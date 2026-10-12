@@ -175,11 +175,11 @@ function drawRefused() {
   document.documentElement.lang = h.locale || 'en';
   $('#who').innerHTML = `${esc(h.node || 'this node')}<small>${esc(h.city || '')}</small>`;
   $('#asof').textContent = 'locked';
+  for (const el of [$('#walk'), $('.down')]) if (el) el.remove();   /* nothing to walk through on a refused phone */
   const block = `<div class="refused"><p class="lede">${esc(refusedSentence || 'This node is not sharing its readings with this screen.')}</p>`
     + `<p class="mut">Unlock this phone with the token for closing a loop, or ask whoever set this node up to turn sharing on. <code>planetai ui</code> on the node prints the tokens.</p>`
     + unlockHTML() + `</div>`;
   $('#now-v').innerHTML = block;
-  $('#place-v').innerHTML = '';
   drawNode(h);
 }
 
@@ -225,7 +225,12 @@ document.addEventListener('visibilitychange', async () => {
 
 /* the walk (§11.2) needs MapLibre, the one heavy library on this page: watched for only once Now has drawn, and
    fetched when the walk nears the screen, so Now comes first on a slow phone; then walk.js draws into #walk */
-boot().then(() => { if ('IntersectionObserver' in window && $('#walk')) {
+boot().then(() => {
+  /* the arrow stays at the foot of the screen until the walk comes up, for whoever does not think to scroll */
+  const dn = $('.down'), wk = $('#walk');
+  if (dn && wk) { const at = () => dn.classList.toggle('gone', wk.getBoundingClientRect().top < innerHeight * 0.85);
+    addEventListener('scroll', at, { passive: true }); at(); }
+  if ('IntersectionObserver' in window && $('#walk')) {
   const wio = new IntersectionObserver(es => {
     if (!es.some(e => e.isIntersecting)) return;
     wio.disconnect();

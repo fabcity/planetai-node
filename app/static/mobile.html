@@ -87,9 +87,16 @@ section>h2{font:500 var(--t-cap)/1.4 var(--mono);letter-spacing:.12em;text-trans
 .unlock input{width:100%;min-height:44px;padding:10px;border:1px solid var(--ink);background:var(--ground);color:var(--ink);font:var(--t-body) var(--mono);margin:0 0 10px}
 .refused{border:1px solid var(--ink);padding:16px 14px;margin:0 0 16px}
 .refused .lede{font-size:var(--t-read);line-height:1.4;margin:0 0 10px}
+/* Now is the first screen on its own, and says there is more below it: the walk is a scroll away, not a peek */
+#now{min-height:calc(100svh - 52px - 16px);display:flex;flex-direction:column}
+.down{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:8;display:flex;flex-direction:column;align-items:center;gap:2px;min-height:44px;padding:8px 14px 6px;background:var(--ground);border:1px solid var(--hair);transition:opacity .3s;white-space:nowrap;font:500 var(--t-cap) var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--mute);text-decoration:none}
+.down span{font:400 26px/1 var(--mono);color:var(--ink);animation:nudge 1.8s ease-in-out infinite}
+@keyframes nudge{50%{transform:translateY(5px)}}
+.down.gone{opacity:0;pointer-events:none}
+@media (prefers-reduced-motion:reduce){.down span{animation:none}}
 /* the walk (§11.2): full width, the map pinned under the bar while its chapters scroll under it */
 :root{--warm:#c8553d;--cool:#3b6ea5}
-#walk{margin:0 -16px 34px}#walk>h2{margin:0 16px 0}#walk>#chs>.mut{padding:0 16px}
+#walk{margin:0 -16px 34px;scroll-margin-top:52px}#walk>h2{margin:0 16px 0}#walk>#chs>.mut{padding:0 16px}
 #top{position:sticky;top:52px;z-index:5;height:58vh;border-bottom:1px solid var(--ink);background:#dfe6ea}
 #map{position:absolute;inset:0}
 #bar{position:absolute;left:0;right:0;top:0;z-index:2;display:flex;padding:10px 12px;background:linear-gradient(var(--ground) 60%,transparent)}
@@ -128,7 +135,8 @@ svg.g{display:block;width:100%;height:auto;margin:16px 0 4px;overflow:visible}
   <span class="asof" id="asof"></span>
 </header>
 <main>
-  <section id="now" aria-label="Now"><h2>Now</h2><div id="now-v"></div></section>
+  <section id="now" aria-label="Now"><h2>Now</h2><div id="now-v"></div>
+    <a class="down" href="#walk">Walk out from the house<span aria-hidden="true">↓</span></a></section>
   <section id="walk" aria-label="Walk out from the house"><h2>Walk out from the house</h2>
     <div id="top"><div id="map"></div><div id="bar"><div class="tg" id="tg" role="group" aria-label="Issue"></div></div><nav id="rail" aria-label="Scales"></nav></div>
     <div id="chs"><p class="mut">The walk draws when you reach it.</p></div></section>
