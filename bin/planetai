@@ -2160,28 +2160,32 @@ if d.get("position") != "cell" or not (d.get("cell") or {}).get("id"):
 print(json.dumps({"name": d["node"], "cell": d["cell"]["id"], "lat": d["lat"], "lon": d["lon"]}))')" || fail "this node has no published cell yet. planetai setup sets its place"
   local name; name="$(printf '%s' "$entry" | json 'print(d["name"])')"
   local place="" operator="" contact=""
-  # already listed? the node's own /nodes has the programme's list (GET /nodes, read every 6 h): its words are the
-  # defaults, so Enter keeps them, and the same entry again sends nothing
-  local lplace="" loper="" lcell="" lsince=""
-  IFS=$'\t' read -r lplace loper lcell lsince < <(curl -sf "localhost:$(port)/nodes" | N="$name" json '
+  # already listed? registry.json on main is public, and the entry asked for is about to go there: read the whole of
+  # this node's row (GET /nodes leaves out contact and sources), so its words are the defaults, Enter keeps them, its
+  # history (since, sources, parent) is kept, and the same entry again sends nothing
+  local old; old="$(curl -sf "https://raw.githubusercontent.com/fabcity/planetai-node/main/registry.json" | N="$name" json '
 import os
 n = next((x for x in d.get("nodes") or [] if x.get("name") == os.environ["N"]), None)
-if n:
-    print("\t".join(str(n.get(k) or "") for k in ("place", "operator", "cell", "since")))' 2>/dev/null) || true
+print(json.dumps(n) if n else "")' 2>/dev/null)" || old=""
+  local lplace="" loper="" lcell="" lsince="" lcontact=""
+  [[ -n "$old" ]] && IFS=$'\x1f' read -r lplace loper lcell lsince lcontact < <(printf '%s' "$old" | json '
+print("\x1f".join(str(d.get(k) or "") for k in ("place", "operator", "cell", "since", "contact")))')   # not a tab: IFS whitespace folds empty fields
+  [[ -n "$old" ]] || old="{}"
   if [[ -z "$remove" ]]; then
     [[ -n "$lcell" ]] && echo "  $name is already listed, since $lsince. Enter keeps what the list says."
     ask place "Place, as anyone may read it (town, region, country)" "${lplace:-$(envget NODE_CITY)}"
     ask operator "Who runs this node (a person or an organisation)" "$loper"
-    ask contact "A public contact, or leave empty" ""
-    if [[ -n "$lcell" && -z "$contact" && "$place" == "$lplace" && "$operator" == "$loper" \
+    ask contact "A public contact, or leave empty" "$lcontact"
+    if [[ -n "$lcell" && "$contact" == "$lcontact" && "$place" == "$lplace" && "$operator" == "$loper" \
           && "$(printf '%s' "$entry" | json 'print(d["cell"])')" == "$lcell" ]]; then
       say "$name is listed as this already. Nothing to send."; return 0
     fi
-    entry="$(printf '%s' "$entry" | P="$place" O="$operator" C="$contact" S="$(envget NODE_SCALE)" json '
+    entry="$(printf '%s' "$entry" | P="$place" O="$operator" C="$contact" S="$(envget NODE_SCALE)" OLD="$old" json '
 import os, datetime
+old = json.loads(os.environ["OLD"])
 row = {"name": d["name"], "scale": os.environ["S"] or "community", "operator": os.environ["O"] or None,
-       "place": os.environ["P"], "cell": d["cell"], "lat": d["lat"], "lon": d["lon"], "sources": [], "parent": None,
-       "since": datetime.date.today().strftime("%Y-%m")}
+       "place": os.environ["P"], "cell": d["cell"], "lat": d["lat"], "lon": d["lon"], "sources": old.get("sources", []),
+       "parent": old.get("parent"), "since": old.get("since") or datetime.date.today().strftime("%Y-%m")}
 if os.environ["C"]:
     row["contact"] = os.environ["C"]
 print(json.dumps(row))')"

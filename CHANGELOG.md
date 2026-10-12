@@ -5,7 +5,9 @@
 - **`planetai hello` lists a node on every node's map.** It shows the household exactly what will be public (the
   node's name, its cell and the cell's centre, the place, who runs it, an optional contact), and on a yes opens the
   pull request to `registry.json` with `gh`, or prints the entry and the link without it. The merge is the
-  approval; every node reads the list within six hours. `--remove` takes a node off.
+  approval; every node reads the list within six hours. `--remove` takes a node off. A node already listed is told
+  so: the listed place, operator and contact are the defaults, its first month and sources are kept, and the same
+  entry again sends nothing.
 
 ## v0.81.0 — 2026-10-12 — The phone walks out from the house
 

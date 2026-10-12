@@ -13,7 +13,7 @@ cp "$REPO/bin/planetai" "$D/node/bin/planetai"
 cat > "$D/stub/curl" <<S
 #!/bin/sh
 case "\$*" in
-  */nodes*) [ -e "$D/listed" ] && cat "$D/listed" || echo '{"nodes": []}';;
+  */registry.json*) [ -e "$D/listed" ] && cat "$D/listed" || echo '{"nodes": []}';;
   *) echo '{"node": "mahon1", "position": "cell", "lat": 39.889, "lon": 4.265, "cell": {"id": "8839a1b2c3fffff", "res": 8}}';;
 esac
 S
@@ -53,11 +53,16 @@ assert any(n["name"] == "bayu-ungasan" for n in r), "the other nodes stay"
 # already listed: the list's words are the defaults, and the same entry again sends nothing (12 Oct 2026: node #1's
 # hello offered "bali" and an empty operator while the list said "Ungasan, Badung, Bali, ID" and who runs it)
 rm -rf "$D/pr" "$D/fork.git"
-echo '{"nodes": [{"name": "mahon1", "place": "Mahon, Menorca, ES", "operator": "Lucas", "cell": "8839a1b2c3fffff", "since": "2026-09"}]}' > "$D/listed"
+echo '{"nodes": [{"name": "mahon1", "place": "Mahon, Menorca, ES", "operator": "Lucas", "cell": "8839a1b2c3fffff",
+  "since": "2026-09", "sources": ["smartcitizen:1"], "parent": null, "contact": "l@x.es"}]}' > "$D/listed"
 out="$(run "" "" "")"
-[[ "$out" == *"already listed, since 2026-09"* && "$out" == *"[Mahon, Menorca, ES]"* && "$out" == *"[Lucas]"* ]] \
-  && ok "a listed node is told so, and its listed place and operator are the defaults" || bad "the listing was not offered: $out"
+[[ "$out" == *"already listed, since 2026-09"* && "$out" == *"[Mahon, Menorca, ES]"* && "$out" == *"[Lucas]"* && "$out" == *"[l@x.es]"* ]] \
+  && ok "a listed node is told so, and its listed place, operator and contact are the defaults" || bad "the listing was not offered: $out"
 [[ "$out" == *"Nothing to send"* && ! -e "$D/pr" && ! -d "$D/fork.git" ]] && ok "the same entry again sends nothing" || bad "an unchanged listing was sent again: $out"
+
+out="$(run "" "" "new@x.es" n)"
+[[ "$out" == *"since     2026-09"* && "$out" == *"new@x.es"* && ! -e "$D/pr" ]] \
+  && ok "a changed listing keeps the month it was first listed, and a no still sends nothing" || bad "since was reset: $out"
 
 [[ "$fails" == 0 ]] || { rm -rf "$D"; exit 1; }
 rm -rf "$D"
