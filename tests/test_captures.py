@@ -347,17 +347,30 @@ ANALYSIS[0] = a
 r = lan.patch("/captures/7", json={"confirm": True, "actor": "Tomas"}, headers=ACT)
 assert r.status_code == 200 and "analysis = analysis || %s" in r.json()["capture"]["sets"], r.text
 assert CUR.params[0].obj["confirmed_by"] == "Tomas" and CUR.params[0].obj["by"] == "person", "confirmed by name"
-# automatic: EYES_AUTO=on describes a new image after the upload answers
-settings._cache["rows"]["EYES_AUTO"] = "on"
+# a person's own list: edited and deleted findings, confirmed by the edit
+r = lan.patch("/captures/7", json={"findings": [{"class": "plant", "name": "coconut palm", "count": 4},
+                                                 {"class": "nope", "name": "a bench"}, {"name": ""}], "actor": "Tomas"}, headers=ACT)
+assert r.status_code == 200, r.text
+mine = CUR.params[0].obj
+assert mine["findings"] == [{"class": "plant", "name": "coconut palm", "count": 4, "issue": False},
+                            {"class": "other", "name": "a bench", "count": None, "issue": False}], mine
+assert mine["by"] == "person" and mine["confirmed_by"] == "Tomas", "an edit is a person's word"
+assert lan.patch("/captures/7", json={"findings": "x"}, headers=ACT).status_code == 422
+# the upload's box: describe=1 describes the new image after the upload answers; unticked, nothing is asked
 called = []
 main._describe, d0 = (lambda cid, model: called.append((cid, model)) or __import__("asyncio").sleep(0)), main._describe
 main.q = q0
 DUPROWS.clear()
-assert local.post("/captures", files={"photo": ("a.jpg", jpeg(False) + b"auto", "image/jpeg")}, data={"kind": "phone"}).status_code == 200
-assert called == [(7, "qwen2.5vl:7b")], f"EYES_AUTO=on describes each new image: {called}"
-settings._cache["rows"]["EYES_AUTO"] = "off"
+r = local.post("/captures", files={"photo": ("a.jpg", jpeg(False) + b"box", "image/jpeg")}, data={"kind": "phone"})
+assert r.status_code == 200 and r.json()["describing"] is False and called == [], "unticked: not described"
+r = local.post("/captures", files={"photo": ("a.jpg", jpeg(False) + b"box2", "image/jpeg")}, data={"kind": "phone", "describe": "1"})
+assert r.status_code == 200 and r.json()["describing"] is True, r.text
+assert called == [(7, "qwen2.5vl:7b")], f"the box describes the new image: {called}"
+settings._cache["rows"]["EYES_MODEL"] = ""
+r = local.post("/captures", files={"photo": ("a.jpg", jpeg(False) + b"box3", "image/jpeg")}, data={"kind": "phone", "describe": "1"})
+assert r.json()["describing"] is False, "no image model: the box says so instead of pretending"
 main._describe = d0
-print("image model: local Ollama with flows classes and no people; kept as the model's; confirmed by a name; auto on upload")
+print("image model: local Ollama with flows classes and no people; kept as the model's; confirmed or edited by a name; the upload box describes")
 
 # ---- the Data door edits an image's words, and the admin token deletes one
 DELFILE = "gone.jpg"

@@ -2781,10 +2781,11 @@ async def capture_post(request: Request, authorization: str = Header(""),
                        photo: "UploadFile" = File(...), kind: str = Form("phone"),
                        lat: float | None = Form(None), lon: float | None = Form(None),
                        cell: str | None = Form(None), note: str = Form(""),
-                       taken_at: str = Form(""), actor: str = Form("")):
+                       taken_at: str = Form(""), actor: str = Form(""), describe: str = Form("")):
     """A household adds a picture: multipart, one image, `kind`, `lat`+`lon` OR a res-10 `cell` OR neither (the
     node's own cell, which is what a phone with no location permission means), optional `note`, `taken_at` and
-    `actor` (the name the phone keeps). The exact point is kept — a tree or a dump is worth it — and only the
+    `actor` (the name the phone keeps), and `describe=1` to have the image model describe it after the upload answers
+    (the upload form's checkbox). The exact point is kept — a tree or a dump is worth it — and only the
     file is cleaned. A duplicate sha256 answers the existing row instead of keeping the same picture twice."""
     import hashlib  # noqa: PLC0415
     import h3  # noqa: PLC0415
@@ -2840,8 +2841,8 @@ async def capture_post(request: Request, authorization: str = Header(""),
                     (ts, kind, cap_cell, lat, lon, outside, at_home, str(actor or "")[:80], str(note or "")[:500],
                      name, sha, len(cleaned), mime))
         row = {k: (v.isoformat() if isinstance(v, datetime) else v) for k, v in cur.fetchone().items()}
-    _describe_later(row["id"])
-    return {"ok": True, "capture": row}
+    describing = describe.strip().lower() in ("1", "on", "true") and _describe_later(row["id"])
+    return {"ok": True, "capture": row, "describing": bool(describing)}
 
 
 @app.get("/captures")
@@ -2884,15 +2885,20 @@ def capture_patch(cid: int, body: dict, request: Request, authorization: str = H
         if not isinstance(m, dict) or len(m) > 40:
             raise HTTPException(422, "meta is an object of at most 40 keys")
         sets.append("meta = %s"); vals.append(Jsonb({str(k)[:60]: str(v)[:500] for k, v in m.items()}))
-    if body.get("confirm"):
+    if body.get("confirm") or "findings" in body:
         if not ((q("SELECT analysis FROM captures WHERE id = %s", cid) or [{}])[0].get("analysis") or {}).get("model"):
             raise HTTPException(409, "nothing to confirm: this image has not been described yet")
         # a person here says the model's findings are right: from now on they are the household's, with its name
+        # (an edited list is confirmed by the edit: what is left is what a person says is there)
         who = str(body.get("actor") or "someone here")[:80]
-        sets.append("analysis = analysis || %s"); vals.append(Jsonb({"by": "person", "confirmed_by": who,
-                                                                     "confirmed_at": datetime.now(timezone.utc).isoformat()}))
+        mine = {"by": "person", "confirmed_by": who, "confirmed_at": datetime.now(timezone.utc).isoformat()}
+        if "findings" in body:
+            if not isinstance(body["findings"], list) or len(body["findings"]) > 30:
+                raise HTTPException(422, "findings is a list of at most 30")
+            mine["findings"] = _findings(body["findings"])
+        sets.append("analysis = analysis || %s"); vals.append(Jsonb(mine))
     if not sets:
-        raise HTTPException(422, "nothing to change: note, kind, meta or confirm")
+        raise HTTPException(422, "nothing to change: note, kind, meta, findings or confirm")
     with db() as con, con.cursor() as cur:
         cur.execute(f"UPDATE captures SET {', '.join(sets)} WHERE id = %s RETURNING *", (*vals, cid))
         row = cur.fetchone()
@@ -3000,15 +3006,7 @@ async def _describe(cid: int, model: str) -> dict:
         raise HTTPException(503, f"Ollama is not answering at {url} ({type(e).__name__})") from None
     except (KeyError, ValueError, TypeError):
         raise HTTPException(502, "the image model answered something that is not the shape asked for") from None
-    findings = []
-    for f in (out.get("findings") or [])[:30]:
-        if not isinstance(f, dict) or str(f.get("name") or "").strip().lower() in ("", "none", "null", "n/a", "nothing"):
-            continue   # a small model walks the class list and files "none" under each
-        cnt = f.get("count")
-        findings.append({"class": f.get("class") if f.get("class") in EYES_CLASSES else "other",
-                         "name": str(f["name"]).strip()[:120],
-                         "count": cnt if isinstance(cnt, int) and not isinstance(cnt, bool) and cnt >= 0 else None,
-                         "issue": f.get("issue") is True})
+    findings = _findings(out.get("findings") or [])
     analysis = {"model": model, "where": "local", "vocab": FLOWS_VOCAB, "asked": [look, EYES_FILE],
                 "at": datetime.now(timezone.utc).isoformat(), "summary": summary[:1500],
                 "findings": findings, "by": "model", "confirmed_by": None}
@@ -3017,16 +3015,31 @@ async def _describe(cid: int, model: str) -> dict:
     return analysis
 
 
+def _findings(raw: list) -> list:
+    """A list of findings as the node keeps them, whoever wrote it: a known class or other, a name, a count or none."""
+    out = []
+    for f in raw[:30]:
+        if not isinstance(f, dict) or str(f.get("name") or "").strip().lower() in ("", "none", "null", "n/a", "nothing"):
+            continue   # a small model walks the class list and files "none" under each
+        cnt = f.get("count")
+        out.append({"class": f.get("class") if f.get("class") in EYES_CLASSES else "other",
+                    "name": str(f["name"]).strip()[:120],
+                    "count": cnt if isinstance(cnt, int) and not isinstance(cnt, bool) and cnt >= 0 else None,
+                    "issue": f.get("issue") is True})
+    return out
+
+
 def _eyes_model() -> str:
     return settings.get("EYES_MODEL", "").strip()
 
 
-def _describe_later(cid: int) -> None:
-    """EYES_AUTO=on: describe a new image after its upload has answered, so the phone is not kept waiting."""
+def _describe_later(cid: int) -> bool:
+    """The upload's checkbox: describe a new image after its upload has answered, so the phone is not kept waiting.
+    False when no image model is set, so the page can say so."""
     import asyncio  # noqa: PLC0415
     model = _eyes_model()
-    if not model or settings.get("EYES_AUTO", "off") != "on":
-        return
+    if not model:
+        return False
 
     async def run():
         try:
@@ -3036,12 +3049,13 @@ def _describe_later(cid: int) -> None:
     t = asyncio.get_running_loop().create_task(run())
     _EYES_TASKS.add(t)
     t.add_done_callback(_EYES_TASKS.discard)
+    return True
 
 
 @app.post("/captures/{cid}/describe")
 async def capture_describe(cid: int, request: Request, authorization: str = Header("")):
     """Describe one image with the image model in Set up (EYES_MODEL), now, and answer what it found. A second
-    press replaces the model's earlier description, and with it any confirmation of that one."""
+    press (a new model, say) replaces the earlier description, and with it any confirmation or edit of that one."""
     _captures_auth(request, authorization)
     model = _eyes_model()
     if not model:

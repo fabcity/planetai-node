@@ -92,6 +92,7 @@ function addImage() {
   dl.innerHTML = `<form id="imgf"><div class="k">Add an image</div><label class="drop" for="imgfile"><input type="file" id="imgfile" accept="image/jpeg,image/png,image/heic,image/heif,image/webp"><span id="imgname">Choose an image, or drop one here</span></label>`
     + `<label>What took it<select id="imgkind">${Object.entries(IKIND).map(([k, t]) => `<option value="${k}">${t}</option>`).join('')}</select></label>`
     + `<label>A note, if it needs one<input id="imgnote" maxlength="500"></label>${who ? '' : '<label>Your name<input id="imgwho" autocomplete="name"></label>'}`
+    + `<label class="tick"><span><input type="checkbox" id="imgseen" checked> Describe it with the image model, on this node</span></label>`
     + `<p class="fine">Its own GPS is where it was taken, else the node's cell. The file is cleaned of EXIF and GPS and kept on this node.</p>`
     + `<p class="fine" id="imgout" role="status"></p><div class="acts"><button type="button" id="imgx">Cancel</button><button type="submit">Keep it on the node</button></div></form>`;
   dl.showModal();
@@ -106,11 +107,12 @@ function addImage() {
     if (!by) { out.textContent = 'The node records who added it: your name first.'; return; }
     if (!who) try { localStorage.setItem('planetai_actor', by); } catch (x) { /* no storage here */ }
     const fd = new FormData(); fd.append('photo', file, file.name || 'image.jpg'); fd.append('kind', $('#imgkind').value);
-    fd.append('note', $('#imgnote').value); fd.append('actor', by);
+    fd.append('note', $('#imgnote').value); fd.append('actor', by); fd.append('describe', $('#imgseen').checked ? '1' : '');
     btn.disabled = true; out.textContent = 'Sending it to the node…';
     try {
       const r = await fetch('/captures', { method: 'POST', headers: DOORS_AUTH(), body: fd }), b = await r.json().catch(() => ({}));
       if (!r.ok) { out.textContent = b.detail || `the node refused it (${r.status})`; return; }
+      if (b.describing) setTimeout(() => window.placeImagesChanged && window.placeImagesChanged(), 40000);   // its description, once the model is done
       dl.close(); if (window.placeImagesChanged) window.placeImagesChanged();
     } catch (x) { out.textContent = `The node did not answer: ${x.message}`; } finally { btn.disabled = false; }
   };

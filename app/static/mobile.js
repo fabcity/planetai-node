@@ -109,6 +109,7 @@ function captureHTML() {
     + `<label class="k" for="capnote">A note, if it needs one</label>`
     + `<input id="capnote" maxlength="500" placeholder="what the image answers">`
     + (actor ? '' : `<label class="k" for="capactor">Your name</label><input id="capactor" autocomplete="name" required>`)
+    + `<label class="mut"><input type="checkbox" id="capseen" checked> Describe it with the image model, on the node</label>`
     + `<button type="submit" class="sbtn primary">Keep it on the node</button><button type="button" class="sbtn" id="capcancel">Cancel</button>`
     + `<p class="dm">Where it was taken is the image's own location, else this phone's if you allow it, else the node's own cell. The node cleans the file of EXIF and GPS and keeps it; only a screen holding a token can see it.</p></form>`
     + `<p class="dm" id="capout" role="status"></p></div>`;
@@ -145,6 +146,7 @@ async function captureSubmit(ev) {
   fd.append('kind', $('#capkind').value);
   fd.append('note', $('#capnote').value);
   fd.append('actor', actor);
+  fd.append('describe', $('#capseen').checked ? '1' : '');
   if (point) { fd.append('lat', point.lat); fd.append('lon', point.lon); }
   out.textContent = 'Sending it to the node…';
   try {
@@ -157,7 +159,8 @@ async function captureSubmit(ev) {
     }
     const c = body.capture || {};
     out.textContent = (body.duplicate ? 'The node already had it' : 'The node kept it')
-      + ` — ${c.kind || 'image'}, ${c.cell ? 'cell ' + c.cell.slice(0, 9) + '…' : 'its cell'}${c.at_home ? ', at home' : ''}. The walk counts it below.`;
+      + ` — ${c.kind || 'image'}, ${c.cell ? 'cell ' + c.cell.slice(0, 9) + '…' : 'its cell'}${c.at_home ? ', at home' : ''}. The walk counts it below.`
+      + (body.describing ? ' The image model is describing it; its findings show in Data.' : $('#capseen').checked && !body.duplicate ? ' No image model is set on the node, so it was not described.' : '');
     captureClose();
   } catch (e) { out.textContent = `The node did not answer: ${e.message}`; } finally { send.disabled = false; }
 }

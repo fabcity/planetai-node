@@ -181,18 +181,26 @@ function cellsBlock() {
 /* IMAGES — every image the household added (SPEC_eyes step 1), with its facts of arrival, and its words to edit: the
    kind, the note, and key: value lines (meta). The act token edits; the admin token deletes, file and row. */
 const IKINDS = { phone: 'Phone', camera: 'Fixed camera', microscope: 'Microscope', drone: 'Drone', balloon: 'Balloon or kite' };
-// What the image model found: its words, each finding filed under a flows class, marked the model's until a person confirms.
+// What the image model found: its words, and each finding filed under a flows class, as rows a person can edit or
+// delete. Saving the rows confirms them: they are the household's from then on, with its name.
+// ponytail: EYES_CLASSES in main.py, copied; the node files anything else under other
+const FCLASSES = ['plant', 'animal', 'habitat', 'food', 'water', 'compost', 'waste_residual', 'plastic_waste', 'packaging', 'wood', 'metal',
+  'textile', 'electronics', 'filament', 'fuel', 'electricity', 'part', 'filter', 'furniture', 'tool', 'appliance', 'garment', 'micromobility', 'goods', 'other'];
+const frow = f => `<div class="frow"><select data-g="class" aria-label="class">${FCLASSES.map(c => `<option${c === f.class ? ' selected' : ''}>${c}</option>`).join('')}</select>`
+  + `<input data-g="name" aria-label="what" value="${esc(f.name || '')}"><input data-g="count" aria-label="how many" type="number" min="0" value="${f.count ?? ''}">`
+  + `<label title="a problem for the place"><input data-g="issue" type="checkbox"${f.issue ? ' checked' : ''}>issue</label><button data-g="x" aria-label="delete this finding">×</button></div>`;
 const seen = a => !a ? `<p class="fine">Not described yet.</p>`
-  : `<div class="seen"><p>${esc(a.summary || '')}</p>`
-    + (a.findings || []).map(f => `<p class="fine"><span class="mono">${esc(f.class)}</span> ${esc(f.name)}${f.count != null ? ' × ' + f.count : ''}${f.issue ? ' · <b>an issue</b>' : ''}</p>`).join('')
+  : `<div class="seen"><p>${esc(a.summary || '')}</p><div class="frows">${(a.findings || []).map(frow).join('')}</div><button data-g="add">+ a finding</button>`
     + `<p class="fine mono">${a.confirmed_by ? `confirmed by ${esc(a.confirmed_by)}` : 'model, not confirmed'} · ${esc(a.model)}, on this machine · <a href="${esc(a.vocab || '')}" target="_blank" rel="noopener">flows 1.0</a></p></div>`;
+const rowsOf = card => [...card.querySelectorAll('.frow')].map(r => ({ class: r.querySelector('[data-g=class]').value, name: r.querySelector('[data-g=name]').value.trim(),
+  count: r.querySelector('[data-g=count]').value === '' ? null : +r.querySelector('[data-g=count]').value, issue: r.querySelector('[data-g=issue]').checked })).filter(f => f.name);
 async function imagesBlock() {
   const el = $('#d-images');
   if (el.querySelector('.icard') && el.contains(document.activeElement)) return;   // a resize must not wipe an edit in progress
   const rows = await fetch('/captures?limit=500', { headers: DOORS_AUTH() }).then(r => (r.ok ? r.json() : null)).catch(() => null);
   if (!rows) { el.innerHTML = `<h2>Images</h2><p class="fine">Images answer a screen holding a token only: the picture and where it was taken. Unlock this screen under Node.</p>`; return; }
   const metaText = m => Object.entries(m || {}).map(([k, v]) => `${k}: ${v}`).join('\n');
-  el.innerHTML = `<h2>Images, ${rows.length}</h2><p class="blurb">What the household added, newest first. Each is a square on Place, one layer per kind. Describe asks the image model in Set up, on this machine; its findings are its own until somebody here confirms them.</p>`
+  el.innerHTML = `<h2>Images, ${rows.length}</h2><p class="blurb">What the household added, newest first. Each is a square on Place, one layer per kind. Describe asks the image model in Set up, on this machine, again whenever the model changes. Its findings are its own until somebody here edits or confirms them.</p>`
     + `<div class="icards">${rows.map(c => `<div class="icard" data-id="${c.id}"><img alt="${esc(c.note || IKINDS[c.kind] || 'an image')}">`
       + `<p class="fine mono">${esc((c.ts || '').slice(0, 16).replace('T', ' '))}${c.actor ? ' · ' + esc(c.actor) : ''} · ${Math.round((c.bytes || 0) / 1024)} kB</p>`
       + `<p class="fine mono">${esc(c.cell)} · ${c.lat == null ? 'its cell only' : 'the exact point'} · ${c.outside ? 'outside the seven cells' : 'in the seven cells'}${c.at_home ? ' · at home' : ''}</p>`
@@ -201,7 +209,7 @@ async function imagesBlock() {
       + `<label>More, one per line as key: value<textarea data-f="meta" rows="2">${esc(metaText(c.meta))}</textarea></label>`
       + `<div data-seen>${seen(c.analysis)}</div>`
       + `<div class="acts"><button data-a="save">Save</button><button data-a="see">${c.analysis ? 'Describe again' : 'Describe'}</button>`
-      + `<button data-a="ok"${c.analysis && !c.analysis.confirmed_by ? '' : ' hidden'}>Confirm</button><button data-a="del">Delete</button></div><p class="fine" role="status"></p></div>`).join('')}</div>`;
+      + `<button data-a="ok"${c.analysis ? '' : ' hidden'}>${c.analysis && c.analysis.confirmed_by ? 'Save findings' : 'Confirm findings'}</button><button data-a="del">Delete</button></div><p class="fine" role="status"></p></div>`).join('')}</div>`;
   el.querySelectorAll('.icard').forEach(async card => {
     const id = card.dataset.id, say = t => { card.querySelector('[role=status]').textContent = t; };
     card.querySelector('[data-a=save]').onclick = async () => {
@@ -218,17 +226,23 @@ async function imagesBlock() {
       const j = r ? await r.json().catch(() => ({})) : {};
       see.disabled = false;
       if (!(r && r.ok)) { say(`Not described: ${j.detail || (r ? r.status : 'the node did not answer')}`); return; }
-      card.querySelector('[data-seen]').innerHTML = seen(j.analysis); see.textContent = 'Describe again'; ok.hidden = false; say('');
+      card.querySelector('[data-seen]').innerHTML = seen(j.analysis); see.textContent = 'Describe again'; ok.hidden = false; ok.textContent = 'Confirm findings'; say('');
       if (window.placeImagesChanged) window.placeImagesChanged();
     };
     ok.onclick = async () => {
       let actor = ''; try { actor = localStorage.getItem('planetai_actor') || ''; } catch (e) { /* no storage here */ }
       const r = await fetch(`/captures/${id}`, { method: 'PATCH', headers: { ...DOORS_AUTH(), 'content-type': 'application/json' },
-        body: JSON.stringify({ confirm: true, actor }) }).catch(() => null);
+        body: JSON.stringify({ findings: rowsOf(card), actor }) }).catch(() => null);
       const j = r ? await r.json().catch(() => ({})) : {};
       if (!(r && r.ok)) { say(`Not confirmed: ${j.detail || (r ? r.status : 'the node did not answer')}`); return; }
-      card.querySelector('[data-seen]').innerHTML = seen(j.capture.analysis); ok.hidden = true; say('Confirmed: these findings are the household\'s now.');
+      card.querySelector('[data-seen]').innerHTML = seen(j.capture.analysis); ok.textContent = 'Save findings'; say('Saved: these findings are the household\'s now.');
+      if (window.placeImagesChanged) window.placeImagesChanged();
     };
+    card.querySelector('[data-seen]').addEventListener('click', e => {   // delete a row, or add a blank one, before saving
+      const g = e.target.dataset && e.target.dataset.g;
+      if (g === 'x') e.target.closest('.frow').remove();
+      if (g === 'add') { card.querySelector('.frows').insertAdjacentHTML('beforeend', frow({ class: 'other', name: '' })); card.querySelector('.frow:last-child [data-g=name]').focus(); }
+    });
     card.querySelector('[data-a=del]').onclick = async () => {
       if (!confirm('Delete this image from the node? The file goes with it, and it cannot be undone.')) return;
       const r = await fetch(`/captures/${id}`, { method: 'DELETE', headers: DOORS_AUTH() }).catch(() => null);
