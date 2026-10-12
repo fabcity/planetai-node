@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+- **The eyes, step 1: the capture tier (SPEC_eyes).** A household chooses a picture from its phone's library on the phone page
+  (**Add an image** in Now, on an unlocked phone, opens the library and asks the details once one is chosen; a
+  locked phone reads "Unlock this phone to add images").
+  The node keeps the file in `CAPTURES_DIR` — any storage, a NAS share included — cleaned of EXIF and GPS on
+  arrival, and records the capture: when (the picture's own date when it carries one), its res-10 cell, its
+  kind, who, and the exact point it was taken from, kept token-only (12 Oct, Tomas: a tree or a dump is worth
+  its precise position). `outside` and `at_home` are computed once on arrival. `POST /captures`, `GET /captures`
+  (a `?cell=` at any resolution, which is how the walk asks) and `GET /captures/{id}/file` answer this machine
+  or the act token only: on no `SHARE_LEVEL` list at any level, the read-only backup token is refused by the
+  routes, and no capture is in `/export`, `/exports`, `/aggregates`, `/readings` or any parent push —
+  `tests/test_captures.py` greps those roads for the table's name. A duplicate sha256 answers the existing row;
+  a missing or unwritable folder is a clear 503, and `planetai doctor` goes red naming the fix. The walk counts
+  a scale's pictures at its step ("1 image here") and opens a small grid of them, token only. The Place door
+  shows them too (Tomas, 12 Oct): one map layer per kind, a square per image that opens its card, and
+  **+ Add an image** beside the views opens a dialog that takes a file picked or dropped. The Data door lists every
+  image with its facts, edits its kind, note and key: value lines (`PATCH /captures/{id}`, act token) and deletes
+  it, file and row (`DELETE /captures/{id}`, admin token). A picture's own GPS becomes its
+  point (a library pick lands where it was taken), and the phone's picker opens the library, not the camera (Tomas). Set up shows the **Pictures folder**; `planetai storage set captures <dir>` moves it.
+
 - **`planetai hello` lists a node on every node's map.** It shows the household exactly what will be public (the
   node's name, its cell and the cell's centre, the place, who runs it, an optional contact), and on a yes opens the
   pull request to `registry.json` with `gh`, or prints the entry and the link without it. The merge is the

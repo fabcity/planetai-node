@@ -585,6 +585,9 @@ cmd_doctor() {
   chk ".env has no stray spaces" "! grep -qE '^[A-Z_]+=[[:space:]]+[^[:space:]]' .env"   "a space after = makes the shell run the value, and a \`#\` after it hands the container the comment: grep -nE '^[A-Z_]+= +' .env"
   chk "backup destination mounted" "mounted \"\$(envget BACKUP_DIR || echo ./backups)\""   "the NAS or drive in BACKUP_DIR is not mounted; tonight's backup will refuse. Mount it, or: planetai storage set backups <dir>"
   chk "a backup in the last 2 days" "[[ -n \"\$(find \"\$(envget BACKUP_DIR || echo ./backups)\" -name '*.sql.gz' -mtime -2 2>/dev/null)\" ]]"   "planetai backup — and check cron: crontab -l | grep backup"
+  # SPEC_eyes: the folder the household's pictures live in. Unlike DATA_DIR it may be a NAS share — files, not
+  # Postgres — so the check is only that it is there and writable; an unmounted share reads as missing, on purpose.
+  chk "captures folder writable" "d=\"\$(envget CAPTURES_DIR)\"; d=\"\${d:-./out/captures}\"; [[ -d \"\$d\" && -w \"\$d\" ]]"   "the folder in CAPTURES_DIR is missing or not writable, so the node refuses every picture. It may be a NAS share (files, not Postgres): mount it, or move them: planetai storage set captures <dir>"
   # A tarball node can say whether the code it is running was signed by the key above. A git checkout
   # never fetches a release, so it has no release signature to have checked — no row there, rather than a
   # permanently red one about something that node does not do.
@@ -1320,10 +1323,15 @@ cmd_storage() {
       remote)   envset BACKUP_REMOTE "$val"; command -v rclone >/dev/null || warn "rclone is not installed: brew install rclone (macOS) or apt install rclone. Then: rclone config"
                 say "off-machine copies to '$val' after each backup${val:+ (rclone remote:path)}";;
       keep)     envset BACKUP_KEEP "$val"; say "keeping $val days of dumps";;
+      captures) [[ -n "$val" ]] || fail "usage: planetai storage set captures <dir>"
+                mounted "$val" || fail "$val is on a drive that is not mounted right now. Mount it first, so I can check it is real."
+                mkdir -p "$val" 2>/dev/null && [[ -w "$val" ]] || fail "$val is not writable"
+                # a NAS share is fine here (files, not Postgres); the folder is a mount, so the app is recreated
+                envset CAPTURES_DIR "$val"; cmd_restart; say "new pictures go to $val. The ones already taken stay where they were: move them across by hand.";;
       data)     fail "the live database stays on a local disk. Set DATA_DIR in .env to a path on another INTERNAL disk or partition,
    then: planetai backup && planetai stop && edit .env && planetai start && planetai restore <latest dump>.
    Never a NAS or a USB drive over the network: Postgres needs fsync and locking those filesystems do not honour.";;
-      *)        fail "usage: planetai storage set backups|remote|keep <value>";;
+      *)        fail "usage: planetai storage set backups|remote|keep|captures <value>";;
     esac; return
   fi
   step "Storage"
@@ -1341,6 +1349,9 @@ cmd_storage() {
     [[ -f "$bdir/LAST_OK" ]] && echo "                     last run OK at $(cat "$bdir/LAST_OK")"
   else printf '   %s(does not exist yet)%s\n' "$Y" "$N"; fi
   echo "                     nightly at 03:17 by cron; on demand:  planetai backup"
+  echo
+  local cdir; cdir="$(envget CAPTURES_DIR)"; cdir="${cdir:-./out/captures}"
+  echo "  Pictures           $cdir   any disk or NAS share.  planetai storage set captures <dir>"
   echo
   local rem; rem="$(envget BACKUP_REMOTE)"
   if [[ -n "$rem" ]]; then echo "  Off-machine copy   $rem  (rclone, after each backup)$(command -v rclone >/dev/null || printf '  %s✗ rclone not installed%s' "$R" "$N")"

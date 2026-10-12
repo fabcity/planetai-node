@@ -244,6 +244,18 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
 .pmpop .maplibregl-popup-close-button{font:400 18px/1 var(--mono);color:var(--ink);width:24px;height:24px;border-radius:0}
 .pmpop .maplibregl-popup-tip{border-top-color:var(--ink);border-bottom-color:var(--ink)}
 .sw.txt::before{content:'Aa';font:600 11px/14px var(--body)}
+.sw.pt-img::before{content:'■';font:14px/12px var(--mono)}.pmimg{width:100%;max-height:160px;object-fit:cover;background:var(--hair)}
+.prow{display:flex;flex-wrap:wrap;gap:10px;align-items:stretch}.prow .pviews{margin-top:14px}
+.addimg{margin-top:14px;background:none;border:1px solid var(--ink);padding:6px 14px;font:600 var(--t-small) var(--body);color:var(--ink);cursor:pointer;min-height:44px}
+.imgdlg{border:1px solid var(--ink);border-radius:0;background:var(--ground);color:var(--ink);padding:18px;width:min(420px,calc(100vw - 32px))}
+.imgdlg::backdrop{background:rgba(0,0,0,.35)}.imgdlg form{display:flex;flex-direction:column;gap:10px}.imgdlg label{display:flex;flex-direction:column;gap:4px;font:var(--t-small) var(--body)}
+.imgdlg .drop{border:1px dashed var(--ink);padding:14px;cursor:pointer}.imgdlg .drop input{font:inherit}.imgdlg form.over .drop{background:color-mix(in srgb,var(--cells) 8%,transparent)}
+.imgdlg select,.imgdlg input:not([type=file]),.imgdlg button{min-height:44px;border:1px solid var(--ink);background:none;color:var(--ink);padding:0 12px;border-radius:0;font:inherit}
+.imgdlg .acts{display:flex;gap:10px;justify-content:flex-end}.imgdlg button[type=submit]{background:var(--ink);color:var(--ground);font-weight:600}
+.icards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr));gap:14px}.icard{border:1px solid var(--hair);padding:10px;display:flex;flex-direction:column;gap:6px}
+.icard img{width:100%;aspect-ratio:4/3;object-fit:cover;background:var(--hair)}.icard .fine{margin:0}.icard label{display:flex;flex-direction:column;gap:3px;font:var(--t-cap) var(--mono);color:var(--mute)}
+.icard select,.icard input,.icard textarea{min-height:44px;border:1px solid var(--ink);background:none;color:var(--ink);padding:6px 10px;border-radius:0;font:var(--t-small) var(--body)}
+.icard .acts{display:flex;gap:8px;flex-wrap:wrap}.icard .seen{border-left:2px solid var(--hair);padding-left:8px}.icard .seen p{margin:0 0 3px}.frow{display:grid;grid-template-columns:minmax(0,1fr) 3.6em auto 32px;gap:4px;align-items:center;margin:0 0 4px}.icard .frow select,.icard .frow input{min-height:36px;padding:2px 6px;min-width:0}.frow label{flex-direction:row;align-items:center;gap:2px}.icard .frow button,.icard .seen [data-g=add]{min-height:36px;padding:0 8px}.frow [data-g=name]{grid-column:1/-1}.imgdlg label.tick{flex-direction:row}.imgdlg label.tick input{min-height:0;margin:0 8px 0 0;vertical-align:middle}.icard button{min-height:44px;border:1px solid var(--ink);background:none;color:var(--ink);padding:0 12px;font:600 var(--t-small) var(--body);cursor:pointer}
 #layers .ly code{font:inherit;border:1px solid var(--hair);padding:0 3px}
 .srow.focus,section.focus{outline:2px solid var(--cells);outline-offset:4px}
 .windcv{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2}
@@ -601,6 +613,7 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
     <div class="altc" data-learn="cell" data-reads="/earth" data-stage="observe" data-pack="earth"><div id="altbar"></div><div id="mapalt"></div></div>
     <aside id="altfacts" data-learn="prov" data-reads="/issues /earth" data-stage="observe" data-pack="earth"></aside>
   </div>
+  <dialog id="imgdlg" class="imgdlg" aria-label="Add an image"></dialog>
   <div class="cols2">
     <section data-learn="reach" data-reads="/reach" data-stage="observe" data-pack="core" data-kind="row"><h2>How far back</h2><div id="reach"></div></section>
     <section data-learn="registry" data-reads="/sources" data-stage="observe" data-pack="core" data-kind="row"><h2>Coming to this place</h2><p class="lede">Sources this node does not read yet. Each says what it would answer, and none draws until it is real.</p><div id="soon"></div></section>
@@ -620,6 +633,7 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
       <section id="models" class="dsec" data-learn="prov" data-reads="/sensors /observations" data-stage="observe" data-pack="earth" data-kind="row"></section>
       <section id="cells" class="dsec" data-learn="parent" data-reads="/cells" data-stage="measure" data-pack="core" data-kind="row"></section>
       <section id="perday" class="dsec" data-learn="strips" data-reads="/issues/days" data-stage="measure" data-pack="core" data-kind="row"></section>
+      <section id="d-images" class="dsec" data-reads="/captures" data-stage="observe" data-pack="core" data-kind="row"></section>
       <section id="ledger" class="dsec" data-learn="actions" data-reads="/actions /alerts" data-stage="act" data-pack="core" data-kind="row"></section>
       <section id="api" class="dsec" data-learn="api" data-reads="/static/docs_site.json" data-pack="core"></section>
     </div>

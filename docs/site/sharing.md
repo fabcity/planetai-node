@@ -67,7 +67,7 @@ same entries on every node in a release, and it says nothing about this house.
 ## What needs a token at every level
 
 `/place/geojson` (the shape of your building and what is around it), the `/geo/` routes other than `/geo/cell` (each locates the node), `/machine` and `/storage` (the machine and what it holds), `/settings/raw`, `/settings/phone`, `/backups` and
-`/backups/<name>`, `/report/bundle`, `GET /aggregates`, `/briefing` and `GET /actions` are on neither
+`/backups/<name>`, `/report/bundle`, `GET /aggregates`, `/briefing`, `GET /actions` and the whole of `/captures` are on neither
 list. So is every write, and the whole of `/mcp` checks the admin token itself. Two writes pass the
 sharing check because their path is on a list for reading, and their handler refuses them instead:
 `POST /readings` at `open`, and `PUT /settings` at every level. Without the admin token, both are refused.
@@ -79,6 +79,12 @@ arrives from Docker's bridge and is treated as a machine on the network.
 `GET /actions` is the ledger of what people did about the alerts: which alert, which stage, who, and the
 note they wrote. It is on no list because the note is the household's own words about its own house.
 `planetai snapshot` blanks every note before it writes its file, for the same reason.
+
+`/captures` is the household's own pictures (SPEC_eyes step 1). It is on no list at any level, and the
+routes then refuse every token but `ACT_TOKEN` and `ADMIN_TOKEN`, so the read-only `BACKUP_TOKEN` that
+passes the middleware cannot read a picture. The row keeps the exact point — a tree or a dump is worth
+it — and only the file is cleaned of EXIF and GPS. No capture is in `/export`, `/exports`, `/aggregates`,
+`/readings` or any parent push; `tests/test_captures.py` greps those roads for the table's name.
 
 > **Careful.** `GET /actions` has no token check of its own. Any of the node's four tokens opens it, and
 > so does `/place/geojson`: the admin token, the backup token on the NAS, the act token on a phone, and

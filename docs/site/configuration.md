@@ -157,7 +157,7 @@ Shortcuts for the settings people change most:
 | `planetai telegram` | Validates the bot token with `getMe`, waits up to two minutes for you to message the bot, writes `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_IDS` to `.env` and to the runtime settings, sends a hello, recreates the app. |
 | `planetai ui` | Creates `ADMIN_TOKEN` and `ACT_TOKEN` in `.env` if either is missing (and recreates the app), then prints the dashboard URLs, `SHARE_LEVEL` and the three tokens: admin, backup, act. |
 | `planetai agent local pull <tag>` | `AGENT_MODEL`, after pulling the model, and recreates the `agent` container. |
-| `planetai storage set backups DIR` · `set remote REMOTE:PATH` · `set keep DAYS` | `BACKUP_DIR` (checked to be a mount point and writable), `BACKUP_REMOTE`, `BACKUP_KEEP`. `set data` refuses and explains why `DATA_DIR` must be an internal disk. |
+| `planetai storage set backups DIR` · `set remote REMOTE:PATH` · `set keep DAYS` · `set captures DIR` | `BACKUP_DIR` (checked to be a mount point and writable), `BACKUP_REMOTE`, `BACKUP_KEEP`, `CAPTURES_DIR` (checked the same way, then the app is recreated so the new folder is mounted). `set data` refuses and explains why `DATA_DIR` must be an internal disk. |
 | `planetai packs install` | Appends the `env:` keys of every pack to `.env` under a dated marker, with their explanation lines, then rebuilds the app image. |
 
 ## Reference
@@ -309,6 +309,7 @@ this machine only when `planetai agent local` set one up. See [Ask the node](ask
 | `AGENT_REMOTE_URL` | blank | `http://<host>:8082/v1` | A bigger local model on your tailnet, OpenAI-compatible. | runtime · restart |
 | `AGENT_REMOTE_MODEL` | `gpt-oss-120b` | model id | e.g. `gpt-oss-120b` or `qwen3:8b`. | runtime · public · restart |
 | `AGENT_REMOTE_KEY` | blank | secret | If that server asks for one. | runtime · secret · restart |
+| `EYES_MODEL` | blank | Ollama model id | The image model: a vision model in this machine's Ollama that describes each image and files what it sees under the [flows](https://planetai.fab.city/vocab/flows/1.0/) classes (`POST /captures/{cid}/describe`). The picture never leaves this machine, and the model is never asked about people. Blank = off. On 16 GB, `qwen2.5vl:7b` (`ollama pull qwen2.5vl:7b`). Each upload form has a box to describe the image as it arrives, and Data, Images describes any image again. | runtime · public |
 | `OLLAMA_URL` | `http://host.docker.internal:11434` | URL | Ollama on this machine, the `local` rung. `planetai agent local` sets `http://172.17.0.1:11434` on Linux. | env only |
 | `AGENT_MODEL` | `qwen3:4b` | Ollama model | The local rung's model, passed to the container as `MODEL`. `planetai agent local pull <tag>` pulls a model and sets this; `planetai agent local` recommends `qwen3.5:4b` below 16 GB of memory and `qwen3.5:9b` at 16 GB or more. It must do tool calling. | env only |
 | `AGENT_NAME` | `local-model` | string | How the agent's actions appear in the audit trail, sent as `X-Agent`. | env only |
@@ -331,11 +332,12 @@ timestamps go up; where, what was said and who said it stay. A node that is a pa
 ## Where it keeps its data
 
 All read by `docker-compose.yml` or `backup.sh`, the nightly cron job. `planetai storage` shows the state of
-each and `planetai storage set` changes the first three.
+each and `planetai storage set` changes the backups and the pictures folder.
 
 | Setting | Default | Values | Meaning | Kind |
 |---|---|---|---|---|
 | `DATA_DIR` | blank = the Docker volume `db` | path | Where the live database lives. A path is a local disk or partition only; never a NAS. `planetai storage set data` refuses for that reason. | bootstrap |
+| `CAPTURES_DIR` | `./out/captures` | path | Where the household's pictures live (SPEC_eyes). Unlike `DATA_DIR` it may be a NAS share or any mounted storage — files, not Postgres. A capture is refused, and `planetai doctor` goes red, when the folder is missing or not writable. | bootstrap |
 | `BACKUP_DIR` | `./backups` | path | Where `pg_dump` files go. If it is a mount point it must be mounted, or the backup refuses. | bootstrap |
 | `BACKUP_KEEP` | `30` | days | Days of dumps kept in `BACKUP_DIR`. | bootstrap |
 | `BACKUP_REMOTE` | blank | rclone `remote:path` | Off-machine copy after each backup: S3, B2, R2, Drive, Dropbox, SFTP, WebDAV, Nextcloud. Run `rclone config` once. | bootstrap |

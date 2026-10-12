@@ -3077,7 +3077,7 @@ async function mobile() {
       card: document.querySelector('#decide')?.textContent || '',
       action: document.querySelector('#decide .dq .said')?.textContent || '',
       buttons: [...document.querySelectorAll('#decide .ans button')].map(b => b.textContent.trim()),
-      targets: [...document.querySelectorAll('button, a')].map(el => { const b = el.getBoundingClientRect();
+      targets: [...document.querySelectorAll('button, a')].filter(el => !el.closest('[hidden]')).map(el => { const b = el.getBoundingClientRect();
         return { t: (el.textContent || '').trim().slice(0, 24), w: b.width, h: b.height }; }),
     }));
     ok(norm(dom.title) === norm(w.title), `the title is not the wire's: "${norm(dom.title)}" vs "${norm(w.title)}"`);
@@ -3094,6 +3094,32 @@ async function mobile() {
       ok(dom.buttons.length === 0, 'an answered event still shows answer buttons');
     }
     for (const t of dom.targets) ok(t.w >= 44 && t.h >= 44, `target under 44×44: "${t.t}" ${t.w.toFixed(0)}×${t.h.toFixed(0)}`);
+    /* Add an image (SPEC_eyes step 1): an unlocked phone gets the button, its form's fields are all
+       44 px targets, and a phone with no token gets the unlock line instead of the button */
+    {
+      /* this rig holds token 'rig' (set on every load by its init script), so the button is there */
+      await r.page.waitForSelector('#capopen', { timeout: 15000 });
+      /* the button opens the library; the details show only once an image is chosen */
+      ok(await r.page.$eval('#capf', f => f.hidden), 'the details are hidden until an image is chosen');
+      const [chooser] = await Promise.all([r.page.waitForEvent('filechooser', { timeout: 5000 }), r.page.click('#capopen')]);
+      await chooser.setFiles({ name: 'p.jpg', mimeType: 'image/jpeg', buffer: Buffer.from([0xff, 0xd8, 0xff, 0xd9]) });
+      ok(await r.page.$eval('#capf', f => !f.hidden) && await r.page.$eval('#capopen', b => b.hidden), 'choosing an image opens its details');
+      const cap = await r.page.evaluate(() => [...document.querySelectorAll('#capf button, #capf select, #capf input:not([type="file"])')]
+        .map(el => { const b = el.getBoundingClientRect(); return { id: el.id || el.tagName, w: b.width, h: b.height }; }));
+      ok(cap.length >= 4, `the capture form draws its fields (${cap.length})`);
+      for (const t of cap) ok(t.w >= 44 && t.h >= 44, `capture form target under 44×44: ${t.id} ${t.w.toFixed(0)}×${t.h.toFixed(0)}`);
+      /* a rig with no token: removeItem on this one would be undone by its init script at the next load */
+      const r0 = await openRig();
+      await r0.page.goto(`${POP}/?layout=mobile&${FIXQ}`, { waitUntil: 'domcontentloaded' });
+      await r0.page.waitForSelector('#now-v .t', { timeout: 15000 });
+      const capLocked = await r0.page.evaluate(() => ({
+        btn: !!document.querySelector('#capopen'),
+        line: document.querySelector('.capture .dm')?.textContent || '',
+      }));
+      ok(!capLocked.btn && capLocked.line.includes('Unlock this phone') && capLocked.line.includes('to add images'),
+        `a locked phone is offered the unlock, not the button: "${capLocked.line}"`);
+      await r0.browser.close();
+    }
     await r.browser.close();
   }
   console.error('  mobile · words and targets (answered card)');

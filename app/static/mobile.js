@@ -88,7 +88,81 @@ function drawNow() {
         + `</span><span class="t2">${said(o.title || o.sentence || '')}</span></button>`;
     }).join('') + `</div>`;
   }
+  s += captureHTML();
   $('#now-v').innerHTML = s;
+}
+
+/* ---- Add an image (SPEC_eyes step 1) ----
+   One button under the rows, on an unlocked phone only — the POST needs the act token, so a locked phone gets
+   the same offer the Decide card makes. The form asks for the picture, its kind and an optional note; where it
+   was taken is the picture's own GPS (read by the node), else the phone's geolocation if allowed, else the node's cell. */
+const CAPTURE_KINDS = ['phone', 'camera', 'microscope', 'drone', 'balloon'];
+function captureHTML() {
+  if (!hasToken()) return `<div class="capture"><p class="dm"><a href="#unlock" data-unlock>Unlock this phone</a> to add images.</p></div>`;
+  let actor = ''; try { actor = localStorage.getItem('planetai_actor') || ''; } catch (e) { /* no storage here */ }
+  /* one button: it opens the library straight away, and the details ask only once an image is chosen (Tomas, 12 Oct) */
+  return `<div class="capture" id="capture"><button class="sbtn" id="capopen">Add an image</button>`
+    + `<input type="file" id="capfile" accept="image/jpeg,image/png,image/heic,image/heif,image/webp" hidden>`
+    + `<form id="capf" hidden><p class="mut" id="capname"></p>`
+    + `<label class="k" for="capkind">What took it</label>`
+    + `<select id="capkind">${CAPTURE_KINDS.map(k => `<option value="${k}"${k === 'phone' ? ' selected' : ''}>${k}</option>`).join('')}</select>`
+    + `<label class="k" for="capnote">A note, if it needs one</label>`
+    + `<input id="capnote" maxlength="500" placeholder="what the image answers">`
+    + (actor ? '' : `<label class="k" for="capactor">Your name</label><input id="capactor" autocomplete="name" required>`)
+    + `<label class="mut"><input type="checkbox" id="capseen" checked> Describe it with the image model, on the node</label>`
+    + `<button type="submit" class="sbtn primary">Keep it on the node</button><button type="button" class="sbtn" id="capcancel">Cancel</button>`
+    + `<p class="dm">Where it was taken is the image's own location, else this phone's if you allow it, else the node's own cell. The node cleans the file of EXIF and GPS and keeps it; only a screen holding a token can see it.</p></form>`
+    + `<p class="dm" id="capout" role="status"></p></div>`;
+}
+
+function captureClose() {
+  $('#capfile').value = ''; $('#capnote').value = ''; $('#capf').hidden = true; $('#capopen').hidden = false;
+}
+
+async function captureSubmit(ev) {
+  ev.preventDefault();
+  const out = $('#capout'), file = $('#capfile').files[0];
+  if (!file) { out.textContent = 'Choose an image first.'; return; }
+  const actorEl = $('#capactor');
+  let actor = ''; try { actor = localStorage.getItem('planetai_actor') || ''; } catch (e) { /* no storage here */ }
+  if (actorEl) {
+    const n = actorEl.value.trim();
+    if (!n) { out.textContent = 'The node records who took it — your name first.'; actorEl.focus(); return; }
+    actor = n;
+    try { localStorage.setItem('planetai_actor', n); } catch (e) { /* no storage here */ }
+  }
+  const send = ev.target.querySelector('button[type="submit"]');
+  if (send.disabled) return;
+  send.disabled = true;   /* before the first await: two taps would otherwise send the picture twice */
+  out.textContent = 'Asking this phone where it stands…';
+  const point = await new Promise(res => {
+    if (!('geolocation' in navigator)) return res(null);
+    navigator.geolocation.getCurrentPosition(
+      p => res({ lat: p.coords.latitude, lon: p.coords.longitude }),
+      () => res(null), { timeout: 8000, maximumAge: 60000 });
+  });
+  const fd = new FormData();
+  fd.append('photo', file, file.name || 'picture.jpg');
+  fd.append('kind', $('#capkind').value);
+  fd.append('note', $('#capnote').value);
+  fd.append('actor', actor);
+  fd.append('describe', $('#capseen').checked ? '1' : '');
+  if (point) { fd.append('lat', point.lat); fd.append('lon', point.lon); }
+  out.textContent = 'Sending it to the node…';
+  try {
+    const r = await fetch('/captures', { method: 'POST', headers: { ...DOORS_AUTH() }, body: fd });
+    const body = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      out.textContent = (body.detail || `the node refused it (${r.status})`)
+        + (r.status === 401 || r.status === 403 ? ' · Unlock this phone with the token for closing a loop.' : '');
+      return;
+    }
+    const c = body.capture || {};
+    out.textContent = (body.duplicate ? 'The node already had it' : 'The node kept it')
+      + ` — ${c.kind || 'image'}, ${c.cell ? 'cell ' + c.cell.slice(0, 9) + '…' : 'its cell'}${c.at_home ? ', at home' : ''}. The walk counts it below.`
+      + (body.describing ? ' The image model is describing it; its findings show in Data.' : $('#capseen').checked && !body.duplicate ? ' No image model is set on the node, so it was not described.' : '');
+    captureClose();
+  } catch (e) { out.textContent = `The node did not answer: ${e.message}`; } finally { send.disabled = false; }
 }
 
 /* ---- the Decide card (§6) ---- */
@@ -207,10 +281,22 @@ document.addEventListener('click', ev => {
     ev.preventDefault();
     try { localStorage.removeItem('planetai_act'); localStorage.removeItem('planetai_admin'); } catch (e) { /* no storage here */ }
     location.reload();
+    return;
+  }
+  if (t.id === 'capopen') { $('#capout').textContent = ''; $('#capfile').click(); return; }
+  if (t.id === 'capcancel') captureClose();
+});
+
+document.addEventListener('change', ev => {
+  if (ev.target.id === 'capfile') {
+    const f = ev.target.files[0]; if (!f) return;
+    $('#capname').textContent = `${f.name || 'the image'} (${Math.max(1, Math.round(f.size / 1024 / 1024))} MB)`;
+    $('#capopen').hidden = true; $('#capf').hidden = false;
   }
 });
 
 document.addEventListener('submit', ev => {
+  if (ev.target.id === 'capf') { captureSubmit(ev); return; }
   if (ev.target.id !== 'sunlock') return;
   ev.preventDefault();
   const t = $('#sact').value.trim();

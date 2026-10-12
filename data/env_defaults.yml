@@ -239,6 +239,9 @@ IPFS_PUBLISH:
 DATA_DIR:
   default: ""
   help: "Where the live database lives. Blank = a Docker volume on this machine. A path = a LOCAL disk or partition only."
+CAPTURES_DIR:
+  default: ""
+  help: "Where the pictures the household takes are kept (SPEC_eyes). Blank = ./out/captures on this machine. Unlike DATA_DIR this MAY be a NAS share or any mounted storage — these are files, not Postgres. The node refuses a capture with a clear error, and `planetai doctor` goes red, when the folder is missing or not writable. Change it with: planetai storage set captures <dir>"
 EE_PROJECT:
   default: ""
   help: "---- code packs (only needed if you enable the pack that uses them; see packs/<id>/README.md) ---- earth-engine: a registered Earth Engine project and a service-account key"
@@ -296,3 +299,6 @@ AGENT_ONLINE_MODEL:
 AGENT_ONLINE_KEY:
   default: ""
   help: "Ask the key which models it can actually see, and paste an id from that list: curl -s \"$AGENT_ONLINE_URL/models\" -H \"Authorization: Bearer $AGENT_ONLINE_KEY\" | grep -o '\"id\":\"[^\"]*\"' Worth doing rather than trusting a name you remember. Providers retire models, and a retired one answers 404, which reads like a bad key or a wrong URL — node #1 lost an evening to `gemini-2.5-flash`, gone by then. Gemini also prefixes its ids: models/gemini-3.8-flash, not gemini-3.8-flash. Its key comes from aistudio.google.com; a Gemini *app* subscription is a different product and carries no API access."
+EYES_MODEL:
+  default: ""
+  help: "The image model (SPEC_eyes step 2): a vision model in this machine's Ollama that describes each image and lists what it finds. Local only; the picture never leaves. Blank = off. On 16 GB: qwen2.5vl:7b (ollama pull qwen2.5vl:7b). Each upload form has a Describe it box; Data, Images can describe any image again."

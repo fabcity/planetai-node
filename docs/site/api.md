@@ -531,6 +531,58 @@ Access: admin
 
 Fires one act-level alert now, through every configured channel, the same as `planetai test-alert`. Writes an alert with rule `gui/test` and sends it with a hint on how to close the loop. Returns `{"ok": true, "alert_id": <id>}`.
 
+## Captures
+
+A capture is one picture with the facts a reading has (SPEC_eyes): when, which cell, who, with what. The file lives in the folder the household chose (`CAPTURES_DIR`, which may be a NAS share — files, not Postgres); the database keeps the row. These routes are on **no `SHARE_LEVEL` list at any level**, and no capture ever appears in `/export`, `/exports`, `/aggregates`, `/readings` or a parent push: a picture leaves only when the household carries it out, or when a later step's offer to an open platform is switched on per platform. The exact point is kept, token only, like the file; only the file is cleaned of EXIF and GPS on arrival, so a picture that is ever shared carries no hidden place.
+
+### POST /captures
+Access: act
+
+A household adds a picture: multipart form, one image (`jpeg`, `png`, `heic`, `webp`; HEIC is re-encoded to JPEG so any screen can show it). From loopback it needs no token, like `POST /actions`; from anywhere else `ACT_TOKEN` or `ADMIN_TOKEN`. Fields:
+
+| Name | Type | Default | Meaning |
+|---|---|---|---|
+| `photo` | file | required | the picture; 40 MB at most |
+| `kind` | str | `phone` | `microscope`, `phone`, `camera`, `drone` or `balloon` |
+| `lat`, `lon` | float | | the exact point, together or neither. Kept, token only. The picture's own GPS, when it carries one, wins over these |
+| `cell` | str | | or a res-10 H3 cell instead of a point; any other resolution is 422 |
+| `note` | str | | cut to 500 characters |
+| `taken_at` | str | | ISO date-time; else the file's own date is used, else now |
+| `actor` | str | | who took it — the name the phone keeps; cut to 80 characters |
+
+A picture whose EXIF carries GPS takes that as its point (where it was taken beats where the phone is now, the case of a gallery pick) unless a `cell` is given; the GPS is then removed from the file with the rest. With no point and no cell, the capture stands in the node's own res-10 cell and the point stays null. Two booleans are computed on arrival and never recomputed: `outside` (the cell is not in the node's seven res-8 cells — its own and the six touching it) and `at_home` (the cell is the res-10 cell of `NODE_LAT`/`NODE_LON`; a later step blurs the house only when something leaves). The upload is re-encoded with no metadata — EXIF, GPS and the thumbnail die on arrival — and stored under its sha256 in `CAPTURES_DIR`; a duplicate sha256 answers `{"ok": true, "duplicate": true, "capture": …}` with the existing row and writes nothing new. Returns `{"ok": true, "capture": <row>}`; 503 with a clear message naming `CAPTURES_DIR` when the folder is missing or not writable.
+
+### GET /captures
+Access: act
+
+The visual database, newest first, rows of `{id, ts, received_at, kind, cell, lat, lon, outside, at_home, actor, note, file, sha256, bytes, mime, at}`. `at` is `[lat, lon]` where a map draws it: the exact point, else the centre of its cell.
+
+| Name | Type | Default | Meaning |
+|---|---|---|---|
+| `cell` | str | | only captures inside this cell — at **any** resolution: a res-9 street or res-6 ring answers the res-10 rows inside it, which is how the walk asks |
+| `kind` | str | | only this kind |
+| `limit` | int | 50 | 1..500 |
+
+### PATCH /captures/{cid}
+Access: act
+
+Edits an image's words from the Data door: a JSON body with any of `note` (cut to 500 characters), `kind` (one of the five) and `meta` (an object of at most 40 keys, each value a string cut to 500, replaced whole). The point, the cell, the time and the file are facts of arrival and are not edited. `{"confirm": true, "actor": "<name>"}` marks the image model's findings as the household's; `{"findings": [...], "actor": "<name>"}` replaces them with a person's edited list, confirmed by the edit (`analysis.by` becomes `person`, with `confirmed_by`); 409 when the image has not been described. Returns `{"ok": true, "capture": <row>}`; 422 for nothing to change or a bad kind, 404 for no such capture.
+
+### POST /captures/{cid}/describe
+Access: act
+
+Asks the image model (`EYES_MODEL`, a vision model in this machine's Ollama) about one image, now, and keeps the answer in the row's `analysis`: `{model, where: "local", vocab, asked, at, summary, findings: [{class, name, count, issue}], by: "model", confirmed_by: null}`. Each finding's `class` is a physical class of the [Fab City flows profile](https://planetai.fab.city/vocab/flows/1.0/) (`plant`, `animal`, `habitat`, `waste_residual`, `goods` and the rest) or `other`; `issue` is true for a problem such as litter, smoke or damage. The model first describes the picture in words, then files those words as findings, so each finding is something it said it saw; it is told never to describe or count people. The picture goes to this machine's Ollama and nowhere else. A second call replaces the earlier description and its confirmation. `POST /captures` with `describe=1` (the upload form's box) describes the new image after the upload answers, and says `"describing": true`; false when no image model is set. 409 when no image model is set, 503 when Ollama or the model is not there.
+
+### DELETE /captures/{cid}
+Access: admin
+
+Deletes an image, its row and its file in `CAPTURES_DIR`. This machine, or the admin token only: the act token adds and edits images and never destroys one (401). Returns `{"ok": true, "deleted": <id>}`; 404 for no such capture.
+
+### GET /captures/{cid}/file
+Access: act
+
+The picture itself, with its stored mime. 404 `no such capture`, or `the row is here but the file is gone from the captures folder`. The name is the node's own (a sha256), never a path from a client.
+
 ## Whether it worked
 
 The measure stage. These two routes read the ledger back against the alerts and say how many alerts were answered, how fast, and which conditions stopped. ρ is measured here and nowhere else, because only the node holds both the alert and the answer.

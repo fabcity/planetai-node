@@ -65,7 +65,7 @@ assert '"node": NODE' in SRC, "/health keeps the node name: /export publishes it
 # The two paths that are on no allowlist at any level, and the one the middleware must not decide twice.
 mw = ast.get_source_segment(SRC, funcs["_share_level"])
 allow = SRC[SRC.index("_SHARE_OFF = ("):SRC.index("_SHARE = {")]
-for p in ("place/geojson", "settings/raw", "backups", "actions", "aggregates", "test-alert"):
+for p in ("place/geojson", "settings/raw", "backups", "actions", "aggregates", "test-alert", "captures"):
     assert f'"/{p}"' not in allow, f"/{p} is on a SHARE_LEVEL allowlist and must never be"
 assert 'startswith("/mcp")' in mw, "the middleware must pass /mcp through: _mcp_auth has already decided it"
 assert "_bearer_ok" in mw, "the middleware must reuse _bearer_ok, which is constant-time"
@@ -270,6 +270,17 @@ level("off")
 assert lan.get("/reach").status_code == 403, "off: /reach is not on the off allowlist and must refuse"
 level("open")
 print("open: /reach readable, and refused at off")
+
+# SPEC_eyes step 1: a picture and its row are on no share level — a stranger gets 403 at off AND at open,
+# and the middleware's own message says no share level opens it. The route's token rules live in test_captures.
+for lv in ("off", "open"):
+    level(lv)
+    r = lan.get("/captures")
+    assert r.status_code == 403, f"{lv}: a stranger must not list the captures"
+    assert "No share level opens this one" in r.json()["error"], \
+        f"{lv}: /captures must refuse like /backups, not offer the open setting: {r.json()}"
+    assert lan.get("/captures/1/file").status_code == 403, f"{lv}: a stranger must not fetch a picture"
+print("captures: a stranger is refused at off and at open, with the no-level-opens-this message")
 
 # F10 · closing a loop. The middleware refuses the anonymous case; the route refuses a read-only token.
 level("open")

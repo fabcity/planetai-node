@@ -101,7 +101,10 @@ if (typeof document !== 'undefined') (async () => {
     $('#chs').innerHTML = step.map((t, i) => { const s = w.at[i], e = edge(SCALES[i].res);
       return `<div class="ch" data-i="${i}"><div class="k">${word(i)} · res ${SCALES[i].res}${e ? ` · ${Math.round(e * 2).toLocaleString('en')} m across` : ''}</div><h2>${t.h}</h2>`
         + (i < 4 ? (s ? `<div class="big">${f(s.value, dp)}<i>${u}</i></div><p>${s.source || ''}${s.provenance ? `, ${s.provenance}` : ''}.</p>` : `<span class="none">${(a.name && a.name[lang]) || K} is not read at the ${word(i)}</span>`) : '')
-        + (t.p && (i > 3 || s) ? `<p>${t.p}</p>` : '') + (s || i > 3 ? t.g || '' : '') + (t.m && (s || i > 3) ? `<p class="m">${t.m}</p>` : '') + '</div>'; }).join('');
+        + (t.p && (i > 3 || s) ? `<p>${t.p}</p>` : '') + (s || i > 3 ? t.g || '' : '') + (t.m && (s || i > 3) ? `<p class="m">${t.m}</p>` : '')
+        + (i < 4 && caps[SCALES[i].res]
+           ? `<button class="capcount" data-res="${SCALES[i].res}">${caps[SCALES[i].res].length} image${caps[SCALES[i].res].length === 1 ? '' : 's'} here</button><div class="capgrid" data-res="${SCALES[i].res}" hidden></div>`
+           : '') + '</div>'; }).join('');
     /* the rail says where the reader is; it is read, not pressed (a 44 px target per scale would cover the map) */
     $('#rail').innerHTML = SCALES.map((s, i) => `<span><s></s>${word(i)}<em>${i < 4 ? f(w.at[i] && w.at[i].value, dp) : ''}</em></span>`).join('');
     document.querySelectorAll('.ch').forEach(c => io.observe(c));
@@ -142,11 +145,31 @@ if (typeof document !== 'undefined') (async () => {
     map.getSource('st').setData(stationsGeo()); story(); start(jump); };
   $('#tg').querySelectorAll('button').forEach(b => (b.onclick = () => pick(b.dataset.k, true)));
   window.WALK_ISSUE = k => pick(k, false);
+  /* a scale's count opens its grid; the pictures fetch as blobs, because an <img> cannot carry the token */
+  document.addEventListener('click', async ev => {
+    const b = ev.target.closest && ev.target.closest('.capcount'); if (!b) return;
+    const grid = document.querySelector(`.capgrid[data-res="${b.dataset.res}"]`); if (!grid) return;
+    if (!grid.hidden) { grid.hidden = true; return; }
+    grid.hidden = false;
+    if (grid.dataset.loaded) return; grid.dataset.loaded = '1'; grid.innerHTML = '';
+    for (const c of (caps[+b.dataset.res] || []).slice(0, 12)) {
+      const blob = await fetch(`/captures/${c.id}/file`, { headers: DOORS_AUTH() }).then(r => (r.ok ? r.blob() : null)).catch(() => null);
+      if (!blob) continue;
+      const img = document.createElement('img');
+      img.src = URL.createObjectURL(blob); img.alt = c.note || c.kind || 'a capture'; img.loading = 'lazy';
+      grid.appendChild(img);
+    }
+    if (!grid.children.length) { grid.innerHTML = '<p class="m">The images answer a screen with a token only.</p>'; delete grid.dataset.loaded; }
+  });
 
   /* the cell this node stands in, at each scale, from the node's own /geo/cell (R25: centres only, never the house) */
   const cells = (await Promise.all(SCALES.slice(0, 4).map(s => get(`geo/cell?lat=${H.lat}&lon=${H.lon}&res=${s.res}`)))).filter(c => c && c.ring)
     .map(c => { const q = []; for (let k = 1; k < c.ring.length; k += 2) q.push([c.ring[k + 1], c.ring[k]]); q.push(q[0]);
-      return { type: 'Feature', properties: { res: c.res }, geometry: { type: 'LineString', coordinates: q } }; });
+      return { type: 'Feature', properties: { res: c.res, id: c.id }, geometry: { type: 'LineString', coordinates: q } }; });
+  /* the pictures the household kept (SPEC_eyes step 1): a count inside each scale's cell, token only — a locked
+     phone's 403 answers null and the walk says nothing, the same silence the map keeps */
+  const caps = {};
+  for (const c of cells) { const rows = await get(`captures?cell=${encodeURIComponent(c.properties.id)}&limit=200`); if (rows && rows.length) caps[c.properties.res] = rows; }
   const V = M && M.layers && M.layers.vector, DR = M && M.layers && M.layers.drone, here = location.origin;
   const map = new maplibregl.Map({ container: 'map', attributionControl: { compact: false }, center: [H.lon, H.lat], zoom: 18, interactive: false,
     transformRequest: url => (url.startsWith(here + '/ground/') ? { url, headers: DOORS_AUTH() } : { url }),

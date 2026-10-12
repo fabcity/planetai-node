@@ -430,8 +430,12 @@ answers and the page draws; the plan still needs a token at every level. See [Sh
 
 The node renders as five doors by default, the redesign worked out in planetai-design (R33 to R45): **Now**
 (the moment, its decision with Done, Not now and Doesn't fit, and the stations around the house), **Place** (the
-ground as a map with layers, scales and a measuring tool, the satellite years and what changed), **Data** (every
-reading, drawn, the seven days of every issue, the models, the Index and the ledger), **Wall** (the keeper's one
+ground as a map with layers, scales and a measuring tool, the satellite years and what changed, and the household's
+**Images**: one map layer per kind, phone, fixed camera, microscope, drone and balloon or kite, each image a square
+that opens a card with the image, when, who, the note and its cell, and a quiet **+ Add an image** beside the views
+that opens a dialog, the file picked or dropped; token-only, `GET /captures`), **Data** (every
+reading, drawn, the seven days of every issue, the models, the Index, **Images** (every image with its facts of
+arrival, its kind, note and key: value lines to edit, and Delete for a screen holding the admin token) and the ledger), **Wall** (the keeper's one
 dark screen) and **Node** (what comes in and goes out, the nodes around it, and how it is running). The classic
 dashboard remains available at `/?layout=classic`.
 
@@ -451,7 +455,10 @@ MapLibre only once the walk is reached). The choice is made once, before anythin
 600 px moves to `/?layout=mobile`; a narrow desk window and a tablet stay on the doors, and nothing is
 re-decided on resize. "Phone view" and "Full dashboard" switch, and the browser remembers. One scrollable page:
 **Now** (the engine's title and tagline, the reading at the household's own distance, the Decide card, the other
-issues as rows), **Walk out from the house** (below) and **Node** (from `/health`, so it draws even
+issues as rows, and **Add an image** — the capture tier of SPEC_eyes: one button on an unlocked phone that opens the phone's library; the
+details (kind, note, name) ask only once an image is chosen. Where it was taken is the picture's own GPS, else the phone's location if the
+person allows (browsers give it to https pages only), else the node's own cell, and the node cleans the file of EXIF and GPS and keeps it; only a screen holding a token can see it. A locked phone
+reads "Unlock this phone to add images", the same offer the Decide card makes), **Walk out from the house** (below) and **Node** (from `/health`, so it draws even
 when everything else is refused). The card's three buttons answer an alert from the phone with the act token;
 without it the card says the question went to Telegram. A locked phone reads the node's own sentence and the
 field for the token. The spec is `docs/SPEC_mobile.md`, and the visual gate measures the page like any other
@@ -470,7 +477,9 @@ map included: `/ground/*` is public data (OpenStreetMap, OpenAerialMap, Sentinel
 `/geo/cell` answers without what it says relative to the node (`is_node`, `cells_from_node`, `ring_polar`, `children_polar`), which
 stays for this machine or a token. At `off` it walks only on an unlocked phone. To unlock a phone without typing a token, open Set up ›
 This screen with the admin token and press *Show the code* under "A phone": the phone's camera opens the phone page
-holding the token for closing a loop, which answers the node and changes no setting.
+holding the token for closing a loop, which answers the node and changes no setting. Each step that has captures
+counts them — "3 pictures here" — and the count opens a small grid of the pictures themselves, token only, fetched
+as blobs because an `<img>` cannot carry one; a locked phone's walk says nothing, the same silence the map keeps.
 
 ## Languages
 
