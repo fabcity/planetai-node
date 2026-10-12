@@ -51,10 +51,46 @@ mobjs = (STATIC / "mobile.js").read_text()
 assert c.get("/", params={"layout": "mobile"}).text == mob
 mnamed = re.findall(r'(?:src|href)="/static/([^"]+)"', mob) + re.findall(r"['\"]/static/([\w.#-]+)['\"]", mobjs)
 assert mnamed and all(n.split("#")[0] in main.COMPANIONS for n in mnamed), [n for n in mnamed if n.split("#")[0] not in main.COMPANIONS]
-assert not re.search(r"maplibre|deck\.gl|d3\.|plot\.umd", mob + mobjs, re.I), "the phone page loads no map or chart library"
+assert not re.search(r'(?:src|href)="/static/(?:maplibre|deck|d3|plot)', mob), "the phone page's shell loads no map or chart library"
+assert not re.search(r"deck\.gl|d3\.|plot\.umd", mobjs, re.I), "the phone page fetches MapLibre for its walk, and nothing heavier"
 assert "planetai_admin'" not in mobjs.replace("removeItem('planetai_admin')", ""), "the phone page never stores the admin token"
 assert not re.search(r"fetch\(\s*['\"]/settings", mobjs), "the phone page reads /settings through loadD (GET) and never calls it"
-print("doors: ?layout=mobile is the phone page; it names only served files, loads no map library, touches no settings")
+print("doors: ?layout=mobile is the phone page; it names only served files, loads no map library up front, touches no settings")
+
+# the walk out from the house (SPEC_mobile §11.2): the phone page's middle, one page; mobile.js fetches MapLibre and
+# walk.js when it nears the screen. It names no issue: every issue /issues carries is walked, at the scales it has
+walkjs = (STATIC / "walk.js").read_text()
+assert c.get("/", params={"layout": "walk"}).text == mob, "?layout=walk is the phone page"
+assert 'id="walk"' in mob and "/static/walk.js" in mobjs and "/static/maplibre-gl.js" in mobjs
+assert not re.search(r"['\"](air|heat|land|coast)['\"]", walkjs), "the walk names no issue; it walks what /issues carries"
+print("doors: the walk is the phone page's middle; it loads when reached and names no issue")
+
+# one phone mode (12 Oct 2026): at SHARE_LEVEL=open the walk's map answers without a token, but /geo/cell keeps what
+# it says relative to the node for a token, or a phone could find the house asking res 15 cell by cell
+assert "/geo/cell" in main._SHARE_OPEN[0] and "/ground/" in main._SHARE_OPEN[1] and "/geo/cell" not in main._SHARE_OFF[0]
+from types import SimpleNamespace  # noqa: E402
+os.environ.setdefault("NODE_LAT", "-8.819"); os.environ.setdefault("NODE_LON", "115.164")
+_rq = lambda t: SimpleNamespace(state=SimpleNamespace(share_trusted=t))  # noqa: E731
+_kw = dict(id=None, lat=-8.8, lon=115.17, res=14, children=15, polar=True)
+_open, _mine = main.geo_cell(_rq(False), **_kw), main.geo_cell(_rq(True), **_kw)
+assert not {"is_node", "cells_from_node", "ring_polar", "children_polar"} & set(_open) and _open["ring"] == _mine["ring"], _open.keys()
+assert {"is_node", "cells_from_node", "ring_polar", "children_polar"} <= set(_mine)
+print("doors: a phone with no token gets the map and the cells, never where they stand from the house")
+
+# the phone's QR unlock: /settings/phone hands the act token to the admin token only, Set up draws it only unlocked,
+# and the phone page keeps #act= and takes it out of the address bar
+os.environ["ADMIN_TOKEN"] = "adm"
+from fastapi import HTTPException  # noqa: E402
+for _a in ("", "Bearer nope"):
+    try:
+        main.settings_phone(_a); raise AssertionError("/settings/phone answered without the admin token")
+    except HTTPException as e:
+        assert e.status_code in (401, 403), e.status_code
+assert "/settings/phone" not in main._SHARE_OPEN[0] and "qrcode.js" in main.COMPANIONS
+_setup = (STATIC / "doors-setup.js").read_text()
+assert "(unlocked ? `<div class=\"srow\"><div class=\"sl\"><label>A phone" in _setup and "/static/qrcode.js" in _setup
+assert "#act=" in mobjs and "history.replaceState" in mobjs
+print("doors: the phone unlocks from a QR code only the admin's Set up can draw")
 
 if not shutil.which("node"):
     print("doors: node is not installed, skipping the loader checks (skipped)")
@@ -87,6 +123,16 @@ console.log(JSON.stringify({
 }));
 """ % FIX
 r = json.loads(subprocess.run(["node"], input=prog, capture_output=True, text=True, check=True).stdout)
+
+# the walk walks every issue with a reading, in the engine's order, at the scales it has: land and coast are read only
+# at the region, so their walk starts there; an issue with no reading anywhere is left off the switch
+wprog = """const { walkOf } = require('./app/static/walk.js'); const F = JSON.parse(require('fs').readFileSync('%s', 'utf8'));
+const I = F.issues; I.issues.empty = { stack: { room: null, yard: null, ring: null, region: { value: null } } }; I.order = I.order.concat('empty', 'gone');
+console.log(JSON.stringify(walkOf(I).map(w => [w.k, w.at.map(Boolean)])));""" % FIX
+wk = json.loads(subprocess.run(["node"], input=wprog, capture_output=True, text=True, check=True).stdout)
+assert [k for k, _ in wk] == ["air", "heat", "land", "coast"], wk
+assert dict(wk)["land"] == [False, False, False, True] and dict(wk)["air"] == [True] * 4, wk
+print("doors: the walk takes every issue with a reading, in order, each at the scales it has")
 
 # the issues, as the doors read them (/issues for the words, /issues/days for the seven days)
 assert r["order"] == ["air", "heat", "land", "coast"] and r["lead"] == "heat" and r["n"] == 168, r["order"]

@@ -6,17 +6,32 @@
   node's name, its cell and the cell's centre, the place, who runs it, an optional contact), and on a yes opens the
   pull request to `registry.json` with `gh`, or prints the entry and the link without it. The merge is the
   approval; every node reads the list within six hours. `--remove` takes a node off.
+
+## v0.81.0 — 2026-10-12 — The phone walks out from the house
+
+- **A phone gets its own page, and it is one page: Now, the walk out from the house, Node.** A coarse pointer
+  with a short screen side under 600 px is moved to `/?layout=mobile`, decided once before anything else loads; a
+  narrow desk window and a tablet stay on the doors, and "Phone view" / "Full dashboard" switch with the choice
+  remembered. Now fills the first screen (the engine's title and tagline, the reading, the Decide card with its
+  three buttons, the other issues), and an arrow at its foot points down. The walk is a map pinned under the bar and
+  a story under it, house → street → ring → region → planet, the camera framing each scale's own cell: the house's
+  day against its line, the street against the house with the gap shaded, the stations around as dots, every scale
+  on one axis, the listed nodes on a globe. It names no issue: every issue `/issues` carries is walked, at the
+  scales it has, so a pack's issue joins it with nothing changed. MapLibre and `walk.js` load once Now has drawn.
+  Node draws from `/health`, so it always draws; a locked phone at `SHARE_LEVEL=off` reads the node's own sentence
+  and the field for the act token. `/?layout=walk` opens the same page. The spec is `docs/SPEC_mobile.md`; the
+  visual gate measures the page (`measure.mjs mobile`).
+- **At `SHARE_LEVEL=open` a phone walks with the map and no token.** `/ground/*` and `/geo/cell` join the `open`
+  list; `/geo/cell` leaves out `is_node`, `cells_from_node`, `ring_polar` and `children_polar` for a caller without
+  a token, since asked cell by cell at res 15 they would find the house.
+- **A phone unlocks from a QR code.** Set up › This screen, unlocked with the admin token, shows "A phone": a QR
+  code of the phone page holding the token for closing a loop, so the phone can answer the node with nothing typed.
+  `GET /settings/phone` (admin only) hands the code its token; the phone keeps `#act=` and takes it out of the
+  address bar. QR Code Generator 1.4.4 (MIT) is vendored for it.
 - **The Node door draws the nodes the programme lists, not a list typed into the page.** The node reads
   `registry.json` from the repository every 6 hours and serves it at `GET /nodes`, open at every share level, with
   each other node's point to one decimal and no contact. The globe and the list say "listed" or "not listed"; a node
   joins with a merged pull request, and a command that opens it comes next. `UPDATE_CHECK=off` reads nothing.
-- **A phone gets its own page.** A coarse pointer with a short screen side under 600 px is moved to
-  `/?layout=mobile`, decided once before anything else loads; a narrow desk window and a tablet stay on the
-  doors, and "Phone view" / "Full dashboard" switch with the choice remembered. One scrollable page
-  (`mobile.html`, `mobile.js`, the doors' loader, no map library): Now with the Decide card and its three
-  buttons, Place without the heavy map, and Node from `/health` so it always draws. A locked phone reads the
-  node's own sentence and the field for the act token. The spec is `docs/SPEC_mobile.md`; the visual gate
-  measures the page (`measure.mjs mobile`).
 - **A Decide card speaks about now, and stops asking once it is answered.** The action on an open event's card
   is chosen again from the readings as they are, so it no longer tells a house to open up on the strength of last
   night's outside reading; the message the bot sent keeps its words. Once somebody answers, the buttons go and the

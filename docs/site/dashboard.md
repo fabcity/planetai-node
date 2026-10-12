@@ -1,5 +1,5 @@
 # The dashboard
-<!-- checked: v0.80.11 -->
+<!-- checked: v0.81.0 -->
 
 The dashboard is where a node is read. Once it is open, the loop the node runs becomes something a person
 can follow and take part in: what it observed about the place, what it suggests, what it has asked of the
@@ -12,7 +12,7 @@ The node serves `index.html` and a fixed list of companion files by name from `G
 stylesheets (`tokens.css`, `planetai-theme.css`, `dashboard.css`), `dashboard.js`, the drawing library
 (`plot.umd.min.js` and `d3.min.js`), two SVGs, `kilometre-cells.json`,
 `learn.json` and the self-hosted fonts; for the map ground, `maplibre-gl.js`, `maplibre-gl.css` and `deck.gl.min.js`;
-and for the five doors (`doors.html`, served by default at `/`; `/?layout=classic` serves `index.html`), thirteen `doors-*.js`, `world-land-110m.json` and `docs_site.json`. The node computes and the page draws. A number the page works out
+and for the five doors (`doors.html`, served by default at `/`; `/?layout=classic` serves `index.html`), thirteen `doors-*.js`, `world-land-110m.json`, `docs_site.json` and `qrcode.js`; and for the phone page, `mobile.html`, `mobile.js` and `walk.js`. The node computes and the page draws. A number the page works out
 for itself is a bug.
 
 ## A first read
@@ -420,7 +420,7 @@ blank would be the node lying about being broken. A browser on the node's own ma
 the network here, because inside Docker it arrives as the bridge gateway. At `open` the whole read API
 answers and the page draws; the plan still needs a token at every level. See [Sharing](sharing.md).
 
-> **Gap in v0.80.11.** At `SHARE_LEVEL=off` a browser that has never stored a token draws the refused page
+> **Gap in v0.81.0.** At `SHARE_LEVEL=off` a browser that has never stored a token draws the refused page
 > on every view, Set up included, so there is nowhere on the page to enter one, and the refused page's advice
 > to open it on the node's own machine does not get past the refusal. Turn sharing on, store the token in
 > Set up, and turn it off again; or read the page at `open`. The doors are the way round it: at `off` without a token
@@ -446,17 +446,31 @@ would show it.
 
 ## The phone page
 
-A phone is a different hand, so it gets its own page (`mobile.html` and `mobile.js`, the doors' loader, no map
-library). The choice is made once, before anything else loads: a coarse pointer and a short screen side under
+A phone is a different hand, so it gets its own page (`mobile.html` and `mobile.js`, the doors' loader, and
+MapLibre only once the walk is reached). The choice is made once, before anything else loads: a coarse pointer and a short screen side under
 600 px moves to `/?layout=mobile`; a narrow desk window and a tablet stay on the doors, and nothing is
 re-decided on resize. "Phone view" and "Full dashboard" switch, and the browser remembers. One scrollable page:
-**Now** (the engine's title and tagline, the reading at the household's own distance, the four distances, the
-Decide card, the other issues as rows), **Place** (the cell's facts, the ground within a kilometre, how far back
-the node reads, one satellite frame, and a link to the full map) and **Node** (from `/health`, so it draws even
+**Now** (the engine's title and tagline, the reading at the household's own distance, the Decide card, the other
+issues as rows), **Walk out from the house** (below) and **Node** (from `/health`, so it draws even
 when everything else is refused). The card's three buttons answer an alert from the phone with the act token;
 without it the card says the question went to Telegram. A locked phone reads the node's own sentence and the
 field for the token. The spec is `docs/SPEC_mobile.md`, and the visual gate measures the page like any other
 (`node tests/visual/measure.mjs mobile`).
+
+**Walk out from the house** is the middle of the phone page (`/?layout=walk` opens the same page). `walk.js` and
+MapLibre are fetched once Now has drawn and the walk nears the screen, so a slow phone gets its sentence first. The
+map stays pinned under the bar while the story scrolls under it,
+one step per scale (house, street, ring, region, planet), and the camera flies out at each, drawing that scale's
+cell heavy with the smaller ones faint inside it. Each step draws what that scale can say: the house's last 24 hours
+against its line, the street against the house with the gap shaded, the outdoor stations as dots against the house,
+every scale on one axis, and the listed nodes on a globe. The switch on top lists every issue the node carries, in
+the engine's order, so a pack's issue joins it with nothing changed here; a scale an issue has no reading at says so,
+and an issue read only by a model (land, coast) starts at the region. At `SHARE_LEVEL=open` it needs no token,
+map included: `/ground/*` is public data (OpenStreetMap, OpenAerialMap, Sentinel-2) cut around the node, and
+`/geo/cell` answers without what it says relative to the node (`is_node`, `cells_from_node`, `ring_polar`, `children_polar`), which
+stays for this machine or a token. At `off` it walks only on an unlocked phone. To unlock a phone without typing a token, open Set up ›
+This screen with the admin token and press *Show the code* under "A phone": the phone's camera opens the phone page
+holding the token for closing a loop, which answers the node and changes no setting.
 
 ## Languages
 

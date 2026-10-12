@@ -75,6 +75,7 @@ function setupDraw() {
   });
   SETUP.drawnPacks = sPackSwitches(); SETUP.loaded = sValues(); SETUP.dirty = false; sCount();
   const tokForm = sq('#sunlock'); if (tokForm) tokForm.onsubmit = sUnlock;
+  const qrB = sq('#sqrb'); if (qrB) qrB.onclick = sQR;
   const lockB = sq('#slock'); if (lockB) lockB.onclick = () => { try { localStorage.removeItem('planetai_admin'); localStorage.removeItem('planetai_act'); } catch (e) { /* none */ } location.reload(); };
   sq('#ssave').onclick = sSave; sq('#sdiscard').onclick = () => { SETUP.dirty = false; setupDraw(); };
 }
@@ -132,7 +133,20 @@ function sScreen(unlocked) {
     + `<div class="sc"><span class="state">${unlocked ? 'unlocked' : DOORS_TOKEN() ? 'act token' : 'locked'}</span>${DOORS_TOKEN() ? ' <button type="button" class="sbtn" id="slock">Lock</button>' : ''}</div></div></div>`
     + `<form class="unlock2" id="sunlock"><label>Admin token<input type="password" id="stok" autocomplete="off" placeholder="changes settings, reads everything"></label>`
     + `<label>Token for closing a loop<input type="password" id="sact" autocomplete="off" placeholder="answers alerts, changes nothing"></label>`
-    + `<div><button type="submit" class="sbtn primary">Unlock this screen</button></div></form>`;
+    + `<div><button type="submit" class="sbtn primary">Unlock this screen</button></div></form>`
+    + (unlocked ? `<div class="srow"><div class="sl"><label>A phone</label><p class="help">Scan this with the phone's camera. It opens the phone page `
+      + `holding the token for closing a loop, so it can answer the node; it cannot change a setting. Anyone who scans it can answer, so show it to the household only.</p></div>`
+      + `<div class="sc" id="sqr"><button type="button" class="sbtn" id="sqrb">Show the code</button></div></div>` : '');
+}
+/* the phone's unlock, drawn here only: GET /settings/phone answers the admin token, and the code is made in this page */
+async function sQR() {
+  const tok = (() => { try { return localStorage.getItem('planetai_admin') || ''; } catch (e) { return ''; } })();
+  const r = await fetch('/settings/phone', { headers: { authorization: 'Bearer ' + tok } }).then(x => x.json().then(j => (x.ok ? j : { error: j.detail || j.error }))).catch(() => ({ error: 'the node did not answer' }));
+  if (!r.act) { sq('#sqr').textContent = r.error || 'no token'; return; }
+  if (!window.qrcode) await new Promise((ok, no) => { const s = document.createElement('script'); s.src = '/static/qrcode.js'; s.onload = ok; s.onerror = no; document.head.appendChild(s); });
+  const far = /^(localhost|127\.|\[::1\])/.test(location.host) ? '<p class="help">This screen is on the node itself, so the code points at localhost, which a phone cannot reach. Open Set up at the address the phone uses.</p>' : '';
+  const q = qrcode(0, 'M'); q.addData(location.origin + '/?layout=mobile#act=' + encodeURIComponent(r.act)); q.make();
+  sq('#sqr').innerHTML = q.createSvgTag({ cellSize: 5, margin: 4, scalable: true }).replace('<svg ', '<svg style="width:220px;height:220px;background:#fff" ') + far;
 }
 async function sUnlock(ev) {
   ev.preventDefault();
