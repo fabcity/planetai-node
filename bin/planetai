@@ -2162,7 +2162,7 @@ print(json.dumps({"name": d["node"], "cell": d["cell"]["id"], "lat": d["lat"], "
   local place="" operator="" contact=""
   # already listed? registry.json on main is public, and the entry asked for is about to go there: read the whole of
   # this node's row (GET /nodes leaves out contact and sources), so its words are the defaults, Enter keeps them, its
-  # history (since, sources, parent) is kept, and the same entry again sends nothing
+  # history (since, parent) is kept, and the same entry again sends nothing
   local old; old="$(curl -sf "https://raw.githubusercontent.com/fabcity/planetai-node/main/registry.json" | N="$name" json '
 import os
 n = next((x for x in d.get("nodes") or [] if x.get("name") == os.environ["N"]), None)
@@ -2176,15 +2176,25 @@ print("\x1f".join(str(d.get(k) or "") for k in ("place", "operator", "cell", "si
     ask place "Place, as anyone may read it (town, region, country)" "${lplace:-$(envget NODE_CITY)}"
     ask operator "Who runs this node (a person or an organisation)" "$loper"
     ask contact "A public contact, or leave empty" "$lcontact"
+    # what this node reads, by source name and never a kit or station id: every source its sensors table registers,
+    # and the map layers it keeps on disk. How much of its context a node plays in, said the same way on every node.
+    local srcs; srcs="$(curl -sf "localhost:$(port)/sensors" | G="$(curl -sf "localhost:$(port)/ground/meta" || echo '{}')" json '
+import os
+rows = d if isinstance(d, list) else d.get("sensors") or []
+got = {r["source"] for r in rows if isinstance(r, dict) and r.get("source")}
+disk = (json.loads(os.environ["G"]) or {}).get("on_disk") or {}
+got |= {n for k, n in (("vector", "openstreetmap"), ("drone", "openaerialmap"), ("imagery", "sentinel-2")) if disk.get(k)}
+print(json.dumps(sorted(got)))' 2>/dev/null)" || srcs="[]"
     if [[ -n "$lcell" && "$contact" == "$lcontact" && "$place" == "$lplace" && "$operator" == "$loper" \
-          && "$(printf '%s' "$entry" | json 'print(d["cell"])')" == "$lcell" ]]; then
+          && "$(printf '%s' "$entry" | json 'print(d["cell"])')" == "$lcell" \
+          && "$srcs" == "$(printf '%s' "$old" | json 'print(json.dumps(sorted(d.get("sources") or [])))')" ]]; then
       say "$name is listed as this already. Nothing to send."; return 0
     fi
-    entry="$(printf '%s' "$entry" | P="$place" O="$operator" C="$contact" S="$(envget NODE_SCALE)" OLD="$old" json '
+    entry="$(printf '%s' "$entry" | P="$place" O="$operator" C="$contact" S="$(envget NODE_SCALE)" OLD="$old" SRC="$srcs" json '
 import os, datetime
 old = json.loads(os.environ["OLD"])
 row = {"name": d["name"], "scale": os.environ["S"] or "community", "operator": os.environ["O"] or None,
-       "place": os.environ["P"], "cell": d["cell"], "lat": d["lat"], "lon": d["lon"], "sources": old.get("sources", []),
+       "place": os.environ["P"], "cell": d["cell"], "lat": d["lat"], "lon": d["lon"], "sources": json.loads(os.environ["SRC"]),
        "parent": old.get("parent"), "since": old.get("since") or datetime.date.today().strftime("%Y-%m")}
 if os.environ["C"]:
     row["contact"] = os.environ["C"]
@@ -2192,9 +2202,9 @@ print(json.dumps(row))')"
     echo
     echo "  This is what the whole programme will see about this node, on GitHub and on every node's map:"
     printf '%s' "$entry" | json '
-for k in ("name", "place", "cell", "lat", "lon", "operator", "contact", "since"):
+for k in ("name", "place", "cell", "lat", "lon", "operator", "contact", "since", "sources"):
     if d.get(k) is not None:
-        print("    %-9s %s" % (k, d[k]))'
+        print("    %-9s %s" % (k, ", ".join(d[k]) if isinstance(d[k], list) else d[k]))'
     echo "  The point is the centre of the node's cell (about 0.7 km²), not the house."
   else
     echo "  This asks the programme to take $name off the list of nodes."
@@ -2216,7 +2226,7 @@ for k in ("name", "place", "cell", "lat", "lon", "operator", "contact", "since")
 import os, re
 reg = json.load(open(os.environ["REG"]))
 old = next((n for n in reg["nodes"] if n.get("name") == d["name"]), {})
-for k in ("since", "sources", "parent"):   # a node saying hello again keeps its history
+for k in ("since", "parent"):   # a node saying hello again keeps its history; its sources are read fresh
     d[k] = old.get(k, d.get(k))
 nodes = [n for n in reg["nodes"] if n.get("name") != d["name"]]
 if not os.environ["REMOVE"]:

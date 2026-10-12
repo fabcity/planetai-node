@@ -99,8 +99,12 @@ Send it? [y/N]
 
 - The fields come from the node: `NODE`, `/health.cell`, and the point `/health` gives a reader without the token, which
   is the centre of the res-8 cell (the R25 rule). Place defaults to `NODE_CITY`; operator and contact are asked
-  for, never guessed, and contact is left out when empty. A node saying hello again keeps its `since`, `sources`
-  and `parent`.
+  for, never guessed, and contact is left out when empty. A node saying hello again is told it is listed, its listed
+  place, operator and contact are the defaults (read from `registry.json` on main, since `/nodes` leaves contact out),
+  it keeps its `since` and `parent`, and the same entry again sends nothing.
+- `sources` is every source the node reads, by name and never a kit or station id: each `source` in its sensors
+  table, and the map layers it keeps (`openstreetmap`, `openaerialmap`, `sentinel-2`). Read fresh at each hello, so the
+  list says how much of its context the node plays in (Tomas, 12 Oct 2026).
 - With `gh` logged in, it forks, commits the entry and opens the pull request, and prints its link. Without `gh`, it
   prints the entry and the link to edit `registry.json` on GitHub.
 - The merge is the approval, as `SPEC.md` §2 has always said. Nothing announces anything until a person merges.

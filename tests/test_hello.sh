@@ -14,6 +14,8 @@ cat > "$D/stub/curl" <<S
 #!/bin/sh
 case "\$*" in
   */registry.json*) [ -e "$D/listed" ] && cat "$D/listed" || echo '{"nodes": []}';;
+  */sensors*) echo '[{"sensor_id": "sck-1", "source": "smartcitizen"}, {"sensor_id": "om", "source": "open-meteo"}, {"sensor_id": "sck-2", "source": "smartcitizen"}]';;
+  */ground/meta*) echo '{"on_disk": {"vector": true, "drone": false, "imagery": true}}';;
   *) echo '{"node": "mahon1", "position": "cell", "lat": 39.889, "lon": 4.265, "cell": {"id": "8839a1b2c3fffff", "res": 8}}';;
 esac
 S
@@ -36,6 +38,8 @@ echo "hello: what goes public is shown first, and a yes opens one pull request"
 
 out="$(run "Mahon, Menorca, ES" "Lucas" "" n)"
 [[ "$out" == *"8839a1b2c3fffff"* && "$out" == *"39.889"* ]] && ok "the cell and its centre are shown before anything is sent" || bad "the entry was not shown: $out"
+[[ "$out" == *"sources   open-meteo, openstreetmap, sentinel-2, smartcitizen"* && "$out" != *"sck-1"* ]] \
+  && ok "sources are every source the node reads and the map it keeps, by name, never a kit id" || bad "sources wrong: $out"
 [[ ! -e "$D/pr" && ! -d "$D/fork.git" ]] && ok "a no sends nothing" || bad "a no forked or opened a pull request"
 
 out="$(run "Mahon, Menorca, ES" "Lucas" "" y)"
@@ -54,7 +58,7 @@ assert any(n["name"] == "bayu-ungasan" for n in r), "the other nodes stay"
 # hello offered "bali" and an empty operator while the list said "Ungasan, Badung, Bali, ID" and who runs it)
 rm -rf "$D/pr" "$D/fork.git"
 echo '{"nodes": [{"name": "mahon1", "place": "Mahon, Menorca, ES", "operator": "Lucas", "cell": "8839a1b2c3fffff",
-  "since": "2026-09", "sources": ["smartcitizen:1"], "parent": null, "contact": "l@x.es"}]}' > "$D/listed"
+  "since": "2026-09", "sources": ["open-meteo", "openstreetmap", "sentinel-2", "smartcitizen"], "parent": null, "contact": "l@x.es"}]}' > "$D/listed"
 out="$(run "" "" "")"
 [[ "$out" == *"already listed, since 2026-09"* && "$out" == *"[Mahon, Menorca, ES]"* && "$out" == *"[Lucas]"* && "$out" == *"[l@x.es]"* ]] \
   && ok "a listed node is told so, and its listed place, operator and contact are the defaults" || bad "the listing was not offered: $out"
