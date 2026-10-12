@@ -555,7 +555,7 @@ A picture whose EXIF carries GPS takes that as its point (where it was taken bea
 ### GET /captures
 Access: act
 
-The visual database, newest first, rows of `{id, ts, received_at, kind, cell, lat, lon, outside, at_home, actor, note, file, sha256, bytes, mime}`.
+The visual database, newest first, rows of `{id, ts, received_at, kind, cell, lat, lon, outside, at_home, actor, note, file, sha256, bytes, mime, at}`. `at` is `[lat, lon]` where a map draws it: the exact point, else the centre of its cell.
 
 | Name | Type | Default | Meaning |
 |---|---|---|---|

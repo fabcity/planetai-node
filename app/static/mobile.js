@@ -102,8 +102,8 @@ function captureHTML() {
   let actor = ''; try { actor = localStorage.getItem('planetai_actor') || ''; } catch (e) { /* no storage here */ }
   return `<div class="capture" id="capture"><button class="sbtn" id="capopen">Add a picture</button>`
     + `<form id="capf" hidden>`
-    + `<input type="file" id="capfile" accept="image/*" hidden>`
-    + `<button type="button" class="sbtn" id="cappick">Choose or take the picture</button><span class="mut" id="capname"></span>`
+    + `<input type="file" id="capfile" accept="image/jpeg,image/png,image/heic,image/heif,image/webp" hidden>`
+    + `<button type="button" class="sbtn" id="cappick">Choose a picture</button><span class="mut" id="capname"></span>`
     + `<label class="k" for="capkind">What took it</label>`
     + `<select id="capkind">${CAPTURE_KINDS.map(k => `<option value="${k}"${k === 'phone' ? ' selected' : ''}>${k}</option>`).join('')}</select>`
     + `<label class="k" for="capnote">A note, if it needs one</label>`
@@ -117,7 +117,7 @@ function captureHTML() {
 async function captureSubmit(ev) {
   ev.preventDefault();
   const out = $('#capout'), file = $('#capfile').files[0];
-  if (!file) { out.textContent = 'Choose or take the picture first.'; return; }
+  if (!file) { out.textContent = 'Choose a picture first.'; return; }
   const actorEl = $('#capactor');
   let actor = ''; try { actor = localStorage.getItem('planetai_actor') || ''; } catch (e) { /* no storage here */ }
   if (actorEl) {

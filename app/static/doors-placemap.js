@@ -53,6 +53,12 @@ const LAYERS = [
   { id: 'public', group: 'Readings', pack: 'nearby', name: 'Public stations', sub: 'hollow · display only, never alert', sw: 'pt-pub', on: true },
   { id: 'models', group: 'Readings', pack: 'core', name: 'Model points', sub: 'sea, air, land, weather', sw: 'pt-model', on: true },
   { id: 'rings', group: 'Readings', pack: 'nearby', name: 'Distance rings', sub: '2, 5 and 15 km', sw: 'line-ring', on: false },
+  /* the household's own images (SPEC_eyes step 1), one row per kind, token-only: GET /captures */
+  { id: 'img-phone', group: 'Images', pack: 'core', name: 'Phone', sub: 'taken on a phone', sw: 'pt-img', on: true },
+  { id: 'img-camera', group: 'Images', pack: 'core', name: 'Fixed camera', sub: 'where one is pointed', sw: 'pt-img', on: true },
+  { id: 'img-microscope', group: 'Images', pack: 'core', name: 'Microscope', sub: 'where the sample came from', sw: 'pt-img', on: true },
+  { id: 'img-drone', group: 'Images', pack: 'core', name: 'Drone', sub: 'a flight, at its point', sw: 'pt-img', on: true },
+  { id: 'img-balloon', group: 'Images', pack: 'core', name: 'Balloon or kite', sub: 'a line, at its point', sw: 'pt-img', on: true },
   { id: 'satonly', group: 'Packs', pack: 'place', name: 'Only the satellite knows', sub: 'buildings missing from OSM', sw: 'fill-sat', on: true, minz: 12.5 },
   { id: 'wind', group: 'Packs', pack: 'forecast', name: 'Wind, moving', sub: 'Open-Meteo field round the node', sw: 'pt-wind', on: true, need: 'wind', still: true },
   { id: 'labs', group: 'Packs', pack: 'make', name: 'Places to make', sub: 'from fablabs.io', sw: 'pt-lab', on: true },
@@ -61,6 +67,16 @@ const LAYERS = [
   { id: 'peers', group: 'Packs', pack: 'reticulum', name: 'Nodes heard nearby', sub: 'their announced cells', sw: 'line-dot', empty: true },
 ];
 LAYERS.forEach(l => { PM.on[l.id] = !!l.on && !l.empty; PM.alpha[l.id] = 1; });
+const IMG = LAYERS.filter(l => l.id.startsWith('img-'));
+/* after GET /captures: a kind with none is a row that says so; a screen without the token is told why */
+function imageRows() {
+  for (const l of IMG) {
+    const n = PM.caps ? PM.caps.filter(c => 'img-' + c.kind === l.id).length : 0;
+    l.base = l.base || l.sub; l.locked = !PM.caps; l.empty = !n;
+    l.none = 'none yet · add one under Images, below the map';
+    l.sub = `${n} · ${l.base}`; PM.on[l.id] = !l.empty;
+  }
+}
 
 /* ---------------------------------------------------------------- asking the node */
 const API = '/';
@@ -254,6 +270,11 @@ function layers() {
     out.push(new Dk.TextLayer({ characterSet: 'auto', id: 'labs-l', data: F, getPosition: lngLat, getText: s => s.name, getSize: 11, fontFamily: 'Figtree, sans-serif',
       getColor: A(p.ink, .8 * a('labs')), getTextAnchor: 'start', getPixelOffset: [12, 0], background: true, getBackgroundColor: A(p.halo, .85), backgroundPadding: [3, 1] }));
   }
+  for (const l of IMG) if (L[l.id] && PM.caps) {
+    out.push(new Dk.TextLayer({ characterSet: 'auto', id: l.id, data: PM.caps.filter(c => 'img-' + c.kind === l.id), getPosition: c => [c.at[1], c.at[0]],
+      getText: () => '■', getSize: 14, pickable: true, fontFamily: 'JetBrains Mono, monospace', getColor: A(p.ink, a(l.id)),
+      background: true, getBackgroundColor: A(p.halo, .9 * a(l.id)), backgroundPadding: [1, 1] }));
+  }
   const st = S.filter(s => s.kind === 'sensor');
   if (L.public) {
     out.push(new Dk.ScatterplotLayer({ id: 'public', data: st.filter(s => !s.local), getPosition: lngLat, ...px, pickable: true, autoHighlight: true,
@@ -291,7 +312,7 @@ function panel() {
       const hidden = PM.on[l.id] && ((l.minz != null && z < l.minz) || (l.maxz != null && z > l.maxz));
       return `<div class="ly ${l.empty ? 'empty' : ''} ${PM.on[l.id] ? 'on' : ''}" data-l="${l.id}">`
         + `<label><input type="checkbox" ${PM.on[l.id] ? 'checked' : ''} ${l.empty ? 'disabled' : ''} aria-label="${esc(l.name)}">`
-        + `<i class="sw ${l.sw}" aria-hidden="true"></i><span class="nm">${esc(l.name)}<small>${l.empty ? (l.locked ? 'token-only · unlock this screen under Node' : `The ${l.pack} pack has nothing here yet${l.why ? ` · <code>${esc(l.why)}</code>` : ''}`) : esc(l.sub)}${hidden ? ` · ${l.minz != null && z < l.minz ? 'zoom in to see' : 'zoom out to see'}` : ''}</small></span>`
+        + `<i class="sw ${l.sw}" aria-hidden="true"></i><span class="nm">${esc(l.name)}<small>${l.empty ? (l.locked ? 'token-only · unlock this screen under Node' : l.none ? l.none : `The ${l.pack} pack has nothing here yet${l.why ? ` · <code>${esc(l.why)}</code>` : ''}`) : esc(l.sub)}${hidden ? ` · ${l.minz != null && z < l.minz ? 'zoom in to see' : 'zoom out to see'}` : ''}</small></span>`
         + `<span class="pk">${esc(l.pack)}</span></label>`
         + (l.id === 'wind' && PM.on.wind && PM.wind ? `<label class="whr"><span>now</span><input type="range" min="0" max="${PM.wind.times.length - 1 - nowIdx()}" step="1" value="${PM.windStep}" aria-label="Hours ahead"><b>${PM.windStep ? `+${PM.windStep} h` : 'now'}</b></label>` : '')
         + (l.empty || l.still ? '' : `<input class="op" type="range" min="0" max="1" step="0.05" value="${PM.alpha[l.id]}" aria-label="${esc(l.name)} opacity" ${PM.on[l.id] ? '' : 'disabled'}>`)
@@ -374,6 +395,14 @@ async function facts() {
         + (c.parent ? row('Parent', `<span class="mono">${c.parent}</span>`) : '')
         + row('This node’s cell?', c.is_node ? 'yes' : c.cells_from_node == null ? 'no' : `no · ${c.cells_from_node} cells away`)
         + (c.may_leave ? `<p class="fine">Coarse enough to leave the machine: the node may publish a cell at this resolution, never finer than 6 by radio.</p>` : '') + said);
+    } else if (o && o.kind === 'image') {
+      const c = o.c, head = `<div class="k">Image · ${esc(KIND[c.kind] || c.kind)}</div><h3>${esc(c.note || 'no note')}</h3>`
+        + row('Taken', esc((c.ts || '').slice(0, 16).replace('T', ' '))) + row('By', esc(c.actor || '—'))
+        + row('Cell, res 10', `<span class="mono">${esc(c.cell)}</span>`) + row('Where', c.lat == null ? 'its cell only' : 'the exact point')
+        + row('In the seven cells', c.outside ? 'no · outside' : 'yes') + (c.at_home ? row('At home', 'yes') : '');
+      put(head + row('From this node', '…'));
+      put(head + row('From this node', fmtM(await fromNode(c.at[1], c.at[0])))
+        + `<p class="fine">Kept on this node, cleaned of EXIF and GPS. The point and the picture answer a screen holding a token only.</p>`);
     } else if (o && o.kind === 'lab') {
       const head = `<div class="k">Place to make</div><h3>${esc(o.s.name)}</h3>`;
       put(head + row('From this node', '…'));
@@ -479,7 +508,10 @@ function windSync() {
 /* ---------------------------------------------------------------- a dot, named where it stands */
 /* Every dot answers a click with what it is, in a card on the map, and the way to its readings in Data. The
    inspector on the right keeps the longer facts. */
-const DOTS = ['own', 'public', 'models', 'labs'];
+const DOTS = ['own', 'public', 'models', 'labs', ...IMG.map(l => l.id)];
+const KIND = { phone: 'Phone', camera: 'Fixed camera', microscope: 'Microscope', drone: 'Drone', balloon: 'Balloon or kite' };
+/* an image answers the token only, so it is fetched as a blob: an <img src> cannot carry the header */
+const imgBlob = id => fetch(`/captures/${id}/file`, { headers: DOORS_AUTH() }).then(r => (r.ok ? r.blob() : null)).catch(() => null);
 let POP = null;
 function popup(o) {
   if (POP) { POP.remove(); POP = null; }
@@ -496,6 +528,12 @@ function popup(o) {
     at = o.p;
     h = `<div class="k">Model points · ${o.ss.length}</div>` + o.ss.map(x => `<span class="said">${esc(x.name)}</span>`).join('')
       + `<span>${prov('model')} a model is partial, whatever its quality</span><a href="#data/models">The models in Data →</a>`;
+  } else if (o.kind === 'image') {
+    const c = o.c; at = [c.at[1], c.at[0]];
+    h = `<div class="k">Image · ${esc(KIND[c.kind] || c.kind)}</div><img class="pmimg" alt="${esc(c.note || KIND[c.kind] || 'an image')}">`
+      + (c.note ? `<b>${esc(c.note)}</b>` : '') + `<span class="mono">${esc((c.ts || '').slice(0, 16).replace('T', ' '))}${c.actor ? ' · ' + esc(c.actor) : ''}</span>`
+      + `<span class="mono">${esc(c.cell)}${c.lat == null ? ' · no point, its cell' : ''}</span>`;
+    imgBlob(c.id).then(b => { const el = POP && POP.getElement().querySelector('.pmimg'); if (b && el) { el.src = URL.createObjectURL(b); el.onload = () => URL.revokeObjectURL(el.src); } });
   } else if (o.kind === 'lab') {
     at = [o.s.lon, o.s.lat];
     h = `<div class="k">Place to make</div><b>${esc(o.s.name)}</b><span class="mono">listed on fablabs.io · shown, never counted</span>`;
@@ -519,6 +557,7 @@ async function placeMap() {
   PM.wind = await fetch(API + 'ground/wind', { headers: DOORS_AUTH() }).then(r => r.status === 200 ? r.json() : null).catch(() => null);
   PM.ground = (PM.meta && PM.meta.on_disk) || {};
   groundRows();
+  PM.caps = await ask('captures?limit=500').catch(() => null); imageRows();
   const nodePlan = await ask('place/geojson').then(g => (g.features || []).length ? g : null).catch(() => null);
   PM.land = { type: 'FeatureCollection', features: [] }; PM.plan = nodePlan;
   if (!nodePlan && !PM.ground.vector && PM.meta) LAYERS.find(l => l.id === 'street').sub = 'the node sent no plan and holds no street map';
@@ -538,7 +577,7 @@ async function placeMap() {
       if (PM.tool === 'measure') return;
       const o = info.object, id = info.layer && info.layer.id;
       PM.pick = !o ? null : (id === 'own' || id === 'public') ? { kind: 'station', s: o } : id === 'models' ? { kind: 'model', ss: o.ss, p: o.p }
-        : id === 'labs' ? { kind: 'lab', s: o } : (id === 'grid' || id === 'grid-dot' || id === 'mine' || id === 'radio') ? { kind: 'cell', id: o.id } : null;
+        : id === 'labs' ? { kind: 'lab', s: o } : id && id.startsWith('img-') ? { kind: 'image', c: o } : (id === 'grid' || id === 'grid-dot' || id === 'mine' || id === 'radio') ? { kind: 'cell', id: o.id } : null;
       popup(PM.pick); facts();
     } });
   map.addControl(PM.overlay);
@@ -570,6 +609,8 @@ async function placeMap() {
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && PM.measure.length) { PM.measure = []; PM.measured = null; PM.hover = null; redraw(); facts(); } });
 }
 window.placeMap = placeMap; window.__PM = PM;   // for the rig
+/* the Images panel added one: ask again, so its kind's row and its square appear */
+window.placeImagesChanged = async () => { if (!PM.map) return; PM.caps = await ask('captures?limit=500').catch(() => null); imageRows(); panel(); redraw(); };
 /* The same base for the doors' other maps (Now's "around this house"): the node's own street map and names when this
    screen may have them; without them only the land's colour, never a tile from anywhere else. */
 window.groundBase = async theme => {

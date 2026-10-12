@@ -430,7 +430,10 @@ answers and the page draws; the plan still needs a token at every level. See [Sh
 
 The node renders as five doors by default, the redesign worked out in planetai-design (R33 to R45): **Now**
 (the moment, its decision with Done, Not now and Doesn't fit, and the stations around the house), **Place** (the
-ground as a map with layers, scales and a measuring tool, the satellite years and what changed), **Data** (every
+ground as a map with layers, scales and a measuring tool, the satellite years and what changed, and the household's
+**Images**: one map layer per kind, phone, fixed camera, microscope, drone and balloon or kite, each image a square
+that opens a card with the image, when, who, the note and its cell, and below the map a panel of the newest with a
+form to add one, picked or dropped; token-only, `GET /captures`), **Data** (every
 reading, drawn, the seven days of every issue, the models, the Index and the ledger), **Wall** (the keeper's one
 dark screen) and **Node** (what comes in and goes out, the nodes around it, and how it is running). The classic
 dashboard remains available at `/?layout=classic`.
@@ -451,8 +454,8 @@ MapLibre only once the walk is reached). The choice is made once, before anythin
 600 px moves to `/?layout=mobile`; a narrow desk window and a tablet stay on the doors, and nothing is
 re-decided on resize. "Phone view" and "Full dashboard" switch, and the browser remembers. One scrollable page:
 **Now** (the engine's title and tagline, the reading at the household's own distance, the Decide card, the other
-issues as rows, and **Add a picture** — the capture tier of SPEC_eyes: one button on an unlocked phone, taking or
-choosing a picture with its kind and an optional note; where it was taken is the picture's own GPS, else the phone's location if the
+issues as rows, and **Add a picture** — the capture tier of SPEC_eyes: one button on an unlocked phone, choosing a
+picture from the phone's library with its kind and an optional note; where it was taken is the picture's own GPS, else the phone's location if the
 person allows (browsers give it to https pages only), else the node's own cell, and the node cleans the file of EXIF and GPS and keeps it; only a screen holding a token can see it. A locked phone
 reads "Unlock this phone to add pictures", the same offer the Decide card makes), **Walk out from the house** (below) and **Node** (from `/health`, so it draws even
 when everything else is refused). The card's three buttons answer an alert from the phone with the act token;

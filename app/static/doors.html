@@ -244,6 +244,12 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
 .pmpop .maplibregl-popup-close-button{font:400 18px/1 var(--mono);color:var(--ink);width:24px;height:24px;border-radius:0}
 .pmpop .maplibregl-popup-tip{border-top-color:var(--ink);border-bottom-color:var(--ink)}
 .sw.txt::before{content:'Aa';font:600 11px/14px var(--body)}
+.sw.pt-img::before{content:'■';font:14px/12px var(--mono)}.pmimg{width:100%;max-height:160px;object-fit:cover;background:var(--hair)}
+.imgs{margin:28px 0}.imgs form{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px;border:1px dashed var(--ink);margin:10px 0}
+.imgs form.over{background:color-mix(in srgb,var(--cells) 8%,transparent)}
+.imgs form>*{min-height:44px}.imgs select,.imgs input:not([type=file]),.imgs button{border:1px solid var(--ink);background:none;color:var(--ink);padding:0 12px;border-radius:0;font:inherit}
+.imgs button{font-weight:600;cursor:pointer}.imgs .ig{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.imgs figure{margin:0}.imgs figure img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;background:var(--hair)}.imgs figcaption{font:var(--t-cap) var(--mono);color:var(--mute);margin-top:4px}
 #layers .ly code{font:inherit;border:1px solid var(--hair);padding:0 3px}
 .srow.focus,section.focus{outline:2px solid var(--cells);outline-offset:4px}
 .windcv{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2}
@@ -601,6 +607,7 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
     <div class="altc" data-learn="cell" data-reads="/earth" data-stage="observe" data-pack="earth"><div id="altbar"></div><div id="mapalt"></div></div>
     <aside id="altfacts" data-learn="prov" data-reads="/issues /earth" data-stage="observe" data-pack="earth"></aside>
   </div>
+  <section class="imgs" data-reads="/captures" data-stage="observe" data-pack="core"><h2>Images</h2><div id="images"></div></section>
   <div class="cols2">
     <section data-learn="reach" data-reads="/reach" data-stage="observe" data-pack="core" data-kind="row"><h2>How far back</h2><div id="reach"></div></section>
     <section data-learn="registry" data-reads="/sources" data-stage="observe" data-pack="core" data-kind="row"><h2>Coming to this place</h2><p class="lede">Sources this node does not read yet. Each says what it would answer, and none draws until it is real.</p><div id="soon"></div></section>

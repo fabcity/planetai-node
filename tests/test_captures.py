@@ -242,11 +242,13 @@ print("privacy: a stranger is refused at off and at open; the backup token canno
 
 # ---- the list and its cell filter, at any resolution
 LISTROWS.extend([
-    {"id": 11, "ts": "2026-10-12T01:00:00+00:00", "kind": "phone", "cell": home10, "note": "a"},
+    {"id": 11, "ts": "2026-10-12T01:00:00+00:00", "kind": "phone", "cell": home10, "note": "a", "lat": -8.6478, "lon": 115.1385},
     {"id": 10, "ts": "2026-10-11T01:00:00+00:00", "kind": "drone", "cell": h3.latlng_to_cell(0.5, 100.0, 10), "note": "b"},
 ])
 rows = lan.get("/captures", headers=ACT).json()
 assert [r["id"] for r in rows] == [11, 10], "newest first"
+assert rows[0]["at"] == [-8.6478, 115.1385], "a map draws a capture at its exact point"
+assert h3.latlng_to_cell(*rows[1]["at"], 10) == rows[1]["cell"], "with no point, at its cell's centre"
 rows = lan.get("/captures", params={"cell": cell9}, headers=ACT).json()
 assert [r["id"] for r in rows] == [11], "a res-9 cell asks for everything inside it"
 rows = lan.get("/captures", params={"cell": home10}, headers=ACT).json()

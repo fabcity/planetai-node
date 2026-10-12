@@ -2860,7 +2860,10 @@ def captures_list(request: Request, authorization: str = Header(""), cell: str |
             raise HTTPException(422, f"{cell!r} is not an H3 cell")
         res = h3.get_resolution(cell)
         rows = [r for r in rows if h3.cell_to_parent(r["cell"], min(res, 10)) == cell] if res <= 10 else []
-    return rows[:limit]
+    import h3  # noqa: PLC0415
+    # `at` is where a map draws it: the exact point, else its cell's centre (the node computes, the page draws)
+    return [{**r, "at": [r["lat"], r["lon"]] if r.get("lat") is not None else list(h3.cell_to_latlng(r["cell"]))}
+            for r in rows[:limit]]
 
 
 @app.get("/captures/{cid}/file")

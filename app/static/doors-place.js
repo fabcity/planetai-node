@@ -17,8 +17,49 @@ VIEWS.place = function () {
   document.querySelectorAll('.pviews button').forEach(b => b.onclick = () => { PVIEW = b.dataset.p; VIEWS.place(); });
   document.querySelector('.bench').dataset.pview = PVIEW;
   if (PVIEW === 'map') placeMap(); else layer();
-  reach();
+  reach(); images();
 };
+
+/* IMAGES — what the household took (SPEC_eyes step 1): which kinds, the newest few, and a way to add one from this
+   screen, a file picked or dropped. Token-only like the map's Images layers: GET /captures, POST /captures. */
+const IKIND = { phone: 'Phone', camera: 'Fixed camera', microscope: 'Microscope', drone: 'Drone', balloon: 'Balloon or kite' };
+async function images() {
+  const el = $('#images');
+  const rows = await fetch('/captures?limit=500', { headers: DOORS_AUTH() }).then(r => (r.ok ? r.json() : null)).catch(() => null);
+  if (!rows) { el.innerHTML = `<p class="fine">Images answer a screen holding a token only: the picture and where it was taken. Unlock this screen under Node to see and add them.</p>`; return; }
+  const n = d3.rollup(rows, v => v.length, c => c.kind);
+  let who = ''; try { who = localStorage.getItem('planetai_actor') || ''; } catch (e) { /* no storage here */ }
+  el.innerHTML = `<p class="lede">${rows.length ? `${rows.length} image${rows.length === 1 ? '' : 's'} on this node: ` + [...n].map(([k, v]) => `${IKIND[k] || k} ${v}`).join(' · ') + '. Each is a square on the map above, one layer per kind.' : 'No image yet. A phone, a fixed camera, a microscope, a drone or a balloon line: add the first one here or on the phone page.'}</p>`
+    + `<form id="imgf"><input type="file" id="imgfile" accept="image/*" aria-label="The image"><select id="imgkind" aria-label="What took it">${Object.entries(IKIND).map(([k, t]) => `<option value="${k}">${t}</option>`).join('')}</select>`
+    + `<input id="imgnote" maxlength="500" placeholder="A note, if it needs one" aria-label="Note">${who ? '' : '<input id="imgwho" placeholder="Your name" aria-label="Your name" autocomplete="name">'}`
+    + `<button type="submit">Keep it on the node</button><span class="fine" id="imgout" role="status">or drop a file here. Its own GPS is where it was taken, else the node's cell; the file is cleaned of EXIF and GPS.</span></form>`
+    + `<div class="ig">${rows.slice(0, 12).map(c => `<figure><img data-id="${c.id}" alt="${esc(c.note || IKIND[c.kind] || 'an image')}"><figcaption>${esc(IKIND[c.kind] || c.kind)} · ${esc((c.ts || '').slice(0, 10))}${c.note ? ' · ' + esc(c.note) : ''}</figcaption></figure>`).join('')}</div>`;
+  el.querySelectorAll('.ig img').forEach(async im => {
+    const b = await fetch(`/captures/${im.dataset.id}/file`, { headers: DOORS_AUTH() }).then(r => (r.ok ? r.blob() : null)).catch(() => null);
+    if (b) { im.src = URL.createObjectURL(b); im.onload = () => URL.revokeObjectURL(im.src); }
+  });
+  const f = $('#imgf'), out = $('#imgout');
+  f.ondragover = e => { e.preventDefault(); f.classList.add('over'); };
+  f.ondragleave = () => f.classList.remove('over');
+  f.ondrop = e => { e.preventDefault(); f.classList.remove('over'); if (e.dataTransfer.files[0]) { $('#imgfile').files = e.dataTransfer.files; out.textContent = e.dataTransfer.files[0].name; } };
+  f.onsubmit = async e => {
+    e.preventDefault();
+    const file = $('#imgfile').files[0], btn = f.querySelector('button');
+    if (!file) { out.textContent = 'Choose or drop an image first.'; return; }
+    const name = who || ($('#imgwho') && $('#imgwho').value.trim());
+    if (!name) { out.textContent = 'The node records who added it: your name first.'; return; }
+    if (!who) try { localStorage.setItem('planetai_actor', name); } catch (x) { /* no storage here */ }
+    const fd = new FormData(); fd.append('photo', file, file.name || 'image.jpg'); fd.append('kind', $('#imgkind').value);
+    fd.append('note', $('#imgnote').value); fd.append('actor', name);
+    btn.disabled = true; out.textContent = 'Sending it to the node…';
+    try {
+      const r = await fetch('/captures', { method: 'POST', headers: DOORS_AUTH(), body: fd }), b = await r.json().catch(() => ({}));
+      if (!r.ok) { out.textContent = b.detail || `the node refused it (${r.status})`; return; }
+      await images(); if (window.placeImagesChanged) window.placeImagesChanged();
+      $('#imgout').textContent = b.duplicate ? 'The node already had it.' : 'Kept.';
+    } catch (x) { out.textContent = `The node did not answer: ${x.message}`; } finally { btn.disabled = false; }
+  };
+}
 
 /* a fact: its name, its figure, where it is from — and, when it has one, its provenance word as the node draws it */
 const facts = (rows, note) => rows.map(([t, v, s, w]) => `<div class="fr"><span>${esc(t)}${s ? `<small class="said">${esc(s)}</small>` : ''}</span><b>${esc(v)}${w ? ' ' + prov(w) : ''}</b></div>`).join('') + (note ? `<p class="fine">${note}</p>` : '');
