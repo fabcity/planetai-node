@@ -13,13 +13,12 @@ const sign = (id, cls = '') => `<svg class="sg ${cls}" aria-hidden="true"><use h
 const PROV = ['live', 'partial', 'model', 'cached', 'example'];
 const prov = w => PROV.includes(w) ? `<span class="pill">${sign('sign-prov-' + w)}${w}</span>` : `<span class="gap">${esc(w)}</span>`;
 const num = (key, v, cmp, inner) => `<span data-num="${esc(key)}" data-cmp="${esc(cmp)}">${inner ?? esc(v)}</span>`;
-const SAT = y => `/earth/frame.png?year=${y}&source=sentinel`;
 const ANSWER_STAGE = { done: 'acted', not_now: 'acknowledged', doesnt_fit: 'dismissed' };
 
 /* the phone's subset (SPEC_mobile §8): never the token-only three, never rho/cells */
 const MOBILE_ROUTES = {
   issues: 'issues', days: 'issues/days?days=7', health: 'health', settings: 'settings',
-  stats: 'stats', sensors: 'sensors', reach: 'reach', observations: 'observations', earth: 'earth',
+  stats: 'stats', sensors: 'sensors',
 };
 
 let D = null, leadKey = null, refusedSentence = null, refusedHealth = null;
@@ -60,7 +59,7 @@ function drawAll() {
   document.documentElement.lang = h.locale || 'en';
   $('#who').innerHTML = `${esc(D.node.name || h.node || 'this node')}<small>${esc(D.node.place || '')}</small>`;
   $('#asof').textContent = `as of ${hhmm(D.as_of)}`;
-  drawNow(); drawPlace(); drawNode(h);
+  drawNow(); drawNode(h);
 }
 
 /* ---- Now (§5.1) ---- */
@@ -76,17 +75,7 @@ function drawNow() {
     + `<span class="u">${esc(it.unit || '')}</span> ${prov(hero.provenance)}`
     + `<p class="cmp">${esc(cmp)}</p>`
     + (it.plain ? `<p class="plain">${said(it.plain)}</p>` : '') + `</div>`;
-  /* the four distances, 2 × 2, an absent one prints none in the gap style */
-  s += `<div class="grid">` + ['room', 'yard', 'ring', 'region'].map(dk => {
-    const st = (it.stack || {})[dk];
-    return `<div class="cell"><div class="l">${esc(D.labels[dk] || dk)}</div>`
-      + (st && st.value != null
-        ? `<div class="v">${num(`${it.metric}.${dk}`, st.value, cmp, esc(fmt(st.value, it.dp)))} <span class="u">${esc(it.unit || '')}</span></div>${prov(st.provenance)}`
-        : `<div class="v"><span class="gap">none</span></div>`)
-      + `</div>`;
-  }).join('') + `</div>`;
-  /* the walk out from the house (§11.2) loads a map, so it is its own page; it reads what this page reads */
-  s += `<p class="walk"><a href="/?layout=walk#${esc(leadKey || D.lead || '')}">Walk out from the house →</a></p>`;
+  /* the four distances are the walk's, below: its rail on the map and one chapter each */
   s += decideHTML(it);
   /* the other issues, one row each */
   const others = D.order.filter(k => k !== leadKey && D.issues[k]);
@@ -162,40 +151,6 @@ async function answer(evId, stage) {
   } catch (e) { if (out) out.textContent = `The node did not answer: ${e.message}`; }
 }
 
-/* ---- Place (§5.2): no heavy map library on a phone ---- */
-function drawPlace() {
-  const h = D.health || {}, cell = h.cell || {};
-  const nos = `<p class="mut">The node does not share this with a screen at SHARE_LEVEL=off.</p>`;
-  let s = '';
-  if (cell.id) {
-    const lad = (D.geometry.ladder || []).find(l => l.res === cell.res) || {};
-    s += `<div class="facts"><div class="fact"><div class="l">The cell</div>`
-      + `${esc(cell.id)} · res ${esc(String(cell.res))} · edge ${esc(fmt(cell.edge_m, 0))} m`
-      + (lad.own_area_m2 ? ` · area ${fmt(lad.own_area_m2 / 1e6, 2)} km²` : '') + `</div>`;
-  }
-  if (D.observations) {
-    const ee = Object.fromEntries((D.observations || []).filter(o => o.sensor_id === 'ee-point').map(o => [o.metric, o]));
-    if (Object.keys(ee).length) {
-      s += `<div class="fact"><div class="l">The ground within 1 km</div>`
-        + ['built_frac', 'tree_frac', 'crop_frac', 'water_frac'].filter(m => ee[m] && ee[m].value != null)
-          .map(m => `<div>${esc(m.replace(/_frac$/, ''))} ${fmt(ee[m].value * 100, 0)}% ${prov('model')}</div>`).join('')
-        + `</div>`;
-    }
-  } else s += nos;
-  if (D.reach) {
-    s += `<div class="fact"><div class="l">How far back the node reads</div>`
-      + (D.reach || []).map(r => `<div>${esc(r.kind)} · ${(r.days || 0).toLocaleString('en')} days</div>`).join('') + `</div>`;
-  } else s += nos;
-  if (D.earth) {
-    const years = (D.earth.sentinel || []);
-    if (years.length) s += `<div class="fact"><div class="l">The ground from above, ${esc(String(years[years.length - 1]))}</div>`
-      + `<img class="frame" loading="lazy" src="${SAT(years[years.length - 1])}" alt="The node's own Sentinel-2 frame for ${esc(String(years[years.length - 1]))}"></div>`;
-  } else s += nos;
-  if (s) s += `</div>`;
-  s += `<p><a href="/?layout=doors#place">Open the map on the full dashboard</a></p>`;
-  $('#place-v').innerHTML = s;
-}
-
 /* ---- Node (§5.3): /health only, so it always draws ---- */
 function drawNode(h) {
   const mesh = h.mesh && h.mesh.root_topic, radio = h.reticulum && h.reticulum.announce_s;
@@ -209,7 +164,7 @@ function drawNode(h) {
   s += `<div class="fact"><div class="l">This phone</div>`
     + (share ? `SHARE_LEVEL=${esc(share)} · ` : '')
     + (hasToken() ? `unlocked · <a href="#lock" data-lock>Lock this phone</a>`
-                  : `locked — this phone is not shown the readings · <a href="#unlock" data-unlock>Unlock this phone</a>`)
+                  : `locked · ${share === 'open' ? 'it reads what the node shares, and cannot answer it' : 'this phone is not shown the readings'} · <a href="#unlock" data-unlock>Unlock this phone</a>`)
     + `</div></div>`;
   $('#node-v').innerHTML = s;
 }
@@ -240,7 +195,7 @@ document.addEventListener('click', ev => {
   const ans = t.closest && t.closest('.decide .ans button[data-ev]');
   if (ans) { ev.preventDefault(); ans.disabled = true; answer(ans.dataset.ev, ans.dataset.stage); return; }
   const row = t.closest && t.closest('.rowb[data-lead]');
-  if (row) { ev.preventDefault(); leadKey = row.dataset.lead; drawNow(); $('#now-v').scrollIntoView(); return; }
+  if (row) { ev.preventDefault(); leadKey = row.dataset.lead; drawNow(); if (window.WALK_ISSUE) WALK_ISSUE(leadKey); $('#now-v').scrollIntoView(); return; }
   const un = t.closest && t.closest('a[data-unlock]');
   if (un) {
     ev.preventDefault();
@@ -268,4 +223,15 @@ document.addEventListener('visibilitychange', async () => {
   if (Date.now() - Date.parse(D.as_of) > 5 * 60 * 1000) { try { D = await loadD(MOBILE_ROUTES); drawAll(); } catch (e) { /* keep what is drawn */ } }
 });
 
-boot();
+/* the walk (§11.2) needs MapLibre, the one heavy library on this page: watched for only once Now has drawn, and
+   fetched when the walk nears the screen, so Now comes first on a slow phone; then walk.js draws into #walk */
+boot().then(() => { if ('IntersectionObserver' in window && $('#walk')) {
+  const wio = new IntersectionObserver(es => {
+    if (!es.some(e => e.isIntersecting)) return;
+    wio.disconnect();
+    const add = (tag, at) => new Promise(ok => { const e = document.createElement(tag); Object.assign(e, at, { onload: ok }); document.head.appendChild(e); });
+    add('link', { rel: 'stylesheet', href: '/static/maplibre-gl.css' });
+    add('script', { src: '/static/maplibre-gl.js' }).then(() => add('script', { src: '/static/walk.js' }));
+  }, { rootMargin: '200px' });
+  wio.observe($('#walk'));
+} });

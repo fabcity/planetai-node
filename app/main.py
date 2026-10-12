@@ -2314,7 +2314,7 @@ STATIC = Path(__file__).parent / "static"
 def ui(layout: str = ""):
     """The dashboard: one HTML file, no build step, reads the same API everything else does. The five doors
     layout is the default (doors.html, docs/decisions/2026-10-07-doors.md); `?layout=classic` serves the legacy
-    dashboard instead; `?layout=mobile` serves the phone page (one column, Now/Place/Node), and `?layout=walk` its walk out from the house. All three share
+    dashboard instead; `?layout=mobile` serves the phone page (one column: Now, the walk out from the house, Node; `?layout=walk` is the same page). All three share
     the same shell route, so the same share rule, and all read the same routes with the same token.
 
     Sent with `cache-control: no-cache`. Without any cache header a browser is free to reuse this document for as
@@ -2324,10 +2324,8 @@ def ui(layout: str = ""):
     from fastapi.responses import HTMLResponse
     if layout == "classic":
         f = STATIC / "index.html"
-    elif layout == "mobile":
+    elif layout in ("mobile", "walk"):     # the walk was its own page for a day; it is the phone page's middle now
         f = STATIC / "mobile.html"
-    elif layout == "walk":
-        f = STATIC / "walk.html"
     else:
         f = STATIC / "doors.html"
     body = f.read_text() if f.exists() else "<h1>planetai-node</h1><p>GUI not shipped in this build.</p>"
@@ -2429,8 +2427,7 @@ COMPANIONS = {
     # The phone page (/?layout=mobile): the shell and its script, which reuses doors-load.js.
     "mobile.html": (STATIC / "mobile.html", "text/html"),
     "mobile.js": (STATIC / "mobile.js", "application/javascript"),
-    # The phone's walk out from the house (/?layout=walk, SPEC_mobile §11.2), the one phone view that loads MapLibre.
-    "walk.html": (STATIC / "walk.html", "text/html"),
+    # The phone page's walk out from the house (SPEC_mobile §11.2): mobile.js loads it, and MapLibre, when it nears the screen.
     "walk.js": (STATIC / "walk.js", "application/javascript"),
     "world-land-110m.json": (STATIC / "vendor" / "world-land-110m.json", "application/json"),
     # The documentation the node carries (`make learn` cuts it out of docs/site): the Data door draws the API from it.

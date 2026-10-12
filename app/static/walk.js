@@ -1,5 +1,6 @@
 'use strict';
-/* The walk out from the house (SPEC_mobile §11.2). Five steps, house → street → ring → region → planet; the map
+/* The walk out from the house (SPEC_mobile §11.2), the phone page's middle: mobile.js loads MapLibre and this file
+   when the walk nears the screen, so Now draws first. Five steps, house → street → ring → region → planet; the map
    flies out at each and draws that scale's cell heavy, the smaller ones faint inside it. Nothing here names an issue:
    the switch lists every issue /issues carries, in its order, and each issue is read at the scales it has. A scale
    with no reading stays in the walk and says so, so a pack's issue read only by a model starts at the region. */
@@ -22,19 +23,15 @@ if (typeof document !== 'undefined') (async () => {
   const get = p => fetch('/' + p, { headers: DOORS_AUTH() }).then(r => (r.ok ? r.json() : null)).catch(() => null);
   /* the walk reads what the phone page reads: whatever this node's SHARE_LEVEL answers, or everything with the token */
   const [I, D, H, N, M] = await Promise.all([get('issues'), get('issues/days?days=1'), get('health'), get('nodes'), get('ground/meta')]);
-  if (!I || !H) {
-    $('#top').remove();
-    $('#chs').innerHTML = '<p class="locked">This node does not share its readings with a phone that is not unlocked. '
-      + '<a href="/?layout=mobile#unlock">Unlock this phone</a> first.</p>';
-    return;
-  }
+  /* refused: Now above already says why and offers the unlock */
+  if (!I || !H) { $('#walk').remove(); return; }
   /* /ground and /geo/cell answer a phone with no token at SHARE_LEVEL=open; anywhere else the walk goes without the map */
   if (!M) $('#map').insertAdjacentHTML('afterend', '<p class="nomap">This node does not share its map with a phone that is not unlocked.</p>');
   const lang = 'en', L = (I.labels && I.labels[lang]) || {}, W = walkOf(I);
   const word = i => (SCALES[i].k ? L[SCALES[i].k] || SCALES[i].k : PLANET[lang]);
   const edge = r => (I.geometry.ladder.find(x => x.res === r) || {}).edge_m;
   const f = (v, dp) => (v == null ? '—' : (+v).toFixed(dp));
-  let K = (W.find(x => x.k === location.hash.slice(1)) || W[0] || {}).k, AT = 0;
+  let K = (W.find(x => x.k === location.hash.slice(1)) || W.find(x => x.k === (I.lead || {}).issue) || W[0] || {}).k, AT = 0;
 
   /* the 24 hours of one scale, from /issues/days; [] where the issue keeps no hours there */
   const hours = (k, d) => ((D && D.issues[k] && D.issues[k].series[d]) || []).slice(-24);
@@ -102,15 +99,15 @@ if (typeof document !== 'undefined') (async () => {
       { h: 'The planet', p: `${nodes.length} node${nodes.length === 1 ? '' : 's'} listed in the programme${N && N.read ? `, the list read ${N.read.slice(0, 10)}` : ''}. Each reads its own house the same way, and none of them sends its rooms here.`,
         g: nodes.length ? '<p>' + nodes.map(x => `<b>${x.name}</b> · ${(x.place || '').split(',')[0]}`).join('<br>') + '</p>' : '', m: 'Not listed? <code>planetai hello</code>' }];
     $('#chs').innerHTML = step.map((t, i) => { const s = w.at[i], e = edge(SCALES[i].res);
-      return `<section class="ch" data-i="${i}"><div class="k">${word(i)} · res ${SCALES[i].res}${e ? ` · ${Math.round(e * 2).toLocaleString('en')} m across` : ''}</div><h2>${t.h}</h2>`
+      return `<div class="ch" data-i="${i}"><div class="k">${word(i)} · res ${SCALES[i].res}${e ? ` · ${Math.round(e * 2).toLocaleString('en')} m across` : ''}</div><h2>${t.h}</h2>`
         + (i < 4 ? (s ? `<div class="big">${f(s.value, dp)}<i>${u}</i></div><p>${s.source || ''}${s.provenance ? `, ${s.provenance}` : ''}.</p>` : `<span class="none">${(a.name && a.name[lang]) || K} is not read at the ${word(i)}</span>`) : '')
-        + (t.p && (i > 3 || s) ? `<p>${t.p}</p>` : '') + (s || i > 3 ? t.g || '' : '') + (t.m && (s || i > 3) ? `<p class="m">${t.m}</p>` : '') + '</section>'; }).join('');
-    $('#rail').innerHTML = SCALES.map((s, i) => `<a href="#" data-i="${i}"><s></s>${word(i)}<em>${i < 4 ? f(w.at[i] && w.at[i].value, dp) : ''}</em></a>`).join('');
-    $('#rail').querySelectorAll('a').forEach(el => (el.onclick = e => { e.preventDefault(); document.querySelectorAll('.ch')[+el.dataset.i].scrollIntoView({ behavior: 'smooth' }); }));
+        + (t.p && (i > 3 || s) ? `<p>${t.p}</p>` : '') + (s || i > 3 ? t.g || '' : '') + (t.m && (s || i > 3) ? `<p class="m">${t.m}</p>` : '') + '</div>'; }).join('');
+    /* the rail says where the reader is; it is read, not pressed (a 44 px target per scale would cover the map) */
+    $('#rail').innerHTML = SCALES.map((s, i) => `<span><s></s>${word(i)}<em>${i < 4 ? f(w.at[i] && w.at[i].value, dp) : ''}</em></span>`).join('');
     document.querySelectorAll('.ch').forEach(c => io.observe(c));
     lit();
   }
-  const lit = () => $('#rail').querySelectorAll('a').forEach((el, i) => el.classList.toggle('on', i === AT));
+  const lit = () => $('#rail').querySelectorAll('span').forEach((el, i) => el.classList.toggle('on', i === AT));
   const stationsGeo = () => { const w = W.find(x => x.k === K), m = metricOf(w);
     return { type: 'FeatureCollection', features: outdoor(w).filter(s => (s.km || 0) > 0.5)
       .map(s => ({ type: 'Feature', properties: { t: f(s.read[m].value, 0) }, geometry: { type: 'Point', coordinates: [s.lon, s.lat] } })) }; };
@@ -133,20 +130,25 @@ if (typeof document !== 'undefined') (async () => {
     const l = document.querySelector('.ch[data-i="3"] .ladder'); if (l) l.outerHTML = ladder(w);
   }
   /* the step is the chapter crossing the band just under the 58vh map, the one being read; .ch's scroll-margin lands a jump there */
-  const io = new IntersectionObserver(es => es.forEach(e => e.isIntersecting && +e.target.dataset.i !== AT && go(+e.target.dataset.i)), { rootMargin: '-61% 0px -35% 0px' });
+  const under = (($('.bar') || {}).offsetHeight || 0) + $('#top').offsetHeight + 8;
+  const io = new IntersectionObserver(es => es.forEach(e => e.isIntersecting && +e.target.dataset.i !== AT && go(+e.target.dataset.i)),
+    { rootMargin: `-${under}px 0px -${Math.max(0, innerHeight - under - 30)}px 0px` });
 
   if (!W.length) { $('#chs').innerHTML = '<p class="locked">No issue has a reading yet.</p>'; return; }
   $('#tg').innerHTML = W.map(w => `<button data-k="${w.k}" aria-pressed="${w.k === K}">${(w.a.name && w.a.name[lang]) || w.k}</button>`).join('');
-  $('#tg').querySelectorAll('button').forEach(b => (b.onclick = () => { K = b.dataset.k;
-    $('#tg').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b));
-    map.getSource('st').setData(stationsGeo()); story(); start(); }));
+  /* one issue for the page: the switch here, or a row in Now (window.WALK_ISSUE), which stays where it is */
+  const pick = (k, jump) => { if (!W.some(x => x.k === k)) return; K = k;
+    $('#tg').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x.dataset.k === k));
+    map.getSource('st').setData(stationsGeo()); story(); start(jump); };
+  $('#tg').querySelectorAll('button').forEach(b => (b.onclick = () => pick(b.dataset.k, true)));
+  window.WALK_ISSUE = k => pick(k, false);
 
   /* the cell this node stands in, at each scale, from the node's own /geo/cell (R25: centres only, never the house) */
   const cells = (await Promise.all(SCALES.slice(0, 4).map(s => get(`geo/cell?lat=${H.lat}&lon=${H.lon}&res=${s.res}`)))).filter(c => c && c.ring)
     .map(c => { const q = []; for (let k = 1; k < c.ring.length; k += 2) q.push([c.ring[k + 1], c.ring[k]]); q.push(q[0]);
       return { type: 'Feature', properties: { res: c.res }, geometry: { type: 'LineString', coordinates: q } }; });
   const V = M && M.layers && M.layers.vector, DR = M && M.layers && M.layers.drone, here = location.origin;
-  const map = new maplibregl.Map({ container: 'map', attributionControl: { compact: true }, center: [H.lon, H.lat], zoom: 18, interactive: false,
+  const map = new maplibregl.Map({ container: 'map', attributionControl: { compact: false }, center: [H.lon, H.lat], zoom: 18, interactive: false,
     transformRequest: url => (url.startsWith(here + '/ground/') ? { url, headers: DOORS_AUTH() } : { url }),
     style: { version: 8, ...(V && V.fonts ? { glyphs: here + '/ground/glyphs/{fontstack}/{range}.pbf' } : {}), sources: {
       ...(V ? { v: { type: 'vector', tiles: [here + '/ground/vector/{z}/{x}/{y}.pbf'], maxzoom: V.maxzoom || 15, attribution: '© OpenStreetMap' } } : {}),
@@ -167,8 +169,8 @@ if (typeof document !== 'undefined') (async () => {
       ...(V && V.fonts ? [{ id: 'stt', type: 'symbol', source: 'st', layout: { 'text-field': ['get', 't'], 'text-size': 10, 'text-font': ['Noto Sans Regular'] }, paint: { 'text-color': '#fff' } }] : []),
       { id: 'nd', type: 'circle', source: 'nd', paint: { 'circle-radius': 6, 'circle-color': '#171717', 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 } }] } });
   /* an issue not read at the house starts where it is first read (land and coast: the region) */
-  const start = () => { const i = Math.max(0, W.find(x => x.k === K).at.findIndex(Boolean));
-    if (i) document.querySelectorAll('.ch')[i].scrollIntoView(); else scrollTo(0, 0); go(i); };
-  map.on('load', () => { map.getSource('st').setData(stationsGeo()); story(); start(); window.WALK_READY = true; });
+  const start = jump => { const i = Math.max(0, W.find(x => x.k === K).at.findIndex(Boolean));
+    if (jump) document.querySelectorAll('.ch')[i].scrollIntoView(); go(i); };
+  map.on('load', () => { map.getSource('st').setData(stationsGeo()); story(); start(false); window.WALK_READY = true; });
   window.WALK_GO = i => go(i);
 })();

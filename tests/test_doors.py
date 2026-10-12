@@ -51,20 +51,19 @@ mobjs = (STATIC / "mobile.js").read_text()
 assert c.get("/", params={"layout": "mobile"}).text == mob
 mnamed = re.findall(r'(?:src|href)="/static/([^"]+)"', mob) + re.findall(r"['\"]/static/([\w.#-]+)['\"]", mobjs)
 assert mnamed and all(n.split("#")[0] in main.COMPANIONS for n in mnamed), [n for n in mnamed if n.split("#")[0] not in main.COMPANIONS]
-assert not re.search(r"maplibre|deck\.gl|d3\.|plot\.umd", mob + mobjs, re.I), "the phone page loads no map or chart library"
+assert not re.search(r"maplibre|deck\.gl|d3\.|plot\.umd", mob, re.I), "the phone page's shell loads no map or chart library"
+assert not re.search(r"deck\.gl|d3\.|plot\.umd", mobjs, re.I), "the phone page fetches MapLibre for its walk, and nothing heavier"
 assert "planetai_admin'" not in mobjs.replace("removeItem('planetai_admin')", ""), "the phone page never stores the admin token"
 assert not re.search(r"fetch\(\s*['\"]/settings", mobjs), "the phone page reads /settings through loadD (GET) and never calls it"
-print("doors: ?layout=mobile is the phone page; it names only served files, loads no map library, touches no settings")
+print("doors: ?layout=mobile is the phone page; it names only served files, loads no map library up front, touches no settings")
 
-# the walk out from the house (SPEC_mobile §11.2): its own page, so the phone page stays light; it names only served
-# files, and it names no issue: every issue /issues carries is walked, at the scales it has
-walk, walkjs = (STATIC / "walk.html").read_text(), (STATIC / "walk.js").read_text()
-assert c.get("/", params={"layout": "walk"}).text == walk
-wnamed = re.findall(r'(?:src|href)="/static/([^"]+)"', walk)
-assert wnamed and all(n in main.COMPANIONS for n in wnamed), [n for n in wnamed if n not in main.COMPANIONS]
-assert "layout=walk" in mobjs, "the phone page offers the walk"
+# the walk out from the house (SPEC_mobile §11.2): the phone page's middle, one page; mobile.js fetches MapLibre and
+# walk.js when it nears the screen. It names no issue: every issue /issues carries is walked, at the scales it has
+walkjs = (STATIC / "walk.js").read_text()
+assert c.get("/", params={"layout": "walk"}).text == mob, "?layout=walk is the phone page"
+assert 'id="walk"' in mob and "/static/walk.js" in mobjs and "/static/maplibre-gl.js" in mobjs
 assert not re.search(r"['\"](air|heat|land|coast)['\"]", walkjs), "the walk names no issue; it walks what /issues carries"
-print("doors: ?layout=walk is the walk out from the house; it names only served files and no issue")
+print("doors: the walk is the phone page's middle; it loads when reached and names no issue")
 
 # one phone mode (12 Oct 2026): at SHARE_LEVEL=open the walk's map answers without a token, but /geo/cell keeps what
 # it says relative to the node for a token, or a phone could find the house asking res 15 cell by cell

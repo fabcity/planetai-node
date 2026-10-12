@@ -58,12 +58,6 @@ section>h2{font:500 var(--t-cap)/1.4 var(--mono);letter-spacing:.12em;text-trans
 .hero .u{font:500 var(--t-small) var(--mono);color:var(--mute);margin-left:4px}
 .hero .cmp{font-size:var(--t-small);color:var(--mute);margin:4px 0 0}
 .hero .plain{font-size:var(--t-body);margin:8px 0 0}
-.walk{margin:14px 0 16px}.walk a{display:block;border:1px solid var(--ink);padding:14px;font:500 var(--t-small) var(--mono);text-decoration:none;letter-spacing:.04em}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 16px}
-.cell{border:1px solid var(--hair);padding:10px 12px}
-.cell .l{font:500 var(--t-cap) var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
-.cell .v{font:700 20px/1.2 var(--num-face);margin-top:2px}
-.cell .u{font:500 var(--t-cap) var(--mono);color:var(--mute)}
 /* the Decide card */
 .decide{border:1px solid var(--ink);padding:14px 14px 12px;margin:0 0 16px}
 .decide .dq{font-size:var(--t-body);margin:8px 0 12px}
@@ -73,7 +67,7 @@ section>h2{font:500 var(--t-cap)/1.4 var(--mono);letter-spacing:.12em;text-trans
 .dm{font-size:var(--t-small);color:var(--mute);margin:10px 0 0}
 .dm[role="status"]{color:var(--ink)}
 /* a link is a finger's target (§5.5): inline links grow a 44 px hit area without moving the sentence */
-.fact a,.dm a,.refused a,#place-v>p>a{display:inline-block;padding:13px 0;margin:-13px 0}
+.fact a,.dm a,.refused a{display:inline-block;padding:13px 0;margin:-13px 0}
 /* the other issues */
 .rows{display:flex;flex-direction:column;gap:8px}
 .rowb{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--hair);background:var(--ground);color:var(--ink);font:inherit;text-align:left;cursor:pointer}
@@ -87,13 +81,36 @@ section>h2{font:500 var(--t-cap)/1.4 var(--mono);letter-spacing:.12em;text-trans
 .facts{display:flex;flex-direction:column;gap:10px}
 .fact{border:1px solid var(--hair);padding:10px 12px}
 .fact .l{font:500 var(--t-cap) var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mute);margin-bottom:4px}
-.frame{width:100%;height:auto;border:1px solid var(--hair);display:block}
 /* unlock */
 .unlock{border:1px solid var(--ink);padding:14px;margin:0 0 16px}
 .unlock label{display:block;font:500 var(--t-cap) var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mute);margin:0 0 6px}
 .unlock input{width:100%;min-height:44px;padding:10px;border:1px solid var(--ink);background:var(--ground);color:var(--ink);font:var(--t-body) var(--mono);margin:0 0 10px}
 .refused{border:1px solid var(--ink);padding:16px 14px;margin:0 0 16px}
 .refused .lede{font-size:var(--t-read);line-height:1.4;margin:0 0 10px}
+/* the walk (§11.2): full width, the map pinned under the bar while its chapters scroll under it */
+:root{--warm:#c8553d;--cool:#3b6ea5}
+#walk{margin:0 -16px 34px}#walk>h2{margin:0 16px 0}#walk>#chs>.mut{padding:0 16px}
+#top{position:sticky;top:52px;z-index:5;height:58vh;border-bottom:1px solid var(--ink);background:#dfe6ea}
+#map{position:absolute;inset:0}
+#bar{position:absolute;left:0;right:0;top:0;z-index:2;display:flex;padding:10px 12px;background:linear-gradient(var(--ground) 60%,transparent)}
+.tg{display:flex;overflow-x:auto;border:1px solid var(--ink);margin-left:auto;scrollbar-width:none}
+.tg button{all:unset;font:500 11px/1 var(--mono);padding:0 12px;min-height:44px;display:flex;align-items:center;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;cursor:pointer}
+.tg button[aria-pressed=true]{background:var(--ink);color:var(--ground)}
+#rail{position:absolute;right:10px;bottom:30px;z-index:2;display:flex;flex-direction:column;background:color-mix(in srgb,var(--ground) 88%,transparent);padding:6px 8px;border:1px solid var(--ink)}
+#rail span{display:flex;align-items:center;gap:7px;min-height:22px;font:500 10px/1.5 var(--mono);color:var(--mute);text-decoration:none;letter-spacing:.06em;text-transform:uppercase}
+#rail span s{width:7px;height:7px;border:1px solid var(--mute);border-radius:50%}
+#rail span.on{color:var(--ink)}#rail span.on s{background:var(--ink);border-color:var(--ink)}
+#rail span em{font-style:normal;margin-left:auto;padding-left:10px;color:var(--ink)}
+.ch{min-height:88vh;scroll-margin-top:calc(58vh + 52px);padding:22px 16px 40px;border-bottom:1px solid var(--hair)}
+.ch h2{font:600 24px/1.2 var(--display);margin:6px 0 4px}
+.big{font:400 44px/1 var(--num-face);margin:14px 0 2px}.big i{font:500 13px var(--mono);font-style:normal;color:var(--mute);margin-left:4px}
+.ch p{margin:10px 0;max-width:34em}.ch p.m{color:var(--mute);font-size:13px}
+.none{display:inline-block;border:1px dashed var(--mute);color:var(--mute);padding:2px 8px;font:500 12px var(--mono);margin-top:12px}
+svg.g{display:block;width:100%;height:auto;margin:16px 0 4px;overflow:visible}
+.g text{font:10px var(--mono);fill:var(--mute);paint-order:stroke;stroke:var(--ground);stroke-width:4px}
+.locked{padding:40px 16px}
+.nomap{position:absolute;left:12px;right:120px;top:40%;margin:0;font:500 12px/1.5 var(--mono);color:var(--mute)}
+.maplibregl-ctrl-attrib{font-size:9px}
 /* the foot */
 .foot{border-top:1px solid var(--hair);padding:18px 16px 34px;max-width:34rem;margin:0 auto}
 .foot a{display:inline-flex;align-items:center;min-height:44px;font-weight:600}
@@ -107,12 +124,14 @@ section>h2{font:500 var(--t-cap)/1.4 var(--mono);letter-spacing:.12em;text-trans
 </div>
 <header class="bar">
   <h1 id="who"></h1>
-  <nav aria-label="Sections"><a href="#now">Now</a><a href="#place">Place</a><a href="#node">Node</a></nav>
+  <nav aria-label="Sections"><a href="#now">Now</a><a href="#walk">Walk</a><a href="#node">Node</a></nav>
   <span class="asof" id="asof"></span>
 </header>
 <main>
   <section id="now" aria-label="Now"><h2>Now</h2><div id="now-v"></div></section>
-  <section id="place" aria-label="Place"><h2>Place</h2><div id="place-v"></div></section>
+  <section id="walk" aria-label="Walk out from the house"><h2>Walk out from the house</h2>
+    <div id="top"><div id="map"></div><div id="bar"><div class="tg" id="tg" role="group" aria-label="Issue"></div></div><nav id="rail" aria-label="Scales"></nav></div>
+    <div id="chs"><p class="mut">The walk draws when you reach it.</p></div></section>
   <section id="node" aria-label="Node"><h2>Node</h2><div id="node-v"></div></section>
 </main>
 <footer class="foot"><a id="fulldoors" href="/?layout=doors">Full dashboard</a></footer>

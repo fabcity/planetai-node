@@ -446,20 +446,20 @@ would show it.
 
 ## The phone page
 
-A phone is a different hand, so it gets its own page (`mobile.html` and `mobile.js`, the doors' loader, no map
-library). The choice is made once, before anything else loads: a coarse pointer and a short screen side under
+A phone is a different hand, so it gets its own page (`mobile.html` and `mobile.js`, the doors' loader, and
+MapLibre only once the walk is reached). The choice is made once, before anything else loads: a coarse pointer and a short screen side under
 600 px moves to `/?layout=mobile`; a narrow desk window and a tablet stay on the doors, and nothing is
 re-decided on resize. "Phone view" and "Full dashboard" switch, and the browser remembers. One scrollable page:
-**Now** (the engine's title and tagline, the reading at the household's own distance, the four distances, the
-Decide card, the other issues as rows), **Place** (the cell's facts, the ground within a kilometre, how far back
-the node reads, one satellite frame, and a link to the full map) and **Node** (from `/health`, so it draws even
+**Now** (the engine's title and tagline, the reading at the household's own distance, the Decide card, the other
+issues as rows), **Walk out from the house** (below) and **Node** (from `/health`, so it draws even
 when everything else is refused). The card's three buttons answer an alert from the phone with the act token;
 without it the card says the question went to Telegram. A locked phone reads the node's own sentence and the
 field for the token. The spec is `docs/SPEC_mobile.md`, and the visual gate measures the page like any other
 (`node tests/visual/measure.mjs mobile`).
 
-The phone page also offers **Walk out from the house** under the four distances: `/?layout=walk`, its own page
-because it is the one phone view that loads MapLibre. The map stays pinned on top while the story scrolls under it,
+**Walk out from the house** is the middle of the phone page (`/?layout=walk` opens the same page). `walk.js` and
+MapLibre are fetched once Now has drawn and the walk nears the screen, so a slow phone gets its sentence first. The
+map stays pinned under the bar while the story scrolls under it,
 one step per scale (house, street, ring, region, planet), and the camera flies out at each, drawing that scale's
 cell heavy with the smaller ones faint inside it. Each step draws what that scale can say: the house's last 24 hours
 against its line, the street against the house with the gap shaded, the outdoor stations as dots against the house,
