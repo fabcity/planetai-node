@@ -2941,15 +2941,19 @@ FLOWS_VOCAB = "https://planetai.fab.city/vocab/flows/1.0/"
 EYES_CLASSES = ("plant", "animal", "habitat", "food", "water", "compost", "waste_residual", "plastic_waste",
                 "packaging", "wood", "metal", "textile", "electronics", "filament", "fuel", "electricity", "part",
                 "filter", "furniture", "tool", "appliance", "garment", "micromobility", "goods", "other")
-EYES_ASK = ("You are looking at a picture a household took of its own place ({kind}, near {city}){note}. "
-            "Describe what is in it in one or two plain sentences. Then list what you can see, one finding per kind "
-            "of thing: `class` from the list given, `name` as specific as you can tell (a species' common and "
-            "scientific name, a kind of building or street furniture, a kind of waste), `count` how many you can see "
-            "or null, and `issue` true when it is a problem for the place: litter, dumping, smoke, a spill, damage, "
-            "standing water. A tree or any living plant is `plant`; a bird or a dog is `animal`; a garden, a field "
-            "or a reef is `habitat`; litter is `plastic_waste` or `waste_residual`; built things are `goods`, "
-            "`furniture`, `micromobility` and the like; anything else is `other`. Never describe, count or name "
-            "people: leave them out entirely.")
+# Two asks, because a 7B vision model asked for JSON straight from the picture invents (node #1, 12 Oct: dogs, cats
+# and a reef on a drone shot of roofs, looping until cut off). Looking first, in words, and filing those words second
+# keeps every finding to something the description said.
+EYES_LOOK = ("A household took this picture of its own place ({kind}, near {city}){note}. Describe what is in it in a "
+             "short paragraph: the living things (plants and trees, with the species when you can tell, and animals), "
+             "what is built or made, and anything that is a problem for the place, such as rubbish, smoke, a spill or "
+             "damage. Say only what you can actually see. Do not describe people.")
+EYES_FILE = ("Here is a description of a picture:\n\n{summary}\n\nList each kind of thing the description says is "
+             "there, once, as a finding, and leave out anything it says is absent. class: plant is any living plant or "
+             "tree, animal any animal, habitat is ground made living, waste_residual and plastic_waste are rubbish, a "
+             "made thing goes under its own class or goods, and other is buildings, roads, cars and anything else. "
+             "name: as specific as the description is. count: only when the description gives a number, else null. "
+             "issue: true only when the description says it is a problem. Never people.")
 _EYES_TASKS: set = set()   # strong refs, so an automatic description is not collected half way
 
 
@@ -2969,40 +2973,44 @@ async def _describe(cid: int, model: str) -> dict:
     buf = io.BytesIO()
     im.save(buf, "JPEG", quality=85)
     note = (rows[0]["note"] or "").strip()
-    asked = EYES_ASK.format(kind=rows[0]["kind"], city=os.getenv("NODE_CITY", "") or NODE,
+    look = EYES_LOOK.format(kind=rows[0]["kind"], city=os.getenv("NODE_CITY", "") or NODE,
                             note=f"; the household wrote: {note[:200]}" if note else "")
-    schema = {"type": "object", "required": ["summary", "findings"], "properties": {
-        "summary": {"type": "string"},
-        "findings": {"type": "array", "items": {"type": "object", "required": ["class", "name"], "properties": {
+    schema = {"type": "object", "required": ["findings"], "properties": {
+        "findings": {"type": "array", "maxItems": 12, "items": {"type": "object", "required": ["class", "name"], "properties": {
             "class": {"type": "string", "enum": list(EYES_CLASSES)}, "name": {"type": "string"},
             "count": {"type": ["integer", "null"]}, "issue": {"type": "boolean"}}}}}}
     url = os.getenv("OLLAMA_URL", "http://host.docker.internal:11434")
+
+    async def ask(hc, msg, num, fmt=None):
+        r = await hc.post(url + "/api/chat", json={"model": model, "stream": False, "messages": [msg],
+                                                   "options": {"temperature": 0, "num_predict": num},
+                                                   **({"format": fmt} if fmt else {})})
+        if r.status_code == 404:
+            raise HTTPException(503, f"{model} is not on this machine yet: `ollama pull {model}`")
+        if r.status_code >= 400:
+            raise HTTPException(502, f"the image model answered {r.status_code}: {r.text[:200]}")
+        return r.json()["message"]["content"]
     try:
         async with httpx.AsyncClient(timeout=600) as hc:
-            r = await hc.post(url + "/api/chat", json={
-                "model": model, "stream": False, "format": schema, "options": {"temperature": 0},
-                "messages": [{"role": "user", "content": asked, "images": [base64.b64encode(buf.getvalue()).decode()]}]})
+            summary = (await ask(hc, {"role": "user", "content": look,
+                                      "images": [base64.b64encode(buf.getvalue()).decode()]}, 500)).strip()
+            filed = EYES_FILE.format(summary=summary)
+            out = json.loads(await ask(hc, {"role": "user", "content": filed}, 900, schema))
     except httpx.HTTPError as e:
         raise HTTPException(503, f"Ollama is not answering at {url} ({type(e).__name__})") from None
-    if r.status_code == 404:
-        raise HTTPException(503, f"{model} is not on this machine yet: `ollama pull {model}`")
-    if r.status_code >= 400:
-        raise HTTPException(502, f"the image model answered {r.status_code}: {r.text[:200]}")
-    try:
-        out = json.loads(r.json()["message"]["content"])
     except (KeyError, ValueError, TypeError):
         raise HTTPException(502, "the image model answered something that is not the shape asked for") from None
     findings = []
     for f in (out.get("findings") or [])[:30]:
-        if not isinstance(f, dict) or not str(f.get("name") or "").strip():
-            continue
+        if not isinstance(f, dict) or str(f.get("name") or "").strip().lower() in ("", "none", "null", "n/a", "nothing"):
+            continue   # a small model walks the class list and files "none" under each
         cnt = f.get("count")
         findings.append({"class": f.get("class") if f.get("class") in EYES_CLASSES else "other",
                          "name": str(f["name"]).strip()[:120],
                          "count": cnt if isinstance(cnt, int) and not isinstance(cnt, bool) and cnt >= 0 else None,
                          "issue": f.get("issue") is True})
-    analysis = {"model": model, "where": "local", "vocab": FLOWS_VOCAB, "asked": asked,
-                "at": datetime.now(timezone.utc).isoformat(), "summary": str(out.get("summary") or "").strip()[:1000],
+    analysis = {"model": model, "where": "local", "vocab": FLOWS_VOCAB, "asked": [look, EYES_FILE],
+                "at": datetime.now(timezone.utc).isoformat(), "summary": summary[:1500],
                 "findings": findings, "by": "model", "confirmed_by": None}
     with db() as con, con.cursor() as cur:
         cur.execute("UPDATE captures SET analysis = %s WHERE id = %s", (Jsonb(analysis), cid))
