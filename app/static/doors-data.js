@@ -186,8 +186,8 @@ const IKINDS = { phone: 'Phone', camera: 'Fixed camera', microscope: 'Microscope
 // ponytail: EYES_CLASSES in main.py, copied; the node files anything else under other
 const FCLASSES = ['plant', 'animal', 'habitat', 'food', 'water', 'compost', 'waste_residual', 'plastic_waste', 'packaging', 'wood', 'metal',
   'textile', 'electronics', 'filament', 'fuel', 'electricity', 'part', 'filter', 'furniture', 'tool', 'appliance', 'garment', 'micromobility', 'goods', 'other'];
-const frow = f => `<div class="frow"><select data-g="class" aria-label="class">${FCLASSES.map(c => `<option${c === f.class ? ' selected' : ''}>${c}</option>`).join('')}</select>`
-  + `<input data-g="name" aria-label="what" value="${esc(f.name || '')}"><input data-g="count" aria-label="how many" type="number" min="0" value="${f.count ?? ''}">`
+const frow = f => `<div class="frow"><input data-g="name" aria-label="what" value="${esc(f.name || '')}">`
+  + `<select data-g="class" aria-label="class">${FCLASSES.map(c => `<option${c === f.class ? ' selected' : ''}>${c}</option>`).join('')}</select><input data-g="count" aria-label="how many" type="number" min="0" value="${f.count ?? ''}">`
   + `<label title="a problem for the place"><input data-g="issue" type="checkbox"${f.issue ? ' checked' : ''}>issue</label><button data-g="x" aria-label="delete this finding">×</button></div>`;
 const seen = a => !a ? `<p class="fine">Not described yet.</p>`
   : `<div class="seen"><p>${esc(a.summary || '')}</p><div class="frows">${(a.findings || []).map(frow).join('')}</div><button data-g="add">+ a finding</button>`
