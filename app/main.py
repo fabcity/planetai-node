@@ -2741,7 +2741,7 @@ def _clean_picture(raw: bytes) -> tuple[bytes, str, str | None, tuple[float, flo
     except Exception:
         raise ValueError("that file is not a picture this node can read (jpeg, png, heic or webp)") from None
     fmt0 = (im.format or "").upper()
-    if fmt0 not in ("JPEG", "PNG", "WEBP", "HEIF", "HEIC", "AVIF"):
+    if fmt0 not in ("JPEG", "MPO", "PNG", "WEBP", "HEIF", "HEIC", "AVIF"):  # MPO: a JPEG with extra frames, what DJI drones write
         raise ValueError(f"a {fmt0 or 'unknown'} is not a picture this node keeps (jpeg, png, heic or webp)")
     taken = None
     try:
@@ -2764,7 +2764,7 @@ def _clean_picture(raw: bytes) -> tuple[bytes, str, str | None, tuple[float, flo
         point = None
     im = ImageOps.exif_transpose(im)  # the orientation is metadata too: apply it, then let it go with the rest
     out = io.BytesIO()
-    if fmt0 in ("JPEG", "HEIF", "HEIC", "AVIF"):
+    if fmt0 in ("JPEG", "MPO", "HEIF", "HEIC", "AVIF"):  # an MPO keeps its first frame, the picture
         im.convert("RGB").save(out, "JPEG", quality=90)
         mime = "image/jpeg"
     elif fmt0 == "PNG":

@@ -295,6 +295,14 @@ try:
 except Exception as e:
     print(f"cleaning: HEIC check skipped ({type(e).__name__})  (skipped)")
 
+# ---- a drone's MPO (a JPEG carrying extra frames, what DJI writes) is a picture too
+buf = io.BytesIO()
+Image.new("RGB", (32, 32), (200, 30, 30)).save(buf, "MPO", save_all=True, append_images=[Image.new("RGB", (8, 8))])
+assert Image.open(io.BytesIO(buf.getvalue())).format == "MPO", "the fixture really is an MPO"
+cleaned, mime, _, _ = main._clean_picture(buf.getvalue())
+assert mime == "image/jpeg" and Image.open(io.BytesIO(cleaned)).size == (32, 32), "an MPO keeps its first frame as a JPEG"
+print("cleaning: a drone's MPO becomes a JPEG of its main frame")
+
 # ---- the Data door edits an image's words, and the admin token deletes one
 DELFILE = "gone.jpg"
 level("open")
