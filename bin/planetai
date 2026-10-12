@@ -2178,7 +2178,7 @@ print("\x1f".join(str(d.get(k) or "") for k in ("place", "operator", "cell", "si
     ask contact "A public contact, or leave empty" "$lcontact"
     # what this node reads, by source name and never a kit or station id: every source its sensors table registers,
     # and the map layers it keeps on disk. How much of its context a node plays in, said the same way on every node.
-    local srcs; srcs="$(curl -sf "localhost:$(port)/sensors" | G="$(curl -sf "localhost:$(port)/ground/meta" || echo '{}')" json '
+    local srcs; srcs="$(api /sensors | G="$(api /ground/meta || echo '{}')" json '
 import os
 rows = d if isinstance(d, list) else d.get("sensors") or []
 got = {r["source"] for r in rows if isinstance(r, dict) and r.get("source")}
