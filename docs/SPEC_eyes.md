@@ -38,9 +38,18 @@ kinds are the ones Tomas named, and a pack can add more:
 | `camera` | a fixed camera the household points | where it is mounted |
 | `drone`, `balloon` | a flight or a kite or balloon line, stitched into a mosaic | every cell the mosaic covers |
 
-The node keeps each one on its own disk with its hash, its time and its cell at res 10 (the room, the scale the walk
-starts from). Location metadata in the file is removed on arrival; the cell is the only place the node records.
+The node keeps each one on its own disk with its hash, its time, its **exact point** and the res-10 cell that point
+falls in. A tree, a dump or a spill is worth its precise position, and the point stays on the node like the picture
+does: token only. Location metadata **in the file** (EXIF, GPS) is removed on arrival, so a picture that is ever shared
+carries no hidden place; the point travels beside it, on purpose. A capture anywhere in the node's seven cells (§5) is
+the node's own; one outside them is kept and marked as outside. Tomas, 12 October 2026: "It is better for precise
+position of a tree or trash source".
 The visual database is this list, and the phone page's walk can show a cell's captures at its step.
+
+**Precision when it leaves.** A finding or an offered picture goes out with the precision its subject needs: the
+exact point for a tree, a dump or a spill in public space. The one exception is the house: a capture inside the res-10
+cell of the node's own point (`NODE_LAT`, `NODE_LON`), about 130 m across, leaves blurred to that cell by default, the
+way iNaturalist's "obscured" geoprivacy works, and the household can lift that per picture.
 
 ## 3 · Pictures stay home; what a model finds is what travels
 
