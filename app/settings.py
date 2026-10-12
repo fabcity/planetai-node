@@ -113,6 +113,14 @@ RUNTIME = {
     "AGENT_REMOTE_MODEL": ("model", "Remote model", False, True, "e.g. gpt-oss-120b or qwen3:8b"),
     "AGENT_ONLINE_URL":   ("model", "Online model URL", False, True, "https://api.anthropic.com/v1 or https://api.openai.com/v1"),
     "AGENT_ONLINE_MODEL": ("model", "Online model", False, True, "e.g. claude-sonnet-4-6"),
+    "EYES_MODEL":         ("model", "Image model", False, False,
+                           "A vision model in this machine's Ollama that describes each image and lists what it "
+                           "finds: species, trees, sites, urban inventory, issues such as litter or pollution. The "
+                           "picture never leaves this machine. Blank = off. On 16 GB: qwen2.5vl:7b (`ollama pull "
+                           "qwen2.5vl:7b`). It is never asked about people."),
+    "EYES_AUTO":          ("model", "Describe new images", False, False,
+                           "off (default) = an image is described when somebody presses Describe in Data, Images. "
+                           "on = every new image goes to the image model as it arrives."),
     "UI_ASK":             ("model", "Ask the node, on the dashboard", False, False,
                            "on (default) = a toggle on the dashboard opens a pane that asks this node's own model, on "
                            "this machine, about what the page shows. It reads and never changes anything; a change "
@@ -188,7 +196,7 @@ RUNTIME = {
 PUBLIC = {"REPORT_EVERY", "REPORT_ANCHOR", "REPORT_DEPTH", "ALERT_LEVEL", "QUIET_HOURS", "QUIET_FROM", "QUIET_TO", "ALERT_LOCALE",
           "MESH_ALERTS", "HA_DISCOVERY", "PACKS_ENABLED", "PACKS_ALLOW_CODE", "OPENMETEO_ENABLED", "BAD_ENABLED", "BAD_RADIUS_KM",
           "BAD_MIN_SEPARATION_M", "BAD_EXCLUDE", "BAD_INCLUDE_INDOOR",
-          "LOCAL_RADIUS_M", "SENSOR_INDOOR", "COAST_MAX_KM", "AGENT_PREFER", "AGENT_REMOTE_MODEL", "AGENT_ONLINE_MODEL", "UI_LAYOUT", "UI_MODE", "UI_ASK", "UI_GROUND", "MAP_TILES", "UPDATE_CHECK", "STATIONS_SHOWN", "NODE_KIND", "SHARE_LEVEL", "NODE_ISSUES",
+          "LOCAL_RADIUS_M", "SENSOR_INDOOR", "COAST_MAX_KM", "AGENT_PREFER", "AGENT_REMOTE_MODEL", "AGENT_ONLINE_MODEL", "EYES_MODEL", "EYES_AUTO", "UI_LAYOUT", "UI_MODE", "UI_ASK", "UI_GROUND", "MAP_TILES", "UPDATE_CHECK", "STATIONS_SHOWN", "NODE_KIND", "SHARE_LEVEL", "NODE_ISSUES",
           "RETICULUM_PRESENCE", "RETICULUM_PRESENCE_RES"}
 # Which Set up tab shows each bootstrap key, read-only. The place itself is Basics; the machinery is System.
 BOOTSTRAP_GROUP = {k: "basics" for k in ("NODE_NAME", "NODE_CITY", "NODE_LAT", "NODE_LON", "NODE_TZ", "NODE_SCALE")}
@@ -213,6 +221,7 @@ CHOICES = {
     "AGENT_PREFER":  ("private", "fallback", "strongest"),   # a typo here would fail open: not-"private" sends household data off the network
     "SHARE_LEVEL":   ("off", "open"),                        # cell and means are named in the help and refused here, so a node cannot sit at a level that does nothing
     "UI_ASK":        ("on", "off"),
+    "EYES_AUTO":     ("off", "on"),
     "UI_GROUND":     ("svg", "map"),
     "MAP_TILES":     ("off", "on"),                          # live tiles leave the house; off by default, a keeper turns them on in Set up
     "UPDATE_CHECK":  ("on", "off"),                          # a daily request to planetai.fab.city; on by default (Tomas, 30 Sep 2026)

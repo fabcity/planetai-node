@@ -299,3 +299,9 @@ AGENT_ONLINE_MODEL:
 AGENT_ONLINE_KEY:
   default: ""
   help: "Ask the key which models it can actually see, and paste an id from that list: curl -s \"$AGENT_ONLINE_URL/models\" -H \"Authorization: Bearer $AGENT_ONLINE_KEY\" | grep -o '\"id\":\"[^\"]*\"' Worth doing rather than trusting a name you remember. Providers retire models, and a retired one answers 404, which reads like a bad key or a wrong URL — node #1 lost an evening to `gemini-2.5-flash`, gone by then. Gemini also prefixes its ids: models/gemini-3.8-flash, not gemini-3.8-flash. Its key comes from aistudio.google.com; a Gemini *app* subscription is a different product and carries no API access."
+EYES_MODEL:
+  default: ""
+  help: "The image model (SPEC_eyes step 2): a vision model in this machine's Ollama that describes each image and lists what it finds. Local only; the picture never leaves. Blank = off. On 16 GB: qwen2.5vl:7b (ollama pull qwen2.5vl:7b)."
+EYES_AUTO:
+  default: "off"
+  help: "off = an image is described when somebody presses Describe in Data, Images. on = every new image, as it arrives."

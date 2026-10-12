@@ -531,7 +531,7 @@ function popup(o) {
   } else if (o.kind === 'image') {
     const c = o.c; at = [c.at[1], c.at[0]];
     h = `<div class="k">Image · ${esc(KIND[c.kind] || c.kind)}</div><img class="pmimg" alt="${esc(c.note || KIND[c.kind] || 'an image')}">`
-      + (c.note ? `<b>${esc(c.note)}</b>` : '') + `<span class="mono">${esc((c.ts || '').slice(0, 16).replace('T', ' '))}${c.actor ? ' · ' + esc(c.actor) : ''}</span>`
+      + (c.note ? `<b>${esc(c.note)}</b>` : '') + (c.analysis ? `<span>${esc(c.analysis.summary || '')} <i>(${c.analysis.confirmed_by ? 'confirmed' : 'model'})</i></span>` : '') + `<span class="mono">${esc((c.ts || '').slice(0, 16).replace('T', ' '))}${c.actor ? ' · ' + esc(c.actor) : ''}</span>`
       + `<span class="mono">${esc(c.cell)}${c.lat == null ? ' · no point, its cell' : ''}</span><a href="#data/d-images">Its details in Data →</a>`;
     imgBlob(c.id).then(b => { const el = POP && POP.getElement().querySelector('.pmimg'); if (b && el) { el.src = URL.createObjectURL(b); el.onload = () => URL.revokeObjectURL(el.src); } });
   } else if (o.kind === 'lab') {

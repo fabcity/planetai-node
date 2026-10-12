@@ -181,20 +181,27 @@ function cellsBlock() {
 /* IMAGES — every image the household added (SPEC_eyes step 1), with its facts of arrival, and its words to edit: the
    kind, the note, and key: value lines (meta). The act token edits; the admin token deletes, file and row. */
 const IKINDS = { phone: 'Phone', camera: 'Fixed camera', microscope: 'Microscope', drone: 'Drone', balloon: 'Balloon or kite' };
+// What the image model found: its words, each finding filed under a flows class, marked the model's until a person confirms.
+const seen = a => !a ? `<p class="fine">Not described yet.</p>`
+  : `<div class="seen"><p>${esc(a.summary || '')}</p>`
+    + (a.findings || []).map(f => `<p class="fine"><span class="mono">${esc(f.class)}</span> ${esc(f.name)}${f.count != null ? ' × ' + f.count : ''}${f.issue ? ' · <b>an issue</b>' : ''}</p>`).join('')
+    + `<p class="fine mono">${a.confirmed_by ? `confirmed by ${esc(a.confirmed_by)}` : 'model, not confirmed'} · ${esc(a.model)}, on this machine · <a href="${esc(a.vocab || '')}" target="_blank" rel="noopener">flows 1.0</a></p></div>`;
 async function imagesBlock() {
   const el = $('#d-images');
   if (el.querySelector('.icard') && el.contains(document.activeElement)) return;   // a resize must not wipe an edit in progress
   const rows = await fetch('/captures?limit=500', { headers: DOORS_AUTH() }).then(r => (r.ok ? r.json() : null)).catch(() => null);
   if (!rows) { el.innerHTML = `<h2>Images</h2><p class="fine">Images answer a screen holding a token only: the picture and where it was taken. Unlock this screen under Node.</p>`; return; }
   const metaText = m => Object.entries(m || {}).map(([k, v]) => `${k}: ${v}`).join('\n');
-  el.innerHTML = `<h2>Images, ${rows.length}</h2><p class="blurb">What the household added, newest first. Each is a square on Place, one layer per kind. A description by a model comes with the next step of SPEC_eyes.</p>`
+  el.innerHTML = `<h2>Images, ${rows.length}</h2><p class="blurb">What the household added, newest first. Each is a square on Place, one layer per kind. Describe asks the image model in Set up, on this machine; its findings are its own until somebody here confirms them.</p>`
     + `<div class="icards">${rows.map(c => `<div class="icard" data-id="${c.id}"><img alt="${esc(c.note || IKINDS[c.kind] || 'an image')}">`
       + `<p class="fine mono">${esc((c.ts || '').slice(0, 16).replace('T', ' '))}${c.actor ? ' · ' + esc(c.actor) : ''} · ${Math.round((c.bytes || 0) / 1024)} kB</p>`
       + `<p class="fine mono">${esc(c.cell)} · ${c.lat == null ? 'its cell only' : 'the exact point'} · ${c.outside ? 'outside the seven cells' : 'in the seven cells'}${c.at_home ? ' · at home' : ''}</p>`
       + `<label>What took it<select data-f="kind">${Object.entries(IKINDS).map(([k, t]) => `<option value="${k}"${k === c.kind ? ' selected' : ''}>${t}</option>`).join('')}</select></label>`
       + `<label>Note<input data-f="note" maxlength="500" value="${esc(c.note || '')}"></label>`
       + `<label>More, one per line as key: value<textarea data-f="meta" rows="2">${esc(metaText(c.meta))}</textarea></label>`
-      + `<div class="acts"><button data-a="save">Save</button><button data-a="del">Delete</button></div><p class="fine" role="status"></p></div>`).join('')}</div>`;
+      + `<div data-seen>${seen(c.analysis)}</div>`
+      + `<div class="acts"><button data-a="save">Save</button><button data-a="see">${c.analysis ? 'Describe again' : 'Describe'}</button>`
+      + `<button data-a="ok"${c.analysis && !c.analysis.confirmed_by ? '' : ' hidden'}>Confirm</button><button data-a="del">Delete</button></div><p class="fine" role="status"></p></div>`).join('')}</div>`;
   el.querySelectorAll('.icard').forEach(async card => {
     const id = card.dataset.id, say = t => { card.querySelector('[role=status]').textContent = t; };
     card.querySelector('[data-a=save]').onclick = async () => {
@@ -203,6 +210,24 @@ async function imagesBlock() {
         body: JSON.stringify({ kind: card.querySelector('[data-f=kind]').value, note: card.querySelector('[data-f=note]').value, meta }) }).catch(() => null);
       say(r && r.ok ? 'Saved.' : `Not saved: ${r ? ((await r.json().catch(() => ({}))).detail || r.status) : 'the node did not answer'}`);
       if (r && r.ok && window.placeImagesChanged) window.placeImagesChanged();
+    };
+    const see = card.querySelector('[data-a=see]'), ok = card.querySelector('[data-a=ok]');
+    see.onclick = async () => {
+      see.disabled = true; say('Asking the image model on this machine. A big picture can take a minute or two.');
+      const r = await fetch(`/captures/${id}/describe`, { method: 'POST', headers: DOORS_AUTH() }).catch(() => null);
+      const j = r ? await r.json().catch(() => ({})) : {};
+      see.disabled = false;
+      if (!(r && r.ok)) { say(`Not described: ${j.detail || (r ? r.status : 'the node did not answer')}`); return; }
+      card.querySelector('[data-seen]').innerHTML = seen(j.analysis); see.textContent = 'Describe again'; ok.hidden = false; say('');
+      if (window.placeImagesChanged) window.placeImagesChanged();
+    };
+    ok.onclick = async () => {
+      let actor = ''; try { actor = localStorage.getItem('planetai_actor') || ''; } catch (e) { /* no storage here */ }
+      const r = await fetch(`/captures/${id}`, { method: 'PATCH', headers: { ...DOORS_AUTH(), 'content-type': 'application/json' },
+        body: JSON.stringify({ confirm: true, actor }) }).catch(() => null);
+      const j = r ? await r.json().catch(() => ({})) : {};
+      if (!(r && r.ok)) { say(`Not confirmed: ${j.detail || (r ? r.status : 'the node did not answer')}`); return; }
+      card.querySelector('[data-seen]').innerHTML = seen(j.capture.analysis); ok.hidden = true; say('Confirmed: these findings are the household\'s now.');
     };
     card.querySelector('[data-a=del]').onclick = async () => {
       if (!confirm('Delete this image from the node? The file goes with it, and it cannot be undone.')) return;

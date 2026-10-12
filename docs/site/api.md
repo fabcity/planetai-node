@@ -566,7 +566,12 @@ The visual database, newest first, rows of `{id, ts, received_at, kind, cell, la
 ### PATCH /captures/{cid}
 Access: act
 
-Edits an image's words from the Data door: a JSON body with any of `note` (cut to 500 characters), `kind` (one of the five) and `meta` (an object of at most 40 keys, each value a string cut to 500, replaced whole). The point, the cell, the time and the file are facts of arrival and are not edited. Returns `{"ok": true, "capture": <row>}`; 422 for nothing to change or a bad kind, 404 for no such capture.
+Edits an image's words from the Data door: a JSON body with any of `note` (cut to 500 characters), `kind` (one of the five) and `meta` (an object of at most 40 keys, each value a string cut to 500, replaced whole). The point, the cell, the time and the file are facts of arrival and are not edited. `{"confirm": true, "actor": "<name>"}` marks the image model's findings as the household's (`analysis.by` becomes `person`, with `confirmed_by`); 409 when the image has not been described. Returns `{"ok": true, "capture": <row>}`; 422 for nothing to change or a bad kind, 404 for no such capture.
+
+### POST /captures/{cid}/describe
+Access: act
+
+Asks the image model (`EYES_MODEL`, a vision model in this machine's Ollama) about one image, now, and keeps the answer in the row's `analysis`: `{model, where: "local", vocab, asked, at, summary, findings: [{class, name, count, issue}], by: "model", confirmed_by: null}`. Each finding's `class` is a physical class of the [Fab City flows profile](https://planetai.fab.city/vocab/flows/1.0/) (`plant`, `animal`, `habitat`, `waste_residual`, `goods` and the rest) or `other`; `issue` is true for a problem such as litter, smoke or damage. The model is told never to describe or count people. The picture goes to this machine's Ollama and nowhere else. A second call replaces the earlier description and its confirmation. With `EYES_AUTO=on` every new image is described after its upload answers. 409 when no image model is set, 503 when Ollama or the model is not there.
 
 ### DELETE /captures/{cid}
 Access: admin

@@ -351,6 +351,9 @@ CREATE TABLE IF NOT EXISTS captures (
 );
 -- The household's own words about an image beyond its note: key → value, edited from the Data door (PATCH /captures).
 ALTER TABLE captures ADD COLUMN IF NOT EXISTS meta JSONB NOT NULL DEFAULT '{}'::jsonb;
+-- What the image model found (SPEC_eyes step 2): {model, asked, at, summary, findings: [{category, name, count}],
+-- confirmed_by}. NULL = not described yet. A finding is the model's until a person here confirms it.
+ALTER TABLE captures ADD COLUMN IF NOT EXISTS analysis JSONB;
 CREATE INDEX IF NOT EXISTS captures_cell ON captures (cell);
 CREATE INDEX IF NOT EXISTS captures_ts ON captures (ts DESC);
 -- Not readable by pack SQL: a rule's text reaches /alerts, which a LAN stranger may read, and a capture's exact

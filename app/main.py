@@ -2840,6 +2840,7 @@ async def capture_post(request: Request, authorization: str = Header(""),
                     (ts, kind, cap_cell, lat, lon, outside, at_home, str(actor or "")[:80], str(note or "")[:500],
                      name, sha, len(cleaned), mime))
         row = {k: (v.isoformat() if isinstance(v, datetime) else v) for k, v in cur.fetchone().items()}
+    _describe_later(row["id"])
     return {"ok": True, "capture": row}
 
 
@@ -2883,8 +2884,15 @@ def capture_patch(cid: int, body: dict, request: Request, authorization: str = H
         if not isinstance(m, dict) or len(m) > 40:
             raise HTTPException(422, "meta is an object of at most 40 keys")
         sets.append("meta = %s"); vals.append(Jsonb({str(k)[:60]: str(v)[:500] for k, v in m.items()}))
+    if body.get("confirm"):
+        if not ((q("SELECT analysis FROM captures WHERE id = %s", cid) or [{}])[0].get("analysis") or {}).get("model"):
+            raise HTTPException(409, "nothing to confirm: this image has not been described yet")
+        # a person here says the model's findings are right: from now on they are the household's, with its name
+        who = str(body.get("actor") or "someone here")[:80]
+        sets.append("analysis = analysis || %s"); vals.append(Jsonb({"by": "person", "confirmed_by": who,
+                                                                     "confirmed_at": datetime.now(timezone.utc).isoformat()}))
     if not sets:
-        raise HTTPException(422, "nothing to change: note, kind or meta")
+        raise HTTPException(422, "nothing to change: note, kind, meta or confirm")
     with db() as con, con.cursor() as cur:
         cur.execute(f"UPDATE captures SET {', '.join(sets)} WHERE id = %s RETURNING *", (*vals, cid))
         row = cur.fetchone()
@@ -2922,6 +2930,115 @@ def capture_file(cid: int, request: Request, authorization: str = Header("")):
     if not os.path.isfile(path):
         raise HTTPException(404, "the row is here but the file is gone from the captures folder")
     return FileResponse(path, media_type=rows[0]["mime"])
+
+
+# ---------------------------------------------------------------- the image model (SPEC_eyes step 2)
+# A local vision model describes an image and lists what it sees, each finding filed under a class of the Fab City
+# flows profile, so a tree in a picture and a tree logged as planted are the same word. Only the physical classes:
+# a picture cannot see a design file or an hour of work. The picture goes to this machine's Ollama and nowhere else.
+FLOWS_VOCAB = "https://planetai.fab.city/vocab/flows/1.0/"
+# ponytail: copied from packs/flows/resources.yml (branch flows-pack-2026-09-28); read that file once the pack merges
+EYES_CLASSES = ("plant", "animal", "habitat", "food", "water", "compost", "waste_residual", "plastic_waste",
+                "packaging", "wood", "metal", "textile", "electronics", "filament", "fuel", "electricity", "part",
+                "filter", "furniture", "tool", "appliance", "garment", "micromobility", "goods", "other")
+EYES_ASK = ("You are looking at a picture a household took of its own place ({kind}, near {city}){note}. "
+            "Describe what is in it in one or two plain sentences. Then list what you can see, one finding per kind "
+            "of thing: `class` from the list given, `name` as specific as you can tell (a species' common and "
+            "scientific name, a kind of building or street furniture, a kind of waste), `count` how many you can see "
+            "or null, and `issue` true when it is a problem for the place: litter, dumping, smoke, a spill, damage, "
+            "standing water. A tree or any living plant is `plant`; a bird or a dog is `animal`; a garden, a field "
+            "or a reef is `habitat`; litter is `plastic_waste` or `waste_residual`; built things are `goods`, "
+            "`furniture`, `micromobility` and the like; anything else is `other`. Never describe, count or name "
+            "people: leave them out entirely.")
+_EYES_TASKS: set = set()   # strong refs, so an automatic description is not collected half way
+
+
+async def _describe(cid: int, model: str) -> dict:
+    """Ask the local vision model about one capture and keep what it says, marked as the model's. Raises with a
+    sentence a person can act on when the model or the file is not there."""
+    import base64, io  # noqa: E401, PLC0415
+    from PIL import Image  # noqa: PLC0415
+    rows = q("SELECT file, kind, note FROM captures WHERE id = %s", cid)
+    if not rows:
+        raise HTTPException(404, "no such capture")
+    path = os.path.join(CAPTURES_DIR, os.path.basename(rows[0]["file"]))
+    if not os.path.isfile(path):
+        raise HTTPException(404, "the file is gone from the captures folder")
+    im = Image.open(path).convert("RGB")
+    im.thumbnail((1024, 1024))   # what a 7B vision model can use; a drone's 20 MP would only cost minutes
+    buf = io.BytesIO()
+    im.save(buf, "JPEG", quality=85)
+    note = (rows[0]["note"] or "").strip()
+    asked = EYES_ASK.format(kind=rows[0]["kind"], city=os.getenv("NODE_CITY", "") or NODE,
+                            note=f"; the household wrote: {note[:200]}" if note else "")
+    schema = {"type": "object", "required": ["summary", "findings"], "properties": {
+        "summary": {"type": "string"},
+        "findings": {"type": "array", "items": {"type": "object", "required": ["class", "name"], "properties": {
+            "class": {"type": "string", "enum": list(EYES_CLASSES)}, "name": {"type": "string"},
+            "count": {"type": ["integer", "null"]}, "issue": {"type": "boolean"}}}}}}
+    url = os.getenv("OLLAMA_URL", "http://host.docker.internal:11434")
+    try:
+        async with httpx.AsyncClient(timeout=600) as hc:
+            r = await hc.post(url + "/api/chat", json={
+                "model": model, "stream": False, "format": schema, "options": {"temperature": 0},
+                "messages": [{"role": "user", "content": asked, "images": [base64.b64encode(buf.getvalue()).decode()]}]})
+    except httpx.HTTPError as e:
+        raise HTTPException(503, f"Ollama is not answering at {url} ({type(e).__name__})") from None
+    if r.status_code == 404:
+        raise HTTPException(503, f"{model} is not on this machine yet: `ollama pull {model}`")
+    if r.status_code >= 400:
+        raise HTTPException(502, f"the image model answered {r.status_code}: {r.text[:200]}")
+    try:
+        out = json.loads(r.json()["message"]["content"])
+    except (KeyError, ValueError, TypeError):
+        raise HTTPException(502, "the image model answered something that is not the shape asked for") from None
+    findings = []
+    for f in (out.get("findings") or [])[:30]:
+        if not isinstance(f, dict) or not str(f.get("name") or "").strip():
+            continue
+        cnt = f.get("count")
+        findings.append({"class": f.get("class") if f.get("class") in EYES_CLASSES else "other",
+                         "name": str(f["name"]).strip()[:120],
+                         "count": cnt if isinstance(cnt, int) and not isinstance(cnt, bool) and cnt >= 0 else None,
+                         "issue": f.get("issue") is True})
+    analysis = {"model": model, "where": "local", "vocab": FLOWS_VOCAB, "asked": asked,
+                "at": datetime.now(timezone.utc).isoformat(), "summary": str(out.get("summary") or "").strip()[:1000],
+                "findings": findings, "by": "model", "confirmed_by": None}
+    with db() as con, con.cursor() as cur:
+        cur.execute("UPDATE captures SET analysis = %s WHERE id = %s", (Jsonb(analysis), cid))
+    return analysis
+
+
+def _eyes_model() -> str:
+    return settings.get("EYES_MODEL", "").strip()
+
+
+def _describe_later(cid: int) -> None:
+    """EYES_AUTO=on: describe a new image after its upload has answered, so the phone is not kept waiting."""
+    import asyncio  # noqa: PLC0415
+    model = _eyes_model()
+    if not model or settings.get("EYES_AUTO", "off") != "on":
+        return
+
+    async def run():
+        try:
+            await _describe(cid, model)
+        except Exception as e:  # noqa: BLE001 — a failed description leaves the image undescribed, never lost
+            log.warning("eyes: capture %s not described: %s", cid, getattr(e, "detail", e))
+    t = asyncio.get_running_loop().create_task(run())
+    _EYES_TASKS.add(t)
+    t.add_done_callback(_EYES_TASKS.discard)
+
+
+@app.post("/captures/{cid}/describe")
+async def capture_describe(cid: int, request: Request, authorization: str = Header("")):
+    """Describe one image with the image model in Set up (EYES_MODEL), now, and answer what it found. A second
+    press replaces the model's earlier description, and with it any confirmation of that one."""
+    _captures_auth(request, authorization)
+    model = _eyes_model()
+    if not model:
+        raise HTTPException(409, "no image model is set: Set up, Model, Image model (qwen2.5vl:7b on 16 GB)")
+    return {"ok": True, "analysis": await _describe(cid, model)}
 
 
 @app.post("/readings")

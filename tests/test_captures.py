@@ -303,6 +303,57 @@ cleaned, mime, _, _ = main._clean_picture(buf.getvalue())
 assert mime == "image/jpeg" and Image.open(io.BytesIO(cleaned)).size == (32, 32), "an MPO keeps its first frame as a JPEG"
 print("cleaning: a drone's MPO becomes a JPEG of its main frame")
 
+# ---- the image model: local Ollama, flows classes, people never, the model's until a person confirms
+level("open")
+open(os.path.join(TMP, "seen.jpg"), "wb").write(jpeg(False))
+SENT, ANSWER, ANALYSIS = [], {}, [None]
+class FakeOllama:
+    def __init__(self, *a, **k): pass
+    async def __aenter__(self): return self
+    async def __aexit__(self, *a): return False
+    async def post(self, url, json):
+        SENT.append((url, json))
+        return main.httpx.Response(200, json={"message": {"content": main.json.dumps(ANSWER)}})
+main.httpx.AsyncClient = FakeOllama
+q0 = main.q
+main.q = lambda sql, *a: ([{"file": "seen.jpg", "kind": "drone", "note": "the banjar", "analysis": ANALYSIS[0]}]
+                          if a and a[0] == 7 else [])
+settings._cache["rows"]["EYES_MODEL"] = ""
+assert lan.post("/captures/7/describe", headers=ACT).status_code == 409, "no image model set: a clear 409"
+assert lan.post("/captures/7/describe").status_code == 403, "a stranger asks nothing"
+settings._cache["rows"]["EYES_MODEL"] = "qwen2.5vl:7b"
+ANSWER.update(summary="Roofs and a car park from above.", findings=[
+    {"class": "plant", "name": "coconut palm (Cocos nucifera)", "count": 4, "issue": False},
+    {"class": "waste_residual", "name": "a pile of rubbish", "count": 1, "issue": True},
+    {"class": "spaceship", "name": "made up", "count": -2}, {"class": "goods", "name": "  "}])
+r = lan.post("/captures/7/describe", headers=ACT)
+assert r.status_code == 200, r.text
+a = r.json()["analysis"]
+url, req = SENT[-1]
+assert url.endswith("/api/chat") and req["model"] == "qwen2.5vl:7b" and req["messages"][0]["images"], "the picture goes to the local Ollama"
+assert "people" in req["messages"][0]["content"] and "the banjar" in req["messages"][0]["content"], "asked never to name people, told the note"
+assert req["format"]["properties"]["findings"]["items"]["properties"]["class"]["enum"] == list(main.EYES_CLASSES), "classes are the flows profile's"
+assert a["vocab"] == "https://planetai.fab.city/vocab/flows/1.0/" and a["model"] == "qwen2.5vl:7b" and a["by"] == "model" and not a["confirmed_by"]
+assert [f["class"] for f in a["findings"]] == ["plant", "waste_residual", "other"], "an unknown class is other; a blank name is dropped"
+assert a["findings"][2]["count"] is None and a["findings"][1]["issue"] is True, "a negative count is none; the issue kept"
+assert "UPDATE captures SET analysis" in CUR.sql, "the description is kept on the row"
+assert lan.patch("/captures/7", json={"confirm": True, "actor": "Tomas"}, headers=ACT).status_code == 409, "nothing to confirm before a description"
+ANALYSIS[0] = a
+r = lan.patch("/captures/7", json={"confirm": True, "actor": "Tomas"}, headers=ACT)
+assert r.status_code == 200 and "analysis = analysis || %s" in r.json()["capture"]["sets"], r.text
+assert CUR.params[0].obj["confirmed_by"] == "Tomas" and CUR.params[0].obj["by"] == "person", "confirmed by name"
+# automatic: EYES_AUTO=on describes a new image after the upload answers
+settings._cache["rows"]["EYES_AUTO"] = "on"
+called = []
+main._describe, d0 = (lambda cid, model: called.append((cid, model)) or __import__("asyncio").sleep(0)), main._describe
+main.q = q0
+DUPROWS.clear()
+assert local.post("/captures", files={"photo": ("a.jpg", jpeg(False) + b"auto", "image/jpeg")}, data={"kind": "phone"}).status_code == 200
+assert called == [(7, "qwen2.5vl:7b")], f"EYES_AUTO=on describes each new image: {called}"
+settings._cache["rows"]["EYES_AUTO"] = "off"
+main._describe = d0
+print("image model: local Ollama with flows classes and no people; kept as the model's; confirmed by a name; auto on upload")
+
 # ---- the Data door edits an image's words, and the admin token deletes one
 DELFILE = "gone.jpg"
 level("open")

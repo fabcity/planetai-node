@@ -90,6 +90,7 @@ instead of wrong.
 | `AGENT_PREFER` | `private`, `fallback`, `strongest` |
 | `SHARE_LEVEL` | `off`, `open` |
 | `UI_ASK` | `on`, `off` |
+| `EYES_AUTO` | `off`, `on` |
 | `UI_GROUND` | `svg`, `map` |
 | `MAP_TILES` | `off`, `on` |
 | `UPDATE_CHECK` | `on`, `off` |
@@ -309,6 +310,8 @@ this machine only when `planetai agent local` set one up. See [Ask the node](ask
 | `AGENT_REMOTE_URL` | blank | `http://<host>:8082/v1` | A bigger local model on your tailnet, OpenAI-compatible. | runtime · restart |
 | `AGENT_REMOTE_MODEL` | `gpt-oss-120b` | model id | e.g. `gpt-oss-120b` or `qwen3:8b`. | runtime · public · restart |
 | `AGENT_REMOTE_KEY` | blank | secret | If that server asks for one. | runtime · secret · restart |
+| `EYES_MODEL` | blank | Ollama model id | The image model: a vision model in this machine's Ollama that describes each image and files what it sees under the [flows](https://planetai.fab.city/vocab/flows/1.0/) classes (`POST /captures/{cid}/describe`). The picture never leaves this machine, and the model is never asked about people. Blank = off. On 16 GB, `qwen2.5vl:7b` (`ollama pull qwen2.5vl:7b`). | runtime · public |
+| `EYES_AUTO` | `off` | `off`, `on` | `off` = an image is described when somebody presses Describe in Data, Images. `on` = every new image goes to the image model as it arrives. | runtime · public |
 | `OLLAMA_URL` | `http://host.docker.internal:11434` | URL | Ollama on this machine, the `local` rung. `planetai agent local` sets `http://172.17.0.1:11434` on Linux. | env only |
 | `AGENT_MODEL` | `qwen3:4b` | Ollama model | The local rung's model, passed to the container as `MODEL`. `planetai agent local pull <tag>` pulls a model and sets this; `planetai agent local` recommends `qwen3.5:4b` below 16 GB of memory and `qwen3.5:9b` at 16 GB or more. It must do tool calling. | env only |
 | `AGENT_NAME` | `local-model` | string | How the agent's actions appear in the audit trail, sent as `X-Agent`. | env only |
