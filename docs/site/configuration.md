@@ -336,6 +336,7 @@ each and `planetai storage set` changes the first three.
 | Setting | Default | Values | Meaning | Kind |
 |---|---|---|---|---|
 | `DATA_DIR` | blank = the Docker volume `db` | path | Where the live database lives. A path is a local disk or partition only; never a NAS. `planetai storage set data` refuses for that reason. | bootstrap |
+| `CAPTURES_DIR` | `./out/captures` | path | Where the household's pictures live (SPEC_eyes). Unlike `DATA_DIR` it may be a NAS share or any mounted storage — files, not Postgres. A capture is refused, and `planetai doctor` goes red, when the folder is missing or not writable. | bootstrap |
 | `BACKUP_DIR` | `./backups` | path | Where `pg_dump` files go. If it is a mount point it must be mounted, or the backup refuses. | bootstrap |
 | `BACKUP_KEEP` | `30` | days | Days of dumps kept in `BACKUP_DIR`. | bootstrap |
 | `BACKUP_REMOTE` | blank | rclone `remote:path` | Off-machine copy after each backup: S3, B2, R2, Drive, Dropbox, SFTP, WebDAV, Nextcloud. Run `rclone config` once. | bootstrap |

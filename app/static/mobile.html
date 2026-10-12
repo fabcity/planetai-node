@@ -85,6 +85,14 @@ section>h2{font:500 var(--t-cap)/1.4 var(--mono);letter-spacing:.12em;text-trans
 .unlock{border:1px solid var(--ink);padding:14px;margin:0 0 16px}
 .unlock label{display:block;font:500 var(--t-cap) var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mute);margin:0 0 6px}
 .unlock input{width:100%;min-height:44px;padding:10px;border:1px solid var(--ink);background:var(--ground);color:var(--ink);font:var(--t-body) var(--mono);margin:0 0 10px}
+/* add a picture (SPEC_eyes step 1) */
+.capture{margin:12px 0 0}
+.capture .k{display:block;margin:14px 0 6px}
+.capture input:not([type=file]),.capture select{width:100%;min-height:44px;padding:10px;border:1px solid var(--ink);background:var(--ground);color:var(--ink);font:var(--t-body) var(--mono)}
+.capture select{font-family:var(--body)}
+.capture .sbtn{margin-top:10px}
+#cappick{margin-top:0}
+#capname{font-size:var(--t-small)}
 .refused{border:1px solid var(--ink);padding:16px 14px;margin:0 0 16px}
 .refused .lede{font-size:var(--t-read);line-height:1.4;margin:0 0 10px}
 /* Now is the first screen on its own, and says there is more below it: the walk is a scroll away, not a peek */
@@ -116,6 +124,10 @@ section>h2{font:500 var(--t-cap)/1.4 var(--mono);letter-spacing:.12em;text-trans
 svg.g{display:block;width:100%;height:auto;margin:16px 0 4px;overflow:visible}
 .g text{font:10px var(--mono);fill:var(--mute);paint-order:stroke;stroke:var(--ground);stroke-width:4px}
 .locked{padding:40px 16px}
+/* a scale's own pictures (SPEC_eyes step 1): the count is a button, the grid opens under it */
+.capcount{min-height:44px;padding:10px 16px;border:1px solid var(--ink);background:var(--ground);color:var(--ink);font:600 13px var(--body);cursor:pointer;margin-top:10px}
+.capgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
+.capgrid img{width:100%;aspect-ratio:1;object-fit:cover;display:block}
 .nomap{position:absolute;left:12px;right:120px;top:40%;margin:0;font:500 12px/1.5 var(--mono);color:var(--mute)}
 .maplibregl-ctrl-attrib{font-size:9px}
 /* the foot */

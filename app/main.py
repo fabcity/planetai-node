@@ -24,7 +24,7 @@ from pathlib import Path
 import httpx
 import psycopg
 import yaml
-from fastapi import FastAPI, Header, HTTPException, Query, Request
+from fastapi import FastAPI, File, Form, Header, HTTPException, Query, Request, UploadFile
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
@@ -2679,6 +2679,188 @@ def action(body: dict, request: Request, authorization: str = Header("")):
         cur.execute("INSERT INTO actions (alert_id, stage, actor, note) VALUES (%s,%s,%s,%s)",
                     (body.get("alert_id"), stage, str(body.get("actor") or "")[:80], str(body.get("note") or "")[:500]))
     return {"ok": True}
+
+
+# ---------------------------------------------------------------- captures (SPEC_eyes step 1)
+# One picture with the facts a reading has: when, which cell, who, with what. The file lives in the folder the
+# household chose (CAPTURES_DIR in .env → /app/captures here; unlike DATA_DIR it MAY be a NAS share — these are
+# files, not Postgres). On NO SHARE_LEVEL list at any level, in no export, aggregate, readings or parent push:
+# the middleware refuses a stranger outright, and the route then refuses every token but ACT/ADMIN, so the
+# read-only BACKUP_TOKEN that passes the gate cannot read a picture. The exact point is kept (token only); only
+# the FILE is cleaned of EXIF/GPS, so a picture that is ever shared carries no hidden place.
+
+CAPTURE_KINDS = ("microscope", "phone", "camera", "drone", "balloon")
+CAPTURES_DIR = os.getenv("PLANETAI_CAPTURES", "/app/captures")   # the compose mount's inside path; tests point it aside
+
+
+def _captures_auth(request: Request, authorization: str) -> None:
+    """The /actions rule (F10): unchanged and open on this machine; from anywhere else ACT_TOKEN or ADMIN_TOKEN —
+    the weaker one on purpose, so a household member adds pictures without holding the key to /settings/raw."""
+    if not _is_local(request):
+        tokens = [t for t in (ACT_TOKEN(), os.getenv("ADMIN_TOKEN", "").strip()) if t]
+        if not tokens:
+            raise HTTPException(403, "no ACT_TOKEN or ADMIN_TOKEN set on this node; run `planetai ui` to create one")
+        if not _bearer_ok(authorization, *tokens):
+            raise HTTPException(401, "the captures answer only this machine or Authorization: Bearer ***")
+
+
+def _captures_dir() -> str:
+    """The folder, or a clear 503: a capture is refused when there is nowhere honest to keep it. `planetai doctor`
+    says the same from the host side."""
+    d = CAPTURES_DIR
+    if not os.path.isdir(d) or not os.access(d, os.W_OK):
+        raise HTTPException(503, f"the captures folder ({d}) is missing or not writable, so this node is not taking "
+                                 "pictures. It may be any disk, a NAS share included: mount it, or point CAPTURES_DIR "
+                                 "in .env at one that is there, and `planetai restart`.")
+    return d
+
+
+def _node_cells() -> tuple[set, str]:
+    """The node's seven res-8 cells (its own and the six touching it, SPEC_eyes §5) and its own res-10 cell —
+    the yardsticks `outside` and `at_home` are measured with once, on arrival."""
+    import h3  # noqa: PLC0415
+    lat, lon = _here()
+    home8 = h3.latlng_to_cell(lat, lon, 8)
+    return set(h3.grid_disk(home8, 1)), h3.latlng_to_cell(lat, lon, 10)
+
+
+def _clean_picture(raw: bytes) -> tuple[bytes, str, str | None]:
+    """Re-encode with no metadata: EXIF, GPS and the thumbnail die here and only the pixels survive. Returns the
+    cleaned bytes, their mime, and the picture's own date when it carried one (kept as `ts`, the taken time —
+    a date is not a place). HEIC becomes JPEG so any screen can show it back."""
+    import io  # noqa: PLC0415
+    from PIL import Image, ImageOps  # noqa: PLC0415
+    try:
+        import pillow_heif  # noqa: PLC0415
+        pillow_heif.register_heif_opener()
+    except ImportError:
+        pass  # no HEIC on this install: a HEIC upload then reads as not-a-picture below, honestly
+    try:
+        im = Image.open(io.BytesIO(raw))
+        im.load()
+    except Exception:
+        raise ValueError("that file is not a picture this node can read (jpeg, png, heic or webp)") from None
+    fmt0 = (im.format or "").upper()
+    if fmt0 not in ("JPEG", "PNG", "WEBP", "HEIF", "HEIC", "AVIF"):
+        raise ValueError(f"a {fmt0 or 'unknown'} is not a picture this node keeps (jpeg, png, heic or webp)")
+    taken = None
+    try:
+        exif = im.getexif()
+        dtor = exif.get(306) or exif.get_ifd(0x8769).get(36867)  # DateTime, else DateTimeOriginal
+        if dtor:
+            taken = datetime.strptime(dtor.strip(), "%Y:%m:%d %H:%M:%S").replace(tzinfo=ZoneInfo(NODE_TZ)).isoformat()  # a camera writes local time
+    except Exception:  # noqa: BLE001 — a picture with a broken date is still a picture; taken falls back to now
+        taken = None
+    im = ImageOps.exif_transpose(im)  # the orientation is metadata too: apply it, then let it go with the rest
+    out = io.BytesIO()
+    if fmt0 in ("JPEG", "HEIF", "HEIC", "AVIF"):
+        im.convert("RGB").save(out, "JPEG", quality=90)
+        mime = "image/jpeg"
+    elif fmt0 == "PNG":
+        im.save(out, "PNG")
+        mime = "image/png"
+    else:
+        im.save(out, "WEBP", quality=90)
+        mime = "image/webp"
+    return out.getvalue(), mime, taken
+
+
+@app.post("/captures")
+async def capture_post(request: Request, authorization: str = Header(""),
+                       photo: "UploadFile" = File(...), kind: str = Form("phone"),
+                       lat: float | None = Form(None), lon: float | None = Form(None),
+                       cell: str | None = Form(None), note: str = Form(""),
+                       taken_at: str = Form(""), actor: str = Form("")):
+    """A household adds a picture: multipart, one image, `kind`, `lat`+`lon` OR a res-10 `cell` OR neither (the
+    node's own cell, which is what a phone with no location permission means), optional `note`, `taken_at` and
+    `actor` (the name the phone keeps). The exact point is kept — a tree or a dump is worth it — and only the
+    file is cleaned. A duplicate sha256 answers the existing row instead of keeping the same picture twice."""
+    import hashlib  # noqa: PLC0415
+    import h3  # noqa: PLC0415
+    _captures_auth(request, authorization)
+    if kind not in CAPTURE_KINDS:
+        raise HTTPException(422, f"kind must be one of {', '.join(CAPTURE_KINDS)}")
+    raw = await photo.read()
+    if not raw:
+        raise HTTPException(422, "no picture arrived")
+    if len(raw) > 40 * 1024 * 1024:
+        raise HTTPException(413, "a capture is a picture, not a film: 40 MB is the most this node takes")
+    sha = hashlib.sha256(raw).hexdigest()
+    dup = q("SELECT * FROM captures WHERE sha256 = %s", sha)
+    if dup:
+        return {"ok": True, "duplicate": True, "capture": dup[0]}
+    try:
+        cleaned, mime, exif_taken = _clean_picture(raw)
+    except ValueError as e:
+        raise HTTPException(415, str(e)) from None
+    if (lat is None) != (lon is None):
+        raise HTTPException(422, "lat and lon together, or neither")
+    if lat is not None and not (-90 <= lat <= 90 and -180 <= lon <= 180):
+        raise HTTPException(422, "lat must be -90..90 and lon -180..180")
+    seven, home10 = _node_cells()
+    if lat is not None:
+        cap_cell = h3.latlng_to_cell(lat, lon, 10)
+    elif cell:
+        if not h3.is_valid_cell(cell):
+            raise HTTPException(422, f"{cell!r} is not an H3 cell")
+        if h3.get_resolution(cell) != 10:
+            raise HTTPException(422, "cell must be res 10, the room; send lat and lon instead if you have them")
+        cap_cell = cell
+    else:
+        cap_cell = home10   # no point given: the picture was taken here, at the node, as far as this node knows
+    outside = h3.cell_to_parent(cap_cell, 8) not in seven
+    at_home = cap_cell == home10
+    ts = taken_at.strip() or exif_taken
+    if ts:
+        try:
+            ts = datetime.fromisoformat(ts.replace("Z", "+00:00")).isoformat()
+        except ValueError:
+            raise HTTPException(422, "taken_at must be an ISO date-time") from None
+    folder = _captures_dir()
+    name = f"{sha}.{mime.split('/')[1].replace('jpeg', 'jpg')}"
+    with open(os.path.join(folder, name), "wb") as f:
+        f.write(cleaned)
+    with db() as con, con.cursor() as cur:
+        cur.execute("""INSERT INTO captures (ts, kind, cell, lat, lon, outside, at_home, actor, note, file, sha256, bytes, mime)
+                       VALUES (COALESCE(%s::timestamptz, now()), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                       RETURNING *""",
+                    (ts, kind, cap_cell, lat, lon, outside, at_home, str(actor or "")[:80], str(note or "")[:500],
+                     name, sha, len(cleaned), mime))
+        row = {k: (v.isoformat() if isinstance(v, datetime) else v) for k, v in cur.fetchone().items()}
+    return {"ok": True, "capture": row}
+
+
+@app.get("/captures")
+def captures_list(request: Request, authorization: str = Header(""), cell: str | None = None,
+                  kind: str | None = None, limit: int = Query(50, ge=1, le=500)):
+    """The visual database, newest first. `?cell=` takes a cell at any resolution and answers the captures inside
+    it — which is how the walk asks for a street's or a ring's pictures from the res-10 cells it keeps."""
+    _captures_auth(request, authorization)
+    if kind is not None and kind not in CAPTURE_KINDS:
+        raise HTTPException(422, f"kind must be one of {', '.join(CAPTURE_KINDS)}")
+    rows = q("SELECT * FROM captures" + (" WHERE kind = %s" if kind else "") + " ORDER BY id DESC LIMIT 2000",
+             *([kind] if kind else []))
+    if cell:
+        import h3  # noqa: PLC0415
+        if not h3.is_valid_cell(cell):
+            raise HTTPException(422, f"{cell!r} is not an H3 cell")
+        res = h3.get_resolution(cell)
+        rows = [r for r in rows if h3.cell_to_parent(r["cell"], min(res, 10)) == cell] if res <= 10 else []
+    return rows[:limit]
+
+
+@app.get("/captures/{cid}/file")
+def capture_file(cid: int, request: Request, authorization: str = Header("")):
+    """The picture itself. Token only, like the row; the name is this node's own, never a client's path."""
+    _captures_auth(request, authorization)
+    from fastapi.responses import FileResponse  # noqa: PLC0415
+    rows = q("SELECT file, mime FROM captures WHERE id = %s", cid)
+    if not rows:
+        raise HTTPException(404, "no such capture")
+    path = os.path.join(CAPTURES_DIR, os.path.basename(rows[0]["file"]))
+    if not os.path.isfile(path):
+        raise HTTPException(404, "the row is here but the file is gone from the captures folder")
+    return FileResponse(path, media_type=rows[0]["mime"])
 
 
 @app.post("/readings")

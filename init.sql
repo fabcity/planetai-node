@@ -327,4 +327,31 @@ ALTER TABLE event_messages ADD COLUMN IF NOT EXISTS action_id TEXT;
 ALTER TABLE alerts  ADD COLUMN IF NOT EXISTS event_id BIGINT REFERENCES alert_events(id);
 ALTER TABLE actions ADD COLUMN IF NOT EXISTS event_id BIGINT REFERENCES alert_events(id);
 GRANT SELECT ON alert_events, event_messages TO planetai_ro;
-INSERT INTO schema_version (version) VALUES ('0.53') ON CONFLICT DO NOTHING;
+
+-- A capture is one picture with the facts a reading has (SPEC_eyes §2): when, which cell, who, with what. The
+-- file lives in CAPTURES_DIR, never in this database; `file` is a name inside that folder, never a client's path.
+-- The exact point is kept (token only, like the file) and only the FILE is cleaned of EXIF/GPS: a tree or a dump
+-- is worth its precise position. `outside` and `at_home` are computed once, on arrival (12 Oct 2026, Tomas).
+CREATE TABLE IF NOT EXISTS captures (
+  id          BIGSERIAL PRIMARY KEY,
+  ts          TIMESTAMPTZ NOT NULL DEFAULT now(),   -- taken: the form's taken_at, else the file's own date, else now
+  received_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  kind        TEXT NOT NULL CHECK (kind IN ('microscope','phone','camera','drone','balloon')),
+  cell        TEXT NOT NULL,                        -- H3 res 10, the room, derived from the point or given
+  lat         DOUBLE PRECISION,                     -- the exact point, nullable when the person gave none, token only
+  lon         DOUBLE PRECISION,
+  outside     BOOLEAN,                              -- the point is not in the node's seven res-8 cells
+  at_home     BOOLEAN,                              -- the point is in the res-10 cell of NODE_LAT/NODE_LON
+  actor       TEXT,                                 -- the name the phone keeps in planetai_actor
+  note        TEXT,
+  file        TEXT NOT NULL,                        -- a name inside CAPTURES_DIR, never a path from the client
+  sha256      TEXT NOT NULL UNIQUE,
+  bytes       BIGINT NOT NULL,
+  mime        TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS captures_cell ON captures (cell);
+CREATE INDEX IF NOT EXISTS captures_ts ON captures (ts DESC);
+-- Not readable by pack SQL: a rule's text reaches /alerts, which a LAN stranger may read, and a capture's exact
+-- point must not ride out in one. Same reason settings is revoked (0.21); the default privileges granted it above.
+REVOKE ALL ON captures FROM planetai_ro;
+INSERT INTO schema_version (version) VALUES ('0.54') ON CONFLICT DO NOTHING;

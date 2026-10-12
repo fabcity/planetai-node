@@ -585,6 +585,9 @@ cmd_doctor() {
   chk ".env has no stray spaces" "! grep -qE '^[A-Z_]+=[[:space:]]+[^[:space:]]' .env"   "a space after = makes the shell run the value, and a \`#\` after it hands the container the comment: grep -nE '^[A-Z_]+= +' .env"
   chk "backup destination mounted" "mounted \"\$(envget BACKUP_DIR || echo ./backups)\""   "the NAS or drive in BACKUP_DIR is not mounted; tonight's backup will refuse. Mount it, or: planetai storage set backups <dir>"
   chk "a backup in the last 2 days" "[[ -n \"\$(find \"\$(envget BACKUP_DIR || echo ./backups)\" -name '*.sql.gz' -mtime -2 2>/dev/null)\" ]]"   "planetai backup — and check cron: crontab -l | grep backup"
+  # SPEC_eyes: the folder the household's pictures live in. Unlike DATA_DIR it may be a NAS share — files, not
+  # Postgres — so the check is only that it is there and writable; an unmounted share reads as missing, on purpose.
+  chk "captures folder writable" "d=\"\$(envget CAPTURES_DIR || echo ./out/captures)\"; [[ -d \"\$d\" && -w \"\$d\" ]]"   "the folder in CAPTURES_DIR is missing or not writable, so the node refuses every picture. It may be a NAS share (files, not Postgres): mount it, or set CAPTURES_DIR in .env to a folder that is there, then planetai restart"
   # A tarball node can say whether the code it is running was signed by the key above. A git checkout
   # never fetches a release, so it has no release signature to have checked — no row there, rather than a
   # permanently red one about something that node does not do.

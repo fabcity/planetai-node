@@ -113,6 +113,8 @@ A community node that stops holding its parent says so on its page and in its li
 
 1. **The capture tier.** A table for captures, a folder the household can place on any storage, the private tier #175
    proposes (kept, used, never exported), and `GET /captures` for this machine or a token. Upload from the phone page.
+   **Built in #217** (12 Oct): the row keeps the exact point, token only, and only the file is cleaned (the CORRECTION
+   of the same day); the walk counts a cell's pictures at its step.
 2. **Findings.** A finding is a reading with a capture id and a model; one local model wired end to end (green share
    of a cell from a drone or phone picture is the smallest useful one).
 3. **The model rows** in Set up, local and online, with the online yes.

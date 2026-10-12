@@ -239,6 +239,9 @@ IPFS_PUBLISH:
 DATA_DIR:
   default: ""
   help: "Where the live database lives. Blank = a Docker volume on this machine. A path = a LOCAL disk or partition only."
+CAPTURES_DIR:
+  default: ""
+  help: "Where the pictures the household takes are kept (SPEC_eyes). Blank = ./out/captures on this machine. Unlike DATA_DIR this MAY be a NAS share or any mounted storage — these are files, not Postgres. The node refuses a capture with a clear error, and `planetai doctor` goes red, when the folder is missing or not writable."
 EE_PROJECT:
   default: ""
   help: "---- code packs (only needed if you enable the pack that uses them; see packs/<id>/README.md) ---- earth-engine: a registered Earth Engine project and a service-account key"
