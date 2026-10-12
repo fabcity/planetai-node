@@ -177,6 +177,7 @@ See [Packs](packs.md) and [Packs that ship](packs-reference.md).
 |---|---|
 | `planetai storage` | Where the database is and how big; the backup folder, the last dump, the retention; the rclone remote; exports; IPFS; whether a backup token exists. |
 | `planetai storage set backups <dir>` | Move the dumps; the folder must be a mounted, writable path. |
+| `planetai storage set captures <dir>` | Move where new pictures are kept (a NAS share is fine); checked like backups, then the app restarts. |
 | `planetai storage set remote <rclone remote:path>` | Copy the last three days of dumps and every export off the machine after each backup. |
 | `planetai storage set keep <days>` | Retention. |
 | `planetai storage set data` | Refuses, and explains why the database must stay on an internal disk. |

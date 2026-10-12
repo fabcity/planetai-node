@@ -157,7 +157,7 @@ Shortcuts for the settings people change most:
 | `planetai telegram` | Validates the bot token with `getMe`, waits up to two minutes for you to message the bot, writes `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_IDS` to `.env` and to the runtime settings, sends a hello, recreates the app. |
 | `planetai ui` | Creates `ADMIN_TOKEN` and `ACT_TOKEN` in `.env` if either is missing (and recreates the app), then prints the dashboard URLs, `SHARE_LEVEL` and the three tokens: admin, backup, act. |
 | `planetai agent local pull <tag>` | `AGENT_MODEL`, after pulling the model, and recreates the `agent` container. |
-| `planetai storage set backups DIR` · `set remote REMOTE:PATH` · `set keep DAYS` | `BACKUP_DIR` (checked to be a mount point and writable), `BACKUP_REMOTE`, `BACKUP_KEEP`. `set data` refuses and explains why `DATA_DIR` must be an internal disk. |
+| `planetai storage set backups DIR` · `set remote REMOTE:PATH` · `set keep DAYS` · `set captures DIR` | `BACKUP_DIR` (checked to be a mount point and writable), `BACKUP_REMOTE`, `BACKUP_KEEP`, `CAPTURES_DIR` (checked the same way, then the app is recreated so the new folder is mounted). `set data` refuses and explains why `DATA_DIR` must be an internal disk. |
 | `planetai packs install` | Appends the `env:` keys of every pack to `.env` under a dated marker, with their explanation lines, then rebuilds the app image. |
 
 ## Reference
@@ -331,7 +331,7 @@ timestamps go up; where, what was said and who said it stay. A node that is a pa
 ## Where it keeps its data
 
 All read by `docker-compose.yml` or `backup.sh`, the nightly cron job. `planetai storage` shows the state of
-each and `planetai storage set` changes the first three.
+each and `planetai storage set` changes the backups and the pictures folder.
 
 | Setting | Default | Values | Meaning | Kind |
 |---|---|---|---|---|
