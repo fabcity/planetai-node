@@ -10,9 +10,12 @@ ok(){ echo "  ok   $1"; }; bad(){ echo "  FAIL $1"; fails=$((fails+1)); }
 D="$(mktemp -d)"; mkdir -p "$D/node/bin" "$D/stub"
 printf 'NODE_NAME=mahon1\nNODE_CITY=Mahon\nAPP_PORT=8080\n' > "$D/node/.env"
 cp "$REPO/bin/planetai" "$D/node/bin/planetai"
-cat > "$D/stub/curl" <<'S'
+cat > "$D/stub/curl" <<S
 #!/bin/sh
-echo '{"node": "mahon1", "position": "cell", "lat": 39.889, "lon": 4.265, "cell": {"id": "8839a1b2c3fffff", "res": 8}}'
+case "\$*" in
+  */nodes*) [ -e "$D/listed" ] && cat "$D/listed" || echo '{"nodes": []}';;
+  *) echo '{"node": "mahon1", "position": "cell", "lat": 39.889, "lon": 4.265, "cell": {"id": "8839a1b2c3fffff", "res": 8}}';;
+esac
 S
 # gh: logged in; a fork is a clone of the registry with a bare repo as its origin; the PR is recorded, not sent
 cat > "$D/stub/gh" <<S
@@ -46,6 +49,15 @@ assert len(m) == 1 and m[0]["operator"] == "Lucas" and m[0]["place"] == "Mahon, 
 assert m[0]["lat"] == 39.889 and "contact" not in m[0], m
 assert any(n["name"] == "bayu-ungasan" for n in r), "the other nodes stay"
 ' && ok "the branch adds mahon1 once, with no contact when none was given, and keeps the others" || bad "registry.json on the branch is wrong"
+
+# already listed: the list's words are the defaults, and the same entry again sends nothing (12 Oct 2026: node #1's
+# hello offered "bali" and an empty operator while the list said "Ungasan, Badung, Bali, ID" and who runs it)
+rm -rf "$D/pr" "$D/fork.git"
+echo '{"nodes": [{"name": "mahon1", "place": "Mahon, Menorca, ES", "operator": "Lucas", "cell": "8839a1b2c3fffff", "since": "2026-09"}]}' > "$D/listed"
+out="$(run "" "" "")"
+[[ "$out" == *"already listed, since 2026-09"* && "$out" == *"[Mahon, Menorca, ES]"* && "$out" == *"[Lucas]"* ]] \
+  && ok "a listed node is told so, and its listed place and operator are the defaults" || bad "the listing was not offered: $out"
+[[ "$out" == *"Nothing to send"* && ! -e "$D/pr" && ! -d "$D/fork.git" ]] && ok "the same entry again sends nothing" || bad "an unchanged listing was sent again: $out"
 
 [[ "$fails" == 0 ]] || { rm -rf "$D"; exit 1; }
 rm -rf "$D"
