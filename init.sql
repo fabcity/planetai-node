@@ -349,6 +349,8 @@ CREATE TABLE IF NOT EXISTS captures (
   bytes       BIGINT NOT NULL,
   mime        TEXT NOT NULL
 );
+-- The household's own words about an image beyond its note: key → value, edited from the Data door (PATCH /captures).
+ALTER TABLE captures ADD COLUMN IF NOT EXISTS meta JSONB NOT NULL DEFAULT '{}'::jsonb;
 CREATE INDEX IF NOT EXISTS captures_cell ON captures (cell);
 CREATE INDEX IF NOT EXISTS captures_ts ON captures (ts DESC);
 -- Not readable by pack SQL: a rule's text reaches /alerts, which a LAN stranger may read, and a capture's exact

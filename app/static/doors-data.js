@@ -31,7 +31,7 @@ const SYM = { pm25: 'PM2.5', pm10: 'PM10', pm1: 'PM1', pm25_raw: 'PM2.5ʳ', aqi:
   precipitation: 'R', uv_index: 'UV', temp_model: 'Tᵐ', humidity_model: 'RHᵐ', pressure_model: 'Pᵐ', noise: 'dB', light: 'lx', sea_surface_temp: 'SST',
   wave_height_m: 'Hs', wave_period_s: 'Tp', wave_direction: 'Dw', swell_height_m: 'Sw', swell_period_s: 'Ts', lora_util_pct: 'LoRa', lora_channel_pct: 'Ch' };
 const DSECTIONS = [['d-readings', 'Readings'], ['issues7', 'Issues, 7 days'], ['models', 'Models and satellite'], ['cells', 'Index cells'],
-  ['perday', 'Hours over the line'], ['ledger', 'Decisions'], ['api', 'API']];
+  ['perday', 'Hours over the line'], ['d-images', 'Images'], ['ledger', 'Decisions'], ['api', 'API']];
 
 /* #data/<sensor-id> (from a dot on Place) opens on a metric that station reads and scrolls to its row, once per link;
    #data/models opens at the models, #data/api at the API. */
@@ -45,7 +45,7 @@ VIEWS.data = function () {
   $('#datahead').innerHTML = `<div class="k">Data · everything this node holds, as it reads it</div><h1>Every reading, drawn.</h1>
     <p class="lede">${D.raw ? `${total.toLocaleString('en')} hourly values from ${Object.keys(S2).length} sources over the last 24 hours` : 'The hourly values with the token'}, seven days of every issue at every distance, ${D.observations.length} model and satellite values, ${D.index_cells.length} Index cells and ${D.actions.length} decisions. Today’s open export, CC BY 4.0: <a class="mono" href="/export?day=${dayOf(D.buckets[D.now])}">GET /export?day=${dayOf(D.buckets[D.now])}</a>.</p>`;
   dataNav(); metricTiles();
-  sensorsBlock(); issuesBlock(); modelsBlock(); cellsBlock(); ledgerBlock(); apiBlock();
+  sensorsBlock(); issuesBlock(); modelsBlock(); cellsBlock(); ledgerBlock(); apiBlock(); imagesBlock();
   if (FOCUS && FOCUS !== FOCUSED) {
     FOCUSED = FOCUS;
     setTimeout(() => {                                          // after route() has scrolled to the top
@@ -178,6 +178,43 @@ function cellsBlock() {
   $('#cells').innerHTML = `<h2>Fab City Index cells</h2><table class="tbl"><tr><th>cell</th><th class="n">value</th><th class="hide">unit</th><th>word</th></tr>`
     + D.index_cells.map(c => `<tr><td>${esc(c.cell.replace('|', ' · '))}</td><td class="n">${fmt(c.value, 2)}</td><td class="hide">${esc(c.unit)}</td><td>${prov(c.state)}</td></tr>`).join('') + `</table>`;
 }
+/* IMAGES — every image the household added (SPEC_eyes step 1), with its facts of arrival, and its words to edit: the
+   kind, the note, and key: value lines (meta). The act token edits; the admin token deletes, file and row. */
+const IKINDS = { phone: 'Phone', camera: 'Fixed camera', microscope: 'Microscope', drone: 'Drone', balloon: 'Balloon or kite' };
+async function imagesBlock() {
+  const el = $('#d-images');
+  if (el.querySelector('.icard') && el.contains(document.activeElement)) return;   // a resize must not wipe an edit in progress
+  const rows = await fetch('/captures?limit=500', { headers: DOORS_AUTH() }).then(r => (r.ok ? r.json() : null)).catch(() => null);
+  if (!rows) { el.innerHTML = `<h2>Images</h2><p class="fine">Images answer a screen holding a token only: the picture and where it was taken. Unlock this screen under Node.</p>`; return; }
+  const metaText = m => Object.entries(m || {}).map(([k, v]) => `${k}: ${v}`).join('\n');
+  el.innerHTML = `<h2>Images, ${rows.length}</h2><p class="blurb">What the household added, newest first. Each is a square on Place, one layer per kind. A description by a model comes with the next step of SPEC_eyes.</p>`
+    + `<div class="icards">${rows.map(c => `<div class="icard" data-id="${c.id}"><img alt="${esc(c.note || IKINDS[c.kind] || 'an image')}">`
+      + `<p class="fine mono">${esc((c.ts || '').slice(0, 16).replace('T', ' '))}${c.actor ? ' · ' + esc(c.actor) : ''} · ${Math.round((c.bytes || 0) / 1024)} kB</p>`
+      + `<p class="fine mono">${esc(c.cell)} · ${c.lat == null ? 'its cell only' : 'the exact point'} · ${c.outside ? 'outside the seven cells' : 'in the seven cells'}${c.at_home ? ' · at home' : ''}</p>`
+      + `<label>What took it<select data-f="kind">${Object.entries(IKINDS).map(([k, t]) => `<option value="${k}"${k === c.kind ? ' selected' : ''}>${t}</option>`).join('')}</select></label>`
+      + `<label>Note<input data-f="note" maxlength="500" value="${esc(c.note || '')}"></label>`
+      + `<label>More, one per line as key: value<textarea data-f="meta" rows="2">${esc(metaText(c.meta))}</textarea></label>`
+      + `<div class="acts"><button data-a="save">Save</button><button data-a="del">Delete</button></div><p class="fine" role="status"></p></div>`).join('')}</div>`;
+  el.querySelectorAll('.icard').forEach(async card => {
+    const id = card.dataset.id, say = t => { card.querySelector('[role=status]').textContent = t; };
+    card.querySelector('[data-a=save]').onclick = async () => {
+      const meta = Object.fromEntries(card.querySelector('[data-f=meta]').value.split('\n').map(l => l.split(/:(.*)/s)).filter(p => p[0].trim()).map(p => [p[0].trim(), (p[1] || '').trim()]));
+      const r = await fetch(`/captures/${id}`, { method: 'PATCH', headers: { ...DOORS_AUTH(), 'content-type': 'application/json' },
+        body: JSON.stringify({ kind: card.querySelector('[data-f=kind]').value, note: card.querySelector('[data-f=note]').value, meta }) }).catch(() => null);
+      say(r && r.ok ? 'Saved.' : `Not saved: ${r ? ((await r.json().catch(() => ({}))).detail || r.status) : 'the node did not answer'}`);
+      if (r && r.ok && window.placeImagesChanged) window.placeImagesChanged();
+    };
+    card.querySelector('[data-a=del]').onclick = async () => {
+      if (!confirm('Delete this image from the node? The file goes with it, and it cannot be undone.')) return;
+      const r = await fetch(`/captures/${id}`, { method: 'DELETE', headers: DOORS_AUTH() }).catch(() => null);
+      if (r && r.ok) { card.remove(); if (window.placeImagesChanged) window.placeImagesChanged(); return; }
+      say(r && r.status === 401 ? 'Only a screen holding the admin token deletes an image.' : `Not deleted (${r ? r.status : 'no answer'}).`);
+    };
+    const b = await fetch(`/captures/${id}/file`, { headers: DOORS_AUTH() }).then(r => (r.ok ? r.blob() : null)).catch(() => null);
+    const im = card.querySelector('img'); if (b) { im.src = URL.createObjectURL(b); im.onload = () => URL.revokeObjectURL(im.src); }
+  });
+}
+
 function ledgerBlock() {
   const pd = D.order.filter(ISSUES_DRAWN).map(k => [k, D.issues[k]]);
   $('#perday').innerHTML = `<h2>Hours over the line, per day</h2><table class="tbl"><tr><th>day</th>${pd.map(([, it]) => `<th class="n">${esc(it.name)}</th>`).join('')}</tr>`

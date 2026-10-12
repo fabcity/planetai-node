@@ -432,9 +432,10 @@ The node renders as five doors by default, the redesign worked out in planetai-d
 (the moment, its decision with Done, Not now and Doesn't fit, and the stations around the house), **Place** (the
 ground as a map with layers, scales and a measuring tool, the satellite years and what changed, and the household's
 **Images**: one map layer per kind, phone, fixed camera, microscope, drone and balloon or kite, each image a square
-that opens a card with the image, when, who, the note and its cell, and below the map a panel of the newest with a
-form to add one, picked or dropped; token-only, `GET /captures`), **Data** (every
-reading, drawn, the seven days of every issue, the models, the Index and the ledger), **Wall** (the keeper's one
+that opens a card with the image, when, who, the note and its cell, and a quiet **+ Add an image** beside the views
+that opens a dialog, the file picked or dropped; token-only, `GET /captures`), **Data** (every
+reading, drawn, the seven days of every issue, the models, the Index, **Images** (every image with its facts of
+arrival, its kind, note and key: value lines to edit, and Delete for a screen holding the admin token) and the ledger), **Wall** (the keeper's one
 dark screen) and **Node** (what comes in and goes out, the nodes around it, and how it is running). The classic
 dashboard remains available at `/?layout=classic`.
 

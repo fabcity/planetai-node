@@ -245,11 +245,17 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
 .pmpop .maplibregl-popup-tip{border-top-color:var(--ink);border-bottom-color:var(--ink)}
 .sw.txt::before{content:'Aa';font:600 11px/14px var(--body)}
 .sw.pt-img::before{content:'■';font:14px/12px var(--mono)}.pmimg{width:100%;max-height:160px;object-fit:cover;background:var(--hair)}
-.imgs{margin:28px 0}.imgs form{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px;border:1px dashed var(--ink);margin:10px 0}
-.imgs form.over{background:color-mix(in srgb,var(--cells) 8%,transparent)}
-.imgs form>*{min-height:44px}.imgs select,.imgs input:not([type=file]),.imgs button{border:1px solid var(--ink);background:none;color:var(--ink);padding:0 12px;border-radius:0;font:inherit}
-.imgs button{font-weight:600;cursor:pointer}.imgs .ig{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
-.imgs figure{margin:0}.imgs figure img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;background:var(--hair)}.imgs figcaption{font:var(--t-cap) var(--mono);color:var(--mute);margin-top:4px}
+.prow{display:flex;flex-wrap:wrap;gap:10px;align-items:stretch}.prow .pviews{margin-top:14px}
+.addimg{margin-top:14px;background:none;border:1px solid var(--ink);padding:6px 14px;font:600 var(--t-small) var(--body);color:var(--ink);cursor:pointer;min-height:44px}
+.imgdlg{border:1px solid var(--ink);border-radius:0;background:var(--ground);color:var(--ink);padding:18px;width:min(420px,calc(100vw - 32px))}
+.imgdlg::backdrop{background:rgba(0,0,0,.35)}.imgdlg form{display:flex;flex-direction:column;gap:10px}.imgdlg label{display:flex;flex-direction:column;gap:4px;font:var(--t-small) var(--body)}
+.imgdlg .drop{border:1px dashed var(--ink);padding:14px;cursor:pointer}.imgdlg .drop input{font:inherit}.imgdlg form.over .drop{background:color-mix(in srgb,var(--cells) 8%,transparent)}
+.imgdlg select,.imgdlg input:not([type=file]),.imgdlg button{min-height:44px;border:1px solid var(--ink);background:none;color:var(--ink);padding:0 12px;border-radius:0;font:inherit}
+.imgdlg .acts{display:flex;gap:10px;justify-content:flex-end}.imgdlg button[type=submit]{background:var(--ink);color:var(--ground);font-weight:600}
+.icards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr));gap:14px}.icard{border:1px solid var(--hair);padding:10px;display:flex;flex-direction:column;gap:6px}
+.icard img{width:100%;aspect-ratio:4/3;object-fit:cover;background:var(--hair)}.icard .fine{margin:0}.icard label{display:flex;flex-direction:column;gap:3px;font:var(--t-cap) var(--mono);color:var(--mute)}
+.icard select,.icard input,.icard textarea{min-height:44px;border:1px solid var(--ink);background:none;color:var(--ink);padding:6px 10px;border-radius:0;font:var(--t-small) var(--body)}
+.icard .acts{display:flex;gap:8px}.icard button{min-height:44px;border:1px solid var(--ink);background:none;color:var(--ink);padding:0 12px;font:600 var(--t-small) var(--body);cursor:pointer}
 #layers .ly code{font:inherit;border:1px solid var(--hair);padding:0 3px}
 .srow.focus,section.focus{outline:2px solid var(--cells);outline-offset:4px}
 .windcv{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2}
@@ -607,7 +613,7 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
     <div class="altc" data-learn="cell" data-reads="/earth" data-stage="observe" data-pack="earth"><div id="altbar"></div><div id="mapalt"></div></div>
     <aside id="altfacts" data-learn="prov" data-reads="/issues /earth" data-stage="observe" data-pack="earth"></aside>
   </div>
-  <section class="imgs" data-reads="/captures" data-stage="observe" data-pack="core"><h2>Images</h2><div id="images"></div></section>
+  <dialog id="imgdlg" class="imgdlg" aria-label="Add an image"></dialog>
   <div class="cols2">
     <section data-learn="reach" data-reads="/reach" data-stage="observe" data-pack="core" data-kind="row"><h2>How far back</h2><div id="reach"></div></section>
     <section data-learn="registry" data-reads="/sources" data-stage="observe" data-pack="core" data-kind="row"><h2>Coming to this place</h2><p class="lede">Sources this node does not read yet. Each says what it would answer, and none draws until it is real.</p><div id="soon"></div></section>
@@ -627,6 +633,7 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
       <section id="models" class="dsec" data-learn="prov" data-reads="/sensors /observations" data-stage="observe" data-pack="earth" data-kind="row"></section>
       <section id="cells" class="dsec" data-learn="parent" data-reads="/cells" data-stage="measure" data-pack="core" data-kind="row"></section>
       <section id="perday" class="dsec" data-learn="strips" data-reads="/issues/days" data-stage="measure" data-pack="core" data-kind="row"></section>
+      <section id="d-images" class="dsec" data-reads="/captures" data-stage="observe" data-pack="core" data-kind="row"></section>
       <section id="ledger" class="dsec" data-learn="actions" data-reads="/actions /alerts" data-stage="act" data-pack="core" data-kind="row"></section>
       <section id="api" class="dsec" data-learn="api" data-reads="/static/docs_site.json" data-pack="core"></section>
     </div>

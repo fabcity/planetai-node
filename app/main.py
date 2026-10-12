@@ -2866,6 +2866,50 @@ def captures_list(request: Request, authorization: str = Header(""), cell: str |
             for r in rows[:limit]]
 
 
+@app.patch("/captures/{cid}")
+def capture_patch(cid: int, body: dict, request: Request, authorization: str = Header("")):
+    """The household edits an image's words: `note`, `kind`, and `meta` (an object of short strings, replaced whole).
+    The point, the cell, the time and the file are facts of arrival and are not edited here."""
+    _captures_auth(request, authorization)
+    sets, vals = [], []
+    if "note" in body:
+        sets.append("note = %s"); vals.append(str(body["note"] or "")[:500])
+    if "kind" in body:
+        if body["kind"] not in CAPTURE_KINDS:
+            raise HTTPException(422, f"kind must be one of {', '.join(CAPTURE_KINDS)}")
+        sets.append("kind = %s"); vals.append(body["kind"])
+    if "meta" in body:
+        m = body["meta"]
+        if not isinstance(m, dict) or len(m) > 40:
+            raise HTTPException(422, "meta is an object of at most 40 keys")
+        sets.append("meta = %s"); vals.append(Jsonb({str(k)[:60]: str(v)[:500] for k, v in m.items()}))
+    if not sets:
+        raise HTTPException(422, "nothing to change: note, kind or meta")
+    with db() as con, con.cursor() as cur:
+        cur.execute(f"UPDATE captures SET {', '.join(sets)} WHERE id = %s RETURNING *", (*vals, cid))
+        row = cur.fetchone()
+    if not row:
+        raise HTTPException(404, "no such capture")
+    return {"ok": True, "capture": {k: (v.isoformat() if isinstance(v, datetime) else v) for k, v in row.items()}}
+
+
+@app.delete("/captures/{cid}")
+def capture_delete(cid: int, request: Request, authorization: str = Header("")):
+    """Delete an image: the row and its file. The admin token (or this machine) only: the act token may add an
+    image and edit its words, never destroy one."""
+    if not _is_local(request):
+        _admin(authorization)
+    with db() as con, con.cursor() as cur:
+        cur.execute("DELETE FROM captures WHERE id = %s RETURNING file", (cid,))
+        row = cur.fetchone()
+    if not row:
+        raise HTTPException(404, "no such capture")
+    path = os.path.join(CAPTURES_DIR, os.path.basename(row["file"]))
+    if os.path.isfile(path):
+        os.remove(path)
+    return {"ok": True, "deleted": cid}
+
+
 @app.get("/captures/{cid}/file")
 def capture_file(cid: int, request: Request, authorization: str = Header("")):
     """The picture itself. Token only, like the row; the name is this node's own, never a client's path."""

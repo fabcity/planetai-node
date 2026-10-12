@@ -73,7 +73,7 @@ function imageRows() {
   for (const l of IMG) {
     const n = PM.caps ? PM.caps.filter(c => 'img-' + c.kind === l.id).length : 0;
     l.base = l.base || l.sub; l.locked = !PM.caps; l.empty = !n;
-    l.none = 'none yet · add one under Images, below the map';
+    l.none = 'none yet · + Add an image, above the map';
     l.sub = `${n} · ${l.base}`; PM.on[l.id] = !l.empty;
   }
 }
@@ -532,7 +532,7 @@ function popup(o) {
     const c = o.c; at = [c.at[1], c.at[0]];
     h = `<div class="k">Image · ${esc(KIND[c.kind] || c.kind)}</div><img class="pmimg" alt="${esc(c.note || KIND[c.kind] || 'an image')}">`
       + (c.note ? `<b>${esc(c.note)}</b>` : '') + `<span class="mono">${esc((c.ts || '').slice(0, 16).replace('T', ' '))}${c.actor ? ' · ' + esc(c.actor) : ''}</span>`
-      + `<span class="mono">${esc(c.cell)}${c.lat == null ? ' · no point, its cell' : ''}</span>`;
+      + `<span class="mono">${esc(c.cell)}${c.lat == null ? ' · no point, its cell' : ''}</span><a href="#data/d-images">Its details in Data →</a>`;
     imgBlob(c.id).then(b => { const el = POP && POP.getElement().querySelector('.pmimg'); if (b && el) { el.src = URL.createObjectURL(b); el.onload = () => URL.revokeObjectURL(el.src); } });
   } else if (o.kind === 'lab') {
     at = [o.s.lon, o.s.lat];

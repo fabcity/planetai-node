@@ -563,6 +563,16 @@ The visual database, newest first, rows of `{id, ts, received_at, kind, cell, la
 | `kind` | str | | only this kind |
 | `limit` | int | 50 | 1..500 |
 
+### PATCH /captures/{cid}
+Access: act
+
+Edits an image's words from the Data door: a JSON body with any of `note` (cut to 500 characters), `kind` (one of the five) and `meta` (an object of at most 40 keys, each value a string cut to 500, replaced whole). The point, the cell, the time and the file are facts of arrival and are not edited. Returns `{"ok": true, "capture": <row>}`; 422 for nothing to change or a bad kind, 404 for no such capture.
+
+### DELETE /captures/{cid}
+Access: admin
+
+Deletes an image, its row and its file in `CAPTURES_DIR`. This machine, or the admin token only: the act token adds and edits images and never destroys one (401). Returns `{"ok": true, "deleted": <id>}`; 404 for no such capture.
+
 ### GET /captures/{cid}/file
 Access: act
 

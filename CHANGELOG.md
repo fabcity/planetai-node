@@ -15,8 +15,10 @@
   `tests/test_captures.py` greps those roads for the table's name. A duplicate sha256 answers the existing row;
   a missing or unwritable folder is a clear 503, and `planetai doctor` goes red naming the fix. The walk counts
   a scale's pictures at its step ("1 image here") and opens a small grid of them, token only. The Place door
-  shows them too (Tomas, 12 Oct): one map layer per kind, a square per image that opens its card, and an
-  **Images** panel under the map that adds one from a laptop, picked or dropped. A picture's own GPS becomes its
+  shows them too (Tomas, 12 Oct): one map layer per kind, a square per image that opens its card, and
+  **+ Add an image** beside the views opens a dialog that takes a file picked or dropped. The Data door lists every
+  image with its facts, edits its kind, note and key: value lines (`PATCH /captures/{id}`, act token) and deletes
+  it, file and row (`DELETE /captures/{id}`, admin token). A picture's own GPS becomes its
   point (a library pick lands where it was taken), and the phone's picker opens the library, not the camera (Tomas). Set up shows the **Pictures folder**; `planetai storage set captures <dir>` moves it.
 
 - **`planetai hello` lists a node on every node's map.** It shows the household exactly what will be public (the

@@ -72,7 +72,8 @@ for py in glob.glob("app/**/*.py", recursive=True):
         assert "FROM captures" not in open(py).read() and "captures" not in open(py).read(), \
             f"{py} names captures: in step 1 the table is main.py's alone"
 
-for route in ("capture_post", "captures_list", "capture_file"):
+assert "_admin(" in code_of("capture_delete"), "only the admin token deletes an image"
+for route in ("capture_post", "captures_list", "capture_file", "capture_patch"):
     assert route in funcs, f"{route} missing"
     assert "_captures_auth" in code_of(route), f"{route} must check the token itself, like /actions"
 body = code_of("capture_post")
@@ -138,6 +139,10 @@ class FakeCur:
         self.sql, self.params = sql, params
     def fetchone(self):
         p = self.params
+        if self.sql.startswith("UPDATE"):
+            return {"id": p[-1], "sets": self.sql} if p[-1] == 7 else None
+        if self.sql.startswith("DELETE"):
+            return {"file": DELFILE} if p[0] == 7 else None
         return {"id": 7, "ts": p[0] or "2026-10-12T01:00:00+00:00", "received_at": "2026-10-12T01:00:01+00:00",
                 "kind": p[1], "cell": p[2], "lat": p[3], "lon": p[4], "outside": p[5], "at_home": p[6],
                 "actor": p[7], "note": p[8], "file": p[9], "sha256": p[10], "bytes": p[11], "mime": p[12]}
@@ -289,5 +294,21 @@ try:
     print("cleaning: a HEIC becomes a JPEG any screen can show")
 except Exception as e:
     print(f"cleaning: HEIC check skipped ({type(e).__name__})  (skipped)")
+
+# ---- the Data door edits an image's words, and the admin token deletes one
+DELFILE = "gone.jpg"
+level("open")
+r = lan.patch("/captures/7", json={"note": "the frangipani", "kind": "camera", "meta": {"species": "Plumeria"}}, headers=ACT)
+assert r.status_code == 200 and "note = %s" in r.json()["capture"]["sets"] and "meta = %s" in r.json()["capture"]["sets"], r.text
+assert lan.patch("/captures/7", json={"kind": "satellite"}, headers=ACT).status_code == 422, "a made-up kind"
+assert lan.patch("/captures/7", json={"lat": 1}, headers=ACT).status_code == 422, "the point is not edited"
+assert lan.patch("/captures/8", json={"note": "x"}, headers=ACT).status_code == 404
+assert lan.patch("/captures/7", json={"note": "x"}).status_code == 403, "a stranger edits nothing"
+open(os.path.join(TMP, DELFILE), "wb").write(b"x")
+assert lan.delete("/captures/7", headers=ACT).status_code == 401, "the act token adds and edits, never deletes"
+r = lan.delete("/captures/7", headers=ADMIN)
+assert r.status_code == 200 and not os.path.exists(os.path.join(TMP, DELFILE)), "delete takes the file with the row"
+assert lan.delete("/captures/8", headers=ADMIN).status_code == 404
+print("edit and delete: note, kind and meta by the act token; delete by the admin token only, file and row")
 
 print("captures: every check passed")
