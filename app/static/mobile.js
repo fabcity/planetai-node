@@ -95,14 +95,14 @@ function drawNow() {
 /* ---- Add a picture (SPEC_eyes step 1) ----
    One button under the rows, on an unlocked phone only — the POST needs the act token, so a locked phone gets
    the same offer the Decide card makes. The form asks for the picture, its kind and an optional note; where it
-   was taken is the phone's geolocation if the person allows it, else the node's own cell on the server. */
+   was taken is the picture's own GPS (read by the node), else the phone's geolocation if allowed, else the node's cell. */
 const CAPTURE_KINDS = ['phone', 'camera', 'microscope', 'drone', 'balloon'];
 function captureHTML() {
   if (!hasToken()) return `<div class="capture"><p class="dm"><a href="#unlock" data-unlock>Unlock this phone</a> to add pictures.</p></div>`;
   let actor = ''; try { actor = localStorage.getItem('planetai_actor') || ''; } catch (e) { /* no storage here */ }
   return `<div class="capture" id="capture"><button class="sbtn" id="capopen">Add a picture</button>`
     + `<form id="capf" hidden>`
-    + `<input type="file" id="capfile" accept="image/*" capture="environment" hidden>`
+    + `<input type="file" id="capfile" accept="image/*" hidden>`
     + `<button type="button" class="sbtn" id="cappick">Choose or take the picture</button><span class="mut" id="capname"></span>`
     + `<label class="k" for="capkind">What took it</label>`
     + `<select id="capkind">${CAPTURE_KINDS.map(k => `<option value="${k}"${k === 'phone' ? ' selected' : ''}>${k}</option>`).join('')}</select>`
@@ -110,7 +110,7 @@ function captureHTML() {
     + `<input id="capnote" maxlength="500" placeholder="what the picture answers">`
     + (actor ? '' : `<label class="k" for="capactor">Your name</label><input id="capactor" autocomplete="name" required>`)
     + `<button type="submit" class="sbtn primary">Keep it on the node</button>`
-    + `<p class="dm">Where it was taken is this phone's location if you allow it, otherwise the node's own cell. The node cleans the file of EXIF and GPS and keeps it; only a screen holding a token can see it.</p>`
+    + `<p class="dm">Where it was taken is the picture's own location, else this phone's if you allow it, else the node's own cell. The node cleans the file of EXIF and GPS and keeps it; only a screen holding a token can see it.</p>`
     + `<p class="dm" id="capout" role="status"></p></form></div>`;
 }
 

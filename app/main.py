@@ -2724,7 +2724,7 @@ def _node_cells() -> tuple[set, str]:
     return set(h3.grid_disk(home8, 1)), h3.latlng_to_cell(lat, lon, 10)
 
 
-def _clean_picture(raw: bytes) -> tuple[bytes, str, str | None]:
+def _clean_picture(raw: bytes) -> tuple[bytes, str, str | None, tuple[float, float] | None]:
     """Re-encode with no metadata: EXIF, GPS and the thumbnail die here and only the pixels survive. Returns the
     cleaned bytes, their mime, and the picture's own date when it carried one (kept as `ts`, the taken time —
     a date is not a place). HEIC becomes JPEG so any screen can show it back."""
@@ -2751,6 +2751,17 @@ def _clean_picture(raw: bytes) -> tuple[bytes, str, str | None]:
             taken = datetime.strptime(dtor.strip(), "%Y:%m:%d %H:%M:%S").replace(tzinfo=ZoneInfo(NODE_TZ)).isoformat()  # a camera writes local time
     except Exception:  # noqa: BLE001 — a picture with a broken date is still a picture; taken falls back to now
         taken = None
+    point = None   # where the camera says it was taken: read here, kept in the row, and gone from the file below
+    try:
+        g = im.getexif().get_ifd(0x8825)
+        dms = lambda v: float(v[0]) + float(v[1]) / 60 + float(v[2]) / 3600  # noqa: E731
+        if g.get(2) and g.get(4):
+            plat = dms(g[2]) * (-1 if str(g.get(1, "N")).upper().startswith("S") else 1)
+            plon = dms(g[4]) * (-1 if str(g.get(3, "E")).upper().startswith("W") else 1)
+            if -90 <= plat <= 90 and -180 <= plon <= 180 and (plat, plon) != (0.0, 0.0):
+                point = (plat, plon)
+    except Exception:  # noqa: BLE001 — a broken GPS block is no point, not a refused picture
+        point = None
     im = ImageOps.exif_transpose(im)  # the orientation is metadata too: apply it, then let it go with the rest
     out = io.BytesIO()
     if fmt0 in ("JPEG", "HEIF", "HEIC", "AVIF"):
@@ -2762,7 +2773,7 @@ def _clean_picture(raw: bytes) -> tuple[bytes, str, str | None]:
     else:
         im.save(out, "WEBP", quality=90)
         mime = "image/webp"
-    return out.getvalue(), mime, taken
+    return out.getvalue(), mime, taken, point
 
 
 @app.post("/captures")
@@ -2790,13 +2801,15 @@ async def capture_post(request: Request, authorization: str = Header(""),
     if dup:
         return {"ok": True, "duplicate": True, "capture": dup[0]}
     try:
-        cleaned, mime, exif_taken = _clean_picture(raw)
+        cleaned, mime, exif_taken, exif_point = _clean_picture(raw)
     except ValueError as e:
         raise HTTPException(415, str(e)) from None
     if (lat is None) != (lon is None):
         raise HTTPException(422, "lat and lon together, or neither")
     if lat is not None and not (-90 <= lat <= 90 and -180 <= lon <= 180):
         raise HTTPException(422, "lat must be -90..90 and lon -180..180")
+    if exif_point and not cell:
+        lat, lon = exif_point   # the picture's own GPS: where it was taken beats where the phone is now (a gallery pick)
     seven, home10 = _node_cells()
     if lat is not None:
         cap_cell = h3.latlng_to_cell(lat, lon, 10)

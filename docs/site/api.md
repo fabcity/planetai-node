@@ -544,13 +544,13 @@ A household adds a picture: multipart form, one image (`jpeg`, `png`, `heic`, `w
 |---|---|---|---|
 | `photo` | file | required | the picture; 40 MB at most |
 | `kind` | str | `phone` | `microscope`, `phone`, `camera`, `drone` or `balloon` |
-| `lat`, `lon` | float | | the exact point, together or neither. Kept, token only |
+| `lat`, `lon` | float | | the exact point, together or neither. Kept, token only. The picture's own GPS, when it carries one, wins over these |
 | `cell` | str | | or a res-10 H3 cell instead of a point; any other resolution is 422 |
 | `note` | str | | cut to 500 characters |
 | `taken_at` | str | | ISO date-time; else the file's own date is used, else now |
 | `actor` | str | | who took it — the name the phone keeps; cut to 80 characters |
 
-With no point and no cell, the capture stands in the node's own res-10 cell and the point stays null. Two booleans are computed on arrival and never recomputed: `outside` (the cell is not in the node's seven res-8 cells — its own and the six touching it) and `at_home` (the cell is the res-10 cell of `NODE_LAT`/`NODE_LON`; a later step blurs the house only when something leaves). The upload is re-encoded with no metadata — EXIF, GPS and the thumbnail die on arrival — and stored under its sha256 in `CAPTURES_DIR`; a duplicate sha256 answers `{"ok": true, "duplicate": true, "capture": …}` with the existing row and writes nothing new. Returns `{"ok": true, "capture": <row>}`; 503 with a clear message naming `CAPTURES_DIR` when the folder is missing or not writable.
+A picture whose EXIF carries GPS takes that as its point (where it was taken beats where the phone is now, the case of a gallery pick) unless a `cell` is given; the GPS is then removed from the file with the rest. With no point and no cell, the capture stands in the node's own res-10 cell and the point stays null. Two booleans are computed on arrival and never recomputed: `outside` (the cell is not in the node's seven res-8 cells — its own and the six touching it) and `at_home` (the cell is the res-10 cell of `NODE_LAT`/`NODE_LON`; a later step blurs the house only when something leaves). The upload is re-encoded with no metadata — EXIF, GPS and the thumbnail die on arrival — and stored under its sha256 in `CAPTURES_DIR`; a duplicate sha256 answers `{"ok": true, "duplicate": true, "capture": …}` with the existing row and writes nothing new. Returns `{"ok": true, "capture": <row>}`; 503 with a clear message naming `CAPTURES_DIR` when the folder is missing or not writable.
 
 ### GET /captures
 Access: act

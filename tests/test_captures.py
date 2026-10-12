@@ -157,7 +157,7 @@ def jpeg(with_gps=True):
     exif[306] = "2026:10:01 10:11:12"                       # DateTime → the capture's ts
     exif[0x8769] = {36867: "2026:10:01 10:11:12"}           # DateTimeOriginal
     if with_gps:
-        exif[0x8825] = {1: "S", 2: (8.0, 38.65, 49.0), 3: "E", 4: (115.0, 8.3, 16.0)}
+        exif[0x8825] = {1: "S", 2: (8.0, 38.0, 52.18476), 3: "E", 4: (115.0, 8.0, 18.74832)}  # the node's own point
     buf = io.BytesIO()
     im.save(buf, "JPEG", exif=exif)
     return buf.getvalue()
@@ -170,13 +170,14 @@ AWAY = {"lat": "0.5", "lon": "100.0"}                       # far outside the se
 # ---- the POST: kept, pointed, cleaned
 level("off")
 r = lan.post("/captures", files={"photo": ("p.jpg", PIC, "image/jpeg")},
-             data={"kind": "phone", "actor": "tomas", "note": "the frangipani", **HERE}, headers=ACT)
+             data={"kind": "phone", "actor": "tomas", "note": "the frangipani", **AWAY}, headers=ACT)
 assert r.status_code == 200, r.text
 cap = r.json()["capture"]
 import h3
 home10 = h3.latlng_to_cell(-8.6478291, 115.1385412, 10)
 assert cap["cell"] == home10, f"the cell is the point's res-10: {cap['cell']}"
-assert cap["lat"] == -8.6478291 and cap["lon"] == 115.1385412, "the exact point is kept (token only)"
+assert abs(cap["lat"] + 8.6478291) < 1e-6 and abs(cap["lon"] - 115.1385412) < 1e-6, \
+    "the picture's own GPS is the point, and beats where the phone is now (a gallery pick); kept, token only"
 assert cap["at_home"] is True and cap["outside"] is False, "at the node's own res-10 cell"
 assert cap["ts"].startswith("2026-10-01T10:11:12"), f"ts is the picture's own date: {cap['ts']}"
 assert cap["actor"] == "tomas" and cap["kind"] == "phone"
@@ -281,7 +282,7 @@ try:
     pillow_heif.register_heif_opener()
     buf = io.BytesIO()
     Image.new("RGB", (32, 32), (30, 30, 200)).save(buf, "HEIF")
-    cleaned, mime, _ = main._clean_picture(buf.getvalue())
+    cleaned, mime, _, _ = main._clean_picture(buf.getvalue())
     assert mime == "image/jpeg" and Image.open(io.BytesIO(cleaned)).format == "JPEG", "HEIC becomes JPEG"
     print("cleaning: a HEIC becomes a JPEG any screen can show")
 except Exception as e:
