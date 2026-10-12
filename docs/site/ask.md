@@ -1,5 +1,5 @@
 # Ask the node
-<!-- checked: v0.80.11 -->
+<!-- checked: v0.81.0 -->
 
 The dashboard can be asked about what it shows. A pane opens beside the page and talks to the model Set up names
 for this node, the same one the Telegram bot uses, asked through the same tools. It reads the page and
@@ -12,7 +12,8 @@ still searches this documentation.
 ## Opening it
 
 1. Press **ask the node**, right of the modes in the header. On a phone the button is in the foot, and the pane
-   opens as a sheet from the bottom. Learn mode opens it by itself.
+   opens as a sheet from the bottom. Learn mode opens it by itself. The phone page (`/?layout=mobile`) has no
+   pane; its **Full dashboard** link goes to the doors, which have one.
 2. The pane's header names the model and where it runs (`runs on this machine`, `runs on <host>, on your
    network`, or `runs online at <host>`), and says what it may do: `reads the page · records what you did ·
    changes nothing`. When it says `no model on this node yet`, see the last section.

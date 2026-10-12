@@ -1,5 +1,5 @@
 # Packs
-<!-- checked: v0.80.11 -->
+<!-- checked: v0.81.0 -->
 
 A pack is how a place teaches its node what to watch and what to say about it. The core names no metric:
 what `pm25` means, which line matters in this house, and the sentence a person should read at 9 pm are all
@@ -7,8 +7,8 @@ written in a pack. A data pack is SQL and words. A code pack also fetches: it ad
 read. The loader's own description of the point is one line: "most useful contributions are a rule and a
 threshold that someone learned the hard way in their city."
 
-Packs come in two tiers. The seventeen in the release are **core** (v0.76 had eighteen; `xiaomi-air` has since
-become wild). Any other pack is **wild**: it lives in its author's own repository, or is hosted at [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs), is listed there by pull request,
+Packs come in two tiers. The sixteen in the release are **core** (v0.76 had eighteen; `xiaomi-air` and `posidonia` have
+since become wild). Any other pack is **wild**: it lives in its author's own repository, or is hosted at [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs), is listed there by pull request,
 and is added to a node with `planetai packs add`. A wild pack that a second place can use may be promoted to core.
 The rules for both are the [packs decision](https://github.com/fabcity/planetai-node/blob/main/docs/decisions/2026-10-01-packs.md).
 
@@ -128,8 +128,8 @@ Telegram if it is connected, the heat issue's state is `act` (on a node on `shad
 The pack now asks a person to do something, and what they record against it counts in [ρ](rho.md).
 
 On a checkout of the repository, `python3 tools/check_rules.py` (it needs `sqlglot`) parses the pack
-against `init.sql`. It prints `54 rules and cells check out against init.sql` (48 at v0.76, which still carried
-`xiaomi-air`'s rule and none of the event engine's seven); with your folder added the count is two more, one rule and one cell. A `{placeholder}` the SQL
+against `init.sql`. It prints `51 rules and cells check out against init.sql` (48 at v0.76, which still carried
+`xiaomi-air`'s rule and `posidonia`'s three, and none of the event engine's seven); with your folder added the count is two more, one rule and one cell. A `{placeholder}` the SQL
 does not return is refused here and named; on a running node the same mistake sends the raw template, braces and all.
 
 ## Fields in pack.yaml
