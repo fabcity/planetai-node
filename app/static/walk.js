@@ -103,7 +103,7 @@ if (typeof document !== 'undefined') (async () => {
         + (i < 4 ? (s ? `<div class="big">${f(s.value, dp)}<i>${u}</i></div><p>${s.source || ''}${s.provenance ? `, ${s.provenance}` : ''}.</p>` : `<span class="none">${(a.name && a.name[lang]) || K} is not read at the ${word(i)}</span>`) : '')
         + (t.p && (i > 3 || s) ? `<p>${t.p}</p>` : '') + (s || i > 3 ? t.g || '' : '') + (t.m && (s || i > 3) ? `<p class="m">${t.m}</p>` : '')
         + (i < 4 && caps[SCALES[i].res]
-           ? `<button class="capcount" data-res="${SCALES[i].res}">${caps[SCALES[i].res].length} picture${caps[SCALES[i].res].length === 1 ? '' : 's'} here</button><div class="capgrid" data-res="${SCALES[i].res}" hidden></div>`
+           ? `<button class="capcount" data-res="${SCALES[i].res}">${caps[SCALES[i].res].length} image${caps[SCALES[i].res].length === 1 ? '' : 's'} here</button><div class="capgrid" data-res="${SCALES[i].res}" hidden></div>`
            : '') + '</div>'; }).join('');
     /* the rail says where the reader is; it is read, not pressed (a 44 px target per scale would cover the map) */
     $('#rail').innerHTML = SCALES.map((s, i) => `<span><s></s>${word(i)}<em>${i < 4 ? f(w.at[i] && w.at[i].value, dp) : ''}</em></span>`).join('');
@@ -159,7 +159,7 @@ if (typeof document !== 'undefined') (async () => {
       img.src = URL.createObjectURL(blob); img.alt = c.note || c.kind || 'a capture'; img.loading = 'lazy';
       grid.appendChild(img);
     }
-    if (!grid.children.length) { grid.innerHTML = '<p class="m">The pictures answer a screen with a token only.</p>'; delete grid.dataset.loaded; }
+    if (!grid.children.length) { grid.innerHTML = '<p class="m">The images answer a screen with a token only.</p>'; delete grid.dataset.loaded; }
   });
 
   /* the cell this node stands in, at each scale, from the node's own /geo/cell (R25: centres only, never the house) */

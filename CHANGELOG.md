@@ -3,7 +3,8 @@
 ## Unreleased
 
 - **The eyes, step 1: the capture tier (SPEC_eyes).** A household chooses a picture from its phone's library on the phone page
-  (**Add a picture** in Now, on an unlocked phone; a locked phone reads "Unlock this phone to add pictures").
+  (**Add an image** in Now, on an unlocked phone, opens the library and asks the details once one is chosen; a
+  locked phone reads "Unlock this phone to add images").
   The node keeps the file in `CAPTURES_DIR` — any storage, a NAS share included — cleaned of EXIF and GPS on
   arrival, and records the capture: when (the picture's own date when it carries one), its res-10 cell, its
   kind, who, and the exact point it was taken from, kept token-only (12 Oct, Tomas: a tree or a dump is worth
@@ -13,7 +14,7 @@
   routes, and no capture is in `/export`, `/exports`, `/aggregates`, `/readings` or any parent push —
   `tests/test_captures.py` greps those roads for the table's name. A duplicate sha256 answers the existing row;
   a missing or unwritable folder is a clear 503, and `planetai doctor` goes red naming the fix. The walk counts
-  a scale's pictures at its step ("1 picture here") and opens a small grid of them, token only. The Place door
+  a scale's pictures at its step ("1 image here") and opens a small grid of them, token only. The Place door
   shows them too (Tomas, 12 Oct): one map layer per kind, a square per image that opens its card, and an
   **Images** panel under the map that adds one from a laptop, picked or dropped. A picture's own GPS becomes its
   point (a library pick lands where it was taken), and the phone's picker opens the library, not the camera (Tomas). Set up shows the **Pictures folder**; `planetai storage set captures <dir>` moves it.

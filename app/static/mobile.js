@@ -92,32 +92,36 @@ function drawNow() {
   $('#now-v').innerHTML = s;
 }
 
-/* ---- Add a picture (SPEC_eyes step 1) ----
+/* ---- Add an image (SPEC_eyes step 1) ----
    One button under the rows, on an unlocked phone only — the POST needs the act token, so a locked phone gets
    the same offer the Decide card makes. The form asks for the picture, its kind and an optional note; where it
    was taken is the picture's own GPS (read by the node), else the phone's geolocation if allowed, else the node's cell. */
 const CAPTURE_KINDS = ['phone', 'camera', 'microscope', 'drone', 'balloon'];
 function captureHTML() {
-  if (!hasToken()) return `<div class="capture"><p class="dm"><a href="#unlock" data-unlock>Unlock this phone</a> to add pictures.</p></div>`;
+  if (!hasToken()) return `<div class="capture"><p class="dm"><a href="#unlock" data-unlock>Unlock this phone</a> to add images.</p></div>`;
   let actor = ''; try { actor = localStorage.getItem('planetai_actor') || ''; } catch (e) { /* no storage here */ }
-  return `<div class="capture" id="capture"><button class="sbtn" id="capopen">Add a picture</button>`
-    + `<form id="capf" hidden>`
+  /* one button: it opens the library straight away, and the details ask only once an image is chosen (Tomas, 12 Oct) */
+  return `<div class="capture" id="capture"><button class="sbtn" id="capopen">Add an image</button>`
     + `<input type="file" id="capfile" accept="image/jpeg,image/png,image/heic,image/heif,image/webp" hidden>`
-    + `<button type="button" class="sbtn" id="cappick">Choose a picture</button><span class="mut" id="capname"></span>`
+    + `<form id="capf" hidden><p class="mut" id="capname"></p>`
     + `<label class="k" for="capkind">What took it</label>`
     + `<select id="capkind">${CAPTURE_KINDS.map(k => `<option value="${k}"${k === 'phone' ? ' selected' : ''}>${k}</option>`).join('')}</select>`
     + `<label class="k" for="capnote">A note, if it needs one</label>`
-    + `<input id="capnote" maxlength="500" placeholder="what the picture answers">`
+    + `<input id="capnote" maxlength="500" placeholder="what the image answers">`
     + (actor ? '' : `<label class="k" for="capactor">Your name</label><input id="capactor" autocomplete="name" required>`)
-    + `<button type="submit" class="sbtn primary">Keep it on the node</button>`
-    + `<p class="dm">Where it was taken is the picture's own location, else this phone's if you allow it, else the node's own cell. The node cleans the file of EXIF and GPS and keeps it; only a screen holding a token can see it.</p>`
-    + `<p class="dm" id="capout" role="status"></p></form></div>`;
+    + `<button type="submit" class="sbtn primary">Keep it on the node</button><button type="button" class="sbtn" id="capcancel">Cancel</button>`
+    + `<p class="dm">Where it was taken is the image's own location, else this phone's if you allow it, else the node's own cell. The node cleans the file of EXIF and GPS and keeps it; only a screen holding a token can see it.</p></form>`
+    + `<p class="dm" id="capout" role="status"></p></div>`;
+}
+
+function captureClose() {
+  $('#capfile').value = ''; $('#capnote').value = ''; $('#capf').hidden = true; $('#capopen').hidden = false;
 }
 
 async function captureSubmit(ev) {
   ev.preventDefault();
   const out = $('#capout'), file = $('#capfile').files[0];
-  if (!file) { out.textContent = 'Choose a picture first.'; return; }
+  if (!file) { out.textContent = 'Choose an image first.'; return; }
   const actorEl = $('#capactor');
   let actor = ''; try { actor = localStorage.getItem('planetai_actor') || ''; } catch (e) { /* no storage here */ }
   if (actorEl) {
@@ -153,8 +157,8 @@ async function captureSubmit(ev) {
     }
     const c = body.capture || {};
     out.textContent = (body.duplicate ? 'The node already had it' : 'The node kept it')
-      + ` — ${c.kind || 'picture'}, ${c.cell ? 'cell ' + c.cell.slice(0, 9) + '…' : 'its cell'}${c.at_home ? ', at home' : ''}. The walk counts it below.`;
-    $('#capfile').value = ''; $('#capname').textContent = ''; $('#capnote').value = '';
+      + ` — ${c.kind || 'image'}, ${c.cell ? 'cell ' + c.cell.slice(0, 9) + '…' : 'its cell'}${c.at_home ? ', at home' : ''}. The walk counts it below.`;
+    captureClose();
   } catch (e) { out.textContent = `The node did not answer: ${e.message}`; } finally { send.disabled = false; }
 }
 
@@ -276,14 +280,15 @@ document.addEventListener('click', ev => {
     location.reload();
     return;
   }
-  if (t.id === 'capopen') { $('#capopen').hidden = true; $('#capf').hidden = false; return; }
-  if (t.id === 'cappick') { ev.preventDefault(); $('#capfile').click(); }
+  if (t.id === 'capopen') { $('#capout').textContent = ''; $('#capfile').click(); return; }
+  if (t.id === 'capcancel') captureClose();
 });
 
 document.addEventListener('change', ev => {
   if (ev.target.id === 'capfile') {
-    const f = ev.target.files[0];
-    $('#capname').textContent = f ? ` · ${f.name || 'the picture'} (${Math.max(1, Math.round(f.size / 1024 / 1024))} MB)` : '';
+    const f = ev.target.files[0]; if (!f) return;
+    $('#capname').textContent = `${f.name || 'the image'} (${Math.max(1, Math.round(f.size / 1024 / 1024))} MB)`;
+    $('#capopen').hidden = true; $('#capf').hidden = false;
   }
 });
 
