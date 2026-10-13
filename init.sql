@@ -368,3 +368,21 @@ ALTER TABLE channel_roles DROP CONSTRAINT IF EXISTS channel_roles_role_check;
 ALTER TABLE channel_roles ADD CONSTRAINT channel_roles_role_check
   CHECK (role IN ('ambient','enclosure','device_health','derived','index','private'));
 INSERT INTO schema_version (version) VALUES ('0.55') ON CONFLICT DO NOTHING;
+
+-- 0.56: the things a home keeps (docs/SPEC_inventory.md). Kept as captures are: not in the export, not readable by
+-- pack SQL; the page, rules and cells read the three private counts per class the node writes as readings
+-- (stock.<class>, idle.<class>, repair.<class> on the `things:<node>` survey sensor, role private).
+CREATE TABLE IF NOT EXISTS things (
+  id          BIGSERIAL PRIMARY KEY,
+  added_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  class       TEXT NOT NULL,                       -- a flows 1.0 physical class (THING_CLASSES in app/main.py)
+  name        TEXT NOT NULL,                       -- the household's words: "cordless drill"
+  count       INTEGER NOT NULL DEFAULT 1 CHECK (count >= 1),
+  used        TEXT NOT NULL DEFAULT 'monthly' CHECK (used IN ('weekly','monthly','yearly','never')),
+  condition   TEXT NOT NULL DEFAULT 'works' CHECK (condition IN ('works','needs_repair','broken')),
+  offer       TEXT NOT NULL DEFAULT 'no' CHECK (offer IN ('no','lend','give')),   -- nothing leaves until step 4
+  capture_id  BIGINT,                              -- the photo it came from, if any
+  note        TEXT
+);
+REVOKE ALL ON things FROM planetai_ro;
+INSERT INTO schema_version (version) VALUES ('0.56') ON CONFLICT DO NOTHING;

@@ -157,6 +157,10 @@ What each `(source, metric)` **is**, written at every start from `config/channel
 
 `version`, `told_at`: one row per release the node has told its household about, so a restart or the hourly re-check never sends "a new version is out" twice for the same one. Added in schema 0.52, for `UPDATE_CHECK`. Written by `check_release()` in `app/main.py`; nothing else reads it.
 
+### `things`
+
+What a home keeps (SPEC_inventory, schema 0.56): `id`, `added_at`, `class`, `name`, `count`, `used` (`weekly` · `monthly` · `yearly` · `never`), `condition` (`works` · `needs_repair` · `broken`), `offer` (`no` · `lend` · `give`), `capture_id`, `note`. Written by `/things`. Revoked from `planetai_ro`, so no pack SQL reads it, and named by no export or push. Its counts per class reach `readings` as the private `stock.<class>`, `idle.<class>` and `repair.<class>`.
+
 ### Pack tables
 
 The `place` pack creates `place_features` (OpenStreetMap features with a PostGIS geometry), `place_runs`, `place_yearly` and `place_buildings_sat` (Open Buildings). Tables a pack creates inherit the read-only role's `SELECT` through default privileges.

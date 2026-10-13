@@ -31,7 +31,7 @@ const SYM = { pm25: 'PM2.5', pm10: 'PM10', pm1: 'PM1', pm25_raw: 'PM2.5ʳ', aqi:
   precipitation: 'R', uv_index: 'UV', temp_model: 'Tᵐ', humidity_model: 'RHᵐ', pressure_model: 'Pᵐ', noise: 'dB', light: 'lx', sea_surface_temp: 'SST',
   wave_height_m: 'Hs', wave_period_s: 'Tp', wave_direction: 'Dw', swell_height_m: 'Sw', swell_period_s: 'Ts', lora_util_pct: 'LoRa', lora_channel_pct: 'Ch' };
 const DSECTIONS = [['d-readings', 'Readings'], ['issues7', 'Issues, 7 days'], ['models', 'Models and satellite'], ['cells', 'Index cells'],
-  ['perday', 'Hours over the line'], ['d-images', 'Images'], ['ledger', 'Decisions'], ['api', 'API']];
+  ['perday', 'Hours over the line'], ['d-images', 'Images'], ['d-things', 'Things'], ['ledger', 'Decisions'], ['api', 'API']];
 
 /* #data/<sensor-id> (from a dot on Place) opens on a metric that station reads and scrolls to its row, once per link;
    #data/models opens at the models, #data/api at the API. */
@@ -45,7 +45,7 @@ VIEWS.data = function () {
   $('#datahead').innerHTML = `<div class="k">Data · everything this node holds, as it reads it</div><h1>Every reading, drawn.</h1>
     <p class="lede">${D.raw ? `${total.toLocaleString('en')} hourly values from ${Object.keys(S2).length} sources over the last 24 hours` : 'The hourly values with the token'}, seven days of every issue at every distance, ${D.observations.length} model and satellite values, ${D.index_cells.length} Index cells and ${D.actions.length} decisions. Today’s open export, CC BY 4.0: <a class="mono" href="/export?day=${dayOf(D.buckets[D.now])}">GET /export?day=${dayOf(D.buckets[D.now])}</a>.</p>`;
   dataNav(); metricTiles();
-  sensorsBlock(); issuesBlock(); modelsBlock(); cellsBlock(); ledgerBlock(); apiBlock(); imagesBlock();
+  sensorsBlock(); issuesBlock(); modelsBlock(); cellsBlock(); ledgerBlock(); apiBlock(); imagesBlock(); thingsBlock();
   if (FOCUS && FOCUS !== FOCUSED) {
     FOCUSED = FOCUS;
     setTimeout(() => {                                          // after route() has scrolled to the top
@@ -185,7 +185,7 @@ const IKINDS = { phone: 'Phone', camera: 'Fixed camera', microscope: 'Microscope
 // delete. Saving the rows confirms them: they are the household's from then on, with its name.
 // ponytail: EYES_CLASSES in main.py, copied; the node files anything else under other
 const FCLASSES = ['plant', 'animal', 'habitat', 'food', 'water', 'compost', 'waste_residual', 'plastic_waste', 'packaging', 'wood', 'metal',
-  'textile', 'electronics', 'filament', 'fuel', 'electricity', 'part', 'filter', 'furniture', 'tool', 'appliance', 'garment', 'micromobility', 'goods', 'other'];
+  'textile', 'electronics', 'filament', 'fuel', 'electricity', 'part', 'filter', 'furniture', 'tool', 'appliance', 'garment', 'micromobility', 'vehicle', 'goods', 'other'];
 const LIVING = ['plant', 'animal'];
 // GRIIS's word for this country (SPEC_species step 2); a species not on the list says nothing, never "native"
 const INTRO = t => (t.introduced ? ` · <b>${esc(t.introduced)}</b> in ${esc(t.where)}` : t.where ? ` · ${esc(t.where)}` : '')
@@ -204,6 +204,46 @@ const seen = a => !a ? `<p class="fine">Not described yet.</p>`
 const rowsOf = card => [...card.querySelectorAll('.frow')].map(r => ({ class: r.querySelector('[data-g=class]').value, name: r.querySelector('[data-g=name]').value.trim(),
   count: r.querySelector('[data-g=count]').value === '' ? null : +r.querySelector('[data-g=count]').value, issue: r.querySelector('[data-g=issue]').checked,
   scientific: r.querySelector('[data-g=sci]').value.trim() || null })).filter(f => f.name);
+/* THINGS — what this home keeps (SPEC_inventory step 2): one card a thing, its use, its state, whether it is offered.
+   The admin token only, and it never leaves: the node counts them per class as private readings. Idle = used yearly
+   or never, which the household says once rather than logging every use. */
+const TWORDS = { used: { weekly: 'Every week', monthly: 'Every month', yearly: 'A few times a year', never: 'Never' },
+  condition: { works: 'Works', needs_repair: 'Needs a repair', broken: 'Broken' }, offer: { no: 'Not offered', lend: 'Would lend it', give: 'Would give it away' } };
+const tsel = (k, v) => `<label>${{ used: 'How often it is used', condition: 'State', offer: 'Offer' }[k]}<select data-t="${k}">`
+  + Object.entries(TWORDS[k]).map(([o, w]) => `<option value="${o}"${o === v ? ' selected' : ''}>${w}</option>`).join('') + `</select></label>`;
+const tcard = (t, classes) => `<div class="icard" data-id="${t.id || ''}"><label>What<input data-t="name" maxlength="120" value="${esc(t.name || '')}"></label>`
+  + `<label>Class<select data-t="class">${classes.map(c => `<option${c === t.class ? ' selected' : ''}>${c}</option>`).join('')}</select></label>`
+  + `<label>How many<input data-t="count" type="number" min="1" value="${t.count || 1}"></label>`
+  + tsel('used', t.used || 'monthly') + tsel('condition', t.condition || 'works') + tsel('offer', t.offer || 'no')
+  + `<div class="acts"><button data-a="save">${t.id ? 'Save' : 'Add'}</button>${t.id ? '<button data-a="del">Delete</button>' : ''}</div><p class="fine" role="status"></p></div>`;
+async function thingsBlock() {
+  const el = $('#d-things');
+  if (el.querySelector('.icard') && el.contains(document.activeElement)) return;   // a resize must not wipe an edit in progress
+  const r = await fetch('/things', { headers: DOORS_AUTH() }).catch(() => null);
+  const j = r && r.ok ? await r.json().catch(() => null) : null;
+  if (!j) { el.innerHTML = `<h2>Things</h2><p class="fine">What this home keeps answers the admin token only, and never leaves the house. Unlock this screen with it under Node.</p>`; return; }
+  const s = j.summary;
+  el.innerHTML = `<h2>Things, ${s.things}</h2><p class="blurb">What this home keeps: ${s.idle} used a few times a year or never, ${s.repair} waiting for a repair. `
+    + `None of it leaves the house: the node counts them per class for the page and its rules, keeps them out of the export, the report and every agent, and only in the household's own backup.</p>`
+    + `<div class="icards">${tcard({}, j.classes)}${j.things.map(t => tcard(t, j.classes)).join('')}</div>`;
+  el.querySelectorAll('.icard').forEach(card => {
+    const id = card.dataset.id, say = t => { card.querySelector('[role=status]').textContent = t; };
+    const val = k => card.querySelector(`[data-t=${k}]`).value;
+    card.querySelector('[data-a=save]').onclick = async () => {
+      const body = { name: val('name'), class: val('class'), count: +val('count') || 1, used: val('used'), condition: val('condition'), offer: val('offer') };
+      const r2 = await fetch(id ? `/things/${id}` : '/things', { method: id ? 'PATCH' : 'POST', headers: { ...DOORS_AUTH(), 'content-type': 'application/json' }, body: JSON.stringify(body) }).catch(() => null);
+      if (r2 && r2.ok) { card.querySelector('[data-a=save]').blur(); thingsBlock(); return; }
+      say(`Not saved: ${r2 ? ((await r2.json().catch(() => ({}))).detail || r2.status) : 'the node did not answer'}`);
+    };
+    const del = card.querySelector('[data-a=del]');
+    if (del) del.onclick = async () => {
+      if (!confirm('Delete this thing from the node?')) return;
+      const r2 = await fetch(`/things/${id}`, { method: 'DELETE', headers: DOORS_AUTH() }).catch(() => null);
+      if (r2 && r2.ok) { thingsBlock(); return; }
+      say(`Not deleted (${r2 ? r2.status : 'no answer'}).`);
+    };
+  });
+}
 async function imagesBlock() {
   const el = $('#d-images');
   if (el.querySelector('.icard') && el.contains(document.activeElement)) return;   // a resize must not wipe an edit in progress

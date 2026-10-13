@@ -177,7 +177,7 @@ Positions follow `/sensors`: for a caller that is neither loopback nor carrying 
 ### GET /observations
 Access: open
 
-The latest value per slow-moving source and metric: a city statistic, a model point sample, a survey. The `observations` view: `sensor_id`, `metric`, `value`, `ts`, `name`, `kind`, `scale`, `local`, `cadence`, `meta`, for every sensor whose `kind` is not `sensor`. Ordered by scale, sensor and metric.
+The latest value per slow-moving source and metric: a city statistic, a model point sample, a survey. The `observations` view: `sensor_id`, `metric`, `value`, `ts`, `name`, `kind`, `scale`, `local`, `cadence`, `meta`, for every sensor whose `kind` is not `sensor`. Ordered by scale, sensor and metric. A `private` value (the counts of the things a home keeps) is in it only for the admin token, and never for a request carrying `X-Agent`.
 
 ### GET /trust
 Access: open
@@ -582,6 +582,26 @@ Deletes an image, its row and its file in `CAPTURES_DIR`. This machine, or the a
 Access: act
 
 The picture itself, with its stored mime. 404 `no such capture`, or `the row is here but the file is gone from the captures folder`. The name is the node's own (a sha256), never a path from a client.
+
+### GET /things
+Access: admin
+
+What this home keeps (SPEC_inventory): `{things: [{id, added_at, class, name, count, used, condition, offer, capture_id, note}], classes, choices, summary: {things, idle, repair, offered}}`, newest first. `class` is one of the flows 1.0 physical classes a home keeps (`tool`, `appliance`, `furniture`, `electronics`, `garment`, `textile`, `micromobility`, `vehicle`, `part`, `goods`). `used` is `weekly`, `monthly`, `yearly` or `never`, said once by the household; idle means `yearly` or `never`. `condition` is `works`, `needs_repair` or `broken`. `offer` is `no`, `lend` or `give`, and nothing is published from it yet. The summary adds up `count`.
+
+### POST /things
+Access: admin
+
+Add a thing (`class` and `name` required; `count` 1 by default, `used` `monthly`, `condition` `works`, `offer` `no`), change any of its fields, or delete it. Unknown fields are ignored; a bad value is a 422 naming the accepted ones; an unknown id is a 404. Every change rewrites three counts for each class it touched as readings on the `things:<node>` survey sensor: `stock.<class>`, `idle.<class>` and `repair.<class>`. They are declared `private`, so the page, rules and cells read them and nothing sends them: not the export, a parent, the report bundle or any agent. The table itself is not readable by pack SQL and is only in the household's own backup.
+
+### PATCH /things/{tid}
+Access: admin
+
+Change any of a thing's fields, as `POST /things` takes them; the counts of its old class and its new one are both rewritten. 404 for an unknown id, 422 for nothing to change.
+
+### DELETE /things/{tid}
+Access: admin
+
+Delete a thing; the counts of its class are rewritten. 404 for an unknown id.
 
 ### GET /species
 Access: act
