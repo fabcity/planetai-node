@@ -203,6 +203,9 @@ MAP_TILES:
 UPDATE_CHECK:
   default: "on"
   help: "Once a day, ask planetai.fab.city which version is current, and say so in the header, planetai doctor and once on Telegram when a newer one is out. The request carries nothing about this house, but it shows this house's internet address to Fab City's host. Nothing is installed: planetai update stays yours to run. on | off"
+SPECIES_MATCH:
+  default: "off"
+  help: "Name the species in images with GBIF: a plant or animal's scientific name is asked of api.gbif.org, and nothing else, never the picture or where it was taken. GBIF's server sees this house's internet address. off | on"
 STATIONS_SHOWN:
   default: "3"
   help: "How many of the neighbourhood's stations the dashboard lists, nearest first. 0 lists every one; this node's own hardware is always listed and is never counted here."
