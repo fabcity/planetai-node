@@ -151,6 +151,12 @@ RUNTIME = {
                            "address and that a PLANETAI node lives there. When a newer version is out, the page's header says so, "
                            "`planetai doctor` says so, and Telegram says so once per version. Nothing is installed: "
                            "`planetai update` stays yours to run. off = the node never asks."),
+    "SPECIES_MATCH":      ("sharing", "Name species with GBIF", False, False,
+                           "off (default) = a plant or animal found in an image keeps the scientific name as somebody "
+                           "here typed it, with no key. on = the node asks api.gbif.org which taxon that name is, so the "
+                           "same palm is the same species on every node. It sends the name and nothing else, never the "
+                           "picture and never where it was taken, but GBIF's server sees this house's internet address "
+                           "and the names it asks about."),
     # Presence: the node saying "I am here" on Reticulum, and nothing else. Off by default, because
     # SHARE_LEVEL governs what this node ANSWERS when asked and this is the node speaking unprompted.
     "RETICULUM_PRESENCE":  ("sharing", "Announce this node on Reticulum", False, False,
@@ -193,7 +199,7 @@ RUNTIME = {
 PUBLIC = {"REPORT_EVERY", "REPORT_ANCHOR", "REPORT_DEPTH", "ALERT_LEVEL", "QUIET_HOURS", "QUIET_FROM", "QUIET_TO", "ALERT_LOCALE",
           "MESH_ALERTS", "HA_DISCOVERY", "PACKS_ENABLED", "PACKS_ALLOW_CODE", "OPENMETEO_ENABLED", "BAD_ENABLED", "BAD_RADIUS_KM",
           "BAD_MIN_SEPARATION_M", "BAD_EXCLUDE", "BAD_INCLUDE_INDOOR",
-          "LOCAL_RADIUS_M", "SENSOR_INDOOR", "COAST_MAX_KM", "AGENT_PREFER", "AGENT_REMOTE_MODEL", "AGENT_ONLINE_MODEL", "EYES_MODEL", "UI_LAYOUT", "UI_MODE", "UI_ASK", "UI_GROUND", "MAP_TILES", "UPDATE_CHECK", "STATIONS_SHOWN", "NODE_KIND", "SHARE_LEVEL", "NODE_ISSUES",
+          "LOCAL_RADIUS_M", "SENSOR_INDOOR", "COAST_MAX_KM", "AGENT_PREFER", "AGENT_REMOTE_MODEL", "AGENT_ONLINE_MODEL", "EYES_MODEL", "UI_LAYOUT", "UI_MODE", "UI_ASK", "UI_GROUND", "MAP_TILES", "UPDATE_CHECK", "SPECIES_MATCH", "STATIONS_SHOWN", "NODE_KIND", "SHARE_LEVEL", "NODE_ISSUES",
           "RETICULUM_PRESENCE", "RETICULUM_PRESENCE_RES"}
 # Which Set up tab shows each bootstrap key, read-only. The place itself is Basics; the machinery is System.
 BOOTSTRAP_GROUP = {k: "basics" for k in ("NODE_NAME", "NODE_CITY", "NODE_LAT", "NODE_LON", "NODE_TZ", "NODE_SCALE")}
@@ -220,7 +226,8 @@ CHOICES = {
     "UI_ASK":        ("on", "off"),
     "UI_GROUND":     ("svg", "map"),
     "MAP_TILES":     ("off", "on"),                          # live tiles leave the house; off by default, a keeper turns them on in Set up
-    "UPDATE_CHECK":  ("on", "off"),                          # a daily request to planetai.fab.city; on by default (Tomas, 30 Sep 2026)
+    "UPDATE_CHECK":  ("on", "off"),
+    "SPECIES_MATCH": ("on", "off"),                          # a plant or animal name asked of api.gbif.org; off by default (SPEC_species §2)                          # a daily request to planetai.fab.city; on by default (Tomas, 30 Sep 2026)
 }
 
 # Keys that change what leaves this machine, as opposed to what it does with what it keeps.
@@ -244,6 +251,7 @@ OUTWARD = {
     "AGENT_PREFER",         # which decides whether the online path is used at all
     "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_IDS",  # where the node speaks
     "UPDATE_CHECK",         # a daily request to planetai.fab.city for the current version
+    "SPECIES_MATCH",        # a finding's scientific name asked of api.gbif.org
 }
 
 # Keys the reports release retired. Rows for them are left in `settings` and in .env, and nothing reads them: a

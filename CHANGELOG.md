@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **A finding names its species (SPEC_species step 1).** A `plant` or `animal` finding carries `scientific`, its
+  scientific name at the rank the image model is sure of (a species, a genus, or a family such as Arecaceae for "a
+  palm"), and the Data door shows it and lets anyone here type or change it. With **Name species with GBIF**
+  (`SPECIES_MATCH`, Set up › Sharing, off by default, outward) the node asks GBIF's Backbone which taxon that name is,
+  strictly and only in the right kingdom, and keeps `taxon` `{key, name, rank, match}`, linked to gbif.org in the
+  Data door. Only the name is sent: never the picture, never the point. The rank is GBIF's, never the model's claim.
+  An edit asks again only for a name that changed, and a taxon sent in the body is ignored. Without the yes, the
+  typed name stands, with no key.
+
 - **The eyes, step 1: the capture tier (SPEC_eyes).** A household chooses a picture from its phone's library on the phone page
   (**Add an image** in Now, on an unlocked phone, opens the library and asks the details once one is chosen; a
   locked phone reads "Unlock this phone to add images").

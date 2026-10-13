@@ -2886,7 +2886,8 @@ def capture_patch(cid: int, body: dict, request: Request, authorization: str = H
             raise HTTPException(422, "meta is an object of at most 40 keys")
         sets.append("meta = %s"); vals.append(Jsonb({str(k)[:60]: str(v)[:500] for k, v in m.items()}))
     if body.get("confirm") or "findings" in body:
-        if not ((q("SELECT analysis FROM captures WHERE id = %s", cid) or [{}])[0].get("analysis") or {}).get("model"):
+        was = (q("SELECT analysis FROM captures WHERE id = %s", cid) or [{}])[0].get("analysis") or {}
+        if not was.get("model"):
             raise HTTPException(409, "nothing to confirm: this image has not been described yet")
         # a person here says the model's findings are right: from now on they are the household's, with its name
         # (an edited list is confirmed by the edit: what is left is what a person says is there)
@@ -2895,7 +2896,8 @@ def capture_patch(cid: int, body: dict, request: Request, authorization: str = H
         if "findings" in body:
             if not isinstance(body["findings"], list) or len(body["findings"]) > 30:
                 raise HTTPException(422, "findings is a list of at most 30")
-            mine["findings"] = _findings(body["findings"])
+            mine["findings"] = _taxa(_findings(body["findings"]),   # an unchanged name keeps its taxon, unasked
+                                     {f["scientific"]: f["taxon"] for f in was.get("findings") or [] if f.get("scientific") and f.get("taxon")})
         sets.append("analysis = analysis || %s"); vals.append(Jsonb(mine))
     if not sets:
         raise HTTPException(422, "nothing to change: note, kind, meta, findings or confirm")
@@ -2959,14 +2961,16 @@ EYES_FILE = ("Here is a description of a picture:\n\n{summary}\n\nList each kind
              "tree, animal any animal, habitat is ground made living, waste_residual and plastic_waste are rubbish, a "
              "made thing goes under its own class or goods, and other is buildings, roads, cars and anything else. "
              "name: as specific as the description is. count: only when the description gives a number, else null. "
-             "issue: true only when the description says it is a problem. Never people.")
+             "issue: true only when the description says it is a problem. scientific: for a plant or animal only, its "
+             "scientific name at the rank you are sure of (a species such as Cocos nucifera, a genus such as Plumeria, "
+             "or a family such as Arecaceae), else null. Never people.")
 _EYES_TASKS: set = set()   # strong refs, so an automatic description is not collected half way
 
 
 async def _describe(cid: int, model: str) -> dict:
     """Ask the local vision model about one capture and keep what it says, marked as the model's. Raises with a
     sentence a person can act on when the model or the file is not there."""
-    import base64, io  # noqa: E401, PLC0415
+    import asyncio, base64, io  # noqa: E401, PLC0415
     from PIL import Image  # noqa: PLC0415
     rows = q("SELECT file, kind, note FROM captures WHERE id = %s", cid)
     if not rows:
@@ -2984,7 +2988,8 @@ async def _describe(cid: int, model: str) -> dict:
     schema = {"type": "object", "required": ["findings"], "properties": {
         "findings": {"type": "array", "maxItems": 12, "items": {"type": "object", "required": ["class", "name"], "properties": {
             "class": {"type": "string", "enum": list(EYES_CLASSES)}, "name": {"type": "string"},
-            "count": {"type": ["integer", "null"]}, "issue": {"type": "boolean"}}}}}}
+            "count": {"type": ["integer", "null"]}, "issue": {"type": "boolean"},
+            "scientific": {"type": ["string", "null"]}}}}}}
     url = os.getenv("OLLAMA_URL", "http://host.docker.internal:11434")
 
     async def ask(hc, msg, num, fmt=None):
@@ -3006,7 +3011,7 @@ async def _describe(cid: int, model: str) -> dict:
         raise HTTPException(503, f"Ollama is not answering at {url} ({type(e).__name__})") from None
     except (KeyError, ValueError, TypeError):
         raise HTTPException(502, "the image model answered something that is not the shape asked for") from None
-    findings = _findings(out.get("findings") or [])
+    findings = await asyncio.to_thread(_taxa, _findings(out.get("findings") or []))
     analysis = {"model": model, "where": "local", "vocab": FLOWS_VOCAB, "asked": [look, EYES_FILE],
                 "at": datetime.now(timezone.utc).isoformat(), "summary": summary[:1500],
                 "findings": findings, "by": "model", "confirmed_by": None}
@@ -3022,11 +3027,51 @@ def _findings(raw: list) -> list:
         if not isinstance(f, dict) or str(f.get("name") or "").strip().lower() in ("", "none", "null", "n/a", "nothing"):
             continue   # a small model walks the class list and files "none" under each
         cnt = f.get("count")
-        out.append({"class": f.get("class") if f.get("class") in EYES_CLASSES else "other",
-                    "name": str(f["name"]).strip()[:120],
-                    "count": cnt if isinstance(cnt, int) and not isinstance(cnt, bool) and cnt >= 0 else None,
-                    "issue": f.get("issue") is True})
+        row = {"class": f.get("class") if f.get("class") in EYES_CLASSES else "other",
+               "name": str(f["name"]).strip()[:120],
+               "count": cnt if isinstance(cnt, int) and not isinstance(cnt, bool) and cnt >= 0 else None,
+               "issue": f.get("issue") is True}
+        sci = " ".join(str(f.get("scientific") or "").split())[:120]
+        if row["class"] in TAXON_KINGDOM and sci.lower() not in ("", "none", "null", "n/a", "unknown"):
+            row["scientific"] = sci   # only a living thing has a species; a taxon is the node's, never taken from a body
+        out.append(row)
     return out
+
+
+# SPEC_species step 1: a plant or animal finding's scientific name, matched to the GBIF Backbone (CC BY 4.0) when the
+# household said yes to SPECIES_MATCH. The name goes, nothing else. strict=true, because a fuzzy match turns a typo
+# into some other living thing; and a match in the wrong kingdom (a plant named like a beetle) is no match.
+TAXON_KINGDOM = {"plant": "Plantae", "animal": "Animalia"}
+GBIF_MATCH = "https://api.gbif.org/v1/species/match"
+
+
+def _taxa(findings: list, known: dict | None = None) -> list:
+    """Give each living finding with a scientific name its taxon: carried over from `known` (scientific -> taxon, the
+    row's earlier findings) when the name is unchanged, else asked of GBIF when the household allows it. The rank is
+    what GBIF matched, never what the model claimed: "Arecaceae" stays a family. No yes, no answer or no match, and
+    the finding keeps its typed name with no taxon."""
+    known = known or {}
+    ask = settings.get("SPECIES_MATCH", "off") == "on"
+    for f in findings:
+        sci = f.get("scientific")
+        if not sci:
+            continue
+        if sci in known:
+            f["taxon"] = known[sci]
+            continue
+        if not ask:
+            continue
+        try:
+            m = httpx.get(GBIF_MATCH, params={"name": sci, "strict": "true"}, timeout=10).json()
+        except (httpx.HTTPError, ValueError) as e:
+            log.warning("species: GBIF did not answer (%s)", type(e).__name__)
+            ask = False   # one failure is enough for this list; the rest keep their typed names
+            continue
+        if m.get("matchType") in (None, "NONE") or not m.get("usageKey") or m.get("kingdom") != TAXON_KINGDOM[f["class"]]:
+            continue
+        f["taxon"] = {"key": m["usageKey"], "name": m.get("scientificName") or sci, "rank": str(m.get("rank") or "").lower(),
+                      "match": str(m["matchType"]).lower(), "source": "gbif"}
+    return findings
 
 
 def _eyes_model() -> str:

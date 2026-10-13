@@ -186,14 +186,19 @@ const IKINDS = { phone: 'Phone', camera: 'Fixed camera', microscope: 'Microscope
 // ponytail: EYES_CLASSES in main.py, copied; the node files anything else under other
 const FCLASSES = ['plant', 'animal', 'habitat', 'food', 'water', 'compost', 'waste_residual', 'plastic_waste', 'packaging', 'wood', 'metal',
   'textile', 'electronics', 'filament', 'fuel', 'electricity', 'part', 'filter', 'furniture', 'tool', 'appliance', 'garment', 'micromobility', 'goods', 'other'];
+const LIVING = ['plant', 'animal'];
 const frow = f => `<div class="frow"><input data-g="name" aria-label="what" value="${esc(f.name || '')}">`
   + `<select data-g="class" aria-label="class">${FCLASSES.map(c => `<option${c === f.class ? ' selected' : ''}>${c}</option>`).join('')}</select><input data-g="count" aria-label="how many" type="number" min="0" value="${f.count ?? ''}">`
-  + `<label title="a problem for the place"><input data-g="issue" type="checkbox"${f.issue ? ' checked' : ''}>issue</label><button data-g="x" aria-label="delete this finding">×</button></div>`;
+  + `<label title="a problem for the place"><input data-g="issue" type="checkbox"${f.issue ? ' checked' : ''}>issue</label><button data-g="x" aria-label="delete this finding">×</button>`
+  // a living thing's scientific name, and what GBIF matched it to (SPEC_species step 1); a changed name is asked again on save
+  + `<input data-g="sci" aria-label="scientific name" placeholder="scientific name" value="${esc(f.scientific || '')}"${LIVING.includes(f.class) ? '' : ' hidden'}>`
+  + (f.taxon ? `<span class="fine mono"><a href="https://www.gbif.org/species/${+f.taxon.key}" target="_blank" rel="noopener">${esc(f.taxon.name)}</a> · ${esc(f.taxon.rank)} · GBIF</span>` : '') + `</div>`;
 const seen = a => !a ? `<p class="fine">Not described yet.</p>`
   : `<div class="seen"><p>${esc(a.summary || '')}</p><div class="frows">${(a.findings || []).map(frow).join('')}</div><button data-g="add">+ a finding</button>`
     + `<p class="fine mono">${a.confirmed_by ? `confirmed by ${esc(a.confirmed_by)}` : 'model, not confirmed'} · ${esc(a.model)}, on this machine · <a href="${esc(a.vocab || '')}" target="_blank" rel="noopener">flows 1.0</a></p></div>`;
 const rowsOf = card => [...card.querySelectorAll('.frow')].map(r => ({ class: r.querySelector('[data-g=class]').value, name: r.querySelector('[data-g=name]').value.trim(),
-  count: r.querySelector('[data-g=count]').value === '' ? null : +r.querySelector('[data-g=count]').value, issue: r.querySelector('[data-g=issue]').checked })).filter(f => f.name);
+  count: r.querySelector('[data-g=count]').value === '' ? null : +r.querySelector('[data-g=count]').value, issue: r.querySelector('[data-g=issue]').checked,
+  scientific: r.querySelector('[data-g=sci]').value.trim() || null })).filter(f => f.name);
 async function imagesBlock() {
   const el = $('#d-images');
   if (el.querySelector('.icard') && el.contains(document.activeElement)) return;   // a resize must not wipe an edit in progress
@@ -238,6 +243,9 @@ async function imagesBlock() {
       card.querySelector('[data-seen]').innerHTML = seen(j.capture.analysis); ok.textContent = 'Save findings'; say('Saved: these findings are the household\'s now.');
       if (window.placeImagesChanged) window.placeImagesChanged();
     };
+    card.querySelector('[data-seen]').addEventListener('change', e => {   // a row turned living gets its scientific name box
+      if (e.target.dataset && e.target.dataset.g === 'class') e.target.closest('.frow').querySelector('[data-g=sci]').hidden = !LIVING.includes(e.target.value);
+    });
     card.querySelector('[data-seen]').addEventListener('click', e => {   // delete a row, or add a blank one, before saving
       const g = e.target.dataset && e.target.dataset.g;
       if (g === 'x') e.target.closest('.frow').remove();

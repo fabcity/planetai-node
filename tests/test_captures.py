@@ -356,6 +356,57 @@ assert mine["findings"] == [{"class": "plant", "name": "coconut palm", "count": 
                             {"class": "other", "name": "a bench", "count": None, "issue": False}], mine
 assert mine["by"] == "person" and mine["confirmed_by"] == "Tomas", "an edit is a person's word"
 assert lan.patch("/captures/7", json={"findings": "x"}, headers=ACT).status_code == 422
+# ---- species (SPEC_species step 1): a living finding's scientific name, matched by GBIF only with the household's yes
+assert "scientific" in filed["messages"][0]["content"] and "Arecaceae" in filed["messages"][0]["content"], "the model is asked for the rank it is sure of"
+assert filed["format"]["properties"]["findings"]["items"]["properties"]["scientific"], "the schema carries it"
+ASKED, GBIF = [], {"Cocos nucifera": {"usageKey": 2735117, "scientificName": "Cocos nucifera L.", "rank": "SPECIES",
+                                      "matchType": "EXACT", "kingdom": "Plantae"},
+                   "Arecaceae": {"usageKey": 7681, "scientificName": "Arecaceae", "rank": "FAMILY", "matchType": "EXACT", "kingdom": "Plantae"},
+                   "Bombus": {"usageKey": 1340278, "scientificName": "Bombus", "rank": "GENUS", "matchType": "EXACT", "kingdom": "Animalia"}}
+def gbif_get(url, params=None, timeout=None):
+    ASKED.append((url, dict(params)))
+    if params["name"] == "Down":
+        raise main.httpx.ConnectError("no route")
+    return main.httpx.Response(200, json=GBIF.get(params["name"], {"matchType": "NONE"}))
+main.httpx.get = gbif_get
+ANSWER.update(findings=[{"class": "plant", "name": "coconut palm", "scientific": "Cocos nucifera"},
+                        {"class": "plant", "name": "palm", "scientific": "Arecaceae"},
+                        {"class": "plant", "name": "a bee, the model says", "scientific": "Bombus"},
+                        {"class": "plant", "name": "a shrub", "scientific": "Nonsuchia fakea"},
+                        {"class": "tool", "name": "a ladder", "scientific": "Scala"},
+                        {"class": "animal", "name": "a dog", "scientific": "  null "}])
+settings._cache["rows"]["SPECIES_MATCH"] = "off"
+a = lan.post("/captures/7/describe", headers=ACT).json()["analysis"]
+assert ASKED == [], "without the yes nothing is asked of GBIF"
+assert [f.get("scientific") for f in a["findings"]] == ["Cocos nucifera", "Arecaceae", "Bombus", "Nonsuchia fakea", None, None], \
+    "a living thing keeps its typed name; a tool has no species; 'null' is no name"
+assert not any("taxon" in f for f in a["findings"]), "no yes, no key"
+settings._cache["rows"]["SPECIES_MATCH"] = "on"
+a = lan.post("/captures/7/describe", headers=ACT).json()["analysis"]
+assert [p["name"] for _, p in ASKED] == ["Cocos nucifera", "Arecaceae", "Bombus", "Nonsuchia fakea"], ASKED
+assert all(u == main.GBIF_MATCH and set(p) == {"name", "strict"} and p["strict"] == "true" for u, p in ASKED), "the name and nothing else, strictly"
+t = [f.get("taxon") for f in a["findings"]]
+assert t[0] == {"key": 2735117, "name": "Cocos nucifera L.", "rank": "species", "match": "exact", "source": "gbif"}, t[0]
+assert t[1]["rank"] == "family", "a palm stays a family: the rank is what GBIF matched"
+assert t[2] is None and t[3] is None, "an animal's name on a plant is no match; nor is no match"
+ASKED.clear()
+ANSWER.update(findings=[{"class": "plant", "name": "x", "scientific": "Down"}, {"class": "plant", "name": "y", "scientific": "Arecaceae"}])
+a = lan.post("/captures/7/describe", headers=ACT).json()["analysis"]
+assert len(ASKED) == 1 and not any("taxon" in f for f in a["findings"]), "GBIF down: the description still lands, with typed names"
+# a person's edit: an unchanged name keeps its taxon unasked, a changed one is asked, a taxon in the body is ignored
+ANALYSIS[0] = {"model": "qwen2.5vl:7b", "findings": [{"class": "plant", "name": "palm", "scientific": "Arecaceae",
+                                                       "taxon": {"key": 7681, "name": "Arecaceae", "rank": "family"}}]}
+ASKED.clear()
+r = lan.patch("/captures/7", json={"findings": [{"class": "plant", "name": "palm", "scientific": "Arecaceae"},
+                                                 {"class": "plant", "name": "coconut", "scientific": "Cocos nucifera"},
+                                                 {"class": "plant", "name": "forged", "scientific": "Forgeria",
+                                                  "taxon": {"key": 1, "name": "Homo sapiens", "rank": "species"}}]}, headers=ACT)
+assert r.status_code == 200, r.text
+mine = CUR.params[0].obj["findings"]
+assert [p["name"] for _, p in ASKED] == ["Cocos nucifera", "Forgeria"], f"only new names are asked: {ASKED}"
+assert mine[0]["taxon"]["key"] == 7681 and mine[1]["taxon"]["key"] == 2735117 and "taxon" not in mine[2], mine
+settings._cache["rows"]["SPECIES_MATCH"] = "off"
+print("species: a living finding's scientific name; GBIF asked the name only, strictly, with the yes; the rank is the match's")
 # the upload's box: describe=1 describes the new image after the upload answers; unticked, nothing is asked
 called = []
 main._describe, d0 = (lambda cid, model: called.append((cid, model)) or __import__("asyncio").sleep(0)), main._describe
