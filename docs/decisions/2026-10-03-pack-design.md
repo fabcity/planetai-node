@@ -114,4 +114,6 @@ starts with somewhere to put its data.
 It changes no code. It does not add `serves:`, the `private` role or the live-check rule, and it does not change the
 camera pack, which stays at motion only on node #1. It does not design the core camera feature.
 
-Decided: ___ on ___
+Decided: point 2 as (A), the `private` role, by Tomas on 13 October 2026. Its first user is not the camera but the
+household inventory (`docs/SPEC_inventory.md`, idle things first), whose rows must never leave the home. Points 1, 3
+and 4 are not yet decided.
