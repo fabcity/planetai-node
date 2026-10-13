@@ -815,6 +815,47 @@ def check_griis() -> None:
                       "read": datetime.now(timezone.utc).isoformat(timespec="seconds")}
 
 
+
+# ---------------------------------------------------------------- what others recorded here (docs/SPEC_species.md §3)
+# GBIF's open occurrence records in the node's seven res-8 cells, counted per species, genus and family key, so a
+# matched finding can say "also recorded here by others, N times". Only CC0 and CC BY records: iNaturalist's CC BY-NC
+# ones are not open, and the node does not keep them. Counts only: no record, observer or point is kept. The request
+# carries the seven hexagons, which tells GBIF the area this node is in, about 2 km across. Weekly, with SPECIES_MATCH.
+OTHERS_EVERY = 7 * 86400
+OTHERS_LICENCES = ("CC0_1_0", "CC_BY_4_0")
+
+
+def _cell_wkt(cell: str) -> str:
+    """One H3 cell as the counter-clockwise WKT polygon GBIF's geometry filter asks for."""
+    import h3  # noqa: PLC0415
+    ring = [(lng, lat) for lat, lng in h3.cell_to_boundary(cell)]
+    if sum((x2 - x1) * (y2 + y1) for (x1, y1), (x2, y2) in zip(ring, ring[1:] + ring[:1])) > 0:
+        ring.reverse()   # the shoelace sum is positive for a clockwise ring
+    return "POLYGON((" + ",".join(f"{x:.6f} {y:.6f}" for x, y in ring + ring[:1]) + "))"
+
+
+def check_others() -> None:
+    """Weekly while SPECIES_MATCH is on: per cell, how many open records GBIF holds of each species, genus and family."""
+    if settings.get("SPECIES_MATCH", "off") != "on":
+        state.pop("others", None)
+        return
+    known = state.get("others") or {}
+    if time.time() - known.get("asked", 0) < OTHERS_EVERY:
+        return
+    try:
+        cells = {}
+        for cell in sorted(_node_cells()[0]):
+            r = hc.get("https://api.gbif.org/v1/occurrence/search", timeout=60, params=[
+                ("geometry", _cell_wkt(cell)), *(("license", lc) for lc in OTHERS_LICENCES), ("limit", "0"),
+                ("facet", "speciesKey"), ("facet", "genusKey"), ("facet", "familyKey"), ("facetLimit", "1000")])
+            r.raise_for_status()
+            cells[cell] = {int(c["name"]): c["count"] for f in r.json().get("facets", []) for c in f["counts"]}
+    except Exception as e:  # noqa: BLE001 — no route out keeps the last good counts and tries again in a day
+        state["others"] = {**known, "error": type(e).__name__, "asked": time.time() - OTHERS_EVERY + 86400}
+        return
+    state["others"] = {"cells": cells, "asked": time.time(), "read": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+
+
 # ---------------------------------------------------------------- loops
 def loop(fn, every: int, delay: int = 0):
     """Run fn forever. Each loop records its own last error under its own name: poll_once clears `last_error`
@@ -952,6 +993,7 @@ loop(push_events, 3600, delay=150)
 loop(check_release, 3600, delay=300)
 loop(check_registry, 3600, delay=60)
 loop(check_griis, 3600, delay=90)
+loop(check_others, 3600, delay=120)
 if RETICULUM_URL:
     loop(poll_reticulum, 300, delay=20)
 
@@ -3170,9 +3212,11 @@ def _taxa(findings: list, known: dict | None = None) -> list:
         f["taxon"] = {"key": m["usageKey"], "name": m.get("scientificName") or sci, "rank": str(m.get("rank") or "").lower(),
                       "match": str(m["matchType"]).lower(), "source": "gbif",
                       **({"accepted": m["acceptedUsageKey"]} if m.get("acceptedUsageKey") else {})}
-    g = state.get("griis")
+    g, o = state.get("griis"), (state.get("others") or {}).get("cells")
     for f in findings:   # every pass, so a saved finding takes up a checklist read since it was matched
         t = f.get("taxon")
+        if t and o is not None:   # what others recorded in the seven cells, under this name or the one it stands for
+            t["others"] = sum(c.get(t.get("key")) or c.get(t.get("accepted")) or 0 for c in o.values())
         if not t or not g:
             continue
         t.pop("introduced", None), t.pop("where", None)
