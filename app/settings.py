@@ -157,7 +157,9 @@ RUNTIME = {
                            "same palm is the same species on every node. It sends the name and nothing else, never the "
                            "picture and never where it was taken, but GBIF's server sees this house's internet address "
                            "and the names it asks about. Once a week it also reads this country's list of introduced and invasive species "
-                           "(GRIIS, on GBIF), which tells GBIF the country, found from the time zone, and nothing else."),
+                           "(GRIIS, on GBIF), which tells GBIF the country, found from the time zone, and nothing else. And once a week it counts "
+                           "the open records others made in this node's seven cells, which tells GBIF the area "
+                           "this house is in, about 2 km across."),
     # Presence: the node saying "I am here" on Reticulum, and nothing else. Off by default, because
     # SHARE_LEVEL governs what this node ANSWERS when asked and this is the node speaking unprompted.
     "RETICULUM_PRESENCE":  ("sharing", "Announce this node on Reticulum", False, False,

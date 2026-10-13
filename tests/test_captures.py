@@ -482,6 +482,46 @@ assert t["introduced"] is None and t["where"] == "GRIIS publishes no checklist f
 main.hc = hc0; main.state.pop("griis"); os.environ["NODE_TZ"] = "Asia/Makassar"
 settings._cache["rows"]["SPECIES_MATCH"] = "off"
 print("introduced: the country from NODE_TZ, its GRIIS list read weekly with the yes, invasive or introduced on the taxon, unlisted unmarked")
+# ---- what others recorded here (SPEC_species step 3): open GBIF records in the seven cells, counted, nothing else kept
+w = main._cell_wkt("8895a4c843fffff")
+pts = [tuple(map(float, xy.split())) for xy in w[len("POLYGON(("):-2].split(",")]
+assert len(pts) == 7 and pts[0] == pts[-1], "a closed hexagon"
+assert sum((x2 - x1) * (y2 + y1) for (x1, y1), (x2, y2) in zip(pts, pts[1:])) < 0, "counter-clockwise, as GBIF asks"
+OCC = []
+class FakeOcc:
+    def get(self, url, params=None, timeout=None):
+        OCC.append((url, list(params)))
+        geo = dict(params)["geometry"]
+        n = 3 if geo == main._cell_wkt(sorted(main._node_cells()[0])[0]) else 1
+        return main.httpx.Response(200, request=main.httpx.Request("GET", url), json={"count": 9, "facets": [
+            {"field": "SPECIES_KEY", "counts": [{"name": "2925303", "count": n}, {"name": "2970418", "count": 2}]},
+            {"field": "FAMILY_KEY", "counts": [{"name": "7681", "count": 5}]}]})
+hc0, main.hc = main.hc, FakeOcc()
+settings._cache["rows"]["SPECIES_MATCH"] = "off"
+main.state["others"] = {"cells": {}}
+main.check_others()
+assert "others" not in main.state and OCC == [], "off: nothing asked, nothing kept"
+settings._cache["rows"]["SPECIES_MATCH"] = "on"
+main.check_others()
+o = main.state["others"]["cells"]
+assert len(OCC) == 7 and len(o) == 7, "one request per cell of the seven"
+assert all(u.endswith("/occurrence/search") and ("license", "CC0_1_0") in q and ("license", "CC_BY_4_0") in q
+           and ("limit", "0") in q and not any(k in ("lat", "lon", "decimalLatitude") for k, _ in q) for u, q in OCC), \
+    "open licences only, counts only, the cell's shape and no point"
+assert sum(c[2925303] for c in o.values()) == 3 + 6 and all(c[7681] == 5 for c in o.values())
+main.check_others()
+assert len(OCC) == 7, "read weekly, not every hour"
+GBIF["Arecaceae"] = {"usageKey": 7681, "scientificName": "Arecaceae", "rank": "FAMILY", "matchType": "EXACT", "kingdom": "Plantae"}
+GBIF["Leucaena glauca"] = {"usageKey": 555, "acceptedUsageKey": 2970418, "scientificName": "Leucaena glauca", "rank": "SPECIES",
+                           "matchType": "EXACT", "kingdom": "Plantae"}
+fs = main._taxa(main._findings([{"class": "plant", "name": "a", "scientific": "Lantana camara"},
+                                {"class": "plant", "name": "b", "scientific": "Arecaceae"},
+                                {"class": "plant", "name": "c", "scientific": "Leucaena glauca"},
+                                {"class": "plant", "name": "d", "scientific": "Cocos nucifera"}]))
+assert [f["taxon"]["others"] for f in fs] == [9, 35, 14, 0], [f["taxon"].get("others") for f in fs]
+main.hc = hc0; main.state.pop("others")
+settings._cache["rows"]["SPECIES_MATCH"] = "off"
+print("others: the seven cells' open GBIF records, counted per species, genus and family, weekly with the yes; none kept but counts")
 # the upload's box: describe=1 describes the new image after the upload answers; unticked, nothing is asked
 called = []
 main._describe, d0 = (lambda cid, model: called.append((cid, model)) or __import__("asyncio").sleep(0)), main._describe

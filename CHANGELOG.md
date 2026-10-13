@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **What others recorded here (SPEC_species step 3).** With **Name species with GBIF** on, the node counts once a week
+  GBIF's open records (CC0 and CC BY only; iNaturalist's CC BY-NC ones are left out) in each of its seven res-8
+  cells, per species, genus and family. A matched finding says "recorded here by others 3×", or "no open record of it
+  here yet". Only counts are kept: no record, observer or point. The request sends each cell's shape, so GBIF learns
+  the area the node is in, about 2 km across; Set up and "what leaves" say so. Read live on 13 Oct for node #1: 748
+  open records across the seven cells.
+
 - **Introduced or invasive (SPEC_species step 2).** With **Name species with GBIF** on, the node reads its country's
   GRIIS checklist (the Global Register of Introduced and Invasive Species, CC BY 4.0, on GBIF) once a week, and a
   matched species is marked `invasive` or `introduced` "in Indonesia" on its finding and in the Data door. The country
