@@ -1065,7 +1065,7 @@ async def _mcp_auth(request, call_next):
 # there too, but the route drops what it says relative to the node (is_node, cells_from_node, *_polar) for a
 # caller without a token: asked at res 15 cell by cell, those would find the house. The phone's walk needs both
 # (Tomas, 12 Oct 2026: one phone mode, no token, for the person running the node).
-_SHARE_OFF = (frozenset({"/", "/ui", "/health", "/llms.txt", "/settings", "/export", "/presence", "/nodes"}), ("/static/",))
+_SHARE_OFF = (frozenset({"/", "/ui", "/health", "/llms.txt", "/settings", "/export", "/presence", "/nodes", "/offers"}), ("/static/",))
 _SHARE_OPEN = (_SHARE_OFF[0] | frozenset({
     "/stats", "/sensors", "/observations", "/alerts", "/series", "/sparks", "/rho", "/cells", "/packs", "/trust",
     "/nearby", "/forecast", "/earth", "/earth/change.png", "/earth/year.png", "/earth/frame.png",
@@ -1787,7 +1787,7 @@ def export(day: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$")):
             "day": day, "generated": datetime.now(timezone.utc).isoformat(), "version": os.getenv("NODE_VERSION", ""),
             "licence": "CC BY 4.0", "hourly": rows,
             "alerts": [{"t": a["ts"], "rule": a["rule_id"], "level": a["level"], "text": a["text"].split("\n")[0]} for a in alerts_],
-            "cells": cells_, "rho": rho_}
+            "cells": cells_, "rho": rho_, "offers": offers_now()["offers"]}
 
 
 @app.get("/place/geojson")
@@ -3174,6 +3174,49 @@ def thing_delete(tid: int, authorization: str = Header("")):
             raise HTTPException(404, "no such thing")
         _thing_counts(cur, [row["class"]])
     return {"ok": True}
+
+
+# ---------------------------------------------------------------- offers (docs/SPEC_inventory.md step 4)
+# A thing the household marks `lend` or `give` becomes a public line: its class, name, condition and count, at the
+# node's own res-8 cell, the one /health already names. Never the household, a point, a photo or a note. Whoever
+# wants it writes to the node's Telegram bot, which passes the message on (agent_loop.relay_offer); the household's
+# chat ids never show. Tomas, 13 Oct 2026: "option 1, the Telegram bot".
+BOT_EVERY = 86400
+
+
+def _bot_username() -> str | None:
+    """The bot's @name, asked of Telegram once a day with the token the node already holds. None without a bot."""
+    tok, chats = TG()
+    if not tok or not chats:
+        return None
+    known = state.get("bot") or {}
+    if time.time() - known.get("asked", 0) < BOT_EVERY:
+        return known.get("username")
+    try:
+        r = httpx.get(f"https://api.telegram.org/bot{tok}/getMe", timeout=10)
+        name = (r.json().get("result") or {}).get("username") if r.status_code == 200 else None
+    except Exception as e:  # noqa: BLE001 — the URL holds the token: log the kind of failure, never the error text
+        log.warning("telegram getMe: %s", type(e).__name__)
+        name = None
+    state["bot"] = {"username": name or known.get("username"), "asked": time.time() if name else time.time() - BOT_EVERY + 3600}
+    return state["bot"]["username"]
+
+
+def offers_now() -> dict:
+    import h3  # noqa: PLC0415
+    lat, lon = float(os.getenv("NODE_LAT", 0) or 0), float(os.getenv("NODE_LON", 0) or 0)
+    bot = _bot_username()
+    rows = q("SELECT id, class, name, condition, offer, count FROM things WHERE offer <> 'no' ORDER BY id")
+    return {"node": NODE, "cell": h3.latlng_to_cell(lat, lon, 8) if (lat or lon) else None,
+            "contact": f"https://t.me/{bot}" if bot else None,
+            "offers": [{**r, "ask": f"https://t.me/{bot}?start=offer-{r['id']}" if bot else None} for r in rows]}
+
+
+@app.get("/offers")
+def offers():
+    """What this home would lend or give, as it chose to publish it: open at every SHARE_LEVEL, and in the daily
+    export. `ask` opens the node's Telegram bot on that offer; null when the node has no bot."""
+    return offers_now()
 
 
 @app.patch("/captures/{cid}")

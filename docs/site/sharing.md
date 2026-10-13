@@ -132,6 +132,7 @@ Set up never travels to a NAS or a remote. The node never logs the Telegram URL,
 | the square being looked at | a tile server, per tile, only with `MAP_TILES=on` | the tile's own square; `off` (the default) draws from the node's local copy of OpenStreetMap |
 | the question you asked the bot | an online model, only if you gave it a key and changed `AGENT_PREFER` from its default, `private` | the question and the tool results the model asked for |
 | a question asked in the dashboard's pane | the model Set up names: this machine, one on your network, or an online provider only with `AGENT_PREFER` set to `fallback` or `strongest` | the question and the page's own sentences and numbers; the context carries no position, name or id; the node keeps no transcript |
+| an offer | anyone: `GET /offers` at every `SHARE_LEVEL`, and the daily export (CC BY 4.0) | only for a thing the household marked lend or give: its class, name, condition and count, at the node's own res-8 cell, with a link to the node's Telegram bot. Never a note, a photo, how often it is used or a point |
 | raw readings | nobody | nothing |
 | a `private` reading | nobody: not the export, a parent, the report bundle or any agent, and on this machine's raw routes only the admin token | it is used on the page, by rules and by cells; Home Assistant discovery, the household's own automation, still receives it |
 

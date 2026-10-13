@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Offers (SPEC_inventory step 4).** A thing the household marks "Would lend it" or "Would give it away" becomes
+  public: `GET /offers` (open at every `SHARE_LEVEL`) and the daily export's new `offers` carry its class, name,
+  condition and count at the node's own res-8 cell, and nothing else. Each offer's `ask` link opens the node's
+  Telegram bot (Tomas: "option 1, the Telegram bot"). Whoever opens it writes one message, and the bot passes it to
+  every household chat with their Telegram name and @username so the household can write back. One message per chat
+  an hour; any other message from a stranger is still ignored; the household's chat ids never show. The node learns
+  its bot's username from Telegram once a day. The Data door's Things now say what an offer publishes.
+  `export-v0` gains the top-level key `offers` (`tests/data/wire/export-v0.json`).
+
 - **A thing from a photo (SPEC_inventory step 3).** Once an image's findings are confirmed, each one in a class a home
   keeps (tool, appliance, furniture, electronics, garment, textile, micromobility, vehicle, part, goods) has a
   **+ … as a thing** button in Data › Images, so a photo of a shelf becomes several things in a few presses. The thing

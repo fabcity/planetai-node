@@ -605,6 +605,11 @@ Delete a thing; the counts of its class are rewritten. 404 for an unknown id.
 
 A thing made from an image carries its `capture_id`: the Data door's Images offer each confirmed finding in one of these classes as "+ … as a thing". Deleting the image (`DELETE /captures/{cid}`) keeps the thing and clears its `capture_id`.
 
+### GET /offers
+Access: public
+
+What this home would lend or give, as it chose to publish it (SPEC_inventory step 4): `{node, cell, contact, offers: [{id, class, name, condition, offer, count, ask}]}`. Only things whose `offer` is `lend` or `give`, and only those six fields: never a note, a photo, how often a thing is used, or where it is beyond `cell`, the node's own resolution-8 cell that `/health` already names. `contact` is the node's Telegram bot (`https://t.me/<bot>`), and `ask` opens it on that offer (`?start=offer-<id>`); both are null on a node with no bot. The bot passes one message from whoever opens it to the household's chats, with the sender's Telegram name ([the bot](bot.md)). On the `off` list, and in the daily export as `offers`.
+
 ### GET /species
 Access: act
 
@@ -775,7 +780,7 @@ What the node publishes, and how its dumps reach a NAS.
 ### GET /export
 Access: public
 
-One day of this node as open data, licensed CC BY 4.0: hourly means per sensor and metric, the Index cells, the alerts and ρ. Never raw readings, never secrets. The node's own sensors are named by role (`indoor-1`, `outdoor-1`), not by device id; public references and models keep their ids. `backup.sh` fetches this nightly over `http://localhost:${APP_PORT}` and writes `exports/<node>/YYYY-MM-DD.json`, which is why the route is on the `off` list.
+One day of this node as open data, licensed CC BY 4.0: hourly means per sensor and metric, the Index cells, the alerts, ρ, and the offers the household chose to publish (`GET /offers`). Never raw readings, never secrets. The node's own sensors are named by role (`indoor-1`, `outdoor-1`), not by device id; public references and models keep their ids. `backup.sh` fetches this nightly over `http://localhost:${APP_PORT}` and writes `exports/<node>/YYYY-MM-DD.json`, which is why the route is on the `off` list.
 
 | Name | Type | Default | Meaning |
 |---|---|---|---|
@@ -906,6 +911,7 @@ The API is the read side. These are the requests the node makes of other machine
 | `GET https://api.gbif.org/v1/species/match?name=…&strict=true` | When a plant or animal finding gets a new scientific name, only with `SPECIES_MATCH=on` | The scientific name only; the request shows the node's internet address to GBIF. The answer is the finding's `taxon` |
 | `GET https://api.gbif.org/v1/organization/…/publishedDataset`, `/v1/species/search?datasetKey=…`, `/v1/dataset/…/endpoint`, then the checklist's archive | Weekly (a day after a failed read), only with `SPECIES_MATCH=on` | Which country's GRIIS checklist to read, so the country (found from `NODE_TZ`) and nothing else. The answer marks matched species introduced or invasive |
 | `GET https://api.gbif.org/v1/occurrence/search?geometry=…&license=CC0_1_0&license=CC_BY_4_0&limit=0&facet=…`, once per cell of the seven | Weekly (a day after a failed read), only with `SPECIES_MATCH=on` | Each of the node's seven res-8 cells as a polygon, so the area this node is in, about 2 km across. Counts come back, never a record |
+| `GET https://api.telegram.org/bot…/getMe` | Once a day, only with a Telegram bot set | Nothing; the answer is the bot's username, for an offer's `ask` link |
 | `GET https://raw.githubusercontent.com/fabcity/planetai-node/main/registry.json` | Every 6 hours (an hour after a failed read), unless `UPDATE_CHECK=off` | Nothing about the house; the request shows the node's internet address to GitHub. The answer is `GET /nodes` |
 | `POST {RETICULUM_URL}/send` | Each act-level alert, if `RETICULUM_URL` is set | `{"text": ...}` to the bridge container |
 | MQTT publish | Each act-level alert (`MESH_ALERTS=1`), and Home Assistant discovery (`HA_DISCOVERY=1`) | The first line of the alert to the mesh downlink; discovery and state topics to the broker at `MQTT_HOST` |

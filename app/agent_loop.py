@@ -619,6 +619,59 @@ def _name_of(user: dict) -> str:
     return ((user.get("first_name") or "") or (user.get("username") or "") or "someone").strip()[:80] or "someone"
 
 
+# ----------------------------------------------------------- offers (SPEC_inventory step 4)
+# Someone who is not this household opens an offer's link (t.me/<bot>?start=offer-<id>), writes one message, and the
+# bot passes it to the household's chats with the sender's Telegram name, so they can write back. The household's chat
+# ids never show and nothing the stranger says is kept. One message per chat an hour; everything else from a chat that
+# is not the household's is still ignored. Tomas, 13 Oct 2026: offers are answered through the bot.
+OFFER_WINDOW = 1800        # seconds after opening an offer in which the next message is the one passed on
+OFFER_GAP = 3600           # seconds between two messages passed on from the same chat
+OFFER_ASKING: dict = {}    # chat -> (offer, until)
+OFFER_SENT: dict = {}      # chat -> when its last message was passed on
+
+
+async def relay_offer(hc, m: dict, chat: str, text: str, now: float) -> bool:
+    """A message from a chat that is not the household's, about an offer. True when it was answered."""
+    hit = re.fullmatch(r"/start offer-(\d+)", text)
+    if hit:
+        r = await hc.get(node_url("/offers"), timeout=15)
+        o = next((x for x in r.json().get("offers", []) if x["id"] == int(hit.group(1))), None) if r.status_code == 200 else None
+        if not o:
+            await telegram("sendMessage", chat_id=chat, text=T("That offer is not here any more.", es="Esa oferta ya no está."))
+            return True
+        OFFER_ASKING[chat] = (o, now + OFFER_WINDOW)
+        what = T("to borrow", es="para prestar") if o["offer"] == "lend" else T("to give away", es="para regalar")
+        await telegram("sendMessage", chat_id=chat, text=T(
+            f"This is the {NODE} node. Write one message about the {o['name']} ({what}) and I will pass it to the "
+            "household with your Telegram name, so they can write back to you.",
+            es=f"Este es el nodo {NODE}. Escribe un mensaje sobre {o['name']} ({what}) y se lo pasaré al hogar con tu "
+               "nombre de Telegram, para que te puedan responder."))
+        return True
+    o, until = OFFER_ASKING.get(chat, (None, 0))
+    if not o or now > until or text.startswith("/"):
+        return False
+    if now - OFFER_SENT.get(chat, -OFFER_GAP) < OFFER_GAP:
+        await telegram("sendMessage", chat_id=chat, text=T("You already wrote to them this hour. Give them time to answer.",
+                                                           es="Ya les escribiste en esta hora. Dales tiempo para responder."))
+        return True
+    u = m.get("from") or {}
+    handle = f"@{u['username']}" if u.get("username") else ""
+    note = "" if handle else T("\n(They have no Telegram username, so you can reach them only if they said how.)",
+                               es="\n(No tiene nombre de usuario en Telegram: solo puedes contestar si dijo cómo.)")
+    for c in CHATS():
+        await telegram("sendMessage", chat_id=c, text=T(
+            f"📦 Someone asks about your offer #{o['id']}, the {o['name']}:\n\n{text[:1000]}\n\n— {_name_of(u)} {handle}{note}",
+            es=f"📦 Alguien pregunta por tu oferta #{o['id']}, {o['name']}:\n\n{text[:1000]}\n\n— {_name_of(u)} {handle}{note}"))
+    OFFER_SENT[chat] = now
+    OFFER_ASKING.pop(chat, None)
+    await telegram("sendMessage", chat_id=chat, text=T(
+        "Passed on. The household will write to you if they can." + ("" if handle else
+        " You have no Telegram username, so they can only reach you if your message said how."),
+        es="Enviado. El hogar te escribirá si puede." + ("" if handle else
+        " No tienes nombre de usuario en Telegram: solo te podrán contestar si tu mensaje dice cómo.")))
+    return True
+
+
 async def _post_answer(hc, event_id: int, stage: str, actor: str, note: str = "") -> None:
     r = await hc.post(node_url("/actions"), timeout=15,
                       json={"event_id": event_id, "stage": stage, "actor": actor, "note": note})
@@ -748,6 +801,11 @@ async def main():
             if not text:
                 continue
             if chat not in CHATS():
+                try:
+                    if await relay_offer(hc, m, chat, text, time.monotonic()):
+                        continue
+                except Exception as e:  # noqa: BLE001
+                    log.warning("offer relay failed: %s", type(e).__name__)
                 log.info("message from chat %s ignored: not in TELEGRAM_CHAT_IDS %s", chat, sorted(CHATS()))
                 continue
             note_eid = note_pending(pending, chat, text, time.monotonic())
