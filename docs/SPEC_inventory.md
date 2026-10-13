@@ -111,13 +111,14 @@ the upstream tiers design, whose pilot tier is still undecided.
    door list, the three private readings and the Now line (the report sentence is left out, §4). Flows 1.0 gains `vehicle` (count, physical) for cars,
    motorbikes and trucks, before any place logs one.
 3. **From a photo.** *Built 13 October 2026.* "Add as a thing" on a confirmed finding.
-4. **Offers.** `lend` and `give` become public lines at the res-8 cell.
+4. **Offers.** *Built 13 October 2026.* `lend` and `give` become public lines at the res-8 cell, answered through the
+   node's Telegram bot.
 5. **Cell totals.** Waits for the upstream tiers.
 
 ## 9 · Open
 
 - **The threshold for cell totals.** Five homes is a placeholder.
-- **Who answers an offer.** The node carries no messages between households. An offer might name the node's
-  Telegram bot, or a Fab Lab that brokers lending. Decided at step 4.
+- **Who answers an offer.** *Decided 13 October 2026 by Tomas: the node's Telegram bot.* An offer's link opens the
+  bot, which passes one message an hour per sender to the household's chats with the sender's Telegram name.
 - **`vehicle` as one class or three.** A car and a motorbike draw on very different amounts of material; flows 1.0
   sums by class. One class with the kind in the name is the smaller change.

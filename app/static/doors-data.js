@@ -234,7 +234,8 @@ async function thingsBlock() {
   if (!j) { el.innerHTML = `<h2>Things</h2><p class="fine">What this home keeps answers the admin token only, and never leaves the house. Unlock this screen with it under Node.</p>`; return; }
   const s = j.summary;
   el.innerHTML = `<h2>Things, ${s.things}</h2><p class="blurb">What this home keeps: ${s.idle} used a few times a year or never, ${s.repair} waiting for a repair. `
-    + `None of it leaves the house: the node counts them per class for the page and its rules, keeps them out of the export, the report and every agent, and only in the household's own backup.</p>`
+    + `Nothing about them leaves the house except what you offer: the node counts them per class for the page and its rules, keeps them out of the export, the report and every agent, and only in the household's own backup. `
+    + `A thing you would lend or give is public: its class, name, state and count, at this node's cell, in <a class="mono" href="/offers">/offers</a> and the daily export, and whoever wants it writes to this node's Telegram bot, which passes the message to you.</p>`
     + `<div class="icards">${tcard({}, j.classes)}${j.things.map(t => tcard(t, j.classes)).join('')}</div>`;
   el.querySelectorAll('.icard').forEach(card => {
     const id = card.dataset.id, say = t => { card.querySelector('[role=status]').textContent = t; };

@@ -113,6 +113,14 @@ set to Bahasa Indonesia they fall back to English, while the model's answers fol
 | `/model [local\|remote\|online\|auto]` | pins a rung for this chat and prints the ladder: each rung, its model, its host, whether it is currently skipped, and what `AGENT_PREFER` means (`private`: "the node's own machines only, nothing leaves the network") |
 | Event buttons | When the bot has announced itself (`TELEGRAM_BUTTONS=1`), event messages carry three buttons: Done (`acted`), Not now (`acknowledged`), Doesn't fit (`dismissed`). Pressing one posts `POST /actions` with `event_id`, `stage`, `actor`, `note`; Doesn't fit asks "what did you do instead?" and keeps the reply as the note. Labels in en/id/es. |
 
+## Offers: someone who is not the household
+
+Everything else a chat outside `TELEGRAM_CHAT_IDS` sends is ignored. The one exception is an offer (SPEC_inventory step 4). An offer's `ask` link (`t.me/<bot>?start=offer-<id>`, in `GET /offers` and the daily export) opens the bot on that offer. It answers "Write one message about the cordless drill (to borrow)…", and the next message, within 30 minutes, goes to every household chat:
+
+> 📦 Someone asks about your offer #4, the cordless drill: … — Wayan @wayan_b
+
+The sender is told "Passed on". You write back to them yourself through their @username. When they have none, both sides are told they can be reached only if their message said how. One message per chat an hour; a later one is ignored like any stranger's. The household's chat ids never show, and nothing the sender writes is kept. Labels in en and es.
+
 ## What leaves the network
 
 Nothing, unless you give the online rung a key and set `AGENT_PREFER` to something other than `private`.
