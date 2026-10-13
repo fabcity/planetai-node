@@ -2,6 +2,209 @@
 
 ## Unreleased
 
+- **The eyes, step 1: the capture tier (SPEC_eyes).** A household chooses a picture from its phone's library on the phone page
+  (**Add an image** in Now, on an unlocked phone, opens the library and asks the details once one is chosen; a
+  locked phone reads "Unlock this phone to add images").
+  The node keeps the file in `CAPTURES_DIR` — any storage, a NAS share included — cleaned of EXIF and GPS on
+  arrival, and records the capture: when (the picture's own date when it carries one), its res-10 cell, its
+  kind, who, and the exact point it was taken from, kept token-only (12 Oct, Tomas: a tree or a dump is worth
+  its precise position). `outside` and `at_home` are computed once on arrival. `POST /captures`, `GET /captures`
+  (a `?cell=` at any resolution, which is how the walk asks) and `GET /captures/{id}/file` answer this machine
+  or the act token only: on no `SHARE_LEVEL` list at any level, the read-only backup token is refused by the
+  routes, and no capture is in `/export`, `/exports`, `/aggregates`, `/readings` or any parent push —
+  `tests/test_captures.py` greps those roads for the table's name. A duplicate sha256 answers the existing row;
+  a missing or unwritable folder is a clear 503, and `planetai doctor` goes red naming the fix. The walk counts
+  a scale's pictures at its step ("1 image here") and opens a small grid of them, token only. The Place door
+  shows them too (Tomas, 12 Oct): one map layer per kind, a square per image that opens its card, and
+  **+ Add an image** beside the views opens a dialog that takes a file picked or dropped. The Data door lists every
+  image with its facts, edits its kind, note and key: value lines (`PATCH /captures/{id}`, act token) and deletes
+  it, file and row (`DELETE /captures/{id}`, admin token). A picture's own GPS becomes its
+  point (a library pick lands where it was taken), and the phone's picker opens the library, not the camera (Tomas). Set up shows the **Pictures folder**; `planetai storage set captures <dir>` moves it.
+
+- **`planetai hello` lists a node on every node's map.** It shows the household exactly what will be public (the
+  node's name, its cell and the cell's centre, the place, who runs it, an optional contact), and on a yes opens the
+  pull request to `registry.json` with `gh`, or prints the entry and the link without it. The merge is the
+  approval; every node reads the list within six hours. `--remove` takes a node off. A node already listed is told
+  so: the listed place, operator and contact are the defaults, its first month is kept, and the same entry again
+  sends nothing. `sources` lists every source the node reads, by name (each sensor source and the map layers it
+  keeps), never a kit id.
+
+## v0.81.0 — 2026-10-12 — The phone walks out from the house
+
+- **A phone gets its own page, and it is one page: Now, the walk out from the house, Node.** A coarse pointer
+  with a short screen side under 600 px is moved to `/?layout=mobile`, decided once before anything else loads; a
+  narrow desk window and a tablet stay on the doors, and "Phone view" / "Full dashboard" switch with the choice
+  remembered. Now fills the first screen (the engine's title and tagline, the reading, the Decide card with its
+  three buttons, the other issues), and an arrow at its foot points down. The walk is a map pinned under the bar and
+  a story under it, house → street → ring → region → planet, the camera framing each scale's own cell: the house's
+  day against its line, the street against the house with the gap shaded, the stations around as dots, every scale
+  on one axis, the listed nodes on a globe. It names no issue: every issue `/issues` carries is walked, at the
+  scales it has, so a pack's issue joins it with nothing changed. MapLibre and `walk.js` load once Now has drawn.
+  Node draws from `/health`, so it always draws; a locked phone at `SHARE_LEVEL=off` reads the node's own sentence
+  and the field for the act token. `/?layout=walk` opens the same page. The spec is `docs/SPEC_mobile.md`; the
+  visual gate measures the page (`measure.mjs mobile`).
+- **At `SHARE_LEVEL=open` a phone walks with the map and no token.** `/ground/*` and `/geo/cell` join the `open`
+  list; `/geo/cell` leaves out `is_node`, `cells_from_node`, `ring_polar` and `children_polar` for a caller without
+  a token, since asked cell by cell at res 15 they would find the house.
+- **A phone unlocks from a QR code.** Set up › This screen, unlocked with the admin token, shows "A phone": a QR
+  code of the phone page holding the token for closing a loop, so the phone can answer the node with nothing typed.
+  `GET /settings/phone` (admin only) hands the code its token; the phone keeps `#act=` and takes it out of the
+  address bar. QR Code Generator 1.4.4 (MIT) is vendored for it.
+- **The Node door draws the nodes the programme lists, not a list typed into the page.** The node reads
+  `registry.json` from the repository every 6 hours and serves it at `GET /nodes`, open at every share level, with
+  each other node's point to one decimal and no contact. The globe and the list say "listed" or "not listed"; a node
+  joins with a merged pull request, and a command that opens it comes next. `UPDATE_CHECK=off` reads nothing.
+- **A Decide card speaks about now, and stops asking once it is answered.** The action on an open event's card
+  is chosen again from the readings as they are, so it no longer tells a house to open up on the strength of last
+  night's outside reading; the message the bot sent keeps its words. Once somebody answers, the buttons go and the
+  card says who and when; after a Not now they come back when its three hours run out. `GET /issues` events gain
+  `asking`, and every page draws its buttons from it.
+- **A past hour says what it meant.** "The house was keeping the street's dust out", "Something in the house was
+  making the air dirty": each hour on the Now door's scrubber is read by the same six stories as the live title.
+- **The live sentence says which way it is going again.** The engine read the trend from the latest 24 hourly
+  buckets, and the forecast's hours (up to two days ahead) are among them: no sensor reads there, so every trend
+  came out "holding" and every issue's movement as zero. It now reads the 24 hours that have happened.
+- **Going back an hour on the Now door speaks the node's words.** Scrub back and the sentence now comes from
+  the node like the live one does, in every language: what the air or the heat was doing ("The air was clearing
+  in the house"), then the reading and whose line, smaller ("At 04:00 it read 8 µg/m³, under the WHO line.").
+  The page used to write that hour itself, in English only, with its own over-or-under arithmetic.
+  `GET /issues/days` gains `hours` per sensed issue, in the locale asked for (`?locale=`).
+- **The title says what it means for the house, and the line below says why.** "The house is keeping the heat
+  out", then smaller: "Inside it is under this house's own heat line, and the street is past it." Each issue's
+  sentence templates mark the split themselves (`title | tagline`), so the words live in the node, in every
+  language, and no page rewrites them. The list of every distance ("cooler than the street, the ring and the
+  region") is gone from the sentence; the figures are where they were, in the reading below.
+- **The Place door's scale buttons take the map to their scale.** On a landscape screen a press did nothing (the
+  map was asked to fit a cell inside a margin taller than itself), and elsewhere it landed one scale off. A button
+  now goes to the zoom the map itself reads as that scale.
+
+## v0.80.11 — 2026-10-10 — The seed in the middle, the labels in lanes, the wall follows the window
+
+- **The asking face's middle is never empty.** Before any script arrives, the measuring frame now carries
+  its own mark dead center — a small square outline, breathing (pure CSS, reduced-motion aware) — on both
+  faces of the node; `open()` removes it the moment the glyph globe wires in. The doors overlay also stops
+  capping its background at 1440 px: the paper now covers the whole window at any width, with the content
+  column unchanged (the cap moved from the element to its padding). The classic dashboard's asking
+  composition centers vertically instead of hugging the top.
+- **Event labels take lanes on the day figure.** Two events opening close together — node #1 had
+  "spike 02:32" and "spike 03:45" printing through each other this morning — are measured, kept inside the
+  frame's right edge, and stepped a row up when they would collide; the lanes are the top margin's own and
+  a label is never dropped. The answer rings and bars are unchanged.
+- **The wall's type follows the window, not just its width.** Every wall text that scaled by `vw` alone —
+  the sentence, the tagline, the node-writing narrative, the asks, the figures — now scales by
+  `min(vw, vh)`, tuned so 1920x1080 renders pixel-identical to before but a shorter or narrower window
+  shrinks the type instead of overflowing it.
+
+## v0.80.10 — 2026-10-10 — The boot screen is the loading screen
+
+- **No dead shell before the asking face, on either face of the node.** The doors and the classic dashboard
+  used to paint their chrome — the nav, the register buttons, the empty middle — for a breath or two before
+  any script arrived to open the asking overlay. Both overlays now ship already on: the first paint is the
+  asking face, whose brand, frame and blink are CSS and move before a line of JS runs, and the glyph globe
+  joins when the page's own `open()` wires the canvas over it (its `on` is a JS flag, so the pre-shown face
+  does not stop it). Every path out closes it as before, and a browser with scripting off gets the shell
+  instead of a spinner that would lie (`@media (scripting: none)` — not a `noscript` style tag, which the
+  page architecture forbids and check_ui would rightly trip on).
+
+## v0.80.9 — 2026-10-10 — The split reaches the Now door's hour scrubber
+
+- **The Now door titles with the split, live hour and past.** v0.80.8 split the hero and the wall but missed
+  the doors Now door's own sentence line: the live hour still drew the whole sentence bold, and a past hour
+  still opened with the reading — "At 04:00 the air in the house read 8 µg/m³, under the line." The live hour
+  now draws `title` + `tagline` like every other surface, and a past hour splits the same way on the page's
+  own words: the title is what it meant ("The air in the house was under the line."), the tagline what it
+  measured ("At 04:00 it read 8 µg/m³.") — smaller, not bold, muted. First the meaning, then the instrument.
+
+## v0.80.8 — 2026-10-10 — The title says what is happening; the readings arrive a beat later
+
+- **The sentence splits into `title` + `tagline` (SPEC_language, the progressive-disclosure pattern applied to
+  the title itself).** The headline a page shows is no longer the whole sentence: the title is the qualitative
+  head — "The air is getting worse in the house" — with no number and no indicator in it, and the tagline is
+  the explanation set smaller and muted beneath — "Under the WHO line. Level with the street, the ring and the
+  region." A household reads the situation first and meets the instruments one line down; the numeral and
+  `plain` stay where they were. The split is engine work (`_sentence_parts`, at the `{line}` clause), so it
+  holds in en/id/es and for every issue, and templates without a `{line}` clause do not split. The full
+  `sentence` stays on the wire for prose — the bot, the asks, the wall's thinking-aloud. The doors wall takes
+  the same split, which is also its fix: release C's clause-headlines had grown the wall's sentence past its
+  screen (the visual gate caught 1,113 px on a 1,080 px wall at release C and every commit since), and the
+  title/tagline split brings the wall back to exactly its viewport — verified against the fixture render.
+  v0.80.7 was tagged but never shipped: CI held it on exactly this wall failure, and this is the fix it was
+  waiting for.
+
+## v0.80.7 — 2026-10-10 — The loop closes from the phone, and the card says whose answer it carries
+
+_Tagged, never shipped: CI held it on the wall overflow, and the tag was deleted on 11 Oct. Everything below
+shipped in v0.80.8._
+
+- **The answer carries the household's own words, and the page insists on a name.** The wire's `answer` now
+  carries `note`, and the card draws it in quotes — `Doesn't fit · tomas · 13:20 — "opened the west side"` —
+  so the reply to the bot's one question is visible where the answer lives. And the card's form no longer
+  sends an anonymous answer: five nameless rows landed on node #1 the morning the card looked frozen — the
+  presses worked, but the record could not say whose they were. (curl may still post an empty `actor`; a LoRa
+  bridge may not know names, and the card says "somebody" for those. spec §4.2 amended.)
+- **Telegram buttons close the loop (SPEC_alerts §7, Plan 2's first half).** An event's message now carries
+  Done / Not now / Doesn't fit when the bot in the agent container has announced itself (`TELEGRAM_BUTTONS=1`,
+  set on startup; a node without the bot sends the same message bare). The press is the same `POST /actions`
+  the dashboard makes — page and phone write one row — then the keyboard lifts and the chat carries the record
+  (`Done · tomas`). *Doesn't fit* asks the one optional question and keeps the reply as the note: the dismissal
+  is recorded at the press, a free-text line within ten minutes rides a second row, and the wire's latest answer
+  is the one carrying the note. Labels are the wire's own in en/id/es. The learning from these answers (§5) and
+  ρ over events (§7's decision record) are still owed. Tested live on node #1 the same morning: a press and a
+  note landed as two rows, fourteen seconds apart, and the card showed both.
+- **The Decide card says it is watching.** An open event's card now carries "watching — last seen …" in its
+  header, from the wire's `last_seen_at`, ticking up on every poll: the visible proof the feed is alive while an
+  event sits open for hours. The margin that keeps such events open on hot nights stays as written — the stillness
+  was the card's, not the engine's (`docs/decisions/2026-10-10-heat-margin.md`, spec §4.2 amended).
+- **`node_url()` replaces the `MCP_URL.replace("/mcp", …)` munge** at its three call sites (the Cowork audit's
+  caveat): the bot's plain-HTTP URLs no longer depend on the letters "/mcp" being present in the setting.
+- **The pre-commit hook adopts the brew `PATH` export and keeps its test gate.** The export was working-tree
+  drift from a GUI-fired session (hooks inherit no shell profile); the drift's other half — `make test`
+  commented out — was refused: a hook that skips the suite teaches `--no-verify`.
+
+## v0.80.6 — 2026-10-10 — The alerts name whose line it is
+
+Tagged at `aeb5a27`, the last commit whose tree holds no `app/static` change — Rule 2: page and packs ship in
+separate releases, so "was it the page or the data" has one answer. The page half is v0.80.7.
+
+- **Every threshold alert names whose line it is (release D of the language split).** The audit of
+  releases A–C found the gap: `docs/SPEC_language.md` rule 10 was delivered in the event templates
+  but not in the pack messages a household receives. The heat and air-quality act rules now say it —
+  "this house's own line is {line} °C, measured here" for heat, "past the US EPA line ({line} µg/m³)"
+  for air — filled from `watch.over` by `main.py`, so the number is never a second copy. `heat_stress_now`
+  drops "dangerously" (danger is a register, not a volume; `heat_danger` keeps it, and keeps being the
+  only place it appears). `tools/check_rules.py` fails any act/warn rule with a `watch.over` whose
+  message skips the `{line}` clause, and any `{line}` with no `watch.over` to fill it — the gate that
+  would have caught the gap. The sign-off pins in `tests/test_shipped.py` moved with Tomas's approval.
+- **Headlines assembled from clauses (release C).** The review found the titles repetitive and flat:
+  `{line}` (over · near · under, computed from the live value, named per issue), `{event}` ("It crossed
+  the line earlier today"), and per-issue `cmp_words` ("cleaner than the street" for air, "cooler than
+  the street" for heat). Heat's skeletons are its own; coast and land headlines dropped the jargon.
+
+## v0.80.5 — 2026-10-09 — The page speaks the three layers, and the Wall's voice lives on the node
+
+- **The page speaks the three layers, and the Wall's voice lives on the node.** The second half of
+  the language split (`docs/SPEC_language.md`): the crossed mark moved out of the sentence (words
+  only since the last release) and onto the figure inside `plain` when it is over the line; the
+  wall card drops `plain`'s first clause, which only repeated the numeral drawn above it; and the
+  Wall's thinking-aloud prompt moved from the page into the node as `WALL_SYSTEM` beside the other
+  two prompts — the page asks for it by name (`prompt: 'wall'` on `/ask`), the node rotates the
+  angle, and the scrubbed figures ride in the system prompt as they always did. The "How a
+  sentence is built" panel now describes the three layers: the headline in words, `plain` the
+  figures, `about` the meaning.
+- Registry pin: `awesome-fabcity-data @ 851b8db` (269 entries; content unchanged, stamp current).
+
+## v0.80.4 — 2026-10-09 — The headline speaks in words, and update says what blocks it
+
+- **`planetai update` says what blocks it, and what "nothing moved" means.** A failed pull on a git
+  install now names the dirty files and the local-only commits (git's own error does not), and a
+  pull that moves nothing asks the channel: if the site serves a release whose tag has not landed
+  on the branch yet, it says the release is still shipping instead of staying silent (node #1 ran
+  three no-op updates in a day chasing v0.80.3). The Set up → Updates row now says *checked N h ago*
+  instead of a bare date, so a stale "this node has it" reads stale. `.gitignore` now covers the
+  operational files a git install writes (`.planetai-*`, `.env.before-*`,
+  `config/rules.yml.before-update`) — a `git add -A` used to sweep them in, and a tracked update log
+  made every later pull refuse.
+
 - **the headline goes words-only, and `plain` carries the figures** (SPEC_language, release A). The
   lead sentence speaks in words — "The air is getting worse in the house, and the source is inside
   the house" — and the plain sentence under it holds the numbers: the numeral distance first, then

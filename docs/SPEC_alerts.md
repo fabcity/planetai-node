@@ -164,13 +164,17 @@ rules.
 ## 7. Closing the loop
 
 **Telegram buttons** on every event message, handled by the bot in the `agent` container, which already polls
-Telegram. The app keeps sending, and the bot handles the replies.
+Telegram. The app keeps sending, and the bot handles the replies. The app attaches the keyboard when the bot has
+announced itself (`TELEGRAM_BUTTONS=1`, set by the bot on startup): a node without the `agent` container sends
+the same message without buttons. `callback_data` is `ev:<event_id>:<stage>`, labels are the wire's own
+(`actions.BUTTONS`), and the bot answers with the same `POST /actions` the dashboard makes — page and phone
+write the same row. After a press the keyboard lifts and the chat carries the record: `Done · tomas`.
 - **Done** → `acted`. A clear afterwards writes `measured`, with the time from Done to clear.
 - **Not now** → `acknowledged`. The event sends nothing more for 3 h unless it reaches `danger`.
 - **Doesn't fit** → a new stage, `dismissed`, which counts against that action for this house. The bot asks one
-  optional question, "What did you do instead?", and keeps the answer as the note.
-
-A node without the `agent` container sends the same message without buttons.
+  optional question, "What did you do instead?", and keeps the answer as the note: the dismissal is recorded at
+  the press, and a free-text line within ten minutes rides a second row (repeated answers are allowed on
+  purpose — the wire keeps the latest, which is the one carrying the note).
 
 **The dashboard's Decide card** shows the same open events with the same three buttons (v0.78, §11).
 
@@ -228,6 +232,7 @@ Switching back is the same setting.
 | `ALERT_LEVEL` | kept | act = only events with an action; warn = also spikes that are not unhealthy yet; info = everything |
 | `HOME_HAS` | new | purifier, AC, fan, windows that open. Asked once in Set up and by the bot; feeds §5 |
 | `ALERT_ENGINE` | new | `rules` (today), `shadow`, `events`. Retired once `events` is the default everywhere |
+| `TELEGRAM_BUTTONS` | new, default 0; the bot sets it to 1 on startup | §7's keyboard rides event messages only while the bot that answers it is running. Nobody sets it by hand |
 | `REPORT_DEPTH` | unchanged | still waits for a model |
 
 A report built from events covers everything since the last one: events opened, cleared and still open; what was
@@ -242,18 +247,21 @@ cover it; add it if the replay or shadow mode shows otherwise.
 
 Each step is its own pull request, mergeable and harmless on its own:
 
-1. Measures (`usual_by_hour`, `recent_15m`, `ahead_12h`) and the replay tool.
+1. Measures (`usual_by_hour`, `recent_15m`, `ahead_12h`) and the replay tool. **Done.**
 2. The `alert_events` table, `alerts.event_id`, `actions.event_id`, the `dismissed` stage; grouping, escalation, clearing,
    quiet hours and the ceiling, in shadow only. **This changes `init.sql`, which `GOVERNANCE.md` says needs two
-   maintainers.**
-3. Actions per issue, the context resolver, `HOME_HAS`.
+   maintainers.** **Done — except `alerts.event_id`: the wire still matches covered rows by time window.**
+3. Actions per issue, the context resolver, `HOME_HAS`. **Done.**
 4. Heat and air rules rewritten with kinds. The old rules are retired, not deleted, so their silence is never read as
    a cleared condition. `tests/test_shipped.py` pins the heat rule's text "needs Tomas's sign-off"; this spec is that
-   sign-off once he approves the replay.
-5. Telegram buttons, the bot's handling of them, and the ρ decision record.
+   sign-off once he approves the replay. **Done. The pins moved again 10 October with Tomas's approval: the act
+   rules now name whose line it is (`{line}` filled from `watch.over`, gated by `tools/check_rules.py`).**
+5. Telegram buttons, the bot's handling of them, and the ρ decision record. **Buttons and the bot shipped
+   10 October (`TELEGRAM_BUTTONS`; the Doesn't-fit note rides a second row). The ρ decision record is still owed.**
 6. Forecast coordinate rounding, the `ahead` rules, then Open-Meteo on node #1 (a setting on his node, by his go).
-7. `REPORT_AT`, `REPORT_SKIP_EMPTY`, and reports built from events.
-8. Node #1 from `shadow` to `events`; then `events` as the default.
+   **The `ahead` rules are still owed — the engine ranks the kind, no pack ships one.**
+7. `REPORT_AT`, `REPORT_SKIP_EMPTY`, and reports built from events. **Still owed.**
+8. Node #1 from `shadow` to `events`; then `events` as the default. **Node #1 runs `events`.**
 
 `docs/NEXT_RELEASE.md` allows one large change per release and keeps `app/static/*` apart from `packs/*`. So **v0.77**
 carries the engine, the packs, Telegram and the reports, and **v0.78** carries the dashboard's Decide card for events.

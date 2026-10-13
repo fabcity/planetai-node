@@ -26,15 +26,24 @@ function readout() {
   const w = (it.provenance || {})[it.hero_distance] || 'model';
   $('#kick').innerHTML = `${said(it.name)} · ${isNow ? 'now' : dLabel(dayOf(b))} · at ${hhmm(b)} ${prov(w)} <span class="x">${isNow ? '· the node’s own sentence' : `· ${D.now - i} h before the capture`}</span>`;
   $('#back').hidden = isNow;
-  const v = val(k, it.hero_distance, i), over = it.line != null && v != null && v > it.line;
   const cmp = it.line != null ? `against the line, ${fmt(it.line, dp)} ${U}` : 'this issue has no line';
   const n = x => num(`${k}.${it.hero_distance}`, x, cmp, `<b class="numf">${esc(x)}</b>`);
-  let s;
-  if (isNow) s = esc(it.sentence).replace(/(\d+(?:\.\d+)?)(?=\s*(?:°C|µg|%|m\b))/, (m0) => n(m0));
-  else if (v == null) s = `<span class="gone">Nothing was recorded in the house at ${hhmm(b)}.</span>`;
-  else s = (k === 'heat' ? `At ${hhmm(b)} it felt like ${n(fmt(v, dp))} ${esc(U)} in the house` : `At ${hhmm(b)} the air in the house read ${n(fmt(v, dp))} ${esc(U)}`)
-    + `, ${over ? 'over' : 'under'} the line.`;
-  $('#sentence').innerHTML = (it.pix ? `<svg class="pix" aria-hidden="true"><use href="${NODE}signs.svg#${it.pix}"/></svg>` : '') + `<span class="said">${s}</span>`;
+  let s, tag = '';
+  if (isNow) {
+    /* the split, same as the wall's: the title is the sentence's qualitative head — no number, no
+       indicator — and the tagline explains it, smaller and not bold. Older nodes send no title:
+       the sentence stands in, its first figure marked as before. */
+    s = esc(it.title || it.sentence).replace(/(\d+(?:\.\d+)?)(?=\s*(?:°C|µg|%|m\b))/, (m0) => n(m0));
+    tag = it.tagline || '';
+  }
+  else {
+    /* a past hour speaks the engine's words too (hours[i]): what it was doing, then the reading and whose
+       line. A capture older than the hours key has none, and says only that nothing is here to read. */
+    const h = (it.hours || [])[i];
+    s = h ? esc(h[0]) : `<span class="gone">Nothing was recorded at ${hhmm(b)}.</span>`;
+    tag = h ? h[1] : '';
+  }
+  $('#sentence').innerHTML = (it.pix ? `<svg class="pix" aria-hidden="true"><use href="${NODE}signs.svg#${it.pix}"/></svg>` : '') + `<span class="said">${s}${tag ? `<span class="ntag">${esc(tag)}</span>` : ''}</span>`;
   $('#ladder').innerHTML = ['room', 'yard', 'ring', 'region'].map(dk => {
     const x = isNow ? (it.stack[dk] || {}).value : val(k, dk, i);
     const pw = (it.provenance || {})[dk] || ((it.stack[dk] || {}).provenance), hourly = (it.series || {})[dk];
@@ -59,7 +68,10 @@ function decision() {
   $('#decide').innerHTML = `<div class="k">decide · ${said(it.name)} · ${esc(e.kind)} since ${hhmm(e.opened_at)}${e.cleared_at ? ` · cleared ${hhmm(e.cleared_at)}` : ' · still open'}`
     + `${e.peak != null ? ` · peak ${num(`${k}.event.peak`, fmt(e.peak, it.dp), `the line ${fmt(it.line, it.dp)} ${it.unit}`)} ${said(it.unit)}` : ''}</div>`
     + `<p class="dq">${said(e.action || 'The node asked for nothing specific.')}</p>`
-    + `<div class="ans" role="group" aria-label="Answer">${['done', 'not_now', 'doesnt_fit'].map(b => `<button class="${on === b ? 'on' : ''}" data-ev="${e.id}" data-stage="${ANSWER_STAGE[b]}" ${live ? '' : 'disabled title="this event is not open at this hour"'}>${said(B[b])}</button>`).join('')}</div><p class="dm" id="answered" role="status"></p>`
+    /* the buttons only while the node is still asking (e.asking, from the node): once somebody answered they go, and
+       the line below says who and when. A past hour is read, never answered, so it shows none either. */
+    + (live && e.asking ? `<div class="ans" role="group" aria-label="Answer">${['done', 'not_now', 'doesnt_fit'].map(b => `<button class="${on === b ? 'on' : ''}" data-ev="${e.id}" data-stage="${ANSWER_STAGE[b]}">${said(B[b])}</button>`).join('')}</div>` : '')
+    + `<p class="dm" id="answered" role="status"></p>`
     + `<p class="dm">${sign(a.closed ? 'sign-rho-closed' : 'sign-rho-open', a.closed ? 'closed' : '')} ${esc(a.w)}${(e.rooms || []).length ? ` · ${e.rooms.length} room${e.rooms.length === 1 ? '' : 's'}: ${said(e.rooms.map(r => r.trim()).join(', '))}` : ''}</p>`;
 }
 

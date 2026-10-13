@@ -420,23 +420,19 @@ function heroRule(key, d) {
 }
 
 function sentence(key, d, cls = 'big') {
-  const s = d.sentence ? d.sentence[LOC] : '';
-  const cell = (d.stack || {})[d.headline];
-  const n = cell && cell.value != null ? fmt(cell.value, d.dp) : null;
-  const crossed = !!(d.line && cell && cell.value != null && cell.value > d.line.value
-    && (d.state === 'act' || d.state === 'notable'));
-  const cmp = d.line
-    ? cmpText({ mode: 'line', line: d.line, unit: d.unit, dp: d.dp })
-    : cmpText({ mode: 'none', reason: noLine(d) });
-  /* The figure inside the sentence is set in the mono and nothing else. It is not the monument and
-     does not carry the monument's attributes: the sketch says this number twice — once as a figure
-     large enough to stop being a number, once inside a sentence that reads as a sentence — and two
-     elements claiming `data-role="numeral"` for one reading is one of them lying. */
-  const marked = n
-    ? esc(s).replace(esc(n), `<b class="mono${crossed ? ' crossed' : ''}">${esc(n)}</b>`)
-    : esc(s);
+  /* The title is the sentence's qualitative head — no number, no indicator, the household's words
+     for what is happening. The tagline explains it (the line, the comparison, the day's event) in a
+     smaller font: the readings are introduced slowly, not shouted in the title. The full sentence
+     stays for prose contexts. Older nodes send no title; the sentence stands in.
+     Release A moved the numeral out of the headline: the sentence is words only, so it draws no
+     figure and marks none. The crossed mark moved with the number — it marks the `plain` figure
+     that is over the line, drawn where plain is rendered. */
+  const t = d.title ? d.title[LOC] : '';
+  const s = t || (d.sentence ? d.sentence[LOC] : '');
+  const tag = cls === 'big' && d.tagline ? d.tagline[LOC] : '';
   return `<p class="${cls}" data-component="sentence" data-role="sentence" id="sentence-${esc(key)}"`
-    + ` data-ref="stack-${esc(key)}">${marked}</p>`;
+    + ` data-ref="stack-${esc(key)}">${esc(s)}`
+    + (tag ? `<span class="tag said">${esc(tag)}</span>` : '') + `</p>`;
 }
 
 /* `rule` is the lead's only. It used to be a second paragraph of its own, and `.lead > .why` matched
@@ -810,15 +806,28 @@ function evButtons(e) {
     + `<button type="button" class="cancel">Cancel</button></div>${TOKEN_FINE}</form>`;
 }
 /* The line an answered event wears: who pressed which button, when, and until when a Not now holds. Empty
-   before an answer. Decide's card and simple mode's row both draw it. */
+   before an answer. Decide's card and simple mode's row both draw it. A Doesn't fit with a note carries the
+   household's own words — the answer to the bot's one question, "what did you do instead?" */
 function evAnswered(e) {
   const a = e.answer, done = a && a.stage === 'acted';
   return !a ? '' : `<p class="${done ? 'evdone' : 'evheld'}">`
     + `${done ? sign('rho-closed', 'closed') : ''}${esc(evWord(a.stage))} · ${esc(a.actor || 'somebody')}`
     + ` · ${esc(evClock(a.ts))}${a.held_until ? ` · held until ${esc(evClock(a.held_until))}`
-      + ` unless it reaches danger` : ''}</p>`;
+      + ` unless it reaches danger` : ''}`
+    + `${a.note ? `<span class="evnote"> — “${esc(a.note)}”</span>` : ''}</p>`;
 }
 /* `tail` is drawn inside the card, last: Decide puts the folded rule rows there (spec §4.2). */
+/* The live stamp. Everything else on the card is event-scoped — peak, message, context — so an event that
+ * stays open for hours (the margin doing its work on a hot night, docs/decisions/2026-10-10) reads as frozen
+ * while the engine is stepping every minute. The wire already carries last_seen_at; the card says so, and the
+ * age ticks up on every poll, which is the visible proof the feed is alive. No current value here: the hero's
+ * value is not in the event's measure (heat's hero is air temperature, the event is apparent), and the card
+ * will not mix the two. */
+function evLive(e) {
+  const t = new Date(e.last_seen_at || '');
+  if (isNaN(t)) return '';
+  return ` · <span class="m">watching — last seen ${esc(age((Date.now() - t.getTime()) / 6e4))}</span>`;
+}
 function evCard(e, tail = '') {
   const d = ISS[e.issue] || { name: {} }, h = d.hero || {}, dp = d.dp == null ? 1 : d.dp, unit = d.unit || '';
   const st = evState(), c = e.context || {}, a = e.answer;
@@ -832,7 +841,7 @@ function evCard(e, tail = '') {
   const m = e.message;
   const said = !m ? '' : `<p class="evmsg"><span class="m">${st === 'shadow' ? 'would have sent'
     : m.sent ? 'sent' : 'held'} ${esc(evClock(m.ts))}</span><span class="said">${esc(m.text || '')}</span></p>`;
-  const done = a && a.stage === 'acted', answered = evAnswered(e);
+  const answered = evAnswered(e);
   const rows = (e.alerts || []).length;
   /* A link goes only to a section this page is drawing: `sensors` belongs to a pack a node may not run, and
      Arrange may have hidden any of them. */
@@ -848,12 +857,13 @@ function evCard(e, tail = '') {
       + `${esc(d.name[LOC] || e.issue)}"><use href="static/signs.svg#${esc(h.sign)}"/></svg>` : ''}`
     + `<b>${esc(d.name[LOC] || e.issue)}</b> · ${esc(e.kind)} · since ${esc(evClock(e.opened_at))}`
     + `${(e.rooms || []).length ? ` · ${esc(e.rooms.join(', '))}` : ''}`
+    + evLive(e)
     + `${st === 'shadow' ? `<span class="m">shadow — nothing was sent</span>` : ''}</div>`
     + `<p class="evcmp"><span class="evnum${worse ? ' worse' : ''}" data-num="ev.${esc(String(e.id))}.peak"`
     + ` data-cmp="${esc(cmp)}">${esc(n(e.peak))}</span> ${esc(unit)} peak <small>${esc(cmp)}</small></p>`
     + (e.action && e.action.text ? `<p class="evact said">${esc(e.action.text)}</p>`
       : `<p class="evact none">The node chose no action for this event, and this page will not invent one.</p>`)
-    + answered + (done ? '' : evButtons(e)) + said
+    + answered + ((e.asking ?? !a) ? evButtons(e) : '') + said
     + (links.length ? `<p class="evlinks">evidence: ${links.join(' · ')}</p>` : '')
     + tail + `</section>`;
 }
@@ -4909,9 +4919,7 @@ function template(ctx) {
       cols: 'minmax(0,210px) minmax(0,1fr) auto',
       left: `<span class="who"><b>How a sentence is built</b>`
         + `<span class="m">the same for all ${(ORDER || []).length}</span></span>`,
-      line: `The state, then the reading at the closest distance that has one, then how the other `
-        + `distances stand against it. Never a distance the node cannot read, and never a `
-        + `comparison against a line the issue does not have.`,
+      line: `The headline speaks in words only (sentence), \`plain\` carries the figures, \`about\` says what the metric is.`,
       qty: [{ num: 'template.parts', value: `${2 + (others.length ? 1 : 0)} parts`,
         cmp: `state \u00b7 the ${LAB[d.headline]} reading`
           + `${others.length ? ` \u00b7 ${others.length} other distance`
@@ -7404,6 +7412,7 @@ const ASKING = (function () {
         (box.querySelector('.frame') || box).appendChild(cv);
       }
       on = true; reads.length = 0; asking = ''; settle0 = 0; spec = null;
+      const seed = box.querySelector('.seed'); if (seed) seed.remove();   /* the globe takes the middle from here */
       settleFor = SETTLE_MS;
       held = !!hold;
       /* Per episode, not per session: the cost of the frames drawn while the page was loading is
@@ -8105,6 +8114,15 @@ function main() {
     const pix = heroPix(hk, d);
     const stamp = ((d.hero || {}).stamp || {})[LOC] || '';
     const plain = ((d.hero || {}).plain || {})[LOC] || '';
+    /* The plain figure gets the crossed mark when over the line (same rule as monument). Extract
+       numerals from plain and wrap them; if plain has no numeral, render unchanged. */
+    const cell = (d.stack || {})[d.headline];
+    const plainCrossed = !!(d.line && cell && cell.value != null && cell.value > d.line.value
+      && (d.state === 'act' || d.state === 'notable'));
+    const markedPlain = plain && cell && cell.value != null
+      ? esc(plain).replace(esc(fmt(cell.value, d.dp)),
+          `<b class="${plainCrossed ? 'crossed ' : ''}mono">${esc(fmt(cell.value, d.dp))}</b>`)
+      : esc(plain);
     /* Simple's eyebrow: the issue and when it was read, in words, with no state word in capitals. */
     const eb = `<div class="eb" data-lv="simple" data-component="heroEyebrow" data-ref="num-${esc(hk)}">`
       + `<b>${esc(d.name[LOC])}</b>${stamp ? ` \u00b7 ${esc(stamp)}` : ''}`
@@ -8125,7 +8143,7 @@ function main() {
         + `<div class="what">${e.action && e.action.text ? esc(e.action.text)
           : `${esc(e.kind)}${(e.rooms || []).length ? ` \u00b7 ${esc(e.rooms.join(', '))}` : ''}`}`
         + `${st === 'shadow' ? `<span class="m">shadow \u2014 nothing was sent</span>` : ''}</div>`
-        + evAnswered(e) + (e.answer && e.answer.stage === 'acted' ? '' : evButtons(e))
+        + evAnswered(e) + ((e.asking ?? !e.answer) ? evButtons(e) : '')
         + (n > 1 ? `<p class="evmore" data-lv="simple">and ${n - 1} more open \u00b7 in advanced</p>` : '') + `</div>`;
     };
     return `<section class="lead" id="band-${esc(hk)}" data-band="lead">`
@@ -8133,7 +8151,7 @@ function main() {
       + eb + monument(hk, d, pix) + sentence(hk, d, 'big')
       + lv(why(hk, d, (S.issues.headline_rule || {})[LOC] || ''), 'adv')
       + (plain ? `<p class="plain" data-lv="simple" data-component="heroPlain" data-ref="sentence-${esc(hk)}">`
-        + `${esc(plain)}</p>` : '')
+        + `${markedPlain}</p>` : '')
       /* The rule the hero declares, where the four meters were. They drew every issue on a scale
          worked out from tonight's numbers; the rule's ends are the issue's own, so a reading of 12
          looks the same size tomorrow as tonight. The four distances in full are in the matrix. */
@@ -8533,6 +8551,16 @@ document.addEventListener('submit', async ev => {
   }
   if (!form.classList.contains('evform')) { didThis(form); return; }
   const val = n => String((form.elements[n] || {}).value || '').trim();
+  if (!val('actor')) {
+    /* ρ is built out of who answered. The buttons post at once only when this browser already knows a name;
+       the form is where a name is given, and it does not send an anonymous one. Five nameless rows landed on
+       node #1 the morning the card looked frozen — presses that worked but could not say whose they were.
+       (The node still takes an empty actor from curl — a LoRa bridge may not know names — and the card says
+       "somebody"; the page is where households press, so the page is where the name is insisted on.) */
+    say('A name first, so the record says who.', true);
+    form.elements.actor.focus();
+    return;
+  }
   const sub = form.querySelector('button[type="submit"]');
   if (sub) sub.disabled = true;
   try {

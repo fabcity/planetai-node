@@ -240,26 +240,42 @@ layers panel, scales and inspector were drawn; the node's map ground has the bas
 
 ---
 
-## 4. The language split, page half (release B)
+## 4. The language split, what is left
 
-**Asked, 9 October 2026.** The node's words moved to the three-layer split in PR #201 (`docs/SPEC_language.md`,
-release A): the headline speaks in words, `plain` carries the figures, `about` says what the metric is. The page
-half of the same spec is still owed — the page is the one surface where the numeral is already drawn big, so it is
-the one surface allowed to drop what the words elsewhere must carry.
+**Asked, 9 October 2026; shipped in four releases.** A (words) in v0.80.4, B (page) in v0.80.5, C (headlines
+from clauses) and D (every threshold alert names whose line) in v0.80.6 — C and D tagged at `aeb5a27` under
+Rule 2, the packs side of the 10 October batch. What remains of
+`docs/SPEC_language.md`'s migration: the doors read the node's English only — locale work shows on the
+classic dashboard and the bot until the doors gain locales (migration item 8); the native passes — es by
+Tomas, id by Bayu, each approved locale shedding its ASSISTANT-WRITTEN header (item 9); and
+SPEC_language.md itself joining the stamped docs set (item 10).
 
-**What is owed.**
+## 5. Alert events and the Decide card, what is left
 
-- The doors may drop `plain`'s first clause where the numeral is drawn directly above it — off the doors the
-  numeral distance speaks first, on the doors that would repeat the big figure.
-- The crossed mark (the value over the line) moves out of the sentence and into the `plain` figure, drawn
-  in red as it already is on the rule.
-- `WALL_SYSTEM` leaves `app/static/doors-wall.js` and lives beside the other two prompts in
-  `app/agent_loop.py`, so the language rules the spec defines (layers, one number, no lecture voice) hold in
-  one place — the Wall's voice was written stricter than the spec before the spec existed, and it should not
-  drift alone in a static file.
-- The ES and ID strings keep the ASSISTANT-WRITTEN header until Tomas (es) and Bayu (id) have done the native
-  pass on `app/issues/*.yml`.
+**State on 10 October 2026, after v0.80.7.** The week's arc: SPEC_alerts approved 5 Oct; the engine proven by
+replay in shadow; v0.77 (events on the wire, `POST /actions`); v0.78 (the Decide card); v0.80.4–5 (its texts
+in the three layers); v0.80.7 (the card's live stamp, the Telegram buttons closing the loop from the phone,
+the answer carrying the household's note, the page insisting on a name). Node #1 runs `ALERT_ENGINE=events`
+and was the test bed: a live Doesn't-fit press and its note landed as two rows, fourteen seconds apart, and
+the card showed both. The heat margin stays at 1 °C (`docs/decisions/2026-10-10-heat-margin.md`): a sustained
+event open through a hot Kuta Selatan night is the hysteresis describing the weather. Do not "fix" this by
+tightening the margin or adding a daily auto-clear; the question was asked from the field and answered by
+Tomas. The Cowork audit of 10 Oct landed two refinements in the same release: `node_url()` for the bot's
+plain-HTTP URLs, and the note window recorded as knowingly process-memory (a bot restart inside the ten
+minutes loses the question, never the dismissal; persistence comes with the learning work below, not before).
 
-**Touches** `app/static/dashboard.js`, `app/static/doors-wall.js`, `app/static/doors-fig.js` and
-`app/agent_loop.py`. A page change: not the same release as release A under rule 3.
+**Still owed, in the order that pays:**
 
+1. **Learning from the answers** (SPEC_alerts §5): among actions whose `when:` holds, prefer the one that
+   cleared fastest in this house (`cleared_after_min` is already recorded on every Done-then-clear), and
+   mute an action for 30 days after two Doesn't-fits. The data exists; the ranking does not.
+2. **Anticipation** (§6, Plan 3): the engine ranks `ahead` events but no pack ships an `ahead` rule — the
+   morning plan, the unusual day ahead, the evening crossover. The measures (`usual_by_hour`, `ahead_12h`)
+   are already there.
+3. **ρ over events** (§7): ρ still counts alerts with the derived-measured trick; the switch needs its own
+   `docs/decisions/` record because it changes a published number. The events carry `responded_at` and
+   `acted_at`; the funnel's `measured` has no event-side notion yet.
+4. **`alerts.event_id` back-link**: the wire matches covered rows by time window — the spec's own "until
+   then" branch.
+5. **Reports built from events** (§11 step 7, Plan 4): `REPORT_AT`, `REPORT_SKIP_EMPTY`, a report that
+   opens with the morning plan.

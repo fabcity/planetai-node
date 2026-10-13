@@ -67,6 +67,7 @@ RUNTIME = {
     "CKAN_PORTALS":       ("sources", "Open-data portals", False, False, "slug=url pairs, comma-separated. Feeds Governance|City."),
     # alerts — alerts and reports: when the node speaks, what interrupts, and how a loop is closed.
     "TELEGRAM_CHAT_IDS":  ("alerts", "Telegram chat ids", False, False, "Comma-separated. planetai telegram finds yours."),
+    "TELEGRAM_BUTTONS":   ("alerts", "Event buttons in Telegram", False, False, "1 = event messages carry Done / Not now / Doesn't fit. The bot sets this on startup so the buttons ride only while somebody answers them; leave it alone."),
     "REPORT_EVERY":       ("alerts", "Report every", False, False, "Hours between reports: 3, 4, 6, 8, 12 or 24. Default 6, which is four a day."),
     "REPORT_ANCHOR":      ("alerts", "First report of the day", False, False, "The local hour the rhythm starts from, 0-23. Default 6: with a 6-hour interval that is 06, 12, 18 and 00."),
     "REPORT_DEPTH":       ("alerts", "How much the report says", False, False, "auto, brief, standard or deep. auto lets the strongest model the node can reach decide. Until a model is in the path every report is the node's own, and this changes nothing."),
@@ -112,6 +113,11 @@ RUNTIME = {
     "AGENT_REMOTE_MODEL": ("model", "Remote model", False, True, "e.g. gpt-oss-120b or qwen3:8b"),
     "AGENT_ONLINE_URL":   ("model", "Online model URL", False, True, "https://api.anthropic.com/v1 or https://api.openai.com/v1"),
     "AGENT_ONLINE_MODEL": ("model", "Online model", False, True, "e.g. claude-sonnet-4-6"),
+    "EYES_MODEL":         ("model", "Image model", False, False,
+                           "A vision model in this machine's Ollama that describes each image and lists what it "
+                           "finds: species, trees, sites, urban inventory, issues such as litter or pollution. The "
+                           "picture never leaves this machine. Blank = off. On 16 GB: qwen2.5vl:7b (`ollama pull "
+                           "qwen2.5vl:7b`). It is never asked about people."),
     "UI_ASK":             ("model", "Ask the node, on the dashboard", False, False,
                            "on (default) = a toggle on the dashboard opens a pane that asks this node's own model, on "
                            "this machine, about what the page shows. It reads and never changes anything; a change "
@@ -187,7 +193,7 @@ RUNTIME = {
 PUBLIC = {"REPORT_EVERY", "REPORT_ANCHOR", "REPORT_DEPTH", "ALERT_LEVEL", "QUIET_HOURS", "QUIET_FROM", "QUIET_TO", "ALERT_LOCALE",
           "MESH_ALERTS", "HA_DISCOVERY", "PACKS_ENABLED", "PACKS_ALLOW_CODE", "OPENMETEO_ENABLED", "BAD_ENABLED", "BAD_RADIUS_KM",
           "BAD_MIN_SEPARATION_M", "BAD_EXCLUDE", "BAD_INCLUDE_INDOOR",
-          "LOCAL_RADIUS_M", "SENSOR_INDOOR", "COAST_MAX_KM", "AGENT_PREFER", "AGENT_REMOTE_MODEL", "AGENT_ONLINE_MODEL", "UI_LAYOUT", "UI_MODE", "UI_ASK", "UI_GROUND", "MAP_TILES", "UPDATE_CHECK", "STATIONS_SHOWN", "NODE_KIND", "SHARE_LEVEL", "NODE_ISSUES",
+          "LOCAL_RADIUS_M", "SENSOR_INDOOR", "COAST_MAX_KM", "AGENT_PREFER", "AGENT_REMOTE_MODEL", "AGENT_ONLINE_MODEL", "EYES_MODEL", "UI_LAYOUT", "UI_MODE", "UI_ASK", "UI_GROUND", "MAP_TILES", "UPDATE_CHECK", "STATIONS_SHOWN", "NODE_KIND", "SHARE_LEVEL", "NODE_ISSUES",
           "RETICULUM_PRESENCE", "RETICULUM_PRESENCE_RES"}
 # Which Set up tab shows each bootstrap key, read-only. The place itself is Basics; the machinery is System.
 BOOTSTRAP_GROUP = {k: "basics" for k in ("NODE_NAME", "NODE_CITY", "NODE_LAT", "NODE_LON", "NODE_TZ", "NODE_SCALE")}
@@ -195,7 +201,7 @@ BOOTSTRAP_GROUP = {k: "basics" for k in ("NODE_NAME", "NODE_CITY", "NODE_LAT", "
 BOOTSTRAP = {
     "NODE_NAME": "Name", "NODE_CITY": "City key", "NODE_LAT": "Latitude", "NODE_LON": "Longitude", "NODE_TZ": "Time zone",
     "NODE_SCALE": "Scale", "APP_PORT": "Port", "COMPOSE_PROFILES": "Extra containers", "MQTT_HOST": "Broker",
-    "BACKUP_DIR": "Backups", "BACKUP_REMOTE": "Off-machine copy", "BACKUP_KEEP": "Days of backups kept", "DATA_DIR": "Database location", "EXPORT_ENABLED": "Daily export", "IPFS_PUBLISH": "IPFS", "POLL_SECONDS": "Poll interval",
+    "BACKUP_DIR": "Backups", "BACKUP_REMOTE": "Off-machine copy", "BACKUP_KEEP": "Days of backups kept", "DATA_DIR": "Database location", "CAPTURES_DIR": "Pictures folder", "EXPORT_ENABLED": "Daily export", "IPFS_PUBLISH": "IPFS", "POLL_SECONDS": "Poll interval",
 }
 
 # Values a key refuses. Most settings are free text on purpose — a node has to keep running through a typo — but a

@@ -46,7 +46,12 @@ function evAt(k, i) {
   const t = D.buckets[i];
   return D.events.filter(e => e.issue === k && e.opened_at.slice(0, 13) <= t.slice(0, 13) && (e.cleared_at == null || e.cleared_at.slice(0, 13) >= t.slice(0, 13)));
 }
-function answerWords(a) { return a ? { w: `${a.stage} · ${a.actor} · ${hhmm(a.ts)}`, closed: a.stage === 'acted' } : { w: 'no answer yet', closed: false }; }
+/* an answer in the household's words: which button, who, when, and until when a Not now holds the node's question */
+function answerWords(a) {
+  if (!a) return { w: 'no answer yet', closed: false };
+  const B = D.buttons || {}, said = { acted: B.done || 'Done', acknowledged: B.not_now || 'Not now', dismissed: B.doesnt_fit || 'Doesn’t fit' }[a.stage] || a.stage;
+  return { w: `answered: ${said}${a.actor ? ` by ${a.actor}` : ''} at ${hhmm(a.ts)}${a.held_until ? `, asked again at ${hhmm(a.held_until)}` : ''}${a.note ? ` · “${a.note}”` : ''}`, closed: a.stage === 'acted' };
+}
 /* The last hour's mean of one metric at one sensor, from the raw hourly table. */
 /* The last hour's mean of one metric at one sensor, from the raw hourly table (token-only); without it the 15-minute
    mean GET /stats gives every screen at `open`. */
@@ -188,6 +193,7 @@ const ASKING = (function () {
         (box.querySelector('.frame') || box).appendChild(cv);
       }
       on = true; reads.length = 0; asking = ''; settle0 = 0; spec = null;
+      const seed = box.querySelector('.seed'); if (seed) seed.remove();   /* the globe takes the middle from here */
       settleFor = SETTLE_MS; held = !!hold;
       t0 = performance.now();
       box.classList.add('on'); box.setAttribute('aria-hidden', 'false');
@@ -258,7 +264,7 @@ Promise.all([loadD(), fetch(NODE + 'learn.json').then(r => r.json()).catch(() =>
   S.issue = D.lead; S.i = D.buckets.length - 1; D.now = S.i;
   D.sens = Object.fromEntries(D.sensors.map(s => [s.sensor_id, s]));
   /* the cells and distances the flow, the Wall and Node draw are the node's answers (js/nodegeo.js) */
-  knownNodes(D); foot();
+  await knownNodes(D); foot();
   if (D.askOff) $('#askbtn').hidden = true;                 /* UI_ASK off: no ask here either */
   $('#who').innerHTML = `${esc(D.node.name)}<small>${esc(D.node.place || '')}</small>`;
   $('#asof').textContent = `${new URLSearchParams(location.search).get('fixture') ? 'CAPTURE' : 'LIVE'} · as of ${hhmm(D.as_of)} · ${D.health.version || ''}${DOORS_TOKEN() ? '' : ' · locked'}`;

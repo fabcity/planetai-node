@@ -1,5 +1,5 @@
 # The dashboard
-<!-- checked: v0.80.3 -->
+<!-- checked: v0.81.0 -->
 
 The dashboard is where a node is read. Once it is open, the loop the node runs becomes something a person
 can follow and take part in: what it observed about the place, what it suggests, what it has asked of the
@@ -12,7 +12,7 @@ The node serves `index.html` and a fixed list of companion files by name from `G
 stylesheets (`tokens.css`, `planetai-theme.css`, `dashboard.css`), `dashboard.js`, the drawing library
 (`plot.umd.min.js` and `d3.min.js`), two SVGs, `kilometre-cells.json`,
 `learn.json` and the self-hosted fonts; for the map ground, `maplibre-gl.js`, `maplibre-gl.css` and `deck.gl.min.js`;
-and for the five doors (`doors.html`, served by default at `/`; `/?layout=classic` serves `index.html`), thirteen `doors-*.js`, `world-land-110m.json` and `docs_site.json`. The node computes and the page draws. A number the page works out
+and for the five doors (`doors.html`, served by default at `/`; `/?layout=classic` serves `index.html`), thirteen `doors-*.js`, `world-land-110m.json`, `docs_site.json` and `qrcode.js`; and for the phone page, `mobile.html`, `mobile.js` and `walk.js`. The node computes and the page draws. A number the page works out
 for itself is a bug.
 
 ## A first read
@@ -143,7 +143,7 @@ rungs either side); and a table of what each thing the node speaks for costs to 
 about seven times finer by area than the one above. The fold's state is `?worth=1`, so it survives the ladder
 it is read against.
 
-The first thing on Now is the ladder, and under it the lead: the headline issue's kicker, its numeral and pictogram, the sentence, a why line and the rule. The last line gives when the numeral was read, the as-of time, what is open and a link to Decide, and a pill: `live`, `stale` or `cached`.
+The first thing on Now is the ladder, and under it the lead: the headline issue's kicker, its numeral and pictogram, the title (the sentence's qualitative head — no number, no indicator) with its tagline smaller beneath (the line, the comparison, the day's event), a why line and the rule. The last line gives when the numeral was read, the as-of time, what is open and a link to Decide, and a pill: `live`, `stale` or `cached`.
 
 What that line counts follows the node. With an event open it reads `1 event open · heat · sustained since
 13:00 · in Decide`, and `· shadow` is added on a node that only records what it would have sent. With none open
@@ -252,7 +252,7 @@ day and to the stations, and "from 9 rule rows", which opens the rows in `alerts
 age. An open act-level alert that no event covers is drawn after the cards, in the same way, with **I did this**,
 so nothing that asks a person something disappears.
 
-**Done**, **Not now** and **Doesn't fit** each write one answer to the event: who pressed, and when. Done closes the loop and shows a closed ring. Not now holds the card, muted, for three hours unless the reading reaches danger. Doesn't fit asks one optional question, what did you do instead, and keeps the answer as the note.
+**Done**, **Not now** and **Doesn't fit** each write one answer to the event: who pressed, and when. Done closes the loop and shows a closed ring. Not now holds the card, muted, for three hours unless the reading reaches danger. Doesn't fit asks one optional question, what did you do instead, and keeps the answer as the note. Once somebody has answered, the buttons go and the card says who answered and when; after a Not now they come back when the hold runs out, because the node asks again then (the wire's `asking`). The action on an open event's card is chosen again from the readings as they are now; the message the bot sent keeps its own words.
 
 The card stays until the event clears, and then it moves to Act. The first press asks for a name, and this browser
 keeps it for the next. The words on the buttons are the node's own (`events.buttons`). From a browser the answer
@@ -420,7 +420,7 @@ blank would be the node lying about being broken. A browser on the node's own ma
 the network here, because inside Docker it arrives as the bridge gateway. At `open` the whole read API
 answers and the page draws; the plan still needs a token at every level. See [Sharing](sharing.md).
 
-> **Gap in v0.80.3.** At `SHARE_LEVEL=off` a browser that has never stored a token draws the refused page
+> **Gap in v0.81.0.** At `SHARE_LEVEL=off` a browser that has never stored a token draws the refused page
 > on every view, Set up included, so there is nowhere on the page to enter one, and the refused page's advice
 > to open it on the node's own machine does not get past the refusal. Turn sharing on, store the token in
 > Set up, and turn it off again; or read the page at `open`. The doors are the way round it: at `off` without a token
@@ -430,8 +430,12 @@ answers and the page draws; the plan still needs a token at every level. See [Sh
 
 The node renders as five doors by default, the redesign worked out in planetai-design (R33 to R45): **Now**
 (the moment, its decision with Done, Not now and Doesn't fit, and the stations around the house), **Place** (the
-ground as a map with layers, scales and a measuring tool, the satellite years and what changed), **Data** (every
-reading, drawn, the seven days of every issue, the models, the Index and the ledger), **Wall** (the keeper's one
+ground as a map with layers, scales and a measuring tool, the satellite years and what changed, and the household's
+**Images**: one map layer per kind, phone, fixed camera, microscope, drone and balloon or kite, each image a square
+that opens a card with the image, when, who, the note and its cell, and a quiet **+ Add an image** beside the views
+that opens a dialog, the file picked or dropped; token-only, `GET /captures`), **Data** (every
+reading, drawn, the seven days of every issue, the models, the Index, **Images** (every image with its facts of
+arrival, its kind, note and key: value lines to edit, and Delete for a screen holding the admin token) and the ledger), **Wall** (the keeper's one
 dark screen) and **Node** (what comes in and goes out, the nodes around it, and how it is running). The classic
 dashboard remains available at `/?layout=classic`.
 
@@ -443,6 +447,39 @@ The map, the cells, every distance and the hourly table are token-only at every 
 where the node is and what the household did hour by hour. **Set up → This screen** (the foot's "Unlock this screen") stores the act or admin
 token in that browser. The gear in the bar opens **Set up**, a page of its own: every setting by group, saved only where it changed and never over a change made on the node meanwhile, the pack switches, who may read the node, this screen's token, updates, and **Machine**, the machine under the node (`GET /machine`) and how long its disk lasts (`GET /storage`). The bar says which version is running. The Wall's right column is **the node, thinking aloud**: every ten minutes, from another angle each time, the node's model (the one chosen under Set up → Model, through `POST /ask`) says in six to eight plain sentences what is happening inside, how it compares with the street and the neighbourhood, what it suggests for an ordinary day and what the next hours may bring, typed at a reading pace, with a countdown to the next. It names the model that answered, warns when the keeper's choice lets the question go online, and calls itself a model's words, never a reading; nothing is kept. Every door but the Wall ends in a foot with the documentation, Ask the node, the classic dashboard, today's open export and Fab City. `?fixture=<name>` works here too, and shows a screen without the token only what the node
 would show it.
+
+## The phone page
+
+A phone is a different hand, so it gets its own page (`mobile.html` and `mobile.js`, the doors' loader, and
+MapLibre only once the walk is reached). The choice is made once, before anything else loads: a coarse pointer and a short screen side under
+600 px moves to `/?layout=mobile`; a narrow desk window and a tablet stay on the doors, and nothing is
+re-decided on resize. "Phone view" and "Full dashboard" switch, and the browser remembers. One scrollable page:
+**Now** (the engine's title and tagline, the reading at the household's own distance, the Decide card, the other
+issues as rows, and **Add an image** — the capture tier of SPEC_eyes: one button on an unlocked phone that opens the phone's library; the
+details (kind, note, name) ask only once an image is chosen. Where it was taken is the picture's own GPS, else the phone's location if the
+person allows (browsers give it to https pages only), else the node's own cell, and the node cleans the file of EXIF and GPS and keeps it; only a screen holding a token can see it. A locked phone
+reads "Unlock this phone to add images", the same offer the Decide card makes), **Walk out from the house** (below) and **Node** (from `/health`, so it draws even
+when everything else is refused). The card's three buttons answer an alert from the phone with the act token;
+without it the card says the question went to Telegram. A locked phone reads the node's own sentence and the
+field for the token. The spec is `docs/SPEC_mobile.md`, and the visual gate measures the page like any other
+(`node tests/visual/measure.mjs mobile`).
+
+**Walk out from the house** is the middle of the phone page (`/?layout=walk` opens the same page). `walk.js` and
+MapLibre are fetched once Now has drawn and the walk nears the screen, so a slow phone gets its sentence first. The
+map stays pinned under the bar while the story scrolls under it,
+one step per scale (house, street, ring, region, planet), and the camera flies out at each, drawing that scale's
+cell heavy with the smaller ones faint inside it. Each step draws what that scale can say: the house's last 24 hours
+against its line, the street against the house with the gap shaded, the outdoor stations as dots against the house,
+every scale on one axis, and the listed nodes on a globe. The switch on top lists every issue the node carries, in
+the engine's order, so a pack's issue joins it with nothing changed here; a scale an issue has no reading at says so,
+and an issue read only by a model (land, coast) starts at the region. At `SHARE_LEVEL=open` it needs no token,
+map included: `/ground/*` is public data (OpenStreetMap, OpenAerialMap, Sentinel-2) cut around the node, and
+`/geo/cell` answers without what it says relative to the node (`is_node`, `cells_from_node`, `ring_polar`, `children_polar`), which
+stays for this machine or a token. At `off` it walks only on an unlocked phone. To unlock a phone without typing a token, open Set up ›
+This screen with the admin token and press *Show the code* under "A phone": the phone's camera opens the phone page
+holding the token for closing a loop, which answers the node and changes no setting. Each step that has captures
+counts them — "3 pictures here" — and the count opens a small grid of the pictures themselves, token only, fetched
+as blobs because an `<img>` cannot carry one; a locked phone's walk says nothing, the same silence the map keeps.
 
 ## Languages
 

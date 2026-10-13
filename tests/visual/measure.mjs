@@ -2934,6 +2934,282 @@ async function probe(expr) {
   await h.browser.close();
 }
 
+/* ------------------------------------------------------------------ the phone page (SPEC_mobile §8.1)
+ * The rig maps / to index.html everywhere else; the node does not — ui() chooses the document from
+ * ?layout=. This command honours that: mobile.html for layout=mobile, doors.html otherwise, classic
+ * for layout=classic, and it serves only names the node's allowlist serves (a flat name, fonts/ for
+ * the faces, a path refused). Against the committed fixture it measures the rule, the overflow, the
+ * engine's words character for character, the targets, the §7.1 budget, and the locked state. */
+async function mobile() {
+  const bad = [];
+  const ok = (cond, what) => { if (!cond) bad.push(what); };
+  const FIXQ = `fixture=${FIXTURE}`;
+  const fx = JSON.parse(fs.readFileSync(path.join(HERE, '..', '..', 'app', 'issues', 'fixtures', `${FIXTURE}.json`), 'utf8'));
+  const norm = s => (s || '').replace(/\s+/g, ' ').trim();
+
+  const docFor = u => {
+    if (u.pathname !== '/' && u.pathname !== '/index.html') return null;
+    const layout = u.searchParams.get('layout');
+    return layout === 'mobile' ? 'mobile.html' : layout === 'classic' ? 'index.html' : 'doors.html';
+  };
+  const openRig = async ({ w = 390, h = 844, touch = true, dark = false, token = null, mem = null, throttle = false, locked = false, wireDays = null } = {}) => {
+    const browser = await chromium.launch();
+    const ctx = await browser.newContext({ viewport: { width: w, height: h }, isMobile: touch, hasTouch: touch,
+      deviceScaleFactor: 1, colorScheme: dark ? 'dark' : 'light', reducedMotion: 'reduce' });
+    const reqs = [];
+    await ctx.route('**/*', async route => {
+      const u = new URL(route.request().url());
+      if (u.origin !== POP) return route.continue();
+      reqs.push(u.pathname);
+      /* a capture that predates /issues/days carries no table for buildD to pair the wire's events with.
+       * wireDays serves it the table its own wire implies — every field taken from the wire's open events,
+       * nothing invented: id, issue, kind, level, opened_at, cleared_at null. */
+      if (wireDays) {
+        const m = u.pathname.match(/^\/issues\/fixtures\/([a-z0-9][a-z0-9._-]{0,63})$/);
+        if (m && decodeURIComponent(m[1]) === wireDays) {
+          const snap = computeNodeData(wireDays).snapshot;
+          if (!snap) return route.continue();
+          const derived = { ...(snap.issues_days || {}), events: ((snap.issues.events || {}).open || []).map(e => ({
+            id: e.id, issue: e.issue, kind: e.kind, level: e.level, opened_at: e.opened_at, cleared_at: null })) };
+          return route.fulfill({ status: 200, contentType: 'application/json',
+            body: JSON.stringify({ ...snap, issues_days: derived }) });
+        }
+      }
+      const doc = docFor(u);
+      let file = doc || (u.pathname.startsWith('/static/') ? u.pathname.slice(8) : null);
+      if (file) {
+        const p = file.includes('/') ? null
+          : fs.existsSync(path.join(STATIC, file)) ? path.join(STATIC, file) : path.join(STATIC, 'fonts', file);
+        if (p === null) return route.fulfill({ status: 404, body: 'the node serves a name, not a path' });
+        if (fs.existsSync(p)) return route.fulfill({ status: 200, body: fs.readFileSync(p),
+          headers: { 'content-type': MIME[path.extname(p)] || 'application/octet-stream' } });
+      }
+      /* the locked phone: /issues answers exactly the 403 body app/main.py builds at SHARE_LEVEL=off */
+      if (locked && u.pathname === '/issues')
+        return route.fulfill({ status: 403, contentType: 'application/json', body: REFUSAL('/issues') });
+      if (await serveNodeAPI(route, u)) return;
+      return route.continue();
+    });
+    if (mem || token) await ctx.addInitScript(([m, t]) => { try {
+      if (m) localStorage.setItem('planetai_layout', m);
+      if (t) localStorage.setItem('planetai_act', t); } catch (e) {} }, [mem, token]);
+    const page = await ctx.newPage();
+    if (throttle) { const cdp = await ctx.newCDPSession(page);
+      await cdp.send('Network.emulateNetworkConditions', { offline: false, latency: 150,
+        downloadThroughput: 1.6 * 1024 * 1024 / 8, uploadThroughput: 750 * 1024 / 8 }); }
+    return { browser, page, reqs };
+  };
+
+  /* 1 · the rule (§4): a phone moves, a desk stays, a section hash keeps the doors, a memory wins */
+  {
+    const r = await openRig();
+    await r.page.goto(`${POP}/?${FIXQ}`, { waitUntil: 'domcontentloaded' });
+    await r.page.waitForSelector('#now-v .t', { timeout: 15000 }).catch(() => null);
+    ok(r.page.url().includes('layout=mobile'), `the rule: a phone was not moved (url ${r.page.url()})`);
+    ok(r.page.url().includes('fixture='), 'the rule: the redirect dropped the rest of the query string');
+    ok(await r.page.$('#now-v .t') !== null, 'the rule: the phone page did not draw after the redirect');
+    await r.browser.close();
+  }
+  {
+    const r = await openRig({ w: 1440, touch: false });
+    await r.page.goto(`${POP}/?${FIXQ}`, { waitUntil: 'domcontentloaded' });
+    await r.page.waitForTimeout(800);
+    ok(!r.page.url().includes('layout=mobile'), 'the rule: a desk window was moved to the phone page');
+    ok(await r.page.$('nav.doors') !== null, 'the rule: the desk did not keep the doors');
+    await r.browser.close();
+  }
+  {
+    const r = await openRig();
+    await r.page.goto(`${POP}/?${FIXQ}#setup`, { waitUntil: 'domcontentloaded' });
+    await r.page.waitForTimeout(800);
+    ok(!r.page.url().includes('layout=mobile'), 'the rule: /#setup on a phone left the doors');
+    await r.browser.close();
+  }
+  {
+    const r = await openRig({ mem: 'doors' });
+    await r.page.goto(`${POP}/?${FIXQ}`, { waitUntil: 'domcontentloaded' });
+    await r.page.waitForTimeout(800);
+    ok(!r.page.url().includes('layout=mobile'), 'the rule: a remembered doors did not keep the doors');
+    await r.browser.close();
+  }
+  {
+    const r = await openRig({ w: 1440, touch: false, mem: 'mobile' });
+    await r.page.goto(`${POP}/?${FIXQ}`, { waitUntil: 'domcontentloaded' });
+    await r.page.waitForSelector('#now-v .t', { timeout: 15000 }).catch(() => null);
+    ok(r.page.url().includes('layout=mobile'), 'the rule: a remembered mobile did not move a desk');
+    await r.browser.close();
+  }
+  console.error('  mobile · the rule: 5 cases');
+
+  /* 2 · no horizontal overflow at 320, 360 and 390, both registers */
+  for (const w of [320, 360, 390]) for (const dark of [false, true]) {
+    const r = await openRig({ w, dark });
+    await r.page.goto(`${POP}/?layout=mobile&${FIXQ}`, { waitUntil: 'domcontentloaded' });
+    await r.page.waitForSelector('#now-v .t', { timeout: 15000 }).catch(() => null);
+    const got = await r.page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));
+    ok(got.scroll <= got.client + 1, `overflow at ${w}${dark ? ' dark' : ''}: scrollWidth ${got.scroll} > clientWidth ${got.client}`);
+    await r.browser.close();
+  }
+  console.error('  mobile · overflow: 6 combinations');
+
+  /* 3 · the engine's words only, character for character; 4 · the targets. The reference is what the
+     * NODE SERVED — the replayed bundle at the very URL the page loaded — never the raw file, never a
+     * hardcoded string: the check is that the page invents and alters nothing. */
+  const readServed = page => page.evaluate(async name =>
+    (await fetch(`/issues/fixtures/${name}`)).json(), FIXQ.split('=')[1]);
+  const wordsOf = served => {
+    const I2 = served.issues, ld = (I2.lead || {}).issue || I2.order[0], it2 = I2.issues[ld];
+    const lc = (served.health || {}).locale || 'en';
+    const t2 = x => x == null ? null : typeof x === 'string' ? x : (x[lc] ?? x.en ?? null);
+    return { title: t2(it2.title) || t2((it2.hero || {}).sentence || it2.sentence),
+             tag: t2(it2.tagline), plain: t2((it2.hero || {}).plain),
+             open: ((I2.events || {}).open || [])[0] || {}, buttons: (I2.events || {}).buttons || {} };
+  };
+  {
+    const r = await openRig({ token: 'rig' });
+    await r.page.goto(`${POP}/?layout=mobile&${FIXQ}`, { waitUntil: 'domcontentloaded' });
+    await r.page.waitForSelector('#now-v .t', { timeout: 15000 });
+    const w = wordsOf(await readServed(r.page));
+    const dom = await r.page.evaluate(() => ({
+      title: document.querySelector('#now-v .t .said')?.textContent || '',
+      tag: document.querySelector('#now-v .tag')?.textContent ?? null,
+      plain: document.querySelector('#now-v .hero .plain .said')?.textContent || '',
+      card: document.querySelector('#decide')?.textContent || '',
+      action: document.querySelector('#decide .dq .said')?.textContent || '',
+      buttons: [...document.querySelectorAll('#decide .ans button')].map(b => b.textContent.trim()),
+      targets: [...document.querySelectorAll('button, a')].filter(el => !el.closest('[hidden]')).map(el => { const b = el.getBoundingClientRect();
+        return { t: (el.textContent || '').trim().slice(0, 24), w: b.width, h: b.height }; }),
+    }));
+    ok(norm(dom.title) === norm(w.title), `the title is not the wire's: "${norm(dom.title)}" vs "${norm(w.title)}"`);
+    ok(w.tag ? norm(dom.tag) === norm(w.tag) : dom.tag === null,
+      w.tag ? 'the tagline is not the wire\'s' : 'the wire has no tagline and the page invented one');
+    ok(norm(dom.plain) === norm(w.plain), 'plain is not the wire\'s');
+    /* this capture's open event is answered (acted, not yet cleared): the card shows the answer with the
+       wire's own button word, actor and hour — no buttons, nothing re-asked */
+    const a = w.open.answer;
+    if (a) {
+      const word = { acted: w.buttons.done, acknowledged: w.buttons.not_now, dismissed: w.buttons.doesnt_fit }[a.stage] || a.stage;
+      const wantLine = `answered: ${word}${a.actor ? ` by ${a.actor}` : ''} at ${(a.ts || '').slice(11, 16)}`;
+      ok(dom.card.includes(wantLine), `the answered line is not the wire's: want "${wantLine}" in "${norm(dom.card).slice(0, 200)}"`);
+      ok(dom.buttons.length === 0, 'an answered event still shows answer buttons');
+    }
+    for (const t of dom.targets) ok(t.w >= 44 && t.h >= 44, `target under 44×44: "${t.t}" ${t.w.toFixed(0)}×${t.h.toFixed(0)}`);
+    /* Add an image (SPEC_eyes step 1): an unlocked phone gets the button, its form's fields are all
+       44 px targets, and a phone with no token gets the unlock line instead of the button */
+    {
+      /* this rig holds token 'rig' (set on every load by its init script), so the button is there */
+      await r.page.waitForSelector('#capopen', { timeout: 15000 });
+      /* the button opens the library; the details show only once an image is chosen */
+      ok(await r.page.$eval('#capf', f => f.hidden), 'the details are hidden until an image is chosen');
+      const [chooser] = await Promise.all([r.page.waitForEvent('filechooser', { timeout: 5000 }), r.page.click('#capopen')]);
+      await chooser.setFiles({ name: 'p.jpg', mimeType: 'image/jpeg', buffer: Buffer.from([0xff, 0xd8, 0xff, 0xd9]) });
+      ok(await r.page.$eval('#capf', f => !f.hidden) && await r.page.$eval('#capopen', b => b.hidden), 'choosing an image opens its details');
+      const cap = await r.page.evaluate(() => [...document.querySelectorAll('#capf button, #capf select, #capf input:not([type="file"])')]
+        .map(el => { const b = el.getBoundingClientRect(); return { id: el.id || el.tagName, w: b.width, h: b.height }; }));
+      ok(cap.length >= 4, `the capture form draws its fields (${cap.length})`);
+      for (const t of cap) ok(t.w >= 44 && t.h >= 44, `capture form target under 44×44: ${t.id} ${t.w.toFixed(0)}×${t.h.toFixed(0)}`);
+      /* a rig with no token: removeItem on this one would be undone by its init script at the next load */
+      const r0 = await openRig();
+      await r0.page.goto(`${POP}/?layout=mobile&${FIXQ}`, { waitUntil: 'domcontentloaded' });
+      await r0.page.waitForSelector('#now-v .t', { timeout: 15000 });
+      const capLocked = await r0.page.evaluate(() => ({
+        btn: !!document.querySelector('#capopen'),
+        line: document.querySelector('.capture .dm')?.textContent || '',
+      }));
+      ok(!capLocked.btn && capLocked.line.includes('Unlock this phone') && capLocked.line.includes('to add images'),
+        `a locked phone is offered the unlock, not the button: "${capLocked.line}"`);
+      await r0.browser.close();
+    }
+    await r.browser.close();
+  }
+  console.error('  mobile · words and targets (answered card)');
+
+  /* 4b · a truly-asking event, from the node1-2026-10-06-events capture (the same alert before Tomas
+     * answered it): with a token the three buttons are the wire's events.buttons, character for character;
+     * without one the card says it went to Telegram. */
+  {
+    const EV = 'fixture=node1-2026-10-06-events';
+    const r = await openRig({ token: 'rig', wireDays: 'node1-2026-10-06-events' });
+    await r.page.goto(`${POP}/?layout=mobile&${EV}`, { waitUntil: 'domcontentloaded' });
+    await r.page.waitForSelector('#now-v .t', { timeout: 15000 });
+    const w = wordsOf(await r.page.evaluate(async () => (await fetch('/issues/fixtures/node1-2026-10-06-events')).json()));
+    const dom = await r.page.evaluate(() => ({
+      action: document.querySelector('#decide .dq .said')?.textContent || '',
+      buttons: [...document.querySelectorAll('#decide .ans button')].map(b => b.textContent.trim()),
+    }));
+    ok(norm(dom.action) === norm((w.open.action || {}).text), `the action is not the wire's: "${norm(dom.action)}"`);
+    ok(JSON.stringify(dom.buttons) === JSON.stringify([w.buttons.done, w.buttons.not_now, w.buttons.doesnt_fit]),
+      `the button labels are not the wire's: ${JSON.stringify(dom.buttons)}`);
+    await r.browser.close();
+    const r2 = await openRig({ wireDays: 'node1-2026-10-06-events' });
+    await r2.page.goto(`${POP}/?layout=mobile&${EV}`, { waitUntil: 'domcontentloaded' });
+    await r2.page.waitForSelector('#now-v .t', { timeout: 15000 });
+    const txt = await r2.page.evaluate(() => document.querySelector('#decide')?.textContent || '');
+    ok(/sent this to Telegram/.test(txt) === !!w.open.message?.sent, 'the card without a token does not say where the answer can be given');
+    await r2.browser.close();
+  }
+  console.error('  mobile · words (asking card)');
+
+  /* 5 · the §7.1 budget under the written throttle: 1.6 Mbit/s, 750 kbit/s, 150 ms */
+  {
+    const r = await openRig({ throttle: true });
+    const t0 = Date.now();
+    await r.page.goto(`${POP}/?layout=mobile&${FIXQ}`, { waitUntil: 'domcontentloaded' });
+    await r.page.waitForSelector('.asking', { state: 'visible', timeout: 20000 });
+    const tBoot = (Date.now() - t0) / 1000;
+    await r.page.waitForSelector('#now-v .t', { timeout: 20000 });
+    const tTitle = (Date.now() - t0) / 1000;
+    /* MapLibre, /ground and /geo/cell are the walk's, fetched once Now has drawn (mobile.js waits on boot());
+       tests/test_doors.py holds the shell to naming none of them */
+    const forbidden = r.reqs.filter(p => /deck\.gl|d3|plot|\/aggregates/.test(p));
+    ok(tBoot <= 1.0, `the boot face painted at ${tBoot.toFixed(2)} s (budget 1.0)`);
+    ok(tTitle <= 4.0, `the title drew at ${tTitle.toFixed(2)} s (budget 4.0 in v1)`);
+    ok(forbidden.length === 0, `requests that must not happen: ${forbidden.join(', ')}`);
+    const kb = ['mobile.js', 'doors-load.js'].map(f => fs.statSync(path.join(STATIC, f)).size).reduce((a, b) => a + b, 0) / 1024;
+    ok(kb < 40, `the two scripts are ${kb.toFixed(0)} kB together (budget 40)`);
+    console.error(`  mobile · budget: boot ${tBoot.toFixed(2)} s · title ${tTitle.toFixed(2)} s · scripts ${kb.toFixed(0)} kB · forbidden ${forbidden.length}`);
+    await r.browser.close();
+  }
+
+  /* 6 · locked: the refused block carries the node's sentence and the unlock field; Node still draws.
+     * NO ?fixture= here: loadD would read the bundle and never touch /issues — the lock would be invisible. */
+  {
+    const r = await openRig({ locked: true });
+    await r.page.goto(`${POP}/?layout=mobile`, { waitUntil: 'domcontentloaded' });
+    await r.page.waitForSelector('.refused', { timeout: 15000 });
+    const got = await r.page.evaluate(() => ({
+      lede: document.querySelector('.refused .lede')?.textContent || '',
+      unlock: !!document.querySelector('#sunlock'),
+      node: document.querySelector('#node-v')?.textContent || '',
+    }));
+    const want = JSON.parse(REFUSAL('/issues')).error;
+    ok(norm(got.lede) === norm(want), 'the refused block does not carry the node\'s own 403 sentence');
+    ok(got.unlock, 'the refused block has no unlock field');
+    ok(got.node.includes((fx.health || {}).node || 'this node'), 'Node did not draw from /health on a locked phone');
+    await r.browser.close();
+  }
+  console.error('  mobile · locked');
+
+  /* 7 · the shots: mobile_populated_390 in both registers */
+  for (const dark of [false, true]) {
+    const r = await openRig({ dark });
+    await r.page.goto(`${POP}/?layout=mobile&${FIXQ}`, { waitUntil: 'domcontentloaded' });
+    await r.page.waitForSelector('#now-v .t', { timeout: 15000 });
+    const name = `mobile_populated_390${dark ? '_dark' : ''}`;
+    for (const full of [false, true]) {
+      const f = path.join(OUT, `${name}${full ? '_full' : '_fold'}.jpg`);
+      await r.page.screenshot({ path: f, fullPage: full, type: 'jpeg', quality: 82 });
+      console.error(`  ${path.basename(f)}  ${(fs.statSync(f).size / 1024).toFixed(0)} kB`);
+    }
+    await r.browser.close();
+  }
+
+  if (!bad.length) { console.error('  mobile: every check passed'); return; }
+  console.error(`  mobile: ${bad.length} failure(s)`);
+  for (const b of bad) console.error('    ✗ ' + b);
+  process.exit(1);
+}
+
 const [cmd, ...rest] = process.argv.slice(2);
 if (cmd === 'render') await render(rest.length ? rest : ['all']);
 else if (cmd === 'steps') await steps();
@@ -2956,5 +3232,6 @@ else if (cmd === 'shots') await shots(rest.length ? rest : ['all']);
 else if (cmd === 'analyse') { const f = A[rest[0]]; if (!f) { console.error('analyse: ' + Object.keys(A).join(' ')); process.exit(2); } f(); }
 else if (cmd === 'overflow') await overflow(rest);
 else if (cmd === 'list') jobs().forEach(j => console.log(j.name));
-else { console.error('usage: measure.mjs render|shots|plates|plate-list|steps|stall|press|asking|extend|anchors|sheets|header|targets|audit|overflow|analyse|list');
+else if (cmd === 'mobile') await mobile();
+else { console.error('usage: measure.mjs render|shots|plates|plate-list|steps|stall|press|asking|extend|anchors|sheets|header|targets|audit|overflow|analyse|list|mobile');
   process.exit(2); }

@@ -59,7 +59,10 @@ def _answer(a: dict | None, kind: str) -> dict | None:
     if not a:
         return None
     held = _t(a["ts"]) + HOLD if a["stage"] == "acknowledged" and kind != "danger" else None
-    return {"stage": a["stage"], "actor": a.get("actor"), "ts": _iso(a["ts"]), "held_until": _iso(held)}
+    # The note is the household's own words ("what did you do instead?"): recorded at the press or ridden in on a
+    # second row, and shown on the card — an answer without it is a vote, an answer with it is a story.
+    return {"stage": a["stage"], "actor": a.get("actor"), "ts": _iso(a["ts"]), "held_until": _iso(held),
+            "note": a.get("note") or None}
 
 
 def build(engine, events, messages, answers, covered, contexts, decl, locale, now, tz=None) -> dict:
@@ -86,8 +89,17 @@ def build(engine, events, messages, answers, covered, contexts, decl, locale, no
                "message": {"text": m.get("text"), "ts": _iso(m["ts"]), "sent": bool(m.get("sent"))} if m else None,
                "alerts": sorted(covered.get(eid) or []),
                "answer": _answer(a, e["kind"])}
+        # Whether the card still asks: until somebody answers, and again once a Not now's hold has run out (the node
+        # asks again then). Every page draws its buttons from this, so an answered card never offers them twice.
+        held = (row["answer"] or {}).get("held_until")
+        row["asking"] = cleared is None and (a is None or (a["stage"] == "acknowledged" and held is not None
+                                                            and _t(held) <= now))
         if cleared is None:
             ctx, key = contexts.get(eid) or {}, OUTSIDE.get(issue.get("metric"))
+            # The card is the present: its action is chosen again from the context as it is now. The message that
+            # was sent keeps its words, as history.
+            if ctx:
+                row["action"] = A.now_say(issue, ctx, locale, e.get("rooms"), e.get("peak")) or row["action"]
             outside = ctx.get(f"outside_{key}") if key else None
             # outside_source only describes the temperature; an outside PM2.5 always came from an outdoor sensor
             came = None if outside is None else "outside" if key == "pm25" else ctx.get("outside_source")
@@ -151,7 +163,7 @@ def live(cur, decl: dict, locale: str, now: dt.datetime) -> dict:
     ids = [e["id"] for e in events]
     cur.execute("SELECT event_id, ts, text, sent, action_id FROM event_messages WHERE event_id = ANY(%s)", (ids,))
     messages = [dict(x) for x in cur.fetchall()]
-    cur.execute("SELECT event_id, ts, stage, actor FROM actions WHERE event_id = ANY(%s)", (ids,))
+    cur.execute("SELECT event_id, ts, stage, actor, note FROM actions WHERE event_id = ANY(%s)", (ids,))
     answers = [dict(x) for x in cur.fetchall()]
     covered, contexts = {}, {}
     for e in events:

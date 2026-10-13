@@ -1,10 +1,10 @@
 # Configuration
-<!-- checked: v0.80.3 -->
+<!-- checked: v0.81.0 -->
 
 A setting is a decision the household makes about its node: which sensors count as its own, what it
 watches first, when it may interrupt somebody, what a stranger on the WiFi may read, whether a question
-may leave the house for an online model. This page lists every setting a node has at v0.80, where its
-value comes from, and what each group lets the node do. It was read against the code of v0.80: 63
+may leave the house for an online model. This page lists every setting a node has at v0.81, where its
+value comes from, and what each group lets the node do. It was read against the code of v0.81: 64
 runtime keys, 16 bootstrap keys, 26 keys declared by packs, and the keys read only from the environment.
 
 ## How a setting is read
@@ -65,7 +65,7 @@ container restarts:
 | `NODE_KIND` | `/presence`, its only reader |
 | `ACT_TOKEN`, `RETICULUM_ALERT_DESTINATIONS` | the Reticulum bridge, which reads its own environment. The app itself reads the `ACT_TOKEN` override |
 
-The full list of what is declared and not read is under [Known gaps](#known-gaps-in-v080).
+The full list of what is declared and not read is under [Known gaps](#known-gaps-in-v081).
 
 ### Keys read only from the environment
 
@@ -157,7 +157,7 @@ Shortcuts for the settings people change most:
 | `planetai telegram` | Validates the bot token with `getMe`, waits up to two minutes for you to message the bot, writes `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_IDS` to `.env` and to the runtime settings, sends a hello, recreates the app. |
 | `planetai ui` | Creates `ADMIN_TOKEN` and `ACT_TOKEN` in `.env` if either is missing (and recreates the app), then prints the dashboard URLs, `SHARE_LEVEL` and the three tokens: admin, backup, act. |
 | `planetai agent local pull <tag>` | `AGENT_MODEL`, after pulling the model, and recreates the `agent` container. |
-| `planetai storage set backups DIR` · `set remote REMOTE:PATH` · `set keep DAYS` | `BACKUP_DIR` (checked to be a mount point and writable), `BACKUP_REMOTE`, `BACKUP_KEEP`. `set data` refuses and explains why `DATA_DIR` must be an internal disk. |
+| `planetai storage set backups DIR` · `set remote REMOTE:PATH` · `set keep DAYS` · `set captures DIR` | `BACKUP_DIR` (checked to be a mount point and writable), `BACKUP_REMOTE`, `BACKUP_KEEP`, `CAPTURES_DIR` (checked the same way, then the app is recreated so the new folder is mounted). `set data` refuses and explains why `DATA_DIR` must be an internal disk. |
 | `planetai packs install` | Appends the `env:` keys of every pack to `.env` under a dated marker, with their explanation lines, then rebuilds the app image. |
 
 ## Reference
@@ -191,8 +191,8 @@ data, what it loads.
 
 | Setting | Default | Values | Meaning | Kind |
 |---|---|---|---|---|
-| `SHARE_LEVEL` | `off` | `off`, `open` | What a request with no token may read. `off` = the dashboard shell, `/health` with the position rounded, the daily export and the layout, and nothing else. `open` = the whole read API to anything on your network, so a wall screen or a phone works with no token; writes still need one. A request with a token reads everything at either level. See [Sharing and security](sharing.md). | runtime · public · outward |
-| `ADMIN_TOKEN` | blank; `install.sh` generates one | hex string | Opens `PUT /settings`, `/settings/raw`, `POST /readings`, `/report/now`, `/test-alert` and the whole `/mcp`; also accepted where `BACKUP_TOKEN` or `ACT_TOKEN` would be. `planetai ui` creates and prints it. | env only · secret |
+| `SHARE_LEVEL` | `off` | `off`, `open` | What a request with no token may read. `off` = the dashboard shell, `/health` with the position rounded, the daily export, the layout and the programme's list of nodes (`/nodes`), and nothing else. `open` = the whole read API to anything on your network, so a wall screen or a phone works with no token (the phone's walk map included: `/ground/*`, and `/geo/cell` without its node-relative fields); writes still need one. A request with a token reads everything at either level. See [Sharing and security](sharing.md). | runtime · public · outward |
+| `ADMIN_TOKEN` | blank; `install.sh` generates one | hex string | Opens `PUT /settings`, `/settings/raw`, `/settings/phone`, `POST /readings`, `/report/now`, `/test-alert` and the whole `/mcp`; also accepted where `BACKUP_TOKEN` or `ACT_TOKEN` would be. `planetai ui` creates and prints it. | env only · secret |
 | `BACKUP_TOKEN` | blank; `update.sh` generates one | string | Read-only: lets a NAS fetch `/backups`, `/backups/<name>` and `/report/bundle`. Separate from the admin token and cannot read `/settings/raw`. `planetai ui` prints it; `planetai storage` reports whether it is set. | runtime · secret |
 | `POSTGRES_PASSWORD` | `change-me`; `install.sh` replaces it | string | The database password, composed into `DATABASE_URL` by Docker. | env only · secret |
 | `DATABASE_URL` | set by `docker-compose.yml` | URL | The database connection the app and the settings module use. Compose-internal; nothing to set by hand. | env only |
@@ -207,7 +207,7 @@ data, what it loads.
 | `UI_GROUND` | `svg` | `svg`, `map` | How the ground is drawn. `svg` = the drawing the page has always made. `map` = MapLibre and deck.gl draw it in the browser, so it pans and zooms; it needs WebGL2 and falls back to `svg`, saying why, without it. The two libraries (860 kB gzipped, 3.2 MB as the node serves them) are fetched from the node only when the ground is drawn this way. Neither value changes what leaves the house: `MAP_TILES` decides that. | runtime · public |
 | `UI_LAYOUT` | blank | JSON | Order and visibility of the dashboard's cards. Managed by the dashboard's Arrange mode; blank restores the default. Readable by every screen in the house at every level. | runtime · public |
 | `MAP_TILES` | `off` | `off`, `on` | Live satellite and street tiles under the cells. Each tile request tells a tile server which square of the planet this house is looking at. `off` = tiles from the node's local copy of OpenStreetMap; `on` = live tiles. A keeper turns this on in Set up. | runtime · public |
-| `UPDATE_CHECK` | `on` | `on`, `off` | Once a day, ask planetai.fab.city which version is current. When a newer one is out, the page's header, `planetai doctor` and Telegram (once per version, after quiet hours) say so. Nothing is installed: `planetai update` stays yours to run. The request carries nothing about the house, but it shows this house's internet address to Fab City's host; see [what leaves](sharing.md). `off` = the node never asks. | runtime · public · outward |
+| `UPDATE_CHECK` | `on` | `on`, `off` | Once a day, ask planetai.fab.city which version is current. When a newer one is out, the page's header, `planetai doctor` and Telegram (once per version, after quiet hours) say so. Nothing is installed: `planetai update` stays yours to run. The request carries nothing about the house, but it shows this house's internet address to Fab City's host; see [what leaves](sharing.md). The same switch reads the programme's list of nodes (`registry.json` on GitHub) every 6 hours for `GET /nodes` and the Node door. `off` = the node asks neither. | runtime · public · outward |
 | `STATIONS_SHOWN` | `3` | integer, `0` = all | How many of the neighbourhood's stations the dashboard lists, nearest first. This node's own hardware is always listed and never counted. Nothing is discarded: the page says how many it is not listing. To collect fewer stations, turn `BAD_RADIUS_KM` down instead. | runtime · public |
 
 ## What it reads
@@ -217,9 +217,9 @@ data, what it loads.
 | `SC_DEVICES` | blank | comma-separated kit ids | Smart Citizen kits read directly from the cloud API, the number in `smartcitizen.me/kits/<id>`. Always treated as yours, at this address. Any id enables the adapter. | runtime |
 | `SC_USER` | blank | username | Discover every kit on a Smart Citizen account instead of listing ids. Indoor or outdoor comes from each kit's own setting. Also used by `/nearby?audit=1`. | runtime |
 | `SC_EXCLUDE` | blank | comma-separated kit ids | Account kits that belong to another site. | runtime |
-| `AIRGRADIENT_HOSTS` | blank | comma-separated hostnames or IPs | AirGradient ONE or Open Air units on your WiFi. In v0.80 the key only keeps these units out of the Bali Air Dispatch ring; see [Known gaps](#known-gaps-in-v080). | runtime |
-| `PURPLEAIR_HOSTS` | blank | comma-separated IPs | PurpleAir units on your WiFi. Use the IP; the `.local` name is unreliable. Nothing reads this key in v0.80. | runtime |
-| `SENSOR_INDOOR` | `0` | `1`, `0` | Whether the LAN sensors above are indoors. Smart Citizen carries this itself. Nothing reads this key in v0.80. | runtime · public |
+| `AIRGRADIENT_HOSTS` | blank | comma-separated hostnames or IPs | AirGradient ONE or Open Air units on your WiFi. In v0.81 the key only keeps these units out of the Bali Air Dispatch ring; see [Known gaps](#known-gaps-in-v081). | runtime |
+| `PURPLEAIR_HOSTS` | blank | comma-separated IPs | PurpleAir units on your WiFi. Use the IP; the `.local` name is unreliable. Nothing reads this key in v0.81. | runtime |
+| `SENSOR_INDOOR` | `0` | `1`, `0` | Whether the LAN sensors above are indoors. Smart Citizen carries this itself. Nothing reads this key in v0.81. | runtime · public |
 | `BAD_ENABLED` | `0`; `.env.example` and the bali preset ship `1` | `1`, `0` | Bali only: the island's public stations from Bali Air Dispatch as outdoor reference. Needs `NODE_LAT`. `planetai setup` sets `0` outside Bali. | runtime · public |
 | `BAD_RADIUS_KM` | `15`; bali preset `8` | km | How far out the ring of other people's stations reaches. Also `/nearby.radius_km`. | runtime · public |
 | `BAD_MIN_SEPARATION_M` | `150` | metres | A station closer than this to the node is assumed to be the node's own hardware, not a neighbour. | runtime · public |
@@ -237,7 +237,7 @@ data, what it loads.
 | `MQTT_USER`, `MQTT_PASS` | blank | strings | Broker credentials. `planetai meshtastic` generates them and writes the broker's password file. | env only · secret |
 | `SOURCES_DIR` | `/app/data/sources` | path inside the container | Where the app reads the vendored source registry that `GET /sources` serves. Mounted read-only from `./data`. | env only |
 
-> **Gap in v0.80.3.** `SENSOR_INDOOR` and `PURPLEAIR_HOSTS` are read by nothing, and `AIRGRADIENT_HOSTS`
+> **Gap in v0.81.0.** `SENSOR_INDOOR` and `PURPLEAIR_HOSTS` are read by nothing, and `AIRGRADIENT_HOSTS`
 > only keeps those units out of the Bali Air Dispatch ring. The AirGradient and PurpleAir adapters exist
 > and are tested; the node does not register them for polling.
 
@@ -250,11 +250,12 @@ data, the nearest fab lab) are set with the pack keys in [What the packs declare
 |---|---|---|---|---|
 | `TELEGRAM_BOT_TOKEN` | blank | BotFather token | Alerts and reports to Telegram. Blank = they go to the log only. Never shown again once saved. `planetai telegram` sets it. | runtime · secret · outward |
 | `TELEGRAM_CHAT_IDS` | blank | comma-separated ids | Recipients. Add the bot to a group, or let `planetai telegram` find yours. | runtime · outward |
+| `TELEGRAM_BUTTONS` | `0` | `1`, `0` | `1` = an event's message carries Done / Not now / Doesn't fit, and the bot in the agent container records the press (the same row the dashboard's buttons write). The bot sets this on startup, so the buttons ride only while somebody answers them; leave it alone. | runtime |
 | `ALERT_LEVEL` | `act` | `act`, `warn`, `info` | What interrupts you between reports. `act` = only when something needs doing; `warn` = also when something changed; `info` = everything. Everything is recorded regardless, on the dashboard and in the next report. | runtime · public |
 | `QUIET_HOURS` | `1` | `1`, `0` | `1` = between the hours below only act-level alerts are sent; the rest wait for the morning report. A report due in quiet hours is held and folded into the next. | runtime · public |
 | `QUIET_FROM` | `22` | local hour | When quiet hours start. | runtime · public |
 | `QUIET_TO` | `6` | local hour | When quiet hours end. | runtime · public |
-| `ALERT_ENGINE` | `rules` | `rules`, `shadow`, `events` | `rules` = every rule sends on its own. `shadow` = the event engine (`docs/SPEC_alerts.md`) records what it would send in `event_messages` and sends nothing; the rules keep sending. `events` = the engine sends the heat and air messages, one per event and without Telegram buttons for now (the dashboard has them); the old heat and air rules still record their alerts but no longer send, and every other alert and the reports are unchanged. On `shadow` and `events`, an issue's state on the dashboard follows its alert event, and the old heat and air alerts are no longer open asks. | runtime |
+| `ALERT_ENGINE` | `rules` | `rules`, `shadow`, `events` | `rules` = every rule sends on its own. `shadow` = the event engine (`docs/SPEC_alerts.md`) records what it would send in `event_messages` and sends nothing; the rules keep sending. `events` = the engine sends the heat and air messages, one per event, with the three buttons when the bot runs (`TELEGRAM_BUTTONS`); the old heat and air rules still record their alerts but no longer send, and every other alert and the reports are unchanged. On `shadow` and `events`, an issue's state on the dashboard follows its alert event, and the old heat and air alerts are no longer open asks. | runtime |
 | `ALERT_MAX_PER_DAY` | `4` | whole number | With the event engine: pushes a day outside danger. Beyond it an event is recorded and waits for the next report. Danger is never held. | runtime |
 | `HOME_HAS` | empty | `purifier`, `ac`, `fan`, `windows`, comma-separated | What this home has. The event engine only suggests what is here to use. | runtime |
 | `ALERT_LOCALE` | `en` | `en`, `id`, `es` | The language of the alert rules, the reports, the test alert and the bot's own replies; every `rules.yml` carries all three. The dashboard and the terminal stay in English. Anything else falls back to English. Echoed in `/health.locale`; read by the agent loop too. | runtime · public |
@@ -278,16 +279,16 @@ written once.
 |---|---|---|---|---|
 | `REPORT_EVERY` | blank = `6` | `3`, `4`, `6`, `8`, `12`, `24` | Hours between reports. `6` is four a day. Each accepted value divides 24, so the rhythm does not walk round the clock. Also the default window of `/report/bundle`. | runtime · public |
 | `REPORT_ANCHOR` | blank = `6` | `0` to `23` | The local hour the rhythm starts from. With a 6-hour interval, `6` gives 06, 12, 18 and 00. | runtime · public |
-| `REPORT_DEPTH` | blank = `auto` | `auto`, `brief`, `standard`, `deep` | How much the report says. `auto` lets the strongest model the node can reach decide. Nothing reads it in v0.80. | runtime · public |
+| `REPORT_DEPTH` | blank = `auto` | `auto`, `brief`, `standard`, `deep` | How much the report says. `auto` lets the strongest model the node can reach decide. Nothing reads it in v0.81. | runtime · public |
 
-> **Gap in v0.80.3.** `REPORT_DEPTH` is declared, validated and offered in Set up, and nothing reads it.
+> **Gap in v0.81.0.** `REPORT_DEPTH` is declared, validated and offered in Set up, and nothing reads it.
 > Changing it changes nothing.
 
 ## How it closes a loop
 
 | Setting | Default | Values | Meaning | Kind |
 |---|---|---|---|---|
-| `ACT_TOKEN` | blank; `planetai ui` generates one | string | Lets someone in the house record that they acted on an alert (`POST /actions`) from off this machine without holding the admin token. It cannot read a secret or change a setting. The dashboard's forms for recording an act or a decision send it, or the admin token, from the browser. The Reticulum bridge posts actions with the copy in its own environment. | runtime · secret |
+| `ACT_TOKEN` | blank; `planetai ui` generates one | string | Lets someone in the house record that they acted on an alert (`POST /actions`) from off this machine without holding the admin token. It cannot read a secret or change a setting. The dashboard's forms for recording an act or a decision send it, or the admin token, from the browser. Set up, unlocked with the admin token, draws it as a QR code a phone scans to unlock its page. The Reticulum bridge posts actions with the copy in its own environment. | runtime · secret |
 | `DECISION_REQUIRED` | `0` | `0`, `1` | `0` records an act whenever somebody says they did something. `1` refuses an act (409) unless a decision was recorded against the same alert first, which is what a node acting for a street rather than a house usually wants. It applies to every way in: the dashboard, Telegram, the radio and the terminal. Turn it on only where everybody answering has a screen to decide on. | runtime |
 
 ## Which model it thinks with
@@ -308,6 +309,7 @@ this machine only when `planetai agent local` set one up. See [Ask the node](ask
 | `AGENT_REMOTE_URL` | blank | `http://<host>:8082/v1` | A bigger local model on your tailnet, OpenAI-compatible. | runtime · restart |
 | `AGENT_REMOTE_MODEL` | `gpt-oss-120b` | model id | e.g. `gpt-oss-120b` or `qwen3:8b`. | runtime · public · restart |
 | `AGENT_REMOTE_KEY` | blank | secret | If that server asks for one. | runtime · secret · restart |
+| `EYES_MODEL` | blank | Ollama model id | The image model: a vision model in this machine's Ollama that describes each image and files what it sees under the [flows](https://planetai.fab.city/vocab/flows/1.0/) classes (`POST /captures/{cid}/describe`). The picture never leaves this machine, and the model is never asked about people. Blank = off. On 16 GB, `qwen2.5vl:7b` (`ollama pull qwen2.5vl:7b`). Each upload form has a box to describe the image as it arrives, and Data, Images describes any image again. | runtime · public |
 | `OLLAMA_URL` | `http://host.docker.internal:11434` | URL | Ollama on this machine, the `local` rung. `planetai agent local` sets `http://172.17.0.1:11434` on Linux. | env only |
 | `AGENT_MODEL` | `qwen3:4b` | Ollama model | The local rung's model, passed to the container as `MODEL`. `planetai agent local pull <tag>` pulls a model and sets this; `planetai agent local` recommends `qwen3.5:4b` below 16 GB of memory and `qwen3.5:9b` at 16 GB or more. It must do tool calling. | env only |
 | `AGENT_NAME` | `local-model` | string | How the agent's actions appear in the audit trail, sent as `X-Agent`. | env only |
@@ -330,11 +332,12 @@ timestamps go up; where, what was said and who said it stay. A node that is a pa
 ## Where it keeps its data
 
 All read by `docker-compose.yml` or `backup.sh`, the nightly cron job. `planetai storage` shows the state of
-each and `planetai storage set` changes the first three.
+each and `planetai storage set` changes the backups and the pictures folder.
 
 | Setting | Default | Values | Meaning | Kind |
 |---|---|---|---|---|
 | `DATA_DIR` | blank = the Docker volume `db` | path | Where the live database lives. A path is a local disk or partition only; never a NAS. `planetai storage set data` refuses for that reason. | bootstrap |
+| `CAPTURES_DIR` | `./out/captures` | path | Where the household's pictures live (SPEC_eyes). Unlike `DATA_DIR` it may be a NAS share or any mounted storage — files, not Postgres. A capture is refused, and `planetai doctor` goes red, when the folder is missing or not writable. | bootstrap |
 | `BACKUP_DIR` | `./backups` | path | Where `pg_dump` files go. If it is a mount point it must be mounted, or the backup refuses. | bootstrap |
 | `BACKUP_KEEP` | `30` | days | Days of dumps kept in `BACKUP_DIR`. | bootstrap |
 | `BACKUP_REMOTE` | blank | rclone `remote:path` | Off-machine copy after each backup: S3, B2, R2, Drive, Dropbox, SFTP, WebDAV, Nextcloud. Run `rclone config` once. | bootstrap |
@@ -374,7 +377,7 @@ environment, where the node puts the database value. A code pack reads none of t
 | `FORECAST_BMKG` | forecast | `1` | Read BMKG, Indonesia's meteorological agency. |
 | `FORECAST_BMKG_ADM4` | forecast | blank | The village code BMKG needs for this point. `planetai run forecast verify` proves it resolves to somewhere near the node. |
 | `FORECAST_OPENMETEO` | forecast | `0` | Read Open-Meteo. It works anywhere, but its free tier is non-commercial only, so it is the operator's decision. Off until you turn it on. |
-| `FORECAST_POLL_HOURS` | forecast | `6` | Declared as how often to ask. Nothing reads it in v0.80. |
+| `FORECAST_POLL_HOURS` | forecast | `6` | Declared as how often to ask. Nothing reads it in v0.81. |
 | `FORECAST_WIND_N` | forecast | `8` | The wind field for the map: points a side, so 64 points. Only with `FORECAST_OPENMETEO=1`. |
 | `FORECAST_WIND_KM` | forecast | `30` | The wind field's half-width in km round the node. |
 | `EARTH_RADIUS_M` | earth | `5000` | Half-width of the square around the node. 5000 is a 10 km square, about 64 MB on disk and 103 MB pulled per year. Also `/earth.radius_m`. |
@@ -390,7 +393,7 @@ environment, where the node puts the database value. A code pack reads none of t
 | `GROUND_SAT_WIDE_KM` | earth-engine | `60` | `planetai run earth-engine basemap`: half-width in km of the wide Sentinel-2 context square; the detailed one is `GROUND_RADIUS_KM`. |
 | `COAST_MAX_KM` | coast | `30` | Refuse to report if the nearest ocean grid cell is further away than this, in km. Also a runtime key (public): the override moves both the dashboard's drawn footprint and the adapter's refusal. |
 
-> **Gap in v0.80.3.** `FORECAST_POLL_HOURS` is declared and read by nothing.
+> **Gap in v0.81.0.** `FORECAST_POLL_HOURS` is declared and read by nothing.
 
 `OVERPASS_URL` (default `https://overpass-api.de/api/interpreter`, the place pack's Overpass endpoint) is
 read by the place pack but declared in no `pack.yaml`, so it is `env only`.
@@ -417,7 +420,7 @@ preset guesses `NODE_ISSUES`: change it, because what matters here is decided by
 `planetai setup` picks the preset itself when the geocoded place falls inside the bali, barcelona, boston
 or santiago bounding box.
 
-## Known gaps in v0.80
+## Known gaps in v0.81
 
 - `AIRGRADIENT_HOSTS` and `PURPLEAIR_HOSTS` are declared and the adapters exist and are tested, but the
   node does not register them for polling. `AIRGRADIENT_HOSTS` is used only to keep those units out of

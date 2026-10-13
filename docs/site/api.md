@@ -1,9 +1,9 @@
 # HTTP API
-<!-- checked: v0.80.3 -->
+<!-- checked: v0.81.0 -->
 
 Every node exposes the same API on port 8080. The dashboard, the `planetai` command, the MCP tools, a NAS pulling backups, Home Assistant and a parent node are all clients of it, and none of them has a private path in. A request either carries a token as `Authorization: Bearer <token>` or carries nothing, and a request carrying nothing is judged by the `SHARE_LEVEL` setting. The container publishes `${APP_PORT:-8080}:8080` on every host interface; Postgres is published on `127.0.0.1:5432` only. There is no TLS on the node itself: the tailnet encrypts the hop, and the [sharing page](sharing.md) says what to do on a network that is not a tailnet.
 
-This page was read from the code at v0.80. Where an older document disagrees, the code wins.
+This page was read from the code at v0.81. Where an older document disagrees, the code wins.
 
 ## Access rules
 
@@ -19,9 +19,9 @@ Two middlewares run before any handler. The first registered checks `/mcp` again
 | `act` | `token` at the middleware. Loopback then needs nothing more; from anywhere else the handler requires `ACT_TOKEN` or `ADMIN_TOKEN`. |
 | `children` | `token`, then the handler requires `AGGREGATE_TOKEN`. What a parent demands of a child. |
 
-The `off` allowlist (the default) is exactly: `/`, `/ui`, `/health`, `/llms.txt`, `/settings`, `/export`, `/presence`, and any path under `/static/`.
+The `off` allowlist (the default) is exactly: `/`, `/ui`, `/health`, `/llms.txt`, `/settings`, `/export`, `/presence`, `/nodes`, and any path under `/static/`.
 
-The `open` allowlist is the `off` list plus 27 paths: `/stats`, `/sensors`, `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/trust`, `/nearby`, `/forecast`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, `/ask`, `/ask/status`, `/docs/search`. It also takes any path under `/static/`, `/exports/`, `/issues` or `/sources/`. That is 34 exact paths and 4 prefixes in all.
+The `open` allowlist is the `off` list plus 28 paths: `/stats`, `/sensors`, `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/trust`, `/nearby`, `/forecast`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, `/ask`, `/ask/status`, `/docs/search`, `/geo/cell`. It also takes any path under `/static/`, `/exports/`, `/issues`, `/sources/` or `/ground/`. That is 36 exact paths and 5 prefixes in all. `/ground/*` is public data (OpenStreetMap, OpenAerialMap, Sentinel-2, Open-Meteo) cut around the node; `/geo/cell` answers an untrusted caller without its node-relative fields.
 
 A `SHARE_LEVEL` value that is neither `off` nor `open` is treated as `off`. The allowlist matches the path whatever the method, so it governs writes as well as reads. `POST /readings` shares its path with `GET /readings`, so at `SHARE_LEVEL=open` an anonymous post gets past the middleware and is refused by the handler with 401. `PUT /settings` shares its path with `GET /settings`, which is on the `off` list, so the same happens at every level. `/actions` is on neither list, so an anonymous `POST /actions` or `GET /actions` is refused by the middleware at both levels. A path the node has no route for is refused with 403 too, not 404, when the caller is untrusted.
 
@@ -83,22 +83,29 @@ What this node is willing to announce about itself on Reticulum. Public at every
 
 Returns `{"enabled": false}` unless `RETICULUM_PRESENCE=1`. When enabled: `{enabled: true, node, cell, res, version, kind}`, where `cell` is the node's cell coarsened to resolution `res` (`RETICULUM_PRESENCE_RES`, default 3, clamped to 0..6; resolution 6 is the finest allowed) and `kind` is `NODE_KIND` or null.
 
+### GET /nodes
+Access: public
+
+The nodes the programme lists: `registry.json` on the repository's `main`, read by the node every 6 hours (`docs/SPEC_hello.md`). Public at every level: it is the same public file on every node and says nothing about this house. A node joins the list with a merged pull request.
+
+Returns `{read, from, nodes, error?}`. `read` is when the last good read was (null before the first), `from` the file's URL, `error` why the last read failed while the list it kept is still served. Each node has `name`, `place`, `scale`, `operator`, `since`, `cell` and `ll`, `[lon, lat]` to one decimal (about 10 km), or null. `contact` and `sources` stay in the file. `UPDATE_CHECK=off` reads nothing and serves an empty list.
+
 ### GET /
 Access: public
 
 ### GET /ui
 Access: public
 
-The dashboard: `app/static/index.html`, one file, no build step, sent with `cache-control: no-cache, must-revalidate` so a wall screen follows the version after `planetai update`. With `?layout=doors` it sends `app/static/doors.html` instead, the five doors on trial, which read the same routes with the same token. A stub page if the file is missing. Hidden from the OpenAPI schema.
+The dashboard: `app/static/index.html`, one file, no build step, sent with `cache-control: no-cache, must-revalidate` so a wall screen follows the version after `planetai update`. It sends `app/static/doors.html`, the five doors, by default; `?layout=classic` sends `app/static/index.html`, the older dashboard, and `?layout=mobile` (or `?layout=walk`) sends `app/static/mobile.html`, the phone page. All three read the same routes with the same token. A stub page if the file is missing. Hidden from the OpenAPI schema.
 
 ### GET /static/{name}
 Access: public
 
-The files the dashboard cannot inline: the ground SVG, the fonts, the renderer's script and stylesheets, the drawing library (Observable Plot and d3), the signs, the kilometre-cells JSON, the learn-mode quotes, the map ground's MapLibre and deck.gl, and the five doors' scripts, their world coastline and the documentation they draw the API from. Named one by one; a name that is not on the list is 404 `no such asset`. Sent with the same no-cache header.
+The files the dashboard cannot inline: the ground SVG, the fonts, the renderer's script and stylesheets, the drawing library (Observable Plot and d3), the signs, the kilometre-cells JSON, the learn-mode quotes, the map ground's MapLibre and deck.gl, the QR code library Set up draws the phone's unlock with, the phone page and its walk, and the five doors' scripts, their world coastline and the documentation they draw the API from. Named one by one; a name that is not on the list is 404 `no such asset`. Sent with the same no-cache header.
 
 | Name | Type | Default | Meaning |
 |---|---|---|---|
-| `name` | path | required | One of `node-ground.svg`, `jetbrains-mono-latin.woff2`, `FunnelSans-VariableFont_wght.ttf`, `Figtree-VariableFont_wght.ttf`, `Figtree-Italic-VariableFont_wght.ttf`, `dashboard.js`, `dashboard.css`, `d3.min.js`, `plot.umd.min.js`, `planetai-theme.css`, `tokens.css`, `signs.svg`, `kilometre-cells.json`, `learn.json`, `maplibre-gl.js`, `maplibre-gl.css`, `deck.gl.min.js`, `world-land-110m.json`, `docs_site.json`, and `doors-<name>.js` for `load`, `nodegeo`, `core`, `fig`, `now`, `placemap`, `place`, `data`, `flow`, `wallmap`, `wall`, `node` and `setup` |
+| `name` | path | required | One of `node-ground.svg`, `jetbrains-mono-latin.woff2`, `FunnelSans-VariableFont_wght.ttf`, `Figtree-VariableFont_wght.ttf`, `Figtree-Italic-VariableFont_wght.ttf`, `dashboard.js`, `dashboard.css`, `d3.min.js`, `plot.umd.min.js`, `planetai-theme.css`, `tokens.css`, `signs.svg`, `kilometre-cells.json`, `learn.json`, `maplibre-gl.js`, `maplibre-gl.css`, `deck.gl.min.js`, `qrcode.js`, `mobile.html`, `mobile.js`, `walk.js`, `world-land-110m.json`, `docs_site.json`, and `doors-<name>.js` for `load`, `nodegeo`, `core`, `fig`, `now`, `placemap`, `place`, `data`, `flow`, `wallmap`, `wall`, `node` and `setup` |
 | `variant` | string | `dark` | Register for `node-ground.svg`; anything but `paper` is treated as `dark` |
 
 `node-ground.svg` is drawn live from `NODE_LAT` and `NODE_LON` when they are set, so the hero shows this node's own cell. Without coordinates the shipped file is served. `learn.json` holds the quotes `tools/build_learn.py` cuts out of this site for the dashboard's learn mode.
@@ -108,7 +115,7 @@ Access: token
 
 A 301 redirect to `/report/latest`, kept for a dashboard left open in a browser through the update that removed the briefing in v0.38. Takes and ignores `kind`. Hidden from the OpenAPI schema.
 
-> **Gap in v0.80.3.** `/briefing` is on neither allowlist. A stale dashboard with no token is refused with 403 by the middleware before it can be redirected, at both levels. The route works as intended only for loopback or a request with a token.
+> **Gap in v0.81.0.** `/briefing` is on neither allowlist. A stale dashboard with no token is refused with 403 by the middleware before it can be redirected, at both levels. The route works as intended only for loopback or a request with a token.
 
 
 ### GET /machine
@@ -243,7 +250,7 @@ What surrounds the node's own numbers: other people's stations, the weather fore
 ### GET /nearby
 Access: open
 
-The ring: other people's stations around this node, and where this node sits inside it. Reads only what is stored, so the dashboard never waits on someone else's server. In v0.80 the ring is Bali Air Dispatch stations only (`source = 'baliairdispatch'`), within `BAD_RADIUS_KM`, that reported in the last 24 hours.
+The ring: other people's stations around this node, and where this node sits inside it. Reads only what is stored, so the dashboard never waits on someone else's server. In v0.81 the ring is Bali Air Dispatch stations only (`source = 'baliairdispatch'`), within `BAD_RADIUS_KM`, that reported in the last 24 hours.
 
 | Name | Type | Default | Meaning |
 |---|---|---|---|
@@ -330,7 +337,7 @@ The H3 cells covering a box at one resolution, one ring wider so a drawn grid ru
 Returns `{res, may_leave, edge_m, node, cells_ll}`. `node` and each `cells_ll` row are `[id, lat, lng, …]`, the shape `/issues` geometry uses. `may_leave` is true at resolution 6 and coarser. A box that would hold more than 2,500 cells is refused with 422, not cut short.
 
 ### GET /geo/cell
-Access: token
+Access: open
 
 One cell's facts, named by `id`, or by `lat`, `lon` and `res`.
 
@@ -340,6 +347,8 @@ One cell's facts, named by `id`, or by `lat`, `lon` and `res`.
 | `lat`, `lon`, `res` | float, float, int | none | The cell containing that point at that resolution, when there is no `id` |
 | `children` | int | none | A finer resolution: adds `children_res`, `children_n`, and up to 400 child rings as `children_ll` |
 | `polar` | bool | false | Adds each ring as distance and bearing from the node: `ring_polar`, and `children_polar` with `children` |
+
+Without a token (at `SHARE_LEVEL=open`) the answer leaves out `is_node`, `cells_from_node`, `ring_polar` and `children_polar`: asked cell by cell at a fine resolution, they would find the house.
 
 Returns `{id, res, area_m2, edge_m, parent, may_leave, is_node, cells_from_node, ring}`. `cells_from_node` counts grid steps from the node's own cell at the same resolution, or is null when h3 cannot walk that far. A polar row is `[id, metres, bearing, …]`, bearing in degrees clockwise from north.
 
@@ -379,28 +388,28 @@ Circles round the node, as `[lat, lng]` rings.
 Returns `{rings: [{km, ring}]}`.
 
 ### GET /ground/meta
-Access: token
+Access: open
 
 What the node holds of its own map in `out/ground/`: for each layer (`vector`, `drone`, `imagery`) its source, licence, attribution, tile count, bytes and fetch time, which layers are on disk (`on_disk`, plus `glyphs` and `wind`), and the command that fetches each one, the wind field's included. Never an error.
 
 ### GET /ground/{layer}/{z}/{x}/{y}
-Access: token
+Access: open
 
 One tile of the node's own map, XYZ addressed. `layer` is `vector` (OpenStreetMap vector tiles from Protomaps' build, served gzipped with `Content-Encoding: gzip`), `drone` (OpenAerialMap mosaics, PNG) or `imagery` (this node's Sentinel-2 composite, PNG). `y` may carry an extension. Answers 204 where the node holds no tile, which a map reads as empty ground.
 
 ### GET /ground/glyphs/{font}/{span}
-Access: token
+Access: open
 
 The label fonts the vector map draws names with (Noto Sans, OFL), one face and one range of 256 per request, as MapLibre asks for them: `/ground/glyphs/Noto Sans Regular/0-255.pbf`. 204 for a range the node did not fetch.
 
 ### GET /ground/wind
-Access: token
+Access: open
 
 The wind over the node's square for a map to draw moving: the forecast pack's Open-Meteo field, `n`×`n` points (8 by default) over `km` each side, hourly for the next day. Returns `{source, licence, attribution, fetched, n, km, lats, lons, times, speed_kmh, from_deg, at_node}`; `lats` run south to north and `lons` west to east, and `speed_kmh[t][row][column]` is km/h, `from_deg` the direction the wind comes from; `at_node` is the same for the node's own point, asked as such. Refreshed on each forecast poll and by `planetai run forecast windfield`; 204 on a node with `FORECAST_OPENMETEO=0`.
 
 `planetai run place basemap` fetches the vector tiles, the fonts and any drone mosaic; `planetai run earth-engine basemap` builds the satellite layer. Each says what it reveals before it runs. After that a map drawn from these routes asks nobody anything.
 
-The five `/geo/` routes and the four `/ground/` routes are on no allowlist, like `/place/geojson`: the node's cell at a fine resolution, a ring centred on it, and a distance from it each give away the point `/health` rounds, and so does a tile pyramid centred on it.
+Four of the five `/geo/` routes are on no allowlist, like `/place/geojson`: the node's cell at a fine resolution, a ring centred on it, and a distance from it each give away the point `/health` rounds. `/geo/cell` and the four `/ground/` routes are on the `open` list, so a phone can walk the map with no token: `/geo/cell` drops its node-relative fields for that caller, and the tiles are public data whose centre is no closer than the point `/health` already rounds.
 
 ## Issues
 
@@ -413,12 +422,12 @@ Every issue this node declares, computed: state, stack by distance, the line it 
 
 Returns `{schema, order, undeclared, dropped, headline, as_of, lead, headline_rule, distances, labels, issues, stations, stations_silent, metrics, asks, digest, mesh, geometry, sections, events}`, with `schema` set to `issues-v0`.
 
-`events` is the alert events (see [Alerts](alerts.md)), one per issue per house, as the bot tells them: which engine the node runs (`rules`, `shadow` or `events`), the three button labels in the household's language, the `open` events (kind, rooms, peak, the issue's line, the numbers the action was chosen from, the action and the latest message word for word, the alerts each covers, and the latest answer), the events cleared in the last 7 days under `recent`, `cleared_today` and `last_cleared` (the issue and time of the latest one cleared today), and `uncovered_asks`: the open alerts no event covers; on `shadow` and `events`, leaving out the alerts of the packs the engine replaced. An open event's issue leads the page, and `lead.by` is then `event`. A node older than v0.77 sends no `events` key, and a node that could not read them sends `events.error`.
+`events` is the alert events (see [Alerts](alerts.md)), one per issue per house, as the bot tells them: which engine the node runs (`rules`, `shadow` or `events`), the three button labels in the household's language, the `open` events (kind, rooms, peak, the issue's line, the numbers the action was chosen from, the action, chosen again from the readings as they are now, and the latest message word for word, the alerts each covers, the latest answer with its `stage`, `actor`, and `note`, and `asking`: true until somebody answers, and again once a Not now's hold has run out, so a page draws the buttons only while it is true), the events cleared in the last 7 days under `recent`, `cleared_today` and `last_cleared` (the issue and time of the latest one cleared today), and `uncovered_asks`: the open alerts no event covers; on `shadow` and `events`, leaving out the alerts of the packs the engine replaced. An open event's issue leads the page, and `lead.by` is then `event`. A node older than v0.77 sends no `events` key, and a node that could not read them sends `events.error`.
 
 - `headline` is the key of the issue an open event belongs to; with no open event, the issue with the highest state. Within a state, the tie goes to the issue that has `moved` most, and an exact tie to the declared order. Only an issue that declares a hero can lead. `headline_rule` states that rule in `en`, `id` and `es`, so a page can print why that issue leads.
 - `lead` is `{issue, by}`: the same issue as `headline`, and which step of the rule picked it over the runner-up, one of `event`, `state`, `moved` or `order`. It is `null` when no watched issue declares a hero.
 - `digest` is keyed by stage, `observe`, `decide`, `act` and `measure`, and each stage holds one sentence per locale. `digest.prompts` is the ask pane's questions per locale, written from the bundle: the three it opens with, then up to nine more it rotates through (the other issues, the two newest other open alerts, and each other issue's line), in the same order in every locale. `digest.simple` is one paragraph per locale, three sentences: the house's own stations and the nearest others, the oldest open alert, and how many times the node asked in the last 30 days and how many were answered. The dashboard's simple mode draws `digest.simple`.
-- Each entry of `issues` carries `state`, `watched`, `reason`, `reason_text`, `name`, `kind`, `metric`, `unit`, `dp`, `headline`, `stack`, `line`, `attribution`, `trend`, `moved`, `open_asks`, `series`, `buckets`, `readouts`, `provenance`, `sentence` (keyed by locale), `hero`, `usual` and `usual_absent`. On `shadow` and `events` an issue's `state` follows its alert event: `act` while an event is open and unanswered (a danger event stays `act` after an answer), `notable` once somebody answers it and for 24 hours after it clears, with `reason.code` `event_open`, `event_answered` or `event_cleared`; and `open_asks`, which the oldest open alert in `digest` is read from, leaves out the alerts of the packs the engine replaced. An enabled pack can add rows to `readouts` through `readouts:` in its `pack.yaml`; it adds and never replaces. The full key set is defined in `app/issues/engine.py`.
+- Each entry of `issues` carries `state`, `watched`, `reason`, `reason_text`, `name`, `kind`, `metric`, `unit`, `dp`, `headline`, `stack`, `line`, `attribution`, `trend`, `moved`, `open_asks`, `series`, `buckets`, `readouts`, `provenance`, `sentence` (keyed by locale), `title` and `tagline` (the sentence's split, keyed by locale: the title is the qualitative head with no number and no indicator in it, the tagline the explanation set smaller beneath it — docs/SPEC_language.md; the page titles with these and speaks prose with `sentence`), `hero`, `usual` and `usual_absent`. On `shadow` and `events` an issue's `state` follows its alert event: `act` while an event is open and unanswered (a danger event stays `act` after an answer), `notable` once somebody answers it and for 24 hours after it clears, with `reason.code` `event_open`, `event_answered` or `event_cleared`; and `open_asks`, which the oldest open alert in `digest` is read from, leaves out the alerts of the packs the engine replaced. An enabled pack can add rows to `readouts` through `readouts:` in its `pack.yaml`; it adds and never replaces. The full key set is defined in `app/issues/engine.py`.
 - `usual` is the issue's usual day at its hero distance: for each local hour 0–23, the mean over that distance's
   sensors of `usual_by_hour`'s median and 90th percentile for the issue's own metric, over the 14 complete days before
   today. It is `null` when the node cannot say, and `usual_absent` says why: `unread` (a capture from before v0.79, or
@@ -454,11 +463,11 @@ Returns the snapshot JSON with `issues` replaced by the recomputation, or `{"err
 ### GET /issues/days
 Access: open
 
-`?days=` from 1 to 90, default 7. Each declared issue's hourly series over that many local days, by the same engine
+`?days=` from 1 to 90, default 7; `?locale=` `en`, `id` or `es`, default `en`, for the words in `hours`. Each declared issue's hourly series over that many local days, by the same engine
 as `/issues`, so one day of it is the 24 hours `/issues` draws. Buckets are every local hour of the window, oldest
 first; an hour with nothing recorded is `null`. The hours are stepped in UTC and shown in the node's zone, so a day
 with a daylight-saving change holds 25 or 23 hours, and `of` says so. For each issue: `distance` (the hero distance,
-the nearest with data), `series` (room, yard, ring and region, each an array or `null`), `provenance` (the word for
+the nearest with data), `series` (room, yard, ring and region, each an array or `null`), `hours` (a sensed issue's past hours in the locale asked for, `{locale: [[title, tagline], …]}`, one per bucket: what it was doing in words, then the reading and whose line; `null` for a context issue), `provenance` (the word for
 each distance drawn), `per_day` (`date`, `over` the hours over the line at the hero distance, `read` the hours with a
 value, `of` the hours of that day inside the window), and `line`. `events` lists the alert events opened or cleared in
 the window, or still open. Wire format `days-v0`. It is under the `/issues` prefix, so it is readable exactly where `/issues` is.
@@ -521,6 +530,58 @@ An alert event is answered the same way, by sending `event_id` instead of `alert
 Access: admin
 
 Fires one act-level alert now, through every configured channel, the same as `planetai test-alert`. Writes an alert with rule `gui/test` and sends it with a hint on how to close the loop. Returns `{"ok": true, "alert_id": <id>}`.
+
+## Captures
+
+A capture is one picture with the facts a reading has (SPEC_eyes): when, which cell, who, with what. The file lives in the folder the household chose (`CAPTURES_DIR`, which may be a NAS share — files, not Postgres); the database keeps the row. These routes are on **no `SHARE_LEVEL` list at any level**, and no capture ever appears in `/export`, `/exports`, `/aggregates`, `/readings` or a parent push: a picture leaves only when the household carries it out, or when a later step's offer to an open platform is switched on per platform. The exact point is kept, token only, like the file; only the file is cleaned of EXIF and GPS on arrival, so a picture that is ever shared carries no hidden place.
+
+### POST /captures
+Access: act
+
+A household adds a picture: multipart form, one image (`jpeg`, `png`, `heic`, `webp`; HEIC is re-encoded to JPEG so any screen can show it). From loopback it needs no token, like `POST /actions`; from anywhere else `ACT_TOKEN` or `ADMIN_TOKEN`. Fields:
+
+| Name | Type | Default | Meaning |
+|---|---|---|---|
+| `photo` | file | required | the picture; 40 MB at most |
+| `kind` | str | `phone` | `microscope`, `phone`, `camera`, `drone` or `balloon` |
+| `lat`, `lon` | float | | the exact point, together or neither. Kept, token only. The picture's own GPS, when it carries one, wins over these |
+| `cell` | str | | or a res-10 H3 cell instead of a point; any other resolution is 422 |
+| `note` | str | | cut to 500 characters |
+| `taken_at` | str | | ISO date-time; else the file's own date is used, else now |
+| `actor` | str | | who took it — the name the phone keeps; cut to 80 characters |
+
+A picture whose EXIF carries GPS takes that as its point (where it was taken beats where the phone is now, the case of a gallery pick) unless a `cell` is given; the GPS is then removed from the file with the rest. With no point and no cell, the capture stands in the node's own res-10 cell and the point stays null. Two booleans are computed on arrival and never recomputed: `outside` (the cell is not in the node's seven res-8 cells — its own and the six touching it) and `at_home` (the cell is the res-10 cell of `NODE_LAT`/`NODE_LON`; a later step blurs the house only when something leaves). The upload is re-encoded with no metadata — EXIF, GPS and the thumbnail die on arrival — and stored under its sha256 in `CAPTURES_DIR`; a duplicate sha256 answers `{"ok": true, "duplicate": true, "capture": …}` with the existing row and writes nothing new. Returns `{"ok": true, "capture": <row>}`; 503 with a clear message naming `CAPTURES_DIR` when the folder is missing or not writable.
+
+### GET /captures
+Access: act
+
+The visual database, newest first, rows of `{id, ts, received_at, kind, cell, lat, lon, outside, at_home, actor, note, file, sha256, bytes, mime, at}`. `at` is `[lat, lon]` where a map draws it: the exact point, else the centre of its cell.
+
+| Name | Type | Default | Meaning |
+|---|---|---|---|
+| `cell` | str | | only captures inside this cell — at **any** resolution: a res-9 street or res-6 ring answers the res-10 rows inside it, which is how the walk asks |
+| `kind` | str | | only this kind |
+| `limit` | int | 50 | 1..500 |
+
+### PATCH /captures/{cid}
+Access: act
+
+Edits an image's words from the Data door: a JSON body with any of `note` (cut to 500 characters), `kind` (one of the five) and `meta` (an object of at most 40 keys, each value a string cut to 500, replaced whole). The point, the cell, the time and the file are facts of arrival and are not edited. `{"confirm": true, "actor": "<name>"}` marks the image model's findings as the household's; `{"findings": [...], "actor": "<name>"}` replaces them with a person's edited list, confirmed by the edit (`analysis.by` becomes `person`, with `confirmed_by`); 409 when the image has not been described. Returns `{"ok": true, "capture": <row>}`; 422 for nothing to change or a bad kind, 404 for no such capture.
+
+### POST /captures/{cid}/describe
+Access: act
+
+Asks the image model (`EYES_MODEL`, a vision model in this machine's Ollama) about one image, now, and keeps the answer in the row's `analysis`: `{model, where: "local", vocab, asked, at, summary, findings: [{class, name, count, issue}], by: "model", confirmed_by: null}`. Each finding's `class` is a physical class of the [Fab City flows profile](https://planetai.fab.city/vocab/flows/1.0/) (`plant`, `animal`, `habitat`, `waste_residual`, `goods` and the rest) or `other`; `issue` is true for a problem such as litter, smoke or damage. The model first describes the picture in words, then files those words as findings, so each finding is something it said it saw; it is told never to describe or count people. The picture goes to this machine's Ollama and nowhere else. A second call replaces the earlier description and its confirmation. `POST /captures` with `describe=1` (the upload form's box) describes the new image after the upload answers, and says `"describing": true`; false when no image model is set. 409 when no image model is set, 503 when Ollama or the model is not there.
+
+### DELETE /captures/{cid}
+Access: admin
+
+Deletes an image, its row and its file in `CAPTURES_DIR`. This machine, or the admin token only: the act token adds and edits images and never destroys one (401). Returns `{"ok": true, "deleted": <id>}`; 404 for no such capture.
+
+### GET /captures/{cid}/file
+Access: act
+
+The picture itself, with its stored mime. 404 `no such capture`, or `the row is here but the file is gone from the captures folder`. The name is the node's own (a sha256), never a path from a client.
 
 ## Whether it worked
 
@@ -609,7 +670,7 @@ Since v0.73 the row ends with five registry fields, and the same row at pin `851
 ### GET /sources
 Access: open
 
-The network's registry of what can be measured, as this node carries it: a pinned copy of `awesome-fabcity-data` under `data/sources/`, identical on every node in a release. In v0.80 the pin is `851b8db`, synced 6 October, with 269 entries. It says nothing about this house, which is why it is on the `open` list by name.
+The network's registry of what can be measured, as this node carries it: a pinned copy of `awesome-fabcity-data` under `data/sources/`, identical on every node in a release. In v0.81 the pin is `851b8db`, synced 12 October, with 269 entries. It says nothing about this house, which is why it is on the `open` list by name.
 
 | Name | Type | Default | Meaning |
 |---|---|---|---|
@@ -750,6 +811,11 @@ Body: `{"KEY": "value", ...}`. Header `X-Agent` names the caller (default `gui`)
 
 > **Note.** Every row `GET /settings` lists can be set here. A pack key is accepted whether or not its pack is switched on, so `MAKE_ENABLED` can turn the make pack on, and the node also puts the value into the environment the pack reads. A node that answers 400 `<KEY> is not a runtime setting` to a pack key is older than this; update it.
 
+### GET /settings/phone
+Access: admin
+
+`{"act": <ACT_TOKEN>}`, for Set up's "A phone" row to draw as a QR code: the phone page at `#act=<token>`, which the phone keeps and takes out of its address bar. Admin token only; 404 when the node has no `ACT_TOKEN` yet.
+
 ### GET /settings/raw
 Access: admin
 
@@ -762,7 +828,7 @@ Access: admin
 
 The MCP server, over streamable HTTP at exactly `/mcp` (GET, POST and DELETE as the transport defines; no trailing-slash redirect). The whole surface needs `Authorization: Bearer <ADMIN_TOKEN>`, checked by its own middleware against the environment, because the tools can write as well as read; a missing or wrong token is 401 `{"error": "the agent surface needs Authorization: Bearer <ADMIN_TOKEN>"}`. It bypasses the `SHARE_LEVEL` check, which leaves the decision to that middleware. The tools call the API back on `http://127.0.0.1:8080`, so they arrive at every other route as loopback.
 
-In v0.80 the tools are `status`, `health_check`, `sensors`, `context`, `readings`, `report_latest`, `report_now`, `report_bundle`, `history`, `alerts`, `act`, `settings_get`, `settings_set`, `packs`, `cells`, `issues`, `series`, `export_day`, `run_pack_script` and `maintenance`. Each is classed `read`, `act` or `admin` in `app/tool_classes.py`; `act` is the only `act` tool, and it refuses a `note` that is empty or a placeholder such as `done` or `ok`, because ρ counts what a person said they did. The [MCP page](mcp.md) describes each.
+In v0.81 the tools are `status`, `health_check`, `sensors`, `context`, `readings`, `report_latest`, `report_now`, `report_bundle`, `history`, `alerts`, `act`, `settings_get`, `settings_set`, `packs`, `cells`, `issues`, `series`, `export_day`, `run_pack_script` and `maintenance`. Each is classed `read`, `act` or `admin` in `app/tool_classes.py`; `act` is the only `act` tool, and it refuses a `note` that is empty or a placeholder such as `done` or `ok`, because ρ counts what a person said they did. The [MCP page](mcp.md) describes each.
 
 ## The ask pane
 
@@ -810,6 +876,7 @@ The API is the read side. These are the requests the node makes of other machine
 | `POST {PARENT_API_URL}/events` | Hourly, if `PARENT_API_URL` is set and an alert was raised in the last 36 hours | `{schema, node, rows, scale}`: one row per alert from the last 36 hours as timestamps (`alert_id`, `rule`, `level`, `kind`, `raised_at`, `responded_at`, `acted_at`, `measured_at`), same header |
 | Telegram `sendMessage` | Each alert at or above `ALERT_LEVEL` (quiet hours hold all but `act`), except that with `ALERT_ENGINE=events` the heat and air-quality alerts are not sent and each event's message is instead; each report not held by quiet hours, and once per newer release outside quiet hours, per chat id | The message text, to `api.telegram.org` with `TELEGRAM_BOT_TOKEN` |
 | `GET https://planetai.fab.city/node0/get/VERSION` | Once a day, unless `UPDATE_CHECK=off` | Nothing about the house; the request shows the node's internet address to Fab City's host. The answer fills `/health`'s `release` |
+| `GET https://raw.githubusercontent.com/fabcity/planetai-node/main/registry.json` | Every 6 hours (an hour after a failed read), unless `UPDATE_CHECK=off` | Nothing about the house; the request shows the node's internet address to GitHub. The answer is `GET /nodes` |
 | `POST {RETICULUM_URL}/send` | Each act-level alert, if `RETICULUM_URL` is set | `{"text": ...}` to the bridge container |
 | MQTT publish | Each act-level alert (`MESH_ALERTS=1`), and Home Assistant discovery (`HA_DISCOVERY=1`) | The first line of the alert to the mesh downlink; discovery and state topics to the broker at `MQTT_HOST` |
 

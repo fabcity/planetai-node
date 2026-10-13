@@ -1,8 +1,8 @@
 # How it works
-<!-- checked: v0.80.3 -->
+<!-- checked: v0.81.0 -->
 
 A node is two containers on one machine. `db` is Postgres with PostGIS, bound to the machine itself. `app` is
-one Python process that answers the HTTP API on port 8080 and runs six loops in the background, a seventh when
+one Python process that answers the HTTP API on port 8080 and runs seven loops in the background, an eighth when
 the Reticulum bridge is on. An `agent` container for the Telegram bot and a Reticulum bridge are optional.
 Everything a node does is one of those loops or one of the API's answers, and this page follows a reading
 through the whole of it. The node's own description of itself, the one it hands every agent that connects,
@@ -56,7 +56,7 @@ a year. `GET /reach` says how far back each kind of source can be asked. Every n
 On the page, Decide is "what to do about it", the first section under the lead on Now. Its other sections, whose
 word covers how much ground and what each H3 resolution is worth, are on Network, and what the node doubts about
 its own sensors is on Historical. Since v0.72 Decide draws a card for each issue with an open act-level alert; a
-node that tells events draws one card for each open event instead, with its action and three buttons. An alert's card shows what was seen and
+node that tells events draws one card for each open event instead, with the action for the readings as they are now and three buttons, which go once somebody answers. An alert's card shows what was seen and
 "what this node suggests", which is the rule's own last line, the one that begins with 👉, written by
 whoever wrote the rule. A person may record a decision there. It is written to `actions` with
 `stage: decided`, and it moves nothing: it closes no alert, it is not in ρ and it is not a stage in the funnel.
@@ -110,6 +110,7 @@ the thing receiving the answer.
 | push aggregates | hourly | if `PARENT_API_URL` is set, posts the last two hours of hourly means to the parent's `/aggregates` |
 | push events | hourly | if `PARENT_API_URL` is set, posts this node's alert timestamps of the last 36 hours to the parent's `/events` |
 | release check | hourly | unless `UPDATE_CHECK=off`, asks planetai.fab.city once a day which version is current, says so in `/health` and the page's header, and once per version on Telegram. It installs nothing |
+| node list | hourly | unless `UPDATE_CHECK=off`, reads the programme's `registry.json` from GitHub every 6 hours and serves it at `/nodes`, each other node's point to one decimal and no contact |
 | Reticulum | 300 s | only with `RETICULUM_URL` set: asks the bridge for its health and the peers it has heard, for `/health.reticulum`. An `act <id>` message is turned into `POST /actions` by the bridge itself |
 
 One more thread runs when `MQTT_HOST` is set. It subscribes to the broker for Meshtastic radios and DIY
@@ -149,9 +150,9 @@ Raw readings stay. What travels is a summary: hourly means and alert timestamps 
 (`indoor-1`, `outdoor-2`), the Index cells, the first line of each alert, ρ and the centre of the node's
 resolution-8 cell (not its point), under CC BY 4.0. The export is readable at every [sharing level](sharing.md).
 
-Once a day the node asks planetai.fab.city which version is current. The request carries nothing about the
-house, but it shows the house's internet address to Fab City's host; `UPDATE_CHECK=off` in Set up → Sharing
-stops it. Four more things can leave, and each only when somebody here turns it on. With `RETICULUM_PRESENCE=1` the
+Once a day the node asks planetai.fab.city which version is current, and every 6 hours it reads the programme's
+list of nodes from GitHub. Neither request carries anything about the house, but each shows the house's internet
+address to the host it asks; `UPDATE_CHECK=off` in Set up → Sharing stops both. Four more things can leave, and each only when somebody here turns it on. With `RETICULUM_PRESENCE=1` the
 node announces a coarse H3 cell on the Reticulum network: resolution 3 by default, never finer than 6. With
 `MAP_TILES=on` the browser showing the dashboard fetches live map tiles at resolution 8 and coarser, and each
 tile request "tells a tile server which square of the planet this house is looking at". And a question to
@@ -195,7 +196,7 @@ by aggregation. No agent dispatches without a human row in `actions`. No layer r
 function. No scale is skipped: a city aggregator is built from nodes, not declared from above. The longer
 form, with the staging from one node to a bioregion, is [Architecture](architecture.md).
 
-Some of that staging is not built in v0.80. The fabrication ticket the Act layer ends in when a decision is
+Some of that staging is not built in v0.81. The fabrication ticket the Act layer ends in when a decision is
 physical does not exist, and no job has been handed to a workshop. Nodes finding each other
 (`docs/SPEC_discovery.md`) is not built; a node as a key (`docs/SPEC_identity.md`) and the second ρ, which
 would ask whether the reading recovered (`docs/SPEC_rho.md`), are Phase 1 with nothing built.

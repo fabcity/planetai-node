@@ -575,7 +575,7 @@ for _k, _want in (
                 "line is 15, and the street and the ring are over it."),
         ("heat", "In the house it is 33.9, and on the street 30.7, and in the ring around it 32.7. "
                  "The line is 35, and nothing here is over it."),
-        ("coast", "2.0 m at the nearest ocean cell. Swell 1.9 m, period 12 s, sea 28.1 °C. The node "
+        ("coast", "2.0 m off this coast. Swell 1.9 m, period 12 s, sea 28.1 °C. The node "
                   "reads this from a model, not from anything here, and it never asks you to do "
                   "anything about it."),
         ("land", "1.3 % of the square this node watches changed between 2024 and 2025. 8.5 % since "
@@ -587,6 +587,73 @@ for _k, _want in (
         check(_p and "{" not in _p and "\u2014" not in _p, f"plain: {_k}.{_loc} is {_p!r}")
 check(_L21["value"] == 91 and _L21["stamp"]["en"] == "looked at in July 2025 \u00b7 next look July 2026",
       f"hero: land on 21 Sep reads {_L21['value']} · {_L21['stamp']['en']!r}")
+# --- Release C: the headline clauses ---------------------------------------------------------
+# The {line} clause is computed from the value, so the sentence can never contradict the line:
+# air at 12 against a line of 15 is under it; heat at 33.9 against 35 is near it.
+_S21 = {k: _O21[k]["sentence"]["en"] for k in ("air", "heat", "coast", "land")}
+check("under the WHO line" in _S21["air"] and "past the WHO line" not in _S21["air"],
+      f"line clause: air reads {_S21['air']!r}")
+check("close to this house's own heat line" in _S21["heat"] and "under the WHO line" not in _S21["heat"],
+      f"line clause: heat reads {_S21['heat']!r}")
+# The {event} clause: heat's ask opened today and the room is back under the line, so the sentence
+# names the crossing — the act band and the calm words agree. Air's stale ask could be from any
+# day, so it gets no such clause.
+check("crossed the line earlier today." in _S21["heat"],
+      f"event clause: heat reads {_S21['heat']!r}")
+check("earlier today" not in _S21["air"], f"event clause: air reads {_S21['air']!r}")
+# The household's words, not the instruments': no "ring" or "region", no dash drama, and no word of the
+# title said again in the tagline's opening (the review of 11 Oct: "holding … holding off", said twice).
+for _k in ("air", "heat"):
+    for _loc in I.LOCALES:
+        _t, _g = _O21[_k]["title"][_loc], _O21[_k]["tagline"][_loc]
+        check(not re.search(r"\b(ring|region)\b", _t + " " + _g) and "\u2014" not in _t + _g,
+              f"voice: {_k}.{_loc} reads {_t!r} | {_g!r}")
+# Context issues carry no jargon in the headline layer.
+check("cell" not in _S21["coast"].lower(), f"coast headline reads {_S21['coast']!r}")
+check("square" not in _S21["land"].lower(), f"land headline reads {_S21['land']!r}")
+# Unit-level: over the line renders the over clause and silences the event clause; back under with
+# an alert today renders the under clause and names the crossing.
+_air = DECL["air"]
+_cmp_mode = _air.get("compare") or {"mode": "ratio", "margin": 1.5}
+_su = engine._sentence(_air, {"room": {"value": 42}}, "notable", "room", "steady", "en",
+                       _cmp_mode, "inside", _air["line"], {"code": "alert_today"})
+check("past the WHO line" in _su and "earlier today" not in _su,
+      f"line/event over: {_su!r}")
+_sb = engine._sentence(_air, {"room": {"value": 4}}, "notable", "room", "steady", "en",
+                       _cmp_mode, "clear", _air["line"], {"code": "alert_today"})
+check("under the WHO line" in _sb and "earlier today" in _sb,
+      f"line/event back under: {_sb!r}")
+# Every locale renders the new clauses with no brace left over.
+for _loc in I.LOCALES:
+    for _k in ("air", "heat"):
+        _s = _O21[_k]["sentence"][_loc]
+        check(_s and "{" not in _s, f"sentence: {_k}.{_loc} is {_s!r}")
+# --- the title / tagline split (v0.80.8) ------------------------------------------------------
+# The title is words only: no digit and no line in any issue, attribution, locale or line relation.
+# The tagline meets the instrument, and opens a sentence of its own.
+for _k in ("air", "heat"):
+    _d = DECL[_k]
+    for _loc in I.LOCALES:
+        _blk = _d["sentences"][_loc]
+        for _att in _blk["attribution"]:
+            for _n in (0.2, 0.95, 3.0):
+                _v = round(_d["line"]["value"] * _n, 1)
+                _f, _t, _g = engine._sentence_parts(_d, {"room": {"value": _v}}, "notable", "room", "rising",
+                                                    _loc, _d.get("compare") or {}, _att, _d["line"], None)
+                check(_t and _g and not re.search(r"\d", _t)
+                      and not any(w in _t for w in _blk["line"].values())
+                      and _g[0].isupper(),
+                      f"split: {_k}.{_loc}.{_att} at {_v} gives {_t!r} | {_g!r}")
+check(engine._sentence_parts(DECL["air"], {}, "none", "room", "steady", "en", {}, None)[2] == "",
+      "split: a template with no {line} has no tagline")
+# --- the past hour: the engine's words, never the page's ----------------------------------------
+# Rendered by /issues/days (tests/test_figures_wire.py checks it per bucket); here, one hour on its own: the
+# line relation is the engine's (0.95 of the line is near, never under) and an empty hour has no tagline.
+_air_near = engine._hour_parts(_air, {"room": [_air["line"]["value"] * 0.95]}, [NOW], 0, "room", "en", _cmp_mode,
+                               _air["line"])
+check("close to the WHO line" in _air_near[1], f"hours: 0.95 of the line reads {_air_near!r}")
+check(engine._hour_parts(_air, {"room": [None]}, [NOW], 0, "room", "en", _cmp_mode, _air["line"])[1] == "",
+      "hours: an hour with no reading has no tagline")
 
 
 # ---------------------------------------------------------------- simple mode's paragraph

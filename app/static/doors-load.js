@@ -28,6 +28,7 @@ function buildD(A, locale) {
       name: tr(it.name), state: it.state, unit: it.unit, dp: it.dp, metric: it.metric,
       line: (it.line || {}).value ?? null, line_source: (it.line || {}).source ?? null,
       sentence: tr(hero.sentence || it.sentence), plain: tr(hero.plain), pix: hero.pictogram || null,
+      title: tr(it.title), tagline: tr(it.tagline), hours: tr(y.hours),
       reason_text: tr(it.reason_text), open_asks: it.open_asks || [],
       usual: (it.usual || {}).hours ? it.usual.hours.map(h => [h.median, h.p90]) : null,
       stack: Object.fromEntries(Object.entries(it.stack || {}).map(([d, s]) => [d, s && { value: s.value, provenance: s.provenance, source: s.source }])),
@@ -44,7 +45,8 @@ function buildD(A, locale) {
   const evs = I.events || {}, full = new Map([...(evs.open || []), ...(evs.recent || [])].map(e => [e.id, e]));
   const events = (Y.events || []).map(e => {
     const f = full.get(e.id) || {};
-    return { ...e, action: (f.action || {}).text ?? null, peak: f.peak ?? null, rooms: f.rooms || [], answer: f.answer ?? null };
+    return { ...e, action: (f.action || {}).text ?? null, peak: f.peak ?? null, rooms: f.rooms || [], answer: f.answer ?? null, asking: f.asking ?? !f.answer,
+             last_seen_at: f.last_seen_at ?? null, message: f.message ?? null };   /* the phone's card reads both (SPEC_mobile §6) */
   });
   /* the hourly table, pivoted: series[sensor][metric][i] = [mean, min, max] */
   let raw = null;
@@ -77,8 +79,9 @@ function buildD(A, locale) {
   };
 }
 
-/* Every route at once. A 403 is this screen's SHARE_LEVEL speaking, not an error: the part stays null. */
-async function loadD() {
+/* Every route at once. A 403 is this screen's SHARE_LEVEL speaking, not an error: the part stays null.
+   The phone page passes its own subset (SPEC_mobile §8) and never asks for the token-only three. */
+async function loadD(routes = DOORS_ROUTES) {
   const get = async p => {
     const t0 = (typeof performance !== 'undefined') ? performance.now() : Date.now();
     if (typeof ASKING !== 'undefined') ASKING.flight('/' + p);
@@ -106,7 +109,7 @@ async function loadD() {
     /* the capture holds token-only answers too; a screen without the token is shown what a node would show it */
     if (!DOORS_TOKEN()) for (const k of ['readings_1h', 'actions', 'alerts']) delete A[k];
   } else {
-    const keys = Object.keys(DOORS_ROUTES), got = await Promise.all(keys.map(k => get(DOORS_ROUTES[k])));
+    const keys = Object.keys(routes), got = await Promise.all(keys.map(k => get(routes[k])));
     A = Object.fromEntries(keys.map((k, i) => [k, got[i]]));
   }
   if (!A.issues) throw new Error('GET /issues did not answer this screen: the doors have nothing to draw');

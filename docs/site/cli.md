@@ -1,5 +1,5 @@
 # Command line
-<!-- checked: v0.80.3 -->
+<!-- checked: v0.81.0 -->
 
 The command line is how the person who keeps a node looks after it: install it, ask whether it is alive,
 record what somebody did about an alert, move its data somewhere safe. The repo names that person as the
@@ -14,8 +14,7 @@ and talks to the node over its own [API](api.md) on `localhost:$APP_PORT` with t
 predates the word says "there is no `planetai <word>` in this node", names the node's version and
 suggests `planetai update`. Commands arrive in releases.
 
-> **Gap in v0.80.3.** The list `planetai` prints leaves out four commands that exist: `preflight`,
-> `sources`, `config unset` and `agent local pull`. The tables below are complete.
+> **Gap in v0.81.0.** The list `planetai` prints leaves out four commands that exist: `preflight`, `sources`, `config unset` and `agent local pull`. The tables below are complete.
 
 Nothing here needs `sudo` except `mesh` (installing and joining Tailscale), `agent local` on a machine with
 `systemctl` where Ollama is not already answering, and, through the installer, `setup` when Docker has to
@@ -72,6 +71,7 @@ The settings themselves are on [Configuration](configuration.md).
 | `planetai meshtastic` | Starts the MQTT broker (compose profile `mqtt`), writes its password, prints the gateway radio's settings for your region, waits up to three minutes for the first packet. | no |
 | `planetai broker` | Starts the MQTT broker if it is not running (compose profile `mqtt`, same user and password as `planetai meshtastic`) and prints what to type into a Smart Citizen Kit's shell or a DIY node's setup portal so it publishes here; waits up to three minutes for the first message. | no |
 | `planetai reticulum` | Starts the LXMF bridge (profile `reticulum`), prints the node's address and the Sideband instructions. | no |
+| `planetai hello [--remove]` | Lists this node on every node's map. Reads the node's name, cell and the cell's centre from `/health` as a stranger would see them, asks for the place, who runs it and an optional public contact, and shows the entry. On a yes it forks `fabcity/planetai-node` with `gh` and opens the pull request to `registry.json`; without `gh` it prints the entry and the link to edit the file. Nothing is listed until a person merges it, and every node reads the list within six hours. `--remove` opens the pull request that takes the node off. | no |
 | `planetai homeassistant` (`ha`) | Ensures the broker, sets `HA_DISCOVERY=1`, prints the integration details. | no |
 
 ## Reading the node
@@ -149,7 +149,7 @@ this node reads yet. The footer says so in the node's words:
   N of 269 entries. The last column is the code that reads it. A cell with sources and a blank column is one nobody has written an adapter for yet.
 ```
 
-The snapshot at v0.80 is `awesome-fabcity-data` at `851b8db`, 269 entries, synced 2026-10-06. `N` is how many
+The snapshot at v0.81 is `awesome-fabcity-data` at `851b8db`, 269 entries, synced 2026-10-12. `N` is how many
 of them are filed for your city or for everywhere. The same list is `GET /sources` on [the API](api.md).
 
 Since v0.73 two more lines follow the footer: the three
@@ -177,6 +177,7 @@ See [Packs](packs.md) and [Packs that ship](packs-reference.md).
 |---|---|
 | `planetai storage` | Where the database is and how big; the backup folder, the last dump, the retention; the rclone remote; exports; IPFS; whether a backup token exists. |
 | `planetai storage set backups <dir>` | Move the dumps; the folder must be a mounted, writable path. |
+| `planetai storage set captures <dir>` | Move where new pictures are kept (a NAS share is fine); checked like backups, then the app restarts. |
 | `planetai storage set remote <rclone remote:path>` | Copy the last three days of dumps and every export off the machine after each backup. |
 | `planetai storage set keep <days>` | Retention. |
 | `planetai storage set data` | Refuses, and explains why the database must stay on an internal disk. |

@@ -65,7 +65,7 @@ assert '"node": NODE' in SRC, "/health keeps the node name: /export publishes it
 # The two paths that are on no allowlist at any level, and the one the middleware must not decide twice.
 mw = ast.get_source_segment(SRC, funcs["_share_level"])
 allow = SRC[SRC.index("_SHARE_OFF = ("):SRC.index("_SHARE = {")]
-for p in ("place/geojson", "settings/raw", "backups", "actions", "aggregates", "test-alert"):
+for p in ("place/geojson", "settings/raw", "backups", "actions", "aggregates", "test-alert", "captures"):
     assert f'"/{p}"' not in allow, f"/{p} is on a SHARE_LEVEL allowlist and must never be"
 assert 'startswith("/mcp")' in mw, "the middleware must pass /mcp through: _mcp_auth has already decided it"
 assert "_bearer_ok" in mw, "the middleware must reuse _bearer_ok, which is constant-time"
@@ -271,6 +271,17 @@ assert lan.get("/reach").status_code == 403, "off: /reach is not on the off allo
 level("open")
 print("open: /reach readable, and refused at off")
 
+# SPEC_eyes step 1: a picture and its row are on no share level — a stranger gets 403 at off AND at open,
+# and the middleware's own message says no share level opens it. The route's token rules live in test_captures.
+for lv in ("off", "open"):
+    level(lv)
+    r = lan.get("/captures")
+    assert r.status_code == 403, f"{lv}: a stranger must not list the captures"
+    assert "No share level opens this one" in r.json()["error"], \
+        f"{lv}: /captures must refuse like /backups, not offer the open setting: {r.json()}"
+    assert lan.get("/captures/1/file").status_code == 403, f"{lv}: a stranger must not fetch a picture"
+print("captures: a stranger is refused at off and at open, with the no-level-opens-this message")
+
 # F10 · closing a loop. The middleware refuses the anonymous case; the route refuses a read-only token.
 level("open")
 assert lan.post("/actions", json={"alert_id": 1, "stage": "acted"}).status_code == 403, "open: an anonymous action must be refused"
@@ -334,9 +345,9 @@ assert not _slow, ("act-level rules slower than index.MEASURED_WINDOW_MIN="
                    "call their alerts measured while they are still waiting to fire again.")
 print(f"measured window {_index.MEASURED_WINDOW_MIN}m outlasts every act-level cooldown")
 
-# The map ground's three vendored files and the doors' world coast are served by name, and nothing else under vendor/
+# The map ground's three vendored files, the doors' world coast and Set up's QR code maker are served by name, and nothing else under vendor/
 # is: the allowlist is the whole of what /static answers, and a directory of libraries must not become one the LAN walks.
-_vendor = {"maplibre-gl.js", "maplibre-gl.css", "deck.gl.min.js", "world-land-110m.json"}
+_vendor = {"maplibre-gl.js", "maplibre-gl.css", "deck.gl.min.js", "world-land-110m.json", "qrcode.js"}
 for _n in sorted(_vendor):
     _r = lan.get(f"/static/{_n}")
     assert _r.status_code == 200 and len(_r.content) > 10000, f"/static/{_n} does not serve the vendored file"
@@ -344,15 +355,31 @@ _served = {k for k, (p, _t) in main.COMPANIONS.items() if p.parent.name == "vend
 assert _served == _vendor, f"/static serves vendored files nobody listed here: {sorted(_served - _vendor)}"
 for _n in ("vendor/maplibre-gl.js", "maplibre-gl.LICENSE.txt", "deck.gl.LICENSE", "..%2Fmain.py"):
     assert lan.get(f"/static/{_n}").status_code == 404, f"/static/{_n} answered: the route takes a name, not a path"
-print("static: the four vendored files are served, and nothing else under vendor/")
-
-# The map workbench (GET /geo/*): the node computes every ring and distance the Place door draws, and none of it is
-# on an allowlist, because the node's cell at a fine resolution and "metres from the node" give away its point.
+print("static: the five vendored files are served, and nothing else under vendor/")
+# Set up's QR unlock: /settings/phone hands the act token to the admin token and to no one else, at either level
 for _lv in ("off", "open"):
     level(_lv)
-    for _u in ("/geo/grid?bbox=115.13,-8.66,115.15,-8.64&res=8", "/geo/cell?lat=-8.65&lon=115.14&res=9",
-               "/geo/measure?path=115.14,-8.65&from_node=true", "/geo/rings"):
+    assert lan.get("/settings/phone").status_code == 403 and lan.get("/settings/phone", headers=ACT).status_code == 401
+    assert lan.get("/settings/phone", headers=ADMIN).json() == {"act": "act-tok"}
+level("off")
+print("settings/phone: the act token, for the admin only")
+
+# The map workbench (GET /geo/*): the node computes every ring and distance the Place door draws, and none of it is
+# on an allowlist, because the node's cell at a fine resolution and "metres from the node" give away its point. The
+# one exception is /geo/cell at `open` (the phone's walk), which answers a stranger without its node-relative fields.
+for _lv in ("off", "open"):
+    level(_lv)
+    for _u in ("/geo/grid?bbox=115.13,-8.66,115.15,-8.64&res=8", "/geo/measure?path=115.14,-8.65&from_node=true", "/geo/rings"):
         assert lan.get(_u).status_code == 403, f"{_u} answered a stranger at SHARE_LEVEL={_lv}: it locates the node"
+    _gc = lan.get("/geo/cell?lat=-8.6478291&lon=115.1385412&res=15&children=15&polar=true")
+    assert _gc.status_code == (403 if _lv == "off" else 422), (_lv, _gc.status_code)
+    _gc = lan.get("/geo/cell?lat=-8.6478291&lon=115.1385412&res=6&children=8&polar=true")
+    if _lv == "off":
+        assert _gc.status_code == 403, "/geo/cell answered a stranger at SHARE_LEVEL=off"
+    else:
+        assert _gc.status_code == 200 and _gc.json()["ring"], _gc.status_code
+        _leak = {"is_node", "cells_from_node", "ring_polar", "children_polar"} & set(_gc.json())
+        assert not _leak, f"/geo/cell told a stranger where its cell stands from the node: {_leak}"
 level("off")
 _g = local.get("/geo/grid?bbox=115.13,-8.66,115.15,-8.64&res=8").json()
 _own = _g["node"][0]
@@ -395,10 +422,11 @@ _db.execute("INSERT INTO tiles VALUES (15, 26866, ?, ?)", ((1 << 15) - 1 - 17189
 _db.commit(); _db.close()
 (_out / "ground" / "glyphs" / "Noto Sans Regular" / "0-255.pbf").write_bytes(b"glyphs")
 (_out / "ground" / "meta.json").write_text(_json.dumps({"vector": {"tiles": 1}}))
+# At `open` it answers a stranger: public data, centred no closer than /health's rounded point (the phone's walk).
 for _lv in ("off", "open"):
     level(_lv)
     for _u in ("/ground/meta", "/ground/vector/15/26866/17189.pbf", "/ground/glyphs/Noto Sans Regular/0-255.pbf"):
-        assert lan.get(_u).status_code == 403, f"{_u} answered a stranger at SHARE_LEVEL={_lv}: a tile pyramid locates the node"
+        assert lan.get(_u).status_code == (403 if _lv == "off" else 200), f"{_u} at SHARE_LEVEL={_lv}: {lan.get(_u).status_code}"
 level("off")
 _t = local.get("/ground/vector/15/26866/17189.pbf")
 assert _t.status_code == 200 and _t.content == b"mvt" and _t.headers["content-type"] == "application/x-protobuf", (_t.status_code, _t.headers)
@@ -409,7 +437,7 @@ assert local.get("/ground/glyphs/Noto Sans Regular/0-255.pbf").content == b"glyp
 assert local.get("/ground/glyphs/..%2F..%2Fmeta/0-255.pbf").status_code == 404, "a font name is a name, not a path"
 assert local.get("/ground/wind").status_code == 204, "no field until the forecast pack has written one"
 (_out / "ground" / "wind.json").write_text(_json.dumps({"n": 8, "times": ["2026-10-07T06:00Z"]}))
-assert local.get("/ground/wind").json()["n"] == 8 and lan.get("/ground/wind").status_code == 403
+assert local.get("/ground/wind").json()["n"] == 8 and lan.get("/ground/wind").status_code == 403, "off refuses the LAN"
 _m = local.get("/ground/meta").json()
 assert _m["on_disk"]["wind"] and _m["fetch"]["wind"] == "planetai run forecast windfield"
 assert _m["on_disk"]["vector"] and not _m["on_disk"]["imagery"] and _m["layers"]["vector"]["tiles"] == 1, _m
@@ -425,7 +453,7 @@ def _v(n):
             return out
 # two entries: tile 5 run 1 at offset 0 length 10; tile 6 run 2, offset 0 meaning "right after the previous"
 assert _b.parse_dir(_v(2) + _v(5) + _v(1) + _v(1) + _v(2) + _v(10) + _v(20) + _v(1) + _v(0)) == [(5, 0, 10, 1), (6, 10, 20, 2)]
-print("ground: tiles, fonts and meta answer this machine, refuse the LAN, read the archive by Hilbert id")
+print("ground: tiles, fonts and meta answer this machine, the LAN only at open, read the archive by Hilbert id")
 
 # GET /storage (the Set up page's Storage): what the machine holds is the keeper's, at every level.
 for _lv in ("off", "open"):

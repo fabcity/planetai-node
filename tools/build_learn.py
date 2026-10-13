@@ -59,7 +59,7 @@ MARKS = [
      "one cell at the rung you are on against the rungs either side, to scale, and what each "
      "thing this node speaks for costs to cover at it."),
     ("lead", "The lead", "dashboard.md", "The lead",
-     "The first thing on Now", "`live`, `stale` or `cached`.",
+     "The first thing on Now", "a why line and the rule.",
      "The node computes and the page draws. A number this page worked out for itself would be a "
      "bug, which is why the sentence, the numeral and the state word all arrive from GET /issues."),
     ("containment", "Exact in the index, approximate on the ground", "dashboard.md", "The lead",

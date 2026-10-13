@@ -44,6 +44,54 @@ assert c.get("/", params={"layout": "doors"}).text == html
 assert c.get("/", params={"layout": "classic"}).text == (STATIC / "index.html").read_text()
 print("doors: / and ?layout=doors is the doors, ?layout=classic the classic dashboard")
 
+# the phone page (SPEC_mobile §8.1): the same shell route, every /static name it uses is served, no heavy
+# library, and it never writes a setting or stores the admin token
+mob = (STATIC / "mobile.html").read_text()
+mobjs = (STATIC / "mobile.js").read_text()
+assert c.get("/", params={"layout": "mobile"}).text == mob
+mnamed = re.findall(r'(?:src|href)="/static/([^"]+)"', mob) + re.findall(r"['\"]/static/([\w.#-]+)['\"]", mobjs)
+assert mnamed and all(n.split("#")[0] in main.COMPANIONS for n in mnamed), [n for n in mnamed if n.split("#")[0] not in main.COMPANIONS]
+assert not re.search(r'(?:src|href)="/static/(?:maplibre|deck|d3|plot)', mob), "the phone page's shell loads no map or chart library"
+assert not re.search(r"deck\.gl|d3\.|plot\.umd", mobjs, re.I), "the phone page fetches MapLibre for its walk, and nothing heavier"
+assert "planetai_admin'" not in mobjs.replace("removeItem('planetai_admin')", ""), "the phone page never stores the admin token"
+assert not re.search(r"fetch\(\s*['\"]/settings", mobjs), "the phone page reads /settings through loadD (GET) and never calls it"
+print("doors: ?layout=mobile is the phone page; it names only served files, loads no map library up front, touches no settings")
+
+# the walk out from the house (SPEC_mobile §11.2): the phone page's middle, one page; mobile.js fetches MapLibre and
+# walk.js when it nears the screen. It names no issue: every issue /issues carries is walked, at the scales it has
+walkjs = (STATIC / "walk.js").read_text()
+assert c.get("/", params={"layout": "walk"}).text == mob, "?layout=walk is the phone page"
+assert 'id="walk"' in mob and "/static/walk.js" in mobjs and "/static/maplibre-gl.js" in mobjs
+assert not re.search(r"['\"](air|heat|land|coast)['\"]", walkjs), "the walk names no issue; it walks what /issues carries"
+print("doors: the walk is the phone page's middle; it loads when reached and names no issue")
+
+# one phone mode (12 Oct 2026): at SHARE_LEVEL=open the walk's map answers without a token, but /geo/cell keeps what
+# it says relative to the node for a token, or a phone could find the house asking res 15 cell by cell
+assert "/geo/cell" in main._SHARE_OPEN[0] and "/ground/" in main._SHARE_OPEN[1] and "/geo/cell" not in main._SHARE_OFF[0]
+from types import SimpleNamespace  # noqa: E402
+os.environ.setdefault("NODE_LAT", "-8.819"); os.environ.setdefault("NODE_LON", "115.164")
+_rq = lambda t: SimpleNamespace(state=SimpleNamespace(share_trusted=t))  # noqa: E731
+_kw = dict(id=None, lat=-8.8, lon=115.17, res=14, children=15, polar=True)
+_open, _mine = main.geo_cell(_rq(False), **_kw), main.geo_cell(_rq(True), **_kw)
+assert not {"is_node", "cells_from_node", "ring_polar", "children_polar"} & set(_open) and _open["ring"] == _mine["ring"], _open.keys()
+assert {"is_node", "cells_from_node", "ring_polar", "children_polar"} <= set(_mine)
+print("doors: a phone with no token gets the map and the cells, never where they stand from the house")
+
+# the phone's QR unlock: /settings/phone hands the act token to the admin token only, Set up draws it only unlocked,
+# and the phone page keeps #act= and takes it out of the address bar
+os.environ["ADMIN_TOKEN"] = "adm"
+from fastapi import HTTPException  # noqa: E402
+for _a in ("", "Bearer nope"):
+    try:
+        main.settings_phone(_a); raise AssertionError("/settings/phone answered without the admin token")
+    except HTTPException as e:
+        assert e.status_code in (401, 403), e.status_code
+assert "/settings/phone" not in main._SHARE_OPEN[0] and "qrcode.js" in main.COMPANIONS
+_setup = (STATIC / "doors-setup.js").read_text()
+assert "(unlocked ? `<div class=\"srow\"><div class=\"sl\"><label>A phone" in _setup and "/static/qrcode.js" in _setup
+assert "#act=" in mobjs and "history.replaceState" in mobjs
+print("doors: the phone unlocks from a QR code only the admin's Set up can draw")
+
 if not shutil.which("node"):
     print("doors: node is not installed, skipping the loader checks (skipped)")
     sys.exit(0)
@@ -57,6 +105,10 @@ const F = JSON.parse(fs.readFileSync('%s', 'utf8'));
 const open = { ...F, days: F.issues_days }; delete open.readings_1h; delete open.actions; delete open.alerts;
 const full = buildD({ ...F, days: F.issues_days }, 'en'), locked = buildD(open, 'en');
 const fl = flowFrom(full), fo = flowFrom(locked);
+/* the phone page's subset (SPEC_mobile §8.1): the capture minus the token-only three builds a D whose Now and
+   Decide card draw — the engine's words (an old capture falls back to the sentence) and the event's asking+action */
+const phone = buildD(open, 'en'), pl = phone.issues[phone.lead] || {};
+const pev = phone.events.filter(e => !e.cleared_at).map(e => ({ asking: e.asking, action: e.action, message: 'message' in e, seen: 'last_seen_at' in e }));
 /* node #1's live table carries forecast rows up to 48 h ahead (7 Oct): the doors' table must stop at the present */
 const ahead = buildD({ ...F, days: F.issues_days, readings_1h: F.readings_1h.concat([{ bucket: '2099-01-01T00:00:00+08:00', sensor_id: 'forecast-om', metric: 'fc_cloud', mean: 1, min: 1, max: 1, n: 1 }]) }, 'en');
 console.log(JSON.stringify({
@@ -67,9 +119,20 @@ console.log(JSON.stringify({
   lockedNote: locked.actions.some(a => 'note' in a), stats: Object.keys(full.stats15).length, point: full.point,
   flow: { b: fl.buckets.length, ids: Object.keys(fl.counts).length, alerts: fl.alerts.length, answers: fl.answers.length, counted: fl.counted },
   flowLocked: { b: fo.buckets.length, ids: Object.keys(fo.counts).length, alerts: fo.alerts.length, answers: fo.answers.length, counted: fo.counted },
+  phone: { title: pl.title, tagline: pl.tagline, plain: pl.plain, sentence: pl.sentence, pev },
 }));
 """ % FIX
 r = json.loads(subprocess.run(["node"], input=prog, capture_output=True, text=True, check=True).stdout)
+
+# the walk walks every issue with a reading, in the engine's order, at the scales it has: land and coast are read only
+# at the region, so their walk starts there; an issue with no reading anywhere is left off the switch
+wprog = """const { walkOf } = require('./app/static/walk.js'); const F = JSON.parse(require('fs').readFileSync('%s', 'utf8'));
+const I = F.issues; I.issues.empty = { stack: { room: null, yard: null, ring: null, region: { value: null } } }; I.order = I.order.concat('empty', 'gone');
+console.log(JSON.stringify(walkOf(I).map(w => [w.k, w.at.map(Boolean)])));""" % FIX
+wk = json.loads(subprocess.run(["node"], input=wprog, capture_output=True, text=True, check=True).stdout)
+assert [k for k, _ in wk] == ["air", "heat", "land", "coast"], wk
+assert dict(wk)["land"] == [False, False, False, True] and dict(wk)["air"] == [True] * 4, wk
+print("doors: the walk takes every issue with a reading, in order, each at the scales it has")
 
 # the issues, as the doors read them (/issues for the words, /issues/days for the seven days)
 assert r["order"] == ["air", "heat", "land", "coast"] and r["lead"] == "heat" and r["n"] == 168, r["order"]
@@ -97,4 +160,13 @@ assert r["flowLocked"]["counted"] is False and r["flowLocked"]["ids"] == 0 and r
 print("doors: the flow counts what the hourly table counted, and says it did not count without it")
 assert r["aheadLast"] == r["fullLast"] and r["aheadN"] == r["fullN"], "a forecast hour ahead of /issues entered the replayed table"
 print("doors: the hourly table stops at the hour /issues was computed; forecast rows ahead of it stay out")
+
+# the phone page's D (SPEC_mobile §8.1): the engine's words and the open event's asking and action. This capture
+# predates title/tagline on the wire, so the check is the page's own fallback: a title, or the sentence it stands on.
+ph = r["phone"]
+assert ph["plain"] and (ph["title"] or ph["sentence"]), "the phone's Now has none of the engine's words to draw"
+assert ph["pev"] and all(e["asking"] is not None and e["action"] for e in ph["pev"]), \
+    "the phone's Decide card needs the event's asking and the live action's words"
+assert all(e["message"] and e["seen"] for e in ph["pev"]), "the phone's card reads message.sent and last_seen_at"
+print("doors: the phone page's subset builds a D with the words, the asking and the action it draws")
 print("all doors checks passed")

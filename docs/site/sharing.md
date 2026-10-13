@@ -1,5 +1,5 @@
 # Sharing and security
-<!-- checked: v0.80.3 -->
+<!-- checked: v0.81.0 -->
 
 This page is the node's boundary: what a reader on the network may see without a token, which token
 opens what, what leaves the machine and how coarse it is when it does, and whose code the node will
@@ -19,8 +19,8 @@ Two rungs in this version; `cell` and `means` are named in the help and refused 
 
 | level | a request with no token, from another machine, may read |
 |---|---|
-| `off` (default) | 7 paths and the static files: `/` and `/ui` (the dashboard shell), `/health` with the centre of the node's resolution-8 cell, `/llms.txt`, `/settings` reduced to the layout and the sharing level, the daily CC BY 4.0 `/export`, `/presence`, and anything under `/static/`. Everything else is refused with a sentence naming the setting. |
-| `open` | 34 paths and 4 prefixes: the `off` list, and `/sensors` and `/stats` (the household's own sensors at their cell's centre, the rest to three decimals, metadata cut to the provenance keys), `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/trust`, `/nearby`, `/forecast`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, the ask pane's `/ask`, `/ask/status` and `/docs/search`, and anything under `/exports/`, `/issues` and `/sources/`. What a wall screen with no token needs. |
+| `off` (default) | 8 paths and the static files: `/` and `/ui` (the dashboard shell), `/health` with the centre of the node's resolution-8 cell, `/llms.txt`, `/settings` reduced to the layout and the sharing level, the daily CC BY 4.0 `/export`, `/presence`, `/nodes` (the programme's public list of nodes), and anything under `/static/`. Everything else is refused with a sentence naming the setting. |
+| `open` | 36 paths and 5 prefixes: the `off` list, and `/sensors` and `/stats` (the household's own sensors at their cell's centre, the rest to three decimals, metadata cut to the provenance keys), `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/trust`, `/nearby`, `/forecast`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, the ask pane's `/ask`, `/ask/status` and `/docs/search`, `/geo/cell` without the fields that place a cell relative to the node (`is_node`, `cells_from_node`, `ring_polar`, `children_polar`), and anything under `/exports/`, `/issues`, `/sources/` and `/ground/`. What a wall screen or a phone with no token needs. |
 
 A refused request gets 403 and one of two sentences. For a path that `open` would answer:
 
@@ -66,8 +66,8 @@ same entries on every node in a release, and it says nothing about this house.
 
 ## What needs a token at every level
 
-`/place/geojson` (the shape of your building and what is around it), the `/geo/` routes and `/ground/*` (each locates the node), `/machine` and `/storage` (the machine and what it holds), `/settings/raw`, `/backups` and
-`/backups/<name>`, `/report/bundle`, `GET /aggregates`, `/briefing` and `GET /actions` are on neither
+`/place/geojson` (the shape of your building and what is around it), the `/geo/` routes other than `/geo/cell` (each locates the node), `/machine` and `/storage` (the machine and what it holds), `/settings/raw`, `/settings/phone`, `/backups` and
+`/backups/<name>`, `/report/bundle`, `GET /aggregates`, `/briefing`, `GET /actions` and the whole of `/captures` are on neither
 list. So is every write, and the whole of `/mcp` checks the admin token itself. Two writes pass the
 sharing check because their path is on a list for reading, and their handler refuses them instead:
 `POST /readings` at `open`, and `PUT /settings` at every level. Without the admin token, both are refused.
@@ -80,6 +80,12 @@ arrives from Docker's bridge and is treated as a machine on the network.
 note they wrote. It is on no list because the note is the household's own words about its own house.
 `planetai snapshot` blanks every note before it writes its file, for the same reason.
 
+`/captures` is the household's own pictures (SPEC_eyes step 1). It is on no list at any level, and the
+routes then refuse every token but `ACT_TOKEN` and `ADMIN_TOKEN`, so the read-only `BACKUP_TOKEN` that
+passes the middleware cannot read a picture. The row keeps the exact point — a tree or a dump is worth
+it — and only the file is cleaned of EXIF and GPS. No capture is in `/export`, `/exports`, `/aggregates`,
+`/readings` or any parent push; `tests/test_captures.py` greps those roads for the table's name.
+
 > **Careful.** `GET /actions` has no token check of its own. Any of the node's four tokens opens it, and
 > so does `/place/geojson`: the admin token, the backup token on the NAS, the act token on a phone, and
 > `AGGREGATE_TOKEN`, which every child node holds as its `PARENT_TOKEN`. Give a child's operator that
@@ -91,9 +97,9 @@ All travel as `Authorization: Bearer <token>`, compared in constant time. There 
 
 | token | opens | where it comes from | give it to |
 |---|---|---|---|
-| `ADMIN_TOKEN` | every write and secret read: `PUT /settings`, `/settings/raw`, `POST /readings`, `/report/now`, `/test-alert`, the whole of `/mcp`; also what `BACKUP_TOKEN` and `ACT_TOKEN` open. It does not open `POST /aggregates` or `POST /events`, which take `AGGREGATE_TOKEN` only | generated by the installer; `planetai ui` prints it | yourself, your agent. Treat it like a password |
+| `ADMIN_TOKEN` | every write and secret read: `PUT /settings`, `/settings/raw`, `/settings/phone`, `POST /readings`, `/report/now`, `/test-alert`, the whole of `/mcp`; also what `BACKUP_TOKEN` and `ACT_TOKEN` open. It does not open `POST /aggregates` or `POST /events`, which take `AGGREGATE_TOKEN` only | generated by the installer; `planetai ui` prints it | yourself, your agent. Treat it like a password |
 | `BACKUP_TOKEN` | read-only pulls: `/backups`, `/backups/<name>`, `/report/bundle`; cannot read `/settings/raw` | generated by `update.sh` when blank; `planetai ui` prints it (`planetai storage` says only whether it is set) | a NAS |
-| `ACT_TOKEN` | `POST /actions` from off the machine: an act, an acknowledgement, a decision or an answer to an alert event (`event_id`). It cannot read a secret or change a setting | `planetai ui` creates it | a phone, the dashboard's forms in a browser you trust, the Reticulum bridge |
+| `ACT_TOKEN` | `POST /actions` from off the machine: an act, an acknowledgement, a decision or an answer to an alert event (`event_id`). It cannot read a secret or change a setting | `planetai ui` creates it; Set up › This screen shows it to the admin as a QR code a phone scans | a phone, the dashboard's forms in a browser you trust, the Reticulum bridge |
 | `AGGREGATE_TOKEN` | what this node demands on `POST /aggregates` and `POST /events`; unset, the node accepts no children | you set it | your children, as their `PARENT_TOKEN` |
 | `PARENT_TOKEN` | sent with this node's hourly pushes to `PARENT_API_URL` | your parent's operator | the node itself |
 
@@ -118,6 +124,7 @@ Set up never travels to a NAS or a remote. The node never logs the Telegram URL,
 | the node's coordinates | Open-Meteo, for weather and the CAMS air model, with `OPENMETEO_ENABLED=1` | rounded to three decimals by the two core adapters |
 | a request for the fab lab directory | gitlab.fabcloud.org (`MAKE_SOURCE=archive`) or api.fablabs.io (`live`), only with `MAKE_ENABLED=1` and `PACKS_ALLOW_CODE=1` | no coordinates: the whole directory comes down and the distances are worked out on the node |
 | a request for the current version | planetai.fab.city, once a day, with `UPDATE_CHECK=on` (the default) | nothing about the house: a plain request for one file. Fab City's host sees this house's internet address and that a PLANETAI node lives there. `off` = the node never asks |
+| a request for the programme's list of nodes | raw.githubusercontent.com (`registry.json` on the repository's main), every 6 hours, with `UPDATE_CHECK=on` | nothing about the house: a plain request for one file, as above. `off` = the node never asks |
 | the square the node's own map covers | build.protomaps.com and OpenAerialMap (`planetai run place basemap`) or Earth Engine, under the node's own project (`planetai run earth-engine basemap`), once, only when somebody runs the command | the tiles fetched, the finest of them `GROUND_RADIUS_KM` (12) round the node; afterwards the map is served from the node at `/ground/*` and sends nothing |
 | the square being looked at | a tile server, per tile, only with `MAP_TILES=on` | the tile's own square; `off` (the default) draws from the node's local copy of OpenStreetMap |
 | the question you asked the bot | an online model, only if you gave it a key and changed `AGENT_PREFER` from its default, `private` | the question and the tool results the model asked for |
@@ -134,8 +141,9 @@ surface instead, which rounds, refuses and audits. See [Ask the node](ask.md).
 respectively open-only, open-only and token-only; read [the API](api.md) before putting `SHARE_LEVEL=open`
 on a network you do not trust.
 
-> **Gap in v0.80.3.** The first-start bootstrap and the `coast` and `forecast` packs send the node's
-> full-precision coordinates to Open-Meteo; only the two core adapters round them.
+> **Gap in v0.81.0.** The `coast` and `forecast` packs send the node's full-precision coordinates to
+> Open-Meteo; only the two core adapters in `app/sources.py` round them. The bootstrap does not call
+> Open-Meteo at all (it uses CAMS history, NASA POWER, and OSM Nominatim only).
 
 ## Signed updates
 

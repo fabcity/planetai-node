@@ -33,6 +33,7 @@ from __future__ import annotations
 import logging
 import math
 import os
+import re
 import statistics
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from datetime import datetime, timedelta, timezone
@@ -872,7 +873,11 @@ def _cmp(d, stack, headline_dist, loc, compare) -> str:
         parts = [r["_text"][loc] for r in (d.get("_readouts") or []) if r.get("_text")]
     else:
         head = (stack.get(headline_dist) or {}).get("value")
-        words = CMP_WORDS.get(loc, CMP_WORDS["en"])
+        # An issue may name its own comparison words in its yml (`cmp_words`): air says "cleaner
+        # than the street" where heat says "cooler than the street". The shared table is the
+        # fallback, not the voice.
+        words = ((d.get("sentences") or {}).get(loc, {}).get("cmp_words")
+                 or CMP_WORDS.get(loc, CMP_WORDS["en"]))
         nouns = NOUN_WORDS.get(loc, NOUN_WORDS["en"])
         # One clause per RELATION, not one per distance. Node #1 has a yard, so three distances all
         # answered "level" and the hero read "Level with the wall outside, level with the street,
@@ -894,16 +899,34 @@ def _cmp(d, stack, headline_dist, loc, compare) -> str:
     return s[0].upper() + s[1:] + "."
 
 
-def _sentence(d, stack, state, headline_dist, verb_key, loc, compare, attribution) -> str:
+def _sentence(d, stack, state, headline_dist, verb_key, loc, compare, attribution,
+              line=None, reason=None) -> str:
+    """The full sentence. `_sentence_parts` returns the title/tagline split with it."""
+    return _sentence_parts(d, stack, state, headline_dist, verb_key, loc, compare,
+                           attribution, line, reason)[0]
+
+
+def _sentence_parts(d, stack, state, headline_dist, verb_key, loc, compare, attribution,
+                    line=None, reason=None) -> tuple[str, str, str]:
+    """(sentence, title, tagline). The template marks the split with "|".
+
+    The title says what is happening for the household, in its words, with no number and no indicator
+    ("The house is keeping the heat out"). The tagline is the evidence: the line, said once with what it
+    protects, the one comparison that explains the title, and the day's event. A page titles with the
+    title and explains with the tagline; the full sentence stays for prose (the bot, the asks). The none
+    and context states carry no "|" and do not split.
+    """
     block = (d.get("sentences") or {}).get(loc) or {}
     if state in ("none", "context"):
         tpl = (block.get("state") or {}).get(state)
         if not tpl and state == "none":
-            return (d.get("empty") or {}).get(loc, "")
+            empty = (d.get("empty") or {}).get(loc, "")
+            return empty, empty, ""
     else:
         tpl = (block.get("state") or {}).get(state) or (block.get("attribution") or {}).get(attribution)
     if not tpl:
-        return (d.get("empty") or {}).get(loc, "")
+        empty = (d.get("empty") or {}).get(loc, "")
+        return empty, empty, ""
     cell = stack.get(headline_dist) or {}
     n = cell.get("value")
     extra = cell.get("extra") or {}
@@ -912,14 +935,78 @@ def _sentence(d, stack, state, headline_dist, verb_key, loc, compare, attributio
         if extra.get("year_a") and extra.get("year_b") else ""
     since = sw["since"].format(pct=f"{extra['since_pct']:.1f}", year=extra["since_year"]) \
         if extra.get("since_year") and extra.get("since_pct") is not None else ""
-    return " ".join(tpl.format(
-        verb=(block.get("verbs") or {}).get(verb_key, ""),
-        n="" if n is None else f"{n:.{d['dp']}f}",
-        unit=d["unit"],
-        where=_where(d, headline_dist, loc),
-        cmp=_cmp(d, stack, headline_dist, loc, compare),
-        span=span, since=since,
-    ).split()).replace(" ,", ",").replace(" .", ".")
+    # The {line} clause is computed from the live value against the line, never written into a
+    # template — so a template can never assert "under the line" on a day the reading is past it.
+    line_key = _line_key(d, n, line)
+    line_clause = (block.get("line") or {}).get(line_key, "")
+    # The {event} clause for the day it crossed and came back: the state band says act or notable
+    # because of what happened earlier, while the sentence says now. Naming the crossing keeps the
+    # two from reading as a contradiction. Only codes that certainly happened today, and never
+    # while the reading is over the line right now — then the {line} clause already says it.
+    event_clause = ""
+    if line_key in ("under", "near") and (reason or {}).get("code") in (
+            "open_ask_current", "alert_today", "event_answered", "event_cleared"):
+        event_clause = (block.get("event") or {}).get("earlier", "")
+    slots = dict(verb=(block.get("verbs") or {}).get(verb_key, ""),
+                 n="" if n is None else f"{n:.{d['dp']}f}",
+                 unit=d["unit"],
+                 where=_where(d, headline_dist, loc),
+                 cmp=_cmp(d, stack, headline_dist, loc, compare),
+                 line=line_clause, event=event_clause,
+                 span=span, since=since)
+
+    def _fmt(t):
+        s = " ".join(t.format(**slots).split()).replace(" ,", ",").replace(" .", ".")
+        # a clause that opens a sentence ("… inside the house. under the WHO line.") opens it upper-case
+        return re.sub(r"([.!?] )(\w)", lambda m: m[1] + m[2].upper(), s)
+
+    # The template says where the title ends: "title | tagline". The title is what it means for the household,
+    # in words; the tagline is the evidence, the line said once. A template with no "|" does not split.
+    head, sep, tail = tpl.partition("|")
+    if not sep:
+        full = _fmt(tpl)
+        return full, full, ""
+    title = _fmt(head).strip().rstrip(",.;:—–- ").strip()
+    # with no reading the line clause is empty, and the tagline must not open on the template's punctuation
+    tagline = _fmt(tail).strip().lstrip(",.;: ").strip()
+    if tagline:
+        tagline = tagline[0].upper() + tagline[1:]
+    return (f"{title}. {tagline}" if tagline else f"{title}."), title, tagline
+
+
+
+def _line_key(d, n, line) -> str:
+    """over · near · under the issue's line — near is within a tenth below it. "" with no line or no value."""
+    if d["kind"] != "sensed" or line is None or n is None:
+        return ""
+    lv = float(line["value"])
+    return "over" if n > lv else ("near" if n >= 0.9 * lv else "under")
+
+
+def _hour_parts(d, series, buckets, i, dist, loc, compare, line, tz=None) -> list[str]:
+    """[title, tagline] for one hour of the day the page can scrub back to. `series` is every distance's hours.
+
+    The same order as the live sentence: the title says what that hour meant for the house, from the six stories
+    `_classify` tells (the house keeping the street's dust out, the dust coming from inside…), and the tagline the
+    reading and whose line. With no story to tell (a sensed issue with only one distance) the title is the trend
+    in the past tense. Every word comes from the issue's `past` block, so the page writes none.
+    """
+    block = (d.get("sentences") or {}).get(loc) or {}
+    past = block.get("past") or {}
+    at = buckets[i]
+    if tz is not None and isinstance(at, datetime) and at.tzinfo is not None:
+        at = at.astimezone(tz)
+    where, hour, own = _where(d, dist, loc), _hhmm(at), series.get(dist) or []
+    n = own[i] if i < len(own) else None
+    if n is None:
+        return [past.get("none", "").format(where=where, hour=hour), ""]
+    verb = (past.get("verbs") or {}).get(_trend(own[:i + 1], compare), "")
+    then = {x: {"value": v[i]} for x, v in series.items() if v and i < len(v) and v[i] is not None}
+    title = (past.get("attribution") or {}).get(_classify(then, line, compare)) or past.get("title", "")
+    line_clause = (block.get("line") or {}).get(_line_key(d, n, line), "")
+    tag = past.get("tagline", "").format(hour=hour, n=f"{n:.{d['dp']}f}", unit=d["unit"], line=line_clause)
+    tag = re.sub(r"\s*,\s*\.", ".", " ".join(tag.split()))
+    return [" ".join(title.format(verb=verb, where=where).split()), tag]
 
 
 # ------------------------------------------------------------------------------------------- readouts
@@ -1391,7 +1478,10 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
     names = {r["sensor_id"]: r.get("name") for r in data["stats"]}
     clock = _clock(data)
 
-    buckets = sorted({r["bucket"] for r in data["hourly"]})[-24:]
+    # The last 24 hours that have happened. readings_1h also holds the forecast's hours, up to 48 h ahead, and the
+    # latest 24 buckets used to be mostly tomorrow's: no sensor reads there, so every series came back empty and
+    # every trend "steady" — on node #1 the live title said "holding" whatever the air did (11 Oct 2026).
+    buckets = sorted({r["bucket"] for r in data["hourly"] if (_age_minutes(r["bucket"], now) or 0) >= 0})[-24:]
     hourly: dict = {b: [] for b in buckets}
     for r in data["hourly"]:
         if r["bucket"] in hourly:
@@ -1419,6 +1509,10 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
                         "sentence": {loc: _reason_text({"code": "not_watched"}, loc)[0].upper()
                                           + _reason_text({"code": "not_watched"}, loc)[1:] + "."
                                      for loc in LOCALES},
+                        "title": {loc: _reason_text({"code": "not_watched"}, loc)[0].upper()
+                                       + _reason_text({"code": "not_watched"}, loc)[1:] + "."
+                                  for loc in LOCALES},
+                        "tagline": {loc: "" for loc in LOCALES},
                         "hero": None, "usual": None, "usual_absent": "not_watched"}
             continue
 
@@ -1437,6 +1531,9 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
         verb_key = _trend(series.get("room") or series.get(headline), compare)
         if reason.get("code") in ("no_alert", "over_line"):
             reason = {**reason, **_peak(series.get("room") or series.get(headline), buckets, d["dp"], d["unit"], clock)}
+        _parts = {loc: _sentence_parts(d, stack, state, headline, verb_key, loc, compare,
+                                       attribution, line, reason)
+                  for loc in LOCALES}
         out[key] = {
             "state": state, "watched": True,
             "reason": reason,
@@ -1451,8 +1548,11 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
             "series": series, "buckets": [b.isoformat() if hasattr(b, "isoformat") else b for b in buckets],
             "readouts": [{k: v for k, v in r.items() if not k.startswith("_")} for r in d["_readouts"]],
             "provenance": _provenance(d, stack, earth),
-            "sentence": {loc: _sentence(d, stack, state, headline, verb_key, loc, compare, attribution)
-                         for loc in LOCALES},
+            "sentence": {loc: _parts[loc][0] for loc in LOCALES},
+            # The page's title is the sentence's qualitative head — no numbers, no indicators;
+            # the tagline explains, smaller. The full sentence stays for prose (the bot, the asks).
+            "title": {loc: _parts[loc][1] for loc in LOCALES},
+            "tagline": {loc: _parts[loc][2] for loc in LOCALES},
         }
         out[key]["hero"] = _hero(d, stack, headline, out[key]["sentence"], now, clock)
         out[key]["usual"], out[key]["usual_absent"] = (usual[key] if usual is not None and key in usual
@@ -1525,7 +1625,7 @@ def _local_days(buckets: list, tz) -> list[tuple]:
     return out
 
 
-def days(cur, settings, decl: dict, n: int, now: datetime | None = None) -> dict:
+def days(cur, settings, decl: dict, n: int, now: datetime | None = None, loc: str = "en") -> dict:
     """GET /issues/days: each declared issue's hourly series over n local days, computed by the same `_series` that
     gives /issues its 24 hours, so a cell of the page's strip is what the lead's numeral said at that hour
     (docs/SPEC_dashboard_figures.md §3.4). The node counts the hours over the line, so the page prints a count it did
@@ -1563,9 +1663,16 @@ def days(cur, settings, decl: dict, n: int, now: datetime | None = None) -> dict
             got = [series[dist][i] for i in idx if series[dist][i] is not None]
             per_day.append({"date": day.isoformat(), "over": None if lv is None else sum(1 for v in got if v > lv),
                             "read": len(got), "of": len(idx)})
+        compare = d.get("compare") or {"mode": "ratio", "margin": 1.5}
         issues[key] = {"distance": dist, "series": series,
                        "provenance": {x: _word(x) for x in DISTANCES if series.get(x)},
-                       "per_day": per_day, "line": line}
+                       "per_day": per_day, "line": line,
+                       # One [title, tagline] per bucket, for the hours the page scrubs back to: the past hour
+                       # speaks the engine's words too, and the page writes none. One locale, the one asked for —
+                       # seven days in all three would be a thousand strings nobody reads.
+                       "hours": ({loc: [_hour_parts(d, series, buckets, i, dist, loc, compare, line, tz)
+                                        for i in range(len(buckets))]}
+                                 if d["kind"] == "sensed" and dist else None)}
     events = _rows(cur, "SELECT id, issue, kind, level, opened_at, cleared_at FROM alert_events "
                         "WHERE opened_at >= %s OR cleared_at IS NULL OR cleared_at >= %s ORDER BY opened_at",
                    buckets[0], buckets[0])

@@ -1,5 +1,5 @@
 # Domains
-<!-- checked: v0.80.3 -->
+<!-- checked: v0.81.0 -->
 
 The core measures nothing in particular. It polls sources, stores readings, runs rules, fills Index cells. Which
 readings, which rules, which cells: that is a pack. `grep pm25 app/packs.py`, the loader, returns nothing.
@@ -37,7 +37,7 @@ issue informs and never asks: it has no act-level rules, and land's cadence is a
 The declarations are `app/issues/*.yml` — one file per issue, holding its name in three languages,
 its metric and unit, its line and that line's source, which packs feed it, how each of the four
 distances (room · yard · ring · region, printed on the page as house · street · ring · region)
-is computed, and its sentence templates. **Adding a fifth issue is a fifth file plus a pack that
+is computed, and its sentence templates, each marking with `|` where its title ends and its tagline begins. **Adding a fifth issue is a fifth file plus a pack that
 declares its domain.** `tests/test_issues.py` asserts that by loading a synthetic `water.yml`, and it
 also asserts that every enabled pack's alerts reach an issue or the pack is named as deliberately not
 one — so a new alert cannot arrive unmapped and unnoticed.

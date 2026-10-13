@@ -50,6 +50,10 @@ services:
       - ./data:/app/data:ro          # the vendored source registry (data/sources) and the platform floors — read, never written
       - ./out:/app/out               # the one writable path: artifacts a pack makes for you (images, charts, briefs)
       - ./backups:/app/backups:ro    # served at /backups (token) so a NAS can pull dumps without mounting anything
+      # CAPTURES_DIR: where the pictures a household takes are kept (SPEC_eyes). Default ./out/captures. Unlike
+      # DATA_DIR it MAY be a NAS share or any mounted storage: these are files, not Postgres — no fsync or locking
+      # is owed to them. The node refuses a capture, and doctor goes red, when the folder is missing or unwritable.
+      - ${CAPTURES_DIR:-./out/captures}:/app/captures
       - ./exports:/app/exports:ro    # served at /exports (public, CC BY 4.0)      # a directory, not a file: editors that save-by-replace would break a single-file mount
     ports: ["${APP_PORT:-8080}:8080"]     # host port; change APP_PORT in .env if 8080 is taken
     # The dashboard's ask pane asks Ollama on this machine, the same one the agent container asks.

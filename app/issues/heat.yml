@@ -69,47 +69,128 @@ distances:
     function: apparent
 
 sentences:
-  # Words only, like air: the number lives on the hero and in `plain` (docs/SPEC_language.md).
+  # Its own skeletons, not air's with the noun swapped (docs/SPEC_language.md): {line} names this
+  # house's own line, {event} the day it crossed and came back, and the comparisons are heat's.
   en:
     verbs:
-      rising:  "building"
-      steady:  "holding"
-      falling: "easing"
+      rising:  "warming up"
+      steady:  "steady"
+      falling: "cooling down"
+    line:
+      over:  "past this house's own heat line"
+      near:  "close to this house's own heat line"
+      under: "under this house's own heat line"
+    event:
+      earlier: "The house crossed the line earlier today."
+    cmp_words:
+      over:  "hotter than {noun}"
+      under: "cooler than {noun}"
+      level: "about as hot as {noun}"
+    # past: one hour the page scrubs back to. The title is what it was doing, in words; the tagline
+    # is the reading and whose line ({line} reuses the words above). The page writes none of it.
+    past:
+      verbs:
+        rising:  "was warming up"
+        steady:  "was steady"
+        falling: "was cooling down"
+      title:   "The heat {verb} {where}"
+      tagline: "At {hour} it felt like {n} {unit}, {line}."
+      none:    "Nothing was recorded {where} at {hour}."
+      # what that hour meant, by the same six stories as the live title
+      attribution:
+        clear:         "The heat was bearable, inside and out"
+        inside:        "The house was the hottest place around"
+        everywhere:    "It was this hot everywhere, the house too"
+        outside_worse: "The house was keeping the heat out"
+        mixed:         "The heat {verb} {where}"
+        unknown:       "The heat {where} {verb}"
     attribution:
-      clear:         "The heat is {verb} {where}, under the line. {cmp}"
-      inside:        "The heat is {verb} {where}, warmer than anywhere around it. {cmp}"
-      everywhere:    "The heat is {verb} {where}, and it is this warm everywhere around. {cmp}"
-      outside_worse: "The heat is {verb} {where}, cooler than the street. {cmp}"
-      mixed:         "The heat is {verb} {where}. {cmp}"
-      unknown:       "The heat is {verb} {where}. {cmp}"
+      clear:         "The heat is bearable, inside and out | In the house it is {verb}, {line}. {event}"
+      inside:        "The house is the hottest place around | Inside it is {line}, and the street is cooler. {event}"
+      everywhere:    "It is this hot everywhere, the house too | Inside and out it is {line}. {event}"
+      outside_worse: "The house is keeping the heat out | Inside it is {line}, and the street is past it. {event}"
+      mixed:         "The heat in the house is {verb} | Inside it is {line}. {event}"
+      unknown:       "The heat {where} is {verb} | It is {line}. {event}"
     state:
       none: "Nothing here reports both temperature and humidity, so there is no apparent temperature to give."
   id:
     verbs:
       rising:  "memanas"
-      steady:  "bertahan"
-      falling: "mereda"
+      steady:  "stabil"
+      falling: "mendingin"
+    line:
+      over:  "di atas batas panas rumah ini"
+      near:  "mendekati batas panas rumah ini"
+      under: "di bawah batas panas rumah ini"
+    event:
+      earlier: "Rumah sempat melewati batas tadi."
+    cmp_words:
+      over:  "lebih panas daripada {noun}"
+      under: "lebih sejuk daripada {noun}"
+      level: "kurang lebih sama dengan {noun}"
+    past:
+      verbs:
+        rising:  "memanas"
+        steady:  "bertahan"
+        falling: "mereda"
+      title:   "Panas {verb} {where}"
+      tagline: "Pukul {hour} terasa {n} {unit}, {line}."
+      none:    "Tidak ada yang tercatat {where} pukul {hour}."
+      # what that hour meant, by the same six stories as the live title
+      attribution:
+        clear:         "Panasnya masih wajar, di dalam dan di luar"
+        inside:        "Rumah ini tempat terpanas di sekitarnya"
+        everywhere:    "Panasnya sama di mana-mana, di rumah juga"
+        outside_worse: "Rumah menahan panas dari luar"
+        mixed:         "Panas {verb} {where}"
+        unknown:       "Panas {where} {verb}"
     attribution:
-      clear:         "Panas {verb} {where}, di bawah batas. {cmp}"
-      inside:        "Panas {verb} {where}, lebih panas daripada mana pun di sekitarnya. {cmp}"
-      everywhere:    "Panas {verb} {where}, dan sepanas ini di seluruh sekitar. {cmp}"
-      outside_worse: "Panas {verb} {where}, lebih sejuk daripada di jalan. {cmp}"
-      mixed:         "Panas {verb} {where}. {cmp}"
-      unknown:       "Panas {verb} {where}. {cmp}"
+      clear:         "Panasnya masih wajar, di dalam dan di luar | Di dalam rumah panasnya {verb}, {line}. {event}"
+      inside:        "Rumah ini tempat terpanas di sekitarnya | Di dalam rumah panasnya {line}, dan jalan lebih sejuk. {event}"
+      everywhere:    "Panasnya sama di mana-mana, di rumah juga | Di dalam dan di luar, panasnya {line}. {event}"
+      outside_worse: "Rumah menahan panas dari luar | Di dalam rumah panasnya {line}, sementara jalan melewatinya. {event}"
+      mixed:         "Panas di dalam rumah {verb} | Di dalam rumah panasnya {line}. {event}"
+      unknown:       "Panas {where} {verb} | Panasnya {line}. {event}"
     state:
       none: "Tidak ada di sini yang melaporkan suhu dan kelembapan sekaligus, jadi suhu terasa tidak bisa dihitung."
   es:
     verbs:
-      rising:  "está subiendo"
-      steady:  "se mantiene"
-      falling: "está bajando"
+      rising:  "subiendo"
+      steady:  "estable"
+      falling: "bajando"
+    line:
+      over:  "por encima del límite de calor de esta casa"
+      near:  "cerca del límite de calor de esta casa"
+      under: "por debajo del límite de calor de esta casa"
+    event:
+      earlier: "La casa cruzó el límite hoy más temprano."
+    cmp_words:
+      over:  "más calor que {noun}"
+      under: "más fresco que {noun}"
+      level: "igual que {noun}"
+    past:
+      verbs:
+        rising:  "estaba subiendo"
+        steady:  "se mantenía"
+        falling: "estaba cediendo"
+      title:   "El calor {verb} {where}"
+      tagline: "A las {hour} la sensación era de {n} {unit}, {line}."
+      none:    "No se registró nada {where} a las {hour}."
+      # what that hour meant, by the same six stories as the live title
+      attribution:
+        clear:         "El calor se aguantaba, dentro y fuera"
+        inside:        "La casa era el sitio más caliente de la zona"
+        everywhere:    "Hacía este calor en todas partes, también en casa"
+        outside_worse: "La casa estaba frenando el calor"
+        mixed:         "El calor {verb} {where}"
+        unknown:       "El calor {where} {verb}"
     attribution:
-      clear:         "El calor {verb} {where}, por debajo del límite. {cmp}"
-      inside:        "El calor {verb} {where}, más que en cualquier sitio alrededor. {cmp}"
-      everywhere:    "El calor {verb} {where}, y hace este calor en todo el alrededor. {cmp}"
-      outside_worse: "El calor {verb} {where}. La casa se mantiene más fresca que la calle. {cmp}"
-      mixed:         "El calor {verb} {where}. {cmp}"
-      unknown:       "El calor {verb} {where}. {cmp}"
+      clear:         "El calor se aguanta, dentro y fuera | En casa está {verb}, {line}. {event}"
+      inside:        "La casa es el sitio más caliente de la zona | Dentro está {line}, y la calle está más fresca. {event}"
+      everywhere:    "Hace este calor en todas partes, también en casa | Dentro y fuera está {line}. {event}"
+      outside_worse: "La casa está frenando el calor | Dentro está {line}, y la calle lo supera. {event}"
+      mixed:         "El calor en casa está {verb} | Dentro está {line}. {event}"
+      unknown:       "El calor {where} está {verb} | Está {line}. {event}"
     state:
       none: "Nada de aquí informa temperatura y humedad a la vez, así que no hay temperatura aparente que dar."
 

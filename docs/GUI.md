@@ -37,7 +37,7 @@ house takes one, and so does everything in between. That is the whole argument f
 table.
 
 **Then the thing that matters.** The issue with most to say, as a sentence in your language, with its
-number beside it at the size of a headline — *"The heat is holding in the house, under the line."*
+number beside it at the size of a headline — *"The house is keeping the heat out."*
 Under it, one plain sentence carries the figures — *"In the house it is 33.9, and on the street 30.7.
 The line is 35, and nothing here is over it."* — and why that issue and not another. Then one rule between the issue's own two
 ends, a dot on it for each distance (the house, the street, the ring, the region) and the line in red

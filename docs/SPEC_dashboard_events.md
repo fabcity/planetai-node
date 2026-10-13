@@ -142,7 +142,7 @@ One per open event, in the node's order. It is a **readout**, one figure with it
 stay four.
 
 ```
-[pix-heat] Heat · sustained · since 13:00 · K room, L room              shadow — would have sent
+[pix-heat] Heat · sustained · since 13:00 · K room, L room · watching — last seen 2 min ago   shadow — would have sent
 35.8 °C  peak        usual at this hour 33.4 · outside 29.1 (own kit) · the line 35
 Open up now: outside is 29.1 °C, inside 35.8.
 [ Done ]  [ Not now ]  [ Doesn't fit ]
@@ -150,6 +150,12 @@ sent 13:02 to Telegram: "…"
 evidence: heat at every distance · the day · K and L rooms' stations · from 9 rule rows ▸
 ```
 
+- **The live stamp** ("watching — last seen …", from the wire's `last_seen_at`) rides the header. Everything else
+  on the card is event-scoped — peak, message, context — so an event that stays open for hours (the margin doing
+  its work on a hot night; `docs/decisions/2026-10-10-heat-margin.md`) would otherwise read as frozen while the
+  engine steps every minute. The age ticks up on every poll: the visible proof the feed is alive. No current
+  *value* rides here — the hero's figure is not in the event's measure (heat's hero is air temperature, the event
+  is apparent), and the card does not mix the two. No `last_seen_at`, no stamp: the card never invents one.
 - **The numeral** is the peak, with `context` beside it. It is `--signal-worse` only when past the issue's line,
   which is what that colour already means.
 - **The action** is in body type, under an ink rule, not a coloured one.
@@ -157,8 +163,13 @@ evidence: heat at every distance · the day · K and L rooms' stations · from 9
   `Done · tomas · 13:20`. The card stays until the event clears, then moves to Act.
   - **Not now** leaves the card on the page, muted: `held until 16:20 unless it reaches danger`.
   - **Doesn't fit** opens one optional field, "What did you do instead?", the bot's own question, kept as the note.
+    The answer line carries it, in quotes: `Doesn't fit · tomas · 13:20 — "opened the west side"`. An answer
+    without a note invents none.
   - Labels come from `events.buttons`.
-- **Who pressed.** The first press asks for a name, and the browser keeps it for the next. The line saying a device
+- **Who pressed.** The first press asks for a name, and the browser keeps it for the next. The form does not send
+  an anonymous answer — five nameless rows landed on node #1 the morning the card looked frozen, and ρ is built
+  out of who answered. (The node still takes an empty `actor` from curl; a LoRa bridge may not know names. The
+  card says "somebody" for those.) The line saying a device
   needs the act token stays under the card. The node's refusal is printed as it wrote it.
 - **The message** is printed small, word for word, as sent (or "would have sent" in shadow).
 - **The evidence links** go to the issue's row in the matrix, its day series and the stations section, with the

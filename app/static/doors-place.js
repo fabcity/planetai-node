@@ -13,7 +13,9 @@ VIEWS.place = function () {
   $('#placehead').innerHTML = `<div class="k">Place · ${said(D.registry.place)}</div>
     <h1 data-learn="1">The ground this node stands on.</h1>
     <p class="lede mono">${esc(h.cell.id)} · res ${h.cell.res} · ${h.cell.edge_m} m edge · ${area.toFixed(2)} km² · ${fmt(D.point[1], 4)}, ${fmt(D.point[0], 4)}</p>
-    <nav class="pviews" aria-label="Views of the place">${PVIEWS.map(([id, t, s]) => `<button class="${id === PVIEW ? 'on' : ''}" data-p="${id}"><b>${t}</b><span>${s}</span></button>`).join('')}</nav>`;
+    <div class="prow"><nav class="pviews" aria-label="Views of the place">${PVIEWS.map(([id, t, s]) => `<button class="${id === PVIEW ? 'on' : ''}" data-p="${id}"><b>${t}</b><span>${s}</span></button>`).join('')}</nav>`
+    + `<button class="addimg" id="addimg" title="An image this household took: it lands on the map where it was taken">+ Add an image</button></div>`;
+  $('#addimg').onclick = addImage;
   document.querySelectorAll('.pviews button').forEach(b => b.onclick = () => { PVIEW = b.dataset.p; VIEWS.place(); });
   document.querySelector('.bench').dataset.pview = PVIEW;
   if (PVIEW === 'map') placeMap(); else layer();
@@ -78,4 +80,40 @@ function reach() {
     ['Index cells', 'the 20 cells of the Fab City Index for this place, scored where data exists', `${new Set(D.index_cells.map(c => c.cell)).size} of 20 have a value`],
     ['Water and soil', 'the other two things the purpose names, beside air', 'no source yet'], ['Forecast', 'the next day of wind and rain, from BMKG for this village', 'needs this point’s village code']]
     .map(([t, s2, c]) => `<div class="lrow two"><span class="t">${t}</span><span class="s">${s2}<br><span class="soon">${c}</span></span></div>`).join('');
+}
+
+/* ADD AN IMAGE — a quiet button beside the views, and a dialog: the file (picked or dropped), what took it, a note,
+   who. POST /captures with this screen's token; the map's Images layers and the Data door's list then ask again. */
+const IKIND = { phone: 'Phone', camera: 'Fixed camera', microscope: 'Microscope', drone: 'Drone', balloon: 'Balloon or kite' };
+function addImage() {
+  let who = ''; try { who = localStorage.getItem('planetai_actor') || ''; } catch (e) { /* no storage here */ }
+  const dl = $('#imgdlg');
+  if (!DOORS_TOKEN()) { dl.innerHTML = `<p>Images answer a screen holding a token only. Unlock this screen under Node to add one.</p><form method="dialog"><button>Close</button></form>`; dl.showModal(); return; }
+  dl.innerHTML = `<form id="imgf"><div class="k">Add an image</div><label class="drop" for="imgfile"><input type="file" id="imgfile" accept="image/jpeg,image/png,image/heic,image/heif,image/webp"><span id="imgname">Choose an image, or drop one here</span></label>`
+    + `<label>What took it<select id="imgkind">${Object.entries(IKIND).map(([k, t]) => `<option value="${k}">${t}</option>`).join('')}</select></label>`
+    + `<label>A note, if it needs one<input id="imgnote" maxlength="500"></label>${who ? '' : '<label>Your name<input id="imgwho" autocomplete="name"></label>'}`
+    + `<label class="tick"><span><input type="checkbox" id="imgseen" checked> Describe it with the image model, on this node</span></label>`
+    + `<p class="fine">Its own GPS is where it was taken, else the node's cell. The file is cleaned of EXIF and GPS and kept on this node.</p>`
+    + `<p class="fine" id="imgout" role="status"></p><div class="acts"><button type="button" id="imgx">Cancel</button><button type="submit">Keep it on the node</button></div></form>`;
+  dl.showModal();
+  const f = $('#imgf'), out = $('#imgout'), name = () => { const x = $('#imgfile').files[0]; $('#imgname').textContent = x ? x.name : 'Choose an image, or drop one here'; };
+  $('#imgx').onclick = () => dl.close(); $('#imgfile').onchange = name;
+  f.ondragover = e => { e.preventDefault(); f.classList.add('over'); }; f.ondragleave = () => f.classList.remove('over');
+  f.ondrop = e => { e.preventDefault(); f.classList.remove('over'); if (e.dataTransfer.files[0]) { $('#imgfile').files = e.dataTransfer.files; name(); } };
+  f.onsubmit = async e => {
+    e.preventDefault();
+    const file = $('#imgfile').files[0], btn = f.querySelector('button[type=submit]'), by = who || ($('#imgwho') && $('#imgwho').value.trim());
+    if (!file) { out.textContent = 'Choose an image first.'; return; }
+    if (!by) { out.textContent = 'The node records who added it: your name first.'; return; }
+    if (!who) try { localStorage.setItem('planetai_actor', by); } catch (x) { /* no storage here */ }
+    const fd = new FormData(); fd.append('photo', file, file.name || 'image.jpg'); fd.append('kind', $('#imgkind').value);
+    fd.append('note', $('#imgnote').value); fd.append('actor', by); fd.append('describe', $('#imgseen').checked ? '1' : '');
+    btn.disabled = true; out.textContent = 'Sending it to the node…';
+    try {
+      const r = await fetch('/captures', { method: 'POST', headers: DOORS_AUTH(), body: fd }), b = await r.json().catch(() => ({}));
+      if (!r.ok) { out.textContent = b.detail || `the node refused it (${r.status})`; return; }
+      if (b.describing) setTimeout(() => window.placeImagesChanged && window.placeImagesChanged(), 40000);   // its description, once the model is done
+      dl.close(); if (window.placeImagesChanged) window.placeImagesChanged();
+    } catch (x) { out.textContent = `The node did not answer: ${x.message}`; } finally { btn.disabled = false; }
+  };
 }

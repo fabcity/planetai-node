@@ -1,5 +1,5 @@
 # Developing and contributing
-<!-- checked: v0.80.3 -->
+<!-- checked: v0.81.0 -->
 
 This page is for the person who changes the node itself: a new adapter, a rule, a pack, a fix. A change
 here reaches every household the next time it runs `planetai update`, and, in the repo's words, "a
@@ -96,7 +96,7 @@ household runs without reading. `GOVERNANCE.md` says who merges what.
 | `build_learn.py --check` | a docs edit that moved one of the spans the dashboard's learn mode quotes, so `app/static/learn.json` would quote prose that is gone |
 | `check_wire.py` | a top-level key added to or dropped from one of the six wire documents in a commit about something else. The key lists are frozen in `tests/data/wire/` |
 | `check_theme.py` | the copy of the design repo's theme drifting on this side, where nothing would say what moved. Holds the three frozen files to the sha256s in `data/frozen_layer.txt`, including in CI, where `planetai-design` is not checked out |
-| `shasum -a 256 -c data/vendor.sha256` | a vendored drawing library (`app/static/plot.umd.min.js`, `app/static/d3.min.js`) replaced without anybody deciding to; replacing one means rewriting its line |
+| `shasum -a 256 -c data/vendor.sha256` | a vendored library (`app/static/plot.umd.min.js`, `app/static/d3.min.js`, `app/static/vendor/qrcode.js`) replaced without anybody deciding to; replacing one means rewriting its line |
 | `check_requirements.sh` | `uvicorn` pinned against `mcp`; the image failed to build on the node |
 | `check_rules.py` (needs sqlglot) | a 69-day cooldown that made `test-alert` report a dead node; message placeholders the SQL never returned; a cell without a `value` |
 | `py_compile`, pyflakes, the import check | `PARENT.startswith()` on a function, at import, so uvicorn never listened |
@@ -106,7 +106,7 @@ household runs without reading. `GOVERNANCE.md` says who merges what.
 `tools/sweep.py` is not a lint gate. It runs once a day in CI and files what it finds into one pinned
 issue: six releases tagged with no CHANGELOG heading, the site at v0.59 while main was at v0.60.
 
-`make test` runs `tests/all`: 67 offline suites, one line each with a count at the end, and a non-zero exit
+`make test` runs `tests/all`: 70 offline suites, one line each with a count at the end, and a non-zero exit
 when a suite fails, when a check skipped that nobody declared, or when the list and the count disagree.
 Adapters against saved payloads, Meshtastic parsing, cell provenance and custody, code packs, settings,
 the issues engine and its geometry, the report templates and schedule, the packs, the registry, the wire
@@ -140,8 +140,8 @@ queue:
    hop cannot be bisected by the person who has to report it.
 4. Sync the registry, then tag, in that order, every release.
 
-The registry is `data/sources/`, a pinned snapshot of `awesome-fabcity-data`. At v0.80 it is `851b8db`,
-269 entries, synced 2026-10-06 (`data/sources/REGISTRY_VERSION`). The script takes a commit sha and
+The registry is `data/sources/`, a pinned snapshot of `awesome-fabcity-data`. At v0.81 it is `851b8db`,
+269 entries, synced 2026-10-12 (`data/sources/REGISTRY_VERSION`). The script takes a commit sha and
 refuses a branch or a tag:
 
 ```bash

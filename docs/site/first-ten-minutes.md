@@ -1,5 +1,5 @@
 # First ten minutes
-<!-- checked: v0.80.3 -->
+<!-- checked: v0.81.0 -->
 
 The install ends with a node that is reading your place and has nobody to tell. These ten minutes add the
 rest of the loop: a channel to your phone, one alert that goes all the way through, a person's answer
@@ -119,9 +119,12 @@ change a setting". `planetai ui` creates the admin and act tokens if they are mi
 
 Open `http://localhost:8080/`. At the default `SHARE_LEVEL=off` every browser, including the one on the
 machine the node runs on (Docker presents it as a network client), sees the node's name, its status and no
-readings. Go to **Set up**, paste the admin token (or only the act token, in the field labelled "Token for
-closing a loop") and press **Unlock**. The header has six views, Now, Historical, Network, Wall, Arrange and
-Set up, and three modes, Simple, Advanced and Learn. Learn is the full page with a question mark at each
+readings. The page opens on the five doors, Now, Place, Node, Data and Wall, with **Set up** behind the gear; a
+phone is sent to the phone page, `/?layout=mobile`. In Set up › This screen, paste the admin token (or only the act
+token, in the field labelled "Token for closing a loop") and press **Unlock this screen**. Once it is unlocked with
+the admin token, "A phone" shows a QR code that opens the phone page holding the act token, so a phone can answer
+the node with nothing typed. The classic dashboard, `/?layout=classic`, has six views, Now, Historical, Network,
+Wall, Arrange and Set up, and three modes, Simple, Advanced and Learn. Learn is the full page with a question mark at each
 part; pressing one puts the passage of these pages that explains it, and a link to it, in the ask pane beside the page. Set up is where sensors are added or changed
 (Sources), where the bot's model lives (Model), and where every runtime setting can be changed without
 touching `.env`. See [Dashboard](dashboard.md) and [Sharing](sharing.md).
@@ -132,13 +135,15 @@ with what asks for a person first and the evidence after it.
 ## When a real alert arrives
 
 The test alert belongs to no issue, so it counts in ρ but never appears as an open alert on the page. The first
-real act-level alert from a pack rule about the air or the heat does, and the loop closes on the Now view. Until then Decide says:
+real act-level alert from a pack rule about the air or the heat does, and the loop closes on the classic page's Now view
+(`/?layout=classic`; the doors and the phone page draw only an event's card). Until then Decide says:
 "This node sends alerts, not events." and, under it, "Nothing is asking for anything."
 
 1. **Read it under Decide.** Decide is the first section under the lead. On a node that still sends alerts, as a
    new node does, it shows a card for each open alert: *what was seen*, the alert's first line, and *what this
    node suggests*, the rule's own 👉 recommendation. (A node set to `ALERT_ENGINE=events`, or to `shadow`, shows one card for each
-   open event instead, with the action it chose and **Done**, **Not now** and **Doesn't fit**; see
+   open event instead, with the action for the readings as they are now and **Done**, **Not now** and **Doesn't fit**,
+   which go once somebody answers; see
    [Dashboard](dashboard.md#decide).) Press **Decide about this**,
    fill in "Who is deciding" and "What will be done" (or press **Take its word**), then **Record the
    decision**. The page answers: "Decided. Nothing has moved — press "I did this" on this card when it is

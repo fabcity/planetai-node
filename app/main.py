@@ -24,12 +24,13 @@ from pathlib import Path
 import httpx
 import psycopg
 import yaml
-from fastapi import FastAPI, Header, HTTPException, Query, Request
+from fastapi import FastAPI, File, Form, Header, HTTPException, Query, Request, UploadFile
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
 import bootstrap
 import agent
+import actions as _act
 import events_pg
 import ground
 import index
@@ -467,8 +468,14 @@ def run_rules() -> None:
                     continue
                 msg = rule["message"]
                 tmpl = msg.get(LOCALE()) or msg.get("en") if isinstance(msg, dict) else str(msg)
+                # {line} is the one placeholder the row never carries: it is the rule's own line,
+                # named by watch.over and printed bare (35, not 35.0), so an alert can say whose
+                # line it is (docs/SPEC_language.md rule 10) without a second copy of the number.
+                watch_over = (rule.get("watch") or {}).get("over")
+                line_f = {"line": f"{float(watch_over):g}"} \
+                    if isinstance(watch_over, (int, float)) else {}
                 try:
-                    text = tmpl.format(**{k: ("—" if v is None else v) for k, v in row.items()})
+                    text = tmpl.format(**line_f, **{k: ("—" if v is None else v) for k, v in row.items()})
                 except (KeyError, ValueError, TypeError):
                     text = tmpl
                 level = rule.get("level", "info")
@@ -495,10 +502,15 @@ def run_rules() -> None:
                 # after the engine's transaction has committed: a message is never sent for a step that rolled back
                 for m, text in decided:
                     if m.send and text:
-                        notify(m.event.level, text)
+                        # The buttons ride only when the bot has announced itself (TELEGRAM_BUTTONS=1,
+                        # set by agent_loop on startup): a node without the agent container sends the
+                        # same message bare (SPEC_alerts §7).
+                        kb = _event_keyboard(m.event.id, settings.get("ALERT_LOCALE", "en") or "en") \
+                            if m.event.id and settings.num("TELEGRAM_BUTTONS", 0) else None
+                        notify(m.event.level, text, keyboard=kb)
 
 
-def notify(level: str, text: str) -> None:
+def notify(level: str, text: str, keyboard: list | None = None) -> None:
     icon = {"info": "ℹ️", "warn": "⚠️", "act": "🔴"}.get(level, "")
     log.info("ALERT [%s] %s", level, text)
     if level == "act":
@@ -513,12 +525,26 @@ def notify(level: str, text: str) -> None:
         return
     for chat in chats:
         try:
+            body = {"chat_id": chat, "text": f"{icon} {text}".strip()}
+            if keyboard:
+                body["reply_markup"] = {"inline_keyboard": keyboard}
             httpx.post(f"https://api.telegram.org/bot{tok}/sendMessage",
-                       json={"chat_id": chat, "text": f"{icon} {text}".strip()}, timeout=15).raise_for_status()
+                       json=body, timeout=15).raise_for_status()
             log.info("telegram -> %s ok", chat)
         except Exception as e:  # noqa: BLE001
             # never interpolate the exception's URL: httpx puts the token in it
             log.warning("telegram -> %s failed: %s", chat, type(e).__name__)
+
+
+def _event_keyboard(event_id: int, locale: str) -> list:
+    """The three buttons under an event's message (SPEC_alerts §7). callback_data is the contract the bot in the
+    agent container parses: ev:<event_id>:<stage>. Labels are the wire's own (actions.BUTTONS), so the page, the
+    phone and the bot all say the same three words. Sent only when the bot has announced itself
+    (TELEGRAM_BUTTONS=1): a button nobody answers is a broken promise under the message."""
+    b = _act.BUTTONS.get(locale) or _act.BUTTONS["en"]
+    return [[{"text": b["done"], "callback_data": f"ev:{event_id}:acted"},
+             {"text": b["not_now"], "callback_data": f"ev:{event_id}:acknowledged"},
+             {"text": b["doesnt_fit"], "callback_data": f"ev:{event_id}:dismissed"}]]
 
 
 # ---------------------------------------------------------------- hourly push (child → parent)
@@ -642,6 +668,54 @@ def check_release() -> None:
     if first:
         words = RELEASE_WORDS.get(settings.get("ALERT_LOCALE", "en"), RELEASE_WORDS["en"])
         notify("info", words.format(latest=known["latest"], here=known["current"] or "an older version"))
+
+
+
+# ---------------------------------------------------------------- the nodes the programme lists (docs/SPEC_hello.md)
+# registry.json on main, the file a node joins by pull request. Read from main and not from this release, so a node
+# merged today is listed everywhere within REGISTRY_EVERY. Only these fields reach a page: `contact` and `sources`
+# stay in the file, and a point is given to one decimal (about 10 km), as the Node door has always drawn another node.
+REGISTRY_URL = "https://raw.githubusercontent.com/fabcity/planetai-node/main/registry.json"
+REGISTRY_EVERY = 6 * 3600
+REGISTRY_FIELDS = ("name", "place", "scale", "operator", "since", "cell")
+
+
+def listed_nodes(raw) -> list[dict]:
+    """registry.json as a page may see it. A malformed entry is skipped, not a reason to lose the list."""
+    out = []
+    for n in raw.get("nodes", []) if isinstance(raw, dict) else []:
+        if not isinstance(n, dict) or not isinstance(n.get("name"), str):
+            continue
+        row = {k: n.get(k) for k in REGISTRY_FIELDS}
+        try:
+            row["ll"] = [round(float(n["lon"]), 1), round(float(n["lat"]), 1)]
+        except (KeyError, TypeError, ValueError):
+            row["ll"] = None
+        out.append(row)
+    return out
+
+
+def check_registry() -> None:
+    """Every REGISTRY_EVERY, read the programme's list. UPDATE_CHECK=off asks nothing, the same switch as the
+    release check: both are this node reaching out to the programme. A failed read keeps the last good list and
+    tries again in an hour."""
+    if settings.get("UPDATE_CHECK", "on") == "off":
+        state.pop("registry", None)
+        return
+    known = state.get("registry") or {}
+    if time.time() - known.get("asked", 0) < REGISTRY_EVERY:
+        return
+    # ponytail: in memory only; a node restarted offline has no list until its first good read. Keep a copy on disk
+    # when that bites someone.
+    try:
+        r = hc.get(REGISTRY_URL, timeout=15)
+        r.raise_for_status()
+        nodes = listed_nodes(r.json())
+    except Exception as e:  # noqa: BLE001 — no route out is a normal node
+        state["registry"] = {**known, "error": type(e).__name__, "asked": time.time() - REGISTRY_EVERY + 3600}
+        return
+    state["registry"] = {"nodes": nodes, "read": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                         "asked": time.time()}
 
 
 # ---------------------------------------------------------------- loops
@@ -779,6 +853,7 @@ loop(refresh_usual, 3600, delay=10)
 loop(push_aggregates, 3600, delay=120)
 loop(push_events, 3600, delay=150)
 loop(check_release, 3600, delay=300)
+loop(check_registry, 3600, delay=60)
 if RETICULUM_URL:
     loop(poll_reticulum, 300, delay=20)
 
@@ -831,7 +906,14 @@ async def _mcp_auth(request, call_next):
 # would silently never announce. It is safe at every level by construction — it answers `{"enabled":
 # false}` until a household turns announcing on, and after that it returns the same handful of facts
 # the node is already broadcasting to every radio in reach.
-_SHARE_OFF = (frozenset({"/", "/ui", "/health", "/llms.txt", "/settings", "/export", "/presence"}), ("/static/",))
+# /nodes is here because it is the programme's public registry.json, the same on every node: it says which nodes
+# exist and nothing about this house.
+# /ground/* is on `open` because every layer under it is a public dataset (OpenStreetMap, OpenAerialMap, Sentinel-2,
+# Open-Meteo) cut around the node, and its centre is no closer than the point /health already rounds. /geo/cell is
+# there too, but the route drops what it says relative to the node (is_node, cells_from_node, *_polar) for a
+# caller without a token: asked at res 15 cell by cell, those would find the house. The phone's walk needs both
+# (Tomas, 12 Oct 2026: one phone mode, no token, for the person running the node).
+_SHARE_OFF = (frozenset({"/", "/ui", "/health", "/llms.txt", "/settings", "/export", "/presence", "/nodes"}), ("/static/",))
 _SHARE_OPEN = (_SHARE_OFF[0] | frozenset({
     "/stats", "/sensors", "/observations", "/alerts", "/series", "/sparks", "/rho", "/cells", "/packs", "/trust",
     "/nearby", "/forecast", "/earth", "/earth/change.png", "/earth/year.png", "/earth/frame.png",
@@ -840,8 +922,8 @@ _SHARE_OPEN = (_SHARE_OFF[0] | frozenset({
     # The ask pane. Its context and every tool result are scrubbed of positions, names and ids (app/ask.py), so
     # it tells a reader nothing /issues does not; it is here, and not on `off`, because it spends this machine's
     # CPU on whoever asks, and `open` is the household saying the WiFi may.
-    "/ask", "/ask/status", "/docs/search",
-}), ("/static/", "/exports/", "/issues", "/sources/"))
+    "/ask", "/ask/status", "/docs/search", "/geo/cell",
+}), ("/static/", "/exports/", "/issues", "/sources/", "/ground/"))
 _SHARE = {"off": _SHARE_OFF, "open": _SHARE_OPEN}
 
 
@@ -974,6 +1056,15 @@ def _presence_res() -> int:
     except ValueError:
         return 3
     return max(0, min(r, PRESENCE_RES_FLOOR))
+
+
+@app.get("/nodes")
+def nodes():
+    """The nodes the programme lists (registry.json on main, read by check_registry). `read` is null until the
+    first good read; `error` says why the last one failed while the list it kept is still served."""
+    k = state.get("registry") or {}
+    return {"read": k.get("read"), "from": REGISTRY_URL, "nodes": k.get("nodes", []),
+            **({"error": k["error"]} if k.get("error") else {})}
 
 
 @app.get("/presence")
@@ -1644,7 +1735,8 @@ def _earth_latest() -> dict | None:
 # The redesign's Place door pans, zooms, inspects and measures. Every ring it draws and every distance it prints is
 # answered here (app/issues/geometry.py), so the page computes no H3 and no distance: tools/check_ui.py holds it to
 # that. **On no SHARE_LEVEL allowlist, like /place/geojson**: the node's cell at a fine resolution, rings centred on
-# it and "metres from the node" each give away the point /health rounds on purpose. This machine or a token.
+# it and "metres from the node" each give away the point /health rounds on purpose. This machine or a token. The one
+# exception is /geo/cell at SHARE_LEVEL=open, which answers without a token minus its node-relative fields.
 
 
 def _here() -> tuple[float, float]:
@@ -1676,7 +1768,7 @@ def geo_grid(bbox: str, res: int = Query(..., ge=0, le=15)):
 
 
 @app.get("/geo/cell")
-def geo_cell(id: str | None = None, lat: float | None = Query(None, ge=-90, le=90),
+def geo_cell(request: Request, id: str | None = None, lat: float | None = Query(None, ge=-90, le=90),
              lon: float | None = Query(None, ge=-180, le=180), res: int | None = Query(None, ge=0, le=15),
              children: int | None = Query(None, ge=1, le=15), polar: bool = False):
     """One cell's facts, named by `id` or by `lat`, `lon` and `res`: area, edge, parent, and how many cells from the
@@ -1689,9 +1781,13 @@ def geo_cell(id: str | None = None, lat: float | None = Query(None, ge=-90, le=9
         import h3
         id = h3.latlng_to_cell(lat, lon, res)
     try:
-        return _geo.cell(id, *here, children=children, as_polar=polar)
+        out = _geo.cell(id, *here, children=children, as_polar=polar)
     except ValueError as e:
         raise HTTPException(422, str(e)) from None
+    if not getattr(request.state, "share_trusted", False):
+        for k in ("is_node", "cells_from_node", "ring_polar", "children_polar"):
+            out.pop(k, None)
+    return out
 
 
 @app.get("/geo/measure")
@@ -1728,7 +1824,7 @@ def geo_rings(km: str = "2,5,15"):
 # ---------------------------------------------------------------- the ground, kept on this node's disk
 # `planetai run place basemap` (vector, fonts, drone mosaics) and `planetai run earth-engine basemap` (Sentinel-2)
 # fetch a detailed map of this place once into out/ground/; these routes serve it, so a map drawn from them asks
-# nobody anything. Private like /place/geojson: a tile pyramid centred on the node says where it is.
+# nobody anything. On the `open` list: public data, centred no closer than /health's rounded point (see _SHARE_OPEN).
 GROUND_LAYERS = {"vector": "application/x-protobuf", "imagery": "image/png", "drone": "image/png"}
 
 
@@ -2218,14 +2314,20 @@ STATIC = Path(__file__).parent / "static"
 def ui(layout: str = ""):
     """The dashboard: one HTML file, no build step, reads the same API everything else does. The five doors
     layout is the default (doors.html, docs/decisions/2026-10-07-doors.md); `?layout=classic` serves the legacy
-    dashboard instead: the same shell route, so the same share rule, and both read the same routes with the same token.
+    dashboard instead; `?layout=mobile` serves the phone page (one column: Now, the walk out from the house, Node; `?layout=walk` is the same page). All three share
+    the same shell route, so the same share rule, and all read the same routes with the same token.
 
     Sent with `cache-control: no-cache`. Without any cache header a browser is free to reuse this document for as
     long as it likes, and an ordinary reload does not always ask: after `planetai update` a screen kept running the
     previous dashboard, with the previous bugs, until someone thought to hard-reload. The node's whole update story
     depends on the page following the version."""
     from fastapi.responses import HTMLResponse
-    f = STATIC / ("index.html" if layout == "classic" else "doors.html")
+    if layout == "classic":
+        f = STATIC / "index.html"
+    elif layout in ("mobile", "walk"):     # the walk was its own page for a day; it is the phone page's middle now
+        f = STATIC / "mobile.html"
+    else:
+        f = STATIC / "doors.html"
     body = f.read_text() if f.exists() else "<h1>planetai-node</h1><p>GUI not shipped in this build.</p>"
     return HTMLResponse(body, headers={"cache-control": "no-cache, must-revalidate"})
 
@@ -2316,10 +2418,17 @@ COMPANIONS = {
     "maplibre-gl.js": (STATIC / "vendor" / "maplibre-gl.js", "application/javascript"),
     "maplibre-gl.css": (STATIC / "vendor" / "maplibre-gl.css", "text/css"),
     "deck.gl.min.js": (STATIC / "vendor" / "deck.gl.min.js", "application/javascript"),
+    # Set up draws the phone's unlock as a QR code on the admin's screen, so the token never leaves the node's own pages.
+    "qrcode.js": (STATIC / "vendor" / "qrcode.js", "application/javascript"),
     # The five doors (/?layout=doors): the loader that builds their one object from the routes, then one file per door,
     # as planetai-design's prototype kept them. Natural Earth's coast for the Node door's world (NOTICE).
     **{f"doors-{n}.js": (STATIC / f"doors-{n}.js", "application/javascript")
        for n in ("load", "nodegeo", "core", "fig", "now", "placemap", "place", "data", "flow", "wallmap", "wall", "node", "setup")},
+    # The phone page (/?layout=mobile): the shell and its script, which reuses doors-load.js.
+    "mobile.html": (STATIC / "mobile.html", "text/html"),
+    "mobile.js": (STATIC / "mobile.js", "application/javascript"),
+    # The phone page's walk out from the house (SPEC_mobile §11.2): mobile.js loads it, and MapLibre, when it nears the screen.
+    "walk.js": (STATIC / "walk.js", "application/javascript"),
     "world-land-110m.json": (STATIC / "vendor" / "world-land-110m.json", "application/json"),
     # The documentation the node carries (`make learn` cuts it out of docs/site): the Data door draws the API from it.
     # ./data is mounted at /app/data in the container and sits beside app/ in a checkout, as ask.py reads it.
@@ -2391,6 +2500,16 @@ def _admin(authorization: str) -> None:
         raise HTTPException(403, "ADMIN_TOKEN is not set in .env; run `planetai ui` to create one")
     if not _bearer_ok(authorization, tok):
         raise HTTPException(401, "bad or missing admin token")
+
+
+@app.get("/settings/phone")
+def settings_phone(authorization: str = Header("")):
+    """The token for closing a loop, for the admin's Set up screen to draw as a QR code a phone scans to unlock itself.
+    Admin token only: it hands out the weaker token to whoever already holds the stronger one, and nothing else."""
+    _admin(authorization)
+    if not ACT_TOKEN():
+        raise HTTPException(404, "no ACT_TOKEN on this node yet; run `planetai ui` to create one")
+    return {"act": ACT_TOKEN()}
 
 
 @app.get("/settings")
@@ -2560,6 +2679,388 @@ def action(body: dict, request: Request, authorization: str = Header("")):
         cur.execute("INSERT INTO actions (alert_id, stage, actor, note) VALUES (%s,%s,%s,%s)",
                     (body.get("alert_id"), stage, str(body.get("actor") or "")[:80], str(body.get("note") or "")[:500]))
     return {"ok": True}
+
+
+# ---------------------------------------------------------------- captures (SPEC_eyes step 1)
+# One picture with the facts a reading has: when, which cell, who, with what. The file lives in the folder the
+# household chose (CAPTURES_DIR in .env → /app/captures here; unlike DATA_DIR it MAY be a NAS share — these are
+# files, not Postgres). On NO SHARE_LEVEL list at any level, in no export, aggregate, readings or parent push:
+# the middleware refuses a stranger outright, and the route then refuses every token but ACT/ADMIN, so the
+# read-only BACKUP_TOKEN that passes the gate cannot read a picture. The exact point is kept (token only); only
+# the FILE is cleaned of EXIF/GPS, so a picture that is ever shared carries no hidden place.
+
+CAPTURE_KINDS = ("microscope", "phone", "camera", "drone", "balloon")
+CAPTURES_DIR = os.getenv("PLANETAI_CAPTURES", "/app/captures")   # the compose mount's inside path; tests point it aside
+
+
+def _captures_auth(request: Request, authorization: str) -> None:
+    """The /actions rule (F10): unchanged and open on this machine; from anywhere else ACT_TOKEN or ADMIN_TOKEN —
+    the weaker one on purpose, so a household member adds pictures without holding the key to /settings/raw."""
+    if not _is_local(request):
+        tokens = [t for t in (ACT_TOKEN(), os.getenv("ADMIN_TOKEN", "").strip()) if t]
+        if not tokens:
+            raise HTTPException(403, "no ACT_TOKEN or ADMIN_TOKEN set on this node; run `planetai ui` to create one")
+        if not _bearer_ok(authorization, *tokens):
+            raise HTTPException(401, "the captures answer only this machine or Authorization: Bearer ***")
+
+
+def _captures_dir() -> str:
+    """The folder, or a clear 503: a capture is refused when there is nowhere honest to keep it. `planetai doctor`
+    says the same from the host side."""
+    d = CAPTURES_DIR
+    if not os.path.isdir(d) or not os.access(d, os.W_OK):
+        raise HTTPException(503, f"the captures folder ({d}) is missing or not writable, so this node is not taking "
+                                 "pictures. It may be any disk, a NAS share included: mount it, or point CAPTURES_DIR "
+                                 "in .env at one that is there, and `planetai restart`.")
+    return d
+
+
+def _node_cells() -> tuple[set, str]:
+    """The node's seven res-8 cells (its own and the six touching it, SPEC_eyes §5) and its own res-10 cell —
+    the yardsticks `outside` and `at_home` are measured with once, on arrival."""
+    import h3  # noqa: PLC0415
+    lat, lon = _here()
+    home8 = h3.latlng_to_cell(lat, lon, 8)
+    return set(h3.grid_disk(home8, 1)), h3.latlng_to_cell(lat, lon, 10)
+
+
+def _clean_picture(raw: bytes) -> tuple[bytes, str, str | None, tuple[float, float] | None]:
+    """Re-encode with no metadata: EXIF, GPS and the thumbnail die here and only the pixels survive. Returns the
+    cleaned bytes, their mime, and the picture's own date when it carried one (kept as `ts`, the taken time —
+    a date is not a place). HEIC becomes JPEG so any screen can show it back."""
+    import io  # noqa: PLC0415
+    from PIL import Image, ImageOps  # noqa: PLC0415
+    try:
+        import pillow_heif  # noqa: PLC0415
+        pillow_heif.register_heif_opener()
+    except ImportError:
+        pass  # no HEIC on this install: a HEIC upload then reads as not-a-picture below, honestly
+    try:
+        im = Image.open(io.BytesIO(raw))
+        im.load()
+    except Exception:
+        raise ValueError("that file is not a picture this node can read (jpeg, png, heic or webp)") from None
+    fmt0 = (im.format or "").upper()
+    if fmt0 not in ("JPEG", "MPO", "PNG", "WEBP", "HEIF", "HEIC", "AVIF"):  # MPO: a JPEG with extra frames, what DJI drones write
+        raise ValueError(f"a {fmt0 or 'unknown'} is not a picture this node keeps (jpeg, png, heic or webp)")
+    taken = None
+    try:
+        exif = im.getexif()
+        dtor = exif.get_ifd(0x8769).get(36867) or exif.get(306)  # DateTimeOriginal (taken), else DateTime (saved)
+        if dtor:
+            taken = datetime.strptime(dtor.strip(), "%Y:%m:%d %H:%M:%S").replace(tzinfo=ZoneInfo(NODE_TZ)).isoformat()  # a camera writes local time
+    except Exception:  # noqa: BLE001 — a picture with a broken date is still a picture; taken falls back to now
+        taken = None
+    point = None   # where the camera says it was taken: read here, kept in the row, and gone from the file below
+    try:
+        g = im.getexif().get_ifd(0x8825)
+        dms = lambda v: float(v[0]) + float(v[1]) / 60 + float(v[2]) / 3600  # noqa: E731
+        if g.get(2) and g.get(4):
+            plat = dms(g[2]) * (-1 if str(g.get(1, "N")).upper().startswith("S") else 1)
+            plon = dms(g[4]) * (-1 if str(g.get(3, "E")).upper().startswith("W") else 1)
+            if -90 <= plat <= 90 and -180 <= plon <= 180 and (plat, plon) != (0.0, 0.0):
+                point = (plat, plon)
+    except Exception:  # noqa: BLE001 — a broken GPS block is no point, not a refused picture
+        point = None
+    im = ImageOps.exif_transpose(im)  # the orientation is metadata too: apply it, then let it go with the rest
+    out = io.BytesIO()
+    if fmt0 in ("JPEG", "MPO", "HEIF", "HEIC", "AVIF"):  # an MPO keeps its first frame, the picture
+        im.convert("RGB").save(out, "JPEG", quality=90)
+        mime = "image/jpeg"
+    elif fmt0 == "PNG":
+        im.save(out, "PNG")
+        mime = "image/png"
+    else:
+        im.save(out, "WEBP", quality=90)
+        mime = "image/webp"
+    return out.getvalue(), mime, taken, point
+
+
+@app.post("/captures")
+async def capture_post(request: Request, authorization: str = Header(""),
+                       photo: "UploadFile" = File(...), kind: str = Form("phone"),
+                       lat: float | None = Form(None), lon: float | None = Form(None),
+                       cell: str | None = Form(None), note: str = Form(""),
+                       taken_at: str = Form(""), actor: str = Form(""), describe: str = Form("")):
+    """A household adds a picture: multipart, one image, `kind`, `lat`+`lon` OR a res-10 `cell` OR neither (the
+    node's own cell, which is what a phone with no location permission means), optional `note`, `taken_at` and
+    `actor` (the name the phone keeps), and `describe=1` to have the image model describe it after the upload answers
+    (the upload form's checkbox). The exact point is kept — a tree or a dump is worth it — and only the
+    file is cleaned. A duplicate sha256 answers the existing row instead of keeping the same picture twice."""
+    import hashlib  # noqa: PLC0415
+    import h3  # noqa: PLC0415
+    _captures_auth(request, authorization)
+    if kind not in CAPTURE_KINDS:
+        raise HTTPException(422, f"kind must be one of {', '.join(CAPTURE_KINDS)}")
+    raw = await photo.read()
+    if not raw:
+        raise HTTPException(422, "no picture arrived")
+    if len(raw) > 40 * 1024 * 1024:
+        raise HTTPException(413, "a capture is a picture, not a film: 40 MB is the most this node takes")
+    sha = hashlib.sha256(raw).hexdigest()
+    dup = q("SELECT * FROM captures WHERE sha256 = %s", sha)
+    if dup:
+        return {"ok": True, "duplicate": True, "capture": dup[0]}
+    try:
+        cleaned, mime, exif_taken, exif_point = _clean_picture(raw)
+    except ValueError as e:
+        raise HTTPException(415, str(e)) from None
+    if (lat is None) != (lon is None):
+        raise HTTPException(422, "lat and lon together, or neither")
+    if lat is not None and not (-90 <= lat <= 90 and -180 <= lon <= 180):
+        raise HTTPException(422, "lat must be -90..90 and lon -180..180")
+    if exif_point and not cell:
+        lat, lon = exif_point   # the picture's own GPS: where it was taken beats where the phone is now (a gallery pick)
+    seven, home10 = _node_cells()
+    if lat is not None:
+        cap_cell = h3.latlng_to_cell(lat, lon, 10)
+    elif cell:
+        if not h3.is_valid_cell(cell):
+            raise HTTPException(422, f"{cell!r} is not an H3 cell")
+        if h3.get_resolution(cell) != 10:
+            raise HTTPException(422, "cell must be res 10, the room; send lat and lon instead if you have them")
+        cap_cell = cell
+    else:
+        cap_cell = home10   # no point given: the picture was taken here, at the node, as far as this node knows
+    outside = h3.cell_to_parent(cap_cell, 8) not in seven
+    at_home = cap_cell == home10
+    ts = taken_at.strip() or exif_taken
+    if ts:
+        try:
+            ts = datetime.fromisoformat(ts.replace("Z", "+00:00")).isoformat()
+        except ValueError:
+            raise HTTPException(422, "taken_at must be an ISO date-time") from None
+    folder = _captures_dir()
+    name = f"{sha}.{mime.split('/')[1].replace('jpeg', 'jpg')}"
+    with open(os.path.join(folder, name), "wb") as f:
+        f.write(cleaned)
+    with db() as con, con.cursor() as cur:
+        cur.execute("""INSERT INTO captures (ts, kind, cell, lat, lon, outside, at_home, actor, note, file, sha256, bytes, mime)
+                       VALUES (COALESCE(%s::timestamptz, now()), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                       RETURNING *""",
+                    (ts, kind, cap_cell, lat, lon, outside, at_home, str(actor or "")[:80], str(note or "")[:500],
+                     name, sha, len(cleaned), mime))
+        row = {k: (v.isoformat() if isinstance(v, datetime) else v) for k, v in cur.fetchone().items()}
+    describing = describe.strip().lower() in ("1", "on", "true") and _describe_later(row["id"])
+    return {"ok": True, "capture": row, "describing": bool(describing)}
+
+
+@app.get("/captures")
+def captures_list(request: Request, authorization: str = Header(""), cell: str | None = None,
+                  kind: str | None = None, limit: int = Query(50, ge=1, le=500)):
+    """The visual database, newest first. `?cell=` takes a cell at any resolution and answers the captures inside
+    it — which is how the walk asks for a street's or a ring's pictures from the res-10 cells it keeps."""
+    _captures_auth(request, authorization)
+    if kind is not None and kind not in CAPTURE_KINDS:
+        raise HTTPException(422, f"kind must be one of {', '.join(CAPTURE_KINDS)}")
+    # ponytail: a ?cell= reads every row and filters in Python (no H3 in Postgres here); fine to tens of thousands
+    rows = q("SELECT * FROM captures" + (" WHERE kind = %s" if kind else "") + " ORDER BY id DESC"
+             + ("" if cell else " LIMIT %s" % limit), *([kind] if kind else []))
+    if cell:
+        import h3  # noqa: PLC0415
+        if not h3.is_valid_cell(cell):
+            raise HTTPException(422, f"{cell!r} is not an H3 cell")
+        res = h3.get_resolution(cell)
+        rows = [r for r in rows if h3.cell_to_parent(r["cell"], min(res, 10)) == cell] if res <= 10 else []
+    import h3  # noqa: PLC0415
+    # `at` is where a map draws it: the exact point, else its cell's centre (the node computes, the page draws)
+    return [{**r, "at": [r["lat"], r["lon"]] if r.get("lat") is not None else list(h3.cell_to_latlng(r["cell"]))}
+            for r in rows[:limit]]
+
+
+@app.patch("/captures/{cid}")
+def capture_patch(cid: int, body: dict, request: Request, authorization: str = Header("")):
+    """The household edits an image's words: `note`, `kind`, and `meta` (an object of short strings, replaced whole).
+    The point, the cell, the time and the file are facts of arrival and are not edited here."""
+    _captures_auth(request, authorization)
+    sets, vals = [], []
+    if "note" in body:
+        sets.append("note = %s"); vals.append(str(body["note"] or "")[:500])
+    if "kind" in body:
+        if body["kind"] not in CAPTURE_KINDS:
+            raise HTTPException(422, f"kind must be one of {', '.join(CAPTURE_KINDS)}")
+        sets.append("kind = %s"); vals.append(body["kind"])
+    if "meta" in body:
+        m = body["meta"]
+        if not isinstance(m, dict) or len(m) > 40:
+            raise HTTPException(422, "meta is an object of at most 40 keys")
+        sets.append("meta = %s"); vals.append(Jsonb({str(k)[:60]: str(v)[:500] for k, v in m.items()}))
+    if body.get("confirm") or "findings" in body:
+        if not ((q("SELECT analysis FROM captures WHERE id = %s", cid) or [{}])[0].get("analysis") or {}).get("model"):
+            raise HTTPException(409, "nothing to confirm: this image has not been described yet")
+        # a person here says the model's findings are right: from now on they are the household's, with its name
+        # (an edited list is confirmed by the edit: what is left is what a person says is there)
+        who = str(body.get("actor") or "someone here")[:80]
+        mine = {"by": "person", "confirmed_by": who, "confirmed_at": datetime.now(timezone.utc).isoformat()}
+        if "findings" in body:
+            if not isinstance(body["findings"], list) or len(body["findings"]) > 30:
+                raise HTTPException(422, "findings is a list of at most 30")
+            mine["findings"] = _findings(body["findings"])
+        sets.append("analysis = analysis || %s"); vals.append(Jsonb(mine))
+    if not sets:
+        raise HTTPException(422, "nothing to change: note, kind, meta, findings or confirm")
+    with db() as con, con.cursor() as cur:
+        cur.execute(f"UPDATE captures SET {', '.join(sets)} WHERE id = %s RETURNING *", (*vals, cid))
+        row = cur.fetchone()
+    if not row:
+        raise HTTPException(404, "no such capture")
+    return {"ok": True, "capture": {k: (v.isoformat() if isinstance(v, datetime) else v) for k, v in row.items()}}
+
+
+@app.delete("/captures/{cid}")
+def capture_delete(cid: int, request: Request, authorization: str = Header("")):
+    """Delete an image: the row and its file. The admin token (or this machine) only: the act token may add an
+    image and edit its words, never destroy one."""
+    if not _is_local(request):
+        _admin(authorization)
+    with db() as con, con.cursor() as cur:
+        cur.execute("DELETE FROM captures WHERE id = %s RETURNING file", (cid,))
+        row = cur.fetchone()
+    if not row:
+        raise HTTPException(404, "no such capture")
+    path = os.path.join(CAPTURES_DIR, os.path.basename(row["file"]))
+    if os.path.isfile(path):
+        os.remove(path)
+    return {"ok": True, "deleted": cid}
+
+
+@app.get("/captures/{cid}/file")
+def capture_file(cid: int, request: Request, authorization: str = Header("")):
+    """The picture itself. Token only, like the row; the name is this node's own, never a client's path."""
+    _captures_auth(request, authorization)
+    from fastapi.responses import FileResponse  # noqa: PLC0415
+    rows = q("SELECT file, mime FROM captures WHERE id = %s", cid)
+    if not rows:
+        raise HTTPException(404, "no such capture")
+    path = os.path.join(CAPTURES_DIR, os.path.basename(rows[0]["file"]))
+    if not os.path.isfile(path):
+        raise HTTPException(404, "the row is here but the file is gone from the captures folder")
+    return FileResponse(path, media_type=rows[0]["mime"])
+
+
+# ---------------------------------------------------------------- the image model (SPEC_eyes step 2)
+# A local vision model describes an image and lists what it sees, each finding filed under a class of the Fab City
+# flows profile, so a tree in a picture and a tree logged as planted are the same word. Only the physical classes:
+# a picture cannot see a design file or an hour of work. The picture goes to this machine's Ollama and nowhere else.
+FLOWS_VOCAB = "https://planetai.fab.city/vocab/flows/1.0/"
+# ponytail: copied from packs/flows/resources.yml (branch flows-pack-2026-09-28); read that file once the pack merges
+EYES_CLASSES = ("plant", "animal", "habitat", "food", "water", "compost", "waste_residual", "plastic_waste",
+                "packaging", "wood", "metal", "textile", "electronics", "filament", "fuel", "electricity", "part",
+                "filter", "furniture", "tool", "appliance", "garment", "micromobility", "goods", "other")
+# Two asks, because a 7B vision model asked for JSON straight from the picture invents (node #1, 12 Oct: dogs, cats
+# and a reef on a drone shot of roofs, looping until cut off). Looking first, in words, and filing those words second
+# keeps every finding to something the description said.
+EYES_LOOK = ("A household took this picture of its own place ({kind}, near {city}){note}. Describe what is in it in a "
+             "short paragraph: the living things (plants and trees, with the species when you can tell, and animals), "
+             "what is built or made, and anything that is a problem for the place, such as rubbish, smoke, a spill or "
+             "damage. Say only what you can actually see. Do not describe people.")
+EYES_FILE = ("Here is a description of a picture:\n\n{summary}\n\nList each kind of thing the description says is "
+             "there, once, as a finding, and leave out anything it says is absent. class: plant is any living plant or "
+             "tree, animal any animal, habitat is ground made living, waste_residual and plastic_waste are rubbish, a "
+             "made thing goes under its own class or goods, and other is buildings, roads, cars and anything else. "
+             "name: as specific as the description is. count: only when the description gives a number, else null. "
+             "issue: true only when the description says it is a problem. Never people.")
+_EYES_TASKS: set = set()   # strong refs, so an automatic description is not collected half way
+
+
+async def _describe(cid: int, model: str) -> dict:
+    """Ask the local vision model about one capture and keep what it says, marked as the model's. Raises with a
+    sentence a person can act on when the model or the file is not there."""
+    import base64, io  # noqa: E401, PLC0415
+    from PIL import Image  # noqa: PLC0415
+    rows = q("SELECT file, kind, note FROM captures WHERE id = %s", cid)
+    if not rows:
+        raise HTTPException(404, "no such capture")
+    path = os.path.join(CAPTURES_DIR, os.path.basename(rows[0]["file"]))
+    if not os.path.isfile(path):
+        raise HTTPException(404, "the file is gone from the captures folder")
+    im = Image.open(path).convert("RGB")
+    im.thumbnail((1024, 1024))   # what a 7B vision model can use; a drone's 20 MP would only cost minutes
+    buf = io.BytesIO()
+    im.save(buf, "JPEG", quality=85)
+    note = (rows[0]["note"] or "").strip()
+    look = EYES_LOOK.format(kind=rows[0]["kind"], city=os.getenv("NODE_CITY", "") or NODE,
+                            note=f"; the household wrote: {note[:200]}" if note else "")
+    schema = {"type": "object", "required": ["findings"], "properties": {
+        "findings": {"type": "array", "maxItems": 12, "items": {"type": "object", "required": ["class", "name"], "properties": {
+            "class": {"type": "string", "enum": list(EYES_CLASSES)}, "name": {"type": "string"},
+            "count": {"type": ["integer", "null"]}, "issue": {"type": "boolean"}}}}}}
+    url = os.getenv("OLLAMA_URL", "http://host.docker.internal:11434")
+
+    async def ask(hc, msg, num, fmt=None):
+        r = await hc.post(url + "/api/chat", json={"model": model, "stream": False, "messages": [msg],
+                                                   "options": {"temperature": 0, "num_predict": num},
+                                                   **({"format": fmt} if fmt else {})})
+        if r.status_code == 404:
+            raise HTTPException(503, f"{model} is not on this machine yet: `ollama pull {model}`")
+        if r.status_code >= 400:
+            raise HTTPException(502, f"the image model answered {r.status_code}: {r.text[:200]}")
+        return r.json()["message"]["content"]
+    try:
+        async with httpx.AsyncClient(timeout=600) as hc:
+            summary = (await ask(hc, {"role": "user", "content": look,
+                                      "images": [base64.b64encode(buf.getvalue()).decode()]}, 500)).strip()
+            filed = EYES_FILE.format(summary=summary)
+            out = json.loads(await ask(hc, {"role": "user", "content": filed}, 900, schema))
+    except httpx.HTTPError as e:
+        raise HTTPException(503, f"Ollama is not answering at {url} ({type(e).__name__})") from None
+    except (KeyError, ValueError, TypeError):
+        raise HTTPException(502, "the image model answered something that is not the shape asked for") from None
+    findings = _findings(out.get("findings") or [])
+    analysis = {"model": model, "where": "local", "vocab": FLOWS_VOCAB, "asked": [look, EYES_FILE],
+                "at": datetime.now(timezone.utc).isoformat(), "summary": summary[:1500],
+                "findings": findings, "by": "model", "confirmed_by": None}
+    with db() as con, con.cursor() as cur:
+        cur.execute("UPDATE captures SET analysis = %s WHERE id = %s", (Jsonb(analysis), cid))
+    return analysis
+
+
+def _findings(raw: list) -> list:
+    """A list of findings as the node keeps them, whoever wrote it: a known class or other, a name, a count or none."""
+    out = []
+    for f in raw[:30]:
+        if not isinstance(f, dict) or str(f.get("name") or "").strip().lower() in ("", "none", "null", "n/a", "nothing"):
+            continue   # a small model walks the class list and files "none" under each
+        cnt = f.get("count")
+        out.append({"class": f.get("class") if f.get("class") in EYES_CLASSES else "other",
+                    "name": str(f["name"]).strip()[:120],
+                    "count": cnt if isinstance(cnt, int) and not isinstance(cnt, bool) and cnt >= 0 else None,
+                    "issue": f.get("issue") is True})
+    return out
+
+
+def _eyes_model() -> str:
+    return settings.get("EYES_MODEL", "").strip()
+
+
+def _describe_later(cid: int) -> bool:
+    """The upload's checkbox: describe a new image after its upload has answered, so the phone is not kept waiting.
+    False when no image model is set, so the page can say so."""
+    import asyncio  # noqa: PLC0415
+    model = _eyes_model()
+    if not model:
+        return False
+
+    async def run():
+        try:
+            await _describe(cid, model)
+        except Exception as e:  # noqa: BLE001 — a failed description leaves the image undescribed, never lost
+            log.warning("eyes: capture %s not described: %s", cid, getattr(e, "detail", e))
+    t = asyncio.get_running_loop().create_task(run())
+    _EYES_TASKS.add(t)
+    t.add_done_callback(_EYES_TASKS.discard)
+    return True
+
+
+@app.post("/captures/{cid}/describe")
+async def capture_describe(cid: int, request: Request, authorization: str = Header("")):
+    """Describe one image with the image model in Set up (EYES_MODEL), now, and answer what it found. A second
+    press (a new model, say) replaces the earlier description, and with it any confirmation or edit of that one."""
+    _captures_auth(request, authorization)
+    model = _eyes_model()
+    if not model:
+        raise HTTPException(409, "no image model is set: Set up, Model, Image model (qwen2.5vl:7b on 16 GB)")
+    return {"ok": True, "analysis": await _describe(cid, model)}
 
 
 @app.post("/readings")
