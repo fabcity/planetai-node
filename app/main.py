@@ -912,10 +912,21 @@ try:
 except Exception as e:  # noqa: BLE001  — never block startup on it
     log.warning("could not move off the old briefing settings: %s", e)
 
+# The things a home keeps (docs/SPEC_inventory.md): their classes and the three private counts per class, here
+# because the roles below declare those counts private at every start. The routes are with /species.
+# ponytail: the flows 1.0 physical classes a home keeps, copied like EYES_CLASSES; `vehicle` is new (Tomas, 13 Oct:
+# cars, motorbikes, trucks) and goes into packs/flows/resources.yml and the published vocab when that merges
+THING_CLASSES = ("tool", "appliance", "furniture", "electronics", "garment", "textile", "micromobility", "vehicle",
+                 "part", "goods")
+THING_COUNTS = ("stock", "idle", "repair")   # how many; used yearly or never; needing repair or broken
+
+
 def load_channel_roles() -> int:
     """Declarations are the file's, not the database's: replace the table on every start so a removed pack's
     claims go with it."""
-    rows = packs.channels()
+    rows = packs.channels() + [{"source": "things", "metric": f"{k}.{c}", "role": "private", "comparable": False,
+                                 "unit": "count", "reference": None, "declared_by": "core"}
+                                for c in THING_CLASSES for k in THING_COUNTS]
     with db() as con, con.cursor() as cur:
         # db() is autocommit, so the delete and the reinsert must share one explicit transaction block —
         # otherwise the DELETE commits alone and a concurrent reader can see an empty table mid-restart.
@@ -1543,9 +1554,11 @@ def forecast(hours: int = Query(24, ge=1, le=72)):
 
 
 @app.get("/observations")
-def observations():
-    """Latest value per slow-moving source: city statistics, model point samples, survey results."""
-    return q("SELECT * FROM observations ORDER BY scale, sensor_id, metric")
+def observations(request: Request, authorization: str = Header("")):
+    """Latest value per slow-moving source: city statistics, model point samples, survey results. A survey's
+    `private` counts (the things a home keeps) answer the admin token only, and never an agent."""
+    return q("SELECT * FROM observations" + ("" if _shows_private(request, authorization) else " WHERE " + packs.public_sql("observations"))
+             + " ORDER BY scale, sensor_id, metric")
 
 
 @app.get("/alerts")
@@ -3053,6 +3066,116 @@ def species(request: Request, authorization: str = Header(""), cell: str | None 
     return {"cell": cell, "species": [{**x, "images": len(x["images"]), "cells": len(x["cells"])} for x in rows]}
 
 
+# ---------------------------------------------------------------- the things a home keeps (docs/SPEC_inventory.md)
+# One row per thing, kept as captures are, and three private counts per class written as readings whenever one
+# changes, so readouts, rules and cells can use them and nothing sends them (packs.public_sql). The admin token only.
+THING_CHOICES = {"used": ("weekly", "monthly", "yearly", "never"), "condition": ("works", "needs_repair", "broken"),
+                 "offer": ("no", "lend", "give")}
+
+
+def _thing_fields(body: dict, partial: bool) -> dict:
+    """A thing as the table keeps it, or a 422 a person can act on."""
+    out = {}
+    if "class" in body or not partial:
+        if body.get("class") not in THING_CLASSES:
+            raise HTTPException(422, f"class must be one of {', '.join(THING_CLASSES)}")
+        out["class"] = body["class"]
+    if "name" in body or not partial:
+        name = " ".join(str(body.get("name") or "").split())[:120]
+        if not name:
+            raise HTTPException(422, "a thing needs a name")
+        out["name"] = name
+    if "count" in body:
+        c = body["count"]
+        if not isinstance(c, int) or isinstance(c, bool) or not 1 <= c <= 10000:
+            raise HTTPException(422, "count is a whole number from 1")
+        out["count"] = c
+    for k, ok in THING_CHOICES.items():
+        if k in body:
+            if body[k] not in ok:
+                raise HTTPException(422, f"{k} must be one of {', '.join(ok)}")
+            out[k] = body[k]
+    if "note" in body:
+        out["note"] = str(body["note"] or "")[:500]
+    if "capture_id" in body:
+        out["capture_id"] = body["capture_id"] if isinstance(body["capture_id"], int) and not isinstance(body["capture_id"], bool) else None
+    return out
+
+
+def _thing_counts(cur, classes) -> None:
+    """Rewrite the three private counts of each class touched, now, on the node's own survey sensor."""
+    sid, now = f"things:{NODE}", datetime.now(timezone.utc)
+    cur.execute("""INSERT INTO sensors (sensor_id, source, name, kind, local, indoor, cadence)
+                   VALUES (%s, 'things', 'The things this home keeps', 'survey', TRUE, TRUE, 'P1D')
+                   ON CONFLICT (sensor_id) DO NOTHING""", (sid,))
+    for c in sorted({c for c in classes if c}):
+        cur.execute("""SELECT coalesce(sum(count), 0) AS stock,
+                              coalesce(sum(count) FILTER (WHERE used IN ('yearly', 'never')), 0) AS idle,
+                              coalesce(sum(count) FILTER (WHERE condition <> 'works'), 0) AS repair
+                       FROM things WHERE class = %s""", (c,))
+        n = cur.fetchone()
+        cur.executemany("""INSERT INTO readings (ts, sensor_id, metric, value) VALUES (%s, %s, %s, %s)
+                           ON CONFLICT (sensor_id, metric, ts) DO UPDATE SET value = EXCLUDED.value""",
+                        [(now, sid, f"{k}.{c}", float(n[k])) for k in THING_COUNTS])
+
+
+def _thing_out(r: dict) -> dict:
+    return {k: (v.isoformat() if isinstance(v, datetime) else v) for k, v in r.items()}
+
+
+@app.get("/things")
+def things_list(authorization: str = Header("")):
+    """Every thing, newest first, and the sums the Now door says in one line: how many, how many idle (used yearly or
+    never), how many waiting for a repair, how many offered."""
+    _admin(authorization)
+    rows = [_thing_out(r) for r in q("SELECT * FROM things ORDER BY id DESC")]
+    return {"things": rows, "classes": list(THING_CLASSES), "choices": THING_CHOICES, "summary": {
+        "things": sum(r["count"] for r in rows),
+        "idle": sum(r["count"] for r in rows if r["used"] in ("yearly", "never")),
+        "repair": sum(r["count"] for r in rows if r["condition"] != "works"),
+        "offered": sum(r["count"] for r in rows if r["offer"] != "no")}}
+
+
+@app.post("/things")
+def thing_add(body: dict, authorization: str = Header("")):
+    _admin(authorization)
+    f = _thing_fields(body, partial=False)
+    with db() as con, con.cursor() as cur:
+        cur.execute(f"INSERT INTO things ({', '.join(f)}) VALUES ({', '.join(['%s'] * len(f))}) RETURNING *", tuple(f.values()))
+        row = cur.fetchone()
+        _thing_counts(cur, [row["class"]])
+    return {"ok": True, "thing": _thing_out(row)}
+
+
+@app.patch("/things/{tid}")
+def thing_edit(tid: int, body: dict, authorization: str = Header("")):
+    _admin(authorization)
+    f = _thing_fields(body, partial=True)
+    if not f:
+        raise HTTPException(422, "nothing to change: class, name, count, used, condition, offer, note")
+    with db() as con, con.cursor() as cur:
+        cur.execute("SELECT class FROM things WHERE id = %s", (tid,))
+        was = cur.fetchone()
+        if not was:
+            raise HTTPException(404, "no such thing")
+        cur.execute(f"UPDATE things SET {', '.join(k + ' = %s' for k in f)} WHERE id = %s RETURNING *", (*f.values(), tid))
+        row = cur.fetchone()
+        _thing_counts(cur, [was["class"], row["class"]])   # a thing moved between classes changes both
+    return {"ok": True, "thing": _thing_out(row)}
+
+
+@app.delete("/things/{tid}")
+def thing_delete(tid: int, authorization: str = Header("")):
+    _admin(authorization)
+    with db() as con, con.cursor() as cur:
+        cur.execute("DELETE FROM things WHERE id = %s RETURNING class", (tid,))
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(404, "no such thing")
+        _thing_counts(cur, [row["class"]])
+    return {"ok": True}
+
+
 @app.patch("/captures/{cid}")
 def capture_patch(cid: int, body: dict, request: Request, authorization: str = Header("")):
     """The household edits an image's words: `note`, `kind`, and `meta` (an object of short strings, replaced whole).
@@ -3133,7 +3256,7 @@ FLOWS_VOCAB = "https://planetai.fab.city/vocab/flows/1.0/"
 # ponytail: copied from packs/flows/resources.yml (branch flows-pack-2026-09-28); read that file once the pack merges
 EYES_CLASSES = ("plant", "animal", "habitat", "food", "water", "compost", "waste_residual", "plastic_waste",
                 "packaging", "wood", "metal", "textile", "electronics", "filament", "fuel", "electricity", "part",
-                "filter", "furniture", "tool", "appliance", "garment", "micromobility", "goods", "other")
+                "filter", "furniture", "tool", "appliance", "garment", "micromobility", "vehicle", "goods", "other")
 # Two asks, because a 7B vision model asked for JSON straight from the picture invents (node #1, 12 Oct: dogs, cats
 # and a reef on a drone shot of roofs, looping until cut off). Looking first, in words, and filing those words second
 # keeps every finding to something the description said.
@@ -3144,7 +3267,8 @@ EYES_LOOK = ("A household took this picture of its own place ({kind}, near {city
 EYES_FILE = ("Here is a description of a picture:\n\n{summary}\n\nList each kind of thing the description says is "
              "there, once, as a finding, and leave out anything it says is absent. class: plant is any living plant or "
              "tree, animal any animal, habitat is ground made living, waste_residual and plastic_waste are rubbish, a "
-             "made thing goes under its own class or goods, and other is buildings, roads, cars and anything else. "
+             "made thing goes under its own class or goods, a car, motorbike or truck is vehicle, and other is "
+             "buildings, roads and anything else. "
              "name: as specific as the description is. count: only when the description gives a number, else null. "
              "issue: true only when the description says it is a problem. scientific: for a plant or animal only, its "
              "scientific name at the rank you are sure of (a species such as Cocos nucifera, a genus such as Plumeria, "

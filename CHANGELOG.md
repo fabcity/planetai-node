@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **The things a home keeps (SPEC_inventory step 2).** The Data door has a **Things** section, for a screen holding
+  the admin token: one card a thing with its class, name and count, how often it is used (every week, every month, a
+  few times a year, never), its state (works, needs a repair, broken) and whether the household would lend or give
+  it. The Now door says it in one line: "31 things, 9 idle, 2 need repair". `GET/POST/PATCH/DELETE /things`, admin
+  only, schema 0.56. Every change rewrites `stock.<class>`, `idle.<class>` and `repair.<class>` on the
+  `things:<node>` survey sensor, declared `private` by core, so rules and cells can read them and nothing sends them;
+  `/observations` now shows a private value to the admin token only. The table is revoked from pack SQL. `vehicle`
+  joins the classes (cars, motorbikes, trucks) and the image model files them there instead of under other. Nothing
+  is offered anywhere yet (step 4), and the report says nothing about them (SPEC_inventory §4).
+
 - **The `private` role (the pack design record, point 2 (A); SPEC_inventory step 1).** A pack can declare a metric
   `role: private` in its `channels.yml`. Such a reading is used here like any other (readouts, sections, rules,
   cells) and never leaves: one predicate, `packs.public_sql`, keeps it out of the daily export, the hourly push to a

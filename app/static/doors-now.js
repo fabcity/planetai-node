@@ -5,8 +5,15 @@
    The first thing is the ladder, and under it the lead (learn: lead). */
 VIEWS.now = function () {
   rail($('#rail')); rows(); drawNow();
-  aroundMap($('#rose'));
+  aroundMap($('#rose')); thingsLine($('#nthings'));
 };
+// The things this home keeps, in one line (SPEC_inventory step 2), for a screen holding the admin token; nothing otherwise.
+async function thingsLine(el) {
+  const r = await fetch('/things', { headers: DOORS_AUTH() }).catch(() => null);
+  const s = r && r.ok ? ((await r.json().catch(() => null)) || {}).summary : null;
+  el.hidden = !(s && s.things);
+  if (!el.hidden) el.innerHTML = `<a href="#data/d-things">${s.things} things, ${s.idle} idle, ${s.repair} need${s.repair === 1 ? 's' : ''} repair ›</a>`;
+}
 function drawNow() {
   dayWeek({ el: $('#svg'), issue: S.issue, head: $('#fighead'), scale: $('#figline'), pick: j => { S.i = j; drawNow(); } });
   readout();

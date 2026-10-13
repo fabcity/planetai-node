@@ -67,8 +67,9 @@ rules and cells read them like any other reading, and the `private` role keeps t
 
 - **On the page:** the Data door lists the things, and you add, edit and delete them there. The Now door has one
   line: "31 things, 9 idle, 2 need repair".
-- **Alerts:** none. The weekly report gets one sentence: "9 things have not been used this year; 2 wait for a
-  repair."
+- **Alerts:** none. *(Built without the report sentence first drafted here: the report is written by a model from a
+  bundle the `private` role keeps these counts out of, so a sentence there would send them. Decided again when the
+  report can say a private figure without its model reading it.)*
 - **Outside services:** none.
 
 ## 5 · How a thing gets in
@@ -106,8 +107,8 @@ the upstream tiers design, whose pilot tier is still undecided.
 1. **The `private` role.** *Built 13 October 2026.* A role in `channels.yml`, one predicate used by the export, the aggregate push,
    `/readings`, `/series`, `app/ask.py` and `app/agent.py`, and a test that a private row appears in none of them.
    Core, and its own pull request.
-2. **Things.** The table, `POST`/`PATCH`/`DELETE /things` behind the admin token, the Data door list, the three
-   private readings, the Now line and the report sentence. Flows 1.0 gains `vehicle` (count, physical) for cars,
+2. **Things.** *Built 13 October 2026.* The table, `POST`/`PATCH`/`DELETE /things` behind the admin token, the Data
+   door list, the three private readings and the Now line (the report sentence is left out, §4). Flows 1.0 gains `vehicle` (count, physical) for cars,
    motorbikes and trucks, before any place logs one.
 3. **From a photo.** "Add as a thing" on a confirmed finding.
 4. **Offers.** `lend` and `give` become public lines at the res-8 cell.
