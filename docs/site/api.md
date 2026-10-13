@@ -583,6 +583,11 @@ Access: act
 
 The picture itself, with its stored mime. 404 `no such capture`, or `the row is here but the file is gone from the captures folder`. The name is the node's own (a sha256), never a path from a client.
 
+### GET /species
+Access: act
+
+The species a person here has confirmed in images, per taxon: `{cell, species: [{key, name, rank, class, count, images, cells, introduced?, where?, others?}]}`, most counted first. `?cell=` takes a cell at any resolution up to 10 and answers inside it. Only images whose findings somebody confirmed count, and only `plant` and `animal` findings with a taxon or a typed scientific name; a name typed without GBIF counts by its words, with `key` null. `count` adds each finding's count, or 1 when it has none. Read from the images, under the images' token, and never stored as readings, so none of it reaches the export or a parent. 422 for a cell that is not one.
+
 ## Whether it worked
 
 The measure stage. These two routes read the ledger back against the alerts and say how many alerts were answered, how fast, and which conditions stopped. ρ is measured here and nowhere else, because only the node holds both the alert and the answer.

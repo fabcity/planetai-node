@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **The species confirmed here (SPEC_species step 4).** `GET /species` counts the plants and animals a person here has
+  confirmed in images, per taxon (or per typed name, without GBIF): how many, in how many images and cells, with the
+  GRIIS mark and others' records beside each, and `?cell=` answers inside any cell up to res 10. The Data door lists
+  them above the images. A model's unconfirmed finding is not counted. It answers the images' own token only, and it
+  is not a reading, so nothing of it reaches the export or a parent: SPEC_species §4 is amended, and `seen.<class>.<key>`
+  readings wait for the `private` role so the household chooses whether its species travel. The Data door now says
+  others' records are "in this node's seven cells", not "here": node #1 showed a Serangan drone image, outside the
+  seven, claiming them.
+
 - **What others recorded here (SPEC_species step 3).** With **Name species with GBIF** on, the node counts once a week
   GBIF's open records (CC0 and CC BY only; iNaturalist's CC BY-NC ones are left out) in each of its seven res-8
   cells, per species, genus and family. A matched finding says "recorded here by others 3×", or "no open record of it

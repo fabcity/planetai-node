@@ -522,6 +522,36 @@ assert [f["taxon"]["others"] for f in fs] == [9, 35, 14, 0], [f["taxon"].get("ot
 main.hc = hc0; main.state.pop("others")
 settings._cache["rows"]["SPECIES_MATCH"] = "off"
 print("others: the seven cells' open GBIF records, counted per species, genus and family, weekly with the yes; none kept but counts")
+# ---- the species confirmed here (SPEC_species §4): from confirmed findings, behind the images' token, per cell
+import h3 as _h3
+C10 = _h3.latlng_to_cell(-8.6478291, 115.1385412, 10)
+FAR = _h3.latlng_to_cell(-8.70, 115.20, 10)
+SEEN = [{"id": 1, "cell": C10, "analysis": {"confirmed_by": "Tomas", "findings": [
+            {"class": "plant", "name": "palm", "count": 4, "scientific": "Cocos nucifera",
+             "taxon": {"key": 2735117, "name": "Cocos nucifera L.", "rank": "species", "others": 0}},
+            {"class": "plant", "name": "lantana", "scientific": "Lantana camara",
+             "taxon": {"key": 2925303, "name": "Lantana camara L.", "rank": "species", "introduced": "invasive", "where": "Indonesia"}},
+            {"class": "waste_residual", "name": "rubbish", "count": 3}, {"class": "plant", "name": "a tree"}]}},
+        {"id": 2, "cell": FAR, "analysis": {"confirmed_by": "Bayu", "findings": [
+            {"class": "plant", "name": "palms", "count": 2, "scientific": "Cocos nucifera", "taxon": {"key": 2735117, "name": "Cocos nucifera L.", "rank": "species"}},
+            {"class": "animal", "name": "gecko", "scientific": "Hemidactylus"}]}}]
+SQL = []
+main.q = lambda sql, *a: (SQL.append(sql), SEEN)[1]
+level("off")
+assert lan.get("/species").status_code == 403, "a stranger reads no species: where a picture was taken is the household's"
+r = lan.get("/species", headers=ACT)
+assert r.status_code == 200 and "confirmed_by' IS NOT NULL" in SQL[-1], "only confirmed images are read"
+sp = r.json()["species"]
+assert [(x["name"], x["count"], x["images"], x["cells"]) for x in sp] == [("Cocos nucifera L.", 6, 2, 2), ("Hemidactylus", 1, 1, 1),
+                                                                          ("Lantana camara L.", 1, 1, 1)], sp
+assert sp[2]["introduced"] == "invasive" and sp[1]["key"] is None, "the GRIIS mark rides along; a typed name counts by its words"
+assert all(x["class"] in ("plant", "animal") for x in sp), "rubbish and an unnamed tree are not species"
+home8 = _h3.cell_to_parent(C10, 8)
+assert [x["count"] for x in lan.get(f"/species?cell={home8}", headers=ACT).json()["species"]] == [4, 1], "a coarser cell answers inside it"
+assert lan.get(f"/species?cell={C10}", headers=ACT).json()["species"][0]["images"] == 1
+assert lan.get("/species?cell=nope", headers=ACT).status_code == 422
+main.q = q0
+print("species here: confirmed findings only, per taxon or typed name, any cell, behind the images' token; never a reading")
 # the upload's box: describe=1 describes the new image after the upload answers; unticked, nothing is asked
 called = []
 main._describe, d0 = (lambda cid, model: called.append((cid, model)) or __import__("asyncio").sleep(0)), main._describe

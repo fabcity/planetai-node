@@ -3008,6 +3008,35 @@ def captures_list(request: Request, authorization: str = Header(""), cell: str |
             for r in rows[:limit]]
 
 
+@app.get("/species")
+def species(request: Request, authorization: str = Header(""), cell: str | None = None):
+    """The species a person here has confirmed (SPEC_species §4), per taxon: how many, in how many images, and what
+    GRIIS and others' records say. `?cell=` at any resolution answers inside that cell. Only confirmed findings count:
+    a model's guess is not a sighting. Read from the images, behind the images' own token, because where a picture was
+    taken is the household's; these are not readings, so nothing here reaches the export or a parent."""
+    _captures_auth(request, authorization)
+    import h3  # noqa: PLC0415
+    if cell and not h3.is_valid_cell(cell):
+        raise HTTPException(422, f"{cell!r} is not an H3 cell")
+    res = h3.get_resolution(cell) if cell else None
+    out: dict = {}
+    for r in q("SELECT id, cell, analysis FROM captures WHERE analysis->>'confirmed_by' IS NOT NULL"):
+        if cell and (res > 10 or h3.cell_to_parent(r["cell"], res) != cell):
+            continue
+        for f in (r["analysis"] or {}).get("findings") or []:
+            t, sci = f.get("taxon") or {}, f.get("scientific")
+            if f.get("class") not in TAXON_KINGDOM or not (t or sci):
+                continue
+            k = t.get("key") or sci   # a name typed without GBIF still counts here, by its words
+            row = out.setdefault(k, {"key": t.get("key"), "name": t.get("name") or sci, "rank": t.get("rank"),
+                                     "class": f["class"], "count": 0, "images": set(), "cells": set()})
+            row["count"] += f.get("count") or 1
+            row["images"].add(r["id"]); row["cells"].add(r["cell"])
+            row.update({k2: t[k2] for k2 in ("introduced", "where", "others") if k2 in t})
+    rows = sorted(out.values(), key=lambda x: (-x["count"], x["name"]))
+    return {"cell": cell, "species": [{**x, "images": len(x["images"]), "cells": len(x["cells"])} for x in rows]}
+
+
 @app.patch("/captures/{cid}")
 def capture_patch(cid: int, body: dict, request: Request, authorization: str = Header("")):
     """The household edits an image's words: `note`, `kind`, and `meta` (an object of short strings, replaced whole).

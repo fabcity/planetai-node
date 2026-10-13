@@ -4,7 +4,7 @@
 with local species of trees, animals, or urban inventory, or issues", and the same evening, of the three next steps:
 "The short Spec linking findings to species". Urban inventory and issues come after this one.*
 
-**Status: proposed, 13 October 2026; nothing here is built.** Each step in §6 is its own pull request, run on node
+**Status: steps 1–4 built, 13 October 2026 (#220, #221, #222 and the step 4 PR); §4 amended as built.** Each step in §6 is its own pull request, run on node
 #1 before it merges.
 
 ## 1 · What exists
@@ -50,13 +50,24 @@ Two facts make a species finding useful to a household, and both have an open so
 Threat status is left out. The IUCN Red List is the source everybody quotes, and its terms are not open; a node
 that showed it would be republishing what it may not.
 
-## 4 · A confirmed species is a reading
+## 4 · A confirmed species is counted, not yet a reading
 
-A finding a person has confirmed becomes one reading per image and taxon, at the image's res-10 cell and time:
-metric `seen.<class>` (`seen.plant`, `seen.animal`), value the count, or 1 when there is no count, with the taxon
-key in its meta. A model's unconfirmed finding is not a reading. From these the node answers, per cell and at any
-coarser cell, the species confirmed there and how many, which is the smallest honest biodiversity figure a household
-can stand behind.
+*Amended 13 October 2026, as built.* The first version made each confirmed finding a `seen.<class>` reading with the
+taxon key "in its meta". Readings have no meta, and every reading leaves the house: the daily export carries its
+hourly mean under CC BY, and the push to a parent sends it on. A confirmed species with the hour its picture was
+taken would have been published before anyone chose that.
+
+So the node answers from the images instead. `GET /species` reads the findings a person has confirmed and counts
+them per taxon (a name typed without GBIF counts by its words): how many, in how many images and cells, with the
+GRIIS mark and others' records beside each. `?cell=` answers inside any cell up to res 10, the house's, the street's,
+the seven. It answers only the images' own token, because where a picture was taken is the household's. The Data
+door lists them above the images. A model's unconfirmed finding is not counted. From these the node answers the
+species confirmed in a cell and how many, which is the smallest honest biodiversity figure a household can stand
+behind.
+
+**Readings come with the `private` role** (decision (A) in the pack design record, step 1 of SPEC_inventory). A
+confirmed species then becomes a `seen.<class>.<key>` reading, private unless the household says otherwise, so rules,
+cells and the page can use it and the household decides whether it travels.
 
 A finding is not a flow. Flows 1.0 records what a place makes, uses and moves; a palm in a picture is a living thing
 that is there, not a line in that ledger. A household that planted it logs `produce.plant.cell` itself, as it does
@@ -76,7 +87,8 @@ iNaturalist is SPEC_eyes step 6, and the taxon key from §2 is what it needs.
    scientific name without it, and the Data door's finding row showing and editing the taxon.
 2. **Introduced or invasive.** The country's GRIIS checklist, fetched under the same yes, marks a matched taxon.
 3. **What others saw.** The seven cells' species from GBIF's open records, as context beside each finding.
-4. **Readings.** A confirmed finding becomes `seen.<class>`; the cell answers its confirmed species.
+4. **The species confirmed here.** `GET /species` per cell from confirmed findings, and the Data door's list.
+   Readings (`seen.<class>.<key>`) follow the `private` role.
 
 ## 7 · Open
 
