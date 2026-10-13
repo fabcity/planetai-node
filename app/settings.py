@@ -156,7 +156,8 @@ RUNTIME = {
                            "here typed it, with no key. on = the node asks api.gbif.org which taxon that name is, so the "
                            "same palm is the same species on every node. It sends the name and nothing else, never the "
                            "picture and never where it was taken, but GBIF's server sees this house's internet address "
-                           "and the names it asks about."),
+                           "and the names it asks about. Once a week it also reads this country's list of introduced and invasive species "
+                           "(GRIIS, on GBIF), which tells GBIF the country, found from the time zone, and nothing else."),
     # Presence: the node saying "I am here" on Reticulum, and nothing else. Off by default, because
     # SHARE_LEVEL governs what this node ANSWERS when asked and this is the node speaking unprompted.
     "RETICULUM_PRESENCE":  ("sharing", "Announce this node on Reticulum", False, False,
