@@ -603,6 +603,8 @@ Access: admin
 
 Delete a thing; the counts of its class are rewritten. 404 for an unknown id.
 
+A thing made from an image carries its `capture_id`: the Data door's Images offer each confirmed finding in one of these classes as "+ … as a thing". Deleting the image (`DELETE /captures/{cid}`) keeps the thing and clears its `capture_id`.
+
 ### GET /species
 Access: act
 

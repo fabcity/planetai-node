@@ -110,7 +110,7 @@ the upstream tiers design, whose pilot tier is still undecided.
 2. **Things.** *Built 13 October 2026.* The table, `POST`/`PATCH`/`DELETE /things` behind the admin token, the Data
    door list, the three private readings and the Now line (the report sentence is left out, §4). Flows 1.0 gains `vehicle` (count, physical) for cars,
    motorbikes and trucks, before any place logs one.
-3. **From a photo.** "Add as a thing" on a confirmed finding.
+3. **From a photo.** *Built 13 October 2026.* "Add as a thing" on a confirmed finding.
 4. **Offers.** `lend` and `give` become public lines at the res-8 cell.
 5. **Cell totals.** Waits for the upstream tiers.
 

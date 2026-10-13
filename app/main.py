@@ -3226,6 +3226,8 @@ def capture_delete(cid: int, request: Request, authorization: str = Header("")):
     with db() as con, con.cursor() as cur:
         cur.execute("DELETE FROM captures WHERE id = %s RETURNING file", (cid,))
         row = cur.fetchone()
+        if row:   # a thing added from this photo stays, without a link to a picture that is gone
+            cur.execute("UPDATE things SET capture_id = NULL WHERE capture_id = %s", (cid,))
     if not row:
         raise HTTPException(404, "no such capture")
     path = os.path.join(CAPTURES_DIR, os.path.basename(row["file"]))

@@ -198,8 +198,17 @@ const frow = f => `<div class="frow"><input data-g="name" aria-label="what" valu
   // a living thing's scientific name, and what GBIF matched it to (SPEC_species step 1); a changed name is asked again on save
   + `<input data-g="sci" aria-label="scientific name" placeholder="scientific name" value="${esc(f.scientific || '')}"${LIVING.includes(f.class) ? '' : ' hidden'}>`
   + (f.taxon ? `<span class="fine mono"><a href="https://www.gbif.org/species/${+f.taxon.key}" target="_blank" rel="noopener">${esc(f.taxon.name)}</a> · ${esc(f.taxon.rank)} · GBIF${INTRO(f.taxon)}</span>` : '') + `</div>`;
-const seen = a => !a ? `<p class="fine">Not described yet.</p>`
+// What a confirmed image found that a home keeps, each a button that adds it to Things with the photo linked
+// (SPEC_inventory step 3). Only on a screen holding the admin token, which TKEEP says: null until /things answered.
+let TKEEP = null;
+const asThings = (a, cid) => !(a && a.confirmed_by && TKEEP) ? '' : (a.findings || []).filter(f => TKEEP.classes.includes(f.class)).map(f => {
+  const had = TKEEP.things.some(t => t.capture_id === +cid && t.name === f.name);
+  return had ? `<span class="fine mono">${esc(f.name)}: in Things</span>`
+    : `<button data-g="thing" data-class="${esc(f.class)}" data-name="${esc(f.name)}" data-count="${f.count || 1}">+ ${esc(f.name)} as a thing</button>`;
+}).join(' ');
+const seen = (a, cid) => !a ? `<p class="fine">Not described yet.</p>`
   : `<div class="seen"><p>${esc(a.summary || '')}</p><div class="frows">${(a.findings || []).map(frow).join('')}</div><button data-g="add">+ a finding</button>`
+    + `<div class="acts">${asThings(a, cid)}</div>`
     + `<p class="fine mono">${a.confirmed_by ? `confirmed by ${esc(a.confirmed_by)}` : 'model, not confirmed'} · ${esc(a.model)}, on this machine · <a href="${esc(a.vocab || '')}" target="_blank" rel="noopener">flows 1.0</a></p></div>`;
 const rowsOf = card => [...card.querySelectorAll('.frow')].map(r => ({ class: r.querySelector('[data-g=class]').value, name: r.querySelector('[data-g=name]').value.trim(),
   count: r.querySelector('[data-g=count]').value === '' ? null : +r.querySelector('[data-g=count]').value, issue: r.querySelector('[data-g=issue]').checked,
@@ -215,6 +224,7 @@ const tcard = (t, classes) => `<div class="icard" data-id="${t.id || ''}"><label
   + `<label>Class<select data-t="class">${classes.map(c => `<option${c === t.class ? ' selected' : ''}>${c}</option>`).join('')}</select></label>`
   + `<label>How many<input data-t="count" type="number" min="1" value="${t.count || 1}"></label>`
   + tsel('used', t.used || 'monthly') + tsel('condition', t.condition || 'works') + tsel('offer', t.offer || 'no')
+  + (t.capture_id ? `<p class="fine"><a href="#data/d-images">from image ${+t.capture_id}</a></p>` : '')
   + `<div class="acts"><button data-a="save">${t.id ? 'Save' : 'Add'}</button>${t.id ? '<button data-a="del">Delete</button>' : ''}</div><p class="fine" role="status"></p></div>`;
 async function thingsBlock() {
   const el = $('#d-things');
@@ -248,6 +258,7 @@ async function imagesBlock() {
   const el = $('#d-images');
   if (el.querySelector('.icard') && el.contains(document.activeElement)) return;   // a resize must not wipe an edit in progress
   const rows = await fetch('/captures?limit=500', { headers: DOORS_AUTH() }).then(r => (r.ok ? r.json() : null)).catch(() => null);
+  TKEEP = await fetch('/things', { headers: DOORS_AUTH() }).then(r => (r.ok ? r.json() : null)).catch(() => null);
   if (!rows) { el.innerHTML = `<h2>Images</h2><p class="fine">Images answer a screen holding a token only: the picture and where it was taken. Unlock this screen under Node.</p>`; return; }
   const metaText = m => Object.entries(m || {}).map(([k, v]) => `${k}: ${v}`).join('\n');
   // what a person here has confirmed, per species (SPEC_species §4): the model's guesses are not in it
@@ -261,7 +272,7 @@ async function imagesBlock() {
       + `<label>What took it<select data-f="kind">${Object.entries(IKINDS).map(([k, t]) => `<option value="${k}"${k === c.kind ? ' selected' : ''}>${t}</option>`).join('')}</select></label>`
       + `<label>Note<input data-f="note" maxlength="500" value="${esc(c.note || '')}"></label>`
       + `<label>More, one per line as key: value<textarea data-f="meta" rows="2">${esc(metaText(c.meta))}</textarea></label>`
-      + `<div data-seen>${seen(c.analysis)}</div>`
+      + `<div data-seen>${seen(c.analysis, c.id)}</div>`
       + `<div class="acts"><button data-a="save">Save</button><button data-a="see">${c.analysis ? 'Describe again' : 'Describe'}</button>`
       + `<button data-a="ok"${c.analysis ? '' : ' hidden'}>${c.analysis && c.analysis.confirmed_by ? 'Save findings' : 'Confirm findings'}</button><button data-a="del">Delete</button></div><p class="fine" role="status"></p></div>`).join('')}</div>`;
   el.querySelectorAll('.icard').forEach(async card => {
@@ -280,7 +291,7 @@ async function imagesBlock() {
       const j = r ? await r.json().catch(() => ({})) : {};
       see.disabled = false;
       if (!(r && r.ok)) { say(`Not described: ${j.detail || (r ? r.status : 'the node did not answer')}`); return; }
-      card.querySelector('[data-seen]').innerHTML = seen(j.analysis); see.textContent = 'Describe again'; ok.hidden = false; ok.textContent = 'Confirm findings'; say('');
+      card.querySelector('[data-seen]').innerHTML = seen(j.analysis, id); see.textContent = 'Describe again'; ok.hidden = false; ok.textContent = 'Confirm findings'; say('');
       if (window.placeImagesChanged) window.placeImagesChanged();
     };
     ok.onclick = async () => {
@@ -289,7 +300,7 @@ async function imagesBlock() {
         body: JSON.stringify({ findings: rowsOf(card), actor }) }).catch(() => null);
       const j = r ? await r.json().catch(() => ({})) : {};
       if (!(r && r.ok)) { say(`Not confirmed: ${j.detail || (r ? r.status : 'the node did not answer')}`); return; }
-      card.querySelector('[data-seen]').innerHTML = seen(j.capture.analysis); ok.textContent = 'Save findings'; say('Saved: these findings are the household\'s now.');
+      card.querySelector('[data-seen]').innerHTML = seen(j.capture.analysis, id); ok.textContent = 'Save findings'; say('Saved: these findings are the household\'s now.');
       if (window.placeImagesChanged) window.placeImagesChanged();
     };
     card.querySelector('[data-seen]').addEventListener('change', e => {   // a row turned living gets its scientific name box
@@ -298,6 +309,15 @@ async function imagesBlock() {
     card.querySelector('[data-seen]').addEventListener('click', e => {   // delete a row, or add a blank one, before saving
       const g = e.target.dataset && e.target.dataset.g;
       if (g === 'x') e.target.closest('.frow').remove();
+      if (g === 'thing') {   // a confirmed finding becomes a thing, its photo linked
+        const b = e.target;
+        b.disabled = true;
+        fetch('/things', { method: 'POST', headers: { ...DOORS_AUTH(), 'content-type': 'application/json' },
+          body: JSON.stringify({ class: b.dataset.class, name: b.dataset.name, count: +b.dataset.count || 1, capture_id: +id }) })
+          .then(async r => { if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || r.status);
+            const j = await r.json(); TKEEP.things.push(j.thing); b.outerHTML = `<span class="fine mono">${esc(b.dataset.name)}: in Things</span>`; thingsBlock(); })
+          .catch(err => { b.disabled = false; say(`Not added: ${err.message}`); });
+      }
       if (g === 'add') { card.querySelector('.frows').insertAdjacentHTML('beforeend', frow({ class: 'other', name: '' })); card.querySelector('.frow:last-child [data-g=name]').focus(); }
     });
     card.querySelector('[data-a=del]').onclick = async () => {
