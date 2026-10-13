@@ -209,7 +209,11 @@ async function imagesBlock() {
   const rows = await fetch('/captures?limit=500', { headers: DOORS_AUTH() }).then(r => (r.ok ? r.json() : null)).catch(() => null);
   if (!rows) { el.innerHTML = `<h2>Images</h2><p class="fine">Images answer a screen holding a token only: the picture and where it was taken. Unlock this screen under Node.</p>`; return; }
   const metaText = m => Object.entries(m || {}).map(([k, v]) => `${k}: ${v}`).join('\n');
-  el.innerHTML = `<h2>Images, ${rows.length}</h2><p class="blurb">What the household added, newest first. Each is a square on Place, one layer per kind. Describe asks the image model in Set up, on this machine, again whenever the model changes. Its findings are its own until somebody here edits or confirms them.</p>`
+  // what a person here has confirmed, per species (SPEC_species §4): the model's guesses are not in it
+  const sp = await fetch('/species', { headers: DOORS_AUTH() }).then(r => (r.ok ? r.json() : null)).catch(() => null);
+  const spList = sp && sp.species.length ? `<h3>Species confirmed, ${sp.species.length}</h3><p class="fine">`
+    + sp.species.map(x => `${x.key ? `<a href="https://www.gbif.org/species/${+x.key}" target="_blank" rel="noopener">${esc(x.name)}</a>` : esc(x.name)} ×${+x.count}${INTRO(x)}`).join('<br>') + `</p>` : '';
+  el.innerHTML = `<h2>Images, ${rows.length}</h2><p class="blurb">What the household added, newest first. Each is a square on Place, one layer per kind. Describe asks the image model in Set up, on this machine, again whenever the model changes. Its findings are its own until somebody here edits or confirms them.</p>` + spList
     + `<div class="icards">${rows.map(c => `<div class="icard" data-id="${c.id}"><img alt="${esc(c.note || IKINDS[c.kind] || 'an image')}">`
       + `<p class="fine mono">${esc((c.ts || '').slice(0, 16).replace('T', ' '))}${c.actor ? ' · ' + esc(c.actor) : ''} · ${Math.round((c.bytes || 0) / 1024)} kB</p>`
       + `<p class="fine mono">${esc(c.cell)} · ${c.lat == null ? 'its cell only' : 'the exact point'} · ${c.outside ? 'outside the seven cells' : 'in the seven cells'}${c.at_home ? ' · at home' : ''}</p>`

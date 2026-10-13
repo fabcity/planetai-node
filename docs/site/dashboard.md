@@ -435,7 +435,7 @@ ground as a map with layers, scales and a measuring tool, the satellite years an
 that opens a card with the image, when, who, the note and its cell, and a quiet **+ Add an image** beside the views
 that opens a dialog, the file picked or dropped; token-only, `GET /captures`), **Data** (every
 reading, drawn, the seven days of every issue, the models, the Index, **Images** (every image with its facts of
-arrival, its kind, note and key: value lines to edit, and Delete for a screen holding the admin token) and the ledger), **Wall** (the keeper's one
+arrival, its kind, note and key: value lines to edit, and Delete for a screen holding the admin token, under the species a person here has confirmed) and the ledger), **Wall** (the keeper's one
 dark screen) and **Node** (what comes in and goes out, the nodes around it, and how it is running). The classic
 dashboard remains available at `/?layout=classic`.
 
