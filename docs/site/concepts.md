@@ -70,7 +70,7 @@ cell, no custody count, no aggregate, no alert, no report line.
 `channel_roles`: `ambient` (the air, water or land at a place, comparable between sensors there),
 `enclosure` (the inside of the instrument's own box: a BME680 sealed in a radio reports the box, not the
 street), `device_health` (battery, radio utilisation), `derived` (computed by the node), `index` (a vendor's
-own composite, never pooled).
+own composite, never pooled), `private` (the house's own: used here, never sent).
 
 **Metric names.** Lowercase, no units in the name: `pm25 pm25_raw pm10 pm1 temp humidity pressure aqi
 gas_resistance noise light eco2 tvoc co2 tvoc_index nox_index`. Units are fixed: µg/m³, °C, %, kPa. `pm25`

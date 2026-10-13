@@ -552,7 +552,8 @@ def push_aggregates() -> None:
     if not PARENT():          # the function, not the setting: a bare PARENT is always truthy
         return
     with db() as con, con.cursor() as cur:
-        cur.execute("SELECT bucket, sensor_id, metric, mean, min, max, n FROM readings_1h WHERE bucket > now() - interval '2 hours'")
+        cur.execute("SELECT bucket, sensor_id, metric, mean, min, max, n FROM readings_1h r "
+                    "WHERE bucket > now() - interval '2 hours' AND " + packs.public_sql("r"))
         rows = [{**r, "bucket": r["bucket"].isoformat()} for r in cur.fetchall()]
     try:
         httpx.post(f"{PARENT()}/aggregates", json={"schema": AGGREGATES_V0, "node": NODE, "rows": rows, "scale": os.getenv("NODE_SCALE", "community")},
@@ -1330,20 +1331,23 @@ def sensors_(request: Request):
 
 
 @app.get("/readings")
-def readings(sensor_id: str | None = None, metric: str | None = None, limit: int = Query(200, ge=1, le=10000)):
+def readings(request: Request, sensor_id: str | None = None, metric: str | None = None,
+             limit: int = Query(200, ge=1, le=10000), authorization: str = Header("")):
     # the NULL parameters need a type or Postgres cannot plan the query (500 on every call since psycopg 3)
-    return q("SELECT ts, sensor_id, metric, value FROM readings WHERE (%s::text IS NULL OR sensor_id=%s::text) AND (%s::text IS NULL OR metric=%s::text) ORDER BY ts DESC LIMIT %s",
+    return q("SELECT ts, sensor_id, metric, value FROM readings WHERE (%s::text IS NULL OR sensor_id=%s::text) AND (%s::text IS NULL OR metric=%s::text)"
+             + ("" if _shows_private(request, authorization) else " AND " + packs.public_sql("readings")) + " ORDER BY ts DESC LIMIT %s",
              sensor_id, sensor_id, metric, metric, limit)
 
 
 @app.get("/stats")
-def stats(request: Request):
+def stats(request: Request, authorization: str = Header("")):
     """Rolling 15m/1h/24h — sensors only. Slow sources (portals, models, surveys) are in /observations.
 
     Positions follow /sensors (#113): unrounded for this machine or a token, and for anyone else the household's
     own sensors at their cell's centre and the rest at three decimals. Before v0.73 this route handed every
     reader at SHARE_LEVEL=open the positions /sensors had rounded."""
-    rows = q("SELECT * FROM stats ORDER BY local DESC, sensor_id, metric")
+    rows = q("SELECT * FROM stats" + ("" if _shows_private(request, authorization, raw=False) else " WHERE " + packs.public_sql("stats"))
+             + " ORDER BY local DESC, sensor_id, metric")
     if getattr(request.state, "share_trusted", False):
         return rows
     own = {r["sensor_id"] for r in q("SELECT sensor_id FROM sensors WHERE custody")}
@@ -1592,7 +1596,7 @@ def actions(limit: int = Query(500, ge=0, le=5000), stage: str = "", events: int
 
 
 @app.get("/series")
-def series(metric: str = "pm25", hours: int = Query(24, ge=1, le=168)):
+def series(request: Request, metric: str = "pm25", hours: int = Query(24, ge=1, le=168), authorization: str = Header("")):
     """Hourly means for the dashboard's strip: local indoor, everything outdoor (yours and references), and the
     model, as three aligned arrays. What readings_1h already knows, shaped for a chart."""
     rows = q("""
@@ -1601,7 +1605,7 @@ def series(metric: str = "pm25", hours: int = Query(24, ge=1, le=168)):
                      avg(r.mean) FILTER (WHERE s.local AND s.indoor) AS indoor,
                      avg(r.mean) FILTER (WHERE NOT s.indoor AND s.kind = 'sensor') AS outdoor
               FROM readings_1h r JOIN sensors s USING (sensor_id)
-              WHERE r.metric = %s AND r.bucket > now() - make_interval(hours => %s) GROUP BY r.bucket),
+              WHERE r.metric = %s AND r.bucket > now() - make_interval(hours => %s)""" + ("" if _shows_private(request, authorization) else " AND " + packs.public_sql("r")) + """ GROUP BY r.bucket),
         m AS (SELECT date_trunc('hour', ts) AS bucket, avg(value) AS model FROM readings
               WHERE sensor_id = 'cams-point' AND metric = %s || '_model' AND ts > now() - make_interval(hours => %s) GROUP BY 1)
         SELECT h.bucket, r.indoor, r.outdoor, m.model FROM h LEFT JOIN r USING (bucket) LEFT JOIN m USING (bucket) ORDER BY h.bucket""",
@@ -1747,7 +1751,8 @@ def export(day: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$")):
         raise HTTPException(422, "day must be a real date, YYYY-MM-DD")
     hourly = q("""SELECT r.bucket, r.sensor_id, s.local, s.indoor, s.kind, s.scale, r.metric, r.mean, r.min, r.max, r.n
                   FROM readings_1h r JOIN sensors s USING (sensor_id)
-                  WHERE r.bucket >= %s::date AND r.bucket < %s::date + 1 ORDER BY r.bucket, r.sensor_id, r.metric""", day, day)
+                  WHERE r.bucket >= %s::date AND r.bucket < %s::date + 1 AND """ + packs.public_sql("r") + """
+                  ORDER BY r.bucket, r.sensor_id, r.metric""", day, day)
     alias, counts = {}, {"indoor": 0, "outdoor": 0}
     def name(row):
         if not row["local"]:
@@ -2307,19 +2312,21 @@ def briefing_moved(kind: str = "morning"):
 
 
 @app.get("/history")
-def history(sensor_id: str, metric: str, limit: int = Query(500, ge=1, le=5000)):
+def history(request: Request, sensor_id: str, metric: str, limit: int = Query(500, ge=1, le=5000), authorization: str = Header("")):
     """Every reading of one metric from one sensor, oldest first. For series that are not hourly: a yearly building count,
     a monthly refresh. `/sparks` is the hourly view; this is the raw one."""
     return [{"ts": r["ts"], "value": r["value"]} for r in            # q() already renders timestamps as ISO strings
-            q("SELECT ts, value FROM readings WHERE sensor_id=%s AND metric=%s ORDER BY ts LIMIT %s", sensor_id, metric, limit)]
+            q("SELECT ts, value FROM readings WHERE sensor_id=%s AND metric=%s"
+              + ("" if _shows_private(request, authorization) else " AND " + packs.public_sql("readings"))
+              + " ORDER BY ts LIMIT %s", sensor_id, metric, limit)]
 
 
 @app.get("/sparks")
-def sparks(metric: str = "pm25", hours: int = Query(24, ge=1, le=168)):
+def sparks(request: Request, metric: str = "pm25", hours: int = Query(24, ge=1, le=168), authorization: str = Header("")):
     """Per-sensor hourly means, aligned to the same buckets, for small traces inside the dashboard's sensor tiles."""
     rows = q("""
         WITH h AS (SELECT generate_series(date_trunc('hour', now()) - make_interval(hours => %s - 1), date_trunc('hour', now()), interval '1 hour') AS bucket),
-        ids AS (SELECT DISTINCT sensor_id FROM readings_1h WHERE metric = %s AND bucket > now() - make_interval(hours => %s))
+        ids AS (SELECT DISTINCT sensor_id FROM readings_1h WHERE metric = %s AND bucket > now() - make_interval(hours => %s)""" + ("" if _shows_private(request, authorization) else " AND " + packs.public_sql("readings_1h")) + """)
         SELECT ids.sensor_id, h.bucket, r.mean
         FROM ids CROSS JOIN h LEFT JOIN readings_1h r ON r.sensor_id = ids.sensor_id AND r.bucket = h.bucket AND r.metric = %s
         ORDER BY ids.sensor_id, h.bucket""", hours, metric, hours, metric)
@@ -2632,6 +2639,15 @@ def _ground_svg(variant: str = "dark") -> str | None:
     if not shipped.exists():
         return None
     return shipped.read_text().replace('data-variant="dark"', f'data-variant="{variant}"', 1)
+
+
+def _shows_private(request: Request, authorization: str = "", raw: bool = True) -> bool:
+    """Whether this read may include `private` readings (packs.public_sql). Never for an agent, which says so with
+    X-Agent on every call (app/agent.py), whatever token it carries: what a model reads can go to a provider. A raw
+    route (rows, series) answers them to the admin token only; a readout (`raw=False`) to anyone the page answers."""
+    if request.headers.get("x-agent"):
+        return False
+    return not raw or _bearer_ok(authorization, os.getenv("ADMIN_TOKEN", "").strip())
 
 
 def _admin(authorization: str) -> None:
@@ -3347,7 +3363,8 @@ def receive_events(body: dict, authorization: str = Header("")):
 
 @app.get("/aggregates")
 def aggregates(hours: int = Query(24, ge=1, le=24 * 90)):   # ge: hours=-1 made make_interval walk forwards and the window empty
-    return q("SELECT bucket, sensor_id, metric, mean, min, max, n FROM readings_1h WHERE bucket > now() - make_interval(hours => %s) ORDER BY bucket DESC", hours)
+    return q("SELECT bucket, sensor_id, metric, mean, min, max, n FROM readings_1h r WHERE bucket > now() - make_interval(hours => %s) AND "
+             + packs.public_sql("r") + " ORDER BY bucket DESC", hours)
 
 
 @app.post("/aggregates")

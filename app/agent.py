@@ -39,7 +39,8 @@ mcp = MCPServer(
 
 
 def _get(path: str):
-    r = httpx.get(API + path, timeout=30)
+    # X-Agent on every read: the node leaves `private` readings out of what an agent is handed (main._shows_private)
+    r = httpx.get(API + path, headers={"X-Agent": "agent"}, timeout=30)
     r.raise_for_status()
     return r.json()
 
@@ -164,7 +165,7 @@ def report_bundle(hours: int = 6) -> dict:
     cells. This is what a report is written from — use it to answer a question about a stretch of time rather than a
     moment, and never write a number that is not in it."""
     r = httpx.get(API + f"/report/bundle?hours={min(max(int(hours), 1), 168)}",
-                  headers={"Authorization": f"Bearer {os.getenv('ADMIN_TOKEN', '')}"}, timeout=120)
+                  headers={"Authorization": f"Bearer {os.getenv('ADMIN_TOKEN', '')}", "X-Agent": "agent"}, timeout=120)
     r.raise_for_status()
     return r.json()
 

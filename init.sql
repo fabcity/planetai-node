@@ -113,7 +113,7 @@ INSERT INTO schema_version (version) VALUES ('0.14') ON CONFLICT DO NOTHING;
 CREATE TABLE IF NOT EXISTS channel_roles (
   source      TEXT NOT NULL,
   metric      TEXT NOT NULL,
-  role        TEXT NOT NULL CHECK (role IN ('ambient','enclosure','device_health','derived','index')),
+  role        TEXT NOT NULL CHECK (role IN ('ambient','enclosure','device_health','derived','index','private')),
   comparable  BOOLEAN NOT NULL DEFAULT FALSE,   -- may be compared between sensors at the same place
   unit        TEXT,
   reference   TEXT,                             -- instrument family, so peer comparison groups like with like
@@ -360,3 +360,11 @@ CREATE INDEX IF NOT EXISTS captures_ts ON captures (ts DESC);
 -- point must not ride out in one. Same reason settings is revoked (0.21); the default privileges granted it above.
 REVOKE ALL ON captures FROM planetai_ro;
 INSERT INTO schema_version (version) VALUES ('0.54') ON CONFLICT DO NOTHING;
+
+-- 0.55: the `private` role (docs/decisions/2026-10-03-pack-design.md, point 2 (A)). A private reading is the house's:
+-- used on the page, by rules and by cells, and never in the export, a parent's aggregates, the report bundle or an
+-- agent's read (packs.public_sql). The CHECK is replaced, because a database made before 0.55 refuses the word.
+ALTER TABLE channel_roles DROP CONSTRAINT IF EXISTS channel_roles_role_check;
+ALTER TABLE channel_roles ADD CONSTRAINT channel_roles_role_check
+  CHECK (role IN ('ambient','enclosure','device_health','derived','index','private'));
+INSERT INTO schema_version (version) VALUES ('0.55') ON CONFLICT DO NOTHING;

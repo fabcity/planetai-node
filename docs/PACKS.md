@@ -131,11 +131,11 @@ A pack that adds a metric says what it IS in `channels.yml`, keyed on `(source, 
 - { source: my-sensor, metric: co2, role: ambient, comparable: true, unit: "ppm" }
 ```
 
-Five roles: `ambient` (the air, water or land at a place — comparable between sensors there), `enclosure` (the
+Six roles: `ambient` (the air, water or land at a place — comparable between sensors there), `enclosure` (the
 inside of the instrument's own box — a BME680 sealed inside a radio reports the box, not the street, so this is
 never averaged as ambient), `device_health` (the instrument talking about itself, e.g. battery), `derived`
-(computed by us from other readings), and `index` (a vendor's own composite number, never pooled with anyone
-else's). `config/channels.yml` has the core declarations; `make lint` checks every metric against `app/sources.py`.
+(computed by us from other readings), `index` (a vendor's own composite number, never pooled with anyone
+else's), and `private` (the house's own: used by readouts, sections, rules and cells like any other, and left out of the daily export, the aggregates a parent receives, the report bundle, every read an agent makes, and `/readings`, `/history`, `/series` and `/sparks` without the admin token; Home Assistant discovery, the household's own automation, still gets it). `config/channels.yml` has the core declarations; `make lint` checks every metric against `app/sources.py`.
 A role is keyed per source and metric, not per device: every sensor an adapter drives shares it, so a node whose
 hardware differs from that adapter's usual shape (an external probe on a Meshtastic pod) cannot override it yet.
 
