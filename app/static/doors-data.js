@@ -190,7 +190,8 @@ const LIVING = ['plant', 'animal'];
 // GRIIS's word for this country (SPEC_species step 2); a species not on the list says nothing, never "native"
 const INTRO = t => (t.introduced ? ` · <b>${esc(t.introduced)}</b> in ${esc(t.where)}` : t.where ? ` · ${esc(t.where)}` : '')
   // what others recorded in the seven cells, from GBIF's open records (SPEC_species step 3)
-  + (t.others > 0 ? ` · recorded here by others ${+t.others}×` : t.others === 0 ? ' · no open record of it here yet' : '');
+  // the seven cells are the node's, not the picture's: a walk's image far away is counted against home
+  + (t.others > 0 ? ` · recorded by others in this node's seven cells ${+t.others}×` : t.others === 0 ? " · no open record of it in this node's seven cells yet" : '');
 const frow = f => `<div class="frow"><input data-g="name" aria-label="what" value="${esc(f.name || '')}">`
   + `<select data-g="class" aria-label="class">${FCLASSES.map(c => `<option${c === f.class ? ' selected' : ''}>${c}</option>`).join('')}</select><input data-g="count" aria-label="how many" type="number" min="0" value="${f.count ?? ''}">`
   + `<label title="a problem for the place"><input data-g="issue" type="checkbox"${f.issue ? ' checked' : ''}>issue</label><button data-g="x" aria-label="delete this finding">×</button>`
