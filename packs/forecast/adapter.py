@@ -191,9 +191,26 @@ def _km(lat1, lon1, lat2, lon2):
     return 12742 * math.asin(math.sqrt(a))
 
 
-def fetch(hc):
+def _due() -> bool:
+    """Once every FORECAST_POLL_HOURS, not on every core poll. The pack runs in the node's 300 s loop, so without this
+    it asked Open-Meteo for 65 points ~275 times a day and spent the whole IP's free tier by 14:00 in Bali (13 Oct).
+    The stamp is touched on every attempt, success or not, and lives in out/, so a restart or a 429 does not ask again.
+    A forecast already stored is never overwritten (ON CONFLICT DO NOTHING), so asking more often gains nothing."""
+    import time
+    from pathlib import Path
+    stamp = Path(os.getenv("PACK_OUT", "/app/out")) / "forecast.last"
+    if stamp.is_file() and time.time() - stamp.stat().st_mtime < float(os.getenv("FORECAST_POLL_HOURS", "6")) * 3600:
+        return False
+    stamp.parent.mkdir(parents=True, exist_ok=True)
+    stamp.touch()
+    return True
+
+
+def fetch(hc, force: bool = False):
     """Both sources if both are configured, either alone, and nothing at all without complaint. A source that is
-    down is never an alert: log once and return what we have."""
+    down is never an alert: log once and return what we have. `force` is `planetai run forecast fetch`: now."""
+    if not force and not _due():
+        return [], []
     lat, lon = float(os.environ["NODE_LAT"]), float(os.environ["NODE_LON"])
     sensors, readings, bm, om = [], [], [], []
     adm4 = os.getenv("FORECAST_BMKG_ADM4", "").strip()

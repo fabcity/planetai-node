@@ -482,7 +482,7 @@ No cells. A forecast is not measured here and is nobody's Index cell.
 | `FORECAST_BMKG` | `1` | poll BMKG. 3-hourly, three days, no key. `ws` is km/h, `wd_deg` is where the wind comes from, `tp` is rain in mm for the step |
 | `FORECAST_BMKG_ADM4` | empty | the Permendagri village code for this point. Node #1 is `51.03.05.2002`, Kuta Selatan / Ungasan, 194 m from the node. Without a code the pack logs one line and idles |
 | `FORECAST_OPENMETEO` | `0` | poll Open-Meteo, hourly, anywhere. Off because its free tier is non-commercial only; that is the operator's decision |
-| `FORECAST_POLL_HOURS` | `6` | BMKG allows 60 requests a minute per IP and enforces it; it publishes twice a day, so anything faster asks a cache the same question |
+| `FORECAST_POLL_HOURS` | `6` | how often the pack asks, whatever `POLL_SECONDS` is; a stamp in `out/forecast.last` keeps it across restarts and failures. BMKG publishes twice a day, and Open-Meteo's free tier is 10,000 calls a day per IP with each wind-field point counting: every 5 min spent it by 06:15 UTC on node #1 (13 Oct) |
 | `FORECAST_WIND_N` | `8` | points a side of the wind field: 8 × 8 |
 | `FORECAST_WIND_KM` | `30` | half-width of the wind field's square, in km |
 
@@ -495,7 +495,7 @@ and `forecast-gap`. A forecast must never pool with a sensor's ambient reading; 
 guard. Every value is stored at its valid time with `fc_lead_hours` beside it. Open-Meteo publishes no model run
 time, so the node records when it fetched and labels it `fetched`, not `issued`. When both sources are on, a third
 derived channel records how far apart they are on temperature and wind for the same hour. With Open-Meteo on, each
-poll also keeps its hourly 10 m wind for the next day over the node's square, and the node's own point, in one
+fetch also keeps its hourly 10 m wind for the next day over the node's square, and the node's own point, in one
 request, as `out/ground/wind.json`, served at `GET /ground/wind` for the map to draw. It asks with
 `cell_selection=nearest`, because the default moves a sea point to the nearest land cell, up to 12 km off. It is a
 model's field, not a reading: it reaches no cell, no alert and no report. Attribution: BMKG must

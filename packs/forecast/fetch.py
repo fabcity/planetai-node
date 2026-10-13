@@ -8,7 +8,7 @@ import psycopg
 sys.path.insert(0, os.path.dirname(__file__))
 import adapter as A  # noqa: E402
 
-sensors, readings = A.fetch(httpx.Client(timeout=60))
+sensors, readings = A.fetch(httpx.Client(timeout=60), force=True)
 if not sensors:
     sys.exit("forecast: nothing fetched. Is FORECAST_BMKG_ADM4 set, or FORECAST_OPENMETEO=1?")
 with psycopg.connect(os.environ["DATABASE_URL"]) as con, con.cursor() as cur:

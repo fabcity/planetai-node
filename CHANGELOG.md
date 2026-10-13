@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **The forecast pack asks every `FORECAST_POLL_HOURS`, as its settings always said.** Nothing read the key: the pack
+  ran in the core 300 s loop, so with `FORECAST_OPENMETEO=1` the 65-point wind field went to Open-Meteo ~275 times a
+  day, and node #1's whole public IP hit the free tier's 10,000-a-day limit at ~06:15 UTC every day from 9 Oct, which
+  silenced `om-point` until midnight UTC. `fetch()` now asks only when `out/forecast.last` is older than the setting,
+  and touches it on every attempt, so neither a restart nor a 429 asks again early. `planetai run forecast fetch`
+  still asks now. Forecast rows are never overwritten, so nothing is lost. `tests/test_forecast.py` counts the calls.
+
 - **The `private` role (the pack design record, point 2 (A); SPEC_inventory step 1).** A pack can declare a metric
   `role: private` in its `channels.yml`. Such a reading is used here like any other (readouts, sections, rules,
   cells) and never leaves: one predicate, `packs.public_sql`, keeps it out of the daily export, the hourly push to a
