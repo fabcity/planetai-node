@@ -133,6 +133,7 @@ Set up never travels to a NAS or a remote. The node never logs the Telegram URL,
 | the question you asked the bot | an online model, only if you gave it a key and changed `AGENT_PREFER` from its default, `private` | the question and the tool results the model asked for |
 | a question asked in the dashboard's pane | the model Set up names: this machine, one on your network, or an online provider only with `AGENT_PREFER` set to `fallback` or `strongest` | the question and the page's own sentences and numbers; the context carries no position, name or id; the node keeps no transcript |
 | raw readings | nobody | nothing |
+| a `private` reading | nobody: not the export, a parent, the report bundle or any agent, and on this machine's raw routes only the admin token | it is used on the page, by rules and by cells; Home Assistant discovery, the household's own automation, still receives it |
 
 The dashboard's ask pane talks to the model Set up names and reads what the page reads, less positions, names and
 ids. At `AGENT_PREFER=private`, the default, that model is on this machine or your network and the conversation

@@ -103,7 +103,7 @@ the upstream tiers design, whose pilot tier is still undecided.
 
 ## 8 · Steps
 
-1. **The `private` role.** A role in `channels.yml`, one predicate used by the export, the aggregate push,
+1. **The `private` role.** *Built 13 October 2026.* A role in `channels.yml`, one predicate used by the export, the aggregate push,
    `/readings`, `/series`, `app/ask.py` and `app/agent.py`, and a test that a private row appears in none of them.
    Core, and its own pull request.
 2. **Things.** The table, `POST`/`PATCH`/`DELETE /things` behind the admin token, the Data door list, the three

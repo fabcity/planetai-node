@@ -143,7 +143,7 @@ Every message the engine decided, sent or held.
 
 ### `channel_roles`
 
-What each `(source, metric)` **is**, written at every start from `config/channels.yml` and every pack's `channels.yml`: `role` (`ambient` · `enclosure` · `device_health` · `derived` · `index`), `comparable`, `unit`, `reference`, `declared_by`.
+What each `(source, metric)` **is**, written at every start from `config/channels.yml` and every pack's `channels.yml`: `role` (`ambient` · `enclosure` · `device_health` · `derived` · `index` · `private`, the last since schema 0.55), `comparable`, `unit`, `reference`, `declared_by`.
 
 ### `settings`
 

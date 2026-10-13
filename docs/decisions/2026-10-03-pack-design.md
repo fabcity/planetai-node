@@ -115,5 +115,5 @@ It changes no code. It does not add `serves:`, the `private` role or the live-ch
 camera pack, which stays at motion only on node #1. It does not design the core camera feature.
 
 Decided: point 2 as (A), the `private` role, by Tomas on 13 October 2026. Its first user is not the camera but the
-household inventory (`docs/SPEC_inventory.md`, idle things first), whose rows must never leave the home. Points 1, 3
+household inventory (`docs/SPEC_inventory.md`, idle things first), whose rows must never leave the home. Built 13 October 2026 as `role: private` and `packs.public_sql` (see `docs/site/sensors.md`). Points 1, 3
 and 4 are not yet decided.

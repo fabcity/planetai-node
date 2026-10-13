@@ -20,7 +20,7 @@ packs/<id>/
   pack.yaml     id, name, description, version, requires, domain, sources:, pip:, env:, secrets:, readouts:, sections:
   rules.yml     alerts: SQL that returns rows, one message per row; or a contribution to the report
   cells.yml     Index cells: SQL that returns one `value`
-  channels.yml  what the pack's own metrics ARE: ambient, enclosure, device_health, derived, index
+  channels.yml  what the pack's own metrics ARE: ambient, enclosure, device_health, derived, index, private
   adapter.py    a new source; its presence makes this a code pack
   *.py          scripts, run with `planetai run <pack> <script>`
   README.md     where the thresholds came from, which place they were written for, what the pack does not know
@@ -256,7 +256,7 @@ A pack that adds a metric says what it is, keyed on `(source, metric)`:
 - { source: forecast-om, metric: fc_wind_speed, role: derived, comparable: false, unit: "km/h" }
 ```
 
-Roles are `ambient`, `enclosure`, `device_health`, `derived` and `index`, defined on the
+Roles are `ambient`, `enclosure`, `device_health`, `derived`, `index` and `private`, defined on the
 [sensors](sensors.md) page. The core's `config/channels.yml` is read first; a pack may not redeclare a pair
 the core already claimed, and the duplicate is logged and dropped. A pack that adds no metric ships
 `channels.yml` as `[]` to say so, as `trust` does.

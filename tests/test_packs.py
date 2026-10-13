@@ -185,7 +185,7 @@ assert _by[("smartcitizen", "bme_iaq")]["role"] == "index", "a vendor index is n
 assert _by[("meshtastic", "temp")]["role"] == "enclosure", "a radio in a sealed case reports its own box"
 assert _by[("meshtastic", "battery_pct")]["role"] == "device_health"
 assert _by[("smartcitizen", "pm25")]["declared_by"] == "core"
-assert all(c["role"] in ("ambient", "enclosure", "device_health", "derived", "index") for c in _ch)
+assert all(c["role"] in ("ambient", "enclosure", "device_health", "derived", "index", "private") for c in _ch)
 assert len({(c["source"], c["metric"]) for c in _ch}) == len(_ch), "one declaration per source and metric"
 print(f"{len(_ch)} channel roles declared")
 

@@ -4,6 +4,7 @@
 #   device_health — the instrument talking about itself. Feeds liveness, never a measurement.
 #   derived       — computed by us from other readings. Carries the provenance of its inputs.
 #   index         — a vendor's own composite number. Never pooled, never averaged across makers.
+#   private       — the house's own. Used here (readouts, rules, cells); never exported, pushed, reported or read by an agent.
 
 - { source: smartcitizen, metric: pm25,           role: ambient, comparable: true,  unit: "µg/m³", reference: sc }
 - { source: smartcitizen, metric: pm10,           role: ambient, comparable: true,  unit: "µg/m³", reference: sc }

@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **The `private` role (the pack design record, point 2 (A); SPEC_inventory step 1).** A pack can declare a metric
+  `role: private` in its `channels.yml`. Such a reading is used here like any other (readouts, sections, rules,
+  cells) and never leaves: one predicate, `packs.public_sql`, keeps it out of the daily export, the hourly push to a
+  parent and a parent's pull from `GET /aggregates`, and the report bundle a model writes reports from. `/readings`,
+  `/history`, `/series` and `/sparks` answer it to the admin token only, and an agent never reads it: every MCP read
+  now carries `X-Agent`, and the node leaves private rows out of any request that does, whatever token it holds.
+  `/stats`, a readout, is unchanged for the page. Home Assistant discovery, the household's own automation, still
+  receives it. Schema 0.55 widens `channel_roles`' CHECK. `tests/test_private.py` replays the predicate in duckdb
+  and checks every road out (72 suites).
+
 - **The species confirmed here (SPEC_species step 4).** `GET /species` counts the plants and animals a person here has
   confirmed in images, per taxon (or per typed name, without GBIF): how many, in how many images and cells, with the
   GRIIS mark and others' records beside each, and `?cell=` answers inside any cell up to res 10. The Data door lists

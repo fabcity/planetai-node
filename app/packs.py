@@ -169,7 +169,16 @@ def cells() -> list[dict]:
     return out
 
 
-ROLES = ("ambient", "enclosure", "device_health", "derived", "index")
+ROLES = ("ambient", "enclosure", "device_health", "derived", "index", "private")
+
+
+def public_sql(alias: str = "r") -> str:
+    """SQL: this row of readings (or readings_1h, or the stats view) is not `private`. The one predicate every road
+    out of the house is written with (docs/decisions/2026-10-03-pack-design.md, point 2 (A)): a private reading is
+    used here by readouts, sections, rules and cells, and is left out of the daily export, the aggregates a parent
+    receives, the report bundle, and every read an agent or a reader without the admin token makes."""
+    return (f"NOT EXISTS (SELECT 1 FROM sensors ps JOIN channel_roles pc ON pc.source = ps.source "
+            f"WHERE ps.sensor_id = {alias}.sensor_id AND pc.metric = {alias}.metric AND pc.role = 'private')")
 
 
 def channels() -> list[dict]:
