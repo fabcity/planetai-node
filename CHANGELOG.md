@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **A thing from a photo (SPEC_inventory step 3).** Once an image's findings are confirmed, each one in a class a home
+  keeps (tool, appliance, furniture, electronics, garment, textile, micromobility, vehicle, part, goods) has a
+  **+ … as a thing** button in Data › Images, so a photo of a shelf becomes several things in a few presses. The thing
+  keeps the photo's id and its card says "from image N"; a finding already added says "in Things". Only on a screen
+  holding the admin token, like Things itself. Deleting the image keeps the things and clears the link.
+
 - **The things a home keeps (SPEC_inventory step 2).** The Data door has a **Things** section, for a screen holding
   the admin token: one card a thing with its class, name and count, how often it is used (every week, every month, a
   few times a year, never), its state (works, needs a repair, broken) and whether the household would lend or give

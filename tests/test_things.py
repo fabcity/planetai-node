@@ -119,4 +119,11 @@ for h, hidden in (({}, True), (ACT, True), (ADMIN, False), ({**ADMIN, "X-Agent":
     SEEN.clear(); c.get("/observations", headers=h)
     assert ("pc.role = 'private'" in SEEN[-1]) == hidden, (h, SEEN[-1])
 print("private: the counts are declared private by core, and /observations shows them to the admin token only, never an agent")
+# ---------------------------------------------------------------- from a photo (step 3)
+JS = open("app/static/doors-data.js").read()
+assert "capture_id: +id" in JS and "a.confirmed_by && TKEEP" in JS, "a confirmed finding becomes a thing with its photo linked"
+assert "TKEEP.classes.includes(f.class)" in JS, "only the classes a home keeps are offered"
+cd = SRC[SRC.index("def capture_delete"):SRC.index("@app.get(\"/captures/{cid}/file\")")]
+assert "UPDATE things SET capture_id = NULL WHERE capture_id = %s" in cd, "a deleted photo leaves its things, unlinked"
+print("from a photo: a confirmed finding in a household class adds a thing, linked; deleting the photo unlinks it")
 print("things: every check passed")
