@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Introduced or invasive (SPEC_species step 2).** With **Name species with GBIF** on, the node reads its country's
+  GRIIS checklist (the Global Register of Introduced and Invasive Species, CC BY 4.0, on GBIF) once a week, and a
+  matched species is marked `invasive` or `introduced` "in Indonesia" on its finding and in the Data door. The country
+  comes from `NODE_TZ` and the system's zone tables, offline; the read tells GBIF the country and nothing else. Both
+  GRIIS formats are read (the profile's `isInvasive`, and the 2022 `degreeOfEstablishment`); a synonym is looked up
+  under its accepted name. A species not on the list is unmarked, never "native". A country with no checklist says so
+  on the finding. Read live on 13 Oct: Indonesia 388 taxa (302 invasive), Spain 881, Singapore 681, the United States
+  8,472.
+
 - **A finding names its species (SPEC_species step 1).** A `plant` or `animal` finding carries `scientific`, its
   scientific name at the rank the image model is sure of (a species, a genus, or a family such as Arecaceae for "a
   palm"), and the Data door shows it and lets anyone here type or change it. With **Name species with GBIF**

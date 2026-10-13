@@ -718,6 +718,103 @@ def check_registry() -> None:
                          "asked": time.time()}
 
 
+
+# ---------------------------------------------------------------- introduced or invasive (docs/SPEC_species.md §3)
+# GRIIS, the Global Register of Introduced and Invasive Species, publishes one checklist per country on GBIF under CC BY
+# 4.0, all from one publisher (ISSG). The node finds its own country's by title, offline from NODE_TZ, and keeps a map
+# Backbone key -> invasive | introduced, read weekly while SPECIES_MATCH is on: three requests that say which country
+# this node is in and nothing else. A species not on the list is unmarked, never "native": absence is not evidence.
+GRIIS_PUBLISHER = "cdef28b1-db4e-4c58-aa71-3c5238c2d0b5"
+GRIIS_TITLE = "Global Register of Introduced and Invasive Species"
+GRIIS_EVERY = 7 * 86400
+# ponytail: iso3166.tab names that GRIIS titles spell otherwise, for the pilots' and nodes' countries; add one when a
+# node lands in a country whose list the node cannot find
+GRIIS_ALIAS = {"GB": "United Kingdom", "KR": "Republic of Korea", "US": "United States (Contiguous) (ver.2.0, 2022)"}
+ZONEINFO = Path("/usr/share/zoneinfo")
+
+
+def node_country() -> tuple[str, str] | None:
+    """(ISO code, name) of the country NODE_TZ is in, from the zone tables every system ships. None when the zone
+    names no single country (UTC, a typo)."""
+    tz = os.getenv("NODE_TZ", "").strip()
+    try:
+        code = next((cols[0] for cols in (ln.split("\t") for ln in (ZONEINFO / "zone.tab").read_text().splitlines())
+                     if len(cols) > 2 and cols[2] == tz and not cols[0].startswith("#")), None)
+        names = dict(ln.split("\t", 1) for ln in (ZONEINFO / "iso3166.tab").read_text().splitlines()
+                     if ln and not ln.startswith("#"))
+    except OSError:
+        return None
+    return (code, names.get(code, code)) if code else None
+
+
+def griis_marks(listing: list[dict], invasive: set[str]) -> dict[int, str]:
+    """A checklist's own rows (GBIF's species search: taxonID, nubKey) as Backbone key -> invasive | introduced. Every
+    taxon on a GRIIS list is introduced; the archive says which of them are invasive."""
+    return {r["nubKey"]: "invasive" if r.get("taxonID") in invasive else "introduced" for r in listing if r.get("nubKey")}
+
+
+def _griis_invasive(zbytes: bytes) -> set[str]:
+    """The taxonIDs a Darwin Core archive calls invasive, in either GRIIS format: the species profile's isInvasive
+    (Indonesia, 2020) or the distribution's degreeOfEstablishment, "invasive (category D2)" and the like (the US, 2022).
+    Columns are found where meta.xml says, not assumed."""
+    import csv, io, zipfile, xml.etree.ElementTree as ET  # noqa: E401, PLC0415
+    z = zipfile.ZipFile(io.BytesIO(zbytes))
+    ns = {"d": "http://rs.tdwg.org/dwc/text/"}
+    out = set()
+    for ext in ET.fromstring(z.read("meta.xml")).findall("d:extension", ns):
+        col = next((int(f.get("index")) for f in ext.findall("d:field", ns)
+                    if f.get("term", "").endswith(("/isInvasive", "/degreeOfEstablishment"))), None)
+        if col is None:
+            continue
+        cid, skip = int(ext.find("d:coreid", ns).get("index")), int(ext.get("ignoreHeaderLines", "0"))
+        rows = csv.reader(io.StringIO(z.read(ext.find("d:files/d:location", ns).text).decode("utf-8")), delimiter="\t")
+        out |= {r[cid] for i, r in enumerate(rows) if i >= skip and len(r) > max(cid, col) and "invasive" in r[col].lower()}
+    return out
+
+
+def check_griis() -> None:
+    """Weekly while SPECIES_MATCH is on: find this country's GRIIS checklist and keep its marks. What it could not
+    find is kept as `why`, so a finding says "no checklist for here" instead of saying nothing."""
+    if settings.get("SPECIES_MATCH", "off") != "on":
+        state.pop("griis", None)
+        return
+    known = state.get("griis") or {}
+    if time.time() - known.get("asked", 0) < GRIIS_EVERY:
+        return
+    c = node_country()
+    if not c:
+        state["griis"] = {"why": "NODE_TZ names no country", "asked": time.time()}
+        return
+    code, name = c
+    try:
+        sets = hc.get(f"https://api.gbif.org/v1/organization/{GRIIS_PUBLISHER}/publishedDataset",
+                      params={"limit": 1000}, timeout=30).json()["results"]
+        want = GRIIS_ALIAS.get(code, name)
+        ds = next((d["key"] for d in sets if re.fullmatch(rf"{GRIIS_TITLE}\s*-\s*{re.escape(want)}", d["title"].strip())), None)
+        if not ds:
+            state["griis"] = {"country": code, "name": name, "why": f"GRIIS publishes no checklist for {name}",
+                              "asked": time.time()}
+            return
+        listing, offset = [], 0
+        while True:
+            page = hc.get("https://api.gbif.org/v1/species/search", params={"datasetKey": ds, "origin": "SOURCE",
+                          "limit": 1000, "offset": offset}, timeout=60).json()
+            listing += page["results"]
+            offset += len(page["results"])
+            if page.get("endOfRecords", True) or not page["results"]:
+                break
+        archive = next(e["url"] for e in hc.get(f"https://api.gbif.org/v1/dataset/{ds}/endpoint", timeout=30).json()
+                       if e["type"] == "DWC_ARCHIVE")
+        r = hc.get(archive, timeout=120, follow_redirects=True)
+        r.raise_for_status()
+        marks = griis_marks(listing, _griis_invasive(r.content))
+    except Exception as e:  # noqa: BLE001 — no route out keeps the last good list and tries again in a day
+        state["griis"] = {**known, "error": type(e).__name__, "asked": time.time() - GRIIS_EVERY + 86400}
+        return
+    state["griis"] = {"country": code, "name": name, "dataset": ds, "marks": marks, "asked": time.time(),
+                      "read": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+
+
 # ---------------------------------------------------------------- loops
 def loop(fn, every: int, delay: int = 0):
     """Run fn forever. Each loop records its own last error under its own name: poll_once clears `last_error`
@@ -854,6 +951,7 @@ loop(push_aggregates, 3600, delay=120)
 loop(push_events, 3600, delay=150)
 loop(check_release, 3600, delay=300)
 loop(check_registry, 3600, delay=60)
+loop(check_griis, 3600, delay=90)
 if RETICULUM_URL:
     loop(poll_reticulum, 300, delay=20)
 
@@ -3070,7 +3168,19 @@ def _taxa(findings: list, known: dict | None = None) -> list:
         if m.get("matchType") in (None, "NONE") or not m.get("usageKey") or m.get("kingdom") != TAXON_KINGDOM[f["class"]]:
             continue
         f["taxon"] = {"key": m["usageKey"], "name": m.get("scientificName") or sci, "rank": str(m.get("rank") or "").lower(),
-                      "match": str(m["matchType"]).lower(), "source": "gbif"}
+                      "match": str(m["matchType"]).lower(), "source": "gbif",
+                      **({"accepted": m["acceptedUsageKey"]} if m.get("acceptedUsageKey") else {})}
+    g = state.get("griis")
+    for f in findings:   # every pass, so a saved finding takes up a checklist read since it was matched
+        t = f.get("taxon")
+        if not t or not g:
+            continue
+        t.pop("introduced", None), t.pop("where", None)
+        if "marks" in g:   # a synonym is looked up under the name it stands for, too
+            mark = g["marks"].get(t.get("key")) or g["marks"].get(t.get("accepted"))
+            t.update({"introduced": mark, "where": g["name"]} if mark else {})
+        elif g.get("why"):
+            t["introduced"], t["where"] = None, g["why"]
     return findings
 
 

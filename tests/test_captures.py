@@ -407,6 +407,81 @@ assert [p["name"] for _, p in ASKED] == ["Cocos nucifera", "Forgeria"], f"only n
 assert mine[0]["taxon"]["key"] == 7681 and mine[1]["taxon"]["key"] == 2735117 and "taxon" not in mine[2], mine
 settings._cache["rows"]["SPECIES_MATCH"] = "off"
 print("species: a living finding's scientific name; GBIF asked the name only, strictly, with the yes; the rank is the match's")
+# ---- introduced or invasive (SPEC_species step 2): this country's GRIIS checklist, found offline from NODE_TZ
+import zipfile
+ZI = os.path.join(TMP, "zoneinfo"); os.makedirs(ZI, exist_ok=True)
+open(os.path.join(ZI, "zone.tab"), "w").write("# comment\nID\t-0507+11924\tAsia/Makassar\tBali\nES\t+4024-00341\tEurope/Madrid\tSpain\n")
+open(os.path.join(ZI, "iso3166.tab"), "w").write("# comment\nES\tSpain\nID\tIndonesia\n")
+main.ZONEINFO = main.Path(ZI)
+os.environ["NODE_TZ"] = "Asia/Makassar"
+assert main.node_country() == ("ID", "Indonesia"), main.node_country()
+os.environ["NODE_TZ"] = "UTC"
+assert main.node_country() is None, "a zone in no country is no country"
+buf = io.BytesIO()
+with zipfile.ZipFile(buf, "w") as z:
+    z.writestr("meta.xml", '<archive xmlns="http://rs.tdwg.org/dwc/text/"><core><files><location>taxon.txt</location></files></core>'
+               '<extension rowType="http://rs.gbif.org/terms/1.0/SpeciesProfile" ignoreHeaderLines="1"><files><location>profile.txt</location></files>'
+               '<coreid index="0"/><field index="1" term="http://rs.gbif.org/terms/1.0/isInvasive"/></extension></archive>')
+    z.writestr("profile.txt", "id\tisInvasive\n84000\tInvasive\n84001\tNull\n84002\tInvasive\n")
+ARCHIVE = buf.getvalue()
+assert main._griis_invasive(ARCHIVE) == {"84000", "84002"}, "isInvasive, read where meta.xml says"
+buf = io.BytesIO()
+with zipfile.ZipFile(buf, "w") as z:   # the 2022 format: no isInvasive, the distribution's degree of establishment
+    z.writestr("meta.xml", '<archive xmlns="http://rs.tdwg.org/dwc/text/"><extension rowType="http://rs.gbif.org/terms/1.0/Distribution" '
+               'ignoreHeaderLines="1"><files><location>distribution.txt</location></files><coreid index="0"/>'
+               '<field index="2" term="http://rs.tdwg.org/dwc/terms/degreeOfEstablishment"/></extension></archive>')
+    z.writestr("distribution.txt", "id\tcountryCode\tdegreeOfEstablishment\n1\tUS\testablished (category C3)\n"
+               "2\tUS\tinvasive (category D2)\n3\tUS\twidespread invasive (category E)\n")
+assert main._griis_invasive(buf.getvalue()) == {"2", "3"}, "degreeOfEstablishment: invasive and widespread invasive"
+LISTING = [{"taxonID": "84000", "nubKey": 2925303}, {"taxonID": "84001", "nubKey": 2970418}, {"taxonID": "84002"}, {"taxonID": "9", "nubKey": 1}]
+assert main.griis_marks(LISTING, main._griis_invasive(ARCHIVE)) == {2925303: "invasive", 2970418: "introduced", 1: "introduced"}, \
+    "every listed taxon with a Backbone key is introduced, the archive's flag makes it invasive"
+HC = []
+class FakeHC:
+    def get(self, url, params=None, timeout=None, follow_redirects=False):
+        HC.append((url, dict(params or {})))
+        if "publishedDataset" in url:
+            return main.httpx.Response(200, json={"results": [
+                {"key": "ds-id", "title": "Global Register of Introduced and Invasive Species- Indonesia"},
+                {"key": "ds-x", "title": "Global Register of Introduced and Invasive Species - Indonesia, Bali island"}]})
+        if url.endswith("/species/search"):
+            return main.httpx.Response(200, json={"results": LISTING, "endOfRecords": True})
+        if url.endswith("/endpoint"):
+            return main.httpx.Response(200, json=[{"type": "EML", "url": "x"}, {"type": "DWC_ARCHIVE", "url": "https://ipt/a.zip"}])
+        return main.httpx.Response(200, content=ARCHIVE, request=main.httpx.Request("GET", url))
+hc0, main.hc = main.hc, FakeHC()
+settings._cache["rows"]["SPECIES_MATCH"] = "off"
+main.state["griis"] = {"marks": {}}
+main.check_griis()
+assert "griis" not in main.state and HC == [], "off: nothing asked, nothing kept"
+settings._cache["rows"]["SPECIES_MATCH"] = "on"
+os.environ["NODE_TZ"] = "Asia/Makassar"
+main.check_griis()
+g = main.state["griis"]
+assert g["dataset"] == "ds-id" and g["marks"] == {2925303: "invasive", 2970418: "introduced", 1: "introduced"} and g["name"] == "Indonesia", g
+assert all("api.gbif.org" in u or u == "https://ipt/a.zip" for u, _ in HC) and HC[1][1]["datasetKey"] == "ds-id", HC
+n = len(HC); main.check_griis()
+assert len(HC) == n, "read weekly, not every hour"
+# the marks on a finding: invasive, introduced through a synonym, unmarked when not listed (never "native")
+GBIF.update({"Lantana camara": {"usageKey": 2925303, "scientificName": "Lantana camara L.", "rank": "SPECIES", "matchType": "EXACT", "kingdom": "Plantae"},
+             "Leucaena glauca": {"usageKey": 555, "acceptedUsageKey": 2970418, "scientificName": "Leucaena glauca", "rank": "SPECIES",
+                                 "matchType": "EXACT", "kingdom": "Plantae"}})
+fs = main._taxa(main._findings([{"class": "plant", "name": "a", "scientific": "Lantana camara"},
+                                {"class": "plant", "name": "b", "scientific": "Leucaena glauca"},
+                                {"class": "plant", "name": "c", "scientific": "Cocos nucifera"}]))
+assert (fs[0]["taxon"]["introduced"], fs[0]["taxon"]["where"]) == ("invasive", "Indonesia"), fs[0]
+assert fs[1]["taxon"]["accepted"] == 2970418 and fs[1]["taxon"]["introduced"] == "introduced", "a synonym is marked under the name it stands for"
+assert "introduced" not in fs[2]["taxon"] and "where" not in fs[2]["taxon"], "not on the list: unmarked, not native"
+# a country GRIIS has no list for says so on the finding
+os.environ["NODE_TZ"] = "Europe/Madrid"
+main.state.pop("griis")
+main.check_griis()
+assert main.state["griis"]["why"] == "GRIIS publishes no checklist for Spain" and "marks" not in main.state["griis"]
+t = main._taxa(main._findings([{"class": "plant", "name": "c", "scientific": "Cocos nucifera"}]))[0]["taxon"]
+assert t["introduced"] is None and t["where"] == "GRIIS publishes no checklist for Spain", t
+main.hc = hc0; main.state.pop("griis"); os.environ["NODE_TZ"] = "Asia/Makassar"
+settings._cache["rows"]["SPECIES_MATCH"] = "off"
+print("introduced: the country from NODE_TZ, its GRIIS list read weekly with the yes, invasive or introduced on the taxon, unlisted unmarked")
 # the upload's box: describe=1 describes the new image after the upload answers; unticked, nothing is asked
 called = []
 main._describe, d0 = (lambda cid, model: called.append((cid, model)) or __import__("asyncio").sleep(0)), main._describe
