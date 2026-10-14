@@ -150,7 +150,7 @@ Seven named steps, each printing its elapsed time and a heartbeat at least every
    containers.
 6. **Schema.** Waits for Postgres and applies `init.sql`: the whole schema, idempotent, the same file a
    fresh volume and an update both run.
-7. **Checks.** Modules in the image, database healthy, app answering, Telegram set, `backup.sh` executable.
+7. **Checks.** Modules in the image, database healthy, app answering, `backup.sh` executable.
 
 Then it installs the nightly backup in your crontab (`17 3 * * *`), and, unless `--no-bootstrap`, the first
 start pulls about 4,500 rows of history for your coordinates (92 days of hourly PM2.5 and PM10 from the
@@ -161,11 +161,22 @@ line you can paste into an issue:
 install OK — <name>, 7 steps in <s>s, on localhost:8080
 ```
 
-`planetai setup` then restarts the app with your settings and runs the doctor. A cross next to *telegram
-connected* and next to the backup rows is expected on a new node, and the setup says so: "The crosses above
-are normal on a new node: Telegram is the next step, and the first backup runs tonight." A cross next to
-*database answers* or *node answers on :8080* means something is wrong; see [Troubleshooting](troubleshooting.md). The
-last screen is a box reading **Your node is running.**, the dashboard's addresses, and the settings token.
+`planetai setup` then restarts the app with your settings and runs the [doctor](cli.md). A cross next to
+*database answers* or *node answers on :8080* means something is wrong; see [Troubleshooting](troubleshooting.md).
+Below the checks the doctor lists the node's **Data sources** and ends with **To finish setting up**: what is
+still missing, most important first, each with the one thing to do. On a new node it usually reads:
+
+```
+  To finish setting up
+   1. Connect Telegram, two minutes: planetai telegram
+   2. No backup yet. One runs every night at 03:17; to have one now: planetai backup
+```
+
+and, with no sensor of your own yet, *Add your sensor* first, with the Set up page's address at Sources. The weather
+and satellite models show a dash until the node's first poll, a few minutes after it starts. The last screen is a
+box reading **Your node is running.**, the dashboard's addresses, and the settings token. Run `./install.sh` on its
+own and it ends with the same doctor; in a terminal it asks whether to do the first step now, and with `--yes` or
+no terminal it only prints. `planetai update` ends the same way.
 
 ## Re-running it
 

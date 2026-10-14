@@ -33,6 +33,7 @@ import bootstrap
 import agent
 import actions as _act
 import events_pg
+import fundamentals
 import ground
 import index
 import learn
@@ -100,6 +101,9 @@ reticulum_state = {"ok": False, "address": None, "destinations": 0, "announce_s"
                    "announcing": False, "peers": [], "last": None}
 STARTED = time.time()
 state = {"polls": 0, "last_poll": None, "last_error": None, "ingested": 0}
+# Whether the last message to Telegram went through, for GET /health/sources. Not in `state`: /health spreads that
+# to every reader at every share level, and whether this house's alerts reach it is not theirs to read.
+tg_state: dict = {"ok": None, "at": None}
 
 
 NODE_TZ = os.getenv("NODE_TZ", "").strip() or "UTC"
@@ -569,9 +573,11 @@ def notify(level: str, text: str, keyboard: list | None = None, home: str = "", 
             httpx.post(f"https://api.telegram.org/bot{tok}/sendMessage",
                        json=body, timeout=15).raise_for_status()
             log.info("telegram -> %s ok", chat)
+            tg_state.update(ok=True, at=time.time())
         except Exception as e:  # noqa: BLE001
             # never interpolate the exception's URL: httpx puts the token in it
             log.warning("telegram -> %s failed: %s", chat, type(e).__name__)
+            tg_state.update(ok=False, at=time.time())
 
 
 def _alert_home(issue: str) -> str:
@@ -1290,6 +1296,32 @@ def health(request: Request):
             "docs": DOCS_URL, "mcp": "/mcp", "llms": "/llms.txt",
             **({"mesh": mesh_state, "direct": sc_state} if MQTT_HOST else {}),
             **({"reticulum": reticulum_state} if RETICULUM_URL else {})}
+
+
+@app.get("/health/sources")
+def health_sources(backup_age: float | None = None):
+    """The node's fundamental sources (app/fundamentals.py), each running or not, and for each that is not, the one
+    thing to do. `planetai doctor` prints it, install and update print what is still missing, and Set up shows it at
+    the top. Not on any share level's list: whether this house has a sensor and a phone connected is the house's.
+
+    One pass over two days of readings, youngest per source and kind, bounded by now(): the forecast pack writes
+    rows timestamped in the future, and one of those would make any source look as if it had just spoken."""
+    seen = q("""SELECT s.source, (s.custody AND s.kind IN ('sensor', 'child')) AS own, s.indoor,
+                       extract(epoch FROM now() - max(r.ts)) / 60 AS minutes
+                FROM readings r JOIN sensors s USING (sensor_id)
+                WHERE r.ts > now() - interval '2 days' AND r.ts <= now()
+                  AND ((s.custody AND s.kind IN ('sensor', 'child')) OR s.source IN ('baliairdispatch', 'open-meteo', 'open-meteo-cams'))
+                GROUP BY 1, 2, 3""")
+    own_known = bool(q("SELECT 1 FROM sensors WHERE custody AND kind IN ('sensor', 'child') LIMIT 1"))
+    cfg = {k: settings.get(k, "") for f in fundamentals.FUNDAMENTALS for k in f["settings"]}
+    cfg.update(OPENMETEO_ENABLED=settings.get("OPENMETEO_ENABLED", "1"), NODE_LAT=os.getenv("NODE_LAT", ""),
+               NODE_LON=os.getenv("NODE_LON", ""), MQTT_HOST=MQTT_HOST)
+    # `backup_age`: minutes since the newest dump, measured by `planetai doctor` where BACKUP_DIR really is (-1: none)
+    here = backup_age is not None or fundamentals.backup_is_here()
+    age = fundamentals.backup_age() if backup_age is None else (None if backup_age < 0 else backup_age)
+    rows = fundamentals.assess(cfg, [{**r, "minutes": float(r["minutes"])} for r in seen], state["polls"] > 0,
+                               state.get("last_error"), tg_state["ok"], age, here, own_known)
+    return {"ok": not any(r["ok"] is False for r in rows), "missing": sum(r["ok"] is False for r in rows), "sources": rows}
 
 
 # Nothing finer than this may be announced. res 6 is roughly 3 km across; below that a node is

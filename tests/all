@@ -152,6 +152,7 @@ test_private|PYTHONPATH=app python3 tests/test_private.py
 test_things|PYTHONPATH=app python3 tests/test_things.py
 test_rooms|PYTHONPATH=app python3 tests/test_rooms.py
 test_offers|PYTHONPATH=app python3 tests/test_offers.py
+test_bot_pictures|PYTHONPATH=app python3 tests/test_bot_pictures.py
 test_learned|PYTHONPATH=app python3 tests/test_learned.py
 test_events_wire|PACKS_DIR=packs PYTHONPATH=app python3 tests/test_events_wire.py
 test_figures_wire|PACKS_DIR=packs PYTHONPATH=app python3 tests/test_figures_wire.py
@@ -159,6 +160,7 @@ test_run_rules_modes|python3 tests/test_run_rules_modes.py
 test_kinded_rules|PYTHONPATH=tests:app python3 tests/test_kinded_rules.py
 test_replay|PYTHONPATH=tests:app:tools python3 tests/test_replay.py
 test_doors|PYTHONPATH=app python3 tests/test_doors.py
+test_fundamentals|PYTHONPATH=app python3 tests/test_fundamentals.py
 SUITES
 
 total=$((pass + fail))
@@ -167,11 +169,11 @@ printf '  %d suites: %d passed, %d failed, %d check(s) skipped\n' "$total" "$pas
 [ -n "$skip_lines" ] && printf '%s' "$skip_lines"
 [ -n "$failed_names" ] && printf '  failed:%s\n' "$failed_names"
 
-# Seventy-seven is the number of suites in the list above (test_fire joined, 15 Oct 2026). If the list and this number disagree, one of them
+# Seventy-eight is the number of suites in the list above (test_fundamentals and test_bot_pictures joined, 15 Oct 2026). If the list and this number disagree, one of them
 # is a typo, and a runner that quietly runs twenty-five of twenty-six is the bug it was written to end.
 # (The word and the number had drifted apart by two bumps when packs/make added the forty-fourth.)
-if [ "$total" -ne 77 ]; then
-  printf '  \033[31mx\033[0m ran %d suites, expected 77 — the list in this file lost or gained a line\n' "$total"
+if [ "$total" -ne 79 ]; then
+  printf '  \033[31mx\033[0m ran %d suites, expected 79 — the list in this file lost or gained a line\n' "$total"
   exit 1
 fi
 [ "$fail" -gt 0 ] && exit 1

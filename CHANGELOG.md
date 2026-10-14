@@ -15,6 +15,46 @@
   first, at most every three hours. An optional `FIRMS_MAP_KEY` reads only the ring's box. The 25 is a first guess
   from one day on the Bukit (14 Oct: nothing within 50 km, the nearest 75 km north-west, 51 places within 150 km).
   New id and es copy is assistant-written. `tests/test_fire.py` (77 suites).
+- **Pictures through the bot (Tomas, 15 Oct).** A photo or an image file sent to the bot from a household chat
+  is posted to the node's `POST /captures` with the caption as the note, the sender's name and `describe=1`, and the
+  bot answers "Kept. The image model on this machine is describing it; it will be in Data › Images in a minute." A
+  photo takes its largest size and the message's date; a file goes byte for byte, so its own date and GPS count. A
+  `#drone`, `#microscope`, `#camera` or `#balloon` in the caption sets the kind. A duplicate, a file that is not an
+  image, one over the Bot API's 20 MB and a refused token are each answered plainly. Strangers' pictures are ignored,
+  and the download's URL, which holds the bot token, never reaches a log line (`tests/test_bot_pictures.py`).
+- **The doctor names the node's fundamental sources, and install and update end with what is left to set up**
+  (Tomas, 15 Oct: "the user should be guided to have the fundamental data sources of the node running"). Six sources
+  every node needs, in one place (`app/fundamentals.py`), most important first: your own sensors (one reporting in
+  the last hour, inside and ideally outside), alerts on your phone (Telegram connected and not refused), air stations
+  nearby (Bali Air Dispatch; does not apply outside Bali yet), weather (Open-Meteo), satellite air (CAMS) and the
+  nightly backup. New `GET /health/sources` (token) says each one's state, its last reading's age and, when it is not
+  running, the one thing to do, with the Set up section or the `planetai` command that does it. `planetai doctor`
+  prints them as a **Data sources** block; `install.sh`, `update.sh` and `planetai setup` now all end with the doctor
+  and a **To finish setting up** list, and in a terminal install and update offer to do the first step (never with
+  `--yes`, cron or an agent: then they only print). The Set up page shows the same list at the top, and the MCP
+  `health_check` returns it as `sources`. Telegram and the backup's age moved from the doctor's checks into the
+  sources, so they no longer make a new node's doctor red; *a backup exists* (which read `./backups` whatever
+  `BACKUP_DIR` said) is gone. Before the first poll after a start, a configured source is a dash, not a cross.
+
+- **The Wall reads from three metres (design review, 14 Oct).** Nothing on the doors' Wall is under 28 px at
+  1920×1080, scaled with the screen; what did not survive that floor was cut: the kicker's reason (it named who
+  answered), the "why" paragraph, the fragments row, the counts box ("alerts out 0 / 7"), the foot, the scale bar,
+  the countdown and the model's name. The map's caption says its red discs in words against the house ("This house is
+  under the clean-air line now; 3 stations nearby, in red, are over it"); what the node suggests is one line that ends
+  on a word, never "If somethin…"; ρ is said ("This house answered 23 of 274 alerts in 30 days") before larger rings.
+  The narration box is not drawn until a text arrives and keeps the last one while the next is written. The back
+  button, chips, hour strip and model note show only under a pointer or the keyboard. `tests/test_doors.py` holds the
+  floor, the hidden chrome and the collapsed box.
+- **Now reads in the order a household asks (Tomas, 14 Oct: "I am not happy with what is showing").** About ten
+  blocks of equal weight competed on the doors' first screen, and on a phone the headline sat under ~340 px of chrome.
+  Now is one bold block, the sentence and its day drawing, then the four distances in one quiet line, then **What to
+  do** (the Decide card framed, with its buttons, only while something is asked; otherwise "Nothing to do now." and
+  the hour it is usually worst), then **Did it work** and **Yesterday**, then **Around the house** (Air and Heat as
+  rows, the stations' map with a one-line caption). Heads are sentence case and name the question; the capitalised
+  engine stages are gone from Now. The res 2–12 scale strip left Now (Place has its own; the kicker links to the
+  cell). Land and Coast change yearly and moved to Place, under **Changes by the year**. Did it work no longer says
+  "the node is asking now" beside an event already answered. On a phone the bar is three rows of 44 px targets (the
+  headline at 237 px instead of 339) and the week is one tappable row a day.
 - **A refusing source is not the household's to-do.** The report's one thing to do skipped past what someone here
   can act on to print a source's raw error, cut mid-URL (node #1, 14 Oct: Open-Meteo's daily limit). Source errors are
   left to Node's Running section.
