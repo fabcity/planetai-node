@@ -126,7 +126,7 @@ RUNTIME = {
                            "and no pane."),
     # packs — which load, and each pack's own settings, which describe() adds after these from every pack.yaml.
     "PACKS_ENABLED":      ("packs", "Enabled packs", False, False, "Empty = every pack in packs/. Or a comma-separated list of ids."),
-    "PACKS_ALLOW_CODE":   ("packs", "Allow code packs", False, False, "1 lets packs with adapter.py run. Read them first."),
+    "PACKS_ALLOW_CODE":   ("packs", "Allow code packs", False, False, "1 lets packs with adapter.py run: a pack's own Python, on this machine, with the node's privileges and everything it holds. Read them first."),
     "EE_PROJECT":         ("packs", "Earth Engine project", False, False, "Project id, not the service account number. Blank reads it from the key file."),
     "EE_KEY_FILE":        ("packs", "Earth Engine key file", False, False, "Path inside the container; the file goes in config/."),
     "COAST_MAX_KM":       ("packs", "Coast: max distance to sea, km", False, False, ""),
@@ -257,7 +257,12 @@ OUTWARD = {
     "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_IDS",  # where the node speaks
     "UPDATE_CHECK",         # a daily request to planetai.fab.city for the current version
     "SPECIES_MATCH",        # a finding's scientific name asked of api.gbif.org
+    "MAP_TILES",            # each live tile request names the square of the planet this house is looking at
 }
+
+# Keys that run code on this machine that is not the node's own. Set up asks before saving one of these, as it does
+# before an OUTWARD key, and quotes the key's own help to say what will run.
+RUNS_CODE = {"PACKS_ALLOW_CODE"}
 
 # Keys the reports release retired. Rows for them are left in `settings` and in .env, and nothing reads them: a
 # household that updates does not have a value it chose deleted out from under it. BRIEF_HOUR was the agent
@@ -488,7 +493,7 @@ def describe(unlocked: bool = False, public: frozenset | set = PUBLIC) -> dict:
                                "choices": list(CHOICES[k]) if k in CHOICES else None,
                                # None when the image has no defaults file, never a guess.
                                "default": (defaults().get(k) or {}).get("default"),
-                               "outward": k in OUTWARD})
+                               "outward": k in OUTWARD, "runs_code": k in RUNS_CODE})
     # The packs' own keys, after the node's. They carry a `default` because pack.yaml states one
     # beside every key; the node's own rows do not, which is the other half of this gap and needs
     # somewhere in the image to read them from — `.env.example` is at the repo root and the app
@@ -516,7 +521,7 @@ def describe(unlocked: bool = False, public: frozenset | set = PUBLIC) -> dict:
             "key": k, "group": "packs", "label": k, "secret": secret, "restart": False,
             "help": r["help"], "value": _mask(v) if hide else v, "set": bool(v),
             "source": "gui" if k in db else ("env" if os.getenv(k) else "default"),
-            "choices": None, "outward": k in OUTWARD,
+            "choices": None, "outward": k in OUTWARD, "runs_code": k in RUNS_CODE,
             "default": r["default"], "pack": r["pack"]})
     for k, label in BOOTSTRAP.items():
         out["bootstrap"].append({"key": k, "label": label, "value": os.getenv(k, ""),

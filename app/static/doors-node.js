@@ -40,11 +40,18 @@ VIEWS.node = function () {
   const kept = doorsFetch('/storage').then(x => x.ok ? x.json() : null).catch(() => null),
     offers = fetch('/offers').then(x => x.ok ? x.json() : null).catch(() => null);
   doorsFetch('/health/sources').then(r => (r.ok ? r.json() : null)).catch(() => null).then(src => { const el = $('#verdict'); if (src && el) el.innerHTML = say(src); });
-  flow(kept, offers); around(); running(kept); remember();
+  flow(kept, offers); cellsBlock(); around(); running(kept); remember();
   /* #node/<id> (a refusal's proof) scrolls to that part once it is drawn; #node/remember is remember()'s own */
   const at = location.hash.slice(1).split('/')[1];
   if (at && at !== 'remember') setTimeout(() => { const t = document.getElementById(at); if (t) t.scrollIntoView({ block: 'start' }); }, 60);
 };
+
+/* THE INDEX CELLS this node holds (GET /cells), under the flow that counts them; moved from Data (phase 4b, 15 Oct).
+   #node/cells lands here, and so does Data's old #data/cells. */
+function cellsBlock() {
+  $('#cells').innerHTML = `<h2>Fab City Index cells, ${new Set(D.index_cells.map(c => c.cell)).size} of 20</h2><table class="tbl"><tr><th>cell</th><th class="n">value</th><th class="hide">unit</th><th>word</th></tr>`
+    + D.index_cells.map(c => `<tr><td>${esc(c.cell.replace('|', ' · '))}</td><td class="n">${fmt(c.value, 2)}</td><td class="hide">${esc(c.unit)}</td><td>${prov(c.state)}</td></tr>`).join('') + `</table>`;
+}
 
 /* WHAT IT REMEMBERS (Tomas, 14 Oct: the diary split between Now and Node; Now keeps Yesterday and Did it work). The
    record, private and never leaving: the counts, the diary as a table with its written entry in a dialog and a search,

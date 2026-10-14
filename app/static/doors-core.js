@@ -76,6 +76,7 @@ function route() {
   const v = view();
   document.querySelectorAll('.view').forEach(el => { el.hidden = el.dataset.view !== v; });
   document.querySelectorAll('.doors a').forEach(a => a.classList.toggle('on', a.dataset.v === v));
+  const gear = $('#gear'); if (v === 'setup') gear.setAttribute('aria-current', 'page'); else gear.removeAttribute('aria-current');   /* Set up is open */
   document.body.dataset.view = v;
   if (v !== 'wall' && typeof flowStop === 'function') { const w = $('#wfield'); w && flowStop(w); }
   if (v !== 'wall' && typeof WALLMAP !== 'undefined' && WALLMAP.stop) WALLMAP.stop();

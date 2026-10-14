@@ -223,7 +223,7 @@ function groundRows() {
 function packRows() {
   const ix = LAYERS.find(l => l.id === 'index'), ea = LAYERS.find(l => l.id === 'earth');
   const nI = new Set(D.index_cells.map(c => c.cell)).size, nE = ((D.earth || {}).changes || []).length;
-  ix.none = nI ? `${nI} of 20 hold a value · a table, not a shape: <a href="#data/cells">Data › Index cells</a>` : null;
+  ix.none = nI ? `${nI} of 20 hold a value · a table, not a shape: <a href="#node/cells">Node › Index cells</a>` : null;
   ea.none = nE ? `${nE} comparison${nE === 1 ? '' : 's'} · a count, not a shape: What changed, above the map` : null;
 }
 function credits() {
