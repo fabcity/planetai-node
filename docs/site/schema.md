@@ -164,7 +164,7 @@ Who is in the house (SPEC_learn, schema 0.59): one row (`id` = 1), `people` (yes
 
 ### `digests`
 
-The node's diary (SPEC_learn, schema 0.58): `scale` (`day` · `week` · `month` · `year`) and `period_start` (the primary key together), `label`, `text`, `numbers`, `written_at`, and `tsv`, a generated full-text vector of label and text with a GIN index. Written by `check_learn()` for every completed period not yet kept, oldest first; never rewritten or deleted. Revoked from `planetai_ro`, and named by no export, push or report.
+The node's diary (SPEC_learn, schema 0.58): `scale` (`day` · `week` · `month` · `year`) and `period_start` (the primary key together), `label`, `text`, `numbers`, `written_at`, and `tsv`, a generated full-text vector of label and text with a GIN index. Written by `check_learn()` in the first hour of each local day, for every completed period not yet kept, oldest first; `numbers.v` says which version wrote it, and one written by an older version is written again once. Never deleted. Revoked from `planetai_ro`, and named by no export, push or report.
 
 ### `learnings`
 
