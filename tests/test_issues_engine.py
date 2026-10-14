@@ -850,4 +850,12 @@ print("\n".join(f"  x {f}" for f in fails if f) or
       f"  issues/engine: the stack, the fence, the five states on eight cases, the headline rule, "
       f"attribution in six classes, and {len(OUT['issues']) * len(I.LOCALES)} sentences with every "
       f"placeholder filled — replayed against node #1, 6 Sep 14:08 UTC")
+# a reason's time from another day says its day (the Wall read "asked at 21:22" under a 22:00 clock, for 2 Oct)
+from datetime import datetime as _D, timezone as _Z, timedelta as _T   # noqa: E402
+_wita = _Z(_T(hours=8)); _now = _D(2026, 10, 14, 14, 0, tzinfo=_Z.utc)
+_old = engine._reason_text({"code": "open_ask_stale", "at": "2026-10-02T13:22:00+00:00", "today": engine._today(_now, _wita)}, "en")
+_new = engine._reason_text({"code": "open_ask_stale", "at": "2026-10-14T05:22:00+00:00", "today": engine._today(_now, _wita)}, "en")
+assert _old.startswith("asked at 2 Oct 21:22;") and _new.startswith("asked at 13:22;"), (_old, _new)
+print("reasons: a time from another day carries its date, today's is the local clock")
 sys.exit(1 if [f for f in fails if f] else 0)
+

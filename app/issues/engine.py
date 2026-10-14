@@ -778,6 +778,14 @@ def _hhmm(ts) -> str:
     return ts.strftime("%H:%M") if isinstance(ts, datetime) else ""
 
 
+def _today(now, clock):
+    """(the local date, the zone) the engine reads `now` in, for a reason's time to know whether it is today's."""
+    if now is None or now.tzinfo is None:
+        return None
+    t = now.astimezone(clock) if clock is not None else now
+    return (t.date(), t.tzinfo)
+
+
 def _reason_text(reason: dict, loc: str) -> str:
     """One line of why, in one language. Every word comes from REASON_WORDS; nothing is typed here.
 
@@ -791,7 +799,15 @@ def _reason_text(reason: dict, loc: str) -> str:
         code += "_peak"
     stage_key = {"acted": "done", "acknowledged": "not_now", "dismissed": "doesnt_fit"}.get(reason.get("stage"), "")
     word = (A.BUTTONS.get(loc) or A.BUTTONS["en"]).get(stage_key, "")
-    return words.get(code, "").format(when=_hhmm(reason.get("at")), level=reason.get("level", ""),
+    # a time from another day says its day: the Wall read "asked at 21:22" under a 22:00 clock for an alert raised on
+    # 2 Oct (node #1, 14 Oct). `today` is the engine's own, so a replayed capture reads as it did that day.
+    at, when_ = reason.get("at"), _hhmm(reason.get("at"))
+    if when_ and reason.get("today"):
+        t = datetime.fromisoformat(at.replace("Z", "+00:00")) if isinstance(at, str) else at
+        t = t.astimezone(reason["today"][1])
+        # ponytail: English month names in every locale; a locale's own when id/es get a native reader
+        when_ = f"{t:%H:%M}" if t.date() == reason["today"][0] else f"{t:%-d %b %H:%M}"
+    return words.get(code, "").format(when=when_, level=reason.get("level", ""),
                                       id=reason.get("alert_id", ""), peak=reason.get("peak", ""),
                                       peak_at=reason.get("peak_at", ""), kind=reason.get("kind", ""),
                                       who=reason.get("who") or words.get("someone", ""), word=word)
@@ -1606,7 +1622,7 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
         out[key] = {
             "state": state, "watched": True,
             "reason": reason,
-            "reason_text": {loc: _reason_text(reason, loc) for loc in LOCALES},
+            "reason_text": {loc: _reason_text({**reason, "today": _today(now, clock)}, loc) for loc in LOCALES},
             "name": d["name"], "kind": d["kind"], "metric": d["metric"], "unit": d["unit"], "dp": d["dp"],
             "about": d.get("about"),
             "headline": headline, "stack": stack, "line": line, "attribution": attribution,
