@@ -338,7 +338,8 @@ figure, from `GET /issues`, and under it one line links the same day as open dat
 Each issue with a day has one drawing of its last 24 hours. Every distance is a trace in ink, dashed by distance, and
 an hour nothing was recorded is a gap in it, never a line drawn across. The grey band is the usual for each hour,
 from the node's own last 14 days. The red dashed line is the issue's line and the red ticks under the drawing are the
-hours over it. An alert event is a bar from when it opened to when it cleared, and its answer is a ring: green for
+hours over it. On the doors and the phone page every drawing of PM2.5 draws the air's own line the same way, red and dashed and
+labelled `WHO 15` (the WHO 2021 24-hour guideline, at the value `/issues` gives); a map marks a station over it instead. An alert event is a bar from when it opened to when it cleared, and its answer is a ring: green for
 Done. When an event is open, its own rooms are a heavier trace beside the house. Point at an hour, or focus the
 drawing and use the arrow keys, and the line under it says that hour in words.
 

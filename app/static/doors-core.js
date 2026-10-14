@@ -12,6 +12,8 @@ const dayOf = iso => loc(iso).slice(0, 10), hourOf = iso => +loc(iso).slice(11, 
 const dLabel = d => { const t = new Date(d + 'T12:00:00Z'); return `${WD[t.getUTCDay()]}, ${t.getUTCDate()} ${MO[t.getUTCMonth()]}`; };
 const wdhm = iso => `${dLabel(dayOf(iso)).split(',')[0]} ${hhmm(iso)}`;
 const fmt = (v, dp) => v == null || Number.isNaN(+v) ? '—' : (+v).toFixed(dp);
+/* a line's name on a drawing (Tomas, 14 Oct: "the WHO line in graphics as reference"): the issue's own value, named the WHO's where its source is the WHO, else "line". The look is .linep */
+const lineLab = it => `${/^WHO\b/.test(it.line_source || '') ? 'WHO' : 'line'} ${fmt(it.line, it.dp)}`;
 const plain = s => String(s ?? '').replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}]/gu, '').replace(/\s+/g, ' ').trim();
 /* the node's own Sentinel-2 annual median for a year (GET /earth/frame.png, open) */
 const SAT = y => `/earth/frame.png?year=${y}&source=sentinel`;

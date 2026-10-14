@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **The WHO line in every PM2.5 drawing (Tomas, 14 Oct).** Now's day, Data's every source and seven days, What is
+  usual's PM2.5 day, and the phone walk's house, street, stations, ring and region each draw the air's own line red and
+  dashed (`.linep`, now the day figure's 6 4 at 1.5) and label it `WHO 15`: the value is `/issues`' own, the name comes
+  from the line's source, so heat keeps `line 35.0`. Before, the walk drew it in ink, Data drew it unlabelled, and What
+  is usual and three of the walk's drawings had none. Alert words and the 35.5 urgent threshold are unchanged. `tests/test_doors.py` renders each drawing on node #1's
+  capture.
 - **Rooms in the household's words.** Set up › Rooms names the room each of the home's sensors is in, and the node
   makes that the sensor's name in the database (schema 0.61, a trigger on `sensors`), whatever a poll or a pack writes
   after. Every alert, the report, the stats and the pages then say "Kids", not "K ROOM - BAYU HOLES" (Tomas, 14 Oct:
