@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Now says what this house learned.** Under the decision, for the issue on screen: what worked after someone here
+  acted, beside the times nobody did, in the node's own sentence (a learning that holds before one that is too early);
+  the hour it is usually worst, inside and outside; and who it matters to, or "Who lives here?" when the household
+  has not said. It links to every case in Data. A screen holding the admin token only; the Wall never reads it.
+
 - **The morning memory.** The first report the household gets each day now carries, in Telegram only, what the node
   remembers: yesterday's diary entry, last week's on a Monday, last month's on the 1st, last year's on 1 January, and
   every learning whose status changed that day, in its own words. One message, not four. On by default (Tomas, 14

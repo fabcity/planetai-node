@@ -169,4 +169,39 @@ assert ph["pev"] and all(e["asking"] is not None and e["action"] for e in ph["pe
     "the phone's Decide card needs the event's asking and the live action's words"
 assert all(e["message"] and e["seen"] for e in ph["pev"]), "the phone's card reads message.sent and last_seen_at"
 print("doors: the phone page's subset builds a D with the words, the asking and the action it draws")
+
+# Now › what this house learned (14 Oct): the node's own sentence for the issue on screen, the usual worst hour, who it
+# matters to or the question that lets the node say so; nothing for a screen without the admin token, never the Wall
+nl = """
+const fs = require('fs'); const src = fs.readFileSync('./app/static/doors-now.js', 'utf8');
+const core = fs.readFileSync('./app/static/doors-core.js', 'utf8');
+const pick = (s, re) => s.match(re)[0];
+const el = { hidden: true, innerHTML: '' }; const $ = () => el; let S = { issue: 'air' };
+const make = new Function('$', 'S', pick(core, /const esc = [^\\n]*/) + ';' + pick(core, /const fmt = [^\\n]*/) + ';' + pick(core, /const said = [^\\n]*/) + ';'
+  + pick(src, /let NOWL = null;[\\s\\S]*?\\nfunction drawNow/).replace(/function drawNow$/, '')
+  + '; return { set: v => { NOWL = v; }, draw: nowLearned };');
+const N = make($, S), out = {};
+const rows = [
+  { kind: 'worked', key: 'air-quality/indoor_pm25_high', issue: 'air-quality', status: 'holding', n: 6, statement: 'Acted on 6 times: PM2.5 inside changed -1.1.', for_whom: [] },
+  { kind: 'worked', key: 'air-quality/events', issue: 'air-quality', status: 'too_early', n: 4, statement: 'Acted on 4 times so far: too early to say.' },
+  { kind: 'worked', key: 'air-quality/old', issue: 'air-quality', status: 'gone', n: 30, statement: 'gone' },
+  { kind: 'usual', key: 'indoor-pm25', issue: 'air', status: 'holding', numbers: { high_hour: 7, high: 12.1, unit: 'µg/m³' } },
+  { kind: 'usual', key: 'outdoor-pm25', issue: 'air', status: 'holding', numbers: { high_hour: 18, high: 17.2, unit: 'µg/m³' } }];
+N.set({ rows, people: {} }); N.draw(); out.air = { hidden: el.hidden, html: el.innerHTML };
+N.set({ rows: rows.map(r => r.status === 'holding' && r.kind === 'worked' ? { ...r, for_whom: ['a child under five'] } : r), people: { under5: true } }); N.draw(); out.who = el.innerHTML;
+S.issue = 'land'; N.draw(); out.land = el.hidden; S.issue = 'air';
+N.set(null); N.draw(); out.locked = el.hidden;
+console.log(JSON.stringify(out));
+"""
+nr = json.loads(subprocess.run(["node"], input=nl, capture_output=True, text=True, check=True).stdout)
+h = nr["air"]["html"]
+assert not nr["air"]["hidden"] and "Acted on 6 times: PM2.5 inside changed -1.1." in h, "the holding learning with the most cases leads"
+assert "too early" not in h and ">gone<" not in h, "a too-early or gone row does not stand in for one that holds"
+assert "around 07:00 inside" in h and "around 18:00 outside" in h and "12.1" in h, "the usual worst hour, from the row's own numbers"
+assert "Who lives here?" in h and "#data/d-learned" in h, "an empty profile is asked for, not left blank"
+assert "matters here: a child under five" in nr["who"] and "Who lives here?" not in nr["who"]
+assert nr["land"] and nr["locked"], "an issue with nothing learned, or a screen without the admin token, shows nothing"
+wall = (STATIC / "doors-wall.js").read_text() + (STATIC / "doors-wallmap.js").read_text()
+assert "/learned" not in wall and "/household" not in wall and "/things" not in wall, "the Wall never reads the house's own"
+print("doors: Now says what worked here, when it is usually worst and who it matters to; nothing without the token")
 print("all doors checks passed")

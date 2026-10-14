@@ -429,7 +429,7 @@ answers and the page draws; the plan still needs a token at every level. See [Sh
 ## The five doors
 
 The node renders as five doors by default, the redesign worked out in planetai-design (R33 to R45): **Now**
-(the moment, its decision with Done, Not now and Doesn't fit, and the stations around the house), **Place** (the
+(the moment, its decision with Done, Not now and Doesn't fit, under it **what this house learned** about that issue: what worked after someone here acted beside the times nobody did, in the node's own sentence, the hour it is usually worst, and who it matters to, or *Who lives here?* when nobody said; a screen holding the admin token only, never the Wall; and the stations around the house), **Place** (the
 ground as a map with layers, scales and a measuring tool, the satellite years and what changed, and the household's
 **Images**: one map layer per kind, phone, fixed camera, microscope, drone and balloon or kite, each image a square
 that opens a card with the image, when, who, the note and its cell, and a quiet **+ Add an image** beside the views

@@ -5,8 +5,38 @@
    The first thing is the ladder, and under it the lead (learn: lead). */
 VIEWS.now = function () {
   rail($('#rail')); rows(); drawNow();
-  aroundMap($('#rose')); thingsLine($('#nthings'));
+  aroundMap($('#rose')); thingsLine($('#nthings')); learnedLoad();
 };
+/* What this house learned, at the decision (SPEC_learn; Tomas 14 Oct: not only in Data). For the issue on screen: what
+   worked after someone here acted, beside the unanswered times, in the node's own sentence; the hour it is usually
+   worst; who it matters to, or the question that lets the node say so. A screen holding the admin token only: the
+   house's learnings never reach a wall (#237). Read once per visit; switching issue redraws from what was read. */
+let NOWL = null;
+const LEARN_PACK = { air: 'air-quality', heat: 'heat' };
+async function learnedLoad() {
+  const get = u => fetch(u, { headers: DOORS_AUTH() }).then(r => r.ok ? r.json() : null).catch(() => null);
+  const [l, h] = await Promise.all([get('/learned'), get('/household')]);
+  NOWL = l ? { rows: l.learnings || [], people: h ? h.people || {} : null } : null;
+  nowLearned();
+}
+function nowLearned() {
+  const el = $('#nlearned'), k = S.issue, pack = LEARN_PACK[k];
+  if (!el) return;
+  const rank = { holding: 0, weakening: 0, too_early: 1 };
+  const worked = NOWL && pack ? NOWL.rows.filter(r => r.kind === 'worked' && r.issue === pack && r.status in rank)
+    .sort((a, b) => rank[a.status] - rank[b.status] || b.n - a.n)[0] : null;
+  const usual = NOWL ? NOWL.rows.filter(r => r.kind === 'usual' && r.issue === k && r.status === 'holding' && r.numbers) : [];
+  el.hidden = !NOWL || !pack || (!worked && !usual.length);
+  if (el.hidden) return;
+  const hh = h => `${String(h).padStart(2, '0')}:00`, where = r => r.key.startsWith('outdoor') ? 'outside' : 'inside';
+  const ask = NOWL.people && !Object.values(NOWL.people).some(Boolean);
+  el.innerHTML = `<div class="k">measure · what this house learned</div>`
+    + (worked ? `<p class="dq">${esc(worked.statement)}${worked.status === 'weakening' ? ' <span class="x">· weakening</span>' : ''}</p>` : '')
+    + (usual.length ? `<p class="dm">usually highest ${usual.map(r => `around ${hh(r.numbers.high_hour)} ${where(r)} (${fmt(r.numbers.high, 1)} ${said(r.numbers.unit)})`).join(', ')}</p>` : '')
+    + ((worked && (worked.for_whom || []).length) ? `<p class="dm">matters here: ${esc(worked.for_whom.join(', '))}</p>`
+      : ask ? `<p class="dm"><a href="#data/d-learned">Who lives here? Tell the node, and it says who an alert matters to ›</a></p>` : '')
+    + `<p class="dm"><a href="#data/d-learned">every case, and what is usual ›</a></p>`;
+}
 // The things this home keeps, in one line (SPEC_inventory step 2), for a screen holding the admin token; nothing otherwise.
 async function thingsLine(el) {
   const r = await fetch('/things', { headers: DOORS_AUTH() }).catch(() => null);
@@ -16,7 +46,7 @@ async function thingsLine(el) {
 }
 function drawNow() {
   dayWeek({ el: $('#svg'), issue: S.issue, head: $('#fighead'), scale: $('#figline'), pick: j => { S.i = j; drawNow(); } });
-  readout();
+  readout(); nowLearned();
 }
 
 /* The ladder, compact: rungs res 2 to 12, this node's rung filled; the node's own rule for the rest — rungs that may
