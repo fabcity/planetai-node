@@ -98,9 +98,12 @@ Everything the sheet was written from, as one JSON document, SQL only, most of i
 (node, locale, local time, window, held hours), `series` per sensor and metric (min, max, mean, n, trend,
 notability, the usual value and how many baseline days), `observations` (sea, weather, satellite air, place,
 land, with yesterday's value), `now` (the `stats` view), `alerts` in the window, `open_act` (unanswered act
-alerts in 24 hours, at most five), `sensors_quiet`, `rho` now and a week ago, `previous` (the last sent
+alerts in 24 hours, at most five), `open_events` (the event engine's open act episodes that were sent; on
+`ALERT_ENGINE=events` only), `sensors_quiet` (the house's own sensors only, never a survey such as the things it
+keeps), `rho` now and a week ago, `previous` (the last sent
 report), `cells` with what changed, `rules`, `health`, `facility` (the nearest lab, or null), and the first
-row of every pack's `contributes: report` rule under its own id. A contributor may not use one of the names the
+row of every pack's `contributes: report` rule under its own id. On `ALERT_ENGINE=events`, `alerts` and `open_act`
+leave out the rows the replaced packs record without sending: the report tells what reached the household. A contributor may not use one of the names the
 bundle owns (`RESERVED` in `app/report.py`); one that tries is skipped and logged. The bundle is trimmed to
 64 kB by dropping the least notable series first.
 

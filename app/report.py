@@ -19,6 +19,7 @@ from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 import index
+import learn
 import packs
 import settings
 
@@ -92,7 +93,7 @@ def held_hours(since, due, every: int, cap: int = MAX_WINDOW) -> int:
 
 # The names the bundle owns. A pack that contributes under one of these would overwrite the node's own numbers,
 # and a model reading the document would have no way to tell.
-RESERVED = ("meta", "series", "now", "observations", "alerts", "open_act", "sensors_quiet", "rho", "previous",
+RESERVED = ("meta", "series", "now", "observations", "alerts", "open_act", "open_events", "sensors_quiet", "rho", "previous",
             "cells", "health", "rules")
 
 
@@ -176,7 +177,7 @@ QUIET_SQL = """
 SELECT s.sensor_id, s.name,
        (SELECT round(extract(epoch FROM now() - max(r.ts)) / 60) FROM readings r WHERE r.sensor_id = s.sensor_id) AS silent_minutes
   FROM sensors s
- WHERE s.local
+ WHERE s.local AND s.kind = 'sensor'
    AND NOT EXISTS (SELECT 1 FROM stats t WHERE t.sensor_id = s.sensor_id AND t.silent_minutes < 180)
  ORDER BY s.sensor_id
 """
@@ -260,11 +261,30 @@ def bundle(cur, hours: int, held_hours: int = 0) -> dict:
                  "mean_1h": _f(r["mean_1h"], 2), "silent_minutes": int(r["silent_minutes"]) if r["silent_minutes"] is not None else None}
                 for r in index.run_ro(cur, NOW_SQL)]
 
+    # On ALERT_ENGINE=events the engine speaks for the packs it replaced, from its first message on, and their rules
+    # still record rows nobody received (learn.silent). The report tells what was sent: node #1's 19:00 report on
+    # 14 Oct opened "It is hot inside" from a heat row the household never got, while the page said it was bearable.
+    try:
+        rep = learn.replaced(packs.load_rules(), settings.get("ALERT_ENGINE", "rules") or "rules")
+    except Exception as e:  # noqa: BLE001 — no rule set, nothing to leave out
+        log.warning("report: cannot read the rule set to leave silent alerts out: %s", e)
+        rep = set()
+    since = None
+    if rep:
+        cur.execute("SELECT min(ts) AS t FROM event_messages WHERE mode = 'events'")
+        since = (cur.fetchone() or {}).get("t")
+    told = lambda r: not learn.silent(r["rule_id"], r["ts"], rep, since)  # noqa: E731
     b["alerts"] = [{"id": r["id"], "at": r["ts"].isoformat(), "rule": r["rule_id"], "sensor_id": r["sensor_id"],
                     "level": r["level"], "line": r["line"], "acted": r["acted"]}
-                   for r in index.run_ro(cur, ALERTS_SQL, p)]
+                   for r in index.run_ro(cur, ALERTS_SQL, p) if told(r)]
     b["open_act"] = [{"id": r["id"], "at": r["ts"].isoformat(), "rule": r["rule_id"], "sensor_id": r["sensor_id"],
-                      "line": r["line"]} for r in index.run_ro(cur, OPEN_ACT_SQL)]
+                      "line": r["line"]} for r in index.run_ro(cur, OPEN_ACT_SQL) if told(r)]
+    # what the engine has open and has told the household, which stands in for the replaced packs' open alerts
+    b["open_events"] = []
+    if rep:
+        cur.execute("""SELECT issue, kind, opened_at FROM alert_events
+                       WHERE cleared_at IS NULL AND ever_sent AND level = 'act' ORDER BY opened_at""")
+        b["open_events"] = [{"issue": r["issue"], "kind": r["kind"], "at": r["opened_at"].isoformat()} for r in cur.fetchall()]
     b["sensors_quiet"] = [{"sensor_id": r["sensor_id"], "name": r["name"],
                            "silent_minutes": int(r["silent_minutes"]) if r["silent_minutes"] is not None else None}
                           for r in index.run_ro(cur, QUIET_SQL)]
@@ -288,7 +308,6 @@ def bundle(cur, hours: int, held_hours: int = 0) -> dict:
         log.warning("cells unavailable for the report: %s", e)
 
     try:
-        import packs
         b["rules"] = sorted(r["id"] for r in packs.rules())
         for r in packs.contributors("report"):
             key = r["id"].split("/")[-1]
@@ -464,7 +483,8 @@ def sheet(b: dict, locale: str = "en") -> str:
               for r in now if r.get("local") and r.get("indoor") and r["metric"] == "pm25"]
     indoor = [v for v in indoor if v is not None]
     heat = [(a.get("rule") or "") for a in b.get("open_act") or [] if (a.get("rule") or "").startswith("heat/")]
-    if "heat/heat_danger" in heat:
+    heat += [f"heat/{e.get('kind')}" for e in b.get("open_events") or [] if e.get("issue") == "heat"]
+    if "heat/heat_danger" in heat or "heat/danger" in heat:
         parts.append(lead + t["state_hot"])          # feels like 40 °C or more: the one heat line called danger
     elif heat:
         # heat_stress_now's 35 is node #1's ordinary afternoon (SPEC_alerts §1): said as a fact, never as danger
@@ -483,6 +503,8 @@ def sheet(b: dict, locale: str = "en") -> str:
     for s in b.get("series") or []:
         if not (s.get("local") and s.get("kind") == "sensor" and abs(s.get("notability") or 0) >= 1.5):
             continue
+        if f"what_{s['metric']}" not in t:
+            continue                    # a metric with no household word (bme_iaq) is never named: it reached a report raw
         if s["sensor_id"] in seen:
             continue
         seen.add(s["sensor_id"]); moved.append(s)
