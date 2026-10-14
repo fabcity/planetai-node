@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **The report tells what was sent.** On `ALERT_ENGINE=events` the heat and air rules still record alerts that
+  nobody receives, and the report read them: node #1's 19:00 report on 14 Oct opened "It is hot inside" from a heat
+  row never sent, while the page said the heat was bearable. The report now leaves those rows out and takes heat from
+  the engine's open episodes that were sent. The things a home keeps are no longer a sensor that "has stopped
+  sending", and a metric with no household word (`bme_iaq`) is never named in "What changed".
+
 - **Data: Images and Things are tables.** Each image is a row: a thumbnail, when and who, what took it, the note,
   what the image model saw and whether somebody here confirmed it. A row opens that image in a dialog, the picture
   beside its fields, to edit, describe again, confirm or delete; *See all images* opens every card at once. Things are

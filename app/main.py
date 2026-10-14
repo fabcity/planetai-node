@@ -913,9 +913,8 @@ def check_learn() -> None:
     rules = packs.load_rules()
     # On ALERT_ENGINE=events the engine speaks for the packs it has kinded rules for, from its first events message
     # on: their rows after that were never sent, and the learnings must not count them (learn.silent).
-    replaced, since = set(), None
-    if (settings.get("ALERT_ENGINE", "rules") or "rules") == "events":
-        replaced = {r["id"].split("/", 1)[0] for r in rules if isinstance(r, dict) and r.get("kind") and r.get("id")}
+    replaced, since = learn.replaced(rules, settings.get("ALERT_ENGINE", "rules") or "rules"), None
+    if replaced:
         since = (q("SELECT min(ts) AS t FROM event_messages WHERE mode = 'events'") or [{}])[0].get("t")
     rows = (learn.learn_worked(q, rules, live, was, replaced, since) + learn.learn_usual(q)
             + learn.learn_asks(q, live, replaced, since))

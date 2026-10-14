@@ -275,4 +275,25 @@ assert report.sheet(CASES["a node at minute five"], "es").startswith("🛰️"),
 assert "dangerously" not in report.sheet(CASES["a hot afternoon"], "en"), "an ordinary hot afternoon is not danger"
 assert report.T["en"]["state_heat"] in report.sheet(CASES["a hot afternoon"], "en")
 assert report.T["en"]["state_hot"] in report.sheet(CASES["dangerous heat"], "en")
+# ---------------------------------------------------------------- what was sent, and only that (14 Oct)
+# On ALERT_ENGINE=events a replaced pack's rules record rows nobody received. node #1's 19:00 report opened "It is hot
+# inside" from one of those while the page said bearable: the bundle leaves them out, and the engine's open, sent
+# episodes stand in for them.
+import learn                                                        # noqa: E402
+assert learn.replaced([{"id": "heat/heat_stress_now", "kind": "sustained"}, {"id": "nearby/x"}], "events") == {"heat"}
+assert learn.replaced([{"id": "heat/heat_stress_now", "kind": "sustained"}], "rules") == set(), "a rules node replaces nothing"
+_src = open("app/report.py").read()
+_bun = _src[_src.index("def bundle"):_src.index("\ndef ", _src.index("def bundle") + 10)]
+assert _bun.count("if told(r)]") == 2 and "learn.silent(" in _bun, "both alert lists leave silent rows out"
+assert "WHERE cleared_at IS NULL AND ever_sent AND level = 'act'" in _bun, "the engine's open episodes, only those it told"
+_ev = lambda kind: _b(open_act=[], open_events=[{"issue": "heat", "kind": kind, "at": "2026-10-14T14:47:00+08:00"}])  # noqa: E731
+assert report.T["en"]["state_heat"] in report.sheet(_ev("sustained"), "en"), "an open heat episode that was sent is said"
+assert report.T["en"]["state_hot"] in report.sheet(_ev("danger"), "en")
+assert report.T["en"]["state_heat"] not in report.sheet(_b(open_act=[], open_events=[]), "en"), "nothing open, no heat line"
+# the inventory is a survey sensor written when it is edited: it never "stopped sending"
+assert "s.local AND s.kind = 'sensor'" in report.QUIET_SQL
+# a metric with no household word is never named (node #1: "BAYU HOLES: the bme_iaq ran higher than usual")
+_iaq = report.sheet(_b(series=[dict(FIXTURE["series"][0], metric="bme_iaq", notability=4.0)], alerts=[], open_act=[]), "en")
+assert "bme_iaq" not in _iaq and "What changed" not in _iaq, _iaq
+print("the report tells what was sent; the inventory never stops sending; a metric without a word is not named")
 print(f"the sheet renders in three languages across {len(CASES)} states, under 100 words, with nothing unfilled")
