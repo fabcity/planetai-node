@@ -144,7 +144,7 @@ function sensorsBlock() {
     const over = line != null ? pts.filter(p => p && p[1][0] > line).map(p => `<rect x="${x(p[0]) - 3}" y="${H - 3}" width="6" height="3" fill="var(--signal-worse)"/>`).join('') : '';
     const clip = pts.filter(p => p && p[1][2] > top).length ? `<text x="${W - 2}" y="9" text-anchor="end" class="lab">↑ ${fmt(d3.max(a.filter(Boolean), v => v[2]), 0)}</text>` : '';
     return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" class="sp"><path d="${band}" class="bandp"/><path d="${ln}" class="lnp"/>`
-      + (line != null ? `<line x1="0" x2="${W}" y1="${y(line)}" y2="${y(line)}" class="linep"/>` : '') + over + clip + `</svg>`;
+      + (line != null ? `<line x1="0" x2="${W}" y1="${y(line)}" y2="${y(line)}" class="linep"/><text x="2" y="${y(line) < 12 ? y(line) + 10 : y(line) - 3}" class="lab">${lineLab(D.issues.air)}</text>` : '') + over + clip + `</svg>`;
   };
   const grp = (t, rs) => rs.length ? `<div class="gh k">${t} · ${rs.length}</div>` + rs.map(r => `<div class="srow" data-sid="${esc(r.id)}"><span class="t">${esc(plain(r.s.name || r.id))}<small>${esc(r.s.source || '')}${r.s.lat != null ? ` · ${fmt(r.d, 1)} km` : ''}${r.s.indoor ? ' · inside' : ''}</small></span>${spark(r.a)}<span class="c">${num(r.id + '.' + METRIC, fmt(r.last, (D.metrics[METRIC] || {}).dp ?? 1), line != null ? `the line ${line}` : `one scale, ${fmt(lo, 0)} to ${fmt(top, 0)}`)}</span></div>`).join('') : '';
   $('#sensors').innerHTML = `<div class="dh"><h2>${said(labelOf(METRIC))}, every source, last 24 hours</h2><span class="k">one scale, ${fmt(lo, 0)} to ${fmt(top, 0)} ${said(unitOf(METRIC))} · band = the hour’s low to high · line = its mean${line != null ? ' · red: over the line' : ''}</span></div>`
@@ -163,7 +163,7 @@ function issuesBlock() {
     out.push(`<figure class="sm"><figcaption><b>${said(it.name)}</b> · ${said(D.labels[dk])} ${prov((it.provenance || {})[dk] || 'model')}</figcaption><svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">`
       + y.ticks(3).map(t => `<line x1="30" x2="${W - 6}" y1="${y(t)}" y2="${y(t)}" class="grid"/><text x="26" y="${y(t) + 4}" text-anchor="end">${fmt(t, 0)}</text>`).join('')
       + days.map(j => `<line x1="${x(j)}" x2="${x(j)}" y1="6" y2="${H - 16}" class="grid"/><text x="${x(j) + 3}" y="${H - 4}">${dayOf(D.buckets[j]).slice(8)}</text>`).join('')
-      + (it.line != null ? `<line x1="30" x2="${W - 6}" y1="${y(it.line)}" y2="${y(it.line)}" class="linep"/>` : '') + `<path d="${ln}" class="lnp" style="stroke-width:${dk === 'room' ? 1.6 : 1.1}"/></svg></figure>`);
+      + (it.line != null ? `<line x1="30" x2="${W - 6}" y1="${y(it.line)}" y2="${y(it.line)}" class="linep"/><text x="34" y="${y(it.line) - 3}" class="lab">${lineLab(it)}</text>` : '') + `<path d="${ln}" class="lnp" style="stroke-width:${dk === 'room' ? 1.6 : 1.1}"/></svg></figure>`);
   }
   $('#issues7').innerHTML = `<h2>Every issue, every distance, seven days</h2><div class="sms">${out.join('')}</div><p class="fine">Hourly, from GET /issues/days. Each drawing keeps its own scale, capped at the 98th percentile; the red dash is the line. Day numbers mark local midnight.</p>`;
 }
@@ -228,11 +228,15 @@ const tcard = (t, classes) => `<div class="icard" data-id="${t.id || ''}"><label
   + `<div class="acts"><button data-a="save">${t.id ? 'Save' : 'Add'}</button>${t.id ? '<button data-a="del">Delete</button>' : ''}</div><p class="fine" role="status"></p></div>`;
 /* The usual day, hour by hour: Node's What it remembers draws it (doors-node.js usualBlock); it stays here beside the
    other drawings of readings. */
-const dayStrip = h => { const v = Object.entries(h || {}).map(([k, x]) => [+k, x]); if (v.length < 12) return '';
-  const lo = Math.min(...v.map(x => x[1])), hi = Math.max(...v.map(x => x[1])) || 1;
-  return `<svg viewBox="0 0 240 34" width="240" height="34" role="img" aria-label="the usual day, hour by hour">`
-    + v.map(([k, x]) => { const y = 4 + 26 * (1 - (x - lo) / ((hi - lo) || 1)); return `<rect x="${k * 10 + 1}" y="${y.toFixed(1)}" width="8" height="${(30 - y).toFixed(1)}" fill="currentColor" opacity=".55"><title>${String(k).padStart(2, '0')}:00 · ${x}</title></rect>`; }).join('')
-    + `<text x="0" y="34" font-size="6" fill="currentColor">00</text><text x="114" y="34" font-size="6" fill="currentColor">12</text><text x="228" y="34" font-size="6" fill="currentColor">23</text></svg>`; };
+/* the usual day, hour by hour: bars from zero when the issue has a line, so the line sits at its true height; the
+   line's label in a right margin and the hours under the bars, so neither is clipped or drawn over a bar */
+const dayStrip = (h, it) => { const v = Object.entries(h || {}).map(([k, x]) => [+k, x]); if (v.length < 12) return '';
+  const line = it ? it.line : null, lo = line != null ? 0 : Math.min(...v.map(x => x[1])), hi = Math.max(...v.map(x => x[1]), line ?? -Infinity) || 1;
+  const Y = x => 8 + 52 * (1 - (x - lo) / ((hi - lo) || 1)), W = 18;
+  return `<svg viewBox="0 0 480 80" style="width:min(480px,100%);height:auto" role="img" aria-label="the usual day, hour by hour">`
+    + v.map(([k, x]) => { const y = Y(x); return `<rect x="${k * W + 2}" y="${y.toFixed(1)}" width="${W - 4}" height="${(60 - y).toFixed(1)}" fill="currentColor" opacity=".55"><title>${String(k).padStart(2, '0')}:00 · ${x}</title></rect>`; }).join('')
+    + (line != null ? `<line x1="0" x2="${24 * W}" y1="${Y(line).toFixed(1)}" y2="${Y(line).toFixed(1)}" class="linep"/><text x="${24 * W + 4}" y="${(Y(line) + 3.5).toFixed(1)}" font-size="10" class="lab">${lineLab(it)}</text>` : '')
+    + [0, 6, 12, 18, 23].map(k => `<text x="${k * W + W / 2}" y="76" font-size="10" text-anchor="middle" fill="currentColor">${String(k).padStart(2, '0')}</text>`).join('') + `</svg>`; };
 /* THINGS and IMAGES are tables (Tomas, 14 Oct: "it needs to build a table and not add all as cards"). A card, the
    whole form, opens only in a dialog: to add or edit a thing, to look at or edit one image, or to see all images. */
 let CARDLG = null;
