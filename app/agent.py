@@ -63,7 +63,8 @@ def status() -> dict:
 @mcp.tool()
 def health_check() -> dict:
     """Checks with the fix named next to each failure: polling recent, sources without errors, a backup in the last two days,
-    the database reachable, the mesh alive if configured."""
+    the database reachable, the mesh alive if configured. `sources` is GET /health/sources: the fundamental sources, each
+    running or not, with its fix; they never make `ok` false."""
     h = _get("/health"); checks = []
     def chk(name, ok, fix): checks.append({"check": name, "ok": bool(ok), "fix": None if ok else fix})
     age = None
@@ -97,7 +98,13 @@ def health_check() -> dict:
             f"radio(s) {', '.join(quiet)} have been silent for hours. What this means: readings and alerts that travel over LoRa have "
             f"stopped; everything else (the WiFi sensors, Telegram, the dashboard) is unaffected. Most often the gateway radio (the XIAO) "
             f"lost WiFi or its MQTT session: check its power light, open its web page at its IP, or power-cycle it. `planetai logs mosquitto` shows whether the broker hears it.")
-    return {"ok": all(c["ok"] for c in checks), "checks": checks}
+    # The fundamental sources (GET /health/sources), apart from the checks: a node with no sensor yet is unfinished,
+    # not broken, so they never make `ok` false. Each one that is not running carries its fix.
+    try:
+        srcs = _get("/health/sources")["sources"]
+    except Exception:  # noqa: BLE001 — an older node has no such route; the checks above stand on their own
+        srcs = None
+    return {"ok": all(c["ok"] for c in checks), "checks": checks, "sources": srcs}
 
 
 @mcp.tool()

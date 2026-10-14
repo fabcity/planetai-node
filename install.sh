@@ -526,11 +526,9 @@ chk "all modules in image" "[ \"\$(ls app/*.py | wc -l)\" -eq \"\$(docker compos
 chk "db healthy"      "docker compose exec -T db pg_isready -U planetai"
 PORT="$(grep '^APP_PORT=' .env | cut -d= -f2 | sed 's/[[:space:]]*#.*$//' | tr -d ' ')"; PORT="${PORT:-8080}"
 chk "app answering"   "curl -sf localhost:${PORT}/health"
-chk "telegram set"    "grep -qE '^TELEGRAM_BOT_TOKEN=.+' .env"
 [[ -x backup.sh ]] || { chmod +x backup.sh; echo "  ✓ backup.sh made executable"; }
 step_ok
 [[ $ok -eq 1 ]] || warn "something's off: docker compose logs -f app"
-grep -qE '^TELEGRAM_BOT_TOKEN=.+' .env || warn "alerts go to the log only until TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_IDS are set in .env (then: docker compose up -d)"
 
 # ---- backup cron (best effort; skip silently if no crontab)
 if need crontab && ! grep -q planetai-backup <<< "$(crontab -l 2>/dev/null)"; then
@@ -556,3 +554,13 @@ say "First reading lands within $(grep '^POLL_SECONDS' .env | cut -d= -f2 || ech
 echo "   make health     (or: curl -s localhost:${PORT}/health | python3 -m json.tool)"
 echo "   make stats"
 echo "   docker compose logs -f app"
+
+# The doctor, last, so the final thing on the screen is what is still to do: every check with its fix, then the
+# node's data sources and "To finish setting up", most important first (GET /health/sources). In a terminal it
+# offers to do the first one; with --yes or no terminal it only prints. `planetai setup` runs the doctor itself once
+# the node has restarted with its answers, and says so with PLANETAI_FROM_SETUP, so it is not printed twice.
+if [[ -z "${PLANETAI_FROM_SETUP:-}" ]]; then
+  echo; echo "doctor:"
+  sleep 3
+  ./bin/planetai doctor "$([[ $YES -eq 1 ]] && echo quiet || echo --guide)" || true
+fi
