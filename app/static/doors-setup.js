@@ -17,14 +17,14 @@
    read that pane out of that file by name; one copy when / becomes the doors. */
 const SETUP = { desc: null, packs: [], sources: null, group: null, loaded: {}, drawnPacks: '', dirty: false, history: null };
 const SETUP_GROUPS = {
-  basics: ['Basics', 'This place: what it watches, in order, what kind of node it is, its language and how its page opens. Its name, city, position and time zone are read once at start: change them in .env on the node, then run planetai restart.'],
+  basics: ['Basics', 'This place: what it watches, in order, what kind of node it is, its language and how its page opens. Its name, city, position and time zone are read once at start.'],
   sources: ['Sources', 'What the node reads: your sensors, your account, and the public stations and portals around you. Sources that come as packs are switched on and set under Packs.'],
   alerts: ['Alerts', 'Reports at the hours you choose, in this node’s own time zone; between them, only what you asked to be interrupted for; and how a loop is closed.'],
   model: ['Model', 'Which model answers, here and on Telegram alike. The strongest one the node can reach is used, and its keys are under Keys.'],
   packs: ['Packs', 'Which packs load, each with its own settings in its card. Code packs stay off until you allow them; read one before you do.'],
   keys: ['Keys', 'Every secret in one place. Each is masked once saved and never shown again.'],
   sharing: ['Sharing', 'Who may read this node, and everything it sends or announces beyond this machine. Readings stay here; hourly means, Index cells and ρ travel.'],
-  system: ['System', 'Tuning numbers, and what is read once at start: the port, extra containers, backups, the poll interval. Change those in .env on the node, then run planetai restart.'],
+  system: ['System', 'Tuning numbers, and what is read once at start: the port, extra containers, backups, the poll interval.'],
 };
 const SETUP_BOOLS = /^(BAD_ENABLED|OPENMETEO_ENABLED|SENSOR_INDOOR|MESH_ALERTS|HA_DISCOVERY|EXPORT_ENABLED|IPFS_PUBLISH|QUIET_HOURS|BAD_INCLUDE_INDOOR|PACKS_ALLOW_CODE)$/;
 /* What a screen without the token gets at each level: the node's own rule (app/main.py _SHARE_OFF / _SHARE_OPEN). */
@@ -78,7 +78,7 @@ function setupDraw() {
   const tokForm = sq('#sunlock'); if (tokForm) tokForm.onsubmit = sUnlock;
   const qrB = sq('#sqrb'); if (qrB) qrB.onclick = sQR;
   const lockB = sq('#slock'); if (lockB) lockB.onclick = () => { try { localStorage.removeItem('planetai_admin'); localStorage.removeItem('planetai_act'); } catch (e) { /* none */ } location.reload(); };
-  sq('#ssave').onclick = sSave; sq('#sdiscard').onclick = () => { SETUP.dirty = false; setupDraw(); };
+  sq('#ssave').onclick = () => sSave(); sq('#sdiscard').onclick = () => { SETUP.dirty = false; setupDraw(); };
   sqa('[data-room]').forEach(f => f.onsubmit = sRoom);
 }
 
@@ -153,11 +153,14 @@ function sGroup(g, unlocked) {
         + `<div><b>${esc(p.name || p.id)}</b><div class="sm">${esc(p.kind || '')}${p.domain ? ` · ${esc(p.domain)}` : ''} · v${esc(p.version || '')} · ${esc(p.author || '')}</div><p class="help">${esc(p.description || '')}</p></div></div>`
         + rows.filter(r => r.pack === p.id).map(r => sRow(r, unlocked)).join('') + `</section>`; }).join('')}</div>` + body;
   }
-  const boot = (d.bootstrap || []).filter(b => (b.group || 'system') === g).map(b => `<div class="srow ro"><div class="sl"><label>${esc(b.label)}</label><div class="sm"><code>${esc(b.key)}</code> · read at start</div>`
-    + `<p class="help">Edit .env on the node, then run <code>planetai restart</code>.</p></div><div class="sc"><input type="text" readonly value="${esc(b.value || '')}" placeholder="not set"></div></div>`).join('');
+  /* what is read once at start: one table, and the way to change it said once */
+  const B = (d.bootstrap || []).filter(b => (b.group || 'system') === g);
+  const boot = B.length ? `<h3 class="sub2">Read at start</h3><p class="blurb">Change these in <code>.env</code> on the node, then run <code>planetai restart</code>.</p>`
+    + `<table class="tbl ro"><tr><th>setting</th><th class="hide">key</th><th>value</th></tr>${B.map(b => `<tr><td>${esc(b.label)}</td><td class="hide mono">${esc(b.key)}</td>`
+      + `<td class="mono">${b.value ? esc(b.value) : '<span class="fine">not set</span>'}</td></tr>`).join('')}</table>` : '';
   const changed = (SETUP.history || []).filter(a => rows.some(r => String(a.note || '').split(', ').includes(r.key))).slice(0, 5);
   return `<h2>${esc(sTitle(g))}</h2><p class="blurb">${esc((SETUP_GROUPS[g] || [])[1] || 'This node declares this group. planetai config shows the same keys.')}</p>${gate}`
-    + `<div class="rows">${body}${boot}</div>`
+    + `<div class="rows">${body}</div>${boot}`
     + (changed.length ? `<div class="hist"><div class="k">changed lately</div>${changed.map(a => `<p><span class="mono">${esc(wdhm(a.ts))}</span> · ${esc(a.actor || 'someone')} · ${esc(a.note || '')}</p>`).join('')}</div>` : '');
 }
 
@@ -292,10 +295,47 @@ document.addEventListener('click', ev => {
   if (go) { ev.preventDefault(); SETUP.group = go.dataset.go; setupDraw(); }
 });
 
-async function sSave() {
+/* THE CONSEQUENCES STEP (phase 4b, 15 Oct 2026). A change that sends something beyond this machine (the node's
+   `outward`) or runs code here that is not the node's (`runs_code`, or a code pack switched on) looked like any other
+   switch behind the same save bar. Now the save bar stops and says, in the setting's own help, what will leave or
+   what will run, with Back and Save anyway, inside the page. Turning one of them off, or back to private, asks nothing. */
+const sOff = v => v === '' || v === '0' || v === 'off' || v === 'private';
+function sConsequences(body, desc, packs, drawn) {
+  const rows = (desc && desc.runtime) || [], out = [];
+  for (const [k, v] of Object.entries(body)) {
+    if (k === 'PACKS_ENABLED') {                  /* '' is every pack, so a code pack can switch on by a list going empty */
+      const ids = packs.map(p => p.id), was = drawn ? drawn.split(',') : ids, now = v ? v.split(',') : ids;
+      for (const p of packs.filter(x => x.kind === 'code' && now.includes(x.id) && !was.includes(x.id)))
+        out.push({ key: 'PACKS_ENABLED', label: p.name || p.id, to: 'on', code: true,
+          help: `A code pack: its adapter.py runs on this machine with the node’s privileges, while Allow code packs is on. ${p.description || ''}`.trim() });
+      continue;
+    }
+    const r = rows.find(x => x.key === k) || {};
+    if ((r.outward || r.runs_code) && !sOff(v)) out.push({ key: k, label: r.label || k, to: r.secret ? 'a new value' : v, leaves: !!r.outward, code: !!r.runs_code, help: r.help || '' });
+  }
+  return out;
+}
+function sConfirm(items) {
+  let p = sq('#sconfirm');
+  if (!p) { p = document.createElement('div'); p.id = 'sconfirm'; p.className = 'sconfirm'; p.setAttribute('role', 'alertdialog'); p.setAttribute('aria-labelledby', 'sconfirm-h'); $('#setupv2').append(p); }
+  const leaves = items.some(i => i.leaves), runs = items.some(i => i.code);
+  p.innerHTML = `<h3 id="sconfirm-h">Before this is saved</h3><p>${leaves && runs ? 'This sends something beyond this machine and runs code on it.' : leaves ? 'This sends something beyond this machine.' : 'This runs code on this machine that is not the node’s own.'} `
+    + `Here is what each change does, in the node’s own words.</p><ul>${items.map(i => `<li><b>${esc(i.label)}</b><span class="to">→ ${esc(i.to)}</span>`
+      + `${i.leaves ? '<span class="why">↗ leaves this machine</span> ' : ''}${i.code ? '<span class="why">runs code here</span>' : ''}<p>${esc(i.help)}</p><code class="fine">${esc(i.key)}</code></li>`).join('')}</ul>`
+    + `<div class="acts"><button type="button" class="sbtn" data-a="back">Back</button><button type="button" class="sbtn primary" data-a="save">Save anyway</button></div>`;
+  p.hidden = false;
+  const close = () => { p.hidden = true; sq('#ssave') && sq('#ssave').focus(); };
+  p.querySelector('[data-a=back]').onclick = close;
+  p.querySelector('[data-a=save]').onclick = () => { p.hidden = true; sSave(true); };
+  p.onkeydown = e => { if (e.key === 'Escape') close(); };
+  p.querySelector('[data-a=back]').focus();
+}
+
+async function sSave(confirmed) {
   const body = sDiff(), keys = Object.keys(body), auth = DOORS_AUTH();
   sqa('.err').forEach(e => { e.textContent = ''; e.hidden = true; });
   if (!keys.length) return;
+  if (confirmed !== true) { const c = sConsequences(body, SETUP.desc, SETUP.packs, SETUP.drawnPacks); if (c.length) return sConfirm(c); }
   /* a key that moved on the node since this page drew it is shown, not overwritten; a second press writes */
   const fresh = await fetch('/settings', { headers: auth }).then(x => x.ok ? x.json() : null).catch(() => null);
   const row = (d, k) => ((d && d.runtime) || []).find(r => r.key === k) || {};

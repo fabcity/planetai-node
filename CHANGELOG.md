@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- **Data is tabs, and Set up asks before anything leaves (design review, 14 Oct; Tomas: tables by default, cards
+  only as pop-ups).** Data was one scroll of nine sections, about 21,900 px at 1440 and 36,600 px on a phone. It is
+  now one pane at a time, routed `#data/<tab>`: Readings, Models and satellite, Home, Ledger and API, with Set up's list
+  as the tab bar (sticky; on a phone a wrapping strip of 44 px targets instead of one that clipped "MODELS AND SATELL"
+  and scrolled away). The models are one table, a row per source with its cadence in words and a unit column, without
+  "years cached" or forecast lead hours, and the 20 empty model tiles left the kinds grid. The ledger collapses a run
+  of the same answer ("decided ×10"), says the day and the time on one line, names who answered in words instead of
+  `gui` or `local-model/telegram`, and filters by stage. API routes are one line each. The Index cells table moved to
+  Node, under the flow. Every old anchor (`#data/d-images`, `#data/perday`, a station's id, `#data/cells`,
+  `#data/d-learned`) lands on its tab or on Node. Side by side, numeric columns no longer run together, and the usual
+  day's hour labels are about 10 px on a phone, not 6. In Set up, a change that sends something beyond the machine
+  (`outward`) or runs code (`runs_code`, new in `GET /settings`: `PACKS_ALLOW_CODE`, and a code pack switched on) opens
+  a **Before this is saved** panel in the page with the setting's own help, Back and Save anyway; `MAP_TILES` is now
+  declared outward. What is read at start is one table with its instruction said once; the section list, switches
+  and buttons are 44 px; the gear is filled while Set up is open. `tests/test_doors.py` renders each tab, the old
+  anchors, the ledger and the consequences step; `measure.mjs doors`, in the visual gate, walks every tab and section at
+  390 and 1440, paper and dark, locked and unlocked.
 - **Fires, a new source (Tomas, 15 Oct).** `packs/fire` reads NASA FIRMS active fire detections (VIIRS 375 m,
   CC0) from the public regional files, no key needed, and counts the burning places of the last day in a local ring
   (`FIRE_LOCAL_KM`, 25 km) and a regional one (`FIRE_REGION_KM`, 150 km): how many, their fire radiative power, the

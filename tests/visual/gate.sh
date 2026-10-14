@@ -260,3 +260,8 @@ node tests/visual/measure.mjs overflow
 # The phone page, per SPEC_mobile §8.1: the rule, the overflow, the engine's words, the targets,
 # the budget under the written throttle, the locked state — against the committed fixture.
 node tests/visual/measure.mjs mobile
+
+# The doors' Data and Set up, pane by pane: the classic `overflow` above never opens them. Every tab and section at
+# 390 and 1440, paper and dark, locked and unlocked; 44 px tabs; one tab's sections at a time; every anchor Data had
+# lands; and a change that leaves the machine asks first. PAI_DOORS_SHOTS=1 keeps a picture of every pane.
+node tests/visual/measure.mjs doors
