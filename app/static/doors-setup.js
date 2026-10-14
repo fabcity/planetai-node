@@ -15,7 +15,7 @@
    key with choices offers only them; a secret is write-only; the pack switches write PACKS_ENABLED; what is read at
    start is shown and never sent. ponytail: the group words are copied from dashboard.js (GROUPS) because four suites
    read that pane out of that file by name; one copy when / becomes the doors. */
-const SETUP = { desc: null, packs: [], group: null, loaded: {}, drawnPacks: '', dirty: false, history: null };
+const SETUP = { desc: null, packs: [], sources: null, group: null, loaded: {}, drawnPacks: '', dirty: false, history: null };
 const SETUP_GROUPS = {
   basics: ['Basics', 'This place: what it watches, in order, what kind of node it is, its language and how its page opens. Its name, city, position and time zone are read once at start: change them in .env on the node, then run planetai restart.'],
   sources: ['Sources', 'What the node reads: your sensors, your account, and the public stations and portals around you. Sources that come as packs are switched on and set under Packs.'],
@@ -52,6 +52,7 @@ async function setupLoad() {
   SETUP.packs = await doorsFetch('/packs').then(r => r.ok ? r.json() : []).catch(() => []);
   [SETUP.storage, SETUP.machine] = await Promise.all(['storage', 'machine'].map(r => doorsFetch('/' + r).then(x => x.ok ? x.json() : null).catch(() => null)));
   SETUP.history = tok ? await doorsFetch('/actions?stage=settings&limit=40').then(r => r.ok ? r.json() : null).catch(() => null) : null;
+  SETUP.sources = tok ? await doorsFetch('/health/sources').then(r => r.ok ? r.json() : null).catch(() => null) : null;
   const hash = location.hash.split('/')[1];
   if (hash && SECTIONS().includes(hash)) SETUP.group = hash;
   if (!SETUP.group || !SECTIONS().includes(SETUP.group)) SETUP.group = SETUP.desc && SETUP.desc.unlocked ? (sGroups(SETUP.desc)[0] || 'screen') : 'screen';
@@ -66,7 +67,7 @@ function setupDraw() {
     + `<p class="lede">Everything here is live within about twenty seconds; nothing needs a restart. A blank field hands the setting back to <code>.env</code>, and a value set here overrides it.</p></header>`
     + `<div class="sgrid"><nav class="snav" aria-label="Set up sections">${SECTIONS().map(s => `<a href="#setup/${s}" class="${s === g ? 'on' : ''}" data-s="${s}">`
       + `<span>${esc(sName(s))}</span>${s === 'screen' ? `<i>${unlocked ? 'unlocked' : 'locked'}</i>` : s === 'updates' ? (D.health.release || {}).newer ? '<i>new</i>' : '' : s === 'machine' ? (SETUP.storage && SETUP.storage.days_left != null ? `<i>${sDays(SETUP.storage.days_left)}</i>` : '') : setHere(s) ? `<i>${setHere(s)} set</i>` : ''}</a>`).join('')}</nav>`
-    + `<section class="spane" aria-live="polite">${g === 'screen' ? sScreen(unlocked) : g === 'updates' ? sUpdates() : g === 'machine' ? sMachine() : g === 'rooms' ? sRooms(unlocked) : sGroup(g, unlocked)}</section></div>`
+    + `<section class="spane" aria-live="polite">${sTodo()}${g === 'screen' ? sScreen(unlocked) : g === 'updates' ? sUpdates() : g === 'machine' ? sMachine() : g === 'rooms' ? sRooms(unlocked) : sGroup(g, unlocked)}</section></div>`
     + `<div class="sbar" id="sbar" hidden><span id="scount"></span><span class="sp"></span><button type="button" class="sbtn" id="sdiscard">Discard</button><button type="button" class="sbtn primary" id="ssave">Save changes</button></div>`;
   sqa('.snav a').forEach(a => a.onclick = ev => {
     ev.preventDefault();
@@ -79,6 +80,16 @@ function setupDraw() {
   const lockB = sq('#slock'); if (lockB) lockB.onclick = () => { try { localStorage.removeItem('planetai_admin'); localStorage.removeItem('planetai_act'); } catch (e) { /* none */ } location.reload(); };
   sq('#ssave').onclick = sSave; sq('#sdiscard').onclick = () => { SETUP.dirty = false; setupDraw(); };
   sqa('[data-room]').forEach(f => f.onsubmit = sRoom);
+}
+
+/* To finish setting up (15 Oct 2026): the node's fundamental sources that are not running, most important first, each
+   with the node's own fix and a link to the section it is set in. The list and the words are GET /health/sources
+   (app/fundamentals.py), the same the doctor prints after an install or an update; this page draws, it decides nothing. */
+function sTodo() {
+  const todo = ((SETUP.sources || {}).sources || []).filter(r => r.ok === false);
+  if (!todo.length) return '';
+  return `<div class="gate"><b>To finish setting up</b><ol>${todo.map(r => { const g = (r.setup || '').split('/')[1];
+    return `<li><b>${esc(r.name)}.</b> ${esc(r.fix)}${g && g !== SETUP.group ? ` <a href="#setup/${esc(g)}" data-go="${esc(g)}">Go to ${esc(sName(g))}</a>` : ''}</li>`; }).join('')}</ol></div>`;
 }
 
 /* Rooms (Tomas, 14 Oct 2026): the household's word for where each of its own sensors is. The node makes it the

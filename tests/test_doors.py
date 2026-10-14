@@ -599,6 +599,7 @@ const page = tok => ({ D, d3, $: mk(), console, Response, UNLOCK_AT: '<a href="#
   const vc = { D, doorsLocal: L.doorsLocal }; vm.createContext(vc); const verdict = v.runInContext(vc);
   out.v = verdict(D); out.vStale = verdict({ ...D, health: { ...D.health, last_poll: '2026-10-06T08:00:00+00:00' } });
   out.vErr = verdict({ ...D, health: { ...D.health, errors: { forecast: 'boom' } } });
+  out.vSrc = verdict(D, { missing: 1, sources: [{ name: 'Alerts on Telegram', ok: false, state: 'missing' }, { name: 'Weather', ok: true, state: 'ok' }, { name: 'Backup', ok: null, state: 'elsewhere' }] });
   /* the flow on a phone */
   const lay = new Function(fn(node, 'flowLayout') + 'return flowLayout;')()(358, 6, 7);
   out.flow = { W: 358, H: lay.H, right: lay.cx + lay.R, tx: lay.tx, rails: [0, 1, 2, 3, 4, 5].map(lay.inX).concat([0, 1, 2, 3, 4, 5, 6].map(lay.outX)),
@@ -633,6 +634,7 @@ print("doors: without WebGL Place draws the still map, the layer list and the fa
 assert pp["v"]["ok"] and pp["v"]["head"] == "Working" and re.match(r"Last reading 19:19; 6 of 6 sensors, \d+ of 20 stations heard in the last hour\.$", pp["v"]["text"]), pp["v"]
 assert not pp["vStale"]["ok"] and pp["vStale"]["head"] == "Needs a look" and "the last reading was at" in pp["vStale"]["text"].lower(), pp["vStale"]
 assert not pp["vErr"]["ok"] and "forecast loop failed" in pp["vErr"]["text"], pp["vErr"]
+assert not pp["vSrc"]["ok"] and pp["vSrc"]["text"] == "Alerts on Telegram is not set up.", pp["vSrc"]   # /health/sources, with the token
 print("doors: Node leads with its verdict: Working, or Needs a look and why")
 _fl = pp["flow"]
 assert _fl["right"] <= _fl["W"] and max(_fl["rails"]) < _fl["tx"] and _fl["lastIn"] < _fl["top"] and _fl["firstOut"] > _fl["bottom"], _fl

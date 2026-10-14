@@ -48,8 +48,9 @@ Four questions: a name, the place, what the node is for, the sensor if they have
 at a terminal for it, `planetai setup --answers node.json` takes the same answers as a file — the JSON
 shape is in `bin/planetai`.
 
-The install ends with a checklist. A cross next to *telegram connected* is expected at this point. A cross
-next to *database* or *node answers* is not: go to `troubleshoot-node`.
+The install ends with a checklist and *To finish setting up*. Telegram and the first backup on that list are expected
+at this point, and a sensor if the person has none yet; walk them through it in that order. A cross next to
+*database* or *node answers* is not: go to `troubleshoot-node`.
 
 **3. Telegram, then a real alert.**
 

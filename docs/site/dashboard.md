@@ -472,9 +472,10 @@ the same answers (the node's cell and its parent's cells, the stations, the ring
 house), with the layer list and the facts as always.
 
 **Node** (15 Oct 2026) leads with its verdict: "Working. Last reading 19:19; 6 of 6 sensors, 10 of 20 stations heard
-in the last hour.", from `/health` and `/stats` (a station is heard when it read in the last hour). A poll older than
-15 minutes, a loop that failed on its last run or a sensor of its own not heard in the last hour turns it into
-"Needs a look", saying which. On a phone (under 700 px) **What comes in, what goes out** is drawn vertically at the
+in the last hour.", from `/health` and `/stats` (a station is heard when it read in the last hour) and, for a screen
+holding the token, the fundamental sources `GET /health/sources` names. A poll older than 15 minutes, a loop that
+failed on its last run, a sensor of its own not heard in the last hour or a fundamental source not running turns it
+into "Needs a look", saying which, with a link to finish setting up. On a phone (under 700 px) **What comes in, what goes out** is drawn vertically at the
 screen's width, what comes in above the hexagon and what goes out below, each link on its own rail in the margin. The
 diary shows its fourteen most recent entries and the rest on **Show more**. **The nodes around it** lists the nodes
 first ("1 listed · 0 heard by radio") and draws the globe at most a third of the screen high. **What this node will

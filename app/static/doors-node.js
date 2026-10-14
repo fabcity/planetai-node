@@ -5,8 +5,8 @@
 
    PHASE 4a (Tomas, 14–15 Oct 2026; the review's findings). The plan:
    8. Lead with a verdict, the node's sentence: "Working. Last reading 19:50; 6 of 6 sensors, 13 of 23 stations heard in
-      the last hour." From /health and /stats only: the doctor's GET /health/sources (#249) is not on main. A stale poll,
-      a failing loop or a silent sensor of its own turns it into "Needs a look: …".
+      the last hour." From /health and /stats, and with the token the doctor's GET /health/sources (#249): a stale poll,
+      a failing loop, a silent sensor of its own or a fundamental source not running turns it into "Needs a look: …".
    9. Under 700 px the flow is drawn vertically (in above the hexagon, out below), the screen's own width, never wider.
    10. What it remembers: the counts line first; the diary shows 14 entries, and the rest on "show more".
    11. The nodes around it: the list first ("1 listed · 0 heard by radio"), the globe at most a third of the screen.
@@ -15,26 +15,31 @@ let FLOWOBS = null;
 /* the verdict: Working, or Needs a look and why. Heard is a reading in the last hour (/stats silent_minutes); a poll is
    stale after 15 minutes of /issues' as_of, the Wall's rule, so a capture is judged at its own time. */
 const ago = m => m < 90 ? `${Math.round(m)} min` : m < 48 * 60 ? `${Math.round(m / 60)} h` : `${Math.round(m / 1440)} days`;
-function verdict(D) {
+function verdict(D, src) {
   const h = D.health, heard = s => Object.values(D.stats15[s.sensor_id] || {}).some(v => v[1] != null && v[1] <= 60);
   const own = D.sensors.filter(s => s.local && s.kind === 'sensor'), pub = D.sensors.filter(s => !s.local && s.kind === 'sensor');
   const nOwn = own.filter(heard).length, nPub = pub.filter(heard).length, age = (Date.parse(D.as_of) - Date.parse(h.last_poll || '')) / 60e3;
   const bad = [!(age < 15) && (h.last_poll ? `the last reading was at ${hhmm(h.last_poll)}, ${ago(age)} before this page` : 'no reading since the restart'),
     ...Object.keys(h.errors || {}).map(k => `the ${k} loop failed on its last run`),
-    own.length > nOwn && `${own.length - nOwn} of its ${own.length} sensors not heard in the last hour`].filter(Boolean);
+    own.length > nOwn && `${own.length - nOwn} of its ${own.length} sensors not heard in the last hour`,
+    /* the doctor's fundamentals, as Set up lists them to finish setting up: each one not running, by its name */
+    ...((src && src.sources) || []).filter(r => r.ok === false).map(r => `${r.name.replace(/^./, c => c.toLowerCase())} ${r.state === 'missing' ? 'is not set up' : 'is quiet'}`)].filter(Boolean);
   if (bad.length) return { ok: false, head: 'Needs a look', text: bad.join('; ').replace(/^./, c => c.toUpperCase()) + '.' };
   return { ok: true, head: 'Working', text: `Last reading ${hhmm(h.last_poll)}; ${own.length ? `${nOwn} of ${own.length} sensors` : 'no sensors of its own'}, ${nPub} of ${pub.length} stations heard in the last hour.` };
 }
 VIEWS.node = function () {
   FLOWOBS && FLOWOBS.disconnect(); CLOCK.off('node-flow');
-  const R = D.registry, h = D.health, v = verdict(D);
-  $('#nodehead').innerHTML = `<div class="k">Node · ${esc(R.name)}, in ${esc(R.place)}</div>
-    <h1 data-learn="1" class="verdict ${v.ok ? '' : 'bad'}">${v.head}.</h1><p class="vline said" data-role="sentence">${esc(v.text)}</p>
+  const R = D.registry, h = D.health;
+  const say = src => { const v = verdict(D, src);
+    return `<h1 data-learn="1" class="verdict ${v.ok ? '' : 'bad'}">${v.head}.</h1><p class="vline said" data-role="sentence">${esc(v.text)}`
+      + `${src && src.missing ? ` <a href="#setup">To finish setting up →</a>` : ''}</p>`; };
+  $('#nodehead').innerHTML = `<div class="k">Node · ${esc(R.name)}, in ${esc(R.place)}</div><div id="verdict">${say(null)}</div>
     <p class="lede mono">planetai-node ${esc(h.version)} · up ${fmt(h.uptime_s / 3600, 1)} h · ${h.ingested.toLocaleString('en')} readings since the restart · cell ${esc(h.cell.id)} · ${esc(h.tz)}</p>`;
   /* asked once a draw, read by the flow and by Running: how many readings the node keeps (GET /storage, token-only)
      and what this home offers (GET /offers, open at every SHARE_LEVEL and in the daily export) */
   const kept = doorsFetch('/storage').then(x => x.ok ? x.json() : null).catch(() => null),
     offers = fetch('/offers').then(x => x.ok ? x.json() : null).catch(() => null);
+  doorsFetch('/health/sources').then(r => (r.ok ? r.json() : null)).catch(() => null).then(src => { const el = $('#verdict'); if (src && el) el.innerHTML = say(src); });
   flow(kept, offers); around(); running(kept); remember();
   /* #node/<id> (a refusal's proof) scrolls to that part once it is drawn; #node/remember is remember()'s own */
   const at = location.hash.slice(1).split('/')[1];
