@@ -36,8 +36,8 @@ const sq = s => document.querySelector('#setupv2 ' + s), sqa = s => document.que
 const sTitle = g => (SETUP_GROUPS[g] || [g.charAt(0).toUpperCase() + g.slice(1)])[0];
 const sGroups = d => { const seen = []; for (const r of d.runtime || []) if (!seen.includes(r.group)) seen.push(r.group);
   for (const b of d.bootstrap || []) if (b.group && !seen.includes(b.group)) seen.push(b.group); return seen; };
-const SECTIONS = () => [...(SETUP.desc ? sGroups(SETUP.desc) : []), 'machine', 'screen', 'updates'];
-const sName = g => ({ screen: 'This screen', updates: 'Updates', machine: 'Machine' })[g] || sTitle(g);
+const SECTIONS = () => [...(SETUP.desc ? sGroups(SETUP.desc) : []), 'rooms', 'machine', 'screen', 'updates'];
+const sName = g => ({ screen: 'This screen', updates: 'Updates', machine: 'Machine', rooms: 'Rooms' })[g] || sTitle(g);
 
 VIEWS.setup = async function () {
   if (!SETUP.desc) await setupLoad();
@@ -66,7 +66,7 @@ function setupDraw() {
     + `<p class="lede">Everything here is live within about twenty seconds; nothing needs a restart. A blank field hands the setting back to <code>.env</code>, and a value set here overrides it.</p></header>`
     + `<div class="sgrid"><nav class="snav" aria-label="Set up sections">${SECTIONS().map(s => `<a href="#setup/${s}" class="${s === g ? 'on' : ''}" data-s="${s}">`
       + `<span>${esc(sName(s))}</span>${s === 'screen' ? `<i>${unlocked ? 'unlocked' : 'locked'}</i>` : s === 'updates' ? (D.health.release || {}).newer ? '<i>new</i>' : '' : s === 'machine' ? (SETUP.storage && SETUP.storage.days_left != null ? `<i>${sDays(SETUP.storage.days_left)}</i>` : '') : setHere(s) ? `<i>${setHere(s)} set</i>` : ''}</a>`).join('')}</nav>`
-    + `<section class="spane" aria-live="polite">${g === 'screen' ? sScreen(unlocked) : g === 'updates' ? sUpdates() : g === 'machine' ? sMachine() : sGroup(g, unlocked)}</section></div>`
+    + `<section class="spane" aria-live="polite">${g === 'screen' ? sScreen(unlocked) : g === 'updates' ? sUpdates() : g === 'machine' ? sMachine() : g === 'rooms' ? sRooms(unlocked) : sGroup(g, unlocked)}</section></div>`
     + `<div class="sbar" id="sbar" hidden><span id="scount"></span><span class="sp"></span><button type="button" class="sbtn" id="sdiscard">Discard</button><button type="button" class="sbtn primary" id="ssave">Save changes</button></div>`;
   sqa('.snav a').forEach(a => a.onclick = ev => {
     ev.preventDefault();
@@ -78,6 +78,30 @@ function setupDraw() {
   const qrB = sq('#sqrb'); if (qrB) qrB.onclick = sQR;
   const lockB = sq('#slock'); if (lockB) lockB.onclick = () => { try { localStorage.removeItem('planetai_admin'); localStorage.removeItem('planetai_act'); } catch (e) { /* none */ } location.reload(); };
   sq('#ssave').onclick = sSave; sq('#sdiscard').onclick = () => { SETUP.dirty = false; setupDraw(); };
+  sqa('[data-room]').forEach(f => f.onsubmit = sRoom);
+}
+
+/* Rooms (Tomas, 14 Oct 2026): the household's word for where each of its own sensors is. The node makes it the
+   sensor's name whatever its platform calls it (init.sql 0.61), so alerts, the report and every page say "Kids", not
+   "K ROOM - BAYU HOLES". Each row saves on its own: a room is not a setting, and has no .env behind it. */
+function sRooms(unlocked) {
+  const S = (D.sensors || []).filter(s => s.local && s.kind === 'sensor');
+  if (!unlocked) return `<h2>Rooms</h2><p class="gate">Which room is which is the household’s: <a href="#setup/screen" data-go="screen">unlock this screen</a> with the admin token to name them.</p>`;
+  return `<h2>Rooms</h2><p class="blurb">Name the room each of this home’s sensors is in. Every alert, the report and every page use the name you give; the Wall never shows one. Leave it empty to use the sensor’s own name again.</p>`
+    + `<div class="rows">${S.map(s => `<form class="srow" data-room="${esc(s.sensor_id)}"><div class="sl"><label for="room-${esc(s.sensor_id)}">${esc(s.source_name || s.name || s.sensor_id)}</label>`
+      + `<div class="sm"><code>${esc(s.sensor_id)}</code>${s.indoor ? ' · inside' : ' · outside'}</div></div>`
+      + `<div class="sc"><input id="room-${esc(s.sensor_id)}" maxlength="40" value="${esc(s.room || '')}" placeholder="${esc(s.source_name || s.name || '')}"><button class="sbtn">Save</button></div>`
+      + `<p class="err" role="status"></p></form>`).join('') || '<p class="fine">This node has no sensors of its own yet.</p>'}</div>`;
+}
+async function sRoom(ev) {
+  ev.preventDefault();
+  const f = ev.currentTarget, sid = f.dataset.room, say = f.querySelector('[role=status]');
+  const r = await doorsFetch(`/sensors/${encodeURIComponent(sid)}`, { method: 'PATCH', headers: { ...DOORS_AUTH(), 'content-type': 'application/json' },
+    body: JSON.stringify({ room: f.querySelector('input').value.trim() || null }) }).catch(() => null);
+  const j = r ? await r.json().catch(() => ({})) : {};
+  if (!(r && r.ok)) { say.textContent = `Not saved: ${j.detail || (r ? r.status : 'the node did not answer')}`; return; }
+  const s = (D.sensors || []).find(x => x.sensor_id === sid); if (s) Object.assign(s, j.sensor);
+  say.textContent = j.sensor.room ? `Saved: this sensor is “${j.sensor.room}” everywhere now.` : 'Saved: back to the sensor’s own name.';
 }
 
 /* one row: the label, the node's help and where its value comes from; the control on the right; the refusal under it */
