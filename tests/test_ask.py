@@ -99,7 +99,8 @@ logging.getLogger().addHandler(handler)
 logging.getLogger().setLevel(logging.DEBUG)
 
 opened = []
-main.db = lambda: opened.append("db") or (_ for _ in ()).throw(RuntimeError("no database in this test"))
+import traceback as _tb                              # noqa: E402
+main.db = lambda: opened.append("".join(_tb.format_stack(limit=9)[:-1])) or (_ for _ in ()).throw(RuntimeError("no database in this test"))
 main.q = lambda sql, *a: [{"name": s.get("name")} for s in FIX["sensors"]] if "FROM sensors" in sql else []
 main.forecast = lambda hours=24: None   # the Wall reads it (ask.wall_reads); never the database in this test
 import inspect                                       # noqa: E402
@@ -336,7 +337,7 @@ logged = LOG.getvalue()
 check(ASKED not in logged and ANSWER not in logged and "satellite map" not in logged,
       "a word somebody asked or the model answered is in the log")
 check("[pane] tool sensors" in logged, "the log should still say which tool ran and how long it took")
-check(not opened, "the pane opened the database")
+check(not opened, "the pane opened the database, from:\n" + (opened[0] if opened else ""))
 check(not list((ROOT / "out").glob("*ask*")) if (ROOT / "out").exists() else True, "the pane wrote a file under out/")
 print("  nothing kept: the log names the tool and its time, never a word; no database, no file")
 logging.getLogger().removeHandler(handler)
