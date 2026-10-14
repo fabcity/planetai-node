@@ -55,6 +55,12 @@ assert early["status"] == "too_early" and early["statement"] == "Acted on 4 time
 flip = learn.summarise("air-quality/indoor_pm25_high", "pm25", [{"change": 3.0, "street": 0.0}] * 6, [], row, True)
 assert flip["status"] == "weakening", "it held, and now it goes the other way"
 assert learn.summarise("x/old", "pm25", cs, [], row, False)["status"] == "gone", "a rule that cannot fire is gone, kept"
+# the verdict Now and Node say in words: inside fell past the street and past the unanswered times, or it did not
+assert row["numbers"]["verdict"] == "helps" and early["numbers"]["verdict"] == "too_early" and flip["numbers"]["verdict"] == "no_clear_difference"
+assert learn.summarise("air-quality/x", "pm25", [{"change": -2.0, "street": 0.0}] * 6, [{"change": -5.0, "street": 0.0}] * 3, None, True)["numbers"]["verdict"] \
+    == "no_clear_difference", "it fell, but more the times nobody answered: no clear difference"
+assert learn.summarise("air-quality/x", "pm25", [{"change": -2.0, "street": -3.0}] * 6, [], None, True)["numbers"]["verdict"] \
+    == "no_clear_difference", "it fell, but less than the street did"
 print("rows: holding, too early under five, weakening when it turns, gone when the rule is retired; the sentence is the numbers")
 
 # ---------------------------------------------------------------- the cases from the ledger
@@ -126,11 +132,12 @@ settings._cache = {"at": time.time() + 1e9, "rows": {"SHARE_LEVEL": "open"}}
 import main                                       # noqa: E402
 from fastapi.testclient import TestClient         # noqa: E402
 
-main.q = lambda sql, *a: [{"kind": "worked", "key": "k", "status": "holding", "statement": "s", "numbers": {}}]
+main.q = lambda sql, *a: [{"scale": "day", "n": 40}] if "FROM digests" in sql else [{"kind": "worked", "key": "k", "status": "holding", "statement": "s", "numbers": {}}]
 c = TestClient(main.app)
 ADMIN = {"Authorization": "Bearer admin-tok"}
 assert c.get("/learned").status_code in (401, 403) and c.get("/learned", headers={"Authorization": "Bearer act-tok"}).status_code == 401
 assert c.get("/learned", headers=ADMIN).json()["learnings"][0]["statement"] == "s"
+assert c.get("/learned", headers=ADMIN).json()["digests"] == {"day": 40}, "Node counts the diary entries kept, by scale"
 settings._cache["rows"]["AGENT_PREFER"] = "private"
 assert c.get("/learned", headers={**ADMIN, "X-Agent": "agent"}).status_code == 200, "an agent, models at home: yes"
 settings._cache["rows"]["AGENT_PREFER"] = "fallback"
@@ -241,6 +248,7 @@ assert c.get("/learned/search?q=smoke", headers=ADMIN).status_code == 200
 assert "to_tsquery('simple', %s)" in LOG[-1][0] and LOG[-1][1][0] == "smoke", "the words go as a parameter"
 c.get("/learned/search?scale=month", headers=ADMIN)
 assert "ORDER BY period_start DESC" in LOG[-1][0] and "to_tsquery" not in LOG[-1][0], "no words: the newest entries"
+assert all("numbers" in sql for sql, _ in LOG[-2:]), "every entry carries its numbers, which Node's diary table reads"
 assert c.get("/learned/search?scale=decade", headers=ADMIN).status_code == 422
 assert c.get("/learned/search?q=x").status_code in (401, 403)
 settings._cache["rows"]["AGENT_PREFER"] = "fallback"
@@ -283,7 +291,7 @@ assert c.put("/household", json={"people": {"older": True}}, headers={**ADMIN, "
 settings._cache["rows"]["AGENT_PREFER"] = "fallback"
 assert c.get("/household", headers={**ADMIN, "X-Agent": "agent"}).status_code == 403
 settings._cache["rows"]["AGENT_PREFER"] = "private"
-main.q = lambda sql, *a: [{"people": {"lungs": True}}] if "FROM household" in sql else [{"kind": "worked", "key": "air-quality/x", "issue": "air-quality", "status": "holding", "statement": "s"}]
+main.q = lambda sql, *a: [{"people": {"lungs": True}}] if "FROM household" in sql else [] if "FROM digests" in sql else [{"kind": "worked", "key": "air-quality/x", "issue": "air-quality", "status": "holding", "statement": "s"}]
 assert c.get("/learned", headers=ADMIN).json()["learnings"][0]["for_whom"] == ["someone with asthma or another lung condition"]
 print("household: yes or no for five, one private row, admin only, never written by an agent; learnings say who they matter to")
 # ---------------------------------------------------------------- who, in the alert (Tomas: "yes, add it to the alerts")

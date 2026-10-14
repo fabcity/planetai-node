@@ -315,6 +315,90 @@ assert ".tbl th.n+th:not(.n),.tbl td.n+td:not(.n){padding-left:" in html
 # 12. The phone reads either token, as the doors do.
 assert "const hasToken = () => !!DOORS_TOKEN();" in mobjs
 print("doors: locked parts link to Set up › This screen; a locked ledger names nobody; the phone reads both tokens")
+# The diary split (Tomas, 14 Oct 2026): Now says Yesterday and Did it work for the issue on screen, Node keeps the record
+# in "What it remembers" as tables with the long text in a dialog, Data keeps a line pointing there. All of it needs the
+# admin token: a screen without one asks nothing and is shown nothing but where to unlock; the Wall never reads it.
+LEARNED = {"digests": {"day": 9, "week": 1}, "checked": "2026-10-06T00:05:00+00:00", "learnings": [
+    {"kind": "worked", "key": "air-quality/events", "issue": "air-quality", "status": "holding", "n": 6, "for_whom": [],
+     "statement": "Acted on 6 times: PM2.5 inside changed -4.1 µg/m³ in the 1–2 h after, while on the street it changed +0.3 µg/m³. Left unanswered 3 times: PM2.5 inside changed -0.5 µg/m³.",
+     "numbers": {"acted": {"n": 6, "change": -4.1, "street": 0.3}, "unanswered": {"n": 3, "change": -0.5, "street": 0.2}, "after_hours": [1, 2],
+                 "unit": "µg/m³", "verdict": "helps", "cases": {
+                     "acted": [{"at": "2026-10-06T07:00:00+08:00", "before": 40.2, "after": 12.3, "change": -27.9, "street": 0.4, "note": "closed the windows, purifier on"}],
+                     "unanswered": [{"at": "2026-10-05T16:00:00+08:00", "before": 30.0, "after": 28.0, "change": -2.0, "street": 1.0}]}}},
+    {"kind": "worked", "key": "heat/events", "issue": "heat", "status": "too_early", "n": 2, "statement": "Acted on 2 times so far: too early to say.",
+     "numbers": {"acted": {"n": 2, "change": -0.4, "street": 0.1}, "unanswered": {"n": 0, "change": None, "street": None}, "after_hours": [3, 6], "unit": "°C",
+                 "verdict": "too_early", "cases": {"acted": [], "unanswered": []}}},
+    {"kind": "usual", "key": "indoor-pm25", "issue": "air", "metric": "pm25", "status": "holding", "scope": "house", "statement": "Usually highest around 07:00.",
+     "numbers": {"high_hour": 7, "high": 12.1, "unit": "µg/m³", "by_hour": {}}}]}
+DAY = {"q": "", "results": [{"source": "digest", "scale": "day", "period_start": "2026-10-05", "label": "Sunday 5 October 2026",
+        "text": "Sunday 5 October 2026. PM2.5 inside averaged 9.1 µg/m³, highest 187.3 µg/m³ (17:00); PM2.5 outside averaged 14.2 µg/m³. 2 alerts (danger 2), 1 acted on. What was done: “closed the windows”.",
+        "numbers": {"indoor-pm25": {"mean": 9.1, "max": 187.3, "max_at": "2026-10-05T17:00:00+08:00", "hours": 24},
+                    "outdoor-pm25": {"mean": 14.2, "max": 30.0, "max_at": "2026-10-05T18:00:00+08:00", "hours": 24},
+                    "alerts": {"danger": {"raised": 2, "acted": 1}}, "notes": 1}}]}
+HOUSE = {"people": {}, "choices": {"older": "someone over 65", "under5": "a child under five"}}
+rprog = r"""
+const fs = require('fs'), vm = require('vm');
+const [path, learned, day, house] = JSON.parse(process.argv[1]);
+const core = fs.readFileSync('./app/static/doors-core.js', 'utf8'), now = fs.readFileSync('./app/static/doors-now.js', 'utf8'), node = fs.readFileSync('./app/static/doors-node.js', 'utf8');
+const pick = n => core.match(new RegExp('^const ' + n + ' = .*$', 'm'))[0], fn = (src, n) => src.match(new RegExp('function ' + n + '[\\s\\S]*?\\n}\\n'))[0];
+const calls = [];
+globalThis.fetch = (p) => { calls.push(p); const b = p.startsWith('/learned/search') ? day : p === '/learned' ? learned : p === '/household' ? house : {};
+  return Promise.resolve(new Response(JSON.stringify(b))); };
+const L = require('./app/static/doors-load.js'), F = JSON.parse(fs.readFileSync(path, 'utf8')), D = L.buildD({ ...F, days: F.issues_days }, 'en');
+D.now = D.buckets.length - 1;
+const mk = () => ({ innerHTML: '', hidden: false, cls: new Set(), classList: { toggle(c, v) { this._.cls[v ? 'add' : 'delete'](c); } }, querySelectorAll: () => [], querySelector: () => ({}), scrollIntoView() {} });
+const run = async (token, issue, hash) => {
+  globalThis.localStorage = token ? { getItem: () => 'tok' } : undefined; calls.length = 0;
+  const els = {}, dlg = [], $ = q => { if (!els[q]) { els[q] = mk(); els[q].classList._ = els[q]; } return els[q]; };
+  const ctx = { D, S: { issue, i: D.now }, doorsLocal: L.doorsLocal, doorsFetch: L.doorsFetch, $, location: { hash }, setTimeout,
+    document: { getElementById: () => mk() }, dayStrip: () => '', cardDialog: (t, h) => dlg.push([t, h]), DOORS_AUTH: () => ({}) };
+  vm.createContext(ctx);
+  vm.runInContext(['esc', 'WD', 'loc', 'dayOf', 'dLabel', 'wdhm', 'fmt', 'said', 'num', 'UNLOCK_AT'].map(pick).join('\n') + '\n' + fn(core, 'answerWords')
+    + now.slice(now.indexOf('let NOWL = null;'), now.indexOf('// The things this home keeps'))
+    + node.slice(node.indexOf('const LSTATUS'), node.indexOf('/* What comes in, what goes out')), ctx);
+  await vm.runInContext('rememberLoad()', ctx);
+  const nr = $('#nremember'), out = { hidden: nr.hidden, html: nr.innerHTML, frame: nr.cls.has('decide') };
+  for (const k of ['heat', 'land']) { ctx.S.issue = k; vm.runInContext('nowRemember()', ctx); out[k] = $('#nremember').innerHTML; }
+  await vm.runInContext('remember()', ctx);
+  return { now: out, node: $('#remember').innerHTML, diary: $('#rdiary').innerHTML, worked: $('#rworked').innerHTML, who: $('#rwho').innerHTML, dlg, calls: calls.slice() };
+};
+(async () => console.log(JSON.stringify({ on: await run(true, 'air', '#node/remember/day/2026-10-05'), off: await run(false, 'air', '#node') })))();
+"""
+_rr = subprocess.run(["node", "-e", rprog, json.dumps([replayed(FIX), LEARNED, DAY, HOUSE])], capture_output=True, text=True)
+assert _rr.returncode == 0, _rr.stderr[-2000:]
+rm = json.loads(_rr.stdout)
+on, off = rm["on"], rm["off"]
+_n = on["now"]["html"]
+assert not on["now"]["hidden"] and "<h3>Yesterday</h3>" in _n and "<h3>Did it work</h3>" in _n, _n
+assert re.search(r"Yesterday the air inside averaged <span[^>]*>9\.1</span> µg/m³", _n) and "over the WHO line for" in _n and ", worse." in _n, \
+    "yesterday's entry in plain words, from its own numbers and the house's hours over the line"
+assert "over the WHO line for 1 hour;" in re.sub(r"<[^>]+>", "", _n), "one hour, not one hours"
+assert "2 alert" in re.sub(r"<[^>]+>", "", _n) and "#node/remember/day/2026-10-05" in _n, "its alerts, and a link to the whole entry on Node"
+_t = re.sub(r"<[^>]+>", "", _n)
+assert "The node last asked Tue, 6 Oct at 07:18" in _t and "card above" in on["now"]["heat"] and "Done Tue, 6 Oct at 07:00: “closed the windows, purifier on”" in _t, _t
+assert "Inside went from 40.2 to 12.3 µg/m³ in the 1–2 h after; the street +0.4." in _t, "what happened after: the case's own numbers"
+assert "It helps here. Acted on 6 times:" in _t and "Left unanswered" not in _t, "the node's verdict, and its statement kept short"
+assert "usually worst around 07:00 inside (12.1 µg/m³)" in _t and "who lives here?" in _t and "#node/remember/who" in _n
+assert "Too early to say." in on["now"]["heat"] and "Did it work" not in on["now"]["land"], "heat is too early; land never asks"
+assert not on["now"]["frame"], "no frame while nothing is asked"
+assert "<h3>Yesterday" not in off["now"]["html"] and off["now"]["hidden"] and not [c for c in off["calls"] if "learned" in c or "household" in c], \
+    "a screen without the token asks nothing of the house's own and shows nothing on Now"
+print("doors: Now says Yesterday and Did it work for the issue on screen, from the node's numbers; nothing without the token")
+assert "diary entries kept (9 days, 1 week)" in on["node"] and "never leaves" in on["node"], on["node"][:400]
+assert '<table class="tbl diary">' in on["diary"] and "Sunday 5 October 2026" in on["diary"] and "187.3" in on["diary"] and "14.2" in on["diary"]
+assert "closed the windows" in on["diary"] and "Against the" not in on["diary"], "what was done, from the entry"
+assert on["dlg"] and on["dlg"][0][0] == "Sunday 5 October 2026" and "What was done" in on["dlg"][0][1], "#node/remember/day/<date> opens that entry"
+assert '<table class="tbl worked">' in on["worked"] and "every ask about the air" in on["worked"] and "6 · -4.1" in on["worked"] and ">helps<" in on["worked"]
+assert "Acted on 6 times" not in on["worked"] and "data-w=" in on["worked"], "the statement and its cases open in a dialog, not in the table"
+assert 'data-f="who"' in on["who"] and "a child under five" in on["who"], "the household form lives on Node now"
+assert "admin token" in off["node"] and "#setup/screen" in off["node"] and "<table" not in off["node"] and "Sunday" not in off["node"]
+print("doors: Node › What it remembers holds the diary and what worked as tables, the text in a dialog; locked, it only says where to unlock")
+_dh = html[html.index('data-view="data"'):html.index("<!-- WALL -->")]
+assert not re.search(r"d-learned|d-usual|d-diary", _dj + _dh) and "learnedBlock" not in _dj and 'href="#node/remember"' in _dh, \
+    "Data no longer holds the diary, what is usual or what worked; it points to Node"
+_wall = (STATIC / "doors-wall.js").read_text() + (STATIC / "doors-wallmap.js").read_text()
+assert "/learned" not in _wall and "/household" not in _wall, "the Wall never reads the house's learnings"
+print("doors: Data points to Node for the diary; the Wall reads none of it")
 
 # The WHO line (Tomas, 14 Oct 2026: "put the WHO line in graphics as reference"): every drawing of PM2.5 draws the
 # air's own line, red and dashed (.linep, or the same three attributes on the phone), labelled "WHO 15". Each
@@ -345,10 +429,9 @@ vm.runInContext(['esc', 'WD', 'loc', 'dayOf', 'dLabel', 'fmt', 'lineLab', 'plain
    const S = { i: D.now, issue: 'air' }, day = (k, w) => { const el = document.createElementNS(0, 'svg'); el.id = 'f' + w; el.parentNode = { clientWidth: w };
      dayWeek({ el, issue: k }); return el.outerHTML; };
    const H = Object.fromEntries([...Array(24).keys()].map(h => [h, 4 + h]));
-   usualBlock({ learnings: [{ kind: 'usual', key: 'indoor-pm25', issue: 'air', metric: 'pm25', statement: '', numbers: { by_hour: H } },
-     { kind: 'usual', key: 'indoor-heat', issue: 'heat', metric: 'apparent', statement: '', numbers: { by_hour: H } }] });
+   /* What is usual lives on Node now (doors-node.js usualBlock), which draws each day with this dayStrip, so: */
    sensorsBlock(); issuesBlock();
-   out = { day: day('air', 900), narrow: day('air', 400), heat: day('heat', 900), usual: $('#d-usual').innerHTML.split('<div class="gh k">').slice(1),
+   out = { day: day('air', 900), narrow: day('air', 400), heat: day('heat', 900), usual: [dayStrip(H, D.issues.air), dayStrip(H, false)],
      sensors: $('#sensors').innerHTML, issues7: $('#issues7').innerHTML.split('<figure').slice(1) };`, ctx);
 /* the walk, the phone's: its whole script on a stand-in page, for the air and for the heat */
 const walk = hash => new Promise(done => {

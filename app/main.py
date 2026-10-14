@@ -3346,10 +3346,12 @@ def learned(request: Request, authorization: str = Header("")):
     _admin(authorization)
     if request.headers.get("x-agent") and settings.get("AGENT_PREFER", "private") != "private":
         raise HTTPException(403, "what this house learned stays with its own machines: AGENT_PREFER is not private, "
-                                 "so a model here may be online. Read it on the page, Data, What worked here.")
+                                 "so a model here may be online. Read it on the page, Node, What it remembers.")
     rows = q("SELECT * FROM learnings ORDER BY kind, CASE status WHEN 'holding' THEN 0 WHEN 'weakening' THEN 1 "
              "WHEN 'too_early' THEN 2 ELSE 3 END, n DESC")
-    return {"learnings": learn.rank(rows, _people()), "checked": state.get("learned_at") and
+    # how many diary entries the node keeps, by scale: Node's "What it remembers" counts them
+    kept = {r["scale"]: r["n"] for r in q("SELECT scale, count(*)::int AS n FROM digests GROUP BY scale")}
+    return {"learnings": learn.rank(rows, _people()), "digests": kept, "checked": state.get("learned_at") and
             datetime.fromtimestamp(state["learned_at"], timezone.utc).isoformat(timespec="seconds")}
 
 
@@ -3397,16 +3399,16 @@ def learned_search(request: Request, q_: str = Query("", alias="q", max_length=2
         raise HTTPException(422, f"scale is one of {', '.join(learn.SCALES)}")
     terms = learn.search_terms(q_)
     if not terms:
-        return {"q": q_, "results": q("""SELECT 'digest' AS source, scale, period_start, label, text FROM digests
+        return {"q": q_, "results": q("""SELECT 'digest' AS source, scale, period_start, label, text, numbers FROM digests
                                          WHERE (%s = '' OR scale = %s) ORDER BY period_start DESC, scale LIMIT %s""",
                                       scale, scale, limit)}
     return {"q": q_, "results": q("""
         WITH t AS (SELECT to_tsquery('simple', %s) AS query)
         SELECT * FROM (
-          SELECT 'digest' AS source, scale, period_start, label, text, ts_rank(tsv, t.query) AS rank
+          SELECT 'digest' AS source, scale, period_start, label, text, numbers, ts_rank(tsv, t.query) AS rank
             FROM digests, t WHERE tsv @@ t.query AND (%s = '' OR scale = %s)
           UNION ALL
-          SELECT 'learning', kind, NULL, key, statement, ts_rank(to_tsvector('simple', key || ' ' || statement), t.query)
+          SELECT 'learning', kind, NULL, key, statement, numbers, ts_rank(to_tsvector('simple', key || ' ' || statement), t.query)
             FROM learnings, t WHERE %s = '' AND to_tsvector('simple', key || ' ' || statement) @@ t.query) x
         ORDER BY rank DESC, period_start DESC NULLS LAST LIMIT %s""", terms, scale, scale, scale, limit)}
 
