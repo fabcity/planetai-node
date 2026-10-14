@@ -19,7 +19,7 @@ line on the report and on an ask, never a number.
 
 | issue | packs | kind | the line, and where it comes from |
 |---|---|---|---|
-| **air** | `air-quality`, `nearby`, `season` | sensed | 15 µg/m³ — WHO 2021, 24-hour mean |
+| **air** | `air-quality`, `nearby`, `season`, `fire` | sensed | 15 µg/m³ — WHO 2021, 24-hour mean |
 | **heat** | `heat` | sensed | 35 °C apparent — measured at node #1, this place's line and not a global one |
 | **land** | `earth` (the change), `earth-engine` (built, trees) | context | none. A year-over-year change is not a threshold |
 | **coast** | `coast` (and wild `posidonia`) | context | none |
@@ -64,7 +64,7 @@ Air was first because Bali has the sensors and the burn season. Everything below
 
 ## Running
 
-**Air** (`packs/air-quality`): PM2.5 inside and outside, spikes, WHO thresholds. **Heat** (`packs/heat`): apparent
+**Air** (`packs/air-quality`): PM2.5 inside and outside, spikes, WHO thresholds. **Fire** (`packs/fire`, feeding air): NASA FIRMS fires near the node, crossed with the wind. **Heat** (`packs/heat`): apparent
 temperature from temp and humidity, heat stress, nights over 28 °C. **Coast** (`packs/coast`): waves and sea
 temperature. **Land** (`packs/earth`, `packs/earth-engine`): change, built-up, tree cover. **Governance** (`open-data-health`,
 and ρ in the core). **Trust** (`packs/trust`): not a place, the node's own instruments — whether they are frozen,
@@ -75,7 +75,7 @@ missing hours or disagreeing with a neighbour.
 **Water**: turbidity, TDS, tank level from a DIY probe over MQTT; is the well safe, will the tank last to the rain.
 **Energy**: grid up/down from a smart plug; outage hours as an Economic cell. **Noise**: Smart Citizen emits it already;
 school-hours rules. **Classroom CO₂**: the core's AirGradient adapter stores its `co2`, but the node does not register that adapter for polling
-yet (see the gap in `sensors.md`), and no pack reads it. Open the windows above 1,200 ppm. **Fire smoke**: NASA FIRMS detections crossed with wind direction. Details and effort in `PACK_IDEAS.md`.
+yet (see the gap in `sensors.md`), and no pack reads it. Open the windows above 1,200 ppm. Details and effort in `PACK_IDEAS.md`.
 
 ## Writing one
 

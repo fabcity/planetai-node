@@ -202,7 +202,8 @@ neither does this page: that is a judgement about somebody else's terms.
 - **`planetai doctor`.** One row: `source registry: 269 entries · awesome-fabcity-data @ 851b8db · synced
   2026-10-12`. It goes amber when the pin is over 180 days old and red when `data/sources/` is missing.
 - **Packs.** Every id in a pack's `sources:` must resolve to an entry at the pin, or `make lint` fails and
-  names the id. At v0.81, 13 pack source ids resolve.
+  names the id. At v0.81, 13 pack source ids resolve. The `fire` pack, after v0.81, adds `environmental/bioregion/nasa-firms`: still a
+  `candidate` at the pin, filed as needing a key, which only its API does.
 
 ## The endpoints
 

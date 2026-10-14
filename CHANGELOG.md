@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- **Fires, a new source (Tomas, 15 Oct).** `packs/fire` reads NASA FIRMS active fire detections (VIIRS 375 m,
+  CC0) from the public regional files, no key needed, and counts the burning places of the last day in a local ring
+  (`FIRE_LOCAL_KM`, 25 km) and a regional one (`FIRE_REGION_KM`, 150 km): how many, their fire radiative power, the
+  nearest and its compass bearing, and how many lie within 45° of where the wind comes from, by the node's own wind
+  (a local kit, the core Open-Meteo point, or the forecast bounded to `ts <= now()`). Three rules say where, as a
+  distance and a direction from the house: `info` a fire in the local ring, `warn` one upwind, and `act` only when
+  25 or more are upwind in the region AND the air outside is rising past the WHO line, 15 µg/m³. Five numbers are a
+  declared section with `wall: true`; a core pack's section now stays out of `/issues` until the node holds a row of
+  it, so nodes that never turn fires on show nothing. Off until `FIRE_ENABLED=1` (and `PACKS_ALLOW_CODE=1`), for the bandwidth: 1 to 2 MB a
+  satellite per changed file for South East Asia; FIRMS ignores conditional requests, so the pack asks with HEAD
+  first, at most every three hours. An optional `FIRMS_MAP_KEY` reads only the ring's box. The 25 is a first guess
+  from one day on the Bukit (14 Oct: nothing within 50 km, the nearest 75 km north-west, 51 places within 150 km).
+  New id and es copy is assistant-written. `tests/test_fire.py` (77 suites).
 - **A refusing source is not the household's to-do.** The report's one thing to do skipped past what someone here
   can act on to print a source's raw error, cut mid-URL (node #1, 14 Oct: Open-Meteo's daily limit). Source errors are
   left to Node's Running section.
