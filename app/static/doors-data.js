@@ -241,7 +241,7 @@ async function whoForm() {
       const r = await fetch('/household', { method: 'PUT', headers: { ...DOORS_AUTH(), 'content-type': 'application/json' }, body: JSON.stringify({ people }) }).catch(() => null);
       f.querySelector('[role=status]').textContent = r && r.ok ? 'Kept. The order below follows it from the next look.' : 'Not kept.';
     }; }, 0);
-  return `<form class="who" data-f="who"><p class="fine">Who lives here? Yes or no, kept on this machine only, never a name or an age. It decides which of these matter most here and changes no alert.</p>`
+  return `<form class="who" data-f="who"><p class="fine">Who lives here? Yes or no, kept on this machine, never a name or an age. It decides which of these matter most here, and a heat or air alert that matters to someone you tick says so in its Telegram message ("you said there is a child under five"), so that line reaches Telegram. It changes no threshold.</p>`
     + Object.entries(h.choices).map(([k, w]) => `<label class="tick"><input type="checkbox" name="${esc(k)}"${h.people[k] ? ' checked' : ''}> ${esc(w)}</label>`).join(' ')
     + `<p class="fine" role="status"></p></form>`;
 }

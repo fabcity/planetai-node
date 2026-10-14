@@ -24,7 +24,7 @@ KINDED = {"id": "heat/kinded", "sql": "KINDED_SQL", "message": "k", "level": "ac
 class Msg:
     def __init__(self, send, level="act"):
         self.send = send
-        self.event = type("E", (), {"level": level, "id": 7})()
+        self.event = type("E", (), {"level": level, "id": 7, "issue": "heat"})()
 
 
 def run(mode, buttons=False):
@@ -59,7 +59,8 @@ def run(mode, buttons=False):
     log.warning = log.info = lambda *a: None
     sent_levels = []
     g = dict(packs=packs, index=index, events_pg=events_pg, settings=settings, log=log, db=db, _act=actions,
-             notify=lambda lvl, text, keyboard=None: (notified.append(text), sent_levels.append(lvl), kbs.append(keyboard)),
+             notify=lambda lvl, text, keyboard=None, home="": (notified.append(text), sent_levels.append(lvl), kbs.append(keyboard)),
+             _alert_home=lambda issue: "",
              ha_alert=lambda *a: None,
              run_report=lambda cur: None, _quiet=lambda lvl: False, LOCALE=lambda: "en", _local_now=lambda: "now")
     exec(code, g)

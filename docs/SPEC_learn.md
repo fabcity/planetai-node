@@ -110,7 +110,8 @@ come only if words prove too weak. Telegram gets `/learned`, a template over the
 The commonest reason people ignore an alert is not feeling at risk. A short, private household profile (an older
 person, a child under five, someone with asthma, a pregnancy, someone working outdoors) lets the node rank its
 learnings and say "you said a child lives here". It is EVDT's *vulnerability*, filled in by the household instead
-of estimated from a census. It never leaves, and it changes no threshold by itself.
+of estimated from a census. It changes no threshold by itself. *Amended 14 October 2026 (Tomas: "yes, add it to the alerts"):* an act-level heat
+or air alert that weighs on someone listed carries one line saying so in its Telegram message, and only there.
 
 ## 9 · Steps
 

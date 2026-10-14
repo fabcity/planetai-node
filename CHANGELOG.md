@@ -9,6 +9,13 @@
   `heat_danger` (40 °C, 120 minutes) is unchanged, and nodes on `ALERT_ENGINE=events` already send one message per
   episode.
 
+- **Who is in the house, in the alert.** An act-level heat or air alert that weighs on someone ticked in Data › What
+  worked now ends, in the household's Telegram, with one line: "👤 This matters more here: you said there is a child
+  under five." (Indonesian and Spanish too, in `ALERT_LOCALE`). People ignore alerts mostly because they do not feel
+  at risk; this says who is (Tomas, 14 Oct). Both engines, act level only. It rides the Telegram message alone: never
+  the mesh, Reticulum, Home Assistant or the stored alert text that `/alerts` serves, and a profile that cannot be read
+  never stops an alert. The page and "what leaves" say so.
+
 - **Who is in the house (SPEC_learn step 4).** Data › What worked opens with five yes-or-no boxes: someone over 65, a
   child under five, someone with asthma or another lung condition, someone pregnant, someone who works outdoors. Kept
   in one private row (`household`, schema 0.59; `GET`/`PUT /household`, admin; an agent reads it only while
