@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **Place and Node, after the design review (Tomas, 14–15 Oct).** Place: the species confirmed here are a table
+  below the map (GBIF link, rank, times seen here, where in words, GBIF's open records in the seven cells; token only)
+  and a filled mark on the map under Images, its row saying "1 confirmed · …"; five layers on by default, the other
+  groups collapsed with a count, no inner scroller, and on a phone the list is a sheet under a "Layers 5" button; the
+  house is named on the map; without WebGL the map is drawn still (the cell, the stations, the rings) and the list and
+  facts still draw, where before nothing did; the tools are 44 px, the active one says its word, Measure ends on Done,
+  and From the house is one tap; one figure per fact ("497 m edge · 0.64 km²", never "about 531 m" or "64.0 ha");
+  Changes by the year moved below the map. Node: a verdict first ("Working. Last reading 19:19; 6 of 6 sensors, 10 of
+  20 stations heard in the last hour.", or "Needs a look" and why); the flow is vertical under 700 px instead of an
+  840 px drawing scrolled sideways; the diary shows 14 entries and the rest on a press; the nodes' list comes before a
+  globe a third of the screen high; the five refusals in plain words, each linked to its proof.
 - **The Wall reads from three metres (design review, 14 Oct).** Nothing on the doors' Wall is under 28 px at
   1920×1080, scaled with the screen; what did not survive that floor was cut: the kicker's reason (it named who
   answered), the "why" paragraph, the fragments row, the counts box ("alerts out 0 / 7"), the foot, the scale bar,

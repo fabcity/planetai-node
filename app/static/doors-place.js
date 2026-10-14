@@ -1,7 +1,21 @@
 'use strict';
 /* PLACE — the geographic context, as a workbench (OneSoil): pick a layer on the left, read the map, read its facts on
    the right. Every layer is real geometry: H3 cells from the node (GET /geo/*), the coast from Natural Earth 1:10m, the plan from
-   OpenStreetMap, the stations at their own coordinates, the satellite frames as photographs. */
+   OpenStreetMap, the stations at their own coordinates, the satellite frames as photographs.
+
+   PHASE 4a (Tomas, 14–15 Oct 2026; the review's findings). The plan, in the order a household meets it:
+   1. Below the map, the species somebody here confirmed, as a table (never cards): the species with its GBIF link, its
+      rank, how many times seen here, where in words ("in the seven cells", "outside"), and GBIF's open records in the
+      seven cells. Token only, as /species is; without it one line says where to unlock. On the map, a filled mark at
+      each confirming image's point, its layer row saying "1 confirmed · Hibiscus …". GBIF's records are a count, not
+      points, so no hollow marks are drawn.
+   2. Five layers on (street, the node's cell, own sensors, public stations, images); the other groups collapsed with
+      their count; the list never scrolls inside itself; on a phone it opens as a sheet under a "Layers 5" button.
+   3. The house is named on the map, as Now's map names it.
+   4. No WebGL: the map draws still (the cell, the stations, the rings), and the list and the facts draw as always.
+   5. Tools are 44 px, the active one says its word, measuring ends on Done, From the house is one tap.
+   6. One fact, one figure: the cell's own edge and its area in km², in the lede and in the facts alike.
+   7. Land and Coast ("Changes by the year") sit below the map, after the species. */
 const GEO = {};
 async function geo(name, url) { return GEO[name] || (GEO[name] = await fetch(url).then(r => r.json())); }
 /* Three views of the place: the map (placemap.js, every layer that has a position), and the two that do not —
@@ -14,11 +28,13 @@ VIEWS.place = function () {
     <h1 data-learn="1">The ground this node stands on.</h1>
     <p class="lede mono">${esc(h.cell.id)} · res ${h.cell.res} · ${h.cell.edge_m} m edge · ${area.toFixed(2)} km² · ${fmt(D.point[1], 4)}, ${fmt(D.point[0], 4)}</p>
     <div class="prow"><nav class="pviews" aria-label="Views of the place">${PVIEWS.map(([id, t, s]) => `<button class="${id === PVIEW ? 'on' : ''}" data-p="${id}"><b>${t}</b><span>${s}</span></button>`).join('')}</nav>`
-    + `<button class="addimg" id="addimg" title="An image this household took: it lands on the map where it was taken">+ Add an image</button></div>`
-    /* the issues that change yearly and have no hours (Land, Coast): Now is for the hour, so they are said here, beside
-       the ground they describe — the engine's own sentence, the region's figure and its provenance (15 Oct) */
-    + yearly();
+    + `<button class="addimg" id="addimg" title="An image this household took: it lands on the map where it was taken">+ Add an image</button></div>`;
+  /* the issues that change yearly and have no hours (Land, Coast): Now is for the hour, so they are said here, below
+     the ground they describe — the engine's own sentence, the region's figure and its provenance (15 Oct) */
+  $('#pyearly').innerHTML = yearly();
   $('#addimg').onclick = addImage;
+  $('#lybtn').onclick = () => { const b = document.querySelector('.bench'); b.classList.toggle('sheet'); $('#lybtn').setAttribute('aria-expanded', b.classList.contains('sheet')); };
+  speciesBlock();
   document.querySelectorAll('.pviews button').forEach(b => b.onclick = () => { PVIEW = b.dataset.p; VIEWS.place(); });
   document.querySelector('.bench').dataset.pview = PVIEW;
   if (PVIEW === 'map') placeMap(); else layer();
@@ -32,6 +48,30 @@ function yearly() {
       return `<div class="fr" data-k="${k}"><span>${said(it.name)}<small class="said">${esc(it.title || it.sentence || '')}</small></span><b>${num(`${k}.region`, fmt(g.value, 1), 'no line: it informs, it never asks')} ${said(it.unit)} ${prov(g.provenance || 'model')}</b></div>`; }).join('')
     + `</section>` : '';
 }
+/* SPECIES CONFIRMED HERE (Tomas, 15 Oct: "species list should sit below the map"): /species, one row per taxon a person
+   here confirmed, as Data › Images reads it. Where is said from the confirming images' own `outside`, which the node
+   measured on arrival against its seven cells. Open records are GBIF's, counted by the node in the same seven cells. */
+async function speciesBlock() {
+  const el = $('#pspecies');
+  const [sp, caps] = await Promise.all(['/species', '/captures?limit=500'].map(u => doorsFetch(u).then(r => (r.ok ? r.json() : null)).catch(() => null)));
+  if (!sp) { el.innerHTML = `<h2>Species confirmed here</h2><p class="fine">The species somebody here confirmed in an image answer a screen holding a token, because where a picture was taken is the household’s. Unlock this screen in ${UNLOCK_AT}.</p>`; return; }
+  const S = sp.species || [];
+  if (!S.length) { el.innerHTML = `<h2>Species confirmed here</h2><p class="fine">None yet. Add an image above the map; once somebody here confirms what it shows in <a href="#data/d-images">Data › Images</a>, it is counted here.</p>`; return; }
+  const mine = x => f => f.taxon && x.key ? f.taxon.key === x.key : (f.scientific || (f.taxon || {}).name) === x.name;
+  const where = x => {
+    const cs = (caps || []).filter(c => c.analysis && c.analysis.confirmed_by && (c.analysis.findings || []).some(mine(x)));
+    const out = cs.filter(c => c.outside).length, inn = cs.length - out;
+    return !cs.length ? '—' : !out ? 'in the seven cells' : !inn ? 'outside the seven cells' : `${inn} in the seven cells, ${out} outside`;
+  };
+  const others = x => x.others > 0 ? `${+x.others} in the seven cells` : x.others === 0 ? 'none yet' : '—';
+  el.innerHTML = `<h2>Species confirmed here, ${num('place.species', S.length, 'taxa a person here confirmed in an image')}</h2>`
+    + `<div class="tscroll"><table class="tbl species"><tr><th>species</th><th class="hide">rank</th><th class="n">seen here</th><th>where</th><th>open records nearby</th></tr>`
+    + S.map(x => `<tr><td>${x.key ? `<a href="https://www.gbif.org/species/${+x.key}" target="_blank" rel="noopener">${esc(x.name)}</a>` : esc(x.name)}`
+      + `${x.introduced ? `<br><small class="fine">${esc(x.introduced)} in ${esc(x.where)}</small>` : ''}</td>`
+      + `<td class="hide">${esc((x.rank || '—').toLowerCase())}</td><td class="n">${+x.count}</td><td>${where(x)}</td><td>${others(x)}</td></tr>`).join('')
+    + `</table></div><p class="fine">Only what somebody here confirmed counts: the image model’s guesses do not. Seen here counts every confirmed one, in ${S.reduce((a, x) => a + x.images, 0)} image${S.reduce((a, x) => a + x.images, 0) === 1 ? '' : 's'}; open records are GBIF’s, by others, in this node’s seven cells.</p>`;
+}
+
 /* a fact: its name, its figure, where it is from — and, when it has one, its provenance word as the node draws it */
 const facts = (rows, note) => rows.map(([t, v, s, w]) => `<div class="fr"><span>${esc(t)}${s ? `<small class="said">${esc(s)}</small>` : ''}</span><b>${esc(v)}${w ? ' ' + prov(w) : ''}</b></div>`).join('') + (note ? `<p class="fine">${note}</p>` : '');
 /* counted in the node's own cell sign: filled for the count, faint for the rest, in the satellite's orange (dashboard.js of20) */

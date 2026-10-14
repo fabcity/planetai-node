@@ -560,4 +560,81 @@ for _v in set(_learn.VERDICT_WORDS) - {"gone"}:
     assert re.search(rf"const VERDICT = {{[^}}]*\b{_v}:", _nowjs), f"Now has no words for the verdict {_v}"
 for _v in _learn.VERDICT_WORDS:
     assert re.search(rf"const VERDICT_W = {{[^}}]*\b{_v}:", _nodejs), f"Node has no words for the verdict {_v}"
+# PHASE 4a, Place and Node (Tomas, 14–15 Oct 2026). Each check fails if its fix regresses.
+_place = html[html.index('<section class="page view" data-view="place"'):html.index("<!-- DATA -->")]
+assert _place.index('class="bench"') < _place.index('id="pspecies"') < _place.index('id="pyearly"') < _place.index('class="cols2"'), \
+    "the species table, then Changes by the year, sit below the map"
+assert "'#pyearly').innerHTML = yearly()" in (STATIC / "doors-place.js").read_text(), "Land and Coast are drawn below the map"
+_css = html[html.index("/* ================= PLACE: the workbench"):html.index("/* ================= NODE")]
+assert re.search(r"\.tools button\{min-width:44px;height:44px", _css), "the map's tools are 44 px targets"
+assert "max-height" not in re.search(r"#layers\{display:block\}[^\n]*", _css).group(0) and "#layers{display:block;overflow" not in _css, \
+    "no inner scroller in the layer list"
+assert "overflow-x:auto" not in html[html.index("/* ================= NODE"):].split("\n")[1], "the flow never scrolls sideways"
+pprog = r"""
+const fs = require('fs'), vm = require('vm'), d3 = require('./app/static/d3.min.js');
+const L = require('./app/static/doors-load.js');
+const core = fs.readFileSync('./app/static/doors-core.js', 'utf8'), pick = n => core.match(new RegExp('^const ' + n + ' = .*$', 'm'))[0];
+const pm = fs.readFileSync('./app/static/doors-placemap.js', 'utf8'), place = fs.readFileSync('./app/static/doors-place.js', 'utf8'), node = fs.readFileSync('./app/static/doors-node.js', 'utf8');
+const fn = (src, n) => src.match(new RegExp('(?:async )?function ' + n + '\\(' + '[\\s\\S]*?\\n}\\n'))[0];
+const F = JSON.parse(fs.readFileSync('%s', 'utf8')), D = L.buildD({ ...F, days: F.issues_days }, 'en');
+const out = {};
+/* five on by default; the rest off */
+out.on = eval(pm.match(/const LAYERS = \[[\s\S]*?\n\];/)[0] + '; LAYERS').filter(l => l.on && !l.parent).map(l => l.id);
+out.house = /id: 'house-l'[^\n]*getText: \(\) => 'This house'/.test(pm);
+out.tools = /\['from', '⌂'/.test(pm) && /class="done" data-t="done"/.test(pm);
+const mk = () => { const els = {}; return q => (els[q] ||= { innerHTML: '', textContent: '', clientWidth: 600, clientHeight: 600, style: {}, appendChild() {}, setAttribute() {}, onclick: null }); };
+const page = tok => ({ D, d3, $: mk(), console, Response, UNLOCK_AT: '<a href="#setup/screen">Set up › This screen</a>',
+  doorsFetch: p => Promise.resolve(!tok ? new Response('{}', { status: 403 }) : new Response(JSON.stringify(
+    p.startsWith('/species') ? { species: [{ key: 3152559, name: 'Hibiscus rosa-sinensis L.', rank: 'SPECIES', count: 2, images: 1, others: 14 }] }
+    : p.startsWith('/captures') ? [{ id: 2, outside: false, analysis: { confirmed_by: 'T', findings: [{ taxon: { key: 3152559 } }] } }] : {}), { status: 200 })) });
+(async () => {
+  /* the species table: a table with the token, one line pointing at the unlock without it */
+  for (const tok of [true, false]) {
+    const c = page(tok); vm.createContext(c);
+    vm.runInContext(['esc', 'num'].map(pick).join('\n') + '\n' + fn(place, 'speciesBlock') + 'speciesBlock()', c);
+    await new Promise(r => setTimeout(r, 20)); out[tok ? 'sp' : 'spLocked'] = c.$('#pspecies').innerHTML;
+  }
+  /* the verdict, on the capture, stale, and with a failing loop */
+  const v = new vm.Script(['loc', 'dayOf'].map(pick).join('\n') + '\n' + node.match(/^const ago = .*$/m)[0] + '\n' + fn(node, 'verdict') + 'verdict');
+  const vc = { D, doorsLocal: L.doorsLocal }; vm.createContext(vc); const verdict = v.runInContext(vc);
+  out.v = verdict(D); out.vStale = verdict({ ...D, health: { ...D.health, last_poll: '2026-10-06T08:00:00+00:00' } });
+  out.vErr = verdict({ ...D, health: { ...D.health, errors: { forecast: 'boom' } } });
+  /* the flow on a phone */
+  const lay = new Function(fn(node, 'flowLayout') + 'return flowLayout;')()(358, 6, 7);
+  out.flow = { W: 358, H: lay.H, right: lay.cx + lay.R, tx: lay.tx, rails: [0, 1, 2, 3, 4, 5].map(lay.inX).concat([0, 1, 2, 3, 4, 5, 6].map(lay.outX)),
+    lastIn: lay.inY(5) + 15, top: lay.cy - lay.R, bottom: lay.cy + lay.R, firstOut: lay.outY(0) - 12 };
+  /* no WebGL: the still map, the list and the facts all draw */
+  const c = page(false), noop = () => {};
+  Object.assign(c, { esc: s => String(s ?? ''), fmt: (v, d) => v == null ? '—' : (+v).toFixed(d), prov: w => w, lastRaw: () => null, plain: s => s, hhmm: s => s, when: s => s,
+    CLOCK: { reduced: () => true, on: noop, off: noop }, view: () => 'place', DOORS_AUTH: () => ({}), location: { origin: 'http://node' }, devicePixelRatio: 1,
+    document: { documentElement: { dataset: {} }, querySelector: () => null, querySelectorAll: () => [], createElement: () => ({ style: {}, setAttribute: noop }), addEventListener: noop },
+    maplibregl: { Map: function () { throw new Error('Failed to initialize WebGL'); } }, deck: {} });
+  c.window = c; c.D = { ...D, ngeo: null, ngeoErr: 'GET /geo/cell answered 403' }; vm.createContext(c);
+  vm.runInContext(pm + '\nwindow.placeMap()', c);
+  await new Promise(r => setTimeout(r, 50));
+  out.flat = { map: c.$('#map').innerHTML, layers: c.$('#layers').innerHTML, facts: c.$('#facts').innerHTML, btn: c.$('#lybtn').innerHTML };
+  console.log(JSON.stringify(out));
+})();
+""" % replayed(FIX)
+pp = json.loads(subprocess.run(["node"], input=pprog, capture_output=True, text=True, check=True).stdout)
+assert pp["on"] == ["street", "mine", "own", "public", "images"], pp["on"]
+print("doors: Place opens with five layers on: the street, the node's cell, its sensors, the public stations, the images")
+assert pp["house"] and pp["tools"], "the house is named on the map; From the house and Done are tools"
+assert '<table class="tbl species">' in pp["sp"] and "gbif.org/species/3152559" in pp["sp"] and "in the seven cells" in pp["sp"] \
+    and "14 in the seven cells" in pp["sp"], pp["sp"]
+assert "<table" not in pp["spLocked"] and "#setup/screen" in pp["spLocked"], pp["spLocked"]
+print("doors: the species confirmed here are a table below the map; without the token one line says where to unlock")
+_f = pp["flat"]
+assert "<svg" in _f["map"] and "This house" in _f["map"] and "no WebGL" in _f["map"], _f["map"][:300]
+assert 'data-l="own"' in _f["layers"] and 'data-l="street"' in _f["layers"] and "live map only" in _f["layers"], _f["layers"][:300]
+# locked, the images cannot draw, so four of the five are on and the phone's button says so
+assert "Resolution" in _f["facts"] and _f["btn"] == "Layers <b>4</b>", (_f["facts"][:200], _f["btn"])
+print("doors: without WebGL Place draws the still map, the layer list and the facts")
+assert pp["v"]["ok"] and pp["v"]["head"] == "Working" and re.match(r"Last reading 19:19; 6 of 6 sensors, \d+ of 20 stations heard in the last hour\.$", pp["v"]["text"]), pp["v"]
+assert not pp["vStale"]["ok"] and pp["vStale"]["head"] == "Needs a look" and "the last reading was at" in pp["vStale"]["text"].lower(), pp["vStale"]
+assert not pp["vErr"]["ok"] and "forecast loop failed" in pp["vErr"]["text"], pp["vErr"]
+print("doors: Node leads with its verdict: Working, or Needs a look and why")
+_fl = pp["flow"]
+assert _fl["right"] <= _fl["W"] and max(_fl["rails"]) < _fl["tx"] and _fl["lastIn"] < _fl["top"] and _fl["firstOut"] > _fl["bottom"], _fl
+print("doors: under 700 px the flow is vertical, in above the hexagon and out below, inside the screen's width")
 print("all doors checks passed")

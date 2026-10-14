@@ -1,19 +1,44 @@
 'use strict';
 /* NODE — this node: who runs it and where; what comes in and what goes out, stepped at the pace things arrive
    (motion named after its datum, stepped never tweened, none under reduced motion); the nodes around it; setup;
-   the five refusals. The central hexagon with its labelled spokes follows Memotron's graph, drawn in the layer. */
+   the five refusals. The central hexagon with its labelled spokes follows Memotron's graph, drawn in the layer.
+
+   PHASE 4a (Tomas, 14–15 Oct 2026; the review's findings). The plan:
+   8. Lead with a verdict, the node's sentence: "Working. Last reading 19:50; 6 of 6 sensors, 13 of 23 stations heard in
+      the last hour." From /health and /stats only: the doctor's GET /health/sources (#249) is not on main. A stale poll,
+      a failing loop or a silent sensor of its own turns it into "Needs a look: …".
+   9. Under 700 px the flow is drawn vertically (in above the hexagon, out below), the screen's own width, never wider.
+   10. What it remembers: the counts line first; the diary shows 14 entries, and the rest on "show more".
+   11. The nodes around it: the list first ("1 listed · 0 heard by radio"), the globe at most a third of the screen.
+   12. The refusals in plain words, each with a link to where it can be checked. */
 let FLOWOBS = null;
+/* the verdict: Working, or Needs a look and why. Heard is a reading in the last hour (/stats silent_minutes); a poll is
+   stale after 15 minutes of /issues' as_of, the Wall's rule, so a capture is judged at its own time. */
+const ago = m => m < 90 ? `${Math.round(m)} min` : m < 48 * 60 ? `${Math.round(m / 60)} h` : `${Math.round(m / 1440)} days`;
+function verdict(D) {
+  const h = D.health, heard = s => Object.values(D.stats15[s.sensor_id] || {}).some(v => v[1] != null && v[1] <= 60);
+  const own = D.sensors.filter(s => s.local && s.kind === 'sensor'), pub = D.sensors.filter(s => !s.local && s.kind === 'sensor');
+  const nOwn = own.filter(heard).length, nPub = pub.filter(heard).length, age = (Date.parse(D.as_of) - Date.parse(h.last_poll || '')) / 60e3;
+  const bad = [!(age < 15) && (h.last_poll ? `the last reading was at ${hhmm(h.last_poll)}, ${ago(age)} before this page` : 'no reading since the restart'),
+    ...Object.keys(h.errors || {}).map(k => `the ${k} loop failed on its last run`),
+    own.length > nOwn && `${own.length - nOwn} of its ${own.length} sensors not heard in the last hour`].filter(Boolean);
+  if (bad.length) return { ok: false, head: 'Needs a look', text: bad.join('; ').replace(/^./, c => c.toUpperCase()) + '.' };
+  return { ok: true, head: 'Working', text: `Last reading ${hhmm(h.last_poll)}; ${own.length ? `${nOwn} of ${own.length} sensors` : 'no sensors of its own'}, ${nPub} of ${pub.length} stations heard in the last hour.` };
+}
 VIEWS.node = function () {
   FLOWOBS && FLOWOBS.disconnect(); CLOCK.off('node-flow');
-  const R = D.registry, h = D.health;
-  $('#nodehead').innerHTML = `<div class="k">Node · this machine</div>
-    <h1 data-learn="1">${esc(R.name)}, in ${esc(R.place)}.</h1>
+  const R = D.registry, h = D.health, v = verdict(D);
+  $('#nodehead').innerHTML = `<div class="k">Node · ${esc(R.name)}, in ${esc(R.place)}</div>
+    <h1 data-learn="1" class="verdict ${v.ok ? '' : 'bad'}">${v.head}.</h1><p class="vline said" data-role="sentence">${esc(v.text)}</p>
     <p class="lede mono">planetai-node ${esc(h.version)} · up ${fmt(h.uptime_s / 3600, 1)} h · ${h.ingested.toLocaleString('en')} readings since the restart · cell ${esc(h.cell.id)} · ${esc(h.tz)}</p>`;
   /* asked once a draw, read by the flow and by Running: how many readings the node keeps (GET /storage, token-only)
      and what this home offers (GET /offers, open at every SHARE_LEVEL and in the daily export) */
   const kept = doorsFetch('/storage').then(x => x.ok ? x.json() : null).catch(() => null),
     offers = fetch('/offers').then(x => x.ok ? x.json() : null).catch(() => null);
   flow(kept, offers); around(); running(kept); remember();
+  /* #node/<id> (a refusal's proof) scrolls to that part once it is drawn; #node/remember is remember()'s own */
+  const at = location.hash.slice(1).split('/')[1];
+  if (at && at !== 'remember') setTimeout(() => { const t = document.getElementById(at); if (t) t.scrollIntoView({ block: 'start' }); }, 60);
 };
 
 /* WHAT IT REMEMBERS (Tomas, 14 Oct: the diary split between Now and Node; Now keeps Yesterday and Did it work). The
@@ -24,7 +49,7 @@ VIEWS.node = function () {
    #node/remember/day/<date> opens that entry, #node/remember/who the household's form. */
 const LSTATUS = { holding: 'holding', weakening: 'weakening', too_early: 'too early to say', gone: 'no longer watched' };
 const VERDICT_W = { helps: 'helps', no_clear_difference: 'no clear difference', worse: 'seems to make it worse', too_early: 'too early to say', gone: 'no longer watched' };
-let REM = { scale: 'day', rows: [] };
+let REM = { scale: 'day', rows: [], all: false };
 async function remember() {
   const el = $('#remember'), at = location.hash.slice(1).split('/');
   const go = () => { if (at[1] === 'remember') setTimeout(() => (document.getElementById(at[2] === 'who' ? 'remember-who' : 'remember') || el).scrollIntoView({ block: 'start' })); };
@@ -41,7 +66,7 @@ async function remember() {
     + `<h3>Diary</h3><div class="rbar"><div class="rseg" role="group" aria-label="Entries by">${['day', 'week', 'month', 'year'].map(x => `<button data-sc="${x}" class="${x === REM.scale ? 'on' : ''}">${x.toUpperCase()}</button>`).join('')}</div>`
     + `<form class="rfind" data-f="find"><input data-f="q" aria-label="search the diary" placeholder="smoke, purifier, October"><button>Search</button></form></div><div id="rdiary"></div>`
     + `<h3>What is usual</h3><div id="rusual"></div><h3>What worked</h3><div id="rworked"></div><h3 id="remember-who">Who lives here?</h3><div id="rwho"></div>`;
-  el.querySelectorAll('[data-sc]').forEach(b => b.onclick = () => { REM.scale = b.dataset.sc; el.querySelectorAll('[data-sc]').forEach(o => o.classList.toggle('on', o === b)); diaryTable(); });
+  el.querySelectorAll('[data-sc]').forEach(b => b.onclick = () => { REM.scale = b.dataset.sc; REM.all = false; el.querySelectorAll('[data-sc]').forEach(o => o.classList.toggle('on', o === b)); diaryTable(); });
   el.querySelector('[data-f=find]').onsubmit = e => { e.preventDefault(); diaryTable(el.querySelector('[data-f=q]').value.trim()); };
   if (at[2] && ['day', 'week', 'month', 'year'].includes(at[2])) REM.scale = at[2];
   el.querySelectorAll('[data-sc]').forEach(o => o.classList.toggle('on', o.dataset.sc === REM.scale));
@@ -57,14 +82,17 @@ async function diaryTable(words, open) {
   const v = (x, g, f) => { const n = ((x.numbers || {})[g] || {})[f]; return n == null ? '—' : fmt(n, 1); };
   const al = (x, f) => !(x.numbers && x.numbers.alerts) ? '—' : Object.values(x.numbers.alerts).reduce((a, y) => a + y[f], 0);
   const done = x => ((x.text || '').match(/What was done: (.*?)\.(?: Against the|$)/) || [])[1] || '';
+  /* fourteen entries, newest first, and the rest on a press: the record, not a wall of rows */
+  const SHOW = 14, shown = words || REM.all || (open && rows.findIndex(x => String(x.period_start).slice(0, 10) === open) >= SHOW) ? rows : rows.slice(0, SHOW);
   el.innerHTML = !rows.length ? `<p class="fine">${words ? 'Nothing mentions that.' : 'No entries yet: the node writes them in the first hour of each day.'}</p>`
     : `<div class="tscroll"><table class="tbl diary"><tr><th>${words ? 'found' : REM.scale}</th><th class="n">PM2.5 inside</th><th class="n hide">peak</th><th class="n">outside</th><th class="n hide">feels-like inside</th><th class="n">alerts</th><th class="n">acted</th><th class="hide">what was done</th></tr>`
-      + rows.map((x, i) => `<tr><td><button class="link" data-i="${i}">${esc(x.label)}</button>${x.source === 'learning' ? ' <span class="x">· learning</span>' : ''}</td>`
+      + shown.map((x, i) => `<tr><td><button class="link" data-i="${i}">${esc(x.label)}</button>${x.source === 'learning' ? ' <span class="x">· learning</span>' : ''}</td>`
         + `<td class="n">${v(x, 'indoor-pm25', 'mean')}</td><td class="n hide">${v(x, 'indoor-pm25', 'max')}</td><td class="n">${v(x, 'outdoor-pm25', 'mean')}</td>`
         + `<td class="n hide">${v(x, 'indoor-heat', 'mean')}</td><td class="n">${al(x, 'raised')}</td><td class="n">${al(x, 'acted')}</td><td class="hide said done">${esc(done(x))}</td></tr>`).join('')
-      + `</table></div><p class="fine">PM2.5 is the period’s mean and its worst hour in µg/m³, from this house’s own sensors inside and out; feels-like is the mean inside in °C. Press an entry to read it as the node wrote it.</p>`;
+      + `</table></div>${shown.length < rows.length ? `<button class="more" data-more>Show ${rows.length - shown.length} more</button>` : ''}<p class="fine">PM2.5 is the period’s mean and its worst hour in µg/m³, from this house’s own sensors inside and out; feels-like is the mean inside in °C. Press an entry to read it as the node wrote it.</p>`;
   const show = x => cardDialog(x.label, `<p class="said">${esc(x.text)}</p><p class="fine">${x.source === 'learning' ? 'A learning, in the node’s own words.' : `The node’s ${esc(x.scale)} entry, written from its own numbers and your notes. It never leaves this machine.`}</p>`);
   el.querySelectorAll('[data-i]').forEach(b => b.onclick = () => show(rows[+b.dataset.i]));
+  const more = el.querySelector('[data-more]'); if (more) more.onclick = () => { REM.all = true; diaryTable(words); };
   const hit = open && rows.find(x => String(x.period_start).slice(0, 10) === open);
   if (hit) show(hit);
 }
@@ -118,8 +146,20 @@ async function whoForm() {
    their own, green; the centre is the node's res-8 cell inside its res-6 parent at true scale, so the cell reads
    against the finest cell that may leave; each square steps at its link's real mean rate, on the Wall's pace
    (--motion-replay-loop: six hours in 30 s), so the two doors run one clock speed. */
+/* the flow on a phone (Tomas, 15 Oct: an 840 px drawing inside 358, "what goes out" off-screen): vertical, in above the
+   hexagon and out below, at the screen's own width. Each link runs down its own rail in the left margin, 3 px apart,
+   and turns to the hexagon at its own height, so no line crosses another or a word. Pure: tests/test_doors.py holds it. */
+function flowLayout(W, nIn, nOut) {
+  const R = 64, step = 40, tx = 8 + 3 * Math.max(nIn, nOut) + 10, cx = Math.max(tx + R + 24, W / 2);
+  const inX = i => 8 + 3 * i, outX = j => 8 + 3 * (nOut - 1 - j), inY = i => 44 + step * i;
+  const yName = inY(nIn - 1) + 15 + 34, yCell = yName + 16, cy = yCell + 18 + R, yB = [cy + R + 20, cy + R + 36, cy + R + 52];
+  const yOutK = yB[2] + 34, outY = j => yOutK + 26 + step * j, yFoot = outY(nOut - 1) + 15 + 28;
+  const inPath = i => { const x = inX(i), ye = cy - 4 - 2 * i; return `M${x},${inY(i) - 4}V${ye - 12}Q${x},${ye} ${x + 12},${ye}H${cx - R}`; };
+  const outPath = j => { const x = outX(j), ye = cy + 4 + 2 * (nOut - 1 - j); return `M${cx - R},${ye}H${x + 12}Q${x},${ye} ${x},${ye + 12}V${outY(j) - 4}`; };
+  return { W, H: yFoot + 3 * 14, R, cx, cy, tx, inX, outX, inY, outY, inPath, outPath, yName, yCell, yB, yInK: 20, yOutK, yFoot };
+}
 async function flow(kept, offers) {
-  const [F, St, Of] = await Promise.all([flowData(), kept, offers]), el = $('#flow'), narrow = el.clientWidth < 700, W = narrow ? 840 : el.clientWidth, H = 500, cx = W / 2, cy = H / 2, R = narrow ? 64 : 96;
+  const [F, St, Of] = await Promise.all([flowData(), kept, offers]), el = $('#flow'), W = el.clientWidth || 900, narrow = W < 700;
   const grp = id => id.startsWith('msh') ? 'mesh' : (D.sensors.find(s => s.sensor_id === id) || {}).kind === 'model' ? 'models' : (D.sensors.find(s => s.sensor_id === id) || {}).local ? 'house' : 'public';
   const n24 = { house: null, public: null, models: null, mesh: null }; for (const [id, n] of Object.entries(F.counts)) n24[grp(id)] = (n24[grp(id)] || 0) + d3.sum(n);
   const loc = D.sensors.filter(s => s.local && s.kind === 'sensor'), pub = D.sensors.filter(s => !s.local && s.kind === 'sensor');
@@ -136,27 +176,47 @@ async function flow(kept, offers) {
     ['Its cell, by radio', ret.announce_s ? `res ${D.geometry.radio.res} · every ${Math.round(ret.announce_s / 60)} min · ${(ret.peers || []).length} heard` : 'no radio on this node', perDay, 'blue'], ['Fab City Index cells', `${new Set(D.index_cells.map(c => c.cell)).size} of 20 · hourly`, 24, 'blue'],
     ['Open export, CC BY 4.0', 'one file a day', 1, ''],
     ['What this home offers', nOff == null ? 'not read' : nOff ? `${nOff} thing${nOff === 1 ? '' : 's'} · open to anyone, and in the export` : 'nothing offered', nOff ? 1 : null, ''], ['Hourly means, to a community node', 'none set · nowhere yet', null, '']];
-  const xIn = narrow ? 280 : 300, xOut = W - (narrow ? 280 : 340), yAt = (i, n) => 46 + i * ((H - 110) / (n - 1));
+  const L = narrow ? flowLayout(W, IN.length, OUT.length) : null, H = L ? L.H : 500, cx = L ? L.cx : W / 2, cy = L ? L.cy : H / 2, R = L ? L.R : 96;
+  const xIn = 300, xOut = W - 340, yAt = (i, n) => 46 + i * ((H - 110) / (n - 1));
   // the centre: the res-6 parent and its 49 res-8 cells, flat and to scale; this node's cell filled. Every hexagon is a real cell.
   /* the node's own answers (js/nodegeo.js): its res-8 cell, the res-6 parent and the parent's 49 children, as rings */
   const NG = D.ngeo, poly = row => ({ type: 'Polygon', coordinates: [llRing(row)] });
   const cellR = NG ? NG.c8.ring : null, parR = NG ? NG.c6.ring : null, cell = NG ? NG.c8.id : D.health.cell.id;
   const pa = NG ? d3.geoPath(d3.geoIdentity().reflectY(true).fitExtent([[cx - R, cy - R], [cx + R, cy + R]], poly(parR))) : null, kids = NG ? NG.c6.children_ll : [];
   const link = d3.linkHorizontal(), paths = [];
-  let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" ${narrow ? `style="width:${W}px"` : ''} role="img" aria-label="What comes into this node and what goes out">`;
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="What comes into this node and what goes out">`;
+  const row = (id, d, e, c, x, y, dx, t, n, hollow) => `<path id="${id}" d="${d}" class="fl ${e == null ? 'empty' : ''}"/><circle cx="${x}" cy="${y - 4}" r="3" class="fd ${hollow && e == null ? 'hollow' : c}"/>`
+    + `<text x="${dx}" y="${y}" class="ft">${esc(t)}</text><text x="${dx}" y="${y + 15}" class="fn">${esc(n)}</text>`;
+  if (L) {
+    s += `<text x="${L.tx}" y="${L.yInK}" class="fn">COMES IN</text><text x="${L.tx}" y="${L.yOutK}" class="fn">GOES OUT</text>`;
+    IN.forEach(([t, n, e, c], i) => { s += row(`fi${i}`, L.inPath(i), e, c, L.inX(i), L.inY(i), L.tx, t, n); paths.push([`fi${i}`, e, c]); });
+    OUT.forEach(([t, n, e, c], j) => { s += row(`fo${j}`, L.outPath(j), e, c, L.outX(j), L.outY(j), L.tx, t, n, true); paths.push([`fo${j}`, e, c]); });
+  } else {
   IN.forEach(([t, n, e, c], i) => { const y = yAt(i, IN.length), d = link({ source: [xIn + 8, y], target: [cx - R, cy] });
     s += `<path id="fi${i}" d="${d}" class="fl ${e == null ? 'empty' : ''}"/><text x="${xIn}" y="${y - 6}" text-anchor="end" class="ft">${esc(t)}</text><text x="${xIn}" y="${y + 9}" text-anchor="end" class="fn">${esc(n)}</text><circle cx="${xIn + 8}" cy="${y}" r="3" class="fd ${c}"/>`;
     paths.push([`fi${i}`, e, c]); });
   OUT.forEach(([t, n, e, c], i) => { const y = yAt(i, OUT.length), d = link({ source: [cx + R, cy], target: [xOut - 8, y] });
     s += `<path id="fo${i}" d="${d}" class="fl ${e == null ? 'empty' : ''}"/><text x="${xOut}" y="${y - 6}" class="ft">${esc(t)}</text><text x="${xOut}" y="${y + 9}" class="fn">${esc(n)}</text><circle cx="${xOut - 8}" cy="${y}" r="3" class="fd ${e == null ? 'hollow' : c}"/>`;
     paths.push([`fo${i}`, e, c]); });
+  }
   const km2 = which => NG ? fmt(NG[which].area_m2 / 1e6, which === 'c8' ? 2 : 0) : '—', tn = (k, v, c) => `<tspan data-num="${k}" data-cmp="${esc(c)}">${v}</tspan>`;   // num(), in SVG
-  s += (!NG ? `<text x="${cx}" y="${cy}" text-anchor="middle" class="fn">the cells need the token: unlock below</text>`
-    : kids.filter(k => k[0] !== cell).map(k => `<path d="${pa(poly(k))}" class="fgrid"/>`).join('') + `<path d="${pa(poly(parR))}" class="fpar"/><path d="${pa(poly(cellR))}" class="fhex"/>`)
+  const centre = (!NG ? `<text x="${cx}" y="${cy}" text-anchor="middle" class="fn">the cells need the token: unlock below</text>`
+    : kids.filter(k => k[0] !== cell).map(k => `<path d="${pa(poly(k))}" class="fgrid"/>`).join('') + `<path d="${pa(poly(parR))}" class="fpar"/><path d="${pa(poly(cellR))}" class="fhex"/>`);
+  const keptW = St ? `about ${St.readings.toLocaleString('en')} readings kept` : `${D.health.ingested.toLocaleString('en')} readings since the restart`;
+  const foot = 'raw readings stay here; what leaves is the cell, the means, the Index, the answers and what this home offers';
+  if (L) {
+    /* on a phone the words sit left, beside the rails, each line short enough for the screen */
+    const lines = [], wds = foot.split(' '); let ln = '';
+    for (const w of wds) { if ((ln + ' ' + w).length > 44 && ln) { lines.push(ln); ln = w; } else ln = ln ? ln + ' ' + w : w; } lines.push(ln);
+    s += centre + `<text x="${L.tx}" y="${L.yName}" class="fname">${esc(D.registry.name)}</text><text x="${L.tx}" y="${L.yCell}" class="fn">${esc(cell)} · res 8 · ${tn('node.cell.km2', km2('c8'), 'this cell\'s own area')} km²</text>`
+      + `<text x="${L.tx}" y="${L.yB[0]}" class="fn">1 of ${tn('node.cell.n6', NG ? NG.c6.children_n : '—', 'res-8 cells in its res-6 parent, counted by the node')} in its res-6 cell · ${tn('node.par.km2', km2('c6'), 'the parent\'s own area')} km²</text>`
+      + `<text x="${L.tx}" y="${L.yB[1]}" class="fn">dotted: may leave</text><text x="${L.tx}" y="${L.yB[2]}" class="fn">${keptW} · none leave</text>`
+      + lines.map((t, i) => `<text x="${L.tx}" y="${L.yFoot + i * 14}" class="fn">${esc(t)}</text>`).join('') + `<g id="dots"></g></svg>`;
+  } else s += centre
     + `<text x="${cx}" y="${cy - R - 26}" text-anchor="middle" class="fname">${esc(D.registry.name)}</text><text x="${cx}" y="${cy - R - 10}" text-anchor="middle" class="fn">${esc(cell)} · res 8 · ${tn('node.cell.km2', km2('c8'), 'this cell\'s own area')} km²</text>`
     + `<text x="${cx}" y="${cy + R + 18}" text-anchor="middle" class="fn">1 of ${tn('node.cell.n6', NG ? NG.c6.children_n : '—', 'res-8 cells in its res-6 parent, counted by the node')} in its res-6 cell · ${tn('node.par.km2', km2('c6'), 'the parent\'s own area')} km² · dotted: may leave</text>`
-    + `<text x="${cx}" y="${cy + R + 34}" text-anchor="middle" class="fn">${St ? `about ${St.readings.toLocaleString('en')} readings kept` : `${D.health.ingested.toLocaleString('en')} readings since the restart`} · none leave</text>`
-    + `<text x="${cx}" y="${H - 6}" text-anchor="middle" class="fn">raw readings stay here; what leaves is the cell, the means, the Index, the answers and what this home offers</text><g id="dots"></g></svg>`;
+    + `<text x="${cx}" y="${cy + R + 34}" text-anchor="middle" class="fn">${keptW} · none leave</text>`
+    + `<text x="${cx}" y="${H - 6}" text-anchor="middle" class="fn">${foot}</text><g id="dots"></g></svg>`;
   el.innerHTML = s;
   // Stepped, named after its datum: one square per link takes one of eight steps per arrival, at the link's real mean
   // rate over 24 h, compressed to the Wall's pace. One clock, transform only, paused off screen, none under reduced motion.
@@ -199,7 +259,9 @@ async function around() {
       : `The programme’s list has not been read yet${L && L.error ? ' (' + L.error + ')' : ''}. `)
     + 'A node joins it with planetai hello and a merged pull request; a node with no published point is not drawn. '
     + (ret.announce_s ? ((ret.peers || []).length ? `This node’s radio has heard ${ret.peers.length} other node${ret.peers.length > 1 ? 's' : ''}; they are not on this map yet.` : 'This node’s radio has heard no other node yet.') : 'This node has no radio announcing it.');
-  $('#nodes').innerHTML = N.map(x => `<div class="lrow"><span class="t">${esc(x.n)}<small>${esc(x.place)}</small></span><span class="s">${esc(x.reads)}</span>`
+  /* the list first, its count in words (Tomas, 15 Oct: a 540 px globe with one dot) */
+  const nL = N.filter(x => x.listed).length;
+  $('#nodes').innerHTML = `<p class="lede">${num('node.listed', nL, 'nodes on the programme’s list with a point')} listed · ${ret.announce_s ? `${num('node.heard', (ret.peers || []).length, 'other nodes this node’s radio heard')} heard by radio` : 'no radio on this node'}</p>` + N.map(x => `<div class="lrow"><span class="t">${esc(x.n)}<small>${esc(x.place)}</small></span><span class="s">${esc(x.reads)}</span>`
     + `<span class="c"><span class="state">${word(x)}</span> ${x.me ? 'this node' : (NG && NG.dist['node:' + x.n] ? fmt(NG.dist['node:' + x.n].m / 1000, 0) + ' km' : '—')}</span></div>`).join('')
     + `<div class="lrow"><span class="t">A community node above it</span><span class="s">where this node’s hourly means would go, so a city can be built from nodes</span><span class="c x">not set</span></div>`
     + `<p class="fine">${esc(fine)}</p>`;
