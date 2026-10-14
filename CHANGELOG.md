@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Data: Images and Things are tables.** Each image is a row: a thumbnail, when and who, what took it, the note,
+  what the image model saw and whether somebody here confirmed it. A row opens that image in a dialog, the picture
+  beside its fields, to edit, describe again, confirm or delete; *See all images* opens every card at once. Things are
+  a row each (what, class, how many, how often used, state, offer), and *Add a thing* or *Edit* opens the form in a
+  dialog. Species confirmed is a table. Cards stay, only as dialogs someone opens (Tomas, 14 Oct). The thumbnails
+  come from `GET /captures/{cid}/file?w=96`, so a table of drone pictures does not fetch 11 MB a row.
+
 - **The morning memory.** The first report the household gets each day now carries, in Telegram only, what the node
   remembers: yesterday's diary entry, last week's on a Monday, last month's on the 1st, last year's on 1 January, and
   every learning whose status changed that day, in its own words. One message, not four. On by default (Tomas, 14

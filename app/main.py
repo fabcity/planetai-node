@@ -3445,16 +3445,26 @@ def capture_delete(cid: int, request: Request, authorization: str = Header("")):
 
 
 @app.get("/captures/{cid}/file")
-def capture_file(cid: int, request: Request, authorization: str = Header("")):
-    """The picture itself. Token only, like the row; the name is this node's own, never a client's path."""
+def capture_file(cid: int, request: Request, authorization: str = Header(""), w: int = Query(0, ge=0, le=1024)):
+    """The picture itself. Token only, like the row; the name is this node's own, never a client's path. `?w=` makes a
+    JPEG at most that many pixels a side, for a table's thumbnail: a drone picture is 11 MB."""
     _captures_auth(request, authorization)
-    from fastapi.responses import FileResponse  # noqa: PLC0415
+    from fastapi.responses import FileResponse, Response  # noqa: PLC0415
     rows = q("SELECT file, mime FROM captures WHERE id = %s", cid)
     if not rows:
         raise HTTPException(404, "no such capture")
     path = os.path.join(CAPTURES_DIR, os.path.basename(rows[0]["file"]))
     if not os.path.isfile(path):
         raise HTTPException(404, "the row is here but the file is gone from the captures folder")
+    if w:
+        import io  # noqa: PLC0415
+        from PIL import Image  # noqa: PLC0415
+        # ponytail: resized on every ask; a thumbnail cache beside the file when a table of hundreds feels slow
+        im = Image.open(path).convert("RGB")
+        im.thumbnail((w, w))
+        buf = io.BytesIO()
+        im.save(buf, "JPEG", quality=80)
+        return Response(buf.getvalue(), media_type="image/jpeg", headers={"Cache-Control": "private, max-age=86400"})
     return FileResponse(path, media_type=rows[0]["mime"])
 
 
