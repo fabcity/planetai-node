@@ -491,7 +491,7 @@ def run_rules() -> None:
                     # No id, and nothing asking to be told. The node watches what happens next (v0.39) instead of
                     # asking; a number a household is expected to quote back was a chore, and 15 of node #1's 37
                     # act alerts got an answer, nine of them in two dashboard batch-clicks a day later.
-                    notify(level, text)
+                    notify(level, text, home=_alert_home(rule["id"]) if level == "act" else "")
                 ha_alert(level, text, alert_id)
         if mode in ("shadow", "events"):
             try:
@@ -508,10 +508,13 @@ def run_rules() -> None:
                         # same message bare (SPEC_alerts §7).
                         kb = _event_keyboard(m.event.id, settings.get("ALERT_LOCALE", "en") or "en") \
                             if m.event.id and settings.num("TELEGRAM_BUTTONS", 0) else None
-                        notify(m.event.level, text, keyboard=kb)
+                        notify(m.event.level, text, keyboard=kb,
+                               home=_alert_home(m.event.issue) if m.event.level == "act" else "")
 
 
-def notify(level: str, text: str, keyboard: list | None = None) -> None:
+def notify(level: str, text: str, keyboard: list | None = None, home: str = "") -> None:
+    """Send an alert. `home` is a line for the household's own Telegram only (who in this house it matters to,
+    learn.alert_line): never the mesh, Reticulum or the log, which other people and machines can read."""
     icon = {"info": "ℹ️", "warn": "⚠️", "act": "🔴"}.get(level, "")
     log.info("ALERT [%s] %s", level, text)
     if level == "act":
@@ -526,7 +529,7 @@ def notify(level: str, text: str, keyboard: list | None = None) -> None:
         return
     for chat in chats:
         try:
-            body = {"chat_id": chat, "text": f"{icon} {text}".strip()}
+            body = {"chat_id": chat, "text": f"{icon} {text}".strip() + (f"\n\n{home}" if home else "")}
             if keyboard:
                 body["reply_markup"] = {"inline_keyboard": keyboard}
             httpx.post(f"https://api.telegram.org/bot{tok}/sendMessage",
@@ -535,6 +538,16 @@ def notify(level: str, text: str, keyboard: list | None = None) -> None:
         except Exception as e:  # noqa: BLE001
             # never interpolate the exception's URL: httpx puts the token in it
             log.warning("telegram -> %s failed: %s", chat, type(e).__name__)
+
+
+def _alert_home(issue: str) -> str:
+    """Who in this house an act alert about `issue` matters to, for its Telegram line; "" on any failure, so reading
+    the household profile can never stop an alert going out."""
+    try:
+        return learn.alert_line(issue, _people(), settings.get("ALERT_LOCALE", "en") or "en")
+    except Exception as e:  # noqa: BLE001
+        log.warning("alert line: %s", type(e).__name__)
+        return ""
 
 
 def _event_keyboard(event_id: int, locale: str) -> list:

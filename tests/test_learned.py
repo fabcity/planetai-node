@@ -233,4 +233,29 @@ settings._cache["rows"]["AGENT_PREFER"] = "private"
 main.q = lambda sql, *a: [{"people": {"lungs": True}}] if "FROM household" in sql else [{"kind": "worked", "key": "air-quality/x", "issue": "air-quality", "status": "holding", "statement": "s"}]
 assert c.get("/learned", headers=ADMIN).json()["learnings"][0]["for_whom"] == ["someone with asthma or another lung condition"]
 print("household: yes or no for five, one private row, admin only, never written by an agent; learnings say who they matter to")
+# ---------------------------------------------------------------- who, in the alert (Tomas: "yes, add it to the alerts")
+assert learn.alert_line("heat", {"under5": True, "lungs": True}) == "👤 This matters more here: you said there is a child under five."
+assert learn.alert_line("air", {"lungs": True}, "id") == "👤 Ini lebih penting di sini: Anda mengatakan ada seseorang dengan asma atau penyakit paru lain."
+assert learn.alert_line("air-quality/indoor_pm25_high", {"older": True}, "es") == "👤 Aquí importa más: dijiste que hay alguien mayor de 65 años."
+assert learn.alert_line("heat", {"lungs": True}) == "" and learn.alert_line("nearby/x", {"older": True}) == "", "nobody at more risk, no line"
+assert learn.alert_line("heat", {"older": True}, "fr").startswith("👤 This matters"), "an unknown locale speaks English"
+SENT = []
+main.mesh_send = lambda text: SENT.append(("mesh", text))
+main.RETICULUM_URL = "http://reticulum"
+main.TG = lambda: ("123:abc", ["109"])
+class P:
+    def raise_for_status(self): return None
+main.httpx.post = lambda url, json=None, timeout=None: (SENT.append(("tg" if "telegram" in url else "ret", json)), P())[1]
+main.notify("act", "It is too hot.\nDrink water.", home="👤 This matters more here: you said there is a child under five.")
+tg = [j for k, j in SENT if k == "tg"][0]["text"]
+assert tg.endswith("Drink water.\n\n👤 This matters more here: you said there is a child under five."), tg
+assert not any("child" in str(x) for k, x in SENT if k != "tg"), "never the mesh or Reticulum"
+main.q = lambda sql, *a: (_ for _ in ()).throw(RuntimeError("no table"))
+assert main._alert_home("heat") == "", "a profile that cannot be read never stops an alert"
+rr = SRC[SRC.index("def run_rules"):SRC.index("def notify")]
+assert 'home=_alert_home(rule["id"]) if level == "act" else ""' in rr and 'home=_alert_home(m.event.issue) if m.event.level == "act" else ""' in rr, \
+    "both engines, act level only"
+assert "INSERT INTO alerts (rule_id, sensor_id, level, text) VALUES (%s,%s,%s,%s)" in rr and "_alert_home" not in rr.split("INSERT INTO alerts")[0][-400:], \
+    "the stored alert text, which /alerts serves, never carries it"
+print("alerts: act-level heat and air say who here they matter to, in the household's language, on Telegram only")
 print("learned: every check passed")
