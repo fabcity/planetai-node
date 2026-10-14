@@ -17,6 +17,15 @@
   `worked` learning carries `numbers.verdict` (helps, no clear difference, worse than leaving it, too early) from its
   own numbers and leads with it in words, because node #1's air row said HOLDING while acting had made it worse;
   `/learned` prints the alert's household name and the verdict first. New id and es copy is assistant-written.
+- **The diary is split between Now and Node (design review, 14 Oct).** Data was 21,900 px long and what the house
+  learned sat at its bottom. Now, under the decision, says **Yesterday** in a line or two from yesterday's entry and
+  **Did it work** for the issue on screen: the last ask, what was done, what happened inside after, and the node's
+  verdict on that alert (it helps, no clear difference, too early to say), which `GET /learned` now carries as
+  `numbers.verdict` so the page never judges for itself. Node gains **What it remembers**: the counts (`GET /learned`
+  `digests`), the diary as a table by day, week, month or year with each entry in a dialog (`GET /learned/search` now
+  returns each entry's `numbers`), what is usual, what worked as a table with its cases in a dialog, and who lives
+  here. Data keeps one line pointing there. All of it is the admin token's; without it Now shows nothing and Node only
+  where to unlock, and the Wall never reads it.
 
 - **The headline says the day, and one answer says what is asked (design review of node #1, 14 Oct).** At 19:00 Now
   said "The air is clean, inside and out" beside "12 h over the line today" and a day drawn red until 11:00. When the

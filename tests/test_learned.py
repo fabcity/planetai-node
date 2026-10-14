@@ -165,11 +165,12 @@ settings._cache = {"at": time.time() + 1e9, "rows": {"SHARE_LEVEL": "open"}}
 import main                                       # noqa: E402
 from fastapi.testclient import TestClient         # noqa: E402
 
-main.q = lambda sql, *a: [{"kind": "worked", "key": "k", "status": "holding", "statement": "s", "numbers": {}}]
+main.q = lambda sql, *a: [{"scale": "day", "n": 40}] if "FROM digests" in sql else [{"kind": "worked", "key": "k", "status": "holding", "statement": "s", "numbers": {}}]
 c = TestClient(main.app)
 ADMIN = {"Authorization": "Bearer admin-tok"}
 assert c.get("/learned").status_code in (401, 403) and c.get("/learned", headers={"Authorization": "Bearer act-tok"}).status_code == 401
 assert c.get("/learned", headers=ADMIN).json()["learnings"][0]["statement"] == "s"
+assert c.get("/learned", headers=ADMIN).json()["digests"] == {"day": 40}, "Node counts the diary entries kept, by scale"
 settings._cache["rows"]["AGENT_PREFER"] = "private"
 assert c.get("/learned", headers={**ADMIN, "X-Agent": "agent"}).status_code == 200, "an agent, models at home: yes"
 settings._cache["rows"]["AGENT_PREFER"] = "fallback"
@@ -280,6 +281,7 @@ assert c.get("/learned/search?q=smoke", headers=ADMIN).status_code == 200
 assert "to_tsquery('simple', %s)" in LOG[-1][0] and LOG[-1][1][0] == "smoke", "the words go as a parameter"
 c.get("/learned/search?scale=month", headers=ADMIN)
 assert "ORDER BY period_start DESC" in LOG[-1][0] and "to_tsquery" not in LOG[-1][0], "no words: the newest entries"
+assert all("numbers" in sql for sql, _ in LOG[-2:]), "every entry carries its numbers, which Node's diary table reads"
 assert c.get("/learned/search?scale=decade", headers=ADMIN).status_code == 422
 assert c.get("/learned/search?q=x").status_code in (401, 403)
 settings._cache["rows"]["AGENT_PREFER"] = "fallback"
@@ -322,7 +324,7 @@ assert c.put("/household", json={"people": {"older": True}}, headers={**ADMIN, "
 settings._cache["rows"]["AGENT_PREFER"] = "fallback"
 assert c.get("/household", headers={**ADMIN, "X-Agent": "agent"}).status_code == 403
 settings._cache["rows"]["AGENT_PREFER"] = "private"
-main.q = lambda sql, *a: [{"people": {"lungs": True}}] if "FROM household" in sql else [{"kind": "worked", "key": "air-quality/x", "issue": "air-quality", "status": "holding", "statement": "s"}]
+main.q = lambda sql, *a: [{"people": {"lungs": True}}] if "FROM household" in sql else [] if "FROM digests" in sql else [{"kind": "worked", "key": "air-quality/x", "issue": "air-quality", "status": "holding", "statement": "s"}]
 assert c.get("/learned", headers=ADMIN).json()["learnings"][0]["for_whom"] == ["someone with asthma or another lung condition"]
 print("household: yes or no for five, one private row, admin only, never written by an agent; learnings say who they matter to")
 # ---------------------------------------------------------------- who, in the alert (Tomas: "yes, add it to the alerts")

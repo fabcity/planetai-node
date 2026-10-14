@@ -31,7 +31,7 @@ const SYM = { pm25: 'PM2.5', pm10: 'PM10', pm1: 'PM1', pm25_raw: 'PM2.5ʳ', aqi:
   precipitation: 'R', uv_index: 'UV', temp_model: 'Tᵐ', humidity_model: 'RHᵐ', pressure_model: 'Pᵐ', noise: 'dB', light: 'lx', sea_surface_temp: 'SST',
   wave_height_m: 'Hs', wave_period_s: 'Tp', wave_direction: 'Dw', swell_height_m: 'Sw', swell_period_s: 'Ts', lora_util_pct: 'LoRa', lora_channel_pct: 'Ch' };
 const DSECTIONS = [['d-readings', 'Readings'], ['issues7', 'Issues, 7 days'], ['models', 'Models and satellite'], ['cells', 'Index cells'],
-  ['perday', 'Hours over the line'], ['d-images', 'Images'], ['d-things', 'Things'], ['d-learned', 'What worked'], ['d-usual', 'What is usual'], ['d-diary', 'Diary'], ['ledger', 'Decisions'], ['api', 'API']];
+  ['perday', 'Hours over the line'], ['d-images', 'Images'], ['d-things', 'Things'], ['ledger', 'Decisions'], ['api', 'API']];
 
 /* #data/<sensor-id> (from a dot on Place) opens on a metric that station reads and scrolls to its row, once per link;
    #data/models opens at the models, #data/api at the API. */
@@ -45,7 +45,7 @@ VIEWS.data = function () {
   $('#datahead').innerHTML = `<div class="k">Data · everything this node holds, as it reads it</div><h1>Every reading, drawn.</h1>
     <p class="lede">${D.raw ? `${total.toLocaleString('en')} hourly values from ${Object.keys(S2).length} sources over the last 24 hours` : 'The hourly values with the token'}, seven days of every issue at every distance, ${D.observations.length} model and satellite values, ${D.index_cells.length} Index cells and ${D.actions.length} decisions. Today’s open export, CC BY 4.0: <a class="mono" href="/export?day=${dayOf(D.buckets[D.now])}">GET /export?day=${dayOf(D.buckets[D.now])}</a>.</p>`;
   dataNav(); metricTiles();
-  sensorsBlock(); issuesBlock(); modelsBlock(); cellsBlock(); ledgerBlock(); apiBlock(); imagesBlock(); thingsBlock(); learnedBlock();
+  sensorsBlock(); issuesBlock(); modelsBlock(); cellsBlock(); ledgerBlock(); apiBlock(); imagesBlock(); thingsBlock();
   if (FOCUS && FOCUS !== FOCUSED) {
     FOCUSED = FOCUS;
     setTimeout(() => {                                          // after route() has scrolled to the top
@@ -226,45 +226,8 @@ const tcard = (t, classes) => `<div class="icard" data-id="${t.id || ''}"><label
   + tsel('used', t.used || 'monthly') + tsel('condition', t.condition || 'works') + tsel('offer', t.offer || 'no')
   + (t.capture_id ? `<p class="fine"><a href="#data/d-images">from image ${+t.capture_id}</a></p>` : '')
   + `<div class="acts"><button data-a="save">${t.id ? 'Save' : 'Add'}</button>${t.id ? '<button data-a="del">Delete</button>' : ''}</div><p class="fine" role="status"></p></div>`;
-/* WHAT WORKED HERE — the household's own evidence (SPEC_learn step 1): per alert, what the air or the heat inside did
-   after someone acted, against the street and against the times nobody answered. The sentence is the node's, written
-   from the numbers; under it, every case, so the proof is on the page. Admin token only: the cases carry the notes. */
-// Who is in the house (SPEC_learn step 4): yes or no answers, kept here and nowhere else, that rank what the node
-// learned and say why a learning matters here. They change no threshold.
-const matters = x => (x.for_whom && x.for_whom.length ? ` <b>Matters here: ${esc(x.for_whom.join(', '))}.</b>` : '');
-async function whoForm() {
-  const h = await doorsFetch('/household').then(r => (r.ok ? r.json() : null)).catch(() => null);
-  if (!h) return '';
-  setTimeout(() => { const f = $('#d-learned [data-f=who]'); if (!f) return;
-    f.onchange = async () => {
-      const people = Object.fromEntries([...f.querySelectorAll('input')].map(i => [i.name, i.checked]));
-      const r = await fetch('/household', { method: 'PUT', headers: { ...DOORS_AUTH(), 'content-type': 'application/json' }, body: JSON.stringify({ people }) }).catch(() => null);
-      f.querySelector('[role=status]').textContent = r && r.ok ? 'Kept. The order below follows it from the next look.' : 'Not kept.';
-    }; }, 0);
-  return `<form class="household" data-f="who"><p class="fine">Who lives here? Yes or no, kept on this machine, never a name or an age. It decides which of these matter most here, and a heat or air alert that matters to someone you tick says so in its Telegram message ("you said there is a child under five"), so that line reaches Telegram. It changes no threshold.</p>`
-    + Object.entries(h.choices).map(([k, w]) => `<label class="tick"><input type="checkbox" name="${esc(k)}"${h.people[k] ? ' checked' : ''}> ${esc(w)}</label>`).join(' ')
-    + `<p class="fine" role="status"></p></form>`;
-}
-const LSTATUS = { holding: 'holding', weakening: 'weakening', too_early: 'too early to say', gone: 'no longer watched' };
-async function learnedBlock() {
-  const el = $('#d-learned');
-  const r = await doorsFetch('/learned').catch(() => null);
-  const j = r && r.ok ? await r.json().catch(() => null) : null;
-  if (!j) { el.innerHTML = `<h2>What worked here</h2><p class="fine">What this house learned answers the admin token only, because its cases carry your own notes. Unlock this screen with it in ${UNLOCK_AT}.</p>`; $('#d-usual').innerHTML = ''; return; }
-  usualBlock(j); diaryBlock();
-  const rows = j.learnings.filter(x => x.kind === 'worked');
-  const casesOf = x => { const c = (x.numbers.cases || {}).acted || [], u = x.numbers.unit || '';
-    return !c.length ? '' : `<table class="tbl"><tr><th>acted</th><th class="n">before</th><th class="n">after</th><th class="n">street</th><th class="hide">note</th></tr>`
-      + c.slice().reverse().map(k => `<tr><td class="mono">${esc(when(k.at))}</td><td class="n">${fmt(k.before, 1)}</td><td class="n">${fmt(k.after, 1)} ${esc(u)}</td>`
-        + `<td class="n">${k.street == null ? '–' : (k.street > 0 ? '+' : '') + fmt(k.street, 1)}</td><td class="hide">${esc(k.note || '')}</td></tr>`).join('') + `</table>`; };
-  el.innerHTML = `<h2>What worked here</h2><p class="blurb">For each alert, what the air or the heat inside did after someone here acted, beside what the street did and what happened the times nobody answered. Your own before and after, not an experiment: the night or the weather can do the same. Checked once a day${j.checked ? `, last ${esc(j.checked.slice(0, 16).replace('T', ' '))}` : ''}. It never leaves this house.</p>`
-    + await whoForm()
-    + (rows.length ? rows.map(x => `<div class="gh k">${esc(x.key)} · ${esc(LSTATUS[x.status] || x.status)}</div><p>${esc(x.statement)}${matters(x)}</p>${casesOf(x)}`).join('')
-      : `<p class="fine">Nothing yet: the node checks once a day, and needs an alert someone acted on.</p>`);
-}
-/* WHAT IS USUAL HERE (SPEC_learn step 2): the shape of a day from this house's own sensors, the week against the three
-   before, and the alerts that are mostly not answered, said as what would change them. The node changes nothing. */
-/* it: the issue whose line a PM2.5 strip draws; its bars then stand on zero, so the line sits at its own height */
+/* The usual day, hour by hour: Node's What it remembers draws it (doors-node.js usualBlock); it stays here beside the
+   other drawings of readings. */
 /* the usual day, hour by hour: bars from zero when the issue has a line, so the line sits at its true height; the
    line's label in a right margin and the hours under the bars, so neither is clipped or drawn over a bar */
 const dayStrip = (h, it) => { const v = Object.entries(h || {}).map(([k, x]) => [+k, x]); if (v.length < 12) return '';
@@ -274,28 +237,6 @@ const dayStrip = (h, it) => { const v = Object.entries(h || {}).map(([k, x]) => 
     + v.map(([k, x]) => { const y = Y(x); return `<rect x="${k * W + 2}" y="${y.toFixed(1)}" width="${W - 4}" height="${(60 - y).toFixed(1)}" fill="currentColor" opacity=".55"><title>${String(k).padStart(2, '0')}:00 · ${x}</title></rect>`; }).join('')
     + (line != null ? `<line x1="0" x2="${24 * W}" y1="${Y(line).toFixed(1)}" y2="${Y(line).toFixed(1)}" class="linep"/><text x="${24 * W + 4}" y="${(Y(line) + 3.5).toFixed(1)}" font-size="10" class="lab">${lineLab(it)}</text>` : '')
     + [0, 6, 12, 18, 23].map(k => `<text x="${k * W + W / 2}" y="76" font-size="10" text-anchor="middle" fill="currentColor">${String(k).padStart(2, '0')}</text>`).join('') + `</svg>`; };
-function usualBlock(j) {
-  const el = $('#d-usual'), usual = j.learnings.filter(x => x.kind === 'usual'), asks = j.learnings.filter(x => x.kind === 'asks');
-  el.innerHTML = `<h2>What is usual here</h2><p class="blurb">From this house's own sensors, up to a year back: when in the day each is usually highest and lowest, weekdays against weekends, and this week against the three before. Outside is about the place; inside stays with the house.</p>`
-    + (usual.length ? usual.map(x => `<div class="gh k">${esc(x.key.replace('-', ' '))} · ${esc(LSTATUS[x.status] || x.status)}${x.scope === 'place' ? ' · about the place' : ''}</div><p>${esc(x.statement)}${matters(x)}</p>${dayStrip((x.numbers || {}).by_hour, x.metric === 'pm25' && D.issues[x.issue])}`).join('')
-      : `<p class="fine">Nothing yet: the node checks once a day.</p>`)
-    + (asks.length ? `<h3>Alerts that may not fit</h3><p class="fine">The last 30 days of each act-level alert. Where most go unanswered, the node says what would change it; it changes nothing itself.</p>`
-      + asks.map(x => `<div class="gh k">${esc(x.key)}</div><p>${esc(x.statement)}</p>`).join('') : '');
-}
-/* DIARY (SPEC_learn step 3): the node's digest of every day, week, month and year, in its own words and the
-   household's, and a search over them and the learnings: the same search the pane and the bot ask. */
-async function diaryBlock(words) {
-  const el = $('#d-diary');
-  const u = words ? `/learned/search?q=${encodeURIComponent(words)}` : '/learned/search?limit=20';
-  const j = await doorsFetch(u).then(r => (r.ok ? r.json() : null)).catch(() => null);
-  if (!j) { el.innerHTML = ''; return; }
-  const rows = j.results || [];
-  el.innerHTML = `<h2>Diary</h2><p class="blurb">The node writes one entry for every day, week, month and year, from its own numbers and your notes, and keeps them here. The ask pane and the bot search the same entries.</p>`
-    + `<form class="acts" data-f="find"><input data-f="q" aria-label="search the diary" placeholder="smoke, purifier, October" value="${esc(words || '')}"><button>Search</button></form>`
-    + (rows.length ? rows.map(x => `<div class="gh k">${esc(x.label)}${x.source === 'learning' ? ' · learning' : x.scale ? ' · ' + esc(x.scale) : ''}</div><p>${esc(x.text)}</p>`).join('')
-      : `<p class="fine">${words ? 'Nothing mentions that.' : 'No entries yet: the node writes them once a day.'}</p>`);
-  el.querySelector('[data-f=find]').onsubmit = e => { e.preventDefault(); diaryBlock(el.querySelector('[data-f=q]').value.trim()); };
-}
 /* THINGS and IMAGES are tables (Tomas, 14 Oct: "it needs to build a table and not add all as cards"). A card, the
    whole form, opens only in a dialog: to add or edit a thing, to look at or edit one image, or to see all images. */
 let CARDLG = null;

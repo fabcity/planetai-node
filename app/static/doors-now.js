@@ -5,8 +5,73 @@
    The first thing is the ladder, and under it the lead (learn: lead). */
 VIEWS.now = function () {
   rail($('#rail')); rows(); drawNow();
-  aroundMap($('#rose')); thingsLine($('#nthings'));
+  aroundMap($('#rose')); thingsLine($('#nthings')); rememberLoad();
 };
+/* YESTERDAY and DID IT WORK: the short part of the diary (Tomas, 14 Oct: the diary split between Now and Node, whose
+   "What it remembers" keeps the record). Under the decision and quiet: yesterday's day entry said plainly from its own
+   numbers; then, for the issue on screen, the last time the node asked, what was done, what happened after and the
+   node's verdict. Framed only while something is asked. The admin token only: the house's learnings never reach a
+   screen without it (doorsFetch does not even ask), nor the Wall. Read once a visit; switching issue redraws. */
+let NOWL = null;
+const LEARN_PACK = { air: 'air-quality', heat: 'heat' };
+const VERDICT = { helps: 'It helps here.', no_clear_difference: 'No clear difference here yet.', worse: 'So far it seems to make it worse here.', too_early: 'Too early to say.' };
+async function rememberLoad() {
+  const get = u => doorsFetch(u).then(r => r.ok ? r.json() : null).catch(() => null);
+  const [l, d, h] = await Promise.all([get('/learned'), get('/learned/search?scale=day&limit=1'), get('/household')]);
+  NOWL = l ? { rows: l.learnings || [], day: ((d || {}).results || [])[0] || null, people: h ? h.people || {} : null } : null;
+  nowRemember();
+}
+const firstSentence = s => String(s || '').split(/(?<=\.)\s/)[0];
+/* yesterday's entry, condensed: for heat the feels-like inside, else the air inside against the line (its hours over
+   the line are /issues/days' own count, at the house) and outside beside it; else the entry's own first sentences */
+function yesterdayWords(e, k) {
+  const n = e.numbers || {}, i = n['indoor-pm25'], o = n['outdoor-pm25'], h = n['indoor-heat'], A = D.issues.air || {};
+  const today = dayOf(D.buckets[D.now]), y = new Date(Date.parse(today + 'T12:00:00Z') - 864e5).toISOString().slice(0, 10);
+  const day = String(e.period_start).slice(0, 10), head = day === y ? 'Yesterday' : `On ${dLabel(day)}`;
+  const lineName = /^WHO\b/.test(A.line_source || '') ? 'the WHO line' : 'the line', cmp = A.line != null ? `${lineName}, ${A.line} µg/m³` : 'no line';
+  const pd = A.hero_distance === 'room' ? (A.per_day || []).find(p => p.date === day) : null;
+  let s;
+  if (k === 'heat' && h) s = `${head} it felt like ${num('yesterday.heat.mean', fmt(h.mean, 1), 'the day’s mean, inside')} °C inside on average, ${num('yesterday.heat.max', fmt(h.max, 1), 'the day’s hottest hour, inside')} at its hottest (${hhmm(h.max_at)}).`;
+  else if (i || o) {
+    s = head + (i ? ` the air inside averaged ${num('yesterday.inside.mean', fmt(i.mean, 1), cmp)} µg/m³, ${num('yesterday.inside.max', fmt(i.max, 1), cmp)} at its worst (${hhmm(i.max_at)})`
+      + (pd ? (pd.over ? `, over ${lineName} for ${num('yesterday.inside.over', pd.over, `of ${pd.read} hours read`)} hour${pd.over === 1 ? '' : 's'}` : `, never over ${lineName}`) : '') : '')
+      + (o ? `${i ? '; outside' : ' the air outside'} averaged ${num('yesterday.outside.mean', fmt(o.mean, 1), cmp)}${i ? (o.mean > i.mean ? ', worse' : o.mean < i.mean ? ', cleaner' : ', the same') : ' µg/m³'}` : '') + '.';
+  } else s = esc(String(e.text || '').split(/(?<=\.)\s/).slice(1, 3).join(' ')) || 'No readings from this house’s own sensors.';
+  const al = Object.values(n.alerts || {}), raised = al.reduce((a, x) => a + x.raised, 0), acted = al.reduce((a, x) => a + x.acted, 0);
+  return s + (raised ? ` ${num('yesterday.alerts', raised, 'alerts sent that day')} alert${raised === 1 ? '' : 's'}, ${num('yesterday.acted', acted, `of ${raised} alerts`)} acted on.` : '');
+}
+function nowRemember() {
+  const el = $('#nremember'), k = S.issue, it = D.issues[k] || {};
+  el.hidden = !NOWL;
+  if (!NOWL) return;
+  el.classList.toggle('decide', S.i === D.now && (it.asking || []).length > 0);   // a frame only while something is asked
+  const day = NOWL.day, pack = LEARN_PACK[k], wd = iso => `${dLabel(dayOf(iso))} at ${hhmm(iso)}`;
+  let h = day ? `<h3>Yesterday</h3><p>${yesterdayWords(day, k)} <a href="#node/remember/day/${esc(String(day.period_start).slice(0, 10))}">the whole entry ›</a></p>` : '';
+  /* an issue that never asks (no line) has nothing that could have worked */
+  if (pack) {
+    const rank = { holding: 0, weakening: 0, too_early: 1 };
+    const w = NOWL.rows.filter(r => r.kind === 'worked' && r.issue === pack && r.status in rank).sort((a, b) => rank[a.status] - rank[b.status] || b.n - a.n)[0];
+    const N = (w && w.numbers) || {}, C = N.cases || {}, U = N.unit || it.unit, [lo, hi] = N.after_hours || [];
+    const c = [...(C.acted || []).map(x => ({ ...x, acted: true })), ...(C.unanswered || [])].sort((a, b) => Date.parse(b.at) - Date.parse(a.at))[0];
+    const ev = D.events.filter(e => e.issue === k).sort((a, b) => Date.parse(b.opened_at) - Date.parse(a.opened_at))[0];
+    /* an event still open is the Decide card's, just above: said once there */
+    const asked = ev && !ev.cleared_at ? `The node is asking now, since ${wd(ev.opened_at)}: the card above.` : ev ? `The node last asked ${wd(ev.opened_at)}${ev.action ? `: ${said(ev.action)}` : '.'} <span class="x">${esc(answerWords(ev.answer).w)}.</span>`
+      : `The node has not asked about ${said(it.name.toLowerCase())} in the last seven days.`;
+    const after = c ? `<p>${c.acted ? `Done ${wd(c.at)}${c.note ? `: “${esc(c.note)}”` : ''}` : `Not answered, ${wd(c.at)}`}. Inside went from `
+      + `${num(`${k}.case.before`, fmt(c.before, 1), 'the hour before')} to ${num(`${k}.case.after`, fmt(c.after, 1), `the ${lo}–${hi} h after`)} ${said(U)} in the ${lo}–${hi} h after`
+      + `${c.street == null ? '' : `; the street ${num(`${k}.case.street`, (c.street > 0 ? '+' : '') + fmt(c.street, 1), 'the street’s change over the same hours')}`}.</p>` : '';
+    const verdict = w ? `<p><b>${VERDICT[N.verdict] || (w.status === 'too_early' ? VERDICT.too_early : '')}</b> ${said(firstSentence(w.statement))}${w.status === 'weakening' ? ' <span class="x">· weakening</span>' : ''}</p>`
+      : `<p class="x">Nothing learned yet: the node checks once a day, and needs an alert somebody acted on.</p>`;
+    const usual = NOWL.rows.filter(r => r.kind === 'usual' && r.issue === k && r.status === 'holding' && r.numbers);
+    const who = w && (w.for_whom || []).length ? `matters here: ${said(w.for_whom.join(', '))}`
+      : NOWL.people && !Object.values(NOWL.people).some(Boolean) ? '<a href="#node/remember/who">who lives here? ›</a>' : '';
+    h += `<h3>Did it work</h3><p>${asked}</p>${after}${verdict}`
+      + (usual.length ? `<p class="dm">usually worst ${usual.map(r => `around ${String(r.numbers.high_hour).padStart(2, '0')}:00 ${r.key.startsWith('outdoor') ? 'outside' : 'inside'} (${num(`${r.key}.usual.high`, fmt(r.numbers.high, 1), 'the median of that hour, 28 days')} ${said(r.numbers.unit)})`).join(', ')}</p>` : '')
+      + (who ? `<p class="dm">${who}</p>` : '') + `<p class="dm"><a href="#node/remember">every case, on Node ›</a></p>`;
+  }
+  el.innerHTML = h;
+  el.hidden = !h;
+}
 // The things this home keeps, in one line (SPEC_inventory step 2), for a screen holding the admin token; nothing otherwise.
 async function thingsLine(el) {
   const r = await doorsFetch('/things').catch(() => null);
@@ -16,7 +81,7 @@ async function thingsLine(el) {
 }
 function drawNow() {
   dayWeek({ el: $('#svg'), issue: S.issue, head: $('#fighead'), scale: $('#figline'), pick: j => { S.i = j; drawNow(); } });
-  readout();
+  readout(); nowRemember();
 }
 
 /* The ladder, compact: rungs res 2 to 12, this node's rung filled; the node's own rule for the rest — rungs that may
