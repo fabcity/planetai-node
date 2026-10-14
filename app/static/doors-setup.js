@@ -49,9 +49,9 @@ VIEWS.setup = async function () {
 async function setupLoad() {
   const tok = (() => { try { return localStorage.getItem('planetai_admin') || ''; } catch (e) { return ''; } })();
   SETUP.desc = await fetch('/settings', { headers: tok ? { authorization: 'Bearer ' + tok } : {} }).then(r => r.json()).catch(() => null);
-  SETUP.packs = await fetch('/packs', { headers: DOORS_AUTH() }).then(r => r.ok ? r.json() : []).catch(() => []);
-  [SETUP.storage, SETUP.machine] = await Promise.all(['storage', 'machine'].map(r => fetch('/' + r, { headers: DOORS_AUTH() }).then(x => x.ok ? x.json() : null).catch(() => null)));
-  SETUP.history = tok ? await fetch('/actions?stage=settings&limit=40', { headers: DOORS_AUTH() }).then(r => r.ok ? r.json() : null).catch(() => null) : null;
+  SETUP.packs = await doorsFetch('/packs').then(r => r.ok ? r.json() : []).catch(() => []);
+  [SETUP.storage, SETUP.machine] = await Promise.all(['storage', 'machine'].map(r => doorsFetch('/' + r).then(x => x.ok ? x.json() : null).catch(() => null)));
+  SETUP.history = tok ? await doorsFetch('/actions?stage=settings&limit=40').then(r => r.ok ? r.json() : null).catch(() => null) : null;
   const hash = location.hash.split('/')[1];
   if (hash && SECTIONS().includes(hash)) SETUP.group = hash;
   if (!SETUP.group || !SECTIONS().includes(SETUP.group)) SETUP.group = SETUP.desc && SETUP.desc.unlocked ? (sGroups(SETUP.desc)[0] || 'screen') : 'screen';
@@ -180,8 +180,8 @@ function sMachine() {
     ['Temperature', hot || 'no thermal sensor this system gives the node'],
     ['Up for', `${upFor(M.uptime_s)} since the system started · the node’s app ${upFor(h.uptime_s)}`],
     ['System', `${esc(M.system)} · Python ${esc(M.python)}<small>${esc(M.seen_as)}</small>`],
-    ['Database', `${esc(M.database.version)} · up since ${esc((M.database.since || '').slice(0, 16).replace('T', ' '))} · ${M.database.connections} connections`],
-    ['The node', `${esc(h.version)} · ${(h.polls || 0).toLocaleString('en')} polls and ${(h.ingested || 0).toLocaleString('en')} readings since its restart · last poll ${esc((h.last_poll || 'none yet').slice(11, 16))} UTC`
+    ['Database', `${esc(M.database.version)} · up since ${esc(when(M.database.since))} · ${M.database.connections} connections`],
+    ['The node', `${esc(h.version)} · ${(h.polls || 0).toLocaleString('en')} polls and ${(h.ingested || 0).toLocaleString('en')} readings since its restart · last poll ${h.last_poll ? hhmm(h.last_poll) : 'none yet'}`
       + (() => { /* /health.errors is each source failing now, by name, with its first line; a source that recovers leaves it */
           const E = h.errors && typeof h.errors === 'object' ? Object.entries(h.errors) : [];
           return E.length ? `<small>${E.length} source${E.length === 1 ? '' : 's'} failing now: ${E.map(([k, v]) => `${esc(k)} (${esc(String(v).slice(0, 90))})`).join('; ')}</small>` : '<small>no source failing now</small>'; })()],

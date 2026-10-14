@@ -43,6 +43,17 @@ assert c.get("/").text == html
 assert c.get("/", params={"layout": "doors"}).text == html
 assert c.get("/", params={"layout": "classic"}).text == (STATIC / "index.html").read_text()
 print("doors: / and ?layout=doors is the doors, ?layout=classic the classic dashboard")
+# the frozen theme asks for the mono at fonts/…, and every page requested it: that one path answers (14 Oct 2026)
+_mono = c.get("/static/fonts/jetbrains-mono-latin.woff2")
+assert _mono.status_code == 200 and _mono.headers["content-type"] == "font/woff2", _mono.status_code
+assert "url('fonts/jetbrains-mono-latin.woff2')" in (STATIC / "planetai-theme.css").read_text().replace('"', "'")
+print("doors: the theme's fonts/jetbrains-mono-latin.woff2 answers 200")
+# the unit /issues names for a metric is the unit the node stores it in, which Home Assistant is told too: pressure
+# said hPa over kPa values, and the Data door read 99.8 hPa beside the model's 996 (14 Oct 2026)
+from issues import engine as _engine  # noqa: E402
+_off = {m: (u, _engine.METRICS[m]["unit"]) for m, (u, _) in main.HA_UNITS.items() if u and m in _engine.METRICS and _engine.METRICS[m]["unit"] != u}
+assert not _off, _off
+print("doors: every metric's unit on the page is the unit the node stores it in")
 
 # the phone page (SPEC_mobile §8.1): the same shell route, every /static name it uses is served, no heavy
 # library, and it never writes a setting or stores the admin token
@@ -179,4 +190,64 @@ assert '<table class="tbl imgs">' in _body("imagesBlock") and "icard" not in _bo
     "Images is a table; a card opens in a dialog, one image or all of them"
 assert '<table class="tbl species">' in _body("imagesBlock") and "file?w=96" in _body("imagesBlock"), "species a table; thumbnails small"
 print("doors: Data's images and things are tables, and a card is a dialog someone opens")
+# Fixes from the design review of node #1 (14 Oct 2026). Each check fails if its fix regresses.
+# 1. Local time: a UTC string and the node's own offset print the same hour (node #1 showed "as of 11:52" beside
+#    "at 19:00"); a string with no offset, or a page with no zone yet, keeps its own clock.
+# 3. A screen with no token asks no token-only route: doorsFetch answers a stand-in 403 and never reaches the network.
+# 7. The Wall names no sensor, room or kit, and says stale only when the last poll is old.
+tprog = r"""
+const fs = require('fs'), vm = require('vm');
+const L = require('./app/static/doors-load.js');
+const tz = 'Asia/Makassar';
+const calls = []; globalThis.fetch = p => { calls.push(p); return Promise.resolve(new Response('[]')); };
+(async () => {
+  const locked = await L.doorsFetch('/things'), cap = await L.doorsFetch('/captures/3/file?w=96'), open = await L.doorsFetch('/stats');
+  const core = fs.readFileSync('./app/static/doors-core.js', 'utf8'), pick = n => core.match(new RegExp('^const ' + n + ' = .*$', 'm'))[0];
+  const F = JSON.parse(fs.readFileSync('%s', 'utf8')), els = {};
+  const ctx = { D: L.buildD({ ...F, days: F.issues_days }, 'en'), VIEWS: {}, $: q => (els[q] ||= {}), out: null };
+  vm.createContext(ctx);
+  vm.runInContext(['esc', 'fmt', 'plain', 'said', 'num', 'unitOf', 'labelOf'].map(pick).join('\n') + '\n' + fs.readFileSync('./app/static/doors-wall.js', 'utf8')
+    + '\nfrags(); out = { frags: $("#wfrag").innerHTML, ask: D.order.map(k => wallAsk(D.issues[k])).join(" "),'
+    + ' fresh: wallStale({ last_poll: new Date().toISOString() }), old: wallStale({ last_poll: "2026-10-06T11:19:50+00:00" }), none: wallStale({}) };', ctx);
+  const pm = fs.readFileSync('./app/static/doors-placemap.js', 'utf8').match(/function packRows[\s\S]*?\n}\n/)[0];
+  vm.runInContext('const LAYERS = [{ id: "index" }, { id: "earth" }];' + pm + 'packRows(); out.pack = LAYERS.map(l => l.none);', ctx);
+  console.log(JSON.stringify({
+    utc: L.doorsLocal('2026-10-14T11:52:07.1+00:00', tz), z: L.doorsLocal('2026-10-14T11:52:00Z', tz), own: L.doorsLocal('2026-10-14T19:00:00+08:00', tz),
+    midnight: L.doorsLocal('2026-10-14T17:30:00+00:00', tz), bare: L.doorsLocal('2026-10-14T11:52:00', tz), notz: L.doorsLocal('2026-10-14T11:52:00+00:00', null),
+    locked: locked.status, cap: cap.status, open: open.status, calls, wall: ctx.out }));
+})();
+""" % FIX
+t = json.loads(subprocess.run(["node"], input=tprog, capture_output=True, text=True, check=True).stdout)
+assert t["utc"] == t["z"] == "2026-10-14T19:52" and t["own"] == "2026-10-14T19:00", t
+assert t["midnight"] == "2026-10-15T01:30", "a UTC evening is the node's next morning, day and all"
+assert t["bare"] == t["notz"] == "2026-10-14T11:52", "no offset, or no zone: the string's own clock"
+print("doors: every time is the node's local time, from a UTC string and from its own offset alike")
+assert t["locked"] == t["cap"] == 403 and t["open"] == 200 and t["calls"] == ["/stats"], t
+_locked = re.search(r"DOORS_LOCKED = /\^\\/\?\((.+?)\)\\b/", (STATIC / "doors-load.js").read_text()).group(1)
+_paths = ["/" + x.replace("\\/", "/") for x in re.split(r"\|(?![^(]*\))", _locked)]
+for _p in _paths:
+    for _q in ([_p.split("(")[0] + y for y in _p.split("(")[1].rstrip(")").split("|")] if "(" in _p else [_p]):
+        _opened = _q in main._SHARE_OPEN[0] or _q.startswith(main._SHARE_OPEN[1])
+        assert not _opened or _q == "/alerts", f"{_q} answers a screen without a token at SHARE_LEVEL=open; doorsFetch must ask it"
+print("doors: a screen with no token asks no token-only route; with one it asks as before")
+_names = {x["name"].strip() for x in json.loads(Path(FIX).read_text())["sensors"] if len(x["name"].strip()) > 3}
+_wall = t["wall"]["frags"] + t["wall"]["ask"]
+assert t["wall"]["frags"].count("<div>") == 5 and not [n for n in _names if n in _wall], [n for n in _names if n in _wall]
+assert "asked of this house" in t["wall"]["ask"], "the open asks are said, in the engine's words"
+assert t["wall"]["old"] and t["wall"]["none"] and not t["wall"]["fresh"], t["wall"]
+print("doors: the Wall names no sensor, room or kit, and says stale only when the last poll is old")
+# 6. Place's Index and land-change rows say what the node holds (node #1: 6 of 20, nine years compared), not "nothing"
+assert t["wall"]["pack"][0].startswith("6 of 20 hold a value") and "What changed" in t["wall"]["pack"][1], t["wall"]["pack"]
+print("doors: Place's Index and land-change rows say what the node holds and where it is drawn")
+# 11. A locked part points to where a screen is unlocked, Set up › This screen, never "under Node".
+assert "under Node" not in js and "UNLOCK_AT" in _dj, "unlocking lives in Set up › This screen (#setup/screen)"
+# 13. Without the token the ledger draws stages and times only (/issues gives no names; test_events_wire holds that).
+_led = _dj[_dj.index("function ledgerBlock"):]
+assert "if (!DOORS_TOKEN())" in _led and "a.actor" not in _led[:_led.index("return;")], "a locked ledger names nobody"
+# 9, 10. The household form is not the head's 20 px bold .who; a cell after a number has its gap on the left.
+assert 'class="who"' not in _dj and ".who{" in html, "the household form took the page's .who rule"
+assert ".tbl th.n+th:not(.n),.tbl td.n+td:not(.n){padding-left:" in html
+# 12. The phone reads either token, as the doors do.
+assert "const hasToken = () => !!DOORS_TOKEN();" in mobjs
+print("doors: locked parts link to Set up › This screen; a locked ledger names nobody; the phone reads both tokens")
 print("all doors checks passed")

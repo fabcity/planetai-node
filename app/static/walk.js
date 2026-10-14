@@ -20,7 +20,7 @@ if (typeof module !== 'undefined') module.exports = { walkOf };
 
 if (typeof document !== 'undefined') (async () => {
   const $ = s => document.querySelector(s);
-  const get = p => fetch('/' + p, { headers: DOORS_AUTH() }).then(r => (r.ok ? r.json() : null)).catch(() => null);
+  const get = p => doorsFetch('/' + p).then(r => (r.ok ? r.json() : null)).catch(() => null);
   /* the walk reads what the phone page reads: whatever this node's SHARE_LEVEL answers, or everything with the token */
   const [I, D, H, N, M] = await Promise.all([get('issues'), get('issues/days?days=1'), get('health'), get('nodes'), get('ground/meta')]);
   /* refused: Now above already says why and offers the unlock */
@@ -153,7 +153,7 @@ if (typeof document !== 'undefined') (async () => {
     grid.hidden = false;
     if (grid.dataset.loaded) return; grid.dataset.loaded = '1'; grid.innerHTML = '';
     for (const c of (caps[+b.dataset.res] || []).slice(0, 12)) {
-      const blob = await fetch(`/captures/${c.id}/file`, { headers: DOORS_AUTH() }).then(r => (r.ok ? r.blob() : null)).catch(() => null);
+      const blob = await doorsFetch(`/captures/${c.id}/file`).then(r => (r.ok ? r.blob() : null)).catch(() => null);
       if (!blob) continue;
       const img = document.createElement('img');
       img.src = URL.createObjectURL(blob); img.alt = c.note || c.kind || 'a capture'; img.loading = 'lazy';

@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+- **Thirteen fixes from the design review of node #1 (14 Oct).** (1) Times are the node's own: the doors and the phone
+  page sliced UTC strings as if they were local, so node #1 read "as of 11:52" beside "at 19:00" in Bali; every time
+  is now read in `/health`'s zone. (2) The mono the frozen theme asks for at `/static/fonts/jetbrains-mono-latin.woff2`
+  404'd on every page; that one path now answers. (3) A screen without a token no longer asks the token-only routes
+  (`/aggregates`, `/actions`, `/alerts`, `/geo/*`, `/things`, `/learned`, `/captures` and the rest) and logs a 403 for
+  each; with a token nothing changes. (4) Node's "readings kept" was the readings since the restart; with the token it
+  is now `/storage`'s count, without it it says "since the restart". What this home offers leaves (`/offers`, open at
+  every share level and in the export), so it is now one of the links out and in the caption. (5) "Alerts, to a phone"
+  counted every alerts row, including the ones the event engine records and never sends; `/issues` now carries
+  `events.sent_24h`, what was sent, and the door shows that. (6) Place's land-change and Index rows said the pack had
+  nothing while node #1 held 6 of 20 Index values and nine years compared; they now say how many and where they are
+  drawn. (7) The Wall printed `stale` always, and the names of the house's sensors ("K ROOM - BAYU HOLES") and an
+  alert's text naming the room; it now says `stale` only when the last poll is over 15 minutes old, and names nothing:
+  inside, outside, a public station by its distance, an ask in the engine's words. (8) Pressure is stored in kPa and
+  `/issues` called it hPa, so Data read "99.8 hPa" beside the model's 996; it says kPa. (9) The household form shared
+  the `.who` class of the page's name and drew its boxes 20 px bold. (10) A left-aligned column after a number ran
+  into it ("HOW MANY USED"); it has its gap now. (11) "Unlock this screen under Node" pointed to the wrong door; it is a
+  link to Set up › This screen. (12) A phone unlocked with the admin token said "locked"; it reads either token.
+  (13) Without a token the ledger showed who answered each alert and what the alert said; it now shows stages and times
+  only, and `/issues` itself gives a tokenless reader no names and no notes (Tomas, 14 Oct).
+
 - **Data: Images and Things are tables.** Each image is a row: a thumbnail, when and who, what took it, the note,
   what the image model saw and whether somebody here confirmed it. A row opens that image in a dialog, the picture
   beside its fields, to edit, describe again, confirm or delete; *See all images* opens every card at once. Things are
