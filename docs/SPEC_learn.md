@@ -86,7 +86,7 @@ line); it never changes a rule by itself. This is the second loop: asking whethe
 
 ## 6 · Learning three: the digests, and asking them
 
-At the report hour the node writes a **digest** per day; each Monday per week, on the 1st per month, on 1 January per
+In the first hour of each local day the node writes a **digest** per day, before the morning report; each Monday per week, on the 1st per month, on 1 January per
 year. A digest is made from that period's learnings, its figures, its actions, and the previous digest at the same
 scale, so the chain of reports becomes a memory at four scales. It is written by the node's template first; a model
 may reword it under §2.1, as the report is.

@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **Four fixes before the new data is shown anywhere else.** (1) The diary counted alerts nobody got: on
+  `ALERT_ENGINE=events` node #1's 13 October entry said "15 alerts, 0 acted on" for rows the engine replaced and never
+  sent. Digests now count the episodes that were sent, by issue, and every digest written before is written again
+  once (`learn.DIGEST_V`). (2) Learnings and digests ran 20 hours after their last pass, drifting round the clock; they
+  now run in the first hour of each local day, so the morning finds yesterday written. (3) `/stats` answered the
+  house's `private` counts (things kept, idle, needing repair) to anyone the page answered, which at
+  `SHARE_LEVEL=open` is the whole network, and to a parent's or a backup's token; a readout now gives them to the
+  household's admin or act token or this machine only. (4) The ask pane, open on the network at `SHARE_LEVEL=open`,
+  and the Wall's narration could read what the house learned whenever `AGENT_PREFER=private`; the `learned` tool is
+  now offered only to a request with the household's token or from this machine, and never to the Wall.
+
 - **Learnings on an events node count what was sent.** On `ALERT_ENGINE=events` the heat and air-quality rules still
   write alert rows that are never sent, and "what worked" and "alerts that may not fit" were counting them: node #1's
   page said the heat alert "rings about 6 times a day" when 4 heat messages had gone out since 5 October. Rows of a

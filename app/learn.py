@@ -368,6 +368,9 @@ def learn_asks(q, live: set, replaced: set = frozenset(), since=None) -> list[di
 SHORT = {"indoor-pm25": "PM2.5 inside", "outdoor-pm25": "PM2.5 outside", "indoor-heat": "feels-like inside"}
 SCALES = ("day", "week", "month", "year")
 BACKFILL_DAYS = 400
+# A digest written by an older version of this file is written again, once: v2 counts what was sent on an events
+# node (node #1's 13 Oct digest said "15 alerts, 0 acted on" when those rows were never sent).
+DIGEST_V = 2
 
 
 def periods(first, today) -> list[tuple[str, object, object]]:
@@ -417,7 +420,7 @@ def digest(scale: str, start, end, groups: dict, alerts: list[dict], notes: list
     text = label(scale, start) + ". " + ("; ".join(parts) + "." if parts else "No readings from this house's own sensors.")
     by_rule: dict = {}
     for a in alerts:
-        r = by_rule.setdefault(a["rule_id"].split("/")[-1], [0, 0])
+        r = by_rule.setdefault(a.get("name") or a["rule_id"].split("/")[-1], [0, 0])
         r[0] += 1
         r[1] += 1 if a["acted"] else 0
     nums["alerts"] = {k: {"raised": v[0], "acted": v[1]} for k, v in by_rule.items()}
@@ -438,12 +441,14 @@ def digest(scale: str, start, end, groups: dict, alerts: list[dict], notes: list
                  if g in nums and isinstance(prev.get(g), dict) and abs(nums[g]["mean"] - prev[g]["mean"]) >= 0.1]
         if moved:
             text += f" Against the {scale} before: " + ", ".join(moved) + "."
+    nums["v"] = DIGEST_V
     return {"scale": scale, "period_start": start.isoformat(), "label": label(scale, start), "text": text, "numbers": nums}
 
 
-def write_digests(q, have: set, prev_numbers: dict, today=None) -> list[dict]:
+def write_digests(q, have: set, prev_numbers: dict, today=None, replaced: set = frozenset(), since=None) -> list[dict]:
     """The digests not yet written, oldest first, so each finds the one before it. `have` is {(scale, start iso)};
-    `prev_numbers` {(scale, start iso): numbers} of those already kept."""
+    `prev_numbers` {(scale, start iso): numbers} of those already kept. `replaced` and `since` as learn_worked: on an
+    events node a replaced pack's rows are left out and the episodes that were sent are counted, by issue."""
     first = q("""SELECT min(r.ts) AS t FROM readings r JOIN sensors s USING (sensor_id)
                  WHERE s.kind = 'sensor' AND s.local AND r.ts <= now()""")
     if not first or not first[0]["t"]:
@@ -454,18 +459,23 @@ def write_digests(q, have: set, prev_numbers: dict, today=None) -> list[dict]:
     todo = [p for p in periods(first_day, today) if (p[0], p[1].isoformat()) not in have]
     if not todo:
         return []
-    since = min(p[1] for p in todo)
+    begin = min(p[1] for p in todo)
     rows = q("""SELECT date_trunc('hour', r.ts) AS bucket, r.sensor_id, r.metric, avg(r.value) AS mean, bool_or(s.indoor) AS indoor
                 FROM readings r JOIN sensors s USING (sensor_id)
                 WHERE s.kind = 'sensor' AND s.local AND r.metric IN ('pm25', 'temp', 'humidity')
-                  AND r.ts >= %s::date AND r.ts < %s::date GROUP BY 1, 2, 3""", since.isoformat(), today.isoformat())
+                  AND r.ts >= %s::date AND r.ts < %s::date GROUP BY 1, 2, 3""", begin.isoformat(), today.isoformat())
     groups = group_hourly(rows)
-    alerts = q("""SELECT l.rule_id, l.ts::date AS d,
+    alerts = q("""SELECT l.rule_id, l.ts, l.ts::date AS d,
                          EXISTS (SELECT 1 FROM actions x WHERE x.alert_id = l.id AND x.stage = 'acted') AS acted
-                  FROM alerts l WHERE l.level = 'act' AND l.ts >= %s::date AND l.ts < %s::date""", since.isoformat(), today.isoformat())
+                  FROM alerts l WHERE l.level = 'act' AND l.ts >= %s::date AND l.ts < %s::date""", begin.isoformat(), today.isoformat())
+    alerts = [a for a in alerts if not silent(a["rule_id"], a["ts"], replaced, since)]
+    if replaced:
+        alerts += [{"rule_id": f"{ISSUE_PACK.get(e['issue'], e['issue'])}/events", "name": e["issue"],
+                    "d": _aware(e["opened_at"]).date(), "acted": e["acted"]}
+                   for e in sent_events(q) if begin <= _aware(e["opened_at"]).date() < today]
     notes = q("""SELECT ts::date AS d, note FROM actions
                  WHERE stage = 'acted' AND coalesce(note, '') <> '' AND ts >= %s::date AND ts < %s::date ORDER BY ts""",
-              since.isoformat(), today.isoformat())
+              begin.isoformat(), today.isoformat())
     day = lambda r: r["d"] if not isinstance(r["d"], str) else datetime.fromisoformat(r["d"]).date()  # noqa: E731
     out, last = [], {}
     for scale, start, end in sorted(todo, key=lambda p: (SCALES.index(p[0]), p[1])):

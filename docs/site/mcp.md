@@ -64,7 +64,7 @@ Every tool has one class, in `app/tool_classes.py`:
 A remote agent, driven by a person, has all twenty. The household's own model on the node is handed the 16
 `read` and `act` tools and nothing else (`app/agent_loop.py`); see [The bot](bot.md). The dashboard's
 [ask pane](ask.md) calls in as `dashboard-chat` and runs 12 of the `read` tools, never `settings_get`,
-`report_bundle` or `export_day`; `act` and the `admin` tools become cards a person presses, and the pane runs none of them. Four tools write:
+`report_bundle` or `export_day`, nor `learned` unless the page carries the household's admin or act token (never on the Wall); `act` and the `admin` tools become cards a person presses, and the pane runs none of them. Four tools write:
 `act`, `report_now`, `settings_set` and `run_pack_script`. `maintenance` is `admin` and writes nothing: it
 answers with a command for a person to run.
 
