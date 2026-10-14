@@ -256,15 +256,17 @@ print("doors: the Wall names no sensor, room or kit, and says stale only when th
 aprog = r"""
 const fs = require('fs'), vm = require('vm');
 const L = require('./app/static/doors-load.js');
-const core = fs.readFileSync('./app/static/doors-core.js', 'utf8'), now = fs.readFileSync('./app/static/doors-now.js', 'utf8');
+const core = fs.readFileSync('./app/static/doors-core.js', 'utf8'), now = fs.readFileSync('./app/static/doors-now.js', 'utf8'), place = fs.readFileSync('./app/static/doors-place.js', 'utf8');
 const pick = n => core.match(new RegExp('^const ' + n + ' = .*$', 'm'))[0], fn = (src, n) => src.match(new RegExp('function ' + n + '[\\s\\S]*?\\n}\\n'))[0];
 const out = {};
 for (const [name, path] of Object.entries(JSON.parse(process.argv[1]))) {
   const F = JSON.parse(fs.readFileSync(path, 'utf8')), els = {}, D = L.buildD({ ...F, days: F.issues_days }, 'en');
   D.now = D.buckets.length - 1;
-  const ctx = { D, S: { issue: null, i: D.now }, doorsLocal: L.doorsLocal, VIEWS: {}, $: q => (els[q] ||= {}) };
+  const ctx = { D, S: { issue: null, i: D.now }, doorsLocal: L.doorsLocal, VIEWS: {}, $: q => (els[q] ||= {}), document: { querySelectorAll: () => [] } };
   vm.createContext(ctx);
-  vm.runInContext(['esc', 'loc', 'dayOf', 'fmt', 'said', 'num', 'unitOf', 'labelOf', 'NODE', 'sign'].map(pick).join('\n') + '\n'
+  vm.runInContext(['esc', 'loc', 'dayOf', 'fmt', 'said', 'num', 'unitOf', 'labelOf', 'NODE', 'sign', 'PROV', 'prov', 'ISSUES_DRAWN'].map(pick).join('\n') + '\n'
+    + 'let NOWL = null;\n' + (now.includes('function usualLine') ? fn(now, 'usualLine') : '') + fn(now, 'rows')
+    + (place.includes('function yearly') ? fn(place, 'yearly') : 'function yearly() { return ""; }\n')
     + fn(core, 'evAt') + fn(core, 'answerWords') + now.match(/^const ANSWER_STAGE = .*$/m)[0] + '\n' + fn(now, 'decision')
     + fs.readFileSync('./app/static/doors-wall.js', 'utf8').match(/function wallAsk[\s\S]*?\n}\n/)[0], ctx);
   /* the phone's Decide card, its own copy of the helpers (mobile.js says why) */
@@ -277,6 +279,8 @@ for (const [name, path] of Object.entries(JSON.parse(process.argv[1]))) {
     return [k, { wall: vm.runInContext('wallAsk(D.issues[S.issue])', ctx), now: els['#decide'].innerHTML, asking: D.issues[k].asking.length,
                  phone: vm.runInContext('decideHTML(D.issues[leadKey])', pctx) }];
   }));
+  vm.runInContext('rows()', ctx);
+  out[name]._rows = els['#rows'].innerHTML; out[name]._yearly = vm.runInContext('yearly()', ctx);
 }
 console.log(JSON.stringify(out));
 """
@@ -286,7 +290,7 @@ assert _ar.returncode == 0, _ar.stderr[-2000:]
 a = json.loads(_ar.stdout)
 _fg, _ev, _ru = a["2026-10-06-figures"], a["2026-10-06-events"], a["2026-09-21d"]
 # 19:22, events: air's only open alert is a stale nearby one, heat's event was answered Done. Nothing is asked, on both.
-assert "Nothing is asked now." in _fg["air"]["wall"] and "nothing is asked now" in _fg["air"]["now"], _fg["air"]
+assert "Nothing is asked now." in _fg["air"]["wall"] and "Nothing to do now." in _fg["air"]["now"], _fg["air"]
 assert "No event was open" not in _fg["air"]["now"], "at the live hour Now speaks for the node's asking, not the events alone"
 assert "Nothing is asked now." in _fg["heat"]["wall"] and "answered: Done" in _fg["heat"]["now"] and 'class="ans"' not in _fg["heat"]["now"]
 # 09:00, events: the danger event asks, and the Wall counts it with the two nearby alerts still true. This capture has
@@ -294,6 +298,7 @@ assert "Nothing is asked now." in _fg["heat"]["wall"] and "answered: Done" in _f
 assert "3 things are asked of this house." in _ev["air"]["wall"] and "an event open since 07:18 (danger)" in _ev["air"]["now"], _ev["air"]
 # 21 Sep, rules: heat's alert is still true and no event stands for it; Now draws the alert, the Wall counts it
 assert "One thing is asked of this house." in _ru["heat"]["wall"] and "asked since" in _ru["heat"]["now"] and "Reply /act" in _ru["heat"]["now"], _ru["heat"]
+_rows = {n: (c.pop("_rows"), c.pop("_yearly")) for n, c in a.items()}
 for _cap in a.values():
     for _k, _v in _cap.items():
         assert ("Nothing is asked now." in _v["wall"]) == (_v["asking"] == 0), (_k, _v)
@@ -301,6 +306,38 @@ for _cap in a.values():
         assert ("still open" in _v["phone"] or "data-ev" in _v["phone"]) == (_v["asking"] > 0), (_k, _v["phone"])
 assert "Reply /act" in _ru["heat"]["phone"] and "Nothing is asked now." in _fg["air"]["phone"], (_ru["heat"]["phone"], _fg["air"]["phone"])
 print("doors: Now's Decide card, the Wall and the phone read one answer to what is asked now, on three captures")
+# NOW'S READING ORDER (Tomas, 15 Oct 2026: "I am not happy with what is showing"). Ten blocks of equal weight became
+# one order: the sentence and its day, the distances in a line, What to do, Did it work and Yesterday, Around the house.
+_nowh = html[html.index('<main class="face view" data-view="now">'):html.index("<!-- PLACE -->")]
+_nowjs = (STATIC / "doors-now.js").read_text()
+# the res 2–12 rail is Place's: Now draws none, and keeps one link to the cell on Place
+assert 'id="rail"' not in _nowh and "function rail(" not in _nowjs and 'id="cellink" title="This node\'s cell, on Place"' in _nowh, \
+    "the grain rail is back on Now"
+# the parts in reading order, each keeping its learn mark: lead, figure, distances, buttons, then the house's states
+_marks = re.findall(r'data-learn="([a-z]+)"', _nowh)
+assert _marks == ["lead", "figure", "distances", "buttons", "states", "custody"], _marks
+assert _nowh.index('id="decide"') < _nowh.index('id="nremember"') < _nowh.index('class="rcol"'), "What to do, then Did it work, then around"
+# heads name the reader's question, in sentence case; no engine stage shouted on Now
+assert "Around the house</h2>" in _nowh and "`Right now · " in _nowjs and '<h2 class="nh">What to do</h2>' in _nowjs
+assert not re.search(r"observe · |decide · |the node’s own sentence", _nowh + _nowjs), "a capitalised engine stage is back as a head"
+# Land and Coast change yearly: off Now's rows, on Place beside the ground
+for _n, (_rw, _yr) in _rows.items():
+    assert 'data-k="land"' not in _rw and 'data-k="coast"' not in _rw, (_n, _rw)   # a capture with no days draws no rows at all
+    assert 'data-k="land"' in _yr and 'data-k="coast"' in _yr, (_n, _yr[:300])
+assert 'data-k="air"' in _rows["2026-10-06-figures"][0] and 'data-k="heat"' in _rows["2026-10-06-figures"][0], _rows["2026-10-06-figures"][0]
+# What to do is framed, with its buttons, only while something is asked; otherwise it is one plain line
+for _n, _cap in a.items():
+    for _k, _v in _cap.items():
+        assert ('class="decide"' in _v["now"]) == (_v["asking"] > 0), (_n, _k, _v["now"][:300])
+        assert ("Nothing to do now." in _v["now"]) == (_v["asking"] == 0), (_n, _k, _v["now"][:300])
+        assert '<h2 class="nh">What to do</h2>' in _v["now"]
+# a phone: the bar's targets, and the week, are 44 px
+_ph = html[html.index("@media (max-width:480px){"):]
+_ph = _ph[:_ph.index("\n}\n")]
+for _sel in (".iconbtn{width:44px;height:44px", ".doors a{flex:1;display:flex;align-items:center;justify-content:center;min-height:44px", ".reg button{min-height:44px"):
+    assert _sel in _ph, f"the phone bar lost a 44 px target: {_sel}"
+assert ".week button{" in html and "min-height:44px" in html[html.index(".week button{"):][:400] and "week: !phone" in _nowjs
+print("doors: Now reads in order: the sentence and its day, the distances, What to do (framed only when asked), Did it work, around the house; land and coast on Place")
 # 6. Place's Index and land-change rows say what the node holds (node #1: 6 of 20, nine years compared), not "nothing"
 assert t["wall"]["pack"][0].startswith("6 of 20 hold a value") and "What changed" in t["wall"]["pack"][1], t["wall"]["pack"]
 print("doors: Place's Index and land-change rows say what the node holds and where it is drawn")
@@ -359,8 +396,9 @@ const run = async (token, issue, hash) => {
   await vm.runInContext('rememberLoad()', ctx);
   const nr = $('#nremember'), out = { hidden: nr.hidden, html: nr.innerHTML, frame: nr.cls.has('decide') };
   for (const k of ['heat', 'land']) { ctx.S.issue = k; vm.runInContext('nowRemember()', ctx); out[k] = $('#nremember').innerHTML; }
+  out.usual = typeof ctx.usualLine === 'function' ? vm.runInContext("usualLine('air')", ctx) : '';
   await vm.runInContext('remember()', ctx);
-  return { now: out, node: $('#remember').innerHTML, diary: $('#rdiary').innerHTML, worked: $('#rworked').innerHTML, who: $('#rwho').innerHTML, dlg, calls: calls.slice() };
+  return { usual: out.usual, now: out, node: $('#remember').innerHTML, diary: $('#rdiary').innerHTML, worked: $('#rworked').innerHTML, who: $('#rwho').innerHTML, dlg, calls: calls.slice() };
 };
 (async () => console.log(JSON.stringify({ on: await run(true, 'air', '#node/remember/day/2026-10-05'), off: await run(false, 'air', '#node') })))();
 """
@@ -375,10 +413,13 @@ assert re.search(r"Yesterday the air inside averaged <span[^>]*>9\.1</span> µg/
 assert "over the WHO line for 1 hour;" in re.sub(r"<[^>]+>", "", _n), "one hour, not one hours"
 assert "2 alert" in re.sub(r"<[^>]+>", "", _n) and "#node/remember/day/2026-10-05" in _n, "its alerts, and a link to the whole entry on Node"
 _t = re.sub(r"<[^>]+>", "", _n)
-assert "The node last asked Tue, 6 Oct at 07:18" in _t and "card above" in on["now"]["heat"] and "Done Tue, 6 Oct at 07:00: “closed the windows, purifier on”" in _t, _t
+assert "The node last asked Tue, 6 Oct at 07:18" in _t and "see What to do, above" in on["now"]["heat"] and "Done Tue, 6 Oct at 07:00: “closed the windows, purifier on”" in _t, _t
 assert "Inside went from 40.2 to 12.3 µg/m³ in the 1–2 h after; the street +0.4." in _t, "what happened after: the case's own numbers"
 assert "It helps here. Acted on 6 times:" in _t and "Left unanswered" not in _t, "the node's verdict, and its statement kept short"
-assert "usually worst around 07:00 inside (12.1 µg/m³)" in _t and "who lives here?" in _t and "#node/remember/who" in _n
+assert "usually worst" not in _t and "who lives here?" in _t and "#node/remember/who" in _n, "the usual hour is said in What to do now"
+assert "It is usually worst around 07:00 inside (12.1 µg/m³)." in re.sub(r"<[^>]+>", "", on["usual"]), on["usual"]
+assert _t.index("Did it work") < _t.index("Yesterday"), "Did it work comes first, then Yesterday"
+assert "The node is asking now" not in on["now"]["heat"], "heat's event was answered Done: nothing is asked, so Did it work says so too"
 assert "Too early to say." in on["now"]["heat"] and "Did it work" not in on["now"]["land"], "heat is too early; land never asks"
 assert not on["now"]["frame"], "no frame while nothing is asked"
 assert "<h3>Yesterday" not in off["now"]["html"] and off["now"]["hidden"] and not [c for c in off["calls"] if "learned" in c or "household" in c], \

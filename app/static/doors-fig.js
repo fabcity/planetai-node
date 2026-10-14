@@ -1,11 +1,12 @@
 'use strict';
 /* The day, large, and the week under it on the same x (R33). One function for Now and the Wall.
-   o: { el: <svg>, issue, big: bool (wall scale), pick: i => void (moves the moment) } */
+   o: { el: <svg>, issue, big: bool (wall scale), pick: i => void (moves the moment), week: false (the day alone: a phone
+   draws the week as rows it can press, doors-now.js weekRows) } */
 function dayWeek(o) {
   const k = o.issue, it = D.issues[k], svg = d3.select(o.el), uid = o.el.id;
   const W = o.el.parentNode.clientWidth, narrow = W < 560, B = o.big ? 1.6 : 1;
   const m = { l: narrow ? 46 : 74 * B, r: narrow ? 52 : 64 * B, t: 40 * B }, H1 = narrow ? 190 : (o.h1 || 220), rowH = narrow ? 13 : 15 * B, gap = 34 * B;
-  const iw = W - m.l - m.r, nD = D.dates.length, H = m.t + H1 + gap + nD * rowH + 26;
+  const iw = W - m.l - m.r, nD = o.week === false ? 0 : D.dates.length, H = m.t + H1 + (nD ? gap + nD * rowH : 0) + 26;
   svg.attr('viewBox', `0 0 ${W} ${H}`).attr('width', W).attr('height', H).selectAll('*').remove();
   const date = dayOf(D.buckets[S.i]);
   const x = d3.scaleLinear([0, 24], [m.l, m.l + iw]);
@@ -105,7 +106,7 @@ function dayWeek(o) {
 
   // ---- the week: one row a day on the same x, the cursor's day outlined ----
   const y0 = m.t + H1 + gap, shade = d3.scaleLinear([lo, top], [.08, .9]).clamp(true);
-  D.dates.forEach((dt, r) => {
+  if (nD) D.dates.forEach((dt, r) => {
     const yy = y0 + r * rowH, pd = (it.per_day || []).find(p => p.date === dt);
     g.append('text').attr('class', dt === date ? 'lab' : '').attr('x', m.l - 8).attr('y', yy + rowH - 3).attr('text-anchor', 'end').text(narrow ? dt.slice(8) : dLabel(dt).replace(',', ''));
     for (let h = 0; h < 24; h++) {
@@ -118,14 +119,15 @@ function dayWeek(o) {
     g.append('text').attr('x', m.l + iw + 8).attr('y', yy + rowH - 3).attr('class', pd && pd.over ? 'lab' : '').text(pd ? (pd.over ? `${pd.over} h` : '0') : '');
     if (dt === date) g.append('rect').attr('x', m.l).attr('y', yy).attr('width', iw).attr('height', rowH).attr('fill', 'none').attr('stroke', 'currentColor').attr('stroke-width', 1.5);
   });
-  g.append('text').attr('x', m.l + iw + 8).attr('y', y0 - 6).text('over');
+  if (nD) g.append('text').attr('x', m.l + iw + 8).attr('y', y0 - 6).text('over');
   // ---- the cursor: one hour, through the day and the week ----
   const ch = hourOf(D.buckets[S.i]) + .5, cv = val(k, it.hero_distance, S.i);
-  g.append('line').attr('x1', x(ch)).attr('x2', x(ch)).attr('y1', m.t - 4).attr('y2', y0 + nD * rowH + 4).attr('stroke', 'var(--cells)').attr('stroke-width', 1.5);
+  g.append('line').attr('x1', x(ch)).attr('x2', x(ch)).attr('y1', m.t - 4).attr('y2', nD ? y0 + nD * rowH + 4 : m.t + H1).attr('stroke', 'var(--cells)').attr('stroke-width', 1.5);
   if (cv != null) g.append('circle').attr('cx', x(ch)).attr('cy', y(Math.min(cv, y.domain()[1]))).attr('r', 5).attr('fill', 'var(--ground)').attr('stroke', 'var(--cells)').attr('stroke-width', 2);
   g.append('circle').attr('cx', x(ch)).attr('cy', m.t + H1 + 4).attr('r', 7).attr('fill', 'var(--cells)');
-  o.head && (o.head.innerHTML = `${said(it.name)} · ${dLabel(date)} · every distance · and the week below`);
-  o.scale && (o.scale.innerHTML = it.line != null ? `scale to ${fmt(y.domain()[1], 0)} ${said(it.unit)}` : '');
+  /* said in sentence case under the drawing: the day, what is drawn, how to move through it */
+  o.head && (o.head.innerHTML = `${esc(dLabel(date))}: the house heavy, the street and the ring dashed${nD ? ', the week below' : ''}. Drag across the day, or focus it and use the arrow keys.`);
+  o.scale && (o.scale.innerHTML = it.line != null ? `Scale to <span class="mono">${fmt(y.domain()[1], 0)}</span> ${said(it.unit)}.` : '');
   svg.selectAll('text').style('font-size', o.big ? '17px' : null);
   if (!o.pick) return;
   // scrub: press and drag inside the day; it moves the moment, never only a tooltip
