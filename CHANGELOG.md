@@ -11,6 +11,16 @@
   The narration box is not drawn until a text arrives and keeps the last one while the next is written. The back
   button, chips, hour strip and model note show only under a pointer or the keyboard. `tests/test_doors.py` holds the
   floor, the hidden chrome and the collapsed box.
+- **Now reads in the order a household asks (Tomas, 14 Oct: "I am not happy with what is showing").** About ten
+  blocks of equal weight competed on the doors' first screen, and on a phone the headline sat under ~340 px of chrome.
+  Now is one bold block, the sentence and its day drawing, then the four distances in one quiet line, then **What to
+  do** (the Decide card framed, with its buttons, only while something is asked; otherwise "Nothing to do now." and
+  the hour it is usually worst), then **Did it work** and **Yesterday**, then **Around the house** (Air and Heat as
+  rows, the stations' map with a one-line caption). Heads are sentence case and name the question; the capitalised
+  engine stages are gone from Now. The res 2–12 scale strip left Now (Place has its own; the kicker links to the
+  cell). Land and Coast change yearly and moved to Place, under **Changes by the year**. Did it work no longer says
+  "the node is asking now" beside an event already answered. On a phone the bar is three rows of 44 px targets (the
+  headline at 237 px instead of 339) and the week is one tappable row a day.
 - **A refusing source is not the household's to-do.** The report's one thing to do skipped past what someone here
   can act on to print a source's raw error, cut mid-URL (node #1, 14 Oct: Open-Meteo's daily limit). Source errors are
   left to Node's Running section.

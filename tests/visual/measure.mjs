@@ -2851,8 +2851,14 @@ async function learnwalk() {
     walk.click();
     const visited = [], srcs = [];
     for (let i = 0; i < order.length; i++) {
-      await new Promise(r => setTimeout(r, 60));
-      const card = document.querySelector('#askpane [data-learn-card]');
+      /* wait for this step's card, up to 2 s: a fixed 60 ms read nothing on CI's slower macOS runner, and the walk
+         failed at step 0 with every card in its place (#245, #248 on 14-15 Oct; locally it always passed) */
+      let card = null;
+      for (let t = 0; t < 40; t++) {
+        await new Promise(r => setTimeout(r, 50));
+        card = document.querySelector('#askpane [data-learn-card]');
+        if (card && (i === 0 || card.getAttribute('data-learn-card') !== visited[i - 1])) break;
+      }
       if (!card) break;
       visited.push(card.getAttribute('data-learn-card'));
       srcs.push((card.querySelector('.src') || {}).textContent || '');
