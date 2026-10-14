@@ -21,7 +21,16 @@ ORDER = ("danger", "sustained", "unusual", "spike", "ahead")   # which open even
 HOLD = dt.timedelta(hours=3)                                   # Not now: docs/SPEC_alerts.md §7
 RECENT = dt.timedelta(days=7)                                  # Act's record (§4.3)
 OUTSIDE = {"apparent": "temp", "temp": "temp", "pm25": "pm25"}  # an issue's metric -> events_pg.context's outside_*
-SENT_ACTION = "\n\n👉 "                                         # how actions.render puts the action under the story
+SENT_ACTION = "\n"              # how actions.render puts the action under the story, since 14 Oct (one sign per message)
+SENT_ACTION_OLD = "\n\n👉 "     # how it did before: messages already sent keep it, and their cards still find the action
+
+
+def _action_of(said: str):
+    """The action line of a sent message: under the story, in the old shape or the new one; None when there is none."""
+    for sep in (SENT_ACTION_OLD, SENT_ACTION):
+        if sep in said:
+            return said.split(sep, 1)[1]
+    return None
 
 
 def engine_of(value) -> str:
@@ -84,7 +93,7 @@ def build(engine, events, messages, answers, covered, contexts, decl, locale, no
                "opened_at": _iso(e["opened_at"]), "last_seen_at": _iso(e["last_seen_at"]), "cleared_at": _iso(cleared),
                "peak": e.get("peak"), "line": (issue.get("line") or {}).get("value"),
                "rooms": sorted(e.get("rooms") or []), "places": sorted(e.get("places") or []),
-               "action": ({"id": am["action_id"], "text": said.split(SENT_ACTION, 1)[1] if SENT_ACTION in said else None}
+               "action": ({"id": am["action_id"], "text": _action_of(said)}
                           if am else None),
                "message": {"text": m.get("text"), "ts": _iso(m["ts"]), "sent": bool(m.get("sent"))} if m else None,
                "alerts": sorted(covered.get(eid) or []),

@@ -69,8 +69,47 @@ def _med(xs):
     return round(statistics.median(xs), 1) if xs else None
 
 
+# The verdict (design review, 14 Oct): node #1's air row read HOLDING while acting had left the air worse than not
+# answering. `holding` says the learning holds; the verdict says what it holds. It compares the two groups' changes
+# inside, each net of the street's: acting helps when its net change is lower (cleaner, cooler) than not answering by
+# more than the metric's noise, which is the report's TREND step read across. With nobody unanswered yet, not
+# answering counts as no change. Words lead the sentence; the numbers follow it, so code proves and the words only say.
+# The values are the ones the diary split's pages read (helps, no_clear_difference, too_early, gone), plus `worse`.
+NOISE = {"pm25": 3.0, "apparent": 0.5, "temp": 0.5}
+VERDICT_WORDS = {"helps": "acting on it helps",
+                 "no_clear_difference": "no clear difference between acting on it and leaving it",
+                 "worse": "acting on it seemed to make it worse than leaving it",
+                 "too_early": "too few to be sure whether acting on it helps",
+                 "gone": "this alert no longer rings here; what it showed is kept"}
+# What the household calls an alert, for a learning's lead and the bot's /learned. A rule not here is named by its
+# pack ("an air alert"), never by its id.
+ALERT_NAMES = {"air-quality/events": "an air alert", "heat/events": "a heat alert",
+               "air-quality/indoor_pm25_high": "unhealthy air inside", "air-quality/inside_worse_ventilate": "smoke or dust inside",
+               "air-quality/outside_worse_keep_shut": "dirtier air outside than in",
+               "air-quality/outdoor_pm25_high": "unhealthy air outside",
+               "heat/heat_stress_now": "heat inside", "heat/heat_danger": "dangerous heat inside"}
+
+
+def alert_name(key: str) -> str:
+    pack = (key or "").split("/")[0]
+    return (ALERT_NAMES.get(key) or GROUP_WORDS.get(key)
+            or {"air-quality": "an air alert", "heat": "a heat alert"}.get(pack) or key)
+
+
+def verdict(metric: str, status: str, a: dict, u: dict) -> str:
+    """helps · no_clear_difference · worse · too_early · gone, from the row's status and the two groups' medians
+    (summarise's `a` and `u`). `helps` also needs the house's own net change to be a fall, as the pages expect."""
+    if status in ("too_early", "gone"):
+        return status
+    net = a["change"] - (a["street"] or 0)
+    base = (u["change"] - (u["street"] or 0)) if u["n"] and u["change"] is not None else 0.0
+    d, step = net - base, NOISE.get(metric, 0.5)
+    return "helps" if net < 0 and d <= -step else "worse" if d >= step else "no_clear_difference"
+
+
 def summarise(rule: str, metric: str, acted: list[dict], unanswered: list[dict], was: dict | None, live: bool) -> dict:
-    """One learning row from the cases, with the statement written from its own numbers."""
+    """One learning row from the cases, with the statement written from its own numbers: the verdict in words first,
+    then the numbers it came from."""
     a = {"n": len(acted), "change": _med(c["change"] for c in acted), "street": _med(c["street"] for c in acted)}
     u = {"n": len(unanswered), "change": _med(c["change"] for c in unanswered),
          "street": _med(c["street"] for c in unanswered)}
@@ -84,19 +123,21 @@ def summarise(rule: str, metric: str, acted: list[dict], unanswered: list[dict],
         old = ((was or {}).get("numbers") or {}).get("acted") or {}
         old_net = (old.get("change") or 0) - (old.get("street") or 0) if old.get("n", 0) >= EARLY else None
         status = "weakening" if old_net is not None and (old_net < 0) != (net < 0) else "holding"
+    v = verdict(metric, status, a, u)
 
     def says(x, who):
         street = f", while on the street it changed {x['street']:+.1f} {unit}" if x["street"] is not None else ""
         return f"{who} {x['n']} times: {w} inside changed {x['change']:+.1f} {unit} in the {lo}–{hi} h after{street}."
-    if status == "too_early":
-        text = f"Acted on {a['n']} times so far: too early to say."
+    text = f"After {alert_name(rule)}, {a['n'] + u['n']} times so far: {VERDICT_WORDS[v]}."
+    if v == "too_early":
+        text += f" Acted on {a['n']} times."
     else:
-        text = says(a, "Acted on") if a["n"] else "Nobody has acted on it yet."
+        text += " " + (says(a, "Acted on") if a["n"] else "Nobody has acted on it yet.")
         if u["n"]:
             text += " " + says(u, "Left unanswered")
     return {"kind": "worked", "key": rule, "issue": rule.split("/")[0], "metric": metric, "status": status,
             "statement": text, "n": a["n"], "scope": "house",
-            "numbers": {"acted": a, "unanswered": u, "after_hours": [lo, hi], "unit": unit,
+            "numbers": {"acted": a, "unanswered": u, "after_hours": [lo, hi], "unit": unit, "verdict": v,
                         "cases": {"acted": acted[-30:], "unanswered": unanswered[-30:]}}}
 
 
@@ -577,7 +618,8 @@ def for_whom(issue: str | None, people: dict) -> list[str]:
 
 # The line an act-level heat or air alert carries to the household's own Telegram when the profile says someone here
 # is at more risk (Tomas, 14 Oct 2026: "yes, add it to the alerts"). People ignore alerts mostly because they do not
-# feel at risk; this says who is. It rides the Telegram message only: never the mesh, Reticulum, Home Assistant or
+# feel at risk; this says who is. No sign of its own: the alert above it has one (one per message, 14 Oct). It rides
+# the Telegram message only: never the mesh, Reticulum, Home Assistant or
 # the stored alert text, which /alerts serves.
 PEOPLE_WORDS = {
     "en": PEOPLE,
@@ -587,9 +629,9 @@ PEOPLE_WORDS = {
     "es": {"older": "alguien mayor de 65 años", "under5": "un niño o una niña menor de cinco años",
            "lungs": "alguien con asma u otra enfermedad pulmonar", "pregnant": "alguien embarazada",
            "outdoor": "alguien que trabaja al aire libre"}}
-MATTERS = {"en": "👤 This matters more here: you said there is {who}.",
-           "id": "👤 Ini lebih penting di sini: Anda mengatakan ada {who}.",
-           "es": "👤 Aquí importa más: dijiste que hay {who}."}
+MATTERS = {"en": "This matters more here: you said there is {who}.",
+           "id": "Ini lebih penting di sini: Anda mengatakan ada {who}.",
+           "es": "Aquí importa más: dijiste que hay {who}."}
 
 
 def alert_line(issue: str | None, people: dict, locale: str = "en") -> str:
@@ -604,5 +646,7 @@ def alert_line(issue: str | None, people: dict, locale: str = "en") -> str:
 def rank(rows: list[dict], people: dict) -> list[dict]:
     """Each learning with its `for_whom`; within each kind, the ones that matter to someone here first, the order
     otherwise kept."""
-    out = [{**r, "for_whom": for_whom(r.get("issue"), people)} for r in rows]
+    out = [{**r, "for_whom": for_whom(r.get("issue"), people), "name": alert_name(r.get("key")),
+            "verdict": VERDICT_WORDS.get(((r.get("numbers") or {}) if isinstance(r.get("numbers"), dict) else {}).get("verdict"))}
+           for r in rows]
     return sorted(out, key=lambda r: (r["kind"], not r["for_whom"]))

@@ -303,7 +303,8 @@ assert "JOIN alive a USING (sensor_id)" in main, "frozen_channels must be gated 
 # 86% of every reading, so 32 was its baseline, not an event. The line is 35 for the rule and 32 for the cell (a
 # count of exposure is not an interruption), and the alert texts must not move without Tomas. 9 October: they
 # moved WITH him — release D of the language split names whose line in every threshold alert (rule 10 of
-# docs/SPEC_language.md), and heat_stress_now drops "dangerously" (danger is a register, not a volume).
+# docs/SPEC_language.md), and heat_stress_now drops "dangerously" (danger is a register, not a volume). 14 October:
+# moved with him again — one line per issue, named with its unit: "this house's heat line, 35 °C feels-like".
 _heat = {r["id"]: r for r in yaml.safe_load(open("packs/heat/rules.yml"))}
 assert ">= 35" in _heat["heat_stress_now"]["sql"], "heat_stress_now: 32 is node #1's baseline; the line is 35"
 assert ">= 40" in _heat["heat_danger"]["sql"], "heat_danger stays at the heat-index danger line"
@@ -311,7 +312,7 @@ assert ">= 32" in open("packs/heat/cells.yml").read(), "the Social cell counts h
 assert _heat["heat_stress_now"]["cooldown_minutes"] == 1440, \
     "once a room a day: in Oct 2026 the hot room was over 35 for 44% of hours and 240 repeated it 5.7 times a day (README)"
 assert _heat["heat_danger"]["cooldown_minutes"] == 120, "danger keeps interrupting as often as it must"
-for _r, _lang, _words in (("heat_stress_now", "en", "It is too hot at {name}: it feels like {at} °C — this house's own line is {line} °C, measured here."),
+for _r, _lang, _words in (("heat_stress_now", "en", "It is too hot at {name}: it feels like {at} °C — past this house's heat line, {line} °C feels-like, measured here."),
                           ("heat_danger", "en", "DANGER at {name}: it feels like {at} °C — the danger line here is {line} °C.")):
     assert _words in _heat[_r]["message"][_lang], f"{_r} [{_lang}]: the message template needs Tomas's sign-off to change"
 assert "Kuta Selatan" in open("packs/heat/README.md").read(), "docs/PACKS.md: say which place you wrote for"

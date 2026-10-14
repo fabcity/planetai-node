@@ -67,6 +67,10 @@ print("  open: danger > sustained > unusual; recent: 7 days, newest clear first"
 
 one = live["open"][1]
 assert one["action"] == {"id": "heat/open_up", "text": "Open up now: outside is 28.0 °C."}, one["action"]
+# since 14 Oct the action is the line under the story, with no 👉; messages sent before keep the old shape, and both read
+assert W._action_of("🥵 Hot inside.\nOpen up now: outside is 28.0 °C.") == "Open up now: outside is 28.0 °C."
+assert W._action_of("Hot inside.\n\n👉 Open up now: outside is 28.0 °C.") == "Open up now: outside is 28.0 °C."
+assert W._action_of("✅ Cooler again in Kids.") is None
 assert one["message"]["text"].startswith("Still hot") and one["message"]["sent"] is False, one["message"]
 assert one["line"] == 35.0 and one["rooms"] == ["K ROOM", "L ROOM"] and one["alerts"] == [571, 578]
 assert one["context"] == {"usual": 33.4, "outside": 29.1, "outside_metric": "temp", "outside_from": "outside"}

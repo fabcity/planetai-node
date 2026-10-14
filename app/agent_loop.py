@@ -62,6 +62,21 @@ LOCALE = os.getenv("ALERT_LOCALE", "en")
 LANG_NAME = {"id": "Bahasa Indonesia", "es": "Spanish"}.get(LOCALE, "English")
 
 
+
+# /learned's first line per learning: the alert as the household calls it and the verdict, then the status in words.
+# `holding` means the learning holds, not that acting helps; the verdict (learn.VERDICT_WORDS, served by the node as
+# `verdict`) says which. The key is left to the page: nobody in a kitchen says "air-quality/indoor_pm25_high".
+LEARNED_STATUS = {"holding": "the finding holds", "weakening": "weakening", "too_early": "too early", "gone": "gone"}
+
+
+def _learned_head(x: dict) -> str:
+    name = x.get("name") or x.get("key") or ""
+    head = name[:1].upper() + name[1:]
+    if x.get("verdict"):
+        head += f": {x['verdict']}"
+    return f"{head} ({LEARNED_STATUS.get(x.get('status'), str(x.get('status') or '').replace('_', ' '))})"
+
+
 def T(en: str, **other: str) -> str:
     """The bot's own few sentences, in the node's language. Bahasa falls back to English here until a native reader
     has been through the set; the model itself answers in whatever ALERT_LOCALE says."""
@@ -866,7 +881,7 @@ async def main():
                     rows = [x for x in data.get("learnings", []) if x.get("status") != "gone"]
                     said = (data.get("kept_home") or T("Nothing learned yet: the node checks once a day.",
                                                       es="Nada aprendido todavía: el nodo lo revisa una vez al día.")) \
-                        if not rows else "\n\n".join(f"• {x['key']} ({x['status'].replace('_', ' ')})\n{x['statement']}"
+                        if not rows else "\n\n".join(f"• {_learned_head(x)}\n{x['statement']}"
                                                        + (T(" Matters here: ", es=" Importa aquí: ") + ", ".join(x["for_whom"]) + "." if x.get("for_whom") else "")
                                                        for x in rows)
                 except Exception as e:  # noqa: BLE001

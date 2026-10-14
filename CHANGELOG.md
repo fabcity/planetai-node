@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- **One voice for the report, the alerts and the learnings (design review of node #1, 14 Oct).** Every line is named
+  with its owner and unit, never a bare number: "the WHO line is 15 µg/m³", "the US EPA's unhealthy level, 35.5
+  µg/m³", "this house's heat line, 35 °C feels-like" (`{line}` and `{peak}` now carry the issue's unit). One sign per
+  message: no emoji pairs in the air and heat rules, no 👉, no 👤, and no `ℹ️`/`🔴` put in front of a message that has
+  its own. Event messages say the story in words, then one reading: "📈 Smoke or dust in Kids and Living Room: 48
+  µg/m³; the WHO line is 15 µg/m³.", with the outside said once, as the action's reason, and no more "open the side
+  where it started" (the engine cannot know which room came first). The report reads headline, what happened per room
+  with its local time ("Kitchen went past the US EPA's unhealthy level, 35.5 µg/m³, at 15:00; it is back under now.",
+  "Studio was more humid than usual."), the one thing to do, then the morning memory, then the invitation, last. Every
+  `worked` learning carries `numbers.verdict` (helps, no clear difference, worse than leaving it, too early) from its
+  own numbers and leads with it in words, because node #1's air row said HOLDING while acting had made it worse;
+  `/learned` prints the alert's household name and the verdict first. New id and es copy is assistant-written.
+
 - **The headline says the day, and one answer says what is asked (design review of node #1, 14 Oct).** At 19:00 Now
   said "The air is clean, inside and out" beside "12 h over the line today" and a day drawn red until 11:00. When the
   reading is back under the line after hours over it today, the title now says both, "The air is clean now, after a
