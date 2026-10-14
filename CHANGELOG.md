@@ -15,6 +15,17 @@
   first, at most every three hours. An optional `FIRMS_MAP_KEY` reads only the ring's box. The 25 is a first guess
   from one day on the Bukit (14 Oct: nothing within 50 km, the nearest 75 km north-west, 51 places within 150 km).
   New id and es copy is assistant-written. `tests/test_fire.py` (77 suites).
+- **The Wall says more, and only what anyone may read (Tomas, 15 Oct: "Generated text in the wall should be richer
+  since we now have much more data").** The Wall's narration (`POST /ask`, `prompt: wall`) no longer reads the
+  pane's context. It reads its own: short labelled facts with their unit and `live`, `model` or `satellite` — the day
+  sentence, the WHO line, the values by distance, how many public stations nearby are over the line, what is usual
+  for the place, the next six hours of forecast, the land and the sea, and any pack section declared `wall: true`,
+  so a new pack's figures reach it with no code. The house's learnings, digests, things, alerts' words and who
+  answered never reach it. `WALL_ANGLES` grows from five to eleven (the day so far, the stations around, what is
+  usual here, the next hours, the land and the sea, fires around, the ground's heat) and an angle whose facts are
+  missing is skipped, not apologised for. The scrub now also cleans dict keys, and catches a coordinate written to
+  more decimals than the node's own rounds to (-8.8190 beside NODE_LAT -8.819).
+
 - **Pictures through the bot (Tomas, 15 Oct).** A photo or an image file sent to the bot from a household chat
   is posted to the node's `POST /captures` with the caption as the note, the sender's name and `describe=1`, and the
   bot answers "Kept. The image model on this machine is describing it; it will be in Data › Images in a minute." A
