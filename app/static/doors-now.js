@@ -1,11 +1,12 @@
 'use strict';
-/* NOW — the moment, its decision, who reads around the house (the ledger is Data's, Tomas 7 Oct). Married to the node's rules:
-   every part is one of the four card kinds (data-kind), names its learn mark, the routes it reads and its stage;
-   every figure carries its comparison; the node's words are never shouted; provenance is a pill in ink.
-   The first thing is the ladder, and under it the lead (learn: lead). */
+/* NOW — the household's first screen, read in the order a person asks (Tomas, 15 Oct; the plan heads the markup in
+   doors.html): right now, as one block (the sentence and its day); what to do; did it work, and yesterday; around the
+   house. Married to the node's rules: every part is one of the four card kinds (data-kind), names its learn mark, the
+   routes it reads and its stage; every figure carries its comparison; the node's words are never shouted; provenance
+   is a pill in ink. The scales are Place's: the kicker links there and draws no rail. */
 VIEWS.now = function () {
-  rail($('#rail')); rows(); drawNow();
-  aroundMap($('#rose')); thingsLine($('#nthings')); rememberLoad();
+  rows(); drawNow();
+  aroundMap($('#rose')); thingsLine($('#nthings')); rememberLoad().then(() => decision());   /* the usual hour joins "Nothing to do now" */
 };
 /* YESTERDAY and DID IT WORK: the short part of the diary (Tomas, 14 Oct: the diary split between Now and Node, whose
    "What it remembers" keeps the record). Under the decision and quiet: yesterday's day entry said plainly from its own
@@ -20,6 +21,11 @@ async function rememberLoad() {
   const [l, d, h] = await Promise.all([get('/learned'), get('/learned/search?scale=day&limit=1'), get('/household')]);
   NOWL = l ? { rows: l.learnings || [], day: ((d || {}).results || [])[0] || null, people: h ? h.people || {} : null } : null;
   nowRemember();
+}
+/* the hour this issue is usually worst, from the node's own `usual` learnings (28 days); said beside "Nothing to do now" */
+function usualLine(k) {
+  const u = NOWL ? NOWL.rows.filter(r => r.kind === 'usual' && r.issue === k && r.status === 'holding' && r.numbers) : [];
+  return u.length ? `It is usually worst ${u.map(r => `around <span class="mono">${String(r.numbers.high_hour).padStart(2, '0')}:00</span> ${r.key.startsWith('outdoor') ? 'outside' : 'inside'} (${num(`${r.key}.usual.high`, fmt(r.numbers.high, 1), 'the median of that hour, 28 days')} ${said(r.numbers.unit)})`).join(' and ')}.` : '';
 }
 const firstSentence = s => String(s || '').split(/(?<=\.)\s/)[0];
 /* yesterday's entry, condensed: for heat the feels-like inside, else the air inside against the line (its hours over
@@ -44,9 +50,9 @@ function nowRemember() {
   const el = $('#nremember'), k = S.issue, it = D.issues[k] || {};
   el.hidden = !NOWL;
   if (!NOWL) return;
-  el.classList.toggle('decide', S.i === D.now && (it.asking || []).length > 0);   // a frame only while something is asked
   const day = NOWL.day, pack = LEARN_PACK[k], wd = iso => `${dLabel(dayOf(iso))} at ${hhmm(iso)}`;
-  let h = day ? `<h3>Yesterday</h3><p>${yesterdayWords(day, k)} <a href="#node/remember/day/${esc(String(day.period_start).slice(0, 10))}">the whole entry ›</a></p>` : '';
+  const yest = day ? `<h3>Yesterday</h3><p>${yesterdayWords(day, k)} <a href="#node/remember/day/${esc(String(day.period_start).slice(0, 10))}">the whole entry ›</a></p>` : '';
+  let h = '';
   /* an issue that never asks (no line) has nothing that could have worked */
   if (pack) {
     const rank = { holding: 0, weakening: 0, too_early: 1 };
@@ -54,21 +60,21 @@ function nowRemember() {
     const N = (w && w.numbers) || {}, C = N.cases || {}, U = N.unit || it.unit, [lo, hi] = N.after_hours || [];
     const c = [...(C.acted || []).map(x => ({ ...x, acted: true })), ...(C.unanswered || [])].sort((a, b) => Date.parse(b.at) - Date.parse(a.at))[0];
     const ev = D.events.filter(e => e.issue === k).sort((a, b) => Date.parse(b.opened_at) - Date.parse(a.opened_at))[0];
-    /* an event still open is the Decide card's, just above: said once there */
-    const asked = ev && !ev.cleared_at ? `The node is asking now, since ${wd(ev.opened_at)}: the card above.` : ev ? `The node last asked ${wd(ev.opened_at)}${ev.action ? `: ${said(ev.action)}` : '.'} <span class="x">${esc(answerWords(ev.answer).w)}.</span>`
+    /* asked now is the node's one answer (`asking`), said once, in What to do above; an event answered but not yet
+       cleared asks nothing (it said "is asking now" beside a Decide card that said Done, 15 Oct) */
+    const asked = ev && !ev.cleared_at ? ((it.asking || []).length ? `The node is asking now, since ${wd(ev.opened_at)}: see What to do, above.` : `The node last asked ${wd(ev.opened_at)}: see What to do, above.`) : ev ? `The node last asked ${wd(ev.opened_at)}${ev.action ? `: ${said(ev.action)}` : '.'} <span class="x">${esc(answerWords(ev.answer).w)}.</span>`
       : `The node has not asked about ${said(it.name.toLowerCase())} in the last seven days.`;
     const after = c ? `<p>${c.acted ? `Done ${wd(c.at)}${c.note ? `: “${esc(c.note)}”` : ''}` : `Not answered, ${wd(c.at)}`}. Inside went from `
       + `${num(`${k}.case.before`, fmt(c.before, 1), 'the hour before')} to ${num(`${k}.case.after`, fmt(c.after, 1), `the ${lo}–${hi} h after`)} ${said(U)} in the ${lo}–${hi} h after`
       + `${c.street == null ? '' : `; the street ${num(`${k}.case.street`, (c.street > 0 ? '+' : '') + fmt(c.street, 1), 'the street’s change over the same hours')}`}.</p>` : '';
     const verdict = w ? `<p><b>${VERDICT[N.verdict] || (w.status === 'too_early' ? VERDICT.too_early : '')}</b> ${said(firstSentence(w.statement))}${w.status === 'weakening' ? ' <span class="x">· weakening</span>' : ''}</p>`
       : `<p class="x">Nothing learned yet: the node checks once a day, and needs an alert somebody acted on.</p>`;
-    const usual = NOWL.rows.filter(r => r.kind === 'usual' && r.issue === k && r.status === 'holding' && r.numbers);
     const who = w && (w.for_whom || []).length ? `matters here: ${said(w.for_whom.join(', '))}`
       : NOWL.people && !Object.values(NOWL.people).some(Boolean) ? '<a href="#node/remember/who">who lives here? ›</a>' : '';
     h += `<h3>Did it work</h3><p>${asked}</p>${after}${verdict}`
-      + (usual.length ? `<p class="dm">usually worst ${usual.map(r => `around ${String(r.numbers.high_hour).padStart(2, '0')}:00 ${r.key.startsWith('outdoor') ? 'outside' : 'inside'} (${num(`${r.key}.usual.high`, fmt(r.numbers.high, 1), 'the median of that hour, 28 days')} ${said(r.numbers.unit)})`).join(', ')}</p>` : '')
-      + (who ? `<p class="dm">${who}</p>` : '') + `<p class="dm"><a href="#node/remember">every case, on Node ›</a></p>`;
+      + `<p class="dm">${who ? `${who} · ` : ''}<a href="#node/remember">every case, on Node ›</a></p>`;
   }
+  h += yest;
   el.innerHTML = h;
   el.hidden = !h;
 }
@@ -80,24 +86,38 @@ async function thingsLine(el) {
   if (!el.hidden) el.innerHTML = `<a href="#data/d-things">${s.things} things, ${s.idle} idle, ${s.repair} need${s.repair === 1 ? 's' : ''} repair ›</a>`;
 }
 function drawNow() {
-  dayWeek({ el: $('#svg'), issue: S.issue, head: $('#fighead'), scale: $('#figline'), pick: j => { S.i = j; drawNow(); } });
+  /* a phone draws the day alone and the week as one row a day it can press (weekRows): 13 px cells are no target */
+  const phone = innerWidth <= 480;
+  dayWeek({ el: $('#svg'), issue: S.issue, head: $('#fighead'), scale: $('#figline'), week: !phone, pick: j => { S.i = j; drawNow(); } });
+  $('#week').hidden = !phone; if (phone) weekRows($('#week'));
   readout(); nowRemember();
 }
 
-/* The ladder, compact: rungs res 2 to 12, this node's rung filled; the node's own rule for the rest — rungs that may
-   leave the machine dotted, rungs finer than the node says where it is struck through (design.md, Colour). */
-function rail(el) {
-  const G = D.geometry.grain, L = D.geometry.ladder.filter(l => l.res >= 2 && l.res <= 12);
-  el.innerHTML = L.map(l => { const g = G.find(x => x.res === l.res) || {};
-    return `<span class="rung ${l.res === 8 ? 'on' : ''} ${g.may_leave ? 'leave' : ''} ${g.finer_than_published ? 'finer' : ''}" title="res ${l.res}, about ${l.edge_m >= 1000 ? fmt(l.edge_m / 1000, 1) + ' km' : l.edge_m + ' m'} a side">${l.res}</span>`; }).join('')
-    + `<a href="#place" class="mono">${D.health.cell.edge_m} m · ${fmt(D.geometry.ladder.find(l => l.res === D.health.cell.res).own_area_m2 / 1e6, 2)} km² ›</a>`;
+/* The week on a phone: one button a day, its 24 hours a strip (over the line red, a missing hour left empty) and
+   its hours over the line, the count /issues/days gives. Pressing a day moves the moment to that day, same hour. */
+function weekRows(el) {
+  const k = S.issue, it = D.issues[k], sd = (it.series || {})[it.hero_distance] || [], h0 = hourOf(D.buckets[S.i]), cur = dayOf(D.buckets[S.i]);
+  const lo = d3.min(sd) ?? 0, top = Math.max(it.line ?? 0, d3.max(sd) ?? 0), span = top - lo || 1;   /* shaded from the week's own low, as the drawing's strip */
+  el.innerHTML = D.dates.map(dt => {
+    const pd = (it.per_day || []).find(p => p.date === dt), cells = d3.range(24).map(h => { const j = D.at[dt + '|' + h], v = j == null ? null : sd[j];
+      return v == null ? '' : `<rect x="${h * 10 + .5}" y="0" width="9" height="14" fill="${it.line != null && v > it.line ? 'var(--signal-worse)' : 'currentColor'}" opacity="${it.line != null && v > it.line ? 1 : (.1 + .75 * (v - lo) / span).toFixed(2)}"/>`; }).join('');
+    return `<button data-d="${dt}" aria-pressed="${dt === cur}"><span>${esc(dLabel(dt).split(' ').slice(0, 2).join(' ').replace(',', ''))}</span><svg viewBox="0 0 240 14" preserveAspectRatio="none" aria-hidden="true">${cells}</svg>`
+      + `<span class="o">${pd ? num(`${k}.over.${dt}`, pd.over ? `${pd.over} h` : '0', `hours over the line, of ${pd.read} read`) : ''}</span></button>`;
+  }).join('');
+  el.querySelectorAll('button').forEach(b => b.onclick = () => {
+    const d = b.dataset.d, js = d3.range(24).map(h => D.at[d + '|' + h]).filter(j => j != null);
+    const j = D.at[d + '|' + h0] ?? js[js.length - 1]; if (j != null) { S.i = j; drawNow(); }
+  });
 }
 
 function readout() {
   const k = S.issue, it = D.issues[k], i = S.i, b = D.buckets[i], dp = it.dp, U = it.unit, isNow = i === D.now;
   const w = (it.provenance || {})[it.hero_distance] || 'model';
-  $('#kick').innerHTML = `${said(it.name)} · ${isNow ? 'now' : dLabel(dayOf(b))} · at ${hhmm(b)} ${prov(w)} <span class="x">${isNow ? '· the node’s own sentence' : `· ${D.now - i} h before the capture`}</span>`;
+  $('#kick').innerHTML = isNow ? `Right now · ${said(it.name)} at <span class="mono">${hhmm(b)}</span> ${prov(w)}`
+    : `${said(it.name)} · ${esc(dLabel(dayOf(b)))} at <span class="mono">${hhmm(b)}</span> ${prov(w)} · ${D.now - i} h before the capture`;
   $('#back').hidden = isNow;
+  const cell = D.health.cell || {}, rung = D.geometry.ladder.find(l => l.res === cell.res);
+  $('#cellink').innerHTML = cell.edge_m && rung ? `${cell.edge_m} m · ${fmt(rung.own_area_m2 / 1e6, 2)} km² ›` : '';
   const cmp = it.line != null ? `against the line, ${fmt(it.line, dp)} ${U}` : 'this issue has no line';
   const n = x => num(`${k}.${it.hero_distance}`, x, cmp, `<b class="numf">${esc(x)}</b>`);
   let s, tag = '';
@@ -116,47 +136,57 @@ function readout() {
     tag = h ? h[1] : '';
   }
   $('#sentence').innerHTML = (it.pix ? `<svg class="pix" aria-hidden="true"><use href="${NODE}signs.svg#${it.pix}"/></svg>` : '') + `<span class="said">${s}${tag ? `<span class="ntag">${esc(tag)}</span>` : ''}</span>`;
+  /* the four distances, one quiet line: the drawing above already draws three of them */
   $('#ladder').innerHTML = ['room', 'yard', 'ring', 'region'].map(dk => {
     const x = isNow ? (it.stack[dk] || {}).value : val(k, dk, i);
     const pw = (it.provenance || {})[dk] || ((it.stack[dk] || {}).provenance), hourly = (it.series || {})[dk];
-    return `<div class="col ${x == null ? 'none' : ''}"><div class="k">${said(D.labels[dk])}</div>`
-      + `<div class="v">${x == null ? '—' : num(`${k}.${dk}`, fmt(x, dp), cmp)}${x == null ? '' : `<small>${said(U)}</small>`}</div>`
-      + (x == null ? `<span class="gap">${hourly ? 'not recorded' : (isNow ? 'none' : 'no hours here')}</span>` : prov(pw)) + `</div>`;
+    return `<span class="d ${x == null ? 'none' : ''}"><span class="x">${said(D.labels[dk])}</span>`
+      + `<span class="v">${x == null ? '—' : num(`${k}.${dk}`, fmt(x, dp), cmp)}${x == null ? '' : `<small>${said(U)}</small>`}</span>`
+      + (x == null ? `<span class="gap">${hourly ? 'not recorded' : (isNow ? 'none' : 'no hours here')}</span>` : prov(pw)) + `</span>`;
   }).join('');
   decision(); rowsValues();
 }
 
-/* The decision of the moment: Decide's card, condensed (learn: buttons). The three answers are the node's own words.
-   At the live hour, whether something is asked is the node's one answer (/issues asking), the one the Wall reads: an
-   event still asking, else an alert still true. On 14 Oct this read the events alone and said "No event was open for
-   air" beside a Wall showing an open ask. A past hour is history: the events open then. */
+/* WHAT TO DO: the decision of the moment (learn: buttons). The three answers are the node's own words. At the live
+   hour, whether something is asked is the node's one answer (/issues asking), the one the Wall reads: an event still
+   asking, else an alert still true. On 14 Oct this read the events alone and said "No event was open for air" beside a
+   Wall showing an open ask. A past hour is history: the events open then. The frame (.decide) and the buttons are
+   drawn only while something is asked; otherwise What to do is one plain line, with the hour it is usually worst. */
 function decision() {
   const k = S.issue, it = D.issues[k], B = D.buttons, live = S.i === D.now, ask = live ? (it.asking || [])[0] : null;
-  const line = `<p class="dm">${it.line != null ? `the line ${fmt(it.line, it.dp)} ${said(it.unit)} · ${said(it.line_source || '')}` : 'this issue has no line: it informs, it never asks'}</p>`;
+  const head = '<h2 class="nh">What to do</h2>', usual = live ? usualLine(k) : '';
+  const line = `<p class="dm">${it.line != null ? `the line <span class="mono">${fmt(it.line, it.dp)}</span> ${said(it.unit)} · ${said(it.line_source || '')}` : 'this issue has no line: it informs, it never asks'}</p>`;
   let evs = ask && ask.event_id != null ? D.events.filter(e => e.id === ask.event_id) : [];
   if (ask && !evs.length) {
     /* an alert still true that no event stands for (answered on Telegram), or an event this screen has no row for */
-    $('#decide').innerHTML = `<div class="k">decide · ${said(it.name)} · asked since ${hhmm(ask.since)} · still open</div>`
-      + `<p class="dq">${said(ask.says || '')}</p>${ask.how ? `<p class="dm">${said(ask.how)}</p>` : ''}` + line;
+    $('#decide').innerHTML = head + `<div class="decide"><p class="nk">${said(it.name)} · asked since <span class="mono">${hhmm(ask.since)}</span> · still open</p>`
+      + `<p class="dq">${said(ask.says || '')}</p>${ask.how ? `<p class="dm">${said(ask.how)}</p>` : ''}` + line + `</div>`;
     return;
   }
   if (!evs.length) evs = evAt(k, S.i);
   if (!evs.length) {
-    $('#decide').innerHTML = live ? `<div class="k">decide · nothing is asked now</div><p class="dq">Nothing is asked of this house about ${said(it.name.toLowerCase())} now.</p>` + line
-      : `<div class="k">decide · nothing is asked at this hour</div><p class="dq">No event was open for ${said(it.name.toLowerCase())}.</p>` + line;
+    $('#decide').innerHTML = head + (live ? `<p class="nothing">Nothing to do now. ${usual ? `<span class="x">${usual}</span>` : ''}</p>`
+      : `<p class="nothing">Nothing was asked about ${said(it.name.toLowerCase())} at <span class="mono">${hhmm(D.buckets[S.i])}</span>.</p>`);
     return;
   }
   const e = evs[0], a = answerWords(e.answer), on = { acted: 'done', acknowledged: 'not_now', dismissed: 'doesnt_fit' }[(e.answer || {}).stage];
   /* an answer is taken only for an event still open, at the live hour: a past hour is read, never answered */
-  const answerable = live && !e.cleared_at;
-  $('#decide').innerHTML = `<div class="k">decide · ${said(it.name)} · ${esc(e.kind)} since ${hhmm(e.opened_at)}${e.cleared_at ? ` · cleared ${hhmm(e.cleared_at)}` : ' · still open'}`
-    + `${e.peak != null ? ` · peak ${num(`${k}.event.peak`, fmt(e.peak, it.dp), `the line ${fmt(it.line, it.dp)} ${it.unit}`)} ${said(it.unit)}` : ''}</div>`
+  const asking = live && !e.cleared_at && (e.asking || !!ask);
+  const what = `${said(it.name)} · ${esc(e.kind)} since <span class="mono">${hhmm(e.opened_at)}</span>${e.cleared_at ? ` · cleared <span class="mono">${hhmm(e.cleared_at)}</span>` : ' · still open'}`
+    + `${e.peak != null ? ` · peak ${num(`${k}.event.peak`, fmt(e.peak, it.dp), `the line ${fmt(it.line, it.dp)} ${it.unit}`)} ${said(it.unit)}` : ''}`;
+  const told = `<p class="dm">${sign(a.closed ? 'sign-rho-closed' : 'sign-rho-open', a.closed ? 'closed' : '')} ${esc(a.w)}${(e.rooms || []).length ? ` · ${e.rooms.length} room${e.rooms.length === 1 ? '' : 's'}: ${said(e.rooms.map(r => r.trim()).join(', '))}` : ''}</p>`;
+  if (!asking) {
+    /* answered, cleared, or a past hour: nothing is asked now, so no frame and no buttons; the event is said quietly */
+    $('#decide').innerHTML = head + (live ? `<p class="nothing">Nothing to do now. ${usual ? `<span class="x">${usual}</span>` : ''}</p>` : '')
+      + `<p class="dm">${what}: ${said(e.action || 'the node asked for nothing specific.')}</p>` + told;
+    return;
+  }
+  $('#decide').innerHTML = head + `<div class="decide"><p class="nk">${what}</p>`
     + `<p class="dq">${said(e.action || 'The node asked for nothing specific.')}</p>`
     /* the buttons only while the node is still asking (e.asking, from the node): once somebody answered they go, and
        the line below says who and when. A past hour is read, never answered, so it shows none either. */
-    + (answerable && e.asking ? `<div class="ans" role="group" aria-label="Answer">${['done', 'not_now', 'doesnt_fit'].map(b => `<button class="${on === b ? 'on' : ''}" data-ev="${e.id}" data-stage="${ANSWER_STAGE[b]}">${said(B[b])}</button>`).join('')}</div>` : '')
-    + `<p class="dm" id="answered" role="status"></p>`
-    + `<p class="dm">${sign(a.closed ? 'sign-rho-closed' : 'sign-rho-open', a.closed ? 'closed' : '')} ${esc(a.w)}${(e.rooms || []).length ? ` · ${e.rooms.length} room${e.rooms.length === 1 ? '' : 's'}: ${said(e.rooms.map(r => r.trim()).join(', '))}` : ''}</p>`;
+    + `<div class="ans" role="group" aria-label="Answer">${['done', 'not_now', 'doesnt_fit'].map(b => `<button class="${on === b ? 'on' : ''}" data-ev="${e.id}" data-stage="${ANSWER_STAGE[b]}">${said(B[b])}</button>`).join('')}</div>`
+    + `<p class="dm" id="answered" role="status"></p>` + told + `</div>`;
 }
 
 /* Done, Not now, Doesn't fit: POST /actions with the event's id, the same write the dashboard makes (answerEvent).
@@ -177,25 +207,21 @@ document.addEventListener('click', async ev => {
   } catch (e) { out.textContent = `The node did not answer: ${e.message}`; b.disabled = false; }
 });
 
+/* Around the house: the issues drawn by the hour, one row each; a row moves the page to that issue. Land and Coast
+   change yearly and have no hours, so they are not here: Place says them, beside the ground (doors-place.js). */
 function rows() {
-  $('#rows').innerHTML = D.order.map(k => {
-    const it = D.issues[k], drawn = ISSUES_DRAWN(k);
-    return `<button class="row" data-k="${k}" data-kind="readout" ${drawn ? '' : 'disabled'} aria-pressed="false"><span><span class="n">${said(it.name)}</span><span class="state ${it.state === 'act' ? 'act' : ''}">${esc(it.state)}</span></span>`
+  $('#rows').innerHTML = D.order.filter(ISSUES_DRAWN).map(k => {
+    const it = D.issues[k];
+    return `<button class="row" data-k="${k}" data-kind="readout" aria-pressed="false"><span><span class="n">${said(it.name)}</span><span class="state ${it.state === 'act' ? 'act' : ''}">${esc(it.state)}</span></span>`
       + `<span class="v" data-v></span><span class="sub" data-s></span></button>`;
   }).join('');
-  document.querySelectorAll('#rows .row:not([disabled])').forEach(b => b.onclick = () => { S.issue = b.dataset.k; drawNow(); });
+  document.querySelectorAll('#rows .row').forEach(b => b.onclick = () => { S.issue = b.dataset.k; drawNow(); });
 }
 function rowsValues() {
   const date = dayOf(D.buckets[S.i]);
   document.querySelectorAll('#rows .row').forEach(r => {
     const k = r.dataset.k, it = D.issues[k];
     r.setAttribute('aria-pressed', String(k === S.issue));
-    if (!ISSUES_DRAWN(k)) {
-      const g = it.stack.region || {};
-      r.querySelector('[data-v]').innerHTML = `${num(`${k}.region`, fmt(g.value, 1), 'no line: it informs, it never asks')}<small>${said(it.unit)}</small>`;
-      r.querySelector('[data-s]').innerHTML = `region only ${prov(g.provenance || 'model')} changes yearly, no hours`;
-      return;
-    }
     const v = val(k, it.hero_distance, S.i), pd = (it.per_day || []).find(p => p.date === date);
     r.querySelector('[data-v]').innerHTML = `${num(`${k}.${it.hero_distance}`, fmt(v, it.dp), `against the line, ${fmt(it.line, it.dp)} ${it.unit}`)}<small>${said(it.unit)}</small>`;
     r.querySelector('[data-s]').innerHTML = pd ? `${pd.over ? '<span class="over" aria-hidden="true"></span>' : ''}${num(`${k}.over.day`, pd.over, `of ${pd.read} hours read, ${pd.of - pd.read} not recorded`)} h over the line ${date === dayOf(D.buckets[D.now]) ? 'today' : 'on ' + dLabel(date).split(',')[0]} · ${pd.read} of ${pd.of} h read` : 'no count for this day';
@@ -216,7 +242,6 @@ async function aroundMap(el) {
   const out = all.filter(s => !s.local && (s.kind === 'sensor' || s.kind === 'facility'))
     .map(s => ({ ...s, p: [s.lon, s.lat], v: s.kind === 'sensor' ? now15(s.sensor_id) : null }));
   const sea = all.find(s => s.sensor_id === 'marine-point'), C = (k, a = 1) => rgba(k, a);
-  const quiet = out.filter(s => s.kind === 'sensor' && s.v == null).length, fac = out.filter(s => s.kind === 'facility').map(s => s.name.trim());
   const base = await window.groundBase(theme);
   if (!NOWMAP || NOWMAP.theme !== theme || !el.contains(NOWMAP.map.getContainer())) {
     if (NOWMAP) NOWMAP.map.remove();
@@ -274,10 +299,9 @@ async function aroundMap(el) {
       getText: () => `this house · ${house.length}${hv.length ? ` · ${fmt(d3.min(hv), 0)}–${fmt(d3.max(hv), 0)} ${unitOf(M)}` : ''}` }),
   ] });
   NOWMAP.paint();
-  $('#rosecap').innerHTML = `${said(labelOf(M))}, the 15-minute mean, at ${out.filter(s => s.v != null).length} public stations and ${house.length} in this house; `
-    + `${quiet} not heard in the last 15 minutes drawn faint. ${fac.length ? `The diamond${fac.length > 1 ? 's are' : ' is'} ${said(fac.join(', '))}. ` : ''}Press a station to open it in Data. `
-    + (base.street ? 'Rings at 0.5, 2, 5 and 15 km and the resolution-7 cells are the node’s; the solid cell is its own. The street map is this node’s own, OpenStreetMap contributors · Protomaps.'
-      : `The node’s street map, its rings and its cells are token-only: unlock this screen in ${UNLOCK_AT} to draw them under the stations.`);
+  /* one line (Tomas, 15 Oct): what is drawn and what a press does; faint is a station not heard in 15 minutes */
+  $('#rosecap').innerHTML = `${said(labelOf(M))} now at ${out.filter(s => s.v != null).length} public stations and ${house.length} in this house; press one to open it in Data.`
+    + (base.street ? ' <span class="x">Map: OpenStreetMap contributors · Protomaps.</span>' : ` <span class="x">Rings and cells: ${UNLOCK_AT}.</span>`);
 }
 
 /* Who reads around this house, now — a stack: one quantity at many distances, on one scale. True bearings; distance on
