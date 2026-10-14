@@ -31,7 +31,7 @@ const SYM = { pm25: 'PM2.5', pm10: 'PM10', pm1: 'PM1', pm25_raw: 'PM2.5ʳ', aqi:
   precipitation: 'R', uv_index: 'UV', temp_model: 'Tᵐ', humidity_model: 'RHᵐ', pressure_model: 'Pᵐ', noise: 'dB', light: 'lx', sea_surface_temp: 'SST',
   wave_height_m: 'Hs', wave_period_s: 'Tp', wave_direction: 'Dw', swell_height_m: 'Sw', swell_period_s: 'Ts', lora_util_pct: 'LoRa', lora_channel_pct: 'Ch' };
 const DSECTIONS = [['d-readings', 'Readings'], ['issues7', 'Issues, 7 days'], ['models', 'Models and satellite'], ['cells', 'Index cells'],
-  ['perday', 'Hours over the line'], ['d-images', 'Images'], ['d-things', 'Things'], ['d-learned', 'What worked'], ['d-usual', 'What is usual'], ['ledger', 'Decisions'], ['api', 'API']];
+  ['perday', 'Hours over the line'], ['d-images', 'Images'], ['d-things', 'Things'], ['d-learned', 'What worked'], ['d-usual', 'What is usual'], ['d-diary', 'Diary'], ['ledger', 'Decisions'], ['api', 'API']];
 
 /* #data/<sensor-id> (from a dot on Place) opens on a metric that station reads and scrolls to its row, once per link;
    #data/models opens at the models, #data/api at the API. */
@@ -235,7 +235,7 @@ async function learnedBlock() {
   const r = await fetch('/learned', { headers: DOORS_AUTH() }).catch(() => null);
   const j = r && r.ok ? await r.json().catch(() => null) : null;
   if (!j) { el.innerHTML = `<h2>What worked here</h2><p class="fine">What this house learned answers the admin token only, because its cases carry your own notes. Unlock this screen with it under Node.</p>`; $('#d-usual').innerHTML = ''; return; }
-  usualBlock(j);
+  usualBlock(j); diaryBlock();
   const rows = j.learnings.filter(x => x.kind === 'worked');
   const casesOf = x => { const c = (x.numbers.cases || {}).acted || [], u = x.numbers.unit || '';
     return !c.length ? '' : `<table class="tbl"><tr><th>acted</th><th class="n">before</th><th class="n">after</th><th class="n">street</th><th class="hide">note</th></tr>`
@@ -259,6 +259,20 @@ function usualBlock(j) {
       : `<p class="fine">Nothing yet: the node checks once a day.</p>`)
     + (asks.length ? `<h3>Alerts that may not fit</h3><p class="fine">The last 30 days of each act-level alert. Where most go unanswered, the node says what would change it; it changes nothing itself.</p>`
       + asks.map(x => `<div class="gh k">${esc(x.key)}</div><p>${esc(x.statement)}</p>`).join('') : '');
+}
+/* DIARY (SPEC_learn step 3): the node's digest of every day, week, month and year, in its own words and the
+   household's, and a search over them and the learnings: the same search the pane and the bot ask. */
+async function diaryBlock(words) {
+  const el = $('#d-diary');
+  const u = words ? `/learned/search?q=${encodeURIComponent(words)}` : '/learned/search?limit=20';
+  const j = await fetch(u, { headers: DOORS_AUTH() }).then(r => (r.ok ? r.json() : null)).catch(() => null);
+  if (!j) { el.innerHTML = ''; return; }
+  const rows = j.results || [];
+  el.innerHTML = `<h2>Diary</h2><p class="blurb">The node writes one entry for every day, week, month and year, from its own numbers and your notes, and keeps them here. The ask pane and the bot search the same entries.</p>`
+    + `<form class="acts" data-f="find"><input data-f="q" aria-label="search the diary" placeholder="smoke, purifier, October" value="${esc(words || '')}"><button>Search</button></form>`
+    + (rows.length ? rows.map(x => `<div class="gh k">${esc(x.label)}${x.source === 'learning' ? ' · learning' : x.scale ? ' · ' + esc(x.scale) : ''}</div><p>${esc(x.text)}</p>`).join('')
+      : `<p class="fine">${words ? 'Nothing mentions that.' : 'No entries yet: the node writes them once a day.'}</p>`);
+  el.querySelector('[data-f=find]').onsubmit = e => { e.preventDefault(); diaryBlock(el.querySelector('[data-f=q]').value.trim()); };
 }
 async function thingsBlock() {
   const el = $('#d-things');

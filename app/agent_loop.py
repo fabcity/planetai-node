@@ -844,9 +844,17 @@ async def main():
             if text.startswith("/learned"):
                 # No model, as /stack: the node's own sentences, printed. Each learning's statement was written by
                 # the node from its numbers (app/learn.py), so nothing here can add one.
+                words = text.split(maxsplit=1)[1].strip() if " " in text else ""
                 try:
                     async with node_session(hc) as (session, _t):
-                        data = _tool_json(await session.call_tool("learned", {}))
+                        data = _tool_json(await session.call_tool("learned", {"query": words} if words else {}))
+                    if words:   # /learned <words>: the diary and the learnings that mention them, newest first
+                        hits = data.get("results") or []
+                        said = data.get("kept_home") or ("\n\n".join(f"• {h['label']}\n{h['text']}" for h in hits[:5])
+                                                         or T(f"Nothing in the diary mentions {words}.",
+                                                              es=f"Nada en el diario menciona {words}."))
+                        await telegram("sendMessage", chat_id=chat, text=said[:4000])
+                        continue
                     rows = [x for x in data.get("learnings", []) if x.get("status") != "gone"]
                     said = (data.get("kept_home") or T("Nothing learned yet: the node checks once a day.",
                                                       es="Nada aprendido todavía: el nodo lo revisa una vez al día.")) \

@@ -221,21 +221,26 @@ def learn_usual(q, today=None) -> list[dict]:
                 WHERE s.kind = 'sensor' AND s.local AND r.metric IN ('pm25', 'temp', 'humidity')
                   AND r.ts > now() - interval '365 days' AND r.ts <= now()
                 GROUP BY 1, 2, 3""")
+    g = group_hourly(rows)
+    today = today or (max(r["bucket"] for r in rows).date() if rows else None)
+    return [r for r in (usual_row(k, g.get(k, {}), today) for k in GROUPS) if r]
+
+
+def group_hourly(rows: list[dict]) -> dict:
+    """{group: {aware local bucket: mean over that group's sensors}} from hourly rows of the house's own sensors."""
     for r in rows:
         r["bucket"] = _aware(r["bucket"])
     s = series(rows)
     indoor = {r["sensor_id"]: r["indoor"] for r in rows}
-    today = today or (max(r["bucket"] for r in rows).date() if rows else None)
-    out = []
+    out = {}
     for group, (metric, inside) in GROUPS.items():
         merged: dict = {}
         for (sid, m), vals in s.items():
             if m == metric and indoor.get(sid) is inside:
                 for b, v in vals.items():
                     merged.setdefault(b, []).append(v)
-        r = usual_row(group, {b: sum(v) / len(v) for b, v in merged.items()}, today)
-        if r:
-            out.append(r)
+        if merged:
+            out[group] = {b: sum(v) / len(v) for b, v in merged.items()}
     return out
 
 
@@ -294,3 +299,138 @@ def learn_asks(q, live: set) -> list[dict]:
     for r in rows:
         by.setdefault(r["rule_id"], []).append(r)
     return [x for x in (asks_row(k, v, k in live) for k, v in by.items()) if x]
+
+
+
+# ---------------------------------------------------------------- digests (SPEC_learn §6, step 3)
+# One per completed day, week (Monday to Sunday), month and year, in the house's own time zone: what each group of its
+# sensors did, the alerts and what was done about them in the household's own words, and the change since the
+# digest before at the same scale. Written by the node from its numbers; searched by the pane and the bot.
+# ponytail: English dates and words, as the report's sheet; a locale per digest when a node asks for one
+SHORT = {"indoor-pm25": "PM2.5 inside", "outdoor-pm25": "PM2.5 outside", "indoor-heat": "feels-like inside"}
+SCALES = ("day", "week", "month", "year")
+BACKFILL_DAYS = 400
+
+
+def periods(first, today) -> list[tuple[str, object, object]]:
+    """Every completed (scale, start, end) from the first day with data to yesterday; `end` is exclusive."""
+    from datetime import date  # noqa: PLC0415
+    out, first = [], max(first, today - timedelta(days=BACKFILL_DAYS))
+    d = first
+    while d < today:
+        out.append(("day", d, d + timedelta(days=1)))
+        d += timedelta(days=1)
+    w = first - timedelta(days=first.weekday())
+    while w + timedelta(days=7) <= today:
+        out.append(("week", w, w + timedelta(days=7)))
+        w += timedelta(days=7)
+    m = first.replace(day=1)
+    while True:
+        nxt = (m.replace(day=28) + timedelta(days=4)).replace(day=1)
+        if nxt > today:
+            break
+        out.append(("month", m, nxt))
+        m = nxt
+    y = date(first.year, 1, 1)
+    while date(y.year + 1, 1, 1) <= today:
+        out.append(("year", y, date(y.year + 1, 1, 1)))
+        y = date(y.year + 1, 1, 1)
+    return out
+
+
+def label(scale: str, start) -> str:
+    return {"day": start.strftime("%A %-d %B %Y"), "week": f"Week of {start.strftime('%-d %B %Y')}",
+            "month": start.strftime("%B %Y"), "year": start.strftime("%Y")}[scale]
+
+
+def digest(scale: str, start, end, groups: dict, alerts: list[dict], notes: list[dict], prev: dict | None) -> dict:
+    """One digest from the period's hourly groups, its act-level alerts [{rule_id, acted}] and acted notes
+    [{note}]. `prev` is the digest before at the same scale, for the change."""
+    nums, parts = {}, []
+    for g in GROUPS:
+        v = {b: x for b, x in (groups.get(g) or {}).items() if start <= b.date() < end}
+        if not v:
+            continue
+        top = max(v, key=v.get)
+        unit = UNIT[GROUPS[g][0]]
+        nums[g] = {"mean": round(sum(v.values()) / len(v), 1), "max": round(v[top], 1), "max_at": top.isoformat(), "hours": len(v)}
+        when = f"{top.hour:02d}:00" if scale == "day" else f"{top.strftime('%-d %b')} at {top.hour:02d}:00"
+        parts.append(f"{SHORT[g]} averaged {nums[g]['mean']} {unit}, highest {nums[g]['max']} {unit} ({when})")
+    text = label(scale, start) + ". " + ("; ".join(parts) + "." if parts else "No readings from this house's own sensors.")
+    by_rule: dict = {}
+    for a in alerts:
+        r = by_rule.setdefault(a["rule_id"].split("/")[-1], [0, 0])
+        r[0] += 1
+        r[1] += 1 if a["acted"] else 0
+    nums["alerts"] = {k: {"raised": v[0], "acted": v[1]} for k, v in by_rule.items()}
+    if by_rule:
+        raised, acted = sum(v[0] for v in by_rule.values()), sum(v[1] for v in by_rule.values())
+        top3 = ", ".join(f"{k} {v[0]}" for k, v in sorted(by_rule.items(), key=lambda kv: -kv[1][0])[:3])
+        text += f" {raised} alert{'s' if raised != 1 else ''} ({top3}), {acted} acted on."
+    words = [n["note"].strip() for n in notes if (n.get("note") or "").strip()]
+    nums["notes"] = len(words)
+    if words:   # the household's words as written, each once, with how many times
+        seen = {}
+        for w in words:
+            seen[w[:120]] = seen.get(w[:120], 0) + 1
+        text += " What was done: " + "; ".join(f"\u201c{w}\u201d" + (f" \u00d7{k}" if k > 1 else "")
+                                              for w, k in list(seen.items())[:8]) + "."
+    if prev:
+        moved = [f"{SHORT[g]} {nums[g]['mean'] - prev[g]['mean']:+.1f}" for g in GROUPS
+                 if g in nums and isinstance(prev.get(g), dict) and abs(nums[g]["mean"] - prev[g]["mean"]) >= 0.1]
+        if moved:
+            text += f" Against the {scale} before: " + ", ".join(moved) + "."
+    return {"scale": scale, "period_start": start.isoformat(), "label": label(scale, start), "text": text, "numbers": nums}
+
+
+def write_digests(q, have: set, prev_numbers: dict, today=None) -> list[dict]:
+    """The digests not yet written, oldest first, so each finds the one before it. `have` is {(scale, start iso)};
+    `prev_numbers` {(scale, start iso): numbers} of those already kept."""
+    first = q("""SELECT min(r.ts) AS t FROM readings r JOIN sensors s USING (sensor_id)
+                 WHERE s.kind = 'sensor' AND s.local AND r.ts <= now()""")
+    if not first or not first[0]["t"]:
+        return []
+    first_day = _aware(first[0]["t"]).date()
+    now_local = _aware(q("SELECT now() AS t")[0]["t"])
+    today = today or now_local.date()
+    todo = [p for p in periods(first_day, today) if (p[0], p[1].isoformat()) not in have]
+    if not todo:
+        return []
+    since = min(p[1] for p in todo)
+    rows = q("""SELECT date_trunc('hour', r.ts) AS bucket, r.sensor_id, r.metric, avg(r.value) AS mean, bool_or(s.indoor) AS indoor
+                FROM readings r JOIN sensors s USING (sensor_id)
+                WHERE s.kind = 'sensor' AND s.local AND r.metric IN ('pm25', 'temp', 'humidity')
+                  AND r.ts >= %s::date AND r.ts < %s::date GROUP BY 1, 2, 3""", since.isoformat(), today.isoformat())
+    groups = group_hourly(rows)
+    alerts = q("""SELECT l.rule_id, l.ts::date AS d,
+                         EXISTS (SELECT 1 FROM actions x WHERE x.alert_id = l.id AND x.stage = 'acted') AS acted
+                  FROM alerts l WHERE l.level = 'act' AND l.ts >= %s::date AND l.ts < %s::date""", since.isoformat(), today.isoformat())
+    notes = q("""SELECT ts::date AS d, note FROM actions
+                 WHERE stage = 'acted' AND coalesce(note, '') <> '' AND ts >= %s::date AND ts < %s::date ORDER BY ts""",
+              since.isoformat(), today.isoformat())
+    day = lambda r: r["d"] if not isinstance(r["d"], str) else datetime.fromisoformat(r["d"]).date()  # noqa: E731
+    out, last = [], {}
+    for scale, start, end in sorted(todo, key=lambda p: (SCALES.index(p[0]), p[1])):
+        before = last.get(scale) or prev_numbers.get((scale, _previous(scale, start).isoformat()))
+        d = digest(scale, start, end, groups, [a for a in alerts if start <= day(a) < end],
+                   [n for n in notes if start <= day(n) < end], before)
+        last[scale] = d["numbers"]
+        out.append(d)
+    return out
+
+
+def _previous(scale: str, start):
+    if scale == "day":
+        return start - timedelta(days=1)
+    if scale == "week":
+        return start - timedelta(days=7)
+    if scale == "month":
+        return (start - timedelta(days=1)).replace(day=1)
+    return start.replace(year=start.year - 1)
+
+
+def search_terms(text: str) -> str:
+    """A tsquery any of whose words may match: words of three letters or more, OR'd. Built from word characters
+    only, so nothing a person or a model types reaches to_tsquery's own syntax."""
+    import re  # noqa: PLC0415
+    return " | ".join(dict.fromkeys(w.lower() for w in re.findall(r"\w{3,}", text or "")))
