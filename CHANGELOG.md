@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+- **Place and Node, after the design review (Tomas, 14–15 Oct).** Place: the species confirmed here are a table
+  below the map (GBIF link, rank, times seen here, where in words, GBIF's open records in the seven cells; token only)
+  and a filled mark on the map under Images, its row saying "1 confirmed · …"; five layers on by default, the other
+  groups collapsed with a count, no inner scroller, and on a phone the list is a sheet under a "Layers 5" button; the
+  house is named on the map; without WebGL the map is drawn still (the cell, the stations, the rings) and the list and
+  facts still draw, where before nothing did; the tools are 44 px, the active one says its word, Measure ends on Done,
+  and From the house is one tap; one figure per fact ("497 m edge · 0.64 km²", never "about 531 m" or "64.0 ha");
+  Changes by the year moved below the map. Node: a verdict first ("Working. Last reading 19:19; 6 of 6 sensors, 10 of
+  20 stations heard in the last hour.", or "Needs a look" and why); the flow is vertical under 700 px instead of an
+  840 px drawing scrolled sideways; the diary shows 14 entries and the rest on a press; the nodes' list comes before a
+  globe a third of the screen high; the five refusals in plain words, each linked to its proof.
+- **The doctor names the node's fundamental sources, and install and update end with what is left to set up**
+  (Tomas, 15 Oct: "the user should be guided to have the fundamental data sources of the node running"). Six sources
+  every node needs, in one place (`app/fundamentals.py`), most important first: your own sensors (one reporting in
+  the last hour, inside and ideally outside), alerts on your phone (Telegram connected and not refused), air stations
+  nearby (Bali Air Dispatch; does not apply outside Bali yet), weather (Open-Meteo), satellite air (CAMS) and the
+  nightly backup. New `GET /health/sources` (token) says each one's state, its last reading's age and, when it is not
+  running, the one thing to do, with the Set up section or the `planetai` command that does it. `planetai doctor`
+  prints them as a **Data sources** block; `install.sh`, `update.sh` and `planetai setup` now all end with the doctor
+  and a **To finish setting up** list, and in a terminal install and update offer to do the first step (never with
+  `--yes`, cron or an agent: then they only print). The Set up page shows the same list at the top, and the MCP
+  `health_check` returns it as `sources`. Telegram and the backup's age moved from the doctor's checks into the
+  sources, so they no longer make a new node's doctor red; *a backup exists* (which read `./backups` whatever
+  `BACKUP_DIR` said) is gone. Before the first poll after a start, a configured source is a dash, not a cross.
 - **Data is tabs, and Set up asks before anything leaves (design review, 14 Oct; Tomas: tables by default, cards
   only as pop-ups).** Data was one scroll of nine sections, about 21,900 px at 1440 and 36,600 px on a phone. It is
   now one pane at a time, routed `#data/<tab>`: Readings, Models and satellite, Home, Ledger and API, with Set up's list

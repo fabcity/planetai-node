@@ -442,9 +442,10 @@ answers and the page draws; the plan still needs a token at every level. See [Sh
 The node renders as five doors by default, the redesign worked out in planetai-design (R33 to R45): **Now**
 (the moment, its decision with Done, Not now and Doesn't fit, and the stations around the house), **Place** (the
 ground as a map with layers, scales and a measuring tool, the satellite years and what changed, and the household's
-**Images**: one map layer per kind, phone, fixed camera, microscope, drone and balloon or kite, each image a square
-that opens a card with the image, when, who, the note and its cell, and a quiet **+ Add an image** beside the views
-that opens a dialog, the file picked or dropped; token-only, `GET /captures`), **Data** (tabs,
+**Images**: one map layer, each image a square that opens a card with the image, when, who, the note and its cell,
+and under it **Species confirmed here**, a filled mark at each confirming image's point with the species named; a
+quiet **+ Add an image** beside the views opens a dialog, the file picked or dropped; token-only, `GET /captures` and
+`GET /species`), **Data** (tabs,
 one pane at a time, routed `#data/<tab>`, with Set up's list as the tab bar, sticky, and on a phone a wrapping strip of
 44 px targets: **Readings** (every kind of reading as a tile, every source over 24 hours, every issue over seven days
 and the hours over the line per day), **Models and satellite** (one table, a row per source with how often it is
@@ -473,6 +474,32 @@ many times it was acted on and the change inside, the same for the times nobody 
 each alert opening its sentence and every case in a dialog; and **Who lives here?**, five yes-or-no boxes that rank
 the learnings and say who each matters to. `#node/remember/day/<date>` opens one entry. The classic
 dashboard remains available at `/?layout=classic`.
+
+**Place** (15 Oct 2026) opens with five layers on: the street map with its names, the cell the node stands in, the
+house's own stations, the public stations and the images. Every other layer starts off, and a group with nothing on
+starts collapsed with its count. The list grows with its rows and never scrolls inside itself, and the map takes its
+height; on a phone it is a sheet under a **Layers 5** button below the map. The house is named on the map. The tools
+on the map's edge are 44 px: zoom, back to the node's cell, **Inspect**, **Measure** (tap points, then **Done**),
+**From the house** (one tap, and the node measures the distance from its own point) and save as PNG; the active
+one says its word. The cell's edge and area are its own, said once and in one unit: "497 m edge · 0.64 km²" in the
+lede and in the facts. Below the map, **Species confirmed here** is a table: the species (its GBIF page), rank, how
+many times seen here, where in words ("in the seven cells", "outside the seven cells", or both counted), and GBIF's
+open records by others in this node's seven cells; it needs the token, as the images do, and without it one line says
+where to unlock. Only what somebody here confirmed counts; GBIF's records are a count, never points on the map.
+**Changes by the year** (Land and Coast) follows it. A browser without WebGL still gets the map, drawn still from
+the same answers (the node's cell and its parent's cells, the stations, the rings with the token, the images and the
+house), with the layer list and the facts as always.
+
+**Node** (15 Oct 2026) leads with its verdict: "Working. Last reading 19:19; 6 of 6 sensors, 10 of 20 stations heard
+in the last hour.", from `/health` and `/stats` (a station is heard when it read in the last hour) and, for a screen
+holding the token, the fundamental sources `GET /health/sources` names. A poll older than 15 minutes, a loop that
+failed on its last run, a sensor of its own not heard in the last hour or a fundamental source not running turns it
+into "Needs a look", saying which, with a link to finish setting up. On a phone (under 700 px) **What comes in, what goes out** is drawn vertically at the
+screen's width, what comes in above the hexagon and what goes out below, each link on its own rail in the margin. The
+diary shows its fourteen most recent entries and the rest on **Show more**. **The nodes around it** lists the nodes
+first ("1 listed · 0 heard by radio") and draws the globe at most a third of the screen high. **What this node will
+not do** says each refusal in plain words beside a link to where it can be checked: the flow, the Index cells under it, the
+ledger, the machine in Set up, and the nodes around it.
 
 **Now reads in the order a household asks** (Tomas, 15 Oct 2026). First, under a one-line kicker ("Right now · Heat at
 19:00", the provenance pill, and a link to this node's cell on Place, "497 m · 0.64 km² ›"), the sentence and the day
