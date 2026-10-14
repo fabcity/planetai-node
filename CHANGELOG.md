@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **The headline says the day, and one answer says what is asked (design review of node #1, 14 Oct).** At 19:00 Now
+  said "The air is clean, inside and out" beside "12 h over the line today" and a day drawn red until 11:00. When the
+  reading is back under the line after hours over it today, the title now says both, "The air is clean now, after a
+  dusty morning", and the tagline when and how long, "In the house it was past the WHO line for fine dust until 12:00,
+  12 hours today.", counted as the door counts them; a day with no hour over keeps the hour's title. In en, id and es
+  (id and es assistant-written, for a native reader). And Now's Decide card said "No event was open for air" while the
+  Wall showed an alert still open: each read its own list. `/issues` now carries `asking` per issue, the open event
+  while it asks and then the alerts still true, and Now, the Wall and the phone all read it. An alert from days ago
+  whose reading came back is still open and still in ρ, but it no longer reads as asked now.
+
 - **Thirteen fixes from the design review of node #1 (14 Oct).** (1) Times are the node's own: the doors and the phone
   page sliced UTC strings as if they were local, so node #1 read "as of 11:52" beside "at 19:00" in Bali; every time
   is now read in `/health`'s zone. (2) The mono the frozen theme asks for at `/static/fonts/jetbrains-mono-latin.woff2`

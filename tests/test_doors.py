@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parent.parent
 os.chdir(ROOT)
 sys.path.insert(0, str(ROOT / "app"))
 os.environ.setdefault("DATABASE_URL", "postgresql://test@127.0.0.1:1/test")
+os.environ.setdefault("PACKS_DIR", str(ROOT / "packs"))      # the replays below need the packs the events engine replaced
 STATIC = ROOT / "app" / "static"
 FIX = "app/issues/fixtures/node1-2026-10-06-figures.json"
 
@@ -195,6 +196,20 @@ print("doors: Data's images and things are tables, and a card is a dialog someon
 #    "at 19:00"); a string with no offset, or a page with no zone yet, keeps its own clock.
 # 3. A screen with no token asks no token-only route: doorsFetch answers a stand-in 403 and never reaches the network.
 # 7. The Wall names no sensor, room or kit, and says stale only when the last poll is old.
+# A capture as ?fixture= serves it (app/issues/api.py): its issues replayed through today's engine, so a field the engine
+# added since the capture (title, tagline, asking) reaches the page as it would from a node.
+import tempfile  # noqa: E402
+from issues import engine as _engine_r, load as _load_r  # noqa: E402
+_TMP = Path(tempfile.mkdtemp())
+
+
+def replayed(path: str) -> str:
+    snap = json.loads(Path(path).read_text())
+    snap["issues"] = _engine_r.replay(snap, main.settings, _load_r())
+    (_TMP / Path(path).name).write_text(json.dumps(snap, default=str))
+    return str(_TMP / Path(path).name)
+
+
 tprog = r"""
 const fs = require('fs'), vm = require('vm');
 const L = require('./app/static/doors-load.js');
@@ -216,7 +231,7 @@ const calls = []; globalThis.fetch = p => { calls.push(p); return Promise.resolv
     midnight: L.doorsLocal('2026-10-14T17:30:00+00:00', tz), bare: L.doorsLocal('2026-10-14T11:52:00', tz), notz: L.doorsLocal('2026-10-14T11:52:00+00:00', null),
     locked: locked.status, cap: cap.status, open: open.status, calls, wall: ctx.out }));
 })();
-""" % FIX
+""" % replayed(FIX)
 t = json.loads(subprocess.run(["node"], input=tprog, capture_output=True, text=True, check=True).stdout)
 assert t["utc"] == t["z"] == "2026-10-14T19:52" and t["own"] == "2026-10-14T19:00", t
 assert t["midnight"] == "2026-10-15T01:30", "a UTC evening is the node's next morning, day and all"
@@ -233,9 +248,59 @@ print("doors: a screen with no token asks no token-only route; with one it asks 
 _names = {x["name"].strip() for x in json.loads(Path(FIX).read_text())["sensors"] if len(x["name"].strip()) > 3}
 _wall = t["wall"]["frags"] + t["wall"]["ask"]
 assert t["wall"]["frags"].count("<div>") == 5 and not [n for n in _names if n in _wall], [n for n in _names if n in _wall]
-assert "asked of this house" in t["wall"]["ask"], "the open asks are said, in the engine's words"
+assert "Nothing is asked now." in t["wall"]["ask"], "6 Oct 19:22: a stale alert and an answered event ask nothing now"
 assert t["wall"]["old"] and t["wall"]["none"] and not t["wall"]["fresh"], t["wall"]
 print("doors: the Wall names no sensor, room or kit, and says stale only when the last poll is old")
+# 2. One answer to "is something asked now" (14 Oct): Now's Decide said "No event was open for air" from the events while
+#    the Wall showed an open ask from open_asks. Both now read /issues `asking`; run on three captures, they agree.
+aprog = r"""
+const fs = require('fs'), vm = require('vm');
+const L = require('./app/static/doors-load.js');
+const core = fs.readFileSync('./app/static/doors-core.js', 'utf8'), now = fs.readFileSync('./app/static/doors-now.js', 'utf8');
+const pick = n => core.match(new RegExp('^const ' + n + ' = .*$', 'm'))[0], fn = (src, n) => src.match(new RegExp('function ' + n + '[\\s\\S]*?\\n}\\n'))[0];
+const out = {};
+for (const [name, path] of Object.entries(JSON.parse(process.argv[1]))) {
+  const F = JSON.parse(fs.readFileSync(path, 'utf8')), els = {}, D = L.buildD({ ...F, days: F.issues_days }, 'en');
+  D.now = D.buckets.length - 1;
+  const ctx = { D, S: { issue: null, i: D.now }, doorsLocal: L.doorsLocal, VIEWS: {}, $: q => (els[q] ||= {}) };
+  vm.createContext(ctx);
+  vm.runInContext(['esc', 'loc', 'dayOf', 'fmt', 'said', 'num', 'unitOf', 'labelOf', 'NODE', 'sign'].map(pick).join('\n') + '\n'
+    + fn(core, 'evAt') + fn(core, 'answerWords') + now.match(/^const ANSWER_STAGE = .*$/m)[0] + '\n' + fn(now, 'decision')
+    + fs.readFileSync('./app/static/doors-wall.js', 'utf8').match(/function wallAsk[\s\S]*?\n}\n/)[0], ctx);
+  /* the phone's Decide card, its own copy of the helpers (mobile.js says why) */
+  const mob = fs.readFileSync('./app/static/mobile.js', 'utf8'), mpick = n => mob.match(new RegExp('^const ' + n + ' = .*$', 'm'))[0];
+  const pctx = { D, leadKey: null, doorsLocal: L.doorsLocal, DOORS_TOKEN: () => '' };
+  vm.createContext(pctx);
+  vm.runInContext(['esc', 'hhmm', 'fmt', 'said', 'ANSWER_STAGE'].map(mpick).join('\n') + '\n' + fn(mob, 'decideHTML'), pctx);
+  out[name] = Object.fromEntries(D.order.map(k => {
+    ctx.S.issue = k; vm.runInContext('decision()', ctx); pctx.leadKey = k;
+    return [k, { wall: vm.runInContext('wallAsk(D.issues[S.issue])', ctx), now: els['#decide'].innerHTML, asking: D.issues[k].asking.length,
+                 phone: vm.runInContext('decideHTML(D.issues[leadKey])', pctx) }];
+  }));
+}
+console.log(JSON.stringify(out));
+"""
+_caps = {n: replayed(f"app/issues/fixtures/node1-{n}.json") for n in ("2026-10-06-figures", "2026-10-06-events", "2026-09-21d")}
+_ar = subprocess.run(["node", "-e", aprog, json.dumps(_caps)], capture_output=True, text=True)
+assert _ar.returncode == 0, _ar.stderr[-2000:]
+a = json.loads(_ar.stdout)
+_fg, _ev, _ru = a["2026-10-06-figures"], a["2026-10-06-events"], a["2026-09-21d"]
+# 19:22, events: air's only open alert is a stale nearby one, heat's event was answered Done. Nothing is asked, on both.
+assert "Nothing is asked now." in _fg["air"]["wall"] and "nothing is asked now" in _fg["air"]["now"], _fg["air"]
+assert "No event was open" not in _fg["air"]["now"], "at the live hour Now speaks for the node's asking, not the events alone"
+assert "Nothing is asked now." in _fg["heat"]["wall"] and "answered: Done" in _fg["heat"]["now"] and 'class="ans"' not in _fg["heat"]["now"]
+# 09:00, events: the danger event asks, and the Wall counts it with the two nearby alerts still true. This capture has
+# no /issues/days, so no event row: Now says the node's own words for it rather than "nothing is asked".
+assert "3 things are asked of this house." in _ev["air"]["wall"] and "an event open since 07:18 (danger)" in _ev["air"]["now"], _ev["air"]
+# 21 Sep, rules: heat's alert is still true and no event stands for it; Now draws the alert, the Wall counts it
+assert "One thing is asked of this house." in _ru["heat"]["wall"] and "asked since" in _ru["heat"]["now"] and "Reply /act" in _ru["heat"]["now"], _ru["heat"]
+for _cap in a.values():
+    for _k, _v in _cap.items():
+        assert ("Nothing is asked now." in _v["wall"]) == (_v["asking"] == 0), (_k, _v)
+        # the phone says the same: an ask is drawn (the event's card or the node's words), or nothing is asked
+        assert ("still open" in _v["phone"] or "data-ev" in _v["phone"]) == (_v["asking"] > 0), (_k, _v["phone"])
+assert "Reply /act" in _ru["heat"]["phone"] and "Nothing is asked now." in _fg["air"]["phone"], (_ru["heat"]["phone"], _fg["air"]["phone"])
+print("doors: Now's Decide card, the Wall and the phone read one answer to what is asked now, on three captures")
 # 6. Place's Index and land-change rows say what the node holds (node #1: 6 of 20, nine years compared), not "nothing"
 assert t["wall"]["pack"][0].startswith("6 of 20 hold a value") and "What changed" in t["wall"]["pack"][1], t["wall"]["pack"]
 print("doors: Place's Index and land-change rows say what the node holds and where it is drawn")

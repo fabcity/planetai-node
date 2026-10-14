@@ -372,11 +372,12 @@ for key, d in DECL.items():
 _air_s = OUT["issues"]["air"]["sentence"]["en"]
 check("In the house it is 5" in OUT["issues"]["air"]["hero"]["plain"]["en"],
       f"air's numeral is not in its plain: {OUT['issues']['air']['hero']['plain']['en']}")
-check(not re.search(r"\d", _air_s), f"air's headline carries a number: {_air_s}")
+# the title is words only; the tagline may carry the day's time and hours ("until 15:00, 1 hour today")
+check(not re.search(r"\d", OUT["issues"]["air"]["title"]["en"]), f"air's title carries a number: {_air_s}")
 _heat_s = OUT["issues"]["heat"]["sentence"]["en"]
 check("In the house it is 30.8" in OUT["issues"]["heat"]["hero"]["plain"]["en"],
       f"heat's numeral is not in its plain: {OUT['issues']['heat']['hero']['plain']['en']}")
-check(not re.search(r"\d", _heat_s), f"heat's headline carries a number: {_heat_s}")
+check(not re.search(r"\d", OUT["issues"]["heat"]["title"]["en"]), f"heat's title carries a number: {_heat_s}")
 
 # --- attribution ---------------------------------------------------------------------------------
 check(OUT["issues"]["air"]["attribution"] == "clear",
@@ -590,7 +591,12 @@ check(_L21["value"] == 91 and _L21["stamp"]["en"] == "looked at in July 2025 \u0
 # --- Release C: the headline clauses ---------------------------------------------------------
 # The {line} clause is computed from the value, so the sentence can never contradict the line:
 # air at 12 against a line of 15 is under it; heat at 33.9 against 35 is near it.
-_S21 = {k: _O21[k]["sentence"]["en"] for k in ("air", "heat", "coast", "land")}
+# Air was over the line for one hour that afternoon, so its title says the day (below). The hour's clauses are read with
+# the day's knob out of reach, which is the sentence a day with no hour over says.
+_knob, engine.DAY_OVER_HOURS = engine.DAY_OVER_HOURS, 25
+_H21 = engine.replay(_F21, Settings(NODE_ISSUES="air,heat,land,coast"), DECL)["issues"]
+engine.DAY_OVER_HOURS = _knob
+_S21 = {k: _H21[k]["sentence"]["en"] for k in ("air", "heat", "coast", "land")}
 check("under the WHO line" in _S21["air"] and "past the WHO line" not in _S21["air"],
       f"line clause: air reads {_S21['air']!r}")
 check("close to this house's own heat line" in _S21["heat"] and "under the WHO line" not in _S21["heat"],
@@ -781,6 +787,63 @@ assert _moved([5] * 6) == 0.0, "a flat run has not moved"
 assert _moved([1, 2, 3]) == 0.0, "fewer than six buckets is not a small move, it is no evidence"
 assert _moved([]) == 0.0 and _moved(None) == 0.0, "no series at all is not an error here"
 print("  the lead is the headline rule, says which step decided it, and skips an issue with no hero")
+
+
+# --- the day behind the hour (14 Oct 2026) -----------------------------------------------------------
+# Node #1 at 19:00 said "The air is clean, inside and out" beside "12 h over the line today". The title now says the
+# day when the reading is back under the line after hours over it, and its count is the one /issues/days prints.
+_FF = json.loads((ROOT / "app/issues/fixtures/node1-2026-10-06-figures.json").read_text())
+_OF = engine.replay(_FF, Settings(NODE_ISSUES="air,heat,land,coast"), DECL)["issues"]
+_today = {k: v["per_day"][-1]["over"] for k, v in _FF["issues_days"]["issues"].items() if v.get("per_day")}
+check(_today["air"] == 2 and _OF["air"]["title"]["en"] == "The air is clean now, after a dusty morning"
+      and _OF["air"]["tagline"]["en"] == "In the house it was past the WHO line for fine dust until 09:00, 2 hours today.",
+      f"day: air on 6 Oct 19:22 reads {_OF['air']['title']['en']!r} | {_OF['air']['tagline']['en']!r} "
+      f"beside {_today['air']} h over the line today")
+check(_today["heat"] == 0 and _OF["heat"]["title"]["en"] == "The heat is bearable, inside and out",
+      f"day: a day with no hour over keeps the hour's title, heat reads {_OF['heat']['title']['en']!r}")
+for _loc in I.LOCALES:
+    _t, _g = _OF["air"]["title"][_loc], _OF["air"]["tagline"][_loc]
+    check(_t and not re.search(r"\d", _t) and "{" not in _t + _g and "09:00" in _g and "2" in _g.replace("09:00", ""),
+          f"day: air.{_loc} reads {_t!r} | {_g!r}")
+# _day itself: twelve hours over from midnight is a morning (the later part on a tie), until the end of the last hour;
+# yesterday's hours are not today's; an hour still running ends now; nothing over is no day.
+_tz = timezone(timedelta(hours=8))
+_bk = [datetime(2026, 10, 14, 19, tzinfo=_tz) - timedelta(hours=23 - i) for i in range(24)]
+_sv = [30 if b.hour <= 11 or b.day == 13 else 5 for b in _bk]
+_now = datetime(2026, 10, 14, 19, 30, tzinfo=_tz)
+check(engine._day(_sv, _bk, {"value": 15}, _now) == {"over": 12, "until": "12:00", "part": "morning"},
+      f"_day: {engine._day(_sv, _bk, {'value': 15}, _now)}")
+check(engine._day(_sv[:-1] + [30], _bk, {"value": 15}, _now)["until"] == "19:30", "_day: an hour still running ends now")
+check(engine._day([5] * 24, _bk, {"value": 15}, _now) is None and engine._day(_sv, _bk, None, _now) is None,
+      "_day: no hour over, or no line, is no day")
+# near the line after a day over it is "better", not "clean"; over the line now keeps the hour's words
+_dy = {"over": 3, "until": "11:00", "part": "morning", "distance": "room"}
+_sn = engine._sentence_parts(_air, {"room": {"value": 14}}, "notable", "room", "steady", "en", _cmp_mode, "clear",
+                             _air["line"], {"code": "no_alert"}, _dy)
+_so = engine._sentence_parts(_air, {"room": {"value": 42}}, "notable", "room", "steady", "en", _cmp_mode, "inside",
+                             _air["line"], {"code": "no_alert"}, _dy)
+check(_sn[1] == "The air is better now, after a dusty morning" and "3 hours today" in _sn[2], f"day near: {_sn}")
+check(_so[1] == "Something in the house is making the air dirty", f"day while over: {_so}")
+print("  the day behind the hour: the title says it when the reading came back, counted as /issues/days counts")
+
+# --- asking: one answer to "is something asked of this house now" (14 Oct 2026) -------------------------
+# Now's Decide said "No event was open for air" from the events while the Wall showed an open ask from open_asks.
+# 6 Oct 19:22 (events): air's one open ask is a nearby alert from 2 Oct whose reading came back, and heat's event was
+# answered Done: nothing is asked now, while open_asks keeps the stale one.
+check(_OF["air"]["asking"] == [] and [a["id"] for a in _OF["air"]["open_asks"]] == [570] and _OF["heat"]["asking"] == [],
+      f"asking at 19:22: air {_OF['air']['asking']}, heat {_OF['heat']['asking']}")
+# 6 Oct 09:00 (events): the danger event is open and unanswered, and the two nearby alerts hold while the room is over
+_OE = engine.replay(json.loads((ROOT / "app/issues/fixtures/node1-2026-10-06-events.json").read_text()),
+                    Settings(NODE_ISSUES="air,heat,land,coast"), DECL)["issues"]
+_ae = _OE["air"]["asking"]
+check([(a.get("event_id"), a.get("alert_id")) for a in _ae] == [(2, None), (None, 571), (None, 570)]
+      and all(a["says"][_l] for a in _ae for _l in I.LOCALES) and "how" in _ae[1],
+      f"asking at 09:00: {_ae}")
+# 21 Sep (rules, no events): the current open asks, never the stale ones
+_ah = _O21["heat"]
+check([a["alert_id"] for a in _ah["asking"]] == [a["id"] for a in _ah["open_asks"] if a["current"]]
+      and len(_ah["asking"]) < len(_ah["open_asks"]), f"asking on rules: {len(_ah['asking'])} of {len(_ah['open_asks'])}")
+print("  asking: the open event while it asks, then the current alerts; a stale one stays open and is not asked")
 
 
 print("\n".join(f"  x {f}" for f in fails if f) or

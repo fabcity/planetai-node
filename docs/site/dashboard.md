@@ -452,7 +452,15 @@ would show it.
 Every time on the doors and the phone page is the node's own local time (`/health` `tz`), whatever offset the route
 wrote it in. The Wall names no sensor, room or kit, because anyone in the room reads it: the house is inside or
 outside, a public station is how far off it stands, and an open ask is the engine's own sentence, never the alert's
-text. It says `stale` only when the node's last poll is more than 15 minutes old. On Node, "Alerts, to a phone" is
+text. It says `stale` only when the node's last poll is more than 15 minutes old. Whether anything is asked of the
+house is one answer, `asking` on each issue in `/issues`, and Now's Decide card, the Wall and the phone all read it: the
+issue's open event while it still asks, then any alert still true that no event stands for. An alert whose reading came
+back on its own is still open and still counted in ρ, but it asks nothing now, and none of the three says it does. At
+the live hour Now's Decide card draws that ask (an alert's card says to answer it on Telegram), else the open event
+already answered, else "Nothing is asked of this house about air now."; a past hour shows the events open then. When
+the reading is back under the line after hours over it today, the title says the day as well as the hour ("The air is
+clean now, after a dusty morning", with "In the house it was past the WHO line for fine dust until 12:00, 12 hours
+today." beneath), counted exactly as the "h over the line today" beside it. On Node, "Alerts, to a phone" is
 what was sent in the last 24 hours (`events.sent_24h` on `/issues`), not every row recorded; the readings kept are
 `/storage`'s count with the token and the readings since the restart without it; and what this home offers
 (`GET /offers`) is one of the links out. On Place, the land change and the Index cells have no shape on the map: their

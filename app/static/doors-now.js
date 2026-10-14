@@ -61,23 +61,35 @@ function readout() {
   decision(); rowsValues();
 }
 
-/* The decision of the moment: Decide's card, condensed (learn: buttons). The three answers are the node's own words. */
+/* The decision of the moment: Decide's card, condensed (learn: buttons). The three answers are the node's own words.
+   At the live hour, whether something is asked is the node's one answer (/issues asking), the one the Wall reads: an
+   event still asking, else an alert still true. On 14 Oct this read the events alone and said "No event was open for
+   air" beside a Wall showing an open ask. A past hour is history: the events open then. */
 function decision() {
-  const k = S.issue, it = D.issues[k], evs = evAt(k, S.i), B = D.buttons;
+  const k = S.issue, it = D.issues[k], B = D.buttons, live = S.i === D.now, ask = live ? (it.asking || [])[0] : null;
+  const line = `<p class="dm">${it.line != null ? `the line ${fmt(it.line, it.dp)} ${said(it.unit)} · ${said(it.line_source || '')}` : 'this issue has no line: it informs, it never asks'}</p>`;
+  let evs = ask && ask.event_id != null ? D.events.filter(e => e.id === ask.event_id) : [];
+  if (ask && !evs.length) {
+    /* an alert still true that no event stands for (answered on Telegram), or an event this screen has no row for */
+    $('#decide').innerHTML = `<div class="k">decide · ${said(it.name)} · asked since ${hhmm(ask.since)} · still open</div>`
+      + `<p class="dq">${said(ask.says || '')}</p>${ask.how ? `<p class="dm">${said(ask.how)}</p>` : ''}` + line;
+    return;
+  }
+  if (!evs.length) evs = evAt(k, S.i);
   if (!evs.length) {
-    $('#decide').innerHTML = `<div class="k">decide · nothing is asked at this hour</div><p class="dq">No event was open for ${said(it.name.toLowerCase())}.</p>`
-      + `<p class="dm">${it.line != null ? `the line ${fmt(it.line, it.dp)} ${said(it.unit)} · ${said(it.line_source || '')}` : 'this issue has no line: it informs, it never asks'}</p>`;
+    $('#decide').innerHTML = live ? `<div class="k">decide · nothing is asked now</div><p class="dq">Nothing is asked of this house about ${said(it.name.toLowerCase())} now.</p>` + line
+      : `<div class="k">decide · nothing is asked at this hour</div><p class="dq">No event was open for ${said(it.name.toLowerCase())}.</p>` + line;
     return;
   }
   const e = evs[0], a = answerWords(e.answer), on = { acted: 'done', acknowledged: 'not_now', dismissed: 'doesnt_fit' }[(e.answer || {}).stage];
   /* an answer is taken only for an event still open, at the live hour: a past hour is read, never answered */
-  const live = S.i === D.now && !e.cleared_at;
+  const answerable = live && !e.cleared_at;
   $('#decide').innerHTML = `<div class="k">decide · ${said(it.name)} · ${esc(e.kind)} since ${hhmm(e.opened_at)}${e.cleared_at ? ` · cleared ${hhmm(e.cleared_at)}` : ' · still open'}`
     + `${e.peak != null ? ` · peak ${num(`${k}.event.peak`, fmt(e.peak, it.dp), `the line ${fmt(it.line, it.dp)} ${it.unit}`)} ${said(it.unit)}` : ''}</div>`
     + `<p class="dq">${said(e.action || 'The node asked for nothing specific.')}</p>`
     /* the buttons only while the node is still asking (e.asking, from the node): once somebody answered they go, and
        the line below says who and when. A past hour is read, never answered, so it shows none either. */
-    + (live && e.asking ? `<div class="ans" role="group" aria-label="Answer">${['done', 'not_now', 'doesnt_fit'].map(b => `<button class="${on === b ? 'on' : ''}" data-ev="${e.id}" data-stage="${ANSWER_STAGE[b]}">${said(B[b])}</button>`).join('')}</div>` : '')
+    + (answerable && e.asking ? `<div class="ans" role="group" aria-label="Answer">${['done', 'not_now', 'doesnt_fit'].map(b => `<button class="${on === b ? 'on' : ''}" data-ev="${e.id}" data-stage="${ANSWER_STAGE[b]}">${said(B[b])}</button>`).join('')}</div>` : '')
     + `<p class="dm" id="answered" role="status"></p>`
     + `<p class="dm">${sign(a.closed ? 'sign-rho-closed' : 'sign-rho-open', a.closed ? 'closed' : '')} ${esc(a.w)}${(e.rooms || []).length ? ` · ${e.rooms.length} room${e.rooms.length === 1 ? '' : 's'}: ${said(e.rooms.map(r => r.trim()).join(', '))}` : ''}</p>`;
 }

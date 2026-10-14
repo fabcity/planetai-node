@@ -82,6 +82,13 @@ sentences:
       under: "under this house's own heat line"
     event:
       earlier: "The house crossed the line earlier today."
+    # day: said instead of the attribution when the reading is back under the line, or close to it, after hours over
+    # it today (engine `_day`, the count the Now door prints beside the title). No number in the title.
+    day:
+      under: "The heat is bearable now, after a hot {part} | {where} it was past this house's own heat line until {until}, {hours} today."
+      near:  "The heat is easing now, after a hot {part} | {where} it was past this house's own heat line until {until}, {hours} today."
+      parts: {night: night, morning: morning, afternoon: afternoon, evening: evening}
+      hours: ["{n} hour", "{n} hours"]
     cmp_words:
       over:  "hotter than {noun}"
       under: "cooler than {noun}"
@@ -124,6 +131,12 @@ sentences:
       under: "di bawah batas panas rumah ini"
     event:
       earlier: "Rumah sempat melewati batas tadi."
+    # day: ASSISTANT-WRITTEN, waiting for a native reader like the rest of this locale
+    day:
+      under: "Panasnya sudah wajar, setelah {part} yang panas | {where} panasnya sempat di atas batas panas rumah ini sampai pukul {until}, {hours} hari ini."
+      near:  "Panasnya mulai reda, setelah {part} yang panas | {where} panasnya sempat di atas batas panas rumah ini sampai pukul {until}, {hours} hari ini."
+      parts: {night: dini hari, morning: pagi, afternoon: siang, evening: malam}
+      hours: ["{n} jam", "{n} jam"]
     cmp_words:
       over:  "lebih panas daripada {noun}"
       under: "lebih sejuk daripada {noun}"
@@ -164,6 +177,12 @@ sentences:
       under: "por debajo del límite de calor de esta casa"
     event:
       earlier: "La casa cruzó el límite hoy más temprano."
+    # day: ASSISTANT-WRITTEN, waiting for a native reader like the rest of this locale
+    day:
+      under: "El calor ya se aguanta, tras una {part} calurosa | {where} estuvo por encima del límite de calor de esta casa hasta las {until}, {hours} hoy."
+      near:  "El calor está bajando, tras una {part} calurosa | {where} estuvo por encima del límite de calor de esta casa hasta las {until}, {hours} hoy."
+      parts: {night: madrugada, morning: mañana, afternoon: tarde, evening: noche}
+      hours: ["{n} hora", "{n} horas"]
     cmp_words:
       over:  "más calor que {noun}"
       under: "más fresco que {noun}"

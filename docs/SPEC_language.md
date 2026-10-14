@@ -46,6 +46,11 @@ sentences:
 
 - `{line}` — the live relation of the headline value to the issue's line, computed from the value itself (`over · near · under`, near within a tenth below). A template can therefore never assert "under the line" on a day the reading is past it, and each issue's yml names its own line: "the WHO line" for air, "this house's own line" for heat.
 - `{event}` — the clause for the day it crossed and came back ("It crossed the line earlier today"), filled only for reason codes that certainly happened today and only while the reading is back under the line. The state band and the sentence then agree instead of reading as a contradiction.
+- **[new 14 Oct]** `day` — when the reading is back under the line, or near it, after hours over it today, the issue's
+  `day.under` or `day.near` template replaces the attribution, so the title does not say the hour against a day
+  drawn red beside it: "The air is clean now, after a dusty morning | In the house it was past the WHO line for fine
+  dust until 12:00, 12 hours today." The title still carries no number; the tagline carries when and how long, with
+  `{part}`, `{until}` and `{hours}` from the engine's `_day()`, counted as `/issues/days` counts `per_day.over`.
 - `{cmp}` — each issue may carry its own `cmp_words`: air says "cleaner than the street", heat says "cooler than the street". The shared table is the fallback, not the voice. One skeleton per issue was the flatness the review found; heat's templates are not air's with the noun swapped.
 
 `plain` becomes the reading layer and gains the numeral distance, which today it omits: "The room reads 42, the yard 31, the street 38. Two are over the line (15)." **[changed]** On the doors, where the numeral is drawn directly above, the page may drop that first clause; everywhere else it stays.

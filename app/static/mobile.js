@@ -168,7 +168,14 @@ async function captureSubmit(ev) {
 
 /* ---- the Decide card (§6) ---- */
 function decideHTML(it) {
-  const e = (D.events || []).find(x => x.issue === leadKey && !x.cleared_at);
+  /* whether something is asked is the node's one answer (/issues asking), as on Now and the Wall: an alert still true
+     that no event stands for is asked too, and answered on Telegram */
+  const ask = (it.asking || [])[0], E = D.events || [];
+  const e = ask ? E.find(x => ask.event_id != null && x.id === ask.event_id) : E.find(x => x.issue === leadKey && !x.cleared_at);
+  if (ask && !e) {
+    return `<div class="decide"><div class="k">decide · ${said(it.name)} · asked since ${hhmm(ask.since)} · still open</div>`
+      + `<p class="dq">${said(ask.says || '')}</p>${ask.how ? `<p class="dm">${said(ask.how)}</p>` : ''}</div>`;
+  }
   if (!e) {
     return `<div class="decide"><p class="dq">Nothing is asked now.</p>`
       + `<p class="dm">${it.line != null ? `${esc(fmt(it.line, it.dp))} ${esc(it.unit || '')} · ${esc(it.line_source || '')}` : 'this issue has no line'}</p></div>`;

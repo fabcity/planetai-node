@@ -48,6 +48,8 @@ function buildD(A, locale) {
       sentence: tr(hero.sentence || it.sentence), plain: tr(hero.plain), pix: hero.pictogram || null,
       title: tr(it.title), tagline: tr(it.tagline), hours: tr(y.hours),
       reason_text: tr(it.reason_text), open_asks: it.open_asks || [],
+      /* what is asked of the house now (engine _asking): Now's Decide card, the Wall and the phone read this, and only this */
+      asking: (it.asking || []).map(a => ({ ...a, says: tr(a.says), how: tr(a.how) })),
       usual: (it.usual || {}).hours ? it.usual.hours.map(h => [h.median, h.p90]) : null,
       stack: Object.fromEntries(Object.entries(it.stack || {}).map(([d, s]) => [d, s && { value: s.value, provenance: s.provenance, source: s.source }])),
       hero_distance: y.distance ?? null, series: y.series || null, per_day: y.per_day || [], provenance: y.provenance || {},
