@@ -845,9 +845,17 @@ async def main():
                 # No model, as /stack: the node's own sentences, printed. Each learning's statement was written by
                 # the node from its numbers (app/learn.py), so nothing here can add one.
                 words = text.split(maxsplit=1)[1].strip() if " " in text else ""
+                scale = words.lower() if words.lower() in ("day", "week", "month", "year") else ""
                 try:
                     async with node_session(hc) as (session, _t):
-                        data = _tool_json(await session.call_tool("learned", {"query": words} if words else {}))
+                        data = _tool_json(await session.call_tool("learned", {"scale": scale} if scale else
+                                                                  {"query": words} if words else {}))
+                    if scale:   # /learned week: the newest entry of that size, as the morning carries it
+                        hits = data.get("results") or []
+                        said = data.get("kept_home") or (f"📔 {hits[0]['text']}" if hits else
+                                                         T(f"No {scale} is written yet.", es="Todavía no hay nada escrito a esa escala."))
+                        await telegram("sendMessage", chat_id=chat, text=said[:4000])
+                        continue
                     if words:   # /learned <words>: the diary and the learnings that mention them, newest first
                         hits = data.get("results") or []
                         said = data.get("kept_home") or ("\n\n".join(f"• {h['label']}\n{h['text']}" for h in hits[:5])

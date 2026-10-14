@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **The morning memory.** The first report the household gets each day now carries, in Telegram only, what the node
+  remembers: yesterday's diary entry, last week's on a Monday, last month's on the 1st, last year's on 1 January, and
+  every learning whose status changed that day, in its own words. One message, not four. On by default (Tomas, 14
+  Oct); `LEARN_PUSH` = `all`, `week` or `off`. Never in the stored report, `/report/latest`, Home Assistant or the mesh.
+  `/learned day`, `week`, `month` or `year` prints the newest entry of that size. Schema 0.60: `learnings.status_since`
+  and `reports.memory`, so a restart never sends it twice. The diary no longer counts test alerts (`_test/…`,
+  `gui/test`) as alerts; every entry is written again once (digest v3).
+
 - **Four fixes before the new data is shown anywhere else.** (1) The diary counted alerts nobody got: on
   `ALERT_ENGINE=events` node #1's 13 October entry said "15 alerts, 0 acted on" for rows the engine replaced and never
   sent. Digests now count the episodes that were sent, by issue, and every digest written before is written again

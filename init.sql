@@ -434,3 +434,11 @@ CREATE TABLE IF NOT EXISTS household (
 );
 REVOKE ALL ON household FROM planetai_ro;
 INSERT INTO schema_version (version) VALUES ('0.59') ON CONFLICT DO NOTHING;
+
+-- 0.60: the morning message (docs/SPEC_learn.md §6). A learning keeps the local day its status last changed, so the
+-- morning says what changed and nothing else; rows from before take their first day. A report row says whether it
+-- carried the house's memory, so one report a day does, whatever restarts in between.
+ALTER TABLE learnings ADD COLUMN IF NOT EXISTS status_since DATE;
+UPDATE learnings SET status_since = first_seen::date WHERE status_since IS NULL;
+ALTER TABLE reports ADD COLUMN IF NOT EXISTS memory BOOLEAN NOT NULL DEFAULT false;
+INSERT INTO schema_version (version) VALUES ('0.60') ON CONFLICT DO NOTHING;

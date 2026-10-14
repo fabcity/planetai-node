@@ -225,6 +225,7 @@ d13 = {d["period_start"]: d for d in learn.write_digests(qd, set(), {}, date(202
 assert "2 alerts (only_here 1, heat 1), 1 acted on." in d13["2026-10-13"]["text"], d13["2026-10-13"]["text"]
 rules_node = {d["period_start"]: d for d in learn.write_digests(qd, set(), {}, date(2026, 10, 14))}
 assert "8 alerts (heat_stress_now 7, only_here 1), 0 acted on." in rules_node["2026-10-13"]["text"], "a rules node counts its rows, as before"
+assert "rule_id NOT LIKE '\\\\_test/%%' AND l.rule_id <> 'gui/test'" in open("app/learn.py").read(), "a test alert is not an alert in the diary"
 CL = SRC[SRC.index("def check_learn"):SRC.index("\n\n\n", SRC.index("def check_learn"))]
 assert 'get("v") == learn.DIGEST_V' in CL and "DO UPDATE SET label = EXCLUDED.label" in CL, "an older digest is written again"
 assert 'state.get("learned_on") == today' in CL and "SELECT current_date" in CL, "once a local day, so the morning finds yesterday"
@@ -323,4 +324,53 @@ for hdr, private in (({}, False), ({"Authorization": "Bearer agg-tok"}, False), 
 SQLS.clear()
 assert c.get("/stats", headers={**ADMIN, "X-Agent": "agent"}).status_code == 200 and "role = 'private'" in SQLS[0], "never an agent"
 print("readouts: the house's private counts to its own tokens and this machine, not to the network, a parent or an agent")
+# ---------------------------------------------------------------- the morning (Tomas, 14 Oct: on by default)
+mp = lambda d, push="all": [(sc, st.isoformat()) for sc, st in learn.morning_periods(d, push)]  # noqa: E731
+assert mp(date(2026, 10, 15)) == [("day", "2026-10-14")], "an ordinary day: yesterday"
+assert mp(date(2026, 10, 19)) == [("day", "2026-10-18"), ("week", "2026-10-12")], "a Monday: yesterday and last week"
+assert mp(date(2027, 1, 1)) == [("day", "2026-12-31"), ("month", "2026-12-01"), ("year", "2026-01-01")], "1 January: the year too"
+assert mp(date(2026, 10, 15), "week") == [] and mp(date(2026, 10, 19), "week") == [("week", "2026-10-12")]
+assert mp(date(2027, 1, 1), "off") == [], "off is off"
+txt = learn.morning(["Wednesday 14 October 2026. PM2.5 inside averaged 20.0."], [{"statement": "Acted on 6 times: …", "status": "holding"},
+                    {"statement": "This alert no longer sends here.", "status": "gone"}])
+assert txt == ("📔 Wednesday 14 October 2026. PM2.5 inside averaged 20.0.\n\nWhat the node learned, changed today:\n"
+               "• Acted on 6 times: …\n• This alert no longer sends here. (gone)"), txt
+assert learn.morning([], []) == "", "nothing to say, nothing said"
+cut = learn.morning(["a" * 300, "b" * 300], [], "es", room=400)
+assert cut.startswith("📔 aaa") and "bbb" not in cut and cut.endswith("… el resto con /learned") and len(cut) <= 400, "what does not fit is left for /learned"
+
+
+class Cur:
+    def __init__(self, sent_today=False, have_yesterday=True):
+        self.sent, self.have, self.sql = sent_today, have_yesterday, []
+    def execute(self, sql, args=()):
+        self.sql.append((sql, args))
+    def fetchone(self):
+        return {"?": 1} if self.sent and "FROM reports" in self.sql[-1][0] else None
+    def fetchall(self):
+        last = self.sql[-1][0]
+        if "FROM digests" in last:
+            return [{"scale": "day", "period_start": date(2026, 10, 18), "text": "Sunday 18 October 2026. Calm."},
+                    {"scale": "week", "period_start": date(2026, 10, 12), "text": "Week of 12 October 2026. Smoky."}][0 if self.have else 1:]
+        return [{"kind": "worked", "key": "heat/events", "issue": "heat", "status": "holding", "statement": "Acted on 5 times: cooler."}]
+
+
+main.q = lambda sql, *a: [{"people": {}}]
+settings._cache["rows"]["LEARN_PUSH"] = "all"
+MON = datetime(2026, 10, 19, 6)
+m = main._morning(Cur(), MON, 900)
+assert m.startswith("📔 Sunday 18 October 2026. Calm.\n\n📔 Week of 12 October 2026. Smoky.\n\nWhat the node learned") and "cooler" in m, m
+assert main._morning(Cur(sent_today=True), MON, 900) == "", "one report a day carries it, whatever restarts"
+assert main._morning(Cur(have_yesterday=False), MON, 900) == "", "yesterday not written yet: the next report carries it"
+settings._cache["rows"]["LEARN_PUSH"] = "off"
+assert main._morning(Cur(), MON, 900) == ""
+settings._cache["rows"]["LEARN_PUSH"] = "all"
+RR = SRC[SRC.index("def run_report"):SRC.index("def _morning")]
+assert 'notify("info", text, home=memory)' in RR and 'ha_alert("info", text, None)' in RR, "Telegram alone carries the memory"
+assert "text, text, not quiet" in RR and "bool(memory)" in RR, "the stored report is the report; it only says it carried the memory"
+assert 'memory = "" if quiet else _morning(' in RR, "a held report carries nothing; the next one sent does"
+assert "status_since = CASE WHEN learnings.status IS DISTINCT FROM EXCLUDED.status THEN current_date" in SRC
+BOT = open("app/agent_loop.py").read()
+assert '{"scale": scale} if scale else' in BOT, "/learned week asks for the newest of that size, no model"
+print("morning: yesterday, Monday's week, the 1st's month, 1 January's year, what changed; once a day, Telegram only, on by default")
 print("learned: every check passed")

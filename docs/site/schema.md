@@ -96,6 +96,7 @@ With `DECISION_REQUIRED=1`, `POST /actions` refuses an `acted` row for an alert 
 | `sent`, `held_quiet` | bool | a report due in quiet hours is written with `sent` false and `held_quiet` true, and folded into the next |
 | `fallback_reason` | text | why `text` is the sheet and not a model's. Nothing writes it in v0.81 |
 | `cells` | jsonb | the Index cells at the time of the report |
+| `memory` | bool | it carried the morning memory on Telegram (schema 0.60); one report a day does |
 
 ### `events`
 
@@ -167,7 +168,7 @@ The node's diary (SPEC_learn, schema 0.58): `scale` (`day` · `week` · `month` 
 
 ### `learnings`
 
-What the node learned (SPEC_learn, schema 0.57): `kind`, `key` (the primary key together), `issue`, `metric`, `status` (`too_early` · `holding` · `weakening` · `gone`), `statement`, `numbers`, `n`, `scope` (`house` · `place`), `first_seen`, `checked_at`. Written once a day by `check_learn()`; a row is replaced, never deleted. Revoked from `planetai_ro`, and named by no export, push or report.
+What the node learned (SPEC_learn, schema 0.57): `kind`, `key` (the primary key together), `issue`, `metric`, `status` (`too_early` · `holding` · `weakening` · `gone`), `statement`, `numbers`, `n`, `scope` (`house` · `place`), `first_seen`, `checked_at`, `status_since` (the local day its status last changed, schema 0.60; the morning memory names the rows that changed that day). Written once a day by `check_learn()`; a row is replaced, never deleted. Revoked from `planetai_ro`, and named by no export, push or report.
 
 ### `things`
 

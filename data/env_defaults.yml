@@ -107,21 +107,24 @@ REPORT_ANCHOR:
 REPORT_DEPTH:
   default: ""
   help: "auto | brief | standard | deep. Blank = auto. Nothing until a model is in the path of a report."
+LEARN_PUSH:
+  default: ""
+  help: "all | week | off. Blank = all: the first report each day also carries, on Telegram only, yesterday's diary entry (the week's on Mondays, the month's on the 1st) and what the node's learnings changed."
 ALERT_LEVEL:
   default: "act"
-  help: "auto | brief | standard | deep. Blank = auto. Nothing until a model is in the path of a report. act | warn | info — what reaches your phone between reports; everything is still recorded"
+  help: "all | week | off. Blank = all: the first report each day also carries, on Telegram only, yesterday's diary entry (the week's on Mondays, the month's on the 1st) and what the node's learnings changed. act | warn | info — what reaches your phone between reports; everything is still recorded"
 QUIET_HOURS:
   default: "1"
-  help: "auto | brief | standard | deep. Blank = auto. Nothing until a model is in the path of a report."
+  help: "all | week | off. Blank = all: the first report each day also carries, on Telegram only, yesterday's diary entry (the week's on Mondays, the month's on the 1st) and what the node's learnings changed."
 QUIET_FROM:
   default: "22"
-  help: "auto | brief | standard | deep. Blank = auto. Nothing until a model is in the path of a report."
+  help: "all | week | off. Blank = all: the first report each day also carries, on Telegram only, yesterday's diary entry (the week's on Mondays, the month's on the 1st) and what the node's learnings changed."
 QUIET_TO:
   default: "6"
-  help: "auto | brief | standard | deep. Blank = auto. Nothing until a model is in the path of a report."
+  help: "all | week | off. Blank = all: the first report each day also carries, on Telegram only, yesterday's diary entry (the week's on Mondays, the month's on the 1st) and what the node's learnings changed."
 ALERT_LOCALE:
   default: "en"
-  help: "auto | brief | standard | deep. Blank = auto. Nothing until a model is in the path of a report. en | id | es   (every rules.yml carries all three)"
+  help: "all | week | off. Blank = all: the first report each day also carries, on Telegram only, yesterday's diary entry (the week's on Mondays, the month's on the 1st) and what the node's learnings changed. en | id | es   (every rules.yml carries all three)"
 ALERT_ENGINE:
   default: "rules"
   help: "rules (default) | shadow | events. docs/SPEC_alerts.md: shadow records what the event engine would send and sends nothing; events sends the engine's heat and air messages instead of the old heat and air rules."

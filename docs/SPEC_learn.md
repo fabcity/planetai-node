@@ -94,7 +94,7 @@ may reword it under §2.1, as the report is.
 Retrieval is the only part that is RAG. The ask pane and the bot get a `learned` tool that searches digests, learnings
 and the household's action notes, by period and issue, with Postgres full-text search: "was this October smokier than
 last?", "what did we do the last time the purifier filter ran out?". Embeddings from a model in the node's own Ollama
-come only if words prove too weak. Telegram gets `/learned`, a template over the rows with no model, as `/stack` is.
+come only if words prove too weak. Telegram gets `/learned`, a template over the rows with no model, as `/stack` is. The first report each day carries the morning memory on Telegram (built 14 Oct 2026, on by default: `LEARN_PUSH`).
 
 ## 7 · What stays home
 

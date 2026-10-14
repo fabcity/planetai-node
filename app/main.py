@@ -18,7 +18,7 @@ import re
 import secrets
 import threading
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import httpx
@@ -410,16 +410,41 @@ def run_report(cur) -> None:
     b = report.bundle(cur, every, held_hours=held)
     text = report.sheet(b, LOCALE())
     quiet = _quiet("info")
-    cur.execute("""INSERT INTO reports (due_local, window_hours, depth, rung, text, sheet, sent, held_quiet, cells)
-                   VALUES (%s, %s, 'sheet', 'node', %s, %s, %s, %s, %s) RETURNING id""",
-                (due, every + held, text, text, not quiet, quiet, Jsonb(b.get("cells") or [])))
+    memory = "" if quiet else _morning(cur, due, len(text))
+    cur.execute("""INSERT INTO reports (due_local, window_hours, depth, rung, text, sheet, sent, held_quiet, cells, memory)
+                   VALUES (%s, %s, 'sheet', 'node', %s, %s, %s, %s, %s, %s) RETURNING id""",
+                (due, every + held, text, text, not quiet, quiet, Jsonb(b.get("cells") or []), bool(memory)))
     rid = cur.fetchone()["id"]
     if quiet:
         log.info("report %d written and held for quiet hours: %d hours will be folded into the next one", rid, every + held)
         return
-    notify("info", text)          # Telegram and Home Assistant. The mesh and Reticulum carry act alerts only.
+    notify("info", text, home=memory)   # Telegram and Home Assistant; the memory rides Telegram alone, never HA.
     ha_alert("info", text, None)
     log.info("report %d sent: %d hours, %d words", rid, every + held, len(text.split()))
+
+
+def _morning(cur, due, used: int) -> str:
+    """The house's memory for the first report each day that finds yesterday written (learn.morning): the digests
+    LEARN_PUSH asks for and the learnings whose status changed today. Telegram only, like the household line: never
+    the stored report text, the bundle, the mesh or Home Assistant. "" on any failure, so the report always goes."""
+    try:
+        periods = learn.morning_periods(due.date(), (settings.get("LEARN_PUSH", "all") or "all").strip().lower())
+        if not periods:
+            return ""
+        cur.execute("SELECT 1 FROM reports WHERE memory AND due_local >= %s LIMIT 1", (due.replace(hour=0),))
+        if cur.fetchone():
+            return ""
+        cur.execute("SELECT scale, period_start, text FROM digests WHERE period_start >= %s", (min(p[1] for p in periods),))
+        kept = {(r["scale"], r["period_start"]): r["text"] for r in cur.fetchall()}
+        if ("day", due.date() - timedelta(days=1)) in periods and ("day", due.date() - timedelta(days=1)) not in kept:
+            return ""                     # yesterday is not written yet: the next report carries it
+        cur.execute("""SELECT kind, key, issue, status, statement FROM learnings
+                       WHERE status_since = %s AND status IN ('holding', 'weakening', 'gone')""", (due.date(),))
+        changed = learn.rank(cur.fetchall(), _people())
+        return learn.morning([kept[p] for p in periods if p in kept], changed, LOCALE(), 4000 - used)
+    except Exception as e:  # noqa: BLE001
+        log.warning("morning memory skipped: %s", type(e).__name__)
+        return ""
 
 
 def refresh_usual() -> None:
@@ -896,10 +921,12 @@ def check_learn() -> None:
             + learn.learn_asks(q, live, replaced, since))
     with db() as con, con.cursor() as cur:
         for r in rows:
-            cur.execute("""INSERT INTO learnings (kind, key, issue, metric, status, statement, numbers, n, scope)
-                           VALUES (%(kind)s, %(key)s, %(issue)s, %(metric)s, %(status)s, %(statement)s, %(numbers)s, %(n)s, %(scope)s)
+            cur.execute("""INSERT INTO learnings (kind, key, issue, metric, status, statement, numbers, n, scope, status_since)
+                           VALUES (%(kind)s, %(key)s, %(issue)s, %(metric)s, %(status)s, %(statement)s, %(numbers)s, %(n)s, %(scope)s, current_date)
                            ON CONFLICT (kind, key) DO UPDATE SET status = EXCLUDED.status, statement = EXCLUDED.statement,
                              numbers = EXCLUDED.numbers, n = EXCLUDED.n, metric = EXCLUDED.metric, scope = EXCLUDED.scope,
+                             status_since = CASE WHEN learnings.status IS DISTINCT FROM EXCLUDED.status THEN current_date
+                                                 ELSE coalesce(learnings.status_since, current_date) END,
                              checked_at = now()""",
                         {**r, "numbers": Jsonb(r["numbers"])})
     kept = q("SELECT scale, period_start, numbers FROM digests")
