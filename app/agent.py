@@ -176,7 +176,8 @@ def learned(query: str = "", scale: str = "") -> dict:
     learnings, what worked after someone acted, what is usual, and the alerts that may not fit. With `query`, a few
     keywords ('October', 'smoke purifier', 'heat'), it searches the learnings and the digests the node writes for every
     day, week, month and year; `scale` (day, week, month, year) narrows to digests of that size, and alone lists the
-    newest. To compare two periods, search for each. Every sentence is the node's own: quote it, never add a number or
+    newest. To compare two periods, search for each. A learning's `for_whom` names who in this house it matters most
+    to, as the household said; say so when it applies. Every sentence is the node's own: quote it, never add a number or
     a cause. Answers only while every model this node may use is on the house's own machines; otherwise it says why."""
     if query or scale:
         r = httpx.get(API + "/learned/search", params={"q": query, "scale": scale}, headers=_admin_headers("agent"), timeout=30)
@@ -187,7 +188,7 @@ def learned(query: str = "", scale: str = "") -> dict:
     r.raise_for_status()
     if query or scale:
         return {"results": [{k: x.get(k) for k in ("source", "scale", "label", "text")} for x in r.json().get("results", [])]}
-    return {"learnings": [{k: x.get(k) for k in ("key", "kind", "status", "statement", "n", "checked_at")}
+    return {"learnings": [{k: x.get(k) for k in ("key", "kind", "status", "statement", "n", "checked_at", "for_whom")}
                           for x in r.json().get("learnings", [])]}
 
 

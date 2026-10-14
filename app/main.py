@@ -3258,8 +3258,39 @@ def learned(request: Request, authorization: str = Header("")):
                                  "so a model here may be online. Read it on the page, Data, What worked here.")
     rows = q("SELECT * FROM learnings ORDER BY kind, CASE status WHEN 'holding' THEN 0 WHEN 'weakening' THEN 1 "
              "WHEN 'too_early' THEN 2 ELSE 3 END, n DESC")
-    return {"learnings": rows, "checked": state.get("learned_at") and
+    return {"learnings": learn.rank(rows, _people()), "checked": state.get("learned_at") and
             datetime.fromtimestamp(state["learned_at"], timezone.utc).isoformat(timespec="seconds")}
+
+
+def _people() -> dict:
+    r = q("SELECT people FROM household WHERE id = 1")
+    return (r[0].get("people") or {}) if r else {}
+
+
+@app.get("/household")
+def household(request: Request, authorization: str = Header("")):
+    """Who is in the house, as the household said (SPEC_learn §8): yes or no for each of `choices`. Guarded as
+    GET /learned: the admin token, and an agent only while AGENT_PREFER=private."""
+    _admin(authorization)
+    if request.headers.get("x-agent") and settings.get("AGENT_PREFER", "private") != "private":
+        raise HTTPException(403, "who is in this house stays with its own machines: AGENT_PREFER is not private")
+    return {"people": _people(), "choices": learn.PEOPLE}
+
+
+@app.put("/household")
+def household_set(body: dict, request: Request, authorization: str = Header("")):
+    """Replace the answers: {"people": {"older": true, ...}}. Only the keys in `choices`, only true or false; the rest
+    is refused, so nothing but these answers is ever kept. An agent may not write them."""
+    _admin(authorization)
+    if request.headers.get("x-agent"):
+        raise HTTPException(403, "who lives here is the household's to say, on the page")
+    p = body.get("people")
+    if not isinstance(p, dict) or any(k not in learn.PEOPLE or not isinstance(v, bool) for k, v in p.items()):
+        raise HTTPException(422, f"people is an object of true or false for {', '.join(learn.PEOPLE)}")
+    with db() as con, con.cursor() as cur:
+        cur.execute("""INSERT INTO household (id, people, updated_at) VALUES (1, %s, now())
+                       ON CONFLICT (id) DO UPDATE SET people = EXCLUDED.people, updated_at = now()""", (Jsonb(p),))
+    return {"ok": True, "people": p}
 
 
 @app.get("/learned/search")

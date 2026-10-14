@@ -434,3 +434,27 @@ def search_terms(text: str) -> str:
     only, so nothing a person or a model types reaches to_tsquery's own syntax."""
     import re  # noqa: PLC0415
     return " | ".join(dict.fromkeys(w.lower() for w in re.findall(r"\w{3,}", text or "")))
+
+
+
+# ---------------------------------------------------------------- who is in the house (SPEC_learn §8, step 4)
+# Yes/no answers, never a name or an age. They rank what the node learned and let it say why a learning matters here;
+# they change no threshold. Who each issue weighs on most: heat on the old, the very young, pregnancy and outdoor work
+# (WHO heat-health guidance); fine particles on lungs, the very young, the old and pregnancy (WHO air quality
+# guidelines 2021).
+PEOPLE = {"older": "someone over 65", "under5": "a child under five", "lungs": "someone with asthma or another lung condition",
+          "pregnant": "someone pregnant", "outdoor": "someone who works outdoors"}
+AT_RISK = {"heat": ("older", "under5", "pregnant", "outdoor"), "air": ("lungs", "under5", "older", "pregnant")}
+
+
+def for_whom(issue: str | None, people: dict) -> list[str]:
+    """The people in this house a learning about `issue` matters most to, in the household's terms."""
+    kind = "air" if (issue or "").startswith("air") else "heat" if (issue or "").startswith("heat") else None
+    return [PEOPLE[k] for k in AT_RISK.get(kind, ()) if people.get(k) is True]
+
+
+def rank(rows: list[dict], people: dict) -> list[dict]:
+    """Each learning with its `for_whom`; within each kind, the ones that matter to someone here first, the order
+    otherwise kept."""
+    out = [{**r, "for_whom": for_whom(r.get("issue"), people)} for r in rows]
+    return sorted(out, key=lambda r: (r["kind"], not r["for_whom"]))

@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Who is in the house (SPEC_learn step 4).** Data › What worked opens with five yes-or-no boxes: someone over 65, a
+  child under five, someone with asthma or another lung condition, someone pregnant, someone who works outdoors. Kept
+  in one private row (`household`, schema 0.59; `GET`/`PUT /household`, admin; an agent reads it only while
+  `AGENT_PREFER=private` and never writes it), never a name, an age or a count. Each learning now says who in this
+  house it matters most to ("Matters here: a child under five"), heat for the old, the very young, pregnancy and
+  outdoor work, fine particles for lungs, the very young, the old and pregnancy, and those come first, on the page,
+  in `/learned` and in the `learned` tool. It changes no threshold and no alert.
+
 - **The diary, and asking it (SPEC_learn step 3).** Once a day the node writes an entry for every completed day,
   week, month and year it has not written yet, back to its first reading, in its own time zone: each group's mean
   and highest hour (air inside and outside, the feels-like temperature inside), the alerts and how many were acted
