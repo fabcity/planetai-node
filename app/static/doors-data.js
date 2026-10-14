@@ -31,7 +31,7 @@ const SYM = { pm25: 'PM2.5', pm10: 'PM10', pm1: 'PM1', pm25_raw: 'PM2.5ʳ', aqi:
   precipitation: 'R', uv_index: 'UV', temp_model: 'Tᵐ', humidity_model: 'RHᵐ', pressure_model: 'Pᵐ', noise: 'dB', light: 'lx', sea_surface_temp: 'SST',
   wave_height_m: 'Hs', wave_period_s: 'Tp', wave_direction: 'Dw', swell_height_m: 'Sw', swell_period_s: 'Ts', lora_util_pct: 'LoRa', lora_channel_pct: 'Ch' };
 const DSECTIONS = [['d-readings', 'Readings'], ['issues7', 'Issues, 7 days'], ['models', 'Models and satellite'], ['cells', 'Index cells'],
-  ['perday', 'Hours over the line'], ['d-images', 'Images'], ['d-things', 'Things'], ['ledger', 'Decisions'], ['api', 'API']];
+  ['perday', 'Hours over the line'], ['d-images', 'Images'], ['d-things', 'Things'], ['d-learned', 'What worked'], ['ledger', 'Decisions'], ['api', 'API']];
 
 /* #data/<sensor-id> (from a dot on Place) opens on a metric that station reads and scrolls to its row, once per link;
    #data/models opens at the models, #data/api at the API. */
@@ -45,7 +45,7 @@ VIEWS.data = function () {
   $('#datahead').innerHTML = `<div class="k">Data · everything this node holds, as it reads it</div><h1>Every reading, drawn.</h1>
     <p class="lede">${D.raw ? `${total.toLocaleString('en')} hourly values from ${Object.keys(S2).length} sources over the last 24 hours` : 'The hourly values with the token'}, seven days of every issue at every distance, ${D.observations.length} model and satellite values, ${D.index_cells.length} Index cells and ${D.actions.length} decisions. Today’s open export, CC BY 4.0: <a class="mono" href="/export?day=${dayOf(D.buckets[D.now])}">GET /export?day=${dayOf(D.buckets[D.now])}</a>.</p>`;
   dataNav(); metricTiles();
-  sensorsBlock(); issuesBlock(); modelsBlock(); cellsBlock(); ledgerBlock(); apiBlock(); imagesBlock(); thingsBlock();
+  sensorsBlock(); issuesBlock(); modelsBlock(); cellsBlock(); ledgerBlock(); apiBlock(); imagesBlock(); thingsBlock(); learnedBlock();
   if (FOCUS && FOCUS !== FOCUSED) {
     FOCUSED = FOCUS;
     setTimeout(() => {                                          // after route() has scrolled to the top
@@ -226,6 +226,24 @@ const tcard = (t, classes) => `<div class="icard" data-id="${t.id || ''}"><label
   + tsel('used', t.used || 'monthly') + tsel('condition', t.condition || 'works') + tsel('offer', t.offer || 'no')
   + (t.capture_id ? `<p class="fine"><a href="#data/d-images">from image ${+t.capture_id}</a></p>` : '')
   + `<div class="acts"><button data-a="save">${t.id ? 'Save' : 'Add'}</button>${t.id ? '<button data-a="del">Delete</button>' : ''}</div><p class="fine" role="status"></p></div>`;
+/* WHAT WORKED HERE — the household's own evidence (SPEC_learn step 1): per alert, what the air or the heat inside did
+   after someone acted, against the street and against the times nobody answered. The sentence is the node's, written
+   from the numbers; under it, every case, so the proof is on the page. Admin token only: the cases carry the notes. */
+const LSTATUS = { holding: 'holding', weakening: 'weakening', too_early: 'too early to say', gone: 'no longer watched' };
+async function learnedBlock() {
+  const el = $('#d-learned');
+  const r = await fetch('/learned', { headers: DOORS_AUTH() }).catch(() => null);
+  const j = r && r.ok ? await r.json().catch(() => null) : null;
+  if (!j) { el.innerHTML = `<h2>What worked here</h2><p class="fine">What this house learned answers the admin token only, because its cases carry your own notes. Unlock this screen with it under Node.</p>`; return; }
+  const rows = j.learnings.filter(x => x.kind === 'worked');
+  const casesOf = x => { const c = (x.numbers.cases || {}).acted || [], u = x.numbers.unit || '';
+    return !c.length ? '' : `<table class="tbl"><tr><th>acted</th><th class="n">before</th><th class="n">after</th><th class="n">street</th><th class="hide">note</th></tr>`
+      + c.slice().reverse().map(k => `<tr><td class="mono">${esc((k.at || '').slice(0, 16).replace('T', ' '))}</td><td class="n">${fmt(k.before, 1)}</td><td class="n">${fmt(k.after, 1)} ${esc(u)}</td>`
+        + `<td class="n">${k.street == null ? '–' : (k.street > 0 ? '+' : '') + fmt(k.street, 1)}</td><td class="hide">${esc(k.note || '')}</td></tr>`).join('') + `</table>`; };
+  el.innerHTML = `<h2>What worked here</h2><p class="blurb">For each alert, what the air or the heat inside did after someone here acted, beside what the street did and what happened the times nobody answered. Your own before and after, not an experiment: the night or the weather can do the same. Checked once a day${j.checked ? `, last ${esc(j.checked.slice(0, 16).replace('T', ' '))}` : ''}. It never leaves this house.</p>`
+    + (rows.length ? rows.map(x => `<div class="gh k">${esc(x.key)} · ${esc(LSTATUS[x.status] || x.status)}</div><p>${esc(x.statement)}</p>${casesOf(x)}`).join('')
+      : `<p class="fine">Nothing yet: the node checks once a day, and needs an alert someone acted on.</p>`);
+}
 async function thingsBlock() {
   const el = $('#d-things');
   if (el.querySelector('.icard') && el.contains(document.activeElement)) return;   // a resize must not wipe an edit in progress

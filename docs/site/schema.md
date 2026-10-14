@@ -157,6 +157,10 @@ What each `(source, metric)` **is**, written at every start from `config/channel
 
 `version`, `told_at`: one row per release the node has told its household about, so a restart or the hourly re-check never sends "a new version is out" twice for the same one. Added in schema 0.52, for `UPDATE_CHECK`. Written by `check_release()` in `app/main.py`; nothing else reads it.
 
+### `learnings`
+
+What the node learned (SPEC_learn, schema 0.57): `kind`, `key` (the primary key together), `issue`, `metric`, `status` (`too_early` · `holding` · `weakening` · `gone`), `statement`, `numbers`, `n`, `scope` (`house` · `place`), `first_seen`, `checked_at`. Written once a day by `check_learn()`; a row is replaced, never deleted. Revoked from `planetai_ro`, and named by no export, push or report.
+
 ### `things`
 
 What a home keeps (SPEC_inventory, schema 0.56): `id`, `added_at`, `class`, `name`, `count`, `used` (`weekly` · `monthly` · `yearly` · `never`), `condition` (`works` · `needs_repair` · `broken`), `offer` (`no` · `lend` · `give`), `capture_id`, `note`. Written by `/things`. Revoked from `planetai_ro`, so no pack SQL reads it, and named by no export or push. Its counts per class reach `readings` as the private `stock.<class>`, `idle.<class>` and `repair.<class>`.

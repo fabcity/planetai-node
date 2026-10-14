@@ -57,11 +57,11 @@ you they did a thing, record what they told you. If they did not, ask.
 **MCP**, from anywhere on the tailnet or from this machine: `http://<node>:8080/mcp`, header
 `Authorization: Bearer <ADMIN_TOKEN>`. Pass your name in every write tool's `agent` argument so the audit trail knows
 who acted (`act` writes it as the action's `actor`, `settings_set` forwards it to the API as `X-Agent`, and
-`report_now` and `run_pack_script` record no name; the header on `/mcp` itself is not read). Twenty tools:
+`report_now` and `run_pack_script` record no name; the header on `/mcp` itself is not read). Twenty-one tools:
 `status`, `health_check`, `issues` (how the place is doing, in the household's own words), `sensors`,
 `context` (sea, weather, satellite air, land), `readings`, `report_latest`,
 `report_now`, `report_bundle`, `history`, `alerts`, `act`, `settings_get`, `settings_set`, `packs`, `cells`, `series`,
-`export_day`, `run_pack_script`, `maintenance`. Start with `health_check`; every failing check names its fix.
+`export_day`, `learned` (what worked here, only while models stay home), `run_pack_script`, `maintenance`. Start with `health_check`; every failing check names its fix.
 
 **A shell on the node**, for what needs Docker or git:
 

@@ -34,6 +34,7 @@ import actions as _act
 import events_pg
 import ground
 import index
+import learn
 import issues.api
 from issues import geometry as _geo
 import packs
@@ -857,6 +858,29 @@ def check_others() -> None:
     state["others"] = {"cells": cells, "asked": time.time(), "read": datetime.now(timezone.utc).isoformat(timespec="seconds")}
 
 
+
+# ---------------------------------------------------------------- what the node learns (docs/SPEC_learn.md)
+LEARN_EVERY = 20 * 3600     # daily, give or take: an hourly loop that only works once its last pass is this old
+
+
+def check_learn() -> None:
+    """Once a day, re-check what worked here (app/learn.py) and keep each rule's row. A row is replaced, never
+    deleted: a rule that can no longer fire keeps its row as `gone`."""
+    if time.time() - state.get("learned_at", 0) < LEARN_EVERY:
+        return
+    was = {r["key"]: r for r in q("SELECT key, status, numbers FROM learnings WHERE kind = 'worked'")}
+    rows = learn.learn_worked(q, packs.load_rules(), set(index._live_rule_ids()), was)
+    with db() as con, con.cursor() as cur:
+        for r in rows:
+            cur.execute("""INSERT INTO learnings (kind, key, issue, metric, status, statement, numbers, n, scope)
+                           VALUES (%(kind)s, %(key)s, %(issue)s, %(metric)s, %(status)s, %(statement)s, %(numbers)s, %(n)s, %(scope)s)
+                           ON CONFLICT (kind, key) DO UPDATE SET status = EXCLUDED.status, statement = EXCLUDED.statement,
+                             numbers = EXCLUDED.numbers, n = EXCLUDED.n, metric = EXCLUDED.metric, checked_at = now()""",
+                        {**r, "numbers": Jsonb(r["numbers"])})
+    state["learned_at"] = time.time()
+    log.info("learn: %d rows re-checked", len(rows))
+
+
 # ---------------------------------------------------------------- loops
 def loop(fn, every: int, delay: int = 0):
     """Run fn forever. Each loop records its own last error under its own name: poll_once clears `last_error`
@@ -1006,6 +1030,7 @@ loop(check_release, 3600, delay=300)
 loop(check_registry, 3600, delay=60)
 loop(check_griis, 3600, delay=90)
 loop(check_others, 3600, delay=120)
+loop(check_learn, 3600, delay=180)
 if RETICULUM_URL:
     loop(poll_reticulum, 300, delay=20)
 
@@ -3210,6 +3235,21 @@ def offers_now() -> dict:
     return {"node": NODE, "cell": h3.latlng_to_cell(lat, lon, 8) if (lat or lon) else None,
             "contact": f"https://t.me/{bot}" if bot else None,
             "offers": [{**r, "ask": f"https://t.me/{bot}?start=offer-{r['id']}" if bot else None} for r in rows]}
+
+
+@app.get("/learned")
+def learned(request: Request, authorization: str = Header("")):
+    """What this node has learned (docs/SPEC_learn.md), newest checks first, each with its numbers and cases. The
+    admin token only: the cases carry the household's own notes. An agent reads it only while every model this node
+    may use is on this house's own machines (AGENT_PREFER=private); otherwise it is told why not."""
+    _admin(authorization)
+    if request.headers.get("x-agent") and settings.get("AGENT_PREFER", "private") != "private":
+        raise HTTPException(403, "what this house learned stays with its own machines: AGENT_PREFER is not private, "
+                                 "so a model here may be online. Read it on the page, Data, What worked here.")
+    rows = q("SELECT * FROM learnings ORDER BY kind, CASE status WHEN 'holding' THEN 0 WHEN 'weakening' THEN 1 "
+             "WHEN 'too_early' THEN 2 ELSE 3 END, n DESC")
+    return {"learnings": rows, "checked": state.get("learned_at") and
+            datetime.fromtimestamp(state["learned_at"], timezone.utc).isoformat(timespec="seconds")}
 
 
 @app.get("/offers")

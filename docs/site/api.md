@@ -605,6 +605,11 @@ Delete a thing; the counts of its class are rewritten. 404 for an unknown id.
 
 A thing made from an image carries its `capture_id`: the Data door's Images offer each confirmed finding in one of these classes as "+ … as a thing". Deleting the image (`DELETE /captures/{cid}`) keeps the thing and clears its `capture_id`.
 
+### GET /learned
+Access: admin
+
+What this node has learned (docs/SPEC_learn.md): `{learnings: [{kind, key, issue, metric, status, statement, numbers, n, scope, first_seen, checked_at}], checked}`. Step 1 writes `kind: worked`, one row per act-level rule: for each alert on one sensor that someone acted on, and each that nobody answered, the metric the rule watches (PM2.5, or apparent temperature for heat) in the hour before and over a window after (1–2 h for air, 3–6 h for heat), on that sensor and on every outdoor sensor. `numbers` holds the medians (`acted`, `unanswered`, each `{n, change, street}`), the window, the unit and up to 30 cases of each, the acted ones with the household's note. `statement` is written by the node from those numbers. `status` is `too_early` under five acted cases, `holding`, `weakening` once its direction turns, or `gone` when the rule can no longer fire; a row is never deleted. Re-checked once a day. A request carrying `X-Agent` gets 403 unless `AGENT_PREFER=private`, because the cases carry the household's own notes.
+
 ### GET /offers
 Access: public
 

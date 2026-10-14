@@ -386,3 +386,23 @@ CREATE TABLE IF NOT EXISTS things (
 );
 REVOKE ALL ON things FROM planetai_ro;
 INSERT INTO schema_version (version) VALUES ('0.56') ON CONFLICT DO NOTHING;
+
+-- 0.57: what the node learns (docs/SPEC_learn.md). One row per learning, re-checked and never deleted: a learning
+-- that stops holding is marked `weakening` or `gone`. Kept as things are: revoked from pack SQL, in no export, push
+-- or report bundle; read by GET /learned with the admin token, and by an agent only while models stay home.
+CREATE TABLE IF NOT EXISTS learnings (
+  kind        TEXT NOT NULL,                 -- worked (step 1) · usual · asks (later steps)
+  key         TEXT NOT NULL,                 -- what it is about: a rule id for `worked`
+  issue       TEXT,
+  metric      TEXT,
+  status      TEXT NOT NULL CHECK (status IN ('too_early','holding','weakening','gone')),
+  statement   TEXT NOT NULL,                 -- written by the node from `numbers`, never by a model
+  numbers     JSONB NOT NULL DEFAULT '{}'::jsonb,
+  n           INTEGER NOT NULL DEFAULT 0,
+  scope       TEXT NOT NULL DEFAULT 'house' CHECK (scope IN ('house','place')),
+  first_seen  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  checked_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (kind, key)
+);
+REVOKE ALL ON learnings FROM planetai_ro;
+INSERT INTO schema_version (version) VALUES ('0.57') ON CONFLICT DO NOTHING;
