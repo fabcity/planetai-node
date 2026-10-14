@@ -419,10 +419,23 @@ The page's context:
 
 
 # WALL_SYSTEM: the node's "thinking aloud" voice for the wall screen (docs/SPEC_language.md §The prompts).
-# Verbatim from app/static/doors-wall.js:73, with NARR_ANGLES rotation handled node-side.
-WALL_ANGLES = ['what is happening right now', 'what has changed over the last few hours', 'how warm it feels inside the home',
-  'how inside the home compares with the street and the neighbourhood', 'how today compares with the last few days']
-WALL_SYSTEM = """You are the voice of this home's sensor node, speaking on a screen in the living room to people who know nothing about air science, units or maps. Like a calm neighbour telling a short story, say what is happening around their home: the air, and the heat if your context has it. Plain everyday words only. Never write units or symbols such as µg/m³, °C, PM2.5, AQI, ppm, percent or km. Say 'inside your home', 'your street', 'the neighbourhood', 'the wider area' instead of room, yard, ring or region. Instead of numbers, compare: 'clean', 'a little hazy', 'well under the safe limit', 'warmer than usual for this hour'. At most two numbers. Go in this order: what is happening inside the home; how that compares with the street and the neighbourhood; what it suggests for an ordinary day, such as windows, cooking, sleep or children outside, never telling people that anything is safe, fine or without risk, only what the readings show; and last, what the next few hours may bring, from the forecast or the usual pattern for this hour if your context has it, or that the node will keep watching if it does not. Use only the figures in your context. Six to eight sentences, one paragraph, no lists, no greeting, no questions."""
+# WALL_ANGLES: (angle, what its facts are called). ask.wall_angles keeps an angle only when a key of the Wall's context
+# matches, so a node with no forecast is never asked to start from one. Searched in the context's keys, never its
+# values: the air's title may say "smoke" on a node with no fire pack.
+WALL_ANGLES = [
+    ("what is happening right now", ""),
+    ("the day so far, and how it has gone until now", r"\bso far\b"),
+    ("what has changed over the last few hours", r"\btrend\b"),
+    ("how warm it feels inside the home", r"\bheat\b"),
+    ("how inside the home compares with the street and the neighbourhood", r"\bstreet\b"),
+    ("the neighbourhood and the public stations around it", r"\bstations\b"),
+    ("what is usual for this place at this hour and this week", r"usual for this place"),
+    ("what the next few hours bring", r"\bforecast\b"),
+    ("the land and the sea around", r"\b(land|coast)\b"),
+    ("smoke and fires around, and which way the wind carries them", r"fire|smoke|hotspot"),
+    ("the heat of the ground itself, here and around", r"surface|ground"),
+]
+WALL_SYSTEM = """You are the voice of this home's sensor node, speaking on a screen in the living room to whoever walks past, people who know nothing about air science, units or maps. Like a calm neighbour telling a short story, say what is happening in and around their home: the air, the heat, and, when your context has them, the stations nearby, what is usual for this place, the forecast, the land, the sea, fires and the ground's heat. Each fact in your context ends with where it comes from: live is measured here or nearby, model is a forecast or a model's estimate, satellite is seen from space; say it in words, such as 'the stations nearby show', 'the forecast expects', 'seen from space'. Plain everyday words only. Never write units or symbols such as µg/m³, °C, PM2.5, AQI, ppm, percent, mm or km. Say 'inside your home', 'your street', 'the neighbourhood', 'the wider area'. Never name a room, a sensor, a device or a person. Instead of numbers, compare: 'clean', 'a little hazy', 'under the World Health Organization's line', 'warmer than usual for this hour'. At most two numbers. Say what the day has been so far and what it suggests for an ordinary day, such as windows, cooking, sleep or children outside, never telling people that anything is safe, fine or without risk, only what the readings show. End with what the next few hours may bring, from the forecast or what is usual here if your context has them, or that the node will keep watching if it does not. Use only the facts in your context, and leave out what it does not have rather than saying so. Six to eight sentences, one paragraph, no lists, no greeting, no questions."""
 
 
 def pane_tools(listed) -> list[dict]:
@@ -687,6 +700,112 @@ async def relay_offer(hc, m: dict, chat: str, text: str, now: float) -> bool:
     return True
 
 
+# ----------------------------------------------------------- pictures (Tomas, 15 Oct 2026)
+# A household sends a picture to the bot and the node keeps it, as the dashboard's + Add an image does: the same
+# upload route, so the node cleans the file, finds its place and has the image model describe it. A photo arrives
+# recompressed by Telegram with no EXIF, so its date is the message's; a picture sent as a file is the original, its
+# own date and GPS included, and goes to the node byte for byte. Strangers' pictures are ignored like their words.
+TG_FILE_MAX = 20 * 1024 * 1024   # the Bot API gives a bot no file larger than this; getFile refuses it
+PICTURE_KINDS = ("phone", "camera", "microscope", "drone", "balloon")   # main.py's kinds; this container never imports main
+
+
+def picture_of(m: dict) -> tuple[dict, bool] | None:
+    """The file a message carries and whether it is the original: the largest size of a photo, or a document."""
+    if m.get("photo"):
+        return max(m["photo"], key=lambda p: (p.get("width", 0) * p.get("height", 0), p.get("file_size", 0))), False
+    if m.get("document"):
+        return m["document"], True
+    return None
+
+
+def kind_and_note(caption: str) -> tuple[str, str]:
+    """`#drone`, `#microscope`, `#camera` or `#balloon` in the caption names what took it; the rest is the note."""
+    tags = [t.lower() for t in re.findall(r"#(\w+)", caption or "") if t.lower() in PICTURE_KINDS]
+    note = re.sub(r"#(%s)\b" % "|".join(PICTURE_KINDS), "", caption or "", flags=re.I)
+    return (tags[0] if tags else "phone"), " ".join(note.split())
+
+
+async def tg_download(file_id: str) -> bytes:
+    """getFile, then the file. The file's URL holds the bot token, so an error carries a status or a type name, never
+    the URL or httpx's message (which quotes it)."""
+    path = ((await telegram("getFile", file_id=file_id)).get("result") or {}).get("file_path")
+    if not path:
+        raise TelegramError("getFile gave no file_path")
+    async with httpx.AsyncClient(timeout=120) as dl:
+        try:
+            r = await dl.get(f"https://api.telegram.org/file/bot{TG_TOKEN()}/{path}")
+        except httpx.HTTPError as e:
+            raise TelegramError(type(e).__name__) from None
+    if r.status_code >= 400:
+        raise TelegramError(f"{r.status_code}")
+    return r.content
+
+
+async def keep_picture(hc, m: dict, chat: str) -> bool:
+    """A picture from a chat: kept on the node and answered, or refused with the reason. False when it was ignored."""
+    got = picture_of(m)
+    if not got:
+        return False
+    if chat not in CHATS():
+        log.info("picture from chat %s ignored: not in TELEGRAM_CHAT_IDS", chat)
+        return False
+    f, original = got
+    say = lambda en, es: telegram("sendMessage", chat_id=chat, text=T(en, es=es))  # noqa: E731
+    mime = f.get("mime_type") or ("image/jpeg" if not original else "")
+    if not mime.startswith("image/"):
+        await say("I keep pictures only: a jpeg, png, heic or webp. That file is not one.",
+                  "Solo guardo imágenes: jpeg, png, heic o webp. Ese archivo no lo es.")
+        return True
+    if (f.get("file_size") or 0) > TG_FILE_MAX:
+        await say("That picture is over 20 MB, the most Telegram lets a bot fetch. Send it as a photo instead, "
+                  "or add it on the dashboard: Place › Images › + Add an image.",
+                  "Esa imagen pasa de 20 MB, lo máximo que Telegram deja bajar a un bot. Envíala como foto, "
+                  "o añádela en el panel: Place › Images › + Add an image.")
+        return True
+    try:
+        raw = await tg_download(f["file_id"])
+    except Exception as e:  # noqa: BLE001
+        log.warning("picture from chat %s not fetched: %s", chat, e.args[0] if isinstance(e, TelegramError) and e.args else type(e).__name__)
+        await say("⚠️ I could not fetch that picture from Telegram. Nothing was kept; send it again in a moment.",
+                  "⚠️ No pude bajar esa imagen de Telegram. No se guardó nada; envíala de nuevo en un momento.")
+        return True
+    kind, note = kind_and_note(m.get("caption") or "")
+    form = {"kind": kind, "note": note, "actor": _name_of(m.get("from") or {}), "describe": "1"}
+    if not original and m.get("date"):   # Telegram stripped the photo's own date; the original keeps it, and it wins
+        form["taken_at"] = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime(m["date"]))   # a conversion, not a clock read
+    name = f.get("file_name") or f"telegram-{m.get('message_id', 0)}.jpg"
+    try:
+        r = await hc.post(node_url("/captures"), files={"photo": (name, raw, mime)}, data=form, timeout=120)
+    except Exception as e:  # noqa: BLE001
+        log.warning("picture from chat %s not kept: %s", chat, type(e).__name__)
+        await say("⚠️ I could not reach the node. Nothing was kept; send it again in a moment.",
+                  "⚠️ No pude llegar al nodo. No se guardó nada; envíala de nuevo en un momento.")
+        return True
+    try:
+        body = r.json()
+    except ValueError:
+        body = {}
+    if r.status_code in (401, 403):
+        log.warning("picture from chat %s refused by the node: %s", chat, r.status_code)
+        await say("The node refused this bot's token, so the picture was not kept. The agent's ADMIN_TOKEN is not the "
+                  "app's: both read it from the node's .env.",
+                  "El nodo rechazó el token de este bot y la imagen no se guardó. El ADMIN_TOKEN del agente no es el de "
+                  "la app: los dos lo leen del .env del nodo.")
+    elif r.status_code >= 400:
+        why = str(body.get("detail") or r.status_code)[:300]   # the node's own sentence: it names no token
+        log.warning("picture from chat %s refused by the node: %s", chat, r.status_code)
+        await say(f"The node did not keep it: {why}", f"El nodo no la guardó: {why}")
+    elif body.get("duplicate"):
+        await say("That picture is already kept.", "Esa imagen ya está guardada.")
+    elif body.get("describing"):
+        await say("Kept. The image model on this machine is describing it; it will be in Data › Images in a minute.",
+                  "Guardada. El modelo de imágenes de esta máquina la está describiendo; estará en Data › Images en un minuto.")
+    else:
+        await say("Kept. It is in Data › Images. No image model is set, so nothing describes it yet.",
+                  "Guardada. Está en Data › Images. No hay modelo de imágenes, así que nada la describe todavía.")
+    return True
+
+
 async def _post_answer(hc, event_id: int, stage: str, actor: str, note: str = "") -> None:
     r = await hc.post(node_url("/actions"), timeout=15,
                       json={"event_id": event_id, "stage": stage, "actor": actor, "note": note})
@@ -813,6 +932,12 @@ async def main():
                 continue
             m = u.get("message") or {}
             chat = str((m.get("chat") or {}).get("id", "")); text = (m.get("text") or "").strip()
+            if picture_of(m):          # a picture has no text, only a caption: it is answered here or not at all
+                try:
+                    await keep_picture(hc, m, chat)
+                except Exception as e:  # noqa: BLE001
+                    log.warning("picture failed: %s", type(e).__name__)
+                continue
             if not text:
                 continue
             if chat not in CHATS():

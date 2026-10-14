@@ -615,7 +615,10 @@ def pack_sections(manifests: list[dict]) -> list[dict]:
                 _warn_once("pack %s: section %s is already declared by another pack; leaving it out", pid, sec["id"])
                 continue
             seen.add(sec["id"])
-            out.append({**sec, "pack": pid})
+            # A core pack is on every node, switched on or not; a wild one was added on purpose (`.wild`, from
+            # `planetai packs add`). engine._sections leaves a core pack's section out until a row of it exists.
+            core = bool(m.get("path")) and not (Path(m["path"]) / ".wild").is_file()
+            out.append({**sec, "pack": pid, **({"core": True} if core else {})})
     return out
 
 

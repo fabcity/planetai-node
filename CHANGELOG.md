@@ -43,6 +43,50 @@
   and buttons are 44 px; the gear is filled while Set up is open. `tests/test_doors.py` renders each tab, the old
   anchors, the ledger and the consequences step; `measure.mjs doors`, in the visual gate, walks every tab and section at
   390 and 1440, paper and dark, locked and unlocked.
+- **Fires, a new source (Tomas, 15 Oct).** `packs/fire` reads NASA FIRMS active fire detections (VIIRS 375 m,
+  CC0) from the public regional files, no key needed, and counts the burning places of the last day in a local ring
+  (`FIRE_LOCAL_KM`, 25 km) and a regional one (`FIRE_REGION_KM`, 150 km): how many, their fire radiative power, the
+  nearest and its compass bearing, and how many lie within 45° of where the wind comes from, by the node's own wind
+  (a local kit, the core Open-Meteo point, or the forecast bounded to `ts <= now()`). Three rules say where, as a
+  distance and a direction from the house: `info` a fire in the local ring, `warn` one upwind, and `act` only when
+  25 or more are upwind in the region AND the air outside is rising past the WHO line, 15 µg/m³. Five numbers are a
+  declared section with `wall: true`; a core pack's section now stays out of `/issues` until the node holds a row of
+  it, so nodes that never turn fires on show nothing. Off until `FIRE_ENABLED=1` (and `PACKS_ALLOW_CODE=1`), for the bandwidth: 1 to 2 MB a
+  satellite per changed file for South East Asia; FIRMS ignores conditional requests, so the pack asks with HEAD
+  first, at most every three hours. An optional `FIRMS_MAP_KEY` reads only the ring's box. The 25 is a first guess
+  from one day on the Bukit (14 Oct: nothing within 50 km, the nearest 75 km north-west, 51 places within 150 km).
+  New id and es copy is assistant-written. `tests/test_fire.py` (77 suites).
+- **The Wall says more, and only what anyone may read (Tomas, 15 Oct: "Generated text in the wall should be richer
+  since we now have much more data").** The Wall's narration (`POST /ask`, `prompt: wall`) no longer reads the
+  pane's context. It reads its own: short labelled facts with their unit and `live`, `model` or `satellite` — the day
+  sentence, the WHO line, the values by distance, how many public stations nearby are over the line, what is usual
+  for the place, the next six hours of forecast, the land and the sea, and any pack section declared `wall: true`,
+  so a new pack's figures reach it with no code. The house's learnings, digests, things, alerts' words and who
+  answered never reach it. `WALL_ANGLES` grows from five to eleven (the day so far, the stations around, what is
+  usual here, the next hours, the land and the sea, fires around, the ground's heat) and an angle whose facts are
+  missing is skipped, not apologised for. The scrub now also cleans dict keys, and catches a coordinate written to
+  more decimals than the node's own rounds to (-8.8190 beside NODE_LAT -8.819).
+
+- **Pictures through the bot (Tomas, 15 Oct).** A photo or an image file sent to the bot from a household chat
+  is posted to the node's `POST /captures` with the caption as the note, the sender's name and `describe=1`, and the
+  bot answers "Kept. The image model on this machine is describing it; it will be in Data › Images in a minute." A
+  photo takes its largest size and the message's date; a file goes byte for byte, so its own date and GPS count. A
+  `#drone`, `#microscope`, `#camera` or `#balloon` in the caption sets the kind. A duplicate, a file that is not an
+  image, one over the Bot API's 20 MB and a refused token are each answered plainly. Strangers' pictures are ignored,
+  and the download's URL, which holds the bot token, never reaches a log line (`tests/test_bot_pictures.py`).
+- **The doctor names the node's fundamental sources, and install and update end with what is left to set up**
+  (Tomas, 15 Oct: "the user should be guided to have the fundamental data sources of the node running"). Six sources
+  every node needs, in one place (`app/fundamentals.py`), most important first: your own sensors (one reporting in
+  the last hour, inside and ideally outside), alerts on your phone (Telegram connected and not refused), air stations
+  nearby (Bali Air Dispatch; does not apply outside Bali yet), weather (Open-Meteo), satellite air (CAMS) and the
+  nightly backup. New `GET /health/sources` (token) says each one's state, its last reading's age and, when it is not
+  running, the one thing to do, with the Set up section or the `planetai` command that does it. `planetai doctor`
+  prints them as a **Data sources** block; `install.sh`, `update.sh` and `planetai setup` now all end with the doctor
+  and a **To finish setting up** list, and in a terminal install and update offer to do the first step (never with
+  `--yes`, cron or an agent: then they only print). The Set up page shows the same list at the top, and the MCP
+  `health_check` returns it as `sources`. Telegram and the backup's age moved from the doctor's checks into the
+  sources, so they no longer make a new node's doctor red; *a backup exists* (which read `./backups` whatever
+  `BACKUP_DIR` said) is gone. Before the first poll after a start, a configured source is a dash, not a cross.
 
 - **The Wall reads from three metres (design review, 14 Oct).** Nothing on the doors' Wall is under 28 px at
   1920×1080, scaled with the screen; what did not survive that floor was cut: the kicker's reason (it named who

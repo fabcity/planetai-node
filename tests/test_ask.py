@@ -99,8 +99,17 @@ logging.getLogger().addHandler(handler)
 logging.getLogger().setLevel(logging.DEBUG)
 
 opened = []
-main.db = lambda: opened.append("db") or (_ for _ in ()).throw(RuntimeError("no database in this test"))
+import traceback as _tb                              # noqa: E402
+def _db():
+    # Only an open that comes through the pane counts: on CI the app's own poll loop (main.poll_sources, started with
+    # the app) reached its first poll while this test ran, and that is not the pane opening the database.
+    stack = _tb.format_stack()
+    if any("/ask.py" in f or "/agent_loop.py" in f for f in stack):
+        opened.append("".join(stack[-9:-1]))
+    raise RuntimeError("no database in this test")
+main.db = _db
 main.q = lambda sql, *a: [{"name": s.get("name")} for s in FIX["sensors"]] if "FROM sensors" in sql else []
+main.forecast = lambda hours=24: None   # the Wall reads it (ask.wall_reads); never the database in this test
 import inspect                                       # noqa: E402
 _sig = inspect.signature(issues_api.issues_now).parameters
 assert all(p.default is not inspect.Parameter.empty for p in _sig.values()), \
@@ -212,6 +221,105 @@ r = local.post("/ask", json={"messages": [{"role": "user", "content": "speak"}],
 check(r.status_code == 200 and SCRIPT[-1]["system"] != wall, "the wall's angle did not rotate between narrations")
 print("  wall: the page asks by name; the voice, the figures and a fresh angle ride in the system prompt")
 
+# ---------------------------------------------------------------- the Wall's facts: richer, and only the public ones
+# Tomas, 15 Oct: "Generated text in the wall should be richer since we now have much more data." The Wall is read by
+# whoever walks past, so its context is a whitelist: the day sentence, the WHO line, the stations nearby, what is
+# usual for the PLACE, the next hours of forecast, the satellite's land, the sea, and any section a pack puts on the
+# wall. Planted beside them, and never to reach it: who answered (the capture names him), a room, what the house
+# learned (a house usual row, a worked row, a digest), a thing the home keeps, and a reading on a private channel.
+FIX2 = json.loads((ROOT / "app/issues/fixtures/node1-2026-10-06-figures.json").read_text())
+DOC2 = engine.replay(FIX2, S(NODE_ISSUES="air,heat,land,coast"), I.load())
+LAT2, LON2 = FIX2["health"]["lat"], FIX2["health"]["lon"]
+NAMES2 = sorted({s["name"].strip() for s in FIX2["sensors"] + DOC2["stations"] if len((s.get("name") or "").strip()) >= 3})
+PRIVATE = ["Tomas Diez", "SECRET-HOUSE-USUAL", "PM2.5 inside", "SECRET-WORKED", "SECRET-DIGEST", "Grandma's purifier",
+           "SECRET-THING-USES", "Things this home keeps"]
+check("Tomas Diez" in json.dumps(DOC2) and "K ROOM - BAYU HOLES" in json.dumps(DOC2),
+      "the 6 Oct capture no longer names who answered or a room, so the wall's privacy test would prove nothing")
+DOC2["sections"] = [
+    {"id": "things", "pack": "thingdata", "stage": "observe", "title": {"en": "Things this home keeps"}, "wall": False,
+     "readouts": [{"metric": "uses", "label": {"en": "Grandma's purifier"}, "value": 4, "dp": 0, "unit": "", "provenance": "partial"}]},
+    {"id": "fire-rings", "pack": "fire", "stage": "observe", "title": {"en": "fires around"}, "wall": True,
+     "readouts": [{"metric": "hotspots_25km", "label": {"en": "hotspots within 25 km"}, "value": 3, "dp": 0, "unit": "",
+                   "source": "NASA FIRMS (VIIRS)", "provenance": "model"},
+                  {"metric": "thing_uses", "label": {"en": "SECRET-THING-USES"}, "value": 2, "dp": 0, "unit": "", "provenance": "partial"},
+                  {"metric": "upwind_km", "label": {"en": f"nearest upwind of K ROOM - BAYU HOLES at {LAT2:.4f}"}, "value": 11,
+                   "dp": 0, "unit": "km", "provenance": "model"}]}]
+_LEARNED = [
+    {"kind": "usual", "key": "indoor-pm25", "scope": "house", "status": "holding", "statement": "SECRET-HOUSE-USUAL",
+     "numbers": {"days": 28, "high_hour": 7, "low_hour": 3, "unit": "SECRET-HOUSE-USUAL"}},
+    {"kind": "worked", "key": "air-quality/x", "scope": "house", "status": "holding", "statement": "SECRET-WORKED",
+     "numbers": {"high_hour": 1, "low_hour": 2, "unit": "SECRET-WORKED"}},
+    {"kind": "digest", "key": "week", "scope": "place", "status": "holding", "statement": "SECRET-DIGEST",
+     "numbers": {"high_hour": 1, "low_hour": 2, "unit": "SECRET-DIGEST"}},
+    {"kind": "usual", "key": "outdoor-pm25", "scope": "place", "status": "holding", "statement": "",
+     "numbers": {"days": 28, "high_hour": 18, "low_hour": 4, "by_hour": {"19": 13.0}, "unit": "µg/m³",
+                 "this_week": 9.1, "usual_week": 11.0}}]
+_FC = {"hours": [  # the capture's as_of is 19:22 +08:00: one hour gone, three to come, one past the six hours read
+    {"ts": "2026-10-06 18:00:00+08:00", "source": "forecast-bmkg", "fc_temp": 41.0},
+    {"ts": "2026-10-06 20:00:00+08:00", "source": "forecast-bmkg", "fc_temp": 29.0, "fc_rain": 0.0,
+     "fc_wind_speed": 12.0, "fc_wind_direction": 135.0},
+    {"ts": "2026-10-06 22:00:00+08:00", "source": "forecast-bmkg", "fc_temp": 27.4, "fc_rain": 0.1},
+    {"ts": "2026-10-06 22:00:00+08:00", "source": "forecast-om", "fc_temp": 33.0},
+    {"ts": "2026-10-07 09:00:00+08:00", "source": "forecast-bmkg", "fc_temp": 17.0}]}
+_q, _fc, _ch = main.q, main.forecast, ask.packs.channels
+main.q = lambda sql, *a: ([{"name": s.get("name"), "room": None, "source_name": None} for s in FIX2["sensors"]]
+                          if "FROM sensors" in sql else _LEARNED if "FROM learnings" in sql else [])
+main.forecast = lambda hours=24: _FC
+ask.packs.channels = lambda: [{"source": "thingdata", "metric": "thing_uses", "role": "private"}]
+issues_api.issues_now = lambda: DOC2
+os.environ.update(NODE_LAT=str(LAT2), NODE_LON=str(LON2))   # rounds to -8.82; "-8.8190" in a label starts -8.81
+
+
+def leaks2(text: str) -> list[str]:
+    found = [f"{v:.3f}" for v in (LAT2, LON2) if f"{v:.3f}" in text]
+    found += [n for n in NAMES2 if n.lower() in text.lower()]
+    found += [s for s in PRIVATE if s in text]
+    return found
+
+
+r = local.post("/ask", json={"messages": [{"role": "user", "content": "speak"}], "view": "wall",
+                             "mode": "advanced", "prompt": "wall"})
+wall2 = SCRIPT[-1]["system"]
+wctx = json.loads(wall2.split("The page's context:\n", 1)[1])
+check(r.status_code == 200 and not leaks2(wall2), f"the wall's prompt carries {leaks2(wall2)}")
+check(wctx["air"]["line"] == "15 µg/m³, the WHO guideline" and "dusty morning" in wctx["air"]["today"]
+      and "2 hours today" in wctx["air"]["so far"], f"the wall lost the day sentence or the WHO line: {wctx.get('air')}")
+check("public stations nearby" in wctx.get("stations nearby", "") and "over the WHO line" in wctx["stations nearby"]
+      and wctx["stations nearby"].endswith(", live"), f"the wall lost the stations nearby: {wctx.get('stations nearby')}")
+check(len(wctx.get("usual for this place") or []) == 1 and "around 18:00" in wctx["usual for this place"][0]
+      and "13.0 µg/m³ at this hour" in wctx["usual for this place"][0], f"the place's usual: {wctx.get('usual for this place')}")
+check(wctx.get("forecast") == "next 6 hours, 27 to 29 °C, dry, wind from the south-east at 12 km/h, model",
+      f"the forecast must be the next hours of one source, never a past or far one: {wctx.get('forecast')}")
+check(wctx["land"].get("built") == "91 %, satellite" and wctx["coast"].get("sea") == "28.3 °C, model",
+      f"the satellite's land or the model's sea is missing: {wctx.get('land')}, {wctx.get('coast')}")
+check(wctx.get("fires around", {}).get("hotspots within 25 km") == "3, satellite",
+      f"a pack's wall section must reach the wall on its own, as satellite: {wctx.get('fires around')}")
+check(any("a sensor" in k and "here" in k for k in wctx.get("fires around", {})),
+      f"the scrub must still turn a room into 'a sensor' and the node's position into 'here': {wctx.get('fires around')}")
+check("cannot say" not in wall2, "an angle the facts cannot carry must be skipped, not apologised for")
+_angle = wall2.split("This time, start from ", 1)[1].split(".", 1)[0]
+check(_angle in ask.wall_angles(wctx), f"the wall started from {_angle!r}, which its facts do not carry")
+_all = [a for a, _ in agent_loop.WALL_ANGLES]
+check(ask.wall_angles(wctx) == [a for a in _all if not a.startswith("the heat of the ground")],
+      f"with every fact but the ground's heat, every angle but that one: {ask.wall_angles(wctx)}")
+_bare = ask.wall_context({**DOC2, "sections": [], "stations": []}, "en")
+_skip = {"what the next few hours bring", "what is usual for this place at this hour and this week",
+         "the neighbourhood and the public stations around it", "smoke and fires around, and which way the wind carries them",
+         "the heat of the ground itself, here and around"}
+check(not _skip & set(ask.wall_angles(_bare)) and "what is happening right now" in ask.wall_angles(_bare),
+      f"with no forecast, usual, stations or fire, those angles must be skipped: {ask.wall_angles(_bare)}")
+_surf = {**_bare, "surface-heat": {"ground here": "48 °C, satellite"}}
+check("the heat of the ground itself, here and around" in ask.wall_angles(_surf), "a surface-heat pack's facts must open its angle")
+seen_angles = set()
+for _ in range(len(_all)):
+    local.post("/ask", json={"messages": [{"role": "user", "content": "speak"}], "view": "wall", "prompt": "wall"})
+    seen_angles.add(SCRIPT[-1]["system"].split("This time, start from ", 1)[1].split(".", 1)[0])
+check(seen_angles <= set(ask.wall_angles(wctx)) and len(seen_angles) > 5, f"the wall's angles rotate within its facts: {seen_angles}")
+main.q, main.forecast, ask.packs.channels = _q, _fc, _ch
+issues_api.issues_now = lambda: DOC
+del os.environ["NODE_LAT"], os.environ["NODE_LON"]
+print("  wall facts: day, WHO line, stations, the place's usual, next hours, land, sea and a pack's section; nothing private")
+
 # ---------------------------------------------------------------- the shape a live node hands it
 # A capture's timestamps are strings; the live engine's are datetimes straight from Postgres. v0.75 was
 # tested on captures only and answered every question on node #1 with a 500 (datetime is not JSON
@@ -236,7 +344,7 @@ logged = LOG.getvalue()
 check(ASKED not in logged and ANSWER not in logged and "satellite map" not in logged,
       "a word somebody asked or the model answered is in the log")
 check("[pane] tool sensors" in logged, "the log should still say which tool ran and how long it took")
-check(not opened, "the pane opened the database")
+check(not opened, "the pane opened the database, from:\n" + (opened[0] if opened else ""))
 check(not list((ROOT / "out").glob("*ask*")) if (ROOT / "out").exists() else True, "the pane wrote a file under out/")
 print("  nothing kept: the log names the tool and its time, never a word; no database, no file")
 logging.getLogger().removeHandler(handler)

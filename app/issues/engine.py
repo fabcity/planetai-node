@@ -1777,6 +1777,8 @@ def _sections(decl: list[dict], obs: list[dict], now: datetime) -> list[dict]:
     out = []
     for sec in decl:
         rows = _readouts(sec, obs)
+        if not rows and sec.get("core"):
+            continue          # a core pack nobody turned on: "none of its readings has arrived" would be noise
         out.append({"id": sec["id"], "pack": sec["pack"], "stage": sec["stage"], "title": sec["title"],
                     "order": sec.get("order", 50), "wall": bool(sec.get("wall")), "note": sec.get("note"),
                     "expected": len(sec["readouts"]),

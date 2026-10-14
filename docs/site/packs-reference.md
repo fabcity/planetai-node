@@ -1,7 +1,8 @@
 # Packs that ship
 <!-- checked: v0.81.0 -->
 
-Sixteen core packs ship in `packs/` in v0.81: nine data packs and seven code packs. Wild packs, written for one
+Sixteen core packs ship in `packs/` in v0.81: nine data packs and seven code packs. A seventeenth, `fire`, a code
+pack, is on `main` for the next release. Wild packs, written for one
 place and kept by their authors, are listed at [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs) and added with `planetai packs add`. Between them they hold
 everything the node knows about a place. No rule in `app/` says what PM2.5 means for a household, what a hot night is, where
 the sea starts or where the nearest fab lab is; the air, the heat, the coast, the land, the repair commons and
@@ -10,7 +11,7 @@ built, loaded and linted is on [Packs](packs.md); this page is what each shipped
 
 A pack is `data` if its folder has no `adapter.py`, and `code` if it has one. The `kind:` line in `pack.yaml`
 is documentation; the presence of the file is what the loader reads. Code packs load only with
-`PACKS_ALLOW_CODE=1`, and `make` also needs `MAKE_ENABLED=1`.
+`PACKS_ALLOW_CODE=1`, `make` also needs `MAKE_ENABLED=1`, and `fire` also needs `FIRE_ENABLED=1`.
 
 | pack | kind | domain | rules | report | cells | scripts | settings |
 |---|---|---|---|---|---|---|---|
@@ -27,11 +28,12 @@ is documentation; the presence of the file is what the loader reads. Code packs 
 | `earth-engine` | code | land | none | — | 1 | `timelapse` `verify` `basemap` | `EE_*`, `GROUND_SAT_WIDE_KM` |
 | `place` | code | place | 1 info | — | 1 | `refresh` `gaps` `verify` `basemap` | `PLACE_*`, `GROUND_*` |
 | `make` | code | make | none | the nearest-lab line | — | — | `MAKE_*` |
+| `fire` (next release) | code | air | 1 act, 1 warn, 1 info | — | — | — | `FIRE_*`, `FIRMS_MAP_KEY` |
 | `open-data-health` | data | governance | 1 warn | — | 2 | — | `CKAN_PORTALS` (core adapter) |
 | `thingdata` | code | repair | 1 warn | — | 2 | — | `THINGDATA_*` |
 | `example-cooking-hours` | data | (none) | 1 info | — | — | — | — |
 
-That is 33 rules with a message (26, and the 7 the event engine reads), 4 report contributors and 12 cells. Every rule with a message carries `en`,
+That is 33 rules with a message in v0.81 (26, and the 7 the event engine reads; `fire` adds 3), 4 report contributors and 12 cells. Every rule with a message carries `en`,
 `id` and `es`, and so do the two core rules in `config/rules.yml`; Spanish reached every alert template in
 v0.63. The node picks `message[ALERT_LOCALE]` and falls back to `en`. Cooldowns below are in minutes, per
 `(rule, sensor_id)`.
@@ -831,6 +833,66 @@ placed; the adapter counts them and logs the number on every read (179 network-w
 > covers the Foundation, not each node's operator** — every operator is a separate party to those terms. The
 > full reading is in `data/sources/data/economic/community/fablabs-io.yaml`. If that matters to you, leave
 > this pack off."
+
+## fire
+
+Fires that satellites saw near the node in the last day, from NASA FIRMS: how many, how far, in which direction,
+and whether they lie where the wind is coming from. Written for Kuta Selatan from one day of FIRMS, 14 Oct 2026,
+when the Bukit had no fire within 50 km, the nearest 75 km north-west in East Java, and 51 burning places within
+150 km. Not in v0.81; on `main` for the next release.
+
+| | |
+|---|---|
+| Kind | code |
+| Domain | `air` |
+| Requires node | `>=0.81.0` |
+| Metrics | `fires_local_24h`, `fires_region_24h`, `frp_local_mw`, `frp_region_mw`, `fires_nearest_km`, `fires_nearest_bearing`, `fires_local_upwind`, `fires_region_upwind`, `fires_upwind_km`, `fires_upwind_bearing`, `fire_wind_from_deg` |
+| Scales | bioregion |
+| Sources | `environmental/bioregion/nasa-firms` |
+| Needs | `PACKS_ALLOW_CODE=1` **and** `FIRE_ENABLED=1`; network to `firms.modaps.eosdis.nasa.gov`; `NODE_LAT` and `NODE_LON` |
+| Scripts | none |
+
+It is off unless `FIRE_ENABLED=1`, for the bandwidth: without a key it reads FIRMS's public regional file per
+satellite (no key, CC0) whenever that file changed, 1.9 MB for NOAA-20 over South East Asia on 14 Oct 2026, and
+the 7-day file once at first start. FIRMS's server ignores conditional requests, so the pack asks with HEAD
+first, at most every `FIRE_POLL_HOURS`, and an unchanged file writes no rows. With `FIRMS_MAP_KEY` it asks the
+keyed area API for the regional ring's box instead. The region is `SouthEast_Asia` or `Europe` when the whole
+regional ring fits the box that file's own detections covered on 14 Oct 2026, else `Global`.
+
+The adapter writes one sensor, `firms-fires`, `source='firms'`, `kind='model'`, `scale='bioregion'`,
+`local=False`, no coordinates. Counts are burning places, one per ~445 m cell a day however many satellites saw
+it, low confidence dropped. Upwind is within 45° of where the wind comes from, by the node's own wind: a local
+kit, then the core Open-Meteo point, then `fc_wind_direction` bounded `ts <= now()`. Every channel is `derived`.
+A declared section, `fire` (stage observe, `wall: true`), shows five of them: fires nearby, in the region,
+upwind, and the nearest fire's distance and bearing. As a core pack's section it stays out of `/issues` until the
+node holds a row of it.
+
+### Rules
+
+Not kinded: they send the same way on every `ALERT_ENGINE`. Each message says where, as a distance and a compass
+direction from the house.
+
+| rule | level | cooldown | fires when | languages |
+|---|---|---|---|---|
+| `fire_near` | info | 1440 | at least one fire in the local ring | en, es, id |
+| `fire_upwind_near` | warn | 720 | at least one fire in the local ring is upwind | en, es, id |
+| `smoke_arriving` | act | 1440 | 25 or more upwind in the regional ring, and outdoor PM2.5 (own and public outdoor sensors, else CAMS) over the last 2 hours past the WHO line, 15 µg/m³, and half again the 6 hours before | en, es, id |
+
+### Settings
+
+| setting | default | meaning |
+|---|---|---|
+| `FIRE_ENABLED` | `0` | the pack's own on-switch |
+| `FIRE_LOCAL_KM` | `25` | the local ring, in km |
+| `FIRE_REGION_KM` | `150` | the regional ring, in km. Singapore may want 500 |
+| `FIRE_POLL_HOURS` | `3` | how often to ask |
+| `FIRE_SATELLITES` | `noaa-20,noaa-21` | any of `noaa-20`, `noaa-21`, `suomi-npp` |
+| `FIRMS_MAP_KEY` | empty | optional, a secret: the keyed area API instead of the public files |
+
+### Know this
+
+A small rubbish fire is usually below what a 375 m pixel sees, and cloud hides fires, so an empty ring is not a
+clean one. The 25 is a first guess from one day, about half of the 150 km ring that day.
 
 ## open-data-health
 

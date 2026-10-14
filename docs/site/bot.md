@@ -116,9 +116,33 @@ set to Bahasa Indonesia they fall back to English, while the model's answers fol
 | `/model [local\|remote\|online\|auto]` | pins a rung for this chat and prints the ladder: each rung, its model, its host, whether it is currently skipped, and what `AGENT_PREFER` means (`private`: "the node's own machines only, nothing leaves the network") |
 | Event buttons | When the bot has announced itself (`TELEGRAM_BUTTONS=1`), event messages carry three buttons: Done (`acted`), Not now (`acknowledged`), Doesn't fit (`dismissed`). Pressing one posts `POST /actions` with `event_id`, `stage`, `actor`, `note`; Doesn't fit asks "what did you do instead?" and keeps the reply as the note. Labels in en/id/es. |
 
+## Sending a picture
+
+A picture sent to the bot is kept on the node, as **+ Add an image** on the dashboard keeps one: the bot fetches it
+from Telegram and posts it to `POST /captures` (see [API](api.md)) with the sender's first name as `actor`, the caption
+as the note, and `describe=1`. It answers "Kept. The image model on this machine is describing it; it will be in Data ›
+Images in a minute.", or "Kept. It is in Data › Images. No image model is set, so nothing describes it yet." when no
+`EYES_MODEL` is set; "That picture is already kept." for one the node has (the same file, by its sha256); and "The
+node did not keep it:" with the node's own reason otherwise.
+
+- **As a photo**, Telegram recompresses it and drops its EXIF, so the node takes the largest size, dates it by the
+  message and places it in the node's own cell.
+- **As a file** (Telegram's *File* instead of *Photo*), the original goes to the node byte for byte. Its own date and
+  GPS are used, then removed from the stored copy as with every capture. Send a picture taken somewhere else this way.
+- **A tag in the caption** names what took it: `#drone`, `#microscope`, `#camera` or `#balloon`; none means `phone`.
+  The tag is taken out of the note; any other `#word` stays in it.
+- **Refused, with the reason:** a file that is not an image ("I keep pictures only"), and one over 20 MB, the most
+  the Bot API lets a bot fetch (add it from the dashboard instead). If the node refuses the bot's token, the reply
+  says so: the agent's `ADMIN_TOKEN` is not the app's.
+
+Only the household's chats (`TELEGRAM_CHAT_IDS`) can send pictures. A picture from any other chat is ignored and
+logged, like the rest of what a stranger sends. The download URL holds the bot token, so a failed download is logged
+by its error's type only. Telegram's location messages are not read: a photo is placed by its own GPS or the node's
+cell. The bot does not send the image model's description back; it is on the image's card. Replies in en and es.
+
 ## Offers: someone who is not the household
 
-Everything else a chat outside `TELEGRAM_CHAT_IDS` sends is ignored. The one exception is an offer (SPEC_inventory step 4). An offer's `ask` link (`t.me/<bot>?start=offer-<id>`, in `GET /offers` and the daily export) opens the bot on that offer. It answers "Write one message about the cordless drill (to borrow)…", and the next message, within 30 minutes, goes to every household chat:
+Everything else a chat outside `TELEGRAM_CHAT_IDS` sends is ignored, a picture included. The one exception is an offer (SPEC_inventory step 4). An offer's `ask` link (`t.me/<bot>?start=offer-<id>`, in `GET /offers` and the daily export) opens the bot on that offer. It answers "Write one message about the cordless drill (to borrow)…", and the next message, within 30 minutes, goes to every household chat:
 
 > 📦 Someone asks about your offer #4, the cordless drill: … — Wayan @wayan_b
 
