@@ -315,4 +315,68 @@ assert ".tbl th.n+th:not(.n),.tbl td.n+td:not(.n){padding-left:" in html
 # 12. The phone reads either token, as the doors do.
 assert "const hasToken = () => !!DOORS_TOKEN();" in mobjs
 print("doors: locked parts link to Set up › This screen; a locked ledger names nobody; the phone reads both tokens")
+
+# The WHO line (Tomas, 14 Oct 2026: "put the WHO line in graphics as reference"): every drawing of PM2.5 draws the
+# air's own line, red and dashed (.linep, or the same three attributes on the phone), labelled "WHO 15". Each
+# drawing is rendered here on node #1's capture: Now's day (d3, on a twenty-line stand-in for the DOM), Data's
+# every source, seven days and usual day, and the phone's walk. Heat keeps its own "line 35.0" and gains no line.
+gprog = r"""
+const fs = require('fs'), vm = require('vm');
+const L = require('./app/static/doors-load.js'), d3 = require('./app/static/d3.min.js');
+const F = JSON.parse(fs.readFileSync('%s', 'utf8'));
+const core = fs.readFileSync('./app/static/doors-core.js', 'utf8'), pick = n => core.match(new RegExp('^(?:const|function) ' + n + '\\b.*$', 'm'))[0];
+const SVG = 'http://www.w3.org/2000/svg', doc = { createElementNS: (ns, t) => new El(t), documentElement: { namespaceURI: SVG }, body: {} };
+class El {
+  constructor(t) { Object.assign(this, { tagName: t, namespaceURI: SVG, ownerDocument: doc, a: {}, kids: [], textContent: '', parentNode: null,
+    style: { setProperty() {}, removeProperty() {}, getPropertyValue: () => '' } }); }
+  setAttribute(k, v) { this.a[k] = String(v); } removeAttribute(k) { delete this.a[k]; } getAttribute(k) { return this.a[k]; }
+  appendChild(c) { c.parentNode = this; this.kids.push(c); return c; } insertBefore(c) { return this.appendChild(c); }
+  removeChild(c) { this.kids = this.kids.filter(x => x !== c); return c; } addEventListener() {}
+  querySelectorAll() { const o = [], w = e => e.kids.forEach(c => { o.push(c); w(c); }); w(this); return o; }
+  get outerHTML() { return `<${this.tagName}${Object.entries(this.a).map(([k, v]) => ` ${k}="${v}"`).join('')}>${this.textContent}${this.kids.map(c => c.outerHTML).join('')}</${this.tagName}>`; }
+}
+const els = {}, ctx = { D: L.buildD({ ...F, days: F.issues_days }, 'en'), d3, document: doc, getComputedStyle: () => ({ color: '#000' }),
+  doorsLocal: L.doorsLocal, VIEWS: {}, $: q => (els[q] ||= {}), out: {} };
+vm.createContext(ctx);
+vm.runInContext(['esc', 'WD', 'loc', 'dayOf', 'dLabel', 'fmt', 'lineLab', 'plain', 'NODE', 'sign', 'PROV', 'prov', 'said', 'num', 'unitOf', 'labelOf',
+  'ISSUES_DRAWN', 'val'].map(pick).join('\n') + '\n' + fs.readFileSync('./app/static/doors-fig.js', 'utf8') + '\n' + fs.readFileSync('./app/static/doors-data.js', 'utf8')
+  + `\nD.dates = [...new Set(D.buckets.map(dayOf))]; D.at = {}; D.buckets.forEach((b, i) => { D.at[dayOf(b) + '|' + hourOf(b)] = i; });
+   D.now = D.buckets.length - 1; D.sens = Object.fromEntries(D.sensors.map(s => [s.sensor_id, s]));   /* doors-core.js's boot, line for line */
+   const S = { i: D.now, issue: 'air' }, day = (k, w) => { const el = document.createElementNS(0, 'svg'); el.id = 'f' + w; el.parentNode = { clientWidth: w };
+     dayWeek({ el, issue: k }); return el.outerHTML; };
+   const H = Object.fromEntries([...Array(24).keys()].map(h => [h, 4 + h]));
+   usualBlock({ learnings: [{ kind: 'usual', key: 'indoor-pm25', issue: 'air', metric: 'pm25', statement: '', numbers: { by_hour: H } },
+     { kind: 'usual', key: 'indoor-heat', issue: 'heat', metric: 'apparent', statement: '', numbers: { by_hour: H } }] });
+   sensorsBlock(); issuesBlock();
+   out = { day: day('air', 900), narrow: day('air', 400), heat: day('heat', 900), usual: $('#d-usual').innerHTML.split('<div class="gh k">').slice(1),
+     sensors: $('#sensors').innerHTML, issues7: $('#issues7').innerHTML.split('<figure').slice(1) };`, ctx);
+/* the walk, the phone's: its whole script on a stand-in page, for the air and for the heat */
+const walk = hash => new Promise(done => {
+  const E = {}, el = q => (E[q] ||= { innerHTML: '', querySelectorAll: () => [], insertAdjacentHTML() {}, remove() {} });
+  const json = { '/issues': F.issues, '/issues/days?days=1': F.issues_days, '/health': F.health };
+  const map = { on: (e, f) => e === 'load' && f(), getSource: () => ({ setData() {} }), getLayer: () => null, setProjection() {}, setPaintProperty() {},
+    setLayoutProperty() {}, flyTo() {}, fitBounds() {} };
+  const w = { doorsFetch: p => Promise.resolve(json[p] ? { ok: true, json: () => json[p] } : { ok: false }), DOORS_AUTH: () => ({}), innerHeight: 800,
+    location: { hash, origin: 'http://node' }, maplibregl: { Map: function () { return map; } }, IntersectionObserver: function () { this.observe = () => {}; },
+    document: { querySelector: el, querySelectorAll: () => [], addEventListener() {} } };
+  w.window = w; vm.createContext(w); vm.runInContext(fs.readFileSync('./app/static/walk.js', 'utf8'), w);
+  setTimeout(() => done({ ready: w.WALK_READY, chs: el('#chs').innerHTML }), 50);
+});
+Promise.all([walk('#air'), walk('#heat')]).then(([air, heat]) => console.log(JSON.stringify({ ...ctx.out, walk: air, walkHeat: heat })));
+""" % FIX
+w = json.loads(subprocess.run(["node"], input=gprog, capture_output=True, text=True, check=True).stdout)
+LINEP = 'stroke="var(--signal-worse)" stroke-width="1.5" stroke-dasharray="6 4"'
+for name in ("day", "narrow"):
+    assert w[name].count('class="linep"') == 1 and ">WHO 15<" in w[name], f"Now's day ({name}) draws no labelled WHO line"
+assert ">line 35.0<" in w["heat"] and "WHO" not in w["heat"], "heat's line keeps its own name: it is this place's, not the WHO's"
+assert w["sensors"].count('class="linep"') == w["sensors"].count('class="srow"') == w["sensors"].count(">WHO 15<") > 3, \
+    "Data's every source, last 24 hours: a labelled WHO line in every row"
+air7 = [f for f in w["issues7"] if f.startswith(' class="sm"><figcaption><b><span class="said">Air')]
+assert len(air7) == 3 and all('class="linep"' in f and ">WHO 15<" in f for f in air7), "Data's seven days: each air drawing labels its line"
+assert 'class="linep"' in w["usual"][0] and ">WHO 15<" in w["usual"][0], "What is usual: the PM2.5 day draws the WHO line"
+assert "linep" not in w["usual"][1], "What is usual: the heat day draws no air line"
+assert w["walk"]["ready"] and w["walk"]["chs"].count(LINEP) == w["walk"]["chs"].count(">WHO 15<") == 5, \
+    "the walk: the house, the street, the stations, the ring and the region each draw the labelled WHO line"
+assert w["walkHeat"]["chs"].count(LINEP) == 2 and "WHO" not in w["walkHeat"]["chs"], "the walk's heat keeps its two lines, named its own"
+print("doors: every PM2.5 drawing draws the air's own line, red and dashed, labelled WHO 15; heat keeps its own")
 print("all doors checks passed")

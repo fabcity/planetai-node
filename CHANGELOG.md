@@ -11,6 +11,17 @@
   Wall showed an alert still open: each read its own list. `/issues` now carries `asking` per issue, the open event
   while it asks and then the alerts still true, and Now, the Wall and the phone all read it. An alert from days ago
   whose reading came back is still open and still in ρ, but it no longer reads as asked now.
+- **The WHO line in every PM2.5 drawing (Tomas, 14 Oct).** Now's day, Data's every source and seven days, What is
+  usual's PM2.5 day, and the phone walk's house, street, stations, ring and region each draw the air's own line red and
+  dashed (`.linep`, now the day figure's 6 4 at 1.5) and label it `WHO 15`: the value is `/issues`' own, the name comes
+  from the line's source, so heat keeps `line 35.0`. Before, the walk drew it in ink, Data drew it unlabelled, and What
+  is usual and three of the walk's drawings had none. Alert words and the 35.5 urgent threshold are unchanged. `tests/test_doors.py` renders each drawing on node #1's
+  capture.
+- **Rooms in the household's words.** Set up › Rooms names the room each of the home's sensors is in, and the node
+  makes that the sensor's name in the database (schema 0.61, a trigger on `sensors`), whatever a poll or a pack writes
+  after. Every alert, the report, the stats and the pages then say "Kids", not "K ROOM - BAYU HOLES" (Tomas, 14 Oct:
+  node #1's K, L and S are Kids, Living Room and Studio). The platform's name is kept in `source_name`; the Wall never
+  shows a room; a reader without a token never sees which room is which. `PATCH /sensors/{sid}`, admin.
 
 - **The report tells what was sent.** On `ALERT_ENGINE=events` the heat and air rules still record alerts that
   nobody receives, and the report read them: node #1's 19:00 report on 14 Oct opened "It is hot inside" from a heat

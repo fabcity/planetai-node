@@ -31,13 +31,17 @@ if (typeof document !== 'undefined') (async () => {
   const word = i => (SCALES[i].k ? L[SCALES[i].k] || SCALES[i].k : PLANET[lang]);
   const edge = r => (I.geometry.ladder.find(x => x.res === r) || {}).edge_m;
   const f = (v, dp) => (v == null ? '—' : (+v).toFixed(dp));
+  /* the line as the doors draw it (.linep in doors.html) and name it (lineLab in doors-core.js): "WHO 15" for the air */
+  const LINEP = 'stroke="var(--signal-worse)" stroke-width="1.5" stroke-dasharray="6 4"';
+  const lineLab = a => `${/^WHO\b/.test(a.line.source || '') ? 'WHO' : 'line'} ${f(a.line.value, a.dp ?? 0)}`;
   let K = (W.find(x => x.k === location.hash.slice(1)) || W.find(x => x.k === (I.lead || {}).issue) || W[0] || {}).k, AT = 0;
 
   /* the 24 hours of one scale, from /issues/days; [] where the issue keeps no hours there */
   const hours = (k, d) => ((D && D.issues[k] && D.issues[k].series[d]) || []).slice(-24);
 
-  function chart(S, line, band) {
-    const Wd = 358, Hh = 120, P = 22, PR = 52, all = S.flatMap(s => s.v).concat(line == null ? [] : [line]).filter(v => v != null);
+  /* a: the issue whose line is drawn, or null for none */
+  function chart(S, a, band) {
+    const line = a ? a.line.value : null, Wd = 358, Hh = 120, P = 22, PR = 52, all = S.flatMap(s => s.v).concat(line == null ? [] : [line]).filter(v => v != null);
     if (!all.length) return '';
     const n = S[0].v.length, lo = Math.min(...all), hi = Math.max(...all), pad = (hi - lo || 1) * .08;
     const x = i => P + (Wd - P - PR) * i / (n - 1), y = v => Hh - 14 - (Hh - 28) * (v - lo + pad) / (hi - lo + pad * 2);
@@ -46,7 +50,7 @@ if (typeof document !== 'undefined') (async () => {
     if (band) { const [a, b] = band; for (let i = 0; i < n - 1; i++) {
       if ([a[i], b[i], a[i + 1], b[i + 1]].some(q => q == null)) continue;
       g += `<path d="M${x(i)},${y(a[i])}L${x(i + 1)},${y(a[i + 1])}L${x(i + 1)},${y(b[i + 1])}L${x(i)},${y(b[i])}Z" fill="var(${b[i] + b[i + 1] > a[i] + a[i + 1] ? '--warm' : '--cool'})" opacity=".22"/>`; } }
-    if (line != null) g += `<line x1="${P}" x2="${Wd - PR}" y1="${y(line)}" y2="${y(line)}" stroke="var(--ink)" stroke-dasharray="3 3"/><text x="${Wd - PR}" y="${y(line) - 4}" text-anchor="end">line ${line}</text>`;
+    if (line != null) g += `<line x1="${P}" x2="${Wd - PR}" y1="${y(line)}" y2="${y(line)}" ${LINEP}/><text x="${Wd - PR}" y="${y(line) - 4}" text-anchor="end" style="fill:var(--ink)">${lineLab(a)}</text>`;
     S.forEach(s => { const li = s.v.length - 1; g += `<path d="${path(s.v)}" fill="none" stroke="${s.c}" stroke-width="2" ${s.dash ? 'stroke-dasharray="2 3"' : ''}/>`;
       if (s.v[li] != null) g += `<circle cx="${x(li)}" cy="${y(s.v[li])}" r="3.5" fill="${s.c}"/><text x="${x(li) + 6}" y="${y(s.v[li]) + 3}" style="fill:${s.c}">${s.label}</text>`; });
     const B = (D && D.buckets.slice(-n)) || [];
@@ -60,7 +64,7 @@ if (typeof document !== 'undefined') (async () => {
     const vs = rows.map(r => r.v).concat(line == null ? [] : [line]), lo = Math.min(...vs), hi = Math.max(...vs), pad = (hi - lo || 1) * .06;
     const x = v => P + (Wd - P * 2) * (v - lo + pad) / (hi - lo + pad * 2), dp = w.a.dp ?? 1;
     let g = `<line x1="${P}" x2="${Wd - P}" y1="20" y2="20" stroke="var(--hair)"/>`;
-    if (line != null) g += `<line x1="${x(line)}" x2="${x(line)}" y1="6" y2="${28 + rows.length * 18}" stroke="var(--ink)" stroke-dasharray="3 3"/><text x="${x(line) + 4}" y="10">line</text>`;
+    if (line != null) g += `<line x1="${x(line)}" x2="${x(line)}" y1="6" y2="${28 + rows.length * 18}" ${LINEP}/><text x="${x(line) + 4}" y="10" style="fill:var(--ink)">${lineLab(w.a)}</text>`;
     rows.sort((a, b) => a.v - b.v).forEach((r, j) => { const yy = 40 + j * 18, on = r.i === AT, X = x(r.v);
       g += `<circle cx="${X}" cy="20" r="${on ? 6 : 4}" fill="var(${on ? '--ink' : '--ground'})" stroke="var(--ink)"/><line x1="${X}" x2="${X}" y1="26" y2="${yy - 4}" stroke="var(--hair)"/>
         <text x="${X}" y="${yy}" text-anchor="${X > Wd - 100 ? 'end' : 'start'}" ${on ? 'style="fill:var(--ink)"' : ''}>${word(r.i)} ${f(r.v, dp)}</text>`; });
@@ -72,12 +76,13 @@ if (typeof document !== 'undefined') (async () => {
 
   /* the stations around, each a dot on one axis, the house marked against them */
   function strip(w) {
-    const st = outdoor(w), house = w.at[0] && w.at[0].value;
+    const st = outdoor(w), house = w.at[0] && w.at[0].value, line = w.a.metric === 'pm25' && w.a.line ? w.a.line.value : null;
     if (!st.length) return '';
-    const Wd = 358, P = 16, vs = st.map(s => s.read[metricOf(w)].value).concat(house == null ? [] : [house]);
+    const Wd = 358, P = 16, vs = st.map(s => s.read[metricOf(w)].value).concat(house == null ? [] : [house], line == null ? [] : [line]);
     const lo = Math.min(...vs), hi = Math.max(...vs), pad = (hi - lo || 1) * .06, x = v => P + (Wd - P * 2) * (v - lo + pad) / (hi - lo + pad * 2);
     let g = `<line x1="${P}" x2="${Wd - P}" y1="24" y2="24" stroke="var(--hair)"/><text x="${P}" y="8">${f(lo, 0)}</text><text x="${Wd - P}" y="8" text-anchor="end">${f(hi, 0)}</text>`;
     st.forEach(s => (g += `<circle cx="${x(s.read[metricOf(w)].value)}" cy="24" r="${Math.max(3, 8 - (s.km || 0))}" fill="var(--warm)" opacity=".55"/>`));
+    if (line != null) g += `<line x1="${x(line)}" x2="${x(line)}" y1="12" y2="36" ${LINEP}/><text x="${x(line) + 4}" y="20" style="fill:var(--ink)">${lineLab(w.a)}</text>`;
     if (house != null) g += `<rect x="${x(house) - 1}" y="10" width="2" height="28" fill="var(--ink)"/><text x="${x(house)}" y="52" text-anchor="middle" style="fill:var(--ink)">${word(0)} ${f(house, w.a.dp ?? 1)}</text>`;
     const felt = metricOf(w) !== w.a.metric ? ` The stations read ${SAID[metricOf(w)] || metricOf(w)}; the ${word(0)} is ${SAID[w.a.metric] || w.a.metric}.` : '';
     return `<svg class="g" viewBox="0 0 ${Wd} 56">${g}</svg><p class="m">${st.length} outdoor stations, the nearer ones drawn bigger.${felt}</p>`;
@@ -85,17 +90,19 @@ if (typeof document !== 'undefined') (async () => {
 
   function story() {
     const w = W.find(x => x.k === K), a = w.a, u = a.unit || '', dp = a.dp ?? 1, line = a.line && a.line.value;
+    /* the line in every PM2.5 drawing (Tomas, 14 Oct); another issue's only in the house's own hours, as before */
+    const ref = line != null ? a : null, pm = a.metric === 'pm25' ? ref : null;
     const [room, yard, ring] = ['room', 'yard', 'ring'].map(d => hours(K, d));
     const gap = w.at[0] && w.at[1] ? w.at[1].value - w.at[0].value : null;
     const pairs = room.map((v, i) => (v != null && yard[i] != null ? yard[i] - v : null)).filter(v => v != null);
     const nodes = (N && N.nodes) || [];
     const step = [
-      { h: 'Inside the house', g: chart([{ v: room, c: 'var(--ink)', label: word(0) }], line), m: 'The last 24 hours.' },
+      { h: 'Inside the house', g: chart([{ v: room, c: 'var(--ink)', label: word(0) }], ref), m: 'The last 24 hours.' },
       { h: 'Out on the street', p: gap == null ? '' : `The ${word(1)} reads ${f(Math.abs(gap), dp)} ${u} ${gap > 0 ? 'higher' : 'lower'} than the ${word(0)} now, and read higher in ${pairs.filter(v => v > 0).length} of the last ${pairs.length} hours.`,
-        g: chart([{ v: yard, c: 'var(--warm)', label: word(1) }, { v: room, c: 'var(--ink)', label: word(0) }], null, [room, yard]),
+        g: chart([{ v: yard, c: 'var(--warm)', label: word(1) }, { v: room, c: 'var(--ink)', label: word(0) }], pm, [room, yard]),
         m: pairs.length ? `Red where the ${word(1)} read higher, blue where the ${word(0)} did.` : '' },
-      { h: 'The ring around it', g: strip(w) + chart([{ v: ring, c: 'var(--warm)', dash: 1, label: word(2) }, { v: room, c: 'var(--ink)', label: word(0) }]) },
-      { h: 'The region', g: ladder(w), m: w.at.filter(Boolean).length < 2 ? '' : line != null ? 'Every scale on one line. The dashed mark is the line this house is held to.' : 'Every scale on one line.' },
+      { h: 'The ring around it', g: strip(w) + chart([{ v: ring, c: 'var(--warm)', dash: 1, label: word(2) }, { v: room, c: 'var(--ink)', label: word(0) }], pm) },
+      { h: 'The region', g: ladder(w), m: w.at.filter(Boolean).length < 2 ? '' : line != null ? 'Every scale on one line. The red dash is the line this house is held to.' : 'Every scale on one line.' },
       { h: 'The planet', p: `${nodes.length} node${nodes.length === 1 ? '' : 's'} listed in the programme${N && N.read ? `, the list read ${N.read.slice(0, 10)}` : ''}. Each reads its own house the same way, and none of them sends its rooms here.`,
         g: nodes.length ? '<p>' + nodes.map(x => `<b>${x.name}</b> · ${(x.place || '').split(',')[0]}`).join('<br>') + '</p>' : '', m: 'Not listed? <code>planetai hello</code>' }];
     $('#chs').innerHTML = step.map((t, i) => { const s = w.at[i], e = edge(SCALES[i].res);

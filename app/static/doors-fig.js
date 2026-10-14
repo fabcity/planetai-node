@@ -42,11 +42,11 @@ function dayWeek(o) {
     g.append('path').attr('fill', 'currentColor').attr('opacity', .08)
       .attr('d', d3.area().x((u, h) => x(h + .5)).y0(u => y(Math.max(lo, u[0]))).y1(u => y(Math.min(y.domain()[1], u[1]))).curve(d3.curveStep)(usual));
   }
-  // the line: red, dashed, labelled in ink
+  // the line: red, dashed (.linep), labelled in ink (lineLab: "WHO 15" for the air)
   if (it.line != null) {
-    g.append('line').attr('x1', m.l).attr('x2', m.l + iw).attr('y1', y(it.line)).attr('y2', y(it.line)).attr('stroke', 'var(--signal-worse)').attr('stroke-width', 1.5).attr('stroke-dasharray', '6 4');
-    if (narrow) g.append('text').attr('class', 'lab').attr('x', m.l + 4).attr('y', y(it.line) - 5).text(`line ${fmt(it.line, it.dp)}`);
-    else g.append('text').attr('class', 'lab').attr('x', m.l - 8).attr('y', y(it.line) + 4).attr('text-anchor', 'end').text(`line ${fmt(it.line, it.dp)}`);
+    g.append('line').attr('class', 'linep').attr('x1', m.l).attr('x2', m.l + iw).attr('y1', y(it.line)).attr('y2', y(it.line));
+    if (narrow) g.append('text').attr('class', 'lab').attr('x', m.l + 4).attr('y', y(it.line) - 5).text(lineLab(it));
+    else g.append('text').attr('class', 'lab').attr('x', m.l - 8).attr('y', y(it.line) + 4).attr('text-anchor', 'end').text(lineLab(it));
   }
   // events: a bar from open to clear across the top, its answer a ring. The labels take lanes: each is
   // measured, kept inside the frame's right edge, and a label that would land on one already written
