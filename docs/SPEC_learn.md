@@ -116,7 +116,8 @@ of estimated from a census. It never leaves, and it changes no threshold by itse
 
 1. **What worked.** *Built 14 October 2026.* The `learnings` table, the daily job for §4 on air and heat, a Data door section "What worked
    here" with its cases, and `/learned`. Node #1 starts with 40 acted alerts.
-2. **What is usual.** §5's daily, weekly and monthly kinds, and the asks that do not fit.
+2. **What is usual.** *Built 14 October 2026:* the day's shape, weekdays against weekends, the week against the three
+   before and a trend from 60 days, and the asks that do not fit. The month's shape waits for months of data.
 3. **Digests and asking them.** The `digests` table, the four scales, the `learned` tool for the pane and the bot.
 4. **Who is in the house.** §8's profile.
 5. **Homes like yours.** Comparison with other homes, the strongest effect in the feedback studies, made from

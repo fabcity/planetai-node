@@ -107,4 +107,46 @@ r = c.get("/learned", headers={**ADMIN, "X-Agent": "agent"})
 assert r.status_code == 403 and "AGENT_PREFER" in r.json()["detail"], "an agent that may be online: no, and why"
 assert c.get("/learned", headers=ADMIN).status_code == 200, "the page is not an agent"
 print("route: admin only; an agent only while AGENT_PREFER=private, told why otherwise")
+# ---------------------------------------------------------------- what is usual (step 2)
+from datetime import date  # noqa: E402
+assert learn.theil_sen([1, 2, 3, 100, 5]) == 1.0, "a slope one odd day cannot drag"
+WIB = timezone(timedelta(hours=8))
+start = datetime(2026, 9, 1, tzinfo=WIB)
+hourly = {}
+for d in range(28):
+    for h in range(24):
+        b = start + timedelta(days=d, hours=h)
+        hourly[b] = (20.0 if h == 7 else 5.0 if h == 0 else 10.0) + (3.0 if b.isoweekday() >= 6 else 0) + (8.0 if d >= 21 else 0)
+today = (start + timedelta(days=27)).date()
+u = learn.usual_row("indoor-pm25", hourly, today)
+assert u["status"] == "holding" and u["scope"] == "house" and u["numbers"]["high_hour"] == 7 and u["numbers"]["low_hour"] == 0, u["numbers"]
+assert "highest around 07:00" in u["statement"] and "lowest around 00:00" in u["statement"], "the hours are the house's local ones"
+assert "Weekends run" in u["statement"] and "higher than weekdays" in u["statement"]
+assert "above the three weeks before" in u["statement"], "this week is 8 over a steady three weeks"
+assert "every 30 days" not in u["statement"], "no trend before 60 days"
+assert learn.usual_row("outdoor-pm25", {b: v for b, v in hourly.items() if (today - b.date()).days < 10}, today)["status"] == "too_early"
+assert learn.usual_row("indoor-heat", {}, today) is None, "no sensor of that kind, no row"
+long = {start + timedelta(days=d, hours=12): 10.0 + d * 0.1 for d in range(90)}
+lu = learn.usual_row("outdoor-pm25", long, (start + timedelta(days=89)).date())
+assert lu["scope"] == "place" and lu["numbers"]["trend_per_30_days"] == 3.0, lu["numbers"]
+rows = [{"bucket": b, "sensor_id": sid, "metric": "pm25", "mean": v, "indoor": ind}
+        for b, v in list(hourly.items())[:400] for sid, ind in (("in", True), ("out", False))]
+got = {r["key"]: r for r in learn.learn_usual(lambda sql, *a: [dict(r) for r in rows], today)}
+assert set(got) == {"indoor-pm25", "outdoor-pm25"} and got["outdoor-pm25"]["scope"] == "place", set(got)
+print("usual: the day's highest and lowest hour, weekends, this week against three, a trend after 60 days; inside is house, outside is place")
+
+# ---------------------------------------------------------------- asks that do not fit
+mk = lambda n, hour, acted=False, answered=False: [{"hour": hour, "acted": acted, "dismissed": False, "answered": answered or acted}] * n  # noqa: E731
+assert learn.asks_row("heat/x", mk(4, 13), True) is None, "under five, nothing to say"
+night = learn.asks_row("heat/x", mk(8, 23) + mk(2, 13, acted=True), True)
+assert night["numbers"]["unanswered_at_night"] == 8 and "between 22:00 and 06:00" in night["statement"], night["statement"]
+assert "Quiet hours do not hold an act-level alert" in night["statement"], "says why quiet hours would not help"
+often = learn.asks_row("heat/y", mk(170, 13) + mk(2, 9, acted=True), True)
+assert "about 6 times a day" in often["statement"] and "around 13:00" in often["statement"], often["statement"]
+fine = learn.asks_row("air/z", mk(6, 13, acted=True) + mk(1, 2), True)
+assert fine["numbers"]["suggest"] is None and "change to its rule" not in fine["statement"], "mostly answered: no suggestion"
+assert learn.asks_row("air/old", mk(6, 13), False)["status"] == "gone"
+SRC2 = open("app/learn.py").read()
+assert "UPDATE" not in SRC2 and "INSERT" not in SRC2 and "settings.set" not in SRC2, "learning changes no rule and no setting"
+print("asks: a count, the hours, and what would change it, said and never done; nothing under five")
 print("learned: every check passed")

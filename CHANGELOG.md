@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **What is usual here, and the alerts that may not fit (SPEC_learn step 2).** The daily check also writes, from
+  the house's own sensors and up to a year of hourly means, one row per group (PM2.5 inside, the feels-like
+  temperature inside, PM2.5 outside): the hour it is usually highest and lowest, weekends against weekdays, this
+  week against the three before, and from 60 days a trend. Outside is marked as being about the place, inside as
+  the house's. And one row per act-level alert raised five or more times in 30 days: how often it was acted on,
+  dismissed or left unanswered, when, and, where seven in ten go unanswered, what would change it (a night line, a
+  longer pause between repeats, a higher line). The node says it and changes nothing. Data › **What is usual**
+  draws the day as a 24-hour strip. Node #1's first read: inside air worst around 07:00, outside around 18:00, and
+  the heat alert ringing about six times a day with 2 of 171 acted on.
+
 - **What worked here (SPEC_learn step 1).** Once a day the node takes every act-level alert on one sensor that someone
   acted on, and every one nobody answered, and compares the metric the rule watches (PM2.5, or the feels-like
   temperature for heat) in the hour before with a window after (1–2 h for air, 3–6 h for heat), on that sensor and on
