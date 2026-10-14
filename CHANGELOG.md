@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **The diary, and asking it (SPEC_learn step 3).** Once a day the node writes an entry for every completed day,
+  week, month and year it has not written yet, back to its first reading, in its own time zone: each group's mean
+  and highest hour (air inside and outside, the feels-like temperature inside), the alerts and how many were acted
+  on, what was done in the household's own words (each once, with a count), and the change since the entry before.
+  A new `digests` table (schema 0.58, full-text indexed, revoked from pack SQL, never exported or deleted).
+  `GET /learned/search` searches it and the learnings by any of the words; the `learned` tool takes `query` and
+  `scale`, so the ask pane and the bot can answer "was this October smokier than September?" from the node's own
+  sentences, still only while `AGENT_PREFER=private`. Telegram's `/learned smoke` searches with no model. Data ›
+  **Diary** lists the entries and searches them. Node #1 begins with 42 days, 6 weeks and September.
+
 - **What is usual here, and the alerts that may not fit (SPEC_learn step 2).** The daily check also writes, from
   the house's own sensors and up to a year of hourly means, one row per group (PM2.5 inside, the feels-like
   temperature inside, PM2.5 outside): the hour it is usually highest and lowest, weekends against weekdays, this

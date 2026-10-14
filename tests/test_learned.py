@@ -149,4 +149,48 @@ assert learn.asks_row("air/old", mk(6, 13), False)["status"] == "gone"
 SRC2 = open("app/learn.py").read()
 assert "UPDATE" not in SRC2 and "INSERT" not in SRC2 and "settings.set" not in SRC2, "learning changes no rule and no setting"
 print("asks: a count, the hours, and what would change it, said and never done; nothing under five")
+# ---------------------------------------------------------------- digests and search (step 3)
+from datetime import date  # noqa: E402,F811
+m = re.search(r"CREATE TABLE IF NOT EXISTS digests \((.*?)\n\);", SQL, re.S)
+assert m and "PRIMARY KEY (scale, period_start)" in m.group(1) and "to_tsvector('simple'" in m.group(1)
+assert "REVOKE ALL ON digests FROM planetai_ro" in SQL and "DELETE FROM digests" not in SRC
+for road in ("def export", "def push_aggregates", "def aggregates"):
+    body = SRC[SRC.index(road):SRC.index("\n\n\n", SRC.index(road))]
+    assert "digests" not in body, f"{road} must never name the digests"
+ps = learn.periods(date(2026, 9, 29), date(2026, 10, 14))
+by = {k: [p[1] for p in ps if p[0] == k] for k in learn.SCALES}
+assert len(by["day"]) == 15 and by["day"][-1] == date(2026, 10, 13), "every completed day, never today"
+assert by["week"] == [date(2026, 9, 28), date(2026, 10, 5)], "Monday to Sunday, only finished weeks"
+assert by["month"] == [date(2026, 9, 1)] and by["year"] == [], "September is done, October is not"
+assert learn.label("day", date(2026, 10, 13)) == "Tuesday 13 October 2026" and learn.label("week", date(2026, 10, 5)) == "Week of 5 October 2026"
+B = lambda d, h: datetime(2026, 10, d, h, tzinfo=WIB)  # noqa: E731
+G = {"indoor-pm25": {B(13, 7): 30.0, B(13, 8): 10.0}, "outdoor-pm25": {B(13, 6): 40.0, B(12, 6): 99.0}}
+dg = learn.digest("day", date(2026, 10, 13), date(2026, 10, 14), G,
+                  [{"rule_id": "heat/heat_stress_now", "acted": True}, {"rule_id": "heat/heat_stress_now", "acted": False}],
+                  [{"note": "closed the windows"}, {"note": "closed the windows"}, {"note": "purifier on"}],
+                  {"indoor-pm25": {"mean": 15.0}, "outdoor-pm25": {"mean": 40.0}})
+t = dg["text"]
+assert t.startswith("Tuesday 13 October 2026. PM2.5 inside averaged 20.0 µg/m³, highest 30.0 µg/m³ (07:00)"), t
+assert "PM2.5 outside averaged 40.0" in t and "99" not in t, "only the period's own hours"
+assert "2 alerts (heat_stress_now 2), 1 acted on." in t
+assert "\u201cclosed the windows\u201d \u00d72; \u201cpurifier on\u201d" in t, "each note once, with how many times"
+assert "Against the day before: PM2.5 inside +5.0." in t, "a change under 0.1 is not said"
+assert "feels-like" not in t, "a group with no readings is not invented"
+empty = learn.digest("week", date(2026, 9, 28), date(2026, 10, 5), {}, [], [], None)
+assert empty["text"] == "Week of 28 September 2026. No readings from this house's own sensors."
+assert learn.search_terms("was this October smokier?") == "was | this | october | smokier"
+assert learn.search_terms("a & b | c:* !! ') ;") == "", "nothing of tsquery's own syntax gets through"
+assert learn.search_terms("asap ok") == "asap", "words of three letters or more"
+LOG = []
+main.q = lambda sql, *a: (LOG.append((sql, a)), [])[1]
+settings._cache["rows"]["AGENT_PREFER"] = "private"
+assert c.get("/learned/search?q=smoke", headers=ADMIN).status_code == 200
+assert "to_tsquery('simple', %s)" in LOG[-1][0] and LOG[-1][1][0] == "smoke", "the words go as a parameter"
+c.get("/learned/search?scale=month", headers=ADMIN)
+assert "ORDER BY period_start DESC" in LOG[-1][0] and "to_tsquery" not in LOG[-1][0], "no words: the newest entries"
+assert c.get("/learned/search?scale=decade", headers=ADMIN).status_code == 422
+assert c.get("/learned/search?q=x").status_code in (401, 403)
+settings._cache["rows"]["AGENT_PREFER"] = "fallback"
+assert c.get("/learned/search?q=smoke", headers={**ADMIN, "X-Agent": "agent"}).status_code == 403
+print("digests: completed days, weeks, months and years only; the period's own hours; notes once with a count; search by words as a parameter, guarded")
 print("learned: every check passed")

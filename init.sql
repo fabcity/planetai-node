@@ -406,3 +406,20 @@ CREATE TABLE IF NOT EXISTS learnings (
 );
 REVOKE ALL ON learnings FROM planetai_ro;
 INSERT INTO schema_version (version) VALUES ('0.57') ON CONFLICT DO NOTHING;
+
+-- 0.58: the digests (docs/SPEC_learn.md §6): one per completed day, week, month and year, written by the node from
+-- its numbers, with the household's own words for what was done. Full-text searched by GET /learned/search; kept as
+-- learnings are: revoked from pack SQL, in no export, push or report, never deleted.
+CREATE TABLE IF NOT EXISTS digests (
+  scale        TEXT NOT NULL CHECK (scale IN ('day','week','month','year')),
+  period_start DATE NOT NULL,
+  label        TEXT NOT NULL,
+  text         TEXT NOT NULL,
+  numbers      JSONB NOT NULL DEFAULT '{}'::jsonb,
+  written_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  tsv          TSVECTOR GENERATED ALWAYS AS (to_tsvector('simple', label || ' ' || text)) STORED,
+  PRIMARY KEY (scale, period_start)
+);
+CREATE INDEX IF NOT EXISTS digests_tsv ON digests USING gin (tsv);
+REVOKE ALL ON digests FROM planetai_ro;
+INSERT INTO schema_version (version) VALUES ('0.58') ON CONFLICT DO NOTHING;
