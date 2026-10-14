@@ -100,3 +100,17 @@ The wall only shows the alert. The answer is given on Telegram, over the radio o
 them write the same row in `actions`: see [Channels](channels.md) and [the dashboard](dashboard.md). What the
 ρ row counts is [ρ](rho.md). The Wall of the five doors, at `/#wall`, is another screen: a living map
 and the node thinking aloud, on [the dashboard](dashboard.md#the-five-doors).
+
+## What the doors' Wall says aloud
+
+The doors' Wall asks `POST /ask` with `prompt: wall` every ten minutes, and the node tells its model only public
+facts, each a short labelled line with its unit and where it comes from (`live`, `model` or `satellite`): the time
+of day; each watched issue's day sentence ("The air is clean now, after a dusty morning", and how many hours were
+over the line today), its values inside the home, on the street, in the neighbourhood and in the wider area, its
+line (the WHO guideline, 15 µg/m³, for the air) and its trend; every issue's readouts, such as the land's built
+and tree share seen by satellite and the sea's swell; how many public stations nearby read fine dust and how many
+of them are over the WHO line; what is usual for the place (the outdoor sensors' learnings, never the house's); the
+next six hours of forecast; and every section a pack declares with `wall: true`. It never carries what the house
+learned, its diary, its things, a room, a sensor's or a person's name, an alert's words or a position. Each
+narration starts from an angle those facts can carry (the day so far, the stations around, what is usual here, the
+next hours, the land and the sea, fires around, the ground's heat), and an angle with no facts is skipped.
