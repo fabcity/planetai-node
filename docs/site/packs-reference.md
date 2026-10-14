@@ -137,7 +137,7 @@ and a temperate node must move them.
 
 | rule | level | cooldown | fires when | languages |
 |---|---|---|---|---|
-| `heat_stress_now` | act | 240 | a local indoor sensor's 15-minute temperature and humidity give an apparent temperature of 35 °C or more | en, es, id |
+| `heat_stress_now` | act | 1440 | a local indoor sensor's 15-minute temperature and humidity give an apparent temperature of 35 °C or more | en, es, id |
 | `heat_danger` | act | 120 | the same, at 40 °C or more | en, es, id |
 | `night_no_relief` | info | 1440 | over the last 12 hours, in the local hours outside 07–21, a local indoor sensor's hourly minimum never fell to 28 °C, with at least 5 buckets | en, es, id |
 

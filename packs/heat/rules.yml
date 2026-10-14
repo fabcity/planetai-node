@@ -5,7 +5,9 @@
 
 - id: heat_stress_now
   level: act
-  cooldown_minutes: 240
+  # Once a room a day. In October 2026 the hot room on node #1 felt 35 °C or more in 44% of hours, so at 240 the same
+  # true sentence came back every four hours (171 in 30 days). heat_danger, at 40, keeps its own two hours. See README.
+  cooldown_minutes: 1440
   # The metric is computed inline from temp and humidity, so the SQL never says its name; the watch
   # comment below is where `check_rules` finds it. The line — 35 — is this place's own (see below).
   watch: {metric: apparent, over: 35}
