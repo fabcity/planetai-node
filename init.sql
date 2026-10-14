@@ -442,3 +442,24 @@ ALTER TABLE learnings ADD COLUMN IF NOT EXISTS status_since DATE;
 UPDATE learnings SET status_since = first_seen::date WHERE status_since IS NULL;
 ALTER TABLE reports ADD COLUMN IF NOT EXISTS memory BOOLEAN NOT NULL DEFAULT false;
 INSERT INTO schema_version (version) VALUES ('0.60') ON CONFLICT DO NOTHING;
+
+-- 0.61: rooms in the household's words (Tomas, 14 Oct 2026: node #1's K, L and S are Kids, Living Room and Studio). A
+-- kit's platform names its sensors ("K ROOM - BAYU HOLES") and every poll writes that name back. A room the household
+-- set (PATCH /sensors/{id}) becomes the name whatever writes the row, core or a pack, so the rules, the stats, the
+-- report, the event messages and the pages all say the room; the platform's own name is kept in `source_name`.
+ALTER TABLE sensors ADD COLUMN IF NOT EXISTS room TEXT;
+ALTER TABLE sensors ADD COLUMN IF NOT EXISTS source_name TEXT;
+CREATE OR REPLACE FUNCTION sensors_room_is_the_name() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF coalesce(NEW.room, '') <> '' THEN
+    -- the incoming name is the platform's unless it is the room this row already had (a rename, not a poll)
+    IF NEW.name IS DISTINCT FROM NEW.room AND (TG_OP = 'INSERT' OR NEW.name IS DISTINCT FROM OLD.room) THEN
+      NEW.source_name := NEW.name;
+    END IF;
+    NEW.name := NEW.room;
+  END IF;
+  RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS sensors_room ON sensors;
+CREATE TRIGGER sensors_room BEFORE INSERT OR UPDATE ON sensors FOR EACH ROW EXECUTE FUNCTION sensors_room_is_the_name();
+INSERT INTO schema_version (version) VALUES ('0.61') ON CONFLICT DO NOTHING;

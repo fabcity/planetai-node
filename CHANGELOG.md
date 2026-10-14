@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Rooms in the household's words.** Set up › Rooms names the room each of the home's sensors is in, and the node
+  makes that the sensor's name in the database (schema 0.61, a trigger on `sensors`), whatever a poll or a pack writes
+  after. Every alert, the report, the stats and the pages then say "Kids", not "K ROOM - BAYU HOLES" (Tomas, 14 Oct:
+  node #1's K, L and S are Kids, Living Room and Studio). The platform's name is kept in `source_name`; the Wall never
+  shows a room; a reader without a token never sees which room is which. `PATCH /sensors/{sid}`, admin.
+
 - **Thirteen fixes from the design review of node #1 (14 Oct).** (1) Times are the node's own: the doors and the phone
   page sliced UTC strings as if they were local, so node #1 read "as of 11:52" beside "at 19:00" in Bali; every time
   is now read in `/health`'s zone. (2) The mono the frozen theme asks for at `/static/fonts/jetbrains-mono-latin.woff2`

@@ -140,7 +140,7 @@ These are the routes a screen, a script or a spreadsheet builds against to read 
 ### GET /sensors
 Access: open
 
-Every sensor this node reads, its position, and where its numbers come from. One row per sensor with `sensor_id`, `source`, `name`, `lat`, `lon`, `indoor`, `local`, `custody`, `kind`, `scale`, `cadence`, `meta`, ordered by custody, then local, then name. The columns are named rather than `SELECT *`, so a column added to the table stays private until someone lists it here.
+Every sensor this node reads, its position, and where its numbers come from. One row per sensor with `sensor_id`, `source`, `name` (the room the household named, when it named one), `room` and `source_name` (the platform's own name; both only for this machine or a token), `lat`, `lon`, `indoor`, `local`, `custody`, `kind`, `scale`, `cadence`, `meta`, ordered by custody, then local, then name. The columns are named rather than `SELECT *`, so a column added to the table stays private until someone lists it here.
 
 For a caller that is neither loopback nor carrying a token, `lat` and `lon` are the centre of the resolution-8 cell for the household's own sensors (`custody`) and rounded to 3 decimals for every other row, and `meta` is cut to the provenance keys `licence`, `attribution`, `model`, `dataset`, `network`, `note`, `corrected` (null if none remain). That drops a unit's `host`, `firmware`, `mesh_node`, `gateway`, `channel`, `root_topic` and `topic`. A row with `kind = 'facility'` (a fab lab the `make` pack stored) keeps ten more keys, because they describe somebody else's published building and not this household: `slug`, `capabilities`, `kind_name`, `city`, `country_code`, `distance_km`, `url`, `registry_slug`, `snapshot`, `fetched`. A trusted caller gets the full rows.
 
@@ -599,6 +599,11 @@ What this home keeps (SPEC_inventory): `{things: [{id, added_at, class, name, co
 Access: admin
 
 Add a thing (`class` and `name` required; `count` 1 by default, `used` `monthly`, `condition` `works`, `offer` `no`), change any of its fields, or delete it. Unknown fields are ignored; a bad value is a 422 naming the accepted ones; an unknown id is a 404. Every change rewrites three counts for each class it touched as readings on the `things:<node>` survey sensor: `stock.<class>`, `idle.<class>` and `repair.<class>`. They are declared `private`, so the page, rules and cells read them and nothing sends them: not the export, a parent, the report bundle or any agent. The table itself is not readable by pack SQL and is only in the household's own backup.
+
+### PATCH /sensors/{sid}
+Access: admin
+
+Name the room one of this home's sensors is in: `{"room": "Kids"}`, at most 40 characters; `null` or `""` gives the platform's own name back. The database makes the room the sensor's `name` whatever writes the row (a poll, a pack or core; init.sql 0.61), so every rule, the stats, the report, the event messages and the pages say it, and keeps the platform's name in `source_name`. Returns `{ok, sensor: {sensor_id, name, room, source_name}}`; 404 for an unknown sensor, 422 when `room` is not text.
 
 ### PATCH /things/{tid}
 Access: admin
