@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **The Wall reads from three metres (design review, 14 Oct).** Nothing on the doors' Wall is under 28 px at
+  1920×1080, scaled with the screen; what did not survive that floor was cut: the kicker's reason (it named who
+  answered), the "why" paragraph, the fragments row, the counts box ("alerts out 0 / 7"), the foot, the scale bar,
+  the countdown and the model's name. The map's caption says its red discs in words against the house ("This house is
+  under the clean-air line now; 3 stations nearby, in red, are over it"); what the node suggests is one line that ends
+  on a word, never "If somethin…"; ρ is said ("This house answered 23 of 274 alerts in 30 days") before larger rings.
+  The narration box is not drawn until a text arrives and keeps the last one while the next is written. The back
+  button, chips, hour strip and model note show only under a pointer or the keyboard. `tests/test_doors.py` holds the
+  floor, the hidden chrome and the collapsed box.
 - **A refusing source is not the household's to-do.** The report's one thing to do skipped past what someone here
   can act on to print a source's raw error, cut mid-URL (node #1, 14 Oct: Open-Meteo's daily limit). Source errors are
   left to Node's Running section.
