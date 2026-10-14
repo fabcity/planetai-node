@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Learnings on an events node count what was sent.** On `ALERT_ENGINE=events` the heat and air-quality rules still
+  write alert rows that are never sent, and "what worked" and "alerts that may not fit" were counting them: node #1's
+  page said the heat alert "rings about 6 times a day" when 4 heat messages had gone out since 5 October. Rows of a
+  replaced pack after the engine's first message are now left out; such a rule says it no longer sends here; and the
+  engine's sent episodes are learned from as `air-quality/events` and `heat/events`. Heat's "left unanswered" on node
+  #1 drops from 198 to 145, the ones that were sent.
+
 - **Who is in the house, in the alert.** An act-level heat or air alert that weighs on someone ticked in Data › What
   worked now ends, in the household's Telegram, with one line: "👤 This matters more here: you said there is a child
   under five." (Indonesian and Spanish too, in `ALERT_LOCALE`). People ignore alerts mostly because they do not feel

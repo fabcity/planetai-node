@@ -100,7 +100,34 @@ def summarise(rule: str, metric: str, acted: list[dict], unanswered: list[dict],
                         "cases": {"acted": acted[-30:], "unanswered": unanswered[-30:]}}}
 
 
-def learn_worked(q, rules: list[dict], live: set, was: dict) -> list[dict]:
+# ON A NODE WHOSE EVENT ENGINE SPEAKS (ALERT_ENGINE=events), the packs it replaced still write `alerts` rows that are
+# never sent. Counting those as "left unanswered" counted alerts nobody received (node #1, 14 Oct: 58 silent heat rows
+# against 4 heat messages since the switch). So a row of a replaced pack after the switch is silent and left out, and
+# the engine's own episodes that were sent stand in for them, under `<pack>/events`.
+ISSUE_PACK = {"air": "air-quality", "heat": "heat"}
+
+
+def silent(rule_id: str, ts, replaced: set, since) -> bool:
+    return bool(since) and rule_id.split("/")[0] in replaced and _aware(ts) >= _aware(since)
+
+
+def sent_events(q, days: int | None = None) -> list[dict]:
+    """The event engine's episodes that reached someone (an open or an escalation sent in events mode)."""
+    return q("""SELECT e.id, e.issue, e.opened_at, e.rooms, CAST(extract(hour FROM e.opened_at) AS INTEGER) AS hour,
+                       (SELECT min(x.ts) FROM actions x WHERE x.event_id = e.id AND x.stage = 'acted') AS acted_at,
+                       EXISTS (SELECT 1 FROM actions x WHERE x.event_id = e.id AND x.stage = 'acted') AS acted,
+                       EXISTS (SELECT 1 FROM actions x WHERE x.event_id = e.id AND x.stage = 'dismissed') AS dismissed,
+                       EXISTS (SELECT 1 FROM actions x WHERE x.event_id = e.id) AS answered,
+                       (SELECT string_agg(x.note, ' · ') FROM actions x
+                         WHERE x.event_id = e.id AND x.stage = 'acted' AND coalesce(x.note, '') <> '') AS note
+                FROM alert_events e
+                WHERE EXISTS (SELECT 1 FROM event_messages m WHERE m.event_id = e.id AND m.sent AND m.mode = 'events'
+                                AND m.reason IN ('open', 'escalate'))
+                  AND (%s::int IS NULL OR e.opened_at > now() - make_interval(days => %s::int))
+                ORDER BY e.opened_at""", days, days)
+
+
+def learn_worked(q, rules: list[dict], live: set, was: dict, replaced: set = frozenset(), since=None) -> list[dict]:
     """Every rule's row, for each rule with at least one case. `q` reads the database (main.q), `rules` are
     packs.load_rules(), `live` the rules that can still fire, `was` the previous rows by key (for `weakening`). A rule
     no longer loaded still gets its row, marked `gone`, from its alerts: retiring a rule does not unlearn it."""
@@ -113,6 +140,18 @@ def learn_worked(q, rules: list[dict], live: set, was: dict) -> list[dict]:
                   FROM alerts l
                   WHERE l.level = 'act' AND l.sensor_id IS NOT NULL
                   ORDER BY l.ts""")
+    alerts = [a for a in alerts if not silent(a["rule_id"], a["ts"], replaced, since)]
+    events = sent_events(q) if since else []
+    names = {r["name"]: r["sensor_id"] for r in q("SELECT sensor_id, name FROM sensors WHERE name IS NOT NULL")} if events else {}
+    for e in events:   # an episode is a case on its first room's sensor, like an alert on its sensor
+        sid = next((names[r] for r in (e["rooms"] or []) if r in names), None)
+        if sid and e["issue"] in ISSUE_PACK:
+            alerts.append({"id": None, "ts": e["opened_at"], "rule_id": f"{ISSUE_PACK[e['issue']]}/events", "sensor_id": sid,
+                           "acted_at": e["acted_at"], "answered": e["answered"], "note": e["note"]})
+            watch.setdefault(f"{ISSUE_PACK[e['issue']]}/events", PACK_METRIC[ISSUE_PACK[e["issue"]]])
+            live = live | {f"{ISSUE_PACK[e['issue']]}/events"}
+    if not alerts:
+        return []
     want = {}
     for rid in dict.fromkeys(a["rule_id"] for a in alerts):
         metric = watch.get(rid) or PACK_METRIC.get(rid.split("/")[0] if "/" in rid else "")
@@ -120,11 +159,11 @@ def learn_worked(q, rules: list[dict], live: set, was: dict) -> list[dict]:
             want[rid] = metric
     if not want:
         return []
-    since = min(_aware(a["ts"]) for a in alerts) - timedelta(hours=2)
+    start = min(_aware(a["ts"]) for a in alerts) - timedelta(hours=2)
     rows = q("""SELECT date_trunc('hour', r.ts) AS bucket, r.sensor_id, r.metric, avg(r.value) AS mean, bool_or(s.indoor) AS indoor
                 FROM readings r JOIN sensors s USING (sensor_id)
                 WHERE s.kind = 'sensor' AND r.metric IN ('pm25', 'temp', 'humidity') AND r.ts >= %s AND r.ts <= now()
-                GROUP BY 1, 2, 3""", since)
+                GROUP BY 1, 2, 3""", start)
     for r in rows:
         r["bucket"] = _aware(r["bucket"])
     s = series(rows)
@@ -288,17 +327,36 @@ def asks_row(rule: str, alerts: list[dict], live: bool) -> dict | None:
             "numbers": {**nums, "suggest": suggest}}
 
 
-def learn_asks(q, live: set) -> list[dict]:
+def learn_asks(q, live: set, replaced: set = frozenset(), since=None) -> list[dict]:
     rows = q("""SELECT l.rule_id, CAST(extract(hour FROM l.ts) AS INTEGER) AS hour,
                        EXISTS (SELECT 1 FROM actions x WHERE x.alert_id = l.id AND x.stage = 'acted') AS acted,
                        EXISTS (SELECT 1 FROM actions x WHERE (x.alert_id = l.id OR (l.event_id IS NOT NULL AND x.event_id = l.event_id))
                                  AND x.stage = 'dismissed') AS dismissed,
                        EXISTS (SELECT 1 FROM actions x WHERE x.alert_id = l.id OR (l.event_id IS NOT NULL AND x.event_id = l.event_id)) AS answered
+                       , l.ts
                 FROM alerts l WHERE l.level = 'act' AND l.ts > now() - make_interval(days => %s)""", ASKS_DAYS)
     by: dict = {}
+    hushed = set()
     for r in rows:
+        if silent(r["rule_id"], r["ts"], replaced, since):
+            hushed.add(r["rule_id"])
+            continue
         by.setdefault(r["rule_id"], []).append(r)
-    return [x for x in (asks_row(k, v, k in live) for k, v in by.items()) if x]
+    out = [x for x in (asks_row(k, v, k in live) for k, v in by.items() if k not in hushed) if x]
+    day = _aware(since).date().isoformat() if since else ""
+    for k in sorted(hushed):   # its old row said how often it rang; it no longer rings here
+        out.append({"kind": "asks", "key": k, "issue": k.split("/")[0], "metric": None, "n": 0, "scope": "house",
+                    "status": "gone", "numbers": {"replaced_since": day},
+                    "statement": f"This alert no longer sends here: since {day} the event engine speaks for this issue, "
+                                 f"once per episode (see {k.split('/')[0]}/events). It still records, silently."})
+    ev = sent_events(q, ASKS_DAYS) if since else []
+    for issue, pack in ISSUE_PACK.items():
+        mine = [{"hour": e["hour"], "acted": e["acted"], "dismissed": e["dismissed"], "answered": e["answered"]}
+                for e in ev if e["issue"] == issue]
+        r = asks_row(f"{pack}/events", mine, True)
+        if r:
+            out.append(r)
+    return out
 
 
 

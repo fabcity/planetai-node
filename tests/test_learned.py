@@ -86,6 +86,37 @@ assert gone["status"] == "gone" and gone["numbers"]["acted"]["n"] == 1 and gone[
     "a retired rule keeps what it taught, by its pack's metric"
 print("ledger: acted and unanswered from the alerts, an unfinished window waits, notes kept, a retired rule kept as gone")
 
+# ---------------------------------------------------------------- an events node: silent rows are not alerts anyone got
+SINCE = now - timedelta(hours=12)
+assert learn.silent("heat/heat_stress_now", now, {"heat"}, SINCE) and not learn.silent("heat/heat_stress_now", now - timedelta(days=9), {"heat"}, SINCE)
+assert not learn.silent("nearby/only_here", now, {"heat"}, SINCE) and not learn.silent("heat/x", now, {"heat"}, None)
+EVENTS = [{"id": i, "issue": "air", "opened_at": t + timedelta(minutes=i), "rooms": ["Kitchen"], "hour": 13, "acted_at": None,
+           "acted": False, "dismissed": False, "answered": False, "note": None} for i in range(6)]
+EVENTS[0].update(acted_at=t, acted=True, answered=True, note="closed the door")
+ARows = [{"rule_id": "air-quality/indoor_pm25_high", "hour": 13, "acted": False, "dismissed": False, "answered": False, "ts": now - timedelta(hours=k)} for k in range(9)] \
+      + [{"rule_id": "nearby/only_here", "hour": 8, "acted": False, "dismissed": False, "answered": False, "ts": now - timedelta(hours=k)} for k in range(6)]
+def qe(sql, *a):
+    if "FROM alert_events" in sql:
+        return [dict(e) for e in EVENTS]
+    if "FROM sensors WHERE name" in sql:
+        return [{"sensor_id": "in", "name": "Kitchen"}]
+    if "FROM alerts" in sql and "hour FROM l.ts" in sql:
+        return ARows
+    if "FROM alerts" in sql:
+        return [a for a in ALERTS if a["rule_id"] == "air-quality/indoor_pm25_high"] + \
+               [{**ALERTS[1], "id": 9, "ts": now - timedelta(hours=3), "acted_at": None, "answered": False}]
+    return [dict(r) for r in READ]
+ak = {r["key"]: r for r in learn.learn_asks(qe, {"air-quality/indoor_pm25_high", "nearby/only_here"}, {"air-quality"}, SINCE)}
+assert ak["air-quality/indoor_pm25_high"]["status"] == "gone" and "no longer sends here" in ak["air-quality/indoor_pm25_high"]["statement"], \
+    "a replaced rule says it no longer rings, not how often it rang"
+assert ak["nearby/only_here"]["n"] == 6, "a pack the engine does not replace is counted as before"
+assert ak["air-quality/events"]["n"] == 6 and ak["air-quality/events"]["numbers"]["acted"] == 1, "the engine's sent episodes are the alerts here"
+wk = {r["key"]: r for r in learn.learn_worked(qe, rules, {"air-quality/indoor_pm25_high"}, {}, {"air-quality"}, SINCE)}
+assert wk["air-quality/indoor_pm25_high"]["numbers"]["unanswered"]["n"] == 1, "the silent row after the switch is not an unanswered alert"
+ev = wk["air-quality/events"]["numbers"]
+assert ev["acted"]["n"] == 1 and ev["cases"]["acted"][0]["note"] == "closed the door", "an episode is a case on its room's sensor"
+print("events node: silent rows left out, a replaced rule says so, the engine's sent episodes counted in both learnings")
+
 # ---------------------------------------------------------------- the route
 logging.disable(logging.WARNING)
 os.environ.update(ADMIN_TOKEN="admin-tok", ACT_TOKEN="act-tok", NODE_LAT="-8.6478291", NODE_LON="115.1385412",
