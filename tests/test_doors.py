@@ -393,8 +393,7 @@ print("doors: Place's Index and land-change rows say what the node holds and whe
 # 11. A locked part points to where a screen is unlocked, Set up › This screen, never "under Node".
 assert "under Node" not in js and "UNLOCK_AT" in _dj, "unlocking lives in Set up › This screen (#setup/screen)"
 # 13. Without the token the ledger draws stages and times only (/issues gives no names; test_events_wire holds that).
-_led = _dj[_dj.index("function ledgerBlock"):]
-assert "if (!DOORS_TOKEN())" in _led and "a.actor" not in _led[:_led.index("return;")], "a locked ledger names nobody"
+# (a locked ledger naming nobody is checked by rendering it, with the Data tabs below)
 # 9, 10. The household form is not the head's 20 px bold .who; a cell after a number has its gap on the left.
 assert 'class="who"' not in _dj and ".who{" in html, "the household form took the page's .who rule"
 assert ".tbl th.n+th:not(.n),.tbl td.n+td:not(.n){padding-left:" in html
@@ -484,7 +483,7 @@ assert 'data-f="who"' in on["who"] and "a child under five" in on["who"], "the h
 assert "admin token" in off["node"] and "#setup/screen" in off["node"] and "<table" not in off["node"] and "Sunday" not in off["node"]
 print("doors: Node › What it remembers holds the diary and what worked as tables, the text in a dialog; locked, it only says where to unlock")
 _dh = html[html.index('data-view="data"'):html.index("<!-- WALL -->")]
-assert not re.search(r"d-learned|d-usual|d-diary", _dj + _dh) and "learnedBlock" not in _dj and 'href="#node/remember"' in _dh, \
+assert not re.search(r'id="d-(learned|usual|diary)"', _dh) and "learnedBlock" not in _dj and 'href="#node/remember"' in _dh, \
     "Data no longer holds the diary, what is usual or what worked; it points to Node"
 _wall = (STATIC / "doors-wall.js").read_text() + (STATIC / "doors-wallmap.js").read_text()
 assert "/learned" not in _wall and "/household" not in _wall, "the Wall never reads the house's learnings"
@@ -560,4 +559,107 @@ for _v in set(_learn.VERDICT_WORDS) - {"gone"}:
     assert re.search(rf"const VERDICT = {{[^}}]*\b{_v}:", _nowjs), f"Now has no words for the verdict {_v}"
 for _v in _learn.VERDICT_WORDS:
     assert re.search(rf"const VERDICT_W = {{[^}}]*\b{_v}:", _nodejs), f"Node has no words for the verdict {_v}"
+# Data as tabs (phase 4b, 15 Oct 2026): #data/<tab> draws one tab's sections and hides the rest; every anchor Data had
+# still lands (its tab and element, or Node for what moved); the ledger collapses repeats, says who in words and keeps a
+# stage filter, and without a token draws the time and the stage only. Rendered here in node on node #1's capture.
+dprog = r"""
+const fs = require('fs'), vm = require('vm');
+const L = require('./app/static/doors-load.js'), d3 = require('./app/static/d3.min.js');
+const F = JSON.parse(fs.readFileSync(process.argv[1], 'utf8'));
+const core = fs.readFileSync('./app/static/doors-core.js', 'utf8'), pick = n => core.match(new RegExp('^(?:const|function) ' + n + '\\b.*$', 'm'))[0];
+const els = {}, mk = id => ({ id, innerHTML: '', hidden: false, classList: { add() {}, remove() {}, toggle() {} }, querySelectorAll: () => [], querySelector: () => null, scrollIntoView() {} });
+const ctx = { D: L.buildD({ ...F, days: F.issues_days }, 'en'), d3, doorsLocal: L.doorsLocal, VIEWS: {}, setTimeout: f => f(), CSS: { escape: x => x },
+  $: q => (els[q.slice(1)] ||= mk(q.slice(1))), document: { getElementById: id => (els[id] ||= mk(id)), querySelector: () => null, querySelectorAll: () => [] },
+  location: { hash: '', replace(h) { this.replaced = h; } }, tok: '', out: {} };
+ctx.DOORS_TOKEN = () => ctx.tok;
+vm.createContext(ctx);
+vm.runInContext(['esc', 'WD', 'loc', 'dayOf', 'dLabel', 'wdhm', 'fmt', 'lineLab', 'plain', 'NODE', 'sign', 'PROV', 'prov', 'said', 'num', 'unitOf', 'labelOf',
+  'UNLOCK_AT', 'ISSUES_DRAWN'].map(pick).join('\n') + '\n' + fs.readFileSync('./app/static/doors-data.js', 'utf8')
+  + `\nD.dates = [...new Set(D.buckets.map(dayOf))]; D.now = D.buckets.length - 1; D.sens = Object.fromEntries(D.sensors.map(s => [s.sensor_id, s]));
+   const calls = [], spy = n => { globalThis[n] = () => calls.push(n); };
+   const real = { ledgerBlock, modelsBlock };
+   ['metricTiles', 'sensorsBlock', 'issuesBlock', 'perdayBlock', 'modelsBlock', 'imagesBlock', 'thingsBlock', 'ledgerBlock', 'apiBlock'].forEach(spy);
+   const draw = h => { calls.length = 0; location.hash = h; location.replaced = null; VIEWS.data();
+     return { calls: calls.slice(), shown: Object.values(DTABS).flatMap(t => t[1]).filter(id => !document.getElementById(id).hidden),
+       on: (document.getElementById('dnav').innerHTML.match(/href="(#data\\/\\w+)"[^>]*class="on"/) || [])[1] || null, node: location.replaced }; };
+   out.tabs = Object.fromEntries(Object.keys(DTABS).map(t => [t, draw('#data/' + t)]));
+   const sid = D.sensors.find(s => s.local && s.kind === 'sensor').sensor_id, mid = D.sensors.find(s => s.kind === 'model').sensor_id;
+   out.old = Object.fromEntries(['#data', '#data/d-images', '#data/d-things', '#data/perday', '#data/issues7', '#data/cells', '#data/d-learned', '#data/' + sid, '#data/' + mid]
+     .map(h => [h, draw(h)]));
+   out.route = { sid: dataRoute('#data/' + sid), old: dataRoute('#data/d-things') };
+   real.modelsBlock(); out.models = $('#models').innerHTML;
+   tok = 'x'; real.ledgerBlock(); out.ledger = $('#ledger').innerHTML;
+   LSTAGE = 'decided'; real.ledgerBlock(); out.decided = $('#ledger').innerHTML; LSTAGE = '';
+   tok = ''; real.ledgerBlock(); out.locked = $('#ledger').innerHTML;`, ctx);
+console.log(JSON.stringify(ctx.out));
+"""
+_d = json.loads(subprocess.run(["node", "-e", dprog, FIX], capture_output=True, text=True, check=True).stdout)
+_want = {"readings": (["metricTiles", "sensorsBlock", "issuesBlock", "perdayBlock"], ["d-readings", "issues7", "perday"]),
+         "models": (["modelsBlock"], ["models"]), "home": (["imagesBlock", "thingsBlock"], ["d-images", "d-things"]),
+         "ledger": (["ledgerBlock"], ["ledger", "dnote"]), "api": (["apiBlock"], ["api"])}
+for _t, (_calls, _shown) in _want.items():
+    _g = _d["tabs"][_t]
+    assert _g["calls"] == _calls and _g["shown"] == _shown and _g["on"] == f"#data/{_t}", (_t, _g)
+print("doors: each Data tab draws only its own sections, and the tab bar marks it")
+_o = _d["old"]
+for _h, _t in (("#data", "readings"), ("#data/d-images", "home"), ("#data/d-things", "home"), ("#data/perday", "readings"), ("#data/issues7", "readings")):
+    assert _o[_h]["on"] == f"#data/{_t}" and not _o[_h]["node"], (_h, _o[_h])
+assert _o["#data/cells"]["node"] == "#node/cells" and _o["#data/d-learned"]["node"] == "#node/remember", "what moved lands on Node"
+_sid = [k for k in _o if k not in ("#data", "#data/d-images", "#data/d-things", "#data/perday", "#data/issues7", "#data/cells", "#data/d-learned")]
+assert _o[_sid[0]]["on"] == "#data/readings" and _o[_sid[1]]["on"] == "#data/models", "a station's dot opens its readings; a model's the models"
+assert _d["route"]["old"] == {"tab": "home", "el": "d-things"} and "sensor" in _d["route"]["sid"], _d["route"]
+assert 'id="cells"' in html[html.index("<!-- NODE -->"):] and 'id="cells"' not in _dh and "function cellsBlock" in (STATIC / "doors-node.js").read_text()
+print("doors: every anchor Data had lands on its tab and element; the Index cells and the diary land on Node")
+_m = _d["models"]
+assert _m.count("<table") == 1 and ">yearly" in _m and ">hourly" in _m and "P1Y" not in _m and "PT1H" not in _m, "one table, cadence in words"
+assert "years" not in _m.lower().replace("yearly", "") and "fc_" not in _m and "lead" not in _m, "the node's own counters are not drawn"
+assert ">hPa<" in _m and ">%<" in _m and _m.count('class="grp"') >= 5, "a unit column, a row per source"
+print("doors: the models are one table, a row per source, a unit, hourly not PT1H, no internal counters")
+_l, _k, _x = _d["ledger"], _d["locked"], _d["decided"]
+assert "×" in _l and re.search(r"(Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d{1,2} (Sep|Oct) \d\d:\d\d", _l), "repeats collapse; a day and a time on one line"
+assert ">gui<" not in _l and "local-model/" not in re.sub(r'title="[^"]*"', "", _l) and "a screen of this node" in _l and "its own model, via Telegram" in _l
+assert 'data-st="decided"' in _l and "acted</td>" not in _x and "decided" in _x, "the stage filter keeps one stage"
+assert "<th>who</th>" not in _k and "Tomas" not in _k and "The air" not in _k and "UNLOCK" not in _k and "Set up › This screen" in _k, "a locked ledger names nobody"
+print("doors: the ledger collapses repeats, says who in words, filters by stage; locked, the time and the stage only")
+
+# Set up's consequences step: a change that leaves the machine or runs code asks first, in the setting's own words;
+# a plain change, or turning one off, does not. Read from the node's own describe() and pack list.
+import settings as _settings  # noqa: E402
+import packs as _packs  # noqa: E402
+assert "PACKS_ALLOW_CODE" in _settings.RUNS_CODE and "MAP_TILES" in _settings.OUTWARD
+_desc = _settings.describe(unlocked=True)
+assert all("runs_code" in r for r in _desc["runtime"]), "describe() says which settings run code"
+_pk = [{"id": "a", "kind": "data", "name": "A"}, {"id": "b", "kind": "code", "name": "B", "description": "reads a meter"}]
+cprog = r"""
+const fs = require('fs'), vm = require('vm'), [desc, packs] = JSON.parse(process.argv[1]);
+const src = fs.readFileSync('./app/static/doors-setup.js', 'utf8');
+const ctx = { out: null, VIEWS: {}, document: { addEventListener() {} } }; vm.createContext(ctx);
+vm.runInContext(src.slice(src.indexOf('const sOff'), src.indexOf('function sConfirm')) + `
+  const c = b => sConsequences(b, ${JSON.stringify(desc)}, ${JSON.stringify(packs)}, 'a');
+  out = { share: c({ SHARE_LEVEL: 'open' }), off: c({ SHARE_LEVEL: 'off', MAP_TILES: 'off', PACKS_ALLOW_CODE: '0' }), code: c({ PACKS_ALLOW_CODE: '1' }),
+    plain: c({ COAST_MAX_KM: '5', NODE_ISSUES: 'air' }), tiles: c({ MAP_TILES: 'on' }), pack: c({ PACKS_ENABLED: 'a,b' }), pack2: c({ PACKS_ENABLED: '' }),
+    key: c({ AGENT_ONLINE_KEY: 'sk-x' }) };`, ctx);
+console.log(JSON.stringify(ctx.out));
+"""
+_c = json.loads(subprocess.run(["node", "-e", cprog, json.dumps([_desc, _pk])], capture_output=True, text=True, check=True).stdout)
+_help = {r["key"]: r["help"] for r in _desc["runtime"]}
+assert len(_c["share"]) == 1 and _c["share"][0]["leaves"] and _c["share"][0]["help"] == _help["SHARE_LEVEL"], _c["share"]
+assert _c["tiles"][0]["leaves"] and _c["code"][0]["code"] and not _c["code"][0]["leaves"] and "privileges" in _c["code"][0]["help"]
+assert _c["off"] == [] and _c["plain"] == [], "turning one off, or a plain setting, asks nothing"
+assert [x["label"] for x in _c["pack"]] == ["B"] == [x["label"] for x in _c["pack2"]] and _c["pack"][0]["code"], "switching on a code pack asks"
+assert _c["key"][0]["to"] == "a new value" and "sk-x" not in json.dumps(_c["key"]), "a secret is never repeated back"
+_setup = (STATIC / "doors-setup.js").read_text()
+assert "confirm(" not in _setup[_setup.index("async function sSave"):] and "sConfirm(c)" in _setup and "Save anyway" in _setup and 'data-a="back"' in _setup
+assert "Read at start" in _setup and _setup.count("planetai restart") == 1, "what is read at start is one table, its instruction said once"
+print("doors: Set up asks before a change that leaves the machine or runs code, in the setting's own words, and never otherwise")
+
+# 44 px targets: the tab bars (Data's and Set up's), Set up's switches and buttons, the ledger's filter; the tab bar
+# holds on a phone and wraps rather than clipping; the gear says when Set up is open.
+for _sel in (".snav a{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:44px;min-width:44px",
+             "#setupv2 .sw{display:inline-flex;align-items:center;justify-content:center;min-width:64px;height:44px",
+             ".sbtn{background:none;border:1px solid var(--ink);color:var(--ink);padding:0 20px;min-width:44px;height:44px", ".lfilt button{min-height:44px",
+             ".dgrid .snav{position:sticky;top:0;z-index:5;background:var(--ground);flex-wrap:wrap", ".iconbtn[aria-current=\"page\"]{"):
+    assert _sel in html, f"lost: {_sel}"
+assert "gear.setAttribute('aria-current', 'page')" in (STATIC / "doors-core.js").read_text()
+print("doors: every tab, switch and button in Data and Set up is a 44 px target; the gear shows Set up is open")
 print("all doors checks passed")

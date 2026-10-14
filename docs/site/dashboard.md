@@ -388,7 +388,7 @@ somebody setting up a node needs them:
 
 | tab | what is in it |
 |---|---|
-| **Basics** | what this place watches, in order; what kind of node it is; its language; how the page opens. Its name, city, position and time zone are shown read-only: edit `.env`, then `planetai restart` |
+| **Basics** | what this place watches, in order; what kind of node it is; its language; how the page opens. Its name, city, position and time zone are one **Read at start** table: edit `.env`, then `planetai restart` |
 | **Sources** | sensors and data: Smart Citizen, AirGradient and PurpleAir hosts, the mesh radios, Bali Air Dispatch, Open-Meteo, open-data portals. A source that comes as a pack is set in its card under Packs |
 | **Alerts** | alerts and reports: Telegram chat ids, when reports go out, what interrupts, quiet hours, which engine sends the heat and air messages (`ALERT_ENGINE`), how many it may send a day (`ALERT_MAX_PER_DAY`), what this home has (`HOME_HAS`), mesh alerts, whether an act needs a decision first |
 | **Model** | ask and model: which model answers, on the ask pane and on Telegram alike; the remote and online models |
@@ -407,6 +407,16 @@ again. If one of those keys changed on the node after the form was drawn (from t
 screen), nothing is saved: the field says what the node holds now and the last change the ledger has for it,
 read from `GET /actions?stage=settings`, and a second press of Save replaces it. In the packs group a pack
 switch decides `PACKS_ENABLED` only when one was moved; otherwise the text field does.
+
+A change that sends something beyond this machine (the node marks those keys `outward` in `GET /settings`:
+`SHARE_LEVEL`, live map tiles, Telegram, the online model, the parent node, Reticulum, Home Assistant, Smart
+Citizen forwarding, the update check, GBIF) or runs code here that is not the node's (`runs_code`:
+`PACKS_ALLOW_CODE`, or a code pack switched on) is not written at the first press. The save bar opens a panel in the
+page, **Before this is saved**, that lists each such change with its new value (a secret is never repeated) and the
+setting's own help, marked "leaves this machine" or "runs code here", with **Back** and **Save anyway**. Turning one
+of them off, or `AGENT_PREFER` back to `private`, asks nothing, and neither does any other setting. In every group,
+what is read once at start is one **Read at start** table, with how to change it said once. The section list, the
+switches and the buttons are 44 px targets, and the gear in the bar is filled while Set up is open.
 
 A pack's own keys save the same way, and the pack has the new value at its next run, whether or not the pack
 is switched on yet. A node older than this refuses them with 400 `<KEY> is not a runtime setting`; see
@@ -434,8 +444,17 @@ The node renders as five doors by default, the redesign worked out in planetai-d
 ground as a map with layers, scales and a measuring tool, the satellite years and what changed, and the household's
 **Images**: one map layer per kind, phone, fixed camera, microscope, drone and balloon or kite, each image a square
 that opens a card with the image, when, who, the note and its cell, and a quiet **+ Add an image** beside the views
-that opens a dialog, the file picked or dropped; token-only, `GET /captures`), **Data** (every
-reading, drawn, the seven days of every issue, the models, the Index, **Images** (a table: a thumbnail, when and who, what took it, the note, what the image model saw and whether somebody here confirmed it, then the species a person here has confirmed, as a table too; a row opens that image in a dialog to look, edit its kind, note and key: value lines, confirm its findings or delete it, and *See all images* opens every card at once), **Things** (a table of what this home keeps, how many, how often each is used, its state and whether it is offered, for a screen holding the admin token; *Add a thing* and each row's *Edit* open the form in a dialog; an image's confirmed findings in those classes each have a button that adds them, the photo linked) and the ledger; a line points to Node for the diary), **Wall** (the keeper's one
+that opens a dialog, the file picked or dropped; token-only, `GET /captures`), **Data** (tabs,
+one pane at a time, routed `#data/<tab>`, with Set up's list as the tab bar, sticky, and on a phone a wrapping strip of
+44 px targets: **Readings** (every kind of reading as a tile, every source over 24 hours, every issue over seven days
+and the hours over the line per day), **Models and satellite** (one table, a row per source with how often it is
+fetched in words, "hourly" or "yearly", then each value with its unit; the node's counters about its own fetching are
+not drawn), **Home**, **Ledger** and **API** (every route, one line each); `#data/d-images`, `#data/perday`, a
+station's id and every other anchor Data had still open the tab that holds it, at its place, and `#data/cells` opens
+Node, where the Index cells table now sits under the flow. Home is **Images** (a table: a thumbnail, when and who, what took it, the note, what the image model saw and whether somebody here confirmed it, then the species a person here has confirmed, as a table too; a row opens that image in a dialog to look, edit its kind, note and key: value lines, confirm its findings or delete it, and *See all images* opens every card at once), **Things** (a table of what this home keeps, how many, how often each is used, its state and whether it is offered, for a screen holding the admin token; *Add a thing* and each row's *Edit* open the form in a dialog; an image's confirmed findings in those classes each have a button that adds them, the photo linked); the **Ledger**
+is every decision, a run of the same answer one row ("decided ×10") with its day and time on one line, who answered in
+words ("a screen of this node", "its own model, via Telegram") rather than the audit's ids, and a filter by stage,
+and without a token only the time and the stage; a line there points to Node for the diary), **Wall** (the keeper's one
 dark screen) and **Node** (what comes in and goes out, **What it remembers**, the nodes around it, and how it is
 running). The diary is split between Now and Node, and both parts need the admin token: a screen without it asks
 none of it, Now shows nothing of it and Node says only that the record exists and where to unlock it; the Wall never
@@ -509,7 +528,7 @@ today." beneath), counted exactly as the "h over the line today" beside it. On N
 what was sent in the last 24 hours (`events.sent_24h` on `/issues`), not every row recorded; the readings kept are
 `/storage`'s count with the token and the readings since the restart without it; and what this home offers
 (`GET /offers`) is one of the links out. On Place, the land change and the Index cells have no shape on the map: their
-rows say how many the node holds and where they are drawn (What changed, and Data › Index cells).
+rows say how many the node holds and where they are drawn (What changed, and Node › Index cells).
 
 ## The phone page
 

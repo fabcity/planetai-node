@@ -136,7 +136,7 @@ body.learn [data-learn]::before{animation:markfloat var(--motion-mark-float) eas
 .tbl td{padding:7px 8px 7px 0;border-bottom:1px solid var(--hair);vertical-align:baseline}
 .tbl td.n{font-family:var(--mono);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 /* a left-aligned cell after a right-aligned number would touch it ("HOW MANY USED"): the gap goes on its left */
-.tbl th.n+th:not(.n),.tbl td.n+td:not(.n){padding-left:16px}
+.tbl th.n+th:not(.n),.tbl td.n+td:not(.n){padding-left:16px}.tbl th.n+th.n,.tbl td.n+td.n{padding-left:28px}
 .tbl td.thumb{width:56px;padding-right:10px}.tbl td.thumb img{width:48px;height:48px;object-fit:cover;display:block;background:var(--hair)}
 .tbl button.link,.cardlg .dhead button{border:0;background:none;color:var(--ink);padding:0;font:inherit;text-decoration:underline;text-underline-offset:3px;cursor:pointer;min-height:0}
 .tbl button.link:focus-visible,.cardlg .dhead button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
@@ -346,18 +346,45 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
 .afind input{flex:1;border:0;background:none;color:var(--ink);font:500 var(--t-small) var(--mono);padding:10px 0;outline:none}
 .afind:focus-within{outline:2px solid var(--ink);outline-offset:2px}
 .ag{margin-bottom:18px}.agh{display:flex;justify-content:space-between;border-bottom:1px solid var(--ink);padding-bottom:5px;letter-spacing:.12em}
-.ar{border-bottom:1px solid var(--hair)}.ar summary{display:grid;grid-template-columns:56px minmax(0,1fr) auto 150px;gap:14px;align-items:center;padding:9px 0;cursor:pointer;list-style:none}
+.ar{border-bottom:1px solid var(--hair)}.ar summary{display:grid;grid-template-columns:4.2em minmax(0,1fr) auto auto;gap:14px;align-items:center;min-height:44px;padding:4px 0;cursor:pointer;list-style:none}
 .ar summary::-webkit-details-marker{display:none}.ar summary:hover .ap{text-decoration:underline}
-.am{font:700 var(--t-cap) var(--mono);letter-spacing:.08em;border:1px solid var(--ink);text-align:center;padding:2px 0}
+.am{font:700 var(--t-cap) var(--mono);letter-spacing:.08em}
 .ar summary .ap{font-size:var(--t-small);word-break:break-all}
-.aa{font:600 var(--t-cap) var(--mono);letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;border:1px dashed var(--ink)}
-.aa.public,.aa.open{border-style:solid}
+.aa{font:500 var(--t-cap) var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+.aa.public,.aa.open{color:var(--ink)}
 .ay{font:500 var(--t-cap) var(--mono);color:var(--mute);text-align:right}.ay.yes{color:var(--ink)}.ay.yes::before{content:'● '}
 .ar[open] summary{border-bottom:1px dashed var(--hair)}.as{margin:10px 0 8px;max-width:76ch;font-size:var(--t-small);color:var(--mute)}
 .ac{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}.ac code{flex:1;min-width:0;font:500 var(--t-cap) var(--mono);background:var(--raise);padding:7px 10px;overflow-x:auto;white-space:nowrap}
-.ac .sbtn{height:28px;display:inline-flex;align-items:center;text-decoration:none}
+.ac .sbtn{height:44px;display:inline-flex;align-items:center;text-decoration:none}
+/* the models, one table: a row per source, set as a ruled head in the body's own face, then its values */
+.mtab tr.grp th{padding:20px 8px 6px 0;font:500 var(--t-small) var(--body);letter-spacing:0;text-transform:none;color:var(--ink)}
+.mtab tr.grp th b{font:600 var(--t-read) var(--body)}.mtab tr.grp th > span{font:500 var(--t-cap) var(--mono);color:var(--mute);letter-spacing:.04em;margin:0 6px}
+.mtab td.u{font:500 var(--t-cap) var(--mono);color:var(--mute);padding-left:10px}
+/* the ledger: a stage filter of 44 px targets; a run of one answer says ×n; a time stays on one line */
+.lfilt{display:flex;flex-wrap:wrap;margin:6px 0 14px;border-left:1px solid var(--ink);border-top:1px solid var(--ink)}
+.lfilt button{min-height:44px;padding:0 14px;border:0;border-right:1px solid var(--ink);border-bottom:1px solid var(--ink);background:none;color:var(--ink);font:600 var(--t-cap) var(--mono);letter-spacing:.1em;text-transform:uppercase;cursor:pointer}
+.lfilt button span{color:var(--mute);font-weight:500;margin-left:4px}.lfilt button[aria-pressed="true"]{background:var(--ink);color:var(--ground)}.lfilt button[aria-pressed="true"] span{color:var(--ground)}
+.lfilt button:focus-visible{outline:2px solid var(--ink);outline-offset:-4px}
+.tbl.ledger td.tw,.tbl.ledger td.ts{white-space:nowrap}.tbl .x2{font:600 var(--t-cap) var(--mono);margin-left:4px}
+/* the gear, while Set up is open */
+.iconbtn[aria-current="page"]{background:var(--ink);color:var(--ground)}
+/* Set up: what is read at start, one table; and the consequences step over the save bar */
+.spane .tbl.ro td{vertical-align:baseline}
+.sconfirm{position:fixed;left:0;right:0;bottom:0;z-index:16;max-height:min(70vh,640px);overflow:auto;background:var(--ground);border-top:2px solid var(--ink);padding:18px clamp(16px,3vw,40px) 16px}
+.sconfirm h3{margin:0 0 4px;font:700 var(--t-read) var(--display)}.sconfirm > p{margin:0 0 10px;color:var(--mute);font-size:var(--t-small);max-width:72ch}
+.sconfirm ul{list-style:none;margin:0 0 14px;padding:0;max-width:860px}.sconfirm li{border-top:1px solid var(--hair);padding:10px 0}
+.sconfirm li b{font:600 var(--t-small) var(--body)}.sconfirm li .to{font:500 var(--t-cap) var(--mono);margin:0 8px}
+.sconfirm li .why{display:inline-block;border:1px solid var(--ink);padding:0 5px;font:600 var(--t-cap) var(--mono);letter-spacing:.04em}
+.sconfirm li p{margin:6px 0 0;font-size:var(--t-small);color:var(--mute);max-width:72ch}
+.sconfirm .acts{display:flex;gap:10px;flex-wrap:wrap}
 @media (max-width:760px){.dpane{padding-left:0}#metrics .fam{grid-template-columns:minmax(0,1fr)}#metrics .fh{border-right:0;border-bottom:1px solid var(--hair);flex-direction:row}
-  #metrics .tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.ar summary{grid-template-columns:48px minmax(0,1fr)}.ar summary .aa,.ar summary .ay{grid-column:2}.ay{text-align:left}}
+  #metrics .tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.ar summary{grid-template-columns:3.6em minmax(0,1fr) auto;gap:10px}.ar summary .ay{display:none}
+  /* the tab bar on a phone: every tab on screen, wrapping into a second row of 44 px targets, and held under the top as the tab scrolls */
+  .dgrid .snav{position:sticky;top:0;z-index:5;background:var(--ground);flex-wrap:wrap;overflow:visible;border-top:1px solid var(--ink)}
+  .dgrid .snav a{flex:1 0 auto;justify-content:center;border-bottom:1px solid var(--hair)}
+  /* the ledger on a phone: the time and the stage on one line, what it answered under them at full width */
+  .tbl.ledger tr{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:12px;border-bottom:1px solid var(--hair)}.tbl.ledger tr:first-child{display:none}
+  .tbl.ledger td{border-bottom:0}.tbl.ledger td:nth-child(4){grid-column:1 / -1;padding-top:0}}
 .dh{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap}.dh h2{margin-bottom:4px}
 .gh{margin:16px 0 4px;padding-bottom:4px;border-bottom:1px solid var(--ink)}
 .srow{display:grid;grid-template-columns:minmax(0,1fr) 300px 80px;gap:16px;align-items:center;padding:4px 0;border-bottom:1px solid var(--hair)}
@@ -489,7 +516,7 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
 #setupv2 .sh h1{margin-top:8px}
 .sgrid{display:grid;grid-template-columns:200px minmax(0,1fr);gap:0;align-items:start}
 .snav{position:sticky;top:12px;display:flex;flex-direction:column;border-right:1px solid var(--ink);padding:18px 0}
-.snav a{display:flex;justify-content:space-between;gap:8px;padding:9px 16px 9px 0;color:var(--ink);text-decoration:none;font:500 var(--t-cap) var(--mono);letter-spacing:.1em;text-transform:uppercase;border-top:1px solid var(--hair)}
+.snav a{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:44px;min-width:44px;box-sizing:border-box;padding:0 16px 0 0;color:var(--ink);text-decoration:none;font:500 var(--t-cap) var(--mono);letter-spacing:.1em;text-transform:uppercase;border-top:1px solid var(--hair)}
 .snav a:last-child{border-bottom:1px solid var(--hair)}
 .snav a i{font-style:normal;color:var(--mute);letter-spacing:.04em;text-transform:none}
 .snav a.on{background:var(--ink);color:var(--ground);padding-left:10px}.snav a.on i{color:var(--ground);opacity:.75}
@@ -511,7 +538,7 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
 #setupv2 .srow.ro .sc input{border-style:dashed;color:var(--mute)}
 #setupv2 .srow .sc.txt{font-size:var(--t-small)}#setupv2 .srow .sc.txt a{color:var(--ink)}
 #setupv2 .srow .err{margin:6px 0 0;border-left:3px solid var(--signal-worse);padding:4px 8px;font-size:var(--t-small)}
-#setupv2 .sw{display:inline-flex;align-items:center;justify-content:center;min-width:64px;height:30px;border:1px solid var(--ink);background:none;color:var(--ink);font:600 var(--t-cap) var(--mono);letter-spacing:.12em;text-transform:uppercase;cursor:pointer;border-radius:0}
+#setupv2 .sw{display:inline-flex;align-items:center;justify-content:center;min-width:64px;height:44px;border:1px solid var(--ink);background:none;color:var(--ink);font:600 var(--t-cap) var(--mono);letter-spacing:.12em;text-transform:uppercase;cursor:pointer;border-radius:0}
 #setupv2 .sw.on{background:var(--ink);color:var(--ground)}
 .share{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0;border:1px solid var(--ink);margin-top:12px}
 .share .opt{display:block;padding:14px 16px;cursor:pointer;position:relative}
@@ -533,7 +560,7 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
 .unlock2 input{background:var(--ground);color:var(--ink);border:1px solid var(--ink);border-radius:0;padding:8px 10px;font:500 var(--t-small) var(--mono);text-transform:none;letter-spacing:0}
 .unlock2 > div{grid-column:1 / -1}
 .state{font:600 var(--t-cap) var(--mono);letter-spacing:.12em;text-transform:uppercase;border:1px solid var(--ink);padding:4px 8px}
-.sbtn{background:none;border:1px solid var(--ink);color:var(--ink);padding:0 20px;height:34px;font:600 var(--t-cap) var(--mono);letter-spacing:.12em;text-transform:uppercase;cursor:pointer;border-radius:0}
+.sbtn{background:none;border:1px solid var(--ink);color:var(--ink);padding:0 20px;min-width:44px;height:44px;font:600 var(--t-cap) var(--mono);letter-spacing:.12em;text-transform:uppercase;cursor:pointer;border-radius:0}
 .sbtn.primary{border-width:2px}
 .sbar{position:fixed;left:0;right:0;bottom:0;z-index:15;display:flex;align-items:center;gap:12px;padding:12px clamp(16px,3vw,40px);background:var(--ground);border-top:2px solid var(--ink);font:500 var(--t-small) var(--mono)}
 .sbar .sp{flex:1}
@@ -548,7 +575,7 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
 #stoast{position:fixed;left:50%;bottom:70px;transform:translateX(-50%);z-index:30;background:var(--ink);color:var(--ground);padding:10px 16px;font:500 var(--t-small) var(--mono);max-width:min(640px,92vw)}
 #stoast.bad{background:var(--ground);color:var(--ink);border:2px solid var(--signal-worse)}
 @media (max-width:760px){.sgrid{grid-template-columns:minmax(0,1fr)}.snav{position:static;flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--ink);padding:0}
-  .snav a{border-top:0;border-right:1px solid var(--hair);padding:10px 12px;white-space:nowrap}.spane{padding-left:0}
+  .snav a{flex-shrink:0;border-top:0;border-right:1px solid var(--hair);padding:0 12px;white-space:nowrap}.snav a.on{padding-left:12px}.spane{padding-left:0}
   #setupv2 .srow{grid-template-columns:minmax(0,1fr)}.share,.unlock2{grid-template-columns:minmax(0,1fr)}.share .opt+.opt{border-left:0;border-top:1px solid var(--ink)}}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 .asking{display:none}
@@ -677,19 +704,18 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
 <section class="page view" data-view="data" hidden>
   <div id="datahead" data-learn="raw" data-reads="/export" data-stage="observe" data-pack="core"></div>
   <div class="sgrid dgrid">
-    <nav class="snav" id="dnav" aria-label="Data sections"></nav>
+    <nav class="snav" id="dnav" aria-label="Data tabs"></nav>
     <div class="dpane">
       <section id="d-readings" class="dsec"><div class="dsh"><h2>What this house reads</h2><p class="blurb">Every kind of reading the node holds, by family. Press one to draw every source that reads it.</p></div>
         <div id="metrics" role="group" aria-label="Kind of reading" data-learn="sensors" data-reads="/stats /aggregates" data-pack="core"></div>
         <div id="sensors" data-learn="siting" data-reads="/sensors /stats /aggregates" data-stage="observe" data-pack="core" data-kind="series"></div></section>
       <section id="issues7" class="dsec" data-learn="figure" data-reads="/issues/days" data-stage="observe" data-pack="core" data-kind="series"></section>
       <section id="models" class="dsec" data-learn="prov" data-reads="/sensors /observations" data-stage="observe" data-pack="earth" data-kind="row"></section>
-      <section id="cells" class="dsec" data-learn="parent" data-reads="/cells" data-stage="measure" data-pack="core" data-kind="row"></section>
       <section id="perday" class="dsec" data-learn="strips" data-reads="/issues/days" data-stage="measure" data-pack="core" data-kind="row"></section>
       <section id="d-images" class="dsec" data-reads="/captures" data-stage="observe" data-pack="core" data-kind="row"></section>
       <section id="d-things" class="dsec" data-reads="/things" data-stage="observe" data-pack="core" data-kind="row"></section>
-      <p class="fine">The diary, what is usual and what worked are on <a href="#node/remember">Node › What it remembers</a>.</p>
       <section id="ledger" class="dsec" data-learn="actions" data-reads="/actions /alerts" data-stage="act" data-pack="core" data-kind="row"></section>
+      <p class="fine dsec" id="dnote">The diary, what is usual and what worked are on <a href="#node/remember">Node › What it remembers</a>; the Index cells on <a href="#node/cells">Node</a>, under the flow.</p>
       <section id="api" class="dsec" data-learn="api" data-reads="/static/docs_site.json" data-pack="core"></section>
     </div>
   </div>
@@ -706,6 +732,7 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
   <div id="nodehead" data-learn="purpose" data-reads="/health" data-pack="core"></div>
   <h2>What comes in, what goes out</h2>
   <div id="flow" data-learn="raw" data-reads="/health /sensors /stats /alerts /actions /rho /cells" data-pack="core" data-kind="row"></div><p class="fine" id="flownote"></p>
+  <section id="cells" data-learn="parent" data-reads="/cells" data-stage="measure" data-pack="core" data-kind="row"></section>
   <section id="remember" data-reads="/learned /learned/search /household" data-stage="measure" data-pack="core" data-kind="row" aria-label="What it remembers"></section>
   <h2>The nodes around it</h2>
   <div id="world" data-learn="presence" data-reads="/health" data-pack="reticulum"></div><div id="nodes"></div>
