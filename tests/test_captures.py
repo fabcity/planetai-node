@@ -65,11 +65,13 @@ for path, meth in (("/export", "get"), ("/exports", "get"), ("/readings", "get")
     assert n, f"no {meth.upper()} {path} route found — the grep cannot protect a road it cannot find"
     seg = ast.get_source_segment(SRC, n)
     assert "captures" not in seg, f"{meth.upper()} {path} names captures: a picture must never travel that road"
-# and no module but main.py holds SQL against the table at all in step 1
+# and no module but main.py holds SQL against the table at all in step 1. The bot (15 Oct) is the one exception, and
+# only as a client of the HTTP route, which checks the token and cleans the file like any other upload.
 import glob
 for py in glob.glob("app/**/*.py", recursive=True):
     if py != "app/main.py":
-        assert "FROM captures" not in open(py).read() and "captures" not in open(py).read(), \
+        src = open(py).read().replace('hc.post(node_url("/captures"), ', "") if py == "app/agent_loop.py" else open(py).read()
+        assert "FROM captures" not in src and "captures" not in src, \
             f"{py} names captures: in step 1 the table is main.py's alone"
 
 assert "_admin(" in code_of("capture_delete"), "only the admin token deletes an image"

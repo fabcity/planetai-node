@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Pictures through the bot (Tomas, 15 Oct).** A photo or an image file sent to the bot from a household chat
+  is posted to the node's `POST /captures` with the caption as the note, the sender's name and `describe=1`, and the
+  bot answers "Kept. The image model on this machine is describing it; it will be in Data › Images in a minute." A
+  photo takes its largest size and the message's date; a file goes byte for byte, so its own date and GPS count. A
+  `#drone`, `#microscope`, `#camera` or `#balloon` in the caption sets the kind. A duplicate, a file that is not an
+  image, one over the Bot API's 20 MB and a refused token are each answered plainly. Strangers' pictures are ignored,
+  and the download's URL, which holds the bot token, never reaches a log line (`tests/test_bot_pictures.py`).
 - **A refusing source is not the household's to-do.** The report's one thing to do skipped past what someone here
   can act on to print a source's raw error, cut mid-URL (node #1, 14 Oct: Open-Meteo's daily limit). Source errors are
   left to Node's Running section.
