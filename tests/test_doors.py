@@ -169,4 +169,14 @@ assert ph["pev"] and all(e["asking"] is not None and e["action"] for e in ph["pe
     "the phone's Decide card needs the event's asking and the live action's words"
 assert all(e["message"] and e["seen"] for e in ph["pev"]), "the phone's card reads message.sent and last_seen_at"
 print("doors: the phone page's subset builds a D with the words, the asking and the action it draws")
+
+# Data (Tomas, 14 Oct): Images and Things are tables; a card, the whole form, opens only in a dialog
+_dj = (STATIC / "doors-data.js").read_text()
+_body = lambda name: _dj[_dj.index(f"async function {name}()"):_dj.index("\n}\n", _dj.index(f"async function {name}()"))]  # noqa: E731
+assert '<table class="tbl things">' in _body("thingsBlock") and "icard" not in _body("thingsBlock").split("const open")[0], \
+    "Things is a table; its form opens in a dialog"
+assert '<table class="tbl imgs">' in _body("imagesBlock") and "icard" not in _body("imagesBlock").split("const show")[0], \
+    "Images is a table; a card opens in a dialog, one image or all of them"
+assert '<table class="tbl species">' in _body("imagesBlock") and "file?w=96" in _body("imagesBlock"), "species a table; thumbnails small"
+print("doors: Data's images and things are tables, and a card is a dialog someone opens")
 print("all doors checks passed")
