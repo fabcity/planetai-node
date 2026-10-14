@@ -100,7 +100,14 @@ logging.getLogger().setLevel(logging.DEBUG)
 
 opened = []
 import traceback as _tb                              # noqa: E402
-main.db = lambda: opened.append("".join(_tb.format_stack(limit=9)[:-1])) or (_ for _ in ()).throw(RuntimeError("no database in this test"))
+def _db():
+    # Only an open that comes through the pane counts: on CI the app's own poll loop (main.poll_sources, started with
+    # the app) reached its first poll while this test ran, and that is not the pane opening the database.
+    stack = _tb.format_stack()
+    if any("/ask.py" in f or "/agent_loop.py" in f for f in stack):
+        opened.append("".join(stack[-9:-1]))
+    raise RuntimeError("no database in this test")
+main.db = _db
 main.q = lambda sql, *a: [{"name": s.get("name")} for s in FIX["sensors"]] if "FROM sensors" in sql else []
 main.forecast = lambda hours=24: None   # the Wall reads it (ask.wall_reads); never the database in this test
 import inspect                                       # noqa: E402
