@@ -212,7 +212,7 @@ async function flow(kept, offers) {
     paths.push([`fo${i}`, e, c]); });
   }
   const km2 = which => NG ? fmt(NG[which].area_m2 / 1e6, which === 'c8' ? 2 : 0) : '—', tn = (k, v, c) => `<tspan data-num="${k}" data-cmp="${esc(c)}">${v}</tspan>`;   // num(), in SVG
-  const centre = (!NG ? `<text x="${cx}" y="${cy}" text-anchor="middle" class="fn">the cells need the token: unlock below</text>`
+  const centre = (!NG ? (L ? `<text x="${L.tx}" y="${cy - 26}" class="fn">the cells need the token: unlock below</text>` : `<text x="${cx}" y="${cy}" text-anchor="middle" class="fn">the cells need the token: unlock below</text>`)
     : kids.filter(k => k[0] !== cell).map(k => `<path d="${pa(poly(k))}" class="fgrid"/>`).join('') + `<path d="${pa(poly(parR))}" class="fpar"/><path d="${pa(poly(cellR))}" class="fhex"/>`);
   const keptW = St ? `about ${St.readings.toLocaleString('en')} readings kept` : `${D.health.ingested.toLocaleString('en')} readings since the restart`;
   const foot = 'raw readings stay here; what leaves is the cell, the means, the Index, the answers and what this home offers';
