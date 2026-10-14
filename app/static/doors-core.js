@@ -268,7 +268,8 @@ Promise.all([loadD(), fetch(NODE + 'learn.json').then(r => r.json()).catch(() =>
   D = d; D.learn = l.marks;
   D.dates = [...new Set(D.buckets.map(dayOf))];
   D.at = {}; D.buckets.forEach((b, i) => { D.at[dayOf(b) + '|' + hourOf(b)] = i; });
-  S.issue = D.lead; S.i = D.buckets.length - 1; D.now = S.i;
+  /* Now opens on the lead when it is drawn by the hour; Land and Coast change yearly and live on Place (15 Oct) */
+  S.issue = D.lead && ISSUES_DRAWN(D.lead) ? D.lead : D.order.find(ISSUES_DRAWN) || D.lead; S.i = D.buckets.length - 1; D.now = S.i;
   D.sens = Object.fromEntries(D.sensors.map(s => [s.sensor_id, s]));
   /* the cells and distances the flow, the Wall and Node draw are the node's answers (js/nodegeo.js) */
   await knownNodes(D); foot();

@@ -68,6 +68,21 @@ Returns one object with: `ok` (true once a poll has run), `node`, `version` (`NO
  "docs": "https://planetai.fab.city/docs/", "mcp": "/mcp", "llms": "/llms.txt"}
 ```
 
+### GET /health/sources
+Access: token
+
+The node's fundamental sources, the ones every node needs for its basic job, each running or not, and for each that is not, the one thing to do. The list and its words are `app/fundamentals.py`; `planetai doctor` prints this route, install and update end with what it says is missing, the Set up page shows it at the top, and the MCP `health_check` returns it as `sources`. In order, most important first: `own-sensors` (a sensor of this household's own reported in the last hour), `alerts` (Telegram connected, and its last message not refused), `nearby-stations` (Bali Air Dispatch within three hours; `na` outside Bali, where the node has no public station network to read yet), `weather` (Open-Meteo within three hours), `satellite-air` (CAMS within three hours) and `backup` (a dump within two days).
+
+Returns `{ok, missing, sources: [{id, name, state, ok, minutes, age, detail, fix, setup, command, why}]}`. `state` is `ok`, `missing` (not set up), `quiet` (set up, nothing inside its window; `detail` carries the source's last error), `waiting` (set up, and the node has not finished a poll since it started), `na` or `elsewhere` (the backups are in a `BACKUP_DIR` this container cannot see). `ok` is true, false or null, and only false carries a `fix`. `setup` is the Set up section the fix is in (`#setup/sources`), `command` the `planetai` command that does it. `ok` at the top is false when any source is. Takes `backup_age`, the minutes since the newest dump where the backups really are (`-1` for none): `planetai doctor` measures it on the machine and the node judges it with the rest. Reads two days of readings once, bounded by `now()`.
+
+```json
+{"ok": false, "missing": 1, "sources": [
+ {"id": "own-sensors", "name": "Your own sensors", "state": "ok", "ok": true, "minutes": 4.0, "age": "4 min ago",
+  "detail": "inside only; one outside would tell the house from the street", "fix": null, "setup": "#setup/sources", "command": null, "why": "..."},
+ {"id": "alerts", "name": "Alerts on your phone (Telegram)", "state": "missing", "ok": false, "minutes": null, "age": null,
+  "detail": "not set up", "fix": "Connect Telegram, two minutes: planetai telegram", "setup": "#setup/keys", "command": "planetai telegram", "why": "..."}]}
+```
+
 ### GET /llms.txt
 Access: public
 
