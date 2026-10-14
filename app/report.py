@@ -613,7 +613,10 @@ def sheet(b: dict, locale: str = "en") -> str:
             tail.append(t["make"].format(where=where))
 
     quiet = (b.get("sensors_quiet") or [None])[0]
-    bad_check = next((c for c in (b.get("health") or {}).get("checks") or [] if not c.get("ok") and c.get("fix")), None)
+    # A source refusing (Open-Meteo's daily limit, node #1 14 Oct) is not the household's to fix, and its raw error went
+    # out cut mid-URL; Node's Running section names failing sources. The to-do keeps what someone here can do.
+    bad_check = next((c for c in (b.get("health") or {}).get("checks") or []
+                      if not c.get("ok") and c.get("fix") and c.get("check") != "no source errors"), None)
     if still_above is not None:
         tail.append(t["todo_above"].format(place=_place(still_above)))
     elif quiet:

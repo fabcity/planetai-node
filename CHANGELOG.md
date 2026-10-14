@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **A refusing source is not the household's to-do.** The report's one thing to do skipped past what someone here
+  can act on to print a source's raw error, cut mid-URL (node #1, 14 Oct: Open-Meteo's daily limit). Source errors are
+  left to Node's Running section.
 - **One voice for the report, the alerts and the learnings (design review of node #1, 14 Oct).** Every line is named
   with its owner and unit, never a bare number: "the WHO line is 15 µg/m³", "the US EPA's unhealthy level, 35.5
   µg/m³", "this house's heat line, 35 °C feels-like" (`{line}` and `{peak}` now carry the issue's unit). One sign per

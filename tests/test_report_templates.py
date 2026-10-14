@@ -346,4 +346,8 @@ assert "s.local AND s.kind = 'sensor'" in report.QUIET_SQL
 _iaq = report.sheet(_b(series=[dict(FIXTURE["series"][0], metric="bme_iaq", notability=4.0)], alerts=[], open_act=[]), "en")
 assert "bme_iaq" not in _iaq and "What changed" not in _iaq, _iaq
 print("the report tells what was sent; the inventory never stops sending; a metric without a word is not named")
+_src_err = _b(alerts=[], open_act=[], sensors_quiet=[], health={"ok": False, "checks": [{"check": "no source errors", "ok": False,
+              "fix": "errors: open-meteo: Client error '429 Too Many Requests' for url 'https://api.open-meteo.com/v1/forecast"}]})
+_se = report.sheet(_src_err, "en")
+assert "429" not in _se and "http" not in _se and report.T["en"]["todo_none"] in _se, "a refusing source is the keeper's, not the house's to-do"
 print(f"the sheet renders in three languages across {len(CASES)} states, under 100 words, with nothing unfilled")
