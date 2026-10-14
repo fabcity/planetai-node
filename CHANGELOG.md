@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **heat: "too hot" once a room a day.** `heat_stress_now` keeps its 35 °C line and its cooldown goes from 240 to
+  1440 minutes. Over node #1's last 30 days the hot room felt 35 °C or more in 44% of hours and the rule fired 171
+  times, 5.7 a day, 21 at night, two acted on; replayed at 1440 it fires 1.9 a day and never at night. The signal
+  was right and the repetition was the problem, so the line is not raised (packs/heat/README.md has the table).
+  `heat_danger` (40 °C, 120 minutes) is unchanged, and nodes on `ALERT_ENGINE=events` already send one message per
+  episode.
+
 - **Who is in the house, in the alert.** An act-level heat or air alert that weighs on someone ticked in Data › What
   worked now ends, in the household's Telegram, with one line: "👤 This matters more here: you said there is a child
   under five." (Indonesian and Spanish too, in `ALERT_LOCALE`). People ignore alerts mostly because they do not feel
