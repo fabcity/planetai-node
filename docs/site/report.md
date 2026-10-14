@@ -125,6 +125,14 @@ them before it is allowed out. The sheet is what the node falls back to.
 The report goes to Telegram, prefixed `ℹ️` like any info message, and to Home Assistant's *latest alert*
 entity. The mesh and Reticulum do not carry it.
 
+**The morning memory.** The first report sent each day that finds yesterday's diary entry written carries, below it
+and in Telegram only, the house's memory: yesterday's entry, last week's on a Monday, last month's on the 1st and
+last year's on 1 January, then each learning whose status changed that day (now holding, weakening or gone), with
+its own sentence. `LEARN_PUSH` sets it: `all` (the default), `week` (only the week, month and year) or `off`. It is
+never in the stored report, `/report/latest`, the bundle, Home Assistant or the mesh, which other people and machines
+can read; `reports.memory` says which report carried it, so a restart does not send it twice. Whatever does not fit
+in one Telegram message is left for `/learned`.
+
 | | |
 |---|---|
 | `GET /report/latest` | the last report, always with the same keys: `schema` (`report-v0`), `id, ts, due_local, window_hours, depth, rung, text, sent, held_quiet, fallback_reason`, and `note`, which is null when a report exists and "no report yet; the first one lands at the next due hour" when none does. Open at `SHARE_LEVEL=open` |

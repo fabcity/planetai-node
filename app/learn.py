@@ -369,8 +369,9 @@ SHORT = {"indoor-pm25": "PM2.5 inside", "outdoor-pm25": "PM2.5 outside", "indoor
 SCALES = ("day", "week", "month", "year")
 BACKFILL_DAYS = 400
 # A digest written by an older version of this file is written again, once: v2 counts what was sent on an events
-# node (node #1's 13 Oct digest said "15 alerts, 0 acted on" when those rows were never sent).
-DIGEST_V = 2
+# node (node #1's 13 Oct digest said "15 alerts, 0 acted on" when those rows were never sent); v3 leaves out test
+# alerts (`_test/hello-<epoch>`, and `gui/test` from POST /test-alert), which node #1's 5 and 6 Oct entries counted as alerts.
+DIGEST_V = 3
 
 
 def periods(first, today) -> list[tuple[str, object, object]]:
@@ -467,7 +468,8 @@ def write_digests(q, have: set, prev_numbers: dict, today=None, replaced: set = 
     groups = group_hourly(rows)
     alerts = q("""SELECT l.rule_id, l.ts, l.ts::date AS d,
                          EXISTS (SELECT 1 FROM actions x WHERE x.alert_id = l.id AND x.stage = 'acted') AS acted
-                  FROM alerts l WHERE l.level = 'act' AND l.ts >= %s::date AND l.ts < %s::date""", begin.isoformat(), today.isoformat())
+                  FROM alerts l WHERE l.level = 'act' AND l.rule_id NOT LIKE '\\_test/%%' AND l.rule_id <> 'gui/test'
+                    AND l.ts >= %s::date AND l.ts < %s::date""", begin.isoformat(), today.isoformat())
     alerts = [a for a in alerts if not silent(a["rule_id"], a["ts"], replaced, since)]
     if replaced:
         alerts += [{"rule_id": f"{ISSUE_PACK.get(e['issue'], e['issue'])}/events", "name": e["issue"],
@@ -503,6 +505,46 @@ def search_terms(text: str) -> str:
     import re  # noqa: PLC0415
     return " | ".join(dict.fromkeys(w.lower() for w in re.findall(r"\w{3,}", text or "")))
 
+
+
+# ---------------------------------------------------------------- the morning (SPEC_learn §6; Tomas, 14 Oct: on by default)
+# The first report the household gets each day carries the house's memory, on Telegram only: yesterday's digest, last
+# week's on a Monday, last month's on the 1st, last year's on 1 January, then the learnings whose status changed today.
+# One message, not four: more messages is what the household already said no to (#235).
+MORNING_HEAD = {"en": "What the node learned, changed today:", "id": "Yang dipelajari node, berubah hari ini:",
+                "es": "Lo que aprendió el nodo, cambiado hoy:"}
+MORE = {"en": "… the rest with /learned", "id": "… selebihnya dengan /learned", "es": "… el resto con /learned"}
+STATUS_WORDS = {"holding": "", "weakening": " (weakening)", "gone": " (gone)"}
+
+
+def morning_periods(today, push: str = "all") -> list[tuple[str, object]]:
+    """[(scale, period_start)] the morning of `today` carries: `push` is LEARN_PUSH, all (default), week or off."""
+    from datetime import date  # noqa: PLC0415
+    if push == "off":
+        return []
+    out = [("day", today - timedelta(days=1))] if push != "week" else []
+    if today.weekday() == 0:
+        out.append(("week", today - timedelta(days=7)))
+    if today.day == 1:
+        out.append(("month", (today - timedelta(days=1)).replace(day=1)))
+        if today.month == 1:
+            out.append(("year", date(today.year - 1, 1, 1)))
+    return out
+
+
+def morning(digests: list[str], changed: list[dict], locale: str = "en", room: int = 3000) -> str:
+    """The memory's text: each digest as written, then each changed learning's own statement. Parts that do not fit in
+    `room` characters are left for /learned, and it says so. "" when there is nothing to say."""
+    parts = [f"📔 {t}" for t in digests]
+    if changed:
+        parts.append(MORNING_HEAD.get(locale, MORNING_HEAD["en"]) + "\n" + "\n".join(
+            f"• {r['statement']}{STATUS_WORDS.get(r['status'], '')}" for r in changed))
+    out, more = "", MORE.get(locale, MORE["en"])
+    for p in parts:
+        if len(out) + len(p) + 2 > room - len(more) - 2:
+            return (out + "\n\n" + more).strip()
+        out = (out + "\n\n" + p).strip()
+    return out
 
 
 # ---------------------------------------------------------------- who is in the house (SPEC_learn §8, step 4)

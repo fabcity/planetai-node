@@ -70,6 +70,7 @@ RUNTIME = {
     "TELEGRAM_BUTTONS":   ("alerts", "Event buttons in Telegram", False, False, "1 = event messages carry Done / Not now / Doesn't fit. The bot sets this on startup so the buttons ride only while somebody answers them; leave it alone."),
     "REPORT_EVERY":       ("alerts", "Report every", False, False, "Hours between reports: 3, 4, 6, 8, 12 or 24. Default 6, which is four a day."),
     "REPORT_ANCHOR":      ("alerts", "First report of the day", False, False, "The local hour the rhythm starts from, 0-23. Default 6: with a 6-hour interval that is 06, 12, 18 and 00."),
+    "LEARN_PUSH":         ("alerts", "Morning memory", False, False, "all = the first report each day also carries yesterday's diary entry, last week's on Mondays, last month's on the 1st and last year's on 1 January, and what the node's learnings changed (default). week = only the week, month and year. off = never; /learned still answers. Telegram only."),
     "REPORT_DEPTH":       ("alerts", "How much the report says", False, False, "auto, brief, standard or deep. auto lets the strongest model the node can reach decide. Until a model is in the path every report is the node's own, and this changes nothing."),
     "ALERT_LEVEL":        ("alerts", "Interrupt me for", False, False, "act = only when something needs doing (default) · warn = also when something changed · info = everything. Everything is recorded, on the dashboard, and in the next report."),
     "QUIET_HOURS":        ("alerts", "Quiet hours", False, False, "1 = between the hours below, only act-level alerts are sent; the rest wait for the morning report."),
@@ -199,7 +200,7 @@ RUNTIME = {
 # What an anonymous reader on the LAN may see the value of. Everything else shows as "•••• set" until the admin token is
 # presented (the dashboard's Set up view sends it once unlocked). Chat ids, sensor hosts, account names and remote URLs
 # are not secrets, but they are the household's, and GET /settings answers anyone on the WiFi (found 6 Sep 2026).
-PUBLIC = {"REPORT_EVERY", "REPORT_ANCHOR", "REPORT_DEPTH", "ALERT_LEVEL", "QUIET_HOURS", "QUIET_FROM", "QUIET_TO", "ALERT_LOCALE",
+PUBLIC = {"REPORT_EVERY", "REPORT_ANCHOR", "REPORT_DEPTH", "LEARN_PUSH", "ALERT_LEVEL", "QUIET_HOURS", "QUIET_FROM", "QUIET_TO", "ALERT_LOCALE",
           "MESH_ALERTS", "HA_DISCOVERY", "PACKS_ENABLED", "PACKS_ALLOW_CODE", "OPENMETEO_ENABLED", "BAD_ENABLED", "BAD_RADIUS_KM",
           "BAD_MIN_SEPARATION_M", "BAD_EXCLUDE", "BAD_INCLUDE_INDOOR",
           "LOCAL_RADIUS_M", "SENSOR_INDOOR", "COAST_MAX_KM", "AGENT_PREFER", "AGENT_REMOTE_MODEL", "AGENT_ONLINE_MODEL", "EYES_MODEL", "UI_LAYOUT", "UI_MODE", "UI_ASK", "UI_GROUND", "MAP_TILES", "UPDATE_CHECK", "SPECIES_MATCH", "STATIONS_SHOWN", "NODE_KIND", "SHARE_LEVEL", "NODE_ISSUES",
@@ -220,6 +221,7 @@ CHOICES = {
     "REPORT_EVERY":  ("3", "4", "6", "8", "12", "24"),      # each divides 24, so the rhythm does not walk round the clock
     "REPORT_ANCHOR": tuple(str(h) for h in range(24)),
     "REPORT_DEPTH":  ("auto", "brief", "standard", "deep"),
+    "LEARN_PUSH":    ("all", "week", "off"),
     "ALERT_ENGINE":  ("rules", "shadow", "events"),
     "UI_MODE":       ("simple", "advanced", "learn"),
     # private first because it is the default and because the order is what every surface offers: `describe()`
