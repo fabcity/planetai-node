@@ -308,7 +308,9 @@ _heat = {r["id"]: r for r in yaml.safe_load(open("packs/heat/rules.yml"))}
 assert ">= 35" in _heat["heat_stress_now"]["sql"], "heat_stress_now: 32 is node #1's baseline; the line is 35"
 assert ">= 40" in _heat["heat_danger"]["sql"], "heat_danger stays at the heat-index danger line"
 assert ">= 32" in open("packs/heat/cells.yml").read(), "the Social cell counts hours over 32, unchanged"
-assert _heat["heat_stress_now"]["cooldown_minutes"] == 240, "at 35 the cooldown stops mattering; it stays 240"
+assert _heat["heat_stress_now"]["cooldown_minutes"] == 1440, \
+    "once a room a day: in Oct 2026 the hot room was over 35 for 44% of hours and 240 repeated it 5.7 times a day (README)"
+assert _heat["heat_danger"]["cooldown_minutes"] == 120, "danger keeps interrupting as often as it must"
 for _r, _lang, _words in (("heat_stress_now", "en", "It is too hot at {name}: it feels like {at} °C — this house's own line is {line} °C, measured here."),
                           ("heat_danger", "en", "DANGER at {name}: it feels like {at} °C — the danger line here is {line} °C.")):
     assert _words in _heat[_r]["message"][_lang], f"{_r} [{_lang}]: the message template needs Tomas's sign-off to change"
