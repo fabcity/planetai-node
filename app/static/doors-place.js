@@ -14,7 +14,10 @@ VIEWS.place = function () {
     <h1 data-learn="1">The ground this node stands on.</h1>
     <p class="lede mono">${esc(h.cell.id)} · res ${h.cell.res} · ${h.cell.edge_m} m edge · ${area.toFixed(2)} km² · ${fmt(D.point[1], 4)}, ${fmt(D.point[0], 4)}</p>
     <div class="prow"><nav class="pviews" aria-label="Views of the place">${PVIEWS.map(([id, t, s]) => `<button class="${id === PVIEW ? 'on' : ''}" data-p="${id}"><b>${t}</b><span>${s}</span></button>`).join('')}</nav>`
-    + `<button class="addimg" id="addimg" title="An image this household took: it lands on the map where it was taken">+ Add an image</button></div>`;
+    + `<button class="addimg" id="addimg" title="An image this household took: it lands on the map where it was taken">+ Add an image</button></div>`
+    /* the issues that change yearly and have no hours (Land, Coast): Now is for the hour, so they are said here, beside
+       the ground they describe — the engine's own sentence, the region's figure and its provenance (15 Oct) */
+    + yearly();
   $('#addimg').onclick = addImage;
   document.querySelectorAll('.pviews button').forEach(b => b.onclick = () => { PVIEW = b.dataset.p; VIEWS.place(); });
   document.querySelector('.bench').dataset.pview = PVIEW;
@@ -22,6 +25,13 @@ VIEWS.place = function () {
   reach();
 };
 
+function yearly() {
+  const ks = D.order.filter(k => !ISSUES_DRAWN(k) && ((D.issues[k].stack || {}).region || {}).value != null);
+  return ks.length ? `<section class="yearly" data-learn="states" data-reads="/issues" data-stage="observe" data-pack="core" data-kind="row"><h2>Changes by the year</h2>`
+    + ks.map(k => { const it = D.issues[k], g = it.stack.region;
+      return `<div class="fr" data-k="${k}"><span>${said(it.name)}<small class="said">${esc(it.title || it.sentence || '')}</small></span><b>${num(`${k}.region`, fmt(g.value, 1), 'no line: it informs, it never asks')} ${said(it.unit)} ${prov(g.provenance || 'model')}</b></div>`; }).join('')
+    + `</section>` : '';
+}
 /* a fact: its name, its figure, where it is from — and, when it has one, its provenance word as the node draws it */
 const facts = (rows, note) => rows.map(([t, v, s, w]) => `<div class="fr"><span>${esc(t)}${s ? `<small class="said">${esc(s)}</small>` : ''}</span><b>${esc(v)}${w ? ' ' + prov(w) : ''}</b></div>`).join('') + (note ? `<p class="fine">${note}</p>` : '');
 /* counted in the node's own cell sign: filled for the count, faint for the rest, in the satellite's orange (dashboard.js of20) */

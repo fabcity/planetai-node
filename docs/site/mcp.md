@@ -75,7 +75,7 @@ Start with `health_check`, then `status`.
 | tool | arguments | returns |
 |---|---|---|
 | `status` | none | node, version, schema, uptime, last poll, readings ingested, polls, per-loop errors, mesh, ρ (the `/rho` body), whether the last backup succeeded |
-| `health_check` | none | `{ok, checks: [{check, ok, fix}]}`: polled in the last 15 minutes; no source errors; a backup in the last two days; no local sensor's ambient channel frozen; with a broker, LoRa radios heard in the last hour. Every failing check names its fix |
+| `health_check` | none | `{ok, checks: [{check, ok, fix}]}`: polled in the last 15 minutes; no source errors; a backup in the last two days; no local sensor's ambient channel frozen; with a broker, LoRa radios heard in the last hour. Every failing check names its fix. Also `sources`, the fundamental sources from [`GET /health/sources`](api.md), each with its state and, when not running, its fix; they never make `ok` false |
 | `issues` | `issue?` | the whole `/issues` object (the issues, `headline` and `headline_rule`, `labels`, `stations` and `stations_silent`, `metrics`, the `asks` ledger, `lead`, the `digest` with its four sentences, `simple` and `prompts`, `geometry`, the packs' `sections`, the alert `events`, each saying with `asking` whether it still asks), or one issue with `as_of` and `labels`: state, the four distances with provenance, the sentence, the open asks |
 | `sensors` | none | one row per sensor from `/stats`: local, indoor, kind, the 15-minute mean per metric, minutes silent; local first |
 | `context` | none | sea, weather, satellite air, place and land from `/observations`, labelled; or a note that the first poll fills this |

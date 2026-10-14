@@ -11,8 +11,9 @@ http://<node>:8080/?layout=classic#wall
 ```
 
 This page describes the classic dashboard's wall. The doors' **Wall** (`/#wall`, the default) is described in
-[the dashboard](dashboard.md#the-five-doors): it names no sensor, room or kit, and says `stale` only when the node's
-last poll is more than 15 minutes old.
+[the dashboard](dashboard.md#the-five-doors): it is read from three metres, so nothing on it is smaller than 28 px at
+1920×1080 and its controls show only under a pointer or the keyboard; it names no sensor, room, kit or person, and
+says the readings are old only when the node's last poll is more than 15 minutes old.
 
 `planetai ui` prints "On a wall screen: add #wall — the dark register, moves its own ladder;
 needs SHARE_LEVEL=open". The node opens the five doors by default, so `#wall` alone opens the doors' Wall (see the
