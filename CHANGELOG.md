@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **The WHO line in every PM2.5 drawing (Tomas, 14 Oct).** Now's day, Data's every source and seven days, What is
+  usual's PM2.5 day, and the phone walk's house, street, stations, ring and region each draw the air's own line red and
+  dashed (`.linep`, now the day figure's 6 4 at 1.5) and label it `WHO 15`: the value is `/issues`' own, the name comes
+  from the line's source, so heat keeps `line 35.0`. Before, the walk drew it in ink, Data drew it unlabelled, and What
+  is usual and three of the walk's drawings had none. Alert words and the 35.5 urgent threshold are unchanged. `tests/test_doors.py` renders each drawing on node #1's
+  capture.
 - **Thirteen fixes from the design review of node #1 (14 Oct).** (1) Times are the node's own: the doors and the phone
   page sliced UTC strings as if they were local, so node #1 read "as of 11:52" beside "at 19:00" in Bali; every time
   is now read in `/health`'s zone. (2) The mono the frozen theme asks for at `/static/fonts/jetbrains-mono-latin.woff2`
