@@ -94,9 +94,18 @@ def summarise(rule: str, metric: str, acted: list[dict], unanswered: list[dict],
         text = says(a, "Acted on") if a["n"] else "Nobody has acted on it yet."
         if u["n"]:
             text += " " + says(u, "Left unanswered")
+    # The verdict a page says in words (Now's "Did it work", Node's table): it helps when inside fell more than the
+    # street did after acting, and more than it fell the times nobody answered; otherwise no clear difference. The page
+    # never judges for itself. ponytail: no noise margin; the statement beside it carries the numbers
+    if status in ("too_early", "gone"):
+        verdict = status
+    else:
+        net = a["change"] - (a["street"] or 0)
+        unet = u["change"] - (u["street"] or 0) if u["n"] else None
+        verdict = "helps" if net < 0 and (unet is None or net < unet) else "no_clear_difference"
     return {"kind": "worked", "key": rule, "issue": rule.split("/")[0], "metric": metric, "status": status,
             "statement": text, "n": a["n"], "scope": "house",
-            "numbers": {"acted": a, "unanswered": u, "after_hours": [lo, hi], "unit": unit,
+            "numbers": {"acted": a, "unanswered": u, "after_hours": [lo, hi], "unit": unit, "verdict": verdict,
                         "cases": {"acted": acted[-30:], "unanswered": unanswered[-30:]}}}
 
 

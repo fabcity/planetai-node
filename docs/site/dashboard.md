@@ -434,8 +434,25 @@ ground as a map with layers, scales and a measuring tool, the satellite years an
 **Images**: one map layer per kind, phone, fixed camera, microscope, drone and balloon or kite, each image a square
 that opens a card with the image, when, who, the note and its cell, and a quiet **+ Add an image** beside the views
 that opens a dialog, the file picked or dropped; token-only, `GET /captures`), **Data** (every
-reading, drawn, the seven days of every issue, the models, the Index, **Images** (a table: a thumbnail, when and who, what took it, the note, what the image model saw and whether somebody here confirmed it, then the species a person here has confirmed, as a table too; a row opens that image in a dialog to look, edit its kind, note and key: value lines, confirm its findings or delete it, and *See all images* opens every card at once), **Diary** (the node's entry for every day, week, month and year, and a search over them and the learnings; admin token), **What is usual** (the shape of the day for this house's air inside and outside and its heat, the week against the three before, and the alerts that may not fit; admin token), **What worked** (who lives here, five yes-or-no boxes that rank the learnings and say who each matters to; then per alert, what the air or the heat inside did after someone here acted, beside the street and the unanswered times, with every case; admin token), **Things** (a table of what this home keeps, how many, how often each is used, its state and whether it is offered, for a screen holding the admin token; *Add a thing* and each row's *Edit* open the form in a dialog; an image's confirmed findings in those classes each have a button that adds them, the photo linked) and the ledger), **Wall** (the keeper's one
-dark screen) and **Node** (what comes in and goes out, the nodes around it, and how it is running). The classic
+reading, drawn, the seven days of every issue, the models, the Index, **Images** (a table: a thumbnail, when and who, what took it, the note, what the image model saw and whether somebody here confirmed it, then the species a person here has confirmed, as a table too; a row opens that image in a dialog to look, edit its kind, note and key: value lines, confirm its findings or delete it, and *See all images* opens every card at once), **Things** (a table of what this home keeps, how many, how often each is used, its state and whether it is offered, for a screen holding the admin token; *Add a thing* and each row's *Edit* open the form in a dialog; an image's confirmed findings in those classes each have a button that adds them, the photo linked) and the ledger; a line points to Node for the diary), **Wall** (the keeper's one
+dark screen) and **Node** (what comes in and goes out, **What it remembers**, the nodes around it, and how it is
+running). The diary is split between Now and Node, and both parts need the admin token: a screen without it asks
+none of it, Now shows nothing of it and Node says only that the record exists and where to unlock it; the Wall never
+reads it. Under the decision, Now says **Yesterday**, the node's entry for yesterday in a line or two from its own
+numbers (the air inside, its worst hour and the hours over the line, outside beside it, the alerts and how many were
+acted on) with a link to the whole entry, and **Did it work** for the issue on screen: the last time the node asked,
+what was done in the household's words and what the air or heat inside did after, beside the street, then the node's
+verdict on that alert (it helps here, no clear difference yet, too early to say: `numbers.verdict` of the `worked`
+learning, inside's change after acting against the street and against the times nobody answered) and the start of its
+own sentence, the hour it is usually worst, and who it matters to or a link to say who lives here. It is framed only
+while something is asked. Node's **What it remembers** keeps the record, private and never leaving: how many entries
+and learnings it holds; the **Diary** as a table, one row per day, week, month or year (a switch), with PM2.5 inside
+(mean and worst hour), outside, feels-like inside, alerts, acted and what was done, each entry opening as the node
+wrote it in a dialog, and a search; **What is usual** (the shape of the day for the air inside and outside and the
+heat, the week against the three before, and the alerts that may not fit); **What worked** as a table, per alert how
+many times it was acted on and the change inside, the same for the times nobody answered, and the node's verdict,
+each alert opening its sentence and every case in a dialog; and **Who lives here?**, five yes-or-no boxes that rank
+the learnings and say who each matters to. `#node/remember/day/<date>` opens one entry. The classic
 dashboard remains available at `/?layout=classic`.
 
 The doors read the routes the dashboard reads, renamed and pivoted in the page and never recomputed

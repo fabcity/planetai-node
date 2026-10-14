@@ -13,8 +13,105 @@ VIEWS.node = function () {
      and what this home offers (GET /offers, open at every SHARE_LEVEL and in the daily export) */
   const kept = doorsFetch('/storage').then(x => x.ok ? x.json() : null).catch(() => null),
     offers = fetch('/offers').then(x => x.ok ? x.json() : null).catch(() => null);
-  flow(kept, offers); around(); running(kept);
+  flow(kept, offers); around(); running(kept); remember();
 };
+
+/* WHAT IT REMEMBERS (Tomas, 14 Oct: the diary split between Now and Node; Now keeps Yesterday and Did it work). The
+   record, private and never leaving: the counts, the diary as a table with its written entry in a dialog and a search,
+   what is usual, what worked as a table with its cases in a dialog, and who lives here. Tables by default, long text
+   only in a dialog. The admin token only, because entries and cases carry the household's notes: a screen without it
+   is told that the record exists and where to unlock it, and is shown none of it. #node/remember scrolls here,
+   #node/remember/day/<date> opens that entry, #node/remember/who the household's form. */
+const LSTATUS = { holding: 'holding', weakening: 'weakening', too_early: 'too early to say', gone: 'no longer watched' };
+const VERDICT_W = { helps: 'helps', no_clear_difference: 'no clear difference', too_early: 'too early to say', gone: 'no longer watched' };
+let REM = { scale: 'day', rows: [] };
+async function remember() {
+  const el = $('#remember'), at = location.hash.slice(1).split('/');
+  const go = () => { if (at[1] === 'remember') setTimeout(() => (document.getElementById(at[2] === 'who' ? 'remember-who' : 'remember') || el).scrollIntoView({ block: 'start' })); };
+  const l = await doorsFetch('/learned').then(r => r.ok ? r.json() : null).catch(() => null);
+  if (!l) {
+    el.innerHTML = `<h2>What it remembers</h2><p class="lede">A diary of every day, week, month and year, what is usual in this house and what worked here. It is the household’s and never leaves this machine, so only a screen holding the admin token reads it: unlock this one in ${UNLOCK_AT}.</p>`;
+    return go();
+  }
+  const L = l.learnings || [], K = l.digests || {}, nK = Object.values(K).reduce((a, b) => a + b, 0), by = s => L.filter(x => x.status === s).length;
+  const scales = ['day', 'week', 'month', 'year'].filter(x => K[x]).map(x => `${K[x]} ${x}${K[x] === 1 ? '' : 's'}`).join(', ');
+  el.innerHTML = `<h2>What it remembers</h2><p class="lede">${num('remember.digests', nK, 'diary entries this node keeps')} diary entr${nK === 1 ? 'y' : 'ies'} kept${scales ? ` (${scales})` : ''}; `
+    + `${num('remember.holding', by('holding') + by('weakening'), `of ${L.length} learnings`)} learnings holding, ${num('remember.early', by('too_early'), `of ${L.length} learnings`)} too early to say, ${num('remember.gone', by('gone'), `of ${L.length} learnings`)} no longer watched`
+    + `${l.checked ? `, checked ${esc(when(l.checked))}` : ''}. All of it stays on this machine and never leaves.</p>`
+    + `<h3>Diary</h3><div class="rbar"><div class="rseg" role="group" aria-label="Entries by">${['day', 'week', 'month', 'year'].map(x => `<button data-sc="${x}" class="${x === REM.scale ? 'on' : ''}">${x.toUpperCase()}</button>`).join('')}</div>`
+    + `<form class="rfind" data-f="find"><input data-f="q" aria-label="search the diary" placeholder="smoke, purifier, October"><button>Search</button></form></div><div id="rdiary"></div>`
+    + `<h3>What is usual</h3><div id="rusual"></div><h3>What worked</h3><div id="rworked"></div><h3 id="remember-who">Who lives here?</h3><div id="rwho"></div>`;
+  el.querySelectorAll('[data-sc]').forEach(b => b.onclick = () => { REM.scale = b.dataset.sc; el.querySelectorAll('[data-sc]').forEach(o => o.classList.toggle('on', o === b)); diaryTable(); });
+  el.querySelector('[data-f=find]').onsubmit = e => { e.preventDefault(); diaryTable(el.querySelector('[data-f=q]').value.trim()); };
+  if (at[2] && ['day', 'week', 'month', 'year'].includes(at[2])) REM.scale = at[2];
+  el.querySelectorAll('[data-sc]').forEach(o => o.classList.toggle('on', o.dataset.sc === REM.scale));
+  usualBlock(L, $('#rusual')); workedTable(L, $('#rworked')); $('#rwho').innerHTML = await whoForm();
+  await diaryTable('', at[3]); go();
+}
+/* the diary as a table: one row per entry, the columns its own numbers; the written entry opens in a dialog */
+async function diaryTable(words, open) {
+  const el = $('#rdiary');
+  const u = words ? `/learned/search?q=${encodeURIComponent(words)}&limit=50` : `/learned/search?scale=${REM.scale}&limit=50`;
+  const j = await doorsFetch(u).then(r => (r.ok ? r.json() : null)).catch(() => null);
+  const rows = REM.rows = (j && j.results) || [];
+  const v = (x, g, f) => { const n = ((x.numbers || {})[g] || {})[f]; return n == null ? '—' : fmt(n, 1); };
+  const al = (x, f) => !(x.numbers && x.numbers.alerts) ? '—' : Object.values(x.numbers.alerts).reduce((a, y) => a + y[f], 0);
+  const done = x => ((x.text || '').match(/What was done: (.*?)\.(?: Against the|$)/) || [])[1] || '';
+  el.innerHTML = !rows.length ? `<p class="fine">${words ? 'Nothing mentions that.' : 'No entries yet: the node writes them in the first hour of each day.'}</p>`
+    : `<div class="tscroll"><table class="tbl diary"><tr><th>${words ? 'found' : REM.scale}</th><th class="n">PM2.5 inside</th><th class="n hide">peak</th><th class="n">outside</th><th class="n hide">feels-like inside</th><th class="n">alerts</th><th class="n">acted</th><th class="hide">what was done</th></tr>`
+      + rows.map((x, i) => `<tr><td><button class="link" data-i="${i}">${esc(x.label)}</button>${x.source === 'learning' ? ' <span class="x">· learning</span>' : ''}</td>`
+        + `<td class="n">${v(x, 'indoor-pm25', 'mean')}</td><td class="n hide">${v(x, 'indoor-pm25', 'max')}</td><td class="n">${v(x, 'outdoor-pm25', 'mean')}</td>`
+        + `<td class="n hide">${v(x, 'indoor-heat', 'mean')}</td><td class="n">${al(x, 'raised')}</td><td class="n">${al(x, 'acted')}</td><td class="hide said done">${esc(done(x))}</td></tr>`).join('')
+      + `</table></div><p class="fine">PM2.5 is the period’s mean and its worst hour in µg/m³, from this house’s own sensors inside and out; feels-like is the mean inside in °C. Press an entry to read it as the node wrote it.</p>`;
+  const show = x => cardDialog(x.label, `<p class="said">${esc(x.text)}</p><p class="fine">${x.source === 'learning' ? 'A learning, in the node’s own words.' : `The node’s ${esc(x.scale)} entry, written from its own numbers and your notes. It never leaves this machine.`}</p>`);
+  el.querySelectorAll('[data-i]').forEach(b => b.onclick = () => show(rows[+b.dataset.i]));
+  const hit = open && rows.find(x => String(x.period_start).slice(0, 10) === open);
+  if (hit) show(hit);
+}
+/* what worked, per alert: acted and its change inside, not answered and its change, the node's verdict, and the cases
+   in a dialog; who it matters to is said once, above the table, from the rows' own for_whom */
+function workedTable(L, el) {
+  const rows = L.filter(x => x.kind === 'worked'), who = [...new Set(rows.flatMap(x => x.for_whom || []))];
+  const name = k => { const [p, r] = k.split('/'); return r === 'events' ? `every ask about ${p === 'air-quality' ? 'the air' : p}` : r.replace(/_/g, ' '); };
+  const ch = g => !g || !g.n ? '—' : `${g.n} · ${(g.change > 0 ? '+' : '') + fmt(g.change, 1)}`;
+  if (!rows.length) { el.innerHTML = `<p class="fine">Nothing yet: the node checks once a day, and needs an alert someone acted on.</p>`; return; }
+  el.innerHTML = `<p class="fine">For each alert, what the air or the heat inside did after someone here acted, beside the times nobody answered and the street. Your own before and after, not an experiment: the night or the weather can do the same.${who.length ? ` <b>Matters here: ${esc(who.join(', '))}.</b>` : ''}</p>`
+    + `<div class="tscroll"><table class="tbl worked"><tr><th>alert</th><th class="n">acted · change</th><th class="n">not answered · change</th><th>the node says</th></tr>`
+    + rows.map((x, i) => { const N = x.numbers || {}, nc = ((N.cases || {}).acted || []).length + ((N.cases || {}).unanswered || []).length;
+      return `<tr><td>${nc ? `<button class="link" data-w="${i}">${esc(name(x.key))}</button>` : esc(name(x.key))}</td><td class="n">${ch(N.acted)}</td><td class="n">${ch(N.unanswered)}</td>`
+        + `<td>${esc(VERDICT_W[N.verdict] || LSTATUS[x.status] || x.status)}${x.status === 'weakening' ? ' · weakening' : ''}</td>`
+        + `</tr>`; }).join('') + `</table></div><p class="fine">How many times, and the median change inside over the hours after: µg/m³ for the air, °C for heat. Press an alert for the node’s sentence and every case.</p>`;
+  const cases = (c, u, acted) => !c.length ? '' : `<table class="tbl"><tr><th>${acted ? 'acted' : 'not answered'}</th><th class="n">before</th><th class="n">after</th><th class="n">street</th>${acted ? '<th>note</th>' : ''}</tr>`
+    + c.slice().reverse().map(k => `<tr><td class="mono">${esc(when(k.at))}</td><td class="n">${fmt(k.before, 1)}</td><td class="n">${fmt(k.after, 1)} ${esc(u)}</td>`
+      + `<td class="n">${k.street == null ? '–' : (k.street > 0 ? '+' : '') + fmt(k.street, 1)}</td>${acted ? `<td class="said">${esc(k.note || '')}</td>` : ''}</tr>`).join('') + `</table>`;
+  el.querySelectorAll('[data-w]').forEach(b => b.onclick = () => { const x = rows[+b.dataset.w], N = x.numbers || {}, C = N.cases || {};
+    cardDialog(name(x.key), `<p class="said">${esc(x.statement)}</p>${cases(C.acted || [], N.unit || '', true)}${cases(C.unanswered || [], N.unit || '', false)}`); });
+}
+/* WHAT IS USUAL HERE (SPEC_learn step 2): the shape of a day from this house's own sensors, the week against the three
+   before, and the alerts that are mostly not answered, said as what would change them. The node changes nothing. */
+function usualBlock(L, el) {
+  const usual = L.filter(x => x.kind === 'usual'), asks = L.filter(x => x.kind === 'asks');
+  el.innerHTML = `<p class="fine">From this house's own sensors, up to a year back: when in the day each is usually highest and lowest, weekdays against weekends, and this week against the three before. Outside is about the place; inside stays with the house.</p>`
+    + (usual.length ? usual.map(x => `<div class="gh k">${esc(x.key.replace('-', ' '))} · ${esc(LSTATUS[x.status] || x.status)}${x.scope === 'place' ? ' · about the place' : ''}</div><p>${esc(x.statement)}</p>${dayStrip((x.numbers || {}).by_hour, x.metric === 'pm25' && D.issues[x.issue])}`).join('')
+      : `<p class="fine">Nothing yet: the node checks once a day.</p>`)
+    + (asks.length ? `<div class="gh k">alerts that may not fit</div><p class="fine">The last 30 days of each act-level alert. Where most go unanswered, the node says what would change it; it changes nothing itself.</p>`
+      + asks.map(x => `<p><b>${esc(x.key)}</b> · ${esc(x.statement)}</p>`).join('') : '');
+}
+// Who is in the house (SPEC_learn step 4): yes or no answers, kept here and nowhere else, that rank what the node
+// learned and say why a learning matters here. They change no threshold.
+async function whoForm() {
+  const h = await doorsFetch('/household').then(r => (r.ok ? r.json() : null)).catch(() => null);
+  if (!h) return '';
+  setTimeout(() => { const f = $('[data-f=who]'); if (!f) return;
+    f.onchange = async () => {
+      const people = Object.fromEntries([...f.querySelectorAll('input')].map(i => [i.name, i.checked]));
+      const r = await fetch('/household', { method: 'PUT', headers: { ...DOORS_AUTH(), 'content-type': 'application/json' }, body: JSON.stringify({ people }) }).catch(() => null);
+      f.querySelector('[role=status]').textContent = r && r.ok ? 'Kept. What worked follows it from the next look.' : 'Not kept.';
+    }; }, 0);
+  return `<form class="household" data-f="who"><p class="fine">Yes or no, kept on this machine, never a name or an age. It decides which of these matter most here, and a heat or air alert that matters to someone you tick says so in its Telegram message ("you said there is a child under five"), so that line reaches Telegram. It changes no threshold.</p>`
+    + Object.entries(h.choices).map(([k, w]) => `<label class="tick"><input type="checkbox" name="${esc(k)}"${h.people[k] ? ' checked' : ''}> ${esc(w)}</label>`).join(' ')
+    + `<p class="fine" role="status"></p></form>`;
+}
 
 /* What comes in, what goes out (R35's hub, back on Node in R38; the Wall keeps the flow by scale, js/flow.js).
    R38: every link says its own count over the hourly table's last 24 hours (flowData, doors-flow.js); answers come back on a link of

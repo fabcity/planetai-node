@@ -83,6 +83,11 @@ a{color:inherit}
 .bar .sp{flex:1}
 .reg{display:flex;border:1px solid var(--ink)}.reg button{background:none;border:0;padding:4px 10px;font:500 var(--t-cap) var(--mono);letter-spacing:.1em;cursor:pointer}
 .reg button.on{background:var(--ink);color:var(--ground)}
+/* Node › What it remembers: the scale switch is the register's, the search a plain field, wide tables scroll inside themselves */
+#remember h3{font:600 var(--t-body) var(--body);margin:26px 0 8px}.rbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:0 0 10px}
+.rseg{display:flex;border:1px solid var(--ink)}.rseg button{background:none;border:0;padding:4px 10px;min-height:32px;font:500 var(--t-cap) var(--mono);letter-spacing:.1em;color:var(--ink);cursor:pointer}.rseg button+button{border-left:1px solid var(--ink)}.rseg button.on{background:var(--ink);color:var(--ground)}
+.rfind{display:flex;gap:6px}.rfind input,.rfind button{min-height:32px;border:1px solid var(--ink);border-radius:0;background:none;color:var(--ink);padding:0 10px;font:var(--t-small) var(--body)}.rfind input{width:min(240px,48vw)}
+.tscroll{overflow-x:auto}.tbl td button.link{text-align:left}.tbl.diary td.done{max-width:28ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.household .tick{display:inline-flex;gap:6px;align-items:center;margin:4px 14px 4px 0;font-size:var(--t-small)}
 .proto{font:500 var(--t-cap) var(--mono);letter-spacing:.08em;color:var(--mute);border:1px dashed var(--mute);padding:3px 8px}
 /* "Phone view" only exists for a hand that would use it (SPEC_mobile §4.2): the head script sets data-phone */
 #layout-switch{display:none;font:500 var(--t-cap) var(--mono);letter-spacing:.08em;color:var(--mute);text-decoration:none;padding:3px 8px}
@@ -166,6 +171,9 @@ details .in{padding:0 0 16px;color:var(--mute);font-size:var(--t-small);max-widt
 .decide{margin-top:18px;border:1px solid var(--ink);padding:14px 16px}
 .decide .dq{font:600 var(--t-read)/1.3 var(--body);margin:6px 0 10px;max-width:46ch}
 .decide .dm{font:500 var(--t-small) var(--mono);color:var(--mute);margin:10px 0 0}
+/* Now's Yesterday and Did it work: quiet, sentence-case heads, no frame unless something is asked (then it is .decide) */
+.nrem{margin-top:18px}.nrem h3{font:600 var(--t-small) var(--body);margin:14px 0 4px}.nrem h3:first-child{margin-top:0}
+.nrem p{margin:0 0 6px;max-width:64ch;font-size:var(--t-small)}.nrem .dm{font:500 var(--t-small) var(--mono);color:var(--mute);margin:6px 0 0}.nrem .x{color:var(--mute)}
 .ans{display:flex;gap:0;border:1px solid var(--ink);width:max-content}
 .ans button{background:none;border:0;border-right:1px solid var(--ink);padding:6px 14px;font:600 var(--t-small) var(--body);cursor:not-allowed}
 .ans button:last-child{border-right:0}.ans button.on{background:var(--ink);color:var(--ground)}
@@ -597,6 +605,7 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
     <section aria-live="polite" data-learn="lead" data-reads="/issues" data-stage="observe" data-pack="core" data-kind="readout"><p class="sentence" id="sentence"></p></section>
     <div class="ladder" id="ladder" data-learn="distances" data-reads="/issues" data-stage="observe" data-pack="core" data-kind="stack"></div>
     <section class="decide" id="decide" data-learn="buttons" data-reads="/issues /actions" data-stage="decide" data-pack="core" data-kind="readout" aria-label="The decision of the moment"></section>
+    <section class="nrem" id="nremember" data-reads="/learned /learned/search /household" data-stage="measure" data-pack="core" data-kind="readout" aria-label="Yesterday, and did it work" hidden></section>
     <section class="fig" data-learn="figure" data-reads="/issues /issues/days" data-stage="observe" data-pack="core" data-kind="series" aria-label="The day and the week">
       <div class="head"><span class="k" id="fighead"></span><span class="k" id="figline"></span></div>
       <svg id="svg" tabindex="0" role="img" aria-describedby="sentence"></svg>
@@ -642,9 +651,7 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
       <section id="perday" class="dsec" data-learn="strips" data-reads="/issues/days" data-stage="measure" data-pack="core" data-kind="row"></section>
       <section id="d-images" class="dsec" data-reads="/captures" data-stage="observe" data-pack="core" data-kind="row"></section>
       <section id="d-things" class="dsec" data-reads="/things" data-stage="observe" data-pack="core" data-kind="row"></section>
-      <section id="d-learned" class="dsec" data-reads="/learned" data-stage="measure" data-pack="core" data-kind="row"></section>
-      <section id="d-usual" class="dsec" data-reads="/learned" data-stage="observe" data-pack="core" data-kind="row"></section>
-      <section id="d-diary" class="dsec" data-reads="/learned/search" data-stage="observe" data-pack="core" data-kind="row"></section>
+      <p class="fine">The diary, what is usual and what worked are on <a href="#node/remember">Node › What it remembers</a>.</p>
       <section id="ledger" class="dsec" data-learn="actions" data-reads="/actions /alerts" data-stage="act" data-pack="core" data-kind="row"></section>
       <section id="api" class="dsec" data-learn="api" data-reads="/static/docs_site.json" data-pack="core"></section>
     </div>
@@ -662,6 +669,7 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
   <div id="nodehead" data-learn="purpose" data-reads="/health" data-pack="core"></div>
   <h2>What comes in, what goes out</h2>
   <div id="flow" data-learn="raw" data-reads="/health /sensors /stats /alerts /actions /rho /cells" data-pack="core" data-kind="row"></div><p class="fine" id="flownote"></p>
+  <section id="remember" data-reads="/learned /learned/search /household" data-stage="measure" data-pack="core" data-kind="row" aria-label="What it remembers"></section>
   <h2>The nodes around it</h2>
   <div id="world" data-learn="presence" data-reads="/health" data-pack="reticulum"></div><div id="nodes"></div>
   <div class="runwrap">
