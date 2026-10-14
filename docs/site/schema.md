@@ -157,6 +157,10 @@ What each `(source, metric)` **is**, written at every start from `config/channel
 
 `version`, `told_at`: one row per release the node has told its household about, so a restart or the hourly re-check never sends "a new version is out" twice for the same one. Added in schema 0.52, for `UPDATE_CHECK`. Written by `check_release()` in `app/main.py`; nothing else reads it.
 
+### `household`
+
+Who is in the house (SPEC_learn, schema 0.59): one row (`id` = 1), `people` (yes or no for `older`, `under5`, `lungs`, `pregnant`, `outdoor`), `updated_at`. Written only by `PUT /household`. Revoked from `planetai_ro`, and named by no export, push or report.
+
 ### `digests`
 
 The node's diary (SPEC_learn, schema 0.58): `scale` (`day` · `week` · `month` · `year`) and `period_start` (the primary key together), `label`, `text`, `numbers`, `written_at`, and `tsv`, a generated full-text vector of label and text with a GIN index. Written by `check_learn()` for every completed period not yet kept, oldest first; never rewritten or deleted. Revoked from `planetai_ro`, and named by no export, push or report.

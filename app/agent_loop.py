@@ -858,7 +858,9 @@ async def main():
                     rows = [x for x in data.get("learnings", []) if x.get("status") != "gone"]
                     said = (data.get("kept_home") or T("Nothing learned yet: the node checks once a day.",
                                                       es="Nada aprendido todavía: el nodo lo revisa una vez al día.")) \
-                        if not rows else "\n\n".join(f"• {x['key']} ({x['status'].replace('_', ' ')})\n{x['statement']}" for x in rows)
+                        if not rows else "\n\n".join(f"• {x['key']} ({x['status'].replace('_', ' ')})\n{x['statement']}"
+                                                       + (T(" Matters here: ", es=" Importa aquí: ") + ", ".join(x["for_whom"]) + "." if x.get("for_whom") else "")
+                                                       for x in rows)
                 except Exception as e:  # noqa: BLE001
                     log.warning("/learned failed: %s: %s", type(e).__name__, str(e)[:200])
                     said = T(f"⚠️ I could not read what the node learned ({type(e).__name__}).",

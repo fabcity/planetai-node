@@ -229,6 +229,22 @@ const tcard = (t, classes) => `<div class="icard" data-id="${t.id || ''}"><label
 /* WHAT WORKED HERE — the household's own evidence (SPEC_learn step 1): per alert, what the air or the heat inside did
    after someone acted, against the street and against the times nobody answered. The sentence is the node's, written
    from the numbers; under it, every case, so the proof is on the page. Admin token only: the cases carry the notes. */
+// Who is in the house (SPEC_learn step 4): yes or no answers, kept here and nowhere else, that rank what the node
+// learned and say why a learning matters here. They change no threshold.
+const matters = x => (x.for_whom && x.for_whom.length ? ` <b>Matters here: ${esc(x.for_whom.join(', '))}.</b>` : '');
+async function whoForm() {
+  const h = await fetch('/household', { headers: DOORS_AUTH() }).then(r => (r.ok ? r.json() : null)).catch(() => null);
+  if (!h) return '';
+  setTimeout(() => { const f = $('#d-learned [data-f=who]'); if (!f) return;
+    f.onchange = async () => {
+      const people = Object.fromEntries([...f.querySelectorAll('input')].map(i => [i.name, i.checked]));
+      const r = await fetch('/household', { method: 'PUT', headers: { ...DOORS_AUTH(), 'content-type': 'application/json' }, body: JSON.stringify({ people }) }).catch(() => null);
+      f.querySelector('[role=status]').textContent = r && r.ok ? 'Kept. The order below follows it from the next look.' : 'Not kept.';
+    }; }, 0);
+  return `<form class="who" data-f="who"><p class="fine">Who lives here? Yes or no, kept on this machine only, never a name or an age. It decides which of these matter most here and changes no alert.</p>`
+    + Object.entries(h.choices).map(([k, w]) => `<label class="tick"><input type="checkbox" name="${esc(k)}"${h.people[k] ? ' checked' : ''}> ${esc(w)}</label>`).join(' ')
+    + `<p class="fine" role="status"></p></form>`;
+}
 const LSTATUS = { holding: 'holding', weakening: 'weakening', too_early: 'too early to say', gone: 'no longer watched' };
 async function learnedBlock() {
   const el = $('#d-learned');
@@ -242,7 +258,8 @@ async function learnedBlock() {
       + c.slice().reverse().map(k => `<tr><td class="mono">${esc((k.at || '').slice(0, 16).replace('T', ' '))}</td><td class="n">${fmt(k.before, 1)}</td><td class="n">${fmt(k.after, 1)} ${esc(u)}</td>`
         + `<td class="n">${k.street == null ? '–' : (k.street > 0 ? '+' : '') + fmt(k.street, 1)}</td><td class="hide">${esc(k.note || '')}</td></tr>`).join('') + `</table>`; };
   el.innerHTML = `<h2>What worked here</h2><p class="blurb">For each alert, what the air or the heat inside did after someone here acted, beside what the street did and what happened the times nobody answered. Your own before and after, not an experiment: the night or the weather can do the same. Checked once a day${j.checked ? `, last ${esc(j.checked.slice(0, 16).replace('T', ' '))}` : ''}. It never leaves this house.</p>`
-    + (rows.length ? rows.map(x => `<div class="gh k">${esc(x.key)} · ${esc(LSTATUS[x.status] || x.status)}</div><p>${esc(x.statement)}</p>${casesOf(x)}`).join('')
+    + await whoForm()
+    + (rows.length ? rows.map(x => `<div class="gh k">${esc(x.key)} · ${esc(LSTATUS[x.status] || x.status)}</div><p>${esc(x.statement)}${matters(x)}</p>${casesOf(x)}`).join('')
       : `<p class="fine">Nothing yet: the node checks once a day, and needs an alert someone acted on.</p>`);
 }
 /* WHAT IS USUAL HERE (SPEC_learn step 2): the shape of a day from this house's own sensors, the week against the three
@@ -255,7 +272,7 @@ const dayStrip = h => { const v = Object.entries(h || {}).map(([k, x]) => [+k, x
 function usualBlock(j) {
   const el = $('#d-usual'), usual = j.learnings.filter(x => x.kind === 'usual'), asks = j.learnings.filter(x => x.kind === 'asks');
   el.innerHTML = `<h2>What is usual here</h2><p class="blurb">From this house's own sensors, up to a year back: when in the day each is usually highest and lowest, weekdays against weekends, and this week against the three before. Outside is about the place; inside stays with the house.</p>`
-    + (usual.length ? usual.map(x => `<div class="gh k">${esc(x.key.replace('-', ' '))} · ${esc(LSTATUS[x.status] || x.status)}${x.scope === 'place' ? ' · about the place' : ''}</div><p>${esc(x.statement)}</p>${dayStrip((x.numbers || {}).by_hour)}`).join('')
+    + (usual.length ? usual.map(x => `<div class="gh k">${esc(x.key.replace('-', ' '))} · ${esc(LSTATUS[x.status] || x.status)}${x.scope === 'place' ? ' · about the place' : ''}</div><p>${esc(x.statement)}${matters(x)}</p>${dayStrip((x.numbers || {}).by_hour)}`).join('')
       : `<p class="fine">Nothing yet: the node checks once a day.</p>`)
     + (asks.length ? `<h3>Alerts that may not fit</h3><p class="fine">The last 30 days of each act-level alert. Where most go unanswered, the node says what would change it; it changes nothing itself.</p>`
       + asks.map(x => `<div class="gh k">${esc(x.key)}</div><p>${esc(x.statement)}</p>`).join('') : '');

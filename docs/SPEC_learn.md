@@ -119,7 +119,7 @@ of estimated from a census. It never leaves, and it changes no threshold by itse
 2. **What is usual.** *Built 14 October 2026:* the day's shape, weekdays against weekends, the week against the three
    before and a trend from 60 days, and the asks that do not fit. The month's shape waits for months of data.
 3. **Digests and asking them.** *Built 14 October 2026, written by the node's template only.* The `digests` table, the four scales, the `learned` tool for the pane and the bot.
-4. **Who is in the house.** §8's profile.
+4. **Who is in the house.** *Built 14 October 2026.* §8's profile, five yes-or-no answers that rank the learnings.
 5. **Homes like yours.** Comparison with other homes, the strongest effect in the feedback studies, made from
    anonymous sums through the community tier. Waits for the upstream tiers.
 6. **A year.** Same-date comparisons, as each node reaches its first year.

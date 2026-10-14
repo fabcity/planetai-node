@@ -423,3 +423,14 @@ CREATE TABLE IF NOT EXISTS digests (
 CREATE INDEX IF NOT EXISTS digests_tsv ON digests USING gin (tsv);
 REVOKE ALL ON digests FROM planetai_ro;
 INSERT INTO schema_version (version) VALUES ('0.58') ON CONFLICT DO NOTHING;
+
+-- 0.59: who is in the house (docs/SPEC_learn.md §8). One row of yes/no answers the household gives, so the node can say
+-- which learnings matter most here. Never a name, an age or a count; changes no threshold; never leaves: revoked from
+-- pack SQL, in no export, push or report, read by GET /household with the admin token.
+CREATE TABLE IF NOT EXISTS household (
+  id         INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+  people     JSONB NOT NULL DEFAULT '{}'::jsonb,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+REVOKE ALL ON household FROM planetai_ro;
+INSERT INTO schema_version (version) VALUES ('0.59') ON CONFLICT DO NOTHING;

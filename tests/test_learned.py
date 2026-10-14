@@ -193,4 +193,44 @@ assert c.get("/learned/search?q=x").status_code in (401, 403)
 settings._cache["rows"]["AGENT_PREFER"] = "fallback"
 assert c.get("/learned/search?q=smoke", headers={**ADMIN, "X-Agent": "agent"}).status_code == 403
 print("digests: completed days, weeks, months and years only; the period's own hours; notes once with a count; search by words as a parameter, guarded")
+# ---------------------------------------------------------------- who is in the house (step 4)
+m = re.search(r"CREATE TABLE IF NOT EXISTS household \((.*?)\n\);", SQL, re.S)
+assert m and "CHECK (id = 1)" in m.group(1) and "REVOKE ALL ON household FROM planetai_ro" in SQL, "one private row"
+for road in ("def export", "def push_aggregates", "def aggregates"):
+    body = SRC[SRC.index(road):SRC.index("\n\n\n", SRC.index(road))]
+    assert "household" not in body, f"{road} must never name the household"
+assert learn.for_whom("heat", {"older": True, "lungs": True}) == ["someone over 65"], "heat weighs on the old, not on lungs"
+assert learn.for_whom("air-quality", {"older": True, "lungs": True}) == ["someone with asthma or another lung condition", "someone over 65"]
+assert learn.for_whom("nearby", {"older": True}) == [] and learn.for_whom(None, {"older": True}) == []
+assert learn.for_whom("heat", {"older": "yes"}) == [], "only a true is a yes"
+ranked = learn.rank([{"kind": "worked", "issue": "air-quality", "key": "a"}, {"kind": "worked", "issue": "heat", "key": "h"},
+                     {"kind": "usual", "issue": "air", "key": "u"}], {"under5": True, "pregnant": False})
+assert [r["key"] for r in ranked] == ["u", "a", "h"] and ranked[1]["for_whom"] == ["a child under five"], ranked
+assert [r["key"] for r in learn.rank([{"kind": "worked", "issue": "heat", "key": "h"}, {"kind": "worked", "issue": "air", "key": "a"}], {"lungs": True})] == ["a", "h"], \
+    "within a kind, what matters here first"
+KEPT = []
+class HCur:
+    def __enter__(self): return self
+    def __exit__(self, *a): return False
+    def execute(self, sql, params=()): KEPT.append(params[0].obj)
+class HCon:
+    def __enter__(self): return self
+    def __exit__(self, *a): return False
+    def cursor(self): return HCur()
+main.db = lambda: HCon()
+main.q = lambda sql, *a: [{"people": {"older": True}}] if "FROM household" in sql else []
+settings._cache["rows"]["AGENT_PREFER"] = "private"
+assert c.get("/household").status_code in (401, 403) and c.get("/household", headers={"Authorization": "Bearer act-tok"}).status_code == 401
+h = c.get("/household", headers=ADMIN).json()
+assert h["people"] == {"older": True} and set(h["choices"]) == set(learn.PEOPLE)
+assert c.put("/household", json={"people": {"older": True, "lungs": False}}, headers=ADMIN).status_code == 200 and KEPT[-1] == {"older": True, "lungs": False}
+for bad in ({"people": {"name": "Ana"}}, {"people": {"older": "yes"}}, {"people": {"older": 2}}, {"people": []}, {}):
+    assert c.put("/household", json=bad, headers=ADMIN).status_code == 422, bad
+assert c.put("/household", json={"people": {"older": True}}, headers={**ADMIN, "X-Agent": "agent"}).status_code == 403, "an agent never writes it"
+settings._cache["rows"]["AGENT_PREFER"] = "fallback"
+assert c.get("/household", headers={**ADMIN, "X-Agent": "agent"}).status_code == 403
+settings._cache["rows"]["AGENT_PREFER"] = "private"
+main.q = lambda sql, *a: [{"people": {"lungs": True}}] if "FROM household" in sql else [{"kind": "worked", "key": "air-quality/x", "issue": "air-quality", "status": "holding", "statement": "s"}]
+assert c.get("/learned", headers=ADMIN).json()["learnings"][0]["for_whom"] == ["someone with asthma or another lung condition"]
+print("household: yes or no for five, one private row, admin only, never written by an agent; learnings say who they matter to")
 print("learned: every check passed")
