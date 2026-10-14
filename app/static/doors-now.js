@@ -30,8 +30,8 @@ function nowLearned() {
   if (el.hidden) return;
   const hh = h => `${String(h).padStart(2, '0')}:00`, where = r => r.key.startsWith('outdoor') ? 'outside' : 'inside';
   const ask = NOWL.people && !Object.values(NOWL.people).some(Boolean);
-  el.innerHTML = `<div class="k">measure · what this house learned</div>`
-    + (worked ? `<p class="dq">${esc(worked.statement)}${worked.status === 'weakening' ? ' <span class="x">· weakening</span>' : ''}</p>` : '')
+  el.innerHTML = `<div class="k">measure · what this house learned${worked ? ` · ${esc(worked.key.split('/').pop().replace(/_/g, ' '))}` : ''}</div>`
+    + (worked ? `<p class="fine">${esc(worked.statement)}${worked.status === 'weakening' ? ' <span class="x">· weakening</span>' : ''}</p>` : '')
     + (usual.length ? `<p class="dm">usually highest ${usual.map(r => `around ${hh(r.numbers.high_hour)} ${where(r)} (${fmt(r.numbers.high, 1)} ${said(r.numbers.unit)})`).join(', ')}</p>` : '')
     + ((worked && (worked.for_whom || []).length) ? `<p class="dm">matters here: ${esc(worked.for_whom.join(', '))}</p>`
       : ask ? `<p class="dm"><a href="#data/d-learned">Who lives here? Tell the node, and it says who an alert matters to ›</a></p>` : '')

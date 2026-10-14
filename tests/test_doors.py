@@ -196,6 +196,7 @@ console.log(JSON.stringify(out));
 nr = json.loads(subprocess.run(["node"], input=nl, capture_output=True, text=True, check=True).stdout)
 h = nr["air"]["html"]
 assert not nr["air"]["hidden"] and "Acted on 6 times: PM2.5 inside changed -1.1." in h, "the holding learning with the most cases leads"
+assert "what this house learned · indoor pm25 high" in h, "it says which alert the learning is about"
 assert "too early" not in h and ">gone<" not in h, "a too-early or gone row does not stand in for one that holds"
 assert "around 07:00 inside" in h and "around 18:00 outside" in h and "12.1" in h, "the usual worst hour, from the row's own numbers"
 assert "Who lives here?" in h and "#data/d-learned" in h, "an empty profile is asked for, not left blank"
