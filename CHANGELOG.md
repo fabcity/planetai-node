@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- **The doctor names the node's fundamental sources, and install and update end with what is left to set up**
+  (Tomas, 15 Oct: "the user should be guided to have the fundamental data sources of the node running"). Six sources
+  every node needs, in one place (`app/fundamentals.py`), most important first: your own sensors (one reporting in
+  the last hour, inside and ideally outside), alerts on your phone (Telegram connected and not refused), air stations
+  nearby (Bali Air Dispatch; does not apply outside Bali yet), weather (Open-Meteo), satellite air (CAMS) and the
+  nightly backup. New `GET /health/sources` (token) says each one's state, its last reading's age and, when it is not
+  running, the one thing to do, with the Set up section or the `planetai` command that does it. `planetai doctor`
+  prints them as a **Data sources** block; `install.sh`, `update.sh` and `planetai setup` now all end with the doctor
+  and a **To finish setting up** list, and in a terminal install and update offer to do the first step (never with
+  `--yes`, cron or an agent: then they only print). The Set up page shows the same list at the top, and the MCP
+  `health_check` returns it as `sources`. Telegram and the backup's age moved from the doctor's checks into the
+  sources, so they no longer make a new node's doctor red; *a backup exists* (which read `./backups` whatever
+  `BACKUP_DIR` said) is gone. Before the first poll after a start, a configured source is a dash, not a cross.
+
 - **A refusing source is not the household's to-do.** The report's one thing to do skipped past what someone here
   can act on to print a source's raw error, cut mid-URL (node #1, 14 Oct: Open-Meteo's daily limit). Source errors are
   left to Node's Running section.
