@@ -153,3 +153,144 @@ def learn_worked(q, rules: list[dict], live: set, was: dict) -> list[dict]:
 def _aware(t) -> datetime:
     t = datetime.fromisoformat(t) if isinstance(t, str) else t
     return t if t.tzinfo else t.replace(tzinfo=timezone.utc)
+
+
+# ---------------------------------------------------------------- what is usual here (SPEC_learn §5, step 2)
+# Per group of this house's own sensors: when in the day it is usually highest and lowest, weekdays against weekends,
+# this week against the three before, and, once there are 60 days, a slow trend. One row per group. The house's
+# indoor rooms are `house`; its own outdoor sensors are `place`, the kind of learning a community would want.
+GROUPS = {"indoor-pm25": ("pm25", True), "outdoor-pm25": ("pm25", False), "indoor-heat": ("apparent", True)}
+GROUP_WORDS = {"indoor-pm25": "PM2.5 inside", "outdoor-pm25": "PM2.5 outside", "indoor-heat": "the feels-like temperature inside"}
+USUAL_DAYS = 28        # the window the day's shape and the week's comparison read
+USUAL_MIN = 14         # fewer days than this and the row says too early
+TREND_MIN = 60         # a slope needs at least this many days
+
+
+def theil_sen(ys: list[float]) -> float:
+    """The median of every pairwise slope, per step: a trend a few odd days cannot drag. O(n²); a year is 66k pairs."""
+    s = [(ys[j] - ys[i]) / (j - i) for i in range(len(ys)) for j in range(i + 1, len(ys))]
+    return statistics.median(s) if s else 0.0
+
+
+def usual_row(group: str, hourly: dict, today) -> dict | None:
+    """One group's row from its hourly means {aware local datetime: value}. None when the house has no such sensor."""
+    if not hourly:
+        return None
+    metric, inside = GROUPS[group]
+    unit, words = UNIT[metric], GROUP_WORDS[group]
+    days = sorted({b.date() for b in hourly})
+    recent = {b: v for b, v in hourly.items() if (today - b.date()).days < USUAL_DAYS}
+    base = {"kind": "usual", "key": group, "issue": "air" if metric == "pm25" else "heat", "metric": metric,
+            "n": len({b.date() for b in recent}), "scope": "house" if inside else "place"}
+    if base["n"] < USUAL_MIN:
+        return {**base, "status": "too_early", "numbers": {"days": base["n"]},
+                "statement": f"{base['n']} days of {words} so far: too early to say what is usual."}
+    by_hour = {h: statistics.median([v for b, v in recent.items() if b.hour == h]) for h in {b.hour for b in recent}}
+    hi, lo = max(by_hour, key=by_hour.get), min(by_hour, key=by_hour.get)
+    wk = [v for b, v in recent.items() if b.isoweekday() < 6]
+    we = [v for b, v in recent.items() if b.isoweekday() >= 6]
+    daily = {d: statistics.median([v for b, v in hourly.items() if b.date() == d]) for d in days}
+    this = [daily[d] for d in days if (today - d).days < 7]
+    before = [daily[d] for d in days if 7 <= (today - d).days < USUAL_DAYS]
+    n = {"days": base["n"], "high_hour": hi, "high": round(by_hour[hi], 1), "low_hour": lo, "low": round(by_hour[lo], 1),
+         "weekday": round(statistics.median(wk), 1) if wk else None, "weekend": round(statistics.median(we), 1) if we else None,
+         "by_hour": {h: round(v, 1) for h, v in sorted(by_hour.items())}, "unit": unit}
+    text = (f"Over the last {base['n']} days, {words} is usually highest around {hi:02d}:00 ({n['high']} {unit}) "
+            f"and lowest around {lo:02d}:00 ({n['low']}).")
+    if n["weekday"] is not None and n["weekend"] is not None:
+        d = round(n["weekend"] - n["weekday"], 1)
+        text += f" Weekends run {abs(d)} {unit} {'higher' if d > 0 else 'lower'} than weekdays." if d else " Weekends and weekdays are the same."
+    if len(this) >= 3 and len(before) >= 7:
+        q1, _, q3 = statistics.quantiles(before, n=4)
+        now_, usual = statistics.median(this), statistics.median(before)
+        n.update(this_week=round(now_, 1), usual_week=round(usual, 1), spread=[round(q1, 1), round(q3, 1)])
+        where = "above" if now_ > q3 else "below" if now_ < q1 else None
+        text += (f" This week it was {round(now_, 1)} {unit} a day, {where} the three weeks before ({round(q1, 1)}–{round(q3, 1)})."
+                 if where else f" This week ({round(now_, 1)} {unit} a day) was within the three weeks before.")
+    if len(days) >= TREND_MIN:
+        slope = theil_sen([daily[d] for d in days]) * 30
+        n["trend_per_30_days"] = round(slope, 2)
+        text += f" Over {len(days)} days it has moved {slope:+.1f} {unit} every 30 days."
+    return {**base, "status": "holding", "numbers": n, "statement": text}
+
+
+def learn_usual(q, today=None) -> list[dict]:
+    """The three groups from this house's own sensors, up to a year back."""
+    rows = q("""SELECT date_trunc('hour', r.ts) AS bucket, r.sensor_id, r.metric, avg(r.value) AS mean, bool_or(s.indoor) AS indoor
+                FROM readings r JOIN sensors s USING (sensor_id)
+                WHERE s.kind = 'sensor' AND s.local AND r.metric IN ('pm25', 'temp', 'humidity')
+                  AND r.ts > now() - interval '365 days' AND r.ts <= now()
+                GROUP BY 1, 2, 3""")
+    for r in rows:
+        r["bucket"] = _aware(r["bucket"])
+    s = series(rows)
+    indoor = {r["sensor_id"]: r["indoor"] for r in rows}
+    today = today or (max(r["bucket"] for r in rows).date() if rows else None)
+    out = []
+    for group, (metric, inside) in GROUPS.items():
+        merged: dict = {}
+        for (sid, m), vals in s.items():
+            if m == metric and indoor.get(sid) is inside:
+                for b, v in vals.items():
+                    merged.setdefault(b, []).append(v)
+        r = usual_row(group, {b: sum(v) / len(v) for b, v in merged.items()}, today)
+        if r:
+            out.append(r)
+    return out
+
+
+# ---------------------------------------------------------------- asks that do not fit (SPEC_learn §5)
+# An alert that is mostly dismissed or left unanswered is a learning about the alert, not the house. The node says so
+# and names what would change it; it changes nothing itself. The lines live in the packs' rules, so the suggestion is
+# addressed to whoever keeps them, and quiet hours hold only lesser alerts, never an act-level one.
+ASKS_DAYS = 30
+ASKS_MIN = 5
+NIGHT = set(range(22, 24)) | set(range(0, 6))
+
+
+def asks_row(rule: str, alerts: list[dict], live: bool) -> dict | None:
+    """One rule's row from its last 30 days of act-level alerts: [{hour, acted, dismissed, answered}]."""
+    n = len(alerts)
+    if n < ASKS_MIN:
+        return None
+    acted = sum(a["acted"] for a in alerts)
+    dismissed = sum(a["dismissed"] and not a["acted"] for a in alerts)
+    ignored = [a for a in alerts if not a["answered"]]
+    night = sum(a["hour"] in NIGHT for a in ignored)
+    share = (len(ignored) + dismissed) / n
+    nums = {"days": ASKS_DAYS, "raised": n, "acted": acted, "dismissed": dismissed, "unanswered": len(ignored),
+            "unanswered_at_night": night}
+    text = (f"In the last {ASKS_DAYS} days this alert was raised {n} times: acted on {acted}, "
+            f"dismissed {dismissed}, left unanswered {len(ignored)}.")
+    per_day = n / ASKS_DAYS
+    peak = statistics.mode(a["hour"] for a in ignored) if ignored else None
+    nums.update(per_day=round(per_day, 1), unanswered_peak_hour=peak)
+    suggest = None
+    if share >= 0.7:
+        if ignored and night / len(ignored) >= 0.5:
+            suggest = (f"{night} of the {len(ignored)} unanswered came between 22:00 and 06:00. Quiet hours do not hold "
+                       "an act-level alert, so this one still rings at night; a night line or a lower level for it is "
+                       "a change to its rule.")
+        elif per_day >= 3:
+            suggest = (f"It rings about {round(per_day)} times a day, most often around {peak:02d}:00, and an alert that "
+                       "often becomes background. A longer pause between repeats, or a higher line, is a change to its rule.")
+        else:
+            suggest = (f"Most of the time it is not answered (most often around {peak:02d}:00). Its line, or the action "
+                       "it asks for, may not fit this house; that is a change to its rule.")
+        text += " " + suggest
+    return {"kind": "asks", "key": rule, "issue": rule.split("/")[0], "metric": None, "n": n, "scope": "house",
+            "status": "gone" if not live else "holding", "statement": text,
+            "numbers": {**nums, "suggest": suggest}}
+
+
+def learn_asks(q, live: set) -> list[dict]:
+    rows = q("""SELECT l.rule_id, CAST(extract(hour FROM l.ts) AS INTEGER) AS hour,
+                       EXISTS (SELECT 1 FROM actions x WHERE x.alert_id = l.id AND x.stage = 'acted') AS acted,
+                       EXISTS (SELECT 1 FROM actions x WHERE (x.alert_id = l.id OR (l.event_id IS NOT NULL AND x.event_id = l.event_id))
+                                 AND x.stage = 'dismissed') AS dismissed,
+                       EXISTS (SELECT 1 FROM actions x WHERE x.alert_id = l.id OR (l.event_id IS NOT NULL AND x.event_id = l.event_id)) AS answered
+                FROM alerts l WHERE l.level = 'act' AND l.ts > now() - make_interval(days => %s)""", ASKS_DAYS)
+    by: dict = {}
+    for r in rows:
+        by.setdefault(r["rule_id"], []).append(r)
+    return [x for x in (asks_row(k, v, k in live) for k, v in by.items()) if x]

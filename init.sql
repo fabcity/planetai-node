@@ -391,7 +391,7 @@ INSERT INTO schema_version (version) VALUES ('0.56') ON CONFLICT DO NOTHING;
 -- that stops holding is marked `weakening` or `gone`. Kept as things are: revoked from pack SQL, in no export, push
 -- or report bundle; read by GET /learned with the admin token, and by an agent only while models stay home.
 CREATE TABLE IF NOT EXISTS learnings (
-  kind        TEXT NOT NULL,                 -- worked (step 1) · usual · asks (later steps)
+  kind        TEXT NOT NULL,                 -- worked (step 1) · usual · asks (step 2)
   key         TEXT NOT NULL,                 -- what it is about: a rule id for `worked`
   issue       TEXT,
   metric      TEXT,

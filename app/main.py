@@ -864,18 +864,20 @@ LEARN_EVERY = 20 * 3600     # daily, give or take: an hourly loop that only work
 
 
 def check_learn() -> None:
-    """Once a day, re-check what worked here (app/learn.py) and keep each rule's row. A row is replaced, never
-    deleted: a rule that can no longer fire keeps its row as `gone`."""
+    """Once a day, re-check what this house learned (app/learn.py): what worked, what is usual, and the asks that do
+    not fit. A row is replaced, never deleted: a rule that can no longer fire keeps its row as `gone`."""
     if time.time() - state.get("learned_at", 0) < LEARN_EVERY:
         return
     was = {r["key"]: r for r in q("SELECT key, status, numbers FROM learnings WHERE kind = 'worked'")}
-    rows = learn.learn_worked(q, packs.load_rules(), set(index._live_rule_ids()), was)
+    live = set(index._live_rule_ids())
+    rows = learn.learn_worked(q, packs.load_rules(), live, was) + learn.learn_usual(q) + learn.learn_asks(q, live)
     with db() as con, con.cursor() as cur:
         for r in rows:
             cur.execute("""INSERT INTO learnings (kind, key, issue, metric, status, statement, numbers, n, scope)
                            VALUES (%(kind)s, %(key)s, %(issue)s, %(metric)s, %(status)s, %(statement)s, %(numbers)s, %(n)s, %(scope)s)
                            ON CONFLICT (kind, key) DO UPDATE SET status = EXCLUDED.status, statement = EXCLUDED.statement,
-                             numbers = EXCLUDED.numbers, n = EXCLUDED.n, metric = EXCLUDED.metric, checked_at = now()""",
+                             numbers = EXCLUDED.numbers, n = EXCLUDED.n, metric = EXCLUDED.metric, scope = EXCLUDED.scope,
+                             checked_at = now()""",
                         {**r, "numbers": Jsonb(r["numbers"])})
     state["learned_at"] = time.time()
     log.info("learn: %d rows re-checked", len(rows))

@@ -31,7 +31,7 @@ const SYM = { pm25: 'PM2.5', pm10: 'PM10', pm1: 'PM1', pm25_raw: 'PM2.5ʳ', aqi:
   precipitation: 'R', uv_index: 'UV', temp_model: 'Tᵐ', humidity_model: 'RHᵐ', pressure_model: 'Pᵐ', noise: 'dB', light: 'lx', sea_surface_temp: 'SST',
   wave_height_m: 'Hs', wave_period_s: 'Tp', wave_direction: 'Dw', swell_height_m: 'Sw', swell_period_s: 'Ts', lora_util_pct: 'LoRa', lora_channel_pct: 'Ch' };
 const DSECTIONS = [['d-readings', 'Readings'], ['issues7', 'Issues, 7 days'], ['models', 'Models and satellite'], ['cells', 'Index cells'],
-  ['perday', 'Hours over the line'], ['d-images', 'Images'], ['d-things', 'Things'], ['d-learned', 'What worked'], ['ledger', 'Decisions'], ['api', 'API']];
+  ['perday', 'Hours over the line'], ['d-images', 'Images'], ['d-things', 'Things'], ['d-learned', 'What worked'], ['d-usual', 'What is usual'], ['ledger', 'Decisions'], ['api', 'API']];
 
 /* #data/<sensor-id> (from a dot on Place) opens on a metric that station reads and scrolls to its row, once per link;
    #data/models opens at the models, #data/api at the API. */
@@ -234,7 +234,8 @@ async function learnedBlock() {
   const el = $('#d-learned');
   const r = await fetch('/learned', { headers: DOORS_AUTH() }).catch(() => null);
   const j = r && r.ok ? await r.json().catch(() => null) : null;
-  if (!j) { el.innerHTML = `<h2>What worked here</h2><p class="fine">What this house learned answers the admin token only, because its cases carry your own notes. Unlock this screen with it under Node.</p>`; return; }
+  if (!j) { el.innerHTML = `<h2>What worked here</h2><p class="fine">What this house learned answers the admin token only, because its cases carry your own notes. Unlock this screen with it under Node.</p>`; $('#d-usual').innerHTML = ''; return; }
+  usualBlock(j);
   const rows = j.learnings.filter(x => x.kind === 'worked');
   const casesOf = x => { const c = (x.numbers.cases || {}).acted || [], u = x.numbers.unit || '';
     return !c.length ? '' : `<table class="tbl"><tr><th>acted</th><th class="n">before</th><th class="n">after</th><th class="n">street</th><th class="hide">note</th></tr>`
@@ -243,6 +244,21 @@ async function learnedBlock() {
   el.innerHTML = `<h2>What worked here</h2><p class="blurb">For each alert, what the air or the heat inside did after someone here acted, beside what the street did and what happened the times nobody answered. Your own before and after, not an experiment: the night or the weather can do the same. Checked once a day${j.checked ? `, last ${esc(j.checked.slice(0, 16).replace('T', ' '))}` : ''}. It never leaves this house.</p>`
     + (rows.length ? rows.map(x => `<div class="gh k">${esc(x.key)} · ${esc(LSTATUS[x.status] || x.status)}</div><p>${esc(x.statement)}</p>${casesOf(x)}`).join('')
       : `<p class="fine">Nothing yet: the node checks once a day, and needs an alert someone acted on.</p>`);
+}
+/* WHAT IS USUAL HERE (SPEC_learn step 2): the shape of a day from this house's own sensors, the week against the three
+   before, and the alerts that are mostly not answered, said as what would change them. The node changes nothing. */
+const dayStrip = h => { const v = Object.entries(h || {}).map(([k, x]) => [+k, x]); if (v.length < 12) return '';
+  const lo = Math.min(...v.map(x => x[1])), hi = Math.max(...v.map(x => x[1])) || 1;
+  return `<svg viewBox="0 0 240 34" width="240" height="34" role="img" aria-label="the usual day, hour by hour">`
+    + v.map(([k, x]) => { const y = 4 + 26 * (1 - (x - lo) / ((hi - lo) || 1)); return `<rect x="${k * 10 + 1}" y="${y.toFixed(1)}" width="8" height="${(30 - y).toFixed(1)}" fill="currentColor" opacity=".55"><title>${String(k).padStart(2, '0')}:00 · ${x}</title></rect>`; }).join('')
+    + `<text x="0" y="34" font-size="6" fill="currentColor">00</text><text x="114" y="34" font-size="6" fill="currentColor">12</text><text x="228" y="34" font-size="6" fill="currentColor">23</text></svg>`; };
+function usualBlock(j) {
+  const el = $('#d-usual'), usual = j.learnings.filter(x => x.kind === 'usual'), asks = j.learnings.filter(x => x.kind === 'asks');
+  el.innerHTML = `<h2>What is usual here</h2><p class="blurb">From this house's own sensors, up to a year back: when in the day each is usually highest and lowest, weekdays against weekends, and this week against the three before. Outside is about the place; inside stays with the house.</p>`
+    + (usual.length ? usual.map(x => `<div class="gh k">${esc(x.key.replace('-', ' '))} · ${esc(LSTATUS[x.status] || x.status)}${x.scope === 'place' ? ' · about the place' : ''}</div><p>${esc(x.statement)}</p>${dayStrip((x.numbers || {}).by_hour)}`).join('')
+      : `<p class="fine">Nothing yet: the node checks once a day.</p>`)
+    + (asks.length ? `<h3>Alerts that may not fit</h3><p class="fine">The last 30 days of each act-level alert. Where most go unanswered, the node says what would change it; it changes nothing itself.</p>`
+      + asks.map(x => `<div class="gh k">${esc(x.key)}</div><p>${esc(x.statement)}</p>`).join('') : '');
 }
 async function thingsBlock() {
   const el = $('#d-things');
