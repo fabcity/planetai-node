@@ -1440,11 +1440,18 @@ def sensor_room(sid: str, body: dict, authorization: str = Header("")):
         raise HTTPException(422, "room is text, or null to give the platform's name back")
     room = " ".join((room or "").split())[:40] or None
     with db() as con, con.cursor() as cur:
+        cur.execute("SELECT name FROM sensors WHERE sensor_id = %s", (sid,))
+        was = cur.fetchone()
+        if not was:
+            raise HTTPException(404, "no such sensor")
         cur.execute("""UPDATE sensors SET room = %s, name = CASE WHEN %s::text IS NULL THEN coalesce(source_name, name) ELSE name END
                        WHERE sensor_id = %s RETURNING sensor_id, name, room, source_name""", (room, room, sid))
         row = cur.fetchone()
-    if not row:
-        raise HTTPException(404, "no such sensor")
+        # An event episode names its rooms by the sensors' names (events_pg.candidates) and matches them by name for
+        # the inside reading: the rename follows into every episode, so an open one keeps its room. What an alert
+        # said is left as it was sent.
+        cur.execute("UPDATE alert_events SET rooms = array_replace(rooms, %s, %s) WHERE %s = ANY(rooms)",
+                    (was["name"], row["name"], was["name"]))
     return {"ok": True, "sensor": row}
 
 

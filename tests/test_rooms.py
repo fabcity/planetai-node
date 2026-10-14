@@ -41,6 +41,9 @@ class Cur:
     def execute(self, sql, params=()):
         DONE.append((sql, params)); self.params = params
     def fetchone(self):
+        if len(self.params) == 1:                       # SELECT name: does the sensor exist, and what was it called
+            s = SENSORS.get(self.params[0])
+            return {"name": s["name"]} if s else None
         room, _, sid = self.params
         s = SENSORS.get(sid)
         if not s:
@@ -64,11 +67,13 @@ assert c.patch("/sensors/sc-1", json={"room": "Kids"}).status_code in (401, 403)
 assert c.patch("/sensors/sc-1", json={"room": "Kids"}, headers=ACT).status_code == 401, "admin only: it renames what the house reads"
 r = c.patch("/sensors/sc-1", json={"room": "  Kids  "}, headers=ADMIN)
 assert r.status_code == 200 and r.json()["sensor"]["name"] == "Kids" and r.json()["sensor"]["source_name"] == "K ROOM - BAYU HOLES", r.text
-assert DONE[-1][1][0] == "Kids", "trimmed before it is stored"
+assert any(q.startswith("UPDATE sensors") and p[0] == "Kids" for q, p in DONE), "trimmed before it is stored"
+assert DONE[-1] == ("UPDATE alert_events SET rooms = array_replace(rooms, %s, %s) WHERE %s = ANY(rooms)",
+                    ("K ROOM - BAYU HOLES", "Kids", "K ROOM - BAYU HOLES")), "the rename follows into the event episodes"
 assert c.patch("/sensors/sc-1", json={"room": "x" * 80}, headers=ADMIN).json()["sensor"]["room"] == "x" * 40, "forty characters at most"
 assert c.patch("/sensors/sc-1", json={"room": 3}, headers=ADMIN).status_code == 422
 r = c.patch("/sensors/sc-1", json={"room": None}, headers=ADMIN)
-assert r.json()["sensor"]["name"] == "K ROOM - BAYU HOLES" and DONE[-1][1][0] is None, "null gives the platform's name back"
+assert r.json()["sensor"]["name"] == "K ROOM - BAYU HOLES" and DONE[-2][1][0] is None, "null gives the platform's name back"
 assert c.patch("/sensors/nope", json={"room": "Kids"}, headers=ADMIN).status_code == 404
 
 ROWS = [{"sensor_id": "sc-1", "source": "smartcitizen", "name": "Kids", "room": "Kids", "source_name": "K ROOM - BAYU HOLES",

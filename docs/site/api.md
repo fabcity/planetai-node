@@ -603,7 +603,7 @@ Add a thing (`class` and `name` required; `count` 1 by default, `used` `monthly`
 ### PATCH /sensors/{sid}
 Access: admin
 
-Name the room one of this home's sensors is in: `{"room": "Kids"}`, at most 40 characters; `null` or `""` gives the platform's own name back. The database makes the room the sensor's `name` whatever writes the row (a poll, a pack or core; init.sql 0.61), so every rule, the stats, the report, the event messages and the pages say it, and keeps the platform's name in `source_name`. Returns `{ok, sensor: {sensor_id, name, room, source_name}}`; 404 for an unknown sensor, 422 when `room` is not text.
+Name the room one of this home's sensors is in: `{"room": "Kids"}`, at most 40 characters; `null` or `""` gives the platform's own name back. The database makes the room the sensor's `name` whatever writes the row (a poll, a pack or core; init.sql 0.61), so every rule, the stats, the report, the event messages and the pages say it, and keeps the platform's name in `source_name`. The rename follows into the event engine's episodes (`alert_events.rooms`), so an open one keeps its room; what an alert said is left as it was sent. Returns `{ok, sensor: {sensor_id, name, room, source_name}}`; 404 for an unknown sensor, 422 when `room` is not text.
 
 ### PATCH /things/{tid}
 Access: admin
