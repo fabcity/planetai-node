@@ -31,7 +31,7 @@ NAME = r"^[a-z0-9][a-z0-9._-]{0,63}$"
 
 @router.get("")
 @router.get("/")
-def issues_now(request: Request):
+def issues_now(request: Request = None):
     """Every issue this node declares: state, stack, line, attribution, sentence, asks, series.
 
     The order is `NODE_ISSUES`; an issue the keeper has not declared still appears, marked
@@ -67,7 +67,9 @@ def issues_now(request: Request):
             events = {"engine": events_wire.engine_of(main.settings.get("ALERT_ENGINE", "rules")),
                       "error": "this node could not read its alert events just now", "open": [], "recent": [],
                       "buttons": {}, "cleared_today": 0, "last_cleared": None}
-        trusted = bool(getattr(request.state, "share_trusted", False))
+        # ask.py calls this with no request to build a model's context, which a tokenless pane or the Wall may speak
+        # from: that caller gets the nameless body too. Without the default, /ask answered 500 (node #1, 14 Oct).
+        trusted = request is not None and bool(getattr(request.state, "share_trusted", False))
         out = engine.compute(cur, main.settings, load(), earth=_earth(),
                              mesh=main.mesh_state if main.MQTT_HOST else None,
                              facilities=facilities, now=now, events=events if trusted else nameless(events))
