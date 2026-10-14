@@ -8,6 +8,11 @@
   from the line's source, so heat keeps `line 35.0`. Before, the walk drew it in ink, Data drew it unlabelled, and What
   is usual and three of the walk's drawings had none. Alert words and the 35.5 urgent threshold are unchanged. `tests/test_doors.py` renders each drawing on node #1's
   capture.
+- **The report tells what was sent.** On `ALERT_ENGINE=events` the heat and air rules still record alerts that
+  nobody receives, and the report read them: node #1's 19:00 report on 14 Oct opened "It is hot inside" from a heat
+  row never sent, while the page said the heat was bearable. The report now leaves those rows out and takes heat from
+  the engine's open episodes that were sent. The things a home keeps are no longer a sensor that "has stopped
+  sending", and a metric with no household word (`bme_iaq`) is never named in "What changed".
 - **Thirteen fixes from the design review of node #1 (14 Oct).** (1) Times are the node's own: the doors and the phone
   page sliced UTC strings as if they were local, so node #1 read "as of 11:52" beside "at 19:00" in Bali; every time
   is now read in `/health`'s zone. (2) The mono the frozen theme asks for at `/static/fonts/jetbrains-mono-latin.woff2`

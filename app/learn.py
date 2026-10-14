@@ -107,6 +107,13 @@ def summarise(rule: str, metric: str, acted: list[dict], unanswered: list[dict],
 ISSUE_PACK = {"air": "air-quality", "heat": "heat"}
 
 
+def replaced(rules: list, mode: str) -> set:
+    """The packs the event engine speaks for on this node: those with kinded rules, on ALERT_ENGINE=events only."""
+    if mode != "events":
+        return set()
+    return {r["id"].split("/", 1)[0] for r in rules if isinstance(r, dict) and r.get("kind") and r.get("id")}
+
+
 def silent(rule_id: str, ts, replaced: set, since) -> bool:
     return bool(since) and rule_id.split("/")[0] in replaced and _aware(ts) >= _aware(since)
 
