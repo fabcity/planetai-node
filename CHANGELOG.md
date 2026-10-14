@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Learnings on an events node count what was sent.** On `ALERT_ENGINE=events` the heat and air-quality rules still
+  write alert rows that are never sent, and "what worked" and "alerts that may not fit" were counting them: node #1's
+  page said the heat alert "rings about 6 times a day" when 4 heat messages had gone out since 5 October. Rows of a
+  replaced pack after the engine's first message are now left out; such a rule says it no longer sends here; and the
+  engine's sent episodes are learned from as `air-quality/events` and `heat/events`. Heat's "left unanswered" on node
+  #1 drops from 198 to 145, the ones that were sent.
 - **heat: "too hot" once a room a day.** `heat_stress_now` keeps its 35 °C line and its cooldown goes from 240 to
   1440 minutes. Over node #1's last 30 days the hot room felt 35 °C or more in 44% of hours and the rule fired 171
   times, 5.7 a day, 21 at night, two acted on; replayed at 1440 it fires 1.9 a day and never at night. The signal
