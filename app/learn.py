@@ -447,10 +447,41 @@ PEOPLE = {"older": "someone over 65", "under5": "a child under five", "lungs": "
 AT_RISK = {"heat": ("older", "under5", "pregnant", "outdoor"), "air": ("lungs", "under5", "older", "pregnant")}
 
 
+def who(issue: str | None, people: dict) -> list[str]:
+    """The keys of the people in this house `issue` weighs on most, in AT_RISK's order."""
+    kind = "air" if (issue or "").startswith("air") else "heat" if (issue or "").startswith("heat") else None
+    return [k for k in AT_RISK.get(kind, ()) if people.get(k) is True]
+
+
 def for_whom(issue: str | None, people: dict) -> list[str]:
     """The people in this house a learning about `issue` matters most to, in the household's terms."""
-    kind = "air" if (issue or "").startswith("air") else "heat" if (issue or "").startswith("heat") else None
-    return [PEOPLE[k] for k in AT_RISK.get(kind, ()) if people.get(k) is True]
+    return [PEOPLE[k] for k in who(issue, people)]
+
+
+# The line an act-level heat or air alert carries to the household's own Telegram when the profile says someone here
+# is at more risk (Tomas, 14 Oct 2026: "yes, add it to the alerts"). People ignore alerts mostly because they do not
+# feel at risk; this says who is. It rides the Telegram message only: never the mesh, Reticulum, Home Assistant or
+# the stored alert text, which /alerts serves.
+PEOPLE_WORDS = {
+    "en": PEOPLE,
+    "id": {"older": "seseorang berusia di atas 65 tahun", "under5": "anak di bawah lima tahun",
+           "lungs": "seseorang dengan asma atau penyakit paru lain", "pregnant": "seseorang yang sedang hamil",
+           "outdoor": "seseorang yang bekerja di luar ruangan"},
+    "es": {"older": "alguien mayor de 65 años", "under5": "un niño o una niña menor de cinco años",
+           "lungs": "alguien con asma u otra enfermedad pulmonar", "pregnant": "alguien embarazada",
+           "outdoor": "alguien que trabaja al aire libre"}}
+MATTERS = {"en": "👤 This matters more here: you said there is {who}.",
+           "id": "👤 Ini lebih penting di sini: Anda mengatakan ada {who}.",
+           "es": "👤 Aquí importa más: dijiste que hay {who}."}
+
+
+def alert_line(issue: str | None, people: dict, locale: str = "en") -> str:
+    """The Telegram line for an alert about `issue`, or "" when nobody listed here is at more risk from it."""
+    keys = who(issue, people)
+    if not keys:
+        return ""
+    words = PEOPLE_WORDS.get(locale) or PEOPLE_WORDS["en"]
+    return (MATTERS.get(locale) or MATTERS["en"]).format(who=", ".join(words[k] for k in keys))
 
 
 def rank(rows: list[dict], people: dict) -> list[dict]:
