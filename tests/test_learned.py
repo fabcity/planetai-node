@@ -207,6 +207,27 @@ assert "2 alerts (heat_stress_now 2), 1 acted on." in t
 assert "\u201cclosed the windows\u201d \u00d72; \u201cpurifier on\u201d" in t, "each note once, with how many times"
 assert "Against the day before: PM2.5 inside +5.0." in t, "a change under 0.1 is not said"
 assert "feels-like" not in t, "a group with no readings is not invented"
+assert dg["numbers"]["v"] == learn.DIGEST_V, "a digest says which version wrote it, so an older one is written again"
+# an events node: the replaced pack's rows were never sent; the episodes that were are counted, by issue
+D13 = lambda h: datetime(2026, 10, 13, h, tzinfo=WIB)  # noqa: E731
+def qd(sql, *a):
+    if "min(r.ts)" in sql:
+        return [{"t": datetime(2026, 10, 12, 1, tzinfo=WIB)}]
+    if "SELECT now()" in sql:
+        return [{"t": D13(9)}]
+    if "FROM alert_events" in sql:
+        return [{"issue": "heat", "opened_at": D13(14), "acted": True}, {"issue": "heat", "opened_at": D13(14) - timedelta(days=9), "acted": False}]
+    if "FROM alerts" in sql:
+        return [{"rule_id": "heat/heat_stress_now", "ts": D13(h), "d": date(2026, 10, 13), "acted": False} for h in range(7)] \
+             + [{"rule_id": "nearby/only_here", "ts": D13(8), "d": date(2026, 10, 13), "acted": False}]
+    return []
+d13 = {d["period_start"]: d for d in learn.write_digests(qd, set(), {}, date(2026, 10, 14), {"heat"}, D13(0) - timedelta(days=8))}
+assert "2 alerts (only_here 1, heat 1), 1 acted on." in d13["2026-10-13"]["text"], d13["2026-10-13"]["text"]
+rules_node = {d["period_start"]: d for d in learn.write_digests(qd, set(), {}, date(2026, 10, 14))}
+assert "8 alerts (heat_stress_now 7, only_here 1), 0 acted on." in rules_node["2026-10-13"]["text"], "a rules node counts its rows, as before"
+CL = SRC[SRC.index("def check_learn"):SRC.index("\n\n\n", SRC.index("def check_learn"))]
+assert 'get("v") == learn.DIGEST_V' in CL and "DO UPDATE SET label = EXCLUDED.label" in CL, "an older digest is written again"
+assert 'state.get("learned_on") == today' in CL and "SELECT current_date" in CL, "once a local day, so the morning finds yesterday"
 empty = learn.digest("week", date(2026, 9, 28), date(2026, 10, 5), {}, [], [], None)
 assert empty["text"] == "Week of 28 September 2026. No readings from this house's own sensors."
 assert learn.search_terms("was this October smokier?") == "was | this | october | smokier"
@@ -289,4 +310,17 @@ assert 'home=_alert_home(rule["id"]) if level == "act" else ""' in rr and 'home=
 assert "INSERT INTO alerts (rule_id, sensor_id, level, text) VALUES (%s,%s,%s,%s)" in rr and "_alert_home" not in rr.split("INSERT INTO alerts")[0][-400:], \
     "the stored alert text, which /alerts serves, never carries it"
 print("alerts: act-level heat and air say who here they matter to, in the household's language, on Telegram only")
+# ---------------------------------------------------------------- the house's counts stay with the house
+# A readout (/stats) answers `private` rows to the household's own tokens or this machine, never to anyone the page
+# answers at SHARE_LEVEL=open, nor to a parent's or a backup's token.
+SQLS = []
+main.q = lambda sql, *a: (SQLS.append(sql), [])[1]
+settings._cache["rows"].update(SHARE_LEVEL="open", ACT_TOKEN="act-tok", AGG_TOKEN="agg-tok")
+for hdr, private in (({}, False), ({"Authorization": "Bearer agg-tok"}, False), ({"Authorization": "Bearer act-tok"}, True), (ADMIN, True)):
+    SQLS.clear()
+    assert c.get("/stats", headers=hdr).status_code == 200, hdr
+    assert ("role = 'private'" not in SQLS[0]) == private, (hdr, SQLS[0])
+SQLS.clear()
+assert c.get("/stats", headers={**ADMIN, "X-Agent": "agent"}).status_code == 200 and "role = 'private'" in SQLS[0], "never an agent"
+print("readouts: the house's private counts to its own tokens and this machine, not to the network, a parent or an agent")
 print("learned: every check passed")

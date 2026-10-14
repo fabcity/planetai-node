@@ -873,13 +873,15 @@ def check_others() -> None:
 
 
 # ---------------------------------------------------------------- what the node learns (docs/SPEC_learn.md)
-LEARN_EVERY = 20 * 3600     # daily, give or take: an hourly loop that only works once its last pass is this old
-
-
 def check_learn() -> None:
-    """Once a day, re-check what this house learned (app/learn.py): what worked, what is usual, and the asks that do
-    not fit. A row is replaced, never deleted: a rule that can no longer fire keeps its row as `gone`."""
-    if time.time() - state.get("learned_at", 0) < LEARN_EVERY:
+    """Once a local day, re-check what this house learned (app/learn.py): what worked, what is usual, and the asks
+    that do not fit. A row is replaced, never deleted: a rule that can no longer fire keeps its row as `gone`.
+
+    Its pass is the first hourly tick of the node's own date (the session runs in NODE_TZ), so yesterday's digest is
+    written by about one in the morning, before the morning report reads it. Until 14 Oct it ran 20 hours after its
+    last pass, which drifted round the clock."""
+    today = q("SELECT current_date AS d")[0]["d"]
+    if state.get("learned_on") == today:
         return
     was = {r["key"]: r for r in q("SELECT key, status, numbers FROM learnings WHERE kind = 'worked'")}
     live = set(index._live_rule_ids())
@@ -901,14 +903,17 @@ def check_learn() -> None:
                              checked_at = now()""",
                         {**r, "numbers": Jsonb(r["numbers"])})
     kept = q("SELECT scale, period_start, numbers FROM digests")
-    new = learn.write_digests(q, {(d["scale"], str(d["period_start"])[:10]) for d in kept},
-                              {(d["scale"], str(d["period_start"])[:10]): d["numbers"] for d in kept})
+    new = learn.write_digests(q, {(d["scale"], str(d["period_start"])[:10]) for d in kept
+                                  if (d["numbers"] or {}).get("v") == learn.DIGEST_V},
+                              {(d["scale"], str(d["period_start"])[:10]): d["numbers"] for d in kept},
+                              replaced=replaced, since=since)
     with db() as con, con.cursor() as cur:
-        for d in new:
+        for d in new:   # a digest of an older version is written again (learn.DIGEST_V); a current one never is
             cur.execute("""INSERT INTO digests (scale, period_start, label, text, numbers)
                            VALUES (%(scale)s, %(period_start)s, %(label)s, %(text)s, %(numbers)s)
-                           ON CONFLICT (scale, period_start) DO NOTHING""", {**d, "numbers": Jsonb(d["numbers"])})
-    state["learned_at"] = time.time()
+                           ON CONFLICT (scale, period_start) DO UPDATE SET label = EXCLUDED.label, text = EXCLUDED.text,
+                             numbers = EXCLUDED.numbers, written_at = now()""", {**d, "numbers": Jsonb(d["numbers"])})
+    state["learned_on"], state["learned_at"] = today, time.time()
     log.info("learn: %d rows re-checked, %d digests written", len(rows), len(new))
 
 
@@ -2713,10 +2718,14 @@ def _ground_svg(variant: str = "dark") -> str | None:
 def _shows_private(request: Request, authorization: str = "", raw: bool = True) -> bool:
     """Whether this read may include `private` readings (packs.public_sql). Never for an agent, which says so with
     X-Agent on every call (app/agent.py), whatever token it carries: what a model reads can go to a provider. A raw
-    route (rows, series) answers them to the admin token only; a readout (`raw=False`) to anyone the page answers."""
+    route (rows, series) answers them to the admin token only; a readout (`raw=False`) to the household's own tokens
+    (admin, act) or this machine. Until 14 Oct a readout went to anyone the page answered, which at SHARE_LEVEL=open is
+    anyone on the network, and a parent's or a backup's token: the house's counts on a screen nobody in it owns."""
     if request.headers.get("x-agent"):
         return False
-    return not raw or _bearer_ok(authorization, os.getenv("ADMIN_TOKEN", "").strip())
+    if not raw:
+        return _bearer_ok(authorization, os.getenv("ADMIN_TOKEN", "").strip(), ACT_TOKEN()) or _is_local(request)
+    return _bearer_ok(authorization, os.getenv("ADMIN_TOKEN", "").strip())
 
 
 def _admin(authorization: str) -> None:

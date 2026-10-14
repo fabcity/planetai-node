@@ -23,10 +23,11 @@ import json
 import logging
 import os
 import re
+import secrets
 from pathlib import Path
 
 import httpx
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -256,8 +257,28 @@ def _sse(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {_json(data)}\n\n"
 
 
+# What the house learned (SPEC_learn §7) stays with the house: the pane offers the `learned` tool only to a caller
+# carrying the household's own token (admin or act) or this machine itself, and never to the Wall, which is read by
+# whoever walks past. /ask is on the SHARE_LEVEL=open allowlist, so without this a stranger on the network could ask
+# the pane what the household did and when.
+HOUSE_TOOLS = frozenset({"learned"})
+
+
+def _house(request: Request) -> bool:
+    given = (request.headers.get("authorization") or "").replace("Bearer ", "", 1).strip().encode()
+    ok = False
+    for t in (os.getenv("ADMIN_TOKEN", "").strip(), (settings.get("ACT_TOKEN", "") or "").strip()):
+        if t and secrets.compare_digest(given, t.encode()):
+            ok = True
+    return ok or (getattr(request.client, "host", "") or "") in ("127.0.0.1", "::1", "localhost")
+
+
+def menu(listed, house: bool) -> list[dict]:
+    return [t for t in agent_loop.pane_tools(listed) if house or t["function"]["name"] not in HOUSE_TOOLS]
+
+
 @router.post("/ask")
-async def ask(body: AskBody):
+async def ask(body: AskBody, request: Request):
     """One answer, streamed as server-sent events: token · tools · retry · proposal · done · error. Nothing is kept."""
     order = rungs()
     if not order:
@@ -286,13 +307,14 @@ async def ask(body: AskBody):
     else:
         system = agent_loop.PANE_SYSTEM.format(node=os.getenv("NODE_NAME", "node"),
                                                lang=agent_loop.LANG_NAME, context=_json(ctx))
+    house = _house(request) and body.prompt != "wall"
     hc = httpx.AsyncClient(headers={"Authorization": f"Bearer {os.getenv('ADMIN_TOKEN', '')}",
                                     "X-Agent": agent_loop.AUDIT_PANE}, timeout=60)
     url = f"http://127.0.0.1:{os.getenv('PORT', '8080')}/mcp"
 
     async def stream():
         try:
-            async with agent_loop.node_session(hc, url, keep=agent_loop.pane_tools) as (session, tools):
+            async with agent_loop.node_session(hc, url, keep=lambda listed: menu(listed, house)) as (session, tools):
                 async def call(name, args):
                     res = await session.call_tool(name, args)
                     return "\n".join(getattr(x, "text", "") for x in res.content)

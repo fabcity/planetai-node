@@ -35,7 +35,7 @@ for name in ("export", "push_aggregates", "aggregates"):
         f"{name}: always public, whoever asks — it is what leaves the machine"
 for name in ("readings", "history", "series", "sparks"):
     assert "_shows_private(request, authorization)" in fn[name], f"{name}: a raw read, private only to the admin token"
-assert "_shows_private(request, authorization, raw=False)" in fn["stats"], "stats is a readout: only an agent loses them"
+assert "_shows_private(request, authorization, raw=False)" in fn["stats"], "stats is a readout: the household's tokens and this machine"
 for q_ in ("SERIES_SQL", "NOW_SQL"):
     body = re.search(rf'{q_} = """(.*?)\n"""', REPORT, re.S).group(1)
     assert "packs.public_sql(" in body, f"report.{q_}: the report is written by a model, so never private"
@@ -77,7 +77,10 @@ for path in raw:
     assert filtered(path, ACT), f"{path}: the act token is not the admin token"
     assert not filtered(path, ADMIN), f"{path}: the admin token reads the house's own"
     assert filtered(path, AGENT_), f"{path}: an agent never does, even holding the admin token"
-assert not filtered("/stats", {}) and not filtered("/stats", ACT), "a readout is unchanged for the page"
+# A readout answers them to the household (admin, act) and this machine, not to anyone the page answers at
+# SHARE_LEVEL=open (14 Oct: the counts were on the network). TestClient arrives as "testclient", not this machine.
+assert not filtered("/stats", ADMIN) and not filtered("/stats", ACT), "a readout for the household's own tokens"
+assert filtered("/stats", {}), "a readout without the household's token gets no private row"
 assert filtered("/stats", AGENT_) and filtered("/stats", {"X-Agent": "agent"}), "but not for an agent"
 assert filtered("/aggregates?hours=2", ADMIN), "a parent's pull is public, whatever token"
 print("routes: raw reads private only to the admin token; readouts unchanged; agents never; a parent's pull public")

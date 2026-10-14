@@ -449,5 +449,21 @@ console.log(JSON.stringify(out));
         check(_o["legacy"] == 1, "a thread from before this change has no clock, and must not vanish on load")
     print("  pane: new conversation, over after 30 idle minutes, three exchanges sent")
 
+# ---------------------------------------------------------------- what the house learned stays with the house
+# /ask is on the SHARE_LEVEL=open allowlist: without a household token, or for the Wall, the pane has no `learned`.
+from types import SimpleNamespace as _NS                                # noqa: E402
+_listed = [_NS(name=n, description="", input_schema=None) for n in ("learned", "issues", "settings_get")]
+_names = lambda house: [t["function"]["name"] for t in ask.menu(_listed, house)]  # noqa: E731
+check(_names(True) == ["learned", "issues"], f"the household's pane reads what the house learned: {_names(True)}")
+check(_names(False) == ["issues"], f"a pane without the household's token must not: {_names(False)}")
+settings._cache["rows"]["ACT_TOKEN"] = "act-tok"
+_req = lambda auth="", host="192.168.4.20": _NS(headers={"authorization": auth}, client=_NS(host=host))  # noqa: E731
+check(ask._house(_req("Bearer admin-tok")) and ask._house(_req("Bearer act-tok")), "admin and act are the household's")
+check(not ask._house(_req()) and not ask._house(_req("Bearer agg-tok")), "no token, or another token, is not the house")
+check(ask._house(_req(host="127.0.0.1")), "this machine is the house")
+_src = open("app/ask.py").read()
+check('house = _house(request) and body.prompt != "wall"' in _src, "the Wall is read by whoever walks past: never `learned`")
+print("  house: `learned` only for the household's token or this machine, never the Wall")
+
 print("\n".join(f"  x {f}" for f in fails) or "  ask: private context, proposals not changes, nothing kept")
 sys.exit(1 if fails else 0)
