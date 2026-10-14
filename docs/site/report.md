@@ -27,7 +27,7 @@ sixty-eight.
 ## Read one now
 
 1. **Run `planetai report`.** The node writes a report at once and sends it. The terminal prints the text,
-   then `  written by node, sent.`, and Telegram, when it is connected, receives the same text after `ℹ️`.
+   then `  written by node, sent.`, and Telegram, when it is connected, receives the same text.
    `written by node` means the node wrote every sentence itself, from its own tables, with no model. With no
    admin token in `.env` it stops at `no ADMIN_TOKEN in .env; run planetai ui`.
 2. **Run `planetai report last`.** It prints the last report's text and one line under it,
@@ -36,34 +36,39 @@ sixty-eight.
    at the next due hour`. The report you just asked for is the last one, and the scheduled ones still come
    at their hours.
 
-## The six parts
+## The four parts
 
 Deterministic, plain text, in `ALERT_LOCALE` (English, Bahasa Indonesia or Spanish), each part a sentence or
-two, an empty part left out:
+two, an empty part left out. One voice since the design review of node #1 (14 Oct 2026): the state in words, then
+what happened per room with its local time, then the one thing to do, then the invitation, last. One sign, the
+headline's, and a line is always named with its owner and its unit, never a bare number.
 
-1. **Where the place stands.** Heat first if an open act-level alert comes from the `heat` pack: "dangerously hot"
-   only when it is `heat_danger` (feels like 40 °C or more), otherwise "It is hot inside: it feels like 35 °C or more." (35 °C is an
-   ordinary afternoon in Kuta Selatan, not a danger); else the worst
-   indoor PM2.5 against 35 (unhealthy) and 15 (the clean line); or that there is no sensor inside yet, so what
-   follows is the district and not the rooms.
-2. **What changed.** Up to two of the node's own sensors whose window was unusual: "{place}: the air ran
-   higher than usual".
-3. **What only the models know.** One clause if its rule is loaded and crossed: a heavy swell, or the satellite
-   model reading the district over 35.
-4. **What happened after this window's act alerts.** For each rule with a threshold: "{place} is back under {n}"
-   or "is still above {n}", at most two. Then, when the node knows one, **the nearest place to make or fix
-   something** (below).
-5. **The one thing to do before the next report.** A room still over the line; a sensor gone quiet; the first
-   failing health check's own fix; or "👉 Nothing needs doing before the next report."
-6. **The invitation.** "Ask me anything about the air, the heat, the sea or what is around here."
+1. **The headline: where the place stands, in words.** Heat first if an open act-level alert comes from the `heat`
+   pack or the event engine has a heat episode open that it sent: "dangerously hot" only at `heat_danger` or a danger
+   episode (feels like 40 °C or more), otherwise "🌡️ It is hot inside." (35 °C is an ordinary afternoon in Kuta
+   Selatan, not a danger); else the worst indoor PM2.5 against 35 (unhealthy) and 15 (the clean line), said as
+   unhealthy, middling or clean; or that there is no sensor inside yet, so what follows is the district and not the
+   rooms. No number in it.
+2. **What happened, per room, with the local time.** Heat, at most two: "In Kids and Living Room it has felt past
+   this house's heat line, 35 °C feels-like, since 14:47." (an `unusual` episode is "hotter than usual", never past the
+   line). Then each act alert with a threshold, one sentence per room, at most two: "Kitchen went past the US EPA's
+   unhealthy level, 35.5 µg/m³, at 15:00; it is back under now." or "…, and is still past it." The lines are the
+   rules' own: the US EPA's unhealthy level (35.5), its level unhealthy for everyone (55.5), the WHO line (15). Then up
+   to two rooms whose window was unusual, in plain words: "Studio was more humid than usual.", "The air in Kitchen was
+   dirtier than usual." Then one clause only the models know, if its rule is loaded and crossed: a heavy swell, or the
+   satellite model putting the district past the WHO's first interim target, 35 µg/m³.
+3. **The one thing to do.** When the node knows one, **the nearest place to make or fix something** (below), then: a
+   room still over its line; a sensor gone quiet; the first failing health check's own fix; or "Nothing needs doing
+   before the next report."
+4. **The invitation.** "Ask me anything about the air, the heat or the sea." Always last: the morning memory goes
+   above it, not below.
 
-Parts 2 and 3 share a paragraph; 4 and 5 share another. The sheet is written to stay under a hundred words; the
-make line, when it is there, adds to that.
+The sheet is written to stay under a hundred words; the make line, when it is there, adds to that.
 
 ## The nearest place to make or fix
 
-When the bundle holds a `facility` row, the fourth paragraph gains one line after the outcomes and before the
-to-do, so a person reads what happened first and only then where somebody could act on it. Its shape is:
+When the bundle holds a `facility` row, the third paragraph opens with one line before the to-do, so a person reads
+what happened first and only then where somebody could act on it. Its shape is:
 
 ```
 Nearest place to make or fix something: {lab}, {distance} km ({up to three capabilities}).
@@ -86,7 +91,7 @@ the report looked for the pack in the wrong folder; it appears from v0.70.
 **Notability** is the window's mean for a sensor and metric against the mean of the same local hours on
 each of the previous seven days, in standard deviations of that baseline. It is null until three days
 exist, so a node in its first three days claims nothing. It decides which two places get a sentence in part 2,
-which is how the report can say "Kitchen: the air ran higher than usual" without anyone reading a chart.
+which is how the report can say "The air in Kitchen was dirtier than usual." without anyone reading a chart.
 
 **Trend** is the `insight` digest's ±3 rule read across to each metric's own units (3 µg/m³ for PM2.5, half a
 degree for a room's temperature, 5% of the window's range for a metric with no line of its own), comparing the
@@ -98,7 +103,7 @@ Everything the sheet was written from, as one JSON document, SQL only, most of i
 (node, locale, local time, window, held hours), `series` per sensor and metric (min, max, mean, n, trend,
 notability, the usual value and how many baseline days), `observations` (sea, weather, satellite air, place,
 land, with yesterday's value), `now` (the `stats` view), `alerts` in the window, `open_act` (unanswered act
-alerts in 24 hours, at most five), `open_events` (the event engine's open act episodes that were sent; on
+alerts in 24 hours, at most five), `open_events` (the event engine's open act episodes that were sent, with their rooms; on
 `ALERT_ENGINE=events` only), `sensors_quiet` (the house's own sensors only, never a survey such as the things it
 keeps), `rho` now and a week ago, `previous` (the last sent
 report), `cells` with what changed, `rules`, `health`, `facility` (the nearest lab, or null), and the first
@@ -125,11 +130,12 @@ them before it is allowed out. The sheet is what the node falls back to.
 
 ## Delivery and endpoints
 
-The report goes to Telegram, prefixed `ℹ️` like any info message, and to Home Assistant's *latest alert*
+The report goes to Telegram with its own sign and no other (a message that opens with a sign is not given the
+level's `ℹ️` too), and to Home Assistant's *latest alert*
 entity. The mesh and Reticulum do not carry it.
 
-**The morning memory.** The first report sent each day that finds yesterday's diary entry written carries, below it
-and in Telegram only, the house's memory: yesterday's entry, last week's on a Monday, last month's on the 1st and
+**The morning memory.** The first report sent each day that finds yesterday's diary entry written carries, in Telegram
+only, the house's memory, between the to-do and the invitation, so the sign-off stays last: yesterday's entry, last week's on a Monday, last month's on the 1st and
 last year's on 1 January, then each learning whose status changed that day (now holding, weakening or gone), with
 its own sentence. `LEARN_PUSH` sets it: `all` (the default), `week` (only the week, month and year) or `off`. It is
 never in the stored report, `/report/latest`, the bundle, Home Assistant or the mesh, which other people and machines

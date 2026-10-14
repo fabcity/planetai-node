@@ -18,6 +18,7 @@ import re
 import secrets
 import threading
 import time
+import unicodedata
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -418,7 +419,9 @@ def run_report(cur) -> None:
     if quiet:
         log.info("report %d written and held for quiet hours: %d hours will be folded into the next one", rid, every + held)
         return
-    notify("info", text, home=memory)   # Telegram and Home Assistant; the memory rides Telegram alone, never HA.
+    # Telegram and Home Assistant; the memory rides Telegram alone, never HA, and sits above the invitation, so the
+    # sign-off stays the last thing the household reads (design review, 14 Oct)
+    notify("info", text, home=memory, home_before_last=True)
     ha_alert("info", text, None)
     log.info("report %d sent: %d hours, %d words", rid, every + held, len(text.split()))
 
@@ -537,10 +540,14 @@ def run_rules() -> None:
                                home=_alert_home(m.event.issue) if m.event.level == "act" else "")
 
 
-def notify(level: str, text: str, keyboard: list | None = None, home: str = "") -> None:
+def notify(level: str, text: str, keyboard: list | None = None, home: str = "", home_before_last: bool = False) -> None:
     """Send an alert. `home` is a line for the household's own Telegram only (who in this house it matters to,
-    learn.alert_line): never the mesh, Reticulum or the log, which other people and machines can read."""
-    icon = {"info": "ℹ️", "warn": "⚠️", "act": "🔴"}.get(level, "")
+    learn.alert_line; the report's morning memory): never the mesh, Reticulum or the log, which other people and
+    machines can read. It goes at the end, or above the last paragraph with `home_before_last` (the report's
+    invitation stays its last line)."""
+    # One sign per message (design review, 14 Oct): a text that opens with its own (📈, ✅, the report's 🌡️) is not
+    # given the level's as well; node #1 sent "ℹ️ 🌡️ It is hot inside".
+    icon = "" if text[:1] and unicodedata.category(text[0]) == "So" else {"info": "ℹ️", "warn": "⚠️", "act": "🔴"}.get(level, "")
     log.info("ALERT [%s] %s", level, text)
     if level == "act":
         mesh_send(text.split("\n")[0])            # the mesh gets the first line only: LoRa frames are small
@@ -554,7 +561,9 @@ def notify(level: str, text: str, keyboard: list | None = None, home: str = "") 
         return
     for chat in chats:
         try:
-            body = {"chat_id": chat, "text": f"{icon} {text}".strip() + (f"\n\n{home}" if home else "")}
+            said = f"{icon} {text}".strip()
+            head, sep, last = said.rpartition("\n\n") if home and home_before_last else ("", "", said)
+            body = {"chat_id": chat, "text": f"{head}\n\n{home}\n\n{last}" if sep else said + (f"\n\n{home}" if home else "")}
             if keyboard:
                 body["reply_markup"] = {"inline_keyboard": keyboard}
             httpx.post(f"https://api.telegram.org/bot{tok}/sendMessage",

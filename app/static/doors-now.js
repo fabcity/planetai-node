@@ -14,7 +14,7 @@ VIEWS.now = function () {
    screen without it (doorsFetch does not even ask), nor the Wall. Read once a visit; switching issue redraws. */
 let NOWL = null;
 const LEARN_PACK = { air: 'air-quality', heat: 'heat' };
-const VERDICT = { helps: 'It helps here.', no_clear_difference: 'No clear difference here yet.', too_early: 'Too early to say.' };
+const VERDICT = { helps: 'It helps here.', no_clear_difference: 'No clear difference here yet.', worse: 'So far it seems to make it worse here.', too_early: 'Too early to say.' };
 async function rememberLoad() {
   const get = u => doorsFetch(u).then(r => r.ok ? r.json() : null).catch(() => null);
   const [l, d, h] = await Promise.all([get('/learned'), get('/learned/search?scale=day&limit=1'), get('/household')]);

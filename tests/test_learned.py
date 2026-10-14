@@ -45,23 +45,56 @@ print("arithmetic: the hour before, the window after, the street beside, apparen
 cs = [{"change": -25.0, "street": 0.0}] * 6
 row = learn.summarise("air-quality/indoor_pm25_high", "pm25", cs, [{"change": -2.0, "street": -1.0}] * 3, None, True)
 assert row["status"] == "holding" and row["n"] == 6 and row["numbers"]["acted"]["change"] == -25.0
-assert row["statement"] == ("Acted on 6 times: PM2.5 inside changed -25.0 µg/m³ in the 1–2 h after, while on the street "
+assert row["statement"] == ("After unhealthy air inside, 9 times so far: acting on it helps. "
+                            "Acted on 6 times: PM2.5 inside changed -25.0 µg/m³ in the 1–2 h after, while on the street "
                             "it changed +0.0 µg/m³. Left unanswered 3 times: PM2.5 inside changed -2.0 µg/m³ in the "
                             "1–2 h after, while on the street it changed -1.0 µg/m³."), row["statement"]
+assert row["numbers"]["verdict"] == "helps"
 assert all(str(x) in row["statement"] for x in ("6", "-25.0", "3", "-2.0")), "every number in the sentence is a row number"
 early = learn.summarise("heat/heat_stress_now", "apparent", cs[:4], [], None, True)
-assert early["status"] == "too_early" and early["statement"] == "Acted on 4 times so far: too early to say.", \
+assert early["status"] == "too_early" and early["statement"] == (
+    "After heat inside, 4 times so far: too few to be sure whether acting on it helps. Acted on 4 times."), \
     "under five, a count and no percentage"
+assert early["numbers"]["verdict"] == "too_early"
 flip = learn.summarise("air-quality/indoor_pm25_high", "pm25", [{"change": 3.0, "street": 0.0}] * 6, [], row, True)
 assert flip["status"] == "weakening", "it held, and now it goes the other way"
-assert learn.summarise("x/old", "pm25", cs, [], row, False)["status"] == "gone", "a rule that cannot fire is gone, kept"
-# the verdict Now and Node say in words: inside fell past the street and past the unanswered times, or it did not
-assert row["numbers"]["verdict"] == "helps" and early["numbers"]["verdict"] == "too_early" and flip["numbers"]["verdict"] == "no_clear_difference"
-assert learn.summarise("air-quality/x", "pm25", [{"change": -2.0, "street": 0.0}] * 6, [{"change": -5.0, "street": 0.0}] * 3, None, True)["numbers"]["verdict"] \
-    == "no_clear_difference", "it fell, but more the times nobody answered: no clear difference"
-assert learn.summarise("air-quality/x", "pm25", [{"change": -2.0, "street": -3.0}] * 6, [], None, True)["numbers"]["verdict"] \
-    == "no_clear_difference", "it fell, but less than the street did"
+old = learn.summarise("x/old", "pm25", cs, [], row, False)
+assert old["status"] == "gone" and old["numbers"]["verdict"] == "gone", "a rule that cannot fire is gone, kept"
+assert old["statement"].startswith("After x/old, 6 times so far: this alert no longer rings here") and "-25.0" in old["statement"]
+# The verdict (design review, 14 Oct). node #1's air row read HOLDING while acting had made it worse: acted +2.5 against
+# unanswered -0.8. Holding says the learning holds; the verdict says what it holds, from the row's own numbers, first.
+n1 = learn.summarise("air-quality/events", "pm25", [{"change": 2.5, "street": 0.3}] * 5, [{"change": -0.8, "street": 0.1}] * 4, None, True)
+assert n1["status"] == "holding" and n1["numbers"]["verdict"] == "worse", n1["numbers"]
+assert n1["statement"].startswith("After an air alert, 9 times so far: acting on it seemed to make it worse than leaving it. "
+                                  "Acted on 5 times: PM2.5 inside changed +2.5 µg/m³"), n1["statement"]
+same = learn.summarise("heat/events", "apparent", [{"change": -1.0, "street": -0.5}] * 5, [{"change": -0.8, "street": -0.5}] * 5, None, True)
+assert same["numbers"]["verdict"] == "no_clear_difference", "0.2 °C apart is inside half a degree of noise"
+assert "no clear difference between acting on it and leaving it" in same["statement"]
+alone = learn.summarise("heat/events", "apparent", [{"change": -2.0, "street": 0.0}] * 5, [], None, True)
+assert alone["numbers"]["verdict"] == "helps", "nobody unanswered yet: leaving it counts as no change"
+street = learn.summarise("air-quality/events", "pm25", [{"change": -6.0, "street": -6.0}] * 5, [{"change": 0.0, "street": 0.0}] * 5, None, True)
+assert street["numbers"]["verdict"] == "no_clear_difference", "the street cleared as much: acting did not do it"
+# the diary split's pages read these values (Now's "Did it work", Node's table): the same five, never a sixth
+assert set(learn.VERDICT_WORDS) == {"helps", "no_clear_difference", "worse", "too_early", "gone"}
+for r in (row, early, n1, same, alone, street):
+    assert r["statement"].index(learn.VERDICT_WORDS[r["numbers"]["verdict"]]) < 60, "the plain meaning leads"
+assert learn.alert_name("air-quality/some_new_rule") == "an air alert" and learn.alert_name("nearby/x") == "nearby/x"
+ranked = sorted(learn.rank([n1, {"kind": "usual", "key": "indoor-heat", "issue": "heat", "numbers": {}}], {}), key=lambda r: r["kind"] != "worked")
+assert ranked[0]["name"] == "an air alert" and ranked[0]["verdict"] == learn.VERDICT_WORDS["worse"], ranked[0]
+assert ranked[1]["name"] == "the feels-like temperature inside" and ranked[1]["verdict"] is None
+# /learned in the bot: the alert as the household calls it and the verdict first, the status in words, no rule id
+import ast  # noqa: E402
+_tree = ast.parse(open("app/agent_loop.py").read())
+_ns = {}
+for _n in _tree.body:
+    if (isinstance(_n, ast.FunctionDef) and _n.name == "_learned_head") or (
+            isinstance(_n, ast.Assign) and any(getattr(t, "id", None) == "LEARNED_STATUS" for t in _n.targets)):
+        exec(compile(ast.Module([_n], []), "agent_loop.py", "exec"), _ns)
+assert _ns["_learned_head"](ranked[0]) == "An air alert: acting on it seemed to make it worse than leaving it (the finding holds)", \
+    _ns["_learned_head"](ranked[0])
+assert "x['key']" not in open("app/agent_loop.py").read().split('if text.startswith("/learned")')[1][:3000], "no rule id"
 print("rows: holding, too early under five, weakening when it turns, gone when the rule is retired; the sentence is the numbers")
+print("verdicts: helps, no clear difference, worse than leaving it, too early; led in words, named as the household names it")
 
 # ---------------------------------------------------------------- the cases from the ledger
 now = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
@@ -295,11 +328,12 @@ main.q = lambda sql, *a: [{"people": {"lungs": True}}] if "FROM household" in sq
 assert c.get("/learned", headers=ADMIN).json()["learnings"][0]["for_whom"] == ["someone with asthma or another lung condition"]
 print("household: yes or no for five, one private row, admin only, never written by an agent; learnings say who they matter to")
 # ---------------------------------------------------------------- who, in the alert (Tomas: "yes, add it to the alerts")
-assert learn.alert_line("heat", {"under5": True, "lungs": True}) == "👤 This matters more here: you said there is a child under five."
-assert learn.alert_line("air", {"lungs": True}, "id") == "👤 Ini lebih penting di sini: Anda mengatakan ada seseorang dengan asma atau penyakit paru lain."
-assert learn.alert_line("air-quality/indoor_pm25_high", {"older": True}, "es") == "👤 Aquí importa más: dijiste que hay alguien mayor de 65 años."
+# no sign of its own: the alert above it has one (one per message, 14 Oct)
+assert learn.alert_line("heat", {"under5": True, "lungs": True}) == "This matters more here: you said there is a child under five."
+assert learn.alert_line("air", {"lungs": True}, "id") == "Ini lebih penting di sini: Anda mengatakan ada seseorang dengan asma atau penyakit paru lain."
+assert learn.alert_line("air-quality/indoor_pm25_high", {"older": True}, "es") == "Aquí importa más: dijiste que hay alguien mayor de 65 años."
 assert learn.alert_line("heat", {"lungs": True}) == "" and learn.alert_line("nearby/x", {"older": True}) == "", "nobody at more risk, no line"
-assert learn.alert_line("heat", {"older": True}, "fr").startswith("👤 This matters"), "an unknown locale speaks English"
+assert learn.alert_line("heat", {"older": True}, "fr").startswith("This matters"), "an unknown locale speaks English"
 SENT = []
 main.mesh_send = lambda text: SENT.append(("mesh", text))
 main.RETICULUM_URL = "http://reticulum"
@@ -307,9 +341,18 @@ main.TG = lambda: ("123:abc", ["109"])
 class P:
     def raise_for_status(self): return None
 main.httpx.post = lambda url, json=None, timeout=None: (SENT.append(("tg" if "telegram" in url else "ret", json)), P())[1]
-main.notify("act", "It is too hot.\nDrink water.", home="👤 This matters more here: you said there is a child under five.")
+main.notify("act", "It is too hot.\nDrink water.", home="This matters more here: you said there is a child under five.")
 tg = [j for k, j in SENT if k == "tg"][0]["text"]
-assert tg.endswith("Drink water.\n\n👤 This matters more here: you said there is a child under five."), tg
+assert tg == "🔴 It is too hot.\nDrink water.\n\nThis matters more here: you said there is a child under five.", tg
+# one sign per message: a text with its own is not given the level's too (node #1 sent "ℹ️ 🌡️ It is hot inside")
+SENT.clear()
+main.notify("act", "📈 Smoke or dust in Kids.\nOpen the windows.")
+assert [j for k, j in SENT if k == "tg"][0]["text"] == "📈 Smoke or dust in Kids.\nOpen the windows.", SENT
+# the report's memory goes above its invitation, so the sign-off is the last thing read
+SENT.clear()
+main.notify("info", "🌡️ It is hot inside.\n\nNothing needs doing.\n\nAsk me anything.", home="📔 Yesterday.", home_before_last=True)
+assert [j for k, j in SENT if k == "tg"][0]["text"] == "🌡️ It is hot inside.\n\nNothing needs doing.\n\n📔 Yesterday.\n\nAsk me anything.", SENT
+SENT.clear()
 assert not any("child" in str(x) for k, x in SENT if k != "tg"), "never the mesh or Reticulum"
 main.q = lambda sql, *a: (_ for _ in ()).throw(RuntimeError("no table"))
 assert main._alert_home("heat") == "", "a profile that cannot be read never stops an alert"
@@ -374,7 +417,7 @@ settings._cache["rows"]["LEARN_PUSH"] = "off"
 assert main._morning(Cur(), MON, 900) == ""
 settings._cache["rows"]["LEARN_PUSH"] = "all"
 RR = SRC[SRC.index("def run_report"):SRC.index("def _morning")]
-assert 'notify("info", text, home=memory)' in RR and 'ha_alert("info", text, None)' in RR, "Telegram alone carries the memory"
+assert 'notify("info", text, home=memory, home_before_last=True)' in RR and 'ha_alert("info", text, None)' in RR, "Telegram alone carries the memory"
 assert "text, text, not quiet" in RR and "bool(memory)" in RR, "the stored report is the report; it only says it carried the memory"
 assert 'memory = "" if quiet else _morning(' in RR, "a held report carries nothing; the next one sent does"
 assert "status_since = CASE WHEN learnings.status IS DISTINCT FROM EXCLUDED.status THEN current_date" in SRC

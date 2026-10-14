@@ -238,24 +238,25 @@ empty:
   es: El calor necesita temperatura y humedad del mismo sensor. Añade uno dentro y la casa se rellena.
 
 # Events (docs/SPEC_alerts.md §4–§5). One message per heat event at this house, whichever rooms it spans; one
-# action, the first below whose `when:` holds. The id and es strings are ASSISTANT-WRITTEN.
+# action, the first below whose `when:` holds. The id and es strings are ASSISTANT-WRITTEN. As air's: words first,
+# one reading, and when the line is said it is this house's heat line with its unit ("35 °C feels-like"); one sign.
 events:
   unusual:
-    en: "🌡️ Hotter than usual in {rooms}: it feels like {peak} °C, well above this room's normal for the hour."
-    id: "🌡️ Lebih panas dari biasanya di {rooms}: terasa seperti {peak} °C, jauh di atas biasanya untuk jam ini."
-    es: "🌡️ Más calor de lo habitual en {rooms}: la sensación es de {peak} °C, muy por encima de lo normal a esta hora."
+    en: "🌡️ Hotter than usual for this hour in {rooms}: it feels like {peak}."
+    id: "🌡️ Lebih panas dari biasanya untuk jam ini di {rooms}: terasa seperti {peak}."
+    es: "🌡️ Más calor de lo habitual a esta hora en {rooms}: la sensación es de {peak}."
   sustained:
-    en: "🥵 {rooms} has been hot for hours: it feels like {peak} °C, longer than this room usually stays there."
-    id: "🥵 {rooms} sudah panas berjam-jam: terasa seperti {peak} °C, lebih lama dari biasanya."
-    es: "🥵 {rooms} lleva horas con calor: la sensación es de {peak} °C, más tiempo del que suele durar."
+    en: "🥵 Hot for hours in {rooms}, longer than usual: it feels like {peak}; this house's heat line is {line} feels-like."
+    id: "🥵 Panas berjam-jam di {rooms}, lebih lama dari biasanya: terasa seperti {peak}; batas panas rumah ini {line} terasa."
+    es: "🥵 Horas de calor en {rooms}, más de lo habitual: la sensación es de {peak}; el límite de calor de esta casa es {line} de sensación."
   danger:
-    en: "🚨🥵 DANGER in {rooms}: it feels like {peak} °C — past this house's own line of {line}. The body cannot shed heat at this level."
-    id: "🚨🥵 BAHAYA di {rooms}: terasa seperti {peak} °C — melewati batas milik rumah ini, {line}. Tubuh tidak bisa membuang panas di tingkat ini."
-    es: "🚨🥵 PELIGRO en {rooms}: la sensación es de {peak} °C — por encima del límite propio de esta casa, {line}. A este nivel el cuerpo no consigue soltar calor."
+    en: "🚨 DANGER in {rooms}: it feels like {peak}, past this house's heat line, {line} feels-like. The body cannot shed heat at this level."
+    id: "🚨 BAHAYA di {rooms}: terasa seperti {peak}, melewati batas panas rumah ini, {line} terasa. Tubuh tidak bisa membuang panas di tingkat ini."
+    es: "🚨 PELIGRO en {rooms}: la sensación es de {peak}, por encima del límite de calor de esta casa, {line} de sensación. A este nivel el cuerpo no consigue soltar calor."
   clear:
-    en: "✅ {rooms} has cooled back to its usual."
-    id: "✅ {rooms} sudah kembali sejuk seperti biasa."
-    es: "✅ {rooms} ha vuelto a su temperatura habitual."
+    en: "✅ Cooler again in {rooms}, back to the usual."
+    id: "✅ Sudah sejuk lagi di {rooms}, kembali seperti biasa."
+    es: "✅ Vuelve a estar fresco en {rooms}, como de costumbre."
 actions:
   - id: heat/leave_or_cool
     when: {kind: [danger]}

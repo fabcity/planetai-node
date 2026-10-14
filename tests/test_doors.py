@@ -462,4 +462,12 @@ assert w["walk"]["ready"] and w["walk"]["chs"].count(LINEP) == w["walk"]["chs"].
     "the walk: the house, the street, the stations, the ring and the region each draw the labelled WHO line"
 assert w["walkHeat"]["chs"].count(LINEP) == 2 and "WHO" not in w["walkHeat"]["chs"], "the walk's heat keeps its two lines, named its own"
 print("doors: every PM2.5 drawing draws the air's own line, red and dashed, labelled WHO 15; heat keeps its own")
+# every verdict learn.py can give has words on Now and on Node (the voice pass added `worse`, 14 Oct)
+import importlib, sys as _sys                                       # noqa: E402,E401
+_sys.path.insert(0, "app"); _learn = importlib.import_module("learn")
+_nowjs, _nodejs = (STATIC / "doors-now.js").read_text(), (STATIC / "doors-node.js").read_text()
+for _v in set(_learn.VERDICT_WORDS) - {"gone"}:
+    assert re.search(rf"const VERDICT = {{[^}}]*\b{_v}:", _nowjs), f"Now has no words for the verdict {_v}"
+for _v in _learn.VERDICT_WORDS:
+    assert re.search(rf"const VERDICT_W = {{[^}}]*\b{_v}:", _nodejs), f"Node has no words for the verdict {_v}"
 print("all doors checks passed")

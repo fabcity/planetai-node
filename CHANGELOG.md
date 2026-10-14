@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- **A refusing source is not the household's to-do.** The report's one thing to do skipped past what someone here
+  can act on to print a source's raw error, cut mid-URL (node #1, 14 Oct: Open-Meteo's daily limit). Source errors are
+  left to Node's Running section.
+- **One voice for the report, the alerts and the learnings (design review of node #1, 14 Oct).** Every line is named
+  with its owner and unit, never a bare number: "the WHO line is 15 µg/m³", "the US EPA's unhealthy level, 35.5
+  µg/m³", "this house's heat line, 35 °C feels-like" (`{line}` and `{peak}` now carry the issue's unit). One sign per
+  message: no emoji pairs in the air and heat rules, no 👉, no 👤, and no `ℹ️`/`🔴` put in front of a message that has
+  its own. Event messages say the story in words, then one reading: "📈 Smoke or dust in Kids and Living Room: 48
+  µg/m³; the WHO line is 15 µg/m³.", with the outside said once, as the action's reason, and no more "open the side
+  where it started" (the engine cannot know which room came first). The report reads headline, what happened per room
+  with its local time ("Kitchen went past the US EPA's unhealthy level, 35.5 µg/m³, at 15:00; it is back under now.",
+  "Studio was more humid than usual."), the one thing to do, then the morning memory, then the invitation, last. Every
+  `worked` learning carries `numbers.verdict` (helps, no clear difference, worse than leaving it, too early) from its
+  own numbers and leads with it in words, because node #1's air row said HOLDING while acting had made it worse;
+  `/learned` prints the alert's household name and the verdict first. New id and es copy is assistant-written.
 - **The diary is split between Now and Node (design review, 14 Oct).** Data was 21,900 px long and what the house
   learned sat at its bottom. Now, under the decision, says **Yesterday** in a line or two from yesterday's entry and
   **Did it work** for the issue on screen: the last ask, what was done, what happened inside after, and the node's

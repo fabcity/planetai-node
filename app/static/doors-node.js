@@ -23,7 +23,7 @@ VIEWS.node = function () {
    is told that the record exists and where to unlock it, and is shown none of it. #node/remember scrolls here,
    #node/remember/day/<date> opens that entry, #node/remember/who the household's form. */
 const LSTATUS = { holding: 'holding', weakening: 'weakening', too_early: 'too early to say', gone: 'no longer watched' };
-const VERDICT_W = { helps: 'helps', no_clear_difference: 'no clear difference', too_early: 'too early to say', gone: 'no longer watched' };
+const VERDICT_W = { helps: 'helps', no_clear_difference: 'no clear difference', worse: 'seems to make it worse', too_early: 'too early to say', gone: 'no longer watched' };
 let REM = { scale: 'day', rows: [] };
 async function remember() {
   const el = $('#remember'), at = location.hash.slice(1).split('/');

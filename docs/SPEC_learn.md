@@ -29,7 +29,7 @@ node can tell what an action changed.
    report's rule already ("never write a number that is not in it").
 2. **Every learning shows its proof.** The page draws its cases; the bot can say how many and since when. A learning
    the household cannot inspect is one it will stop trusting (the learning thermostat's lesson).
-3. **Few cases say so.** Under five, a learning is "too early to say", with its count, never a percentage.
+3. **Few cases say so.** Under five, a learning is "too few to be sure", with its count, never a percentage.
 4. **A learning is never deleted.** It is checked again at each period and marked `holding`, `weakening` or `gone`.
    "The Saturday smoke stopped in November" is a learning too.
 5. **Describe and explain before predicting.** EVDT planned describe, explain, predict and reached the first two;
@@ -65,6 +65,17 @@ cases by what was done is a household's choice of words, offered as a filter, no
 
 What it does not claim: a cause. It is the household's own before and after, with the street and the unanswered
 alerts beside it. That is more than any study we found records, and it says so in those words.
+
+**The verdict** *(14 October 2026, design review of node #1)*. `holding` says the learning holds, not that acting
+helps: node #1's air row read holding while acting had left the air worse than leaving it (+2.5 µg/m³ acted, −0.8
+unanswered). So every `worked` row carries `numbers.verdict`, computed from its own medians: each group's change
+inside net of the street's, acted against unanswered (no unanswered yet counts as no change). Acted lower than
+unanswered by more than the metric's noise (3 µg/m³ for PM2.5, half a degree for heat, the report's trend step) is
+`helps`; higher by as much is `worse`; between them `no_clear_difference`; under five acted cases `too_early`, and a rule that can no longer fire `gone`. `helps` also needs the house's own net change to be a fall. The statement
+leads with it in plain words and the alert's household name, then keeps every number it came from: "After an air
+alert, 9 times so far: acting on it seemed to make it worse than leaving it. Acted on 5 times: PM2.5 inside changed
++2.5 µg/m³ in the 1–2 h after, …". `GET /learned` serves `name` (`learn.alert_name`) and `verdict` (its words) beside
+each row, so a page can show them as columns and the bot's `/learned` prints them first.
 
 ## 5 · Learning two: what is usual here
 
