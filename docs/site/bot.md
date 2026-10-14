@@ -40,7 +40,7 @@ Containers on macOS get CPU only, Intel and Apple Silicon alike; this is the one
 
 ## What the model is given
 
-The loop hands the model 16 of the node's 20 MCP tools: the `read` ones and `act`. It cannot change a
+The loop hands the model 17 of the node's 21 MCP tools: the `read` ones and `act`. It cannot change a
 setting, run a pack's code, or make the node message the household by itself. The log says so each time the loop
 opens a session to the node: "tools withheld from the local model (admin): maintenance, report_now, run_pack_script,
 settings_set". Every rung gets the same 16, local, remote or online. A person driving an agent over the
@@ -110,6 +110,7 @@ set to Bahasa Indonesia they fall back to English, while the model's answers fol
 | `/act 12 closed the windows` | records the action on alert 12 in those words, with the actor `<AGENT_NAME>/telegram`; replies "Recorded: you acted on #12." |
 | `/act 12` | records nothing and asks "What did you do about #12?", with the form to send it in: `/act 12 <what you did>` |
 | `/stack [issue]` | the issue's state, its sentence in your language, the four distances with their provenance and unit, and up to two open alerts (on a node whose alert engine is `shadow` or `events`, not the heat and air alerts an event stands for): a template over the `issues` tool, no model ever |
+| `/learned` | what the node learned here, each rule's own sentence and status (SPEC_learn): a template over the `learned` tool, no model. Empty until the first daily check, and told why when `AGENT_PREFER` is not `private` |
 | `/model [local\|remote\|online\|auto]` | pins a rung for this chat and prints the ladder: each rung, its model, its host, whether it is currently skipped, and what `AGENT_PREFER` means (`private`: "the node's own machines only, nothing leaves the network") |
 | Event buttons | When the bot has announced itself (`TELEGRAM_BUTTONS=1`), event messages carry three buttons: Done (`acted`), Not now (`acknowledged`), Doesn't fit (`dismissed`). Pressing one posts `POST /actions` with `event_id`, `stage`, `actor`, `note`; Doesn't fit asks "what did you do instead?" and keeps the reply as the note. Labels in en/id/es. |
 

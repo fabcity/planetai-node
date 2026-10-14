@@ -8,7 +8,7 @@
 > people and the other living things around it. Raw readings stay on the machine. Apache-2.0 today, AGPL-3.0-or-later once every contributor has consented; beta.
 > Documentation: https://planetai.fab.city/docs/ · programme: https://planetai.fab.city/
 
-The node is also an MCP server with twenty tools. If you are an agent working for somebody, start with
+The node is also an MCP server with twenty-one tools. If you are an agent working for somebody, start with
 AGENTS.md: its first section routes you to the skill for what they are actually asking. Raw URLs below are
 the files themselves.
 

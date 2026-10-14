@@ -841,6 +841,22 @@ async def main():
                                  es=f"⚠️ No pude anotarlo en el nodo ({type(e).__name__}). No se escribió nada; inténtalo de nuevo en un momento.")
                     await telegram("sendMessage", chat_id=chat, text=said)
                     continue
+            if text.startswith("/learned"):
+                # No model, as /stack: the node's own sentences, printed. Each learning's statement was written by
+                # the node from its numbers (app/learn.py), so nothing here can add one.
+                try:
+                    async with node_session(hc) as (session, _t):
+                        data = _tool_json(await session.call_tool("learned", {}))
+                    rows = [x for x in data.get("learnings", []) if x.get("status") != "gone"]
+                    said = (data.get("kept_home") or T("Nothing learned yet: the node checks once a day.",
+                                                      es="Nada aprendido todavía: el nodo lo revisa una vez al día.")) \
+                        if not rows else "\n\n".join(f"• {x['key']} ({x['status'].replace('_', ' ')})\n{x['statement']}" for x in rows)
+                except Exception as e:  # noqa: BLE001
+                    log.warning("/learned failed: %s: %s", type(e).__name__, str(e)[:200])
+                    said = T(f"⚠️ I could not read what the node learned ({type(e).__name__}).",
+                             es=f"⚠️ No pude leer lo que aprendió el nodo ({type(e).__name__}).")
+                await telegram("sendMessage", chat_id=chat, text=said)
+                continue
             if text.startswith("/stack"):
                 # No model, ever. /stack is a read of the node's own arithmetic printed through a
                 # template, so it answers on a node with no agent rung reachable at all — which is

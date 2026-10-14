@@ -171,6 +171,20 @@ def report_bundle(hours: int = 6) -> dict:
 
 
 @mcp.tool()
+def learned() -> dict:
+    """What this house has learned from its own record (docs/SPEC_learn.md): for each alert, what happened to the air
+    or the heat inside after someone acted, against the street and against the times nobody answered. Each row's
+    `statement` is the node's own sentence; quote it, never add a number or a cause. Answers only while every model
+    this node may use is on the house's own machines; otherwise it says why and gives nothing."""
+    r = httpx.get(API + "/learned", headers=_admin_headers("agent"), timeout=30)
+    if r.status_code == 403:
+        return {"kept_home": r.json().get("detail")}
+    r.raise_for_status()
+    return {"learnings": [{k: x.get(k) for k in ("key", "issue", "status", "statement", "n", "checked_at")}
+                          for x in r.json().get("learnings", [])]}
+
+
+@mcp.tool()
 def history(sensor_id: str, metric: str) -> list:
     """Every reading of a slow series, oldest first: e.g. sensor_id='place-point', metric='sat_buildings_yearly' for how
     many buildings stood within a kilometre each year 2016-2023, or 'sat_height_m_yearly' for their mean height."""

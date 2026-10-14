@@ -96,8 +96,8 @@ for bad in ADMIN:
 assert "act" in menu and "issues" in menu, "read and act must still be there; this is a subset, not a lockout"
 
 # 3. nothing was removed from the MCP surface. A keeper in Claude Desktop over the tailnet still has all
-#    twenty, which is the case the surface was built for.
-assert len(TC.TOOL_CLASS) == 20, len(TC.TOOL_CLASS)
+#    twenty-one, which is the case the surface was built for.
+assert len(TC.TOOL_CLASS) == 21, len(TC.TOOL_CLASS)
 
 # 4. rho is built out of what people said, so a model may not write a row without it. The placeholders
 #    are the strings this repository itself used where a human's sentence belongs.

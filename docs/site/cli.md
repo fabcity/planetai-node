@@ -118,7 +118,7 @@ The default name is `snapshot-<node>-<YYYY-MM-DDTHHMM>.json`, and the command sa
 
 | command | what it does |
 |---|---|
-| `planetai agent` (`agents`, `mcp`) | The MCP endpoint, the twenty tools by class (read, act, admin), the header to send, and a ready-made `mcp.json` snippet; see [MCP](mcp.md). A person driving an agent gets all twenty; the local model gets read and act only. |
+| `planetai agent` (`agents`, `mcp`) | The MCP endpoint, the twenty-one tools by class (read, act, admin), the header to send, and a ready-made `mcp.json` snippet; see [MCP](mcp.md). A person driving an agent gets all twenty; the local model gets read and act only. |
 | `planetai agent local` | Installs Ollama if it is missing, starts it as a service, and starts the `agent` container that answers on Telegram; see [The bot](bot.md). The dashboard's ask pane can then use the same model on this machine; see [Ask the node](ask.md). It does not download a model: it prints the one it recommends for this machine's memory, `qwen3.5:9b` (6.6 GB) at 16 GB or more, else `qwen3.5:4b` (3.4 GB). |
 | `planetai agent local pull <tag>` | `ollama pull <tag>`, sets `AGENT_MODEL` to it, recreates the `agent` container. Without a tag it prints the recommended tag and exits. |
 | `planetai agent stop` | Stops the agent container. |

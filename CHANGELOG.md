@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **What worked here (SPEC_learn step 1).** Once a day the node takes every act-level alert on one sensor that someone
+  acted on, and every one nobody answered, and compares the metric the rule watches (PM2.5, or the feels-like
+  temperature for heat) in the hour before with a window after (1–2 h for air, 3–6 h for heat), on that sensor and on
+  the street's outdoor sensors. One row per rule in a new `learnings` table (schema 0.57, revoked from pack SQL, never
+  exported or deleted): the medians, up to 30 cases each with the household's note, a status (`too early` under five
+  acted cases, `holding`, `weakening`, `gone`), and a sentence the node writes from its own numbers. Data › **What
+  worked** shows it with every case; `GET /learned` (admin) and the `learned` agent tool serve it, the tool only while
+  `AGENT_PREFER=private`; Telegram's `/learned` prints it with no model. It says what changed, not why: the street
+  and the unanswered alerts are beside it, and the page says it is not an experiment.
+
 - **Offers (SPEC_inventory step 4).** A thing the household marks "Would lend it" or "Would give it away" becomes
   public: `GET /offers` (open at every `SHARE_LEVEL`) and the daily export's new `offers` carry its class, name,
   condition and count at the node's own res-8 cell, and nothing else. Each offer's `ask` link opens the node's
