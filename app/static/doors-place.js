@@ -88,7 +88,7 @@ const IKIND = { phone: 'Phone', camera: 'Fixed camera', microscope: 'Microscope'
 function addImage() {
   let who = ''; try { who = localStorage.getItem('planetai_actor') || ''; } catch (e) { /* no storage here */ }
   const dl = $('#imgdlg');
-  if (!DOORS_TOKEN()) { dl.innerHTML = `<p>Images answer a screen holding a token only. Unlock this screen under Node to add one.</p><form method="dialog"><button>Close</button></form>`; dl.showModal(); return; }
+  if (!DOORS_TOKEN()) { dl.innerHTML = `<p>Images answer a screen holding a token only. Unlock this screen in Set up › This screen to add one.</p><form method="dialog"><button>Close</button></form>`; dl.showModal(); return; }
   dl.innerHTML = `<form id="imgf"><div class="k">Add an image</div><label class="drop" for="imgfile"><input type="file" id="imgfile" accept="image/jpeg,image/png,image/heic,image/heif,image/webp"><span id="imgname">Choose an image, or drop one here</span></label>`
     + `<label>What took it<select id="imgkind">${Object.entries(IKIND).map(([k, t]) => `<option value="${k}">${t}</option>`).join('')}</select></label>`
     + `<label>A note, if it needs one<input id="imgnote" maxlength="500"></label>${who ? '' : '<label>Your name<input id="imgwho" autocomplete="name"></label>'}`

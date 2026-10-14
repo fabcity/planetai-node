@@ -83,7 +83,7 @@ async function wallMap(o) {
   map.addControl(new maplibregl.ScaleControl({ maxWidth: big ? 120 : 80, unit: 'metric' }), 'bottom-left');
 
   /* the wind: this hour of the model's field, not the replayed hour (the field looks forward; the hours look back) */
-  const W = await fetch('/ground/wind', { headers: DOORS_AUTH() }).then(r => r.status === 200 ? r.json() : null).catch(() => null);
+  const W = await doorsFetch('/ground/wind').then(r => r.status === 200 ? r.json() : null).catch(() => null);
   let wind = null;
   const windHour = W ? W.times.reduce((b, t, i) => Math.abs(Date.parse(t) - Date.now()) < Math.abs(Date.parse(W.times[b]) - Date.now()) ? i : b, 0) : 0;
   map.once('idle', () => { if (W) wind = WALLMAP.wind = windOn(map, W, windHour, 'rgba(249,245,242,.5)'); });

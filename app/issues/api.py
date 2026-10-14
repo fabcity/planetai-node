@@ -15,7 +15,7 @@ import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Path as PathParam, Query
+from fastapi import APIRouter, HTTPException, Path as PathParam, Query, Request
 
 from . import load
 from . import engine
@@ -31,7 +31,7 @@ NAME = r"^[a-z0-9][a-z0-9._-]{0,63}$"
 
 @router.get("")
 @router.get("/")
-def issues_now():
+def issues_now(request: Request = None):
     """Every issue this node declares: state, stack, line, attribution, sentence, asks, series.
 
     The order is `NODE_ISSUES`; an issue the keeper has not declared still appears, marked
@@ -40,6 +40,9 @@ def issues_now():
 
     The node computes; the page draws. Nothing in the response needs arithmetic to render, and
     nothing in it came from a model.
+
+    Who answered is the household's (Tomas, 14 Oct 2026): a screen without a token reads every answer's stage and
+    time, never the name and never the words left with it (`nameless`).
     """
     import main                    # noqa: PLC0415 — main imports this module at the bottom of itself
     with main.db() as con, con.cursor() as cur:
@@ -64,9 +67,28 @@ def issues_now():
             events = {"engine": events_wire.engine_of(main.settings.get("ALERT_ENGINE", "rules")),
                       "error": "this node could not read its alert events just now", "open": [], "recent": [],
                       "buttons": {}, "cleared_today": 0, "last_cleared": None}
-        return engine.compute(cur, main.settings, load(), earth=_earth(),
-                               mesh=main.mesh_state if main.MQTT_HOST else None,
-                               facilities=facilities, now=now, events=events)
+        # ask.py calls this with no request to build a model's context, which a tokenless pane or the Wall may speak
+        # from: that caller gets the nameless body too. Without the default, /ask answered 500 (node #1, 14 Oct).
+        trusted = request is not None and bool(getattr(request.state, "share_trusted", False))
+        out = engine.compute(cur, main.settings, load(), earth=_earth(),
+                             mesh=main.mesh_state if main.MQTT_HOST else None,
+                             facilities=facilities, now=now, events=events if trusted else nameless(events))
+        return out if trusted else nameless(out)
+
+
+def nameless(body: dict | None) -> dict | None:
+    """An /issues body, or its events block, without who answered: every answer keeps its stage and its time and
+    loses `actor` and `note`. The events block goes through before compute, so a reason that names who answered says
+    "someone" (engine.py `event_answered`); the asks ledger after it. In place, and returned."""
+    if not body:
+        return body
+    evs = body if "engine" in body else (body.get("events") or {})
+    for e in (evs.get("open") or []) + (evs.get("recent") or []):
+        if e.get("answer"):
+            e["answer"] = {**e["answer"], "actor": None, "note": None}
+    for a in (body.get("asks") or {}).get("actions") or []:
+        a["actor"] = None
+    return body
 
 
 @router.get("/days")

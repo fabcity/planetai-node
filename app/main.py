@@ -2685,6 +2685,14 @@ COMPANIONS = {
 NO_CACHE = {"cache-control": "no-cache, must-revalidate"}
 
 
+@app.get("/static/fonts/jetbrains-mono-latin.woff2", include_in_schema=False)
+def static_mono():
+    """The one path planetai-theme.css asks for the mono at (`fonts/…`; the theme is frozen, not this repo's to edit).
+    Every page requested it and got a 404 (14 Oct 2026); tokens.css's flat name is what loads the face. A fixed path,
+    not a parameter, so nothing a caller sends reaches the filesystem."""
+    return static_file("jetbrains-mono-latin.woff2")
+
+
 @app.get("/static/{name}", include_in_schema=False)
 def static_file(name: str, variant: str = "dark"):
     """The dashboard's ground and its data face.

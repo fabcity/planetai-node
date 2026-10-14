@@ -9,7 +9,7 @@ VIEWS.now = function () {
 };
 // The things this home keeps, in one line (SPEC_inventory step 2), for a screen holding the admin token; nothing otherwise.
 async function thingsLine(el) {
-  const r = await fetch('/things', { headers: DOORS_AUTH() }).catch(() => null);
+  const r = await doorsFetch('/things').catch(() => null);
   const s = r && r.ok ? ((await r.json().catch(() => null)) || {}).summary : null;
   el.hidden = !(s && s.things);
   if (!el.hidden) el.innerHTML = `<a href="#data/d-things">${s.things} things, ${s.idle} idle, ${s.repair} need${s.repair === 1 ? 's' : ''} repair ›</a>`;
@@ -94,7 +94,7 @@ document.addEventListener('click', async ev => {
     const r = await fetch('/actions', { method: 'POST', headers: { 'content-type': 'application/json', ...DOORS_AUTH() },
       body: JSON.stringify({ event_id: Number(b.dataset.ev), stage: b.dataset.stage, actor, note: '' }) });
     const said_ = r.ok ? '' : ((await r.json().catch(() => ({}))).detail || `the node refused it (${r.status})`);
-    if (!r.ok) { out.textContent = r.status === 401 || r.status === 403 ? `${said_} · unlock this screen under Node with the act token.` : said_; b.disabled = false; return; }
+    if (!r.ok) { out.textContent = r.status === 401 || r.status === 403 ? `${said_} · unlock this screen in Set up › This screen with the act token.` : said_; b.disabled = false; return; }
     out.textContent = b.dataset.stage === 'acknowledged' ? 'Not now. The node holds this for three hours, unless it reaches danger.' : 'Recorded.';
     D = await loadD().then(d => Object.assign(d, { learn: D.learn, dates: D.dates, at: D.at, now: D.now, sens: D.sens, ngeo: D.ngeo })); VIEWS.now();
   } catch (e) { out.textContent = `The node did not answer: ${e.message}`; b.disabled = false; }
@@ -162,7 +162,7 @@ async function aroundMap(el) {
        because together they place it. The grid is resolution 7 (about 1.2 km to an edge) over what the map shows;
        the node's own res-8 cell is the one drawn solid. */
     map.once('idle', async () => {
-      const ask = q => fetch('/' + q, { headers: DOORS_AUTH() }).then(r => r.ok ? r.json() : null).catch(() => null);
+      const ask = q => doorsFetch('/' + q).then(r => r.ok ? r.json() : null).catch(() => null);
       const bx = map.getBounds(), box = [bx.getWest(), bx.getSouth(), bx.getEast(), bx.getNorth()].map(v => v.toFixed(5)).join(',');
       const [rg, gr] = await Promise.all([ask('geo/rings?km=0.5,2,5,15'), ask(`geo/grid?res=7&bbox=${box}`)]);
       const loopLL = row => { const r = []; for (let i = 1; i < row.length; i += 2) r.push([row[i + 1], row[i]]); r.push(r[0]); return r; };
@@ -200,7 +200,7 @@ async function aroundMap(el) {
   $('#rosecap').innerHTML = `${said(labelOf(M))}, the 15-minute mean, at ${out.filter(s => s.v != null).length} public stations and ${house.length} in this house; `
     + `${quiet} not heard in the last 15 minutes drawn faint. ${fac.length ? `The diamond${fac.length > 1 ? 's are' : ' is'} ${said(fac.join(', '))}. ` : ''}Press a station to open it in Data. `
     + (base.street ? 'Rings at 0.5, 2, 5 and 15 km and the resolution-7 cells are the node’s; the solid cell is its own. The street map is this node’s own, OpenStreetMap contributors · Protomaps.'
-      : 'The node’s street map, its rings and its cells are token-only: unlock this screen under Node to draw them under the stations.');
+      : `The node’s street map, its rings and its cells are token-only: unlock this screen in ${UNLOCK_AT} to draw them under the stations.`);
 }
 
 /* Who reads around this house, now — a stack: one quantity at many distances, on one scale. True bearings; distance on

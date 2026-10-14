@@ -55,7 +55,7 @@ function dayWeek(o) {
   const labLane = [], laneMax = Math.max(1, Math.floor((m.t - 14) / 13));
   const evs = [];
   for (const e of D.events.filter(e => e.issue === k)) {
-    const a = dayOf(e.opened_at) === date ? hourOf(e.opened_at) + (+e.opened_at.slice(14, 16)) / 60 : (dayOf(e.opened_at) < date ? 0 : null);
+    const a = dayOf(e.opened_at) === date ? hourOf(e.opened_at) + (+loc(e.opened_at).slice(14, 16)) / 60 : (dayOf(e.opened_at) < date ? 0 : null);
     if (a == null) continue;
     const zEnd = e.cleared_at ? (dayOf(e.cleared_at) === date ? hourOf(e.cleared_at) + (+e.cleared_at.slice(14, 16)) / 60 : (dayOf(e.cleared_at) > date ? 24 : null)) : nowH;
     if (zEnd == null || zEnd < a) continue;

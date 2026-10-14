@@ -73,7 +73,9 @@ METRICS = {
     "aqi": {"unit": "AQI", "dp": 0, "issue": "air", "label": "AQI"},
     "temp": {"unit": "°C", "dp": 1, "issue": "heat", "label": "temperature"},
     "humidity": {"unit": "%", "dp": 0, "issue": "heat", "label": "humidity"},
-    "pressure": {"unit": "hPa", "dp": 0, "issue": None, "label": "pressure"},
+    # kPa: every source stores pressure in kPa (app/sources.py divides hPa by ten). This said hPa, and the Data door
+    # printed node #1's 99.8 as "99.8 hPa" beside the model's 996 hPa (14 Oct 2026).
+    "pressure": {"unit": "kPa", "dp": 1, "issue": None, "label": "pressure"},
     "noise": {"unit": "dB", "dp": 0, "issue": None, "label": "noise"},
     "light": {"unit": "lux", "dp": 0, "issue": None, "label": "light"},
     "gas_resistance": {"unit": "kΩ", "dp": 0, "issue": None, "label": "gas resistance"},

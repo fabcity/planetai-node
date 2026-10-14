@@ -441,11 +441,22 @@ dashboard remains available at `/?layout=classic`.
 The doors read the routes the dashboard reads, renamed and pivoted in the page and never recomputed
 (`doors-load.js`), and they read them with the same token, kept in the same place in the browser. A screen without
 the token draws what `SHARE_LEVEL` gives it and says, where a part is missing, why. At `open` that is the issues, the
-events, the stations' 15-minute means, the models, the Index, the satellite years and the ledger without its notes.
-The map, the cells, every distance and the hourly table are token-only at every level, because together they say
-where the node is and what the household did hour by hour. **Set up → This screen** (the foot's "Unlock this screen") stores the act or admin
+events, the stations' 15-minute means, the models, the Index, the satellite years and the ledger's stages and times,
+without who answered, what each alert said or the notes. The map, the cells, every distance and the hourly table are
+token-only at every level, because together they say where the node is and what the household did hour by hour. A
+screen holding no token does not ask those routes at all, so it leaves no 403s in the node's log; each locked part
+links to **Set up → This screen**. **Set up → This screen** (the foot's "Unlock this screen") stores the act or admin
 token in that browser. The gear in the bar opens **Set up**, a page of its own: every setting by group, saved only where it changed and never over a change made on the node meanwhile, the pack switches, who may read the node, this screen's token, updates, and **Machine**, the machine under the node (`GET /machine`) and how long its disk lasts (`GET /storage`). The bar says which version is running. The Wall's right column is **the node, thinking aloud**: every ten minutes, from another angle each time, the node's model (the one chosen under Set up → Model, through `POST /ask`) says in six to eight plain sentences what is happening inside, how it compares with the street and the neighbourhood, what it suggests for an ordinary day and what the next hours may bring, typed at a reading pace, with a countdown to the next. It names the model that answered, warns when the keeper's choice lets the question go online, and calls itself a model's words, never a reading; nothing is kept. Every door but the Wall ends in a foot with the documentation, Ask the node, the classic dashboard, today's open export and Fab City. `?fixture=<name>` works here too, and shows a screen without the token only what the node
 would show it.
+
+Every time on the doors and the phone page is the node's own local time (`/health` `tz`), whatever offset the route
+wrote it in. The Wall names no sensor, room or kit, because anyone in the room reads it: the house is inside or
+outside, a public station is how far off it stands, and an open ask is the engine's own sentence, never the alert's
+text. It says `stale` only when the node's last poll is more than 15 minutes old. On Node, "Alerts, to a phone" is
+what was sent in the last 24 hours (`events.sent_24h` on `/issues`), not every row recorded; the readings kept are
+`/storage`'s count with the token and the readings since the restart without it; and what this home offers
+(`GET /offers`) is one of the links out. On Place, the land change and the Index cells have no shape on the map: their
+rows say how many the node holds and where they are drawn (What changed, and Data › Index cells).
 
 ## The phone page
 
