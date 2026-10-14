@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **The Wall reads from three metres (design review, 14 Oct).** Nothing on the doors' Wall is under 28 px at
+  1920×1080, scaled with the screen; what did not survive that floor was cut: the kicker's reason (it named who
+  answered), the "why" paragraph, the fragments row, the counts box ("alerts out 0 / 7"), the foot, the scale bar,
+  the countdown and the model's name. The map's caption says its red discs in words against the house ("This house is
+  under the clean-air line now; 3 stations nearby, in red, are over it"); what the node suggests is one line that ends
+  on a word, never "If somethin…"; ρ is said ("This house answered 23 of 274 alerts in 30 days") before larger rings.
+  The narration box is not drawn until a text arrives and keeps the last one while the next is written. The back
+  button, chips, hour strip and model note show only under a pointer or the keyboard. `tests/test_doors.py` holds the
+  floor, the hidden chrome and the collapsed box.
 - **Now reads in the order a household asks (Tomas, 14 Oct: "I am not happy with what is showing").** About ten
   blocks of equal weight competed on the doors' first screen, and on a phone the headline sat under ~340 px of chrome.
   Now is one bold block, the sentence and its day drawing, then the four distances in one quiet line, then **What to

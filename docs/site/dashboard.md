@@ -477,13 +477,27 @@ without who answered, what each alert said or the notes. The map, the cells, eve
 token-only at every level, because together they say where the node is and what the household did hour by hour. A
 screen holding no token does not ask those routes at all, so it leaves no 403s in the node's log; each locked part
 links to **Set up → This screen**. **Set up → This screen** (the foot's "Unlock this screen") stores the act or admin
-token in that browser. The gear in the bar opens **Set up**, a page of its own: every setting by group, saved only where it changed and never over a change made on the node meanwhile, the pack switches, who may read the node, this screen's token, updates, **Rooms** (the household's word for where each of its sensors is, which every alert, the report and every page then use; never shown on the Wall), and **Machine**, the machine under the node (`GET /machine`) and how long its disk lasts (`GET /storage`). The bar says which version is running. The Wall's right column is **the node, thinking aloud**: every ten minutes, from another angle each time, the node's model (the one chosen under Set up → Model, through `POST /ask`) says in six to eight plain sentences what is happening inside, how it compares with the street and the neighbourhood, what it suggests for an ordinary day and what the next hours may bring, typed at a reading pace, with a countdown to the next. It names the model that answered, warns when the keeper's choice lets the question go online, and calls itself a model's words, never a reading; nothing is kept. Every door but the Wall ends in a foot with the documentation, Ask the node, the classic dashboard, today's open export and Fab City. `?fixture=<name>` works here too, and shows a screen without the token only what the node
+token in that browser. The gear in the bar opens **Set up**, a page of its own: every setting by group, saved only where it changed and never over a change made on the node meanwhile, the pack switches, who may read the node, this screen's token, updates, **Rooms** (the household's word for where each of its sensors is, which every alert, the report and every page then use; never shown on the Wall), and **Machine**, the machine under the node (`GET /machine`) and how long its disk lasts (`GET /storage`). The bar says which version is running. The **Wall** is a public screen in a living room or a lab, read from about three metres by people who know nothing
+about air science, and nobody operates it. Nothing on it is smaller than 28 px at 1920×1080, scaled with the screen
+(the `--wf` floor); what did not fit at that size was cut, not shrunk. It reads in one order: the time and the
+sentence (the lead issue's title, its tagline under it); the map, with the wind, the stations as discs and the house as
+one mark, and a caption under it saying in words what the red discs mean against the house ("This house is under the
+clean-air line now; 3 stations nearby, in red, are over it"), at the hour the discs show while the hours replay; what
+the node suggests, one line that ends on a word, with "Answer on Telegram, not here." when something is asked; whether
+people here acted on it, in words ("This house answered 23 of 274 alerts in 30 days") and then the ρ rings, larger;
+and last **the node, thinking aloud**: every ten minutes, from another angle each time, the node's model (the one
+chosen under Set up → Model, through `POST /ask`) says in six to eight plain sentences what is happening inside, how it
+compares with the street and the neighbourhood, what it suggests for an ordinary day and what the next hours may
+bring, typed at a reading pace. Its box is not drawn until a text has arrived; while the next one is written the last
+one stays, held in the page's memory, and the new one is typed once it has all arrived. It calls itself a model's
+words from the node's figures, never a reading, and says "written online" when the keeper's choice sent the question
+out; nothing is kept. The back button, the metric chips, the hour strip and a note naming the model (or why there is
+no text) are chrome: invisible until a pointer is over them or the keyboard reaches them, the back button first. Every door but the Wall ends in a foot with the documentation, Ask the node, the classic dashboard, today's open export and Fab City. `?fixture=<name>` works here too, and shows a screen without the token only what the node
 would show it.
 
 Every time on the doors and the phone page is the node's own local time (`/health` `tz`), whatever offset the route
-wrote it in. The Wall names no sensor, room or kit, because anyone in the room reads it: the house is inside or
-outside, a public station is how far off it stands, and an open ask is the engine's own sentence, never the alert's
-text. It says `stale` only when the node's last poll is more than 15 minutes old. Whether anything is asked of the
+wrote it in. The Wall names no sensor, room, kit or person, because anyone in the room reads it: the house is one
+mark, a public station is a disc, and an open ask is the engine's own sentence, never the alert's text. It says the readings are old only when the node's last poll is more than 15 minutes old. Whether anything is asked of the
 house is one answer, `asking` on each issue in `/issues`, and Now's Decide card, the Wall and the phone all read it: the
 issue's open event while it still asks, then any alert still true that no event stands for. An alert whose reading came
 back on its own is still open and still counted in ρ, but it asks nothing now, and none of the three says it does. At

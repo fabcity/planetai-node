@@ -222,7 +222,15 @@ const calls = []; globalThis.fetch = p => { calls.push(p); return Promise.resolv
   const ctx = { D: L.buildD({ ...F, days: F.issues_days }, 'en'), VIEWS: {}, $: q => (els[q] ||= {}), out: null };
   vm.createContext(ctx);
   vm.runInContext(['esc', 'fmt', 'plain', 'said', 'num', 'unitOf', 'labelOf'].map(pick).join('\n') + '\n' + fs.readFileSync('./app/static/doors-wall.js', 'utf8')
-    + '\nfrags(); out = { frags: $("#wfrag").innerHTML, ask: D.order.map(k => wallAsk(D.issues[k])).join(" "),'
+    + '\nconst now15 = s => ((D.stats15[s.sensor_id] || {}).pm25 || [])[0] ?? null, st = D.sensors.filter(s => s.kind === "sensor");'
+    + ' const hv = st.filter(s => s.local).map(now15).filter(v => v != null), house = hv.length ? hv.reduce((a, b) => a + b) / hv.length : null;'
+    + ' const say = Array(30).fill("Close the windows facing the street").join(" ") + ".";'
+    + ' $("#wnarr").classList = { toggle() {} }; const nd = () => { narrDraw(); return { hidden: $("#wnarr").hidden, html: $("#wnarr").innerHTML, note: $("#wnote").textContent }; };'
+    + ' const narr = { empty: nd() }; NARR.busy = true; narr.asking = nd(); NARR.err = "The node’s model did not answer: 500"; narr.err = nd();'
+    + ' NARR.prev = "The air inside is calm."; narr.kept = nd(); NARR.busy = false; NARR.err = null; NARR.shown = "The air"; NARR.typing = true; narr.typing = nd();'
+    + ' out = { ask: D.order.map(k => wallAsk(D.issues[k])).join(" "), cap: wallCaption(house, st.filter(s => !s.local).map(now15), D.issues.air.line),'
+    + ' caps: [wallCaption(10, [20, 5], 15), wallCaption(20, [], 15), wallCaption(null, [16], 15, "at 15:00"), wallCaption(5, [], null)], narr,'
+    + ' long: wallAsk({ asking: [{ says: say }] }), short: oneLine("Open the windows. Then wait."),'
     + ' fresh: wallStale({ last_poll: new Date().toISOString() }), old: wallStale({ last_poll: "2026-10-06T11:19:50+00:00" }), none: wallStale({}) };', ctx);
   const pm = fs.readFileSync('./app/static/doors-placemap.js', 'utf8').match(/function packRows[\s\S]*?\n}\n/)[0];
   vm.runInContext('const LAYERS = [{ id: "index" }, { id: "earth" }];' + pm + 'packRows(); out.pack = LAYERS.map(l => l.none);', ctx);
@@ -246,11 +254,51 @@ for _p in _paths:
         assert not _opened or _q == "/alerts", f"{_q} answers a screen without a token at SHARE_LEVEL=open; doorsFetch must ask it"
 print("doors: a screen with no token asks no token-only route; with one it asks as before")
 _names = {x["name"].strip() for x in json.loads(Path(FIX).read_text())["sensors"] if len(x["name"].strip()) > 3}
-_wall = t["wall"]["frags"] + t["wall"]["ask"]
-assert t["wall"]["frags"].count("<div>") == 5 and not [n for n in _names if n in _wall], [n for n in _names if n in _wall]
+_wall = json.dumps(t["wall"], ensure_ascii=False)
+assert not [n for n in _names if n in _wall], [n for n in _names if n in _wall]
 assert "Nothing is asked now." in t["wall"]["ask"], "6 Oct 19:22: a stale alert and an answered event ask nothing now"
 assert t["wall"]["old"] and t["wall"]["none"] and not t["wall"]["fresh"], t["wall"]
 print("doors: the Wall names no sensor, room or kit, and says stale only when the last poll is old")
+# 15 Oct, the Wall read from 3 m (Tomas's review of 14 Oct). Each check fails if its fix regresses.
+# The map's caption says in words what its red discs mean against the house: a clean headline beside red discs.
+_c = t["wall"]["caps"]
+assert t["wall"]["cap"].startswith("This house") and "clean-air line now" in t["wall"]["cap"], t["wall"]["cap"]
+assert _c[0] == "This house is under the clean-air line now; one station nearby, in red, is over it.", _c[0]
+assert _c[1] == "This house is over the clean-air line now; no station nearby is." and "at 15:00" in _c[2] and _c[3] == "", _c
+# What the node suggests is one line ending on a word ("If somethin…"), and still never a button that answers.
+_long = re.search(r'class="wsay said">(.*?)</span>', t["wall"]["long"]).group(1)
+_say = " ".join(["Close the windows facing the street"] * 30) + "."
+assert len(_long) <= 91 and _long.endswith("…") and _say.startswith(_long[:-1]) and _say[len(_long) - 1] == " ", _long   # ends on a word
+assert t["wall"]["short"] == "Open the windows.", t["wall"]["short"]
+assert "Answer on Telegram, not here." in t["wall"]["long"] and "<button" not in t["wall"]["long"]
+# The narration box is collapsed until there is text; it keeps the last text while the next is written, and says whose.
+_n = t["wall"]["narr"]
+assert _n["empty"]["hidden"] and _n["asking"]["hidden"] and _n["err"]["hidden"] and not _n["empty"]["html"], _n
+assert "did not answer" in _n["err"]["note"], "a failure is chrome (#wnote), never the box"
+assert not _n["kept"]["hidden"] and "The air inside is calm." in _n["kept"]["html"] and "a model’s words" in _n["kept"]["html"], _n["kept"]
+assert "The air<" in _n["typing"]["html"] and "calm" not in _n["typing"]["html"], _n["typing"]
+print("doors: the Wall's caption, its one line and its narration box say what they should, and nothing when empty")
+# THE TYPE FLOOR: every size in the Wall's CSS is --wf or a multiple of it, and --wf is 28 px at 1920x1080. Nothing
+# drawn on the Wall carries a class whose size is set outside that block (.k, .fine, <small>); the map's words are --wf.
+_wcss = html[html.index("/* ================= WALL:"):html.index("/* ================= FLOW:")]
+_wf = re.search(r"--wf:min\(([\d.]+)vw,([\d.]+)vh\)", _wcss)
+assert _wf and min(float(_wf.group(1)) * 19.2, float(_wf.group(2)) * 10.8) >= 28, "the floor is 28 px at 1920x1080"
+_sizes = re.findall(r"font(?:-size)?:([^;}]*)", re.sub(r"/\*.*?\*/", "", _wcss, flags=re.S))
+assert len(_sizes) >= 18, len(_sizes)
+for _f in _sizes:
+    _m = re.search(r"calc\(var\(--wf\) \* ([\d.]+)\)|var\(--wf\)|(\d[\d.]*)(px|em|rem|vw|vh)\b", _f)
+    assert _m and (_m.group(0) == "var(--wf)" or (_m.group(1) and float(_m.group(1)) >= 1)), f"under the Wall's type floor: font:{_f}"
+_wjs = (STATIC / "doors-wall.js").read_text().split("/* THE NODE, THINKING ALOUD")[0] + (STATIC / "doors-wallmap.js").read_text()
+assert not re.search(r'class="(?:k|fine)\b|<small', _wjs.split("if (o.time) {")[0] + _wjs.split("if (o.time) {")[-1].split("o.time.querySelectorAll('.seg")[-1]), \
+    "a class sized outside the Wall's block, drawn on the Wall"
+assert re.findall(r"getSize: (\w+)", _wjs) == ["wf", "wf"], "the map's words are at the floor"
+# CHROME: a wall is not operated. The back button, the chips and the hour strip are .wchrome, invisible until a pointer
+# or the keyboard is in them; the back button is the first thing in keyboard order.
+assert "#wallv .wchrome{opacity:0" in _wcss and "#wallv .wchrome:hover,#wallv .wchrome:focus-within{opacity:1}" in _wcss
+assert re.search(r'<div class="wtop wchrome"><button class="wback"', _wjs) and 'id="wtime" class="flowtime wchrome"' in _wjs
+for _gone in ("share level", "#wall", "more</a>", "readings in", "next in", "Read at", "replay with the token"):
+    assert _gone not in _wjs.lower().replace("#wallv", ""), f"admin chrome is back on the Wall: {_gone}"
+print("doors: nothing on the Wall is under 28 px at 1920x1080, and its chrome shows only under a pointer or the keyboard")
 # 2. One answer to "is something asked now" (14 Oct): Now's Decide said "No event was open for air" from the events while
 #    the Wall showed an open ask from open_asks. Both now read /issues `asking`; run on three captures, they agree.
 aprog = r"""
@@ -268,6 +316,7 @@ for (const [name, path] of Object.entries(JSON.parse(process.argv[1]))) {
     + 'let NOWL = null;\n' + (now.includes('function usualLine') ? fn(now, 'usualLine') : '') + fn(now, 'rows')
     + (place.includes('function yearly') ? fn(place, 'yearly') : 'function yearly() { return ""; }\n')
     + fn(core, 'evAt') + fn(core, 'answerWords') + now.match(/^const ANSWER_STAGE = .*$/m)[0] + '\n' + fn(now, 'decision')
+    + fs.readFileSync('./app/static/doors-wall.js', 'utf8').match(/const oneLine[\s\S]*?\n};\n/)[0]
     + fs.readFileSync('./app/static/doors-wall.js', 'utf8').match(/function wallAsk[\s\S]*?\n}\n/)[0], ctx);
   /* the phone's Decide card, its own copy of the helpers (mobile.js says why) */
   const mob = fs.readFileSync('./app/static/mobile.js', 'utf8'), mpick = n => mob.match(new RegExp('^const ' + n + ' = .*$', 'm'))[0];
