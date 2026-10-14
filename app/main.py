@@ -1420,10 +1420,11 @@ def sensors_(request: Request):
     room name and five decimals of position."""
     # `custody` travels with the row: it is the answer to "why is my cell partial", and a person looking at
     # /sensors should not have to rederive it from `local` and `kind`.
-    rows = q("SELECT sensor_id, source, name, lat, lon, indoor, local, custody, kind, scale, cadence, meta FROM sensors ORDER BY custody DESC, local DESC, name")
+    rows = q("SELECT sensor_id, source, name, room, source_name, lat, lon, indoor, local, custody, kind, scale, cadence, meta FROM sensors ORDER BY custody DESC, local DESC, name")
     if getattr(request.state, "share_trusted", False):
         return rows
     for r in rows:
+        r.pop("room", None); r.pop("source_name", None)   # which room is which is the household's
         # This household's own instruments stand in its house, so an untrusted reader gets the cell's centre
         # for them (R25). Everything else here is a public station, a model point or a lab, whose position is
         # public at its source; three decimals is what it always was.
@@ -1435,6 +1436,32 @@ def sensors_(request: Request):
         allow = _META_PUBLIC_FACILITY if r.get("kind") == "facility" else _META_PUBLIC
         r["meta"] = {k: v for k, v in (r["meta"] or {}).items() if k in allow} or None
     return rows
+
+
+@app.patch("/sensors/{sid}")
+def sensor_room(sid: str, body: dict, authorization: str = Header("")):
+    """Name the room a sensor is in, in the household's words (`{"room": "Kids"}`; null or "" gives the platform's name
+    back). The database makes the room the sensor's name whatever writes the row (init.sql 0.61), so every rule, the
+    report and every message say it. Admin token: it renames what the whole house reads."""
+    _admin(authorization)
+    room = body.get("room")
+    if room is not None and not isinstance(room, str):
+        raise HTTPException(422, "room is text, or null to give the platform's name back")
+    room = " ".join((room or "").split())[:40] or None
+    with db() as con, con.cursor() as cur:
+        cur.execute("SELECT name FROM sensors WHERE sensor_id = %s", (sid,))
+        was = cur.fetchone()
+        if not was:
+            raise HTTPException(404, "no such sensor")
+        cur.execute("""UPDATE sensors SET room = %s, name = CASE WHEN %s::text IS NULL THEN coalesce(source_name, name) ELSE name END
+                       WHERE sensor_id = %s RETURNING sensor_id, name, room, source_name""", (room, room, sid))
+        row = cur.fetchone()
+        # An event episode names its rooms by the sensors' names (events_pg.candidates) and matches them by name for
+        # the inside reading: the rename follows into every episode, so an open one keeps its room. What an alert
+        # said is left as it was sent.
+        cur.execute("UPDATE alert_events SET rooms = array_replace(rooms, %s, %s) WHERE %s = ANY(rooms)",
+                    (was["name"], row["name"], was["name"]))
+    return {"ok": True, "sensor": row}
 
 
 @app.get("/readings")
