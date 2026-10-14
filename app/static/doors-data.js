@@ -291,48 +291,57 @@ async function diaryBlock(words) {
       : `<p class="fine">${words ? 'Nothing mentions that.' : 'No entries yet: the node writes them once a day.'}</p>`);
   el.querySelector('[data-f=find]').onsubmit = e => { e.preventDefault(); diaryBlock(el.querySelector('[data-f=q]').value.trim()); };
 }
+/* THINGS and IMAGES are tables (Tomas, 14 Oct: "it needs to build a table and not add all as cards"). A card, the
+   whole form, opens only in a dialog: to add or edit a thing, to look at or edit one image, or to see all images. */
+let CARDLG = null;
+function cardDialog(title, html, onClose) {
+  if (!CARDLG) { CARDLG = document.createElement('dialog'); CARDLG.className = 'imgdlg cardlg'; document.body.append(CARDLG); }
+  CARDLG.innerHTML = `<div class="dhead"><h3>${esc(title)}</h3><button data-a="close">Close</button></div>${html}`;
+  CARDLG.querySelector('[data-a=close]').onclick = () => CARDLG.close();
+  CARDLG.onclose = () => { CARDLG.innerHTML = ''; if (onClose) onClose(); };
+  CARDLG.showModal();
+  return CARDLG;
+}
+const cell = v => esc(v == null || v === '' ? '—' : v);
 async function thingsBlock() {
   const el = $('#d-things');
-  if (el.querySelector('.icard') && el.contains(document.activeElement)) return;   // a resize must not wipe an edit in progress
+  if (CARDLG && CARDLG.open) return;   // a refresh must not wipe an edit in progress
   const r = await fetch('/things', { headers: DOORS_AUTH() }).catch(() => null);
   const j = r && r.ok ? await r.json().catch(() => null) : null;
   if (!j) { el.innerHTML = `<h2>Things</h2><p class="fine">What this home keeps answers the admin token only, and never leaves the house. Unlock this screen with it under Node.</p>`; return; }
   const s = j.summary;
-  el.innerHTML = `<h2>Things, ${s.things}</h2><p class="blurb">What this home keeps: ${s.idle} used a few times a year or never, ${s.repair} waiting for a repair. `
-    + `Nothing about them leaves the house except what you offer: the node counts them per class for the page and its rules, keeps them out of the export, the report and every agent, and only in the household's own backup. `
-    + `A thing you would lend or give is public: its class, name, state and count, at this node's cell, in <a class="mono" href="/offers">/offers</a> and the daily export, and whoever wants it writes to this node's Telegram bot, which passes the message to you.</p>`
-    + `<div class="icards">${tcard({}, j.classes)}${j.things.map(t => tcard(t, j.classes)).join('')}</div>`;
-  el.querySelectorAll('.icard').forEach(card => {
-    const id = card.dataset.id, say = t => { card.querySelector('[role=status]').textContent = t; };
+  el.innerHTML = `<h2>Things, ${s.things}</h2><p class="blurb">What this home keeps: ${s.idle} used a few times a year or never, ${s.repair} waiting for a repair, ${s.offered} offered. `
+    + `Only what you offer leaves the house: its class, name, state and count, at this node's cell, in <a class="mono" href="/offers">/offers</a>; whoever wants it writes to this node's Telegram bot, which passes the message to you.</p>`
+    + `<div class="acts"><button data-a="add">Add a thing</button></div>`
+    + (j.things.length ? `<table class="tbl things"><tr><th>what</th><th class="hide">class</th><th class="n">how many</th><th>used</th><th class="hide">state</th><th>offer</th><th></th></tr>`
+      + j.things.map(t => `<tr><td>${cell(t.name)}${t.capture_id ? ` <a class="fine" href="#data/d-images">image</a>` : ''}</td><td class="hide">${cell(t.class)}</td><td class="n">${+t.count || 1}</td>`
+        + `<td>${cell(TWORDS.used[t.used])}</td><td class="hide">${cell(TWORDS.condition[t.condition])}</td><td>${cell(TWORDS.offer[t.offer])}</td>`
+        + `<td class="n"><button class="link" data-edit="${t.id}">Edit</button></td></tr>`).join('') + `</table>`
+      : `<p class="fine">Nothing yet. Add what this home keeps and how often it is used: an idle drill is a drill a neighbour could borrow.</p>`);
+  const open = t => {
+    const dl = cardDialog(t.id ? `Edit ${t.name || 'this thing'}` : 'Add a thing', tcard(t, j.classes), thingsBlock);
+    const card = dl.querySelector('.icard'), id = card.dataset.id, say = x => { card.querySelector('[role=status]').textContent = x; };
     const val = k => card.querySelector(`[data-t=${k}]`).value;
     card.querySelector('[data-a=save]').onclick = async () => {
       const body = { name: val('name'), class: val('class'), count: +val('count') || 1, used: val('used'), condition: val('condition'), offer: val('offer') };
       const r2 = await fetch(id ? `/things/${id}` : '/things', { method: id ? 'PATCH' : 'POST', headers: { ...DOORS_AUTH(), 'content-type': 'application/json' }, body: JSON.stringify(body) }).catch(() => null);
-      if (r2 && r2.ok) { card.querySelector('[data-a=save]').blur(); thingsBlock(); return; }
+      if (r2 && r2.ok) { dl.close(); return; }
       say(`Not saved: ${r2 ? ((await r2.json().catch(() => ({}))).detail || r2.status) : 'the node did not answer'}`);
     };
     const del = card.querySelector('[data-a=del]');
     if (del) del.onclick = async () => {
       if (!confirm('Delete this thing from the node?')) return;
       const r2 = await fetch(`/things/${id}`, { method: 'DELETE', headers: DOORS_AUTH() }).catch(() => null);
-      if (r2 && r2.ok) { thingsBlock(); return; }
+      if (r2 && r2.ok) { dl.close(); return; }
       say(`Not deleted (${r2 ? r2.status : 'no answer'}).`);
     };
-  });
+    card.querySelector('[data-t=name]').focus();
+  };
+  el.querySelector('[data-a=add]').onclick = () => open({});
+  el.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => open(j.things.find(t => String(t.id) === b.dataset.edit)));
 }
-async function imagesBlock() {
-  const el = $('#d-images');
-  if (el.querySelector('.icard') && el.contains(document.activeElement)) return;   // a resize must not wipe an edit in progress
-  const rows = await fetch('/captures?limit=500', { headers: DOORS_AUTH() }).then(r => (r.ok ? r.json() : null)).catch(() => null);
-  TKEEP = await fetch('/things', { headers: DOORS_AUTH() }).then(r => (r.ok ? r.json() : null)).catch(() => null);
-  if (!rows) { el.innerHTML = `<h2>Images</h2><p class="fine">Images answer a screen holding a token only: the picture and where it was taken. Unlock this screen under Node.</p>`; return; }
-  const metaText = m => Object.entries(m || {}).map(([k, v]) => `${k}: ${v}`).join('\n');
-  // what a person here has confirmed, per species (SPEC_species §4): the model's guesses are not in it
-  const sp = await fetch('/species', { headers: DOORS_AUTH() }).then(r => (r.ok ? r.json() : null)).catch(() => null);
-  const spList = sp && sp.species.length ? `<h3>Species confirmed, ${sp.species.length}</h3><p class="fine">`
-    + sp.species.map(x => `${x.key ? `<a href="https://www.gbif.org/species/${+x.key}" target="_blank" rel="noopener">${esc(x.name)}</a>` : esc(x.name)} ×${+x.count}${INTRO(x)}`).join('<br>') + `</p>` : '';
-  el.innerHTML = `<h2>Images, ${rows.length}</h2><p class="blurb">What the household added, newest first. Each is a square on Place, one layer per kind. Describe asks the image model in Set up, on this machine, again whenever the model changes. Its findings are its own until somebody here edits or confirms them.</p>` + spList
-    + `<div class="icards">${rows.map(c => `<div class="icard" data-id="${c.id}"><img alt="${esc(c.note || IKINDS[c.kind] || 'an image')}">`
+const metaText = m => Object.entries(m || {}).map(([k, v]) => `${k}: ${v}`).join('\n');
+const icardHTML = c => `<div class="icard" data-id="${c.id}"><img alt="${esc(c.note || IKINDS[c.kind] || 'an image')}">`
       + `<p class="fine mono">${esc((c.ts || '').slice(0, 16).replace('T', ' '))}${c.actor ? ' · ' + esc(c.actor) : ''} · ${Math.round((c.bytes || 0) / 1024)} kB</p>`
       + `<p class="fine mono">${esc(c.cell)} · ${c.lat == null ? 'its cell only' : 'the exact point'} · ${c.outside ? 'outside the seven cells' : 'in the seven cells'}${c.at_home ? ' · at home' : ''}</p>`
       + `<label>What took it<select data-f="kind">${Object.entries(IKINDS).map(([k, t]) => `<option value="${k}"${k === c.kind ? ' selected' : ''}>${t}</option>`).join('')}</select></label>`
@@ -340,8 +349,8 @@ async function imagesBlock() {
       + `<label>More, one per line as key: value<textarea data-f="meta" rows="2">${esc(metaText(c.meta))}</textarea></label>`
       + `<div data-seen>${seen(c.analysis, c.id)}</div>`
       + `<div class="acts"><button data-a="save">Save</button><button data-a="see">${c.analysis ? 'Describe again' : 'Describe'}</button>`
-      + `<button data-a="ok"${c.analysis ? '' : ' hidden'}>${c.analysis && c.analysis.confirmed_by ? 'Save findings' : 'Confirm findings'}</button><button data-a="del">Delete</button></div><p class="fine" role="status"></p></div>`).join('')}</div>`;
-  el.querySelectorAll('.icard').forEach(async card => {
+      + `<button data-a="ok"${c.analysis ? '' : ' hidden'}>${c.analysis && c.analysis.confirmed_by ? 'Save findings' : 'Confirm findings'}</button><button data-a="del">Delete</button></div><p class="fine" role="status"></p></div>`;
+async function wireImageCard(card) {
     const id = card.dataset.id, say = t => { card.querySelector('[role=status]').textContent = t; };
     card.querySelector('[data-a=save]').onclick = async () => {
       const meta = Object.fromEntries(card.querySelector('[data-f=meta]').value.split('\n').map(l => l.split(/:(.*)/s)).filter(p => p[0].trim()).map(p => [p[0].trim(), (p[1] || '').trim()]));
@@ -392,9 +401,42 @@ async function imagesBlock() {
       if (r && r.ok) { card.remove(); if (window.placeImagesChanged) window.placeImagesChanged(); return; }
       say(r && r.status === 401 ? 'Only a screen holding the admin token deletes an image.' : `Not deleted (${r ? r.status : 'no answer'}).`);
     };
-    const b = await fetch(`/captures/${id}/file`, { headers: DOORS_AUTH() }).then(r => (r.ok ? r.blob() : null)).catch(() => null);
+    const b = await fetch(`/captures/${id}/file?w=1024`, { headers: DOORS_AUTH() }).then(r => (r.ok ? r.blob() : null)).catch(() => null);
     const im = card.querySelector('img'); if (b) { im.src = URL.createObjectURL(b); im.onload = () => URL.revokeObjectURL(im.src); }
-  });
+}
+const imgStatus = a => !a ? 'not described' : a.confirmed_by ? `confirmed by ${a.confirmed_by}` : 'the model’s, not confirmed';
+async function imagesBlock() {
+  const el = $('#d-images');
+  if (CARDLG && CARDLG.open) return;   // a refresh must not wipe an edit in progress
+  const rows = await fetch('/captures?limit=500', { headers: DOORS_AUTH() }).then(r => (r.ok ? r.json() : null)).catch(() => null);
+  TKEEP = await fetch('/things', { headers: DOORS_AUTH() }).then(r => (r.ok ? r.json() : null)).catch(() => null);
+  if (!rows) { el.innerHTML = `<h2>Images</h2><p class="fine">Images answer a screen holding a token only: the picture and where it was taken. Unlock this screen under Node.</p>`; return; }
+  // what a person here has confirmed, per species (SPEC_species §4): the model's guesses are not in it
+  const sp = await fetch('/species', { headers: DOORS_AUTH() }).then(r => (r.ok ? r.json() : null)).catch(() => null);
+  const spTable = sp && sp.species.length ? `<h3>Species confirmed, ${sp.species.length}</h3><table class="tbl species"><tr><th>species</th><th class="hide">rank</th><th class="n">seen</th><th>here and around</th></tr>`
+    + sp.species.map(x => `<tr><td>${x.key ? `<a href="https://www.gbif.org/species/${+x.key}" target="_blank" rel="noopener">${esc(x.name)}</a>` : esc(x.name)}</td>`
+      + `<td class="hide">${cell(x.rank)}</td><td class="n">${+x.count}</td><td class="fine">${INTRO(x).replace(/^ · /, '') || '—'}</td></tr>`).join('') + `</table>` : '';
+  el.innerHTML = `<h2>Images, ${rows.length}</h2><p class="blurb">What the household added, newest first, each a square on Place. The image model on this machine describes each one; what it found is its own until somebody here confirms it. Open a row to look, edit or confirm.</p>`
+    + (rows.length ? `<div class="acts"><button data-a="all">See all images</button></div>` : '') + spTable
+    + (rows.length ? `<table class="tbl imgs"><tr><th></th><th>when</th><th class="hide">taken with</th><th>note</th><th class="hide">what it shows</th><th>findings</th></tr>`
+      + rows.map(c => `<tr data-id="${c.id}"><td class="thumb"><img alt=""></td>`
+        + `<td><button class="link" data-open="${c.id}">${esc((c.ts || '').slice(0, 16).replace('T', ' '))}</button>${c.actor ? `<br><span class="fine">${esc(c.actor)}</span>` : ''}</td>`
+        + `<td class="hide">${cell(IKINDS[c.kind] || c.kind)}</td><td>${cell(c.note)}</td>`
+        + `<td class="hide">${cell(((c.analysis || {}).findings || []).map(f => f.name).filter(Boolean).slice(0, 6).join(', '))}</td>`
+        + `<td class="fine">${esc(imgStatus(c.analysis))}</td></tr>`).join('') + `</table>`
+      : `<p class="fine">No images yet. Add one from Place, or from a phone unlocked under Node.</p>`);
+  const show = list => {
+    const dl = cardDialog(list.length === 1 ? (list[0].note || IKINDS[list[0].kind] || 'Image') : `All images, ${list.length}`,
+      `<div class="icards${list.length === 1 ? ' one' : ''}">${list.map(icardHTML).join('')}</div>`, () => { imagesBlock(); thingsBlock(); });
+    dl.querySelectorAll('.icard').forEach(wireImageCard);
+  };
+  el.querySelector('[data-a=all]')?.addEventListener('click', () => show(rows));
+  el.querySelectorAll('[data-open]').forEach(b => b.onclick = () => show([rows.find(c => String(c.id) === b.dataset.open)]));
+  // thumbnails, one at a time, 96 px a side from the node (?w=): a drone picture is 11 MB
+  for (const tr of el.querySelectorAll('tr[data-id]')) {
+    const bl = await fetch(`/captures/${tr.dataset.id}/file?w=96`, { headers: DOORS_AUTH() }).then(r => (r.ok ? r.blob() : null)).catch(() => null);
+    const im = tr.querySelector('img'); if (bl && im) { im.src = URL.createObjectURL(bl); im.onload = () => URL.revokeObjectURL(im.src); }
+  }
 }
 
 function ledgerBlock() {

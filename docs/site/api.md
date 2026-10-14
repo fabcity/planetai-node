@@ -581,7 +581,7 @@ Deletes an image, its row and its file in `CAPTURES_DIR`. This machine, or the a
 ### GET /captures/{cid}/file
 Access: act
 
-The picture itself, with its stored mime. 404 `no such capture`, or `the row is here but the file is gone from the captures folder`. The name is the node's own (a sha256), never a path from a client.
+The picture itself, with its stored mime; `?w=` (1 to 1024) answers a JPEG at most that many pixels a side instead, for a table's thumbnail. 404 `no such capture`, or `the row is here but the file is gone from the captures folder`. The name is the node's own (a sha256), never a path from a client.
 
 ### GET /things
 Access: admin
