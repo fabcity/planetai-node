@@ -417,14 +417,14 @@ async function imagesBlock() {
     + sp.species.map(x => `<tr><td>${x.key ? `<a href="https://www.gbif.org/species/${+x.key}" target="_blank" rel="noopener">${esc(x.name)}</a>` : esc(x.name)}</td>`
       + `<td class="hide">${cell(x.rank)}</td><td class="n">${+x.count}</td><td class="fine">${INTRO(x).replace(/^ · /, '') || '—'}</td></tr>`).join('') + `</table>` : '';
   el.innerHTML = `<h2>Images, ${rows.length}</h2><p class="blurb">What the household added, newest first, each a square on Place. The image model on this machine describes each one; what it found is its own until somebody here confirms it. Open a row to look, edit or confirm.</p>`
-    + (rows.length ? `<div class="acts"><button data-a="all">See all images</button></div>` : '') + spTable
+    + (rows.length ? `<div class="acts"><button data-a="all">See all images</button></div>` : '')
     + (rows.length ? `<table class="tbl imgs"><tr><th></th><th>when</th><th class="hide">taken with</th><th>note</th><th class="hide">what it shows</th><th>findings</th></tr>`
       + rows.map(c => `<tr data-id="${c.id}"><td class="thumb"><img alt=""></td>`
         + `<td><button class="link" data-open="${c.id}">${esc((c.ts || '').slice(0, 16).replace('T', ' '))}</button>${c.actor ? `<br><span class="fine">${esc(c.actor)}</span>` : ''}</td>`
         + `<td class="hide">${cell(IKINDS[c.kind] || c.kind)}</td><td>${cell(c.note)}</td>`
         + `<td class="hide">${cell(((c.analysis || {}).findings || []).map(f => f.name).filter(Boolean).slice(0, 6).join(', '))}</td>`
         + `<td class="fine">${esc(imgStatus(c.analysis))}</td></tr>`).join('') + `</table>`
-      : `<p class="fine">No images yet. Add one from Place, or from a phone unlocked under Node.</p>`);
+      : `<p class="fine">No images yet. Add one from Place, or from a phone unlocked under Node.</p>`) + spTable;
   const show = list => {
     const dl = cardDialog(list.length === 1 ? (list[0].note || IKINDS[list[0].kind] || 'Image') : `All images, ${list.length}`,
       `<div class="icards${list.length === 1 ? ' one' : ''}">${list.map(icardHTML).join('')}</div>`, () => { imagesBlock(); thingsBlock(); });
