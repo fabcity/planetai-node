@@ -101,6 +101,7 @@ logging.getLogger().setLevel(logging.DEBUG)
 opened = []
 main.db = lambda: opened.append("db") or (_ for _ in ()).throw(RuntimeError("no database in this test"))
 main.q = lambda sql, *a: [{"name": s.get("name")} for s in FIX["sensors"]] if "FROM sensors" in sql else []
+main.forecast = lambda hours=24: None   # the Wall reads it (ask.wall_reads); never the database in this test
 import inspect                                       # noqa: E402
 _sig = inspect.signature(issues_api.issues_now).parameters
 assert all(p.default is not inspect.Parameter.empty for p in _sig.values()), \
