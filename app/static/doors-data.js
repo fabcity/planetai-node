@@ -265,13 +265,15 @@ async function learnedBlock() {
 /* WHAT IS USUAL HERE (SPEC_learn step 2): the shape of a day from this house's own sensors, the week against the three
    before, and the alerts that are mostly not answered, said as what would change them. The node changes nothing. */
 /* it: the issue whose line a PM2.5 strip draws; its bars then stand on zero, so the line sits at its own height */
+/* the usual day, hour by hour: bars from zero when the issue has a line, so the line sits at its true height; the
+   line's label in a right margin and the hours under the bars, so neither is clipped or drawn over a bar */
 const dayStrip = (h, it) => { const v = Object.entries(h || {}).map(([k, x]) => [+k, x]); if (v.length < 12) return '';
   const line = it ? it.line : null, lo = line != null ? 0 : Math.min(...v.map(x => x[1])), hi = Math.max(...v.map(x => x[1]), line ?? -Infinity) || 1;
-  const Y = x => 4 + 26 * (1 - (x - lo) / ((hi - lo) || 1));
-  return `<svg viewBox="0 0 240 34" width="240" height="34" role="img" aria-label="the usual day, hour by hour">`
-    + v.map(([k, x]) => { const y = Y(x); return `<rect x="${k * 10 + 1}" y="${y.toFixed(1)}" width="8" height="${(30 - y).toFixed(1)}" fill="currentColor" opacity=".55"><title>${String(k).padStart(2, '0')}:00 · ${x}</title></rect>`; }).join('')
-    + (line != null ? `<line x1="0" x2="240" y1="${Y(line).toFixed(1)}" y2="${Y(line).toFixed(1)}" class="linep"/><text x="240" y="${(Y(line) - 2).toFixed(1)}" text-anchor="end" font-size="6" class="lab">${lineLab(it)}</text>` : '')
-    + `<text x="0" y="34" font-size="6" fill="currentColor">00</text><text x="114" y="34" font-size="6" fill="currentColor">12</text><text x="228" y="34" font-size="6" fill="currentColor">23</text></svg>`; };
+  const Y = x => 8 + 52 * (1 - (x - lo) / ((hi - lo) || 1)), W = 18;
+  return `<svg viewBox="0 0 480 80" style="width:min(480px,100%);height:auto" role="img" aria-label="the usual day, hour by hour">`
+    + v.map(([k, x]) => { const y = Y(x); return `<rect x="${k * W + 2}" y="${y.toFixed(1)}" width="${W - 4}" height="${(60 - y).toFixed(1)}" fill="currentColor" opacity=".55"><title>${String(k).padStart(2, '0')}:00 · ${x}</title></rect>`; }).join('')
+    + (line != null ? `<line x1="0" x2="${24 * W}" y1="${Y(line).toFixed(1)}" y2="${Y(line).toFixed(1)}" class="linep"/><text x="${24 * W + 4}" y="${(Y(line) + 3.5).toFixed(1)}" font-size="10" class="lab">${lineLab(it)}</text>` : '')
+    + [0, 6, 12, 18, 23].map(k => `<text x="${k * W + W / 2}" y="76" font-size="10" text-anchor="middle" fill="currentColor">${String(k).padStart(2, '0')}</text>`).join('') + `</svg>`; };
 function usualBlock(j) {
   const el = $('#d-usual'), usual = j.learnings.filter(x => x.kind === 'usual'), asks = j.learnings.filter(x => x.kind === 'asks');
   el.innerHTML = `<h2>What is usual here</h2><p class="blurb">From this house's own sensors, up to a year back: when in the day each is usually highest and lowest, weekdays against weekends, and this week against the three before. Outside is about the place; inside stays with the house.</p>`
