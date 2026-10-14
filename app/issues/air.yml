@@ -91,6 +91,13 @@ sentences:
     # {event} names the day it crossed and came back, so the state band and the sentence agree.
     event:
       earlier: "The house crossed the line earlier today."
+    # day: said instead of the attribution when the reading is back under the line, or close to it, after hours over
+    # it today (engine `_day`, the count the Now door prints beside the title). No number in the title.
+    day:
+      under: "The air is clean now, after a dusty {part} | {where} it was past the WHO line for fine dust until {until}, {hours} today."
+      near:  "The air is better now, after a dusty {part} | {where} it was past the WHO line for fine dust until {until}, {hours} today."
+      parts: {night: night, morning: morning, afternoon: afternoon, evening: evening}
+      hours: ["{n} hour", "{n} hours"]
     cmp_words:
       over:  "worse than {noun}"
       under: "cleaner than {noun}"
@@ -133,6 +140,12 @@ sentences:
       under: "di bawah batas WHO untuk debu halus"
     event:
       earlier: "Rumah sempat melewati batas tadi."
+    # day: ASSISTANT-WRITTEN, waiting for a native reader like the rest of this locale
+    day:
+      under: "Udara sudah bersih, setelah {part} yang berdebu | {where} udaranya sempat di atas batas WHO untuk debu halus sampai pukul {until}, {hours} hari ini."
+      near:  "Udara sudah membaik, setelah {part} yang berdebu | {where} udaranya sempat di atas batas WHO untuk debu halus sampai pukul {until}, {hours} hari ini."
+      parts: {night: dini hari, morning: pagi, afternoon: siang, evening: malam}
+      hours: ["{n} jam", "{n} jam"]
     cmp_words:
       over:  "lebih buruk daripada {noun}"
       under: "lebih bersih daripada {noun}"
@@ -173,6 +186,12 @@ sentences:
       under: "por debajo del límite de la OMS para el polvo fino"
     event:
       earlier: "La casa cruzó el límite hoy más temprano."
+    # day: ASSISTANT-WRITTEN, waiting for a native reader like the rest of this locale
+    day:
+      under: "El aire ya está limpio, tras una {part} de polvo | {where} estuvo por encima del límite de la OMS para el polvo fino hasta las {until}, {hours} hoy."
+      near:  "El aire ha mejorado, tras una {part} de polvo | {where} estuvo por encima del límite de la OMS para el polvo fino hasta las {until}, {hours} hoy."
+      parts: {night: madrugada, morning: mañana, afternoon: tarde, evening: noche}
+      hours: ["{n} hora", "{n} horas"]
     cmp_words:
       over:  "peor que {noun}"
       under: "más limpio que {noun}"

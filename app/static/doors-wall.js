@@ -11,12 +11,14 @@ const mFrom = s => ((D.ngeo && D.ngeo.dist[s.sensor_id]) || { m: Infinity }).m;
 let WVAR = 'pm25';
 /* Never a name on the wall (Tomas, 14 Oct 2026): anyone in the room reads it, and a sensor's name is a room, a kit or an
    address ("K ROOM - BAYU HOLES"). The house is inside or outside; a public station is how far off it stands; an ask
-   is the engine's own sentence (open_asks[].says), never the alert's text, which names the room. */
+   is the engine's own sentence (asking[].says), never the alert's text, which names the room. */
 const wallWhere = s => s.local ? (s.indoor ? 'inside' : 'outside') : Number.isFinite(mFrom(s)) ? `${fmt(mFrom(s) / 1000, 1)} km off` : 'around here';
+/* What is asked now is the node's one answer (/issues asking), the same Now's Decide card reads: an alert still open
+   whose reading came back is not asked of anybody now, and the Wall said it was while Now said nothing was (14 Oct). */
 function wallAsk(it) {
-  const a = it.open_asks || [], says = a.length ? (a[0].says || {})[D.health.locale] || (a[0].says || {}).en || '' : '';
+  const a = it.asking || [], says = a.length ? a[0].says || '' : '';
   return a.length ? `${a.length === 1 ? 'One thing is asked of this house.' : `${a.length} things are asked of this house.`}<small>${said(says)}</small>`
-    : `Nothing has been asked.<small>${said(it.name)} is ${esc(it.state)}, and no rule here asks anybody to do anything about it.</small>`;
+    : `Nothing is asked now.<small>${said(it.name)} is ${esc(it.state)}, and nothing here is asking anybody to do anything about it now.</small>`;
 }
 /* `stale` only when the node's readings are old: no poll in the last 15 minutes (three at the 300 s default), or none
    since the restart. /health's last_error is not read: one failing portal of twenty sets it while the rest are fresh. */
