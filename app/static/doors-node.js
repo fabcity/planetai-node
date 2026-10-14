@@ -9,7 +9,11 @@ VIEWS.node = function () {
   $('#nodehead').innerHTML = `<div class="k">Node · this machine</div>
     <h1 data-learn="1">${esc(R.name)}, in ${esc(R.place)}.</h1>
     <p class="lede mono">planetai-node ${esc(h.version)} · up ${fmt(h.uptime_s / 3600, 1)} h · ${h.ingested.toLocaleString('en')} readings since the restart · cell ${esc(h.cell.id)} · ${esc(h.tz)}</p>`;
-  flow(); around(); running();
+  /* asked once a draw, read by the flow and by Running: how many readings the node keeps (GET /storage, token-only)
+     and what this home offers (GET /offers, open at every SHARE_LEVEL and in the daily export) */
+  const kept = doorsFetch('/storage').then(x => x.ok ? x.json() : null).catch(() => null),
+    offers = fetch('/offers').then(x => x.ok ? x.json() : null).catch(() => null);
+  flow(kept, offers); around(); running(kept);
 };
 
 /* What comes in, what goes out (R35's hub, back on Node in R38; the Wall keeps the flow by scale, js/flow.js).
@@ -17,20 +21,24 @@ VIEWS.node = function () {
    their own, green; the centre is the node's res-8 cell inside its res-6 parent at true scale, so the cell reads
    against the finest cell that may leave; each square steps at its link's real mean rate, on the Wall's pace
    (--motion-replay-loop: six hours in 30 s), so the two doors run one clock speed. */
-async function flow() {
-  const F = await flowData(), el = $('#flow'), narrow = el.clientWidth < 700, W = narrow ? 840 : el.clientWidth, H = 500, cx = W / 2, cy = H / 2, R = narrow ? 64 : 96;
+async function flow(kept, offers) {
+  const [F, St, Of] = await Promise.all([flowData(), kept, offers]), el = $('#flow'), narrow = el.clientWidth < 700, W = narrow ? 840 : el.clientWidth, H = 500, cx = W / 2, cy = H / 2, R = narrow ? 64 : 96;
   const grp = id => id.startsWith('msh') ? 'mesh' : (D.sensors.find(s => s.sensor_id === id) || {}).kind === 'model' ? 'models' : (D.sensors.find(s => s.sensor_id === id) || {}).local ? 'house' : 'public';
   const n24 = { house: null, public: null, models: null, mesh: null }; for (const [id, n] of Object.entries(F.counts)) n24[grp(id)] = (n24[grp(id)] || 0) + d3.sum(n);
   const loc = D.sensors.filter(s => s.local && s.kind === 'sensor'), pub = D.sensors.filter(s => !s.local && s.kind === 'sensor');
   const heard = pub.filter(s => lastRaw(s.sensor_id, 'pm25') != null).length, models = D.sensors.filter(s => s.kind === 'model').length, c24 = v => v == null ? 'counted with the token' : `${v.toLocaleString('en')} in 24 h`;
   const ret = D.health.reticulum || {}, perDay = ret.announce_s ? Math.round(86400 / ret.announce_s) : null;
+  /* what reached a phone: the node's own count (/issues events.sent_24h), since an alerts row is written whether or not
+     it was sent (below ALERT_LEVEL, or a pack the event engine speaks for); a node too old to say counts the rows */
+  const sent = D.sent24, nOff = Of ? (Of.offers || []).length : null;
   // [title, words, events in 24 h (null: nothing travels), colour]
   const IN = [['Sensors in this house', `${loc.length} · ${c24(n24.house)}`, n24.house, ''], ['Public stations around it', `${heard} of ${pub.length} heard · ${c24(n24.public)}`, n24.public, ''],
     ['Models for this point', `${models} · ${c24(n24.models)}`, n24.models, ''], ['The mesh, by LoRa', n24.mesh == null ? (F.counted ? 'no mesh heard' : 'counted with the token') : `${n24.mesh.toLocaleString('en')} packets in 24 h`, n24.mesh, ''],
     ['Answers, from the household', `${c24(F.answers.length)} · Done, Not now, Doesn’t fit`, F.answers.length, 'green'], ['The satellite', D.earth ? `${D.earth.years.length} years · once a year` : 'not fetched on this node', null, 'sat']];
-  const OUT = [['This page, on your network', '0 requests out · when you open it', null, ''], ['Alerts, to a phone', `${c24(F.alerts.length)} · ${D.rho.acted} acted on`, F.alerts.length, 'red'],
+  const OUT = [['This page, on your network', '0 requests out · when you open it', null, ''], ['Alerts, to a phone', `${sent == null ? `${F.alerts.length.toLocaleString('en')} recorded in 24 h` : `${sent.toLocaleString('en')} sent in 24 h`} · ${D.rho.acted} acted on`, sent ?? F.alerts.length, 'red'],
     ['Its cell, by radio', ret.announce_s ? `res ${D.geometry.radio.res} · every ${Math.round(ret.announce_s / 60)} min · ${(ret.peers || []).length} heard` : 'no radio on this node', perDay, 'blue'], ['Fab City Index cells', `${new Set(D.index_cells.map(c => c.cell)).size} of 20 · hourly`, 24, 'blue'],
-    ['Open export, CC BY 4.0', 'one file a day', 1, ''], ['Hourly means, to a community node', 'none set · nowhere yet', null, '']];
+    ['Open export, CC BY 4.0', 'one file a day', 1, ''],
+    ['What this home offers', nOff == null ? 'not read' : nOff ? `${nOff} thing${nOff === 1 ? '' : 's'} · open to anyone, and in the export` : 'nothing offered', nOff ? 1 : null, ''], ['Hourly means, to a community node', 'none set · nowhere yet', null, '']];
   const xIn = narrow ? 280 : 300, xOut = W - (narrow ? 280 : 340), yAt = (i, n) => 46 + i * ((H - 110) / (n - 1));
   // the centre: the res-6 parent and its 49 res-8 cells, flat and to scale; this node's cell filled. Every hexagon is a real cell.
   /* the node's own answers (js/nodegeo.js): its res-8 cell, the res-6 parent and the parent's 49 children, as rings */
@@ -50,8 +58,8 @@ async function flow() {
     : kids.filter(k => k[0] !== cell).map(k => `<path d="${pa(poly(k))}" class="fgrid"/>`).join('') + `<path d="${pa(poly(parR))}" class="fpar"/><path d="${pa(poly(cellR))}" class="fhex"/>`)
     + `<text x="${cx}" y="${cy - R - 26}" text-anchor="middle" class="fname">${esc(D.registry.name)}</text><text x="${cx}" y="${cy - R - 10}" text-anchor="middle" class="fn">${esc(cell)} · res 8 · ${tn('node.cell.km2', km2('c8'), 'this cell\'s own area')} km²</text>`
     + `<text x="${cx}" y="${cy + R + 18}" text-anchor="middle" class="fn">1 of ${tn('node.cell.n6', NG ? NG.c6.children_n : '—', 'res-8 cells in its res-6 parent, counted by the node')} in its res-6 cell · ${tn('node.par.km2', km2('c6'), 'the parent\'s own area')} km² · dotted: may leave</text>`
-    + `<text x="${cx}" y="${cy + R + 34}" text-anchor="middle" class="fn">${D.health.ingested.toLocaleString('en')} readings kept · none leave</text>`
-    + `<text x="${cx}" y="${H - 6}" text-anchor="middle" class="fn">raw readings stay here; what leaves is the cell, the means, the Index and the answers</text><g id="dots"></g></svg>`;
+    + `<text x="${cx}" y="${cy + R + 34}" text-anchor="middle" class="fn">${St ? `about ${St.readings.toLocaleString('en')} readings kept` : `${D.health.ingested.toLocaleString('en')} readings since the restart`} · none leave</text>`
+    + `<text x="${cx}" y="${H - 6}" text-anchor="middle" class="fn">raw readings stay here; what leaves is the cell, the means, the Index, the answers and what this home offers</text><g id="dots"></g></svg>`;
   el.innerHTML = s;
   // Stepped, named after its datum: one square per link takes one of eight steps per arrival, at the link's real mean
   // rate over 24 h, compressed to the Wall's pace. One clock, transform only, paused off screen, none under reduced motion.
@@ -90,7 +98,7 @@ async function around() {
   s += `</svg>`;
   el.innerHTML = s;
   const L = D.listed, ret = D.health.reticulum || {}, word = x => !(L && L.read) ? 'list not read' : x.listed ? 'listed' : 'not listed';
-  const fine = (L && L.read ? `Listed: the programme’s registry.json, read at ${hhmm(L.read)} UTC${L.error ? ', the last read failed (' + L.error + ')' : ''}. `
+  const fine = (L && L.read ? `Listed: the programme’s registry.json, read at ${hhmm(L.read)}${L.error ? ', the last read failed (' + L.error + ')' : ''}. `
       : `The programme’s list has not been read yet${L && L.error ? ' (' + L.error + ')' : ''}. `)
     + 'A node joins it with planetai hello and a merged pull request; a node with no published point is not drawn. '
     + (ret.announce_s ? ((ret.peers || []).length ? `This node’s radio has heard ${ret.peers.length} other node${ret.peers.length > 1 ? 's' : ''}; they are not on this map yet.` : 'This node’s radio has heard no other node yet.') : 'This node has no radio announcing it.');
@@ -102,9 +110,9 @@ async function around() {
 
 /* Running, and a light reading of the machine under it (GET /machine, /storage: token-only; the full one is Set up →
    Machine). Meters are ink on a hairline, one per resource, so the state reads at a glance. */
-async function running() {
+async function running(kept) {
   const h = D.health, mesh = h.mesh && h.mesh.root_topic ? h.mesh : null, ret = h.reticulum;
-  const [M, S] = await Promise.all(['machine', 'storage'].map(r => fetch('/' + r, { headers: DOORS_AUTH() }).then(x => x.ok ? x.json() : null).catch(() => null)));
+  const [M, S] = await Promise.all([doorsFetch('/machine').then(x => x.ok ? x.json() : null).catch(() => null), kept]);
   const meter = (v, T) => T ? `<i class="nm"><b style="width:${Math.min(100, v / T * 100).toFixed(1)}%"></b></i>` : '';
   const gb = b => b == null ? '—' : b >= 1e9 ? `${(b / 1e9).toFixed(1)} GB` : `${Math.round(b / 1e6)} MB`;
   const mem = M && M.memory, used = mem && mem.total_bytes && mem.available_bytes != null ? mem.total_bytes - mem.available_bytes : null, k = S && S.disk;
@@ -116,7 +124,7 @@ async function running() {
     ...(k ? [['Disk', `${gb(S.database_bytes + S.out_bytes + S.backups.bytes + S.exports_bytes)} this node · ${gb(k.free_bytes)} free of ${gb(k.total_bytes)}${meter(k.used_bytes, k.total_bytes)}`, `${years(S.days_left)} left`]] : []),
   ] : [['The machine', 'its processor, memory and disk are the keeper’s: unlock this screen in Set up', '<a href="#setup/screen">unlock →</a>']];
   $('#running').innerHTML = [['Version', `planetai-node ${h.version} · schema ${h.schema}`, ''], ['Running for', 'since the last restart', `${fmt(h.uptime_s / 3600, 1)} h`],
-    ['Readings taken in', h.last_poll ? `${h.polls} polls since the restart, the last at ${h.last_poll.slice(11, 16)} UTC` : 'no poll yet since the restart', h.ingested.toLocaleString('en')],
+    ['Readings taken in', h.last_poll ? `${h.polls} polls since the restart, the last at ${hhmm(h.last_poll)}` : 'no poll yet since the restart', h.ingested.toLocaleString('en')],
     ...hw,
     ['Mesh in the house', mesh ? `${mesh.root_topic} · gateway ${mesh.gateway}` : 'no mesh broker set', mesh ? `${mesh.packets} packets` : 'off'],
     ['Radio', ret && ret.announce_s ? `announces its cell every ${ret.announce_s / 60} min` : 'no radio bridge set', ret && ret.ok ? 'on' : 'off'],

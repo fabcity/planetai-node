@@ -9,12 +9,24 @@ const mFrom = s => ((D.ngeo && D.ngeo.dist[s.sensor_id]) || { m: Infinity }).m;
    flush beneath (the HBO Max telemetry bar `c44e6dca`, Windy `b64ab20b`); the right column's first line sits on the
    drawing's top edge and its last on the strip's bottom edge, so the two columns share two lines. */
 let WVAR = 'pm25';
+/* Never a name on the wall (Tomas, 14 Oct 2026): anyone in the room reads it, and a sensor's name is a room, a kit or an
+   address ("K ROOM - BAYU HOLES"). The house is inside or outside; a public station is how far off it stands; an ask
+   is the engine's own sentence (open_asks[].says), never the alert's text, which names the room. */
+const wallWhere = s => s.local ? (s.indoor ? 'inside' : 'outside') : Number.isFinite(mFrom(s)) ? `${fmt(mFrom(s) / 1000, 1)} km off` : 'around here';
+function wallAsk(it) {
+  const a = it.open_asks || [], says = a.length ? (a[0].says || {})[D.health.locale] || (a[0].says || {}).en || '' : '';
+  return a.length ? `${a.length === 1 ? 'One thing is asked of this house.' : `${a.length} things are asked of this house.`}<small>${said(says)}</small>`
+    : `Nothing has been asked.<small>${said(it.name)} is ${esc(it.state)}, and no rule here asks anybody to do anything about it.</small>`;
+}
+/* `stale` only when the node's readings are old: no poll in the last 15 minutes (three at the 300 s default), or none
+   since the restart. /health's last_error is not read: one failing portal of twenty sets it while the rest are fresh. */
+const wallStale = h => !(Date.now() - Date.parse(h.last_poll || '') < 15 * 60e3);
 VIEWS.wall = function () {
   const k = D.lead, it = D.issues[k], b = D.buckets[D.now];
   const carried = Object.keys(D.metrics).filter(m => Object.values(D.stats15).some(x => x[m] && x[m][0] != null));
   const chips = [WVAR, ...carried.filter(m => m !== WVAR)].slice(0, 4);
   const moving = !CLOCK.reduced() && !!D.raw;   /* the hours replay only from the hourly table, which needs the token */
-  const ask = (it.open_asks || []).length ? said(it.open_asks[0].text || '') : `Nothing has been asked.<small>${said(it.name)} is ${esc(it.state)}, and no rule here asks anybody to do anything about it.</small>`;
+  const ask = wallAsk(it);
   $('#wallv').innerHTML = `
     <div class="wtop"><button class="wback" onclick="location.hash='#now'">← back</button>
       <span class="wchips">${chips.map(m => `<button class="${m === WVAR ? 'on' : ''}" data-m="${m}">${said(labelOf(m))}</button>`).join('')}${carried.length > 4 ? `<a href="#data">+${carried.length - 4} more</a>` : ''}</span>
@@ -33,7 +45,7 @@ VIEWS.wall = function () {
       </section>
     </div>
     <div class="wfrag" id="wfrag"></div>
-    <div class="wfoot k">Read at ${new Intl.DateTimeFormat('en-GB', { timeZone: D.tz, hour: '2-digit', minute: '2-digit' }).format(new Date(D.as_of))} · planetai-node ${esc(D.health.version)} · <b>stale</b> · ${moving ? 'a disc is a station’s hourly mean; the window replays every 30 s · press an hour to go to it' : 'reduced motion: nothing moves; press an hour to go to it'}</div>`;
+    <div class="wfoot k">Read at ${new Intl.DateTimeFormat('en-GB', { timeZone: D.tz, hour: '2-digit', minute: '2-digit' }).format(new Date(D.as_of))} · planetai-node ${esc(D.health.version)}${wallStale(D.health) ? ' · <b>stale</b>' : ''} · ${moving ? 'a disc is a station’s hourly mean; the window replays every 30 s · press an hour to go to it' : 'reduced motion: nothing moves; press an hour to go to it'}</div>`;
   document.querySelectorAll('.wchips button').forEach(c => c.onclick = () => { WVAR = c.dataset.m; VIEWS.wall(); });
   rhoRow(); frags(); narrDraw();
   if (!NARR.busy && !NARR.typing && (!NARR.next || Date.now() >= NARR.next)) narrate(); else { narrTick(); if (NARR.shown.length < NARR.text.length) narrType(); }
@@ -53,7 +65,7 @@ function rhoRow() {
 function frags() {
   const st = D.sensors.filter(s => s.kind === 'sensor').map(s => ({ ...s, v: ((D.stats15[s.sensor_id] || {})[WVAR] || [])[0] })).filter(s => s.v != null)
     .sort((a, b) => (b.local - a.local) || (mFrom(a) - mFrom(b)));   // nearest first, by the node's own metres
-  $('#wfrag').innerHTML = st.slice(0, 5).map(s => `<div><span class="said">${esc(plain(s.name))}</span>${num(s.sensor_id + '.' + WVAR, fmt(s.v, 1), WVAR === 'pm25' ? `the line ${D.issues.air.line}` : 'no line', `<b>${fmt(s.v, 1)}</b>`)}<small class="said">${esc(unitOf(WVAR))} · ${s.local ? (s.indoor ? 'this house, inside' : 'this house') : 'public'}</small></div>`).join('')
+  $('#wfrag').innerHTML = st.slice(0, 5).map(s => `<div><span class="said">${esc(wallWhere(s))}</span>${num(s.sensor_id + '.' + WVAR, fmt(s.v, 1), WVAR === 'pm25' ? `the line ${D.issues.air.line}` : 'no line', `<b>${fmt(s.v, 1)}</b>`)}<small class="said">${esc(unitOf(WVAR))} · ${s.local ? (s.indoor ? 'this house, inside' : 'this house') : 'public'}</small></div>`).join('')
     + (st.length > 5 ? `<a href="#now" class="more">+${st.length - 5} more in Now</a>` : '');
 }
 
@@ -122,7 +134,7 @@ async function narrate() {
   if (NARR.busy || NARR.typing || view() !== 'wall') return;
   if (D.askOff) { NARR.err = 'Asking the node is turned off here (UI_ASK, under Set up → Model), so the wall has nothing to say aloud.'; NARR.next = 0; narrDraw(); return; }
   clearTimeout(NARR.timer); NARR.busy = true; NARR.err = null; NARR.read = [];
-  const st = await fetch('/ask/status', { headers: DOORS_AUTH() }).then(r => r.ok ? r.json() : r.status === 404 ? { none: true } : null).catch(() => null);
+  const st = await doorsFetch('/ask/status').then(r => r.ok ? r.json() : r.status === 404 ? { none: true } : null).catch(() => null);
   if (!st || st.none) {
     NARR.busy = false; NARR.at = Date.now(); NARR.next = Date.now() + NARR_EVERY;
     NARR.err = st && st.none ? 'No model is set up on this node, so it has nothing to say aloud. Set up → Model, or planetai agent local on the node.' : 'The node did not say which model answers this screen.';

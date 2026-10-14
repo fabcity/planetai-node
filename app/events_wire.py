@@ -174,4 +174,29 @@ def live(cur, decl: dict, locale: str, now: dt.datetime) -> dict:
         covered[e["id"]] = [x["id"] for x in cur.fetchall()]
         if e["cleared_at"] is None and engine != "rules":
             contexts[e["id"]] = _context(cur, P, e, (decl.get(e["issue"]) or {}).get("metric"), r["hour"], now)
-    return build(engine, events, messages, answers, covered, contexts, decl, locale, now, tz)
+    out = build(engine, events, messages, answers, covered, contexts, decl, locale, now, tz)
+    out["sent_24h"] = _sent(cur, engine, now)
+    return out
+
+
+LEVELS = {"act": 2, "warn": 1, "info": 0}
+
+
+def _sent(cur, engine: str, now: dt.datetime) -> int:
+    """What reached a phone in the last 24 hours, for the Node door's "Alerts, to a phone". An alerts row is written
+    whether or not it was sent, so this counts what run_rules sends (app/main.py): a row at ALERT_LEVEL or above, never
+    one of a pack the event engine speaks for once it has spoken (learn.silent), and the engine's own sent messages.
+    Counting every row said 30 on node #1 when the engine had sent a handful.
+    ponytail: quiet hours leave no trace in the table, so a warn they held still counts; a `sent` column if it matters."""
+    import learn                     # noqa: PLC0415
+    import packs                     # noqa: PLC0415
+    floor = LEVELS.get(settings.get("ALERT_LEVEL", "act"), LEVELS["act"])
+    replaced = {r["id"].split("/", 1)[0] for r in packs.load_rules() if r.get("kind")} if engine == "events" else set()
+    cur.execute("SELECT min(ts) AS since FROM event_messages WHERE mode = 'events'")
+    since = (cur.fetchone() or {}).get("since")
+    cur.execute("SELECT rule_id, level, ts FROM alerts WHERE ts > %s", (now - dt.timedelta(hours=24),))
+    rows = [x for x in cur.fetchall() if LEVELS.get(x.get("level"), 0) >= floor
+            and not learn.silent(x.get("rule_id") or "", x.get("ts"), replaced, since)]
+    cur.execute("SELECT count(*) AS n FROM event_messages WHERE sent AND mode = 'events' AND ts > %s",
+                (now - dt.timedelta(hours=24),))
+    return len(rows) + int((cur.fetchone() or {}).get("n") or 0)

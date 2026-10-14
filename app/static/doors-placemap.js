@@ -62,6 +62,8 @@ const LAYERS = [
   { id: 'satonly', group: 'Packs', pack: 'place', name: 'Only the satellite knows', sub: 'buildings missing from OSM', sw: 'fill-sat', on: true, minz: 12.5 },
   { id: 'wind', group: 'Packs', pack: 'forecast', name: 'Wind, moving', sub: 'Open-Meteo field round the node', sw: 'pt-wind', on: true, need: 'wind', still: true },
   { id: 'labs', group: 'Packs', pack: 'make', name: 'Places to make', sub: 'from fablabs.io', sw: 'pt-lab', on: true },
+  /* no shape on this map, whatever the node holds: the change is a picture in UTM metres with its own words burned in
+     (Place › What changed draws it), and the Index's cells are a table of themes, not places. packRows() says which. */
   { id: 'earth', group: 'Packs', pack: 'earth', name: 'Land change raster', sub: 'AlphaEarth, year on year', sw: 'fill-photo', empty: true },
   { id: 'index', group: 'Packs', pack: 'index', name: 'Fab City Index cells', sub: 'the 20 cells for this place', sw: 'fill-cell', empty: true },
   { id: 'peers', group: 'Packs', pack: 'reticulum', name: 'Nodes heard nearby', sub: 'their announced cells', sw: 'line-dot', empty: true },
@@ -80,7 +82,7 @@ function imageRows() {
 
 /* ---------------------------------------------------------------- asking the node */
 const API = '/';
-const ask = p => fetch(API + p, { headers: DOORS_AUTH() }).then(async r => {
+const ask = p => doorsFetch(API + p).then(async r => {
   if (r.ok) return r.json();
   const b = await r.json().catch(() => ({}));
   throw new Error(typeof b.detail === 'string' ? b.detail : `GET /${p.split('?')[0]} answered ${r.status}`);
@@ -114,7 +116,7 @@ function offline(why) {
   let n = document.querySelector('.nonode');
   if (!why) { if (n) n.remove(); return; }
   if (!n) { n = document.createElement('p'); n.className = 'nonode'; PM.map.getContainer().appendChild(n); }
-  n.textContent = `The node did not give this screen its map (${why}). The grid, the rings, the cell facts, every distance and the node’s own street map and satellite are token-only, because together they say where the node is. Unlock this screen under Node to draw them.`;
+  n.textContent = `The node did not give this screen its map (${why}). The grid, the rings, the cell facts, every distance and the node’s own street map and satellite are token-only, because together they say where the node is. Unlock this screen in Set up › This screen to draw them.`;
 }
 
 /* ---------------------------------------------------------------- the base style: everything from the node's disk */
@@ -197,15 +199,23 @@ function groundRows() {
   /* no /ground/meta at all is this screen being refused it, not a node without a map: say which */
   const locked = !PM.meta;
   const set = (id, sub, empty, why) => { const l = LAYERS.find(x => x.id === id); if (sub) l.sub = sub; l.empty = !!empty; l.why = why; l.locked = locked && !!empty; if (empty) PM.on[id] = false; };
-  set('street', G.vector ? `OpenStreetMap ${(m.vector || {}).build ? `build ${m.vector.build.slice(0, 8)}` : ''} · ${mb((m.vector || {}).bytes)} on this node` : locked ? 'token-only · unlock this screen under Node' : 'the plan from /place/geojson; no street map on this node yet');
+  set('street', G.vector ? `OpenStreetMap ${(m.vector || {}).build ? `build ${m.vector.build.slice(0, 8)}` : ''} · ${mb((m.vector || {}).bytes)} on this node` : locked ? 'token-only · unlock this screen in Set up › This screen' : 'the plan from /place/geojson; no street map on this node yet');
   set('labels', null, !(G.vector && G.glyphs), 'planetai run place basemap --only vector');
   const im = m.imagery || {};
   set('imagery', G.imagery ? `Sentinel-2, ${im.passes} passes, ${(im.from || '').slice(0, 7)} to ${(im.to || '').slice(0, 7)} · ${mb(im.bytes)}` : null, !G.imagery, 'planetai run earth-engine basemap');
   const dr = m.drone || {}, ms = dr.mosaics || [];
   const W = PM.wind;
-  set('wind', W ? `Open-Meteo, ${W.n * W.n} points over ${W.km * 2} km, hourly · read ${W.fetched.slice(11, 16)} UTC` : null, !W,
+  set('wind', W ? `Open-Meteo, ${W.n * W.n} points over ${W.km * 2} km, hourly · read ${hhmm(W.fetched)}` : null, !W,
     'FORECAST_OPENMETEO=1, then planetai run forecast windfield');
   set('drone', G.drone && ms.length ? `${ms.map(x => `${x.provider}, ${Math.round(x.gsd_m * 100)} cm, ${x.date}`).join(' · ')} · ${mb(dr.bytes)}` : null, !G.drone, 'planetai run place basemap --only drone');
+}
+/* The two rows above that cannot draw: from what the page already holds, where the node's answer is instead of "the pack
+   has nothing here yet", which said so beside 6 of 20 Index values and a working What changed (14 Oct). */
+function packRows() {
+  const ix = LAYERS.find(l => l.id === 'index'), ea = LAYERS.find(l => l.id === 'earth');
+  const nI = new Set(D.index_cells.map(c => c.cell)).size, nE = ((D.earth || {}).changes || []).length;
+  ix.none = nI ? `${nI} of 20 hold a value · a table, not a shape: <a href="#data/cells">Data › Index cells</a>` : null;
+  ea.none = nE ? `${nE} comparison${nE === 1 ? '' : 's'} · a count, not a shape: What changed, above the map` : null;
 }
 function credits() {
   const m = (PM.meta && PM.meta.layers) || {}, c = [];
@@ -312,7 +322,7 @@ function panel() {
       const hidden = PM.on[l.id] && ((l.minz != null && z < l.minz) || (l.maxz != null && z > l.maxz));
       return `<div class="ly ${l.empty ? 'empty' : ''} ${PM.on[l.id] ? 'on' : ''}" data-l="${l.id}">`
         + `<label><input type="checkbox" ${PM.on[l.id] ? 'checked' : ''} ${l.empty ? 'disabled' : ''} aria-label="${esc(l.name)}">`
-        + `<i class="sw ${l.sw}" aria-hidden="true"></i><span class="nm">${esc(l.name)}<small>${l.empty ? (l.locked ? 'token-only · unlock this screen under Node' : l.none ? l.none : `The ${l.pack} pack has nothing here yet${l.why ? ` · <code>${esc(l.why)}</code>` : ''}`) : esc(l.sub)}${hidden ? ` · ${l.minz != null && z < l.minz ? 'zoom in to see' : 'zoom out to see'}` : ''}</small></span>`
+        + `<i class="sw ${l.sw}" aria-hidden="true"></i><span class="nm">${esc(l.name)}<small>${l.empty ? (l.locked ? `token-only · unlock this screen in ${UNLOCK_AT}` : l.none ? l.none : `The ${l.pack} pack has nothing here yet${l.why ? ` · <code>${esc(l.why)}</code>` : ''}`) : esc(l.sub)}${hidden ? ` · ${l.minz != null && z < l.minz ? 'zoom in to see' : 'zoom out to see'}` : ''}</small></span>`
         + `<span class="pk">${esc(l.pack)}</span></label>`
         + (l.id === 'wind' && PM.on.wind && PM.wind ? `<label class="whr"><span>now</span><input type="range" min="0" max="${PM.wind.times.length - 1 - nowIdx()}" step="1" value="${PM.windStep}" aria-label="Hours ahead"><b>${PM.windStep ? `+${PM.windStep} h` : 'now'}</b></label>` : '')
         + (l.empty || l.still ? '' : `<input class="op" type="range" min="0" max="1" step="0.05" value="${PM.alpha[l.id]}" aria-label="${esc(l.name)} opacity" ${PM.on[l.id] ? '' : 'disabled'}>`)
@@ -397,7 +407,7 @@ async function facts() {
         + (c.may_leave ? `<p class="fine">Coarse enough to leave the machine: the node may publish a cell at this resolution, never finer than 6 by radio.</p>` : '') + said);
     } else if (o && o.kind === 'image') {
       const c = o.c, head = `<div class="k">Image · ${esc(KIND[c.kind] || c.kind)}</div><h3>${esc(c.note || 'no note')}</h3>`
-        + row('Taken', esc((c.ts || '').slice(0, 16).replace('T', ' '))) + row('By', esc(c.actor || '—'))
+        + row('Taken', esc(when(c.ts))) + row('By', esc(c.actor || '—'))
         + row('Cell, res 10', `<span class="mono">${esc(c.cell)}</span>`) + row('Where', c.lat == null ? 'its cell only' : 'the exact point')
         + row('In the seven cells', c.outside ? 'no · outside' : 'yes') + (c.at_home ? row('At home', 'yes') : '');
       put(head + row('From this node', '…'));
@@ -438,7 +448,7 @@ function windWords() {
   const F = PM.wind; if (!F || !PM.on.wind) return '';
   const h = windHour(), s = F.at_node.speed_kmh[h], d = F.at_node.from_deg[h];
   if (s == null || d == null) return '';
-  return `<span class="wind">wind ${Math.round(s)} km/h from ${COMPASS[Math.round(d / 22.5) % 16]} · ${F.times[h].slice(11, 16)} UTC${PM.windStep ? ` · +${PM.windStep} h` : ''}</span>`;
+  return `<span class="wind">wind ${Math.round(s)} km/h from ${COMPASS[Math.round(d / 22.5) % 16]} · ${hhmm(F.times[h])}${PM.windStep ? ` · +${PM.windStep} h` : ''}</span>`;
 }
 /* east and north components, km/h, of the wind going TO (from + 180) */
 const uv = (s, from) => { const t = (from + 180) * Math.PI / 180; return [s * Math.sin(t), s * Math.cos(t)]; };
@@ -511,7 +521,7 @@ function windSync() {
 const DOTS = ['own', 'public', 'models', 'labs', ...IMG.map(l => l.id)];
 const KIND = { phone: 'Phone', camera: 'Fixed camera', microscope: 'Microscope', drone: 'Drone', balloon: 'Balloon or kite' };
 /* an image answers the token only, so it is fetched as a blob: an <img src> cannot carry the header */
-const imgBlob = id => fetch(`/captures/${id}/file`, { headers: DOORS_AUTH() }).then(r => (r.ok ? r.blob() : null)).catch(() => null);
+const imgBlob = id => doorsFetch(`/captures/${id}/file`).then(r => (r.ok ? r.blob() : null)).catch(() => null);
 let POP = null;
 function popup(o) {
   if (POP) { POP.remove(); POP = null; }
@@ -531,7 +541,7 @@ function popup(o) {
   } else if (o.kind === 'image') {
     const c = o.c; at = [c.at[1], c.at[0]];
     h = `<div class="k">Image · ${esc(KIND[c.kind] || c.kind)}</div><img class="pmimg" alt="${esc(c.note || KIND[c.kind] || 'an image')}">`
-      + (c.note ? `<b>${esc(c.note)}</b>` : '') + (c.analysis ? `<span>${esc(c.analysis.summary || '')} <i>(${c.analysis.confirmed_by ? 'confirmed' : 'model'})</i></span>` : '') + `<span class="mono">${esc((c.ts || '').slice(0, 16).replace('T', ' '))}${c.actor ? ' · ' + esc(c.actor) : ''}</span>`
+      + (c.note ? `<b>${esc(c.note)}</b>` : '') + (c.analysis ? `<span>${esc(c.analysis.summary || '')} <i>(${c.analysis.confirmed_by ? 'confirmed' : 'model'})</i></span>` : '') + `<span class="mono">${esc(when(c.ts))}${c.actor ? ' · ' + esc(c.actor) : ''}</span>`
       + `<span class="mono">${esc(c.cell)}${c.lat == null ? ' · no point, its cell' : ''}</span><a href="#data/d-images">Its details in Data →</a>`;
     imgBlob(c.id).then(b => { const el = POP && POP.getElement().querySelector('.pmimg'); if (b && el) { el.src = URL.createObjectURL(b); el.onload = () => URL.revokeObjectURL(el.src); } });
   } else if (o.kind === 'lab') {
@@ -554,9 +564,9 @@ async function placeMap() {
   /* The plan is the node's own GET /place/geojson, centred where the node stands. Only when the node has none is the
      design kit's copy drawn, and the layer row says it is 1.2 km off. */
   PM.meta = await ask('ground/meta').catch(() => null);
-  PM.wind = await fetch(API + 'ground/wind', { headers: DOORS_AUTH() }).then(r => r.status === 200 ? r.json() : null).catch(() => null);
+  PM.wind = await doorsFetch(API + 'ground/wind').then(r => r.status === 200 ? r.json() : null).catch(() => null);
   PM.ground = (PM.meta && PM.meta.on_disk) || {};
-  groundRows();
+  groundRows(); packRows();
   PM.caps = await ask('captures?limit=500').catch(() => null); imageRows();
   const nodePlan = await ask('place/geojson').then(g => (g.features || []).length ? g : null).catch(() => null);
   PM.land = { type: 'FeatureCollection', features: [] }; PM.plan = nodePlan;
