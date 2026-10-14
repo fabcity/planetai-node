@@ -286,6 +286,33 @@ _src = open("app/report.py").read()
 _bun = _src[_src.index("def bundle"):_src.index("\ndef ", _src.index("def bundle") + 10)]
 assert _bun.count("if told(r)]") == 2 and "learn.silent(" in _bun, "both alert lists leave silent rows out"
 assert "WHERE cleared_at IS NULL AND ever_sent AND level = 'act'" in _bun, "the engine's open episodes, only those it told"
+# and bundle() itself, run: node #1 showed a check by reading alone is not enough. A local `import packs` lower in
+# bundle() made `packs` local to all of it, the rule set could not be read, and every silent row went through.
+from datetime import datetime as _dt, timedelta as _td, timezone as _tz          # noqa: E402
+_now = _dt.now(_tz.utc)
+_rows = {"ALERTS_SQL": [{"id": 1, "ts": _now - _td(hours=2), "rule_id": "heat/heat_stress_now", "sensor_id": "k", "level": "act", "line": "hot", "acted": False},
+                        {"id": 2, "ts": _now - _td(hours=1), "rule_id": "nearby/only_here", "sensor_id": "k", "level": "act", "line": "x", "acted": False}],
+         "OPEN_ACT_SQL": [{"id": 1, "ts": _now - _td(hours=2), "rule_id": "heat/heat_stress_now", "sensor_id": "k", "line": "hot"}]}
+class _Cur:
+    def __init__(self): self.last = ""
+    def execute(self, sql, *a): self.last = sql
+    def fetchone(self): return {"t": _now - _td(days=9)} if "event_messages" in self.last else None
+    def fetchall(self): return [{"issue": "heat", "kind": "sustained", "opened_at": _now - _td(hours=2)}] if "alert_events" in self.last else []
+_by = {getattr(report, k): k for k in ("ALERTS_SQL", "OPEN_ACT_SQL")}
+_saved = (report.index.run_ro, report.index.rho, report.index.cells, report.packs.load_rules, report.packs.rules, report.packs.contributors)
+report.index.run_ro = lambda cur, sql, *a: [dict(r) for r in _rows.get(_by.get(sql), [])]
+report.index.rho = lambda cur, **k: None
+report.index.cells = lambda cur: []
+report.packs.load_rules = lambda: [{"id": "heat/heat_stress_now", "kind": "sustained"}, {"id": "nearby/only_here"}]
+report.packs.rules = lambda: []
+report.packs.contributors = lambda kind: []
+_sg = report.settings.get
+report.settings.get = lambda k, d=None: "events" if k == "ALERT_ENGINE" else _sg(k, d)
+_bundle = report.bundle(_Cur(), 6)
+report.settings.get = _sg
+(report.index.run_ro, report.index.rho, report.index.cells, report.packs.load_rules, report.packs.rules, report.packs.contributors) = _saved
+assert [a["rule"] for a in _bundle["alerts"]] == ["nearby/only_here"] and _bundle["open_act"] == [], _bundle["alerts"]
+assert _bundle["open_events"] and _bundle["open_events"][0]["issue"] == "heat", "the engine's open sent episode stands in"
 _ev = lambda kind: _b(open_act=[], open_events=[{"issue": "heat", "kind": kind, "at": "2026-10-14T14:47:00+08:00"}])  # noqa: E731
 assert report.T["en"]["state_heat"] in report.sheet(_ev("sustained"), "en"), "an open heat episode that was sent is said"
 assert report.T["en"]["state_hot"] in report.sheet(_ev("danger"), "en")

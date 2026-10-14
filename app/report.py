@@ -308,7 +308,6 @@ def bundle(cur, hours: int, held_hours: int = 0) -> dict:
         log.warning("cells unavailable for the report: %s", e)
 
     try:
-        import packs
         b["rules"] = sorted(r["id"] for r in packs.rules())
         for r in packs.contributors("report"):
             key = r["id"].split("/")[-1]
