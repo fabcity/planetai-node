@@ -3167,7 +3167,11 @@ async function mobile() {
     const r = await openRig({ throttle: true });
     const t0 = Date.now();
     await r.page.goto(`${POP}/?layout=mobile&${FIXQ}`, { waitUntil: 'domcontentloaded' });
-    await r.page.waitForSelector('.asking', { state: 'visible', timeout: 20000 });
+    /* the boot face, or Now already drawn over it: on CI's slower runner the face could be gone before this looked,
+       and a wait for it to be visible ran out at 20 s with the page drawn (#245, #249 on 14-15 Oct) */
+    await r.page.waitForFunction(() => { const a = document.querySelector('.asking');
+      return (a && a.getBoundingClientRect().height > 0 && getComputedStyle(a).display !== 'none') || document.querySelector('#now-v .t'); },
+      null, { timeout: 20000, polling: 50 });
     const tBoot = (Date.now() - t0) / 1000;
     await r.page.waitForSelector('#now-v .t', { timeout: 20000 });
     const tTitle = (Date.now() - t0) / 1000;

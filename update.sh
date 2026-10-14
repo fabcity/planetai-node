@@ -275,3 +275,9 @@ if [[ -f config/rules.yml.before-update ]] && ! diff -q config/rules.yml config/
 fi
 [[ $ok -eq 1 ]] || die "something is off: docker compose logs app | tail -40"
 say "updated. Nothing was lost: $(docker compose exec -T db psql -U planetai -tAc 'SELECT count(*) FROM readings' planetai | tr -d ' ') readings, $(docker compose exec -T db psql -U planetai -tAc 'SELECT count(*) FROM alerts' planetai | tr -d ' ') alerts, $(docker compose exec -T db psql -U planetai -tAc 'SELECT count(*) FROM actions' planetai | tr -d ' ') actions."
+
+# The whole doctor, with the node's data sources and what is still to do, most important first: an update is when a
+# keeper is at the terminal anyway. It never fails an update that has already succeeded, and with no terminal (cron,
+# an agent over ssh) it prints and asks nothing.
+echo
+./bin/planetai doctor --guide || true

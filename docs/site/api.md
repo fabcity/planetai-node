@@ -68,6 +68,21 @@ Returns one object with: `ok` (true once a poll has run), `node`, `version` (`NO
  "docs": "https://planetai.fab.city/docs/", "mcp": "/mcp", "llms": "/llms.txt"}
 ```
 
+### GET /health/sources
+Access: token
+
+The node's fundamental sources, the ones every node needs for its basic job, each running or not, and for each that is not, the one thing to do. The list and its words are `app/fundamentals.py`; `planetai doctor` prints this route, install and update end with what it says is missing, the Set up page shows it at the top, and the MCP `health_check` returns it as `sources`. In order, most important first: `own-sensors` (a sensor of this household's own reported in the last hour), `alerts` (Telegram connected, and its last message not refused), `nearby-stations` (Bali Air Dispatch within three hours; `na` outside Bali, where the node has no public station network to read yet), `weather` (Open-Meteo within three hours), `satellite-air` (CAMS within three hours) and `backup` (a dump within two days).
+
+Returns `{ok, missing, sources: [{id, name, state, ok, minutes, age, detail, fix, setup, command, why}]}`. `state` is `ok`, `missing` (not set up), `quiet` (set up, nothing inside its window; `detail` carries the source's last error), `waiting` (set up, and the node has not finished a poll since it started), `na` or `elsewhere` (the backups are in a `BACKUP_DIR` this container cannot see). `ok` is true, false or null, and only false carries a `fix`. `setup` is the Set up section the fix is in (`#setup/sources`), `command` the `planetai` command that does it. `ok` at the top is false when any source is. Takes `backup_age`, the minutes since the newest dump where the backups really are (`-1` for none): `planetai doctor` measures it on the machine and the node judges it with the rest. Reads two days of readings once, bounded by `now()`.
+
+```json
+{"ok": false, "missing": 1, "sources": [
+ {"id": "own-sensors", "name": "Your own sensors", "state": "ok", "ok": true, "minutes": 4.0, "age": "4 min ago",
+  "detail": "inside only; one outside would tell the house from the street", "fix": null, "setup": "#setup/sources", "command": null, "why": "..."},
+ {"id": "alerts", "name": "Alerts on your phone (Telegram)", "state": "missing", "ok": false, "minutes": null, "age": null,
+  "detail": "not set up", "fix": "Connect Telegram, two minutes: planetai telegram", "setup": "#setup/keys", "command": "planetai telegram", "why": "..."}]}
+```
+
 ### GET /llms.txt
 Access: public
 
@@ -902,6 +917,8 @@ Access: open
 Access: open
 
 Takes `{messages, view, mode, focus?}`: the thread so far (at most 24 messages of 4,000 characters, `user` or `assistant`), the view and mode the page is in, and a learn mark's key when one is in focus. The browser sends no readings; the node builds the model's context itself from `/issues` (the lead and its hero, the digest, every watched issue's state and values, the open alerts) and the learn entry for `focus`. That context, and every tool result, carries no coordinate, no sensor or station name, no sensor id and no `meta`: they are dropped or replaced before the model reads them.
+
+With `prompt: wall` (the doors' Wall) the context is another one, built for a screen anybody may read: short labelled facts, each with its unit and `live`, `model` or `satellite`. It carries the time of day; each watched issue's title and tagline (the day sentence), its values by distance, its line and whether that is the WHO guideline or the place's own, its trend and its readouts; how many public outdoor stations read PM2.5 in the last two hours and how many are over the air's line; the `learnings` rows of kind `usual` and scope `place` that hold; the next six hours from `GET /forecast` (BMKG when it answers, else Open-Meteo; hours already past are left out); and the readouts of every pack section declared `wall: true`. A readout on a channel any pack declares `private` is left out, and so are the house's learnings, digests, things, alerts' words, reasons and who answered. The prompt is `WALL_SYSTEM` and one of `WALL_ANGLES`, chosen in turn among the angles whose facts the context has.
 
 Answers `text/event-stream` with six events: `token` (`{text}`, the answer in pieces), `tools` (`{tool, ms}`, one per read the model made, sent the moment the read is done), `retry` (`{rung}`, a model that had already read something failed, so forget its `tools` before the next one starts), `proposal` (`{tool, args, setting, current, proposed, choices, group, leaves, undo}`, one per change it reached for; an `act` proposal carries only the alert's id, because what the person did is theirs to write, and a value the setting would refuse is `null` with its `choices`; `leaves` is the setting's own help text and `undo` says how to set it back, both per locale), `done` (`{rung, model, host, where}`, the model that answered and where it runs; when one fails the next is tried, and no proposal the failed one produced is sent) and `error` (`{message}`). The model is offered the `read` tools except `settings_get`, `report_bundle` and `export_day`, and except `learned` unless the request carries the admin or act token or comes from this machine, and never for the Wall's narration (`prompt: wall`), since what the house learned stays with the house (SPEC_learn §7); and it runs them through `/mcp` as `dashboard-chat`; it is also offered `act` and the admin tools, and calling one does nothing but emit a `proposal`. 404 when no model is set up, by the same test as `GET /ask/status`.
 
