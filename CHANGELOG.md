@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Rooms stay in the house (Tomas, 15 Oct).** A screen without a token read the rooms and sensor names at
+  `SHARE_LEVEL=open` (`/issues`, `/stats`, `/sensors`, `/trust`, `/nearby`, `/report/latest`, alert texts). The sharing
+  middleware now swaps the house's labels for "Room A" / "Sensor 1" in every untrusted JSON answer, once, and the
+  sentences of past alerts (written under older names) are left out of `/alerts` and `/issues`. A token reads the
+  real names. `tests/test_share.py` holds both.
+- **The house's sensors stand at the house.** Without a token, each of the house's own sensors was drawn at the centre
+  of its own res-8 cell; node #1 sits on a cell's edge, so its kits stood ~700 m from "This house" on Place and Now.
+  They now stand at the house's published point, the cell `/health` names; a child's rows keep their own cell.
+
 - **The pages speak to the household (pre-launch audit, 15 Oct).**
   - Data links every sensor and every model to where its source publishes it, in a new tab (Tomas, 15 Oct); a Smart
     Citizen kit links to its own kit page.
