@@ -167,7 +167,9 @@ assert r["stats"] == 18 and r["point"] == [115.164, -8.819], "the point is /heal
 print("doors: without the token the hourly table is absent and the ledger carries no notes")
 
 # the flow: counts from the hourly table, alerts and answers in its window (matched flow.json exactly on 7 Oct)
-assert r["flow"] == {"b": 24, "ids": 21, "alerts": 30, "answers": 7, "counted": True}, r["flow"]
+# 7 answers in /actions and 2 left on alert events, which /actions without events=1 does not return (audit, 15 Oct)
+assert r["flow"] == {"b": 24, "ids": 21, "alerts": 30, "answers": 9, "counted": True}, r["flow"]
+assert r["flowLocked"]["answers"] >= 2, f"a screen with no token counts the events' answers too: {r['flowLocked']}"
 assert r["flowLocked"]["counted"] is False and r["flowLocked"]["ids"] == 0 and r["flowLocked"]["b"] == 24
 print("doors: the flow counts what the hourly table counted, and says it did not count without it")
 assert r["aheadLast"] == r["fullLast"] and r["aheadN"] == r["fullN"], "a forecast hour ahead of /issues entered the replayed table"
