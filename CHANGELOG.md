@@ -5,6 +5,12 @@
 - **One sentence when nothing is asked.** Now said "Nothing to do now." where the Wall and the phone said "Nothing is
   asked now."; all three say "Nothing is asked now." (Tomas, 15 Oct). The Wall keeps "clean-air line" for the WHO line.
 
+- **The forecast pack asks every `FORECAST_POLL_HOURS`, as its settings always said.** Nothing read the key: the pack
+  ran in the core 300 s loop, so with `FORECAST_OPENMETEO=1` the 65-point wind field went to Open-Meteo ~275 times a
+  day, and node #1's whole public IP hit the free tier's 10,000-a-day limit at ~06:15 UTC every day from 9 Oct, which
+  silenced `om-point` until midnight UTC. `fetch()` now asks only when `out/forecast.last` is older than the setting,
+  and touches it on every attempt, so neither a restart nor a 429 asks again early. `planetai run forecast fetch`
+  still asks now. Forecast rows are never overwritten, so nothing is lost. `tests/test_forecast.py` counts the calls.
 - **Place and Node, after the design review (Tomas, 14–15 Oct).** Place: the species confirmed here are a table
   below the map (GBIF link, rank, times seen here, where in words, GBIF's open records in the seven cells; token only)
   and a filled mark on the map under Images, its row saying "1 confirmed · …"; five layers on by default, the other
@@ -110,6 +116,17 @@
   cell). Land and Coast change yearly and moved to Place, under **Changes by the year**. Did it work no longer says
   "the node is asking now" beside an event already answered. On a phone the bar is three rows of 44 px targets (the
   headline at 237 px instead of 339) and the week is one tappable row a day.
+- **The ground around the house, from orbit: a `surface-heat` pack (Tomas, 15 Oct: "urban heat would be
+  interesting").** Once a day it asks Microsoft Planetary Computer, anonymously, for the newest clear Landsat 8/9
+  surface-temperature scene and works out the mean ground temperature of the node's own H3 res-8 cell, the mean of
+  the land 1 to 3 km around it, the difference and the cell's percentile among the ring's cells; and from MODIS, the
+  ground at the node's 1 km pixel at night and by day. Three readouts on the heat issue and a `ground` line in the
+  report bundle beside the house's own outdoor air at the same half hour. All `kind='model'`, stamped at the pass,
+  scene id in `meta`; no alert and no cell. It adds no library: the COGs are read with HTTP range requests and
+  `zlib`, half a megabyte of a 68 MB scene, each scene once. A code pack, so `PACKS_ALLOW_CODE=1`. On the earth
+  suite's Ungasan test point, 27 Sep 2026 at 10:29: ground 41.3 °C, 0.3 °C over the ring, 50th percentile of 24
+  cells. `tests/test_surface_heat.py` runs on two real 64×64 crops (one clear, one clouded over the cell); 77 suites.
+
 - **A refusing source is not the household's to-do.** The report's one thing to do skipped past what someone here
   can act on to print a source's raw error, cut mid-URL (node #1, 14 Oct: Open-Meteo's daily limit). Source errors are
   left to Node's Running section.
