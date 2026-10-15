@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **Numbers you can trust (pre-launch audit, 15 Oct).**
+  - When the bot cannot reach the node, `/stack` said "Nothing is wrong with your air; this is me" at exactly the
+    moment it could not know. It now says it can't say how the air is.
+  - "The air is clean now … past the WHO line until 10:47" at 10:47 read as still over: an hour still running is
+    said as "until a few minutes ago" (`day.at`/`day.recent` in air and heat, three languages).
+  - Now's Around-the-house card showed the running hour's mean (17) beside a title and legend saying the live
+    reading (10); at the present hour it shows the live reading. The map's "this house · 5" says "5 sensors".
+  - Node's flow counted "0 answers in 24 h" beside today's Done: answers left on alert events are counted too.
+  - Urgent air alerts (an hour unhealthy, danger) name the US EPA's unhealthy level, 35.5 µg/m³, as decided on
+    14 Oct; the others keep the WHO line. The morning report's model clause said "the WHO's first interim target,
+    35 µg/m³", which is the annual target; it now compares against and names the EPA's 35.5, and calls CAMS the
+    European air model rather than "the satellites".
 - **A child node is another household, not a member of this one.** `AGGREGATE_TOKEN` made a request trusted by
   the sharing check, and every child holds it, so a child read its parent's sensor rooms, point, building plan and
   notes as if it lived there. The token now passes only `POST /aggregates` and `POST /events`, which check it

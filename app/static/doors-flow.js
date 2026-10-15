@@ -37,7 +37,9 @@ function flowFrom(D) {
   const inW = x => { const v = h(x.ts); return v >= 0 && v < B.length; };
   return { buckets: B, counts, counted,
     alerts: D.alerts.filter(inW).map(a => ({ h: +h(a.ts).toFixed(3), level: a.level ?? null, rule: a.rule_id, text: (a.text || '').split('\n')[0] })),
-    answers: D.actions.filter(inW).map(a => ({ h: +h(a.ts).toFixed(3), stage: a.stage, actor: a.actor })) };
+    /* an answer to an alert event lives on the event, not in /actions (audit, 15 Oct: "0 in 24 h" beside today's Done) */
+    answers: D.actions.concat((D.events || []).map(e => e.answer).filter(x => x && x.ts)).filter(inW)
+      .map(a => ({ h: +h(a.ts).toFixed(3), stage: a.stage, actor: a.actor })) };
 }
 if (typeof module !== 'undefined') module.exports = { flowFrom };
 const HOURS = 24, TRAVEL = 1.1, WINS = [6, 24];                                 // a packet's flight, in replay seconds

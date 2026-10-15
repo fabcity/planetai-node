@@ -1027,8 +1027,8 @@ async def main():
                     said = stack_text(_tool_json(res), arg)
                 except Exception as e:  # noqa: BLE001
                     log.warning("/stack failed: %s: %s", type(e).__name__, str(e)[:200])
-                    said = T(f"⚠️ I could not read the node ({type(e).__name__}). Nothing is wrong with your air; this is me.",
-                             es=f"⚠️ No pude leer el nodo ({type(e).__name__}). Tu aire está bien; el problema soy yo.")
+                    said = T("⚠️ I can't reach the node right now, so I can't say how the air is. Try again in a minute.",
+                             es="⚠️ Ahora no llego al nodo, así que no puedo decir cómo está el aire. Prueba en un minuto.")
                 await telegram("sendMessage", chat_id=chat, text=said)
                 continue
             if text.startswith("/model"):
