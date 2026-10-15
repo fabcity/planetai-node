@@ -9,6 +9,16 @@ a phone yet; that is the [next page](first-ten-minutes.md).
 One line, four questions, two minutes. Before it, if the machine is old or you are not sure it qualifies,
 run the preflight.
 
+> **The short way.** Six commands, top to bottom, each one waiting for the one before:
+> 1. `curl -fsSL planetai.fab.city/preflight | bash`: is this machine fit?
+> 2. `curl -fsSL planetai.fab.city/install | bash`: four questions, then the node.
+> 3. `planetai status`: every source green.
+> 4. `planetai telegram`: your phone.
+> 5. `planetai test-alert`: a real alert arrives.
+> 6. `planetai act <id>`: answer it, and the loop is closed.
+>
+> The rest of this page and the [next](first-ten-minutes.md) explain each step.
+
 ## 1. Check the machine
 
 ```bash
@@ -90,7 +100,7 @@ relies on. `PLANETAI_GET` points the installer at the GitHub Release mirror of t
 | 1 | A short name for the node (lowercase, dashes; default: the hostname) | `NODE_NAME` |
 | 2 | The place. Type a neighbourhood, town or city; it geocodes (Nominatim, then Open-Meteo), shows the hits, and asks you to confirm even when there is one. `lat,lon` is accepted. | `NODE_LAT`, `NODE_LON`, `NODE_TZ`, `NODE_CITY`; a pilot preset when the place falls inside Bali, Barcelona, Boston or Santiago; `BAD_ENABLED=0` outside Bali |
 | 3 | What the node is for: a home · a business · a community or lab · a district or region | `NODE_KIND`; `district` also sets `NODE_SCALE=city` |
-| 4 | Your sensor, if you have one: none · a Smart Citizen kit number · an AirGradient host (and whether it is indoors) · a PurpleAir IP (and whether it is indoors) | `SC_DEVICES` · `AIRGRADIENT_HOSTS` · `PURPLEAIR_HOSTS`, plus `SENSOR_INDOOR` |
+| 4 | Your sensor, if you have one: none · a Smart Citizen kit number | `SC_DEVICES` |
 
 After the fourth answer the installer runs its seven steps (below) and ends on a box reading **● Your node
 is running.**, with the dashboard's addresses and the settings token under it, and in a terminal `What now?  [o] open the
@@ -102,10 +112,9 @@ inside which a sensor counts as this node's own. Without a sensor the node still
 satellite air model for your district and forty years of climate for your coordinates; see
 [Before a sensor](before-a-sensor.md).
 
-> **Gap in v0.81.0.** The AirGradient and PurpleAir adapters exist in `app/sources.py` and are tested, but this
-> version does not register them for polling; the AirGradient hosts you enter are used to keep your own kit out of the
-> Bali Air Dispatch ring and for nothing else. A Smart Citizen kit is read. Details on the [sensors](sensors.md)
-> page.
+> **Only Smart Citizen, for now.** The installer offers the one kit the node reads. AirGradient and PurpleAir come
+> back as choices when the `air-sensors` pack reads them. Details on the
+> [sensors](sensors.md) page.
 
 ### Without a terminal
 

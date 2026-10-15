@@ -313,7 +313,7 @@ assert _heat["heat_stress_now"]["cooldown_minutes"] == 1440, \
     "once a room a day: in Oct 2026 the hot room was over 35 for 44% of hours and 240 repeated it 5.7 times a day (README)"
 assert _heat["heat_danger"]["cooldown_minutes"] == 120, "danger keeps interrupting as often as it must"
 for _r, _lang, _words in (("heat_stress_now", "en", "It is too hot at {name}: it feels like {at} °C — past this house's heat line, {line} °C feels-like, measured here."),
-                          ("heat_danger", "en", "DANGER at {name}: it feels like {at} °C — the danger line here is {line} °C.")):
+                          ("heat_danger", "en", "Dangerous heat at {name}: it feels like {at} °C, past the danger line here, {line} °C.")):
     assert _words in _heat[_r]["message"][_lang], f"{_r} [{_lang}]: the message template needs Tomas's sign-off to change"
 assert "Kuta Selatan" in open("packs/heat/README.md").read(), "docs/PACKS.md: say which place you wrote for"
 print("the heat line is this place's, and every threshold alert names whose line it is")
@@ -562,6 +562,9 @@ agent = open("app/agent_loop.py").read()
 assert "async def node_session(" in agent, "agent_loop.py: the node_session helper"
 assert agent.count("streamable_http_client(") == 1, \
     "agent_loop.py: only node_session may open an MCP session — a second one is a session outliving a question"
+# a second person in the house messaging the bot heard nothing (audit, 15 Oct): an unknown chat is told once, with its id
+assert "told_unknown.add(chat)" in agent and "This node answers its household only" in agent, \
+    "agent_loop.py: an unknown chat must be told once why the node is quiet, and how to be added"
 assert re.search(r"^    offset, history, pins, pending = ", agent, re.M), \
     "agent_loop.py: main's poll loop must sit at the top of main, outside any MCP session — indented deeper it is " \
     "nested in one again, and that session outlives the question (refresh_ladder has a `while True` of its own, so " \

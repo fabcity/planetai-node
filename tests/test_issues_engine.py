@@ -227,8 +227,8 @@ land = no_earth["issues"]["land"]
 check(land["stack"]["region"] is None, "with no earth record land's region is empty")
 check(land["state"] == "none" and land["reason"]["code"] == "no_source",
       f"with no earth record land is {land['state']}/{land['reason']['code']}, expected none/no_source")
-check("earth fetch" in land["sentence"]["en"] or "satellite record" in land["sentence"]["en"],
-      f"land must say how to get a record: {land['sentence']['en']}")
+check("satellite" in land["sentence"]["en"] and "planetai" not in land["sentence"]["en"],
+      f"land says there is no record yet, in the household's words, never the command: {land['sentence']['en']}")
 check(land["readouts"], "land keeps its built and trees readouts with no change record")
 # and the mechanism is gone, not just unused
 from issues import _distance_problems  # noqa: E402
