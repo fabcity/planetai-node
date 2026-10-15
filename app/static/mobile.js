@@ -84,7 +84,7 @@ function drawNow() {
     s += `<div class="rows">` + others.map(k => {
       const o = D.issues[k], ohd = o.hero_distance || 'region', ov = (o.stack || {})[ohd] || {};
       return `<button class="rowb" data-lead="${esc(k)}"><span class="rh"><span class="n">${said(o.name)}</span>`
-        + `<span class="st${o.state === 'act' ? ' act' : ''}">${esc(o.state || '')}</span>`
+        + `<span class="st${o.state === 'act' ? ' act' : ''}">${esc(stateWord(o.state || ''))}</span>`
         + (ov.value != null ? `<span class="v">${esc(fmt(ov.value, o.dp))} ${esc(o.unit || '')}</span>` : '')
         + `</span><span class="t2">${said(o.title || o.sentence || '')}</span></button>`;
     }).join('') + `</div>`;
