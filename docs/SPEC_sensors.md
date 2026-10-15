@@ -4,7 +4,7 @@
 sensors at the household, and have smart citizen, purple air, and air gradient as a air quality sensor pack,
 independently."*
 
-**Status: proposed. Nothing built.** Each step below is its own pull request, run on node #1 before it merges.
+**Status: decided 15 October 2026 (Tomas: "A yes, B air-sensors, C yes"). Nothing built.** Each step below is its own pull request, run on node #1 before it merges.
 
 ## 1 · What is there today
 
@@ -72,12 +72,9 @@ just readings in. Whether it is a broker transport or a brand is open question C
    is offered. Node #1 has neither today, so this step waits for a unit in a house.
 4. **The installer's question 4 reads the pack.**
 
-## 5 · Open questions, for Tomas
+## 5 · Decided (Tomas, 15 October 2026)
 
-- **A. Code in official packs.** Should the packs shipped in this repository, signed with the release, run their
-  `adapter.py` without `PACKS_ALLOW_CODE=1`? The flag would then mean "wild packs may run code". Proposed: yes. The
-  release signature is the same trust as the core's own code.
-- **B. The pack's name.** `air-sensors` sits beside `air-quality`. The alternative, `sensors`, would later also hold
-  non-air brands (a soil probe, a power meter). Proposed: `air-sensors` now, since it reads only air.
-- **C. Meshtastic.** Keep it in the core as the house's radio, or move it to its own pack? Proposed: core, because
-  alerts go out over it.
+- **A. Code in official packs: yes.** The packs shipped in this repository, signed with the release, run their
+  `adapter.py` without `PACKS_ALLOW_CODE=1`. The flag now means "wild packs may run code".
+- **B. The pack's name: `air-sensors`.**
+- **C. Meshtastic stays in the core**, as the house's radio. Alerts go out over it.
