@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Rooms stay in the house (Tomas, 15 Oct).** A screen without a token read the rooms and sensor names at
+  `SHARE_LEVEL=open` (`/issues`, `/stats`, `/sensors`, `/trust`, `/nearby`, `/report/latest`, alert texts). The sharing
+  middleware now swaps the house's labels for "Room A" / "Sensor 1" in every untrusted JSON answer, once, and the
+  sentences of past alerts (written under older names) are left out of `/alerts` and `/issues`. A token reads the
+  real names. `tests/test_share.py` holds both.
+
 - **A child node is another household, not a member of this one.** `AGGREGATE_TOKEN` made a request trusted by
   the sharing check, and every child holds it, so a child read its parent's sensor rooms, point, building plan and
   notes as if it lived there. The token now passes only `POST /aggregates` and `POST /events`, which check it

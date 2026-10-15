@@ -88,6 +88,16 @@ def nameless(body: dict | None) -> dict | None:
             e["answer"] = {**e["answer"], "actor": None, "note": None}
     for a in (body.get("asks") or {}).get("actions") or []:
         a["actor"] = None
+    # Sentences written when an alert was sent, under the room names of that day: a rename since cannot be matched by
+    # the middleware's swap (main._unhoused), so a screen without a key gets none of them (Tomas, 15 Oct).
+    for a in (body.get("asks") or {}).get("acts") or []:
+        a["text"] = None
+    for it in (body.get("issues") or {}).values():
+        for a in (it.get("open_asks") or []) if isinstance(it, dict) else []:
+            a["text"] = None
+    for e in (evs.get("open") or []) + (evs.get("recent") or []):
+        if isinstance(e.get("message"), dict):
+            e["message"] = {**e["message"], "text": None}
     return body
 
 

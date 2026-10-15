@@ -235,7 +235,21 @@ assert s0["meta"]["licence"] == "CC BY 4.0", "open: provenance must survive the 
 assert dp(s0["lat"]) <= 3 and dp(s0["lon"]) <= 3, f"open: /sensors hands out {s0['lat']},{s0['lon']}"
 assert (s0["lat"], s0["lon"]) == main._coarse(-8.6478291, 115.1385412), \
     "open: the household's own sensor must stand at its cell's centre for an untrusted reader (R25)"
-assert s0["name"] == "Kitchen, upstairs", "open: the sensor's name is on the dashboard and stays"
+# Tomas, 15 Oct 2026: a screen without a key never reads what the house calls its rooms or its sensors.
+main._HOUSE.update(at=time.time() + 1e9, map=[("Kitchen, upstairs", "Sensor 1")])   # the database is stubbed out
+r = lan.get("/sensors"); s0 = r.json()[0]
+assert s0["name"] == "Sensor 1" and "Kitchen" not in r.text, f"open: the house's own name reached a stranger: {s0['name']}"
+assert lan.get("/sensors", headers=ADMIN).json()[0]["name"] == "Kitchen, upstairs", "a key still reads the house's names"
+main._HOUSE.update(map=[("K ROOM - BAYU HOLES", "Sensor 1"), ("Kids", "Room A")])
+_q0 = main.q
+main.q = lambda sql, *a: ([{"id": 1, "ts": "2026-10-15T10:00:00+08:00", "rule_id": "x", "sensor_id": "ag-1", "level": "act",
+                                 "text": "The air in K ROOM - BAYU HOLES is unhealthy", "acted_at": None}] if "FROM alerts" in sql
+                          else _q0(sql, *a))
+_al = lan.get("/alerts").json()
+assert _al and _al[0]["text"] is None and "BAYU" not in lan.get("/alerts").text, f"open: an alert's sentence reached a stranger: {_al}"
+assert main._unhoused(b'{"rooms": ["Kids"], "t": "Smoke in Kids"}', "/issues") == b'{"rooms": ["Room A"], "t": "Smoke in Room A"}'
+main.q = _q0; main._HOUSE.update(at=0.0, map=[])
+print("open: rooms and the house's sensor names are swapped for Room A / Sensor 1; old alert sentences left out")
 print("open: sensors readable, hostnames and firmware gone, own sensors at their cell's centre")
 
 # A FACILITY IS NOT A SENSOR, and the filter above was written about sensors. A fab lab is somebody
