@@ -507,7 +507,7 @@ as one block: the issue's sign, the engine's title and tagline, and the day draw
 or the issue's own, the week under it. The four distances (house, street, ring, region) follow as one quiet line with
 their provenance pills. Then **What to do**: while something is asked (`asking` on the issue, or a live event still
 asking) the card, framed, with the node's sentence and Done, Not now and Doesn't fit; otherwise one plain line,
-"Nothing to do now.", with the hour the issue is usually worst when the screen holds the admin token, and an event
+"Nothing is asked now.", with the hour the issue is usually worst when the screen holds the admin token, and an event
 already answered said quietly under it. Then **Did it work** and **Yesterday**, then **Around the house**: a row for
 each issue drawn by the hour (pressing one moves the page to it) and the map of the stations, its caption one line.
 Land and Coast change yearly and have no hours, so they are on Place, under **Changes by the year**, and Now opens on
@@ -548,7 +548,7 @@ house is one answer, `asking` on each issue in `/issues`, and Now's Decide card,
 issue's open event while it still asks, then any alert still true that no event stands for. An alert whose reading came
 back on its own is still open and still counted in ρ, but it asks nothing now, and none of the three says it does. At
 the live hour Now's Decide card draws that ask (an alert's card says to answer it on Telegram), else the open event
-already answered, else "Nothing to do now."; a past hour shows the events open then, unframed. When
+already answered, else "Nothing is asked now."; a past hour shows the events open then, unframed. When
 the reading is back under the line after hours over it today, the title says the day as well as the hour ("The air is
 clean now, after a dusty morning", with "In the house it was past the WHO line for fine dust until 12:00, 12 hours
 today." beneath), counted exactly as the "h over the line today" beside it. On Node, "Alerts, to a phone" is

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **One sentence when nothing is asked.** Now said "Nothing to do now." where the Wall and the phone said "Nothing is
+  asked now."; all three say "Nothing is asked now." (Tomas, 15 Oct). The Wall keeps "clean-air line" for the WHO line.
+
 - **Place and Node, after the design review (Tomas, 14–15 Oct).** Place: the species confirmed here are a table
   below the map (GBIF link, rank, times seen here, where in words, GBIF's open records in the seven cells; token only)
   and a filled mark on the map under Images, its row saying "1 confirmed · …"; five layers on by default, the other
