@@ -111,6 +111,14 @@ os.environ["PACKS_DIR"] = str(ROOT / "packs")
 import importlib  # noqa: E402
 import packs      # noqa: E402
 importlib.reload(packs)
-assert not [m["id"] for m in packs.manifests() if m.get("readouts")], "a shipped pack declares readouts; this guard is about to lie"
-assert I.load() == FILES, "with the shipped packs, load() must equal the files: every node's /issues stays as it is"
-print("pack readouts: added after the issue's own, refused when malformed, never twice, never invented; shipped packs change nothing")
+# One shipped pack declares readouts since 15 Oct 2026: surface-heat, on heat, from its own satellite sensors. Every
+# other issue is exactly its file, and heat gains only rows that show nothing until that pack has written a pass,
+# which a node without PACKS_ALLOW_CODE=1 never does. A second pack declaring readouts must be added here on purpose.
+assert [m["id"] for m in packs.manifests() if m.get("readouts")] == ["surface-heat"], "a new shipped pack declares readouts"
+shipped = I.load()
+assert {k: v for k, v in shipped.items() if k != "heat"} == {k: v for k, v in FILES.items() if k != "heat"}
+own = FILES["heat"].get("readouts") or []
+added = shipped["heat"]["readouts"][len(own):]
+assert shipped["heat"]["readouts"][:len(own)] == own and {r["sensor_id"] for r in added} == {"surface-cell", "surface-modis"}
+assert engine._readouts({"readouts": added}, []) == [], "no pass written, nothing shown"
+print("pack readouts: added after the issue's own, refused when malformed, never twice, never invented; only surface-heat adds any")

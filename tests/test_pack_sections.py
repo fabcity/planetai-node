@@ -69,12 +69,12 @@ print("  a declared section carries the rows the node has, with their age, and s
 assert engine._sections([{**sec(), "pack": "p"}], [], now)[0]["readouts"] == []
 print("  and nothing for a row the node does not have, never an invented number")
 
-# One shipped pack declares a section: fire's. A core pack is on every node whether or not its keeper turned it on, so
-# its section stays out of /issues until the node holds a row of it; a wild pack, added on purpose, still says what
-# has not arrived.
-assert [m["id"] for m in packs.manifests() if m.get("sections")] == ["fire"], "a shipped pack declares a section"
+# Two shipped packs declare a section: fire's and surface-heat's (15 Oct), both for the Wall. A core pack is on every
+# node whether or not its keeper turned it on, so its section stays out of /issues until the node holds a row of it; a
+# wild pack, added on purpose, still says what has not arrived.
+assert sorted(m["id"] for m in packs.manifests() if m.get("sections")) == ["fire", "surface-heat"], "a shipped pack declares a section"
 shipped = I.pack_sections(packs.manifests())
-assert [(s["id"], s.get("core"), s["wall"]) for s in shipped] == [("fire", True, True)], shipped
+assert sorted((s["id"], s.get("core"), s["wall"]) for s in shipped) == [("fire", True, True), ("surface-heat", True, True)], shipped
 assert engine._sections(shipped, [], now) == [], "a core section nobody turned on must not draw an empty band"
 fire_row = {"sensor_id": "firms-fires", "metric": "fires_region_24h", "value": 51.0, "kind": "model",
             "name": "Fires within 150 km (NASA FIRMS, VIIRS satellites)", "ts": "2026-10-02T06:40:00+00:00"}
