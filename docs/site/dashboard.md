@@ -475,20 +475,30 @@ each alert opening its sentence and every case in a dialog; and **Who lives here
 the learnings and say who each matters to. `#node/remember/day/<date>` opens one entry. The classic
 dashboard remains available at `/?layout=classic`.
 
-**Place** (15 Oct 2026) opens with five layers on: the street map with its names, the cell the node stands in, the
-house's own stations, the public stations and the images. Every other layer starts off, and a group with nothing on
-starts collapsed with its count. The list grows with its rows and never scrolls inside itself, and the map takes its
-height; on a phone it is a sheet under a **Layers 5** button below the map. The house is named on the map. The tools
-on the map's edge are 44 px: zoom, back to the node's cell, **Inspect**, **Measure** (tap points, then **Done**),
-**From the house** (one tap, and the node measures the distance from its own point) and save as PNG; the active
-one says its word. The cell's edge and area are its own, said once and in one unit: "497 m edge · 0.64 km²" in the
-lede and in the facts. Below the map, **Species confirmed here** is a table: the species (its GBIF page), rank, how
-many times seen here, where in words ("in the seven cells", "outside the seven cells", or both counted), and GBIF's
-open records by others in this node's seven cells; it needs the token, as the images do, and without it one line says
-where to unlock. Only what somebody here confirmed counts; GBIF's records are a count, never points on the map.
-**Changes by the year** (Land and Coast) follows it. A browser without WebGL still gets the map, drawn still from
-the same answers (the node's cell and its parent's cells, the stations, the rings with the token, the images and the
-house), with the layer list and the facts as always.
+**Place** (15 Oct 2026, option A, "the landscape workbench") draws the map at the content's full width, 560 px high.
+Above it, the fourteen layers are a strip of five groups (**Base**, **Grid**, **Readings**, **Images**, **Packs**, each
+with how many of its layers are on); pressing one opens its rows in a drop-down over the map, the same rows as before:
+a checkbox, the layer's swatch, what it draws and from where, its pack, its opacity. The base map's state sits at the
+strip's right ("street map · OSM build 20261006", cached). Five layers start on: the street map with its names, the
+cell the node stands in, the house's own stations, the public stations and the images. On a phone the strip scrolls
+sideways inside itself, never the page. Nothing is labelled on the house: every mark in view leaves the map on a thin
+leader line to a ruled margin on the right, **At the house · by position**, one row per mark with its sign, its name
+and its distance in metres from the node's own point (`GET /geo/measure`, and `GET /nearby` for the public stations),
+in the order the marks sit, top to bottom; public stations off the map sit on its edge with their distance. Without
+the token the house's stations and its images and species say **withheld** (a red-stroked sign, the word in ink) in
+the place they would stand, and the map opens on the node's published cell centre. On a phone the margin is the list
+**Around the house** under the map. The inspector is one line under the map: the node's cell, the resolution in
+view, its edge and area ("497 m edge · 0.64 km²", as in the lede) and how many layers are on; pressing a mark or a
+margin row says its facts in that line and in a small card on the map. The scale rail (Street 10 to Radio 3) and the
+tools (zoom, back to the node's cell, **Inspect**, **Measure** with **Done**, **From the house**, save as PNG; 44 px,
+the active one saying its word) stay on the map. **Map**, **From orbit** and **What changed** and **+ Add an image**
+sit at the header's right. Below the map, three equal columns: **Where the readings come from** (how far back each
+kind of source reaches, and the public stations within 5 km, each a figure with its date and provenance), **Species
+confirmed here** (a table: the species and its GBIF page, how many times seen here, where in words, and GBIF's open
+records by others in the seven cells; token only, and without it one line says where to unlock), and **What is
+changing** (Land and Coast, the Index cells, and Production and trade · Water and soil · Forecast as one "not yet"
+row). A browser without WebGL still gets the map, drawn still from the same answers, with the strip, the margin and
+the inspector as always.
 
 **Node** (15 Oct 2026) leads with its verdict: "Working. Last reading 19:19; 6 of 6 sensors, 10 of 20 stations heard
 in the last hour.", from `/health` and `/stats` (a station is heard when it read in the last hour) and, for a screen

@@ -3310,6 +3310,29 @@ async function doors() {
       if (shots && (s === '#setup/basics' || s === '#setup/sharing' || s === '#setup/screen'))
         await r.page.screenshot({ path: path.join(OUT, `doors_${s.slice(1).replace('/', '-')}_${tag}.jpg`), fullPage: true, type: 'jpeg', quality: 78 });
     }
+    /* Place, option A (Tomas, 15 Oct): the layers a strip of five groups that scrolls inside itself, a press opens one
+       group's rows; the map at the content's width; the house named in the margin, its own rows withheld without the
+       token; 44 px targets on a phone; nothing scrolls sideways */
+    await go(r.page, '#place'); await wait(r.page, '#layers .lystrip'); await r.page.waitForTimeout(600);
+    const pl = await r.page.evaluate(() => {
+      const vis = x => x.getClientRects().length, sel = '#layers .lystrip button, .tools button, #pmargin button.mr, .pviews button, .scales button';
+      return { groups: document.querySelectorAll('#layers .lystrip button[data-g]').length, map: Math.round(document.getElementById('map').getBoundingClientRect().width),
+        small: [...document.querySelectorAll(sel)].filter(vis).map(x => x.getBoundingClientRect()).filter(b => b.height < 44 || b.width < 44).length,
+        margin: document.getElementById('pmargin').innerText, facts: document.getElementById('facts').innerText };
+    });
+    ok(pl.groups === 5, `${tag} #place: the strip has ${pl.groups} groups, not 5`);
+    ok(w < 768 || pl.map >= 1000, `${tag} #place: the map is ${pl.map}px wide, not the content's width`);
+    ok(w >= 768 || !pl.small, `${tag} #place: ${pl.small} target(s) under 44 × 44 px`);
+    ok(/This house/.test(pl.margin) && (tok || /withheld/.test(pl.margin)), `${tag} #place: the margin reads ${pl.margin.slice(0, 120)}`);
+    ok(/In view/i.test(pl.facts), `${tag} #place: the inspector line reads ${pl.facts.slice(0, 80)}`);
+    await r.page.click('#layers button[data-g="Readings"]'); await r.page.waitForTimeout(200);
+    const dd = await r.page.evaluate(() => { const d = document.getElementById('lydrop'); return { open: !d.hidden, rows: d.querySelectorAll('.ly').length }; });
+    ok(dd.open && dd.rows === 4, `${tag} #place: Readings opened ${dd.rows} rows (${dd.open ? 'open' : 'closed'})`);
+    { const o = await overflowAt(r.page); ok(o <= 1, `${tag} #place: the page scrolls ${o}px sideways with a drop-down open`); }
+    if (shots) await r.page.screenshot({ path: path.join(OUT, `doors_place_${tag}.jpg`), fullPage: true, type: 'jpeg', quality: 78 });
+    await r.page.click('#layers button[data-g="Readings"]'); await r.page.waitForTimeout(200);
+    ok(await r.page.evaluate(() => document.getElementById('lydrop').hidden), `${tag} #place: a second press did not close the drop-down`);
+    panes += 1;
     /* the consequences step, unlocked only: open sharing asks first; a plain setting saves at once */
     if (tok && w === 1440 && !dark) {
       const puts = []; r.page.on('request', q => { if (q.method() === 'PUT' && q.url().endsWith('/settings')) puts.push(q.postData()); });
@@ -3333,7 +3356,7 @@ async function doors() {
     }
     await r.browser.close();
   }
-  if (!bad.length) { console.log(`  doors: ${panes} panes of Data and Set up at 390/1440, paper/dark, locked/token: no sideways scroll, `
+  if (!bad.length) { console.log(`  doors: ${panes} panes of Data, Set up and Place at 390/1440, paper/dark, locked/token: no sideways scroll, `
     + `44 px tabs, one tab's sections at a time, every old Data anchor lands${said.length ? '; ' + said.join('; ') : ''}`); return; }
   for (const b of bad) console.log('FAIL doors:', b);
   process.exit(1);
