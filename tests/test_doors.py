@@ -312,7 +312,7 @@ const out = {};
 for (const [name, path] of Object.entries(JSON.parse(process.argv[1]))) {
   const F = JSON.parse(fs.readFileSync(path, 'utf8')), els = {}, D = L.buildD({ ...F, days: F.issues_days }, 'en');
   D.now = D.buckets.length - 1;
-  const ctx = { D, S: { issue: null, i: D.now }, doorsLocal: L.doorsLocal, VIEWS: {}, $: q => (els[q] ||= {}), document: { querySelectorAll: () => [] } };
+  const ctx = { D, S: { issue: null, i: D.now }, doorsLocal: L.doorsLocal, WORDS: L.WORDS, stateWord: L.stateWord, kindWord: L.kindWord, VIEWS: {}, $: q => (els[q] ||= {}), document: { querySelectorAll: () => [] } };
   vm.createContext(ctx);
   vm.runInContext(['esc', 'loc', 'dayOf', 'fmt', 'said', 'num', 'unitOf', 'labelOf', 'NODE', 'sign', 'PROV', 'prov', 'ISSUES_DRAWN'].map(pick).join('\n') + '\n'
     + 'let NOWL = null;\n' + (now.includes('function usualLine') ? fn(now, 'usualLine') : '') + fn(now, 'rows')
@@ -322,7 +322,7 @@ for (const [name, path] of Object.entries(JSON.parse(process.argv[1]))) {
     + fs.readFileSync('./app/static/doors-wall.js', 'utf8').match(/function wallAsk[\s\S]*?\n}\n/)[0], ctx);
   /* the phone's Decide card, its own copy of the helpers (mobile.js says why) */
   const mob = fs.readFileSync('./app/static/mobile.js', 'utf8'), mpick = n => mob.match(new RegExp('^const ' + n + ' = .*$', 'm'))[0];
-  const pctx = { D, leadKey: null, doorsLocal: L.doorsLocal, DOORS_TOKEN: () => '' };
+  const pctx = { D, leadKey: null, doorsLocal: L.doorsLocal, kindWord: L.kindWord, DOORS_TOKEN: () => '' };
   vm.createContext(pctx);
   vm.runInContext(['esc', 'hhmm', 'fmt', 'said', 'ANSWER_STAGE'].map(mpick).join('\n') + '\n' + fn(mob, 'decideHTML'), pctx);
   out[name] = Object.fromEntries(D.order.map(k => {
@@ -696,6 +696,10 @@ assert 'id="cells"' in html[html.index("<!-- NODE -->"):] and 'id="cells"' not i
 print("doors: every anchor Data had lands on its tab and element; the Index cells and the diary land on Node")
 _m = _d["models"]
 assert _m.count("<table") == 1 and ">yearly" in _m and ">hourly" in _m and "P1Y" not in _m and "PT1H" not in _m, "one table, cadence in words"
+# every source links to where it publishes, in a new tab (Tomas, 15 Oct)
+assert 'href="https://open-meteo.com/' in _m and 'target="_blank" rel="noopener">source ↗' in _m, "a model's source links out, in a new tab"
+_dj = (STATIC / "doors-data.js").read_text()
+assert "smartcitizen.me/kits/" in _dj and "srcLink({ ...r.s" in _dj, "every sensor row links to its source"
 assert "years" not in _m.lower().replace("yearly", "") and "fc_" not in _m and "lead" not in _m, "the node's own counters are not drawn"
 assert ">hPa<" in _m and ">%<" in _m and _m.count('class="grp"') >= 5, "a unit column, a row per source"
 print("doors: the models are one table, a row per source, a unit, hourly not PT1H, no internal counters")

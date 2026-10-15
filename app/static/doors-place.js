@@ -26,13 +26,13 @@ VIEWS.place = function () {
   const h = D.health, area = D.geometry.ladder.find(l => l.res === h.cell.res).own_area_m2 / 1e6;   // the node's own figure for this cell, not the resolution's average
   $('#placehead').innerHTML = `<div class="k">Place · ${said(D.registry.place)}</div>
     <h1 data-learn="1">The ground this node stands on.</h1>
-    <p class="lede mono">${esc(h.cell.id)} · res ${h.cell.res} · ${h.cell.edge_m} m edge · ${area.toFixed(2)} km² · ${fmt(D.point[1], 4)}, ${fmt(D.point[0], 4)}</p>
+    <p class="lede mono">${esc(h.cell.id)} · res ${h.cell.res} · ${h.cell.edge_m} m edge · ${area.toFixed(2)} km²${DOORS_TOKEN() ? ` · ${fmt(D.point[1], 3)}, ${fmt(D.point[0], 3)}` : ''}</p>
     <div class="prow"><nav class="pviews" aria-label="Views of the place">${PVIEWS.map(([id, t, s]) => `<button class="${id === PVIEW ? 'on' : ''}" data-p="${id}"><b>${t}</b><span>${s}</span></button>`).join('')}</nav>`
-    + `<button class="addimg" id="addimg" title="An image this household took: it lands on the map where it was taken">+ Add an image</button></div>`;
+    + (DOORS_TOKEN() ? `<button class="addimg" id="addimg" title="An image this household took: it lands on the map where it was taken">+ Add an image</button>` : '') + `</div>`;
   /* the issues that change yearly and have no hours (Land, Coast): Now is for the hour, so they are said here, below
      the ground they describe — the engine's own sentence, the region's figure and its provenance (15 Oct) */
   $('#pyearly').innerHTML = yearly();
-  $('#addimg').onclick = addImage;
+  if ($('#addimg')) $('#addimg').onclick = addImage;
   $('#lybtn').onclick = () => { const b = document.querySelector('.bench'); b.classList.toggle('sheet'); $('#lybtn').setAttribute('aria-expanded', b.classList.contains('sheet')); };
   speciesBlock();
   document.querySelectorAll('.pviews button').forEach(b => b.onclick = () => { PVIEW = b.dataset.p; VIEWS.place(); });
@@ -54,7 +54,7 @@ function yearly() {
 async function speciesBlock() {
   const el = $('#pspecies');
   const [sp, caps] = await Promise.all(['/species', '/captures?limit=500'].map(u => doorsFetch(u).then(r => (r.ok ? r.json() : null)).catch(() => null)));
-  if (!sp) { el.innerHTML = `<h2>Species confirmed here</h2><p class="fine">The species somebody here confirmed in an image answer a screen holding a token, because where a picture was taken is the household’s. Unlock this screen in ${UNLOCK_AT}.</p>`; return; }
+  if (!sp) { el.innerHTML = `<h2>Species confirmed here</h2><p class="fine">The species somebody here confirmed stay private to this house, because where a picture was taken is the household’s. Unlock this screen in ${UNLOCK_AT} to see them.</p>`; return; }
   const S = sp.species || [];
   if (!S.length) { el.innerHTML = `<h2>Species confirmed here</h2><p class="fine">None yet. Add an image above the map; once somebody here confirms what it shows in <a href="#data/d-images">Data › Images</a>, it is counted here.</p>`; return; }
   const mine = x => f => f.taxon && x.key ? f.taxon.key === x.key : (f.scientific || (f.taxon || {}).name) === x.name;
@@ -138,7 +138,7 @@ const IKIND = { phone: 'Phone', camera: 'Fixed camera', microscope: 'Microscope'
 function addImage() {
   let who = ''; try { who = localStorage.getItem('planetai_actor') || ''; } catch (e) { /* no storage here */ }
   const dl = $('#imgdlg');
-  if (!DOORS_TOKEN()) { dl.innerHTML = `<p>Images answer a screen holding a token only. Unlock this screen in Set up › This screen to add one.</p><form method="dialog"><button>Close</button></form>`; dl.showModal(); return; }
+  if (!DOORS_TOKEN()) { dl.innerHTML = `<p>Images stay private to this house. Unlock this screen in Set up › This screen to see or add them.</p><form method="dialog"><button>Close</button></form>`; dl.showModal(); return; }
   dl.innerHTML = `<form id="imgf"><div class="k">Add an image</div><label class="drop" for="imgfile"><input type="file" id="imgfile" accept="image/jpeg,image/png,image/heic,image/heif,image/webp"><span id="imgname">Choose an image, or drop one here</span></label>`
     + `<label>What took it<select id="imgkind">${Object.entries(IKIND).map(([k, t]) => `<option value="${k}">${t}</option>`).join('')}</select></label>`
     + `<label>A note, if it needs one<input id="imgnote" maxlength="500"></label>${who ? '' : '<label>Your name<input id="imgwho" autocomplete="name"></label>'}`

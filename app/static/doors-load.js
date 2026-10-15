@@ -136,4 +136,14 @@ async function loadD(routes = DOORS_ROUTES) {
   return buildD(A, (A.health || {}).locale || 'en');
 }
 
-if (typeof module !== 'undefined') module.exports = { buildD, doorsLocal, doorsFetch, DOORS_LOCKED };
+/* The household's words for the engine's own (pre-launch audit, 15 Oct): a state, an event's kind, and the two
+   sentences a screen says when it cannot answer. One table for the doors and the phone, which both load this file. */
+const WORDS = {
+  state: { act: 'act now', notable: 'worth a look', quiet: 'fine', context: 'background', none: 'not read' },
+  kind: { spike: 'a sudden rise', unusual: 'higher than usual for this hour', sustained: 'high for an hour', danger: 'dangerous' },
+  locked: 'This screen can’t answer yet. Ask whoever set up the node to unlock it, or answer on Telegram.',
+  noreply: 'The node did not answer. Check this screen is on the home network, then try again.',
+};
+const stateWord = s => WORDS.state[s] || s, kindWord = k => WORDS.kind[k] || k;
+
+if (typeof module !== 'undefined') module.exports = { buildD, doorsLocal, doorsFetch, DOORS_LOCKED, WORDS, stateWord, kindWord };

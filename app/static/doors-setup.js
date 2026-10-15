@@ -23,7 +23,7 @@ const SETUP_GROUPS = {
   model: ['Model', 'Which model answers, here and on Telegram alike. The strongest one the node can reach is used, and its keys are under Keys.'],
   packs: ['Packs', 'Which packs load, each with its own settings in its card. Code packs stay off until you allow them; read one before you do.'],
   keys: ['Keys', 'Every secret in one place. Each is masked once saved and never shown again.'],
-  sharing: ['Sharing', 'Who may read this node, and everything it sends or announces beyond this machine. Readings stay here; hourly means, Index cells and ρ travel.'],
+  sharing: ['Sharing', 'Who may read this node, and everything it sends or announces beyond this machine. Raw readings stay here; only hourly averages, Index scores and the share of alerts answered leave.'],
   system: ['System', 'Tuning numbers, and what is read once at start: the port, extra containers, backups, the poll interval.'],
 };
 const SETUP_BOOLS = /^(BAD_ENABLED|OPENMETEO_ENABLED|SENSOR_INDOOR|MESH_ALERTS|HA_DISCOVERY|EXPORT_ENABLED|IPFS_PUBLISH|QUIET_HOURS|BAD_INCLUDE_INDOOR|PACKS_ALLOW_CODE)$/;

@@ -3128,8 +3128,9 @@ async function mobile() {
         btn: !!document.querySelector('#capopen'),
         line: document.querySelector('.capture .dm')?.textContent || '',
       }));
-      ok(!capLocked.btn && capLocked.line.includes('Unlock this phone') && capLocked.line.includes('to add images'),
-        `a locked phone is offered the unlock, not the button: "${capLocked.line}"`);
+      // audit, 15 Oct: a locked phone is offered nothing it cannot use; the Node section's own Unlock is the way in
+      ok(!capLocked.btn && capLocked.line === '',
+        `a locked phone shows no image button and no add-images line: "${capLocked.line}"`);
       await r0.browser.close();
     }
     await r.browser.close();
