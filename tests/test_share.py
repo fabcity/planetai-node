@@ -235,6 +235,12 @@ assert s0["meta"]["licence"] == "CC BY 4.0", "open: provenance must survive the 
 assert dp(s0["lat"]) <= 3 and dp(s0["lon"]) <= 3, f"open: /sensors hands out {s0['lat']},{s0['lon']}"
 assert (s0["lat"], s0["lon"]) == main._coarse(-8.6478291, 115.1385412), \
     "open: the household's own sensor must stand at its cell's centre for an untrusted reader (R25)"
+# 15 Oct: a house on a cell's edge has sensors in the next cell; they stand at the house's point, not ~700 m off.
+_h = lan.get("/health").json()
+assert main._own_point({"local": True, "kind": "sensor", "lat": -8.6528, "lon": 115.1445}) == (_h["lat"], _h["lon"]), \
+    "a house's own sensor in the neighbouring cell must stand where the house does"
+assert main._own_point({"local": False, "kind": "child", "lat": -8.6528, "lon": 115.1445}) == main._coarse(-8.6528, 115.1445), \
+    "a child's row is another house: its own cell's centre"
 # Tomas, 15 Oct 2026: a screen without a key never reads what the house calls its rooms or its sensors.
 main._HOUSE.update(at=time.time() + 1e9, map=[("Kitchen, upstairs", "Sensor 1")])   # the database is stubbed out
 r = lan.get("/sensors"); s0 = r.json()[0]
