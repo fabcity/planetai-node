@@ -98,6 +98,6 @@ hero:
   clock: time
 
 empty:
-  en: The coast pack reports nothing inland. It needs an ocean cell within COAST_MAX_KM of this node.
-  id: Pack coast tidak melaporkan apa pun di pedalaman. Perlu sel laut dalam COAST_MAX_KM dari node ini.
-  es: El pack coast no informa nada en el interior. Necesita una celda de océano a menos de COAST_MAX_KM del nodo.
+  en: This node is too far from the sea to read it.
+  id: Node ini terlalu jauh dari laut untuk membacanya.
+  es: Este nodo está demasiado lejos del mar para leerlo.

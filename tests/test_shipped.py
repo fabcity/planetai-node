@@ -313,7 +313,7 @@ assert _heat["heat_stress_now"]["cooldown_minutes"] == 1440, \
     "once a room a day: in Oct 2026 the hot room was over 35 for 44% of hours and 240 repeated it 5.7 times a day (README)"
 assert _heat["heat_danger"]["cooldown_minutes"] == 120, "danger keeps interrupting as often as it must"
 for _r, _lang, _words in (("heat_stress_now", "en", "It is too hot at {name}: it feels like {at} °C — past this house's heat line, {line} °C feels-like, measured here."),
-                          ("heat_danger", "en", "DANGER at {name}: it feels like {at} °C — the danger line here is {line} °C.")):
+                          ("heat_danger", "en", "Dangerous heat at {name}: it feels like {at} °C, past the danger line here, {line} °C.")):
     assert _words in _heat[_r]["message"][_lang], f"{_r} [{_lang}]: the message template needs Tomas's sign-off to change"
 assert "Kuta Selatan" in open("packs/heat/README.md").read(), "docs/PACKS.md: say which place you wrote for"
 print("the heat line is this place's, and every threshold alert names whose line it is")
