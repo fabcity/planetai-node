@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **First run (pre-launch audit, 15 Oct).** The installer's question 4 offered AirGradient and PurpleAir, which the
+  node never read: an operator who picked one got no reading and no first alert. It offers Smart Citizen until the
+  `air-sensors` pack reads the others. A chat not in `TELEGRAM_CHAT_IDS` is told once, with its own id, that the node
+  answers its household only and who can add it; it heard nothing before. The install page opens with the six
+  commands of the short way.
+
 - **Rooms stay in the house (Tomas, 15 Oct).** A screen without a token read the rooms and sensor names at
   `SHARE_LEVEL=open` (`/issues`, `/stats`, `/sensors`, `/trust`, `/nearby`, `/report/latest`, alert texts). The sharing
   middleware now swaps the house's labels for "Room A" / "Sensor 1" in every untrusted JSON answer, once, and the

@@ -911,6 +911,7 @@ async def main():
     if TG_TOKEN() and CHATS():
         await announce_buttons(hc)
     offset, history, pins, pending = 0, {}, {}, {}
+    told_unknown: set[str] = set()     # unknown chats already told why the node is quiet
     while True:
         if not TG_TOKEN():
             await asyncio.sleep(30); continue
@@ -947,6 +948,12 @@ async def main():
                 except Exception as e:  # noqa: BLE001
                     log.warning("offer relay failed: %s", type(e).__name__)
                 log.info("message from chat %s ignored: not in TELEGRAM_CHAT_IDS %s", chat, sorted(CHATS()))
+                # once per chat per run, so a second person in the house learns why it is quiet (audit, 15 Oct)
+                if chat not in told_unknown:
+                    told_unknown.add(chat)
+                    await telegram("sendMessage", chat_id=chat, text=T(
+                        f"This node answers its household only. To be added, ask whoever set it up to add this chat: {chat}.",
+                        es=f"Este nodo solo responde a su casa. Para entrar, pide a quien lo instaló que añada este chat: {chat}."))
                 continue
             note_eid = note_pending(pending, chat, text, time.monotonic())
             if note_eid is not None:

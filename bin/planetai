@@ -447,15 +447,11 @@ print(next((k for k, (a, b, c, d) in boxes.items() if a < lat < b and c < lon < 
   local sensor sc ag pa indoor=0        # not `kind`: that already holds home|business|community|district from question 3
   choose sensor "   Pick one. You can add more later." \
     "None yet. Start with the global models and add hardware when I have it." \
-    "Smart Citizen kit (I have the number from its smartcitizen.me URL)" \
-    "AirGradient on my WiFi" \
-    "PurpleAir on my WiFi"
+    "Smart Citizen kit (I have the number from its smartcitizen.me URL)"
+  # AirGradient and PurpleAir come back when the air-sensors pack reads them (docs/SPEC_sensors.md step 3): until
+  # then the node never read either, and an operator who picked one got no reading and no first alert.
   case "$sensor" in
     Smart*) ask sc "   Kit number" ""; [[ "$sc" =~ ^[0-9]+$ ]] || fail "a Smart Citizen kit number is digits only, e.g. 19880" ;;
-    AirGradient*) ask ag "   Its hostname or IP (on the device's sticker, or in your router)" "airgradient_XXXXXX.local"
-                  confirm "   Is it indoors?" && indoor=1 ;;
-    PurpleAir*)   ask pa "   Its IP address (from your router; the .local name is unreliable)" ""
-                  confirm "   Is it indoors?" && indoor=1 ;;
   esac
 
   # summary
