@@ -1,21 +1,15 @@
 'use strict';
-/* PLACE — the geographic context, as a workbench (OneSoil): pick a layer on the left, read the map, read its facts on
-   the right. Every layer is real geometry: H3 cells from the node (GET /geo/*), the coast from Natural Earth 1:10m, the plan from
-   OpenStreetMap, the stations at their own coordinates, the satellite frames as photographs.
+/* PLACE — the geographic context, as a landscape workbench (option A, Tomas 15 Oct 2026: "I like A"): the map at the
+   content's full width, the fourteen layers as a strip of five groups above it, labels on leaders to a ruled margin
+   (doors-placemap.js), the inspector one line under the map, and three equal columns below: where the readings come
+   from, the species confirmed here, what is changing. Every layer is real geometry: H3 cells from the node (GET /geo/*),
+   the coast from Natural Earth 1:10m, the plan from OpenStreetMap, the stations at their own coordinates, the satellite
+   frames as photographs.
 
-   PHASE 4a (Tomas, 14–15 Oct 2026; the review's findings). The plan, in the order a household meets it:
-   1. Below the map, the species somebody here confirmed, as a table (never cards): the species with its GBIF link, its
-      rank, how many times seen here, where in words ("in the seven cells", "outside"), and GBIF's open records in the
-      seven cells. Token only, as /species is; without it one line says where to unlock. On the map, a filled mark at
-      each confirming image's point, its layer row saying "1 confirmed · Hibiscus …". GBIF's records are a count, not
-      points, so no hollow marks are drawn.
-   2. Five layers on (street, the node's cell, own sensors, public stations, images); the other groups collapsed with
-      their count; the list never scrolls inside itself; on a phone it opens as a sheet under a "Layers 5" button.
-   3. The house is named on the map, as Now's map names it.
-   4. No WebGL: the map draws still (the cell, the stations, the rings), and the list and the facts draw as always.
-   5. Tools are 44 px, the active one says its word, measuring ends on Done, From the house is one tap.
-   6. One fact, one figure: the cell's own edge and its area in km², in the lede and in the facts alike.
-   7. Land and Coast ("Changes by the year") sit below the map, after the species. */
+   Kept from PHASE 4a (14–15 Oct): the species as a table (never cards), token only, with GBIF's open records counted
+   and never drawn; five layers on (street, the node's cell, own sensors, public stations, images); no WebGL draws the
+   map still; 44 px tools, Done ends measuring, From the house is one tap; the cell's own edge and area in km², once.
+   Land and Coast sit under What is changing. */
 const GEO = {};
 async function geo(name, url) { return GEO[name] || (GEO[name] = await fetch(url).then(r => r.json())); }
 /* Three views of the place: the map (placemap.js, every layer that has a position), and the two that do not —
@@ -24,29 +18,27 @@ let PVIEW = 'map', YEAR = 2025, COMPARE = true, PAST = null;   /* From orbit ope
 const PVIEWS = [['map', 'Map', 'every layer with a position'], ['orbit', 'From orbit', 'then and now, Sentinel-2'], ['change', 'What changed', 'AlphaEarth, year on year']];
 VIEWS.place = function () {
   const h = D.health, area = D.geometry.ladder.find(l => l.res === h.cell.res).own_area_m2 / 1e6;   // the node's own figure for this cell, not the resolution's average
-  $('#placehead').innerHTML = `<div class="k">Place · ${said(D.registry.place)}</div>
+  /* option A (15 Oct): the views and + Add an image at the header's right, the map below at full width */
+  $('#placehead').innerHTML = `<div><div class="k">Place · ${said(D.registry.place)}</div>
     <h1 data-learn="1">The ground this node stands on.</h1>
-    <p class="lede mono">${esc(h.cell.id)} · res ${h.cell.res} · ${h.cell.edge_m} m edge · ${area.toFixed(2)} km²${DOORS_TOKEN() ? ` · ${fmt(D.point[1], 3)}, ${fmt(D.point[0], 3)}` : ''}</p>
+    <p class="lede mono">${esc(h.cell.id)} · res ${h.cell.res} · ${h.cell.edge_m} m edge · ${area.toFixed(2)} km²${DOORS_TOKEN() ? ` · ${fmt(D.point[1], 3)}, ${fmt(D.point[0], 3)}` : ''}</p></div>
     <div class="prow"><nav class="pviews" aria-label="Views of the place">${PVIEWS.map(([id, t, s]) => `<button class="${id === PVIEW ? 'on' : ''}" data-p="${id}"><b>${t}</b><span>${s}</span></button>`).join('')}</nav>`
     + (DOORS_TOKEN() ? `<button class="addimg" id="addimg" title="An image this household took: it lands on the map where it was taken">+ Add an image</button>` : '') + `</div>`;
   /* the issues that change yearly and have no hours (Land, Coast): Now is for the hour, so they are said here, below
      the ground they describe — the engine's own sentence, the region's figure and its provenance (15 Oct) */
   $('#pyearly').innerHTML = yearly();
   if ($('#addimg')) $('#addimg').onclick = addImage;
-  $('#lybtn').onclick = () => { const b = document.querySelector('.bench'); b.classList.toggle('sheet'); $('#lybtn').setAttribute('aria-expanded', b.classList.contains('sheet')); };
   speciesBlock();
   document.querySelectorAll('.pviews button').forEach(b => b.onclick = () => { PVIEW = b.dataset.p; VIEWS.place(); });
   document.querySelector('.bench').dataset.pview = PVIEW;
   if (PVIEW === 'map') placeMap(); else layer();
-  reach();
+  reach(); changing();
 };
 
 function yearly() {
   const ks = D.order.filter(k => !ISSUES_DRAWN(k) && ((D.issues[k].stack || {}).region || {}).value != null);
-  return ks.length ? `<section class="yearly" data-learn="states" data-reads="/issues" data-stage="observe" data-pack="core" data-kind="row"><h2>Changes by the year</h2>`
-    + ks.map(k => { const it = D.issues[k], g = it.stack.region;
-      return `<div class="fr" data-k="${k}"><span>${said(it.name)}<small class="said">${esc(it.title || it.sentence || '')}</small></span><b>${num(`${k}.region`, fmt(g.value, 1), 'no line: it informs, it never asks')} ${said(it.unit)} ${prov(g.provenance || 'model')}</b></div>`; }).join('')
-    + `</section>` : '';
+  return ks.map(k => { const it = D.issues[k], g = it.stack.region;
+      return `<div class="fr" data-k="${k}"><span>${said(it.name)}<small class="said">${esc(it.title || it.sentence || '')}</small></span><b><span class="${k === 'land' ? 'sat' : ''}">${num(`${k}.region`, fmt(g.value, 1), 'no line: it informs, it never asks')} ${said(it.unit)}</span> ${prov(g.provenance || 'model')}</b></div>`; }).join('');
 }
 /* SPECIES CONFIRMED HERE (Tomas, 15 Oct: "species list should sit below the map"): /species, one row per taxon a person
    here confirmed, as Data › Images reads it. Where is said from the confirming images' own `outside`, which the node
@@ -121,15 +113,31 @@ async function layer() {
 
 }
 
-function reach() {
-  const R = D.reach || [], max = d3.max(R, r => r.days) || 1, word = { map: 'The satellite', model: 'Models read for this point', sensor: 'The kit in and around this house' };
-  $('#reach').innerHTML = R.map(r => `<div class="lrow"><span class="t">${word[r.kind] || r.kind}<small>${r.sources} source${r.sources === 1 ? '' : 's'} · ${r.buckets.toLocaleString('en')} hours</small></span>`
-    + `<span class="bar"><i style="width:${Math.max(.5, r.days / max * 100)}%"></i></span><span class="c">${r.days >= 730 ? fmt(r.days / 365.25, 1) + ' yr' : r.days + ' d'}</span></div>`).join('')
-    + `<p class="fine">From ${dLabel(dayOf(R[0].oldest))} ${R[0].oldest.slice(0, 4)} for the satellite; the kit started on ${dLabel(dayOf(R[2].oldest))}.</p>`;
-  $('#soon').innerHTML = [['Production and trade', 'what this place makes and what it brings in, by category, for the Fab City Index', 'open sources named, no adapter yet'],
-    ['Index cells', 'the 20 cells of the Fab City Index for this place, scored where data exists', `${new Set(D.index_cells.map(c => c.cell)).size} of 20 have a value`],
-    ['Water and soil', 'the other two things the purpose names, beside air', 'no source yet'], ['Forecast', 'the next day of wind and rain, from BMKG for this village', 'needs this point’s village code']]
-    .map(([t, s2, c]) => `<div class="lrow two"><span class="t">${t}</span><span class="s">${s2}<br><span class="soon">${c}</span></span></div>`).join('');
+/* WHERE THE READINGS COME FROM and WHAT IS CHANGING (option A, 15 Oct): the first and last of the three columns under
+   the map. Every row is a figure with its date and its provenance word: how far back each kind of source reaches
+   (/reach), the public stations by the node's own distances (/nearby), the Index cells, and what is not here yet. */
+const PV = { sensor: 'live', model: 'model', map: 'cached', survey: 'partial' };
+async function reach() {
+  const R = D.reach || [], word = { map: 'The satellite', model: 'Models read for this point', sensor: 'The kit in and around this house', survey: 'Survey' };
+  const back = r => r.days >= 730 ? fmt(r.days / 365.25, 1) + ' yr' : r.days + ' d';
+  const rows = R.map(r => `<div class="fr"><span>${word[r.kind] || esc(r.kind)}<small>${r.sources} source${r.sources === 1 ? '' : 's'} · ${r.buckets.toLocaleString('en')} hours · since ${dLabel(dayOf(r.oldest))} ${r.oldest.slice(0, 4)}</small></span>`
+    + `<b>${num(`place.reach.${r.kind}`, back(r), 'how far back this kind of source reaches here')} ${prov(PV[r.kind] || 'partial')}</b></div>`);
+  $('#reach').innerHTML = rows.join('');
+  /* the public stations, at the node's own distances: open at every share level, display only */
+  const N = await doorsFetch('/nearby').then(r => (r.ok ? r.json() : null)).catch(() => null), ring = ((N || {}).ring || []).filter(x => x.km <= 5);
+  if (ring.length) {
+    const km = ring.map(x => x.km), last = ring.map(x => x.last_ts).filter(Boolean).sort().pop();
+    rows.splice(1, 0, `<div class="fr"><span>Public stations<small>${ring.length} within 5 km · display only${last ? ` · heard ${dLabel(dayOf(last))}` : ''}</small></span>`
+      + `<b>${num('place.nearby', `${fmt(d3.min(km), 1)}–${fmt(d3.max(km), 1)} km`, 'the nearest and the furthest within 5 km, from the node’s point')} ${prov('partial')}</b></div>`);
+    $('#reach').innerHTML = rows.join('');
+  }
+}
+function changing() {
+  const ch = ((D.earth || {}).changes || []).slice(-1)[0], nI = new Set(D.index_cells.map(c => c.cell)).size;
+  $('#soon').innerHTML = `<div class="fr"><span>Index cells<small>of the Fab City Index for this place · <a href="#node/cells">Node › Index cells</a></small></span>`
+    + `<b>${num('place.index', `${nI} of 20`, 'cells of the Fab City Index holding a value')} ${prov('partial')}</b></div>`
+    + `<div class="fr"><span>Production and trade · Water and soil · Forecast<small>coming to this place: no adapter, no source, or no village code yet</small></span><b><span class="soon">not yet</span></b></div>`
+    + (ch ? `<p class="fine">Land: AlphaEarth, ${ch.year_a} → ${ch.year_b}.</p>` : '');
 }
 
 /* ADD AN IMAGE — a quiet button beside the views, and a dialog: the file (picked or dropped), what took it, a note,

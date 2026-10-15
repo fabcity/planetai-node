@@ -566,13 +566,20 @@ for _v in _learn.VERDICT_WORDS:
     assert re.search(rf"const VERDICT_W = {{[^}}]*\b{_v}:", _nodejs), f"Node has no words for the verdict {_v}"
 # PHASE 4a, Place and Node (Tomas, 14–15 Oct 2026). Each check fails if its fix regresses.
 _place = html[html.index('<section class="page view" data-view="place"'):html.index("<!-- DATA -->")]
-assert _place.index('class="bench"') < _place.index('id="pspecies"') < _place.index('id="pyearly"') < _place.index('class="cols2"'), \
-    "the species table, then Changes by the year, sit below the map"
+# OPTION A (Tomas, 15 Oct: "I like A"): under the map, three columns: where the readings come from, the species, what is changing
+assert _place.index('class="bench"') < _place.index('class="pcols"') < _place.index('id="reach"') < _place.index('id="pspecies"') \
+    < _place.index('id="pyearly"') < _place.index('id="soon"'), "the three columns sit below the map, in their order"
+assert 'id="pmargin"' in _place and 'id="pleads"' in _place and 'class="inspect"' in _place and 'id="lybtn"' not in _place, \
+    "the margin and its leaders beside the map, the inspector one line under it, no layer sheet"
 assert "'#pyearly').innerHTML = yearly()" in (STATIC / "doors-place.js").read_text(), "Land and Coast are drawn below the map"
 _css = html[html.index("/* ================= PLACE: the workbench"):html.index("/* ================= NODE")]
 assert re.search(r"\.tools button\{min-width:44px;height:44px", _css), "the map's tools are 44 px targets"
-assert "max-height" not in re.search(r"#layers\{display:block\}[^\n]*", _css).group(0) and "#layers{display:block;overflow" not in _css, \
-    "no inner scroller in the layer list"
+_drop = re.search(r"\.lydrop\{[^}]*\}", _css).group(0)
+assert "max-height" not in _drop and "overflow" not in _drop, "no inner scroller in the layer drop-down"
+assert re.search(r"\.lystrip\{[^}]*overflow-x:auto", _css) and ".page[data-view=\"place\"]{max-width:1440px}" in _css, \
+    "the strip scrolls inside itself; the map takes the content's full width"
+assert re.search(r"\.mapc\{display:grid;grid-template-columns:minmax\(0,1fr\) 300px", _css) and ".mapc #map{aspect-ratio:auto;height:560px" in _css, \
+    "the map is landscape, 560 px high, with a 300 px margin"
 assert "overflow-x:auto" not in html[html.index("/* ================= NODE"):].split("\n")[1], "the flow never scrolls sideways"
 pprog = r"""
 const fs = require('fs'), vm = require('vm'), d3 = require('./app/static/d3.min.js');
@@ -584,10 +591,10 @@ const F = JSON.parse(fs.readFileSync('%s', 'utf8')), D = L.buildD({ ...F, days: 
 const out = {};
 /* five on by default; the rest off */
 out.on = eval(pm.match(/const LAYERS = \[[\s\S]*?\n\];/)[0] + '; LAYERS').filter(l => l.on && !l.parent).map(l => l.id);
-out.house = /id: 'house-l'[^\n]*getText: \(\) => 'This house'/.test(pm);
+out.house = !/id: '(house|species)-l'/.test(pm) && /name: 'This house', ll: D\.point/.test(pm);
 out.tools = /\['from', '⌂'/.test(pm) && /class="done" data-t="done"/.test(pm);
 const mk = () => { const els = {}; return q => (els[q] ||= { innerHTML: '', textContent: '', clientWidth: 600, clientHeight: 600, style: {}, appendChild() {}, setAttribute() {}, onclick: null }); };
-const page = tok => ({ D, d3, $: mk(), console, Response, UNLOCK_AT: '<a href="#setup/screen">Set up › This screen</a>',
+const page = tok => ({ D, d3, $: mk(), console, Response, DOORS_TOKEN: () => (tok ? 't' : ''), sign: id => `<svg data-s="${id}"></svg>`, UNLOCK_AT: '<a href="#setup/screen">Set up › This screen</a>',
   doorsFetch: p => Promise.resolve(!tok ? new Response('{}', { status: 403 }) : new Response(JSON.stringify(
     p.startsWith('/species') ? { species: [{ key: 3152559, name: 'Hibiscus rosa-sinensis L.', rank: 'SPECIES', count: 2, images: 1, others: 14 }] }
     : p.startsWith('/captures') ? [{ id: 2, outside: false, analysis: { confirmed_by: 'T', findings: [{ taxon: { key: 3152559 } }] } }] : {}), { status: 200 })) });
@@ -617,7 +624,9 @@ const page = tok => ({ D, d3, $: mk(), console, Response, UNLOCK_AT: '<a href="#
   c.window = c; c.D = { ...D, ngeo: null, ngeoErr: 'GET /geo/cell answered 403' }; vm.createContext(c);
   vm.runInContext(pm + '\nwindow.placeMap()', c);
   await new Promise(r => setTimeout(r, 50));
-  out.flat = { map: c.$('#map').innerHTML, layers: c.$('#layers').innerHTML, facts: c.$('#facts').innerHTML, btn: c.$('#lybtn').innerHTML };
+  out.flat = { map: c.$('#map').innerHTML, layers: c.$('#layers').innerHTML, facts: c.$('#facts').innerHTML, margin: c.$('#pmargin').innerHTML, drop: {} };
+  /* a group pressed opens its rows; the flat branch of placeMap() draws the strip again */
+  for (const g of ['Base', 'Readings', 'Packs']) { c.__PM.gopen = g; vm.runInContext('window.placeMap()', c); await new Promise(r => setTimeout(r, 10)); out.flat.drop[g] = c.$('#layers').innerHTML; }
   console.log(JSON.stringify(out));
 })();
 """ % replayed(FIX)
@@ -630,11 +639,17 @@ assert '<table class="tbl species">' in pp["sp"] and "gbif.org/species/3152559" 
 assert "<table" not in pp["spLocked"] and "#setup/screen" in pp["spLocked"], pp["spLocked"]
 print("doors: the species confirmed here are a table below the map; without the token one line says where to unlock")
 _f = pp["flat"]
-assert "<svg" in _f["map"] and "This house" in _f["map"] and "no WebGL" in _f["map"], _f["map"][:300]
-assert 'data-l="own"' in _f["layers"] and 'data-l="street"' in _f["layers"] and "live map only" in _f["layers"], _f["layers"][:300]
-# locked, the images cannot draw, so four of the five are on and the phone's button says so
-assert "Resolution" in _f["facts"] and _f["btn"] == "Layers <b>4</b>", (_f["facts"][:200], _f["btn"])
-print("doors: without WebGL Place draws the still map, the layer list and the facts")
+assert "<svg" in _f["map"] and 'class="house"' in _f["map"] and "This house" not in _f["map"] and "no WebGL" in _f["map"], _f["map"][:300]
+# the strip: five groups, closed until pressed; each opens its own rows
+assert all(f'data-g="{g}"' in _f["layers"] for g in ("Base", "Grid", "Readings", "Images", "Packs")) and 'class="lydrop" id="lydrop" hidden' in _f["layers"], _f["layers"][:400]
+assert 'data-l="street"' in _f["drop"]["Base"] and 'data-l="own"' in _f["drop"]["Readings"] and "live map only" in _f["drop"]["Packs"], _f["drop"]
+assert 'data-l="own"' not in _f["drop"]["Base"], "a group's drop-down holds its own rows only"
+# locked, the images cannot draw, so four of the five are on and the strip says so; the inspector is one line
+assert "In view" in _f["facts"] and "res 8 in view" in _f["facts"] and "Layers <small>4 of" in _f["layers"], (_f["facts"][:200], _f["layers"][:200])
+# the margin names the house, never the map; without the token the house's own rows say withheld and keep their place
+assert "This house" in _f["margin"] and _f["margin"].count("<b>withheld</b>") == 2 and "This house’s stations" in _f["margin"], _f["margin"][:600]
+assert _f["margin"].index("withheld") < _f["margin"].index("This house</span>"), "withheld rows stand where the house is, first" 
+print("doors: Place, option A: a strip of five groups, the house named in the margin (withheld rows without the token), the inspector one line; without WebGL the map draws still")
 assert pp["v"]["ok"] and pp["v"]["head"] == "Working" and re.match(r"Last reading 19:19; 6 of 6 sensors, \d+ of 20 stations heard in the last hour\.$", pp["v"]["text"]), pp["v"]
 assert not pp["vStale"]["ok"] and pp["vStale"]["head"] == "Needs a look" and "the last reading was at" in pp["vStale"]["text"].lower(), pp["vStale"]
 assert not pp["vErr"]["ok"] and "forecast loop failed" in pp["vErr"]["text"], pp["vErr"]

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Place, option A: the map full width, layers as a strip, labels in a margin (Tomas, 15 Oct).** The map is the
+  content's full width (1060 × 560 at 1440); the fourteen layers are five group buttons above it, each opening its rows
+  in a drop-down, with the base map's state at the right; nothing is labelled on the house: marks leave on leader lines
+  to a ruled margin with their distance (on a phone, the list Around the house), off-map stations sit on the edge with
+  theirs, and without a token the house's rows say withheld in their place. The inspector is one line under the map;
+  below it, three columns: where the readings come from, the species, what is changing. `tests/test_doors.py` and the
+  visual gate's doors pass hold the layout.
 - **Rooms stay in the house (Tomas, 15 Oct).** A screen without a token read the rooms and sensor names at
   `SHARE_LEVEL=open` (`/issues`, `/stats`, `/sensors`, `/trust`, `/nearby`, `/report/latest`, alert texts). The sharing
   middleware now swaps the house's labels for "Room A" / "Sensor 1" in every untrusted JSON answer, once, and the
