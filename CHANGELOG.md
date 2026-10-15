@@ -14,6 +14,11 @@
     14 Oct; the others keep the WHO line. The morning report's model clause said "the WHO's first interim target,
     35 µg/m³", which is the annual target; it now compares against and names the EPA's 35.5, and calls CAMS the
     European air model rather than "the satellites".
+- **A child node is another household, not a member of this one.** `AGGREGATE_TOKEN` made a request trusted by
+  the sharing check, and every child holds it, so a child read its parent's sensor rooms, point, building plan and
+  notes as if it lived there. The token now passes only `POST /aggregates` and `POST /events`, which check it
+  themselves; everything else it asks is answered as to a stranger on the network. Found by the pre-launch audit
+  (15 Oct). `tests/test_share.py` holds it.
 
 - **One sentence when nothing is asked.** Now said "Nothing to do now." where the Wall and the phone said "Nothing is
   asked now."; all three say "Nothing is asked now." (Tomas, 15 Oct). The Wall keeps "clean-air line" for the WHO line.

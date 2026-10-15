@@ -7,13 +7,13 @@ This page was read from the code at v0.81. Where an older document disagrees, th
 
 ## Access rules
 
-Two middlewares run before any handler. The first registered checks `/mcp` against `ADMIN_TOKEN`, and the second passes `/mcp` straight through. Everything else is checked by the second. A request is *trusted* when it comes from loopback or carries any of the four node tokens, and a trusted request reaches every handler. An untrusted request is looked up against the allowlist for the current `SHARE_LEVEL` and refused with 403 if its path is not on it. The handler then applies its own token check, if it has one. The pages on this site name the result with one of these classes.
+Two middlewares run before any handler. The first registered checks `/mcp` against `ADMIN_TOKEN`, and the second passes `/mcp` straight through. Everything else is checked by the second. A request is *trusted* when it comes from loopback or carries one of the three household tokens (`ADMIN_TOKEN`, `BACKUP_TOKEN`, `ACT_TOKEN`), and a trusted request reaches every handler. An untrusted request is looked up against the allowlist for the current `SHARE_LEVEL` and refused with 403 if its path is not on it. `AGGREGATE_TOKEN` is not a household token: it passes the check only for `POST /aggregates` and `POST /events`, which verify it themselves. The handler then applies its own token check, if it has one. The pages on this site name the result with one of these classes.
 
 | Class | Who is answered |
 |---|---|
 | `public` | On the `off` allowlist. Answers anyone, at every `SHARE_LEVEL`, with no token. |
 | `open` | On the `open` allowlist only. Without a token, answers only when `SHARE_LEVEL=open`. Always answers loopback or any node token. |
-| `token` | On neither allowlist. Answers loopback or a request carrying any of the four node tokens (`ADMIN_TOKEN`, `BACKUP_TOKEN`, `AGGREGATE_TOKEN`, `ACT_TOKEN`); then the handler's own check, if any. |
+| `token` | On neither allowlist. Answers loopback or a request carrying a household token (`ADMIN_TOKEN`, `BACKUP_TOKEN`, `ACT_TOKEN`); then the handler's own check, if any. |
 | `admin` | The handler requires `ADMIN_TOKEN`, whatever the allowlists let through. |
 | `pull` | `token`, then the handler requires `ADMIN_TOKEN` or `BACKUP_TOKEN`. The read-only token for a NAS. |
 | `act` | `token` at the middleware. Loopback then needs nothing more; from anywhere else the handler requires `ACT_TOKEN` or `ADMIN_TOKEN`. |
@@ -523,7 +523,7 @@ Every answer a person gave an alert, newest first: which alert, which stage, who
 
 Returns a list of `{ts, alert_id, stage, actor, note}`, and with `events=1` each row also carries `event_id`, which is null for an alert's answer and set, with a null `alert_id`, for an event's. The node's own `settings` rows are left out unless `stage=settings` asks for them: one row per `PUT /settings`, where `actor` is its `X-Agent` and `note` the keys it wrote, comma-separated. The route is on neither allowlist on purpose, because `actor` and `note` are the household's own words about what they did in their own house.
 
-> **Careful.** The handler has no token check of its own, so any of the four node tokens reads it. That includes `BACKUP_TOKEN`, `ACT_TOKEN` and this node's `AGGREGATE_TOKEN`, which every child of this node holds.
+> **Careful.** The handler has no token check of its own, so any household token reads it. That includes `BACKUP_TOKEN` and `ACT_TOKEN`.
 
 ### POST /actions
 Access: act
@@ -868,7 +868,7 @@ Access: public
 
 Every runtime setting with its group, label, help and current value, plus the bootstrap keys read-only. Secrets are always masked as `•••• set`: the node's own, and every key a pack lists under `secrets:` in its `pack.yaml`. Without the admin token, every value outside the public set is masked too: chat ids, sensor hosts, account names and remote URLs are the household's. A wrong token reads as no token, with no error, so the dashboard's layout read keeps working on every screen.
 
-At `SHARE_LEVEL=off`, a caller that is neither loopback nor carrying a token sees the values of `UI_LAYOUT` and `SHARE_LEVEL` only. Every other row is still present, masked, so the Set up view still renders and says what a token would show. A reader without the admin token sees the values of the public set when `SHARE_LEVEL=open`, from loopback, or with one of the other three node tokens (`REPORT_EVERY`, `ALERT_LEVEL`, `QUIET_HOURS`, `SHARE_LEVEL`, `NODE_ISSUES`, `MAP_TILES`, `UI_MODE`, `PACKS_ENABLED` and the rest of `settings.PUBLIC`).
+At `SHARE_LEVEL=off`, a caller that is neither loopback nor carrying a token sees the values of `UI_LAYOUT` and `SHARE_LEVEL` only. Every other row is still present, masked, so the Set up view still renders and says what a token would show. A reader without the admin token sees the values of the public set when `SHARE_LEVEL=open`, from loopback, or with `BACKUP_TOKEN` or `ACT_TOKEN` (`REPORT_EVERY`, `ALERT_LEVEL`, `QUIET_HOURS`, `SHARE_LEVEL`, `NODE_ISSUES`, `MAP_TILES`, `UI_MODE`, `PACKS_ENABLED` and the rest of `settings.PUBLIC`).
 
 Returns `{unlocked, runtime: [...], bootstrap: [{key, label, value, group}]}`. Each node row in `runtime` is `{key, group, label, secret, restart, help, value, set, source, choices, default, outward}`. `source` is `gui`, `env` or `default`; `choices` lists the accepted values where the key has a fixed set; `default` is the shipped default, or null when the image has no defaults file; `outward` marks a key that changes what leaves the machine.
 
