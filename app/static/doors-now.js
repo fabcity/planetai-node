@@ -222,7 +222,8 @@ function rowsValues() {
   document.querySelectorAll('#rows .row').forEach(r => {
     const k = r.dataset.k, it = D.issues[k];
     r.setAttribute('aria-pressed', String(k === S.issue));
-    const v = val(k, it.hero_distance, S.i), pd = (it.per_day || []).find(p => p.date === date);
+    // now is the live reading the title and the legend say, not the running hour's mean (audit, 15 Oct: 17 beside 10)
+    const v = S.i === D.now ? ((it.stack || {})[it.hero_distance] || {}).value : val(k, it.hero_distance, S.i), pd = (it.per_day || []).find(p => p.date === date);
     r.querySelector('[data-v]').innerHTML = `${num(`${k}.${it.hero_distance}`, fmt(v, it.dp), `against the line, ${fmt(it.line, it.dp)} ${it.unit}`)}<small>${said(it.unit)}</small>`;
     r.querySelector('[data-s]').innerHTML = pd ? `${pd.over ? '<span class="over" aria-hidden="true"></span>' : ''}${num(`${k}.over.day`, pd.over, `of ${pd.read} hours read, ${pd.of - pd.read} not recorded`)} h over the line ${date === dayOf(D.buckets[D.now]) ? 'today' : 'on ' + dLabel(date).split(',')[0]} · ${pd.read} of ${pd.of} h read` : 'no count for this day';
   });
@@ -296,7 +297,7 @@ async function aroundMap(el) {
     new deck.ScatterplotLayer({ id: 'house', data: [{ p: D.point }], getPosition: d => d.p, radiusUnits: 'pixels', getRadius: 6.5, getFillColor: ink, stroked: true, getLineColor: ground, lineWidthUnits: 'pixels', getLineWidth: 2 }),
     new deck.TextLayer({ id: 'house-l', data: [{ p: D.point }], characterSet: 'auto', getPosition: d => d.p, getPixelOffset: [0, 17], getTextAnchor: 'middle', getSize: 11, fontFamily: mono, getColor: ink,
       background: true, getBackgroundColor: C('--ground', .92), backgroundPadding: [3, 1],
-      getText: () => `this house · ${house.length}${hv.length ? ` · ${fmt(d3.min(hv), 0)}–${fmt(d3.max(hv), 0)} ${unitOf(M)}` : ''}` }),
+      getText: () => `this house · ${house.length} sensor${house.length === 1 ? '' : 's'}${hv.length ? ` · ${fmt(d3.min(hv), 0)}–${fmt(d3.max(hv), 0)} ${unitOf(M)}` : ''}` }),
   ] });
   NOWMAP.paint();
   /* one line (Tomas, 15 Oct): what is drawn and what a press does; faint is a station not heard in 15 minutes */
