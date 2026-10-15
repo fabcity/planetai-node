@@ -8,6 +8,11 @@
   the log and stays in each health check's `fix` on Node › Running. The morning's health line is its own sentence per
   check and names a quiet sensor by its room, never its id. Trust alerts name the metric ("fine dust (PM2.5)", not
   `pm25`), the heat danger alert is sentence case, and the nearby alert's Spanish says tú (pre-launch audit, 15 Oct).
+- **A child node is another household, not a member of this one.** `AGGREGATE_TOKEN` made a request trusted by
+  the sharing check, and every child holds it, so a child read its parent's sensor rooms, point, building plan and
+  notes as if it lived there. The token now passes only `POST /aggregates` and `POST /events`, which check it
+  themselves; everything else it asks is answered as to a stranger on the network. Found by the pre-launch audit
+  (15 Oct). `tests/test_share.py` holds it.
 
 - **One sentence when nothing is asked.** Now said "Nothing to do now." where the Wall and the phone said "Nothing is
   asked now."; all three say "Nothing is asked now." (Tomas, 15 Oct). The Wall keeps "clean-air line" for the WHO line.

@@ -1182,13 +1182,22 @@ _SHARE = {"off": _SHARE_OFF, "open": _SHARE_OPEN}
 
 
 def _node_tokens() -> list[str]:
-    """Every token this node accepts. A request carrying one is not what SHARE_LEVEL is about: it is the NAS pulling
-    /backups, the agent, Home Assistant, a parent node or someone in the house, and it reads exactly what it read
+    """Every token this node trusts as the household. A request carrying one is not what SHARE_LEVEL is about: it is
+    the NAS pulling /backups, the agent, Home Assistant or someone in the house, and it reads exactly what it read
     before, from anywhere — which is the whole reason the setting can default to `off` without breaking a node on
     update. Each endpoint still checks its own token after this, so BACKUP_TOKEN getting past here does not unmask
-    the Telegram token at /settings/raw."""
+    the Telegram token at /settings/raw.
+
+    AGGREGATE_TOKEN is not one of them: every child node holds it, and a child is another household. Until 15 Oct
+    2026 it was, and a child read its parent's sensor rooms, point and building as if it lived there. Its two
+    writes pass the middleware by path (_CHILD_WRITES) and check the token themselves."""
     return [t for t in (os.getenv("ADMIN_TOKEN", "").strip(), settings.get("BACKUP_TOKEN", "").strip(),
-                        AGG_TOKEN(), ACT_TOKEN()) if t]
+                        ACT_TOKEN()) if t]
+
+
+# What a child node sends its parent. Each route checks AGGREGATE_TOKEN itself and refuses without it, so letting
+# them past SHARE_LEVEL opens nothing to a request with no token.
+_CHILD_WRITES = frozenset({("POST", "/aggregates"), ("POST", "/events")})
 
 
 def _is_local(request: Request) -> bool:
@@ -1217,7 +1226,7 @@ async def _share_level(request, call_next):
     The 403 names the setting because the person reading it is usually the household, not a developer."""
     request.state.share_trusted = trusted = (
         _bearer_ok(request.headers.get("authorization", ""), *_node_tokens()) or _is_local(request))
-    if request.url.path.startswith("/mcp") or trusted:
+    if request.url.path.startswith("/mcp") or trusted or (request.method, request.url.path) in _CHILD_WRITES:
         return await call_next(request)
     level = SHARE_LEVEL()
     exact, prefixes = _SHARE.get(level, _SHARE_OFF)
