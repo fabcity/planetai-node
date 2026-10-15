@@ -24,6 +24,7 @@ is documentation; the presence of the file is what the loader reads. Code packs 
 | `cold-start` | data | cross-domain | 3 info | — | — | — | — |
 | `forecast` | code | weather | none | `ahead` | — | `fetch` `status` `verify` `windfield` | `FORECAST_*` |
 | `coast` | code | coast | 2 info | — | 1 | — | `COAST_MAX_KM` |
+| `surface-heat` (after v0.81) | code | heat | none | `ground` | — | — | `SURFACE_HEAT_*` |
 | `earth` | code | land | none | — | 1 | `fetch` `change` `frames` `status` `verify` `similar` | `EARTH_*` |
 | `earth-engine` | code | land | none | — | 1 | `timelapse` `verify` `basemap` | `EE_*`, `GROUND_SAT_WIDE_KM` |
 | `place` | code | place | 1 info | — | 1 | `refresh` `gaps` `verify` `basemap` | `PLACE_*`, `GROUND_*` |
@@ -34,6 +35,7 @@ is documentation; the presence of the file is what the loader reads. Code packs 
 | `example-cooking-hours` | data | (none) | 1 info | — | — | — | — |
 
 That is 33 rules with a message in v0.81 (26, and the 7 the event engine reads; `fire` adds 3), 4 report contributors and 12 cells. Every rule with a message carries `en`,
+That is 33 rules with a message (26, and the 7 the event engine reads), 4 report contributors (5 with `surface-heat`, after v0.81) and 12 cells. Every rule with a message carries `en`,
 `id` and `es`, and so do the two core rules in `config/rules.yml`; Spanish reached every alert template in
 v0.63. The node picks `message[ALERT_LOCALE]` and falls back to `en`. Cooldowns below are in minutes, per
 `(rule, sensor_id)`.
@@ -548,6 +550,61 @@ weather of a sea it cannot see.
 
 The wild `posidonia` pack reads this pack's `sea_surface_temp`; without `coast` enabled it has nothing to read.
 Attribution: Open-Meteo Marine API (CC BY 4.0), carrying Copernicus Marine / MeteoFrance MFWAM model data.
+
+## surface-heat
+
+**On main since 15 October 2026, after v0.81; it ships in the next release.** How hot the ground in this node's own
+H3 res-8 cell got against the land 1 to 3 km around it, from Landsat's surface temperature at 30 m, and how warm the
+ground stays at night, from MODIS at 1 km. Read once a day from Microsoft Planetary Computer, anonymously. Written
+for Kuta Selatan; nothing in it is specific to Bali.
+
+| | |
+|---|---|
+| Kind | code |
+| Domain | `heat` |
+| Requires node | `>=0.81.0` |
+| Metrics | `lst`, `lst_ring`, `lst_delta`, `lst_pctile`, `lst_night`, `lst_day` |
+| Scales | city |
+| Sources | none listed yet: `environmental/city/landsat-c2-surface-temperature` and `environmental/city/modis-lst-mod11a1` are to be filed in the registry |
+| Needs | `PACKS_ALLOW_CODE=1`; network to planetarycomputer.microsoft.com and its blob storage, once a day |
+| Scripts | none |
+
+The adapter writes two sensors, both `kind='model'`, `scale='city'`, `local=False`: `surface-cell`
+(`source='landsat-lst'`) from the newest clear Landsat 8/9 Collection 2 scene, and `surface-modis`
+(`source='modis-lst'`) from MOD11A1 and MYD11A1 v061. Every reading is stamped with the satellite's pass, not the
+poll. A scene counts when at least half the cell's land and half the ring's is clear in `QA_PIXEL`; water is on
+neither side. The scale and offset come from the STAC item (0.00341802 and 149.0 K for ST_B10 on 15 Oct 2026).
+
+It adds no library. It reads Cloud-Optimized GeoTIFFs with HTTP range requests and `zlib`: one header and the few
+tiles around the node, about half a megabyte on a day with a new scene, out of a 68 MB file. A scene is read once and
+remembered in `out/surface-heat/state.json`.
+
+It adds three readouts to the heat issue: the cell's ground temperature, the cell minus the ring, and the ground at
+night.
+
+### Rules
+
+| rule | level | cooldown | fires when | languages |
+|---|---|---|---|---|
+| `ground` | — | — | report contributor: the last pass's `seen_at`, `ground_c`, `around_c`, `hotter_than_around_c`, `percentile_in_ring`, and `air_c` from the house's own outdoor sensor within half an hour of the pass, else the weather model's, with `air_from` saying which. Never sent | none |
+
+### Cells
+
+No cells. A satellite retrieval of the ground is not measured here and is nobody's Index cell.
+
+### Settings
+
+| setting | default | meaning |
+|---|---|---|
+| `SURFACE_HEAT_RING_KM` | `3` | the outer edge of the ring, in km; it starts at 1 km |
+| `SURFACE_HEAT_MIN_CLEAR` | `0.5` | the share of the cell's land, and of the ring's, that must be clear for a scene to count |
+
+### Know this
+
+A ground temperature is the skin of roofs, roads and canopy, not the air: a roof at 45 °C is not a room at 45 °C,
+and that is why there is no alert and no cell. One clear look every one to three weeks at about 10:30. Landsat data
+courtesy of the U.S. Geological Survey and MODIS from NASA LP DAAC, both public domain; Microsoft Planetary Computer
+is the host.
 
 ## posidonia (wild)
 
