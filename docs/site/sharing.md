@@ -103,8 +103,10 @@ All travel as `Authorization: Bearer <token>`, compared in constant time. There 
 | `AGGREGATE_TOKEN` | what this node demands on `POST /aggregates` and `POST /events`; unset, the node accepts no children | you set it | your children, as their `PARENT_TOKEN` |
 | `PARENT_TOKEN` | sent with this node's hourly pushes to `PARENT_API_URL` | your parent's operator | the node itself |
 
-Any of the four node tokens (admin, backup, act, aggregate) makes a request trusted by the sharing check,
-at every level, so each of them reads the whole read API. Routes with a check of their own then apply it:
+Any of the three household tokens (admin, backup, act) makes a request trusted by the sharing check,
+at every level, so each of them reads the whole read API. The aggregate token does not: every child node
+holds it, and a child is another household, so it pushes to `POST /aggregates` and `POST /events` and
+reads only what a stranger reads. Routes with a check of their own then apply it:
 a backup token cannot change a setting, and an act token cannot fetch a dump. The routes without one are
 in the Careful note above. The optional `X-Agent` header names the caller in the audit trail. The dashboard
 keeps the token it was given in the browser's local storage and sends the admin token first, then the act

@@ -149,7 +149,7 @@ except ImportError:
 import logging
 import time
 logging.disable(logging.WARNING)      # main.py logs a failed bootstrap connect on import; that is the point of the stub
-os.environ.update(ADMIN_TOKEN="admin-tok", ACT_TOKEN="act-tok", NODE_LAT="-8.6478291", NODE_LON="115.1385412",
+os.environ.update(ADMIN_TOKEN="admin-tok", ACT_TOKEN="act-tok", AGGREGATE_TOKEN="agg-tok", NODE_LAT="-8.6478291", NODE_LON="115.1385412",
                   NODE_NAME="bayu-2", DATABASE_URL="postgresql://unused/never-connected")
 import settings                                    # noqa: F811 — the same module; the stub below is what matters
 settings._cache = {"at": time.time() + 1e9, "rows": {}}     # never touch a database: get() falls through to the environment
@@ -182,6 +182,20 @@ assert local.get("/sensors").status_code == 200, "off: this machine still reads 
 assert lan.get("/health").status_code == 200 and lan.get("/").status_code == 200, "off: the shell stays readable"
 assert lan.get("/export").status_code != 403, "off: backup.sh fetches /export over the published port to write the daily file"
 print("off: /sensors refused from the WiFi, answered to a token and to this machine")
+
+# A child node holds AGGREGATE_TOKEN, and a child is another household (15 Oct 2026): it may push, never read as one.
+CHILD = {"Authorization": "Bearer agg-tok"}
+for lv in ("off", "open"):
+    level(lv)
+    assert lan.get("/place/geojson", headers=CHILD).status_code == 403, f"{lv}: a child read its parent's building"
+    assert lan.get("/health", headers=CHILD).json().get("position") == "cell", f"{lv}: a child read its parent's point"
+assert lan.get("/sensors", headers=CHILD).json()[0]["meta"].get("host") is None, "open: a child read the unredacted row"
+level("off")
+assert lan.get("/sensors", headers=CHILD).status_code == 403, "off: a child read /sensors"
+_lan5 = TestClient(main.app, raise_server_exceptions=False)    # the push reaches the database, which is stubbed to raise
+assert _lan5.post("/aggregates", json={}, headers=CHILD).status_code != 403, "a child's push must still pass SHARE_LEVEL"
+assert lan.post("/aggregates", json={}).status_code == 401, "a push with no token is refused by the route itself"
+print("child token: pushes pass, reads are a stranger's")
 
 for lv in ("off", "open"):
     level(lv)

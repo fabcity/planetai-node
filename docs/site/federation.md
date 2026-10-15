@@ -17,8 +17,8 @@ To make one node the child of another:
 
 1. **On the parent, set `AGGREGATE_TOKEN`.** `planetai config set AGGREGATE_TOKEN <a long random string>`
    (`openssl rand -hex 16` makes one). Until it is set, both routes answer 403 `this node accepts no
-   children: set AGGREGATE_TOKEN in .env and give it to them`. The token also reads this node's notes and
-   the plan of its building (see [Sharing](sharing.md)), so give it knowing that.
+   children: set AGGREGATE_TOKEN in .env and give it to them`. The token pushes and reads nothing: a
+   child reads this node only as a stranger on its network would (see [Sharing](sharing.md)).
 2. **On the child, set `PARENT_API_URL` and `PARENT_TOKEN`.** `planetai config set PARENT_API_URL
    http://<parent>:8080`, where `<parent>` is the parent's tailnet hostname, then `planetai config set
    PARENT_TOKEN <the parent's AGGREGATE_TOKEN>`. Each answers `<KEY> is now …, on this node, within 20 s`.
