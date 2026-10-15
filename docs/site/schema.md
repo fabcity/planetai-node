@@ -17,7 +17,9 @@ One row per thing that produces readings, and per place the node was told about.
 |---|---|---|
 | `sensor_id` | text, primary key | `<source>-<upstream id>`: `sc-19880`, `bad-pa-46949`; a child's as `<child>/<sensor_id>`; a fab lab's as `lab-<slug>`. Never reassigned |
 | `source` | text | the adapter: `smartcitizen`, `baliairdispatch`, `airgradient`, `open-meteo`, `open-meteo-cams`, `nasa-power`, `ckan`, `meshtastic`, `child`, `contributor`, or a pack's (`fablabs-io` for `make`) |
-| `name` | text | the place, as the person named it |
+| `name` | text | the place, as the person named it: the `room` when the household set one, else the platform's name |
+| `room` | text | the household's word for where the sensor is (schema 0.61, `PATCH /sensors/{sid}`); a trigger makes it the `name` whatever writes the row |
+| `source_name` | text | the platform's own name, kept while a `room` stands in for it |
 | `lat`, `lon` | double | position; rounded before it leaves for a reader without a token |
 | `indoor` | bool | measures a room; never in an ambient average |
 | `local` | bool | the person's own **and** within `LOCAL_RADIUS_M` of the node |
@@ -96,6 +98,7 @@ With `DECISION_REQUIRED=1`, `POST /actions` refuses an `acted` row for an alert 
 | `sent`, `held_quiet` | bool | a report due in quiet hours is written with `sent` false and `held_quiet` true, and folded into the next |
 | `fallback_reason` | text | why `text` is the sheet and not a model's. Nothing writes it in v0.81 |
 | `cells` | jsonb | the Index cells at the time of the report |
+| `memory` | bool | it carried the morning memory on Telegram (schema 0.60); one report a day does |
 
 ### `events`
 
@@ -156,6 +159,22 @@ What each `(source, metric)` **is**, written at every start from `config/channel
 ### `release_notices`
 
 `version`, `told_at`: one row per release the node has told its household about, so a restart or the hourly re-check never sends "a new version is out" twice for the same one. Added in schema 0.52, for `UPDATE_CHECK`. Written by `check_release()` in `app/main.py`; nothing else reads it.
+
+### `household`
+
+Who is in the house (SPEC_learn, schema 0.59): one row (`id` = 1), `people` (yes or no for `older`, `under5`, `lungs`, `pregnant`, `outdoor`), `updated_at`. Written only by `PUT /household`. Revoked from `planetai_ro`, and named by no export, push or report.
+
+### `digests`
+
+The node's diary (SPEC_learn, schema 0.58): `scale` (`day` · `week` · `month` · `year`) and `period_start` (the primary key together), `label`, `text`, `numbers`, `written_at`, and `tsv`, a generated full-text vector of label and text with a GIN index. Written by `check_learn()` in the first hour of each local day, for every completed period not yet kept, oldest first; `numbers.v` says which version wrote it, and one written by an older version is written again once. Never deleted. Revoked from `planetai_ro`, and named by no export, push or report.
+
+### `learnings`
+
+What the node learned (SPEC_learn, schema 0.57): `kind`, `key` (the primary key together), `issue`, `metric`, `status` (`too_early` · `holding` · `weakening` · `gone`), `statement`, `numbers`, `n`, `scope` (`house` · `place`), `first_seen`, `checked_at`, `status_since` (the local day its status last changed, schema 0.60; the morning memory names the rows that changed that day). Written once a day by `check_learn()`; a row is replaced, never deleted. Revoked from `planetai_ro`, and named by no export, push or report.
+
+### `things`
+
+What a home keeps (SPEC_inventory, schema 0.56): `id`, `added_at`, `class`, `name`, `count`, `used` (`weekly` · `monthly` · `yearly` · `never`), `condition` (`works` · `needs_repair` · `broken`), `offer` (`no` · `lend` · `give`), `capture_id`, `note`. Written by `/things`. Revoked from `planetai_ro`, so no pack SQL reads it, and named by no export or push. Its counts per class reach `readings` as the private `stock.<class>`, `idle.<class>` and `repair.<class>`.
 
 ### Pack tables
 

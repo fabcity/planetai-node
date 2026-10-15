@@ -85,6 +85,7 @@ instead of wrong.
 | `REPORT_EVERY` | `3`, `4`, `6`, `8`, `12`, `24` |
 | `REPORT_ANCHOR` | `0` to `23` |
 | `REPORT_DEPTH` | `auto`, `brief`, `standard`, `deep` |
+| `LEARN_PUSH` | `all` (default), `week`, `off`: the morning memory below |
 | `ALERT_ENGINE` | `rules`, `shadow`, `events` |
 | `UI_MODE` | `simple`, `advanced`, `learn` |
 | `AGENT_PREFER` | `private`, `fallback`, `strongest` |

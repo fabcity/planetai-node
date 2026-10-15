@@ -97,7 +97,7 @@ function flowTrips(G, F, HS, h0) {
 
 /* The key: the cells in words, and how many like this one make the radio's res-3 cell, the region, which is a ring. Areas are each cell's own, from the node (area_m2), not a resolution's average. */
 function flowKey(C) {
-  if (C.none) return `<div class="fkey"><div class="k">the cells</div><p>The cells and every distance are the node’s answers, token-only because together they place it (${esc(D.ngeoErr || 'no answer')}). Unlock this screen under Node to draw them.</p></div>`;
+  if (C.none) return `<div class="fkey"><div class="k">the cells</div><p>The cells and every distance are the node’s answers, token-only because together they place it (${esc(D.ngeoErr || 'no answer')}). Unlock this screen in ${UNLOCK_AT} to draw them.</p></div>`;
   /* every count and area here is the node's (GET /geo/cell children and area_m2), each cell's own, not a resolution's average */
   const n6 = C.n6, n3 = C.n3, A = { [C.cell]: C.a8, [C.par]: C.a6, r3: C.a3 }, r3 = 'r3', a = id => A[id] / 1e6;
   return `<div class="fkey"><div class="k">the cells</div>`

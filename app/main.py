@@ -18,7 +18,8 @@ import re
 import secrets
 import threading
 import time
-from datetime import datetime, timezone
+import unicodedata
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import httpx
@@ -32,8 +33,10 @@ import bootstrap
 import agent
 import actions as _act
 import events_pg
+import fundamentals
 import ground
 import index
+import learn
 import issues.api
 from issues import geometry as _geo
 import packs
@@ -98,6 +101,9 @@ reticulum_state = {"ok": False, "address": None, "destinations": 0, "announce_s"
                    "announcing": False, "peers": [], "last": None}
 STARTED = time.time()
 state = {"polls": 0, "last_poll": None, "last_error": None, "ingested": 0}
+# Whether the last message to Telegram went through, for GET /health/sources. Not in `state`: /health spreads that
+# to every reader at every share level, and whether this house's alerts reach it is not theirs to read.
+tg_state: dict = {"ok": None, "at": None}
 
 
 NODE_TZ = os.getenv("NODE_TZ", "").strip() or "UTC"
@@ -409,16 +415,43 @@ def run_report(cur) -> None:
     b = report.bundle(cur, every, held_hours=held)
     text = report.sheet(b, LOCALE())
     quiet = _quiet("info")
-    cur.execute("""INSERT INTO reports (due_local, window_hours, depth, rung, text, sheet, sent, held_quiet, cells)
-                   VALUES (%s, %s, 'sheet', 'node', %s, %s, %s, %s, %s) RETURNING id""",
-                (due, every + held, text, text, not quiet, quiet, Jsonb(b.get("cells") or [])))
+    memory = "" if quiet else _morning(cur, due, len(text))
+    cur.execute("""INSERT INTO reports (due_local, window_hours, depth, rung, text, sheet, sent, held_quiet, cells, memory)
+                   VALUES (%s, %s, 'sheet', 'node', %s, %s, %s, %s, %s, %s) RETURNING id""",
+                (due, every + held, text, text, not quiet, quiet, Jsonb(b.get("cells") or []), bool(memory)))
     rid = cur.fetchone()["id"]
     if quiet:
         log.info("report %d written and held for quiet hours: %d hours will be folded into the next one", rid, every + held)
         return
-    notify("info", text)          # Telegram and Home Assistant. The mesh and Reticulum carry act alerts only.
+    # Telegram and Home Assistant; the memory rides Telegram alone, never HA, and sits above the invitation, so the
+    # sign-off stays the last thing the household reads (design review, 14 Oct)
+    notify("info", text, home=memory, home_before_last=True)
     ha_alert("info", text, None)
     log.info("report %d sent: %d hours, %d words", rid, every + held, len(text.split()))
+
+
+def _morning(cur, due, used: int) -> str:
+    """The house's memory for the first report each day that finds yesterday written (learn.morning): the digests
+    LEARN_PUSH asks for and the learnings whose status changed today. Telegram only, like the household line: never
+    the stored report text, the bundle, the mesh or Home Assistant. "" on any failure, so the report always goes."""
+    try:
+        periods = learn.morning_periods(due.date(), (settings.get("LEARN_PUSH", "all") or "all").strip().lower())
+        if not periods:
+            return ""
+        cur.execute("SELECT 1 FROM reports WHERE memory AND due_local >= %s LIMIT 1", (due.replace(hour=0),))
+        if cur.fetchone():
+            return ""
+        cur.execute("SELECT scale, period_start, text FROM digests WHERE period_start >= %s", (min(p[1] for p in periods),))
+        kept = {(r["scale"], r["period_start"]): r["text"] for r in cur.fetchall()}
+        if ("day", due.date() - timedelta(days=1)) in periods and ("day", due.date() - timedelta(days=1)) not in kept:
+            return ""                     # yesterday is not written yet: the next report carries it
+        cur.execute("""SELECT kind, key, issue, status, statement FROM learnings
+                       WHERE status_since = %s AND status IN ('holding', 'weakening', 'gone')""", (due.date(),))
+        changed = learn.rank(cur.fetchall(), _people())
+        return learn.morning([kept[p] for p in periods if p in kept], changed, LOCALE(), 4000 - used)
+    except Exception as e:  # noqa: BLE001
+        log.warning("morning memory skipped: %s", type(e).__name__)
+        return ""
 
 
 def refresh_usual() -> None:
@@ -490,7 +523,7 @@ def run_rules() -> None:
                     # No id, and nothing asking to be told. The node watches what happens next (v0.39) instead of
                     # asking; a number a household is expected to quote back was a chore, and 15 of node #1's 37
                     # act alerts got an answer, nine of them in two dashboard batch-clicks a day later.
-                    notify(level, text)
+                    notify(level, text, home=_alert_home(rule["id"]) if level == "act" else "")
                 ha_alert(level, text, alert_id)
         if mode in ("shadow", "events"):
             try:
@@ -507,11 +540,18 @@ def run_rules() -> None:
                         # same message bare (SPEC_alerts §7).
                         kb = _event_keyboard(m.event.id, settings.get("ALERT_LOCALE", "en") or "en") \
                             if m.event.id and settings.num("TELEGRAM_BUTTONS", 0) else None
-                        notify(m.event.level, text, keyboard=kb)
+                        notify(m.event.level, text, keyboard=kb,
+                               home=_alert_home(m.event.issue) if m.event.level == "act" else "")
 
 
-def notify(level: str, text: str, keyboard: list | None = None) -> None:
-    icon = {"info": "ℹ️", "warn": "⚠️", "act": "🔴"}.get(level, "")
+def notify(level: str, text: str, keyboard: list | None = None, home: str = "", home_before_last: bool = False) -> None:
+    """Send an alert. `home` is a line for the household's own Telegram only (who in this house it matters to,
+    learn.alert_line; the report's morning memory): never the mesh, Reticulum or the log, which other people and
+    machines can read. It goes at the end, or above the last paragraph with `home_before_last` (the report's
+    invitation stays its last line)."""
+    # One sign per message (design review, 14 Oct): a text that opens with its own (📈, ✅, the report's 🌡️) is not
+    # given the level's as well; node #1 sent "ℹ️ 🌡️ It is hot inside".
+    icon = "" if text[:1] and unicodedata.category(text[0]) == "So" else {"info": "ℹ️", "warn": "⚠️", "act": "🔴"}.get(level, "")
     log.info("ALERT [%s] %s", level, text)
     if level == "act":
         mesh_send(text.split("\n")[0])            # the mesh gets the first line only: LoRa frames are small
@@ -525,15 +565,29 @@ def notify(level: str, text: str, keyboard: list | None = None) -> None:
         return
     for chat in chats:
         try:
-            body = {"chat_id": chat, "text": f"{icon} {text}".strip()}
+            said = f"{icon} {text}".strip()
+            head, sep, last = said.rpartition("\n\n") if home and home_before_last else ("", "", said)
+            body = {"chat_id": chat, "text": f"{head}\n\n{home}\n\n{last}" if sep else said + (f"\n\n{home}" if home else "")}
             if keyboard:
                 body["reply_markup"] = {"inline_keyboard": keyboard}
             httpx.post(f"https://api.telegram.org/bot{tok}/sendMessage",
                        json=body, timeout=15).raise_for_status()
             log.info("telegram -> %s ok", chat)
+            tg_state.update(ok=True, at=time.time())
         except Exception as e:  # noqa: BLE001
             # never interpolate the exception's URL: httpx puts the token in it
             log.warning("telegram -> %s failed: %s", chat, type(e).__name__)
+            tg_state.update(ok=False, at=time.time())
+
+
+def _alert_home(issue: str) -> str:
+    """Who in this house an act alert about `issue` matters to, for its Telegram line; "" on any failure, so reading
+    the household profile can never stop an alert going out."""
+    try:
+        return learn.alert_line(issue, _people(), settings.get("ALERT_LOCALE", "en") or "en")
+    except Exception as e:  # noqa: BLE001
+        log.warning("alert line: %s", type(e).__name__)
+        return ""
 
 
 def _event_keyboard(event_id: int, locale: str) -> list:
@@ -857,6 +911,53 @@ def check_others() -> None:
     state["others"] = {"cells": cells, "asked": time.time(), "read": datetime.now(timezone.utc).isoformat(timespec="seconds")}
 
 
+
+# ---------------------------------------------------------------- what the node learns (docs/SPEC_learn.md)
+def check_learn() -> None:
+    """Once a local day, re-check what this house learned (app/learn.py): what worked, what is usual, and the asks
+    that do not fit. A row is replaced, never deleted: a rule that can no longer fire keeps its row as `gone`.
+
+    Its pass is the first hourly tick of the node's own date (the session runs in NODE_TZ), so yesterday's digest is
+    written by about one in the morning, before the morning report reads it. Until 14 Oct it ran 20 hours after its
+    last pass, which drifted round the clock."""
+    today = q("SELECT current_date AS d")[0]["d"]
+    if state.get("learned_on") == today:
+        return
+    was = {r["key"]: r for r in q("SELECT key, status, numbers FROM learnings WHERE kind = 'worked'")}
+    live = set(index._live_rule_ids())
+    rules = packs.load_rules()
+    # On ALERT_ENGINE=events the engine speaks for the packs it has kinded rules for, from its first events message
+    # on: their rows after that were never sent, and the learnings must not count them (learn.silent).
+    replaced, since = learn.replaced(rules, settings.get("ALERT_ENGINE", "rules") or "rules"), None
+    if replaced:
+        since = (q("SELECT min(ts) AS t FROM event_messages WHERE mode = 'events'") or [{}])[0].get("t")
+    rows = (learn.learn_worked(q, rules, live, was, replaced, since) + learn.learn_usual(q)
+            + learn.learn_asks(q, live, replaced, since))
+    with db() as con, con.cursor() as cur:
+        for r in rows:
+            cur.execute("""INSERT INTO learnings (kind, key, issue, metric, status, statement, numbers, n, scope, status_since)
+                           VALUES (%(kind)s, %(key)s, %(issue)s, %(metric)s, %(status)s, %(statement)s, %(numbers)s, %(n)s, %(scope)s, current_date)
+                           ON CONFLICT (kind, key) DO UPDATE SET status = EXCLUDED.status, statement = EXCLUDED.statement,
+                             numbers = EXCLUDED.numbers, n = EXCLUDED.n, metric = EXCLUDED.metric, scope = EXCLUDED.scope,
+                             status_since = CASE WHEN learnings.status IS DISTINCT FROM EXCLUDED.status THEN current_date
+                                                 ELSE coalesce(learnings.status_since, current_date) END,
+                             checked_at = now()""",
+                        {**r, "numbers": Jsonb(r["numbers"])})
+    kept = q("SELECT scale, period_start, numbers FROM digests")
+    new = learn.write_digests(q, {(d["scale"], str(d["period_start"])[:10]) for d in kept
+                                  if (d["numbers"] or {}).get("v") == learn.DIGEST_V},
+                              {(d["scale"], str(d["period_start"])[:10]): d["numbers"] for d in kept},
+                              replaced=replaced, since=since)
+    with db() as con, con.cursor() as cur:
+        for d in new:   # a digest of an older version is written again (learn.DIGEST_V); a current one never is
+            cur.execute("""INSERT INTO digests (scale, period_start, label, text, numbers)
+                           VALUES (%(scale)s, %(period_start)s, %(label)s, %(text)s, %(numbers)s)
+                           ON CONFLICT (scale, period_start) DO UPDATE SET label = EXCLUDED.label, text = EXCLUDED.text,
+                             numbers = EXCLUDED.numbers, written_at = now()""", {**d, "numbers": Jsonb(d["numbers"])})
+    state["learned_on"], state["learned_at"] = today, time.time()
+    log.info("learn: %d rows re-checked, %d digests written", len(rows), len(new))
+
+
 # ---------------------------------------------------------------- loops
 def loop(fn, every: int, delay: int = 0):
     """Run fn forever. Each loop records its own last error under its own name: poll_once clears `last_error`
@@ -912,10 +1013,21 @@ try:
 except Exception as e:  # noqa: BLE001  — never block startup on it
     log.warning("could not move off the old briefing settings: %s", e)
 
+# The things a home keeps (docs/SPEC_inventory.md): their classes and the three private counts per class, here
+# because the roles below declare those counts private at every start. The routes are with /species.
+# ponytail: the flows 1.0 physical classes a home keeps, copied like EYES_CLASSES; `vehicle` is new (Tomas, 13 Oct:
+# cars, motorbikes, trucks) and goes into packs/flows/resources.yml and the published vocab when that merges
+THING_CLASSES = ("tool", "appliance", "furniture", "electronics", "garment", "textile", "micromobility", "vehicle",
+                 "part", "goods")
+THING_COUNTS = ("stock", "idle", "repair")   # how many; used yearly or never; needing repair or broken
+
+
 def load_channel_roles() -> int:
     """Declarations are the file's, not the database's: replace the table on every start so a removed pack's
     claims go with it."""
-    rows = packs.channels()
+    rows = packs.channels() + [{"source": "things", "metric": f"{k}.{c}", "role": "private", "comparable": False,
+                                 "unit": "count", "reference": None, "declared_by": "core"}
+                                for c in THING_CLASSES for k in THING_COUNTS]
     with db() as con, con.cursor() as cur:
         # db() is autocommit, so the delete and the reinsert must share one explicit transaction block —
         # otherwise the DELETE commits alone and a concurrent reader can see an empty table mid-restart.
@@ -995,6 +1107,7 @@ loop(check_release, 3600, delay=300)
 loop(check_registry, 3600, delay=60)
 loop(check_griis, 3600, delay=90)
 loop(check_others, 3600, delay=120)
+loop(check_learn, 3600, delay=180)
 if RETICULUM_URL:
     loop(poll_reticulum, 300, delay=20)
 
@@ -1054,7 +1167,7 @@ async def _mcp_auth(request, call_next):
 # there too, but the route drops what it says relative to the node (is_node, cells_from_node, *_polar) for a
 # caller without a token: asked at res 15 cell by cell, those would find the house. The phone's walk needs both
 # (Tomas, 12 Oct 2026: one phone mode, no token, for the person running the node).
-_SHARE_OFF = (frozenset({"/", "/ui", "/health", "/llms.txt", "/settings", "/export", "/presence", "/nodes"}), ("/static/",))
+_SHARE_OFF = (frozenset({"/", "/ui", "/health", "/llms.txt", "/settings", "/export", "/presence", "/nodes", "/offers"}), ("/static/",))
 _SHARE_OPEN = (_SHARE_OFF[0] | frozenset({
     "/stats", "/sensors", "/observations", "/alerts", "/series", "/sparks", "/rho", "/cells", "/packs", "/trust",
     "/nearby", "/forecast", "/earth", "/earth/change.png", "/earth/year.png", "/earth/frame.png",
@@ -1185,6 +1298,32 @@ def health(request: Request):
             **({"reticulum": reticulum_state} if RETICULUM_URL else {})}
 
 
+@app.get("/health/sources")
+def health_sources(backup_age: float | None = None):
+    """The node's fundamental sources (app/fundamentals.py), each running or not, and for each that is not, the one
+    thing to do. `planetai doctor` prints it, install and update print what is still missing, and Set up shows it at
+    the top. Not on any share level's list: whether this house has a sensor and a phone connected is the house's.
+
+    One pass over two days of readings, youngest per source and kind, bounded by now(): the forecast pack writes
+    rows timestamped in the future, and one of those would make any source look as if it had just spoken."""
+    seen = q("""SELECT s.source, (s.custody AND s.kind IN ('sensor', 'child')) AS own, s.indoor,
+                       extract(epoch FROM now() - max(r.ts)) / 60 AS minutes
+                FROM readings r JOIN sensors s USING (sensor_id)
+                WHERE r.ts > now() - interval '2 days' AND r.ts <= now()
+                  AND ((s.custody AND s.kind IN ('sensor', 'child')) OR s.source IN ('baliairdispatch', 'open-meteo', 'open-meteo-cams'))
+                GROUP BY 1, 2, 3""")
+    own_known = bool(q("SELECT 1 FROM sensors WHERE custody AND kind IN ('sensor', 'child') LIMIT 1"))
+    cfg = {k: settings.get(k, "") for f in fundamentals.FUNDAMENTALS for k in f["settings"]}
+    cfg.update(OPENMETEO_ENABLED=settings.get("OPENMETEO_ENABLED", "1"), NODE_LAT=os.getenv("NODE_LAT", ""),
+               NODE_LON=os.getenv("NODE_LON", ""), MQTT_HOST=MQTT_HOST)
+    # `backup_age`: minutes since the newest dump, measured by `planetai doctor` where BACKUP_DIR really is (-1: none)
+    here = backup_age is not None or fundamentals.backup_is_here()
+    age = fundamentals.backup_age() if backup_age is None else (None if backup_age < 0 else backup_age)
+    rows = fundamentals.assess(cfg, [{**r, "minutes": float(r["minutes"])} for r in seen], state["polls"] > 0,
+                               state.get("last_error"), tg_state["ok"], age, here, own_known)
+    return {"ok": not any(r["ok"] is False for r in rows), "missing": sum(r["ok"] is False for r in rows), "sources": rows}
+
+
 # Nothing finer than this may be announced. res 6 is roughly 3 km across; below that a node is
 # telling an open radio network which neighbourhood it is in, and that is not a thing anyone should
 # be able to do by typing a number into a settings box.
@@ -1313,10 +1452,11 @@ def sensors_(request: Request):
     room name and five decimals of position."""
     # `custody` travels with the row: it is the answer to "why is my cell partial", and a person looking at
     # /sensors should not have to rederive it from `local` and `kind`.
-    rows = q("SELECT sensor_id, source, name, lat, lon, indoor, local, custody, kind, scale, cadence, meta FROM sensors ORDER BY custody DESC, local DESC, name")
+    rows = q("SELECT sensor_id, source, name, room, source_name, lat, lon, indoor, local, custody, kind, scale, cadence, meta FROM sensors ORDER BY custody DESC, local DESC, name")
     if getattr(request.state, "share_trusted", False):
         return rows
     for r in rows:
+        r.pop("room", None); r.pop("source_name", None)   # which room is which is the household's
         # This household's own instruments stand in its house, so an untrusted reader gets the cell's centre
         # for them (R25). Everything else here is a public station, a model point or a lab, whose position is
         # public at its source; three decimals is what it always was.
@@ -1328,6 +1468,32 @@ def sensors_(request: Request):
         allow = _META_PUBLIC_FACILITY if r.get("kind") == "facility" else _META_PUBLIC
         r["meta"] = {k: v for k, v in (r["meta"] or {}).items() if k in allow} or None
     return rows
+
+
+@app.patch("/sensors/{sid}")
+def sensor_room(sid: str, body: dict, authorization: str = Header("")):
+    """Name the room a sensor is in, in the household's words (`{"room": "Kids"}`; null or "" gives the platform's name
+    back). The database makes the room the sensor's name whatever writes the row (init.sql 0.61), so every rule, the
+    report and every message say it. Admin token: it renames what the whole house reads."""
+    _admin(authorization)
+    room = body.get("room")
+    if room is not None and not isinstance(room, str):
+        raise HTTPException(422, "room is text, or null to give the platform's name back")
+    room = " ".join((room or "").split())[:40] or None
+    with db() as con, con.cursor() as cur:
+        cur.execute("SELECT name FROM sensors WHERE sensor_id = %s", (sid,))
+        was = cur.fetchone()
+        if not was:
+            raise HTTPException(404, "no such sensor")
+        cur.execute("""UPDATE sensors SET room = %s, name = CASE WHEN %s::text IS NULL THEN coalesce(source_name, name) ELSE name END
+                       WHERE sensor_id = %s RETURNING sensor_id, name, room, source_name""", (room, room, sid))
+        row = cur.fetchone()
+        # An event episode names its rooms by the sensors' names (events_pg.candidates) and matches them by name for
+        # the inside reading: the rename follows into every episode, so an open one keeps its room. What an alert
+        # said is left as it was sent.
+        cur.execute("UPDATE alert_events SET rooms = array_replace(rooms, %s, %s) WHERE %s = ANY(rooms)",
+                    (was["name"], row["name"], was["name"]))
+    return {"ok": True, "sensor": row}
 
 
 @app.get("/readings")
@@ -1543,9 +1709,11 @@ def forecast(hours: int = Query(24, ge=1, le=72)):
 
 
 @app.get("/observations")
-def observations():
-    """Latest value per slow-moving source: city statistics, model point samples, survey results."""
-    return q("SELECT * FROM observations ORDER BY scale, sensor_id, metric")
+def observations(request: Request, authorization: str = Header("")):
+    """Latest value per slow-moving source: city statistics, model point samples, survey results. A survey's
+    `private` counts (the things a home keeps) answer the admin token only, and never an agent."""
+    return q("SELECT * FROM observations" + ("" if _shows_private(request, authorization) else " WHERE " + packs.public_sql("observations"))
+             + " ORDER BY scale, sensor_id, metric")
 
 
 @app.get("/alerts")
@@ -1774,7 +1942,7 @@ def export(day: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$")):
             "day": day, "generated": datetime.now(timezone.utc).isoformat(), "version": os.getenv("NODE_VERSION", ""),
             "licence": "CC BY 4.0", "hourly": rows,
             "alerts": [{"t": a["ts"], "rule": a["rule_id"], "level": a["level"], "text": a["text"].split("\n")[0]} for a in alerts_],
-            "cells": cells_, "rho": rho_}
+            "cells": cells_, "rho": rho_, "offers": offers_now()["offers"]}
 
 
 @app.get("/place/geojson")
@@ -2585,6 +2753,14 @@ COMPANIONS = {
 NO_CACHE = {"cache-control": "no-cache, must-revalidate"}
 
 
+@app.get("/static/fonts/jetbrains-mono-latin.woff2", include_in_schema=False)
+def static_mono():
+    """The one path planetai-theme.css asks for the mono at (`fonts/…`; the theme is frozen, not this repo's to edit).
+    Every page requested it and got a 404 (14 Oct 2026); tokens.css's flat name is what loads the face. A fixed path,
+    not a parameter, so nothing a caller sends reaches the filesystem."""
+    return static_file("jetbrains-mono-latin.woff2")
+
+
 @app.get("/static/{name}", include_in_schema=False)
 def static_file(name: str, variant: str = "dark"):
     """The dashboard's ground and its data face.
@@ -2644,10 +2820,14 @@ def _ground_svg(variant: str = "dark") -> str | None:
 def _shows_private(request: Request, authorization: str = "", raw: bool = True) -> bool:
     """Whether this read may include `private` readings (packs.public_sql). Never for an agent, which says so with
     X-Agent on every call (app/agent.py), whatever token it carries: what a model reads can go to a provider. A raw
-    route (rows, series) answers them to the admin token only; a readout (`raw=False`) to anyone the page answers."""
+    route (rows, series) answers them to the admin token only; a readout (`raw=False`) to the household's own tokens
+    (admin, act) or this machine. Until 14 Oct a readout went to anyone the page answered, which at SHARE_LEVEL=open is
+    anyone on the network, and a parent's or a backup's token: the house's counts on a screen nobody in it owns."""
     if request.headers.get("x-agent"):
         return False
-    return not raw or _bearer_ok(authorization, os.getenv("ADMIN_TOKEN", "").strip())
+    if not raw:
+        return _bearer_ok(authorization, os.getenv("ADMIN_TOKEN", "").strip(), ACT_TOKEN()) or _is_local(request)
+    return _bearer_ok(authorization, os.getenv("ADMIN_TOKEN", "").strip())
 
 
 def _admin(authorization: str) -> None:
@@ -3053,6 +3233,234 @@ def species(request: Request, authorization: str = Header(""), cell: str | None 
     return {"cell": cell, "species": [{**x, "images": len(x["images"]), "cells": len(x["cells"])} for x in rows]}
 
 
+# ---------------------------------------------------------------- the things a home keeps (docs/SPEC_inventory.md)
+# One row per thing, kept as captures are, and three private counts per class written as readings whenever one
+# changes, so readouts, rules and cells can use them and nothing sends them (packs.public_sql). The admin token only.
+THING_CHOICES = {"used": ("weekly", "monthly", "yearly", "never"), "condition": ("works", "needs_repair", "broken"),
+                 "offer": ("no", "lend", "give")}
+
+
+def _thing_fields(body: dict, partial: bool) -> dict:
+    """A thing as the table keeps it, or a 422 a person can act on."""
+    out = {}
+    if "class" in body or not partial:
+        if body.get("class") not in THING_CLASSES:
+            raise HTTPException(422, f"class must be one of {', '.join(THING_CLASSES)}")
+        out["class"] = body["class"]
+    if "name" in body or not partial:
+        name = " ".join(str(body.get("name") or "").split())[:120]
+        if not name:
+            raise HTTPException(422, "a thing needs a name")
+        out["name"] = name
+    if "count" in body:
+        c = body["count"]
+        if not isinstance(c, int) or isinstance(c, bool) or not 1 <= c <= 10000:
+            raise HTTPException(422, "count is a whole number from 1")
+        out["count"] = c
+    for k, ok in THING_CHOICES.items():
+        if k in body:
+            if body[k] not in ok:
+                raise HTTPException(422, f"{k} must be one of {', '.join(ok)}")
+            out[k] = body[k]
+    if "note" in body:
+        out["note"] = str(body["note"] or "")[:500]
+    if "capture_id" in body:
+        out["capture_id"] = body["capture_id"] if isinstance(body["capture_id"], int) and not isinstance(body["capture_id"], bool) else None
+    return out
+
+
+def _thing_counts(cur, classes) -> None:
+    """Rewrite the three private counts of each class touched, now, on the node's own survey sensor."""
+    sid, now = f"things:{NODE}", datetime.now(timezone.utc)
+    cur.execute("""INSERT INTO sensors (sensor_id, source, name, kind, local, indoor, cadence)
+                   VALUES (%s, 'things', 'The things this home keeps', 'survey', TRUE, TRUE, 'P1D')
+                   ON CONFLICT (sensor_id) DO NOTHING""", (sid,))
+    for c in sorted({c for c in classes if c}):
+        cur.execute("""SELECT coalesce(sum(count), 0) AS stock,
+                              coalesce(sum(count) FILTER (WHERE used IN ('yearly', 'never')), 0) AS idle,
+                              coalesce(sum(count) FILTER (WHERE condition <> 'works'), 0) AS repair
+                       FROM things WHERE class = %s""", (c,))
+        n = cur.fetchone()
+        cur.executemany("""INSERT INTO readings (ts, sensor_id, metric, value) VALUES (%s, %s, %s, %s)
+                           ON CONFLICT (sensor_id, metric, ts) DO UPDATE SET value = EXCLUDED.value""",
+                        [(now, sid, f"{k}.{c}", float(n[k])) for k in THING_COUNTS])
+
+
+def _thing_out(r: dict) -> dict:
+    return {k: (v.isoformat() if isinstance(v, datetime) else v) for k, v in r.items()}
+
+
+@app.get("/things")
+def things_list(authorization: str = Header("")):
+    """Every thing, newest first, and the sums the Now door says in one line: how many, how many idle (used yearly or
+    never), how many waiting for a repair, how many offered."""
+    _admin(authorization)
+    rows = [_thing_out(r) for r in q("SELECT * FROM things ORDER BY id DESC")]
+    return {"things": rows, "classes": list(THING_CLASSES), "choices": THING_CHOICES, "summary": {
+        "things": sum(r["count"] for r in rows),
+        "idle": sum(r["count"] for r in rows if r["used"] in ("yearly", "never")),
+        "repair": sum(r["count"] for r in rows if r["condition"] != "works"),
+        "offered": sum(r["count"] for r in rows if r["offer"] != "no")}}
+
+
+@app.post("/things")
+def thing_add(body: dict, authorization: str = Header("")):
+    _admin(authorization)
+    f = _thing_fields(body, partial=False)
+    with db() as con, con.cursor() as cur:
+        cur.execute(f"INSERT INTO things ({', '.join(f)}) VALUES ({', '.join(['%s'] * len(f))}) RETURNING *", tuple(f.values()))
+        row = cur.fetchone()
+        _thing_counts(cur, [row["class"]])
+    return {"ok": True, "thing": _thing_out(row)}
+
+
+@app.patch("/things/{tid}")
+def thing_edit(tid: int, body: dict, authorization: str = Header("")):
+    _admin(authorization)
+    f = _thing_fields(body, partial=True)
+    if not f:
+        raise HTTPException(422, "nothing to change: class, name, count, used, condition, offer, note")
+    with db() as con, con.cursor() as cur:
+        cur.execute("SELECT class FROM things WHERE id = %s", (tid,))
+        was = cur.fetchone()
+        if not was:
+            raise HTTPException(404, "no such thing")
+        cur.execute(f"UPDATE things SET {', '.join(k + ' = %s' for k in f)} WHERE id = %s RETURNING *", (*f.values(), tid))
+        row = cur.fetchone()
+        _thing_counts(cur, [was["class"], row["class"]])   # a thing moved between classes changes both
+    return {"ok": True, "thing": _thing_out(row)}
+
+
+@app.delete("/things/{tid}")
+def thing_delete(tid: int, authorization: str = Header("")):
+    _admin(authorization)
+    with db() as con, con.cursor() as cur:
+        cur.execute("DELETE FROM things WHERE id = %s RETURNING class", (tid,))
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(404, "no such thing")
+        _thing_counts(cur, [row["class"]])
+    return {"ok": True}
+
+
+# ---------------------------------------------------------------- offers (docs/SPEC_inventory.md step 4)
+# A thing the household marks `lend` or `give` becomes a public line: its class, name, condition and count, at the
+# node's own res-8 cell, the one /health already names. Never the household, a point, a photo or a note. Whoever
+# wants it writes to the node's Telegram bot, which passes the message on (agent_loop.relay_offer); the household's
+# chat ids never show. Tomas, 13 Oct 2026: "option 1, the Telegram bot".
+BOT_EVERY = 86400
+
+
+def _bot_username() -> str | None:
+    """The bot's @name, asked of Telegram once a day with the token the node already holds. None without a bot."""
+    tok, chats = TG()
+    if not tok or not chats:
+        return None
+    known = state.get("bot") or {}
+    if time.time() - known.get("asked", 0) < BOT_EVERY:
+        return known.get("username")
+    try:
+        r = httpx.get(f"https://api.telegram.org/bot{tok}/getMe", timeout=10)
+        name = (r.json().get("result") or {}).get("username") if r.status_code == 200 else None
+    except Exception as e:  # noqa: BLE001 — the URL holds the token: log the kind of failure, never the error text
+        log.warning("telegram getMe: %s", type(e).__name__)
+        name = None
+    state["bot"] = {"username": name or known.get("username"), "asked": time.time() if name else time.time() - BOT_EVERY + 3600}
+    return state["bot"]["username"]
+
+
+def offers_now() -> dict:
+    import h3  # noqa: PLC0415
+    lat, lon = float(os.getenv("NODE_LAT", 0) or 0), float(os.getenv("NODE_LON", 0) or 0)
+    bot = _bot_username()
+    rows = q("SELECT id, class, name, condition, offer, count FROM things WHERE offer <> 'no' ORDER BY id")
+    return {"node": NODE, "cell": h3.latlng_to_cell(lat, lon, 8) if (lat or lon) else None,
+            "contact": f"https://t.me/{bot}" if bot else None,
+            "offers": [{**r, "ask": f"https://t.me/{bot}?start=offer-{r['id']}" if bot else None} for r in rows]}
+
+
+@app.get("/learned")
+def learned(request: Request, authorization: str = Header("")):
+    """What this node has learned (docs/SPEC_learn.md), newest checks first, each with its numbers and cases. The
+    admin token only: the cases carry the household's own notes. An agent reads it only while every model this node
+    may use is on this house's own machines (AGENT_PREFER=private); otherwise it is told why not."""
+    _admin(authorization)
+    if request.headers.get("x-agent") and settings.get("AGENT_PREFER", "private") != "private":
+        raise HTTPException(403, "what this house learned stays with its own machines: AGENT_PREFER is not private, "
+                                 "so a model here may be online. Read it on the page, Node, What it remembers.")
+    rows = q("SELECT * FROM learnings ORDER BY kind, CASE status WHEN 'holding' THEN 0 WHEN 'weakening' THEN 1 "
+             "WHEN 'too_early' THEN 2 ELSE 3 END, n DESC")
+    # how many diary entries the node keeps, by scale: Node's "What it remembers" counts them
+    kept = {r["scale"]: r["n"] for r in q("SELECT scale, count(*)::int AS n FROM digests GROUP BY scale")}
+    return {"learnings": learn.rank(rows, _people()), "digests": kept, "checked": state.get("learned_at") and
+            datetime.fromtimestamp(state["learned_at"], timezone.utc).isoformat(timespec="seconds")}
+
+
+def _people() -> dict:
+    r = q("SELECT people FROM household WHERE id = 1")
+    return (r[0].get("people") or {}) if r else {}
+
+
+@app.get("/household")
+def household(request: Request, authorization: str = Header("")):
+    """Who is in the house, as the household said (SPEC_learn §8): yes or no for each of `choices`. Guarded as
+    GET /learned: the admin token, and an agent only while AGENT_PREFER=private."""
+    _admin(authorization)
+    if request.headers.get("x-agent") and settings.get("AGENT_PREFER", "private") != "private":
+        raise HTTPException(403, "who is in this house stays with its own machines: AGENT_PREFER is not private")
+    return {"people": _people(), "choices": learn.PEOPLE}
+
+
+@app.put("/household")
+def household_set(body: dict, request: Request, authorization: str = Header("")):
+    """Replace the answers: {"people": {"older": true, ...}}. Only the keys in `choices`, only true or false; the rest
+    is refused, so nothing but these answers is ever kept. An agent may not write them."""
+    _admin(authorization)
+    if request.headers.get("x-agent"):
+        raise HTTPException(403, "who lives here is the household's to say, on the page")
+    p = body.get("people")
+    if not isinstance(p, dict) or any(k not in learn.PEOPLE or not isinstance(v, bool) for k, v in p.items()):
+        raise HTTPException(422, f"people is an object of true or false for {', '.join(learn.PEOPLE)}")
+    with db() as con, con.cursor() as cur:
+        cur.execute("""INSERT INTO household (id, people, updated_at) VALUES (1, %s, now())
+                       ON CONFLICT (id) DO UPDATE SET people = EXCLUDED.people, updated_at = now()""", (Jsonb(p),))
+    return {"ok": True, "people": p}
+
+
+@app.get("/learned/search")
+def learned_search(request: Request, q_: str = Query("", alias="q", max_length=200), scale: str = "",
+                   limit: int = Query(12, ge=1, le=50), authorization: str = Header("")):
+    """Search what this house learned and its digests (SPEC_learn §6): any of the words, ranked, newest first among
+    equals. No words lists the newest digests, of one `scale` if given. Postgres full-text search, 'simple' so English,
+    Indonesian and Spanish words all match as written. Guarded as GET /learned."""
+    _admin(authorization)
+    if request.headers.get("x-agent") and settings.get("AGENT_PREFER", "private") != "private":
+        raise HTTPException(403, "what this house learned stays with its own machines: AGENT_PREFER is not private")
+    if scale and scale not in learn.SCALES:
+        raise HTTPException(422, f"scale is one of {', '.join(learn.SCALES)}")
+    terms = learn.search_terms(q_)
+    if not terms:
+        return {"q": q_, "results": q("""SELECT 'digest' AS source, scale, period_start, label, text, numbers FROM digests
+                                         WHERE (%s = '' OR scale = %s) ORDER BY period_start DESC, scale LIMIT %s""",
+                                      scale, scale, limit)}
+    return {"q": q_, "results": q("""
+        WITH t AS (SELECT to_tsquery('simple', %s) AS query)
+        SELECT * FROM (
+          SELECT 'digest' AS source, scale, period_start, label, text, numbers, ts_rank(tsv, t.query) AS rank
+            FROM digests, t WHERE tsv @@ t.query AND (%s = '' OR scale = %s)
+          UNION ALL
+          SELECT 'learning', kind, NULL, key, statement, numbers, ts_rank(to_tsvector('simple', key || ' ' || statement), t.query)
+            FROM learnings, t WHERE %s = '' AND to_tsvector('simple', key || ' ' || statement) @@ t.query) x
+        ORDER BY rank DESC, period_start DESC NULLS LAST LIMIT %s""", terms, scale, scale, scale, limit)}
+
+
+@app.get("/offers")
+def offers():
+    """What this home would lend or give, as it chose to publish it: open at every SHARE_LEVEL, and in the daily
+    export. `ask` opens the node's Telegram bot on that offer; null when the node has no bot."""
+    return offers_now()
+
+
 @app.patch("/captures/{cid}")
 def capture_patch(cid: int, body: dict, request: Request, authorization: str = Header("")):
     """The household edits an image's words: `note`, `kind`, and `meta` (an object of short strings, replaced whole).
@@ -3103,6 +3511,8 @@ def capture_delete(cid: int, request: Request, authorization: str = Header("")):
     with db() as con, con.cursor() as cur:
         cur.execute("DELETE FROM captures WHERE id = %s RETURNING file", (cid,))
         row = cur.fetchone()
+        if row:   # a thing added from this photo stays, without a link to a picture that is gone
+            cur.execute("UPDATE things SET capture_id = NULL WHERE capture_id = %s", (cid,))
     if not row:
         raise HTTPException(404, "no such capture")
     path = os.path.join(CAPTURES_DIR, os.path.basename(row["file"]))
@@ -3112,16 +3522,26 @@ def capture_delete(cid: int, request: Request, authorization: str = Header("")):
 
 
 @app.get("/captures/{cid}/file")
-def capture_file(cid: int, request: Request, authorization: str = Header("")):
-    """The picture itself. Token only, like the row; the name is this node's own, never a client's path."""
+def capture_file(cid: int, request: Request, authorization: str = Header(""), w: int = Query(0, ge=0, le=1024)):
+    """The picture itself. Token only, like the row; the name is this node's own, never a client's path. `?w=` makes a
+    JPEG at most that many pixels a side, for a table's thumbnail: a drone picture is 11 MB."""
     _captures_auth(request, authorization)
-    from fastapi.responses import FileResponse  # noqa: PLC0415
+    from fastapi.responses import FileResponse, Response  # noqa: PLC0415
     rows = q("SELECT file, mime FROM captures WHERE id = %s", cid)
     if not rows:
         raise HTTPException(404, "no such capture")
     path = os.path.join(CAPTURES_DIR, os.path.basename(rows[0]["file"]))
     if not os.path.isfile(path):
         raise HTTPException(404, "the row is here but the file is gone from the captures folder")
+    if w:
+        import io  # noqa: PLC0415
+        from PIL import Image  # noqa: PLC0415
+        # ponytail: resized on every ask; a thumbnail cache beside the file when a table of hundreds feels slow
+        im = Image.open(path).convert("RGB")
+        im.thumbnail((w, w))
+        buf = io.BytesIO()
+        im.save(buf, "JPEG", quality=80)
+        return Response(buf.getvalue(), media_type="image/jpeg", headers={"Cache-Control": "private, max-age=86400"})
     return FileResponse(path, media_type=rows[0]["mime"])
 
 
@@ -3133,7 +3553,7 @@ FLOWS_VOCAB = "https://planetai.fab.city/vocab/flows/1.0/"
 # ponytail: copied from packs/flows/resources.yml (branch flows-pack-2026-09-28); read that file once the pack merges
 EYES_CLASSES = ("plant", "animal", "habitat", "food", "water", "compost", "waste_residual", "plastic_waste",
                 "packaging", "wood", "metal", "textile", "electronics", "filament", "fuel", "electricity", "part",
-                "filter", "furniture", "tool", "appliance", "garment", "micromobility", "goods", "other")
+                "filter", "furniture", "tool", "appliance", "garment", "micromobility", "vehicle", "goods", "other")
 # Two asks, because a 7B vision model asked for JSON straight from the picture invents (node #1, 12 Oct: dogs, cats
 # and a reef on a drone shot of roofs, looping until cut off). Looking first, in words, and filing those words second
 # keeps every finding to something the description said.
@@ -3144,7 +3564,8 @@ EYES_LOOK = ("A household took this picture of its own place ({kind}, near {city
 EYES_FILE = ("Here is a description of a picture:\n\n{summary}\n\nList each kind of thing the description says is "
              "there, once, as a finding, and leave out anything it says is absent. class: plant is any living plant or "
              "tree, animal any animal, habitat is ground made living, waste_residual and plastic_waste are rubbish, a "
-             "made thing goes under its own class or goods, and other is buildings, roads, cars and anything else. "
+             "made thing goes under its own class or goods, a car, motorbike or truck is vehicle, and other is "
+             "buildings, roads and anything else. "
              "name: as specific as the description is. count: only when the description gives a number, else null. "
              "issue: true only when the description says it is a problem. scientific: for a plant or animal only, its "
              "scientific name at the rank you are sure of (a species such as Cocos nucifera, a genus such as Plumeria, "

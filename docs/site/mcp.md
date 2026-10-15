@@ -8,7 +8,7 @@ everything measuring one place, from sensors on the wall to satellites overhead,
 tells the people there what to do. Raw readings never leave it." Nothing an agent does through it takes a
 reading off the machine.
 
-`app/agent.py` mounts it on the API at exactly `/mcp`, streamable HTTP, twenty tools over the existing
+`app/agent.py` mounts it on the API at exactly `/mcp`, streamable HTTP, twenty-one tools over the existing
 endpoints. The tools call the node's own API back on `127.0.0.1`, so they arrive as loopback; `report_now`,
 `settings_set` and `report_bundle` also carry the admin token. The same tools serve Claude Desktop or Claude
 Code on a laptop across the tailnet, the household's own model on Telegram, the dashboard's ask pane, and any
@@ -57,14 +57,14 @@ Every tool has one class, in `app/tool_classes.py`:
 
 | class | means | tools |
 |---|---|---|
-| `read` | asks the node a question; nothing changes | `status`, `health_check`, `sensors`, `context`, `readings`, `report_latest`, `report_bundle`, `history`, `alerts`, `settings_get`, `packs`, `cells`, `issues`, `series`, `export_day` |
+| `read` | asks the node a question; nothing changes | `status`, `health_check`, `sensors`, `context`, `readings`, `report_latest`, `report_bundle`, `history`, `alerts`, `settings_get`, `packs`, `cells`, `issues`, `series`, `export_day`, `learned` |
 | `act` | records that a person did something, in their own words | `act` |
 | `admin` | changes the node, runs code on it, or makes it speak to the household unprompted | `settings_set`, `run_pack_script`, `maintenance`, `report_now` |
 
 A remote agent, driven by a person, has all twenty. The household's own model on the node is handed the 16
 `read` and `act` tools and nothing else (`app/agent_loop.py`); see [The bot](bot.md). The dashboard's
 [ask pane](ask.md) calls in as `dashboard-chat` and runs 12 of the `read` tools, never `settings_get`,
-`report_bundle` or `export_day`; `act` and the `admin` tools become cards a person presses, and the pane runs none of them. Four tools write:
+`report_bundle` or `export_day`, nor `learned` unless the page carries the household's admin or act token (never on the Wall); `act` and the `admin` tools become cards a person presses, and the pane runs none of them. Four tools write:
 `act`, `report_now`, `settings_set` and `run_pack_script`. `maintenance` is `admin` and writes nothing: it
 answers with a command for a person to run.
 
@@ -75,7 +75,7 @@ Start with `health_check`, then `status`.
 | tool | arguments | returns |
 |---|---|---|
 | `status` | none | node, version, schema, uptime, last poll, readings ingested, polls, per-loop errors, mesh, ρ (the `/rho` body), whether the last backup succeeded |
-| `health_check` | none | `{ok, checks: [{check, ok, fix}]}`: polled in the last 15 minutes; no source errors; a backup in the last two days; no local sensor's ambient channel frozen; with a broker, LoRa radios heard in the last hour. Every failing check names its fix |
+| `health_check` | none | `{ok, checks: [{check, ok, fix}]}`: polled in the last 15 minutes; no source errors; a backup in the last two days; no local sensor's ambient channel frozen; with a broker, LoRa radios heard in the last hour. Every failing check names its fix. Also `sources`, the fundamental sources from [`GET /health/sources`](api.md), each with its state and, when not running, its fix; they never make `ok` false |
 | `issues` | `issue?` | the whole `/issues` object (the issues, `headline` and `headline_rule`, `labels`, `stations` and `stations_silent`, `metrics`, the `asks` ledger, `lead`, the `digest` with its four sentences, `simple` and `prompts`, `geometry`, the packs' `sections`, the alert `events`, each saying with `asking` whether it still asks), or one issue with `as_of` and `labels`: state, the four distances with provenance, the sentence, the open asks |
 | `sensors` | none | one row per sensor from `/stats`: local, indoor, kind, the 15-minute mean per metric, minutes silent; local first |
 | `context` | none | sea, weather, satellite air, place and land from `/observations`, labelled; or a note that the first poll fills this |
@@ -88,6 +88,7 @@ Start with `health_check`, then `status`.
 | `cells` | none | the Fab City Index cells with value, unit and state |
 | `packs` | none | the loaded packs: id, kind, description |
 | `export_day` | `day?` (default yesterday) | the open-data export for that day |
+| `learned` | `query?`, `scale?` | with nothing, what the house learned (SPEC_learn): what worked, what is usual, the alerts that may not fit, each the node's own sentence. With `query` (a few keywords) it searches those and the diary of days, weeks, months and years; `scale` narrows to one size, alone the newest. Answers only while `AGENT_PREFER=private`, and says why otherwise |
 | `settings_get` | none | every runtime setting with its group, help and value, the node's secrets and the keys a pack lists under `secrets:` masked; bootstrap keys read-only |
 | `maintenance` | `task`: update, backup, restore, restart, logs, doctor, storage, ui, telegram | the `planetai` command to run on the node, what it does and where. It runs nothing |
 | **`act`** | `alert_id`, `note` (required), `agent="agent"` | records `stage: acted` for that alert with the agent as actor, and returns `{recorded, alert_id, by}`. **Writes** |

@@ -11,7 +11,10 @@
    - the house, and a ring that leaves it when an alert went out that hour (red) or an answer came back (green).
    The hours replay: the last 6 (or 24) in 30 s (--motion-replay-loop), the strip under the map says which.
    Without the token the hourly table, the map and the wind are not this screen's: it draws the 15-minute means now,
-   held still, on the land's colour, and says so. Under reduced motion it holds the last hour still. */
+   held still, on the land's colour. Under reduced motion it holds the last hour still.
+   15 Oct (read from 3 m): every word on it is at the wall's type floor (--wf, read off #wfield's font size); the clock
+   shows only while the hours replay, beside the wind; the scale bar and the counts box are gone; the caption under it
+   says in words what the red discs mean against the house, at the hour drawn (wallCaption). */
 const WALLMAP = { map: null, ov: null, wind: null, stop: null };
 
 /* A wind engine for any map: particles moved by the field's hour, the screen fading behind them (Agafonkin's CPU
@@ -68,8 +71,9 @@ async function wallMap(o) {
   const vals = [];
   for (const s of all) for (let h = h0; h < B.length; h++) { const v = replay ? meanAt(s.sensor_id, h) : now15(s.sensor_id); if (v != null) vals.push(v); }
   vals.sort(d3.ascending);
-  const cap = Math.max(d3.quantile(vals, .98) ?? 1, line ?? 0, 1e-9), big = o.size > 700, rMax = big ? 34 : 24, rad = v => v == null ? 0 : 3 + (rMax - 3) * Math.sqrt(Math.min(v, cap) / cap);
-  const C = (k, a = 1) => rgba(k, a), mono = 'JetBrains Mono, monospace', f = big ? 1.35 : 1;
+  const wf = parseFloat(getComputedStyle(o.el).fontSize) || 28, f = wf / 28;      /* the type floor, in pixels, on this screen */
+  const cap = Math.max(d3.quantile(vals, .98) ?? 1, line ?? 0, 1e-9), rMax = 40 * f, rad = v => v == null ? 0 : 4 * f + (rMax - 4 * f) * Math.sqrt(Math.min(v, cap) / cap);
+  const C = (k, a = 1) => rgba(k, a), mono = 'JetBrains Mono, monospace';
 
   const base = await window.groundBase('dark');
   o.el.innerHTML = `<div class="wallmap" style="width:${o.size}px;height:${o.size}px"></div><div class="wclock" aria-live="off"></div>`;
@@ -78,17 +82,16 @@ async function wallMap(o) {
   map.on('load', () => { for (const l of ['v-road-label', 'v-poi-label']) if (map.getLayer(l)) map.setLayoutProperty(l, 'visibility', 'none');
     if (map.getLayer('v-place-label')) map.setPaintProperty('v-place-label', 'text-opacity', .45); });
   const bb = new maplibregl.LngLatBounds(D.point, D.point); pub.forEach(s => bb.extend([s.lon, s.lat]));
-  map.fitBounds(bb, { padding: big ? 70 : 40, duration: 0, maxZoom: 14 });
+  map.fitBounds(bb, { padding: 70 * f, duration: 0, maxZoom: 14 });
   const ov = WALLMAP.ov = new deck.MapboxOverlay({ interleaved: false, layers: [] }); map.addControl(ov);
-  map.addControl(new maplibregl.ScaleControl({ maxWidth: big ? 120 : 80, unit: 'metric' }), 'bottom-left');
 
   /* the wind: this hour of the model's field, not the replayed hour (the field looks forward; the hours look back) */
-  const W = await fetch('/ground/wind', { headers: DOORS_AUTH() }).then(r => r.status === 200 ? r.json() : null).catch(() => null);
+  const W = await doorsFetch('/ground/wind').then(r => r.status === 200 ? r.json() : null).catch(() => null);
   let wind = null;
   const windHour = W ? W.times.reduce((b, t, i) => Math.abs(Date.parse(t) - Date.now()) < Math.abs(Date.parse(W.times[b]) - Date.now()) ? i : b, 0) : 0;
   map.once('idle', () => { if (W) wind = WALLMAP.wind = windOn(map, W, windHour, 'rgba(249,245,242,.5)'); });
   const COMPASS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
-  const windWords = W && W.at_node.speed_kmh[windHour] != null ? `wind now ${Math.round(W.at_node.speed_kmh[windHour])} km/h from ${COMPASS[Math.round(W.at_node.from_deg[windHour] / 22.5) % 16]} · model` : 'no wind field on this screen';
+  const windWords = W && W.at_node.speed_kmh[windHour] != null ? `wind ${Math.round(W.at_node.speed_kmh[windHour])} km/h from ${COMPASS[Math.round(W.at_node.from_deg[windHour] / 22.5) % 16]}` : '';
 
   const hourOfT = t => Math.min(B.length - 1, h0 + Math.floor(t / HS));
   const layers = (t) => {
@@ -104,37 +107,32 @@ async function wallMap(o) {
         getFillColor: d => line != null && d.v > line ? C('--signal-worse', .5) : C('--ink', .16), getLineColor: d => line != null && d.v > line ? C('--signal-worse') : C('--ink', .85),
         lineWidthUnits: 'pixels', getLineWidth: 1.5, transitions: { getRadius: { duration: HS * 700, easing: d3.easeCubicInOut }, getFillColor: HS * 500 },
         updateTriggers: { getRadius: h, getFillColor: h, getLineColor: h } }),
-      new deck.TextLayer({ id: 'st-v', data: pts, characterSet: 'auto', getPosition: d => d.p, getText: d => fmt(d.v, 0), getSize: 13 * f, fontFamily: mono, fontWeight: 600,
-        getColor: C('--ink'), getPixelOffset: d => [rad(d.v) + 5, 0], getTextAnchor: 'start', getAlignmentBaseline: 'center', updateTriggers: { getText: h, getPixelOffset: h } }),
-      ...ev.map((e, i) => new deck.ScatterplotLayer({ id: 'ev' + i, data: [D.point], getPosition: d => d, radiusUnits: 'pixels', getRadius: 10 + (90 + i * 18) * k * f,
+      new deck.TextLayer({ id: 'st-v', data: pts, characterSet: 'auto', getPosition: d => d.p, getText: d => fmt(d.v, 0), getSize: wf, fontFamily: mono, fontWeight: 600,
+        getColor: C('--ink'), getPixelOffset: d => [rad(d.v) + 6 * f, 0], getTextAnchor: 'start', getAlignmentBaseline: 'center', updateTriggers: { getText: h, getPixelOffset: h } }),
+      ...ev.map((e, i) => new deck.ScatterplotLayer({ id: 'ev' + i, data: [D.point], getPosition: d => d, radiusUnits: 'pixels', getRadius: (10 + (90 + i * 18) * k) * f,
         stroked: true, filled: false, getLineColor: e === 'alert' ? C('--signal-worse', .9 * (1 - k)) : C('--rings', .9 * (1 - k)), lineWidthUnits: 'pixels', getLineWidth: 2 })),
-      new deck.ScatterplotLayer({ id: 'house', data: [D.point], getPosition: d => d, radiusUnits: 'pixels', getRadius: rad(hmean) || 7, stroked: true, filled: true,
+      new deck.ScatterplotLayer({ id: 'house', data: [D.point], getPosition: d => d, radiusUnits: 'pixels', getRadius: rad(hmean) || 9 * f, stroked: true, filled: true,
         getFillColor: C('--ink'), getLineColor: C('--ground'), lineWidthUnits: 'pixels', getLineWidth: 2, transitions: { getRadius: HS * 700 }, updateTriggers: { getRadius: h } }),
       new deck.TextLayer({ id: 'house-l', data: [D.point], characterSet: 'auto', getPosition: d => d, getText: () => `this house${hmean != null ? ` · ${fmt(hmean, 0)} ${unitOf(M)}` : ''}`,
-        getSize: 13 * f, fontFamily: mono, fontWeight: 600, getColor: C('--ink'), getPixelOffset: [0, (rad(hmean) || 7) + 14], getTextAnchor: 'middle',
+        getSize: wf, fontFamily: mono, fontWeight: 600, getColor: C('--ink'), getPixelOffset: [0, (rad(hmean) || 9 * f) + wf * .75], getTextAnchor: 'middle',
         background: true, getBackgroundColor: C('--ground', .85), backgroundPadding: [4, 2], updateTriggers: { getText: h, getPixelOffset: h } }),
     ];
   };
 
-  /* the words beside it and the clock on it: this hour's counts, then the window's */
-  const tot = { in: Object.values(F.counts).reduce((a, n) => a + d3.sum(n.slice(h0)), 0), out: F.alerts.filter(a => a.h >= h0).length, back: F.answers.filter(a => a.h >= h0).length };
+  /* the clock on it, only while the hours replay (the time now is beside the sentence), and the wind */
   let shown = -1;
   const words = t => {
     const h = replay ? hourOfT(t) : B.length - 1; if (h === shown) return; shown = h;
-    const st = { in: Object.values(F.counts).reduce((a, n) => a + (n[h] || 0), 0), out: F.alerts.filter(a => Math.floor(a.h) === h).length, back: F.answers.filter(a => Math.floor(a.h) === h).length };
-    o.el.querySelector('.wclock').innerHTML = `<b>${hhmm(B[h])}</b><span>${dLabel(dayOf(B[h])).split(',')[0]} · ${replay ? `the last ${WIN} hours, replayed` : 'now, held still'}</span><span>${esc(windWords)}</span>`;
-    o.side && (o.side.innerHTML = `<div class="fwords"><div class="k">${hhmm(B[h])} · this hour, then the last ${WIN}</div>`
-      + [['readings in', F.counted ? st.in : '—', F.counted ? tot.in : '—', 'ink', F.counted ? 'from every source on the map' : 'counted with the token'],
-         ['alerts out', st.out, tot.out, 'red', 'a ring leaves the house'], ['answers back', st.back, tot.back, 'green', 'a loop closed']]
-        .map(([t2, a, z, cls, s2]) => `<div class="fc ${cls}"><i></i><span>${t2}<small>${s2}</small></span>${num('wall.' + t2, a, `this hour; ${z} in ${WIN} hours`, `<b>${a}</b>`)}<em>${z}</em></div>`).join('')
-      + `<p class="fine">A disc’s area is that hour’s mean of ${said(labelOf(M))} at that station, one scale for the window; red is over the air line. The streaks are the wind now, a model.</p></div>`);
+    o.el.querySelector('.wclock').innerHTML = (replay ? `<b>${hhmm(B[h])}</b><span>the last ${WIN} hours, replayed</span>` : '') + (windWords ? `<span>${esc(windWords)}</span>` : '');
+    const v = s => replay ? meanAt(s.sensor_id, h) : now15(s.sensor_id);      /* the caption reads the hour the discs show */
+    if (o.cap) o.cap.textContent = wallCaption(d3.mean(house.map(v).filter(x => x != null)) ?? null, pub.map(v), line, replay ? `at ${hhmm(B[h])}` : 'now');
     o.time && o.time.querySelectorAll('.h').forEach(x => x.classList.toggle('on', +x.dataset.h === h));
   };
   if (o.time) {
     o.time.innerHTML = `<div class="seg" role="group" aria-label="Window">${WINS.map(w2 => `<button data-w="${w2}" class="${w2 === WIN ? 'on' : ''}">${w2} h</button>`).join('')}</div>`
       + `<button class="play" aria-label="Pause">❚❚</button><div class="hours" style="grid-template-columns:repeat(${WIN},minmax(0,1fr))">${B.slice(h0).map((b, j) => { const i = h0 + j, al = F.alerts.filter(a => Math.floor(a.h) === i).length, an = F.answers.some(a => Math.floor(a.h) === i);
         return `<button class="h" data-h="${i}" title="${hhmm(b)}"><span>${WIN <= 6 || hourOf(b) % 6 === 0 ? hhmm(b) : ''}</span>${al ? `<i class="a" style="height:${Math.min(14, 3 + al * 2)}px"></i>` : ''}${an ? '<i class="b"></i>' : ''}</button>`; }).join('')}</div>`
-      + `<span class="k">${replay ? `${WIN} hours in ${LOOP} s` : D.raw ? 'reduced motion: the last hour, held' : 'the hours replay with the token'} · red: alerts sent · green: answers back</span>`;
+      + `<span class="k">${replay ? `${WIN} hours in ${LOOP} s` : D.raw ? 'reduced motion: the last hour, held' : 'the last half hour, held still'} · red: alerts sent · green: answers back</span>`;
     o.time.querySelectorAll('.seg button').forEach(b => b.onclick = () => +b.dataset.w !== WIN && wallMap({ ...o, win: +b.dataset.w }));
   }
   let tHold = replay ? 0 : LOOP - HS * .5, t0 = performance.now(), paused = !replay, last = 0;

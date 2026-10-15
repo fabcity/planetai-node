@@ -40,7 +40,7 @@ Containers on macOS get CPU only, Intel and Apple Silicon alike; this is the one
 
 ## What the model is given
 
-The loop hands the model 16 of the node's 20 MCP tools: the `read` ones and `act`. It cannot change a
+The loop hands the model 17 of the node's 21 MCP tools: the `read` ones and `act`. It cannot change a
 setting, run a pack's code, or make the node message the household by itself. The log says so each time the loop
 opens a session to the node: "tools withheld from the local model (admin): maintenance, report_now, run_pack_script,
 settings_set". Every rung gets the same 16, local, remote or online. A person driving an agent over the
@@ -110,8 +110,43 @@ set to Bahasa Indonesia they fall back to English, while the model's answers fol
 | `/act 12 closed the windows` | records the action on alert 12 in those words, with the actor `<AGENT_NAME>/telegram`; replies "Recorded: you acted on #12." |
 | `/act 12` | records nothing and asks "What did you do about #12?", with the form to send it in: `/act 12 <what you did>` |
 | `/stack [issue]` | the issue's state, its sentence in your language, the four distances with their provenance and unit, and up to two open alerts (on a node whose alert engine is `shadow` or `events`, not the heat and air alerts an event stands for): a template over the `issues` tool, no model ever |
+| `/learned` | what the node learned here: per learning, the alert as the household calls it and the verdict first ("An air alert: acting on it seemed to make it worse than leaving it (the finding holds)"), then its own sentence with the numbers (SPEC_learn §4): a template over the `learned` tool, no model. Empty until the first daily check, and told why when `AGENT_PREFER` is not `private` |
+| `/learned day` · `week` · `month` · `year` | the newest diary entry of that size, as the morning memory carries it: no model |
+| `/learned smoke` | the five diary entries and learnings that best match the words, newest first among equals: no model |
 | `/model [local\|remote\|online\|auto]` | pins a rung for this chat and prints the ladder: each rung, its model, its host, whether it is currently skipped, and what `AGENT_PREFER` means (`private`: "the node's own machines only, nothing leaves the network") |
 | Event buttons | When the bot has announced itself (`TELEGRAM_BUTTONS=1`), event messages carry three buttons: Done (`acted`), Not now (`acknowledged`), Doesn't fit (`dismissed`). Pressing one posts `POST /actions` with `event_id`, `stage`, `actor`, `note`; Doesn't fit asks "what did you do instead?" and keeps the reply as the note. Labels in en/id/es. |
+
+## Sending a picture
+
+A picture sent to the bot is kept on the node, as **+ Add an image** on the dashboard keeps one: the bot fetches it
+from Telegram and posts it to `POST /captures` (see [API](api.md)) with the sender's first name as `actor`, the caption
+as the note, and `describe=1`. It answers "Kept. The image model on this machine is describing it; it will be in Data ›
+Images in a minute.", or "Kept. It is in Data › Images. No image model is set, so nothing describes it yet." when no
+`EYES_MODEL` is set; "That picture is already kept." for one the node has (the same file, by its sha256); and "The
+node did not keep it:" with the node's own reason otherwise.
+
+- **As a photo**, Telegram recompresses it and drops its EXIF, so the node takes the largest size, dates it by the
+  message and places it in the node's own cell.
+- **As a file** (Telegram's *File* instead of *Photo*), the original goes to the node byte for byte. Its own date and
+  GPS are used, then removed from the stored copy as with every capture. Send a picture taken somewhere else this way.
+- **A tag in the caption** names what took it: `#drone`, `#microscope`, `#camera` or `#balloon`; none means `phone`.
+  The tag is taken out of the note; any other `#word` stays in it.
+- **Refused, with the reason:** a file that is not an image ("I keep pictures only"), and one over 20 MB, the most
+  the Bot API lets a bot fetch (add it from the dashboard instead). If the node refuses the bot's token, the reply
+  says so: the agent's `ADMIN_TOKEN` is not the app's.
+
+Only the household's chats (`TELEGRAM_CHAT_IDS`) can send pictures. A picture from any other chat is ignored and
+logged, like the rest of what a stranger sends. The download URL holds the bot token, so a failed download is logged
+by its error's type only. Telegram's location messages are not read: a photo is placed by its own GPS or the node's
+cell. The bot does not send the image model's description back; it is on the image's card. Replies in en and es.
+
+## Offers: someone who is not the household
+
+Everything else a chat outside `TELEGRAM_CHAT_IDS` sends is ignored, a picture included. The one exception is an offer (SPEC_inventory step 4). An offer's `ask` link (`t.me/<bot>?start=offer-<id>`, in `GET /offers` and the daily export) opens the bot on that offer. It answers "Write one message about the cordless drill (to borrow)…", and the next message, within 30 minutes, goes to every household chat:
+
+> 📦 Someone asks about your offer #4, the cordless drill: … — Wayan @wayan_b
+
+The sender is told "Passed on". You write back to them yourself through their @username. When they have none, both sides are told they can be reached only if their message said how. One message per chat an hour; a later one is ignored like any stranger's. The household's chat ids never show, and nothing the sender writes is kept. Labels in en and es.
 
 ## What leaves the network
 

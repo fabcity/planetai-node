@@ -5,7 +5,7 @@
    The seven one-line helpers are copied from doors-core.js, which boots the doors on load and cannot be imported. */
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const hhmm = iso => iso ? iso.slice(11, 16) : '';
+const hhmm = iso => iso ? doorsLocal(iso, D && D.tz).slice(11, 16) : '';   /* in the node's zone (doors-load.js) */
 const fmt = (v, dp) => v == null || Number.isNaN(+v) ? '—' : (+v).toFixed(dp);
 const NODE = '/static/';
 const said = x => `<span class="said">${esc(x)}</span>`;
@@ -28,7 +28,8 @@ if (location.hash.startsWith('#act=')) {
   try { localStorage.setItem('planetai_act', decodeURIComponent(location.hash.slice(5))); } catch (e) { /* no storage here */ }
   history.replaceState(null, '', location.pathname + location.search);
 }
-const hasToken = () => { try { return !!localStorage.getItem('planetai_act'); } catch (e) { return false; } };
+/* either token unlocks the phone, as DOORS_TOKEN reads them: a phone unlocked with the admin token is not locked */
+const hasToken = () => !!DOORS_TOKEN();
 const bootOff = () => { const a = $('#asking'); if (a) a.remove(); };
 
 async function boot() {
@@ -46,7 +47,7 @@ async function boot() {
     /* /issues refused this screen (the default SHARE_LEVEL=off): the node's own sentence, then the unlock field */
     const [h, r] = await Promise.all([
       fetch('/health').then(x => x.ok ? x.json() : ({})).catch(() => ({})),
-      fetch('/issues', { headers: DOORS_AUTH() }).then(async x => x.ok ? null : (await x.json().catch(() => ({}))).error || null).catch(() => null),
+      doorsFetch('/issues').then(async x => x.ok ? null : (await x.json().catch(() => ({}))).error || null).catch(() => null),
     ]);
     refusedHealth = h; refusedSentence = r || e.message;
     drawRefused();
@@ -167,7 +168,14 @@ async function captureSubmit(ev) {
 
 /* ---- the Decide card (§6) ---- */
 function decideHTML(it) {
-  const e = (D.events || []).find(x => x.issue === leadKey && !x.cleared_at);
+  /* whether something is asked is the node's one answer (/issues asking), as on Now and the Wall: an alert still true
+     that no event stands for is asked too, and answered on Telegram */
+  const ask = (it.asking || [])[0], E = D.events || [];
+  const e = ask ? E.find(x => ask.event_id != null && x.id === ask.event_id) : E.find(x => x.issue === leadKey && !x.cleared_at);
+  if (ask && !e) {
+    return `<div class="decide"><div class="k">decide · ${said(it.name)} · asked since ${hhmm(ask.since)} · still open</div>`
+      + `<p class="dq">${said(ask.says || '')}</p>${ask.how ? `<p class="dm">${said(ask.how)}</p>` : ''}</div>`;
+  }
   if (!e) {
     return `<div class="decide"><p class="dq">Nothing is asked now.</p>`
       + `<p class="dm">${it.line != null ? `${esc(fmt(it.line, it.dp))} ${esc(it.unit || '')} · ${esc(it.line_source || '')}` : 'this issue has no line'}</p></div>`;

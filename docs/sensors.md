@@ -123,7 +123,7 @@ The node writes it itself, from SQL against its own tables, so a node with no mo
 Two numbers in it are worth knowing about. **Notability** is the window's mean against the mean of the same local hours
 on each of the previous seven days, in standard deviations of that baseline; it is null until three days exist, so a
 node in its first three days claims nothing. It decides which two places get a sentence, which is how the report can say "the
-kitchen ran higher than usual" without anyone reading a chart. **Trend** is the digest's ±3 rule read across to each
+air in Kitchen was dirtier than usual" without anyone reading a chart. **Trend** is the digest's ±3 rule read across to each
 metric's own units: 3 µg/m³ for PM2.5, half a degree for a room's temperature, 5% of the window's range for a metric
 with no line of its own.
 

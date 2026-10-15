@@ -49,6 +49,11 @@ STATE_SENTENCES = ("context", "none")
 # and `event` the clause for the day it crossed and came back — both empty when there is nothing
 # true to say, so the sentence never asserts what the reading denies.
 PLACEHOLDERS = ("verb", "n", "unit", "where", "cmp", "span", "since", "line", "event")
+# A sensed issue's `day` templates (one per live relation, under and near) say the day behind the hour: the part of
+# the day that was over the line, until when, for how long. They may ask for these three besides the ones above.
+# The parts start at these local hours; `day.parts` names each in the issue's own words.
+DAY_PLACEHOLDERS = ("part", "until", "hours")
+DAY_PARTS = ((0, "night"), (6, "morning"), (12, "afternoon"), (18, "evening"))
 
 WHERE_FROM = ("stats", "observations", "earth")
 AGGREGATES = ("mean", "median", "fenced_median")
@@ -470,6 +475,16 @@ def _problems(key: str, d: dict) -> list[str]:
                 if not (s.get("verbs") or {}).get(t):
                     p.append(f"{key}: sentences.{loc} uses {{verb}}, so sentences.{loc}.verbs.{t} "
                              f"is needed")
+        day = s.get("day")
+        if day is not None:
+            for rel in ("under", "near"):
+                for ph in re.findall(r"\{(\w+)\}", str(day.get(rel) or "")):
+                    if ph not in PLACEHOLDERS + DAY_PLACEHOLDERS:
+                        p.append(f"{key}: sentences.{loc}.day.{rel} asks for {{{ph}}}, which the engine does not fill")
+            if not all((day.get("parts") or {}).get(n) for _, n in DAY_PARTS):
+                p.append(f"{key}: sentences.{loc}.day.parts needs {', '.join(n for _, n in DAY_PARTS)}")
+            if not (isinstance(day.get("hours"), list) and len(day["hours"]) == 2):
+                p.append(f"{key}: sentences.{loc}.day.hours is two forms, one hour and many: [\"{{n}} hour\", \"{{n}} hours\"]")
         for w in (d.get("where") or {}).get(loc, {}):
             if w not in DISTANCES:
                 p.append(f"{key}: where.{loc}.{w} is not one of {', '.join(DISTANCES)}")
@@ -600,7 +615,10 @@ def pack_sections(manifests: list[dict]) -> list[dict]:
                 _warn_once("pack %s: section %s is already declared by another pack; leaving it out", pid, sec["id"])
                 continue
             seen.add(sec["id"])
-            out.append({**sec, "pack": pid})
+            # A core pack is on every node, switched on or not; a wild one was added on purpose (`.wild`, from
+            # `planetai packs add`). engine._sections leaves a core pack's section out until a row of it exists.
+            core = bool(m.get("path")) and not (Path(m["path"]) / ".wild").is_file()
+            out.append({**sec, "pack": pid, **({"core": True} if core else {})})
     return out
 
 

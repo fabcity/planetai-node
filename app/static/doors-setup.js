@@ -15,16 +15,16 @@
    key with choices offers only them; a secret is write-only; the pack switches write PACKS_ENABLED; what is read at
    start is shown and never sent. ponytail: the group words are copied from dashboard.js (GROUPS) because four suites
    read that pane out of that file by name; one copy when / becomes the doors. */
-const SETUP = { desc: null, packs: [], group: null, loaded: {}, drawnPacks: '', dirty: false, history: null };
+const SETUP = { desc: null, packs: [], sources: null, group: null, loaded: {}, drawnPacks: '', dirty: false, history: null };
 const SETUP_GROUPS = {
-  basics: ['Basics', 'This place: what it watches, in order, what kind of node it is, its language and how its page opens. Its name, city, position and time zone are read once at start: change them in .env on the node, then run planetai restart.'],
+  basics: ['Basics', 'This place: what it watches, in order, what kind of node it is, its language and how its page opens. Its name, city, position and time zone are read once at start.'],
   sources: ['Sources', 'What the node reads: your sensors, your account, and the public stations and portals around you. Sources that come as packs are switched on and set under Packs.'],
   alerts: ['Alerts', 'Reports at the hours you choose, in this node’s own time zone; between them, only what you asked to be interrupted for; and how a loop is closed.'],
   model: ['Model', 'Which model answers, here and on Telegram alike. The strongest one the node can reach is used, and its keys are under Keys.'],
   packs: ['Packs', 'Which packs load, each with its own settings in its card. Code packs stay off until you allow them; read one before you do.'],
   keys: ['Keys', 'Every secret in one place. Each is masked once saved and never shown again.'],
   sharing: ['Sharing', 'Who may read this node, and everything it sends or announces beyond this machine. Readings stay here; hourly means, Index cells and ρ travel.'],
-  system: ['System', 'Tuning numbers, and what is read once at start: the port, extra containers, backups, the poll interval. Change those in .env on the node, then run planetai restart.'],
+  system: ['System', 'Tuning numbers, and what is read once at start: the port, extra containers, backups, the poll interval.'],
 };
 const SETUP_BOOLS = /^(BAD_ENABLED|OPENMETEO_ENABLED|SENSOR_INDOOR|MESH_ALERTS|HA_DISCOVERY|EXPORT_ENABLED|IPFS_PUBLISH|QUIET_HOURS|BAD_INCLUDE_INDOOR|PACKS_ALLOW_CODE)$/;
 /* What a screen without the token gets at each level: the node's own rule (app/main.py _SHARE_OFF / _SHARE_OPEN). */
@@ -36,8 +36,8 @@ const sq = s => document.querySelector('#setupv2 ' + s), sqa = s => document.que
 const sTitle = g => (SETUP_GROUPS[g] || [g.charAt(0).toUpperCase() + g.slice(1)])[0];
 const sGroups = d => { const seen = []; for (const r of d.runtime || []) if (!seen.includes(r.group)) seen.push(r.group);
   for (const b of d.bootstrap || []) if (b.group && !seen.includes(b.group)) seen.push(b.group); return seen; };
-const SECTIONS = () => [...(SETUP.desc ? sGroups(SETUP.desc) : []), 'machine', 'screen', 'updates'];
-const sName = g => ({ screen: 'This screen', updates: 'Updates', machine: 'Machine' })[g] || sTitle(g);
+const SECTIONS = () => [...(SETUP.desc ? sGroups(SETUP.desc) : []), 'rooms', 'machine', 'screen', 'updates'];
+const sName = g => ({ screen: 'This screen', updates: 'Updates', machine: 'Machine', rooms: 'Rooms' })[g] || sTitle(g);
 
 VIEWS.setup = async function () {
   if (!SETUP.desc) await setupLoad();
@@ -49,9 +49,10 @@ VIEWS.setup = async function () {
 async function setupLoad() {
   const tok = (() => { try { return localStorage.getItem('planetai_admin') || ''; } catch (e) { return ''; } })();
   SETUP.desc = await fetch('/settings', { headers: tok ? { authorization: 'Bearer ' + tok } : {} }).then(r => r.json()).catch(() => null);
-  SETUP.packs = await fetch('/packs', { headers: DOORS_AUTH() }).then(r => r.ok ? r.json() : []).catch(() => []);
-  [SETUP.storage, SETUP.machine] = await Promise.all(['storage', 'machine'].map(r => fetch('/' + r, { headers: DOORS_AUTH() }).then(x => x.ok ? x.json() : null).catch(() => null)));
-  SETUP.history = tok ? await fetch('/actions?stage=settings&limit=40', { headers: DOORS_AUTH() }).then(r => r.ok ? r.json() : null).catch(() => null) : null;
+  SETUP.packs = await doorsFetch('/packs').then(r => r.ok ? r.json() : []).catch(() => []);
+  [SETUP.storage, SETUP.machine] = await Promise.all(['storage', 'machine'].map(r => doorsFetch('/' + r).then(x => x.ok ? x.json() : null).catch(() => null)));
+  SETUP.history = tok ? await doorsFetch('/actions?stage=settings&limit=40').then(r => r.ok ? r.json() : null).catch(() => null) : null;
+  SETUP.sources = tok ? await doorsFetch('/health/sources').then(r => r.ok ? r.json() : null).catch(() => null) : null;
   const hash = location.hash.split('/')[1];
   if (hash && SECTIONS().includes(hash)) SETUP.group = hash;
   if (!SETUP.group || !SECTIONS().includes(SETUP.group)) SETUP.group = SETUP.desc && SETUP.desc.unlocked ? (sGroups(SETUP.desc)[0] || 'screen') : 'screen';
@@ -66,7 +67,7 @@ function setupDraw() {
     + `<p class="lede">Everything here is live within about twenty seconds; nothing needs a restart. A blank field hands the setting back to <code>.env</code>, and a value set here overrides it.</p></header>`
     + `<div class="sgrid"><nav class="snav" aria-label="Set up sections">${SECTIONS().map(s => `<a href="#setup/${s}" class="${s === g ? 'on' : ''}" data-s="${s}">`
       + `<span>${esc(sName(s))}</span>${s === 'screen' ? `<i>${unlocked ? 'unlocked' : 'locked'}</i>` : s === 'updates' ? (D.health.release || {}).newer ? '<i>new</i>' : '' : s === 'machine' ? (SETUP.storage && SETUP.storage.days_left != null ? `<i>${sDays(SETUP.storage.days_left)}</i>` : '') : setHere(s) ? `<i>${setHere(s)} set</i>` : ''}</a>`).join('')}</nav>`
-    + `<section class="spane" aria-live="polite">${g === 'screen' ? sScreen(unlocked) : g === 'updates' ? sUpdates() : g === 'machine' ? sMachine() : sGroup(g, unlocked)}</section></div>`
+    + `<section class="spane" aria-live="polite">${sTodo()}${g === 'screen' ? sScreen(unlocked) : g === 'updates' ? sUpdates() : g === 'machine' ? sMachine() : g === 'rooms' ? sRooms(unlocked) : sGroup(g, unlocked)}</section></div>`
     + `<div class="sbar" id="sbar" hidden><span id="scount"></span><span class="sp"></span><button type="button" class="sbtn" id="sdiscard">Discard</button><button type="button" class="sbtn primary" id="ssave">Save changes</button></div>`;
   sqa('.snav a').forEach(a => a.onclick = ev => {
     ev.preventDefault();
@@ -77,7 +78,41 @@ function setupDraw() {
   const tokForm = sq('#sunlock'); if (tokForm) tokForm.onsubmit = sUnlock;
   const qrB = sq('#sqrb'); if (qrB) qrB.onclick = sQR;
   const lockB = sq('#slock'); if (lockB) lockB.onclick = () => { try { localStorage.removeItem('planetai_admin'); localStorage.removeItem('planetai_act'); } catch (e) { /* none */ } location.reload(); };
-  sq('#ssave').onclick = sSave; sq('#sdiscard').onclick = () => { SETUP.dirty = false; setupDraw(); };
+  sq('#ssave').onclick = () => sSave(); sq('#sdiscard').onclick = () => { SETUP.dirty = false; setupDraw(); };
+  sqa('[data-room]').forEach(f => f.onsubmit = sRoom);
+}
+
+/* To finish setting up (15 Oct 2026): the node's fundamental sources that are not running, most important first, each
+   with the node's own fix and a link to the section it is set in. The list and the words are GET /health/sources
+   (app/fundamentals.py), the same the doctor prints after an install or an update; this page draws, it decides nothing. */
+function sTodo() {
+  const todo = ((SETUP.sources || {}).sources || []).filter(r => r.ok === false);
+  if (!todo.length) return '';
+  return `<div class="gate"><b>To finish setting up</b><ol>${todo.map(r => { const g = (r.setup || '').split('/')[1];
+    return `<li><b>${esc(r.name)}.</b> ${esc(r.fix)}${g && g !== SETUP.group ? ` <a href="#setup/${esc(g)}" data-go="${esc(g)}">Go to ${esc(sName(g))}</a>` : ''}</li>`; }).join('')}</ol></div>`;
+}
+
+/* Rooms (Tomas, 14 Oct 2026): the household's word for where each of its own sensors is. The node makes it the
+   sensor's name whatever its platform calls it (init.sql 0.61), so alerts, the report and every page say "Kids", not
+   "K ROOM - BAYU HOLES". Each row saves on its own: a room is not a setting, and has no .env behind it. */
+function sRooms(unlocked) {
+  const S = (D.sensors || []).filter(s => s.local && s.kind === 'sensor');
+  if (!unlocked) return `<h2>Rooms</h2><p class="gate">Which room is which is the household’s: <a href="#setup/screen" data-go="screen">unlock this screen</a> with the admin token to name them.</p>`;
+  return `<h2>Rooms</h2><p class="blurb">Name the room each of this home’s sensors is in. Every alert, the report and every page use the name you give; the Wall never shows one. Leave it empty to use the sensor’s own name again.</p>`
+    + `<div class="rows">${S.map(s => `<form class="srow" data-room="${esc(s.sensor_id)}"><div class="sl"><label for="room-${esc(s.sensor_id)}">${esc(s.source_name || s.name || s.sensor_id)}</label>`
+      + `<div class="sm"><code>${esc(s.sensor_id)}</code>${s.indoor ? ' · inside' : ' · outside'}</div></div>`
+      + `<div class="sc"><input id="room-${esc(s.sensor_id)}" maxlength="40" value="${esc(s.room || '')}" placeholder="${esc(s.source_name || s.name || '')}"><button class="sbtn">Save</button></div>`
+      + `<p class="err" role="status"></p></form>`).join('') || '<p class="fine">This node has no sensors of its own yet.</p>'}</div>`;
+}
+async function sRoom(ev) {
+  ev.preventDefault();
+  const f = ev.currentTarget, sid = f.dataset.room, say = f.querySelector('[role=status]');
+  const r = await doorsFetch(`/sensors/${encodeURIComponent(sid)}`, { method: 'PATCH', headers: { ...DOORS_AUTH(), 'content-type': 'application/json' },
+    body: JSON.stringify({ room: f.querySelector('input').value.trim() || null }) }).catch(() => null);
+  const j = r ? await r.json().catch(() => ({})) : {};
+  if (!(r && r.ok)) { say.textContent = `Not saved: ${j.detail || (r ? r.status : 'the node did not answer')}`; return; }
+  const s = (D.sensors || []).find(x => x.sensor_id === sid); if (s) Object.assign(s, j.sensor);
+  say.textContent = j.sensor.room ? `Saved: this sensor is “${j.sensor.room}” everywhere now.` : 'Saved: back to the sensor’s own name.';
 }
 
 /* one row: the label, the node's help and where its value comes from; the control on the right; the refusal under it */
@@ -118,11 +153,14 @@ function sGroup(g, unlocked) {
         + `<div><b>${esc(p.name || p.id)}</b><div class="sm">${esc(p.kind || '')}${p.domain ? ` · ${esc(p.domain)}` : ''} · v${esc(p.version || '')} · ${esc(p.author || '')}</div><p class="help">${esc(p.description || '')}</p></div></div>`
         + rows.filter(r => r.pack === p.id).map(r => sRow(r, unlocked)).join('') + `</section>`; }).join('')}</div>` + body;
   }
-  const boot = (d.bootstrap || []).filter(b => (b.group || 'system') === g).map(b => `<div class="srow ro"><div class="sl"><label>${esc(b.label)}</label><div class="sm"><code>${esc(b.key)}</code> · read at start</div>`
-    + `<p class="help">Edit .env on the node, then run <code>planetai restart</code>.</p></div><div class="sc"><input type="text" readonly value="${esc(b.value || '')}" placeholder="not set"></div></div>`).join('');
+  /* what is read once at start: one table, and the way to change it said once */
+  const B = (d.bootstrap || []).filter(b => (b.group || 'system') === g);
+  const boot = B.length ? `<h3 class="sub2">Read at start</h3><p class="blurb">Change these in <code>.env</code> on the node, then run <code>planetai restart</code>.</p>`
+    + `<table class="tbl ro"><tr><th>setting</th><th class="hide">key</th><th>value</th></tr>${B.map(b => `<tr><td>${esc(b.label)}</td><td class="hide mono">${esc(b.key)}</td>`
+      + `<td class="mono">${b.value ? esc(b.value) : '<span class="fine">not set</span>'}</td></tr>`).join('')}</table>` : '';
   const changed = (SETUP.history || []).filter(a => rows.some(r => String(a.note || '').split(', ').includes(r.key))).slice(0, 5);
   return `<h2>${esc(sTitle(g))}</h2><p class="blurb">${esc((SETUP_GROUPS[g] || [])[1] || 'This node declares this group. planetai config shows the same keys.')}</p>${gate}`
-    + `<div class="rows">${body}${boot}</div>`
+    + `<div class="rows">${body}</div>${boot}`
     + (changed.length ? `<div class="hist"><div class="k">changed lately</div>${changed.map(a => `<p><span class="mono">${esc(wdhm(a.ts))}</span> · ${esc(a.actor || 'someone')} · ${esc(a.note || '')}</p>`).join('')}</div>` : '');
 }
 
@@ -180,8 +218,8 @@ function sMachine() {
     ['Temperature', hot || 'no thermal sensor this system gives the node'],
     ['Up for', `${upFor(M.uptime_s)} since the system started · the node’s app ${upFor(h.uptime_s)}`],
     ['System', `${esc(M.system)} · Python ${esc(M.python)}<small>${esc(M.seen_as)}</small>`],
-    ['Database', `${esc(M.database.version)} · up since ${esc((M.database.since || '').slice(0, 16).replace('T', ' '))} · ${M.database.connections} connections`],
-    ['The node', `${esc(h.version)} · ${(h.polls || 0).toLocaleString('en')} polls and ${(h.ingested || 0).toLocaleString('en')} readings since its restart · last poll ${esc((h.last_poll || 'none yet').slice(11, 16))} UTC`
+    ['Database', `${esc(M.database.version)} · up since ${esc(when(M.database.since))} · ${M.database.connections} connections`],
+    ['The node', `${esc(h.version)} · ${(h.polls || 0).toLocaleString('en')} polls and ${(h.ingested || 0).toLocaleString('en')} readings since its restart · last poll ${h.last_poll ? hhmm(h.last_poll) : 'none yet'}`
       + (() => { /* /health.errors is each source failing now, by name, with its first line; a source that recovers leaves it */
           const E = h.errors && typeof h.errors === 'object' ? Object.entries(h.errors) : [];
           return E.length ? `<small>${E.length} source${E.length === 1 ? '' : 's'} failing now: ${E.map(([k, v]) => `${esc(k)} (${esc(String(v).slice(0, 90))})`).join('; ')}</small>` : '<small>no source failing now</small>'; })()],
@@ -257,10 +295,47 @@ document.addEventListener('click', ev => {
   if (go) { ev.preventDefault(); SETUP.group = go.dataset.go; setupDraw(); }
 });
 
-async function sSave() {
+/* THE CONSEQUENCES STEP (phase 4b, 15 Oct 2026). A change that sends something beyond this machine (the node's
+   `outward`) or runs code here that is not the node's (`runs_code`, or a code pack switched on) looked like any other
+   switch behind the same save bar. Now the save bar stops and says, in the setting's own help, what will leave or
+   what will run, with Back and Save anyway, inside the page. Turning one of them off, or back to private, asks nothing. */
+const sOff = v => v === '' || v === '0' || v === 'off' || v === 'private';
+function sConsequences(body, desc, packs, drawn) {
+  const rows = (desc && desc.runtime) || [], out = [];
+  for (const [k, v] of Object.entries(body)) {
+    if (k === 'PACKS_ENABLED') {                  /* '' is every pack, so a code pack can switch on by a list going empty */
+      const ids = packs.map(p => p.id), was = drawn ? drawn.split(',') : ids, now = v ? v.split(',') : ids;
+      for (const p of packs.filter(x => x.kind === 'code' && now.includes(x.id) && !was.includes(x.id)))
+        out.push({ key: 'PACKS_ENABLED', label: p.name || p.id, to: 'on', code: true,
+          help: `A code pack: its adapter.py runs on this machine with the node’s privileges, while Allow code packs is on. ${p.description || ''}`.trim() });
+      continue;
+    }
+    const r = rows.find(x => x.key === k) || {};
+    if ((r.outward || r.runs_code) && !sOff(v)) out.push({ key: k, label: r.label || k, to: r.secret ? 'a new value' : v, leaves: !!r.outward, code: !!r.runs_code, help: r.help || '' });
+  }
+  return out;
+}
+function sConfirm(items) {
+  let p = sq('#sconfirm');
+  if (!p) { p = document.createElement('div'); p.id = 'sconfirm'; p.className = 'sconfirm'; p.setAttribute('role', 'alertdialog'); p.setAttribute('aria-labelledby', 'sconfirm-h'); $('#setupv2').append(p); }
+  const leaves = items.some(i => i.leaves), runs = items.some(i => i.code);
+  p.innerHTML = `<h3 id="sconfirm-h">Before this is saved</h3><p>${leaves && runs ? 'This sends something beyond this machine and runs code on it.' : leaves ? 'This sends something beyond this machine.' : 'This runs code on this machine that is not the node’s own.'} `
+    + `Here is what each change does, in the node’s own words.</p><ul>${items.map(i => `<li><b>${esc(i.label)}</b><span class="to">→ ${esc(i.to)}</span>`
+      + `${i.leaves ? '<span class="why">↗ leaves this machine</span> ' : ''}${i.code ? '<span class="why">runs code here</span>' : ''}<p>${esc(i.help)}</p><code class="fine">${esc(i.key)}</code></li>`).join('')}</ul>`
+    + `<div class="acts"><button type="button" class="sbtn" data-a="back">Back</button><button type="button" class="sbtn primary" data-a="save">Save anyway</button></div>`;
+  p.hidden = false;
+  const close = () => { p.hidden = true; sq('#ssave') && sq('#ssave').focus(); };
+  p.querySelector('[data-a=back]').onclick = close;
+  p.querySelector('[data-a=save]').onclick = () => { p.hidden = true; sSave(true); };
+  p.onkeydown = e => { if (e.key === 'Escape') close(); };
+  p.querySelector('[data-a=back]').focus();
+}
+
+async function sSave(confirmed) {
   const body = sDiff(), keys = Object.keys(body), auth = DOORS_AUTH();
   sqa('.err').forEach(e => { e.textContent = ''; e.hidden = true; });
   if (!keys.length) return;
+  if (confirmed !== true) { const c = sConsequences(body, SETUP.desc, SETUP.packs, SETUP.drawnPacks); if (c.length) return sConfirm(c); }
   /* a key that moved on the node since this page drew it is shown, not overwritten; a second press writes */
   const fresh = await fetch('/settings', { headers: auth }).then(x => x.ok ? x.json() : null).catch(() => null);
   const row = (d, k) => ((d && d.runtime) || []).find(r => r.key === k) || {};

@@ -8,6 +8,291 @@
   silenced `om-point` until midnight UTC. `fetch()` now asks only when `out/forecast.last` is older than the setting,
   and touches it on every attempt, so neither a restart nor a 429 asks again early. `planetai run forecast fetch`
   still asks now. Forecast rows are never overwritten, so nothing is lost. `tests/test_forecast.py` counts the calls.
+- **Place and Node, after the design review (Tomas, 14–15 Oct).** Place: the species confirmed here are a table
+  below the map (GBIF link, rank, times seen here, where in words, GBIF's open records in the seven cells; token only)
+  and a filled mark on the map under Images, its row saying "1 confirmed · …"; five layers on by default, the other
+  groups collapsed with a count, no inner scroller, and on a phone the list is a sheet under a "Layers 5" button; the
+  house is named on the map; without WebGL the map is drawn still (the cell, the stations, the rings) and the list and
+  facts still draw, where before nothing did; the tools are 44 px, the active one says its word, Measure ends on Done,
+  and From the house is one tap; one figure per fact ("497 m edge · 0.64 km²", never "about 531 m" or "64.0 ha");
+  Changes by the year moved below the map. Node: a verdict first ("Working. Last reading 19:19; 6 of 6 sensors, 10 of
+  20 stations heard in the last hour.", or "Needs a look" and why); the flow is vertical under 700 px instead of an
+  840 px drawing scrolled sideways; the diary shows 14 entries and the rest on a press; the nodes' list comes before a
+  globe a third of the screen high; the five refusals in plain words, each linked to its proof.
+- **The doctor names the node's fundamental sources, and install and update end with what is left to set up**
+  (Tomas, 15 Oct: "the user should be guided to have the fundamental data sources of the node running"). Six sources
+  every node needs, in one place (`app/fundamentals.py`), most important first: your own sensors (one reporting in
+  the last hour, inside and ideally outside), alerts on your phone (Telegram connected and not refused), air stations
+  nearby (Bali Air Dispatch; does not apply outside Bali yet), weather (Open-Meteo), satellite air (CAMS) and the
+  nightly backup. New `GET /health/sources` (token) says each one's state, its last reading's age and, when it is not
+  running, the one thing to do, with the Set up section or the `planetai` command that does it. `planetai doctor`
+  prints them as a **Data sources** block; `install.sh`, `update.sh` and `planetai setup` now all end with the doctor
+  and a **To finish setting up** list, and in a terminal install and update offer to do the first step (never with
+  `--yes`, cron or an agent: then they only print). The Set up page shows the same list at the top, and the MCP
+  `health_check` returns it as `sources`. Telegram and the backup's age moved from the doctor's checks into the
+  sources, so they no longer make a new node's doctor red; *a backup exists* (which read `./backups` whatever
+  `BACKUP_DIR` said) is gone. Before the first poll after a start, a configured source is a dash, not a cross.
+- **Data is tabs, and Set up asks before anything leaves (design review, 14 Oct; Tomas: tables by default, cards
+  only as pop-ups).** Data was one scroll of nine sections, about 21,900 px at 1440 and 36,600 px on a phone. It is
+  now one pane at a time, routed `#data/<tab>`: Readings, Models and satellite, Home, Ledger and API, with Set up's list
+  as the tab bar (sticky; on a phone a wrapping strip of 44 px targets instead of one that clipped "MODELS AND SATELL"
+  and scrolled away). The models are one table, a row per source with its cadence in words and a unit column, without
+  "years cached" or forecast lead hours, and the 20 empty model tiles left the kinds grid. The ledger collapses a run
+  of the same answer ("decided ×10"), says the day and the time on one line, names who answered in words instead of
+  `gui` or `local-model/telegram`, and filters by stage. API routes are one line each. The Index cells table moved to
+  Node, under the flow. Every old anchor (`#data/d-images`, `#data/perday`, a station's id, `#data/cells`,
+  `#data/d-learned`) lands on its tab or on Node. Side by side, numeric columns no longer run together, and the usual
+  day's hour labels are about 10 px on a phone, not 6. In Set up, a change that sends something beyond the machine
+  (`outward`) or runs code (`runs_code`, new in `GET /settings`: `PACKS_ALLOW_CODE`, and a code pack switched on) opens
+  a **Before this is saved** panel in the page with the setting's own help, Back and Save anyway; `MAP_TILES` is now
+  declared outward. What is read at start is one table with its instruction said once; the section list, switches
+  and buttons are 44 px; the gear is filled while Set up is open. `tests/test_doors.py` renders each tab, the old
+  anchors, the ledger and the consequences step; `measure.mjs doors`, in the visual gate, walks every tab and section at
+  390 and 1440, paper and dark, locked and unlocked.
+- **Fires, a new source (Tomas, 15 Oct).** `packs/fire` reads NASA FIRMS active fire detections (VIIRS 375 m,
+  CC0) from the public regional files, no key needed, and counts the burning places of the last day in a local ring
+  (`FIRE_LOCAL_KM`, 25 km) and a regional one (`FIRE_REGION_KM`, 150 km): how many, their fire radiative power, the
+  nearest and its compass bearing, and how many lie within 45° of where the wind comes from, by the node's own wind
+  (a local kit, the core Open-Meteo point, or the forecast bounded to `ts <= now()`). Three rules say where, as a
+  distance and a direction from the house: `info` a fire in the local ring, `warn` one upwind, and `act` only when
+  25 or more are upwind in the region AND the air outside is rising past the WHO line, 15 µg/m³. Five numbers are a
+  declared section with `wall: true`; a core pack's section now stays out of `/issues` until the node holds a row of
+  it, so nodes that never turn fires on show nothing. Off until `FIRE_ENABLED=1` (and `PACKS_ALLOW_CODE=1`), for the bandwidth: 1 to 2 MB a
+  satellite per changed file for South East Asia; FIRMS ignores conditional requests, so the pack asks with HEAD
+  first, at most every three hours. An optional `FIRMS_MAP_KEY` reads only the ring's box. The 25 is a first guess
+  from one day on the Bukit (14 Oct: nothing within 50 km, the nearest 75 km north-west, 51 places within 150 km).
+  New id and es copy is assistant-written. `tests/test_fire.py` (77 suites).
+- **The Wall says more, and only what anyone may read (Tomas, 15 Oct: "Generated text in the wall should be richer
+  since we now have much more data").** The Wall's narration (`POST /ask`, `prompt: wall`) no longer reads the
+  pane's context. It reads its own: short labelled facts with their unit and `live`, `model` or `satellite` — the day
+  sentence, the WHO line, the values by distance, how many public stations nearby are over the line, what is usual
+  for the place, the next six hours of forecast, the land and the sea, and any pack section declared `wall: true`,
+  so a new pack's figures reach it with no code. The house's learnings, digests, things, alerts' words and who
+  answered never reach it. `WALL_ANGLES` grows from five to eleven (the day so far, the stations around, what is
+  usual here, the next hours, the land and the sea, fires around, the ground's heat) and an angle whose facts are
+  missing is skipped, not apologised for. The scrub now also cleans dict keys, and catches a coordinate written to
+  more decimals than the node's own rounds to (-8.8190 beside NODE_LAT -8.819).
+
+- **Pictures through the bot (Tomas, 15 Oct).** A photo or an image file sent to the bot from a household chat
+  is posted to the node's `POST /captures` with the caption as the note, the sender's name and `describe=1`, and the
+  bot answers "Kept. The image model on this machine is describing it; it will be in Data › Images in a minute." A
+  photo takes its largest size and the message's date; a file goes byte for byte, so its own date and GPS count. A
+  `#drone`, `#microscope`, `#camera` or `#balloon` in the caption sets the kind. A duplicate, a file that is not an
+  image, one over the Bot API's 20 MB and a refused token are each answered plainly. Strangers' pictures are ignored,
+  and the download's URL, which holds the bot token, never reaches a log line (`tests/test_bot_pictures.py`).
+- **The doctor names the node's fundamental sources, and install and update end with what is left to set up**
+  (Tomas, 15 Oct: "the user should be guided to have the fundamental data sources of the node running"). Six sources
+  every node needs, in one place (`app/fundamentals.py`), most important first: your own sensors (one reporting in
+  the last hour, inside and ideally outside), alerts on your phone (Telegram connected and not refused), air stations
+  nearby (Bali Air Dispatch; does not apply outside Bali yet), weather (Open-Meteo), satellite air (CAMS) and the
+  nightly backup. New `GET /health/sources` (token) says each one's state, its last reading's age and, when it is not
+  running, the one thing to do, with the Set up section or the `planetai` command that does it. `planetai doctor`
+  prints them as a **Data sources** block; `install.sh`, `update.sh` and `planetai setup` now all end with the doctor
+  and a **To finish setting up** list, and in a terminal install and update offer to do the first step (never with
+  `--yes`, cron or an agent: then they only print). The Set up page shows the same list at the top, and the MCP
+  `health_check` returns it as `sources`. Telegram and the backup's age moved from the doctor's checks into the
+  sources, so they no longer make a new node's doctor red; *a backup exists* (which read `./backups` whatever
+  `BACKUP_DIR` said) is gone. Before the first poll after a start, a configured source is a dash, not a cross.
+
+- **The Wall reads from three metres (design review, 14 Oct).** Nothing on the doors' Wall is under 28 px at
+  1920×1080, scaled with the screen; what did not survive that floor was cut: the kicker's reason (it named who
+  answered), the "why" paragraph, the fragments row, the counts box ("alerts out 0 / 7"), the foot, the scale bar,
+  the countdown and the model's name. The map's caption says its red discs in words against the house ("This house is
+  under the clean-air line now; 3 stations nearby, in red, are over it"); what the node suggests is one line that ends
+  on a word, never "If somethin…"; ρ is said ("This house answered 23 of 274 alerts in 30 days") before larger rings.
+  The narration box is not drawn until a text arrives and keeps the last one while the next is written. The back
+  button, chips, hour strip and model note show only under a pointer or the keyboard. `tests/test_doors.py` holds the
+  floor, the hidden chrome and the collapsed box.
+- **Now reads in the order a household asks (Tomas, 14 Oct: "I am not happy with what is showing").** About ten
+  blocks of equal weight competed on the doors' first screen, and on a phone the headline sat under ~340 px of chrome.
+  Now is one bold block, the sentence and its day drawing, then the four distances in one quiet line, then **What to
+  do** (the Decide card framed, with its buttons, only while something is asked; otherwise "Nothing to do now." and
+  the hour it is usually worst), then **Did it work** and **Yesterday**, then **Around the house** (Air and Heat as
+  rows, the stations' map with a one-line caption). Heads are sentence case and name the question; the capitalised
+  engine stages are gone from Now. The res 2–12 scale strip left Now (Place has its own; the kicker links to the
+  cell). Land and Coast change yearly and moved to Place, under **Changes by the year**. Did it work no longer says
+  "the node is asking now" beside an event already answered. On a phone the bar is three rows of 44 px targets (the
+  headline at 237 px instead of 339) and the week is one tappable row a day.
+- **A refusing source is not the household's to-do.** The report's one thing to do skipped past what someone here
+  can act on to print a source's raw error, cut mid-URL (node #1, 14 Oct: Open-Meteo's daily limit). Source errors are
+  left to Node's Running section.
+- **One voice for the report, the alerts and the learnings (design review of node #1, 14 Oct).** Every line is named
+  with its owner and unit, never a bare number: "the WHO line is 15 µg/m³", "the US EPA's unhealthy level, 35.5
+  µg/m³", "this house's heat line, 35 °C feels-like" (`{line}` and `{peak}` now carry the issue's unit). One sign per
+  message: no emoji pairs in the air and heat rules, no 👉, no 👤, and no `ℹ️`/`🔴` put in front of a message that has
+  its own. Event messages say the story in words, then one reading: "📈 Smoke or dust in Kids and Living Room: 48
+  µg/m³; the WHO line is 15 µg/m³.", with the outside said once, as the action's reason, and no more "open the side
+  where it started" (the engine cannot know which room came first). The report reads headline, what happened per room
+  with its local time ("Kitchen went past the US EPA's unhealthy level, 35.5 µg/m³, at 15:00; it is back under now.",
+  "Studio was more humid than usual."), the one thing to do, then the morning memory, then the invitation, last. Every
+  `worked` learning carries `numbers.verdict` (helps, no clear difference, worse than leaving it, too early) from its
+  own numbers and leads with it in words, because node #1's air row said HOLDING while acting had made it worse;
+  `/learned` prints the alert's household name and the verdict first. New id and es copy is assistant-written.
+- **The diary is split between Now and Node (design review, 14 Oct).** Data was 21,900 px long and what the house
+  learned sat at its bottom. Now, under the decision, says **Yesterday** in a line or two from yesterday's entry and
+  **Did it work** for the issue on screen: the last ask, what was done, what happened inside after, and the node's
+  verdict on that alert (it helps, no clear difference, too early to say), which `GET /learned` now carries as
+  `numbers.verdict` so the page never judges for itself. Node gains **What it remembers**: the counts (`GET /learned`
+  `digests`), the diary as a table by day, week, month or year with each entry in a dialog (`GET /learned/search` now
+  returns each entry's `numbers`), what is usual, what worked as a table with its cases in a dialog, and who lives
+  here. Data keeps one line pointing there. All of it is the admin token's; without it Now shows nothing and Node only
+  where to unlock, and the Wall never reads it.
+
+- **The headline says the day, and one answer says what is asked (design review of node #1, 14 Oct).** At 19:00 Now
+  said "The air is clean, inside and out" beside "12 h over the line today" and a day drawn red until 11:00. When the
+  reading is back under the line after hours over it today, the title now says both, "The air is clean now, after a
+  dusty morning", and the tagline when and how long, "In the house it was past the WHO line for fine dust until 12:00,
+  12 hours today.", counted as the door counts them; a day with no hour over keeps the hour's title. In en, id and es
+  (id and es assistant-written, for a native reader). And Now's Decide card said "No event was open for air" while the
+  Wall showed an alert still open: each read its own list. `/issues` now carries `asking` per issue, the open event
+  while it asks and then the alerts still true, and Now, the Wall and the phone all read it. An alert from days ago
+  whose reading came back is still open and still in ρ, but it no longer reads as asked now.
+- **The WHO line in every PM2.5 drawing (Tomas, 14 Oct).** Now's day, Data's every source and seven days, What is
+  usual's PM2.5 day, and the phone walk's house, street, stations, ring and region each draw the air's own line red and
+  dashed (`.linep`, now the day figure's 6 4 at 1.5) and label it `WHO 15`: the value is `/issues`' own, the name comes
+  from the line's source, so heat keeps `line 35.0`. Before, the walk drew it in ink, Data drew it unlabelled, and What
+  is usual and three of the walk's drawings had none. Alert words and the 35.5 urgent threshold are unchanged. `tests/test_doors.py` renders each drawing on node #1's
+  capture.
+- **Rooms in the household's words.** Set up › Rooms names the room each of the home's sensors is in, and the node
+  makes that the sensor's name in the database (schema 0.61, a trigger on `sensors`), whatever a poll or a pack writes
+  after. Every alert, the report, the stats and the pages then say "Kids", not "K ROOM - BAYU HOLES" (Tomas, 14 Oct:
+  node #1's K, L and S are Kids, Living Room and Studio). The platform's name is kept in `source_name`; the Wall never
+  shows a room; a reader without a token never sees which room is which. `PATCH /sensors/{sid}`, admin.
+
+- **The report tells what was sent.** On `ALERT_ENGINE=events` the heat and air rules still record alerts that
+  nobody receives, and the report read them: node #1's 19:00 report on 14 Oct opened "It is hot inside" from a heat
+  row never sent, while the page said the heat was bearable. The report now leaves those rows out and takes heat from
+  the engine's open episodes that were sent. The things a home keeps are no longer a sensor that "has stopped
+  sending", and a metric with no household word (`bme_iaq`) is never named in "What changed".
+- **Thirteen fixes from the design review of node #1 (14 Oct).** (1) Times are the node's own: the doors and the phone
+  page sliced UTC strings as if they were local, so node #1 read "as of 11:52" beside "at 19:00" in Bali; every time
+  is now read in `/health`'s zone. (2) The mono the frozen theme asks for at `/static/fonts/jetbrains-mono-latin.woff2`
+  404'd on every page; that one path now answers. (3) A screen without a token no longer asks the token-only routes
+  (`/aggregates`, `/actions`, `/alerts`, `/geo/*`, `/things`, `/learned`, `/captures` and the rest) and logs a 403 for
+  each; with a token nothing changes. (4) Node's "readings kept" was the readings since the restart; with the token it
+  is now `/storage`'s count, without it it says "since the restart". What this home offers leaves (`/offers`, open at
+  every share level and in the export), so it is now one of the links out and in the caption. (5) "Alerts, to a phone"
+  counted every alerts row, including the ones the event engine records and never sends; `/issues` now carries
+  `events.sent_24h`, what was sent, and the door shows that. (6) Place's land-change and Index rows said the pack had
+  nothing while node #1 held 6 of 20 Index values and nine years compared; they now say how many and where they are
+  drawn. (7) The Wall printed `stale` always, and the names of the house's sensors ("K ROOM - BAYU HOLES") and an
+  alert's text naming the room; it now says `stale` only when the last poll is over 15 minutes old, and names nothing:
+  inside, outside, a public station by its distance, an ask in the engine's words. (8) Pressure is stored in kPa and
+  `/issues` called it hPa, so Data read "99.8 hPa" beside the model's 996; it says kPa. (9) The household form shared
+  the `.who` class of the page's name and drew its boxes 20 px bold. (10) A left-aligned column after a number ran
+  into it ("HOW MANY USED"); it has its gap now. (11) "Unlock this screen under Node" pointed to the wrong door; it is a
+  link to Set up › This screen. (12) A phone unlocked with the admin token said "locked"; it reads either token.
+  (13) Without a token the ledger showed who answered each alert and what the alert said; it now shows stages and times
+  only, and `/issues` itself gives a tokenless reader no names and no notes (Tomas, 14 Oct).
+
+- **Data: Images and Things are tables.** Each image is a row: a thumbnail, when and who, what took it, the note,
+  what the image model saw and whether somebody here confirmed it. A row opens that image in a dialog, the picture
+  beside its fields, to edit, describe again, confirm or delete; *See all images* opens every card at once. Things are
+  a row each (what, class, how many, how often used, state, offer), and *Add a thing* or *Edit* opens the form in a
+  dialog. Species confirmed is a table. Cards stay, only as dialogs someone opens (Tomas, 14 Oct). The thumbnails
+  come from `GET /captures/{cid}/file?w=96`, so a table of drone pictures does not fetch 11 MB a row.
+
+- **The morning memory.** The first report the household gets each day now carries, in Telegram only, what the node
+  remembers: yesterday's diary entry, last week's on a Monday, last month's on the 1st, last year's on 1 January, and
+  every learning whose status changed that day, in its own words. One message, not four. On by default (Tomas, 14
+  Oct); `LEARN_PUSH` = `all`, `week` or `off`. Never in the stored report, `/report/latest`, Home Assistant or the mesh.
+  `/learned day`, `week`, `month` or `year` prints the newest entry of that size. Schema 0.60: `learnings.status_since`
+  and `reports.memory`, so a restart never sends it twice. The diary no longer counts test alerts (`_test/…`,
+  `gui/test`) as alerts; every entry is written again once (digest v3).
+
+- **Four fixes before the new data is shown anywhere else.** (1) The diary counted alerts nobody got: on
+  `ALERT_ENGINE=events` node #1's 13 October entry said "15 alerts, 0 acted on" for rows the engine replaced and never
+  sent. Digests now count the episodes that were sent, by issue, and every digest written before is written again
+  once (`learn.DIGEST_V`). (2) Learnings and digests ran 20 hours after their last pass, drifting round the clock; they
+  now run in the first hour of each local day, so the morning finds yesterday written. (3) `/stats` answered the
+  house's `private` counts (things kept, idle, needing repair) to anyone the page answered, which at
+  `SHARE_LEVEL=open` is the whole network, and to a parent's or a backup's token; a readout now gives them to the
+  household's admin or act token or this machine only. (4) The ask pane, open on the network at `SHARE_LEVEL=open`,
+  and the Wall's narration could read what the house learned whenever `AGENT_PREFER=private`; the `learned` tool is
+  now offered only to a request with the household's token or from this machine, and never to the Wall.
+
+- **Learnings on an events node count what was sent.** On `ALERT_ENGINE=events` the heat and air-quality rules still
+  write alert rows that are never sent, and "what worked" and "alerts that may not fit" were counting them: node #1's
+  page said the heat alert "rings about 6 times a day" when 4 heat messages had gone out since 5 October. Rows of a
+  replaced pack after the engine's first message are now left out; such a rule says it no longer sends here; and the
+  engine's sent episodes are learned from as `air-quality/events` and `heat/events`. Heat's "left unanswered" on node
+  #1 drops from 198 to 145, the ones that were sent.
+- **heat: "too hot" once a room a day.** `heat_stress_now` keeps its 35 °C line and its cooldown goes from 240 to
+  1440 minutes. Over node #1's last 30 days the hot room felt 35 °C or more in 44% of hours and the rule fired 171
+  times, 5.7 a day, 21 at night, two acted on; replayed at 1440 it fires 1.9 a day and never at night. The signal
+  was right and the repetition was the problem, so the line is not raised (packs/heat/README.md has the table).
+  `heat_danger` (40 °C, 120 minutes) is unchanged, and nodes on `ALERT_ENGINE=events` already send one message per
+  episode.
+
+- **Who is in the house, in the alert.** An act-level heat or air alert that weighs on someone ticked in Data › What
+  worked now ends, in the household's Telegram, with one line: "👤 This matters more here: you said there is a child
+  under five." (Indonesian and Spanish too, in `ALERT_LOCALE`). People ignore alerts mostly because they do not feel
+  at risk; this says who is (Tomas, 14 Oct). Both engines, act level only. It rides the Telegram message alone: never
+  the mesh, Reticulum, Home Assistant or the stored alert text that `/alerts` serves, and a profile that cannot be read
+  never stops an alert. The page and "what leaves" say so.
+
+- **Who is in the house (SPEC_learn step 4).** Data › What worked opens with five yes-or-no boxes: someone over 65, a
+  child under five, someone with asthma or another lung condition, someone pregnant, someone who works outdoors. Kept
+  in one private row (`household`, schema 0.59; `GET`/`PUT /household`, admin; an agent reads it only while
+  `AGENT_PREFER=private` and never writes it), never a name, an age or a count. Each learning now says who in this
+  house it matters most to ("Matters here: a child under five"), heat for the old, the very young, pregnancy and
+  outdoor work, fine particles for lungs, the very young, the old and pregnancy, and those come first, on the page,
+  in `/learned` and in the `learned` tool. It changes no threshold and no alert.
+
+- **The diary, and asking it (SPEC_learn step 3).** Once a day the node writes an entry for every completed day,
+  week, month and year it has not written yet, back to its first reading, in its own time zone: each group's mean
+  and highest hour (air inside and outside, the feels-like temperature inside), the alerts and how many were acted
+  on, what was done in the household's own words (each once, with a count), and the change since the entry before.
+  A new `digests` table (schema 0.58, full-text indexed, revoked from pack SQL, never exported or deleted).
+  `GET /learned/search` searches it and the learnings by any of the words; the `learned` tool takes `query` and
+  `scale`, so the ask pane and the bot can answer "was this October smokier than September?" from the node's own
+  sentences, still only while `AGENT_PREFER=private`. Telegram's `/learned smoke` searches with no model. Data ›
+  **Diary** lists the entries and searches them. Node #1 begins with 42 days, 6 weeks and September.
+
+- **What is usual here, and the alerts that may not fit (SPEC_learn step 2).** The daily check also writes, from
+  the house's own sensors and up to a year of hourly means, one row per group (PM2.5 inside, the feels-like
+  temperature inside, PM2.5 outside): the hour it is usually highest and lowest, weekends against weekdays, this
+  week against the three before, and from 60 days a trend. Outside is marked as being about the place, inside as
+  the house's. And one row per act-level alert raised five or more times in 30 days: how often it was acted on,
+  dismissed or left unanswered, when, and, where seven in ten go unanswered, what would change it (a night line, a
+  longer pause between repeats, a higher line). The node says it and changes nothing. Data › **What is usual**
+  draws the day as a 24-hour strip. Node #1's first read: inside air worst around 07:00, outside around 18:00, and
+  the heat alert ringing about six times a day with 2 of 171 acted on.
+
+- **What worked here (SPEC_learn step 1).** Once a day the node takes every act-level alert on one sensor that someone
+  acted on, and every one nobody answered, and compares the metric the rule watches (PM2.5, or the feels-like
+  temperature for heat) in the hour before with a window after (1–2 h for air, 3–6 h for heat), on that sensor and on
+  the street's outdoor sensors. One row per rule in a new `learnings` table (schema 0.57, revoked from pack SQL, never
+  exported or deleted): the medians, up to 30 cases each with the household's note, a status (`too early` under five
+  acted cases, `holding`, `weakening`, `gone`), and a sentence the node writes from its own numbers. Data › **What
+  worked** shows it with every case; `GET /learned` (admin) and the `learned` agent tool serve it, the tool only while
+  `AGENT_PREFER=private`; Telegram's `/learned` prints it with no model. It says what changed, not why: the street
+  and the unanswered alerts are beside it, and the page says it is not an experiment.
+
+- **Offers (SPEC_inventory step 4).** A thing the household marks "Would lend it" or "Would give it away" becomes
+  public: `GET /offers` (open at every `SHARE_LEVEL`) and the daily export's new `offers` carry its class, name,
+  condition and count at the node's own res-8 cell, and nothing else. Each offer's `ask` link opens the node's
+  Telegram bot (Tomas: "option 1, the Telegram bot"). Whoever opens it writes one message, and the bot passes it to
+  every household chat with their Telegram name and @username so the household can write back. One message per chat
+  an hour; any other message from a stranger is still ignored; the household's chat ids never show. The node learns
+  its bot's username from Telegram once a day. The Data door's Things now say what an offer publishes.
+  `export-v0` gains the top-level key `offers` (`tests/data/wire/export-v0.json`).
+
+- **A thing from a photo (SPEC_inventory step 3).** Once an image's findings are confirmed, each one in a class a home
+  keeps (tool, appliance, furniture, electronics, garment, textile, micromobility, vehicle, part, goods) has a
+  **+ … as a thing** button in Data › Images, so a photo of a shelf becomes several things in a few presses. The thing
+  keeps the photo's id and its card says "from image N"; a finding already added says "in Things". Only on a screen
+  holding the admin token, like Things itself. Deleting the image keeps the things and clears the link.
+
+- **The things a home keeps (SPEC_inventory step 2).** The Data door has a **Things** section, for a screen holding
+  the admin token: one card a thing with its class, name and count, how often it is used (every week, every month, a
+  few times a year, never), its state (works, needs a repair, broken) and whether the household would lend or give
+  it. The Now door says it in one line: "31 things, 9 idle, 2 need repair". `GET/POST/PATCH/DELETE /things`, admin
+  only, schema 0.56. Every change rewrites `stock.<class>`, `idle.<class>` and `repair.<class>` on the
+  `things:<node>` survey sensor, declared `private` by core, so rules and cells can read them and nothing sends them;
+  `/observations` now shows a private value to the admin token only. The table is revoked from pack SQL. `vehicle`
+  joins the classes (cars, motorbikes, trucks) and the image model files them there instead of under other. Nothing
+  is offered anywhere yet (step 4), and the report says nothing about them (SPEC_inventory §4).
 
 - **The `private` role (the pack design record, point 2 (A); SPEC_inventory step 1).** A pack can declare a metric
   `role: private` in its `channels.yml`. Such a reading is used here like any other (readouts, sections, rules,

@@ -5,11 +5,15 @@
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], MO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-/* A wire time says its own local hour; read it from the string, never re-derive it (DST-safe). */
-const dayOf = iso => iso.slice(0, 10), hourOf = iso => +iso.slice(11, 13), hhmm = iso => iso.slice(11, 16);
+/* Every wire time is read in the node's own zone (doorsLocal, doors-load.js): a UTC string and a local one say the same
+   hour on the page. `when` is a time as a row of a table says it, 'YYYY-MM-DD HH:MM'. */
+const loc = iso => doorsLocal(iso, D && D.tz);
+const dayOf = iso => loc(iso).slice(0, 10), hourOf = iso => +loc(iso).slice(11, 13), hhmm = iso => loc(iso).slice(11, 16), when = iso => iso ? loc(iso).replace('T', ' ') : '';
 const dLabel = d => { const t = new Date(d + 'T12:00:00Z'); return `${WD[t.getUTCDay()]}, ${t.getUTCDate()} ${MO[t.getUTCMonth()]}`; };
 const wdhm = iso => `${dLabel(dayOf(iso)).split(',')[0]} ${hhmm(iso)}`;
 const fmt = (v, dp) => v == null || Number.isNaN(+v) ? '—' : (+v).toFixed(dp);
+/* a line's name on a drawing (Tomas, 14 Oct: "the WHO line in graphics as reference"): the issue's own value, named the WHO's where its source is the WHO, else "line". The look is .linep */
+const lineLab = it => `${/^WHO\b/.test(it.line_source || '') ? 'WHO' : 'line'} ${fmt(it.line, it.dp)}`;
 const plain = s => String(s ?? '').replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}]/gu, '').replace(/\s+/g, ' ').trim();
 /* the node's own Sentinel-2 annual median for a year (GET /earth/frame.png, open) */
 const SAT = y => `/earth/frame.png?year=${y}&source=sentinel`;
@@ -20,6 +24,8 @@ const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).
 const NODE = '/static/';                           // the node's own frozen layer: theme, tokens, signs, learn.json, fonts
 // The node's own words are never uppercased (µ uppercases to M): anything the node wrote goes in .said.
 const said = x => `<span class="said">${esc(x)}</span>`;
+// Where a screen is unlocked: Set up › This screen, as a link wherever a door says it is locked.
+const UNLOCK_AT = '<a href="#setup/screen">Set up › This screen</a>';
 // A sign from the node's signs.svg; counting signs repeat, never grow, and never draw under --sign-floor (12 px).
 const sign = (id, cls = '') => `<svg class="sg ${cls}" aria-hidden="true"><use href="${NODE}signs.svg#${id}"/></svg>`;
 // Provenance is ink only and square: the glyph, then one of the five words. Anything else is an absence, not a provenance.
@@ -44,7 +50,8 @@ const ISSUES_DRAWN = k => D.issues[k].series && Object.values(D.issues[k].series
 function val(k, dist, i) { const s = (D.issues[k].series || {})[dist]; return s ? s[i] : null; }
 function evAt(k, i) {
   const t = D.buckets[i];
-  return D.events.filter(e => e.issue === k && e.opened_at.slice(0, 13) <= t.slice(0, 13) && (e.cleared_at == null || e.cleared_at.slice(0, 13) >= t.slice(0, 13)));
+  const h = iso => loc(iso).slice(0, 13), th = h(t);
+  return D.events.filter(e => e.issue === k && h(e.opened_at) <= th && (e.cleared_at == null || h(e.cleared_at) >= th));
 }
 /* an answer in the household's words: which button, who, when, and until when a Not now holds the node's question */
 function answerWords(a) {
@@ -69,6 +76,7 @@ function route() {
   const v = view();
   document.querySelectorAll('.view').forEach(el => { el.hidden = el.dataset.view !== v; });
   document.querySelectorAll('.doors a').forEach(a => a.classList.toggle('on', a.dataset.v === v));
+  const gear = $('#gear'); if (v === 'setup') gear.setAttribute('aria-current', 'page'); else gear.removeAttribute('aria-current');   /* Set up is open */
   document.body.dataset.view = v;
   if (v !== 'wall' && typeof flowStop === 'function') { const w = $('#wfield'); w && flowStop(w); }
   if (v !== 'wall' && typeof WALLMAP !== 'undefined' && WALLMAP.stop) WALLMAP.stop();
@@ -261,7 +269,8 @@ Promise.all([loadD(), fetch(NODE + 'learn.json').then(r => r.json()).catch(() =>
   D = d; D.learn = l.marks;
   D.dates = [...new Set(D.buckets.map(dayOf))];
   D.at = {}; D.buckets.forEach((b, i) => { D.at[dayOf(b) + '|' + hourOf(b)] = i; });
-  S.issue = D.lead; S.i = D.buckets.length - 1; D.now = S.i;
+  /* Now opens on the lead when it is drawn by the hour; Land and Coast change yearly and live on Place (15 Oct) */
+  S.issue = D.lead && ISSUES_DRAWN(D.lead) ? D.lead : D.order.find(ISSUES_DRAWN) || D.lead; S.i = D.buckets.length - 1; D.now = S.i;
   D.sens = Object.fromEntries(D.sensors.map(s => [s.sensor_id, s]));
   /* the cells and distances the flow, the Wall and Node draw are the node's answers (js/nodegeo.js) */
   await knownNodes(D); foot();
@@ -280,7 +289,7 @@ Promise.all([loadD(), fetch(NODE + 'learn.json').then(r => r.json()).catch(() =>
    the node's own sentence, and the one way in, the token. Without this the page stayed blank and could not be unlocked. */
 async function refused(e) {
   const [h, r] = await Promise.all([fetch('/health').then(x => x.json()).catch(() => ({})),
-    fetch('/issues', { headers: DOORS_AUTH() }).then(async x => x.ok ? null : (await x.json().catch(() => ({}))).error || (await x.text().catch(() => ''))).catch(() => null)]);
+    doorsFetch('/issues').then(async x => x.ok ? null : (await x.json().catch(() => ({}))).error || (await x.text().catch(() => ''))).catch(() => null)]);
   $('#who').innerHTML = `${esc(h.node || 'this node')}<small>${esc(h.city || '')}</small>`;
   $('#asof').textContent = `${h.version || ''} · locked`;
   document.querySelectorAll('.view').forEach(el => { el.hidden = el.dataset.view !== 'setup'; });

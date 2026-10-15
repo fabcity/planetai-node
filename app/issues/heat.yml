@@ -82,6 +82,13 @@ sentences:
       under: "under this house's own heat line"
     event:
       earlier: "The house crossed the line earlier today."
+    # day: said instead of the attribution when the reading is back under the line, or close to it, after hours over
+    # it today (engine `_day`, the count the Now door prints beside the title). No number in the title.
+    day:
+      under: "The heat is bearable now, after a hot {part} | {where} it was past this house's own heat line until {until}, {hours} today."
+      near:  "The heat is easing now, after a hot {part} | {where} it was past this house's own heat line until {until}, {hours} today."
+      parts: {night: night, morning: morning, afternoon: afternoon, evening: evening}
+      hours: ["{n} hour", "{n} hours"]
     cmp_words:
       over:  "hotter than {noun}"
       under: "cooler than {noun}"
@@ -124,6 +131,12 @@ sentences:
       under: "di bawah batas panas rumah ini"
     event:
       earlier: "Rumah sempat melewati batas tadi."
+    # day: ASSISTANT-WRITTEN, waiting for a native reader like the rest of this locale
+    day:
+      under: "Panasnya sudah wajar, setelah {part} yang panas | {where} panasnya sempat di atas batas panas rumah ini sampai pukul {until}, {hours} hari ini."
+      near:  "Panasnya mulai reda, setelah {part} yang panas | {where} panasnya sempat di atas batas panas rumah ini sampai pukul {until}, {hours} hari ini."
+      parts: {night: dini hari, morning: pagi, afternoon: siang, evening: malam}
+      hours: ["{n} jam", "{n} jam"]
     cmp_words:
       over:  "lebih panas daripada {noun}"
       under: "lebih sejuk daripada {noun}"
@@ -164,6 +177,12 @@ sentences:
       under: "por debajo del límite de calor de esta casa"
     event:
       earlier: "La casa cruzó el límite hoy más temprano."
+    # day: ASSISTANT-WRITTEN, waiting for a native reader like the rest of this locale
+    day:
+      under: "El calor ya se aguanta, tras una {part} calurosa | {where} estuvo por encima del límite de calor de esta casa hasta las {until}, {hours} hoy."
+      near:  "El calor está bajando, tras una {part} calurosa | {where} estuvo por encima del límite de calor de esta casa hasta las {until}, {hours} hoy."
+      parts: {night: madrugada, morning: mañana, afternoon: tarde, evening: noche}
+      hours: ["{n} hora", "{n} horas"]
     cmp_words:
       over:  "más calor que {noun}"
       under: "más fresco que {noun}"
@@ -219,24 +238,25 @@ empty:
   es: El calor necesita temperatura y humedad del mismo sensor. Añade uno dentro y la casa se rellena.
 
 # Events (docs/SPEC_alerts.md §4–§5). One message per heat event at this house, whichever rooms it spans; one
-# action, the first below whose `when:` holds. The id and es strings are ASSISTANT-WRITTEN.
+# action, the first below whose `when:` holds. The id and es strings are ASSISTANT-WRITTEN. As air's: words first,
+# one reading, and when the line is said it is this house's heat line with its unit ("35 °C feels-like"); one sign.
 events:
   unusual:
-    en: "🌡️ Hotter than usual in {rooms}: it feels like {peak} °C, well above this room's normal for the hour."
-    id: "🌡️ Lebih panas dari biasanya di {rooms}: terasa seperti {peak} °C, jauh di atas biasanya untuk jam ini."
-    es: "🌡️ Más calor de lo habitual en {rooms}: la sensación es de {peak} °C, muy por encima de lo normal a esta hora."
+    en: "🌡️ Hotter than usual for this hour in {rooms}: it feels like {peak}."
+    id: "🌡️ Lebih panas dari biasanya untuk jam ini di {rooms}: terasa seperti {peak}."
+    es: "🌡️ Más calor de lo habitual a esta hora en {rooms}: la sensación es de {peak}."
   sustained:
-    en: "🥵 {rooms} has been hot for hours: it feels like {peak} °C, longer than this room usually stays there."
-    id: "🥵 {rooms} sudah panas berjam-jam: terasa seperti {peak} °C, lebih lama dari biasanya."
-    es: "🥵 {rooms} lleva horas con calor: la sensación es de {peak} °C, más tiempo del que suele durar."
+    en: "🥵 Hot for hours in {rooms}, longer than usual: it feels like {peak}; this house's heat line is {line} feels-like."
+    id: "🥵 Panas berjam-jam di {rooms}, lebih lama dari biasanya: terasa seperti {peak}; batas panas rumah ini {line} terasa."
+    es: "🥵 Horas de calor en {rooms}, más de lo habitual: la sensación es de {peak}; el límite de calor de esta casa es {line} de sensación."
   danger:
-    en: "🚨🥵 DANGER in {rooms}: it feels like {peak} °C — past this house's own line of {line}. The body cannot shed heat at this level."
-    id: "🚨🥵 BAHAYA di {rooms}: terasa seperti {peak} °C — melewati batas milik rumah ini, {line}. Tubuh tidak bisa membuang panas di tingkat ini."
-    es: "🚨🥵 PELIGRO en {rooms}: la sensación es de {peak} °C — por encima del límite propio de esta casa, {line}. A este nivel el cuerpo no consigue soltar calor."
+    en: "🚨 DANGER in {rooms}: it feels like {peak}, past this house's heat line, {line} feels-like. The body cannot shed heat at this level."
+    id: "🚨 BAHAYA di {rooms}: terasa seperti {peak}, melewati batas panas rumah ini, {line} terasa. Tubuh tidak bisa membuang panas di tingkat ini."
+    es: "🚨 PELIGRO en {rooms}: la sensación es de {peak}, por encima del límite de calor de esta casa, {line} de sensación. A este nivel el cuerpo no consigue soltar calor."
   clear:
-    en: "✅ {rooms} has cooled back to its usual."
-    id: "✅ {rooms} sudah kembali sejuk seperti biasa."
-    es: "✅ {rooms} ha vuelto a su temperatura habitual."
+    en: "✅ Cooler again in {rooms}, back to the usual."
+    id: "✅ Sudah sejuk lagi di {rooms}, kembali seperti biasa."
+    es: "✅ Vuelve a estar fresco en {rooms}, como de costumbre."
 actions:
   - id: heat/leave_or_cool
     when: {kind: [danger]}

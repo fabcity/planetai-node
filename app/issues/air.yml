@@ -91,6 +91,13 @@ sentences:
     # {event} names the day it crossed and came back, so the state band and the sentence agree.
     event:
       earlier: "The house crossed the line earlier today."
+    # day: said instead of the attribution when the reading is back under the line, or close to it, after hours over
+    # it today (engine `_day`, the count the Now door prints beside the title). No number in the title.
+    day:
+      under: "The air is clean now, after a dusty {part} | {where} it was past the WHO line for fine dust until {until}, {hours} today."
+      near:  "The air is better now, after a dusty {part} | {where} it was past the WHO line for fine dust until {until}, {hours} today."
+      parts: {night: night, morning: morning, afternoon: afternoon, evening: evening}
+      hours: ["{n} hour", "{n} hours"]
     cmp_words:
       over:  "worse than {noun}"
       under: "cleaner than {noun}"
@@ -133,6 +140,12 @@ sentences:
       under: "di bawah batas WHO untuk debu halus"
     event:
       earlier: "Rumah sempat melewati batas tadi."
+    # day: ASSISTANT-WRITTEN, waiting for a native reader like the rest of this locale
+    day:
+      under: "Udara sudah bersih, setelah {part} yang berdebu | {where} udaranya sempat di atas batas WHO untuk debu halus sampai pukul {until}, {hours} hari ini."
+      near:  "Udara sudah membaik, setelah {part} yang berdebu | {where} udaranya sempat di atas batas WHO untuk debu halus sampai pukul {until}, {hours} hari ini."
+      parts: {night: dini hari, morning: pagi, afternoon: siang, evening: malam}
+      hours: ["{n} jam", "{n} jam"]
     cmp_words:
       over:  "lebih buruk daripada {noun}"
       under: "lebih bersih daripada {noun}"
@@ -173,6 +186,12 @@ sentences:
       under: "por debajo del límite de la OMS para el polvo fino"
     event:
       earlier: "La casa cruzó el límite hoy más temprano."
+    # day: ASSISTANT-WRITTEN, waiting for a native reader like the rest of this locale
+    day:
+      under: "El aire ya está limpio, tras una {part} de polvo | {where} estuvo por encima del límite de la OMS para el polvo fino hasta las {until}, {hours} hoy."
+      near:  "El aire ha mejorado, tras una {part} de polvo | {where} estuvo por encima del límite de la OMS para el polvo fino hasta las {until}, {hours} hoy."
+      parts: {night: madrugada, morning: mañana, afternoon: tarde, evening: noche}
+      hours: ["{n} hora", "{n} horas"]
     cmp_words:
       over:  "peor que {noun}"
       under: "más limpio que {noun}"
@@ -233,54 +252,58 @@ empty:
   id: Node membaca model untuk koordinat ini. Tambahkan sensor di Set up dan rumah akan terisi.
   es: El nodo lee el modelo para estas coordenadas. Añade un sensor en Set up y la casa se rellena.
 
-# Events (docs/SPEC_alerts.md §4–§5). The id and es strings are ASSISTANT-WRITTEN. The second
-# clause names whose line it is (AGENTS.md): air's line is the WHO's. {line} renders its value.
+# Events (docs/SPEC_alerts.md §4–§5). The id and es strings are ASSISTANT-WRITTEN. The voice (14 Oct): the story in
+# words first, then ONE reading, then whose line it is; {peak} and {line} carry their unit, so a template never types
+# one and never says a bare "15". One sign per message. The outside reading is the action's reason, so it is said
+# there and only there. {rooms} is a sorted set: no template may say where it started or which room came first.
 events:
   spike:
-    en: "📈 The air jumped in {rooms}: {peak} µg/m³ PM2.5 — the WHO line is {line}. Outside reads {outside_pm25}."
-    id: "📈 Udara melonjak di {rooms}: PM2.5 {peak} µg/m³ — batas WHO {line}. Di luar {outside_pm25}."
-    es: "📈 El aire empeoró de golpe en {rooms}: {peak} µg/m³ de PM2.5 — el límite de la OMS es {line}. Afuera marca {outside_pm25}."
+    en: "📈 Smoke or dust in {rooms}: {peak}; the WHO line is {line}."
+    id: "📈 Asap atau debu di {rooms}: {peak}; batas WHO {line}."
+    es: "📈 Humo o polvo en {rooms}: {peak}; el límite de la OMS es {line}."
   unusual:
-    en: "😷 The air in {rooms} is worse than usual for this hour: {peak} µg/m³ PM2.5."
-    id: "😷 Udara di {rooms} lebih buruk dari biasanya untuk jam ini: PM2.5 {peak} µg/m³."
-    es: "😷 El aire en {rooms} está peor de lo habitual a esta hora: {peak} µg/m³ de PM2.5."
+    en: "😷 The air in {rooms} is dirtier than usual for this hour: {peak}; the WHO line is {line}."
+    id: "😷 Udara di {rooms} lebih kotor dari biasanya untuk jam ini: {peak}; batas WHO {line}."
+    es: "😷 El aire en {rooms} está más sucio de lo habitual a esta hora: {peak}; el límite de la OMS es {line}."
   sustained:
-    en: "😷 The air in {rooms} has been unhealthy for an hour: {peak} µg/m³ PM2.5 — the WHO line is {line}."
-    id: "😷 Udara di {rooms} sudah tidak sehat selama satu jam: PM2.5 {peak} µg/m³ — batas WHO {line}."
-    es: "😷 El aire en {rooms} lleva una hora siendo insalubre: {peak} µg/m³ de PM2.5 — el límite de la OMS es {line}."
+    en: "😷 The air in {rooms} has been unhealthy for an hour: {peak}; the WHO line is {line}."
+    id: "😷 Udara di {rooms} sudah tidak sehat selama satu jam: {peak}; batas WHO {line}."
+    es: "😷 El aire en {rooms} lleva una hora siendo insalubre: {peak}; el límite de la OMS es {line}."
   danger:
-    en: "🚨😷 DANGER: the air in {rooms} is very unhealthy: {peak} µg/m³ PM2.5 — the WHO line is {line}."
-    id: "🚨😷 BAHAYA: udara di {rooms} sangat tidak sehat: PM2.5 {peak} µg/m³ — batas WHO {line}."
-    es: "🚨😷 PELIGRO: el aire en {rooms} es muy insalubre: {peak} µg/m³ de PM2.5 — el límite de la OMS es {line}."
+    en: "🚨 DANGER: the air in {rooms} is very unhealthy: {peak}; the WHO line is {line}."
+    id: "🚨 BAHAYA: udara di {rooms} sangat tidak sehat: {peak}; batas WHO {line}."
+    es: "🚨 PELIGRO: el aire en {rooms} es muy insalubre: {peak}; el límite de la OMS es {line}."
+  # An episode clears against its own rule's line (35 for sustained, the usual for unusual), not always the WHO's, so
+  # the all-clear names no line it cannot vouch for.
   clear:
-    en: "✅ The air in {rooms} is back under the line."
-    id: "✅ Udara di {rooms} sudah kembali di bawah batas."
-    es: "✅ El aire en {rooms} ha vuelto a bajar del límite."
+    en: "✅ The air in {rooms} has eased."
+    id: "✅ Udara di {rooms} sudah mereda."
+    es: "✅ El aire en {rooms} se ha calmado."
 actions:
   - id: air/ventilate_and_purify
     when: {where: inside, outside_worse: false, outside_pm25_below: 35, home_has: purifier}
     say:
-      en: "Open the side where it started and run the purifier for 30 min: outside is cleaner ({outside_pm25})."
-      id: "Buka sisi asal asapnya dan nyalakan pemurni udara 30 menit: di luar lebih bersih ({outside_pm25})."
-      es: "Abre el lado donde empezó y enciende el purificador 30 min: fuera está más limpio ({outside_pm25})."
+      en: "Open the windows and run the purifier for 30 minutes. Outside is cleaner, at {outside_pm25}."
+      id: "Buka jendela dan nyalakan pemurni udara 30 menit. Di luar lebih bersih, {outside_pm25}."
+      es: "Abre las ventanas y enciende el purificador 30 minutos. Fuera está más limpio, a {outside_pm25}."
   - id: air/ventilate
     when: {where: inside, outside_worse: false, outside_pm25_below: 35}
     say:
-      en: "Open the side where it started and let it through: outside is cleaner ({outside_pm25})."
-      id: "Buka sisi asal asapnya dan biarkan mengalir: di luar lebih bersih ({outside_pm25})."
-      es: "Abre el lado donde empezó y deja que corra: fuera está más limpio ({outside_pm25})."
+      en: "Open the windows and let the air through. Outside is cleaner, at {outside_pm25}."
+      id: "Buka jendela dan biarkan udara mengalir. Di luar lebih bersih, {outside_pm25}."
+      es: "Abre las ventanas y deja correr el aire. Fuera está más limpio, a {outside_pm25}."
   - id: air/keep_shut_purify
     when: {outside_worse: true, home_has: purifier}
     say:
-      en: "Keep windows and doors shut and run the purifier: outside is worse ({outside_pm25})."
-      id: "Tutup jendela dan pintu dan nyalakan pemurni udara: di luar lebih buruk ({outside_pm25})."
-      es: "Mantén ventanas y puertas cerradas y enciende el purificador: afuera está peor ({outside_pm25})."
+      en: "Keep windows and doors shut and run the purifier. Outside is worse, at {outside_pm25}."
+      id: "Tutup jendela dan pintu dan nyalakan pemurni udara. Di luar lebih buruk, {outside_pm25}."
+      es: "Mantén ventanas y puertas cerradas y enciende el purificador. Fuera está peor, a {outside_pm25}."
   - id: air/keep_shut
     when: {outside_worse: true}
     say:
-      en: "Keep windows and doors shut: outside is worse ({outside_pm25})."
-      id: "Tutup jendela dan pintu: di luar lebih buruk ({outside_pm25})."
-      es: "Mantén ventanas y puertas cerradas: afuera está peor ({outside_pm25})."
+      en: "Keep windows and doors shut. Outside is worse, at {outside_pm25}."
+      id: "Tutup jendela dan pintu. Di luar lebih buruk, {outside_pm25}."
+      es: "Mantén ventanas y puertas cerradas. Fuera está peor, a {outside_pm25}."
   - id: air/find_source
     when: {}
     say:

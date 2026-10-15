@@ -65,11 +65,13 @@ for path, meth in (("/export", "get"), ("/exports", "get"), ("/readings", "get")
     assert n, f"no {meth.upper()} {path} route found — the grep cannot protect a road it cannot find"
     seg = ast.get_source_segment(SRC, n)
     assert "captures" not in seg, f"{meth.upper()} {path} names captures: a picture must never travel that road"
-# and no module but main.py holds SQL against the table at all in step 1
+# and no module but main.py holds SQL against the table at all in step 1. The bot (15 Oct) is the one exception, and
+# only as a client of the HTTP route, which checks the token and cleans the file like any other upload.
 import glob
 for py in glob.glob("app/**/*.py", recursive=True):
     if py != "app/main.py":
-        assert "FROM captures" not in open(py).read() and "captures" not in open(py).read(), \
+        src = open(py).read().replace('hc.post(node_url("/captures"), ', "") if py == "app/agent_loop.py" else open(py).read()
+        assert "FROM captures" not in src and "captures" not in src, \
             f"{py} names captures: in step 1 the table is main.py's alone"
 
 assert "_admin(" in code_of("capture_delete"), "only the admin token deletes an image"
@@ -268,6 +270,12 @@ print("GET: newest first, a cell at any resolution, the kind filter, a bad cell 
 ROW = {"file": f"{SHA}.jpg", "mime": "image/jpeg"}
 r = lan.get("/captures/7/file", headers=ACT)
 assert r.status_code == 200 and r.headers["content-type"] == "image/jpeg" and len(r.content) > 100, "the picture answers a token"
+import io as _io                                                     # noqa: E402
+from PIL import Image as _Image                                      # noqa: E402
+t = lan.get("/captures/7/file?w=64", headers=ACT)
+assert t.status_code == 200 and t.headers["content-type"] == "image/jpeg" and max(_Image.open(_io.BytesIO(t.content)).size) <= 64, \
+    "?w= answers a thumbnail a table can afford"
+assert lan.get("/captures/7/file?w=5000", headers=ACT).status_code == 422 and lan.get("/captures/7/file?w=64").status_code == 403
 r = lan.get("/captures/7/file", headers=BACKUP)
 assert r.status_code == 401, "the backup token cannot fetch the file either"
 ROW.clear() if isinstance(ROW, dict) else None

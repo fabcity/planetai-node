@@ -2851,8 +2851,14 @@ async function learnwalk() {
     walk.click();
     const visited = [], srcs = [];
     for (let i = 0; i < order.length; i++) {
-      await new Promise(r => setTimeout(r, 60));
-      const card = document.querySelector('#askpane [data-learn-card]');
+      /* wait for this step's card, up to 2 s: a fixed 60 ms read nothing on CI's slower macOS runner, and the walk
+         failed at step 0 with every card in its place (#245, #248 on 14-15 Oct; locally it always passed) */
+      let card = null;
+      for (let t = 0; t < 40; t++) {
+        await new Promise(r => setTimeout(r, 50));
+        card = document.querySelector('#askpane [data-learn-card]');
+        if (card && (i === 0 || card.getAttribute('data-learn-card') !== visited[i - 1])) break;
+      }
       if (!card) break;
       visited.push(card.getAttribute('data-learn-card'));
       srcs.push((card.querySelector('.src') || {}).textContent || '');
@@ -2940,6 +2946,64 @@ async function probe(expr) {
  * for layout=classic, and it serves only names the node's allowlist serves (a flat name, fonts/ for
  * the faces, a path refused). Against the committed fixture it measures the rule, the overflow, the
  * engine's words character for character, the targets, the §7.1 budget, and the locked state. */
+/* The doors as a node serves them: / is doors.html unless ?layout= says otherwise, /static/<name> by name only,
+   every node route from the committed fixture. `mobile` and `doors` both open the page through this. */
+const docFor = u => {
+  if (u.pathname !== '/' && u.pathname !== '/index.html') return null;
+  const layout = u.searchParams.get('layout');
+  return layout === 'mobile' ? 'mobile.html' : layout === 'classic' ? 'index.html' : 'doors.html';
+};
+const openRig = async ({ w = 390, h = 844, touch = true, dark = false, token = null, mem = null, throttle = false, locked = false, wireDays = null, admin = null } = {}) => {
+  const browser = await chromium.launch();
+  const ctx = await browser.newContext({ viewport: { width: w, height: h }, isMobile: touch, hasTouch: touch,
+    deviceScaleFactor: 1, colorScheme: dark ? 'dark' : 'light', reducedMotion: 'reduce' });
+  const reqs = [];
+  await ctx.route('**/*', async route => {
+    const u = new URL(route.request().url());
+    if (u.origin !== POP) return route.continue();
+    reqs.push(u.pathname);
+    /* a capture that predates /issues/days carries no table for buildD to pair the wire's events with.
+     * wireDays serves it the table its own wire implies — every field taken from the wire's open events,
+     * nothing invented: id, issue, kind, level, opened_at, cleared_at null. */
+    if (wireDays) {
+      const m = u.pathname.match(/^\/issues\/fixtures\/([a-z0-9][a-z0-9._-]{0,63})$/);
+      if (m && decodeURIComponent(m[1]) === wireDays) {
+        const snap = computeNodeData(wireDays).snapshot;
+        if (!snap) return route.continue();
+        const derived = { ...(snap.issues_days || {}), events: ((snap.issues.events || {}).open || []).map(e => ({
+          id: e.id, issue: e.issue, kind: e.kind, level: e.level, opened_at: e.opened_at, cleared_at: null })) };
+        return route.fulfill({ status: 200, contentType: 'application/json',
+          body: JSON.stringify({ ...snap, issues_days: derived }) });
+      }
+    }
+    const doc = docFor(u);
+    let file = doc || (u.pathname.startsWith('/static/') ? u.pathname.slice(8) : null);
+    /* the node serves the documentation's index from data/ under this one name (main.py COMPANIONS) */
+    if (file === 'docs_site.json') return route.fulfill({ status: 200, contentType: 'application/json', body: fs.readFileSync(path.join(ROOT, 'data', file)) });
+    if (file) {
+      const p = file.includes('/') ? null
+        : fs.existsSync(path.join(STATIC, file)) ? path.join(STATIC, file) : path.join(STATIC, 'fonts', file);
+      if (p === null) return route.fulfill({ status: 404, body: 'the node serves a name, not a path' });
+      if (fs.existsSync(p)) return route.fulfill({ status: 200, body: fs.readFileSync(p),
+        headers: { 'content-type': MIME[path.extname(p)] || 'application/octet-stream' } });
+    }
+    /* the locked phone: /issues answers exactly the 403 body app/main.py builds at SHARE_LEVEL=off */
+    if (locked && u.pathname === '/issues')
+      return route.fulfill({ status: 403, contentType: 'application/json', body: REFUSAL('/issues') });
+    if (await serveNodeAPI(route, u)) return;
+    return route.continue();
+  });
+  if (mem || token || admin) await ctx.addInitScript(([m, t, a]) => { try {
+    if (m) localStorage.setItem('planetai_layout', m);
+    if (a) localStorage.setItem('planetai_admin', a);
+    if (t) localStorage.setItem('planetai_act', t); } catch (e) {} }, [mem, token, admin]);
+  const page = await ctx.newPage();
+  if (throttle) { const cdp = await ctx.newCDPSession(page);
+    await cdp.send('Network.emulateNetworkConditions', { offline: false, latency: 150,
+      downloadThroughput: 1.6 * 1024 * 1024 / 8, uploadThroughput: 750 * 1024 / 8 }); }
+  return { browser, page, reqs };
+};
+
 async function mobile() {
   const bad = [];
   const ok = (cond, what) => { if (!cond) bad.push(what); };
@@ -2947,58 +3011,6 @@ async function mobile() {
   const fx = JSON.parse(fs.readFileSync(path.join(HERE, '..', '..', 'app', 'issues', 'fixtures', `${FIXTURE}.json`), 'utf8'));
   const norm = s => (s || '').replace(/\s+/g, ' ').trim();
 
-  const docFor = u => {
-    if (u.pathname !== '/' && u.pathname !== '/index.html') return null;
-    const layout = u.searchParams.get('layout');
-    return layout === 'mobile' ? 'mobile.html' : layout === 'classic' ? 'index.html' : 'doors.html';
-  };
-  const openRig = async ({ w = 390, h = 844, touch = true, dark = false, token = null, mem = null, throttle = false, locked = false, wireDays = null } = {}) => {
-    const browser = await chromium.launch();
-    const ctx = await browser.newContext({ viewport: { width: w, height: h }, isMobile: touch, hasTouch: touch,
-      deviceScaleFactor: 1, colorScheme: dark ? 'dark' : 'light', reducedMotion: 'reduce' });
-    const reqs = [];
-    await ctx.route('**/*', async route => {
-      const u = new URL(route.request().url());
-      if (u.origin !== POP) return route.continue();
-      reqs.push(u.pathname);
-      /* a capture that predates /issues/days carries no table for buildD to pair the wire's events with.
-       * wireDays serves it the table its own wire implies — every field taken from the wire's open events,
-       * nothing invented: id, issue, kind, level, opened_at, cleared_at null. */
-      if (wireDays) {
-        const m = u.pathname.match(/^\/issues\/fixtures\/([a-z0-9][a-z0-9._-]{0,63})$/);
-        if (m && decodeURIComponent(m[1]) === wireDays) {
-          const snap = computeNodeData(wireDays).snapshot;
-          if (!snap) return route.continue();
-          const derived = { ...(snap.issues_days || {}), events: ((snap.issues.events || {}).open || []).map(e => ({
-            id: e.id, issue: e.issue, kind: e.kind, level: e.level, opened_at: e.opened_at, cleared_at: null })) };
-          return route.fulfill({ status: 200, contentType: 'application/json',
-            body: JSON.stringify({ ...snap, issues_days: derived }) });
-        }
-      }
-      const doc = docFor(u);
-      let file = doc || (u.pathname.startsWith('/static/') ? u.pathname.slice(8) : null);
-      if (file) {
-        const p = file.includes('/') ? null
-          : fs.existsSync(path.join(STATIC, file)) ? path.join(STATIC, file) : path.join(STATIC, 'fonts', file);
-        if (p === null) return route.fulfill({ status: 404, body: 'the node serves a name, not a path' });
-        if (fs.existsSync(p)) return route.fulfill({ status: 200, body: fs.readFileSync(p),
-          headers: { 'content-type': MIME[path.extname(p)] || 'application/octet-stream' } });
-      }
-      /* the locked phone: /issues answers exactly the 403 body app/main.py builds at SHARE_LEVEL=off */
-      if (locked && u.pathname === '/issues')
-        return route.fulfill({ status: 403, contentType: 'application/json', body: REFUSAL('/issues') });
-      if (await serveNodeAPI(route, u)) return;
-      return route.continue();
-    });
-    if (mem || token) await ctx.addInitScript(([m, t]) => { try {
-      if (m) localStorage.setItem('planetai_layout', m);
-      if (t) localStorage.setItem('planetai_act', t); } catch (e) {} }, [mem, token]);
-    const page = await ctx.newPage();
-    if (throttle) { const cdp = await ctx.newCDPSession(page);
-      await cdp.send('Network.emulateNetworkConditions', { offline: false, latency: 150,
-        downloadThroughput: 1.6 * 1024 * 1024 / 8, uploadThroughput: 750 * 1024 / 8 }); }
-    return { browser, page, reqs };
-  };
 
   /* 1 · the rule (§4): a phone moves, a desk stays, a section hash keeps the doors, a memory wins */
   {
@@ -3155,7 +3167,11 @@ async function mobile() {
     const r = await openRig({ throttle: true });
     const t0 = Date.now();
     await r.page.goto(`${POP}/?layout=mobile&${FIXQ}`, { waitUntil: 'domcontentloaded' });
-    await r.page.waitForSelector('.asking', { state: 'visible', timeout: 20000 });
+    /* the boot face, or Now already drawn over it: on CI's slower runner the face could be gone before this looked,
+       and a wait for it to be visible ran out at 20 s with the page drawn (#245, #249 on 14-15 Oct) */
+    await r.page.waitForFunction(() => { const a = document.querySelector('.asking');
+      return (a && a.getBoundingClientRect().height > 0 && getComputedStyle(a).display !== 'none') || document.querySelector('#now-v .t'); },
+      null, { timeout: 20000, polling: 50 });
     const tBoot = (Date.now() - t0) / 1000;
     await r.page.waitForSelector('#now-v .t', { timeout: 20000 });
     const tTitle = (Date.now() - t0) / 1000;
@@ -3210,6 +3226,118 @@ async function mobile() {
   process.exit(1);
 }
 
+/* ------------------------------------------------------------------ the doors' Data and Set up (phase 4b)
+ *
+ * Data is tabs routed #data/<tab> and Set up is sections routed #setup/<section>, so a door's overflow is a
+ * per-pane fact the classic `overflow` above never sees. This opens the doors at 390 and 1440, paper and dark,
+ * locked and with the admin token, and walks every tab and section the page itself lists:
+ *   · no pane scrolls sideways;
+ *   · every tab and section link is a 44 × 44 px target, and Data's tab bar stays on screen when a long tab scrolls;
+ *   · each tab draws only its own sections;
+ *   · every anchor Data used to have still lands: on its tab, on its element, or on Node where the part moved;
+ *   · a change that leaves the machine or runs code asks first, inside the page, and nothing else does.
+ * PAI_DOORS_SHOTS=1 also writes a full-page jpg of every pane to PAI_OUT (doors_<pane>_<w>_<register>_<token>.jpg). */
+async function doors() {
+  const bad = [], ok = (c, what) => { if (!c) bad.push(what); }, said = [];
+  const ADMIN = process.env.PAI_ADMIN_TOKEN || (process.env.PAI_ADMIN_TOKEN = 'rig-admin');
+  const shots = process.env.PAI_DOORS_SHOTS === '1';
+  let panes = 0;
+  const wait = (page, sel) => page.waitForSelector(sel, { timeout: 20000 });
+  const go = async (page, hash) => { await page.evaluate(h => { location.hash = h; }, hash); await page.waitForTimeout(450); };
+  const overflowAt = page => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  for (const w of [390, 1440]) for (const dark of [false, true]) for (const tok of [false, true]) {
+    const tag = `${w}_${dark ? 'dark' : 'paper'}_${tok ? 'token' : 'locked'}`;
+    const r = await openRig({ w, h: w < 768 ? 844 : 900, touch: w < 768, admin: tok ? ADMIN : null });
+    await r.page.goto(`${POP}/?fixture=${FIXTURE}#data`, { waitUntil: 'domcontentloaded' });
+    await wait(r.page, '#datahead h1');
+    if (dark) await r.page.click('.reg button[data-r="dark"]');
+    await r.page.waitForTimeout(400);
+    /* the loading screen holds at least 1.2 s (ASKING's floor); a shot taken under it is a shot of nothing */
+    ok(await r.page.waitForSelector('#asking:not(.on)', { state: 'attached', timeout: 6000 }).then(() => true, () => false), `${tag}: the loading screen never closed`);
+    const tabs = await r.page.evaluate(() => [...document.querySelectorAll('#dnav a')].map(a => a.getAttribute('href')));
+    ok(tabs.length >= 4, `${tag}: Data lists ${tabs.length} tabs`);
+    const seen = new Set();
+    for (const t of tabs) {
+      await go(r.page, t);
+      const g = await r.page.evaluate(() => {
+        const on = [...document.querySelectorAll('#dnav a')].filter(a => a.classList.contains('on')).map(a => a.getAttribute('href'));
+        const vis = [...document.querySelectorAll('.dpane > .dsec, .dpane > [id]')].filter(s => !s.hidden && s.getClientRects().length).map(s => s.id);
+        const small = [...document.querySelectorAll('#dnav a')].map(a => a.getBoundingClientRect()).filter(b => b.height < 44 || b.width < 44).length;
+        return { on, vis, small, view: document.body.dataset.view };
+      });
+      panes += 1;
+      ok(g.view === 'data' && g.on.length === 1 && g.on[0] === t, `${tag} ${t}: the tab bar marks ${g.on.join(',') || 'nothing'}`);
+      ok(g.vis.length > 0, `${tag} ${t}: the tab draws nothing`);
+      for (const id of g.vis) { ok(!seen.has(id), `${tag} ${t}: #${id} is drawn on two tabs`); seen.add(id); }
+      ok(!g.small, `${tag} ${t}: ${g.small} tab(s) under 44 × 44 px`);
+      const o = await overflowAt(r.page); ok(o <= 1, `${tag} ${t}: the page scrolls ${o}px sideways`);
+      if (t === '#data/readings') {
+        await r.page.evaluate(() => window.scrollTo(0, 1600)); await r.page.waitForTimeout(150);
+        const top = await r.page.evaluate(() => document.getElementById('dnav').getBoundingClientRect().top);
+        ok(top >= -1 && top < 120, `${tag}: Data's tab bar scrolled away (top ${Math.round(top)}px)`);
+      }
+      if (shots) await r.page.screenshot({ path: path.join(OUT, `doors_data-${t.split('/')[1]}_${tag}.jpg`), fullPage: true, type: 'jpeg', quality: 78 });
+    }
+    /* the old anchors: [hash, the view it lands on, the tab marked, the element that must be there] */
+    const sid = await r.page.evaluate(() => (D.sensors.find(s => s.local && s.kind === 'sensor') || {}).sensor_id);
+    for (const [h, view, tab, el] of [['#data/d-images', 'data', 'home', 'd-images'], ['#data/d-things', 'data', 'home', 'd-things'],
+      ['#data/models', 'data', 'models', 'models'], ['#data/perday', 'data', 'readings', 'perday'], ['#data/issues7', 'data', 'readings', 'issues7'],
+      ['#data/ledger', 'data', 'ledger', 'ledger'], ['#data/api', 'data', 'api', 'api'], ['#data/cells', 'node', null, 'cells'],
+      ['#data/d-learned', 'node', null, 'remember'], [`#data/${sid}`, 'data', 'readings', 'd-readings']]) {
+      await go(r.page, h); await r.page.waitForTimeout(300);
+      const g = await r.page.evaluate(([e]) => { const x = document.getElementById(e);
+        return { view: document.body.dataset.view, tab: ((document.querySelector('#dnav a.on') || {}).getAttribute || (() => null)).call(document.querySelector('#dnav a.on'), 'href'),
+          there: !!x && !!x.getClientRects().length, top: x ? Math.round(x.getBoundingClientRect().top) : null }; }, [el]);
+      ok(g.view === view, `${tag} ${h}: landed on ${g.view}, not ${view}`);
+      if (tab) ok(g.tab === `#data/${tab}`, `${tag} ${h}: the tab bar marks ${g.tab}, not #data/${tab}`);
+      ok(g.there, `${tag} ${h}: #${el} is not drawn`);
+      if (h !== `#data/${sid}`) ok(g.top != null && g.top < 900 && g.top > -400, `${tag} ${h}: #${el} is ${g.top}px from the top`);
+    }
+    /* Set up: every section the page lists */
+    await go(r.page, '#setup'); await wait(r.page, '#setupv2 .snav');
+    const secs = await r.page.evaluate(() => [...document.querySelectorAll('#setupv2 .snav a')].map(a => a.getAttribute('href')));
+    for (const s of secs) {
+      await go(r.page, s);
+      const g = await r.page.evaluate(() => ({
+        small: [...document.querySelectorAll('#setupv2 .snav a, #setupv2 .sw, #setupv2 .sbtn')].filter(x => x.getClientRects().length)
+          .map(x => x.getBoundingClientRect()).filter(b => b.height < 44 || b.width < 44).length,
+        gear: document.getElementById('gear').getAttribute('aria-current') }));
+      panes += 1;
+      ok(!g.small, `${tag} ${s}: ${g.small} target(s) under 44 × 44 px`);
+      ok(g.gear === 'page', `${tag} ${s}: the gear does not show Set up is open`);
+      const o = await overflowAt(r.page); ok(o <= 1, `${tag} ${s}: the page scrolls ${o}px sideways`);
+      if (shots && (s === '#setup/basics' || s === '#setup/sharing' || s === '#setup/screen'))
+        await r.page.screenshot({ path: path.join(OUT, `doors_${s.slice(1).replace('/', '-')}_${tag}.jpg`), fullPage: true, type: 'jpeg', quality: 78 });
+    }
+    /* the consequences step, unlocked only: open sharing asks first; a plain setting saves at once */
+    if (tok && w === 1440 && !dark) {
+      const puts = []; r.page.on('request', q => { if (q.method() === 'PUT' && q.url().endsWith('/settings')) puts.push(q.postData()); });
+      await go(r.page, '#setup/sharing');
+      await r.page.click('#setupv2 .share input[value="open"]', { force: true });
+      await r.page.click('#ssave'); await r.page.waitForTimeout(300);
+      const c = await r.page.evaluate(() => { const p = document.getElementById('sconfirm'); return p && !p.hidden ? p.innerText : null; });
+      ok(c && /leaves this machine/i.test(c) && /SHARE_LEVEL|reader without a token/i.test(c), `opening SHARE_LEVEL saved without saying what leaves: ${c}`);
+      ok(!puts.length, 'the consequences step let a PUT through before Save anyway');
+      if (shots) await r.page.screenshot({ path: path.join(OUT, `doors_setup-confirm_${tag}.jpg`), type: 'jpeg', quality: 78 });
+      await r.page.click('#sconfirm [data-a="back"]'); await r.page.waitForTimeout(200);
+      ok(await r.page.evaluate(() => !document.getElementById('sconfirm') || document.getElementById('sconfirm').hidden), 'Back did not close the step');
+      ok(!puts.length, 'Back sent the change');
+      await go(r.page, '#setup/alerts'); await r.page.waitForTimeout(200);
+      const k = await r.page.evaluate(() => { const plain = x => { const row = SETUP.desc.runtime.find(y => y.key === x.dataset.key) || {}; return !row.outward && !row.runs_code; };
+        const i = [...document.querySelectorAll('#setupv2 .srow .sc input[type=text]')].find(x => !x.disabled && plain(x)); if (!i) return null; i.value = i.value + '1'; i.dispatchEvent(new Event('input', { bubbles: true })); return i.dataset.key; });
+      await r.page.click('#ssave'); await r.page.waitForTimeout(500);
+      const c2 = await r.page.evaluate(() => { const p = document.getElementById('sconfirm'); return p && !p.hidden; });
+      ok(k && !c2 && puts.length === 1, `a plain setting (${k}) asked first, or did not save (${puts.length} PUT)`);
+      said.push(`the consequences step: SHARE_LEVEL=open asks and sends nothing until Save anyway; ${k} saves at once`);
+    }
+    await r.browser.close();
+  }
+  if (!bad.length) { console.log(`  doors: ${panes} panes of Data and Set up at 390/1440, paper/dark, locked/token: no sideways scroll, `
+    + `44 px tabs, one tab's sections at a time, every old Data anchor lands${said.length ? '; ' + said.join('; ') : ''}`); return; }
+  for (const b of bad) console.log('FAIL doors:', b);
+  process.exit(1);
+}
+
 const [cmd, ...rest] = process.argv.slice(2);
 if (cmd === 'render') await render(rest.length ? rest : ['all']);
 else if (cmd === 'steps') await steps();
@@ -3233,5 +3361,6 @@ else if (cmd === 'analyse') { const f = A[rest[0]]; if (!f) { console.error('ana
 else if (cmd === 'overflow') await overflow(rest);
 else if (cmd === 'list') jobs().forEach(j => console.log(j.name));
 else if (cmd === 'mobile') await mobile();
-else { console.error('usage: measure.mjs render|shots|plates|plate-list|steps|stall|press|asking|extend|anchors|sheets|header|targets|audit|overflow|analyse|list|mobile');
+else if (cmd === 'doors') await doors();
+else { console.error('usage: measure.mjs render|shots|plates|plate-list|steps|stall|press|asking|extend|anchors|sheets|header|targets|audit|overflow|analyse|list|mobile|doors');
   process.exit(2); }

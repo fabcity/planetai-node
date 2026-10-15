@@ -125,7 +125,7 @@ A metric means different things from different devices. `config/channels.yml`, a
 | `device_health` | the instrument talking about itself | `battery_pct`, `battery_v`, `lora_util_pct`, `lora_channel_pct`, a purifier's `filter_life` |
 | `derived` | computed by the node from other readings | `open-meteo-cams` `pm25_model`; every `fc_*` forecast metric |
 | `index` | a vendor's own composite, never pooled with anyone else's | `aqi`, `bme_iaq`, `eco2`, `tvoc_index`, `nox_index` |
-| `private` | the house's own: readouts, sections, rules and cells use it; it is left out of the daily export, a parent's aggregates, the report bundle and every agent's read, and `/readings`, `/history`, `/series` and `/sparks` answer it to the admin token only | a household's inventory counts (SPEC_inventory) |
+| `private` | the house's own: readouts, sections, rules and cells use it; it is left out of the daily export, a parent's aggregates, the report bundle and every agent's read, and `/readings`, `/history`, `/series` and `/sparks` answer it to the admin token only, and readouts such as `/stats` to the household's admin or act token or this machine | a household's inventory counts (SPEC_inventory) |
 
 `comparable` says whether two sensors' values of that metric may be compared (`pm25_raw` is not); `reference`
 names the sensing element (`plantower`, `sc`, `bme680`). A role is keyed per source and metric, not per

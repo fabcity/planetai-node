@@ -331,7 +331,7 @@ PY
     if confirm "Continue with these?"; then
       step "Installing"
       chmod +x install.sh backup.sh update.sh 2>/dev/null || true
-      PLANETAI_INSTALL_LOG="$LOG" ./install.sh --yes || exit 1
+      PLANETAI_FROM_SETUP=1 PLANETAI_INSTALL_LOG="$LOG" ./install.sh --yes || exit 1
       finish_setup; return
     fi
     # After an install that failed more than once, starting clean is often the shortest way out — and
@@ -484,7 +484,7 @@ print(next((k for k, (a, b, c, d) in boxes.items() if a < lat < b and c < lon < 
   # NOT wrapped in spin(): install.sh prints named steps with elapsed time, and hiding them behind one
   # spinner line is precisely what left a tester watching "building the node" for four minutes and then
   # reading "Something went wrong."
-  PLANETAI_INSTALL_LOG="$LOG" ./install.sh "${flags[@]}" || exit 1
+  PLANETAI_FROM_SETUP=1 PLANETAI_INSTALL_LOG="$LOG" ./install.sh "${flags[@]}" || exit 1
   envset NODE_TZ "$tz"; envset NODE_CITY "$city"; envset NODE_KIND "$kind"
   [[ "$kind" == district ]] && envset NODE_SCALE city
   # on a Linux box that had no Docker a minute ago, install.sh ran under the new docker group (sg) but this shell
@@ -500,7 +500,7 @@ finish_setup() {
   spin "starting with your settings" docker compose up -d --force-recreate app || fail "the app container did not restart with your settings"
   spin "waiting for the first answer" bash -c 'for i in $(seq 1 30); do curl -sf "http://localhost:$(grep ^APP_PORT= .env | cut -d= -f2 | sed "s/[[:space:]]*#.*$//" | tr -d " " || echo 8080)/health" >/dev/null && exit 0; sleep 1; done; exit 1' || true
   api /health >/dev/null || fail "the node is not answering on port $(port). Look at: planetai logs"
-  cmd_doctor quiet || echo "  The crosses above are normal on a new node: Telegram is the next step, and the first backup runs tonight."
+  cmd_doctor quiet || true
 
   what_next
 }
@@ -556,8 +556,14 @@ print(("  reference %d: " % len(ref)) + ", ".join(s["sensor_id"] for s in ref[:4
   api /rho | json 'print("  rho       %s  (%s/%s act-level alerts answered, 30d)" % (d["rho"] if d["rho"] is not None else "not yet measured", d["acted"], d["alerts_act"]))' 2>/dev/null || true
 }
 
+# planetai doctor            every check, then the node's data sources, each failure with its fix under it
+# planetai doctor quiet      no heading and no "all good": what `planetai setup` prints, then "To finish setting up"
+# planetai doctor --guide    quiet, and in a terminal offers to do the first unfinished step (install.sh, update.sh)
+# planetai doctor --json     the checks and the sources as one JSON object
+# The data sources never change the exit code: a node with no sensor yet is unfinished, not broken.
 cmd_doctor() {
   local quiet="${1:-}" ok=1 p; p="$(port)"; local JSON=0; [[ "$quiet" == "--json" ]] && { JSON=1; quiet=""; }
+  local guide=""; [[ "$quiet" == "--guide" || "$quiet" == "quiet" ]] && guide="$quiet"; [[ "$quiet" == "--guide" ]] && quiet="quiet"
   local rows=""
   # $4 = "warn": the row goes amber and does NOT fail the run. For a thing worth saying that is not
   # worth a red doctor — a registry pin that is getting old is a sync to schedule, not a broken node.
@@ -584,7 +590,6 @@ cmd_doctor() {
   chk "coordinates set"          "grep -qE '^NODE_LAT=-?[0-9]' .env"                    "planetai setup"
   chk ".env has no stray spaces" "! grep -qE '^[A-Z_]+=[[:space:]]+[^[:space:]]' .env"   "a space after = makes the shell run the value, and a \`#\` after it hands the container the comment: grep -nE '^[A-Z_]+= +' .env"
   chk "backup destination mounted" "mounted \"\$(envget BACKUP_DIR || echo ./backups)\""   "the NAS or drive in BACKUP_DIR is not mounted; tonight's backup will refuse. Mount it, or: planetai storage set backups <dir>"
-  chk "a backup in the last 2 days" "[[ -n \"\$(find \"\$(envget BACKUP_DIR || echo ./backups)\" -name '*.sql.gz' -mtime -2 2>/dev/null)\" ]]"   "planetai backup — and check cron: crontab -l | grep backup"
   # SPEC_eyes: the folder the household's pictures live in. Unlike DATA_DIR it may be a NAS share — files, not
   # Postgres — so the check is only that it is there and writable; an unmounted share reads as missing, on purpose.
   chk "captures folder writable" "d=\"\$(envget CAPTURES_DIR)\"; d=\"\${d:-./out/captures}\"; [[ -d \"\$d\" && -w \"\$d\" ]]"   "the folder in CAPTURES_DIR is missing or not writable, so the node refuses every picture. It may be a NAS share (files, not Postgres): mount it, or move them: planetai storage set captures <dir>"
@@ -642,8 +647,8 @@ print("%s|%s|%s" % (r.get("latest", ""), r.get("current", ""), "1" if r.get("new
     chk "$mline" "true" "" ""
     fi
   fi
-  chk "telegram connected"       "grep -qE '^TELEGRAM_BOT_TOKEN=.+' .env && grep -qE '^TELEGRAM_CHAT_IDS=.+' .env"  "planetai telegram   (alerts go to the log until then)"
-  chk "a backup exists"          "ls backups/*.sql.gz"                                  "planetai backup   (then check the line below)"
+  # Telegram and the age of the last backup are not checks here: they are data sources, in the block below, where
+  # a new node's two expected crosses read as the next steps they are rather than as a broken node.
   chk "nightly backup scheduled" "grep -q planetai-backup <<< \"\$(crontab -l 2>/dev/null)\""   "no cron entry. Add it: (crontab -l 2>/dev/null; echo '17 3 * * * cd $PWD && ./backup.sh >/dev/null 2>&1 # planetai-backup') | crontab -   (macOS: give cron Full Disk Access first)"
   # the disk the node lives on: the database volume and the backups share it by default; when it fills, Postgres stops
   local freek; freek="$(df -Pk . 2>/dev/null | awk 'NR==2{print $4}')"; freek="${freek:-0}"
@@ -653,10 +658,70 @@ print("%s|%s|%s" % (r.get("latest", ""), r.get("current", ""), "1" if r.get("new
     chk "mesh packets arriving"  "[ \$(mesh_packets) -gt 0 ]"                              "gateway not uplinking yet: planetai meshtastic prints the settings";; esac
   case ",$(envget COMPOSE_PROFILES)," in *,reticulum,*)
     chk "reticulum bridge up"    "curl -sf localhost:4243/health"                       "planetai logs reticulum";; esac
-  if [[ $JSON -eq 1 ]]; then printf '{"ok":%s,"checks":[%s]}\n' "$([[ $ok -eq 1 ]] && echo true || echo false)" "${rows%,}"; return $(( 1 - ok )); fi
+  if [[ $JSON -eq 1 ]]; then
+    printf '{"ok":%s,"checks":[%s],"sources":%s}\n' "$([[ $ok -eq 1 ]] && echo true || echo false)" "${rows%,}" "$(doctor_sources json || echo null)"
+    return $(( 1 - ok )); fi
+  doctor_sources "${guide:-full}" || true
   [[ $ok -eq 1 ]] && { [[ -z "$quiet" ]] && say "all good"; return 0; }
   [[ -z "$quiet" ]] && warn "fix the marked lines, then run planetai doctor again"
   return 1
+}
+
+# The node's fundamental sources (app/fundamentals.py, served at GET /health/sources), as the doctor prints them.
+#   full     a "Data sources" block, each ✗ with its fix under it
+#   quiet    the block without the fixes, then "To finish setting up": the ✗ rows in order, most important first
+#   --guide  quiet, then in a terminal: do the first one now? Never asked without one — an unattended update prints.
+#   json     the route's rows, with the backup judged here
+# The backup's age is read on this machine and handed to the route: BACKUP_DIR may be a NAS the container never sees.
+doctor_sources() {
+  local mode="${1:-full}" bd age out first; bd="$(envget BACKUP_DIR)"; bd="${bd:-./backups}"
+  # minutes since the newest dump where the backups really go; -1 for none. The node judges it with everything else.
+  age="$(python3 -c 'import glob, os, sys, time
+d = [os.path.getmtime(f) for f in glob.glob(os.path.join(sys.argv[1], "*.sql.gz"))]
+print(round((time.time() - max(d)) / 60, 1) if d else -1)' "$bd" 2>/dev/null || echo -1)"
+  out="$({ api "/health/sources?backup_age=$age" || true; } | python3 -c '
+import json, sys
+mode, port, G, R, D, B, N = sys.argv[1:8]
+try:
+    rows = json.load(sys.stdin)["sources"]
+except Exception:
+    if mode == "json":
+        sys.exit(1)
+    print("\n  %sData sources%s\n  %sthe node did not answer GET /health/sources, so its sources cannot be read from here%s" % (B, N, D, N))
+    sys.exit(0)
+if mode == "json":
+    print(json.dumps(rows))
+    sys.exit(0)
+w = max(len(r["name"]) for r in rows)
+sign = {True: G + "\u2713" + N, False: R + "\u2717" + N, None: D + "\u2013" + N}
+print("\n  %sData sources%s" % (B, N))
+for r in rows:
+    said = " \u00b7 ".join(x for x in (r.get("age"), r.get("detail")) if x)
+    print("  %s %s  %s%s%s" % (sign[r["ok"]], r["name"].ljust(w), D, said, N))
+    if mode == "full" and r["ok"] is False:
+        print("      %s\u2192 %s%s" % (D, r["fix"], N))
+todo = [r for r in rows if r["ok"] is False]
+if mode != "full" and todo:
+    print("\n  %sTo finish setting up%s" % (B, N))
+    for i, r in enumerate(todo, 1):
+        print("   %d. %s" % (i, r["fix"]))
+        if r.get("setup") and not r.get("command") and r["state"] == "missing":
+            print("      %shttp://localhost:%s/%s%s" % (D, port, r["setup"], N))
+if todo:
+    f = todo[0]
+    print("\x1f" + (f["command"] or "") + "\x1f" + (f["setup"] or "") + "\x1f" + f["name"])
+' "$mode" "$(port)" "$G" "$R" "$D" "$B" "$N")" || return 1
+  first="${out##*$'\n'}"; [[ "$first" == $'\x1f'* ]] && out="${out%$'\n'*}" || first=""
+  printf '%s\n' "$out"
+  [[ "$mode" == "--guide" && -n "$first" ]] || return 0
+  [[ -t 1 ]] && ( : </dev/tty ) 2>/dev/null || return 0     # no terminal (cron, an agent, a pipe): the list is enough
+  local cmd anchor name; IFS=$'\x1f' read -r _ cmd anchor name <<< "$first"
+  if [[ -n "$cmd" ]]; then printf '\n  Do the first one now: %s%s%s?  %s[y]%s yes   %s[Enter]%s later\n  ' "$B" "$cmd" "$N" "$B" "$N" "$B" "$N"
+  else printf '\n  Open %s in Set up now?  %s[y]%s open the dashboard   %s[Enter]%s later\n  ' "$name" "$B" "$N" "$B" "$N"; fi
+  local k; IFS= read -r -n1 k </dev/tty || k=""; echo
+  [[ "$k" == [yY] ]] || return 0
+  if [[ -n "$cmd" ]]; then "$HOME_DIR/bin/planetai" ${cmd#planetai }
+  else local u="http://localhost:$(port)/$anchor"; open "$u" 2>/dev/null || xdg-open "$u" 2>/dev/null || echo "  open $u in a browser"; fi
 }
 
 cmd_logs() { docker compose logs -f --tail=80 "${1:-app}"; }
@@ -1555,14 +1620,14 @@ cmd_agent() {
   step "Agents"
   local p; p="$(port)"; local tok; tok="$(envget ADMIN_TOKEN)"; local dns; dns="$(envget MESH_NAME)"
   echo "  The node is an MCP server at /mcp. Any agent that speaks MCP (Claude Desktop, Claude Code, Codex, a local model"
-  echo "  with an MCP client) gets twenty tools. Each one is read, act or admin — app/tool_classes.py is the authority:"
+  echo "  with an MCP client) gets twenty-one tools. Each one is read, act or admin — app/tool_classes.py is the authority:"
   echo
   echo "    read   status  health_check  sensors  context  readings  report_latest  report_bundle  history"
-  echo "           alerts  settings_get  packs  cells  issues  series  export_day"
+  echo "           alerts  settings_get  packs  cells  issues  series  export_day  learned"
   echo "    act    act                          records that a PERSON acted, in their own words. \`note\` is required."
   echo "    admin  settings_set  run_pack_script  maintenance  report_now"
   echo
-  echo "  A person driving an agent gets all twenty. THE LOCAL MODEL RUNNING UNATTENDED ON THIS MACHINE GETS READ AND"
+  echo "  A person driving an agent gets all twenty-one. THE LOCAL MODEL RUNNING UNATTENDED ON THIS MACHINE GETS READ AND"
   echo "  ACT ONLY — it cannot change a setting, run a pack'"'"'s code, or make the node message the household by itself."
   echo "  Writes record the agent'"'"'s name (X-Agent)."
   echo

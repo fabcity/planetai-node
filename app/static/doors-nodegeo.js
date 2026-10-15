@@ -24,7 +24,7 @@ async function knownNodes(D) {
 }
 
 async function nodeGeo(D) {
-  const ask = p => fetch('/' + p, { headers: DOORS_AUTH() }).then(r => r.ok ? r.json() : Promise.reject(new Error(`GET /${p.split('?')[0]} answered ${r.status}`)));
+  const ask = p => doorsFetch('/' + p).then(r => r.ok ? r.json() : Promise.reject(new Error(`GET /${p.split('?')[0]} answered ${r.status}`)));
   const [lon, lat] = D.point, here = r => `geo/cell?lat=${lat}&lon=${lon}&res=${r}`;
   // one path from the node through every point a drawing places by distance: stations, the sea model, other nodes
   const pts = D.sensors.filter(s => s.lat != null).map(s => ({ id: s.sensor_id, ll: [s.lon, s.lat] }))

@@ -63,7 +63,8 @@ def status() -> dict:
 @mcp.tool()
 def health_check() -> dict:
     """Checks with the fix named next to each failure: polling recent, sources without errors, a backup in the last two days,
-    the database reachable, the mesh alive if configured."""
+    the database reachable, the mesh alive if configured. `sources` is GET /health/sources: the fundamental sources, each
+    running or not, with its fix; they never make `ok` false."""
     h = _get("/health"); checks = []
     def chk(name, ok, fix): checks.append({"check": name, "ok": bool(ok), "fix": None if ok else fix})
     age = None
@@ -97,7 +98,13 @@ def health_check() -> dict:
             f"radio(s) {', '.join(quiet)} have been silent for hours. What this means: readings and alerts that travel over LoRa have "
             f"stopped; everything else (the WiFi sensors, Telegram, the dashboard) is unaffected. Most often the gateway radio (the XIAO) "
             f"lost WiFi or its MQTT session: check its power light, open its web page at its IP, or power-cycle it. `planetai logs mosquitto` shows whether the broker hears it.")
-    return {"ok": all(c["ok"] for c in checks), "checks": checks}
+    # The fundamental sources (GET /health/sources), apart from the checks: a node with no sensor yet is unfinished,
+    # not broken, so they never make `ok` false. Each one that is not running carries its fix.
+    try:
+        srcs = _get("/health/sources")["sources"]
+    except Exception:  # noqa: BLE001 — an older node has no such route; the checks above stand on their own
+        srcs = None
+    return {"ok": all(c["ok"] for c in checks), "checks": checks, "sources": srcs}
 
 
 @mcp.tool()
@@ -168,6 +175,28 @@ def report_bundle(hours: int = 6) -> dict:
                   headers={"Authorization": f"Bearer {os.getenv('ADMIN_TOKEN', '')}", "X-Agent": "agent"}, timeout=120)
     r.raise_for_status()
     return r.json()
+
+
+@mcp.tool()
+def learned(query: str = "", scale: str = "") -> dict:
+    """What this house has learned from its own record (docs/SPEC_learn.md), and its diary. With no arguments: the
+    learnings, what worked after someone acted, what is usual, and the alerts that may not fit. With `query`, a few
+    keywords ('October', 'smoke purifier', 'heat'), it searches the learnings and the digests the node writes for every
+    day, week, month and year; `scale` (day, week, month, year) narrows to digests of that size, and alone lists the
+    newest. To compare two periods, search for each. A learning's `for_whom` names who in this house it matters most
+    to, as the household said; say so when it applies. Every sentence is the node's own: quote it, never add a number or
+    a cause. Answers only while every model this node may use is on the house's own machines; otherwise it says why."""
+    if query or scale:
+        r = httpx.get(API + "/learned/search", params={"q": query, "scale": scale}, headers=_admin_headers("agent"), timeout=30)
+    else:
+        r = httpx.get(API + "/learned", headers=_admin_headers("agent"), timeout=30)
+    if r.status_code in (403, 422):
+        return {"kept_home" if r.status_code == 403 else "error": r.json().get("detail")}
+    r.raise_for_status()
+    if query or scale:
+        return {"results": [{k: x.get(k) for k in ("source", "scale", "label", "text")} for x in r.json().get("results", [])]}
+    return {"learnings": [{k: x.get(k) for k in ("key", "kind", "status", "statement", "n", "checked_at", "for_whom")}
+                          for x in r.json().get("learnings", [])]}
 
 
 @mcp.tool()

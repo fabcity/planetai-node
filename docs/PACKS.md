@@ -1,7 +1,7 @@
 # Packs
 
 A pack is a folder in `packs/`. It carries rules, Index cells, or an adapter for a new source. The core knows nothing
-about air, water or heat; the packs do. Eighteen ship in `packs/`.
+about air, water or heat; the packs do. Seventeen ship in `packs/`.
 
 ```
 packs/<id>/
@@ -135,7 +135,7 @@ Six roles: `ambient` (the air, water or land at a place — comparable between s
 inside of the instrument's own box — a BME680 sealed inside a radio reports the box, not the street, so this is
 never averaged as ambient), `device_health` (the instrument talking about itself, e.g. battery), `derived`
 (computed by us from other readings), `index` (a vendor's own composite number, never pooled with anyone
-else's), and `private` (the house's own: used by readouts, sections, rules and cells like any other, and left out of the daily export, the aggregates a parent receives, the report bundle, every read an agent makes, and `/readings`, `/history`, `/series` and `/sparks` without the admin token; Home Assistant discovery, the household's own automation, still gets it). `config/channels.yml` has the core declarations; `make lint` checks every metric against `app/sources.py`.
+else's), and `private` (the house's own: used by readouts, sections, rules and cells like any other, and left out of the daily export, the aggregates a parent receives, the report bundle, every read an agent makes, and `/readings`, `/history`, `/series` and `/sparks` without the admin token, and from a readout such as `/stats` for anyone without the household's admin or act token who is not this machine; Home Assistant discovery, the household's own automation, still gets it). `config/channels.yml` has the core declarations; `make lint` checks every metric against `app/sources.py`.
 A role is keyed per source and metric, not per device: every sensor an adapter drives shares it, so a node whose
 hardware differs from that adapter's usual shape (an external probe on a Meshtastic pod) cannot override it yet.
 
@@ -301,7 +301,8 @@ sections:
 The node reads each readout's latest row, as it does an issue's, and serves the section in `/issues` as `sections`,
 with the numbers already in it and each one's age. The page turns it into a band in its stage, on Now, with the
 pack's name beside the title and `GET /issues` as its route. A reading the node has no row for is not drawn, and the
-band says how many have not arrived. Its note, at the foot of the page, says which pack declared it and that the pack
+band says how many have not arrived. A core pack's section is the exception: a core pack is on every node whether or
+not its keeper turned it on, so its section stays out of `/issues` until the node holds at least one of its rows. Its note, at the foot of the page, says which pack declared it and that the pack
 ships no code for this page. A declared section draws readout cards only: a stack, a series or a row needs the
 shell's own code. One that is not well formed, or whose id another pack already took, is left out with a line in the
 log; one whose id the page already has is listed under "Registration problems". `tests/test_pack_sections.py` holds
@@ -368,6 +369,7 @@ reaches no issue and is not named as deliberately outside them fails `tests/test
 | place | code | — the ground, its own band | what is around the node from OpenStreetMap, in PostGIS: buildings, shops, schools, clinics, roads, green, walking distances |
 | thingdata | code | — repair knowledge, its own catalogue | a ThingData server's things, guides and stories, and how much of the catalogue anyone has written down how to fix |
 | make | code | — places, not numbers | the nearest active fab labs and what each can do, from the Fab Lab Network directory — display-only, no metrics, no cell and no alert, by design |
+| fire | code | air | fires near the node from NASA FIRMS, and whether they are upwind; acts only when the air outside rises too — off until `FIRE_ENABLED=1` |
 | example-cooking-hours | data | air | a worked example |
 
 `make` is the only pack that stores no number at all. Its rows are `kind='facility'`: a place with

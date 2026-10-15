@@ -368,3 +368,98 @@ ALTER TABLE channel_roles DROP CONSTRAINT IF EXISTS channel_roles_role_check;
 ALTER TABLE channel_roles ADD CONSTRAINT channel_roles_role_check
   CHECK (role IN ('ambient','enclosure','device_health','derived','index','private'));
 INSERT INTO schema_version (version) VALUES ('0.55') ON CONFLICT DO NOTHING;
+
+-- 0.56: the things a home keeps (docs/SPEC_inventory.md). Kept as captures are: not in the export, not readable by
+-- pack SQL; the page, rules and cells read the three private counts per class the node writes as readings
+-- (stock.<class>, idle.<class>, repair.<class> on the `things:<node>` survey sensor, role private).
+CREATE TABLE IF NOT EXISTS things (
+  id          BIGSERIAL PRIMARY KEY,
+  added_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  class       TEXT NOT NULL,                       -- a flows 1.0 physical class (THING_CLASSES in app/main.py)
+  name        TEXT NOT NULL,                       -- the household's words: "cordless drill"
+  count       INTEGER NOT NULL DEFAULT 1 CHECK (count >= 1),
+  used        TEXT NOT NULL DEFAULT 'monthly' CHECK (used IN ('weekly','monthly','yearly','never')),
+  condition   TEXT NOT NULL DEFAULT 'works' CHECK (condition IN ('works','needs_repair','broken')),
+  offer       TEXT NOT NULL DEFAULT 'no' CHECK (offer IN ('no','lend','give')),   -- nothing leaves until step 4
+  capture_id  BIGINT,                              -- the photo it came from, if any
+  note        TEXT
+);
+REVOKE ALL ON things FROM planetai_ro;
+INSERT INTO schema_version (version) VALUES ('0.56') ON CONFLICT DO NOTHING;
+
+-- 0.57: what the node learns (docs/SPEC_learn.md). One row per learning, re-checked and never deleted: a learning
+-- that stops holding is marked `weakening` or `gone`. Kept as things are: revoked from pack SQL, in no export, push
+-- or report bundle; read by GET /learned with the admin token, and by an agent only while models stay home.
+CREATE TABLE IF NOT EXISTS learnings (
+  kind        TEXT NOT NULL,                 -- worked (step 1) · usual · asks (step 2)
+  key         TEXT NOT NULL,                 -- what it is about: a rule id for `worked`
+  issue       TEXT,
+  metric      TEXT,
+  status      TEXT NOT NULL CHECK (status IN ('too_early','holding','weakening','gone')),
+  statement   TEXT NOT NULL,                 -- written by the node from `numbers`, never by a model
+  numbers     JSONB NOT NULL DEFAULT '{}'::jsonb,
+  n           INTEGER NOT NULL DEFAULT 0,
+  scope       TEXT NOT NULL DEFAULT 'house' CHECK (scope IN ('house','place')),
+  first_seen  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  checked_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (kind, key)
+);
+REVOKE ALL ON learnings FROM planetai_ro;
+INSERT INTO schema_version (version) VALUES ('0.57') ON CONFLICT DO NOTHING;
+
+-- 0.58: the digests (docs/SPEC_learn.md §6): one per completed day, week, month and year, written by the node from
+-- its numbers, with the household's own words for what was done. Full-text searched by GET /learned/search; kept as
+-- learnings are: revoked from pack SQL, in no export, push or report, never deleted.
+CREATE TABLE IF NOT EXISTS digests (
+  scale        TEXT NOT NULL CHECK (scale IN ('day','week','month','year')),
+  period_start DATE NOT NULL,
+  label        TEXT NOT NULL,
+  text         TEXT NOT NULL,
+  numbers      JSONB NOT NULL DEFAULT '{}'::jsonb,
+  written_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  tsv          TSVECTOR GENERATED ALWAYS AS (to_tsvector('simple', label || ' ' || text)) STORED,
+  PRIMARY KEY (scale, period_start)
+);
+CREATE INDEX IF NOT EXISTS digests_tsv ON digests USING gin (tsv);
+REVOKE ALL ON digests FROM planetai_ro;
+INSERT INTO schema_version (version) VALUES ('0.58') ON CONFLICT DO NOTHING;
+
+-- 0.59: who is in the house (docs/SPEC_learn.md §8). One row of yes/no answers the household gives, so the node can say
+-- which learnings matter most here. Never a name, an age or a count; changes no threshold; never leaves: revoked from
+-- pack SQL, in no export, push or report, read by GET /household with the admin token.
+CREATE TABLE IF NOT EXISTS household (
+  id         INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+  people     JSONB NOT NULL DEFAULT '{}'::jsonb,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+REVOKE ALL ON household FROM planetai_ro;
+INSERT INTO schema_version (version) VALUES ('0.59') ON CONFLICT DO NOTHING;
+
+-- 0.60: the morning message (docs/SPEC_learn.md §6). A learning keeps the local day its status last changed, so the
+-- morning says what changed and nothing else; rows from before take their first day. A report row says whether it
+-- carried the house's memory, so one report a day does, whatever restarts in between.
+ALTER TABLE learnings ADD COLUMN IF NOT EXISTS status_since DATE;
+UPDATE learnings SET status_since = first_seen::date WHERE status_since IS NULL;
+ALTER TABLE reports ADD COLUMN IF NOT EXISTS memory BOOLEAN NOT NULL DEFAULT false;
+INSERT INTO schema_version (version) VALUES ('0.60') ON CONFLICT DO NOTHING;
+
+-- 0.61: rooms in the household's words (Tomas, 14 Oct 2026: node #1's K, L and S are Kids, Living Room and Studio). A
+-- kit's platform names its sensors ("K ROOM - BAYU HOLES") and every poll writes that name back. A room the household
+-- set (PATCH /sensors/{id}) becomes the name whatever writes the row, core or a pack, so the rules, the stats, the
+-- report, the event messages and the pages all say the room; the platform's own name is kept in `source_name`.
+ALTER TABLE sensors ADD COLUMN IF NOT EXISTS room TEXT;
+ALTER TABLE sensors ADD COLUMN IF NOT EXISTS source_name TEXT;
+CREATE OR REPLACE FUNCTION sensors_room_is_the_name() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF coalesce(NEW.room, '') <> '' THEN
+    -- the incoming name is the platform's unless it is the room this row already had (a rename, not a poll)
+    IF NEW.name IS DISTINCT FROM NEW.room AND (TG_OP = 'INSERT' OR NEW.name IS DISTINCT FROM OLD.room) THEN
+      NEW.source_name := NEW.name;
+    END IF;
+    NEW.name := NEW.room;
+  END IF;
+  RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS sensors_room ON sensors;
+CREATE TRIGGER sensors_room BEFORE INSERT OR UPDATE ON sensors FOR EACH ROW EXECUTE FUNCTION sensors_room_is_the_name();
+INSERT INTO schema_version (version) VALUES ('0.61') ON CONFLICT DO NOTHING;

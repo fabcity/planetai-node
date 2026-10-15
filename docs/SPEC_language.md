@@ -46,6 +46,11 @@ sentences:
 
 - `{line}` — the live relation of the headline value to the issue's line, computed from the value itself (`over · near · under`, near within a tenth below). A template can therefore never assert "under the line" on a day the reading is past it, and each issue's yml names its own line: "the WHO line" for air, "this house's own line" for heat.
 - `{event}` — the clause for the day it crossed and came back ("It crossed the line earlier today"), filled only for reason codes that certainly happened today and only while the reading is back under the line. The state band and the sentence then agree instead of reading as a contradiction.
+- **[new 14 Oct]** `day` — when the reading is back under the line, or near it, after hours over it today, the issue's
+  `day.under` or `day.near` template replaces the attribution, so the title does not say the hour against a day
+  drawn red beside it: "The air is clean now, after a dusty morning | In the house it was past the WHO line for fine
+  dust until 12:00, 12 hours today." The title still carries no number; the tagline carries when and how long, with
+  `{part}`, `{until}` and `{hours}` from the engine's `_day()`, counted as `/issues/days` counts `per_day.over`.
 - `{cmp}` — each issue may carry its own `cmp_words`: air says "cleaner than the street", heat says "cooler than the street". The shared table is the fallback, not the voice. One skeleton per issue was the flatness the review found; heat's templates are not air's with the noun swapped.
 
 `plain` becomes the reading layer and gains the numeral distance, which today it omits: "The room reads 42, the yard 31, the street 38. Two are over the line (15)." **[changed]** On the doors, where the numeral is drawn directly above, the page may drop that first clause; everywhere else it stays.
@@ -63,7 +68,7 @@ The pair travels together. Every consumer renders `sentence` + `plain`, or state
 | ask pane | in context (already: `sentence`, `plain`) | same | `about` in context when focused **[changed: to be added in `app/ask.py`]** |
 | Telegram bot | answer's first line | one number when it drives the advice | when the person asks "what is…" |
 | Wall, thinking aloud **[new]** | the whole paragraph is words | none: its prompt already bans units and allows at most two numbers | none |
-| alerts (events) | first clause ("The air jumped in the kitchen") | second clause, naming whose line **[changed]** ("42 µg/m³ — the WHO line is 15, outside 12") | the action card |
+| alerts (events) | first clause, words only ("Smoke or dust in Kids and Living Room") **[changed 14 Oct]** | one reading, then whose line with its unit ("48 µg/m³; the WHO line is 15 µg/m³"); the outside only in the action, as its reason | the action card |
 | MCP / API | `hero.sentence` | `hero.plain`, `hero.value` | `about` in the issue document |
 
 ## The `about` key
@@ -89,12 +94,14 @@ These apply to every string and every prompt. They exist because every string so
 3. **No units in headlines, no lecturing anywhere.** The number follows the words; the lesson follows the number; nothing precedes its layer.
 4. **No AI mannerisms.** No significance inflation ("a critical threshold"), no promotional adjectives ("optimal", "severe levels"), no copula avoidance ("serves as", "stands as"), no negative parallelism ("not just X, but Y"), no rule-of-three padding, no rhetorical questions answered immediately, no signposting ("let's look at"), no reassurance kickers ("and that's okay"), no corporate filler ("in order to", "at this point in time"), no "it is important to".
 5. **Alarm is a register, not a volume.** DANGER appears at danger and nowhere else. **[changed]** The one exception is the end label of a hero's rule, which names the far end of the scale ("dangerous") rather than the present. Emoji mark events and bot answers (📈 😷 🚨 ✅) because they are the scan-language of a chat list; they never decorate prose.
-6. **Advice is physical, specific, and keeps its reasons.** "Open the side where it started and run the purifier for 30 min: outside is cleaner (12 µg/m³)." The reason moves the hand. Never drop a safety clause for smoothness: "wet skin" and "do not leave anyone alone in it" stay.
+6. **Advice is physical, specific, and keeps its reasons.** "Open the windows and run the purifier for 30 minutes. Outside is cleaner, at 11 µg/m³." **[changed 14 Oct]** Never "the side where it started": an event's rooms are a set, and the engine does not know which came first. The reason moves the hand. Never drop a safety clause for smoothness: "wet skin" and "do not leave anyone alone in it" stay.
 7. **Uncertainty says itself.** "Say what you know and what you do not" is already in both prompts; it applies to templates too. An absent distance says why; it never fills with a guess.
 8. **Each locale is written, not translated.** The es and id strings are read by native speakers before their ASSISTANT-WRITTEN header comes off. Calques count as bugs: "se siente como" is English wearing Spanish; "sensación de" is Spanish.
 
 9) **One word per thing. [new]** A message the node sent is called the same thing on every surface; so is a map cell. The UX review found "ask", "alert" and "message" on one screen for one thing (`docs/design/UX_REVIEW_2026-09.md` §2.1).
 10) **Every alert names whose line it is. [new]** This is an `AGENTS.md` invariant, restated here so the templates keep it: "the WHO line", "this house's own line".
+11) **One line per issue, always with its unit, both named. [new 14 Oct, Tomas]** "The WHO line is 15 µg/m³", never a bare "15"; the urgent air rules keep the US EPA's 35.5 and say so ("the US EPA's unhealthy level, 35.5 µg/m³"); heat says "this house's heat line, 35 °C feels-like". `{line}` and `{peak}` carry the issue's unit (`actions._fields`), so a template never types one.
+12) **One sign per message. [new 14 Oct]** The story's own (📈 😷 🚨 ✅ 🌡️), at its start; no pairs ("🏠😷"), no 👉 before the action, no level icon added in front of a message that has one (`main.notify`). The report has its headline's sign and no other.
 
 ## The prompts
 

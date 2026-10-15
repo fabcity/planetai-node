@@ -338,7 +338,8 @@ figure, from `GET /issues`, and under it one line links the same day as open dat
 Each issue with a day has one drawing of its last 24 hours. Every distance is a trace in ink, dashed by distance, and
 an hour nothing was recorded is a gap in it, never a line drawn across. The grey band is the usual for each hour,
 from the node's own last 14 days. The red dashed line is the issue's line and the red ticks under the drawing are the
-hours over it. An alert event is a bar from when it opened to when it cleared, and its answer is a ring: green for
+hours over it. On the doors and the phone page every drawing of PM2.5 draws the air's own line the same way, red and dashed and
+labelled `WHO 15` (the WHO 2021 24-hour guideline, at the value `/issues` gives); a map marks a station over it instead. An alert event is a bar from when it opened to when it cleared, and its answer is a ring: green for
 Done. When an event is open, its own rooms are a heavier trace beside the house. Point at an hour, or focus the
 drawing and use the arrow keys, and the line under it says that hour in words.
 
@@ -387,7 +388,7 @@ somebody setting up a node needs them:
 
 | tab | what is in it |
 |---|---|
-| **Basics** | what this place watches, in order; what kind of node it is; its language; how the page opens. Its name, city, position and time zone are shown read-only: edit `.env`, then `planetai restart` |
+| **Basics** | what this place watches, in order; what kind of node it is; its language; how the page opens. Its name, city, position and time zone are one **Read at start** table: edit `.env`, then `planetai restart` |
 | **Sources** | sensors and data: Smart Citizen, AirGradient and PurpleAir hosts, the mesh radios, Bali Air Dispatch, Open-Meteo, open-data portals. A source that comes as a pack is set in its card under Packs |
 | **Alerts** | alerts and reports: Telegram chat ids, when reports go out, what interrupts, quiet hours, which engine sends the heat and air messages (`ALERT_ENGINE`), how many it may send a day (`ALERT_MAX_PER_DAY`), what this home has (`HOME_HAS`), mesh alerts, whether an act needs a decision first |
 | **Model** | ask and model: which model answers, on the ask pane and on Telegram alike; the remote and online models |
@@ -406,6 +407,16 @@ again. If one of those keys changed on the node after the form was drawn (from t
 screen), nothing is saved: the field says what the node holds now and the last change the ledger has for it,
 read from `GET /actions?stage=settings`, and a second press of Save replaces it. In the packs group a pack
 switch decides `PACKS_ENABLED` only when one was moved; otherwise the text field does.
+
+A change that sends something beyond this machine (the node marks those keys `outward` in `GET /settings`:
+`SHARE_LEVEL`, live map tiles, Telegram, the online model, the parent node, Reticulum, Home Assistant, Smart
+Citizen forwarding, the update check, GBIF) or runs code here that is not the node's (`runs_code`:
+`PACKS_ALLOW_CODE`, or a code pack switched on) is not written at the first press. The save bar opens a panel in the
+page, **Before this is saved**, that lists each such change with its new value (a secret is never repeated) and the
+setting's own help, marked "leaves this machine" or "runs code here", with **Back** and **Save anyway**. Turning one
+of them off, or `AGENT_PREFER` back to `private`, asks nothing, and neither does any other setting. In every group,
+what is read once at start is one **Read at start** table, with how to change it said once. The section list, the
+switches and the buttons are 44 px targets, and the gear in the bar is filled while Set up is open.
 
 A pack's own keys save the same way, and the pack has the new value at its next run, whether or not the pack
 is switched on yet. A node older than this refuses them with 400 `<KEY> is not a runtime setting`; see
@@ -431,22 +442,120 @@ answers and the page draws; the plan still needs a token at every level. See [Sh
 The node renders as five doors by default, the redesign worked out in planetai-design (R33 to R45): **Now**
 (the moment, its decision with Done, Not now and Doesn't fit, and the stations around the house), **Place** (the
 ground as a map with layers, scales and a measuring tool, the satellite years and what changed, and the household's
-**Images**: one map layer per kind, phone, fixed camera, microscope, drone and balloon or kite, each image a square
-that opens a card with the image, when, who, the note and its cell, and a quiet **+ Add an image** beside the views
-that opens a dialog, the file picked or dropped; token-only, `GET /captures`), **Data** (every
-reading, drawn, the seven days of every issue, the models, the Index, **Images** (every image with its facts of
-arrival, its kind, note and key: value lines to edit, and Delete for a screen holding the admin token, under the species a person here has confirmed) and the ledger), **Wall** (the keeper's one
-dark screen) and **Node** (what comes in and goes out, the nodes around it, and how it is running). The classic
+**Images**: one map layer, each image a square that opens a card with the image, when, who, the note and its cell,
+and under it **Species confirmed here**, a filled mark at each confirming image's point with the species named; a
+quiet **+ Add an image** beside the views opens a dialog, the file picked or dropped; token-only, `GET /captures` and
+`GET /species`), **Data** (tabs,
+one pane at a time, routed `#data/<tab>`, with Set up's list as the tab bar, sticky, and on a phone a wrapping strip of
+44 px targets: **Readings** (every kind of reading as a tile, every source over 24 hours, every issue over seven days
+and the hours over the line per day), **Models and satellite** (one table, a row per source with how often it is
+fetched in words, "hourly" or "yearly", then each value with its unit; the node's counters about its own fetching are
+not drawn), **Home**, **Ledger** and **API** (every route, one line each); `#data/d-images`, `#data/perday`, a
+station's id and every other anchor Data had still open the tab that holds it, at its place, and `#data/cells` opens
+Node, where the Index cells table now sits under the flow. Home is **Images** (a table: a thumbnail, when and who, what took it, the note, what the image model saw and whether somebody here confirmed it, then the species a person here has confirmed, as a table too; a row opens that image in a dialog to look, edit its kind, note and key: value lines, confirm its findings or delete it, and *See all images* opens every card at once), **Things** (a table of what this home keeps, how many, how often each is used, its state and whether it is offered, for a screen holding the admin token; *Add a thing* and each row's *Edit* open the form in a dialog; an image's confirmed findings in those classes each have a button that adds them, the photo linked); the **Ledger**
+is every decision, a run of the same answer one row ("decided ×10") with its day and time on one line, who answered in
+words ("a screen of this node", "its own model, via Telegram") rather than the audit's ids, and a filter by stage,
+and without a token only the time and the stage; a line there points to Node for the diary), **Wall** (the keeper's one
+dark screen) and **Node** (what comes in and goes out, **What it remembers**, the nodes around it, and how it is
+running). The diary is split between Now and Node, and both parts need the admin token: a screen without it asks
+none of it, Now shows nothing of it and Node says only that the record exists and where to unlock it; the Wall never
+reads it. After the decision, Now says **Yesterday**, the node's entry for yesterday in a line or two from its own
+numbers (the air inside, its worst hour and the hours over the line, outside beside it, the alerts and how many were
+acted on) with a link to the whole entry, and **Did it work** for the issue on screen: the last time the node asked,
+what was done in the household's words and what the air or heat inside did after, beside the street, then the node's
+verdict on that alert (it helps here, no clear difference yet, too early to say: `numbers.verdict` of the `worked`
+learning, inside's change after acting against the street and against the times nobody answered) and the start of its
+own sentence, and who it matters to or a link to say who lives here. It is never framed. Node's **What it remembers** keeps the record, private and never leaving: how many entries
+and learnings it holds; the **Diary** as a table, one row per day, week, month or year (a switch), with PM2.5 inside
+(mean and worst hour), outside, feels-like inside, alerts, acted and what was done, each entry opening as the node
+wrote it in a dialog, and a search; **What is usual** (the shape of the day for the air inside and outside and the
+heat, the week against the three before, and the alerts that may not fit); **What worked** as a table, per alert how
+many times it was acted on and the change inside, the same for the times nobody answered, and the node's verdict,
+each alert opening its sentence and every case in a dialog; and **Who lives here?**, five yes-or-no boxes that rank
+the learnings and say who each matters to. `#node/remember/day/<date>` opens one entry. The classic
 dashboard remains available at `/?layout=classic`.
+
+**Place** (15 Oct 2026) opens with five layers on: the street map with its names, the cell the node stands in, the
+house's own stations, the public stations and the images. Every other layer starts off, and a group with nothing on
+starts collapsed with its count. The list grows with its rows and never scrolls inside itself, and the map takes its
+height; on a phone it is a sheet under a **Layers 5** button below the map. The house is named on the map. The tools
+on the map's edge are 44 px: zoom, back to the node's cell, **Inspect**, **Measure** (tap points, then **Done**),
+**From the house** (one tap, and the node measures the distance from its own point) and save as PNG; the active
+one says its word. The cell's edge and area are its own, said once and in one unit: "497 m edge · 0.64 km²" in the
+lede and in the facts. Below the map, **Species confirmed here** is a table: the species (its GBIF page), rank, how
+many times seen here, where in words ("in the seven cells", "outside the seven cells", or both counted), and GBIF's
+open records by others in this node's seven cells; it needs the token, as the images do, and without it one line says
+where to unlock. Only what somebody here confirmed counts; GBIF's records are a count, never points on the map.
+**Changes by the year** (Land and Coast) follows it. A browser without WebGL still gets the map, drawn still from
+the same answers (the node's cell and its parent's cells, the stations, the rings with the token, the images and the
+house), with the layer list and the facts as always.
+
+**Node** (15 Oct 2026) leads with its verdict: "Working. Last reading 19:19; 6 of 6 sensors, 10 of 20 stations heard
+in the last hour.", from `/health` and `/stats` (a station is heard when it read in the last hour) and, for a screen
+holding the token, the fundamental sources `GET /health/sources` names. A poll older than 15 minutes, a loop that
+failed on its last run, a sensor of its own not heard in the last hour or a fundamental source not running turns it
+into "Needs a look", saying which, with a link to finish setting up. On a phone (under 700 px) **What comes in, what goes out** is drawn vertically at the
+screen's width, what comes in above the hexagon and what goes out below, each link on its own rail in the margin. The
+diary shows its fourteen most recent entries and the rest on **Show more**. **The nodes around it** lists the nodes
+first ("1 listed · 0 heard by radio") and draws the globe at most a third of the screen high. **What this node will
+not do** says each refusal in plain words beside a link to where it can be checked: the flow, the Index cells under it, the
+ledger, the machine in Set up, and the nodes around it.
+
+**Now reads in the order a household asks** (Tomas, 15 Oct 2026). First, under a one-line kicker ("Right now · Heat at
+19:00", the provenance pill, and a link to this node's cell on Place, "497 m · 0.64 km² ›"), the sentence and the day
+as one block: the issue's sign, the engine's title and tagline, and the day drawn at every distance with the WHO line
+or the issue's own, the week under it. The four distances (house, street, ring, region) follow as one quiet line with
+their provenance pills. Then **What to do**: while something is asked (`asking` on the issue, or a live event still
+asking) the card, framed, with the node's sentence and Done, Not now and Doesn't fit; otherwise one plain line,
+"Nothing to do now.", with the hour the issue is usually worst when the screen holds the admin token, and an event
+already answered said quietly under it. Then **Did it work** and **Yesterday**, then **Around the house**: a row for
+each issue drawn by the hour (pressing one moves the page to it) and the map of the stations, its caption one line.
+Land and Coast change yearly and have no hours, so they are on Place, under **Changes by the year**, and Now opens on
+the lead only when the lead is drawn by the hour. On a phone (480 px and under) the order is the same in one column,
+the bar is three rows of 44 px targets so the headline is on the first screen, and the week is one row a day, the
+whole row a target, with its hours as a strip and its count of hours over the line.
 
 The doors read the routes the dashboard reads, renamed and pivoted in the page and never recomputed
 (`doors-load.js`), and they read them with the same token, kept in the same place in the browser. A screen without
 the token draws what `SHARE_LEVEL` gives it and says, where a part is missing, why. At `open` that is the issues, the
-events, the stations' 15-minute means, the models, the Index, the satellite years and the ledger without its notes.
-The map, the cells, every distance and the hourly table are token-only at every level, because together they say
-where the node is and what the household did hour by hour. **Set up → This screen** (the foot's "Unlock this screen") stores the act or admin
-token in that browser. The gear in the bar opens **Set up**, a page of its own: every setting by group, saved only where it changed and never over a change made on the node meanwhile, the pack switches, who may read the node, this screen's token, updates, and **Machine**, the machine under the node (`GET /machine`) and how long its disk lasts (`GET /storage`). The bar says which version is running. The Wall's right column is **the node, thinking aloud**: every ten minutes, from another angle each time, the node's model (the one chosen under Set up → Model, through `POST /ask`) says in six to eight plain sentences what is happening inside, how it compares with the street and the neighbourhood, what it suggests for an ordinary day and what the next hours may bring, typed at a reading pace, with a countdown to the next. It names the model that answered, warns when the keeper's choice lets the question go online, and calls itself a model's words, never a reading; nothing is kept. Every door but the Wall ends in a foot with the documentation, Ask the node, the classic dashboard, today's open export and Fab City. `?fixture=<name>` works here too, and shows a screen without the token only what the node
+events, the stations' 15-minute means, the models, the Index, the satellite years and the ledger's stages and times,
+without who answered, what each alert said or the notes. The map, the cells, every distance and the hourly table are
+token-only at every level, because together they say where the node is and what the household did hour by hour. A
+screen holding no token does not ask those routes at all, so it leaves no 403s in the node's log; each locked part
+links to **Set up → This screen**. **Set up → This screen** (the foot's "Unlock this screen") stores the act or admin
+token in that browser. The gear in the bar opens **Set up**, a page of its own: every setting by group, saved only where it changed and never over a change made on the node meanwhile, the pack switches, who may read the node, this screen's token, updates, **Rooms** (the household's word for where each of its sensors is, which every alert, the report and every page then use; never shown on the Wall), and **Machine**, the machine under the node (`GET /machine`) and how long its disk lasts (`GET /storage`). The bar says which version is running. The **Wall** is a public screen in a living room or a lab, read from about three metres by people who know nothing
+about air science, and nobody operates it. Nothing on it is smaller than 28 px at 1920×1080, scaled with the screen
+(the `--wf` floor); what did not fit at that size was cut, not shrunk. It reads in one order: the time and the
+sentence (the lead issue's title, its tagline under it); the map, with the wind, the stations as discs and the house as
+one mark, and a caption under it saying in words what the red discs mean against the house ("This house is under the
+clean-air line now; 3 stations nearby, in red, are over it"), at the hour the discs show while the hours replay; what
+the node suggests, one line that ends on a word, with "Answer on Telegram, not here." when something is asked; whether
+people here acted on it, in words ("This house answered 23 of 274 alerts in 30 days") and then the ρ rings, larger;
+and last **the node, thinking aloud**: every ten minutes, from another angle each time, the node's model (the one
+chosen under Set up → Model, through `POST /ask`) says in six to eight plain sentences what is happening inside, how it
+compares with the street and the neighbourhood, what it suggests for an ordinary day and what the next hours may
+bring, typed at a reading pace. Its box is not drawn until a text has arrived; while the next one is written the last
+one stays, held in the page's memory, and the new one is typed once it has all arrived. It calls itself a model's
+words from the node's figures, never a reading, and says "written online" when the keeper's choice sent the question
+out; nothing is kept. The back button, the metric chips, the hour strip and a note naming the model (or why there is
+no text) are chrome: invisible until a pointer is over them or the keyboard reaches them, the back button first. Every door but the Wall ends in a foot with the documentation, Ask the node, the classic dashboard, today's open export and Fab City. `?fixture=<name>` works here too, and shows a screen without the token only what the node
 would show it.
+
+Every time on the doors and the phone page is the node's own local time (`/health` `tz`), whatever offset the route
+wrote it in. The Wall names no sensor, room, kit or person, because anyone in the room reads it: the house is one
+mark, a public station is a disc, and an open ask is the engine's own sentence, never the alert's text. It says the readings are old only when the node's last poll is more than 15 minutes old. Whether anything is asked of the
+house is one answer, `asking` on each issue in `/issues`, and Now's Decide card, the Wall and the phone all read it: the
+issue's open event while it still asks, then any alert still true that no event stands for. An alert whose reading came
+back on its own is still open and still counted in ρ, but it asks nothing now, and none of the three says it does. At
+the live hour Now's Decide card draws that ask (an alert's card says to answer it on Telegram), else the open event
+already answered, else "Nothing to do now."; a past hour shows the events open then, unframed. When
+the reading is back under the line after hours over it today, the title says the day as well as the hour ("The air is
+clean now, after a dusty morning", with "In the house it was past the WHO line for fine dust until 12:00, 12 hours
+today." beneath), counted exactly as the "h over the line today" beside it. On Node, "Alerts, to a phone" is
+what was sent in the last 24 hours (`events.sent_24h` on `/issues`), not every row recorded; the readings kept are
+`/storage`'s count with the token and the readings since the restart without it; and what this home offers
+(`GET /offers`) is one of the links out. On Place, the land change and the Index cells have no shape on the map: their
+rows say how many the node holds and where they are drawn (What changed, and Node › Index cells).
 
 ## The phone page
 

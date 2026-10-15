@@ -9,11 +9,29 @@
 const DOORS_TOKEN = () => { try { return localStorage.getItem('planetai_admin') || localStorage.getItem('planetai_act') || ''; } catch (e) { return ''; } };
 const DOORS_AUTH = () => (DOORS_TOKEN() ? { authorization: 'Bearer ' + DOORS_TOKEN() } : {});
 if (typeof window !== 'undefined') window.PAI_AUTH = DOORS_AUTH;
+/* The routes no SHARE_LEVEL opens to a screen without a token (main._SHARE_OPEN), and /alerts, whose texts name the
+   rooms and which /issues' asks stand in for. Asked without a token they are a 403 every time: noise in the node's log
+   and the console, and nothing drawn. So a screen holding no token at all does not ask; it gets a stand-in 403 and
+   each caller draws what it draws locked. With any token the page asks as before, and the node decides. */
+const DOORS_LOCKED = /^\/?(health\/sources|aggregates|actions|alerts|geo\/(planet|measure|rings|grid)|things|learned|captures|species|household|machine|storage|place\/geojson)\b/;
+const doorsFetch = (p, init = {}) => !DOORS_TOKEN() && DOORS_LOCKED.test(p) ? Promise.resolve(new Response('{}', { status: 403 }))
+  : fetch(p, { ...init, headers: { ...DOORS_AUTH(), ...(init.headers || {}) } });
+/* A wire time in the node's own zone (/health tz) as 'YYYY-MM-DDTHH:MM'. /health and /issues' as_of are written in
+   UTC, the hourly buckets in the node's offset; slicing the string printed both as local, and node #1 showed "as of
+   11:52" beside "at 19:00" (14 Oct). A string with no offset, or no zone yet, keeps its own clock. */
+const DOORS_TZF = {};
+function doorsLocal(iso, tz) {
+  const s = String(iso ?? '');
+  if (!tz || !/(Z|[+-]\d\d:?\d\d)$/.test(s) || Number.isNaN(Date.parse(s))) return s.slice(0, 16);
+  const f = DOORS_TZF[tz] ||= new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+  const p = Object.fromEntries(f.formatToParts(new Date(s)).map(x => [x.type, x.value]));
+  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
+}
 
 const DOORS_ROUTES = {
   issues: 'issues', days: 'issues/days?days=7', health: 'health', rho: 'rho', earth: 'earth', reach: 'reach',
   sensors: 'sensors', observations: 'observations', cells: 'cells', stats: 'stats', settings: 'settings',
-  /* token-only at every SHARE_LEVEL: a screen without the token gets null and says so */
+  /* token-only (doorsFetch): a screen without the token gets null and says so */
   readings_1h: 'aggregates?hours=24', actions: 'actions?limit=2000', alerts: 'alerts?limit=500',
 };
 
@@ -30,6 +48,8 @@ function buildD(A, locale) {
       sentence: tr(hero.sentence || it.sentence), plain: tr(hero.plain), pix: hero.pictogram || null,
       title: tr(it.title), tagline: tr(it.tagline), hours: tr(y.hours),
       reason_text: tr(it.reason_text), open_asks: it.open_asks || [],
+      /* what is asked of the house now (engine _asking): Now's Decide card, the Wall and the phone read this, and only this */
+      asking: (it.asking || []).map(a => ({ ...a, says: tr(a.says), how: tr(a.how) })),
       usual: (it.usual || {}).hours ? it.usual.hours.map(h => [h.median, h.p90]) : null,
       stack: Object.fromEntries(Object.entries(it.stack || {}).map(([d, s]) => [d, s && { value: s.value, provenance: s.provenance, source: s.source }])),
       hero_distance: y.distance ?? null, series: y.series || null, per_day: y.per_day || [], provenance: y.provenance || {},
@@ -68,7 +88,7 @@ function buildD(A, locale) {
   const setting = k => { const r = ((A.settings || {}).runtime || []).find(x => x.key === k) || {}; return r.value || r.default || null; };
   return {
     as_of: I.as_of, tz: H.tz, buckets: Y.buckets || [], order: I.order || [], lead: (I.lead || {}).issue ?? (I.order || [])[0],
-    labels: (I.labels || {})[L] || {}, metrics: I.metrics || {}, issues, events, buttons: evs.buttons || {},
+    labels: (I.labels || {})[L] || {}, metrics: I.metrics || {}, issues, events, buttons: evs.buttons || {}, sent24: evs.sent_24h ?? null,
     node: { name: H.node, place: H.city }, registry: { name: H.node, place: H.city || H.node },
     share: setting('SHARE_LEVEL'), settings: A.settings || null, askOff: setting('UI_ASK') === 'off',   /* the keeper's switch for every ask, the dashboard's and the doors' */ rho: A.rho || {}, health: H,
     earth: A.earth ? { years: E.years || [], changes: E.changes || [], radius_m: E.radius_m, change: E.latest || null,
@@ -86,7 +106,7 @@ async function loadD(routes = DOORS_ROUTES) {
     const t0 = (typeof performance !== 'undefined') ? performance.now() : Date.now();
     if (typeof ASKING !== 'undefined') ASKING.flight('/' + p);
     try {
-      const r = await fetch('/' + p, { headers: DOORS_AUTH() });
+      const r = await doorsFetch('/' + p);
       const ms = ((typeof performance !== 'undefined') ? performance.now() : Date.now()) - t0;
       if (typeof ASKING !== 'undefined') ASKING.saw('/' + p, ms, r.ok);
       if (!r.ok) return null;
@@ -116,4 +136,4 @@ async function loadD(routes = DOORS_ROUTES) {
   return buildD(A, (A.health || {}).locale || 'en');
 }
 
-if (typeof module !== 'undefined') module.exports = { buildD };
+if (typeof module !== 'undefined') module.exports = { buildD, doorsLocal, doorsFetch, DOORS_LOCKED };

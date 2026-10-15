@@ -23,14 +23,19 @@ import json
 import logging
 import os
 import re
+import secrets
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import httpx
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 import agent_loop
+import learn
+import packs
 import settings
 from tool_classes import TOOL_CLASS
 
@@ -66,8 +71,9 @@ class Scrub:
         coords = []
         for v in (lat, lon):
             if v:
-                head = f"{float(v):.2f}"
-                coords.append(re.escape(head) + r"\d*")
+                # rounded and cut: -8.8190516 rounds to -8.82, and "-8.8190" in a text starts -8.81
+                for head in {f"{float(v):.2f}", f"{int(float(v) * 100) / 100:.2f}"}:
+                    coords.append(re.escape(head) + r"\d*")
         self.coords = re.compile("|".join(coords)) if coords else None
 
     def text(self, s: str) -> str:
@@ -79,7 +85,8 @@ class Scrub:
 
     def value(self, v):
         if isinstance(v, dict):
-            return {k: self.value(x) for k, x in v.items() if k not in DROP}
+            # keys too: the Wall's facts are labelled by a pack's own words, and a label can carry a room
+            return {self.text(k) if isinstance(k, str) else k: self.value(x) for k, x in v.items() if k not in DROP}
         if isinstance(v, list):
             return [self.value(x) for x in v]
         if isinstance(v, str):
@@ -139,6 +146,146 @@ def context(doc: dict, loc: str, view: str, mode: str, focus: str | None = None,
             out["focus"] = {"part": m.get("title"), "quote": m.get("quote"), "more": m.get("more"),
                             "from": f"{m.get('page_title')} · {m.get('section') or ''}".strip(" ·")}
     return out
+
+
+# ---------------------------------------------------------------- the Wall's facts
+# The Wall is read by whoever walks past, so its context is a whitelist, not the pane's context cut down: short
+# labelled facts, each with its unit and where it comes from (live, model, satellite), and nothing else. What the
+# house learned, its digests, its things, who answered and the alerts' own words (which name rooms) never enter it.
+# A pack's public figures reach it without code here: every watched issue's readouts, and every section a pack
+# declares `wall: true`. A readout on a channel any pack declares `private` is left out.
+WALL_WHERE = {"room": "inside the home", "yard": "street", "ring": "neighbourhood", "region": "wider area"}
+# ponytail: provenance by the source's words; a pack whose source names none of these reads as its own provenance
+SATELLITE = re.compile(r"satellite|earth engine|alphaearth|sentinel|landsat|modis|viirs|firms", re.I)
+COMPASS = ("north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west")
+WALL_FORECAST_HOURS = 6
+
+
+def _prov(x: dict) -> str:
+    if SATELLITE.search(str(x.get("source") or "")):
+        return "satellite"
+    p = x.get("provenance") or "live"
+    return "live" if p == "partial" else p
+
+
+def _fig(v, dp, unit) -> str:
+    return f"{float(v):.{int(dp or 0)}f} {unit or ''}".strip()
+
+
+def _forecast(fc: dict | None, now) -> str | None:
+    """The next few hours from one forecast source (BMKG first, the official one, else Open-Meteo). Only hours
+    still to come: readings hold the forecast's rows up to 48 h ahead, timestamped in the future."""
+    end = now + timedelta(hours=WALL_FORECAST_HOURS)
+    hours = [h for h in (fc or {}).get("hours") or [] if now < learn._aware(h["ts"]) <= end]
+    src = next((s for s in ("forecast-bmkg", "forecast-om") if any(h.get("source") == s for h in hours)), None)
+    hours = [h for h in hours if h.get("source") == src]
+    if not hours:
+        return None
+    temps = [h["fc_temp"] for h in hours if h.get("fc_temp") is not None]
+    rain = sum(h.get("fc_rain") or 0 for h in hours)
+    wind = next((h for h in hours if h.get("fc_wind_speed") is not None and h.get("fc_wind_direction") is not None), None)
+    parts = [f"next {WALL_FORECAST_HOURS} hours"]
+    if temps:
+        parts.append(f"{min(temps):.0f} to {max(temps):.0f} °C")
+    parts.append(f"rain about {rain:.1f} mm" if rain >= 0.2 else "dry")
+    if wind:
+        parts.append(f"wind from the {COMPASS[round(wind['fc_wind_direction'] / 45) % 8]} at {wind['fc_wind_speed']:.0f} km/h")
+    return ", ".join(parts + ["model"])
+
+
+def wall_context(doc: dict, loc: str = "en", usual=(), forecast: dict | None = None, private=frozenset(),
+                 now=None) -> dict:
+    """What the Wall's model is told. `usual` is learnings rows (only kind usual, scope place, holding are read);
+    `forecast` is GET /forecast's body; `private` the metrics any channel declares private."""
+    loc = loc if loc in LOCALES else "en"
+
+    def L(d):
+        return (d.get(loc) or d.get("en") or "") if isinstance(d, dict) else (d or "")
+    now = learn._aware(now or doc.get("as_of") or datetime.now(timezone.utc))
+    tz = os.getenv("NODE_TZ", "").strip()
+    try:
+        here = now.astimezone(ZoneInfo(tz)) if tz else now
+    except (ZoneInfoNotFoundError, ValueError):
+        here = now
+    out: dict = {"time": here.strftime("%A %H:%M")}
+
+    def readouts(rows) -> dict:
+        return {L(r.get("label")) or r["metric"]: f"{_fig(r['value'], r.get('dp'), r.get('unit'))}, {_prov(r)}"
+                for r in rows or [] if r.get("value") is not None and r.get("metric") not in private}
+    iss = doc.get("issues") or {}
+    for k, v in iss.items():
+        if v.get("watched") is False:
+            continue
+        f = {"today": L(v.get("title")), "so far": L(v.get("tagline"))}
+        if v.get("state") != "context":            # land and the sea say themselves in their readouts
+            for d, c in (v.get("stack") or {}).items():
+                if c and c.get("value") is not None:
+                    f[WALL_WHERE.get(d, d)] = f"{_fig(c['value'], v.get('dp'), v.get('unit'))}, {_prov(c)}"
+            line = v.get("line") or {}
+            if line.get("value") is not None:
+                f["line"] = (f"{_fig(line['value'], 0, line.get('unit') or v.get('unit'))}, "
+                             + ("the WHO guideline" if "WHO" in str(line.get("source")) else "this place's own line"))
+            f["trend"] = v.get("trend")
+        f.update(readouts(v.get("readouts")))
+        f = {a: b for a, b in f.items() if b}
+        if f:
+            out[k] = f
+    for sec in doc.get("sections") or []:
+        if sec.get("wall") and readouts(sec.get("readouts")):
+            out[L(sec.get("title")) or sec.get("id")] = readouts(sec.get("readouts"))
+
+    air_line = ((iss.get("air") or {}).get("line") or {}).get("value")
+    pm = [(s.get("km"), r["value"]) for s in doc.get("stations") or [] if not s.get("local") and not s.get("indoor")
+          for r in [(s.get("read") or {}).get("pm25") or {}]
+          if r.get("value") is not None and (r.get("silent_minutes") or 0) < 120]
+    if pm:
+        st = f"{len(pm)} public stations nearby read fine dust, {min(v for _, v in pm):.0f} to {max(v for _, v in pm):.0f} µg/m³"
+        if air_line is not None:
+            st += f", {sum(v > air_line for _, v in pm)} of them over the WHO line"
+        kms = [km for km, _ in pm if km is not None]
+        out["stations nearby"] = st + (f", the nearest {min(kms):.0f} km away" if kms else "") + ", live"
+
+    seen = []
+    for r in usual or []:
+        n = r.get("numbers") or {}
+        if r.get("kind") != "usual" or r.get("scope") != "place" or r.get("status") != "holding" or "high_hour" not in n:
+            continue
+        s = (f"{learn.GROUP_WORDS.get(r.get('key'), r.get('key'))} over the last {n.get('days')} days: usually highest "
+             f"around {n['high_hour']:02d}:00 and lowest around {n['low_hour']:02d}:00")
+        at = (n.get("by_hour") or {})
+        at = at.get(here.hour, at.get(str(here.hour)))
+        if at is not None:
+            s += f", usually {at} {n.get('unit', '')} at this hour"
+        if n.get("this_week") is not None:
+            s += f", this week {n['this_week']} a day against {n.get('usual_week')} the three weeks before"
+        seen.append(s + ", live")
+    if seen:
+        out["usual for this place"] = seen
+    fc = _forecast(forecast, now)
+    if fc:
+        out["forecast"] = fc
+    return out
+
+
+def wall_angles(ctx: dict) -> list[str]:
+    """The angles whose facts this context has: an angle with nothing to say from is skipped, never apologised for."""
+    keys = " ".join(list(ctx) + [k for v in ctx.values() if isinstance(v, dict) for k in v])
+    return [a for a, need in agent_loop.WALL_ANGLES if re.search(need, keys, re.I)]
+
+
+def wall_reads() -> tuple[list, dict | None]:
+    """The two reads the Wall makes beyond /issues. A read that fails leaves its fact out."""
+    import main                                    # noqa: PLC0415
+    try:
+        usual = main.q("SELECT kind, key, scope, status, numbers FROM learnings "
+                       "WHERE kind = 'usual' AND scope = 'place' AND status = 'holding'")
+    except Exception:  # noqa: BLE001
+        usual = []
+    try:
+        fc = main.forecast(WALL_FORECAST_HOURS)
+    except Exception:  # noqa: BLE001
+        fc = None
+    return usual, fc
 
 
 AGENT_KEYS = ("AGENT_PREFER", "AGENT_REMOTE_URL", "AGENT_REMOTE_MODEL", "AGENT_REMOTE_KEY",
@@ -256,8 +403,28 @@ def _sse(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {_json(data)}\n\n"
 
 
+# What the house learned (SPEC_learn §7) stays with the house: the pane offers the `learned` tool only to a caller
+# carrying the household's own token (admin or act) or this machine itself, and never to the Wall, which is read by
+# whoever walks past. /ask is on the SHARE_LEVEL=open allowlist, so without this a stranger on the network could ask
+# the pane what the household did and when.
+HOUSE_TOOLS = frozenset({"learned"})
+
+
+def _house(request: Request) -> bool:
+    given = (request.headers.get("authorization") or "").replace("Bearer ", "", 1).strip().encode()
+    ok = False
+    for t in (os.getenv("ADMIN_TOKEN", "").strip(), (settings.get("ACT_TOKEN", "") or "").strip()):
+        if t and secrets.compare_digest(given, t.encode()):
+            ok = True
+    return ok or (getattr(request.client, "host", "") or "") in ("127.0.0.1", "::1", "localhost")
+
+
+def menu(listed, house: bool) -> list[dict]:
+    return [t for t in agent_loop.pane_tools(listed) if house or t["function"]["name"] not in HOUSE_TOOLS]
+
+
 @router.post("/ask")
-async def ask(body: AskBody):
+async def ask(body: AskBody, request: Request):
     """One answer, streamed as server-sent events: token · tools · retry · proposal · done · error. Nothing is kept."""
     order = rungs()
     if not order:
@@ -266,33 +433,39 @@ async def ask(body: AskBody):
     from issues import api as issues_api           # noqa: PLC0415
     doc = await asyncio.to_thread(issues_api.issues_now)
     try:
-        names = [r["name"] for r in await asyncio.to_thread(main.q, "SELECT name FROM sensors") if r.get("name")]
+        # a room is the sensor's name (init.sql 0.61); the room and the platform's own name are looked for too
+        names = [v for r in await asyncio.to_thread(main.q, "SELECT name, room, source_name FROM sensors")
+                 for v in (r.get("name"), r.get("room"), r.get("source_name")) if v]
     except Exception:  # noqa: BLE001 — a read failing must not put names back in; it only means fewer to look for
         names = []
     scrub = scrub_for(doc, names, os.getenv("NODE_LAT"), os.getenv("NODE_LON"))
     loc = settings.get("ALERT_LOCALE", "en") or "en"
     learn = json.loads(LEARN.read_text()) if body.focus and LEARN.exists() else None
-    ctx = scrub.value(context(doc, loc, body.view, body.mode, body.focus, learn, os.getenv("NODE_VERSION", "")))
 
-    # Compose system prompt: wall narration uses WALL_SYSTEM with rotating angle; otherwise PANE_SYSTEM.
+    # Compose system prompt: wall narration uses WALL_SYSTEM with an angle its facts can carry; otherwise PANE_SYSTEM.
     # Either way the scrubbed context rides in the system prompt — the wall's voice lives on its figures.
     if body.prompt == "wall":
         global WALL_NARR_TURN
-        angle = agent_loop.WALL_ANGLES[WALL_NARR_TURN % len(agent_loop.WALL_ANGLES)]
+        usual, fc = await asyncio.to_thread(wall_reads)
+        private = {c["metric"] for c in packs.channels() if c.get("role") == "private"}
+        ctx = scrub.value(wall_context(doc, loc, usual, fc, private))
+        angles = wall_angles(ctx)
+        angle = angles[WALL_NARR_TURN % len(angles)]
         WALL_NARR_TURN += 1
-        system = (agent_loop.WALL_SYSTEM
-                  + f" This time, start from {angle}; if your context cannot say, speak about the air now."
+        system = (agent_loop.WALL_SYSTEM + f" This time, start from {angle}."
                   + f"\n\nThe page's context:\n{_json(ctx)}")
     else:
+        ctx = scrub.value(context(doc, loc, body.view, body.mode, body.focus, learn, os.getenv("NODE_VERSION", "")))
         system = agent_loop.PANE_SYSTEM.format(node=os.getenv("NODE_NAME", "node"),
                                                lang=agent_loop.LANG_NAME, context=_json(ctx))
+    house = _house(request) and body.prompt != "wall"
     hc = httpx.AsyncClient(headers={"Authorization": f"Bearer {os.getenv('ADMIN_TOKEN', '')}",
                                     "X-Agent": agent_loop.AUDIT_PANE}, timeout=60)
     url = f"http://127.0.0.1:{os.getenv('PORT', '8080')}/mcp"
 
     async def stream():
         try:
-            async with agent_loop.node_session(hc, url, keep=agent_loop.pane_tools) as (session, tools):
+            async with agent_loop.node_session(hc, url, keep=lambda listed: menu(listed, house)) as (session, tools):
                 async def call(name, args):
                     res = await session.call_tool(name, args)
                     return "\n".join(getattr(x, "text", "") for x in res.content)

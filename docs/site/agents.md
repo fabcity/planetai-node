@@ -27,7 +27,7 @@ Paste this to your agent and nothing else:
 1. **Put the node on your tailnet.** On the node, `planetai mesh`. It says that afterwards "the node is
    reachable by name from any of your devices, wherever they are, with no ports opened on any router." The
    name is recorded as `MESH_NAME`.
-2. **Get the snippet.** On the node, `planetai agent`. It prints the twenty tools by class (read, act,
+2. **Get the snippet.** On the node, `planetai agent`. It prints the twenty-one tools by class (read, act,
    admin), the address on this machine (`http://localhost:8080/mcp`) and from the tailnet
    (`http://<MESH_NAME>:8080/mcp`), the header every call must carry, `Authorization: Bearer <ADMIN_TOKEN>`
    with the real token in it, and a ready-made block for
@@ -117,7 +117,7 @@ Docker and no git. An agent with no shell tells the person which to run.
 `planetai agent local` puts Ollama on the node and a loop that answers the household on Telegram. It
 downloads no model: it prints the recommendation for the machine's memory, `qwen3.5:4b` (3.4 GB) or
 `qwen3.5:9b` (6.6 GB) at 16 GB and up, and `planetai agent local pull <tag>` fetches it. `docs/MODELS.md` is
-the catalogue, and its first sentence is "A node needs none of this." That model gets 16 of the 20 tools, the
+the catalogue, and its first sentence is "A node needs none of this." That model gets 17 of the 21 tools, the
 `read` and `act` ones, and appears in the audit trail as `local-model/<rung>`. A remote agent is not alone on
 the node: read the alerts and the actions before acting, and do not undo what the household's own model did
 without asking. See [The bot](bot.md).

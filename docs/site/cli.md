@@ -28,7 +28,7 @@ be installed or started. The installer says what each `sudo` is for on the line 
 | `planetai setup` | The four questions, then the installer. On an existing node offers update · reconfigure · nothing · remove. Detects a version gap against the published `VERSION` and an unfinished install. |
 | `planetai setup --answers file.json` | Headless install from a JSON file; see [Install](install.md). |
 | `planetai status [--json]` | `/health`, sensors, recent alerts and ρ on one screen. |
-| `planetai doctor [quiet\|--json]` | Every check with its fix. Docker running, the containers up, the database answering, the node answering on its port, the app logged in to the database, coordinates set, no stray spaces in `.env`, the backup destination mounted, a backup in the last two days, the release signature verified on the last update (tarball nodes only), the source registry, whether a newer release is out (amber, never red; silent when `UPDATE_CHECK` is off), the `make` pack when it is installed and `PACKS_ALLOW_CODE=1`, Telegram connected, a backup exists, a nightly backup scheduled, more than 1 GB free; with profiles, the broker, mesh packets and the Reticulum bridge. |
+| `planetai doctor [quiet\|--guide\|--json]` | Every check with its fix. Docker running, the containers up, the database answering, the node answering on its port, the app logged in to the database, coordinates set, no stray spaces in `.env`, the backup destination mounted, captures folder writable, the release signature verified on the last update (tarball nodes only), the source registry, whether a newer release is out (amber, never red; silent when `UPDATE_CHECK` is off), the `make` pack when it is installed and `PACKS_ALLOW_CODE=1`, a nightly backup scheduled, more than 1 GB free; with profiles, the broker, mesh packets and the Reticulum bridge. Then the node's **Data sources**, below. `quiet` drops the heading and prints *To finish setting up* instead of a fix under each source; `--guide` does the same and, in a terminal, offers to do the first step. |
 | `planetai update` | Backup, fetch, check the checksum and the release signature, migrate, rebuild, verify; see [Updating](updating.md). Refuses at once when no container runtime is running. |
 | `planetai start` · `stop` · `restart` | `docker compose up -d` · `down` (data kept) · recreate the app container, which is how `.env` changes take effect. |
 | `planetai logs [service]` | Follow the container's log; `app` by default, `agent`, `db`, `reticulum` by name. |
@@ -44,7 +44,34 @@ Three of the doctor's rows say more than pass or fail. The last two are facts, a
 | `source registry: N entries · awesome-fabcity-data @ <sha> · synced <date>` | which snapshot of the source registry this node carries | red when `data/sources/REGISTRY_VERSION` is missing; amber when the pin is more than 180 days old. Amber does not fail the run. |
 | `make: …` | `off` with the licence reason, or how many fab labs lie within `MAKE_RADIUS_KM`, from which snapshot, read on which date | never; it is a fact about the place |
 
-`doctor --json` prints `{"ok": …, "checks": [{"check", "ok", "warn", "fix"}]}`, one object per check.
+Below the checks, **Data sources**: the sources every node needs for its basic job, from
+[`GET /health/sources`](api.md), most important first. Each is ✓, ✗ with its fix under it, or a dash when it does not
+apply here or has not had its first poll yet:
+
+```
+  Data sources
+  ✓ Your own sensors                         4 min ago · inside only; one outside would tell the house from the street
+  ✗ Alerts on your phone (Telegram)          not set up
+      → Connect Telegram, two minutes: planetai telegram
+  ✓ Air stations nearby (Bali Air Dispatch)  12 min ago
+  ✓ Weather (Open-Meteo)                     12 min ago
+  ✗ Satellite air (CAMS)                     no reading in two days · last error: 429 Too Many Requests
+      → CAMS (through Open-Meteo) has not answered in three hours. Is the internet up? planetai logs names the error.
+  ✓ Nightly backup                           9 h ago
+```
+
+A cross here never changes the doctor's exit code: a node with no sensor yet is unfinished, not broken. Telegram
+and the age of the last backup used to be checks above; they are sources now, so a new node's two expected crosses
+read as its next steps. The backup's age is measured on this machine, where `BACKUP_DIR` really is, and handed to
+the node with the request.
+
+After an install, an update and `planetai setup`, the doctor ends with **To finish setting up**: the crosses again,
+in the same order, each with its fix and, for a setting, the Set up page's address at the right section
+(`http://localhost:8080/#setup/sources`). In a terminal, install and update then ask whether to do the first one
+now (run `planetai telegram`, or open the page); with no terminal (cron, an agent over ssh, `--yes`) they only print.
+
+`doctor --json` prints `{"ok": …, "checks": [{"check", "ok", "warn", "fix"}], "sources": [...]}`, one object per
+check and the route's rows as `sources` (null when the node did not answer).
 
 ## Configuration
 
@@ -118,7 +145,7 @@ The default name is `snapshot-<node>-<YYYY-MM-DDTHHMM>.json`, and the command sa
 
 | command | what it does |
 |---|---|
-| `planetai agent` (`agents`, `mcp`) | The MCP endpoint, the twenty tools by class (read, act, admin), the header to send, and a ready-made `mcp.json` snippet; see [MCP](mcp.md). A person driving an agent gets all twenty; the local model gets read and act only. |
+| `planetai agent` (`agents`, `mcp`) | The MCP endpoint, the twenty-one tools by class (read, act, admin), the header to send, and a ready-made `mcp.json` snippet; see [MCP](mcp.md). A person driving an agent gets all twenty; the local model gets read and act only. |
 | `planetai agent local` | Installs Ollama if it is missing, starts it as a service, and starts the `agent` container that answers on Telegram; see [The bot](bot.md). The dashboard's ask pane can then use the same model on this machine; see [Ask the node](ask.md). It does not download a model: it prints the one it recommends for this machine's memory, `qwen3.5:9b` (6.6 GB) at 16 GB or more, else `qwen3.5:4b` (3.4 GB). |
 | `planetai agent local pull <tag>` | `ollama pull <tag>`, sets `AGENT_MODEL` to it, recreates the `agent` container. Without a tag it prints the recommended tag and exits. |
 | `planetai agent stop` | Stops the agent container. |

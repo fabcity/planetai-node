@@ -20,7 +20,7 @@
 
 (function () {
 const PM = { map: null, overlay: null, theme: null, res: 8, tool: 'inspect', measure: [], hover: null, pick: null,
-  on: {}, alpha: {}, plan: null, land: null };
+  on: {}, alpha: {}, gopen: {}, plan: null, land: null };
 
 /* ---------------------------------------------------------------- the palette, by register */
 const PAL = {
@@ -40,47 +40,56 @@ const mayLeave = r => r <= 6;
 
 /* ---------------------------------------------------------------- the layer registry: one row per layer, by pack.
    A pack that grows a layer adds one entry here. `empty` is a layer the pack would draw and cannot yet: the row
-   stays, says so in the node's words, and cannot be switched on. */
+   stays, says so in the node's words, and cannot be switched on.
+   FIVE ON (Tomas, 15 Oct): the street, the node's cell, its own sensors, the public stations and the images; every other
+   row starts off, and a group with nothing on starts collapsed with its count. A row with `parent` sits under it and
+   is counted with it. The street map carries its names: one row, not two. */
 const LAYERS = [
-  { id: 'street', group: 'Base', pack: 'place', name: 'Street map', sub: 'OpenStreetMap, kept on this node', sw: 'fill-land', on: true, still: true },
-  { id: 'labels', group: 'Base', pack: 'place', name: 'Names', sub: 'places, streets, points of interest', sw: 'txt', on: true, still: true, need: 'glyphs' },
+  { id: 'street', group: 'Base', pack: 'place', name: 'Street map', sub: 'OpenStreetMap, with its names, kept on this node', sw: 'fill-land', on: true, still: true },
   { id: 'imagery', group: 'Base', pack: 'earth-engine', name: 'Satellite, 10 m', sub: 'Sentinel-2, composited by this node', sw: 'fill-photo', on: false, need: 'imagery' },
   { id: 'drone', group: 'Base', pack: 'place', name: 'Drone imagery', sub: 'OpenAerialMap, where somebody flew', sw: 'fill-photo', on: false, need: 'drone', minz: 13 },
-  { id: 'grid', group: 'Grid', pack: 'core', name: 'H3 cells at this scale', sub: 'dotted where a cell may leave', sw: 'line-grid', on: true },
+  { id: 'grid', group: 'Grid', pack: 'core', name: 'H3 cells at this scale', sub: 'dotted where a cell may leave', sw: 'line-grid', on: false },
   { id: 'mine', group: 'Grid', pack: 'core', name: 'The cell it stands in', sub: 'at the resolution in view', sw: 'fill-cell', on: true },
-  { id: 'radio', group: 'Grid', pack: 'reticulum', name: 'What leaves by radio', sub: 'the res-3 cell it announces', sw: 'line-dot', on: true, maxz: 10 },
+  { id: 'radio', group: 'Grid', pack: 'reticulum', name: 'What leaves by radio', sub: 'the res-3 cell it announces', sw: 'line-dot', on: false, maxz: 10 },
   { id: 'own', group: 'Readings', pack: 'core', name: 'This house’s stations', sub: 'filled', sw: 'pt-own', on: true },
   { id: 'public', group: 'Readings', pack: 'nearby', name: 'Public stations', sub: 'hollow · display only, never alert', sw: 'pt-pub', on: true },
-  { id: 'models', group: 'Readings', pack: 'core', name: 'Model points', sub: 'sea, air, land, weather', sw: 'pt-model', on: true },
+  { id: 'models', group: 'Readings', pack: 'core', name: 'Model points', sub: 'sea, air, land, weather', sw: 'pt-model', on: false },
   { id: 'rings', group: 'Readings', pack: 'nearby', name: 'Distance rings', sub: '2, 5 and 15 km', sw: 'line-ring', on: false },
-  /* the household's own images (SPEC_eyes step 1), one row per kind, token-only: GET /captures */
-  { id: 'img-phone', group: 'Images', pack: 'core', name: 'Phone', sub: 'taken on a phone', sw: 'pt-img', on: true },
-  { id: 'img-camera', group: 'Images', pack: 'core', name: 'Fixed camera', sub: 'where one is pointed', sw: 'pt-img', on: true },
-  { id: 'img-microscope', group: 'Images', pack: 'core', name: 'Microscope', sub: 'where the sample came from', sw: 'pt-img', on: true },
-  { id: 'img-drone', group: 'Images', pack: 'core', name: 'Drone', sub: 'a flight, at its point', sw: 'pt-img', on: true },
-  { id: 'img-balloon', group: 'Images', pack: 'core', name: 'Balloon or kite', sub: 'a line, at its point', sw: 'pt-img', on: true },
-  { id: 'satonly', group: 'Packs', pack: 'place', name: 'Only the satellite knows', sub: 'buildings missing from OSM', sw: 'fill-sat', on: true, minz: 12.5 },
-  { id: 'wind', group: 'Packs', pack: 'forecast', name: 'Wind, moving', sub: 'Open-Meteo field round the node', sw: 'pt-wind', on: true, need: 'wind', still: true },
-  { id: 'labs', group: 'Packs', pack: 'make', name: 'Places to make', sub: 'from fablabs.io', sw: 'pt-lab', on: true },
+  /* the household's own images (SPEC_eyes step 1) and the species somebody here confirmed in them (SPEC_species §4),
+     token-only: GET /captures, GET /species. GBIF's open records are a count per species (the table below the map),
+     never points, so nothing hollow is drawn for them. */
+  { id: 'images', group: 'Images', pack: 'core', name: 'Images', sub: 'what the household added', sw: 'pt-img', on: true },
+  { id: 'species', group: 'Images', pack: 'core', name: 'Species confirmed here', sub: 'at the image’s point', sw: 'pt-sp', on: true, parent: 'images' },
+  { id: 'satonly', group: 'Packs', pack: 'place', name: 'Only the satellite knows', sub: 'buildings missing from OSM', sw: 'fill-sat', on: false, minz: 12.5 },
+  { id: 'wind', group: 'Packs', pack: 'forecast', name: 'Wind, moving', sub: 'Open-Meteo field round the node', sw: 'pt-wind', on: false, need: 'wind', still: true },
+  { id: 'labs', group: 'Packs', pack: 'make', name: 'Places to make', sub: 'from fablabs.io', sw: 'pt-lab', on: false },
+  /* no shape on this map, whatever the node holds: the change is a picture in UTM metres with its own words burned in
+     (Place › What changed draws it), and the Index's cells are a table of themes, not places. packRows() says which. */
   { id: 'earth', group: 'Packs', pack: 'earth', name: 'Land change raster', sub: 'AlphaEarth, year on year', sw: 'fill-photo', empty: true },
   { id: 'index', group: 'Packs', pack: 'index', name: 'Fab City Index cells', sub: 'the 20 cells for this place', sw: 'fill-cell', empty: true },
   { id: 'peers', group: 'Packs', pack: 'reticulum', name: 'Nodes heard nearby', sub: 'their announced cells', sw: 'line-dot', empty: true },
 ];
 LAYERS.forEach(l => { PM.on[l.id] = !!l.on && !l.empty; PM.alpha[l.id] = 1; });
-const IMG = LAYERS.filter(l => l.id.startsWith('img-'));
-/* after GET /captures: a kind with none is a row that says so; a screen without the token is told why */
+const ON = () => LAYERS.filter(l => PM.on[l.id] && !l.parent).length;   // the header's count and the phone's button
+/* a species as a row says it: genus and epithet, without the author GBIF appends */
+const short = t => String(t.name || '').split(' ').slice(0, t.rank === 'GENUS' ? 1 : 2).join(' ');
+/* every confirmed living finding, at its image's point (the node's `at`); a model's guess is not one */
+const speciesMarks = () => (PM.caps || []).filter(c => c.analysis && c.analysis.confirmed_by)
+  .flatMap(c => (c.analysis.findings || []).filter(f => f.taxon || f.scientific).map(f => ({ c, t: f.taxon ? short(f.taxon) : f.scientific })));
+/* after GET /captures and /species: none is a row that says so; a screen without the token is told why */
 function imageRows() {
-  for (const l of IMG) {
-    const n = PM.caps ? PM.caps.filter(c => 'img-' + c.kind === l.id).length : 0;
-    l.base = l.base || l.sub; l.locked = !PM.caps; l.empty = !n;
-    l.none = 'none yet · + Add an image, above the map';
-    l.sub = `${n} · ${l.base}`; PM.on[l.id] = !l.empty;
-  }
+  const im = LAYERS.find(l => l.id === 'images'), sp = LAYERS.find(l => l.id === 'species'), C = PM.caps || [], S = (PM.species || {}).species || [];
+  const kinds = d3.rollups(C, v => v.length, c => c.kind).map(([k, v]) => `${v} ${(KIND[k] || k).toLowerCase()}`).join(', ');
+  im.locked = sp.locked = !PM.caps; im.empty = !C.length; sp.empty = !S.length;
+  im.none = 'none yet · + Add an image, above the map'; sp.none = 'none confirmed yet · confirm what an image shows in Data › Images';
+  im.sub = `${C.length} · ${kinds}`;
+  sp.sub = `${S.length} confirmed · ${S.slice(0, 2).map(short).join(', ')}${S.length > 2 ? ', …' : ''}`;
+  PM.on.images = !im.empty; PM.on.species = !sp.empty;
 }
 
 /* ---------------------------------------------------------------- asking the node */
 const API = '/';
-const ask = p => fetch(API + p, { headers: DOORS_AUTH() }).then(async r => {
+const ask = p => doorsFetch(API + p).then(async r => {
   if (r.ok) return r.json();
   const b = await r.json().catch(() => ({}));
   throw new Error(typeof b.detail === 'string' ? b.detail : `GET /${p.split('?')[0]} answered ${r.status}`);
@@ -93,7 +102,8 @@ const CELLS = new Map();
 const cellFacts = id => { if (!CELLS.has(id)) CELLS.set(id, ask(`geo/cell?id=${id}`)); return CELLS.get(id); };
 const cellAt = (lon, lat, r) => ask(`geo/cell?lat=${lat.toFixed(6)}&lon=${lon.toFixed(6)}&res=${r}`);
 const fromNode = (lon, lat) => ask(`geo/measure?from_node=true&path=${lon},${lat}`).then(m => m.total_m);
-const area = m2 => m2 >= 1e6 ? `${(m2 / 1e6).toFixed(m2 >= 1e8 ? 0 : 2)} km²` : `${(m2 / 1e4).toFixed(1)} ha`;
+/* one fact, one figure, one unit (Tomas, 15 Oct: "0.64 km²" beside "64.0 ha"): an area is always km², as the lede says it */
+const area = m2 => `${(m2 / 1e6).toFixed(m2 >= 1e8 ? 0 : m2 >= 1e5 ? 2 : 3)} km²`;
 
 /* The grid in view, asked again whenever the view settles. A slow answer for an old view is dropped. */
 let GRID = null, GSEQ = 0, RINGS = null, RADIO = null;
@@ -106,15 +116,15 @@ async function loadGrid() {
     GRID = { res: g.res, edge_m: g.edge_m, node: g.node[0], nodeRing: loop(g.node), cells: g.cells_ll.map(r => ({ id: r[0], path: loop(r) })) };
     offline(null);
   } catch (e) { if (seq === GSEQ) { GRID = null; offline(e.message); } }
-  redraw(); if (!PM.pick && PM.tool !== 'measure') facts();
+  redraw(); if (!PM.pick && !MEASURING()) facts();
 }
 /* Said once, on the map, when the node does not answer: what is missing and why, never a blank grid. */
 function offline(why) {
   PM.offline = why;
   let n = document.querySelector('.nonode');
   if (!why) { if (n) n.remove(); return; }
-  if (!n) { n = document.createElement('p'); n.className = 'nonode'; PM.map.getContainer().appendChild(n); }
-  n.textContent = `The node did not give this screen its map (${why}). The grid, the rings, the cell facts, every distance and the node’s own street map and satellite are token-only, because together they say where the node is. Unlock this screen under Node to draw them.`;
+  if (!n) { n = document.createElement('p'); n.className = 'nonode'; (PM.map ? PM.map.getContainer() : $('#map')).appendChild(n); }
+  n.textContent = `The node did not give this screen its map (${why}). The grid, the rings, the cell facts, every distance and the node’s own street map and satellite are token-only, because together they say where the node is. Unlock this screen in Set up › This screen to draw them.`;
 }
 
 /* ---------------------------------------------------------------- the base style: everything from the node's disk */
@@ -180,9 +190,11 @@ function style() {
   return { version: 8, glyphs: location.origin + API + 'ground/glyphs/{fontstack}/{range}.pbf', sources, layers: L };
 }
 /* which base style layers each registry row owns */
-const OWNS = { street: ['land-fill', 'land-edge', 'v-earth', 'v-farm', 'v-green', 'v-built', 'v-sand', 'v-water', 'v-stream', 'v-coast', 'v-path', 'v-casing', 'v-road', 'v-bldg', 'plan-green', 'plan-casing', 'plan-road', 'plan-bldg'],
-  labels: ['v-road-label', 'v-poi-label', 'v-place-label'], imagery: ['imagery'], drone: ['drone'], satonly: ['plan-sat'] };
+const OWNS = { street: ['land-fill', 'land-edge', 'v-earth', 'v-farm', 'v-green', 'v-built', 'v-sand', 'v-water', 'v-stream', 'v-coast', 'v-path', 'v-casing', 'v-road', 'v-bldg', 'plan-green', 'plan-casing', 'plan-road', 'plan-bldg',
+    'v-road-label', 'v-poi-label', 'v-place-label'],
+  imagery: ['imagery'], drone: ['drone'], satonly: ['plan-sat'] };
 function applyBase() {
+  if (!PM.map) return;
   for (const [id, ls] of Object.entries(OWNS)) for (const l of ls) {
     if (!PM.map.getLayer(l)) continue;
     PM.map.setLayoutProperty(l, 'visibility', PM.on[id] ? 'visible' : 'none');
@@ -197,15 +209,22 @@ function groundRows() {
   /* no /ground/meta at all is this screen being refused it, not a node without a map: say which */
   const locked = !PM.meta;
   const set = (id, sub, empty, why) => { const l = LAYERS.find(x => x.id === id); if (sub) l.sub = sub; l.empty = !!empty; l.why = why; l.locked = locked && !!empty; if (empty) PM.on[id] = false; };
-  set('street', G.vector ? `OpenStreetMap ${(m.vector || {}).build ? `build ${m.vector.build.slice(0, 8)}` : ''} · ${mb((m.vector || {}).bytes)} on this node` : locked ? 'token-only · unlock this screen under Node' : 'the plan from /place/geojson; no street map on this node yet');
-  set('labels', null, !(G.vector && G.glyphs), 'planetai run place basemap --only vector');
+  set('street', G.vector ? `OpenStreetMap ${(m.vector || {}).build ? `build ${m.vector.build.slice(0, 8)}` : ''} · ${mb((m.vector || {}).bytes)} on this node` : locked ? 'token-only · unlock this screen in Set up › This screen' : 'the plan from /place/geojson; no street map on this node yet');
   const im = m.imagery || {};
   set('imagery', G.imagery ? `Sentinel-2, ${im.passes} passes, ${(im.from || '').slice(0, 7)} to ${(im.to || '').slice(0, 7)} · ${mb(im.bytes)}` : null, !G.imagery, 'planetai run earth-engine basemap');
   const dr = m.drone || {}, ms = dr.mosaics || [];
   const W = PM.wind;
-  set('wind', W ? `Open-Meteo, ${W.n * W.n} points over ${W.km * 2} km, hourly · read ${W.fetched.slice(11, 16)} UTC` : null, !W,
+  set('wind', W ? `Open-Meteo, ${W.n * W.n} points over ${W.km * 2} km, hourly · read ${hhmm(W.fetched)}` : null, !W,
     'FORECAST_OPENMETEO=1, then planetai run forecast windfield');
   set('drone', G.drone && ms.length ? `${ms.map(x => `${x.provider}, ${Math.round(x.gsd_m * 100)} cm, ${x.date}`).join(' · ')} · ${mb(dr.bytes)}` : null, !G.drone, 'planetai run place basemap --only drone');
+}
+/* The two rows above that cannot draw: from what the page already holds, where the node's answer is instead of "the pack
+   has nothing here yet", which said so beside 6 of 20 Index values and a working What changed (14 Oct). */
+function packRows() {
+  const ix = LAYERS.find(l => l.id === 'index'), ea = LAYERS.find(l => l.id === 'earth');
+  const nI = new Set(D.index_cells.map(c => c.cell)).size, nE = ((D.earth || {}).changes || []).length;
+  ix.none = nI ? `${nI} of 20 hold a value · a table, not a shape: <a href="#node/cells">Node › Index cells</a>` : null;
+  ea.none = nE ? `${nE} comparison${nE === 1 ? '' : 's'} · a count, not a shape: What changed, above the map` : null;
 }
 function credits() {
   const m = (PM.meta && PM.meta.layers) || {}, c = [];
@@ -270,10 +289,19 @@ function layers() {
     out.push(new Dk.TextLayer({ characterSet: 'auto', id: 'labs-l', data: F, getPosition: lngLat, getText: s => s.name, getSize: 11, fontFamily: 'Figtree, sans-serif',
       getColor: A(p.ink, .8 * a('labs')), getTextAnchor: 'start', getPixelOffset: [12, 0], background: true, getBackgroundColor: A(p.halo, .85), backgroundPadding: [3, 1] }));
   }
-  for (const l of IMG) if (L[l.id] && PM.caps) {
-    out.push(new Dk.TextLayer({ characterSet: 'auto', id: l.id, data: PM.caps.filter(c => 'img-' + c.kind === l.id), getPosition: c => [c.at[1], c.at[0]],
-      getText: () => '■', getSize: 14, pickable: true, fontFamily: 'JetBrains Mono, monospace', getColor: A(p.ink, a(l.id)),
-      background: true, getBackgroundColor: A(p.halo, .9 * a(l.id)), backgroundPadding: [1, 1] }));
+  if (L.images && PM.caps) {
+    out.push(new Dk.TextLayer({ characterSet: 'auto', id: 'images', data: PM.caps, getPosition: c => [c.at[1], c.at[0]],
+      getText: () => '■', getSize: 14, pickable: true, fontFamily: 'JetBrains Mono, monospace', getColor: A(p.ink, a('images')),
+      background: true, getBackgroundColor: A(p.halo, .9 * a('images')), backgroundPadding: [1, 1] }));
+  }
+  /* a species somebody here confirmed: filled, at its image's point, named beside it */
+  if (L.species && PM.caps) {
+    const sp = speciesMarks();
+    out.push(new Dk.TextLayer({ characterSet: 'auto', id: 'species', data: sp, getPosition: d => [d.c.at[1], d.c.at[0]], getText: () => '◆', getSize: 15,
+      pickable: true, fontFamily: 'JetBrains Mono, monospace', getColor: A(p.ink, a('species')), getPixelOffset: [0, -13] }));
+    out.push(new Dk.TextLayer({ characterSet: 'auto', id: 'species-l', data: sp, getPosition: d => [d.c.at[1], d.c.at[0]], getText: d => d.t, getSize: 11,
+      fontFamily: 'Figtree, sans-serif', getColor: A(p.ink, .85 * a('species')), getTextAnchor: 'start', getPixelOffset: [9, -13],
+      background: true, getBackgroundColor: A(p.halo, .85), backgroundPadding: [3, 1] }));
   }
   const st = S.filter(s => s.kind === 'sensor');
   if (L.public) {
@@ -289,11 +317,15 @@ function layers() {
   /* the node itself, always: a ring, not a dot, because /health publishes its cell's centre to strangers */
   out.push(new Dk.ScatterplotLayer({ id: 'node', data: [{ p: D.point }], getPosition: d => d.p, ...px, stroked: true, filled: false,
     getRadius: 9, getLineColor: A(p.cells, 1), getLineWidth: 2 }));
+  /* and named, as Now's map names it (Tomas, 15 Oct) */
+  out.push(new Dk.TextLayer({ characterSet: 'auto', id: 'house-l', data: [{ p: D.point }], getPosition: d => d.p, getText: () => 'This house', getSize: 11,
+    fontFamily: 'JetBrains Mono, monospace', getColor: A(p.ink, 1), getTextAnchor: 'middle', getPixelOffset: [0, 21],
+    background: true, getBackgroundColor: A(p.halo, .9), backgroundPadding: [3, 1] }));
   if (PM.measure.length) {
     const path = PM.measure.concat(PM.hover && PM.tool === 'measure' ? [PM.hover] : []);
     /* each placed leg labelled with the node's own metres for it; the leg to the cursor is drawn, not measured */
     const legs = (PM.measured && PM.measured.points === PM.measure.length) ? PM.measured.legs_m : [];
-    const lab = PM.measure.map((q, i) => ({ q, t: i ? (legs[i - 1] != null ? fmtM(legs[i - 1]) : '…') : 'start' }));
+    const lab = PM.measure.map((q, i) => ({ q, t: i ? (legs[i - 1] != null ? fmtM(legs[i - 1]) : '…') : PM.from ? '' : 'start' })).filter(d => d.t);
     out.push(new Dk.PathLayer({ id: 'measure', data: [{ path }], getPath: d => d.path, ...px, getColor: A(p.cells, 1), getWidth: 2, extensions: [dashed], getDashArray: [6, 3] }));
     out.push(new Dk.ScatterplotLayer({ id: 'measure-v', data: PM.measure, getPosition: q => q, ...px, getRadius: 3.5, getFillColor: A(p.halo, 1), stroked: true, getLineColor: A(p.cells, 1), getLineWidth: 2 }));
     out.push(new Dk.TextLayer({ characterSet: 'auto', id: 'measure-l', data: lab, getPosition: d => d.q, getText: d => d.t, getSize: 11, fontFamily: 'JetBrains Mono, monospace',
@@ -301,23 +333,29 @@ function layers() {
   }
   return out;
 }
-const redraw = () => PM.overlay && PM.overlay.setProps({ layers: layers() });
+const redraw = () => PM.flat ? flat() : PM.overlay && PM.overlay.setProps({ layers: layers() });
 
 /* ---------------------------------------------------------------- the panel: layers as legend */
 function panel() {
-  const groups = d3.groups(LAYERS, l => l.group);
-  const z = PM.map ? PM.map.getZoom() : 0;
-  $('#layers').innerHTML = `<div class="lyh"><span class="k">Layers</span><span class="k">${LAYERS.filter(l => PM.on[l.id]).length} on</span></div>`
-    + groups.map(([g, ls]) => `<div class="lyg"><div class="k">${g}</div>` + ls.map(l => {
-      const hidden = PM.on[l.id] && ((l.minz != null && z < l.minz) || (l.maxz != null && z > l.maxz));
-      return `<div class="ly ${l.empty ? 'empty' : ''} ${PM.on[l.id] ? 'on' : ''}" data-l="${l.id}">`
-        + `<label><input type="checkbox" ${PM.on[l.id] ? 'checked' : ''} ${l.empty ? 'disabled' : ''} aria-label="${esc(l.name)}">`
-        + `<i class="sw ${l.sw}" aria-hidden="true"></i><span class="nm">${esc(l.name)}<small>${l.empty ? (l.locked ? 'token-only · unlock this screen under Node' : l.none ? l.none : `The ${l.pack} pack has nothing here yet${l.why ? ` · <code>${esc(l.why)}</code>` : ''}`) : esc(l.sub)}${hidden ? ` · ${l.minz != null && z < l.minz ? 'zoom in to see' : 'zoom out to see'}` : ''}</small></span>`
+  const groups = d3.groups(LAYERS, l => l.group), z = PM.map ? PM.map.getZoom() : 0;
+  const b = $('#lybtn'); if (b) b.innerHTML = `Layers <b>${ON()}</b>`;
+  /* the list grows with its rows and never scrolls inside itself: a scroller over a map that pans is a trap */
+  $('#layers').innerHTML = `<div class="lyh"><span class="k">Layers</span><span class="k">${ON()} on</span></div>`
+    + groups.map(([g, ls]) => {
+      const on = ls.filter(l => PM.on[l.id]).length, open = PM.gopen[g] ?? on > 0;
+      return `<details class="lyg" data-g="${g}"${open ? ' open' : ''}><summary class="k">${g}<span>${on ? `${on} of ${ls.length} on` : `${ls.length} layer${ls.length === 1 ? '' : 's'}`}</span></summary>` + ls.map(l => {
+      const hidden = PM.on[l.id] && !PM.flat && ((l.minz != null && z < l.minz) || (l.maxz != null && z > l.maxz));
+      const off = l.empty || (PM.flat && !FLAT.includes(l.id));
+      const why = PM.flat && !FLAT.includes(l.id) ? 'drawn on the live map only' : l.locked ? `token-only · unlock this screen in ${UNLOCK_AT}` : l.none ? l.none : `The ${l.pack} pack has nothing here yet${l.why ? ` · <code>${esc(l.why)}</code>` : ''}`;
+      return `<div class="ly ${off ? 'empty' : ''} ${PM.on[l.id] ? 'on' : ''} ${l.parent ? 'sub' : ''}" data-l="${l.id}">`
+        + `<label><input type="checkbox" ${PM.on[l.id] ? 'checked' : ''} ${off ? 'disabled' : ''} aria-label="${esc(l.name)}">`
+        + `<i class="sw ${l.sw}" aria-hidden="true"></i><span class="nm">${esc(l.name)}<small>${off ? why : esc(l.sub)}${hidden ? ` · ${l.minz != null && z < l.minz ? 'zoom in to see' : 'zoom out to see'}` : ''}</small></span>`
         + `<span class="pk">${esc(l.pack)}</span></label>`
         + (l.id === 'wind' && PM.on.wind && PM.wind ? `<label class="whr"><span>now</span><input type="range" min="0" max="${PM.wind.times.length - 1 - nowIdx()}" step="1" value="${PM.windStep}" aria-label="Hours ahead"><b>${PM.windStep ? `+${PM.windStep} h` : 'now'}</b></label>` : '')
-        + (l.empty || l.still ? '' : `<input class="op" type="range" min="0" max="1" step="0.05" value="${PM.alpha[l.id]}" aria-label="${esc(l.name)} opacity" ${PM.on[l.id] ? '' : 'disabled'}>`)
+        + (off || l.still || PM.flat ? '' : `<input class="op" type="range" min="0" max="1" step="0.05" value="${PM.alpha[l.id]}" aria-label="${esc(l.name)} opacity" ${PM.on[l.id] ? '' : 'disabled'}>`)
         + `</div>`;
-    }).join('') + `</div>`).join('');
+    }).join('') + `</details>`; }).join('');
+  document.querySelectorAll('#layers details').forEach(d => d.ontoggle = () => { PM.gopen[d.dataset.g] = d.open; });
   document.querySelectorAll('#layers .ly').forEach(row => {
     const id = row.dataset.l, cb = row.querySelector('input[type=checkbox]'), op = row.querySelector('.op');
     cb.onchange = () => { PM.on[id] = cb.checked; applyBase(); redraw(); panel(); credits(); windSync(); status(PM.cursor); };
@@ -343,16 +381,28 @@ async function fly(r) {
   PM.map.easeTo({ center: [(bb[0] + bb[2]) / 2, (bb[1] + bb[3]) / 2], zoom: Math.log2(px * mPerPx(0) / EDGE(r)),
     duration: CLOCK.reduced() ? 0 : 700 });
 }
+/* The tools (Tomas, 15 Oct): 44 px targets, the active one says its word, measuring ends on Done (a double click still
+   does), and the house is one tap away: From the house measures from the node's own point to the next tap. */
+const MEASURING = () => PM.tool === 'measure' || PM.tool === 'from';
 function tools() {
   const el = document.createElement('div'); el.className = 'tools';
-  const T = [['in', '+', 'Zoom in'], ['out', '−', 'Zoom out'], ['fit', '⌖', 'Back to this node’s cell'], ['inspect', '↖', 'Inspect: click a feature'],
-    ['measure', '⟷', 'Measure: click points, double-click to finish'], ['png', '⤓', 'Save this view as a PNG']];
-  el.innerHTML = T.map(([k, g, t]) => `<button data-t="${k}" title="${t}" aria-label="${t}" class="${k === PM.tool ? 'on' : ''}">${g}</button>`).join('');
+  const T = [['in', '+', 'Zoom in'], ['out', '−', 'Zoom out'], ['fit', '⌖', 'Back to this node’s cell'], ['inspect', '↖', 'Inspect: tap a feature', 'Inspect'],
+    ['measure', '⟷', 'Measure: tap points, then Done', 'Measure'], ['from', '⌂', 'Distance from the house: tap a point', 'From the house'], ['png', '⤓', 'Save this view as a PNG']];
+  el.innerHTML = T.map(([k, g, t, w]) => `<button data-t="${k}" title="${t}" aria-label="${t}" class="${k === PM.tool ? 'on' : ''}"><span class="g" aria-hidden="true">${g}</span>${w ? `<span class="w">${w}</span>` : ''}</button>`).join('')
+    + `<button class="done" data-t="done" hidden>Done</button>`;
+  PM.setTool = k => {
+    PM.tool = k; PM.hover = null;
+    if (MEASURING()) { PM.measure = []; PM.measured = null; PM.from = k === 'from'; }
+    el.querySelectorAll('button[data-t]').forEach(b => b.classList.toggle('on', b.dataset.t === PM.tool));
+    el.querySelector('.done').hidden = !MEASURING();
+    PM.map.getCanvas().style.cursor = MEASURING() ? 'crosshair' : ''; redraw(); facts();
+  };
   el.onclick = e => {
     const k = e.target.closest('button')?.dataset.t; if (!k) return;
     if (k === 'in') PM.map.zoomIn(); else if (k === 'out') PM.map.zoomOut(); else if (k === 'fit') fly(8);
     else if (k === 'png') { const a = document.createElement('a'); a.download = `place-res${PM.res}.png`; PM.map.triggerRepaint(); PM.map.once('render', () => { a.href = PM.map.getCanvas().toDataURL('image/png'); a.click(); }); }
-    else { PM.tool = k; if (k === 'measure') { PM.measure = []; PM.measured = null; } el.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.t === PM.tool)); PM.map.getCanvas().style.cursor = k === 'measure' ? 'crosshair' : ''; redraw(); facts(); }
+    else if (k === 'done') PM.setTool('inspect');
+    else PM.setTool(k);
   };
   PM.map.getContainer().appendChild(el);
 }
@@ -361,9 +411,10 @@ function tools() {
 /* The cell under the cursor is the node's answer, asked once the pointer rests for a moment. */
 let STAT = 0;
 function status(ll) {
+  if (!PM.map) return;
   const z = PM.map.getZoom();
   $('#mapstatus').innerHTML = `<span>${ll ? `${ll[1].toFixed(5)}, ${ll[0].toFixed(5)}` : '—'}</span><span>z ${z.toFixed(1)}</span>`
-    + `<span class="${mayLeave(PM.res) ? 'leave' : ''}">res ${PM.res} · ${fmtM(EDGE(PM.res))} edge</span>${windWords()}<span class="cid"></span>`;
+    + `<span class="${mayLeave(PM.res) ? 'leave' : ''}">res ${PM.res}</span>${windWords()}<span class="cid"></span>`;
   clearTimeout(STAT);
   if (ll && !PM.offline) STAT = setTimeout(() => cellAt(ll[0], ll[1], PM.res).then(c => { const el = $('#mapstatus .cid'); if (el && PM.cursor === ll) el.textContent = c.id; }).catch(() => {}), 140);
 }
@@ -373,10 +424,13 @@ async function facts() {
   const put = h => { if (seq === FSEQ) $('#facts').innerHTML = h; };
   const said = `<p class="fine">Every figure here is the node’s answer: GET /geo/cell, /geo/measure.</p>`;
   try {
-    if (PM.tool === 'measure') {
-      const m = PM.measured && PM.measured.points === PM.measure.length && PM.measure.length > 1 ? PM.measured : null;
+    const m = PM.measured && PM.measured.points === PM.measure.length && PM.measure.length > 1 ? PM.measured : null;
+    if (PM.tool === 'from') {
+      put(`<div class="k">From the house</div><p class="big mono">${m ? fmtM(m.total_m) : '—'}</p>`
+        + `<p class="fine">Tap any point: the node measures it from its own point, great-circle (GET /geo/measure). Done when you have it.</p>`);
+    } else if (PM.tool === 'measure') {
       put(`<div class="k">Measure</div><p class="big mono">${m ? fmtM(m.total_m) : '—'}</p>` + row('Points', PM.measure.length)
-        + `<p class="fine">Click to add a point, double-click to finish, Esc to clear. The node measures the path, great-circle, leg by leg (GET /geo/measure).</p>`);
+        + `<p class="fine">Tap to add a point, Done to finish, Esc to clear. The node measures the path, great-circle, leg by leg (GET /geo/measure).</p>`);
     } else if (o && o.kind === 'station') {
       const s = o.s, v = lastRaw(s.sensor_id, 'pm25');
       const head = `<div class="k">${s.local ? 'This house’s station' : 'Public station'}</div><h3 class="said">${esc(s.name || s.sensor_id)}</h3>` + row('Id', `<span class="said">${esc(s.sensor_id)}</span>`);
@@ -397,7 +451,7 @@ async function facts() {
         + (c.may_leave ? `<p class="fine">Coarse enough to leave the machine: the node may publish a cell at this resolution, never finer than 6 by radio.</p>` : '') + said);
     } else if (o && o.kind === 'image') {
       const c = o.c, head = `<div class="k">Image · ${esc(KIND[c.kind] || c.kind)}</div><h3>${esc(c.note || 'no note')}</h3>`
-        + row('Taken', esc((c.ts || '').slice(0, 16).replace('T', ' '))) + row('By', esc(c.actor || '—'))
+        + row('Taken', esc(when(c.ts))) + row('By', esc(c.actor || '—'))
         + row('Cell, res 10', `<span class="mono">${esc(c.cell)}</span>`) + row('Where', c.lat == null ? 'its cell only' : 'the exact point')
         + row('In the seven cells', c.outside ? 'no · outside' : 'yes') + (c.at_home ? row('At home', 'yes') : '');
       put(head + row('From this node', '…'));
@@ -411,10 +465,12 @@ async function facts() {
       const sc = SCALES.find(([x]) => x === r), G = GRID && GRID.res === r ? GRID : null;
       const head = `<div class="k">In view · ${sc ? sc[1] : 'res ' + r}</div><p class="big mono">${G ? G.node : '—'}</p>`;
       const c = G ? await cellFacts(G.node) : null;
-      put(head + row('Resolution', `${r}`, `about ${fmtM(G ? G.edge_m : EDGE(r))} to an edge`)
-        + row('This node’s cell', c ? area(c.area_m2) : '<span class="gap">no node</span>')
-        + row('Layers on', `${LAYERS.filter(l => PM.on[l.id]).length} of ${LAYERS.filter(l => !l.empty).length}`)
-        + `<p class="fine">Scroll or press a scale: the grid follows the zoom, and the node draws it. Dotted cells are coarse enough to leave the machine. Click any cell, station or point to inspect it.</p>`);
+      /* the cell's own edge and area, as the lede says them: the resolution's world average is a different hexagon */
+      put(head + row('Resolution', `${r}`, sc ? sc[1] : '')
+        + (c ? row('This node’s cell, its edge', fmtM(c.edge_m)) + row('Its area', area(c.area_m2)) : row('This node’s cell', '<span class="gap">no node</span>'))
+        + (m ? row(PM.from ? 'From the house' : 'Measured', fmtM(m.total_m)) : '')
+        + row('Layers on', `${ON()} of ${LAYERS.filter(l => !l.empty && !l.parent).length}`)
+        + `<p class="fine">Scroll or press a scale: the grid follows the zoom, and the node draws it. Dotted cells are coarse enough to leave the machine. Tap any cell, station, image or point to inspect it.</p>`);
     }
   } catch (e) { offline(e.message); put(`<div class="k">Inspect</div><p class="fine">The node did not answer: ${esc(e.message)}</p>`); }
 }
@@ -438,7 +494,7 @@ function windWords() {
   const F = PM.wind; if (!F || !PM.on.wind) return '';
   const h = windHour(), s = F.at_node.speed_kmh[h], d = F.at_node.from_deg[h];
   if (s == null || d == null) return '';
-  return `<span class="wind">wind ${Math.round(s)} km/h from ${COMPASS[Math.round(d / 22.5) % 16]} · ${F.times[h].slice(11, 16)} UTC${PM.windStep ? ` · +${PM.windStep} h` : ''}</span>`;
+  return `<span class="wind">wind ${Math.round(s)} km/h from ${COMPASS[Math.round(d / 22.5) % 16]} · ${hhmm(F.times[h])}${PM.windStep ? ` · +${PM.windStep} h` : ''}</span>`;
 }
 /* east and north components, km/h, of the wind going TO (from + 180) */
 const uv = (s, from) => { const t = (from + 180) * Math.PI / 180; return [s * Math.sin(t), s * Math.cos(t)]; };
@@ -508,10 +564,10 @@ function windSync() {
 /* ---------------------------------------------------------------- a dot, named where it stands */
 /* Every dot answers a click with what it is, in a card on the map, and the way to its readings in Data. The
    inspector on the right keeps the longer facts. */
-const DOTS = ['own', 'public', 'models', 'labs', ...IMG.map(l => l.id)];
+const DOTS = ['own', 'public', 'models', 'labs', 'images', 'species'];
 const KIND = { phone: 'Phone', camera: 'Fixed camera', microscope: 'Microscope', drone: 'Drone', balloon: 'Balloon or kite' };
 /* an image answers the token only, so it is fetched as a blob: an <img src> cannot carry the header */
-const imgBlob = id => fetch(`/captures/${id}/file`, { headers: DOORS_AUTH() }).then(r => (r.ok ? r.blob() : null)).catch(() => null);
+const imgBlob = id => doorsFetch(`/captures/${id}/file`).then(r => (r.ok ? r.blob() : null)).catch(() => null);
 let POP = null;
 function popup(o) {
   if (POP) { POP.remove(); POP = null; }
@@ -531,7 +587,7 @@ function popup(o) {
   } else if (o.kind === 'image') {
     const c = o.c; at = [c.at[1], c.at[0]];
     h = `<div class="k">Image · ${esc(KIND[c.kind] || c.kind)}</div><img class="pmimg" alt="${esc(c.note || KIND[c.kind] || 'an image')}">`
-      + (c.note ? `<b>${esc(c.note)}</b>` : '') + (c.analysis ? `<span>${esc(c.analysis.summary || '')} <i>(${c.analysis.confirmed_by ? 'confirmed' : 'model'})</i></span>` : '') + `<span class="mono">${esc((c.ts || '').slice(0, 16).replace('T', ' '))}${c.actor ? ' · ' + esc(c.actor) : ''}</span>`
+      + (c.note ? `<b>${esc(c.note)}</b>` : '') + (c.analysis ? `<span>${esc(c.analysis.summary || '')} <i>(${c.analysis.confirmed_by ? 'confirmed' : 'model'})</i></span>` : '') + `<span class="mono">${esc(when(c.ts))}${c.actor ? ' · ' + esc(c.actor) : ''}</span>`
       + `<span class="mono">${esc(c.cell)}${c.lat == null ? ' · no point, its cell' : ''}</span><a href="#data/d-images">Its details in Data →</a>`;
     imgBlob(c.id).then(b => { const el = POP && POP.getElement().querySelector('.pmimg'); if (b && el) { el.src = URL.createObjectURL(b); el.onload = () => URL.revokeObjectURL(el.src); } });
   } else if (o.kind === 'lab') {
@@ -543,9 +599,38 @@ function popup(o) {
   POP.on('close', () => { POP = null; });
 }
 
+/* ---------------------------------------------------------------- without WebGL */
+/* A browser or a kiosk with no WebGL threw at new maplibregl.Map and drew nothing, not even the list or the facts
+   (Tomas's review, 15 Oct). Now the same answers are drawn still, the way Node draws its cell: the node's cell and its
+   res-6 parent's cells (D.ngeo), the rings (GET /geo/rings), the stations, the images and the house, projected, never
+   tiled. Without the token only the stations and the house: the cells and the rings place the node. */
+const FLAT = ['grid', 'mine', 'own', 'public', 'rings', 'images', 'species'];
+function flat() {
+  const el = $('#map'), W = el.clientWidth || 600, H = el.clientHeight || W, NG = D.ngeo, on = id => PM.on[id];
+  const st = D.sensors.filter(s => s.kind === 'sensor' && s.lat != null), five = RINGS && RINGS.find(r => r.km === 5);
+  let pts = five && on('rings') ? five.path : NG ? loop(NG.c6.ring) : st.filter(s => s.local).map(lngLat).concat([D.point]);
+  if (pts.length < 2) pts = [D.point, [D.point[0] + .02, D.point[1] + .02]];
+  const pr = d3.geoMercator().fitExtent([[60, 60], [W - 60, H - 60]], { type: 'MultiPoint', coordinates: pts });
+  const xy = q => pr(q).map(v => v.toFixed(1)), d = ring => 'M' + ring.map(q => xy(q).join(',')).join('L') + 'Z';
+  const T = (q, t, cls, dy = 0) => { const [x, y] = xy(q); return `<text x="${x}" y="${+y + dy}" class="${cls}">${esc(t)}</text>`; };
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" class="geo flatmap" role="img" aria-label="The node’s cell, the stations and the rings, drawn still">`;
+  if (NG && on('grid')) s += NG.c6.children_ll.filter(k => k[0] !== NG.c8.id).map(k => `<path d="${d(loop(k))}" class="hex"/>`).join('');
+  if (NG && on('mine')) s += `<path d="${d(loop(NG.c8.ring))}" class="mine"/>`;
+  if (RINGS && on('rings')) s += RINGS.map(r => `<path d="${d(r.path)}" class="ringl"/>` + T(r.path[0], `${r.km} km`, 'rl', -4)).join('');
+  if (on('public')) s += st.filter(x => !x.local).map(x => { const [cx, cy] = xy(lngLat(x)); return `<circle cx="${cx}" cy="${cy}" r="4.5" class="st"/>`; }).join('');
+  if (on('own')) s += st.filter(x => x.local).map(x => { const [cx, cy] = xy(lngLat(x)); return `<circle cx="${cx}" cy="${cy}" r="5" class="st in"/>`; }).join('');
+  if (PM.caps && on('images')) s += PM.caps.map(c => T([c.at[1], c.at[0]], '■', 'gl')).join('');
+  if (PM.caps && on('species')) s += speciesMarks().map(m => T([m.c.at[1], m.c.at[0]], '◆', 'gl', -13) + T([m.c.at[1], m.c.at[0]], m.t, 'lab sp', -13)).join('');
+  const [hx, hy] = xy(D.point);
+  s += `<circle cx="${hx}" cy="${hy}" r="9" class="house"/><text x="${hx}" y="${+hy + 25}" class="lab hl">This house</text></svg>`;
+  el.innerHTML = s + `<p class="flatnote">${esc(PM.flat)}</p>`;
+  if (PM.offline) offline(PM.offline);
+}
+
 /* ---------------------------------------------------------------- mount once; later calls re-skin */
 async function placeMap() {
   const theme = document.documentElement.dataset.theme || 'light';
+  if (PM.flat) { flat(); panel(); facts(); return; }
   if (PM.map) {
     if (theme !== PM.theme) { PM.theme = theme; PM.map.setStyle(style()); PM.map.once('styledata', () => { applyBase(); redraw(); }); }
     PM.map.resize(); chrome(); panel(); facts(); windSync(); return;
@@ -554,30 +639,42 @@ async function placeMap() {
   /* The plan is the node's own GET /place/geojson, centred where the node stands. Only when the node has none is the
      design kit's copy drawn, and the layer row says it is 1.2 km off. */
   PM.meta = await ask('ground/meta').catch(() => null);
-  PM.wind = await fetch(API + 'ground/wind', { headers: DOORS_AUTH() }).then(r => r.status === 200 ? r.json() : null).catch(() => null);
+  PM.wind = await doorsFetch(API + 'ground/wind').then(r => r.status === 200 ? r.json() : null).catch(() => null);
   PM.ground = (PM.meta && PM.meta.on_disk) || {};
-  groundRows();
-  PM.caps = await ask('captures?limit=500').catch(() => null); imageRows();
+  groundRows(); packRows();
+  [PM.caps, PM.species] = await Promise.all([ask('captures?limit=500').catch(() => null), ask('species').catch(() => null)]); imageRows();
   const nodePlan = await ask('place/geojson').then(g => (g.features || []).length ? g : null).catch(() => null);
   PM.land = { type: 'FeatureCollection', features: [] }; PM.plan = nodePlan;
   if (!nodePlan && !PM.ground.vector && PM.meta) LAYERS.find(l => l.id === 'street').sub = 'the node sent no plan and holds no street map';
   const el = $('#map'); el.innerHTML = '';
-  const map = PM.map = new maplibregl.Map({ container: el, style: style(), center: D.point, zoom: 13.6, minZoom: 5, maxZoom: 18.5,
+  panel();   /* the list first: the map takes its height, so it must be at its height before the map is centred */
+  let map;
+  try { map = PM.map = new maplibregl.Map({ container: el, style: style(), center: D.point, zoom: 13.6, minZoom: 5, maxZoom: 18.5,
     dragRotate: false, pitchWithRotate: false, touchPitch: false, maxPitch: 0, attributionControl: false, fadeDuration: 0, canvasContextAttributes: { preserveDrawingBuffer: true },
     /* the one guard that keeps the promise: nothing but this page's own origin is ever asked for a tile */
     transformRequest: url => (url.startsWith(location.origin + '/ground/') ? { url, headers: DOORS_AUTH() }
-      : url.startsWith(location.origin) || url.startsWith('blob:') ? { url } : { url: 'data:,' }) });
+      : url.startsWith(location.origin) || url.startsWith('blob:') ? { url } : { url: 'data:,' }) }); } catch (e) {
+    /* no WebGL here: the still drawing, and the list and the facts as always */
+    PM.map = null; PM.res = 8;
+    if (D.ngeo) GRID = { res: 8, edge_m: EDGE(8), node: D.ngeo.c8.id, nodeRing: loop(D.ngeo.c8.ring), cells: [] };
+    console.warn('Place: no live map', e);
+    PM.flat = `This browser gave the map no WebGL, so the node’s answers are drawn still: its cell, the stations, the rings and the images. Panning, the scales and measuring need the live map.`;
+    flat(); panel(); facts(); credits();
+    if (!D.ngeo) offline(D.ngeoErr || 'no token');
+    ask('geo/rings?km=2,5,15').then(x => { RINGS = x.rings.map(g => ({ km: g.km, path: g.ring.map(([la, ln]) => [ln, la]) })); flat(); }).catch(() => {});
+    return;
+  }
   map.touchZoomRotate.disableRotation();
   map.addControl(new maplibregl.ScaleControl({ maxWidth: 110, unit: 'metric' }), 'bottom-left');
   PM.overlay = new deck.MapboxOverlay({ interleaved: true, layers: [], pickingRadius: 8,
     onHover: info => { PM.hoverDot = !!(info.object && DOTS.includes(info.layer.id)); },
     /* deck.gl owns the cursor in interleaved mode: a dot says it can be clicked, the measure tool keeps its cross */
-    getCursor: ({ isDragging }) => isDragging ? 'grabbing' : PM.tool === 'measure' ? 'crosshair' : PM.hoverDot ? 'pointer' : 'grab',
+    getCursor: ({ isDragging }) => isDragging ? 'grabbing' : MEASURING() ? 'crosshair' : PM.hoverDot ? 'pointer' : 'grab',
     onClick: info => {
-      if (PM.tool === 'measure') return;
+      if (MEASURING()) return;
       const o = info.object, id = info.layer && info.layer.id;
       PM.pick = !o ? null : (id === 'own' || id === 'public') ? { kind: 'station', s: o } : id === 'models' ? { kind: 'model', ss: o.ss, p: o.p }
-        : id === 'labs' ? { kind: 'lab', s: o } : id && id.startsWith('img-') ? { kind: 'image', c: o } : (id === 'grid' || id === 'grid-dot' || id === 'mine' || id === 'radio') ? { kind: 'cell', id: o.id } : null;
+        : id === 'labs' ? { kind: 'lab', s: o } : id === 'images' ? { kind: 'image', c: o } : id === 'species' ? { kind: 'image', c: o.c } : (id === 'grid' || id === 'grid-dot' || id === 'mine' || id === 'radio') ? { kind: 'cell', id: o.id } : null;
       popup(PM.pick); facts();
     } });
   map.addControl(PM.overlay);
@@ -596,6 +693,11 @@ async function placeMap() {
   map.on('mousemove', e => { const ll = PM.cursor = [e.lngLat.lng, e.lngLat.lat]; status(ll); if (PM.tool === 'measure' && PM.measure.length) { PM.hover = ll; redraw(); } });
   map.on('mouseout', () => { PM.cursor = null; status(null); });
   map.on('click', e => {
+    if (PM.tool === 'from') {
+      const q = [e.lngLat.lng, e.lngLat.lat]; PM.measure = [D.point, q]; PM.measured = null; redraw(); facts();
+      fromNode(q[0], q[1]).then(d => { if (PM.measure[1] === q) { PM.measured = { points: 2, legs_m: [d], total_m: d }; redraw(); facts(); } }).catch(x => offline(x.message));
+      return;
+    }
     if (PM.tool !== 'measure') return;
     PM.measure.push([e.lngLat.lng, e.lngLat.lat]); redraw(); facts();
     if (PM.measure.length > 1) {
@@ -604,13 +706,12 @@ async function placeMap() {
         .then(m => { if (pts.length === PM.measure.length) { PM.measured = m; redraw(); facts(); } }).catch(e => offline(e.message));
     }
   });
-  map.on('dblclick', e => { if (PM.tool !== 'measure') return; e.preventDefault(); PM.hover = null; PM.tool = 'inspect'; map.getCanvas().style.cursor = '';
-    document.querySelectorAll('.tools button').forEach(b => b.classList.toggle('on', b.dataset.t === 'inspect')); redraw(); });
+  map.on('dblclick', e => { if (!MEASURING()) return; e.preventDefault(); PM.setTool('inspect'); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && PM.measure.length) { PM.measure = []; PM.measured = null; PM.hover = null; redraw(); facts(); } });
 }
 window.placeMap = placeMap; window.__PM = PM;   // for the rig
 /* the Images panel added one: ask again, so its kind's row and its square appear */
-window.placeImagesChanged = async () => { if (!PM.map) return; PM.caps = await ask('captures?limit=500').catch(() => null); imageRows(); panel(); redraw(); };
+window.placeImagesChanged = async () => { if (!PM.map && !PM.flat) return; [PM.caps, PM.species] = await Promise.all([ask('captures?limit=500').catch(() => null), ask('species').catch(() => null)]); imageRows(); panel(); redraw(); };
 /* The same base for the doors' other maps (Now's "around this house"): the node's own street map and names when this
    screen may have them; without them only the land's colour, never a tile from anywhere else. */
 window.groundBase = async theme => {

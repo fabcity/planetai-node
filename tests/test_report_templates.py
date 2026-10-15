@@ -140,7 +140,7 @@ for sid, (group, labels) in report.LABELS.items():
 print("every query reads, none of them can see settings, and LABELS has one home")
 
 # ---------------------------------------------------------------- the sheet, in every language
-import copy, re, yaml
+import copy, re, unicodedata, yaml
 
 RULES = {}
 for _f in sorted(__import__("glob").glob("packs/*/rules.yml")):
@@ -150,7 +150,8 @@ for _f in sorted(__import__("glob").glob("packs/*/rules.yml")):
 
 # The thresholds the report quotes are the rules' own. A number here that is not in that rule's SQL is a second
 # copy waiting to drift, which is exactly what the pack-README gate exists for.
-for rule, (metric, line) in report.THRESHOLDS.items():
+for rule, (metric, line, owner) in report.THRESHOLDS.items():
+    assert all(owner in report.T[loc] for loc in report.T), f"{rule}: no words for whose line {owner} is"
     assert rule in RULES, f"{rule} is in THRESHOLDS but no pack ships it"
     sql = RULES[rule]["sql"]
     # the whole number, not a prefix of it: plain `"35" in sql` is satisfied by the 35.5 it is meant to catch
@@ -161,6 +162,8 @@ for rule in report.BEYOND:
     assert rule in RULES, f"{rule} is in BEYOND but no pack ships it"
 assert not any(r.startswith("heat/") for r in report.THRESHOLDS), \
     "heat_stress_now watches an apparent temperature no column holds; it gets an outcome in v0.39, not a guess here"
+# the heat line the report names is the issue's own, the one the page and the alerts name
+assert report.HEAT_LINE == float(yaml.safe_load(open("app/issues/heat.yml"))["line"]["value"]), "two heat lines"
 print("every threshold the report quotes is the rule's own")
 
 # Every language carries every phrase. A key in one dict and not another is a report with a hole in it.
@@ -170,7 +173,7 @@ for loc, d in report.T.items():
     # The report's whole placeholder vocabulary. A phrase may only ask for something the code fills,
     # so a typo like {palce} fails here rather than reaching a person as a literal brace. Growing this
     # tuple is how the vocabulary grows — {where} arrived with packs/make.
-    PLACEHOLDERS = ("{place}", "{what}", "{n}", "{clauses}", "{fix}", "{where}")
+    PLACEHOLDERS = ("{place}", "{n}", "{fix}", "{where}", "{at}", "{line}", "{rooms}")
     for k, v in d.items():
         bare = v
         for ph in PLACEHOLDERS:
@@ -182,7 +185,7 @@ for m in re.findall(r"""t\[["']([a-z_]+)["']\]""", open("app/report.py").read())
         assert m in report.T[loc], f"{loc} has no phrase for {m}"
 for metric in ("pm25", "temp", "humidity"):
     for loc in report.T:
-        assert f"what_{metric}" in report.T[loc], f"{loc}: what_{metric}"
+        assert f"high_{metric}" in report.T[loc] and f"low_{metric}" in report.T[loc], f"{loc}: {metric}"
 print("every phrase exists in English, Bahasa Indonesia and Spanish")
 
 
@@ -244,6 +247,11 @@ for name, b in CASES.items():
         assert len(s.split()) <= 100, f"{name}/{loc}: {len(s.split())} words\n{s}"
         assert s.split("\n\n")[-1] == report.T[loc]["ask"], f"{name}/{loc}: the invitation must be last"
         assert s.strip()[0] not in "0123456789", f"{name}/{loc}: it opens with an emoji, not a number"
+        # one sign per report (design review, 14 Oct): the headline's, and no 👉 under it
+        assert sum(unicodedata.category(ch) == "So" and ch != "°" for ch in s) <= 1, f"{name}/{loc}: more than one sign\n{s}"
+        # a line is never a bare number: every figure carries its unit, and a time is a time
+        bare = re.findall(r"(?<![\d:.])\d+(?:\.\d+)?(?!\d|[:.]\d|\s*(?:µg/m³|°C|km))", s)
+        assert not bare, f"{name}/{loc}: a number with no unit {bare}\n{s}"
         seen_keys |= {k for k, v in report.T[loc].items() if "{" not in v and v in s}
     # the same bundle in three languages must be the same report, part for part
     assert len({len(report.sheet(b, loc).split("\n\n")) for loc in ("en", "id", "es")}) == 1, f"{name}: shapes differ"
@@ -253,26 +261,93 @@ for name, b in CASES.items():
 _phrases = {k for k, v in report.T["en"].items() if "{" not in v and v.endswith((".", "?"))}
 assert _phrases <= seen_keys, f"never rendered, so never checked: {sorted(_phrases - seen_keys)}"
 
-# The metric words, each one asked for on purpose: a bundle where that metric is the notable one.
-for _metric, _en in (("pm25", "air"), ("temp", "heat"), ("humidity", "damp")):
+# The room sentences, each one asked for on purpose: a bundle where that metric is the notable one. Plain words about
+# the room ("Kitchen was more humid than usual"), never "Kitchen: the damp ran higher than usual" (node #1, 14 Oct).
+for _metric, _hi, _lo in (("pm25", "The air in Kitchen was dirtier", "The air in Kitchen was cleaner"),
+                          ("temp", "Kitchen was warmer", "Kitchen was cooler"),
+                          ("humidity", "Kitchen was more humid", "Kitchen was drier")):
     _one = _b(series=[dict(FIXTURE["series"][0], metric=_metric, notability=4.0)], alerts=[], open_act=[])
-    for _loc in ("en", "id", "es"):
-        _s = report.sheet(_one, _loc)
-        assert report.T[_loc][f"what_{_metric}"] in _s, f"{_loc}: {_metric} never reaches a sentence\n{_s}"
-    assert f"the {_en} ran higher than usual" in report.sheet(_one, "en"), _metric
     _low = _b(series=[dict(FIXTURE["series"][0], metric=_metric, notability=-4.0)], alerts=[], open_act=[])
-    assert f"the {_en} sat lower than usual" in report.sheet(_low, "en"), _metric
+    for _loc in ("en", "id", "es"):
+        assert report.T[_loc][f"high_{_metric}"].format(place="Kitchen") in report.sheet(_one, _loc), (_loc, _metric)
+        assert report.T[_loc][f"low_{_metric}"].format(place="Kitchen") in report.sheet(_low, _loc), (_loc, _metric)
+    assert f"{_hi} than usual." in report.sheet(_one, "en") and f"{_lo} than usual." in report.sheet(_low, "en"), _metric
+    assert "ran higher" not in report.sheet(_one, "en") and "What changed" not in report.sheet(_one, "en")
 # a part with nothing to say is left out of the report, not printed empty or as a dash
 _clean = report.sheet(CASES["a clean afternoon"], "en").split("\n\n")
 assert len(_clean) == 3 and all(p.strip() for p in _clean), _clean
-assert not any(report.T["en"]["changed"].split("{")[0] in p for p in _clean), "nothing changed, so no 'What changed'"
-assert not any("After the alert" in p for p in _clean), "no alert fired, so no 'After the alert'"
+assert not any("than usual" in p or "went past" in p for p in _clean), "nothing happened, so no sentence says it did"
+# headline, what happened (per room, with its local time and the line named with its unit), the one thing, the invitation
 _busy = report.sheet(CASES["a pot still on the stove"], "en").split("\n\n")
-assert len(_busy) == 4 and "What changed" in _busy[1] and "After the alert" in _busy[2], _busy
-assert "back under" in report.sheet(CASES["the room came back down"], "en")
-assert "still above" in report.sheet(CASES["a pot still on the stove"], "en")
+assert len(_busy) == 4, _busy
+assert _busy[1].startswith("Kitchen went past the US EPA's unhealthy level, 35.5 µg/m³, at 15:00, and is still past it."), _busy[1]
+assert "The air in Kitchen was dirtier than usual." in _busy[1] and _busy[2].startswith("Kitchen is the one to deal with"), _busy
+assert "35.5 µg/m³, at 15:00; it is back under now." in report.sheet(CASES["the room came back down"], "en")
+assert _busy[0] == "😷 The air inside is unhealthy right now.", "the headline is the state in words, no number"
+# heat, per room and with its time: the old rule's sensor, and the engine's episode by its rooms, joined in words
+_hot = report.sheet(CASES["a hot afternoon"], "en").split("\n\n")
+assert _hot[0] == "🌡️ It is hot inside." and _hot[1].startswith(
+    "In Kitchen it has felt past this house's heat line, 35 °C feels-like, since 15:00."), _hot
+_kids = report.sheet(_b(open_act=[], alerts=[], series=[], open_events=[{"issue": "heat", "kind": "sustained", "at": "2026-10-14T06:47:00+00:00",
+                                                                        "rooms": ["Living Room", "Kids"]}]), "en")
+assert "In Kids and Living Room it has felt past this house's heat line, 35 °C feels-like, since 14:47." in _kids, _kids
+_warm = report.sheet(_b(open_act=[], alerts=[], series=[], open_events=[{"issue": "heat", "kind": "unusual", "at": "2026-10-14T06:47:00+00:00",
+                                                                        "rooms": ["Studio"]}]), "es")
+assert "En Studio hace más calor de lo habitual desde las 14:47." in _warm, "an unusual episode is not said to be past the line"
 assert report.sheet(CASES["a node at minute five"], "es").startswith("🛰️"), "a node with no readings still speaks"
 assert "dangerously" not in report.sheet(CASES["a hot afternoon"], "en"), "an ordinary hot afternoon is not danger"
 assert report.T["en"]["state_heat"] in report.sheet(CASES["a hot afternoon"], "en")
 assert report.T["en"]["state_hot"] in report.sheet(CASES["dangerous heat"], "en")
+# ---------------------------------------------------------------- what was sent, and only that (14 Oct)
+# On ALERT_ENGINE=events a replaced pack's rules record rows nobody received. node #1's 19:00 report opened "It is hot
+# inside" from one of those while the page said bearable: the bundle leaves them out, and the engine's open, sent
+# episodes stand in for them.
+import learn                                                        # noqa: E402
+assert learn.replaced([{"id": "heat/heat_stress_now", "kind": "sustained"}, {"id": "nearby/x"}], "events") == {"heat"}
+assert learn.replaced([{"id": "heat/heat_stress_now", "kind": "sustained"}], "rules") == set(), "a rules node replaces nothing"
+_src = open("app/report.py").read()
+_bun = _src[_src.index("def bundle"):_src.index("\ndef ", _src.index("def bundle") + 10)]
+assert _bun.count("if told(r)]") == 2 and "learn.silent(" in _bun, "both alert lists leave silent rows out"
+assert "WHERE cleared_at IS NULL AND ever_sent AND level = 'act'" in _bun, "the engine's open episodes, only those it told"
+# and bundle() itself, run: node #1 showed a check by reading alone is not enough. A local `import packs` lower in
+# bundle() made `packs` local to all of it, the rule set could not be read, and every silent row went through.
+from datetime import datetime as _dt, timedelta as _td, timezone as _tz          # noqa: E402
+_now = _dt.now(_tz.utc)
+_rows = {"ALERTS_SQL": [{"id": 1, "ts": _now - _td(hours=2), "rule_id": "heat/heat_stress_now", "sensor_id": "k", "level": "act", "line": "hot", "acted": False},
+                        {"id": 2, "ts": _now - _td(hours=1), "rule_id": "nearby/only_here", "sensor_id": "k", "level": "act", "line": "x", "acted": False}],
+         "OPEN_ACT_SQL": [{"id": 1, "ts": _now - _td(hours=2), "rule_id": "heat/heat_stress_now", "sensor_id": "k", "line": "hot"}]}
+class _Cur:
+    def __init__(self): self.last = ""
+    def execute(self, sql, *a): self.last = sql
+    def fetchone(self): return {"t": _now - _td(days=9)} if "event_messages" in self.last else None
+    def fetchall(self): return [{"issue": "heat", "kind": "sustained", "opened_at": _now - _td(hours=2)}] if "alert_events" in self.last else []
+_by = {getattr(report, k): k for k in ("ALERTS_SQL", "OPEN_ACT_SQL")}
+_saved = (report.index.run_ro, report.index.rho, report.index.cells, report.packs.load_rules, report.packs.rules, report.packs.contributors)
+report.index.run_ro = lambda cur, sql, *a: [dict(r) for r in _rows.get(_by.get(sql), [])]
+report.index.rho = lambda cur, **k: None
+report.index.cells = lambda cur: []
+report.packs.load_rules = lambda: [{"id": "heat/heat_stress_now", "kind": "sustained"}, {"id": "nearby/only_here"}]
+report.packs.rules = lambda: []
+report.packs.contributors = lambda kind: []
+_sg = report.settings.get
+report.settings.get = lambda k, d=None: "events" if k == "ALERT_ENGINE" else _sg(k, d)
+_bundle = report.bundle(_Cur(), 6)
+report.settings.get = _sg
+(report.index.run_ro, report.index.rho, report.index.cells, report.packs.load_rules, report.packs.rules, report.packs.contributors) = _saved
+assert [a["rule"] for a in _bundle["alerts"]] == ["nearby/only_here"] and _bundle["open_act"] == [], _bundle["alerts"]
+assert _bundle["open_events"] and _bundle["open_events"][0]["issue"] == "heat", "the engine's open sent episode stands in"
+_ev = lambda kind: _b(open_act=[], open_events=[{"issue": "heat", "kind": kind, "at": "2026-10-14T14:47:00+08:00"}])  # noqa: E731
+assert report.T["en"]["state_heat"] in report.sheet(_ev("sustained"), "en"), "an open heat episode that was sent is said"
+assert report.T["en"]["state_hot"] in report.sheet(_ev("danger"), "en")
+assert report.T["en"]["state_heat"] not in report.sheet(_b(open_act=[], open_events=[]), "en"), "nothing open, no heat line"
+# the inventory is a survey sensor written when it is edited: it never "stopped sending"
+assert "s.local AND s.kind = 'sensor'" in report.QUIET_SQL
+# a metric with no household word is never named (node #1: "BAYU HOLES: the bme_iaq ran higher than usual")
+_iaq = report.sheet(_b(series=[dict(FIXTURE["series"][0], metric="bme_iaq", notability=4.0)], alerts=[], open_act=[]), "en")
+assert "bme_iaq" not in _iaq and "What changed" not in _iaq, _iaq
+print("the report tells what was sent; the inventory never stops sending; a metric without a word is not named")
+_src_err = _b(alerts=[], open_act=[], sensors_quiet=[], health={"ok": False, "checks": [{"check": "no source errors", "ok": False,
+              "fix": "errors: open-meteo: Client error '429 Too Many Requests' for url 'https://api.open-meteo.com/v1/forecast"}]})
+_se = report.sheet(_src_err, "en")
+assert "429" not in _se and "http" not in _se and report.T["en"]["todo_none"] in _se, "a refusing source is the keeper's, not the house's to-do"
 print(f"the sheet renders in three languages across {len(CASES)} states, under 100 words, with nothing unfilled")
