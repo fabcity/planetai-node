@@ -33,6 +33,9 @@ line:
   unit: µg/m³
   source: WHO 2021 global air quality guidelines, 24-hour mean
   sql: air-quality/inside_worse_ventilate
+# The line urgent alerts name ({unhealthy}): Tomas, 14 Oct — WHO 15 in every graphic, EPA 35.5 when the air is
+# unhealthy for an hour or dangerous. The US EPA's 2024 AQI breakpoint for "unhealthy for sensitive groups" ends here.
+unhealthy: 35.5
 
 packs:
   domains: [air]          # every rule and metric from a pack whose domain is `air`
@@ -98,6 +101,8 @@ sentences:
       near:  "The air is better now, after a dusty {part} | {where} it was past the WHO line for fine dust until {until}, {hours} today."
       parts: {night: night, morning: morning, afternoon: afternoon, evening: evening}
       hours: ["{n} hour", "{n} hours"]
+      at: "{t}"
+      recent: "a few minutes ago"
     cmp_words:
       over:  "worse than {noun}"
       under: "cleaner than {noun}"
@@ -142,10 +147,12 @@ sentences:
       earlier: "Rumah sempat melewati batas tadi."
     # day: ASSISTANT-WRITTEN, waiting for a native reader like the rest of this locale
     day:
-      under: "Udara sudah bersih, setelah {part} yang berdebu | {where} udaranya sempat di atas batas WHO untuk debu halus sampai pukul {until}, {hours} hari ini."
-      near:  "Udara sudah membaik, setelah {part} yang berdebu | {where} udaranya sempat di atas batas WHO untuk debu halus sampai pukul {until}, {hours} hari ini."
+      under: "Udara sudah bersih, setelah {part} yang berdebu | {where} udaranya sempat di atas batas WHO untuk debu halus sampai {until}, {hours} hari ini."
+      near:  "Udara sudah membaik, setelah {part} yang berdebu | {where} udaranya sempat di atas batas WHO untuk debu halus sampai {until}, {hours} hari ini."
       parts: {night: dini hari, morning: pagi, afternoon: siang, evening: malam}
       hours: ["{n} jam", "{n} jam"]
+      at: "pukul {t}"
+      recent: "beberapa menit lalu"
     cmp_words:
       over:  "lebih buruk daripada {noun}"
       under: "lebih bersih daripada {noun}"
@@ -188,10 +195,12 @@ sentences:
       earlier: "La casa cruzó el límite hoy más temprano."
     # day: ASSISTANT-WRITTEN, waiting for a native reader like the rest of this locale
     day:
-      under: "El aire ya está limpio, tras una {part} de polvo | {where} estuvo por encima del límite de la OMS para el polvo fino hasta las {until}, {hours} hoy."
-      near:  "El aire ha mejorado, tras una {part} de polvo | {where} estuvo por encima del límite de la OMS para el polvo fino hasta las {until}, {hours} hoy."
+      under: "El aire ya está limpio, tras una {part} de polvo | {where} estuvo por encima del límite de la OMS para el polvo fino hasta {until}, {hours} hoy."
+      near:  "El aire ha mejorado, tras una {part} de polvo | {where} estuvo por encima del límite de la OMS para el polvo fino hasta {until}, {hours} hoy."
       parts: {night: madrugada, morning: mañana, afternoon: tarde, evening: noche}
       hours: ["{n} hora", "{n} horas"]
+      at: "las {t}"
+      recent: "hace unos minutos"
     cmp_words:
       over:  "peor que {noun}"
       under: "más limpio que {noun}"
@@ -266,13 +275,13 @@ events:
     id: "😷 Udara di {rooms} lebih kotor dari biasanya untuk jam ini: {peak}; batas WHO {line}."
     es: "😷 El aire en {rooms} está más sucio de lo habitual a esta hora: {peak}; el límite de la OMS es {line}."
   sustained:
-    en: "😷 The air in {rooms} has been unhealthy for an hour: {peak}; the WHO line is {line}."
-    id: "😷 Udara di {rooms} sudah tidak sehat selama satu jam: {peak}; batas WHO {line}."
-    es: "😷 El aire en {rooms} lleva una hora siendo insalubre: {peak}; el límite de la OMS es {line}."
+    en: "😷 The air in {rooms} has been unhealthy for an hour: {peak}; the US EPA's unhealthy level is {unhealthy}."
+    id: "😷 Udara di {rooms} sudah tidak sehat selama satu jam: {peak}; batas tidak sehat US EPA {unhealthy}."
+    es: "😷 El aire en {rooms} lleva una hora siendo insalubre: {peak}; el nivel insalubre de la US EPA es {unhealthy}."
   danger:
-    en: "🚨 DANGER: the air in {rooms} is very unhealthy: {peak}; the WHO line is {line}."
-    id: "🚨 BAHAYA: udara di {rooms} sangat tidak sehat: {peak}; batas WHO {line}."
-    es: "🚨 PELIGRO: el aire en {rooms} es muy insalubre: {peak}; el límite de la OMS es {line}."
+    en: "🚨 DANGER: the air in {rooms} is very unhealthy: {peak}; the US EPA's unhealthy level is {unhealthy}."
+    id: "🚨 BAHAYA: udara di {rooms} sangat tidak sehat: {peak}; batas tidak sehat US EPA {unhealthy}."
+    es: "🚨 PELIGRO: el aire en {rooms} es muy insalubre: {peak}; el nivel insalubre de la US EPA es {unhealthy}."
   # An episode clears against its own rule's line (35 for sustained, the usual for unusual), not always the WHO's, so
   # the all-clear names no line it cannot vouch for.
   clear:

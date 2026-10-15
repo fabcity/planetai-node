@@ -167,7 +167,7 @@ function sensorsBlock() {
     return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" class="sp"><path d="${band}" class="bandp"/><path d="${ln}" class="lnp"/>`
       + (line != null ? `<line x1="0" x2="${W}" y1="${y(line)}" y2="${y(line)}" class="linep"/><text x="2" y="${y(line) < 12 ? y(line) + 10 : y(line) - 3}" class="lab">${lineLab(D.issues.air)}</text>` : '') + over + clip + `</svg>`;
   };
-  const grp = (t, rs) => rs.length ? `<div class="gh k">${t} · ${rs.length}</div>` + rs.map(r => `<div class="srow" data-sid="${esc(r.id)}"><span class="t">${esc(plain(r.s.name || r.id))}<small>${esc(r.s.source || '')}${r.s.lat != null ? ` · ${fmt(r.d, 1)} km` : ''}${r.s.indoor ? ' · inside' : ''}</small></span>${spark(r.a)}<span class="c">${num(r.id + '.' + METRIC, fmt(r.last, (D.metrics[METRIC] || {}).dp ?? 1), line != null ? `the line ${line}` : `one scale, ${fmt(lo, 0)} to ${fmt(top, 0)}`)}</span></div>`).join('') : '';
+  const grp = (t, rs) => rs.length ? `<div class="gh k">${t} · ${rs.length}</div>` + rs.map(r => `<div class="srow" data-sid="${esc(r.id)}"><span class="t">${esc(plain(r.s.name || r.id))}<small>${srcLink({ ...r.s, sensor_id: r.s.sensor_id || r.id }, esc(r.s.source || ''))}${r.s.lat != null ? ` · ${fmt(r.d, 1)} km` : ''}${r.s.indoor ? ' · inside' : ''}</small></span>${spark(r.a)}<span class="c">${num(r.id + '.' + METRIC, fmt(r.last, (D.metrics[METRIC] || {}).dp ?? 1), line != null ? `the line ${line}` : `one scale, ${fmt(lo, 0)} to ${fmt(top, 0)}`)}</span></div>`).join('') : '';
   $('#sensors').innerHTML = `<div class="dh"><h2>${said(labelOf(METRIC))}, every source, last 24 hours</h2><span class="k">one scale, ${fmt(lo, 0)} to ${fmt(top, 0)} ${said(unitOf(METRIC))} · band = the hour’s low to high · line = its mean${line != null ? ' · red: over the line' : ''}</span></div>`
     + grp('This house', rows.filter(r => r.s.local)) + grp('Around it', rows.filter(r => !r.s.local && r.s.kind !== 'model')) + grp('Models', rows.filter(r => r.s.kind === 'model'))
     + `<div class="axis"><span></span><span class="mono k">${hhmm(B[0])} yesterday → ${hhmm(B[B.length - 1])} today</span><span></span></div>`;
@@ -189,6 +189,23 @@ function issuesBlock() {
   $('#issues7').innerHTML = `<h2>Every issue, every distance, seven days</h2><div class="sms">${out.join('')}</div><p class="fine">Hourly, from GET /issues/days. Each drawing keeps its own scale, capped at the 98th percentile; the red dash is the line. Day numbers mark local midnight.</p>`;
 }
 
+/* Where each source publishes what this node read from it, opened in a new tab (Tomas, 15 Oct: every sensor and every
+   value links to its source). A kit with its own public page links to that page; a source this house runs itself (its
+   own radio, its own inventory) has no page and gets no link. */
+const SRC_URL = {
+  smartcitizen: s => `https://smartcitizen.me/kits/${String(s.sensor_id || '').replace(/^\D+-/, '')}`,
+  airgradient: () => 'https://app.airgradient.com/', purpleair: () => 'https://map.purpleair.com/',
+  baliairdispatch: () => 'https://baliairdispatch.com/', 'fablabs-io': s => (s.meta || {}).url || 'https://www.fablabs.io/labs',
+  openstreetmap: () => 'https://www.openstreetmap.org/', 'open-meteo': () => 'https://open-meteo.com/en/docs',
+  'forecast-om': () => 'https://open-meteo.com/en/docs', 'open-meteo-cams': () => 'https://open-meteo.com/en/docs/air-quality-api',
+  'open-meteo-marine': () => 'https://open-meteo.com/en/docs/marine-weather-api', firms: () => 'https://firms.modaps.eosdis.nasa.gov/map/',
+  'modis-lst': () => 'https://lpdaac.usgs.gov/products/mod11a1v061/',
+  'landsat-lst': () => 'https://www.usgs.gov/landsat-missions/landsat-collection-2-surface-temperature',
+  'earth-engine': () => 'https://developers.google.com/earth-engine/datasets',
+  earth: () => 'https://developers.google.com/earth-engine/datasets/catalog/GOOGLE_SATELLITE_EMBEDDING_V1_ANNUAL',
+};
+const srcLink = (s, label) => { const f = SRC_URL[(s || {}).source], u = f && f(s);
+  return u ? `<a href="${esc(u)}" target="_blank" rel="noopener">${label} ↗</a>` : label; };
 /* MODELS AND THE SATELLITE: one table, a row per value under a row per source, which says how often that source
    is fetched in words and that a model is partial. The unit is the node's where it has one (GET /issues → metrics);
    a model's own kinds keep theirs here. A share is printed as a percent. The node's counters about its own fetching
@@ -212,7 +229,7 @@ function modelsBlock() {
   const by = d3.group(D.observations.filter(o => !MINTERNAL.test(o.metric)), o => o.sensor_id);
   const at = os => d3.max(os, o => o.ts), head = (id, os) => { const c = os[0].cadence;
     return `<tr class="grp" id="m-${esc(id)}"><th colspan="4"><b>${said(os[0].name || (D.sens[id] || {}).name || id)}</b> <span>${esc(CADENCE[c] || c || '')}`
-      + ` · as of ${esc(when(at(os)))}</span> ${prov('model')}</th></tr>`; };
+      + ` · as of ${esc(when(at(os)))}</span> ${prov('model')} ${srcLink({ sensor_id: id, ...(D.sens[id] || {}), source: (D.sens[id] || {}).source || os[0].source }, 'source')}</th></tr>`; };
   $('#models').innerHTML = `<h2>Models and the satellite</h2><p class="blurb">What the models and the satellite say about this point, ${D.observations.length} values from ${by.size} sources. `
     + `A model is partial, whatever its quality: it is the place as a model sees it, never measured here.</p>`
     + `<table class="tbl mtab"><thead><tr><th>what</th><th class="n">value</th><th>unit</th><th class="hide">as of</th></tr></thead>`
@@ -297,7 +314,7 @@ async function thingsBlock() {
   if (CARDLG && CARDLG.open) return;   // a refresh must not wipe an edit in progress
   const r = await doorsFetch('/things').catch(() => null);
   const j = r && r.ok ? await r.json().catch(() => null) : null;
-  if (!j) { el.innerHTML = `<h2>Things</h2><p class="fine">What this home keeps answers the admin token only, and never leaves the house. Unlock this screen with it in ${UNLOCK_AT}.</p>`; return; }
+  if (!j) { el.innerHTML = `<h2>Things</h2><p class="fine">What this home keeps stays private to this house and never leaves it. Unlock this screen with the admin key in ${UNLOCK_AT} to see it.</p>`; return; }
   const s = j.summary;
   el.innerHTML = `<h2>Things, ${s.things}</h2><p class="blurb">What this home keeps: ${s.idle} used a few times a year or never, ${s.repair} waiting for a repair, ${s.offered} offered. `
     + `Only what you offer leaves the house: its class, name, state and count, at this node's cell, in <a class="mono" href="/offers">/offers</a>; whoever wants it writes to this node's Telegram bot, which passes the message to you.</p>`
@@ -399,7 +416,7 @@ async function imagesBlock() {
   if (CARDLG && CARDLG.open) return;   // a refresh must not wipe an edit in progress
   const rows = await doorsFetch('/captures?limit=500').then(r => (r.ok ? r.json() : null)).catch(() => null);
   TKEEP = await doorsFetch('/things').then(r => (r.ok ? r.json() : null)).catch(() => null);
-  if (!rows) { el.innerHTML = `<h2>Images</h2><p class="fine">Images answer a screen holding a token only: the picture and where it was taken. Unlock this screen in ${UNLOCK_AT}.</p>`; return; }
+  if (!rows) { el.innerHTML = `<h2>Images</h2><p class="fine">Images stay private to this house: the picture and where it was taken. Unlock this screen in ${UNLOCK_AT} to see them.</p>`; return; }
   // what a person here has confirmed, per species (SPEC_species §4): the model's guesses are not in it
   const sp = await doorsFetch('/species').then(r => (r.ok ? r.json() : null)).catch(() => null);
   const spTable = sp && sp.species.length ? `<h3>Species confirmed, ${sp.species.length}</h3><table class="tbl species"><tr><th>species</th><th class="hide">rank</th><th class="n">seen</th><th>around here</th></tr>`
@@ -462,6 +479,6 @@ function ledgerBlock() {
     + (tok ? `<table class="tbl ledger"><tr><th>when</th><th>stage</th><th class="hide">who</th><th>what it answered</th></tr>`
       + R.map(r => `<tr><td class="mono tw">${dspan(r.first, r.last)}</td><td class="ts">${stage(r)}</td><td class="hide" title="${esc(r.a.actor || '')}">${esc(actorWord(r.a.actor))}</td><td>${esc(plain(r.a.text) || r.a.rule || '')}</td></tr>`).join('') + `</table>`
       : `<table class="tbl ledger"><tr><th>when</th><th>stage</th></tr>` + R.map(r => `<tr><td class="mono tw">${dspan(r.first, r.last)}</td><td class="ts">${stage(r)}</td></tr>`).join('') + `</table>`
-        + `<p class="fine">Who answered and what each alert said answer a screen holding a token: ${UNLOCK_AT}.</p>`);
+        + `<p class="fine">Who answered, and what each alert said, stay private to this house. Unlock this screen in ${UNLOCK_AT} to see them.</p>`);
   document.querySelectorAll('#ledger [data-st]').forEach(b => b.onclick = () => { LSTAGE = b.dataset.st; ledgerBlock(); });
 }

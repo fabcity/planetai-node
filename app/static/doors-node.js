@@ -299,7 +299,7 @@ async function running(kept) {
     ...hw,
     ['Mesh in the house', mesh ? `${mesh.root_topic} · gateway ${mesh.gateway}` : 'no mesh broker set', mesh ? `${mesh.packets} packets` : 'off'],
     ['Radio', ret && ret.announce_s ? `announces its cell every ${ret.announce_s / 60} min` : 'no radio bridge set', ret && ret.ok ? 'on' : 'off'],
-    ['This screen', DOORS_TOKEN() ? 'holds a token: it draws the map, the cells and the counts' : `at SHARE_LEVEL=${D.share || 'off'} without a token: the map, the cells and the counts stay on the node`,
+    ['This screen', DOORS_TOKEN() ? 'holds a token: it draws the map, the cells and the counts' : `${D.share === 'open' ? 'shared openly on this network' : 'not shared with this network'}, without a key: the map, the cells and the counts stay on the node`,
       DOORS_TOKEN() ? 'unlocked' : 'locked']]
     .map(([t, s2, c]) => `<div class="lrow"><span class="t">${t}</span><span class="s">${t === 'The machine' || /class="nm"/.test(s2) ? s2.replace(/^([^<]*)/, m => esc(m)) : esc(s2)}</span><span class="c">${/^<a /.test(c) ? c : esc(c)}</span></div>`).join('')
     + `<p class="fine">${M ? 'The machine as the node’s containers see it. ' : ''}<a href="#setup/machine">Set up → Machine</a> has all of it, and how long the disk lasts.</p>`;

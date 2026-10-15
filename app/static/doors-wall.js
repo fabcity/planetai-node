@@ -129,11 +129,11 @@ const narrLater = () => { NARR.busy = false; NARR.at = Date.now(); NARR.next = D
 async function narrate() {
   if (NARR.busy || NARR.typing || view() !== 'wall') return;
   clearTimeout(NARR.timer); NARR.err = null;
-  if (D.askOff) { NARR.err = 'Asking the node is turned off here (UI_ASK, under Set up → Model), so the wall says nothing aloud.'; NARR.next = 0; narrDraw(); return; }
+  if (D.askOff) { NARR.err = ''; NARR.next = 0; narrDraw(); return; }
   NARR.busy = true;
   const st = await doorsFetch('/ask/status').then(r => r.ok ? r.json() : r.status === 404 ? { none: true } : null).catch(() => null);
   if (!st || st.none) {
-    NARR.err = st && st.none ? 'No model is set up on this node, so the wall says nothing aloud. Set up → Model, or planetai agent local on the node.' : 'The node did not say which model answers this screen.';
+    NARR.err = '';
     return narrLater();
   }
   NARR.model = null; NARR.where = null; NARR.prev = NARR.shown || NARR.prev; NARR.text = ''; NARR.shown = ''; narrDraw();
@@ -156,7 +156,7 @@ async function narrate() {
     }
     NARR.text = NARR.text.trim();
     if (!NARR.text) throw new Error('it answered with nothing');
-  } catch (e) { NARR.err = `The node’s model did not answer: ${e.message}`; NARR.text = ''; }
+  } catch (e) { NARR.err = 'The story returns when the node can speak again.'; NARR.text = ''; }
   if (NARR.err) return narrLater();
   NARR.busy = false; NARR.at = Date.now(); narrType();     /* the typist replaces the last text, then sets the next ten minutes on */
 }

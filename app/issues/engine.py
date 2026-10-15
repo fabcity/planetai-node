@@ -867,8 +867,10 @@ def _day(series: list[float | None] | None, buckets: list, line: dict | None, no
     """Today's hours over the line, counted the way GET /issues/days counts them for the "N h over the line today"
     beside the title: the same series, the same strict `>`, the node's local day. {over, until, part}, or None.
 
-    `until` is the end of the last hour over, or now if that hour is still running; `part` is the part of the day that
-    held most of the hours over, the later one on a tie (over from 00:00 to 11:00 is a morning, as the house tells it)."""
+    `until` is the end of the last hour over, or now if that hour is still running, and then `running` is true: the
+    hour's mean is over while the reading that put the title under is not, so the clock time would be this minute and
+    the sentence would read as still over (audit, 15 Oct). `part` is the part of the day that held most of the hours
+    over, the later one on a tie (over from 00:00 to 11:00 is a morning, as the house tells it)."""
     if line is None or not series or len(series) != len(buckets) or not buckets:
         return None
     lv, tz = float(line["value"]), tz or getattr(buckets[-1], "tzinfo", None)
@@ -880,7 +882,8 @@ def _day(series: list[float | None] | None, buckets: list, line: dict | None, no
         return None
     parts = [max(p for p in DAY_PARTS if p[0] <= h.hour) for h in over]
     part = max(DAY_PARTS, key=lambda p: (parts.count(p), p[0]))[1]
-    return {"over": len(over), "until": _hhmm(min(over[-1] + timedelta(hours=1), local(now))), "part": part}
+    end = over[-1] + timedelta(hours=1)
+    return {"over": len(over), "until": _hhmm(min(end, local(now))), "running": end > local(now), "part": part}
 
 
 def _trend(series: list[float | None], compare: dict) -> str:
@@ -1030,7 +1033,8 @@ def _sentence_parts(d, stack, state, headline_dist, verb_key, loc, compare, attr
         and day["over"] >= DAY_OVER_HOURS and line_key in ("under", "near") else None
     if said_day:
         tpl, dw = said_day, block["day"]
-        slots.update(part=dw["parts"][day["part"]], until=day["until"],
+        until = dw.get("recent", "a few minutes ago") if day.get("running") else dw.get("at", "{t}").format(t=day["until"])
+        slots.update(part=dw["parts"][day["part"]], until=until,
                      hours=dw["hours"][0 if day["over"] == 1 else 1].format(n=day["over"]),
                      where=_where(d, day.get("distance") or headline_dist, loc))
 

@@ -8,6 +8,33 @@
   sentences of past alerts (written under older names) are left out of `/alerts` and `/issues`. A token reads the
   real names. `tests/test_share.py` holds both.
 
+- **The pages speak to the household (pre-launch audit, 15 Oct).**
+  - Data links every sensor and every model to where its source publishes it, in a new tab (Tomas, 15 Oct); a Smart
+    Citizen kit links to its own kit page.
+  - One table of the household's words in doors-load.js, for the doors and the phone: the engine's states (act now,
+    worth a look, fine, background) and event kinds (a sudden rise, high for an hour…) instead of `notable`/`spike`.
+  - A locked screen pressing Done reads "This screen can't answer yet…", never `Authorization: Bearer <ACT_TOKEN>`;
+    a dropped request reads "The node did not answer…", never the browser's "Failed to fetch".
+  - The Wall at `SHARE_LEVEL=off` draws one line, not a token form; its narration never prints `UI_ASK` or
+    `planetai agent local`.
+  - A screen without a key: no version or schema in the header or the phone's Node, no `SHARE_LEVEL=`, no
+    coordinates on Place, no "+ Add an image" it cannot use, and "locked on this screen" where Place said "no node".
+  - "Raw readings stay on this machine. Only hourly averages, … leave it." replaces a sentence that said readings never
+    leave and then that hourly means travel. The loading screen says "Finding this place", not H3 glyphs.
+  - The footer drops the classic dashboard link (`?layout=classic` still works), says what the node is in one line,
+    and links "Fab City".
+- **Numbers you can trust (pre-launch audit, 15 Oct).**
+  - When the bot cannot reach the node, `/stack` said "Nothing is wrong with your air; this is me" at exactly the
+    moment it could not know. It now says it can't say how the air is.
+  - "The air is clean now … past the WHO line until 10:47" at 10:47 read as still over: an hour still running is
+    said as "until a few minutes ago" (`day.at`/`day.recent` in air and heat, three languages).
+  - Now's Around-the-house card showed the running hour's mean (17) beside a title and legend saying the live
+    reading (10); at the present hour it shows the live reading. The map's "this house · 5" says "5 sensors".
+  - Node's flow counted "0 answers in 24 h" beside today's Done: answers left on alert events are counted too.
+  - Urgent air alerts (an hour unhealthy, danger) name the US EPA's unhealthy level, 35.5 µg/m³, as decided on
+    14 Oct; the others keep the WHO line. The morning report's model clause said "the WHO's first interim target,
+    35 µg/m³", which is the annual target; it now compares against and names the EPA's 35.5, and calls CAMS the
+    European air model rather than "the satellites".
 - **A child node is another household, not a member of this one.** `AGGREGATE_TOKEN` made a request trusted by
   the sharing check, and every child holds it, so a child read its parent's sensor rooms, point, building plan and
   notes as if it lived there. The token now passes only `POST /aggregates` and `POST /events`, which check it

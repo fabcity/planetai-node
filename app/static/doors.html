@@ -768,7 +768,7 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
   </div>
   <!-- the five refusals in plain words, each pointing at where it can be checked (Tomas, 15 Oct) -->
   <section class="refuse" data-learn="refusals" data-pack="core"><h2>What this node will not do, at any stage</h2>
-    <div class="lrow"><span class="t">Your readings never leave this machine. What travels is the cell, hourly means, the Index and the open export.</span><a class="c" href="#node/flow">What comes in, what goes out →</a></div>
+    <div class="lrow"><span class="t">Raw readings stay on this machine. Only hourly averages, the area the node is in, its Index scores and the open daily file leave it.</span><a class="c" href="#node/flow">What comes in, what goes out →</a></div>
     <div class="lrow"><span class="t">A cell is never called live because the ones around it are. Live means measured here.</span><a class="c" href="#node/cells">Each cell’s state, under the flow →</a></div>
     <div class="lrow"><span class="t">No agent acts for this house unless a person here said so, in the ledger.</span><a class="c" href="#data/ledger">The ledger, in Data →</a></div>
     <div class="lrow"><span class="t">Nothing here stops working without a cloud company: the readings, the rules and the alerts run on this machine.</span><a class="c" href="#setup/machine">This machine, in Set up →</a></div>
@@ -783,7 +783,7 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
   <textarea id="q" rows="3" placeholder="Ask about this place, its readings, or this page"></textarea>
   <div class="try" id="try"></div><button class="now" id="qsend">ASK</button>
   <div class="answer said" id="qout" role="status" aria-live="polite"></div>
-  <p class="fine">The node searches its own notes and readings first, and asks a model only if one is set up here (POST /ask).</p>
+  <p class="fine">The node searches its own notes and readings first, and asks a model only if one is set up here.</p>
   <label class="learnsw"><input type="checkbox" id="learn"> <span><b>Learn this page</b><br>Number every part of the door you are on, and say here what each one is.</span></label>
   <ol class="learnlist" id="learnlist"></ol>
 </aside>

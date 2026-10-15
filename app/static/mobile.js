@@ -84,7 +84,7 @@ function drawNow() {
     s += `<div class="rows">` + others.map(k => {
       const o = D.issues[k], ohd = o.hero_distance || 'region', ov = (o.stack || {})[ohd] || {};
       return `<button class="rowb" data-lead="${esc(k)}"><span class="rh"><span class="n">${said(o.name)}</span>`
-        + `<span class="st${o.state === 'act' ? ' act' : ''}">${esc(o.state || '')}</span>`
+        + `<span class="st${o.state === 'act' ? ' act' : ''}">${esc(stateWord(o.state || ''))}</span>`
         + (ov.value != null ? `<span class="v">${esc(fmt(ov.value, o.dp))} ${esc(o.unit || '')}</span>` : '')
         + `</span><span class="t2">${said(o.title || o.sentence || '')}</span></button>`;
     }).join('') + `</div>`;
@@ -99,7 +99,7 @@ function drawNow() {
    was taken is the picture's own GPS (read by the node), else the phone's geolocation if allowed, else the node's cell. */
 const CAPTURE_KINDS = ['phone', 'camera', 'microscope', 'drone', 'balloon'];
 function captureHTML() {
-  if (!hasToken()) return `<div class="capture"><p class="dm"><a href="#unlock" data-unlock>Unlock this phone</a> to add images.</p></div>`;
+  if (!hasToken()) return '';
   let actor = ''; try { actor = localStorage.getItem('planetai_actor') || ''; } catch (e) { /* no storage here */ }
   /* one button: it opens the library straight away, and the details ask only once an image is chosen (Tomas, 12 Oct) */
   return `<div class="capture" id="capture"><button class="sbtn" id="capopen">Add an image</button>`
@@ -154,16 +154,15 @@ async function captureSubmit(ev) {
     const r = await fetch('/captures', { method: 'POST', headers: { ...DOORS_AUTH() }, body: fd });
     const body = await r.json().catch(() => ({}));
     if (!r.ok) {
-      out.textContent = (body.detail || `the node refused it (${r.status})`)
-        + (r.status === 401 || r.status === 403 ? ' · Unlock this phone with the token for closing a loop.' : '');
+      out.textContent = r.status === 401 || r.status === 403 ? WORDS.locked : (body.detail || `the node refused it (${r.status})`);
       return;
     }
     const c = body.capture || {};
     out.textContent = (body.duplicate ? 'The node already had it' : 'The node kept it')
-      + ` — ${c.kind || 'image'}, ${c.cell ? 'cell ' + c.cell.slice(0, 9) + '…' : 'its cell'}${c.at_home ? ', at home' : ''}. The walk counts it below.`
+      + ` — ${c.kind || 'image'}${c.at_home ? ', taken at home' : ''}. The walk counts it below.`
       + (body.describing ? ' The image model is describing it; its findings show in Data.' : $('#capseen').checked && !body.duplicate ? ' No image model is set on the node, so it was not described.' : '');
     captureClose();
-  } catch (e) { out.textContent = `The node did not answer: ${e.message}`; } finally { send.disabled = false; }
+  } catch (e) { out.textContent = WORDS.noreply; } finally { send.disabled = false; }
 }
 
 /* ---- the Decide card (§6) ---- */
@@ -180,7 +179,7 @@ function decideHTML(it) {
     return `<div class="decide"><p class="dq">Nothing is asked now.</p>`
       + `<p class="dm">${it.line != null ? `${esc(fmt(it.line, it.dp))} ${esc(it.unit || '')} · ${esc(it.line_source || '')}` : 'this issue has no line'}</p></div>`;
   }
-  let s = `<div class="decide" id="decide"><div class="k">decide · ${said(it.name)} · ${esc(e.kind)} since ${hhmm(e.opened_at)}`
+  let s = `<div class="decide" id="decide"><div class="k">decide · ${said(it.name)} · ${esc(kindWord(e.kind))} since ${hhmm(e.opened_at)}`
     + `${e.last_seen_at ? ` · watching, last seen ${hhmm(e.last_seen_at)}` : ''}`
     + `${e.peak != null ? ` · peak ${esc(fmt(e.peak, it.dp))} ${esc(it.unit || '')}` : ''}</div>`
     + `<p class="dq">${said(e.action || 'The node asked for nothing specific.')}</p>`;
@@ -225,12 +224,11 @@ async function answer(evId, stage) {
       body: JSON.stringify({ event_id: Number(evId), stage, actor, note: '' }) });
     if (!r.ok) {
       const detail = (await r.json().catch(() => ({}))).detail || `the node refused it (${r.status})`;
-      if (out) out.textContent = r.status === 401 || r.status === 403
-        ? `${detail} · Unlock this phone with the token for closing a loop.` : detail;
+      if (out) out.textContent = r.status === 401 || r.status === 403 ? WORDS.locked : detail;
       return;
     }
     D = await loadD(MOBILE_ROUTES); drawAll();
-  } catch (e) { if (out) out.textContent = `The node did not answer: ${e.message}`; }
+  } catch (e) { if (out) out.textContent = WORDS.noreply; }
 }
 
 /* ---- Node (§5.3): /health only, so it always draws ---- */
@@ -238,13 +236,12 @@ function drawNode(h) {
   const mesh = h.mesh && h.mesh.root_topic, radio = h.reticulum && h.reticulum.announce_s;
   let s = `<div class="facts">`
     + `<div class="fact"><div class="l">The node</div>${esc(h.node || 'this node')}${h.city ? `, in ${esc(h.city)}` : ''}</div>`
-    + `<div class="fact"><div class="l">Running</div>planetai-node ${esc(h.version || '')} · schema ${esc(h.schema || '')}<br>`
+    + `<div class="fact"><div class="l">Running</div>${hasToken() ? `planetai-node ${esc(h.version || '')} · schema ${esc(h.schema || '')}<br>` : ''}`
     + `up ${fmt((h.uptime_s || 0) / 3600, 1)} h · last poll ${hhmm(h.last_poll)} · ${(h.ingested || 0).toLocaleString('en')} readings since the restart</div>`
     + `<div class="fact"><div class="l">The mesh and the radio</div>mesh ${mesh ? 'on' : 'off'} · radio ${radio ? 'on' : 'off'}</div>`;
   if (h.release && h.release.newer) s += `<div class="fact">A newer release is out.</div>`;
   const share = D ? D.share : null;
   s += `<div class="fact"><div class="l">This phone</div>`
-    + (share ? `SHARE_LEVEL=${esc(share)} · ` : '')
     + (hasToken() ? `unlocked · <a href="#lock" data-lock>Lock this phone</a>`
                   : `locked · ${share === 'open' ? 'it reads what the node shares, and cannot answer it' : 'this phone is not shown the readings'} · <a href="#unlock" data-unlock>Unlock this phone</a>`)
     + `</div></div>`;

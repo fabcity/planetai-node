@@ -210,9 +210,8 @@ const ASKING = (function () {
       const m = el('ask-meters'); if (m) m.innerHTML = '';
       const r = el('ask-rule');
       if (r) {
-        r.textContent = 'The glyphs are the sixteen characters an H3 index is written in. They turn '
-          + 'while the node has not answered and settle into this node’s own cell the moment '
-          + '/issues lands. Nothing here is a reading.';
+        r.textContent = 'Finding this place. The characters settle into the address of the node’s own area '
+          + 'once it answers. Nothing here is a reading yet.';
       }
       size();
       window.addEventListener('resize', size);
@@ -233,7 +232,7 @@ const ASKING = (function () {
       spec = [
         `RES ${c.res == null ? '?' : c.res} · EDGE ${c.edge_m == null ? '?' : `${c.edge_m} M`}`
           + `${area ? ` · ${area} M²` : ''}`,
-        `SHARE LEVEL ${String((health.share_level || 'off')).toUpperCase()} · RAW STAYS HOME`,
+        'RAW READINGS STAY HOME',
       ];
     },
     landed(issues) {
@@ -276,7 +275,7 @@ Promise.all([loadD(), fetch(NODE + 'learn.json').then(r => r.json()).catch(() =>
   await knownNodes(D); foot();
   if (D.askOff) $('#askbtn').hidden = true;                 /* UI_ASK off: no ask here either */
   $('#who').innerHTML = `${esc(D.node.name)}<small>${esc(D.node.place || '')}</small>`;
-  $('#asof').textContent = `${new URLSearchParams(location.search).get('fixture') ? 'CAPTURE' : 'LIVE'} · as of ${hhmm(D.as_of)} · ${D.health.version || ''}${DOORS_TOKEN() ? '' : ' · locked'}`;
+  $('#asof').textContent = `${new URLSearchParams(location.search).get('fixture') ? 'CAPTURE' : 'LIVE'} · as of ${hhmm(D.as_of)}${DOORS_TOKEN() ? '' : ' · locked'}`;   /* the version is in the footer (audit, 15 Oct) */
   try { D.ngeo = await nodeGeo(D); } catch (e) { D.ngeo = null; D.ngeoErr = e.message; }
   route();
   ASKING.close();
@@ -291,8 +290,13 @@ async function refused(e) {
   const [h, r] = await Promise.all([fetch('/health').then(x => x.json()).catch(() => ({})),
     doorsFetch('/issues').then(async x => x.ok ? null : (await x.json().catch(() => ({}))).error || (await x.text().catch(() => ''))).catch(() => null)]);
   $('#who').innerHTML = `${esc(h.node || 'this node')}<small>${esc(h.city || '')}</small>`;
-  $('#asof').textContent = `${h.version || ''} · locked`;
+  $('#asof').textContent = 'locked';
   document.querySelectorAll('.view').forEach(el => { el.hidden = el.dataset.view !== 'setup'; });
+  /* a Wall is a screen nobody operates: one line it can be read by from across the room, never a token form (audit, 15 Oct) */
+  if (/^#wall/.test(location.hash)) {
+    $('#setupv2').innerHTML = `<header class="sh"><h1>This screen needs sharing turned on.</h1><p class="lede">Whoever set up ${esc(h.node || 'this node')} can turn it on in Set up › Sharing. Then this screen shows the house by itself.</p></header>`;
+    return;
+  }
   $('#setupv2').innerHTML = `<header class="sh"><div class="k">${esc(h.node || 'this node')} · not sharing with this screen</div><h1>This node is not sharing its readings with this screen.</h1>`
     + `<p class="lede">${esc(r || e.message)}</p><p class="lede">Unlock this screen with a token, or ask whoever set this node up to turn sharing on (Set up → Sharing). <code>planetai ui</code> on the node prints the tokens.</p></header>`
     + `<form class="unlock2" id="sunlock"><label>Admin token<input type="password" id="stok" autocomplete="off" placeholder="changes settings, reads everything"></label>`
@@ -350,7 +354,7 @@ $('#qsend').onclick = async () => {
       }
     }
     if (!text) out.textContent = 'The node answered with nothing.';
-  } catch (e) { out.textContent = `The node did not answer: ${e.message}`; }
+  } catch (e) { out.textContent = WORDS.noreply; }
   finally { $('#qsend').disabled = false; }
 };
 
@@ -359,12 +363,12 @@ $('#qsend').onclick = async () => {
    doors are tried. */
 function foot() {
   const h = D.health, docs = h.docs || 'https://planetai.fab.city/docs/', rel = h.release || {};
-  $('#foot').innerHTML = `<div><b>This node</b><p>${esc(D.node.name)}${D.node.place ? ` · ${esc(D.node.place)}` : ''} · planetai-node ${esc(h.version || '')}</p>`
+  $('#foot').innerHTML = `<div><b>This node</b><p>A home monitor for air, heat, sea and land, part of Fab City’s PLANETAI.</p><p>${esc(D.node.name)}${D.node.place ? ` · ${esc(D.node.place)}` : ''} · planetai-node ${esc(h.version || '')}</p>`
     + `<p>${rel.newer ? `${esc(rel.latest)} is out: <code>planetai update</code> on the node.` : 'A node of PLANETAI, the Fab City programme’s network of homes that read their place, decide and act.'}</p></div>`
     + `<div><b>Read</b><a href="${esc(docs)}" target="_blank" rel="noopener">Documentation</a><a href="${esc(docs)}dashboard/" target="_blank" rel="noopener">These pages, explained</a>`
     + `<a href="${esc(h.llms || '/llms.txt')}">For agents: llms.txt</a>${D.askOff ? '' : '<button class="linkish" type="button" id="footask">Ask the node</button>'}</div>`
-    + `<div><b>This house</b><a href="/?layout=classic">The classic dashboard</a><a href="#setup">Set up</a><a href="#setup/screen">Unlock this screen</a><a href="/export?day=${esc(dayOf(D.as_of))}">Today’s open data, CC BY 4.0</a></div>`
-    + `<div><b>Fab City</b><a href="https://planetai.fab.city/" target="_blank" rel="noopener">PLANETAI</a><a href="https://fab.city/" target="_blank" rel="noopener">Fab City Foundation</a>`
+    + `<div><b>This house</b><a href="#setup">Set up</a><a href="#setup/screen">Unlock this screen</a><a href="/export?day=${esc(dayOf(D.as_of))}">Today’s open data, CC BY 4.0</a></div>`
+    + `<div><b>Fab City</b><a href="https://planetai.fab.city/" target="_blank" rel="noopener">PLANETAI</a><a href="https://fab.city/" target="_blank" rel="noopener">Fab City</a>`
     + `<a href="https://github.com/fabcity/planetai-node" target="_blank" rel="noopener">Source, Apache-2.0</a></div>`;
   if (!D.askOff) $('#footask').onclick = () => $('#askbtn').click();
 }
