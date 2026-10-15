@@ -339,7 +339,10 @@ assert _ar.returncode == 0, _ar.stderr[-2000:]
 a = json.loads(_ar.stdout)
 _fg, _ev, _ru = a["2026-10-06-figures"], a["2026-10-06-events"], a["2026-09-21d"]
 # 19:22, events: air's only open alert is a stale nearby one, heat's event was answered Done. Nothing is asked, on both.
-assert "Nothing is asked now." in _fg["air"]["wall"] and "Nothing to do now." in _fg["air"]["now"], _fg["air"]
+assert "Nothing is asked now." in _fg["air"]["wall"] and "Nothing is asked now." in _fg["air"]["now"], _fg["air"]
+# one sentence on every screen for "nothing is asked" (Tomas, 15 Oct: "Nothing is asked now"): Now, the Wall, the phone
+_said = [(STATIC / f).read_text() for f in ("doors-now.js", "doors-wall.js", "mobile.js")]
+assert all("Nothing is asked now." in t for t in _said) and not any("Nothing to do now" in t for t in _said), "one sentence, three screens"
 assert "No event was open" not in _fg["air"]["now"], "at the live hour Now speaks for the node's asking, not the events alone"
 assert "Nothing is asked now." in _fg["heat"]["wall"] and "answered: Done" in _fg["heat"]["now"] and 'class="ans"' not in _fg["heat"]["now"]
 # 09:00, events: the danger event asks, and the Wall counts it with the two nearby alerts still true. This capture has
@@ -378,7 +381,7 @@ assert 'data-k="air"' in _rows["2026-10-06-figures"][0] and 'data-k="heat"' in _
 for _n, _cap in a.items():
     for _k, _v in _cap.items():
         assert ('class="decide"' in _v["now"]) == (_v["asking"] > 0), (_n, _k, _v["now"][:300])
-        assert ("Nothing to do now." in _v["now"]) == (_v["asking"] == 0), (_n, _k, _v["now"][:300])
+        assert ("Nothing is asked now." in _v["now"]) == (_v["asking"] == 0), (_n, _k, _v["now"][:300])
         assert '<h2 class="nh">What to do</h2>' in _v["now"]
 # a phone: the bar's targets, and the week, are 44 px
 _ph = html[html.index("@media (max-width:480px){"):]

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **One sentence when nothing is asked.** Now said "Nothing to do now." where the Wall and the phone said "Nothing is
+  asked now."; all three say "Nothing is asked now." (Tomas, 15 Oct). The Wall keeps "clean-air line" for the WHO line.
+
 - **The forecast pack asks every `FORECAST_POLL_HOURS`, as its settings always said.** Nothing read the key: the pack
   ran in the core 300 s loop, so with `FORECAST_OPENMETEO=1` the 65-point wind field went to Open-Meteo ~275 times a
   day, and node #1's whole public IP hit the free tier's 10,000-a-day limit at ~06:15 UTC every day from 9 Oct, which

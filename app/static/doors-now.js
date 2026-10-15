@@ -6,7 +6,7 @@
    is a pill in ink. The scales are Place's: the kicker links there and draws no rail. */
 VIEWS.now = function () {
   rows(); drawNow();
-  aroundMap($('#rose')); thingsLine($('#nthings')); rememberLoad().then(() => decision());   /* the usual hour joins "Nothing to do now" */
+  aroundMap($('#rose')); thingsLine($('#nthings')); rememberLoad().then(() => decision());   /* the usual hour joins "Nothing is asked now" */
 };
 /* YESTERDAY and DID IT WORK: the short part of the diary (Tomas, 14 Oct: the diary split between Now and Node, whose
    "What it remembers" keeps the record). Under the decision and quiet: yesterday's day entry said plainly from its own
@@ -22,7 +22,7 @@ async function rememberLoad() {
   NOWL = l ? { rows: l.learnings || [], day: ((d || {}).results || [])[0] || null, people: h ? h.people || {} : null } : null;
   nowRemember();
 }
-/* the hour this issue is usually worst, from the node's own `usual` learnings (28 days); said beside "Nothing to do now" */
+/* the hour this issue is usually worst, from the node's own `usual` learnings (28 days); said beside "Nothing is asked now" */
 function usualLine(k) {
   const u = NOWL ? NOWL.rows.filter(r => r.kind === 'usual' && r.issue === k && r.status === 'holding' && r.numbers) : [];
   return u.length ? `It is usually worst ${u.map(r => `around <span class="mono">${String(r.numbers.high_hour).padStart(2, '0')}:00</span> ${r.key.startsWith('outdoor') ? 'outside' : 'inside'} (${num(`${r.key}.usual.high`, fmt(r.numbers.high, 1), 'the median of that hour, 28 days')} ${said(r.numbers.unit)})`).join(' and ')}.` : '';
@@ -165,7 +165,7 @@ function decision() {
   }
   if (!evs.length) evs = evAt(k, S.i);
   if (!evs.length) {
-    $('#decide').innerHTML = head + (live ? `<p class="nothing">Nothing to do now. ${usual ? `<span class="x">${usual}</span>` : ''}</p>`
+    $('#decide').innerHTML = head + (live ? `<p class="nothing">Nothing is asked now. ${usual ? `<span class="x">${usual}</span>` : ''}</p>`
       : `<p class="nothing">Nothing was asked about ${said(it.name.toLowerCase())} at <span class="mono">${hhmm(D.buckets[S.i])}</span>.</p>`);
     return;
   }
@@ -177,7 +177,7 @@ function decision() {
   const told = `<p class="dm">${sign(a.closed ? 'sign-rho-closed' : 'sign-rho-open', a.closed ? 'closed' : '')} ${esc(a.w)}${(e.rooms || []).length ? ` · ${e.rooms.length} room${e.rooms.length === 1 ? '' : 's'}: ${said(e.rooms.map(r => r.trim()).join(', '))}` : ''}</p>`;
   if (!asking) {
     /* answered, cleared, or a past hour: nothing is asked now, so no frame and no buttons; the event is said quietly */
-    $('#decide').innerHTML = head + (live ? `<p class="nothing">Nothing to do now. ${usual ? `<span class="x">${usual}</span>` : ''}</p>` : '')
+    $('#decide').innerHTML = head + (live ? `<p class="nothing">Nothing is asked now. ${usual ? `<span class="x">${usual}</span>` : ''}</p>` : '')
       + `<p class="dm">${what}: ${said(e.action || 'the node asked for nothing specific.')}</p>` + told;
     return;
   }
