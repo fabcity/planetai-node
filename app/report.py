@@ -419,7 +419,12 @@ T = {
         "make": "Nearest place to make or fix something: {where}.",
         "todo_above": "{place} is the one to deal with before the next report.",
         "todo_quiet": "Check {place}: it has stopped sending.",
-        "todo_health": "The node itself needs a look: {fix}",
+        "health_poll": "The node has stopped reading its sensors. Check it is switched on.",
+        "health_backup": "The last backup did not run. Whoever set up the node can check it.",
+        "health_frozen": "A sensor is stuck on the same number: {place}. Switching it off and on again usually fixes it.",
+        "health_quiet": "A sensor has gone quiet: {place}.",
+        "health_quiet_any": "A sensor has gone quiet.",
+        "health_other": "The node itself needs a look. Whoever set it up can see what on the Node page.",
         "todo_none": "Nothing needs doing before the next report.",
         "ask": "Ask me anything about the air, the heat or the sea.",
     },
@@ -450,7 +455,12 @@ T = {
         "make": "Tempat terdekat untuk membuat atau memperbaiki sesuatu: {where}.",
         "todo_above": "{place} yang perlu diurus sebelum laporan berikutnya.",
         "todo_quiet": "Cek {place}: sudah tidak mengirim data.",
-        "todo_health": "Node-nya sendiri perlu dilihat: {fix}",
+        "health_poll": "Node berhenti membaca sensornya. Pastikan node menyala.",
+        "health_backup": "Cadangan terakhir tidak berjalan. Orang yang memasang node bisa memeriksanya.",
+        "health_frozen": "Sebuah sensor terus menunjukkan angka yang sama: {place}. Biasanya beres jika dimatikan lalu dinyalakan lagi.",
+        "health_quiet": "Sebuah sensor tidak mengirim lagi: {place}.",
+        "health_quiet_any": "Sebuah sensor tidak mengirim lagi.",
+        "health_other": "Node-nya sendiri perlu dilihat. Orang yang memasangnya bisa melihat apa di halaman Node.",
         "todo_none": "Tidak ada yang perlu dilakukan sebelum laporan berikutnya.",
         "ask": "Tanya apa saja tentang udara, panas, atau laut.",
     },
@@ -461,7 +471,7 @@ T = {
         "state_bad": "😷 El aire de dentro está insalubre ahora mismo.",
         "state_warm": "🌫️ El aire de dentro está a medias: ni limpio ni insalubre.",
         "state_clean": "✅ El aire de dentro está limpio.",
-        "state_no_sensor": "🛰️ Aún no hay sensor dentro, así que esto es la comuna y no tus habitaciones.",
+        "state_no_sensor": "🛰️ Aún no hay sensor dentro, así que esto es la zona y no tus habitaciones.",
         "high_pm25": "El aire en {place} estuvo más sucio de lo habitual.",
         "low_pm25": "El aire en {place} estuvo más limpio de lo habitual.",
         "high_temp": "En {place} hizo más calor de lo habitual.",
@@ -469,7 +479,7 @@ T = {
         "high_humidity": "En {place} hubo más humedad de lo habitual.",
         "low_humidity": "En {place} el aire estuvo más seco de lo habitual.",
         "beyond_swell": "Mar adentro llega un oleaje grande y de periodo largo.",
-        "beyond_satellite": "El modelo satelital pone toda la comuna por encima de la primera meta intermedia de la OMS, 35 µg/m³.",
+        "beyond_satellite": "El modelo satelital pone toda la zona por encima de la primera meta intermedia de la OMS, 35 µg/m³.",
         "heat_over": "En {rooms} la sensación pasa de {line}, desde las {at}.",
         "heat_usual": "En {rooms} hace más calor de lo habitual desde las {at}.",
         "line_heat": "el límite de calor de esta casa, {n} °C de sensación",
@@ -481,11 +491,30 @@ T = {
         "make": "El lugar más cercano para fabricar o reparar algo: {where}.",
         "todo_above": "{place} es lo que hay que atender antes del próximo informe.",
         "todo_quiet": "Revisa {place}: dejó de enviar datos.",
-        "todo_health": "El nodo mismo necesita una revisión: {fix}",
+        "health_poll": "El nodo dejó de leer sus sensores. Comprueba que está encendido.",
+        "health_backup": "La última copia de seguridad no se hizo. Quien instaló el nodo puede revisarlo.",
+        "health_frozen": "Un sensor se quedó en el mismo número: {place}. Apagarlo y encenderlo de nuevo suele arreglarlo.",
+        "health_quiet": "Un sensor dejó de enviar: {place}.",
+        "health_quiet_any": "Un sensor dejó de enviar.",
+        "health_other": "El nodo mismo necesita una revisión. Quien lo instaló puede ver qué en la página Nodo.",
         "todo_none": "No hay nada que hacer antes del próximo informe.",
         "ask": "Pregúntame lo que quieras sobre el aire, el calor o el mar.",
     },
 }
+
+
+# app/agent.py::health_check's `fix` is for whoever runs the node (shell commands, ids); the morning message says the
+# same failure in the household's words, keyed by the check's name. A check not listed here gets health_other.
+HEALTH = {"polled in the last 15 min": "health_poll", "a backup in the last 2 days": "health_backup",
+          "no local sensor's ambient channel is frozen": "health_frozen", "LoRa radios heard in the last hour": "health_quiet"}
+
+
+def _health_line(check: dict, t: dict) -> str:
+    key = HEALTH.get(check.get("check"), "health_other")
+    who = ", ".join(_place({"name": n}) for n in check.get("who") or [])
+    if key in ("health_frozen", "health_quiet") and not who:   # never the id: no name, no name in the sentence
+        key = "health_quiet_any" if key == "health_quiet" else "health_other"
+    return t[key].format(place=who)
 
 
 def _place(row: dict) -> str:
@@ -622,7 +651,7 @@ def sheet(b: dict, locale: str = "en") -> str:
     elif quiet:
         tail.append(t["todo_quiet"].format(place=_place(quiet)))
     elif bad_check:
-        tail.append(t["todo_health"].format(fix=bad_check["fix"].split(";")[0].split(".")[0]))
+        tail.append(_health_line(bad_check, t))
     else:
         tail.append(t["todo_none"])
     parts.append(" ".join(tail))

@@ -108,6 +108,6 @@ hero:
   clock: date
 
 empty:
-  en: "No satellite record yet. To fetch one: planetai run earth fetch, then planetai run earth change."
-  id: "Belum ada rekaman satelit. Untuk mengambilnya: planetai run earth fetch, lalu planetai run earth change."
-  es: "Aún no hay registro satelital. Para obtenerlo: planetai run earth fetch, luego planetai run earth change."
+  en: "No satellite pictures of this place yet."
+  id: "Belum ada citra satelit tempat ini."
+  es: "Aún no hay imágenes de satélite de este lugar."

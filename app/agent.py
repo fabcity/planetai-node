@@ -66,7 +66,10 @@ def health_check() -> dict:
     the database reachable, the mesh alive if configured. `sources` is GET /health/sources: the fundamental sources, each
     running or not, with its fix; they never make `ok` false."""
     h = _get("/health"); checks = []
-    def chk(name, ok, fix): checks.append({"check": name, "ok": bool(ok), "fix": None if ok else fix})
+    # `fix` is the admin's (Node › Running, MCP). `who` is the display names a failing check is about, so the morning
+    # message can name the room in the household's words instead of quoting `fix` (app/report.py, HEALTH).
+    def chk(name, ok, fix, who=()):
+        checks.append({"check": name, "ok": bool(ok), "fix": None if ok else fix, **({"who": list(who)} if who and not ok else {})})
     age = None
     if h.get("last_poll"):
         age = (datetime.now(timezone.utc) - datetime.fromisoformat(h["last_poll"])).total_seconds() / 60
@@ -84,20 +87,22 @@ def health_check() -> dict:
         chk("no local sensor's ambient channel is frozen", False, f"/trust did not respond ({e}); check `planetai logs`")
     else:
         frozen = sorted({r["name"] or r["sensor_id"] for r in trust if r["frozen_channels"] > 0})
+        named = sorted({r["name"] for r in trust if r["frozen_channels"] > 0 and r.get("name")})
         chk("no local sensor's ambient channel is frozen", not frozen,
             f"{', '.join(frozen)} {'has' if len(frozen) == 1 else 'have'} a channel stuck on the same number for hours while the kit itself "
             f"still reports. What this means: any reading or alert built from that channel is wrong; the rest of the kit and the rest of the "
             f"node are unaffected. Most often one sensor inside the kit has died: power-cycle it. If the number stays frozen, replace that "
-            f"sensor — nothing it has recorded since it froze can be trusted.")
+            f"sensor — nothing it has recorded since it froze can be trusted.", named)
     if os.getenv("MQTT_HOST"):
         # judge the radios by their readings, not by in-memory packet counters that reset on every restart
         mesh = [r for r in _get("/stats") if r["sensor_id"].startswith("msh-")]
         quiet = sorted({r["sensor_id"] for r in mesh if r["silent_minutes"] > 60})
         heard = sorted({r["sensor_id"] for r in mesh if r["silent_minutes"] <= 60})
+        named = sorted({r["name"] for r in mesh if r["silent_minutes"] > 60 and r.get("name")})
         chk("LoRa radios heard in the last hour", bool(heard) or not mesh,
             f"radio(s) {', '.join(quiet)} have been silent for hours. What this means: readings and alerts that travel over LoRa have "
             f"stopped; everything else (the WiFi sensors, Telegram, the dashboard) is unaffected. Most often the gateway radio (the XIAO) "
-            f"lost WiFi or its MQTT session: check its power light, open its web page at its IP, or power-cycle it. `planetai logs mosquitto` shows whether the broker hears it.")
+            f"lost WiFi or its MQTT session: check its power light, open its web page at its IP, or power-cycle it. `planetai logs mosquitto` shows whether the broker hears it.", named)
     # The fundamental sources (GET /health/sources), apart from the checks: a node with no sensor yet is unfinished,
     # not broken, so they never make `ok` false. Each one that is not running carries its fix.
     try:

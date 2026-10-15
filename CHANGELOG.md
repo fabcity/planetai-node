@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **What the family reads names no command, token, model tag or exception.** The bot, the morning message, the
+  image reader's errors and the coast, land, trust, cold-start, nearby and heat texts now say what happened and who can
+  fix it ("I can't answer questions right now. Alerts and the morning report still work."); the admin detail moved to
+  the log and stays in each health check's `fix` on Node › Running. The morning's health line is its own sentence per
+  check and names a quiet sensor by its room, never its id. Trust alerts name the metric ("fine dust (PM2.5)", not
+  `pm25`), the heat danger alert is sentence case, and the nearby alert's Spanish says tú (pre-launch audit, 15 Oct).
+
 - **One sentence when nothing is asked.** Now said "Nothing to do now." where the Wall and the phone said "Nothing is
   asked now."; all three say "Nothing is asked now." (Tomas, 15 Oct). The Wall keeps "clean-air line" for the WHO line.
 
