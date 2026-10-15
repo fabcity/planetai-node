@@ -123,8 +123,10 @@ function offline(why) {
   PM.offline = why;
   let n = document.querySelector('.nonode');
   if (!why) { if (n) n.remove(); return; }
+  /* locked, not broken: the margin and the inspector line already say so, and an overlay hid the scale rail (15 Oct) */
+  if (!DOORS_TOKEN()) { if (n) n.remove(); return; }
   if (!n) { n = document.createElement('p'); n.className = 'nonode'; (PM.map ? PM.map.getContainer() : $('#map')).appendChild(n); }
-  n.textContent = 'This map is locked on this screen, because together its layers say where the house is. Unlock this screen in Set up › This screen to draw it.';
+  n.textContent = 'The node did not give this screen its map just now. Try again in a minute.';
   n.title = why;
 }
 
