@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **The forecast pack asks every `FORECAST_POLL_HOURS`, as its settings always said.** Nothing read the key: the pack
+  ran in the core 300 s loop, so with `FORECAST_OPENMETEO=1` the 65-point wind field went to Open-Meteo ~275 times a
+  day, and node #1's whole public IP hit the free tier's 10,000-a-day limit at ~06:15 UTC every day from 9 Oct, which
+  silenced `om-point` until midnight UTC. `fetch()` now asks only when `out/forecast.last` is older than the setting,
+  and touches it on every attempt, so neither a restart nor a 429 asks again early. `planetai run forecast fetch`
+  still asks now. Forecast rows are never overwritten, so nothing is lost. `tests/test_forecast.py` counts the calls.
 - **Place and Node, after the design review (Tomas, 14–15 Oct).** Place: the species confirmed here are a table
   below the map (GBIF link, rank, times seen here, where in words, GBIF's open records in the seven cells; token only)
   and a filled mark on the map under Images, its row saying "1 confirmed · …"; five layers on by default, the other
