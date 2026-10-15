@@ -106,7 +106,7 @@ assert "/act" in open("app/agent_loop.py").read()
 src = open("app/agent_loop.py").read()
 assert '"note": parts[2] if len(parts) > 2 else "acted"' not in src, \
     "the Telegram handler is substituting a placeholder for the person's own words again"
-assert "What did you do about #" in src, "it must ask for the words instead of inventing them"
+assert "What did you do about it?" in src, "it must ask for the words instead of inventing them"
 
 # 5. `planetai agent` prints the class, and the two cannot drift. The CLI is Bash and cannot import the
 #    table, so this is the gate instead of a shared file.

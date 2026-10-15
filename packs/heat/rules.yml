@@ -50,9 +50,9 @@
     FROM x
     WHERE (t + 0.33 * (rh/100.0 * 6.105 * exp(17.27*t/(237.7+t))) - 4.0) >= 40
   message:
-    en: "🚨 DANGER at {name}: it feels like {at} °C — the danger line here is {line} °C.\n\nThis is heatstroke territory. The body cannot shed heat at this level, and it goes wrong fast.\n\nCool the room or leave it. Wet skin, a fan, shade, water. Do not leave anyone alone in it."
-    id: "🚨 BAHAYA di {name}: terasa seperti {at} °C — garis bahaya di sini {line} °C.\n\nIni wilayah heatstroke. Tubuh tidak bisa membuang panas di tingkat ini, dan cepat memburuk.\n\nDinginkan ruangan atau keluar. Basahi kulit, kipas, teduh, air. Jangan tinggalkan siapa pun sendirian di dalamnya."
-    es: "🚨 PELIGRO en {name}: la sensación es de {at} °C — la línea de peligro aquí es {line} °C.\n\nEsto es terreno de golpe de calor. A este nivel el cuerpo no consigue soltar calor, y se descompone rápido.\n\nEnfría la habitación o sal de ella. Piel mojada, un ventilador, sombra, agua. No dejes a nadie solo ahí."
+    en: "🚨 Dangerous heat at {name}: it feels like {at} °C, past the danger line here, {line} °C.\n\nThis is heatstroke territory. The body cannot shed heat at this level, and it goes wrong fast.\n\nCool the room or leave it. Wet skin, a fan, shade, water. Do not leave anyone alone in it."
+    id: "🚨 Panas berbahaya di {name}: terasa seperti {at} °C, melewati garis bahaya di sini, {line} °C.\n\nIni wilayah heatstroke. Tubuh tidak bisa membuang panas di tingkat ini, dan cepat memburuk.\n\nDinginkan ruangan atau keluar. Basahi kulit, kipas, teduh, air. Jangan tinggalkan siapa pun sendirian di dalamnya."
+    es: "🚨 Calor peligroso en {name}: la sensación es de {at} °C, por encima de la línea de peligro de aquí, {line} °C.\n\nEsto es terreno de golpe de calor. A este nivel el cuerpo no consigue soltar calor, y se descompone rápido.\n\nEnfría la habitación o sal de ella. Piel mojada, un ventilador, sombra, agua. No dejes a nadie solo ahí."
 
 - id: night_no_relief
   level: info

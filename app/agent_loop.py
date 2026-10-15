@@ -279,7 +279,8 @@ def stack_text(data: dict, one: str = "") -> str:
         issues, head = data.get("issues") or {}, data.get("headline")
         rows = [(k, issues[k]) for k in (data.get("order") or []) if k in issues]
     if not rows:
-        return "No issues are declared on this node yet. Set NODE_ISSUES under Set up → Basics."
+        return T("The node is not watching anything yet; whoever set it up can choose what in Set up.",
+                 es="El nodo todavía no vigila nada; quien lo instaló puede elegir qué en Configurar.")
     out = []
     for key, iss in rows:
         name = (iss.get("name") or {}).get(LOCALE) or key
@@ -374,9 +375,12 @@ async def ask(session: ClientSession, tools: list[dict], user: str, history: lis
                 last_err = e
                 rung.skip_until = time.time() + SKIP_FOR
                 log.warning("[%s] unavailable (%s: %s); trying the next rung", rung.name, type(e).__name__, str(e)[:100])
-    why = type(last_err).__name__ if last_err else 'none configured'
-    return T(f"No model answered ({why}). On the node: `ollama list`, and check AGENT_* in .env.",
-             es=f"Ningún modelo respondió ({why}). En el nodo: `ollama list`, y revisa AGENT_* en .env."), "none"
+    # The admin detail is the log's; the household gets what still works and who can fix it.
+    log.warning("no model answered: %s", type(last_err).__name__ if last_err else "none configured")
+    return T("I can't answer questions right now. Alerts and the morning report still work. "
+             "Whoever set up the node can fix this in Set up › Model.",
+             es="Ahora no puedo responder preguntas. Las alertas y el informe de la mañana siguen funcionando. "
+                "Quien instaló el nodo puede arreglarlo en Configurar › Modelo."), "none"
 
 
 # ---------------------------------------------------------------------------------------- the dashboard's pane
@@ -787,14 +791,16 @@ async def keep_picture(hc, m: dict, chat: str) -> bool:
         body = {}
     if r.status_code in (401, 403):
         log.warning("picture from chat %s refused by the node: %s", chat, r.status_code)
-        await say("The node refused this bot's token, so the picture was not kept. The agent's ADMIN_TOKEN is not the "
-                  "app's: both read it from the node's .env.",
-                  "El nodo rechazó el token de este bot y la imagen no se guardó. El ADMIN_TOKEN del agente no es el de "
-                  "la app: los dos lo leen del .env del nodo.")
+        await say("The node did not accept this picture. Whoever set up the node needs to check the bot's access.",
+                  "El nodo no aceptó esta imagen. Quien instaló el nodo tiene que revisar el acceso del bot.")
     elif r.status_code >= 400:
-        why = str(body.get("detail") or r.status_code)[:300]   # the node's own sentence: it names no token
+        why = str(body.get("detail") or "")[:300]   # the node's own sentence: it names no token; a bare status is the log's
         log.warning("picture from chat %s refused by the node: %s", chat, r.status_code)
-        await say(f"The node did not keep it: {why}", f"El nodo no la guardó: {why}")
+        if why:
+            await say(f"The node did not keep it: {why}", f"El nodo no la guardó: {why}")
+        else:
+            await say("The node did not keep it; send it again in a minute.",
+                      "El nodo no la guardó; envíala de nuevo en un minuto.")
     elif body.get("duplicate"):
         await say("That picture is already kept.", "Esa imagen ya está guardada.")
     elif body.get("describing"):
@@ -829,8 +835,8 @@ async def handle_callback(hc, cq: dict, pending: dict) -> None:
     if not parsed:
         if qid:
             await telegram("answerCallbackQuery", callback_query_id=qid,
-                           text=T("This button is from another time; the event it belonged to is no longer mine.",
-                                  es="Este botón es de otro momento; el evento al que pertenecía ya no es mío."))
+                           text=T("This alert is already closed, so there is nothing to answer.",
+                                  es="Esta alerta ya está cerrada, así que no hay nada que responder."))
         return
     eid, stage = parsed
     try:
@@ -952,8 +958,7 @@ async def main():
             if note_eid is not None:
                 try:
                     await _post_answer(hc, note_eid, "dismissed", _name_of(m.get("from") or {}), note=text)
-                    said = T(f"Kept as the note for event #{note_eid}.",
-                             es=f"Anotado como la nota del evento #{note_eid}.")
+                    said = T("Note kept with that alert.", es="Nota guardada con esa alerta.")
                 except Exception as e:  # noqa: BLE001
                     log.warning("note on event #%s failed: %s: %s", note_eid, type(e).__name__, str(e)[:200])
                     said = T("⚠️ I could not keep that note on the node. The Doesn't fit stands; the note is lost.",
@@ -967,18 +972,18 @@ async def main():
                     # where the person's own sentence belongs — and rho is built out of those sentences.
                     # Asking costs one message and gets something true.
                     await telegram("sendMessage", chat_id=chat,
-                                   text=T(f"What did you do about #{parts[1]}? Send it as:  /act {parts[1]} <what you did>",
-                                          es=f"¿Qué hiciste con la #{parts[1]}? Envíalo así:  /act {parts[1]} <lo que hiciste>"))
+                                   text=T(f"What did you do about it? Send it with your words:  /act {parts[1]} <what you did>",
+                                          es=f"¿Qué hiciste? Envíalo con tus palabras:  /act {parts[1]} <lo que hiciste>"))
                     continue
                 if len(parts) >= 3 and parts[1].isdigit():
                     try:
                         async with node_session(hc) as (session, _t):
                             await session.call_tool("act", {"alert_id": int(parts[1]), "note": parts[2], "agent": f"{NAME}/telegram"})
-                        said = T(f"Recorded: you acted on #{parts[1]}.", es=f"Anotado: actuaste sobre #{parts[1]}.")
+                        said = T("Recorded what you did.", es="Anotado lo que hiciste.")
                     except Exception as e:  # noqa: BLE001
                         log.warning("act on #%s failed: %s: %s", parts[1], type(e).__name__, str(e)[:200])
-                        said = T(f"⚠️ I could not record that on the node ({type(e).__name__}). Nothing was written; try again in a moment.",
-                                 es=f"⚠️ No pude anotarlo en el nodo ({type(e).__name__}). No se escribió nada; inténtalo de nuevo en un momento.")
+                        said = T("⚠️ I couldn't record that. Nothing was saved; try again in a minute.",
+                                 es="⚠️ No pude anotarlo. No se guardó nada; inténtalo de nuevo en un minuto.")
                     await telegram("sendMessage", chat_id=chat, text=said)
                     continue
             if text.startswith("/learned"):
@@ -1011,8 +1016,8 @@ async def main():
                                                        for x in rows)
                 except Exception as e:  # noqa: BLE001
                     log.warning("/learned failed: %s: %s", type(e).__name__, str(e)[:200])
-                    said = T(f"⚠️ I could not read what the node learned ({type(e).__name__}).",
-                             es=f"⚠️ No pude leer lo que aprendió el nodo ({type(e).__name__}).")
+                    said = T("⚠️ I couldn't read what the node learned. Try again in a minute.",
+                             es="⚠️ No pude leer lo que aprendió el nodo. Inténtalo de nuevo en un minuto.")
                 await telegram("sendMessage", chat_id=chat, text=said)
                 continue
             if text.startswith("/stack"):
@@ -1044,7 +1049,8 @@ async def main():
             except Exception as e:  # noqa: BLE001
                 # The node itself, not a model: say so plainly rather than letting a model guess at it.
                 log.warning("no session to the node for chat %s: %s: %s", chat, type(e).__name__, str(e)[:200])
-                answer, rung = f"⚠️ I could not open a session to the node just now ({type(e).__name__}). It may be restarting — try again in a moment.", "none"
+                answer, rung = T("⚠️ I couldn't reach the node just now. It may be restarting; try again in a minute.",
+                                 es="⚠️ Ahora no pude llegar al nodo. Puede que se esté reiniciando; inténtalo de nuevo en un minuto."), "none"
             history.setdefault(chat, []).extend([{"role": "user", "content": text}, {"role": "assistant", "content": answer}])
             log.info("chat %s via %s: %.1fs", chat, rung, time.time() - t0)
             await telegram("sendMessage", chat_id=chat, text=answer[:4000])

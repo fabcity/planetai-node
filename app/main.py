@@ -3677,10 +3677,13 @@ async def _describe(cid: int, model: str) -> dict:
         r = await hc.post(url + "/api/chat", json={"model": model, "stream": False, "messages": [msg],
                                                    "options": {"temperature": 0, "num_predict": num},
                                                    **({"format": fmt} if fmt else {})})
+        # The detail reaches the Data door, so it is said in the household's words; the admin's is the log's.
         if r.status_code == 404:
-            raise HTTPException(503, f"{model} is not on this machine yet: `ollama pull {model}`")
+            log.warning("eyes: %s is not pulled on this machine (ollama pull %s)", model, model)
+            raise HTTPException(503, "No image reader is set up on this node yet.")
         if r.status_code >= 400:
-            raise HTTPException(502, f"the image model answered {r.status_code}: {r.text[:200]}")
+            log.warning("eyes: %s answered %s: %s", model, r.status_code, r.text[:200])
+            raise HTTPException(502, "The image reader did not answer; try again later.")
         return r.json()["message"]["content"]
     try:
         async with httpx.AsyncClient(timeout=600) as hc:
@@ -3689,9 +3692,11 @@ async def _describe(cid: int, model: str) -> dict:
             filed = EYES_FILE.format(summary=summary)
             out = json.loads(await ask(hc, {"role": "user", "content": filed}, 900, schema))
     except httpx.HTTPError as e:
-        raise HTTPException(503, f"Ollama is not answering at {url} ({type(e).__name__})") from None
-    except (KeyError, ValueError, TypeError):
-        raise HTTPException(502, "the image model answered something that is not the shape asked for") from None
+        log.warning("eyes: Ollama is not answering at %s (%s)", url, type(e).__name__)
+        raise HTTPException(503, "The image reader did not answer; try again later.") from None
+    except (KeyError, ValueError, TypeError) as e:
+        log.warning("eyes: %s answered something that is not the shape asked for (%s)", model, type(e).__name__)
+        raise HTTPException(502, "The image reader did not answer; try again later.") from None
     findings = await asyncio.to_thread(_taxa, _findings(out.get("findings") or []))
     analysis = {"model": model, "where": "local", "vocab": FLOWS_VOCAB, "asked": [look, EYES_FILE],
                 "at": datetime.now(timezone.utc).isoformat(), "summary": summary[:1500],
@@ -3799,7 +3804,7 @@ async def capture_describe(cid: int, request: Request, authorization: str = Head
     _captures_auth(request, authorization)
     model = _eyes_model()
     if not model:
-        raise HTTPException(409, "no image model is set: Set up, Model, Image model (qwen2.5vl:7b on 16 GB)")
+        raise HTTPException(409, "No image reader is set up on this node yet.")
     return {"ok": True, "analysis": await _describe(cid, model)}
 
 
