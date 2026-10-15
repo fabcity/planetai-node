@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- **The pages speak to the household (pre-launch audit, 15 Oct).**
+  - Data links every sensor and every model to where its source publishes it, in a new tab (Tomas, 15 Oct); a Smart
+    Citizen kit links to its own kit page.
+  - One table of the household's words in doors-load.js, for the doors and the phone: the engine's states (act now,
+    worth a look, fine, background) and event kinds (a sudden rise, high for an hour…) instead of `notable`/`spike`.
+  - A locked screen pressing Done reads "This screen can't answer yet…", never `Authorization: Bearer <ACT_TOKEN>`;
+    a dropped request reads "The node did not answer…", never the browser's "Failed to fetch".
+  - The Wall at `SHARE_LEVEL=off` draws one line, not a token form; its narration never prints `UI_ASK` or
+    `planetai agent local`.
+  - A screen without a key: no version or schema in the header or the phone's Node, no `SHARE_LEVEL=`, no
+    coordinates on Place, no "+ Add an image" it cannot use, and "locked on this screen" where Place said "no node".
+  - "Raw readings stay on this machine. Only hourly averages, … leave it." replaces a sentence that said readings never
+    leave and then that hourly means travel. The loading screen says "Finding this place", not H3 glyphs.
+  - The footer drops the classic dashboard link (`?layout=classic` still works), says what the node is in one line,
+    and links "Fab City".
+
 - **One sentence when nothing is asked.** Now said "Nothing to do now." where the Wall and the phone said "Nothing is
   asked now."; all three say "Nothing is asked now." (Tomas, 15 Oct). The Wall keeps "clean-air line" for the WHO line.
 
