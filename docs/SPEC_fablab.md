@@ -4,7 +4,7 @@
 "machines, services, courses, repair, optional to be a parent node (depends on compute capacity), it should for sure
 take 7 cells by default."*
 
-**Status: proposed. Nothing built.** Each step below is its own pull request, run on node #1 before it merges.
+**Status: decided 15 October 2026 (Tomas: "A: ok, B: yes, and with possibilities of expanding to the next contiguous cells, expanded limit, minimum 7. C: not yet"). Nothing built.** Each step below is its own pull request, run on node #1 before it merges.
 
 ## 1 · What is there today
 
@@ -72,9 +72,11 @@ A lab can be the parent of the homes around it, and becomes one only when its ma
 3. **Import from fablabs.io** by the lab's own slug, once, on the lab's word.
 4. **Parent by compute.** The installer question and the floor.
 
-## 6 · Open questions, for Tomas
+## 6 · Decided (Tomas, 15 October 2026)
 
-- **A. The floor for parent.** Proposed: 8 GB and 4 cores. Or something else?
-- **B. Seven cells: map only, or also publish?** Proposed: map only, like a private node. A lab publishes its offers
-  at its cell; mapping past the seven is the community request.
-- **C. Fab Lab Bali.** Should it be the first lab node, on its own machine, or node #1 standing in for it in a test?
+- **A. The floor for parent: 8 GB and 4 cores.**
+- **B. Seven cells is the minimum, mapped like a private node.** A lab may grow into the next contiguous cells. The
+  next ring around the seven makes 19 at res 8. It grows ring by ring, up to a larger limit than a home's. The seven
+  are never fewer. The limit itself is set when step 1 is built.
+- **C. Not yet.** Node #1 will move to Fab Lab Bali later; for now it stays at Tomas's place, a home. The first lab
+  node waits for that move.
