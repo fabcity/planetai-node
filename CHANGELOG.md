@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **First run (pre-launch audit, 15 Oct).** The installer's question 4 offered AirGradient and PurpleAir, which the
+  node never read: an operator who picked one got no reading and no first alert. It offers Smart Citizen until the
+  `air-sensors` pack reads the others. A chat not in `TELEGRAM_CHAT_IDS` is told once, with its own id, that the node
+  answers its household only and who can add it; it heard nothing before. The install page opens with the six
+  commands of the short way.
+
 - **What the family reads names no command, token, model tag or exception.** The bot, the morning message, the
   image reader's errors and the coast, land, trust, cold-start, nearby and heat texts now say what happened and who can
   fix it ("I can't answer questions right now. Alerts and the morning report still work."); the admin detail moved to
