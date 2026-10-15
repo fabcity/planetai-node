@@ -114,7 +114,7 @@ function readout() {
   const k = S.issue, it = D.issues[k], i = S.i, b = D.buckets[i], dp = it.dp, U = it.unit, isNow = i === D.now;
   const w = (it.provenance || {})[it.hero_distance] || 'model';
   $('#kick').innerHTML = isNow ? `Right now · ${said(it.name)} at <span class="mono">${hhmm(b)}</span> ${prov(w)}`
-    : `${said(it.name)} · ${esc(dLabel(dayOf(b)))} at <span class="mono">${hhmm(b)}</span> ${prov(w)} · ${D.now - i} h before the capture`;
+    : `${said(it.name)} · ${esc(dLabel(dayOf(b)))} at <span class="mono">${hhmm(b)}</span> ${prov(w)} · ${D.now - i} hour${D.now - i === 1 ? '' : 's'} ago`;
   $('#back').hidden = isNow;
   const cell = D.health.cell || {}, rung = D.geometry.ladder.find(l => l.res === cell.res);
   $('#cellink').innerHTML = cell.edge_m && rung ? `${cell.edge_m} m · ${fmt(rung.own_area_m2 / 1e6, 2)} km² ›` : '';
@@ -155,7 +155,7 @@ function readout() {
 function decision() {
   const k = S.issue, it = D.issues[k], B = D.buttons, live = S.i === D.now, ask = live ? (it.asking || [])[0] : null;
   const head = '<h2 class="nh">What to do</h2>', usual = live ? usualLine(k) : '';
-  const line = `<p class="dm">${it.line != null ? `the line <span class="mono">${fmt(it.line, it.dp)}</span> ${said(it.unit)} · ${said(it.line_source || '')}` : 'this issue has no line: it informs, it never asks'}</p>`;
+  const line = `<p class="dm">${it.line != null ? `the line <span class="mono">${fmt(it.line, it.dp)}</span> ${said(it.unit)} · ${said(it.line_source || '')}` : 'There is no limit for this, so the node only reports it. It never asks you to act.'}</p>`;
   let evs = ask && ask.event_id != null ? D.events.filter(e => e.id === ask.event_id) : [];
   if (ask && !evs.length) {
     /* an alert still true that no event stands for (answered on Telegram), or an event this screen has no row for */
@@ -172,7 +172,7 @@ function decision() {
   const e = evs[0], a = answerWords(e.answer), on = { acted: 'done', acknowledged: 'not_now', dismissed: 'doesnt_fit' }[(e.answer || {}).stage];
   /* an answer is taken only for an event still open, at the live hour: a past hour is read, never answered */
   const asking = live && !e.cleared_at && (e.asking || !!ask);
-  const what = `${said(it.name)} · ${esc(e.kind)} since <span class="mono">${hhmm(e.opened_at)}</span>${e.cleared_at ? ` · cleared <span class="mono">${hhmm(e.cleared_at)}</span>` : ' · still open'}`
+  const what = `${said(it.name)} · ${esc(kindWord(e.kind))} since <span class="mono">${hhmm(e.opened_at)}</span>${e.cleared_at ? ` · cleared <span class="mono">${hhmm(e.cleared_at)}</span>` : e.answer ? ' · answered, watching until it clears' : ' · still open'}`
     + `${e.peak != null ? ` · peak ${num(`${k}.event.peak`, fmt(e.peak, it.dp), `the line ${fmt(it.line, it.dp)} ${it.unit}`)} ${said(it.unit)}` : ''}`;
   const told = `<p class="dm">${sign(a.closed ? 'sign-rho-closed' : 'sign-rho-open', a.closed ? 'closed' : '')} ${esc(a.w)}${(e.rooms || []).length ? ` · ${e.rooms.length} room${e.rooms.length === 1 ? '' : 's'}: ${said(e.rooms.map(r => r.trim()).join(', '))}` : ''}</p>`;
   if (!asking) {
@@ -201,10 +201,10 @@ document.addEventListener('click', async ev => {
     const r = await fetch('/actions', { method: 'POST', headers: { 'content-type': 'application/json', ...DOORS_AUTH() },
       body: JSON.stringify({ event_id: Number(b.dataset.ev), stage: b.dataset.stage, actor, note: '' }) });
     const said_ = r.ok ? '' : ((await r.json().catch(() => ({}))).detail || `the node refused it (${r.status})`);
-    if (!r.ok) { out.textContent = r.status === 401 || r.status === 403 ? `${said_} · unlock this screen in Set up › This screen with the act token.` : said_; b.disabled = false; return; }
+    if (!r.ok) { out.textContent = r.status === 401 || r.status === 403 ? WORDS.locked : said_; b.disabled = false; return; }
     out.textContent = b.dataset.stage === 'acknowledged' ? 'Not now. The node holds this for three hours, unless it reaches danger.' : 'Recorded.';
     D = await loadD().then(d => Object.assign(d, { learn: D.learn, dates: D.dates, at: D.at, now: D.now, sens: D.sens, ngeo: D.ngeo })); VIEWS.now();
-  } catch (e) { out.textContent = `The node did not answer: ${e.message}`; b.disabled = false; }
+  } catch (e) { out.textContent = WORDS.noreply; b.disabled = false; }
 });
 
 /* Around the house: the issues drawn by the hour, one row each; a row moves the page to that issue. Land and Coast
@@ -212,7 +212,7 @@ document.addEventListener('click', async ev => {
 function rows() {
   $('#rows').innerHTML = D.order.filter(ISSUES_DRAWN).map(k => {
     const it = D.issues[k];
-    return `<button class="row" data-k="${k}" data-kind="readout" aria-pressed="false"><span><span class="n">${said(it.name)}</span><span class="state ${it.state === 'act' ? 'act' : ''}">${esc(it.state)}</span></span>`
+    return `<button class="row" data-k="${k}" data-kind="readout" aria-pressed="false"><span><span class="n">${said(it.name)}</span><span class="state ${it.state === 'act' ? 'act' : ''}">${esc(stateWord(it.state))}</span></span>`
       + `<span class="v" data-v></span><span class="sub" data-s></span></button>`;
   }).join('');
   document.querySelectorAll('#rows .row').forEach(b => b.onclick = () => { S.issue = b.dataset.k; drawNow(); });
@@ -222,7 +222,8 @@ function rowsValues() {
   document.querySelectorAll('#rows .row').forEach(r => {
     const k = r.dataset.k, it = D.issues[k];
     r.setAttribute('aria-pressed', String(k === S.issue));
-    const v = val(k, it.hero_distance, S.i), pd = (it.per_day || []).find(p => p.date === date);
+    // now is the live reading the title and the legend say, not the running hour's mean (audit, 15 Oct: 17 beside 10)
+    const v = S.i === D.now ? ((it.stack || {})[it.hero_distance] || {}).value : val(k, it.hero_distance, S.i), pd = (it.per_day || []).find(p => p.date === date);
     r.querySelector('[data-v]').innerHTML = `${num(`${k}.${it.hero_distance}`, fmt(v, it.dp), `against the line, ${fmt(it.line, it.dp)} ${it.unit}`)}<small>${said(it.unit)}</small>`;
     r.querySelector('[data-s]').innerHTML = pd ? `${pd.over ? '<span class="over" aria-hidden="true"></span>' : ''}${num(`${k}.over.day`, pd.over, `of ${pd.read} hours read, ${pd.of - pd.read} not recorded`)} h over the line ${date === dayOf(D.buckets[D.now]) ? 'today' : 'on ' + dLabel(date).split(',')[0]} · ${pd.read} of ${pd.of} h read` : 'no count for this day';
   });
@@ -296,7 +297,7 @@ async function aroundMap(el) {
     new deck.ScatterplotLayer({ id: 'house', data: [{ p: D.point }], getPosition: d => d.p, radiusUnits: 'pixels', getRadius: 6.5, getFillColor: ink, stroked: true, getLineColor: ground, lineWidthUnits: 'pixels', getLineWidth: 2 }),
     new deck.TextLayer({ id: 'house-l', data: [{ p: D.point }], characterSet: 'auto', getPosition: d => d.p, getPixelOffset: [0, 17], getTextAnchor: 'middle', getSize: 11, fontFamily: mono, getColor: ink,
       background: true, getBackgroundColor: C('--ground', .92), backgroundPadding: [3, 1],
-      getText: () => `this house · ${house.length}${hv.length ? ` · ${fmt(d3.min(hv), 0)}–${fmt(d3.max(hv), 0)} ${unitOf(M)}` : ''}` }),
+      getText: () => `this house · ${house.length} sensor${house.length === 1 ? '' : 's'}${hv.length ? ` · ${fmt(d3.min(hv), 0)}–${fmt(d3.max(hv), 0)} ${unitOf(M)}` : ''}` }),
   ] });
   NOWMAP.paint();
   /* one line (Tomas, 15 Oct): what is drawn and what a press does; faint is a station not heard in 15 minutes */

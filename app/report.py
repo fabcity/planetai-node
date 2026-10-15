@@ -379,7 +379,7 @@ HEAT_LINE = 35.0
 BEYOND = {
     "coast/heavy_swell": ("beyond_swell", lambda o: (o.get(("marine-point", "swell_height_m")) or 0) >= 2.5
                                                 and (o.get(("marine-point", "swell_period_s")) or 0) >= 12),
-    "air-quality/indoor_pm25_high": ("beyond_satellite", lambda o: (o.get(("cams-point", "pm25_model")) or 0) > ACT),
+    "air-quality/indoor_pm25_high": ("beyond_satellite", lambda o: (o.get(("cams-point", "pm25_model")) or 0) > 35.5),
 }
 
 # One dict per language. Every phrase a household reads is in here; the code decides which key, never the words,
@@ -406,7 +406,7 @@ T = {
         "high_humidity": "{place} was more humid than usual.",
         "low_humidity": "{place} was drier than usual.",
         "beyond_swell": "Out at sea a big, long-period swell is arriving.",
-        "beyond_satellite": "The satellite model puts the whole district past the WHO's first interim target, 35 µg/m³.",
+        "beyond_satellite": "The European air model puts the whole district past the US EPA's unhealthy level, 35.5 µg/m³.",
         "heat_over": "In {rooms} it has felt past {line}, since {at}.",
         "heat_usual": "In {rooms} it has been hotter than usual since {at}.",
         "line_heat": "this house's heat line, {n} °C feels-like",
@@ -443,7 +443,7 @@ T = {
         "high_humidity": "{place} lebih lembap dari biasanya.",
         "low_humidity": "{place} lebih kering dari biasanya.",
         "beyond_swell": "Di laut ombak besar berperiode panjang sedang datang.",
-        "beyond_satellite": "Model satelit menempatkan seluruh kecamatan di atas target antara pertama WHO, 35 µg/m³.",
+        "beyond_satellite": "Model udara Eropa menempatkan seluruh kecamatan di atas batas tidak sehat US EPA, 35.5 µg/m³.",
         "heat_over": "Di {rooms} terasa melewati {line}, sejak {at}.",
         "heat_usual": "Di {rooms} lebih panas dari biasanya sejak {at}.",
         "line_heat": "batas panas rumah ini, {n} °C terasa",
@@ -479,7 +479,7 @@ T = {
         "high_humidity": "En {place} hubo más humedad de lo habitual.",
         "low_humidity": "En {place} el aire estuvo más seco de lo habitual.",
         "beyond_swell": "Mar adentro llega un oleaje grande y de periodo largo.",
-        "beyond_satellite": "El modelo satelital pone toda la zona por encima de la primera meta intermedia de la OMS, 35 µg/m³.",
+        "beyond_satellite": "El modelo europeo del aire pone toda la zona por encima del nivel insalubre de la US EPA, 35.5 µg/m³.",
         "heat_over": "En {rooms} la sensación pasa de {line}, desde las {at}.",
         "heat_usual": "En {rooms} hace más calor de lo habitual desde las {at}.",
         "line_heat": "el límite de calor de esta casa, {n} °C de sensación",

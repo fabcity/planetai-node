@@ -64,6 +64,13 @@ same entries on every node in a release, and it says nothing about this house.
 > the hourly series, indoor rooms included, with the hours over the line counted per day. That is the
 > household's rhythm over three months, to anyone on the network.
 
+### Rooms and sensor names stay in the house
+
+At every level, a screen without a token never reads what the house calls its rooms or its sensors. Every answer it
+gets has the house's own labels swapped for neutral ones, "Room A" for a room and "Sensor 1" for a sensor's own name,
+the same on every route, so the page still tells one room from another. The sentences of past alerts, written under
+the names of their day, are left out of `/alerts` and `/issues` instead. A token reads the real names.
+
 ## What needs a token at every level
 
 `/place/geojson` (the shape of your building and what is around it), the `/geo/` routes other than `/geo/cell` (each locates the node), `/machine` and `/storage` (the machine and what it holds), `/settings/raw`, `/settings/phone`, `/backups` and

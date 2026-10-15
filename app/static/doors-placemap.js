@@ -124,7 +124,8 @@ function offline(why) {
   let n = document.querySelector('.nonode');
   if (!why) { if (n) n.remove(); return; }
   if (!n) { n = document.createElement('p'); n.className = 'nonode'; (PM.map ? PM.map.getContainer() : $('#map')).appendChild(n); }
-  n.textContent = `The node did not give this screen its map (${why}). The grid, the rings, the cell facts, every distance and the node’s own street map and satellite are token-only, because together they say where the node is. Unlock this screen in Set up › This screen to draw them.`;
+  n.textContent = 'This map is locked on this screen, because together its layers say where the house is. Unlock this screen in Set up › This screen to draw it.';
+  n.title = why;
 }
 
 /* ---------------------------------------------------------------- the base style: everything from the node's disk */
@@ -467,7 +468,7 @@ async function facts() {
       const c = G ? await cellFacts(G.node) : null;
       /* the cell's own edge and area, as the lede says them: the resolution's world average is a different hexagon */
       put(head + row('Resolution', `${r}`, sc ? sc[1] : '')
-        + (c ? row('This node’s cell, its edge', fmtM(c.edge_m)) + row('Its area', area(c.area_m2)) : row('This node’s cell', '<span class="gap">no node</span>'))
+        + (c ? row('This node’s cell, its edge', fmtM(c.edge_m)) + row('Its area', area(c.area_m2)) : row('This node’s cell', `<span class="gap">${PM.offline ? 'locked on this screen' : 'not drawn yet'}</span>`))
         + (m ? row(PM.from ? 'From the house' : 'Measured', fmtM(m.total_m)) : '')
         + row('Layers on', `${ON()} of ${LAYERS.filter(l => !l.empty && !l.parent).length}`)
         + `<p class="fine">Scroll or press a scale: the grid follows the zoom, and the node draws it. Dotted cells are coarse enough to leave the machine. Tap any cell, station, image or point to inspect it.</p>`);

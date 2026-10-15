@@ -811,9 +811,16 @@ _tz = timezone(timedelta(hours=8))
 _bk = [datetime(2026, 10, 14, 19, tzinfo=_tz) - timedelta(hours=23 - i) for i in range(24)]
 _sv = [30 if b.hour <= 11 or b.day == 13 else 5 for b in _bk]
 _now = datetime(2026, 10, 14, 19, 30, tzinfo=_tz)
-check(engine._day(_sv, _bk, {"value": 15}, _now) == {"over": 12, "until": "12:00", "part": "morning"},
+check(engine._day(_sv, _bk, {"value": 15}, _now) == {"over": 12, "until": "12:00", "running": False, "part": "morning"},
       f"_day: {engine._day(_sv, _bk, {'value': 15}, _now)}")
-check(engine._day(_sv[:-1] + [30], _bk, {"value": 15}, _now)["until"] == "19:30", "_day: an hour still running ends now")
+_run = engine._day(_sv[:-1] + [30], _bk, {"value": 15}, _now)
+check(_run["until"] == "19:30" and _run["running"], "_day: an hour still running ends now, and says it is running")
+# Audit 15 Oct: "clean now … past the WHO line until 10:47" at 10:47 read as still over. A running hour is said in words.
+import yaml as _y
+for _f in ("app/issues/air.yml", "app/issues/heat.yml"):
+    for _loc, _sx in _y.safe_load(open(_f))["sentences"].items():
+        _dw = _sx.get("day") or {}
+        check(_dw.get("recent") and "{t}" in _dw.get("at", ""), f"{_f} {_loc}: day needs `at` and `recent` for a running hour")
 check(engine._day([5] * 24, _bk, {"value": 15}, _now) is None and engine._day(_sv, _bk, None, _now) is None,
       "_day: no hour over, or no line, is no day")
 # near the line after a day over it is "better", not "clean"; over the line now keeps the hour's words

@@ -1212,6 +1212,53 @@ def _is_local(request: Request) -> bool:
     return (getattr(request.client, "host", "") or "") in ("127.0.0.1", "::1", "localhost")
 
 
+# A screen without a key never reads what the house calls its rooms (Tomas, 15 Oct 2026: "4. Yes", the pre-launch audit).
+# The names live in sensors.room/name/source_name and reach a reader through every route that says where a reading is:
+# /issues, /stats, /sensors, /trust, /nearby, /report/latest, alert texts. Rather than a redaction in each of them,
+# the answer to an untrusted request has the house's own labels swapped for neutral ones here, once. Free text written
+# under an older name (an alert sent before a rename) cannot be matched, so those texts are left out instead (_FREE_TEXT).
+_HOUSE = {"at": 0.0, "map": []}
+
+
+def _house_labels() -> list[tuple[str, str]]:
+    """[(label, alias)], longest label first. A room becomes "Room A", a sensor's own name "Sensor 1"; the order is
+    the labels' own, so an alias is stable between requests. Re-read every minute; a failed read keeps the last."""
+    if time.time() - _HOUSE["at"] < 60:
+        return _HOUSE["map"]
+    try:
+        with db() as con, con.cursor() as cur:   # its own read, not q(): the routes' tests count q's statements
+            cur.execute("SELECT room, name, source_name FROM sensors WHERE local AND kind = 'sensor'")
+            rows = [dict(r) for r in cur.fetchall()]
+    except Exception:  # noqa: BLE001 — no database: nothing to swap, and nothing of the house to leak either
+        return _HOUSE["map"]
+    rooms = sorted({(r.get("room") or "").strip() for r in rows} - {""})
+    names = sorted({(r.get(k) or "").strip() for r in rows for k in ("name", "source_name")} - {""} - set(rooms))
+    pairs = [(x, f"Room {chr(65 + i)}" if i < 26 else f"Room {i + 1}") for i, x in enumerate(rooms)]
+    pairs += [(x, f"Sensor {i + 1}") for i, x in enumerate(names)]
+    _HOUSE.update(at=time.time(), map=sorted(pairs, key=lambda p: -len(p[0])))
+    return _HOUSE["map"]
+
+
+_FREE_TEXT = {"/alerts": "text"}     # a route whose rows carry a sentence written when it was sent, under the names then
+
+
+def _unhoused(body: bytes, path: str) -> bytes:
+    """An untrusted answer with the house's labels swapped out. JSON only; the swap works on the encoded text, so a
+    label is replaced wherever it stands, in a field or inside a sentence."""
+    key = _FREE_TEXT.get(path)
+    if key:
+        try:
+            rows = json.loads(body)
+            if isinstance(rows, list):
+                body = json.dumps([{**r, key: None} if isinstance(r, dict) else r for r in rows]).encode()
+        except ValueError:
+            pass
+    text = body.decode("utf-8", "replace")
+    for label, alias in _house_labels():
+        text = text.replace(json.dumps(label)[1:-1], alias)
+    return text.encode()
+
+
 @app.middleware("http")
 async def _share_level(request, call_next):
     """SHARE_LEVEL decides what a request with no token may read. The levels are in settings.RUNTIME["SHARE_LEVEL"];
@@ -1242,7 +1289,13 @@ async def _share_level(request, call_next):
         return JSONResponse(status_code=403, content={"error":
             f"this node is set to SHARE_LEVEL={level}, so {request.url.path} answers only this machine or a request "
             f"carrying a token. {fix}"})
-    return await call_next(request)
+    resp = await call_next(request)
+    if "application/json" not in resp.headers.get("content-type", ""):
+        return resp
+    from fastapi.responses import Response
+    body = _unhoused(b"".join([c async for c in resp.body_iterator]), request.url.path)
+    headers = {k: v for k, v in resp.headers.items() if k.lower() != "content-length"}
+    return Response(body, status_code=resp.status_code, headers=headers)
 
 
 app.include_router(issues.api.router)  # GET /issues and /issues/fixtures/<name>; see app/issues/
@@ -1402,6 +1455,19 @@ def _published_position(trusted: bool = False) -> dict:
     return {"lat": clat, "lon": clon, "position": "cell"}
 
 
+def _own_point(r: dict) -> tuple:
+    """Where an untrusted reader is told one of this node's own rows stands. The house's own sensors stand at the
+    house's published point, the cell /health names, not each at the centre of its own cell: a house on a cell's
+    edge has sensors in the neighbouring cells, and drawn at their own centres they stood ~700 m from "This house"
+    (node #1, 15 Oct). A child's row is another house, so it keeps its own cell's centre."""
+    if r.get("lat") is None or r.get("lon") is None:
+        return None, None
+    if r.get("local") and r.get("kind") == "sensor":
+        p = _published_position()
+        return p["lat"], p["lon"]
+    return _coarse(r["lat"], r["lon"])
+
+
 def _coarse(lat, lon):
     """A point snapped to the centre of its resolution-8 cell, three decimals; two decimals without h3."""
     if lat is None or lon is None:
@@ -1470,7 +1536,7 @@ def sensors_(request: Request):
         # for them (R25). Everything else here is a public station, a model point or a lab, whose position is
         # public at its source; three decimals is what it always was.
         if r.get("custody"):
-            r["lat"], r["lon"] = _coarse(r["lat"], r["lon"])
+            r["lat"], r["lon"] = _own_point(r)
         else:
             for k in ("lat", "lon"):
                 r[k] = round(r[k], 3) if r[k] is not None else None
@@ -1525,12 +1591,12 @@ def stats(request: Request, authorization: str = Header("")):
              + " ORDER BY local DESC, sensor_id, metric")
     if getattr(request.state, "share_trusted", False):
         return rows
-    own = {r["sensor_id"] for r in q("SELECT sensor_id FROM sensors WHERE custody")}
+    own = {r["sensor_id"]: r for r in q("SELECT sensor_id, local, kind FROM sensors WHERE custody")}
     for r in rows:
         if "lat" not in r:
             continue
         if r.get("sensor_id") in own:
-            r["lat"], r["lon"] = _coarse(r.get("lat"), r.get("lon"))
+            r["lat"], r["lon"] = _own_point({**own[r["sensor_id"]], "lat": r.get("lat"), "lon": r.get("lon")})
         else:
             r["lat"] = round(r["lat"], 3) if r.get("lat") is not None else None
             r["lon"] = round(r["lon"], 3) if r.get("lon") is not None else None

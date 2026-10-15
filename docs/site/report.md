@@ -56,7 +56,7 @@ headline's, and a line is always named with its owner and its unit, never a bare
    rules' own: the US EPA's unhealthy level (35.5), its level unhealthy for everyone (55.5), the WHO line (15). Then up
    to two rooms whose window was unusual, in plain words: "Studio was more humid than usual.", "The air in Kitchen was
    dirtier than usual." Then one clause only the models know, if its rule is loaded and crossed: a heavy swell, or the
-   satellite model putting the district past the WHO's first interim target, 35 µg/m³.
+   European air model (CAMS) putting the district past the US EPA's unhealthy level, 35.5 µg/m³.
 3. **The one thing to do.** When the node knows one, **the nearest place to make or fix something** (below), then: a
    room still over its line; a sensor gone quiet; the first failing health check's own fix; or "Nothing needs doing
    before the next report."
