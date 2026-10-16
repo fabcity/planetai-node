@@ -87,7 +87,7 @@ app/          main.py (api, loops, notify) · sources.py (adapters) · index.py 
 bin/planetai  the operator CLI
 packs/        seventeen packs; see PACKS.md
 config/       rules.yml (two domain-blind rules), mosquitto, reticulum
-tools/        gates, hooks, bundle, release, mesh-provision.sh, nas/ (the NAS puller)
+tools/        gates, hooks, bundle, release, radio.py + radio_profiles/ (planetai radio), nas/ (the NAS puller)
 tests/        offline suites
 docs/         you are here
 ```

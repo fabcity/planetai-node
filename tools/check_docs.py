@@ -128,6 +128,7 @@ for doc in DOCS:
 
     # files a command creates at runtime are documented before they exist; that is correct
     RUNTIME = {"config/ee-key.json", "config/reticulum/config", "config/mosquitto/passwd",
+               "config/radio", "config/radio/fleet.yaml", "config/mosquitto/bridges",   # planetai radio init / federate --write
                "app/requirements-packs.txt", "out/", "packs/_test",
                # a build artifact: present on any machine that has run the app, absent in a clean
                # checkout. `make lint` passed on every laptop and failed on every CI run since 5 Sep.

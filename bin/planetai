@@ -22,6 +22,7 @@
 #   planetai mesh           join the tailnet: reach this node from anywhere, no open ports
 #   planetai meshtastic     LoRa sensors and alerts via a gateway radio (sets up the broker, prints gateway settings)
 #   planetai broker         a DIY node publishing straight to this node (sets up the broker, prints the portal values)
+#   planetai radio          LoRa radios: provision by role, the node as their USB gateway, federate nodes (tools/radio.py)
 #   planetai reticulum      give the node an LXMF address: encrypted messaging over TCP or LoRa (RNode)
 #   planetai homeassistant  publish sensors and alerts as Home Assistant entities (MQTT discovery)
 #   planetai packs          what is loaded; `packs install` adds code-pack settings to .env and their libraries to the image
@@ -2332,6 +2333,12 @@ case "${1:-help}" in
   start) cmd_start;;  stop) cmd_stop;;  restart) cmd_restart;;  sensors) shift; cmd_sensors "$@";;  cells) shift; cmd_cells "$@";;
   mesh) shift; cmd_mesh "$@";;
   meshtastic) cmd_meshtastic;;  reticulum) cmd_reticulum;;  broker) cmd_broker;;
+  radio) shift
+    # Python, not Bash: it talks to radios through the meshtastic package, which the CLI's Python 3.9 floor does not
+    # carry. So it is its own file and says what to install rather than failing on an import.
+    python3 -c 'import meshtastic, paho.mqtt' 2>/dev/null \
+      || fail "planetai radio needs two packages on this machine:  pip3 install --user meshtastic paho-mqtt"
+    exec python3 "$(dirname "$0")/../tools/radio.py" "$@";;
   homeassistant|ha) cmd_homeassistant;;
   packs) shift; cmd_packs "$@";;
   sources) shift; cmd_sources "$@";;

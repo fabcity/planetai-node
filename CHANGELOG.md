@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- **`planetai radio`: one command per radio, the node as their gateway, nodes federated** (Tomas, 16 Oct: "a tool to
+  easily program any mesh nodes … and the node as a broker and gateway to connect other nodes globally via mqtt").
+  `tools/radio.py` and five role profiles (sensor, relay, shelf, gateway-wifi, gateway-host) replace
+  `tools/mesh-provision.sh`: one DeviceProfile per radio applied in one settings transaction instead of six reboots;
+  `--fixed LAT,LON` for a XIAO sensor node, which has no GPS. The fleet is two keyed channels, `planetai` (primary,
+  the household's) and `fabcity` (secondary, what crosses, position capped at 2.9 km), in `config/radio/fleet.yaml`.
+  **Bali's frequency slot is pinned inside Indonesia's 920–923 MHz**; SG_923 spans 917–925 and the slot hashed from
+  the channel name could fall outside. `planetai radio gateway` makes any radio on the node's USB the gateway,
+  nRF52 boards included, publishing the same JSON an ESP32 gateway does, so `app/` changes by zero lines.
+  `planetai radio federate` bridges brokers over the tailnet carrying `fabcity/` only: text and alerts, never a
+  reading. Existing radios are re-provisioned once. Spec: `docs/SPEC_radio.md`. Firmware now comes from
+  `makingsense.fablabbali.com/flash`, which `docs/MESHTASTIC.md` points to. Two suites, both skip where the
+  meshtastic package or mosquitto is absent. **Not yet run against a radio.**
 - **The Wall's narration no longer covers its page** (found on node #1, 16 Oct). The page keeps its height and the
   narration takes the room left under it; on a scale whose page leaves too little, it waits for the next scale. The
   gate's Wall pass now asks the rig's model for a full-length narration and fails when the box covers the page.
