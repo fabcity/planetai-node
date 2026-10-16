@@ -765,4 +765,11 @@ for _sel in (".snav a{display:flex;justify-content:space-between;align-items:cen
     assert _sel in html, f"lost: {_sel}"
 assert "gear.setAttribute('aria-current', 'page')" in (STATIC / "doors-core.js").read_text()
 print("doors: every tab, switch and button in Data and Set up is a 44 px target; the gear shows Set up is open")
+# the Wall's row of rings: one ring is one alert, never a rounded unit (8 answers once drew a closed ring of 10)
+_w = (STATIC / "doors-wall.js").read_text()
+_rp = re.search(r"const RHO_ROW = \d+;\nfunction rhoCount\(n, acted\) \{.*?\n\}", _w, re.S).group(0)
+_rc = json.loads(subprocess.run(["node"], input=_rp + "\nconsole.log(JSON.stringify([rhoCount(97, 8), rhoCount(28, 14), rhoCount(274, 23)]))",
+                                capture_output=True, text=True, check=True).stdout)
+assert _rc == [{"closed": 8, "open": 32, "left": 57}, {"closed": 14, "open": 14, "left": 0}, {"closed": 23, "open": 17, "left": 234}], _rc
+print("doors: the Wall draws one ring per alert, exactly as many closed as answered, the rest said in words")
 print("all doors checks passed")

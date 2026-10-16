@@ -66,7 +66,7 @@ function dataRoute(hash) {
   return { tab: 'readings' };
 }
 
-let FOCUSED = '', TILED = false;
+let FOCUSED = '';
 VIEWS.data = function () {
   const r = dataRoute(location.hash);
   if (r.node) { location.replace('#node/' + r.node); return; }
@@ -106,13 +106,13 @@ function metricTiles() {
     return `<svg class="tr" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true"><path d="${d3.line().defined(v => v != null).x((v, i) => x(i)).y(v => y(v))(med)}"/></svg>`;
   };
   let k = 0;
-  $('#metrics').innerHTML = fams.map(([t, ms]) => `<div class="fam"><div class="fh k">${t}<span><b>${ms.length}</b> kind${ms.length === 1 ? '' : 's'}</span></div><div class="tiles">${ms.map(m => {
+  /* every figure carries its date and its word (the layer): a tile is the median of the latest 15-minute means */
+  $('#metrics').innerHTML = `<p class="fine mdate">Medians of each source’s latest 15-minute mean, ${esc(wdhm(D.as_of))} ${prov('live')}</p>` + fams.map(([t, ms]) => `<div class="fam"><div class="fh k">${t}<span><b>${ms.length}</b> kind${ms.length === 1 ? '' : 's'}</span></div><div class="tiles">${ms.map(m => {
     const n = src[m].size, md = now[m] && now[m].length ? d3.median(now[m]) : null, dp = Math.abs(md) >= 100 ? 0 : Math.abs(md) >= 10 ? 1 : 2;
     return `<button type="button" class="mt ${m === METRIC ? 'on' : ''}" data-m="${esc(m)}" aria-pressed="${m === METRIC}" style="--i:${k++}">`
       + `<span class="sym">${esc(SYM[m] || m.slice(0, 4))}</span><span class="mn said">${esc(mWord(m))}</span>${trace(m)}`
       + `<span class="mv">${md == null ? '<b>—</b>' : num(`metric.${m}.median`, fmt(md, dp), `median of ${now[m].length} sources’ 15-minute means`, `<b>${fmt(md, dp)}</b>`)} <span class="said">${esc(unitOf(m))}</span></span>`
       + `<span class="ms">${n} source${n === 1 ? '' : 's'}</span></button>`; }).join('')}</div></div>`).join('');
-  if (!TILED) { $('#metrics').classList.add('enter'); TILED = true; } else $('#metrics').classList.remove('enter');
   document.querySelectorAll('#metrics .mt').forEach(b => b.onclick = () => { METRIC = b.dataset.m;
     document.querySelectorAll('#metrics .mt').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', String(x === b)); });
     sensorsBlock(); document.getElementById('sensors').scrollIntoView({ behavior: CLOCK.reduced() ? 'auto' : 'smooth', block: 'start' }); });

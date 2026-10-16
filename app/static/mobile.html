@@ -4,8 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <script>
-/* The register follows the hand that holds the phone (SPEC_mobile §7): set before first paint, no toggle in v1. */
-try { document.documentElement.dataset.theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; } catch (e) {}
+/* The register (SPEC_mobile §7), set before first paint: what the reader chose last on this screen (the switch in the
+   foot, the doors' own key and values), else what the phone's system asks for */
+(function () { let t = null; try { t = localStorage.getItem('planetai_theme'); } catch (e) { /* no storage here */ }
+  try { document.documentElement.dataset.theme = t === 'light' || t === 'dark' ? t : matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; } catch (e) {} })();
 </script>
 <title>PLANETAI</title>
 <link rel="stylesheet" href="/static/planetai-theme.css">
@@ -13,19 +15,23 @@ try { document.documentElement.dataset.theme = matchMedia('(prefers-color-scheme
 /* The node's own layer, loaded, not imitated: planetai-theme.css carries --ground --ink --cells --rings --prov
    --mono --num-face --sign-floor and the fonts. The aliases below are the doors' :root, copied by value. */
 :root{
-  --mute:#5F5A54;--dim:#7C766F;--hair:var(--fc-grid-line);--raise:rgba(23,23,23,.035);
+  --mute:#5F5A54;--dim:#6F6963;--hair:var(--fc-grid-line);--raise:rgba(23,23,23,.035);
   --body:var(--fc-font-body);--display:var(--fc-font-display);
-  --t-cap:11px;--t-small:13px;--t-body:15px;--t-read:20px;--t-head:clamp(24px,6.4vw,34px);
+  --t-cap:12px;--t-small:13px;--t-body:15px;--t-read:20px;--t-head:clamp(24px,6.4vw,34px);
+  --map-bg:#dfe6ea;
 }
-:root[data-theme="dark"]{--mute:#A3A19F;--dim:#8A8886;--hair:rgba(249,245,242,.14);--raise:rgba(249,245,242,.05)}
+:root[data-theme="dark"]{--mute:#A3A19F;--dim:#8A8886;--hair:rgba(249,245,242,.14);--raise:rgba(249,245,242,.05);--map-bg:#0E1012}
 *{box-sizing:border-box}
 html{scroll-behavior:auto}
 body{margin:0;background:var(--ground);color:var(--ink);font:var(--t-body)/1.5 var(--body);-webkit-font-smoothing:antialiased}
 .said{text-transform:none!important;letter-spacing:normal}
+/* a unit is the node's own spelling, in mono, in any line: an uppercased µg/m³ reads as milligrams */
+.unit{text-transform:none!important;letter-spacing:normal;font-family:var(--mono)}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 svg.sg{width:1em;height:1em;flex:none;vertical-align:-.12em;fill:currentColor}
-.pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--prov);color:var(--prov);padding:2px 7px 2px 6px;font:500 11px/1.3 var(--mono);letter-spacing:.04em;white-space:nowrap;vertical-align:middle;text-transform:none}
+.pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--prov);color:var(--prov);padding:2px 7px 2px 6px;font:500 12px/1.3 var(--mono);letter-spacing:.04em;white-space:nowrap;vertical-align:middle;text-transform:none}
 .pill svg.sg{width:var(--sign-floor);height:var(--sign-floor)}
-.gap{display:inline-block;border:1px dashed var(--mute);color:var(--mute);padding:1px 7px;font:500 11px/1.3 var(--mono)}
+.gap{display:inline-block;border:1px dashed var(--mute);color:var(--mute);padding:1px 7px;font:500 12px/1.3 var(--mono)}
 .k{font:500 var(--t-cap)/1.4 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}
 .mut{color:var(--mute)}
 a{color:var(--ink)}
@@ -35,14 +41,14 @@ a{color:var(--ink)}
 .asking .brand b{color:var(--ink);font-weight:800}
 .asking .hd{display:flex;align-items:center;gap:10px;margin:0;font:500 var(--t-small) var(--mono);color:var(--mute)}
 .asking .hd b{color:var(--ink)}
-.blink{width:8px;height:8px;border-radius:50%;background:var(--ink);animation:blink 1.2s ease-in-out infinite}
+.blink{width:8px;height:8px;border-radius:50%;background:var(--ink);animation:blink 1.2s steps(1) infinite}
 @keyframes blink{50%{opacity:0}}
 @media (scripting:none){.asking{display:none!important}}
 @media (prefers-reduced-motion:reduce){.blink{animation:none}}
 /* the bar */
 .bar{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:12px;padding:0 16px;min-height:52px;background:var(--ground);border-bottom:1px solid var(--hair)}
 .bar h1{font:700 var(--t-body) var(--body);margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.bar h1 small{font-weight:400;color:var(--mute);margin-left:6px}
+.bar h1 small{font-weight:400;color:var(--mute)}
 .bar nav{display:flex;gap:2px;margin-left:auto}
 .bar nav a{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;padding:0 10px;font:500 var(--t-cap) var(--mono);letter-spacing:.1em;text-transform:uppercase;text-decoration:none}
 .bar .asof{font:500 var(--t-cap) var(--mono);color:var(--mute);white-space:nowrap}
@@ -94,44 +100,50 @@ section>h2{font:500 var(--t-cap)/1.4 var(--mono);letter-spacing:.12em;text-trans
 #capname{font-size:var(--t-small)}
 .refused{border:1px solid var(--ink);padding:16px 14px;margin:0 0 16px}
 .refused .lede{font-size:var(--t-read);line-height:1.4;margin:0 0 10px}
-/* Now is the first screen on its own, and says there is more below it: the walk is a scroll away, not a peek */
+/* Now is the first screen on its own, and says there is more below it: the walk is a scroll away, not a peek.
+   The arrow sits in the flow at the foot of that screen, so it never covers a link Now draws (audit 15 Oct, item 27) */
 #now{min-height:calc(100svh - 52px - 16px);display:flex;flex-direction:column}
-.down{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:8;display:flex;flex-direction:column;align-items:center;gap:2px;min-height:44px;padding:8px 14px 6px;background:var(--ground);border:1px solid var(--hair);transition:opacity .3s;white-space:nowrap;font:500 var(--t-cap) var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--mute);text-decoration:none}
-.down span{font:400 26px/1 var(--mono);color:var(--ink);animation:nudge 1.8s ease-in-out infinite}
-@keyframes nudge{50%{transform:translateY(5px)}}
-.down.gone{opacity:0;pointer-events:none}
-@media (prefers-reduced-motion:reduce){.down span{animation:none}}
+.down{align-self:center;margin-top:auto;display:flex;flex-direction:column;align-items:center;gap:2px;min-height:44px;padding:8px 14px 6px;border:1px solid var(--hair);white-space:nowrap;font:500 var(--t-cap) var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--mute);text-decoration:none}
+.down span{font:400 26px/1 var(--mono);color:var(--ink)}
 /* the walk (§11.2): full width, the map pinned under the bar while its chapters scroll under it */
-:root{--warm:#c8553d;--cool:#3b6ea5}
 #walk{margin:0 -16px 34px;scroll-margin-top:52px}#walk>h2{margin:0 16px 0}#walk>#chs>.mut{padding:0 16px}
-#top{position:sticky;top:52px;z-index:5;height:58vh;border-bottom:1px solid var(--ink);background:#dfe6ea}
+#top{position:sticky;top:52px;z-index:5;height:58vh;border-bottom:1px solid var(--ink);background:var(--map-bg)}
 #map{position:absolute;inset:0}
-#bar{position:absolute;left:0;right:0;top:0;z-index:2;display:flex;padding:10px 12px;background:linear-gradient(var(--ground) 60%,transparent)}
-.tg{display:flex;overflow-x:auto;border:1px solid var(--ink);margin-left:auto;scrollbar-width:none}
-.tg button{all:unset;font:500 11px/1 var(--mono);padding:0 12px;min-height:44px;display:flex;align-items:center;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;cursor:pointer}
+#bar{position:absolute;left:0;right:0;top:0;z-index:2;display:flex;padding:10px 12px}
+.tg{display:flex;overflow-x:auto;border:1px solid var(--ink);margin-left:auto;scrollbar-width:none;background:var(--ground)}
+.tg button{all:unset;font:500 var(--t-cap)/1 var(--mono);padding:0 12px;min-height:44px;display:flex;align-items:center;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;cursor:pointer}
 .tg button[aria-pressed=true]{background:var(--ink);color:var(--ground)}
+.tg button:focus-visible{outline:2px solid var(--ink);outline-offset:-4px}.tg button[aria-pressed=true]:focus-visible{outline-color:var(--ground)}
 #rail{position:absolute;right:10px;bottom:30px;z-index:2;display:flex;flex-direction:column;background:color-mix(in srgb,var(--ground) 88%,transparent);padding:6px 8px;border:1px solid var(--ink)}
-#rail span{display:flex;align-items:center;gap:7px;min-height:22px;font:500 10px/1.5 var(--mono);color:var(--mute);text-decoration:none;letter-spacing:.06em;text-transform:uppercase}
+#rail span{display:flex;align-items:center;gap:7px;min-height:22px;font:500 12px/1.5 var(--mono);color:var(--mute);text-decoration:none;letter-spacing:.06em;text-transform:uppercase}
 #rail span s{width:7px;height:7px;border:1px solid var(--mute);border-radius:50%}
 #rail span.on{color:var(--ink)}#rail span.on s{background:var(--ink);border-color:var(--ink)}
 #rail span em{font-style:normal;margin-left:auto;padding-left:10px;color:var(--ink)}
-.ch{min-height:88vh;scroll-margin-top:calc(58vh + 52px);padding:22px 16px 40px;border-bottom:1px solid var(--hair)}
+/* a chapter fills the screen under the map, no more; a scale with no reading is its one line (audit 15 Oct, item 27) */
+.ch{min-height:calc(42vh - 52px);scroll-margin-top:calc(58vh + 52px);padding:22px 16px 40px;border-bottom:1px solid var(--hair)}
+.ch.unread{min-height:0;padding-bottom:22px}
 .ch h2{font:600 24px/1.2 var(--display);margin:6px 0 4px}
 .big{font:400 44px/1 var(--num-face);margin:14px 0 2px}.big i{font:500 13px var(--mono);font-style:normal;color:var(--mute);margin-left:4px}
 .ch p{margin:10px 0;max-width:34em}.ch p.m{color:var(--mute);font-size:13px}
 .none{display:inline-block;border:1px dashed var(--mute);color:var(--mute);padding:2px 8px;font:500 12px var(--mono);margin-top:12px}
 svg.g{display:block;width:100%;height:auto;margin:16px 0 4px;overflow:visible}
-.g text{font:10px var(--mono);fill:var(--mute);paint-order:stroke;stroke:var(--ground);stroke-width:4px}
+.g text{font:12px var(--mono);fill:var(--mute);paint-order:stroke;stroke:var(--ground);stroke-width:4px}
 .locked{padding:40px 16px}
 /* a scale's own pictures (SPEC_eyes step 1): the count is a button, the grid opens under it */
 .capcount{min-height:44px;padding:10px 16px;border:1px solid var(--ink);background:var(--ground);color:var(--ink);font:600 13px var(--body);cursor:pointer;margin-top:10px}
 .capgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
 .capgrid img{width:100%;aspect-ratio:1;object-fit:cover;display:block}
 .nomap{position:absolute;left:12px;right:120px;top:40%;margin:0;font:500 12px/1.5 var(--mono);color:var(--mute)}
-.maplibregl-ctrl-attrib{font-size:9px}
+.maplibregl-ctrl-attrib{font-size:12px}
 /* the foot */
 .foot{border-top:1px solid var(--hair);padding:18px 16px 34px;max-width:34rem;margin:0 auto}
+.foot{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .foot a{display:inline-flex;align-items:center;min-height:44px;font-weight:600}
+/* the register switch, the doors' .reg: paper or dark, kept under planetai_theme */
+.reg{display:flex;border:1px solid var(--ink)}
+.reg button{min-height:44px;min-width:44px;padding:0 12px;border:0;background:none;color:var(--ink);font:500 var(--t-cap) var(--mono);letter-spacing:.1em;text-transform:uppercase;cursor:pointer}
+.reg button[aria-pressed=true]{background:var(--ink);color:var(--ground)}
+.reg button:focus-visible{outline-offset:-4px}.reg button[aria-pressed=true]:focus-visible{outline-color:var(--ground)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -153,7 +165,8 @@ svg.g{display:block;width:100%;height:auto;margin:16px 0 4px;overflow:visible}
     <div id="chs"><p class="mut">The walk draws when you reach it.</p></div></section>
   <section id="node" aria-label="Node"><h2>Node</h2><div id="node-v"></div></section>
 </main>
-<footer class="foot"><a id="fulldoors" href="/?layout=doors">Full dashboard</a></footer>
+<footer class="foot"><a id="fulldoors" href="/?layout=doors">Full dashboard</a>
+  <div class="reg" role="group" aria-label="Register"><button data-r="light" aria-pressed="false">Paper</button><button data-r="dark" aria-pressed="false">Dark</button></div></footer>
 <script src="/static/doors-load.js"></script>
 <script src="/static/mobile.js"></script>
 </body>
