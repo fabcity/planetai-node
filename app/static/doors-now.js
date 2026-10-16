@@ -100,7 +100,9 @@ function weekRows(el) {
   const lo = d3.min(sd) ?? 0, top = Math.max(it.line ?? 0, d3.max(sd) ?? 0), span = top - lo || 1;   /* shaded from the week's own low, as the drawing's strip */
   el.innerHTML = D.dates.map(dt => {
     const pd = (it.per_day || []).find(p => p.date === dt), cells = d3.range(24).map(h => { const j = D.at[dt + '|' + h], v = j == null ? null : sd[j];
-      return v == null ? '' : `<rect x="${h * 10 + .5}" y="0" width="9" height="14" fill="${it.line != null && v > it.line ? 'var(--signal-worse)' : 'currentColor'}" opacity="${it.line != null && v > it.line ? 1 : (.1 + .75 * (v - lo) / span).toFixed(2)}"/>`; }).join('');
+      const over = it.line != null && v > it.line;   /* over the line: an ink cell with a red tick, never a red fill */
+      return v == null ? '' : `<rect x="${h * 10 + .5}" y="0" width="9" height="14" fill="currentColor" opacity="${over ? .9 : (.1 + .75 * (v - lo) / span).toFixed(2)}"/>`
+        + (over ? `<rect x="${h * 10 + .5}" y="0" width="9" height="3" fill="var(--signal-worse)"/>` : ''); }).join('');
     return `<button data-d="${dt}" aria-pressed="${dt === cur}"><span>${esc(dLabel(dt).split(' ').slice(0, 2).join(' ').replace(',', ''))}</span><svg viewBox="0 0 240 14" preserveAspectRatio="none" aria-hidden="true">${cells}</svg>`
       + `<span class="o">${pd ? num(`${k}.over.${dt}`, pd.over ? `${pd.over} h` : '0', `hours over the line, of ${pd.read} read`) : ''}</span></button>`;
   }).join('');

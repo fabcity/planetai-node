@@ -38,7 +38,7 @@ VIEWS.place = function () {
 function yearly() {
   const ks = D.order.filter(k => !ISSUES_DRAWN(k) && ((D.issues[k].stack || {}).region || {}).value != null);
   return ks.map(k => { const it = D.issues[k], g = it.stack.region;
-      return `<div class="fr" data-k="${k}"><span>${said(it.name)}<small class="said">${esc(it.title || it.sentence || '')}</small></span><b><span class="${k === 'land' ? 'sat' : ''}">${num(`${k}.region`, fmt(g.value, 1), 'no line: it informs, it never asks')} ${said(it.unit)}</span> ${prov(g.provenance || 'model')}</b></div>`; }).join('');
+      return `<div class="fr" data-k="${k}"><span>${said(it.name)}<small class="said">${esc(it.title || it.sentence || '')}</small></span><b><span class="${k === 'land' ? 'sat' : ''}">${num(`${k}.region`, fmt(g.value, 1), 'no line: it informs, it never asks')} ${said(it.unit)}</span> ${prov(g.provenance || 'model')}${g.age_minutes != null ? ` <small class="mono">${esc(wdhm(new Date(Date.parse(D.as_of) - g.age_minutes * 6e4).toISOString()))}</small>` : ''}</b></div>`; }).join('');
 }
 /* SPECIES CONFIRMED HERE (Tomas, 15 Oct: "species list should sit below the map"): /species, one row per taxon a person
    here confirmed, as Data › Images reads it. Where is said from the confirming images' own `outside`, which the node

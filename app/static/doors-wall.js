@@ -10,10 +10,22 @@
      house → what the node suggests, one line ending on a word, never a room → did people here act on it (ρ in words,
      larger rings) → the narration, only when there is text.
    - Chrome (back, chips, the hour strip, the model's note) is .wchrome: invisible until a pointer is over it or the
-     keyboard is in it. The back button stays first in keyboard order.
+     keyboard is in it; always shown on a touch screen, every control a 44 px target there. The back button stays first
+     in keyboard order.
+   - 16 Oct: on a phone, a small or a portrait screen the two columns stack, the map first, and the floor is 12 px.
    - The narration box is collapsed until a model's text arrives, and keeps the last text, in memory, while the next one
      is written. Its label says these are a model's words. */
 let WVAR = 'pm25';
+/* Every duration on the Wall, in one table named after the datum each one paces (the layer: motion only where the datum
+   has a cadence, stepped, never tweened; nothing moves under reduced motion: the hours hold, the wind is a still frame,
+   the model's text arrives whole). The replay loop itself is the layer's token, --motion-replay-loop. */
+const WALL_TIME = {
+  HOUR_STEP: win => (parseFloat(css('--motion-replay-loop')) || 30) / win,  /* s: one replayed hour on the map, then the next */
+  WIND_FRAME: 33,                                                           /* ms: one step of the wind's streaks */
+  NARR_EVERY: 10 * 60e3,                                                    /* ms: a new reading by the node's model */
+  NARR_CHAR: 1000 / 11,                                                     /* ms: one character typed, about two words a second */
+  STALE: 15 * 60e3,                                                         /* ms: no poll this long and the readings are old */
+};
 /* Never a name on the wall (Tomas, 14 Oct 2026): anyone in the room reads it, and a sensor's name is a room, a kit or an
    address ("K ROOM - BAYU HOLES"); a kicker's reason names who answered. The house is one mark, a public station a disc;
    what is asked is the engine's own sentence (asking[].says), never the alert's text, which names the room. */
@@ -41,7 +53,7 @@ function wallCaption(house, near, line, when = 'now') {
 }
 /* `stale` only when the node's readings are old: no poll in the last 15 minutes (three at the 300 s default), or none
    since the restart. /health's last_error is not read: one failing portal of twenty sets it while the rest are fresh. */
-const wallStale = h => !(Date.now() - Date.parse(h.last_poll || '') < 15 * 60e3);
+const wallStale = h => !(Date.now() - Date.parse(h.last_poll || '') < WALL_TIME.STALE);
 VIEWS.wall = function () {
   const k = D.lead, it = D.issues[k];
   const carried = Object.keys(D.metrics).filter(m => Object.values(D.stats15).some(x => x[m] && x[m][0] != null));
@@ -65,21 +77,29 @@ VIEWS.wall = function () {
   document.querySelectorAll('.wchips button').forEach(c => c.onclick = () => { WVAR = c.dataset.m; VIEWS.wall(); });
   rhoRow(); narrDraw();
   if (!NARR.busy && !NARR.typing && (!NARR.next || Date.now() >= NARR.next)) narrate(); else if (NARR.shown.length < NARR.text.length) narrType();
-  // the drawing's square sets the left column: the main band's height less the caption, never more than 46% of the width
-  const g = $('.wgrid'), S = Math.floor(Math.min(g.clientHeight - 3.4 * parseFloat(getComputedStyle(g).fontSize), g.clientWidth * .46));
+  // the drawing's square sets the left column: the main band's height less the caption, never more than 46% of the width;
+  // stacked (a phone, a small or portrait screen: one track) it is the full width, never more than 70% of the screen's height
+  const g = $('.wgrid'), one = getComputedStyle(g).gridTemplateColumns.trim().split(/\s+/).length === 1;
+  const S = Math.floor(one ? Math.min(g.clientWidth, innerHeight * .7) : Math.min(g.clientHeight - 3.4 * parseFloat(getComputedStyle(g).fontSize), g.clientWidth * .46));
   g.style.setProperty('--ws', S + 'px');
   wallMap({ el: $('#wfield'), cap: $('#wcap'), time: $('#wtime'), size: S });
 };
 /* The ρ row: counted, never sized, and said in words first ("the house answered 8 of 311 alerts"; small open rings read
-   as a row of letter Cs, 14 Oct). One ring per alert up to 40, one per 10 up to 400, then one per 100. Closed rings are
-   the answered ones, first. */
+   as a row of letter Cs, 14 Oct). A ring is always one alert: closed for each one answered, exactly, then an open ring
+   for each one not answered yet. 16 Oct: one ring per 10 rounded 8 answers up to a closed ring of 10, an answer that
+   never happened. Past RHO_ROW rings the row stops and says in words how many more there are, never a bigger unit. */
+const RHO_ROW = 40;
+function rhoCount(n, acted) {
+  const closed = Math.min(acted, RHO_ROW), open = Math.min(n - acted, RHO_ROW - closed);
+  return { closed, open, left: n - closed - open };
+}
 function rhoRow() {
   const r = D.rho, n = r.alerts_act || 0;
   if (!n) { $('#wrho').innerHTML = `<p>No alert has gone out from this house in ${r.window_days} days.</p>`; return; }
-  const unit = n <= 40 ? 1 : n <= 400 ? 10 : 100, rings = Math.ceil(n / unit), closed = Math.round(r.acted / unit);
+  const c = rhoCount(n, r.acted || 0);
   $('#wrho').innerHTML = `<p class="rsay">This house answered ${num('rho.acted', r.acted, `of ${n} act-level alerts, ${r.window_days} days`, `<b>${r.acted}</b>`)} of ${n} alerts in ${r.window_days} days.</p>`
-    + `<span class="rings">${Array.from({ length: rings }, (_, i) => sign(i < closed ? 'sign-rho-closed' : 'sign-rho-open', i < closed ? 'closed' : '')).join('')}</span>`
-    + `<p>${unit === 1 ? 'A ring is an alert' : `A ring is ${unit} alerts`}; a closed ring was answered.</p>`;
+    + `<span class="rings">${sign('sign-rho-closed', 'closed').repeat(c.closed)}${sign('sign-rho-open').repeat(c.open)}</span>`
+    + `<p>A ring is an alert; a closed ring was answered${c.left ? `; ${c.left} more are not drawn` : ''}.</p>`;
 }
 
 /* THE NODE, THINKING ALOUD (R44, 7 Oct 2026). A reading of the figures by the node's own model, in plain words for
@@ -96,7 +116,6 @@ function rhoRow() {
    once it has all arrived. Kept in memory, never stored. The label says these are a model's words; the model's name, a
    failure and why are chrome (#wnote), shown under a pointer or the keyboard. */
 const NARR = { text: '', shown: '', prev: '', at: 0, next: 0, busy: false, typing: false, model: null, where: null, err: null, timer: 0 };
-const NARR_EVERY = 10 * 60e3, NARR_CPS = 11;          /* about two words a second: read as it is written */
 let NARR_TYPE = 0;
 function narrDraw() {
   const el = $('#wnarr'), note = $('#wnote'); if (!el) return;
@@ -119,13 +138,13 @@ function narrType() {
     if (NARR.shown.length < NARR.text.length) {
       NARR.shown = NARR.text.slice(0, CLOCK.reduced() ? NARR.text.length : NARR.shown.length + 1);
       if (t) t.textContent = NARR.shown; else narrDraw();     /* the first letter opens a box that had nothing yet */
-      NARR_TYPE = setTimeout(step, CLOCK.reduced() ? 250 : 1000 / NARR_CPS);
-    } else { NARR_TYPE = 0; NARR.typing = false; NARR.prev = NARR.text; NARR.next = Date.now() + NARR_EVERY; narrDraw();
-      clearTimeout(NARR.timer); NARR.timer = setTimeout(narrate, NARR_EVERY); }
+      NARR_TYPE = setTimeout(step, CLOCK.reduced() ? 0 : WALL_TIME.NARR_CHAR);
+    } else { NARR_TYPE = 0; NARR.typing = false; NARR.prev = NARR.text; NARR.next = Date.now() + WALL_TIME.NARR_EVERY; narrDraw();
+      clearTimeout(NARR.timer); NARR.timer = setTimeout(narrate, WALL_TIME.NARR_EVERY); }
   };
   step();
 }
-const narrLater = () => { NARR.busy = false; NARR.at = Date.now(); NARR.next = Date.now() + NARR_EVERY; narrDraw(); NARR.timer = setTimeout(narrate, NARR_EVERY); };
+const narrLater = () => { NARR.busy = false; NARR.at = Date.now(); NARR.next = Date.now() + WALL_TIME.NARR_EVERY; narrDraw(); NARR.timer = setTimeout(narrate, WALL_TIME.NARR_EVERY); };
 async function narrate() {
   if (NARR.busy || NARR.typing || view() !== 'wall') return;
   clearTimeout(NARR.timer); NARR.err = null;

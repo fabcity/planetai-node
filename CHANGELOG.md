@@ -2,6 +2,35 @@
 
 ## Unreleased
 
+- **The pages keep to the layer (pre-launch audit PR 5, 15–16 Oct).**
+  - Red is never a fill: an hour over the line in the week strips (the Now figure and the week rows) is an ink cell
+    with a red tick on top.
+  - The reader's register is remembered: Paper or Dark is saved on this screen (`planetai_theme`), and with nothing
+    saved the doors follow the system's setting, as the phone did. The Wall stays dark.
+  - Contrast and structure: `--dim` is #6F6963 (5.0:1 on paper, was 4.14:1); a state on a selected ink row reads in
+    paper (was 2.62:1); no doors type under 12 px; the Now headline is the page's h1; the day figure has its own name;
+    a "Skip to the content" link is the first thing a keyboard reaches.
+  - Every figure carries its date and its word: the Data tiles say when their 15-minute medians are from, Place's
+    yearly rows the date of their value, and the Index cells table when the node computed it.
+  - The Data tiles no longer tween in: motion only where the datum has a cadence.
+  - The phone: no hue outside the layer. The house, street and ring lines are ink told apart by dash and weight
+    (solid, dashed, dotted), the gap between them an ink shade, stations one dot each, the map's stations ink and its
+    cells blue; red stays the line itself. The heading reads the node's name, then its place. Units are µg/m³ in mono,
+    never upper-cased (the decide line printed "MG/M³"). Chips and buttons show a focus ring; no type under 12 px.
+  - The phone has a Paper / Dark switch in its foot (saved as on the doors, the system's setting until chosen), and
+    its map follows it.
+  - The phone's "Walk out" sits in the page at the foot of the first screen and no longer covers the unlock link;
+    the walk's chapters are as tall as what they hold, so a scale with no reading is one line, not a blank screen.
+    Map flights and the boot blink keep still under reduced motion.
+  - The Wall: a station over the line is an ink disc with a red stroke, never a red fill, and every station is one
+    size (its figure says the value). The replay steps an hour at a time (`WALL_TIME.HOUR_STEP`, from
+    `--motion-replay-loop`) instead of tweening; each alert and answer of that hour is one still ring around the house;
+    under reduced motion the wind is one still frame. The row of answers draws one ring per alert, exactly as many
+    closed as were answered, at most 40, and says the rest in words (8 answers drew a closed ring of 10).
+  - The Wall on a phone, a portrait screen or a small TV stacks its columns with the map first; on a touch screen its
+    controls show without hover and are 44 px targets; no Wall type under 12 px; a station's figure that would cover
+    another mark, the house or the clock is not drawn, and the house's label moves above the house when below would
+    hide a station.
 - **Place, option A: the map full width, layers as a strip, labels in a margin (Tomas, 15 Oct).** The map is the
   content's full width (1060 × 560 at 1440); the fourteen layers are five group buttons above it, each opening its rows
   in a drop-down, with the base map's state at the right; nothing is labelled on the house: marks leave on leader lines

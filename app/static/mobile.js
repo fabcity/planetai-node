@@ -55,10 +55,13 @@ async function boot() {
   bootOff();
 }
 
+/* the node's name, then where it is: two words apart, never "bayu-ungasanbali" (audit 15 Oct, item 25) */
+const who = (name, place) => `${esc(name || 'this node')}${place ? `<small> · ${esc(place)}</small>` : ''}`;
+
 function drawAll() {
   const h = D.health || {};
   document.documentElement.lang = h.locale || 'en';
-  $('#who').innerHTML = `${esc(D.node.name || h.node || 'this node')}<small>${esc(D.node.place || '')}</small>`;
+  $('#who').innerHTML = who(D.node.name || h.node, D.node.place);
   $('#asof').textContent = `as of ${hhmm(D.as_of)}`;
   drawNow(); drawNode(h);
 }
@@ -74,7 +77,7 @@ function drawNow() {
     + (it.tagline ? `<p class="tag">${esc(it.tagline)}</p>` : '') + `</div>`
     + `<div class="hero"><span class="v">${num(`${it.metric}.${hd}`, hero.value, cmp, `<b>${esc(fmt(hero.value, it.dp))}</b>`)}</span>`
     + `<span class="u">${esc(it.unit || '')}</span> ${prov(hero.provenance)}`
-    + `<p class="cmp">${esc(cmp)}</p>`
+    + `<p class="cmp">${it.line != null ? `against the line, ${esc(fmt(it.line, it.dp))} <span class="unit">${esc(it.unit || '')}</span>` : esc(cmp)}</p>`
     + (it.plain ? `<p class="plain">${said(it.plain)}</p>` : '') + `</div>`;
   /* the four distances are the walk's, below: its rail on the map and one chapter each */
   s += decideHTML(it);
@@ -177,11 +180,11 @@ function decideHTML(it) {
   }
   if (!e) {
     return `<div class="decide"><p class="dq">Nothing is asked now.</p>`
-      + `<p class="dm">${it.line != null ? `${esc(fmt(it.line, it.dp))} ${esc(it.unit || '')} · ${esc(it.line_source || '')}` : 'this issue has no line'}</p></div>`;
+      + `<p class="dm">${it.line != null ? `${esc(fmt(it.line, it.dp))} <span class="unit">${esc(it.unit || '')}</span> · ${esc(it.line_source || '')}` : 'this issue has no line'}</p></div>`;
   }
   let s = `<div class="decide" id="decide"><div class="k">decide · ${said(it.name)} · ${esc(kindWord(e.kind))} since ${hhmm(e.opened_at)}`
     + `${e.last_seen_at ? ` · watching, last seen ${hhmm(e.last_seen_at)}` : ''}`
-    + `${e.peak != null ? ` · peak ${esc(fmt(e.peak, it.dp))} ${esc(it.unit || '')}` : ''}</div>`
+    + `${e.peak != null ? ` · peak ${esc(fmt(e.peak, it.dp))} <span class="unit">${esc(it.unit || '')}</span>` : ''}</div>`
     + `<p class="dq">${said(e.action || 'The node asked for nothing specific.')}</p>`;
   const B = D.buttons || {};
   if (e.asking && DOORS_TOKEN()) {
@@ -252,7 +255,7 @@ function drawNode(h) {
 function drawRefused() {
   const h = refusedHealth || {};
   document.documentElement.lang = h.locale || 'en';
-  $('#who').innerHTML = `${esc(h.node || 'this node')}<small>${esc(h.city || '')}</small>`;
+  $('#who').innerHTML = who(h.node, h.city);
   $('#asof').textContent = 'locked';
   for (const el of [$('#walk'), $('.down')]) if (el) el.remove();   /* nothing to walk through on a refused phone */
   const block = `<div class="refused"><p class="lede">${esc(refusedSentence || 'This node is not sharing its readings with this screen.')}</p>`
@@ -288,6 +291,12 @@ document.addEventListener('click', ev => {
     location.reload();
     return;
   }
+  const reg = t.closest && t.closest('.reg button[data-r]');
+  if (reg) {
+    document.documentElement.dataset.theme = reg.dataset.r;   /* walk.js repaints its map on this attribute */
+    try { localStorage.setItem('planetai_theme', reg.dataset.r); } catch (e) { /* no storage here */ }
+    regOn(); return;
+  }
   if (t.id === 'capopen') { $('#capout').textContent = ''; $('#capfile').click(); return; }
   if (t.id === 'capcancel') captureClose();
 });
@@ -316,11 +325,11 @@ document.addEventListener('visibilitychange', async () => {
 
 /* the walk (§11.2) needs MapLibre, the one heavy library on this page: watched for only once Now has drawn, and
    fetched when the walk nears the screen, so Now comes first on a slow phone; then walk.js draws into #walk */
+/* the switch in the foot shows the register the page is in, chosen or the system's */
+const regOn = () => document.querySelectorAll('.reg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.r === document.documentElement.dataset.theme));
+regOn();
+
 boot().then(() => {
-  /* the arrow stays at the foot of the screen until the walk comes up, for whoever does not think to scroll */
-  const dn = $('.down'), wk = $('#walk');
-  if (dn && wk) { const at = () => dn.classList.toggle('gone', wk.getBoundingClientRect().top < innerHeight * 0.85);
-    addEventListener('scroll', at, { passive: true }); at(); }
   if ('IntersectionObserver' in window && $('#walk')) {
   const wio = new IntersectionObserver(es => {
     if (!es.some(e => e.isIntersecting)) return;
