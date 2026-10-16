@@ -42,6 +42,7 @@ GET="${PLANETAI_GET:-$SITE/get}"
 # asking the download to vouch for itself. `tools/allowed_signers` carries the same line, and
 # tests/test_release_consistency.sh fails if the copies drift.
 read -r -d '' ALLOWED_SIGNERS <<'SIGNERS' || true
+fabcity ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGvxokFMBrpVd/yz/zAhYzIMTp4MZTPp+y5ulSoDX71/ fabcity
 fabcity ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINbgbaRosyOEVk7c4iBHc5iXn9H7F1s9QGwhXBGt+qay fabcity
 SIGNERS
 

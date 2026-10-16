@@ -185,7 +185,7 @@ this download is not signed by the PLANETAI release key. Nothing was installed a
 
 ```
 planetai-node v0.80  ·  a Fab City project  ·  <name> @ <city>
-  updates signed by  fabcity  SHA256:1+MvZWJUBWisjY08E1KR77znXLs2lVWgVkh+Z++8IL4
+  updates signed by  fabcity  SHA256:OrUQK/jsjNjpei1U8B5tyuEWY36/gwYWXrgVF+5ycIY
 ```
 
 Compare that fingerprint from a machine that is not the node. If they disagree, something replaced the

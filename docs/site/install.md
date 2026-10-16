@@ -74,7 +74,7 @@ written into the installer and `update.sh` and is not on the web server. `planet
 this node trusts:
 
 ```
-  updates signed by  fabcity  SHA256:1+MvZWJUBWisjY08E1KR77znXLs2lVWgVkh+Z++8IL4
+  updates signed by  fabcity  SHA256:OrUQK/jsjNjpei1U8B5tyuEWY36/gwYWXrgVF+5ycIY
 ```
 
 `planetai update` makes the same two checks. When either fails it stops before touching the node, and these

@@ -2,6 +2,12 @@
 
 ## v0.82.0 — 2026-10-16 — The pre-launch audit: what a household reads, and what it never sees
 
+- **A new release key (17 Oct).** The passphrase of the key issued on 19 September was lost, so v0.82.0 is the first
+  release signed with a new one, `SHA256:OrUQK/jsjNjpei1U8B5tyuEWY36/gwYWXrgVF+5ycIY` (SECURITY.md, `planetai
+  version`). The old line stays in `tools/allowed_signers` for one release, so v0.81.0 still verifies, and goes in the
+  next. **A node installed from a tarball before v0.82.0 trusts only the old key and refuses this update: reinstall
+  it with the short way (docs/site/install.md); its data stays.** Nodes that are a git checkout update as before.
+
 - **`planetai radio`: one command per radio, the node as their gateway, nodes federated** (Tomas, 16 Oct: "a tool to
   easily program any mesh nodes … and the node as a broker and gateway to connect other nodes globally via mqtt").
   `tools/radio.py` and five role profiles (sensor, relay, shelf, gateway-wifi, gateway-host) replace
