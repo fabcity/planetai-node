@@ -10,6 +10,9 @@
   shipped `NODE_CITY=bali  # pilot key …` line, so it found no region and fell back to EU_868: an 868 MHz fleet for
   node #1 in Bali, where the band is 920–923 MHz. Inline comments are stripped as docker compose strips them, and a
   city with no known region now refuses and asks for `--region`.
+- **The retired release key is no longer trusted.** v0.82.0 shipped with both signer lines so v0.81.0 still verified;
+  the 19 September key's line is now gone from all four copies (docs/SIGNING.md §5). A node on v0.82.0 already trusts
+  the new key.
 
 ## v0.82.0 — 2026-10-16 — The pre-launch audit: what a household reads, and what it never sees
 
