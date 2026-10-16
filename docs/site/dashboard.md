@@ -539,9 +539,8 @@ about air science, and nobody operates it. Nothing on it is smaller than 28 px a
 sentence (the lead issue's title, its tagline under it); the map, with the wind, the stations as discs and the house as
 one mark, and a caption under it saying in words what the red discs mean against the house ("This house is under the
 clean-air line now; 3 stations nearby, in red, are over it"), at the hour the discs show while the hours replay; what
-the node suggests, one line that ends on a word, with "Answer on Telegram, not here." when something is asked; whether
-people here acted on it, in words ("This house answered 23 of 274 alerts in 30 days") and then the ρ rings, larger;
-and last **the node, thinking aloud**: every ten minutes, from another angle each time, the node's model (the one
+the node suggests, one line that ends on a word, with "Answer on Telegram, not here." when something is asked; and
+last **the node, thinking aloud**: every ten minutes, from another angle each time, the node's model (the one
 chosen under Set up → Model, through `POST /ask`) says in six to eight plain sentences what is happening inside, how it
 compares with the street and the neighbourhood, what it suggests for an ordinary day and what the next hours may
 bring, typed at a reading pace. Its box is not drawn until a text has arrived; while the next one is written the last

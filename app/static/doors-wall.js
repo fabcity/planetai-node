@@ -7,8 +7,8 @@
      counts box, the foot, the scale bar, the countdown and the model's name.
    - Reading order, top to bottom and left to right: the sentence with the clock (the hero, as the engine writes it) →
      the map (wind, stations, the house as one mark), its caption saying in words what its red discs mean against the
-     house → what the node suggests, one line ending on a word, never a room → did people here act on it (ρ in words,
-     larger rings) → the narration, only when there is text.
+     house → what the node suggests, one line ending on a word, never a room → the narration, only when there is text.
+     16 Oct (Tomas): the row of answered alerts is gone, and the rings around the house with it.
    - Chrome (back, chips, the hour strip, the model's note) is .wchrome: invisible until a pointer is over it or the
      keyboard is in it; always shown on a touch screen, every control a 44 px target there. The back button stays first
      in keyboard order.
@@ -70,12 +70,11 @@ VIEWS.wall = function () {
         <div class="wkick"><time>${at}</time>${wallStale(D.health) ? ' · <b>the readings are old</b>' : ''}</div>
         <p class="wsent">${it.pix ? `<svg class="pix" aria-hidden="true"><use href="${NODE}signs.svg#${it.pix}"/></svg>` : ''}<span class="said">${esc(it.title || it.sentence).replace(/(\d+(?:\.\d+)?)(?=\s*(?:°C|µg|%|m\b))/, m0 => num(`${k}.${it.hero_distance}`, m0, `against the line, ${it.line} ${it.unit}`, `<b class="numf">${m0}</b>`))}${it.tagline ? `<span class="wtag">${esc(it.tagline)}</span>` : ''}</span></p>
         <div class="wask">${wallAsk(it)}</div></div>
-        <div class="wrho" id="wrho" data-kind="row"></div>
         <div class="wnarr" id="wnarr" hidden data-learn="ask" data-reads="/ask/status /ask" data-stage="observe" data-pack="core"></div>
       </section>
     </div>`;
   document.querySelectorAll('.wchips button').forEach(c => c.onclick = () => { WVAR = c.dataset.m; VIEWS.wall(); });
-  rhoRow(); narrDraw();
+  narrDraw();
   if (!NARR.busy && !NARR.typing && (!NARR.next || Date.now() >= NARR.next)) narrate(); else if (NARR.shown.length < NARR.text.length) narrType();
   // the drawing's square sets the left column: the main band's height less the caption, never more than 46% of the width;
   // stacked (a phone, a small or portrait screen: one track) it is the full width, never more than 70% of the screen's height
@@ -84,24 +83,6 @@ VIEWS.wall = function () {
   g.style.setProperty('--ws', S + 'px');
   wallMap({ el: $('#wfield'), cap: $('#wcap'), time: $('#wtime'), size: S });
 };
-/* The ρ row: counted, never sized, and said in words first ("the house answered 8 of 311 alerts"; small open rings read
-   as a row of letter Cs, 14 Oct). A ring is always one alert: closed for each one answered, exactly, then an open ring
-   for each one not answered yet. 16 Oct: one ring per 10 rounded 8 answers up to a closed ring of 10, an answer that
-   never happened. Past RHO_ROW rings the row stops and says in words how many more there are, never a bigger unit. */
-const RHO_ROW = 40;
-function rhoCount(n, acted) {
-  const closed = Math.min(acted, RHO_ROW), open = Math.min(n - acted, RHO_ROW - closed);
-  return { closed, open, left: n - closed - open };
-}
-function rhoRow() {
-  const r = D.rho, n = r.alerts_act || 0;
-  if (!n) { $('#wrho').innerHTML = `<p>No alert has gone out from this house in ${r.window_days} days.</p>`; return; }
-  const c = rhoCount(n, r.acted || 0);
-  $('#wrho').innerHTML = `<p class="rsay">This house answered ${num('rho.acted', r.acted, `of ${n} act-level alerts, ${r.window_days} days`, `<b>${r.acted}</b>`)} of ${n} alerts in ${r.window_days} days.</p>`
-    + `<span class="rings">${sign('sign-rho-closed', 'closed').repeat(c.closed)}${sign('sign-rho-open').repeat(c.open)}</span>`
-    + `<p>A ring is an alert; a closed ring was answered${c.left ? `; ${c.left} more are not drawn` : ''}.</p>`;
-}
-
 /* THE NODE, THINKING ALOUD (R44, 7 Oct 2026). A reading of the figures by the node's own model, in plain words for
    people who know nothing about air science, units or maps: what is happening inside, how it compares with the street and the
    neighbourhood, what it suggests for an ordinary day, and what the next hours may bring. It asks POST /ask, so the

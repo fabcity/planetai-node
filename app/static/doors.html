@@ -456,10 +456,6 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
 /* what the node suggests: one line, ending on a word (wallAsk), never a button that answers */
 .wask{display:flex;flex-direction:column;gap:.3em;border-left:3px solid var(--ink);padding-left:1vw}
 .wask .wsay{font:600 calc(var(--wf) * 1.15)/1.25 var(--body)}.wask .wtel{font:500 var(--wf)/1.3 var(--body);color:var(--mute)}
-/* did people here act on it: ρ in words, then the rings, counted and large enough not to read as letters */
-.wrho p{margin:0;font:500 var(--wf)/1.3 var(--body);color:var(--mute)}.wrho .rsay{color:var(--ink);font-weight:600}
-.wrho .rsay b{font:800 calc(var(--wf) * 1.3)/1 var(--num-face);letter-spacing:-.03em}
-.wrho .rings{display:flex;flex-wrap:wrap;gap:.25em;margin:.5em 0}.wrho svg.sg{width:calc(var(--wf) * 1.2);height:calc(var(--wf) * 1.2)}
 /* the node, thinking aloud: a voice, set apart from the node's figures. Figtree Italic, light and large, is speech against
    the upright facts around it. Collapsed ([hidden]) until there is text; the last text stays while the next is written. */
 .wnarr{flex:0 1 auto;min-height:calc(var(--wf) * 5);display:flex;flex-direction:column;border:1px solid var(--ink);overflow:hidden}
@@ -774,7 +770,7 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
 </section>
 
 <!-- WALL -->
-<section class="view" data-view="wall" hidden><div id="wallv" data-learn="dial" data-reads="/health /issues /stats /rho" data-stage="observe" data-pack="core"></div></section>
+<section class="view" data-view="wall" hidden><div id="wallv" data-learn="dial" data-reads="/health /issues /stats" data-stage="observe" data-pack="core"></div></section>
 
 <!-- SET UP: a page of its own, opened by the gear (doors-setup.js) -->
 <section class="page view" data-view="setup" hidden><div id="setupv2" data-learn="settings" data-reads="/settings /packs /actions /health" data-pack="core"></div></section>

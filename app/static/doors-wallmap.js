@@ -9,8 +9,7 @@
    - every station at its point, one disc of one size, that hour's mean of the chosen metric written beside it (GET
      /aggregates, the hourly table); where PM2.5 is over the air line the disc is filled and ringed red (red is a
      stroke, never a fill: the layer, audit items 11 and 29, 16 Oct);
-   - the house, and one still ring around it for each alert that went out that hour (red) and each answer that came
-     back (green): counted, not grown.
+   - the house, one mark (16 Oct, Tomas: no alert or answer rings around it).
    The hours replay: the last 6 (or 24) in 30 s (--motion-replay-loop), one hour a step (WALL_TIME.HOUR_STEP), never
    tweened; the strip under the map says which. A value label that would cover another label or a mark is not drawn.
    Without the token the hourly table, the map and the wind are not this screen's: it draws the 15-minute means now,
@@ -115,11 +114,7 @@ async function wallMap(o) {
       const x0 = d.q[0] + ST + GAP, box = [x0, d.q[1] - wf / 2, x0 + textW(fmt(d.v, 0)), d.q[1] + wf / 2];
       if (taken.some(t => hit(t, box))) return false; taken.push(box); return true;
     });
-    /* one still ring around the house for each alert sent (red) and each answer back (green) in this hour, counted */
-    const ev = D.raw ? [...F.alerts.filter(a => Math.floor(a.h) === h).map(() => 'alert'), ...F.answers.filter(a => Math.floor(a.h) === h).map(() => 'answer')] : [];
     return [
-      ...ev.map((e, i) => new deck.ScatterplotLayer({ id: 'ev' + i, data: [D.point], getPosition: d => d, radiusUnits: 'pixels', getRadius: HOUSE + (10 + i * 8) * f,
-        stroked: true, filled: false, getLineColor: e === 'alert' ? C('--signal-worse') : C('--rings'), lineWidthUnits: 'pixels', getLineWidth: 2 })),
       new deck.ScatterplotLayer({ id: 'st', data: pts, getPosition: d => d.p, radiusUnits: 'pixels', getRadius: ST, stroked: true, filled: true,
         getFillColor: d => over(d) ? C('--ink') : C('--ink', .16), getLineColor: d => over(d) ? C('--signal-worse') : C('--ink', .85),
         lineWidthUnits: 'pixels', getLineWidth: d => over(d) ? 3 : 1.5, updateTriggers: { getFillColor: h, getLineColor: h, getLineWidth: h } }),
@@ -142,9 +137,8 @@ async function wallMap(o) {
   };
   if (o.time) {
     o.time.innerHTML = `<div class="seg" role="group" aria-label="Window">${WINS.map(w2 => `<button data-w="${w2}" class="${w2 === WIN ? 'on' : ''}">${w2} h</button>`).join('')}</div>`
-      + `<button class="play" aria-label="Pause">❚❚</button><div class="hours" style="grid-template-columns:repeat(${WIN},minmax(var(--hmin,0),1fr))">${B.slice(h0).map((b, j) => { const i = h0 + j, al = F.alerts.filter(a => Math.floor(a.h) === i).length, an = F.answers.some(a => Math.floor(a.h) === i);
-        return `<button class="h" data-h="${i}" title="${hhmm(b)}"><span>${WIN <= 6 || hourOf(b) % 6 === 0 ? hhmm(b) : ''}</span>${al ? '<i class="a"></i>' : ''}${an ? '<i class="b"></i>' : ''}</button>`; }).join('')}</div>`
-      + `<span class="k">${replay ? `${WIN} hours in ${LOOP} s` : D.raw ? 'reduced motion: the last hour, held' : 'the last half hour, held still'} · red: alerts sent · green: answers back</span>`;
+      + `<button class="play" aria-label="Pause">❚❚</button><div class="hours" style="grid-template-columns:repeat(${WIN},minmax(var(--hmin,0),1fr))">${B.slice(h0).map((b, j) => `<button class="h" data-h="${h0 + j}" title="${hhmm(b)}"><span>${WIN <= 6 || hourOf(b) % 6 === 0 ? hhmm(b) : ''}</span></button>`).join('')}</div>`
+      + `<span class="k">${replay ? `${WIN} hours in ${LOOP} s` : D.raw ? 'reduced motion: the last hour, held' : 'the last half hour, held still'}</span>`;
     o.time.querySelectorAll('.seg button').forEach(b => b.onclick = () => +b.dataset.w !== WIN && wallMap({ ...o, win: +b.dataset.w }));
   }
   /* stepped: the map is redrawn only when the replayed hour changes, one hour every HOUR_STEP seconds */

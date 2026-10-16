@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **The Wall no longer shows answers to alerts** (Tomas, 16 Oct). The row "This house answered N of M alerts" and its
+  rings are gone, and so are the rings around the house on the map and the alert and answer marks on its hour strip.
+  The Wall still says what is asked now. Milestone: v0.82.1.
 - **The pages keep to the layer (pre-launch audit PR 5, 15–16 Oct).**
   - Red is never a fill: an hour over the line in the week strips (the Now figure and the week rows) is an ink cell
     with a red tick on top.
