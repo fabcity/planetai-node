@@ -254,6 +254,9 @@ main.q = lambda sql, *a: ([{"id": 1, "ts": "2026-10-15T10:00:00+08:00", "rule_id
 _al = lan.get("/alerts").json()
 assert _al and _al[0]["text"] is None and "BAYU" not in lan.get("/alerts").text, f"open: an alert's sentence reached a stranger: {_al}"
 assert main._unhoused(b'{"rooms": ["Kids"], "t": "Smoke in Kids"}', "/issues") == b'{"rooms": ["Room A"], "t": "Smoke in Room A"}'
+assert main._unlabelled("Smoke or dust in Kids and K ROOM - BAYU HOLES") == "Smoke or dust in Room A and Sensor 1", \
+    "/export's alert lines travel as CC BY whoever asked for them: they carry Room A, never the house's names"
+assert "_unlabelled(a[\"text\"]" in SRC, "/export must swap the house's labels in its alert lines"
 main.q = _q0; main._HOUSE.update(at=0.0, map=[])
 print("open: rooms and the house's sensor names are swapped for Room A / Sensor 1; old alert sentences left out")
 print("open: sensors readable, hostnames and firmware gone, own sensors at their cell's centre")

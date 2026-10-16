@@ -1,5 +1,5 @@
 # Turn an old laptop into a node
-<!-- checked: v0.81.0 -->
+<!-- checked: v0.82.0 -->
 
 > **Partly rehearsed, and the part that was rehearsed is not the part this page recommends.**
 > On 10 September 2026 a 2015 MacBook Pro became a live node this way — on **Linux Mint 22.3**, which is
@@ -77,9 +77,10 @@ ThinkPad X220 with 2 GB runs it. Everything below applies, except that you get a
 the installer takes Arch's `pacman` branch instead of `apt`.
 
 ```bash
-curl -fL -o ~/Downloads/omarchy.iso https://iso.omarchy.org/omarchy-4.0.3.iso
-curl -fL -o ~/Downloads/omarchy.iso.sha256 https://iso.omarchy.org/omarchy-4.0.3.iso.sha256
-shasum -a 256 -c ~/Downloads/omarchy.iso.sha256      # must say: OK
+cd ~/Downloads
+curl -fLO https://iso.omarchy.org/omarchy-4.0.3.iso
+curl -fLO https://iso.omarchy.org/omarchy-4.0.3.iso.sha256
+shasum -a 256 -c omarchy-4.0.3.iso.sha256      # must say: OK (the file names omarchy-4.0.3.iso)
 ```
 
 **Yes, and you want the ordinary answer.** [Linux Mint](https://linuxmint.com) — Cinnamon, a desktop

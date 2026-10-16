@@ -1,5 +1,5 @@
 # Developing and contributing
-<!-- checked: v0.81.0 -->
+<!-- checked: v0.82.0 -->
 
 This page is for the person who changes the node itself: a new adapter, a rule, a pack, a fix. A change
 here reaches every household the next time it runs `planetai update`, and, in the repo's words, "a
@@ -28,9 +28,9 @@ docker compose logs app | tail -50`. Never `.env`.
 `local` and `indoor` to what is true; every rule depends on them.
 
 **Write a rule, a cell, a pack.** [Packs](packs.md). For one place it is a wild pack in its own repository, listed at
-[fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs), not a pull request here; the 17 in
-`packs/` are core, and a pack joins them by promotion. (v0.76 shipped 18: `xiaomi-air` left core in v0.77 and is now a
-wild pack.) Copy `packs/heat`; say in the README where the thresholds came from and which
+[fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs), not a pull request here; the 18 in
+`packs/` are core, and a pack joins them by promotion. (v0.82 added `fire` and `surface-heat`; `xiaomi-air` left core in
+v0.77 and is now a wild pack.) Copy `packs/heat`; say in the README where the thresholds came from and which
 place you wrote for. A rule should end in something a person does.
 
 ## What will not be merged
@@ -106,7 +106,7 @@ household runs without reading. `GOVERNANCE.md` says who merges what.
 `tools/sweep.py` is not a lint gate. It runs once a day in CI and files what it finds into one pinned
 issue: six releases tagged with no CHANGELOG heading, the site at v0.59 while main was at v0.60.
 
-`make test` runs `tests/all`: 70 offline suites, one line each with a count at the end, and a non-zero exit
+`make test` runs `tests/all`: 80 offline suites, one line each with a count at the end, and a non-zero exit
 when a suite fails, when a check skipped that nobody declared, or when the list and the count disagree.
 Adapters against saved payloads, Meshtastic parsing, cell provenance and custody, code packs, settings,
 the issues engine and its geometry, the report templates and schedule, the packs, the registry, the wire
@@ -140,7 +140,7 @@ queue:
    hop cannot be bisected by the person who has to report it.
 4. Sync the registry, then tag, in that order, every release.
 
-The registry is `data/sources/`, a pinned snapshot of `awesome-fabcity-data`. At v0.81 it is `851b8db`,
+The registry is `data/sources/`, a pinned snapshot of `awesome-fabcity-data`. At v0.82 it is `851b8db`,
 269 entries, synced 2026-10-12 (`data/sources/REGISTRY_VERSION`). The script takes a commit sha and
 refuses a branch or a tag:
 
@@ -262,10 +262,10 @@ app/          main.py (api, loops, notify) · sources.py (adapters) · index.py 
               registry.py (the source registry) · report.py · agent.py (MCP) · tool_classes.py · agent_loop.py (the bot)
               events.py · events_pg.py · events_wire.py · actions.py (the alert-event engine, its store, its /issues block and
               the action it chooses)
-              requires.py (which node a pack needs)
+              requires.py (which node a pack needs) · fundamentals.py (the sources every node needs) · learn.py (what it learns)
               ask.py (the dashboard's ask pane) · bootstrap.py · ground.py · reticulum_bridge.py · issues/ · static/ (the dashboard)
 bin/planetai  the operator CLI
-packs/        seventeen core packs; see Packs
+packs/        eighteen core packs; see Packs
 config/       rules.yml (two domain-blind rules) · channels.yml · mosquitto · reticulum
 data/         sources/ (the pinned registry) · strings/ · env_defaults.yml · frozen_layer.txt · platform_floors.yml · mac_ceilings.yml
 skills/       setup-node · troubleshoot-node · connect-agent · publish-to-index · preflight · land · write-a-pack

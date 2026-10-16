@@ -1,5 +1,5 @@
 # The bot and the model ladder
-<!-- checked: v0.81.0 -->
+<!-- checked: v0.82.0 -->
 
 The bot adds conversation to a node. Somebody in the house asks "is the air bad right now?" on Telegram and
 gets an answer read from the node's own tools; somebody says "I closed the windows" and that is recorded, in
@@ -43,13 +43,13 @@ Containers on macOS get CPU only, Intel and Apple Silicon alike; this is the one
 The loop hands the model 17 of the node's 21 MCP tools: the `read` ones and `act`. It cannot change a
 setting, run a pack's code, or make the node message the household by itself. The log says so each time the loop
 opens a session to the node: "tools withheld from the local model (admin): maintenance, report_now, run_pack_script,
-settings_set". Every rung gets the same 16, local, remote or online. A person driving an agent over the
-tailnet still has all twenty; see [MCP](mcp.md).
+settings_set". Every rung gets the same 17, local, remote or online. A person driving an agent over the
+tailnet still has all 21; see [MCP](mcp.md).
 
 `act` needs the person's own words. A model cannot write `acted`, `done` or `ok` as the note: the tool
 refuses a placeholder and tells the model to ask.
 
-> **Gap in v0.81.0.** The bot's system prompt tells the model to "give the exact command from
+> **Gap in v0.82.0.** The bot's system prompt tells the model to "give the exact command from
 > `maintenance`" for a task that needs the node's shell, and `maintenance` is one of the four tools the loop
 > withholds. Asked to update or back up the node, the bot cannot look the command up; the commands are in
 > [The command line](cli.md).
@@ -76,7 +76,7 @@ The dashboard's ask pane walks the same ladder, from the same settings and the s
 choice governs both. Its local rung is there only when `planetai agent local` set one up, and it runs
 read tools only, never a write; see [Ask the node](ask.md).
 
-> **Gap in v0.81.0.** The Model group's description in Set up, on the dashboard and on the doors' Set up page, still reads "The strongest one the node can
+> **Gap in v0.82.0.** The Model group's description in Set up, on the dashboard and on the doors' Set up page, still reads "The strongest one the node can
 > reach is used." The default is `private`, and `/model` in Telegram prints the order in force.
 
 `tools/remote-model.sh gptoss` runs llama.cpp's server on a laptop or workstation with gpt-oss-120b (about
@@ -96,9 +96,11 @@ hundred words, without narrating.
 Up to eight rounds of tool calls at temperature 0.2, with the last six messages of the chat (three
 exchanges) as context. On the small rung the model is told not to think aloud and the final answer is
 requested as constrained JSON, because a 4B model otherwise narrates its reasoning as prose. `<think>` blocks
-and Markdown are stripped before sending, since Telegram shows them raw. Messages from a chat not in
-`TELEGRAM_CHAT_IDS` are ignored and logged. If no rung answers, the reply says so and where to look:
-"On the node: `ollama list`, and check AGENT_* in .env."
+and Markdown are stripped before sending, since Telegram shows them raw. A message from a chat not in
+`TELEGRAM_CHAT_IDS` is logged and not answered; the first one from each such chat since the loop started is told
+"This node answers its household only. To be added, ask whoever set it up to add this chat: <its id>." If no rung
+answers, the reply names no setting: "I can't answer questions right now. Alerts and the morning report still work.
+Whoever set up the node can fix this in Set up › Model."; the log says which error.
 
 The bot's own fixed replies (the `/act` prompts, the errors) are written in English and Spanish; on a node
 set to Bahasa Indonesia they fall back to English, while the model's answers follow `ALERT_LOCALE`.
@@ -107,8 +109,8 @@ set to Bahasa Indonesia they fall back to English, while the model's answers fol
 
 | in Telegram | does |
 |---|---|
-| `/act 12 closed the windows` | records the action on alert 12 in those words, with the actor `<AGENT_NAME>/telegram`; replies "Recorded: you acted on #12." |
-| `/act 12` | records nothing and asks "What did you do about #12?", with the form to send it in: `/act 12 <what you did>` |
+| `/act 12 closed the windows` | records the action on alert 12 in those words, with the actor `<AGENT_NAME>/telegram`; replies "Recorded what you did." |
+| `/act 12` | records nothing and asks "What did you do about it?", with the form to send it in: `/act 12 <what you did>` |
 | `/stack [issue]` | the issue's state, its sentence in your language, the four distances with their provenance and unit, and up to two open alerts (on a node whose alert engine is `shadow` or `events`, not the heat and air alerts an event stands for): a template over the `issues` tool, no model ever |
 | `/learned` | what the node learned here: per learning, the alert as the household calls it and the verdict first ("An air alert: acting on it seemed to make it worse than leaving it (the finding holds)"), then its own sentence with the numbers (SPEC_learn §4): a template over the `learned` tool, no model. Empty until the first daily check, and told why when `AGENT_PREFER` is not `private` |
 | `/learned day` · `week` · `month` · `year` | the newest diary entry of that size, as the morning memory carries it: no model |
@@ -132,21 +134,22 @@ node did not keep it:" with the node's own reason otherwise.
 - **A tag in the caption** names what took it: `#drone`, `#microscope`, `#camera` or `#balloon`; none means `phone`.
   The tag is taken out of the note; any other `#word` stays in it.
 - **Refused, with the reason:** a file that is not an image ("I keep pictures only"), and one over 20 MB, the most
-  the Bot API lets a bot fetch (add it from the dashboard instead). If the node refuses the bot's token, the reply
-  says so: the agent's `ADMIN_TOKEN` is not the app's.
+  the Bot API lets a bot fetch (send it as a photo, or add it from the dashboard). If the node refuses the bot's
+  token, the reply says "The node did not accept this picture. Whoever set up the node needs to check the bot's
+  access." and the log has the status: the agent's `ADMIN_TOKEN` is not the app's.
 
 Only the household's chats (`TELEGRAM_CHAT_IDS`) can send pictures. A picture from any other chat is ignored and
-logged, like the rest of what a stranger sends. The download URL holds the bot token, so a failed download is logged
+logged, with no reply. The download URL holds the bot token, so a failed download is logged
 by its error's type only. Telegram's location messages are not read: a photo is placed by its own GPS or the node's
 cell. The bot does not send the image model's description back; it is on the image's card. Replies in en and es.
 
 ## Offers: someone who is not the household
 
-Everything else a chat outside `TELEGRAM_CHAT_IDS` sends is ignored, a picture included. The one exception is an offer (SPEC_inventory step 4). An offer's `ask` link (`t.me/<bot>?start=offer-<id>`, in `GET /offers` and the daily export) opens the bot on that offer. It answers "Write one message about the cordless drill (to borrow)…", and the next message, within 30 minutes, goes to every household chat:
+Everything else a chat outside `TELEGRAM_CHAT_IDS` sends gets no answer beyond the one line saying who the node answers (above), and a picture not even that. The one exception is an offer (SPEC_inventory step 4). An offer's `ask` link (`t.me/<bot>?start=offer-<id>`, in `GET /offers` and the daily export) opens the bot on that offer. It answers "Write one message about the cordless drill (to borrow)…", and the next message, within 30 minutes, goes to every household chat:
 
 > 📦 Someone asks about your offer #4, the cordless drill: … — Wayan @wayan_b
 
-The sender is told "Passed on". You write back to them yourself through their @username. When they have none, both sides are told they can be reached only if their message said how. One message per chat an hour; a later one is ignored like any stranger's. The household's chat ids never show, and nothing the sender writes is kept. Labels in en and es.
+The sender is told "Passed on". You write back to them yourself through their @username. When they have none, both sides are told they can be reached only if their message said how. One message per chat an hour; a later one is not passed on. The household's chat ids never show, and nothing the sender writes is kept. Labels in en and es.
 
 ## What leaves the network
 

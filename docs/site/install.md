@@ -1,5 +1,5 @@
 # Install
-<!-- checked: v0.81.0 -->
+<!-- checked: v0.82.0 -->
 
 This page puts the node itself on a machine: two containers, a database on this disk, and the loops that read
 your place every five minutes. Once it is done the node has pulled the air model and the climate normals for
@@ -12,7 +12,8 @@ run the preflight.
 > **The short way.** Six commands, top to bottom, each one waiting for the one before:
 > 1. `curl -fsSL planetai.fab.city/preflight | bash`: is this machine fit?
 > 2. `curl -fsSL planetai.fab.city/install | bash`: four questions, then the node.
-> 3. `planetai status`: every source green.
+> 3. `planetai doctor`: every check green, and under **Data sources** what is left, each with its fix. If this
+>    terminal says `planetai: command not found`, open a new one: the installer adds it to the PATH of new terminals.
 > 4. `planetai telegram`: your phone.
 > 5. `planetai test-alert`: a real alert arrives.
 > 6. `planetai act <id>`: answer it, and the loop is closed.
@@ -46,7 +47,7 @@ an error, because that is an answer.
 curl -fsSL planetai.fab.city/install | bash
 ```
 
-`/install` is a stub that fetches the current `install` script from the repository on every run. The script
+`/install` is a stub that fetches the `install` script of the released version from the repository on every run. The script
 prints the published version under the logo, runs the preflight, downloads the node's tarball from
 `planetai.fab.city/node0/get`, checks it (below), unpacks it into `~/planetai` keeping any `.env` already
 there, links the command to `~/.local/bin/planetai`, and hands over to `planetai setup`, which asks the four
@@ -130,7 +131,7 @@ planetai setup --answers node.json
 
 `place` is geocoded (Open-Meteo, first hit) or replaced by `"lat"` and `"lon"`; `kind` defaults to `home`;
 `sensor` is one of `{"sc": "19880"}`, `{"sc_user": "name"}`, `{"airgradient": "host"}`, `{"purpleair": "ip"}`
-or absent. The answers become `install.sh` flags and the installer runs with `--yes`. It needs `python3` on
+or absent; the last two are written to `.env` and, as on question 4, not read yet. The answers become `install.sh` flags and the installer runs with `--yes`. It needs `python3` on
 the machine, standard library only. It ends with `installed. planetai status --json for the state; planetai
 ui for the token.`
 
@@ -212,6 +213,7 @@ any of the node's own code.
   backups/               nightly pg_dump, kept BACKUP_KEEP days
   exports/<node>/        the daily CC BY 4.0 export, one JSON a day
   out/                   what pack scripts write: land-change maps, timelapses, mapping briefs, the kept map (out/ground/)
+  out/captures/          the household's pictures, unless CAPTURES_DIR says elsewhere
   packs/                 the rules; add a folder to add a domain
   config/rules.yml       the two domain-blind core rules
   data/                  the pinned source registry and the platform floors, mounted read-only

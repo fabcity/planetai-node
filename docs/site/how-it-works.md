@@ -1,8 +1,8 @@
 # How it works
-<!-- checked: v0.81.0 -->
+<!-- checked: v0.82.0 -->
 
 A node is two containers on one machine. `db` is Postgres with PostGIS, bound to the machine itself. `app` is
-one Python process that answers the HTTP API on port 8080 and runs seven loops in the background, an eighth when
+one Python process that answers the HTTP API on port 8080 and runs ten loops in the background, an eleventh when
 the Reticulum bridge is on. An `agent` container for the Telegram bot and a Reticulum bridge are optional.
 Everything a node does is one of those loops or one of the API's answers, and this page follows a reading
 through the whole of it. The node's own description of itself, the one it hands every agent that connects,
@@ -57,8 +57,8 @@ On the page, Decide is "what to do about it", the first section under the lead o
 word covers how much ground and what each H3 resolution is worth, are on Network, and what the node doubts about
 its own sensors is on Historical. Since v0.72 Decide draws a card for each issue with an open act-level alert; a
 node that tells events draws one card for each open event instead, with the action for the readings as they are now and three buttons, which go once somebody answers. An alert's card shows what was seen and
-"what this node suggests", which is the rule's own last line, the one that begins with 👉, written by
-whoever wrote the rule. A person may record a decision there. It is written to `actions` with
+"what this node suggests", which is the rule's own last line when it begins with 👉 (the air and heat
+rules no longer write one), written by whoever wrote the rule. A person may record a decision there. It is written to `actions` with
 `stage: decided`, and it moves nothing: it closes no alert, it is not in ρ and it is not a stage in the funnel.
 
 Two words are easy to confuse here. `ARCHITECTURE.md` maps decide to the `acknowledged` row of its ledger;
@@ -93,7 +93,7 @@ day. Beside it the funnel counts the same alerts four times: asked, acknowledged
 derives it: an act followed by 2,880 minutes (48 hours) of silence from the same rule on the same sensor,
 counted only for rules the node still runs. `GET /effect` asks the same question per rule over the whole
 record, how many acts and how many cleared, and gives a recovery time in hours only for a rule that declares
-`watch: {metric, over}`. Two rules do, both in the air-quality pack.
+`watch: {metric, over}`. Four do, two in the air-quality pack and two in heat.
 
 A pack's `cells.yml` computes the other Index cells the node has the data to fill, each with a `state`: `live`
 if measured here, `partial` if derived or modelled, `mock` if a placeholder. Two generations of the Index
@@ -111,6 +111,9 @@ the thing receiving the answer.
 | push events | hourly | if `PARENT_API_URL` is set, posts this node's alert timestamps of the last 36 hours to the parent's `/events` |
 | release check | hourly | unless `UPDATE_CHECK=off`, asks planetai.fab.city once a day which version is current, says so in `/health` and the page's header, and once per version on Telegram. It installs nothing |
 | node list | hourly | unless `UPDATE_CHECK=off`, reads the programme's `registry.json` from GitHub every 6 hours and serves it at `/nodes`, each other node's point to one decimal and no contact |
+| introduced species | hourly | only with `SPECIES_MATCH=on`: once a week reads the country's GRIIS checklist from GBIF |
+| others' records | hourly | only with `SPECIES_MATCH=on`: once a week counts GBIF's open records in each of the node's seven res-8 cells |
+| what the house learned | hourly | once a local day, in its first hour: what worked, what is usual, the alerts that may not fit, and the diary's entries |
 | Reticulum | 300 s | only with `RETICULUM_URL` set: asks the bridge for its health and the peers it has heard, for `/health.reticulum`. An `act <id>` message is turned into `POST /actions` by the bridge itself |
 
 One more thread runs when `MQTT_HOST` is set. It subscribes to the broker for Meshtastic radios and DIY
@@ -147,18 +150,20 @@ sentence when `PACKS_ALLOW_CODE=1` and `MAKE_ENABLED=1` are both set.
 
 Raw readings stay. What travels is a summary: hourly means and alert timestamps to a parent node, if
 `PARENT_API_URL` names one; the daily [export](storage.md), with hourly means, your own sensors named by role
-(`indoor-1`, `outdoor-2`), the Index cells, the first line of each alert, ρ and the centre of the node's
-resolution-8 cell (not its point), under CC BY 4.0. The export is readable at every [sharing level](sharing.md).
+(`indoor-1`, `outdoor-2`), the Index cells, each alert's first line, ρ, the household's offers and its res-8 cell's centre, never its
+point, under CC BY 4.0. The export is readable at every [sharing level](sharing.md).
 
 Once a day the node asks planetai.fab.city which version is current, and every 6 hours it reads the programme's
 list of nodes from GitHub. Neither request carries anything about the house, but each shows the house's internet
-address to the host it asks; `UPDATE_CHECK=off` in Set up → Sharing stops both. Four more things can leave, and each only when somebody here turns it on. With `RETICULUM_PRESENCE=1` the
+address to the host it asks; `UPDATE_CHECK=off` in Set up → Sharing stops both. Six more things can leave, and each only when somebody here turns it on. With `RETICULUM_PRESENCE=1` the
 node announces a coarse H3 cell on the Reticulum network: resolution 3 by default, never finer than 6. With
 `MAP_TILES=on` the browser showing the dashboard fetches live map tiles at resolution 8 and coarser, and each
 tile request "tells a tile server which square of the planet this house is looking at". And a question to
 the bot or the dashboard's ask pane goes to an online model, with the node's answers to the model's tool calls, only when `AGENT_PREFER`
 is `fallback` or `strongest` and an online key is set. At the default, `private`, both use the model on
-this machine or one on your own network, and nothing goes further. And `planetai run place basemap` or `planetai run
+this machine or one on your own network, and nothing goes further. With **Name species with GBIF** (`SPECIES_MATCH=on`) a finding's scientific name goes to GBIF, and the weekly
+reads tell it the country and the seven cells' shapes. A thing the household marks to lend or give away is public at
+`GET /offers` and in the export: its class, name, condition and count at the node's cell. And `planetai run place basemap` or `planetai run
 earth-engine basemap`, typed by somebody here, tells Protomaps, OpenAerialMap or Earth Engine once which square the
 node is in, to keep a detailed map of it on the node; after that the map is read from the node and sends nothing.
 
@@ -196,7 +201,7 @@ by aggregation. No agent dispatches without a human row in `actions`. No layer r
 function. No scale is skipped: a city aggregator is built from nodes, not declared from above. The longer
 form, with the staging from one node to a bioregion, is [Architecture](architecture.md).
 
-Some of that staging is not built in v0.81. The fabrication ticket the Act layer ends in when a decision is
+Some of that staging is not built in v0.82. The fabrication ticket the Act layer ends in when a decision is
 physical does not exist, and no job has been handed to a workshop. Nodes finding each other
 (`docs/SPEC_discovery.md`) is not built; a node as a key (`docs/SPEC_identity.md`) and the second ρ, which
 would ask whether the reading recovered (`docs/SPEC_rho.md`), are Phase 1 with nothing built.

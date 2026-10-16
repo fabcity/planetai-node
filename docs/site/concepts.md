@@ -1,7 +1,7 @@
 # Concepts
-<!-- checked: v0.81.0 -->
+<!-- checked: v0.82.0 -->
 
-The words the rest of these pages use, each with what it means in the code at v0.81. When two of them
+The words the rest of these pages use, each with what it means in the code at v0.82. When two of them
 sound alike (`local` and `custody`, domain and issue, `kind` and `scale`, decided and acted) the difference
 is the point. Most of them are about one question: which numbers belong to this place, and may be counted
 for it.
@@ -56,8 +56,9 @@ not this node's measurement. A sensor with no coordinates that arrives over your
 enters an ambient average.
 
 **`kind`.** How the number was produced: `sensor`, `portal`, `model`, `map`, `child`, `peer`, or
-`facility`, a named place with a point and no number at all (a fab lab, from the `make` pack). `survey` is
-reserved. Only `sensor` rows enter `stats`.
+`facility`, a named place with a point and no number at all (a fab lab, from the `make` pack), or `survey`,
+what the household tells the node (the `things:<node>` sensor of the things it keeps). Only `sensor` rows enter
+`stats`.
 
 **`custody`.** A generated column: `kind = 'child' OR (local AND kind <> 'peer')`. The only thing a cell may
 count. Custody splits geography from responsibility: a peer's station can be closer than your own kit and
@@ -92,8 +93,9 @@ designs to build. See the [CLI](cli.md).
 **Rule.** SQL that returns rows, plus a message template with `{placeholders}` for the row's columns, a
 `level` and a `cooldown_minutes`. No rules engine, no expression language: if Postgres cannot express the
 condition, the condition is wrong. Core rules live in `config/rules.yml` and know no metric; a pack's
-rules live in `packs/<id>/rules.yml`, namespaced `<pack>/<id>`. A rule's message ends with a line beginning
-👉, its recommendation, and the dashboard's alert card in Decide shows that line as "what this node suggests".
+rules live in `packs/<id>/rules.yml`, namespaced `<pack>/<id>`. A rule's message ends with its recommendation;
+where that line begins 👉 (no longer in the air and heat rules), the classic dashboard's alert card in Decide
+shows it as "what this node suggests".
 
 **Level.** `act`: something needs doing. `warn`: something changed. `info`: everything else.
 `ALERT_LEVEL` is the floor for interrupting a person; below it an alert is still recorded, still on the
@@ -139,7 +141,7 @@ node still runs. The funnel counts this node's own alerts only.
 derivation), and a recovery time in hours only for a rule that declares `watch: {metric, over}`.
 
 **Report.** The node's one scheduled message: every `REPORT_EVERY` hours from `REPORT_ANCHOR`, local time,
-six parts, under a hundred words, written by the node itself from SQL. See [The report](report.md).
+four parts, under a hundred words, written by the node itself from SQL. See [The report](report.md).
 
 ## The page and its stages
 
@@ -183,11 +185,12 @@ report bundle under the rule's id.
 the daily export, the programme's node list at `/nodes`, and `/settings` reduced to the layout and the sharing level,
 nothing else) or `open` (the whole read API, which is what a wall screen without a token needs, plus the map's public
 layers under `/ground/*` and `/geo/cell` without its node-relative fields). Two more rungs, `cell` and `means`, are
-named and refused. See [Sharing](sharing.md).
+named and refused. Every untrusted JSON answer names the house's rooms and sensors only as "Room A" and "Sensor 1". See [Sharing](sharing.md).
 
 **Tokens.** `ADMIN_TOKEN` unlocks every write and the agent surface. `BACKUP_TOKEN` is read-only, for a NAS
 pulling dumps and the report bundle. `ACT_TOKEN` closes a loop, from a phone or from the dashboard's **I did
-this**, and can read no secret. `AGGREGATE_TOKEN` is what this node demands from its children;
+this**, and can read no secret. `AGGREGATE_TOKEN` is what this node demands from its children, and it opens only `POST /aggregates` and
+`POST /events`: anything else a child asks is answered as to a stranger;
 `PARENT_TOKEN` is what it presents to its parent. All travel as `Authorization: Bearer <token>`.
 
 **Loopback.** A request from `127.0.0.1` inside the container (the node's own MCP tools, a shell in the
@@ -207,8 +210,8 @@ outside" is always this, never a port forward.
 `live`: measured by this node, in the house or on the street. `partial`: derived, a portal, the ring.
 `model`: a model row. `cached`: a committed fixture replayed through the node's own engine. `stale`: the
 last figures the node gave, once it has stopped answering. When a poll fails the lead's pill says `stale`
-and the as-of stamp says "Read at HH:MM · the node has not answered for N min"; the wall's foot carries a
-fixed `stale` label. `refused` is not a word but a page: what a reader without a token sees at
+and the as-of stamp says "Read at HH:MM · the node has not answered for N min"; the classic wall's foot
+carries a fixed `stale` label, and the doors' Wall says it only when its last poll is over 15 minutes old. `refused` is not a word but a page: what a reader without a token sees at
 `SHARE_LEVEL=off`, with the node's own sentence explaining why. Provenance is ink only and square, never a coloured pill.
 
 ## Words

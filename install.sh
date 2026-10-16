@@ -439,7 +439,7 @@ grep -qE '^NODE_LAT=-?[0-9]' .env || die "this node needs coordinates: pass --la
 if ! grep -qE '^(SC_DEVICES|SC_USER|AIRGRADIENT_HOSTS|PURPLEAIR_HOSTS)=.+' .env; then
   warn "no sensor configured — that is fine. On first start this node will pull 92 days of CAMS air quality"
   warn "and NASA POWER climatology for its coordinates, so it has something true to say before hardware arrives."
-  warn "Add a sensor later with --sc / --airgradient / --purpleair, or edit .env."
+  warn "Add a sensor later with --sc (a Smart Citizen kit), or edit .env."
 fi
 [[ -n "$LAT"  ]] && setenv NODE_LAT "$LAT"
 [[ -n "$LON"  ]] && setenv NODE_LON "$LON"
@@ -543,7 +543,7 @@ if grep -qE 'api\.telegram\.org/bot[0-9]+:' <<< "$(docker compose logs app 2>/de
 fi
 echo
 if grep -q '^BOOTSTRAP=1' .env; then
-  say "first start pulls ~2,200 rows of history for your location (CAMS 92 days + NASA POWER normals)."
+  say "first start pulls ~4,400 rows of history for your location (CAMS 92 days + NASA POWER normals)."
   echo "   watch it:  docker compose logs -f app | grep bootstrap"
 fi
 # One line, pasteable without editing, success or failure.

@@ -1,9 +1,9 @@
 # HTTP API
-<!-- checked: v0.81.0 -->
+<!-- checked: v0.82.0 -->
 
 Every node exposes the same API on port 8080. The dashboard, the `planetai` command, the MCP tools, a NAS pulling backups, Home Assistant and a parent node are all clients of it, and none of them has a private path in. A request either carries a token as `Authorization: Bearer <token>` or carries nothing, and a request carrying nothing is judged by the `SHARE_LEVEL` setting. The container publishes `${APP_PORT:-8080}:8080` on every host interface; Postgres is published on `127.0.0.1:5432` only. There is no TLS on the node itself: the tailnet encrypts the hop, and the [sharing page](sharing.md) says what to do on a network that is not a tailnet.
 
-This page was read from the code at v0.81. Where an older document disagrees, the code wins.
+This page was read from the code at v0.82. Where an older document disagrees, the code wins.
 
 ## Access rules
 
@@ -12,18 +12,20 @@ Two middlewares run before any handler. The first registered checks `/mcp` again
 | Class | Who is answered |
 |---|---|
 | `public` | On the `off` allowlist. Answers anyone, at every `SHARE_LEVEL`, with no token. |
-| `open` | On the `open` allowlist only. Without a token, answers only when `SHARE_LEVEL=open`. Always answers loopback or any node token. |
+| `open` | On the `open` allowlist only. Without a token, answers only when `SHARE_LEVEL=open`. Always answers loopback or a household token. |
 | `token` | On neither allowlist. Answers loopback or a request carrying a household token (`ADMIN_TOKEN`, `BACKUP_TOKEN`, `ACT_TOKEN`); then the handler's own check, if any. |
 | `admin` | The handler requires `ADMIN_TOKEN`, whatever the allowlists let through. |
 | `pull` | `token`, then the handler requires `ADMIN_TOKEN` or `BACKUP_TOKEN`. The read-only token for a NAS. |
 | `act` | `token` at the middleware. Loopback then needs nothing more; from anywhere else the handler requires `ACT_TOKEN` or `ADMIN_TOKEN`. |
-| `children` | `token`, then the handler requires `AGGREGATE_TOKEN`. What a parent demands of a child. |
+| `children` | Past the middleware by method and path (`POST /aggregates` and `POST /events` only), then the handler requires `AGGREGATE_TOKEN`. What a parent demands of a child. |
 
-The `off` allowlist (the default) is exactly: `/`, `/ui`, `/health`, `/llms.txt`, `/settings`, `/export`, `/presence`, `/nodes`, and any path under `/static/`.
+The `off` allowlist (the default) is exactly: `/`, `/ui`, `/health`, `/llms.txt`, `/settings`, `/export`, `/presence`, `/nodes`, `/offers`, and any path under `/static/`.
 
-The `open` allowlist is the `off` list plus 28 paths: `/stats`, `/sensors`, `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/trust`, `/nearby`, `/forecast`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, `/ask`, `/ask/status`, `/docs/search`, `/geo/cell`. It also takes any path under `/static/`, `/exports/`, `/issues`, `/sources/` or `/ground/`. That is 36 exact paths and 5 prefixes in all. `/ground/*` is public data (OpenStreetMap, OpenAerialMap, Sentinel-2, Open-Meteo) cut around the node; `/geo/cell` answers an untrusted caller without its node-relative fields.
+The `open` allowlist is the `off` list plus 28 paths: `/stats`, `/sensors`, `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/trust`, `/nearby`, `/forecast`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, `/ask`, `/ask/status`, `/docs/search`, `/geo/cell`. It also takes any path under `/static/`, `/exports/`, `/issues`, `/sources/` or `/ground/`. That is 37 exact paths and 5 prefixes in all. `/ground/*` is public data (OpenStreetMap, OpenAerialMap, Sentinel-2, Open-Meteo) cut around the node; `/geo/cell` answers an untrusted caller without its node-relative fields.
 
 A `SHARE_LEVEL` value that is neither `off` nor `open` is treated as `off`. The allowlist matches the path whatever the method, so it governs writes as well as reads. `POST /readings` shares its path with `GET /readings`, so at `SHARE_LEVEL=open` an anonymous post gets past the middleware and is refused by the handler with 401. `PUT /settings` shares its path with `GET /settings`, which is on the `off` list, so the same happens at every level. `/actions` is on neither list, so an anonymous `POST /actions` or `GET /actions` is refused by the middleware at both levels. A path the node has no route for is refused with 403 too, not 404, when the caller is untrusted.
+
+What an untrusted caller is answered never names a room. The middleware swaps the household's own labels (each local sensor's `room`, `name` and `source_name`) for `Room A`, `Room B` … and `Sensor 1`, `Sensor 2` … in every JSON answer, once, wherever they stand, in a field or inside a sentence. A sentence written when an alert was sent, under the names of that day, cannot be matched, so it is left out instead: `/alerts` answers `text: null`, and so do the alert texts in `/issues`. A token reads the real names.
 
 **How a token travels.** In the `Authorization` header only, as `Bearer <token>`. There is no query parameter and no `X-Token` form. The node strips one `Bearer `, then compares the rest against every candidate token in constant time, without returning early, so the time taken does not say which token matched. `ADMIN_TOKEN` is read from the environment (`.env`). The other three come from settings, which the dashboard may overlay on `.env`. An optional `X-Agent` header names the caller: `PUT /settings` writes it into the `actions` ledger and defaults it to `gui`.
 
@@ -46,7 +48,7 @@ Handlers answer with FastAPI's default `{"detail": "..."}`. The handler checks a
 | `act` | 403 ``no ACT_TOKEN or ADMIN_TOKEN set on this node; run `planetai ui` to create one`` | 401 `closing a loop from off this machine needs Authorization: Bearer <ACT_TOKEN>` |
 | `children` | 403 `this node accepts no children: set AGGREGATE_TOKEN in .env and give it to them` | 401 `bad or missing Authorization: Bearer <AGGREGATE_TOKEN>` |
 
-Timestamps are ISO 8601 strings with an offset. A timestamp the node read from the database carries the offset of `NODE_TZ`, because every connection sets the session time zone from it; one the node stamped itself (`last_poll`, `generated`, `as_of`, `observed_at`) is UTC. A reader the node does not know (not this machine, no token) never gets a position finer than the node's resolution-8 cell: `/health` and `/export` carry the centre of that cell, and so do the household's own sensors (`custody`) in `/sensors` and `/stats`; other sensors there are rounded to 3 decimals. A trusted caller gets `/health` at 3 decimals and the other two unrounded. `/forecast`, `/earth` and `/place/geojson` are unrounded and are never readable without a token or `SHARE_LEVEL=open`.
+Timestamps are ISO 8601 strings with an offset. A timestamp the node read from the database carries the offset of `NODE_TZ`, because every connection sets the session time zone from it; one the node stamped itself (`last_poll`, `generated`, `as_of`, `observed_at`) is UTC. A reader the node does not know (not this machine, no token) never gets a position finer than the node's resolution-8 cell: `/health` and `/export` carry the centre of that cell, and the household's own sensors in `/sensors` and `/stats` stand at that same point (a child's rows at the centre of their own cell); other sensors there are rounded to 3 decimals. A trusted caller gets `/health` at 3 decimals and the other two unrounded. `/forecast`, `/earth` and `/place/geojson` are unrounded and are never readable without a token or `SHARE_LEVEL=open`.
 
 ## Status
 
@@ -67,6 +69,8 @@ Returns one object with: `ok` (true once a poll has run), `node`, `version` (`NO
  "cell": {"id": "...", "res": 8, "...": "..."},
  "docs": "https://planetai.fab.city/docs/", "mcp": "/mcp", "llms": "/llms.txt"}
 ```
+
+> **Gap in v0.82.0.** `/health` spreads the poll loop's own state into its answer, so it also carries `registry` (the last read behind `/nodes`), `bot` (the Telegram bot's username), `learned_on` and `learned_at`, and with `SPECIES_MATCH=on` `griis` (the country's whole checklist of marks) and `others` (GBIF's open-record counts per taxon for each of the seven cells), to every reader at every level, on the one route every screen polls. With `MQTT_HOST` set, `direct` (the Smart Citizen MQTT counters) rides beside `mesh`.
 
 ### GET /health/sources
 Access: token
@@ -135,7 +139,7 @@ Access: token
 
 A 301 redirect to `/report/latest`, kept for a dashboard left open in a browser through the update that removed the briefing in v0.38. Takes and ignores `kind`. Hidden from the OpenAPI schema.
 
-> **Gap in v0.81.0.** `/briefing` is on neither allowlist. A stale dashboard with no token is refused with 403 by the middleware before it can be redirected, at both levels. The route works as intended only for loopback or a request with a token.
+> **Gap in v0.82.0.** `/briefing` is on neither allowlist. A stale dashboard with no token is refused with 403 by the middleware before it can be redirected, at both levels. The route works as intended only for loopback or a request with a token.
 
 
 ### GET /machine
@@ -157,7 +161,7 @@ Access: open
 
 Every sensor this node reads, its position, and where its numbers come from. One row per sensor with `sensor_id`, `source`, `name` (the room the household named, when it named one), `room` and `source_name` (the platform's own name; both only for this machine or a token), `lat`, `lon`, `indoor`, `local`, `custody`, `kind`, `scale`, `cadence`, `meta`, ordered by custody, then local, then name. The columns are named rather than `SELECT *`, so a column added to the table stays private until someone lists it here.
 
-For a caller that is neither loopback nor carrying a token, `lat` and `lon` are the centre of the resolution-8 cell for the household's own sensors (`custody`) and rounded to 3 decimals for every other row, and `meta` is cut to the provenance keys `licence`, `attribution`, `model`, `dataset`, `network`, `note`, `corrected` (null if none remain). That drops a unit's `host`, `firmware`, `mesh_node`, `gateway`, `channel`, `root_topic` and `topic`. A row with `kind = 'facility'` (a fab lab the `make` pack stored) keeps ten more keys, because they describe somebody else's published building and not this household: `slug`, `capabilities`, `kind_name`, `city`, `country_code`, `distance_km`, `url`, `registry_slug`, `snapshot`, `fetched`. A trusted caller gets the full rows.
+For a caller that is neither loopback nor carrying a token, `room` and `source_name` are left out, `lat` and `lon` are the house's published point (the cell `/health` names) for the household's own sensors and the centre of its own resolution-8 cell for a child's, rounded to 3 decimals for every other row, and `meta` is cut to the provenance keys `licence`, `attribution`, `model`, `dataset`, `network`, `note`, `corrected` (null if none remain). That drops a unit's `host`, `firmware`, `mesh_node`, `gateway`, `channel`, `root_topic` and `topic`. A row with `kind = 'facility'` (a fab lab the `make` pack stored) keeps ten more keys, because they describe somebody else's published building and not this household: `slug`, `capabilities`, `kind_name`, `city`, `country_code`, `distance_km`, `url`, `registry_slug`, `snapshot`, `fetched`. A trusted caller gets the full rows.
 
 ### GET /readings
 Access: open
@@ -192,7 +196,7 @@ Access: open
 
 Rolling statistics per sensor and metric over the last 24 hours, sensors only (`kind = 'sensor'`). This is the `stats` view: `sensor_id`, `metric`, `indoor`, `local`, `kind`, `scale`, `lat`, `lon`, `name`, `last`, `last_ts`, `silent_minutes`, `mean_15m`, `mean_1h`, `mean_24h`. Ordered local first, then sensor and metric. Slow sources are in `/observations`.
 
-Positions follow `/sensors`: for a caller that is neither loopback nor carrying a token, `lat` and `lon` are the centre of the resolution-8 cell for the household's own sensors and rounded to 3 decimals for every other row. Before v0.73 this route handed every reader at `SHARE_LEVEL=open` the positions `/sensors` had rounded (#113).
+Positions follow `/sensors`: for a caller that is neither loopback nor carrying a token, `lat` and `lon` follow it too: the house's published point for its own sensors, a child's cell centre for a child's, 3 decimals for every other row. A `private` value is in it only for the admin or act token or this machine, never for a request carrying `X-Agent`. Before v0.73 this route handed every reader at `SHARE_LEVEL=open` the positions `/sensors` had rounded (#113).
 
 ### GET /observations
 Access: open
@@ -270,7 +274,7 @@ What surrounds the node's own numbers: other people's stations, the weather fore
 ### GET /nearby
 Access: open
 
-The ring: other people's stations around this node, and where this node sits inside it. Reads only what is stored, so the dashboard never waits on someone else's server. In v0.81 the ring is Bali Air Dispatch stations only (`source = 'baliairdispatch'`), within `BAD_RADIUS_KM`, that reported in the last 24 hours.
+The ring: other people's stations around this node, and where this node sits inside it. Reads only what is stored, so the dashboard never waits on someone else's server. In v0.82 the ring is Bali Air Dispatch stations only (`source = 'baliairdispatch'`), within `BAD_RADIUS_KM`, that reported in the last 24 hours.
 
 | Name | Type | Default | Meaning |
 |---|---|---|---|
@@ -460,11 +464,11 @@ Returns `{schema, order, undeclared, dropped, headline, as_of, lead, headline_ru
   `digest` (the simple sentence, "observing N stations", the neighbours within a kilometre) and `geometry` (the grain
   table) count only `stations`.
 - `hero` is what the page draws when that issue leads, and the page draws nothing else there: `sign` and `pictogram` (symbol ids in `signs.svg`; no pictogram means the sign at hero size), `numeral` (the distance or readout the number is), `value`, `unit`, `dp`, `sentence` (the headline: words only, no numbers — docs/SPEC_language.md), `plain` (the reading layer: the numeral distance first, then the others on the rule, and the line; a context issue's figures, then where its number comes from), `rule` and `stamp` (keyed by locale). `rule` is `null` or `{min, max, ends, dots, line}`: `ends` is two words per locale, `dots` is `[{distance, value}]` for the distances that have a value tonight, and `line` is `{value, name}` or `null`. `clock` says what `stamp` is: `time`, when the numeral was read, or `date`, when a yearly record looked and when it looks next. `hero` is `null` for an issue that declares none, and for one not watched here. Each issue also carries `about`: one glossary text per locale, what the metric is and whose line it is, taught once.
-- `sections` is one entry per section an enabled pack declares under `sections:` in its `pack.yaml`: `{id, pack, stage, title, order, wall, note, expected, readouts}`. Each readout carries its `sensor_id` and `age_minutes`; a reading the node has no row for is left out, and `expected` says how many were declared. No shipped pack declares one, so it is `[]` on every node unless a wild pack adds one.
+- `sections` is one entry per section an enabled pack declares under `sections:` in its `pack.yaml`: `{id, pack, stage, title, order, wall, note, expected, readouts}`. Each readout carries its `sensor_id` and `age_minutes`; a reading the node has no row for is left out, and `expected` says how many were declared. Two shipped packs declare one, `fire` and `surface-heat`, both `wall: true`; a core pack's section stays out until the node holds a row of it, so a node that never turned them on gets `[]`.
 
 The whole `/issues` prefix is on the `open` list and never on the `off` list: a snapshot carries 15-minute means, alert texts and sensor names, which are the household's own data.
 
-Who answered is the household's too. A reader without a token gets every answer's stage and time and never the name or the words left with it: `asks.actions[].actor`, and each event answer's `actor` and `note`, are `null`, and a reason that would name who answered says "someone".
+Who answered is the household's too. A reader without a token gets every answer's stage and time and never the name or the words left with it: `asks.actions[].actor`, and each event answer's `actor` and `note`, are `null`, and a reason that would name who answered says "someone". The alerts' own sentences (`asks.acts[].text`, each issue's `open_asks[].text`, an event's `message.text`) are `null` for that reader too, because they were written under the room names of their day.
 
 ### GET /issues/fixtures
 Access: open
@@ -508,7 +512,7 @@ Alerts newest first, each with the id that `planetai act <id>` needs, and whethe
 | `limit` | int | 50 | 0..1000 |
 | `since_hours` | int | 0 | only the alerts of the last that many hours, 0..2160; 0 is no bound |
 
-Returns a list of `{id, ts, rule_id, sensor_id, level, text, acted_at}`. `acted_at` is the time of the first `acknowledged` or `acted` row for that alert, or null. A `decided` row does not set it.
+Returns a list of `{id, ts, rule_id, sensor_id, level, text, acted_at}`; `text` is null for an untrusted caller (see [Access rules](#access-rules)). `acted_at` is the time of the first `acknowledged` or `acted` row for that alert, or null. A `decided` row does not set it.
 
 ### GET /actions
 Access: token
@@ -608,7 +612,7 @@ The picture itself, with its stored mime; `?w=` (1 to 1024) answers a JPEG at mo
 ### GET /things
 Access: admin
 
-What this home keeps (SPEC_inventory): `{things: [{id, added_at, class, name, count, used, condition, offer, capture_id, note}], classes, choices, summary: {things, idle, repair, offered}}`, newest first. `class` is one of the flows 1.0 physical classes a home keeps (`tool`, `appliance`, `furniture`, `electronics`, `garment`, `textile`, `micromobility`, `vehicle`, `part`, `goods`). `used` is `weekly`, `monthly`, `yearly` or `never`, said once by the household; idle means `yearly` or `never`. `condition` is `works`, `needs_repair` or `broken`. `offer` is `no`, `lend` or `give`, and nothing is published from it yet. The summary adds up `count`.
+What this home keeps (SPEC_inventory): `{things: [{id, added_at, class, name, count, used, condition, offer, capture_id, note}], classes, choices, summary: {things, idle, repair, offered}}`, newest first. `class` is one of the flows 1.0 physical classes a home keeps (`tool`, `appliance`, `furniture`, `electronics`, `garment`, `textile`, `micromobility`, `vehicle`, `part`, `goods`). `used` is `weekly`, `monthly`, `yearly` or `never`, said once by the household; idle means `yearly` or `never`. `condition` is `works`, `needs_repair` or `broken`. `offer` is `no`, `lend` or `give`; a `lend` or `give` is published at [`GET /offers`](#get-offers). The summary adds up `count`.
 
 ### POST /things
 Access: admin
@@ -744,7 +748,7 @@ Since v0.73 the row ends with five registry fields, and the same row at pin `851
 ### GET /sources
 Access: open
 
-The network's registry of what can be measured, as this node carries it: a pinned copy of `awesome-fabcity-data` under `data/sources/`, identical on every node in a release. In v0.81 the pin is `851b8db`, synced 12 October, with 269 entries. It says nothing about this house, which is why it is on the `open` list by name.
+The network's registry of what can be measured, as this node carries it: a pinned copy of `awesome-fabcity-data` under `data/sources/`, identical on every node in a release. In v0.82 the pin is `851b8db`, synced 12 October, with 269 entries. It says nothing about this house, which is why it is on the `open` list by name.
 
 | Name | Type | Default | Meaning |
 |---|---|---|---|
@@ -836,7 +840,7 @@ Returns:
  "hourly": [{"t": "2026-09-21T00:00:00+08:00", "sensor": "indoor-1", "local": true, "indoor": true,
              "kind": "sensor", "metric": "pm25", "mean": 11.2, "min": 9.0, "max": 14.1, "n": 12}],
  "alerts": [{"t": "2026-09-21T06:12:00+08:00", "rule": "air-quality/indoor_pm25_high", "level": "act", "text": "..."}],
- "cells": [], "rho": {}}
+ "cells": [], "rho": {}, "offers": []}
 ```
 
 `alerts[].text` is the first line only. `cells` and `rho` are the same shapes as `/cells` and `/rho`, computed at export time.
@@ -870,9 +874,9 @@ Every runtime setting with its group, label, help and current value, plus the bo
 
 At `SHARE_LEVEL=off`, a caller that is neither loopback nor carrying a token sees the values of `UI_LAYOUT` and `SHARE_LEVEL` only. Every other row is still present, masked, so the Set up view still renders and says what a token would show. A reader without the admin token sees the values of the public set when `SHARE_LEVEL=open`, from loopback, or with `BACKUP_TOKEN` or `ACT_TOKEN` (`REPORT_EVERY`, `ALERT_LEVEL`, `QUIET_HOURS`, `SHARE_LEVEL`, `NODE_ISSUES`, `MAP_TILES`, `UI_MODE`, `PACKS_ENABLED` and the rest of `settings.PUBLIC`).
 
-Returns `{unlocked, runtime: [...], bootstrap: [{key, label, value, group}]}`. Each node row in `runtime` is `{key, group, label, secret, restart, help, value, set, source, choices, default, outward}`. `source` is `gui`, `env` or `default`; `choices` lists the accepted values where the key has a fixed set; `default` is the shipped default, or null when the image has no defaults file; `outward` marks a key that changes what leaves the machine.
+Returns `{unlocked, runtime: [...], bootstrap: [{key, label, value, group}]}`. Each node row in `runtime` is `{key, group, label, secret, restart, help, value, set, source, choices, default, outward, runs_code}`. `source` is `gui`, `env` or `default`; `choices` lists the accepted values where the key has a fixed set; `default` is the shipped default, or null when the image has no defaults file; `outward` marks a key that changes what leaves the machine, and `runs_code` one that lets code run on it (`PACKS_ALLOW_CODE`).
 
-After the node's own rows come the keys the installed packs declare in their `pack.yaml`, whether the pack is switched on or not: the shipped packs declare 26, and 23 of them are rows here. Each has `group: "packs"`, `restart: false` (the value reaches the pack at its next run), `choices: null`, the key as its `label`, the `default` the pack states, and a `pack` key naming the pack; `secret` is true only when the pack lists the key under `secrets:`. The other three, `COAST_MAX_KM`, `EE_PROJECT` and `EE_KEY_FILE`, are node keys too, already in group `packs`: each stays one row and gains the `pack` key.
+After the node's own rows come the keys the installed packs declare in their `pack.yaml`, whether the pack is switched on or not: the shipped packs declare 34, and 31 of them are rows here. Each has `group: "packs"`, `restart: false` (the value reaches the pack at its next run), `choices: null`, the key as its `label`, the `default` the pack states, and a `pack` key naming the pack; `secret` is true only when the pack lists the key under `secrets:`. The other three, `COAST_MAX_KM`, `EE_PROJECT` and `EE_KEY_FILE`, are node keys too, already in group `packs`: each stays one row and gains the `pack` key.
 
 ### PUT /settings
 Access: admin
@@ -902,7 +906,7 @@ Access: admin
 
 The MCP server, over streamable HTTP at exactly `/mcp` (GET, POST and DELETE as the transport defines; no trailing-slash redirect). The whole surface needs `Authorization: Bearer <ADMIN_TOKEN>`, checked by its own middleware against the environment, because the tools can write as well as read; a missing or wrong token is 401 `{"error": "the agent surface needs Authorization: Bearer <ADMIN_TOKEN>"}`. It bypasses the `SHARE_LEVEL` check, which leaves the decision to that middleware. The tools call the API back on `http://127.0.0.1:8080`, so they arrive at every other route as loopback.
 
-In v0.81 the tools are `status`, `health_check`, `sensors`, `context`, `readings`, `report_latest`, `report_now`, `report_bundle`, `history`, `alerts`, `act`, `settings_get`, `settings_set`, `packs`, `cells`, `issues`, `series`, `export_day`, `run_pack_script` and `maintenance`. Each is classed `read`, `act` or `admin` in `app/tool_classes.py`; `act` is the only `act` tool, and it refuses a `note` that is empty or a placeholder such as `done` or `ok`, because ρ counts what a person said they did. The [MCP page](mcp.md) describes each.
+In v0.82 the tools are `status`, `health_check`, `sensors`, `context`, `readings`, `report_latest`, `report_now`, `report_bundle`, `learned`, `history`, `alerts`, `act`, `settings_get`, `settings_set`, `packs`, `cells`, `issues`, `series`, `export_day`, `run_pack_script` and `maintenance`. Each is classed `read`, `act` or `admin` in `app/tool_classes.py`; `act` is the only `act` tool, and it refuses a `note` that is empty or a placeholder such as `done` or `ok`, because ρ counts what a person said they did. The [MCP page](mcp.md) describes each.
 
 ## The ask pane
 
