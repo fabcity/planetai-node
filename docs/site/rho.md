@@ -1,5 +1,5 @@
 # ρ: the loop closed
-<!-- checked: v0.81.0 -->
+<!-- checked: v0.82.0 -->
 
 ρ (rho) is the share of the node's act-level alerts that a person answered within 24 hours. It is the one
 number on the page that comes from a person, the Fab City Index's `Governance` cell at the node's scale, and
@@ -39,7 +39,8 @@ Of 137 act-level alerts in 30 days, 29 were answered within 24 hours; among thos
 
 `rho` and `median_minutes` are `null` when there is nothing to divide. `planetai status` and `planetai act` print
 ρ; the `status` MCP tool carries it; the dashboard's *Whether it worked* section draws it as "{closed} of {total}
-alerts answered · median {n} min".
+alerts answered · median {n} min", and the doors' Wall says it in words, "This house answered {acted} of
+{alerts_act} alerts in 30 days", before its rings.
 
 ## Read it on your node
 
@@ -103,8 +104,9 @@ left out: it can never fire again, and its silence is not evidence of anything.
 many acts there were (`acted`) and how many were followed by the condition stopping (`cleared`, the same
 derivation as `measured`). A rule that declares `watch: {metric, over}` also gets `measured` (acts after which
 that sensor's hourly mean came back under the line), `already` (acts made when it was already back), and the
-median `hours` to recovery. Two rules declare one, both in `packs/air-quality/rules.yml`: `indoor_pm25_high`
-(`pm25` over 35.5) and `outdoor_pm25_high` (`pm25` over 55.5). Every other rule answers `hours: null`, because
+median `hours` to recovery. Four rules declare one: in `packs/air-quality/rules.yml` `indoor_pm25_high`
+(`pm25` over 35.5) and `outdoor_pm25_high` (`pm25` over 55.5), and in `packs/heat/rules.yml` `heat_stress_now`
+(`apparent`, the feels-like temperature, over 35) and `heat_danger` (over 40). Every other rule answers `hours: null`, because
 it fires on a relation, such as inside worse than outside, where a threshold would be a fiction. The dashboard
 draws it as *Which of these worked*.
 
@@ -144,7 +146,7 @@ Each way in, and what it writes:
 |---|---|---|
 | the dashboard's *I did this* (v0.72) | the name typed in the form | will not post; the form needs the act or admin token Set up holds |
 | `planetai act <id> [note]` | `$(whoami)` | `acted` |
-| Telegram `/act <id> <words>` | `<AGENT_NAME>/telegram` | nothing is written; the bot asks "What did you do about #<id>?" |
+| Telegram `/act <id> <words>` | `<AGENT_NAME>/telegram` | nothing is written; the bot asks "What did you do about it?" and how to send it |
 | the MCP `act` tool | its `agent` argument | refused, along with placeholders such as `acted`, `done` or `ok` |
 | `act <id> [note]` over LXMF | `lxmf:<hash>` | `acted (via reticulum)` |
 

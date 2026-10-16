@@ -1,5 +1,5 @@
 # Alerts
-<!-- checked: v0.81.0 -->
+<!-- checked: v0.82.0 -->
 
 An alert is the node asking a person to do something. This is the Act stage, which the architecture describes
 as the one that "turns an observation into a human decision", and it is "the only place ρ can be measured".
@@ -68,21 +68,24 @@ event engine is stricter: inside quiet hours it sends only `danger`, and an all-
 ## What an alert says
 
 Three paragraphs separated by blank lines: what is happening, what it means for the people in the house, and
-what to do, the third opening with 👉. From the air pack:
+what to do. One sign per message: the first line opens with one emoji and the level's icon is not added in front of
+it. From the air pack, whose `{line}` is the rule's own `watch.over`:
 
 ```
-🏠😷 The air inside at Kitchen is unhealthy right now.
+😷 The air inside at Kitchen is unhealthy right now — past the US EPA's unhealthy level, 35.5 µg/m³.
 
 Fine particles are high enough to bother people with asthma, children and older people, and to tire
 anyone over a few hours.
 
-👉 Run the purifier if you have one. Before opening a window, check whether outside is any better;
+Run the purifier if you have one. Before opening a window, check whether outside is any better;
 often it is not.
 ```
 
-The 👉 paragraph is the rule author's recommendation. Since v0.72 the dashboard also draws it on its own on the alert
-card in Decide, as "what this node suggests"; that card is what a node on `ALERT_ENGINE=rules` shows. A rule without one gets a line saying so, and the
-page does not invent advice.
+The third paragraph is the rule author's recommendation. Since v0.72 the classic dashboard also draws it on its own
+on the alert card in Decide, as "what this node suggests", when it opens with 👉; that card is what a node on
+`ALERT_ENGINE=rules` shows. The coast, trust, insight, thingdata and open-data-health rules still open it so; the air
+and heat rules dropped the 👉 on 14 Oct, so their cards get the line saying there is none, and the page does not
+invent advice.
 
 An act alert says what to do and asks for nothing back: since v0.39 no id is appended, because a number a
 household is expected to quote back was a chore. The API's test alert (`POST /test-alert`) is the exception. It
@@ -94,13 +97,16 @@ returned. A rule may not print a number its SQL did not compute.
 ## Languages
 
 `ALERT_LOCALE` is `en`, `id` or `es`. Since v0.63 every rule with a message carries all three, the two core rules
-and all 33 messaged rules in the packs that ship (seven of them the event engine's). The report, the test alert and the Telegram bot's own replies follow the same
+and all 36 messaged rules in the packs that ship (seven of them the event engine's). The report, the test alert and the Telegram bot's own replies follow the same
 setting; the bot's few fixed lines fall back to English for `id`. A language a template lacks falls back to
 English. The presets set `id` for Bali, `es` for Menorca, Barcelona and Santiago, and `en` for Boston and Delhi.
 
 ## Where alerts go
 
-`notify(level, text)` sends to Telegram every alert that reaches it, prefixed with the level's icon (ℹ️ ⚠️ 🔴).
+`notify(level, text)` sends to Telegram every alert that reaches it, prefixed with the level's icon (ℹ️ ⚠️ 🔴)
+unless the text opens with its own sign. An `act` heat or air alert that weighs on someone ticked under Who is in the
+house ends, in Telegram only, with one line such as "This matters more here: you said there is a child under five."
+(`learn.alert_line`, in `ALERT_LOCALE`); it never goes to the mesh, Reticulum, Home Assistant or the stored text.
 An `act` alert also goes to the LoRa mesh (first line only; a LoRa frame is about 200 bytes) and to the Reticulum
 bridge for LXMF delivery. Home Assistant is a separate call, `ha_alert()`, made for every alert whether it was
 sent or not; it becomes the state of one text entity. The set-up of each is on [Channels](channels.md).
@@ -196,7 +202,7 @@ bot have none.
 | way in | without a note |
 |---|---|
 | the dashboard's *I did this* and Decide forms | will not post; needs `ACT_TOKEN` or `ADMIN_TOKEN` from Set up |
-| Telegram `/act <id> <words>` | `/act 23` alone is answered with "What did you do about #23?" and nothing is written |
+| Telegram `/act <id> <words>` | `/act 23` alone is answered with "What did you do about it?" and nothing is written |
 | the MCP `act` tool | refuses an empty note and placeholders such as `acted`, `done` or `ok` |
 | `planetai act <id> [note]` | records the note `acted` |
 | `act <id>` over LXMF | records the note `acted (via reticulum)` |
@@ -230,8 +236,8 @@ and `GET /actions?events=1` lists the answers given to events with their `event_
 no `alert_id` is left out. `planetai status` shows the last three alerts and ρ. On the dashboard, Decide draws each
 open event once, with its action and Done, Not now and Doesn't fit, and each open alert on a node still on the old
 engine; *What was asked, and what was answered* is the record of what was sent and answered, and *What was decided,
-and by whom* is the ledger of answers. The report's fourth part says what
-happened after the window's act alerts.
+and by whom* is the ledger of answers. The report's second part says, per room,
+where the window's act alerts stand now.
 
 ## Where this leads
 

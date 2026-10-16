@@ -1,5 +1,5 @@
 # Sensors and sources
-<!-- checked: v0.81.0 -->
+<!-- checked: v0.82.0 -->
 
 This page gives the node its senses. The repo's own sentence for what a node does is that it "connects
 everything that measures where you stand, from a particle sensor on the wall to a satellite overhead, into one
@@ -78,7 +78,7 @@ node down.
 ## What ships
 
 The poll loop asks `sources.enabled()` which adapters to run: the core ones below, then every code pack's
-adapter. Code packs run only with `PACKS_ALLOW_CODE=1`, which ships as `0`. In v0.81:
+adapter. Code packs run only with `PACKS_ALLOW_CODE=1`, which ships as `0`. In v0.82:
 
 | source | enabled by | `kind` | `local` | what it reads |
 |---|---|---|---|---|
@@ -92,21 +92,21 @@ adapter. Code packs run only with `PACKS_ALLOW_CODE=1`, which ships as `0`. In v
 | **Xiaomi purifiers** (`xiaomi-air` wild pack, listed at [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs), core v0.61 to v0.76) | `planetai packs add xiaomi-air`, then `XIAOMI_PURIFIERS=Living Room@192.168.4.98=<token>,…` and `planetai packs install` (installs python-miio) | `sensor` | yes (no coordinates, so it stays local) | Mi Home purifiers read on the LAN over miio/MIoT, always `indoor`: `pm25`, `temp`, `humidity`, `filter_life`, and `pm10` where the model reports it. Ids are `xm-<mac6>`. Each unit's 32-hex token is extracted once with xiaomi-cloud-tokens-extractor; after that nothing talks to the Xiaomi cloud. The line that holds those tokens is listed by the pack under `secrets:`, so Set up shows it masked once saved. No EPA correction: the sensor is not a Plantower. |
 | **ThingData** (`thingdata` pack) | `THINGDATA_INSTANCES=slug=url,…` | `portal` | never | A repair-knowledge server's catalogue: things described, guides, stories, and whether anyone is still writing. Scale from `THINGDATA_SCALE` (`city`). |
 | **Fab labs** (`make` pack) | `MAKE_ENABLED=1` as well as `PACKS_ALLOW_CODE=1`; `MAKE_ENABLED` ships as `0` | `facility` | never | One row per active fab lab within `MAKE_RADIUS_KM` (50) from the Fab Lab Network directory, with no readings. `meta` holds the slug, capabilities, city, distance and the lab's URL, never an email or a telephone. The directory is not openly licensed; read [the report page](report.md#the-nearest-place-to-make-or-fix) before turning it on. |
-| **Other code packs** | the pack's own settings | as declared | as declared | `coast` (Open-Meteo Marine), `forecast` (BMKG, Open-Meteo), `earth` (AlphaEarth embeddings), `earth-engine` (Dynamic World, Sentinel-2, VIIRS), `place` (OpenStreetMap into PostGIS). See [Packs that ship](packs-reference.md). |
+| **Other code packs** | the pack's own settings | as declared | as declared | `coast` (Open-Meteo Marine), `forecast` (BMKG, Open-Meteo), `earth` (AlphaEarth embeddings), `earth-engine` (Dynamic World, Sentinel-2, VIIRS), `place` (OpenStreetMap into PostGIS), `fire` (NASA FIRMS, also `FIRE_ENABLED=1`), `surface-heat` (Landsat and MODIS through Planetary Computer). See [Packs that ship](packs-reference.md). |
 
-> **Gap in v0.81.0.** Two LAN adapters are written and tested but not registered for polling. **AirGradient**
+> **Gap in v0.82.0.** Two LAN adapters are written and tested but not registered for polling. **AirGradient**
 > (`AIRGRADIENT_HOSTS`, read on the LAN, EPA 2021 correction applied with raw kept as `pm25_raw`) and
 > **PurpleAir** (`PURPLEAIR_HOSTS`, `/json`, two Plantower channels averaged and corrected) have functions in
 > `app/sources.py` and rows in `config/channels.yml`, and `sources.enabled()` never calls them. The AirGradient
 > hosts you set are used only to keep those units out of the Bali Air Dispatch ring. `SENSOR_INDOOR` appears under
 > Set up → Sources and nothing reads it. The changelog records both adapters as shipped, so read this as a
 > regression to be fixed rather than a decision. Today the one indoor PM2.5 source on the LAN that is polled is
-> the `xiaomi-air` wild pack.
+> the `xiaomi-air` wild pack. `planetai setup` offers only Smart Citizen until the `air-sensors` pack reads the other two.
 
 ## What else this place could read
 
 The node carries a pinned copy of the network's registry, `awesome-fabcity-data` (269 entries at `851b8db`,
-synced 2026-10-12, in v0.81). `planetai sources` lists the entries for this node's pilot plus the global ones,
+synced 2026-10-12, in v0.82). `planetai sources` lists the entries for this node's pilot plus the global ones,
 with the adapter that reads each where one exists; `--all`, `--pillar`, `--scale` and `--cell
 'Environmental|City'` narrow or widen it. It answers from `data/sources` when the node is down. The same list is
 `GET /sources`. A row with no adapter is a source the network knows about and no code reads yet. [The source
@@ -164,7 +164,7 @@ reading of 3 next to the street's 15.
 Optical PM sensors over-read in humid air; Bali runs 45–70% RH. `epa_2021_correct(pm_raw, rh)` implements
 the US EPA 2021 Plantower correction: raw 28 at Bali humidity becomes about 15. Near-zero raw in dry air
 lifts to 1–2, a property of the regression with no health meaning. It is for Plantower lasers (PurpleAir,
-AirGradient, a DIY PMS5003), and not for Smart Citizen, Xiaomi, IQAir, AQICN or Airly. In v0.81 the only
+AirGradient, a DIY PMS5003), and not for Smart Citizen, Xiaomi, IQAir, AQICN or Airly. In v0.82 the only
 callers are the AirGradient and PurpleAir functions in the gap above, so no polled source applies it.
 
 ## Siting
@@ -179,7 +179,7 @@ prints it.
 | PM2.5 µg/m³ | scale | used for |
 |---|---|---|
 | 15 | WHO 2021, 24-hour | the "clean" line everywhere; the floor of `inside_worse_ventilate` |
-| 35.5 | US EPA / WHO interim target 1 | `indoor_pm25_high`, `outside_worse_keep_shut`, the "moderate" ceiling |
+| 35.5 | US EPA, unhealthy for sensitive groups | `indoor_pm25_high`, `outside_worse_keep_shut`, the "moderate" ceiling |
 | 55.5 | US EPA Unhealthy | `outdoor_pm25_high` |
 
 Spikes: 2.5× the day's mean, above 12 indoors or 15 outdoors, which says "something changed" before anything

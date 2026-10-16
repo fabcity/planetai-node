@@ -1,5 +1,5 @@
 # Ask the node
-<!-- checked: v0.81.0 -->
+<!-- checked: v0.82.0 -->
 
 The dashboard can be asked about what it shows. A pane opens beside the page and talks to the model Set up names
 for this node, the same one the Telegram bot uses, asked through the same tools. It reads the page and
@@ -11,7 +11,9 @@ still searches this documentation.
 
 ## Opening it
 
-1. Press **ask the node**, right of the modes in the header. On a phone the button is in the foot, and the pane
+1. Press **ask the node**, right of the modes in the header of the classic dashboard (`/?layout=classic`), whose pane
+   this page describes. The five doors, the default, have a smaller one on the same `POST /ask`: the speech-bubble
+   icon in the header, or **Ask the node** in the foot, opens a box with learn mode beside it. On a phone the button is in the foot, and the pane
    opens as a sheet from the bottom. Learn mode opens it by itself. The phone page (`/?layout=mobile`) has no
    pane; its **Full dashboard** link goes to the doors, which have one.
 2. The pane's header names the model and where it runs (`runs on this machine`, `runs on <host>, on your
@@ -28,7 +30,7 @@ and the ledger says so.
 
 `UI_ASK` under Set up turns the pane off for everybody: no toggle, no pane. It is `on` by default. The wall never
 shows it. The five doors read it too: with `UI_ASK` off their ask box is gone and the Wall's
-narration, which otherwise asks the same model every ten minutes, says asking is off and sends nothing.
+narration, which otherwise asks the same model every ten minutes, draws nothing and sends nothing.
 
 ## What it may do
 
@@ -44,7 +46,9 @@ full length, rather than handed half a list as though it were all of it. For a c
 (`reasoning_effort: none`): the thinking is what chooses the tool, and after the result it was a minute or more of
 hidden text for one sentence. A server that refuses the field is asked again without it, and not sent it again.
 
-`settings_get`, `report_bundle` and `export_day` are read tools the pane is not given. The pane can be open on a
+`settings_get`, `report_bundle` and `export_day` are read tools the pane is not given. `learned` is given only to a
+request carrying the admin or act token, or from this machine, and never to the Wall's narration: what the house
+learned stays with the house. The pane can be open on a
 wall at `SHARE_LEVEL=open`, and the person typing is not always the person who set the node up.
 
 A setting card says what the setting is now, what it would become, what leaves the house (the setting's own help
@@ -61,7 +65,9 @@ The node builds the model's context itself, from the `/issues` bundle the page a
 sentence, the digest, every watched issue's state and values, the open alerts, and the documentation for the part
 in focus. On a node whose alert engine is `shadow` or `events`, the open alerts leave out those of the
 heat and air packs the events replaced, which nobody can answer there; the pane's first question about the oldest open
-alert is then about one of the others, or asks whether anything needs attention. The browser sends only the end of the thread: the question and the three exchanges before it.
+alert is then about one of the others, or asks whether anything needs attention. The browser sends only the end of the thread: the question and the three exchanges before it. The Wall's narration
+(`prompt: wall`) is built from a context of its own, short facts anybody walking past may read, with no learnings,
+digests, things, alerts' words or who answered ([API](api.md#post-ask)).
 
 That context, and every tool result the model reads, has no coordinate, no sensor or station name, no sensor id
 and no `meta`. They are removed or replaced before the model sees them; `tests/test_ask.py` checks the context

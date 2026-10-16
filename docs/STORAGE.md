@@ -1,5 +1,5 @@
 # Where the data lives
-<!-- checked: v0.81.0 -->
+<!-- checked: v0.82.0 -->
 
 `planetai storage` shows all of this on one screen. `GET /storage`, for a token or this machine at every
 `SHARE_LEVEL`, gives the sizes as numbers: the database, `out/`, the backups (and what `BACKUP_KEEP` days of dumps
@@ -11,6 +11,7 @@ will take), the exports, the free space on the disk `out/` is on, and `days_left
 | backups | `BACKUP_DIR`, or pulled by a NAS | yes | an rclone remote |
 | daily exports (open data) | `exports/<node>/` | yes | IPFS, a parent node, the Index, anyone |
 | artifacts (images, briefs, the kept map in `out/ground/`) | `out/` | yes | whoever you send them to |
+| the household's pictures | `CAPTURES_DIR` (`./out/captures`); `planetai storage set captures <dir>` | yes, files not Postgres | nobody: no export, parent or dump carries them |
 
 ## The database stays on a local disk
 
@@ -67,7 +68,8 @@ planetai storage set remote r2:planetai/bayu-ungasan
 ```
 
 B2 or R2 cost cents a month for a node's lifetime of dumps. Drive works but is a person's account, not infrastructure.
-Dumps hold readings, sensors, alerts, alert events and actions. They do not hold the rows of the `settings` table (the dashboard's
+Dumps hold readings, sensors, alerts, alert events and actions, and the rows of what the house learned, the things it
+keeps and its pictures; the picture files stay in `CAPTURES_DIR`, which neither `backup.sh` nor the NAS script copies. They do not hold the rows of the `settings` table (the dashboard's
 values, a Telegram token saved from Set up): `backup.sh` excludes them so no token travels to a NAS or a remote. After
 a restore the node runs on `.env`; `planetai telegram` reconnects the bot if it was set from the dashboard. Alert texts
 name places and numbers, so treat every dump and every remote as private anyway. rclone's `crypt` backend encrypts if
@@ -76,7 +78,7 @@ you want that.
 ## The export
 
 `/export?day=YYYY-MM-DD`, written nightly to `exports/<node>/`. Hourly mean, min and max per sensor and metric; the
-Index cells; alerts (first line); ρ. Your sensors are named by role (`indoor-1`, `outdoor-2`), not device id.
+Index cells; alerts (first line); ρ; the household's offers (class, name, condition and count at the cell). Your sensors are named by role (`indoor-1`, `outdoor-2`), not device id.
 The position is the centre of the node's resolution-8 cell, not its point (since v0.73; earlier exports carry three decimals). No raw rows, no tokens, no chat ids. CC BY 4.0, stated in the file.
 
 This is what a parent node, the Index, a researcher or the commons should receive. The node keeps the raw and gives

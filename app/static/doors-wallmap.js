@@ -109,7 +109,8 @@ async function wallMap(o) {
     const hDy = discs.some(t => hit(t, hBox(HOUSE + wf * .75))) && !discs.some(t => hit(t, hBox(-HOUSE - wf * .75))) ? -HOUSE - wf * .75 : HOUSE + wf * .75;
     const taken = [[hp[0] - HOUSE, hp[1] - HOUSE, hp[0] + HOUSE, hp[1] + HOUSE], hBox(hDy), ...discs];
     const ck = o.el.querySelector('.wclock'), m = map.getContainer().getBoundingClientRect();      /* the clock's words, drawn over the map */
-    if (ck && ck.offsetHeight) { const a = ck.getBoundingClientRect(); taken.push([a.left - m.left, a.top - m.top, a.right - m.left, a.bottom - m.top]); }
+    /* each line of it, not the box: a line wider than .wclock overflows it, and its box would miss the words */
+    if (ck && ck.offsetHeight) for (const c of ck.children) { const a = c.getBoundingClientRect(); taken.push([a.left - m.left - 4, a.top - m.top, a.right - m.left + 4, a.bottom - m.top]); }
     const named = [...pts].sort((a, b) => b.v - a.v).filter(d => {
       const x0 = d.q[0] + ST + GAP, box = [x0, d.q[1] - wf / 2, x0 + textW(fmt(d.v, 0)), d.q[1] + wf / 2];
       if (taken.some(t => hit(t, box))) return false; taken.push(box); return true;

@@ -1,5 +1,5 @@
 # The source registry
-<!-- checked: v0.81.0 -->
+<!-- checked: v0.82.0 -->
 
 A node measures what its adapters read. The registry is the network's shared list of what could be measured
 at each pillar and scale, and of the places a person could go to act on it, carried inside every node as a
@@ -145,7 +145,7 @@ The same text is in `data/sources/data/environmental/community/bali-air-dispatch
 in the pin answers 404 and names the pin.
 
 **4. See it on the Network view.** Open the dashboard's Network view. The section headed **What this place
-could read, and where it could go** has three rows, with `GET /sources` beside its title. *Registered, and
+could read, and where it could go** has three rows, with `GET /sources` beside its title.
 *Registered, and read* shows `pin 851b8db · synced 2026-10-12`, and the pin is a link to the registry on GitHub at that
 commit. It says "269 sources registered; 16 have code on this node that reads them", naming the twelve
 adapter strings (`core:airgradient` to `pack:place`), then "The rest have no adapter yet, which is a thing
@@ -158,7 +158,7 @@ A line under the rows links to `GET /sources?status=live`, `GET /sources?status=
 [Adding a source](#adding-a-source). The fold under it lists all sixteen with each licence as the registry
 wrote it. The page fetches `/sources` the first time somebody opens Network, and never before.
 
-> **Gap in v0.81.0.** The registry counts `core:airgradient` among the sources that are read, and the
+> **Gap in v0.82.0.** The registry counts `core:airgradient` among the sources that are read, and the
 > AirGradient function exists in `app/sources.py`, but the poll loop never calls it. The registry records
 > that the code exists, not that a node runs it.
 
@@ -202,7 +202,7 @@ neither does this page: that is a judgement about somebody else's terms.
 - **`planetai doctor`.** One row: `source registry: 269 entries · awesome-fabcity-data @ 851b8db · synced
   2026-10-12`. It goes amber when the pin is over 180 days old and red when `data/sources/` is missing.
 - **Packs.** Every id in a pack's `sources:` must resolve to an entry at the pin, or `make lint` fails and
-  names the id. At v0.81, 13 pack source ids resolve. The `fire` pack, after v0.81, adds `environmental/bioregion/nasa-firms`: still a
+  names the id. At v0.82, 14 pack source ids resolve. The `fire` pack's is `environmental/bioregion/nasa-firms`: still a
   `candidate` at the pin, filed as needing a key, which only its API does.
 
 ## The endpoints
@@ -253,7 +253,7 @@ repository.
 > `registry.json` at the repository root is the node directory, described on [Federation](federation.md); the node
 > reads it from `main` every 6 hours and serves it at `GET /nodes`.
 
-> **Gap in v0.81.0.** Comments in `app/registry.py`, `app/main.py` and `bin/planetai` still say the registry
+> **Gap in v0.82.0.** Comments in `app/registry.py`, `app/main.py` and `bin/planetai` still say the registry
 > holds 209 entries, and a docstring in `app/registry.py` says sixteen of 225 entries count nowhere. The pin
 > carries 269, and sixteen is right.
 

@@ -1,5 +1,5 @@
 # Bring your own agent
-<!-- checked: v0.81.0 -->
+<!-- checked: v0.82.0 -->
 
 An agent is a guest on the machine, never a part of it. It can read everything the node knows and help the
 person in front of it operate the node; it drafts, and a person dispatches. The architecture puts it in one
@@ -54,7 +54,7 @@ Paste this to your agent and nothing else:
    `{"recorded": true, "alert_id": 361, "by": "tomas-claude"}`. Asked to record an act with no words, or with
    `acted`, `done` or `ok`, the tool refuses and tells the agent to ask you what you did. On a node set to
    `DECISION_REQUIRED=1` it is refused with 409 until somebody records a decision on the dashboard.
-6. **Find the row.** On the dashboard, Act → "What was decided, and by whom" now shows `tomas-claude` with
+6. **Find the row.** On the dashboard, Data › Ledger (Act → "What was decided, and by whom" on `?layout=classic`) now shows `tomas-claude` with
    `acted` at the top. The `alerts` tool shows the alert's `acted_at` filled in. The row is in `actions`,
    written because a person said it happened, and it counts in ρ.
 
@@ -80,15 +80,15 @@ four end the same way: when a document and the skill disagree, the document wins
 
 ## What each tool is allowed to be
 
-Every one of the twenty MCP tools has a class in `app/tool_classes.py`, and `planetai agent` prints them:
+Every one of the twenty-one MCP tools has a class in `app/tool_classes.py`, and `planetai agent` prints them:
 
 | class | what it may do | tools |
 |---|---|---|
-| `read` | ask the node a question; nothing changes | `status`, `health_check`, `sensors`, `context`, `readings`, `report_latest`, `report_bundle`, `history`, `alerts`, `settings_get`, `packs`, `cells`, `issues`, `series`, `export_day` |
+| `read` | ask the node a question; nothing changes | `status`, `health_check`, `sensors`, `context`, `readings`, `report_latest`, `report_bundle`, `history`, `alerts`, `settings_get`, `packs`, `cells`, `issues`, `series`, `export_day`, `learned` |
 | `act` | record that a person did something, in their own words | `act` |
 | `admin` | change the node, run code on it, or make it speak to the household unprompted | `settings_set`, `run_pack_script`, `maintenance`, `report_now` |
 
-A person driving an agent over the tailnet gets all twenty, because somebody is reading what it proposes. The
+A person driving an agent over the tailnet gets all twenty-one, because somebody is reading what it proposes. The
 model running unattended on the node gets `read` and `act` only.
 
 `run_pack_script` runs every script of a core pack, but a wild pack's script only when that pack's `pack.yaml` lists it

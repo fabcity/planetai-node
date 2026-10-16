@@ -1,5 +1,5 @@
 # Sharing and security
-<!-- checked: v0.81.0 -->
+<!-- checked: v0.82.0 -->
 
 This page is the node's boundary: what a reader on the network may see without a token, which token
 opens what, what leaves the machine and how coarse it is when it does, and whose code the node will
@@ -19,8 +19,8 @@ Two rungs in this version; `cell` and `means` are named in the help and refused 
 
 | level | a request with no token, from another machine, may read |
 |---|---|
-| `off` (default) | 8 paths and the static files: `/` and `/ui` (the dashboard shell), `/health` with the centre of the node's resolution-8 cell, `/llms.txt`, `/settings` reduced to the layout and the sharing level, the daily CC BY 4.0 `/export`, `/presence`, `/nodes` (the programme's public list of nodes), and anything under `/static/`. Everything else is refused with a sentence naming the setting. |
-| `open` | 36 paths and 5 prefixes: the `off` list, and `/sensors` and `/stats` (the household's own sensors at their cell's centre, the rest to three decimals, metadata cut to the provenance keys), `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/trust`, `/nearby`, `/forecast`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, the ask pane's `/ask`, `/ask/status` and `/docs/search`, `/geo/cell` without the fields that place a cell relative to the node (`is_node`, `cells_from_node`, `ring_polar`, `children_polar`), and anything under `/exports/`, `/issues`, `/sources/` and `/ground/`. What a wall screen or a phone with no token needs. |
+| `off` (default) | 9 paths and the static files: `/` and `/ui` (the dashboard shell), `/health` with the centre of the node's resolution-8 cell, `/llms.txt`, `/settings` reduced to the layout and the sharing level, the daily CC BY 4.0 `/export`, `/presence`, `/nodes` (the programme's public list of nodes), `/offers` (what the household chose to lend or give), and anything under `/static/`. Everything else is refused with a sentence naming the setting. |
+| `open` | 37 paths and 5 prefixes: the `off` list, and `/sensors` and `/stats` (the household's own sensors at the point `/health` publishes, the rest to three decimals, metadata cut to the provenance keys), `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/trust`, `/nearby`, `/forecast`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, the ask pane's `/ask`, `/ask/status` and `/docs/search`, `/geo/cell` without the fields that place a cell relative to the node (`is_node`, `cells_from_node`, `ring_polar`, `children_polar`), and anything under `/exports/`, `/issues`, `/sources/` and `/ground/`. What a wall screen or a phone with no token needs. |
 
 A refused request gets 403 and one of two sentences. For a path that `open` would answer:
 
@@ -53,7 +53,7 @@ To see the boundary move:
 `/sources` is on the `open` list on purpose: it is a copy of a public registry of public datasets, the
 same entries on every node in a release, and it says nothing about this house.
 
-> **Note.** `/issues` at `open` carries the alert events: the message the node sent, the rooms, and who answered last and when. It never carries what they wrote; that note is in `GET /actions`, behind a token.
+> **Note.** `/issues` at `open` carries the alert events: their rooms (under the neutral names below), and the stage and time of the last answer. It never carries the text of the message the node sent, who answered or what they wrote; those are behind a token.
 
 > **Note.** `/shape` at `open` is the house's usual day: one mean per local hour, indoor against outdoor,
 > over the whole record. It is what the page draws, and it is also a pattern of when the kitchen is in
@@ -78,6 +78,8 @@ the names of their day, are left out of `/alerts` and `/issues` instead. A token
 list. So is every write, and the whole of `/mcp` checks the admin token itself. Two writes pass the
 sharing check because their path is on a list for reading, and their handler refuses them instead:
 `POST /readings` at `open`, and `PUT /settings` at every level. Without the admin token, both are refused.
+`POST /aggregates` and `POST /events`, what a child sends its parent, pass at every level by path and check
+`AGGREGATE_TOKEN` themselves.
 
 A request from the machine itself (loopback: `127.0.0.1` inside the container, which is the node's own MCP
 tools and a shell in the container) is trusted without a token. A browser on the host is not loopback: it
@@ -93,10 +95,10 @@ passes the middleware cannot read a picture. The row keeps the exact point — a
 it — and only the file is cleaned of EXIF and GPS. No capture is in `/export`, `/exports`, `/aggregates`,
 `/readings` or any parent push; `tests/test_captures.py` greps those roads for the table's name.
 
-> **Careful.** `GET /actions` has no token check of its own. Any of the node's four tokens opens it, and
-> so does `/place/geojson`: the admin token, the backup token on the NAS, the act token on a phone, and
-> `AGGREGATE_TOKEN`, which every child node holds as its `PARENT_TOKEN`. Give a child's operator that
-> token knowing it reads this node's notes and the plan of its building.
+> **Careful.** `GET /actions` has no token check of its own. Any of the node's three household tokens opens it,
+> and so does `/place/geojson`: the admin token, the backup token on the NAS and the act token on a phone. Give
+> each knowing it reads the household's notes and the plan of its building. `AGGREGATE_TOKEN`, which every child
+> node holds as its `PARENT_TOKEN`, opens neither.
 
 ## The tokens
 
@@ -132,6 +134,8 @@ Set up never travels to a NAS or a remote. The node never logs the Telegram URL,
 | a presence announce | the Reticulum network, every half hour, only with `RETICULUM_PRESENCE=1` | the H3 cell rounded up to `RETICULUM_PRESENCE_RES` (3), with a floor of resolution 6 no setting can go under |
 | the node's coordinates | Open-Meteo, for weather and the CAMS air model, with `OPENMETEO_ENABLED=1` | rounded to three decimals by the two core adapters |
 | a request for the fab lab directory | gitlab.fabcloud.org (`MAKE_SOURCE=archive`) or api.fablabs.io (`live`), only with `MAKE_ENABLED=1` and `PACKS_ALLOW_CODE=1` | no coordinates: the whole directory comes down and the distances are worked out on the node |
+| fires nearby | firms.modaps.eosdis.nasa.gov, at most every three hours, only with `FIRE_ENABLED=1` and `PACKS_ALLOW_CODE=1` | the name of a regional file, nothing about the house; with `FIRMS_MAP_KEY`, a box `FIRE_REGION_KM` (150) round the node, to three decimals |
+| the ground's heat | planetarycomputer.microsoft.com, anonymously, once a day, with the `surface-heat` pack on and `PACKS_ALLOW_CODE=1` | the node's own point, unrounded, in each scene search |
 | a request for the current version | planetai.fab.city, once a day, with `UPDATE_CHECK=on` (the default) | nothing about the house: a plain request for one file. Fab City's host sees this house's internet address and that a PLANETAI node lives there. `off` = the node never asks |
 | a species name | api.gbif.org, when a plant or animal in an image is given a scientific name, with `SPECIES_MATCH=on` (off by default) | the scientific name and nothing else: never the picture, never where it was taken. GBIF's server sees this house's internet address and the names asked. `off` = the node never asks, and the name stays as typed |
 | the country's list of introduced and invasive species | api.gbif.org and the checklist's archive host, weekly, with `SPECIES_MATCH=on` | which country's GRIIS checklist to read (the country comes from `NODE_TZ`), and nothing else. `off` = the node never asks |
@@ -156,9 +160,9 @@ surface instead, which rounds, refuses and audits. See [Ask the node](ask.md).
 respectively open-only, open-only and token-only; read [the API](api.md) before putting `SHARE_LEVEL=open`
 on a network you do not trust.
 
-> **Gap in v0.81.0.** The `coast` and `forecast` packs send the node's full-precision coordinates to
-> Open-Meteo; only the two core adapters in `app/sources.py` round them. The bootstrap does not call
-> Open-Meteo at all (it uses CAMS history, NASA POWER, and OSM Nominatim only).
+> **Gap in v0.82.0.** The `coast` and `forecast` packs, and the first start's 92 days of CAMS history, send the
+> node's full-precision coordinates to Open-Meteo; only the two core adapters in `app/sources.py` round them. The
+> first start also sends them to NASA POWER and OSM Nominatim.
 
 ## Signed updates
 

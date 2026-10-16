@@ -1,5 +1,5 @@
 # Wall mode
-<!-- checked: v0.81.0 -->
+<!-- checked: v0.82.0 -->
 
 A screen on a wall that nobody is standing at. With the wall, the node is read by people walking past: a
 household sees one number, one sentence and whether the loop closed, and a lab sees which cells around it
@@ -12,8 +12,10 @@ http://<node>:8080/?layout=classic#wall
 
 This page describes the classic dashboard's wall. The doors' **Wall** (`/#wall`, the default) is described in
 [the dashboard](dashboard.md#the-five-doors): it is read from three metres, so nothing on it is smaller than 28 px at
-1920×1080 and its controls show only under a pointer or the keyboard; it names no sensor, room, kit or person, and
-says the readings are old only when the node's last poll is more than 15 minutes old.
+1920×1080 and its controls show only under a pointer or the keyboard (always, as 44 px targets, on a touch screen);
+it names no sensor, room, kit or person, and says the readings are old only when the node's last poll is more than 15
+minutes old. At `SHARE_LEVEL=off` with no token it draws one line, "This screen needs sharing turned on.", never a
+token form.
 
 `planetai ui` prints "On a wall screen: add #wall — the dark register, moves its own ladder;
 needs SHARE_LEVEL=open". The node opens the five doors by default, so `#wall` alone opens the doors' Wall (see the
@@ -47,7 +49,7 @@ It is laid out to fill one viewport (`min-height: 100vh`), so nothing a passer-b
 
 The bar answers the questions asked before any reading is read. From the left: a **back** button, drawn first
 so it is first in keyboard order; up to four variable chips; the node's name, its city, `#wall`, a share
-level (always `off` in v0.81, because `/health` carries no share level) and how often the ladder moves
+level (always `off` in v0.82, because `/health` carries no share level) and how often the ladder moves
 ("the ladder moves every 8 s", or "the ladder stands still" under reduced motion); and at the right what the numbers are: the variable, its unit, and `15-min means`.
 
 The chips offer only metrics at least one station on this node carries. The one being shown is always first,
@@ -89,7 +91,7 @@ the exact counts.
 ## The foot
 
 The as-of time, the version stamp, the word `stale` in bold ink, and the motion caption. The bold word is a
-fixed label in v0.81. The as-of time beside it does judge: when the page's last poll got no answer it reads
+fixed label in v0.82. The as-of time beside it does judge: when the page's last poll got no answer it reads
 "Read at … · the node has not answered for N min".
 
 If the wall throws while it draws, the screen says "The wall did not render:" and the reason, rather than

@@ -1,5 +1,5 @@
 # MCP server and tools
-<!-- checked: v0.81.0 -->
+<!-- checked: v0.82.0 -->
 
 This is the surface an agent holds. With it, any client that speaks MCP can read what the node read, ask it
 how the place is doing in the household's own words, and record, in a person's own words, that somebody
@@ -10,7 +10,7 @@ reading off the machine.
 
 `app/agent.py` mounts it on the API at exactly `/mcp`, streamable HTTP, twenty-one tools over the existing
 endpoints. The tools call the node's own API back on `127.0.0.1`, so they arrive as loopback; `report_now`,
-`settings_set` and `report_bundle` also carry the admin token. The same tools serve Claude Desktop or Claude
+`settings_set`, `report_bundle` and `learned` also carry the admin token. The same tools serve Claude Desktop or Claude
 Code on a laptop across the tailnet, the household's own model on Telegram, the dashboard's ask pane, and any
 other MCP client.
 
@@ -61,7 +61,7 @@ Every tool has one class, in `app/tool_classes.py`:
 | `act` | records that a person did something, in their own words | `act` |
 | `admin` | changes the node, runs code on it, or makes it speak to the household unprompted | `settings_set`, `run_pack_script`, `maintenance`, `report_now` |
 
-A remote agent, driven by a person, has all twenty. The household's own model on the node is handed the 16
+A remote agent, driven by a person, has all twenty-one. The household's own model on the node is handed the 17
 `read` and `act` tools and nothing else (`app/agent_loop.py`); see [The bot](bot.md). The dashboard's
 [ask pane](ask.md) calls in as `dashboard-chat` and runs 12 of the `read` tools, never `settings_get`,
 `report_bundle` or `export_day`, nor `learned` unless the page carries the household's admin or act token (never on the Wall); `act` and the `admin` tools become cards a person presses, and the pane runs none of them. Four tools write:
@@ -79,7 +79,7 @@ Start with `health_check`, then `status`.
 | `issues` | `issue?` | the whole `/issues` object (the issues, `headline` and `headline_rule`, `labels`, `stations` and `stations_silent`, `metrics`, the `asks` ledger, `lead`, the `digest` with its four sentences, `simple` and `prompts`, `geometry`, the packs' `sections`, the alert `events`, each saying with `asking` whether it still asks), or one issue with `as_of` and `labels`: state, the four distances with provenance, the sentence, the open asks |
 | `sensors` | none | one row per sensor from `/stats`: local, indoor, kind, the 15-minute mean per metric, minutes silent; local first |
 | `context` | none | sea, weather, satellite air, place and land from `/observations`, labelled; or a note that the first poll fills this |
-| `readings` | `sensor_id`, `metric`, `hours=24` (≤168) | meant to return hourly means oldest first. In v0.81 it returns its error for every sensor, because it looks the sensor up at the top level of `/sparks`, whose means sit under `series` |
+| `readings` | `sensor_id`, `metric`, `hours=24` (≤168) | meant to return hourly means oldest first. In v0.82 it returns its error for every sensor, because it looks the sensor up at the top level of `/sparks`, whose means sit under `series` |
 | `history` | `sensor_id`, `metric` | every `{ts, value}` oldest first, for slow series such as `place-point / sat_buildings_yearly` |
 | `series` | `metric="pm25"`, `hours=24` (≤168) | aligned hourly arrays: indoor, outdoor, model |
 | `alerts` | `limit=10` (≤100), `since_hours=0` | the most recent alerts: `id`, `ts`, `rule_id`, `sensor_id`, `level`, `text` and `acted_at`. With `since_hours`, `{since_hours, count, alerts}`: `count` is every alert in the window, `alerts` the newest `limit` with their text cut to 160 characters |

@@ -1,5 +1,5 @@
 # Design
-<!-- checked: v0.81.0 -->
+<!-- checked: v0.82.0 -->
 
 What a PLANETAI surface is made of, and why each part is the way it is. This page is the programme layer
 written out: the colours and what each one means, the type, the four card kinds, the signs, every motion with
@@ -33,8 +33,9 @@ and redefine no `--fc-` token.
 Paper by day, dark on a wall and by a reader's switch. `--ground` is `#F9F5F2` on paper and `#171717` in the
 dark register; `--ink` is the reverse. Everything drawn is ink on ground (buildings, roads, labels,
 provenance), and the register is one attribute on `<html>`, `data-theme="dark"`, so a page carries both and
-no drawing is exported twice. The Paper / Dark switch sits in the dashboard's header and the choice is kept
-per browser; the wall is always dark.
+no drawing is exported twice. The Paper / Dark switch sits in the header of the classic dashboard and of the doors,
+and in the phone page's foot, and the choice is kept per browser (`planetai_theme` on the doors and the phone, which
+with nothing kept follow the system's setting); the wall is always dark.
 
 Corners are square, and the page draws no gauges, no dials with needles and no rounded verdict: a reading is a
 number with its comparison beside it.
@@ -192,8 +193,9 @@ The layer is not only what a surface may draw. It is also what it may not.
 - No layer requires a cloud provider to function.
 - No scale is skipped: a city aggregator is built from nodes, not declared from above.
 
-On the dashboard these five are the care label, "What this node will not do, at any stage", drawn as signs
-inside the Measure stage's "Whether it worked", beside the funnel, where the loop closes.
+On the classic dashboard these five are the care label, "What this node will not do, at any stage", drawn as signs
+inside the Measure stage's "Whether it worked", beside the funnel, where the loop closes. On the doors they close
+the Node door under the same title, each in plain words beside a link to where it can be checked.
 
 The longer form, with the staging from one node to a bioregion, is [Architecture](architecture.md); the
 privacy half (what leaves the machine and how coarse) is [Sharing and security](sharing.md).

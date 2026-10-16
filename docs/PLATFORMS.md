@@ -1,5 +1,5 @@
 # Platforms
-<!-- checked: v0.81.0 -->
+<!-- checked: v0.82.0 -->
 
 **Linux first, macOS second, Windows third.** Not a preference — a consequence. A node's home is a box
 that stays on, and a laptop under macOS is designed to go to sleep. More to the point: on macOS the floor
@@ -218,6 +218,6 @@ planetai preflight                                    # on a node
 planetai preflight --json                             # to paste into an issue
 ```
 
-It prints one table: OS, architecture, memory, free disk, whether the disk can be written to, container
-runtime, python3, egress and ports. Every failing row
+It prints one table: OS, architecture, memory, free disk, container runtime, whether the disk can be written
+to, python3, egress and ports. Every failing row
 carries the one command that fixes it *on that machine*, and it never asks a question.

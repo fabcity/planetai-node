@@ -1259,6 +1259,15 @@ def _unhoused(body: bytes, path: str) -> bytes:
     return text.encode()
 
 
+def _unlabelled(text: str) -> str:
+    """A sentence with the house's labels swapped, for a file that travels whoever asked for it (/export is CC BY,
+    and `planetai ipfs` pins it). ponytail: only today's labels match, as in _unhoused; a name dropped before a
+    rename stays in that day's old sentences."""
+    for label, alias in _house_labels():
+        text = text.replace(label, alias)
+    return text
+
+
 @app.middleware("http")
 async def _share_level(request, call_next):
     """SHARE_LEVEL decides what a request with no token may read. The levels are in settings.RUNTIME["SHARE_LEVEL"];
@@ -2016,7 +2025,7 @@ def export(day: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$")):
             "lat": _pos["lat"], "lon": _pos["lon"],
             "day": day, "generated": datetime.now(timezone.utc).isoformat(), "version": os.getenv("NODE_VERSION", ""),
             "licence": "CC BY 4.0", "hourly": rows,
-            "alerts": [{"t": a["ts"], "rule": a["rule_id"], "level": a["level"], "text": a["text"].split("\n")[0]} for a in alerts_],
+            "alerts": [{"t": a["ts"], "rule": a["rule_id"], "level": a["level"], "text": _unlabelled(a["text"].split("\n")[0])} for a in alerts_],
             "cells": cells_, "rho": rho_, "offers": offers_now()["offers"]}
 
 
