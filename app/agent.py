@@ -63,7 +63,7 @@ def status() -> dict:
 @mcp.tool()
 def health_check() -> dict:
     """Checks with the fix named next to each failure: polling recent, sources without errors, a backup in the last two days,
-    the database reachable, the mesh alive if configured. `sources` is GET /health/sources: the fundamental sources, each
+    no local sensor's channel frozen, the LoRa radios heard if configured. `sources` is GET /health/sources: the fundamental sources, each
     running or not, with its fix; they never make `ok` false."""
     h = _get("/health"); checks = []
     # `fix` is the admin's (Node › Running, MCP). `who` is the display names a failing check is about, so the morning
@@ -281,8 +281,8 @@ def issues(issue: str | None = None) -> dict:
     changed today · quiet = nothing to say · context = it informs and never asks · none = not
     watched or no source) and why; the same quantity at four distances (room, yard, ring, region)
     with a source and a provenance word for each; the line it is judged against and where that line
-    comes from; the open alerts, and whether each is still true; and one sentence in English, Bahasa
-    and Spanish.
+    comes from; the open alerts, and whether each is still true; `asking`, what is asked of the
+    household now; and one sentence in English, Bahasa and Spanish.
 
     `headline` is the issue to lead with: the highest state present, ties going to the keeper's
     order. Prefer this tool over `stats` or `readings` for any question about how the place is
@@ -307,7 +307,8 @@ def series(metric: str = "pm25", hours: int = 24) -> dict:
 
 @mcp.tool()
 def export_day(day: str | None = None) -> dict:
-    """One day as open data: hourly means per sensor, cells, alerts, rho. Default yesterday. What a parent node or a researcher receives."""
+    """One day as open data: hourly means per sensor, cells, alerts, rho, and what the household offers to lend or give.
+    Default yesterday. What a parent node or a researcher receives."""
     day = day or (date.today() - timedelta(days=1)).isoformat()
     return _get(f"/export?day={day}")
 

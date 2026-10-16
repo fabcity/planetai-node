@@ -21,7 +21,7 @@ Two middlewares run before any handler. The first registered checks `/mcp` again
 
 The `off` allowlist (the default) is exactly: `/`, `/ui`, `/health`, `/llms.txt`, `/settings`, `/export`, `/presence`, `/nodes`, `/offers`, and any path under `/static/`.
 
-The `open` allowlist is the `off` list plus 28 paths: `/stats`, `/sensors`, `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/trust`, `/nearby`, `/forecast`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, `/ask`, `/ask/status`, `/docs/search`, `/geo/cell`. It also takes any path under `/static/`, `/exports/`, `/issues`, `/sources/` or `/ground/`. That is 37 exact paths and 5 prefixes in all. `/ground/*` is public data (OpenStreetMap, OpenAerialMap, Sentinel-2, Open-Meteo) cut around the node; `/geo/cell` answers an untrusted caller without its node-relative fields.
+The `open` allowlist is the `off` list plus 29 paths: `/stats`, `/sensors`, `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/trust`, `/nearby`, `/forecast`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, `/ask`, `/ask/status`, `/docs/search`, `/geo/cell`, `/learned/place`. It also takes any path under `/static/`, `/exports/`, `/issues`, `/sources/` or `/ground/`. That is 38 exact paths and 5 prefixes in all. `/ground/*` is public data (OpenStreetMap, OpenAerialMap, Sentinel-2, Open-Meteo) cut around the node; `/geo/cell` answers an untrusted caller without its node-relative fields.
 
 A `SHARE_LEVEL` value that is neither `off` nor `open` is treated as `off`. The allowlist matches the path whatever the method, so it governs writes as well as reads. `POST /readings` shares its path with `GET /readings`, so at `SHARE_LEVEL=open` an anonymous post gets past the middleware and is refused by the handler with 401. `PUT /settings` shares its path with `GET /settings`, which is on the `off` list, so the same happens at every level. `/actions` is on neither list, so an anonymous `POST /actions` or `GET /actions` is refused by the middleware at both levels. A path the node has no route for is refused with 403 too, not 404, when the caller is untrusted.
 
@@ -647,10 +647,11 @@ Access: admin
 Who is in the house, as the household said (SPEC_learn step 4): `{people, choices}`, where `people` is yes or no for `older` (someone over 65), `under5` (a child under five), `lungs` (someone with asthma or another lung condition), `pregnant` and `outdoor` (someone who works outdoors). `PUT` replaces the answers with `{"people": {...}}`: only those keys, only `true` or `false`, else 422; never a name, an age or a count. An agent may read it only while `AGENT_PREFER=private` and may never write it. It ranks what the node learned (`GET /learned` adds `for_whom` to each learning: who in this house it matters most to, heat for the old, the very young, pregnancy and outdoor work, fine particles for lungs, the very young, the old and pregnancy) and changes no threshold. An act-level heat or air alert that weighs on someone ticked here carries one more line in its Telegram message only ("This matters more here: you said there is a child under five.", in `ALERT_LOCALE`, with no sign of its own); the mesh, Reticulum, Home Assistant and the stored alert text never do.
 
 ### GET /learned/place
+Access: open
 
 What the node learned about the place around it, never about the house: `{learnings: [{key, issue, metric, statement,
 numbers, n, checked_at}]}`, the holding `usual` learnings of scope `place` (the outdoor sensors' usual hours, `by_hour`,
-`high_hour`, `low_hour`, `this_week` against `usual_week`). On the `open` list, so the Wall reads it without a token;
+`high_hour`, `low_hour`, `this_week` against `usual_week`). On the `open` list, so at `SHARE_LEVEL=open` the doors' Wall reads it without a token;
 the Wall's narration reads the same rows. The house's own learnings, what worked, the asks and the digests stay
 behind `GET /learned`.
 

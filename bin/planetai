@@ -448,7 +448,7 @@ print(next((k for k, (a, b, c, d) in boxes.items() if a < lat < b and c < lon < 
   choose sensor "   Pick one. You can add more later." \
     "None yet. Start with the global models and add hardware when I have it." \
     "Smart Citizen kit (I have the number from its smartcitizen.me URL)"
-  # AirGradient and PurpleAir come back when the air-sensors pack reads them (docs/SPEC_sensors.md step 3): until
+  # AirGradient and PurpleAir come back when the air-sensors pack reads them (the sensors spec, PR #262, step 3): until
   # then the node never read either, and an operator who picked one got no reading and no first alert.
   case "$sensor" in
     Smart*) ask sc "   Kit number" ""; [[ "$sc" =~ ^[0-9]+$ ]] || fail "a Smart Citizen kit number is digits only, e.g. 19880" ;;

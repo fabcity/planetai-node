@@ -2757,14 +2757,15 @@ This is one PLANETAI node. Every route below is relative to the address you reac
 
 - [GET /health](/health): alive or not, the version, the node's H3 cell (resolution 8), and the share level. Answers at every level.
 - [GET /issues](/issues): the node's own reading of its place, one document, every sentence written by the node.
-- [GET /export](/export): the daily open export, hourly means and the Index cells, CC BY 4.0.
+- [GET /export](/export): the daily open export, hourly means, the Index cells and the household's offers, CC BY 4.0.
+- [GET /offers](/offers): what this home would lend or give, as it chose to publish it. Answers at every level.
 - [GET /sources](/sources): the pinned source registry this node reads from.
 
 What answers without a token depends on SHARE_LEVEL, which the household sets. A 403 names the setting.
 
 ## Work with it
 
-- POST /mcp: the node's twenty tools over MCP (streamable HTTP). Needs `Authorization: Bearer <ADMIN_TOKEN>`,
+- POST /mcp: the node's twenty-one tools over MCP (streamable HTTP). Needs `Authorization: Bearer <ADMIN_TOKEN>`,
   which `planetai ui` prints on the machine itself. Every write an agent makes is recorded under its name, and
   `act` needs the person's own words: an agent may draft, a person acts.
 

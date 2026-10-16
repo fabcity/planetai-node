@@ -32,6 +32,16 @@ and the ledger says so.
 shows it. The five doors read it too: with `UI_ASK` off their ask box is gone and the Wall's
 narration, which otherwise asks the same model every ten minutes, draws nothing and sends nothing.
 
+## The doors' ask box
+
+The five doors' box asks the same `POST /ask`, with the door you are on as its `view`, and draws only the words of
+the answer as they arrive. It takes one question at a time, with no thread: nothing asked before is sent with it. It
+shows no ledger line, no list of reads and no cards, so a change the model reaches for is not drawn there; make it
+in Set up. Up to four questions are offered under the box, the ones the door's own parts carry in learn mode;
+pressing one puts it in the box, and **ASK** sends it. When the node does not answer, the box says "The node did
+not answer. Check this screen is on the home network, then try again." **Learn this page**, in the same box,
+numbers every part of the door you are on and says what each one is, which routes it reads and which pack drew it.
+
 ## What it may do
 
 | class | tools | in the pane |
@@ -66,7 +76,7 @@ sentence, the digest, every watched issue's state and values, the open alerts, a
 in focus. On a node whose alert engine is `shadow` or `events`, the open alerts leave out those of the
 heat and air packs the events replaced, which nobody can answer there; the pane's first question about the oldest open
 alert is then about one of the others, or asks whether anything needs attention. The browser sends only the end of the thread: the question and the three exchanges before it. The Wall's narration
-(`prompt: wall`) is built from a context of its own, short facts anybody walking past may read, with no learnings,
+(`prompt: wall`) is built from a context of its own, short facts anybody walking past may read: what is usual for the place, but none of the house's learnings, its
 digests, things, alerts' words or who answered ([API](api.md#post-ask)).
 
 That context, and every tool result the model reads, has no coordinate, no sensor or station name, no sensor id

@@ -72,7 +72,7 @@ assert set(S.CHOICES["AGENT_PREFER"]) == {"private", "fallback", "strongest"}, "
 # The model is a client of this node, not a component of it.
 #
 # Stage 1's trigger has not fired, the 9 September benchmark memo retired "local AI over your own data"
-# as a claim, and the agent surface is twenty tools including settings_set and run_pack_script. What the
+# as a claim, and the agent surface is twenty-one tools including settings_set and run_pack_script. What the
 # unattended model on the box may reach is therefore a decision, and this is where it is held.
 import types  # noqa: E402 — already imported above; named again because this block stands on its own
 import tool_classes as TC  # noqa: E402

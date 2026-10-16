@@ -35,9 +35,9 @@ is that a node needs none of it. The loop appears in the audit trail as `local-m
 
 **That local model gets `read` and `act` only.** It cannot change a setting, run a pack's code, or make the node
 message the household by itself — `app/tool_classes.py` is the table and `app/agent_loop.py` derives the allow-list
-from it. You, a remote agent driven by a person, have all twenty; the difference is that somebody is reading what you
-propose. If you are a remote agent, you are not alone on this node; read `alerts` and the actions before acting, and do
-not undo what the person's local model did without asking.
+from it: seventeen of the twenty-one. You, a remote agent driven by a person, have all twenty-one; the difference is
+that somebody is reading what you propose. If you are a remote agent, you are not alone on this node; read `alerts`
+and the actions before acting, and do not undo what the person's local model did without asking.
 
 **The dashboard has a pane that asks the same models** (`POST /ask`, `app/ask.py`): the ladder Set up → Model and
 `AGENT_PREFER` define for the Telegram bot, and it says on every answer which model answered and where it runs. It is
@@ -47,6 +47,8 @@ an `act` or an admin tool it reaches for is not run at all. It becomes a card th
 tool result are scrubbed of coordinates, sensor and station names, sensor ids and `meta`, and nothing asked or answered
 is kept anywhere, a log line included. If you change `app/ask.py` or `agent_loop.pane`, `tests/test_ask.py` holds you to
 all three.
+`learned` is offered only to a request carrying the household's token or from this machine, and never
+to the Wall, whose narration (`prompt: wall`) reads its own short list of facts anyone may read, not the pane's context.
 
 **`act` needs the person's own words.** It has no default `note` and refuses a placeholder. ρ is the share of act-level
 alerts a human answered, and a row written without anything a human said is a model measuring itself. If somebody told
@@ -61,7 +63,9 @@ who acted (`act` writes it as the action's `actor`, `settings_set` forwards it t
 `status`, `health_check`, `issues` (how the place is doing, in the household's own words), `sensors`,
 `context` (sea, weather, satellite air, land), `readings`, `report_latest`,
 `report_now`, `report_bundle`, `history`, `alerts`, `act`, `settings_get`, `settings_set`, `packs`, `cells`, `series`,
-`export_day`, `learned` (what worked here, only while models stay home), `run_pack_script`, `maintenance`. Start with `health_check`; every failing check names its fix.
+`export_day`, `learned` (what worked here, what is usual, and the diary; only while models stay home), `run_pack_script`,
+`maintenance`. Start with `health_check`; every failing check names its fix, and its `sources` says which of the
+node's fundamental sources is not running yet and the one thing to do.
 
 **A shell on the node**, for what needs Docker or git:
 
@@ -71,6 +75,7 @@ planetai report             planetai report last        planetai report every <h
 planetai update             planetai backup             planetai restart             planetai logs
 planetai packs              planetai packs add <owner>/<repo>[/<folder>][@<ref>]       planetai packs install
 planetai setup --answers node.json      # install without a terminal; see the JSON shape in bin/planetai
+planetai hello              # list this node on every node's map, after showing what becomes public
 ```
 
 `maintenance` over MCP returns these commands with an explanation. If you have no shell, tell the person which to run.
@@ -86,6 +91,10 @@ planetai setup --answers node.json      # install without a terminal; see the JS
 - The dashboard names no metric. Issues are declared in `app/issues/*.yml`, ordered by `NODE_ISSUES`, and
   served at `GET /issues`. The node computes; the page draws. A number the page works out for itself is a bug.
 - Do not put the node's database on IPFS. Only the daily export goes to the commons.
+- **A `private` reading never leaves.** A metric a pack declares `role: private` is used here like any other and is
+  kept out of the export, the aggregates, the report bundle and every read an agent makes (`X-Agent`), all through
+  one predicate, `packs.public_sql`. What the house learned, its diary, its things, its household profile and its
+  pictures are never exported either; `/offers` publishes only what the household marked to lend or give.
 - **Peers never roll up.** A `kind='peer'` row is display-only: it reaches no Index cell, no custody count, and
   no aggregate pushed to a parent, whatever its coordinates say. Custody is `local OR kind='child'`, it lives in
   `init.sql` as a generated column, and it is the only thing a cell may count.
@@ -131,6 +140,8 @@ where the thresholds came from and which place they were written for.
 ## Reading the node
 
 - `status.errors` is per loop. A key present means that loop failed on its last run.
+- A request without a token reads the house's rooms and sensors as "Room A" and "Sensor 1"; the MCP tools, on this
+  machine, read the names the household gave in Set up › Rooms. Never repeat those names anywhere a stranger reads.
 - `sensors[].local` means the person's own **and** at this node; a kit of theirs further than `LOCAL_RADIUS_M` is theirs but not this node's measurement. `indoor` is what the rules use to tell the house from the street.
 - `alerts[].acted_at` is null until someone acts. It is the person's note on what they did, not the node's own
   measurement: ask them, record it with `act` in their words, and never invent one.
