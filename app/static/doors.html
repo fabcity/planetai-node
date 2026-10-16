@@ -423,42 +423,66 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
    THE TYPE FLOOR: every size here is --wf or a multiple of it, never less. --wf is 28 px at 1920×1080 and scales with the
    viewport, whichever of its width or height is shorter for it; tests/test_doors.py holds this block to that.
    What did not survive the floor was cut from the Wall, not shrunk. */
-#wallv{--wf:min(1.4584vw,2.5926vh);position:relative;height:100vh;display:grid;grid-template-rows:minmax(0,1fr);padding:3.4vh 2.4vw;overflow:hidden;font-size:var(--wf)}
+#wallv{--wf:min(1.4584vw,2.5926vh);position:relative;height:100vh;display:grid;grid-template-rows:auto minmax(0,1fr);gap:2.4vh;padding:3.4vh 2.4vw;overflow:hidden;font-size:var(--wf)}
 /* chrome: a wall is not operated. The back button, the chips, the hour strip and the model's note are there for a pointer
    or the keyboard and invisible otherwise; the back button is first in keyboard order. On a touch screen there is no
    hover, so there it is always shown, and every control is a 44 px target. It appears at once: nothing fades. */
 #wallv .wchrome{opacity:0}
 #wallv .wchrome:hover,#wallv .wchrome:focus-within{opacity:1}
-@media (hover:none) and (pointer:coarse){#wallv .wchrome{opacity:1}#wallv{grid-template-rows:auto minmax(0,1fr)}#wallv .wtop{position:relative;margin:-3.4vh -2.4vw 1.6vh}}
-@media (pointer:coarse){#wallv .wback,#wallv .wchips button,#wallv .flowtime .seg button,#wallv .flowtime .play,#wallv .flowtime .h{min-height:44px;min-width:44px}
-  #wallv .flowtime{--hmin:44px}#wallv .flowtime .hours{overflow-x:auto}}
+@media (hover:none) and (pointer:coarse){#wallv .wchrome{opacity:1}#wallv{grid-template-rows:auto auto minmax(0,1fr)}#wallv .wtop{position:relative;margin:-3.4vh -2.4vw 0}}
+@media (pointer:coarse){#wallv .wback,#wallv .wchips button,#wallv .wrail button{min-height:44px;min-width:44px}}
 .wtop{position:absolute;top:0;left:0;right:0;z-index:6;display:flex;gap:1.2vw;align-items:center;flex-wrap:wrap;padding:1.2vh 2.4vw;background:var(--ground);border-bottom:1px solid var(--hair)}
 .wback,.wchips button{background:none;border:1px solid var(--ink);padding:.1em .5em;font:600 var(--wf) var(--mono);cursor:pointer}
 .wchips{display:flex}.wchips button+button{border-left:0}.wchips button.on{background:var(--ink);color:var(--ground)}
 .wnote{font:500 var(--wf)/1.3 var(--body);color:var(--mute)}
-.wgrid{display:grid;grid-template-columns:var(--ws,46%) minmax(0,1fr);min-height:0;font-size:var(--wf)}
-.wl{position:relative;display:flex;flex-direction:column;gap:1.6vh;min-width:0;min-height:0}
-#wfield{position:relative;font-size:var(--wf)}.wallmap{position:relative}.wallmap .windcv{z-index:1}
-.wclock{position:absolute;top:.5em;left:.6em;z-index:3;display:flex;flex-direction:column;gap:.15em;pointer-events:none;font:500 var(--wf)/1.2 var(--mono);color:var(--ink);text-shadow:0 0 6px var(--ground),0 0 2px var(--ground)}
+/* the walk: the map on the left, framed on one scale's cell; the scale's page on the right */
+.wgrid{display:grid;grid-template-columns:58% minmax(0,1fr);min-height:0;font-size:var(--wf)}
+.wl{position:relative;display:grid;grid-template-rows:minmax(0,1fr) auto;gap:1.2vh;min-width:0;min-height:0}
+#wfield{position:relative;min-height:0;font-size:var(--wf)}#wfield .wallmap{position:absolute!important;inset:0;width:100%;height:100%}.wallmap .windcv{z-index:1}
+/* the rail says which scale is drawn (not chrome: always shown); each scale is a button that holds it */
+.wrail{position:absolute;left:0;top:0;z-index:5;display:flex;background:var(--ground)}
+.wrail button{background:none;border:0;border-bottom:3px solid transparent;padding:.25em .5em;font:500 var(--wf)/1.2 var(--mono);color:var(--mute);cursor:pointer}
+.wrail button.on{color:var(--ink);font-weight:700;border-bottom-color:var(--ink)}.wrail button[aria-pressed="true"]::after{content:" ·held"}
+.wclock{position:absolute;bottom:.5em;left:.6em;z-index:3;display:flex;flex-direction:column;gap:.15em;pointer-events:none;font:500 var(--wf)/1.2 var(--mono);color:var(--ink);text-shadow:0 0 6px var(--ground),0 0 2px var(--ground)}
 .wclock b{font:600 calc(var(--wf) * 2)/1 var(--mono);letter-spacing:-.02em}.wclock:empty{display:none}
-.wcap{margin:0;font:500 var(--wf)/1.3 var(--body);max-width:var(--ws,46vw);text-wrap:pretty}
-/* the hour strip lies over the map's foot, chrome like the rest */
-#wallv .flowtime{position:absolute;left:0;top:var(--ws,0);transform:translateY(-100%);width:var(--ws,46%);margin:0;padding:.3em .4em;gap:.4em;background:var(--ground);z-index:4}
-#wallv .flowtime .seg button,#wallv .flowtime .play{height:1.5em;width:auto;padding:0 .4em;font:500 var(--wf) var(--mono)}
-#wallv .flowtime .hours{min-width:0}#wallv .flowtime .h{height:1.5em}#wallv .flowtime .h .a{height:.5em}#wallv .flowtime .h span{font:500 var(--wf) var(--mono)}
-#wallv .flowtime > .k{font:500 var(--wf)/1.3 var(--body);letter-spacing:0;text-transform:none}
-.wr{min-width:0;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:3vh;border-left:1px solid var(--hair);padding-left:2.4vw;margin-left:2.4vw}
-.whead{display:flex;flex-direction:column;gap:1.8vh}
+.wcap{margin:0;font:500 var(--wf)/1.3 var(--body);text-wrap:pretty}
+.wr{min-width:0;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:1.6vh;border-left:1px solid var(--hair);padding-left:2.4vw;margin-left:2.4vw}
+/* the head runs across the top: the time and the sentence, and what is asked now beside them */
+.whead{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,30%);gap:.6vh 2.4vw;align-items:end}.whead .wkick{grid-column:1/-1}.whead .wask{align-self:end}
 .wkick{font:600 calc(var(--wf) * 1.2)/1.2 var(--mono);color:var(--mute)}.wkick time,.wkick b{color:var(--ink)}
 /* the hero: what is happening, in the household's words; the tagline explains it, at the floor and muted */
-.wsent{font:700 calc(var(--wf) * 2.3)/1.04 var(--display);letter-spacing:-.03em;margin:0;text-wrap:balance}
+.wsent{font:700 calc(var(--wf) * 2.1)/1.04 var(--display);letter-spacing:-.03em;margin:0;text-wrap:balance}
 .wsent .wtag{display:block;font:500 var(--wf)/1.3 var(--body);letter-spacing:0;color:var(--mute);margin-top:1.4vh;max-width:40ch;text-wrap:pretty}
 /* what the node suggests: one line, ending on a word (wallAsk), never a button that answers */
 .wask{display:flex;flex-direction:column;gap:.3em;border-left:3px solid var(--ink);padding-left:1vw}
 .wask .wsay{font:600 calc(var(--wf) * 1.15)/1.25 var(--body)}.wask .wtel{font:500 var(--wf)/1.3 var(--body);color:var(--mute)}
 /* the node, thinking aloud: a voice, set apart from the node's figures. Figtree Italic, light and large, is speech against
    the upright facts around it. Collapsed ([hidden]) until there is text; the last text stays while the next is written. */
-.wnarr{flex:0 1 auto;min-height:calc(var(--wf) * 5);display:flex;flex-direction:column;border:1px solid var(--ink);overflow:hidden}
+/* the scale's page: its figures, each with its source, when and its word; its day; its land; what is around */
+.wscale{margin:0;font:600 calc(var(--wf) * 1.2)/1.2 var(--mono);color:var(--mute)}
+.wpage{display:flex;flex-direction:column;gap:1.2vh;min-height:0}
+.wpage h3{margin:1.2vh 0 0;font:700 calc(var(--wf) * 1.2)/1.1 var(--display);letter-spacing:-.02em}
+.wfacts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,10em),1fr));gap:1.4vh 2vw}
+.wfig{display:grid;grid-template-columns:auto 1fr;align-items:baseline;gap:0 .35em}.wfig .wn{grid-column:1/-1;font:600 var(--wf)/1.2 var(--body)}
+.wfig b{font-size:calc(var(--wf) * 2.2);line-height:1;letter-spacing:-.03em}.wfig .wsrc{grid-column:1/-1}
+.wu{font:500 var(--wf) var(--mono)}
+.wsrc{display:block;margin:0;font:500 var(--wf)/1.3 var(--body);color:var(--mute);text-wrap:pretty}
+.wpw{display:inline-block;margin-left:.25em;padding:.05em .3em;border:1px solid currentColor;font:500 var(--wf)/1 var(--mono)}
+.wat{margin:0;font:700 calc(var(--wf) * 1.5)/1.15 var(--display);letter-spacing:-.02em}.wat b{font-family:var(--mono)}
+.wday{display:block;width:100%;height:calc(var(--wf) * 5)}
+/* the land as a hundred squares: the kind by fill, never by hue; stroked orange, what only the satellite knows */
+.whund{display:grid;grid-template-columns:repeat(20,1fr);gap:3px;max-width:calc(var(--wf) * 18)}
+.whund i,.wkey i{display:block;aspect-ratio:1;border:2px solid var(--satellite-only)}
+.wkey{display:flex;flex-wrap:wrap;align-items:baseline;gap:.2em 1em;margin:0;font:500 var(--wf)/1.3 var(--body)}.wkey .wsrc{display:inline}.wkey b{font-family:var(--mono)}
+.wkey i{display:inline-block;width:.8em;margin-right:.3em;vertical-align:-.05em}
+.q-built{background:var(--ink)}.q-trees{background:repeating-linear-gradient(45deg,var(--ink) 0 3px,transparent 3px 7px)}
+.q-crops{background:repeating-linear-gradient(0deg,var(--ink) 0 2px,transparent 2px 6px)}.whund .q-rest,.wkey .q-rest{border-style:dashed}
+.wplaces{display:flex;flex-direction:column;gap:.4vh}.wplaces div{display:grid;grid-template-columns:5em minmax(0,1fr) 2em;align-items:center;gap:.6em;font:500 var(--wf)/1.2 var(--body)}
+.wplaces b{font:600 var(--wf) var(--mono);text-align:right}.wsq{display:flex;flex-wrap:wrap;gap:3px}.wsq i{width:.65em;height:.65em;background:var(--ink)}
+.wexp{border-collapse:collapse;width:100%;font:500 var(--wf)/1.25 var(--body)}
+.wexp th{text-align:left;vertical-align:top;padding:.5vh 1em .5vh 0;white-space:nowrap;font-weight:700}.wexp td{padding:.5vh 0;border-bottom:1px solid var(--hair)}
+.wexp td b{font-family:var(--mono)}.wexp .wbysat td b{color:var(--satellite-only)}.wexp .wnone td{color:var(--mute)}
+.wnarr{margin-top:auto;flex:0 1 auto;min-height:calc(var(--wf) * 5);display:flex;flex-direction:column;border:1px solid var(--ink);overflow:hidden}
 .wnarr .nh{display:flex;justify-content:space-between;flex-wrap:wrap;gap:0 1em;padding:.8vh 1.1vw;border-bottom:1px solid var(--hair);font:500 var(--wf)/1.3 var(--body);color:var(--mute)}
 .wnarr .nl{display:flex;align-items:center;gap:.4em;color:var(--ink);font-weight:600}
 .wnarr .dot{width:.3em;height:.3em;border-radius:50%;background:var(--ink);opacity:.35}
@@ -475,10 +499,9 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
    drops under 12 px, the layer's floor for type and controls (at 390 px wide --wf alone would be 5.7 px). */
 @media (max-width:999px),(max-height:499px),(orientation:portrait){
   #wallv{--wf:max(12px,min(1.4584vw,2.5926vh));height:auto;min-height:100vh;overflow:visible;grid-template-rows:auto;padding:16px}
+  #wallv .whead{grid-template-columns:minmax(0,1fr)}#wallv .wl{grid-template-rows:auto auto}#wallv #wfield{height:min(calc(100vw - 32px),70vh)}
   #wallv .wgrid{grid-template-columns:minmax(0,1fr);gap:3vh}
   #wallv .wr{border-left:0;padding-left:0;margin-left:0;border-top:1px solid var(--hair);padding-top:3vh;overflow:visible}
-  #wallv .wcap{max-width:none}
-  #wallv .flowtime{position:static;transform:none;width:auto}   /* under the map, never over its foot */
   @media (hover:none) and (pointer:coarse){#wallv .wtop{margin:-16px -16px 16px}}
 }
 

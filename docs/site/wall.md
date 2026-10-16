@@ -101,8 +101,9 @@ going black.
 
 The wall only shows the alert. The answer is given on Telegram, over the radio or on the dashboard, and all of
 them write the same row in `actions`: see [Channels](channels.md) and [the dashboard](dashboard.md). What the
-ρ row counts is [ρ](rho.md). The Wall of the five doors, at `/#wall`, is another screen: a living map
-and the node thinking aloud, on [the dashboard](dashboard.md#the-five-doors).
+ρ row counts is [ρ](rho.md). The Wall of the five doors, at `/#wall`, is another screen: a map that walks
+out from the house a scale at a time, house, street, ring and region, with each scale's figures, its day, the land
+around and what the satellites see, and the node thinking aloud, on [the dashboard](dashboard.md#the-five-doors).
 
 ## What the doors' Wall says aloud
 

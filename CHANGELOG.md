@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- **The Wall walks out from the house** (Tomas, 16 Oct: "more interactivity, maybe similar to the phone version and have
+  an automatic change of time and scale"; option A of three). The map is framed on one scale's own H3 cell at a time,
+  house, street, ring and region, as the phone's walk is, and steps by itself: each scale's day is replayed an hour at a
+  time, then the next scale. Nothing moves under reduced motion; pressing a scale's name holds it. Beside the map,
+  that scale's page: the house's figures and day; the street's day against what the node learned is usual outside;
+  the land within 1 km as a hundred squares (satellite) and the places mapped there, counted (OpenStreetMap); and what
+  the satellites and models see around: fires, the ground's heat, the sky, the sea, and floods said to be not watched.
+  Every figure carries its time and one provenance word, and no sensor's name. The narration stays, under the page.
+  The hour strip and its window buttons are gone.
+- **GET /learned/place**: the place's usual hours (the holding `usual` learnings of scope place), on the `open` list,
+  for the Wall. The house's learnings stay behind `GET /learned`.
+- The visual gate walks the Wall (`measure.mjs wallwalk`): each scale one screen at 1920×1080, the type floor, every
+  figure dated and worded, no names, still under reduced motion, stepping with motion on, 44 px scale names on a phone.
 - **The Wall no longer shows answers to alerts** (Tomas, 16 Oct). The row "This house answered N of M alerts" and its
   rings are gone, and so are the rings around the house on the map and the alert and answer marks on its hour strip.
   The Wall still says what is asked now.

@@ -539,20 +539,36 @@ screen holding no token does not ask those routes at all, so it leaves no 403s i
 links to **Set up → This screen**. **Set up → This screen** (the foot's "Unlock this screen") stores the act or admin
 token in that browser. The gear in the bar opens **Set up**, a page of its own: every setting by group, saved only where it changed and never over a change made on the node meanwhile, the pack switches, who may read the node, this screen's token, updates, **Rooms** (the household's word for where each of its sensors is, which every alert, the report and every page then use; never shown on the Wall, and to a screen without the token "Room A" and "Sensor 1" instead, see [Sharing](sharing.md#rooms-and-sensor-names-stay-in-the-house)), and **Machine**, the machine under the node (`GET /machine`) and how long its disk lasts (`GET /storage`). The foot says which version is running. The bar's **Paper** / **Dark** switch is kept on this screen as `planetai_theme`; with nothing kept the doors follow the system's setting, and the Wall is always dark. The **Wall** is a public screen in a living room or a lab, read from about three metres by people who know nothing
 about air science, and nobody operates it. Nothing on it is smaller than 28 px at 1920×1080, scaled with the screen
-(the `--wf` floor); what did not fit at that size was cut, not shrunk. It reads in one order: the time and the
-sentence (the lead issue's title, its tagline under it); the map, with the wind, the stations as discs and the house as
-one mark, and a caption under it saying in words what the red discs mean against the house ("This house is under the
-clean-air line now; 3 stations nearby, in red, are over it"), at the hour the discs show while the hours replay; what
-the node suggests, one line that ends on a word, with "Answer on Telegram, not here." when something is asked; and
-last **the node, thinking aloud**: every ten minutes, from another angle each time, the node's model (the one
-chosen under Set up → Model, through `POST /ask`) says in six to eight plain sentences what is happening inside, how it
-compares with the street and the neighbourhood, what it suggests for an ordinary day and what the next hours may
-bring, typed at a reading pace. Its box is not drawn until a text has arrived; while the next one is written the last
-one stays, held in the page's memory, and the new one is typed once it has all arrived. It calls itself a model's
-words from the node's figures, never a reading, and says "written online" when the keeper's choice sent the question
-out; nothing is kept. The back button, the metric chips, the hour strip and a note naming the model (or why there is
-no text) are chrome: invisible until a pointer is over them or the keyboard reaches them, the back button first; on a
-touch screen they always show, as 44 px targets. On a phone, a portrait screen or a small TV the two columns stack, the
+(the `--wf` floor); what did not fit at that size was cut, not shrunk. It **walks out from the house by itself**, as
+the phone's walk does: the map is framed on one scale's own H3 cell at a time, house (resolution 10), street (9), ring
+(6) and region (3), drawn blue with the smaller cells faint inside it, and a new scale is a cut, never a flight. Each
+scale holds while its day is replayed, one hour a step (24 hours in the `--motion-replay-loop`, 30 s), and then the
+walk goes to the next. Under reduced motion nothing moves: it holds on the street at the last hour, and the wind is one
+still frame. The four scale names on the map say which one is drawn; pressing one holds it, pressing it again lets the walk go on.
+It reads in one order: the time and the sentence (the lead issue's title), with what is asked now beside them ("Answer
+on Telegram, not here." when something is); the map, with the wind, the stations as discs and the house as one mark,
+and a caption under it saying in words what the red discs mean against the house ("This house is under the clean-air
+line now; 3 stations nearby, in red, are over it"), at the hour the discs show; and beside it the scale's page. The
+**house** shows each issue's figure in the house and the day in the house. The **street** shows the street's figures,
+the replayed hour in words ("Air at 19:00: house 7 · street 11 · ring 8 µg/m³") and the street's day against what the
+node learned is usual outside at each hour, dotted (`GET /learned/place`). The **ring** shows the land within 1 km as a
+hundred squares, one a hundredth, by kind (built, trees, crops, water; land cover by satellite), and the places
+OpenStreetMap maps there, counted, one square a place; it says when the map tags too few buildings as shops or
+offices to tell homes from shops. The **region** shows what the satellites and the models see around: fires within
+150 km (NASA FIRMS, `fire` pack), the ground's heat at the last clear Landsat pass and at night (`surface-heat`), fine
+dust over the region (CAMS) and the sea's swell, each only where the node reads it, and floods as not watched on this
+node yet, since no pack reads a flood layer. Every figure says when it is from and one of the provenance words; one
+from `/observations` takes the engine's rule for readouts (`model` for a model, `partial` otherwise), and the source
+is said in the Wall's own words, never a sensor's name. Under the page, **the node, thinking aloud**: every ten
+minutes, from another angle each time, the node's model (the one chosen under Set up → Model, through `POST /ask`)
+says in six to eight plain sentences what is happening inside, how it compares with the street and the
+neighbourhood, what it suggests for an ordinary day and what the next hours may bring, typed at a reading pace. Its
+box is not drawn until a text has arrived; while the next one is written the last one stays, held in the page's
+memory, and the new one is typed once it has all arrived. It calls itself a model's words from the node's figures,
+never a reading, and says "written online" when the keeper's choice sent the question out; nothing is kept. The back
+button, the metric chips and a note naming the model (or why there is no text) are chrome: invisible until a pointer
+is over them or the keyboard reaches them, the back button first; on a touch screen they always show, as 44 px
+targets, and so are the scale names. On a phone, a portrait screen or a small TV the two columns stack, the
 map first. Every door but the Wall ends in a foot with what the node is in one line, its version, the documentation, Ask the node, Set up, Unlock this screen, today's open export and Fab City; the classic dashboard is no longer linked there and still opens at `/?layout=classic`. `?fixture=<name>` works here too, and shows a screen without the token only what the node
 would show it.
 

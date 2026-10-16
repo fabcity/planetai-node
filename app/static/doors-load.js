@@ -13,7 +13,7 @@ if (typeof window !== 'undefined') window.PAI_AUTH = DOORS_AUTH;
    rooms and which /issues' asks stand in for. Asked without a token they are a 403 every time: noise in the node's log
    and the console, and nothing drawn. So a screen holding no token at all does not ask; it gets a stand-in 403 and
    each caller draws what it draws locked. With any token the page asks as before, and the node decides. */
-const DOORS_LOCKED = /^\/?(health\/sources|aggregates|actions|alerts|geo\/(planet|measure|rings|grid)|things|learned|captures|species|household|machine|storage|place\/geojson)\b/;
+const DOORS_LOCKED = /^\/?(health\/sources|aggregates|actions|alerts|geo\/(planet|measure|rings|grid)|things|learned(?!\/place)|captures|species|household|machine|storage|place\/geojson)\b/;
 const doorsFetch = (p, init = {}) => !DOORS_TOKEN() && DOORS_LOCKED.test(p) ? Promise.resolve(new Response('{}', { status: 403 }))
   : fetch(p, { ...init, headers: { ...DOORS_AUTH(), ...(init.headers || {}) } });
 /* A wire time in the node's own zone (/health tz) as 'YYYY-MM-DDTHH:MM'. /health and /issues' as_of are written in

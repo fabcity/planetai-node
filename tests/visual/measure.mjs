@@ -3227,6 +3227,73 @@ async function mobile() {
   process.exit(1);
 }
 
+/* ------------------------------------------------------------------ the Wall's walk (16 Oct, option A)
+ * The Wall walks out a scale at a time (doors-wall.js). Against the committed fixture, at 1920×1080 on a TV and at 390 on a
+ * phone, this presses each scale on the rail and reads the drawing: one viewport, nothing under the 28 px floor outside
+ * the chrome, every figure with its time and one of the five provenance words, no room or sensor name; under reduced
+ * motion two reads 1.5 s apart are the same scale and hour and the walk's clock is not subscribed; with motion on and
+ * the replay loop shortened to 2.4 s, the hours step and the scale moves on; on a touch phone the rail is 44 px. */
+async function wallwalk() {
+  const bad = [], ok = (c, what) => { if (!c) bad.push(what); };
+  const fx = JSON.parse(fs.readFileSync(path.join(HERE, '..', '..', 'app', 'issues', 'fixtures', `${FIXTURE}.json`), 'utf8'));
+  const names = (fx.sensors || []).filter(x => x.local && (x.name || '').trim().length > 3).map(x => x.name.trim());
+  const read = page => page.evaluate(([names]) => {
+    const W = document.querySelector('#wallv'), r = document.querySelector('.wr');
+    const txt = [...W.querySelectorAll('*')].filter(e => [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim()) && e.getClientRects().length && !e.closest('.wchrome'));
+    const figs = [...W.querySelectorAll('.wfig')].map(f => f.textContent);
+    return { sc: [...document.querySelectorAll('#wrail button.on')].map(b => b.dataset.sc), hour: WALK.hour, sub: CLOCK.subs.has('wall-walk'),
+      h: document.documentElement.scrollHeight, w: document.documentElement.scrollWidth, over: r ? r.scrollHeight - r.clientHeight : 0,
+      small: txt.filter(e => parseFloat(getComputedStyle(e).fontSize) < 27.5).map(e => `${e.tagName}.${e.className}`).slice(0, 3),
+      undated: figs.filter(f => !/\d\d:\d\d/.test(f) || !/(live|partial|model|cached|example)/.test(f)).slice(0, 2),
+      words: [...W.querySelectorAll('.wpw')].map(e => e.textContent).filter(x => !['live', 'partial', 'model', 'cached', 'example'].includes(x)),
+      named: names.filter(n => W.textContent.includes(n)), rail: [...document.querySelectorAll('#wrail button')].map(b => { const q = b.getBoundingClientRect(); return [q.width, q.height]; }) };
+  }, [names]);
+  for (const [w, h, touch] of [[1920, 1080, false], [390, 844, true]]) {
+    const r = await openRig({ w, h, touch, dark: true });
+    await r.page.goto(`${POP}/?fixture=${FIXTURE}#wall`, { waitUntil: 'domcontentloaded' });
+    await r.page.waitForSelector('#wpage .wfig', { timeout: 30000 }).catch(() => bad.push(`${w}: the Wall drew no page`));
+    for (let i = 0; i < 4; i++) {
+      await r.page.click(`#wrail button[data-sc="${i}"]`); await r.page.waitForTimeout(500);
+      const g = await read(r.page), tag = `${w} scale ${i}`;
+      if (process.env.PAI_WALL_SHOTS === '1') await r.page.screenshot({ path: path.join(OUT, `wallwalk_${w}_${i}.png`) });
+      ok(g.sc.length === 1 && g.sc[0] === String(i), `${tag}: the rail marks ${g.sc.join(',') || 'nothing'}`);
+      ok(g.w <= w, `${tag}: the page is ${g.w} px wide`);
+      if (!touch) { ok(g.h <= h, `${tag}: the Wall is ${g.h} px on a ${h} px screen`); ok(g.over <= 1, `${tag}: the page runs ${g.over} px past the screen`);
+        ok(!g.small.length, `${tag}: under the 28 px floor: ${g.small.join(', ')}`); }
+      ok(!g.undated.length, `${tag}: a figure with no time or word: ${g.undated.join(' | ')}`);
+      ok(!g.words.length, `${tag}: a provenance word that is not one of the five: ${g.words.join(', ')}`);
+      ok(!g.named.length, `${tag}: names a room or sensor: ${g.named.join(', ')}`);
+      if (touch) ok(g.rail.every(([a, b]) => a >= 44 && b >= 44), `${tag}: a rail button under 44 px: ${JSON.stringify(g.rail)}`);
+    }
+    if (!touch) {
+      const a = await read(r.page); await r.page.waitForTimeout(1500); const b = await read(r.page);
+      ok(a.sc[0] === b.sc[0] && a.hour === b.hour && !b.sub, `reduced motion: the walk moved (${a.sc}/${a.hour} → ${b.sc}/${b.hour}, subscribed ${b.sub})`);
+    }
+    await r.browser.close();
+  }
+  { const browser = await chromium.launch();
+    /* openRig holds reduced motion on; this context turns it off and serves the same page, fixture and routes */
+    const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 }, reducedMotion: 'no-preference' });
+    await ctx.route('**/*', async route => { const u = new URL(route.request().url()); if (u.origin !== POP) return route.continue();
+      const doc = docFor(u), file = doc || (u.pathname.startsWith('/static/') ? u.pathname.slice(8) : null);
+      if (file && !file.includes('/')) { const p = fs.existsSync(path.join(STATIC, file)) ? path.join(STATIC, file) : path.join(STATIC, 'fonts', file);
+        if (fs.existsSync(p)) return route.fulfill({ status: 200, body: fs.readFileSync(p), headers: { 'content-type': MIME[path.extname(p)] || 'application/octet-stream' } }); }
+      if (await serveNodeAPI(route, u)) return; return route.continue(); });
+    const page = await ctx.newPage();
+    await page.goto(`${POP}/?fixture=${FIXTURE}#wall`, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#wpage .wfig', { timeout: 30000 }).catch(() => bad.push('motion: the Wall drew no page'));
+    await page.evaluate(() => document.documentElement.style.setProperty('--motion-replay-loop', '2.4s'));
+    const seen = [];
+    for (let k = 0; k < 14; k++) { seen.push(await page.evaluate(() => [document.querySelector('#wrail button.on').dataset.sc, WALK.hour])); await page.waitForTimeout(250); }
+    const hours = new Set(seen.map(x => x[1])), scales = new Set(seen.map(x => x[0]));
+    ok(hours.size >= 4 && seen.every(x => Number.isInteger(x[1])), `motion: the hours did not step (${[...hours].join(',')})`);
+    ok(scales.size >= 2, `motion: the walk stayed on scale ${[...scales].join(',')} for a whole day's replay`);
+    await browser.close(); }
+  if (!bad.length) console.log('  wallwalk: four scales at 1920×1080 and 390, each one screen, dated and worded, no names; still under reduced motion, stepping with motion on; 44 px scale names on a phone');
+  for (const b of bad) console.log('FAIL wallwalk:', b);
+  if (bad.length) process.exitCode = 1;
+}
+
 /* ------------------------------------------------------------------ the doors' Data and Set up (phase 4b)
  *
  * Data is tabs routed #data/<tab> and Set up is sections routed #setup/<section>, so a door's overflow is a
@@ -3386,5 +3453,6 @@ else if (cmd === 'overflow') await overflow(rest);
 else if (cmd === 'list') jobs().forEach(j => console.log(j.name));
 else if (cmd === 'mobile') await mobile();
 else if (cmd === 'doors') await doors();
-else { console.error('usage: measure.mjs render|shots|plates|plate-list|steps|stall|press|asking|extend|anchors|sheets|header|targets|audit|overflow|analyse|list|mobile|doors');
+else if (cmd === 'wallwalk') await wallwalk();
+else { console.error('usage: measure.mjs render|shots|plates|plate-list|steps|stall|press|asking|extend|anchors|sheets|header|targets|audit|overflow|analyse|list|mobile|doors|wallwalk');
   process.exit(2); }

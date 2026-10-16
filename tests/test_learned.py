@@ -178,6 +178,18 @@ r = c.get("/learned", headers={**ADMIN, "X-Agent": "agent"})
 assert r.status_code == 403 and "AGENT_PREFER" in r.json()["detail"], "an agent that may be online: no, and why"
 assert c.get("/learned", headers=ADMIN).status_code == 200, "the page is not an agent"
 print("route: admin only; an agent only while AGENT_PREFER=private, told why otherwise")
+# GET /learned/place: the place's usual hours for a screen with no token (the Wall), and nothing of the house
+_sql = []
+main.q = lambda sql, *a: _sql.append(sql) or [{"key": "outdoor-pm25", "issue": "air", "metric": "pm25", "statement": "s", "numbers": {"high_hour": 18}}]
+r = c.get("/learned/place")
+assert r.status_code == 200 and r.json()["learnings"][0]["key"] == "outdoor-pm25", r.text
+assert "kind = 'usual'" in _sql[0] and "scope = 'place'" in _sql[0] and "status = 'holding'" in _sql[0] and "cases" not in _sql[0], _sql
+settings._cache["rows"]["SHARE_LEVEL"] = "off"
+assert c.get("/learned/place").status_code == 403, "at SHARE_LEVEL=off a screen with no token reads nothing of it"
+settings._cache["rows"]["SHARE_LEVEL"] = "open"
+assert "/learned/place" in main._SHARE_OPEN[0] and "/learned" not in main._SHARE_OPEN[0] and "/learned/search" not in main._SHARE_OPEN[0]
+print("route: /learned/place answers the place's usual hours on the open list; /learned and its search stay the house's")
+
 # ---------------------------------------------------------------- what is usual (step 2)
 from datetime import date  # noqa: E402
 assert learn.theil_sen([1, 2, 3, 100, 5]) == 1.0, "a slope one odd day cannot drag"
