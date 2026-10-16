@@ -6,6 +6,10 @@
   failed after its packages were in (node #1, 17 Oct); it now runs the node's own copy. Its install hint is
   `python3 -m pip install --user …`, for the same interpreter that runs it, and on Apple's Python 3.9 it pins pyobjc
   below 12, which does not build there (`tests/test_radio_cli.sh`).
+- **`planetai radio init` never guesses a region.** It read `.env` itself and kept the inline comment of the
+  shipped `NODE_CITY=bali  # pilot key …` line, so it found no region and fell back to EU_868: an 868 MHz fleet for
+  node #1 in Bali, where the band is 920–923 MHz. Inline comments are stripped as docker compose strips them, and a
+  city with no known region now refuses and asks for `--region`.
 
 ## v0.82.0 — 2026-10-16 — The pre-launch audit: what a household reads, and what it never sees
 
