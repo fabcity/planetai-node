@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.82.1 — 2026-10-17 — The radio command runs on a real node, and the old key retires
 
 - **`planetai radio` runs on a real node.** It looked for `tools/radio.py` beside the `~/.local/bin` link, so it
   failed after its packages were in (node #1, 17 Oct); it now runs the node's own copy. Its install hint is

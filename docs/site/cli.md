@@ -1,5 +1,5 @@
 # Command line
-<!-- checked: v0.82.0 -->
+<!-- checked: v0.82.1 -->
 
 The command line is how the person who keeps a node looks after it: install it, ask whether it is alive,
 record what somebody did about an alert, move its data somewhere safe. The repo names that person as the
@@ -14,7 +14,7 @@ and talks to the node over its own [API](api.md) on `localhost:$APP_PORT` with t
 predates the word says "there is no `planetai <word>` in this node", names the node's version and
 suggests `planetai update`. Commands arrive in releases.
 
-> **Gap in v0.82.0.** The list `planetai` prints leaves out four commands that exist: `preflight`, `sources`, `config unset` and `agent local pull`. The tables below are complete.
+> **Gap in v0.82.1.** The list `planetai` prints leaves out four commands that exist: `preflight`, `sources`, `config unset` and `agent local pull`. The tables below are complete.
 
 Nothing here needs `sudo` except `mesh` (installing and joining Tailscale), `agent local` on a machine with
 `systemctl` where Ollama is not already answering, and, through the installer, `setup` when Docker has to
@@ -96,7 +96,7 @@ The settings themselves are on [Configuration](configuration.md).
 | `planetai telegram` | Validates the bot token, waits up to two minutes for your first message to learn the chat id, writes both to `.env` and to the running node's settings, sends a hello (in Spanish when `ALERT_LOCALE=es`), recreates the app. | no |
 | `planetai mesh [up\|status\|down]` | Installs Tailscale and joins the tailnet under the node's name (`TS_AUTHKEY` optional); records `MESH_NAME`. | yes |
 | `planetai meshtastic` | Starts the MQTT broker (compose profile `mqtt`), writes its password, prints the gateway radio's settings for your region, waits up to three minutes for the first packet. | no |
-| `planetai radio …` | LoRa radios. `init` writes the fleet (region from `NODE_CITY`, frequency slot pinned inside Indonesia's 920–923 MHz for Bali, two channel keys); `provision <role> "<name>" <SHORT> --port …` applies a role (sensor, relay, shelf, gateway-wifi, gateway-host) in one settings transaction, `--fixed LAT,LON` for a radio with no GPS; `url` prints the QR a phone imports; `gateway --port … [--install]` makes a radio on this machine's USB the node's gateway; `federate [--write]` bridges this node's broker to `RADIO_PEERS`; `doctor`. Needs `pip3 install --user meshtastic paho-mqtt` on the host. Spec: SPEC_radio. | no |
+| `planetai radio …` | LoRa radios. `init` writes the fleet (region from `NODE_CITY`, frequency slot pinned inside Indonesia's 920–923 MHz for Bali, two channel keys; a city it has no region for refuses until you pass `--region`); `provision <role> "<name>" <SHORT> --port …` applies a role (sensor, relay, shelf, gateway-wifi, gateway-host) in one settings transaction, `--fixed LAT,LON` for a radio with no GPS; `url` prints the QR a phone imports; `gateway --port … [--install]` makes a radio on this machine's USB the node's gateway; `federate [--write]` bridges this node's broker to `RADIO_PEERS`; `doctor`. Needs `pip3 install --user meshtastic paho-mqtt` on the host. Spec: SPEC_radio. | no |
 | `planetai broker` | Starts the MQTT broker if it is not running (compose profile `mqtt`, same user and password as `planetai meshtastic`) and prints what to type into a Smart Citizen Kit's shell or a DIY node's setup portal so it publishes here; waits up to three minutes for the first message. | no |
 | `planetai reticulum` | Starts the LXMF bridge (profile `reticulum`), prints the node's address and the Sideband instructions. | no |
 | `planetai hello [--remove]` | Lists this node on every node's map. Reads the node's name, cell and the cell's centre from `/health` as a stranger would see them, asks for the place, who runs it and an optional public contact, and shows the entry. On a yes it forks `fabcity/planetai-node` with `gh` and opens the pull request to `registry.json`; without `gh` it prints the entry and the link to edit the file. Nothing is listed until a person merges it, and every node reads the list within six hours. `--remove` opens the pull request that takes the node off. | no |

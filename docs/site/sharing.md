@@ -1,5 +1,5 @@
 # Sharing and security
-<!-- checked: v0.82.0 -->
+<!-- checked: v0.82.1 -->
 
 This page is the node's boundary: what a reader on the network may see without a token, which token
 opens what, what leaves the machine and how coarse it is when it does, and whose code the node will
@@ -160,7 +160,7 @@ surface instead, which rounds, refuses and audits. See [Ask the node](ask.md).
 respectively open-only, open-only and token-only; read [the API](api.md) before putting `SHARE_LEVEL=open`
 on a network you do not trust.
 
-> **Gap in v0.82.0.** The `coast` and `forecast` packs, and the first start's 92 days of CAMS history, send the
+> **Gap in v0.82.1.** The `coast` and `forecast` packs, and the first start's 92 days of CAMS history, send the
 > node's full-precision coordinates to Open-Meteo; only the two core adapters in `app/sources.py` round them. The
 > first start also sends them to NASA POWER and OSM Nominatim.
 

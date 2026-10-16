@@ -1,5 +1,5 @@
 # Wall mode
-<!-- checked: v0.82.0 -->
+<!-- checked: v0.82.1 -->
 
 A screen on a wall that nobody is standing at. With the wall, the node is read by people walking past: a
 household sees one number, one sentence and whether the loop closed, and a lab sees which cells around it

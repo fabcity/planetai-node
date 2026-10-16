@@ -1,5 +1,5 @@
 # MCP server and tools
-<!-- checked: v0.82.0 -->
+<!-- checked: v0.82.1 -->
 
 This is the surface an agent holds. With it, any client that speaks MCP can read what the node read, ask it
 how the place is doing in the household's own words, and record, in a person's own words, that somebody

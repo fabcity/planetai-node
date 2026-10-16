@@ -1,5 +1,5 @@
 # Configuration
-<!-- checked: v0.82.0 -->
+<!-- checked: v0.82.1 -->
 
 A setting is a decision the household makes about its node: which sensors count as its own, what it
 watches first, when it may interrupt somebody, what a stranger on the WiFi may read, whether a question
@@ -242,7 +242,7 @@ data, what it loads.
 | `MQTT_USER`, `MQTT_PASS` | blank | strings | Broker credentials. `planetai meshtastic` generates them and writes the broker's password file. | env only · secret |
 | `SOURCES_DIR` | `/app/data/sources` | path inside the container | Where the app reads the vendored source registry that `GET /sources` serves. Mounted read-only from `./data`. | env only |
 
-> **Gap in v0.82.0.** `SENSOR_INDOOR` and `PURPLEAIR_HOSTS` are read by nothing, and `AIRGRADIENT_HOSTS`
+> **Gap in v0.82.1.** `SENSOR_INDOOR` and `PURPLEAIR_HOSTS` are read by nothing, and `AIRGRADIENT_HOSTS`
 > only keeps those units out of the Bali Air Dispatch ring. The AirGradient and PurpleAir adapters exist
 > and are tested; the node does not register them for polling.
 
@@ -287,7 +287,7 @@ written once.
 | `REPORT_DEPTH` | blank = `auto` | `auto`, `brief`, `standard`, `deep` | How much the report says. `auto` lets the strongest model the node can reach decide. Nothing reads it in v0.82. | runtime · public |
 | `LEARN_PUSH` | blank = `all` | `all`, `week`, `off` | The morning memory: `all` = the first report each day also carries yesterday's diary entry, last week's on Mondays, last month's on the 1st and last year's on 1 January, and what the node's learnings changed. `week` = only the week, month and year. `off` = never; `/learned` still answers. Telegram only. See [The report](report.md). | runtime · public |
 
-> **Gap in v0.82.0.** `REPORT_DEPTH` is declared, validated and offered in Set up, and nothing reads it.
+> **Gap in v0.82.1.** `REPORT_DEPTH` is declared, validated and offered in Set up, and nothing reads it.
 > Changing it changes nothing.
 
 ## How it closes a loop
