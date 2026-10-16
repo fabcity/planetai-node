@@ -1,6 +1,9 @@
 # The dashboard
 
-One page the node serves at `/`. No build step, no framework, no account, and no connection to
+This page describes the classic dashboard, `/?layout=classic`. Since v0.80 `/` opens the five doors
+(Now, Place, Node, Data, Wall): [docs/site/dashboard.md](site/dashboard.md) describes them.
+
+One page the node serves. No build step, no framework, no account, and no connection to
 anywhere else — a node hands this page to the machine you are reading it on, and if the house has no
 route to the internet it still works.
 

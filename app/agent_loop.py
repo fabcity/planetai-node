@@ -194,7 +194,7 @@ def clean(text: str) -> str:
 # rather than retyped, so a tool added there cannot quietly appear in a model's menu here.
 #
 # NOTHING IS REMOVED FROM THE MCP SURFACE. A person operating an agent over the tailnet still has all
-# twenty. This is only what the model running unattended on the box is handed.
+# twenty-one. This is only what the model running unattended on the box is handed.
 from tool_classes import TOOL_CLASS  # noqa: E402 — a table and nothing else; see that module's docstring
 
 LOCAL_CLASSES = ("read", "act")

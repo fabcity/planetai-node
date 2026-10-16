@@ -5,7 +5,7 @@ or daily/weekly/monthly/yearly learnings from the node?" Before building it he a
 made by households, local businesses and organised communities, starting from MIT Space Enabled's EVDT framework.
 Then: "yes, you can add a research note, and build the spec, lets go."*
 
-**Status: proposed, 14 October 2026; nothing here is built.** Each step in §9 is its own pull request, run on node #1
+**Status: steps 1–4 built in v0.82 (#230–#233); 5 waits on the community tier, 6 from Sep 2027. Proposed 14 October 2026.** Each step in §9 is its own pull request, run on node #1
 before it merges. The research behind it is in the note linked in §10.
 
 ## 1 · What it serves

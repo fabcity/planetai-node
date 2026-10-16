@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.82.0 — 2026-10-16 — The pre-launch audit: what a household reads, and what it never sees
 
 - **`planetai radio`: one command per radio, the node as their gateway, nodes federated** (Tomas, 16 Oct: "a tool to
   easily program any mesh nodes … and the node as a broker and gateway to connect other nodes globally via mqtt").
@@ -35,8 +35,6 @@
   rings are gone, and so are the rings around the house on the map and the alert and answer marks on its hour strip.
   The Wall still says what is asked now.
 
-## v0.82.0 — 2026-10-16 — The pre-launch audit: what a household reads, and what it never sees
-
 - **The daily export names no room.** `/export` is CC BY and `planetai ipfs` pins it, but its alert lines kept the
   house's room and sensor names whenever the request carried a token (the nightly backup on a node run natively).
   They now read Room A / Sensor 1 like every untrusted answer (`tests/test_share.py`).
@@ -66,8 +64,7 @@
   - The Wall: a station over the line is an ink disc with a red stroke, never a red fill, and every station is one
     size (its figure says the value). The replay steps an hour at a time (`WALL_TIME.HOUR_STEP`, from
     `--motion-replay-loop`) instead of tweening; each alert and answer of that hour is one still ring around the house;
-    under reduced motion the wind is one still frame. The row of answers draws one ring per alert, exactly as many
-    closed as were answered, at most 40, and says the rest in words (8 answers drew a closed ring of 10).
+    under reduced motion the wind is one still frame.
   - The Wall on a phone, a portrait screen or a small TV stacks its columns with the map first; on a touch screen its
     controls show without hover and are 44 px targets; no Wall type under 12 px; a station's figure that would cover
     another mark, the house or the clock is not drawn, and the house's label moves above the house when below would

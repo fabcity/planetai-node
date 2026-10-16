@@ -39,8 +39,8 @@ Of 137 act-level alerts in 30 days, 29 were answered within 24 hours; among thos
 
 `rho` and `median_minutes` are `null` when there is nothing to divide. `planetai status` and `planetai act` print
 ρ; the `status` MCP tool carries it; the dashboard's *Whether it worked* section draws it as "{closed} of {total}
-alerts answered · median {n} min", and the doors' Wall says it in words, "This house answered {acted} of
-{alerts_act} alerts in 30 days", before its rings.
+alerts answered · median {n} min", and the classic wall draws it as its ρ row of rings. The doors' Wall does
+not show it.
 
 ## Read it on your node
 
