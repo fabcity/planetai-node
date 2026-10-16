@@ -221,9 +221,9 @@ const calls = []; globalThis.fetch = p => { calls.push(p); return Promise.resolv
   const locked = await L.doorsFetch('/things'), cap = await L.doorsFetch('/captures/3/file?w=96'), open = await L.doorsFetch('/stats');
   const core = fs.readFileSync('./app/static/doors-core.js', 'utf8'), pick = n => core.match(new RegExp('^const ' + n + ' = .*$', 'm'))[0];
   const F = JSON.parse(fs.readFileSync('%s', 'utf8')), els = {};
-  const ctx = { D: L.buildD({ ...F, days: F.issues_days }, 'en'), VIEWS: {}, $: q => (els[q] ||= {}), out: null };
+  const ctx = { D: L.buildD({ ...F, days: F.issues_days }, 'en'), VIEWS: {}, $: q => (els[q] ||= {}), out: null, doorsLocal: L.doorsLocal };
   vm.createContext(ctx);
-  vm.runInContext(['esc', 'fmt', 'plain', 'said', 'num', 'unitOf', 'labelOf'].map(pick).join('\n') + '\n' + fs.readFileSync('./app/static/doors-wall.js', 'utf8')
+  vm.runInContext(['esc', 'fmt', 'plain', 'said', 'num', 'unitOf', 'labelOf', 'loc', 'dayOf'].map(pick).join('\n') + '\n' + fs.readFileSync('./app/static/doors-wall.js', 'utf8')
     + '\nconst now15 = s => ((D.stats15[s.sensor_id] || {}).pm25 || [])[0] ?? null, st = D.sensors.filter(s => s.kind === "sensor");'
     + ' const hv = st.filter(s => s.local).map(now15).filter(v => v != null), house = hv.length ? hv.reduce((a, b) => a + b) / hv.length : null;'
     + ' const say = Array(30).fill("Close the windows facing the street").join(" ") + ".";'
@@ -233,7 +233,11 @@ const calls = []; globalThis.fetch = p => { calls.push(p); return Promise.resolv
     + ' out = { ask: D.order.map(k => wallAsk(D.issues[k])).join(" "), cap: wallCaption(house, st.filter(s => !s.local).map(now15), D.issues.air.line),'
     + ' caps: [wallCaption(10, [20, 5], 15), wallCaption(20, [], 15), wallCaption(null, [16], 15, "at 15:00"), wallCaption(5, [], null)], narr,'
     + ' long: wallAsk({ asking: [{ says: say }] }), short: oneLine("Open the windows. Then wait."),'
-    + ' fresh: wallStale({ last_poll: new Date().toISOString() }), old: wallStale({ last_poll: "2026-10-06T11:19:50+00:00" }), none: wallStale({}) };', ctx);
+    + ' fresh: wallStale({ last_poll: new Date().toISOString() }), old: wallStale({ last_poll: "2026-10-06T11:19:50+00:00" }), none: wallStale({}) };'
+    /* the walk's four pages, at the day's last hour, with a place learning shaped as GET /learned/place answers it */
+    + ' WALK.place = [{ issue: "air", numbers: { by_hour: Object.fromEntries([...Array(24)].map((_, h) => [h, 10 + h %% 5])), days: 28 }, checked_at: "2026-10-06T08:00:00+08:00" }];'
+    + ' out.pages = [0, 1, 2, 3].map(i => wallPage(i, 23)); out.when = [wallWhen(new Date().toISOString()), wallWhen("2025-07-01T08:00:00+08:00")];'
+    + ' WALK.place = []; out.bare = wallPage(1, 23);', ctx);
   const pm = fs.readFileSync('./app/static/doors-placemap.js', 'utf8').match(/function packRows[\s\S]*?\n}\n/)[0];
   vm.runInContext('const LAYERS = [{ id: "index" }, { id: "earth" }];' + pm + 'packRows(); out.pack = LAYERS.map(l => l.none);', ctx);
   console.log(JSON.stringify({
@@ -254,6 +258,9 @@ for _p in _paths:
     for _q in ([_p.split("(")[0] + y for y in _p.split("(")[1].rstrip(")").split("|")] if "(" in _p else [_p]):
         _opened = _q in main._SHARE_OPEN[0] or _q.startswith(main._SHARE_OPEN[1])
         assert not _opened or _q == "/alerts", f"{_q} answers a screen without a token at SHARE_LEVEL=open; doorsFetch must ask it"
+_lk = json.loads(subprocess.run(["node", "-e", "const L = require('./app/static/doors-load.js'); console.log(JSON.stringify(['/learned', '/learned/search?q=x', '/learned/place'].map(p => L.DOORS_LOCKED.test(p))))"],
+                                capture_output=True, text=True, check=True).stdout)
+assert _lk == [True, True, False], f"the house's learnings ask the token, the place's do not: {_lk}"
 print("doors: a screen with no token asks no token-only route; with one it asks as before")
 _names = {x["name"].strip() for x in json.loads(Path(FIX).read_text())["sensors"] if len(x["name"].strip()) > 3}
 _wall = json.dumps(t["wall"], ensure_ascii=False)
@@ -261,6 +268,29 @@ assert not [n for n in _names if n in _wall], [n for n in _names if n in _wall]
 assert "Nothing is asked now." in t["wall"]["ask"], "6 Oct 19:22: a stale alert and an answered event ask nothing now"
 assert t["wall"]["old"] and t["wall"]["none"] and not t["wall"]["fresh"], t["wall"]
 print("doors: the Wall names no sensor, room or kit, and says stale only when the last poll is old")
+# THE WALK (Tomas picked option A, 16 Oct): four scales, the phone's own; every figure says when and one provenance word;
+# the land is a hundred squares; floods are said to be not watched, never drawn; the learned usual only when the node has it.
+_pg = t["wall"]["pages"]
+_wsrc = (STATIC / "doors-wall.js").read_text()
+_ws = re.search(r"const WALL_SCALES = (\[.*?\]);", _wsrc).group(1)
+_ps = re.search(r"const SCALES = (\[.*?\]);", (STATIC / "walk.js").read_text()).group(1)
+assert re.findall(r"k: '(\w+)'", _ws) == re.findall(r"k: '(\w+)'", _ps) and re.findall(r"res: (\d+)", _ws) == re.findall(r"res: (\d+)", _ps)[:4], (_ws, _ps)
+for _i, _h in enumerate(_pg):
+    _figs = re.findall(r'<div class="wfig">(.*?)</div>', _h)
+    assert _figs or _i == 3, f"scale {_i} draws no figure"
+    for _f in _figs:
+        assert re.search(r'class="wpw">(live|partial|model|cached|example)<', _f) and re.search(r"· \d\d:\d\d ", _f), f"a figure with no time or word: {_f}"
+    assert not re.findall(r'class="wpw">(?!(?:live|partial|model|cached|example)<)', _h), f"a word that is not one of the five on scale {_i}"
+assert "dotted: what this node learned is usual outside" in _pg[1] and "dotted" not in t["wall"]["bare"], "the usual is drawn only when learned"
+assert 'stroke-dasharray="1 6"' in _pg[1] and 'stroke-width="3"' in _pg[1] and 'stroke-dasharray="1 6"' not in _pg[0], "the street's day and its usual, dotted"
+assert re.search(r'<p class="wat">.* at <b>\d\d:00</b>: ', _pg[1]), "the replayed hour said in words, house, street and ring"
+_hund = re.search(r'<div class="whund"[^>]*>(.*?)</div>', _pg[2]).group(1)
+assert _hund.count("<i ") == 100 and re.search(r"built <b>\d+%</b>", _pg[2]), _pg[2][:400]
+assert "OpenStreetMap" in _pg[2] and "too few to tell homes from shops" in _pg[2], "the places counted, and why there is no homes-and-shops split"
+assert "<th>Floods</th><td>not watched on this node yet</td>" in _pg[3]
+assert t["wall"]["when"][1] == "Jul 2025" and re.fullmatch(r"\d\d:\d\d", t["wall"]["when"][0]), t["wall"]["when"]
+print("doors: the Wall walks the phone's four scales; every figure has its time and word; land as 100 squares; floods not invented")
+
 # 15 Oct, the Wall read from 3 m (Tomas's review of 14 Oct). Each check fails if its fix regresses.
 # The map's caption says in words what its red discs mean against the house: a clean headline beside red discs.
 _c = t["wall"]["caps"]
@@ -297,7 +327,9 @@ assert re.findall(r"getSize: (\w+)", _wjs) == ["wf", "wf"], "the map's words are
 # CHROME: a wall is not operated. The back button, the chips and the hour strip are .wchrome, invisible until a pointer
 # or the keyboard is in them; the back button is the first thing in keyboard order.
 assert "#wallv .wchrome{opacity:0" in _wcss and "#wallv .wchrome:hover,#wallv .wchrome:focus-within{opacity:1}" in _wcss
-assert re.search(r'<div class="wtop wchrome"><button class="wback"', _wjs) and 'id="wtime" class="flowtime wchrome"' in _wjs
+assert re.search(r'<div class="wtop wchrome"><button class="wback"', _wjs) and 'class="wrail" id="wrail"' in _wjs and "flowtime" not in _wjs, \
+    "the rail is how a reader knows the scale: never chrome; the hour strip is gone"
+assert "#wallv .wrail button" in _wcss and "#wallv .wback,#wallv .wchips button,#wallv .wrail button{min-height:44px;min-width:44px}" in _wcss
 for _gone in ("share level", "#wall", "more</a>", "readings in", "next in", "Read at", "replay with the token"):
     assert _gone not in _wjs.lower().replace("#wallv", ""), f"admin chrome is back on the Wall: {_gone}"
 print("doors: nothing on the Wall is under 28 px at 1920x1080, and its chrome shows only under a pointer or the keyboard")
@@ -491,7 +523,7 @@ _dh = html[html.index('data-view="data"'):html.index("<!-- WALL -->")]
 assert not re.search(r'id="d-(learned|usual|diary)"', _dh) and "learnedBlock" not in _dj and 'href="#node/remember"' in _dh, \
     "Data no longer holds the diary, what is usual or what worked; it points to Node"
 _wall = (STATIC / "doors-wall.js").read_text() + (STATIC / "doors-wallmap.js").read_text()
-assert "/learned" not in _wall and "/household" not in _wall, "the Wall never reads the house's learnings"
+assert "/learned" not in _wall.replace("/learned/place", "") and "/household" not in _wall, "the Wall never reads the house's learnings"
 print("doors: Data points to Node for the diary; the Wall reads none of it")
 
 # The WHO line (Tomas, 14 Oct 2026: "put the WHO line in graphics as reference"): every drawing of PM2.5 draws the
@@ -765,11 +797,9 @@ for _sel in (".snav a{display:flex;justify-content:space-between;align-items:cen
     assert _sel in html, f"lost: {_sel}"
 assert "gear.setAttribute('aria-current', 'page')" in (STATIC / "doors-core.js").read_text()
 print("doors: every tab, switch and button in Data and Set up is a 44 px target; the gear shows Set up is open")
-# the Wall's row of rings: one ring is one alert, never a rounded unit (8 answers once drew a closed ring of 10)
-_w = (STATIC / "doors-wall.js").read_text()
-_rp = re.search(r"const RHO_ROW = \d+;\nfunction rhoCount\(n, acted\) \{.*?\n\}", _w, re.S).group(0)
-_rc = json.loads(subprocess.run(["node"], input=_rp + "\nconsole.log(JSON.stringify([rhoCount(97, 8), rhoCount(28, 14), rhoCount(274, 23)]))",
-                                capture_output=True, text=True, check=True).stdout)
-assert _rc == [{"closed": 8, "open": 32, "left": 57}, {"closed": 14, "open": 14, "left": 0}, {"closed": 23, "open": 17, "left": 234}], _rc
-print("doors: the Wall draws one ring per alert, exactly as many closed as answered, the rest said in words")
+# the Wall shows no alert answers (Tomas, 16 Oct): no row of answered alerts, no rings around the house
+_w = (STATIC / "doors-wall.js").read_text() + (STATIC / "doors-wallmap.js").read_text()
+assert not re.search(r"rhoRow|RHO_ROW|wrho|F\.answers|F\.alerts|answers back", _w), "the Wall shows answers to alerts again"
+assert ".wrho" not in html
+print("doors: the Wall counts no answers to alerts, in words or rings")
 print("all doors checks passed")

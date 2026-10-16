@@ -9,16 +9,17 @@
    - every station at its point, one disc of one size, that hour's mean of the chosen metric written beside it (GET
      /aggregates, the hourly table); where PM2.5 is over the air line the disc is filled and ringed red (red is a
      stroke, never a fill: the layer, audit items 11 and 29, 16 Oct);
-   - the house, and one still ring around it for each alert that went out that hour (red) and each answer that came
-     back (green): counted, not grown.
-   The hours replay: the last 6 (or 24) in 30 s (--motion-replay-loop), one hour a step (WALL_TIME.HOUR_STEP), never
-   tweened; the strip under the map says which. A value label that would cover another label or a mark is not drawn.
-   Without the token the hourly table, the map and the wind are not this screen's: it draws the 15-minute means now,
-   held still, on the land's colour. Under reduced motion it holds the last hour still.
-   15 Oct (read from 3 m): every word on it is at the wall's type floor (--wf, read off #wfield's font size); the clock
-   shows only while the hours replay, beside the wind; the scale bar and the counts box are gone; the caption under it
-   says in words what the red discs mean against the house, at the hour drawn (wallCaption). */
-const WALLMAP = { map: null, ov: null, wind: null, stop: null };
+   - the house, one mark (16 Oct, Tomas: no alert or answer rings around it).
+   16 Oct, the walk (Tomas picked option A, artifact NjPB3GjGuEJeSCZnobCJwM): the map is framed on one scale's own H3 cell
+   at a time, house (res 10), street (9), ring (6), region (3), as the phone's walk is (walk.js SCALES), the cell drawn
+   blue (an H3 cell is blue in the layer) and the smaller ones faint inside it. A new scale is a cut, never a flight
+   (fitBounds with no duration). Without GET /geo/cell the frame is the cell's size around the house, from /issues'
+   geometry ladder, and no outline is drawn. The hour is the walk's (doors-wall.js): WALLMAP.api.hour(i) redraws the
+   discs at hour i of the hourly table, which only a screen with the token has; without it they hold the 15-minute
+   means now. A value label that would cover another label, a line of the clock or a mark is not drawn.
+   15 Oct (read from 3 m): every word on it is at the wall's type floor (--wf, read off #wfield's font size); the caption
+   under it says in words what the red discs mean against the house, at the hour drawn (wallCaption). */
+const WALLMAP = { map: null, ov: null, wind: null, stop: null, api: null, cells: {} };
 
 /* A wind engine for any map: particles moved by the field's hour, the screen fading behind them (Agafonkin's CPU
    version). ponytail: the Place door keeps its own copy inside doors-placemap.js; merge the two when Place changes. */
@@ -60,11 +61,26 @@ function windOn(map, F, hour, colour) {
   return { resample, tick, remove: () => cv.remove() };
 }
 
+/* the cell's ring from GET /geo/cell ([id, lat, lon, …]) as [lon, lat] points, closed */
+const cellLoop = c => { const r = c.ring.slice(1), p = []; for (let i = 0; i < r.length; i += 2) p.push([r[i + 1], r[i]]); p.push(p[0]); return p; };
+async function wallCell(res) {
+  if (!(res in WALLMAP.cells)) WALLMAP.cells[res] = doorsFetch(`/geo/cell?lat=${D.point[1]}&lon=${D.point[0]}&res=${res}`)
+    .then(r => (r.ok ? r.json() : null)).then(c => (c && c.ring ? c : null)).catch(() => null);
+  return WALLMAP.cells[res];
+}
+/* the frame of a scale: its cell's own bounds, or, with no cell, a box of the cell's size around the house */
+function wallFrame(res, cell) {
+  if (cell) { const p = cellLoop(cell); return p.reduce((b, q) => b.extend(q), new maplibregl.LngLatBounds(p[0], p[0])); }
+  const e = ((D.geometry.ladder || []).find(x => x.res === res) || {}).edge_m || 2000, [lon, lat] = D.point;
+  const dLat = e * 1.05 / 111320, dLon = dLat / Math.max(.2, Math.cos(lat * Math.PI / 180));
+  return new maplibregl.LngLatBounds([lon - dLon, lat - dLat], [lon + dLon, lat + dLat]);
+}
+
+/* o: { el, cap, scales: [{ res }], sc, hour } — draws the map at scale o.sc and the hour o.hour (an index into the
+   hourly table's buckets, or null for the 15-minute means now) */
 async function wallMap(o) {
   if (WALLMAP.stop) WALLMAP.stop();
-  const F = await flowData(), WIN = WINS.includes(o.win) ? o.win : WINS[0], HS = WALL_TIME.HOUR_STEP(WIN), LOOP = HS * WIN;
-  const B = F.buckets, h0 = B.length - WIN, M = WVAR, line = M === 'pm25' ? (D.issues.air || {}).line : null;
-  const replay = !!D.raw && !CLOCK.reduced();
+  const M = WVAR, line = M === 'pm25' ? (D.issues.air || {}).line : null, B = D.raw ? D.raw.buckets : [];
   const meanAt = (id, h) => { const s = D.raw && (D.raw.series[id] || {})[M]; const v = s && s[h]; return v ? v[0] : null; };
   const now15 = id => ((D.stats15[id] || {})[M] || [])[0] ?? null;
   const all = D.sensors.filter(s => s.lat != null && s.lon != null && s.kind === 'sensor' && s.source !== 'openstreetmap');
@@ -75,32 +91,30 @@ async function wallMap(o) {
   const C = (k, a = 1) => rgba(k, a), mono = 'JetBrains Mono, monospace';
 
   const base = await window.groundBase('dark');
-  o.el.innerHTML = `<div class="wallmap" style="width:${o.size}px;height:${o.size}px"></div><div class="wclock" aria-live="off"></div>`;
-  const map = WALLMAP.map = new maplibregl.Map({ container: o.el.firstChild, style: base.style, center: D.point, zoom: 11, interactive: false,
+  o.el.innerHTML = '<div class="wallmap"></div><div class="wclock" aria-live="off"></div>';
+  const map = WALLMAP.map = new maplibregl.Map({ container: o.el.firstChild, style: base.style, center: D.point, zoom: 13, interactive: false,
     attributionControl: false, fadeDuration: 0, transformRequest: window.groundRequest });
   map.on('load', () => { for (const l of ['v-road-label', 'v-poi-label']) if (map.getLayer(l)) map.setLayoutProperty(l, 'visibility', 'none');
     if (map.getLayer('v-place-label')) map.setPaintProperty('v-place-label', 'text-opacity', .45); });
-  const bb = new maplibregl.LngLatBounds(D.point, D.point); pub.forEach(s => bb.extend([s.lon, s.lat]));
-  map.fitBounds(bb, { padding: 70 * f, duration: 0, maxZoom: 14 });
   const ov = WALLMAP.ov = new deck.MapboxOverlay({ interleaved: false, layers: [] }); map.addControl(ov);
+  const cells = await Promise.all(o.scales.map(s => wallCell(s.res)));
 
   /* the wind: this hour of the model's field, not the replayed hour (the field looks forward; the hours look back) */
   const W = await doorsFetch('/ground/wind').then(r => r.status === 200 ? r.json() : null).catch(() => null);
   let wind = null;
   const windHour = W ? W.times.reduce((b, t, i) => Math.abs(Date.parse(t) - Date.now()) < Math.abs(Date.parse(W.times[b]) - Date.now()) ? i : b, 0) : 0;
-  map.once('idle', () => { if (!W) return; wind = WALLMAP.wind = windOn(map, W, windHour, 'rgba(249,245,242,.5)');
-    if (CLOCK.reduced()) for (let i = 0; i < 40; i++) wind.tick(); });          /* held still: one frame of streaks, never moving */
   const COMPASS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
   const windWords = W && W.at_node.speed_kmh[windHour] != null ? `wind ${Math.round(W.at_node.speed_kmh[windHour])} km/h from ${COMPASS[Math.round(W.at_node.from_deg[windHour] / 22.5) % 16]}` : '';
 
-  const hourOfT = t => replay ? Math.min(B.length - 1, h0 + Math.floor(t / HS)) : B.length - 1;
   /* a label is drawn only where it covers no mark and no label already drawn: the house first, then the worst station
      first, so where two stations crowd it is the dirtier one that keeps its figure (16 Oct: they wrote over each other) */
-  const px = p => { const q = map.project(p); return [q.x, q.y]; }, hp = px(D.point);
+  const px = p => { const q = map.project(p); return [q.x, q.y]; };
   const hit = (a, b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
   const textW = t => String(t).length * wf * .6;                                /* JetBrains Mono: 0.6 em a character */
-  const layers = h => {
-    const v = s => replay ? meanAt(s.sensor_id, h) : now15(s.sensor_id);
+  let sc = o.sc, hr = o.hour;
+  const layers = () => {
+    const hp = px(D.point);
+    const v = s => hr != null ? meanAt(s.sensor_id, hr) : now15(s.sensor_id);
     const pts = pub.map(s => ({ s, p: [s.lon, s.lat], q: px([s.lon, s.lat]), v: v(s) })).filter(d => d.v != null);
     const hv = house.map(v).filter(x => x != null), hmean = hv.length ? d3.mean(hv) : null;
     const discs = pts.map(d => [d.q[0] - ST, d.q[1] - ST, d.q[0] + ST, d.q[1] + ST]);
@@ -109,61 +123,53 @@ async function wallMap(o) {
     const hBox = dy => [hp[0] - hw, hp[1] + dy - wf / 2 - 2, hp[0] + hw, hp[1] + dy + wf / 2 + 2];
     const hDy = discs.some(t => hit(t, hBox(HOUSE + wf * .75))) && !discs.some(t => hit(t, hBox(-HOUSE - wf * .75))) ? -HOUSE - wf * .75 : HOUSE + wf * .75;
     const taken = [[hp[0] - HOUSE, hp[1] - HOUSE, hp[0] + HOUSE, hp[1] + HOUSE], hBox(hDy), ...discs];
-    const ck = o.el.querySelector('.wclock'), m = map.getContainer().getBoundingClientRect();      /* the clock's words, drawn over the map */
-    /* each line of it, not the box: a line wider than .wclock overflows it, and its box would miss the words */
-    if (ck && ck.offsetHeight) for (const c of ck.children) { const a = c.getBoundingClientRect(); taken.push([a.left - m.left - 4, a.top - m.top, a.right - m.left + 4, a.bottom - m.top]); }
+    /* the clock's words, drawn over the map, one box per line: a box round the whole clock would also cover the empty
+       width beside its short lines, and a station's figure there was left out for a word that is not there (16 Oct) */
+    const ck = o.el.querySelector('.wclock'), m = map.getContainer().getBoundingClientRect();
+    if (ck) for (const line of ck.children) { const a = line.getBoundingClientRect(); if (a.width && a.height) taken.push([a.left - m.left, a.top - m.top, a.right - m.left, a.bottom - m.top]); }
     const named = [...pts].sort((a, b) => b.v - a.v).filter(d => {
       const x0 = d.q[0] + ST + GAP, box = [x0, d.q[1] - wf / 2, x0 + textW(fmt(d.v, 0)), d.q[1] + wf / 2];
       if (taken.some(t => hit(t, box))) return false; taken.push(box); return true;
     });
-    /* one still ring around the house for each alert sent (red) and each answer back (green) in this hour, counted */
-    const ev = D.raw ? [...F.alerts.filter(a => Math.floor(a.h) === h).map(() => 'alert'), ...F.answers.filter(a => Math.floor(a.h) === h).map(() => 'answer')] : [];
+    const key = `${sc}-${hr}`;
     return [
-      ...ev.map((e, i) => new deck.ScatterplotLayer({ id: 'ev' + i, data: [D.point], getPosition: d => d, radiusUnits: 'pixels', getRadius: HOUSE + (10 + i * 8) * f,
-        stroked: true, filled: false, getLineColor: e === 'alert' ? C('--signal-worse') : C('--rings'), lineWidthUnits: 'pixels', getLineWidth: 2 })),
+      new deck.PolygonLayer({ id: 'cells-in', data: cells.slice(0, sc).filter(Boolean), getPolygon: cellLoop, stroked: true, filled: false,
+        getLineColor: C('--cells', .45), lineWidthUnits: 'pixels', getLineWidth: 1.5, updateTriggers: { getPolygon: key } }),
+      new deck.PolygonLayer({ id: 'cell', data: cells[sc] ? [cells[sc]] : [], getPolygon: cellLoop, stroked: true, filled: true,
+        getFillColor: C('--cells', .13), getLineColor: C('--cells'), lineWidthUnits: 'pixels', getLineWidth: 2.5, updateTriggers: { getPolygon: key } }),
       new deck.ScatterplotLayer({ id: 'st', data: pts, getPosition: d => d.p, radiusUnits: 'pixels', getRadius: ST, stroked: true, filled: true,
         getFillColor: d => over(d) ? C('--ink') : C('--ink', .16), getLineColor: d => over(d) ? C('--signal-worse') : C('--ink', .85),
-        lineWidthUnits: 'pixels', getLineWidth: d => over(d) ? 3 : 1.5, updateTriggers: { getFillColor: h, getLineColor: h, getLineWidth: h } }),
+        lineWidthUnits: 'pixels', getLineWidth: d => over(d) ? 3 : 1.5, updateTriggers: { getFillColor: key, getLineColor: key, getLineWidth: key } }),
       new deck.TextLayer({ id: 'st-v', data: named, characterSet: 'auto', getPosition: d => d.p, getText: d => fmt(d.v, 0), getSize: wf, fontFamily: mono, fontWeight: 600,
-        getColor: C('--ink'), getPixelOffset: [ST + GAP, 0], getTextAnchor: 'start', getAlignmentBaseline: 'center', updateTriggers: { getText: h } }),
+        getColor: C('--ink'), getPixelOffset: [ST + GAP, 0], getTextAnchor: 'start', getAlignmentBaseline: 'center', updateTriggers: { getText: key } }),
       new deck.ScatterplotLayer({ id: 'house', data: [D.point], getPosition: d => d, radiusUnits: 'pixels', getRadius: HOUSE, stroked: true, filled: true,
         getFillColor: C('--ink'), getLineColor: C('--ground'), lineWidthUnits: 'pixels', getLineWidth: 2 }),
       new deck.TextLayer({ id: 'house-l', data: [D.point], characterSet: 'auto', getPosition: d => d, getText: () => hText,
         getSize: wf, fontFamily: mono, fontWeight: 600, getColor: C('--ink'), getPixelOffset: [0, hDy], getTextAnchor: 'middle',
-        background: true, getBackgroundColor: C('--ground', .85), backgroundPadding: [4, 2], updateTriggers: { getText: h, getPixelOffset: h } }),
+        background: true, getBackgroundColor: C('--ground', .85), backgroundPadding: [4, 2], updateTriggers: { getText: key, getPixelOffset: key } }),
     ];
   };
-
-  /* the clock on it, only while the hours replay (the time now is beside the sentence), and the wind */
-  const words = h => {
-    o.el.querySelector('.wclock').innerHTML = (replay ? `<b>${hhmm(B[h])}</b><span>the last ${WIN} hours, replayed</span>` : '') + (windWords ? `<span>${esc(windWords)}</span>` : '');
-    const v = s => replay ? meanAt(s.sensor_id, h) : now15(s.sensor_id);      /* the caption reads the hour the discs show */
-    if (o.cap) o.cap.textContent = wallCaption(d3.mean(house.map(v).filter(x => x != null)) ?? null, pub.map(v), line, replay ? `at ${hhmm(B[h])}` : 'now');
-    o.time && o.time.querySelectorAll('.h').forEach(x => x.classList.toggle('on', +x.dataset.h === h));
+  /* the clock on it: the hour the discs show, and the wind; the caption reads the same hour */
+  const words = () => {
+    o.el.querySelector('.wclock').innerHTML = (hr != null ? `<b>${hhmm(B[hr])}</b><span>the stations at this hour</span>` : '') + (windWords ? `<span>${esc(windWords)}</span>` : '');
+    const v = s => hr != null ? meanAt(s.sensor_id, hr) : now15(s.sensor_id);
+    if (o.cap) o.cap.textContent = wallCaption(d3.mean(house.map(v).filter(x => x != null)) ?? null, pub.map(v), line, hr != null ? `at ${hhmm(B[hr])}` : 'now');
   };
-  if (o.time) {
-    o.time.innerHTML = `<div class="seg" role="group" aria-label="Window">${WINS.map(w2 => `<button data-w="${w2}" class="${w2 === WIN ? 'on' : ''}">${w2} h</button>`).join('')}</div>`
-      + `<button class="play" aria-label="Pause">❚❚</button><div class="hours" style="grid-template-columns:repeat(${WIN},minmax(var(--hmin,0),1fr))">${B.slice(h0).map((b, j) => { const i = h0 + j, al = F.alerts.filter(a => Math.floor(a.h) === i).length, an = F.answers.some(a => Math.floor(a.h) === i);
-        return `<button class="h" data-h="${i}" title="${hhmm(b)}"><span>${WIN <= 6 || hourOf(b) % 6 === 0 ? hhmm(b) : ''}</span>${al ? '<i class="a"></i>' : ''}${an ? '<i class="b"></i>' : ''}</button>`; }).join('')}</div>`
-      + `<span class="k">${replay ? `${WIN} hours in ${LOOP} s` : D.raw ? 'reduced motion: the last hour, held' : 'the last half hour, held still'} · red: alerts sent · green: answers back</span>`;
-    o.time.querySelectorAll('.seg button').forEach(b => b.onclick = () => +b.dataset.w !== WIN && wallMap({ ...o, win: +b.dataset.w }));
-  }
-  /* stepped: the map is redrawn only when the replayed hour changes, one hour every HOUR_STEP seconds */
-  let tHold = replay ? 0 : LOOP - HS * .5, t0 = performance.now(), paused = !replay, last = 0, shown = -1;
-  const draw = t => { const h = hourOfT(t); if (h === shown) return; shown = h; words(h); ov.setProps({ layers: layers(h) }); };
-  const tick = now => {
+  const draw = () => { words(); ov.setProps({ layers: layers() }); };
+  const frame = () => { map.fitBounds(wallFrame(o.scales[sc].res, cells[sc]), { padding: 40 * f, duration: 0 }); if (wind) wind.resample(); };
+  frame();
+  /* the marks once the style is in, whatever the tiles do; the wind once the map has drawn, on what it drew */
+  if (map.loaded()) draw(); else map.once('load', draw);
+  map.once('idle', () => { if (!W) return; wind = WALLMAP.wind = windOn(map, W, windHour, 'rgba(249,245,242,.5)'); if (CLOCK.reduced()) for (let i = 0; i < 40; i++) wind.tick(); });  /* held still: one frame */
+  let last = 0;
+  CLOCK.on('wall-map', now => {                                                 /* the wind's streaks only; the walk sets the hour */
     if (view() !== 'wall') return WALLMAP.stop && WALLMAP.stop();
-    if (wind && now - last >= WALL_TIME.WIND_FRAME) { last = now; wind.tick(); }   /* the wind moves even when the hours are paused */
-    if (paused) return;
-    tHold = ((now - t0) / 1000) % LOOP; draw(tHold);
+    if (wind && now - last >= WALL_TIME.WIND_FRAME) { last = now; wind.tick(); }
+  });
+  /* a scale is a cut, an hour a redraw: stepped, never tweened */
+  WALLMAP.api = {
+    scale(i) { if (i === sc) return; sc = i; frame(); draw(); },
+    hour(i) { const h = i == null || !D.raw ? null : i; if (h === hr) return; hr = h; draw(); },
   };
-  const play = () => { paused = false; t0 = performance.now() - tHold * 1000; o.time && (o.time.querySelector('.play').textContent = '❚❚'); };
-  const pause = () => { paused = true; o.time && (o.time.querySelector('.play').textContent = '▶'); };
-  if (o.time) {
-    const pb = o.time.querySelector('.play'); pb.onclick = () => paused ? play() : pause(); if (!replay) { pb.disabled = true; pb.textContent = '▶'; }
-    o.time.querySelectorAll('.h').forEach(b => b.onclick = () => { if (!replay) return; tHold = (+b.dataset.h - h0 + .5) * HS; t0 = performance.now() - tHold * 1000; draw(tHold); });
-  }
-  map.once('idle', () => draw(tHold));
-  if (!CLOCK.reduced()) CLOCK.on('wall-map', tick);
-  WALLMAP.stop = () => { CLOCK.off('wall-map'); if (wind) wind.remove(); map.remove(); WALLMAP.map = WALLMAP.ov = WALLMAP.wind = WALLMAP.stop = null; };
+  WALLMAP.stop = () => { CLOCK.off('wall-map'); if (wind) wind.remove(); map.remove(); WALLMAP.map = WALLMAP.ov = WALLMAP.wind = WALLMAP.stop = WALLMAP.api = null; };
 }

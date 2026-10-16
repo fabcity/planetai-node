@@ -1177,6 +1177,8 @@ _SHARE_OPEN = (_SHARE_OFF[0] | frozenset({
     # it tells a reader nothing /issues does not; it is here, and not on `off`, because it spends this machine's
     # CPU on whoever asks, and `open` is the household saying the WiFi may.
     "/ask", "/ask/status", "/docs/search", "/geo/cell",
+    # What the node learned about the place (outdoor stations' usual hours), never the house's: the Wall reads it.
+    "/learned/place",
 }), ("/static/", "/exports/", "/issues", "/sources/", "/ground/"))
 _SHARE = {"off": _SHARE_OFF, "open": _SHARE_OPEN}
 
@@ -3509,6 +3511,16 @@ def household_set(body: dict, request: Request, authorization: str = Header(""))
         cur.execute("""INSERT INTO household (id, people, updated_at) VALUES (1, %s, now())
                        ON CONFLICT (id) DO UPDATE SET people = EXCLUDED.people, updated_at = now()""", (Jsonb(p),))
     return {"ok": True, "people": p}
+
+
+@app.get("/learned/place")
+def learned_place():
+    """What this node learned about the place around it, never about the house (SPEC_learn §3): the holding `usual`
+    learnings of scope place, the outdoor sensors' hours, which the Wall draws and its narration already reads
+    (ask.wall_reads). On the `open` list: the rows are outdoor public stations' numbers, with nothing of the house in
+    them. The house's own learnings, what worked, the asks and the digests stay behind GET /learned."""
+    return {"learnings": q("SELECT key, issue, metric, statement, numbers, n, checked_at FROM learnings "
+                           "WHERE kind = 'usual' AND scope = 'place' AND status = 'holding' ORDER BY key")}
 
 
 @app.get("/learned/search")
