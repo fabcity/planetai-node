@@ -170,6 +170,9 @@ MESH_ALERTS:
 MESH_GATEWAY_NODE_NUM:
   default: "0"
   help: "The gateway's node number (decimal), used as the sender for downlink. `planetai meshtastic` shows how to find it."
+RADIO_PEERS:
+  default: ""
+  help: "Other nodes this node's broker bridges to (planetai radio federate): name=<tailnet host>:1883:<their MQTT_PASS>,… Only fabcity/ topics cross: text and alerts on the fabcity channel, and presence. Never a reading."
 RETICULUM_URL:
   default: ""
   help: "Reticulum bridge (LXMF). Alert destinations: LXMF address hashes from Sideband, comma-separated, no spaces."
