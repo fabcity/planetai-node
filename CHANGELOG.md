@@ -15,7 +15,9 @@
   reading. Existing radios are re-provisioned once. Spec: `docs/SPEC_radio.md`. Firmware now comes from
   `makingsense.fablabbali.com/flash`, which `docs/MESHTASTIC.md` points to. Two suites, both skip where the
   meshtastic package or mosquitto is absent. **Not yet run against a radio.**
-
+- **The Wall's narration no longer covers its page** (found on node #1, 16 Oct). The page keeps its height and the
+  narration takes the room left under it; on a scale whose page leaves too little, it waits for the next scale. The
+  gate's Wall pass now asks the rig's model for a full-length narration and fails when the box covers the page.
 - **The Wall walks out from the house** (Tomas, 16 Oct: "more interactivity, maybe similar to the phone version and have
   an automatic change of time and scale"; option A of three). The map is framed on one scale's own H3 cell at a time,
   house, street, ring and region, as the phone's walk is, and steps by itself: each scale's day is replayed an hour at a

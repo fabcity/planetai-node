@@ -166,10 +166,16 @@ function wallScale(i) {
   const r = $('#wrail'); if (r) { r.innerHTML = wallRail(); wallRailOn(); }
   const k = $('#wscale'); if (k) k.textContent = `${D.labels[WALL_SCALES[i].k] || WALL_SCALES[i].k} · scale ${i + 1} of 4`;
   const p = $('#wpage'); if (p) p.innerHTML = wallPage(i, WALK.hour);
-  WALLMAP.api && WALLMAP.api.scale(i);
+  wallFit(); WALLMAP.api && WALLMAP.api.scale(i);
+}
+/* the narration takes the room the page leaves; where that is less than its box, it waits for the next scale rather
+   than covering the page or running past the screen (node #1, 16 Oct). A stacked Wall scrolls, so there it always fits. */
+function wallFit() {
+  const n = $('#wnarr'), r = $('.wr'); if (!n || !r) return;
+  n.classList.remove('wnoroom'); if (!n.hidden && r.scrollHeight > r.clientHeight + 1) n.classList.add('wnoroom');
 }
 function wallHour(i) {
-  WALK.hour = i; const p = $('#wpage'); if (p && (WALK.sc <= 1)) p.innerHTML = wallPage(WALK.sc, i);
+  WALK.hour = i; const p = $('#wpage'); if (p && (WALK.sc <= 1)) { p.innerHTML = wallPage(WALK.sc, i); wallFit(); }
   WALLMAP.api && WALLMAP.api.hour(rawHour(i));
 }
 function wallRailOn() {
@@ -240,6 +246,7 @@ function narrDraw() {
   el.innerHTML = `<div class="nh"><span class="nl"><i class="dot" aria-hidden="true"></i>The node, thinking aloud</span>`
     + `<span>a model’s words from the node’s figures, never a reading${NARR.where === 'online' ? ' · written online' : ''}</span></div>`
     + `<div class="nw"><p class="nt said"><span id="ntext">${esc(t)}</span>${NARR.typing ? '<i class="caret" aria-hidden="true"></i>' : ''}</p></div>`;
+  if (typeof wallFit === 'function') wallFit();
 }
 /* the typist: one character at a time over the last text, all at once under reduced motion; then the next in ten minutes */
 function narrType() {

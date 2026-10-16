@@ -460,7 +460,10 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
    the upright facts around it. Collapsed ([hidden]) until there is text; the last text stays while the next is written. */
 /* the scale's page: its figures, each with its source, when and its word; its day; its land; what is around */
 .wscale{margin:0;font:600 calc(var(--wf) * 1.2)/1.2 var(--mono);color:var(--mute)}
-.wpage{display:flex;flex-direction:column;gap:1.2vh;min-height:0}
+/* the page keeps its height; the narration under it is what gives way, showing its last lines (node #1, 16 Oct: the
+   page was let shrink, and the region's table ran on under the narration's box) */
+.wpage{flex:0 0 auto;display:flex;flex-direction:column;gap:1.2vh}
+.wnarr.wnoroom{display:none}
 .wpage h3{margin:1.2vh 0 0;font:700 calc(var(--wf) * 1.2)/1.1 var(--display);letter-spacing:-.02em}
 .wfacts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,10em),1fr));gap:1.4vh 2vw}
 .wfig{display:grid;grid-template-columns:auto 1fr;align-items:baseline;gap:0 .35em}.wfig .wn{grid-column:1/-1;font:600 var(--wf)/1.2 var(--body)}
