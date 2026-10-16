@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- **`planetai radio`: one command per radio, the node as their gateway, nodes federated** (Tomas, 16 Oct: "a tool to
+  easily program any mesh nodes … and the node as a broker and gateway to connect other nodes globally via mqtt").
+  `tools/radio.py` and five role profiles (sensor, relay, shelf, gateway-wifi, gateway-host) replace
+  `tools/mesh-provision.sh`: one DeviceProfile per radio applied in one settings transaction instead of six reboots;
+  `--fixed LAT,LON` for a XIAO sensor node, which has no GPS. The fleet is two keyed channels, `planetai` (primary,
+  the household's) and `fabcity` (secondary, what crosses, position capped at 2.9 km), in `config/radio/fleet.yaml`.
+  **Bali's frequency slot is pinned inside Indonesia's 920–923 MHz**; SG_923 spans 917–925 and the slot hashed from
+  the channel name could fall outside. `planetai radio gateway` makes any radio on the node's USB the gateway,
+  nRF52 boards included, publishing the same JSON an ESP32 gateway does, so `app/` changes by zero lines.
+  `planetai radio federate` bridges brokers over the tailnet carrying `fabcity/` only: text and alerts, never a
+  reading. Existing radios are re-provisioned once. Spec: `docs/SPEC_radio.md`. Firmware now comes from
+  `makingsense.fablabbali.com/flash`, which `docs/MESHTASTIC.md` points to. Two suites, both skip where the
+  meshtastic package or mosquitto is absent. **Not yet run against a radio.**
+
 - **The Wall walks out from the house** (Tomas, 16 Oct: "more interactivity, maybe similar to the phone version and have
   an automatic change of time and scale"; option A of three). The map is framed on one scale's own H3 cell at a time,
   house, street, ring and region, as the phone's walk is, and steps by itself: each scale's day is replayed an hour at a
