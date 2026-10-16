@@ -227,7 +227,7 @@ const calls = []; globalThis.fetch = p => { calls.push(p); return Promise.resolv
     + '\nconst now15 = s => ((D.stats15[s.sensor_id] || {}).pm25 || [])[0] ?? null, st = D.sensors.filter(s => s.kind === "sensor");'
     + ' const hv = st.filter(s => s.local).map(now15).filter(v => v != null), house = hv.length ? hv.reduce((a, b) => a + b) / hv.length : null;'
     + ' const say = Array(30).fill("Close the windows facing the street").join(" ") + ".";'
-    + ' $("#wnarr").classList = { toggle() {} }; const nd = () => { narrDraw(); return { hidden: $("#wnarr").hidden, html: $("#wnarr").innerHTML, note: $("#wnote").textContent }; };'
+    + ' $("#wnarr").classList = { toggle() {}, add() {}, remove() {} }; const nd = () => { narrDraw(); return { hidden: $("#wnarr").hidden, html: $("#wnarr").innerHTML, note: $("#wnote").textContent }; };'
     + ' const narr = { empty: nd() }; NARR.busy = true; narr.asking = nd(); NARR.err = "The node’s model did not answer: 500"; narr.err = nd();'
     + ' NARR.prev = "The air inside is calm."; narr.kept = nd(); NARR.busy = false; NARR.err = null; NARR.shown = "The air"; NARR.typing = true; narr.typing = nd();'
     + ' out = { ask: D.order.map(k => wallAsk(D.issues[k])).join(" "), cap: wallCaption(house, st.filter(s => !s.local).map(now15), D.issues.air.line),'
