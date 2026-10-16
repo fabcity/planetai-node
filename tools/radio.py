@@ -467,7 +467,10 @@ def envget(key: str, default: str = "") -> str:
         return os.getenv(key, default)
     for line in env.read_text().splitlines():
         if line.startswith(key + "="):
-            return line.split("=", 1)[1].strip().strip('"').strip("'")
+            v = line.split("=", 1)[1].strip()
+            if v[:1] in "\"'":                       # quoted: the value is what the quotes hold, # and all
+                return v[1:].split(v[0], 1)[0]
+            return re.split(r"\s+#", v, maxsplit=1)[0].strip()   # unquoted: ` # …` is a comment, as docker compose reads it
     return os.getenv(key, default)
 
 
@@ -653,7 +656,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         if FLEET_PATH.exists() and not a.force:
             raise SystemExit(f"{FLEET_PATH} exists. --force makes a new one, and every radio must then be re-provisioned (new keys).")
         city = envget("NODE_CITY")
-        region = a.region or CITY_REGION.get(city) or "EU_868"
+        region = a.region or CITY_REGION.get(city)
+        if not region:   # never guess: a radio on another country's band is illegal there (node #1 got EU_868 in Bali)
+            raise SystemExit(f"no radio region for NODE_CITY={city!r}. Say which, e.g.  planetai radio init --region SG_923\n"
+                             f"   one of {', '.join(sorted(REGIONS))}")
         f = new_fleet(envget("NODE_NAME", "node"), region, city, a.preset, a.slot)
         save_fleet(f)
         print(f">> fleet for {f['node']}: region {region}, preset {a.preset}, slot {f['slot'] or 'by channel name'}"

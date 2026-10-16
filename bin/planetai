@@ -2324,6 +2324,20 @@ cmd_version() {
   echo "  updates signed by  fabcity  $(signer_fingerprint)"
 }
 
+cmd_radio() {
+  # Python, not Bash: it talks to radios through the meshtastic package, which the CLI's Python 3.9 floor does not
+  # carry. So it is its own file and says what to install rather than failing on an import.
+  # `python3 -m pip` installs for the very python3 that runs radio.py (a bare pip3 can belong to another one), and
+  # Apple's Python 3.9 needs pyobjc below 12: 12.0 was yanked for 3.9 and does not build there (node #1, 17 Oct).
+  if ! python3 -c 'import meshtastic, paho.mqtt' 2>/dev/null; then
+    pins=""
+    [[ "$(uname)" == Darwin ]] && python3 -c 'import sys; sys.exit(sys.version_info >= (3, 10))' 2>/dev/null \
+      && pins='"pyobjc-core<12" "pyobjc-framework-Cocoa<12" "pyobjc-framework-CoreBluetooth<12" "pyobjc-framework-libdispatch<12" '
+    fail "planetai radio needs two packages for $(command -v python3):  python3 -m pip install --user ${pins}meshtastic paho-mqtt"
+  fi
+  exec python3 "$HOME_DIR/tools/radio.py" "$@"   # $HOME_DIR, not dirname $0: the CLI runs through ~/.local/bin
+}
+
 case "${1:-help}" in
   preflight) shift; exec bash tools/preflight.sh "$@";;
   setup) shift; cmd_setup "$@";;      status) shift; cmd_status "$@";;     doctor) shift; cmd_doctor "$@";;
@@ -2333,12 +2347,7 @@ case "${1:-help}" in
   start) cmd_start;;  stop) cmd_stop;;  restart) cmd_restart;;  sensors) shift; cmd_sensors "$@";;  cells) shift; cmd_cells "$@";;
   mesh) shift; cmd_mesh "$@";;
   meshtastic) cmd_meshtastic;;  reticulum) cmd_reticulum;;  broker) cmd_broker;;
-  radio) shift
-    # Python, not Bash: it talks to radios through the meshtastic package, which the CLI's Python 3.9 floor does not
-    # carry. So it is its own file and says what to install rather than failing on an import.
-    python3 -c 'import meshtastic, paho.mqtt' 2>/dev/null \
-      || fail "planetai radio needs two packages on this machine:  pip3 install --user meshtastic paho-mqtt"
-    exec python3 "$(dirname "$0")/../tools/radio.py" "$@";;
+  radio) shift; cmd_radio "$@";;
   homeassistant|ha) cmd_homeassistant;;
   packs) shift; cmd_packs "$@";;
   sources) shift; cmd_sources "$@";;
