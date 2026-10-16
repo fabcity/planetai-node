@@ -499,7 +499,9 @@ async function serveNodeAPI(route, u) {
     const sse = (e, d) => `event: ${e}\ndata: ${JSON.stringify(d)}\n\n`;
     /* A model that takes its time, so the pane's waiting state can be looked at. */
     if (process.env.PAI_ASK_SLOW) await new Promise(r => setTimeout(r, Number(process.env.PAI_ASK_SLOW)));
-    const words = 'I have put MAP_TILES on a card. Nothing changed; you decide.'.split(' ');
+    /* PAI_ASK_LONG=1: a narration as long as the Wall's model writes (six to eight sentences), for the Wall's box */
+    const words = (process.env.PAI_ASK_LONG === '1' ? Array(8).fill('The air outside has stayed under the line all day and the house is a little cleaner still.').join(' ')
+      : 'I have put MAP_TILES on a card. Nothing changed; you decide.').split(' ');
     await route.fulfill({ status: 200, contentType: 'text/event-stream', body:
       sse('tools', { tool: 'issues', ms: 12 })
       + sse('proposal', { tool: 'settings_set', args: { changes: { MAP_TILES: 'on' } }, setting: 'MAP_TILES',
@@ -3245,9 +3247,15 @@ async function wallwalk() {
       h: document.documentElement.scrollHeight, w: document.documentElement.scrollWidth, over: r ? r.scrollHeight - r.clientHeight : 0,
       small: txt.filter(e => parseFloat(getComputedStyle(e).fontSize) < 27.5).map(e => `${e.tagName}.${e.className}`).slice(0, 3),
       undated: figs.filter(f => !/\d\d:\d\d/.test(f) || !/(live|partial|model|cached|example)/.test(f)).slice(0, 2),
+      /* the narration under the page: drawn, and neither over the page nor past the screen */
+      narr: (n => n && n.getClientRects().length ? (() => { const a = n.getBoundingClientRect(), pg = document.querySelector('#wpage'), c = r.getBoundingClientRect();
+        return { over: Math.round(pg.getBoundingClientRect().top + pg.scrollHeight - a.top), past: Math.round(a.bottom - c.bottom) }; })() : null)(document.querySelector('#wnarr')),
       words: [...W.querySelectorAll('.wpw')].map(e => e.textContent).filter(x => !['live', 'partial', 'model', 'cached', 'example'].includes(x)),
       named: names.filter(n => W.textContent.includes(n)), rail: [...document.querySelectorAll('#wrail button')].map(b => { const q = b.getBoundingClientRect(); return [q.width, q.height]; }) };
   }, [names]);
+  const was = [process.env.PAI_ASK_MODEL, process.env.PAI_ASK_LONG];
+  process.env.PAI_ASK_MODEL = 'rig-model'; process.env.PAI_ASK_LONG = '1';      /* a model that answers, at length */
+  let narrSeen = 0;
   for (const [w, h, touch] of [[1920, 1080, false], [390, 844, true]]) {
     const r = await openRig({ w, h, touch, dark: true });
     await r.page.goto(`${POP}/?fixture=${FIXTURE}#wall`, { waitUntil: 'domcontentloaded' });
@@ -3263,14 +3271,17 @@ async function wallwalk() {
       ok(!g.undated.length, `${tag}: a figure with no time or word: ${g.undated.join(' | ')}`);
       ok(!g.words.length, `${tag}: a provenance word that is not one of the five: ${g.words.join(', ')}`);
       ok(!g.named.length, `${tag}: names a room or sensor: ${g.named.join(', ')}`);
+      if (!touch && g.narr) { narrSeen += 1; ok(g.narr.over <= 1 && g.narr.past <= 1, `${tag}: the narration covers the page by ${g.narr.over} px, runs ${g.narr.past} px past the screen`); }
       if (touch) ok(g.rail.every(([a, b]) => a >= 44 && b >= 44), `${tag}: a rail button under 44 px: ${JSON.stringify(g.rail)}`);
     }
     if (!touch) {
+      ok(narrSeen >= 2, `the narration drew on ${narrSeen} of 4 scales`);
       const a = await read(r.page); await r.page.waitForTimeout(1500); const b = await read(r.page);
       ok(a.sc[0] === b.sc[0] && a.hour === b.hour && !b.sub, `reduced motion: the walk moved (${a.sc}/${a.hour} → ${b.sc}/${b.hour}, subscribed ${b.sub})`);
     }
     await r.browser.close();
   }
+  [process.env.PAI_ASK_MODEL, process.env.PAI_ASK_LONG] = was; for (const [k, v] of [['PAI_ASK_MODEL', was[0]], ['PAI_ASK_LONG', was[1]]]) if (v == null) delete process.env[k];
   { const browser = await chromium.launch();
     /* openRig holds reduced motion on; this context turns it off and serves the same page, fixture and routes */
     const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 }, reducedMotion: 'no-preference' });
@@ -3289,7 +3300,7 @@ async function wallwalk() {
     ok(hours.size >= 4 && seen.every(x => Number.isInteger(x[1])), `motion: the hours did not step (${[...hours].join(',')})`);
     ok(scales.size >= 2, `motion: the walk stayed on scale ${[...scales].join(',')} for a whole day's replay`);
     await browser.close(); }
-  if (!bad.length) console.log('  wallwalk: four scales at 1920×1080 and 390, each one screen, dated and worded, no names; still under reduced motion, stepping with motion on; 44 px scale names on a phone');
+  if (!bad.length) console.log('  wallwalk: four scales at 1920×1080 and 390, each one screen, dated and worded, no names, the narration under the page; still under reduced motion, stepping with motion on; 44 px scale names on a phone');
   for (const b of bad) console.log('FAIL wallwalk:', b);
   if (bad.length) process.exitCode = 1;
 }
