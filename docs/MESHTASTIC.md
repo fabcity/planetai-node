@@ -1,5 +1,5 @@
 # Radios
-<!-- checked: v0.82.0 -->
+<!-- checked: v0.82.1 -->
 
 Three boards. The board suggests the job; the settings decide it, and `planetai radio provision` sets them.
 
@@ -36,7 +36,8 @@ brick them.
 ## Settings: `planetai radio`
 
 ```bash
-pip3 install --user meshtastic paho-mqtt                 # on the machine the radios plug into
+python3 -m pip install --user meshtastic paho-mqtt       # on the machine the radios plug into; `planetai radio` prints
+                                                         # the exact line for its python3 (Apple's 3.9 needs pyobjc<12)
 planetai meshtastic                                      # the broker and its user, as before
 planetai radio init                                      # the fleet: region from NODE_CITY, slot, two channel keys
 planetai radio provision gateway-host "bayu radio" NODE --port /dev/cu.usbmodem1101
