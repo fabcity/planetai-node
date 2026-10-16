@@ -76,6 +76,7 @@ planetai update             planetai backup             planetai restart        
 planetai packs              planetai packs add <owner>/<repo>[/<folder>][@<ref>]       planetai packs install
 planetai setup --answers node.json      # install without a terminal; see the JSON shape in bin/planetai
 planetai hello              # list this node on every node's map, after showing what becomes public
+planetai radio init         # LoRa radios: the fleet, then `radio provision <role>`, `radio gateway`, `radio federate` (docs/SPEC_radio.md)
 ```
 
 `maintenance` over MCP returns these commands with an explanation. If you have no shell, tell the person which to run.

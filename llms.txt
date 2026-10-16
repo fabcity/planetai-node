@@ -69,6 +69,7 @@ the files themselves.
 
 - [docs/NETWORKING.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/NETWORKING.md): Tailscale, Meshtastic and Reticulum — what connects to what, and how to reach a node from elsewhere.
 - [docs/MESHTASTIC.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/MESHTASTIC.md): putting sensors on LoRa where there is no WiFi.
+- [docs/SPEC_radio.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/SPEC_radio.md): `planetai radio`, radios provisioned by role, the node as their USB gateway, nodes federated over MQTT.
 
 ## How it is built
 

@@ -51,3 +51,6 @@ tests/visual/*_live_*.json
 tests/visual/*.png
 tests/visual/*.jpg
 tests/visual/sizes.json
+# planetai radio: the fleet's channel keys, and the broker bridges' peer passwords. Credentials.
+config/radio/
+config/mosquitto/bridges/
