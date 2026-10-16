@@ -82,7 +82,6 @@ version() { git describe --tags --always 2>/dev/null || cat VERSION 2>/dev/null 
 # say what it trusts without anybody having to read a file on it — that is what `planetai version` is for.
 read -r -d '' ALLOWED_SIGNERS <<'SIGNERS' || true
 fabcity ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGvxokFMBrpVd/yz/zAhYzIMTp4MZTPp+y5ulSoDX71/ fabcity
-fabcity ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINbgbaRosyOEVk7c4iBHc5iXn9H7F1s9QGwhXBGt+qay fabcity
 SIGNERS
 # Never fails: `planetai version` is what somebody runs when nothing else works.
 signer_fingerprint() {

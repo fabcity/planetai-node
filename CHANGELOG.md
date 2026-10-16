@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- **The retired release key is no longer trusted.** v0.82.0 shipped with both signer lines so v0.81.0 still verified;
+  the 19 September key's line is now gone from all four copies (docs/SIGNING.md §5). A node on v0.82.0 already trusts
+  the new key.
+
 ## v0.82.0 — 2026-10-16 — The pre-launch audit: what a household reads, and what it never sees
 
 - **A new release key (17 Oct).** The passphrase of the key issued on 19 September was lost, so v0.82.0 is the first
