@@ -1,5 +1,5 @@
 # PLANETAI. Architecture
-<!-- checked: v0.81.0 -->
+<!-- checked: v0.82.0 -->
 
 The whole building, drawn once, so every brick knows where it goes. What exists today is marked. What doesn't is
 drawn anyway, because the contracts between layers are the thing that can't be retrofitted.
@@ -53,7 +53,7 @@ a node anywhere on earth can sample a global model at its coordinates. Same core
 | `sensor` | a device on your LAN or a nearby public one | minutes | Community, City | Smart Citizen, Meshtastic over MQTT; AirGradient and PurpleAir written, not polled |
 | `portal` | an open-data or statistical API | days–months | City, Region, Bioregion | `ckan` (any CKAN portal) |
 | `model` | a global model sampled at a point | hours | Planet, Bioregion | `openmeteo` |
-| `survey` | people answering | campaign | Community, City | **not built**: the four empty Social cells |
+| `survey` | people answering | campaign | Community, City | **not built** as a campaign: the four empty Social cells. The one `survey` row is `things:<node>`, the counts of the things a home keeps |
 | `child` | a node below this one | hourly | the scale below | the aggregate push |
 
 Slow sources land in the `observations` view (latest per source per metric); sensors land in `stats` (15m/1h/24h).
@@ -132,8 +132,8 @@ The point of fixing the contracts is that compute is a *deployment decision*, no
 
 **Downstream: phones and small devices.**
 A mobile app is a client of the nearest node: reads `/stats` and `/alerts`, writes `POST /readings` (phone
-sensors, photos, "burning here" reports; it carries the node's admin token, given once when the phone is paired) and
-`POST /actions` (I shut the windows; open to the household's phones). It needs no server of its own.
+sensors, "burning here" reports; it carries the node's admin token, given once when the phone is paired), `POST /captures`
+(photos, with the act token the phone is unlocked with) and `POST /actions` (I shut the windows; open to the household's phones). It needs no server of its own.
 When on-device models arrive (classify a photo of smoke, run the tiny persistence model), they run against the same
 endpoints. Federated participation, if ever wanted, is a `POST` of model deltas to the same node: the Flower
 Android/iOS SDKs speak to a SuperNode that would sit next to the node's API. Nothing above the node changes.
@@ -200,7 +200,7 @@ Not a roadmap. Each stage names what exists, what it proves, and the trigger for
 **Stage 0: now.** One node, two containers by default (a broker, a Reticulum bridge, the local model's loop and IPFS
 are optional profiles), Sense: adapters across sensor, portal, model and map classes, in the core and in packs.
 Observe: Postgres, hourly view, read API. Act: two domain-blind core rules plus whatever the loaded packs contribute
-(seventeen core packs ship, eighteen in v0.76 before `xiaomi-air` became wild, and wild packs are added per node), to
+(eighteen core packs ship, `fire` and `surface-heat` new in v0.82, and wild packs are added per node), to
 Telegram, the mesh, and Home Assistant; `POST /actions` records what a person did.
 Index: `GET /cells` emits `Environmental|Community` live and ρ partial. Compute: one Mac mini. *Proves:* a reading
 becomes a message someone acts on, and the node reports that fact as a cell.

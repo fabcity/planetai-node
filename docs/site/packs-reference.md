@@ -1,13 +1,12 @@
 # Packs that ship
-<!-- checked: v0.81.0 -->
+<!-- checked: v0.82.0 -->
 
-Sixteen core packs ship in `packs/` in v0.81: nine data packs and seven code packs. A seventeenth, `fire`, a code
-pack, is on `main` for the next release. Wild packs, written for one
+Eighteen core packs ship in `packs/` in v0.82: nine data packs and nine code packs. Wild packs, written for one
 place and kept by their authors, are listed at [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs) and added with `planetai packs add`. Between them they hold
 everything the node knows about a place. No rule in `app/` says what PM2.5 means for a household, what a hot night is, where
 the sea starts or where the nearest fab lab is; the air, the heat, the coast, the land, the repair commons and
-the nearest workshop are all in here, as SQL and YAML, and in seven cases as an adapter too. How a pack is
-built, loaded and linted is on [Packs](packs.md); this page is what each shipped pack does in v0.81.
+the nearest workshop are all in here, as SQL and YAML, and in nine cases as an adapter too. How a pack is
+built, loaded and linted is on [Packs](packs.md); this page is what each shipped pack does in v0.82.
 
 A pack is `data` if its folder has no `adapter.py`, and `code` if it has one. The `kind:` line in `pack.yaml`
 is documentation; the presence of the file is what the loader reads. Code packs load only with
@@ -24,18 +23,17 @@ is documentation; the presence of the file is what the loader reads. Code packs 
 | `cold-start` | data | cross-domain | 3 info | — | — | — | — |
 | `forecast` | code | weather | none | `ahead` | — | `fetch` `status` `verify` `windfield` | `FORECAST_*` |
 | `coast` | code | coast | 2 info | — | 1 | — | `COAST_MAX_KM` |
-| `surface-heat` (after v0.81) | code | heat | none | `ground` | — | — | `SURFACE_HEAT_*` |
+| `surface-heat` | code | heat | none | `ground` | — | — | `SURFACE_HEAT_*` |
 | `earth` | code | land | none | — | 1 | `fetch` `change` `frames` `status` `verify` `similar` | `EARTH_*` |
 | `earth-engine` | code | land | none | — | 1 | `timelapse` `verify` `basemap` | `EE_*`, `GROUND_SAT_WIDE_KM` |
 | `place` | code | place | 1 info | — | 1 | `refresh` `gaps` `verify` `basemap` | `PLACE_*`, `GROUND_*` |
 | `make` | code | make | none | the nearest-lab line | — | — | `MAKE_*` |
-| `fire` (next release) | code | air | 1 act, 1 warn, 1 info | — | — | — | `FIRE_*`, `FIRMS_MAP_KEY` |
+| `fire` | code | air | 1 act, 1 warn, 1 info | — | — | — | `FIRE_*`, `FIRMS_MAP_KEY` |
 | `open-data-health` | data | governance | 1 warn | — | 2 | — | `CKAN_PORTALS` (core adapter) |
 | `thingdata` | code | repair | 1 warn | — | 2 | — | `THINGDATA_*` |
 | `example-cooking-hours` | data | (none) | 1 info | — | — | — | — |
 
-That is 33 rules with a message in v0.81 (26, and the 7 the event engine reads; `fire` adds 3), 4 report contributors and 12 cells. Every rule with a message carries `en`,
-That is 33 rules with a message (26, and the 7 the event engine reads), 4 report contributors (5 with `surface-heat`, after v0.81) and 12 cells. Every rule with a message carries `en`,
+That is 36 rules with a message in v0.82 (29, and the 7 the event engine reads), 5 report contributors and 12 cells. Every rule with a message carries `en`,
 `id` and `es`, and so do the two core rules in `config/rules.yml`; Spanish reached every alert template in
 v0.63. The node picks `message[ALERT_LOCALE]` and falls back to `en`. Cooldowns below are in minutes, per
 `(rule, sensor_id)`.
@@ -150,7 +148,7 @@ both "other people's numbers, not ours". 35 °C is the pack's own and was measur
 at 32 °C, which in Kuta Selatan is the year-round baseline. Against node #1's two indoor kits over 2–7 September
 2026, a line at 32 fired 20 times in 48 hours, ten of them at night; 35 °C is the hot room's p90 and fired eight
 times in five days, never at night. The README records why the fix was the threshold and not a longer cooldown, a
-duration gate or a trend.
+duration gate or a trend. In October, with the hot room over 35 °C in 44% of hours, the cooldown went from 240 to 1440: once a room a day.
 
 The pack also carries three rules with a `kind:`, read only by the event engine ([Alerts](alerts.md#the-event-engine)):
 skipped under `ALERT_ENGINE=rules`, and under `shadow` and `events` they write no `alerts` row and fold into one
@@ -553,7 +551,7 @@ Attribution: Open-Meteo Marine API (CC BY 4.0), carrying Copernicus Marine / Met
 
 ## surface-heat
 
-**On main since 15 October 2026, after v0.81; it ships in the next release.** How hot the ground in this node's own
+How hot the ground in this node's own
 H3 res-8 cell got against the land 1 to 3 km around it, from Landsat's surface temperature at 30 m, and how warm the
 ground stays at night, from MODIS at 1 km. Read once a day from Microsoft Planetary Computer, anonymously. Written
 for Kuta Selatan; nothing in it is specific to Bali.
@@ -580,7 +578,7 @@ tiles around the node, about half a megabyte on a day with a new scene, out of a
 remembered in `out/surface-heat/state.json`.
 
 It adds three readouts to the heat issue: the cell's ground temperature, the cell minus the ring, and the ground at
-night.
+night. A declared section, `surface-heat` (stage observe, `wall: true`), shows four: those three and the ring's own.
 
 ### Rules
 
@@ -824,7 +822,7 @@ After a move it takes `planetai restart`, `planetai run place refresh` and a das
 
 Where somebody can go to make or fix something: the active fab labs nearest this node, from the Fab Lab
 Network directory, with what each one can do. This pack is the first thread from a reading to a place that can
-make or fix something. In v0.81 it names the place and stops there: no node has handed a job to a workshop,
+make or fix something. In v0.82 it names the place and stops there: no node has handed a job to a workshop,
 and nothing in the code sends one.
 
 | | |
@@ -896,7 +894,7 @@ placed; the adapter counts them and logs the number on every read (179 network-w
 Fires that satellites saw near the node in the last day, from NASA FIRMS: how many, how far, in which direction,
 and whether they lie where the wind is coming from. Written for Kuta Selatan from one day of FIRMS, 14 Oct 2026,
 when the Bukit had no fire within 50 km, the nearest 75 km north-west in East Java, and 51 burning places within
-150 km. Not in v0.81; on `main` for the next release.
+150 km.
 
 | | |
 |---|---|

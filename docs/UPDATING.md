@@ -1,5 +1,5 @@
 # Updating
-<!-- checked: v0.81.0 -->
+<!-- checked: v0.82.0 -->
 
 ```bash
 planetai update
@@ -8,8 +8,10 @@ planetai update
 In order: back up the database (and refuse to go on if that fails); fetch tags and pull, or download the tarball if the
 node has no repository access, check its checksum **and its signature**, and stop dead if either is wrong; apply
 `init.sql`, which is idempotent, to the live database; merge new keys from
-`.env.example` into `.env` under a dated marker; rebuild the image; restart; run the doctor; report the schema before
-and after.
+`.env.example` into `.env` under a dated marker; rebuild the image; restart; run its checks; report the schema before
+and after. It ends with `planetai doctor`: the checks, the node's **Data sources** and **To finish setting up**, what
+is still missing, most important first. In a terminal it offers to do the first of those; with no terminal (cron, an
+agent over ssh) it only prints. A cross there never fails an update that has already succeeded.
 
 If the version arriving ships a core pack with the same id as a wild pack on the node (one `planetai packs add`
 fetched), it stops after the backup and before anything moves, names the wild copy and where it came from, and asks

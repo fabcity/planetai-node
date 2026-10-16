@@ -1,5 +1,5 @@
 # The report
-<!-- checked: v0.81.0 -->
+<!-- checked: v0.82.0 -->
 
 The report is the node telling the household what the ground is doing, in their language, on a schedule. The
 repo's own sentence for a node ends there: "It tells the people there in plain sentences, on Telegram, and passes
@@ -58,8 +58,9 @@ headline's, and a line is always named with its owner and its unit, never a bare
    dirtier than usual." Then one clause only the models know, if its rule is loaded and crossed: a heavy swell, or the
    European air model (CAMS) putting the district past the US EPA's unhealthy level, 35.5 µg/m³.
 3. **The one thing to do.** When the node knows one, **the nearest place to make or fix something** (below), then: a
-   room still over its line; a sensor gone quiet; the first failing health check's own fix; or "Nothing needs doing
-   before the next report."
+   room still over its line; a sensor gone quiet; the first failing health check, in a sentence of the household's own
+   ("A sensor has gone quiet: Kitchen."), never the admin's fix and never a source refusing, which Node's Running
+   section names; or "Nothing needs doing before the next report."
 4. **The invitation.** "Ask me anything about the air, the heat or the sea." Always last: the morning memory goes
    above it, not below.
 
@@ -169,13 +170,14 @@ row.
 ## Contributing to it from a pack
 
 A rule with `contributes: report` and no message is never sent; its first row lands in the bundle under the
-rule's id, where the sheet may read it and a model may quote from it. Four ship:
+rule's id, where the sheet may read it and a model may quote from it. Five ship:
 
 | contributor | what it puts in the bundle |
 |---|---|
 | `insight/digest` | inside, outside, modelled, the day's mean and peak, the trend |
 | `nearby/alone` | a ring of fewer than two stations, or none within 10 km |
 | `forecast/ahead` | wind and rain for the next day |
+| `surface-heat/ground` | the ground's temperature in the node's cell at the newest clear Landsat pass, against the land around it, beside the house's own outdoor air at the same half hour (else the weather model's) |
 | `season/record` | this week's PM2.5 around the node against the usual: each Bali Air Dispatch station's last 7 days against its own preceding 60, the median of the differences, and the station count, whether or not it crossed a line |
 
 See [Packs](packs.md).

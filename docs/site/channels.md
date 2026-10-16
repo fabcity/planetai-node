@@ -1,5 +1,5 @@
 # Channels
-<!-- checked: v0.81.0 -->
+<!-- checked: v0.82.0 -->
 
 A channel is how an alert leaves the node and reaches the people it is for. The repo's own description of a node
 ends with it: it "sends the people at that address one plain message when something should change". This page
@@ -8,7 +8,7 @@ an alert becomes a row in `actions` and, from there, part of [ρ](rho.md).
 
 | channel | receives | needs internet | answers back | set up with |
 |---|---|---|---|---|
-| Telegram | every alert that reaches the floor; every report; the bot's replies | yes | `/act <id> <words>`, when the bot runs | `planetai telegram` |
+| Telegram | every alert that reaches the floor; every report, the day's first with the morning memory; the bot's replies | yes | `/act <id> <words>`, when the bot runs | `planetai telegram` |
 | Meshtastic (LoRa mesh) | `act` alerts, first line only | no | no | `planetai meshtastic`, then `MESH_ALERTS=1` |
 | Reticulum (LXMF) | `act` alerts, full text | no | `act <id> [note]` | `planetai reticulum` |
 | Home Assistant | every alert, sent or not, and every report sent, as entity state | no (LAN) | no | `planetai homeassistant` |
@@ -29,7 +29,8 @@ press posts `POST /actions` with `event_id`, `stage`, `actor`, `note`. `/act` st
 ## Telegram
 
 The default channel, and the one the report uses. Everything it sends is plain text prefixed with the level's
-icon: ℹ️ for a report or an info alert, ⚠️ for warn, 🔴 for act.
+icon (ℹ️ for info, ⚠️ for warn, 🔴 for act) unless it opens with its own sign, as the report and the air and heat
+alerts do. Only Telegram carries an act alert's line on who in the house it matters to, and the morning memory.
 
 1. **Run `planetai telegram`.** It prints `1. In Telegram, message @BotFather and send:  /newbot`. Do that, give
    the bot any name and a username ending in `bot`, and copy the token BotFather replies with.
@@ -49,8 +50,8 @@ With the token blank the node logs alerts and sends nothing. The node never logs
 token is in it; `planetai logs` containing `api.telegram.org/bot` would be a leak.
 
 Answering on Telegram is the [bot](bot.md), which runs in the separate `agent` container. `/act 12 closed the
-windows` records an `acted` row with the actor `<AGENT_NAME>/telegram` (`local-model/telegram` by default) and replies "Recorded: you acted on
-#12." `/act 12` with no words is not recorded: the bot asks "What did you do about #12? Send it as:  /act 12
+windows` records an `acted` row with the actor `<AGENT_NAME>/telegram` (`local-model/telegram` by default) and replies "Recorded what you did."
+`/act 12` with no words is not recorded: the bot asks "What did you do about it? Send it with your words:  /act 12
 <what you did>". `/stack` answers from the node's own arithmetic, with no model.
 
 ## Meshtastic, the LoRa mesh

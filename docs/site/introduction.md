@@ -1,5 +1,5 @@
 # Introduction
-<!-- checked: v0.81.0 -->
+<!-- checked: v0.82.0 -->
 
 PLANETAI is hyperlocal compute and intelligence for distributed production, and a node is its
 unit: one computer per place, on hardware the place already owns. It reads what measures that place, from a
@@ -33,8 +33,8 @@ product in, trash out, and the one it builds DIDO, data in, data out: materials 
 moves between cities. On a node, raw readings stay on the machine and only summaries travel, to a parent node
 if you name one, to the [Fab City Index](https://index.fab.city), and to the models that need ground truth.
 
-In v0.81 a node reads air and heat from the sensors in and around the house, and land and coast from public
-and satellite sources. Water and soil have no pack yet. The `make` pack names the nearest fab lab in a
+In v0.82 a node reads air and heat from the sensors in and around the house, and land and coast from public
+and satellite sources; two packs that are off until turned on read nearby fires and the ground's heat from orbit. Water and soil have no pack yet. The `make` pack names the nearest fab lab in a
 sentence, and no node has yet handed a job to a workshop. What runs today is the loop from a reading to a
 person acting and to a measured result; the loop from a reading to something made nearby is the direction.
 The programme behind it is at [planetai.fab.city](https://planetai.fab.city/).
@@ -70,7 +70,7 @@ The dashboard also explains itself and answers questions: learn mode puts a ques
 
 Raw readings stay on the machine. A parent node, if you name one, receives hourly means and the timestamps of
 this node's alerts. The daily open export carries hourly means with your own sensors named by role, the Index
-cells, the first line of each alert and ρ, under CC BY 4.0. A node that nobody has told otherwise sends no
+cells, the first line of each alert, ρ and the things the household offers to lend or give, under CC BY 4.0. A node that nobody has told otherwise sends no
 question to a model outside your network (`AGENT_PREFER=private` is the default), and the dashboard fetches no
 live map tiles until a keeper sets `MAP_TILES=on`. Once a day it asks planetai.fab.city whether a newer version
 is out, and every 6 hours it reads the programme's list of nodes from GitHub; both show the house's internet address and nothing else about it, and `UPDATE_CHECK=off` stops both. The
@@ -108,7 +108,7 @@ alive and the alerts correct."
 
 ## What these pages are
 
-This is the reference for the node at v0.81, read from the code of that version. The pages under *Get
+This is the reference for the node at v0.82, read from the code of that version. The pages under *Get
 started* and *Operate* are for the person running one. *Alerts, reports and ρ*, *Packs*, *Dashboard* and
 *Agents* explain what the node does and how to change it. *Reference* is the [HTTP API](api.md), the
 [database](schema.md) and the [federation contracts](federation.md). *Project* holds the architecture and the

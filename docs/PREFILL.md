@@ -1,5 +1,5 @@
 # What a node knows before it has a sensor
-<!-- checked: v0.81.0 -->
+<!-- checked: v0.82.0 -->
 
 On first start, with an empty database, the node pulls for its coordinates:
 
@@ -21,8 +21,9 @@ sensor arrives.
 
 ## Opt-in, because they need a key
 
-OpenAQ (global public sensors), Google Flood Hub, Sentinel-5P via Earth Engine, NASA FIRMS. None is written yet in
-v0.81; each would be a code pack or an adapter behind a flag, off by default. Nothing that needs an account runs
+OpenAQ (global public sensors), Google Flood Hub, Sentinel-5P via Earth Engine. None is written yet in v0.82; each
+would be a code pack or an adapter behind a flag, off by default. NASA FIRMS turned out to need no key: it is the
+`fire` code pack, off until `FIRE_ENABLED=1`, and an optional `FIRMS_MAP_KEY` only narrows what it downloads. Nothing that needs an account runs
 unless you turn it on.
 
 ## Presets

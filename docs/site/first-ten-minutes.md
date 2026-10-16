@@ -1,5 +1,5 @@
 # First ten minutes
-<!-- checked: v0.81.0 -->
+<!-- checked: v0.82.0 -->
 
 The install ends with a node that is reading your place and has nobody to tell. These ten minutes add the
 rest of the loop: a channel to your phone, one alert that goes all the way through, a person's answer
@@ -49,7 +49,8 @@ to two minutes for that message. When it worked:
 
 Your phone shows "<name> is connected. Alerts will arrive here." The command writes `TELEGRAM_BOT_TOKEN` and
 `TELEGRAM_CHAT_IDS` to `.env` and to the running node, so the terminal and the dashboard agree. Several
-people can receive alerts: comma-separate chat ids in `TELEGRAM_CHAT_IDS`.
+people can receive alerts: comma-separate chat ids in `TELEGRAM_CHAT_IDS`. Once the bot answers messages ([step 6](#6-talk-to-it)),
+a chat not in that list is told, once, that the node answers its household only, with its own chat id to add.
 
 **Now there is:** a channel. An alert has somewhere to go that a person will see.
 
@@ -188,7 +189,8 @@ your Telegram messages with the node's own tools, and ends: "running. Message yo
 /act 23 closed the windows /model". On Linux it also sets `OLLAMA_URL=http://172.17.0.1:11434` and warns that
 the Ollama service must listen on `0.0.0.0` so the container can reach it.
 
-`/act 23` with no words gets a question back ("What did you do about #23?") and records nothing. The model
+`/act 23` with no words gets a question back ("What did you do about it? Send it with your words: /act 23 <what you
+did>") and records nothing. The model
 on this machine gets the node's read and act tools only, never the admin ones. By default
 (`AGENT_PREFER=private`) nothing the bot is asked leaves your network; a bigger model on a machine of yours
 can sit above the local one on the [model ladder](bot.md), and an online model is used only after someone
@@ -207,7 +209,8 @@ planetai storage     where the data is, where the copies go
 ```
 
 `planetai doctor` prints one line per check, `✓` or `✗`, or an amber `!` for something worth saying that does not
-fail the run, such as a new version being out; the fix is under every `✗` and `!` after a `→`. It ends with
+fail the run, such as a new version being out; the fix is under every `✗` and `!` after a `→`. Below the checks,
+**Data sources** lists what the node needs for its basic job, each `✓`, `✗` with its fix, or a dash. It ends with
 `all good` or `fix the marked lines, then run planetai doctor again`. A tarball node also shows
 `release signature verified on last update` and the source registry it carries.
 

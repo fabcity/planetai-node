@@ -1,5 +1,5 @@
 # Packs
-<!-- checked: v0.81.0 -->
+<!-- checked: v0.82.0 -->
 
 A pack is how a place teaches its node what to watch and what to say about it. The core names no metric:
 what `pm25` means, which line matters in this house, and the sentence a person should read at 9 pm are all
@@ -7,8 +7,8 @@ written in a pack. A data pack is SQL and words. A code pack also fetches: it ad
 read. The loader's own description of the point is one line: "most useful contributions are a rule and a
 threshold that someone learned the hard way in their city."
 
-Packs come in two tiers. The sixteen in the release are **core** (v0.76 had eighteen; `xiaomi-air` and `posidonia` have
-since become wild). Any other pack is **wild**: it lives in its author's own repository, or is hosted at [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs), is listed there by pull request,
+Packs come in two tiers. The eighteen in the release are **core** (v0.76 also had eighteen; `xiaomi-air` and `posidonia` have
+since become wild, and v0.82 added `fire` and `surface-heat`). Any other pack is **wild**: it lives in its author's own repository, or is hosted at [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs), is listed there by pull request,
 and is added to a node with `planetai packs add`. A wild pack that a second place can use may be promoted to core.
 The rules for both are the [packs decision](https://github.com/fabcity/planetai-node/blob/main/docs/decisions/2026-10-01-packs.md).
 
@@ -38,8 +38,8 @@ with the node's privileges and network access: read it first. Without that setti
 code; set PACKS_ALLOW_CODE=1 to run it (read <path> first)` and loads the pack's rules and cells anyway.
 
 Because blank `PACKS_ENABLED` means every pack, a pack that must stay off by default needs its own switch.
-One pack has one: `make` reads a directory that is not openly licensed, so it does nothing until
-`MAKE_ENABLED=1`, on top of `PACKS_ALLOW_CODE=1`. v0.65 shipped without that switch and the pack turned
+Two packs have one: `make` reads a directory that is not openly licensed, so it does nothing until
+`MAKE_ENABLED=1`, on top of `PACKS_ALLOW_CODE=1`; `fire` waits for `FIRE_ENABLED=1` the same way, for the bandwidth. v0.65 shipped `make` without its switch and the pack turned
 itself on at update on node #1; v0.66 added it (see [`CHANGELOG.md`](../../CHANGELOG.md)).
 
 Loading is plain. A `pack.yaml`, `rules.yml`, `cells.yml` or adapter that does not parse is
@@ -128,7 +128,7 @@ Telegram if it is connected, the heat issue's state is `act` (on a node on `shad
 The pack now asks a person to do something, and what they record against it counts in [ρ](rho.md).
 
 On a checkout of the repository, `python3 tools/check_rules.py` (it needs `sqlglot`) parses the pack
-against `init.sql`. It prints `51 rules and cells check out against init.sql` (48 at v0.76, which still carried
+against `init.sql`. It prints `55 rules and cells check out against init.sql` (48 at v0.76, which still carried
 `xiaomi-air`'s rule and `posidonia`'s three, and none of the event engine's seven); with your folder added the count is two more, one rule and one cell. A `{placeholder}` the SQL
 does not return is refused here and named; on a running node the same mistake sends the raw template, braces and all.
 
@@ -290,7 +290,7 @@ writable path, and what they write there is yours to send anywhere. Every `*.py`
 ## A dashboard section
 
 Any pack, wild or core, can declare a section in its `pack.yaml`, as data. The node reads each readout's latest row
-and serves the section in `GET /issues` under `sections`; the page draws it as a band in its stage on Now, with the
+and serves the section in `GET /issues` under `sections` (a core pack's section only once a row of it exists); the page draws it as a band in its stage on Now, with the
 pack's name beside the title, using its own readout cards and no code from the pack:
 
 ```yaml
