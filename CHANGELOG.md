@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- **`/tester`: the sensor bench, served by the node** (Tomas, 17 Oct: "a tool to see if the sensor is working via serial
+  usb … also a visualizer of devices in a lan network, with layers"). The same file as makingsense.fablabbali.com/test/;
+  here it reads the node's own /health, /sensors, /readings and /nodes and draws every device the node knows, by layer
+  (mesh, WiFi pods, LAN, Smart Citizen, stations & models, other nodes, indoors/outdoors). USB works on this machine
+  (localhost is a secure context), not from across the LAN. Answers at every SHARE_LEVEL like /ui; the reads behind it
+  stay gated and the page asks for the token when one is refused. `app/static/tester.html` is a copy.
+
 ## v0.82.1 — 2026-10-17 — The radio command runs on a real node, and the old key retires
 
 - **`planetai radio` runs on a real node.** It looked for `tools/radio.py` beside the `~/.local/bin` link, so it
