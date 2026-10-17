@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- **`planetai radio` no longer crashes on a blank `.env` value.** `envget` took `""` for a quoted value (an empty string
+  is in every string), so `radio doctor` and `radio gateway` died with IndexError on any node whose `MQTT_PASS=` is still
+  blank, which is every node before `planetai meshtastic`. `test_radio` now reads blank, quoted and commented values.
+  CI never saw it: both radio suites skip without the meshtastic package.
+
 ## v0.82.1 — 2026-10-17 — The radio command runs on a real node, and the old key retires
 
 - **`planetai radio` runs on a real node.** It looked for `tools/radio.py` beside the `~/.local/bin` link, so it

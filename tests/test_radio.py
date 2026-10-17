@@ -172,6 +172,16 @@ assert len(fed.inbound("fabcity/boston/text", long, now=1200)) == 200, "LoRa fra
 t, body = fed.presence(3, "83a5f6fffffffff")
 assert t == "fabcity/bayu-ungasan/presence" and json.loads(body)["radios"] == 3
 
+# ---- .env reading: blank, quoted, commented (a blank MQTT_PASS= is every node before `planetai meshtastic`)
+import tempfile as _tf, pathlib as _pl
+with _tf.TemporaryDirectory() as _d:
+    _old = radio.ROOT; radio.ROOT = _pl.Path(_d)
+    (_pl.Path(_d) / ".env").write_text('MQTT_PASS=\nMQTT_USER=planetai   # the broker user\nNODE_NAME="bayu # ungasan"\nNODE_CITY=bali\n')
+    assert radio.envget("MQTT_PASS") == "", "a blank value is blank, not a crash"
+    assert radio.envget("MQTT_USER") == "planetai" and radio.envget("NODE_NAME") == "bayu # ungasan" and radio.envget("NODE_CITY") == "bali"
+    assert radio.envget("MISSING", "dflt") == "dflt"
+    radio.ROOT = _old
+
 # ---- broker bridges: only fabcity/ crosses, each direction named, over the tailnet
 peers = radio.parse_peers("menorca=lucas-node.tail1234.ts.net:1883:s3cret, boston=fabhub.tail1234.ts.net:1883:pw2")
 assert peers == {"menorca": {"address": "lucas-node.tail1234.ts.net:1883", "password": "s3cret"}, "boston": {"address": "fabhub.tail1234.ts.net:1883", "password": "pw2"}}

@@ -468,7 +468,8 @@ def envget(key: str, default: str = "") -> str:
     for line in env.read_text().splitlines():
         if line.startswith(key + "="):
             v = line.split("=", 1)[1].strip()
-            if v[:1] in "\"'":                       # quoted: the value is what the quotes hold, # and all
+            if v and v[0] in "\"'":                  # quoted: the value is what the quotes hold, # and all
+                                                     # (`v[:1] in …` was true for a blank value: "" is in every string)
                 return v[1:].split(v[0], 1)[0]
             return re.split(r"\s+#", v, maxsplit=1)[0].strip()   # unquoted: ` # …` is a comment, as docker compose reads it
     return os.getenv(key, default)
