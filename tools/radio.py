@@ -697,6 +697,14 @@ def usb_radios() -> List[Tuple[str, str]]:
     return out
 
 
+def gateway_port() -> Optional[str]:
+    """The USB port the installed gateway service holds, read back from its own service file."""
+    p = (Path.home() / "Library" / "LaunchAgents" / "city.fab.planetai.radio.plist") if sys.platform == "darwin" \
+        else (Path.home() / ".config" / "systemd" / "user" / "planetai-radio.service")
+    m = re.search(r"(/dev/[\w.\-]+)", p.read_text()) if p.exists() else None
+    return m.group(1) if m else None
+
+
 def service_installed() -> bool:
     if sys.platform == "darwin":
         return (Path.home() / "Library" / "LaunchAgents" / "city.fab.planetai.radio.plist").exists()
@@ -707,7 +715,9 @@ def guide() -> int:
     """`planetai radio` on its own: where this node is in setting up its radios, step by step, and the one command
     that comes next. Read-only: it looks at .env, the fleet file and the USB ports, and never talks to a radio."""
     ports = usb_radios()
-    port = ports[0][0] if len(ports) == 1 else "/dev/cu.usbmodem…"
+    gw_port = gateway_port()
+    free = [d for d, _ in ports if d != gw_port]   # the gateway's port is taken: never offer it for another radio
+    port = free[0] if len(free) == 1 else "/dev/cu.usbmodem…"
     try:
         fleet = load_fleet() if FLEET_PATH.exists() else None
     except ImportError:   # yaml arrives with the packages; the fleet is there, its details wait for step 1
@@ -750,7 +760,7 @@ def guide() -> int:
     print("Radios for this node, step by step\n")
     for i, (done, title, detail, _) in enumerate(steps, 1):
         print(f"  {'✓' if done else '·'} {i}. {title}: {detail}")
-    print("\n  On USB now: " + ("; ".join(f"{d} ({desc})" for d, desc in ports) if ports
+    print("\n  On USB now: " + ("; ".join(f"{d} ({desc})" + (" — the gateway, keep it plugged in" if d == gw_port else "") for d, desc in ports) if ports
           else "no radio. Plug one in by USB (antenna on first), then run this again.\n"
           "    Plugged in and still nothing? The usual four, most likely first: a charge-only cable (try the one that came\n"
           "    with the radio); a Tracker's power switch is off; a XIAO needs BOOT held while it is plugged in; a hub or\n"
@@ -759,7 +769,8 @@ def guide() -> int:
     if todo:
         print(f"\nNext: {todo[0][3]}")
         if "/dev/cu.usbmodem…" in todo[0][3]:
-            print("      (plug the radio in by USB first; this command then names its port)" if not ports else
+            print("      (plug the radio in by USB first; this command then names its port)" if not free and not (ports and gw_port) else
+                  "      (plug the next radio into another USB port; the gateway stays where it is)" if not free else
                   "      (more than one radio is plugged in: pick its port from the list above)")
     else:
         print("\nEvery step is done. Phones join with  planetai radio url ; check a radio with  planetai radio doctor --port <port>")
@@ -770,6 +781,7 @@ def guide() -> int:
 # ---------------------------------------------------------------- CLI
 def main(argv: Optional[List[str]] = None) -> int:
     logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"), format="%(asctime)s %(levelname)s %(message)s")
+    logging.getLogger("meshtastic").setLevel(logging.WARNING)   # its "Telling node to commit…" lines are not for people
     ap = argparse.ArgumentParser(prog="planetai radio", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd")
     s = sub.add_parser("init"); s.add_argument("--region"); s.add_argument("--slot", type=int); s.add_argument("--preset", default="LONG_FAST"); s.add_argument("--force", action="store_true")

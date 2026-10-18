@@ -52,3 +52,17 @@ if PYTHONNOUSERSITE=1 python3 -S -c 'import sys; sys.path.insert(0,"tools"); imp
   echo "  x wait_ready passed with no meshtastic"; exit 1; fi
 grep -q 'not installed' "$t/err" || { echo "  x a missing meshtastic must say so, not that the radio did not come back:"; cat "$t/err"; exit 1; }
 echo "  ok   meshtastic runs as python3 -m meshtastic, and a missing package is said as such"
+# Once the gateway runs as a service, its port is taken. The guide once offered the gateway's own port for the next
+# radio, which would have rewritten the gateway as a sensor (node #1, 18 Oct).
+h="$t/home"; mkdir -p "$h/Library/LaunchAgents" "$h/.config/systemd/user"
+for f in "$h/Library/LaunchAgents/city.fab.planetai.radio.plist" "$h/.config/systemd/user/planetai-radio.service"; do
+  echo "<string>/dev/cu.usbmodemGATE</string> --port /dev/cu.usbmodemGATE" > "$f"; done
+g="$(FAKE_HOME="$h" PYTHONPATH="$t/stub" PLANETAI_ROOT="$r" python3 -c '
+import os, sys; from pathlib import Path; sys.path.insert(0, "tools"); import radio
+radio.Path.home = staticmethod(lambda: Path(os.environ["FAKE_HOME"]))   # the service file, without hiding user-site packages
+radio.usb_radios = lambda: [("/dev/cu.usbmodemGATE", "seeed-xiao-s3")]
+f = radio.load_fleet(); f.setdefault("radios", []).append({"id": "!1", "role": "gateway-host", "name": "gw", "short": "GW", "provisioned": "x"}); radio.save_fleet(f)
+radio.guide()')"
+grep -q 'keep it plugged in' <<<"$g" && ! grep -q 'provision sensor .*--port /dev/cu.usbmodemGATE' <<<"$g" \
+  || { echo "  x the guide offered the gateway's port for another radio:"; echo "$g"; exit 1; }
+echo "  ok   with the gateway running, the guide never offers its port for the next radio"

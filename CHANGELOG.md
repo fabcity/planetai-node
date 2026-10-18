@@ -19,6 +19,10 @@
   `--configure` set the region but left the old primary key and no `fabcity` channel; the check caught it. `provision`
   now writes both channels in one settings transaction through the Meshtastic API after `--configure`, and provisioning
   a radio again replaces its entry in the fleet instead of listing it twice.
+- **The guide never offers the gateway's port for another radio.** With the gateway running, the only radio on USB is
+  the gateway; step 6 used to name its port for the next sensor, which would have rewritten it. The guide now marks it
+  "the gateway, keep it plugged in" and asks for the next radio on another port. The Meshtastic library's INFO lines no
+  longer print over `provision`.
 
 - **A node joins every map within the hour.** Each node read `registry.json` every 6 hours, so `larsbcn` (Barcelona,
   merged 18 Oct 12:20 UTC) was missing from node #1's map until a read at 17:25. It reads the file every hour now:
