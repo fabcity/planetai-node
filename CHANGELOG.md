@@ -14,6 +14,9 @@
 
 ## Unreleased
 
+- **A node joins every map within the hour.** Each node read `registry.json` every 6 hours, so `larsbcn` (Barcelona,
+  merged 18 Oct 12:20 UTC) was missing from node #1's map until a read at 17:25. It reads the file every hour now:
+  one small public file, 24 requests a day (`REGISTRY_EVERY`).
 - **`/tester`: the sensor bench, served by the node** (Tomas, 17 Oct: "a tool to see if the sensor is working via serial
   usb … also a visualizer of devices in a lan network, with layers"). The same file as makingsense.fablabbali.com/test/;
   here it reads the node's own /health, /sensors, /readings and /nodes and draws every device the node knows, by layer
