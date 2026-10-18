@@ -279,6 +279,8 @@ Promise.all([loadD(), fetch(NODE + 'learn.json').then(r => r.json()).catch(() =>
   if (D.askOff) $('#askbtn').hidden = true;                 /* UI_ASK off: no ask here either */
   $('#who').innerHTML = `${esc(D.node.name)}<small>${esc(D.node.place || '')}</small>`;
   $('#asof').textContent = `${new URLSearchParams(location.search).get('fixture') ? 'CAPTURE' : 'LIVE'} · as of ${hhmm(D.as_of)}${DOORS_TOKEN() ? '' : ' · locked'}`;   /* the version is in the footer (audit, 15 Oct) */
+  const rel = D.health.release || {};                        /* a newer release: one small line in the bar, to Set up › Updates */
+  $('#relnote').hidden = !rel.newer; $('#relnote').textContent = rel.newer ? `${rel.latest} is out` : '';
   try { D.ngeo = await nodeGeo(D); } catch (e) { D.ngeo = null; D.ngeoErr = e.message; }
   route();
   ASKING.close();

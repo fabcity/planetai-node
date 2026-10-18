@@ -802,4 +802,9 @@ _w = (STATIC / "doors-wall.js").read_text() + (STATIC / "doors-wallmap.js").read
 assert not re.search(r"rhoRow|RHO_ROW|wrho|F\.answers|F\.alerts|answers back", _w), "the Wall shows answers to alerts again"
 assert ".wrho" not in html
 print("doors: the Wall counts no answers to alerts, in words or rings")
+
+# a newer release is one small line in the bar, hidden until /health says so, and it opens Set up › Updates
+assert re.search(r'<header class="bar">.*id="relnote" href="#setup/updates"[^>]*hidden.*</header>', html, re.S)
+assert "$('#relnote').hidden = !rel.newer" in js
+print("doors: a newer release shows in the bar, and only then")
 print("all doors checks passed")

@@ -671,7 +671,7 @@ def push_events() -> None:
 # It is not signed, and it need not be: the most a forged one can do is say a version is out, and `planetai update`
 # still refuses a tarball the release key did not sign.
 RELEASE_URL = "https://planetai.fab.city/node0/get/VERSION"
-RELEASE_EVERY = 24 * 3600
+RELEASE_EVERY = 3600  # one line of text: a release is on every node's page within the hour
 RELEASE_WORDS = {
     "en": "PLANETAI {latest} is out; this node runs {here}. On the node: planetai update (it backs up first). "
           "What changed: https://planetai.fab.city/docs/changelog/",
@@ -688,9 +688,8 @@ from requires import release_of  # noqa: E402
 
 
 def check_release() -> None:
-    """Once a day, ask which version is current; say so in /health, and once per version on Telegram, when it is
-    newer than this node. Runs hourly so a message held back by quiet hours goes out the next morning, but asks
-    the site only once in RELEASE_EVERY. UPDATE_CHECK=off asks nothing and forgets what it knew."""
+    """Every hour, ask which version is current; say so in /health, and once per version on Telegram, when it is
+    newer than this node. A message held back by quiet hours goes out the next morning. UPDATE_CHECK=off asks nothing and forgets what it knew."""
     if settings.get("UPDATE_CHECK", "on") == "off":
         state.pop("release", None)
         return
