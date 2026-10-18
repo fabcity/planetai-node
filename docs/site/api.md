@@ -1,5 +1,5 @@
 # HTTP API
-<!-- checked: v0.82.1 -->
+<!-- checked: v0.82.2 -->
 
 Every node exposes the same API on port 8080. The dashboard, the `planetai` command, the MCP tools, a NAS pulling backups, Home Assistant and a parent node are all clients of it, and none of them has a private path in. A request either carries a token as `Authorization: Bearer <token>` or carries nothing, and a request carrying nothing is judged by the `SHARE_LEVEL` setting. The container publishes `${APP_PORT:-8080}:8080` on every host interface; Postgres is published on `127.0.0.1:5432` only. There is no TLS on the node itself: the tailnet encrypts the hop, and the [sharing page](sharing.md) says what to do on a network that is not a tailnet.
 
@@ -21,7 +21,7 @@ Two middlewares run before any handler. The first registered checks `/mcp` again
 
 The `off` allowlist (the default) is exactly: `/`, `/ui`, `/tester`, `/health`, `/llms.txt`, `/settings`, `/export`, `/presence`, `/nodes`, `/offers`, and any path under `/static/`.
 
-The `open` allowlist is the `off` list plus 29 paths: `/stats`, `/sensors`, `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/trust`, `/nearby`, `/forecast`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, `/ask`, `/ask/status`, `/docs/search`, `/geo/cell`, `/learned/place`. It also takes any path under `/static/`, `/exports/`, `/issues`, `/sources/` or `/ground/`. That is 38 exact paths and 5 prefixes in all. `/ground/*` is public data (OpenStreetMap, OpenAerialMap, Sentinel-2, Open-Meteo) cut around the node; `/geo/cell` answers an untrusted caller without its node-relative fields.
+The `open` allowlist is the `off` list plus 29 paths: `/stats`, `/sensors`, `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/trust`, `/nearby`, `/forecast`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, `/ask`, `/ask/status`, `/docs/search`, `/geo/cell`, `/learned/place`. It also takes any path under `/static/`, `/exports/`, `/issues`, `/sources/` or `/ground/`. That is 39 exact paths and 5 prefixes in all. `/ground/*` is public data (OpenStreetMap, OpenAerialMap, Sentinel-2, Open-Meteo) cut around the node; `/geo/cell` answers an untrusted caller without its node-relative fields.
 
 A `SHARE_LEVEL` value that is neither `off` nor `open` is treated as `off`. The allowlist matches the path whatever the method, so it governs writes as well as reads. `POST /readings` shares its path with `GET /readings`, so at `SHARE_LEVEL=open` an anonymous post gets past the middleware and is refused by the handler with 401. `PUT /settings` shares its path with `GET /settings`, which is on the `off` list, so the same happens at every level. `/actions` is on neither list, so an anonymous `POST /actions` or `GET /actions` is refused by the middleware at both levels. A path the node has no route for is refused with 403 too, not 404, when the caller is untrusted.
 
@@ -70,7 +70,7 @@ Returns one object with: `ok` (true once a poll has run), `node`, `version` (`NO
  "docs": "https://planetai.fab.city/docs/", "mcp": "/mcp", "llms": "/llms.txt"}
 ```
 
-> **Gap in v0.82.1.** `/health` spreads the poll loop's own state into its answer, so it also carries `registry` (the last read behind `/nodes`), `bot` (the Telegram bot's username), `learned_on` and `learned_at`, and with `SPECIES_MATCH=on` `griis` (the country's whole checklist of marks) and `others` (GBIF's open-record counts per taxon for each of the seven cells), to every reader at every level, on the one route every screen polls. With `MQTT_HOST` set, `direct` (the Smart Citizen MQTT counters) rides beside `mesh`.
+> **Gap in v0.82.2.** `/health` spreads the poll loop's own state into its answer, so it also carries `registry` (the last read behind `/nodes`), `bot` (the Telegram bot's username), `learned_on` and `learned_at`, and with `SPECIES_MATCH=on` `griis` (the country's whole checklist of marks) and `others` (GBIF's open-record counts per taxon for each of the seven cells), to every reader at every level, on the one route every screen polls. With `MQTT_HOST` set, `direct` (the Smart Citizen MQTT counters) rides beside `mesh`.
 
 ### GET /health/sources
 Access: token
@@ -143,7 +143,7 @@ Access: token
 
 A 301 redirect to `/report/latest`, kept for a dashboard left open in a browser through the update that removed the briefing in v0.38. Takes and ignores `kind`. Hidden from the OpenAPI schema.
 
-> **Gap in v0.82.1.** `/briefing` is on neither allowlist. A stale dashboard with no token is refused with 403 by the middleware before it can be redirected, at both levels. The route works as intended only for loopback or a request with a token.
+> **Gap in v0.82.2.** `/briefing` is on neither allowlist. A stale dashboard with no token is refused with 403 by the middleware before it can be redirected, at both levels. The route works as intended only for loopback or a request with a token.
 
 
 ### GET /machine

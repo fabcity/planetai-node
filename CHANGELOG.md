@@ -7,6 +7,9 @@
   "v0.83.0 is out", only while `/health.release.newer` is true; it opens Set up › Updates. On a phone it is its own
   44 px row under the bar. Until now only the foot and a "new" tag in Set up said so. The node asks planetai.fab.city
   every hour instead of once a day (`RELEASE_EVERY`): one line of text. Telegram is still told once per version.
+
+## v0.82.2 — 2026-10-18 — Radios, step by step, and the sensor bench on the node
+
 - **Radios, step by step (Tomas, 18 Oct: "I am not sure how to make the radios work").** `planetai radio` on its own is
   now the guide: the packages, the broker, the fleet, the gateway radio, the gateway as a service, the other radios,
   each ticked or not, the radios on USB right now, and the one command that comes next with its port filled in. It
