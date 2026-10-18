@@ -37,24 +37,27 @@ If step 3 says `outdoor` for a kit that is inside, fix it on the Smart Citizen p
 ### A Bayu sensor that publishes to Smart Citizen
 
 A Bayu (the Making Sense Bali DIY node) reaches Smart Citizen with a token, and the token comes from the
-platform, not from the node or the flasher. In this order:
+platform, not from the node or the flasher. Making Sense Bali's setup tool does the platform side from a phone.
+In this order:
 
-1. **Create an account** on [smartcitizen.me](https://smartcitizen.me).
-2. **Add the sensor as an experiment** at
-   [api.smartcitizen.me/ui/experiments/onboarding](https://api.smartcitizen.me/ui/experiments/onboarding), signed
-   in with that account. That process generates the sensor's token. Keep it.
-3. **Flash the sensor** at [planetai.fab.city/sensors](https://planetai.fab.city/sensors/#flash) (01 Flash, the Bayu
+1. **Flash the sensor** at [planetai.fab.city/sensors](https://planetai.fab.city/sensors/#flash) (01 Flash, the Bayu
    button). Flashing sets no WiFi and no token.
-4. **Type the token into the setup portal.** On first boot the sensor opens a WiFi network, `MSB-Node-xxxx`,
-   password `makingsense`; join it and the portal opens (or browse to `192.168.4.1`). Give it your WiFi, a name,
-   the site, the height and indoors if it hangs in a room, leave the broker blank, and paste the token.
-5. **Check it publishes**: 02 Test on the same page, with the sensor on USB, shows `Publishing` with a count of
-   messages sent. Then step 1 above: once the kit has a page on smartcitizen.me, the number in that page's address
-   is the id `SC_DEVICES` takes.
+2. **Open the setup tool** at [makingsense.fablabbali.com/setup.html](https://makingsense.fablabbali.com/setup.html)
+   on your phone and sign in to Smart Citizen. No account yet: create one on
+   [smartcitizen.me](https://smartcitizen.me) and come back.
+3. **Name the sensor** and say whether it hangs indoors or outdoors and where. The tool creates the device on the
+   platform, with its token. It has no server of its own: what you type goes from the browser to
+   api.smartcitizen.me.
+4. **Hand the token to the sensor.** Plug it in; on the phone, join its WiFi, `MSB-Node-xxxx`, password
+   `makingsense`, and scan the code the tool shows (or open the `http://192.168.4.1/t?token=…` link under it). The
+   sensor saves the token. Pick your home WiFi in its portal, type the password, press Save.
+5. **Wait for the first reading.** The tool watches for it; the sensor publishes once a minute after it joins
+   WiFi. 02 Test on the workbench, with the sensor on USB, shows `Publishing` with a count. Then step 1 above: the
+   number in the device page's address on smartcitizen.me is the id `SC_DEVICES` takes.
 
-Only the token reaches the platform; name, site and height stay on the sensor's own status page. A Bayu that
-publishes only to this node skips steps 1 and 2: the broker fields come from `planetai broker`, and the token is
-any six characters.
+Only the token reaches the platform; the sensor's own name, site and height stay on its status page. A Bayu that
+publishes only to this node skips the tool: the broker fields come from `planetai broker`, and the token is any six
+characters.
 
 ## Who may be counted
 

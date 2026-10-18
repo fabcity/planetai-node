@@ -10,10 +10,10 @@
   this machine (localhost is a secure context), not from across the LAN. Answers at every SHARE_LEVEL like /ui; the
   reads behind it stay gated and the page asks for the token when one is refused. `app/static/workbench.html` is a
   copy. Not `/sensors`, which is the sensor list; `/tester`, its name on main for a day, redirects.
-- **Docs: a Bayu sensor on Smart Citizen, in order** (Tomas, 18 Oct). docs/site/sensors.md: create an account,
-  add the sensor as an experiment at api.smartcitizen.me/ui/experiments/onboarding (that gives the token), flash at
-  planetai.fab.city/sensors, then type the token into the sensor's WiFi setup portal. The workbench says the same
-  in its Flash tab, in three languages.
+- **Docs: a Bayu sensor on Smart Citizen, in order** (Tomas, 18 Oct). docs/site/sensors.md: flash at
+  planetai.fab.city/sensors, then Making Sense Bali's setup tool (makingsense.fablabbali.com/setup.html) signs in to
+  Smart Citizen, creates the device with its token, and hands the token to the sensor's WiFi portal by a code the
+  phone scans. The workbench says the same in its Flash tab, in three languages.
 
 ## v0.82.1 — 2026-10-17 — The radio command runs on a real node, and the old key retires
 
