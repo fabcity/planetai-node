@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.82.2 — 2026-10-18 — Radios, step by step, and the sensor bench on the node
 
 - **Radios, step by step (Tomas, 18 Oct: "I am not sure how to make the radios work").** `planetai radio` on its own is
   now the guide: the packages, the broker, the fleet, the gateway radio, the gateway as a service, the other radios,

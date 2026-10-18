@@ -1,5 +1,5 @@
 # When it goes wrong
-<!-- checked: v0.82.1 -->
+<!-- checked: v0.82.2 -->
 
 Every entry here is something that happened to a real tester, not something we imagined. They are
 ordered by **what is on your screen**, because that is what you have.
