@@ -44,3 +44,11 @@ echo "  ok   planetai radio on its own walks broker → fleet → gateway and na
 g="$(PYTHONNOUSERSITE=1 PLANETAI_ROOT="$r" python3 -S tools/radio.py 2>&1 || true)"
 grep -q '^Next: python3 -m pip install --user .*meshtastic paho-mqtt' <<<"$g" || { echo "  x without the packages the next step must install them:"; echo "$g"; exit 1; }
 echo "  ok   without the packages, the guide's first step is the pip line for its own python3"
+# radio.py runs meshtastic as a module of its own python3. It once looked for the `meshtastic` script, which a Mac's
+# `pip install --user` puts on nobody's PATH, and called that a radio which "did not come back after a reboot".
+c="$(PYTHONPATH="$t/stub" python3 -c 'import sys; sys.argv=["x"]; sys.path.insert(0,"tools"); import radio; print(radio.meshtastic_cli())')"
+[[ "$c" == *"'-m', 'meshtastic'"* ]] || { echo "  x meshtastic must run as python3 -m meshtastic, got: $c"; exit 1; }
+if PYTHONNOUSERSITE=1 python3 -S -c 'import sys; sys.path.insert(0,"tools"); import radio; radio.wait_ready("/dev/null", tries=1)' 2>"$t/err"; then
+  echo "  x wait_ready passed with no meshtastic"; exit 1; fi
+grep -q 'not installed' "$t/err" || { echo "  x a missing meshtastic must say so, not that the radio did not come back:"; cat "$t/err"; exit 1; }
+echo "  ok   meshtastic runs as python3 -m meshtastic, and a missing package is said as such"

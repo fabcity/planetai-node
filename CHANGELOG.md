@@ -11,6 +11,10 @@
   itself instead of printing `launchctl` lines; every step ends with "Next step: planetai radio". urllib3's LibreSSL
   warning no longer prints over the output on Apple's Python. docs/MESHTASTIC.md opens with the same steps, each with
   what you should see.
+- **`planetai radio provision` reaches the radio.** It looked for the `meshtastic` script, which `pip install --user`
+  puts in `~/Library/Python/3.9/bin` on a Mac, on nobody's PATH; the "not installed" that followed was retried as a
+  radio that "did not come back after a reboot", though no command had reached it (node #1, 18 Oct). Every call is now
+  `python3 -m meshtastic` from the same interpreter, and a missing package says so.
 
 - **A node joins every map within the hour.** Each node read `registry.json` every 6 hours, so `larsbcn` (Barcelona,
   merged 18 Oct 12:20 UTC) was missing from node #1's map until a read at 17:25. It reads the file every hour now:

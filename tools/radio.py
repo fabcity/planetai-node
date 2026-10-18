@@ -234,15 +234,18 @@ def render_profile(role: str, long_name: str, short_name: str, fleet: dict, prof
 
 
 # ---------------------------------------------------------------- talking to a radio (thin: the meshtastic CLI does the work)
-def meshtastic_cli() -> str:
-    exe = shutil.which("meshtastic") or str(Path.home() / ".local" / "bin" / "meshtastic")
-    if not Path(exe).exists():
-        raise SystemExit("the meshtastic CLI is not installed:  pip3 install --user meshtastic")
-    return exe
+def meshtastic_cli() -> List[str]:
+    """The meshtastic CLI as the module of the very python3 running this file. A `--user` install puts the
+    `meshtastic` script in ~/Library/Python/3.9/bin on a Mac, which is on nobody's PATH: looking for the script once
+    reported a radio that "did not come back after a reboot" when no command had reached it (node #1, 18 Oct)."""
+    import importlib.util
+    if importlib.util.find_spec("meshtastic") is None:
+        raise SystemExit(f"the meshtastic package is not installed for {sys.executable}:  python3 -m pip install --user meshtastic")
+    return [sys.executable, "-m", "meshtastic"]
 
 
 def run_cli(port: str, *args: str, timeout: int = 120) -> str:
-    r = subprocess.run([meshtastic_cli(), "--port", port, *args], capture_output=True, text=True, timeout=timeout)
+    r = subprocess.run([*meshtastic_cli(), "--port", port, *args], capture_output=True, text=True, timeout=timeout)
     if r.returncode != 0:
         raise SystemExit(f"meshtastic {' '.join(args)} failed:\n{(r.stdout + r.stderr).strip()[-800:]}")
     return r.stdout
@@ -250,11 +253,12 @@ def run_cli(port: str, *args: str, timeout: int = 120) -> str:
 
 def wait_ready(port: str, tries: int = 30) -> None:
     """Every settings write reboots the radio; an ESP32 takes longer than an nRF52 to come back. Poll, don't sleep."""
+    meshtastic_cli()   # a missing package is said as such, not retried as a radio that is slow to come back
     for _ in range(tries):
         try:
             run_cli(port, "--info", timeout=40)
             return
-        except SystemExit:
+        except (SystemExit, subprocess.TimeoutExpired):
             time.sleep(2)
     raise SystemExit(f"radio on {port} did not come back after a reboot")
 
@@ -607,7 +611,8 @@ def doctor(port: Optional[str]) -> int:
         print(("  ok  " if ok else "  !!  ") + what + ("" if ok else f"\n        {fix}"))
         bad += 0 if ok else 1
 
-    chk(bool(shutil.which("meshtastic") or (Path.home() / ".local/bin/meshtastic").exists()), "meshtastic CLI on the host", "python3 -m pip install --user meshtastic")
+    import importlib.util
+    chk(importlib.util.find_spec("meshtastic") is not None, f"meshtastic for {sys.executable}", "python3 -m pip install --user meshtastic")
     try:
         from importlib.metadata import version
         v = tuple(int(x) for x in version("meshtastic").split(".")[:3])
