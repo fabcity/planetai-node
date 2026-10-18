@@ -21,6 +21,8 @@ import httpx
 from mcp.server.mcpserver import MCPServer
 
 import settings
+from packs import PACKS_DIR, agent_scripts
+from tool_classes import PLACEHOLDER_NOTES, TOOL_CLASS  # noqa: F401 — re-exported; `planetai agent` and the loop read them
 
 API = f"http://127.0.0.1:{os.getenv('PORT', '8080')}"
 NODE = os.getenv("NODE_NAME", "node")
@@ -37,7 +39,8 @@ mcp = MCPServer(
 
 
 def _get(path: str):
-    r = httpx.get(API + path, timeout=30)
+    # X-Agent on every read: the node leaves `private` readings out of what an agent is handed (main._shows_private)
+    r = httpx.get(API + path, headers={"X-Agent": "agent"}, timeout=30)
     r.raise_for_status()
     return r.json()
 
@@ -48,7 +51,7 @@ def _admin_headers(agent: str) -> dict:
 
 @mcp.tool()
 def status() -> dict:
-    """Is the node alive, what has it read, what fired, and its rho (share of alerts that led to an action)."""
+    """Is the node alive, what has it read, what fired, and its rho (share of act-level alerts somebody answered within 24 h)."""
     h = _get("/health"); rho = _get("/rho")
     backups = Path("/app/backups")
     last_ok = (backups / "LAST_OK").read_text().strip() if (backups / "LAST_OK").exists() else None
@@ -60,9 +63,13 @@ def status() -> dict:
 @mcp.tool()
 def health_check() -> dict:
     """Checks with the fix named next to each failure: polling recent, sources without errors, a backup in the last two days,
-    the database reachable, the mesh alive if configured."""
+    no local sensor's channel frozen, the LoRa radios heard if configured. `sources` is GET /health/sources: the fundamental sources, each
+    running or not, with its fix; they never make `ok` false."""
     h = _get("/health"); checks = []
-    def chk(name, ok, fix): checks.append({"check": name, "ok": bool(ok), "fix": None if ok else fix})
+    # `fix` is the admin's (Node › Running, MCP). `who` is the display names a failing check is about, so the morning
+    # message can name the room in the household's words instead of quoting `fix` (app/report.py, HEALTH).
+    def chk(name, ok, fix, who=()):
+        checks.append({"check": name, "ok": bool(ok), "fix": None if ok else fix, **({"who": list(who)} if who and not ok else {})})
     age = None
     if h.get("last_poll"):
         age = (datetime.now(timezone.utc) - datetime.fromisoformat(h["last_poll"])).total_seconds() / 60
@@ -80,21 +87,29 @@ def health_check() -> dict:
         chk("no local sensor's ambient channel is frozen", False, f"/trust did not respond ({e}); check `planetai logs`")
     else:
         frozen = sorted({r["name"] or r["sensor_id"] for r in trust if r["frozen_channels"] > 0})
+        named = sorted({r["name"] for r in trust if r["frozen_channels"] > 0 and r.get("name")})
         chk("no local sensor's ambient channel is frozen", not frozen,
             f"{', '.join(frozen)} {'has' if len(frozen) == 1 else 'have'} a channel stuck on the same number for hours while the kit itself "
             f"still reports. What this means: any reading or alert built from that channel is wrong; the rest of the kit and the rest of the "
             f"node are unaffected. Most often one sensor inside the kit has died: power-cycle it. If the number stays frozen, replace that "
-            f"sensor — nothing it has recorded since it froze can be trusted.")
+            f"sensor — nothing it has recorded since it froze can be trusted.", named)
     if os.getenv("MQTT_HOST"):
         # judge the radios by their readings, not by in-memory packet counters that reset on every restart
         mesh = [r for r in _get("/stats") if r["sensor_id"].startswith("msh-")]
         quiet = sorted({r["sensor_id"] for r in mesh if r["silent_minutes"] > 60})
         heard = sorted({r["sensor_id"] for r in mesh if r["silent_minutes"] <= 60})
+        named = sorted({r["name"] for r in mesh if r["silent_minutes"] > 60 and r.get("name")})
         chk("LoRa radios heard in the last hour", bool(heard) or not mesh,
             f"radio(s) {', '.join(quiet)} have been silent for hours. What this means: readings and alerts that travel over LoRa have "
             f"stopped; everything else (the WiFi sensors, Telegram, the dashboard) is unaffected. Most often the gateway radio (the XIAO) "
-            f"lost WiFi or its MQTT session: check its power light, open its web page at its IP, or power-cycle it. `planetai logs mosquitto` shows whether the broker hears it.")
-    return {"ok": all(c["ok"] for c in checks), "checks": checks}
+            f"lost WiFi or its MQTT session: check its power light, open its web page at its IP, or power-cycle it. `planetai logs mosquitto` shows whether the broker hears it.", named)
+    # The fundamental sources (GET /health/sources), apart from the checks: a node with no sensor yet is unfinished,
+    # not broken, so they never make `ok` false. Each one that is not running carries its fix.
+    try:
+        srcs = _get("/health/sources")["sources"]
+    except Exception:  # noqa: BLE001 — an older node has no such route; the checks above stand on their own
+        srcs = None
+    return {"ok": all(c["ok"] for c in checks), "checks": checks, "sources": srcs}
 
 
 @mcp.tool()
@@ -162,9 +177,31 @@ def report_bundle(hours: int = 6) -> dict:
     cells. This is what a report is written from — use it to answer a question about a stretch of time rather than a
     moment, and never write a number that is not in it."""
     r = httpx.get(API + f"/report/bundle?hours={min(max(int(hours), 1), 168)}",
-                  headers={"Authorization": f"Bearer {os.getenv('ADMIN_TOKEN', '')}"}, timeout=120)
+                  headers={"Authorization": f"Bearer {os.getenv('ADMIN_TOKEN', '')}", "X-Agent": "agent"}, timeout=120)
     r.raise_for_status()
     return r.json()
+
+
+@mcp.tool()
+def learned(query: str = "", scale: str = "") -> dict:
+    """What this house has learned from its own record (docs/SPEC_learn.md), and its diary. With no arguments: the
+    learnings, what worked after someone acted, what is usual, and the alerts that may not fit. With `query`, a few
+    keywords ('October', 'smoke purifier', 'heat'), it searches the learnings and the digests the node writes for every
+    day, week, month and year; `scale` (day, week, month, year) narrows to digests of that size, and alone lists the
+    newest. To compare two periods, search for each. A learning's `for_whom` names who in this house it matters most
+    to, as the household said; say so when it applies. Every sentence is the node's own: quote it, never add a number or
+    a cause. Answers only while every model this node may use is on the house's own machines; otherwise it says why."""
+    if query or scale:
+        r = httpx.get(API + "/learned/search", params={"q": query, "scale": scale}, headers=_admin_headers("agent"), timeout=30)
+    else:
+        r = httpx.get(API + "/learned", headers=_admin_headers("agent"), timeout=30)
+    if r.status_code in (403, 422):
+        return {"kept_home" if r.status_code == 403 else "error": r.json().get("detail")}
+    r.raise_for_status()
+    if query or scale:
+        return {"results": [{k: x.get(k) for k in ("source", "scale", "label", "text")} for x in r.json().get("results", [])]}
+    return {"learnings": [{k: x.get(k) for k in ("key", "kind", "status", "statement", "n", "checked_at", "for_whom")}
+                          for x in r.json().get("learnings", [])]}
 
 
 @mcp.tool()
@@ -175,15 +212,32 @@ def history(sensor_id: str, metric: str) -> list:
 
 
 @mcp.tool()
-def alerts(limit: int = 10) -> list:
-    """Recent alerts, newest first, each with its id, level (info/warn/act) and whether anyone acted on it."""
-    return _get(f"/alerts?limit={min(limit, 100)}")
+def alerts(limit: int = 10, since_hours: int = 0) -> dict | list:
+    """Recent alerts, newest first, each with its id, level (info/warn/act) and whether anyone acted on it.
+
+    For "how many in the last day", pass since_hours=24: that returns {since_hours, count, alerts}, where `count` is
+    every alert in the window and `alerts` the newest `limit` of them with their text shortened. Answer a count from
+    `count`, never by counting a list."""
+    if not since_hours:
+        return _get(f"/alerts?limit={min(limit, 100)}")
+    rows = _get(f"/alerts?since_hours={int(since_hours)}&limit=1000")
+    return {"since_hours": since_hours, "count": len(rows),
+            "alerts": [{**r, "text": (r.get("text") or "")[:160]} for r in rows[:min(limit, 100)]]}
 
 
 @mcp.tool()
-def act(alert_id: int, note: str = "acted", agent: str = "agent") -> dict:
-    """Record that a person acted on an alert. This is the node's own measurement: rho is the share of act-level alerts that
-    led to an action. Use the person's words in `note` when you have them."""
+def act(alert_id: int, note: str, agent: str = "agent") -> dict:
+    """Record that a PERSON acted on an alert, in their own words. `note` is required and must be what they said.
+
+    rho — the share of act-level alerts that led to an action — is the one number this project has that nobody can
+    measure from orbit, and this tool is how it is written. Do not call this because an alert looked handled, or
+    because you suggested something sensible. Call it when somebody told you they did a thing, and put what they
+    told you in `note`. If you do not have their words, ask for them."""
+    if not (note or "").strip() or (note or "").strip().lower() in PLACEHOLDER_NOTES:
+        raise ValueError(
+            "act() needs the person's own words in `note`, not a placeholder. rho is the share of alerts a HUMAN "
+            "answered; a row written without anything a human said is a model measuring itself. Ask them what they "
+            "did and call this again with their answer.")
     r = httpx.post(API + "/actions", json={"alert_id": alert_id, "stage": "acted", "actor": agent, "note": note}, timeout=30)
     r.raise_for_status()
     return {"recorded": True, "alert_id": alert_id, "by": agent}
@@ -227,8 +281,8 @@ def issues(issue: str | None = None) -> dict:
     changed today · quiet = nothing to say · context = it informs and never asks · none = not
     watched or no source) and why; the same quantity at four distances (room, yard, ring, region)
     with a source and a provenance word for each; the line it is judged against and where that line
-    comes from; the open asks, and whether each is still true; and one sentence in English, Bahasa
-    and Spanish.
+    comes from; the open alerts, and whether each is still true; `asking`, what is asked of the
+    household now; and one sentence in English, Bahasa and Spanish.
 
     `headline` is the issue to lead with: the highest state present, ties going to the keeper's
     order. Prefer this tool over `stats` or `readings` for any question about how the place is
@@ -253,7 +307,8 @@ def series(metric: str = "pm25", hours: int = 24) -> dict:
 
 @mcp.tool()
 def export_day(day: str | None = None) -> dict:
-    """One day as open data: hourly means per sensor, cells, alerts, rho. Default yesterday. What a parent node or a researcher receives."""
+    """One day as open data: hourly means per sensor, cells, alerts, rho, and what the household offers to lend or give.
+    Default yesterday. What a parent node or a researcher receives."""
     day = day or (date.today() - timedelta(days=1)).isoformat()
     return _get(f"/export?day={day}")
 
@@ -262,9 +317,14 @@ def export_day(day: str | None = None) -> dict:
 def run_pack_script(pack: str, script: str, args: list[str] | None = None, agent: str = "agent") -> dict:
     """Run a script a pack ships (e.g. earth-engine verify, earth-engine timelapse). Runs in the app container; output files land in out/.
     Returns stdout/stderr and the exit code."""
-    p = Path("/app/packs") / Path(pack).name / (Path(script).name + ".py")
-    if not p.exists():
-        return {"error": f"no such script: {pack}/{script}", "available": [f"{q.parent.name}/{q.stem}" for q in Path("/app/packs").glob("*/*.py") if q.stem != "adapter"]}
+    pack, script = Path(pack).name, Path(script).name
+    p = PACKS_DIR / pack / (script + ".py")
+    reachable = agent_scripts()
+    if f"{pack}/{script}" not in reachable:
+        why = (f"{pack}/{script} is in a wild pack that does not list it under agent_scripts:, so only the node's own "
+               f"terminal runs it: planetai run {pack} {script}") if p.is_file() and (p.parent / ".wild").is_file() \
+            else f"no such script: {pack}/{script}"
+        return {"error": why, "available": reachable}
     r = subprocess.run(["python", str(p), *(args or [])], capture_output=True, text=True, timeout=900, env={**os.environ, "PACK_OUT": "/app/out"})
     return {"exit": r.returncode, "stdout": r.stdout[-6000:], "stderr": r.stderr[-2000:], "by": agent}
 
@@ -289,6 +349,11 @@ def maintenance(task: str) -> dict:
         return {"error": f"unknown task; one of {sorted(cmds)}"}
     c, what = cmds[task]
     return {"run_on_the_node": c, "does": what, "where": "a shell on the node's machine (ssh, or the local agent). Not from here."}
+
+
+def tool_names() -> set:
+    """Every tool the server registers, for the test that TOOL_CLASS has not drifted from it."""
+    return {t.name for t in mcp._tool_manager.list_tools()} if hasattr(mcp, "_tool_manager") else set()
 
 
 def http_routes():

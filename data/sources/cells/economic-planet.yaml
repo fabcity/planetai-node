@@ -1,0 +1,17 @@
+cell: Economic|Planet
+indicator_categories:
+- open design commons
+- global material and waste flows
+- economic complexity
+minimum_indicators:
+- name: Openly licensed hardware designs published
+  unit: count
+  aggregation: latest
+- name: Global municipal solid waste generated
+  unit: t/yr
+  aggregation: annual-total
+does_not_claim: A count of designs is not a count of things made. The size of a commons says nothing
+  about whether anything was built from it, where, or by whom — and an Index that reports a growing
+  library as growing production is making the claim this sentence exists to forbid.
+notes: '13 entries filed, most of them act sources: Appropedia, OKH Search, OSHWA, Things That Work,
+  the Open Lab Starter Kit. This is the cell where ''what could be built'' lives.'

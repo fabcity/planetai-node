@@ -21,9 +21,12 @@
 #   planetai act <id>       your note on what you did about alert <id>
 #   planetai mesh           join the tailnet: reach this node from anywhere, no open ports
 #   planetai meshtastic     LoRa sensors and alerts via a gateway radio (sets up the broker, prints gateway settings)
+#   planetai broker         a DIY node publishing straight to this node (sets up the broker, prints the portal values)
+#   planetai radio          LoRa radios: provision by role, the node as their USB gateway, federate nodes (tools/radio.py)
 #   planetai reticulum      give the node an LXMF address: encrypted messaging over TCP or LoRa (RNode)
 #   planetai homeassistant  publish sensors and alerts as Home Assistant entities (MQTT discovery)
 #   planetai packs          what is loaded; `packs install` adds code-pack settings to .env and their libraries to the image
+#   planetai packs add <id>  a wild pack from fabcity/planetai-wild-packs; or <owner>/<repo>[/<folder>][@<ref>] from GitHub
 #   planetai ui             the dashboard: where it is, and the token that unlocks its settings pages
 #   planetai storage        where the data lives, where backups and copies go, exports, IPFS; `set` to change
 #   planetai backup         dump + export + copy now, instead of waiting for 03:17
@@ -36,6 +39,7 @@
 #   planetai cells           the Index cells this node fills, with provenance (--json)
 #   planetai snapshot        one JSON of everything the node answers, for a design round or a bug report (--out FILE)
 #   planetai geocode <place> what the setup wizard would find for a place name
+#   planetai hello          list this node on every node's map: shows what goes public, then opens the pull request (--remove)
 #   planetai version         the version this folder is at
 #   planetai remove         take this node off the machine; asks twice. --keep-data keeps the readings
 #   planetai stop | start | restart
@@ -72,6 +76,23 @@ spin() {
 # The version, however this node was installed: a git checkout describes, a tarball carries VERSION, and a
 # node mid-install has neither and is honestly "dev".
 version() { git describe --tags --always 2>/dev/null || cat VERSION 2>/dev/null || echo dev; }
+
+# The key an update must be signed by. Same line as tools/allowed_signers and the heredocs in `install`
+# and `update.sh`; tests/test_release_consistency.sh fails if the four drift. A node should be able to
+# say what it trusts without anybody having to read a file on it — that is what `planetai version` is for.
+read -r -d '' ALLOWED_SIGNERS <<'SIGNERS' || true
+fabcity ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGvxokFMBrpVd/yz/zAhYzIMTp4MZTPp+y5ulSoDX71/ fabcity
+SIGNERS
+# Never fails: `planetai version` is what somebody runs when nothing else works.
+signer_fingerprint() {
+  local t fp=""
+  if command -v ssh-keygen >/dev/null 2>&1; then
+    t="$(mktemp)"; printf '%s\n' "$ALLOWED_SIGNERS" > "$t"
+    fp="$(ssh-keygen -lf "$t" 2>/dev/null | awk 'NR==1{print $2}')"
+    rm -f "$t"
+  fi
+  printf '%s' "${fp:-none issued yet, so this node refuses every tarball}"
+}
 logo() { printf '%s' "$BL"; cat <<'LOGO'
 
   ██████╗ ██╗      █████╗ ███╗   ██╗███████╗████████╗ █████╗ ██╗
@@ -311,7 +332,7 @@ PY
     if confirm "Continue with these?"; then
       step "Installing"
       chmod +x install.sh backup.sh update.sh 2>/dev/null || true
-      PLANETAI_INSTALL_LOG="$LOG" ./install.sh --yes || exit 1
+      PLANETAI_FROM_SETUP=1 PLANETAI_INSTALL_LOG="$LOG" ./install.sh --yes || exit 1
       finish_setup; return
     fi
     # After an install that failed more than once, starting clean is often the shortest way out — and
@@ -427,15 +448,11 @@ print(next((k for k, (a, b, c, d) in boxes.items() if a < lat < b and c < lon < 
   local sensor sc ag pa indoor=0        # not `kind`: that already holds home|business|community|district from question 3
   choose sensor "   Pick one. You can add more later." \
     "None yet. Start with the global models and add hardware when I have it." \
-    "Smart Citizen kit (I have the number from its smartcitizen.me URL)" \
-    "AirGradient on my WiFi" \
-    "PurpleAir on my WiFi"
+    "Smart Citizen kit (I have the number from its smartcitizen.me URL)"
+  # AirGradient and PurpleAir come back when the air-sensors pack reads them (the sensors spec, PR #262, step 3): until
+  # then the node never read either, and an operator who picked one got no reading and no first alert.
   case "$sensor" in
     Smart*) ask sc "   Kit number" ""; [[ "$sc" =~ ^[0-9]+$ ]] || fail "a Smart Citizen kit number is digits only, e.g. 19880" ;;
-    AirGradient*) ask ag "   Its hostname or IP (on the device's sticker, or in your router)" "airgradient_XXXXXX.local"
-                  confirm "   Is it indoors?" && indoor=1 ;;
-    PurpleAir*)   ask pa "   Its IP address (from your router; the .local name is unreliable)" ""
-                  confirm "   Is it indoors?" && indoor=1 ;;
   esac
 
   # summary
@@ -464,7 +481,7 @@ print(next((k for k, (a, b, c, d) in boxes.items() if a < lat < b and c < lon < 
   # NOT wrapped in spin(): install.sh prints named steps with elapsed time, and hiding them behind one
   # spinner line is precisely what left a tester watching "building the node" for four minutes and then
   # reading "Something went wrong."
-  PLANETAI_INSTALL_LOG="$LOG" ./install.sh "${flags[@]}" || exit 1
+  PLANETAI_FROM_SETUP=1 PLANETAI_INSTALL_LOG="$LOG" ./install.sh "${flags[@]}" || exit 1
   envset NODE_TZ "$tz"; envset NODE_CITY "$city"; envset NODE_KIND "$kind"
   [[ "$kind" == district ]] && envset NODE_SCALE city
   # on a Linux box that had no Docker a minute ago, install.sh ran under the new docker group (sg) but this shell
@@ -480,7 +497,7 @@ finish_setup() {
   spin "starting with your settings" docker compose up -d --force-recreate app || fail "the app container did not restart with your settings"
   spin "waiting for the first answer" bash -c 'for i in $(seq 1 30); do curl -sf "http://localhost:$(grep ^APP_PORT= .env | cut -d= -f2 | sed "s/[[:space:]]*#.*$//" | tr -d " " || echo 8080)/health" >/dev/null && exit 0; sleep 1; done; exit 1' || true
   api /health >/dev/null || fail "the node is not answering on port $(port). Look at: planetai logs"
-  cmd_doctor quiet || echo "  The crosses above are normal on a new node: Telegram is the next step, and the first backup runs tonight."
+  cmd_doctor quiet || true
 
   what_next
 }
@@ -496,7 +513,7 @@ what_next() {
   printf '    on this machine     %shttp://localhost:%s%s\n' "$BL" "$p" "$N"
   [[ -n "$ip" ]] && printf '    from your phone     %shttp://%s:%s%s   (same WiFi)\n' "$BL" "$ip" "$p" "$N"
   printf '    settings token      %s%s%s   (planetai ui shows it again)\n\n' "$D" "${tok:-not set yet}" "$N"
-  printf '  %sThis is an alpha.%s Things will break; tell us what happened, what helped and what did not: %sinfo@fab.city%s\n\n' "$Y" "$N" "$B" "$N"
+  printf '  %sThis is a beta.%s Things will still break; tell us what happened, what helped and what did not: %sinfo@fab.city%s\n\n' "$Y" "$N" "$B" "$N"
   printf '  %sIn the terminal%s\n' "$B" "$N"
   printf '    %splanetai%s             every command, one line each\n' "$BL" "$N"
   printf '    %splanetai telegram%s    alerts on your phone, two minutes\n' "$BL" "$N"
@@ -536,31 +553,99 @@ print(("  reference %d: " % len(ref)) + ", ".join(s["sensor_id"] for s in ref[:4
   api /rho | json 'print("  rho       %s  (%s/%s act-level alerts answered, 30d)" % (d["rho"] if d["rho"] is not None else "not yet measured", d["acted"], d["alerts_act"]))' 2>/dev/null || true
 }
 
+# planetai doctor            every check, then the node's data sources, each failure with its fix under it
+# planetai doctor quiet      no heading and no "all good": what `planetai setup` prints, then "To finish setting up"
+# planetai doctor --guide    quiet, and in a terminal offers to do the first unfinished step (install.sh, update.sh)
+# planetai doctor --json     the checks and the sources as one JSON object
+# The data sources never change the exit code: a node with no sensor yet is unfinished, not broken.
 cmd_doctor() {
   local quiet="${1:-}" ok=1 p; p="$(port)"; local JSON=0; [[ "$quiet" == "--json" ]] && { JSON=1; quiet=""; }
+  local guide=""; [[ "$quiet" == "--guide" || "$quiet" == "quiet" ]] && guide="$quiet"; [[ "$quiet" == "--guide" ]] && quiet="quiet"
   local rows=""
+  # $4 = "warn": the row goes amber and does NOT fail the run. For a thing worth saying that is not
+  # worth a red doctor — a registry pin that is getting old is a sync to schedule, not a broken node.
   chk() {
     local pass=1; eval "$2" >/dev/null 2>&1 || pass=0
+    local soft=0; [[ "${4:-}" == "warn" ]] && soft=1
     if [[ $JSON -eq 1 ]]; then
       local fix="null"; [[ $pass -eq 1 ]] || fix="\"$(sed 's/"/\\"/g' <<< "$3")\""
-      rows+="$(printf '{"check":"%s","ok":%s,"fix":%s}' "$1" "$([[ $pass -eq 1 ]] && echo true || echo false)" "$fix"),"
-    elif [[ $pass -eq 1 ]]; then printf '  %s✓%s %s\n' "$G" "$N" "$1"; else printf '  %s✗%s %s\n' "$R" "$N" "$1"; printf '      %s→ %s%s\n' "$D" "$3" "$N"; fi
-    [[ $pass -eq 1 ]] || ok=0
+      rows+="$(printf '{"check":"%s","ok":%s,"warn":%s,"fix":%s}' "$1" "$([[ $pass -eq 1 ]] && echo true || echo false)" "$([[ $soft -eq 1 ]] && echo true || echo false)" "$fix"),"
+    elif [[ $pass -eq 1 ]]; then printf '  %s✓%s %s\n' "$G" "$N" "$1"
+    elif [[ $soft -eq 1 ]]; then printf '  %s!%s %s\n' "$Y" "$N" "$1"; printf '      %s→ %s%s\n' "$D" "$3" "$N"
+    else printf '  %s✗%s %s\n' "$R" "$N" "$1"; printf '      %s→ %s%s\n' "$D" "$3" "$N"; fi
+    [[ $pass -eq 1 || $soft -eq 1 ]] || ok=0
   }
   [[ -z "$quiet" && $JSON -eq 0 ]] && step "Doctor"
   chk "docker is running"        "docker info"                                          "start OrbStack / Docker Desktop, or on Linux: sudo systemctl start docker"
   chk "containers are up"        "[ \$(docker compose ps -q | wc -l) -ge 2 ]"           "planetai start"
   chk "database answers"         "docker compose exec -T db pg_isready -U planetai"     "planetai logs db"
   chk "node answers on :$p"      "curl -sf localhost:$p/health"                         "planetai logs   (if the port is taken: set APP_PORT in .env, then planetai restart)"
-  # /health answers even when every database call fails; the schema field then carries the pre-0.4 text. Seen after a
-  # reinstall over a leftover volume: pg_isready happy, the app locked out, the install's doctor all green.
-  chk "app logs in to the database" "h=\"\$(curl -sf localhost:$p/health)\"; [[ -n \"\$h\" ]] && ! grep -q '\"schema\": *\"pre-0.4' <<< \"\$h\""   "the app cannot use the database (planetai logs shows 'password authentication failed'): the POSTGRES_PASSWORD in .env does not match the database volume, usually after a reinstall over an earlier node's volume. Keep the data: restore the earlier .env. Start clean: planetai stop && docker volume rm planetai_db && planetai start"
+  # /health answers even when every database call fails; the schema field then carries the "unreachable" text
+  # (a login failure: wrong password, db down) or the pre-0.4 text (a schema that predates schema_version).
+  # Seen after a reinstall over a leftover volume: pg_isready happy, the app locked out, the install's doctor all green.
+  chk "app logs in to the database" "h=\"\$(curl -sf localhost:$p/health)\"; [[ -n \"\$h\" ]] && ! grep -qE '\"schema\": *\"(unreachable|pre-0.4)' <<< \"\$h\""   "the app cannot use the database. planetai logs says which: 'password authentication failed' means the POSTGRES_PASSWORD in .env does not match the database volume, usually after a reinstall over an earlier node's volume — keep the data: restore the earlier .env; start clean: planetai stop && docker volume rm planetai_db && planetai start. No auth error and a schema reading pre-0.4 means the node predates schema_version: ./update.sh applies it"
   chk "coordinates set"          "grep -qE '^NODE_LAT=-?[0-9]' .env"                    "planetai setup"
-  chk ".env has no stray spaces" "! grep -qE '^[A-Z_]+=[[:space:]]+[^[:space:]]' .env"   "a space after = makes the shell run the value, and a `#` after it hands the container the comment: grep -nE '^[A-Z_]+= +' .env"
+  chk ".env has no stray spaces" "! grep -qE '^[A-Z_]+=[[:space:]]+[^[:space:]]' .env"   "a space after = makes the shell run the value, and a \`#\` after it hands the container the comment: grep -nE '^[A-Z_]+= +' .env"
   chk "backup destination mounted" "mounted \"\$(envget BACKUP_DIR || echo ./backups)\""   "the NAS or drive in BACKUP_DIR is not mounted; tonight's backup will refuse. Mount it, or: planetai storage set backups <dir>"
-  chk "a backup in the last 2 days" "[[ -n \"\$(find \"\$(envget BACKUP_DIR || echo ./backups)\" -name '*.sql.gz' -mtime -2 2>/dev/null)\" ]]"   "planetai backup — and check cron: crontab -l | grep backup"
-  chk "telegram connected"       "grep -qE '^TELEGRAM_BOT_TOKEN=.+' .env && grep -qE '^TELEGRAM_CHAT_IDS=.+' .env"  "planetai telegram   (alerts go to the log until then)"
-  chk "a backup exists"          "ls backups/*.sql.gz"                                  "planetai backup   (then check the line below)"
+  # SPEC_eyes: the folder the household's pictures live in. Unlike DATA_DIR it may be a NAS share — files, not
+  # Postgres — so the check is only that it is there and writable; an unmounted share reads as missing, on purpose.
+  chk "captures folder writable" "d=\"\$(envget CAPTURES_DIR)\"; d=\"\${d:-./out/captures}\"; [[ -d \"\$d\" && -w \"\$d\" ]]"   "the folder in CAPTURES_DIR is missing or not writable, so the node refuses every picture. It may be a NAS share (files, not Postgres): mount it, or move them: planetai storage set captures <dir>"
+  # A tarball node can say whether the code it is running was signed by the key above. A git checkout
+  # never fetches a release, so it has no release signature to have checked — no row there, rather than a
+  # permanently red one about something that node does not do.
+  [[ -d .git ]] || chk "release signature verified on last update" "grep -q '^signed ' .planetai-release" \
+    "the last update did not check who built it — either it ran with PLANETAI_UNSIGNED=1, or it predates signed releases. Run: planetai update"
+  # What registry this node carries, as a fact rather than a check — the facts are in the label. Red
+  # when it is missing (a node that ships no registry cannot answer what its place could measure),
+  # amber when the pin is over 180 days old, which is data/platform_floors.yml's convention.
+  local rv="data/sources/REGISTRY_VERSION" rline="source registry: none" rsev="" rage=0
+  if [[ -f "$rv" ]]; then
+    rage="$(python3 -c 'import datetime, sys
+print((datetime.date.today() - datetime.date.fromisoformat(sys.argv[1])).days)' "$(sed -n 's/^synced=//p' "$rv")" 2>/dev/null || echo 0)"
+    rline="source registry: $(sed -n 's/^entries=//p' "$rv") entries · awesome-fabcity-data @ $(sed -n 's/^short=//p' "$rv") · synced $(sed -n 's/^synced=//p' "$rv")"
+    [[ "$rage" -gt 180 ]] && rsev="warn"
+  fi
+  chk "$rline" "[ -f \"$rv\" ] && [ \"$rage\" -le 180 ]" \
+    "$([[ -f "$rv" ]] && echo "the pin is ${rage} days old: re-pin on a dev machine with tools/sync_registry.sh <sha>, then planetai update" \
+       || echo "this node ships no source registry, so planetai sources and GET /sources cannot answer. planetai update")" "$rsev"
+  # A newer release: what the app's daily check found (UPDATE_CHECK), read off /health. Amber, never red: an older
+  # node is not a broken one. Silent when the check is off or has not had an answer yet.
+  local rel rlatest rcur rnewer
+  rel="$(curl -sf "localhost:$p/health" 2>/dev/null | python3 -c 'import json, sys
+r = json.load(sys.stdin).get("release") or {}
+print("%s|%s|%s" % (r.get("latest", ""), r.get("current", ""), "1" if r.get("newer") else "0"))' 2>/dev/null || true)"
+  if [[ -n "${rel%%|*}" ]]; then
+    IFS='|' read -r rlatest rcur rnewer <<< "$rel"
+    if [[ "$rnewer" == 1 ]]; then
+      chk "PLANETAI $rlatest is out (this node runs ${rcur:-an older version})" "false" \
+        "planetai update   (it backs up first) · what changed: https://planetai.fab.city/docs/changelog/" "warn"
+    else
+      chk "on the current release ($rlatest)" "true" "" ""
+    fi
+  fi
+  # packs/make, when it is on. A fact, not a check: the number of labs in the ring, where they came
+  # from, and how many active labs the directory publishes with no coordinates — those can never be
+  # placed and would otherwise vanish into a smaller number without anyone noticing.
+  if [[ -d packs/make ]] && grep -qE '^PACKS_ALLOW_CODE=1' .env 2>/dev/null; then
+    local mline mn mfetched msnap
+    if ! grep -qiE '^MAKE_ENABLED=(1|true|yes|on)' .env 2>/dev/null; then
+      # Off is a different fact from "no lab nearby", and saying the wrong one would tell an operator
+      # their place has no fab lab when nothing has looked.
+      chk "make: off (MAKE_ENABLED=0 — the directory it reads is not openly licensed, see packs/make/README.md)" "true" "" ""
+    else
+    mn="$(docker compose exec -T db psql -tAqU planetai -c "SELECT count(*) FROM sensors WHERE kind='facility' AND source='fablabs-io'" planetai </dev/null 2>/dev/null | tr -d '[:space:]' || true)"
+    if [[ -n "$mn" && "$mn" != "0" ]]; then
+      mfetched="$(docker compose exec -T db psql -tAqU planetai -c "SELECT max((meta->>'fetched')::timestamptz)::date FROM sensors WHERE kind='facility' AND source='fablabs-io'" planetai </dev/null 2>/dev/null | tr -d '[:space:]' || echo "?")"
+      msnap="$(docker compose exec -T db psql -tAqU planetai -c "SELECT meta->>'snapshot' FROM sensors WHERE kind='facility' AND source='fablabs-io' LIMIT 1" planetai </dev/null 2>/dev/null | tr -d '[:space:]' || echo "?")"
+      mline="make: $mn fab lab(s) within ${MAKE_RADIUS_KM:-50} km · fablabs.io @ $msnap · read $mfetched"
+    else
+      mline="make: no fab lab within ${MAKE_RADIUS_KM:-50} km of this node yet"
+    fi
+    chk "$mline" "true" "" ""
+    fi
+  fi
+  # Telegram and the age of the last backup are not checks here: they are data sources, in the block below, where
+  # a new node's two expected crosses read as the next steps they are rather than as a broken node.
   chk "nightly backup scheduled" "grep -q planetai-backup <<< \"\$(crontab -l 2>/dev/null)\""   "no cron entry. Add it: (crontab -l 2>/dev/null; echo '17 3 * * * cd $PWD && ./backup.sh >/dev/null 2>&1 # planetai-backup') | crontab -   (macOS: give cron Full Disk Access first)"
   # the disk the node lives on: the database volume and the backups share it by default; when it fills, Postgres stops
   local freek; freek="$(df -Pk . 2>/dev/null | awk 'NR==2{print $4}')"; freek="${freek:-0}"
@@ -570,10 +655,70 @@ cmd_doctor() {
     chk "mesh packets arriving"  "[ \$(mesh_packets) -gt 0 ]"                              "gateway not uplinking yet: planetai meshtastic prints the settings";; esac
   case ",$(envget COMPOSE_PROFILES)," in *,reticulum,*)
     chk "reticulum bridge up"    "curl -sf localhost:4243/health"                       "planetai logs reticulum";; esac
-  if [[ $JSON -eq 1 ]]; then printf '{"ok":%s,"checks":[%s]}\n' "$([[ $ok -eq 1 ]] && echo true || echo false)" "${rows%,}"; return $(( 1 - ok )); fi
+  if [[ $JSON -eq 1 ]]; then
+    printf '{"ok":%s,"checks":[%s],"sources":%s}\n' "$([[ $ok -eq 1 ]] && echo true || echo false)" "${rows%,}" "$(doctor_sources json || echo null)"
+    return $(( 1 - ok )); fi
+  doctor_sources "${guide:-full}" || true
   [[ $ok -eq 1 ]] && { [[ -z "$quiet" ]] && say "all good"; return 0; }
   [[ -z "$quiet" ]] && warn "fix the marked lines, then run planetai doctor again"
   return 1
+}
+
+# The node's fundamental sources (app/fundamentals.py, served at GET /health/sources), as the doctor prints them.
+#   full     a "Data sources" block, each ✗ with its fix under it
+#   quiet    the block without the fixes, then "To finish setting up": the ✗ rows in order, most important first
+#   --guide  quiet, then in a terminal: do the first one now? Never asked without one — an unattended update prints.
+#   json     the route's rows, with the backup judged here
+# The backup's age is read on this machine and handed to the route: BACKUP_DIR may be a NAS the container never sees.
+doctor_sources() {
+  local mode="${1:-full}" bd age out first; bd="$(envget BACKUP_DIR)"; bd="${bd:-./backups}"
+  # minutes since the newest dump where the backups really go; -1 for none. The node judges it with everything else.
+  age="$(python3 -c 'import glob, os, sys, time
+d = [os.path.getmtime(f) for f in glob.glob(os.path.join(sys.argv[1], "*.sql.gz"))]
+print(round((time.time() - max(d)) / 60, 1) if d else -1)' "$bd" 2>/dev/null || echo -1)"
+  out="$({ api "/health/sources?backup_age=$age" || true; } | python3 -c '
+import json, sys
+mode, port, G, R, D, B, N = sys.argv[1:8]
+try:
+    rows = json.load(sys.stdin)["sources"]
+except Exception:
+    if mode == "json":
+        sys.exit(1)
+    print("\n  %sData sources%s\n  %sthe node did not answer GET /health/sources, so its sources cannot be read from here%s" % (B, N, D, N))
+    sys.exit(0)
+if mode == "json":
+    print(json.dumps(rows))
+    sys.exit(0)
+w = max(len(r["name"]) for r in rows)
+sign = {True: G + "\u2713" + N, False: R + "\u2717" + N, None: D + "\u2013" + N}
+print("\n  %sData sources%s" % (B, N))
+for r in rows:
+    said = " \u00b7 ".join(x for x in (r.get("age"), r.get("detail")) if x)
+    print("  %s %s  %s%s%s" % (sign[r["ok"]], r["name"].ljust(w), D, said, N))
+    if mode == "full" and r["ok"] is False:
+        print("      %s\u2192 %s%s" % (D, r["fix"], N))
+todo = [r for r in rows if r["ok"] is False]
+if mode != "full" and todo:
+    print("\n  %sTo finish setting up%s" % (B, N))
+    for i, r in enumerate(todo, 1):
+        print("   %d. %s" % (i, r["fix"]))
+        if r.get("setup") and not r.get("command") and r["state"] == "missing":
+            print("      %shttp://localhost:%s/%s%s" % (D, port, r["setup"], N))
+if todo:
+    f = todo[0]
+    print("\x1f" + (f["command"] or "") + "\x1f" + (f["setup"] or "") + "\x1f" + f["name"])
+' "$mode" "$(port)" "$G" "$R" "$D" "$B" "$N")" || return 1
+  first="${out##*$'\n'}"; [[ "$first" == $'\x1f'* ]] && out="${out%$'\n'*}" || first=""
+  printf '%s\n' "$out"
+  [[ "$mode" == "--guide" && -n "$first" ]] || return 0
+  [[ -t 1 ]] && ( : </dev/tty ) 2>/dev/null || return 0     # no terminal (cron, an agent, a pipe): the list is enough
+  local cmd anchor name; IFS=$'\x1f' read -r _ cmd anchor name <<< "$first"
+  if [[ -n "$cmd" ]]; then printf '\n  Do the first one now: %s%s%s?  %s[y]%s yes   %s[Enter]%s later\n  ' "$B" "$cmd" "$N" "$B" "$N" "$B" "$N"
+  else printf '\n  Open %s in Set up now?  %s[y]%s open the dashboard   %s[Enter]%s later\n  ' "$name" "$B" "$N" "$B" "$N"; fi
+  local k; IFS= read -r -n1 k </dev/tty || k=""; echo
+  [[ "$k" == [yY] ]] || return 0
+  if [[ -n "$cmd" ]]; then "$HOME_DIR/bin/planetai" ${cmd#planetai }
+  else local u="http://localhost:$(port)/$anchor"; open "$u" 2>/dev/null || xdg-open "$u" 2>/dev/null || echo "  open $u in a browser"; fi
 }
 
 cmd_logs() { docker compose logs -f --tail=80 "${1:-app}"; }
@@ -608,7 +753,10 @@ print((x.get("message") or x.get("edited_message") or x.get("channel_post") or {
   # the dashboard may hold its own values for these, and those win over .env. Write the same values there too, so the
   # terminal and the dashboard never disagree about which bot this node talks to.
   runtime_set TELEGRAM_BOT_TOKEN "$tok" TELEGRAM_CHAT_IDS "$chat" || warn "the node is not answering, so only .env was written; planetai restart makes it take effect"
-  curl -sf "https://api.telegram.org/bot${tok}/sendMessage" -d chat_id="$chat" -d text="$(envget NODE_NAME) is connected. Alerts will arrive here." >/dev/null && say "sent you a hello"
+  local hello="$(envget NODE_NAME) is connected. Alerts will arrive here."
+  # the effective locale, not .env's: the dashboard writes the database and the database overlays .env
+  case "$(setting ALERT_LOCALE)" in es) hello="$(envget NODE_NAME) está conectado. Los avisos llegarán aquí.";; esac
+  curl -sf "https://api.telegram.org/bot${tok}/sendMessage" -d chat_id="$chat" -d text="$hello" >/dev/null && say "sent you a hello"
   docker compose up -d --force-recreate app >/dev/null 2>&1
   say "the node is restarting with Telegram on. Try:  planetai test-alert"
 }
@@ -635,16 +783,22 @@ Y
   message:
     en: "Test alert from your node. If you can read this, the whole path works: rule to message to you. Record it with \`planetai act <id>\`."
     id: "Alert uji dari node Anda. Jika Anda membaca ini, seluruh jalur berfungsi. Catat dengan \`planetai act <id>\`."
+    es: "Aviso de prueba de tu nodo. Si lees esto, todo el camino funciona: de la regla al mensaje y hasta ti. Regístralo con \`planetai act <id>\`."
 Y
   echo "  A rule that always fires has been added. The node checks rules every minute."
   printf '  Waiting'
-  local before after id=""; before="$(api /alerts | json 'print(len(d))')"
+  # Look for THIS run's alert by its own rule id. Counting the rows /alerts returns told nothing on a node with 50 or
+  # more alerts (that is its default page), so node #1 reported "no alert fired" while the rule fired twice.
+  local id=""
   for i in $(seq 1 45); do
-    after="$(api /alerts | json 'print(len(d))' 2>/dev/null || echo "$before")"
-    if [[ "$after" -gt "$before" ]]; then id="$(api /alerts | json 'print(d[0].get("id","?"))' 2>/dev/null || echo "?")"; break; fi
+    id="$(api '/alerts?since_hours=1&limit=200' | json "
+for a in d:
+    if str(a.get('rule_id', '')).endswith('/${rid}'):
+        print(a.get('id', '?')); break" 2>/dev/null)"
+    [[ -n "$id" ]] && break
     printf '.'; sleep 2
   done; echo
-  rm -rf packs/_test
+  rm -rf packs/_test      # at once: the rule fires every minute, and the household should get one test, not two
   [[ -n "$id" ]] || fail "no alert fired in 90 seconds. Is the node up? planetai doctor"
   say "it fired. Alert #$id is in the log$( grep -qE '^TELEGRAM_BOT_TOKEN=.+' .env && echo ' and on your phone')."
   echo
@@ -776,12 +930,9 @@ lan_ip() {
   esac
 }
 profiles_add() { local cur; cur="$(envget COMPOSE_PROFILES)"; case ",$cur," in *",$1,"*) ;; *) envset COMPOSE_PROFILES "${cur:+$cur,}$1";; esac; }
-cmd_meshtastic() {
-  step "Meshtastic"
-  echo "  A LoRa mesh reaches sensors and phones where there is no WiFi. One radio with WiFi is the gateway: it"
-  echo "  uplinks the mesh to a broker on this node, and can send alerts back out. This sets the node side up and"
-  echo "  tells you exactly what to type into the gateway."
-  echo
+# The broker and its one user, created once and shared by everything that publishes to this node: the Meshtastic
+# gateway, Home Assistant, a DIY node. Idempotent: a second call keeps the password and only makes sure it runs.
+broker_ensure() {
   local user="planetai" pass; pass="$(envget MQTT_PASS)"
   if [[ -z "$pass" ]]; then
     pass="$(openssl rand -hex 12 2>/dev/null || head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')"
@@ -797,6 +948,16 @@ cmd_meshtastic() {
   [[ -s config/mosquitto/passwd ]] || fail "password file is empty after mosquitto_passwd; see $LOG"
   say "starting the broker and restarting the node with MQTT on"
   docker compose up -d >>"$LOG" 2>&1 && docker compose up -d --force-recreate app >>"$LOG" 2>&1 || fail "compose failed; see $LOG"
+}
+
+cmd_meshtastic() {
+  step "Meshtastic"
+  echo "  A LoRa mesh reaches sensors and phones where there is no WiFi. One radio with WiFi is the gateway: it"
+  echo "  uplinks the mesh to a broker on this node, and can send alerts back out. This sets the node side up and"
+  echo "  tells you exactly what to type into the gateway."
+  echo
+  broker_ensure
+  local user="planetai" pass; pass="$(envget MQTT_PASS)"
   local ip; ip="$(lan_ip)"; [[ -n "$ip" ]] || ip="<this machine LAN IP>"
   local region="EU_868"; case "$(envget NODE_CITY)" in bali) region="SG_923 (AS923, the band Indonesia allocates)";; boston) region="US";; santiago) region="LORA_24 or check local allocation";; esac
   step "Now the gateway radio (the ESP32 one), in the Meshtastic app"
@@ -832,6 +993,45 @@ T
   else
     warn "nothing yet. The usual reasons: JSON output off on the gateway; wrong address (this Mac is ${ip}); gateway not on"
     warn "this WiFi; a firewall blocking 1883. Watch with:  planetai logs mosquitto    and    planetai logs"
+  fi
+}
+
+
+# ---------------------------------------------------------------- broker: a DIY node publishing straight to this node
+cmd_broker() {
+  step "This node's broker"
+  echo "  A Making Sense Bali DIY node can publish to this node instead of to smartcitizen.me: the same topics and"
+  echo "  bytes, so no new firmware beyond v4. The node keeps every reading with the device's own time, and passes"
+  echo "  the message on to the platform for any token listed in SC_FORWARD. This sets the node side up and prints"
+  echo "  what to type into the node's setup portal."
+  echo
+  broker_ensure
+  local ip host; ip="$(lan_ip)"; [[ -n "$ip" ]] || ip="<this machine LAN IP>"
+  host="$(scutil --get LocalHostName 2>/dev/null || hostname -s 2>/dev/null)"; host="${host:+${host}.local}"
+  step "Now the DIY node, in its setup portal (firmware v4), under \"Where it publishes\""
+  cat <<T
+     Broker host:      ${host:-$ip}$( [[ -n "$host" ]] && echo "   (or $ip, if the phone cannot resolve .local names)")
+     Broker port:      1883
+     Broker user:      planetai
+     Broker password:  $(envget MQTT_PASS)
+     Device token:     the device's Smart Citizen token if it has a page there; else any six characters you choose
+     Indoors:          tick it when the node hangs in a room, so its readings never enter the outside air
+
+   Give this node a fixed address on the router (a DHCP reservation): the DIY node stores a host, not a search.
+   To keep the device's page on smartcitizen.me:   planetai config set SC_FORWARD <token>[,<token>]
+   and list that device's platform id in SC_EXCLUDE, or the cloud adapter reads it a second time.
+T
+  echo
+  printf '  Waiting for the first message from a DIY node (up to 3 minutes)'
+  local got=""; for i in $(seq 1 90); do
+    got="$(api /health | json 'print(d.get("direct",{}).get("messages",0))' 2>/dev/null || echo 0)"
+    [[ "${got:-0}" -gt 0 ]] && break; printf '.'; sleep 2
+  done; echo
+  if [[ "${got:-0}" -gt 0 ]]; then
+    say "messages arriving. Sensors seen so far:"; cmd_sensors | grep -i "sck-" || echo "   (a meta message only so far; readings follow every minute)"
+  else
+    warn "nothing yet. The node's status page (http://<its name>.local) says whether its last publish succeeded;"
+    echo "  \`planetai logs mosquitto\` shows who connected and from where."
   fi
 }
 
@@ -921,15 +1121,40 @@ cmd_packs() {
   # `planetai packs` lists; `planetai packs install` writes (.env keys, the image). A listing that rebuilt the image and
   # appended to .env surprised the first tester who only wanted to see what was loaded (6 Sep 2026).
   if [[ "${1:-}" == "install" ]]; then packs_install; return; fi
+  if [[ "${1:-}" == "add" ]]; then shift; packs_add "$@"; return; fi
   step "Packs"
-  local loaded; loaded="$(api /packs || true)"
+  local loaded wild; loaded="$(api /packs || true)"; wild="$(wild_ids)"
   if [[ -z "$loaded" ]]; then
     warn "the node is not answering on port $(port) — the list below is what is on disk, not what is running."
     warn "check with: planetai doctor"
-    ls -d packs/*/ 2>/dev/null | sed 's|packs/||;s|/||' | sed 's/^/    /'
+    local d n core="" w=""
+    for d in packs/*/; do [[ -f "${d}pack.yaml" ]] || continue; n="$(basename "$d")"
+      if [[ -f "${d}.wild" ]]; then w=1; else core="$core    $n"$'\n'; fi; done
+    [[ -z "$core" ]] || printf '  core:\n%s' "$core"
+    [[ -z "$w" ]] || printf '  wild:\n'                 # each named once, with where it came from, below
   else
     echo "  loaded now:"
-    printf '%s' "$loaded" | json 'for p in d: print("    %-16s %-5s %s" % (p["id"], p["kind"], (p.get("description") or "").replace(chr(10)," ")[:70]))'
+    printf '%s' "$loaded" | python3 -c 'import json, sys
+d = json.load(sys.stdin)
+wild = set(sys.argv[1].split())
+for head, rows in (("core", [p for p in d if p["id"] not in wild]), ("wild", [p for p in d if p["id"] in wild])):
+    if rows:
+        print("  " + head + ":")
+        for p in rows:
+            print("    %-16s %-5s %s" % (p["id"], p["kind"], (p.get("description") or "").replace(chr(10), " ")[:70]))
+            if head == "wild":
+                a = p.get("agent_scripts")
+                a = [s for s in a if isinstance(s, str)] if isinstance(a, list) else []
+                print("    %-16s agents may run: %s" % ("", ", ".join(a)) if a else "    %-16s agents run none of its scripts" % "")' "$wild"
+  fi
+  local id
+  for id in $wild; do
+    printf '    %s%s from %s at %s, added %s%s\n' "$D" "$id" "$(wildget "$id" source)" "$(wildget "$id" commit | cut -c1-12)" "$(wildget "$id" added)" "$N"
+  done
+  local refused; refused="$(packs_refused)"
+  if [[ -n "$refused" ]]; then
+    echo "  not loaded, written for another node version:"
+    printf '%s\n' "$refused" | while IFS=$'\t' read -r id why; do printf '    %-16s %s\n' "$id" "$why"; done
   fi
   echo
   # what `install` would do, said rather than done
@@ -970,6 +1195,107 @@ packs_install() {
   say "done. Code packs also need PACKS_ALLOW_CODE=1 in .env to run. Read their adapter.py first."
 }
 
+# ---------------------------------------------------------------- packs add: a wild pack, fetched without git
+# Packs in this repository are core; every other pack is wild (docs/decisions/2026-10-01-packs.md). A node installed
+# the default way has curl and tar and no git, so a wild pack arrives as GitHub's archive of one commit. `.wild`
+# beside it says where it came from and at which commit: it is how `packs` tells core from wild, and how running
+# `packs add` again knows it may replace the folder. A folder without it is core, or put there by hand, and is
+# never replaced.
+WILD_INDEX="https://raw.githubusercontent.com/fabcity/planetai-wild-packs/main/packs.json"
+wild_ids() { local f; for f in packs/*/.wild; do [[ -f "$f" ]] && basename "$(dirname "$f")"; done; return 0; }
+wildget() { sed -n "s/^$2=//p" "packs/$1/.wild" 2>/dev/null | head -1; }
+# Packs on disk this node will not load, and why, one per line as `<id><TAB><reason>`; with an id, only that pack.
+# The rule is app/requires.py, the same one the loader applies, run here on the node's own Python. pack.yaml is
+# read with a pattern because that Python has no YAML: `requires: { node: ">=0.40.0" }` or the block form.
+packs_refused() {
+  python3 -c 'import glob, re, sys
+sys.path.insert(0, "app")
+try:
+    import requires
+except ImportError:
+    sys.exit(0)  # no app/ beside this script: nothing to say, rather than a traceback in a listing
+here, only = sys.argv[1], sys.argv[2]
+for f in sorted(glob.glob("packs/*/pack.yaml")):
+    pid = f.split("/")[1]
+    if only and pid != only:
+        continue
+    block = re.search(r"^requires:.*(?:\n[ \t]+.*)*", open(f, encoding="utf-8").read(), re.M)
+    m = re.search(r"\bnode:\s*[\"\x27]?([^\"\x27}\n]*)", block.group(0)) if block else None
+    why = requires.check(m.group(1).strip() if m else None, here)
+    if why:
+        print(pid + "\t" + why)' "$(envget NODE_VERSION)" "${1:-}"
+}
+
+packs_add() {
+  FAIL_WHAT="The pack was not added."
+  local spec="${1:-}" src="" ref="" status="" want=""
+  [[ -n "$spec" ]] || fail "say which pack:  planetai packs add <id>  (one on the wild list)  or  planetai packs add <owner>/<repo>[/<folder>][@<ref>]"
+  step "Packs: add $spec"
+  if [[ "$spec" != */* ]]; then
+    want="$spec"
+    local idx hit
+    idx="$(curl -fsSL "$WILD_INDEX")" || fail "could not read the wild list at $WILD_INDEX"
+    hit="$(printf '%s' "$idx" | python3 -c 'import json, sys
+try:
+    d = json.load(sys.stdin)
+except ValueError:
+    sys.exit("the wild list is not readable JSON")
+e = [x for x in d if isinstance(x, dict) and x.get("id") == sys.argv[1]]
+ids = sorted(x.get("id", "?") for x in d if isinstance(x, dict))
+if not e:
+    sys.exit("no pack called " + sys.argv[1] + " on the wild list, " + ("which is empty" if not ids else "which has " + ", ".join(ids)))
+print(e[0].get("source", ""), e[0].get("commit", "-"), e[0].get("status", "listed"))' "$spec" 2>&1)" || fail "$hit"
+    read -r src ref status <<< "$hit"
+    [[ "$ref" == "-" ]] && ref=""
+  else
+    src="${spec%%@*}"
+    if [[ "$spec" == *@* ]]; then ref="${spec#*@}"; fi
+  fi
+  [[ "$src" =~ ^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$ && "/$src/" != */../* && "/$src/" != */./* ]] \
+    || fail "'$src' is not owner/repo or owner/repo/folder"
+  [[ -z "$ref" || "$ref" =~ ^[A-Za-z0-9._/-]+$ ]] || fail "'$ref' is not a commit, branch or tag"
+  local owner="${src%%/*}" rest="${src#*/}" repo path="" sha
+  repo="${rest%%/*}"; if [[ "$rest" == */* ]]; then path="${rest#*/}"; fi
+  # Always pin. A branch or tag is resolved to the commit it names now, and that commit is what is recorded.
+  if [[ "$ref" =~ ^[0-9a-f]{40}$ ]]; then sha="$ref"
+  else sha="$(curl -fsSL -H 'Accept: application/vnd.github.sha' "https://api.github.com/repos/$owner/$repo/commits/${ref:-HEAD}")" \
+         || fail "GitHub does not know $owner/$repo${ref:+ at $ref}"
+  fi
+  [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || fail "GitHub answered something that is not a commit for $owner/$repo${ref:+ at $ref}"
+
+  local tmp; tmp="$(mktemp -d)"; trap "rm -rf '$tmp'" EXIT   # expanded now: at exit, the local is gone
+  curl -fsSL "https://codeload.github.com/$owner/$repo/tar.gz/$sha" -o "$tmp/p.tgz" \
+    || fail "could not download $owner/$repo at ${sha:0:12}"
+  mkdir "$tmp/all"; tar xzf "$tmp/p.tgz" -C "$tmp/all" 2>>"$LOG" || fail "the download of $owner/$repo is not a readable archive"
+  local top; top="$(ls "$tmp/all")"
+  [[ -n "$top" && "$top" != *$'\n'* ]] || fail "the archive of $owner/$repo does not have the one folder GitHub's archives have"
+  local from="$tmp/all/$top${path:+/$path}"
+  [[ -f "$from/pack.yaml" ]] || fail "no pack.yaml at $src (commit ${sha:0:12}): a pack is a folder with a pack.yaml in it"
+  [[ -z "$(find "$from" -type l)" ]] || fail "$src carries symbolic links. A pack is plain files, so it was not added."
+  local id; id="$(sed -n 's/^id:[[:space:]]*//p' "$from/pack.yaml" | head -1 | sed 's/[[:space:]]*#.*$//' | tr -d "\"'[:space:]")"
+  [[ "$id" =~ ^[a-z0-9][a-z0-9-]*$ ]] \
+    || fail "its pack.yaml says id '$id'. A pack's id is its folder name: lowercase letters, digits and hyphens."
+  [[ -z "$want" || "$id" == "$want" ]] || fail "the wild list calls it '$want', but its pack.yaml says '$id'"
+  if [[ -e "packs/$id" && ! -f "packs/$id/.wild" ]]; then
+    fail "packs/$id is already here and did not come from packs add: it is a core pack, or one put there by hand. A wild pack never replaces it."
+  fi
+  local kind=data verb=added; if [[ -f "$from/adapter.py" ]]; then kind=code; fi
+  if [[ -d "packs/$id" ]]; then verb="updated from $(wildget "$id" commit | cut -c1-12)"; rm -rf "packs/$id"; fi
+  mkdir -p packs && mv "$from" "packs/$id"
+  printf 'source=%s\ncommit=%s\nadded=%s\n' "$src" "$sha" "$(date +%F)" > "packs/$id/.wild"
+  say "$id: $verb, a $kind pack, from $src at ${sha:0:12}"
+  if [[ -z "$want" ]]; then warn "it is not on the wild list, so nobody has checked it against this node's release."
+  elif [[ "$status" != "reviewed" ]]; then warn "it is listed, not reviewed: nobody who keeps the wild list has read it."
+  fi
+  if [[ "$kind" == code ]]; then
+    warn "a code pack runs Python with this node's privileges, and only with PACKS_ALLOW_CODE=1. Read packs/$id/adapter.py first."
+  fi
+  local why; why="$(packs_refused "$id" | cut -f2-)"
+  if [[ -n "$why" ]]; then warn "it will not load on this node: $why."; fi
+  packs_install
+  say "planetai restart loads it. To remove it: delete packs/$id and restart."
+}
+
 
 # ---------------------------------------------------------------- run a script a pack ships
 # Packs can carry scripts as well as rules: things you ask for rather than things that happen on a schedule.
@@ -993,7 +1319,10 @@ cmd_run() {
     return 1
   fi
   [[ -f "packs/$pack/$script.py" ]] || fail "packs/$pack/$script.py does not exist"
-  docker compose exec -T -e PACK_OUT=/app/out app python "/app/packs/$pack/$script.py" "$@"
+  # `exec` starts a new process with only the container's .env, so a pack key saved in Set up would not reach the
+  # script. Loading the settings rows first puts those keys into its environment (settings._overlay_packs); then
+  # the script runs as `python <script>` would run it: its own argv, its own folder first on sys.path, as __main__.
+  docker compose exec -T -e PACK_OUT=/app/out app python -c 'import os, runpy, sys; import settings; settings._rows(); p = sys.argv[1]; sys.argv = sys.argv[1:]; sys.path[0] = os.path.dirname(p); runpy.run_path(p, run_name="__main__")' "/app/packs/$pack/$script.py" "$@"
 }
 
 
@@ -1014,7 +1343,7 @@ cmd_ui() {
   echo "  On this machine:      http://localhost:${p}/"
   [[ -n "$ip" ]] && echo "  On your network:      http://${ip}:${p}/"
   [[ -n "$(envget MESH_NAME)" ]] && echo "  On the tailnet:       http://$(envget MESH_NAME):${p}/"
-  echo "  On a small display:   add  ?kiosk=1  — big numbers only, refreshes every 30 s"
+  echo "  On a wall screen:     add  #wall  — the dark register, moves its own ladder; needs SHARE_LEVEL=open"
   echo
   local lvl; lvl="$(setting SHARE_LEVEL)"; lvl="${lvl:-off}"
   if [[ "$lvl" == "off" ]]; then
@@ -1056,10 +1385,15 @@ cmd_storage() {
       remote)   envset BACKUP_REMOTE "$val"; command -v rclone >/dev/null || warn "rclone is not installed: brew install rclone (macOS) or apt install rclone. Then: rclone config"
                 say "off-machine copies to '$val' after each backup${val:+ (rclone remote:path)}";;
       keep)     envset BACKUP_KEEP "$val"; say "keeping $val days of dumps";;
+      captures) [[ -n "$val" ]] || fail "usage: planetai storage set captures <dir>"
+                mounted "$val" || fail "$val is on a drive that is not mounted right now. Mount it first, so I can check it is real."
+                mkdir -p "$val" 2>/dev/null && [[ -w "$val" ]] || fail "$val is not writable"
+                # a NAS share is fine here (files, not Postgres); the folder is a mount, so the app is recreated
+                envset CAPTURES_DIR "$val"; cmd_restart; say "new pictures go to $val. The ones already taken stay where they were: move them across by hand.";;
       data)     fail "the live database stays on a local disk. Set DATA_DIR in .env to a path on another INTERNAL disk or partition,
    then: planetai backup && planetai stop && edit .env && planetai start && planetai restore <latest dump>.
    Never a NAS or a USB drive over the network: Postgres needs fsync and locking those filesystems do not honour.";;
-      *)        fail "usage: planetai storage set backups|remote|keep <value>";;
+      *)        fail "usage: planetai storage set backups|remote|keep|captures <value>";;
     esac; return
   fi
   step "Storage"
@@ -1077,6 +1411,9 @@ cmd_storage() {
     [[ -f "$bdir/LAST_OK" ]] && echo "                     last run OK at $(cat "$bdir/LAST_OK")"
   else printf '   %s(does not exist yet)%s\n' "$Y" "$N"; fi
   echo "                     nightly at 03:17 by cron; on demand:  planetai backup"
+  echo
+  local cdir; cdir="$(envget CAPTURES_DIR)"; cdir="${cdir:-./out/captures}"
+  echo "  Pictures           $cdir   any disk or NAS share.  planetai storage set captures <dir>"
   echo
   local rem; rem="$(envget BACKUP_REMOTE)"
   if [[ -n "$rem" ]]; then echo "  Off-machine copy   $rem  (rclone, after each backup)$(command -v rclone >/dev/null || printf '  %s✗ rclone not installed%s' "$R" "$N")"
@@ -1280,10 +1617,16 @@ cmd_agent() {
   step "Agents"
   local p; p="$(port)"; local tok; tok="$(envget ADMIN_TOKEN)"; local dns; dns="$(envget MESH_NAME)"
   echo "  The node is an MCP server at /mcp. Any agent that speaks MCP (Claude Desktop, Claude Code, Codex, a local model"
-  echo "  with an MCP client) gets twenty tools: status, health_check, issues, sensors, context, readings,"
-  echo "  report_latest, report_now, report_bundle, history,"
-  echo "  alerts, act, settings_get, settings_set, packs, cells, series, export_day, run_pack_script, maintenance."
-  echo "  Writes record the agent's name (X-Agent)."
+  echo "  with an MCP client) gets twenty-one tools. Each one is read, act or admin — app/tool_classes.py is the authority:"
+  echo
+  echo "    read   status  health_check  sensors  context  readings  report_latest  report_bundle  history"
+  echo "           alerts  settings_get  packs  cells  issues  series  export_day  learned"
+  echo "    act    act                          records that a PERSON acted, in their own words. \`note\` is required."
+  echo "    admin  settings_set  run_pack_script  maintenance  report_now"
+  echo
+  echo "  A person driving an agent gets all twenty-one. THE LOCAL MODEL RUNNING UNATTENDED ON THIS MACHINE GETS READ AND"
+  echo "  ACT ONLY — it cannot change a setting, run a pack'"'"'s code, or make the node message the household by itself."
+  echo "  Writes record the agent'"'"'s name (X-Agent)."
   echo
   echo "  Local (this machine):    http://localhost:${p}/mcp"
   [[ -n "$dns" ]] && echo "  From the tailnet:        http://${dns}:${p}/mcp"
@@ -1303,6 +1646,24 @@ JSON
 
 
 # ---------------------------------------------------------------- a model on this machine that runs the node
+cmd_agent_local_pull() {
+  local tag="${1:-}"
+  if [[ -z "$tag" ]]; then
+    local mem; mem="$(sysctl -n hw.memsize 2>/dev/null || awk '/MemTotal/{print $2*1024}' /proc/meminfo)"; mem=$((mem/1073741824))
+    if [[ $mem -ge 16 ]]; then echo "usage: planetai agent local pull qwen3.5:9b     (${mem} GB here; 6.6 GB on disk)"
+    else echo "usage: planetai agent local pull qwen3.5:4b     (${mem} GB here; 3.4 GB on disk)"; fi
+    echo "       docs/MODELS.md lists the tags, their sizes and what each one is for."
+    return 1
+  fi
+  command -v ollama >/dev/null || fail "no ollama on this machine. Run: planetai agent local"
+  curl -sf --max-time 5 http://127.0.0.1:11434/api/tags >/dev/null || fail "Ollama is not answering on 11434. Run: planetai agent local"
+  spin "pulling $tag (this is the large download; once)" ollama pull "$tag" || fail "ollama pull $tag failed; see $LOG"
+  # The tag the loop asks for and the tag on disk have to be the same one, or pulling changes nothing.
+  envset AGENT_MODEL "$tag"
+  say "$tag is on this machine and AGENT_MODEL now points at it"
+  docker compose ps agent >/dev/null 2>&1 && { spin "restarting the agent so it sees it" docker compose up -d --force-recreate agent || true; }
+}
+
 cmd_agent_local() {
   step "A model on this machine"
   echo "  Ollama here, a small tool-calling model, the node's tools, and your Telegram bot to talk to it. No cloud, no key."
@@ -1326,10 +1687,31 @@ cmd_agent_local() {
     for i in $(seq 1 15); do curl -sf --max-time 3 http://127.0.0.1:11434/api/tags >/dev/null && break; sleep 2; done
   fi
   curl -sf --max-time 5 http://127.0.0.1:11434/api/tags >/dev/null || fail "Ollama is not answering on 11434 after 30 s. Try: brew services start ollama  (or open the Ollama app), then run this again"
+  # NOTHING IS PULLED HERE. Until v0.63 this line fetched 2.5 GB (or 5.2 GB on 16 GB+) as part of
+  # `planetai agent local`, which made "put a model on the node" and "download several gigabytes of
+  # weights" one command. The node is 230 MiB across both containers and under 5% of a core; a model is
+  # a different product and it is the thing that will fail first on the revived 2015 laptop that is the
+  # best hardware story this project has. So: the recommendation is PRINTED, with its size, and a person
+  # decides. `planetai agent local pull <tag>` or the Model page's button does the fetching.
   local mem model; mem="$(sysctl -n hw.memsize 2>/dev/null || awk '/MemTotal/{print $2*1024}' /proc/meminfo)"; mem=$((mem/1073741824))
-  model="$(envget AGENT_MODEL)"; [[ -n "$model" ]] || { model="qwen3:4b"; [[ $mem -ge 16 ]] && model="qwen3:8b"; envset AGENT_MODEL "$model"; }
-  say "machine has ${mem} GB; local model $model"
-  if ! grep -q "^${model}" <<< "$(ollama list 2>/dev/null)"; then spin "pulling $model (a few minutes, once)" ollama pull "$model" || fail "ollama pull $model failed; see $LOG"; fi
+  model="$(envget AGENT_MODEL)"
+  say "machine has ${mem} GB"
+  if [[ -z "$model" ]] || ! grep -q "^${model}" <<< "$(ollama list 2>/dev/null)"; then
+    local rec recsize
+    # Sizes measured against registry.ollama.ai on 20 September 2026, not estimated. docs/MODELS.md
+    # carries the table and says at the top that a node needs none of it.
+    if [[ $mem -ge 16 ]]; then rec="qwen3.5:9b"; recsize="6.6 GB"; else rec="qwen3.5:4b"; recsize="3.4 GB"; fi
+    echo
+    warn "no model is on this machine yet, and this command does not fetch one."
+    echo "     For ${mem} GB the recommendation is  ${rec}  (${recsize} on disk, Apache-2.0)"
+    echo "     Pull it when you want it:   planetai agent local pull ${rec}"
+    echo "     Other tags and what they are for:  docs/MODELS.md"
+    echo "     The loop below starts either way. Until a model is pulled it answers from the remote or"
+    echo "     online rung if you have configured one, and says so if you have not."
+    echo
+  else
+    say "local model $model"
+  fi
   [[ "$(uname -s)" == Linux ]] && { envset OLLAMA_URL "http://172.17.0.1:11434"; warn "Linux: the ollama service must listen on 0.0.0.0 (systemctl edit ollama, Environment=OLLAMA_HOST=0.0.0.0) so the container reaches it"; }
   [[ -n "$(setting TELEGRAM_BOT_TOKEN)" && -n "$(setting TELEGRAM_CHAT_IDS)" ]] || warn "no Telegram yet: run planetai telegram, or the model has nobody to talk to"
   profiles_add agent
@@ -1623,13 +2005,112 @@ cmd_restart() { docker compose up -d --force-recreate app && say "restarted"; }
 cmd_sensors() { [[ "${1:-}" == "--json" ]] && { api /sensors; echo; return; }; api /sensors | json '
 for s in d: print("  %-22s %-7s %-9s %-7s  %s" % (s["sensor_id"], s["kind"], "yours" if s["local"] else "reference", "indoor" if s["indoor"] else "outdoor", s["name"]))'; }
 cmd_cells()   { [[ "${1:-}" == "--json" ]] && { api /cells; echo; return; }; api /cells | json 'for c in d: print("  %-26s %8s  %-8s %s" % (c["cell"], c["value"], c["state"], c["unit"]))'; }
+
+# What this place could measure, and what it already does. `planetai cells` says what the node
+# computes; this says what the network has filed for it, from the snapshot at data/sources.
+#
+# It reads the node when the node is answering and the file when it is not, and the two are the same
+# 209 rows either way — the registry is a snapshot committed in the repo, not something the node works
+# out. That matters: "what could this place measure" is exactly the question somebody asks with the
+# containers down, and a command that needed the node up to answer it would be useless then.
+#
+# Default is this node's own pilot plus `global`, because an unfiltered 209 is a list nobody reads.
+# NODE_CITY that is not one of the registry's pilots leaves the global rows, which is the honest
+# answer: nothing has been filed for that place yet. `--all` for the whole list.
+cmd_sources() {
+  local pillar="" scale="" cell="" pilot="" jsonout=0 showall=0
+  pilot="$(envget NODE_CITY)"
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --all)    pilot=""; showall=1;;
+      --pillar) pillar="${2:-}"; shift;;
+      --scale)  scale="${2:-}"; shift;;
+      --cell)   cell="${2:-}"; shift;;
+      --json)   jsonout=1;;
+      *) echo "usage: planetai sources [--all] [--pillar environmental] [--scale city] [--cell 'Environmental|City'] [--json]"; return 2;;
+    esac
+    shift
+  done
+
+  local raw where; raw="$(api /sources || true)"; where="the node"
+  if [[ -z "$raw" ]]; then
+    where="data/sources (the node is not answering)"
+    raw="$(cat data/sources/index.json 2>/dev/null || true)"
+  fi
+  if [[ -z "$raw" ]]; then
+    warn "no source registry here: data/sources/index.json is missing."
+    warn "on a dev machine: tools/sync_registry.sh <commit sha of awesome-fabcity-data>, then planetai update"
+    return 1
+  fi
+
+  [[ $jsonout -eq 1 ]] || { step "Sources"; echo "  registered in awesome-fabcity-data, read from ${where}:"; }
+  # Filtering happens here rather than in the query string so that the file path and the API path
+  # format one list one way. The API filters the same way; this is the half that has to work offline.
+  printf '%s' "$raw" | FPILLAR="$pillar" FSCALE="$scale" FCELL="$cell" FPILOT="$pilot" FJSON="$jsonout" FALL="$showall" python3 -c 'import json, os, sys
+d = json.load(sys.stdin)
+rows = d["sources"] if isinstance(d, dict) else d
+def f(k): return os.environ.get(k, "")
+out = []
+for e in rows:
+    if f("FPILLAR") and e.get("pillar") != f("FPILLAR"): continue
+    if f("FSCALE") and e.get("scale") != f("FSCALE"): continue
+    if f("FCELL") and e.get("cell") != f("FCELL"): continue
+    if f("FPILOT"):
+        rel = e.get("pilot_relevance") or []
+        if f("FPILOT") not in rel and "global" not in rel: continue
+    out.append(e)
+if f("FJSON") == "1":
+    print(json.dumps(out, indent=2)); sys.exit(0)
+for e in out:
+    pil = ",".join(e.get("pilot_relevance") or []) or "-"
+    print("  %-44s %-9s %-40s %-20s %s" % (e.get("slug", ""), e.get("status", ""), (e.get("license") or "")[:40], pil[:20], e.get("adapter") or ""))
+print("")
+print("  %d of %d entries. The last column is the code that reads it. A cell with sources and a blank column is one nobody has written an adapter for yet." % (len(out), len(rows)))
+# The three honest counts. Served by the node as "counts" (app/registry.py::cell_counts); recomputed
+# here by the same rule when the answer came from data/sources/index.json with the node down, which
+# is the case this command exists for. Grouped by feeds_cells, falling back to the path-derived cell
+# only when that key is absent, and no deprecated/stale/paywalled/planned entry counts anywhere.
+USABLE = ("usable", "usable-with-caveats")
+counts = d.get("counts") if isinstance(d, dict) else None
+if not counts:
+    counts = {}
+    for e in rows:
+        cs = e["feeds_cells"] if "feeds_cells" in e else [e.get("cell", "")]
+        st = e.get("status"); ad = bool(e.get("adapter"))
+        ok = ad or any(r.get("verdict") in USABLE for r in (e.get("reviews") or []))
+        for c in cs:
+            if not c: continue
+            row = counts.setdefault(c, {"capable": 0, "reviewed": 0, "candidate": 0})
+            if st == "live" and ad: row["capable"] += 1
+            if st == "live" and ok: row["reviewed"] += 1
+            if st == "candidate": row["candidate"] += 1
+sel = f("FCELL")
+if sel:
+    c = counts.get(sel, {"capable": 0, "reviewed": 0, "candidate": 0})
+    print("  %s: capable %d / reviewed %d / candidate %d" % (sel, c["capable"], c["reviewed"], c["candidate"]))
+else:
+    tot = {"capable": 0, "reviewed": 0, "candidate": 0}
+    for c in counts.values():
+        for k in tot: tot[k] += c[k]
+    print("  across %d cells: capable %d / reviewed %d / candidate %d" % (len(counts), tot["capable"], tot["reviewed"], tot["candidate"]))
+print("  capable = live with an adapter. reviewed = live, backed by an adapter or a usable review. candidate = verified, unread.")
+if f("FALL") == "1":
+    skipped = {}
+    for e in rows:
+        st = e.get("status", "")
+        if st not in ("live", "candidate"): skipped[st] = skipped.get(st, 0) + 1
+    if skipped:
+        parts = ", ".join("%d %s" % (n, s) for s, n in sorted(skipped.items()))
+        print("  counted nowhere: %s. A node cannot call them, so they are in no cell number." % parts)'
+}
 # One file holding every answer the node gives, so a screen that looks wrong can be looked at somewhere
 # else. It is what a design round renders against (the dashboard reads it back with ?fixture=<name>)
 # and what a tester sends when something on the page is not what they expected.
 #
 # WHAT IT CONTAINS: 15-minute, hourly and daily means per sensor; alert texts; sensor names and the
-# node's position; the last report; rho. That is the keeper's own data, and it should be treated the
-# way you would treat a photograph of their kitchen wall.
+# node's position; the last report; rho; and every action a person took on an alert, with the note
+# they wrote. That last one is somebody's own words about their own house. All of it is the keeper's
+# own data, and it should be treated the way you would treat a photograph of their kitchen wall.
 # WHAT IT NEVER CONTAINS: raw readings. Not one row of them, at any flag, ever — they do not leave the
 # machine that recorded them (SPEC.md, "Invariants"). It also carries no token and no .env value: the
 # token is used to ask, and is not written down.
@@ -1648,8 +2129,19 @@ cmd_snapshot() {
 import json, os, sys, urllib.error, urllib.request
 from datetime import datetime
 
-PATHS = ["/health", "/issues", "/stats", "/alerts?limit=50", "/rho", "/cells", "/observations",
-         "/sensors", "/trust", "/report/latest", "/nearby", "/forecast"]
+# /alerts asks for 200 because engine._read does: a fixture given 50 replays a shorter ledger than
+# the node it was taken from. /actions and /aggregates are the two engine.Replay reads that were
+# never fetched here -- see the readings_1h stitch below, and PICK_2026-09-20.md gap J.
+# /earth is here because engine.replay passes snapshot["earth"] straight into compute(), and a
+# snapshot without it replays two of the land figures away: land.region and land.square, the
+# AlphaEarth comparison and the attribution that goes with it. The node published 18 figures and a
+# replay of the same capture produced 16, silently, which is what the Figures ledger made visible.
+# It is 10.6 kB on node 1 against 465 kB for /issues, so carrying it costs nothing.
+# NOTE for whoever edits this next: no apostrophes in here. This block is inside a single-quoted
+# shell string and one apostrophe ends it, taking the whole snapshot command with it.
+PATHS = ["/health", "/issues", "/stats", "/alerts?limit=200", "/rho", "/cells", "/observations",
+         "/sensors", "/trust", "/report/latest", "/nearby", "/forecast",
+         "/actions?limit=2000", "/aggregates?hours=24", "/reach", "/earth", "/shape", "/effect", "/issues/days?days=7"]
 base = "http://localhost:" + os.environ["SNAP_PORT"]
 tok = os.environ["SNAP_TOKEN"]
 
@@ -1669,6 +2161,45 @@ for path in PATHS:
         # /trust. That is not a failed snapshot; it is the snapshot saying so.
         out[key] = None
         out["provenance"]["refused"][key] = "GET %s: %s" % (path, type(e).__name__)
+# readings_1h is not an endpoint and never will be, but engine.Replay answers one of its five
+# queries from it: without it a fixture renders with no series, no buckets and no barcode, and
+# nothing says so. /aggregates IS that table -- it is short only the three columns the engine joins
+# in from sensors, so they are joined here rather than by widening a route other nodes federate on.
+# The engine uses an INNER JOIN, which drops a bucket whose sensor is gone; so does this.
+# THE NOTES COME OUT. A snapshot is made to be sent -- to a design round, to a bug report, into a
+# repository -- and GET /actions is on neither sharing allowlist precisely because a note is the
+# household own words about what it did in its own house. Capturing it with the admin token and
+# writing it into a file somebody will attach to an issue walks around that decision. Nothing in the
+# replay reads it: engine.Replay uses actions for stages, for whether an ask is open and for the
+# funnel, and asks.actions on the wire carries actor and never note. So it costs the replay nothing
+# and it is the same rule the node already applies to anyone without a token.
+acts = out.get("actions")
+if isinstance(acts, list):
+    kept = 0
+    for a in acts:
+        if isinstance(a, dict) and str(a.get("note") or "").strip():
+            a["note"] = None
+            kept += 1
+    if kept:
+        out["provenance"]["read"]["actions"] = (
+            "GET /actions?limit=2000, with %d note(s) removed: a note is the household own words "
+            "and this file is made to be sent" % kept)
+
+prov, agg = out["provenance"], out.pop("aggregates", None)
+if "aggregates" in prov["refused"]:
+    prov["refused"]["readings_1h"] = prov["refused"].pop("aggregates")
+    out["readings_1h"] = None
+else:
+    prov["read"].pop("aggregates", None)
+    by_id = {s["sensor_id"]: s for s in (out.get("sensors") or [])
+             if isinstance(s, dict) and s.get("sensor_id")}
+    out["readings_1h"] = [dict(r, indoor=by_id[r["sensor_id"]].get("indoor"),
+                               local=by_id[r["sensor_id"]].get("local"),
+                               kind=by_id[r["sensor_id"]].get("kind"))
+                          for r in (agg or []) if r.get("sensor_id") in by_id]
+    prov["read"]["readings_1h"] = ("GET /aggregates?hours=24, with indoor, local and kind joined "
+                                   "from GET /sensors, as engine._read joins them")
+
 h = out.get("health") or {}
 out["node"], out["version"] = h.get("node"), h.get("version")
 out["provenance"]["what_this_is"] = (
@@ -1690,7 +2221,122 @@ for key, why in sorted(out["provenance"]["refused"].items()):
   echo "  To render it in the dashboard, copy it into app/issues/fixtures/ on a dev machine and open ?fixture=<name>."
 }
 
-cmd_version() { echo "planetai-node $(version)  ·  a Fab City project  ·  $(envget NODE_NAME) @ $(envget NODE_CITY)"; }
+# Saying hello is a pull request to registry.json, the programme's list of nodes (docs/SPEC_hello.md §5). Nothing
+# leaves until the household has read the entry and said yes, and nothing is listed until a person merges it.
+# The point is what /health gives a reader without the token: the centre of the res-8 cell, never the house (R25).
+cmd_hello() {
+  local remove=""; [[ "${1:-}" == --remove ]] && remove=1
+  local h; h="$(curl -sf "localhost:$(port)/health")" || fail "the node does not answer on :$(port). planetai start, then try again"
+  local entry; entry="$(printf '%s' "$h" | json '
+if d.get("position") != "cell" or not (d.get("cell") or {}).get("id"):
+    sys.exit("this node has no cell yet: run planetai setup first")
+print(json.dumps({"name": d["node"], "cell": d["cell"]["id"], "lat": d["lat"], "lon": d["lon"]}))')" || fail "this node has no published cell yet. planetai setup sets its place"
+  local name; name="$(printf '%s' "$entry" | json 'print(d["name"])')"
+  local place="" operator="" contact=""
+  # already listed? registry.json on main is public, and the entry asked for is about to go there: read the whole of
+  # this node's row (GET /nodes leaves out contact and sources), so its words are the defaults, Enter keeps them, its
+  # history (since, parent) is kept, and the same entry again sends nothing
+  local old; old="$(curl -sf "https://raw.githubusercontent.com/fabcity/planetai-node/main/registry.json" | N="$name" json '
+import os
+n = next((x for x in d.get("nodes") or [] if x.get("name") == os.environ["N"]), None)
+print(json.dumps(n) if n else "")' 2>/dev/null)" || old=""
+  local lplace="" loper="" lcell="" lsince="" lcontact=""
+  [[ -n "$old" ]] && IFS=$'\x1f' read -r lplace loper lcell lsince lcontact < <(printf '%s' "$old" | json '
+print("\x1f".join(str(d.get(k) or "") for k in ("place", "operator", "cell", "since", "contact")))')   # not a tab: IFS whitespace folds empty fields
+  [[ -n "$old" ]] || old="{}"
+  if [[ -z "$remove" ]]; then
+    [[ -n "$lcell" ]] && echo "  $name is already listed, since $lsince. Enter keeps what the list says."
+    ask place "Place, as anyone may read it (town, region, country)" "${lplace:-$(envget NODE_CITY)}"
+    ask operator "Who runs this node (a person or an organisation)" "$loper"
+    ask contact "A public contact, or leave empty" "$lcontact"
+    # what this node reads, by source name and never a kit or station id: every source its sensors table registers,
+    # and the map layers it keeps on disk. How much of its context a node plays in, said the same way on every node.
+    local srcs; srcs="$(api /sensors | G="$(api /ground/meta || echo '{}')" json '
+import os
+rows = d if isinstance(d, list) else d.get("sensors") or []
+got = {r["source"] for r in rows if isinstance(r, dict) and r.get("source")}
+disk = (json.loads(os.environ["G"]) or {}).get("on_disk") or {}
+got |= {n for k, n in (("vector", "openstreetmap"), ("drone", "openaerialmap"), ("imagery", "sentinel-2")) if disk.get(k)}
+print(json.dumps(sorted(got)))' 2>/dev/null)" || srcs="[]"
+    if [[ -n "$lcell" && "$contact" == "$lcontact" && "$place" == "$lplace" && "$operator" == "$loper" \
+          && "$(printf '%s' "$entry" | json 'print(d["cell"])')" == "$lcell" \
+          && "$srcs" == "$(printf '%s' "$old" | json 'print(json.dumps(sorted(d.get("sources") or [])))')" ]]; then
+      say "$name is listed as this already. Nothing to send."; return 0
+    fi
+    entry="$(printf '%s' "$entry" | P="$place" O="$operator" C="$contact" S="$(envget NODE_SCALE)" OLD="$old" SRC="$srcs" json '
+import os, datetime
+old = json.loads(os.environ["OLD"])
+row = {"name": d["name"], "scale": os.environ["S"] or "community", "operator": os.environ["O"] or None,
+       "place": os.environ["P"], "cell": d["cell"], "lat": d["lat"], "lon": d["lon"], "sources": json.loads(os.environ["SRC"]),
+       "parent": old.get("parent"), "since": old.get("since") or datetime.date.today().strftime("%Y-%m")}
+if os.environ["C"]:
+    row["contact"] = os.environ["C"]
+print(json.dumps(row))')"
+    echo
+    echo "  This is what the whole programme will see about this node, on GitHub and on every node's map:"
+    printf '%s' "$entry" | json '
+for k in ("name", "place", "cell", "lat", "lon", "operator", "contact", "since", "sources"):
+    if d.get(k) is not None:
+        print("    %-9s %s" % (k, ", ".join(d[k]) if isinstance(d[k], list) else d[k]))'
+    echo "  The point is the centre of the node's cell (about 0.7 km²), not the house."
+  else
+    echo "  This asks the programme to take $name off the list of nodes."
+  fi
+  echo
+  local edit="https://github.com/fabcity/planetai-node/edit/main/registry.json"
+  if ! command -v gh >/dev/null || ! gh auth status >/dev/null 2>&1; then
+    echo "  GitHub's gh is not logged in here, so open this and make the change by hand, then propose it:"
+    echo "    $edit"
+    [[ -z "$remove" ]] && { echo "  The entry, for the \"nodes\" list:"; printf '%s' "$entry" | json 'print(json.dumps(d, indent=2))' | sed 's/^/    /'; }
+    return 0
+  fi
+  confirm "Open the pull request?" || { say "nothing sent"; return 0; }
+  local tmp; tmp="$(mktemp -d)"
+  ( cd "$tmp" && gh repo fork fabcity/planetai-node --clone --default-branch-only -- --depth=1 -q >>"$LOG" 2>&1 ) \
+    || fail "could not fork fabcity/planetai-node with gh. By hand: $edit"
+  local repo="$tmp/planetai-node" branch="hello-$name-$(date +%Y%m%d)"
+  printf '%s' "$entry" | REMOVE="$remove" REG="$repo/registry.json" json '
+import os, re
+reg = json.load(open(os.environ["REG"]))
+old = next((n for n in reg["nodes"] if n.get("name") == d["name"]), {})
+for k in ("since", "parent"):   # a node saying hello again keeps its history; its sources are read fresh
+    d[k] = old.get(k, d.get(k))
+nodes = [n for n in reg["nodes"] if n.get("name") != d["name"]]
+if not os.environ["REMOVE"]:
+    nodes.append(d)
+reg["nodes"] = nodes
+out = json.dumps(reg, indent=2, ensure_ascii=False)
+out = re.sub(r"\[\s+([^\[\]{}]*?)\s+\]", lambda m: "[" + re.sub(r",\s+", ", ", m.group(1)) + "]", out)
+open(os.environ["REG"], "w").write(out + "\n")'
+  local verb="list"; [[ -n "$remove" ]] && verb="unlist"
+  ( cd "$repo" && git checkout -qb "$branch" && git commit -qam "registry: $verb $name" && git push -qu origin "$branch" >>"$LOG" 2>&1 \
+    && gh pr create --repo fabcity/planetai-node --head "$(gh api user -q .login):$branch" --title "registry: $verb $name" \
+       --body "Sent by \`planetai hello\` from $name. The merge is the approval (SPEC.md §2, docs/SPEC_hello.md §5)." ) \
+    || fail "could not open the pull request. The change is in $repo; or by hand: $edit"
+  rm -rf "$tmp"
+  say "sent. When it is merged, every node lists $name within six hours."
+}
+
+cmd_version() {
+  echo "planetai-node $(version)  ·  a Fab City project  ·  $(envget NODE_NAME) @ $(envget NODE_CITY)"
+  # Who this node will take code from. SECURITY.md publishes the same fingerprint; if the two disagree,
+  # something replaced bin/planetai and this line is the one that says so.
+  echo "  updates signed by  fabcity  $(signer_fingerprint)"
+}
+
+cmd_radio() {
+  # Python, not Bash: it talks to radios through the meshtastic package, which the CLI's Python 3.9 floor does not
+  # carry. So it is its own file and says what to install rather than failing on an import.
+  # `python3 -m pip` installs for the very python3 that runs radio.py (a bare pip3 can belong to another one), and
+  # Apple's Python 3.9 needs pyobjc below 12: 12.0 was yanked for 3.9 and does not build there (node #1, 17 Oct).
+  if ! python3 -c 'import meshtastic, paho.mqtt' 2>/dev/null; then
+    pins=""
+    [[ "$(uname)" == Darwin ]] && python3 -c 'import sys; sys.exit(sys.version_info >= (3, 10))' 2>/dev/null \
+      && pins='"pyobjc-core<12" "pyobjc-framework-Cocoa<12" "pyobjc-framework-CoreBluetooth<12" "pyobjc-framework-libdispatch<12" '
+    fail "planetai radio needs two packages for $(command -v python3):  python3 -m pip install --user ${pins}meshtastic paho-mqtt"
+  fi
+  exec python3 "$HOME_DIR/tools/radio.py" "$@"   # $HOME_DIR, not dirname $0: the CLI runs through ~/.local/bin
+}
 
 case "${1:-help}" in
   preflight) shift; exec bash tools/preflight.sh "$@";;
@@ -1700,9 +2346,11 @@ case "${1:-help}" in
   update) cmd_update;;  backup) cmd_backup;;  config) shift; cmd_config "$@";;  logs) shift; cmd_logs "$@";;
   start) cmd_start;;  stop) cmd_stop;;  restart) cmd_restart;;  sensors) shift; cmd_sensors "$@";;  cells) shift; cmd_cells "$@";;
   mesh) shift; cmd_mesh "$@";;
-  meshtastic) cmd_meshtastic;;  reticulum) cmd_reticulum;;
+  meshtastic) cmd_meshtastic;;  reticulum) cmd_reticulum;;  broker) cmd_broker;;
+  radio) shift; cmd_radio "$@";;
   homeassistant|ha) cmd_homeassistant;;
   packs) shift; cmd_packs "$@";;
+  sources) shift; cmd_sources "$@";;
   ui|dashboard) cmd_ui;;
   storage) shift; cmd_storage "$@";;
   remove|uninstall) shift; cmd_remove "$@";;
@@ -1710,11 +2358,12 @@ case "${1:-help}" in
   ipfs) cmd_ipfs;;
   agent|agents|mcp)
     case "${2:-}" in
-      local) cmd_agent_local;;
+      local) if [[ "${3:-}" == pull ]]; then shift 3; cmd_agent_local_pull "$@"; else cmd_agent_local; fi;;
       stop)  docker compose stop agent >>"$LOG" 2>&1; say "local model stopped";;
       *)     cmd_agent;;
     esac;;
   run) shift; cmd_run "$@";;
+  hello) shift; cmd_hello "$@";;
   version|-v|--version) cmd_version;;
   snapshot) shift; cmd_snapshot "$@";;
   geocode) shift; geocode "$*";;   # try a place name without installing anything

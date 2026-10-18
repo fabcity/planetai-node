@@ -1,0 +1,28 @@
+name: BPS Bali value of output by major industrial group (large and medium industry)
+url: https://bali.bps.go.id/id/statistics-table/1/NzcjMQ==/nilai-output-menurut-golongan-pokok-industri-di-provinsi-bali--2018-2021.html
+description: |
+  Value of output of Bali's large and medium manufacturing establishments (IBS survey)
+  by KBLI 2-digit division, 2018-2021, in million rupiah: goods produced, industrial
+  services, change in stocks, other income and total.
+pillar: economic
+scale: region
+status: candidate
+license: "BPS website terms (bps.go.id/id/term-of-use): free, worldwide, perpetual, non-exclusive use including commercial, copying, distribution and derivatives, with citation; content stays subject to copyright and BPS may change the terms without notice. The BPS WebAPI (non-commercial, key) is excluded. Used from the website only by maintainer decision (Tomas Diez, 2026-09-27)"
+api: null
+pilot_relevance: [bali]
+places: [bali]
+tags: [manufacturing, production, output, bali, indonesia, bps, kbli]
+added: 2026-09-27
+auth: none
+feeds_cells: [Economic|Region]
+upstream_listed_in: []
+notes: |
+  VERIFIED 2026-09-27 in a browser, not yet read for a real territory. Filed for #42: Bali's measured production by industry.
+
+  LICENCE, BY DECISION. BPS's website terms now grant content "secara gratis, di seluruh dunia, terus-menerus, dan non-eksklusif" for "penggunaan data, baik untuk kepentingan komersial maupun nonkomersial", copying, distribution and derivatives, with citation. Content stays "tunduk pada hak cipta" and the terms can change without notice. The WebAPI's terms are non-commercial and need a key (#15, still blocked). Tomas Diez decided on 2026-09-27 that tables read from the website are usable; the API is not.
+
+  ENDPOINT. HTML table only. bps.go.id and bali.bps.go.id return 403 to scripts, so reading it needs a browser or a committed extract. 2021, million rupiah: food (10) 4,786,828; beverages (11) 2,181,866; textiles (13) 169,085; apparel (14) 882,424; leather (15) 13,200; pharmaceuticals (21) 98,631; non-metallic minerals (23) 429,557; other manufacturing (32) 1,186,374; total 12,046,283.
+
+  WHY THIS CELL. Economic|Region's manufacturing capacity, measured by division.
+
+  WHAT IT DOES NOT CLAIM. Large and medium establishments only: micro and small industry, larger than this in total and most of Bali's clothing and crafts, is published only as a provincial total. No row for electronics (26) in any year, suppressed or absent. Division 21 is missing in 2019, and 2019 food (37,741,252) is about ten times the neighbouring years. Ends in 2021.

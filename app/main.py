@@ -9,29 +9,38 @@
 """
 from __future__ import annotations
 
+import collections
 import json
 from zoneinfo import ZoneInfo
 import logging
 import os
+import re
 import secrets
 import threading
 import time
-from datetime import datetime, timezone
+import unicodedata
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import httpx
 import psycopg
 import yaml
-from fastapi import FastAPI, Header, HTTPException, Query, Request
+from fastapi import FastAPI, File, Form, Header, HTTPException, Query, Request, UploadFile
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
 import bootstrap
 import agent
+import actions as _act
+import events_pg
+import fundamentals
 import ground
 import index
+import learn
 import issues.api
+from issues import geometry as _geo
 import packs
+import registry
 import report
 import settings
 import sources
@@ -61,6 +70,8 @@ def MESH_ALERTS():
     return settings.get("MESH_ALERTS", "0") == "1"
 def MESH_GATEWAY_NUM():
     return int(settings.get("MESH_GATEWAY_NODE_NUM", "0") or 0)
+def SC_FORWARD():
+    return {t.strip() for t in settings.get("SC_FORWARD", "").split(",") if t.strip()}
 def AGG_TOKEN():
     return settings.get("AGGREGATE_TOKEN", "").strip()
 def SHARE_LEVEL():
@@ -74,14 +85,25 @@ def HA_DISCOVERY():
 _ha_announced: set = set()
 RETICULUM_URL = os.getenv("RETICULUM_URL", "").strip()       # the reticulum bridge, e.g. http://reticulum:4243
 mesh_state = {"root_topic": None, "gateway": None, "packets": 0, "last": None}
+# Kits and DIY nodes publishing Smart Citizen's own wire format to this node's broker (sources.smartcitizen_mqtt).
+# `queued` is what still has to reach smartcitizen.me for the devices in SC_FORWARD.
+sc_state = {"devices": 0, "messages": 0, "last": None, "forwarded": 0, "forward_failed": 0, "queued": 0}
+sc_meta: dict[str, dict] = {}          # token -> the device's last retained meta message, kept in memory only
+sc_seen: set[str] = set()              # tokens heard since start; only their count is ever reported
+# ponytail: in memory, bounded at two days of one device a minute; a restart during an internet outage drops it.
+# A table if a forwarded minute ever matters that much. appendleft on failure evicts the newest, not the oldest.
+sc_queue: "collections.deque[tuple[str, bytes, str]]" = collections.deque(maxlen=2880)
+SC_PLATFORM_HOST, SC_PLATFORM_PORT = "mqtt.smartcitizen.me", 8883
 # What the Reticulum bridge says about itself, refreshed on its own thread. /health is called every
 # twenty seconds by every screen in the house, so it must never make an outbound request of its own:
 # a bridge that is down would turn the node's own health check into a timeout.
 reticulum_state = {"ok": False, "address": None, "destinations": 0, "announce_s": None,
                    "announcing": False, "peers": [], "last": None}
-RULES = Path(os.getenv("RULES_PATH", "/app/config/rules.yml"))
 STARTED = time.time()
 state = {"polls": 0, "last_poll": None, "last_error": None, "ingested": 0}
+# Whether the last message to Telegram went through, for GET /health/sources. Not in `state`: /health spreads that
+# to every reader at every share level, and whether this house's alerts reach it is not theirs to read.
+tg_state: dict = {"ok": None, "at": None}
 
 
 NODE_TZ = os.getenv("NODE_TZ", "").strip() or "UTC"
@@ -161,8 +183,8 @@ def mqtt_thread() -> None:
     import paho.mqtt.client as mqtt
 
     def on_connect(c, u, flags, rc, props=None):
-        c.subscribe([("msh/#", 0), ("planetai/sensors/#", 0)])
-        log.info("mqtt: connected to %s, subscribed msh/# and planetai/sensors/#", MQTT_HOST)
+        c.subscribe([("msh/#", 0), ("planetai/sensors/#", 0), ("device/sck/#", 1)])
+        log.info("mqtt: connected to %s, subscribed msh/#, planetai/sensors/# and device/sck/#", MQTT_HOST)
 
     def on_message(c, u, msg):
         try:
@@ -182,6 +204,18 @@ def mqtt_thread() -> None:
                          "indoor": bool(body.get("indoor", False)), "local": True, "kind": "sensor", "scale": "community",
                          "cadence": None, "meta": {"topic": msg.topic}}],
                        [(ts, f"pod-{sid}", metric, float(body["value"]))])
+            elif msg.topic.startswith("device/sck/"):
+                # a Smart Citizen Kit or a DIY node pointed at this broker: the platform's own topics and bytes
+                token = msg.topic.split("/")[2]
+                sensors, readings, info = sources.smartcitizen_mqtt(msg.topic, msg.payload, sc_meta.get(token))
+                if info.get("kind") == "meta" and "meta" in info:
+                    sc_meta[token] = info["meta"]
+                if sensors or readings:
+                    _store(sensors, readings)
+                    sc_seen.add(token)
+                    sc_state.update({"messages": sc_state["messages"] + 1, "last": datetime.now(timezone.utc).isoformat(), "devices": len(sc_seen)})
+                if info.get("kind") != "meta" and token in SC_FORWARD():
+                    sc_queue.append((msg.topic, bytes(msg.payload), token)); sc_state["queued"] = len(sc_queue)
         except Exception as e:  # noqa: BLE001
             log.debug("mqtt message on %s ignored: %s", msg.topic, e)
 
@@ -196,6 +230,28 @@ def mqtt_thread() -> None:
         except Exception as e:  # noqa: BLE001
             log.warning("mqtt: %s — retrying in 15s", e)
             time.sleep(15)
+
+
+def sc_forward_thread() -> None:
+    """Pass each queued message to smartcitizen.me exactly as the device sent it: same topic, same bytes, the
+    device's token as the MQTT identity (what both firmwares do), QoS 1 as the platform asks, and the platform's
+    certificate actually checked, which the DIY firmware cannot afford to do. One connection per message: at a
+    message a minute per device that is nothing, and it keeps the per-token identity simple."""
+    import ssl
+    import paho.mqtt.publish as publish
+    while True:
+        if not sc_queue:
+            time.sleep(1); continue
+        topic, payload, token = sc_queue.popleft(); sc_state["queued"] = len(sc_queue)
+        try:
+            publish.single(topic, payload, qos=1, hostname=SC_PLATFORM_HOST, port=SC_PLATFORM_PORT, client_id=token,
+                           auth={"username": token, "password": ""}, tls={"cert_reqs": ssl.CERT_REQUIRED}, keepalive=30)
+            sc_state["forwarded"] += 1
+        except Exception as e:  # noqa: BLE001
+            sc_queue.appendleft((topic, payload, token)); sc_state["queued"] = len(sc_queue)
+            sc_state["forward_failed"] += 1
+            log.warning("sc-direct: forward to %s failed (%s: %s) — %d queued, retrying in 30s", SC_PLATFORM_HOST, type(e).__name__, e, len(sc_queue))
+            time.sleep(30)
 
 
 def mesh_send(text: str) -> None:
@@ -282,14 +338,6 @@ def ha_alert(level: str, text: str, alert_id: int | None) -> None:
 
 
 # ---------------------------------------------------------------- rules → alerts
-def load_rules() -> list[dict]:
-    try:
-        core = yaml.safe_load(RULES.read_text()) or []
-    except FileNotFoundError:
-        core = []
-    return core + packs.alerts()      # a pack rule with `contributes:` is part of the report, not an alert
-
-
 def _local_now() -> datetime:
     """The node's own clock. Everything a person is told about time uses this, never UTC: a 'good morning' that arrives
     at one in the afternoon is the bug this exists to prevent."""
@@ -367,31 +415,82 @@ def run_report(cur) -> None:
     b = report.bundle(cur, every, held_hours=held)
     text = report.sheet(b, LOCALE())
     quiet = _quiet("info")
-    cur.execute("""INSERT INTO reports (due_local, window_hours, depth, rung, text, sheet, sent, held_quiet, cells)
-                   VALUES (%s, %s, 'sheet', 'node', %s, %s, %s, %s, %s) RETURNING id""",
-                (due, every + held, text, text, not quiet, quiet, Jsonb(b.get("cells") or [])))
+    memory = "" if quiet else _morning(cur, due, len(text))
+    cur.execute("""INSERT INTO reports (due_local, window_hours, depth, rung, text, sheet, sent, held_quiet, cells, memory)
+                   VALUES (%s, %s, 'sheet', 'node', %s, %s, %s, %s, %s, %s) RETURNING id""",
+                (due, every + held, text, text, not quiet, quiet, Jsonb(b.get("cells") or []), bool(memory)))
     rid = cur.fetchone()["id"]
     if quiet:
         log.info("report %d written and held for quiet hours: %d hours will be folded into the next one", rid, every + held)
         return
-    notify("info", text)          # Telegram and Home Assistant. The mesh and Reticulum carry act alerts only.
+    # Telegram and Home Assistant; the memory rides Telegram alone, never HA, and sits above the invitation, so the
+    # sign-off stays the last thing the household reads (design review, 14 Oct)
+    notify("info", text, home=memory, home_before_last=True)
     ha_alert("info", text, None)
     log.info("report %d sent: %d hours, %d words", rid, every + held, len(text.split()))
 
 
+def _morning(cur, due, used: int) -> str:
+    """The house's memory for the first report each day that finds yesterday written (learn.morning): the digests
+    LEARN_PUSH asks for and the learnings whose status changed today. Telegram only, like the household line: never
+    the stored report text, the bundle, the mesh or Home Assistant. "" on any failure, so the report always goes."""
+    try:
+        periods = learn.morning_periods(due.date(), (settings.get("LEARN_PUSH", "all") or "all").strip().lower())
+        if not periods:
+            return ""
+        cur.execute("SELECT 1 FROM reports WHERE memory AND due_local >= %s LIMIT 1", (due.replace(hour=0),))
+        if cur.fetchone():
+            return ""
+        cur.execute("SELECT scale, period_start, text FROM digests WHERE period_start >= %s", (min(p[1] for p in periods),))
+        kept = {(r["scale"], r["period_start"]): r["text"] for r in cur.fetchall()}
+        if ("day", due.date() - timedelta(days=1)) in periods and ("day", due.date() - timedelta(days=1)) not in kept:
+            return ""                     # yesterday is not written yet: the next report carries it
+        cur.execute("""SELECT kind, key, issue, status, statement FROM learnings
+                       WHERE status_since = %s AND status IN ('holding', 'weakening', 'gone')""", (due.date(),))
+        changed = learn.rank(cur.fetchall(), _people())
+        return learn.morning([kept[p] for p in periods if p in kept], changed, LOCALE(), 4000 - used)
+    except Exception as e:  # noqa: BLE001
+        log.warning("morning memory skipped: %s", type(e).__name__)
+        return ""
+
+
+def refresh_usual() -> None:
+    """usual_by_hour is materialized (init.sql): rebuild it hourly, in this connection's NODE_TZ, so a rule's
+    "usual for this hour" is the household's hour. A plain REFRESH takes an ACCESS EXCLUSIVE lock, so a rule reading
+    usual_by_hour waits for it (well under a second on a node). REFRESH CONCURRENTLY would need a unique index and
+    fails on a never-populated view."""
+    with db() as con, con.cursor() as cur:
+        cur.execute("REFRESH MATERIALIZED VIEW usual_by_hour")
+
+
 def run_rules() -> None:
-    rules = load_rules()
+    rules = packs.load_rules()
+    mode = settings.get("ALERT_ENGINE", "rules") or "rules"
+    if mode not in ("rules", "shadow", "events"):
+        mode = "rules"                    # a typo behaves as rules: the household keeps its alerts
+    # In events mode the engine speaks for the packs it has kinded rules for (heat, air-quality): their old rules
+    # still record an alerts row (the dashboard, rho and Home Assistant read those) but no longer send. Every other
+    # rule, core sensor_silent included, sends as before.
+    replaced = {r["id"].split("/", 1)[0] for r in rules if r.get("kind")} if mode == "events" else set()
+    cands = []
     with db() as con, con.cursor() as cur:
         try:
             run_report(cur)
         except Exception as e:  # noqa: BLE001
             log.warning("report failed: %s", e)
         for rule in rules:
+            if rule.get("kind") and mode == "rules":
+                continue                  # kinded rules belong to the event engine (docs/SPEC_alerts.md)
             try:
                 rows = index.run_ro(cur, rule["sql"])      # as planetai_ro: a rule can read everything but settings, and write nothing
             except Exception as e:  # noqa: BLE001
                 log.warning("rule %s failed: %s", rule.get("id"), e)
                 continue
+            if rule.get("kind"):
+                # No alerts row, on purpose: an act-level row is an open ask on the dashboard and a row in rho's
+                # denominator, and shadow must change neither. Linking them (alerts.event_id) is Plan 2's.
+                cands += events_pg.candidates(rule, rows)
+                continue                  # never through the old cooldown-and-send path
             for row in rows:
                 sid = str(row.get("sensor_id", "node"))
                 cur.execute(
@@ -402,8 +501,14 @@ def run_rules() -> None:
                     continue
                 msg = rule["message"]
                 tmpl = msg.get(LOCALE()) or msg.get("en") if isinstance(msg, dict) else str(msg)
+                # {line} is the one placeholder the row never carries: it is the rule's own line,
+                # named by watch.over and printed bare (35, not 35.0), so an alert can say whose
+                # line it is (docs/SPEC_language.md rule 10) without a second copy of the number.
+                watch_over = (rule.get("watch") or {}).get("over")
+                line_f = {"line": f"{float(watch_over):g}"} \
+                    if isinstance(watch_over, (int, float)) else {}
                 try:
-                    text = tmpl.format(**{k: ("—" if v is None else v) for k, v in row.items()})
+                    text = tmpl.format(**line_f, **{k: ("—" if v is None else v) for k, v in row.items()})
                 except (KeyError, ValueError, TypeError):
                     text = tmpl
                 level = rule.get("level", "info")
@@ -412,17 +517,41 @@ def run_rules() -> None:
                 # what interrupts a person: act always; warn if ALERT_LEVEL allows; info only in a briefing (it is
                 # recorded either way, and appears on the dashboard). Quiet hours hold everything but act.
                 floor = {"act": 2, "warn": 1, "info": 0}
-                send = floor.get(level, 0) >= floor.get(settings.get("ALERT_LEVEL", "act"), floor["act"]) and not _quiet(level)
+                send = (rule["id"].split("/", 1)[0] not in replaced
+                        and floor.get(level, 0) >= floor.get(settings.get("ALERT_LEVEL", "act"), floor["act"]) and not _quiet(level))
                 if send:
                     # No id, and nothing asking to be told. The node watches what happens next (v0.39) instead of
                     # asking; a number a household is expected to quote back was a chore, and 15 of node #1's 37
                     # act alerts got an answer, nine of them in two dashboard batch-clicks a day later.
-                    notify(level, text)
+                    notify(level, text, home=_alert_home(rule["id"]) if level == "act" else "")
                 ha_alert(level, text, alert_id)
+        if mode in ("shadow", "events"):
+            try:
+                decided = events_pg.run(cur, cands, mode, _local_now())
+            except Exception as e:  # noqa: BLE001
+                log.warning("event engine failed: %s", e)
+                decided = []
+            if mode == "events":
+                # after the engine's transaction has committed: a message is never sent for a step that rolled back
+                for m, text in decided:
+                    if m.send and text:
+                        # The buttons ride only when the bot has announced itself (TELEGRAM_BUTTONS=1,
+                        # set by agent_loop on startup): a node without the agent container sends the
+                        # same message bare (SPEC_alerts §7).
+                        kb = _event_keyboard(m.event.id, settings.get("ALERT_LOCALE", "en") or "en") \
+                            if m.event.id and settings.num("TELEGRAM_BUTTONS", 0) else None
+                        notify(m.event.level, text, keyboard=kb,
+                               home=_alert_home(m.event.issue) if m.event.level == "act" else "")
 
 
-def notify(level: str, text: str) -> None:
-    icon = {"info": "ℹ️", "warn": "⚠️", "act": "🔴"}.get(level, "")
+def notify(level: str, text: str, keyboard: list | None = None, home: str = "", home_before_last: bool = False) -> None:
+    """Send an alert. `home` is a line for the household's own Telegram only (who in this house it matters to,
+    learn.alert_line; the report's morning memory): never the mesh, Reticulum or the log, which other people and
+    machines can read. It goes at the end, or above the last paragraph with `home_before_last` (the report's
+    invitation stays its last line)."""
+    # One sign per message (design review, 14 Oct): a text that opens with its own (📈, ✅, the report's 🌡️) is not
+    # given the level's as well; node #1 sent "ℹ️ 🌡️ It is hot inside".
+    icon = "" if text[:1] and unicodedata.category(text[0]) == "So" else {"info": "ℹ️", "warn": "⚠️", "act": "🔴"}.get(level, "")
     log.info("ALERT [%s] %s", level, text)
     if level == "act":
         mesh_send(text.split("\n")[0])            # the mesh gets the first line only: LoRa frames are small
@@ -436,12 +565,40 @@ def notify(level: str, text: str) -> None:
         return
     for chat in chats:
         try:
+            said = f"{icon} {text}".strip()
+            head, sep, last = said.rpartition("\n\n") if home and home_before_last else ("", "", said)
+            body = {"chat_id": chat, "text": f"{head}\n\n{home}\n\n{last}" if sep else said + (f"\n\n{home}" if home else "")}
+            if keyboard:
+                body["reply_markup"] = {"inline_keyboard": keyboard}
             httpx.post(f"https://api.telegram.org/bot{tok}/sendMessage",
-                       json={"chat_id": chat, "text": f"{icon} {text}".strip()}, timeout=15).raise_for_status()
+                       json=body, timeout=15).raise_for_status()
             log.info("telegram -> %s ok", chat)
+            tg_state.update(ok=True, at=time.time())
         except Exception as e:  # noqa: BLE001
             # never interpolate the exception's URL: httpx puts the token in it
             log.warning("telegram -> %s failed: %s", chat, type(e).__name__)
+            tg_state.update(ok=False, at=time.time())
+
+
+def _alert_home(issue: str) -> str:
+    """Who in this house an act alert about `issue` matters to, for its Telegram line; "" on any failure, so reading
+    the household profile can never stop an alert going out."""
+    try:
+        return learn.alert_line(issue, _people(), settings.get("ALERT_LOCALE", "en") or "en")
+    except Exception as e:  # noqa: BLE001
+        log.warning("alert line: %s", type(e).__name__)
+        return ""
+
+
+def _event_keyboard(event_id: int, locale: str) -> list:
+    """The three buttons under an event's message (SPEC_alerts §7). callback_data is the contract the bot in the
+    agent container parses: ev:<event_id>:<stage>. Labels are the wire's own (actions.BUTTONS), so the page, the
+    phone and the bot all say the same three words. Sent only when the bot has announced itself
+    (TELEGRAM_BUTTONS=1): a button nobody answers is a broken promise under the message."""
+    b = _act.BUTTONS.get(locale) or _act.BUTTONS["en"]
+    return [[{"text": b["done"], "callback_data": f"ev:{event_id}:acted"},
+             {"text": b["not_now"], "callback_data": f"ev:{event_id}:acknowledged"},
+             {"text": b["doesnt_fit"], "callback_data": f"ev:{event_id}:dismissed"}]]
 
 
 # ---------------------------------------------------------------- hourly push (child → parent)
@@ -449,10 +606,11 @@ def push_aggregates() -> None:
     if not PARENT():          # the function, not the setting: a bare PARENT is always truthy
         return
     with db() as con, con.cursor() as cur:
-        cur.execute("SELECT bucket, sensor_id, metric, mean, min, max, n FROM readings_1h WHERE bucket > now() - interval '2 hours'")
+        cur.execute("SELECT bucket, sensor_id, metric, mean, min, max, n FROM readings_1h r "
+                    "WHERE bucket > now() - interval '2 hours' AND " + packs.public_sql("r"))
         rows = [{**r, "bucket": r["bucket"].isoformat()} for r in cur.fetchall()]
     try:
-        httpx.post(f"{PARENT()}/aggregates", json={"node": NODE, "rows": rows, "scale": os.getenv("NODE_SCALE", "community")},
+        httpx.post(f"{PARENT()}/aggregates", json={"schema": AGGREGATES_V0, "node": NODE, "rows": rows, "scale": os.getenv("NODE_SCALE", "community")},
                    headers={"Authorization": f"Bearer {PARENT_TOKEN()}"} if PARENT_TOKEN() else {},
                    timeout=30).raise_for_status()
         log.info("pushed %d hourly rows to parent", len(rows))
@@ -500,12 +658,304 @@ def push_events() -> None:
     if not rows:
         return
     try:
-        httpx.post(f"{PARENT()}/events", json={"node": NODE, "rows": rows, "scale": os.getenv("NODE_SCALE", "community")},
+        httpx.post(f"{PARENT()}/events", json={"schema": EVENTS_V0, "node": NODE, "rows": rows, "scale": os.getenv("NODE_SCALE", "community")},
                    headers={"Authorization": f"Bearer {PARENT_TOKEN()}"} if PARENT_TOKEN() else {},
                    timeout=30).raise_for_status()
         log.info("pushed %d alert events to parent", len(rows))
     except Exception as e:  # noqa: BLE001
         log.warning("event push to parent failed: %s", e)
+
+
+# ---------------------------------------------------------------- is there a newer release
+# The file tools/ship.sh publishes beside the signed tarball: one line, the version a tester downloading now gets.
+# It is not signed, and it need not be: the most a forged one can do is say a version is out, and `planetai update`
+# still refuses a tarball the release key did not sign.
+RELEASE_URL = "https://planetai.fab.city/node0/get/VERSION"
+RELEASE_EVERY = 24 * 3600
+RELEASE_WORDS = {
+    "en": "PLANETAI {latest} is out; this node runs {here}. On the node: planetai update (it backs up first). "
+          "What changed: https://planetai.fab.city/docs/changelog/",
+    "es": "Ya está PLANETAI {latest}; este nodo tiene {here}. En el nodo: planetai update (antes hace una copia). "
+          "Qué cambia: https://planetai.fab.city/docs/changelog/",
+    "id": "PLANETAI {latest} sudah tersedia; node ini menjalankan {here}. Di node: planetai update (ia membuat cadangan "
+          "dulu). Apa yang berubah: https://planetai.fab.city/docs/changelog/",
+}
+
+
+# The release a version string is at. It lives in requires.py because the packs loader and the CLI need it too,
+# and nothing may import this module to get it (a second import starts a second MQTT client).
+from requires import release_of  # noqa: E402
+
+
+def check_release() -> None:
+    """Once a day, ask which version is current; say so in /health, and once per version on Telegram, when it is
+    newer than this node. Runs hourly so a message held back by quiet hours goes out the next morning, but asks
+    the site only once in RELEASE_EVERY. UPDATE_CHECK=off asks nothing and forgets what it knew."""
+    if settings.get("UPDATE_CHECK", "on") == "off":
+        state.pop("release", None)
+        return
+    known = state.get("release") or {}
+    if time.time() - known.get("asked", 0) >= RELEASE_EVERY:
+        # Not raised: a node with no route out is a normal node, and a loop's error lands in /health's `errors`,
+        # which the agent's health check reads as a broken source. Kept here instead, and asked again in an hour.
+        try:
+            r = hc.get(RELEASE_URL, timeout=15)
+            r.raise_for_status()
+            latest = r.text.strip()
+            # A site that answers 200 with a page instead of the file must not become "v<html>" in a header.
+            if not re.fullmatch(r"v\d+\.\d+(?:\.\d+)?", latest):
+                raise ValueError("the answer is not a version")
+        except Exception as e:  # noqa: BLE001
+            state["release"] = {**known, "error": type(e).__name__, "asked": time.time() - RELEASE_EVERY + 3600}
+            return
+        here = os.getenv("NODE_VERSION", "")
+        mine, theirs = release_of(here), release_of(latest)
+        known = {"latest": latest, "current": here, "newer": bool(mine and theirs > mine),
+                 "checked": datetime.now(timezone.utc).isoformat(timespec="seconds"), "asked": time.time()}
+        state["release"] = known
+    if not known.get("newer") or _quiet("info"):
+        return
+    # One row per version, and the row is the lock: two checks racing, or a restart, cannot send it twice.
+    with db() as con, con.cursor() as cur:
+        cur.execute("INSERT INTO release_notices (version) VALUES (%s) ON CONFLICT DO NOTHING RETURNING version",
+                    (known["latest"],))
+        first = cur.fetchone()
+    if first:
+        words = RELEASE_WORDS.get(settings.get("ALERT_LOCALE", "en"), RELEASE_WORDS["en"])
+        notify("info", words.format(latest=known["latest"], here=known["current"] or "an older version"))
+
+
+
+# ---------------------------------------------------------------- the nodes the programme lists (docs/SPEC_hello.md)
+# registry.json on main, the file a node joins by pull request. Read from main and not from this release, so a node
+# merged today is listed everywhere within REGISTRY_EVERY. Only these fields reach a page: `contact` and `sources`
+# stay in the file, and a point is given to one decimal (about 10 km), as the Node door has always drawn another node.
+REGISTRY_URL = "https://raw.githubusercontent.com/fabcity/planetai-node/main/registry.json"
+REGISTRY_EVERY = 3600  # one small public file: a merged node is on every map within the hour
+REGISTRY_FIELDS = ("name", "place", "scale", "operator", "since", "cell")
+
+
+def listed_nodes(raw) -> list[dict]:
+    """registry.json as a page may see it. A malformed entry is skipped, not a reason to lose the list."""
+    out = []
+    for n in raw.get("nodes", []) if isinstance(raw, dict) else []:
+        if not isinstance(n, dict) or not isinstance(n.get("name"), str):
+            continue
+        row = {k: n.get(k) for k in REGISTRY_FIELDS}
+        try:
+            row["ll"] = [round(float(n["lon"]), 1), round(float(n["lat"]), 1)]
+        except (KeyError, TypeError, ValueError):
+            row["ll"] = None
+        out.append(row)
+    return out
+
+
+def check_registry() -> None:
+    """Every REGISTRY_EVERY, read the programme's list. UPDATE_CHECK=off asks nothing, the same switch as the
+    release check: both are this node reaching out to the programme. A failed read keeps the last good list and
+    tries again in an hour."""
+    if settings.get("UPDATE_CHECK", "on") == "off":
+        state.pop("registry", None)
+        return
+    known = state.get("registry") or {}
+    if time.time() - known.get("asked", 0) < REGISTRY_EVERY:
+        return
+    # ponytail: in memory only; a node restarted offline has no list until its first good read. Keep a copy on disk
+    # when that bites someone.
+    try:
+        r = hc.get(REGISTRY_URL, timeout=15)
+        r.raise_for_status()
+        nodes = listed_nodes(r.json())
+    except Exception as e:  # noqa: BLE001 — no route out is a normal node
+        state["registry"] = {**known, "error": type(e).__name__, "asked": time.time() - REGISTRY_EVERY + 3600}
+        return
+    state["registry"] = {"nodes": nodes, "read": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                         "asked": time.time()}
+
+
+
+# ---------------------------------------------------------------- introduced or invasive (docs/SPEC_species.md §3)
+# GRIIS, the Global Register of Introduced and Invasive Species, publishes one checklist per country on GBIF under CC BY
+# 4.0, all from one publisher (ISSG). The node finds its own country's by title, offline from NODE_TZ, and keeps a map
+# Backbone key -> invasive | introduced, read weekly while SPECIES_MATCH is on: three requests that say which country
+# this node is in and nothing else. A species not on the list is unmarked, never "native": absence is not evidence.
+GRIIS_PUBLISHER = "cdef28b1-db4e-4c58-aa71-3c5238c2d0b5"
+GRIIS_TITLE = "Global Register of Introduced and Invasive Species"
+GRIIS_EVERY = 7 * 86400
+# ponytail: iso3166.tab names that GRIIS titles spell otherwise, for the pilots' and nodes' countries; add one when a
+# node lands in a country whose list the node cannot find
+GRIIS_ALIAS = {"GB": "United Kingdom", "KR": "Republic of Korea", "US": "United States (Contiguous) (ver.2.0, 2022)"}
+ZONEINFO = Path("/usr/share/zoneinfo")
+
+
+def node_country() -> tuple[str, str] | None:
+    """(ISO code, name) of the country NODE_TZ is in, from the zone tables every system ships. None when the zone
+    names no single country (UTC, a typo)."""
+    tz = os.getenv("NODE_TZ", "").strip()
+    try:
+        code = next((cols[0] for cols in (ln.split("\t") for ln in (ZONEINFO / "zone.tab").read_text().splitlines())
+                     if len(cols) > 2 and cols[2] == tz and not cols[0].startswith("#")), None)
+        names = dict(ln.split("\t", 1) for ln in (ZONEINFO / "iso3166.tab").read_text().splitlines()
+                     if ln and not ln.startswith("#"))
+    except OSError:
+        return None
+    return (code, names.get(code, code)) if code else None
+
+
+def griis_marks(listing: list[dict], invasive: set[str]) -> dict[int, str]:
+    """A checklist's own rows (GBIF's species search: taxonID, nubKey) as Backbone key -> invasive | introduced. Every
+    taxon on a GRIIS list is introduced; the archive says which of them are invasive."""
+    return {r["nubKey"]: "invasive" if r.get("taxonID") in invasive else "introduced" for r in listing if r.get("nubKey")}
+
+
+def _griis_invasive(zbytes: bytes) -> set[str]:
+    """The taxonIDs a Darwin Core archive calls invasive, in either GRIIS format: the species profile's isInvasive
+    (Indonesia, 2020) or the distribution's degreeOfEstablishment, "invasive (category D2)" and the like (the US, 2022).
+    Columns are found where meta.xml says, not assumed."""
+    import csv, io, zipfile, xml.etree.ElementTree as ET  # noqa: E401, PLC0415
+    z = zipfile.ZipFile(io.BytesIO(zbytes))
+    ns = {"d": "http://rs.tdwg.org/dwc/text/"}
+    out = set()
+    for ext in ET.fromstring(z.read("meta.xml")).findall("d:extension", ns):
+        col = next((int(f.get("index")) for f in ext.findall("d:field", ns)
+                    if f.get("term", "").endswith(("/isInvasive", "/degreeOfEstablishment"))), None)
+        if col is None:
+            continue
+        cid, skip = int(ext.find("d:coreid", ns).get("index")), int(ext.get("ignoreHeaderLines", "0"))
+        rows = csv.reader(io.StringIO(z.read(ext.find("d:files/d:location", ns).text).decode("utf-8")), delimiter="\t")
+        out |= {r[cid] for i, r in enumerate(rows) if i >= skip and len(r) > max(cid, col) and "invasive" in r[col].lower()}
+    return out
+
+
+def check_griis() -> None:
+    """Weekly while SPECIES_MATCH is on: find this country's GRIIS checklist and keep its marks. What it could not
+    find is kept as `why`, so a finding says "no checklist for here" instead of saying nothing."""
+    if settings.get("SPECIES_MATCH", "off") != "on":
+        state.pop("griis", None)
+        return
+    known = state.get("griis") or {}
+    if time.time() - known.get("asked", 0) < GRIIS_EVERY:
+        return
+    c = node_country()
+    if not c:
+        state["griis"] = {"why": "NODE_TZ names no country", "asked": time.time()}
+        return
+    code, name = c
+    try:
+        sets = hc.get(f"https://api.gbif.org/v1/organization/{GRIIS_PUBLISHER}/publishedDataset",
+                      params={"limit": 1000}, timeout=30).json()["results"]
+        want = GRIIS_ALIAS.get(code, name)
+        ds = next((d["key"] for d in sets if re.fullmatch(rf"{GRIIS_TITLE}\s*-\s*{re.escape(want)}", d["title"].strip())), None)
+        if not ds:
+            state["griis"] = {"country": code, "name": name, "why": f"GRIIS publishes no checklist for {name}",
+                              "asked": time.time()}
+            return
+        listing, offset = [], 0
+        while True:
+            page = hc.get("https://api.gbif.org/v1/species/search", params={"datasetKey": ds, "origin": "SOURCE",
+                          "limit": 1000, "offset": offset}, timeout=60).json()
+            listing += page["results"]
+            offset += len(page["results"])
+            if page.get("endOfRecords", True) or not page["results"]:
+                break
+        archive = next(e["url"] for e in hc.get(f"https://api.gbif.org/v1/dataset/{ds}/endpoint", timeout=30).json()
+                       if e["type"] == "DWC_ARCHIVE")
+        r = hc.get(archive, timeout=120, follow_redirects=True)
+        r.raise_for_status()
+        marks = griis_marks(listing, _griis_invasive(r.content))
+    except Exception as e:  # noqa: BLE001 — no route out keeps the last good list and tries again in a day
+        state["griis"] = {**known, "error": type(e).__name__, "asked": time.time() - GRIIS_EVERY + 86400}
+        return
+    state["griis"] = {"country": code, "name": name, "dataset": ds, "marks": marks, "asked": time.time(),
+                      "read": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+
+
+
+# ---------------------------------------------------------------- what others recorded here (docs/SPEC_species.md §3)
+# GBIF's open occurrence records in the node's seven res-8 cells, counted per species, genus and family key, so a
+# matched finding can say "also recorded here by others, N times". Only CC0 and CC BY records: iNaturalist's CC BY-NC
+# ones are not open, and the node does not keep them. Counts only: no record, observer or point is kept. The request
+# carries the seven hexagons, which tells GBIF the area this node is in, about 2 km across. Weekly, with SPECIES_MATCH.
+OTHERS_EVERY = 7 * 86400
+OTHERS_LICENCES = ("CC0_1_0", "CC_BY_4_0")
+
+
+def _cell_wkt(cell: str) -> str:
+    """One H3 cell as the counter-clockwise WKT polygon GBIF's geometry filter asks for."""
+    import h3  # noqa: PLC0415
+    ring = [(lng, lat) for lat, lng in h3.cell_to_boundary(cell)]
+    if sum((x2 - x1) * (y2 + y1) for (x1, y1), (x2, y2) in zip(ring, ring[1:] + ring[:1])) > 0:
+        ring.reverse()   # the shoelace sum is positive for a clockwise ring
+    return "POLYGON((" + ",".join(f"{x:.6f} {y:.6f}" for x, y in ring + ring[:1]) + "))"
+
+
+def check_others() -> None:
+    """Weekly while SPECIES_MATCH is on: per cell, how many open records GBIF holds of each species, genus and family."""
+    if settings.get("SPECIES_MATCH", "off") != "on":
+        state.pop("others", None)
+        return
+    known = state.get("others") or {}
+    if time.time() - known.get("asked", 0) < OTHERS_EVERY:
+        return
+    try:
+        cells = {}
+        for cell in sorted(_node_cells()[0]):
+            r = hc.get("https://api.gbif.org/v1/occurrence/search", timeout=60, params=[
+                ("geometry", _cell_wkt(cell)), *(("license", lc) for lc in OTHERS_LICENCES), ("limit", "0"),
+                ("facet", "speciesKey"), ("facet", "genusKey"), ("facet", "familyKey"), ("facetLimit", "1000")])
+            r.raise_for_status()
+            cells[cell] = {int(c["name"]): c["count"] for f in r.json().get("facets", []) for c in f["counts"]}
+    except Exception as e:  # noqa: BLE001 — no route out keeps the last good counts and tries again in a day
+        state["others"] = {**known, "error": type(e).__name__, "asked": time.time() - OTHERS_EVERY + 86400}
+        return
+    state["others"] = {"cells": cells, "asked": time.time(), "read": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+
+
+
+# ---------------------------------------------------------------- what the node learns (docs/SPEC_learn.md)
+def check_learn() -> None:
+    """Once a local day, re-check what this house learned (app/learn.py): what worked, what is usual, and the asks
+    that do not fit. A row is replaced, never deleted: a rule that can no longer fire keeps its row as `gone`.
+
+    Its pass is the first hourly tick of the node's own date (the session runs in NODE_TZ), so yesterday's digest is
+    written by about one in the morning, before the morning report reads it. Until 14 Oct it ran 20 hours after its
+    last pass, which drifted round the clock."""
+    today = q("SELECT current_date AS d")[0]["d"]
+    if state.get("learned_on") == today:
+        return
+    was = {r["key"]: r for r in q("SELECT key, status, numbers FROM learnings WHERE kind = 'worked'")}
+    live = set(index._live_rule_ids())
+    rules = packs.load_rules()
+    # On ALERT_ENGINE=events the engine speaks for the packs it has kinded rules for, from its first events message
+    # on: their rows after that were never sent, and the learnings must not count them (learn.silent).
+    replaced, since = learn.replaced(rules, settings.get("ALERT_ENGINE", "rules") or "rules"), None
+    if replaced:
+        since = (q("SELECT min(ts) AS t FROM event_messages WHERE mode = 'events'") or [{}])[0].get("t")
+    rows = (learn.learn_worked(q, rules, live, was, replaced, since) + learn.learn_usual(q)
+            + learn.learn_asks(q, live, replaced, since))
+    with db() as con, con.cursor() as cur:
+        for r in rows:
+            cur.execute("""INSERT INTO learnings (kind, key, issue, metric, status, statement, numbers, n, scope, status_since)
+                           VALUES (%(kind)s, %(key)s, %(issue)s, %(metric)s, %(status)s, %(statement)s, %(numbers)s, %(n)s, %(scope)s, current_date)
+                           ON CONFLICT (kind, key) DO UPDATE SET status = EXCLUDED.status, statement = EXCLUDED.statement,
+                             numbers = EXCLUDED.numbers, n = EXCLUDED.n, metric = EXCLUDED.metric, scope = EXCLUDED.scope,
+                             status_since = CASE WHEN learnings.status IS DISTINCT FROM EXCLUDED.status THEN current_date
+                                                 ELSE coalesce(learnings.status_since, current_date) END,
+                             checked_at = now()""",
+                        {**r, "numbers": Jsonb(r["numbers"])})
+    kept = q("SELECT scale, period_start, numbers FROM digests")
+    new = learn.write_digests(q, {(d["scale"], str(d["period_start"])[:10]) for d in kept
+                                  if (d["numbers"] or {}).get("v") == learn.DIGEST_V},
+                              {(d["scale"], str(d["period_start"])[:10]): d["numbers"] for d in kept},
+                              replaced=replaced, since=since)
+    with db() as con, con.cursor() as cur:
+        for d in new:   # a digest of an older version is written again (learn.DIGEST_V); a current one never is
+            cur.execute("""INSERT INTO digests (scale, period_start, label, text, numbers)
+                           VALUES (%(scale)s, %(period_start)s, %(label)s, %(text)s, %(numbers)s)
+                           ON CONFLICT (scale, period_start) DO UPDATE SET label = EXCLUDED.label, text = EXCLUDED.text,
+                             numbers = EXCLUDED.numbers, written_at = now()""", {**d, "numbers": Jsonb(d["numbers"])})
+    state["learned_on"], state["learned_at"] = today, time.time()
+    log.info("learn: %d rows re-checked, %d digests written", len(rows), len(new))
 
 
 # ---------------------------------------------------------------- loops
@@ -563,10 +1013,21 @@ try:
 except Exception as e:  # noqa: BLE001  — never block startup on it
     log.warning("could not move off the old briefing settings: %s", e)
 
+# The things a home keeps (docs/SPEC_inventory.md): their classes and the three private counts per class, here
+# because the roles below declare those counts private at every start. The routes are with /species.
+# ponytail: the flows 1.0 physical classes a home keeps, copied like EYES_CLASSES; `vehicle` is new (Tomas, 13 Oct:
+# cars, motorbikes, trucks) and goes into packs/flows/resources.yml and the published vocab when that merges
+THING_CLASSES = ("tool", "appliance", "furniture", "electronics", "garment", "textile", "micromobility", "vehicle",
+                 "part", "goods")
+THING_COUNTS = ("stock", "idle", "repair")   # how many; used yearly or never; needing repair or broken
+
+
 def load_channel_roles() -> int:
     """Declarations are the file's, not the database's: replace the table on every start so a removed pack's
     claims go with it."""
-    rows = packs.channels()
+    rows = packs.channels() + [{"source": "things", "metric": f"{k}.{c}", "role": "private", "comparable": False,
+                                 "unit": "count", "reference": None, "declared_by": "core"}
+                                for c in THING_CLASSES for k in THING_COUNTS]
     with db() as con, con.cursor() as cur:
         # db() is autocommit, so the delete and the reinsert must share one explicit transaction block —
         # otherwise the DELETE commits alone and a concurrent reader can see an empty table mid-restart.
@@ -587,6 +1048,7 @@ except Exception as e:  # noqa: BLE001  — a node whose schema predates 0.22 ha
 
 if MQTT_HOST:
     threading.Thread(target=mqtt_thread, daemon=True, name="mqtt").start()
+    threading.Thread(target=sc_forward_thread, daemon=True, name="sc-forward").start()
 
 def poll_sources() -> None:
     poll_once(hc)
@@ -638,8 +1100,14 @@ def _with_distance(peers: list[dict]) -> list[dict]:
 
 loop(poll_sources, POLL, delay=2)
 loop(run_rules, 60, delay=30)
+loop(refresh_usual, 3600, delay=10)
 loop(push_aggregates, 3600, delay=120)
 loop(push_events, 3600, delay=150)
+loop(check_release, 3600, delay=300)
+loop(check_registry, 3600, delay=60)
+loop(check_griis, 3600, delay=90)
+loop(check_others, 3600, delay=120)
+loop(check_learn, 3600, delay=180)
 if RETICULUM_URL:
     loop(poll_reticulum, 300, delay=20)
 
@@ -683,29 +1151,55 @@ async def _mcp_auth(request, call_next):
 # (`grep -oE "(api|fetch)\('/[a-z0-9/._{}-]+" app/static/index.html`), less the three writes and /place/geojson, plus
 # the two <img> routes that grep does not see (/earth/year.png at index.html:904, /earth/change.png from /earth's
 # png_url) and the other-consumer reads /readings, /exports and /export.
+# /sources is on the `open` list and named on purpose rather than left to default-private: it is a
+# byte-identical copy of a public registry of public datasets, the same 209 rows on every node in a
+# release. It says nothing about this house — not a sensor, not a reading, not a coordinate. /packs,
+# already here, describes this node's own configuration and is more revealing than it is.
 # /presence is here and not on the `open` list because the RETICULUM BRIDGE reads it, and the bridge
 # is another container with no token: on the default SHARE_LEVEL=off it would be refused and presence
 # would silently never announce. It is safe at every level by construction — it answers `{"enabled":
 # false}` until a household turns announcing on, and after that it returns the same handful of facts
 # the node is already broadcasting to every radio in reach.
-_SHARE_OFF = (frozenset({"/", "/ui", "/health", "/settings", "/export", "/presence"}), ("/static/",))
+# /nodes is here because it is the programme's public registry.json, the same on every node: it says which nodes
+# exist and nothing about this house.
+# /ground/* is on `open` because every layer under it is a public dataset (OpenStreetMap, OpenAerialMap, Sentinel-2,
+# Open-Meteo) cut around the node, and its centre is no closer than the point /health already rounds. /geo/cell is
+# there too, but the route drops what it says relative to the node (is_node, cells_from_node, *_polar) for a
+# caller without a token: asked at res 15 cell by cell, those would find the house. The phone's walk needs both
+# (Tomas, 12 Oct 2026: one phone mode, no token, for the person running the node).
+_SHARE_OFF = (frozenset({"/", "/ui", "/tester", "/health", "/llms.txt", "/settings", "/export", "/presence", "/nodes", "/offers"}), ("/static/",))
 _SHARE_OPEN = (_SHARE_OFF[0] | frozenset({
     "/stats", "/sensors", "/observations", "/alerts", "/series", "/sparks", "/rho", "/cells", "/packs", "/trust",
     "/nearby", "/forecast", "/earth", "/earth/change.png", "/earth/year.png", "/earth/frame.png",
-    "/report/latest", "/readings",
-    "/history", "/exports",
-}), ("/static/", "/exports/", "/issues"))
+    "/report/latest", "/readings", "/reach", "/shape", "/effect",
+    "/history", "/exports", "/sources",
+    # The ask pane. Its context and every tool result are scrubbed of positions, names and ids (app/ask.py), so
+    # it tells a reader nothing /issues does not; it is here, and not on `off`, because it spends this machine's
+    # CPU on whoever asks, and `open` is the household saying the WiFi may.
+    "/ask", "/ask/status", "/docs/search", "/geo/cell",
+    # What the node learned about the place (outdoor stations' usual hours), never the house's: the Wall reads it.
+    "/learned/place",
+}), ("/static/", "/exports/", "/issues", "/sources/", "/ground/"))
 _SHARE = {"off": _SHARE_OFF, "open": _SHARE_OPEN}
 
 
 def _node_tokens() -> list[str]:
-    """Every token this node accepts. A request carrying one is not what SHARE_LEVEL is about: it is the NAS pulling
-    /backups, the agent, Home Assistant, a parent node or someone in the house, and it reads exactly what it read
+    """Every token this node trusts as the household. A request carrying one is not what SHARE_LEVEL is about: it is
+    the NAS pulling /backups, the agent, Home Assistant or someone in the house, and it reads exactly what it read
     before, from anywhere — which is the whole reason the setting can default to `off` without breaking a node on
     update. Each endpoint still checks its own token after this, so BACKUP_TOKEN getting past here does not unmask
-    the Telegram token at /settings/raw."""
+    the Telegram token at /settings/raw.
+
+    AGGREGATE_TOKEN is not one of them: every child node holds it, and a child is another household. Until 15 Oct
+    2026 it was, and a child read its parent's sensor rooms, point and building as if it lived there. Its two
+    writes pass the middleware by path (_CHILD_WRITES) and check the token themselves."""
     return [t for t in (os.getenv("ADMIN_TOKEN", "").strip(), settings.get("BACKUP_TOKEN", "").strip(),
-                        AGG_TOKEN(), ACT_TOKEN()) if t]
+                        ACT_TOKEN()) if t]
+
+
+# What a child node sends its parent. Each route checks AGGREGATE_TOKEN itself and refuses without it, so letting
+# them past SHARE_LEVEL opens nothing to a request with no token.
+_CHILD_WRITES = frozenset({("POST", "/aggregates"), ("POST", "/events")})
 
 
 def _is_local(request: Request) -> bool:
@@ -718,6 +1212,62 @@ def _is_local(request: Request) -> bool:
     arrives as the gateway too, so trusting the bridge would trust the whole WiFi and this setting would do nothing.
     Fail closed and let the household set `open`, or carry a token."""
     return (getattr(request.client, "host", "") or "") in ("127.0.0.1", "::1", "localhost")
+
+
+# A screen without a key never reads what the house calls its rooms (Tomas, 15 Oct 2026: "4. Yes", the pre-launch audit).
+# The names live in sensors.room/name/source_name and reach a reader through every route that says where a reading is:
+# /issues, /stats, /sensors, /trust, /nearby, /report/latest, alert texts. Rather than a redaction in each of them,
+# the answer to an untrusted request has the house's own labels swapped for neutral ones here, once. Free text written
+# under an older name (an alert sent before a rename) cannot be matched, so those texts are left out instead (_FREE_TEXT).
+_HOUSE = {"at": 0.0, "map": []}
+
+
+def _house_labels() -> list[tuple[str, str]]:
+    """[(label, alias)], longest label first. A room becomes "Room A", a sensor's own name "Sensor 1"; the order is
+    the labels' own, so an alias is stable between requests. Re-read every minute; a failed read keeps the last."""
+    if time.time() - _HOUSE["at"] < 60:
+        return _HOUSE["map"]
+    try:
+        with db() as con, con.cursor() as cur:   # its own read, not q(): the routes' tests count q's statements
+            cur.execute("SELECT room, name, source_name FROM sensors WHERE local AND kind = 'sensor'")
+            rows = [dict(r) for r in cur.fetchall()]
+    except Exception:  # noqa: BLE001 — no database: nothing to swap, and nothing of the house to leak either
+        return _HOUSE["map"]
+    rooms = sorted({(r.get("room") or "").strip() for r in rows} - {""})
+    names = sorted({(r.get(k) or "").strip() for r in rows for k in ("name", "source_name")} - {""} - set(rooms))
+    pairs = [(x, f"Room {chr(65 + i)}" if i < 26 else f"Room {i + 1}") for i, x in enumerate(rooms)]
+    pairs += [(x, f"Sensor {i + 1}") for i, x in enumerate(names)]
+    _HOUSE.update(at=time.time(), map=sorted(pairs, key=lambda p: -len(p[0])))
+    return _HOUSE["map"]
+
+
+_FREE_TEXT = {"/alerts": "text"}     # a route whose rows carry a sentence written when it was sent, under the names then
+
+
+def _unhoused(body: bytes, path: str) -> bytes:
+    """An untrusted answer with the house's labels swapped out. JSON only; the swap works on the encoded text, so a
+    label is replaced wherever it stands, in a field or inside a sentence."""
+    key = _FREE_TEXT.get(path)
+    if key:
+        try:
+            rows = json.loads(body)
+            if isinstance(rows, list):
+                body = json.dumps([{**r, key: None} if isinstance(r, dict) else r for r in rows]).encode()
+        except ValueError:
+            pass
+    text = body.decode("utf-8", "replace")
+    for label, alias in _house_labels():
+        text = text.replace(json.dumps(label)[1:-1], alias)
+    return text.encode()
+
+
+def _unlabelled(text: str) -> str:
+    """A sentence with the house's labels swapped, for a file that travels whoever asked for it (/export is CC BY,
+    and `planetai ipfs` pins it). ponytail: only today's labels match, as in _unhoused; a name dropped before a
+    rename stays in that day's old sentences."""
+    for label, alias in _house_labels():
+        text = text.replace(label, alias)
+    return text
 
 
 @app.middleware("http")
@@ -734,20 +1284,34 @@ async def _share_level(request, call_next):
     The 403 names the setting because the person reading it is usually the household, not a developer."""
     request.state.share_trusted = trusted = (
         _bearer_ok(request.headers.get("authorization", ""), *_node_tokens()) or _is_local(request))
-    if request.url.path.startswith("/mcp") or trusted:
+    if request.url.path.startswith("/mcp") or trusted or (request.method, request.url.path) in _CHILD_WRITES:
         return await call_next(request)
     level = SHARE_LEVEL()
     exact, prefixes = _SHARE.get(level, _SHARE_OFF)
     if request.url.path not in exact and not request.url.path.startswith(prefixes):
         from fastapi.responses import JSONResponse
+        openable, open_prefixes = _SHARE_OPEN
+        # Only offer the setting when changing it would actually answer THIS path. /version, /backups and the rest
+        # are in no allowlist at any level, and telling their reader to set `open` sends them to change a setting,
+        # come back, and get the same 403 — the advice has to know whether it is advice.
+        fix = ("Set SHARE_LEVEL to open in the dashboard's Set up view to let anything on your network read it."
+               if request.url.path in openable or request.url.path.startswith(open_prefixes)
+               else "No share level opens this one, so it always needs a token from anywhere but the node itself.")
         return JSONResponse(status_code=403, content={"error":
             f"this node is set to SHARE_LEVEL={level}, so {request.url.path} answers only this machine or a request "
-            f"carrying a token. Set SHARE_LEVEL to open in the dashboard's Set up view to let anything on your "
-            f"network read it."})
-    return await call_next(request)
+            f"carrying a token. {fix}"})
+    resp = await call_next(request)
+    if "application/json" not in resp.headers.get("content-type", ""):
+        return resp
+    from fastapi.responses import Response
+    body = _unhoused(b"".join([c async for c in resp.body_iterator]), request.url.path)
+    headers = {k: v for k, v in resp.headers.items() if k.lower() != "content-length"}
+    return Response(body, status_code=resp.status_code, headers=headers)
 
 
 app.include_router(issues.api.router)  # GET /issues and /issues/fixtures/<name>; see app/issues/
+import ask  # noqa: E402 — GET /ask/status, POST /ask, GET /docs/search: the dashboard's ask pane
+app.include_router(ask.router)
 
 for _r in agent.http_routes():        # MCP at exactly /mcp, no trailing-slash redirect
     app.router.routes.append(_r)
@@ -760,23 +1324,32 @@ def q(sql: str, *args):
 
 
 @app.get("/health")
-def health():
+def health(request: Request):
     schema = None
     try:
         with db() as con, con.cursor() as cur:
             # latest applied, not the lexically largest: '0.4' > '0.14' as text
             cur.execute("SELECT version AS v FROM schema_version ORDER BY applied_at DESC, string_to_array(version,'.')::int[] DESC LIMIT 1")
             schema = (cur.fetchone() or {}).get("v")
+    except psycopg.OperationalError:
+        # The database is there but this app cannot use it — wrong password after a reinstall over an
+        # earlier volume, db down, wrong host. That is a login problem, not a schema age: answering
+        # "pre-0.4 (run ./update.sh)" here sent keepers running a migration against a database the
+        # app could not log in to, while the real fix is in .env. `planetai doctor` reads this string.
+        schema = "unreachable (the app cannot log in to its database — planetai doctor says why)"
     except Exception:  # noqa: BLE001 — a pre-0.4 node has no schema_version table until it updates
         schema = "pre-0.4 (run ./update.sh)"
-    # A12: 3 decimals, for every caller at every level. /export has always rounded here (:838) and round(x, 3) is
+    # A12, superseded by R25 (v0.73): see _published_position. Before v0.73 this was 3 decimals for every caller.
+    # The rest of the old reasoning stands: round(x, 3) is
     # 110 m, which changes no answer a consumer computes from this — while five decimals is 1.1 m, i.e. the doorway.
     # `cell` is an H3 resolution 8 (~500 m edge), coarser than the rounding, so it does not put the position back.
     # `node` stays: /export publishes it under CC BY by design, /aggregates posts it to a parent, agent.py reads it
     # out of here, and the dashboard prints it in five places. If the name is ever sensitive it comes out of all of
     # them at once, which is a different change.
     return {"ok": state["last_poll"] is not None, "node": NODE, "version": os.getenv("NODE_VERSION", "?"),
-            "schema": schema, "uptime_s": int(time.time() - STARTED), "lat": round(float(os.getenv("NODE_LAT", 0) or 0), 3), "lon": round(float(os.getenv("NODE_LON", 0) or 0), 3), "city": os.getenv("NODE_CITY", ""), **state,
+            "schema": schema, "uptime_s": int(time.time() - STARTED),
+            **_published_position(bool(getattr(request.state, "share_trusted", False))),
+            "city": os.getenv("NODE_CITY", ""), **state,
             # The household's own language, so the page can be written in it. /issues carries every
             # sentence in all three and carries no way to choose — `snap.locale` was read by the
             # dashboard and set by nothing, so the test fell through to 'en' on every node, in every
@@ -790,8 +1363,38 @@ def health():
             # VIEWER's timezone, so a Madrid node polling at 17:35 read "As of 11:40 PM" on a laptop in
             # Bali and nothing on the page named a zone. A reading belongs to the place it was taken in.
             "tz": os.getenv("NODE_TZ", ""),
-            "cell": _cell(), **({"mesh": mesh_state} if MQTT_HOST else {}),
+            "cell": _cell(),
+            # Where to read about this node and how to reach its tools, so a reader holding only this answer
+            # can go further: the documentation, the MCP endpoint (token-gated) and this node's own /llms.txt.
+            "docs": DOCS_URL, "mcp": "/mcp", "llms": "/llms.txt",
+            **({"mesh": mesh_state, "direct": sc_state} if MQTT_HOST else {}),
             **({"reticulum": reticulum_state} if RETICULUM_URL else {})}
+
+
+@app.get("/health/sources")
+def health_sources(backup_age: float | None = None):
+    """The node's fundamental sources (app/fundamentals.py), each running or not, and for each that is not, the one
+    thing to do. `planetai doctor` prints it, install and update print what is still missing, and Set up shows it at
+    the top. Not on any share level's list: whether this house has a sensor and a phone connected is the house's.
+
+    One pass over two days of readings, youngest per source and kind, bounded by now(): the forecast pack writes
+    rows timestamped in the future, and one of those would make any source look as if it had just spoken."""
+    seen = q("""SELECT s.source, (s.custody AND s.kind IN ('sensor', 'child')) AS own, s.indoor,
+                       extract(epoch FROM now() - max(r.ts)) / 60 AS minutes
+                FROM readings r JOIN sensors s USING (sensor_id)
+                WHERE r.ts > now() - interval '2 days' AND r.ts <= now()
+                  AND ((s.custody AND s.kind IN ('sensor', 'child')) OR s.source IN ('baliairdispatch', 'open-meteo', 'open-meteo-cams'))
+                GROUP BY 1, 2, 3""")
+    own_known = bool(q("SELECT 1 FROM sensors WHERE custody AND kind IN ('sensor', 'child') LIMIT 1"))
+    cfg = {k: settings.get(k, "") for f in fundamentals.FUNDAMENTALS for k in f["settings"]}
+    cfg.update(OPENMETEO_ENABLED=settings.get("OPENMETEO_ENABLED", "1"), NODE_LAT=os.getenv("NODE_LAT", ""),
+               NODE_LON=os.getenv("NODE_LON", ""), MQTT_HOST=MQTT_HOST)
+    # `backup_age`: minutes since the newest dump, measured by `planetai doctor` where BACKUP_DIR really is (-1: none)
+    here = backup_age is not None or fundamentals.backup_is_here()
+    age = fundamentals.backup_age() if backup_age is None else (None if backup_age < 0 else backup_age)
+    rows = fundamentals.assess(cfg, [{**r, "minutes": float(r["minutes"])} for r in seen], state["polls"] > 0,
+                               state.get("last_error"), tg_state["ok"], age, here, own_known)
+    return {"ok": not any(r["ok"] is False for r in rows), "missing": sum(r["ok"] is False for r in rows), "sources": rows}
 
 
 # Nothing finer than this may be announced. res 6 is roughly 3 km across; below that a node is
@@ -806,6 +1409,15 @@ def _presence_res() -> int:
     except ValueError:
         return 3
     return max(0, min(r, PRESENCE_RES_FLOOR))
+
+
+@app.get("/nodes")
+def nodes():
+    """The nodes the programme lists (registry.json on main, read by check_registry). `read` is null until the
+    first good read; `error` says why the last one failed while the list it kept is still served."""
+    k = state.get("registry") or {}
+    return {"read": k.get("read"), "from": REGISTRY_URL, "nodes": k.get("nodes", []),
+            **({"error": k["error"]} if k.get("error") else {})}
 
 
 @app.get("/presence")
@@ -837,6 +1449,48 @@ def presence():
             "version": os.getenv("NODE_VERSION", "?"), "kind": os.getenv("NODE_KIND", "") or None}
 
 
+def _published_position(trusted: bool = False) -> dict:
+    """The position this node hands to a reader it does not know: the centre of its resolution-8 cell, the same
+    cell `/health` has always named. Decided 23 Sep 2026 (R25): nothing finer than that cell leaves the node for
+    an untrusted reader or in the open export. Three decimals, which this route and /export carried before
+    v0.73, is about 110 m, finer than the ~500 m cell the programme page promises. A trusted reader (a token,
+    or this machine) still gets three decimals, because it can read /place/geojson anyway and the household's
+    own plan is drawn from it. `position` says which one the reader got, so a page can say so.
+
+    Without coordinates, or without h3 in an old image, it falls back to two decimals (~1.1 km), which is
+    coarser than the cell rather than finer: failing toward the household."""
+    lat, lon = float(os.getenv("NODE_LAT", 0) or 0), float(os.getenv("NODE_LON", 0) or 0)
+    if trusted or not (lat or lon):
+        return {"lat": round(lat, 3), "lon": round(lon, 3), "position": "point"}
+    clat, clon = _coarse(lat, lon)
+    return {"lat": clat, "lon": clon, "position": "cell"}
+
+
+def _own_point(r: dict) -> tuple:
+    """Where an untrusted reader is told one of this node's own rows stands. The house's own sensors stand at the
+    house's published point, the cell /health names, not each at the centre of its own cell: a house on a cell's
+    edge has sensors in the neighbouring cells, and drawn at their own centres they stood ~700 m from "This house"
+    (node #1, 15 Oct). A child's row is another house, so it keeps its own cell's centre."""
+    if r.get("lat") is None or r.get("lon") is None:
+        return None, None
+    if r.get("local") and r.get("kind") == "sensor":
+        p = _published_position()
+        return p["lat"], p["lon"]
+    return _coarse(r["lat"], r["lon"])
+
+
+def _coarse(lat, lon):
+    """A point snapped to the centre of its resolution-8 cell, three decimals; two decimals without h3."""
+    if lat is None or lon is None:
+        return lat, lon
+    try:
+        import h3  # noqa: PLC0415
+        clat, clon = h3.cell_to_latlng(h3.latlng_to_cell(float(lat), float(lon), 8))
+        return round(clat, 3), round(clon, 3)
+    except Exception:  # noqa: BLE001
+        return round(float(lat), 2), round(float(lon), 2)
+
+
 def _cell() -> dict | None:
     """The H3 cell this node stands in: id, resolution, the mean edge of this cell in metres, and the
     line the dashboard prints under the hero. None before setup, when there is no place to name."""
@@ -854,6 +1508,20 @@ def _cell() -> dict | None:
 # else in there describes the household's network rather than the measurement.
 _META_PUBLIC = ("licence", "attribution", "model", "dataset", "network", "note", "corrected")
 
+# A FACILITY IS NOT A SENSOR, and the list above was written about sensors. It drops `host`,
+# `firmware`, `gateway`, `channel` and `topic` because those describe the household's own network —
+# correct for a thing in this house, and meaningless for a fab lab, which is somebody else's
+# building, published by name and coordinate in a public directory the node read it from.
+#
+# The effect until now: a facility row reached the page carrying `attribution` and nothing else, so
+# the dashboard could name a place and could not say how far away it is or what is in it. The page
+# runs in a browser on the LAN and is therefore untrusted, so this was not a corner case — it was
+# every reader. Every key below describes the lab or the archive it came from; not one of them is a
+# fact about this household that `lat`, `lon` and the node's own position do not already publish.
+_META_PUBLIC_FACILITY = _META_PUBLIC + (
+    "slug", "capabilities", "kind_name", "city", "country_code",
+    "distance_km", "url", "registry_slug", "snapshot", "fetched")
+
 
 @app.get("/sensors")
 def sensors_(request: Request):
@@ -863,34 +1531,112 @@ def sensors_(request: Request):
     added to `sensors` on the day it landed, so the redaction below would have gone stale by itself. Add a column and
     it stays private until it is named here.
 
-    For a caller that is neither on this machine nor carrying a token, the position is rounded to 3 decimals (110 m,
-    the rounding /export has always used) and `meta` is cut to _META_PUBLIC. On a real node that drops `host`,
+    For a caller that is neither on this machine nor carrying a token, the position of this household's own sensors
+    (`custody`) is the centre of their resolution-8 cell and every other position is rounded to 3 decimals, and `meta` is cut to _META_PUBLIC. On a real node that drops `host`,
     `firmware`, `mesh_node`, `gateway`, `channel`, `root_topic` and `topic` — an AirGradient row otherwise hands a
     stranger on the WiFi `{"host": "airgradient_84fce6.local", "model": "I-9PSL", "firmware": "3.1.9"}` next to a
     room name and five decimals of position."""
     # `custody` travels with the row: it is the answer to "why is my cell partial", and a person looking at
     # /sensors should not have to rederive it from `local` and `kind`.
-    rows = q("SELECT sensor_id, source, name, lat, lon, indoor, local, custody, kind, scale, cadence, meta FROM sensors ORDER BY custody DESC, local DESC, name")
+    rows = q("SELECT sensor_id, source, name, room, source_name, lat, lon, indoor, local, custody, kind, scale, cadence, meta FROM sensors ORDER BY custody DESC, local DESC, name")
     if getattr(request.state, "share_trusted", False):
         return rows
     for r in rows:
-        for k in ("lat", "lon"):
-            r[k] = round(r[k], 3) if r[k] is not None else None
-        r["meta"] = {k: v for k, v in (r["meta"] or {}).items() if k in _META_PUBLIC} or None
+        r.pop("room", None); r.pop("source_name", None)   # which room is which is the household's
+        # This household's own instruments stand in its house, so an untrusted reader gets the cell's centre
+        # for them (R25). Everything else here is a public station, a model point or a lab, whose position is
+        # public at its source; three decimals is what it always was.
+        if r.get("custody"):
+            r["lat"], r["lon"] = _own_point(r)
+        else:
+            for k in ("lat", "lon"):
+                r[k] = round(r[k], 3) if r[k] is not None else None
+        allow = _META_PUBLIC_FACILITY if r.get("kind") == "facility" else _META_PUBLIC
+        r["meta"] = {k: v for k, v in (r["meta"] or {}).items() if k in allow} or None
     return rows
 
 
+@app.patch("/sensors/{sid}")
+def sensor_room(sid: str, body: dict, authorization: str = Header("")):
+    """Name the room a sensor is in, in the household's words (`{"room": "Kids"}`; null or "" gives the platform's name
+    back). The database makes the room the sensor's name whatever writes the row (init.sql 0.61), so every rule, the
+    report and every message say it. Admin token: it renames what the whole house reads."""
+    _admin(authorization)
+    room = body.get("room")
+    if room is not None and not isinstance(room, str):
+        raise HTTPException(422, "room is text, or null to give the platform's name back")
+    room = " ".join((room or "").split())[:40] or None
+    with db() as con, con.cursor() as cur:
+        cur.execute("SELECT name FROM sensors WHERE sensor_id = %s", (sid,))
+        was = cur.fetchone()
+        if not was:
+            raise HTTPException(404, "no such sensor")
+        cur.execute("""UPDATE sensors SET room = %s, name = CASE WHEN %s::text IS NULL THEN coalesce(source_name, name) ELSE name END
+                       WHERE sensor_id = %s RETURNING sensor_id, name, room, source_name""", (room, room, sid))
+        row = cur.fetchone()
+        # An event episode names its rooms by the sensors' names (events_pg.candidates) and matches them by name for
+        # the inside reading: the rename follows into every episode, so an open one keeps its room. What an alert
+        # said is left as it was sent.
+        cur.execute("UPDATE alert_events SET rooms = array_replace(rooms, %s, %s) WHERE %s = ANY(rooms)",
+                    (was["name"], row["name"], was["name"]))
+    return {"ok": True, "sensor": row}
+
+
 @app.get("/readings")
-def readings(sensor_id: str | None = None, metric: str | None = None, limit: int = Query(200, ge=1, le=10000)):
+def readings(request: Request, sensor_id: str | None = None, metric: str | None = None,
+             limit: int = Query(200, ge=1, le=10000), authorization: str = Header("")):
     # the NULL parameters need a type or Postgres cannot plan the query (500 on every call since psycopg 3)
-    return q("SELECT ts, sensor_id, metric, value FROM readings WHERE (%s::text IS NULL OR sensor_id=%s::text) AND (%s::text IS NULL OR metric=%s::text) ORDER BY ts DESC LIMIT %s",
+    return q("SELECT ts, sensor_id, metric, value FROM readings WHERE (%s::text IS NULL OR sensor_id=%s::text) AND (%s::text IS NULL OR metric=%s::text)"
+             + ("" if _shows_private(request, authorization) else " AND " + packs.public_sql("readings")) + " ORDER BY ts DESC LIMIT %s",
              sensor_id, sensor_id, metric, metric, limit)
 
 
 @app.get("/stats")
-def stats():
-    """Rolling 15m/1h/24h — sensors only. Slow sources (portals, models, surveys) are in /observations."""
-    return q("SELECT * FROM stats ORDER BY local DESC, sensor_id, metric")
+def stats(request: Request, authorization: str = Header("")):
+    """Rolling 15m/1h/24h — sensors only. Slow sources (portals, models, surveys) are in /observations.
+
+    Positions follow /sensors (#113): unrounded for this machine or a token, and for anyone else the household's
+    own sensors at their cell's centre and the rest at three decimals. Before v0.73 this route handed every
+    reader at SHARE_LEVEL=open the positions /sensors had rounded."""
+    rows = q("SELECT * FROM stats" + ("" if _shows_private(request, authorization, raw=False) else " WHERE " + packs.public_sql("stats"))
+             + " ORDER BY local DESC, sensor_id, metric")
+    if getattr(request.state, "share_trusted", False):
+        return rows
+    own = {r["sensor_id"]: r for r in q("SELECT sensor_id, local, kind FROM sensors WHERE custody")}
+    for r in rows:
+        if "lat" not in r:
+            continue
+        if r.get("sensor_id") in own:
+            r["lat"], r["lon"] = _own_point({**own[r["sensor_id"]], "lat": r.get("lat"), "lon": r.get("lon")})
+        else:
+            r["lat"] = round(r["lat"], 3) if r.get("lat") is not None else None
+            r["lon"] = round(r["lon"], 3) if r.get("lon") is not None else None
+    return rows
+
+
+@app.get("/reach")
+def reach():
+    """How far back this node's own record goes, per kind of source.
+
+    The Historical view draws years of satellite record beside a node that may have been switched on
+    last week, and nothing on the page said which. A reader comparing 2017 to now deserves to know
+    that the line under it starts in September — the satellite's reach and this node's are different
+    lengths and the page was drawing them as if they were the same.
+
+    Per kind, because the kinds reach back differently and for different reasons: this house's own
+    sensors go back to the day somebody plugged them in, a model's point samples start when the pack
+    was enabled, and a portal's history is whatever the portal chose to publish. One number for all
+    of them would be the shortest of them, reported as if it were the record.
+
+    `readings_1h` and not `readings`: the hourly means are what survives, and they are what every
+    chart on the page is drawn from, so this is the reach of the thing actually shown.
+    """
+    return q("""SELECT s.kind,
+                       min(r.bucket) AS oldest, max(r.bucket) AS newest,
+                       count(*) AS buckets, count(DISTINCT r.sensor_id) AS sources,
+                       round(extract(epoch FROM max(r.bucket) - min(r.bucket)) / 86400.0)::int AS days
+                FROM readings_1h r JOIN sensors s USING (sensor_id)
+                GROUP BY s.kind ORDER BY s.kind""")
 
 
 @app.get("/trust")
@@ -1049,22 +1795,62 @@ def forecast(hours: int = Query(24, ge=1, le=72)):
 
 
 @app.get("/observations")
-def observations():
-    """Latest value per slow-moving source: city statistics, model point samples, survey results."""
-    return q("SELECT * FROM observations ORDER BY scale, sensor_id, metric")
+def observations(request: Request, authorization: str = Header("")):
+    """Latest value per slow-moving source: city statistics, model point samples, survey results. A survey's
+    `private` counts (the things a home keeps) answer the admin token only, and never an agent."""
+    return q("SELECT * FROM observations" + ("" if _shows_private(request, authorization) else " WHERE " + packs.public_sql("observations"))
+             + " ORDER BY scale, sensor_id, metric")
 
 
 @app.get("/alerts")
-def alerts(limit: int = Query(50, ge=0, le=1000)):
+def alerts(limit: int = Query(50, ge=0, le=1000), since_hours: int = Query(0, ge=0, le=2160)):
     """Alerts newest first, each with its id (what `planetai act <id>` and the GUI's Act button need) and whether
-    anyone has already acted on it."""
+    anyone has already acted on it. `since_hours` keeps only those of the last that many hours; 0 is no bound."""
     return q("""SELECT a.id, a.ts, a.rule_id, a.sensor_id, a.level, a.text,
                        (SELECT min(x.ts) FROM actions x WHERE x.alert_id = a.id AND x.stage IN ('acknowledged','acted')) AS acted_at
-                FROM alerts a ORDER BY a.ts DESC LIMIT %s""", limit)
+                FROM alerts a WHERE %s = 0 OR a.ts > now() - make_interval(hours => %s)
+                ORDER BY a.ts DESC LIMIT %s""", since_hours, since_hours, limit)
+
+
+@app.get("/actions")
+def actions(limit: int = Query(500, ge=0, le=5000), stage: str = "", events: int = Query(0, ge=0, le=1)):
+    """Every answer a person gave an alert, newest first: which alert, which stage, who, and the note they left.
+
+    `/alerts` says only *whether* somebody acted, as one timestamp. The stage is the thing the Act ledger and
+    the funnel are counted from, and acknowledged, acted and measured are three different answers — collapsing
+    them to "acted_at" loses the question. `issues/engine.py::_read` reads this table directly, so a snapshot
+    that cannot fetch it replays with no act ledger, no stages and no funnel, and nothing says so at render
+    time (docs/design/PICK_2026-09-20.md, gap J).
+
+    On neither share allowlist, deliberately: `actor` and `note` are the household's own words about what they
+    did in their own house. This answers a token or the machine itself, and nothing else.
+
+    `stage` narrows it to one stage, and `stage=settings` is the only way to read the node's own rows: who changed
+    which settings, and when. The dashboard's Set up reads them to say who moved a key while its form was open.
+
+    events=1 adds the answers to alert events, with their event_id (docs/SPEC_dashboard_events.md §3.4).
+    """
+    if stage:
+        if events:
+            # With events=1 on a stage filter, include event rows with their event_id. Settings rows (both NULL)
+            # must always be returned regardless of events flag.
+            return q("SELECT ts, alert_id, event_id, stage, actor, note FROM actions WHERE stage = %s "
+                     "ORDER BY ts DESC LIMIT %s",
+                     stage, limit)
+        # Default: exclude event rows (alert_id NULL, event_id set) but keep settings rows (both NULL)
+        return q("SELECT ts, alert_id, stage, actor, note FROM actions WHERE stage = %s AND "
+                 "(alert_id IS NOT NULL OR event_id IS NULL) ORDER BY ts DESC LIMIT %s",
+                 stage, limit)
+    if events:
+        # the event answers too, with event_id; without it the v0.76 page never meets a row with no alert_id
+        return q("SELECT ts, alert_id, event_id, stage, actor, note FROM actions "
+                 "WHERE alert_id IS NOT NULL OR event_id IS NOT NULL ORDER BY ts DESC LIMIT %s", limit)
+    return q("SELECT ts, alert_id, stage, actor, note FROM actions WHERE alert_id IS NOT NULL "
+             "ORDER BY ts DESC LIMIT %s", limit)
 
 
 @app.get("/series")
-def series(metric: str = "pm25", hours: int = Query(24, ge=1, le=168)):
+def series(request: Request, metric: str = "pm25", hours: int = Query(24, ge=1, le=168), authorization: str = Header("")):
     """Hourly means for the dashboard's strip: local indoor, everything outdoor (yours and references), and the
     model, as three aligned arrays. What readings_1h already knows, shaped for a chart."""
     rows = q("""
@@ -1073,13 +1859,139 @@ def series(metric: str = "pm25", hours: int = Query(24, ge=1, le=168)):
                      avg(r.mean) FILTER (WHERE s.local AND s.indoor) AS indoor,
                      avg(r.mean) FILTER (WHERE NOT s.indoor AND s.kind = 'sensor') AS outdoor
               FROM readings_1h r JOIN sensors s USING (sensor_id)
-              WHERE r.metric = %s AND r.bucket > now() - make_interval(hours => %s) GROUP BY r.bucket),
+              WHERE r.metric = %s AND r.bucket > now() - make_interval(hours => %s)""" + ("" if _shows_private(request, authorization) else " AND " + packs.public_sql("r")) + """ GROUP BY r.bucket),
         m AS (SELECT date_trunc('hour', ts) AS bucket, avg(value) AS model FROM readings
               WHERE sensor_id = 'cams-point' AND metric = %s || '_model' AND ts > now() - make_interval(hours => %s) GROUP BY 1)
         SELECT h.bucket, r.indoor, r.outdoor, m.model FROM h LEFT JOIN r USING (bucket) LEFT JOIN m USING (bucket) ORDER BY h.bucket""",
         hours, metric, hours, metric, hours)
     return {"metric": metric, "hours": hours, "buckets": [x["bucket"] for x in rows],
             "indoor": [x["indoor"] for x in rows], "outdoor": [x["outdoor"] for x in rows], "model": [x["model"] for x in rows]}
+
+
+@app.get("/effect")
+def effect(days: int = Query(365, ge=1, le=3650)):
+    """Did the actions work, and how long did they take? Per rule, over this node's whole record.
+
+    TWO DIFFERENT QUESTIONS WITH TWO DIFFERENT KINDS OF EVIDENCE, and they are reported apart because
+    conflating them would overstate the second.
+
+    `cleared` is the funnel's derivation, per rule: an act followed by a full MEASURED_WINDOW_MIN of silence from
+    the same rule on the same sensor is the condition having stopped being true. It works for every rule, needs no
+    threshold, and says WHETHER. It cannot say when: run_rules re-fires the moment a cooldown expires and the
+    condition still holds, so the finest this evidence can ever resolve is one cooldown.
+
+    `hours` is the other question and it needs the readings. Only a rule that declares `watch: {metric, over}` has an
+    indicator and a line to recover under -- of node #1's seven act-level rules, two do; the rest fire on a RELATION
+    ("inside is worse than outside"), where a threshold would be a fiction. For those the answer is null and the
+    reason is published rather than a zero.
+
+    AND IT IS ELAPSED TIME, NOT AN EFFECT. A window opened at 21:00 and air that cleared at 03:00 may be the window
+    or may be the night, and this node cannot tell. Nothing here says the action caused the recovery.
+
+    `already` IS NOT A NOUGHT-HOUR RECOVERY and has two causes, which is why it is counted apart rather than folded
+    into the median. Node #1's five acts on indoor_pm25_high are all `already`, and reading them one by one shows
+    both: people acted 2.0, 1.8 and 10.3 hours after the alert, by which time the air had come back on its own --
+    and separately, the rule triggers on `mean_15m` while the only history a node keeps is hourly, so a
+    fifteen-minute spike over 35.5 can fire without the hour ever crossing it (four of those five had an hourly mean
+    of 14 to 22 when they fired). The measurement is therefore COARSER THAN THE TRIGGER, structurally, and the
+    honest report is a count of the acts it cannot time rather than a number that pretends otherwise.
+
+    Retired rules are excluded for the reason index.py::_live_rule_ids exists: a rule that can never fire again would
+    have its silence counted as a cleared condition, which once made this node's own funnel report 8 where the true
+    number was 5."""
+    win = index.MEASURED_WINDOW_MIN
+    live = index._live_rule_ids()
+    if not live:
+        return {"window_hours": round(win / 60), "rules": [], "note": "this node could not read its rule set"}
+    rows = q("""WITH a AS (SELECT id, ts, rule_id, sensor_id FROM alerts
+                            WHERE level = 'act' AND rule_id = ANY(%s)
+                              AND ts > now() - make_interval(days => %s)),
+                     act AS (SELECT alert_id, min(ts) AS t FROM actions WHERE stage = 'acted' GROUP BY alert_id),
+                     -- only an act whose window has fully elapsed can be judged either way
+                     j AS (SELECT a.rule_id, a.id, a.sensor_id, act.t AS acted_at,
+                                  NOT EXISTS (SELECT 1 FROM alerts r
+                                               WHERE r.rule_id = a.rule_id
+                                                 AND r.sensor_id IS NOT DISTINCT FROM a.sensor_id
+                                                 AND r.ts > act.t
+                                                 AND r.ts <= act.t + make_interval(mins => %s)) AS cleared
+                           FROM a JOIN act ON act.alert_id = a.id
+                           WHERE now() > act.t + make_interval(mins => %s))
+                SELECT rule_id, count(*) AS acted, count(*) FILTER (WHERE cleared) AS cleared
+                FROM j GROUP BY rule_id ORDER BY count(*) DESC, rule_id""",
+             live, days, win, win)
+    watches = {r["id"]: r["watch"] for r in packs.load_rules()
+               if isinstance(r, dict) and isinstance(r.get("watch"), dict)}
+    out = []
+    for r in rows:
+        w = watches.get(r["rule_id"])
+        item = {"rule_id": r["rule_id"], "acted": int(r["acted"]), "cleared": int(r["cleared"]),
+                "watch": w, "hours": None, "measured": 0, "already": 0}
+        if w:
+            # The first hour, at or after the act, when that alert's own sensor is back under the line. `already`
+            # is an act made when the reading had come back on its own, which is a real and common thing and not
+            # a nought-hour recovery.
+            h = q("""WITH a AS (SELECT id, ts, sensor_id FROM alerts
+                                 WHERE level='act' AND rule_id = %s AND ts > now() - make_interval(days => %s)),
+                          act AS (SELECT alert_id, min(ts) AS t FROM actions WHERE stage='acted' GROUP BY alert_id),
+                          e AS (SELECT a.id, act.t AS acted_at,
+                                       (SELECT min(x.bucket) FROM readings_1h x
+                                         WHERE x.sensor_id = a.sensor_id AND x.metric = %s
+                                           AND x.bucket >= date_trunc('hour', act.t) AND x.mean < %s) AS ok_at
+                                FROM a JOIN act ON act.alert_id = a.id)
+                     SELECT count(*) FILTER (WHERE ok_at IS NOT NULL
+                                             AND ok_at > date_trunc('hour', acted_at)) AS measured,
+                            count(*) FILTER (WHERE ok_at IS NOT NULL
+                                             AND ok_at <= date_trunc('hour', acted_at)) AS already,
+                            percentile_cont(0.5) WITHIN GROUP (
+                              ORDER BY extract(epoch FROM ok_at - acted_at) / 3600.0)
+                              FILTER (WHERE ok_at IS NOT NULL
+                                      AND ok_at > date_trunc('hour', acted_at)) AS median_hours
+                     FROM e""", r["rule_id"], days, w["metric"], w["over"])
+            g = (h[0] if h else {}) or {}
+            item["measured"] = int(g.get("measured") or 0)
+            item["already"] = int(g.get("already") or 0)
+            item["hours"] = round(float(g["median_hours"]), 1) if g.get("median_hours") is not None else None
+        out.append(item)
+    return {"window_hours": round(win / 60), "days": days, "rules": out}
+
+
+@app.get("/shape")
+def shape(metric: str = "pm25"):
+    """The day this place usually has: one hour-of-day mean per hour, over the whole record, indoor against outdoor.
+
+    THE HOURS ARE LOCAL, and that is not incidental. `extract(hour FROM bucket)` answers in the session timezone, and
+    db() sets it from NODE_TZ on every connection for exactly this reason -- the comment there records the day
+    boundaries and "evening" landing eight hours out in Bali once already. Read the same query in a psql session,
+    which does not go through db(), and node #1's shape moves by eight hours and says the opposite thing: a midday
+    cooking peak reads as a 4 a.m. one. Anything computing an hour-of-day here must go through db().
+
+    INDOOR AND OUTDOOR ARE SEPARATE because on node #1 they are ANTI-PHASED -- inside peaks at meal times, outside
+    peaks in the evening -- and one average over both is a number that describes neither and hides the only thing a
+    household could act on.
+
+    `days` is how many distinct local days this node's OWN stations have for this metric, and `windows` is what that
+    record can honestly support. A node installed this morning has a day and says so; it does not draw a year from
+    it. That refusal is the point: this is the one place a page is most tempted to describe a pattern it has not
+    seen."""
+    rows = q("""SELECT extract(hour FROM h.bucket)::int AS hour,
+                       avg(h.mean) FILTER (WHERE s.indoor)     AS indoor,
+                       avg(h.mean) FILTER (WHERE NOT s.indoor) AS outdoor,
+                       count(*) AS n
+                FROM readings_1h h JOIN sensors s USING (sensor_id)
+                WHERE h.metric = %s AND s.local
+                GROUP BY 1 ORDER BY 1""", metric)
+    span = q("""SELECT count(DISTINCT date_trunc('day', h.bucket)) AS days,
+                       min(h.bucket) AS first, max(h.bucket) AS last
+                FROM readings_1h h JOIN sensors s USING (sensor_id)
+                WHERE h.metric = %s AND s.local""", metric)
+    d = (span[0] if span else {}) or {}
+    days = int(d.get("days") or 0)
+    # What the record supports, decided here and not on the page: the page draws what the node says it may.
+    # A day's shape wants a week behind it before an hourly mean means anything; a week-on-week comparison wants two;
+    # a month wants two months to compare; a year wants a year. Nothing here is a forecast and nothing extrapolates.
+    return {"metric": metric, "days": days, "first": d.get("first"), "last": d.get("last"),
+            "hours": [{"hour": r["hour"], "indoor": r["indoor"], "outdoor": r["outdoor"], "n": r["n"]} for r in rows],
+            "windows": {"day": days >= 7, "week": days >= 14, "month": days >= 60, "year": days >= 365}}
 
 
 @app.get("/export")
@@ -1093,7 +2005,8 @@ def export(day: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$")):
         raise HTTPException(422, "day must be a real date, YYYY-MM-DD")
     hourly = q("""SELECT r.bucket, r.sensor_id, s.local, s.indoor, s.kind, s.scale, r.metric, r.mean, r.min, r.max, r.n
                   FROM readings_1h r JOIN sensors s USING (sensor_id)
-                  WHERE r.bucket >= %s::date AND r.bucket < %s::date + 1 ORDER BY r.bucket, r.sensor_id, r.metric""", day, day)
+                  WHERE r.bucket >= %s::date AND r.bucket < %s::date + 1 AND """ + packs.public_sql("r") + """
+                  ORDER BY r.bucket, r.sensor_id, r.metric""", day, day)
     alias, counts = {}, {"indoor": 0, "outdoor": 0}
     def name(row):
         if not row["local"]:
@@ -1107,12 +2020,15 @@ def export(day: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$")):
     alerts_ = q("SELECT ts, rule_id, level, text FROM alerts WHERE ts >= %s::date AND ts < %s::date + 1 ORDER BY ts", day, day)
     with db() as con, con.cursor() as cur:
         cells_ = index.cells(cur); rho_ = index.rho(cur)
-    return {"node": NODE, "city": os.getenv("NODE_CITY", ""), "scale": os.getenv("NODE_SCALE", "community"),
-            "lat": round(float(os.getenv("NODE_LAT", 0) or 0), 3), "lon": round(float(os.getenv("NODE_LON", 0) or 0), 3),
+    _pos = _published_position()
+    return {"schema": EXPORT_V0,
+            "node": NODE, "city": os.getenv("NODE_CITY", ""), "scale": os.getenv("NODE_SCALE", "community"),
+            # The cell's centre, never a point: this file is CC BY and meant to travel (R25, 23 Sep 2026).
+            "lat": _pos["lat"], "lon": _pos["lon"],
             "day": day, "generated": datetime.now(timezone.utc).isoformat(), "version": os.getenv("NODE_VERSION", ""),
             "licence": "CC BY 4.0", "hourly": rows,
-            "alerts": [{"t": a["ts"], "rule": a["rule_id"], "level": a["level"], "text": a["text"].split("\n")[0]} for a in alerts_],
-            "cells": cells_, "rho": rho_}
+            "alerts": [{"t": a["ts"], "rule": a["rule_id"], "level": a["level"], "text": _unlabelled(a["text"].split("\n")[0])} for a in alerts_],
+            "cells": cells_, "rho": rho_, "offers": offers_now()["offers"]}
 
 
 @app.get("/place/geojson")
@@ -1163,7 +2079,31 @@ def place_geojson(kinds: str = "building,poi,green,road,sat", tolerance: float =
 
 
 def _earth_dir() -> Path:
-    return OUT / "earth" / NODE
+    """The directory holding this node's AlphaEarth square.
+
+    The pack names it for the node, but the embeddings describe a *place*, so the name is not the key: after
+    node #1 was renamed `bayu-2` → `bayu-ungasan` there were two directories of the same square and the
+    older one had stopped being readable by anything. A directory whose meta.json says it was read around
+    this point, at this radius, answers for this node whatever it is called — the node's own name preferred
+    when more than one does. `packs/earth/adapter.py:cache()` carries the same rule, because core does not
+    import a pack; `app/sources.py:metres()` is already the second copy of the distance for the same reason.
+    """
+    root = OUT / "earth"
+    mine = root / NODE
+    lat, lon = os.getenv("NODE_LAT"), os.getenv("NODE_LON")
+    if not (root.is_dir() and lat and lon):
+        return mine
+    radius = int(settings.get("EARTH_RADIUS_M", "5000") or 5000)
+    tol = max(radius * 0.01, 25.0)          # the pack's move tolerance: 1% of the radius, floor 25 m
+    for p in sorted(root.glob("*/meta.json"), key=lambda q: (q.parent != mine, q.parent.name)):
+        try:
+            m = json.loads(p.read_text())
+            if m.get("radius_m") in (None, radius) and \
+                    sources.metres(float(m["lat"]), float(m["lon"]), float(lat), float(lon)) <= tol:
+                return p.parent
+        except (OSError, ValueError, TypeError, KeyError):
+            continue
+    return mine
 
 
 def _earth_changes() -> list[dict]:
@@ -1188,6 +2128,271 @@ def _earth_latest() -> dict | None:
         return None
     yoy = [c for c in out if c.get("year_b", 0) - c.get("year_a", 0) == 1]
     return (yoy or out)[-1]
+
+
+# ---------------------------------------------------------------- the map workbench
+# The redesign's Place door pans, zooms, inspects and measures. Every ring it draws and every distance it prints is
+# answered here (app/issues/geometry.py), so the page computes no H3 and no distance: tools/check_ui.py holds it to
+# that. **On no SHARE_LEVEL allowlist, like /place/geojson**: the node's cell at a fine resolution, rings centred on
+# it and "metres from the node" each give away the point /health rounds on purpose. This machine or a token. The one
+# exception is /geo/cell at SHARE_LEVEL=open, which answers without a token minus its node-relative fields.
+
+
+def _here() -> tuple[float, float]:
+    lat, lon = float(os.getenv("NODE_LAT", 0) or 0), float(os.getenv("NODE_LON", 0) or 0)
+    if not (lat or lon):
+        raise HTTPException(409, "this node has no NODE_LAT and NODE_LON yet, so there is no place to draw")
+    return lat, lon
+
+
+def _floats(text: str, n: int | None, what: str) -> list[float]:
+    try:
+        out = [float(x) for x in text.split(",")]
+    except ValueError:
+        raise HTTPException(422, f"{what}: numbers separated by commas") from None
+    if n is not None and len(out) != n:
+        raise HTTPException(422, f"{what}: {n} numbers")
+    return out
+
+
+@app.get("/geo/grid")
+def geo_grid(bbox: str, res: int = Query(..., ge=0, le=15)):
+    """The cells covering `bbox` (west,south,east,north) at `res`, one ring wider, and the node's own cell at that
+    resolution, as `cells_ll` rows ([id, lat, lng, …]). 422 rather than a truncated covering when the box is too big."""
+    lat, lon = _here()
+    try:
+        return _geo.grid(*_floats(bbox, 4, "bbox"), res, lat, lon)
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from None
+
+
+@app.get("/geo/cell")
+def geo_cell(request: Request, id: str | None = None, lat: float | None = Query(None, ge=-90, le=90),
+             lon: float | None = Query(None, ge=-180, le=180), res: int | None = Query(None, ge=0, le=15),
+             children: int | None = Query(None, ge=1, le=15), polar: bool = False):
+    """One cell's facts, named by `id` or by `lat`, `lon` and `res`: area, edge, parent, and how many cells from the
+    node's own at the same resolution. `children=<res>` adds how many children it has there and, up to 400, their
+    rings; `polar=true` adds every ring as distance and bearing from the node."""
+    here = _here()
+    if id is None:
+        if lat is None or lon is None or res is None:
+            raise HTTPException(422, "name a cell: id, or lat, lon and res")
+        import h3
+        id = h3.latlng_to_cell(lat, lon, res)
+    try:
+        out = _geo.cell(id, *here, children=children, as_polar=polar)
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from None
+    if not getattr(request.state, "share_trusted", False):
+        for k in ("is_node", "cells_from_node", "ring_polar", "children_polar"):
+            out.pop(k, None)
+    return out
+
+
+@app.get("/geo/measure")
+def geo_measure(path: str, from_node: bool = False, each: bool = False):
+    """Metres along `path`, lon,lat pairs separated by `;`, great-circle, each leg and the total. `from_node=true`
+    starts the path at the node, which is how the inspector says how far a station is. `each=true` adds, for every
+    point after the first, its distance and bearing from the first, in one answer."""
+    pts = [tuple(_floats(p, 2, "each point")) for p in path.split(";") if p.strip()]
+    if from_node:
+        lat, lon = _here()
+        pts = [(lon, lat)] + pts
+    if not 2 <= len(pts) <= 200 or any(not (-180 <= x <= 180 and -90 <= y <= 90) for x, y in pts):
+        raise HTTPException(422, "path: 2 to 200 lon,lat points in degrees")
+    return {**_geo.measure(pts), **({"each": _geo.each(pts)} if each else {})}
+
+
+@app.get("/geo/planet")
+def geo_planet(res: int = Query(2, ge=0, le=2)):
+    """Every H3 cell on the planet at resolution 0, 1 or 2, as cells_ll rows: the world grid a map of nodes is drawn
+    on, so the page computes none of it."""
+    _here()
+    return {"res": res, "cells_ll": _geo.planet(res)}
+
+
+@app.get("/geo/rings")
+def geo_rings(km: str = "2,5,15"):
+    """Circles round the node at each distance in `km`, as [lat, lng] rings. At most eight, none past 500 km."""
+    kms = _floats(km, None, "km")
+    if not 1 <= len(kms) <= 8 or any(not 0 < k <= 500 for k in kms):
+        raise HTTPException(422, "km: one to eight distances, each above 0 and at most 500")
+    return {"rings": _geo.rings(*_here(), kms)}
+
+
+# ---------------------------------------------------------------- the ground, kept on this node's disk
+# `planetai run place basemap` (vector, fonts, drone mosaics) and `planetai run earth-engine basemap` (Sentinel-2)
+# fetch a detailed map of this place once into out/ground/; these routes serve it, so a map drawn from them asks
+# nobody anything. On the `open` list: public data, centred no closer than /health's rounded point (see _SHARE_OPEN).
+GROUND_LAYERS = {"vector": "application/x-protobuf", "imagery": "image/png", "drone": "image/png"}
+
+
+def _ground() -> Path:
+    return OUT / "ground"
+
+
+@app.get("/machine")
+def machine():
+    """The machine this node runs on, as the node's container sees it: processor, load, memory, temperature, how long
+    it has been up, its system, and the database engine. Read from /proc and /sys, so on Linux (a Pi, a mini PC) it is
+    the machine; on macOS it is the container engine's virtual machine, and says so in `seen_as`. A value the system
+    does not give (no thermal sensor, no cgroup limit) is null, never a guess. Private like /storage."""
+    import platform, time as _t
+    def read(p):
+        try:
+            return Path(p).read_text()
+        except OSError:
+            return None
+    mem = {}
+    for line in (read("/proc/meminfo") or "").splitlines():
+        k, _, v = line.partition(":")
+        if k in ("MemTotal", "MemAvailable", "SwapTotal", "SwapFree") and v.split():
+            mem[k] = int(v.split()[0]) * 1024
+    def cpu_times():
+        f = (read("/proc/stat") or "").splitlines()
+        nums = [int(x) for x in f[0].split()[1:]] if f and f[0].startswith("cpu ") else []
+        return (sum(nums), nums[3] + (nums[4] if len(nums) > 4 else 0)) if nums else None
+    a = cpu_times(); _t.sleep(0.25); b = cpu_times()
+    busy = round(100 * (1 - (b[1] - a[1]) / (b[0] - a[0])), 1) if a and b and b[0] > a[0] else None
+    temps = []
+    for z in sorted(Path("/sys/class/thermal").glob("thermal_zone*")):
+        t = read(z / "temp")
+        if t and t.strip().lstrip("-").isdigit():
+            temps.append({"zone": (read(z / "type") or z.name).strip(), "celsius": round(int(t) / 1000, 1)})
+    up = read("/proc/uptime")
+    cg_max, cg_cur = read("/sys/fs/cgroup/memory.max"), read("/sys/fs/cgroup/memory.current")
+    with db() as con, con.cursor() as cur:
+        cur.execute("SELECT split_part(version(), ' on ', 1) AS v, pg_postmaster_start_time() AS since,"
+                    " (SELECT count(*) FROM pg_stat_activity) AS conns")
+        pg = cur.fetchone()
+    return {
+        "seen_as": "the Linux system the node's containers run on: the machine itself on Linux, the container engine's virtual machine on macOS",
+        "arch": platform.machine(), "system": f"{platform.system()} {platform.release()}", "cores": os.cpu_count(),
+        "load": [float(x) for x in (read("/proc/loadavg") or "").split()[:3]] or None, "cpu_busy_pct": busy,
+        "memory": {"total_bytes": mem.get("MemTotal"), "available_bytes": mem.get("MemAvailable"),
+                   "swap_total_bytes": mem.get("SwapTotal"), "swap_free_bytes": mem.get("SwapFree")},
+        "container_memory": {"limit_bytes": int(cg_max) if cg_max and cg_max.strip().isdigit() else None,
+                             "used_bytes": int(cg_cur) if cg_cur and cg_cur.strip().isdigit() else None},
+        "temperatures": temps, "uptime_s": round(float(up.split()[0])) if up else None,
+        "python": platform.python_version(),
+        "database": {"version": pg["v"], "since": pg["since"].isoformat() if pg["since"] else None, "connections": pg["conns"]},
+    }
+
+
+@app.get("/storage")
+def storage():
+    """How much room this node takes, how much is left, and how long that lasts at the rate it has been growing.
+
+    The node computes it so no page has to: the database's own size (Postgres), the files it keeps beside it (out/,
+    the backups, the open exports), and the free space on the disk those files live on, as this container sees it.
+    The rate is the readings written in the last seven days times what a reading row costs on disk, indexes and all,
+    which is where nearly all of the growth is; nothing is ever pruned. The backups are counted as they will be once
+    BACKUP_KEEP days of dumps sit there. `days_left` is null when the rate is zero or not yet known.
+
+    The database's own disk is the container engine's: on Linux it is this disk unless DATA_DIR moves it; on macOS
+    it is the engine's virtual disk, which this container cannot see. `planetai doctor` checks the host's.
+    Private like /version: what the machine holds is the keeper's, not the network's."""
+    import shutil
+    def du(p: Path) -> int:
+        try:
+            return sum(f.stat().st_size for f in p.rglob("*") if f.is_file())
+        except OSError:
+            return 0
+    with db() as con, con.cursor() as cur:
+        cur.execute("SELECT pg_database_size(current_database()) AS db, pg_total_relation_size('readings') AS r,"
+                    " (SELECT reltuples FROM pg_class WHERE relname = 'readings') AS n,"
+                    " (SELECT count(*) FROM readings WHERE ts > now() - interval '7 days') AS week")
+        row = cur.fetchone()
+    per_row = (row["r"] / row["n"]) if row["n"] and row["n"] > 0 else None
+    per_day = round(per_row * row["week"] / 7) if per_row else None
+    backups = Path("/app/backups")
+    dumps = sorted(backups.glob("*.sql.gz"), key=lambda f: f.stat().st_mtime) if backups.exists() else []
+    keep = int(os.getenv("BACKUP_KEEP", "30") or 30)
+    b_now = sum(f.stat().st_size for f in dumps)
+    b_full = (dumps[-1].stat().st_size * keep) if dumps else 0
+    disk = shutil.disk_usage(OUT) if OUT.exists() else None
+    free = disk.free if disk else None
+    room = (free - max(0, b_full - b_now)) if free is not None else None
+    return {
+        "database_bytes": row["db"], "readings": int(row["n"] or 0), "readings_last_7_days": row["week"],
+        "bytes_per_reading": round(per_row) if per_row else None, "growth_bytes_per_day": per_day,
+        "out_bytes": du(OUT), "exports_bytes": du(Path("/app/exports")),
+        "backups": {"bytes": b_now, "dumps": len(dumps), "keep_days": keep, "bytes_when_full": b_full},
+        "disk": ({"path": str(OUT), "total_bytes": disk.total, "used_bytes": disk.used, "free_bytes": disk.free} if disk else None),
+        "days_left": (int(room / per_day) if room is not None and per_day else None),
+        "rate": "readings written in the last 7 days x bytes per reading row; backups counted at BACKUP_KEEP dumps",
+    }
+
+
+@app.get("/ground/meta")
+def ground_meta():
+    """What the node holds of its own map: each layer's source, licence, attribution, tile count, bytes and when it
+    was fetched, from out/ground/meta.json, and which layers are actually on disk. Never an error."""
+    g = _ground()
+    try:
+        meta = json.loads((g / "meta.json").read_text())
+    except (OSError, ValueError):
+        meta = {}
+    have = {k: (g / f"{k}.mbtiles").is_file() for k in GROUND_LAYERS}
+    have["glyphs"] = (g / "glyphs").is_dir()
+    have["wind"] = (g / "wind.json").is_file()
+    return {"layers": meta, "on_disk": have,
+            "fetch": {"vector": "planetai run place basemap --only vector", "drone": "planetai run place basemap --only drone",
+                      "imagery": "planetai run earth-engine basemap", "wind": "planetai run forecast windfield"}}
+
+
+@app.get("/ground/wind")
+def ground_wind():
+    """The wind over the node's square for a map to draw moving: the forecast pack's Open-Meteo field, n×n points,
+    hourly for the next day (out/ground/wind.json, refreshed on each forecast poll). 204 when the node has none,
+    which is every node with FORECAST_OPENMETEO=0."""
+    from fastapi.responses import Response
+    p = _ground() / "wind.json"
+    if not p.is_file():
+        return Response(status_code=204)
+    return Response(p.read_bytes(), media_type="application/json", headers={"cache-control": "no-cache"})
+
+
+@app.get("/ground/glyphs/{font}/{span}")
+def ground_glyphs(font: str, span: str):
+    """The label fonts the vector map draws names with, as MapLibre asks for them: one face, one range of 256."""
+    from fastapi.responses import Response
+    if not re.fullmatch(r"[A-Za-z ]{1,40}", font) or not re.fullmatch(r"\d{1,5}-\d{1,5}\.pbf", span):
+        raise HTTPException(404, "no such glyphs")
+    p = _ground() / "glyphs" / font / span
+    if not p.is_file():
+        return Response(status_code=204)
+    return Response(p.read_bytes(), media_type="application/x-protobuf", headers={"cache-control": "max-age=86400"})
+
+
+@app.get("/ground/{layer}/{z}/{x}/{y}")
+def ground_tile(layer: str, z: int, x: int, y: str):
+    """One tile of the node's own map, XYZ addressed (`y` may carry .pbf, .png or .jpg). 204 where the node holds
+    none, which a map reads as empty ground rather than an error."""
+    from fastapi.responses import Response
+    import sqlite3
+    if layer not in GROUND_LAYERS:
+        raise HTTPException(404, "no such ground layer")
+    try:
+        yy = int(y.split(".")[0])
+    except ValueError:
+        raise HTTPException(422, "y must be a number") from None
+    p = _ground() / f"{layer}.mbtiles"
+    if not p.is_file() or not (0 <= z <= 22 and 0 <= x < 2 ** z and 0 <= yy < 2 ** z):
+        return Response(status_code=204)
+    con = sqlite3.connect(f"file:{p}?mode=ro", uri=True)
+    try:
+        row = con.execute("SELECT tile_data FROM tiles WHERE zoom_level=? AND tile_column=? AND tile_row=?",
+                          (z, x, (1 << z) - 1 - yy)).fetchone()
+    finally:
+        con.close()
+    if not row:
+        return Response(status_code=204)
+    data, head = row[0], {"cache-control": "max-age=3600"}
+    if data[:2] == b"\x1f\x8b":
+        head["content-encoding"] = "gzip"               # vector tiles are kept gzipped, as Protomaps ships them
+    kind = GROUND_LAYERS[layer] if layer == "vector" else ("image/jpeg" if data[:2] == b"\xff\xd8" else "image/png")
+    return Response(data, media_type=kind, headers=head)
 
 
 @app.get("/earth")
@@ -1307,8 +2512,21 @@ def report_latest():
     # in `planetai report last` — the button said "sent" and the page went on showing the one before it.
     rows = q("""SELECT id, ts, due_local, window_hours, depth, rung, text, sent, held_quiet, fallback_reason
                   FROM reports ORDER BY ts DESC LIMIT 1""")
-    return rows[0] if rows else {"text": None, "ts": None, "depth": None, "rung": None, "held_quiet": None,
-                                 "note": "no report yet; the first one lands at the next due hour"}
+    # One shape, whether or not a report exists. Until v0.63 the empty case answered five keys and the
+    # populated case answered ten, so a client that read `sent` had to know which case it was in — the
+    # exact implicitness this release is about. Every key is present and null when there is no report,
+    # and `note` is added rather than substituted.
+    r = rows[0] if rows else {}
+    out = {"schema": REPORT_V0,
+           "id": r.get("id"), "ts": r.get("ts"), "due_local": r.get("due_local"),
+           "window_hours": r.get("window_hours"), "depth": r.get("depth"), "rung": r.get("rung"),
+           "text": r.get("text"), "sent": r.get("sent"), "held_quiet": r.get("held_quiet"),
+           "fallback_reason": r.get("fallback_reason"),
+           # in the literal, None when there is a report: a key added by subscript is a key of the
+           # document that does not appear in it, which tools/check_wire.py refuses for the same
+           # reason it refuses `**`.
+           "note": None if rows else "no report yet; the first one lands at the next due hour"}
+    return out
 
 
 @app.get("/report/bundle")
@@ -1348,19 +2566,21 @@ def briefing_moved(kind: str = "morning"):
 
 
 @app.get("/history")
-def history(sensor_id: str, metric: str, limit: int = Query(500, ge=1, le=5000)):
+def history(request: Request, sensor_id: str, metric: str, limit: int = Query(500, ge=1, le=5000), authorization: str = Header("")):
     """Every reading of one metric from one sensor, oldest first. For series that are not hourly: a yearly building count,
     a monthly refresh. `/sparks` is the hourly view; this is the raw one."""
     return [{"ts": r["ts"], "value": r["value"]} for r in            # q() already renders timestamps as ISO strings
-            q("SELECT ts, value FROM readings WHERE sensor_id=%s AND metric=%s ORDER BY ts LIMIT %s", sensor_id, metric, limit)]
+            q("SELECT ts, value FROM readings WHERE sensor_id=%s AND metric=%s"
+              + ("" if _shows_private(request, authorization) else " AND " + packs.public_sql("readings"))
+              + " ORDER BY ts LIMIT %s", sensor_id, metric, limit)]
 
 
 @app.get("/sparks")
-def sparks(metric: str = "pm25", hours: int = Query(24, ge=1, le=168)):
+def sparks(request: Request, metric: str = "pm25", hours: int = Query(24, ge=1, le=168), authorization: str = Header("")):
     """Per-sensor hourly means, aligned to the same buckets, for small traces inside the dashboard's sensor tiles."""
     rows = q("""
         WITH h AS (SELECT generate_series(date_trunc('hour', now()) - make_interval(hours => %s - 1), date_trunc('hour', now()), interval '1 hour') AS bucket),
-        ids AS (SELECT DISTINCT sensor_id FROM readings_1h WHERE metric = %s AND bucket > now() - make_interval(hours => %s))
+        ids AS (SELECT DISTINCT sensor_id FROM readings_1h WHERE metric = %s AND bucket > now() - make_interval(hours => %s)""" + ("" if _shows_private(request, authorization) else " AND " + packs.public_sql("readings_1h")) + """)
         SELECT ids.sensor_id, h.bucket, r.mean
         FROM ids CROSS JOIN h LEFT JOIN readings_1h r ON r.sensor_id = ids.sensor_id AND r.bucket = h.bucket AND r.metric = %s
         ORDER BY ids.sensor_id, h.bucket""", hours, metric, hours, metric)
@@ -1381,6 +2601,43 @@ def sparks(metric: str = "pm25", hours: int = Query(24, ge=1, le=168)):
 BACKUPS = Path("/app/backups")
 EXPORTS = Path("/app/exports")
 OUT = Path(os.getenv("PACK_OUT", "/app/out"))      # the one writable mount; packs put their artifacts here
+
+
+# ---------------------------------------------------------------- wire formats
+# ARCHITECTURE.md §3 names the contracts that must not change casually. One of them was versioned
+# (`fci-cells-v0`) and the rest were implicit: the nightly export is pinned to IPFS forever with a
+# licence and no schema version, GET /issues is the one document a client draws, and the two pushes
+# travel between nodes on different releases. Four nodes exist. The cost of saying which is a string.
+ISSUES_V0, EXPORT_V0, AGGREGATES_V0, EVENTS_V0, REPORT_V0 = (
+    "issues-v0", "export-v0", "aggregates-v0", "events-v0", "report-v0")
+
+_wire_said: set = set()
+
+
+def _wire_in(body: dict, expect: str) -> str:
+    """What a received document says it is. Logged once per (format, value); never refused.
+
+    A RECEIVER NEVER REFUSES ON THIS, and that is the rule the whole change rests on. A parent one
+    release behind has to keep accepting a child one release ahead, or an operator updating their own
+    node silently stops the district's numbers. So an unknown version is processed for the fields this
+    node recognises and the rest are dropped — which is exactly what `receive_events` already did for
+    unknown columns, and this only makes it say so. A document with no `schema` predates the key and
+    is read as `-v0`, which is what it is.
+
+    The log is once per distinct value and the set is capped, because the value comes off the wire
+    from a child and an unbounded set keyed on a stranger's string is a slow leak.
+    """
+    said = ((body.get("schema") or "") if isinstance(body, dict) else "")
+    said = said.strip()[:40] if isinstance(said, str) else "<not a string>"
+    key = (expect, said)
+    if key not in _wire_said and len(_wire_said) < 64:
+        _wire_said.add(key)
+        if not said:
+            log.info("%s: a push arrived with no schema key; reading it as %s (legacy)", expect, expect)
+        elif said != expect:
+            log.info("%s: a push says schema=%r, which this node does not know; reading the fields it "
+                     "recognises and dropping the rest", expect, said)
+    return said or expect
 
 
 def _bearer_ok(authorization: str, *tokens: str) -> bool:
@@ -1455,17 +2712,86 @@ STATIC = Path(__file__).parent / "static"
 
 @app.get("/", include_in_schema=False)
 @app.get("/ui", include_in_schema=False)
-def ui():
-    """The dashboard: one HTML file, no build step, reads the same API everything else does.
+def ui(layout: str = ""):
+    """The dashboard: one HTML file, no build step, reads the same API everything else does. The five doors
+    layout is the default (doors.html, docs/decisions/2026-10-07-doors.md); `?layout=classic` serves the legacy
+    dashboard instead; `?layout=mobile` serves the phone page (one column: Now, the walk out from the house, Node; `?layout=walk` is the same page). All three share
+    the same shell route, so the same share rule, and all read the same routes with the same token.
 
     Sent with `cache-control: no-cache`. Without any cache header a browser is free to reuse this document for as
     long as it likes, and an ordinary reload does not always ask: after `planetai update` a screen kept running the
     previous dashboard, with the previous bugs, until someone thought to hard-reload. The node's whole update story
     depends on the page following the version."""
     from fastapi.responses import HTMLResponse
-    f = STATIC / "index.html"
+    if layout == "classic":
+        f = STATIC / "index.html"
+    elif layout in ("mobile", "walk"):     # the walk was its own page for a day; it is the phone page's middle now
+        f = STATIC / "mobile.html"
+    else:
+        f = STATIC / "doors.html"
     body = f.read_text() if f.exists() else "<h1>planetai-node</h1><p>GUI not shipped in this build.</p>"
     return HTMLResponse(body, headers={"cache-control": "no-cache, must-revalidate"})
+
+
+@app.get("/tester", include_in_schema=False)
+def tester():
+    """The sensor bench (Making Sense Bali's makingsense.fablabbali.com/test/, the same file). Served here it reads this
+    node's /health, /sensors, /readings and /nodes on its own origin, which a page from anywhere else cannot (no CORS,
+    and http from https is blocked), and draws every device the node knows in layers. It reads boards over USB too,
+    but only where the browser counts the page as secure: on this machine (localhost), not from across the LAN.
+
+    The page is the shell, so it answers at every SHARE_LEVEL like /ui; what it then reads is gated as always, and it
+    asks for the token when a read is refused. app/static/tester.html is a copy: edit it in makingsensebali/test/."""
+    from fastapi.responses import HTMLResponse
+    f = STATIC / "tester.html"
+    if not f.exists():
+        raise HTTPException(404, "the sensor bench is not shipped in this build")
+    return HTMLResponse(f.read_text(), headers={"cache-control": "no-cache, must-revalidate"})
+
+
+# What this machine is for, in the words of docs/site/introduction.md; tools/check_site.py holds this, the
+# dashboard's foot and the programme page to that one lead. /llms.txt is the door an agent handed this node's
+# address knows to try first. It answers at every SHARE_LEVEL because it says nothing about the house: the
+# purpose, the version, and where the documented routes are. Before v0.73 the node served no such file and
+# `llms.txt` existed only on GitHub, so an agent pointed at a node found nothing to read.
+PURPOSE = ("PLANETAI is hyperlocal compute and intelligence for distributed production. Its purpose is "
+           "fixed: clean air, water and soil for the people and the other living things around each node.")
+DOCS_URL = "https://planetai.fab.city/docs/"
+
+
+@app.get("/llms.txt", include_in_schema=False)
+def llms_txt():
+    from fastapi.responses import PlainTextResponse
+    v = os.getenv("NODE_VERSION", "?")
+    body = f"""# planetai-node {v}
+
+> {PURPOSE} Raw readings stay on this machine; only summaries leave.
+
+This is one PLANETAI node. Every route below is relative to the address you reached this file at.
+
+## Read it
+
+- [GET /health](/health): alive or not, the version, the node's H3 cell (resolution 8), and the share level. Answers at every level.
+- [GET /issues](/issues): the node's own reading of its place, one document, every sentence written by the node.
+- [GET /export](/export): the daily open export, hourly means, the Index cells and the household's offers, CC BY 4.0.
+- [GET /offers](/offers): what this home would lend or give, as it chose to publish it. Answers at every level.
+- [GET /sources](/sources): the pinned source registry this node reads from.
+
+What answers without a token depends on SHARE_LEVEL, which the household sets. A 403 names the setting.
+
+## Work with it
+
+- POST /mcp: the node's twenty-one tools over MCP (streamable HTTP). Needs `Authorization: Bearer <ADMIN_TOKEN>`,
+  which `planetai ui` prints on the machine itself. Every write an agent makes is recorded under its name, and
+  `act` needs the person's own words: an agent may draft, a person acts.
+
+## Read about it
+
+- Documentation: {DOCS_URL} (HTTP API: {DOCS_URL}api/ · MCP tools: {DOCS_URL}mcp/ · agents: {DOCS_URL}agents/)
+- For agents working on the code: https://raw.githubusercontent.com/fabcity/planetai-node/main/AGENTS.md
+- The programme: https://planetai.fab.city/
+"""
+    return PlainTextResponse(body, headers={"cache-control": "no-cache"})
 
 
 # The two files index.html cannot hold. The dashboard is still one HTML document with no build step: the
@@ -1492,12 +2818,50 @@ COMPANIONS = {
     # line and reports it rather than failing on it.
     "dashboard.js": (STATIC / "dashboard.js", "application/javascript"),
     "dashboard.css": (STATIC / "dashboard.css", "text/css"),
+    # The drawing library (docs/SPEC_dashboard_figures.md §4.1): Observable Plot and the d3 it is built on, vendored
+    # for the same reason as the fonts. ISC; the licences are in app/static/licences/. data/vendor.sha256 pins both.
+    "d3.min.js": (STATIC / "d3.min.js", "application/javascript"),
+    "plot.umd.min.js": (STATIC / "plot.umd.min.js", "application/javascript"),
     "planetai-theme.css": (STATIC / "planetai-theme.css", "text/css"),
     "tokens.css": (STATIC / "tokens.css", "text/css"),
     "signs.svg": (STATIC / "signs.svg", "image/svg+xml"),
     "kilometre-cells.json": (STATIC / "kilometre-cells.json", "application/json"),
+    # The learn layer: the marks cut out of docs/site by tools/build_learn.py at build
+    # time, because a node does not carry the documentation site. Fetched only when a reader
+    # turns learn mode on, and the quotes are inline so the mode works on a LAN with no route out.
+    "learn.json": (STATIC / "learn.json", "application/json"),
+    # The map ground, UI_GROUND=map: MapLibre for the base, deck.gl for the cells and stations over it.
+    # Pinned UMD builds, vendored so the page needs no CDN; fetched only when the ground is drawn that way.
+    # Versions and licences are in NOTICE.
+    "maplibre-gl.js": (STATIC / "vendor" / "maplibre-gl.js", "application/javascript"),
+    "maplibre-gl.css": (STATIC / "vendor" / "maplibre-gl.css", "text/css"),
+    "deck.gl.min.js": (STATIC / "vendor" / "deck.gl.min.js", "application/javascript"),
+    # Set up draws the phone's unlock as a QR code on the admin's screen, so the token never leaves the node's own pages.
+    "qrcode.js": (STATIC / "vendor" / "qrcode.js", "application/javascript"),
+    # The five doors (/?layout=doors): the loader that builds their one object from the routes, then one file per door,
+    # as planetai-design's prototype kept them. Natural Earth's coast for the Node door's world (NOTICE).
+    **{f"doors-{n}.js": (STATIC / f"doors-{n}.js", "application/javascript")
+       for n in ("load", "nodegeo", "core", "fig", "now", "placemap", "place", "data", "flow", "wallmap", "wall", "node", "setup")},
+    # The phone page (/?layout=mobile): the shell and its script, which reuses doors-load.js.
+    "mobile.html": (STATIC / "mobile.html", "text/html"),
+    "mobile.js": (STATIC / "mobile.js", "application/javascript"),
+    # The phone page's walk out from the house (SPEC_mobile §11.2): mobile.js loads it, and MapLibre, when it nears the screen.
+    "walk.js": (STATIC / "walk.js", "application/javascript"),
+    "world-land-110m.json": (STATIC / "vendor" / "world-land-110m.json", "application/json"),
+    # The documentation the node carries (`make learn` cuts it out of docs/site): the Data door draws the API from it.
+    # ./data is mounted at /app/data in the container and sits beside app/ in a checkout, as ask.py reads it.
+    "docs_site.json": (next((p for p in (STATIC.parent / "data" / "docs_site.json", STATIC.parent.parent / "data" / "docs_site.json")
+                             if p.exists()), STATIC.parent / "data" / "docs_site.json"), "application/json"),
 }
 NO_CACHE = {"cache-control": "no-cache, must-revalidate"}
+
+
+@app.get("/static/fonts/jetbrains-mono-latin.woff2", include_in_schema=False)
+def static_mono():
+    """The one path planetai-theme.css asks for the mono at (`fonts/…`; the theme is frozen, not this repo's to edit).
+    Every page requested it and got a 404 (14 Oct 2026); tokens.css's flat name is what loads the face. A fixed path,
+    not a parameter, so nothing a caller sends reaches the filesystem."""
+    return static_file("jetbrains-mono-latin.woff2")
 
 
 @app.get("/static/{name}", include_in_schema=False)
@@ -1556,12 +2920,35 @@ def _ground_svg(variant: str = "dark") -> str | None:
     return shipped.read_text().replace('data-variant="dark"', f'data-variant="{variant}"', 1)
 
 
+def _shows_private(request: Request, authorization: str = "", raw: bool = True) -> bool:
+    """Whether this read may include `private` readings (packs.public_sql). Never for an agent, which says so with
+    X-Agent on every call (app/agent.py), whatever token it carries: what a model reads can go to a provider. A raw
+    route (rows, series) answers them to the admin token only; a readout (`raw=False`) to the household's own tokens
+    (admin, act) or this machine. Until 14 Oct a readout went to anyone the page answered, which at SHARE_LEVEL=open is
+    anyone on the network, and a parent's or a backup's token: the house's counts on a screen nobody in it owns."""
+    if request.headers.get("x-agent"):
+        return False
+    if not raw:
+        return _bearer_ok(authorization, os.getenv("ADMIN_TOKEN", "").strip(), ACT_TOKEN()) or _is_local(request)
+    return _bearer_ok(authorization, os.getenv("ADMIN_TOKEN", "").strip())
+
+
 def _admin(authorization: str) -> None:
     tok = os.getenv("ADMIN_TOKEN", "").strip()
     if not tok:
         raise HTTPException(403, "ADMIN_TOKEN is not set in .env; run `planetai ui` to create one")
     if not _bearer_ok(authorization, tok):
         raise HTTPException(401, "bad or missing admin token")
+
+
+@app.get("/settings/phone")
+def settings_phone(authorization: str = Header("")):
+    """The token for closing a loop, for the admin's Set up screen to draw as a QR code a phone scans to unlock itself.
+    Admin token only: it hands out the weaker token to whoever already holds the stronger one, and nothing else."""
+    _admin(authorization)
+    if not ACT_TOKEN():
+        raise HTTPException(404, "no ACT_TOKEN on this node yet; run `planetai ui` to create one")
+    return {"act": ACT_TOKEN()}
 
 
 @app.get("/settings")
@@ -1587,8 +2974,8 @@ def put_settings(body: dict, authorization: str = Header(""), x_agent: str = Hea
     _admin(authorization)
     changed = []
     for k, v in body.items():
-        if k not in settings.RUNTIME:
-            raise HTTPException(400, f"{k} is not a runtime setting")
+        if not settings.writable(k):       # RUNTIME, or a key an installed pack declares
+            raise HTTPException(400, f"{k} is not a runtime setting, and no installed pack declares it")
         try:
             settings.set(k, str(v).strip())
         except ValueError as e:            # a key with a fixed set of values says so; a 500 would read as the node's fault
@@ -1605,12 +2992,18 @@ def put_settings(body: dict, authorization: str = Header(""), x_agent: str = Hea
 def test_alert(authorization: str = Header("")):
     """Fire one act-level alert now, through every configured channel. Same as `planetai test-alert`."""
     _admin(authorization)
-    text = "🔔 A test from your node.\n\nIf you can read this, the whole path works: a rule fired, the node wrote a message, and it reached you here. Real alerts will look like this, with what is happening, what it means, and what to do."
+    es = LOCALE() == "es"
+    text = ("🔔 Una prueba de tu nodo.\n\nSi lees esto, todo el camino funciona: una regla se disparó, el nodo escribió un mensaje y te llegó aquí. Los avisos reales se verán así: qué pasa, qué significa y qué hacer."
+            if es else
+            "🔔 A test from your node.\n\nIf you can read this, the whole path works: a rule fired, the node wrote a message, and it reached you here. Real alerts will look like this, with what is happening, what it means, and what to do.")
     with db() as con, con.cursor() as cur:
         cur.execute("INSERT INTO alerts (ts, rule_id, sensor_id, level, text) VALUES (now(), 'gui/test', 'node', 'act', %s) RETURNING id", (text,))
         alert_id = cur.fetchone()["id"]
     how = act_hint(alert_id)
-    closing = f"👉 Reply {how} to show me how you close the loop." if how.startswith("/") else f"👉 In the terminal, {how} records that you closed the loop."
+    if es:
+        closing = f"👉 Responde {how} para mostrarme cómo cierras el círculo." if how.startswith("/") else f"👉 En la terminal, {how} registra que cerraste el círculo."
+    else:
+        closing = f"👉 Reply {how} to show me how you close the loop." if how.startswith("/") else f"👉 In the terminal, {how} records that you closed the loop."
     notify("act", f"{text}\n\n{closing}")      # the hint already carries the number; a bare #id on the end taught nothing
     ha_alert("act", text, alert_id)
     return {"ok": True, "alert_id": alert_id}
@@ -1622,6 +3015,41 @@ def cells():
     """Index cells this node can honestly compute. Same row shape as the FCI Observations base."""
     with db() as con, con.cursor() as cur:
         return index.cells(cur)
+
+
+@app.get("/sources")
+def sources_(pillar: str = "", scale: str = "", pilot: str = "", cell: str = "",
+             wired: bool | None = None, status: str = ""):
+    """The network's registry of what can be measured, as this node carries it (app/registry.py).
+
+    `/cells` says what this node computes. This says what the network has registered — including for
+    the cells no adapter fills yet, which have no `/cells` row at all. `?cell=Social|City` is the
+    query the 5 September report did by hand.
+
+    `?status=live` (or candidate, stale, deprecated, paywalled, planned) narrows to the registry's
+    own word for what a source is. `counts` is the same three numbers per cell that a `/cells` row
+    carries, for every cell rather than only the ones this node computes: capable is live with an
+    adapter, reviewed is live backed by an adapter or a usable review, candidate is verified and
+    unread. Nothing deprecated, stale, paywalled or planned is in any of them.
+
+    Not to be confused with `app/sources.py`, which is the node's own sensor adapters. This serves
+    rows somebody filed upstream; that reads instruments."""
+    entries, ver = registry.load()
+    if not entries:
+        raise HTTPException(503, f"no source registry on this node: {registry.SOURCES_DIR} is empty or "
+                                 "unmounted. Vendor one with tools/sync_registry.sh <sha> and rebuild.")
+    rows = registry.find(pillar=pillar, scale=scale, pilot=pilot, cell=cell, wired=wired, status=status)
+    return {"registry": {k: ver.get(k) for k in ("sha", "short", "synced", "entries")},
+            "counts": registry.cell_counts(), "count": len(rows), "sources": rows}
+
+
+@app.get("/sources/{pillar}/{scale}/{slug}")
+def source_(pillar: str, scale: str, slug: str):
+    e = registry.one(f"{pillar}/{scale}/{slug}")
+    if not e:
+        raise HTTPException(404, f"{pillar}/{scale}/{slug} is not in the registry this node carries "
+                                 f"({registry.load()[1].get('short', 'none')}). Ask /sources for the list.")
+    return e
 
 
 @app.get("/packs")
@@ -1639,6 +3067,7 @@ def rho():
 @app.post("/actions")
 def action(body: dict, request: Request, authorization: str = Header("")):
     """A human closes the loop: {"alert_id": 12, "stage": "acted", "actor": "ibu wayan", "note": "closed windows"}.
+    An event's button is {"event_id": 3, "stage": "dismissed", …}: acted, acknowledged or dismissed (Done, Not now, Doesn't fit).
     A mobile app, a Telegram reply handler, or curl — all the same call.
 
     F10: unchanged and open on this machine, so the MCP `act` tool and a shell in the container keep working with no
@@ -1654,16 +3083,767 @@ def action(body: dict, request: Request, authorization: str = Header("")):
             raise HTTPException(403, "no ACT_TOKEN or ADMIN_TOKEN set on this node; run `planetai ui` to create one")
         if not _bearer_ok(authorization, *tokens):
             raise HTTPException(401, "closing a loop from off this machine needs Authorization: Bearer <ACT_TOKEN>")
+    if body.get("event_id") is not None:
+        # An event's buttons (docs/SPEC_dashboard_events.md §3.2): the same tokens, the same refusals, one row.
+        if body.get("alert_id") is not None:
+            raise HTTPException(400, "send alert_id or event_id, not both")
+        with db() as con, con.cursor() as cur:
+            try:
+                events_pg.answer(cur, body["event_id"], body.get("stage"), body.get("actor"), body.get("note"))
+            except ValueError as e:
+                raise HTTPException(400, str(e)) from None
+            except LookupError as e:
+                raise HTTPException(404, str(e)) from None
+        return {"ok": True}
     stage = body.get("stage")
-    if stage not in ("acknowledged", "acted"):            # 'settings' rows are written by the node itself, never posted
-        raise HTTPException(400, "stage must be acknowledged or acted")
+    # `decided` is a record and not an answer: it closes nothing, enters no rho, and is not a funnel stage. A household
+    # that looked at an observation, decided what to do and did not manage it leaves the same trace today as one that
+    # never looked, and those are opposite facts. docs/SPEC_decide.md section 6.
+    if stage not in ("acknowledged", "acted", "decided"):  # 'settings' rows are written by the node itself, never posted
+        raise HTTPException(400, "stage must be acknowledged, acted or decided")
     with db() as con, con.cursor() as cur:
         cur.execute("SELECT 1 FROM alerts WHERE id = %s", (body.get("alert_id"),))
         if not cur.fetchone():
             raise HTTPException(404, "no such alert")
+        # DECISION_REQUIRED is a community's switch and it is off by default, because the four other ways in here have
+        # no screen to decide on: the Reticulum bridge (a LoRa reply from a device with no display), the MCP `act` tool,
+        # the terminal, and curl. A node in a house records an act whether or not anybody deliberated -- somebody smells
+        # smoke and opens a window -- and refusing that would make the node assert a deliberation that did not happen,
+        # or push the act somewhere it is never recorded at all. A node acting for a street is the case this is for.
+        if stage == "acted" and settings.num("DECISION_REQUIRED", 0):
+            cur.execute("SELECT 1 FROM actions WHERE alert_id = %s AND stage = 'decided' LIMIT 1", (body.get("alert_id"),))
+            if not cur.fetchone():
+                raise HTTPException(409, "this node is set to DECISION_REQUIRED, so an act needs a decision recorded "
+                                         "against the same alert first. Decide on the dashboard, then record what you did.")
         cur.execute("INSERT INTO actions (alert_id, stage, actor, note) VALUES (%s,%s,%s,%s)",
                     (body.get("alert_id"), stage, str(body.get("actor") or "")[:80], str(body.get("note") or "")[:500]))
     return {"ok": True}
+
+
+# ---------------------------------------------------------------- captures (SPEC_eyes step 1)
+# One picture with the facts a reading has: when, which cell, who, with what. The file lives in the folder the
+# household chose (CAPTURES_DIR in .env → /app/captures here; unlike DATA_DIR it MAY be a NAS share — these are
+# files, not Postgres). On NO SHARE_LEVEL list at any level, in no export, aggregate, readings or parent push:
+# the middleware refuses a stranger outright, and the route then refuses every token but ACT/ADMIN, so the
+# read-only BACKUP_TOKEN that passes the gate cannot read a picture. The exact point is kept (token only); only
+# the FILE is cleaned of EXIF/GPS, so a picture that is ever shared carries no hidden place.
+
+CAPTURE_KINDS = ("microscope", "phone", "camera", "drone", "balloon")
+CAPTURES_DIR = os.getenv("PLANETAI_CAPTURES", "/app/captures")   # the compose mount's inside path; tests point it aside
+
+
+def _captures_auth(request: Request, authorization: str) -> None:
+    """The /actions rule (F10): unchanged and open on this machine; from anywhere else ACT_TOKEN or ADMIN_TOKEN —
+    the weaker one on purpose, so a household member adds pictures without holding the key to /settings/raw."""
+    if not _is_local(request):
+        tokens = [t for t in (ACT_TOKEN(), os.getenv("ADMIN_TOKEN", "").strip()) if t]
+        if not tokens:
+            raise HTTPException(403, "no ACT_TOKEN or ADMIN_TOKEN set on this node; run `planetai ui` to create one")
+        if not _bearer_ok(authorization, *tokens):
+            raise HTTPException(401, "the captures answer only this machine or Authorization: Bearer ***")
+
+
+def _captures_dir() -> str:
+    """The folder, or a clear 503: a capture is refused when there is nowhere honest to keep it. `planetai doctor`
+    says the same from the host side."""
+    d = CAPTURES_DIR
+    if not os.path.isdir(d) or not os.access(d, os.W_OK):
+        raise HTTPException(503, f"the captures folder ({d}) is missing or not writable, so this node is not taking "
+                                 "pictures. It may be any disk, a NAS share included: mount it, or point CAPTURES_DIR "
+                                 "in .env at one that is there, and `planetai restart`.")
+    return d
+
+
+def _node_cells() -> tuple[set, str]:
+    """The node's seven res-8 cells (its own and the six touching it, SPEC_eyes §5) and its own res-10 cell —
+    the yardsticks `outside` and `at_home` are measured with once, on arrival."""
+    import h3  # noqa: PLC0415
+    lat, lon = _here()
+    home8 = h3.latlng_to_cell(lat, lon, 8)
+    return set(h3.grid_disk(home8, 1)), h3.latlng_to_cell(lat, lon, 10)
+
+
+def _clean_picture(raw: bytes) -> tuple[bytes, str, str | None, tuple[float, float] | None]:
+    """Re-encode with no metadata: EXIF, GPS and the thumbnail die here and only the pixels survive. Returns the
+    cleaned bytes, their mime, and the picture's own date when it carried one (kept as `ts`, the taken time —
+    a date is not a place). HEIC becomes JPEG so any screen can show it back."""
+    import io  # noqa: PLC0415
+    from PIL import Image, ImageOps  # noqa: PLC0415
+    try:
+        import pillow_heif  # noqa: PLC0415
+        pillow_heif.register_heif_opener()
+    except ImportError:
+        pass  # no HEIC on this install: a HEIC upload then reads as not-a-picture below, honestly
+    try:
+        im = Image.open(io.BytesIO(raw))
+        im.load()
+    except Exception:
+        raise ValueError("that file is not a picture this node can read (jpeg, png, heic or webp)") from None
+    fmt0 = (im.format or "").upper()
+    if fmt0 not in ("JPEG", "MPO", "PNG", "WEBP", "HEIF", "HEIC", "AVIF"):  # MPO: a JPEG with extra frames, what DJI drones write
+        raise ValueError(f"a {fmt0 or 'unknown'} is not a picture this node keeps (jpeg, png, heic or webp)")
+    taken = None
+    try:
+        exif = im.getexif()
+        dtor = exif.get_ifd(0x8769).get(36867) or exif.get(306)  # DateTimeOriginal (taken), else DateTime (saved)
+        if dtor:
+            taken = datetime.strptime(dtor.strip(), "%Y:%m:%d %H:%M:%S").replace(tzinfo=ZoneInfo(NODE_TZ)).isoformat()  # a camera writes local time
+    except Exception:  # noqa: BLE001 — a picture with a broken date is still a picture; taken falls back to now
+        taken = None
+    point = None   # where the camera says it was taken: read here, kept in the row, and gone from the file below
+    try:
+        g = im.getexif().get_ifd(0x8825)
+        dms = lambda v: float(v[0]) + float(v[1]) / 60 + float(v[2]) / 3600  # noqa: E731
+        if g.get(2) and g.get(4):
+            plat = dms(g[2]) * (-1 if str(g.get(1, "N")).upper().startswith("S") else 1)
+            plon = dms(g[4]) * (-1 if str(g.get(3, "E")).upper().startswith("W") else 1)
+            if -90 <= plat <= 90 and -180 <= plon <= 180 and (plat, plon) != (0.0, 0.0):
+                point = (plat, plon)
+    except Exception:  # noqa: BLE001 — a broken GPS block is no point, not a refused picture
+        point = None
+    im = ImageOps.exif_transpose(im)  # the orientation is metadata too: apply it, then let it go with the rest
+    out = io.BytesIO()
+    if fmt0 in ("JPEG", "MPO", "HEIF", "HEIC", "AVIF"):  # an MPO keeps its first frame, the picture
+        im.convert("RGB").save(out, "JPEG", quality=90)
+        mime = "image/jpeg"
+    elif fmt0 == "PNG":
+        im.save(out, "PNG")
+        mime = "image/png"
+    else:
+        im.save(out, "WEBP", quality=90)
+        mime = "image/webp"
+    return out.getvalue(), mime, taken, point
+
+
+@app.post("/captures")
+async def capture_post(request: Request, authorization: str = Header(""),
+                       photo: "UploadFile" = File(...), kind: str = Form("phone"),
+                       lat: float | None = Form(None), lon: float | None = Form(None),
+                       cell: str | None = Form(None), note: str = Form(""),
+                       taken_at: str = Form(""), actor: str = Form(""), describe: str = Form("")):
+    """A household adds a picture: multipart, one image, `kind`, `lat`+`lon` OR a res-10 `cell` OR neither (the
+    node's own cell, which is what a phone with no location permission means), optional `note`, `taken_at` and
+    `actor` (the name the phone keeps), and `describe=1` to have the image model describe it after the upload answers
+    (the upload form's checkbox). The exact point is kept — a tree or a dump is worth it — and only the
+    file is cleaned. A duplicate sha256 answers the existing row instead of keeping the same picture twice."""
+    import hashlib  # noqa: PLC0415
+    import h3  # noqa: PLC0415
+    _captures_auth(request, authorization)
+    if kind not in CAPTURE_KINDS:
+        raise HTTPException(422, f"kind must be one of {', '.join(CAPTURE_KINDS)}")
+    raw = await photo.read()
+    if not raw:
+        raise HTTPException(422, "no picture arrived")
+    if len(raw) > 40 * 1024 * 1024:
+        raise HTTPException(413, "a capture is a picture, not a film: 40 MB is the most this node takes")
+    sha = hashlib.sha256(raw).hexdigest()
+    dup = q("SELECT * FROM captures WHERE sha256 = %s", sha)
+    if dup:
+        return {"ok": True, "duplicate": True, "capture": dup[0]}
+    try:
+        cleaned, mime, exif_taken, exif_point = _clean_picture(raw)
+    except ValueError as e:
+        raise HTTPException(415, str(e)) from None
+    if (lat is None) != (lon is None):
+        raise HTTPException(422, "lat and lon together, or neither")
+    if lat is not None and not (-90 <= lat <= 90 and -180 <= lon <= 180):
+        raise HTTPException(422, "lat must be -90..90 and lon -180..180")
+    if exif_point and not cell:
+        lat, lon = exif_point   # the picture's own GPS: where it was taken beats where the phone is now (a gallery pick)
+    seven, home10 = _node_cells()
+    if lat is not None:
+        cap_cell = h3.latlng_to_cell(lat, lon, 10)
+    elif cell:
+        if not h3.is_valid_cell(cell):
+            raise HTTPException(422, f"{cell!r} is not an H3 cell")
+        if h3.get_resolution(cell) != 10:
+            raise HTTPException(422, "cell must be res 10, the room; send lat and lon instead if you have them")
+        cap_cell = cell
+    else:
+        cap_cell = home10   # no point given: the picture was taken here, at the node, as far as this node knows
+    outside = h3.cell_to_parent(cap_cell, 8) not in seven
+    at_home = cap_cell == home10
+    ts = taken_at.strip() or exif_taken
+    if ts:
+        try:
+            ts = datetime.fromisoformat(ts.replace("Z", "+00:00")).isoformat()
+        except ValueError:
+            raise HTTPException(422, "taken_at must be an ISO date-time") from None
+    folder = _captures_dir()
+    name = f"{sha}.{mime.split('/')[1].replace('jpeg', 'jpg')}"
+    with open(os.path.join(folder, name), "wb") as f:
+        f.write(cleaned)
+    with db() as con, con.cursor() as cur:
+        cur.execute("""INSERT INTO captures (ts, kind, cell, lat, lon, outside, at_home, actor, note, file, sha256, bytes, mime)
+                       VALUES (COALESCE(%s::timestamptz, now()), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                       RETURNING *""",
+                    (ts, kind, cap_cell, lat, lon, outside, at_home, str(actor or "")[:80], str(note or "")[:500],
+                     name, sha, len(cleaned), mime))
+        row = {k: (v.isoformat() if isinstance(v, datetime) else v) for k, v in cur.fetchone().items()}
+    describing = describe.strip().lower() in ("1", "on", "true") and _describe_later(row["id"])
+    return {"ok": True, "capture": row, "describing": bool(describing)}
+
+
+@app.get("/captures")
+def captures_list(request: Request, authorization: str = Header(""), cell: str | None = None,
+                  kind: str | None = None, limit: int = Query(50, ge=1, le=500)):
+    """The visual database, newest first. `?cell=` takes a cell at any resolution and answers the captures inside
+    it — which is how the walk asks for a street's or a ring's pictures from the res-10 cells it keeps."""
+    _captures_auth(request, authorization)
+    if kind is not None and kind not in CAPTURE_KINDS:
+        raise HTTPException(422, f"kind must be one of {', '.join(CAPTURE_KINDS)}")
+    # ponytail: a ?cell= reads every row and filters in Python (no H3 in Postgres here); fine to tens of thousands
+    rows = q("SELECT * FROM captures" + (" WHERE kind = %s" if kind else "") + " ORDER BY id DESC"
+             + ("" if cell else " LIMIT %s" % limit), *([kind] if kind else []))
+    if cell:
+        import h3  # noqa: PLC0415
+        if not h3.is_valid_cell(cell):
+            raise HTTPException(422, f"{cell!r} is not an H3 cell")
+        res = h3.get_resolution(cell)
+        rows = [r for r in rows if h3.cell_to_parent(r["cell"], min(res, 10)) == cell] if res <= 10 else []
+    import h3  # noqa: PLC0415
+    # `at` is where a map draws it: the exact point, else its cell's centre (the node computes, the page draws)
+    return [{**r, "at": [r["lat"], r["lon"]] if r.get("lat") is not None else list(h3.cell_to_latlng(r["cell"]))}
+            for r in rows[:limit]]
+
+
+@app.get("/species")
+def species(request: Request, authorization: str = Header(""), cell: str | None = None):
+    """The species a person here has confirmed (SPEC_species §4), per taxon: how many, in how many images, and what
+    GRIIS and others' records say. `?cell=` at any resolution answers inside that cell. Only confirmed findings count:
+    a model's guess is not a sighting. Read from the images, behind the images' own token, because where a picture was
+    taken is the household's; these are not readings, so nothing here reaches the export or a parent."""
+    _captures_auth(request, authorization)
+    import h3  # noqa: PLC0415
+    if cell and not h3.is_valid_cell(cell):
+        raise HTTPException(422, f"{cell!r} is not an H3 cell")
+    res = h3.get_resolution(cell) if cell else None
+    out: dict = {}
+    for r in q("SELECT id, cell, analysis FROM captures WHERE analysis->>'confirmed_by' IS NOT NULL"):
+        if cell and (res > 10 or h3.cell_to_parent(r["cell"], res) != cell):
+            continue
+        for f in (r["analysis"] or {}).get("findings") or []:
+            t, sci = f.get("taxon") or {}, f.get("scientific")
+            if f.get("class") not in TAXON_KINGDOM or not (t or sci):
+                continue
+            k = t.get("key") or sci   # a name typed without GBIF still counts here, by its words
+            row = out.setdefault(k, {"key": t.get("key"), "name": t.get("name") or sci, "rank": t.get("rank"),
+                                     "class": f["class"], "count": 0, "images": set(), "cells": set()})
+            row["count"] += f.get("count") or 1
+            row["images"].add(r["id"]); row["cells"].add(r["cell"])
+            row.update({k2: t[k2] for k2 in ("introduced", "where", "others") if k2 in t})
+    rows = sorted(out.values(), key=lambda x: (-x["count"], x["name"]))
+    return {"cell": cell, "species": [{**x, "images": len(x["images"]), "cells": len(x["cells"])} for x in rows]}
+
+
+# ---------------------------------------------------------------- the things a home keeps (docs/SPEC_inventory.md)
+# One row per thing, kept as captures are, and three private counts per class written as readings whenever one
+# changes, so readouts, rules and cells can use them and nothing sends them (packs.public_sql). The admin token only.
+THING_CHOICES = {"used": ("weekly", "monthly", "yearly", "never"), "condition": ("works", "needs_repair", "broken"),
+                 "offer": ("no", "lend", "give")}
+
+
+def _thing_fields(body: dict, partial: bool) -> dict:
+    """A thing as the table keeps it, or a 422 a person can act on."""
+    out = {}
+    if "class" in body or not partial:
+        if body.get("class") not in THING_CLASSES:
+            raise HTTPException(422, f"class must be one of {', '.join(THING_CLASSES)}")
+        out["class"] = body["class"]
+    if "name" in body or not partial:
+        name = " ".join(str(body.get("name") or "").split())[:120]
+        if not name:
+            raise HTTPException(422, "a thing needs a name")
+        out["name"] = name
+    if "count" in body:
+        c = body["count"]
+        if not isinstance(c, int) or isinstance(c, bool) or not 1 <= c <= 10000:
+            raise HTTPException(422, "count is a whole number from 1")
+        out["count"] = c
+    for k, ok in THING_CHOICES.items():
+        if k in body:
+            if body[k] not in ok:
+                raise HTTPException(422, f"{k} must be one of {', '.join(ok)}")
+            out[k] = body[k]
+    if "note" in body:
+        out["note"] = str(body["note"] or "")[:500]
+    if "capture_id" in body:
+        out["capture_id"] = body["capture_id"] if isinstance(body["capture_id"], int) and not isinstance(body["capture_id"], bool) else None
+    return out
+
+
+def _thing_counts(cur, classes) -> None:
+    """Rewrite the three private counts of each class touched, now, on the node's own survey sensor."""
+    sid, now = f"things:{NODE}", datetime.now(timezone.utc)
+    cur.execute("""INSERT INTO sensors (sensor_id, source, name, kind, local, indoor, cadence)
+                   VALUES (%s, 'things', 'The things this home keeps', 'survey', TRUE, TRUE, 'P1D')
+                   ON CONFLICT (sensor_id) DO NOTHING""", (sid,))
+    for c in sorted({c for c in classes if c}):
+        cur.execute("""SELECT coalesce(sum(count), 0) AS stock,
+                              coalesce(sum(count) FILTER (WHERE used IN ('yearly', 'never')), 0) AS idle,
+                              coalesce(sum(count) FILTER (WHERE condition <> 'works'), 0) AS repair
+                       FROM things WHERE class = %s""", (c,))
+        n = cur.fetchone()
+        cur.executemany("""INSERT INTO readings (ts, sensor_id, metric, value) VALUES (%s, %s, %s, %s)
+                           ON CONFLICT (sensor_id, metric, ts) DO UPDATE SET value = EXCLUDED.value""",
+                        [(now, sid, f"{k}.{c}", float(n[k])) for k in THING_COUNTS])
+
+
+def _thing_out(r: dict) -> dict:
+    return {k: (v.isoformat() if isinstance(v, datetime) else v) for k, v in r.items()}
+
+
+@app.get("/things")
+def things_list(authorization: str = Header("")):
+    """Every thing, newest first, and the sums the Now door says in one line: how many, how many idle (used yearly or
+    never), how many waiting for a repair, how many offered."""
+    _admin(authorization)
+    rows = [_thing_out(r) for r in q("SELECT * FROM things ORDER BY id DESC")]
+    return {"things": rows, "classes": list(THING_CLASSES), "choices": THING_CHOICES, "summary": {
+        "things": sum(r["count"] for r in rows),
+        "idle": sum(r["count"] for r in rows if r["used"] in ("yearly", "never")),
+        "repair": sum(r["count"] for r in rows if r["condition"] != "works"),
+        "offered": sum(r["count"] for r in rows if r["offer"] != "no")}}
+
+
+@app.post("/things")
+def thing_add(body: dict, authorization: str = Header("")):
+    _admin(authorization)
+    f = _thing_fields(body, partial=False)
+    with db() as con, con.cursor() as cur:
+        cur.execute(f"INSERT INTO things ({', '.join(f)}) VALUES ({', '.join(['%s'] * len(f))}) RETURNING *", tuple(f.values()))
+        row = cur.fetchone()
+        _thing_counts(cur, [row["class"]])
+    return {"ok": True, "thing": _thing_out(row)}
+
+
+@app.patch("/things/{tid}")
+def thing_edit(tid: int, body: dict, authorization: str = Header("")):
+    _admin(authorization)
+    f = _thing_fields(body, partial=True)
+    if not f:
+        raise HTTPException(422, "nothing to change: class, name, count, used, condition, offer, note")
+    with db() as con, con.cursor() as cur:
+        cur.execute("SELECT class FROM things WHERE id = %s", (tid,))
+        was = cur.fetchone()
+        if not was:
+            raise HTTPException(404, "no such thing")
+        cur.execute(f"UPDATE things SET {', '.join(k + ' = %s' for k in f)} WHERE id = %s RETURNING *", (*f.values(), tid))
+        row = cur.fetchone()
+        _thing_counts(cur, [was["class"], row["class"]])   # a thing moved between classes changes both
+    return {"ok": True, "thing": _thing_out(row)}
+
+
+@app.delete("/things/{tid}")
+def thing_delete(tid: int, authorization: str = Header("")):
+    _admin(authorization)
+    with db() as con, con.cursor() as cur:
+        cur.execute("DELETE FROM things WHERE id = %s RETURNING class", (tid,))
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(404, "no such thing")
+        _thing_counts(cur, [row["class"]])
+    return {"ok": True}
+
+
+# ---------------------------------------------------------------- offers (docs/SPEC_inventory.md step 4)
+# A thing the household marks `lend` or `give` becomes a public line: its class, name, condition and count, at the
+# node's own res-8 cell, the one /health already names. Never the household, a point, a photo or a note. Whoever
+# wants it writes to the node's Telegram bot, which passes the message on (agent_loop.relay_offer); the household's
+# chat ids never show. Tomas, 13 Oct 2026: "option 1, the Telegram bot".
+BOT_EVERY = 86400
+
+
+def _bot_username() -> str | None:
+    """The bot's @name, asked of Telegram once a day with the token the node already holds. None without a bot."""
+    tok, chats = TG()
+    if not tok or not chats:
+        return None
+    known = state.get("bot") or {}
+    if time.time() - known.get("asked", 0) < BOT_EVERY:
+        return known.get("username")
+    try:
+        r = httpx.get(f"https://api.telegram.org/bot{tok}/getMe", timeout=10)
+        name = (r.json().get("result") or {}).get("username") if r.status_code == 200 else None
+    except Exception as e:  # noqa: BLE001 — the URL holds the token: log the kind of failure, never the error text
+        log.warning("telegram getMe: %s", type(e).__name__)
+        name = None
+    state["bot"] = {"username": name or known.get("username"), "asked": time.time() if name else time.time() - BOT_EVERY + 3600}
+    return state["bot"]["username"]
+
+
+def offers_now() -> dict:
+    import h3  # noqa: PLC0415
+    lat, lon = float(os.getenv("NODE_LAT", 0) or 0), float(os.getenv("NODE_LON", 0) or 0)
+    bot = _bot_username()
+    rows = q("SELECT id, class, name, condition, offer, count FROM things WHERE offer <> 'no' ORDER BY id")
+    return {"node": NODE, "cell": h3.latlng_to_cell(lat, lon, 8) if (lat or lon) else None,
+            "contact": f"https://t.me/{bot}" if bot else None,
+            "offers": [{**r, "ask": f"https://t.me/{bot}?start=offer-{r['id']}" if bot else None} for r in rows]}
+
+
+@app.get("/learned")
+def learned(request: Request, authorization: str = Header("")):
+    """What this node has learned (docs/SPEC_learn.md), newest checks first, each with its numbers and cases. The
+    admin token only: the cases carry the household's own notes. An agent reads it only while every model this node
+    may use is on this house's own machines (AGENT_PREFER=private); otherwise it is told why not."""
+    _admin(authorization)
+    if request.headers.get("x-agent") and settings.get("AGENT_PREFER", "private") != "private":
+        raise HTTPException(403, "what this house learned stays with its own machines: AGENT_PREFER is not private, "
+                                 "so a model here may be online. Read it on the page, Node, What it remembers.")
+    rows = q("SELECT * FROM learnings ORDER BY kind, CASE status WHEN 'holding' THEN 0 WHEN 'weakening' THEN 1 "
+             "WHEN 'too_early' THEN 2 ELSE 3 END, n DESC")
+    # how many diary entries the node keeps, by scale: Node's "What it remembers" counts them
+    kept = {r["scale"]: r["n"] for r in q("SELECT scale, count(*)::int AS n FROM digests GROUP BY scale")}
+    return {"learnings": learn.rank(rows, _people()), "digests": kept, "checked": state.get("learned_at") and
+            datetime.fromtimestamp(state["learned_at"], timezone.utc).isoformat(timespec="seconds")}
+
+
+def _people() -> dict:
+    r = q("SELECT people FROM household WHERE id = 1")
+    return (r[0].get("people") or {}) if r else {}
+
+
+@app.get("/household")
+def household(request: Request, authorization: str = Header("")):
+    """Who is in the house, as the household said (SPEC_learn §8): yes or no for each of `choices`. Guarded as
+    GET /learned: the admin token, and an agent only while AGENT_PREFER=private."""
+    _admin(authorization)
+    if request.headers.get("x-agent") and settings.get("AGENT_PREFER", "private") != "private":
+        raise HTTPException(403, "who is in this house stays with its own machines: AGENT_PREFER is not private")
+    return {"people": _people(), "choices": learn.PEOPLE}
+
+
+@app.put("/household")
+def household_set(body: dict, request: Request, authorization: str = Header("")):
+    """Replace the answers: {"people": {"older": true, ...}}. Only the keys in `choices`, only true or false; the rest
+    is refused, so nothing but these answers is ever kept. An agent may not write them."""
+    _admin(authorization)
+    if request.headers.get("x-agent"):
+        raise HTTPException(403, "who lives here is the household's to say, on the page")
+    p = body.get("people")
+    if not isinstance(p, dict) or any(k not in learn.PEOPLE or not isinstance(v, bool) for k, v in p.items()):
+        raise HTTPException(422, f"people is an object of true or false for {', '.join(learn.PEOPLE)}")
+    with db() as con, con.cursor() as cur:
+        cur.execute("""INSERT INTO household (id, people, updated_at) VALUES (1, %s, now())
+                       ON CONFLICT (id) DO UPDATE SET people = EXCLUDED.people, updated_at = now()""", (Jsonb(p),))
+    return {"ok": True, "people": p}
+
+
+@app.get("/learned/place")
+def learned_place():
+    """What this node learned about the place around it, never about the house (SPEC_learn §3): the holding `usual`
+    learnings of scope place, the outdoor sensors' hours, which the Wall draws and its narration already reads
+    (ask.wall_reads). On the `open` list: the rows are outdoor public stations' numbers, with nothing of the house in
+    them. The house's own learnings, what worked, the asks and the digests stay behind GET /learned."""
+    return {"learnings": q("SELECT key, issue, metric, statement, numbers, n, checked_at FROM learnings "
+                           "WHERE kind = 'usual' AND scope = 'place' AND status = 'holding' ORDER BY key")}
+
+
+@app.get("/learned/search")
+def learned_search(request: Request, q_: str = Query("", alias="q", max_length=200), scale: str = "",
+                   limit: int = Query(12, ge=1, le=50), authorization: str = Header("")):
+    """Search what this house learned and its digests (SPEC_learn §6): any of the words, ranked, newest first among
+    equals. No words lists the newest digests, of one `scale` if given. Postgres full-text search, 'simple' so English,
+    Indonesian and Spanish words all match as written. Guarded as GET /learned."""
+    _admin(authorization)
+    if request.headers.get("x-agent") and settings.get("AGENT_PREFER", "private") != "private":
+        raise HTTPException(403, "what this house learned stays with its own machines: AGENT_PREFER is not private")
+    if scale and scale not in learn.SCALES:
+        raise HTTPException(422, f"scale is one of {', '.join(learn.SCALES)}")
+    terms = learn.search_terms(q_)
+    if not terms:
+        return {"q": q_, "results": q("""SELECT 'digest' AS source, scale, period_start, label, text, numbers FROM digests
+                                         WHERE (%s = '' OR scale = %s) ORDER BY period_start DESC, scale LIMIT %s""",
+                                      scale, scale, limit)}
+    return {"q": q_, "results": q("""
+        WITH t AS (SELECT to_tsquery('simple', %s) AS query)
+        SELECT * FROM (
+          SELECT 'digest' AS source, scale, period_start, label, text, numbers, ts_rank(tsv, t.query) AS rank
+            FROM digests, t WHERE tsv @@ t.query AND (%s = '' OR scale = %s)
+          UNION ALL
+          SELECT 'learning', kind, NULL, key, statement, numbers, ts_rank(to_tsvector('simple', key || ' ' || statement), t.query)
+            FROM learnings, t WHERE %s = '' AND to_tsvector('simple', key || ' ' || statement) @@ t.query) x
+        ORDER BY rank DESC, period_start DESC NULLS LAST LIMIT %s""", terms, scale, scale, scale, limit)}
+
+
+@app.get("/offers")
+def offers():
+    """What this home would lend or give, as it chose to publish it: open at every SHARE_LEVEL, and in the daily
+    export. `ask` opens the node's Telegram bot on that offer; null when the node has no bot."""
+    return offers_now()
+
+
+@app.patch("/captures/{cid}")
+def capture_patch(cid: int, body: dict, request: Request, authorization: str = Header("")):
+    """The household edits an image's words: `note`, `kind`, and `meta` (an object of short strings, replaced whole).
+    The point, the cell, the time and the file are facts of arrival and are not edited here."""
+    _captures_auth(request, authorization)
+    sets, vals = [], []
+    if "note" in body:
+        sets.append("note = %s"); vals.append(str(body["note"] or "")[:500])
+    if "kind" in body:
+        if body["kind"] not in CAPTURE_KINDS:
+            raise HTTPException(422, f"kind must be one of {', '.join(CAPTURE_KINDS)}")
+        sets.append("kind = %s"); vals.append(body["kind"])
+    if "meta" in body:
+        m = body["meta"]
+        if not isinstance(m, dict) or len(m) > 40:
+            raise HTTPException(422, "meta is an object of at most 40 keys")
+        sets.append("meta = %s"); vals.append(Jsonb({str(k)[:60]: str(v)[:500] for k, v in m.items()}))
+    if body.get("confirm") or "findings" in body:
+        was = (q("SELECT analysis FROM captures WHERE id = %s", cid) or [{}])[0].get("analysis") or {}
+        if not was.get("model"):
+            raise HTTPException(409, "nothing to confirm: this image has not been described yet")
+        # a person here says the model's findings are right: from now on they are the household's, with its name
+        # (an edited list is confirmed by the edit: what is left is what a person says is there)
+        who = str(body.get("actor") or "someone here")[:80]
+        mine = {"by": "person", "confirmed_by": who, "confirmed_at": datetime.now(timezone.utc).isoformat()}
+        if "findings" in body:
+            if not isinstance(body["findings"], list) or len(body["findings"]) > 30:
+                raise HTTPException(422, "findings is a list of at most 30")
+            mine["findings"] = _taxa(_findings(body["findings"]),   # an unchanged name keeps its taxon, unasked
+                                     {f["scientific"]: f["taxon"] for f in was.get("findings") or [] if f.get("scientific") and f.get("taxon")})
+        sets.append("analysis = analysis || %s"); vals.append(Jsonb(mine))
+    if not sets:
+        raise HTTPException(422, "nothing to change: note, kind, meta, findings or confirm")
+    with db() as con, con.cursor() as cur:
+        cur.execute(f"UPDATE captures SET {', '.join(sets)} WHERE id = %s RETURNING *", (*vals, cid))
+        row = cur.fetchone()
+    if not row:
+        raise HTTPException(404, "no such capture")
+    return {"ok": True, "capture": {k: (v.isoformat() if isinstance(v, datetime) else v) for k, v in row.items()}}
+
+
+@app.delete("/captures/{cid}")
+def capture_delete(cid: int, request: Request, authorization: str = Header("")):
+    """Delete an image: the row and its file. The admin token (or this machine) only: the act token may add an
+    image and edit its words, never destroy one."""
+    if not _is_local(request):
+        _admin(authorization)
+    with db() as con, con.cursor() as cur:
+        cur.execute("DELETE FROM captures WHERE id = %s RETURNING file", (cid,))
+        row = cur.fetchone()
+        if row:   # a thing added from this photo stays, without a link to a picture that is gone
+            cur.execute("UPDATE things SET capture_id = NULL WHERE capture_id = %s", (cid,))
+    if not row:
+        raise HTTPException(404, "no such capture")
+    path = os.path.join(CAPTURES_DIR, os.path.basename(row["file"]))
+    if os.path.isfile(path):
+        os.remove(path)
+    return {"ok": True, "deleted": cid}
+
+
+@app.get("/captures/{cid}/file")
+def capture_file(cid: int, request: Request, authorization: str = Header(""), w: int = Query(0, ge=0, le=1024)):
+    """The picture itself. Token only, like the row; the name is this node's own, never a client's path. `?w=` makes a
+    JPEG at most that many pixels a side, for a table's thumbnail: a drone picture is 11 MB."""
+    _captures_auth(request, authorization)
+    from fastapi.responses import FileResponse, Response  # noqa: PLC0415
+    rows = q("SELECT file, mime FROM captures WHERE id = %s", cid)
+    if not rows:
+        raise HTTPException(404, "no such capture")
+    path = os.path.join(CAPTURES_DIR, os.path.basename(rows[0]["file"]))
+    if not os.path.isfile(path):
+        raise HTTPException(404, "the row is here but the file is gone from the captures folder")
+    if w:
+        import io  # noqa: PLC0415
+        from PIL import Image  # noqa: PLC0415
+        # ponytail: resized on every ask; a thumbnail cache beside the file when a table of hundreds feels slow
+        im = Image.open(path).convert("RGB")
+        im.thumbnail((w, w))
+        buf = io.BytesIO()
+        im.save(buf, "JPEG", quality=80)
+        return Response(buf.getvalue(), media_type="image/jpeg", headers={"Cache-Control": "private, max-age=86400"})
+    return FileResponse(path, media_type=rows[0]["mime"])
+
+
+# ---------------------------------------------------------------- the image model (SPEC_eyes step 2)
+# A local vision model describes an image and lists what it sees, each finding filed under a class of the Fab City
+# flows profile, so a tree in a picture and a tree logged as planted are the same word. Only the physical classes:
+# a picture cannot see a design file or an hour of work. The picture goes to this machine's Ollama and nowhere else.
+FLOWS_VOCAB = "https://planetai.fab.city/vocab/flows/1.0/"
+# ponytail: copied from packs/flows/resources.yml (branch flows-pack-2026-09-28); read that file once the pack merges
+EYES_CLASSES = ("plant", "animal", "habitat", "food", "water", "compost", "waste_residual", "plastic_waste",
+                "packaging", "wood", "metal", "textile", "electronics", "filament", "fuel", "electricity", "part",
+                "filter", "furniture", "tool", "appliance", "garment", "micromobility", "vehicle", "goods", "other")
+# Two asks, because a 7B vision model asked for JSON straight from the picture invents (node #1, 12 Oct: dogs, cats
+# and a reef on a drone shot of roofs, looping until cut off). Looking first, in words, and filing those words second
+# keeps every finding to something the description said.
+EYES_LOOK = ("A household took this picture of its own place ({kind}, near {city}){note}. Describe what is in it in a "
+             "short paragraph: the living things (plants and trees, with the species when you can tell, and animals), "
+             "what is built or made, and anything that is a problem for the place, such as rubbish, smoke, a spill or "
+             "damage. Say only what you can actually see. Do not describe people.")
+EYES_FILE = ("Here is a description of a picture:\n\n{summary}\n\nList each kind of thing the description says is "
+             "there, once, as a finding, and leave out anything it says is absent. class: plant is any living plant or "
+             "tree, animal any animal, habitat is ground made living, waste_residual and plastic_waste are rubbish, a "
+             "made thing goes under its own class or goods, a car, motorbike or truck is vehicle, and other is "
+             "buildings, roads and anything else. "
+             "name: as specific as the description is. count: only when the description gives a number, else null. "
+             "issue: true only when the description says it is a problem. scientific: for a plant or animal only, its "
+             "scientific name at the rank you are sure of (a species such as Cocos nucifera, a genus such as Plumeria, "
+             "or a family such as Arecaceae), else null. Never people.")
+_EYES_TASKS: set = set()   # strong refs, so an automatic description is not collected half way
+
+
+async def _describe(cid: int, model: str) -> dict:
+    """Ask the local vision model about one capture and keep what it says, marked as the model's. Raises with a
+    sentence a person can act on when the model or the file is not there."""
+    import asyncio, base64, io  # noqa: E401, PLC0415
+    from PIL import Image  # noqa: PLC0415
+    rows = q("SELECT file, kind, note FROM captures WHERE id = %s", cid)
+    if not rows:
+        raise HTTPException(404, "no such capture")
+    path = os.path.join(CAPTURES_DIR, os.path.basename(rows[0]["file"]))
+    if not os.path.isfile(path):
+        raise HTTPException(404, "the file is gone from the captures folder")
+    im = Image.open(path).convert("RGB")
+    im.thumbnail((1024, 1024))   # what a 7B vision model can use; a drone's 20 MP would only cost minutes
+    buf = io.BytesIO()
+    im.save(buf, "JPEG", quality=85)
+    note = (rows[0]["note"] or "").strip()
+    look = EYES_LOOK.format(kind=rows[0]["kind"], city=os.getenv("NODE_CITY", "") or NODE,
+                            note=f"; the household wrote: {note[:200]}" if note else "")
+    schema = {"type": "object", "required": ["findings"], "properties": {
+        "findings": {"type": "array", "maxItems": 12, "items": {"type": "object", "required": ["class", "name"], "properties": {
+            "class": {"type": "string", "enum": list(EYES_CLASSES)}, "name": {"type": "string"},
+            "count": {"type": ["integer", "null"]}, "issue": {"type": "boolean"},
+            "scientific": {"type": ["string", "null"]}}}}}}
+    url = os.getenv("OLLAMA_URL", "http://host.docker.internal:11434")
+
+    async def ask(hc, msg, num, fmt=None):
+        r = await hc.post(url + "/api/chat", json={"model": model, "stream": False, "messages": [msg],
+                                                   "options": {"temperature": 0, "num_predict": num},
+                                                   **({"format": fmt} if fmt else {})})
+        # The detail reaches the Data door, so it is said in the household's words; the admin's is the log's.
+        if r.status_code == 404:
+            log.warning("eyes: %s is not pulled on this machine (ollama pull %s)", model, model)
+            raise HTTPException(503, "No image reader is set up on this node yet.")
+        if r.status_code >= 400:
+            log.warning("eyes: %s answered %s: %s", model, r.status_code, r.text[:200])
+            raise HTTPException(502, "The image reader did not answer; try again later.")
+        return r.json()["message"]["content"]
+    try:
+        async with httpx.AsyncClient(timeout=600) as hc:
+            summary = (await ask(hc, {"role": "user", "content": look,
+                                      "images": [base64.b64encode(buf.getvalue()).decode()]}, 500)).strip()
+            filed = EYES_FILE.format(summary=summary)
+            out = json.loads(await ask(hc, {"role": "user", "content": filed}, 900, schema))
+    except httpx.HTTPError as e:
+        log.warning("eyes: Ollama is not answering at %s (%s)", url, type(e).__name__)
+        raise HTTPException(503, "The image reader did not answer; try again later.") from None
+    except (KeyError, ValueError, TypeError) as e:
+        log.warning("eyes: %s answered something that is not the shape asked for (%s)", model, type(e).__name__)
+        raise HTTPException(502, "The image reader did not answer; try again later.") from None
+    findings = await asyncio.to_thread(_taxa, _findings(out.get("findings") or []))
+    analysis = {"model": model, "where": "local", "vocab": FLOWS_VOCAB, "asked": [look, EYES_FILE],
+                "at": datetime.now(timezone.utc).isoformat(), "summary": summary[:1500],
+                "findings": findings, "by": "model", "confirmed_by": None}
+    with db() as con, con.cursor() as cur:
+        cur.execute("UPDATE captures SET analysis = %s WHERE id = %s", (Jsonb(analysis), cid))
+    return analysis
+
+
+def _findings(raw: list) -> list:
+    """A list of findings as the node keeps them, whoever wrote it: a known class or other, a name, a count or none."""
+    out = []
+    for f in raw[:30]:
+        if not isinstance(f, dict) or str(f.get("name") or "").strip().lower() in ("", "none", "null", "n/a", "nothing"):
+            continue   # a small model walks the class list and files "none" under each
+        cnt = f.get("count")
+        row = {"class": f.get("class") if f.get("class") in EYES_CLASSES else "other",
+               "name": str(f["name"]).strip()[:120],
+               "count": cnt if isinstance(cnt, int) and not isinstance(cnt, bool) and cnt >= 0 else None,
+               "issue": f.get("issue") is True}
+        sci = " ".join(str(f.get("scientific") or "").split())[:120]
+        if row["class"] in TAXON_KINGDOM and sci.lower() not in ("", "none", "null", "n/a", "unknown"):
+            row["scientific"] = sci   # only a living thing has a species; a taxon is the node's, never taken from a body
+        out.append(row)
+    return out
+
+
+# SPEC_species step 1: a plant or animal finding's scientific name, matched to the GBIF Backbone (CC BY 4.0) when the
+# household said yes to SPECIES_MATCH. The name goes, nothing else. strict=true, because a fuzzy match turns a typo
+# into some other living thing; and a match in the wrong kingdom (a plant named like a beetle) is no match.
+TAXON_KINGDOM = {"plant": "Plantae", "animal": "Animalia"}
+GBIF_MATCH = "https://api.gbif.org/v1/species/match"
+
+
+def _taxa(findings: list, known: dict | None = None) -> list:
+    """Give each living finding with a scientific name its taxon: carried over from `known` (scientific -> taxon, the
+    row's earlier findings) when the name is unchanged, else asked of GBIF when the household allows it. The rank is
+    what GBIF matched, never what the model claimed: "Arecaceae" stays a family. No yes, no answer or no match, and
+    the finding keeps its typed name with no taxon."""
+    known = known or {}
+    ask = settings.get("SPECIES_MATCH", "off") == "on"
+    for f in findings:
+        sci = f.get("scientific")
+        if not sci:
+            continue
+        if sci in known:
+            f["taxon"] = known[sci]
+            continue
+        if not ask:
+            continue
+        try:
+            m = httpx.get(GBIF_MATCH, params={"name": sci, "strict": "true"}, timeout=10).json()
+        except (httpx.HTTPError, ValueError) as e:
+            log.warning("species: GBIF did not answer (%s)", type(e).__name__)
+            ask = False   # one failure is enough for this list; the rest keep their typed names
+            continue
+        if m.get("matchType") in (None, "NONE") or not m.get("usageKey") or m.get("kingdom") != TAXON_KINGDOM[f["class"]]:
+            continue
+        f["taxon"] = {"key": m["usageKey"], "name": m.get("scientificName") or sci, "rank": str(m.get("rank") or "").lower(),
+                      "match": str(m["matchType"]).lower(), "source": "gbif",
+                      **({"accepted": m["acceptedUsageKey"]} if m.get("acceptedUsageKey") else {})}
+    g, o = state.get("griis"), (state.get("others") or {}).get("cells")
+    for f in findings:   # every pass, so a saved finding takes up a checklist read since it was matched
+        t = f.get("taxon")
+        if t and o is not None:   # what others recorded in the seven cells, under this name or the one it stands for
+            t["others"] = sum(c.get(t.get("key")) or c.get(t.get("accepted")) or 0 for c in o.values())
+        if not t or not g:
+            continue
+        t.pop("introduced", None), t.pop("where", None)
+        if "marks" in g:   # a synonym is looked up under the name it stands for, too
+            mark = g["marks"].get(t.get("key")) or g["marks"].get(t.get("accepted"))
+            t.update({"introduced": mark, "where": g["name"]} if mark else {})
+        elif g.get("why"):
+            t["introduced"], t["where"] = None, g["why"]
+    return findings
+
+
+def _eyes_model() -> str:
+    return settings.get("EYES_MODEL", "").strip()
+
+
+def _describe_later(cid: int) -> bool:
+    """The upload's checkbox: describe a new image after its upload has answered, so the phone is not kept waiting.
+    False when no image model is set, so the page can say so."""
+    import asyncio  # noqa: PLC0415
+    model = _eyes_model()
+    if not model:
+        return False
+
+    async def run():
+        try:
+            await _describe(cid, model)
+        except Exception as e:  # noqa: BLE001 — a failed description leaves the image undescribed, never lost
+            log.warning("eyes: capture %s not described: %s", cid, getattr(e, "detail", e))
+    t = asyncio.get_running_loop().create_task(run())
+    _EYES_TASKS.add(t)
+    t.add_done_callback(_EYES_TASKS.discard)
+    return True
+
+
+@app.post("/captures/{cid}/describe")
+async def capture_describe(cid: int, request: Request, authorization: str = Header("")):
+    """Describe one image with the image model in Set up (EYES_MODEL), now, and answer what it found. A second
+    press (a new model, say) replaces the earlier description, and with it any confirmation or edit of that one."""
+    _captures_auth(request, authorization)
+    model = _eyes_model()
+    if not model:
+        raise HTTPException(409, "No image reader is set up on this node yet.")
+    return {"ok": True, "analysis": await _describe(cid, model)}
 
 
 @app.post("/readings")
@@ -1699,6 +3879,7 @@ def receive_events(body: dict, authorization: str = Header("")):
         raise HTTPException(403, "this node accepts no children: set AGGREGATE_TOKEN in .env and give it to them")
     if not _bearer_ok(authorization, AGG_TOKEN()):
         raise HTTPException(401, "bad or missing Authorization: Bearer <AGGREGATE_TOKEN>")
+    _wire_in(body, EVENTS_V0)
     rows, child = body.get("rows", []), body.get("node", "?")
     scale = body.get("scale", "community")
     kept = 0
@@ -1721,7 +3902,8 @@ def receive_events(body: dict, authorization: str = Header("")):
 
 @app.get("/aggregates")
 def aggregates(hours: int = Query(24, ge=1, le=24 * 90)):   # ge: hours=-1 made make_interval walk forwards and the window empty
-    return q("SELECT bucket, sensor_id, metric, mean, min, max, n FROM readings_1h WHERE bucket > now() - make_interval(hours => %s) ORDER BY bucket DESC", hours)
+    return q("SELECT bucket, sensor_id, metric, mean, min, max, n FROM readings_1h r WHERE bucket > now() - make_interval(hours => %s) AND "
+             + packs.public_sql("r") + " ORDER BY bucket DESC", hours)
 
 
 @app.post("/aggregates")
@@ -1742,6 +3924,7 @@ def receive_aggregates(body: dict, authorization: str = Header("")):
         raise HTTPException(403, "this node accepts no children: set AGGREGATE_TOKEN in .env and give it to them")
     if not _bearer_ok(authorization, AGG_TOKEN()):
         raise HTTPException(401, "bad or missing Authorization: Bearer <AGGREGATE_TOKEN>")
+    _wire_in(body, AGGREGATES_V0)
     rows = body.get("rows", [])
     child = body.get("node", "?")
     with db() as con, con.cursor() as cur:

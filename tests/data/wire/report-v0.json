@@ -1,0 +1,18 @@
+{
+  "schema": "report-v0",
+  "source": "app/main.py::report_latest",
+  "keys": [
+    "depth",
+    "due_local",
+    "fallback_reason",
+    "held_quiet",
+    "id",
+    "note",
+    "rung",
+    "schema",
+    "sent",
+    "text",
+    "ts",
+    "window_hours"
+  ]
+}

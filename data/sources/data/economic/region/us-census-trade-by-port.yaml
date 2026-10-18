@@ -1,0 +1,32 @@
+name: US Census Bureau international trade by port (intltrade porths)
+url: https://www.census.gov/foreign-trade/data/index.html
+description: |
+  Monthly US imports and exports by port of entry or exit and HS commodity,
+  with value in dollars and shipping weight split by vessel, air and
+  containerised cargo, from the Census Bureau's international trade API.
+pillar: economic
+scale: region
+status: candidate
+license: US public domain (Census Bureau work; API terms require a no-endorsement notice)
+api: https://api.census.gov/data/timeseries/intltrade/imports/porths
+pilot_relevance: [boston]
+places: [boston]
+tags: [trade, imports, exports, ports, airports, material-flow, tonnes, census]
+added: 2026-09-26
+auth: api-key
+feeds_cells: [Economic|Bioregion]
+upstream_listed_in: []
+notes: |
+  VERIFIED 2026-09-26, nothing read for a real territory yet. Filed for the gateway-flows row proposed in #36.
+
+  LICENCE. No licence text. Census Bureau data is a work of the US Government and public domain under 17 USC 105. The API catalogue's `license: CC0` is a metadata field, not a licence document. The API terms of service ask for the notice "This product uses the Census Bureau Data API but is not endorsed or certified by the Census Bureau", and forbid presenting modified data as the Bureau's.
+
+  ENDPOINTS. `/data/timeseries/intltrade/exports/porths` and `/imports/porths`. **A free key is now required.** On 2026-09-26 a keyless data call returned a 302 redirect to `/data/missing_key.html`, not an error body, so a harvester without a key sees what looks like an empty result. `variables.json` for both answered 200. Exports carry ALL_VAL_MO plus VES_, AIR_ and CNT_ value and weight fields; imports carry GEN_VAL_MO and the same weight fields. Weights are in kilograms. The key is free from api.census.gov/data/key_signup.html.
+
+  PORT CODES (Schedule D, census.gov/foreign-trade/schedules/d/dist.txt): district 04 Boston; port 0401 Boston, MA (seaport) and 0417 Logan Airport, MA. Air freight is small by weight and large by value, which is why the split matters.
+
+  WHY THIS CELL. Economic|Bioregion's category is material flow accounting, and DMC needs imports and exports. This is the gateway's measured flow, not a model.
+
+  WHAT IT DOES NOT CLAIM. Port of entry is where goods cleared customs, not where they are used: much that lands in Boston goes on to the rest of New England, and goods cleared inland arrive by truck from other ports. International trade only; domestic freight between states is in FAF5, whose licence text was not found (see #36). Start year not verified here without a key.
+
+  STILL MISSING. A key on a node and a first pull for 0401 and 0417.

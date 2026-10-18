@@ -1,4 +1,5 @@
 # PLANETAI. Architecture
+<!-- checked: v0.82.1 -->
 
 The whole building, drawn once, so every brick knows where it goes. What exists today is marked. What doesn't is
 drawn anyway, because the contracts between layers are the thing that can't be retrofitted.
@@ -49,10 +50,10 @@ a node anywhere on earth can sample a global model at its coordinates. Same core
 
 | `sensors.kind` | what it is | cadence | scales it serves | shipped |
 |---|---|---|---|---|
-| `sensor` | a device on your LAN or a nearby public one | minutes | Community, City | Smart Citizen, AirGradient, PurpleAir |
+| `sensor` | a device on your LAN or a nearby public one | minutes | Community, City | Smart Citizen, Meshtastic over MQTT; AirGradient and PurpleAir written, not polled |
 | `portal` | an open-data or statistical API | days–months | City, Region, Bioregion | `ckan` (any CKAN portal) |
 | `model` | a global model sampled at a point | hours | Planet, Bioregion | `openmeteo` |
-| `survey` | people answering | campaign | Community, City | **not built**: the four empty Social cells |
+| `survey` | people answering | campaign | Community, City | **not built** as a campaign: the four empty Social cells. The one `survey` row is `things:<node>`, the counts of the things a home keeps |
 | `child` | a node below this one | hourly | the scale below | the aggregate push |
 
 Slow sources land in the `observations` view (latest per source per metric); sensors land in `stats` (15m/1h/24h).
@@ -78,6 +79,25 @@ don't summarise upward.
 
 Every layer speaks three protocols. Compute, apps, and partner systems attach by speaking one of them.
 
+**Every wire document says which document it is.** From v0.63 the ones below carry a top-level `schema`
+key, and `tools/check_wire.py` in `make lint` holds their top-level shape against a fixture in
+`tests/data/wire/`, so a key cannot be gained or lost without somebody editing that file on purpose.
+
+| `schema` | the document | built by |
+|---|---|---|
+| `issues-v0` | `GET /issues` — the one document a client draws | `app/issues/engine.py::compute` |
+| `export-v0` | `GET /export?day=` — the nightly open-data file, pinned to IPFS forever | `app/main.py::export` |
+| `report-v0` | `GET /report/latest` | `app/main.py::report_latest` |
+| `aggregates-v0` | the child's hourly push body | `app/main.py::push_aggregates` |
+| `events-v0` | the child's ρ push body | `app/main.py::push_events` |
+| `days-v0` | `GET /issues/days?days=` — the same hourly series over up to 90 days (v0.79) | `app/issues/engine.py::days` |
+
+A receiver that sees a `schema` it does not know **logs once and processes what it recognises. It never
+refuses** — a parent one release behind has to keep accepting a child one release ahead. A document with
+no `schema` is read as `-v0` and logged once as legacy. A version bumps only on a breaking change, and
+the bump is a `docs/decisions/` entry. (`/health`'s `schema` is older and means something else: the
+database schema version. Nothing else should use the name for two things.)
+
 **Readings**: `(ts, sensor_id, metric, value)` + a `sensors` row `(source, name, lat, lon, indoor, local, meta)`.
 Up: children push hourly means (`POST /aggregates`). Down: a sensor or a phone the household trusts posts raw
 (`POST /readings`, with the node's admin token: a posted reading counts as one of the house's own). The instance
@@ -87,9 +107,13 @@ decides what it keeps.
 Exactly the `FCI Observations` row. Every instance exposes `GET /cells`. The Index surface (or the aggregator above)
 pulls them. Provenance `state` travels end to end and is never upgraded on the way.
 
-**Actions**: `{alert_id, stage: acknowledged|acted|measured, ts, note}` via `POST /actions`. This is how ρ is
-measured: detect (alert `ts`) → decide (`acknowledged`) → deploy (`acted`) → measure (`measured`). Five FCC-era
-stages collapse to these four at an address; `fabricate` appears between decide and act when the action is a part.
+**Actions**: `{alert_id, stage: acknowledged|decided|acted, ts, note}` via `POST /actions`. This is how ρ is
+measured: detect (alert `ts`) → decide (`acknowledged`) → deploy (`acted`) → measure (`measured`, derived by the
+node and never posted). `decided` is a record and enters no ρ. Five FCC-era stages collapse to these four at an
+address; `fabricate` appears between decide and act when the action is a part.
+Since v0.77 an alert *event* (one story per issue per house, `ALERT_ENGINE=events`) is answered the same way with
+`{event_id, stage: acted|acknowledged|dismissed}`: Done, Not now, Doesn't fit. It is a row in `actions` with an
+`event_id` and no `alert_id`, and it enters no ρ.
 
 **Read API** (the Observe contract): `GET /sensors /readings /stats /aggregates /alerts /cells /rho /health`, plus
 `GET /report/latest` (the last report the node wrote) and `GET /report/bundle?hours=` (every number it was written
@@ -108,8 +132,8 @@ The point of fixing the contracts is that compute is a *deployment decision*, no
 
 **Downstream: phones and small devices.**
 A mobile app is a client of the nearest node: reads `/stats` and `/alerts`, writes `POST /readings` (phone
-sensors, photos, "burning here" reports; it carries the node's admin token, given once when the phone is paired) and
-`POST /actions` (I shut the windows; open to the household's phones). It needs no server of its own.
+sensors, "burning here" reports; it carries the node's admin token, given once when the phone is paired), `POST /captures`
+(photos, with the act token the phone is unlocked with) and `POST /actions` (I shut the windows; open to the household's phones). It needs no server of its own.
 When on-device models arrive (classify a photo of smoke, run the tiny persistence model), they run against the same
 endpoints. Federated participation, if ever wanted, is a `POST` of model deltas to the same node: the Flower
 Android/iOS SDKs speak to a SuperNode that would sit next to the node's API. Nothing above the node changes.
@@ -131,6 +155,11 @@ one generic adapter reads it. This is how the network grows without owning every
 > These two names are the contract, not settings yet: no code reads them, so they were removed from `.env.example`
 > rather than sit there pretending to do something. The first thing that needs upstream compute adds them back
 > along with the code that reads them.
+>
+> The model half shipped in v0.22 under other names: `AGENT_REMOTE_URL` (a model on the household's own network)
+> and `AGENT_ONLINE_URL` (an online one, only when `AGENT_PREFER` allows it), both OpenAI-compatible, read by
+> `app/agent_loop.py` for the Telegram bot and, since v0.75, by `app/ask.py` for the dashboard's ask pane.
+> `UPSTREAM_COMPUTE_URL` still has no code.
 
 ## 5. Where the Fab City Index plugs in
 
@@ -144,14 +173,21 @@ named sources for whatever your place has, and where it has none, the global mod
 |---|---|---|
 | `Environmental\|Community` | local sensors: PM2.5 24h mean; days over WHO 24h in last 30d; sensor count | **live** as soon as node #1 runs 24h |
 | `Governance\|Community` | ρ from the actions table; is a council/operator acknowledging alerts | **partial** until someone acts |
-| `Economic\|Community` | fablabs.io activity for Fab Lab Bali (Fab Lab Activity Index, Boeing 2024) | adapter not written; **planned** |
+| `Economic\|Community` | businesses per km² within the kilometre, from OpenStreetMap (`packs/place`); `packs/make` reads fablabs.io to name workshops and fills no cell | **partial** |
 | `Social\|Community` | participation: WhatsApp group size, campaign responses (Making Sense Bali pattern) | operator-entered; **mock → partial** |
 | `Environmental\|City` | Bali Air Dispatch ambient means (peer observatory) + OpenAQ | **partial** (reference, not ours) |
-| `Governance\|City` | Bali Satu Data open-data health | adapter not written; registry entry exists |
+| `Governance\|City` | Bali Satu Data open-data health, through the CKAN adapter (`CKAN_PORTALS` in `presets/bali.env`, `packs/open-data-health`) | **partial** |
 
-`GET /cells` emits whatever the node can compute, each row carrying its `state`. The `Data Sources`
-registry (synced from `awesome-fabcity-data`) needs one new entry: `environmental/community/bali-air-dispatch` -
-proposed in `contrib/awesome-fabcity-data/`. Add the source via PR to that repo; the Airtable mirror follows.
+`GET /cells` emits whatever the node can compute, each row carrying its `state`. The rows it cannot
+compute are the more interesting half of the table, and the node carries the answer to them: a pinned
+snapshot of `awesome-fabcity-data` lives at `data/sources/` and is served at `GET /sources`, so a cell
+with no row can still say whether a source for it is registered and whether an adapter reads it. That
+is how a cell with no adapter says so, as a query rather than as a sentence somebody wrote once.
+
+A source entry is upstream's to change. Add one by PR to `awesome-fabcity-data`, wait for the merge,
+then re-pin here with `tools/sync_registry.sh <merge sha>` and commit the diff — `docs/SOURCES.md`.
+Nothing in this repo edits an entry, and `make lint` fails if anything did. The Airtable mirror follows
+upstream, not this snapshot.
 
 **ρ is the brick nobody else has.** Two generations of the Index measured a snapshot with ρ implicit at 1. The node
 measures ρ for real, because it's the thing sending the alert and the thing receiving the acknowledgement. Every
@@ -161,9 +197,10 @@ address running a node is a ρ instrument. That's the H0-A hypothesis reduced to
 
 Not a roadmap. Each stage names what exists, what it proves, and the trigger for the next.
 
-**Stage 0: now.** One node, two containers by default (a broker and a Reticulum bridge are optional profiles),
-about 1,400 lines. Sense: nine adapters across sensor, portal and model classes. Observe: Postgres, hourly view,
-read API. Act: two domain-blind core rules plus whatever the loaded packs contribute: eight packs ship: to
+**Stage 0: now.** One node, two containers by default (a broker, a Reticulum bridge, the local model's loop and IPFS
+are optional profiles), Sense: adapters across sensor, portal, model and map classes, in the core and in packs.
+Observe: Postgres, hourly view, read API. Act: two domain-blind core rules plus whatever the loaded packs contribute
+(eighteen core packs ship, `fire` and `surface-heat` new in v0.82, and wild packs are added per node), to
 Telegram, the mesh, and Home Assistant; `POST /actions` records what a person did.
 Index: `GET /cells` emits `Environmental|Community` live and ρ partial. Compute: one Mac mini. *Proves:* a reading
 becomes a message someone acts on, and the node reports that fact as a cell.
@@ -191,3 +228,9 @@ publishes. Mobile app ships as the domestic client. The Index publishes a quarte
 No raw readings leave the instance that recorded them. No cell is upgraded from mock or partial to live by
 aggregation. No agent dispatches without a human row in `actions`. No layer requires a cloud provider to function.
 No scale is skipped: a city aggregator is built from nodes, not declared from above.
+
+The node's page is `doors.html` (the five doors), `mobile.html` (the phone page at `/?layout=mobile`) or `index.html` (the classic dashboard at `/?layout=classic`) and a fixed list of companion files served by name from `app/static/`, and stays
+so — no framework, no build step, nothing loaded from anywhere else, because a node serves it to a household network
+that may have no route out.
+`planetai.fab.city` may use a framework; the two never share code, and both read the programme layer, which is
+published as [`docs/site/design.md`](docs/site/design.md).

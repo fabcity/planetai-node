@@ -96,5 +96,50 @@ assert all("message" not in r for r in rules), "no rule here may have a message"
 assert not os.path.exists(os.path.join(ROOT, "packs/forecast/cells.yml")), \
     "a forecast is not measured here and is nobody's Index cell"
 
+# ---- the wind field the map draws moving: 64 points in ONE request, answered in the order asked, south to north and
+# west to east, so the page reads row j, column i without working out where a point is.
+wg = fixture("openmeteo_wind_grid_ungasan_2026-10-07.json")
+lats, lons = A.wind_grid(LAT, LON)
+assert len(lats) == len(lons) == 8 and lats == sorted(lats) and lons == sorted(lons), "south to north, west to east"
+assert abs(lats[-1] - lats[0] - 60 / 110.574) < 1e-3, "the square is 2 x FORECAST_WIND_KM tall"
+assert len(wg) == 65 and all(abs(p["latitude"] - lats[k // 8]) < .06 and abs(p["longitude"] - lons[k % 8]) < .06 for k, p in enumerate(wg[:64])), \
+    "Open-Meteo answers in the order asked, within one model cell (cell_selection=nearest, never a land cell 12 km off)"
+assert wg[0]["hourly_units"]["wind_speed_10m"] == "km/h", "the field is km/h, as the point forecast stores it"
+_real_now = A.datetime
+class _At(dt.datetime):
+    @classmethod
+    def now(cls, tz=None): return dt.datetime(2026, 10, 7, 6, 50, tzinfo=dt.timezone.utc)
+A.datetime = _At
+wf = A.wind_field(HC(wg), LAT, LON)
+A.datetime = _real_now
+assert wf["n"] == 8 and len(wf["times"]) == len(wf["speed_kmh"]) == len(wf["from_deg"]) and 24 <= len(wf["times"]) <= 26, len(wf["times"])
+assert len(wf["speed_kmh"][0]) == 8 and len(wf["speed_kmh"][0][0]) == 8, "time, then row (south to north), then column"
+k = wg[3 * 8 + 5]["hourly"]["time"].index(wf["times"][0][:-1])
+assert wf["speed_kmh"][0][3][5] == wg[3 * 8 + 5]["hourly"]["wind_speed_10m"][k], "row 3, column 5 is point 29"
+assert len(wf["at_node"]["speed_kmh"]) == len(wf["times"]) and wf["at_node"]["speed_kmh"][0] == wg[64]["hourly"]["wind_speed_10m"][k], \
+    "the readout is the node's own point, asked as the 65th, not a value picked off the grid"
+try:
+    A.wind_field(HC(wg[:10]), LAT, LON); raise AssertionError("a short answer must be refused")
+except ValueError:
+    pass
+
+# ---- the cadence. The pack runs in the core 300 s loop; FORECAST_POLL_HOURS is how often it may ask, and a restart
+# or a failed fetch must not ask again sooner. 13 Oct: asking every poll spent Open-Meteo's daily limit by 06:15 UTC.
+import tempfile  # noqa: E402
+os.environ["PACK_OUT"] = tempfile.mkdtemp()
+calls = []
+class Count:
+    def get(s, url, params=None, headers=None, timeout=None): calls.append(url); raise RuntimeError("429")
+os.environ.update(FORECAST_OPENMETEO="1", FORECAST_BMKG="0", NODE_LAT=str(LAT), NODE_LON=str(LON), FORECAST_POLL_HOURS="6")
+A.fetch(Count()); first = len(calls)
+assert first == 2, f"the first poll asks Open-Meteo twice, the point and the field: {calls}"
+A.fetch(Count()); A.fetch(Count())
+assert len(calls) == first, "a second poll inside FORECAST_POLL_HOURS asks nothing, even after a failure"
+A.fetch(Count(), force=True)
+assert len(calls) == 2 * first, "`planetai run forecast fetch` asks now"
+stamp = os.path.join(os.environ["PACK_OUT"], "forecast.last"); os.utime(stamp, (0, 0))
+A.fetch(Count())
+assert len(calls) == 3 * first, "once the hours have passed, it asks again"
+
 print(f"test_forecast: ok — {loc['desa']}, {km*1000:.0f} m from the node, issued {issued:%d %b %H:%M} UTC, "
       f"{len(readings)} readings, {len(gr)} gap values, and not one thing it can say out loud")

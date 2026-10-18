@@ -1,21 +1,22 @@
 # Beta tester guide
 
-> **Alpha.** This is an experiment and you are joining it. Things will break. What you report decides what gets fixed
+> **Beta.** This is still an experiment and you are joining it. Things will break. What you report decides what gets fixed
 > first. Write to **info@fab.city** with what broke, what helped, and what did not.
 
 This is the path two testers follow in September 2026, rehearsed on a clean Ubuntu machine on 6 September with the
 Santiago (Providencia) and Barcelona (Poblenou) presets. It is written for someone who is not a developer.
 
-**Language.** The alerts, the dashboard, the terminal and the Telegram bot are in English or Bahasa Indonesia
-(`ALERT_LOCALE=en` or `id`). **The report is also in Spanish** (`ALERT_LOCALE=es`) — the first Spanish anything on the
-node. The Spanish and the Bahasa Indonesia report templates were written by an assistant and no native reader has been
-through them yet, so treat them as a draft and tell us which sentences are wrong or strange. Everything else is still
-English only.
+**Language.** What the node sends you is in Spanish on a Santiago, Barcelona or Menorca node: the alerts, the
+reports, the test alert and the bot's own replies (`/act`). The Spanish and the Bahasa Indonesia were written by an
+assistant and no native reader has been through the whole set, so treat them as a draft and tell us which sentences
+are wrong or strange. The dashboard, the terminal and these documents are still in English. To switch: Set up →
+Basics → Alert language, or `ALERT_LOCALE=es` in `.env`.
 
 ## 1. What you need
 
 - A computer that stays on: a Mac (Apple Silicon or Intel, macOS 13 or later), a Linux machine (x86), or Windows 10/11
-  with WSL2 (Ubuntu). **A Raspberry Pi does not work yet** (the database image has no arm64 build).
+  with WSL2 (Ubuntu). **A Raspberry Pi is untested**: the database image runs on arm64 since v0.63, and nobody
+  has run a node on one yet (`PLATFORMS.md`).
 - On a Mac: install [OrbStack](https://orbstack.dev) or Docker Desktop first and open it once. On Linux the installer
   installs Docker for you. On Windows: Docker Desktop with the WSL2 engine, and run everything inside the Ubuntu shell.
 - About 2 GB of disk, an internet connection, and 10 minutes.
@@ -42,8 +43,8 @@ What happens, in order:
    - *Do you have a sensor?* — pick `1`, *None yet*. You can add one later.
 3. *Here's the plan* — check the place and the time zone, press Enter.
 4. *Installing* — one to three minutes the first time (it downloads the database image and builds the node's image).
-5. A checklist. **Two crosses are normal now**: *telegram connected* and *a backup exists*. Telegram comes next; the
-   first backup runs tonight at 03:17.
+5. A checklist, then **To finish setting up**. **Two lines are normal there now**: *Connect Telegram* and *No backup
+   yet*. Telegram comes next; the first backup runs tonight at 03:17.
 6. **The green screen: "Your node is running."** It shows the dashboard address (`http://localhost:8080`), the address
    for your phone on the same WiFi, and the settings token (write it down; `planetai ui` shows it again). Then
    *What now?* Press `o` to open the dashboard, `t` to connect Telegram, or Enter to stay in the terminal.
@@ -55,10 +56,16 @@ If the terminal says `command not found: planetai` afterwards, open a new termin
 
 ## 3. Minute five: what you should see
 
-Open `http://localhost:8080`. With no sensor the top card says **"No sensor yet. The model says N for this square of
-the map."** N is the satellite model's PM2.5 estimate for your district (CAMS, an 11 km square). Below it: *Inside*
-(empty until you add a sensor), *Outside the door* (the wind), *The day it just had* (an empty chart for now), *Region*
-(the model, and the weather). The node polls every 5 minutes; "polled N min ago" sits next to the orange **ALPHA** pill.
+Open `http://localhost:8080`. Across the top is the ladder: eleven rungs, one per size of map
+cell your node knows, with the one it is standing on lit. Under it, the issue with most to say, as a
+sentence. With no sensor yet that sentence says so in as many words: **"No air sensor here yet, and
+no model for this point"**, or the model's own figure where there is one — CAMS, an 11 km square.
+
+Below that the page runs through the four stages the node works in, Decide first: **Decide** (what to do
+about it: one card for each open alert event, with the action your node chose and three buttons),
+**Observe** (every issue at every distance, and for each empty cell the reason it is empty), **Act** (what
+has been asked of whom, and what was answered) and **Measure** (whether it worked). The node polls every 5 minutes and the line under the lead says when
+it last heard anything.
 
 Within the first hour the node fetches 92 days of modelled air history and the climate normals for your coordinates,
 so the chart and the "compared with normal" sentences fill in.
@@ -92,8 +99,8 @@ planetai act 3 "read it"
 ```
 
 The terminal answers with ρ ("rho"): the share of alerts that led to someone doing something. This one number is what
-the node exists to measure. On the dashboard, the button **I did this** beside an alert in the *Act here* band does the
-same.
+the node exists to measure. On the dashboard the same button, **I did this**, is on the alert's card in Decide, the first of the stages
+under the lead.
 
 Replying `/act 3` in Telegram only works if the node's bot is running (`planetai agent local`, which installs a small
 local model; optional, and heavy on an 8 GB machine).
@@ -118,7 +125,7 @@ The old two-reports-a-day rhythm, if you want it: `planetai report every 12 && p
   changed, anything only the satellites know, what happened after the alerts, the one thing to do before the next
   report, and an invitation to ask. Under a hundred words.
 - **The one due at midnight is written and held, not sent.** You read it at six, with the night folded into it, and it
-  says so. It is on the dashboard the whole time under *Here — the last thing the node said*.
+  says so. It is on the dashboard the whole time, as the sentence at the top of **Now**.
 - **Between reports: act-level alerts only.** They say what to do in one sentence and ask for nothing back — no number
   to quote, no button on the hero. Quiet hours 22:00–06:00 hold everything but *act*.
 - Change the rhythm: `planetai report every 3|4|6|8|12|24` and `planetai report at <hour>`. Want one right now?
@@ -151,4 +158,4 @@ understand, anything that took more than one try.
 
 Updating to a newer version: `planetai update`. It backs up first and refuses to continue if the backup fails.
 
-Removing it: `planetai stop` keeps the data; `docker compose down -v` in `~/planetai` removes everything.
+Removing it: `planetai stop` keeps the data; `planetai remove` removes everything, and asks twice first.

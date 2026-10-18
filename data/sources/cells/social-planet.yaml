@@ -1,0 +1,18 @@
+cell: Social|Planet
+indicator_categories:
+- human development
+- health outcomes
+- education
+- poverty
+minimum_indicators:
+- name: Life expectancy at birth
+  unit: years
+  aggregation: latest
+- name: Population below the international poverty line
+  unit: percent
+  aggregation: latest
+does_not_claim: 'A global or national composite is not a measure of any city, and must not be shown
+  on a city page as though it were. A composite index''s rank is an artefact of its weighting: two
+  indices over the same underlying data rank countries differently, and the ranking is the index''s
+  opinion, not a finding.'
+notes: 4 entries filed. Context for local figures; no node computes this.

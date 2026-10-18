@@ -1,0 +1,20 @@
+cell: Environmental|Community
+indicator_categories:
+- air quality at the point of exposure
+- thermal exposure indoors
+- local biodiversity observation
+minimum_indicators:
+- name: PM2.5 24h mean from sensors in this node's custody
+  unit: ug/m3
+  aggregation: 24h-mean
+- name: Days over the WHO 24h PM2.5 guideline
+  unit: count
+  aggregation: 30d-total
+does_not_claim: 'A handful of sensors is not the neighbourhood. This cell measures the air where the
+  instruments are, and says nothing about a street with none. Indoor and outdoor are different measurements
+  and must never be averaged together. A low-cost sensor is not a reference instrument: its number
+  is not comparable to a regulatory station''s without calibration, and presenting the two on one
+  axis implies an equivalence that does not exist.'
+notes: '4 entries filed and this is the cell the node can actually measure. packs/air-quality computes
+  PM2.5 from sensors in custody and is the only `state: live` cell in the environmental pillar — `live`
+  means measured here, by instruments this node or its children hold.'

@@ -10,7 +10,7 @@ Bali; its Python is Apple's 3.9 with no third-party libraries, and that is the P
 ```bash
 make lint      # shell syntax, SQL idempotency, compose mounts, CLI snippets as Python 3.9 with stdlib only,
                # rules and cells against init.sql, docs against the code, the GUI, pyflakes, the app imports
-make test      # six offline suites: adapters, Meshtastic parsing, cell provenance, code packs, settings, outside resolution
+make test      # the 56 offline suites in tests/all, one line each and a count at the end
 ```
 
 The pre-commit hook runs lint and refuses `.env`, credentials, `.DS_Store`, and anything under `.git`. Install it once:
@@ -25,9 +25,13 @@ Every gate is a bug that shipped.
 | `check_sql.py` | a comment ate a closing bracket; a missing config Docker replaced with an empty directory; `.DS_Store` committed; `\| grep -q` under pipefail failing a good dump |
 | `check_cli_python.py` | f-strings that crashed on Python 3.9; PyYAML the node does not have; a `for` after a semicolon |
 | `check_rules.py` | a 69-day cooldown that made `test-alert` report a dead node; message placeholders the SQL never returned |
-| `check_docs.py` | "two containers, five rules" when there were nine adapters and eight packs; links to files that had moved |
+| `check_docs.py` | "two containers, five rules" when there were nine adapters and eight packs; links to files that had moved. Reads `docs/site/` too since v0.72.1, when the site was found fifteen releases behind |
+| `build_docs.py --check` | the docs site as a site: a NAV source that is gone, a page NAV never lists, a link to no page, an anchor to no heading |
 | `check_ui.py` | an element id the script referenced that was not in the markup |
-| `check_theme.py` | the copy of the design repo's theme drifting on this side, where nothing would say what moved |
+| `check_theme.py` | the copy of the design repo's theme drifting on this side, where nothing would say what moved. Holds the three frozen files to the sha256s in `data/frozen_layer.txt` on every lint — including CI and a node, where planetai-design is not checked out and the byte comparison cannot run |
+| `check_registry.py` | a pack naming `environmental/city/alphaearth` after the registry filed it as `alphaearth-satellite-embedding`, and a `social/community/openstreetmap` twin that was never filed. Also a hand-edited `data/sources/index.json`, and a pin that stopped half-way through a sync |
+| `tools/session.sh preflight` / `land` | not a lint gate — the two ends of a session. Four PRs unmerged for two weeks; the redesign on one laptop; two branches moving the suite count and git keeping one; CI red on main for a day. `skills/preflight/` and `skills/land/` |
+| `tools/sweep.py` | the same, once a day, into one pinned issue: six releases tagged with no CHANGELOG heading, the site at v0.59 while main was at v0.60 |
 | import check | `PARENT.startswith()` on a function, at import, so uvicorn never listened |
 | `check_requirements.sh` | `uvicorn==0.30.*` pinned against `mcp`, which needs 0.31; the image failed to build on the node |
 
@@ -58,17 +62,17 @@ retyping hid the bug.
 ## Releasing
 
 ```bash
-tools/release.sh v0.19     # lint, tag, push. Needs a CHANGELOG section.
-tools/bundle.sh            # the tarball the website serves to testers without repo access
-cd ../planetai && make deploy
+PLANETAI_SIGNING_KEY=~/.planetai/release_key tools/release.sh 0.73
+# lint + test, tag v0.73, push, then tools/ship.sh: the signed tarball AND the docs site, from the
+# same commit, into the site repo, and deploy. Needs a `## v0.73` section in CHANGELOG.md.
 ```
 
 ## Agents
 
 `AGENTS.md` at the root is the operating manual for an AI agent (Claude, Codex, a local model): the MCP surface at
 `/mcp`, the `--json` commands, the invariants, the gates. `planetai agent` prints the endpoint, the token and a config
-snippet. The MCP server is `app/agent.py`, twenty tools over the existing API; host operations are handed back as
-commands because the container has no Docker or git. `app/agent_loop.py` is a local model (Ollama, `qwen3:4b`) using
+snippet. The MCP server is `app/agent.py`, twenty-one tools over the existing API; host operations are handed back as
+commands because the container has no Docker or git. `app/agent_loop.py` is a local model (Ollama, `qwen3.5:4b` on 8 GB) using
 those tools, talking to the household over Telegram; `planetai agent local` sets it up. A bigger model on a laptop or workstation becomes the `remote` rung with
 `tools/remote-model.sh gptoss` (llama.cpp, `--jinja` for tool calls, an API key, the tailnet address printed for the
 node's `.env`). Tested: gpt-oss-120b answers in about two seconds with correct tool use; the node falls back to its
@@ -79,11 +83,11 @@ as constrained JSON because a 4B model narrates its reasoning as prose otherwise
 
 ```
 app/          main.py (api, loops, notify) · sources.py (adapters) · index.py (cells, ρ) · packs.py · settings.py ·
-              bootstrap.py · static/index.html (the dashboard)
+              bootstrap.py · ask.py (the ask pane) · static/ (the dashboard)
 bin/planetai  the operator CLI
-packs/        ten packs; see PACKS.md
+packs/        seventeen packs; see PACKS.md
 config/       rules.yml (two domain-blind rules), mosquitto, reticulum
-tools/        gates, hooks, bundle, release, mesh-provision.sh, nas/ (the NAS puller)
+tools/        gates, hooks, bundle, release, radio.py + radio_profiles/ (planetai radio), nas/ (the NAS puller)
 tests/        offline suites
 docs/         you are here
 ```

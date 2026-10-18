@@ -1,0 +1,18 @@
+cell: Social|Bioregion
+indicator_categories:
+- language and cultural continuity
+- indigenous and community land tenure
+minimum_indicators:
+- name: Recognised indigenous or community land area
+  unit: km2
+  aggregation: sum
+- name: Living languages present
+  unit: count
+  aggregation: latest
+does_not_claim: Presence is not vitality and title is not security. A language recorded in a global
+  register may have few speakers left; land shown as recognised may be contested, unmapped in the
+  national cadastre, or recognised on paper only. Absence from a global register is emphatically not
+  absence on the ground — under-registration is the normal state for both of these.
+notes: 2 entries filed, the thinnest cell in the matrix. The minimum set is provisional and this cell
+  most needs someone with standing to say what belongs in it — it is the one where a badly chosen
+  indicator does real harm.

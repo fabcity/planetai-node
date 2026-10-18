@@ -1,0 +1,35 @@
+cell: Environmental|Region
+indicator_categories:
+- renewable energy capacity
+- land use
+- watershed condition
+- regional emissions
+- municipal waste
+minimum_indicators:
+- name: Renewable electricity generation
+  unit: GWh/yr
+  aggregation: annual-total
+- name: Land under each land-use class
+  unit: km2
+  aggregation: latest
+- name: Residual municipal waste per capita
+  unit: kg/capita/yr
+  aggregation: annual-total
+does_not_claim: A regional total conceals where within the region anything is. Generation in one valley
+  is not access for the whole region, and land-use area says nothing about condition or tenure. Nothing
+  here is a measure of energy actually consumed locally. Generation is also not capacity — a wet year
+  and a new dam move this number the same way, so a rise is not evidence that anything was built, and
+  reading it as installed capacity is unsupported. Residual waste is what is not separately collected
+  for recovery, so it went to landfill, incineration, mechanical treatment or out of the region. It is not
+  waste generated, and a low figure can mean waste the system never collected. Separate collection is
+  not recycling, since a collected fraction can still be rejected at sorting, and sources count
+  different things (collected municipal waste, household waste only, or tonnes declared by operators).
+notes: '7 entries filed and it is the thinnest environmental cell — four of the seven are Bhutan NSDI
+  layers and one is an Indonesian forecast feed. The energy row asked for installed capacity in MW
+  until 2026-09-23. No source in this list published that at region scale, while the one that exists
+  (Occitanie) publishes generation in GWh — 221 rows, every one GWh, 2008-2024 — so the minimum was
+  one nothing could meet. Changed to match what regions actually publish. Capacity stays in
+  indicator_categories because it is still the thing you would rather know. The waste row (added
+  2026-09-26, #42) is the "trash out" half of PITO at region scale. Eurostat publishes no NUTS-level
+  waste table, so it is summed from municipal sources: Catalonia from the Generalitat''s 948
+  municipalities (253.4 kg/capita in 2024), the Region Metropolitana from RETC''s comunas.'

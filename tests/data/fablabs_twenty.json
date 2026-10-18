@@ -1,0 +1,736 @@
+[
+ {
+  "id": 2755,
+  "name": "Fab Lab Bali",
+  "kind_name": "fab_lab",
+  "parent_id": null,
+  "blurb": "A digital fabrication and prototyping facility in Bali aimed to empower the local community to develop meaningful interventions that enrich, empower, and scale Bali’s emerging regenerative economy.",
+  "description": "Fab Lab Bali is a cutting-edge digital fabrication and prototyping facility located in Jimbaran Hub, Bali that provides an extensive range of services to businesses, entrepreneurs, educational institutions, and individual makers in the region. \r\n\r\nPowered by the expertise of Meaningful Design Group, the eco-friendly vision of Jimbaran Hijau, and the full-support from Fab City Foundation, Fab Lab Bali aims to be a community innovation lab to propose and develop meaningful interventions that enrich, empower, and scale Bali’s emerging regenerative economy\r\n\r\nOur mission is to empower the local community by offering access to state-of-the-art tools, technology, and training while fostering sustainable design principles and practices. We are committed to making a positive impact on the environment and nurturing a vibrant ecosystem of innovation, collaboration, and growth.",
+  "slug": "fablabbali",
+  "avatar_url": "https://www.fablabs.io/media/W1siZiIsIjIwMjMvMDYvMjMvMDUvMDIvMDIvMDkxMzdhODUtNmU0YS00ODlkLTgzNWEtMWZhMDk3N2MzNzI0L0ZhYiBMYWIgQmFsaSBFbWJsZW0ucG5nIl0sWyJwIiwidGh1bWIiLCIxNTB4MTUwIyJdXQ/Fab%20Lab%20Bali%20Emblem.png?sha=61fd94c2dc46bdff",
+  "header_url": "https://www.fablabs.io/media/W1siZiIsIjIwMjMvMDYvMjMvMDUvMDIvMDIvYWM0NDMyY2ItMGFkYS00YzI3LTliZjEtOTA1YzQyNDcxMGMyL1doYXRzQXBwIEltYWdlIDIwMjMtMDYtMjAgYXQgMTcuMjIuMTUuanBlZyJdLFsicCIsInRodW1iIiwiODAweCJdXQ/WhatsApp%20Image%202023-06-20%20at%2017.22.15.jpeg?sha=48e9a6008082c92f",
+  "address_1": "J-Loft 2C, Jimbaran HUB, Jl. Karang Mas, Jimbaran, Kuta Selatan",
+  "address_2": "",
+  "city": "Badung",
+  "county": "Bali",
+  "postal_code": "80361",
+  "country_code": "ID",
+  "latitude": -8.7931195,
+  "longitude": 115.1501316,
+  "address_notes": "J-Loft Office No. 2C",
+  "phone": "+628119119066",
+  "email": "fablabbali@gmail.com",
+  "capabilities": [
+   "three_d_printing",
+   "cnc_milling",
+   "circuit_production",
+   "laser",
+   "precision_milling",
+   "vinyl_cutting"
+  ],
+  "activity_status": "active",
+  "links": [
+   {
+    "id": 42017,
+    "url": "https://fablabbali.com/"
+   },
+   {
+    "id": 42018,
+    "url": "http://www.instagram.com/fablab_bali"
+   }
+  ]
+ },
+ {
+  "id": 2852,
+  "name": "FabLab Solidaire Orange Digital Center Côte d'Ivoire",
+  "kind_name": "fab_lab",
+  "parent_id": 2791,
+  "blurb": "Le FabLab Solidaire de l’Orange Digital Center CI est l’atelier de fabrication numérique au sein duquel se regroupe toute sorte d’outils permettant de passer d’une idée projet à un prototype.",
+  "description": "Basé sur le \"faire\" et le partage, le FabLab Solidaire propose des formations gratuites pour développer de nouvelles compétences ou approfondir les compétences de fabrication numérique (robotique, électronique,...) et contribuer à améliorer l’employabilité de jeunes en situation d’insertion.",
+  "slug": "fablabsolidaireorangedigitalcenterctedivoire",
+  "avatar_url": "https://www.fablabs.io/media/W1siZiIsIjIwMjQvMDEvMTIvMDkvMDgvMjEvNDAyYWRjNTQtNjgxYS00NWU5LWJjMGItZGE1Y2FjYTE1ZTQ2LzIwMjExMTEyXzEwMjIxNi5qcGciXSxbInAiLCJ0aHVtYiIsIjE1MHgxNTAjIl1d/20211112_102216.jpg?sha=f7f0ba1b3a144cf4",
+  "header_url": "https://www.fablabs.io/media/W1siZiIsIjIwMjQvMDIvMDkvMTYvNTMvMTgvNTFjMmIxOWUtMjdhMi00YTBmLWI1MzItM2VjNjk1OWZhM2JlL1doYXRzQXBwIEltYWdlIDIwMjMtMDktMjUgYXQgMjEuMDEuMTYuanBlZyJdLFsicCIsInRodW1iIiwiODAweCJdXQ/WhatsApp%20Image%202023-09-25%20at%2021.01.16.jpeg?sha=e42de877ef761dd8",
+  "address_1": "https://maps.app.goo.gl/AYZTpZ8RncKXq7WEA",
+  "address_2": "",
+  "city": "Abidjan",
+  "county": "Abidjan/Plateau/Indénié",
+  "postal_code": "11 BP 202 Abidjan 11",
+  "country_code": "CI",
+  "latitude": null,
+  "longitude": null,
+  "address_notes": "Orange Digital Center - Plateau Indénié, 5ème étage immeuble Bellevue",
+  "phone": "+2252720345555",
+  "email": "fablabodcci@gmail.com",
+  "capabilities": [
+   "three_d_printing",
+   "cnc_milling",
+   "laser",
+   "vinyl_cutting"
+  ],
+  "activity_status": "active",
+  "links": [
+   {
+    "id": 43112,
+    "url": "https://www.facebook.com/ODCCotedIvoire/"
+   }
+  ]
+ },
+ {
+  "id": 2390,
+  "name": "ZEBRA3-SculptureClub",
+  "kind_name": "fab_lab",
+  "parent_id": null,
+  "blurb": "Artist, designer, scenographer, architect, student, Zébra3 shares with you his professional production workshop to build your project independently. Get technical advice, space, tools and machines.",
+  "description": "A space for production and experimentation, the shared Zébra3 workshop is a place of work and associative learning dedicated to artistic creation, shared and open to all. It is a place of discovery and meeting where we come to work, learn, train",
+  "slug": "zebra3",
+  "avatar_url": null,
+  "header_url": null,
+  "address_1": "10 Quai de Brazza",
+  "address_2": "Fabrique POLA",
+  "city": "bordeaux",
+  "county": "nouvelle aquitaine",
+  "postal_code": "33100",
+  "country_code": "FR",
+  "latitude": null,
+  "longitude": null,
+  "address_notes": "",
+  "phone": "0607705390",
+  "email": "sculpture.club@zebra3.org",
+  "capabilities": [
+   "three_d_printing",
+   "cnc_milling",
+   "precision_milling"
+  ],
+  "activity_status": "active",
+  "links": [
+   {
+    "id": 32901,
+    "url": "https://www.zebra3.org/sculptureclub-atelier-zebra3"
+   }
+  ]
+ },
+ {
+  "id": 776,
+  "name": "Fab Lab Lleida",
+  "kind_name": "fab_lab",
+  "parent_id": null,
+  "blurb": "Help the community around us to develop social projects with the help of digital manufacturing technologies.",
+  "description": "We are looking for a location for our lab.",
+  "slug": "fablablleida",
+  "avatar_url": "https://www.fablabs.io/media/W1siZiIsIjIwMTcvMDEvMjgvMTEvMjMvMjIvNDRmZTI3MzMtYzcxYS00NWIxLWI5NWYtYTg1OGYyYThjODlmL0ZhYiBMYWIgTGxlaWRhLmpwZyJdLFsicCIsInRodW1iIiwiMTUweDE1MCMiXV0/Fab%20Lab%20Lleida.jpg?sha=b2bc3867d943537c",
+  "header_url": null,
+  "address_1": "",
+  "address_2": "",
+  "city": "Lérida",
+  "county": "Lleida",
+  "postal_code": "",
+  "country_code": "ES",
+  "latitude": 41.623023,
+  "longitude": 0.6258636000000024,
+  "address_notes": "",
+  "phone": "+34 660493352",
+  "email": "fablablleida@gmail.com",
+  "capabilities": [
+   "three_d_printing",
+   "cnc_milling",
+   "circuit_production",
+   "laser"
+  ],
+  "activity_status": "planned",
+  "links": [
+   {
+    "id": 2145,
+    "url": "http://www.fablablleida.org"
+   }
+  ]
+ },
+ {
+  "id": 276,
+  "name": "Fab Lab Toscana Cascina",
+  "kind_name": "fab_lab",
+  "parent_id": null,
+  "blurb": "Our aim is to disseminate digital fabrication to citizens and artisans in our area. Our focus is on wearable, textiles, smart devices and design.",
+  "description": "- currently closed until furter notice",
+  "slug": "fablabcascina",
+  "avatar_url": "https://www.fablabs.io/media/W1siZiIsIjIwMTcvMDEvMjgvMTEvMTQvMDEvZGNlYjBhZWUtMTU4NS00NWU2LTlhMTctYTU4NWM2NjY3OGQ1L0ZhYiBMYWIgVG9zY2FuYSBDYXNjaW5hLmpwZyJdLFsicCIsInRodW1iIiwiMTUweDE1MCMiXV0/Fab%20Lab%20Toscana%20Cascina.jpg?sha=5a1ad1d4d725e6e1",
+  "header_url": "https://www.fablabs.io/media/W1siZiIsIjIwMTcvMDEvMjgvMTMvNTAvMjMvZTMwODllYTEtMjhmYy00MGFjLTllMjItMzNlZDVhNzljZmE2L0ZhYiBMYWIgVG9zY2FuYSBDYXNjaW5hLmpwZyJdLFsicCIsInRodW1iIiwiODAweCJdXQ/Fab%20Lab%20Toscana%20Cascina.jpg?sha=0c0433ed80a035ac",
+  "address_1": "",
+  "address_2": "",
+  "city": "Cascina",
+  "county": "Pisa, Toscana",
+  "postal_code": "56026",
+  "country_code": "IT",
+  "latitude": 43.684447,
+  "longitude": 10.488997100000006,
+  "address_notes": "",
+  "phone": "+0000000000",
+  "email": "info@fablabcascina.org",
+  "capabilities": [
+   "three_d_printing",
+   "circuit_production",
+   "laser",
+   "precision_milling",
+   "vinyl_cutting"
+  ],
+  "activity_status": "closed",
+  "links": [
+   {
+    "id": 520,
+    "url": "http://www.fablabcascina.org"
+   },
+   {
+    "id": 521,
+    "url": "https://www.facebook.com/groups/fablabcascina/"
+   }
+  ]
+ },
+ {
+  "id": 2535,
+  "name": "UF Fablab",
+  "kind_name": "fab_lab",
+  "parent_id": null,
+  "blurb": "UF FabLab is the part of Ukrainian Future Incubator ecosystem which gives access to educational opportunities, technical support and to the largest Material Library in Ukraine.",
+  "description": "UF FabLab is an open prototype production laboratory where entrepreneurs and inventors can work on creating layouts and working models of their projects. More info: https://ufincubator.com/en/department/fablab ",
+  "slug": "UFincubator",
+  "avatar_url": "https://www.fablabs.io/media/W1siZiIsIjIwMjIvMDIvMTYvMTMvMzUvNDkvNGRiYWJlYWUtYTdiOS00YTI3LTgyMjAtYzVkNjhlZjhkYTZmLzExODAwOTAwNV81ODQ5OTU0OTU1MDUzNjNfMjAzMzQ0NjgzOTI0MzQ0NTQ4N19uLnBuZyJdLFsicCIsInRodW1iIiwiMTUweDE1MCMiXV0/118009005_584995495505363_2033446839243445487_n.png?sha=2a441bcd29da5696",
+  "header_url": "https://www.fablabs.io/media/W1siZiIsIjIwMjIvMDIvMTYvMTMvMzUvNTAvZWU2YWQ0MzUtOGY1Zi00YTRlLTg5ZDMtNjU1YjA1ODQ5OWMyLzExODcwMzY5Ml81OTc1NDA5MjQyNTA4MjBfODQwMjk0NTY2NjE4OTY1ODI1OV9uLmpwZWciXSxbInAiLCJ0aHVtYiIsIjgwMHgiXV0/118703692_597540924250820_8402945666189658259_n.jpeg?sha=9d31bf94999409c8",
+  "address_1": "13 Chokolivkiy Blv.",
+  "address_2": "",
+  "city": "Kyiv",
+  "county": "Ukraine",
+  "postal_code": "03186",
+  "country_code": "UA",
+  "latitude": null,
+  "longitude": null,
+  "address_notes": "",
+  "phone": "+38 (099) 624 54 80",
+  "email": "mail@ufincubator.com",
+  "capabilities": [
+   "three_d_printing",
+   "cnc_milling",
+   "circuit_production",
+   "laser",
+   "precision_milling",
+   "vinyl_cutting"
+  ],
+  "activity_status": "corona",
+  "links": [
+   {
+    "id": 38578,
+    "url": "https://ufincubator.com/en"
+   }
+  ]
+ },
+ {
+  "id": 17,
+  "name": "PiNG",
+  "kind_name": "fab_lab",
+  "parent_id": null,
+  "blurb": null,
+  "description": null,
+  "slug": "ping",
+  "avatar_url": null,
+  "header_url": null,
+  "address_1": null,
+  "address_2": null,
+  "city": "Nantes",
+  "county": "Pays de la Loire",
+  "postal_code": "44000",
+  "country_code": "FR",
+  "latitude": 47.218371,
+  "longitude": -1.55362100000002,
+  "address_notes": null,
+  "phone": null,
+  "email": null,
+  "capabilities": [],
+  "activity_status": null,
+  "links": [
+   {
+    "id": 52,
+    "url": "http://fablab.pingbase.net"
+   }
+  ]
+ },
+ {
+  "id": 1355,
+  "name": "RépareRecycle / 974",
+  "kind_name": "mini_fab_lab",
+  "parent_id": 979,
+  "blurb": "RépareRecycle.re",
+  "description": "RépareRecycle.re",
+  "slug": "reparerecycle",
+  "avatar_url": "https://www.fablabs.io/media/W1siZiIsIjIwMjEvMDEvMDIvMDMvMDQvMzQvOTY4MTY5Y2MtNzk4Mi00ODRjLTlkNWItM2ZlOWI4MTkyMGMxLzlhNGIxZTFjMGQ4NzBlNDc0ZWM5YmIxOTVlMmIxNDIxLmpwZyJdLFsicCIsInRodW1iIiwiMTUweDE1MCMiXV0/9a4b1e1c0d870e474ec9bb195e2b1421.jpg?sha=a579fd508a30d122",
+  "header_url": "https://www.fablabs.io/media/W1siZiIsIjIwMjEvMDEvMDIvMDIvNTkvMjYvYzU2YTU3MTEtMjE1OS00YTRiLTgwZDUtZTUxY2M5ZDgwODU4L2NpdHJvbnZlcnQuanBlZyJdLFsicCIsInRodW1iIiwiODAweCJdXQ/citronvert.jpeg?sha=c2c82fb312ce1ad8",
+  "address_1": "Plaine des Cafres",
+  "address_2": "3 impasse renneville",
+  "city": "La Plaine des Cafres",
+  "county": "tampon",
+  "postal_code": "97418",
+  "country_code": "RE",
+  "latitude": -21.2328589,
+  "longitude": 55.5786829,
+  "address_notes": "",
+  "phone": "0693420287",
+  "email": "reparerecycle@gmail.com",
+  "capabilities": [],
+  "activity_status": "active",
+  "links": [
+   {
+    "id": 36812,
+    "url": "https://reparerecycle.re"
+   }
+  ]
+ },
+ {
+  "id": 1949,
+  "name": "FAB DE FAB",
+  "kind_name": "mobile",
+  "parent_id": null,
+  "blurb": "Mobile training platform in digital manufacturing",
+  "description": "It is a training and construction platform composed of creators committed to the methodology based on learning by doing through the use of digital tools. It arises in response to the need to teach today's most advanced techniques to the creators of tomorrow through a structured pedagogical program of courses and workshops.It is itinerant with the aim of bringing digital technology to all audiences and apply it wherever the projects arise traveling with their mobile workshop FABRICAR. It is specialized in digital design and manufacturing researching the intersection between art and technology, encouraging the use of mixed artisanal and digital techniques for the execution of projects. It develops design proposals, models, prototypes and architectural projects where parametric design techniques, rapid prototyping, numerical control, electronics, programming and robotics are applied.",
+  "slug": "fabdefab",
+  "avatar_url": "https://www.fablabs.io/media/W1siZiIsIjIwMTkvMDMvMjEvMTUvNDIvNTAvOTJmMTcxZGItOTNkNS00ZGE1LWFlM2UtN2QwNTI5YjFkNTRiL2ZhYmRlZmFiX2xvZ28ucG5nIl0sWyJwIiwidGh1bWIiLCIxNTB4MTUwIyJdXQ/fabdefab_logo.png?sha=7e6e272902609410",
+  "header_url": "https://www.fablabs.io/media/W1siZiIsIjIwMTkvMDMvMjEvMTUvNDIvNTAvNDg2ZDZjODctYTFjNy00MzM5LTg4YTYtMzBlZDNlOTViMDRlL2ZhYmRlZmFiX2ZvbmRvLnBuZyJdLFsicCIsInRodW1iIiwiODAweCJdXQ/fabdefab_fondo.png?sha=1c9b90b5c478ed73",
+  "address_1": "Las Rozas de Madrid",
+  "address_2": "",
+  "city": "",
+  "county": "",
+  "postal_code": "",
+  "country_code": "ES",
+  "latitude": 40.4935236,
+  "longitude": -3.8757267999999385,
+  "address_notes": "",
+  "phone": "",
+  "email": "info@fabdefab.com",
+  "capabilities": [
+   "three_d_printing",
+   "laser",
+   "vinyl_cutting"
+  ],
+  "activity_status": "active",
+  "links": [
+   {
+    "id": 6843,
+    "url": "http://fabdefab.com/"
+   },
+   {
+    "id": 6844,
+    "url": "https://www.instagram.com/fabricadefabricantes/"
+   },
+   {
+    "id": 6845,
+    "url": "https://www.facebook.com/fabricadefabricantes/"
+   },
+   {
+    "id": 6846,
+    "url": "https://www.linkedin.com/company/fabrica-de-fabricantes"
+   }
+  ]
+ },
+ {
+  "id": 3294,
+  "name": "THCSLUONGKHANHTHIEN_HAIPHONG",
+  "kind_name": "fab_lab",
+  "parent_id": null,
+  "blurb": "A STEM classroom is an educational space designed for students to learn and engage in hands-on practice through an integrated approach to Science, Technology, Engineering, and Mathematics.",
+  "description": "A STEM classroom is an educational space designed for students to learn and engage in hands-on practice through an integrated approach to Science, Technology, Engineering, and Mathematics.\r\nSTEM Classroom\r\n•\tProvides an environment for students to practice, conduct experiments, and build prototypes.\r\n•\tFosters logical thinking, creativity, and problem-solving skills.\r\n•\tDevelops teamwork, communication, and presentation skills.\r\n•\tConnects theoretical knowledge with real-world situations.\r\nSTEM classrooms should be flexible and safe. Furniture should be movable to allow for transitions between individual study, group work, and project-based activities. Electrical, plumbing, and ventilation systems, as well as equipment areas, must be arranged to suit the students' age group.\r\nOperational Model:\r\nA STEM lesson typically follows this process:\r\nDefining the problem → Acquiring knowledge → Proposing solutions → Designing/building → Testing → Improving → Presenting the product.\r\nA STEM classroom is not merely a room filled with modern equipment. Most importantly, the space, equipment, and teaching methods must support students in self-discovery, hands-on practice, collaboration, and solving real-world problems.\r\n",
+  "slug": "thcsluongkhanhthienhaiphong",
+  "avatar_url": "https://www.fablabs.io/media/W1siZiIsIjIwMjYvMDgvMDgvMDcvNTEvMzgvYmUxZmI4MGUtYjIzYS00NDZlLWIyNWEtYjViNDk2Njc0ZTgzL2xvZ28uanBnIl0sWyJwIiwidGh1bWIiLCIxNTB4MTUwIyJdXQ/logo.jpg?sha=da9c89fe7d86faf3",
+  "header_url": "https://www.fablabs.io/media/W1siZiIsIjIwMjYvMDgvMDgvMDcvNTEvMzkvYzQyOTczZmQtMmNlYi00MDlhLWEwMzMtMDk3NzYzZDkwYjg4LzIyMjIuanBnIl0sWyJwIiwidGh1bWIiLCI4MDB4Il1d/2222.jpg?sha=c0dba7375d11a4df",
+  "address_1": "173 Đường Phan Đăng Lưu",
+  "address_2": "số 06 Khúc Trì",
+  "city": "Thành phố Hải Phòng",
+  "county": "Phường Phù Liễn",
+  "postal_code": "180000",
+  "country_code": "VN",
+  "latitude": 20.8098588,
+  "longitude": 106.623822,
+  "address_notes": "",
+  "phone": "0946875145",
+  "email": "khtn.lkt@gmail.com",
+  "capabilities": [
+   "three_d_printing",
+   "cnc_milling",
+   "circuit_production",
+   "laser",
+   "precision_milling",
+   "vinyl_cutting"
+  ],
+  "activity_status": "active",
+  "links": []
+ },
+ {
+  "id": 1814,
+  "name": "Studio Zinkin",
+  "kind_name": "mini_fab_lab",
+  "parent_id": 236,
+  "blurb": "Our mission is to share our KnowHow, experiences and provide our quality services internationally competitive, spreading issues such as recycling and care environmental.",
+  "description": "We are #Zinkers\r\nStudio Zinkin SAC is a Peruvian company formed\r\nunder legal terms, on October 17 of\r\n2017\r\nAt Zinkin we develop projects of\r\ninterior design and manufacture molds for accessories\r\ndecorative\r\nFabiola Escajadillo, CEO & Founder, started with\r\nthe Zinkin entrepreneurship with the vision of power\r\ndevelop projects with the help of manufacturing\r\ndigital, how 3D printing.\r\nOur mission is to share our KnowHow,\r\nexperiences and provide our quality services\r\ninternationally competitive, spreading\r\nissues such as recycling and care\r\nenvironmental.\r\n# 2018\r\nIn the process of manufacturing printed molds\r\nin 3D, with materials like the PLA (polymer\r\nobtained from renewable resources, with capacity\r\nto biodegrade, which confers a great advantage\r\nfrom the ecological point of view),\r\nwe discovered that we could design our\r\nown decorative complements but with the\r\ndesire to innovate in the final material. We contacted\r\nwith the company Cementos Inka, which has\r\nan eco-environmental core producing Cement\r\nECO (60% less CO2 emissions in the medium\r\nambient) . They developed our\r\nformula called ZK, subject to the finishes that\r\nwe required to develop our products,\r\ncomplying with environmental regulations.\r\n#STARPOT\r\nWith our eco product line, we want\r\ndisseminate our design processes and the use of\r\navant-garde materials of ecological line.\r\nWe offer:\r\nCustom design of decorative products,\r\nperfect for all kinds of events.\r\nProcesses:\r\n* 3D Design, 3D Printing, Molds.\r\n* Final product in Cement ZK.\r\nThe development and manufacture of our products\r\nThey are endorsed by Cementos Inka experts.",
+  "slug": "studiozinkin",
+  "avatar_url": "https://www.fablabs.io/media/W1siZiIsIjIwMTgvMDkvMjUvMDMvMTIvMzAvMDIyYWZjNmYtZGJhNy00NmJhLTlmYjQtMDE1OWI4NzMxMmE1L2xvZ28yLmpwZyJdLFsicCIsInRodW1iIiwiMTUweDE1MCMiXV0/logo2.jpg?sha=b16180b3f2c6b7c7",
+  "header_url": "https://www.fablabs.io/media/W1siZiIsIjIwMTgvMDkvMjUvMDMvMTIvMzAvZjUwMGYyYzgtM2E2MC00N2RkLTlhYWYtNmJlYWM3ZjRkNTFhL2hlYWRlcl8xOTIweDEwODBfaW1wcmVzb24zZC5qcGciXSxbInAiLCJ0aHVtYiIsIjgwMHgiXV0/header_1920x1080_impreson3d.jpg?sha=bc6b931b9ba67f4b",
+  "address_1": "Jr. Lineas de Nazca 270, Lima Perú",
+  "address_2": "Jr. Lineas de Nazca 270, Lima Perú",
+  "city": "La Molina",
+  "county": "Peru",
+  "postal_code": "15024",
+  "country_code": "PE",
+  "latitude": -12.113936986899084,
+  "longitude": -76.93832734285274,
+  "address_notes": "Av. Alameda del Corregidor cdra. 29",
+  "phone": "0511 997316338",
+  "email": "info@studiozinkin.com",
+  "capabilities": [
+   "three_d_printing"
+  ],
+  "activity_status": "active",
+  "links": [
+   {
+    "id": 6114,
+    "url": "https://studiozinkin.com/"
+   },
+   {
+    "id": 6115,
+    "url": "https://www.facebook.com/studiozinkin/"
+   },
+   {
+    "id": 6116,
+    "url": "https://www.instagram.com/studiozinkin/"
+   }
+  ]
+ },
+ {
+  "id": 1514,
+  "name": "Satbayev University",
+  "kind_name": "fab_lab",
+  "parent_id": null,
+  "blurb": "Open digital fabrication and advanced manufacturing lab supporting education, research, prototyping, employability and industry collaboration in Kazakhstan.",
+  "description": "abLab Satbayev University is an open digital fabrication and advanced manufacturing laboratory located in Almaty, Kazakhstan.\r\n\r\nWe support students, researchers, educators, startups and industry partners in transforming ideas into prototypes, functional products and applied engineering solutions. Our capabilities include 3D modelling and scanning, additive manufacturing, CNC milling and turning, laser and waterjet cutting, electronics, CAD/CAM/CAE, metrology and engineering training.\r\n\r\nThe laboratory develops industry-aligned micro-qualifications in 3D Modelling, Prototyping and CNC Machine Operation. These programmes combine practical training, digital manufacturing technologies and skills validated through cooperation with industrial and international partners.\r\n\r\nFabLab Satbayev University participates in international educational and innovation initiatives and contributes to the global Fab Lab community. Our work primarily supports SDG 4 — Quality Education, SDG 8 — Decent Work and Economic Growth, SDG 9 — Industry, Innovation and Infrastructure, and SDG 17 — Partnerships for the Goals.",
+  "slug": "KazNRTU",
+  "avatar_url": "https://www.fablabs.io/media/W1siZiIsIjIwMjIvMTEvMTYvMDMvMDYvMjEvMDc2YTcwMzgtMDgwNi00NGI1LWI5NzctYWY1NTA1MDZkZjk1L1NhdGFiYXlldl9Vbml2ZXJzaXR5X2xvZ28ucG5nIl0sWyJwIiwidGh1bWIiLCIxNTB4MTUwIyJdXQ/Satabayev_University_logo.png?sha=11628119d3b4b2ee",
+  "header_url": "https://www.fablabs.io/media/W1siZiIsIjIwMjIvMTEvMTYvMDMvMDYvMjEvNWZhYzRmMGMtYTE3ZS00YTc2LWFjZTEtNGEwNjliMzhmOTY0L2xvZ28ucG5nIl0sWyJwIiwidGh1bWIiLCI4MDB4Il1d/logo.png?sha=5487e412e2bb6e89",
+  "address_1": "22 Satbaev street",
+  "address_2": "",
+  "city": "Almaty",
+  "county": "Kazakhstan",
+  "postal_code": "050013",
+  "country_code": "KZ",
+  "latitude": 43.2375635,
+  "longitude": 76.9297921,
+  "address_notes": "FabLaB",
+  "phone": "+77765515511",
+  "email": "b.arymbekov@satbayev.university",
+  "capabilities": [
+   "three_d_printing",
+   "cnc_milling",
+   "circuit_production",
+   "laser",
+   "precision_milling"
+  ],
+  "activity_status": "active",
+  "links": [
+   {
+    "id": 44471,
+    "url": "https://satbayev.university/en/fablab"
+   },
+   {
+    "id": 44472,
+    "url": "https://satbayev.university/en/fablab"
+   }
+  ]
+ },
+ {
+  "id": 3169,
+  "name": "THCS Quang Trung_Tan Phu_Dong Nai",
+  "kind_name": "fab_lab",
+  "parent_id": null,
+  "blurb": "Sponsored by PetroVietnam, Quang Trung STEMLab is a high-tech makerspace with 3D printers, Robotics, and AI. We empower students to solve real-world problems and nurture future digital innovators.",
+  "description": "Welcome to Quang Trung STEMLab!\r\nProudly sponsored by the \"STEM Innovation PetroVietnam\" program, Quang Trung STEMLab is a state-of-the-art makerspace where creativity meets cutting-edge technology. Officially inaugurated on January 28, 2026, our lab empowers students from grades 6 to 9 to transform their bold ideas into reality.\r\nStep inside and explore a world of innovation! The lab is fully equipped with advanced Anycubic 3D printers, versatile Snapmaker 3-in-1 Laser/CNC machines, and a network of modern ASUS ExpertBook laptops. Students can dive deep into the future by building and programming VEX Robotics (IQ & V5), developing Internet of Things (IoT) systems like weather stations, and mastering Artificial Intelligence using UNIHIKER K10 boards and HuskyLens AI smart cameras.\r\nGuided by the Socratic method—\"Ask to inspire, do not answer for them\"—we foster independent thinking and a human-centered AI mindset. Our unique 4-step learning cycle (Engage, Experience, Challenge, Improve) ensures highly interactive and practical sessions. Here, students apply digital literacy and technology ethically to solve real-world problems and confidently prepare for national scientific competitions like VISEF.\r\nQuang Trung STEMLab: The launchpad for tomorrow's innovators!",
+  "slug": "thcsquangtrung",
+  "avatar_url": "https://www.fablabs.io/media/W1siZiIsIjIwMjYvMDUvMjkvMDAvNDkvNDIvMWMwMDU0M2QtMjUwYS00MWVmLTg5ZTMtZmVjZGY2YzZjM2IyL2ljb25TVEVNTGFiUVQucG5nIl0sWyJwIiwidGh1bWIiLCIxNTB4MTUwIyJdXQ/iconSTEMLabQT.png?sha=c4ab717c37f7c25f",
+  "header_url": null,
+  "address_1": "Khu 7, Tân Phú, Đồng Nai, Việt Nam",
+  "address_2": "",
+  "city": "Tân Phú",
+  "county": "Đồng Nai",
+  "postal_code": "76806",
+  "country_code": "VN",
+  "latitude": 11.27915003602334,
+  "longitude": 107.4447120455078,
+  "address_notes": "Khu 7, Tân Phú, Đồng Nai, Việt Nam",
+  "phone": "0983461103",
+  "email": "stemlabquangtrung@gmail.com",
+  "capabilities": [
+   "three_d_printing",
+   "cnc_milling",
+   "circuit_production",
+   "laser",
+   "precision_milling",
+   "vinyl_cutting"
+  ],
+  "activity_status": "active",
+  "links": []
+ },
+ {
+  "id": 1394,
+  "name": "Laney College FabLab",
+  "kind_name": "fab_lab",
+  "parent_id": null,
+  "blurb": "Laney College FabLab is an inclusive and innovative space that is committed to the success of the students both academically and in entrepreneurial ventures.",
+  "description": "Laney College FabLab, founded in the year 2015, is a compact yet dynamic  9,000 square feet space adjacent to the carpentry construction area. Originally, the space served as a loading dock for the theater department, yet now serves as an incubator for ideas and innovation for projects ranging from the production of a personal small scale \"extraterrariums\" to the the digital fabrication of a \"Pocket House\" for the homeless community. The Laney College FabLab fosters innovation, creativity, and ingenuity to students, teachers, and faculty as well as it inspires many to build (almost) anything.",
+  "slug": "laneycollegefablab",
+  "avatar_url": "https://www.fablabs.io/media/W1siZiIsIjIwMTcvMDMvMDcvMjIvMDAvNDMvOTcxNTdkNDktNjQ3Ny00ZmVkLTliMzQtYTBlYzZkMTkxN2ViL2xhbmV5X2ZhYmxhYl9sb2dvLTIucG5nIl0sWyJwIiwidGh1bWIiLCIxNTB4MTUwIyJdXQ/laney_fablab_logo-2.png?sha=5b42ca09104524df",
+  "header_url": null,
+  "address_1": "900 Fallon St",
+  "address_2": "",
+  "city": "Oakland",
+  "county": "ca",
+  "postal_code": "94607",
+  "country_code": "US",
+  "latitude": 37.7968656,
+  "longitude": -122.26314780000001,
+  "address_notes": "Our FabLab is located at Laney College campus in the basement of the theater. The entrance is through a large roll up door facing the outdoor carpentry canopy area. ",
+  "phone": "4153091170",
+  "email": "laneyfablab@gmail.com",
+  "capabilities": [
+   "three_d_printing",
+   "cnc_milling",
+   "laser",
+   "precision_milling",
+   "vinyl_cutting"
+  ],
+  "activity_status": "active",
+  "links": [
+   {
+    "id": 4471,
+    "url": "http://laneyfablab.org"
+   }
+  ]
+ },
+ {
+  "id": 1491,
+  "name": "La Fabrique Caylus",
+  "kind_name": "fab_lab",
+  "parent_id": null,
+  "blurb": "La Fabrique Caylus is a rural fablab in the south west of France near Toulouse. It focuses on the thematic \"Digital Artisan\". It's open to every people (Professional, School, ...)",
+  "description": "La Fabrique Caylus is a rural fablab in the south west of France near Toulouse. It focuses on the thematic \"Digital Artisan\". It's open to every people (Professional, School, ...).",
+  "slug": "lafabriquecaylus",
+  "avatar_url": "https://www.fablabs.io/media/W1siZiIsIjIwMjMvMDEvMDQvMTYvMjYvMTIvOWJkYjNhODUtNDI2YS00OTNkLTk0ZmEtMjUzYjQyODZjNTYzL2xvZ28tZmFicmlxdWUucG5nIl0sWyJwIiwidGh1bWIiLCIxNTB4MTUwIyJdXQ/logo-fabrique.png?sha=9c32693d1080ebf0",
+  "header_url": "https://www.fablabs.io/media/W1siZiIsIjIwMTcvMDcvMTIvMTMvMDEvMzQvNThkMTUxYjYtNWUzNS00ZDJkLTkyYjctYThlMzhiMmVhMjZlL2ZhYmxhYi5qcGciXSxbInAiLCJ0aHVtYiIsIjgwMHgiXV0/fablab.jpg?sha=b609effb921787ae",
+  "address_1": "Caylus",
+  "address_2": "6 bis rue du long",
+  "city": "Caylus",
+  "county": "",
+  "postal_code": "82160",
+  "country_code": "FR",
+  "latitude": 44.2364488,
+  "longitude": 1.7720143000000235,
+  "address_notes": "",
+  "phone": "+33563281036",
+  "email": "fablab@cc-qrga.fr",
+  "capabilities": [
+   "three_d_printing",
+   "cnc_milling",
+   "laser",
+   "precision_milling",
+   "vinyl_cutting"
+  ],
+  "activity_status": "active",
+  "links": [
+   {
+    "id": 4808,
+    "url": "http://lab-origami.fr"
+   },
+   {
+    "id": 4809,
+    "url": "http://facebook.com/fablab.origami"
+   }
+  ]
+ },
+ {
+  "id": 689,
+  "name": "riidl Fablab",
+  "kind_name": "fab_lab",
+  "parent_id": null,
+  "blurb": "Research Innovation Incubation Design Laboratory Foundation (riidl Somaiya Vidyavihar) is an innovation center and a Tech Business Incubator in the Somaiya Campus.",
+  "description": "riidl FabLab – Empowering Innovation Through Digital Fabrication\r\n\r\nriidl FabLab, housed within riidl Somaiya Vidyavihar, is a cutting-edge digital fabrication and prototyping facility designed to support students, makers, innovators, and startups in transforming their ideas into reality. Established as part of riidl (Research Innovation Incubation Design Laboratory Foundation), a nationally recognized business incubator, the FabLab plays a crucial role in fostering innovation, entrepreneurship, and hands-on learning on the Somaiya Vidyavihar campus and beyond.\r\n\r\nEquipped with advanced 3D printers, CNC machines, laser cutters, electronics workstations, and fabrication tools, the lab provides resources for rapid prototyping, product development, and technical experimentation. As an active Fab Academy node, riidl FabLab has been training individuals in digital fabrication, embedded systems, and mechanical-electronics integration for the past several years. Regular rapid prototyping workshops and hands-on training sessions ensure that users gain expertise in computer-aided design (CAD), electronics fabrication, and interdisciplinary prototyping.\r\n\r\nAs a core facility supporting riidl’s incubation programs, the FabLab enables startups incubated at riidl to prototype, iterate, and develop scalable products. Through the Innovate PBL program, student innovators can receive mentorship and funding of up to ₹5 lakh to bring their projects to life. Additionally, the FabLab is open to small MSMEs and independent makers through dedicated membership plans, providing access to high-end fabrication tools and technical guidance.\r\n\r\nriidl Somaiya Vidyavihar, recognized as a DST and DBT-BIRAC-supported business incubator, has incubated over 160 startups, facilitated the creation of 600+ jobs, and contributed to a startup ecosystem valued at over ₹1,226 Cr. The FabLab remains a key enabler in this journey, ensuring that emerging ventures and innovators have the technical infrastructure, expertise, and support to turn their ideas into market-ready solutions.\r\n\r\nWith its commitment to digital fabrication, entrepreneurship, and skill development, riidl FabLab continues to be a hub for prototyping, research, and innovation, empowering the next generation of creators to push the boundaries of technology and design.",
+  "slug": "riidl",
+  "avatar_url": "https://www.fablabs.io/media/W1siZiIsIjIwMjMvMDkvMDUvMDUvNTkvNTQvZTQwMzI2NWMtMzM1ZC00NzNiLWFjYzAtZmNlYTc4MmVhZTYxL3JpaWRsX2xvZ28ucG5nIl0sWyJwIiwidGh1bWIiLCIxNTB4MTUwIyJdXQ/riidl_logo.png?sha=11796ce28bb85000",
+  "header_url": "https://www.fablabs.io/media/W1siZiIsIjIwMjUvMDMvMDkvMTEvMDgvMzYvOTYxYjU1ZGQtNWViOS00MDE3LTljNDEtODNjNmE3M2QyMTc5L1doYXRzQXBwIEltYWdlIDIwMjUtMDItMTggYXQgMTAuMjUuMjcgUE0gKDMpLmpwZWciXSxbInAiLCJ0aHVtYiIsIjgwMHgiXV0/WhatsApp%20Image%202025-02-18%20at%2010.25.27%20PM%20%283%29.jpeg?sha=741a1a24ba6673ba",
+  "address_1": "520, riidl HQ, Bhaskaracharya Building, Somaiya Vidyavihar Campus",
+  "address_2": "Vidyavihar (East)",
+  "city": "Mumbai",
+  "county": "Maharashtra",
+  "postal_code": "400077",
+  "country_code": "IN",
+  "latitude": 19.072446,
+  "longitude": 72.900352,
+  "address_notes": "riidl HQ is located on the 5th floor above the library in the New building of K.J.Somaiya college of Engineering. You can come either from vidyavihar (railway) or ghatkopar(railway/metro station) and ask for Somayia Vidyavihar campus.",
+  "phone": "+91 7718961063",
+  "email": "pranav.rg@somaiya.edu",
+  "capabilities": [
+   "three_d_printing",
+   "cnc_milling",
+   "circuit_production",
+   "laser",
+   "precision_milling",
+   "vinyl_cutting"
+  ],
+  "activity_status": "active",
+  "links": [
+   {
+    "id": 1170,
+    "url": "https://riidl.org/"
+   },
+   {
+    "id": 1171,
+    "url": "https://riidl.org/laboratory/fab-lab"
+   }
+  ]
+ },
+ {
+  "id": 2634,
+  "name": "Fablab Jogja",
+  "kind_name": "fab_lab",
+  "parent_id": 150,
+  "blurb": "Fablab Jogja: Enhancing the University-Industry-Government-Community (U-I-G-C) Approach through Open Innovation and an Enabling Environment at FRC-UGM",
+  "description": "Fablab Jogja was developed as part of a center of excellence located in Kulon Progo, Yogyakarta, Indonesia. It carries out the Tri Dharma of higher education, which includes teaching, research, and community service, by fostering open innovation and strengthening local potential. Through this mission, Fablab Jogja supports the Jogja Open Innovation for Community Enhancement (JOICE) concept, contributing to the growing capacity of FRC-Universitas Gadjah Mada Yogyakarta.",
+  "slug": "fablabjogja",
+  "avatar_url": "https://www.fablabs.io/media/W1siZiIsIjIwMjYvMDcvMTgvMTEvMzkvMjkvODIyOWIxNTMtY2EzMi00OWYzLWJmNGYtZTg0YTczMmNjZGVhL2ZhYl9qb2dqYS5wbmciXSxbInAiLCJ0aHVtYiIsIjE1MHgxNTAjIl1d/fab_jogja.png?sha=250a6cec7c2d567e",
+  "header_url": "https://www.fablabs.io/media/W1siZiIsIjIwMjYvMDcvMTgvMTIvMDMvNTcvNTVmMWY3YWQtYzA2MC00NGU5LWJjZGQtM2UwMzQ4NDQ3MGEyL2ZhYmxhYl9oZWFkZXIucG5nIl0sWyJwIiwidGh1bWIiLCI4MDB4Il1d/fablab_header.png?sha=7d6f64ffd8bd37b0",
+  "address_1": "45V2+VFJ",
+  "address_2": "Sawah Area, Wates",
+  "city": "Wates",
+  "county": "Kulon Progo",
+  "postal_code": "55651",
+  "country_code": "ID",
+  "latitude": -7.8552797,
+  "longitude": 110.151144,
+  "address_notes": "Field Research Center (FRC) Universitas Gadjah Mada ",
+  "phone": "+81 80-9715-1895",
+  "email": "fabj@ugm.ac.id",
+  "capabilities": [
+   "three_d_printing",
+   "cnc_milling",
+   "circuit_production",
+   "laser",
+   "precision_milling",
+   "vinyl_cutting"
+  ],
+  "activity_status": "active",
+  "links": [
+   {
+    "id": 41026,
+    "url": "https://www.instagram.com/fab_jogja/"
+   }
+  ]
+ },
+ {
+  "id": 862,
+  "name": "Fablab O @U Link -“数制”工坊苏州领科海外教育学校",
+  "kind_name": "fab_lab",
+  "parent_id": 469,
+  "blurb": "Fablab O @ Suzhou ULINK opening ceremony is on 16th DEC, 2017",
+  "description": "Fablab O in SUZHOU ULINK college",
+  "slug": "fablaboULINK",
+  "avatar_url": "https://www.fablabs.io/media/W1siZiIsIjIwMTgvMDEvMzEvMTEvMDMvNDkvYTcxNjAyMWItMDQ2Zi00M2ZhLWE4NzQtZTg1Yjc4OTExYmU1LzcwODc1OTE2NTEzNDkzNTY1NS5qcGciXSxbInAiLCJ0aHVtYiIsIjE1MHgxNTAjIl1d/708759165134935655.jpg?sha=03bbc10a25e3dd16",
+  "header_url": "https://www.fablabs.io/media/W1siZiIsIjIwMTgvMDEvMzEvMTEvMDAvMjAvMDAwZGU0MDUtNWFiNy00ZWMxLWI5OTUtMDU0MmRlNjM2NmY4LzUwODM1NzIyODYxOTE3MTE2Ny5qcGciXSxbInAiLCJ0aHVtYiIsIjgwMHgiXV0/508357228619171167.jpg?sha=1bbad5fdb3ff5188",
+  "address_1": "苏州工业园区林泉街377号",
+  "address_2": "",
+  "city": "SuZhou",
+  "county": "JiangSu",
+  "postal_code": "",
+  "country_code": "CN",
+  "latitude": 31.267948,
+  "longitude": 120.74915399999998,
+  "address_notes": "苏州工业园区林泉街377号公共学院6号楼",
+  "phone": "",
+  "email": "",
+  "capabilities": [
+   "three_d_printing",
+   "cnc_milling",
+   "laser",
+   "precision_milling",
+   "vinyl_cutting"
+  ],
+  "activity_status": "active",
+  "links": []
+ },
+ {
+  "id": 1010,
+  "name": "Logicbrigade",
+  "kind_name": "fab_lab",
+  "parent_id": 40,
+  "blurb": "Bringing Creative Minds together.",
+  "description": "Logic brigade is a initiative by which people of different verticals are combined to create innovation for the society. Working as a fabrication lab in electronics and robotics guiding the people in our city as well as peoples from different states from past decades in achieving their goal, we feel proud to be associated with FABLAB. We believe that creativity is a way to transform dream and imagination into reality. Being a part of Electronics industry from 10 years we have a variety of tools available to help people to flourish their goals. Machines ranging from CNC to acrylic cutting , Laser cutting ,PCB engraving , SMD rework station ,Digital storage oscilloscope and 3d printer are available for access.",
+  "slug": "aimslogicbrigade",
+  "avatar_url": "https://www.fablabs.io/media/W1siZiIsIjIwMTcvMDEvMjgvMTEvMjcvNTYvYjM4YmY5NWItYWE1MS00OGQ4LWE5NDEtMDc2MWJiNjA3NDE4L0xvZ2ljYnJpZ2FkZS5qcGciXSxbInAiLCJ0aHVtYiIsIjE1MHgxNTAjIl1d/Logicbrigade.jpg?sha=db1b997f8d28c097",
+  "header_url": "https://www.fablabs.io/media/W1siZiIsIjIwMTcvMDEvMjgvMTQvNDcvMzEvNjAzMmQwMjUtZjY4Ni00ZjE3LThjMDYtZDM3M2EyNjI3MjAzL0xvZ2ljYnJpZ2FkZS5qcGciXSxbInAiLCJ0aHVtYiIsIjgwMHgiXV0/Logicbrigade.jpg?sha=8e90815375a3146e",
+  "address_1": "Logic brigade C/o Aims Interactive 1295 wright town",
+  "address_2": "opp maharashtra school First Floor SIDBI bank",
+  "city": "jabalpur",
+  "county": "Madhya-pradesh",
+  "postal_code": "482002",
+  "country_code": "IN",
+  "latitude": 23.167721065908005,
+  "longitude": 79.92978471653288,
+  "address_notes": "google map link- https://www.google.com/maps/place/Logic+Brigade+FABLAB/@23.167677,79.9277062,17z/data=!3m1!4b1!4m2!3m1!1s0x0:0x13d00cd0f940f0f9?hl=en-IN",
+  "phone": "07613587064",
+  "email": "logicbrigadejbp@gmail.com",
+  "capabilities": [
+   "three_d_printing",
+   "cnc_milling",
+   "circuit_production",
+   "laser",
+   "vinyl_cutting"
+  ],
+  "activity_status": "active",
+  "links": [
+   {
+    "id": 1776,
+    "url": "http://www.logicbrigade.com"
+   }
+  ]
+ },
+ {
+  "id": 2191,
+  "name": "SEDI-Cup-ct",
+  "kind_name": "fab_lab",
+  "parent_id": null,
+  "blurb": "SEDI-Cup-ct FabLab offers different digital manufacturing technologies so that anyone can materialize their ideas and projects.",
+  "description": "\r\nIt is a FabLab born in the heart of the Polytechnic University of Cartagena. Coordinated by the SEDIC, Industrial Design and Scientific Calculation Service, integrated into the SAIT, Technological Research Support Service. This central service offers services to different research groups, departments, students, public or private companies and external staff within the scope of the university. \r\nThe FabLab aims to facilitate access to these services to all potential users outside or not the university community to develop and materialize their ideas and projects.\r\n SEDI-Cup-ct will make available to users the different digital manufacturing technologies (large format printing, 3D scanning, additive manufacturing, laser cutting, CNC machining, electronic workshop, ...). In addition, SEDI-Cup-ct gives access to training and workshops oriented to these technologies, and informative activities to promote the approach of society to the FabLab network.\r\n",
+  "slug": "sedicupct",
+  "avatar_url": "https://www.fablabs.io/media/W1siZiIsIjIwMjIvMDEvMTEvMDgvMTUvMDIvNjExYTE2NjQtZTVmZC00MWZmLTg5ZWQtMDNkYmFjMTdjYTI5L3RodW1ibmFpbF9pbWFnZS5wbmciXSxbInAiLCJ0aHVtYiIsIjE1MHgxNTAjIl1d/thumbnail_image.png?sha=e1987401c9b99130",
+  "header_url": "https://www.fablabs.io/media/W1siZiIsIjIwMjIvMDEvMTEvMDgvMTUvMDIvNGQ3OTRmYTYtNjhlNC00NjdiLTg3OWItMjZiYmZlYjYwZjA5L3RodW1ibmFpbF9pbWFnZS5wbmciXSxbInAiLCJ0aHVtYiIsIjgwMHgiXV0/thumbnail_image.png?sha=4eec30a34b01e0f9",
+  "address_1": "Calle sor Francisca Almendáriz, s/n",
+  "address_2": "",
+  "city": "Cartagena",
+  "county": "Murcia",
+  "postal_code": "30202",
+  "country_code": "ES",
+  "latitude": 37.6017217069246,
+  "longitude": -0.9794709066765108,
+  "address_notes": " Next to the student residence",
+  "phone": "968338954",
+  "email": "sedicupct@upct.es",
+  "capabilities": [
+   "three_d_printing",
+   "cnc_milling",
+   "circuit_production",
+   "laser",
+   "precision_milling",
+   "vinyl_cutting"
+  ],
+  "activity_status": "active",
+  "links": [
+   {
+    "id": 8330,
+    "url": "https://www.youtube.com/channel/UCmWmyPgioqREAjAPSZ5IkBg"
+   },
+   {
+    "id": 28951,
+    "url": "http://www.sedicupct-fablab.upct.es/"
+   }
+  ]
+ }
+]

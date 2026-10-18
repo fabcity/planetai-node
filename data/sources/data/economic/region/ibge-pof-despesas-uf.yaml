@@ -1,0 +1,29 @@
+name: IBGE household budget survey 2017-2018, spending by type and state (POF, SIDRA 6715 and 6972)
+url: https://sidra.ibge.gov.br/tabela/6715
+description: |
+  Average monthly household spending by type of expenditure and state (UF) from IBGE's
+  Pesquisa de Orçamentos Familiares 2017-2018: food at and away from home, clothing,
+  medicines, furniture and household articles, appliances, phones, toys, in reais per
+  family, with the number of families (table 6977).
+pillar: economic
+scale: region
+status: candidate
+license: "IBGE terms: data from IBGE publications and databases may be used by third parties with IBGE cited as the source; a transformed table must say who transformed it"
+api: https://apisidra.ibge.gov.br/values/t/6972/n3/35,26/v/1201/p/2018/c339/7999/c12190/103626/f/n
+pilot_relevance: []
+places: [recife, sao-paulo]
+tags: [consumption, household-spending, pof, brazil, sao-paulo, pernambuco, recife, sidra, open-api]
+added: 2026-09-27
+auth: none
+feeds_cells: [Economic|Region]
+upstream_listed_in: []
+notes: |
+  VERIFIED 2026-09-27, not yet read for a real territory. Filed for #42: the consumption side of São Paulo's and Recife's goods index.
+
+  LICENCE. IBGE's terms, as for ibge-pia-empresa-uf: reuse with IBGE cited as the source.
+
+  ENDPOINT. SIDRA API, no key, one period ("2018" = the 2017-2018 survey). Variable 1201, R$ per family per month; c339 = 7999 (all incomes); c12190 types: 103626 food at home (table 6972), 103554 clothing, 103575 medicines, 8026 furniture and household articles, 111442 appliances, 103594 phones and accessories, 103593 toys and games (table 6715). SP: food at home 499.82, clothing 180.99, medicines 169.43; PE: 402.27, 155.36, 105.64. Families (table 6977): SP 15,635,512, PE 3,021,057.
+
+  WHY THIS CELL. Economic|Region's regional accounts: household spending by purpose, which the goods index sets production against.
+
+  WHAT IT DOES NOT CLAIM. Not COICOP: TVs and computers sit inside appliances with fridges, so electronics can be read as phones only. One survey wave (2017-2018), state level only, reais of that period.

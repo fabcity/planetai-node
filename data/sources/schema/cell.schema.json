@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/fabcity/awesome-fabcity-data/blob/main/schema/cell.schema.json",
+  "title": "Fab City Index Cell",
+  "description": "One cell of the 4x5 pillar x scale matrix, saying what it would take to fill it. Entries say what a source carries; a cell says what the Index claims when that cell is populated, what the minimum is, and — the field that matters most — what it does NOT claim. Each cell lives at cells/{pillar}-{scale}.yaml, lowercase, matching its own `cell` key; scripts/validate.py checks that the filename and the key agree.",
+  "type": "object",
+  "required": ["cell", "indicator_categories", "minimum_indicators", "does_not_claim"],
+  "additionalProperties": false,
+  "properties": {
+    "cell": {
+      "type": "string",
+      "pattern": "^(Environmental|Social|Economic|Governance)\\|(Planet|Bioregion|Region|City|Community)$",
+      "description": "The cell key in the node's own spelling: Pillar|Scale, capitalised, pipe-separated — the same strings an entry's `feeds_cells` uses, so the two join without a translation table."
+    },
+    "indicator_categories": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 2 },
+      "description": "The families of indicator this cell is for, in words a person uses: 'air quality', 'material throughput', 'procurement openness'. Broad on purpose — an entry is filed against a named row, and this is the list of rows that exist here."
+    },
+    "minimum_indicators": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "unit", "aggregation"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "minLength": 2, "description": "The indicator, named the way it would be read off a dashboard." },
+          "unit": { "type": "string", "minLength": 1, "description": "The unit it is carried in, explicitly. 'ug/m3', 't/capita/yr', 'count', 'percent'. A number without a unit is not an indicator." },
+          "aggregation": { "type": "string", "minLength": 2, "description": "How readings become the cell's number: mean, median, sum, max, p95, annual-total, latest. Says what the cell is doing to the data, which is the half of an index that is usually left implicit." }
+        }
+      },
+      "description": "The floor. Below this list the cell is not filled, it is decorated — a single source with one reading is a demo, and this repo has been burned by cells that looked live on the strength of one row."
+    },
+    "does_not_claim": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 2000,
+      "description": "What a filled version of this cell must not be read as saying. Required, and required to be specific: a city-scale air-quality cell full of reference-station data does not claim neighbourhood exposure; an economic cell built from registered businesses does not claim informal production. This is the field that keeps an index from being asked to answer questions it cannot."
+    },
+    "notes": {
+      "type": "string",
+      "maxLength": 2000,
+      "description": "Anything else: which territories have a candidate source for this cell, where the aggregation is contested, what the known gap is."
+    }
+  }
+}

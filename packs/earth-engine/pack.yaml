@@ -2,8 +2,8 @@ id: earth-engine
 name: Earth Engine context
 description: >-
   What the land within a kilometre of the node did this year, from Google Earth Engine's public catalog: tree
-  cover and built-up fraction (Dynamic World), vegetation (Sentinel-2 NDVI), night lights (VIIRS), and a
-  year-over-year land-change score from the AlphaEarth satellite embeddings. Bioregion context, yearly cadence.
+  cover and built-up fraction (Dynamic World), vegetation (Sentinel-2 NDVI) and night lights (VIIRS). Land change
+  from the AlphaEarth embeddings is the `earth` pack's. Bioregion context, yearly cadence.
 author: PLANETAI core (official, prototype)
 version: 0.1.0
 requires: { node: ">=0.10.0" }
@@ -20,6 +20,8 @@ env:
   - "EE_SERVICE_ACCOUNT="
   - "# earth-engine: copy the JSON key to config/ee-key.json on the node"
   - "EE_KEY_FILE=/app/config/ee-key.json"
+  - "# earth-engine basemap (planetai run earth-engine basemap): half-width in km of the wide context square; the close one is GROUND_RADIUS_KM"
+  - "GROUND_SAT_WIDE_KM=60"
 needs: >-
   A Google Earth Engine project (free for research and non-commercial use) and a service-account key:
   EE_PROJECT, EE_SERVICE_ACCOUNT, EE_KEY_FILE in .env, with the key mounted read-only into the app container.

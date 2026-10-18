@@ -1,0 +1,28 @@
+cell: Governance|City
+indicator_categories:
+- open data provision
+- procurement transparency
+- participation
+- responsiveness
+minimum_indicators:
+- name: Open datasets published
+  unit: count
+  aggregation: latest
+- name: Datasets updated in the last 90 days
+  unit: percent
+  aggregation: latest
+- name: Share of this node's asks that were acted on (rho)
+  unit: ratio
+  aggregation: 30d
+- name: Public contracts awarded, published as structured data
+  unit: count
+  aggregation: annual-total
+- name: Participatory budget projects funded
+  unit: count
+  aggregation: annual-total
+does_not_claim: Publishing is not accountability. A city can run an exemplary portal and answer nobody.
+  And rho measures whether the people using THIS node acted on what it asked of them — it is a property
+  of a household or a banjar and its own instrument, not of the city's responsiveness to its residents.
+  Reading rho as a civic score is the single most available misreading in this matrix.
+notes: 32 entries filed. packs/open-data-health computes both dataset indicators (`partial`) and the
+  core computes rho at every scale — see app/index.py, "is anyone acting on what this node says".

@@ -82,21 +82,24 @@ OUT = run(earth=EARTH)
 
 # --- what the sentences add beyond the number ---------------------------------------------------
 # Land's history. The latest pair is the number; the longest span is the direction, and a household
-# deciding whether the trees behind them are going needs both.
-_land_en = OUT["issues"]["land"]["sentence"]["en"]
+# deciding whether the trees behind them are going needs both. The figures live in `plain` now
+# (docs/SPEC_language.md); the sentence above them stays words only.
+_land_en = OUT["issues"]["land"]["hero"]["plain"]["en"]
 check("between 2024 and 2025" in _land_en, f"land must say which two years it compared: {_land_en}")
 check("8.5 % since 2017" in _land_en, f"land must say how far back the change goes: {_land_en}")
-_no_span = run(earth={**EARTH, "changes": [EARTH["changes"][-1]]})["issues"]["land"]["sentence"]["en"]
+_no_span = run(earth={**EARTH, "changes": [EARTH["changes"][-1]]})["issues"]["land"]["hero"]["plain"]["en"]
 check("since" not in _no_span and "  " not in _no_span,
-      f"with no long span the sentence closes cleanly rather than leaving a gap: {_no_span}")
+      f"with no long span the plain closes cleanly rather than leaving a gap: {_no_span}")
 for loc in I.LOCALES:
-    check(OUT["issues"]["land"]["sentence"][loc].count("2017") == 1, f"land.{loc} names the span year once")
+    check(OUT["issues"]["land"]["hero"]["plain"][loc].count("2017") == 1, f"land.{loc} names the span year once")
+    check(not re.search(r"\d", OUT["issues"]["land"]["sentence"][loc]),
+          f"land.{loc} headline stays words only: {OUT['issues']['land']['sentence'][loc]}")
 
 # Heat has a direction now, the way air has. Whichever verb the trend picks, the numeral must survive.
 _heat_verbs = DECL["heat"]["sentences"]["en"]["verbs"]
 check(set(_heat_verbs) == {"rising", "steady", "falling"}, "heat declares all three directions")
-check(any(OUT["issues"]["heat"]["sentence"]["en"].startswith(v) for v in _heat_verbs.values()),
-      f"heat's sentence opens with one of its verbs: {OUT['issues']['heat']['sentence']['en']}")
+check(any(v in OUT["issues"]["heat"]["sentence"]["en"] for v in _heat_verbs.values()),
+      f"heat's sentence carries one of its verbs: {OUT['issues']['heat']['sentence']['en']}")
 
 # The day's high. A quiet issue used to say "nothing to say"; with 24 hours in hand it says the one
 # thing there is to say. The reason carries the value WITH its unit and the hour it landed in.
@@ -224,8 +227,8 @@ land = no_earth["issues"]["land"]
 check(land["stack"]["region"] is None, "with no earth record land's region is empty")
 check(land["state"] == "none" and land["reason"]["code"] == "no_source",
       f"with no earth record land is {land['state']}/{land['reason']['code']}, expected none/no_source")
-check("earth fetch" in land["sentence"]["en"] or "satellite record" in land["sentence"]["en"],
-      f"land must say how to get a record: {land['sentence']['en']}")
+check("satellite" in land["sentence"]["en"] and "planetai" not in land["sentence"]["en"],
+      f"land says there is no record yet, in the household's words, never the command: {land['sentence']['en']}")
 check(land["readouts"], "land keeps its built and trees readouts with no change record")
 # and the mechanism is gone, not just unused
 from issues import _distance_problems  # noqa: E402
@@ -243,15 +246,85 @@ for key in ("air", "heat", "land", "coast"):
     check(e["issues"][key]["sentence"]["en"], f"{key} must still have a sentence with no source")
 check(e["order"] == ["air", "heat", "land", "coast"], "an empty node keeps the declared order")
 
-# 7: a tie goes to the declared order
+# 6b: an ABSENT table is not an empty one.
+#
+# Until v0.67 `planetai snapshot` fetched three of the five tables Replay reads -- `actions` and
+# `readings_1h` are not endpoints -- and a missing key read as `[]`. So every fixture taken in
+# between replayed with no act ledger, no stages, no series and no barcode, and nothing anywhere
+# said so. A design round would have measured that as a page bug. Both halves are checked here: that
+# an absent table refuses out loud, and that every fixture the route can serve carries all five.
+for _missing in [k for _, k in engine.Replay.TABLES]:
+    _partial = {k: v for k, v in empty.items() if k != _missing}
+    try:
+        run(_partial)
+        check(False, f"a snapshot carrying no {_missing} replayed silently instead of refusing")
+    except LookupError as _exc:
+        check(_missing in str(_exc), f"a refusal must name the table it wants, got: {_exc}")
+
+# 6c: the digest — simple mode's whole answer, so a brace left in it is the entire page.
+#
+# Four stages, three languages, twelve sentences, on a node with data and on one with none. The
+# empty node matters more than the populated one: that is the node a tester sets up on a Tuesday,
+# and "{issues} issues watched here" printed literally is what the page would lead with.
+for _case, _d in (("node #1", run()), ("an empty node", e)):
+    _dg = _d.get("digest")
+    check(isinstance(_dg, dict), f"{_case}: /issues carries no digest")
+    for _stage in ("observe", "decide", "act", "measure"):
+        for _loc in ("en", "id", "es"):
+            _s = (_dg or {}).get(_stage, {}).get(_loc)
+            check(isinstance(_s, str), f"{_case}: digest.{_stage}.{_loc} is not a sentence")
+            if _case == "node #1":
+                check(_s, f"{_case}: digest.{_stage}.{_loc} is empty")
+            check("{" not in (_s or "") and "}" not in (_s or ""),
+                  f"{_case}: digest.{_stage}.{_loc} has an unfilled placeholder: {_s}")
+
+# The cell area is grouped for the language it is read in. A comma is the DECIMAL mark in Spanish
+# and Indonesian, so an English "639,550 m2" reads there as six hundred and thirty-nine point five
+# five — the same digits, three orders of magnitude out, in the one sentence that has to be right.
+# The number itself depends on where the node stands, so this checks the separator and not a value.
+_dec = run()["digest"]["decide"]
+_m = re.search(r"([\d,]{5,}) m", _dec["en"])
+check(_m is not None and "," in _m.group(1), f"en groups thousands with commas: {_dec['en']}")
+if _m:
+    _same = _m.group(1).replace(",", ".")
+    check(_same in _dec["es"], f"es wants {_same}: {_dec['es']}")
+    check(_same in _dec["id"], f"id wants {_same}: {_dec['id']}")
+
+# rho stays out of the digest. It is specified over its own window in docs/SPEC_rho.md and computed
+# by app/index.py from a query Replay cannot answer, so a digest that reported one would be a second
+# rho over a different window — and two of them disagreeing on one page is worse than one absent.
+for _loc in ("en", "id", "es"):
+    check("%" not in run()["digest"]["measure"][_loc],
+          f"measure reports the ledger, never a rate a reader could take for rho: "
+          f"{run()['digest']['measure'][_loc]}")
+
+for _fx in sorted((ROOT / "app/issues/fixtures").glob("*.json")):
+    _snap = json.loads(_fx.read_text())
+    _absent = [k for _, k in engine.Replay.TABLES if k not in _snap]
+    check(not _absent, f"{_fx.name} is served by /issues/fixtures/ but cannot be replayed: "
+                       f"it carries no {', '.join(_absent)}. A snapshot that is evidence of the "
+                       f"wire rather than a render belongs in docs/design/fixtures/.")
+
+# 7: level on state, the one that MOVED leads; an exact tie goes to the declared order
+#
+# This asserted "a tie goes to the declared order" for both orders, and on 18 September it started
+# failing for the right reason: change became the tie-break inside a state, and in this capture the
+# two issues are not actually tied. air moved 0.0714 of its own recent level over the last three
+# hours against the three before; heat moved 0.0. So air leads whichever order the household typed,
+# which is the whole of what was asked for. The declared order still breaks an EXACT tie, and the
+# unit cases at the foot of this file hold it to that with issues built to be equal on both counts.
 quiet = json.loads(json.dumps(FIX))
 quiet["alerts"], quiet["actions"] = [], []
-for declared, want in (("air,heat", "air"), ("heat,air", "heat")):
+for declared in ("air,heat", "heat,air"):
     t = run(quiet, declared=declared, earth=EARTH)
     check(t["issues"]["air"]["state"] == t["issues"]["heat"]["state"],
           "this case only tests the tie-break while air and heat are in the same state")
-    check(t["headline"] == want,
-          f"with NODE_ISSUES={declared} and a tie, the headline is {t['headline']}, expected {want}")
+    check(t["issues"]["air"]["moved"] > t["issues"]["heat"]["moved"],
+          f"this case needs air to be the one that moved: air {t['issues']['air']['moved']}, "
+          f"heat {t['issues']['heat']['moved']}")
+    check(t["headline"] == "air",
+          f"with NODE_ISSUES={declared}, level on state, the headline is the one that moved: "
+          f"got {t['headline']}, expected air")
 
 # 8: an undeclared issue is still shown, greyed, as not watched here
 part = run(declared="air,heat", earth=EARTH)
@@ -295,11 +368,16 @@ for key, d in DECL.items():
                                   d["compare"], cls)
             check(st and "{" not in st, f"{key}.{cls}.{loc} did not render: {st!r}")
 
-# the numeral is the one the stack carries, formatted to the issue's own dp
-check("5 µg/m³" in OUT["issues"]["air"]["sentence"]["en"],
-      f"air's numeral is not in its sentence: {OUT['issues']['air']['sentence']['en']}")
-check("30.8 °C" in OUT["issues"]["heat"]["sentence"]["en"],
-      f"heat's numeral is not in its sentence: {OUT['issues']['heat']['sentence']['en']}")
+# the numeral lives in `plain`, formatted to the issue's own dp; the headline stays words only
+_air_s = OUT["issues"]["air"]["sentence"]["en"]
+check("In the house it is 5" in OUT["issues"]["air"]["hero"]["plain"]["en"],
+      f"air's numeral is not in its plain: {OUT['issues']['air']['hero']['plain']['en']}")
+# the title is words only; the tagline may carry the day's time and hours ("until 15:00, 1 hour today")
+check(not re.search(r"\d", OUT["issues"]["air"]["title"]["en"]), f"air's title carries a number: {_air_s}")
+_heat_s = OUT["issues"]["heat"]["sentence"]["en"]
+check("In the house it is 30.8" in OUT["issues"]["heat"]["hero"]["plain"]["en"],
+      f"heat's numeral is not in its plain: {OUT['issues']['heat']['hero']['plain']['en']}")
+check(not re.search(r"\d", OUT["issues"]["heat"]["title"]["en"]), f"heat's title carries a number: {_heat_s}")
 
 # --- attribution ---------------------------------------------------------------------------------
 check(OUT["issues"]["air"]["attribution"] == "clear",
@@ -364,10 +442,10 @@ class Counting(engine.Replay):
 
 c = Counting(FIX)
 engine.compute(c, Settings(NODE_ISSUES="air,heat,land,coast"), DECL, earth=EARTH, now=NOW)
-check(c.n == 5, f"the engine ran {c.n} queries for four issues; it must read each table once")
+check(c.n == 7, f"the engine ran {c.n} queries for four issues; it must read each table once, and the usual and the silent once")
 c = Counting(FIX)
 engine.compute(c, Settings(NODE_ISSUES="air"), DECL, earth=EARTH, now=NOW)
-check(c.n == 5, f"the engine ran {c.n} queries for one issue; the reads are not per-issue")
+check(c.n == 7, f"the engine ran {c.n} queries for one issue; the reads are not per-issue")
 
 # --- the keys the modular dashboard reads ---------------------------------------------------------
 body = engine.replay(FIX, Settings(), DECL)
@@ -457,8 +535,334 @@ else:
     if [body["stations"][i]["sensor_id"] for i in own_cell["sensors"]] != ["sc-19849", "sc-19880", "sc-19897"]:
         fails.append("the plate's sensor indices index into the published stations")
 
+# ---------------------------------------------------------------- the hero, a slot the page draws blind
+# Every watched core issue declares a hero, and the engine fills it with tonight's values. The page
+# reads `hero` and nothing else in the lead, so what the page must not work out for itself is here.
+for k in ("air", "heat", "land", "coast"):
+    h = OUT["issues"][k].get("hero")
+    check(isinstance(h, dict), f"hero: {k} is watched and has no hero")
+    if not isinstance(h, dict):
+        continue
+    check(set(h) == {"sign", "pictogram", "numeral", "value", "unit", "dp", "sentence", "plain", "rule", "clock",
+                     "stamp"},
+          f"hero: {k} carries {sorted(h)}")
+    check(h["sentence"] == OUT["issues"][k]["sentence"], f"hero: {k}'s sentence is not the issue's own")
+    check(set(h["stamp"]) == set(I.LOCALES), f"hero: {k}'s stamp is not in every locale")
+_air, _coast, _land = (OUT["issues"][k]["hero"] for k in ("air", "coast", "land"))
+check(_air["value"] == round(OUT["issues"]["air"]["stack"]["room"]["value"], 0), "hero: air's numeral is not the room")
+check(_air["rule"]["line"] and _air["rule"]["line"]["value"] == 15, "hero: air's rule has lost its line")
+check({x["distance"] for x in _air["rule"]["dots"]} <= {"room", "yard", "ring"},
+      "hero: air's rule put the region on it, which its contract leaves off")
+check(_air["stamp"]["en"].startswith("read at "), f"hero: air's stamp is {_air['stamp']['en']!r}")
+check(_coast["rule"] and _coast["rule"]["line"] is None, "hero: coast draws a rule and no line")
+check([x["distance"] for x in _coast["rule"]["dots"]] == ["region"], "hero: coast's one dot is the region")
+check(_land["rule"] is None and _land["clock"] == "date", "hero: land draws no rule and a date")
+# 6 Sep: the built share was there and the satellite comparison was not. The sentence says there is
+# no record, so the numeral cannot say 91 %.
+check(OUT["issues"]["land"]["state"] != "none" or _land["value"] is None,
+      "hero: land is `none` and its numeral still carries a readout")
+check(OUT["lead"] == {"issue": OUT["headline"], "by": OUT["lead"]["by"]}
+      and OUT["lead"]["by"] in ("state", "moved", "order"), f"lead: {OUT['lead']} against headline {OUT['headline']}")
+# The land fixture of 21 Sep has the record: a date stamp from the observation, and the next look a
+# year on, because the pack's cadence is P1Y.
+_F21 = json.loads((ROOT / "app/issues/fixtures/node1-2026-09-21d.json").read_text())
+_L21 = engine.replay(_F21, Settings(NODE_ISSUES="air,heat,land,coast"), DECL)["issues"]["land"]["hero"]
+# The plain line: the reading layer carries the figures now (docs/SPEC_language.md). The numeral
+# distance speaks first, the line keeps its value bare, and the context issues' figures are the
+# strings that were their whole sentences before the split, with where the number comes from after.
+_O21 = engine.replay(_F21, Settings(NODE_ISSUES="air,heat,land,coast"), DECL)["issues"]
+for _k, _want in (
+        ("air", "In the house it is 12, and on the street 18, and in the ring around it 19. The "
+                "line is 15, and the street and the ring are over it."),
+        ("heat", "In the house it is 33.9, and on the street 30.7, and in the ring around it 32.7. "
+                 "The line is 35, and nothing here is over it."),
+        ("coast", "2.0 m off this coast. Swell 1.9 m, period 12 s, sea 28.1 °C. The node "
+                  "reads this from a model, not from anything here, and it never asks you to do "
+                  "anything about it."),
+        ("land", "1.3 % of the square this node watches changed between 2024 and 2025. 8.5 % since "
+                 "2017. Built 91 %, trees 9 %. The satellite looks once a year, and the node never "
+                 "asks you to do anything about it.")):
+    check(_O21[_k]["hero"]["plain"]["en"] == _want, f"plain: {_k} reads {_O21[_k]['hero']['plain']['en']!r}")
+    for _loc in I.LOCALES:
+        _p = _O21[_k]["hero"]["plain"][_loc]
+        check(_p and "{" not in _p and "\u2014" not in _p, f"plain: {_k}.{_loc} is {_p!r}")
+check(_L21["value"] == 91 and _L21["stamp"]["en"] == "looked at in July 2025 \u00b7 next look July 2026",
+      f"hero: land on 21 Sep reads {_L21['value']} · {_L21['stamp']['en']!r}")
+# --- Release C: the headline clauses ---------------------------------------------------------
+# The {line} clause is computed from the value, so the sentence can never contradict the line:
+# air at 12 against a line of 15 is under it; heat at 33.9 against 35 is near it.
+# Air was over the line for one hour that afternoon, so its title says the day (below). The hour's clauses are read with
+# the day's knob out of reach, which is the sentence a day with no hour over says.
+_knob, engine.DAY_OVER_HOURS = engine.DAY_OVER_HOURS, 25
+_H21 = engine.replay(_F21, Settings(NODE_ISSUES="air,heat,land,coast"), DECL)["issues"]
+engine.DAY_OVER_HOURS = _knob
+_S21 = {k: _H21[k]["sentence"]["en"] for k in ("air", "heat", "coast", "land")}
+check("under the WHO line" in _S21["air"] and "past the WHO line" not in _S21["air"],
+      f"line clause: air reads {_S21['air']!r}")
+check("close to this house's own heat line" in _S21["heat"] and "under the WHO line" not in _S21["heat"],
+      f"line clause: heat reads {_S21['heat']!r}")
+# The {event} clause: heat's ask opened today and the room is back under the line, so the sentence
+# names the crossing — the act band and the calm words agree. Air's stale ask could be from any
+# day, so it gets no such clause.
+check("crossed the line earlier today." in _S21["heat"],
+      f"event clause: heat reads {_S21['heat']!r}")
+check("earlier today" not in _S21["air"], f"event clause: air reads {_S21['air']!r}")
+# The household's words, not the instruments': no "ring" or "region", no dash drama, and no word of the
+# title said again in the tagline's opening (the review of 11 Oct: "holding … holding off", said twice).
+for _k in ("air", "heat"):
+    for _loc in I.LOCALES:
+        _t, _g = _O21[_k]["title"][_loc], _O21[_k]["tagline"][_loc]
+        check(not re.search(r"\b(ring|region)\b", _t + " " + _g) and "\u2014" not in _t + _g,
+              f"voice: {_k}.{_loc} reads {_t!r} | {_g!r}")
+# Context issues carry no jargon in the headline layer.
+check("cell" not in _S21["coast"].lower(), f"coast headline reads {_S21['coast']!r}")
+check("square" not in _S21["land"].lower(), f"land headline reads {_S21['land']!r}")
+# Unit-level: over the line renders the over clause and silences the event clause; back under with
+# an alert today renders the under clause and names the crossing.
+_air = DECL["air"]
+_cmp_mode = _air.get("compare") or {"mode": "ratio", "margin": 1.5}
+_su = engine._sentence(_air, {"room": {"value": 42}}, "notable", "room", "steady", "en",
+                       _cmp_mode, "inside", _air["line"], {"code": "alert_today"})
+check("past the WHO line" in _su and "earlier today" not in _su,
+      f"line/event over: {_su!r}")
+_sb = engine._sentence(_air, {"room": {"value": 4}}, "notable", "room", "steady", "en",
+                       _cmp_mode, "clear", _air["line"], {"code": "alert_today"})
+check("under the WHO line" in _sb and "earlier today" in _sb,
+      f"line/event back under: {_sb!r}")
+# Every locale renders the new clauses with no brace left over.
+for _loc in I.LOCALES:
+    for _k in ("air", "heat"):
+        _s = _O21[_k]["sentence"][_loc]
+        check(_s and "{" not in _s, f"sentence: {_k}.{_loc} is {_s!r}")
+# --- the title / tagline split (v0.80.8) ------------------------------------------------------
+# The title is words only: no digit and no line in any issue, attribution, locale or line relation.
+# The tagline meets the instrument, and opens a sentence of its own.
+for _k in ("air", "heat"):
+    _d = DECL[_k]
+    for _loc in I.LOCALES:
+        _blk = _d["sentences"][_loc]
+        for _att in _blk["attribution"]:
+            for _n in (0.2, 0.95, 3.0):
+                _v = round(_d["line"]["value"] * _n, 1)
+                _f, _t, _g = engine._sentence_parts(_d, {"room": {"value": _v}}, "notable", "room", "rising",
+                                                    _loc, _d.get("compare") or {}, _att, _d["line"], None)
+                check(_t and _g and not re.search(r"\d", _t)
+                      and not any(w in _t for w in _blk["line"].values())
+                      and _g[0].isupper(),
+                      f"split: {_k}.{_loc}.{_att} at {_v} gives {_t!r} | {_g!r}")
+check(engine._sentence_parts(DECL["air"], {}, "none", "room", "steady", "en", {}, None)[2] == "",
+      "split: a template with no {line} has no tagline")
+# --- the past hour: the engine's words, never the page's ----------------------------------------
+# Rendered by /issues/days (tests/test_figures_wire.py checks it per bucket); here, one hour on its own: the
+# line relation is the engine's (0.95 of the line is near, never under) and an empty hour has no tagline.
+_air_near = engine._hour_parts(_air, {"room": [_air["line"]["value"] * 0.95]}, [NOW], 0, "room", "en", _cmp_mode,
+                               _air["line"])
+check("close to the WHO line" in _air_near[1], f"hours: 0.95 of the line reads {_air_near!r}")
+check(engine._hour_parts(_air, {"room": [None]}, [NOW], 0, "room", "en", _cmp_mode, _air["line"])[1] == "",
+      "hours: an hour with no reading has no tagline")
+
+
+# ---------------------------------------------------------------- simple mode's paragraph
+# digest.simple, as approved on 25 Sep against this capture. Its alerts reach back only to 11 Sep, so
+# "since" is 11 September and never "30 days"; a live read goes back the full thirty.
+_D21 = engine.replay(_F21, Settings(NODE_ISSUES="air,heat,land,coast"), DECL)["digest"]["simple"]
+check(_D21["en"] == "This house has 5 stations of its own; the nearest other station is 3.2 km away. "
+      "The oldest open alert is #168, about heat, open since 11 September. Since 11 September the node "
+      "has asked 101 times and somebody answered 7; the usual wait was 112 minutes.",
+      f"digest.simple reads {_D21['en']!r}")
+_P21 = engine.replay(_F21, Settings(NODE_ISSUES="air,heat,land,coast"), DECL)["digest"]["prompts"]
+# The three the pane opens with are unchanged; after them, the pool it rotates through (28 Sep 2026).
+check(_P21["en"][:3] == ["Why is heat what the node leads with?", "What should I do about alert #168?",
+                         "What does the line for heat mean?"], f"digest.prompts opens with {_P21['en'][:3]}")
+check(len(_P21["en"]) > 3 and "What is air like right now?" in _P21["en"]
+      and any(re.fullmatch(r"What should I do about alert #(?!168\b)\d+\?", q) for q in _P21["en"]),
+      f"digest.prompts has no pool to rotate through: {_P21['en']}")
+check(all(len(_P21[l]) == len(_P21["en"]) <= engine.PROMPTS_MAX and len(set(_P21[l])) == len(_P21[l])
+          and all("{" not in q for q in _P21[l]) for l in I.LOCALES), f"digest.prompts: {_P21}")
+check(set(_D21) == set(I.LOCALES) and all(v and "{" not in v for v in _D21.values()),
+      f"digest.simple is not whole in every locale: {_D21}")
+_now = datetime(2026, 9, 25, 12, 0, tzinfo=timezone.utc)
+_st = lambda local, km: {"local": local, "km": km}                              # noqa: E731
+_iss = {"air": {"name": {"en": "Air", "id": "Udara", "es": "Aire"},
+                "open_asks": [{"id": 9, "ts": "2026-09-25T09:30:00+00:00"}]}}
+for _name, _stations, _asks, _want in [
+    ("one of its own, one near, an alert today, nothing asked in the window",
+     [_st(True, 0), _st(False, 0.4)], {"acts": [{"id": 1, "ts": "2026-08-01T00:00:00+00:00"}]},
+     "This house has 1 station of its own, and 1 other station within a kilometre. The oldest open "
+     "alert is #9, about air, open since 09:30. The node has not asked anybody for anything in the last "
+     "30 days."),
+    ("none of its own, asked once, nobody answered",
+     [_st(False, 5.0)], {"acts": [{"id": 9, "ts": "2026-09-25T09:30:00+00:00"}]},
+     "This house has no station of its own yet, so the node reads the model for this point. The oldest "
+     "open alert is #9, about air, open since 09:30. Since 26 August the node has asked once and nobody "
+     "has answered yet."),
+]:
+    _got = engine._simple(_iss, _stations, _asks, _now, timezone.utc, None, {})["en"]
+    check(_got == _want, f"digest.simple, {_name}: {_got!r}")
+check(engine._simple({}, [_st(True, 0)], {"acts": []}, _now, None, None, {})["en"].startswith(
+      "This house has 1 station of its own, and no other station is near enough to compare. Nothing is open."),
+      "digest.simple with nothing near and nothing open")
+
+
+class _Grab:
+    """A cursor that keeps the SQL it is handed, to ask what the live read asks Postgres for."""
+    def __init__(self):
+        self.sql = []
+
+    def execute(self, sql, args=()):
+        self.sql.append(sql)
+
+    def fetchall(self):
+        return []
+
+
+_g = _Grab()
+engine._read(_g)
+_alerts_sql = next(q for q in _g.sql if "FROM alerts" in q)
+check("level = 'act' AND ts > now() - interval '30 days'" in _alerts_sql and "LIMIT 200" in _alerts_sql,
+      f"the live read no longer takes 30 days of act alerts plus the last 200: {_alerts_sql}")
+
+
+# The two derived fixtures the visual rig draws the slot from. Each is 21 Sep with every reading but
+# one issue's removed, so the rule itself puts that issue first: coast with a rule and no line, land
+# with a date and no rule. If either stops leading, the page's own proof of a blind slot is gone.
+for _name, _want in (("coast-led-2026-09-21", "coast"), ("land-led-2026-09-21", "land")):
+    _o = engine.replay(json.loads((ROOT / f"app/issues/fixtures/{_name}.json").read_text()),
+                       Settings(NODE_ISSUES="air,heat,land,coast"), DECL)
+    _h = _o["issues"][_want]["hero"]
+    check(_o["lead"] == {"issue": _want, "by": "state"}, f"{_name}: lead is {_o['lead']}")
+    check(_h["value"] is not None, f"{_name}: the lead has no numeral")
+    if _want == "coast":
+        check(_h["rule"] and _h["rule"]["line"] is None and _h["rule"]["dots"], f"{_name}: {_h['rule']}")
+    else:
+        check(_h["rule"] is None and _h["stamp"]["en"].startswith("looked at in "), f"{_name}: {_h}")
+
+
+# ---------------------------------------------------------------- the headline, and what moved
+# Asked 18 September 2026: lead with the data showing the most significant change. The rule was
+# state alone — act, notable, quiet, context, none — with the household's declared order as the only
+# tie-break, so two issues saying equally much were separated by alphabet.
+#
+# State still wins outright. That is the load-bearing half: something that needs doing cannot be
+# pushed down the page by something that merely moved a lot. Change is the tie-break INSIDE a state.
+from issues.engine import _lead, _moved                 # noqa: E402
+
+_DECLARED = ["air", "heat", "land", "coast"]
+_HERO = {"sign": "sign-air"}                            # any hero at all: _lead only asks whether there is one
+
+
+def _iss(state, moved, hero=_HERO):
+    return {"state": state, "moved": moved, "hero": hero}
+
+
+for _name, _out, _want, _by in [
+    ("an act is never demoted by something that merely moved",
+     {"air": _iss("notable", 0.90), "heat": _iss("act", 0.0),
+      "land": _iss("context", 0.0), "coast": _iss("context", 0.0)}, "heat", "state"),
+    ("among equals, the one that moved most leads",
+     {"air": _iss("notable", 0.02), "heat": _iss("notable", 0.40),
+      "land": _iss("context", 0.0), "coast": _iss("context", 0.0)}, "heat", "moved"),
+    ("an exact tie still goes to the order this place chose",
+     {"air": _iss("notable", 0.20), "heat": _iss("notable", 0.20),
+      "land": _iss("context", 0.0), "coast": _iss("context", 0.0)}, "air", "order"),
+    ("a big move in a lower state does not outrank a quiet higher one",
+     {"air": _iss("notable", 0.0), "heat": _iss("context", 0.99),
+      "land": _iss("context", 0.0), "coast": _iss("context", 0.0)}, "air", "state"),
+    # The hero is a slot the page draws blind. An issue that declares none has nothing to put there,
+    # so it cannot lead however much it has to say: here it is the only `act` on the page.
+    ("a declared issue without a hero never leads",
+     {"air": _iss("act", 0.90, hero=None), "heat": _iss("quiet", 0.0),
+      "land": _iss("context", 0.0), "coast": _iss("context", 0.0)}, "heat", "state"),
+]:
+    got = _lead(_out, _DECLARED)
+    assert got == {"issue": _want, "by": _by}, f"lead: {_name}: {got}"
+assert _lead({"air": _iss("act", 1.0, hero=None)}, ["air"]) is None, "no hero anywhere is no lead, not a crash"
+
+# The size is read off the same six buckets the trend verb already uses, relative to the issue's own
+# recent level — micrograms and degrees are not comparable quantities, and ranking them against each
+# other by absolute magnitude would be arithmetic on a category error.
+assert _moved([1, 1, 1, 2, 2, 2]) == 1.0, "a doubling is a move of one"
+assert _moved([2, 2, 2, 1, 1, 1]) == 0.5, "a halving is as much news as a doubling, and unsigned"
+assert _moved([5] * 6) == 0.0, "a flat run has not moved"
+assert _moved([1, 2, 3]) == 0.0, "fewer than six buckets is not a small move, it is no evidence"
+assert _moved([]) == 0.0 and _moved(None) == 0.0, "no series at all is not an error here"
+print("  the lead is the headline rule, says which step decided it, and skips an issue with no hero")
+
+
+# --- the day behind the hour (14 Oct 2026) -----------------------------------------------------------
+# Node #1 at 19:00 said "The air is clean, inside and out" beside "12 h over the line today". The title now says the
+# day when the reading is back under the line after hours over it, and its count is the one /issues/days prints.
+_FF = json.loads((ROOT / "app/issues/fixtures/node1-2026-10-06-figures.json").read_text())
+_OF = engine.replay(_FF, Settings(NODE_ISSUES="air,heat,land,coast"), DECL)["issues"]
+_today = {k: v["per_day"][-1]["over"] for k, v in _FF["issues_days"]["issues"].items() if v.get("per_day")}
+check(_today["air"] == 2 and _OF["air"]["title"]["en"] == "The air is clean now, after a dusty morning"
+      and _OF["air"]["tagline"]["en"] == "In the house it was past the WHO line for fine dust until 09:00, 2 hours today.",
+      f"day: air on 6 Oct 19:22 reads {_OF['air']['title']['en']!r} | {_OF['air']['tagline']['en']!r} "
+      f"beside {_today['air']} h over the line today")
+check(_today["heat"] == 0 and _OF["heat"]["title"]["en"] == "The heat is bearable, inside and out",
+      f"day: a day with no hour over keeps the hour's title, heat reads {_OF['heat']['title']['en']!r}")
+for _loc in I.LOCALES:
+    _t, _g = _OF["air"]["title"][_loc], _OF["air"]["tagline"][_loc]
+    check(_t and not re.search(r"\d", _t) and "{" not in _t + _g and "09:00" in _g and "2" in _g.replace("09:00", ""),
+          f"day: air.{_loc} reads {_t!r} | {_g!r}")
+# _day itself: twelve hours over from midnight is a morning (the later part on a tie), until the end of the last hour;
+# yesterday's hours are not today's; an hour still running ends now; nothing over is no day.
+_tz = timezone(timedelta(hours=8))
+_bk = [datetime(2026, 10, 14, 19, tzinfo=_tz) - timedelta(hours=23 - i) for i in range(24)]
+_sv = [30 if b.hour <= 11 or b.day == 13 else 5 for b in _bk]
+_now = datetime(2026, 10, 14, 19, 30, tzinfo=_tz)
+check(engine._day(_sv, _bk, {"value": 15}, _now) == {"over": 12, "until": "12:00", "running": False, "part": "morning"},
+      f"_day: {engine._day(_sv, _bk, {'value': 15}, _now)}")
+_run = engine._day(_sv[:-1] + [30], _bk, {"value": 15}, _now)
+check(_run["until"] == "19:30" and _run["running"], "_day: an hour still running ends now, and says it is running")
+# Audit 15 Oct: "clean now … past the WHO line until 10:47" at 10:47 read as still over. A running hour is said in words.
+import yaml as _y
+for _f in ("app/issues/air.yml", "app/issues/heat.yml"):
+    for _loc, _sx in _y.safe_load(open(_f))["sentences"].items():
+        _dw = _sx.get("day") or {}
+        check(_dw.get("recent") and "{t}" in _dw.get("at", ""), f"{_f} {_loc}: day needs `at` and `recent` for a running hour")
+check(engine._day([5] * 24, _bk, {"value": 15}, _now) is None and engine._day(_sv, _bk, None, _now) is None,
+      "_day: no hour over, or no line, is no day")
+# near the line after a day over it is "better", not "clean"; over the line now keeps the hour's words
+_dy = {"over": 3, "until": "11:00", "part": "morning", "distance": "room"}
+_sn = engine._sentence_parts(_air, {"room": {"value": 14}}, "notable", "room", "steady", "en", _cmp_mode, "clear",
+                             _air["line"], {"code": "no_alert"}, _dy)
+_so = engine._sentence_parts(_air, {"room": {"value": 42}}, "notable", "room", "steady", "en", _cmp_mode, "inside",
+                             _air["line"], {"code": "no_alert"}, _dy)
+check(_sn[1] == "The air is better now, after a dusty morning" and "3 hours today" in _sn[2], f"day near: {_sn}")
+check(_so[1] == "Something in the house is making the air dirty", f"day while over: {_so}")
+print("  the day behind the hour: the title says it when the reading came back, counted as /issues/days counts")
+
+# --- asking: one answer to "is something asked of this house now" (14 Oct 2026) -------------------------
+# Now's Decide said "No event was open for air" from the events while the Wall showed an open ask from open_asks.
+# 6 Oct 19:22 (events): air's one open ask is a nearby alert from 2 Oct whose reading came back, and heat's event was
+# answered Done: nothing is asked now, while open_asks keeps the stale one.
+check(_OF["air"]["asking"] == [] and [a["id"] for a in _OF["air"]["open_asks"]] == [570] and _OF["heat"]["asking"] == [],
+      f"asking at 19:22: air {_OF['air']['asking']}, heat {_OF['heat']['asking']}")
+# 6 Oct 09:00 (events): the danger event is open and unanswered, and the two nearby alerts hold while the room is over
+_OE = engine.replay(json.loads((ROOT / "app/issues/fixtures/node1-2026-10-06-events.json").read_text()),
+                    Settings(NODE_ISSUES="air,heat,land,coast"), DECL)["issues"]
+_ae = _OE["air"]["asking"]
+check([(a.get("event_id"), a.get("alert_id")) for a in _ae] == [(2, None), (None, 571), (None, 570)]
+      and all(a["says"][_l] for a in _ae for _l in I.LOCALES) and "how" in _ae[1],
+      f"asking at 09:00: {_ae}")
+# 21 Sep (rules, no events): the current open asks, never the stale ones
+_ah = _O21["heat"]
+check([a["alert_id"] for a in _ah["asking"]] == [a["id"] for a in _ah["open_asks"] if a["current"]]
+      and len(_ah["asking"]) < len(_ah["open_asks"]), f"asking on rules: {len(_ah['asking'])} of {len(_ah['open_asks'])}")
+print("  asking: the open event while it asks, then the current alerts; a stale one stays open and is not asked")
+
+
 print("\n".join(f"  x {f}" for f in fails if f) or
       f"  issues/engine: the stack, the fence, the five states on eight cases, the headline rule, "
       f"attribution in six classes, and {len(OUT['issues']) * len(I.LOCALES)} sentences with every "
       f"placeholder filled — replayed against node #1, 6 Sep 14:08 UTC")
+# a reason's time from another day says its day (the Wall read "asked at 21:22" under a 22:00 clock, for 2 Oct)
+from datetime import datetime as _D, timezone as _Z, timedelta as _T   # noqa: E402
+_wita = _Z(_T(hours=8)); _now = _D(2026, 10, 14, 14, 0, tzinfo=_Z.utc)
+_old = engine._reason_text({"code": "open_ask_stale", "at": "2026-10-02T13:22:00+00:00", "today": engine._today(_now, _wita)}, "en")
+_new = engine._reason_text({"code": "open_ask_stale", "at": "2026-10-14T05:22:00+00:00", "today": engine._today(_now, _wita)}, "en")
+assert _old.startswith("asked at 2 Oct 21:22;") and _new.startswith("asked at 13:22;"), (_old, _new)
+print("reasons: a time from another day carries its date, today's is the local clock")
 sys.exit(1 if [f for f in fails if f] else 0)
+

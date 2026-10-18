@@ -26,9 +26,13 @@ def tree():
     """A throwaway copy of the files check_ui.py reads. The page is three of them now."""
     tmp = Path(tempfile.mkdtemp(prefix="planetai-ui-"))
     (tmp / "app" / "static").mkdir(parents=True)
-    for f in ("index.html", "dashboard.js", "dashboard.css"):
+    # The two drawings the node serves as documents of their own go too: no stylesheet on the page
+    # can reach inside them, so the SMIL rule has to be checked against the files themselves.
+    for f in ("index.html", "dashboard.js", "dashboard.css", "learn.json",
+              "signs.svg", "node-ground.svg"):
         shutil.copy(ROOT / "app" / "static" / f, tmp / "app" / "static" / f)
     shutil.copy(ROOT / "app" / "main.py", tmp / "app" / "main.py")
+    shutil.copy(ROOT / "app" / "ask.py", tmp / "app" / "ask.py")
     (tmp / "app" / "issues").mkdir(parents=True, exist_ok=True)
     shutil.copy(ROOT / "app" / "issues" / "api.py", tmp / "app" / "issues" / "api.py")
     shutil.copy(ROOT / "init.sql", tmp / "init.sql")
@@ -61,6 +65,11 @@ def sub(old, new):
         assert s.count(old) >= 1, f"anchor not found in the file under test: {old[:60]!r}"
         return s.replace(old, new, 1)
     return f
+
+
+def prepend_js(line):
+    """A violation at the top of the script. Same reasoning as prepend() below."""
+    return lambda s: line + "\n" + s
 
 
 def prepend(css):
@@ -139,6 +148,14 @@ broken("stylesheet off the allowlist",
        sub('href="static/dashboard.css"', 'href="static/theme2.css"'),
        r"COMPANIONS allowlist does not serve", where="index.html")
 
+# 8b. the page computes no H3: neither h3-js nor deck.gl's own hexagon layer, which computes the ring in the browser
+broken("h3-js on the page", prepend_js("window.x = new deck.H3HexagonLayer({ getHexagon: d => d.id });"),
+       r"computes H3 itself \(H3HexagonLayer\)", where="dashboard.js")
+broken("an h3 call on the page", prepend_js("const r = h3.cellToBoundary('8888');"),
+       r"computes H3 itself \(h3\.cellToBoundary\)", where="dashboard.js")
+broken("a vendored library off the allowlist", prepend_js("const L = { src: 'static/leaflet.js' };"),
+       r"loads static/leaflet\.js, which app/main\.py's COMPANIONS allowlist does not serve", where="dashboard.js")
+
 # 9. the stylesheets: a font nothing serves, and a CDN
 broken("font off the allowlist", prepend('@font-face{font-family:"Z";src:url("Nope.ttf")}'),
        r"loads Nope\.ttf, which app/main\.py's COMPANIONS allowlist does not serve")
@@ -170,5 +187,44 @@ broken("a viewport-height class on an element and its own ancestor",
        sub('<div class="wrap"><p class="note">Asking',
            '<div class="wallbox"><div class="wallbox"></div></div><div class="wrap"><p class="note">Asking'),
        r"\.wallbox sets a viewport height and is on <div>.*inside <div>", where="index.html")
+
+# 12. a learn mark with nothing behind it, and an entry nothing draws
+# Both are silent: the page renders either way and the only way to find out is to be the tester who
+# presses a question mark and gets nothing. So they are counted at build time instead.
+broken("a mark the layer does not have",
+       sub("learn: ['cards', 'raw', 'figure']", "learn: ['cards', 'raw', 'figure', 'weather']"),
+       r"draws a learn mark 'weather' that app/static/learn\.json does not have", where="dashboard.js")
+broken("an entry nothing on the page draws",
+       sub("learn: ['rho', 'refusals']", "learn: ['rho']"),
+       r"learn\.json carries 'refusals' and nothing on the page draws it", where="dashboard.js")
+
+# 13. SVG SMIL, which reduced motion cannot reach
+# The netmap shipped an <animate> and it was rewritten in CSS for exactly this reason. Nothing
+# stopped the next drawing reaching for it again; this does. Prose about SMIL is not a violation —
+# the page's own note explains why the wires are not drawn that way — so the rule wants an attribute.
+broken("an SVG <animate> in the script",
+       prepend_js('const SMIL = \'<animate attributeName="opacity" dur="2s"/>\';'),
+       r"dashboard\.js writes an SVG <animate>.*reduced motion cannot reach smil", where="dashboard.js")
+broken("an <animateTransform> inside a drawing the node serves",
+       sub("</svg>", '<animateTransform attributeName="transform" dur="3s"/></svg>'),
+       r"node-ground\.svg carries an SVG <animateTransform>", where="node-ground.svg")
+# and the other half: the page already TALKS about SMIL, in a note a reader sees and in this repo's
+# own comments. A rule that cannot tell the two apart would have been red the day it was written.
+tmp = tree()
+p = tmp / "app" / "static" / "dashboard.js"
+p.write_text("/* the netmap once used <animate> and does not any more */\n" + p.read_text())
+rc, out = run(tmp)
+assert rc == 0, f"prose mentioning <animate> was read as a violation:\n{out}"
+shutil.rmtree(tmp, ignore_errors=True)
+print("  · prose mentioning <animate> is left alone: the rule wants an attribute")
+
+# The routes a band prints beside its kicker. A section with no `reads:` is a band nobody can trace
+# back to the node; a route app/main.py does not define is a citation that answers 404.
+broken("a section with no reads",
+       sub("  reads: ['/effect'],\n", ""),
+       r"section 'effect' declares no `reads:`", where="dashboard.js")
+broken("a section that reads a route the node does not have",
+       sub("  reads: ['/effect'],", "  reads: ['/effects'],"),
+       r"section 'effect' reads /effects, which app/main\.py does not define", where="dashboard.js")
 
 print("check_ui: every visual-language gate fails when the page breaks its rule")

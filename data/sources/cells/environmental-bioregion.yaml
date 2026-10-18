@@ -1,0 +1,40 @@
+cell: Environmental|Bioregion
+indicator_categories:
+- freshwater and water stress
+- land cover
+- biodiversity
+- coastal and marine condition
+- soil
+- natural hazards
+minimum_indicators:
+- name: Tree-cover fraction
+  unit: fraction 0-1
+  aggregation: mean
+- name: Sea surface temperature
+  unit: degC
+  aggregation: 7d-mean
+- name: Baseline water stress
+  unit: ratio
+  aggregation: latest
+- name: Active fire detections
+  unit: count/yr (VIIRS 375 m hot pixels)
+  aggregation: annual-total
+- name: Earthquakes of magnitude 4.5 and above
+  unit: count/yr
+  aggregation: annual-total
+does_not_claim: A bioregion is not the sum of its cities, and a figure here must not be presented
+  as one. A satellite land-cover class is a model's guess at what a pixel contains, not a survey —
+  tree cover from Dynamic World and tree cover from a forest inventory disagree, and the disagreement
+  is real. A point sample from a global model, which is what the node's coast and earth-engine packs
+  take, is a boundary condition for this place and not a measurement of the bioregion. A count of
+  hazard events is not risk. Risk is hazard times exposure times vulnerability, and neither row carries
+  the buildings or the people. A fire detection is a hot pixel, not a fire and not burned area; flares,
+  kilns and volcanoes count too, and cloud hides what burns under it. A quiet year is not a safe place.
+  Faults release on return periods of centuries, so a count of zero earthquakes says nothing about seismic
+  hazard, and below about M4.5 the global catalogue is only as complete as the local network.
+notes: '12 entries filed. The node computes three things here today, all `partial` on purpose: sea
+  surface temperature (packs/coast), tree-cover fraction (packs/earth-engine) and Posidonia thermal-stress
+  days (packs/posidonia). None is a measurement made here, which is why none is `live`. The natural-hazards
+  rows (added 2026-09-26) are served by two candidates, NASA FIRMS for fires and the USGS catalogue for
+  earthquakes; nothing reads either yet. Flood is deliberately not a row: the only filed source, Google
+  Flood Hub, publishes forecasts, and a forecast is not a count of what happened.'

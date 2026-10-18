@@ -73,8 +73,44 @@ with open(os.path.join(DATA, "address"), "w") as f:
 # no node has ever seen another this way.
 PRESENCE = RNS.Destination(identity, RNS.Destination.IN, RNS.Destination.SINGLE, "planetai", "presence")
 HEARD_MAX = 200
+# Peers live in /data, beside the identity, because they are the same kind of fact: something this
+# container learned that a new container cannot re-derive. `heard` was memory only, so every restart
+# emptied it — and `planetai update` recreates containers, so a node forgot every peer it knew on every
+# update and showed "alone" until each one announced again, up to RETICULUM_ANNOUNCE_S (30 min) later.
+# On the Network tab, whose whole purpose is showing who else is out there.
+PEERS_FILE = os.path.join(DATA, "peers.json")
 heard: dict = {}
 heard_lock = threading.Lock()
+
+
+def _load_heard() -> None:
+    """Whatever the last container heard. A missing file is an ordinary first run; a corrupt one is not
+    worth failing a bridge over, since the next announce rebuilds it."""
+    try:
+        with open(PEERS_FILE) as f:
+            rows = json.load(f)
+        if isinstance(rows, dict):
+            heard.update({k: v for k, v in rows.items() if isinstance(v, dict) and v.get("node")})
+            log.info("presence: %d peer(s) remembered from the last run", len(heard))
+    except FileNotFoundError:
+        pass
+    except Exception as e:                                  # noqa: BLE001 — a bad file is not a dead bridge
+        log.warning("presence: could not read %s (%s); starting with none", PEERS_FILE, e)
+
+
+def _save_heard() -> None:
+    """Called with heard_lock held. Written to a temporary file and renamed, so a container dying
+    mid-write leaves the previous list rather than half of this one."""
+    tmp = PEERS_FILE + ".tmp"
+    try:
+        with open(tmp, "w") as f:
+            json.dump(heard, f)
+        os.replace(tmp, PEERS_FILE)
+    except Exception as e:                                  # noqa: BLE001 — losing the file is not losing the node
+        log.warning("presence: could not write %s (%s)", PEERS_FILE, e)
+
+
+_load_heard()
 announcing = False
 
 
@@ -104,6 +140,7 @@ class PresenceHandler:
             if len(heard) > HEARD_MAX:                      # a busy network must not fill this container
                 for k, _ in sorted(heard.items(), key=lambda kv: kv[1]["last"])[:len(heard) - HEARD_MAX]:
                     heard.pop(k, None)
+            _save_heard()
         log.info("presence: heard %s (%s)", row["node"], h[:8])
 
 

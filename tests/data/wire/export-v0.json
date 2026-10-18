@@ -1,0 +1,21 @@
+{
+  "schema": "export-v0",
+  "source": "app/main.py::export",
+  "keys": [
+    "alerts",
+    "cells",
+    "city",
+    "day",
+    "generated",
+    "hourly",
+    "lat",
+    "licence",
+    "lon",
+    "node",
+    "offers",
+    "rho",
+    "scale",
+    "schema",
+    "version"
+  ]
+}

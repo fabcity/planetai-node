@@ -5,6 +5,8 @@
   · every field it reads off /stats rows is a column of the stats view
   · anything the script hides with .hidden is not un-hidden by a display rule
 Run: python3 tools/check_ui.py"""
+import json
+import pathlib
 import re
 import shutil
 import subprocess
@@ -35,12 +37,32 @@ routes = set(re.findall(r'@app\.(?:get|post|put)\("(/[a-z_./{}-]*)"', main))   #
 _api = open("app/issues/api.py").read()
 _prefix = (re.search(r'APIRouter\(prefix="([^"]+)"', _api) or [None, ""])[1]
 routes |= {(_prefix + p) or "/" for p in re.findall(r'@router\.(?:get|post|put)\("([^"]*)"', _api)}
+# app/ask.py is a router with no prefix: GET /ask/status, POST /ask, GET /docs/search.
+routes |= set(re.findall(r'@router\.(?:get|post|put)\("(/[^"]*)"', open("app/ask.py").read()))
 # `fetch('/x')`, and `get('/x')` — snapshot()'s own helper, which is how most of them are called
 _called = set(re.findall(r"(?:api|fetch|get)\('(/[a-z_/.-]+)", js))
-_called |= set(re.findall(r"[\"'`](/(?:earth|issues|actions|settings|packs|health|alerts|rho|report)[a-z_/.-]*)", js))
+_called |= set(re.findall(r"[\"'`](/(?:earth|issues|actions|settings|packs|health|alerts|rho|report|ask|docs)[a-z_/.-]*)", js))
 for p in sorted({x.rstrip("/") or "/" for x in _called}):
     if p not in routes:
         errs.append(f"page calls {p}, which app/main.py does not define")
+
+# Every section names the routes its band's data comes from (`reads:`), and the shell prints them
+# beside the kicker as links. A section with none is a band a reader cannot trace to the node, and a
+# route that is not in app/main.py is a link to a 404 printed as a citation.
+_heads = re.findall(r"^window\.PAI\.register\(\{(.*?)\n  (?:render|lead|controls|wall|notes)\b", js,
+                    re.S | re.M)
+if len(_heads) != len(re.findall(r"^window\.PAI\.register\(\{", js, re.M)):
+    errs.append("a section registration has no render, lead, controls, wall or notes, so its declared "
+                "fields cannot be read for `reads:`")
+for _head in _heads:
+    _sid = (re.search(r"\bid:\s*'([^']+)'", _head) or [None, "?"])[1]
+    _arr = re.search(r"\breads:\s*\[([^\]]*)\]", _head)
+    _got = re.findall(r"'([^']+)'", _arr.group(1)) if _arr else []
+    if not _got:
+        errs.append(f"section '{_sid}' declares no `reads:`, so its band does not say which route it drew")
+    for _r in _got:
+        if _r.split("?")[0] not in routes:
+            errs.append(f"section '{_sid}' reads {_r}, which app/main.py does not define")
 
 # `hidden` is an attribute the UA styles as display:none, and ANY display rule of our own beats it. This has
 # shipped twice: an empty orange act strip on every node with nothing to act on (.actstrip sets display:grid),
@@ -149,11 +171,25 @@ for hexv, name in WEBSITE_PALETTE.items():
                         f"green a response, red a line crossed, blue data, orange satellite-only, else ink.")
 
 # --- 3. gradients and glows ---------------------------------------------------------------------------------------
+# The rule was written against .glow.a and .glow.b — two drifting radial-gradients behind the whole page, decoration
+# pretending to be atmosphere. It is not written against a DOT SCREEN, which is the only way CSS draws one and which
+# is how the grain rail says "this cell may leave the machine" without spending the cells blue on a second meaning.
+# A texture that encodes a datum is an instrument; a gradient behind everything is a mood.
+#
+# Recorded verbatim and exactly, the way PROSE_IN_A_SHOUT and RADIUS_LEGACY are: this is the one expression allowed,
+# not the one function. Anything else with a gradient in it still fails. Added 21 September 2026 with the rail.
+TEXTURE_KNOWN = (
+    "radial-gradient(circle, var(--ink) .8px, transparent 1px)",     # the rail's may-leave zone, and its key swatch
+)
 for fn in ("linear-gradient", "radial-gradient", "conic-gradient"):
     for src, where in ((CSS_SRC, "the stylesheet"), (JS_SRC, "the script"), (BODY, "the markup")):
-        if fn + "(" in src:
+        probe = src
+        for _tex in TEXTURE_KNOWN:
+            probe = probe.replace(_tex, "")
+        if fn + "(" in probe:
             errs.append(f"{fn}() is in {where}. No gradients and no glows: .glow.a and .glow.b were two "
-                        f"drifting radial-gradients behind the whole page.")
+                        f"drifting radial-gradients behind the whole page. A dot screen that encodes a "
+                        f"datum goes in TEXTURE_KNOWN, verbatim, with a reason.")
 
 # --- 4. radius -----------------------------------------------------------------------------------------------------
 # A control is at most 8px and a card at most 18px. The dashboard predates the rule and its pills and 30px cards
@@ -265,12 +301,31 @@ _refs |= {m.split("#")[0] for m in re.findall(r'href="([^"${}]+)"', js) if "/" i
 # character class above excludes `${}` — which is the same way a reference dropping its prefix
 # dropped out, two comments up. The asset is the path; the query is not part of the allowlist.
 _refs |= set(re.findall(r'src="([^"${}?]+)\?[^"]*"', js))
+# The map ground (UI_GROUND=map) loads its libraries by building the element in script, as
+# `{ src: 'static/maplibre-gl.js' }`, so the attribute forms above never see them.
+_refs |= set(re.findall(r"(?:src|href):\s*'(static/[^'${}]+)'", js))
 for ref in sorted(_refs):
     ref = ref.strip("'\"").split("?")[0]
+    # A link OUT (the documentation, the programme) or to one of this node's own routes (the foot's
+    # GET /health and /llms.txt) is not an asset the page loads; the route half is checked above.
+    if ref.startswith(("https://", "http://")) or ref in routes:
+        continue
     if not ref.startswith("static/"):
         errs.append(f"the page loads {ref}, which is not under static/ — app/main.py serves nothing else")
     elif ref[len("static/"):] not in served:
         errs.append(f"the page loads {ref}, which app/main.py's COMPANIONS allowlist does not serve")
+
+# --- 8b. the page computes no H3 ---------------------------------------------------------------------------------
+# The node computes, the page draws: every cell ring the page draws arrives as `cells_ll` in /issues' geometry. A
+# browser that imports h3-js, or hands deck.gl an H3 id to turn into a hexagon, is computing a boundary the node
+# did not send — and at a resolution the node may have refused to publish. deck.gl's bundle carries the H3 layers;
+# the page must not reach for them.
+_h3 = re.findall(r"h3-js|H3HexagonLayer|H3ClusterLayer|\bh3\.(?:latLngToCell|cellToBoundary|cellToLatLng|gridDisk|"
+                 r"polygonToCells|cellToParent|cellToChildren|compactCells|geoToH3|h3ToGeoBoundary|kRing)\b",
+                 strip_comments(js))
+if _h3:
+    errs.append(f"the page computes H3 itself ({', '.join(sorted(set(_h3)))}). The node sends every ring it may "
+                f"draw as cells_ll; draw those with PolygonLayer, and add a route to app/main.py if one is missing.")
 
 # --- 9. the stylesheets the page loads ------------------------------------------------------------
 # Everything under app/static/*.css is served to a household LAN by the COMPANIONS allowlist in
@@ -366,7 +421,8 @@ if _fills:
 
 # And if a new uppercasing rule appears, somebody has to look at it against the check above rather than find out on
 # a wall. This list is the recorded set, dated 14 September 2026; it may shrink and it may not grow silently.
-UPPERCASE_KNOWN = {".k", ".chip", ".unit .lab", ".index .state", ".ledger .iss", "table.figs th", ".field .src",
+UPPERCASE_KNOWN = {".asking .brand",               # "PLANETAI loading", the page's own two words (28 Sep 2026)
+                   ".k", ".chip", ".unit .lab", ".index .state", ".ledger .iss", "table.figs th", ".field .src",
                    ".tag", ".netnode .note", ".wall .wi .st", ".wall .exit",
                    # Added 15 September 2026 with the modular page. Each one was read against the rule
                    # above: every one of these carries the PAGE's own words, or a fixed vocabulary of
@@ -384,11 +440,142 @@ UPPERCASE_KNOWN = {".k", ".chip", ".unit .lab", ".index .state", ".ledger .iss",
                    "details.fold > summary",     # "All eleven grains, and what each is worth"
                    "table.tbl th",               # the grain table's column headings
                    # Added 16 September 2026 with the station list's display cap.
-                   ".stations .more a"}          # "show all" and "show N" — the page's own two words
+                   ".stations .more a",          # "show all" and "show N" — the page's own two words
+                   # Added 18 September 2026 with the year player.
+                   ".satplay .satctl button",    # "Play", "Pause", "Motion off", "one year"
+                   # Added 22 September 2026 with the Decide card. Four fixed labels this page
+                   # writes: "what was seen", "what this node suggests", "who is deciding", "what
+                   # will be done". The node's own sentence and the household's are both in the
+                   # elements under them, neither of which is shouted.
+                   ".decide .k",
+                   ".decide form.decided label span",
+                   # Added 22 September 2026 with the act form. Two field labels the PAGE writes,
+                   # "Who" and "What you did". The keeper's own sentence goes in the input, which is
+                   # not shouted and never could be.
+                   ".ask form.did label span",
+                   # Added 22 September 2026 with the rail's fold. Both carry the PAGE's own
+                   # words and nothing else: a heading the page composes around a resolution number,
+                   # which uppercasing cannot change, and the literal word "Close".
+                   ".railfold .rh h2",
+                   ".railfold .rh a",
+                   # Added 21 September 2026 with the header's segmented controls. The register is
+                   # "Paper" and "Dark"; the mode is "Simple", "Advanced" and "Learn". Five words,
+                   # all written by this page. The node's own words cannot reach either control.
+                   ".seg button",
+                   # Added 21 September 2026 with the lead's bracket meters and its stamp line.
+                   # `.stack.meters .col .k` carries LABEL_WORDS — room, wall outside, street, model
+                   # — which is an engine constant published verbatim as /issues.labels. A pack can
+                   # rename where a reading IS (`where:` overrides WHERE_WORDS and NOUN_WORDS); it
+                   # cannot reach these four. Closed vocabulary, four words, never a sentence, and
+                   # none of them can contain a mu. `.askref` is this page's own words and a count.
+                   ".stack.meters .col .k", ".askref",
+                   # Added 22 September 2026 with learn mode. Four rules, all of them chrome the
+                   # page writes for itself: "Walk the page", "Close", "Back", "Next", "This page:",
+                   # the mark's key (an identifier — `dial`, `share` — not a word of anybody's), and
+                   # "n of N". The two places a learn panel carries prose are the quote and the
+                   # `more` line, and neither is shouted: `.lpanel .qt` and `.lpanel .more` are set
+                   # in the body face at their own case, because one is the documentation's sentence
+                   # and the other is this page's.
+                   ".learnbar .walk", "#askpane .card.mark .ch",
+                   # Added 22 September 2026 with the loading state. Its heading is one of three
+                   # sentences this file writes — "Asking the node", "Asking the node again", "The
+                   # node stopped answering. Asking again" — and a count. The endpoint paths beside
+                   # it are NOT in here and are not shouted: /issues is a route, and a route that has
+                   # been uppercased is a route a reader cannot type back.
+                   ".asking .hd",
+                   # Added 22 September 2026 with the wall's top bar. `.who` is the node's name, its
+                   # city, "#wall", the share level and the dial's cadence — NODE_NAME is lowercase
+                   # with dashes and a city key is a word, so no unit and no mu can reach it. The
+                   # variable and its unit are the other half of that bar and are deliberately NOT
+                   # in here: `.wallbox .wtop .what` is left in its own case because µg/m³ shouted
+                   # is MG/M³. `.wnoask` is this page's one sentence, "Answer on Telegram, not here."
+                   ".wallbox .wtop .who", ".wallbox .wnoask"}
 _shouting = {sel.strip() for sel, body in RULES if re.search(r"text-transform\s*:\s*uppercase", body)}
 for _new in sorted(_shouting - UPPERCASE_KNOWN):
     errs.append(f"{_new} is a new text-transform:uppercase rule. If the node's own words can reach it, they need "
                 f".said — see PROSE_IN_A_SHOUT in this file. Then add it to UPPERCASE_KNOWN.")
+
+# --- and the letter that started all of this -----------------------------------------------------------------
+# `µ` uppercases to `M`. Not to a bigger µ: to the letter M, so `µg/m³` is printed `MG/M³` and a household reads
+# milligrams where the node said micrograms — a thousandfold error, in the unit, on a wall, silently. It was found
+# on the wall foot in September, fixed at the two sites PROSE_IN_A_SHOUT names, and then drawn again on the
+# September sketch's wall foot by somebody who had not been told. So it gets a rule rather than a memory.
+#
+# Two halves, both static, because `make lint` has no browser: a mu authored into the stylesheet, and a mu
+# authored into the page's own markup outside a `.said` wrapper. A mu arriving from the NODE is a different
+# problem and is already covered — that is what .said and PROSE_IN_A_SHOUT are for.
+MU = ("\u00b5", "\u03bc")          # MICRO SIGN and GREEK SMALL LETTER MU; they look identical and both do this
+# A mu in the STYLESHEET is always wrong here, whatever the selector: units are the node's words and
+# arrive over the wire, so a `content: "µg/m³"` is the page inventing a unit — and one uppercase rule
+# anywhere above it turns that into MG/M³. No allowlist, because there is no good case for one.
+for _sel, _body in RULES:
+    if any(m in _body for m in MU):
+        errs.append(f"{_sel.strip()} writes a mu into the stylesheet. Units come from the node, not from "
+                    f"CSS, and an uppercase rule turns µg/m³ into MG/M³ — a thousandfold error, on a wall.")
+for _i, _line in enumerate(JS_SRC.splitlines(), 1):
+    _code = _line.split("//")[0] if not _line.lstrip().startswith(("*", "/*")) else ""
+    if any(m in _code for m in MU) and "said" not in _code:
+        errs.append(f"dashboard.js:{_i} writes a mu into the page outside .said. If a rule above it ever "
+                    f"uppercases, that becomes MG/M³ and the household reads milligrams. Wrap it in .said.")
+
+# --- the learn layer: a mark the page draws and a mark the build wrote are the same set ------------------
+# A `.q` with no entry behind it is a question mark that opens nothing; an entry nothing draws is a
+# quote maintained against a docs page for no reader. Both are silent — the page renders either way —
+# so they are counted here rather than discovered by a tester. build_learn.py's own --check holds the
+# other half: that each of those quotes is still a verbatim span of the page it cites.
+_learn = pathlib.Path("app/static/learn.json")
+if _learn.exists():
+    _have = set(json.loads(_learn.read_text())["marks"])
+    _drawn = set()
+    for _arr in re.findall(r"\blearn:\s*\[([^\]]*)\]", js):
+        _drawn |= set(re.findall(r"'([a-z]+)'", _arr))
+    _drawn |= set(re.findall(r"\bmark\('([a-z]+)'", js))
+    for _k in sorted(_drawn - _have):
+        errs.append(f"the page draws a learn mark '{_k}' that app/static/learn.json does not have. "
+                    f"Add it to MARKS in tools/build_learn.py, or stop drawing it.")
+    for _k in sorted(_have - _drawn):
+        errs.append(f"learn.json carries '{_k}' and nothing on the page draws it. Give it to a section "
+                    f"(`learn: ['{_k}']`) or to the shell, or take it out of tools/build_learn.py.")
+
+# --- every note names its own subject -----------------------------------------------------------------
+# The notes band prints a term beside each note. It used to print the SECTION's title for every note
+# in the fold, so a fold of five was five rows reading "What the satellite says" beside five
+# paragraphs about five different things — the fold's own heading, said again, five times, telling a
+# reader scanning for one of them nothing. `label` fixed that, and the fallback to the section title
+# is still there for a note that has none, which is exactly how the repeat would come back: silently,
+# one note at a time, with the page rendering perfectly either way. So a note without a label is a
+# lint error rather than something somebody notices at the bottom of a long page.
+# A note is the only shape on this page whose `id` is followed by `text:` — a row carries `left`,
+# `line` and `qty`, never prose — so that pair is what this looks for, and `label:` has to be
+# between them.
+for _m in re.finditer(r"\{\s*id:\s*[`'\"]([A-Za-z0-9_.-]+)[`'\"]\s*,([^{}]{0,80}?)text\s*:", js):
+    if "label:" not in _m.group(2):
+        errs.append(f"the note '{_m.group(1)}' has no `label:`, so the notes band prints its section's "
+                    f"title beside it \u2014 the same words every other note in that fold prints. Give it a "
+                    f"few words naming what THIS note is about.")
+
+# --- SMIL: the one kind of motion this page may not use --------------------------------------------------
+# `@media (prefers-reduced-motion: reduce)` reaches CSS animations and nothing else. An SVG <animate>
+# keeps running when a household has asked the whole machine for stillness, and there is no way to
+# switch it off from a stylesheet. The netmap shipped one and it was rewritten in CSS for exactly
+# this; nothing has stopped the next drawing from reaching for it again. This does.
+#
+# The pattern wants an ATTRIBUTE, so prose about SMIL — the page's own note explaining why the wires
+# are not drawn that way, and the comments in this repo — is not a false positive. A real SMIL
+# element always carries one.
+SMIL = re.compile(r"<(animate|animateTransform|animateMotion|set)\b[^>]*\b"
+                  r"(attributeName|dur|values|from|to|begin|repeatCount)\s*=")
+for _name, _text in (("index.html", h), ("dashboard.js", js), ("dashboard.css", open("app/static/dashboard.css").read())):
+    _m = SMIL.search(_text)
+    if _m:
+        errs.append(f"{_name} writes an SVG <{_m.group(1)}>. Reduced motion cannot reach SMIL: it keeps "
+                    f"moving after a household has asked the machine to stop. Use a CSS animation on a "
+                    f"--motion- token, which the one reduce block in planetai-theme.css turns off.")
+for _svg in sorted(pathlib.Path("app/static").glob("*.svg")):
+    _m = SMIL.search(_svg.read_text())
+    if _m:
+        errs.append(f"{_svg.name} carries an SVG <{_m.group(1)}>, which reduced motion cannot reach. "
+                    f"It is served as a document of its own, so no stylesheet on the page can stop it.")
 
 print("\n".join(f"  x {e}" for e in errs) or
       "  GUI: script parses; every id, endpoint, field and asset resolves; nothing hidden is un-hidden by CSS;\n"

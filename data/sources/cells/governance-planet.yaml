@@ -1,0 +1,17 @@
+cell: Governance|Planet
+indicator_categories:
+- institutional quality
+- open government commitment
+- data openness
+minimum_indicators:
+- name: Government effectiveness estimate
+  unit: index -2.5 to +2.5
+  aggregation: latest
+- name: Open data availability score
+  unit: score
+  aggregation: latest
+does_not_claim: 'A national governance score is not a city''s, and putting one on a city row asserts
+  something the source does not support. These are perception-based composites with published confidence
+  intervals: two countries whose intervals overlap are not ranked, whatever their point estimates
+  do, and an Index that ranks them anyway is reporting noise as order.'
+notes: 6 entries filed. WGI carries the standard errors that make the non-ranking explicit.

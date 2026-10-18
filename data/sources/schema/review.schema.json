@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/fabcity/awesome-fabcity-data/blob/main/schema/review.schema.json",
+  "title": "Fab City Source Review",
+  "description": "One person's record of having read one source for one real territory. Reviews are files, not a boolean on the entry, because the thing that makes an entry `live` is testimony with a name on it — and testimony has an author, a date, a place, and a list of what was actually checked. Each review lives at reviews/{pillar}/{scale}/{slug}/{date}-{reviewer-slug}.yaml, alongside the entry it is about at data/{pillar}/{scale}/{slug}.yaml. scripts/validate.py resolves that pointer and fails if it dangles.",
+  "type": "object",
+  "required": ["entry", "by", "org", "date", "territory", "checked", "verdict"],
+  "additionalProperties": false,
+  "properties": {
+    "entry": {
+      "type": "string",
+      "pattern": "^[a-z]+/[a-z]+/[a-z0-9-]+$",
+      "description": "The registry id this review is about: {pillar}/{scale}/{slug}, the same path the entry file lives at under data/ minus the .yaml. Must resolve to an existing entry, and the review file must sit under reviews/{entry}/."
+    },
+    "by": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 120,
+      "description": "The name of the person who read it. A person, not a team and not a bot — the point of a review is that somebody can be asked about it afterwards."
+    },
+    "org": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 120,
+      "description": "The lab, city, foundation or institution the reviewer did this as. Says whose hands the source passed through, and lets a reader weigh a self-declared review (see `self_declared`)."
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "ISO date the reading happened. scripts/check_review.py warns past 365 days and fails past 730: a review is evidence about a source at a moment, and sources move."
+    },
+    "territory": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 160,
+      "description": "The real place the source was read FOR — a city, region, island, bioregion. Not 'global' and not the source's own coverage claim: the question a review answers is whether this source works for somewhere, and somewhere has a name."
+    },
+    "checked": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": ["licence", "endpoint", "admin-code", "vintage", "field-fit"]
+      },
+      "description": "What the reviewer actually verified, from a closed list so that reviews are comparable. licence = the terms permit the use this list implies; endpoint = the URL or API answered, with data in it; admin-code = the source's administrative identifiers join to the territory's own; vintage = how old the newest record is, and how often it moves; field-fit = the fields carry the indicator row this entry is filed against. A short list is honest; an unchecked box is not a failure, it is a thing the next reviewer can do."
+    },
+    "verdict": {
+      "enum": ["usable", "usable-with-caveats", "unusable"],
+      "description": "usable = a node or a city can read this for the named territory as it stands; usable-with-caveats = it works, and `note` says what the reader must know first; unusable = it does not work for this territory, and `note` says why. Only the first two make an entry `live`."
+    },
+    "self_declared": {
+      "type": "boolean",
+      "default": false,
+      "description": "True when the reviewer's org is also the source's publisher. Not disqualifying — the publisher often knows the licence and the vintage best — but it is a different kind of evidence than an outside reading, and a reader is entitled to see which one this is."
+    },
+    "assisted_by": {
+      "type": "string",
+      "maxLength": 200,
+      "description": "The AI agent or tool that did part of the checks, named (e.g. 'Claude Code'). The reviewer is still `by`: the person who read the findings, stands behind the verdict and filed the issue from their own account. Absent means the person did the checks themselves. Like self_declared, it tells a reader which kind of evidence this is."
+    },
+    "issue": {
+      "type": "integer",
+      "description": "The issue number this review arrived on, when it came through .github/ISSUE_TEMPLATE/source-review.yml. Absent for a review committed by hand."
+    },
+    "note": {
+      "type": "string",
+      "maxLength": 2000,
+      "description": "What the reviewer wants the next reader to know: the caveat behind usable-with-caveats, the reason behind unusable, the rate limit, the join that had to be built. Required by nothing and worth more than everything else in the file."
+    }
+  }
+}

@@ -1,0 +1,36 @@
+name: Eurostat — Freight and mail air transport by main airports (avia_gooa)
+url: https://ec.europa.eu/eurostat/databrowser/view/avia_gooa/default/table
+description: |
+  Freight and mail loaded and unloaded at each main EU and EFTA airport, in tonnes,
+  monthly, quarterly and annual, by national, intra-EU and extra-EU transport.
+pillar: economic
+scale: region
+status: candidate
+license: Eurostat reuse policy (Commission Decision 2011/833/EU), reuse authorised with acknowledgement
+api: https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/avia_gooa?freq=A&unit=T&schedule=TOTAL&tra_cov=TOTAL&tra_meas=FRM_LD&tra_meas=FRM_NLD
+pilot_relevance: [barcelona]
+places: [barcelona, hamburg]
+tags: [trade, imports, exports, airports, air-freight, material-flow, tonnes, eurostat, europe-only, open-api]
+added: 2026-09-26
+auth: none
+feeds_cells: [Economic|Bioregion]
+upstream_listed_in: []
+notes: |
+  VERIFIED 2026-09-26, not yet read for a real territory.
+
+  LICENCE. Eurostat's copyright notice authorises reuse "provided the source is
+  acknowledged" (2011/833/EU). The CC-BY-4.0 on the website covers editorial content only.
+
+  ENDPOINT. Key-free JSON-stat, updated 2026-09-24. Filter by rep_airp and tra_meas:
+  FRM_NLD is freight and mail unloaded (inwards), FRM_LD loaded (outwards); unit T;
+  schedule and tra_cov TOTAL; freq A. 2024, tonnes in / out: Barcelona El Prat (ES_LEBL)
+  87,094 / 95,432; Hamburg (DE_EDDH) 16,254 / 13,603; Paris Charles de Gaulle (FR_LFPG)
+  938,224 / 974,594; Paris Orly (FR_LFPO) 22,480 / 49,312.
+
+  WHY THIS CELL. The airport half of Economic|Bioregion's gateway row ("Goods imported and
+  exported through the territory's ports and airports"), beside the maritime entry. Air
+  freight is small by weight (Barcelona 0.18 Mt against 55.5 Mt by sea in 2024) and large
+  by value, so a tonnage-only row understates it and the entry says so.
+
+  WHAT IT DOES NOT CLAIM. Tonnes handled at the airport, not goods consumed in its city:
+  hub airports tranship. Mail is included with freight. Road and rail are not in it.

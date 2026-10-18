@@ -1,0 +1,17 @@
+id: season
+name: Season
+description: >-
+  The record: is the air around this node worse than it has been? The ring answers where the smoke is;
+  this answers whether the year has turned. One paired comparison — the same stations' last seven days
+  against their own preceding sixty — so a station arriving or leaving cannot move the answer.
+author: PLANETAI core (official, prototype)
+version: 0.1.0
+requires: { node: ">=0.40.0" }
+kind: data
+domain: air
+metrics: [pm25]
+scales: [community]
+sources: [environmental/community/bali-air-dispatch]
+attribution: >-
+  Bali Air Dispatch, baliairdispatch.com, and the originating network named in each row's `source`
+  field. This pack adds no fetch: it reads the ring the node already stores.

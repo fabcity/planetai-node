@@ -16,7 +16,8 @@ def my_source(hc: httpx.Client, ...) -> tuple[list[dict], list[tuple]]:
 ```
 
 Readings dedupe on `(sensor_id, metric, ts)`, so polling twice is harmless. `local` means yours. `indoor` must be
-correct; the rules depend on it. `kind` is `sensor`, `portal`, `model`, `map` or `child`; only `sensor` enters `stats`.
+correct; the rules depend on it. `kind` is `sensor`, `portal`, `model`, `survey`, `child`, `peer` or `facility`, and the
+`place` pack also writes `map` rows; only `sensor` enters `stats`.
 
 `local` is two facts at once: an adapter says whether a sensor is *yours*, and the node checks whether it is
 *here*. A kit on your account 1.2 km away is yours and is not this node's measurement. `LOCAL_RADIUS_M` (500 m by
@@ -36,8 +37,24 @@ EPA 2021 correction applied, raw kept as `pm25_raw`.
 
 **PurpleAir** (`PURPLEAIR_HOSTS=192.168.1.50`). LAN, `/json`. Two Plantower channels averaged; corrected; raw kept.
 
+> **Not polled in this version.** Both adapters are written and tested, but `sources.enabled()` does not register
+> them, so a host you set is used only to keep your own kit out of the Bali Air Dispatch ring. A regression to be
+> fixed, not a decision; until then the sensors a node reads on its own are a Smart Citizen kit, Meshtastic radios and,
+> through the `xiaomi-air` wild pack, Xiaomi purifiers.
+
 **Meshtastic** (`planetai meshtastic`). Telemetry from radios via the gateway's MQTT uplink. `MESH_INDOOR_NODES` marks the
 indoor ones. DIY pods publish to `planetai/sensors/<id>/<metric>` on the same broker.
+
+**DIY nodes, direct** (`planetai broker`). A Making Sense Bali DIY node (its v4 portal asks where to publish) sends the
+platform's own topics and bytes to this node's Mosquitto: `device/sck/<token>/readings`, plus a retained `meta` message
+with the name, the site, the mounting height and whether it is indoors. The parser also reads a Smart Citizen Kit's
+`readings/raw` (`{t:...,55:28.3}`, what `mqtt -host <node> -port 1883` in the kit's shell would send), but the kit's
+firmware cannot send a password and this node's broker refuses anonymous clients, so a kit stays on the cloud path
+until a later version adds a listener scoped to `device/sck/#`. The node stores them with the device's own timestamp, which the cloud API never gives
+(rule 2 below). Ids are `sck-` + 8 hex of the token's hash: the token is a credential and is never shown. Without a
+`meta` message a device is outdoor and named by its id. Tokens listed in `SC_FORWARD` are passed on to
+smartcitizen.me unchanged, through a queue that outlives an internet outage, so the device keeps its page there;
+add that device's platform id to `SC_EXCLUDE` or it is read twice, once direct and once from the cloud.
 
 **Bali Air Dispatch** (`BAD_ENABLED=1`, Bali). The ring: other people's stations within `BAD_RADIUS_KM`, as the
 outdoor reference this node is read against. Never `local`, at any distance. Three rules keep this node's own kit out
@@ -105,8 +122,8 @@ The node writes it itself, from SQL against its own tables, so a node with no mo
 
 Two numbers in it are worth knowing about. **Notability** is the window's mean against the mean of the same local hours
 on each of the previous seven days, in standard deviations of that baseline; it is null until three days exist, so a
-node in its first week claims nothing. It decides which two places get a sentence, which is how the report can say "the
-kitchen ran higher than usual" without anyone reading a chart. **Trend** is the digest's ±3 rule read across to each
+node in its first three days claims nothing. It decides which two places get a sentence, which is how the report can say "the
+air in Kitchen was dirtier than usual" without anyone reading a chart. **Trend** is the digest's ±3 rule read across to each
 metric's own units: 3 µg/m³ for PM2.5, half a degree for a room's temperature, 5% of the window's range for a metric
 with no line of its own.
 

@@ -1,0 +1,44 @@
+name: Generalitat de Catalunya — Estadístiques de residus municipals (69zu-w48s)
+url: https://analisi.transparenciacatalunya.cat/d/69zu-w48s
+description: |
+  Municipal waste for every Catalan municipality, 2000–2024: tonnes and kg per
+  inhabitant, separate collection by stream, and where the residual fraction went
+  (landfill, incineration, mechanical-biological treatment).
+pillar: environmental
+scale: city
+status: candidate
+license: Llicència oberta d'ús d'informació – Catalunya (reuse, redistribution and derived works; cite the source and the date of last update; do not alter or distort)
+api: https://analisi.transparenciacatalunya.cat/resource/69zu-w48s.json
+pilot_relevance: [barcelona]
+places: [barcelona]
+tags: [waste, msw, recycling, landfill, catalonia, municipal, socrata]
+added: 2026-09-26
+auth: none
+feeds_cells: [Environmental|City, Environmental|Region]
+upstream_listed_in: []
+notes: |
+  VERIFIED 2026-09-26, not yet read for a real territory.
+
+  LICENCE. The dataset's licence field says "See Terms of Use", which points to the
+  Llicència oberta d'ús d'informació – Catalunya (web.gencat.cat, Dades obertes >
+  Llicències). It permits "la reutilització", "la distribució i la comunicació pública" and
+  "la transformació de la informació per fer-ne obres derivades, per a tot el món i sense
+  cap limitació temporal". The conditions: do not alter or distort the information, cite
+  "Generalitat de Catalunya. Departament de ...", and state the date of last update. No
+  commercial restriction. It is NOT CC-BY-4.0, although the portal entry once said so.
+
+  ENDPOINT. Key-free Socrata, 23,687 rows, 2000–2024. Barcelona (codi 80193), 2024:
+  kg_hab_any 446.76, total separate collection 317,446 t (r_s_r_m_total 42.14%), residual
+  to landfill 48,725 t and to incineration 10,838 t. Publisher: Departament de Territori,
+  Habitatge i Transició Ecològica.
+
+  WHY THIS CELL. Environmental|City asks for municipal solid waste per capita, and this is
+  it at municipal resolution. The disposal split also gives residual waste per capita, the
+  proposed "trash out" measure (awesome-fabcity-data#42).
+
+  REGION. Summed over all 948 municipalities, 2024: residual 2,030,395 t for 8,012,231
+  people, 253.4 kg/capita (Environmental|Region's waste row).
+
+  WHAT IT DOES NOT CLAIM. This is waste collected, not generated: a municipality can
+  generate waste its system never counts. The separate-collection rate is not a recycling
+  rate, because a collected fraction can still be rejected at sorting.

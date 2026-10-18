@@ -74,6 +74,7 @@
   message:
     en: "📊 Your house and the street, this week.\n\nThe air indoors followed the street, as it does in most homes; your building held back a good part of what was outside. The satellite model roughly tracked your street but said nothing useful about your rooms: it sees a district, not a house.\n\nAsk me for the numbers behind this if you want them."
     id: "📊 Rumah Anda dan jalan, minggu ini.\n\nUdara di dalam mengikuti jalan, seperti di kebanyakan rumah; bangunan Anda menahan sebagian besar yang ada di luar. Model satelit kira-kira mengikuti jalan Anda tapi tidak bilang apa pun yang berguna soal ruangan Anda: ia melihat kecamatan, bukan rumah.\n\nTanya angkanya kalau mau."
+    es: "📊 Tu casa y la calle, esta semana.\n\nEl aire de dentro siguió al de la calle, como en casi todas las casas; el edificio frenó buena parte de lo que había fuera. El modelo de satélite siguió más o menos tu calle, pero no dijo nada útil de tus habitaciones: ve un distrito, no una casa.\n\nPídeme los números si los quieres."
 
 # ---------------------------------------------------------------- daily: when is the street worst, and does the noise agree?
 # Cross-joins `loud`, which is empty without a local outdoor noise sensor — so a node with none gets no alert at
@@ -103,3 +104,4 @@
   message:
     en: "🕐 Your street has a rhythm.\n\nThis week the outside air was worst around {worst_hr}:00 and cleanest around {best_hr}:00. The street was loudest around {quiet_hr}:00, a different hour entirely. Burning after dark fits that pattern.\n\n👉 If you air the house, {best_hr}:00 is the hour."
     id: "🕐 Jalan Anda punya ritme.\n\nMinggu ini udara luar terburuk sekitar pukul {worst_hr}:00 dan terbersih sekitar pukul {best_hr}:00. Jalan paling ramai sekitar pukul {quiet_hr}:00, jam yang sama sekali berbeda. Pembakaran setelah gelap cocok dengan pola ini.\n\n👉 Kalau ingin membuka rumah, pukul {best_hr}:00 waktunya."
+    es: "🕐 Tu calle tiene un ritmo.\n\nEsta semana el aire de fuera estuvo peor hacia las {worst_hr}:00 y más limpio hacia las {best_hr}:00. La calle tuvo su hora más ruidosa hacia las {quiet_hr}:00, una hora completamente distinta. Las quemas de después del anochecer encajan con ese patrón.\n\n👉 Si ventilas la casa, la hora es las {best_hr}:00."

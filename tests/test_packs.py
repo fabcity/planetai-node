@@ -98,6 +98,29 @@ sys.modules["ee"] = types.ModuleType("ee")     # importable, but _init will fail
 eepack._state["last"] = 0
 assert eepack.fetch(None) == ([], []) and eepack._state["warned"]
 
+# verify.py, run end to end against a fake ee. Its step 6 named adapter.EMB for a year after the AlphaEarth score
+# left the adapter, so the one script a tester runs to check their setup died with AttributeError on a good setup.
+import contextlib, io, json, tempfile   # noqa: E401,E402
+class _Q:                                # every call chains; getInfo() is the only answer
+    def __getattr__(s, name): return lambda *a, **k: s
+    def getInfo(s): return {"elevation": 42}
+_seen = []
+_vee = types.ModuleType("ee")
+_vee.Initialize = _vee.ServiceAccountCredentials = lambda *a, **k: None
+_vee.Image = lambda cid: _Q(); _vee.ImageCollection = lambda cid: (_seen.append(cid), _Q())[1]
+_vee.Reducer = _vee.Geometry = _Q()
+with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as _kf:
+    json.dump({"project_id": "p", "client_email": "sa@p"}, _kf)
+os.environ.update(EE_PROJECT="p", EE_SERVICE_ACCOUNT="sa@p", EE_KEY_FILE=_kf.name)
+sys.modules["ee"] = _vee; sys.modules.pop("adapter", None)
+_out = io.StringIO()
+with contextlib.redirect_stdout(_out):
+    load("packs/earth-engine/verify.py", "ee_verify")     # an AttributeError here is the bug
+os.unlink(_kf.name); sys.modules.pop("adapter", None); [os.environ.pop(k) for k in ("EE_PROJECT", "EE_SERVICE_ACCOUNT", "EE_KEY_FILE")]
+assert "Setup is good" in _out.getvalue(), _out.getvalue()
+assert _seen == [eepack.DW, eepack.S2, eepack.VIIRS], f"verify.py checks {_seen}, the adapter reads DW, S2, VIIRS"
+print("earth-engine verify.py runs all six steps and checks only the datasets the adapter reads")
+
 print("all pack tests pass")
 
 # ---------------------------------------------------------------- place: a node that moved
@@ -162,6 +185,52 @@ assert _by[("smartcitizen", "bme_iaq")]["role"] == "index", "a vendor index is n
 assert _by[("meshtastic", "temp")]["role"] == "enclosure", "a radio in a sealed case reports its own box"
 assert _by[("meshtastic", "battery_pct")]["role"] == "device_health"
 assert _by[("smartcitizen", "pm25")]["declared_by"] == "core"
-assert all(c["role"] in ("ambient", "enclosure", "device_health", "derived", "index") for c in _ch)
+assert all(c["role"] in ("ambient", "enclosure", "device_health", "derived", "index", "private") for c in _ch)
 assert len({(c["source"], c["metric"]) for c in _ch}) == len(_ch), "one declaration per source and metric"
 print(f"{len(_ch)} channel roles declared")
+
+
+# ---------------------------------------------------------------- every alert template speaks every language the node offers
+# A Santiago or Menorca tester read English until v0.32. A rule added with only `en` would silently fall back for
+# everyone else, so the set is checked as a set: same keys, same placeholders, in every rules.yml.
+import glob, re, yaml
+LOCALES = {"en", "id", "es"}
+for f in ["config/rules.yml"] + sorted(glob.glob("packs/*/rules.yml")):
+    for r in yaml.safe_load(open(f)) or []:
+        m = r.get("message")
+        if not isinstance(m, dict):
+            continue
+        assert set(m) == LOCALES, f"{f} {r['id']}: message has {sorted(m)}, needs {sorted(LOCALES)}"
+        ph = {k: set(re.findall(r"\{(\w+)", v)) for k, v in m.items()}
+        assert len(set(map(frozenset, ph.values()))) == 1, f"{f} {r['id']}: placeholders differ between languages: {ph}"
+        for k, v in m.items():
+            assert v.strip() and len(v) < 700, f"{f} {r['id']}.{k}: empty or too long for a phone"
+assert "es" in open("app/settings.py").read().split('"ALERT_LOCALE"')[1].split("\n")[0], "settings.py: ALERT_LOCALE help must name es"
+# the language select is built in the dashboard's own script, not typed into index.html, since v0.54
+assert "'es', 'Espa\u00f1ol'" in open("app/static/dashboard.js").read(), "dashboard: language select needs Espa\u00f1ol"
+for pre in ("santiago", "barcelona", "menorca"):
+    assert "ALERT_LOCALE=es" in open(f"presets/{pre}.env").read(), f"presets/{pre}.env: Spanish-first pilots speak Spanish"
+print("every template speaks en, id and es")
+
+# packs.module() is the one place that knows where a node keeps its packs. Two callers used to
+# insert "../packs/<name>" on sys.path and import bare — engine._where_to_go and report.sheet — and
+# "../packs" is not where the image keeps them (/app/packs is, and PACKS_DIR is unset there), so
+# both imports failed on every real node. Both swallow the failure by design, so nothing said so:
+# `asks.where` was null with the make pack on and a lab 3.3 km away, and the report's `make` line
+# never appeared once. This asserts the loader finds a real pack's adapter, and that neither caller
+# has gone back to building the path itself.
+import pathlib as _pl
+_m = _packs.module("make")
+assert _m is not None, f"packs.module('make') found nothing under {_packs.PACKS_DIR}"
+assert hasattr(_m, "ask_line"), "packs/make/adapter.py no longer exposes ask_line"
+assert _packs.module("no-such-pack") is None, "a pack that is not here must be None, never a raise"
+assert _packs.module("make", "no-such-module") is None, "a missing module must be None"
+for _f in ("app/issues/engine.py", "app/report.py"):
+    # The CODE, not the prose: both files explain the old bug in a comment that names the path, and
+    # matching the string flagged the explanation as the offence.
+    _src = "\n".join(l.split("#")[0] for l in _pl.Path(_f).read_text().split("\n"))
+    assert 'getenv("PACKS_DIR"' not in _src, \
+        f"{_f} resolves PACKS_DIR itself again; packs.py holds that default (/app/packs on a node)"
+    assert "path.insert" not in _src, \
+        f"{_f} is putting a pack on sys.path again; packs.module() imports it by file"
+print("packs.module finds a pack's adapter, and neither caller builds the path itself")

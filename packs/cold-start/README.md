@@ -6,7 +6,7 @@ at its coordinates is a node that survives to week two.
 
 **What it adds** — three rules that need no hardware at all:
 
-- `modelled_air_today` — a daily air-quality line from Copernicus CAMS at your coordinates, and says it is a model.
+- `modelled_air_today` — an air-quality line from Copernicus CAMS at your coordinates, and says it is a model. Weekly at most: the daily reports carry the model reading now.
 - `hotter_than_normal` — today against 40+ years of NASA POWER satellite climatology for this month, at this point.
 - `sensor_vs_model` — once you *do* have an outdoor sensor, the weekly gap between it and the model. A big gap isn't an error; it's the local signal the global model can't see, which is the entire argument for hyperlocal nodes.
 

@@ -1,0 +1,19 @@
+cell: Governance|Region
+indicator_categories:
+- open data provision
+- procurement transparency
+minimum_indicators:
+- name: Open datasets published
+  unit: count
+  aggregation: latest
+- name: Datasets updated in the last 90 days
+  unit: percent
+  aggregation: latest
+- name: Public contracts awarded, published as structured data
+  unit: count
+  aggregation: annual-total
+does_not_claim: A catalogue's size is not its usefulness. A portal with a thousand datasets nobody
+  maintains scores higher on the first indicator than one with fifty that are current, which is why
+  the second indicator is in the minimum set and not optional. Neither measures whether anyone used
+  the data.
+notes: 23 entries filed, almost all regional open-data catalogues.

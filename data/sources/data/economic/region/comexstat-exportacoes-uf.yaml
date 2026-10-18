@@ -1,0 +1,28 @@
+name: ComexStat Brazilian exports by state of production and ISIC division (MDIC/SECEX)
+url: https://comexstat.mdic.gov.br/
+description: |
+  Brazil's foreign trade statistics from MDIC/SECEX: exports and imports by product
+  (NCM, SH, ISIC, CUCI), state and municipality, monthly from 1997, FOB US dollars and
+  kilograms, with a key-free API.
+pillar: economic
+scale: region
+status: candidate
+license: "Open government data under Decreto 8.777/2016 (reuse limited to crediting the source). The gov.br site footer reads CC BY-ND 3.0; read as the website's editorial licence, not the data's, by maintainer decision (Tomas Diez, 2026-09-27)"
+api: https://api-comexstat.mdic.gov.br/general?language=en
+pilot_relevance: []
+places: [recife, sao-paulo]
+tags: [trade, exports, imports, value, brazil, sao-paulo, pernambuco, recife, isic, open-api]
+added: 2026-09-27
+auth: none
+feeds_cells: [Economic|Region]
+upstream_listed_in: []
+notes: |
+  VERIFIED 2026-09-27, not yet read for a real territory. Filed for #42: the export side of São Paulo's and Recife's trade-adjusted goods index.
+
+  LICENCE, BY DECISION. The only licence text found is the gov.br footer on MDIC's statistics pages: "Todo o conteúdo deste site está publicado sob a licença Creative Commons Atribuição-SemDerivações 3.0 Não Adaptada." No-derivatives is not open by this list's rule. Decreto 8.777/2016, art. 2, defines government open data as available "sob licença aberta que permita sua livre utilização, consumo ou cruzamento, limitando-se a creditar a autoria ou a fonte". dados.gov.br's licence field could not be read (its API returns 401 without a key). Tomas Diez decided on 2026-09-27 to read the footer as the website's editorial licence and the data as open under the Decreto.
+
+  ENDPOINT. POST /general, no key. Body: flow, period, filters (state, ISICDivision), details, metrics (metricFOB). ComexStat's state codes: SP = 41, PE = 26. 2019 exports, FOB USD: SP food (ISIC 10) 9,012,886,069, electronics (26) 1,099,929,111; PE food 119,980,159. In the general dataset a state's exports are counted where the goods were produced, whatever the exporter's domicile (MDIC's FAQ). The /cities endpoint has SH chapters only, by exporter domicile.
+
+  WHY THIS CELL. Economic|Region's external-trade row. The state-of-production attribution is closer to a region's own output than customs data by declarant.
+
+  WHAT IT DOES NOT CLAIM. Products converted to ISIC, not the exporting firms' industry, so it is a proxy for the share of production sold abroad. US dollars; the pipeline converts at the central bank's annual average rate (SGS series 3694).

@@ -1,0 +1,29 @@
+name: Statistikamt Nord manufacturing in Hamburg (E I 1, annual)
+url: https://www.statistik-nord.de/fileadmin/Dokumente/E_I_1_j22_HH.xlsx
+description: |
+  Annual report on manufacturing, mining and quarrying in Hamburg: establishments,
+  persons employed, gross pay, turnover, foreign turnover and export share, and (from
+  2022) turnover from own production, by WZ 2008 division, for establishments with
+  20 or more persons employed. XLSX, final results.
+pillar: economic
+scale: region
+status: candidate
+license: "Statistikamt Nord imprint: extracts may be reproduced and distributed with attribution, all other rights reserved. Not on the Transparenzportal, so no dl-de-by-2.0. Used under these terms by maintainer decision (Tomas Diez, 2026-09-27)"
+api: null
+pilot_relevance: []
+places: [hamburg]
+tags: [manufacturing, production, turnover, exports, foreign-turnover, employment, hamburg, xlsx]
+added: 2026-09-27
+auth: none
+feeds_cells: [Economic|Region]
+upstream_listed_in: []
+notes: |
+  VERIFIED 2026-09-27, not yet read for a real territory. Filed for #42: it measures what the Index otherwise models.
+
+  LICENCE, NOT OPEN BY THIS LIST'S RULE. The imprint of every edition reads "Auszugsweise Vervielfältigung und Verbreitung mit Quellenangabe gestattet ... Alle übrigen Rechte bleiben vorbehalten." Statistikamt Nord's trade and waste reports are also on the Transparenzportal under dl-de-by-2.0; the E I 1 annual editions there stop at 2012. Tomas Diez decided on 2026-09-27 to use it under its own terms, attributed, for index figures. Record any change of that decision here.
+
+  ENDPOINT. No API. Files on statistik-nord.de, no login: E_I_1_j22_HH.xlsx, j23, j24 at /fileadmin/Dokumente/, and j18, j21 under Statistische_Berichte/industrie__handel_und_dienstl/E_I_1_j_H/. No j19 or j20 at either path. Table T2_1 holds turnover and foreign turnover by division; 2022 adds own-production turnover and its foreign part. 2022, food (C10): own production 3,205 M EUR, of which 1,362 M abroad. Cells shown as "·" are suppressed (textiles C13 in 2022; C23's foreign turnover).
+
+  WHY THIS CELL. Economic|Region's manufacturing capacity: persons employed by division (the minimum row), and measured turnover where the pipeline otherwise scales national production by employment.
+
+  WHAT IT DOES NOT CLAIM. Establishments with 20 or more persons only, so small workshops are missing. Turnover is sales, not production value; own-production turnover excludes resale. Foreign turnover is sales abroad; sales to the rest of Germany count as domestic.

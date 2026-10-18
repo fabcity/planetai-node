@@ -66,12 +66,28 @@ drawing:
     planetai restart                  # the coordinates are read once, at start
     planetai run place refresh        # replaces every feature with the ones around the new point
 
-Then reload the dashboard; the plan is held in the page for its lifetime, so the 60-second refresh will not redraw it.
+Then reload the dashboard; the plan is held in the page for its lifetime, so the page's own refresh will not redraw it.
 
 The node also notices by itself: the next poll sees that the stored run was centred somewhere else and refetches,
 and it clears the satellite footprints and the yearly series, which described the old circle. A correction smaller
 than 1% of the radius (never less than 25 m) is not treated as a move, so retyping a decimal costs no fetch.
 `planetai run place verify` names the mismatch while it lasts.
+
+## A detailed map kept on the node
+
+`planetai run place basemap` keeps two maps of this place on the node's own disk, in `out/ground/`, for the
+dashboard's map to draw with nothing sent anywhere:
+
+- **vector**: OpenStreetMap as vector tiles, cut out of Protomaps' daily planet build (ODbL) by HTTP range
+  requests, in three rings (300 km to zoom 8, 60 km to zoom 11, `GROUND_RADIUS_KM` to zoom 15), with the Noto Sans
+  label fonts. Node #1, 7 October 2026: 726 tiles, 6.4 MB, 26 requests, 19 s.
+- **drone**: any OpenAerialMap mosaic (CC BY 4.0) crossing the `GROUND_DRONE_RADIUS_KM` ring, to
+  `GROUND_DRONE_MAXZ`. Node #1: one, Saragis Multikencana's Benoa flight (7 cm, December 2024), 1,656 tiles, 49 MB.
+  It stops 1.5 km east of the house: no open sub-metre imagery covers node #1's own cell.
+
+The fetch tells build.protomaps.com and OpenAerialMap which square the node is in, once, and says so before it
+runs. `--only vector` or `--only drone` runs one half; `--dry-run` counts without fetching. The 10 m satellite
+layer is the earth-engine pack's (`planetai run earth-engine basemap`).
 
 ## Next source
 

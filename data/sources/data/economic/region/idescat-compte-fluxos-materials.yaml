@@ -1,0 +1,29 @@
+name: Idescat material flow accounts of Catalonia (CFM)
+url: https://www.idescat.cat/pub/?id=cfm&lang=en
+description: |
+  Economy-wide material flow accounts for Catalonia, annual 2000-2023, in tonnes:
+  domestic extraction, imports and exports split into abroad and the rest of Spain,
+  domestic material consumption (DMC), direct material input and material productivity,
+  following Eurostat's MFA methodology with interregional trade added.
+pillar: economic
+scale: region
+status: candidate
+license: "Idescat reuse conditions: reuse allowed if the source is cited, the content is not altered and the update date is stated (no named licence)"
+api: https://www.idescat.cat/indicadors/?id=aec&n=16006&lang=en&f=csv&t=201900
+pilot_relevance: [barcelona]
+places: [barcelona]
+tags: [material-flow, dmc, domestic-extraction, imports, exports, interregional-trade, tonnes, catalonia, csv]
+added: 2026-09-27
+auth: none
+feeds_cells: [Economic|Bioregion]
+upstream_listed_in: []
+notes: |
+  VERIFIED 2026-09-27, not yet read for a real territory. Filed for #42 and for Economic|Bioregion's DMC row.
+
+  LICENCE. Idescat's legal notice, as for idescat-comerc-exterior (reviewed usable-with-caveats, #54): reuse allowed if the source is cited, the content is not altered and the update date is stated; no licence is named.
+
+  ENDPOINT. CSV, no key: table 16006 (DMC and its parts), 16005 (direct material input), 16004 (domestic extraction by material). `&t=YYYY00` picks the year. 2019, tonnes: DMC 55,317,163 (7.20 t/inhabitant); domestic extraction 38,690,387; imports from abroad 56,829,458, exports abroad 34,288,583; imports from the rest of Spain 35,754,962, exports to the rest of Spain 41,669,059. 2023: DMC 43,859,974 (5.51 t/inhabitant). The foreign flows equal Idescat's customs weights (comest) to the tonne.
+
+  WHY THIS CELL. Economic|Bioregion's minimum row is domestic material consumption, t/capita/yr, and this is it for Catalonia, measured and not national. It is also the one open source here with trade with the rest of Spain, which the other regional trade data counts as local.
+
+  WHAT IT DOES NOT CLAIM. Tonnes, not value or use: a tonne of sand and a tonne of chips weigh the same. Rest-of-Spain flows are estimated from road, rail, coastal-shipping and pipeline statistics; air freight is left out; C-intereg fills 2000-2005 only. Table 10963 (EU comparison) prints 14.6 t/inhabitant for 2023 against 5.5 in table 16006 (43.9 Mt over 8.0 M people); use 16006.

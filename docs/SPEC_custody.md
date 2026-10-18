@@ -188,7 +188,7 @@ ALTER TABLE sensors ADD CONSTRAINT sensors_peer_not_local CHECK (NOT (local AND 
 
 **Recommend (a).** It is a generated column, not a column anyone writes: no writer changes, no migration of
 values, no way for it to disagree with `local` and `kind`. Postgres 16 (`docker-compose.yml:4`,
-`postgis/postgis:16-3.4-alpine`) has had generated columns since 12. `init.sql` is idempotent and re-applied
+`imresamu/postgis:16-3.4-alpine`) has had generated columns since 12. `init.sql` is idempotent and re-applied
 by `update.sh`, so this is additive in the way every other `ALTER ... IF NOT EXISTS` in that file is.
 
 (b) is smaller but fails closed on an existing node: the `ALTER` is refused if a bad row already exists, which

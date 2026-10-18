@@ -1,4 +1,5 @@
 # Turn an old laptop into a node
+<!-- checked: v0.82.1 -->
 
 > **Partly rehearsed, and the part that was rehearsed is not the part this page recommends.**
 > On 10 September 2026 a 2015 MacBook Pro became a live node this way — on **Linux Mint 22.3**, which is
@@ -29,8 +30,9 @@ Check the machine is worth it:
 curl -fsSL planetai.fab.city/preflight | bash
 ```
 
-If it prints *"This hardware is a capable node"*, the CPU, the memory and the OS are settled. It does
-not test the disk, which is the next section and the one that matters most on a machine this old.
+If it prints *"This hardware is a capable node"*, the CPU and the memory are settled and the OS, which Linux replaces, is the only blocker. It checks
+that the disk has room and can be written to, not that it survives a long write, which is the next
+section and the one that matters most on a machine this old.
 
 ## 0.5. Test the disk before you trust the machine
 
@@ -75,9 +77,10 @@ ThinkPad X220 with 2 GB runs it. Everything below applies, except that you get a
 the installer takes Arch's `pacman` branch instead of `apt`.
 
 ```bash
-curl -fL -o ~/Downloads/omarchy.iso https://iso.omarchy.org/omarchy-4.0.3.iso
-curl -fL -o ~/Downloads/omarchy.iso.sha256 https://iso.omarchy.org/omarchy-4.0.3.iso.sha256
-shasum -a 256 -c ~/Downloads/omarchy.iso.sha256      # must say: OK
+cd ~/Downloads
+curl -fLO https://iso.omarchy.org/omarchy-4.0.3.iso
+curl -fLO https://iso.omarchy.org/omarchy-4.0.3.iso.sha256
+shasum -a 256 -c omarchy-4.0.3.iso.sha256      # must say: OK (the file names omarchy-4.0.3.iso)
 ```
 
 **Yes, and you want the ordinary answer.** [Linux Mint](https://linuxmint.com) — Cinnamon, a desktop

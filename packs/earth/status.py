@@ -1,4 +1,5 @@
 """What this pack has on disk, what it computed, and what the Index cell says.  planetai run earth status"""
+import json
 import os
 import sys
 
@@ -11,7 +12,21 @@ cs = A.changes()
 size = sum(p.stat().st_size for p in A.cache().glob("*")) if A.cache().is_dir() else 0
 
 print(f"earth · {A.node()} · {lat}, {lon} · UTM {A.utm_zone(lat, lon)} · {2 * radius / 1000:.1f} km square")
-print(f"  cache: {A.cache()}  ({size / 1e6:.0f} MB)")
+print(f"  cache: {A.cache()}  ({size / 1e6:.0f} MB)"
+      + ("" if A.cache().name == A.node() else f"  — read under the node's earlier name, {A.cache().name}"))
+
+# Directories under out/earth/ that are not this node's square: a previous name, or a previous address. Nothing
+# reads them and nothing here deletes them — 64 MB a year is an expensive download and whose it is, is not the
+# node's call. Say they are there, say nothing needs them, and let the person decide.
+root = A.cache().parent
+for other in sorted(p for p in root.iterdir() if p.is_dir() and p != A.cache()) if root.is_dir() else []:
+    n = sum(f.stat().st_size for f in other.glob("*") if f.is_file())
+    try:
+        m = json.loads((other / "meta.json").read_text())
+    except Exception:                                                            # noqa: BLE001
+        m = {}
+    where = (f"{m['lat']}, {m['lon']}" if m.get("lat") is not None else "an unrecorded point")
+    print(f"  not in use: {other}  ({n / 1e6:.0f} MB, read around {where})")
 if years:
     print(f"  years cached: {', '.join(map(str, years))}  ({len(years)} of {len(A.YEARS)})")
     missing = [y for y in A.wanted_years() if y not in years]

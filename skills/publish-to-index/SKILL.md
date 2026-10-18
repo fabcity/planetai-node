@@ -56,9 +56,9 @@ into `tools/` — still refusing to run without the flag and the token. Not yet.
 
 ## Reach settings are not the same question
 
-A node has its own settings for how far its data travels. The one arriving in v0.43, `SHARE_LEVEL`, does
-not exist in this tree today, and when it does it will control the node's own reach — its export, its
-dashboard, what a neighbouring node can see. **It has nothing to do with writing cells to the Index.**
+A node has its own settings for how far its data travels. The one that arrived in v0.43, `SHARE_LEVEL`,
+controls the node's own reach — what a reader with no token on its network may see of its dashboard and
+its read API. **It has nothing to do with writing cells to the Index.**
 Publishing is not the top rung of that ladder; it is a different act, gated by the tier contract and a
 token issued to a person. Turning a reach setting up will never make a home node a publisher, and nothing
 in this repository should imply that it could.

@@ -1,0 +1,63 @@
+name: World Bank Worldwide Governance Indicators (WGI)
+url: https://datacatalog.worldbank.org/search/dataset/0038026
+description: |
+  Six governance dimensions — voice and accountability, political stability,
+  government effectiveness, regulatory quality, rule of law, control of
+  corruption — for over 200 economies, 1996 to 2024, with confidence intervals.
+pillar: governance
+scale: planet
+status: candidate
+license: CC-BY-4.0
+api: https://api.worldbank.org/v2/sources/3/indicators
+pilot_relevance: [global]
+tags: [governance, world-bank, institutions, corruption, rule-of-law]
+added: 2026-09-23
+auth: none
+feeds_cells: [Governance|Planet]
+upstream_listed_in: []
+notes: |
+  LICENCE: "Creative Commons Attribution 4.0" on the World Bank Data Catalog
+  entry for dataset 0038026, read 2026-09-23. Criterion 1 is met, and this is
+  the cleanest licence in Tier A — no split, no date cutoff, no viral clause, no
+  non-commercial exception.
+
+  ENDPOINT VERIFIED 2026-09-23, no key and no account. `GET
+  api.worldbank.org/v2/country/ESP/indicator/GOV_WGI_GE.EST?format=json&
+  date=2020:2024&source=3` returned Spain's Government Effectiveness estimate
+  for five years — 1.11 for 2024.
+
+  **TWO TRAPS, both of which cost a request.** The indicator codes changed: the
+  long-standing `GE.EST`, `CC.EST` and friends now return "The indicator was not
+  found. It may have been deleted or archived." The current ids are prefixed —
+  `GOV_WGI_GE.EST`, `GOV_WGI_CC.EST` — and `source=3` must be passed explicitly
+  or the call fails with "The provided parameter value is not valid". Any code
+  or tutorial written before the 2025 release is wrong about both. The full list
+  of 36 series is at `/v2/sources/3/indicators?format=json`.
+
+  VINTAGE: the 2025 release, version 7, spans 1996–2024, and the World Bank
+  recalculates the whole history each release for methodological consistency —
+  so a stored 2019 value from an older release will not match this one. Pin the
+  release, or re-pull the series; do not mix.
+
+  SPATIAL: ISO 3166-1 country level and nothing below it. Every value is a
+  national score, so **not federatable to a region or a city at all** — not for
+  want of a crosswalk, but because the thing measured is the country. A Fab City
+  cannot have its own rule-of-law score, and an Index that implies otherwise by
+  showing a national figure on a city row would be making a claim the source
+  does not support.
+
+  Read with care for a second reason: these are perception-based composites
+  built from other people's surveys, with published standard errors and
+  confidence intervals. The interval is part of the measurement — two countries
+  whose intervals overlap are not ranked, whatever the point estimates do, and
+  the `.SE`, `.SC_LB` and `.SC_UB` series exist so that a consumer can say so.
+
+  INDICATOR: institutional quality at national scale — the governance-pillar
+  planet row, and national context for every city cell rather than a city
+  measure. I could not read the landing plan's Table 2 in this session, so this
+  names the indicator in plain words rather than a row id.
+
+  Promotes to live when somebody pulls one dimension for a pilot country and
+  states, in the review, what the Index will do with a national score on a
+  sub-national dashboard — because the licence and the endpoint are not the hard
+  part here, the interpretation is.

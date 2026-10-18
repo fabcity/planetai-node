@@ -1,0 +1,29 @@
+cell: Economic|Bioregion
+indicator_categories:
+- material flow accounting
+- circularity
+- food balance
+minimum_indicators:
+- name: Domestic material consumption
+  unit: t/capita/yr
+  aggregation: annual-total
+- name: Circular material use rate
+  unit: percent
+  aggregation: latest
+- name: Goods imported and exported through the territory's ports and airports
+  unit: t/yr, inwards and outwards reported separately
+  aggregation: annual-total
+does_not_claim: 'A material-flow account is an accounting boundary, not a physical measurement: it
+  is built from trade and production statistics, and its resolution is the statistical unit, never
+  the watershed. A per-capita figure assigns material to where people live, which is not where it
+  was extracted or used. Neither is a measure of what any place could make locally. A gateway''s
+  throughput is not its hinterland''s consumption: goods landed at Barcelona feed Aragon and southern
+  France, San Antonio serves the whole of central Chile, and transit or transhipment cargo never enters
+  the local economy at all. Gateway tonnage is the physical boundary flow a territory''s account would
+  start from, not the account, and it is silent on everything that crosses by road or rail.'
+notes: '10 entries filed. EXIOBASE, materialflows.net and the UNEP IRP accounts are the backbone. The
+  gateway row (added 2026-09-26, #36) is served from economic/region by three candidates: Eurostat
+  maritime goods by port (Barcelona), US Census trade by port (Boston seaport and Logan) and Chile''s
+  customs declarations (San Antonio, Valparaíso, AMB). The national accounts above publish imports
+  and exports only per country, which is why the row exists. Bali has no open source for it: IMF
+  PortWatch covers Benoa and is blocked on licence (#35).'

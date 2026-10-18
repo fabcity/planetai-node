@@ -82,6 +82,14 @@ def drift(m: dict, lat: float, lon: float):
     return metres(float(m["lat"]), float(m["lon"]), lat, lon)
 
 
+def describes(m: dict, lat: float, lon: float, radius_m: int) -> bool:
+    """Whether a cache's meta.json says it holds *this* square: read around this point, within the move
+    tolerance, at this radius. The same test `fetch` makes before it re-reads a square and `verify` makes
+    before it trusts one. A meta.json from before v0.33.4 records no radius; that is not a resize."""
+    d = drift(m, lat, lon)
+    return d is not None and d <= move_tolerance(radius_m) and m.get("radius_m") in (None, radius_m)
+
+
 def wanted_years() -> list[int]:
     """EARTH_YEARS blank means every year the dataset has."""
     raw = (os.getenv("EARTH_YEARS", "") or "").replace(" ", "")
@@ -91,7 +99,28 @@ def wanted_years() -> list[int]:
 
 
 def cache() -> Path:
-    return Path(os.getenv("PACK_OUT", "/app/out")) / "earth" / node()
+    """The directory holding this node's square.
+
+    Named for the node because something had to name it, but the embeddings describe a *place*: the same
+    10 km square is the same square whatever the operator calls the machine. So a directory whose meta.json
+    says it holds this square answers for this node whatever its name, the node's own name preferred when
+    more than one does. Node #1 was renamed `bayu-2` → `bayu-ungasan` and re-read 930 MB it already had on
+    disk, then kept both copies. The tolerance is the one a move already uses, so a rename costs nothing and
+    a real move still costs everything. Nothing is moved or deleted: the abandoned directory stays where it
+    is, and `earth status` names it for a person to decide about.
+    """
+    root = Path(os.getenv("PACK_OUT", "/app/out")) / "earth"
+    mine = root / node()
+    if not root.is_dir() or not (os.getenv("NODE_LAT") and os.getenv("NODE_LON")):
+        return mine
+    lat, lon, radius = aoi()
+    for p in sorted(root.glob("*/meta.json"), key=lambda q: (q.parent != mine, q.parent.name)):
+        try:
+            if describes(json.loads(p.read_text()), lat, lon, radius):
+                return p.parent
+        except (OSError, ValueError, TypeError):        # unreadable or not this pack's json; the next one may be
+            continue
+    return mine
 
 
 def utm_zone(lat: float, lon: float) -> str:

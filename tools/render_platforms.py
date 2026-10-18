@@ -31,15 +31,16 @@ def rows(d: dict) -> str:
         f"| **Arch, and Omarchy on top of it (amd64)** | rolling | Docker from Arch's own repository, "
         f"installed by the script | {ram} GB | {disk} GB |",
         f"| **macOS, Apple Silicon (arm64)** | **{r['colima']['min_os']}** | OrbStack, Docker Desktop or "
-        f"Colima. Colima reaches {r['colima']['min_os']} here; the database image is amd64-only and runs "
-        f"emulated. | {ram} GB | {disk} GB |",
+        f"Colima. Colima reaches {r['colima']['min_os']} here; since v0.63 the database image is "
+        f"native arm64, not emulated. | {ram} GB | {disk} GB |",
         f"| **macOS, Intel (x86_64)** | **{colima_x86}** | ≥{orb}: all three · {colima_x86}–13.7: "
         f"**Colima only** (`--vm-type vz`) · **below {colima_x86}: none, and Linux is the route** | "
         f"{ram} GB | {disk} GB |",
         f"| **Windows via WSL2 (amd64)** | {win['docker_desktop_wsl2']['min_os']} | Docker Desktop, WSL2 "
         f"backend | {win['docker_desktop_wsl2']['min_ram_gb']} GB | {disk} GB |",
-        "| **Raspberry Pi OS 64-bit (arm64)** | — | **none. Untested, and the database image has no "
-        "arm64 build.** | — | — |",
+        "| **Raspberry Pi OS 64-bit (arm64)** | — | Docker Engine, installed by the script. The database "
+        "image is published for arm64 since v0.63; **no Pi has run a node yet.** 8 GB and an SSD, never an "
+        "SD card: see below. | — | — |",
         "",
         "### Where each number comes from",
         "",

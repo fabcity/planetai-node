@@ -109,6 +109,24 @@ Measured on node #1 (Bali, `EARTH_RADIUS_M=5000`, a 10 km square, 1000 x 1000 px
 
 Nothing is downloaded on a poll. The pack fetches on command; the adapter only reads what is already here.
 
+### The directory is named for the node, but it is keyed on the place
+
+`<node>` is only a name. What decides whether a directory holds *this* node's square is its `meta.json`: the
+point it was read around, within the same tolerance a move uses, and the radius. So a directory written under
+an earlier `NODE_NAME` is adopted as it stands, and when several match, the one named for the node today wins.
+
+Node #1 is why. It was renamed `bayu-2` → `bayu-ungasan`, and because the name was the key, `fetch` saw an
+empty directory and re-read all nine years: about 930 MB pulled for data already on the disk, and 555 MB of
+`out/earth/bayu-2/` left behind that nothing reads. A rename now costs nothing, and two nodes at one address
+share one cache.
+
+A real move still costs everything, unchanged: the tolerance is 1% of the radius with a 25 m floor, so a
+corrected decimal keeps the cache and 1.1 km does not. A different `EARTH_RADIUS_M` is a different square too.
+And nothing is moved or deleted to make this work — a directory that stopped being this node's square stays
+exactly where it is, and `planetai run earth status` names it, its size and the point it was read around, for
+a person to decide about. Nine years is expensive to fetch and cheap to keep; a node does not delete somebody's
+data on its own.
+
 ## Moving a node
 
 The cache is a square around `NODE_LAT` / `NODE_LON`, and the files are named by year. Change the coordinates (or
@@ -180,7 +198,7 @@ pack publishes the mean of the *per-pixel* distances over 10 km, computed here, 
 key. They are different quantities and they did not agree — averaging vectors first cancels the noise that
 averaging distances keeps, and on node #1 the two read 0.037 and 0.041 without any way for a reader to tell
 why. Two numbers for one idea with different provenance is worse than one, so the Earth Engine one was
-retired and the `land_changed` alert moved here with it. `earth-engine` keeps what only Earth Engine can
+retired. Its `land_changed` alert was not carried over, for the reason under *there is no alert* above. `earth-engine` keeps what only Earth Engine can
 give: Dynamic World, Sentinel-2 and VIIRS.
 
 ## Attribution
@@ -190,5 +208,5 @@ The AlphaEarth Foundations Satellite Embedding dataset is produced by Google and
 This is the wording the dataset's licence asks for, and it travels with every derivative: the pack manifest,
 the `/earth` endpoint, the dashboard card, the PNG's own metadata, and the daily export.
 
-This pack is alpha, like the rest of the node. If the numbers look wrong for your place, that is worth an
+This pack is beta, like the rest of the node. If the numbers look wrong for your place, that is worth an
 email: info@fab.city.

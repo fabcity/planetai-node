@@ -1,18 +1,7 @@
 {
   "_": "PLANETAI node directory. Adding a node = a pull request. This file is the registry until there are too many nodes for a file.",
   "nodes": [
-    {
-      "name": "bayu-2",
-      "scale": "community",
-      "operator": "Meaningful Design Group",
-      "place": "Ungasan, Badung, Bali, ID",
-      "lat": -8.8190516,
-      "lon": 115.1644423,
-      "sources": ["smartcitizen:19880", "baliairdispatch"],
-      "parent": null,
-      "since": "2026-09",
-      "contact": "tomas@meaningful-design.org"
-    },
+   
     {
       "name": "bayu-ungasan",
       "scale": "community",
@@ -25,6 +14,18 @@
       "parent": null,
       "since": "2026-09",
       "contact": "fablabbali@gmail.com"
+},
+   {
+      "name": "larsbcn",
+      "scale": "community",
+      "operator": "Lars Petrova Taylor",
+      "place": "Barcelona",
+      "cell": "88394460e5fffff",
+      "lat": 41.385,
+      "lon": 2.174,
+      "sources": ["ckan", "nasa-power", "open-meteo", "open-meteo-cams"],
+      "parent": null,
+      "since": "2026-10"
     }
   ]
 }

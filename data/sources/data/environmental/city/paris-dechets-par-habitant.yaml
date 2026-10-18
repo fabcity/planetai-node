@@ -1,0 +1,36 @@
+name: Ville de Paris — Quantité de déchets produits et triés par habitant et par an
+url: https://opendata.paris.fr/explore/dataset/quantite-de-dechets-produits-et-tries-par-habitant-et-par-an/
+description: |
+  Household waste per Parisian per year, 2019–2024, split into residual waste and the
+  sorted streams (packaging, glass, biowaste, occasional waste).
+pillar: environmental
+scale: city
+status: candidate
+license: Licence Ouverte (Etalab)
+api: https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/quantite-de-dechets-produits-et-tries-par-habitant-et-par-an/records
+pilot_relevance: []
+places: [paris]
+tags: [waste, household-waste, recycling, paris, france, opendatasoft]
+added: 2026-09-26
+auth: none
+feeds_cells: [Environmental|City]
+upstream_listed_in: []
+notes: |
+  VERIFIED 2026-09-26, not yet read for a real territory.
+
+  LICENCE. The dataset metadata names "Licence Ouverte (Etalab)" and links the Etalab
+  licence PDF. Publisher: Direction de la Propreté et de l'Eau, Ville de Paris. Modified
+  2024-12-02.
+
+  ENDPOINT. Key-free Opendatasoft API, 30 records, years 2019–2024, five streams.
+  2024 in kg per inhabitant: residual household waste 308, multi-material 50, occasional
+  43, glass 33, biowaste 2. Total 436, of which 128 sorted (29%).
+
+  WHY THIS CELL. Environmental|City's waste-per-capita row, at city resolution, with the
+  residual share that the proposed "trash out" measure needs (awesome-fabcity-data#42).
+  Paris is a reference city for the Index (the Utopies 2018 score), not a PLANETAI pilot.
+
+  WHAT IT DOES NOT CLAIM. Household waste only: commercial waste collected by the city
+  and construction waste are outside it. Eurostat's Urban Audit gives Paris (FR001C)
+  about four times the tonnage, most likely because it counts a different boundary or
+  scope. Check the boundary before comparing the two.

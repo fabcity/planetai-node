@@ -34,8 +34,20 @@ assert "agent" in compose["services"] and compose["services"]["agent"]["command"
 for k in ("AGENT_PREFER", "AGENT_REMOTE_URL", "AGENT_REMOTE_MODEL", "AGENT_REMOTE_KEY", "AGENT_ONLINE_URL", "AGENT_ONLINE_MODEL", "AGENT_ONLINE_KEY"):
     assert f'"{k}"' in settings, f"settings.py: {k}"
     assert re.search(rf"^{k}=", env, re.M), f".env.example: {k}"
-assert re.search(r"^\s*agent: \['", gui, re.M), "gui: a tab for the agent group"
-assert "cmd_agent_local()" in cli and "local) cmd_agent_local" in cli
+assert re.search(r"^\s*model: \['", gui, re.M), "gui: a tab for the model group, where the AGENT_* keys are"
+# v0.63: `local` dispatches to the setup OR to `pull`, which is the whole point of that release — the
+# setup no longer fetches weights. Both halves must exist and `local)` must reach both.
+assert "cmd_agent_local()" in cli and "cmd_agent_local_pull()" in cli
+assert "local) if" in cli and "cmd_agent_local_pull" in cli and "else cmd_agent_local" in cli, \
+    "`planetai agent local [pull]` no longer dispatches to both"
+# cmd_agent_local_pull() is defined ABOVE cmd_agent_local(), so splitting on it reads the wrong half —
+# which this assertion did until an injected `ollama pull` walked straight through it. Slice the setup
+# function's own body and look in there.
+_body = cli[cli.index("\ncmd_agent_local() {"):]
+_body = _body[:_body.index("\n}\n")]
+assert "ollama pull" not in _body, \
+    "`planetai agent local` fetches a model again; the setup must download nothing"
+assert "ollama pull" in cli, "`planetai agent local pull` must still be able to fetch one"
 assert "def refresh_ladder" in open("app/agent_loop.py").read()
 print("all shipped claims present")
 
@@ -104,10 +116,12 @@ assert "contributes: report" in open("packs/insight/rules.yml").read(), "the dig
 assert "def contributors" in open("app/packs.py").read() and "def alerts" in open("app/packs.py").read(), "packs.py: a contributor is not an alert"
 print("one report, its table, its endpoints, its settings and its command all ship")
 # v0.32.1 — a reinstall over an earlier node's volume left an app that could not log in while every check said fine
-# Was pinned to the literal "planetai_db", which is only the volume's name when the node happens to
-# live in a folder called planetai. The guard reads the compose project now, so assert that instead.
+# The guard once looked for "planetai_db" literally, then derived the name from the folder's basename —
+# both wrong in one direction each: docker-compose.yml pins `name: planetai`, so the volume is planetai_db
+# whatever the folder is called (a tarball install lives in planetai-node), and COMPOSE_PROJECT_NAME is the
+# only override. Assert the pin, not a derivation.
 _ish = open("install.sh").read()
-assert 'DBVOL="${COMPOSE_PROJECT_NAME:-$(basename "$PWD")}_db"' in _ish and 'docker volume inspect "$DBVOL"' in _ish \
+assert 'DBVOL="${COMPOSE_PROJECT_NAME:-planetai}_db"' in _ish and 'docker volume inspect "$DBVOL"' in _ish \
     and "NEWPW" in _ish, "install.sh: refuse a new password over an old volume, whatever the folder is called"
 assert "app logs in to the database" in cli, "doctor: the locked-out app must be a named failure"
 print("reinstall over a leftover volume is refused and diagnosed")
@@ -160,11 +174,23 @@ assert '"view"' in open("packs/earth/frames.py").read(), "the projection must be
 assert '@app.get("/earth/year.png")' in main and 'f"year_{year}.png"' in main, \
     "main.py: a frame is addressed by an integer year, never by a name from the request"
 assert '"frames": frames' in main and '"dir": str(d)' in main
-# The satellite card's controls are hooked by data-sat= now rather than by seven ids: the same
-# component is drawn more than once on a page (the node's own record and the imagery), and an id
-# cannot be. The play/pause, the year slider and the years-or-change toggle are all still there.
-for _hook in ('data-sat="play"', 'data-sat="slider"', 'data-sat="mode"', 'data-sat="year"'):
+# The satellite card's controls are hooked by data-sat= rather than by ids: the same component is
+# drawn more than once on a page (the node's own record and the imagery), and an id cannot be.
+#
+# `mode` is gone as of 18 September, and deliberately. It toggled to a "what changed" composite
+# frame; v0.53 emitted an image with data-i="change" for it to show, the modular page never did, and
+# no route serves one — /earth/frame.png takes sentinel or landsat and /earth/year.png takes a year.
+# So it had nothing to toggle to for five releases, on top of having no handler at all. A control
+# that does nothing is worse than no control. `year` became `frame` on the images and `label` on the
+# year readout when both records became one player; the capability is what is asserted here, not the
+# spelling.
+for _hook in ('data-sat="play"', 'data-sat="slider"', 'data-sat="frame"', 'data-sat="label"'):
     assert _hook in gui, f"gui: the satellite card lost {_hook}"
+# And the controls are live. They were markup with no listener from v0.54 to v0.59: Play did nothing.
+assert "function wireSat(root)" in gui and "play.onclick" in gui and "slider.oninput" in gui, \
+    "gui: the year player's controls are not wired again"
+assert "--motion-satellite-year" in gui, \
+    "gui: the player no longer takes its cadence from the frozen layer, so reduced motion cannot stop it"
 for _id in ():
     assert f'id="{_id}"' in gui, f"gui: #{_id}"
 assert "not a photograph" in gui.lower() or "Not a photograph" in gui, \
@@ -183,7 +209,7 @@ assert '/earth/frame.png?source=sentinel' in gui, "gui: the imagery frames"
 assert re.search(r'class="[^"]*\bprov\b', gui), "gui: the satellite card needs its provenance pill"
 assert "planetai run earth fetch" in gui, "gui: the empty state must name the command that fills it"
 # v0.33.6 — the dashboard must not be cacheable: a node that updates has to reach the screens looking at it
-_ui = re.search(r"^def ui\(\):(.*?)(?=^def |\Z)", main, re.M | re.S).group(1)
+_ui = re.search(r"^def ui\([^)]*\):(.*?)(?=^def |\Z)", main, re.M | re.S).group(1)
 assert "no-cache" in _ui, "the dashboard route must send a cache-control header, or an update never reaches an open browser"
 print("the dashboard is not cacheable")
 # v0.33.7 — one unusual OpenStreetMap object must not blank the plan. A poi mapped as an open way made
@@ -275,17 +301,22 @@ assert "alive AS (\n          SELECT sensor_id, max(ts) AS kit_ts FROM readings\
 assert "JOIN alive a USING (sensor_id)" in main, "frozen_channels must be gated by the kit still being alive, not just by the flat hours"
 # v0.33.8 — the heat rule fired on Kuta Selatan's ordinary weather: node #1's hot room was over 32 °C apparent for
 # 86% of every reading, so 32 was its baseline, not an event. The line is 35 for the rule and 32 for the cell (a
-# count of exposure is not an interruption), and the alert texts must not move without Tomas.
+# count of exposure is not an interruption), and the alert texts must not move without Tomas. 9 October: they
+# moved WITH him — release D of the language split names whose line in every threshold alert (rule 10 of
+# docs/SPEC_language.md), and heat_stress_now drops "dangerously" (danger is a register, not a volume). 14 October:
+# moved with him again — one line per issue, named with its unit: "this house's heat line, 35 °C feels-like".
 _heat = {r["id"]: r for r in yaml.safe_load(open("packs/heat/rules.yml"))}
 assert ">= 35" in _heat["heat_stress_now"]["sql"], "heat_stress_now: 32 is node #1's baseline; the line is 35"
 assert ">= 40" in _heat["heat_danger"]["sql"], "heat_danger stays at the heat-index danger line"
 assert ">= 32" in open("packs/heat/cells.yml").read(), "the Social cell counts hours over 32, unchanged"
-assert _heat["heat_stress_now"]["cooldown_minutes"] == 240, "at 35 the cooldown stops mattering; it stays 240"
-for _r, _lang, _words in (("heat_stress_now", "en", "It is dangerously hot at {name}: it feels like {at} °C."),
-                          ("heat_danger", "en", "DANGER at {name}: it feels like {at} °C.")):
+assert _heat["heat_stress_now"]["cooldown_minutes"] == 1440, \
+    "once a room a day: in Oct 2026 the hot room was over 35 for 44% of hours and 240 repeated it 5.7 times a day (README)"
+assert _heat["heat_danger"]["cooldown_minutes"] == 120, "danger keeps interrupting as often as it must"
+for _r, _lang, _words in (("heat_stress_now", "en", "It is too hot at {name}: it feels like {at} °C — past this house's heat line, {line} °C feels-like, measured here."),
+                          ("heat_danger", "en", "Dangerous heat at {name}: it feels like {at} °C, past the danger line here, {line} °C.")):
     assert _words in _heat[_r]["message"][_lang], f"{_r} [{_lang}]: the message template needs Tomas's sign-off to change"
 assert "Kuta Selatan" in open("packs/heat/README.md").read(), "docs/PACKS.md: say which place you wrote for"
-print("the heat line is this place's, and the alert texts are untouched")
+print("the heat line is this place's, and every threshold alert names whose line it is")
 
 # v0.38 — the hero's ground is the node's own cell, drawn from NODE_LAT/NODE_LON, and the line naming that
 # cell is on the page rather than stamped in the drawing, where object-fit:cover crops it away.
@@ -301,7 +332,13 @@ assert '"cell": _cell()' in main and "ground.facts(" in main and "ground.svg(" i
 # code that draws today: the stamp is a component, it is drawn on both surfaces from one piece of
 # code, and its caption is /health's own cell rather than anything the page worked out.
 assert 'data-component="stamp"' in gui, "gui: the cell stamp"
-assert "${asof()}${window.K.stamp()}" in gui, "gui: the lead no longer draws the cell stamp"
+# The two used to be asserted as one adjacent string. They are not adjacent since
+# 21 September 2026: the lead's stamp line carries the open-ask reference between them,
+# because the ask strip moved to Act and T1 still wants an ask on the first screen. What
+# this guards is that the LEAD draws the stamp at all — one stamp(), called from here and
+# from the wall — not the order of the line it sits in.
+assert "${window.K.stamp()}" in gui, "gui: the lead no longer draws the cell stamp"
+assert "${asof()}" in gui, "gui: the lead no longer draws its as-of"
 assert "${K.asof()}${K.stamp()}" in gui, "gui: the wall no longer draws the cell stamp"
 assert "const c = (S.health || {}).cell;" in gui, "gui: the caption is the cell's own, from /health"
 assert "const said = c ? c.caption : '';" in gui, "gui: and a node with no cell prints nothing"
@@ -525,7 +562,10 @@ agent = open("app/agent_loop.py").read()
 assert "async def node_session(" in agent, "agent_loop.py: the node_session helper"
 assert agent.count("streamable_http_client(") == 1, \
     "agent_loop.py: only node_session may open an MCP session — a second one is a session outliving a question"
-assert re.search(r"^    offset, history, pins = ", agent, re.M), \
+# a second person in the house messaging the bot heard nothing (audit, 15 Oct): an unknown chat is told once, with its id
+assert "told_unknown.add(chat)" in agent and "This node answers its household only" in agent, \
+    "agent_loop.py: an unknown chat must be told once why the node is quiet, and how to be added"
+assert re.search(r"^    offset, history, pins, pending = ", agent, re.M), \
     "agent_loop.py: main's poll loop must sit at the top of main, outside any MCP session — indented deeper it is " \
     "nested in one again, and that session outlives the question (refresh_ladder has a `while True` of its own, so " \
     "the loop keyword alone proves nothing)"
@@ -581,3 +621,21 @@ for _port in sorted(set(re.findall(r"localhost:(\d+)", cli)) - HOST_PORTS):
         f"bin/planetai talks to localhost:{_port}, which docker-compose.yml publishes on no service"
 
 print("every localhost port the CLI uses is published by a compose service")
+
+# v0.61 the vendored source registry. A tarball that carries the code and not the snapshot gives a
+# tester `planetai sources` that answers nothing and a doctor row that is red on arrival — and lint
+# cannot see it, because lint runs in a checkout where data/sources is right there.
+import pathlib as _pl
+import subprocess as _sp
+_tracked = set(_sp.run(["git", "ls-files"], capture_output=True, text=True).stdout.split())
+for _f in ("data/sources/REGISTRY_VERSION", "data/sources/index.json"):
+    assert _f in _tracked, f"{_f} is not tracked, so tools/bundle.sh will not ship it"
+_ver = dict(l.split("=", 1) for l in _pl.Path("data/sources/REGISTRY_VERSION").read_text().split() if "=" in l)
+assert len(_ver.get("sha", "")) == 40, "REGISTRY_VERSION: sha is not a full commit"
+# The snapshot is mounted, not baked: app/Dockerfile COPYs *.py, issues/ and static/ and never data/,
+# so without this line the container's /app/data does not exist and /sources 503s on a working node.
+assert "./data:/app/data:ro" in compose["services"]["app"]["volumes"], "compose: the data mount"
+assert "cmd_sources()" in cli and "sources) shift; cmd_sources" in cli, "bin/planetai: sources command"
+assert "def sources_(" in main and "import registry" in main, "main.py: GET /sources"
+
+print("v0.61: the tarball carries the source registry, and the app mounts it")

@@ -1,0 +1,23 @@
+cell: Social|City
+indicator_categories:
+- population and demography
+- housing
+- income
+- access to services
+minimum_indicators:
+- name: Resident population
+  unit: count
+  aggregation: latest
+- name: Population density
+  unit: persons/km2
+  aggregation: latest
+- name: Housing cost burden or overcrowding
+  unit: percent
+  aggregation: latest
+does_not_claim: A city total hides its districts. An average that conceals a distribution is not a
+  measure of who lives well, and this cell must not be read as one. A census figure is exactly as
+  old as the census — Mexico's is 2020 and does not refresh. A gridded model's population is an estimate
+  redistributed from a census, not a register, and where it disagrees with the municipal padron the
+  register is the authority.
+notes: '11 entries filed, now the best-supplied social cell: Urban Audit, INE, IBGE, INEGI and US
+  Census ACS all reach it with official codes. No node computes it.'

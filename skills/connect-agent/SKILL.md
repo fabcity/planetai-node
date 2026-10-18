@@ -1,6 +1,6 @@
 ---
 name: connect-agent
-description: Give a person's own agent the node's nineteen MCP tools, over their tailnet, without opening a port to the internet.
+description: Give a person's own agent the node's twenty-one MCP tools, over their tailnet, without opening a port to the internet.
 ---
 
 # Connecting an agent to a node
@@ -19,7 +19,7 @@ the node's own name in it. Those three facts are the whole configuration. Never 
 one into a file you will commit.
 
 Read `AGENTS.md` before the first call. It is the operating manual for whatever you connect, and it lists
-the nineteen tools.
+the twenty-one tools.
 
 ## The answer is Tailscale, not a port forward
 
@@ -57,17 +57,25 @@ claude mcp add --transport http planetai "$PLANETAI_MCP_URL" \
 Code does, so `.mcp.json` here will not work for it. Use the snippet `planetai agent` prints, with the
 values already filled in.
 
-## Always send X-Agent
+## Name yourself in every write
 
-Every write is recorded in the audit trail against the name in `X-Agent`. A node may have a local model
-on it already, appearing as `local-model`; if you connect without a name of your own, the trail cannot
-tell you apart. Pick a name a person would recognise a month from now.
+Every write — `act`, `settings_set`, `report_now`, `run_pack_script` — takes an `agent` argument, and that
+is how a name reaches the audit trail: `act` writes it as the action's `actor`, and `settings_set` passes it
+on to the node's API as `X-Agent`; `report_now` and `run_pack_script` record no name. The default is
+`agent`, which tells nobody anything. Pass your own name in that argument on every write (the `X-Agent`
+header you send on `/mcp` itself is not read by the tools in this version). A node may have a local model on
+it already, appearing as `local-model/<rung>`; without a name of your own, the trail cannot tell you apart.
+Pick a name a person would recognise a month from now.
 
 ## Call health_check first
 
-`health_check` before anything else, every session. Every failing check names its own fix, and it tells
-you what this node can honestly answer before you ask it something it cannot. Then `status`, then the
+`health_check` before anything else, every session. Every failing check names its own fix, its `sources`
+says which of the node's fundamental sources is not running yet, and it tells you what this node can
+honestly answer before you ask it something it cannot. Then `status`, then the
 tool you came for.
+
+What the tools never hand you: a reading a pack declared `private`, and, unless every model this node may
+use runs on the house's own machines, what the house learned (`learned` says why instead).
 
 `act` and `settings_set` write. Read the invariants in `AGENTS.md` before either, and read
 `troubleshoot-node` before you change a threshold.

@@ -31,12 +31,16 @@
   --hair: var(--fc-grid-line);
   --raise: rgba(23, 23, 23, .035);
   --on-rings: #171717;      /* 5.26:1 on --rings in both registers; it must not flip */
+  --doc: var(--fc-neutral-200);  /* the pane's ground, not the data's: --mute on it is 5.3:1 */
+  --doc-line: var(--fc-neutral-400);  /* a hairline on --doc; --hair is the same grey as --doc here */
 }
 :root[data-theme="dark"] {
   --mute: #A3A19F;
   --dim: #8A8886;
   --hair: rgba(249, 245, 242, .14);
   --raise: rgba(249, 245, 242, .05);
+  --doc: var(--fc-neutral-800);  /* --mute on it is 5.5:1 */
+  --doc-line: var(--fc-neutral-600);
 }
 
 * { box-sizing: border-box }
@@ -73,8 +77,6 @@ svg.sg { width: 1em; height: 1em; flex: none; vertical-align: -.12em }
 [data-kind="readout"] .cmp.none { color: var(--mute) }
 [data-kind="readout"] .src { font-size: 12px; color: var(--mute); line-height: 1.4;
   display: flex; gap: 8px; align-items: center; flex-wrap: wrap }
-[data-kind="readout"].unplaced { border: 1px dashed var(--hair); padding: 10px 12px }
-[data-kind="readout"].unplaced .lab::after { content: " · unplaced"; color: var(--signal-worse) }
 
 /* ---------------------------------------------------------------- 2 · stack
  * The same quantity at four distances, on one scale. The columns are the distances in order and an
@@ -100,22 +102,28 @@ svg.sg { width: 1em; height: 1em; flex: none; vertical-align: -.12em }
   [data-kind="stack"] .col:nth-child(3) { padding-left: 0 }
 }
 
+/* The matrix's fifth column. [data-kind="stack"] is four distances, so a fifth child wrapped to a
+   row of its own and the line read as a second heading under each issue — a whole band of wasted
+   height per row. Answer the track list, not just the class.
+
+   The divider before it is heavier than the others on purpose: the four to its left are readings
+   and this one is not, it is what they are read against. A fifth identical column would say they
+   were five of the same thing. Weight, not hue — the layer's rule. */
+.stack.withline { grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(0, .8fr) }
+.stack.withline .col.line { border-left: 1px solid var(--ink); padding-left: 12px }
+.stack.withline .col.line .k { color: var(--ink) }
+@media (max-width: 560px) {
+  /* At two columns the line cannot sit beside anything, so it spans and keeps its heavier rule on
+     the edge that is now above it rather than beside it. */
+  .stack.withline { grid-template-columns: repeat(2, minmax(0, 1fr)) }
+  .stack.withline .col.line { grid-column: 1 / -1; border-left: 0; padding-left: 0;
+    border-top: 1px solid var(--ink) }
+}
+
 /* ---------------------------------------------------------------- 3 · series
- * A trace with an axis, a time origin, the line, and a text alternative. The text alternative is
- * not a fallback: it is beside the drawing at every width, because the drawing stretches and its
- * own labels do not survive a phone. */
-[data-kind="series"] .ax { display: flex; justify-content: space-between; gap: 12px;
-  font: 500 11px var(--mono); letter-spacing: .06em; color: var(--mute) }
-[data-kind="series"] .ax.top { margin-bottom: 2px }
-[data-kind="series"] .ax.bot { margin-top: 2px }
+ * The figures (.f-*, further down) are this kind. What they share is that a drawing
+ * fills its card. The old trace's axis, alternative and legend rules went with the trace. */
 [data-kind="series"] svg { width: 100%; height: auto; display: block }
-[data-kind="series"] .alt { font-size: 12.5px; color: var(--mute); margin-top: 6px; line-height: 1.45 }
-[data-kind="series"] .legend { display: flex; gap: 16px; flex-wrap: wrap; font: 500 11px var(--mono);
-  letter-spacing: .04em; color: var(--mute); margin-top: 8px }
-[data-kind="series"] .legend i { display: inline-block; width: 18px; border-top: 1.5px solid var(--ink);
-  vertical-align: middle; margin-right: 6px }
-[data-kind="series"] .legend i.dash { border-top-style: dashed }
-[data-kind="series"] .legend i.dot { border-top-style: dotted }
 
 /* ---------------------------------------------------------------- 4 · row
  * A ledger, an index, a unit row or a sensor row. One grammar: a left rail that is scannable, a
@@ -132,6 +140,11 @@ svg.sg { width: 1em; height: 1em; flex: none; vertical-align: -.12em }
 [data-kind="row"] .signs { display: flex; flex-wrap: wrap; gap: 4px; align-items: center }
 [data-kind="row"] .signs svg.sg { width: 18px; height: 18px; color: var(--ink) }
 [data-kind="row"] .signs svg.sat { color: var(--satellite-only) }
+/* A row with BOTH a sentence and a strip of signs gives the strip its own grid row.
+   Side by side, a strip of 22 rings took the `auto` track and squeezed the 1fr sentence to one word
+   a line — twenty lines of single words where a sentence should be. Isotype rows (`.units`) have no
+   sentence and keep the strip inline, which is why this is scoped to rows that have both. */
+[data-kind="row"]:has(> .line):has(> .signs) > .signs { grid-column: 2 / -1; margin-top: 2px }
 [data-kind="row"].quiet .name, [data-kind="row"].quiet .line { opacity: .72 }
 [data-kind="row"].unwatched { opacity: .5 }
 @media (max-width: 820px) {
@@ -146,12 +159,123 @@ svg.sg { width: 1em; height: 1em; flex: none; vertical-align: -.12em }
 .ask .what small { display: block; font-weight: 400; color: var(--mute); font-size: 13px; margin-top: 2px }
 .ask .go { background: var(--rings); border: 1px solid var(--rings); color: var(--on-rings);
   font: 600 14px var(--fc-font-body); padding: 10px 16px; border-radius: 0 }
+/* THE FORM BEHIND "I did this". Hidden it costs no height, which matters because T1 reads this
+   strip's own box on the first screen. Open it spans both columns under the sentence and the
+   button, so nothing above it moves sideways. */
+.ask form.did { grid-column: 1 / -1; display: grid; gap: 10px 16px; padding-top: 12px;
+  border-top: 1px solid var(--hair) }
+/* An author `display` beats the UA's `[hidden] { display: none }`, so the rule above showed the
+   form at all times — 93.5 px on every strip on every view, measured, including the first screen
+   T1 reads. It renders either way, which is why a screenshot would not have caught it. */
+.ask form.did[hidden] { display: none }
+@media (min-width: 620px) {
+  .ask form.did { grid-template-columns: minmax(0, 14em) minmax(0, 1fr) auto; align-items: end }
+}
+.ask form.did label { display: grid; gap: 3px; min-width: 0 }
+.ask form.did label span { font: 500 10.5px var(--mono); letter-spacing: .1em;
+  text-transform: uppercase; color: var(--mute) }
+.ask form.did input { font: 400 14px var(--fc-font-body); padding: 9px 10px;
+  border: 1px solid var(--hair); background: var(--ground); color: var(--ink); min-width: 0 }
+.ask form.did input:focus-visible { outline: 2px solid var(--ink); outline-offset: -1px }
+.ask form.did .btns { display: flex; gap: 8px }
+.ask form.did button { font: 600 14px var(--fc-font-body); padding: 9px 14px; border-radius: 0;
+  border: 1px solid var(--ink); background: var(--ground); color: var(--ink) }
+.ask form.did button.pri { background: var(--ink); color: var(--ground) }
+.ask form.did button[disabled] { opacity: .5 }
+.ask form.did .fine { grid-column: 1 / -1; font-size: 12.5px; color: var(--mute); max-width: 68ch; margin: 0 }
+/* ==== h/mods/shape.js — the day this place usually has ==== */
+
+/* ==== h/mods/decide.js — an observation, what the node suggests, and a box ==== */
+/* Three bands down one card: what was seen, what the node suggests, and the decision. The suggestion
+   sits inside a rule rather than beside it, because it is the node speaking and the box underneath
+   is the household answering, and the order is the argument. */
+.decide { border: 1px solid var(--ink); padding: clamp(13px, 1.4vw, 18px); display: grid;
+  gap: 12px; background: var(--ground); margin-bottom: clamp(12px, 1.4vw, 20px) }
+.decide .k { font: 500 10.5px var(--mono); letter-spacing: .1em; text-transform: uppercase;
+  color: var(--mute); display: block; margin-bottom: 3px }
+.decide .obs p { font: 600 14.5px/1.4 var(--fc-font-body); max-width: 56ch }
+.decide .obs .m { font: 500 11.5px var(--mono); color: var(--mute); display: block; margin-top: 4px }
+.decide .sug { border-left: 3px solid var(--cells); padding-left: 12px }
+.decide .sug p { font-size: 14.5px; max-width: 56ch }
+.decide .sug p.none { color: var(--mute) }
+.decide .open { font: 600 14px var(--fc-font-body); padding: 9px 14px; border-radius: 0;
+  border: 1px solid var(--ink); background: var(--ground); color: var(--ink); justify-self: start }
+.decide form.decided { display: grid; gap: 10px 16px; border-top: 1px solid var(--hair);
+  padding-top: 12px }
+/* An author `display` beats the UA's `[hidden] { display: none }` — the same trap the act form hit,
+   where it rendered 93.5 px on every strip while claiming to be hidden. */
+.decide form.decided[hidden] { display: none }
+@media (min-width: 620px) {
+  .decide form.decided { grid-template-columns: minmax(0, 13em) minmax(0, 1fr); align-items: end }
+  .decide form.decided .btns, .decide form.decided .fine { grid-column: 1 / -1 }
+}
+.decide form.decided label { display: grid; gap: 3px; min-width: 0 }
+.decide form.decided label span { font: 500 10.5px var(--mono); letter-spacing: .1em;
+  text-transform: uppercase; color: var(--mute) }
+.decide form.decided input { font: 400 14px var(--fc-font-body); padding: 9px 10px;
+  border: 1px solid var(--hair); background: var(--ground); color: var(--ink); min-width: 0 }
+.decide form.decided input:focus-visible { outline: 2px solid var(--ink); outline-offset: -1px }
+.decide form.decided .btns { display: flex; gap: 8px; flex-wrap: wrap }
+.decide form.decided button { font: 600 14px var(--fc-font-body); padding: 9px 14px;
+  border-radius: 0; border: 1px solid var(--ink); background: var(--ground); color: var(--ink) }
+.decide form.decided button.pri { background: var(--ink); color: var(--ground) }
+.decide form.decided .fine { font-size: 12.5px; color: var(--mute); max-width: 68ch }
+
+/* ==== the event card (SPEC_dashboard_events §4.2) — the decide card's box, the readout's numeral, the ask's
+   button. One per issue per house; answered, it goes quiet rather than disappearing. */
+.ev { border: 1px solid var(--ink); padding: clamp(13px, 1.4vw, 18px); display: grid; gap: 10px;
+  background: var(--ground); margin-bottom: clamp(12px, 1.4vw, 20px) }
+.ev.held { color: var(--mute); border-color: var(--hair) }
+.ev .evhead { font: 600 14.5px/1.4 var(--fc-font-body); display: flex; flex-wrap: wrap; gap: 4px 6px;
+  align-items: center }
+.ev .evhead .sgn { width: 20px; height: 20px; color: var(--ink) }
+.ev .m, .evrow .m { font: 500 11.5px var(--mono); color: var(--mute) }
+.ev .evhead .m { margin-left: 8px }
+.ev .evcmp { display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px }
+.evnum { font: 700 clamp(1.3rem, 1.9vw, 1.7rem)/1 var(--mono); letter-spacing: -.02em;
+  font-variant-numeric: tabular-nums }
+.evnum.worse { color: var(--signal-worse) }
+.ev .evcmp small { font: 500 11px var(--mono); color: var(--mute); flex-basis: 100% }
+.ev .evact { font: 600 14.5px/1.4 var(--fc-font-body); max-width: 56ch }
+.ev .evact.none { font-weight: 400; color: var(--mute) }
+.ev .evdone, .ev .evheld, .evrow .evdone, .evrow .evheld { font: 500 12.5px var(--mono); color: var(--mute) }
+.ev .evnote, .evrow .evnote { font-style: italic }
+.ev .evdone svg.sg, .evrow .evdone svg.sg { color: var(--loop-closed) }
+.ev .evbtns, .evrow .evbtns { display: flex; gap: 8px; flex-wrap: wrap }
+.ev .evb, .evrow .evb { font: 600 14px var(--fc-font-body); padding: 10px 16px; border-radius: 0;
+  border: 1px solid var(--ink); background: var(--ground); color: var(--ink) }
+.ev .evb.pri, .evrow .evb.pri { background: var(--ink); color: var(--ground) }
+.ev .evmsg { display: grid; gap: 2px; border-left: 3px solid var(--cells); padding-left: 12px }
+.ev .evmsg .said { font-size: 12.5px; line-height: 1.45; white-space: pre-line; max-width: 56ch }
+.ev .evlinks { font: 500 11.5px var(--mono); color: var(--mute) }
+.ev .evlinks a { color: var(--ink) }
+.ev details.evrows { font: 500 11.5px var(--mono); color: var(--mute) }
+.ev details.evrows summary { cursor: pointer; color: var(--ink) }
+.ev details.evrows p { margin: 4px 0 0 }
+/* The I did this button on a Decide alert card sits in the card's own box, not in a second one. */
+.decide > .ask { border: 0; padding: 0 }
+.decide > .ask .go { justify-self: start }
+.ev .evform, .evrow .evform { display: grid; gap: 10px 16px; border-top: 1px solid var(--hair); padding-top: 12px }
+.ev .evform[hidden], .evrow .evform[hidden] { display: none }
+.ev .evform label, .evrow .evform label { display: grid; gap: 3px; min-width: 0 }
+.ev .evform label[hidden], .evrow .evform label[hidden] { display: none }
+.ev .evform label span, .evrow .evform label span { font: 500 10.5px var(--mono); letter-spacing: .1em; color: var(--mute) }
+.ev .evform input:not([type="hidden"]), .evrow .evform input:not([type="hidden"]) { font: 400 14px var(--fc-font-body); padding: 9px 10px;
+  border: 1px solid var(--hair); background: var(--ground); color: var(--ink); min-width: 0 }
+.ev .evform input:focus-visible, .evrow .evform input:focus-visible { outline: 2px solid var(--ink); outline-offset: -1px }
+.ev .evform .btns, .evrow .evform .btns { display: flex; gap: 8px; flex-wrap: wrap }
+.ev .evform button, .evrow .evform button { font: 600 14px var(--fc-font-body); padding: 9px 14px; border-radius: 0;
+  border: 1px solid var(--ink); background: var(--ground); color: var(--ink) }
+.ev .evform button.pri, .evrow .evform button.pri { background: var(--ink); color: var(--ground) }
+.ev .evform .fine, .evrow .evform .fine { font-size: 12.5px; color: var(--mute); max-width: 68ch }
+
 .ask.none { border-style: dashed; border-color: var(--hair) }
 .ask.none .what { font-weight: 400; color: var(--mute) }
 
 .stamp { font: 500 10.5px/1.5 var(--mono); letter-spacing: .08em; color: var(--mute);
   overflow-wrap: anywhere }
 .asof { font: 500 11px var(--mono); letter-spacing: .06em; color: var(--mute) }
+.asof.stale { color: var(--ink); border-bottom: 1px solid var(--hair) }
 
 .rho { display: flex; flex-wrap: wrap; gap: 4px; align-items: center }
 .rho svg.sg { width: 13px; height: 13px; color: var(--ink) }
@@ -163,12 +287,57 @@ svg.sg { width: 1em; height: 1em; flex: none; vertical-align: -.12em }
 .funnel .bar { height: 14px; border: 1px solid var(--ink); background: var(--raise) }
 .funnel .bar > i { display: block; height: 100%; background: var(--ink) }
 .funnel .lat { font: 500 11px var(--mono); color: var(--mute); text-align: right; white-space: nowrap }
-.funnel .m2 { display: grid; grid-template-columns: minmax(0, 14ch) 1fr 1fr; gap: 1px;
-  margin-top: 14px; background: var(--hair); border: 1px solid var(--hair) }
-.funnel .m2 > * { background: var(--ground); padding: 8px 10px; font-size: 12.5px }
-.funnel .m2 .h { font: 500 10.5px var(--mono); letter-spacing: .08em; text-transform: uppercase;
-  color: var(--mute) }
-.funnel .m2 b { font-family: var(--mono); font-size: 18px }
+/* The reason line under a stage. It is a fourth child of a three-column .st, so it is told to span
+   the row; without this it lands in column one and reads as a second stage name. */
+.funnel .st .m { grid-column: 1 / -1; font-size: 11.5px; color: var(--mute); margin: -2px 0 0 }
+/* A stage at zero, in weight and never in hue: the bar keeps its outline so the row still reads as a
+   stage that exists and is empty, rather than as a stage that is missing. */
+.funnel .st.none .k { font-weight: 400; color: var(--mute) }
+.funnel .st.none .lat { color: var(--mute) }
+.funnel > .note { margin-top: 10px }
+
+/* The care label. Five sentences the architecture owns, set as a block so it reads as one label and
+   not as five more rows of data. The sign slot keeps its width when a sign is absent, so the
+   sentences stay aligned while `person` does not exist. */
+.care { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--ink) }
+.care .k { margin: 0 0 8px }   /* the rest comes from .k, which the shout gate already knows about */
+.care .rf { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; align-items: start;
+  margin: 0 0 6px; font-size: 12.5px; line-height: 1.45 }
+.care .sg { display: block; width: 18px; height: 18px }
+.care .sg svg { width: 18px; height: 18px; color: var(--ink) }
+
+/* Isotype unit rows. [data-kind="row"] .signs already wraps them, sizes them and gives svg.sat the
+   satellite's own colour, so only the two states it has never needed are here.
+
+   Somebody else's station is the same sign at less weight: the same kind of thing, read at a
+   distance. And a twentieth of the ground that is NOT built still occupies its place, so the row is
+   the same width whatever the share is and both halves can be counted. Weight, never hue. */
+.units .row .signs svg.sg.faint { opacity: .45 }
+.units .row .signs svg.sg.off { opacity: .22 }
+
+/* The worked instance under the sentence template: the node's own sentence, and under it the parts
+   named. Indented from the row above so it reads as that row's example and not as a fourth row. */
+.tmplex { display: grid; gap: 4px; margin: 0; padding: 10px 0 12px 12px;
+  border-left: 2px solid var(--hair) }
+.tmplex .k { margin: 0 }   /* the rest is the global .k, which the shout gate already knows */
+.tmplex .said { font-size: 14.5px; line-height: 1.45; color: var(--ink) }
+.tmplex .m { font-size: 12px; color: var(--mute); line-height: 1.5 }
+.tmplex .m b { font-weight: 700; color: var(--ink) }
+
+/* The Figures ledger. It scrolls INSIDE its own box rather than making the page scroll sideways —
+   N6 of the UX review measured the old one at 435 px in a 390 px column, which took the whole page
+   with it. The overflow gate in tests/visual/gate.sh checks the document, so a table that scrolls
+   itself passes and a table that pushes the page does not. */
+.figwrap { overflow-x: auto; -webkit-overflow-scrolling: touch }
+table.figs { width: 100%; min-width: 520px; border-collapse: collapse; font-size: 12.5px }
+table.figs th { font: 500 10.5px var(--mono); letter-spacing: .08em; text-transform: uppercase;
+  color: var(--mute); text-align: left; padding: 0 12px 6px 0; border-bottom: 1px solid var(--ink) }
+table.figs td { padding: 7px 12px 7px 0; border-bottom: 1px solid var(--hair);
+  vertical-align: baseline }
+table.figs td.mono { font-family: var(--mono); font-variant-numeric: tabular-nums }
+table.figs td.num { font-weight: 700; white-space: nowrap }
+table.figs td small { font-weight: 500; color: var(--mute) }
+.figwrap .cap { font-size: 12px; color: var(--mute); margin: 8px 0 0 }
 
 .peer { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; padding: 12px 0;
   border-top: 1px solid var(--hair); align-items: start }
@@ -274,11 +443,11 @@ svg.hexgrid { width: 100%; height: auto; display: block }
 /* a claim: what one source's word covers, and how coarse it is by the time it says it */
 .claim { border-top: 1px solid var(--ink); padding: clamp(11px, 1.3vw, 15px) 0; display: grid;
   gap: 8px clamp(18px, 2.6vw, 34px) }
-.claim { grid-template-columns: minmax(0, 84px) minmax(0, 1fr) }
-@media (min-width: 760px) { .claim { grid-template-columns: minmax(0, 150px) minmax(0, 1fr) } }
-.claim .pic { max-width: 150px }
-.claim .pic .cap { font-size: 9.5px }
-.claim .pic { align-self: start }
+/* ONE COLUMN. The picture column held a drawing of the card's own compacted covering, which the
+   striped bar under the same card already drew and which did not answer to the rail above it. It
+   moved into the rail's fold on 22 September; the column went with it. */
+.claim { grid-template-columns: minmax(0, 1fr) }
+.claim .decl .cx { display: block; color: var(--ink) }
 .claim h3 { font: 800 clamp(1rem, 1.5vw, 1.25rem) var(--fc-font-display); letter-spacing: -.02em }
 .claim .what { font-size: 13.5px; color: var(--mute); max-width: 56ch }
 .claim .facts { display: flex; gap: 6px 22px; flex-wrap: wrap; margin-top: 4px }
@@ -309,47 +478,261 @@ header .wrap { display: flex; align-items: center; justify-content: space-betwee
 .brand { display: flex; align-items: baseline; gap: 10px; min-width: 0 }
 .brand b { font: 800 17px var(--fc-font-display); letter-spacing: -.02em }
 .brand span { font-size: 13px; color: var(--mute) }
+/* The tabs are buttons and have been since the shell was rewritten; these rules still said `span`,
+   so every tab fell back to the base button at line ~669 and drew its own box inside the nav's box.
+   One border around the group and one hairline between, which is what the rules always meant. */
 nav { display: flex; border: 1px solid var(--ink) }
-nav span { padding: 7px 14px; font: 500 13.5px var(--fc-font-body); color: var(--mute);
-  border-right: 1px solid var(--ink); white-space: nowrap }
-nav span:last-child { border-right: 0 }
-nav span.on { background: var(--ink); color: var(--ground) }
+nav span, nav button { padding: 7px 14px; font: 500 13.5px var(--fc-font-body); color: var(--mute);
+  background: none; border: 0; border-right: 1px solid var(--ink); white-space: nowrap }
+nav span:last-child, nav button:last-child { border-right: 0 }
+nav span.on, nav button.on { background: var(--ink); color: var(--ground); font-weight: 700 }
 
-/* THE DIAL. Eleven stops, two lines across it, and the whole page hanging off where it stands. */
-.dialwrap { position: sticky; top: 0; z-index: 3; background: var(--ground);
+/* A segmented control: the register here, and the mode beside it. Same anatomy as the nav, set in
+   the mono at label size because it names a state of the page rather than a place in it. */
+.seg { display: flex; border: 1px solid var(--ink) }
+.seg button { padding: 7px 12px; font: 500 11px var(--mono); letter-spacing: .06em;
+  text-transform: uppercase; color: var(--mute); background: none; border: 0;
+  border-right: 1px solid var(--ink); white-space: nowrap }
+.seg button:last-child { border-right: 0 }
+.seg button.on { background: var(--ink); color: var(--ground); font-weight: 700 }
+
+/* THE DIGEST — simple mode's whole answer: four stages, one sentence each, written by the node.
+   Four tracks on a wide screen and one on a narrow one; `minmax(0, 1fr)` because a long sentence in
+   an `auto` track widens the page instead of wrapping inside it. */
+.digest { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 1px solid var(--ink); margin-block: 22px }
+.digest .d { min-width: 0; padding: 12px 14px; border-right: 1px solid var(--ink) }
+.digest .d:last-child { border-right: 0 }
+.digest .d .n { display: inline-block; vertical-align: middle; width: 20px; height: 20px;
+  margin-right: 8px; border: 1px solid var(--ink); font: 800 11px var(--mono); line-height: 18px;
+  text-align: center }
+.digest .d b { vertical-align: middle; font: 700 17px var(--fc-font-display); letter-spacing: -.01em }
+.digest .d p { margin: 8px 0 0; font: 400 14px var(--fc-font-body); line-height: 1.45 }
+@media (max-width: 860px) {
+  .digest { grid-template-columns: minmax(0, 1fr) }
+  .digest .d { border-right: 0; border-bottom: 1px solid var(--ink) }
+  .digest .d:last-child { border-bottom: 0 }
+}
+
+/* THE GRAIN RAIL. Eleven stops, the top instrument on Now, and the whole page hanging off where it
+   stands. Design log R14.
+
+   THE ZONES ARE TEXTURE, NOT HUE. `may_leave` was a 12% wash of the cells blue, which spent the one
+   colour that means "a cell" on a second meaning, vanished for a reader who cannot separate blue
+   from grey, and went white on a printed plate. It is a dot screen now. `finer_than_published` was
+   already a strike-through and stays one. Plain is plain. */
+.railwrap { position: sticky; top: 0; z-index: 3; background: var(--ground);
   border-bottom: 1px solid var(--ink); padding-block: 10px }
-.dial { display: flex; border: 1px solid var(--ink); overflow: hidden }
-.dial a { flex: 1 1 0; min-width: 0; padding: 8px 4px 7px; text-align: center; text-decoration: none;
-  color: var(--mute); border-right: 1px solid var(--hair); display: grid; gap: 2px }
-.dial a:last-child { border-right: 0 }
-.dial a .r { font: 700 13px var(--mono) }
-.dial a .s { font: 500 9.5px var(--mono); letter-spacing: .04em; white-space: nowrap;
+.rail { display: flex; border: 1px solid var(--ink); overflow: hidden }
+.rail a { flex: 1 1 0; min-width: 0; padding: 8px 4px 7px; text-align: center; text-decoration: none;
+  color: var(--mute); border-right: 1px solid var(--hair); display: grid; gap: 2px;
+  position: relative }
+.rail a:last-child { border-right: 0 }
+.rail a .r { font: 700 13px var(--mono) }
+.rail a .s { font: 500 9.5px var(--mono); letter-spacing: .04em; white-space: nowrap;
   overflow: hidden; text-overflow: ellipsis }
-.dial a.on { background: var(--ink); color: var(--ground) }
-.dial a.leaves { background: color-mix(in srgb, var(--cells) 12%, transparent) }
-.dial a.leaves.on { background: var(--ink) }
-.dial a.toofine .r { text-decoration: line-through }
-.dialkey { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 6px; font: 500 10.5px var(--mono);
+.rail a.leaves { background-image: radial-gradient(circle, var(--ink) .8px, transparent 1px);
+  background-size: 6px 6px }
+/* The dots run under the text, so both lines carry the ground with them to stay legible on it. */
+.rail a.leaves .r, .rail a.leaves .s { background: var(--ground); width: max-content; max-width: 100%;
+  margin-inline: auto; padding-inline: 4px }
+.rail a.on { background: var(--ink); color: var(--ground); background-image: none }
+.rail a.on .r, .rail a.on .s { background: none; color: var(--ground) }
+.rail a.toofine .r { text-decoration: line-through; text-decoration-thickness: 2px }
+/* The picked stop says so twice: inverted, and pointed at. */
+.rail a.on .r::before { content: "\25c2\00a0"; font-weight: 400 }
+.rail a.on .r::after { content: "\00a0\25b8"; font-weight: 400 }
+
+/* THE RULE. Eleven equal boxes say the step from 7 to 8 is the step from 11 to 12; it is about the
+   same factor but on numbers three orders of magnitude apart. This puts each grain where it falls
+   between 10 m and 200 km. Hidden below 860, where it would draw a distinction finer than its
+   pixels. Decorative in the accessibility tree: every figure in it is already in the rail above. */
+.ruler { position: relative; height: 26px; margin: 6px 4px 0 }
+.ruler .line { position: absolute; inset: 0 0 auto; height: 9px;
+  border-bottom: 1px solid var(--hair) }
+.ruler .line i { position: absolute; bottom: 0; width: 1px; height: 6px; background: var(--mute) }
+.ruler .line i.on { height: 9px; width: 2px; background: var(--ink) }
+.ruler .marks { position: absolute; inset: 11px 0 auto; height: 14px }
+.ruler .marks span { position: absolute; transform: translateX(-50%); white-space: nowrap;
+  font: 500 9px var(--mono); letter-spacing: .04em; color: var(--mute) }
+@media (max-width: 860px) { .ruler { display: none } }
+
+.railkey { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 6px; font: 500 10.5px var(--mono);
   letter-spacing: .06em; color: var(--mute) }
-.dialkey i { display: inline-block; width: 14px; height: 9px; border: 1px solid var(--ink);
+.railkey code { font: inherit; color: var(--ink) }
+.railkey i { display: inline-block; width: 14px; height: 9px; border: 1px solid var(--ink);
   vertical-align: -1px; margin-right: 5px }
-.dialkey i.leaves { background: color-mix(in srgb, var(--cells) 12%, transparent) }
-.dialkey i.fine { border-style: dashed }
+.railkey i.leaves { background-image: radial-gradient(circle, var(--ink) .8px, transparent 1px);
+  background-size: 5px 5px }
+.railkey i.fine { border-style: dashed }
+
+/* THE RAIL'S FOLD — what one cell at this stop is worth. Open, it is the three hexagons to scale
+   and the table of what each footprint costs to cover here; closed it is NOT THERE, and its
+   trigger is the key's own last chip. A <details> of its own cost 33.5 px shut and took the ask and
+   the as-of off the first screen at 390 and 1440 both — T1, on a gate that was green the render
+   before. The one control the page could afford was the one already on the page.
+
+   Two columns where there is room, stacked where there is not: the drawing is square and the table
+   is three narrow columns, and side by side they are one look rather than two. */
+.railkey a.worth { color: inherit; text-decoration: underline; text-underline-offset: 3px;
+  text-decoration-color: var(--hair) }
+.railkey a.worth::after { content: "\00a0\25be" }
+.railkey a.worth.on::after { content: "\00a0\25b4" }
+.railkey a.worth:hover, .railkey a.worth:focus-visible { text-decoration-color: var(--ink) }
+.railfold { border-top: 1px solid var(--hair); margin-top: 10px; padding-top: 4px }
+.railfold .rh { display: flex; gap: 14px; align-items: baseline; padding: 6px 0 8px }
+.railfold .rh h2 { font: 500 11px var(--mono); letter-spacing: .1em; text-transform: uppercase;
+  color: var(--mute) }
+.railfold .rh a { font: 500 11px var(--mono); letter-spacing: .1em; text-transform: uppercase;
+  color: var(--mute); margin-left: auto }
+.railfold .rf { display: grid; gap: clamp(10px, 1.5vw, 20px); padding-bottom: 10px }
+@media (min-width: 760px) {
+  .railfold .rf { grid-template-columns: minmax(0, 190px) minmax(0, 1fr); align-items: start }
+}
+.railfold .pic { max-width: 190px }
+.railfold .pic svg { display: block; width: 100%; height: auto }
+.railfold .pic .cap { display: flex; flex-wrap: wrap; gap: 2px 10px; justify-content: center }
+.railfold .pic .cap .on { color: var(--ink); font-weight: 700 }
+/* `min-width: 0` for the same reason the grain table's box has it: a grid child floors at its own
+   max-content width, so the table inside widened the document at 390 instead of scrolling. */
+.railfold .rfx { min-width: 0 }
+.railfold .rfx p { font-size: 13.5px; color: var(--mute); max-width: 56ch; margin-bottom: 8px }
 
 .lead { padding: clamp(14px, 2vw, 22px) 0 clamp(10px, 1.6vw, 16px); display: grid; gap: 10px }
+/* On a phone the lead is one column of six blocks, so its gaps are 50px of the first screen and
+   the as-of line was landing 12px under the fold — T1's fifth leg, for the sake of spacing. */
+@media (max-width: 520px) { .lead { gap: 7px } .stack.meters .col { padding: 4px 0 } }
 .lead .big { font: 700 clamp(1.35rem, 2.6vw, 2.1rem)/1.18 var(--fc-font-display);
   letter-spacing: -.03em; max-width: 26ch; text-wrap: balance }
-.lead .big b { font-family: var(--mono); font-weight: 700; font-size: clamp(2.4rem, 5.2vw, 4rem);
-  line-height: .78; letter-spacing: -.04em; vertical-align: -.06em; margin: 0 .05em }
+/* THE MONUMENT — its own row, which is the whole point. The figure was inline inside the sentence
+   until 21 September and kept having to shrink, because a 132px numeral inside a paragraph decides
+   where every line in that paragraph breaks. Out of the flow it is the size the sketch draws it.
+   `--num-face` is the layer's token for which face; the fallback keeps it on the mono where the
+   frozen layer predates the token. O13 is whether it stays mono or goes to Funnel Sans. */
+.lead .num { display: flex; align-items: flex-end; gap: clamp(12px, 1.6vw, 22px); min-width: 0 }
+.lead .num .v { font-family: var(--num-face, var(--mono)); font-weight: 800;
+  font-size: clamp(3.4rem, 9.2vw, 8.25rem); line-height: .82; letter-spacing: -.06em }
+.lead .num .u { font: 600 clamp(15px, 1.8vw, 26px) var(--mono); letter-spacing: -.02em;
+  padding-bottom: clamp(4px, .7vw, 10px); white-space: nowrap }
+/* The sentence is prose and is set as prose: the sketch gives it the body face at 21px, not the
+   display face the whole lead used to be in. The figure inside it is the sentence's own word for
+   the number, at sentence size — the monument above is the reading. */
+.lead .big { font: 400 clamp(16px, 1.5vw, 21px)/1.3 var(--fc-font-body); letter-spacing: 0;
+  max-width: 30ch }
+/* The tagline is the title's explanation — the line, the comparison, the day's event — set smaller
+   and muted, so the title says what is happening and the readings arrive a beat later. */
+.lead .big .tag { display: block; font-size: clamp(13px, 1.15vw, 16px); line-height: 1.35;
+  color: var(--mute); margin-top: .3em; max-width: 38ch }
+.band .big .tag { display: block; font-size: .82em; line-height: 1.3; color: var(--mute);
+  margin-top: .25em }
+.lead .big b { font-family: var(--mono); font-weight: 700 }
+/* What the red tick on every meter means, said once. */
+.legend { font: 500 10.5px var(--mono); letter-spacing: .04em; color: var(--mute); margin: 0 }
+.legend i { display: inline-block; width: 9px; height: 2px; background: var(--signal-worse);
+  vertical-align: middle; margin-right: 7px }
+
+/* THE BRACKET METERS — the Stack's mini variant, design-log R15. Sixteen cells against one scale
+   shared by the four distances, and the line as a tick at the same x on every row, so under it and
+   over it is a thing you see instead of a thing you work out. The anatomy is the Stack's; only the
+   value's drawing is different, which is why this is a variant and not a fifth card kind. */
+/* Every property the four-column base sets has to be answered here, not just `display`: the cascade
+   is per property, so a rule that changed only display and gap left `repeat(4, minmax(0, 1fr))`
+   standing and drew four meters side by side, overprinting each other. */
+.stack.meters { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0;
+  border-top: 1px solid var(--hair); border-bottom: 1px solid var(--hair) }
+.stack.meters .col { display: grid; grid-template-columns: minmax(0, 7.5em) minmax(0, 1fr) auto;
+  gap: 4px 10px; align-items: center; padding: 6px 0; border-right: 0;
+  border-top: 1px dotted var(--hair) }
+.stack.meters .col + .col { padding-left: 0 }
+.stack.meters .col:first-child { border-top: 0 }
+.stack.meters .col .k { font: 500 10.5px var(--mono); letter-spacing: .06em; text-transform: uppercase;
+  color: var(--mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.stack.meters .col .v { display: flex; align-items: center; gap: 8px; min-width: 0;
+  margin-top: 0; white-space: nowrap }
+.stack.meters .col .v .num { font: 700 15px var(--mono) }
+.stack.meters .col .v small { font: 500 10px var(--mono); color: var(--mute) }
+/* ONE LINE PER DISTANCE, which is what the sketch draws and what makes four of these a glance
+   rather than a section. The full Stack — comparison and provenance visible per column — is still
+   drawn wherever a Stack is drawn; this is the mini variant in the lead, and four rows of four
+   lines each came to 356 px and pushed the as-of line off the first screen. T1's fifth leg.
+   The comparison is not lost: `data-cmp` is an attribute on every numeral and T4 reads it there.
+   It is only not SHOWN — except where there is no reading, when the words are the whole point. */
+.stack.meters .col .cmp { display: none }
+.stack.meters .col .cmp.none { display: block; grid-column: 2 / -1; font: 500 10.5px var(--mono);
+  letter-spacing: .02em; color: var(--mute); font-style: italic }
+.stack.meters .col .src, .stack.meters .col .pill { display: none }
+.meter { display: block; width: 100%; height: 11px; min-width: 0; overflow: visible }
+.meter .on { fill: var(--ink) }
+.meter .off { fill: none; stroke: var(--hair); stroke-width: .9 }
+.meter .line { fill: var(--signal-worse) }
+
+/* Where the open asks are, said once, in the stamp line the lead ends on. */
+.askref { font: 500 10.5px var(--mono); letter-spacing: .06em; text-transform: uppercase;
+  color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--ink) }
+.askref.none { color: var(--mute); border-bottom: 0 }
+.askref b { font-weight: 700 }
+/* The pictogram belongs to the monument, beside the figure, at the size the sketch draws it. */
+.pix { flex: 0 0 auto; width: clamp(92px, 10.4vw, 150px); height: auto; aspect-ratio: 15 / 11;
+  color: var(--ink) }
+/* A hero with no pictogram draws its sign at hero size, which is square. */
+.pix.sign { aspect-ratio: 1; width: clamp(64px, 7vw, 104px) }
+/* THE HERO'S RULE. One line, the issue's own ends, a dot per distance and the line where there is
+   one. Labels alternate above and below so two readings a few units apart do not print on each
+   other; the track is drawn in HTML so it reflows with the column instead of scaling its type. */
+.herorule { max-width: 520px; min-width: 0; padding: 32px 0 0; font: 500 10.5px var(--mono);
+  letter-spacing: .04em }
+.herorule .track { position: relative; height: 20px; margin: 0 8px }
+.herorule .axis { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible }
+.herorule .axis line { stroke: var(--ink); stroke-width: 1.5; vector-effect: non-scaling-stroke }
+.herorule .dot { position: absolute; top: 50%; width: 12px; height: 12px; border-radius: 50%;
+  transform: translate(-50%, -50%); background: var(--ground); border: 2px solid var(--ink) }
+.herorule .dot.own { width: 16px; height: 16px; background: var(--ink) }
+.herorule .dot.ring { border-style: dashed }
+.herorule .ln { position: absolute; top: -6px; bottom: -6px; width: 2.5px; transform: translateX(-50%);
+  background: var(--signal-worse) }
+.herorule .labels { position: relative; height: 0; margin: 0 8px }
+.herorule .dl { position: absolute; bottom: 22px; transform: translateX(-50%); white-space: nowrap;
+  color: var(--mute) }
+.herorule .dl.t1 { bottom: 36px }
+/* at the ends the label hangs inward, so a reading past the rule cannot widen the page */
+.herorule .dl.start { transform: none } .herorule .dl.end { transform: translateX(-100%) }
+.herorule .dl.lo { bottom: auto; top: 4px }
+.herorule .dl.lo.t1 { top: 17px }
+/* the line's own label hangs to the right of the line, so the red stroke does not run through it */
+.herorule .dl.lnl { transform: translateX(6px) } .herorule .dl.lnl.end { transform: translateX(calc(-100% - 6px)) }
+.herorule .dl b { color: var(--ink); font-weight: 700 }
+.herorule .dl.own b { font-weight: 800 }
+.herorule .dl.lnl, .herorule .dl.lnl b { color: var(--signal-worse) }
+.herorule .ends { display: flex; justify-content: space-between; margin-top: 32px; color: var(--mute) }
+.lead .whenline .stamp { font: 500 10.5px var(--mono); letter-spacing: .04em }
 .lead .why { max-width: 54ch; font-size: 14.5px }
 .lead .whenline { display: flex; gap: 12px; align-items: center; flex-wrap: wrap }
 @media (min-width: 900px) {
-  .lead { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
-    grid-template-areas: "k g" "s g" "w g" "n g" "a g" "t g"; gap: 9px clamp(20px, 3vw, 40px);
+  /* THE TEXT COLUMN IS ITS MEASURE, AND THE DRAWING HAS A FLOOR.
+     It was `1.45fr 1fr`, which at 1440 gave the left column 663 px to hold a sentence that stops at
+     404 and a why line that stops at 502 — so a 200 px strip of it was empty for every row above
+     the meters, and T2c's own decomposition put 79 % air in the tenth beside it. `56ch` is the
+     measure the column actually carries. The 340 px floor on the drawing is the other half: a fixed
+     text column alone starved the ground to 266 px at a 940 px window; 340 is what the
+     proportional rule gave it there, so no width is worse off than before. Measured with `analyse air`: 57.3 % → 52.4 % of the viewport at
+     1440, 47.0 % → 40.9 % inside the page's own column, and T6 from six divergences to four. */
+  .lead { grid-template-columns: minmax(0, 56ch) minmax(340px, 1fr);
+    /* 7px and not 9: six rows of it is 45px of the first screen, and the as-of line was sitting
+       five pixels above the fold before the ground panel gained one sentence. */
+    /* The last row is the only flexible one, so a map taller than the text column hands its extra
+       height to the empty row under the stamp line instead of spreading it between the sentence, the
+       rule and the stamp. With the legend's row gone, spreading pushed the stamp 1 px under a 900 px
+       fold at 1440 (T1). */
+    grid-template-areas: "k g" "n g" "s g" "w g" "m g" "t g" ". g"; grid-template-rows: repeat(6, auto) 1fr;
+    gap: 7px clamp(20px, 3vw, 40px);
     align-items: start }
-  .lead > .k { grid-area: k } .lead > .big { grid-area: s }
-  .lead > .why { grid-area: w } .lead > .why.grainline { grid-area: n }
-  .lead > .ask { grid-area: a } .lead > .whenline { grid-area: t }
+  .lead > .k { grid-area: k } .lead > .num { grid-area: n } .lead > .big { grid-area: s }
+  /* `.why` matched the why line AND the headline rule, which both landed in `w` and printed on top
+     of each other at every width over 900. The rule is a span inside the why line now, so there is
+     one element here and nothing to collide with. `a` was the ask strip's; the strip is in Act and
+     the meters take the row. */
+  .lead > .why { grid-area: w } .lead > .stack, .lead > .herorule { grid-area: m }
+  .lead > .whenline { grid-area: t }
   .lead > .mapwrap { grid-area: g; align-self: start }
 }
 
@@ -358,14 +741,19 @@ nav span.on { background: var(--ink); color: var(--ground) }
   display: flex; justify-content: space-between; gap: 12px; align-items: baseline }
 .band > .k .pack { font: 500 10px var(--mono); letter-spacing: .12em; text-transform: lowercase;
   color: var(--mute); border: 1px solid var(--hair); padding: 1px 6px }
+/* The routes a band's data came from, beside its kicker. Quiet, and in their own case: the kicker
+   shouts, and a route uppercased is a route a reader cannot type back. */
+.band > .k { flex-wrap: wrap }
+.band > .k .routes { display: inline-flex; flex-wrap: wrap; gap: 2px 10px; font: 400 10.5px var(--mono);
+  letter-spacing: 0; text-transform: none }
+.band > .k .routes a { color: var(--mute); text-decoration: none; border-bottom: 1px solid var(--hair) }
+.band > .k .routes a:hover, .band > .k .routes a:focus-visible { color: var(--ink); border-bottom-color: var(--ink) }
 
 /* THE LOOP. Four stages, numbered, each a heading with the loop drawn beside it and the stage lit.
  * The page reads in the order the loop runs, and a section belongs to exactly one stage. */
 .stage { padding-top: clamp(26px, 3.4vw, 44px) }
 .stagehead { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
   border-bottom: 2px solid var(--ink); padding-bottom: 8px }
-.stagehead .n { font: 700 12px var(--mono); border: 1px solid var(--ink); width: 22px; height: 22px;
-  display: inline-grid; place-items: center; align-self: center }
 .stagehead h2 { font: 800 clamp(1.15rem, 1.8vw, 1.5rem) var(--fc-font-display); letter-spacing: -.02em }
 .stagehead .what { font-size: 13px; color: var(--mute) }
 .stagehead .loop { margin-left: auto; display: inline-flex; gap: 4px; align-self: center }
@@ -397,7 +785,28 @@ details.notefold[open] > summary .n::after { content: ' · open' }
 /* A base this node will not send for, drawn rather than hidden: a reader can see that satellite and
    street exist and that one setting stands between them and the map. Not a link, not pressable, and
    struck through so it cannot be mistaken for one. */
-.ctlstrip .off { color: var(--mute); opacity: .5; text-decoration: line-through; cursor: not-allowed }
+/* A disabled base is drawn, not hidden — hiding them made a keeper who had seen satellite and street
+   in the prototype think production had lost them. But it was styled for colour only: no padding, no
+   border, so the two of them ran together as "satellitestreet map" inside the strip's own box. It is
+   a cell of the strip like the others; only its state differs. */
+.ctlstrip .off { padding: 6px 12px; font: 500 12px var(--fc-font-body); white-space: nowrap;
+  border-right: 1px solid var(--ink); color: var(--mute); cursor: not-allowed }
+.ctlstrip .off:last-child { border-right: 0 }
+/* The price sits beside the name on ONE line, not under it. Stacked, it made each tab two lines and
+   the ground panel taller — and the map column spans all six rows of the lead, so a taller panel
+   pushes the left column's rows apart and the as-of off the first screen. T1's fifth leg, spent on
+   a line break. */
+.ctlstrip a, .ctlstrip .off { text-decoration: none; white-space: nowrap }
+/* After the rule above, not before it: `text-decoration: none` there was winning on source order and
+   a base you cannot press looked exactly like one you can. The strike is the whole of the state. */
+.ctlstrip .off { text-decoration: line-through; text-decoration-thickness: 1px }
+.ctlstrip .off small { text-decoration: none }
+.ctlstrip a small, .ctlstrip .off small { margin-left: 7px; font: 500 9.5px var(--mono);
+  letter-spacing: .04em; color: var(--mute); text-decoration: none }
+.ctlstrip a.on small { color: var(--ground); opacity: .8 }
+/* The rule the strip follows, under it: a sentence about the strip, not a base you can press. */
+.ctlrule { margin: -6px 0 6px; font: 500 10.5px var(--mono); letter-spacing: .04em; line-height: 1.35;
+  color: var(--mute); max-width: 60ch }
 .ctlstrip { display: flex; flex-wrap: wrap; gap: 0; border: 1px solid var(--ink); width: max-content;
   max-width: 100%; margin-bottom: 10px }
 .ctlstrip a { padding: 6px 12px; font: 500 12px var(--fc-font-body); color: var(--mute);
@@ -421,7 +830,7 @@ table.tbl td.mono { white-space: nowrap; font-family: var(--mono) }
 table.tbl tr.picked td { font-weight: 700 }
 table.tbl tr.flat td { color: var(--mute) }
 
-body.wall header, body.wall .dialwrap, body.wall .band { display: none }
+body.wall header, body.wall .railwrap, body.wall .band { display: none }
 /* The way out of the wall. Quiet until it is wanted: a wall is looked at from three metres and
    read by nobody standing at the keyboard, so the control sits in the corner at low contrast and
    comes up to full on hover and on focus. Never hidden — a door that only appears once you know
@@ -474,6 +883,25 @@ svg.planmap { width: 100%; height: auto; display: block; aspect-ratio: 1 / 1 }
 .gridkey i.sat-only { background: var(--satellite-only); border-color: var(--satellite-only) }
 
 /* four passes of the same 3 km, brightness matched. Nothing coloured sits on a photograph. */
+/* THE YEAR PLAYER. One frame at a time, which is the whole reason it exists: the records were a
+   column of every year at full width, and nothing hid the ones that were not current because
+   nothing styled .frames at all. Eight near-identical squares a screen apart is the worst way to
+   see what changed between them.
+
+   display:none and not opacity: a hidden frame must not be reachable by a screen reader or by tab,
+   and it must not cost layout. The box keeps its height from the frame that is showing. */
+.satplay { margin: 0; display: grid; gap: 8px }
+.satplay .frames { display: grid; border: 1px solid var(--ink) }
+.satplay .frames img { display: none; width: 100%; height: auto; grid-area: 1 / 1 }
+.satplay .frames img.on { display: block }
+.satplay .satctl { display: flex; align-items: center; gap: 10px; flex-wrap: wrap }
+.satplay .satctl button { font: 500 10.5px var(--mono); letter-spacing: .1em; text-transform: uppercase;
+  background: none; border: 1px solid var(--ink); color: var(--ink); padding: 5px 11px; cursor: pointer }
+.satplay .satctl button[disabled] { color: var(--mute); border-color: var(--hair); cursor: default }
+.satplay .satctl input[type="range"] { flex: 1 1 120px; min-width: 90px; accent-color: var(--ink) }
+.satplay .satctl .yr { font: 700 13px var(--mono); color: var(--ink) }
+@media (max-width: 560px) { .satplay .satctl input[type="range"] { order: 3; flex-basis: 100% } }
+
 .satstrip { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: clamp(8px, 1.2vw, 16px) }
 @media (min-width: 760px) { .satstrip { grid-template-columns: repeat(4, minmax(0, 1fr)) } }
@@ -619,8 +1047,12 @@ svg.net .halo { transform-origin: 675px 180px; animation: nethalo var(--motion-r
 .row.station .silent { font: 700 10.5px var(--mono); letter-spacing: .1em; text-transform: uppercase;
   color: var(--ink) }
 .row.station .pic { min-width: 0 }
-.row.station .pic svg.spark { display: block; width: 240px; max-width: 100%; height: auto }
-.row.station .pic svg.spark text { font: 500 8px var(--mono); fill: var(--mute); letter-spacing: .04em }
+.row.station .pic .f-fig { width: 100%; max-width: 240px }
+.silentfold { margin: 10px 0 0; border-top: 1px solid var(--hair); padding-top: 8px }
+.silentfold summary { cursor: pointer; font: 500 12px var(--mono); color: var(--mute) }
+.silentfold .row.silent { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; padding: 6px 0;
+  border-bottom: 1px solid var(--hair); color: var(--mute) }
+.silentfold .said { font: 500 12px var(--mono) }
 .row.station .qty { justify-self: end; align-items: baseline }
 .row.station .qty .num { font-size: 20px }
 .row.station .qty small { font: 500 11px var(--mono); color: var(--mute); margin-left: 4px }
@@ -710,6 +1142,9 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--cells);outline-offs
 .savebar{display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding-top:20px;margin-top:8px;position:sticky;bottom:0;background:var(--ground);border-top:1px solid var(--hair)}
 .savebar .sub{margin:0}
 .pack{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;padding:16px 0;border-top:1px solid var(--hair);align-items:start}
+.packcard{border-top:1px solid var(--ink);margin-top:8px}
+.packcard>.pack{border-top:0}
+.packcard .field{padding-left:52px}
 .pack b{font:700 15px var(--fc-font-body)}
 .pack .help{font-size:13px;color:var(--mute);margin-top:5px;max-width:60ch;line-height:1.55}
 .tag{display:inline-block;font:500 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;padding:2px 7px;border:1px solid var(--hair);color:var(--mute);margin-left:8px}
@@ -720,6 +1155,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--cells);outline-offs
 .tabs button.on{border-left:0;border-bottom-color:var(--ink)}
 .tabs .acts{margin:0;padding:0;border:0}
 .field{grid-template-columns:1fr}
+.packcard .field{padding-left:0}
 }
 
 /* The toast the pane speaks through. It had no rule of its own on the page this replaces, so it is
@@ -743,8 +1179,30 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--cells);outline-offs
 .vh { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden;
   clip-path: inset(50%); white-space: nowrap; border: 0 }
 h1.brand { font: inherit }
-.tblwrap { overflow-x: auto }
+/* `min-width: 0` is what makes `overflow-x: auto` mean anything here. A grid or flex child floors
+   at its max-content width unless told otherwise, so a box that scrolls its contents still widened
+   the page to fit them: measured at 390, the table is 391px and the document came back 409. */
+.tblwrap { overflow-x: auto; min-width: 0; max-width: 100% }
 .tblwrap:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px }
+
+/* THE THREE BREAKPOINTS the shell reflows on. The page is fluid to the wrap's max width and then
+   centres; these are where its own furniture — the header, the tabs, the two segmented controls —
+   changes shape. Component-level rules elsewhere in this file still carry a scatter of their own
+   widths from before this was written; they are left to the prompts that redraw those components,
+   and the overflow gate in tests/visual/measure.mjs covers all of them either way. */
+@media (max-width: 1180px) {
+  header .wrap { row-gap: 10px }
+}
+@media (max-width: 860px) {
+  /* Six tabs are 429px on one row and the viewport is 390. They wrap, and a wrapped row needs its
+     own bottom hairline or the two rows read as one block with a gap in it. */
+  nav { flex-wrap: wrap }
+  nav span, nav button { flex: 1 1 auto; padding: 7px 10px }
+}
+@media (max-width: 520px) {
+  nav span, nav button { padding: 6px 8px; font-size: 12.5px }
+  .seg button { padding: 6px 9px; font-size: 10px }
+}
 
 /* One column, definite, below the width the lead splits in two.
  *
@@ -772,3 +1230,362 @@ h1.brand { font: inherit }
  * absence, which is the one thing this page may not draw. */
 .satstrip .frame .miss { display: none }
 .satstrip .frame.missing .miss { display: block }
+
+/* ------------------------------------------------------------------ LEARN MODE
+ * The third mode: the page as it is, with a question mark at each part and a panel that quotes the
+ * node's own documentation for it. Nothing is hidden and nothing moves — learn mode only adds.
+ *
+ * THE MARK SITS AT THE END OF THE PART'S OWN LABEL LINE, not floating over its top-right corner as
+ * the sketch drew it. A mark positioned over a corner needs a positioned ancestor and a negative
+ * offset, and at 390 px a negative right offset is horizontal overflow on a page whose gate counts
+ * exactly that across 108 combinations. The label line is the top of the part, it is where the eye
+ * already is, and it reflows for free.
+ *
+ * The float is the one motion: 4 px, transform only, on `--motion-mark-float`, which is in the
+ * frozen layer beside the other motion datums. No fallback duration here: a second copy of the
+ * number is the thing the token exists to prevent. */
+.q { flex: none; width: 22px; height: 22px; border: 1.5px solid var(--ink); border-radius: 50%;
+  background: var(--ground); color: var(--ink); font: 800 12px/1 var(--mono); cursor: pointer;
+  display: inline-grid; place-items: center; padding: 0;
+  animation: qfloat var(--motion-mark-float) ease-in-out infinite }
+.q:nth-of-type(even) { animation-delay: -1.6s }
+.q:hover, .q[aria-expanded="true"] { background: var(--ink); color: var(--ground) }
+@keyframes qfloat { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-4px) } }
+/* The one existing block: every motion on this page goes to zero here, this one with it. */
+@media (prefers-reduced-motion: reduce) { .q { animation: none } }
+
+/* Where the marks sit. A band's kicker is a flex row that was justified apart; pushing the title
+   with an auto margin leaves the rest packed right and looks identical when there are no marks. */
+.band > .k > span:first-child { margin-right: auto }
+.band > .k .q { align-self: center }
+.railkey .q { margin-left: auto }
+.leadk { display: flex; gap: 12px; align-items: baseline; justify-content: space-between }
+.figmarks { display: flex; gap: 8px; justify-content: flex-end }
+.stagehead .q { align-self: center }
+/* Marks inside a line of text: the foot's purpose and doors, the make pack's row in Act. */
+.foot .q, .note .q { margin-left: 8px; vertical-align: middle }
+
+/* The bar under the header: where these words come from, and the way in for a reader who would
+   rather be walked than hunt. */
+.learnbar { display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
+  border: 1.5px solid var(--ink); padding: 9px 14px; margin-top: 10px;
+  font: 500 12px/1.5 var(--fc-font-body) }
+.learnbar .qq { flex: none; width: 22px; height: 22px; border: 1.5px solid var(--ink);
+  border-radius: 50%; display: inline-grid; place-items: center; font: 800 12px var(--mono) }
+.learnbar span { min-width: 0 }
+.learnbar .walk { margin-left: auto; background: var(--ink); color: var(--ground); border: 0;
+  padding: 7px 12px; font: 700 11px var(--mono); letter-spacing: .08em; text-transform: uppercase;
+  cursor: pointer }
+
+/* A newer PLANETAI is out: a second row of the header, inside its own wrap and rule like the learn bar, with
+   no frame of its own. One fact about this machine, and it should not weigh what a reading does. */
+.release { flex: 1 1 100%; display: flex; gap: 4px 14px; align-items: baseline; flex-wrap: wrap; margin: 0;
+  font: 500 12px/1.5 var(--fc-font-body) }
+.release b { font: 800 11px var(--mono); letter-spacing: .06em }
+.release span { color: var(--mute); min-width: 0 }
+.release code { font: 600 11.5px var(--mono); color: var(--ink) }
+.release a { font: 600 11px var(--mono); color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--ink) }
+
+/* ------------------------------------------------------------------ ASKING THE NODE
+ * The loading state, over the page and not instead of it. `.on` is the whole of its visibility, the
+ * way the learn panel works and for the same reason: a reader who never waits never has it in the
+ * tree as something to tab through.
+ *
+ * It has no motion of its own in here. The globe is a canvas driven by PAI_RAF — which draws one
+ * still frame under reduced motion — and the numeral and the meters use the layer's own tokens. The
+ * one thing that is CSS is the blink beside the heading, and it goes to zero in the block below. */
+.asking { display: none }
+/* ships already on (index.html: the boot screen is the loading screen); a browser with scripting
+   off gets the shell instead of a spinner that would lie */
+@media (scripting: none) { .asking { display: none !important } }
+.asking.on { display: grid; position: fixed; inset: 0; z-index: 8; background: var(--ground);
+  grid-template-columns: minmax(0, 1fr) min(380px, 40vw); gap: clamp(16px, 3vw, 32px);
+  align-content: center; padding: clamp(16px, 3vw, 28px) clamp(16px, 4vw, 32px); overflow: auto }
+.asking .frame { position: relative; border: 1px solid var(--ink); aspect-ratio: 1.55;
+  max-height: 60vh; overflow: hidden }
+/* The corner brackets: a frame around a thing being measured, which is what this is. */
+.asking .frame::before, .asking .frame::after { content: ""; position: absolute; width: 18px;
+  height: 18px; border: 1.5px solid var(--ink) }
+.asking .frame::before { left: -1px; top: -1px; border-right: 0; border-bottom: 0 }
+.asking .frame::after { right: -1px; bottom: -1px; border-left: 0; border-top: 0 }
+.asking canvas { width: 100%; height: 100%; display: block }
+/* the seed: the measuring frame's own mark, centered, breathing from the first paint — the face's
+   middle is never empty while the scripts come. open() removes it the moment the globe wires in. */
+.asking .seed { position: absolute; width: 18px; height: 18px; border: 1.5px solid var(--ink);
+  margin: auto; inset: 0; animation: seedbreathe 1.8s ease-in-out infinite }
+@keyframes seedbreathe { 50% { opacity: .3; transform: scale(.86) } }
+@media (prefers-reduced-motion: reduce) { .asking .seed { animation: none } }
+.asking .aside { min-width: 0 }
+.asking .hd { display: flex; justify-content: space-between; gap: 12px; margin: 0 0 10px;
+  font: 500 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--mute) }
+.asking .hd b { color: var(--ink); font-weight: 800 }
+.asking .hd .blink { display: inline-block; width: 8px; height: 8px; background: var(--ink);
+  vertical-align: middle; margin-right: 8px; animation: askblink 1s steps(1) infinite }
+@keyframes askblink { 50% { opacity: 0 } }
+.asking .ep .r { display: flex; justify-content: space-between; gap: 12px; align-items: baseline;
+  padding: 7px 0; border-top: 1px dotted var(--ink); font: 500 12.5px var(--mono) }
+.asking .ep .r .ms { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap }
+.asking .ep .r.wait .ms { color: var(--mute); font-weight: 400 }
+/* Four dashes until /issues lands, then the node's own figure with the layer's two arrival motions. */
+.asking .big { font: 800 clamp(2.2rem, 6vw, 3.5rem)/1 var(--num-face, var(--mono));
+  letter-spacing: -.04em; font-variant-numeric: tabular-nums; margin: 14px 0 0 }
+.asking .big small { font: 600 14px var(--mono); letter-spacing: 0; margin-left: 8px }
+/* The lead's four bars, with their words. Same drawing as the page behind, so the eye does not
+   have to re-learn it when the overlay leaves. */
+.asking .meters { display: grid; gap: 4px; margin: 12px 0 0 }
+.asking .meters .r { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 10px;
+  align-items: center }
+.asking .meters .k { font: 500 10.5px var(--mono); letter-spacing: .06em; color: var(--mute);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.asking .meters .meter { height: 10px; width: 100% }
+.asking .rule { font: 400 11.5px/1.6 var(--fc-font-body); color: var(--mute); margin: 14px 0 0;
+  max-width: 48ch }
+/* One column on a narrow screen and on any portrait one. The frame gets a height of its own here
+   rather than its 1.55 ratio under a max-height: with both, its row came out shorter than the frame
+   itself, so the heading and the first reads were drawn over its bottom edge and its labels. */
+@media (max-width: 899px), (orientation: portrait) {
+  .asking.on { grid-template-columns: minmax(0, 1fr) }
+  .asking .frame { aspect-ratio: auto; height: min(38vh, 72vw) }
+}
+/* What this screen is, before anything on it has answered. */
+.asking .brand { grid-column: 1 / -1; margin: 0; font: 500 11px var(--mono); letter-spacing: .1em;
+  text-transform: uppercase; color: var(--mute) }
+.asking .brand b { color: var(--ink); font-weight: 800 }
+@media (prefers-reduced-motion: reduce) { .asking .hd .blink { animation: none } }
+
+/* The header's ↻. A control, so it is a button and it says what it does to a screen reader. */
+.reask { flex: none; background: none; border: 1px solid var(--hair); color: var(--ink);
+  padding: 5px 9px; font: 500 13px var(--mono); cursor: pointer }
+.reask:hover { border-color: var(--ink) }
+
+/* THE WALL'S TOP BAR — the sketch's, and the answers a person wants before they read a number:
+ * which node, which cell, how open it is, how often the field turns, and what the numbers are.
+ * All of it used to be in the foot, which on a 1080 px screen is the last place the eye arrives. */
+.wallbox .wtop { display: flex; align-items: center; gap: clamp(12px, 1.4vw, 26px); flex-wrap: wrap;
+  border-bottom: 1px solid var(--hair); padding-bottom: clamp(8px, .8vw, 14px);
+  font: 500 clamp(11px, .78vw, 15px) var(--mono); letter-spacing: .06em; color: var(--mute) }
+/* Uppercase on the left half only. The right half carries the UNIT, and `µ` uppercases to `M`, so
+   `µg/m³` becomes `MG/M³` — micrograms read as milligrams, a factor of a thousand, on a wall, in
+   silence. The sketch shouts this half; the sketch is wrong, and check_ui caught it. */
+.wallbox .wtop .who { margin-right: auto; text-transform: uppercase }
+.wallbox .wtop .what { color: var(--ink); font-weight: 700 }
+/* A middot with air either side, so a run of facts reads as a run and not as one long word. */
+.wallbox .wtop i { font-style: normal; margin: 0 .55em; opacity: .55 }
+/* In the bar now, not floated over the corner. It was absolutely positioned top-right from before
+   there was a bar to put it in; the sketch has it top-LEFT and first, which is also where the
+   keyboard reaches it — a wall with the door painted on was the bug that put it here at all. */
+.wallbox .wtop .exit { position: static; margin: 0; opacity: 1; order: -1 }
+/* Four chips under the bar, not nine inside the column. `+N more` is a link, because a wall screen
+   is not touched and the reader who wants the rest is holding a phone. */
+.wallbox .wtop .wvars { display: flex; flex-wrap: wrap; gap: 0; width: max-content; margin: 0 }
+.wallbox .wvars .more { border-left: 0; color: var(--mute) }
+/* The wall's own refusal, where an ask would be, and the dial's key under the dial. */
+.wallbox .wnoask { font: 700 clamp(12px, .95vw, 18px) var(--mono); letter-spacing: .06em;
+  text-transform: uppercase; margin: clamp(10px, 1vw, 18px) 0 0 }
+.wallbox .wcap i { font-style: normal; margin: 0 .5em; opacity: .55 }
+.wallbox .wcap code { font: inherit; color: var(--ink) }
+
+/* The foot: the purpose and the doors (dashboard.js foot()). Quiet, ink tiers only, no hue but
+   the links' own; every door is a path or a URL, so it is set in mono like every other path. */
+.foot { border-top: 1px solid var(--hair); margin-top: 48px; padding: 18px 0 28px }
+.foot .why { font-size: 14px; line-height: 1.5; color: var(--mute); max-width: 72ch; margin: 0 0 10px }
+.foot .doors { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--mute); margin: 0 }
+.foot .doors .mono { font-family: var(--mono); font-size: 12px }
+body.wall .foot { display: none }
+
+/* SIMPLE — the three questions. One switch on <body>: `data-lv="simple"` on Now in simple mode,
+   `adv` everywhere else. A component marked for one level is hidden in the other; nothing is
+   deleted, and advanced is drawn exactly as it was. */
+body[data-lv="simple"] [data-lv="adv"], body:not([data-lv="simple"]) [data-lv="simple"] { display: none !important }
+.lead .eb { font: 500 12px var(--mono); letter-spacing: .04em; display: flex; flex-wrap: wrap;
+  gap: 4px 10px; align-items: center }
+.lead .eb b { font-weight: 800 }
+.lead .eb .pin { border: 1px solid var(--ink); padding: 1px 6px; font-size: 10.5px }
+.lead .eb .back { font: 700 10.5px var(--mono); letter-spacing: .06em; background: none; color: var(--ink);
+  border: 1px solid var(--ink); padding: 2px 8px; cursor: pointer }
+.lead .plain { font: 400 16px/1.45 var(--fc-font-body); max-width: 40ch; margin: 0 }
+body[data-lv="simple"] .lead .big { font-size: clamp(18px, 1.8vw, 24px); max-width: 26ch }
+.askrow { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 10px 14px;
+  align-items: center; padding: 12px 14px; border: 1.5px solid var(--ink); max-width: 560px; min-width: 0 }
+.askrow .sgn { width: 28px; height: 28px; color: var(--ink) }
+.askrow .what { font: 600 15px/1.35 var(--fc-font-body); min-width: 0; overflow-wrap: anywhere }
+.askrow .what small { display: block; font: 400 11px var(--mono); color: var(--mute); margin-top: 3px }
+.askrow form.did { grid-column: 1 / -1 }
+/* The event row: its buttons and form take the row's width, under the sign and the action; "and N more" closes it. */
+.evrow .evbtns, .evrow .evform, .evrow .evmore, .evrow .evdone, .evrow .evheld { grid-column: 1 / -1 }
+.evrow .evdone, .evrow .evheld { margin: 0 }
+.evrow .what .m { display: block; margin-top: 3px }
+.evrow .evmore { margin: 0; font: 500 11px var(--mono); color: var(--mute) }
+@media (max-width: 520px) { .askrow { grid-template-columns: 26px minmax(0, 1fr) } .askrow .go { grid-column: 1 / -1 } }
+.plainkey { font: 400 14px/1.4 var(--fc-font-body); display: block }
+.plainkey .d { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: middle;
+  margin: 0 7px 0 2px; border: 1.5px solid var(--ink) }
+.plainkey .d.me { background: var(--cells); border-color: var(--cells) }
+.digestline { font: 400 17px/1.45 var(--fc-font-body); border-top: 1px solid var(--ink);
+  border-bottom: 1px solid var(--ink); padding: 16px 0; margin: 22px 0 0; max-width: none }
+.also { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; margin: 14px 0 28px;
+  font: 500 12px var(--mono) }
+.also .lbl { font-size: 10.5px; letter-spacing: .1em; font-weight: 700 }
+.also button { font: inherit; color: var(--mute); background: none; border: 0; border-bottom: 1px dotted var(--ink);
+  padding: 4px 0; min-height: 32px; cursor: pointer; display: inline-flex; gap: 8px; align-items: center }
+.also button b { color: var(--ink) }
+.also button:hover, .also button:focus-visible { color: var(--ink) }
+.also .sgn { width: 16px; height: 16px; color: var(--ink) }
+@media (min-width: 900px) {
+  body[data-lv="simple"] .lead { grid-template-areas: "e g" "n g" "s g" "p g" "m g" "a g" "t g" ". g";
+    grid-template-rows: repeat(7, auto) 1fr }
+  .lead > .eb { grid-area: e } .lead > .plain { grid-area: p } .lead > .askrow { grid-area: a }
+}
+
+/* THE ASK PANE — the right column of the page when it is open: 400 px at 1280 and up, 340 below that,
+   and under 860 a sheet from the bottom, opened from the foot. The page keeps the rest of the width,
+   and every grid in it reflows in the track that is left. Drawn outside #page, so a poll does not
+   wipe the thread. */
+#askpane { display: none }
+body.askopen { padding-right: 400px }
+body.askopen #askpane { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; position: fixed; z-index: 20;
+  top: 0; right: 0; bottom: 0; width: 400px; box-sizing: border-box; padding: 16px 20px 16px 22px;
+  background: var(--doc); border-left: 1.5px solid var(--ink); overflow: auto }
+@media (max-width: 1279px) { body.askopen { padding-right: 340px } body.askopen #askpane { width: 340px } }
+@media (max-width: 859px) {
+  body.askopen { padding-right: 0 }
+  body.askopen #askpane { top: auto; left: 0; width: auto; height: 72vh; border-left: 0; border-top: 1.5px solid var(--ink);
+    padding: 12px 16px 16px }
+  header .asktoggle { display: none }
+}
+@media (min-width: 860px) { .askfoot { display: none } }
+.asktoggle { font: 700 11px var(--mono); letter-spacing: .06em; background: none; color: var(--ink);
+  border: 1.5px solid var(--ink); padding: 6px 12px; cursor: pointer; display: inline-flex; gap: 8px; align-items: center }
+.asktoggle i { width: 9px; height: 9px; border: 1.5px solid currentColor; border-radius: 50% }
+.asktoggle[aria-pressed="true"] { background: var(--ink); color: var(--ground) }
+#askpane .ah { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: start;
+  border-bottom: 1px solid var(--ink); padding-bottom: 8px; font: 500 10.5px var(--mono); letter-spacing: .04em }
+#askpane .ah b { display: block; font-size: 12px; font-weight: 800 }
+#askpane .ah .m { display: block; color: var(--mute); line-height: 1.6 }
+#askpane .ah .m i { display: inline-block; width: 8px; height: 8px; background: var(--rings); vertical-align: middle; margin-right: 6px }
+#askpane .ah .m i.none { background: none; border: 1.5px solid var(--mute) }
+#askpane .ah .x { font: 500 11px var(--mono); background: none; color: var(--ink); border: 1px solid var(--ink); padding: 3px 8px; cursor: pointer }
+#askpane .ah .hx { display: flex; flex-direction: column; align-items: flex-end; gap: 6px }
+#askpane .ledger summary { cursor: pointer }
+#askpane .ledger details span { margin-right: 10px }
+#askpane .thread { overflow: auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-content: start; padding: 14px 0 10px; min-height: 0 }
+#askpane .msg .who { font: 500 10px var(--mono); letter-spacing: .08em; color: var(--mute); margin-bottom: 4px }
+#askpane .msg .who b { color: var(--ink) }
+#askpane .msg .bd { font: 400 14px/1.45 var(--fc-font-body); overflow-wrap: anywhere }
+#askpane .msg.you .bd { border: 1px solid var(--ink); padding: 8px 11px; display: inline-block; max-width: 100% }
+#askpane .msg.node .bd { border-left: 3px solid var(--ink); padding-left: 11px }
+/* Ink beside a red rule, not red text: red text was 4.2:1 on paper and 3.5:1 on the pane's grey. */
+#askpane .err { color: var(--ink); border-left: 3px solid var(--signal-worse); padding-left: 8px; margin: 6px 0 0 }
+/* The node working on an answer: the loading state's globe, small, and how long it has been asked. */
+#askpane .thinking { display: flex; align-items: center; gap: 10px }
+#askpane .thinking canvas { flex: none; width: 76px; height: 64px; display: block }
+#askpane .thinking .m { font: 500 11px var(--mono); color: var(--mute) }
+#askpane .thinking .m b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums }
+#askpane .ledger { display: flex; flex-wrap: wrap; gap: 4px 10px; font: 500 10.5px var(--mono); color: var(--mute);
+  border-top: 1px dotted var(--ink); border-bottom: 1px dotted var(--ink); padding: 4px 0; margin-top: 8px }
+#askpane .ledger b { color: var(--ink); font-weight: 600 }
+#askpane .ledger i { display: inline-block; width: 6px; height: 6px; background: var(--rings); vertical-align: middle; margin-right: 4px }
+#askpane .card { border: 1.5px solid var(--ink); padding: 11px 13px; margin-top: 10px; display: block; min-width: 0 }
+/* The whole pane is the node talking about the data, never the data, so all of it sits on --doc and the
+   page's paper is only ever readings (Tomas, 28 Sep 2026). A neutral, not a hue: every hue on this page
+   is a role (check_ui.py), and blue would say "data", which is the one thing the pane is not. A learn
+   card is the documentation inside that, so it drops its ink frame for a hairline: the frames left in
+   the pane are the person's own words and the controls. */
+#askpane .card.mark { border: 1px solid var(--doc-line) }
+#askpane .card.mark .qt { margin: 0 0 8px; font: 400 14px/1.5 var(--fc-font-body) }
+#askpane .card .ch { display: flex; justify-content: space-between; gap: 8px; font: 800 10px var(--mono); letter-spacing: .08em; margin-bottom: 6px }
+#askpane .card .ch span + span { font-weight: 400; color: var(--mute) }
+#askpane .card .kv { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; font: 500 11.5px var(--mono);
+  margin: 6px 0 10px; align-items: baseline }
+#askpane .card .kv > span:nth-child(odd) { color: var(--mute); font-size: 10px }
+#askpane .card .more, #askpane .plead { font: 400 13px/1.45 var(--fc-font-body); color: var(--mute); margin: 0 0 8px }
+#askpane .plead { color: var(--ink); font-size: 14px }
+#askpane .card pre { font: 500 11px/1.5 var(--mono); background: var(--raise); padding: 8px 10px; margin: 6px 0 8px;
+  white-space: pre-wrap; overflow-wrap: anywhere }
+#askpane .bt { display: flex; gap: 6px; flex-wrap: wrap }
+#askpane .bt button, #askpane .askfind button, #askpane .compose .box button { font: 700 10.5px var(--mono);
+  letter-spacing: .06em; background: none; color: var(--ink); border: 1.5px solid var(--ink); padding: 7px 10px; cursor: pointer }
+#askpane .bt button.pri, #askpane .compose .box button { background: var(--ink); color: var(--ground) }
+#askpane .card input, #askpane .card select { font: 500 12px var(--mono); border: 1px solid var(--ink); background: none;
+  color: var(--ink); padding: 5px 7px; margin: 0 0 8px; max-width: 100% }
+#askpane .compose { border-top: 1px solid var(--ink); padding-top: 10px }
+#askpane .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px }
+#askpane .chips button { font: 500 11px var(--mono); background: none; color: var(--ink); border: 1px solid var(--ink);
+  padding: 5px 8px; cursor: pointer; text-align: left }
+#askpane .compose .box, #askpane .askfind { display: grid; grid-template-columns: minmax(0, 1fr) auto; border: 1.5px solid var(--ink) }
+#askpane .compose .box input, #askpane .askfind input { font: 400 14px var(--fc-font-body); border: 0; background: none;
+  color: var(--ink); padding: 9px 11px; min-width: 0 }
+#askpane .compose .fine { font: 500 10px/1.6 var(--mono); color: var(--mute); margin: 6px 0 0 }
+#askpane .compose .fine b { color: var(--ink) }
+#askpane .nomodel { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; align-content: start; padding-top: 12px; overflow: auto; min-height: 0 }
+#askpane .nomodel .or { font: 500 10px var(--mono); letter-spacing: .1em; color: var(--mute); text-align: center; margin: 0 }
+#askpane .askhits { display: grid; gap: 8px }
+#askpane .hit { display: block; color: var(--ink); text-decoration: none; border-bottom: 1px dotted var(--ink); padding-bottom: 6px }
+#askpane .hit b { display: block; font: 700 11px var(--mono) }
+#askpane .hit span { font: 400 12.5px/1.4 var(--fc-font-body); color: var(--mute) }
+
+/* A learn mark's card in the ask pane: the documentation's words as a quotation, the page's own line
+   under them, and where they come from by title. The bullet is the mark's own question mark. */
+#askpane .card.mark { position: relative; margin-top: 16px }
+#askpane .card.mark::before { content: "?"; position: absolute; top: -12px; left: 12px; width: 22px; height: 22px;
+  border-radius: 50%; border: 1.5px solid var(--ink); background: var(--ink); color: var(--ground);
+  font: 800 12px/19px var(--mono); text-align: center }
+#askpane .card.mark .qt { margin: 4px 0 8px; border-left: 3px solid var(--ink); padding-left: 12px;
+  font: 400 14px/1.45 var(--fc-font-body) }
+#askpane .card.mark .qt code { font: 500 .9em var(--mono) }
+#askpane .card.mark .more .who { font: 700 10px var(--mono); letter-spacing: .08em; color: var(--ink) }
+#askpane .card.mark .src { font: 500 10.5px/1.6 var(--mono); color: var(--mute); margin: 0 0 10px }
+#askpane .card.mark .src a { color: var(--cells); overflow-wrap: anywhere }
+/* With no model the pane is one scrolling column: the card in focus, its search chip, then the
+   no-model sentence, the search and the two cards. As separate grid rows the card was squeezed to
+   whatever the first row had left. */
+#askpane .askbody { overflow: auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px;
+  align-content: start; padding-top: 6px }
+#askpane .askbody > .nomodel { overflow: visible }
+/* The one line that says a question may leave the house. Ink and weight, not the red of a crossed line:
+   it is a fact about where the answer comes from, chosen under Set up, not an alarm. */
+#askpane .ah .m.out { color: var(--ink); font-weight: 700 }
+#askpane .ledger .out { color: var(--ink); font-weight: 700 }
+#askpane .ledger .out i { background: none; border: 1.5px solid var(--ink) }
+
+/* ================================================================= figures (kit 6 · docs/SPEC_dashboard_figures.md §4)
+ * Every class here starts with f-: .ev, .band, .line, .read, .legend, .over and .gone already mean something on
+ * this page. Ink for readings, red for the line and the hours over it, green only for an answer that closed a loop,
+ * blue only for focus and the pointed cell. */
+.f-day, .f-strips { margin: 12px 0 20px }
+.f-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 0 0 2px;
+  font: 500 12px var(--mono); color: var(--mute) }
+.f-head .f-line { color: var(--signal-worse) }
+.f-fig { position: relative; outline: none }
+.f-fig:focus-visible { outline: 2px solid var(--cells); outline-offset: 2px }
+.f-fig svg { display: block; max-width: 100%; height: auto }
+.f-in { position: relative }
+.f-hair { position: absolute; top: 0; bottom: 26px; width: 0; border-left: 1px solid var(--ink); opacity: .6;
+  pointer-events: none }
+.f-read { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: baseline; min-height: 20px; margin: 4px 0;
+  font: 500 12.5px var(--mono); font-variant-numeric: tabular-nums }
+.f-read .f-over { color: var(--signal-worse) }
+.f-read .f-gone, .f-legend .f-gone { color: var(--dim) }
+.f-read .f-usual { color: var(--mute) }
+.f-read .f-done { color: var(--rings) }
+.f-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 2px 0 0; font: 500 10.5px var(--mono);
+  letter-spacing: .04em; color: var(--mute) }
+.f-legend i, .f-read i { display: inline-block; width: 12px; height: 0; border-top: 2px solid var(--ink);
+  vertical-align: middle; margin-right: 5px }
+.f-yard i { border-top-style: dashed }
+.f-ring i { border-top-style: dotted }
+.f-region i { border-top-style: dashed; opacity: .55 }
+.f-rooms i { border-top-width: 3px }
+.f-gone i { border-top-color: var(--dim) }
+.f-band i { height: 8px; border: 0; background: var(--ink); opacity: .12 }
+.f-over i { border-top-color: var(--signal-worse) }
+.f-evl i { border-top-width: 5px; opacity: .25 }
+.f-done i { width: 9px; height: 9px; border: 2px solid var(--rings); border-radius: 50% }
+.f-lo i, .f-hi i, .f-red i, .f-gap i, .f-evc i { width: 9px; height: 9px; border: 0 }
+.f-lo i { background: var(--ink); opacity: .15 }
+.f-hi i { background: var(--ink) }
+.f-red i { background: var(--signal-worse) }
+.f-gap i { border: 1px solid var(--hair) }
+.f-evc i { border: 1.5px solid var(--ink) }
+.f-alt { font-size: 13px; color: var(--mute); line-height: 1.5; margin: 6px 0 0 }
+@media (max-width: 600px) { .f-read { font-size: 11.5px; gap: 2px 12px } }

@@ -1,0 +1,27 @@
+name: BPS Bali exports by main commodity group (HS 2-digit)
+url: https://bali.bps.go.id/id/statistics-table/1/NDEjMQ==/-ekspor-provinsi-bali-menurut-kelompok-komoditas-utama--2017-2025.html
+description: |
+  Exports of Bali province by its main HS 2-digit commodity groups, 2017-2025:
+  volume in kilograms, value in US dollars and share, top groups plus the rest.
+pillar: economic
+scale: region
+status: candidate
+license: "BPS website terms (bps.go.id/id/term-of-use): free, worldwide, perpetual, non-exclusive use including commercial, copying, distribution and derivatives, with citation; content stays subject to copyright and BPS may change the terms without notice. The BPS WebAPI (non-commercial, key) is excluded. Used from the website only by maintainer decision (Tomas Diez, 2026-09-27)"
+api: null
+pilot_relevance: [bali]
+places: [bali]
+tags: [trade, exports, value, tonnes, bali, indonesia, bps, hs]
+added: 2026-09-27
+auth: none
+feeds_cells: [Economic|Region]
+upstream_listed_in: []
+notes: |
+  VERIFIED 2026-09-27 in a browser, not yet read for a real territory. Filed for #42: the export side of a Bali goods index.
+
+  LICENCE, BY DECISION. BPS website terms, as for bps-bali-nilai-output-industri: usable from the website, not the API, by Tomas Diez's decision of 2026-09-27.
+
+  ENDPOINT. HTML table only; bali.bps.go.id returns 403 to scripts. US dollars and kilograms by HS chapter. 2022: fish and crustaceans (03) US$147,967,445; apparel, not knitted (62) US$102,859,558; jewellery (71) US$73,721,929. 2025: fish US$166,824,029, 29.5% of the total.
+
+  WHY THIS CELL. Economic|Region's external-trade row, exports half.
+
+  WHAT IT DOES NOT CLAIM. Only the main groups are named, the rest is lumped. HS chapters are products, not industries, so a goods index has to map them to KBLI divisions. It includes primary goods (fish). Customs exports, attributed where they were declared. US dollars.

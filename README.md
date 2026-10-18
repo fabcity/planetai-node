@@ -1,10 +1,10 @@
 <p align="center">
-  <img src=".github/banner.png" alt="planetai-node — Sense. Observe. Act." width="100%">
+  <img src=".github/dashboard.webp" alt="The Now view of node #1, bayu-ungasan in Bali: air at 12 µg/m³ in the house, level with the street, under the WHO line; the resolution ruler at H3 resolution 8; the cell the node stands in and the 18 around it on a Sentinel-2 image" width="100%">
 </p>
 
 <p align="center">
   <a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-20388D?style=flat-square"></a>
-  <a href="CHANGELOG.md"><img alt="Version 0.31" src="https://img.shields.io/badge/version-0.31-171717?style=flat-square"></a>
+  <a href="CHANGELOG.md"><img alt="Version 0.82" src="https://img.shields.io/badge/version-0.82-171717?style=flat-square"></a>
   <img alt="Node #1 live" src="https://img.shields.io/badge/node%20%231-live%20in%20Bali-00A057?style=flat-square">
   <img alt="Containers: 2" src="https://img.shields.io/badge/containers-2-171717?style=flat-square">
   <img alt="Clouds required: 0" src="https://img.shields.io/badge/clouds%20required-0-171717?style=flat-square">
@@ -13,14 +13,15 @@
 
 # planetai-node
 
-**See your place at higher resolution.** A small program for a computer in your home, lab or community centre. It
-connects everything that measures where you stand, from a particle sensor on the wall to a satellite overhead, into
-one picture sharp enough to act on: what to do about the air, the heat, the sea, the land, today, here. It tells the
-people there in plain sentences, on Telegram, and passes upward what the models of a bioregion and a planet cannot see
-from above: what the ground is doing.
+**Hyperlocal compute and intelligence for distributed production.** A node is one computer per place, on
+hardware the place already owns. It reads what measures that place, from a particle sensor on the wall to a satellite
+overhead, tells the people there in plain sentences what to do about it, records what they did, and measures whether
+it worked. Its purpose is fixed: clean air, water and soil for the people and the other living things around each
+node. Raw readings stay on the machine; only summaries travel.
 
-> **Alpha.** This is an experiment. Installing a node makes you part of it: things will break, some will surprise you,
-> and what you report decides what gets fixed first. Write to **info@fab.city** with what broke, what helped, what did not.
+> **Beta.** `main` is the beta channel: every update is signed, and a node refuses one that does not verify. It is still
+> an experiment, and installing a node makes you part of it: things will break, some will surprise you, and what you
+> report decides what gets fixed first. Write to **info@fab.city** with what broke, what helped, what did not.
 
 ```bash
 curl -fsSL planetai.fab.city/install | bash
@@ -31,57 +32,82 @@ Walk-through in [`docs/START_HERE.md`](docs/START_HERE.md).
 
 ## What it is
 
-Hyperlocal awareness for climate and local challenges, built on distributed design and production. A city is measured
-today by satellites, by models with 11 km squares, and by a few reference stations; none of them know your kitchen at
-3 am, the shade on your street, or which hour to open the windows. A node fills that resolution gap from below, with the
-sensors people already own, and decides where it stands instead of sending readings away. Community scale first, then
-city, then region; upward, only summaries, to the [Fab City Index](https://index.fab.city) and to the models that need
-ground truth.
+Twenty years of fab labs and makerspaces built a distributed infrastructure for making things, and since 2014 the
+cities of the Fab City pledge have committed to producing half of what they consume by 2054. What that
+infrastructure never had is computing of its own: a machine at each place that reads the place, works out what it
+needs, and says why it should be made there rather than shipped in. A node is that machine.
+
+The rule it runs on is Fab City's rule for production, applied to data: DIDO, data in, data out. Raw readings stay on
+the machine; only summaries travel, to a parent node if you name one, to the [Fab City Index](https://index.fab.city),
+and to the models that need ground truth. Today a node reads air and heat from sensors, land and coast from public and
+satellite sources; water and soil have no pack yet, and no node has handed a job to a workshop yet. Programme:
+[planetai.fab.city](https://planetai.fab.city/) · documentation: [planetai.fab.city/docs](https://planetai.fab.city/docs/).
 
 ## What it does
 
-- **Connects every scale.** Sensors on WiFi (Smart Citizen, AirGradient, PurpleAir), radios over LoRa where there is no
-  WiFi (Meshtastic), public stations nearby, the city's open-data portal, Copernicus atmosphere and ocean models, Earth
-  Engine's view of the land. One schema from the room to the planet.
+- **Connects every scale.** Sensors on WiFi (Smart Citizen, and Xiaomi purifiers through a wild pack; the AirGradient and
+  PurpleAir adapters are written and not polled in this version), radios over LoRa where there is no WiFi (Meshtastic),
+  public stations nearby, the city's open-data portal, Copernicus atmosphere and ocean models, Earth Engine's view of the
+  land. One schema from the house to the planet.
 - **Turns awareness into action.** Alerts say what is happening, what it means, what to do. Then the node measures
-  whether anything changed: ρ, the share of alerts that led to an action, a number the Index never had.
-- **Shows the place.** A dashboard with the room's number as a sentence, the day as an annotated chart, every source with
-  a note, the sea, the land, the weather. Four views: Now, Network, Set up, Wall.
-- **Answers questions.** A bot on your Telegram, running a small model on your own machine, reads the node and explains
-  it; point it at a bigger model when you have one.
+  whether anything changed: ρ, the share of act-level alerts somebody answered, a number the Index never had.
+- **Shows the place.** A dashboard that leads with whatever the node puts first, as a number and a sentence, then the day
+  as an annotated chart, every source with a note, the sea, the land, the weather. Five doors: Now, Place, Data, Node
+  and Wall, with Set up behind the gear (Set up › Rooms names the room each sensor is in); the Wall walks out from the
+  house through four scales by itself. `?layout=mobile` is the phone page, `?layout=classic` the earlier six-view
+  dashboard. Paper or dark.
+- **Answers questions.** Ask the node from the dashboard's pane, or from a bot on your Telegram. Both run a small model on
+  your own machine by default, read the node and explain it; point them at a bigger model on your network when you have
+  one. Every answer says which model gave it and where that model runs, and nothing goes online unless somebody here
+  chooses it.
+- **Remembers what worked.** Once a day it compares what happened after the alerts somebody answered with the ones
+  nobody did, learns what is usual here, and keeps a diary by day, week, month and year that the morning message
+  carries (`LEARN_PUSH`). None of it leaves the machine.
+- **Keeps the household's pictures and things.** A photo sent to the bot or added on the page is kept on storage the
+  household picks and, once `EYES_MODEL` names one, described by an image model on this machine; with the household's yes, a plant or
+  animal is named by GBIF and marked introduced or invasive from GRIIS. The things a home keeps are counted privately;
+  only what it would lend or give is published (`/offers`).
 - **Keeps the data where it was made.** Local database, nightly backups a NAS can collect, an open daily export you decide
-  where to send.
-- **Grows by folders.** Air, heat, coast, land, place (what is around you, from OpenStreetMap, in PostGIS) and open-data packs ship. Water, energy, noise, classroom CO₂, fire smoke
-  are a folder of rules each, written by whoever needs them, for their place.
+  where to send. A screen without the token reads "Room A" and "Sensor 1", never the house's own names.
+- **Grows by folders.** Air, heat, coast, land, place (what is around you, from OpenStreetMap, in PostGIS), fires (NASA
+  FIRMS), the ground's heat from orbit (Landsat and MODIS) and open-data packs ship: 18 core packs. Water, energy, noise,
+  classroom CO₂ are a folder of rules each, written by whoever needs them, for their place.
 
-Node #1 has run in Kuta Selatan, Bali, since 2 September 2026.
+Node #1, `bayu-ungasan`, has run in Kuta Selatan, Bali, since 2 September 2026 (above). Node #2 has run in Menorca since
+10 September.
 
 ## Read next
 
+The documentation site is **[planetai.fab.city/docs](https://planetai.fab.city/docs/)** — the same pages, with a
+sidebar, search and the API reference, built from this repository by `tools/build_docs.py`. The files themselves:
+
 ```
-docs/     getting a node running   START_HERE · PLATFORMS · REVIVE_A_LAPTOP · MAC_MINI · UPDATING · STORAGE
+docs/     getting a node running   START_HERE · PLATFORMS · REVIVE_A_LAPTOP · MAC_MINI · UPDATING · STORAGE · ARM64
           when it goes wrong       TROUBLESHOOTING
-          what it can tell you     USE_CASES · sensors · DOMAINS · COVERAGE · PREFILL · GUI
-          extending it             PACKS · PACK_IDEAS · DEVELOPING
+          what it can tell you     USE_CASES · sensors · DOMAINS · COVERAGE · PREFILL · GUI · MODELS
           radios and reachability  NETWORKING · MESHTASTIC
-          the beta review          BETA_TESTER_GUIDE · HANDOFF_beta_review · reviews/
-          the earth pack           HANDOFF_earth_pack
-          the dashboard's design    HANDOFF_dashboard_violations · design/shots/
-          reports and messages     HANDOFF_reports
-          the trust pack           HANDOFF_trust
-          the ring and the forecast HANDOFF_nearby_forecast
-          air, heat, land, coast   HANDOFF_issues · DOMAINS
-          the dashboard renderer  HANDOFF_dashboard_renderer · GUI
-          three directions, picked HANDOFF_dashboard_directions · design/DIRECTIONS_2026-09 · design/REDESIGN_2026-09_ground
-          proposed, not decided   SPEC_custody · decisions/
+          extending it             PACKS · PACK_IDEAS · SOURCES · DEVELOPING
+          testing a beta           BETA_TESTER_GUIDE · FAB26_EXPERIMENT
+          releasing it             WORKFLOW · NEXT_RELEASE · SIGNING
+          specs, each with status  SPEC_custody · SPEC_identity · SPEC_rho · SPEC_discovery · SPEC_decide · SPEC_alerts · SPEC_dashboard_events · SPEC_event_led_state · SPEC_dashboard_figures · SPEC_language · SPEC_journeys · SPEC_mobile · SPEC_hello · SPEC_eyes · SPEC_species · SPEC_inventory · SPEC_learn · SPEC_fablab · SPEC_radio
+          proposed, then decided   proposals/ · decisions/
+          the documentation site   site/ (planetai.fab.city/docs)
+          the page's design rounds design/ (not shipped to nodes)
+          history                  archive/ (handoffs, reviews, plans: what was true then, not now)
+SECURITY.md       reporting a vulnerability, and the key a node checks an update against
 AGENTS.md         for an AI agent operating the node
 ARCHITECTURE.md   how it is built; SPEC.md   what was left out and when it returns; PRODUCT.md   who pays for what
 ```
 
+## Who runs this
+
+One person maintains it today, with a second holding access and a proposed scope — `MAINTAINERS.md`.
+`GOVERNANCE.md` says who has to agree to what, and why the installer and `init.sql` need two people.
+
 ## Bring your own agent
 
 A node is a thing you operate, and most people who install one will do it with an agent beside them. This
-repository is written for that: `AGENTS.md` opens with a table that routes an agent to one of four skills
+repository is written for that: `AGENTS.md` opens with a table that routes an agent to one of eight skills
 in `skills/`, and `make lint` fails if a skill names a command or a path that does not exist. Paste this
 to your agent and nothing else:
 
@@ -99,15 +125,19 @@ file. `planetai agent` on the node prints the three facts you need for any other
 ## Layout
 
 ```
-app/       main.py · sources.py · index.py · packs.py · settings.py · agent.py · agent_loop.py · static/index.html
+app/       main.py · sources.py · index.py · issues/ · packs.py · settings.py · ask.py · agent.py · agent_loop.py · report.py ·
+           learn.py · fundamentals.py · static/
 bin/       planetai, the command line
-packs/     air-quality · heat · insight · trust · cold-start · open-data-health · coast · earth-engine · earth · place · example
-config/    rules.yml · mosquitto · reticulum
-tools/     the checks, hooks, bundle and release scripts, mesh-provision.sh, nas/, remote-model.sh
+packs/     air-quality · heat · insight · trust · cold-start · open-data-health · coast · earth-engine · earth · place ·
+           nearby · season · forecast · make · thingdata · fire · surface-heat · example-cooking-hours
+config/    rules.yml · channels.yml · mosquitto · reticulum
+tools/     the checks, hooks, bundle and release scripts, radio.py + radio_profiles/ (planetai radio), nas/, remote-model.sh
 tests/     offline suites
-presets/   bali · barcelona · boston · santiago · delhi
+presets/   bali · barcelona · boston · santiago · delhi · menorca
 ```
 
 ## Licence
 
-Apache 2.0. Fab City Foundation, 2026. Alpha; feedback to info@fab.city.
+Apache 2.0 today; AGPL-3.0-or-later once every contributor has consented
+([docs/decisions/2026-09-25-licence.md](docs/decisions/2026-09-25-licence.md)). Fab City Foundation, 2026. Beta; feedback
+to info@fab.city.

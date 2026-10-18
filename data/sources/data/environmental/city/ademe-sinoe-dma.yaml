@@ -1,0 +1,35 @@
+name: ADEME SINOE — Chiffres-clés DMA (déchets ménagers et assimilés) par département
+url: https://www.data.gouv.fr/datasets/sinoe-r-chiffres-cles-dma-hors-gravats/
+description: |
+  Household and similar waste (DMA) per département, tonnes and kg per inhabitant,
+  from ADEME's SINOE waste observatory. This series runs 2009–2017.
+pillar: environmental
+scale: city
+status: candidate
+license: Licence Ouverte / Open Licence v2.0 (Etalab)
+api: https://data.ademe.fr/data-fair/api/v1/datasets/sinoe-indicateurs-chiffres-cles-dma-hors-gravats-2009-2017/lines
+pilot_relevance: []
+places: [paris]
+tags: [waste, household-waste, dma, ademe, sinoe, france, departement]
+added: 2026-09-26
+auth: none
+feeds_cells: [Environmental|City]
+upstream_listed_in: []
+notes: |
+  VERIFIED 2026-09-26, not yet read for a real territory.
+
+  LICENCE. data.gouv.fr lists the dataset as lov2, and the ADEME data-fair API reports
+  "Licence Ouverte / Open Licence". The sibling SINOE datasets (tonnage by waste type,
+  treatment, costs) carry the same licence and were updated in September 2026.
+
+  ENDPOINT. Key-free data-fair API, 800 rows (département x odd years 2009–2017).
+  Paris (C_DEPT 75): 485.63 kg per inhabitant in 2009 (1,084,949 t), 468.16 in 2013.
+
+  WHY CITY AND NOT REGION. For Paris, département 75 and the commune are the same
+  territory, so this is city-level there. For other départements it is county-level.
+  Environmental|Region has no waste row yet, so this entry is filed where it answers.
+
+  WHAT IT DOES NOT CLAIM. DMA includes waste from small businesses collected with
+  household waste, so it is larger than the city's household-only figure. It excludes
+  rubble ("hors gravats"). This series stops in 2017; later years are in other SINOE
+  datasets, which have not been read here.

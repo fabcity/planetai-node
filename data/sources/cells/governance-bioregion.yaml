@@ -1,0 +1,16 @@
+cell: Governance|Bioregion
+indicator_categories:
+- transboundary water governance
+- protected area designation
+- public procurement
+minimum_indicators:
+- name: Transboundary basin agreements in force
+  unit: count
+  aggregation: latest
+- name: River basin organisations present
+  unit: count
+  aggregation: latest
+does_not_claim: A treaty in force is not a treaty observed, and a designation is not management. A
+  Ramsar site or a basin agreement records an intention registered with an international body; whether
+  water is shared or a wetland protected is not in these sources and must not be inferred from them.
+notes: 7 entries filed, the TFDD family plus Ramsar and three procurement systems.

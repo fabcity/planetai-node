@@ -51,7 +51,7 @@ per source: node #1's SENX unit is a different sensor model from the kits beside
   rule on this later"). It is a direct instrument-failure signal and this pack is the "later" — but node #1 has no
   PurpleAir hardware, so nothing is lost today. A future version should declare it in `channels.yml` and add a
   rule.
-- Meshtastic's `altitude_m` (`app/sources.py:441-442`), written by the position handler outside `MESH_METRICS`
+- Meshtastic's `altitude_m` (`meshtastic_message` in `app/sources.py`), written by the position handler outside `MESH_METRICS`
   entirely, so it never gets a role and this pack never sees it.
 
 **Where the numbers came from, and what was wrong with the first set.** Node #1, Ungasan, Kuta Selatan. On

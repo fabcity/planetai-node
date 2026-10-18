@@ -147,7 +147,7 @@ watch_run() {         # watch_run "why it failed" cmd...  — run it, heartbeat 
 }
 
 say()  { printf '\033[1;32m>>\033[0m %s\n' "$*"; }
-warn() { printf '\033[1;33m!!\033[0m %s\n' "$*"; }
+warn() { printf '\033[1;33m!!\033[0m %s\n' "$*"; printf '!! %s\n' "$*" >>"${LOG_FILE:-/dev/null}" 2>/dev/null || true; }  # a refusal nobody sees twice is a refusal lost: warnings belong in the install log too
 # Every exit goes through the reporter. `die` predates it and there are a dozen calls: the old-database
 # guard, the missing coordinates, the port clash. Each one used to print a bare xx line with no step
 # name, no elapsed time and no way back — the shape the tester met on 7 September. Now they all carry
@@ -320,6 +320,31 @@ if [[ "$PLATFORM" == "macos" ]]; then
   docker info >/dev/null 2>&1 || die "no container runtime on this Mac. Run 'planetai preflight' — it names the one that installs on this macOS version."
 elif [[ "$PLATFORM" == wsl-* ]] && ! need docker; then
   die "Docker not visible inside WSL. Install Docker Desktop for Windows, enable 'Use the WSL 2 based engine' and turn on WSL integration for this distro (Settings → Resources → WSL integration), then re-run."
+elif ! need docker && need podman; then
+  # Podman is here and Docker is not, and that is almost always deliberate — a Fedora or RHEL machine, or
+  # somebody who does not want a root daemon. Installing Docker over the top of it would be this script
+  # deciding something the person already decided, and on a Pi it would also mean two runtimes fighting
+  # over cgroups.
+  #
+  # What the node needs is not Docker specifically; it is a `docker` command and a socket. Podman ships
+  # both: `podman-docker` provides /usr/bin/docker, and the user socket is what DOCKER_HOST points at.
+  # With those two in place every one of this repository's 99 `docker` call sites — 57 in bin/planetai
+  # alone — works unchanged, which is why this is two lines of instruction and not a refactor.
+  #
+  # NOT TESTED ON A NODE. No CI leg runs under Podman and nobody has carried a node on it, so this says
+  # what to do and stops rather than installing something and claiming it works. docs/ARM64.md
+  # carries what proving it would take.
+  warn "Podman is installed here and Docker is not. Not installing Docker over it."
+  echo "     The node drives a runtime through the 'docker' command, and Podman can provide one:"
+  echo
+  echo "       sudo <package manager> install podman-docker        provides /usr/bin/docker"
+  echo "       systemctl --user enable --now podman.socket         and a socket for it to talk to"
+  echo "       export DOCKER_HOST=unix://\$XDG_RUNTIME_DIR/podman/podman.sock"
+  echo
+  echo "     Then run this same line again; it will find 'docker' and carry on."
+  echo "     No node has been run on Podman and no CI leg covers it, so you would be the first. If you"
+  echo "     would rather not be:  curl -fsSL https://get.docker.com | sh"
+  die "Podman is here, Docker is not, and the node needs a 'docker' command. The three lines above give it one."
 elif ! need docker; then
   say "there is no container runtime on this machine, and the node is two containers. Installing Docker."
   sudo_first "installing Docker"
@@ -414,7 +439,7 @@ grep -qE '^NODE_LAT=-?[0-9]' .env || die "this node needs coordinates: pass --la
 if ! grep -qE '^(SC_DEVICES|SC_USER|AIRGRADIENT_HOSTS|PURPLEAIR_HOSTS)=.+' .env; then
   warn "no sensor configured — that is fine. On first start this node will pull 92 days of CAMS air quality"
   warn "and NASA POWER climatology for its coordinates, so it has something true to say before hardware arrives."
-  warn "Add a sensor later with --sc / --airgradient / --purpleair, or edit .env."
+  warn "Add a sensor later with --sc (a Smart Citizen kit), or edit .env."
 fi
 [[ -n "$LAT"  ]] && setenv NODE_LAT "$LAT"
 [[ -n "$LON"  ]] && setenv NODE_LON "$LON"
@@ -428,10 +453,12 @@ grep -q '^POSTGRES_PASSWORD=change-me' .env && { setenv POSTGRES_PASSWORD "$(ope
 # call while pg_isready and the install's own doctor say the database is fine. Refuse now and say which way out.
 if [[ $NEWPW -eq 1 ]]; then
   DATA_DIR_SET="$(grep '^DATA_DIR=' .env | cut -d= -f2 | sed 's/[[:space:]]*#.*$//' | tr -d ' ')"
-  # The volume is named after the compose project, which is the folder's basename unless
-  # COMPOSE_PROJECT_NAME says otherwise. This used to look for "planetai_db" literally, so it saw
-  # nothing whenever the node lived in a folder called anything else.
-  DBVOL="${COMPOSE_PROJECT_NAME:-$(basename "$PWD")}_db"
+  # The volume is named after the compose project, and docker-compose.yml pins `name: planetai`, so the
+  # volume is planetai_db whatever the folder is called — a tarball install lives in `planetai-node`, and a
+  # guard that derives the name from the folder looks for planetai-node_db, finds nothing, and waves a
+  # password-changing reinstall past the old node's data (the v0.80.1 update reports). COMPOSE_PROJECT_NAME
+  # overrides the pin, so honour it first.
+  DBVOL="${COMPOSE_PROJECT_NAME:-planetai}_db"
   if { [[ -z "$DATA_DIR_SET" ]] && docker volume inspect "$DBVOL" >/dev/null 2>&1; } || { [[ -n "$DATA_DIR_SET" && -f "$DATA_DIR_SET/PG_VERSION" ]]; }; then
     warn "a database from an earlier node is still on this machine (${DATA_DIR_SET:-Docker volume $DBVOL}), and this is a new .env,"
     warn "so its password cannot match. Two ways out:"
@@ -461,7 +488,7 @@ step_ok
 # case a tester pastes into an issue, and the reason the heartbeat had nothing to show. `docker pull`
 # does print one line per layer, piped or not, so pull the image by name. Same result, visible progress.
 DB_IMAGE="$(docker compose config --images 2>/dev/null | grep -E '[a-z0-9._-]+/[a-z0-9._-]+' | head -1)"
-DB_IMAGE="${DB_IMAGE:-postgis/postgis:16-3.4-alpine}"
+DB_IMAGE="${DB_IMAGE:-imresamu/postgis:16-3.4-alpine}"
 step "downloading the database image ${DB_IMAGE} (about 162 MB)"
 watch_run "the database image did not arrive. The log has the reason; the resume command retries." \
   docker pull "$DB_IMAGE"
@@ -499,11 +526,9 @@ chk "all modules in image" "[ \"\$(ls app/*.py | wc -l)\" -eq \"\$(docker compos
 chk "db healthy"      "docker compose exec -T db pg_isready -U planetai"
 PORT="$(grep '^APP_PORT=' .env | cut -d= -f2 | sed 's/[[:space:]]*#.*$//' | tr -d ' ')"; PORT="${PORT:-8080}"
 chk "app answering"   "curl -sf localhost:${PORT}/health"
-chk "telegram set"    "grep -qE '^TELEGRAM_BOT_TOKEN=.+' .env"
 [[ -x backup.sh ]] || { chmod +x backup.sh; echo "  ✓ backup.sh made executable"; }
 step_ok
 [[ $ok -eq 1 ]] || warn "something's off: docker compose logs -f app"
-grep -qE '^TELEGRAM_BOT_TOKEN=.+' .env || warn "alerts go to the log only until TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_IDS are set in .env (then: docker compose up -d)"
 
 # ---- backup cron (best effort; skip silently if no crontab)
 if need crontab && ! grep -q planetai-backup <<< "$(crontab -l 2>/dev/null)"; then
@@ -518,7 +543,7 @@ if grep -qE 'api\.telegram\.org/bot[0-9]+:' <<< "$(docker compose logs app 2>/de
 fi
 echo
 if grep -q '^BOOTSTRAP=1' .env; then
-  say "first start pulls ~2,200 rows of history for your location (CAMS 92 days + NASA POWER normals)."
+  say "first start pulls ~4,400 rows of history for your location (CAMS 92 days + NASA POWER normals)."
   echo "   watch it:  docker compose logs -f app | grep bootstrap"
 fi
 # One line, pasteable without editing, success or failure.
@@ -529,3 +554,13 @@ say "First reading lands within $(grep '^POLL_SECONDS' .env | cut -d= -f2 || ech
 echo "   make health     (or: curl -s localhost:${PORT}/health | python3 -m json.tool)"
 echo "   make stats"
 echo "   docker compose logs -f app"
+
+# The doctor, last, so the final thing on the screen is what is still to do: every check with its fix, then the
+# node's data sources and "To finish setting up", most important first (GET /health/sources). In a terminal it
+# offers to do the first one; with --yes or no terminal it only prints. `planetai setup` runs the doctor itself once
+# the node has restarted with its answers, and says so with PLANETAI_FROM_SETUP, so it is not printed twice.
+if [[ -z "${PLANETAI_FROM_SETUP:-}" ]]; then
+  echo; echo "doctor:"
+  sleep 3
+  ./bin/planetai doctor "$([[ $YES -eq 1 ]] && echo quiet || echo --guide)" || true
+fi

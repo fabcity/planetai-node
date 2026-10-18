@@ -1,0 +1,66 @@
+name: INEGI Censo de Población y Vivienda 2020 — ITER (Mexico)
+url: https://www.inegi.org.mx/programas/ccpv/2020/
+description: |
+  Mexico's 2020 census, published down to the locality: population, housing,
+  education and services for every locality in the country, with official
+  geostatistical codes and coordinates, as open CSV.
+pillar: social
+scale: city
+status: candidate
+license: "Términos de Libre Uso de la Información del INEGI — copying, distribution, adaptation and commercial exploitation are all permitted with attribution. An open permission governed by Mexican law, not a named licence; no SPDX id exists for it."
+api: https://www.inegi.org.mx/contenidos/programas/ccpv/2020/datosabiertos/iter/iter_00_cpv2020_csv.zip
+pilot_relevance: [global]
+tags: [inegi, mexico, census, iter, locality, cvegeo]
+added: 2026-09-23
+auth: none
+feeds_cells: [Social|City, Social|Community]
+upstream_listed_in: []
+notes: |
+  LICENCE: the "Términos de Libre Uso de la Información del INEGI", read
+  2026-09-23. Users "pueden hacer y distribuir copias de la información" and
+  "pueden explotar comercialmente la información, utilizándola como insumo para
+  generar otros productos o servicios" — copying, distribution, derived products
+  and commercial use, all named. Attribution takes the form "Fuente: INEGI,
+  [nombre del producto]" with the update date where available, and the reuser
+  must tell the end user about any transformation applied and must not imply
+  INEGI endorsed it. Criterion 1 is met in substance; it is INEGI's own
+  instrument under Mexican law and has no SPDX id.
+
+  **THE BULK FILES NEED NO TOKEN; THE INDICATOR API DOES.** This entry is the
+  ITER open-data download, deliberately, because that half is unauthenticated.
+  INEGI's indicator API (`/app/api/indicadores/...`) requires a token obtained
+  by registration, and this entry does not depend on it. If a node ever needs
+  the API rather than the files, that is a different `auth` and worth a separate
+  entry.
+
+  ENDPOINT VERIFIED 2026-09-23, no key and no account. The national file
+  `iter_00_cpv2020_csv.zip` is **36.6 MB**, `Content-Type:
+  application/x-zip-compressed`, `Last-Modified: Thu, 19 May 2022`. Per-state
+  files exist and are far smaller — `iter_09` (Ciudad de México) is 175 kB,
+  `iter_32` (Zacatecas) 884 kB — so a node wanting one territory should fetch
+  one state, not the country. Downloaded and unzipped `iter_32` in this session:
+  it carries the data, a metadata file, a data dictionary and catalogues.
+
+  SPATIAL: official INEGI geostatistical codes as separate columns —
+  `ENTIDAD` (32 = Zacatecas), `MUN`, `LOC`, with `NOM_ENT` / `NOM_MUN` /
+  `NOM_LOC` alongside, which concatenate to CVEGEO. **And every locality row
+  carries `LONGITUD`, `LATITUD` and `ALTITUD`.** That combination — official
+  code plus coordinates, at locality rather than municipality level — is unique
+  in Tier A and Tier B: it is the only source here that can place a settlement
+  on a map and join it to a national register without either a crosswalk or a
+  geocoder. Verified value: Zacatecas state total, 1,622,138.
+
+  VINTAGE: the 2020 census, files last modified May 2022. It is a census, so it
+  does not refresh — the next one is 2030, and any "current population" claim
+  built on this is a 2020 number however it is labelled.
+
+  INDICATOR: locality population and housing — the social-pillar city row, and
+  at `LOC` level it reaches the community tier, which is why `feeds_cells` names
+  both. I could not read the landing plan's Table 2 in this session, so this
+  names the indicator in plain words rather than a row id.
+
+  Promotes to live when somebody reads one Mexican locality for a real purpose
+  and confirms the ENTIDAD/MUN/LOC triple joins to whatever boundary they are
+  using. There is no Mexican pilot in `pilot_relevance` today — like
+  social/city/ibge-sidra, this is a strong source the network has nowhere to
+  point yet.

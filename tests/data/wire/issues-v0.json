@@ -1,0 +1,26 @@
+{
+  "schema": "issues-v0",
+  "source": "app/issues/engine.py::compute",
+  "keys": [
+    "as_of",
+    "asks",
+    "digest",
+    "distances",
+    "dropped",
+    "events",
+    "geometry",
+    "headline",
+    "headline_rule",
+    "issues",
+    "labels",
+    "lead",
+    "mesh",
+    "metrics",
+    "order",
+    "schema",
+    "sections",
+    "stations",
+    "stations_silent",
+    "undeclared"
+  ]
+}

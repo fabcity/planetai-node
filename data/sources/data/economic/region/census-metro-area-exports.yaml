@@ -1,0 +1,28 @@
+name: US Census exports by metropolitan area
+url: https://www.census.gov/foreign-trade/statistics/state/index.html
+description: |
+  Quarterly and annual US goods exports for each metropolitan statistical
+  area, in million US dollars, published by the Census Bureau as one XLSX
+  per quarter (metroqQYYYY.xlsx).
+pillar: economic
+scale: region
+status: candidate
+license: US public domain (Census Bureau work, 17 USC 105)
+api: null
+pilot_relevance: [boston]
+places: [boston]
+tags: [trade, exports, value, metro, msa, boston, census, xlsx]
+added: 2026-09-26
+auth: none
+feeds_cells: [Economic|Region]
+upstream_listed_in: []
+notes: |
+  VERIFIED 2026-09-26, not yet read for a real territory. Filed for #42. It is Boston's only openly readable trade figure below the national level.
+
+  LICENCE. There is no licence text. The data is Census Bureau work and so a US Government work, public domain under 17 USC 105. It was formerly published by ITA, whose page trade.gov/metropolitan-area-exports now returns 404.
+
+  ENDPOINT. `census.gov/foreign-trade/statistics/state/metroq42025.xlsx` answered 200 with no key on 2026-09-26, and editions run to Q1 2026. Boston-Cambridge-Newton, MA-NH exported 30,541.3 million USD in 2025 and 29,935.6 million in 2024.
+
+  WHY THIS CELL. Economic|Region's external-trade row, exports half.
+
+  WHAT IT DOES NOT CLAIM. Exports only: no imports are published at metro level. Exports are attributed to the exporter of record's location, not to where goods were made. The state series (`intltrade/*/statehs`, imports and exports by HS code) needs a free API key, which the harvest pipeline does not hold; it redirects to `missing_key.html` without one. No Massachusetts state dataset was found, since MOITI republishes the federal figures.

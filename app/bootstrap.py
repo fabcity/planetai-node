@@ -33,7 +33,7 @@ MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", 
 
 
 def cams_history(hc: httpx.Client, lat: float, lon: float, days: int = 92):
-    """Hourly CAMS PM2.5/PM10 for the past N days (92 is the API maximum). One call, ~2200 rows."""
+    """Hourly CAMS PM2.5/PM10 for the past N days (92 is the API maximum). One call, ~4,400 rows (two metrics an hour)."""
     r = hc.get(sources.OM_AIR_URL, params={"latitude": lat, "longitude": lon, "hourly": "pm2_5,pm10",
                                            "past_days": min(days, 92), "forecast_days": 0, "timezone": "UTC"})
     r.raise_for_status()

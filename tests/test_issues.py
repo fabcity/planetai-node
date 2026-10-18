@@ -69,11 +69,38 @@ for name, break_it in BREAKS.items():
     if not I._problems("air", d):
         fails.append(f"the validator accepts a declaration with {name}")
 
+# --- the hero contract refuses what the page could not draw -------------------------------------
+# Coast, because it is the issue with distances missing: a rule dot or a numeral naming the room is
+# a hero the page would have to invent a number for.
+HERO_BREAKS = {
+    "a sign that is not in signs.svg": lambda d: d["hero"].__setitem__("sign", "sign-surf"),
+    "a pictogram that is not in signs.svg": lambda d: d["hero"].__setitem__("pictogram", "pix-surf"),
+    "a rule dot at a distance it lacks": lambda d: d["hero"]["rule"]["dots"].append("room"),
+    "a numeral that is neither a distance nor a readout": lambda d: d["hero"].__setitem__("numeral", "tide"),
+    "a numeral at a distance it lacks": lambda d: d["hero"].__setitem__("numeral", "yard"),
+    "a line on the rule with no line declared": lambda d: d["hero"]["rule"].__setitem__("line", True),
+    "a clock that is neither": lambda d: d["hero"].__setitem__("clock", "tide"),
+    "one end word": lambda d: d["hero"]["rule"]["ends"].__setitem__("es", ["en calma"]),
+}
+for name, break_it in HERO_BREAKS.items():
+    d = yaml.safe_load((ROOT / "app/issues/coast.yml").read_text())
+    break_it(d)
+    if not I._problems("coast", d):
+        fails.append(f"the validator accepts a hero with {name}")
+_ok = yaml.safe_load((ROOT / "app/issues/coast.yml").read_text())
+_ok["hero"]["numeral"] = "swell_height_m"
+if I._problems("coast", _ok):
+    fails.append("the validator refuses a hero whose numeral is one of the issue's own readouts")
+_ok.pop("hero")
+if I._problems("coast", _ok):
+    fails.append("the validator refuses an issue with no hero; it is optional, and such an issue never leads")
+
 # --- every pack reaches an issue, or is named as not one ------------------------------------------
 # A pack domain that is deliberately outside the environmental picture. Weather feeds air and heat
 # (wind for attribution, the forecast for the day ahead) but is not itself something a place is
-# better or worse at; place is the ground everything sits on; governance is the loop and the Index.
-NOT_ISSUES = {"weather", "place", "governance"}
+# better or worse at; place is the ground everything sits on; governance is the loop and the Index;
+# repair is a catalogue somebody maintains, not a quality of the air, water or land here.
+NOT_ISSUES = {"weather", "place", "governance", "repair"}
 # Alert rules from cross-domain packs, or from packs with no domain at all, that belong to no issue.
 # trust is the node's own instruments: whether they are frozen, missing hours, or disagreeing.
 UNMAPPED_RULES = {
@@ -175,6 +202,32 @@ for declared, want_order, want_dropped in [
         fails.append(f"NODE_ISSUES={declared!r} ordered {got}, expected {want_order}")
     if dropped != want_dropped:
         fails.append(f"NODE_ISSUES={declared!r} dropped {dropped}, expected {want_dropped}")
+
+# --- the four distances have ONE vocabulary ---------------------------------------------------------------------
+#
+# A column headed YARD above a sentence reading "on the wall outside" is two names for one place on
+# one screen, and English was the only language that had them: Decision 6 gave it the system's own
+# words and gave the household's to the other two. Half of that is reversed — the headings are the
+# sentence's nouns now, in all three — and this is what keeps them from drifting apart again.
+#
+# The API keys are deliberately NOT part of it. `room/yard/ring/region` are what /issues.distances
+# publishes, what every stack is keyed on and what a pack's `where:` block overrides. Renaming them
+# would be a wire break to fix a wording problem.
+for _loc in I.LOCALES:
+    if set(I.LABEL_WORDS.get(_loc, {})) != set(I.DISTANCES):
+        fails.append(f"LABEL_WORDS[{_loc}] does not carry exactly the four distances")
+        continue
+    for _d in I.DISTANCES:
+        _label, _noun = I.LABEL_WORDS[_loc][_d], I.NOUN_WORDS[_loc][_d]
+        if not _label.strip():
+            fails.append(f"LABEL_WORDS[{_loc}][{_d}] is blank")
+        # The heading must be the noun the sentence uses, allowing the article the sentence needs
+        # and the heading does not: "the street" -> "street", "la calle" -> "calle".
+        if _label.lower() not in _noun.lower():
+            fails.append(f"LABEL_WORDS[{_loc}][{_d}] is {_label!r} but the sentence says {_noun!r} — "
+                         f"one place, two names, on one screen")
+if set(I.DISTANCES) != {"room", "yard", "ring", "region"}:
+    fails.append(f"the API keys changed to {I.DISTANCES}: that is a wire break, not a wording change")
 
 print("\n".join(f"  x {f}" for f in fails) or
       f"  issues: {len(DECL)} declarations validate in {len(I.LOCALES)} locales; "

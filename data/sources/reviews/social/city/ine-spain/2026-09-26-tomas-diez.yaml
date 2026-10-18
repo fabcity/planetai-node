@@ -1,0 +1,28 @@
+entry: social/city/ine-spain
+by: Tomas Diez
+org: Fab City Foundation
+date: 2026-09-26
+territory: Barcelona
+checked:
+  - licence
+  - endpoint
+  - admin-code
+  - vintage
+  - field-fit
+verdict: usable
+self_declared: false
+issue: 31
+note: |
+  Reads operation 22, Cifras Oficiales de Población (the padrón). Barcelona is table 2861, series DPOP2665: 1,731,649 for 2025, 1,702,547 for 2024. INE's published CSV for that table has the same figures in row `08019 Barcelona`. No key.
+
+  TRAP 1: table 2861 has two series labelled "Barcelona. Total. Total habitantes. Personas." DPOP2608 is the province (5,983,325), and DPOP2665 is the city. Matching on the label gets you the province, 3.5 times too big, with no error. `VALORES_SERIE/{code}?det=1` gives the code in one call: `Municipios | Barcelona | 08019` versus `Provincias | Barcelona | 08`. Key on the código INE, never on the name.
+
+  TRAP 2: other official populations exist. Idescat serves 1,713,247 for 2025 (from INE's annual census, a different operation) and 1,686,208 (a seasonal estimate, 2024, provisional). The cell says the register is the authority, so read operation 22 and name it.
+
+  Vintage: annual, as of 1 January. The table was last modified on 2025-12-11, and the 2026 figure is due around December 2026.
+
+  Field-fit, 1 of 3: it gives resident population. For density it has no area, so that needs a second source (IGN). It has no housing burden. I did not search INE's other operations for these, and I did not review Social|Region.
+
+  Licence: CC BY 4.0, on the current Aviso legal (`ine.es/dyngs/AYU/index.htm?cid=125`). An older Aviso legal is still served at `ss/Satellite?...cid=1254735849170`, the one search and the Wayback Machine find. It has no CC BY sentence, and it is a stale page, not a change of licence. Attribute as "Elaboración propia con datos extraídos del sitio web del INE: www.ine.es", give the data's last-update date, and do not imply that INE endorses it.
+
+  The checks were run with Claude Code at my request. I read the findings and stand behind the verdict.

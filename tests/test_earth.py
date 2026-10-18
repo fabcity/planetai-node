@@ -215,6 +215,71 @@ assert 'A.cache().glob("change_*")' in _fetch, "a moved square must not leave it
 
 print("earth move tests pass")
 
+# ---------------------------------------------------------------- a renamed node, and the square it already has
+# The cache directory was keyed on NODE_NAME. Node #1 was renamed bayu-2 → bayu-ungasan and re-read 930 MB of
+# embeddings it already had on disk, then carried both copies (555 + 562 MB) with nothing reading the first. The
+# embeddings describe a place, not a machine's name, so the name is not the key: a directory whose meta.json says
+# it holds this square answers for this node whatever it is called.
+def _meta(d: Path, lat, lon, radius=5000, **extra):
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "meta.json").write_text(json.dumps({"lat": lat, "lon": lon, "radius_m": radius, **extra}))
+    return d
+
+with tempfile.TemporaryDirectory() as tmp:
+    os.environ["PACK_OUT"] = tmp
+    was_name = os.environ["NODE_NAME"]
+    os.environ["NODE_NAME"] = "bayu-ungasan"
+    root = Path(tmp) / "earth"
+    LAT, LON = -8.8271, 115.15709
+    assert A.node() == "bayu-ungasan"
+
+    # nothing on disk: the node's own name, exactly as before
+    assert A.cache() == root / "bayu-ungasan"
+
+    # the square is there under the name it was fetched with. It is this node's square, so it is this node's cache.
+    old = _meta(root / "bayu-2", LAT, LON)
+    np.save(old / "2025.npy", np.zeros((2, 2, 2), dtype=np.int8))
+    assert A.cache() == old, f"a renamed node must find its own square, got {A.cache()}"
+    assert A.cached_years() == [2025], "and read it: this is the 930 MB that would be downloaded again"
+    assert A.meta()["lat"] == LAT
+
+    # both directories exist — node #1 today. The one named for the node wins, so nothing switches under a live
+    # node and the older copy is left where it is for a person to decide about.
+    new = _meta(root / "bayu-ungasan", LAT, LON)
+    assert A.cache() == new, "the node's own name wins when both describe the square"
+
+    # a directory read around somewhere else is not this node's cache, however it is named
+    import shutil
+    shutil.rmtree(new)
+    _meta(root / "santiago", -33.4310, -70.6045)
+    assert A.cache() == old, "the nearer-named square must not be displaced by an unrelated one"
+    shutil.rmtree(old)
+    assert A.cache() == root / "bayu-ungasan", "a square read around another city is never adopted"
+
+    # a corrected decimal (inside the move tolerance) keeps the cache; a real move does not
+    drifted = _meta(root / "bayu-2", LAT + 0.0002, LON)          # 22 m, tolerance is 50 m at 5000
+    assert 0 < A.drift(json.loads((drifted / "meta.json").read_text()), LAT, LON) < 50
+    assert A.cache() == drifted, "a 22 m correction must not orphan nine years of embeddings"
+    _meta(root / "bayu-2", LAT + 0.01, LON)                      # 1.1 km: a different square
+    assert A.cache() == root / "bayu-ungasan", "a moved node must not silently adopt the previous square"
+
+    # the radius is part of the square. A bigger one is a different picture of the same place.
+    _meta(root / "bayu-2", LAT, LON, radius=8000)
+    assert A.cache() == root / "bayu-ungasan", "a resized square is not this square"
+    _meta(root / "bayu-2", LAT, LON)
+    assert A.cache() == root / "bayu-2"
+    # a meta.json from before the radius was recorded is still this square: it must not force a re-read
+    (root / "bayu-2" / "meta.json").write_text(json.dumps({"lat": LAT, "lon": LON}))
+    assert A.cache() == root / "bayu-2", "a pre-v0.33.4 meta.json records no radius; that is not a resize"
+    # and neither unreadable json nor a directory without meta.json stops the scan
+    (root / "half-written").mkdir(); (root / "half-written" / "meta.json").write_text("{not json")
+    (root / "empty").mkdir()
+    assert A.cache() == root / "bayu-2"
+
+    os.environ.pop("PACK_OUT")
+    os.environ["NODE_NAME"] = was_name
+print("earth cache: a rename costs nothing, a move still costs everything")
+
 # ---------------------------------------------------------------- change: its arguments, and --all
 # `planetai run earth change --all` used to print an ordinary result for the latest pair: the flag was not a
 # digit so it was dropped, and an empty argument list meant "the default". Run the real script and read what
