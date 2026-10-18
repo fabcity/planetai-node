@@ -1167,7 +1167,7 @@ async def _mcp_auth(request, call_next):
 # there too, but the route drops what it says relative to the node (is_node, cells_from_node, *_polar) for a
 # caller without a token: asked at res 15 cell by cell, those would find the house. The phone's walk needs both
 # (Tomas, 12 Oct 2026: one phone mode, no token, for the person running the node).
-_SHARE_OFF = (frozenset({"/", "/ui", "/tester", "/health", "/llms.txt", "/settings", "/export", "/presence", "/nodes", "/offers"}), ("/static/",))
+_SHARE_OFF = (frozenset({"/", "/ui", "/workbench", "/tester", "/health", "/llms.txt", "/settings", "/export", "/presence", "/nodes", "/offers"}), ("/static/",))
 _SHARE_OPEN = (_SHARE_OFF[0] | frozenset({
     "/stats", "/sensors", "/observations", "/alerts", "/series", "/sparks", "/rho", "/cells", "/packs", "/trust",
     "/nearby", "/forecast", "/earth", "/earth/change.png", "/earth/year.png", "/earth/frame.png",
@@ -2733,20 +2733,30 @@ def ui(layout: str = ""):
     return HTMLResponse(body, headers={"cache-control": "no-cache, must-revalidate"})
 
 
+@app.get("/workbench", include_in_schema=False)
+def workbench():
+    """The sensors workbench, the same file as planetai.fab.city/sensors/: flash a Bayu sensor or a Meshtastic radio,
+    test it over USB, and see every device this node reads, in layers. Served here it reads this node's /health,
+    /sensors, /readings and /nodes on its own origin, which a page from anywhere else cannot (no CORS, and http from
+    https is blocked). USB and flashing need a secure context: this machine (localhost), not the LAN.
+
+    It is not at /sensors because /sensors is the sensor list. The page is the shell, so it answers at every
+    SHARE_LEVEL like /ui; what it then reads is gated as always, and it asks for the token when a read is refused.
+    app/static/workbench.html is a copy of the site's sensors/index.html (fabcity/planetai): edit it there and copy.
+    Its one link to the design layer, /kit/planetai-theme.css on the site, is this node's /static/ copy here."""
+    from fastapi.responses import HTMLResponse
+    f = STATIC / "workbench.html"
+    if not f.exists():
+        raise HTTPException(404, "the sensors workbench is not shipped in this build")
+    body = f.read_text().replace('href="/kit/planetai-theme.css"', 'href="/static/planetai-theme.css"')
+    return HTMLResponse(body, headers={"cache-control": "no-cache, must-revalidate"})
+
+
 @app.get("/tester", include_in_schema=False)
 def tester():
-    """The sensor bench (Making Sense Bali's makingsense.fablabbali.com/test/, the same file). Served here it reads this
-    node's /health, /sensors, /readings and /nodes on its own origin, which a page from anywhere else cannot (no CORS,
-    and http from https is blocked), and draws every device the node knows in layers. It reads boards over USB too,
-    but only where the browser counts the page as secure: on this machine (localhost), not from across the LAN.
-
-    The page is the shell, so it answers at every SHARE_LEVEL like /ui; what it then reads is gated as always, and it
-    asks for the token when a read is refused. app/static/tester.html is a copy: edit it in makingsensebali/test/."""
-    from fastapi.responses import HTMLResponse
-    f = STATIC / "tester.html"
-    if not f.exists():
-        raise HTTPException(404, "the sensor bench is not shipped in this build")
-    return HTMLResponse(f.read_text(), headers={"cache-control": "no-cache, must-revalidate"})
+    """Where the workbench answered on main for a day (17 to 18 Oct 2026), before it was named; never in a tag."""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse("/workbench#test", status_code=308)
 
 
 # What this machine is for, in the words of docs/site/introduction.md; tools/check_site.py holds this, the

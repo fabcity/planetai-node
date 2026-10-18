@@ -19,7 +19,7 @@ Two middlewares run before any handler. The first registered checks `/mcp` again
 | `act` | `token` at the middleware. Loopback then needs nothing more; from anywhere else the handler requires `ACT_TOKEN` or `ADMIN_TOKEN`. |
 | `children` | Past the middleware by method and path (`POST /aggregates` and `POST /events` only), then the handler requires `AGGREGATE_TOKEN`. What a parent demands of a child. |
 
-The `off` allowlist (the default) is exactly: `/`, `/ui`, `/tester`, `/health`, `/llms.txt`, `/settings`, `/export`, `/presence`, `/nodes`, `/offers`, and any path under `/static/`.
+The `off` allowlist (the default) is exactly: `/`, `/ui`, `/workbench`, `/tester` (a redirect to it), `/health`, `/llms.txt`, `/settings`, `/export`, `/presence`, `/nodes`, `/offers`, and any path under `/static/`.
 
 The `open` allowlist is the `off` list plus 29 paths: `/stats`, `/sensors`, `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/trust`, `/nearby`, `/forecast`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, `/ask`, `/ask/status`, `/docs/search`, `/geo/cell`, `/learned/place`. It also takes any path under `/static/`, `/exports/`, `/issues`, `/sources/` or `/ground/`. That is 38 exact paths and 5 prefixes in all. `/ground/*` is public data (OpenStreetMap, OpenAerialMap, Sentinel-2, Open-Meteo) cut around the node; `/geo/cell` answers an untrusted caller without its node-relative fields.
 
@@ -117,9 +117,9 @@ Access: public
 
 The dashboard: `app/static/index.html`, one file, no build step, sent with `cache-control: no-cache, must-revalidate` so a wall screen follows the version after `planetai update`. It sends `app/static/doors.html`, the five doors, by default; `?layout=classic` sends `app/static/index.html`, the older dashboard, and `?layout=mobile` (or `?layout=walk`) sends `app/static/mobile.html`, the phone page. All three read the same routes with the same token. A stub page if the file is missing. Hidden from the OpenAPI schema.
 
-### GET /tester
+### GET /workbench
 
-The sensor bench: the same single file as `makingsense.fablabbali.com/test/`. Served from here it reads this node's `/health`, `/sensors`, `/readings` and `/nodes` and draws every device the node knows, in layers (mesh radios, WiFi pods, LAN devices, Smart Citizen kits, stations and models, other nodes, indoors and outdoors). It reads boards over USB (Web Serial) only where the browser counts the page as secure, which is this machine (`http://localhost:8080/tester`), not a LAN address. The page answers at every share level, like `/ui`; the reads behind it are gated as usual, and it asks for a token when one is refused. Sent with `cache-control: no-cache`.
+The sensors workbench: the same single file as `planetai.fab.city/sensors/`, in three tabs. Flash puts the Bayu (Making Sense Bali DIY node) v5 or the Meshtastic release on a board over Web Serial, with the firmware read from Making Sense Bali's firmware folder. Test reads boards on USB: each sensor animated, a check list for sensors found, WiFi, clock and publishing, and a Meshtastic radio's node list. Network draws every device this node knows, in layers (mesh radios, WiFi pods, LAN devices, Smart Citizen kits, stations and models, other nodes, indoors and outdoors), from this node's `/health`, `/sensors`, `/readings` and `/nodes`. USB and flashing work only where the browser counts the page as secure, which is this machine (`http://localhost:8080/workbench`), not a LAN address. The page answers at every share level, like `/ui`; the reads behind it are gated as usual, and it asks for a token when one is refused. Sent with `cache-control: no-cache`. `/tester`, its address on `main` for a day, redirects here.
 
 ### GET /static/{name}
 Access: public

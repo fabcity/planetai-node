@@ -34,6 +34,28 @@ same checks work for any source on this page.
 If step 3 says `outdoor` for a kit that is inside, fix it on the Smart Citizen platform: the adapter takes
 `indoor` from each kit's own `exposure`, and every air rule depends on it.
 
+### A Bayu sensor that publishes to Smart Citizen
+
+A Bayu (the Making Sense Bali DIY node) reaches Smart Citizen with a token, and the token comes from the
+platform, not from the node or the flasher. In this order:
+
+1. **Create an account** on [smartcitizen.me](https://smartcitizen.me).
+2. **Add the sensor as an experiment** at
+   [api.smartcitizen.me/ui/experiments/onboarding](https://api.smartcitizen.me/ui/experiments/onboarding), signed
+   in with that account. That process generates the sensor's token. Keep it.
+3. **Flash the sensor** at [planetai.fab.city/sensors](https://planetai.fab.city/sensors/#flash) (01 Flash, the Bayu
+   button). Flashing sets no WiFi and no token.
+4. **Type the token into the setup portal.** On first boot the sensor opens a WiFi network, `MSB-Node-xxxx`,
+   password `makingsense`; join it and the portal opens (or browse to `192.168.4.1`). Give it your WiFi, a name,
+   the site, the height and indoors if it hangs in a room, leave the broker blank, and paste the token.
+5. **Check it publishes**: 02 Test on the same page, with the sensor on USB, shows `Publishing` with a count of
+   messages sent. Then step 1 above: once the kit has a page on smartcitizen.me, the number in that page's address
+   is the id `SC_DEVICES` takes.
+
+Only the token reaches the platform; name, site and height stay on the sensor's own status page. A Bayu that
+publishes only to this node skips steps 1 and 2: the broker fields come from `planetai broker`, and the token is
+any six characters.
+
 ## Who may be counted
 
 `local` is two facts at once. The adapter says whether a sensor is *yours*, and the node checks whether it is
