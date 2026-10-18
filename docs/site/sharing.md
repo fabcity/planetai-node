@@ -1,5 +1,5 @@
 # Sharing and security
-<!-- checked: v0.82.1 -->
+<!-- checked: v0.82.2 -->
 
 This page is the node's boundary: what a reader on the network may see without a token, which token
 opens what, what leaves the machine and how coarse it is when it does, and whose code the node will
@@ -19,8 +19,8 @@ Two rungs in this version; `cell` and `means` are named in the help and refused 
 
 | level | a request with no token, from another machine, may read |
 |---|---|
-| `off` (default) | 9 paths and the static files: `/` and `/ui` (the dashboard shell), `/health` with the centre of the node's resolution-8 cell, `/llms.txt`, `/settings` reduced to the layout and the sharing level, the daily CC BY 4.0 `/export`, `/presence`, `/nodes` (the programme's public list of nodes), `/offers` (what the household chose to lend or give), and anything under `/static/`. Everything else is refused with a sentence naming the setting. |
-| `open` | 38 paths and 5 prefixes: the `off` list, and `/sensors` and `/stats` (the household's own sensors at the point `/health` publishes, the rest to three decimals, metadata cut to the provenance keys), `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/trust`, `/nearby`, `/forecast`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, the ask pane's `/ask`, `/ask/status` and `/docs/search`, `/geo/cell` without the fields that place a cell relative to the node (`is_node`, `cells_from_node`, `ring_polar`, `children_polar`), `/learned/place` (what the node learned is usual for the outdoor sensors, never the house), and anything under `/exports/`, `/issues`, `/sources/` and `/ground/`. What a wall screen or a phone with no token needs. |
+| `off` (default) | 10 paths and the static files: `/` and `/ui` (the dashboard shell), `/tester` (the sensor bench, a shell like `/ui`), `/health` with the centre of the node's resolution-8 cell, `/llms.txt`, `/settings` reduced to the layout and the sharing level, the daily CC BY 4.0 `/export`, `/presence`, `/nodes` (the programme's public list of nodes), `/offers` (what the household chose to lend or give), and anything under `/static/`. Everything else is refused with a sentence naming the setting. |
+| `open` | 39 paths and 5 prefixes: the `off` list, and `/sensors` and `/stats` (the household's own sensors at the point `/health` publishes, the rest to three decimals, metadata cut to the provenance keys), `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/trust`, `/nearby`, `/forecast`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, the ask pane's `/ask`, `/ask/status` and `/docs/search`, `/geo/cell` without the fields that place a cell relative to the node (`is_node`, `cells_from_node`, `ring_polar`, `children_polar`), `/learned/place` (what the node learned is usual for the outdoor sensors, never the house), and anything under `/exports/`, `/issues`, `/sources/` and `/ground/`. What a wall screen or a phone with no token needs. |
 
 A refused request gets 403 and one of two sentences. For a path that `open` would answer:
 
@@ -160,7 +160,7 @@ surface instead, which rounds, refuses and audits. See [Ask the node](ask.md).
 respectively open-only, open-only and token-only; read [the API](api.md) before putting `SHARE_LEVEL=open`
 on a network you do not trust.
 
-> **Gap in v0.82.1.** The `coast` and `forecast` packs, and the first start's 92 days of CAMS history, send the
+> **Gap in v0.82.2.** The `coast` and `forecast` packs, and the first start's 92 days of CAMS history, send the
 > node's full-precision coordinates to Open-Meteo; only the two core adapters in `app/sources.py` round them. The
 > first start also sends them to NASA POWER and OSM Nominatim.
 

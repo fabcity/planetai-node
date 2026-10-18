@@ -1,5 +1,5 @@
 # Concepts
-<!-- checked: v0.82.1 -->
+<!-- checked: v0.82.2 -->
 
 The words the rest of these pages use, each with what it means in the code at v0.82. When two of them
 sound alike (`local` and `custody`, domain and issue, `kind` and `scale`, decided and acted) the difference
