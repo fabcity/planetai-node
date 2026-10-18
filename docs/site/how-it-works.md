@@ -110,7 +110,7 @@ the thing receiving the answer.
 | push aggregates | hourly | if `PARENT_API_URL` is set, posts the last two hours of hourly means to the parent's `/aggregates` |
 | push events | hourly | if `PARENT_API_URL` is set, posts this node's alert timestamps of the last 36 hours to the parent's `/events` |
 | release check | hourly | unless `UPDATE_CHECK=off`, asks planetai.fab.city once a day which version is current, says so in `/health` and the page's header, and once per version on Telegram. It installs nothing |
-| node list | hourly | unless `UPDATE_CHECK=off`, reads the programme's `registry.json` from GitHub every 6 hours and serves it at `/nodes`, each other node's point to one decimal and no contact |
+| node list | hourly | unless `UPDATE_CHECK=off`, reads the programme's `registry.json` from GitHub every hour and serves it at `/nodes`, each other node's point to one decimal and no contact |
 | introduced species | hourly | only with `SPECIES_MATCH=on`: once a week reads the country's GRIIS checklist from GBIF |
 | others' records | hourly | only with `SPECIES_MATCH=on`: once a week counts GBIF's open records in each of the node's seven res-8 cells |
 | what the house learned | hourly | once a local day, in its first hour: what worked, what is usual, the alerts that may not fit, and the diary's entries |

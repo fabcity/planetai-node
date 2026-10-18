@@ -731,7 +731,7 @@ def check_release() -> None:
 # merged today is listed everywhere within REGISTRY_EVERY. Only these fields reach a page: `contact` and `sources`
 # stay in the file, and a point is given to one decimal (about 10 km), as the Node door has always drawn another node.
 REGISTRY_URL = "https://raw.githubusercontent.com/fabcity/planetai-node/main/registry.json"
-REGISTRY_EVERY = 6 * 3600
+REGISTRY_EVERY = 3600  # one small public file: a merged node is on every map within the hour
 REGISTRY_FIELDS = ("name", "place", "scale", "operator", "since", "cell")
 
 
