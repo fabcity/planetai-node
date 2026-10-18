@@ -69,6 +69,14 @@ Name field sensors for the **place**: the name becomes the sensor's name in the 
 bridge this node's broker to theirs over the tailnet. Text and alerts on the `fabcity` channel cross, six lines a minute
 at most; readings and positions never do. `docs/SPEC_radio.md` has the whole design.
 
+## Is it working? The bench
+
+**`http://<this node>:8080/tester`** draws every device this node reads, in layers you switch on and off: mesh
+radios through the gateway, WiFi pods on the broker, LAN devices, Smart Citizen kits, stations and models, other
+nodes. On this machine (`http://localhost:8080/tester`) it also reads a board on USB: each sensor animated, and a
+check list for sensors found, WiFi, clock and publishing. From any other laptop, USB is at
+`makingsense.fablabbali.com/test`, which works offline after one visit.
+
 ## The phone app
 
 If you would rather tap. Bluetooth first, then the radio appears as `Meshtastic_xxxx`.
