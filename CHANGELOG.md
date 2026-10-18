@@ -15,6 +15,10 @@
   puts in `~/Library/Python/3.9/bin` on a Mac, on nobody's PATH; the "not installed" that followed was retried as a
   radio that "did not come back after a reboot", though no command had reached it (node #1, 18 Oct). Every call is now
   `python3 -m meshtastic` from the same interpreter, and a missing package says so.
+- **A provisioned radio has both channels.** On node #1's XIAO (firmware 2.7.26) the channel URL inside
+  `--configure` set the region but left the old primary key and no `fabcity` channel; the check caught it. `provision`
+  now writes both channels in one settings transaction through the Meshtastic API after `--configure`, and provisioning
+  a radio again replaces its entry in the fleet instead of listing it twice.
 
 - **A node joins every map within the hour.** Each node read `registry.json` every 6 hours, so `larsbcn` (Barcelona,
   merged 18 Oct 12:20 UTC) was missing from node #1's map until a read at 17:25. It reads the file every hour now:

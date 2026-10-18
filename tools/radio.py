@@ -134,6 +134,32 @@ def save_fleet(fleet: dict, path: Path = FLEET_PATH) -> None:
 
 
 # ---------------------------------------------------------------- the channel URL
+def write_channels(port: str, fleet: dict, gateway: bool = False) -> None:
+    """Both channels, written to the radio in one settings transaction through the API. On node #1's XIAO (firmware
+    2.7.26, 18 Oct) the channel URL inside `--configure` set the region and left the old primary key with no
+    secondary, `--seturl` set only the primary, and one `--ch-set` per field raced each reboot and lost the name.
+    Same fields as channel_url(), so the radio and the phone's QR agree."""
+    import meshtastic.serial_interface
+    from meshtastic.protobuf import channel_pb2
+    iface = meshtastic.serial_interface.SerialInterface(port)
+    try:
+        node = iface.localNode
+        node.beginSettingsTransaction()
+        for idx, key, role in ((0, "primary", channel_pb2.Channel.Role.PRIMARY), (1, "fabcity", channel_pb2.Channel.Role.SECONDARY)):
+            c, ch = fleet[key], node.channels[idx]
+            ch.index, ch.role = idx, role
+            ch.settings.name = c["name"]
+            ch.settings.psk = base64.b64decode(c["psk"])
+            ch.settings.uplink_enabled = ch.settings.downlink_enabled = gateway
+            if c.get("position_precision") is not None:
+                ch.settings.module_settings.position_precision = int(c["position_precision"])
+            node.writeChannel(idx)
+        node.commitSettingsTransaction()
+        time.sleep(2)
+    finally:
+        iface.close()
+
+
 def channel_url(fleet: dict, gateway: bool = False) -> str:
     """One URL carrying both channels and the LoRa config (region, preset, pinned slot), the thing the phone app
     imports and `--configure` applies. Uplink/downlink flags ride inside it, so a gateway's URL differs from a
@@ -294,6 +320,10 @@ def provision(port: str, role: str, long_name: str, short_name: str, fleet: dict
         print("\n".join(l for l in out.splitlines() if l.startswith("Setting") or "Writing" in l))
         time.sleep(3)
         wait_ready(port)
+        print(">> the two channels, planetai and fabcity, in one transaction")
+        write_channels(port, fleet, gateway=role.startswith("gateway"))
+        time.sleep(3)
+        wait_ready(port)
         problems = verify(port, fleet, profiles[role])
     finally:
         os.unlink(tmp)
@@ -301,7 +331,9 @@ def provision(port: str, role: str, long_name: str, short_name: str, fleet: dict
     m = re.search(r'"id": "(![0-9a-f]{8})"', run_cli(port, "--info"))
     if m:
         node_id = m.group(1)
-    fleet.setdefault("radios", []).append({"id": node_id, "role": role, "name": long_name, "short": short_name,
+    # provisioning a radio again replaces its entry: the fleet lists each radio once
+    fleet["radios"] = [r for r in fleet.get("radios", []) if not (node_id and r.get("id") == node_id)]
+    fleet["radios"].append({"id": node_id, "role": role, "name": long_name, "short": short_name,
                                           "provisioned": datetime.now(timezone.utc).isoformat(timespec="seconds")})
     save_fleet(fleet)
     if problems:
