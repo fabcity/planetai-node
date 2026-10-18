@@ -33,19 +33,50 @@ adafruit-nrfutil dfu serial --package firmware-seeed_wio_tracker_L1-<ver>-ota.zi
 XIAO: hold BOOT while plugging in if no port appears. Never use the phone OTA app on these boards; Seeed says it can
 brick them.
 
-## Settings: `planetai radio`
+## Your first radios, step by step
+
+Run **`planetai radio`** at any point. It ticks what is done, lists the radios plugged in by USB right now, and ends
+with the one command that comes next, port filled in. Everything below happens on the node's machine (node #1: the
+mini), with the radios plugged into it.
+
+0. **The packages, once.** `planetai radio` says what to install for its own Python. On a Mac with Apple's Python 3.9:
+   `python3 -m pip install --user "pyobjc-core<12" "pyobjc-framework-Cocoa<12" "pyobjc-framework-CoreBluetooth<12"
+   "pyobjc-framework-libdispatch<12" meshtastic paho-mqtt`.
+1. **The broker.** `planetai meshtastic`. The node gets an MQTT broker and a user for it; this is where the gateway
+   delivers what the radios hear. *You see:* the broker's address and password, and `planetai radio` ticks step 1.
+2. **The fleet.** `planetai radio init`. One set of channel keys, region and frequency for every radio of this node,
+   in `config/radio/fleet.yaml`. *You see:* `region SG_923, slot 19 (921.625 MHz)` on a Bali node. If the city has no
+   known region it stops and asks for `--region`: it never guesses, because a radio on another country's band is illegal there.
+3. **The gateway radio.** Antenna on, then plug a radio into the node's USB and run the command `planetai radio`
+   prints, e.g. `planetai radio provision gateway-host "bayu gateway" GATE --port /dev/cu.usbmodem1101`. It writes every
+   setting in one go and the radio reboots once. *You see:* `>> ok. !abcd1234 is on the fleet's channels`.
+   *No port?* `planetai radio` lists none: a charge-only cable (the usual one), a Tracker's power switch off, a XIAO
+   that needs BOOT held while plugging in, or a hub in between.
+4. **The gateway, always on.** `planetai radio gateway --port /dev/cu.usbmodem1101 --install`. The gateway becomes a
+   service that starts again after every restart. *You see:* `the gateway runs as a service now`. Leave this radio
+   plugged in.
+5. **Each other radio.** Plug it in by USB, provision it, unplug it, take it where it goes:
+   a field sensor `planetai radio provision sensor "Subak edge" SBK --port …` (a Tracker has GPS; a XIAO sensor node gets
+   `--fixed LAT,LON`), a relay `relay`, a shelf radio for alerts when the internet is down `shelf`. Name a sensor for the
+   **place**: that name becomes the sensor's name in the node.
+6. **Phones.** `planetai radio url` prints the three steps and the link (a QR too, with `qrencode` installed): the
+   Meshtastic app, Bluetooth pairing, then open the link and accept replacing the channels.
+7. **Is it working?** `planetai radio doctor --port …` checks the usual reasons nothing arrives, one by one; the bench at
+   `http://<this node>:8080/tester` draws every radio the node hears. A sensor's first reading arrives within its
+   15-minute interval.
+
+### All the commands
 
 ```bash
-python3 -m pip install --user meshtastic paho-mqtt       # on the machine the radios plug into; `planetai radio` prints
-                                                         # the exact line for its python3 (Apple's 3.9 needs pyobjc<12)
-planetai meshtastic                                      # the broker and its user, as before
+planetai radio                                           # where you are, and the next command
+planetai meshtastic                                      # the broker and its user
 planetai radio init                                      # the fleet: region from NODE_CITY, slot, two channel keys
 planetai radio provision gateway-host "bayu radio" NODE --port /dev/cu.usbmodem1101
 planetai radio gateway --port /dev/cu.usbmodem1101 --install
 planetai radio provision sensor "Subak edge" SBK --port /dev/cu.usbmodem1101             # a Tracker: it has GPS
 planetai radio provision sensor "Warung roof" WRG --port … --fixed -8.80045,115.17664    # a XIAO sensor node: pin it
 planetai radio provision shelf "kitchen shelf" SHF --port /dev/cu.usbmodem1101
-planetai radio url                                       # the QR, for anyone joining by phone
+planetai radio url                                       # for phones: the link, the QR, the three steps
 planetai radio doctor --port /dev/cu.usbmodem1101
 ```
 
@@ -83,7 +114,7 @@ If you would rather tap. Bluetooth first, then the radio appears as `Meshtastic_
 
 **PIN.** Radios with a screen show it. Radios without (L1 Lite, XIAO) use `123456`.
 
-**The quick way by phone:** scan the QR from `planetai radio url` and accept replacing the channels. Region, slot and keys arrive together. The steps below are for a radio with no node in reach.
+**The quick way by phone:** `planetai radio url` prints the link, the QR and the three steps. Region, slot and keys arrive together. The steps below are for a radio with no node in reach.
 
 **Region.** *Radio configuration → LoRa → Region.* Do it before anything else. A radio with region unset does not transmit
 and nothing tells you.
