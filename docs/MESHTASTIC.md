@@ -50,6 +50,8 @@ mini), with the radios plugged into it.
 3. **The gateway radio.** Antenna on, then plug a radio into the node's USB and run the command `planetai radio`
    prints, e.g. `planetai radio provision gateway-host "bayu gateway" GATE --port /dev/cu.usbmodem1101`. It writes every
    setting in one go and the radio reboots once. *You see:* `>> ok. !abcd1234 is on the fleet's channels`.
+   *No port?* `planetai radio` lists none: a charge-only cable (the usual one), a Tracker's power switch off, a XIAO
+   that needs BOOT held while plugging in, or a hub in between.
 4. **The gateway, always on.** `planetai radio gateway --port /dev/cu.usbmodem1101 --install`. The gateway becomes a
    service that starts again after every restart. *You see:* `the gateway runs as a service now`. Leave this radio
    plugged in.

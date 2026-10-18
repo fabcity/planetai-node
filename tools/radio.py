@@ -714,7 +714,10 @@ def guide() -> int:
     for i, (done, title, detail, _) in enumerate(steps, 1):
         print(f"  {'✓' if done else '·'} {i}. {title}: {detail}")
     print("\n  On USB now: " + ("; ".join(f"{d} ({desc})" for d, desc in ports) if ports
-          else "no radio. Plug one in by USB (antenna on first), then run this again."))
+          else "no radio. Plug one in by USB (antenna on first), then run this again.\n"
+          "    Plugged in and still nothing? The usual four, most likely first: a charge-only cable (try the one that came\n"
+          "    with the radio); a Tracker's power switch is off; a XIAO needs BOOT held while it is plugged in; a hub or\n"
+          "    dock in between (plug straight into this machine)."))
     todo = [st for st in steps if not st[0]]
     if todo:
         print(f"\nNext: {todo[0][3]}")
