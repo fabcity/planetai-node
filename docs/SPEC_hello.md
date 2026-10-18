@@ -36,10 +36,10 @@ a heard node is something this machine witnessed. Neither is proof the other nod
 ## 3 · Step 1: one list, read by everyone
 
 **The node reads the registry.** `check_release()` already asks the site once a day; beside it, a `check_registry()`
-on the same hourly loop reads the file once every 6 hours, from
+on the same hourly loop reads the file once an hour, from
 `https://raw.githubusercontent.com/fabcity/planetai-node/main/registry.json`.
 
-`main`, not the release: a node merged today is listed on every node within six hours, without a release. The
+`main`, not the release: a node merged today is listed on every node within the hour, without a release. The
 answer is kept in memory (`state["registry"]`) with when it was read. `UPDATE_CHECK=off` asks nothing, the same
 switch that stops the release check, because both are this node reaching out to the programme. A failed read keeps
 the last good list and says how old it is.

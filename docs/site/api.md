@@ -105,7 +105,7 @@ Returns `{"enabled": false}` unless `RETICULUM_PRESENCE=1`. When enabled: `{enab
 ### GET /nodes
 Access: public
 
-The nodes the programme lists: `registry.json` on the repository's `main`, read by the node every 6 hours (`docs/SPEC_hello.md`). Public at every level: it is the same public file on every node and says nothing about this house. A node joins the list with a merged pull request.
+The nodes the programme lists: `registry.json` on the repository's `main`, read by the node every hour (`docs/SPEC_hello.md`). Public at every level: it is the same public file on every node and says nothing about this house. A node joins the list with a merged pull request.
 
 Returns `{read, from, nodes, error?}`. `read` is when the last good read was (null before the first), `from` the file's URL, `error` why the last read failed while the list it kept is still served. Each node has `name`, `place`, `scale`, `operator`, `since`, `cell` and `ll`, `[lon, lat]` to one decimal (about 10 km), or null. `contact` and `sources` stay in the file. `UPDATE_CHECK=off` reads nothing and serves an empty list.
 
@@ -973,7 +973,7 @@ The API is the read side. These are the requests the node makes of other machine
 | `GET https://api.gbif.org/v1/organization/…/publishedDataset`, `/v1/species/search?datasetKey=…`, `/v1/dataset/…/endpoint`, then the checklist's archive | Weekly (a day after a failed read), only with `SPECIES_MATCH=on` | Which country's GRIIS checklist to read, so the country (found from `NODE_TZ`) and nothing else. The answer marks matched species introduced or invasive |
 | `GET https://api.gbif.org/v1/occurrence/search?geometry=…&license=CC0_1_0&license=CC_BY_4_0&limit=0&facet=…`, once per cell of the seven | Weekly (a day after a failed read), only with `SPECIES_MATCH=on` | Each of the node's seven res-8 cells as a polygon, so the area this node is in, about 2 km across. Counts come back, never a record |
 | `GET https://api.telegram.org/bot…/getMe` | Once a day, only with a Telegram bot set | Nothing; the answer is the bot's username, for an offer's `ask` link |
-| `GET https://raw.githubusercontent.com/fabcity/planetai-node/main/registry.json` | Every 6 hours (an hour after a failed read), unless `UPDATE_CHECK=off` | Nothing about the house; the request shows the node's internet address to GitHub. The answer is `GET /nodes` |
+| `GET https://raw.githubusercontent.com/fabcity/planetai-node/main/registry.json` | Every hour, unless `UPDATE_CHECK=off` | Nothing about the house; the request shows the node's internet address to GitHub. The answer is `GET /nodes` |
 | `POST {RETICULUM_URL}/send` | Each act-level alert, if `RETICULUM_URL` is set | `{"text": ...}` to the bridge container |
 | MQTT publish | Each act-level alert (`MESH_ALERTS=1`), and Home Assistant discovery (`HA_DISCOVERY=1`) | The first line of the alert to the mesh downlink; discovery and state topics to the broker at `MQTT_HOST` |
 
