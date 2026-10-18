@@ -2329,7 +2329,8 @@ cmd_radio() {
   # carry. So it is its own file and says what to install rather than failing on an import.
   # `python3 -m pip` installs for the very python3 that runs radio.py (a bare pip3 can belong to another one), and
   # Apple's Python 3.9 needs pyobjc below 12: 12.0 was yanked for 3.9 and does not build there (node #1, 17 Oct).
-  if ! python3 -c 'import meshtastic, paho.mqtt' 2>/dev/null; then
+  # On its own it is the guide, which needs neither package and says how to install them as its first step.
+  if [[ $# -gt 0 ]] && ! python3 -c 'import meshtastic, paho.mqtt' 2>/dev/null; then
     pins=""
     [[ "$(uname)" == Darwin ]] && python3 -c 'import sys; sys.exit(sys.version_info >= (3, 10))' 2>/dev/null \
       && pins='"pyobjc-core<12" "pyobjc-framework-Cocoa<12" "pyobjc-framework-CoreBluetooth<12" "pyobjc-framework-libdispatch<12" '

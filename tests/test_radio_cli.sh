@@ -24,3 +24,23 @@ printf 'NODE_NAME=testnode\nNODE_CITY=atlantis\n' > "$r/.env"; rm -rf "$r/config
 if PLANETAI_ROOT="$r" python3 tools/radio.py init >/dev/null 2>"$t/err"; then echo "  x an unknown city got a region"; exit 1; fi
 grep -q 'no radio region' "$t/err" || { echo "  x an unknown city must say to pass --region"; cat "$t/err"; exit 1; }
 echo "  ok   a city with no known region refuses and asks for --region, never guesses"
+# `planetai radio` on its own is the guide: every step in order and the one command that comes next. A node that
+# only had the fleet once read `Next: planetai radio provision …` with no idea that a broker came first.
+printf 'NODE_NAME=testnode\nNODE_CITY=bali\n' > "$r/.env"; rm -rf "$r/config"
+# the guide reads whether the packages import; give it stubs so the steps after the packages are what is tested
+mkdir -p "$t/stub/meshtastic" "$t/stub/paho/mqtt" "$t/empty"; : > "$t/stub/meshtastic/__init__.py"; : > "$t/stub/paho/__init__.py"; : > "$t/stub/paho/mqtt/__init__.py"
+g="$(PYTHONPATH="$t/stub" PLANETAI_ROOT="$r" python3 tools/radio.py)"
+grep -q '^Next: planetai meshtastic' <<<"$g" || { echo "  x with no broker the guide's next step must be the broker:"; echo "$g"; exit 1; }
+printf 'NODE_NAME=testnode\nNODE_CITY=bali\nMQTT_PASS=x\nCOMPOSE_PROFILES=mqtt\n' > "$r/.env"
+g="$(PYTHONPATH="$t/stub" PLANETAI_ROOT="$r" python3 tools/radio.py)"
+grep -q '^Next: planetai radio init' <<<"$g" || { echo "  x with a broker and no fleet the next step must be init:"; echo "$g"; exit 1; }
+PLANETAI_ROOT="$r" python3 tools/radio.py init >/dev/null
+g="$(PYTHONPATH="$t/stub" PLANETAI_ROOT="$r" python3 tools/radio.py)"
+grep -q 'provision gateway-host' <<<"$g" && grep -q '✓ 3. The fleet: region SG_923' <<<"$g" \
+  || { echo "  x with a fleet the next step must be the gateway radio:"; echo "$g"; exit 1; }
+echo "  ok   planetai radio on its own walks broker → fleet → gateway and names the next command"
+# and without the packages, step 1 is the pip line for this very python3 (no stub on the path, and none installed
+# in a clean interpreter: -S skips site-packages, PYTHONNOUSERSITE the user's)
+g="$(PYTHONNOUSERSITE=1 PLANETAI_ROOT="$r" python3 -S tools/radio.py 2>&1 || true)"
+grep -q '^Next: python3 -m pip install --user .*meshtastic paho-mqtt' <<<"$g" || { echo "  x without the packages the next step must install them:"; echo "$g"; exit 1; }
+echo "  ok   without the packages, the guide's first step is the pip line for its own python3"

@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **Radios, step by step (Tomas, 18 Oct: "I am not sure how to make the radios work").** `planetai radio` on its own is
+  now the guide: the packages, the broker, the fleet, the gateway radio, the gateway as a service, the other radios,
+  each ticked or not, the radios on USB right now, and the one command that comes next with its port filled in. It
+  runs before the packages are installed and names them as the first step. `planetai radio url` tells a person how to
+  put a phone on the mesh (the app, Bluetooth pairing, the link, a QR when `qrencode` is there); `--json` keeps the
+  decoded settings. `provision` without `--port` lists the radios it can see; `gateway --install` loads the service
+  itself instead of printing `launchctl` lines; every step ends with "Next step: planetai radio". urllib3's LibreSSL
+  warning no longer prints over the output on Apple's Python. docs/MESHTASTIC.md opens with the same steps, each with
+  what you should see.
+
+## Unreleased
+
 - **`/tester`: the sensor bench, served by the node** (Tomas, 17 Oct: "a tool to see if the sensor is working via serial
   usb … also a visualizer of devices in a lan network, with layers"). The same file as makingsense.fablabbali.com/test/;
   here it reads the node's own /health, /sensors, /readings and /nodes and draws every device the node knows, by layer

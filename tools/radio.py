@@ -14,7 +14,7 @@ Roles: sensor · relay · shelf · gateway-wifi (ESP32 uplinks over WiFi) · gat
 
 Everything a radio needs is in one DeviceProfile applied with `meshtastic --configure` in a single settings
 transaction (one reboot, not six). The fleet file holds the keys, so it is a credential: config/radio/fleet.yaml,
-gitignored, next to mosquitto/passwd. Python 3.9, needs `pip3 install --user meshtastic paho-mqtt` on the host
+gitignored, next to mosquitto/passwd. Python 3.9, needs `python3 -m pip install --user meshtastic paho-mqtt` on the host
 (not in the container: a USB port does not reach a container on macOS, and node #1 is a Mac mini).
 """
 from __future__ import annotations
@@ -37,6 +37,10 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 log = logging.getLogger("planetai.radio")
+# Apple's Python 3.9 is built on LibreSSL, so urllib3 2.x warns on every run. The radio talks over USB and the LAN, and
+# the warning only taught people to doubt the output under it.
+import warnings  # noqa: E402
+warnings.filterwarnings("ignore", message=r"urllib3 v2 only supports OpenSSL")
 
 ROOT = Path(os.getenv("PLANETAI_ROOT", Path(__file__).resolve().parent.parent))
 FLEET_PATH = ROOT / "config" / "radio" / "fleet.yaml"
@@ -300,6 +304,7 @@ def provision(port: str, role: str, long_name: str, short_name: str, fleet: dict
         print("!! provisioned with problems:\n   " + "\n   ".join(problems))
     else:
         print(f">> ok. {node_id or 'radio'} is on the fleet's channels; it is in {FLEET_PATH}")
+        print("   Next step:  planetai radio")
     return prof
 
 
@@ -579,13 +584,18 @@ def install_service(port: str) -> None:
     if sys.platform == "darwin":
         p = Path.home() / "Library" / "LaunchAgents" / "city.fab.planetai.radio.plist"
         p.write_text(SERVICE_MAC.format(python=py, script=script, port=port, root=root))
-        print(f">> wrote {p}\n   launchctl unload {p} 2>/dev/null; launchctl load {p}")
+        subprocess.run(["launchctl", "unload", str(p)], capture_output=True)   # a fresh load picks up a changed port
+        r = subprocess.run(["launchctl", "load", str(p)], capture_output=True, text=True)
+        print(f">> the gateway runs as a service now, and again after every restart ({p})" if r.returncode == 0 else
+              f"!! wrote {p}, but launchctl did not load it: {(r.stderr or r.stdout).strip()}\n   by hand:  launchctl load {p}")
     else:
         p = Path.home() / ".config" / "systemd" / "user" / "planetai-radio.service"
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(SERVICE_LINUX.format(python=py, script=script, port=port, root=root))
-        print(f">> wrote {p}\n   systemctl --user daemon-reload && systemctl --user enable --now planetai-radio\n"
-              "   (and  loginctl enable-linger $USER  so it survives logout)")
+        ok = all(subprocess.run(c, capture_output=True).returncode == 0 for c in
+                 (["systemctl", "--user", "daemon-reload"], ["systemctl", "--user", "enable", "--now", "planetai-radio"]))
+        print(f">> the gateway runs as a service now ({p}). So it also runs while nobody is logged in:  loginctl enable-linger $USER"
+              if ok else f"!! wrote {p}, but systemctl did not start it.\n   by hand:  systemctl --user daemon-reload && systemctl --user enable --now planetai-radio")
 
 
 # ---------------------------------------------------------------- doctor
@@ -597,20 +607,20 @@ def doctor(port: Optional[str]) -> int:
         print(("  ok  " if ok else "  !!  ") + what + ("" if ok else f"\n        {fix}"))
         bad += 0 if ok else 1
 
-    chk(bool(shutil.which("meshtastic") or (Path.home() / ".local/bin/meshtastic").exists()), "meshtastic CLI on the host", "pip3 install --user meshtastic")
+    chk(bool(shutil.which("meshtastic") or (Path.home() / ".local/bin/meshtastic").exists()), "meshtastic CLI on the host", "python3 -m pip install --user meshtastic")
     try:
         from importlib.metadata import version
         v = tuple(int(x) for x in version("meshtastic").split(".")[:3])
         # 2.7.11 is the version read on 16 Oct 2026, where --configure seeds each section from the radio before
         # overlaying the profile. An older CLI replaces whole sections, and a partial `device:` would reset the rest.
-        chk(v >= (2, 7, 11), f"meshtastic package {'.'.join(map(str, v))} (2.7.11 or newer: --configure merges sections)", "pip3 install --user -U meshtastic")
+        chk(v >= (2, 7, 11), f"meshtastic package {'.'.join(map(str, v))} (2.7.11 or newer: --configure merges sections)", "python3 -m pip install --user -U meshtastic")
     except Exception:  # noqa: BLE001
-        chk(False, "meshtastic package version readable", "pip3 install --user -U meshtastic")
+        chk(False, "meshtastic package version readable", "python3 -m pip install --user -U meshtastic")
     try:
         import paho.mqtt  # noqa: F401
         chk(True, "paho-mqtt on the host", "")
     except ImportError:
-        chk(False, "paho-mqtt on the host", "pip3 install --user paho-mqtt")
+        chk(False, "paho-mqtt on the host", "python3 -m pip install --user paho-mqtt")
     chk(FLEET_PATH.exists(), f"fleet file {FLEET_PATH.relative_to(ROOT)}", "planetai radio init")
     chk(bool(envget("MQTT_PASS")), "broker credentials in .env", "planetai meshtastic  (creates the broker and its user)")
     chk("mqtt" in envget("COMPOSE_PROFILES"), "mqtt compose profile on", "planetai meshtastic")
@@ -634,13 +644,96 @@ def doctor(port: Optional[str]) -> int:
     return 1 if bad else 0
 
 
+# ---------------------------------------------------------------- the guide
+def usb_radios() -> List[Tuple[str, str]]:
+    """Serial ports with a USB vendor id: what is plugged in now. macOS lists every radio twice (cu. and tty.); cu. is
+    the one to use. Empty when pyserial is missing, so the guide still runs."""
+    try:
+        from serial.tools import list_ports
+    except ImportError:
+        return []
+    out = []
+    for p in list_ports.comports():
+        if p.vid is None or "/dev/tty." in p.device:
+            continue
+        out.append((p.device, (p.description or "").strip() if p.description and p.description != "n/a" else "USB serial"))
+    return out
+
+
+def service_installed() -> bool:
+    if sys.platform == "darwin":
+        return (Path.home() / "Library" / "LaunchAgents" / "city.fab.planetai.radio.plist").exists()
+    return (Path.home() / ".config" / "systemd" / "user" / "planetai-radio.service").exists()
+
+
+def guide() -> int:
+    """`planetai radio` on its own: where this node is in setting up its radios, step by step, and the one command
+    that comes next. Read-only: it looks at .env, the fleet file and the USB ports, and never talks to a radio."""
+    ports = usb_radios()
+    port = ports[0][0] if len(ports) == 1 else "/dev/cu.usbmodem…"
+    try:
+        fleet = load_fleet() if FLEET_PATH.exists() else None
+    except ImportError:   # yaml arrives with the packages; the fleet is there, its details wait for step 1
+        fleet = {"region": "?", "radios": []}
+    radios = (fleet or {}).get("radios", [])
+    gateways = [r for r in radios if str(r.get("role", "")).startswith("gateway")]
+    others = [r for r in radios if not str(r.get("role", "")).startswith("gateway")]
+    steps = []   # (done, title, detail, next command when not done)
+    try:
+        import meshtastic  # noqa: F401
+        import paho.mqtt  # noqa: F401
+        pkgs = True
+    except ImportError:
+        pkgs = False
+    pins = ('"pyobjc-core<12" "pyobjc-framework-Cocoa<12" "pyobjc-framework-CoreBluetooth<12" "pyobjc-framework-libdispatch<12" '
+            if sys.platform == "darwin" and sys.version_info < (3, 10) else "")   # 12.0 does not build on Apple's 3.9
+    steps.append((pkgs, "The packages", f"meshtastic and paho-mqtt for {sys.executable}",
+                  f"python3 -m pip install --user {pins}meshtastic paho-mqtt"))
+    broker = bool(envget("MQTT_PASS")) and "mqtt" in envget("COMPOSE_PROFILES")
+    steps.append((broker, "The broker", "the node's MQTT broker, where the gateway delivers what the radios hear",
+                  "planetai meshtastic"))
+    if fleet:
+        f = fleet
+        where = f"region {f['region']}, slot {f.get('slot') or 'by channel name'}" + (
+            f" ({slot_freq(f['region'], f['slot'], f.get('preset', 'LONG_FAST'))} MHz)" if f.get("slot") else "")
+        steps.append((True, "The fleet", f"{where}; the household's channel keys, in {FLEET_PATH.relative_to(ROOT)}", ""))
+    else:
+        steps.append((False, "The fleet", "one set of channel keys, region and frequency for every radio of this node",
+                      "planetai radio init"))
+    steps.append((bool(gateways), "The gateway radio",
+                  "one radio on this machine's USB that carries the mesh to the node" + (f": {gateways[0]['name']}" if gateways else ""),
+                  f'planetai radio provision gateway-host "{envget("NODE_NAME", "node")} gateway" GATE --port {port}'))
+    if gateways:
+        steps.append((service_installed(), "The gateway, always on", "a service that keeps the gateway running after a restart",
+                      f"planetai radio gateway --port {port} --install"))
+    steps.append((bool(others), "Sensor and shelf radios",
+                  (f"{len(others)} provisioned: " + ", ".join(r["name"] for r in others[:4]) + ("…" if len(others) > 4 else "")) if others
+                  else "field sensors, relays, and shelf radios that receive alerts when the internet is down",
+                  f'planetai radio provision sensor "<the place it stands>" ABC --port {port}'))
+    print("Radios for this node, step by step\n")
+    for i, (done, title, detail, _) in enumerate(steps, 1):
+        print(f"  {'✓' if done else '·'} {i}. {title}: {detail}")
+    print("\n  On USB now: " + ("; ".join(f"{d} ({desc})" for d, desc in ports) if ports
+          else "no radio. Plug one in by USB (antenna on first), then run this again."))
+    todo = [st for st in steps if not st[0]]
+    if todo:
+        print(f"\nNext: {todo[0][3]}")
+        if "/dev/cu.usbmodem…" in todo[0][3]:
+            print("      (plug the radio in by USB first; this command then names its port)" if not ports else
+                  "      (more than one radio is plugged in: pick its port from the list above)")
+    else:
+        print("\nEvery step is done. Phones join with  planetai radio url ; check a radio with  planetai radio doctor --port <port>")
+    print("Step by step, with what you should see: docs/MESHTASTIC.md")
+    return 0
+
+
 # ---------------------------------------------------------------- CLI
 def main(argv: Optional[List[str]] = None) -> int:
     logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"), format="%(asctime)s %(levelname)s %(message)s")
     ap = argparse.ArgumentParser(prog="planetai radio", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    sub = ap.add_subparsers(dest="cmd", required=True)
+    sub = ap.add_subparsers(dest="cmd")
     s = sub.add_parser("init"); s.add_argument("--region"); s.add_argument("--slot", type=int); s.add_argument("--preset", default="LONG_FAST"); s.add_argument("--force", action="store_true")
-    sub.add_parser("url")
+    s = sub.add_parser("url"); s.add_argument("--json", action="store_true", help="the decoded settings, for a script")
     for name in ("render", "provision"):
         s = sub.add_parser(name); s.add_argument("role"); s.add_argument("long_name"); s.add_argument("short_name")
         s.add_argument("--port"); s.add_argument("--mqtt", help="host:1883 user pass, for gateway-wifi", nargs=3, metavar=("ADDR", "USER", "PASS"))
@@ -651,6 +744,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     s = sub.add_parser("list"); s.add_argument("--port")
     s = sub.add_parser("doctor"); s.add_argument("--port")
     a = ap.parse_args(argv)
+    if not a.cmd:
+        return guide()
 
     if a.cmd == "init":
         if FLEET_PATH.exists() and not a.force:
@@ -664,12 +759,25 @@ def main(argv: Optional[List[str]] = None) -> int:
         save_fleet(f)
         print(f">> fleet for {f['node']}: region {region}, preset {a.preset}, slot {f['slot'] or 'by channel name'}"
               + (f" ({slot_freq(region, f['slot'], a.preset)} MHz)" if f["slot"] else ""))
-        print(f"   keys in {FLEET_PATH} (mode 600, gitignored). Next: planetai radio provision …")
+        print(f"   keys in {FLEET_PATH} (mode 600, gitignored). Next step:  planetai radio")
         return 0
     if a.cmd == "url":
         f = load_fleet(); u = channel_url(f)
-        print(u); print(json.dumps(decode_url(u), indent=1))
-        print("gateway variant (uplink/downlink on):", channel_url(f, gateway=True))
+        if a.json:
+            print(json.dumps({"url": u, **decode_url(u)}, indent=1)); return 0
+        print(f"This node's radio channels: region {f['region']}, slot {f.get('slot') or 'by channel name'}; "
+              "two channels, planetai (the household's) and fabcity (what other nodes see).\n")
+        print("To put a phone on the mesh:")
+        print("  1. Install the Meshtastic app (iPhone or Android).")
+        print("  2. Pair it with any radio over Bluetooth: the PIN is on the radio's screen, or 123456 on one without a screen.")
+        qr = shutil.which("qrencode")
+        print(f"  3. Open this link on the phone{', or scan the QR below' if qr else ''}, and accept replacing the channels:\n")
+        print(f"     {u}\n")
+        if qr:
+            subprocess.run(["qrencode", "-t", "ansiutf8", u], check=False)
+        else:
+            print("     (for a QR here:  brew install qrencode  or  apt install qrencode)")
+        print("Radios provisioned with  planetai radio provision  already have these channels; this link is for phones.")
         return 0
     if a.cmd in ("render", "provision"):
         f, profiles = load_fleet(), load_profiles()
@@ -687,11 +795,14 @@ def main(argv: Optional[List[str]] = None) -> int:
         if a.cmd == "render":
             print(_yaml().safe_dump(render_profile(a.role, a.long_name, a.short_name, f, profiles, mqtt, wifi, fixed), sort_keys=False)); return 0
         if not a.port:
-            raise SystemExit("--port /dev/… is needed to provision (render shows the profile without a radio)")
+            seen = usb_radios()
+            raise SystemExit("--port is needed to provision. " + (
+                "On USB now: " + ", ".join(d for d, _ in seen) if seen else "No radio is on USB now: plug one in (antenna on first).")
+                + "\n   render shows the profile without a radio.")
         provision(a.port, a.role, a.long_name, a.short_name, f, profiles, mqtt, wifi, fixed=fixed); return 0
     if a.cmd == "gateway":
         if a.install:
-            install_service(a.port); return 0
+            install_service(a.port); print("   Next step:  planetai radio"); return 0
         gateway(a.port, load_fleet(), a.broker, once=a.once); return 0
     if a.cmd == "federate":
         peers = parse_peers(envget("RADIO_PEERS"))
