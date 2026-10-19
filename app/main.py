@@ -1392,7 +1392,8 @@ def health_sources(backup_age: float | None = None):
     here = backup_age is not None or fundamentals.backup_is_here()
     age = fundamentals.backup_age() if backup_age is None else (None if backup_age < 0 else backup_age)
     rows = fundamentals.assess(cfg, [{**r, "minutes": float(r["minutes"])} for r in seen], state["polls"] > 0,
-                               state.get("last_error"), tg_state["ok"], age, here, own_known)
+                               state.get("last_error"), tg_state["ok"], age, here, own_known,
+                               fundamentals.map_fetched(str(_ground())))
     return {"ok": not any(r["ok"] is False for r in rows), "missing": sum(r["ok"] is False for r in rows), "sources": rows}
 
 

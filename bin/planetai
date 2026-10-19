@@ -498,7 +498,7 @@ finish_setup() {
   spin "waiting for the first answer" bash -c 'for i in $(seq 1 30); do curl -sf "http://localhost:$(grep ^APP_PORT= .env | cut -d= -f2 | sed "s/[[:space:]]*#.*$//" | tr -d " " || echo 8080)/health" >/dev/null && exit 0; sleep 1; done; exit 1' || true
   api /health >/dev/null || fail "the node is not answering on port $(port). Look at: planetai logs"
   cmd_doctor quiet || true
-
+  [[ -f out/ground/vector.mbtiles ]] || offer_map
   what_next
 }
 
@@ -704,21 +704,43 @@ if mode != "full" and todo:
         print("   %d. %s" % (i, r["fix"]))
         if r.get("setup") and not r.get("command") and r["state"] == "missing":
             print("      %shttp://localhost:%s/%s%s" % (D, port, r["setup"], N))
+# the first unfinished step to offer, and whether the map is missing: it has an offer of its own, after the first
+f = next((r for r in todo if r["id"] != "map"), None) or {"command": "", "setup": "", "name": ""}
 if todo:
-    f = todo[0]
-    print("\x1f" + (f["command"] or "") + "\x1f" + (f["setup"] or "") + "\x1f" + f["name"])
+    print("\x1f" + (f["command"] or "") + "\x1f" + (f["setup"] or "") + "\x1f" + f["name"] + "\x1f"
+          + ("1" if any(r["id"] == "map" for r in todo) else ""))
 ' "$mode" "$(port)" "$G" "$R" "$D" "$B" "$N")" || return 1
   first="${out##*$'\n'}"; [[ "$first" == $'\x1f'* ]] && out="${out%$'\n'*}" || first=""
   printf '%s\n' "$out"
   [[ "$mode" == "--guide" && -n "$first" ]] || return 0
   [[ -t 1 ]] && ( : </dev/tty ) 2>/dev/null || return 0     # no terminal (cron, an agent, a pipe): the list is enough
-  local cmd anchor name; IFS=$'\x1f' read -r _ cmd anchor name <<< "$first"
-  if [[ -n "$cmd" ]]; then printf '\n  Do the first one now: %s%s%s?  %s[y]%s yes   %s[Enter]%s later\n  ' "$B" "$cmd" "$N" "$B" "$N" "$B" "$N"
-  else printf '\n  Open %s in Set up now?  %s[y]%s open the dashboard   %s[Enter]%s later\n  ' "$name" "$B" "$N" "$B" "$N"; fi
+  local cmd anchor name map k; IFS=$'\x1f' read -r _ cmd anchor name map <<< "$first"
+  if [[ -n "$name" ]]; then
+    if [[ -n "$cmd" ]]; then printf '\n  Do the first one now: %s%s%s?  %s[y]%s yes   %s[Enter]%s later\n  ' "$B" "$cmd" "$N" "$B" "$N" "$B" "$N"
+    else printf '\n  Open %s in Set up now?  %s[y]%s open the dashboard   %s[Enter]%s later\n  ' "$name" "$B" "$N" "$B" "$N"; fi
+    IFS= read -r -n1 k </dev/tty || k=""; echo
+    if [[ "$k" == [yY] ]]; then
+      if [[ -n "$cmd" ]]; then "$HOME_DIR/bin/planetai" ${cmd#planetai }
+      else local u="http://localhost:$(port)/$anchor"; open "$u" 2>/dev/null || xdg-open "$u" 2>/dev/null || echo "  open $u in a browser"; fi
+    fi
+  fi
+  [[ "$map" == 1 ]] && offer_map
+  return 0
+}
+
+# The map of this place, its own question (Tomas, 19 Oct 2026: "it should be one of the basic setup steps"): what it
+# fetches and who learns what, said before it runs, as packs/place/basemap.py's docstring says it. Asked only in a
+# terminal: the doctor's --guide (install, update) and setup, never with --yes, from cron or by an agent.
+offer_map() {
+  [[ -t 1 ]] && ( : </dev/tty ) 2>/dev/null || return 0
+  local km; km="$(setting GROUND_RADIUS_KM 2>/dev/null || true)"; km="${km:-$(envget GROUND_RADIUS_KM || true)}"; km="${km:-12}"
+  printf '\n  %sThe map of this place%s: OpenStreetMap streets, buildings and names, and drone imagery where somebody flew,\n' "$B" "$N"
+  printf '  fetched once onto this node (a few minutes, up to tens of MB). build.protomaps.com and OpenAerialMap learn roughly\n'
+  printf '  where this node is: the squares within %s km of it. After that nothing is sent; tiles are read from out/ground/.\n' "$km"
+  printf '  Fetch it now: %splanetai run place basemap%s?  %s[y]%s yes   %s[Enter]%s later\n  ' "$B" "$N" "$B" "$N" "$B" "$N"
   local k; IFS= read -r -n1 k </dev/tty || k=""; echo
   [[ "$k" == [yY] ]] || return 0
-  if [[ -n "$cmd" ]]; then "$HOME_DIR/bin/planetai" ${cmd#planetai }
-  else local u="http://localhost:$(port)/$anchor"; open "$u" 2>/dev/null || xdg-open "$u" 2>/dev/null || echo "  open $u in a browser"; fi
+  "$HOME_DIR/bin/planetai" run place basemap || warn "the map did not finish; run it again later: planetai run place basemap"
 }
 
 cmd_logs() { docker compose logs -f --tail=80 "${1:-app}"; }

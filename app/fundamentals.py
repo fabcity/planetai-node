@@ -14,6 +14,7 @@ States, one per source:
             the first reading is minutes away, and calling that a fault would put a cross on every new node.
   na        does not apply here (public stations outside Bali: no network this node can read there yet)
   elsewhere the backups are kept outside this container (BACKUP_DIR); the doctor on the machine judges them
+The map is fetched once, not read: ok with the day it was fetched, or missing.
 `ok` is true, false or null (waiting, na, elsewhere): only false asks somebody to do something.
 """
 from __future__ import annotations
@@ -60,6 +61,15 @@ FUNDAMENTALS = [
      "settings": [], "setup": None, "command": "planetai backup",
      "fix": "No backup yet. One runs every night at 03:17; to have one now: planetai backup",
      "fix_quiet": "No backup in two days. Make one now: planetai backup, then check the nightly one: crontab -l | grep backup"},
+    # Tomas, 19 Oct 2026: "how to add the open street maps tiles? I dont find how to set it up, it should be one of the
+    # basic setup steps." Fetched once (packs/place/basemap.py), so it is there or it is not: never quiet, never waiting.
+    {"id": "map", "name": "The map of this place", "fresh_minutes": None,
+     "why": "Streets, buildings and their names round the node, kept on its own disk, so the Place door and the Wall "
+            "draw where things are and ask nobody for a tile.",
+     "settings": [], "setup": None, "command": "planetai run place basemap",
+     "fix": "No map yet. Fetch it once, a few minutes: planetai run place basemap. build.protomaps.com and "
+            "OpenAerialMap learn roughly where this node is (the square fetched); after that nothing is sent.",
+     "fix_quiet": None},
 ]
 
 # which adapter (sources.enabled) answers for which source, to name its last error
@@ -89,7 +99,7 @@ def _errors(last_error: str | None) -> dict:
 
 def assess(cfg: dict, seen: list[dict], polled: bool, last_error: str | None = None,
            telegram_ok: bool | None = None, backup_minutes: float | None = None, backup_here: bool = True,
-           own_known: bool = False) -> list[dict]:
+           own_known: bool = False, map_at: float | None = None) -> list[dict]:
     """Pure: the state of every fundamental source.
 
     cfg            the effective settings this needs (settings.get), plus NODE_LAT/NODE_LON and MQTT_HOST
@@ -99,6 +109,7 @@ def assess(cfg: dict, seen: list[dict], polled: bool, last_error: str | None = N
     backup_minutes the age of the newest dump the app can see, None when there is none
     backup_here    False when BACKUP_DIR points outside ./backups, which is the only folder this container sees
     own_known      the node has ever stored a sensor of this household's own (a kit on MQTT needs no setting)
+    map_at         when out/ground/vector.mbtiles was written (epoch seconds), None when the node has no map
     """
     on = lambda k: (cfg.get(k) or "").strip() not in ("", "0")  # noqa: E731
     errs = _errors(last_error)
@@ -134,6 +145,11 @@ def assess(cfg: dict, seen: list[dict], polled: bool, last_error: str | None = N
             minutes = youngest(lambda r: r["source"] == ADAPTER[fid])
         elif fid == "backup":
             minutes, configured = backup_minutes, backup_minutes is not None
+        elif fid == "map":
+            configured = map_at is not None
+            if configured:
+                t = time.localtime(map_at)
+                detail = f"fetched {t.tm_mday} {time.strftime('%b %Y', t)}"
 
         if not applies:
             state, ok = "na", None
@@ -142,6 +158,8 @@ def assess(cfg: dict, seen: list[dict], polled: bool, last_error: str | None = N
             state, ok, detail = "elsewhere", None, "kept outside this container (BACKUP_DIR); planetai doctor checks it on the machine"
         elif not configured:
             state, ok, detail = "missing", False, "not set up"
+        elif fid == "map":
+            state, ok = "ok", True
         elif fid == "alerts":
             state, ok = ("quiet", False) if telegram_ok is False else ("ok", True)
             detail = {True: "the last message went through", False: "", None: "set up; nothing sent since the node started"}[telegram_ok]
@@ -156,7 +174,7 @@ def assess(cfg: dict, seen: list[dict], polled: bool, last_error: str | None = N
             detail = f"last error: {err}"
         out.append({"id": fid, "name": f["name"], "state": state, "ok": ok,
                     "minutes": None if minutes is None else round(minutes, 1),
-                    "age": _age(minutes) if state in ("ok", "quiet") and fid != "alerts" else None,
+                    "age": _age(minutes) if state in ("ok", "quiet") and fid not in ("alerts", "map") else None,
                     "detail": detail or None,
                     "fix": None if ok is not False else (f["fix"] if state == "missing" else f["fix_quiet"]),
                     "setup": f"#setup/{f['setup']}" if f["setup"] else None, "command": f["command"], "why": f["why"]})
@@ -168,6 +186,12 @@ def backup_age(folder: str = "/app/backups") -> float | None:
     p = Path(folder)
     dumps = [x.stat().st_mtime for x in p.glob("*.sql.gz")] if p.is_dir() else []
     return (time.time() - max(dumps)) / 60 if dumps else None
+
+
+def map_fetched(folder: str = "/app/out/ground") -> float | None:
+    """When the street map was written (packs/place/basemap.py replaces it whole), or None when there is none."""
+    p = Path(folder) / "vector.mbtiles"
+    return p.stat().st_mtime if p.is_file() else None
 
 
 def backup_is_here() -> bool:

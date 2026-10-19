@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- **The map of this place is a setup step.** Tomas, 19 Oct: "how to add the open street maps tiles? I dont find how
+  to set it up, it should be one of the basic setup steps." The street map (`planetai run place basemap`) was written
+  down only in the packs reference, so a new node's Place door and Wall drew no streets and nothing said why. Now
+  `planetai doctor`, Set up and `GET /health/sources` list **The map of this place**: a tick with the day it was
+  fetched, or a cross whose fix is the command. Install and update (in a terminal, never with `--yes`, from cron or by
+  an agent) and `planetai setup` offer to fetch it, saying first that build.protomaps.com and OpenAerialMap learn
+  roughly where the node is. The Place door names the command where the street map would be. Install, first ten
+  minutes, dashboard, CLI and API pages say so.
+
 ## v0.82.3 — 2026-10-19 — Radios that keep their settings, and every node told a release is out
 
 - **A provisioned radio holds its profile, and the check reads the radio, not a copy.** On firmware 2.7.26 (node #1,

@@ -9,14 +9,16 @@ a phone yet; that is the [next page](first-ten-minutes.md).
 One line, four questions, two minutes. Before it, if the machine is old or you are not sure it qualifies,
 run the preflight.
 
-> **The short way.** Six commands, top to bottom, each one waiting for the one before:
+> **The short way.** Seven commands, top to bottom, each one waiting for the one before:
 > 1. `curl -fsSL planetai.fab.city/preflight | bash`: is this machine fit?
 > 2. `curl -fsSL planetai.fab.city/install | bash`: four questions, then the node.
 > 3. `planetai doctor`: every check green, and under **Data sources** what is left, each with its fix. If this
 >    terminal says `planetai: command not found`, open a new one: the installer adds it to the PATH of new terminals.
 > 4. `planetai telegram`: your phone.
-> 5. `planetai test-alert`: a real alert arrives.
-> 6. `planetai act <id>`: answer it, and the loop is closed.
+> 5. `planetai run place basemap`: the map of this place, streets and names, fetched once onto the node. The Place
+>    door and the Wall draw no streets without it.
+> 6. `planetai test-alert`: a real alert arrives.
+> 7. `planetai act <id>`: answer it, and the loop is closed.
 >
 > The rest of this page and the [next](first-ten-minutes.md) explain each step.
 
@@ -180,13 +182,16 @@ still missing, most important first, each with the one thing to do. On a new nod
   To finish setting up
    1. Connect Telegram, two minutes: planetai telegram
    2. No backup yet. One runs every night at 03:17; to have one now: planetai backup
+   3. No map yet. Fetch it once, a few minutes: planetai run place basemap. build.protomaps.com and OpenAerialMap
+      learn roughly where this node is (the square fetched); after that nothing is sent.
 ```
 
 and, with no sensor of your own yet, *Add your sensor* first, with the Set up page's address at Sources. The weather
 and satellite models show a dash until the node's first poll, a few minutes after it starts. The last screen is a
 box reading **Your node is running.**, the dashboard's addresses, and the settings token. Run `./install.sh` on its
-own and it ends with the same doctor; in a terminal it asks whether to do the first step now, and with `--yes` or
-no terminal it only prints. `planetai update` ends the same way.
+own and it ends with the same doctor; in a terminal it asks whether to do the first step now, then, when the node
+has no map yet, whether to fetch it, saying first who learns what. With `--yes` or no terminal it only prints.
+`planetai update` ends the same way, and `planetai setup` asks about the map before its last screen.
 
 ## Re-running it
 
