@@ -411,7 +411,11 @@ def write_and_reboot(port: str, steps: List[List[str]]) -> dict:
     """Each step alone, SETTLE_S apart, then a reboot proven by wait_rebooted; returns the radio read afterwards."""
     for i, args in enumerate(steps, 1):
         print(f"   {i}/{len(steps) + 1}  {shown(args)}")
-        run_cli(port, *args)
+        out = run_cli(port, *args)
+        if args[0] == "--set" and out.count("\nSet ") + out.startswith("Set ") < args.count("--set"):
+            # a --set that lands in the radio's reboot window prints no "Set" line and writes nothing (19 Oct)
+            wait_ready(port)
+            run_cli(port, *args)
         time.sleep(SETTLE_S)   # 2.7.26 drops a write when the port closes too soon after it
         wait_ready(port)
     # commitSettingsTransaction does not reboot 2.7.26, and a radio keeps its old frequency until it does. The count of

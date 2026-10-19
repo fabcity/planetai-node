@@ -104,6 +104,16 @@ try:
     radio.wait_rebooted("/dev/x", 0, tries=2); raise AssertionError("no rise, no drop: not proven")
 except SystemExit as e:
     assert "did not reboot" in str(e)
+# a --set that prints no "Set" line landed in a reboot window and wrote nothing: it is sent again at once
+calls, outs = [], iter(["Connected to radio\n", "Connected to radio\nSet role to SENSOR\nSet serial_enabled to true\n"])
+real_cli, real_ready = radio.run_cli, radio.wait_ready
+radio.run_cli = lambda port, *a, **k: (calls.append(a), next(outs, "") if a and a[0] == "--set" else "")[1]
+radio.wait_ready = lambda port, tries=30: None
+radio.read_radio = lambda port: snap_of(reboot_count=1)
+radio.os.path.exists = lambda port: next(iter([False]))
+radio.write_and_reboot("/dev/x", [sets[0]])
+assert [c[0] for c in calls] == ["--set", "--set", "--reboot"], calls
+radio.run_cli, radio.wait_ready = real_cli, real_ready
 radio.read_radio, radio.os.path.exists, radio.time.sleep = real
 print("radio provision: ok")
 
