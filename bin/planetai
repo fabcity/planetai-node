@@ -430,7 +430,7 @@ boxes = {"bali": (-9.2, -8.0, 114.4, 115.8), "barcelona": (41.25, 41.55, 1.9, 2.
 print(next((k for k, (a, b, c, d) in boxes.items() if a < lat < b and c < lon < d), ""))' "$lat" "$lon")"
   [[ -n "$pilot" ]] && city="$pilot"
   local bad=0; [[ "$pilot" == bali ]] && bad=1
-  [[ $bad -eq 1 ]] && say "that's Bali: the island air archive (Bali Air Dispatch) will be used as your outdoor reference." \
+  [[ $bad -eq 1 ]] && say "that's Bali: the island's public stations (the bali-air-dispatch pack) will be your outdoor reference." \
                     || say "outdoor reference: the global CAMS model at your coordinates (no key, works everywhere)."
 
   # 3. what kind of node — decides defaults, not the Index scale (a house is still a Community-scale observation)
@@ -469,14 +469,13 @@ print(next((k for k, (a, b, c, d) in boxes.items() if a < lat < b and c < lon < 
   envset NODE_TZ "$tz"; envset NODE_CITY "$city"; envset NODE_KIND "$kind"
   [[ -n "${sc:-}" ]] && envset SC_DEVICES "$sc"; [[ -n "${ag:-}" ]] && envset AIRGRADIENT_HOSTS "$ag"
   [[ -n "${pa:-}" ]] && envset PURPLEAIR_HOSTS "$pa"; [[ $indoor -eq 1 ]] && envset SENSOR_INDOOR 1
-  [[ $bad -eq 0 ]] && envset BAD_ENABLED 0
 
   # install
   step "Installing"
   local flags=(--name "$name" --lat "$lat" --lon "$lon")
   [[ -n "$pilot" ]] && flags+=(--preset "$pilot")     # the pilot's portal and references; the coordinates typed here still win
   [[ -n "${sc:-}" ]] && flags+=(--sc "$sc"); [[ -n "${ag:-}" ]] && flags+=(--airgradient "$ag"); [[ -n "${pa:-}" ]] && flags+=(--purpleair "$pa")
-  [[ $indoor -eq 1 ]] && flags+=(--indoor); [[ $bad -eq 0 ]] && flags+=(--no-bad)
+  [[ $indoor -eq 1 ]] && flags+=(--indoor)
   chmod +x install.sh backup.sh update.sh 2>/dev/null || true
   # NOT wrapped in spin(): install.sh prints named steps with elapsed time, and hiding them behind one
   # spinner line is precisely what left a tester watching "building the node" for four minutes and then

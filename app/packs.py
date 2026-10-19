@@ -231,15 +231,46 @@ def agent_scripts() -> list[str]:
     return out
 
 
+def _manifest(d: Path) -> dict:
+    try:
+        return yaml.safe_load((d / "pack.yaml").read_text()) or {}
+    except Exception:  # noqa: BLE001 — a pack.yaml that does not parse is reported where manifests() reads it
+        return {}
+
+
+def _official_on(d: Path) -> bool:
+    """An official pack (shipped and signed with the release, so no `.wild`) that names its own `switch:` runs its
+    code when that switch is 1, without PACKS_ALLOW_CODE: decision A of the sensors spec (PR #262), for the packs that
+    can be switched off by themselves. An official pack without a switch still waits for the flag, because turning
+    the flag's meaning over for all of them at once would start forecast, place and surface-heat on every node."""
+    import settings
+    sw = _manifest(d).get("switch")
+    return not (d / ".wild").is_file() and isinstance(sw, str) and settings.get(sw, "0") == "1"
+
+
+def stations() -> list[dict]:
+    """The enabled packs that read public stations around the node (pack.yaml `stations:`), each with its pack id,
+    name, `switch` and whether that switch is on. What "Air stations nearby", GET /nearby and the ring's footprint
+    read, so none of them names a network."""
+    import settings
+    out = []
+    for m in manifests():
+        s, sw = m.get("stations"), m.get("switch")
+        if isinstance(s, dict) and s.get("source"):
+            out.append({**s, "pack": m["id"], "name": m.get("name") or m["id"], "switch": sw,
+                        "on": isinstance(sw, str) and settings.get(sw, "0") == "1"})
+    return out
+
+
 def adapters(hc):
-    """Source adapters from code packs. Off unless PACKS_ALLOW_CODE=1 — a pack's adapter.py runs with this
-    node's privileges and network access. Read it before you enable it."""
+    """Source adapters from code packs. Off unless PACKS_ALLOW_CODE=1, or an official pack's own switch is on — a
+    pack's adapter.py runs with this node's privileges and network access. Read it before you enable it."""
     out = []
     for d in _enabled():
         f = d / "adapter.py"
         if not f.is_file():
             continue
-        if not _allow_code():
+        if not (_allow_code() or _official_on(d)):
             log.warning("pack %s ships code; set PACKS_ALLOW_CODE=1 to run it (read %s first)", d.name, f)
             continue
         try:

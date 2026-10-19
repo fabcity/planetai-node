@@ -54,6 +54,10 @@ for f in F.FUNDAMENTALS:
 check("--section" in CLI[CLI.index("cmd_config() {"):], "planetai config takes --section, which a fix names")
 
 # ---- 2. the states
+import yaml  # noqa: E402
+_m = yaml.safe_load(open(os.path.join(ROOT, "packs/bali-air-dispatch/pack.yaml")))
+_st = {**_m["stations"], "pack": _m["id"], "name": _m["name"], "switch": _m["switch"]}  # as packs.stations() gives it
+ST_ON, ST_OFF = [dict(_st, on=True)], [dict(_st, on=False)]
 bali = {"NODE_LAT": "-8.83", "NODE_LON": "115.16"}
 madrid = {"NODE_LAT": "40.42", "NODE_LON": "-3.70"}
 by = lambda rows: {r["id"]: r for r in rows}  # noqa: E731
@@ -63,7 +67,13 @@ check(new["own-sensors"]["state"] == "missing" and new["own-sensors"]["fix"] == 
       "a fresh node with no sensor: own sensors missing, with the fix that adds one", new["own-sensors"])
 check(new["alerts"]["state"] == "missing" and "planetai telegram" in new["alerts"]["fix"], "no Telegram: missing, fix is planetai telegram")
 check(new["nearby-stations"]["state"] == "na" and new["nearby-stations"]["ok"] is None,
-      "outside Bali the public-station source does not apply, and is not a cross", new["nearby-stations"])
+      "no stations pack at all: the public-station source does not apply, and is not a cross", new["nearby-stations"])
+far = by(F.assess(dict(madrid), [], polled=True, stations=ST_OFF))["nearby-stations"]
+check(far["state"] == "na" and far["name"] == "Air stations nearby" and "Bali" not in json.dumps(far),
+      "outside Bali the pack is installed and off: na, and the line names no network", far)
+near = by(F.assess(dict(bali), [], polled=True, stations=ST_OFF))["nearby-stations"]
+check(near["state"] == "missing" and near["fix"] == "Turn on Bali Air Dispatch in Set up › Packs. Or: planetai config set BAD_ENABLED 1"
+      and near["setup"] == "#setup/packs", "inside the pack's box and off: missing, the fix names the pack and its switch", near)
 check(new["weather"]["state"] == "waiting" and new["weather"]["ok"] is None,
       "before the first poll the default-on models are waiting, not failing", new["weather"])
 check(new["backup"]["state"] == "missing" and "03:17" in new["backup"]["fix"], "no dump yet: missing, says the nightly one is coming")
@@ -80,7 +90,7 @@ cfg = {**bali, "SC_DEVICES": "19880", "BAD_ENABLED": "1", "OPENMETEO_ENABLED": "
        "TELEGRAM_BOT_TOKEN": "1:x", "TELEGRAM_CHAT_IDS": "5"}
 import time  # noqa: E402
 fetched = time.mktime((2026, 10, 19, 12, 0, 0, 0, 0, -1))
-good = F.assess(cfg, seen, polled=True, telegram_ok=True, backup_minutes=600, map_at=fetched)
+good = F.assess(cfg, seen, polled=True, telegram_ok=True, backup_minutes=600, stations=ST_ON, map_at=fetched)
 check(all(r["ok"] is True for r in good), "a working Bali node: every source ok", [r for r in good if r["ok"] is not True])
 g = by(good)
 check(g["own-sensors"]["minutes"] == 4.0 and g["own-sensors"]["detail"] == "inside and outside",
@@ -109,6 +119,10 @@ bad = by(F.assess({**cfg, "TELEGRAM_BOT_TOKEN": "1:x"}, [s for s in seen if s["s
 check(bad["weather"]["state"] == "quiet" and "429" in (bad["weather"]["detail"] or "") and bad["weather"]["fix"] == F.FUNDAMENTALS[3]["fix_quiet"],
       "a model that stopped answering: quiet, its own last error, the quiet fix", bad["weather"])
 check(bad["satellite-air"]["ok"] is True, "CAMS is judged on its own rows, not on Open-Meteo's error")
+ring = by(F.assess(cfg, [s for s in seen if s["source"] != "baliairdispatch"], polled=True, stations=ST_ON,
+                   last_error="bali-air-dispatch: ReadTimeout"))["nearby-stations"]
+check(ring["state"] == "quiet" and ring["detail"] == "last error: ReadTimeout" and ring["fix"].startswith("Bali Air Dispatch has not"),
+      "a stations pack that stopped answering: quiet, the pack's own last error, the quiet fix in its name", ring)
 check(bad["alerts"]["state"] == "quiet", "Telegram refused the last message: quiet, run planetai telegram again")
 check(bad["backup"]["state"] == "quiet" and bad["backup"]["age"] == "2 days ago", "a dump older than two days: quiet", bad["backup"])
 quiet_own = by(F.assess(cfg, [s for s in seen if not s["own"]], polled=True))

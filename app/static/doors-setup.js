@@ -26,7 +26,7 @@ const SETUP_GROUPS = {
   sharing: ['Sharing', 'Who may read this node, and everything it sends or announces beyond this machine. Raw readings stay here; only hourly averages, Index scores and the share of alerts answered leave.'],
   system: ['System', 'Tuning numbers, and what is read once at start: the port, extra containers, backups, the poll interval.'],
 };
-const SETUP_BOOLS = /^(BAD_ENABLED|OPENMETEO_ENABLED|SENSOR_INDOOR|MESH_ALERTS|HA_DISCOVERY|EXPORT_ENABLED|IPFS_PUBLISH|QUIET_HOURS|BAD_INCLUDE_INDOOR|PACKS_ALLOW_CODE)$/;
+const SETUP_BOOLS = /^(OPENMETEO_ENABLED|SENSOR_INDOOR|MESH_ALERTS|HA_DISCOVERY|EXPORT_ENABLED|IPFS_PUBLISH|QUIET_HOURS|PACKS_ALLOW_CODE)$/;
 /* What a screen without the token gets at each level: the node's own rule (app/main.py _SHARE_OFF / _SHARE_OPEN). */
 const SHARE_WORDS = {
   off: ['Off', 'A screen on this network without the token gets the page, the node’s name and the daily open export. Nothing else.'],
@@ -128,7 +128,7 @@ function sRow(r, unlocked) {
       `<label class="opt ${(r.value || 'off') === v ? 'on' : ''}"><input type="radio" name="SHARE_LEVEL" value="${v}" data-key="SHARE_LEVEL" ${(r.value || 'off') === v ? 'checked' : ''}${dis}><b>${t}</b><span>${s2}</span></label>`).join('')}</div>`;
     return `<div class="srow wide">${left}${ctl}${err}</div>`;
   }
-  if (SETUP_BOOLS.test(r.key)) {
+  if (SETUP_BOOLS.test(r.key) || (r.pack && /_ENABLED$/.test(r.key))) {   /* a pack's own on-switch, whichever pack */
     const on = r.value === '1';
     ctl = `<button type="button" role="switch" aria-checked="${on}" aria-labelledby="${id}" id="${id}" class="sw ${on ? 'on' : ''}" data-key="${esc(r.key)}" data-bool="1"${dis}><span>${on ? 'on' : 'off'}</span></button>`;
   } else {

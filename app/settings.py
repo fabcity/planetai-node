@@ -60,9 +60,6 @@ RUNTIME = {
     "PURPLEAIR_HOSTS":    ("sources", "PurpleAir hosts", False, False, "IP addresses on your WiFi."),
     "SENSOR_INDOOR":      ("sources", "LAN sensors are indoors", False, False, "1 if the AirGradient/PurpleAir units are inside."),
     "MESH_INDOOR_NODES":  ("sources", "Indoor mesh radios", False, False, "Meshtastic node ids that are inside, e.g. !8f491db0,!64e0bfd1."),
-    "BAD_ENABLED":        ("sources", "Bali Air Dispatch", False, False, "Bali only: the island's public stations as outdoor reference. 1 or 0."),
-    "BAD_EXCLUDE":        ("sources", "Stations to leave out", False, False, "Comma-separated station ids that are ours and the identity and distance rules missed."),
-    "BAD_INCLUDE_INDOOR": ("sources", "Keep indoor stations", False, False, "1 to keep stations the archive suspects are indoors. Off by default: they are not the ring."),
     "OPENMETEO_ENABLED":  ("sources", "Global models (Open-Meteo, CAMS)", False, False, "Free, key-free, anywhere. 1 or 0."),
     "CKAN_PORTALS":       ("sources", "Open-data portals", False, False, "slug=url pairs, comma-separated. Feeds Governance|City."),
     # alerts — alerts and reports: when the node speaks, what interrupts, and how a loop is closed.
@@ -183,14 +180,12 @@ RUNTIME = {
     "PARENT_API_URL":     ("sharing", "Parent node", False, False, "http://<district>:8080 — hourly means go here. Empty = none."),
     # system — tuning numbers, and the layout Arrange mode writes. Not "advanced": that is a page mode, and the header has its switch.
     "LOCAL_RADIUS_M":     ("system", "Local radius, m", False, False, "how far from the node a sensor can be and still count as this node's own, in metres"),
-    "BAD_RADIUS_KM":      ("system", "Bali Air Dispatch radius, km", False, False, "How far out the ring of other people's stations reaches."),
-    "BAD_MIN_SEPARATION_M": ("system", "Nearest a station may be, m", False, False, "A station closer than this to the node is assumed to be our own hardware, not a neighbour."),
     "STATIONS_SHOWN":     ("system", "Other people's stations listed", False, False,
                            "How many of the neighbourhood's stations the dashboard lists, nearest first. Default 3; "
                            "0 lists every one. This node's own hardware is always listed and is never counted here \u2014 "
                            "a house hiding its own sensors behind a press would be absurd. Nothing is discarded or "
                            "stopped: the page says how many it is not listing and one press lists them all. To collect "
-                           "fewer stations in the first place, turn the Bali Air Dispatch radius down instead."),
+                           "fewer stations in the first place, turn the stations pack's radius down instead."),
     "UI_GROUND":          ("system", "How the ground is drawn", False, False,
                            "svg (default) = the drawing this page has always made. map = MapLibre and deck.gl draw it "
                            "in this browser, so it pans and zooms; it needs WebGL2 and falls back to svg, saying why, "
@@ -201,8 +196,7 @@ RUNTIME = {
 # presented (the dashboard's Set up view sends it once unlocked). Chat ids, sensor hosts, account names and remote URLs
 # are not secrets, but they are the household's, and GET /settings answers anyone on the WiFi (found 6 Sep 2026).
 PUBLIC = {"REPORT_EVERY", "REPORT_ANCHOR", "REPORT_DEPTH", "LEARN_PUSH", "ALERT_LEVEL", "QUIET_HOURS", "QUIET_FROM", "QUIET_TO", "ALERT_LOCALE",
-          "MESH_ALERTS", "HA_DISCOVERY", "PACKS_ENABLED", "PACKS_ALLOW_CODE", "OPENMETEO_ENABLED", "BAD_ENABLED", "BAD_RADIUS_KM",
-          "BAD_MIN_SEPARATION_M", "BAD_EXCLUDE", "BAD_INCLUDE_INDOOR",
+          "MESH_ALERTS", "HA_DISCOVERY", "PACKS_ENABLED", "PACKS_ALLOW_CODE", "OPENMETEO_ENABLED",
           "LOCAL_RADIUS_M", "SENSOR_INDOOR", "COAST_MAX_KM", "AGENT_PREFER", "AGENT_REMOTE_MODEL", "AGENT_ONLINE_MODEL", "EYES_MODEL", "UI_LAYOUT", "UI_MODE", "UI_ASK", "UI_GROUND", "MAP_TILES", "UPDATE_CHECK", "SPECIES_MATCH", "STATIONS_SHOWN", "NODE_KIND", "SHARE_LEVEL", "NODE_ISSUES",
           "RETICULUM_PRESENCE", "RETICULUM_PRESENCE_RES"}
 # Which Set up tab shows each bootstrap key, read-only. The place itself is Basics; the machinery is System.

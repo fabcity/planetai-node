@@ -137,8 +137,8 @@ or absent; the last two are written to `.env` and, as on question 4, not read ye
 the machine, standard library only. It ends with `installed. planetai status --json for the state; planetai
 ui for the token.`
 
-> **Careful.** This path does not set `BAD_ENABLED=0` outside Bali the way question 2 does, so a headless
-> node keeps `.env.example`'s `BAD_ENABLED=1`. Outside Bali, set it to `0` afterwards.
+> Bali Air Dispatch is the `bali-air-dispatch` pack and is off unless the bali preset turns it on, so this path
+> needs nothing extra outside Bali.
 
 ## What the installer does
 

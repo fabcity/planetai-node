@@ -19,14 +19,6 @@
 - { source: smartcitizen, metric: eco2,           role: index,   comparable: false, unit: "ppm" }
 - { source: smartcitizen, metric: tvoc,           role: index,   comparable: false }
 
-- { source: baliairdispatch, metric: pm25,     role: ambient, comparable: true, unit: "µg/m³" }
-- { source: baliairdispatch, metric: pm25_raw, role: ambient, comparable: false, unit: "µg/m³" }
-- { source: baliairdispatch, metric: pm10,     role: ambient, comparable: true, unit: "µg/m³" }
-- { source: baliairdispatch, metric: pm1,      role: ambient, comparable: true, unit: "µg/m³" }
-- { source: baliairdispatch, metric: temp,     role: ambient, comparable: true, unit: "°C" }
-- { source: baliairdispatch, metric: humidity, role: ambient, comparable: true, unit: "%" }
-- { source: baliairdispatch, metric: aqi,      role: index,   comparable: false }
-
 - { source: airgradient, metric: pm25,       role: ambient, comparable: true,  unit: "µg/m³", reference: plantower }
 - { source: airgradient, metric: pm25_raw,   role: ambient, comparable: false, unit: "µg/m³", reference: plantower }
 - { source: airgradient, metric: pm10,       role: ambient, comparable: true,  unit: "µg/m³", reference: plantower }

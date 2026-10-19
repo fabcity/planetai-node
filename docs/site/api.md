@@ -75,7 +75,7 @@ Returns one object with: `ok` (true once a poll has run), `node`, `version` (`NO
 ### GET /health/sources
 Access: token
 
-The node's fundamental sources, the ones every node needs for its basic job, each running or not, and for each that is not, the one thing to do. The list and its words are `app/fundamentals.py`; `planetai doctor` prints this route, install and update end with what it says is missing, the Set up page shows it at the top, and the MCP `health_check` returns it as `sources`. In order, most important first: `own-sensors` (a sensor of this household's own reported in the last hour), `alerts` (Telegram connected, and its last message not refused), `nearby-stations` (Bali Air Dispatch within three hours; `na` outside Bali, where the node has no public station network to read yet), `weather` (Open-Meteo within three hours), `satellite-air` (CAMS within three hours), `backup` (a dump within two days) and `map` (`out/ground/vector.mbtiles` on disk, from `planetai run place basemap`; `detail` says the day it was fetched).
+The node's fundamental sources, the ones every node needs for its basic job, each running or not, and for each that is not, the one thing to do. The list and its words are `app/fundamentals.py`; `planetai doctor` prints this route, install and update end with what it says is missing, the Set up page shows it at the top, and the MCP `health_check` returns it as `sources`. In order, most important first: `own-sensors` (a sensor of this household's own reported in the last hour), `alerts` (Telegram connected, and its last message not refused), `nearby-stations` (a pack that reads public stations, within three hours: `bali-air-dispatch` in Bali; `na` where no installed pack's network reaches, and then it names no network), `weather` (Open-Meteo within three hours), `satellite-air` (CAMS within three hours), `backup` (a dump within two days) and `map` (the street map, fetched to the end by `planetai run place basemap`; `detail` says the day it was fetched).
 
 Returns `{ok, missing, sources: [{id, name, state, ok, minutes, age, detail, fix, setup, command, why}]}`. `state` is `ok`, `missing` (not set up), `quiet` (set up, nothing inside its window; `detail` carries the source's last error), `waiting` (set up, and the node has not finished a poll since it started), `na` or `elsewhere` (the backups are in a `BACKUP_DIR` this container cannot see). `ok` is true, false or null, and only false carries a `fix`. `setup` is the Set up section the fix is in (`#setup/sources`), `command` the `planetai` command that does it. `ok` at the top is false when any source is. Takes `backup_age`, the minutes since the newest dump where the backups really are (`-1` for none): `planetai doctor` measures it on the machine and the node judges it with the rest. Reads two days of readings once, bounded by `now()`.
 
@@ -278,7 +278,7 @@ What surrounds the node's own numbers: other people's stations, the weather fore
 ### GET /nearby
 Access: open
 
-The ring: other people's stations around this node, and where this node sits inside it. Reads only what is stored, so the dashboard never waits on someone else's server. In v0.82 the ring is Bali Air Dispatch stations only (`source = 'baliairdispatch'`), within `BAD_RADIUS_KM`, that reported in the last 24 hours.
+The ring: other people's stations around this node, and where this node sits inside it. Reads only what is stored, so the dashboard never waits on someone else's server. The ring is the stations of every pack that declares `stations:` and is switched on (today `bali-air-dispatch`, `source = 'baliairdispatch'`), within that pack's radius (`BAD_RADIUS_KM`), that reported in the last 24 hours; `attribution` is the pack's. With no such pack on, `ring` is empty and `radius_km` is 0. `?audit=1` asks each pack's `audit()`.
 
 | Name | Type | Default | Meaning |
 |---|---|---|---|
@@ -977,7 +977,7 @@ The API is the read side. These are the requests the node makes of other machine
 | `POST {RETICULUM_URL}/send` | Each act-level alert, if `RETICULUM_URL` is set | `{"text": ...}` to the bridge container |
 | MQTT publish | Each act-level alert (`MESH_ALERTS=1`), and Home Assistant discovery (`HA_DISCOVERY=1`) | The first line of the alert to the mesh downlink; discovery and state topics to the broker at `MQTT_HOST` |
 
-The sources the node polls (Smart Citizen, Bali Air Dispatch, Open-Meteo, CKAN portals, packs) are on the [sensors page](sensors.md).
+The sources the node polls (Smart Citizen, Open-Meteo, CKAN portals, packs such as Bali Air Dispatch) are on the [sensors page](sensors.md).
 
 ## Not in this version
 

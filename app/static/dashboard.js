@@ -9145,7 +9145,7 @@ const groupTitle = g => (GROUPS[g] || [g.charAt(0).toUpperCase() + g.slice(1)])[
 const groupBlurb = g => (GROUPS[g] || [])[1]
   || 'This node declares this group and the dashboard has no words for it yet. planetai config shows the same keys.';
 
-const BOOLS = /^(BAD_ENABLED|OPENMETEO_ENABLED|SENSOR_INDOOR|MESH_ALERTS|HA_DISCOVERY|EXPORT_ENABLED|IPFS_PUBLISH|QUIET_HOURS|BAD_INCLUDE_INDOOR|PACKS_ALLOW_CODE)$/;
+const BOOLS = /^(OPENMETEO_ENABLED|SENSOR_INDOOR|MESH_ALERTS|HA_DISCOVERY|EXPORT_ENABLED|IPFS_PUBLISH|QUIET_HOURS|PACKS_ALLOW_CODE)$/;
 
 function unlock() {
   const t = q('#tok').value.trim();
@@ -9238,7 +9238,7 @@ async function loadSetup() {
     // Where the node's refusal is written when it refuses. Empty until then, and aria-live so a
     // reader who is not looking at this field still hears why the save did not take.
     const err = `<p class="err" id="err-${r.key}" role="alert" hidden></p>`;
-    if (BOOLS.test(r.key)) {
+    if (BOOLS.test(r.key) || (r.pack && /_ENABLED$/.test(r.key))) {
       const on = r.value === '1';
       return `<div class="field">${left}<div><button type="button" role="switch" aria-checked="${on}"`
         + ` aria-labelledby="${lbl}" aria-describedby="help-${r.key}" id="${id}" class="switch ${on ? 'on' : ''}"`

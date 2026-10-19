@@ -232,20 +232,22 @@ def _claim(lat, lon, *, key, name, what, footprint_m, shape, declared, where, no
     return out
 
 
-def claims(lat: float, lon: float, settings) -> list[dict]:
+def claims(lat: float, lon: float, settings, ring: dict | None = None) -> list[dict]:
     """What each source's word covers, as the compacted cell set that covers it. Every footprint is a number a pack or
-    a preset already declares; each names the file it came from. Ordered widest first."""
+    a preset already declares; each names the file it came from. Ordered widest first. `ring` is the stations pack
+    that is on (packs.stations()); without one there is no ring to claim."""
     pub = publication()
+    rk = (ring or {}).get("radius")
     out = [
         _claim(lat, lon, key="coast", name="The sea", what="waves and sea-surface temperature at the nearest ocean cell",
                footprint_m=settings.num("COAST_MAX_KM", 30) * 1000, shape="circle", native_res=None, base_res=7,
                declared=f"COAST_MAX_KM={settings.num('COAST_MAX_KM', 30)}", where="packs/coast/pack.yaml",
                note="the pack refuses if the nearest ocean cell is further than this; the model cell it reads is not "
                     "declared anywhere, so the refusal radius is the only footprint there is"),
-        _claim(lat, lon, key="ring", name="The ring", what="public stations this node is allowed to read",
-               footprint_m=settings.num("BAD_RADIUS_KM", 15) * 1000, shape="circle", native_res=None, base_res=8,
-               declared=f"BAD_RADIUS_KM={settings.num('BAD_RADIUS_KM', 15)}", where=".env / presets",
-               note=""),
+        *([_claim(lat, lon, key="ring", name="The ring", what="public stations this node is allowed to read",
+                  footprint_m=settings.num(rk, 15) * 1000, shape="circle", native_res=None, base_res=8,
+                  declared=f"{rk}={settings.num(rk, 15)}", where=f"packs/{ring['pack']}/pack.yaml",
+                  note="")] if rk else []),
         _claim(lat, lon, key="region", name="The square this node keeps", what="AlphaEarth satellite embeddings, year against year",
                footprint_m=settings.num("EARTH_RADIUS_M", 5000), shape="square", native_res=contains(10), base_res=9,
                declared=f"EARTH_RADIUS_M={settings.num('EARTH_RADIUS_M', 5000)}, at 10 m a pixel", where="packs/earth/pack.yaml",
