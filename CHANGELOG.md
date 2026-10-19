@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **The source registry is re-pinned to awesome-fabcity-data `db77fcc` (275 entries, was 269 at `851b8db`).** Bali Air
+  Dispatch's entry now names its reader `pack:bali-air-dispatch`, and the pin brings the entries merged upstream since
+  12 Oct: OECD TiVA, FAO AQUASTAT and Landsat C2 surface temperature, with updated notes on four more. `planetai sources`
+  and `GET /sources` answer from it.
 - **Bali Air Dispatch is a pack, `bali-air-dispatch`, and the core names no network of public stations** (Tomas,
   19 Oct: "it should be a pack"). Nothing changes on a Bali node: the stations keep their ids (`bad-…`), their history
   and their settings (`BAD_ENABLED`, `BAD_RADIUS_KM`, …, now in the pack's card under Set up › Packs). `planetai update`
