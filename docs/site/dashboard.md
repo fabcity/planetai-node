@@ -183,6 +183,10 @@ on this node` (OpenStreetMap vector tiles with names), `satellite, on this node`
 on this node` (OpenAerialMap mosaics, from zoom 14). Each says `sends nothing`, because it is read from
 `/ground/*` on this node with the page's token. Without WebGL2 the page draws the svg ground and says why.
 
+The street map is one of the basic setup steps: `planetai run place basemap`, once, a few minutes (`--dry-run` first
+says what it would fetch). Until it has run, `planetai doctor` and Set up list **The map of this place** under
+**To finish setting up**, and the Place door's street-map row names the same command where a map would be.
+
 Three things the grid forces the page to say: a cell is not the thing (three indoor sensors share one
 coordinate); containment is exact in the index and approximate on the ground; and the four distances are
 not four resolutions.

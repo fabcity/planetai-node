@@ -58,12 +58,15 @@ apply here or has not had its first poll yet:
   ✗ Satellite air (CAMS)                     no reading in two days · last error: 429 Too Many Requests
       → CAMS (through Open-Meteo) has not answered in three hours. Is the internet up? planetai logs names the error.
   ✓ Nightly backup                           9 h ago
+  ✓ The map of this place                    fetched 19 Oct 2026
 ```
 
 A cross here never changes the doctor's exit code: a node with no sensor yet is unfinished, not broken. Telegram
 and the age of the last backup used to be checks above; they are sources now, so a new node's two expected crosses
 read as its next steps. The backup's age is measured on this machine, where `BACKUP_DIR` really is, and handed to
-the node with the request.
+the node with the request. The map is fetched once, not read, so it is a tick with the day it was fetched or a cross
+whose fix is `planetai run place basemap`; `--guide` (install, update) and `planetai setup` offer to fetch it in a
+terminal, after saying who learns where the node is.
 
 After an install, an update and `planetai setup`, the doctor ends with **To finish setting up**: the crosses again,
 in the same order, each with its fix and, for a setting, the Set up page's address at the right section

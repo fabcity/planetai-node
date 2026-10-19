@@ -130,6 +130,19 @@ part; pressing one puts the passage of these pages that explains it, and a link 
 (Sources), where the bot's model lives (Model), and where every runtime setting can be changed without
 touching `.env`. See [Dashboard](dashboard.md) and [Sharing](sharing.md).
 
+The Place door and the Wall draw streets, buildings and their names only once the node holds the map of its place.
+The installer offers it; if you said later, fetch it now, once, in a few minutes:
+
+```bash
+planetai run place basemap
+```
+
+It cuts OpenStreetMap out of Protomaps' daily build in three rings round the node, to street level, and adds drone
+imagery where somebody flew it. `build.protomaps.com` and OpenAerialMap learn roughly where the node is, the square
+fetched (`GROUND_RADIUS_KM`, 12 km by default); after that every tile is read from `out/ground/` and nothing is sent.
+`--dry-run` says what it would ask for. Until it has run, `planetai doctor` lists **The map of this place** under
+what is left to set up.
+
 **Now there is:** the loop, on a screen. The same `GET /issues` document the bot and the report read, drawn
 with what asks for a person first and the evidence after it.
 

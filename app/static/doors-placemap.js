@@ -212,7 +212,7 @@ function groundRows() {
   /* no /ground/meta at all is this screen being refused it, not a node without a map: say which */
   const locked = !PM.meta;
   const set = (id, sub, empty, why) => { const l = LAYERS.find(x => x.id === id); if (sub) l.sub = sub; l.empty = !!empty; l.why = why; l.locked = locked && !!empty; if (empty) PM.on[id] = false; };
-  set('street', G.vector ? `OpenStreetMap ${(m.vector || {}).build ? `build ${m.vector.build.slice(0, 8)}` : ''} · ${mb((m.vector || {}).bytes)} on this node` : locked ? 'token-only · unlock this screen in Set up › This screen' : 'the plan from /place/geojson; no street map on this node yet');
+  set('street', G.vector ? `OpenStreetMap ${(m.vector || {}).build ? `build ${m.vector.build.slice(0, 8)}` : ''} · ${mb((m.vector || {}).bytes)} on this node` : locked ? 'token-only · unlock this screen in Set up › This screen' : 'the plan from /place/geojson; no street map on this node yet: planetai run place basemap');
   const im = m.imagery || {};
   set('imagery', G.imagery ? `Sentinel-2, ${im.passes} passes, ${(im.from || '').slice(0, 7)} to ${(im.to || '').slice(0, 7)} · ${mb(im.bytes)}` : null, !G.imagery, 'planetai run earth-engine basemap');
   const dr = m.drone || {}, ms = dr.mosaics || [];
@@ -414,7 +414,9 @@ function baseWords() {
   if (!PM.meta) return `${WH}<small>street map withheld</small>`;
   const m = PM.meta.layers || {}, G = PM.ground || {}, b = (m.vector || {}).build;
   const on = [PM.on.street && (G.vector ? `street map${b ? ` · OSM build ${b.slice(0, 8)}` : ''}` : 'the plan'), PM.on.imagery && 'satellite', PM.on.drone && 'drone'].filter(Boolean);
-  return `<small>${on.join(' + ') || 'no base map'}</small>${on.length ? prov('cached') : ''}`;
+  /* a node that holds no street map says how to get one, in one line where the map would be (Tomas, 19 Oct 2026) */
+  const get = G.vector ? '' : ` · <small>no street map yet: <code>planetai run place basemap</code></small>`;
+  return `<small>${on.join(' + ') || 'no base map'}</small>${on.length ? prov('cached') : ''}${get}`;
 }
 function panel() {
   const groups = d3.groups(LAYERS, l => l.group), z = PM.map ? PM.map.getZoom() : 0, G = PM.gopen;
@@ -720,7 +722,7 @@ async function placeMap() {
   [PM.caps, PM.species] = await Promise.all([ask('captures?limit=500').catch(() => null), ask('species').catch(() => null)]); imageRows();
   const nodePlan = await ask('place/geojson').then(g => (g.features || []).length ? g : null).catch(() => null);
   PM.land = { type: 'FeatureCollection', features: [] }; PM.plan = nodePlan;
-  if (!nodePlan && !PM.ground.vector && PM.meta) LAYERS.find(l => l.id === 'street').sub = 'the node sent no plan and holds no street map';
+  if (!nodePlan && !PM.ground.vector && PM.meta) LAYERS.find(l => l.id === 'street').sub = 'the node sent no plan and holds no street map: planetai run place basemap';
   const el = $('#map'); el.innerHTML = '';
   panel();   /* the list first: the map takes its height, so it must be at its height before the map is centred */
   let map;
