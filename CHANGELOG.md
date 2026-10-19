@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.83.0 — 2026-10-20 — Bali Air Dispatch as a pack, and the map as a setup step
 
 - **The source registry is re-pinned to awesome-fabcity-data `db77fcc` (275 entries, was 269 at `851b8db`).** Bali Air
   Dispatch's entry now names its reader `pack:bali-air-dispatch`, and the pin brings the entries merged upstream since

@@ -1,5 +1,5 @@
 # Concepts
-<!-- checked: v0.82.3 -->
+<!-- checked: v0.83.0 -->
 
 The words the rest of these pages use, each with what it means in the code at v0.82. When two of them
 sound alike (`local` and `custody`, domain and issue, `kind` and `scale`, decided and acted) the difference
@@ -84,7 +84,7 @@ prints them as house · street · ring · region; in Bahasa, rumah · jalan · s
 they are casa · calle · alrededores · región. The keys stay as they are on the wire. A child node is a fifth
 place that is not a column. A distance is custody, not scale: nothing maps a distance to an H3 resolution.
 
-**Registry.** A pinned snapshot of `awesome-fabcity-data`, 269 entries at `851b8db`, served at `/sources` and
+**Registry.** A pinned snapshot of `awesome-fabcity-data`, 275 entries at `db77fcc`, served at `/sources` and
 listed by `planetai sources`. Most entries are things this place could measure; some are places to go and
 designs to build. See the [CLI](cli.md).
 

@@ -1,5 +1,5 @@
 # Updating
-<!-- checked: v0.82.3 -->
+<!-- checked: v0.83.0 -->
 
 ```bash
 planetai update

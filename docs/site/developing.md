@@ -1,5 +1,5 @@
 # Developing and contributing
-<!-- checked: v0.82.3 -->
+<!-- checked: v0.83.0 -->
 
 This page is for the person who changes the node itself: a new adapter, a rule, a pack, a fix. A change
 here reaches every household the next time it runs `planetai update`, and, in the repo's words, "a
@@ -140,8 +140,8 @@ queue:
    hop cannot be bisected by the person who has to report it.
 4. Sync the registry, then tag, in that order, every release.
 
-The registry is `data/sources/`, a pinned snapshot of `awesome-fabcity-data`. At v0.82 it is `851b8db`,
-269 entries, synced 2026-10-12 (`data/sources/REGISTRY_VERSION`). The script takes a commit sha and
+The registry is `data/sources/`, a pinned snapshot of `awesome-fabcity-data`. At v0.83 it is `db77fcc`,
+275 entries, synced 2026-10-19 (`data/sources/REGISTRY_VERSION`). The script takes a commit sha and
 refuses a branch or a tag:
 
 ```bash
@@ -265,7 +265,7 @@ app/          main.py (api, loops, notify) · sources.py (adapters) · index.py 
               requires.py (which node a pack needs) · fundamentals.py (the sources every node needs) · learn.py (what it learns)
               ask.py (the dashboard's ask pane) · bootstrap.py · ground.py · reticulum_bridge.py · issues/ · static/ (the dashboard)
 bin/planetai  the operator CLI
-packs/        eighteen core packs; see Packs
+packs/        nineteen core packs; see Packs
 config/       rules.yml (two domain-blind rules) · channels.yml · mosquitto · reticulum
 data/         sources/ (the pinned registry) · strings/ · env_defaults.yml · frozen_layer.txt · platform_floors.yml · mac_ceilings.yml
 skills/       setup-node · troubleshoot-node · connect-agent · publish-to-index · preflight · land · write-a-pack

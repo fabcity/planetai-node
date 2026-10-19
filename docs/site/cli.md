@@ -1,5 +1,5 @@
 # Command line
-<!-- checked: v0.82.3 -->
+<!-- checked: v0.83.0 -->
 
 The command line is how the person who keeps a node looks after it: install it, ask whether it is alive,
 record what somebody did about an alert, move its data somewhere safe. The repo names that person as the
@@ -14,7 +14,7 @@ and talks to the node over its own [API](api.md) on `localhost:$APP_PORT` with t
 predates the word says "there is no `planetai <word>` in this node", names the node's version and
 suggests `planetai update`. Commands arrive in releases.
 
-> **Gap in v0.82.3.** The list `planetai` prints leaves out four commands that exist: `preflight`, `sources`, `config unset` and `agent local pull`. The tables below are complete.
+> **Gap in v0.83.0.** The list `planetai` prints leaves out four commands that exist: `preflight`, `sources`, `config unset` and `agent local pull`. The tables below are complete.
 
 Nothing here needs `sudo` except `mesh` (installing and joining Tailscale), `agent local` on a machine with
 `systemctl` where Ollama is not already answering, and, through the installer, `setup` when Docker has to
@@ -177,18 +177,18 @@ relevant to, and the adapter string that reads it: `core:ckan` for an adapter in
 this node reads yet. The footer says so in the node's words:
 
 ```
-  N of 269 entries. The last column is the code that reads it. A cell with sources and a blank column is one nobody has written an adapter for yet.
+  N of 275 entries. The last column is the code that reads it. A cell with sources and a blank column is one nobody has written an adapter for yet.
 ```
 
-The snapshot at v0.82 is `awesome-fabcity-data` at `851b8db`, 269 entries, synced 2026-10-12. `N` is how many
+The snapshot at v0.83 is `awesome-fabcity-data` at `db77fcc`, 275 entries, synced 2026-10-19. `N` is how many
 of them are filed for your city or for everywhere. The same list is `GET /sources` on [the API](api.md).
 
 Since v0.73 two more lines follow the footer: the three
 counts, summed over every cell or, with `--cell`, for that one cell, and what they mean. The counts are for
-the whole registry whatever the other filters, and are grouped by each entry's `feeds_cells`. At `851b8db`:
+the whole registry whatever the other filters, and are grouped by each entry's `feeds_cells`. At `db77fcc`:
 
 ```
-  across 19 cells: capable 12 / reviewed 17 / candidate 51
+  across 19 cells: capable 12 / reviewed 17 / candidate 52
   capable = live with an adapter. reviewed = live, backed by an adapter or a usable review. candidate = verified, unread.
 ```
 

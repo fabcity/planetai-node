@@ -1,5 +1,5 @@
 # Radios
-<!-- checked: v0.82.3 -->
+<!-- checked: v0.83.0 -->
 
 Three boards. The board suggests the job; the settings decide it, and `planetai radio provision` sets them.
 

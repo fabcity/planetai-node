@@ -70,7 +70,7 @@ satellite sources; water and soil have no pack yet, and no node has handed a job
 - **Keeps the data where it was made.** Local database, nightly backups a NAS can collect, an open daily export you decide
   where to send. A screen without the token reads "Room A" and "Sensor 1", never the house's own names.
 - **Grows by folders.** Air, heat, coast, land, place (what is around you, from OpenStreetMap, in PostGIS), fires (NASA
-  FIRMS), the ground's heat from orbit (Landsat and MODIS) and open-data packs ship: 18 core packs. Water, energy, noise,
+  FIRMS), the ground's heat from orbit (Landsat and MODIS) and open-data packs ship, and Bali Air Dispatch's stations as a pack of their own: 19 core packs. Water, energy, noise,
   classroom CO₂ are a folder of rules each, written by whoever needs them, for their place.
 
 Node #1, `bayu-ungasan`, has run in Kuta Selatan, Bali, since 2 September 2026 (above). Node #2 has run in Menorca since

@@ -1,5 +1,5 @@
 # Packs
-<!-- checked: v0.82.3 -->
+<!-- checked: v0.83.0 -->
 
 A pack is how a place teaches its node what to watch and what to say about it. The core names no metric:
 what `pm25` means, which line matters in this house, and the sentence a person should read at 9 pm are all
@@ -7,8 +7,8 @@ written in a pack. A data pack is SQL and words. A code pack also fetches: it ad
 read. The loader's own description of the point is one line: "most useful contributions are a rule and a
 threshold that someone learned the hard way in their city."
 
-Packs come in two tiers. The eighteen in the release are **core** (v0.76 also had eighteen; `xiaomi-air` and `posidonia` have
-since become wild, and v0.82 added `fire` and `surface-heat`). Any other pack is **wild**: it lives in its author's own repository, or is hosted at [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs), is listed there by pull request,
+Packs come in two tiers. The nineteen in the release are **core** (v0.76 had eighteen; `xiaomi-air` and `posidonia` have
+since become wild, v0.82 added `fire` and `surface-heat`, and v0.83 `bali-air-dispatch`, out of the core). Any other pack is **wild**: it lives in its author's own repository, or is hosted at [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs), is listed there by pull request,
 and is added to a node with `planetai packs add`. A wild pack that a second place can use may be promoted to core.
 The rules for both are the [packs decision](https://github.com/fabcity/planetai-node/blob/main/docs/decisions/2026-10-01-packs.md).
 

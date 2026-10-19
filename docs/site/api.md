@@ -1,5 +1,5 @@
 # HTTP API
-<!-- checked: v0.82.3 -->
+<!-- checked: v0.83.0 -->
 
 Every node exposes the same API on port 8080. The dashboard, the `planetai` command, the MCP tools, a NAS pulling backups, Home Assistant and a parent node are all clients of it, and none of them has a private path in. A request either carries a token as `Authorization: Bearer <token>` or carries nothing, and a request carrying nothing is judged by the `SHARE_LEVEL` setting. The container publishes `${APP_PORT:-8080}:8080` on every host interface; Postgres is published on `127.0.0.1:5432` only. There is no TLS on the node itself: the tailnet encrypts the hop, and the [sharing page](sharing.md) says what to do on a network that is not a tailnet.
 
@@ -70,7 +70,7 @@ Returns one object with: `ok` (true once a poll has run), `node`, `version` (`NO
  "docs": "https://planetai.fab.city/docs/", "mcp": "/mcp", "llms": "/llms.txt"}
 ```
 
-> **Gap in v0.82.3.** `/health` spreads the poll loop's own state into its answer, so it also carries `registry` (the last read behind `/nodes`), `bot` (the Telegram bot's username), `learned_on` and `learned_at`, and with `SPECIES_MATCH=on` `griis` (the country's whole checklist of marks) and `others` (GBIF's open-record counts per taxon for each of the seven cells), to every reader at every level, on the one route every screen polls. With `MQTT_HOST` set, `direct` (the Smart Citizen MQTT counters) rides beside `mesh`.
+> **Gap in v0.83.0.** `/health` spreads the poll loop's own state into its answer, so it also carries `registry` (the last read behind `/nodes`), `bot` (the Telegram bot's username), `learned_on` and `learned_at`, and with `SPECIES_MATCH=on` `griis` (the country's whole checklist of marks) and `others` (GBIF's open-record counts per taxon for each of the seven cells), to every reader at every level, on the one route every screen polls. With `MQTT_HOST` set, `direct` (the Smart Citizen MQTT counters) rides beside `mesh`.
 
 ### GET /health/sources
 Access: token
@@ -143,7 +143,7 @@ Access: token
 
 A 301 redirect to `/report/latest`, kept for a dashboard left open in a browser through the update that removed the briefing in v0.38. Takes and ignores `kind`. Hidden from the OpenAPI schema.
 
-> **Gap in v0.82.3.** `/briefing` is on neither allowlist. A stale dashboard with no token is refused with 403 by the middleware before it can be redirected, at both levels. The route works as intended only for loopback or a request with a token.
+> **Gap in v0.83.0.** `/briefing` is on neither allowlist. A stale dashboard with no token is refused with 403 by the middleware before it can be redirected, at both levels. The route works as intended only for loopback or a request with a token.
 
 
 ### GET /machine
@@ -750,10 +750,10 @@ Each row:
 
 `value` is rounded to 3 decimals or null; `state` is `live`, `partial` or `mock` and is never upgraded here or downstream; `source` is `planetai-node · pack:<id>` or `planetai-node actions ledger`. In v0.72.1 `registered` is how many registry entries are filed under that cell, and `adapter` is true when any of them names code that reads it. Both come from the registry this node carries and change nothing about `state` or `value`. A cell with registered sources and no adapter has no row here at all; `/sources?cell=` answers for it.
 
-Since v0.73 the row ends with five registry fields, and the same row at pin `851b8db` ends:
+Since v0.73 the row ends with five registry fields, and the same row at pin `db77fcc` ends:
 
 ```
- "registered": 2, "adapter": true, "reviewed": 2, "candidate": 0, "capable": 2}
+ "registered": 2, "adapter": true, "reviewed": 2, "candidate": 1, "capable": 2}
 ```
 
 `registered` keeps its name and now carries the `reviewed` count, so it is not the v0.72.1 number: `Governance|City` goes from 32 to 4. `adapter` is true when `capable` is above 0. `capable`, `reviewed` and `candidate` are the three counts `GET /sources` returns under `counts`, grouped by `feeds_cells` rather than by where an entry is filed; see [the source registry](sources.md).
@@ -761,7 +761,7 @@ Since v0.73 the row ends with five registry fields, and the same row at pin `851
 ### GET /sources
 Access: open
 
-The network's registry of what can be measured, as this node carries it: a pinned copy of `awesome-fabcity-data` under `data/sources/`, identical on every node in a release. In v0.82 the pin is `851b8db`, synced 12 October, with 269 entries. It says nothing about this house, which is why it is on the `open` list by name.
+The network's registry of what can be measured, as this node carries it: a pinned copy of `awesome-fabcity-data` under `data/sources/`, identical on every node in a release. In v0.83 the pin is `db77fcc`, synced 19 October, with 275 entries. It says nothing about this house, which is why it is on the `open` list by name.
 
 | Name | Type | Default | Meaning |
 |---|---|---|---|
@@ -772,7 +772,7 @@ The network's registry of what can be measured, as this node carries it: a pinne
 | `wired` | bool | any | `true`: only entries whose `adapter` names code that reads them; `false`: only those without |
 | `status` | string | any | Since v0.73. `live`, `candidate`, `stale`, `deprecated`, `paywalled` or `planned`: only entries with that status |
 
-Every filter is AND. `?cell=Social|City` lists what is filed for a cell this node may have no row for. Returns `{registry: {sha, short, synced, entries}, count, sources}`, with each entry as the registry writes it. Since v0.73 the answer also carries `counts`, `{cell: {capable, reviewed, candidate}}` for every cell the registry counts, whatever the filters: `capable` is live with an adapter, `reviewed` is live and backed by an adapter or a review whose verdict is `usable` or `usable-with-caveats`, `candidate` is status `candidate`. An entry counts against the cells in its `feeds_cells`, and against its own `cell` only when that key is absent. A `deprecated`, `stale`, `paywalled` or `planned` entry counts in none of them. At `851b8db` the counts cover 19 cells and sum to 12 capable, 17 reviewed and 51 candidate. 503 when the registry is missing: `no source registry on this node: <dir> is empty or unmounted. Vendor one with tools/sync_registry.sh <sha> and rebuild.`
+Every filter is AND. `?cell=Social|City` lists what is filed for a cell this node may have no row for. Returns `{registry: {sha, short, synced, entries}, count, sources}`, with each entry as the registry writes it. Since v0.73 the answer also carries `counts`, `{cell: {capable, reviewed, candidate}}` for every cell the registry counts, whatever the filters: `capable` is live with an adapter, `reviewed` is live and backed by an adapter or a review whose verdict is `usable` or `usable-with-caveats`, `candidate` is status `candidate`. An entry counts against the cells in its `feeds_cells`, and against its own `cell` only when that key is absent. A `deprecated`, `stale`, `paywalled` or `planned` entry counts in none of them. At `db77fcc` the counts cover 19 cells and sum to 12 capable, 17 reviewed and 52 candidate. 503 when the registry is missing: `no source registry on this node: <dir> is empty or unmounted. Vendor one with tools/sync_registry.sh <sha> and rebuild.`
 
 ### GET /sources/{pillar}/{scale}/{slug}
 Access: open
