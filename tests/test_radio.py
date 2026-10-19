@@ -46,7 +46,7 @@ assert radio.shown(sets[0]) == "--set device.role SENSOR --set device.serialEnab
 assert radio.channel_hash("ab", bytes([1, 2])) == ord("a") ^ ord("b") ^ 1 ^ 2 and radio.channel_hash("", b"") == 0
 # differences(): the radio as read back over a new connection (MessageToDict, defaults included) against the profile
 def snap_of(**over):
-    s = {"id": "!8f501a20", "lat": -8.8190201, "lon": 115.1673599, "owner": "Mesh test Ungasan", "owner_short": "MTU", "reboot_count": 7,
+    s = {"id": "!8f501a20", "lat_i": -88190200, "lon_i": 1151673601, "alt": 0, "owner": "Mesh test Ungasan", "owner_short": "MTU", "reboot_count": 7,
          "config": {"device": {"role": "SENSOR", "serialEnabled": True, "rebroadcastMode": "ALL"},
                     "position": {"fixedPosition": True, "gpsMode": "NOT_PRESENT"},
                     "lora": {"region": "SG_923", "usePreset": True, "modemPreset": "LONG_FAST", "channelNum": 19}},
@@ -82,9 +82,12 @@ assert radio.differences(wifi, fleet, ws, gateway=False) == []
 assert radio.differences(dict(prof, module_config={"telemetry": {"environmentUpdateInterval": 900}}), fleet,
                          snap_of(module_config={"telemetry": {"environmentUpdateInterval": "900"}}), gateway=False) == []
 # the pin itself, not only fixedPosition: on the XIAO a later write put the position back to its defaults (19 Oct)
-assert radio.differences(prof, fleet, snap_of(lat=None, lon=None), gateway=False) == ["position.pin is None,None, wants -8.81902,115.16736"]
-assert radio.problem_key("position.pin is None,None, wants -8.81902,115.16736") == "position"
-assert radio.differences(dict(prof, location=None), fleet, snap_of(lat=None, lon=None), gateway=False) == [], "no --fixed, no pin wanted"
+assert radio.differences(prof, fleet, snap_of(lat_i=None, lon_i=None), gateway=False) == ["position.pin is none,none,0 m, wants -8.81902,115.16736,0 m"]
+assert radio.differences(prof, fleet, snap_of(lon_i=None), gateway=False)[0].startswith("position.pin is -8.81902,none"), "one coordinate missing is a difference, not a crash"
+assert radio.differences(prof, fleet, snap_of(lat_i=-88190300), gateway=False), "10 m off is off: compared at the stored 1e-7 degrees"
+assert radio.differences(prof, fleet, snap_of(alt=12), gateway=False) == ["position.pin is -8.81902,115.1673601,12 m, wants -8.81902,115.16736,0 m"]
+assert radio.problem_key("position.pin is none,none,0 m, wants -8.81902,115.16736,0 m") == "position"
+assert radio.differences(dict(prof, location=None), fleet, snap_of(lat_i=None, lon_i=None), gateway=False) == [], "no --fixed, no pin wanted"
 # a difference names the step that repairs it: provision writes again only what did not hold (a ch0 write once
 # emptied ch1 on a XIAO, 19 Oct)
 keys = {radio.step_key(s) for s in steps}
@@ -117,8 +120,23 @@ radio.read_radio = lambda port: snap_of(reboot_count=1)
 radio.os.path.exists = lambda port: next(iter([False]))
 radio.write_and_reboot("/dev/x", [sets[0]])
 assert [c[0] for c in calls] == ["--set", "--set", "--reboot"], calls
+outs = iter(["", "", ""])   # three times no "Set" line: a password write cannot be read back, so it stops
+try:
+    radio.write_and_reboot("/dev/x", [["--set", "network.wifiPsk", "hunter22"]]); raise AssertionError("an unconfirmed write passed")
+except SystemExit as e:
+    assert "did not take" in str(e) and "hunter22" not in str(e)
 radio.run_cli, radio.wait_ready = real_cli, real_ready
 radio.read_radio, radio.os.path.exists, radio.time.sleep = real
+# a failed CLI call is reported without the values it was given: the CLI echoes "Set wifi_psk to …" before failing
+real_run, real_cli = radio.subprocess.run, radio.meshtastic_cli
+radio.meshtastic_cli = lambda: ["python3", "-m", "meshtastic"]
+radio.subprocess.run = lambda *a, **k: type("R", (), {"returncode": 1, "stdout": "Set wifi_psk to hunter22\n", "stderr": "Error: base64 key AAAA lost"})()
+for args in (["--set", "network.wifiPsk", "hunter22"], ["--ch-index", "1", "--ch-set", "psk", "base64:AAAA"]):
+    try:
+        radio.run_cli("/dev/x", *args); raise AssertionError("a failed call passed")
+    except SystemExit as e:
+        assert "hunter22" not in str(e) if "hunter22" in args else "AAAA" not in str(e), str(e)
+radio.subprocess.run, radio.meshtastic_cli = real_run, real_cli
 print("radio provision: ok")
 
 try:

@@ -258,7 +258,11 @@ def shown(args: List[str]) -> str:
 def run_cli(port: str, *args: str, timeout: int = 120) -> str:
     r = subprocess.run([*meshtastic_cli(), "--port", port, *args], capture_output=True, text=True, timeout=timeout)
     if r.returncode != 0:
-        raise SystemExit(f"meshtastic {shown(list(args))} failed:\n{(r.stdout + r.stderr).strip()[-800:]}")
+        out = r.stdout + r.stderr
+        for i, a in enumerate(args):   # the CLI echoes "Set wifi_psk to <value>" before a write fails
+            if i and re.search(r"psk|password|seturl", args[i - 1], re.I):
+                out = out.replace(a.split(":", 1)[-1] if a.startswith("base64:") else a, "…")
+        raise SystemExit(f"meshtastic {shown(list(args))} failed:\n{out.strip()[-800:]}")
     return r.stdout
 
 
@@ -328,7 +332,7 @@ def read_radio(port: str) -> dict:
     try:
         n, me = iface.localNode, iface.getMyUser() or {}
         pos = (iface.getMyNodeInfo() or {}).get("position") or {}
-        return {"id": me.get("id"), "lat": pos.get("latitude"), "lon": pos.get("longitude"), "owner": me.get("longName"), "owner_short": me.get("shortName"),
+        return {"id": me.get("id"), "lat_i": pos.get("latitudeI"), "lon_i": pos.get("longitudeI"), "alt": pos.get("altitude", 0), "owner": me.get("longName"), "owner_short": me.get("shortName"),
                 "reboot_count": iface.myInfo.reboot_count, "config": d(n.localConfig), "module_config": d(n.moduleConfig),
                 "channels": {c.index: {"role": channel_pb2.Channel.Role.Name(c.role), "name": c.settings.name,
                                        "psk": bytes(c.settings.psk), "uplink": c.settings.uplink_enabled,
@@ -378,9 +382,13 @@ def differences(prof: dict, fleet: dict, snap: dict, gateway: bool) -> List[str]
                     hint = " (a radio with no region never transmits)" if k == "region" else ""
                     problems.append(f"{section}.{k} is {got.get(k)}, wants {want}{hint}")
     loc = prof.get("location")
-    if loc and not (snap.get("lat") is not None and abs(snap["lat"] - loc["lat"]) < 1e-4
-                    and abs(snap["lon"] - loc["lon"]) < 1e-4):   # ~10 m: the firmware stores 1e-7 degrees
-        problems.append(f"position.pin is {snap.get('lat')},{snap.get('lon')}, wants {loc['lat']},{loc['lon']}")
+    if loc:   # the firmware stores 1e-7 degrees and whole metres; a lost --setlat leaves fixedPosition on and no place
+        got = (snap.get("lat_i"), snap.get("lon_i"), snap.get("alt") or 0)
+        want = (round(loc["lat"] * 1e7), round(loc["lon"] * 1e7), int(loc["alt"]))
+        if None in got or abs(got[0] - want[0]) > 1 or abs(got[1] - want[1]) > 1 or got[2] != want[2]:
+            def deg(v: Optional[int]) -> str:
+                return "none" if v is None else f"{v / 1e7:.7f}".rstrip("0")
+            problems.append(f"position.pin is {deg(got[0])},{deg(got[1])},{got[2]} m, wants {loc['lat']},{loc['lon']},{want[2]} m")
     for idx, key, role in ((0, "primary", "PRIMARY"), (1, "fabcity", "SECONDARY")):
         c, ch = fleet[key], snap.get("channels", {}).get(idx) or {}
         psk = base64.b64decode(c["psk"])
@@ -417,10 +425,14 @@ def write_and_reboot(port: str, steps: List[List[str]]) -> dict:
     for i, args in enumerate(steps, 1):
         print(f"   {i}/{len(steps) + 1}  {shown(args)}")
         out = run_cli(port, *args)
-        if args[0] == "--set" and out.count("\nSet ") + out.startswith("Set ") < args.count("--set"):
+        for _ in range(2):
+            if args[0] != "--set" or out.count("\nSet ") + out.startswith("Set ") >= args.count("--set"):
+                break
             # a --set that lands in the radio's reboot window prints no "Set" line and writes nothing (19 Oct)
             wait_ready(port)
-            run_cli(port, *args)
+            out = run_cli(port, *args)
+        else:   # verify cannot read a password back, so an unconfirmed write stops here
+            raise SystemExit(f"the radio did not take  {shown(args)}  (no \"Set\" line, twice): run provision again")
         time.sleep(SETTLE_S)   # 2.7.26 drops a write when the port closes too soon after it
         wait_ready(port)
     # commitSettingsTransaction does not reboot 2.7.26, and a radio keeps its old frequency until it does. The count of
@@ -455,7 +467,7 @@ def provision(port: str, role: str, long_name: str, short_name: str, fleet: dict
     node_id = snap.get("id")
     # provisioning a radio again replaces its entry: the fleet lists each radio once
     fleet["radios"] = [r for r in fleet.get("radios", []) if not (node_id and r.get("id") == node_id)]
-    fleet["radios"].append({"id": node_id, "role": role, "name": long_name, "short": short_name,
+    fleet["radios"].append({"id": node_id, "role": role, "name": long_name, "short": short_name, "verified": not problems,
                                           "provisioned": datetime.now(timezone.utc).isoformat(timespec="seconds")})
     save_fleet(fleet)
     if problems:
@@ -847,7 +859,8 @@ def guide() -> int:
         fleet = load_fleet() if FLEET_PATH.exists() else None
     except ImportError:   # yaml arrives with the packages; the fleet is there, its details wait for step 1
         fleet = {"region": "?", "radios": []}
-    radios = (fleet or {}).get("radios", [])
+    # a radio whose readback failed is listed, and not counted as done (entries from before 19 Oct have no flag)
+    radios = [r for r in (fleet or {}).get("radios", []) if r.get("verified", True)]
     gateways = [r for r in radios if str(r.get("role", "")).startswith("gateway")]
     others = [r for r in radios if not str(r.get("role", "")).startswith("gateway")]
     steps = []   # (done, title, detail, next command when not done)
