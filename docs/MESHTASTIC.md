@@ -48,8 +48,10 @@ mini), with the radios plugged into it.
    in `config/radio/fleet.yaml`. *You see:* `region SG_923, slot 19 (921.625 MHz)` on a Bali node. If the city has no
    known region it stops and asks for `--region`: it never guesses, because a radio on another country's band is illegal there.
 3. **The gateway radio.** Antenna on, then plug a radio into the node's USB and run the command `planetai radio`
-   prints, e.g. `planetai radio provision gateway-host "bayu gateway" GATE --port /dev/cu.usbmodem1101`. It writes every
-   setting in one go and the radio reboots once. *You see:* `>> ok. !abcd1234 is on the fleet's channels`.
+   prints, e.g. `planetai radio provision gateway-host "bayu gateway" GATE --port /dev/cu.usbmodem1101`. It writes one
+   settings section at a time, 25 s apart, reboots the radio and reads everything back over a new connection: about
+   seven minutes. *You see:* `>> ok. !abcd1234 booted on it (boot count 6) … channels planetai 0xfe and fabcity 0xe7`
+   (your hashes differ). Anything else is a list of what the radio holds that it should not; run it again.
    *No port?* `planetai radio` lists none: a charge-only cable (the usual one), a Tracker's power switch off, a XIAO
    that needs BOOT held while plugging in, or a hub in between.
 4. **The gateway, always on.** `planetai radio gateway --port /dev/cu.usbmodem1101 --install`. The gateway becomes a
@@ -57,7 +59,7 @@ mini), with the radios plugged into it.
    plugged in.
 5. **Each other radio.** Plug it in by USB, provision it, unplug it, take it where it goes:
    a field sensor `planetai radio provision sensor "Subak edge" SBK --port …` (a Tracker has GPS; a XIAO sensor node gets
-   `--fixed LAT,LON`), a relay `relay`, a shelf radio for alerts when the internet is down `shelf`. Name a sensor for the
+   `--fixed LAT,LON`, south latitudes as written: `--fixed -8.80045,115.17664`), a relay `relay`, a shelf radio for alerts when the internet is down `shelf`. Name a sensor for the
    **place**: that name becomes the sensor's name in the node.
 6. **Phones.** `planetai radio url` prints the three steps and the link (a QR too, with `qrencode` installed): the
    Meshtastic app, Bluetooth pairing, then open the link and accept replacing the channels.
@@ -80,11 +82,14 @@ planetai radio url                                       # for phones: the link,
 planetai radio doctor --port /dev/cu.usbmodem1101
 ```
 
-One settings transaction per radio, one reboot. `render` instead of `provision` prints the profile without touching a
-radio. A WiFi gateway is `provision gateway-wifi … --wifi SSID:PSK`; it fills the broker address and password itself.
+One write per settings section, then one reboot, then a readback over a new connection that compares every setting
+and each channel's key by its hash. Firmware 2.7.26 lost a settings transaction (`--configure`, or several sections in
+one call) when the port closed, and a readback on the same connection showed the API's copy, not the radio: node #1's
+gateway "had" the fleet's slot and key for a day while it ran its old ones (19 Oct). `render` instead of `provision`
+prints the profile without touching a radio. A WiFi gateway is `provision gateway-wifi … --wifi SSID:PSK`; it fills the broker address and password itself.
 
 **The fleet** lives in `config/radio/fleet.yaml` (mode 600, gitignored: it holds the keys). Two channels, each with its
-own 256-bit key: `planetai` is **primary**, the household's, and carries telemetry and position; radios send those on
+own 256-bit key: `planetai` is **primary**, the household's, and carries telemetry and full position (precision 32; 0 would send none); radios send those on
 channel 0 only, which is why a private channel added as secondary never carried sensor data (our gateway sat a day
 publishing nothing). `fabcity` is secondary and is what crosses to other nodes, with position capped at 13 bits
 (2.9 km). **Bali's slot is pinned** inside Indonesia's 920–923 MHz; SG_923 spans 917–925 and a slot hashed from the
@@ -147,6 +152,9 @@ Use BME280/BME680, SHT4x or AHT10 on Trackers. PM belongs on a mains-powered kit
   (`security.debug_log_api_enabled`). Turn both on to read the radio over USB:
   `stty -f /dev/cu.usbmodemXXX 115200 raw -echo; cat /dev/cu.usbmodemXXX`.
 - `meshtastic --get lora.region` prints numbers: `0` unset, `18` SG_923. `device.role` `6` is SENSOR.
+- On firmware 2.7.26 a settings transaction can vanish when the port closes, and `--info` or `--get` in the same
+  session reads the CLI's copy. Write one section per call, `--reboot`, then read on a new connection and check
+  `myInfo.rebootCount` went up. A lora change takes effect only after that reboot.
 
 ## Limits
 

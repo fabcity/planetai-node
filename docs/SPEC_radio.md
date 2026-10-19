@@ -11,7 +11,7 @@ finer than a 2.9 km cell leaves a node, and never a reading.
 
 | | today (v0.81.0) | with `planetai radio` |
 |---|---|---|
-| provisioning | the old mesh-provision.sh script, positional args, six `--set` calls, six reboots, env vars for the gateway | `planetai radio provision <role> "<name>" <SHORT> --port …`: one DeviceProfile, one `--configure`, one settings transaction |
+| provisioning | the old mesh-provision.sh script, positional args, six `--set` calls, six reboots, env vars for the gateway | `planetai radio provision <role> "<name>" <SHORT> --port …`: one DeviceProfile, written one section per CLI call, one reboot, a readback over a new connection (19 Oct: the single transaction did not hold on firmware 2.7.26) |
 | what a radio is told | region, preset, name, role, telemetry, then a channel URL, then MQTT, then WiFi, one at a time | the same, from five role files in `tools/radio_profiles/` and one fleet file; `render` shows it before anything is written |
 | the fleet's keys | `~/planetai-mesh.url`, one primary channel | `config/radio/fleet.yaml` (mode 600, gitignored): a primary `planetai` channel and a secondary `fabcity` channel, each with its own 256-bit key, plus region, preset and slot |
 | the gateway | an ESP32 on WiFi with JSON output on; nRF52 boards cannot do it | still supported (`gateway-wifi`), and now any board on the node's USB (`gateway-host`): the node runs `planetai radio gateway`, which publishes the same JSON an ESP32 would. `app/main.py` and `app/sources.py` change by zero lines |
@@ -64,11 +64,24 @@ The channel URL is built from the fleet file in Python (`apponly_pb2.ChannelSet`
 downlink bits (on for gateways), the position cap on `fabcity`, and the LoRa config with the pinned slot. The same
 URL is what the phone app imports, so a radio provisioned by phone and one provisioned by USB land in the same place.
 
-The profile the tool writes is the DeviceProfile `meshtastic --configure` takes. The CLI applies the URL first,
-then each config section seeded from the radio's current state (meshtastic 2.7.11). That order has a trap: a
-`lora:` section seeded from a radio whose region was UNSET writes UNSET back after the URL set it. So the rendered
-profile repeats region, preset and slot in `config.lora` explicitly. `doctor` refuses a CLI older than 2.7.11,
-where sections are replaced rather than merged and a partial `device:` would reset the rest of it.
+The profile is a DeviceProfile in meshtastic's camelCase YAML (`render` prints it). `provision` writes it with the
+stock CLI, each call a single write: the owner; `--seturl` (channel 0 and the LoRa config); one `--set` call per
+config or module section; `--setlat= --setlon= --setalt=` for a pinned radio (the `=` because a south latitude starts
+with a minus); then each channel again by `--ch-index N --ch-set …` (2.7.26 lost channel 1 from the URL, and the
+Tracker read channel 0's precision 0 after a URL that carried 32). It waits 25 s after each, reads
+`myInfo.reboot_count` over a new connection, sends `--reboot`, waits for the count to rise (an ESP32) or the USB port
+to drop and return (an nRF52, whose count stays 0), and compares the radio, read over another new
+connection, with the profile: every config field, owner, both channels' names and keys (said only as the one-byte
+hash, name XOR key), roles, uplink bits and the position cap. Whatever did not hold is written again (only those
+steps), rebooted and read back, at most twice: on the sensor XIAO a channel 0 write emptied channel 1, while the same
+write kept it on the gateway and the Tracker. It exits non-zero on any difference left.
+
+Why this shape (node #1, firmware 2.7.26, CLI 2.7.11, 19 Oct 2026, on two XIAOs): `--configure` set the owner and the
+primary channel and none of the config sections; the API transaction with a 2 s wait lost channel 1; a 20–25 s wait
+held on the sensor and not on the gateway. The same writes as separate CLI calls held on both. A readback on the
+same connection returns the API's cached `localConfig` (and cached uptime), which is how a wrong radio passed
+verify for a day. `commitSettingsTransaction` does not reboot 2.7.26, so a new slot is not on air until a reboot.
+The rendered profile repeats region, preset and slot in `config.lora` so that the readback checks them directly.
 
 `planetai radio gateway` subscribes to the Python API's `meshtastic.receive`, turns each decoded packet into the
 JSON an ESP32 gateway with JSON output publishes (camelCase to snake_case, the same topic
@@ -88,7 +101,7 @@ planetai radio init                                   # region from NODE_CITY, s
 planetai radio provision gateway-host "bayu radio" NODE --port /dev/cu.usbmodem1101
 planetai radio gateway --port /dev/cu.usbmodem1101 --install
 planetai radio provision sensor "Subak edge" SBK --port /dev/cu.usbmodem1101   # each field radio in turn
-planetai radio provision sensor "Warung roof" WRG --port … --fixed -8.80045,115.17664   # a XIAO sensor node: no GPS, so pin it
+planetai radio provision sensor "Warung roof" WRG --port … --fixed -8.80045,115.17664   # a XIAO sensor node: no GPS, so pin it (south as written)
 planetai radio provision shelf  "kitchen shelf" SHF --port /dev/cu.usbmodem1101
 planetai radio url                                    # the QR for anyone joining by phone
 planetai radio doctor --port /dev/cu.usbmodem1101
@@ -112,7 +125,8 @@ the broker. A line typed on a Bali shelf radio's fabcity channel shows up on Men
   the ESP32 gateway last. Same for Menorca if it has radios.
 - **A XIAO ESP32-S3 as a sensor node, not the gateway** (the FAB26 ones, Seeed's cased kit) is the same image and
   the `sensor` role; it has no GPS, so `--fixed LAT,LON[,ALT]` writes the DeviceProfile's `location` and sets
-  `position.fixedPosition`, which the CLI applies only when both are present. A reading with no place never
+  `position.fixedPosition`; provision writes the pin with `--setlat=`, after the position section. `--fixed
+  -8.8,115.1` is taken as written (argparse on Python 3.9 once read it as an option). A reading with no place never
   becomes `local` on the node, so the flag is not optional for a XIAO. Added 16 Oct 2026, tested through the
   CLI's own profile reader.
 - **`ROUTER` for the relay profile** is the documented choice for a radio up high; the newer `ROUTER_LATE` role

@@ -12,9 +12,10 @@
 
 Roles: sensor · relay · shelf · gateway-wifi (ESP32 uplinks over WiFi) · gateway-host (any board on this node's USB).
 
-Everything a radio needs is in one DeviceProfile applied with `meshtastic --configure` in a single settings
-transaction (one reboot, not six). The fleet file holds the keys, so it is a credential: config/radio/fleet.yaml,
-gitignored, next to mosquitto/passwd. Python 3.9, needs `python3 -m pip install --user meshtastic paho-mqtt` on the host
+Everything a radio needs is in one DeviceProfile (`render` prints it). `provision` writes it with the stock CLI, one
+settings section per call, reboots the radio and reads it back over a new connection. The fleet file holds the keys,
+so it is a credential: config/radio/fleet.yaml, gitignored, next to mosquitto/passwd. Python 3.9, needs
+`python3 -m pip install --user meshtastic paho-mqtt` on the host
 (not in the container: a USB port does not reach a container on macOS, and node #1 is a Mac mini).
 """
 from __future__ import annotations
@@ -29,7 +30,6 @@ import secrets
 import shutil
 import subprocess
 import sys
-import tempfile
 import threading
 import time
 from datetime import datetime, timezone
@@ -112,8 +112,9 @@ def new_fleet(node: str, region: str, city: str = "", preset: str = "LONG_FAST",
     slot = slot if slot is not None else slot_for(region, city, preset)
     return {
         "node": node, "region": region, "preset": preset, "slot": slot, "created": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        # channel 0, PRIMARY: telemetry and position travel here and only here. The key is this node's own.
-        "primary": {"name": "planetai", "psk": base64.b64encode(secrets.token_bytes(32)).decode()},
+        # channel 0, PRIMARY: telemetry and position travel here and only here. The key is this node's own. Full
+        # position (32 bits): it is the household's channel (Tomas, 19 Oct); 0 would send no position at all.
+        "primary": {"name": "planetai", "psk": base64.b64encode(secrets.token_bytes(32)).decode(), "position_precision": 32},
         # channel 1, SECONDARY: what crosses to other nodes (text, alerts). Its own key too; federation re-sends as
         # text through the bridge, so two nodes never need to share a key. Position on it is capped coarse.
         "fabcity": {"name": "fabcity", "psk": base64.b64encode(secrets.token_bytes(32)).decode(), "position_precision": 13},
@@ -134,35 +135,9 @@ def save_fleet(fleet: dict, path: Path = FLEET_PATH) -> None:
 
 
 # ---------------------------------------------------------------- the channel URL
-def write_channels(port: str, fleet: dict, gateway: bool = False) -> None:
-    """Both channels, written to the radio in one settings transaction through the API. On node #1's XIAO (firmware
-    2.7.26, 18 Oct) the channel URL inside `--configure` set the region and left the old primary key with no
-    secondary, `--seturl` set only the primary, and one `--ch-set` per field raced each reboot and lost the name.
-    Same fields as channel_url(), so the radio and the phone's QR agree."""
-    import meshtastic.serial_interface
-    from meshtastic.protobuf import channel_pb2
-    iface = meshtastic.serial_interface.SerialInterface(port)
-    try:
-        node = iface.localNode
-        node.beginSettingsTransaction()
-        for idx, key, role in ((0, "primary", channel_pb2.Channel.Role.PRIMARY), (1, "fabcity", channel_pb2.Channel.Role.SECONDARY)):
-            c, ch = fleet[key], node.channels[idx]
-            ch.index, ch.role = idx, role
-            ch.settings.name = c["name"]
-            ch.settings.psk = base64.b64decode(c["psk"])
-            ch.settings.uplink_enabled = ch.settings.downlink_enabled = gateway
-            if c.get("position_precision") is not None:
-                ch.settings.module_settings.position_precision = int(c["position_precision"])
-            node.writeChannel(idx)
-        node.commitSettingsTransaction()
-        time.sleep(2)
-    finally:
-        iface.close()
-
-
 def channel_url(fleet: dict, gateway: bool = False) -> str:
     """One URL carrying both channels and the LoRa config (region, preset, pinned slot), the thing the phone app
-    imports and `--configure` applies. Uplink/downlink flags ride inside it, so a gateway's URL differs from a
+    imports and `provision` writes with `--seturl`. Uplink/downlink flags ride inside it, so a gateway's URL differs from a
     sensor's by those two bits only."""
     from meshtastic.protobuf import apponly_pb2, channel_pb2, config_pb2
     cs = apponly_pb2.ChannelSet()
@@ -220,7 +195,7 @@ def _deep_merge(a: dict, b: dict) -> dict:
 def render_profile(role: str, long_name: str, short_name: str, fleet: dict, profiles: Dict[str, dict],
                    mqtt: Optional[dict] = None, wifi: Optional[Tuple[str, str]] = None,
                    fixed: Optional[Tuple[float, float, float]] = None) -> dict:
-    """The DeviceProfile (meshtastic --configure format) for one radio. Pure: no radio, no network.
+    """The DeviceProfile (meshtastic's camelCase YAML) for one radio. Pure: no radio, no network.
     `fixed` = (lat, lon, alt_m) pins the radio's position: a XIAO ESP32-S3 sensor node has no GPS, and a reading
     without a place never becomes `local` on the node. Broadcast on the primary channel only (the household's);
     the fabcity channel's precision cap still applies to anything that crosses."""
@@ -234,9 +209,8 @@ def render_profile(role: str, long_name: str, short_name: str, fleet: dict, prof
     prof: dict = {"owner": long_name, "owner_short": short_name, "channel_url": channel_url(fleet, gateway=is_gw)}
     prof["config"] = spec.get("config", {})
     prof["module_config"] = spec.get("module_config", {})
-    # The URL already carries the LoRa config, but `--configure` applies the URL first and the config sections after,
-    # each seeded from the radio's current state (meshtastic 2.7.11, __main__.py). A lora section seeded from a radio
-    # whose region was still UNSET would put UNSET back. So the lora section says it all again, explicitly.
+    # The URL already carries the LoRa config, but on firmware 2.7.26 a write that rides along with others can be lost
+    # (node #1, 19 Oct), and verify compares section by section. So the lora section says it all again, explicitly.
     prof["config"]["lora"] = {"region": fleet["region"], "usePreset": True, "modemPreset": fleet.get("preset", "LONG_FAST"),
                               "channelNum": int(fleet.get("slot") or 0), "hopLimit": 3, "txEnabled": True}
     if fixed:
@@ -270,10 +244,25 @@ def meshtastic_cli() -> List[str]:
     return [sys.executable, "-m", "meshtastic"]
 
 
+# Firmware 2.7.26 (node #1, 19 Oct) keeps a write only when it travels alone: `--configure`, a settings transaction
+# through the API, `write_channels` with a 2 s wait all lost sections or channel 1, on two XIAOs, and the readback said
+# they were there. What held on both: one stock CLI call per settings section, 25 s apart, then a reboot.
+SETTLE_S = 25
+
+
+def shown(args: List[str]) -> str:
+    """A CLI call as it may be printed: keys, passwords and the channel URL (which carries both keys) are dots."""
+    return " ".join("…" if i and re.search(r"psk|password|seturl", args[i - 1], re.I) else a for i, a in enumerate(args))
+
+
 def run_cli(port: str, *args: str, timeout: int = 120) -> str:
     r = subprocess.run([*meshtastic_cli(), "--port", port, *args], capture_output=True, text=True, timeout=timeout)
     if r.returncode != 0:
-        raise SystemExit(f"meshtastic {' '.join(args)} failed:\n{(r.stdout + r.stderr).strip()[-800:]}")
+        out = r.stdout + r.stderr
+        for i, a in enumerate(args):   # the CLI echoes "Set wifi_psk to <value>" before a write fails
+            if i and re.search(r"psk|password|seturl", args[i - 1], re.I):
+                out = out.replace(a.split(":", 1)[-1] if a.startswith("base64:") else a, "…")
+        raise SystemExit(f"meshtastic {shown(list(args))} failed:\n{out.strip()[-800:]}")
     return r.stdout
 
 
@@ -289,59 +278,207 @@ def wait_ready(port: str, tries: int = 30) -> None:
     raise SystemExit(f"radio on {port} did not come back after a reboot")
 
 
-def verify(port: str, fleet: dict, role_spec: dict) -> List[str]:
-    """What is actually on the radio after provisioning, as a list of problems (empty = good)."""
-    info = run_cli(port, "--info")
+def _cli_value(v: Any) -> str:
+    return ("true" if v else "false") if isinstance(v, bool) else str(v)
+
+
+def provision_steps(prof: dict, fleet: dict, gateway: bool) -> List[List[str]]:
+    """The CLI calls that write `prof`, in order, each a single write: the owner, the URL (both channels and the LoRa
+    config), one `--set` call per config and module section, the fixed position, then each channel again by its index:
+    2.7.26 lost channel 1 from the URL, and channel 0's position precision (node #1's Tracker, 19 Oct). Pure, so it is
+    tested without a radio. `provision` adds the reboot."""
+    steps = [["--set-owner", prof["owner"], "--set-owner-short", prof["owner_short"]], ["--seturl", prof["channel_url"]]]
+    for group in ("config", "module_config"):
+        for section, fields in prof.get(group, {}).items():
+            step = [x for k, v in fields.items() for x in ("--set", f"{section}.{k}", _cli_value(v))]
+            if step:
+                steps.append(step)
+    loc = prof.get("location")
+    if loc:   # after the position section: `=` because a south latitude starts with a minus
+        steps.append([f"--setlat={loc['lat']}", f"--setlon={loc['lon']}", f"--setalt={loc['alt']}"])
+    for idx, key in ((0, "primary"), (1, "fabcity")):
+        c = fleet[key]
+        ch = ["--ch-index", str(idx), "--ch-set", "name", c["name"], "--ch-set", "psk", "base64:" + c["psk"],
+              "--ch-set", "uplink_enabled", _cli_value(gateway), "--ch-set", "downlink_enabled", _cli_value(gateway)]
+        if c.get("position_precision") is not None:
+            ch += ["--ch-set", "module_settings.position_precision", str(int(c["position_precision"]))]
+        steps.append(ch)
+    return steps
+
+
+def channel_hash(name: str, psk: bytes) -> int:
+    """The firmware's one-byte channel hash: name bytes XOR key bytes. It is what a packet carries and what can be
+    printed; the fleet's are planetai 0xfe, fabcity 0xe7 on node #1."""
+    h = 0
+    for b in name.encode() + psk:
+        h ^= b
+    return h
+
+
+def read_radio(port: str) -> dict:
+    """The radio as it is now, over a NEW connection. Within one connection the Python API answers from what it read
+    at connect (localConfig, and deviceMetrics uptime too), so a readback after a write shows the write, not the radio:
+    node #1's gateway "had" slot 19 and the fleet key for a day while it ran slot 20 and its old key (19 Oct)."""
+    import meshtastic.serial_interface
+    from google.protobuf import json_format
+    from meshtastic.protobuf import channel_pb2
+
+    def d(m: Any) -> dict:
+        try:
+            return json_format.MessageToDict(m, always_print_fields_with_no_presence=True)
+        except TypeError:   # protobuf older than 5.26
+            return json_format.MessageToDict(m, including_default_value_fields=True)
+    iface = meshtastic.serial_interface.SerialInterface(port, timeout=60)
+    try:
+        n, me = iface.localNode, iface.getMyUser() or {}
+        pos = (iface.getMyNodeInfo() or {}).get("position") or {}
+        return {"id": me.get("id"), "lat_i": pos.get("latitudeI"), "lon_i": pos.get("longitudeI"), "alt": pos.get("altitude", 0), "owner": me.get("longName"), "owner_short": me.get("shortName"),
+                "reboot_count": iface.myInfo.reboot_count, "config": d(n.localConfig), "module_config": d(n.moduleConfig),
+                "channels": {c.index: {"role": channel_pb2.Channel.Role.Name(c.role), "name": c.settings.name,
+                                       "psk": bytes(c.settings.psk), "uplink": c.settings.uplink_enabled,
+                                       "downlink": c.settings.downlink_enabled,
+                                       "position_precision": c.settings.module_settings.position_precision}
+                             for c in (n.channels or [])}}
+    finally:
+        iface.close()
+
+
+def wait_rebooted(port: str, before: int, tries: int = 24) -> dict:
+    """read_radio once the radio has rebooted on what was written. Proof is its boot count rising (an ESP32, whose USB
+    port stays up through a soft reboot), or its USB port going away and coming back (an nRF52: the Tracker L1's
+    reboot_count stays 0, node #1, 19 Oct). The CLI's --reboot waits 10 s before the radio goes."""
+    gone = False
+    for _ in range(160):   # 40 s
+        if not os.path.exists(port):
+            gone = True
+            break
+        time.sleep(0.25)
+    for _ in range(tries):
+        time.sleep(5)
+        try:
+            snap = read_radio(port)
+        except (Exception, SystemExit):  # noqa: BLE001  (a booting radio stalls the port or drops it)
+            continue
+        if gone or snap["reboot_count"] > before:
+            return snap
+    raise SystemExit(f"the radio on {port} did not reboot (boot count stayed {before}, its USB port never dropped); "
+                     "it may still be on its old frequency")
+
+
+def differences(prof: dict, fleet: dict, snap: dict, gateway: bool) -> List[str]:
+    """What the radio (read_radio) holds that `prof` does not, as sentences (empty = good). Keys are compared, only
+    their hashes are said; a WiFi or broker password is not compared (the firmware need not return it)."""
     problems = []
-    if f'"region": "{fleet["region"]}"' not in info and f"region: {fleet['region']}" not in info:
-        problems.append(f"region is not {fleet['region']} (region 0 means the radio never transmits)")
-    for ch in ("primary", "fabcity"):
-        if f'"name": "{fleet[ch]["name"]}"' not in info:
-            problems.append(f"channel {fleet[ch]['name']!r} is not on the radio")
-    want_role = role_spec.get("config", {}).get("device", {}).get("role")
-    if want_role and f'"role": "{want_role}"' not in info and want_role != "CLIENT":
-        problems.append(f"device role is not {want_role}")
+    for k in ("owner", "owner_short"):
+        if snap.get(k) != prof[k]:
+            problems.append(f"{k} is {snap.get(k)!r}, wants {prof[k]!r}")
+    for group in ("config", "module_config"):
+        for section, fields in prof.get(group, {}).items():
+            got = snap.get(group, {}).get(section, {})
+            for k, want in fields.items():
+                if re.search(r"psk|password", k, re.I):
+                    continue
+                if _cli_value(want).lower() != _cli_value(got.get(k)).lower():   # enums by name, int64 as text
+                    hint = " (a radio with no region never transmits)" if k == "region" else ""
+                    problems.append(f"{section}.{k} is {got.get(k)}, wants {want}{hint}")
+    loc = prof.get("location")
+    if loc:   # the firmware stores 1e-7 degrees and whole metres; a lost --setlat leaves fixedPosition on and no place
+        got = (snap.get("lat_i"), snap.get("lon_i"), snap.get("alt") or 0)
+        want = (round(loc["lat"] * 1e7), round(loc["lon"] * 1e7), int(loc["alt"]))
+        if None in got or abs(got[0] - want[0]) > 1 or abs(got[1] - want[1]) > 1 or got[2] != want[2]:
+            def deg(v: Optional[int]) -> str:
+                return "none" if v is None else f"{v / 1e7:.7f}".rstrip("0")
+            problems.append(f"position.pin is {deg(got[0])},{deg(got[1])},{got[2]} m, wants {loc['lat']},{loc['lon']},{want[2]} m")
+    for idx, key, role in ((0, "primary", "PRIMARY"), (1, "fabcity", "SECONDARY")):
+        c, ch = fleet[key], snap.get("channels", {}).get(idx) or {}
+        psk = base64.b64decode(c["psk"])
+        if ch.get("role") != role or ch.get("name") != c["name"] or ch.get("psk") != psk:
+            got = f"{ch.get('name')!r} hash {channel_hash(ch.get('name', ''), ch.get('psk', b'')):#04x}" if ch else "missing"
+            problems.append(f"channel {idx} is {got} ({ch.get('role', 'no role')}), wants {c['name']!r} hash "
+                            f"{channel_hash(c['name'], psk):#04x} ({role})")
+        elif ch.get("uplink") != gateway or ch.get("downlink") != gateway:
+            problems.append(f"channel {idx} uplink/downlink is {ch.get('uplink')}/{ch.get('downlink')}, wants {gateway}")
+        elif c.get("position_precision") is not None and ch.get("position_precision") != int(c["position_precision"]):
+            problems.append(f"channel {idx} position precision is {ch.get('position_precision')}, wants {c['position_precision']}")
     return problems
 
 
+def step_key(step: List[str]) -> str:
+    """What a provision step writes, in the words problem_key gives a difference: owner, a section, ch0, ch1."""
+    if step[0] == "--set":
+        return step[1].split(".")[0]
+    if step[0].startswith("--setlat"):
+        return "position"
+    if step[0] == "--ch-index":
+        return "ch" + step[1]
+    return {"--set-owner": "owner"}.get(step[0], step[0])
+
+
+def problem_key(problem: str) -> str:
+    """The step that would fix a sentence from differences(): 'channel 1 is …' → ch1, 'lora.region is …' → lora."""
+    m = re.match(r"channel (\d)|(owner)|(\w+)\.", problem)
+    return ("ch" + m.group(1)) if m and m.group(1) else (m.group(2) or m.group(3)) if m else ""
+
+
+def write_and_reboot(port: str, steps: List[List[str]]) -> dict:
+    """Each step alone, SETTLE_S apart, then a reboot proven by wait_rebooted; returns the radio read afterwards."""
+    for i, args in enumerate(steps, 1):
+        print(f"   {i}/{len(steps) + 1}  {shown(args)}")
+        out = run_cli(port, *args)
+        for _ in range(2):
+            if args[0] != "--set" or out.count("\nSet ") + out.startswith("Set ") >= args.count("--set"):
+                break
+            # a --set that lands in the radio's reboot window prints no "Set" line and writes nothing (19 Oct)
+            wait_ready(port)
+            out = run_cli(port, *args)
+        else:   # verify cannot read a password back, so an unconfirmed write stops here
+            raise SystemExit(f"the radio did not take  {shown(args)}  (no \"Set\" line, twice): run provision again")
+        time.sleep(SETTLE_S)   # 2.7.26 drops a write when the port closes too soon after it
+        wait_ready(port)
+    # commitSettingsTransaction does not reboot 2.7.26, and a radio keeps its old frequency until it does. The count of
+    # boots, read before and after over new connections, is the proof; uptime is cached by the API.
+    before = read_radio(port)["reboot_count"]
+    print(f"   {len(steps) + 1}/{len(steps) + 1}  --reboot  (boot count {before})")
+    run_cli(port, "--reboot")
+    return wait_rebooted(port, before)
+
+
 def provision(port: str, role: str, long_name: str, short_name: str, fleet: dict, profiles: Dict[str, dict],
-              mqtt: Optional[dict] = None, wifi: Optional[Tuple[str, str]] = None, dry_run: bool = False,
-              fixed: Optional[Tuple[float, float, float]] = None) -> dict:
+              mqtt: Optional[dict] = None, wifi: Optional[Tuple[str, str]] = None,
+              fixed: Optional[Tuple[float, float, float]] = None) -> List[str]:
+    """Write the role's profile, reboot, and read it back from a new connection. Returns the problems found."""
     prof = render_profile(role, long_name, short_name, fleet, profiles, mqtt, wifi, fixed)
-    if dry_run:
-        return prof
-    with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as f:
-        _yaml().safe_dump(prof, f, sort_keys=False)
-        tmp = f.name
-    try:
-        wait_ready(port)
-        print(f">> {role}: '{long_name}' ({short_name}), region {fleet['region']}, slot {fleet.get('slot') or 'by name'}")
-        out = run_cli(port, "--configure", tmp, timeout=300)
-        print("\n".join(l for l in out.splitlines() if l.startswith("Setting") or "Writing" in l))
-        time.sleep(3)
-        wait_ready(port)
-        print(">> the two channels, planetai and fabcity, in one transaction")
-        write_channels(port, fleet, gateway=role.startswith("gateway"))
-        time.sleep(3)
-        wait_ready(port)
-        problems = verify(port, fleet, profiles[role])
-    finally:
-        os.unlink(tmp)
-    node_id = None
-    m = re.search(r'"id": "(![0-9a-f]{8})"', run_cli(port, "--info"))
-    if m:
-        node_id = m.group(1)
+    gw = bool(profiles[role].get("_gateway"))
+    steps = provision_steps(prof, fleet, gw)
+    wait_ready(port)
+    print(f">> {role}: '{long_name}' ({short_name}), region {fleet['region']}, slot {fleet.get('slot') or 'by name'}; "
+          f"{len(steps) + 1} steps, one write each, about {(len(steps) * (SETTLE_S + 15) + 60) // 60} minutes")
+    snap = write_and_reboot(port, steps)
+    problems = differences(prof, fleet, snap, gw)
+    # 2.7.26 can still drop a write, or take one with another: a channel 0 write emptied channel 1 on a XIAO while the
+    # same write kept it on the gateway and the Tracker (19 Oct). Write again only what did not hold, at most twice.
+    for _ in range(2):
+        redo = [st for st in steps if step_key(st) in {problem_key(p) for p in problems}]
+        if not redo:
+            break
+        print("   did not hold: " + "; ".join(problems) + "\n   writing those again")
+        snap = write_and_reboot(port, redo)
+        problems = differences(prof, fleet, snap, gw)
+    node_id = snap.get("id")
     # provisioning a radio again replaces its entry: the fleet lists each radio once
     fleet["radios"] = [r for r in fleet.get("radios", []) if not (node_id and r.get("id") == node_id)]
-    fleet["radios"].append({"id": node_id, "role": role, "name": long_name, "short": short_name,
+    fleet["radios"].append({"id": node_id, "role": role, "name": long_name, "short": short_name, "verified": not problems,
                                           "provisioned": datetime.now(timezone.utc).isoformat(timespec="seconds")})
     save_fleet(fleet)
     if problems:
-        print("!! provisioned with problems:\n   " + "\n   ".join(problems))
+        print("!! the radio, read back after its reboot, is not what was written:\n   " + "\n   ".join(problems)
+              + "\n   Written three times and still not held: write that one setting with python3 -m meshtastic, then --reboot.")
     else:
-        print(f">> ok. {node_id or 'radio'} is on the fleet's channels; it is in {FLEET_PATH}")
+        h = {k: channel_hash(fleet[k]["name"], base64.b64decode(fleet[k]["psk"])) for k in ("primary", "fabcity")}
+        print(f">> ok. {node_id or 'radio'} rebooted on it and was read back over a new connection: every setting, "
+              f"channels planetai {h['primary']:#04x} and fabcity {h['fabcity']:#04x}. In {FLEET_PATH}")
         print("   Next step:  planetai radio")
-    return prof
+    return problems
 
 
 # ---------------------------------------------------------------- the host gateway: packets → the same JSON an ESP32 gateway publishes
@@ -648,9 +785,9 @@ def doctor(port: Optional[str]) -> int:
     try:
         from importlib.metadata import version
         v = tuple(int(x) for x in version("meshtastic").split(".")[:3])
-        # 2.7.11 is the version read on 16 Oct 2026, where --configure seeds each section from the radio before
-        # overlaying the profile. An older CLI replaces whole sections, and a partial `device:` would reset the rest.
-        chk(v >= (2, 7, 11), f"meshtastic package {'.'.join(map(str, v))} (2.7.11 or newer: --configure merges sections)", "python3 -m pip install --user -U meshtastic")
+        # 2.7.11 is the CLI provision was proven with on firmware 2.7.26 (node #1, 19 Oct): one `--set` per section,
+        # `--ch-index 1 --ch-set psk base64:…`, `--setlat=` for a south latitude.
+        chk(v >= (2, 7, 11), f"meshtastic package {'.'.join(map(str, v))} (2.7.11 or newer: what provision is proven with)", "python3 -m pip install --user -U meshtastic")
     except Exception:  # noqa: BLE001
         chk(False, "meshtastic package version readable", "python3 -m pip install --user -U meshtastic")
     try:
@@ -722,7 +859,8 @@ def guide() -> int:
         fleet = load_fleet() if FLEET_PATH.exists() else None
     except ImportError:   # yaml arrives with the packages; the fleet is there, its details wait for step 1
         fleet = {"region": "?", "radios": []}
-    radios = (fleet or {}).get("radios", [])
+    # a radio whose readback failed is listed, and not counted as done (entries from before 19 Oct have no flag)
+    radios = [r for r in (fleet or {}).get("radios", []) if r.get("verified", True)]
     gateways = [r for r in radios if str(r.get("role", "")).startswith("gateway")]
     others = [r for r in radios if not str(r.get("role", "")).startswith("gateway")]
     steps = []   # (done, title, detail, next command when not done)
@@ -790,11 +928,19 @@ def main(argv: Optional[List[str]] = None) -> int:
         s = sub.add_parser(name); s.add_argument("role"); s.add_argument("long_name"); s.add_argument("short_name")
         s.add_argument("--port"); s.add_argument("--mqtt", help="host:1883 user pass, for gateway-wifi", nargs=3, metavar=("ADDR", "USER", "PASS"))
         s.add_argument("--wifi", help="SSID:PSK, gateway-wifi only")
-        s.add_argument("--fixed", help="LAT,LON[,ALT_M]: pin the position of a radio with no GPS (a XIAO sensor node)")
+        s.add_argument("--fixed", help="LAT,LON[,ALT_M]: pin the position of a radio with no GPS (a XIAO sensor node); "
+                                       "a south latitude as it is: --fixed -8.8,115.1")
     s = sub.add_parser("gateway"); s.add_argument("--port", required=True); s.add_argument("--broker", default="127.0.0.1:1883"); s.add_argument("--install", action="store_true"); s.add_argument("--once", action="store_true")
     s = sub.add_parser("federate"); s.add_argument("--write", action="store_true")
     s = sub.add_parser("list"); s.add_argument("--port")
     s = sub.add_parser("doctor"); s.add_argument("--port")
+    argv = list(sys.argv[1:] if argv is None else argv)
+    # `--fixed -8.8,115.1`: argparse takes a value that starts with a minus, and is not a bare number, for an option, so
+    # every radio south of the equator stopped at "expected one argument" (Bali, 19 Oct). Join it to its flag.
+    for i in range(len(argv) - 1):
+        if argv[i] == "--fixed" and argv[i + 1].startswith("-"):
+            argv[i:i + 2] = ["--fixed=" + argv[i + 1]]
+            break
     a = ap.parse_args(argv)
     if not a.cmd:
         return guide()
@@ -843,7 +989,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 xs = [float(x) for x in a.fixed.split(",")]
                 fixed = (xs[0], xs[1], xs[2] if len(xs) > 2 else 0.0)
             except (ValueError, IndexError):
-                raise SystemExit("--fixed wants LAT,LON or LAT,LON,ALT_M")
+                raise SystemExit("--fixed wants LAT,LON or LAT,LON,ALT_M, e.g. --fixed -8.80045,115.17664")
         if a.cmd == "render":
             print(_yaml().safe_dump(render_profile(a.role, a.long_name, a.short_name, f, profiles, mqtt, wifi, fixed), sort_keys=False)); return 0
         if not a.port:
@@ -851,7 +997,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             raise SystemExit("--port is needed to provision. " + (
                 "On USB now: " + ", ".join(d for d, _ in seen) if seen else "No radio is on USB now: plug one in (antenna on first).")
                 + "\n   render shows the profile without a radio.")
-        provision(a.port, a.role, a.long_name, a.short_name, f, profiles, mqtt, wifi, fixed=fixed); return 0
+        return 1 if provision(a.port, a.role, a.long_name, a.short_name, f, profiles, mqtt, wifi, fixed=fixed) else 0
     if a.cmd == "gateway":
         if a.install:
             install_service(a.port); print("   Next step:  planetai radio"); return 0

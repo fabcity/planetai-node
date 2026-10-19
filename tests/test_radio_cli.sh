@@ -66,3 +66,25 @@ radio.guide()')"
 grep -q 'keep it plugged in' <<<"$g" && ! grep -q 'provision sensor .*--port /dev/cu.usbmodemGATE' <<<"$g" \
   || { echo "  x the guide offered the gateway's port for another radio:"; echo "$g"; exit 1; }
 echo "  ok   with the gateway running, the guide never offers its port for the next radio"
+# `--fixed -8.8,115.1`: a south latitude starts with a minus, and argparse once took it for an option and stopped at
+# "expected one argument". Every radio in Bali has one (19 Oct 2026). Accepted, the command reaches its next question.
+# Python 3.12+ argparse accepts it already; node #1 runs Apple's 3.9, so the test puts 3.9's rule back first.
+for fx in "--fixed -8.81902,115.16736" "--fixed=-8.81902,115.16736" "--fixed -8.81902,115.16736,12"; do
+  # shellcheck disable=SC2086
+  if PLANETAI_ROOT="$r" python3 - provision sensor "Mesh test" MTU $fx >"$t/out" 2>&1 <<'PY'
+import argparse, re, sys
+sys.path.insert(0, "tools")
+init = argparse._ActionsContainer.__init__
+def as_39(self, *a, **k):
+    init(self, *a, **k)
+    self._negative_number_matcher = re.compile(r"^-\d+$|^-\d*\.\d+$")   # Python 3.9's
+argparse._ActionsContainer.__init__ = as_39
+import radio
+radio.main(sys.argv[1:])
+PY
+  then echo "  x provision with no port passed"; exit 1; fi
+  grep -q -- '--port is needed' "$t/out" || { echo "  x $fx did not parse:"; cat "$t/out"; exit 1; }
+done
+if PLANETAI_ROOT="$r" python3 tools/radio.py provision sensor "Mesh test" MTU --fixed -8.8 >"$t/out" 2>&1; then echo "  x --fixed with one number passed"; exit 1; fi
+grep -q -- '--fixed wants LAT,LON' "$t/out" || { echo "  x a half coordinate must say what --fixed wants:"; cat "$t/out"; exit 1; }
+echo "  ok   --fixed takes a south latitude as written (-8.8,115.1), and a half coordinate says what it wants"
