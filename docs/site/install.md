@@ -1,5 +1,5 @@
 # Install
-<!-- checked: v0.82.2 -->
+<!-- checked: v0.82.3 -->
 
 This page puts the node itself on a machine: two containers, a database on this disk, and the loops that read
 your place every five minutes. Once it is done the node has pulled the air model and the climate normals for

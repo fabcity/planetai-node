@@ -1,5 +1,5 @@
 # Ten packs someone could write this month
-<!-- checked: v0.82.2 -->
+<!-- checked: v0.82.3 -->
 
 Four are built (heat, coast, earth-engine, fire). Each row: what it adds, the Index cell, what it needs, rough size, who
 would naturally write it.

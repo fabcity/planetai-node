@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.82.3 — 2026-10-19 — Radios that keep their settings, and every node told a release is out
 
 - **A provisioned radio holds its profile, and the check reads the radio, not a copy.** On firmware 2.7.26 (node #1,
   19 Oct) `planetai radio provision` left the first LoRa sensor with region unset, role CLIENT, no pin and no
