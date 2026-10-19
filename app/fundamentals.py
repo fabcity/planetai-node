@@ -19,6 +19,8 @@ The map is fetched once, not read: ok with the day it was fetched, or missing.
 """
 from __future__ import annotations
 
+import calendar
+import json
 import os
 import time
 from pathlib import Path
@@ -109,7 +111,7 @@ def assess(cfg: dict, seen: list[dict], polled: bool, last_error: str | None = N
     backup_minutes the age of the newest dump the app can see, None when there is none
     backup_here    False when BACKUP_DIR points outside ./backups, which is the only folder this container sees
     own_known      the node has ever stored a sensor of this household's own (a kit on MQTT needs no setting)
-    map_at         when out/ground/vector.mbtiles was written (epoch seconds), None when the node has no map
+    map_at         when the street map's fetch finished (epoch seconds, map_fetched), None when the node has no map
     """
     on = lambda k: (cfg.get(k) or "").strip() not in ("", "0")  # noqa: E731
     errs = _errors(last_error)
@@ -189,9 +191,14 @@ def backup_age(folder: str = "/app/backups") -> float | None:
 
 
 def map_fetched(folder: str = "/app/out/ground") -> float | None:
-    """When the street map was written (packs/place/basemap.py replaces it whole), or None when there is none."""
-    p = Path(folder) / "vector.mbtiles"
-    return p.stat().st_mtime if p.is_file() else None
+    """When the street map's fetch finished, or None: no map, or a fetch that stopped half way. packs/place/basemap.py
+    writes meta.json's vector.fetched last, after the tiles and the label fonts, so the tiles alone are not a map."""
+    p = Path(folder)
+    try:
+        at = json.loads((p / "meta.json").read_text())["vector"]["fetched"]
+        return calendar.timegm(time.strptime(at, "%Y-%m-%dT%H:%M:%SZ")) if (p / "vector.mbtiles").is_file() else None
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
 
 
 def backup_is_here() -> bool:

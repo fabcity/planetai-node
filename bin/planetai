@@ -718,8 +718,9 @@ if todo:
   if [[ -n "$name" ]]; then
     if [[ -n "$cmd" ]]; then printf '\n  Do the first one now: %s%s%s?  %s[y]%s yes   %s[Enter]%s later\n  ' "$B" "$cmd" "$N" "$B" "$N" "$B" "$N"
     else printf '\n  Open %s in Set up now?  %s[y]%s open the dashboard   %s[Enter]%s later\n  ' "$name" "$B" "$N" "$B" "$N"; fi
-    IFS= read -r -n1 k </dev/tty || k=""; echo
-    if [[ "$k" == [yY] ]]; then
+    # a whole line, not -n1: a "y" then Enter would leave the Enter to answer the map's question below
+    IFS= read -r k </dev/tty || k=""
+    if [[ "$k" == [yY]* ]]; then
       if [[ -n "$cmd" ]]; then "$HOME_DIR/bin/planetai" ${cmd#planetai }
       else local u="http://localhost:$(port)/$anchor"; open "$u" 2>/dev/null || xdg-open "$u" 2>/dev/null || echo "  open $u in a browser"; fi
     fi
@@ -738,8 +739,8 @@ offer_map() {
   printf '  fetched once onto this node (a few minutes, up to tens of MB). build.protomaps.com and OpenAerialMap learn roughly\n'
   printf '  where this node is: the squares within %s km of it. After that nothing is sent; tiles are read from out/ground/.\n' "$km"
   printf '  Fetch it now: %splanetai run place basemap%s?  %s[y]%s yes   %s[Enter]%s later\n  ' "$B" "$N" "$B" "$N" "$B" "$N"
-  local k; IFS= read -r -n1 k </dev/tty || k=""; echo
-  [[ "$k" == [yY] ]] || return 0
+  local k; IFS= read -r k </dev/tty || k=""            # a whole line, so its Enter never answers what_next's question
+  [[ "$k" == [yY]* ]] || return 0
   "$HOME_DIR/bin/planetai" run place basemap || warn "the map did not finish; run it again later: planetai run place basemap"
 }
 

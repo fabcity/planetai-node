@@ -90,9 +90,17 @@ check(g["map"]["state"] == "ok" and g["map"]["detail"] == "fetched 19 Oct 2026" 
 check(by(F.assess(cfg, seen, polled=False, map_at=fetched))["map"]["state"] == "ok",
       "the map is judged by the file, not by a poll: no 'waiting' on a fresh start")
 with tempfile.TemporaryDirectory() as d:
-    check(F.map_fetched(d) is None, "map_fetched: no vector.mbtiles, None")
+    check(F.map_fetched(d) is None, "map_fetched: an empty folder, None")
     open(os.path.join(d, "vector.mbtiles"), "wb").close()
-    check(abs(F.map_fetched(d) - time.time()) < 60, "map_fetched: the file's own time")
+    check(F.map_fetched(d) is None, "map_fetched: tiles with no finished fetch in meta.json (stopped before the fonts), None")
+    with open(os.path.join(d, "meta.json"), "w") as fh:
+        json.dump({"drone": {"fetched": "2026-10-07T07:19:51Z"}}, fh)
+    check(F.map_fetched(d) is None, "map_fetched: only the drone layer finished, None")
+    with open(os.path.join(d, "meta.json"), "w") as fh:
+        json.dump({"vector": {"fetched": "2026-10-07T07:16:33Z"}}, fh)
+    check(F.map_fetched(d) == 1791357393, "map_fetched: meta.json's vector.fetched, as UTC", F.map_fetched(d))
+    os.remove(os.path.join(d, "vector.mbtiles"))
+    check(F.map_fetched(d) is None, "map_fetched: meta.json without the tiles, None")
 inside = by(F.assess(cfg, seen[:1], polled=True))["own-sensors"]
 check(inside["ok"] is True and inside["detail"].startswith("inside only"), "inside only is fine, and says what one outside adds", inside)
 
@@ -180,6 +188,8 @@ check(offer.index("[[ -t 1 ]]") < offer.index("read -r"), "offer_map: asks only 
 check(offer.index("build.protomaps.com") < offer.index("bin/planetai\" run place basemap"),
       "offer_map: says who learns where the node is before it runs anything")
 check('[[ "$map" == 1 ]] && offer_map' in fn, "the doctor's --guide offers the map when the node says it is missing")
+check("read -r -n1" not in fn[fn.index("[[ -t 1 ]]"):] and "read -r -n1" not in offer,
+      "the two questions read whole lines: a 'y' then Enter cannot leave the Enter to decline the next one")
 check("|| offer_map" in CLI[CLI.index("finish_setup() {"):CLI.index("what_next() {")], "planetai setup offers the map before its last screen")
 check('"$mode" == "--guide"' in fn and fn.index('"$mode" == "--guide"') < fn.index("offer_map"), "only --guide offers it: quiet and full print")
 
