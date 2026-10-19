@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **A provisioned radio holds its profile, and the check reads the radio, not a copy.** On firmware 2.7.26 (node #1,
+  19 Oct) `planetai radio provision` left the first LoRa sensor with region unset, role CLIENT, no pin and no
+  telemetry, and the gateway on its old slot and key for a day, while the check said all was well: `--configure` and
+  the settings transaction were lost when the port closed, and the check read the Meshtastic API's cached copy on the
+  same connection. Provision now writes one settings section per CLI call, 25 s apart, then reboots the radio (a new
+  frequency is not on air before), waits for its boot count to rise, and compares every setting, both channels' keys
+  (by their one-byte hash, never the key) and the pin from a new connection. Any difference is listed and the command
+  exits non-zero. `--fixed -8.8,115.1` works as written: a south latitude was read as an option on Python 3.9.
+
 - **A newer release is said at the top of the page, within the hour** (Tomas, 18 Oct: "can the node dashboard get a
   message if there is a new version? somewhere in the top as a small notification"). The bar carries one small line,
   "v0.83.0 is out", only while `/health.release.newer` is true; it opens Set up › Updates. On a phone it is its own

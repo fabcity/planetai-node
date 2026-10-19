@@ -1,19 +1,89 @@
 """Offline tests for tools/radio.py: the slot arithmetic, the fleet file, the channel URL, the role profiles, the
 host gateway's packet → JSON mapping (fed straight into app/sources.py, which must not need to change), the
 federation filter and the broker bridge blocks. No radio, no broker.
-Run: PYTHONPATH=/tmp/stub:app:tools python3 tests/test_radio.py   (needs the meshtastic package: it has the protobufs)"""
+Run: PYTHONPATH=/tmp/stub:app:tools python3 tests/test_radio.py   (the provision checks run anywhere; the rest needs
+the meshtastic package: it has the protobufs)"""
 import base64
 import json
 import os
 import tempfile
 from pathlib import Path
 
+import radio
+
+# ---- provision, without a radio and without the meshtastic package (these run in CI). Firmware 2.7.26 kept a write
+# only when it travelled alone, and the readback on the same connection was the API's cache (node #1, 19 Oct 2026).
+fleet = {"region": "SG_923", "preset": "LONG_FAST", "slot": 19,
+         "primary": {"name": "planetai", "psk": base64.b64encode(bytes(range(32))).decode()},
+         "fabcity": {"name": "fabcity", "psk": base64.b64encode(bytes(range(32, 64))).decode(), "position_precision": 13}}
+prof = {"owner": "Mesh test Ungasan", "owner_short": "MTU", "channel_url": "https://meshtastic.org/e/#SECRET",
+        "config": {"device": {"role": "SENSOR", "serialEnabled": True},
+                   "position": {"fixedPosition": True, "gpsMode": "NOT_PRESENT"},
+                   "lora": {"region": "SG_923", "usePreset": True, "modemPreset": "LONG_FAST", "channelNum": 19}},
+        "module_config": {"telemetry": {"environmentMeasurementEnabled": True, "environmentUpdateInterval": 900}},
+        "location": {"lat": -8.81902, "lon": 115.16736, "alt": 0}}
+steps = radio.provision_steps(prof, fleet, gateway=False)
+assert steps[0] == ["--set-owner", "Mesh test Ungasan", "--set-owner-short", "MTU"] and steps[1][0] == "--seturl"
+sets = [s for s in steps if s[0] == "--set"]
+assert [s[1].split(".")[0] for s in sets] == ["device", "position", "lora", "telemetry"], "one call per section: a call that wrote two sections was a transaction, and 2.7.26 lost it"
+assert all(len({x.split(".")[0] for x in s[1::3]}) == 1 for s in sets)
+assert sets[0] == ["--set", "device.role", "SENSOR", "--set", "device.serialEnabled", "true"]
+assert steps.index(["--setlat=-8.81902", "--setlon=115.16736", "--setalt=0"]) > steps.index(sets[1]), \
+    "the pin comes after the position section, with `=` for a south latitude"
+ch1 = steps[-1]
+assert ch1[:2] == ["--ch-index", "1"] and "--ch-add" not in ch1, "by index: --ch-add refuses a radio that already has fabcity"
+assert ch1[ch1.index("psk") + 1] == "base64:" + fleet["fabcity"]["psk"] and ch1[ch1.index("module_settings.position_precision") + 1] == "13"
+assert ch1[ch1.index("uplink_enabled") + 1] == "false" and radio.provision_steps(prof, fleet, gateway=True)[-1][ch1.index("uplink_enabled") + 1] == "true"
+assert not [s for s in steps if s[0] == "--reboot"], "provision reboots after reading the boot count, not inside the steps"
+# what is printed never carries a key: not the psk, not the URL (it holds both keys), not a WiFi or broker password
+for s in steps + [["--set", "network.wifiPsk", "hunter22"], ["--set", "mqtt.password", "pw"]]:
+    out = radio.shown(s)
+    assert fleet["fabcity"]["psk"] not in out and "SECRET" not in out and "hunter22" not in out and " pw" not in out, out
+assert radio.shown(sets[0]) == "--set device.role SENSOR --set device.serialEnabled true"
+# the channel hash: name XOR key; node #1's fleet reads planetai 0xfe, fabcity 0xe7
+assert radio.channel_hash("ab", bytes([1, 2])) == ord("a") ^ ord("b") ^ 1 ^ 2 and radio.channel_hash("", b"") == 0
+# differences(): the radio as read back over a new connection (MessageToDict, defaults included) against the profile
+def snap_of(**over):
+    s = {"id": "!8f501a20", "owner": "Mesh test Ungasan", "owner_short": "MTU", "reboot_count": 7,
+         "config": {"device": {"role": "SENSOR", "serialEnabled": True, "rebroadcastMode": "ALL"},
+                    "position": {"fixedPosition": True, "gpsMode": "NOT_PRESENT"},
+                    "lora": {"region": "SG_923", "usePreset": True, "modemPreset": "LONG_FAST", "channelNum": 19}},
+         "module_config": {"telemetry": {"environmentMeasurementEnabled": True, "environmentUpdateInterval": 900}},
+         "channels": {0: {"role": "PRIMARY", "name": "planetai", "psk": base64.b64decode(fleet["primary"]["psk"]), "uplink": False, "downlink": False, "position_precision": 0},
+                      1: {"role": "SECONDARY", "name": "fabcity", "psk": base64.b64decode(fleet["fabcity"]["psk"]), "uplink": False, "downlink": False, "position_precision": 13},
+                      2: {"role": "DISABLED", "name": "", "psk": b"", "uplink": False, "downlink": False, "position_precision": 0}}}
+    s.update(over)
+    return s
+assert radio.differences(prof, fleet, snap_of(), gateway=False) == [], radio.differences(prof, fleet, snap_of(), gateway=False)
+# what 19 Oct's sensor held after --configure: owner and primary channel set, every config section at its default
+bad = snap_of(config={"device": {"role": "CLIENT", "serialEnabled": False}, "position": {"fixedPosition": False, "gpsMode": "DISABLED"},
+                      "lora": {"region": "UNSET", "usePreset": True, "modemPreset": "LONG_FAST", "channelNum": 0}},
+              module_config={"telemetry": {"environmentMeasurementEnabled": False, "environmentUpdateInterval": 0}})
+bad["channels"] = dict(bad["channels"]); bad["channels"].pop(1)
+p = radio.differences(prof, fleet, bad, gateway=False)
+assert "device.role is CLIENT, wants SENSOR" in p and "position.fixedPosition is False, wants True" in p
+assert any(x.startswith("lora.region is UNSET, wants SG_923 (a radio with no region") for x in p) and "lora.channelNum is 0, wants 19" in p
+assert "telemetry.environmentUpdateInterval is 0, wants 900" in p
+assert "channel 1 is missing (no role), wants 'fabcity' hash " + f"{radio.channel_hash('fabcity', base64.b64decode(fleet['fabcity']['psk'])):#04x} (SECONDARY)" in p, p
+# the gateway's 18–19 Oct state: the right names, an old primary key. Said by hash, never by key
+old = snap_of(); old["channels"] = dict(old["channels"]); old["channels"][0] = dict(old["channels"][0], psk=bytes(32))
+p = radio.differences(prof, fleet, old, gateway=False)
+assert len(p) == 1 and p[0].startswith("channel 0 is 'planetai' hash ") and fleet["primary"]["psk"] not in p[0], p
+assert radio.differences(prof, fleet, snap_of(owner_short="MT"), gateway=False) == ["owner_short is 'MT', wants 'MTU'"]
+assert radio.differences(prof, fleet, snap_of(), gateway=True)[0] == "channel 0 uplink/downlink is False/False, wants True"
+# int64 fields come back as text from MessageToDict; a password is never compared or said
+wifi = dict(prof, config=dict(prof["config"], network={"wifiEnabled": True, "wifiPsk": "hunter22"}))
+ws = snap_of(); ws["config"] = dict(ws["config"], network={"wifiEnabled": True, "wifiPsk": ""})
+assert radio.differences(wifi, fleet, ws, gateway=False) == []
+assert radio.differences(dict(prof, module_config={"telemetry": {"environmentUpdateInterval": 900}}), fleet,
+                         snap_of(module_config={"telemetry": {"environmentUpdateInterval": "900"}}), gateway=False) == []
+print("radio provision: ok")
+
 try:
     import meshtastic  # noqa: F401  (the protobufs the channel URL and the profile reader need)
 except ImportError:
     print("radio: skipped (no meshtastic package: pip3 install --user meshtastic)")
     raise SystemExit(0)
-import radio
 import sources
 
 # ---- the frequency slot: SG_923 is 917–925, Indonesia allows 920–923, LONG_FAST is 250 kHz wide
