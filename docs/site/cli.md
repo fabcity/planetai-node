@@ -53,7 +53,7 @@ apply here or has not had its first poll yet:
   ✓ Your own sensors                         4 min ago · inside only; one outside would tell the house from the street
   ✗ Alerts on your phone (Telegram)          not set up
       → Connect Telegram, two minutes: planetai telegram
-  ✓ Air stations nearby (Bali Air Dispatch)  12 min ago
+  ✓ Air stations nearby                      12 min ago
   ✓ Weather (Open-Meteo)                     12 min ago
   ✗ Satellite air (CAMS)                     no reading in two days · last error: 429 Too Many Requests
       → CAMS (through Open-Meteo) has not answered in three hours. Is the internet up? planetai logs names the error.

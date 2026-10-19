@@ -227,6 +227,25 @@ while IFS= read -r line; do
 done < .env.example
 [[ $NEW -eq 0 ]] && echo "   nothing new" || warn "${NEW} new setting(s) added with defaults — review .env"
 
+# 5b. a source that left the core for a pack stays on where it was on. Bali Air Dispatch became packs/bali-air-dispatch
+# (after v0.82.3): a node that lists its packs, in .env or in Set up (a `settings` row wins), gets it added to that list
+# when its switch is on, or it would lose the ring on this update. An empty list is every pack and needs nothing.
+pq() { docker compose exec -T db psql -U planetai -tAc "$1" planetai 2>/dev/null | tr -d '[:space:]'; }
+badon="$(pq "SELECT value FROM settings WHERE key = 'BAD_ENABLED'")"
+[[ -z "$badon" ]] && badon="$(sed -n 's/^BAD_ENABLED=\([0-9]*\).*/\1/p' .env | tail -1)"
+if [[ "$badon" == 1 ]]; then
+  pe="$(pq "SELECT value FROM settings WHERE key = 'PACKS_ENABLED'")"
+  if [[ -n "$pe" && ",$pe," != *,bali-air-dispatch,* ]]; then
+    pq "UPDATE settings SET value = value || ',bali-air-dispatch' WHERE key = 'PACKS_ENABLED'" >/dev/null
+    echo "   + bali-air-dispatch in the packs Set up lists (Bali Air Dispatch is a pack now)"
+  fi
+  pe="$(sed -n 's/^PACKS_ENABLED=\([^#[:space:]]*\).*/\1/p' .env | tail -1)"
+  if [[ -n "$pe" && ",$pe," != *,bali-air-dispatch,* ]]; then
+    sed -i.bak "s|^PACKS_ENABLED=${pe}|PACKS_ENABLED=${pe},bali-air-dispatch|" .env && rm -f .env.bak
+    echo "   + bali-air-dispatch in PACKS_ENABLED in .env (Bali Air Dispatch is a pack now)"
+  fi
+fi
+
 # 6. rebuild and restart
 say "rebuilding"
 spin "building the image (pip installs; a minute or two)" docker compose build app || die "the image did not build; the node keeps running the version it had. See $ULOG"

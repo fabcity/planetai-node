@@ -62,24 +62,9 @@ THINGDATA_SCALE:
 THINGDATA_MAX:
   default: "5000"
   help: "Refuse to count a collection larger than this, rather than report a truncated total as a total."
-BAD_ENABLED:
-  default: "1"
-  help: "---- reference / context sources (public data around you) ---- Bali Air Dispatch — island-wide aggregator for Bali. Set 0 outside Bali. (OpenAQ adapter for elsewhere: planned.)"
-BAD_RADIUS_KM:
-  default: "15"
-  help: "---- reference / context sources (public data around you) ---- Bali Air Dispatch — island-wide aggregator for Bali. Set 0 outside Bali. (OpenAQ adapter for elsewhere: planned.)"
-BAD_MIN_SEPARATION_M:
-  default: "150"
-  help: "The ring is other people's stations. These three keep this node's own kit from entering it a second time: how close a station has to be to this node before it is assumed to be our own hardware, station ids to drop by hand, and whether stations the archive suspects are indoors come through at all."
-BAD_EXCLUDE:
-  default: ""
-  help: "The ring is other people's stations. These three keep this node's own kit from entering it a second time: how close a station has to be to this node before it is assumed to be our own hardware, station ids to drop by hand, and whether stations the archive suspects are indoors come through at all."
-BAD_INCLUDE_INDOOR:
-  default: "0"
-  help: "The ring is other people's stations. These three keep this node's own kit from entering it a second time: how close a station has to be to this node before it is assumed to be our own hardware, station ids to drop by hand, and whether stations the archive suspects are indoors come through at all."
 POLL_SECONDS:
   default: "300"
-  help: "The ring is other people's stations. These three keep this node's own kit from entering it a second time: how close a station has to be to this node before it is assumed to be our own hardware, station ids to drop by hand, and whether stations the archive suspects are indoors come through at all."
+  help: "---- reference / context sources (public data around you) ---- Public stations around you come as packs: packs/bali-air-dispatch in Bali (presets/bali.env turns it on)."
 SC_USER:
   default: ""
   help: "---- integrations ---- Discover every kit in a Smart Citizen account instead of listing ids. They are all yours; indoor or outdoor comes from each kit's own setting. SC_EXCLUDE leaves out kits that belong to another site."

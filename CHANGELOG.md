@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- **Bali Air Dispatch is a pack, `bali-air-dispatch`, and the core names no network of public stations** (Tomas,
+  19 Oct: "it should be a pack"). Nothing changes on a Bali node: the stations keep their ids (`bad-…`), their history
+  and their settings (`BAD_ENABLED`, `BAD_RADIUS_KM`, …, now in the pack's card under Set up › Packs). `planetai update`
+  adds the pack to a node's `PACKS_ENABLED` list when the node keeps one and has `BAD_ENABLED=1`. It runs without
+  `PACKS_ALLOW_CODE`: an official pack that names its own switch runs its code when that switch is on (the first step
+  of decision A in the sensors spec); a wild pack still needs the flag. Outside Bali the pack is off and "Air stations
+  nearby" in `planetai doctor` and Set up no longer names Bali; inside Bali's box with it off, the fix names the pack.
+  `GET /nearby`, the ring on the map and its footprint read whichever pack declares `stations:`. Set up draws any
+  pack's `…_ENABLED` key as a switch.
+
 ## v0.82.3 — 2026-10-19 — Radios that keep their settings, and every node told a release is out
 
 - **A provisioned radio holds its profile, and the check reads the radio, not a copy.** On firmware 2.7.26 (node #1,

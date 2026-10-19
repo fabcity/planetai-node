@@ -1,22 +1,25 @@
 # Packs that ship
 <!-- checked: v0.82.3 -->
 
-Eighteen core packs ship in `packs/` in v0.82: nine data packs and nine code packs. Wild packs, written for one
+Nineteen core packs ship in `packs/`: nine data packs and ten code packs. Wild packs, written for one
 place and kept by their authors, are listed at [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs) and added with `planetai packs add`. Between them they hold
 everything the node knows about a place. No rule in `app/` says what PM2.5 means for a household, what a hot night is, where
 the sea starts or where the nearest fab lab is; the air, the heat, the coast, the land, the repair commons and
-the nearest workshop are all in here, as SQL and YAML, and in nine cases as an adapter too. How a pack is
+the nearest workshop are all in here, as SQL and YAML, and in ten cases as an adapter too. How a pack is
 built, loaded and linted is on [Packs](packs.md); this page is what each shipped pack does in v0.82.
 
 A pack is `data` if its folder has no `adapter.py`, and `code` if it has one. The `kind:` line in `pack.yaml`
 is documentation; the presence of the file is what the loader reads. Code packs load only with
-`PACKS_ALLOW_CODE=1`, `make` also needs `MAKE_ENABLED=1`, and `fire` also needs `FIRE_ENABLED=1`.
+`PACKS_ALLOW_CODE=1`, `make` also needs `MAKE_ENABLED=1`, and `fire` also needs `FIRE_ENABLED=1`. The one
+exception is `bali-air-dispatch`: an official pack that names its own switch (`switch: BAD_ENABLED`) runs on
+that switch alone, without `PACKS_ALLOW_CODE` (the first step of decision A in the sensors spec, PR #262).
 
 | pack | kind | domain | rules | report | cells | scripts | settings |
 |---|---|---|---|---|---|---|---|
 | `air-quality` | data | air | 4 act, 2 warn; and the event engine's 3 act, 1 warn | — | 3 | — | — |
 | `heat` | data | heat | 2 act, 1 info; and the event engine's 3 act | — | 1 | — | — |
-| `nearby` | data | air | 1 act, 1 info | `alone` | — | `stations` `status` `verify` `backfill` | `BAD_*` |
+| `bali-air-dispatch` | code | air | none | — | — | — | `BAD_ENABLED`, `BAD_RADIUS_KM`, `BAD_MIN_SEPARATION_M`, `BAD_EXCLUDE`, `BAD_INCLUDE_INDOOR` |
+| `nearby` | data | air | 1 act, 1 info | `alone` | — | `stations` `status` `verify` `backfill` | `BAD_BACKFILL_DAYS`; the ring's are `bali-air-dispatch`'s |
 | `season` | data | air | 1 info | `record` | — | `window` | — |
 | `insight` | data | cross-domain | 2 info | `digest` | — | — | — |
 | `trust` | data | cross-domain | 3 info | — | — | — | — |
@@ -181,6 +184,54 @@ calibration rests on five dry-season days at one house with a maximum AT of 36.5
 the normal and has not yet met the abnormal. To move it, change the one `>= 35` in `heat_stress_now` to near the
 90th percentile of your hottest indoor sensor.
 
+## bali-air-dispatch
+
+The island's public air stations around this node, from Bali Air Dispatch: eight networks (Nafas, IQAir,
+PurpleAir, AQICN, OpenAQ, AirGradient, Smart Citizen, Airly) in one key-free archive. Stored as other people's
+stations (`local=false`, at any distance), so the node can tell the lane from the island. Bali only. Until the
+release after v0.82.3 this was a core source in `app/sources.py`; the move kept the sensor ids (`bad-<station>`),
+the source (`baliairdispatch`) and the settings, so a node's history carries on.
+
+| | |
+|---|---|
+| Kind | code, run by its own switch |
+| Domain | `air` |
+| Requires node | `>=0.82.3` |
+| Metrics | `pm25`, `pm25_raw`, `pm10`, `pm1`, `temp`, `humidity`, `aqi` |
+| Scales | community |
+| Sources | `environmental/community/bali-air-dispatch` |
+| Needs | network to `baliairdispatch.com`; `NODE_LAT` and `NODE_LON` |
+
+It declares `stations:` in its `pack.yaml`, which is how the node's "Air stations nearby" source, `GET /nearby`
+and the ring on the map find it without naming it: a node inside its box (south Bali to north Bali) with the pack
+off is told to turn it on, and a node anywhere else is told nothing.
+
+### Settings
+
+| setting | default | meaning |
+|---|---|---|
+| `BAD_ENABLED` | `0`; the bali preset `1` | the pack's switch. It runs the adapter without `PACKS_ALLOW_CODE` |
+| `BAD_RADIUS_KM` | `15`; the bali preset `8` | ring radius. 15 is the tightest radius that clears `nearby`'s two-station floor at node #1 with room to spare; 25 km reaches Canggu, a different airshed |
+| `BAD_MIN_SEPARATION_M` | `150` | anything closer to the node than this is excluded as the node's own kit |
+| `BAD_EXCLUDE` | — | station ids excluded by hand |
+| `BAD_INCLUDE_INDOOR` | `0` | `1` keeps stations the archive marks `suspected_indoor` |
+
+It also reads `SC_USER`, `SC_DEVICES`, `SC_EXCLUDE` and `AIRGRADIENT_HOSTS`, to know which devices this node
+already polls (the identity exclusion).
+
+### Know this
+
+Keeping the node's own kit out of its own ring is done here, by four rules: identity (a device this node polls, at
+any distance), proximity (within `BAD_MIN_SEPARATION_M`), by hand (`BAD_EXCLUDE`), and one-device-two-networks (23
+AirGradient units mirrored by OpenAQ, collapsed on same name within the separation radius). Ownership is not the
+test; whether this node already measures that device is. One function, `verdicts()`, decides, and `nearby`'s
+scripts and `GET /nearby?audit=1` call the same one.
+
+No rules and no cells: peers never drive an alert, and `nearby` and `season` read what it stores. Its channels are
+in its own `channels.yml`. On `planetai update` a node that lists its packs (`PACKS_ENABLED`, in `.env` or Set up)
+with `BAD_ENABLED=1` gets `bali-air-dispatch` added to the list. Attribution: Bali Air Dispatch,
+baliairdispatch.com, and the network named in each row's `source`.
+
 ## nearby
 
 The ring: other people's air sensors around this node, from Bali Air Dispatch. One kit cannot tell a fire in the
@@ -231,37 +282,29 @@ to refuse.
 
 ### Settings
 
-The pack declares no `env:` of its own; its scripts and the adapter in the core read these from `.env`.
+The pack declares no `env:` of its own. The ring is `bali-air-dispatch`'s, and so are its settings (`BAD_*`, above);
+its scripts read them too. One more is its own:
 
 | setting | default | meaning |
 |---|---|---|
-| `BAD_RADIUS_KM` | `15` | ring radius. 15 is the tightest radius that clears the two-station floor at node #1 with room to spare; 25 km reaches Canggu, a different airshed |
-| `BAD_MIN_SEPARATION_M` | `150` | anything closer to the node than this is excluded as the node's own kit |
-| `BAD_EXCLUDE` | — | station ids excluded by hand |
-| `BAD_INCLUDE_INDOOR` | `0` | `1` keeps stations the archive marks `suspected_indoor` |
 | `BAD_BACKFILL_DAYS` | `0` | history to pull on `backfill` |
-| `BAD_ENABLED` | `1` in `.env.example`, `0` when absent | whether the core polls the archive at all |
-| `NODE_LAT`, `NODE_LON` | — | the point the ring is measured from |
-| `SC_USER`, `SC_DEVICES`, `AIRGRADIENT_HOSTS` | — | read to know which devices this node already polls (the identity exclusion) |
 
 ### Know this
 
-The pack has no adapter. The fetch lives in `app/sources.py` and has since v0.11; a second one would put every
-station in the node twice. Keeping the node's own kit out of its own ring is also done there, by four rules:
-identity (a device this node polls, at any distance), proximity (within `BAD_MIN_SEPARATION_M`), by hand
-(`BAD_EXCLUDE`), and one-device-two-networks (23 AirGradient units mirrored by OpenAQ, collapsed on same name within
-the separation radius). Ownership is not the test; whether this node already measures that device is.
+The pack has no adapter. The fetch is `bali-air-dispatch`'s (in `app/sources.py` from v0.11 until the release after
+v0.82.3); a second one would put every station in the node twice. Keeping the node's own kit out of its own ring is
+done there too.
 
-There is no `channels.yml` either: the pack adds no metric, and Bali Air Dispatch's channels are already declared
-in `config/channels.yml`. Elsewhere the same three rules want an OpenAQ v3 backend behind the same shape.
+There is no `channels.yml` either: the pack adds no metric, and Bali Air Dispatch's channels are declared by
+`bali-air-dispatch`. Elsewhere the same three rules want an OpenAQ v3 backend behind the same shape.
 Attribution: Bali Air Dispatch, baliairdispatch.com, and the network named in each row's `source`.
 
 ## season
 
 The other half of `nearby`. That pack asks where the bad air is coming from, right now, across space. This one
 asks across time: is this week worse than the weeks before it, or is this what the air here does? A data pack,
-two SQL rules and a script, with no fetch of its own: it reads the Bali Air Dispatch ring the core already
-stores. Written for Bali, from the archive's daily record January 2025 to 16 September 2026.
+two SQL rules and a script, with no fetch of its own: it reads the Bali Air Dispatch ring the
+`bali-air-dispatch` pack stores. Written for Bali, from the archive's daily record January 2025 to 16 September 2026.
 
 | | |
 |---|---|
@@ -271,7 +314,7 @@ stores. Written for Bali, from the archive's daily record January 2025 to 16 Sep
 | Metrics | `pm25` |
 | Scales | community |
 | Sources | `environmental/community/bali-air-dispatch` |
-| Needs | the core's Bali Air Dispatch source on (`BAD_ENABLED=1`) and 68 days of the ring in this node's own database. `planetai run nearby backfill 90` fetches that depth from the archive once |
+| Needs | the `bali-air-dispatch` pack on (`BAD_ENABLED=1`) and 68 days of the ring in this node's own database. `planetai run nearby backfill 90` fetches that depth from the archive once |
 
 The comparison is paired: each ring station's last 7 days against its own preceding 60, and the median of
 those differences. A station counts only if it holds at least 4 days in the week and 20 in the baseline. The

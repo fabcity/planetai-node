@@ -1,12 +1,12 @@
 # Packs
 
 A pack is a folder in `packs/`. It carries rules, Index cells, or an adapter for a new source. The core knows nothing
-about air, water or heat; the packs do. Eighteen ship in `packs/`.
+about air, water or heat; the packs do. Nineteen ship in `packs/`.
 
 ```
 packs/<id>/
   pack.yaml     id, name, description, kind (data | code), version, requires:, domain:, sources:, needs:, pip:, env:,
-                secrets:, agent_scripts:, readouts:, sections:, (read by people only) author:, attribution:,
+                secrets:, switch:, stations:, agent_scripts:, readouts:, sections:, (read by people only) author:, attribution:,
                 metrics:, scales:, thresholds:
   rules.yml     alerts: SQL that returns rows, one message per row
   cells.yml     Index cells: SQL that returns one `value`
@@ -174,6 +174,34 @@ asks for a node newer than the latest release.
 
 `adapter.py` with `fetch(hc) -> (sensors, readings)`, the same contract as `app/sources.py`. Off unless
 `PACKS_ALLOW_CODE=1`: a pack runs with the node's privileges, so read it first.
+
+**Code in official packs.** A pack shipped in this repository (signed with the release, so it has no `.wild`) that
+names its own on-switch runs its `adapter.py` when that switch is `1`, without `PACKS_ALLOW_CODE`:
+
+```yaml
+switch: BAD_ENABLED        # the pack's own key, declared under env:, off by default
+```
+
+This is the first step of decision A in the sensors spec (PR #262: "official packs run code by default"), taken only for
+packs that can switch themselves off. An official pack without a `switch:` still waits for `PACKS_ALLOW_CODE=1`,
+because forecast, place, surface-heat and coast have no switch of their own and would start on every node. A wild
+pack never runs code without the flag, whatever it declares.
+
+**Public stations.** A pack that reads a network of other people's stations around the node says so, and the node's
+"Air stations nearby" source, `GET /nearby` and the ring's footprint read it instead of naming a network:
+
+```yaml
+stations:
+  source: baliairdispatch          # the `source` its sensors carry
+  prefix: bad-                     # its sensor ids start with this, for the station's link and attribution
+  radius: BAD_RADIUS_KM            # the key that sets how far the ring reaches
+  box: [-9.2, -8.0, 114.4, 115.8]  # south, north, west, east: where the network has stations
+  url: https://baliairdispatch.com/
+  attribution: ["Bali Air Dispatch, baliairdispatch.com"]
+```
+
+A node inside `box` with the pack off is told to turn it on; a node outside every box is told nothing.
+`packs/bali-air-dispatch` is the first.
 
 Dependencies and settings are declared in `pack.yaml`; `planetai packs` lists what is loaded and what is missing, and
 `planetai packs install` installs the libraries into the image once and
@@ -357,7 +385,8 @@ reaches no issue and is not named as deliberately outside them fails `tests/test
 | air-quality | data | air | PM2.5 rules (inside/outside, spikes), cells |
 | heat | data | heat | apparent temperature, heat stress, nights over 28 °C, a Social cell |
 | insight | data | air (`agreement`, `rhythm`) | the air three ways, contributed to every report; daily agreement between indoor, street and model |
-| nearby | data | air | the ring of other people's stations: is this address worse than everywhere, or is everywhere worse — no cell, by design |
+| bali-air-dispatch | code | air | the island's public stations as this node's ring, from Bali Air Dispatch (eight networks, key-free) — Bali only, off until `BAD_ENABLED=1`, which `presets/bali.env` sets; no alert, no cell |
+| nearby | data | air | the ring of other people's stations: is this address worse than everywhere, or is everywhere worse — no cell, by design; reads what `bali-air-dispatch` stores |
 | season | data | air | the same ring across time: is this week worse than its own preceding two months, paired per station — no cell, same reason as `nearby` |
 | forecast | code | — feeds air and heat | wind and rain for the next day, from BMKG and Open-Meteo — context for the report, no alerts, no cell |
 | trust | data | — the instruments | coverage, frozen channels, collocated disagreement — needs a week of a sensor before it names it; all three `info`, no cell, by design |

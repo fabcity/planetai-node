@@ -299,7 +299,8 @@ the node's own sensors it doubts.
 "Whose word, over how much ground" covers with H3 cells the six footprints this node already declares,
 from `COAST_MAX_KM` for the sea to the three decimals `/health` rounds a position to. Each produces one
 number, and its card says how many cells of the rung you are on that one number has to cover. The other
-four are `BAD_RADIUS_KM`, `EARTH_RADIUS_M`, `PLACE_RADIUS_M` and `LOCAL_RADIUS_M`. The node computes the
+four are the stations pack's radius (`BAD_RADIUS_KM` in Bali; no ring is claimed without one), `EARTH_RADIUS_M`,
+`PLACE_RADIUS_M` and `LOCAL_RADIUS_M`. The node computes the
 coverings and sends them in `GET /issues` as `geometry.claims`, widest first.
 
 ### Act
@@ -392,7 +393,7 @@ somebody setting up a node needs them:
 | tab | what is in it |
 |---|---|
 | **Basics** | what this place watches, in order; what kind of node it is; its language; how the page opens. Its name, city, position and time zone are one **Read at start** table: edit `.env`, then `planetai restart` |
-| **Sources** | sensors and data: Smart Citizen, AirGradient and PurpleAir hosts, the mesh radios, Bali Air Dispatch, Open-Meteo, open-data portals. A source that comes as a pack is set in its card under Packs |
+| **Sources** | sensors and data: Smart Citizen, AirGradient and PurpleAir hosts, the mesh radios, Open-Meteo, open-data portals. A source that comes as a pack (Bali Air Dispatch among them) is set in its card under Packs |
 | **Alerts** | alerts and reports: Telegram chat ids, when reports go out, what interrupts, quiet hours, which engine sends the heat and air messages (`ALERT_ENGINE`), how many it may send a day (`ALERT_MAX_PER_DAY`), what this home has (`HOME_HAS`), mesh alerts, whether an act needs a decision first |
 | **Model** | ask and model: which model answers, on the ask pane and on Telegram alike; the remote and online models |
 | **Packs** | which packs load, and one card per pack with its switch, what it is, and its own settings; a key the pack lists under `secrets:` is masked once saved |

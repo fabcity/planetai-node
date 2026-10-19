@@ -4,7 +4,7 @@
 #                [--sc 19880] [--airgradient host,host] [--purpleair ip] [--indoor] [--no-bad] [--no-bootstrap]
 #   A node needs coordinates. Sensors are optional: with none, it still bootstraps 92 days of CAMS air quality
 #   and NASA POWER climatology for its location — free, no key, anywhere on earth.
-#   pick at least one sensor flag. --indoor marks LAN sensors as indoor. --no-bad disables the Bali Air Dispatch reference (outside Bali).
+#   pick at least one sensor flag. --indoor marks LAN sensors as indoor. --no-bad keeps the bali-air-dispatch pack off (it is off unless --preset bali turns it on).
 # Targets: macOS (Apple Silicon/Intel; OrbStack or Docker Desktop), Debian/Ubuntu/Raspberry Pi OS 64-bit, Arch, Fedora, Windows via WSL2 (Ubuntu).
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
