@@ -70,7 +70,7 @@ The full list of what is declared and not read is under [Known gaps](#known-gaps
 ### Keys read only from the environment
 
 `ADMIN_TOKEN`, `POSTGRES_PASSWORD`, `DATABASE_URL`, `OLLAMA_URL`, `AGENT_MODEL`, `MQTT_USER`, `MQTT_PASS`,
-`RETICULUM_URL`, `OVERPASS_URL` and `BAD_BACKFILL_DAYS` are not runtime settings, not bootstrap settings and
+`RETICULUM_URL`, `OVERPASS_URL` and `BAD_BACKFILL_DAYS` (the `nearby` pack's backfill size) are not runtime settings, not bootstrap settings and
 not declared by any pack, so `GET /settings` does not list them and `planetai config set` says each is not a
 setting this node has. Edit them in `.env` and restart. The tables below mark them `env only`.
 
@@ -225,12 +225,6 @@ data, what it loads.
 | `AIRGRADIENT_HOSTS` | blank | comma-separated hostnames or IPs | AirGradient ONE or Open Air units on your WiFi. In v0.82 the key only keeps these units out of the Bali Air Dispatch ring; see [Known gaps](#known-gaps-in-v082). | runtime |
 | `PURPLEAIR_HOSTS` | blank | comma-separated IPs | PurpleAir units on your WiFi. Use the IP; the `.local` name is unreliable. Nothing reads this key in v0.82. | runtime |
 | `SENSOR_INDOOR` | `0` | `1`, `0` | Whether the LAN sensors above are indoors. Smart Citizen carries this itself. Nothing reads this key in v0.82. | runtime · public |
-| `BAD_ENABLED` | `0`; `.env.example` and the bali preset ship `1` | `1`, `0` | Bali only: the island's public stations from Bali Air Dispatch as outdoor reference. Needs `NODE_LAT`. `planetai setup` sets `0` outside Bali. | runtime · public |
-| `BAD_RADIUS_KM` | `15`; bali preset `8` | km | How far out the ring of other people's stations reaches. Also `/nearby.radius_km`. | runtime · public |
-| `BAD_MIN_SEPARATION_M` | `150` | metres | A station closer than this to the node is assumed to be the node's own hardware, not a neighbour. | runtime · public |
-| `BAD_EXCLUDE` | blank | comma-separated station ids | Stations that are ours and the identity and distance rules missed. | runtime · public |
-| `BAD_INCLUDE_INDOOR` | `0` | `1`, `0` | `1` keeps stations the archive suspects are indoors. Off by default: they are not the ring. | runtime · public |
-| `BAD_BACKFILL_DAYS` | `0` | days | Size of the one-off history fetch by `planetai run nearby backfill`. Off by default: it is a large fetch against someone else's server. The script's argument overrides it. | env only |
 | `OPENMETEO_ENABLED` | `1` | `1`, `0` | Open-Meteo weather and CAMS air model point samples at the node's coordinates, two adapters. Free, key-free, anywhere. Context from the planet scale, never rolled into an index cell. Needs `NODE_LAT`. | runtime · public |
 | `BOOTSTRAP` | `1` | `1`, `0` | On first start, fill the database from 92 days of CAMS history and NASA POWER climatology at these coordinates. Skipped once `cams-point` history older than two days exists. `0` starts empty. | env only |
 | `CKAN_PORTALS` | blank | `slug=url,slug=url` | CKAN open-data portals to watch. One adapter reads any CKAN portal; feeds the `Governance\|City` cell. The presets fill this per city. | runtime · outward |
@@ -368,10 +362,16 @@ each and `planetai storage set` changes the backups and the pictures folder.
 Every key a `pack.yaml` declares, with the default it ships. All are kind `pack`: listed by
 `GET /settings` in group `packs` and set like a runtime key; the pack's own code reads them from the
 environment, where the node puts the database value. A code pack reads none of them until
-`PACKS_ALLOW_CODE=1`.
+`PACKS_ALLOW_CODE=1`, unless it is an official pack whose own switch (`switch:` in its `pack.yaml`) is `1`:
+`bali-air-dispatch` runs on `BAD_ENABLED=1` alone.
 
 | Setting | Pack | Default | Meaning |
 |---|---|---|---|
+| `BAD_ENABLED` | bali-air-dispatch | `0`; the bali preset `1` | The pack's own switch: the island's public stations from Bali Air Dispatch as this node's ring. Bali only. Needs `NODE_LAT`. Before the release after v0.82.3 this was a core setting with the same name, so a node that had it keeps it. |
+| `BAD_RADIUS_KM` | bali-air-dispatch | `15`; the bali preset `8` | How far out the ring of other people's stations reaches. Also `/nearby.radius_km`. |
+| `BAD_MIN_SEPARATION_M` | bali-air-dispatch | `150` | A station closer than this to the node is assumed to be the node's own hardware, not a neighbour. |
+| `BAD_EXCLUDE` | bali-air-dispatch | blank | Station ids, comma-separated, that are ours and the identity and distance rules missed. |
+| `BAD_INCLUDE_INDOOR` | bali-air-dispatch | `0` | `1` keeps stations the archive suspects are indoors. Off by default: they are not the ring. |
 | `MAKE_ENABLED` | make | `0` | The make pack's own switch, off by default and on purpose: the Fab Lab Network directory it reads is not openly licensed, each lab keeps copyright in its own record, and the Fab City Foundation's decision to read it covers the Foundation, not you. Read [packs/make/README.md](../../packs/make/README.md), then set `1`. It needs `PACKS_ALLOW_CODE=1` too. |
 | `MAKE_RADIUS_KM` | make | `50` | How far to look for a fab lab, in km. 50 is a morning's travel in most places. `planetai doctor` reports how many lie inside it. |
 | `MAKE_SOURCE` | make | `archive` | `archive` reads the dated monthly snapshots, which can be pinned; `live` reads api.fablabs.io, whose own root page says it has been removed. |
@@ -409,6 +409,8 @@ environment, where the node puts the database value. A code pack reads none of t
 
 `OVERPASS_URL` (default `https://overpass-api.de/api/interpreter`, the place pack's Overpass endpoint) is
 read by the place pack but declared in no `pack.yaml`, so it is `env only`.
+`BAD_BACKFILL_DAYS` (default `0`) sizes the one-off history fetch by `planetai run nearby backfill`; off by default
+because it is a large fetch against someone else's server, and the script's argument overrides it. `env only`.
 
 ## Presets
 
@@ -424,7 +426,7 @@ preset guesses `NODE_ISSUES`: change it, because what matters here is decided by
 | `NODE_LON` | `115.2167` | `2.1686` | `-71.0589` | `77.2090` | `4.2658` | `-70.6693` |
 | `NODE_TZ` | `Asia/Makassar` | `Europe/Madrid` | `America/New_York` | `Asia/Kolkata` | `Europe/Madrid` | `America/Santiago` |
 | `ALERT_LOCALE` | `id` | `es` | `en` | `en` | `es` | `es` |
-| `BAD_ENABLED` | `1` | `0` | `0` | `0` | `0` | `0` |
+| `BAD_ENABLED` | `1` | not set | not set | not set | not set | not set |
 | `BAD_RADIUS_KM` | `8` | not set | not set | not set | not set | not set |
 | `CKAN_PORTALS` | `bali-satu-data=https://balisatudata.baliprov.go.id` | `open-data-bcn=https://opendata-ajuntament.barcelona.cat/data` | `analyze-boston=https://data.boston.gov` | blank | `menorca=https://intranet.caib.es/opendatacataleg` | `datos-gob-cl=https://datos.gob.cl` |
 | `NODE_ISSUES` | `air,heat,land,coast` | `heat,air` | `heat,air` | `air,heat` | `coast,heat,air,land` | `air,heat` |

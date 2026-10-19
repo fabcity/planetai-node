@@ -16,7 +16,7 @@ One row per thing that produces readings, and per place the node was told about.
 | column | type | meaning |
 |---|---|---|
 | `sensor_id` | text, primary key | `<source>-<upstream id>`: `sc-19880`, `bad-pa-46949`; a child's as `<child>/<sensor_id>`; a fab lab's as `lab-<slug>`. Never reassigned |
-| `source` | text | the adapter: `smartcitizen`, `baliairdispatch`, `airgradient`, `open-meteo`, `open-meteo-cams`, `nasa-power`, `ckan`, `meshtastic`, `child`, `contributor`, `things`, or a pack's (`fablabs-io` for `make`) |
+| `source` | text | the adapter: `smartcitizen`, `airgradient`, `open-meteo`, `open-meteo-cams`, `nasa-power`, `ckan`, `meshtastic`, `child`, `contributor`, `things`, or a pack's (`fablabs-io` for `make`, `baliairdispatch` for `bali-air-dispatch`) |
 | `name` | text | the place, as the person named it: the `room` when the household set one, else the platform's name |
 | `room` | text | the household's word for where the sensor is (schema 0.61, `PATCH /sensors/{sid}`); a trigger makes it the `name` whatever writes the row |
 | `source_name` | text | the platform's own name, kept while a `room` stands in for it |

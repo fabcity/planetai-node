@@ -138,9 +138,9 @@ curl -s -H "Authorization: Bearer $(grep '^ADMIN_TOKEN=' ~/planetai/.env | cut -
   localhost:8080/sources/environmental/community/bali-air-dispatch
 ```
 
-The answer is the entry as filed: `"adapter": "core:baliairdispatch"`, `"feeds_cells":
-["Environmental|City"]`, `"auth": "none"`, the licence text, and notes that name every reader (the core's
-`baliairdispatch()` ingests the ring, `packs/nearby` verifies it, `packs/season` reads it over 68 days).
+The answer is the entry as filed: `"adapter": "pack:bali-air-dispatch"`, `"feeds_cells":
+["Environmental|City"]`, `"auth": "none"`, the licence text, and notes that name every reader (the
+`bali-air-dispatch` pack ingests the ring, `packs/nearby` verifies it, `packs/season` reads it over 68 days).
 The same text is in `data/sources/data/environmental/community/bali-air-dispatch.yaml`. A slug that is not
 in the pin answers 404 and names the pin.
 

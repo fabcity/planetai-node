@@ -1378,12 +1378,13 @@ def health_sources(backup_age: float | None = None):
 
     One pass over two days of readings, youngest per source and kind, bounded by now(): the forecast pack writes
     rows timestamped in the future, and one of those would make any source look as if it had just spoken."""
+    ring = packs.stations()
     seen = q("""SELECT s.source, (s.custody AND s.kind IN ('sensor', 'child')) AS own, s.indoor,
                        extract(epoch FROM now() - max(r.ts)) / 60 AS minutes
                 FROM readings r JOIN sensors s USING (sensor_id)
                 WHERE r.ts > now() - interval '2 days' AND r.ts <= now()
-                  AND ((s.custody AND s.kind IN ('sensor', 'child')) OR s.source IN ('baliairdispatch', 'open-meteo', 'open-meteo-cams'))
-                GROUP BY 1, 2, 3""")
+                  AND ((s.custody AND s.kind IN ('sensor', 'child')) OR s.source = ANY(%s))
+                GROUP BY 1, 2, 3""", ["open-meteo", "open-meteo-cams"] + [x["source"] for x in ring])
     own_known = bool(q("SELECT 1 FROM sensors WHERE custody AND kind IN ('sensor', 'child') LIMIT 1"))
     cfg = {k: settings.get(k, "") for f in fundamentals.FUNDAMENTALS for k in f["settings"]}
     cfg.update(OPENMETEO_ENABLED=settings.get("OPENMETEO_ENABLED", "1"), NODE_LAT=os.getenv("NODE_LAT", ""),
@@ -1392,7 +1393,7 @@ def health_sources(backup_age: float | None = None):
     here = backup_age is not None or fundamentals.backup_is_here()
     age = fundamentals.backup_age() if backup_age is None else (None if backup_age < 0 else backup_age)
     rows = fundamentals.assess(cfg, [{**r, "minutes": float(r["minutes"])} for r in seen], state["polls"] > 0,
-                               state.get("last_error"), tg_state["ok"], age, here, own_known)
+                               state.get("last_error"), tg_state["ok"], age, here, own_known, ring)
     return {"ok": not any(r["ok"] is False for r in rows), "missing": sum(r["ok"] is False for r in rows), "sources": rows}
 
 
@@ -1701,6 +1702,8 @@ def nearby(audit: bool = False):
     false and it leaves the ring's numbers within two hours on its own. The row is left alone rather than deleted:
     what it measured while it was in the ring was still measured.
     """
+    on = [p for p in packs.stations() if p["on"]]
+    src = [p["source"] for p in on]
     ring = q("""
         SELECT s.sensor_id, s.name, s.lat, s.lon, s.indoor, s.meta->>'network' AS network,
                round((s.meta->>'km')::numeric, 2) AS km,
@@ -1709,11 +1712,11 @@ def nearby(audit: bool = False):
                (st.silent_minutes IS NOT NULL AND st.silent_minutes < 120) AS reporting
         FROM sensors s LEFT JOIN stats st
           ON st.sensor_id = s.sensor_id AND st.metric = 'pm25'
-        WHERE s.source = 'baliairdispatch' AND NOT s.local
+        WHERE s.source = ANY(%s) AND NOT s.local
           -- a station excluded after it was stored keeps its row but stops getting readings. Drop it from the
           -- list after a day rather than leaving it on the card as a neighbour that never answers.
           AND st.last_ts > now() - interval '24 hours'
-        ORDER BY (s.meta->>'km')::numeric NULLS LAST""")
+        ORDER BY (s.meta->>'km')::numeric NULLS LAST""", src)
     shape = q("""
         WITH ring AS (
           SELECT st.mean_1h AS pm,
@@ -1721,7 +1724,7 @@ def nearby(audit: bool = False):
                     + power((st.lon - current_setting('planetai.lon')::float) * 111320
                             * cos(radians(current_setting('planetai.lat')::float)), 2)) / 1000 AS km
           FROM stats st JOIN sensors sn USING (sensor_id)
-          WHERE sn.source = 'baliairdispatch' AND NOT st.local AND NOT st.indoor AND st.kind = 'sensor' AND st.metric = 'pm25'
+          WHERE sn.source = ANY(%s) AND NOT st.local AND NOT st.indoor AND st.kind = 'sensor' AND st.metric = 'pm25'
             AND st.mean_1h IS NOT NULL AND st.silent_minutes < 120 AND st.lat IS NOT NULL),
         mine AS (
           SELECT avg(mean_1h) AS pm, count(*) AS n FROM stats
@@ -1735,32 +1738,20 @@ def nearby(audit: bool = False):
                (SELECT round(max(pm)::numeric, 1) FROM ring)                                      AS highest,
                (SELECT round(min(km)::numeric, 1) FROM ring)                                      AS nearest_km,
                (SELECT round(pm::numeric, 1) FROM mine)                                           AS mine,
-               (SELECT n FROM mine)                                                               AS mine_sensors""")
+               (SELECT n FROM mine)                                                               AS mine_sensors""", src)
     out = {"ring": ring, **(shape[0] if shape else {}),
-           "radius_km": float(settings.get("BAD_RADIUS_KM", "15")),
-           "attribution": ["Bali Air Dispatch, baliairdispatch.com",
-                           "and the network named in each station's `network` field"]}
+           "radius_km": max([float(settings.get(p["radius"], "15") or 15) for p in on if p.get("radius")] or [0.0]),
+           "attribution": [w for p in on for w in (p.get("attribution") or [])]
+           + (["and the network named in each station's `network` field"] if on else [])}
     m, med = out.get("mine"), out.get("median")
     out["mine_minus_ring"] = None if m is None or med is None else round(float(m) - float(med), 1)
     if audit:
+        out["audit"] = []
         try:
-            import sources
             hc = httpx.Client(timeout=30, headers={"user-agent": "planetai-node"})
-            rows = hc.get(sources.BAD_LATEST).json().get("readings", [])
-            ids = {int(x) for x in settings.get("SC_DEVICES", "").replace(" ", "").split(",") if x}
-            if settings.get("SC_USER", "").strip():
-                ids |= set(sources.smartcitizen_account(hc, settings.get("SC_USER").strip()))
-            own = {f"sc-{i}" for i in ids}
-            own |= {f"ag-{h.replace('.local', '').replace('airgradient_', '')}"
-                    for h in settings.get("AIRGRADIENT_HOSTS", "").replace(" ", "").split(",") if h}
-            byhand = {x for x in settings.get("BAD_EXCLUDE", "").replace(" ", "").split(",") if x}
-            lat, lon = float(os.environ["NODE_LAT"]), float(os.environ["NODE_LON"])
-            out["audit"] = [{"station_id": r["station_id"], "name": r.get("name"), "network": r.get("source"),
-                             "km": None if r.get("latitude") is None else round(sources.km(lat, lon, r["latitude"], r["longitude"]), 2),
-                             "verdict": v}
-                            for r, v in sources.bad_verdicts(rows, lat, lon, out["radius_km"], own, byhand,
-                                                             float(settings.get("BAD_MIN_SEPARATION_M", "150")),
-                                                             settings.get("BAD_INCLUDE_INDOOR", "0") == "1")]
+            for p in on:
+                mod = packs.module(p["pack"])
+                out["audit"] += mod.audit(hc) if mod and hasattr(mod, "audit") else []
         except Exception as e:  # noqa: BLE001  — a source that is down must not take the endpoint down
             out["audit_error"] = f"{type(e).__name__}: {str(e)[:160]}"
     return out

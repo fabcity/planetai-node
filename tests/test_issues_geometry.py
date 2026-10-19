@@ -108,8 +108,11 @@ class S:  # the settings module's two readers, over the preset node #1 was captu
     def get(k, d=""):
         return str(S._v.get(k, d))
 
-C = {c["key"]: c for c in G.claims(LAT, LON, S)}
-if list(c["key"] for c in G.claims(LAT, LON, S)) != ["coast", "ring", "region", "place", "yard", "room"]:
+RING = {"pack": "bali-air-dispatch", "radius": "BAD_RADIUS_KM"}   # what packs.stations() gives with the pack on
+C = {c["key"]: c for c in G.claims(LAT, LON, S, RING)}
+if [c["key"] for c in G.claims(LAT, LON, S)] != ["coast", "region", "place", "yard", "room"]:
+    fails.append("no stations pack on, no ring claimed")
+if list(c["key"] for c in G.claims(LAT, LON, S, RING)) != ["coast", "ring", "region", "place", "yard", "room"]:
     fails.append("claims are ordered widest first: coast, ring, region, place, yard, room")
 if not (2800 < C["coast"]["area_km2"] < 2830) or not (195 < C["ring"]["area_km2"] < 205):
     fails.append(f"coast ≈ 2,813 km² and ring ≈ 200 km²; got {C['coast']['area_km2']}, {C['ring']['area_km2']}")
@@ -158,7 +161,7 @@ class S0:  # a copy of S with BAD_RADIUS_KM set to 0 — S's own methods close o
         return str(S0._v.get(k, d))
 
 try:
-    C0 = {c["key"]: c for c in G.claims(LAT, LON, S0)}
+    C0 = {c["key"]: c for c in G.claims(LAT, LON, S0, RING)}
 except Exception as e:  # noqa: BLE001 — the assertion is that nothing raises
     fails.append(f"a zero radius must not raise: {e!r}")
 else:

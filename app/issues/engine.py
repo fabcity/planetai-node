@@ -83,14 +83,15 @@ METRICS = {
 }
 
 
-def _source_of(sensor_id: str) -> dict:
-    """Where a station's data comes from, read off its id the way app/sources.py assigns them."""
+def _source_of(sensor_id: str, ring: list[dict] | tuple = ()) -> dict:
+    """Where a station's data comes from, read off its id the way app/sources.py assigns them, or off the `prefix` a
+    stations pack declares (`ring` is packs.stations())."""
     if sensor_id.startswith("sc-"):
         return {"source": "smartcitizen", "url": f"https://smartcitizen.me/kits/{sensor_id[3:]}",
                 "attribution": "Smart Citizen, smartcitizen.me"}
-    if sensor_id.startswith("bad-"):
-        return {"source": "baliairdispatch", "url": "https://baliairdispatch.com",
-                "attribution": "Bali Air Dispatch, baliairdispatch.com"}
+    for p in ring:
+        if p.get("prefix") and sensor_id.startswith(p["prefix"]):
+            return {"source": p["source"], "url": p.get("url"), "attribution": ", ".join(p.get("attribution") or []) or None}
     if sensor_id.startswith("msh-"):
         return {"source": "meshtastic", "url": None, "attribution": None}
     return {"source": "unknown", "url": None, "attribution": None}
@@ -109,10 +110,11 @@ def _stations(stats: list[dict], hourly: list[dict], lat: float, lon: float, sit
     `silent` is the stations heard within SILENT_DAYS and not in the last day; they keep a row with `last_heard`,
     unless a station heard today stands at the same point."""
     import h3  # noqa: PLC0415 — only this path needs it, and geometry.py already requires it
+    ring = packs.stations()
     def row(r: dict) -> dict:
         return {"sensor_id": r["sensor_id"], "name": r.get("name"), "lat": r["lat"], "lon": r["lon"],
                 "local": bool(r.get("local")), "indoor": bool(r.get("indoor")), "kind": r.get("kind") or "sensor",
-                **_source_of(r["sensor_id"]),
+                **_source_of(r["sensor_id"], ring),
                 "km": round(h3.great_circle_distance((lat, lon), (r["lat"], r["lon"]), unit="km"), 1) if sited
                 else None,
                 "read": {}, "series": {}}
@@ -127,9 +129,10 @@ def _stations(stats: list[dict], hourly: list[dict], lat: float, lon: float, sit
                                        "silent_minutes": None if r.get("silent_minutes") is None
                                        else round(r["silent_minutes"])}
     # The archive of silence (docs/SPEC_dashboard_figures.md §3.3): a station heard in the last 30 days and not in the
-    # last day keeps its row, with when it was last heard. Unless a station heard today stands at the same point: Bali
-    # Air Dispatch relays Smart Citizen kits as bad-sc-<kit> and AirGradient ones through OpenAQ, so a relay that
-    # stopped is a second road to a kit that still reports, and listing it would call a working kit dead.
+    # last day keeps its row, with when it was last heard. Unless a station heard today stands at the same point: an
+    # archive of public stations relays kits under its own ids (Bali Air Dispatch: Smart Citizen as bad-sc-<kit>,
+    # AirGradient through OpenAQ), so a relay that stopped is a second road to a kit that still reports, and listing
+    # it would call a working kit dead.
     heard = {(round(float(s["lat"]), 5), round(float(s["lon"]), 5)) for s in by.values()}
     for r in silent or []:
         if r.get("lat") is None or r.get("lon") is None or r["sensor_id"] in by:
@@ -1467,6 +1470,7 @@ def _geometry(lat: float, lon: float, settings, stations: list[dict], peers) -> 
     """
     import h3  # noqa: PLC0415 — only this path needs it, same lazy import _stations already uses
     floor = geometry.FLOOR_RES
+    ring = next((p for p in packs.stations() if p["on"] and p.get("radius")), None)
     pub = geometry.publication()
     peer_rows = [{"cell": p.get("cell"), "res": p.get("res"), "km": p.get("km")} for p in (peers or [])]
     return {
@@ -1474,10 +1478,10 @@ def _geometry(lat: float, lon: float, settings, stations: list[dict], peers) -> 
         "ladder": geometry.ladder(lat, lon),
         "nav": geometry.plates(lat, lon, stations),
         "grain_table": geometry.grain_table(lat, lon, stations, floor_res=floor, publication_res=pub["res"]),
-        "claims": geometry.claims(lat, lon, settings),
+        "claims": geometry.claims(lat, lon, settings, ring),
         "radio": geometry.radio(lat, lon, settings, peer_rows),
         "settings": {k: settings.num(k, d) for k, d in (
-            ("LOCAL_RADIUS_M", 500), ("BAD_RADIUS_KM", 15), ("EARTH_RADIUS_M", 5000),
+            ("LOCAL_RADIUS_M", 500), *([(ring["radius"], 15)] if ring else []), ("EARTH_RADIUS_M", 5000),
             ("PLACE_RADIUS_M", 1000), ("RETICULUM_PRESENCE_RES", 3))} | {"PRESENCE_RES_FLOOR": floor},
         "source": f"h3 {h3.__version__}, computed by this node",
     }

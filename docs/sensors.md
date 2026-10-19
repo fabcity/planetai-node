@@ -56,7 +56,8 @@ until a later version adds a listener scoped to `device/sck/#`. The node stores 
 smartcitizen.me unchanged, through a queue that outlives an internet outage, so the device keeps its page there;
 add that device's platform id to `SC_EXCLUDE` or it is read twice, once direct and once from the cloud.
 
-**Bali Air Dispatch** (`BAD_ENABLED=1`, Bali). The ring: other people's stations within `BAD_RADIUS_KM`, as the
+**Bali Air Dispatch** (the `bali-air-dispatch` pack, `BAD_ENABLED=1`, Bali; a core source until the release after
+v0.82.3, with the same ids and settings). The ring: other people's stations within `BAD_RADIUS_KM`, as the
 outdoor reference this node is read against. Never `local`, at any distance. Three rules keep this node's own kit out
 of its own ring — the ids it already polls, anything within `BAD_MIN_SEPARATION_M` of the node, and `BAD_EXCLUDE` by
 hand — and one more keeps a single device from arriving twice under two networks' ids. Stations the archive suspects

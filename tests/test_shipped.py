@@ -436,8 +436,8 @@ _fp = yaml.safe_load(open("packs/forecast/pack.yaml"))
 assert _np["kind"] == "data" and _np["scales"] == ["community"], "nearby: a data pack about this address"
 assert _fp["kind"] == "code" and _fp["scales"] == ["community"], "forecast: a code pack about this address"
 assert not _os.path.exists("packs/nearby/adapter.py"), \
-    "nearby has no adapter: the Bali Air Dispatch fetch lives in app/sources.py, and a second one would store " \
-    "every station twice — the same duplicate the pack exists to refuse, one layer up"
+    "nearby has no adapter: the Bali Air Dispatch fetch lives in packs/bali-air-dispatch, and a second one would " \
+    "store every station twice — the same duplicate the pack exists to refuse, one layer up"
 
 # neither pack may grow an Index cell. `live` means measured here; the ring is other people's and a forecast is
 # nobody's measurement of this place. Environmental|City already exists in air-quality over the same stations.
@@ -462,16 +462,17 @@ for _id, _r in _nr.items():
     if "message" in _r:
         assert set(_r["message"]) == {"en", "id", "es"}, f"nearby/{_id}: three languages"
 
-# the four exclusions, and the audit that proves them
-_src = open("app/sources.py").read()
-assert "def bad_verdicts(" in _src, "app/sources.py: one pure function decides the ring, so the audit cannot drift"
+# the four exclusions, and the audit that proves them (in packs/bali-air-dispatch since the release after v0.82.3)
+_src = open("packs/bali-air-dispatch/adapter.py").read()
+assert "def verdicts(" in _src, "bali-air-dispatch: one pure function decides the ring, so the audit cannot drift"
 for _w in ("identity", "proximity", "by hand", "same device"):
-    assert _w in _src, f"app/sources.py: the `{_w}` exclusion"
-assert "BAD_MIRROR_PREFIXES" in _src
+    assert _w in _src, f"bali-air-dispatch: the `{_w}` exclusion"
+assert "MIRROR_PREFIXES" in _src
+_benv = "\n".join(yaml.safe_load(open("packs/bali-air-dispatch/pack.yaml"))["env"])
 for _k in ("BAD_MIN_SEPARATION_M", "BAD_EXCLUDE", "BAD_INCLUDE_INDOOR"):
-    assert re.search(rf"^{_k}=", env, re.M) and f'"{_k}"' in settings, f".env.example and settings.py: {_k}"
-assert re.search(r"^BAD_RADIUS_KM=15$", env, re.M), \
-    ".env.example: 15 km, which is 6 real neighbours at node #1 against 3 at 10 km and 1 at 5"
+    assert re.search(rf"^{_k}=", _benv, re.M), f"bali-air-dispatch pack.yaml: {_k}"
+assert re.search(r"^BAD_RADIUS_KM=15$", _benv, re.M), \
+    "bali-air-dispatch: 15 km, which is 6 real neighbours at node #1 against 3 at 10 km and 1 at 5"
 
 # both endpoints, and the two surfaces they reach
 #

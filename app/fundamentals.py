@@ -12,7 +12,7 @@ States, one per source:
   quiet     set up, and nothing inside its window. `fix_quiet` says what to look at.
   waiting   set up, nothing yet, and the node has not finished a poll since it started: after an install or an update
             the first reading is minutes away, and calling that a fault would put a cross on every new node.
-  na        does not apply here (public stations outside Bali: no network this node can read there yet)
+  na        does not apply here (public stations where no installed pack reads a network yet)
   elsewhere the backups are kept outside this container (BACKUP_DIR); the doctor on the machine judges them
 `ok` is true, false or null (waiting, na, elsewhere): only false asks somebody to do something.
 """
@@ -22,8 +22,6 @@ import os
 import time
 from pathlib import Path
 
-# the box `planetai setup` uses for "this is Bali" (bin/planetai, cmd_setup), where Bali Air Dispatch has stations
-BALI = (-9.2, -8.0, 114.4, 115.8)
 HOUR = 60
 
 FUNDAMENTALS = [
@@ -39,11 +37,12 @@ FUNDAMENTALS = [
      "settings": ["TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_IDS"], "setup": "keys", "command": "planetai telegram",
      "fix": "Connect Telegram, two minutes: planetai telegram",
      "fix_quiet": "Telegram refused the last message: the bot's token may have been revoked. Run planetai telegram again."},
-    {"id": "nearby-stations", "name": "Air stations nearby (Bali Air Dispatch)", "fresh_minutes": 3 * HOUR,
+    # Whose stations is a pack's (pack.yaml `stations:`, packs.stations()); {name} and {switch} are that pack's.
+    {"id": "nearby-stations", "name": "Air stations nearby", "fresh_minutes": 3 * HOUR,
      "why": "The street around you, from other people's stations, so one kit can tell a fire in the lane from haze over the island.",
-     "settings": ["BAD_ENABLED"], "setup": "sources", "command": None,
-     "fix": "Turn on Bali Air Dispatch in Set up › Sources. Or: planetai config set BAD_ENABLED 1",
-     "fix_quiet": "Bali Air Dispatch has not answered in three hours. Is the internet up? planetai logs names the error."},
+     "settings": [], "setup": "packs", "command": None,
+     "fix": "Turn on {name} in Set up › Packs. Or: planetai config set {switch} 1",
+     "fix_quiet": "{name} has not answered in three hours. Is the internet up? planetai logs names the error."},
     {"id": "weather", "name": "Weather (Open-Meteo)", "fresh_minutes": 3 * HOUR,
      "why": "Temperature, humidity, wind and rain at this point from a global model, free and anywhere.",
      "settings": ["OPENMETEO_ENABLED"], "setup": "sources", "command": None,
@@ -62,8 +61,8 @@ FUNDAMENTALS = [
      "fix_quiet": "No backup in two days. Make one now: planetai backup, then check the nightly one: crontab -l | grep backup"},
 ]
 
-# which adapter (sources.enabled) answers for which source, to name its last error
-ADAPTER = {"nearby-stations": "baliairdispatch", "weather": "open-meteo", "satellite-air": "open-meteo-cams"}
+# which adapter (sources.enabled) answers for which source, to name its last error; a stations pack answers by its id
+ADAPTER = {"weather": "open-meteo", "satellite-air": "open-meteo-cams"}
 
 
 def _age(minutes):
@@ -89,7 +88,7 @@ def _errors(last_error: str | None) -> dict:
 
 def assess(cfg: dict, seen: list[dict], polled: bool, last_error: str | None = None,
            telegram_ok: bool | None = None, backup_minutes: float | None = None, backup_here: bool = True,
-           own_known: bool = False) -> list[dict]:
+           own_known: bool = False, stations: list[dict] | None = None) -> list[dict]:
     """Pure: the state of every fundamental source.
 
     cfg            the effective settings this needs (settings.get), plus NODE_LAT/NODE_LON and MQTT_HOST
@@ -99,6 +98,7 @@ def assess(cfg: dict, seen: list[dict], polled: bool, last_error: str | None = N
     backup_minutes the age of the newest dump the app can see, None when there is none
     backup_here    False when BACKUP_DIR points outside ./backups, which is the only folder this container sees
     own_known      the node has ever stored a sensor of this household's own (a kit on MQTT needs no setting)
+    stations       packs.stations(): the enabled packs that read public stations, each with `box`, `switch`, `on`
     """
     on = lambda k: (cfg.get(k) or "").strip() not in ("", "0")  # noqa: E731
     errs = _errors(last_error)
@@ -110,7 +110,7 @@ def assess(cfg: dict, seen: list[dict], polled: bool, last_error: str | None = N
     out = []
     for f in FUNDAMENTALS:
         fid, fresh = f["id"], f["fresh_minutes"]
-        minutes, detail, configured, applies = None, "", True, True
+        minutes, detail, configured, applies, adapter, words = None, "", True, True, ADAPTER.get(fid, ""), {}
         if fid == "own-sensors":
             configured = any(on(k) for k in f["settings"]) or on("MQTT_HOST") or own_known
             minutes = youngest(lambda r: r["own"])
@@ -123,12 +123,16 @@ def assess(cfg: dict, seen: list[dict], polled: bool, last_error: str | None = N
         elif fid == "nearby-stations":
             try:
                 lat, lon = float(cfg.get("NODE_LAT") or "nan"), float(cfg.get("NODE_LON") or "nan")
-                bali = BALI[0] < lat < BALI[1] and BALI[2] < lon < BALI[3]
             except ValueError:
-                bali = False
-            applies = bali or cfg.get("BAD_ENABLED") == "1"
-            configured = cfg.get("BAD_ENABLED") == "1"
-            minutes = youngest(lambda r: r["source"] == "baliairdispatch")
+                lat = lon = float("nan")
+            inside = lambda b: isinstance(b, list) and len(b) == 4 and b[0] < lat < b[1] and b[2] < lon < b[3]  # noqa: E731
+            here = [s for s in stations or [] if s.get("on") or inside(s.get("box"))]
+            on = [s for s in here if s.get("on")]
+            applies, configured = bool(here), bool(on)
+            mine = {s["source"] for s in on}
+            minutes = youngest(lambda r: r["source"] in mine)
+            first = (on or here or [{}])[0]
+            adapter, words = first.get("pack", ""), {"name": first.get("name", ""), "switch": first.get("switch", "")}
         elif fid in ("weather", "satellite-air"):
             configured = (cfg.get("OPENMETEO_ENABLED") or "1") == "1"
             minutes = youngest(lambda r: r["source"] == ADAPTER[fid])
@@ -151,14 +155,14 @@ def assess(cfg: dict, seen: list[dict], polled: bool, last_error: str | None = N
             state, ok, detail = "waiting", None, "set up; the first reading arrives after the node's first poll, within a few minutes"
         else:
             state, ok = "quiet", False
-        err = errs.get(ADAPTER.get(fid, ""), "")
+        err = errs.get(adapter, "")
         if state == "quiet" and err:
             detail = f"last error: {err}"
         out.append({"id": fid, "name": f["name"], "state": state, "ok": ok,
                     "minutes": None if minutes is None else round(minutes, 1),
                     "age": _age(minutes) if state in ("ok", "quiet") and fid != "alerts" else None,
                     "detail": detail or None,
-                    "fix": None if ok is not False else (f["fix"] if state == "missing" else f["fix_quiet"]),
+                    "fix": None if ok is not False else (f["fix"] if state == "missing" else f["fix_quiet"]).format(**words),
                     "setup": f"#setup/{f['setup']}" if f["setup"] else None, "command": f["command"], "why": f["why"]})
     return out
 
