@@ -112,8 +112,9 @@ def new_fleet(node: str, region: str, city: str = "", preset: str = "LONG_FAST",
     slot = slot if slot is not None else slot_for(region, city, preset)
     return {
         "node": node, "region": region, "preset": preset, "slot": slot, "created": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        # channel 0, PRIMARY: telemetry and position travel here and only here. The key is this node's own.
-        "primary": {"name": "planetai", "psk": base64.b64encode(secrets.token_bytes(32)).decode()},
+        # channel 0, PRIMARY: telemetry and position travel here and only here. The key is this node's own. Full
+        # position (32 bits): it is the household's channel (Tomas, 19 Oct); 0 would send no position at all.
+        "primary": {"name": "planetai", "psk": base64.b64encode(secrets.token_bytes(32)).decode(), "position_precision": 32},
         # channel 1, SECONDARY: what crosses to other nodes (text, alerts). Its own key too; federation re-sends as
         # text through the bridge, so two nodes never need to share a key. Position on it is capped coarse.
         "fabcity": {"name": "fabcity", "psk": base64.b64encode(secrets.token_bytes(32)).decode(), "position_precision": 13},
@@ -278,9 +279,10 @@ def _cli_value(v: Any) -> str:
 
 
 def provision_steps(prof: dict, fleet: dict, gateway: bool) -> List[List[str]]:
-    """The CLI calls that write `prof`, in order, each a single write: the owner, the URL (channel 0 and the LoRa
-    config), one `--set` call per config and module section, the fixed position, then channel 1 by its index (the URL
-    wrote it too, and 2.7.26 lost it). Pure, so it is tested without a radio. `provision` adds the reboot."""
+    """The CLI calls that write `prof`, in order, each a single write: the owner, the URL (both channels and the LoRa
+    config), one `--set` call per config and module section, the fixed position, then each channel again by its index:
+    2.7.26 lost channel 1 from the URL, and channel 0's position precision (node #1's Tracker, 19 Oct). Pure, so it is
+    tested without a radio. `provision` adds the reboot."""
     steps = [["--set-owner", prof["owner"], "--set-owner-short", prof["owner_short"]], ["--seturl", prof["channel_url"]]]
     for group in ("config", "module_config"):
         for section, fields in prof.get(group, {}).items():
@@ -290,12 +292,14 @@ def provision_steps(prof: dict, fleet: dict, gateway: bool) -> List[List[str]]:
     loc = prof.get("location")
     if loc:   # after the position section: `=` because a south latitude starts with a minus
         steps.append([f"--setlat={loc['lat']}", f"--setlon={loc['lon']}", f"--setalt={loc['alt']}"])
-    fc = fleet["fabcity"]
-    ch1 = ["--ch-index", "1", "--ch-set", "name", fc["name"], "--ch-set", "psk", "base64:" + fc["psk"],
-           "--ch-set", "uplink_enabled", _cli_value(gateway), "--ch-set", "downlink_enabled", _cli_value(gateway)]
-    if fc.get("position_precision") is not None:
-        ch1 += ["--ch-set", "module_settings.position_precision", str(int(fc["position_precision"]))]
-    return steps + [ch1]
+    for idx, key in ((0, "primary"), (1, "fabcity")):
+        c = fleet[key]
+        ch = ["--ch-index", str(idx), "--ch-set", "name", c["name"], "--ch-set", "psk", "base64:" + c["psk"],
+              "--ch-set", "uplink_enabled", _cli_value(gateway), "--ch-set", "downlink_enabled", _cli_value(gateway)]
+        if c.get("position_precision") is not None:
+            ch += ["--ch-set", "module_settings.position_precision", str(int(c["position_precision"]))]
+        steps.append(ch)
+    return steps
 
 
 def channel_hash(name: str, psk: bytes) -> int:
@@ -335,16 +339,25 @@ def read_radio(port: str) -> dict:
 
 
 def wait_rebooted(port: str, before: int, tries: int = 24) -> dict:
-    """read_radio once reboot_count has gone past `before`: proof the radio booted on what was written."""
+    """read_radio once the radio has rebooted on what was written. Proof is its boot count rising (an ESP32, whose USB
+    port stays up through a soft reboot), or its USB port going away and coming back (an nRF52: the Tracker L1's
+    reboot_count stays 0, node #1, 19 Oct). The CLI's --reboot waits 10 s before the radio goes."""
+    gone = False
+    for _ in range(160):   # 40 s
+        if not os.path.exists(port):
+            gone = True
+            break
+        time.sleep(0.25)
     for _ in range(tries):
         time.sleep(5)
         try:
             snap = read_radio(port)
         except (Exception, SystemExit):  # noqa: BLE001  (a booting radio stalls the port or drops it)
             continue
-        if snap["reboot_count"] > before:
+        if gone or snap["reboot_count"] > before:
             return snap
-    raise SystemExit(f"the radio on {port} did not reboot (reboot_count stayed {before}); it may be on its old frequency")
+    raise SystemExit(f"the radio on {port} did not reboot (boot count stayed {before}, its USB port never dropped); "
+                     "it may still be on its old frequency")
 
 
 def differences(prof: dict, fleet: dict, snap: dict, gateway: bool) -> List[str]:
@@ -377,16 +390,25 @@ def differences(prof: dict, fleet: dict, snap: dict, gateway: bool) -> List[str]
     return problems
 
 
-def provision(port: str, role: str, long_name: str, short_name: str, fleet: dict, profiles: Dict[str, dict],
-              mqtt: Optional[dict] = None, wifi: Optional[Tuple[str, str]] = None,
-              fixed: Optional[Tuple[float, float, float]] = None) -> List[str]:
-    """Write the role's profile, reboot, and read it back from a new connection. Returns the problems found."""
-    prof = render_profile(role, long_name, short_name, fleet, profiles, mqtt, wifi, fixed)
-    gw = bool(profiles[role].get("_gateway"))
-    steps = provision_steps(prof, fleet, gw)
-    wait_ready(port)
-    print(f">> {role}: '{long_name}' ({short_name}), region {fleet['region']}, slot {fleet.get('slot') or 'by name'}; "
-          f"{len(steps) + 1} steps, one write each, about {(len(steps) * (SETTLE_S + 15) + 60) // 60} minutes")
+def step_key(step: List[str]) -> str:
+    """What a provision step writes, in the words problem_key gives a difference: owner, a section, ch0, ch1."""
+    if step[0] == "--set":
+        return step[1].split(".")[0]
+    if step[0].startswith("--setlat"):
+        return "position"
+    if step[0] == "--ch-index":
+        return "ch" + step[1]
+    return {"--set-owner": "owner"}.get(step[0], step[0])
+
+
+def problem_key(problem: str) -> str:
+    """The step that would fix a sentence from differences(): 'channel 1 is …' → ch1, 'lora.region is …' → lora."""
+    m = re.match(r"channel (\d)|(owner)|(\w+)\.", problem)
+    return ("ch" + m.group(1)) if m and m.group(1) else (m.group(2) or m.group(3)) if m else ""
+
+
+def write_and_reboot(port: str, steps: List[List[str]]) -> dict:
+    """Each step alone, SETTLE_S apart, then a reboot proven by wait_rebooted; returns the radio read afterwards."""
     for i, args in enumerate(steps, 1):
         print(f"   {i}/{len(steps) + 1}  {shown(args)}")
         run_cli(port, *args)
@@ -397,8 +419,30 @@ def provision(port: str, role: str, long_name: str, short_name: str, fleet: dict
     before = read_radio(port)["reboot_count"]
     print(f"   {len(steps) + 1}/{len(steps) + 1}  --reboot  (boot count {before})")
     run_cli(port, "--reboot")
-    snap = wait_rebooted(port, before)
+    return wait_rebooted(port, before)
+
+
+def provision(port: str, role: str, long_name: str, short_name: str, fleet: dict, profiles: Dict[str, dict],
+              mqtt: Optional[dict] = None, wifi: Optional[Tuple[str, str]] = None,
+              fixed: Optional[Tuple[float, float, float]] = None) -> List[str]:
+    """Write the role's profile, reboot, and read it back from a new connection. Returns the problems found."""
+    prof = render_profile(role, long_name, short_name, fleet, profiles, mqtt, wifi, fixed)
+    gw = bool(profiles[role].get("_gateway"))
+    steps = provision_steps(prof, fleet, gw)
+    wait_ready(port)
+    print(f">> {role}: '{long_name}' ({short_name}), region {fleet['region']}, slot {fleet.get('slot') or 'by name'}; "
+          f"{len(steps) + 1} steps, one write each, about {(len(steps) * (SETTLE_S + 15) + 60) // 60} minutes")
+    snap = write_and_reboot(port, steps)
     problems = differences(prof, fleet, snap, gw)
+    # 2.7.26 can still drop a write, or take one with another: a channel 0 write emptied channel 1 on a XIAO while the
+    # same write kept it on the gateway and the Tracker (19 Oct). Write again only what did not hold, at most twice.
+    for _ in range(2):
+        redo = [st for st in steps if step_key(st) in {problem_key(p) for p in problems}]
+        if not redo:
+            break
+        print("   did not hold: " + "; ".join(problems) + "\n   writing those again")
+        snap = write_and_reboot(port, redo)
+        problems = differences(prof, fleet, snap, gw)
     node_id = snap.get("id")
     # provisioning a radio again replaces its entry: the fleet lists each radio once
     fleet["radios"] = [r for r in fleet.get("radios", []) if not (node_id and r.get("id") == node_id)]
@@ -407,11 +451,11 @@ def provision(port: str, role: str, long_name: str, short_name: str, fleet: dict
     save_fleet(fleet)
     if problems:
         print("!! the radio, read back after its reboot, is not what was written:\n   " + "\n   ".join(problems)
-              + "\n   Run the same provision again; if a line stays, write that one setting with python3 -m meshtastic --set.")
+              + "\n   Written three times and still not held: write that one setting with python3 -m meshtastic, then --reboot.")
     else:
-        print(f">> ok. {node_id or 'radio'} booted on it (boot count {snap['reboot_count']}), read back over a new "
-              f"connection: every setting, channels planetai {channel_hash(fleet['primary']['name'], base64.b64decode(fleet['primary']['psk'])):#04x} "
-              f"and fabcity {channel_hash(fleet['fabcity']['name'], base64.b64decode(fleet['fabcity']['psk'])):#04x}. In {FLEET_PATH}")
+        h = {k: channel_hash(fleet[k]["name"], base64.b64decode(fleet[k]["psk"])) for k in ("primary", "fabcity")}
+        print(f">> ok. {node_id or 'radio'} rebooted on it and was read back over a new connection: every setting, "
+              f"channels planetai {h['primary']:#04x} and fabcity {h['fabcity']:#04x}. In {FLEET_PATH}")
         print("   Next step:  planetai radio")
     return problems
 

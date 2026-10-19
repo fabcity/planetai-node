@@ -14,7 +14,7 @@ import radio
 # ---- provision, without a radio and without the meshtastic package (these run in CI). Firmware 2.7.26 kept a write
 # only when it travelled alone, and the readback on the same connection was the API's cache (node #1, 19 Oct 2026).
 fleet = {"region": "SG_923", "preset": "LONG_FAST", "slot": 19,
-         "primary": {"name": "planetai", "psk": base64.b64encode(bytes(range(32))).decode()},
+         "primary": {"name": "planetai", "psk": base64.b64encode(bytes(range(32))).decode(), "position_precision": 32},
          "fabcity": {"name": "fabcity", "psk": base64.b64encode(bytes(range(32, 64))).decode(), "position_precision": 13}}
 prof = {"owner": "Mesh test Ungasan", "owner_short": "MTU", "channel_url": "https://meshtastic.org/e/#SECRET",
         "config": {"device": {"role": "SENSOR", "serialEnabled": True},
@@ -30,9 +30,11 @@ assert all(len({x.split(".")[0] for x in s[1::3]}) == 1 for s in sets)
 assert sets[0] == ["--set", "device.role", "SENSOR", "--set", "device.serialEnabled", "true"]
 assert steps.index(["--setlat=-8.81902", "--setlon=115.16736", "--setalt=0"]) > steps.index(sets[1]), \
     "the pin comes after the position section, with `=` for a south latitude"
-ch1 = steps[-1]
+ch0, ch1 = steps[-2:]
 assert ch1[:2] == ["--ch-index", "1"] and "--ch-add" not in ch1, "by index: --ch-add refuses a radio that already has fabcity"
 assert ch1[ch1.index("psk") + 1] == "base64:" + fleet["fabcity"]["psk"] and ch1[ch1.index("module_settings.position_precision") + 1] == "13"
+assert ch0[:2] == ["--ch-index", "0"] and ch0[ch0.index("module_settings.position_precision") + 1] == "32", \
+    "channel 0 again by index: the Tracker read precision 0 after a --seturl that carried 32 (19 Oct)"
 assert ch1[ch1.index("uplink_enabled") + 1] == "false" and radio.provision_steps(prof, fleet, gateway=True)[-1][ch1.index("uplink_enabled") + 1] == "true"
 assert not [s for s in steps if s[0] == "--reboot"], "provision reboots after reading the boot count, not inside the steps"
 # what is printed never carries a key: not the psk, not the URL (it holds both keys), not a WiFi or broker password
@@ -49,7 +51,7 @@ def snap_of(**over):
                     "position": {"fixedPosition": True, "gpsMode": "NOT_PRESENT"},
                     "lora": {"region": "SG_923", "usePreset": True, "modemPreset": "LONG_FAST", "channelNum": 19}},
          "module_config": {"telemetry": {"environmentMeasurementEnabled": True, "environmentUpdateInterval": 900}},
-         "channels": {0: {"role": "PRIMARY", "name": "planetai", "psk": base64.b64decode(fleet["primary"]["psk"]), "uplink": False, "downlink": False, "position_precision": 0},
+         "channels": {0: {"role": "PRIMARY", "name": "planetai", "psk": base64.b64decode(fleet["primary"]["psk"]), "uplink": False, "downlink": False, "position_precision": 32},
                       1: {"role": "SECONDARY", "name": "fabcity", "psk": base64.b64decode(fleet["fabcity"]["psk"]), "uplink": False, "downlink": False, "position_precision": 13},
                       2: {"role": "DISABLED", "name": "", "psk": b"", "uplink": False, "downlink": False, "position_precision": 0}}}
     s.update(over)
@@ -70,6 +72,8 @@ old = snap_of(); old["channels"] = dict(old["channels"]); old["channels"][0] = d
 p = radio.differences(prof, fleet, old, gateway=False)
 assert len(p) == 1 and p[0].startswith("channel 0 is 'planetai' hash ") and fleet["primary"]["psk"] not in p[0], p
 assert radio.differences(prof, fleet, snap_of(owner_short="MT"), gateway=False) == ["owner_short is 'MT', wants 'MTU'"]
+nopos = snap_of(); nopos["channels"] = dict(nopos["channels"]); nopos["channels"][0] = dict(nopos["channels"][0], position_precision=0)
+assert radio.differences(prof, fleet, nopos, gateway=False) == ["channel 0 position precision is 0, wants 32"], "0 = no position on the household channel"
 assert radio.differences(prof, fleet, snap_of(), gateway=True)[0] == "channel 0 uplink/downlink is False/False, wants True"
 # int64 fields come back as text from MessageToDict; a password is never compared or said
 wifi = dict(prof, config=dict(prof["config"], network={"wifiEnabled": True, "wifiPsk": "hunter22"}))
@@ -77,6 +81,30 @@ ws = snap_of(); ws["config"] = dict(ws["config"], network={"wifiEnabled": True, 
 assert radio.differences(wifi, fleet, ws, gateway=False) == []
 assert radio.differences(dict(prof, module_config={"telemetry": {"environmentUpdateInterval": 900}}), fleet,
                          snap_of(module_config={"telemetry": {"environmentUpdateInterval": "900"}}), gateway=False) == []
+# a difference names the step that repairs it: provision writes again only what did not hold (a ch0 write once
+# emptied ch1 on a XIAO, 19 Oct)
+keys = {radio.step_key(s) for s in steps}
+for q in radio.differences(prof, fleet, bad, gateway=False) + radio.differences(prof, fleet, nopos, gateway=False) + ["owner_short is 'MT', wants 'MTU'"]:
+    assert radio.problem_key(q) in keys, (q, radio.problem_key(q), keys)
+assert radio.problem_key("channel 1 is missing (no role), wants 'fabcity' hash 0xe7 (SECONDARY)") == "ch1"
+assert [radio.step_key(s) for s in steps if radio.step_key(s) == "position"] == ["position", "position"], "the pin is rewritten with its section"
+assert radio.step_key(steps[1]) == "--seturl" and "--seturl" not in {radio.problem_key(q) for q in radio.differences(prof, fleet, bad, gateway=False)}
+# wait_rebooted: an ESP32's boot count rises with its port up; an nRF52's count stays 0 and its USB port drops and returns
+real = (radio.read_radio, radio.os.path.exists, radio.time.sleep)
+radio.time.sleep = lambda s: None
+radio.read_radio = lambda port: snap_of(reboot_count=8)
+radio.os.path.exists = lambda port: True
+assert radio.wait_rebooted("/dev/x", 7)["reboot_count"] == 8, "ESP32: the count rose"
+radio.read_radio = lambda port: snap_of(reboot_count=0)
+seen = iter([True, True, False])
+radio.os.path.exists = lambda port: next(seen, True)
+assert radio.wait_rebooted("/dev/x", 0)["reboot_count"] == 0, "nRF52: the port dropped, the count stays 0"
+radio.os.path.exists = lambda port: True
+try:
+    radio.wait_rebooted("/dev/x", 0, tries=2); raise AssertionError("no rise, no drop: not proven")
+except SystemExit as e:
+    assert "did not reboot" in str(e)
+radio.read_radio, radio.os.path.exists, radio.time.sleep = real
 print("radio provision: ok")
 
 try:
@@ -123,7 +151,9 @@ assert d["region"] == "SG_923" and d["preset"] == "LONG_FAST" and d["slot"] == p
 assert [c["name"] for c in d["channels"]] == ["planetai", "fabcity"]
 assert all(c["psk_len"] == 32 for c in d["channels"])
 assert not d["channels"][0]["uplink"] and not d["channels"][0]["downlink"]
-assert d["channels"][1]["position_precision"] == 13 and d["channels"][0]["position_precision"] == 0
+assert d["channels"][1]["position_precision"] == 13 and d["channels"][0]["position_precision"] == 32, \
+    "full position on the household channel (Tomas, 19 Oct); 0 would mean a sensor never says where it stands"
+assert f["primary"]["position_precision"] == 32
 dg = radio.decode_url(radio.channel_url(f, gateway=True))
 assert dg["channels"][0]["uplink"] and dg["channels"][0]["downlink"] and dg["channels"][1]["uplink"]
 assert u.startswith("https://meshtastic.org/e/#") and "=" not in u

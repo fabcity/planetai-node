@@ -89,7 +89,7 @@ gateway "had" the fleet's slot and key for a day while it ran its old ones (19 O
 prints the profile without touching a radio. A WiFi gateway is `provision gateway-wifi … --wifi SSID:PSK`; it fills the broker address and password itself.
 
 **The fleet** lives in `config/radio/fleet.yaml` (mode 600, gitignored: it holds the keys). Two channels, each with its
-own 256-bit key: `planetai` is **primary**, the household's, and carries telemetry and position; radios send those on
+own 256-bit key: `planetai` is **primary**, the household's, and carries telemetry and full position (precision 32; 0 would send none); radios send those on
 channel 0 only, which is why a private channel added as secondary never carried sensor data (our gateway sat a day
 publishing nothing). `fabcity` is secondary and is what crosses to other nodes, with position capped at 13 bits
 (2.9 km). **Bali's slot is pinned** inside Indonesia's 920–923 MHz; SG_923 spans 917–925 and a slot hashed from the

@@ -10,6 +10,13 @@
   frequency is not on air before), waits for its boot count to rise, and compares every setting, both channels' keys
   (by their one-byte hash, never the key) and the pin from a new connection. Any difference is listed and the command
   exits non-zero. `--fixed -8.8,115.1` works as written: a south latitude was read as an option on Python 3.9.
+  An nRF52 board (Tracker L1, T1000-E) never raises its boot count, so its reboot is proven by its USB port dropping.
+  What did not hold is written again, alone, and read back again, at most twice: on one XIAO a channel 0 write
+  emptied channel 1.
+- **The household channel carries full position** (Tomas, 19 Oct). `planetai radio init` writes `position_precision:
+  32` for the primary `planetai` channel (`fabcity` stays 13); before, the URL carried 0, which sends no position on
+  channel 0, so a sensor never said where it stood. Existing fleets: add the line to `config/radio/fleet.yaml` and
+  provision again. Provision writes both channels by index after the URL and checks both precisions on the readback.
 
 - **A newer release is said at the top of the page, within the hour** (Tomas, 18 Oct: "can the node dashboard get a
   message if there is a new version? somewhere in the top as a small notification"). The bar carries one small line,

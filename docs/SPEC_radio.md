@@ -67,10 +67,14 @@ URL is what the phone app imports, so a radio provisioned by phone and one provi
 The profile is a DeviceProfile in meshtastic's camelCase YAML (`render` prints it). `provision` writes it with the
 stock CLI, each call a single write: the owner; `--seturl` (channel 0 and the LoRa config); one `--set` call per
 config or module section; `--setlat= --setlon= --setalt=` for a pinned radio (the `=` because a south latitude starts
-with a minus); channel 1 by `--ch-index 1 --ch-set …`. It waits 25 s after each, reads `myInfo.reboot_count` over a
-new connection, sends `--reboot`, waits for the count to rise, and compares the radio, read over another new
+with a minus); then each channel again by `--ch-index N --ch-set …` (2.7.26 lost channel 1 from the URL, and the
+Tracker read channel 0's precision 0 after a URL that carried 32). It waits 25 s after each, reads
+`myInfo.reboot_count` over a new connection, sends `--reboot`, waits for the count to rise (an ESP32) or the USB port
+to drop and return (an nRF52, whose count stays 0), and compares the radio, read over another new
 connection, with the profile: every config field, owner, both channels' names and keys (said only as the one-byte
-hash, name XOR key), roles, uplink bits and the position cap. It exits non-zero on any difference.
+hash, name XOR key), roles, uplink bits and the position cap. Whatever did not hold is written again (only those
+steps), rebooted and read back, at most twice: on the sensor XIAO a channel 0 write emptied channel 1, while the same
+write kept it on the gateway and the Tracker. It exits non-zero on any difference left.
 
 Why this shape (node #1, firmware 2.7.26, CLI 2.7.11, 19 Oct 2026, on two XIAOs): `--configure` set the owner and the
 primary channel and none of the config sections; the API transaction with a 2 s wait lost channel 1; a 20–25 s wait
