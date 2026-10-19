@@ -327,7 +327,8 @@ def read_radio(port: str) -> dict:
     iface = meshtastic.serial_interface.SerialInterface(port, timeout=60)
     try:
         n, me = iface.localNode, iface.getMyUser() or {}
-        return {"id": me.get("id"), "owner": me.get("longName"), "owner_short": me.get("shortName"),
+        pos = (iface.getMyNodeInfo() or {}).get("position") or {}
+        return {"id": me.get("id"), "lat": pos.get("latitude"), "lon": pos.get("longitude"), "owner": me.get("longName"), "owner_short": me.get("shortName"),
                 "reboot_count": iface.myInfo.reboot_count, "config": d(n.localConfig), "module_config": d(n.moduleConfig),
                 "channels": {c.index: {"role": channel_pb2.Channel.Role.Name(c.role), "name": c.settings.name,
                                        "psk": bytes(c.settings.psk), "uplink": c.settings.uplink_enabled,
@@ -376,6 +377,10 @@ def differences(prof: dict, fleet: dict, snap: dict, gateway: bool) -> List[str]
                 if _cli_value(want).lower() != _cli_value(got.get(k)).lower():   # enums by name, int64 as text
                     hint = " (a radio with no region never transmits)" if k == "region" else ""
                     problems.append(f"{section}.{k} is {got.get(k)}, wants {want}{hint}")
+    loc = prof.get("location")
+    if loc and not (snap.get("lat") is not None and abs(snap["lat"] - loc["lat"]) < 1e-4
+                    and abs(snap["lon"] - loc["lon"]) < 1e-4):   # ~10 m: the firmware stores 1e-7 degrees
+        problems.append(f"position.pin is {snap.get('lat')},{snap.get('lon')}, wants {loc['lat']},{loc['lon']}")
     for idx, key, role in ((0, "primary", "PRIMARY"), (1, "fabcity", "SECONDARY")):
         c, ch = fleet[key], snap.get("channels", {}).get(idx) or {}
         psk = base64.b64decode(c["psk"])

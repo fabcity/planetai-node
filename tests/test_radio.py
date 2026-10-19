@@ -46,7 +46,7 @@ assert radio.shown(sets[0]) == "--set device.role SENSOR --set device.serialEnab
 assert radio.channel_hash("ab", bytes([1, 2])) == ord("a") ^ ord("b") ^ 1 ^ 2 and radio.channel_hash("", b"") == 0
 # differences(): the radio as read back over a new connection (MessageToDict, defaults included) against the profile
 def snap_of(**over):
-    s = {"id": "!8f501a20", "owner": "Mesh test Ungasan", "owner_short": "MTU", "reboot_count": 7,
+    s = {"id": "!8f501a20", "lat": -8.8190201, "lon": 115.1673599, "owner": "Mesh test Ungasan", "owner_short": "MTU", "reboot_count": 7,
          "config": {"device": {"role": "SENSOR", "serialEnabled": True, "rebroadcastMode": "ALL"},
                     "position": {"fixedPosition": True, "gpsMode": "NOT_PRESENT"},
                     "lora": {"region": "SG_923", "usePreset": True, "modemPreset": "LONG_FAST", "channelNum": 19}},
@@ -81,6 +81,10 @@ ws = snap_of(); ws["config"] = dict(ws["config"], network={"wifiEnabled": True, 
 assert radio.differences(wifi, fleet, ws, gateway=False) == []
 assert radio.differences(dict(prof, module_config={"telemetry": {"environmentUpdateInterval": 900}}), fleet,
                          snap_of(module_config={"telemetry": {"environmentUpdateInterval": "900"}}), gateway=False) == []
+# the pin itself, not only fixedPosition: on the XIAO a later write put the position back to its defaults (19 Oct)
+assert radio.differences(prof, fleet, snap_of(lat=None, lon=None), gateway=False) == ["position.pin is None,None, wants -8.81902,115.16736"]
+assert radio.problem_key("position.pin is None,None, wants -8.81902,115.16736") == "position"
+assert radio.differences(dict(prof, location=None), fleet, snap_of(lat=None, lon=None), gateway=False) == [], "no --fixed, no pin wanted"
 # a difference names the step that repairs it: provision writes again only what did not hold (a ch0 write once
 # emptied ch1 on a XIAO, 19 Oct)
 keys = {radio.step_key(s) for s in steps}
