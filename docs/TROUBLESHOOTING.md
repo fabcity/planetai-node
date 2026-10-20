@@ -7,7 +7,7 @@ It fetches a fresh installer rather than running the one on your disk, so it wor
 and on an existing node it updates in place and keeps your `.env`:
 
 ```bash
-curl -fsSL planetai.fab.city/install | bash
+curl -fsSL https://planetai.fab.city/install | bash
 ```
 
 If you are still stuck, send us three things at info@fab.city: the last screen, the log

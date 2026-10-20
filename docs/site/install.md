@@ -7,8 +7,8 @@ your coordinates, answers on port 8080, and keeps every reading it takes on this
 a phone yet; that is the [next page](first-ten-minutes.md).
 
 > **The short way.** Six commands, in order, each one waiting for the one before:
-> 1. `curl -fsSL planetai.fab.city/preflight | bash` checks the machine.
-> 2. `curl -fsSL planetai.fab.city/install | bash` asks four questions and installs the node. Near the end it
+> 1. `curl -fsSL https://planetai.fab.city/preflight | bash` checks the machine.
+> 2. `curl -fsSL https://planetai.fab.city/install | bash` asks four questions and installs the node. Near the end it
 >    offers to fetch the map of your place; say `y`, or run `planetai run place basemap` later.
 > 3. `planetai doctor` shows every check, and under **Data sources** what is left, each with its fix. If the
 >    terminal says `planetai: command not found`, open a new one: the installer adds the command to the PATH of
@@ -22,7 +22,7 @@ a phone yet; that is the [next page](first-ten-minutes.md).
 ## 1. Check the machine
 
 ```bash
-curl -fsSL planetai.fab.city/preflight | bash
+curl -fsSL https://planetai.fab.city/preflight | bash
 ```
 
 It reads the machine in a few seconds and installs nothing. It prints one table, a row each for OS,
@@ -43,7 +43,7 @@ that is an answer.
 ## 2. Run the install line
 
 ```bash
-curl -fsSL planetai.fab.city/install | bash
+curl -fsSL https://planetai.fab.city/install | bash
 ```
 
 `/install` is a small stub. It looks up the released version and fetches the `install` script, and the preflight,
