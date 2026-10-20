@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- **The radio gateway restarts when its radio is unplugged.** It noticed the port go and then slept on, a live process
+  holding a dead port, so launchd and systemd had nothing to restart: node #1's gateway heard nothing after a replug
+  until it was restarted by hand (20 Oct). It now exits on meshtastic's `connection.lost` and the service starts it
+  again. Also: an empty `.env` value (`MQTT_USER=`) crashed `envget`, which `tests/test_radio_gateway.sh` sets and CI
+  skips for want of mosquitto; both are checked there now.
+
 ## v0.83.0 — 2026-10-20 — Bali Air Dispatch as a pack, and the map as a setup step
 
 - **ρ asks only what was sent.** On `ALERT_ENGINE=events` the packs the event engine replaced still write `alerts`

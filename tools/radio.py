@@ -646,7 +646,7 @@ def envget(key: str, default: str = "") -> str:
     for line in env.read_text().splitlines():
         if line.startswith(key + "="):
             v = line.split("=", 1)[1].strip()
-            if v[:1] in "\"'":                       # quoted: the value is what the quotes hold, # and all
+            if v and v[0] in "\"'":                       # quoted: the value is what the quotes hold, # and all
                 return v[1:].split(v[0], 1)[0]
             return re.split(r"\s+#", v, maxsplit=1)[0].strip()   # unquoted: ` # …` is a comment, as docker compose reads it
     return os.getenv(key, default)
@@ -711,6 +711,12 @@ def gateway(port: str, fleet: dict, broker: str = "127.0.0.1:1883", once: bool =
     c.subscribe([(f"{root_topic}/2/json/mqtt/", 0), ("fabcity/+/text", 0), ("fabcity/+/alerts", 0)])
     c.loop_start()
     pub.subscribe(on_radio, "meshtastic.receive")
+    # an unplugged radio leaves the port dead and this process alive, so the service never restarts it (20 Oct 2026)
+    lost = threading.Event()
+
+    def on_lost(interface):  # noqa: ARG001
+        lost.set()
+    pub.subscribe(on_lost, "meshtastic.connection.lost")
 
     def heartbeat():
         while True:
@@ -723,8 +729,9 @@ def gateway(port: str, fleet: dict, broker: str = "127.0.0.1:1883", once: bool =
         if once:
             time.sleep(5)
         else:
-            while True:
-                time.sleep(60)
+            lost.wait()
+            log.warning("the radio on %s went away; exiting so the service starts the gateway again", port)
+            raise SystemExit(1)
     finally:
         iface.close(); c.loop_stop()
 
