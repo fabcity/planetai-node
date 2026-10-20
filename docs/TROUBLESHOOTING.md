@@ -124,7 +124,7 @@ ran in.
 node in the same place, remove the old one first. To run a second node somewhere else instead:
 
 ```bash
-PLANETAI_HOME=~/somewhere bash -c "$(curl -fsSL planetai.fab.city/node0/install)"
+PLANETAI_HOME=~/somewhere bash -c "$(curl -fsSL https://planetai.fab.city/node0/install)"
 ```
 
 ### `there is no planetai <word> in this node`
@@ -155,7 +155,7 @@ Your copy is older than the current remover, or the folder is damaged. Nothing w
 can reach it:
 
 ```bash
-curl -fsSL planetai.fab.city/remove | bash
+curl -fsSL https://planetai.fab.city/remove | bash
 ```
 
 If the node will not start at all, add `--purge`. It runs none of the node's own code, finds the containers, the
@@ -163,7 +163,7 @@ four volumes, the folder, the symlink and the crontab line itself, asks once, an
 left:
 
 ```bash
-curl -fsSL planetai.fab.city/remove | bash -s -- --purge
+curl -fsSL https://planetai.fab.city/remove | bash -s -- --purge
 ```
 
 To do it by hand, step by step:

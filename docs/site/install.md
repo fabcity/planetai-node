@@ -64,7 +64,7 @@ is on [Updating](updating.md#updates-are-signed).
 To put a second node somewhere else on the same machine:
 
 ```bash
-PLANETAI_HOME=~/somewhere bash -c "$(curl -fsSL planetai.fab.city/node0/install)"
+PLANETAI_HOME=~/somewhere bash -c "$(curl -fsSL https://planetai.fab.city/node0/install)"
 ```
 
 ## 3. Answer the four questions
@@ -187,7 +187,7 @@ planetai remove --keep-data  # the same, but the readings stay in their volume
 
 The Docker volume outlives the folder, and every node's compose project is `planetai`, so a fresh install finds
 the old database; the installer then refuses to give it a new password and names the two ways out
-([Troubleshooting](troubleshooting.md)). `planetai remove` deletes the volumes by name and then checks. If the node will not start at all, `curl -fsSL planetai.fab.city/remove | bash -s -- --purge` finds the
+([Troubleshooting](troubleshooting.md)). `planetai remove` deletes the volumes by name and then checks. If the node will not start at all, `curl -fsSL https://planetai.fab.city/remove | bash -s -- --purge` finds the
 containers, the four volumes, the folder, the symlink and the crontab line without running any of the node's
 own code.
 
