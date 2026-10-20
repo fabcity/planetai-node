@@ -222,6 +222,27 @@ MISSING_IMAGES = []
 IMG_BASE = "assets/img/"   # where a build copies docs/site/img; main() sets it per mode
 
 
+# Tags the renderer and the pages are allowed to emit. Anything else in a page's HTML is a placeholder such as
+# `<name>` or `<script>` that sat outside backticks (often a code span broken across two lines), which a browser
+# takes for a real element: a stray <script> swallows the rest of the page.
+HTML_OK = set("""a abbr b blockquote br caption code dd del details div dl dt em figcaption figure h1 h2 h3 h4 h5 h6
+hr i img kbd li ol p pre s small span strong sub summary sup table tbody td tfoot th thead tr u ul svg""".split())
+
+
+class _Tags(__import__("html.parser").parser.HTMLParser):
+    def __init__(self):
+        super().__init__(); self.bad, self.svg = [], 0
+    def handle_starttag(self, tag, attrs):
+        if tag == "svg": self.svg += 1
+        elif not self.svg and tag not in HTML_OK: self.bad.append(tag)
+    def handle_endtag(self, tag):
+        if tag == "svg": self.svg -= 1
+
+
+def stray_tags(html_body):
+    p = _Tags(); p.feed(html_body); return sorted(set(p.bad))
+
+
 def figure(m, src):
     """`![alt](img/x.svg "caption")` on a line of its own becomes a figure. An SVG is inlined, so it
     draws with the page's own tokens and follows the theme toggle; a picture is copied with the assets.
@@ -437,6 +458,8 @@ def check():
         ids[slug] = set(ANCHOR.findall(body_html))
         for href in dead_links(body_html, slug):
             errs.append(f"{src}: links to {href}, which resolved to no page")
+        for tag in stray_tags(body_html):
+            errs.append(f"{src}: renders a raw <{tag}> element; put the placeholder inside backticks on one line")
     errs += MISSING_IMAGES
     for slug, body_html in rendered.items():
         src = BY_SLUG[slug][0]

@@ -11,7 +11,9 @@
   can tell you and Pack ideas left it, their lasting parts folded into Concepts, First ten minutes and Packs. The
   pages carry eight diagrams and six screenshots of node #1 (`docs/site/img/`, drawn inline on the page's own tokens,
   left out of the tarball), and `tools/ship.sh` builds the docs from empty so a retired page leaves the site. The docs
-  header links planetai.fab.city, where it linked the old node0 page.
+  header links planetai.fab.city, where it linked the old node0 page. `build_docs.py --check` now fails on a raw HTML tag in a
+  rendered page: a placeholder outside backticks, such as `<script>` in a code span broken across two lines, had
+  turned the rest of the changelog page into an unclosed script.
 
 - **Mesh readings are filed under the radio that measured them, by its name, with the right metric** (node #1,
   20 Oct, read against firmware 2.7.26's serializer and its 41 sensor drivers). The firmware's MQTT JSON sets `sender`
@@ -1133,8 +1135,8 @@ the last three exchanges. Also: the source registry is synced again.*
 started from the terminal still read `.env` alone. It reads the saved settings now. Also: the source registry
 is synced again.*
 
-- **`planetai run` sees what Set up saved.** A pack script started with `planetai run <pack>
-  <script>` is a new process in the container, and it read only `.env`: `planetai run earth-engine verify`
+- **`planetai run` sees what Set up saved.** A pack script started with `planetai run <pack> <script>`
+   is a new process in the container, and it read only `.env`: `planetai run earth-engine verify`
   called `EE_PROJECT` missing while Set up held it. The command now loads the node's settings before the
   script starts, so a pack key saved from Set up, the CLI or an agent is in its environment, the same as for
   the pack's adapter. With the database down it falls back to `.env`, as before.

@@ -45,7 +45,7 @@ When it worked:
 ● the node is restarting with Telegram on. Try:  planetai test-alert
 ```
 
-Your phone shows "<name> is connected. Alerts will arrive here." The command writes `TELEGRAM_BOT_TOKEN` and
+Your phone shows "&lt;name&gt; is connected. Alerts will arrive here." The command writes `TELEGRAM_BOT_TOKEN` and
 `TELEGRAM_CHAT_IDS` to `.env` and to the running node. For more people, comma-separate their chat ids in
 `TELEGRAM_CHAT_IDS`. Once the bot answers messages ([step 6](#6-talk-to-it)), a chat that is not in that list
 is told once that the node answers its household only, with its own chat id to add.
