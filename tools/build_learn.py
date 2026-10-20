@@ -103,7 +103,7 @@ MARKS = [
      "Your own instruments are drawn in ink on this page, the borrowed ones faint, and what only "
      "the satellite knows in orange."),
     ("share", "Reach, not publishing", "sharing.md", "`SHARE_LEVEL`",
-     "`SHARE_LEVEL` is reach, not publishing", "it is live within 20\nseconds.",
+     "`SHARE_LEVEL` says who on your network", "it is live within 20\nseconds.",
      "The request ledger below is this page confessing what it asked of the world while you looked "
      "at it. The offline plan asks nothing; Telegram is reached by the node, never by this page."),
     ("raw", "Raw readings stay", "how-it-works.md", "What leaves the machine, and what never does",
@@ -119,7 +119,7 @@ MARKS = [
      "A heat alert is a condition that holds for hours; a cooking spike is an event with a "
      "cooldown. The schema does not yet know an alert can clear, so the page says which it is."),
     ("rho", "ρ: the loop closed", "rho.md", None,
-     "ρ (rho) is the share", "rather than an app feature.",
+     "ρ (rho) is the share", "a row in the `actions` table.",
      "The page draws it as the alerts answered over the alerts raised, with the median minutes to the "
      "first answer, and counts the rings rather than sizing them."),
     ("refusals", "Refusals that hold at every stage", "how-it-works.md",
@@ -130,7 +130,7 @@ MARKS = [
 
     # --- Now: the sections that had no mark ------------------------------------------------------
     ("counted", "Yours, here, and counted", "sensors.md", None,
-     "Once one is", "`local` and `custody`.",
+     "Once a sensor of yours", "`local` and `custody`.",
      "`planetai sensors` prints these stations one line each, with `yours` or `reference` beside the "
      "id, and GET /sensors is the route a script reads them from. Only the ones in this node's "
      "custody can make a cell say live."),
@@ -152,8 +152,8 @@ MARKS = [
     ("buttons", "Done, Not now and Doesn't fit", "dashboard.md", "The sections",
      "**Done**, **Not now** and **Doesn't fit** each write", "keeps the answer as the note.",
      "The first press asks for a name, and this browser keeps it for the next. The labels come "
-     "from the node, and an answer needs the act token from another device. ρ does not count "
-     "events yet, so none of the three moves it."),
+     "from the node, and an answer needs the act token from another device. Done and Not now "
+     "answer the ask, so they count in ρ when the event was sent at act level; Doesn't fit does not."),
     ("claims", "One number, over how much ground", "dashboard.md", "The sections",
      "\"Whose word, over how much ground\" covers", "that one number has to cover.",
      "The line above the fold names the widest and the narrowest footprint; the fold holds all six. "
@@ -164,11 +164,11 @@ MARKS = [
      "where the pack is on: the lab, how far, and the dated archive it came from. With MAKE_ENABLED off, the row is "
      "the node's own help text for that setting instead."),
     ("note", "The note is the record", "cli.md", "Reading the node",
-     "`planetai act` is the terminal's way", "record of what was\ndone.",
+     "`planetai act` is the terminal's way", "record of what was done.",
      "Each row here is one of those records, newest first: who, which stage, how long ago, and "
      "decided first where a decision came before the act."),
     ("bot", "An answer in the household's words", "bot.md", None,
-     "Somebody in the house asks", "in\ntheir words, as an act.",
+     "Somebody in the house asks", "as an act.",
      "An act recorded through the bot lands in this ledger like one pressed on this page, with the "
      "person's own words as its note."),
     ("actions", "The table ρ is counted from", "schema.md", "Tables",
@@ -210,7 +210,7 @@ MARKS = [
      "from GET /reach. The climate normals the node pulled at install are dated years before it was "
      "switched on; its own sensors start on the day they were first polled."),
     ("trust", "Whether its own sensors tell the truth", "packs-reference.md", "trust",
-     "Whether the node's own sensors are telling it the truth", "all three\nwere wrong.",
+     "Whether the node's own sensors are telling it the truth", "disagree about the level.",
      "The figures here are GET /trust, one row per local sensor: its coverage over seven days, the "
      "channels that stopped moving, and how old the sensor is, which explains a low coverage without "
      "a fault."),
@@ -264,7 +264,7 @@ MARKS = [
      "The version at the foot is the one GET /health reports. Open it from the foot to read what "
      "every screen here asks first: the node, its version, its cell at resolution 8, its last poll."),
     ("mcp", "The surface an agent holds", "mcp.md", None,
-     "This is the surface an agent holds.", "that somebody\nacted.",
+     "This is the surface an agent holds.", "a reading off the machine.",
      "The foot names POST /mcp for an agent handed this node's address: streamable HTTP, with "
      "Authorization: Bearer and the admin token on every call. `planetai agent` prints the snippet "
      "to paste into a client."),

@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **The docs, read again from the code and rewritten.** Every page of planetai.fab.city/docs was checked against main
+  and rewritten to say what the node does now, once, in plain words: version history, internal dates and names, PR
+  numbers and node #1's diary are gone from the pages (this file keeps them), and the long pages are about a third
+  shorter (the API page went from 16,000 words to 6,000). Facts that were wrong are fixed, among them the release check
+  and the node list being read hourly, ρ counting sent events, the firmware address, nineteen core packs, and the
+  routes, flags and settings that were missing. The sidebar has ten groups and 40 pages: Index coverage, What node #1
+  can tell you and Pack ideas left it, their lasting parts folded into Concepts, First ten minutes and Packs. The
+  pages carry eight diagrams and six screenshots of node #1 (`docs/site/img/`, drawn inline on the page's own tokens,
+  left out of the tarball), and `tools/ship.sh` builds the docs from empty so a retired page leaves the site.
+
 - **Mesh readings are filed under the radio that measured them, by its name, with the right metric** (node #1,
   20 Oct, read against firmware 2.7.26's serializer and its 41 sensor drivers). The firmware's MQTT JSON sets `sender`
   to the gateway, and the node read it first: from 5 Sep to 19 Oct every radio's readings and texts went under

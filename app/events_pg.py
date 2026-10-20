@@ -152,8 +152,8 @@ EVENT_STAGES = ("acknowledged", "acted", "dismissed")
 
 def answer(cur, event_id, stage, actor, note) -> None:
     """A button pressed on an event, from the dashboard or (Plan 2) the bot: one actions row with event_id and no
-    alert_id. Every ρ, funnel and effect query joins actions to alerts on alert_id, so this row changes no published
-    number until Plan 2's decision record says how events count."""
+    alert_id. ρ and its funnel count an acknowledged or acted answer to an event sent at act level (index.rho());
+    /effect still joins on alert_id, so this row moves no effect figure."""
     if stage not in EVENT_STAGES:
         raise ValueError("an event's stage must be acknowledged, acted or dismissed")
     if isinstance(event_id, bool) or isinstance(event_id, float):

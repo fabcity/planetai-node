@@ -121,7 +121,7 @@ for doc in DOCS:
         if cmd not in CMDS and cmd not in proposed:
             errs.append(f"{doc}: mentions `planetai {cmd}`, which the CLI does not dispatch")
 
-    for link in set() if doc in SITE else set(re.findall(r"\]\((?!https?:|#|mailto:)([^)#]+)", text)):
+    for link in set() if doc in SITE else set(re.findall(r"\]\((?!https?:|#|mailto:)([^)#\s]+)", text)):
         target = os.path.normpath(os.path.join(os.path.dirname(doc), link))
         if not os.path.exists(target):
             errs.append(f"{doc}: link to `{link}` does not exist")

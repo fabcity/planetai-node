@@ -77,7 +77,7 @@ RUNTIME = {
                            "rules = every rule sends on its own, as before (default). shadow = the event engine "
                            "(docs/SPEC_alerts.md) decides what it would send and records it, and sends nothing; "
                            "the rules keep sending. events = the event engine sends the heat and air messages, one "
-                           "per event (no buttons yet), and the old heat and air rules are recorded but not sent; "
+                           "per event, and the old heat and air rules are recorded but not sent; "
                            "every other alert and the reports are unchanged."),
     "ALERT_MAX_PER_DAY":  ("alerts", "Most messages a day", False, False,
                            "With the event engine: pushes a day outside danger, default 4. Beyond it an event "
@@ -144,7 +144,7 @@ RUNTIME = {
                            "This never changes what a request carrying a token may read, from anywhere \u2014 the NAS, Home Assistant and the agent are unaffected at every level."),
     "MAP_TILES":          ("sharing", "Live map tiles", False, False, "Satellite and street view tiles from the internet. Each tile request tells a tile server which square of the planet this house is looking at. off (default) = tiles from the node's local copy of OpenStreetMap; on = live tiles. A keeper turns this on in Set up."),
     "UPDATE_CHECK":       ("sharing", "Tell me when a new version is out", False, False,
-                           "on (default) = once a day the node asks planetai.fab.city which version is current, with a plain "
+                           "on (default) = every hour the node asks planetai.fab.city which version is current, with a plain "
                            "request that carries nothing about this house. It does show Fab City's host this house's internet "
                            "address and that a PLANETAI node lives there. When a newer version is out, the page's header says so, "
                            "`planetai doctor` says so, and Telegram says so once per version. Nothing is installed: "
@@ -249,7 +249,7 @@ OUTWARD = {
     "AGENT_ONLINE_URL", "AGENT_ONLINE_MODEL", "AGENT_ONLINE_KEY",  # the one path off the network
     "AGENT_PREFER",         # which decides whether the online path is used at all
     "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_IDS",  # where the node speaks
-    "UPDATE_CHECK",         # a daily request to planetai.fab.city for the current version
+    "UPDATE_CHECK",         # an hourly request to planetai.fab.city for the current version
     "SPECIES_MATCH",        # a finding's scientific name asked of api.gbif.org
     "MAP_TILES",            # each live tile request names the square of the planet this house is looking at
 }

@@ -193,7 +193,7 @@ MAP_TILES:
   help: "dashboard: live map tiles (satellite and street) under the cells. Each tile request tells a tile server which square of the planet this house is looking at, so this is off until a keeper turns it on in Set up. off | on"
 UPDATE_CHECK:
   default: "on"
-  help: "Once a day, ask planetai.fab.city which version is current, and say so in the header, planetai doctor and once on Telegram when a newer one is out. The request carries nothing about this house, but it shows this house's internet address to Fab City's host. Nothing is installed: planetai update stays yours to run. on | off"
+  help: "Every hour, ask planetai.fab.city which version is current and read the programme's list of nodes from GitHub, and say so in the header, planetai doctor and once on Telegram when a newer version is out. The request carries nothing about this house, but it shows this house's internet address to Fab City's host. Nothing is installed: planetai update stays yours to run. on | off"
 SPECIES_MATCH:
   default: "off"
   help: "Name the species in images with GBIF: a plant or animal's scientific name is asked of api.gbif.org, and nothing else, never the picture or where it was taken. GBIF's server sees this house's internet address. Weekly, it also reads this country's list of introduced and invasive species (GRIIS), which tells GBIF the country (from NODE_TZ), and counts the open records others made in the node's seven cells, which tells GBIF the area, about 2 km across. off | on"

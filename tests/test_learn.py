@@ -133,7 +133,7 @@ try:
 
     # 1. the quote is edited out of its page entirely
     page = tmp / "docs" / "site" / "rho.md"
-    before = edit(page, "ρ (rho) is the share of the node's act-level alerts",
+    before = edit(page, "ρ (rho) is the share of the node's act-level asks",
                   "ρ is roughly how often somebody did something")
     rc, out = run(tmp)
     assert rc != 0, f"the build accepted a quote that is no longer in its page:\n{out}"
@@ -143,8 +143,8 @@ try:
 
     # 2. the paragraph grows past what the panel holds
     page = tmp / "docs" / "site" / "alerts.md"
-    before = edit(page, "`ALERT_LEVEL` (default `act`) is the floor for interrupting a person.",
-                  "`ALERT_LEVEL` (default `act`) is the floor for interrupting a person. "
+    before = edit(page, "`ALERT_LEVEL` (default `act`) is the floor for interrupting a person,",
+                  "`ALERT_LEVEL` (default `act`) is the floor for interrupting a person, "
                   + "and so on " * 30)
     rc, out = run(tmp)
     assert rc != 0, f"the build accepted a quote past the word ceiling:\n{out}"
