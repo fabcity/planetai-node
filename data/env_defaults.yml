@@ -97,7 +97,7 @@ LEARN_PUSH:
   help: "all | week | off. Blank = all: the first report each day also carries, on Telegram only, yesterday's diary entry (the week's on Mondays, the month's on the 1st) and what the node's learnings changed."
 ALERT_LEVEL:
   default: "act"
-  help: "all | week | off. Blank = all: the first report each day also carries, on Telegram only, yesterday's diary entry (the week's on Mondays, the month's on the 1st) and what the node's learnings changed. act | warn | info — what reaches your phone between reports; everything is still recorded"
+  help: "The lowest level of alert sent to your phone between reports. act | warn | info — what reaches your phone between reports; everything is still recorded"
 QUIET_HOURS:
   default: "1"
   help: "1 = between QUIET_FROM and QUIET_TO (local hours) only act-level alerts are sent; the rest wait for the morning report."
@@ -109,7 +109,7 @@ QUIET_TO:
   help: "Local hour quiet ends."
 ALERT_LOCALE:
   default: "en"
-  help: "Local hour quiet ends. en | id | es   (every rules.yml carries all three)"
+  help: "Language of the alerts and reports. en | id | es   (every rules.yml carries all three)"
 ALERT_ENGINE:
   default: "rules"
   help: "rules (default) | shadow | events. docs/SPEC_alerts.md: shadow records what the event engine would send and sends nothing; events sends the engine's heat and air messages instead of the old heat and air rules."
