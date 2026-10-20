@@ -130,7 +130,7 @@ the other appears under Nodes within a minute. If not: region on both, same firm
 **Then the channel.** Edit the **primary** channel (`LongFast`, index 0): rename it, generate a 256-bit key. Share by
 QR to every other radio.
 
-**Field sensor:** role `SENSOR`, GPS on, position every 30 min, *Telemetry → Environment* on at 15 min. Plug the Grove
+**Field sensor:** role `SENSOR`, GPS on, position every 30 min, *Telemetry → Environment* on at 15 min, and *Telemetry → Air quality* on at 15 min (off by default: a PM, CO2 or formaldehyde sensor sends nothing without it). Plug the Grove
 sensor before power-up; I²C is scanned at boot.
 
 **Gateway, in this order:** region, channel, name; then WiFi, last. On ESP32 turning WiFi on turns Bluetooth off; from
@@ -142,6 +142,14 @@ then on use the web client at the radio's IP, or USB. *Module → MQTT*: address
 The Tracker's Grove port is **3.3 V**. A SEN54/SEN55 or any fan-driven PM sensor needs 5 V and simply does not appear.
 Use BME280/BME680, SHT4x or AHT10 on Trackers. PM belongs on a mains-powered kit. The gateway can carry a sensor too
 (same rules; keep its role `CLIENT`; mark it indoor).
+
+What the node files, per radio (`MESH_METRICS` in `app/sources.py`, firmware 2.7.26): every reading goes under the radio
+that measured it, never under the gateway that heard it. The radio's own battery is `battery_v`; an INA219 or INA260
+wired to the radio sends its voltage in the environment block, and that is `voltage` and `current`, never the battery.
+A SEN5x gives `pm1` `pm25` `pm4` `pm10` `tvoc_index` `nox_index`, an SFA30 `hcho` (ppb), an SCD4x `co2`. A BME680's
+`gas_resistance` is in kΩ. **Not an MLX90632:** it sends the temperature of whatever it points at as the radio's
+`temperature`, and nothing in the packet says so, so the node would file a surface as `temp`. An MLX90614 is safe: its
+object temperature travels in a block the gateway does not uplink.
 
 ## What went wrong, so you skip it
 

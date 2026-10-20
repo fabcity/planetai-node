@@ -12,3 +12,5 @@ module_config:
     environmentMeasurementEnabled: true
     environmentUpdateInterval: 900   # 15 min: the node's cadence for mesh sensors (sources.py says PT15M)
     environmentDisplayFahrenheit: false
+    airQualityEnabled: true          # off by default: a PM, CO2 or formaldehyde sensor on the radio sends nothing without it
+    airQualityInterval: 900

@@ -166,12 +166,16 @@ def _store(sensors, readings) -> None:
     with db() as con, con.cursor() as cur:
         for s in sensors:
             cur.execute("""INSERT INTO sensors (sensor_id, source, name, lat, lon, indoor, local, kind, scale, cadence, meta)
-                           VALUES (%(sensor_id)s,%(source)s,%(name)s,%(lat)s,%(lon)s,%(indoor)s,%(local)s,%(kind)s,%(scale)s,%(cadence)s,%(meta)s)
+                           VALUES (%(sensor_id)s,%(source)s,COALESCE(%(name)s, %(default_name)s),%(lat)s,%(lon)s,%(indoor)s,%(local)s,%(kind)s,%(scale)s,%(cadence)s,%(meta)s)
                            ON CONFLICT (sensor_id) DO UPDATE SET
-                             name = COALESCE(EXCLUDED.name, sensors.name),
+                             name = COALESCE(%(name)s, sensors.name),
                              lat = COALESCE(EXCLUDED.lat, sensors.lat), lon = COALESCE(EXCLUDED.lon, sensors.lon),
-                             indoor = EXCLUDED.indoor, local = EXCLUDED.local, meta = sensors.meta || EXCLUDED.meta""",
-                        {**s, "meta": Jsonb(s.get("meta") or {})})
+                             indoor = EXCLUDED.indoor, local = EXCLUDED.local, meta = sensors.meta || EXCLUDED.meta
+                           RETURNING name""",
+                        # default_name names a new row only: a radio's telemetry, filed as "mesh !id", overwrote the name
+                        # its nodeinfo gave it every 15 minutes (node #1, 20 Oct 2026)
+                        {"default_name": None, **s, "meta": Jsonb(s.get("meta") or {})})
+            s["name"] = cur.fetchone()["name"]  # the stored name (db() rows are dicts), so Home Assistant is told the radio's, not "mesh !id"
         if readings:
             cur.executemany("INSERT INTO readings (ts, sensor_id, metric, value) VALUES (%s,%s,%s,%s) ON CONFLICT DO NOTHING", readings)
             state["ingested"] += max(cur.rowcount or 0, 0)      # rowcount, not len: duplicates are dropped
@@ -300,7 +304,7 @@ def ha_publish(sensors: list[dict], readings: list[tuple]) -> None:
                 unit, dclass = HA_UNITS.get(metric, (None, None))
                 cfg = {"name": metric.replace("_", " "), "unique_id": uid, "state_topic": state_topic,
                        "state_class": "measurement", "expire_after": 3600,
-                       "device": {"identifiers": [f"planetai_{NODE}_{sid}"], "name": s.get("name") or sid,
+                       "device": {"identifiers": [f"planetai_{NODE}_{sid}"], "name": s.get("name") or s.get("default_name") or sid,
                                   "manufacturer": "PLANETAI node", "model": s.get("source", "sensor"),
                                   "suggested_area": "Indoor" if s.get("indoor") else "Outdoor"}}
                 if unit: cfg["unit_of_measurement"] = unit

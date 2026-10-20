@@ -29,6 +29,9 @@ sent = []
 class FakeIface:
     def __init__(self, port): pass
     def getMyNodeInfo(self): return {"num": 0x0A1B2C3D, "user": {"id": "!0a1b2c3d"}}
+    # the radio's NodeDB, as the Python API holds it: itself, and a stranger's radio heard on the channel
+    nodes = {"!0a1b2c3d": {"num": 0x0A1B2C3D, "user": {"id": "!0a1b2c3d", "longName": "testnode gateway", "shortName": "GATE", "hwModel": "SEEED_XIAO_S3"}},
+             "!99999999": {"num": 0x99999999, "user": {"id": "!99999999", "longName": "a stranger", "shortName": "STR"}}}
     def sendText(self, text, channelIndex=0, **kw): sent.append((channelIndex, text))
     def close(self): pass
 meshtastic.serial_interface.SerialInterface = FakeIface
@@ -49,10 +52,14 @@ pub.sendMessage("meshtastic.receive", packet=pkt("TELEMETRY_APP", telemetry={"en
 pub.sendMessage("meshtastic.receive", packet=pkt("TEXT_MESSAGE_APP", channel=1, text="hello from Bali"), interface=None)
 pub.sendMessage("meshtastic.receive", packet=pkt("POSITION_APP", channel=1, position={"latitudeI": -88004527, "longitudeI": 1151766378}), interface=None)
 time.sleep(1)
+# at start the gateway says the names it holds for itself and the fleet's radios; its own nodeinfo never comes up USB
+names = [json.loads(p)["payload"]["longname"] for t, p in got if t.startswith("msh/") and json.loads(p)["type"] == "nodeinfo"]
+assert names == ["testnode gateway"], names
 topics = [t for t, _ in got]
 assert "msh/SG_923/2/json/planetai/!0a1b2c3d" in topics, topics
 tele = [json.loads(p) for t, p in got if t.endswith("/planetai/!0a1b2c3d")][0]
-assert tele["type"] == "telemetry" and tele["payload"]["relative_humidity"] == 71.2 and tele["sender"] == "!deadbeef"
+tele = [json.loads(p) for t, p in got if t.endswith("/planetai/!0a1b2c3d") and json.loads(p)["type"] == "telemetry"][0]
+assert tele["payload"]["relative_humidity"] == 71.2 and tele["payload"]["block"] == "environment" and tele["sender"] == "!deadbeef"
 assert "msh/SG_923/2/json/fabcity/!0a1b2c3d" in topics, "channel-1 text is still stored locally"
 assert "fabcity/testnode/text" in topics and json.loads(dict(got)["fabcity/testnode/text"])["text"] == "hello from Bali"
 assert not any(t == "fabcity/testnode/text" and b"latitude" in p for t, p in got), "position never federates"

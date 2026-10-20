@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- **Mesh readings are filed under the radio that measured them, by its name, with the right metric** (node #1,
+  20 Oct, read against firmware 2.7.26's serializer and its 41 sensor drivers). The firmware's MQTT JSON sets `sender`
+  to the gateway, and the node read it first: from 5 Sep to 19 Oct every radio's readings and texts went under
+  `msh-8f491db0`. It reads `from` now; those old rows are left as they are. A radio's telemetry no longer renames it
+  "mesh !id" every 15 minutes over the name its nodeinfo gave it, and the gateway says the names it holds for itself
+  and the fleet's radios when it starts (its own nodeinfo never comes up USB). The sensor profile turns air-quality
+  telemetry on (`airQualityEnabled`, every 900 s): the firmware has it off, so a PM, CO2 or formaldehyde sensor on a
+  radio sent nothing; provision a sensor radio again to get it. New metrics: `pm4`, `hcho`, `distance`, `weight`,
+  `radiation`, `rainfall_24h`, `white_light`, `current`; a SEN5x's VOC and NOx index arrive as `tvoc_index` and
+  `nox_index` (the node looked for field names no firmware sends), and `rainfall_1h` arrives from the host gateway at
+  all. The gateway names the telemetry block, so an INA219's voltage is `voltage`, not `battery_v`. A meshtastic
+  `gas_resistance` is kΩ, not ohms. An MLX90632 is not filed apart from air temperature, because nothing in the
+  packet says what it points at; docs/MESHTASTIC.md says not to fit one.
+
 - **The radio gateway restarts when its radio is unplugged.** It noticed the port go and then slept on, a live process
   holding a dead port, so launchd and systemd had nothing to restart: node #1's gateway heard nothing after a replug
   until it was restarted by hand (20 Oct). It now exits on meshtastic's `connection.lost` and the service starts it
