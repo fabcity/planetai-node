@@ -40,7 +40,7 @@ P = int(os.environ["RADIO_TEST_PORT"])
 w.connect("127.0.0.1", P); w.subscribe([("msh/#", 0), ("fabcity/#", 0)]); w.loop_start()
 
 fleet = radio.load_fleet()
-threading.Thread(target=radio.gateway, args=("/dev/fake", fleet, f"127.0.0.1:{P}"), daemon=True).start()
+gw = threading.Thread(target=radio.gateway, args=("/dev/fake", fleet, f"127.0.0.1:{P}"), daemon=True); gw.start()
 time.sleep(2)
 
 def pkt(portnum, channel=0, **decoded):
@@ -68,6 +68,10 @@ assert (0, "PM2.5 high, close windows") in sent, sent
 assert (1, "[menorca] hola desde Menorca") in sent, sent
 assert len(sent) == 2, sent
 assert "fabcity/testnode/alerts" in [t for t, _ in got], "the node's alert is also offered to peers"
+# an unplugged radio: the gateway exits, so launchd or systemd starts it again
+pub.sendMessage("meshtastic.connection.lost", interface=None)
+gw.join(5)
+assert not gw.is_alive(), "the gateway outlived its radio"
 print("radio gateway: ok")
 EOF
 
