@@ -175,7 +175,7 @@ def _store(sensors, readings) -> None:
                         # default_name names a new row only: a radio's telemetry, filed as "mesh !id", overwrote the name
                         # its nodeinfo gave it every 15 minutes (node #1, 20 Oct 2026)
                         {"default_name": None, **s, "meta": Jsonb(s.get("meta") or {})})
-            s["name"] = cur.fetchone()[0]       # the stored name, so Home Assistant is told the radio's, not "mesh !id"
+            s["name"] = cur.fetchone()["name"]  # the stored name (db() rows are dicts), so Home Assistant is told the radio's, not "mesh !id"
         if readings:
             cur.executemany("INSERT INTO readings (ts, sensor_id, metric, value) VALUES (%s,%s,%s,%s) ON CONFLICT DO NOTHING", readings)
             state["ingested"] += max(cur.rowcount or 0, 0)      # rowcount, not len: duplicates are dropped
