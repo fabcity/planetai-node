@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **ρ asks only what was sent.** On `ALERT_ENGINE=events` the packs the event engine replaced still write `alerts`
+  rows that are never sent, and ρ counted them: node #1 read 289 asks in 30 days for 9 messages that went out, ρ 0.028,
+  which the programme page was about to publish (20 Oct). `index.rho()` and its funnel now leave a replaced pack's rows
+  out from the engine's first sent message on, and count each act-level event it sent once, answered by an `actions`
+  row with its `event_id`. A rules node reads exactly what it read before. `tests/test_rho_pg.py` runs on a real
+  Postgres in CI.
 - **The source registry is re-pinned to awesome-fabcity-data `db77fcc` (275 entries, was 269 at `851b8db`).** Bali Air
   Dispatch's entry now names its reader `pack:bali-air-dispatch`, and the pin brings the entries merged upstream since
   12 Oct: OECD TiVA, FAO AQUASTAT and Landsat C2 surface temperature, with updated notes on four more. `planetai sources`
