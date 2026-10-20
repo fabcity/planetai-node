@@ -143,8 +143,8 @@ try:
 
     # 2. the paragraph grows past what the panel holds
     page = tmp / "docs" / "site" / "alerts.md"
-    before = edit(page, "`ALERT_LEVEL` (default `act`) is the floor for interrupting a person.",
-                  "`ALERT_LEVEL` (default `act`) is the floor for interrupting a person. "
+    before = edit(page, "`ALERT_LEVEL` (default `act`) is the floor for interrupting a person,",
+                  "`ALERT_LEVEL` (default `act`) is the floor for interrupting a person, "
                   + "and so on " * 30)
     rc, out = run(tmp)
     assert rc != 0, f"the build accepted a quote past the word ceiling:\n{out}"

@@ -77,7 +77,7 @@ RUNTIME = {
                            "rules = every rule sends on its own, as before (default). shadow = the event engine "
                            "(docs/SPEC_alerts.md) decides what it would send and records it, and sends nothing; "
                            "the rules keep sending. events = the event engine sends the heat and air messages, one "
-                           "per event (no buttons yet), and the old heat and air rules are recorded but not sent; "
+                           "per event, and the old heat and air rules are recorded but not sent; "
                            "every other alert and the reports are unchanged."),
     "ALERT_MAX_PER_DAY":  ("alerts", "Most messages a day", False, False,
                            "With the event engine: pushes a day outside danger, default 4. Beyond it an event "
@@ -249,7 +249,7 @@ OUTWARD = {
     "AGENT_ONLINE_URL", "AGENT_ONLINE_MODEL", "AGENT_ONLINE_KEY",  # the one path off the network
     "AGENT_PREFER",         # which decides whether the online path is used at all
     "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_IDS",  # where the node speaks
-    "UPDATE_CHECK",         # a daily request to planetai.fab.city for the current version
+    "UPDATE_CHECK",         # an hourly request to planetai.fab.city for the current version
     "SPECIES_MATCH",        # a finding's scientific name asked of api.gbif.org
     "MAP_TILES",            # each live tile request names the square of the planet this house is looking at
 }

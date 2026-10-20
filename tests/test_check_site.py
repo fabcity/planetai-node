@@ -51,7 +51,7 @@ for what, js, extra, needle in [
     ("another release", good, ["--version", "v0.74"], "says v0.73"),
     ("a pack count", good.replace(f"total: {f['packs']}", f"total: {f['packs'] + 1}"), [], "packs"),
     ("a language", good.replace(", 'Spanish'", ""), [], "languages"),
-    ("the docs count", good.replace(f"docsPages: {f['docs']}", "docsPages: 40"), [], "documentation pages"),
+    ("the docs count", good.replace(f"docsPages: {f['docs']}", f"docsPages: {f['docs'] + 1}"), [], "documentation pages"),
     ("the purpose", good.replace("clean air, water and soil", "clean air"), [], "PURPOSE"),
     ("the line", good.replace("for distributed production';", "for regenerative local production';"), [], "not inside the lead"),
     ("a stale rho at release", good.replace(today, "2026-01-01"), ["--version", "v0.73"], "days ago"),
