@@ -79,6 +79,20 @@ assert radio.differences(prof, fleet, snap_of(), gateway=True)[0] == "channel 0 
 wifi = dict(prof, config=dict(prof["config"], network={"wifiEnabled": True, "wifiPsk": "hunter22"}))
 ws = snap_of(); ws["config"] = dict(ws["config"], network={"wifiEnabled": True, "wifiPsk": ""})
 assert radio.differences(wifi, fleet, ws, gateway=False) == []
+# the sensor role turns air-quality telemetry on. The firmware has it off, so a PM, CO2 or formaldehyde sensor on a
+# radio sent nothing at all (20 Oct 2026). It travels in the telemetry section's one call and is read back by name.
+sens = radio.load_profiles()["sensor"]["module_config"]["telemetry"]
+assert sens["airQualityEnabled"] is True and sens["airQualityInterval"] == 900
+aq = dict(prof, module_config={"telemetry": {**prof["module_config"]["telemetry"], "airQualityEnabled": True, "airQualityInterval": 900}})
+tele = [st for st in radio.provision_steps(aq, fleet, gateway=False) if st[0] == "--set" and st[1].startswith("telemetry.")]
+assert len(tele) == 1 and tele[0][-6:] == ["--set", "telemetry.airQualityEnabled", "true", "--set", "telemetry.airQualityInterval", "900"], tele
+held = snap_of(module_config={"telemetry": {"environmentMeasurementEnabled": True, "environmentUpdateInterval": 900, "airQualityEnabled": True, "airQualityInterval": 900}})
+assert radio.differences(aq, fleet, held, gateway=False) == []
+lost = snap_of()   # MessageToDict with defaults: a radio that dropped the write reads False and 0
+lost["module_config"]["telemetry"].update(airQualityEnabled=False, airQualityInterval=0)
+assert radio.differences(aq, fleet, lost, gateway=False) == ["telemetry.airQualityEnabled is False, wants True",
+                                                            "telemetry.airQualityInterval is 0, wants 900"]
+assert {radio.problem_key(x) for x in radio.differences(aq, fleet, lost, gateway=False)} == {radio.step_key(tele[0])}, "a lost one is written again"
 assert radio.differences(dict(prof, module_config={"telemetry": {"environmentUpdateInterval": 900}}), fleet,
                          snap_of(module_config={"telemetry": {"environmentUpdateInterval": "900"}}), gateway=False) == []
 # the pin itself, not only fixedPosition: on the XIAO a later write put the position back to its defaults (19 Oct)
@@ -262,6 +276,18 @@ assert vals == {"pm1": 4.0, "pm25": 9.0, "pm10": 11.0}, vals
 tp = radio.to_mqtt(pkt("TELEMETRY_APP", telemetry={"deviceMetrics": {"batteryLevel": 101, "voltage": 4.9, "airUtilTx": 0.05}}), GW, "SG_923", "planetai")
 s, r, _ = sources.meshtastic_message(*tp)
 assert {k for _, _, k, _ in r} == {"lora_util_pct"}
+assert json.loads(tp[1])["payload"]["block"] == "device"
+# an INA219's voltage arrives in environmentMetrics; the block's name keeps it off battery_v (20 Oct 2026)
+tp = radio.to_mqtt(pkt("TELEMETRY_APP", telemetry={"environmentMetrics": {"voltage": 12.6, "current": 340.0}}), GW, "SG_923", "planetai")
+assert json.loads(tp[1])["payload"]["block"] == "environment"
+assert {k: v for _, _, k, v in sources.meshtastic_message(*tp)[1]} == {"voltage": 12.6, "current": 340.0}
+# SEN5x on 2.7.26, camelCase as MessageToDict gives it; rainfall24h has lost its underscore on the way
+tp = radio.to_mqtt(pkt("TELEMETRY_APP", telemetry={"airQualityMetrics": {"pm40Standard": 8, "pmVocIdx": 101.0, "pmNoxIdx": 1.0, "formFormaldehyde": 12.5}}), GW, "SG_923", "planetai")
+assert {k: v for _, _, k, v in sources.meshtastic_message(*tp)[1]} == {"pm4": 8, "tvoc_index": 101.0, "nox_index": 1.0, "hcho": 12.5}
+tp = radio.to_mqtt(pkt("TELEMETRY_APP", telemetry={"environmentMetrics": {"rainfall1h": 1.5, "rainfall24h": 22.0}}), GW, "SG_923", "planetai")
+assert {k: v for _, _, k, v in sources.meshtastic_message(*tp)[1]} == {"rainfall_1h": 1.5, "rainfall_24h": 22.0}
+# an MLX90614's object temperature is healthMetrics: never uplinked, so never filed as the air's
+assert radio.to_mqtt(pkt("TELEMETRY_APP", telemetry={"healthMetrics": {"temperature": 36.6}}), GW, "SG_923", "planetai") is None
 # position and nodeinfo
 tp = radio.to_mqtt(pkt("POSITION_APP", position={"latitudeI": -88004527, "longitudeI": 1151766378, "altitude": 42, "time": 1760600000}), GW, "SG_923", "planetai")
 s, r, _ = sources.meshtastic_message(*tp)

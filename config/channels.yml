@@ -41,15 +41,22 @@
 - { source: meshtastic, metric: temp,             role: enclosure,     comparable: false, unit: "°C" }
 - { source: meshtastic, metric: humidity,         role: enclosure,     comparable: false, unit: "%" }
 - { source: meshtastic, metric: pressure,         role: enclosure,     comparable: false, unit: "kPa" }
-- { source: meshtastic, metric: gas_resistance,   role: enclosure,     comparable: false, unit: "Ohm" }
+- { source: meshtastic, metric: gas_resistance,   role: enclosure,     comparable: false, unit: "kΩ" }    # firmware 2.7.26 divides the BME680's ohms by 1000
 - { source: meshtastic, metric: iaq,              role: index,         comparable: false }
 - { source: meshtastic, metric: pm25,             role: ambient,       comparable: true,  unit: "µg/m³" }
 - { source: meshtastic, metric: pm10,             role: ambient,       comparable: true,  unit: "µg/m³" }
 - { source: meshtastic, metric: pm1,              role: ambient,       comparable: true,  unit: "µg/m³" }
 - { source: meshtastic, metric: co2,              role: ambient,       comparable: true,  unit: "ppm" }
+- { source: meshtastic, metric: pm4,              role: ambient,       comparable: true,  unit: "µg/m³" }
+- { source: meshtastic, metric: hcho,             role: ambient,       comparable: true,  unit: "ppb" }
+- { source: meshtastic, metric: tvoc_index,       role: index,         comparable: false }
+- { source: meshtastic, metric: nox_index,        role: index,         comparable: false }
 - { source: meshtastic, metric: battery_pct,      role: device_health,  comparable: false, unit: "%" }
 - { source: meshtastic, metric: battery_v,        role: device_health,  comparable: false, unit: "V" }
 - { source: meshtastic, metric: lora_util_pct,    role: device_health,  comparable: false, unit: "%" }
 - { source: meshtastic, metric: lora_channel_pct, role: device_health,  comparable: false, unit: "%" }
+# an INA219/INA260 on the radio: environment_metrics voltage and current, the radio's own supply (a panel, a pump line)
+- { source: meshtastic, metric: voltage,          role: device_health,  comparable: false, unit: "V" }
+- { source: meshtastic, metric: current,          role: device_health,  comparable: false, unit: "mA" }
 
 - { source: open-meteo-cams, metric: pm25_model, role: derived, comparable: false, unit: "µg/m³" }

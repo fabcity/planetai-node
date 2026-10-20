@@ -326,21 +326,42 @@ def openmeteo_air(hc: httpx.Client, lat: float, lon: float):
 #   telemetry  -> readings (environment_metrics / air_quality_metrics / power fields flattened into payload)
 #   position   -> the sensor's lat/lon (Tracker L1 boards carry GPS)
 #   nodeinfo   -> the sensor's name
-# Metric names follow the rest of the node; field names follow Meshtastic firmware 2.x. If a future firmware renames
-# them the adapter logs the unknown keys once rather than silently dropping them.
+# Metric names follow the rest of the node; field names follow Meshtastic firmware 2.7.26, both as its own MQTT JSON
+# writes them (MeshPacketSerializer.cpp) and as the host gateway snake-cases the protobuf. Keys are matched with their
+# underscores taken out, because MessageToDict says rainfall1h where the firmware says rainfall_1h. If a future
+# firmware renames a field the adapter logs the unknown key once rather than silently dropping it.
+# Not filed, on purpose: an MLX90632 on a radio sends a surface's temperature as environment `temperature`, and the
+# packet cannot say so; it would read as `temp`, which is already an enclosure reading never averaged as the street's
+# (config/channels.yml). Do not fit an MLX90632 to a radio whose temperature matters. An MLX90614 sends its die
+# temperature there and the object's in health_metrics, which the gateway does not uplink.
 MESH_METRICS = {
     # environment_metrics
     "temperature": "temp", "relative_humidity": "humidity", "barometric_pressure": "pressure_hpa",
-    "gas_resistance": "gas_resistance", "iaq": "iaq", "lux": "light", "uv_lux": "uv_lux",
-    "wind_speed": "wind_speed", "wind_direction": "wind_direction", "rainfall_1h": "rainfall_1h",
+    "gas_resistance": "gas_resistance", "iaq": "iaq", "lux": "light", "white_lux": "white_light", "uv_lux": "uv_lux",
+    "wind_speed": "wind_speed", "wind_direction": "wind_direction", "rainfall_1h": "rainfall_1h", "rainfall_24h": "rainfall_24h",
     "soil_moisture": "soil_moisture", "soil_temperature": "soil_temp",
-    # air_quality_metrics (Plantower / SEN5x / HM3301 family)
-    "pm10_standard": "pm1", "pm25_standard": "pm25", "pm100_standard": "pm10",
+    "distance": "distance", "weight": "weight", "radiation": "radiation",     # mm (RCWL-9620 water level), kg, µR/h
+    "current": "current",                                                    # mA, an INA219/INA260 on the radio
+    # air_quality_metrics (Plantower / SEN5x / HM3301 / SCD4x / SFA30), as the host gateway names them
+    "pm10_standard": "pm1", "pm25_standard": "pm25", "pm40_standard": "pm4", "pm100_standard": "pm10",
     "pm10_environmental": "pm1_env", "pm25_environmental": "pm25_env", "pm100_environmental": "pm10_env",
-    "co2": "co2", "voc_idx": "tvoc_index", "nox_idx": "nox_index",
+    "co2": "co2", "pm_voc_idx": "tvoc_index", "pm_nox_idx": "nox_index", "form_formaldehyde": "hcho",   # hcho in ppb
+    # ...and as the firmware's own MQTT JSON names them: its "pm10" is PM1.0 and its "pm100" is PM10
+    "pm10": "pm1", "pm25": "pm25", "pm100": "pm10",
     # device health, useful for the dead-sensor rule and for battery planning
     "battery_level": "battery_pct", "voltage": "battery_v", "air_util_tx": "lora_util_pct", "channel_utilization": "lora_channel_pct",
 }
+# The same field in environment_metrics means something else: `voltage` there is an INA219/INA260's bus voltage, across
+# whatever it is wired to (a panel, a pump line), not the radio's battery.
+MESH_ENVIRONMENT = {"voltage": "voltage"}
+_MESH_KEYS = {k.replace("_", ""): v for k, v in MESH_METRICS.items()}
+
+
+def _mesh_metric(key: str, block: str):
+    """The node's metric for one telemetry field of a `block` (device, environment, air_quality, power)."""
+    return (block == "environment" and MESH_ENVIRONMENT.get(key)) or _MESH_KEYS.get(key.replace("_", ""))
+
+
 _MESH_UNKNOWN: set = set()
 
 
@@ -362,13 +383,16 @@ def meshtastic_message(topic: str, payload: bytes, indoor_ids: set | None = None
     except Exception:  # noqa: BLE001
         return [], [], {}
     kind, p = m.get("type"), m.get("payload") or {}
-    node = m.get("sender") or (f"!{m['from']:08x}" if isinstance(m.get("from"), int) else None)
+    # `from` is the radio that sent the packet. The firmware's JSON sets `sender` to the GATEWAY that published it, so
+    # reading `sender` filed every radio's readings under the gateway (node #1, 5 Sep to 19 Oct 2026).
+    node = f"!{m['from']:08x}" if isinstance(m.get("from"), int) else m.get("sender")
     if not node:
         return [], [], {}
     sid = f"msh-{node.lstrip('!')}"
     ts = datetime.fromtimestamp(m["timestamp"], tz=timezone.utc) if isinstance(m.get("timestamp"), (int, float)) and m["timestamp"] > 1_600_000_000 else datetime.now(timezone.utc)
     indoor = bool(indoor_ids and (node in indoor_ids or sid in indoor_ids))
-    sensor = {"sensor_id": sid, "source": "meshtastic", "name": None, "lat": None, "lon": None, "indoor": indoor, "local": True,
+    # name None: only a nodeinfo names a radio. _store keeps the name it has and gives a new row default_name.
+    sensor = {"sensor_id": sid, "source": "meshtastic", "name": None, "default_name": f"mesh {node}", "lat": None, "lon": None, "indoor": indoor, "local": True,
               "kind": "sensor", "scale": "community", "cadence": "PT15M",
               "meta": {"mesh_node": node, "gateway": gateway, "channel": channel, "root_topic": root}}
     readings = []
@@ -377,10 +401,13 @@ def meshtastic_message(topic: str, payload: bytes, indoor_ids: set | None = None
         # with it is noise. A mains-powered gateway reports this every time. Drop both rather than store them.
         if isinstance(p.get("battery_level"), (int, float)) and p["battery_level"] > 100:
             p = {k: v for k, v in p.items() if k not in ("battery_level", "voltage")}
+        # the host gateway names the block; the firmware's JSON does not, and its device block always carries
+        # channel_utilization. Neither JSON puts `voltage` in an air-quality or power block.
+        block = p.get("block") or ("device" if "channel_utilization" in p or "air_util_tx" in p else "environment")
         for k, v in p.items():
             if not isinstance(v, (int, float)):
                 continue
-            metric = MESH_METRICS.get(k)
+            metric = _mesh_metric(k, block)
             if metric:
                 if metric == "pressure_hpa":
                     readings.append((ts, sid, "pressure", float(v) / 10.0))   # hPa -> kPa, same unit as the rest of the node
@@ -404,8 +431,6 @@ def meshtastic_message(topic: str, payload: bytes, indoor_ids: set | None = None
     # a sensor row is only worth writing if it carries something new (name, position) or has readings
     if not readings and sensor["name"] is None and sensor["lat"] is None and kind != "text":
         return [], [], {"root_topic": root, "gateway": gateway}
-    if sensor["name"] is None:
-        sensor["name"] = f"mesh {node}"
     return [sensor], readings, {"root_topic": root, "gateway": gateway, "channel": channel, "kind": kind, "node": node}
 
 

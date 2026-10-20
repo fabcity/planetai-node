@@ -501,9 +501,12 @@ def envelope(packet: dict, gateway_id: str) -> Optional[Tuple[str, dict]]:
     port = dec.get("portnum")
     if port == "TELEMETRY_APP":
         t = dec.get("telemetry") or {}
-        for block in ("deviceMetrics", "environmentMetrics", "airQualityMetrics", "powerMetrics"):
+        # the block travels with the fields: `voltage` is the battery in deviceMetrics and an INA's bus in
+        # environmentMetrics, and app/sources.py files them apart. healthMetrics (an MLX90614's object) is not uplinked.
+        for block, name in (("deviceMetrics", "device"), ("environmentMetrics", "environment"),
+                            ("airQualityMetrics", "air_quality"), ("powerMetrics", "power")):
             if block in t:
-                return "telemetry", snake(t[block])
+                return "telemetry", {**snake(t[block]), "block": name}
         return None
     if port == "POSITION_APP":
         p = dec.get("position") or {}
@@ -710,6 +713,15 @@ def gateway(port: str, fleet: dict, broker: str = "127.0.0.1:1883", once: bool =
     c.connect(host, int(bport or 1883), keepalive=60)
     c.subscribe([(f"{root_topic}/2/json/mqtt/", 0), ("fabcity/+/text", 0), ("fabcity/+/alerts", 0)])
     c.loop_start()
+    # Names: the gateway's own nodeinfo never comes up its USB, and a sensor's comes every three hours. So say the
+    # names this radio already holds for itself and the fleet's radios, once, at start (node #1, 20 Oct 2026).
+    ours = {gw_id} | {r.get("id") for r in fleet.get("radios", [])}
+    for n in list((getattr(iface, "nodes", None) or {}).values()):
+        u = n.get("user") or {}
+        tp = to_mqtt({"from": n.get("num"), "fromId": u.get("id"), "decoded": {"portnum": "NODEINFO_APP", "user": u}},
+                     gw_id, region, primary) if u.get("id") in ours and isinstance(n.get("num"), int) else None
+        if tp:
+            c.publish(tp[0], tp[1])
     pub.subscribe(on_radio, "meshtastic.receive")
     # an unplugged radio leaves the port dead and this process alive, so the service never restarts it (20 Oct 2026)
     lost = threading.Event()
