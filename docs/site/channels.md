@@ -46,7 +46,7 @@ token is in it, so `api.telegram.org/bot` in `planetai logs` would be a leak.
 Answering on Telegram is the [bot](bot.md), which runs in the separate `agent` container. `/act 12 closed the
 windows` records an `acted` row with the actor `<AGENT_NAME>/telegram` (`local-model/telegram` by default) and
 replies "Recorded what you did." `/act 12` with no words records nothing, and the bot asks "What did you do about
-it? Send it with your words:  /act 12 <what you did>". `/act` answers alerts; an event is answered with its
+it? Send it with your words:  /act 12 &lt;what you did&gt;". `/act` answers alerts; an event is answered with its
 Done, Not now and Doesn't fit buttons, which the bot draws once it has announced itself (`TELEGRAM_BUTTONS=1`).
 `/stack` answers from the node's own arithmetic, with no model.
 
@@ -82,8 +82,8 @@ The bridge container (compose profile `reticulum`) gives the node an LXMF addres
 posts answers to `POST /actions` with `ACT_TOKEN`, and reads that token when its container is created, so run
 `planetai ui` first if the node has no `ACT_TOKEN` yet: it creates one.
 
-1. **Run `planetai reticulum`.** It builds and starts the bridge and prints `● this node's LXMF address:
-   <address>`, then what to do in Sideband: add a TCP Client interface to this machine's LAN address on port 4242,
+1. **Run `planetai reticulum`.** It builds and starts the bridge and prints
+   `● this node's LXMF address: <address>`, then what to do in Sideband: add a TCP Client interface to this machine's LAN address on port 4242,
    and start a conversation with the address above. A phone can now reach the node over Reticulum with no internet
    in between.
 2. **Answer an alert.** Send `act 3 opened the windows`. The bridge records an `acted` row on alert #3 with the

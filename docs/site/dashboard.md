@@ -428,7 +428,7 @@ Every section is registered with the page contract: `id`, `pack`, `stage`, `titl
 Optional keys are `order`, `needs`, `controls`, `wall`, `learn`, `notes`, `level` and `anchor`. `reads` names the
 routes the section's data comes from, printed beside its title as links that open the JSON it was drawn from;
 `tools/check_ui.py` fails a section with no `reads` or a route `app/main.py` does not define. A section whose `needs`
-are not on this node prints one line in their place ("The <pack> pack has nothing here yet: … is not on this node."),
+are not on this node prints one line in their place ("The &lt;pack&gt; pack has nothing here yet: … is not on this node."),
 never a blank and never a guess. A section that throws says that it did not render and why, and every other section
 still draws. The notes every section wants to make are gathered at the foot, in *Where these numbers come from*.
 
