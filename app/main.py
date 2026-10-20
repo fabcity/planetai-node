@@ -170,10 +170,12 @@ def _store(sensors, readings) -> None:
                            ON CONFLICT (sensor_id) DO UPDATE SET
                              name = COALESCE(%(name)s, sensors.name),
                              lat = COALESCE(EXCLUDED.lat, sensors.lat), lon = COALESCE(EXCLUDED.lon, sensors.lon),
-                             indoor = EXCLUDED.indoor, local = EXCLUDED.local, meta = sensors.meta || EXCLUDED.meta""",
+                             indoor = EXCLUDED.indoor, local = EXCLUDED.local, meta = sensors.meta || EXCLUDED.meta
+                           RETURNING name""",
                         # default_name names a new row only: a radio's telemetry, filed as "mesh !id", overwrote the name
                         # its nodeinfo gave it every 15 minutes (node #1, 20 Oct 2026)
                         {"default_name": None, **s, "meta": Jsonb(s.get("meta") or {})})
+            s["name"] = cur.fetchone()[0]       # the stored name, so Home Assistant is told the radio's, not "mesh !id"
         if readings:
             cur.executemany("INSERT INTO readings (ts, sensor_id, metric, value) VALUES (%s,%s,%s,%s) ON CONFLICT DO NOTHING", readings)
             state["ingested"] += max(cur.rowcount or 0, 0)      # rowcount, not len: duplicates are dropped
