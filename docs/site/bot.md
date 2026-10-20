@@ -91,7 +91,7 @@ before sending, since Telegram shows them raw.
 
 A message from a chat not in `TELEGRAM_CHAT_IDS` is logged and not answered. The first one from each such chat since
 the loop started gets "This node answers its household only. To be added, ask whoever set it up to add this chat:
-<its id>." When no rung answers, the reply is "I can't answer questions right now. Alerts and the morning report
+&lt;its id&gt;." When no rung answers, the reply is "I can't answer questions right now. Alerts and the morning report
 still work. Whoever set up the node can fix this in Set up › Model.", and the log has the error.
 
 The bot's own fixed replies (the `/act` prompts, the errors, the picture and offer replies) are in English and
