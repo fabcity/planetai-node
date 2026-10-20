@@ -78,6 +78,11 @@ def _ddl() -> str:
         for col in _generated(sql, t):
             ddl = ddl.replace("\n);", f",\n  {col}\n);")
         out.append(ddl)
+    # rho also reads the event engine's tables (what was sent, and answers by event_id): empty here, which is the
+    # rules node this gate is about, so only their shape matters.
+    out.append("CREATE TABLE alert_events (id BIGINT, level TEXT);\n"
+               "CREATE TABLE event_messages (ts TIMESTAMPTZ, event_id BIGINT, reason TEXT, sent BOOLEAN, mode TEXT);\n"
+               "ALTER TABLE actions ADD COLUMN event_id BIGINT;")
     out.append(re.search(r"CREATE VIEW readings_1h AS.*?;", sql, re.S).group(0))
     # DuckDB merges a USING column, so the view's own r.sensor_id will not bind. An explicit ON is the same join.
     out.append(re.search(r"CREATE VIEW observations AS.*?;", sql, re.S).group(0)
@@ -181,6 +186,7 @@ def rho_at(alerts, actions, events):
     import index
     sql = re.search(r'cur\.execute\(\s*"""(.*?)"""', inspect.getsource(index.rho), re.S).group(1)
     sql = (sql.replace("%(back)s", "0").replace("make_interval(days => 0)", "interval '0 days'")
+              .replace("split_part(rule_id, '/', 1) = ANY(%(rep)s::text[])", "FALSE")   # no pack replaced: a rules node
               .replace("now()", f"TIMESTAMPTZ '{NOW.isoformat()}'"))
     cur = con.execute(sql)
     return dict(zip([d[0] for d in cur.description], cur.fetchone()))
