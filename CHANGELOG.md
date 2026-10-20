@@ -10,7 +10,8 @@
   routes, flags and settings that were missing. The sidebar has ten groups and 40 pages: Index coverage, What node #1
   can tell you and Pack ideas left it, their lasting parts folded into Concepts, First ten minutes and Packs. The
   pages carry eight diagrams and six screenshots of node #1 (`docs/site/img/`, drawn inline on the page's own tokens,
-  left out of the tarball), and `tools/ship.sh` builds the docs from empty so a retired page leaves the site.
+  left out of the tarball), and `tools/ship.sh` builds the docs from empty so a retired page leaves the site. The docs
+  header links planetai.fab.city, where it linked the old node0 page.
 
 - **Mesh readings are filed under the radio that measured them, by its name, with the right metric** (node #1,
   20 Oct, read against firmware 2.7.26's serializer and its 41 sensor drivers). The firmware's MQTT JSON sets `sender`

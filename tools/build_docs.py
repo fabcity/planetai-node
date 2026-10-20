@@ -335,7 +335,7 @@ TEMPLATE = """<!doctype html>
   <span class="chip version" title="built {built} from {commit}">{version}</span>
   <div class="search"><input id="q" type="search" placeholder="Search the docs" aria-label="Search the docs" autocomplete="off"><kbd>/</kbd><div id="results" hidden></div></div>
   <nav class="links">
-    <a href="https://planetai.fab.city/node0/">node0</a>
+    <a href="https://planetai.fab.city/">planetai.fab.city</a>
     <a href="{github}" rel="noopener">GitHub</a>
     <button class="theme" aria-label="Switch register">Dark</button>
   </nav>
