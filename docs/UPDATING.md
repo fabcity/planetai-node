@@ -90,7 +90,7 @@ Every release is published twice, on the site and as a GitHub Release, from the 
 ```bash
 PLANETAI_GET=https://github.com/fabcity/planetai-node/releases/download/<tag> planetai update
 PLANETAI_GET=https://github.com/fabcity/planetai-node/releases/download/<tag> \
-  bash -c "$(curl -fsSL planetai.fab.city/install)"
+  bash -c "$(curl -fsSL https://planetai.fab.city/install)"
 ```
 
 `<tag>` is a release such as `v0.82.0`. Releases from v0.61 on are signed, and the node refuses an older one. Use the

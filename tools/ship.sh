@@ -334,7 +334,7 @@ if [[ "$HERE" == v*  && "$HERE" != *-g* ]]; then
 Install from here rather than the site:
 
     PLANETAI_GET=https://github.com/fabcity/planetai-node/releases/download/${HERE} \\
-      bash -c \"\$(curl -fsSL planetai.fab.city/install)\"
+      bash -c \"\$(curl -fsSL https://planetai.fab.city/install)\"
 
 SECURITY.md has the signer fingerprint and how to report something." \
         "${FILES[@]}" \
