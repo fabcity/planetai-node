@@ -138,7 +138,7 @@ adds drone imagery where somebody flew. `build.protomaps.com` and OpenAerialMap 
 it would ask for. Until it has run, `planetai doctor` lists **The map of this place** under what is left to
 set up.
 
-**Now there is:** the loop on a screen, drawn from the same `GET /issues` document the bot and the report read.
+**Now there is:** the loop on a screen, drawn from the node's `GET /issues` document.
 
 ## When a real alert arrives
 

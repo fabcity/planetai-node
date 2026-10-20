@@ -1,7 +1,8 @@
 # ρ: the loop closed
 <!-- checked: v0.83.0 -->
 
-ρ (rho) is the share of the node's act-level alerts that a person answered within 24 hours. It is the node's
+ρ (rho) is the share of the node's act-level asks (alerts and events it sent, and its children's alerts) that a
+person answered within 24 hours. It is the node's
 `Governance` cell in the Fab City Index, counted from the answers people give, each one a row in the `actions` table.
 
 Once the node has asked ([alerts](alerts.md)) and heard back ([channels](channels.md)), ρ and the numbers beside

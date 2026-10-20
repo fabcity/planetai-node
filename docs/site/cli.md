@@ -3,8 +3,9 @@
 
 `planetai` is how the person who keeps a node looks after it from the machine it runs on: install it, check
 it is alive, record what somebody did about an alert, change a setting, update it and keep its data safe.
-Every command reads the node's own answers over its [API](api.md) on `localhost:$APP_PORT`, with the tokens in
-`.env`, so what it prints is what the node is doing now.
+The commands that read or change a running node do it over its [API](api.md) on `localhost:$APP_PORT`, with the
+tokens in `.env`, so what they print is what the node is doing now. A few work without one: `planetai preflight`
+runs before there is a node, and `planetai sources` reads the pinned registry when the node does not answer.
 
 It is one bash script, `bin/planetai`, linked into `~/.local/bin`. It needs only the Python the machine already
 has (Apple's 3.9 on a Mac, standard library only). `planetai` on its own prints the command list. A word the node
@@ -129,7 +130,7 @@ The settings themselves, and what each one does, are on [Configuration](configur
 | `planetai backup` | Dump, export, remote copy and IPFS now, the job cron runs nightly at 03:17. |
 | `planetai restore <dump.sql.gz>` | Asks for the node's name, takes a safety backup, replaces the database with the dump and re-applies `init.sql`. Settings saved from Set up are not in a dump, so the node goes back to `.env`. With no file, lists the newest dumps. |
 | `planetai storage` | Where the database, backups, pictures, remote copy and exports are, and their state. |
-| `planetai storage set backups <dir>` | Moves the dumps (`BACKUP_DIR`). The folder must be mounted and writable. |
+| `planetai storage set backups <dir>` | Where new dumps go (`BACKUP_DIR`). The folder must be mounted and writable. Dumps already made stay in the old folder, so keep it until you have copied them. |
 | `planetai storage set captures <dir>` | Moves where new pictures go (`CAPTURES_DIR`), checked the same way, then restarts the app. A NAS share is fine. Pictures already taken stay where they are. |
 | `planetai storage set remote <remote:path>` | After each backup, copies the dumps and exports off the machine with rclone (`BACKUP_REMOTE`). |
 | `planetai storage set keep <days>` | Days of dumps kept (`BACKUP_KEEP`). |

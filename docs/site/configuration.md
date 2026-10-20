@@ -192,7 +192,7 @@ ask pane reads the same keys on every question. See [The bot](bot.md) and [Ask t
 | Setting | Default | Values | Meaning | Kind |
 |---|---|---|---|---|
 | `AGENT_PREFER` | `private` | `private`, `fallback`, `strongest` | `private` never uses the online model, so nothing leaves your network. `fallback` tries your remote model, then online, then local. `strongest` puts online first. | runtime · public · outward · restart |
-| `AGENT_ONLINE_URL` | blank | `https://api.anthropic.com/v1`, `https://api.openai.com/v1`, … | An OpenAI-compatible online endpoint, the URL and nothing else. A value not starting with `http` is skipped. | runtime · outward · restart |
+| `AGENT_ONLINE_URL` | blank | `https://api.anthropic.com/v1`, `https://api.openai.com/v1`, … | An OpenAI-compatible online endpoint, the URL and nothing else. Use an `https` address: the key travels in the `Authorization` header. A value not starting with `http` is skipped. | runtime · outward · restart |
 | `AGENT_ONLINE_MODEL` | `claude-sonnet-4-6` | model id | Pick one from `GET $AGENT_ONLINE_URL/models`; a retired model answers 404, which looks like a bad key. | runtime · public · outward · restart |
 | `AGENT_ONLINE_KEY` | blank | secret | The one thing that lets household data leave your network. | runtime · secret · outward · restart |
 | `AGENT_REMOTE_URL` | blank | `http://<host>:8082/v1` | A bigger model on another machine of yours, OpenAI-compatible. | runtime · restart |

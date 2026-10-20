@@ -1,8 +1,8 @@
 # Domains
 <!-- checked: v0.83.0 -->
 
-The core measures nothing in particular. It polls sources, stores readings, runs rules and fills Index cells, and
-which readings, which rules and which cells is a pack's business. `grep pm25 app/packs.py`, the loader, returns
+The core measures nothing in particular. It polls sources, stores readings, runs rules and fills Index cells. Which
+readings, which rules and which cells is a pack's business. `grep pm25 app/packs.py`, the loader, returns
 nothing.
 
 ## Issues: what a domain is called in the house

@@ -49,8 +49,9 @@ every remote as private anyway.
 
 ## A NAS that pulls
 
-Better than mounting the NAS on the node is letting the NAS fetch the dumps. The node serves `/backups` behind a
-read-only `BACKUP_TOKEN`, separate from the admin token. On the NAS a small script in a container asks every hour,
+Better than mounting the NAS on the node is letting the NAS fetch the dumps. The node serves `/backups` to a
+`BACKUP_TOKEN`, which reads backups and nothing else; the admin token works there too, but give the NAS the backup
+token. On the NAS a small script in a container asks every hour,
 fetches what it lacks, and opens each dump to check it is a database before keeping it. Nothing is deleted there,
 and the node holds no NAS credentials and mounts nothing. This is how node #1 is backed up.
 

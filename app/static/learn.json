@@ -835,7 +835,7 @@
      "Bagaimana saya menutup lingkaran pada sebuah peringatan?"
     ]
    },
-   "quote": "ρ (rho) is the share of the node's act-level alerts that a person answered within 24 hours. It is the node's\n`Governance` cell in the Fab City Index, counted from the answers people give, each one a row in the `actions` table.",
+   "quote": "ρ (rho) is the share of the node's act-level asks (alerts and events it sent, and its children's alerts) that a\nperson answered within 24 hours. It is the node's\n`Governance` cell in the Fab City Index, counted from the answers people give, each one a row in the `actions` table.",
    "section": "",
    "title": "ρ: the loop closed",
    "url": "https://planetai.fab.city/docs/rho/"

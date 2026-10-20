@@ -60,4 +60,6 @@ A macOS update you approved and forgot, the router, or Docker wanting a click af
 ## Moving from a laptop
 
 `planetai backup` on the laptop, copy the dump to the mini, install there, then `planetai restore <dump>`. About ten
-minutes, and everything the laptop recorded comes across.
+minutes, and every reading, alert and answer the laptop recorded comes across. Two things are not in the dump: the
+settings saved from Set up (write them down, or set them again on the mini) and the pictures in `CAPTURES_DIR`
+(copy that folder across with the dump).

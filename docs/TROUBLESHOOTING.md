@@ -28,9 +28,11 @@ drive yourself, write 3 GB and read the kernel log:
 dd if=/dev/zero of=~/writetest bs=1M count=3000 conv=fsync status=progress; rm -f ~/writetest; sudo dmesg | tail -20
 ```
 
-**Fix.** First clear Docker's image store, which an earlier failure can leave inconsistent and which holds nothing
-of yours before a first install. Stop the socket as well as the service, or the daemon wakes up while the folder is
-being deleted:
+**Fix.** Only on a first install, on a machine where Docker runs nothing else: clear Docker's image store, which an
+earlier failure can leave inconsistent. `/var/lib/docker` holds every image, container and volume on the machine,
+the node's database included once it exists, so never run this on a node that has recorded anything; back up first
+and remove only the failed image (`docker image rm <image>`) instead. Stop the socket as well as the service, or the
+daemon wakes up while the folder is being deleted:
 
 ```bash
 sudo systemctl stop docker.socket docker.service && sudo rm -rf /var/lib/docker && sudo systemctl start docker

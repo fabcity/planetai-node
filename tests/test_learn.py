@@ -133,7 +133,7 @@ try:
 
     # 1. the quote is edited out of its page entirely
     page = tmp / "docs" / "site" / "rho.md"
-    before = edit(page, "ρ (rho) is the share of the node's act-level alerts",
+    before = edit(page, "ρ (rho) is the share of the node's act-level asks",
                   "ρ is roughly how often somebody did something")
     rc, out = run(tmp)
     assert rc != 0, f"the build accepted a quote that is no longer in its page:\n{out}"

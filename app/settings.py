@@ -144,7 +144,7 @@ RUNTIME = {
                            "This never changes what a request carrying a token may read, from anywhere \u2014 the NAS, Home Assistant and the agent are unaffected at every level."),
     "MAP_TILES":          ("sharing", "Live map tiles", False, False, "Satellite and street view tiles from the internet. Each tile request tells a tile server which square of the planet this house is looking at. off (default) = tiles from the node's local copy of OpenStreetMap; on = live tiles. A keeper turns this on in Set up."),
     "UPDATE_CHECK":       ("sharing", "Tell me when a new version is out", False, False,
-                           "on (default) = once a day the node asks planetai.fab.city which version is current, with a plain "
+                           "on (default) = every hour the node asks planetai.fab.city which version is current, with a plain "
                            "request that carries nothing about this house. It does show Fab City's host this house's internet "
                            "address and that a PLANETAI node lives there. When a newer version is out, the page's header says so, "
                            "`planetai doctor` says so, and Telegram says so once per version. Nothing is installed: "
