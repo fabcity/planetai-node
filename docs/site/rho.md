@@ -25,6 +25,13 @@ answered within 24 hours. Both are computed by `index.rho()` from `alerts` joine
 earlier). A node with no children reads an empty `events` table. `days_ago` shifts the whole window back; the
 report's bundle uses 7 to carry what ρ was a week ago.
 
+**Only what was sent is asked.** On `ALERT_ENGINE=events` the event engine speaks for the packs it replaced (those
+with kinded rules), and from its first sent message on, those packs' `alerts` rows are written and never sent. They
+are left out. Each act-level event the engine sent counts once instead, at its first sent `open` or `escalate`
+message, answered by an `actions` row carrying its `event_id` (the bot's Done or Not now). Packs the engine does not
+replace still send through rules and count as before; on a rules node nothing changes. Before v0.83 the unsent rows
+were counted: node #1 read 289 asks in 30 days for 9 messages that went out (20 Oct 2026).
+
 `GET /rho` on node #1 as published on 19 September 2026, with the funnel's counts left out:
 
 ```json
