@@ -97,19 +97,19 @@ LEARN_PUSH:
   help: "all | week | off. Blank = all: the first report each day also carries, on Telegram only, yesterday's diary entry (the week's on Mondays, the month's on the 1st) and what the node's learnings changed."
 ALERT_LEVEL:
   default: "act"
-  help: "all | week | off. Blank = all: the first report each day also carries, on Telegram only, yesterday's diary entry (the week's on Mondays, the month's on the 1st) and what the node's learnings changed. act | warn | info — what reaches your phone between reports; everything is still recorded"
+  help: "The lowest level of alert sent to your phone between reports. act | warn | info — what reaches your phone between reports; everything is still recorded"
 QUIET_HOURS:
   default: "1"
-  help: "all | week | off. Blank = all: the first report each day also carries, on Telegram only, yesterday's diary entry (the week's on Mondays, the month's on the 1st) and what the node's learnings changed."
+  help: "1 = between QUIET_FROM and QUIET_TO (local hours) only act-level alerts are sent; the rest wait for the morning report."
 QUIET_FROM:
   default: "22"
-  help: "all | week | off. Blank = all: the first report each day also carries, on Telegram only, yesterday's diary entry (the week's on Mondays, the month's on the 1st) and what the node's learnings changed."
+  help: "Local hour quiet starts."
 QUIET_TO:
   default: "6"
-  help: "all | week | off. Blank = all: the first report each day also carries, on Telegram only, yesterday's diary entry (the week's on Mondays, the month's on the 1st) and what the node's learnings changed."
+  help: "Local hour quiet ends."
 ALERT_LOCALE:
   default: "en"
-  help: "all | week | off. Blank = all: the first report each day also carries, on Telegram only, yesterday's diary entry (the week's on Mondays, the month's on the 1st) and what the node's learnings changed. en | id | es   (every rules.yml carries all three)"
+  help: "Language of the alerts and reports. en | id | es   (every rules.yml carries all three)"
 ALERT_ENGINE:
   default: "rules"
   help: "rules (default) | shadow | events. docs/SPEC_alerts.md: shadow records what the event engine would send and sends nothing; events sends the engine's heat and air messages instead of the old heat and air rules."
@@ -187,7 +187,7 @@ ACT_TOKEN:
   help: "weaker token for recording that someone acted on an alert (POST /actions) from off this machine; it cannot read a secret or change a setting. planetai ui generates it and shows it beside the admin token."
 SHARE_LEVEL:
   default: "off"
-  help: "What a request carrying no token may read. off (default) = the dashboard, /health with the position rounded to 110 m, the daily export, the layout. open = the whole read API to anything on your network, which is what a wall screen or a phone needs; writes still need a token. A request WITH a token reads everything at either level, from anywhere, so the NAS, Home Assistant and the agent are unaffected. The building's plan needs a token always."
+  help: "What a request carrying no token may read. off (default) = the dashboard, /health with the position as the centre of the node's resolution 8 cell, the daily export, the layout. open = the whole read API to anything on your network, which is what a wall screen or a phone needs; writes still need a token. A request WITH a token reads everything at either level, from anywhere, so the NAS, Home Assistant and the agent are unaffected. The building's plan needs a token always."
 MAP_TILES:
   default: "off"
   help: "dashboard: live map tiles (satellite and street) under the cells. Each tile request tells a tile server which square of the planet this house is looking at, so this is off until a keeper turns it on in Set up. off | on"
