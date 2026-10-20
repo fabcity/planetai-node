@@ -1,5 +1,5 @@
 # Sensors and sources
-<!-- checked: v0.82.3 -->
+<!-- checked: v0.83.0 -->
 
 This page gives the node its senses. The repo's own sentence for what a node does is that it "connects
 everything that measures where you stand, from a particle sensor on the wall to a satellite overhead, into one
@@ -103,7 +103,7 @@ hand; plus one rule against a single device arriving under two networks' ids. Se
 | **Fab labs** (`make` pack) | `MAKE_ENABLED=1` as well as `PACKS_ALLOW_CODE=1`; `MAKE_ENABLED` ships as `0` | `facility` | never | One row per active fab lab within `MAKE_RADIUS_KM` (50) from the Fab Lab Network directory, with no readings. `meta` holds the slug, capabilities, city, distance and the lab's URL, never an email or a telephone. The directory is not openly licensed; read [the report page](report.md#the-nearest-place-to-make-or-fix) before turning it on. |
 | **Other code packs** | the pack's own settings | as declared | as declared | `coast` (Open-Meteo Marine), `forecast` (BMKG, Open-Meteo), `earth` (AlphaEarth embeddings), `earth-engine` (Dynamic World, Sentinel-2, VIIRS), `place` (OpenStreetMap into PostGIS), `fire` (NASA FIRMS, also `FIRE_ENABLED=1`), `surface-heat` (Landsat and MODIS through Planetary Computer). See [Packs that ship](packs-reference.md). |
 
-> **Gap in v0.82.3.** Two LAN adapters are written and tested but not registered for polling. **AirGradient**
+> **Gap in v0.83.0.** Two LAN adapters are written and tested but not registered for polling. **AirGradient**
 > (`AIRGRADIENT_HOSTS`, read on the LAN, EPA 2021 correction applied with raw kept as `pm25_raw`) and
 > **PurpleAir** (`PURPLEAIR_HOSTS`, `/json`, two Plantower channels averaged and corrected) have functions in
 > `app/sources.py` and rows in `config/channels.yml`, and `sources.enabled()` never calls them. The AirGradient
@@ -114,8 +114,8 @@ hand; plus one rule against a single device arriving under two networks' ids. Se
 
 ## What else this place could read
 
-The node carries a pinned copy of the network's registry, `awesome-fabcity-data` (269 entries at `851b8db`,
-synced 2026-10-12, in v0.82). `planetai sources` lists the entries for this node's pilot plus the global ones,
+The node carries a pinned copy of the network's registry, `awesome-fabcity-data` (275 entries at `db77fcc`,
+synced 2026-10-19, in v0.83). `planetai sources` lists the entries for this node's pilot plus the global ones,
 with the adapter that reads each where one exists; `--all`, `--pillar`, `--scale` and `--cell
 'Environmental|City'` narrow or widen it. It answers from `data/sources` when the node is down. The same list is
 `GET /sources`. A row with no adapter is a source the network knows about and no code reads yet. [The source

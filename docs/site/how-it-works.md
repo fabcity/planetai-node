@@ -1,5 +1,5 @@
 # How it works
-<!-- checked: v0.82.3 -->
+<!-- checked: v0.83.0 -->
 
 A node is two containers on one machine. `db` is Postgres with PostGIS, bound to the machine itself. `app` is
 one Python process that answers the HTTP API on port 8080 and runs ten loops in the background, an eleventh when
@@ -141,7 +141,7 @@ portal; and anywhere, sampling a global model at its coordinates. Same contracts
 Aggregation of Index cells stops at Region. Bioregion and Planet enter as boundary conditions, context
 published downward and never rolled up, which is the Index's own methodology and the architecture keeps it.
 
-The node also carries a pinned snapshot of the `awesome-fabcity-data` registry, 269 entries at `851b8db`,
+The node also carries a pinned snapshot of the `awesome-fabcity-data` registry, 275 entries at `db77fcc`,
 served at `/sources` and listed by `planetai sources`. Most of it is what this place could measure. Some of
 it is where people could go to make or fix something, and the `make` pack turns the nearest fab lab into a
 sentence when `PACKS_ALLOW_CODE=1` and `MAKE_ENABLED=1` are both set.

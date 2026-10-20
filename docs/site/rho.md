@@ -1,5 +1,5 @@
 # ρ: the loop closed
-<!-- checked: v0.82.3 -->
+<!-- checked: v0.83.0 -->
 
 ρ (rho) is the share of the node's act-level alerts that a person answered within 24 hours. It is the one
 number on the page that comes from a person, the Fab City Index's `Governance` cell at the node's scale, and
@@ -32,17 +32,17 @@ message, answered by an `actions` row carrying its `event_id` (the bot's Done or
 replace still send through rules and count as before; on a rules node nothing changes. Before v0.83 the unsent rows
 were counted: node #1 read 289 asks in 30 days for 9 messages that went out (20 Oct 2026).
 
-`GET /rho` on node #1 as published on 19 September 2026, with the funnel's counts left out:
+`GET /rho` on node #1 as read on 20 October 2026, an events node:
 
 ```json
-{"window_days": 30, "days_ago": 0, "alerts_act": 137, "acted": 29, "rho": 0.212, "median_minutes": 112,
- "funnel": {"stages": {"asked": ..., "acknowledged": ..., "acted": ..., "measured": ...},
-            "latency_minutes": {"acknowledged": ..., "acted": ..., "measured": null},
+{"window_days": 30, "days_ago": 0, "alerts_act": 157, "acted": 13, "rho": 0.083, "median_minutes": 73,
+ "funnel": {"stages": {"asked": 157, "acknowledged": 2, "acted": 13, "measured": 6},
+            "latency_minutes": {"acknowledged": null, "acted": 438, "measured": null},
             "measured_derived": true, "measured_window_minutes": 2880, "self_only": true}}
 ```
 
-Of 137 act-level alerts in 30 days, 29 were answered within 24 hours; among those 29 the median answer came
-112 minutes after the alert.
+Of 157 act-level alerts in 30 days, 13 were answered within 24 hours; among those 13 the median answer came
+73 minutes after the alert.
 
 `rho` and `median_minutes` are `null` when there is nothing to divide. `planetai status` and `planetai act` print
 ρ; the `status` MCP tool carries it; the dashboard's *Whether it worked* section draws it as "{closed} of {total}
@@ -51,8 +51,8 @@ not show it.
 
 ## Read it on your node
 
-1. **Run `planetai status`.** Its `rho` line reads, for example, `rho       0.212  (29/137 act-level alerts
-   answered, 30d)`: 29 of the 137 alerts of the last 30 days had an answer within 24 hours. Before the
+1. **Run `planetai status`.** Its `rho` line reads, for example, `rho       0.083  (13/157 act-level alerts
+   answered, 30d)`: 13 of the 157 alerts of the last 30 days had an answer within 24 hours. Before the
    first act-level alert it reads `rho       not yet measured  (0/0 act-level alerts answered, 30d)`,
    because there is nothing to divide.
 2. **Ask the node for the whole record.** `curl http://<node>:8080/rho` (at `SHARE_LEVEL=open`, or with
@@ -77,11 +77,10 @@ not show it.
 | `settings` | a setting was changed; an audit row with no alert | the node, on `PUT /settings` | no |
 | `dismissed` | *Doesn't fit*, said of an alert event's advice; an event's row has an `event_id` and no `alert_id` | `POST /actions` with an `event_id` | no |
 
-An event's three answers (`acted`, `acknowledged`, `dismissed`) are written with an `event_id` and no `alert_id`, and
-ρ, the funnel and `GET /effect` all join `actions` to `alerts` on `alert_id`, so no event's answer is in any of them
-in this release. Under `ALERT_ENGINE=events` the old heat and air rules still record their act-level alerts, which
-ρ still counts, though the engine and not those rules is what messages the household about them. How events count
-is not decided yet (v0.80.7). See [Alerts](alerts.md#the-event-engine).
+An event's three answers (`acted`, `acknowledged`, `dismissed`) are written with an `event_id` and no `alert_id`.
+Since v0.83, ρ and the funnel count an act-level event the engine sent, and its `acted` or `acknowledged` row with that
+`event_id` as its answer (see *Only what was sent is asked*, above). `GET /effect` still joins `actions` to `alerts` on
+`alert_id`, so no event's answer is in it. See [Alerts](alerts.md#the-event-engine).
 
 For ρ, `acknowledged` and `acted` both count as a response. For the dashboard's alerts, only `acted` and `measured`
 close one: "`acknowledged` means somebody saw it. Only these two mean somebody did something." There is no cap of

@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.83.0 — 2026-10-20 — Bali Air Dispatch as a pack, and the map as a setup step
 
 - **ρ asks only what was sent.** On `ALERT_ENGINE=events` the packs the event engine replaced still write `alerts`
   rows that are never sent, and ρ counted them: node #1 read 289 asks in 30 days for 9 messages that went out, ρ 0.028,

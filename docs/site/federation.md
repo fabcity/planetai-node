@@ -1,5 +1,5 @@
 # Federation and the Index
-<!-- checked: v0.82.3 -->
+<!-- checked: v0.83.0 -->
 
 This is the part that joins the network. With a parent set, a house becomes one cell in a district's picture
 without its readings leaving the house: every hour it sends up hourly means and the timestamps of its alerts,
@@ -98,10 +98,10 @@ shape of an `FCI Observations` row, plus two fields from [the source registry](s
  "unit": "µg/m³ PM2.5 (24h mean, sensors in this node's custody)",
  "source": "planetai-node · pack:air-quality", "observed_at": "2026-09-16T06:00:00+00:00",
  "state": "live", "notes": "this node's own sensors and its children's hourly means; indoor and outdoor kept separate by the rules · <have>/12 hourly buckets",
- "registered": 2, "adapter": true, "reviewed": 2, "candidate": 0, "capable": 2}
+ "registered": 2, "adapter": true, "reviewed": 2, "candidate": 1, "capable": 2}
 ```
 
-`registered` carries the `reviewed` count (two for `Environmental|Community` at pin `851b8db`), `adapter` is
+`registered` carries the `reviewed` count (two for `Environmental|Community` at pin `db77fcc`), `adapter` is
 true when `capable` is above 0, and `reviewed`, `candidate` and `capable` are counted from each entry's
 `feeds_cells`. Before v0.73 `registered` was how many entries were filed under the cell (four here) and
 `adapter` whether any of them had code. [The source registry](sources.md) says how.
