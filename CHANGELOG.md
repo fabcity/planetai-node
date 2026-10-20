@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Ask the node, on the doors, works like a chat box again, and learn mode follows the doors.** The pane sits on its
+  own grey again, as it did on the classic dashboard, so the page's paper is only ever the data; the doors had drawn
+  it on the page's ground. Enter asks (Shift and Enter for a new line), where only the ASK button did. The questions
+  under the box are the node's own, written from tonight's figures, and they read the way a household asks: "What
+  should I know about the heat today?", "Is the air worse than usual for this hour?", never an alert number. Learn
+  mode has a mark for every part of every door, 45 new ones, each quoting the section of these docs that describes
+  that part, and the pane shows that quote first. The classic dashboard keeps its own marks. The Bahasa Indonesia
+  questions have not yet been read by a native speaker.
+
 - **The docs, read again from the code and rewritten.** Every page of planetai.fab.city/docs was checked against main
   and rewritten to say what the node does now, once, in plain words: version history, internal dates and names, PR
   numbers and node #1's diary are gone from the pages (this file keeps them), and the long pages are about a third

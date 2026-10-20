@@ -24,6 +24,30 @@
    "title": "The table ρ is counted from",
    "url": "https://planetai.fab.city/docs/schema/#tables"
   },
+  "bar": {
+   "anchor": "the-bar-and-the-foot",
+   "more": "It says which node this is, which door you are on and how fresh the readings are. Locked means this screen holds no token: Set up › This screen unlocks it.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "Why does the bar say locked?",
+     "How fresh are the readings on this page?"
+    ],
+    "es": [
+     "¿Por qué arriba dice locked?",
+     "¿De cuándo son las lecturas de esta página?"
+    ],
+    "id": [
+     "Mengapa di bagian atas tertulis locked?",
+     "Seberapa baru bacaan di halaman ini?"
+    ]
+   },
+   "quote": "The bar runs along the top of every door but the Wall: the node's name and place, the five doors in the order Now,\nPlace, Node, Data, Wall, then an as-of line (`LIVE · as of 19:00`, or `CAPTURE` on a fixture, with `· locked` on a\nscreen without a token)",
+   "section": "The bar and the foot",
+   "title": "The bar at the top",
+   "url": "https://planetai.fab.city/docs/dashboard/#the-bar-and-the-foot"
+  },
   "bot": {
    "anchor": "",
    "more": "An act recorded through the bot lands in this ledger like one pressed on this page, with the person's own words as its note.",
@@ -240,6 +264,246 @@
    "title": "Custody: who may be counted",
    "url": "https://planetai.fab.city/docs/concepts/#sources-and-sensors"
   },
+  "data-api": {
+   "anchor": "",
+   "more": "This tab lists every route on this node, one line each, with a search. The doors read the same routes a script or a spreadsheet can.",
+   "page": "api.md",
+   "page_title": "HTTP API",
+   "questions": {
+    "en": [
+     "How can I read this data from my own tools?",
+     "Which routes need a token?"
+    ],
+    "es": [
+     "¿Cómo leo estos datos desde mis propias herramientas?",
+     "¿Qué rutas necesitan token?"
+    ],
+    "id": [
+     "Bagaimana saya bisa membaca data ini dari alat saya sendiri?",
+     "Rute mana yang memerlukan token?"
+    ]
+   },
+   "quote": "Every node exposes the same API on port 8080. The dashboard, the `planetai` command, the MCP tools, a NAS pulling backups, Home Assistant and a parent node are all clients of it, and none of them has a private path in.",
+   "section": "",
+   "title": "The API",
+   "url": "https://planetai.fab.city/docs/api/"
+  },
+  "data-head": {
+   "anchor": "data",
+   "more": "The head counts what the tabs draw, the hourly values, the model and satellite values and the decisions, and links to today's open file.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "How much has this node recorded in the last day?",
+     "Can I download our data?"
+    ],
+    "es": [
+     "¿Cuánto ha registrado este nodo en el último día?",
+     "¿Puedo descargar nuestros datos?"
+    ],
+    "id": [
+     "Berapa banyak yang dicatat node ini dalam sehari terakhir?",
+     "Bisakah saya mengunduh data kami?"
+    ]
+   },
+   "quote": "Every reading the node holds, one tab at a time, routed `#data/<tab>`. The tab bar is sticky; on a phone it wraps into\n44 px targets.",
+   "section": "Data",
+   "title": "Everything the node holds",
+   "url": "https://planetai.fab.city/docs/dashboard/#data"
+  },
+  "data-images": {
+   "anchor": "data",
+   "more": "The pictures stay on this node, cleaned of EXIF and GPS. What the image model saw counts only once a person here confirms it.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "What did the image model see in our photos?",
+     "How do I confirm what a photo shows?"
+    ],
+    "es": [
+     "¿Qué vio el modelo de imágenes en nuestras fotos?",
+     "¿Cómo confirmo lo que muestra una foto?"
+    ],
+    "id": [
+     "Apa yang dilihat model gambar di foto-foto kami?",
+     "Bagaimana cara memastikan isi sebuah foto?"
+    ]
+   },
+   "quote": "**Images**, newest first: when and who, what took it, the note, what the image model saw and whether somebody here confirmed it. A row opens the image to edit, confirm or delete.",
+   "section": "Data",
+   "title": "Images",
+   "url": "https://planetai.fab.city/docs/dashboard/#data"
+  },
+  "data-ledger": {
+   "anchor": "data",
+   "more": "An answer from this page, Telegram, the radio or an agent lands here as one row. The newest is at the top.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "Who answered the last alert?",
+     "What have we done this week?"
+    ],
+    "es": [
+     "¿Quién respondió la última alerta?",
+     "¿Qué hemos hecho esta semana?"
+    ],
+    "id": [
+     "Siapa yang menjawab peringatan terakhir?",
+     "Apa saja yang sudah kami lakukan minggu ini?"
+    ]
+   },
+   "quote": "every decision, newest first, a run of the same answer as one row (\"decided ×10\"), who answered in words, and a filter by stage. Without a token, only the time and the stage",
+   "section": "Data",
+   "title": "The ledger",
+   "url": "https://planetai.fab.city/docs/dashboard/#data"
+  },
+  "data-models": {
+   "anchor": "data",
+   "more": "A model is partial whatever its quality, so these values sit apart from what the house measures.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "What does the forecast say for here?",
+     "How is a model different from a sensor?"
+    ],
+    "es": [
+     "¿Qué dice el pronóstico para aquí?",
+     "¿En qué se diferencia un modelo de un sensor?"
+    ],
+    "id": [
+     "Apa kata prakiraan untuk tempat ini?",
+     "Apa bedanya model dengan sensor?"
+    ]
+   },
+   "quote": "one table: a row per value the models and the satellite give for this point, how often it is fetched, its unit",
+   "section": "Data",
+   "title": "Models and satellite",
+   "url": "https://planetai.fab.city/docs/dashboard/#data"
+  },
+  "data-perday": {
+   "anchor": "the-strips",
+   "more": "Here those counts are a table, a row a day, with the hours over the line out of the hours read, for each issue drawn by the hour.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "Which days had the most bad hours?",
+     "Are the bad hours getting fewer?"
+    ],
+    "es": [
+     "¿Qué días tuvieron más horas malas?",
+     "¿Hay cada vez menos horas malas?"
+    ],
+    "id": [
+     "Hari apa yang paling banyak jam buruknya?",
+     "Apakah jam-jam buruk makin berkurang?"
+    ]
+   },
+   "quote": "The figure at the end of each row is the node's own count of\nhours over the line that day, from `GET /issues/days`.",
+   "section": "The strips",
+   "title": "Hours over the line, per day",
+   "url": "https://planetai.fab.city/docs/dashboard/#the-strips"
+  },
+  "data-readings": {
+   "anchor": "data",
+   "more": "Each tile is one kind of reading with the median of its sources now. With the token a small trace shows its last 24 hours.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "What does this house measure?",
+     "What does each of these readings mean?"
+    ],
+    "es": [
+     "¿Qué mide esta casa?",
+     "¿Qué significa cada una de estas lecturas?"
+    ],
+    "id": [
+     "Apa saja yang diukur di rumah ini?",
+     "Apa arti masing-masing bacaan ini?"
+    ]
+   },
+   "quote": "every kind of reading as a tile, with the median of its sources' 15-minute means now.",
+   "section": "Data",
+   "title": "Every kind of reading",
+   "url": "https://planetai.fab.city/docs/dashboard/#data"
+  },
+  "data-sources": {
+   "anchor": "data",
+   "more": "All the sources share one scale so you can compare them, and a spike above it is printed with its number, so one spike cannot flatten the rest.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "Do our sensors agree with the public stations?",
+     "Which source reads the highest today?"
+    ],
+    "es": [
+     "¿Coinciden nuestros sensores con las estaciones públicas?",
+     "¿Qué fuente marca más alto hoy?"
+    ],
+    "id": [
+     "Apakah sensor kami sejalan dengan stasiun publik?",
+     "Sumber mana yang bacaannya paling tinggi hari ini?"
+    ]
+   },
+   "quote": "Press one to draw every source that reads it over 24 hours on one scale, each linked to where its source publishes it (the hourly table needs the token).",
+   "section": "Data",
+   "title": "Every source, a row each",
+   "url": "https://planetai.fab.city/docs/dashboard/#data"
+  },
+  "data-things": {
+   "anchor": "data",
+   "more": "Only a thing you mark to lend or give is ever published, and nothing else about your things leaves this machine.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "Which of our things are rarely used?",
+     "How do I offer something to lend?"
+    ],
+    "es": [
+     "¿Qué cosas nuestras casi no usamos?",
+     "¿Cómo ofrezco algo para prestar?"
+    ],
+    "id": [
+     "Barang kami mana yang jarang dipakai?",
+     "Bagaimana cara menawarkan barang untuk dipinjamkan?"
+    ]
+   },
+   "quote": "**Things**, what this home keeps, how often each is used, its state and whether it is offered (admin token)",
+   "section": "Data",
+   "title": "Things",
+   "url": "https://planetai.fab.city/docs/dashboard/#data"
+  },
+  "data-week": {
+   "anchor": "data",
+   "more": "One drawing per issue and distance over the last seven days, each against the issue's own line.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "Was this week better or worse than usual?",
+     "Which day was the worst this week?"
+    ],
+    "es": [
+     "¿Esta semana fue mejor o peor de lo normal?",
+     "¿Qué día fue el peor de la semana?"
+    ],
+    "id": [
+     "Apakah minggu ini lebih baik atau lebih buruk dari biasanya?",
+     "Hari apa yang paling buruk minggu ini?"
+    ]
+   },
+   "quote": "Then every issue at every distance over seven days, and the hours over the line per day",
+   "section": "Data",
+   "title": "Seven days at every distance",
+   "url": "https://planetai.fab.city/docs/dashboard/#data"
+  },
   "dial": {
    "anchor": "the-lead",
    "more": "The rungs that may leave the machine are drawn as a dotted texture rather than the cells blue, so blue keeps its one meaning on this page: an H3 cell. Under the ladder, a fold draws one cell at the rung you are on against the rungs either side, to scale, and what each thing this node speaks for costs to cover at it.",
@@ -432,6 +696,30 @@
    "title": "One API, and no private path in",
    "url": "https://planetai.fab.city/docs/api/"
   },
+  "foot": {
+   "anchor": "the-bar-and-the-foot",
+   "more": "The links here go to the documentation, to Set up and to today's open file, which anyone on your network can download at every sharing level.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "What is in today's open data file?",
+     "Where can I read how this node works?"
+    ],
+    "es": [
+     "¿Qué hay en el archivo de datos abiertos de hoy?",
+     "¿Dónde puedo leer cómo funciona este nodo?"
+    ],
+    "id": [
+     "Apa isi berkas data terbuka hari ini?",
+     "Di mana saya bisa membaca cara kerja node ini?"
+    ]
+   },
+   "quote": "The foot closes every door but the Wall: what the node is in one line, its version, the documentation and \"These pages,\nexplained\" (this page), `llms.txt` for agents, Ask the node, Set up, **Unlock this screen**, today's open export (CC BY\n4.0) and links to PLANETAI, Fab City and the source.",
+   "section": "The bar and the foot",
+   "title": "The foot of the page",
+   "url": "https://planetai.fab.city/docs/dashboard/#the-bar-and-the-foot"
+  },
   "forecast": {
    "anchor": "forecast",
    "more": "The card is drawn from GET /forecast: the wind and the rain for the hours ahead, and a forecast point more than 10 km from the node is said to be another place. Nothing on this card can raise an alert.",
@@ -576,6 +864,198 @@
    "title": "Where there is no WiFi",
    "url": "https://planetai.fab.city/docs/channels/#meshtastic-the-lora-mesh"
   },
+  "node-around": {
+   "anchor": "the-node-directory",
+   "more": "The count says how many nodes are listed and how many this node's radio heard. A node joins the list with planetai hello and a merged pull request.",
+   "page": "federation.md",
+   "page_title": "Federation and the Index",
+   "questions": {
+    "en": [
+     "Which other nodes are near us?",
+     "How does our node join the list?"
+    ],
+    "es": [
+     "¿Qué otros nodos hay cerca?",
+     "¿Cómo entra nuestro nodo en la lista?"
+    ],
+    "id": [
+     "Node lain mana yang dekat dengan kami?",
+     "Bagaimana node kami bisa masuk daftar?"
+    ]
+   },
+   "quote": "Every node reads the file from the repository's `main` once an hour and serves it at `GET /nodes`, with only\nthe name, place, scale, operator, `since` and cell, and each point rounded to one decimal; `contact`, `sources`\nand `parent` stay in the file. The Node door and the phone's walk draw the nodes from it.",
+   "section": "The node directory",
+   "title": "The nodes around it",
+   "url": "https://planetai.fab.city/docs/federation/#the-node-directory"
+  },
+  "node-cells": {
+   "anchor": "node",
+   "more": "A cell is live only when it was measured here in the last day. A model or a neighbour's numbers never make one live.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "What is the Fab City Index?",
+     "Why are some cells only partial?"
+    ],
+    "es": [
+     "¿Qué es el Índice Fab City?",
+     "¿Por qué algunas celdas aparecen como parciales?"
+    ],
+    "id": [
+     "Apa itu Fab City Index?",
+     "Mengapa beberapa sel hanya sebagian?"
+    ]
+   },
+   "quote": "the Index cells this node computes from its hourly buckets, \"N of 20\", each with its value and provenance word",
+   "section": "Node",
+   "title": "Fab City Index cells",
+   "url": "https://planetai.fab.city/docs/dashboard/#node"
+  },
+  "node-flow": {
+   "anchor": "node",
+   "more": "Your sources come in on one side and what leaves goes out on the other, at their real rate. Raw readings stay here; a dashed line is one nobody turned on.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "What does this node send out, and to whom?",
+     "Where do our readings come from?"
+    ],
+    "es": [
+     "¿Qué envía este nodo hacia fuera, y a quién?",
+     "¿De dónde vienen nuestras lecturas?"
+    ],
+    "id": [
+     "Apa yang dikirim node ini keluar, dan kepada siapa?",
+     "Dari mana bacaan kami berasal?"
+    ]
+   },
+   "quote": "the node as a hexagon, its sources on one side and what leaves on the other, replaying the last six hours in 30 s (24 hours on a press). Drawn vertically under 700 px",
+   "section": "Node",
+   "title": "What comes in, what goes out",
+   "url": "https://planetai.fab.city/docs/dashboard/#node"
+  },
+  "node-globe": {
+   "anchor": "node",
+   "more": "Each listed node lights its own coarse cell on the planet's grid, with a line from this node to every other node that has a point.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "Where are the other nodes in the world?",
+     "Why is our place shown as such a big cell?"
+    ],
+    "es": [
+     "¿Dónde están los otros nodos en el mundo?",
+     "¿Por qué nuestro lugar aparece como una celda tan grande?"
+    ],
+    "id": [
+     "Di mana saja node lain di dunia?",
+     "Mengapa tempat kami ditampilkan sebagai sel yang begitu besar?"
+    ]
+   },
+   "quote": "the nodes listed and heard by radio, then a globe at most a third of the screen high",
+   "section": "Node",
+   "title": "The globe",
+   "url": "https://planetai.fab.city/docs/dashboard/#node"
+  },
+  "node-refusals": {
+   "anchor": "refusals-that-hold-at-every-stage",
+   "more": "Each refusal on this door links to where you can check it yourself: the flow, the cells, the ledger, the machine and the nodes around.",
+   "page": "how-it-works.md",
+   "page_title": "How it works",
+   "questions": {
+    "en": [
+     "Can anyone see our raw readings?",
+     "Could an agent act for us without asking?"
+    ],
+    "es": [
+     "¿Alguien puede ver nuestras lecturas en bruto?",
+     "¿Podría un agente actuar por nosotros sin preguntar?"
+    ],
+    "id": [
+     "Bisakah orang lain melihat bacaan mentah kami?",
+     "Bisakah agen bertindak atas nama kami tanpa bertanya?"
+    ]
+   },
+   "quote": "No raw readings leave the instance that recorded them. No cell is upgraded from `mock` or `partial` to `live`\nby aggregation. No agent dispatches without a human row in `actions`. No layer requires a cloud provider to\nfunction. No scale is skipped: a city aggregator is built from nodes, not declared from above.",
+   "section": "Refusals that hold at every stage",
+   "title": "What this node will not do",
+   "url": "https://planetai.fab.city/docs/how-it-works/#refusals-that-hold-at-every-stage"
+  },
+  "node-remember": {
+   "anchor": "node",
+   "more": "Under the diary and what is usual sit What worked and Who lives here. All of it needs the admin token and none of it leaves this machine.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "What has the node learned about our house?",
+     "What happened in the house last week?"
+    ],
+    "es": [
+     "¿Qué ha aprendido el nodo sobre nuestra casa?",
+     "¿Qué pasó en casa la semana pasada?"
+    ],
+    "id": [
+     "Apa yang sudah dipelajari node tentang rumah kami?",
+     "Apa yang terjadi di rumah minggu lalu?"
+    ]
+   },
+   "quote": "admin token only, and never leaves the machine: the **Diary** as a table by day, week, month or year, each entry opening as the node wrote it, with a search; **What is usual** (the shape of the day inside and out, the week against the three before)",
+   "section": "Node",
+   "title": "What it remembers",
+   "url": "https://planetai.fab.city/docs/dashboard/#node"
+  },
+  "node-running": {
+   "anchor": "node",
+   "more": "The version, the uptime and the readings since the last restart, then the processor, memory and disk, which need the token. Set up › Machine has the full view.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "How long will the disk last?",
+     "Is the machine working too hard?"
+    ],
+    "es": [
+     "¿Cuánto le queda al disco?",
+     "¿La máquina está trabajando al límite?"
+    ],
+    "id": [
+     "Berapa lama lagi ruang disk-nya cukup?",
+     "Apakah mesinnya bekerja terlalu berat?"
+    ]
+   },
+   "quote": "the machine under the node and how long its disk lasts",
+   "section": "Node",
+   "title": "Running",
+   "url": "https://planetai.fab.city/docs/dashboard/#node"
+  },
+  "node-verdict": {
+   "anchor": "node",
+   "more": "The verdict is the node's own check of its last poll, its loop and its sensors. Under it, the version, how long it has run and the cell it stands in.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "Is the node working properly?",
+     "Which sensor has gone quiet?"
+    ],
+    "es": [
+     "¿Está funcionando bien el nodo?",
+     "¿Qué sensor ha dejado de enviar datos?"
+    ],
+    "id": [
+     "Apakah node bekerja dengan baik?",
+     "Sensor mana yang berhenti mengirim data?"
+    ]
+   },
+   "quote": "A\npoll older than 15 minutes, a loop that failed on its last run, a sensor of its own not heard in the last hour, or,\nwith the token, a fundamental source not running (`GET /health/sources`) turns it into \"Needs a look\", saying which,\nwith a link to finish setting up.",
+   "section": "Node",
+   "title": "Working, or needs a look",
+   "url": "https://planetai.fab.city/docs/dashboard/#node"
+  },
   "note": {
    "anchor": "reading-the-node",
    "more": "Each row here is one of those records, newest first: who, which stage, how long ago, and decided first where a decision came before the act.",
@@ -600,6 +1080,174 @@
    "title": "The note is the record",
    "url": "https://planetai.fab.city/docs/cli/#reading-the-node"
   },
+  "now-around": {
+   "anchor": "now",
+   "more": "Press a station to open its readings in Data. Without WebGL the map is drawn as a rose of bearings and distances instead.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "Is the air outside worse than in our house?",
+     "Which station near us has the dirtiest air?"
+    ],
+    "es": [
+     "¿El aire de fuera está peor que el de casa?",
+     "¿Qué estación cercana tiene el aire más sucio?"
+    ],
+    "id": [
+     "Apakah udara di luar lebih buruk daripada di rumah kami?",
+     "Stasiun mana di dekat kami yang udaranya paling kotor?"
+    ]
+   },
+   "quote": "Under them, the map of the stations around the house: each public\nstation with its 15-minute mean, a red square beside one over the air's line, the house as one mark with its own\nsensors' range, and the distance rings and cells for a screen with the token.",
+   "section": "Now",
+   "title": "The stations around the house",
+   "url": "https://planetai.fab.city/docs/dashboard/#now"
+  },
+  "now-distances": {
+   "anchor": "now",
+   "more": "Each distance carries its own provenance word, so you can see which number was measured in this house and which came from a public station or a model.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "Is it worse inside or outside right now?",
+     "What was it like at this hour yesterday?"
+    ],
+    "es": [
+     "¿Ahora está peor dentro o fuera de casa?",
+     "¿Cómo estaba ayer a esta misma hora?"
+    ],
+    "id": [
+     "Sekarang lebih buruk di dalam atau di luar rumah?",
+     "Bagaimana keadaannya pada jam yang sama kemarin?"
+    ]
+   },
+   "quote": "The four distances follow as one quiet line; a distance with no reading says `none` or `not recorded`. Point at\nan hour, drag across the day, or use the arrow keys (left and right an hour, up and down a day, End for now): the\nsentence, the distances and Decide follow the hour, and **Back to now** returns.",
+   "section": "Now",
+   "title": "House, street, ring and region",
+   "url": "https://planetai.fab.city/docs/dashboard/#now"
+  },
+  "now-rows": {
+   "anchor": "now",
+   "more": "Each row carries the node's state word, the value now and today's hours over the line. Press one and the whole door moves to that issue.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "Which of these needs a look today?",
+     "Was it too hot or the air too dirty at any hour today?"
+    ],
+    "es": [
+     "¿Cuál de estos hay que mirar hoy?",
+     "¿Hubo alguna hora hoy con demasiado calor o el aire muy sucio?"
+    ],
+    "id": [
+     "Mana di antara ini yang perlu diperhatikan hari ini?",
+     "Apakah hari ini ada jam yang terlalu panas atau udaranya terlalu kotor?"
+    ]
+   },
+   "quote": "**Around the house.** A row for each issue drawn by the hour, its state word, its value now and its hours over the line\ntoday; pressing one moves the page to that issue.",
+   "section": "Now",
+   "title": "Every issue, a row each",
+   "url": "https://planetai.fab.city/docs/dashboard/#now"
+  },
+  "now-sentence": {
+   "anchor": "now",
+   "more": "The sentence is the node's own, in the house's language, and the pill beside the time says where its number comes from. The cell at the right of the kicker opens Place.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "What does the node want me to know right now?",
+     "Is this number measured in our house?"
+    ],
+    "es": [
+     "¿Qué quiere decirme el nodo ahora mismo?",
+     "¿Esta cifra se mide en nuestra casa?"
+    ],
+    "id": [
+     "Apa yang ingin disampaikan node kepada saya sekarang?",
+     "Apakah angka ini diukur di rumah kami?"
+    ]
+   },
+   "quote": "**Right now.** A kicker (\"Right now · Heat at 19:00\" and the provenance pill), then the sentence and the day as one\nblock: the issue's sign, the node's title (no number in it) with its tagline smaller beneath, and the\n[day figure](#the-day-figure) with the week under it.",
+   "section": "Now",
+   "title": "Right now",
+   "url": "https://planetai.fab.city/docs/dashboard/#now"
+  },
+  "now-things": {
+   "anchor": "now",
+   "more": "The line counts the things, how many sit idle and how many need repair, and opens the list in Data › Home. Only a thing you mark to lend or give is ever published.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "Which of our things need repair?",
+     "What could we lend to a neighbour?"
+    ],
+    "es": [
+     "¿Qué cosas nuestras necesitan arreglo?",
+     "¿Qué podríamos prestarle a un vecino?"
+    ],
+    "id": [
+     "Barang kami mana yang perlu diperbaiki?",
+     "Apa yang bisa kami pinjamkan ke tetangga?"
+    ]
+   },
+   "quote": "With the admin token one line counts the things this home\nkeeps.",
+   "section": "Now",
+   "title": "What this home keeps",
+   "url": "https://planetai.fab.city/docs/dashboard/#now"
+  },
+  "now-todo": {
+   "anchor": "now",
+   "more": "Press the one that is true: Done when you did it, Not now to be asked again in three hours, Doesn't fit when it does not apply here. Your answer is the first row in Data › Ledger.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "What should I do about this now?",
+     "What happens if I leave it for later?"
+    ],
+    "es": [
+     "¿Qué debería hacer ahora?",
+     "¿Qué pasa si lo dejo para más tarde?"
+    ],
+    "id": [
+     "Apa yang sebaiknya saya lakukan sekarang?",
+     "Apa yang terjadi kalau saya menundanya?"
+    ]
+   },
+   "quote": "**What to do.** While the node is asking (`asking` on the issue in `/issues`), a framed card: the issue, the kind of\nevent and when it began, the peak against the line, the action the node chose in its own words, and **Done**, **Not\nnow** and **Doesn't fit**.",
+   "section": "Now",
+   "title": "What to do",
+   "url": "https://planetai.fab.city/docs/dashboard/#now"
+  },
+  "now-worked": {
+   "anchor": "now",
+   "more": "This part shows only with the admin token, because it is the house's own record. The whole diary and every case are on Node, under What it remembers.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "Did what we did last time help?",
+     "How was yesterday in the house?"
+    ],
+    "es": [
+     "¿Sirvió lo que hicimos la última vez?",
+     "¿Cómo estuvo ayer la casa?"
+    ],
+    "id": [
+     "Apakah yang kami lakukan terakhir kali membantu?",
+     "Bagaimana keadaan rumah kemarin?"
+    ]
+   },
+   "quote": "**Did it work** and **Yesterday** (admin token only). For the issue on screen: the last time the node asked, what was\ndone, what the air or heat inside did in the hours after against the street, and the node's verdict from what it\nlearned (\"It helps here.\", \"No clear difference here yet.\", \"Too early to say.\")",
+   "section": "Now",
+   "title": "Did it work, and yesterday",
+   "url": "https://planetai.fab.city/docs/dashboard/#now"
+  },
   "parent": {
    "anchor": "",
    "more": "The wires on the right are what leaves this node: hourly means to a parent, the Index cells and ρ. A wire with nothing on it is dashed. `planetai config set PARENT_API_URL` and `PARENT_TOKEN` give this node a parent.",
@@ -623,6 +1271,246 @@
    "section": "",
    "title": "One cell in a district's picture",
    "url": "https://planetai.fab.city/docs/federation/"
+  },
+  "place-changed": {
+   "anchor": "place",
+   "more": "Each square is ten hectares the node's AlphaEarth record marks as changed between two years, and the share of built ground, trees, crops and water within 1 km sits beside them.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "How much land around us changed this year?",
+     "Are we losing trees around here?"
+    ],
+    "es": [
+     "¿Cuánto terreno cambió a nuestro alrededor este año?",
+     "¿Se están perdiendo árboles por aquí?"
+    ],
+    "id": [
+     "Seberapa banyak lahan di sekitar kami yang berubah tahun ini?",
+     "Apakah pepohonan di sekitar sini berkurang?"
+    ]
+   },
+   "quote": "the hectares that changed year on year (one square per 10 ha), and what the ground within 1 km is made of: built, trees, crops, water, by satellite",
+   "section": "Place",
+   "title": "What changed",
+   "url": "https://planetai.fab.city/docs/dashboard/#place"
+  },
+  "place-changing": {
+   "anchor": "place",
+   "more": "Land and coast change yearly, so they are here and not on Now. What the node cannot read yet is named here as missing.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "Is the coast near us changing?",
+     "What can this node not measure yet?"
+    ],
+    "es": [
+     "¿Está cambiando la costa cerca de nosotros?",
+     "¿Qué no puede medir todavía este nodo?"
+    ],
+    "id": [
+     "Apakah pantai di dekat kami berubah?",
+     "Apa yang belum bisa diukur node ini?"
+    ]
+   },
+   "quote": "**What is\nchanging**: land and coast with the node's sentence and figure, the Index cells, and what is not here yet (production\nand trade, water and soil).",
+   "section": "Place",
+   "title": "What is changing",
+   "url": "https://planetai.fab.city/docs/dashboard/#place"
+  },
+  "place-head": {
+   "anchor": "place",
+   "more": "The cell id is printed whole. The three buttons switch between the map, the satellite then and now, and what changed year on year.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "How big is the area this node covers?",
+     "What does the satellite show changed here?"
+    ],
+    "es": [
+     "¿Qué tamaño tiene la zona que cubre este nodo?",
+     "¿Qué cambió aquí según el satélite?"
+    ],
+    "id": [
+     "Seberapa luas area yang dicakup node ini?",
+     "Menurut satelit, apa yang berubah di sini?"
+    ]
+   },
+   "quote": "The ground this node stands on. The head gives the cell's id, resolution, edge and area (and the node's position, for\na screen with the token), and three views:",
+   "section": "Place",
+   "title": "The ground this node stands on",
+   "url": "https://planetai.fab.city/docs/dashboard/#place"
+  },
+  "place-image": {
+   "anchor": "place",
+   "more": "The picture stays on this node, cleaned of EXIF and GPS, and lands on the map where its own GPS says it was taken, else in the node's cell.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "What happens to a photo I add here?",
+     "Can the node tell me what plant this is?"
+    ],
+    "es": [
+     "¿Qué pasa con una foto que subo aquí?",
+     "¿Puede el nodo decirme qué planta es esta?"
+    ],
+    "id": [
+     "Apa yang terjadi pada foto yang saya tambahkan di sini?",
+     "Bisakah node memberi tahu saya tanaman apa ini?"
+    ]
+   },
+   "quote": "**+ Add an image** (token only) opens a dialog: the file, what took it (phone, fixed camera, microscope, drone, balloon\nor kite), a note and your name, and whether the image model on this node describes it.",
+   "section": "Place",
+   "title": "Add an image",
+   "url": "https://planetai.fab.city/docs/dashboard/#place"
+  },
+  "place-layers": {
+   "anchor": "place",
+   "more": "Eighteen layers in five groups sit in the strip. Press a group to open its rows and switch a layer on or off.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "Which layer shows the public air stations?",
+     "Where does the street map come from?"
+    ],
+    "es": [
+     "¿Qué capa muestra las estaciones públicas de aire?",
+     "¿De dónde sale el mapa de calles?"
+    ],
+    "id": [
+     "Lapisan mana yang menampilkan stasiun udara publik?",
+     "Dari mana peta jalan ini berasal?"
+    ]
+   },
+   "quote": "Each row has its swatch, what it draws and from where, its pack and its opacity. Five start\non: the street map, the node's cell, the house's stations, the public stations and the images. A layer whose pack has\nnothing here says so.",
+   "section": "Place",
+   "title": "The layers",
+   "url": "https://planetai.fab.city/docs/dashboard/#place"
+  },
+  "place-map": {
+   "anchor": "place",
+   "more": "Every distance in the margin is measured by the node from its own point. Without the token the house's marks say withheld, because together they would place the house.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "How far is the nearest station from our house?",
+     "Why are some marks hidden?"
+    ],
+    "es": [
+     "¿A qué distancia de casa está la estación más cercana?",
+     "¿Por qué algunas marcas están ocultas?"
+    ],
+    "id": [
+     "Seberapa jauh stasiun terdekat dari rumah kami?",
+     "Mengapa beberapa tanda disembunyikan?"
+    ]
+   },
+   "quote": "Nothing is labelled on the map itself: every mark leaves on a thin leader to a ruled margin, **At the house · by\nposition**, one row per mark with its distance in metres from the node, measured by the node (`GET /geo/measure`, and\n`GET /nearby` for public stations).",
+   "section": "Place",
+   "title": "The map and its margin",
+   "url": "https://planetai.fab.city/docs/dashboard/#place"
+  },
+  "place-orbit": {
+   "anchor": "place",
+   "more": "Two of the node's own Sentinel-2 years side by side, from files it already holds. Nothing is fetched while you look.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "What did this place look like a few years ago?",
+     "Has there been more building around us?"
+    ],
+    "es": [
+     "¿Cómo era este lugar hace unos años?",
+     "¿Se ha construido más a nuestro alrededor?"
+    ],
+    "id": [
+     "Seperti apa tempat ini beberapa tahun lalu?",
+     "Apakah bangunan di sekitar kami bertambah?"
+    ]
+   },
+   "quote": "the node's Sentinel-2 annual medians, then and now side by side, with the hectares that changed between them by its AlphaEarth record",
+   "section": "Place",
+   "title": "From orbit",
+   "url": "https://planetai.fab.city/docs/dashboard/#place"
+  },
+  "place-reach": {
+   "anchor": "place",
+   "more": "Each row is one kind of source with the oldest and newest hour this node holds for it, and under them the public stations within 5 km.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "How long has this node been measuring here?",
+     "Which public stations are close to us?"
+    ],
+    "es": [
+     "¿Desde cuándo mide este nodo aquí?",
+     "¿Qué estaciones públicas tenemos cerca?"
+    ],
+    "id": [
+     "Sudah berapa lama node ini mengukur di sini?",
+     "Stasiun publik mana yang dekat dengan kami?"
+    ]
+   },
+   "quote": "**Where the readings come from**: how far back each kind of source reaches, from\n`GET /reach`, and the public stations within 5 km.",
+   "section": "Place",
+   "title": "Where the readings come from",
+   "url": "https://planetai.fab.city/docs/dashboard/#place"
+  },
+  "place-species": {
+   "anchor": "place",
+   "more": "Only what a person here confirmed in an image is counted. Where a picture was taken places the house, so the table needs the token.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "Which plants and animals have we found here?",
+     "What else lives around here, by other people's records?"
+    ],
+    "es": [
+     "¿Qué plantas y animales hemos encontrado aquí?",
+     "¿Qué más vive por aquí, según lo que otros han registrado?"
+    ],
+    "id": [
+     "Tumbuhan dan hewan apa saja yang sudah kami temukan di sini?",
+     "Menurut catatan orang lain, makhluk apa lagi yang hidup di sekitar sini?"
+    ]
+   },
+   "quote": "**Species confirmed here**: a table of what somebody here confirmed\nin an image, how often, where, and GBIF's open records by others in the node's seven cells, token only.",
+   "section": "Place",
+   "title": "Species confirmed here",
+   "url": "https://planetai.fab.city/docs/dashboard/#place"
+  },
+  "place-tools": {
+   "anchor": "place",
+   "more": "Press a mark, a margin row or a cell and its facts appear in this line. Measure and From the house ask the node for the distance, so the page never works one out itself.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "How far is that point from the house?",
+     "What cell is this, and how big is it?"
+    ],
+    "es": [
+     "¿A qué distancia de la casa está ese punto?",
+     "¿Qué celda es esta y qué tamaño tiene?"
+    ],
+    "id": [
+     "Seberapa jauh titik itu dari rumah?",
+     "Sel apa ini, dan seberapa besar?"
+    ]
+   },
+   "quote": "The inspector is one line under the map. The scale rail (Street, Block, Cell,\nVillage, District, Island, Radio) and the tools sit on the map: zoom, back to the node's cell, **Inspect**, **Measure**\nwith **Done**, **From the house**, and save as PNG.",
+   "section": "Place",
+   "title": "The inspector and the tools",
+   "url": "https://planetai.fab.city/docs/dashboard/#place"
   },
   "presence": {
    "anchor": "reticulum-lxmf",
@@ -864,6 +1752,54 @@
    "title": "A setting is a decision",
    "url": "https://planetai.fab.city/docs/configuration/"
   },
+  "setup-save": {
+   "anchor": "set-up",
+   "more": "A change that sends something beyond this machine, or runs code that is not the node's, waits for Save anyway, after a panel says what it does.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "What happens when I save a setting?",
+     "How do I undo a change?"
+    ],
+    "es": [
+     "¿Qué pasa cuando guardo un ajuste?",
+     "¿Cómo deshago un cambio?"
+    ],
+    "id": [
+     "Apa yang terjadi saat saya menyimpan pengaturan?",
+     "Bagaimana cara membatalkan perubahan?"
+    ]
+   },
+   "quote": "A save sends only the fields you edited. A value saved here is live within 20 seconds and wins over `.env`; a blank\nreturns the key to `.env`. Every change is an `actions` row with `stage='settings'` and the actor `dashboard`",
+   "section": "Set up",
+   "title": "Saving a change",
+   "url": "https://planetai.fab.city/docs/dashboard/#set-up"
+  },
+  "setup-sections": {
+   "anchor": "set-up",
+   "more": "A section with something set here says how many. This screen says locked or unlocked.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "Where do I change when the reports arrive?",
+     "How do I let every screen in the house read the node?"
+    ],
+    "es": [
+     "¿Dónde cambio la hora de los informes?",
+     "¿Cómo dejo que todas las pantallas de casa lean el nodo?"
+    ],
+    "id": [
+     "Di mana saya mengubah jam laporan dikirim?",
+     "Bagaimana agar semua layar di rumah bisa membaca node?"
+    ]
+   },
+   "quote": "The gear opens Set up, a page of its own with a sticky list of sections. The first eight are the setting groups;\nthe last four are about this screen and this machine.",
+   "section": "Set up",
+   "title": "The sections",
+   "url": "https://planetai.fab.city/docs/dashboard/#set-up"
+  },
   "shape": {
    "anchor": "sensors-and-readings",
    "more": "The page waits for seven local days before it names the worst hour, and until then says how many it has. GET /shape?metric=pm25 returns the same hours, with how many hourly means went into each.",
@@ -1056,6 +1992,150 @@
    "title": "Whether its own sensors tell the truth",
    "url": "https://planetai.fab.city/docs/packs-reference/#trust"
   },
+  "wall-map": {
+   "anchor": "what-it-shows",
+   "more": "The caption under the map says in words what the red discs mean against the house, at the hour they show.",
+   "page": "wall.md",
+   "page_title": "Wall mode",
+   "questions": {
+    "en": [
+     "Which way is the wind blowing?",
+     "What do the red circles mean?"
+    ],
+    "es": [
+     "¿Hacia dónde sopla el viento?",
+     "¿Qué significan los círculos rojos?"
+    ],
+    "id": [
+     "Ke arah mana angin bertiup?",
+     "Apa arti lingkaran merah itu?"
+    ]
+   },
+   "quote": "**The map**: the stations around the house on the node's own map, framed on the scale's H3 cell, with the wind. The\n  house is one mark and a public station a disc, red when it is over the line.",
+   "section": "What it shows",
+   "title": "The map",
+   "url": "https://planetai.fab.city/docs/wall/#what-it-shows"
+  },
+  "wall-narration": {
+   "anchor": "the-node-thinking-aloud",
+   "more": "A new text comes every ten minutes from the model chosen in Set up › Model, and the box says it is a model's words, written from the node's figures.",
+   "page": "wall.md",
+   "page_title": "Wall mode",
+   "questions": {
+    "en": [
+     "What does the node suggest for today?",
+     "Which model writes this text?"
+    ],
+    "es": [
+     "¿Qué sugiere el nodo para hoy?",
+     "¿Qué modelo escribe este texto?"
+    ],
+    "id": [
+     "Apa saran node untuk hari ini?",
+     "Model mana yang menulis teks ini?"
+    ]
+   },
+   "quote": "The node tells it to speak like a calm neighbour in six to eight plain sentences: what is happening\ninside, how it compares with the street and the neighbourhood, what it suggests for an ordinary day, and what the next\nhours may bring, with no units, at most two numbers, and never saying that anything is safe.",
+   "section": "The node, thinking aloud",
+   "title": "The node, thinking aloud",
+   "url": "https://planetai.fab.city/docs/wall/#the-node-thinking-aloud"
+  },
+  "wall-never": {
+   "anchor": "what-the-wall-never-shows",
+   "more": "That is why this screen holds no token and no button. An answer belongs on Telegram, the radio or the other doors.",
+   "page": "wall.md",
+   "page_title": "Wall mode",
+   "questions": {
+    "en": [
+     "Why does this screen not name the rooms?",
+     "Can a guest see anything private here?"
+    ],
+    "es": [
+     "¿Por qué esta pantalla no nombra las habitaciones?",
+     "¿Puede un invitado ver algo privado aquí?"
+    ],
+    "id": [
+     "Mengapa layar ini tidak menyebut nama ruangan?",
+     "Bisakah tamu melihat sesuatu yang pribadi di sini?"
+    ]
+   },
+   "quote": "Anyone in the room reads the Wall, so it names no sensor, room, kit or person, and the model's facts carry none of\nthem either. What is asked is the node's own sentence, never the alert's text, which can name a room. It never shows\nwhat the house learned, its diary, its things, a position or a button to answer.",
+   "section": "What the Wall never shows",
+   "title": "What the Wall never shows",
+   "url": "https://planetai.fab.city/docs/wall/#what-the-wall-never-shows"
+  },
+  "wall-page": {
+   "anchor": "the-walk",
+   "more": "At the house it draws each issue and the day inside, at the street what is usual outside, at the ring the land within 1 km, and at the region what the satellites see.",
+   "page": "wall.md",
+   "page_title": "Wall mode",
+   "questions": {
+    "en": [
+     "What is the land around us made of?",
+     "Are there fires nearby?"
+    ],
+    "es": [
+     "¿De qué está hecho el terreno de alrededor?",
+     "¿Hay incendios cerca?"
+    ],
+    "id": [
+     "Tanah di sekitar kami terdiri dari apa saja?",
+     "Apakah ada kebakaran di dekat sini?"
+    ]
+   },
+   "quote": "Every figure says when it is from and carries a provenance word. A figure from `/observations` takes the node's rule\nfor readouts (`model` for a model, `partial` otherwise), and what the node learned is `partial`. A source is named the\nway the Wall says it (\"Sea, 5 km off\"), and a sensor's name never appears.",
+   "section": "The walk",
+   "title": "The page for each scale",
+   "url": "https://planetai.fab.city/docs/wall/#the-walk"
+  },
+  "wall-sentence": {
+   "anchor": "what-it-shows",
+   "more": "When the node's last poll is more than 15 minutes old, the time says the readings are old.",
+   "page": "wall.md",
+   "page_title": "Wall mode",
+   "questions": {
+    "en": [
+     "Is anything being asked of us right now?",
+     "Are these readings fresh?"
+    ],
+    "es": [
+     "¿Se nos está pidiendo algo ahora?",
+     "¿Son recientes estas lecturas?"
+    ],
+    "id": [
+     "Apakah ada yang diminta dari kami sekarang?",
+     "Apakah bacaan ini masih baru?"
+    ]
+   },
+   "quote": "**The time and the sentence**: the headline issue's title as the node writes it, with what is asked now beside it:\n  the node's own sentence, how many things are asked of the house, and \"Answer on Telegram, not here.\", or \"Nothing is\n  asked now.\"",
+   "section": "What it shows",
+   "title": "The time and the sentence",
+   "url": "https://planetai.fab.city/docs/wall/#what-it-shows"
+  },
+  "wall-walk": {
+   "anchor": "the-walk",
+   "more": "House, street, ring and region, each framed on its own cell. With reduced motion on, the Wall holds the street at the last hour.",
+   "page": "wall.md",
+   "page_title": "Wall mode",
+   "questions": {
+    "en": [
+     "Why does the map keep moving out?",
+     "How do I keep it on our street?"
+    ],
+    "es": [
+     "¿Por qué el mapa se va alejando?",
+     "¿Cómo lo dejo quieto en nuestra calle?"
+    ],
+    "id": [
+     "Mengapa peta terus bergerak menjauh?",
+     "Bagaimana agar peta tetap di jalan kami?"
+    ]
+   },
+   "quote": "Each scale holds while its day is replayed, 24 hours in 30 s, then the walk cuts to the next. A new scale is a cut,\nnever a flight. The four scale names on the map say which one is drawn: pressing one holds it, pressing it again lets\nthe walk go on.",
+   "section": "The walk",
+   "title": "The walk, a scale at a time",
+   "url": "https://planetai.fab.city/docs/wall/#the-walk"
+  },
   "workshop": {
    "anchor": "what-it-is-for",
    "more": "In Act, under the record of what was asked, the row with the nearest fab lab is that sentence where the pack is on: the lab, how far, and the dated archive it came from. With MAKE_ENABLED off, the row is the node's own help text for that setting instead.",
@@ -1126,6 +2206,51 @@
   "production",
   "purpose",
   "health",
-  "mcp"
+  "mcp",
+  "bar",
+  "foot",
+  "now-sentence",
+  "now-distances",
+  "now-todo",
+  "now-worked",
+  "now-rows",
+  "now-around",
+  "now-things",
+  "place-head",
+  "place-image",
+  "place-layers",
+  "place-map",
+  "place-tools",
+  "place-orbit",
+  "place-changed",
+  "place-reach",
+  "place-species",
+  "place-changing",
+  "node-verdict",
+  "node-flow",
+  "node-cells",
+  "node-remember",
+  "node-around",
+  "node-globe",
+  "node-running",
+  "node-refusals",
+  "data-head",
+  "data-readings",
+  "data-sources",
+  "data-week",
+  "data-perday",
+  "data-models",
+  "data-images",
+  "data-things",
+  "data-ledger",
+  "data-api",
+  "wall-never",
+  "wall-sentence",
+  "wall-map",
+  "wall-walk",
+  "wall-page",
+  "wall-narration",
+  "setup-sections",
+  "setup-save"
  ]
 }

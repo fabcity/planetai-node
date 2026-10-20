@@ -530,6 +530,13 @@ if _learn.exists():
     for _arr in re.findall(r"\blearn:\s*\[([^\]]*)\]", js):
         _drawn |= set(re.findall(r"'([a-z]+)'", _arr))
     _drawn |= set(re.findall(r"\bmark\('([a-z]+)'", js))
+    # The doors (`/`) mark their parts in the markup, `data-learn="<key>"`, and Place names the frame it reuses
+    # for two views with `dataset.learn = ...`. learnList() lists each one, so a key there must exist too.
+    _doors = "".join(p.read_text() for p in sorted(pathlib.Path("app/static").glob("doors*.*")))
+    _dk = set(re.findall(r'data-learn="([a-z-]+)"', _doors))
+    for _expr in re.findall(r"dataset\.learn\s*=\s*([^;]+);", _doors):
+        _dk |= set(re.findall(r"(?:^|[?:])\s*'([a-z-]+)'", _expr.strip()))   # the values, not what they are chosen by
+    _drawn |= _dk
     for _k in sorted(_drawn - _have):
         errs.append(f"the page draws a learn mark '{_k}' that app/static/learn.json does not have. "
                     f"Add it to MARKS in tools/build_learn.py, or stop drawing it.")

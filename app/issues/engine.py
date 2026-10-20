@@ -42,7 +42,7 @@ import actions as A
 import packs
 
 from . import (CMP_WORDS, DAY_PARTS, DIGEST_WORDS, DISTANCES, HEADLINE_RULE, HERO_WORDS, JOIN_WORDS, LABEL_WORDS,
-               LOCALES, NOUN_WORDS, PLAIN_WORDS, PROMPT_WORDS, REASON_WORDS, SIMPLE_WORDS,
+               LOCALES, NOUN_WORDS, PLAIN_WORDS, PROMPT_WORDS, REASON_WORDS, SIMPLE_WORDS, prompt_issue,
                SPAN_WORDS, WHERE_WORDS, order, pack_sections)
 from . import geometry
 from .schema import CLOSED_STAGES, is_open, is_seen, place_of, stage_of
@@ -304,29 +304,32 @@ PROMPTS_MAX = 12
 
 
 def _prompts(out: dict, headline: str | None) -> dict:
-    """The ask pane's questions. The first three are the ones it opens with: why the lead leads, the oldest
-    open alert (or whether anything is asking), and what the lead's line means (or, with no line, where its
-    number comes from). After them, the pool the pane rotates through: every other issue with a reading as
-    it is now, the two newest of the other open alerts, and every other issue's line. Only two more alerts,
-    because node #1 had ten open and the pool became six copies of one question. An issue that is context
-    (land, coast: the satellite's year) is not asked about "right now". Nothing repeats, and there are at
-    most PROMPTS_MAX. The order is the same in every locale, so a rotation lands on the same question in each."""
-    opens = sorted((a for v in out.values() for a in (v.get("open_asks") or []) if a.get("id") is not None),
-                   key=lambda a: str(a.get("ts")))
-    oldest = opens[0] if opens else None
+    """The ask pane's questions. The first three are the ones it opens with: what to know about the lead today,
+    what can be done about the issue of the oldest open alert (or whether anything needs doing), and where the
+    lead's line comes from (or, with no line, whether its number is measured here). After them, the pool the
+    pane rotates through: every other issue as it is now, whether the lead and the others are worse than usual
+    for the hour, what can be done about the issues of other open alerts, and every other issue's line. An issue
+    that is context (land, coast: the satellite's year) is not asked about "right now" or "usual". Nothing
+    repeats, and there are at most PROMPTS_MAX. The order is the same in every locale, so a rotation lands on the
+    same question in each."""
+    opens = sorted(((k, a) for k, v in out.items() for a in (v.get("open_asks") or []) if a.get("id") is not None),
+                   key=lambda ka: str(ka[1].get("ts")))
     others = [k for k, v in out.items() if k != headline and v.get("state") not in (None, "none")]
+    live = lambda k: (out.get(k) or {}).get("state") not in (None, "none", "context")  # noqa: E731
     said = {}
     for loc in LOCALES:
         w = PROMPT_WORDS[loc]
-        nm = lambda k: ((out.get(k) or {}).get("name") or {}).get(loc, k or "").lower()  # noqa: E731
+        nm = lambda k: prompt_issue(((out.get(k) or {}).get("name") or {}).get(loc, k or ""), loc)  # noqa: E731
         line = lambda k: w["line" if (out[k].get("line") or {}).get("value") is not None else "model"].format(issue=nm(k))  # noqa: E731
         qs = [w["lead"].format(issue=nm(headline))] if headline else []
-        qs.append(w["ask"].format(id=oldest["id"]) if oldest else w["quiet"])
+        qs.append(w["act"].format(issue=nm(opens[0][0])) if opens else w["quiet"])
         if headline:
             qs.append(line(headline))
-        qs += [w["now"].format(issue=nm(k)) for k in others if out[k].get("state") != "context"]
-        qs += [w["ask"].format(id=a["id"]) for a in list(reversed(opens[1:]))[:2]]
+        qs += [w["now"].format(issue=nm(k)) for k in others if live(k)]
+        qs += [w["usual"].format(issue=nm(k)) for k in ([headline] if headline else []) + others if live(k)]
+        qs += [w["act"].format(issue=nm(k)) for k, _ in opens[1:]]
         qs += [line(k) for k in others]
+        qs = [q.replace(" de el ", " del ") for q in qs] if loc == "es" else qs   # de + el is del
         said[loc] = list(dict.fromkeys(qs))[:PROMPTS_MAX]
     return said
 

@@ -63,11 +63,11 @@ function setupDraw() {
   if (!d) { el.innerHTML = `<p class="fine">GET /settings did not answer this screen.</p>`; return; }
   const unlocked = !!d.unlocked, rows = d.runtime || [], g = SETUP.group;
   const setHere = k => rows.filter(r => r.group === k && r.source === 'gui').length;
-  el.innerHTML = `<header class="sh"><div class="k">Set up · ${esc(D.node.name)}</div><h1>How this node was told to behave.</h1>`
+  el.innerHTML = `<header class="sh" data-learn="settings" data-reads="/settings" data-pack="core"><div class="k">Set up · ${esc(D.node.name)}</div><h1>How this node was told to behave.</h1>`
     + `<p class="lede">Everything here is live within about twenty seconds; nothing needs a restart. A blank field hands the setting back to <code>.env</code>, and a value set here overrides it.</p></header>`
-    + `<div class="sgrid"><nav class="snav" aria-label="Set up sections">${SECTIONS().map(s => `<a href="#setup/${s}" class="${s === g ? 'on' : ''}" data-s="${s}">`
+    + `<div class="sgrid" data-learn="setup-sections" data-reads="/settings /health/sources"><nav class="snav" aria-label="Set up sections">${SECTIONS().map(s => `<a href="#setup/${s}" class="${s === g ? 'on' : ''}" data-s="${s}">`
       + `<span>${esc(sName(s))}</span>${s === 'screen' ? `<i>${unlocked ? 'unlocked' : 'locked'}</i>` : s === 'updates' ? (D.health.release || {}).newer ? '<i>new</i>' : '' : s === 'machine' ? (SETUP.storage && SETUP.storage.days_left != null ? `<i>${sDays(SETUP.storage.days_left)}</i>` : '') : setHere(s) ? `<i>${setHere(s)} set</i>` : ''}</a>`).join('')}</nav>`
-    + `<section class="spane" aria-live="polite">${sTodo()}${g === 'screen' ? sScreen(unlocked) : g === 'updates' ? sUpdates() : g === 'machine' ? sMachine() : g === 'rooms' ? sRooms(unlocked) : sGroup(g, unlocked)}</section></div>`
+    + `<section class="spane" aria-live="polite" data-learn="setup-save" data-reads="/settings /actions">${sTodo()}${g === 'screen' ? sScreen(unlocked) : g === 'updates' ? sUpdates() : g === 'machine' ? sMachine() : g === 'rooms' ? sRooms(unlocked) : sGroup(g, unlocked)}</section></div>`
     + `<div class="sbar" id="sbar" hidden><span id="scount"></span><span class="sp"></span><button type="button" class="sbtn" id="sdiscard">Discard</button><button type="button" class="sbtn primary" id="ssave">Save changes</button></div>`;
   sqa('.snav a').forEach(a => a.onclick = ev => {
     ev.preventDefault();

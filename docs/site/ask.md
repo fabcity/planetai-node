@@ -32,14 +32,19 @@ asks the same model every ten minutes, draws nothing and sends nothing.
 
 ## The doors' ask box
 
-On the five doors, the speech-bubble icon in the header, or **Ask the node** in the foot, opens a box with learn
-mode beside it. It asks the same `POST /ask`, with the door you are on as its `view`, and draws only the words of the
-answer as they arrive. It takes one question at a time with no thread, so nothing asked before is sent with it. It
-shows no ledger line, no list of reads and no cards, so a change the model reaches for is not drawn there; make it in
-Set up. Up to four questions are offered under the box, the ones the door's own parts carry in learn mode; pressing
-one puts it in the box, and **ASK** sends it. When the node does not answer, the box says "The node did not answer.
-Check this screen is on the home network, then try again." **Learn this page**, in the same box, numbers every part
-of the door you are on and says what each one is, which routes it reads and which pack drew it.
+On the five doors, the speech-bubble icon in the header, or **Ask the node** in the foot, opens a pane on its own
+grey, so the page's paper is only ever the data. It asks the same `POST /ask`, with the door you are on as its `view`,
+and draws only the words of the answer as they arrive. It takes one question at a time with no thread, so nothing
+asked before is sent with it. It shows no ledger line, no list of reads and no cards, so a change the model reaches
+for is not drawn there; make it in Set up. Enter asks, Shift and Enter starts a new line, and **ASK** does the same as
+Enter. Three questions are offered under the box, written by the node from tonight's figures (`digest.prompts` in
+`GET /issues`), such as "What should I know about the heat today?". With learn on, the two that the parts of the door
+carry come first. Pressing one asks it, and after each answer the next three come round. When the node does not
+answer, the box says "The node did not answer. Check this screen is on the home network, then try again."
+
+**Learn this page**, in the same pane, numbers every part of the door you are on, the bar and the foot included, and
+lists for each one its name, its stage in the loop, what this documentation says about it, a line on what the part
+draws, the routes it reads, the pack that drew it, and a link to the section it quotes.
 
 ## What it may do
 

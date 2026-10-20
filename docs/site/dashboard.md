@@ -241,16 +241,18 @@ way and reach the pack at its next run, see [Configuration](configuration.md#key
 
 ## Ask the node
 
-**Ask the node**, in the bar and the foot, opens a pane at the side of the page. On the doors it takes one question at
-a time and streams the answer from `POST /ask`. The node searches its own notes and readings first and asks a model
+**Ask the node**, in the bar and the foot, opens a pane at the side of the page, on its own grey. On the doors it takes
+one question at a time and streams the answer from `POST /ask`; Enter asks, and the three questions under the box are
+the node's own, written from tonight's figures. The node searches its own notes and readings first and asks a model
 only if one is set up: the one Set up › Model names, the same as the Telegram bot's. That is the model `planetai agent
 local` set up on this machine, one on another machine of yours, or an online one only when `AGENT_PREFER` allows it.
 It reads and changes nothing, and the node keeps nothing asked or answered. `UI_ASK=off` removes it, and the Wall never
 shows it. The whole of it is on [Ask the node](ask.md).
 
 **Learn this page**, the box under the question, numbers every part of the door you are on and lists what each one
-is: its name, its stage in the loop, a line on what it draws, the routes it reads, the pack that drew it, and a link to
-the page of this documentation that explains it. The chips under the question become questions about those parts. The
+is: its name, its stage in the loop, what this documentation says about it, a line on what it draws, the routes it
+reads, the pack that drew it, and a link to the section it quotes. The bar and the foot are numbered too. With learn
+on, the questions under the box start with two about those parts. The
 words come from `learn.json`, which `tools/build_learn.py` cuts from these pages at build time, so learn mode works on a
 network with no route out. On the classic dashboard, learn is a mode, see [Modes](#modes).
 
