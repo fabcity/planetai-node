@@ -20,10 +20,10 @@ VIEWS.place = function () {
   const h = D.health, area = D.geometry.ladder.find(l => l.res === h.cell.res).own_area_m2 / 1e6;   // the node's own figure for this cell, not the resolution's average
   /* option A (15 Oct): the views and + Add an image at the header's right, the map below at full width */
   $('#placehead').innerHTML = `<div><div class="k">Place · ${said(D.registry.place)}</div>
-    <h1 data-learn="1">The ground this node stands on.</h1>
+    <h1>The ground this node stands on.</h1>
     <p class="lede mono">${esc(h.cell.id)} · res ${h.cell.res} · ${h.cell.edge_m} m edge · ${area.toFixed(2)} km²${DOORS_TOKEN() ? ` · ${fmt(D.point[1], 3)}, ${fmt(D.point[0], 3)}` : ''}</p></div>
     <div class="prow"><nav class="pviews" aria-label="Views of the place">${PVIEWS.map(([id, t, s]) => `<button class="${id === PVIEW ? 'on' : ''}" data-p="${id}"><b>${t}</b><span>${s}</span></button>`).join('')}</nav>`
-    + (DOORS_TOKEN() ? `<button class="addimg" id="addimg" title="An image this household took: it lands on the map where it was taken">+ Add an image</button>` : '') + `</div>`;
+    + (DOORS_TOKEN() ? `<button class="addimg" id="addimg" data-learn="place-image" data-reads="/captures" data-stage="observe" data-pack="core" title="An image this household took: it lands on the map where it was taken">+ Add an image</button>` : '') + `</div>`;
   /* the issues that change yearly and have no hours (Land, Coast): Now is for the hour, so they are said here, below
      the ground they describe — the engine's own sentence, the region's figure and its provenance (15 Oct) */
   $('#pyearly').innerHTML = yearly();
@@ -31,6 +31,7 @@ VIEWS.place = function () {
   speciesBlock();
   document.querySelectorAll('.pviews button').forEach(b => b.onclick = () => { PVIEW = b.dataset.p; VIEWS.place(); });
   document.querySelector('.bench').dataset.pview = PVIEW;
+  document.querySelector('.altc').dataset.learn = PVIEW === 'change' ? 'place-changed' : 'place-orbit';   /* one frame, two views: learn names the one drawn */
   if (PVIEW === 'map') placeMap(); else layer();
   reach(); changing();
 };

@@ -400,8 +400,8 @@ _nowjs = (STATIC / "doors-now.js").read_text()
 assert 'id="rail"' not in _nowh and "function rail(" not in _nowjs and 'id="cellink" title="This node\'s cell, on Place"' in _nowh, \
     "the grain rail is back on Now"
 # the parts in reading order, each keeping its learn mark: lead, figure, distances, buttons, then the house's states
-_marks = re.findall(r'data-learn="([a-z]+)"', _nowh)
-assert _marks == ["lead", "figure", "distances", "buttons", "states", "custody"], _marks
+_marks = re.findall(r'data-learn="([a-z-]+)"', _nowh)
+assert _marks == ["now-sentence", "figure", "now-distances", "now-todo", "now-worked", "now-rows", "now-around", "now-things"], _marks
 assert _nowh.index('id="decide"') < _nowh.index('id="nremember"') < _nowh.index('class="rcol"'), "What to do, then Did it work, then around"
 # heads name the reader's question, in sentence case; no engine stage shouted on Now
 assert "Around the house</h2>" in _nowh and "`Right now · " in _nowjs and '<h2 class="nh">What to do</h2>' in _nowjs
@@ -804,7 +804,7 @@ assert ".wrho" not in html
 print("doors: the Wall counts no answers to alerts, in words or rings")
 
 # a newer release is one small line in the bar, hidden until /health says so, and it opens Set up › Updates
-assert re.search(r'<header class="bar">.*id="relnote" href="#setup/updates"[^>]*hidden.*</header>', html, re.S)
+assert re.search(r'<header class="bar"[^>]*>.*id="relnote" href="#setup/updates"[^>]*hidden.*</header>', html, re.S)
 assert "$('#relnote').hidden = !rel.newer" in js
 print("doors: a newer release shows in the bar, and only then")
 print("all doors checks passed")

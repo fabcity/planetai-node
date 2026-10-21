@@ -3432,6 +3432,36 @@ async function doors() {
       ok(k && !c2 && puts.length === 1, `a plain setting (${k}) asked first, or did not save (${puts.length} PUT)`);
       said.push(`the consequences step: SHARE_LEVEL=open asks and sends nothing until Save anyway; ${k} saves at once`);
     }
+    /* Learn this page, on every door: each part the door shows is listed once, in the order it is seen, with what the
+       docs say about it (the quote), and a link to the section; a part on a hidden tab or view is not listed */
+    if (!dark) {
+      await go(r.page, '#now'); await r.page.click('#askbtn'); await r.page.check('#learn');
+      const WANT = { '#now': ['now-sentence', 'now-todo', 'now-rows'], '#place': ['place-head', 'place-layers', 'place-map', 'place-tools'],
+        '#node': ['node-verdict', 'node-flow', 'node-refusals'], '#data/readings': ['data-head', 'data-readings', 'data-week'],
+        '#data/home': ['data-images', 'data-things'], '#setup': ['settings', 'setup-sections', 'setup-save'], '#wall': ['wall-never', 'wall-sentence', 'wall-map'] };
+      const NOT = { '#place': ['place-orbit', 'place-changed', 'earth'], '#data/home': ['data-ledger', 'data-readings'], '#wall': ['bar', 'foot'] };
+      let parts = 0;
+      for (const [h, want] of Object.entries(WANT)) {
+        await go(r.page, h); await r.page.waitForTimeout(h === '#setup' || h === '#wall' ? 1200 : 600);
+        const L = await r.page.evaluate(() => {
+          const items = [...document.querySelectorAll('#learnlist li')], ap = document.getElementById('askpane');
+          return { got: items.map(li => li.dataset.learnItem), nums: items.map(li => li.querySelector('i').textContent),
+            bare: items.filter(li => !(li.querySelector('blockquote') || {}).textContent || !li.querySelector('a[href^="https://planetai.fab.city/docs/"]')).map(li => li.dataset.learnItem),
+            unknown: items.map(li => li.dataset.learnItem).filter(k => !D.learn[k]), wide: ap.scrollWidth - ap.clientWidth };
+        });
+        parts += L.got.length;
+        for (const k of want) ok(L.got.includes(k), `${tag} ${h}: learn does not list ${k} (${L.got.join(' ')})`);
+        for (const k of NOT[h] || []) ok(!L.got.includes(k), `${tag} ${h}: learn lists ${k}, which is not on the screen`);
+        ok(new Set(L.got).size === L.got.length, `${tag} ${h}: a part is listed twice (${L.got.join(' ')})`);
+        ok(L.nums.every((n, i) => +n === i + 1), `${tag} ${h}: the parts are numbered ${L.nums.join(',')}`);
+        ok(!L.bare.length, `${tag} ${h}: ${L.bare.join(', ')} listed without the docs' quote or the link to its section`);
+        ok(!L.unknown.length, `${tag} ${h}: ${L.unknown.join(', ')} has no mark in learn.json`);
+        ok(L.wide <= 1, `${tag} ${h}: the learn list scrolls ${L.wide}px sideways`);
+        if (shots && h === '#now') await r.page.screenshot({ path: path.join(OUT, `doors_learn_${tag}.jpg`), type: 'jpeg', quality: 78 });
+      }
+      await r.page.click('#askclose');
+      said.push(`${tag} learn: ${parts} parts over seven doors and tabs, each with its quote and docs link`);
+    }
     await r.browser.close();
   }
   if (!bad.length) { console.log(`  doors: ${panes} panes of Data, Set up and Place at 390/1440, paper/dark, locked/token: no sideways scroll, `

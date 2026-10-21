@@ -639,7 +639,7 @@ One answer, streamed as `text/event-stream`. Takes `{messages, view, mode, focus
 ### GET /docs/search
 Access: open
 
-This documentation searched without a model, `?q=` of 2 to 80 characters. Returns at most 20 `{page, anchor, title, snippet}`.
+This documentation searched without a model, `?q=` of 2 to 200 characters: the whole query as a phrase first, then the sections that hold most of its words, a rare word weighing more than a common one. Returns at most 20 `{page, anchor, title, snippet}`.
 
 ## Wire formats
 

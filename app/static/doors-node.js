@@ -31,7 +31,7 @@ VIEWS.node = function () {
   FLOWOBS && FLOWOBS.disconnect(); CLOCK.off('node-flow');
   const R = D.registry, h = D.health;
   const say = src => { const v = verdict(D, src);
-    return `<h1 data-learn="1" class="verdict ${v.ok ? '' : 'bad'}">${v.head}.</h1><p class="vline said" data-role="sentence">${esc(v.text)}`
+    return `<h1 class="verdict ${v.ok ? '' : 'bad'}">${v.head}.</h1><p class="vline said" data-role="sentence">${esc(v.text)}`
       + `${src && src.missing ? ` <a href="#setup">To finish setting up →</a>` : ''}</p>`; };
   $('#nodehead').innerHTML = `<div class="k">Node · ${esc(R.name)}, in ${esc(R.place)}</div><div id="verdict">${say(null)}</div>
     <p class="lede mono">planetai-node ${esc(h.version)} · up ${fmt(h.uptime_s / 3600, 1)} h · ${h.ingested.toLocaleString('en')} readings since the restart · cell ${esc(h.cell.id)} · ${esc(h.tz)}</p>`;

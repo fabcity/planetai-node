@@ -85,8 +85,9 @@ function route() {
   if (v !== 'wall' && typeof WALLMAP !== 'undefined' && WALLMAP.stop) WALLMAP.stop();
   // the wall is the keeper's register: dark, always (Decision 15); every other door keeps the reader's choice
   document.documentElement.dataset.theme = v === 'wall' ? 'dark' : userTheme;
-  VIEWS[v]();
+  const drawn = VIEWS[v]();
   learnList(); window.scrollTo(0, 0);
+  if (drawn && drawn.then) drawn.then(() => learnList());   /* Set up and the Wall draw after they have asked the node */
 }
 
 const ASKING = (function () {
@@ -319,31 +320,101 @@ document.querySelectorAll('.reg button').forEach(b => b.onclick = () => {
    Learn is the node's own learn mode (app/static/learn.json): every part names a mark, and the list says what the
    docs say about it, which routes the part reads, which pack drew it and which stage of the loop it belongs to.
    The questions offered are the marks' own. */
+/* The docs' markdown, inline only: a quote is a cut of a page, so its backticks, bold and links arrive as written */
+const quoted = q => esc(String(q).replace(/\s*\n\s*/g, ' ')).replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+  .replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
 function learnList() {
   const v = view(), on = $('#learn').checked, pane = document.querySelector(`.view[data-view="${v}"]`);
-  const parts = pane ? [...pane.querySelectorAll('[data-learn]')] : [];
+  /* the parts a person can see, in the order they see them: the bar, the door's own parts, the foot. A tab, a view or
+     a block the node has not filled yet is hidden, and is not a part of what is on the screen. */
+  const shown = el => el.getClientRects().length > 0;
+  const mine = pane ? [...pane.querySelectorAll('[data-learn]')].filter(shown) : [];
+  const parts = [$('.bar'), ...mine, $('#foot')].filter(el => el && el.dataset.learn && shown(el));
   document.body.classList.toggle('learn', on);
   parts.forEach((el, n) => el.dataset.n = n + 1);
   $('#learnlist').innerHTML = on ? parts.map((el, n) => {
-    const m = D.learn[el.dataset.learn] || {};
-    return `<li><i>${n + 1}</i><span><b>${esc(m.title || el.dataset.learn)}</b>${el.dataset.stage ? ` <span class="k">${esc(el.dataset.stage)}</span>` : ''}<br>${esc(plain(m.more || ''))}`
-      + `<span class="reads">${(el.dataset.reads || '').split(' ').filter(Boolean).map(r => `<code>GET ${esc(r)}</code>`).join(' ')}${el.dataset.pack ? ` <code>${esc(el.dataset.pack)}</code>` : ''}`
-      + `${m.page ? ` · <a href="https://planetai.fab.city/docs/${esc(m.page.replace('.md', '/'))}">${esc(m.page_title || m.page)}</a>` : ''}</span></span></li>`;
+    const m = D.learn[el.dataset.learn] || {}, reads = (el.dataset.reads || '').split(' ').filter(Boolean);
+    return `<li data-learn-item="${esc(el.dataset.learn)}"><i>${n + 1}</i><div><p><b>${esc(m.title || el.dataset.learn)}</b>${el.dataset.stage ? ` <span class="k">${esc(el.dataset.stage)}</span>` : ''}</p>`
+      + (m.quote ? `<blockquote>${quoted(m.quote)}</blockquote>` : '') + (m.more ? `<p class="lm">${esc(plain(m.more))}</p>` : '')
+      + `<span class="reads">${reads.map(r => `<code>GET ${esc(r)}</code>`).join(' ')}${el.dataset.pack ? ` <code>${esc(el.dataset.pack)}</code>` : ''}`
+      + `${m.url ? `${reads.length || el.dataset.pack ? ' · ' : ''}<a href="${esc(m.url)}" target="_blank" rel="noopener">From ${esc(m.page_title || m.page)}${m.section ? ` · ${esc(plain(m.section).replace(/`/g, ''))}` : ''}</a>` : ''}</span></div></li>`;
   }).join('') : '';
-  const qs = [...new Set(parts.flatMap(el => ((D.learn[el.dataset.learn] || {}).questions || {}).en || []))].slice(0, 4);
-  $('#try').innerHTML = qs.map(q => `<button>${esc(q)}</button>`).join('');
-  document.querySelectorAll('#try button').forEach(b => b.onclick = () => { $('#q').value = b.textContent; });
+  tryQs(on ? mine : []);
 }
-$('#askbtn').onclick = () => { const open = $('#askpane').hidden; $('#askpane').hidden = !open; $('#askbtn').setAttribute('aria-expanded', String(open)); if (open) { learnList(); $('#q').focus(); } };
+/* A door fills some parts after it is drawn (Did it work, a Data tab, Place's views): while learn is on, a part that
+   appears or goes is counted again */
+const LEARN_SEEN = new MutationObserver(() => { if ($('#learn').checked) { clearTimeout(LEARN_SEEN.t); LEARN_SEEN.t = setTimeout(learnList, 120); } });
+document.querySelectorAll('.view').forEach(el => LEARN_SEEN.observe(el, { subtree: true, attributes: true, attributeFilter: ['hidden', 'data-pview', 'data-learn'] }));
+/* The questions offered: with learn on, the marks' own for this door first; then the node's pool, written from
+   tonight's figures, three at a time and turning after each answer so the same three never stand there all day.
+   A press asks it. */
+let TURN = 0;
+const ASKED = new Set();
+function tryQs(parts) {
+  const L = (D.health || {}).locale || 'en';
+  const mine = [...new Set(parts.flatMap(el => { const q = (D.learn[el.dataset.learn] || {}).questions || {}; return q[L] || q.en || []; }))].slice(0, 2);
+  const pool = (D.prompts || []).filter(q => !ASKED.has(q) && !mine.includes(q)), r = pool.length ? TURN % pool.length : 0;
+  const qs = [...mine, ...pool.slice(r), ...pool.slice(0, r)].slice(0, 3);
+  $('#try').innerHTML = qs.map(q => `<button type="button">${esc(q)}</button>`).join('');
+  document.querySelectorAll('#try button').forEach(b => b.onclick = () => { $('#q').value = b.textContent; $('#qform').requestSubmit(); });
+}
+/* Enter asks, Shift+Enter starts a new line, as in every chat box; a composition in progress (an IME) is left alone */
+$('#q').addEventListener('keydown', ev => {
+  if (ev.key === 'Enter' && !ev.shiftKey && !ev.isComposing && ev.keyCode !== 229) {   /* 229: Safari's IME commit */ ev.preventDefault(); $('#qform').requestSubmit(); }
+});
+$('#askbtn').onclick = () => { const open = $('#askpane').hidden; $('#askpane').hidden = !open; $('#askbtn').setAttribute('aria-expanded', String(open)); if (open) { learnList(); askMode(); $('#q').focus(); } };
 $('#askclose').onclick = () => { $('#askpane').hidden = true; $('#askbtn').setAttribute('aria-expanded', 'false'); $('#learn').checked = false; learnList(); };
 $('#learn').onchange = learnList;
 /* the token is set and cleared on Set up → This screen (doors-setup.js), kept where the dashboard keeps it */
 /* POST /ask, the node's own: it streams `event: token` blocks; only the words are drawn here, the dashboard's ask pane
    keeps the ledger of what it read. One question at a time, no thread. */
-$('#qsend').onclick = async () => {
-  const q = $('#q').value.trim(), out = $('#qout'); if (!q) return;
-  out.textContent = '…'; $('#qsend').disabled = true;
+/* Which way the box answers: a model the node has set up, or, with none, the documentation itself, searched by the
+   question's words (GET /docs/search). Asked once per page, when the pane first opens. */
+let MODE = null;
+async function askMode() {
+  if (MODE) return;
+  const r = await fetch('/ask/status', { headers: DOORS_AUTH() }).catch(() => null);
+  MODE = r && r.ok ? 'model' : 'docs';
+  $('#amode').textContent = MODE === 'model' ? 'Answers from the model set up for this node' : 'No model is set up here, so the box searches these docs';
+  $('#q').placeholder = MODE === 'model' ? 'Ask about this place, its readings, or this page' : 'Search the docs: how do I add a sensor?';
+}
+/* The docs' answer: the sections that hold most of the question's words, each a link to the page it is from. */
+async function docsHits(q, n) {
+  const r = await fetch('/docs/search?q=' + encodeURIComponent(q.slice(0, 200)), { headers: DOORS_AUTH() }).catch(() => null);
+  return r && r.ok ? (await r.json()).slice(0, n) : null;
+}
+function hitsHtml(hits) {
+  const base = (D.health || {}).docs || 'https://planetai.fab.city/docs/';
+  return `<ol class="hits">${hits.map(h => `<li><a href="${esc(base + String(h.page || '').replace(/\.md$/, '/') + (h.anchor ? '#' + h.anchor : ''))}" target="_blank" rel="noopener">${esc(h.title || h.page)}</a><p>${esc(h.snippet)}…</p></li>`).join('')}</ol>`;
+}
+async function docsAnswer(q, why, out) {
+  const hits = await docsHits(q, 5);
+  if (!hits) { out.textContent = WORDS.noreply; return; }
+  out.innerHTML = (why ? `<p class="fine">${esc(why)}</p>` : '') + (hits.length ? hitsHtml(hits)
+    : '<p>Nothing in the docs holds those words. Try other ones; the docs are in English.</p>');
+}
+/* Under a model's answer, the three sections of the docs that hold most of the question's words. */
+async function docsAfter(q, out) {
+  const hits = await docsHits(q, 3);
+  if (hits && hits.length) out.insertAdjacentHTML('beforeend', `<p class="amode">In the docs</p>${hitsHtml(hits)}`);
+}
+/* One exchange in the thread: the question as the person's own line, the answer under it, the view kept at the newest.
+   What is shown stays in this tab; only the new question is ever sent. */
+function exchange(q) {
+  const th = $('#thread'), hello = $('#athello');
+  if (hello) hello.remove();
+  th.insertAdjacentHTML('beforeend', `<div class="msg me">${esc(q)}</div><div class="msg node answer said">…</div>`);
+  const out = th.lastElementChild, sc = $('#ascroll');
+  sc.scrollTop = sc.scrollHeight;
+  return out;
+}
+$('#qform').onsubmit = async ev => {
+  ev.preventDefault();
+  const q = $('#q').value.trim(); if (!q || $('#qsend').disabled) return;
+  const out = exchange(q); $('#q').value = ''; $('#qsend').disabled = true;
   try {
+    await askMode();
+    if (MODE === 'docs') { await docsAnswer(q, '', out); ASKED.add(q); TURN += 3; return; }
     const r = await fetch('/ask', { method: 'POST', headers: { 'content-type': 'application/json', ...DOORS_AUTH() },
       body: JSON.stringify({ messages: [{ role: 'user', content: q }], view: view(), mode: 'advanced', focus: null }) });
     if (!r.ok || !r.body) throw new Error((await r.json().catch(() => ({}))).detail || `the node answered ${r.status}`);
@@ -359,9 +430,12 @@ $('#qsend').onclick = async () => {
         else if (ev === 'error') throw new Error(data.message);
       }
     }
-    if (!text) out.textContent = 'The node answered with nothing.';
-  } catch (e) { out.textContent = WORDS.noreply; }
-  finally { $('#qsend').disabled = false; }
+    if (!text) throw new Error('empty');
+    out.innerHTML = `<p>${esc(text)}</p>`;
+    if (!(D.prompts || []).includes(q)) await docsAfter(q, out);   /* the node's own questions are about tonight's readings, not the docs */
+    ASKED.add(q); TURN += 3;
+  } catch (e) { await docsAnswer(q, 'The model did not answer, so here is what the docs say.', out); }
+  finally { $('#qsend').disabled = false; learnList(); const sc = $('#ascroll'); sc.scrollTop = sc.scrollHeight; $('#q').focus(); }
 };
 
 /* The foot of every door but the Wall: what this is, where its words are, and who it belongs to. The links are the

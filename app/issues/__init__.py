@@ -261,21 +261,33 @@ SIMPLE_WORDS = {
            "today": "las {t}", "date": "el {d} de {month}"},
 }
 # The ask pane's questions, `digest.prompts`: written from tonight's bundle so the first thing a person
-# does in the pane is press rather than face a blank box. A question, never an answer. The first three are
-# the ones the pane opens with; the rest are the pool it rotates through (Tomas, 28 Sep 2026). Every one is
-# about this node's own issues and alerts, which is all the model is there to answer. `now` is new on
-# 28 Sep and its id and es wording has not yet been read by a native speaker.
+# does in the pane is press rather than face a blank box. A question, never an answer, in the words a household
+# would use, never an alert number. The first three are the ones the pane opens with; the rest are the pool it
+# rotates through. The Bahasa Indonesia wording has not yet been read by a native speaker.
 PROMPT_WORDS = {
-    "en": {"lead": "Why is {issue} what the node leads with?", "ask": "What should I do about alert #{id}?",
-           "quiet": "Is anything here asking for attention?", "line": "What does the line for {issue} mean?",
-           "model": "Where does the {issue} number come from?", "now": "What is {issue} like right now?"},
-    "id": {"lead": "Mengapa {issue} yang ditampilkan paling depan?", "ask": "Apa yang harus saya lakukan dengan peringatan #{id}?",
-           "quiet": "Apakah ada yang perlu diperhatikan di sini?", "line": "Apa arti batas untuk {issue}?",
-           "model": "Dari mana angka {issue} berasal?", "now": "Bagaimana {issue} saat ini?"},
-    "es": {"lead": "\u00bfPor qu\u00e9 el nodo empieza por {issue}?", "ask": "\u00bfQu\u00e9 hago con la alerta #{id}?",
-           "quiet": "\u00bfHay algo aqu\u00ed que pida atenci\u00f3n?", "line": "\u00bfQu\u00e9 significa el l\u00edmite de {issue}?",
-           "model": "\u00bfDe d\u00f3nde sale la cifra de {issue}?", "now": "\u00bfQu\u00e9 dicen ahora mismo los datos de {issue}?"},
+    "en": {"lead": "What should I know about the {issue} today?", "act": "What can I do about the {issue} right now?",
+           "quiet": "Is there anything I should do today?", "line": "Where does the line for the {issue} come from?",
+           "model": "Is the {issue} number measured here, or estimated?", "now": "How is the {issue} right now?",
+           "usual": "Is the {issue} worse than usual for this hour?"},
+    "id": {"lead": "Apa yang perlu saya ketahui tentang {issue} hari ini?", "act": "Apa yang bisa saya lakukan soal {issue} sekarang?",
+           "quiet": "Ada yang perlu saya lakukan hari ini?", "line": "Dari mana batas untuk {issue} berasal?",
+           "model": "Angka {issue} ini diukur di sini, atau perkiraan?", "now": "Bagaimana {issue} sekarang?",
+           "usual": "Apakah {issue} lebih buruk dari biasanya untuk jam ini?"},
+    # {issue} carries its article in Spanish: "el aire", "la costa" (prompt_issue below).
+    "es": {"lead": "\u00bfQu\u00e9 deber\u00eda saber hoy sobre {issue}?", "act": "\u00bfQu\u00e9 puedo hacer ahora con {issue}?",
+           "quiet": "\u00bfHay algo que deba hacer hoy?", "line": "\u00bfDe d\u00f3nde sale el l\u00edmite para {issue}?",
+           "model": "\u00bfLa cifra de {issue} se mide aqu\u00ed o es una estimaci\u00f3n?", "now": "\u00bfC\u00f3mo est\u00e1 {issue} ahora mismo?",
+           "usual": "\u00bfEst\u00e1 {issue} peor de lo habitual para esta hora?"},
 }
+
+
+def prompt_issue(name: str, loc: str) -> str:
+    """An issue's name as a question says it: lower case, with its article in Spanish (aire, calor, suelo are el;
+    costa is la). English and Bahasa ask with the bare noun."""
+    n = (name or "").lower()
+    if loc == "es" and n:
+        return ("la " if n.endswith("a") else "el ") + n
+    return n
 # The hero's plain line: the other distances and the line in the household's words, under the
 # sentence. Approved by Tomas 25 September 2026. The place words are WHERE_WORDS and NOUN_WORDS, so
 # "on the street" means the same thing here as in the sentence above it.

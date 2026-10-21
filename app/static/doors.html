@@ -41,10 +41,11 @@
    tokens. The four below are the node's dashboard.css :root, copied by value with its measurements. */
 :root{
   --mute:#5F5A54;--dim:#6F6963;--hair:var(--fc-grid-line);--raise:rgba(23,23,23,.035);
+  --doc:var(--fc-neutral-200);--doc-line:var(--fc-neutral-400);   /* the ask pane's ground, not the data's (dashboard.css) */
   --body:var(--fc-font-body);--display:var(--fc-font-display);
   --t-cap:11px;--t-small:13px;--t-body:15px;--t-read:20px;--t-head:clamp(26px,3.1vw,44px);
 }
-:root[data-theme="dark"]{--mute:#A3A19F;--dim:#8A8886;--hair:rgba(249,245,242,.14);--raise:rgba(249,245,242,.05)}
+:root[data-theme="dark"]{--mute:#A3A19F;--dim:#8A8886;--hair:rgba(249,245,242,.14);--raise:rgba(249,245,242,.05);--doc:var(--fc-neutral-800);--doc-line:var(--fc-neutral-600)}
 /* the node's words are never shouted (check_ui.py: µ uppercases to M) */
 .said{text-transform:none!important;letter-spacing:normal}
 /* provenance: ink only, square, glyph then word (dashboard.css .pill) */
@@ -103,17 +104,42 @@ body[data-view="wall"] .bar,body[data-view="wall"] .foot{display:none}
 @media (max-width:760px){.foot{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
 
 /* ---- Ask the node, and Learn inside it ---- */
-.askpane{position:fixed;top:0;right:0;bottom:0;width:min(420px,100vw);background:var(--ground);border-left:1px solid var(--ink);padding:18px 20px;overflow:auto;z-index:20}
+/* Everything the node says sits on its own grey, so the page's paper is only ever the data (v0.75.8). */
+.askpane{position:fixed;top:0;right:0;bottom:0;width:min(420px,100vw);background:var(--doc);border-left:1px solid var(--ink);padding:18px 20px 14px;z-index:20;display:flex;flex-direction:column;gap:8px}
+.askpane[hidden]{display:none}
+/* as in every chat: the conversation scrolls in the middle, the box stays at the bottom */
+.askpane .ascroll{flex:1 1 auto;min-height:0;overflow:auto;margin:0 -20px;padding:0 20px;border-top:1px solid var(--doc-line)}
+.askpane .abottom{flex:none;border-top:1px solid var(--doc-line);padding-top:6px}
+.askpane .thread{display:flex;flex-direction:column;gap:10px;padding:12px 0}
+.askpane .msg.me{align-self:flex-end;max-width:85%;background:var(--ink);color:var(--ground);padding:8px 12px;white-space:pre-wrap}
+.askpane .msg.node{align-self:stretch}
+.askpane .msg.node>p:not(.fine):not(.amode){white-space:pre-wrap;margin:0}
 .askpane .ah{display:flex;justify-content:space-between;align-items:center;font:700 var(--t-read) var(--display)}
 .askpane .ah button{background:none;border:1px solid var(--ink);width:28px;height:28px;cursor:pointer;font-size:18px;line-height:1}
-.askpane textarea{width:100%;margin-top:14px;background:var(--ground);color:var(--ink);border:1px solid var(--ink);padding:10px;font:var(--t-body) var(--body);resize:vertical}
-.try{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.try button{background:none;border:1px solid var(--hair);padding:4px 8px;font-size:var(--t-small);cursor:pointer;text-align:left}
-.learnsw{display:flex;gap:10px;align-items:flex-start;border-top:1px solid var(--ink);margin-top:18px;padding-top:14px;font-size:var(--t-small);cursor:pointer}
+/* a label for a screen reader only */
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+/* the composer: the box and its send button are one thing, the way a chat box is; the questions sit above it */
+.askpane .amode{margin:0;font:500 var(--t-cap) var(--mono);letter-spacing:.04em;color:var(--mute)}
+.askpane .compose{position:relative;margin-top:8px;background:var(--ground);border:1px solid var(--ink)}
+.askpane .compose:focus-within{outline:2px solid var(--ink);outline-offset:1px}
+.askpane textarea{display:block;width:100%;min-height:64px;max-height:40vh;background:none;color:var(--ink);border:0;outline:0;padding:10px 52px 10px 10px;font:var(--t-body) var(--body);resize:none}
+.askpane #qsend{position:absolute;right:8px;bottom:8px;width:34px;height:34px;display:grid;place-items:center;background:var(--ink);color:var(--ground);border:0;cursor:pointer}
+.askpane #qsend:disabled{opacity:.4;cursor:default}
+.askpane .hint{margin:6px 0 0;font:400 var(--t-cap) var(--mono);color:var(--mute)}
+.askpane .hits{list-style:none;padding:0;margin:4px 0 0}.askpane .hits li{padding:8px 0;border-top:1px solid var(--doc-line)}
+.askpane .hits a{font-weight:600}.askpane .hits p{margin:3px 0 0;font-size:var(--t-small);color:var(--mute)}
+.try{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.try button{background:var(--ground);color:var(--ink);border:1px solid var(--doc-line);padding:4px 8px;font-size:var(--t-small);cursor:pointer;text-align:left}
+.learnsw{display:flex;gap:10px;align-items:flex-start;font-size:var(--t-small);cursor:pointer}
 .learnsw input{margin-top:3px;accent-color:var(--ink)}
 .learnlist{padding-left:0;list-style:none;margin:12px 0 0;font-size:var(--t-small)}
-.learnlist .reads{display:block;margin-top:4px;font:500 var(--t-cap) var(--mono);color:var(--mute)}.learnlist code{font:inherit;border:1px solid var(--hair);padding:0 4px}
-.learnlist li{display:grid;grid-template-columns:24px minmax(0,1fr);gap:8px;padding:8px 0;border-top:1px solid var(--hair)}
+.learnlist .reads{display:block;margin-top:4px;font:500 var(--t-cap) var(--mono);color:var(--mute)}.learnlist code{font:inherit;border:1px solid var(--doc-line);padding:0 4px}
+.learnlist li{display:grid;grid-template-columns:24px minmax(0,1fr);gap:8px;padding:8px 0;border-top:1px solid var(--doc-line)}
 .learnlist li i{font:700 var(--t-cap) var(--mono);font-style:normal;border:1px solid var(--ink);text-align:center;height:20px;line-height:18px}
+/* each part: its name and stage, then what the docs say (the quote, the main text), then the page's own line */
+.learnlist p{margin:0}.learnlist .lm{margin-top:6px;color:var(--mute)}
+.learnlist blockquote{margin:6px 0 0;padding-left:10px;border-left:2px solid var(--ink);font:var(--t-small)/1.5 var(--body);overflow-wrap:anywhere}
+.learnlist blockquote code{border:0;padding:0;font:500 .92em var(--mono)}
+body.learn .bar[data-learn]::before{top:2px;left:2px}
 body.learn [data-learn]{position:relative;outline:1px dashed var(--mute);outline-offset:4px}
 /* learn marks float, named after their datum: learn mode is on (--motion-mark-float, 3.2 s, 4 px); still under reduced motion */
 @keyframes markfloat{to{transform:translateY(-4px)}}
@@ -707,7 +733,7 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
     <p class="rule" id="ask-rule"></p>
   </div>
 </div>
-<header class="bar">
+<header class="bar" data-learn="bar" data-reads="/health" data-pack="core">
   <span class="who" id="who"></span>
   <nav class="doors" aria-label="Doors"><a href="#now" data-v="now">Now</a><a href="#place" data-v="place">Place</a><a href="#node" data-v="node">Node</a><a href="#data" data-v="data">Data</a><a href="#wall" data-v="wall">Wall</a></nav>
   <span class="sp"></span>
@@ -739,87 +765,87 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
   <div class="kick"><p class="nk" id="kick"></p><span class="kr"><button class="now" id="back" hidden>Back to now</button><a href="#place" class="mono" id="cellink" title="This node's cell, on Place"></a></span></div>
   <div class="lcol">
     <div class="hero">
-      <section aria-live="polite" data-learn="lead" data-reads="/issues" data-stage="observe" data-pack="core" data-kind="readout"><h1 class="sentence" id="sentence"></h1></section>
+      <section aria-live="polite" data-learn="now-sentence" data-reads="/issues" data-stage="observe" data-pack="core" data-kind="readout"><h1 class="sentence" id="sentence"></h1></section>
       <section class="fig" data-learn="figure" data-reads="/issues /issues/days" data-stage="observe" data-pack="core" data-kind="series" aria-label="The day and the week">
         <svg id="svg" tabindex="0" role="img" aria-describedby="sentence"></svg>
         <div class="week" id="week" role="group" aria-label="The last seven days" hidden></div>
       </section>
-      <p class="ladder" id="ladder" data-learn="distances" data-reads="/issues" data-stage="observe" data-pack="core" data-kind="stack"></p>
+      <p class="ladder" id="ladder" data-learn="now-distances" data-reads="/issues" data-stage="observe" data-pack="core" data-kind="stack"></p>
       <p class="nk figfoot"><span id="fighead"></span> <span id="figline"></span></p>
     </div>
-    <section class="todo" id="decide" data-learn="buttons" data-reads="/issues /actions" data-stage="decide" data-pack="core" data-kind="readout" aria-label="What to do"></section>
-    <section class="nrem" id="nremember" data-reads="/learned /learned/search /household" data-stage="measure" data-pack="core" data-kind="readout" aria-label="Did it work, and yesterday" hidden></section>
+    <section class="todo" id="decide" data-learn="now-todo" data-reads="/issues /actions" data-stage="decide" data-pack="core" data-kind="readout" aria-label="What to do"></section>
+    <section class="nrem" id="nremember" data-learn="now-worked" data-reads="/learned /learned/search /household" data-stage="measure" data-pack="core" data-kind="readout" aria-label="Did it work, and yesterday" hidden></section>
   </div>
   <div class="rcol">
     <h2 class="nh">Around the house</h2>
-    <aside data-learn="states" data-reads="/issues /issues/days" data-stage="measure" data-pack="core"><div class="rows" id="rows"></div></aside>
-    <figure class="around" data-learn="custody" data-reads="/sensors /stats" data-stage="observe" data-pack="air-quality" data-kind="stack"><div id="rose"></div><figcaption class="fine" id="rosecap"></figcaption></figure>
-    <p class="fine" id="nthings" data-reads="/things" data-stage="observe" data-pack="core" data-kind="row" hidden></p>
+    <aside data-learn="now-rows" data-reads="/issues /issues/days" data-stage="measure" data-pack="core"><div class="rows" id="rows"></div></aside>
+    <figure class="around" data-learn="now-around" data-reads="/sensors /stats" data-stage="observe" data-pack="air-quality" data-kind="stack"><div id="rose"></div><figcaption class="fine" id="rosecap"></figcaption></figure>
+    <p class="fine" id="nthings" data-learn="now-things" data-reads="/things" data-stage="observe" data-pack="core" data-kind="row" hidden></p>
   </div>
 </main>
 
 <!-- PLACE -->
 <section class="page view" data-view="place" hidden>
-  <div id="placehead" class="phead"></div>
+  <div id="placehead" class="phead" data-learn="place-head" data-reads="/health /issues" data-stage="observe" data-pack="place"></div>
   <div class="bench">
-    <nav id="layers" aria-label="Layers" data-learn="containment" data-reads="/health /issues /packs" data-stage="observe" data-pack="place"></nav>
-    <div class="mapc" data-learn="cell" data-reads="/place/geojson /sensors /issues" data-stage="observe" data-pack="place"><div class="mapw"><div id="mapbar"></div><div id="map"></div><svg id="pedges" aria-hidden="true"></svg></div><aside id="pmargin" aria-label="At the house, by position"></aside><svg id="pleads" aria-hidden="true"></svg></div>
-    <div id="facts" class="inspect" aria-live="polite" data-learn="prov" data-reads="/issues /sensors" data-stage="observe" data-pack="core"></div>
+    <nav id="layers" aria-label="Layers" data-learn="place-layers" data-reads="/health /issues /packs" data-stage="observe" data-pack="place"></nav>
+    <div class="mapc" data-learn="place-map" data-reads="/place/geojson /sensors /issues" data-stage="observe" data-pack="place"><div class="mapw"><div id="mapbar"></div><div id="map"></div><svg id="pedges" aria-hidden="true"></svg></div><aside id="pmargin" aria-label="At the house, by position"></aside><svg id="pleads" aria-hidden="true"></svg></div>
+    <div id="facts" class="inspect" aria-live="polite" data-learn="place-tools" data-reads="/geo/cell /geo/measure" data-stage="observe" data-pack="core"></div>
     <p id="mapcredit"></p>
-    <div class="altc" data-learn="cell" data-reads="/earth" data-stage="observe" data-pack="earth"><div id="altbar"></div><div id="mapalt"></div></div>
-    <aside id="altfacts" data-learn="prov" data-reads="/issues /earth" data-stage="observe" data-pack="earth"></aside>
+    <div class="altc" data-learn="place-orbit" data-reads="/earth" data-stage="observe" data-pack="earth"><div id="altbar"></div><div id="mapalt"></div></div>
+    <aside id="altfacts" data-learn="earth" data-reads="/issues /earth" data-stage="observe" data-pack="earth"></aside>
   </div>
   <dialog id="imgdlg" class="imgdlg" aria-label="Add an image"></dialog>
   <div class="pcols">
-    <section data-learn="reach" data-reads="/reach /nearby" data-stage="observe" data-pack="core" data-kind="row"><h2>Where the readings come from</h2><div id="reach"></div></section>
-    <section id="pspecies" class="pspecies" data-reads="/species /captures" data-stage="observe" data-pack="core" data-kind="row"></section>
-    <section data-learn="states" data-reads="/issues /cells /sources" data-stage="observe" data-pack="core" data-kind="row"><h2>What is changing</h2><div id="pyearly"></div><div id="soon"></div></section>
+    <section data-learn="place-reach" data-reads="/reach /nearby" data-stage="observe" data-pack="core" data-kind="row"><h2>Where the readings come from</h2><div id="reach"></div></section>
+    <section id="pspecies" class="pspecies" data-learn="place-species" data-reads="/species /captures" data-stage="observe" data-pack="core" data-kind="row"></section>
+    <section data-learn="place-changing" data-reads="/issues /cells /sources" data-stage="observe" data-pack="core" data-kind="row"><h2>What is changing</h2><div id="pyearly"></div><div id="soon"></div></section>
   </div>
 </section>
 
 <!-- DATA -->
 <section class="page view" data-view="data" hidden>
-  <div id="datahead" data-learn="raw" data-reads="/export" data-stage="observe" data-pack="core"></div>
+  <div id="datahead" data-learn="data-head" data-reads="/export" data-stage="observe" data-pack="core"></div>
   <div class="sgrid dgrid">
     <nav class="snav" id="dnav" aria-label="Data tabs"></nav>
     <div class="dpane">
       <section id="d-readings" class="dsec"><div class="dsh"><h2>What this house reads</h2><p class="blurb">Every kind of reading the node holds, by family. Press one to draw every source that reads it.</p></div>
-        <div id="metrics" role="group" aria-label="Kind of reading" data-learn="sensors" data-reads="/stats /aggregates" data-pack="core"></div>
-        <div id="sensors" data-learn="siting" data-reads="/sensors /stats /aggregates" data-stage="observe" data-pack="core" data-kind="series"></div></section>
-      <section id="issues7" class="dsec" data-learn="figure" data-reads="/issues/days" data-stage="observe" data-pack="core" data-kind="series"></section>
-      <section id="models" class="dsec" data-learn="prov" data-reads="/sensors /observations" data-stage="observe" data-pack="earth" data-kind="row"></section>
-      <section id="perday" class="dsec" data-learn="strips" data-reads="/issues/days" data-stage="measure" data-pack="core" data-kind="row"></section>
-      <section id="d-images" class="dsec" data-reads="/captures" data-stage="observe" data-pack="core" data-kind="row"></section>
-      <section id="d-things" class="dsec" data-reads="/things" data-stage="observe" data-pack="core" data-kind="row"></section>
-      <section id="ledger" class="dsec" data-learn="actions" data-reads="/actions /alerts" data-stage="act" data-pack="core" data-kind="row"></section>
+        <div id="metrics" role="group" aria-label="Kind of reading" data-learn="data-readings" data-reads="/stats /aggregates" data-stage="observe" data-pack="core"></div>
+        <div id="sensors" data-learn="data-sources" data-reads="/sensors /stats /aggregates" data-stage="observe" data-pack="core" data-kind="series"></div></section>
+      <section id="issues7" class="dsec" data-learn="data-week" data-reads="/issues/days" data-stage="observe" data-pack="core" data-kind="series"></section>
+      <section id="models" class="dsec" data-learn="data-models" data-reads="/sensors /observations" data-stage="observe" data-pack="earth" data-kind="row"></section>
+      <section id="perday" class="dsec" data-learn="data-perday" data-reads="/issues/days" data-stage="measure" data-pack="core" data-kind="row"></section>
+      <section id="d-images" class="dsec" data-learn="data-images" data-reads="/captures" data-stage="observe" data-pack="core" data-kind="row"></section>
+      <section id="d-things" class="dsec" data-learn="data-things" data-reads="/things" data-stage="observe" data-pack="core" data-kind="row"></section>
+      <section id="ledger" class="dsec" data-learn="data-ledger" data-reads="/actions /alerts" data-stage="act" data-pack="core" data-kind="row"></section>
       <p class="fine dsec" id="dnote">The diary, what is usual and what worked are on <a href="#node/remember">Node › What it remembers</a>; the Index cells on <a href="#node/cells">Node</a>, under the flow.</p>
-      <section id="api" class="dsec" data-learn="api" data-reads="/static/docs_site.json" data-pack="core"></section>
+      <section id="api" class="dsec" data-learn="data-api" data-reads="/static/docs_site.json" data-pack="core"></section>
     </div>
   </div>
 </section>
 
 <!-- WALL -->
-<section class="view" data-view="wall" hidden><div id="wallv" data-learn="dial" data-reads="/health /issues /stats" data-stage="observe" data-pack="core"></div></section>
+<section class="view" data-view="wall" hidden><div id="wallv" data-learn="wall-never" data-reads="/health /issues /stats" data-stage="observe" data-pack="core"></div></section>
 
 <!-- SET UP: a page of its own, opened by the gear (doors-setup.js) -->
-<section class="page view" data-view="setup" hidden><div id="setupv2" data-learn="settings" data-reads="/settings /packs /actions /health" data-pack="core"></div></section>
+<section class="page view" data-view="setup" hidden><div id="setupv2"></div></section>
 
 <!-- NODE -->
 <section class="page view" data-view="node" hidden>
-  <div id="nodehead" data-learn="purpose" data-reads="/health" data-pack="core"></div>
+  <div id="nodehead" data-learn="node-verdict" data-reads="/health" data-pack="core"></div>
   <h2>What comes in, what goes out</h2>
-  <div id="flow" data-learn="raw" data-reads="/health /sensors /stats /alerts /actions /rho /cells" data-pack="core" data-kind="row"></div><p class="fine" id="flownote"></p>
-  <section id="cells" data-learn="parent" data-reads="/cells" data-stage="measure" data-pack="core" data-kind="row"></section>
-  <section id="remember" data-reads="/learned /learned/search /household" data-stage="measure" data-pack="core" data-kind="row" aria-label="What it remembers"></section>
+  <div id="flow" data-learn="node-flow" data-reads="/health /sensors /stats /alerts /actions /rho /cells" data-pack="core" data-kind="row"></div><p class="fine" id="flownote"></p>
+  <section id="cells" data-learn="node-cells" data-reads="/cells" data-stage="measure" data-pack="core" data-kind="row"></section>
+  <section id="remember" data-learn="node-remember" data-reads="/learned /learned/search /household" data-stage="measure" data-pack="core" data-kind="row" aria-label="What it remembers"></section>
   <h2>The nodes around it</h2>
-  <div id="nodes"></div><div id="world" data-learn="presence" data-reads="/health" data-pack="reticulum"></div>
+  <div id="nodes" data-learn="node-around" data-reads="/nodes /health" data-pack="core"></div><div id="world" data-learn="node-globe" data-reads="/nodes /geo/planet /geo/cell" data-pack="core"></div>
   <div class="runwrap">
-    <section data-learn="health" data-reads="/health /machine /storage" data-pack="core"><h2>Running</h2><div id="running"></div>
+    <section data-learn="node-running" data-reads="/health /machine /storage" data-pack="core"><h2>Running</h2><div id="running"></div>
       <p class="fine"><a href="#setup">Set up</a> holds this node’s settings, its packs, who may read it and this screen’s token.</p></section>
 
   </div>
   <!-- the five refusals in plain words, each pointing at where it can be checked (Tomas, 15 Oct) -->
-  <section class="refuse" data-learn="refusals" data-pack="core"><h2>What this node will not do, at any stage</h2>
+  <section class="refuse" data-learn="node-refusals" data-pack="core"><h2>What this node will not do, at any stage</h2>
     <div class="lrow"><span class="t">Raw readings stay on this machine. Only hourly averages, the area the node is in, its Index scores and the open daily file leave it.</span><a class="c" href="#node/flow">What comes in, what goes out →</a></div>
     <div class="lrow"><span class="t">A cell is never called live because the ones around it are. Live means measured here.</span><a class="c" href="#node/cells">Each cell’s state, under the flow →</a></div>
     <div class="lrow"><span class="t">No agent acts for this house unless a person here said so, in the ledger.</span><a class="c" href="#data/ledger">The ledger, in Data →</a></div>
@@ -828,16 +854,23 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
   </section>
 </section>
 
-<footer class="foot" id="foot" data-learn="purpose" data-reads="/health"></footer>
+<footer class="foot" id="foot" data-learn="foot" data-reads="/health" data-pack="core"></footer>
 
 <aside class="askpane" id="askpane" hidden aria-label="Ask the node">
   <div class="ah"><b>Ask the node</b><button id="askclose" aria-label="Close">×</button></div>
-  <textarea id="q" rows="3" placeholder="Ask about this place, its readings, or this page"></textarea>
-  <div class="try" id="try"></div><button class="now" id="qsend">ASK</button>
-  <div class="answer said" id="qout" role="status" aria-live="polite"></div>
-  <p class="fine">The node searches its own notes and readings first, and asks a model only if one is set up here.</p>
-  <label class="learnsw"><input type="checkbox" id="learn"> <span><b>Learn this page</b><br>Number every part of the door you are on, and say here what each one is.</span></label>
-  <ol class="learnlist" id="learnlist"></ol>
+  <p class="amode" id="amode"></p>
+  <label class="learnsw"><input type="checkbox" id="learn"> <span><b>Learn this page</b> · number every part of the door you are on, and say here what each one is</span></label>
+  <div class="ascroll" id="ascroll">
+    <ol class="learnlist" id="learnlist"></ol>
+    <div class="thread" id="thread" role="log" aria-live="polite"><p class="fine" id="athello">The node searches its own notes and readings first, and asks a model only if one is set up here.</p></div>
+  </div>
+  <div class="abottom">
+    <div class="try" id="try" aria-label="Questions to ask"></div>
+    <form class="compose" id="qform"><label class="vh" for="q">Ask the node</label>
+      <textarea id="q" rows="2" placeholder="Ask about this place, its readings, or this page"></textarea>
+      <button type="submit" id="qsend" aria-label="Ask"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M8 13V3M3.5 7.5 8 3l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></button></form>
+    <p class="hint">Enter to ask · Shift+Enter for a new line</p>
+  </div>
 </aside>
 
 <link rel="stylesheet" href="/static/maplibre-gl.css">

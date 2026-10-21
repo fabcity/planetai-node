@@ -32,14 +32,26 @@ asks the same model every ten minutes, draws nothing and sends nothing.
 
 ## The doors' ask box
 
-On the five doors, the speech-bubble icon in the header, or **Ask the node** in the foot, opens a box with learn
-mode beside it. It asks the same `POST /ask`, with the door you are on as its `view`, and draws only the words of the
-answer as they arrive. It takes one question at a time with no thread, so nothing asked before is sent with it. It
-shows no ledger line, no list of reads and no cards, so a change the model reaches for is not drawn there; make it in
-Set up. Up to four questions are offered under the box, the ones the door's own parts carry in learn mode; pressing
-one puts it in the box, and **ASK** sends it. When the node does not answer, the box says "The node did not answer.
-Check this screen is on the home network, then try again." **Learn this page**, in the same box, numbers every part
-of the door you are on and says what each one is, which routes it reads and which pack drew it.
+On the five doors, the speech-bubble icon in the header, or **Ask the node** in the foot, opens a pane on its own
+grey, so the page's paper is only ever the data. It asks the same `POST /ask`, with the door you are on as its `view`,
+and draws only the words of the answer as they arrive. It reads like any chat: the box is at the bottom, each question
+appears as your own line with the answer under it, and the exchanges stay on screen while the tab is open. Only the
+new question is sent, never the ones before it. It shows no ledger line, no list of reads and no cards, so a change the model reaches
+for is not drawn there; make it in Set up. Type in the box and press Enter, or the arrow inside the box; Shift and
+Enter starts a new line, as the line under the box says. Above the box, three questions are offered, written by the
+node from tonight's figures (`digest.prompts` in `GET /issues`), such as "What should I know about the heat today?".
+With learn on, the two that the parts of the door carry come first. Pressing one asks it, and after each answer the
+next three come round.
+
+The line at the top of the pane says what answers. With no model set up, the box is a search of these docs: the
+question's words are looked up in every section (`GET /docs/search`), the rarest words weighing most, and the five
+best sections come back as links with a line of each. When a model answers a question you typed, the three best
+sections follow its answer under **In the docs**, and when it does not answer, the search answers instead and says so. When the node itself does not answer, the box says "The node did not answer. Check this
+screen is on the home network, then try again."
+
+**Learn this page**, in the same pane, numbers every part of the door you are on, the bar and the foot included, and
+lists for each one its name, its stage in the loop, what this documentation says about it, a line on what the part
+draws, the routes it reads, the pack that drew it, and a link to the section it quotes.
 
 ## What it may do
 

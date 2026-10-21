@@ -201,14 +201,14 @@ VIEWS.wall = async function () {
     <div class="wtop wchrome"><button class="wback" onclick="location.hash='#now'">← back</button>
       <span class="wchips">${chips.map(m => `<button class="${m === WVAR ? 'on' : ''}" data-m="${m}">${said(labelOf(m))}</button>`).join('')}</span>
       <span class="wnote said" id="wnote"></span></div>
-    <div class="whead"><div class="wkick"><time>${at}</time>${wallStale(D.health) ? ' · <b>the readings are old</b>' : ''}</div>
+    <div class="whead" data-learn="wall-sentence" data-reads="/issues /health" data-stage="decide" data-pack="core"><div class="wkick"><time>${at}</time>${wallStale(D.health) ? ' · <b>the readings are old</b>' : ''}</div>
       <p class="wsent">${it.pix ? `<svg class="pix" aria-hidden="true"><use href="${NODE}signs.svg#${it.pix}"/></svg>` : ''}<span class="said">${esc(it.title || it.sentence).replace(/(\d+(?:\.\d+)?)(?=\s*(?:°C|µg|%|m\b))/, m0 => num(`${k}.${it.hero_distance}`, m0, `against the line, ${it.line} ${it.unit}`, `<b class="numf">${m0}</b>`))}</span></p>
       <div class="wask">${wallAsk(it)}</div></div>
     <div class="wgrid">
-      <section class="wl" data-kind="row"><div id="wfield" role="img" aria-label="The stations around this house on its own map, at one scale, their readings, and the wind now"></div>
+      <section class="wl" data-kind="row" data-learn="wall-map" data-reads="/sensors /stats /geo/cell /ground/wind" data-stage="observe" data-pack="core"><div id="wfield" role="img" aria-label="The stations around this house on its own map, at one scale, their readings, and the wind now"></div>
         <div class="wrail" id="wrail" role="group" aria-label="Scale">${wallRail()}</div><p class="wcap said" id="wcap"></p></section>
-      <section class="wr"><p class="wscale" id="wscale"></p><div class="wpage" id="wpage"></div>
-        <div class="wnarr" id="wnarr" hidden data-learn="ask" data-reads="/ask/status /ask" data-stage="observe" data-pack="core"></div>
+      <section class="wr"><p class="wscale" id="wscale" data-learn="wall-walk"></p><div class="wpage" id="wpage" data-learn="wall-page" data-reads="/issues /observations /learned/place" data-stage="observe" data-pack="core"></div>
+        <div class="wnarr" id="wnarr" hidden data-learn="wall-narration" data-reads="/ask/status /ask" data-stage="observe" data-pack="core"></div>
       </section>
     </div>`;
   document.querySelectorAll('.wchips button').forEach(c => c.onclick = () => { WVAR = c.dataset.m; VIEWS.wall(); });

@@ -454,6 +454,12 @@ hits = local.get("/docs/search", params={"q": "map_tiles"}).json()
 check(hits and all({"page", "anchor", "title", "snippet"} <= set(h) for h in hits)
       and any("MAP_TILES" in h["snippet"] for h in hits), f"/docs/search found {hits[:2]}")
 check(local.get("/docs/search", params={"q": "x"}).status_code == 422, "a one-letter search should be refused")
+# A question is searched by its words, rare ones weighing most, so the box works as a docs search with no model.
+for q, page in [("how do I add a sensor?", "sensors.md"), ("What is rho?", "rho.md"), ("How do I update the node?", "cli.md")]:
+    got = local.get("/docs/search", params={"q": q}).json()
+    check(got and got[0]["page"] == page, f"/docs/search {q!r} led with {[(h['page'], h['anchor']) for h in got[:3]]}")
+check(not any(h["page"] == "STYLE.md" for h in local.get("/docs/search", params={"q": "renderer"}).json()),
+      "/docs/search returned the authors' style guide")
 settings._cache["rows"]["SHARE_LEVEL"] = "off"
 check(all(lan.get(p, params={"q": "air"}).status_code == 403 for p in ("/ask/status", "/docs/search")),
       "at SHARE_LEVEL=off the pane's routes must need a token from the WiFi")

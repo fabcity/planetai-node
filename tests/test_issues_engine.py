@@ -671,12 +671,14 @@ check(_D21["en"] == "This house has 5 stations of its own; the nearest other sta
       "has asked 101 times and somebody answered 7; the usual wait was 112 minutes.",
       f"digest.simple reads {_D21['en']!r}")
 _P21 = engine.replay(_F21, Settings(NODE_ISSUES="air,heat,land,coast"), DECL)["digest"]["prompts"]
-# The three the pane opens with are unchanged; after them, the pool it rotates through (28 Sep 2026).
-check(_P21["en"][:3] == ["Why is heat what the node leads with?", "What should I do about alert #168?",
-                         "What does the line for heat mean?"], f"digest.prompts opens with {_P21['en'][:3]}")
-check(len(_P21["en"]) > 3 and "What is air like right now?" in _P21["en"]
-      and any(re.fullmatch(r"What should I do about alert #(?!168\b)\d+\?", q) for q in _P21["en"]),
-      f"digest.prompts has no pool to rotate through: {_P21['en']}")
+# The three the pane opens with, in a household's words and never an alert number; after them, the pool it rotates through.
+check(_P21["en"][:3] == ["What should I know about the heat today?", "What can I do about the heat right now?",
+                         "Where does the line for the heat come from?"], f"digest.prompts opens with {_P21['en'][:3]}")
+check(len(_P21["en"]) > 3 and "How is the air right now?" in _P21["en"]
+      and "Is the heat worse than usual for this hour?" in _P21["en"]
+      and not any("#" in q for l in I.LOCALES for q in _P21[l]),
+      f"digest.prompts has no pool to rotate through, or names an alert number: {_P21['en']}")
+check(_P21["es"][0] == "\u00bfQu\u00e9 deber\u00eda saber hoy sobre el calor?", f"digest.prompts es: {_P21['es'][:2]}")
 check(all(len(_P21[l]) == len(_P21["en"]) <= engine.PROMPTS_MAX and len(set(_P21[l])) == len(_P21[l])
           and all("{" not in q for q in _P21[l]) for l in I.LOCALES), f"digest.prompts: {_P21}")
 check(set(_D21) == set(I.LOCALES) and all(v and "{" not in v for v in _D21.values()),
