@@ -431,7 +431,8 @@ $('#qform').onsubmit = async ev => {
       }
     }
     if (!text) throw new Error('empty');
-    out.innerHTML = `<p>${esc(text)}</p>`; await docsAfter(q, out);
+    out.innerHTML = `<p>${esc(text)}</p>`;
+    if (!(D.prompts || []).includes(q)) await docsAfter(q, out);   /* the node's own questions are about tonight's readings, not the docs */
     ASKED.add(q); TURN += 3;
   } catch (e) { await docsAnswer(q, 'The model did not answer, so here is what the docs say.', out); }
   finally { $('#qsend').disabled = false; learnList(); const sc = $('#ascroll'); sc.scrollTop = sc.scrollHeight; $('#q').focus(); }

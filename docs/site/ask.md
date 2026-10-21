@@ -45,8 +45,8 @@ next three come round.
 
 The line at the top of the pane says what answers. With no model set up, the box is a search of these docs: the
 question's words are looked up in every section (`GET /docs/search`), the rarest words weighing most, and the five
-best sections come back as links with a line of each. When a model answers, the three best sections follow its
-answer under **In the docs**, and when it does not answer, the search answers instead and says so. When the node itself does not answer, the box says "The node did not answer. Check this
+best sections come back as links with a line of each. When a model answers a question you typed, the three best
+sections follow its answer under **In the docs**, and when it does not answer, the search answers instead and says so. When the node itself does not answer, the box says "The node did not answer. Check this
 screen is on the home network, then try again."
 
 **Learn this page**, in the same pane, numbers every part of the door you are on, the bar and the foot included, and
