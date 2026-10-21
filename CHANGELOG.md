@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Hourly means without regrouping every reading.** `readings_1h` was a view that grouped every reading the node had
+  ever stored each time anything read it: 434 ms on node #1 for the last two hours, 2.7 s for the ninety days
+  `/issues/days` draws. The finished hours now sit in a table, `readings_1h_done`, filled by the app (the last 26 hours
+  every hour, all of it on start and once a day), and the view reads that table and groups only the hours after it,
+  live. On a copy of node #1: 55 ms to under 1 ms for two hours, 283 ms to 20 ms for ninety days. The view keeps its
+  name and columns, so no pack's SQL changes, and it is complete whatever the table's state: an empty table only
+  makes it slower. `readings` gains an index on `ts` for that live half.
+
 - **Importing the app starts nothing.** The first-start bootstrap, the channel roles, the MQTT client and the ten
   timer loops ran when `app/main.py` was imported. So a second import ran a second node inside the first, and its
   MQTT client, with the same client id, knocked node #1 off its broker on 28 September. They run once now, from the

@@ -66,12 +66,33 @@ CREATE TABLE IF NOT EXISTS actions (
   note      TEXT
 );
 
--- Hourly means. A plain view is fine until this node holds millions of rows; then materialize it.
+-- Hourly means. Finished hours are kept in readings_1h_done; the view reads them and groups only the readings from
+-- the table's last hour onward, live. Until 22 Oct 2026 the view grouped every reading ever stored on every read:
+-- 434 ms for the last two hours on node #1, 2.7 s for ninety days. app/main.py::refresh_hourly fills the table: the
+-- last 26 hours every hour (late child pushes, a radio that caught up), the whole of it on start and once a day
+-- (a backfill, a deletion). The live half starts where the table ends, so an empty or stale table makes the view
+-- slower, never shorter. Buckets are cut in the session's time zone, NODE_TZ, as the view always cut them.
+CREATE TABLE IF NOT EXISTS readings_1h_done (
+  bucket    TIMESTAMPTZ NOT NULL,
+  sensor_id TEXT NOT NULL,
+  metric    TEXT NOT NULL,
+  mean      DOUBLE PRECISION,
+  min       DOUBLE PRECISION,
+  max       DOUBLE PRECISION,
+  n         BIGINT,
+  PRIMARY KEY (sensor_id, metric, bucket)
+);
+CREATE INDEX IF NOT EXISTS readings_1h_done_bucket ON readings_1h_done (bucket);
+CREATE INDEX IF NOT EXISTS readings_ts ON readings (ts);    -- the live half reads only the last hour or two
 DROP VIEW IF EXISTS readings_1h CASCADE;
 CREATE VIEW readings_1h AS
-SELECT date_trunc('hour', ts) AS bucket, sensor_id, metric,
-       avg(value) AS mean, min(value) AS min, max(value) AS max, count(*) AS n
-FROM readings GROUP BY 1, 2, 3;
+SELECT d.bucket, d.sensor_id, d.metric, d.mean, d.min, d.max, d.n FROM readings_1h_done d
+UNION ALL
+SELECT date_trunc('hour', r.ts) AS bucket, r.sensor_id, r.metric,
+       avg(r.value) AS mean, min(r.value) AS min, max(r.value) AS max, count(*) AS n
+FROM readings r
+WHERE r.ts >= (SELECT COALESCE(max(bucket) + INTERVAL '1 hour', '-infinity'::timestamptz) FROM readings_1h_done)
+GROUP BY 1, 2, 3;
 
 -- Rolling stats per sensor/metric, used by rules. One row per (sensor, metric).
 DROP VIEW IF EXISTS stats CASCADE;

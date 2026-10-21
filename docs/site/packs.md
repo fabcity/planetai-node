@@ -217,7 +217,7 @@ What a rule may read:
 | table or view | what it holds |
 |---|---|
 | `stats` | `sensor_id, metric, indoor, local, kind, scale, lat, lon, name, last, last_ts, silent_minutes, mean_15m, mean_1h, mean_24h`: the last 24 hours, sensors only |
-| `readings_1h` | hourly `mean, min, max, n` over all history |
+| `readings_1h` | hourly `mean, min, max, n` over all history; a filter on `bucket` reads only the hours it asks for |
 | `recent_15m` | quarter-hour means of the last 24 hours, with `apparent` |
 | `usual_by_hour` | each room's own median, p75 and p90 for each local hour, from the fourteen complete days before today |
 | `observations` | the latest value per slow source |

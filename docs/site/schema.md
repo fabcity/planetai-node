@@ -182,6 +182,12 @@ What the node learned: `kind` and `key` (the primary key together), `issue`, `me
 
 What a home keeps ([`docs/SPEC_inventory.md`](../SPEC_inventory.md)): `id`, `added_at`, `class`, `name`, `count`, `used` (`weekly` · `monthly` · `yearly` · `never`), `condition` (`works` · `needs_repair` · `broken`), `offer` (`no` · `lend` · `give`), `capture_id` and `note`. Written by `/things`. Revoked from `planetai_ro`, so no pack SQL reads it, and named by no export or push. Its counts per class reach `readings` as the private `stock.<class>`, `idle.<class>` and `repair.<class>`.
 
+### `readings_1h_done`
+
+The finished hours behind the `readings_1h` view: `bucket, sensor_id, metric, mean, min, max, n`, one row per sensor,
+metric and hour. The app fills it from `readings`, the last 26 hours every hour and the whole table on start and once a
+day. Read `readings_1h`, never this table: the view adds the hours this table has not got to yet.
+
 ### Pack tables
 
 The `place` pack creates `place_features` (OpenStreetMap features with a PostGIS geometry), `place_runs`, `place_yearly` and `place_buildings_sat` (Open Buildings). Tables a pack creates inherit the read-only role's `SELECT` through default privileges.
@@ -190,7 +196,7 @@ The `place` pack creates `place_features` (OpenStreetMap features with a PostGIS
 
 | view | rows | columns |
 |---|---|---|
-| `readings_1h` | hourly means over all readings | `bucket, sensor_id, metric, mean, min, max, n` |
+| `readings_1h` | hourly means over all readings: the finished hours from `readings_1h_done`, and the rest grouped live from where that table ends, so it is complete even when the table is behind | `bucket, sensor_id, metric, mean, min, max, n` |
 | `stats` | one per (sensor, metric), last 24 h, `kind='sensor'` only | `sensor_id, metric, indoor, local, kind, scale, lat, lon, name, last, last_ts, silent_minutes, mean_15m, mean_1h, mean_24h` |
 | `observations` | the latest row per (sensor, metric) for `kind <> 'sensor'` | `sensor_id, metric, value, ts, name, kind, scale, local, cadence, meta` |
 | `recent_15m` | quarter-hour means of the last 24 h, `kind='sensor'` only, with `apparent` (the no-wind indoor feels-like) derived wherever `temp` and `humidity` share a bucket | `bucket, sensor_id, metric, mean` |
