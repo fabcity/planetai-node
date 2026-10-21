@@ -149,7 +149,14 @@ def ladder(cfg: dict) -> list[Rung]:
     rungs.append(Rung("local", os.getenv("OLLAMA_URL", "http://host.docker.internal:11434") + "/v1", os.getenv("MODEL", "qwen3:4b"), small=True))
     prefer = g("AGENT_PREFER", "private")
     if prefer == "private":
-        rungs = [r for r in rungs if r.name != "online"]
+        # Nothing leaves: no online rung, and no rung whose address is outside this house's network, whatever box it
+        # was typed into. A city's GPU server in the remote box is used only once somebody here picks fallback or
+        # strongest, the same choice an online key needs.
+        for r in rungs:
+            if r.name != "online" and r.leaves:
+                log.warning("%s rung not used: %s is outside this network and Model preference is private",
+                            r.name, urlparse(r.url).hostname)
+        rungs = [r for r in rungs if r.name != "online" and not r.leaves]
     elif prefer == "fallback":
         # Your own big model, then the online one, then the small local model last.
         #

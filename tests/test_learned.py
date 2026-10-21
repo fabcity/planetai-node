@@ -177,13 +177,16 @@ settings._cache["rows"]["AGENT_PREFER"] = "fallback"
 r = c.get("/learned", headers={**ADMIN, "X-Agent": "agent"})
 assert r.status_code == 403 and "AGENT_PREFER" in r.json()["detail"], "an agent that may be online: no, and why"
 assert c.get("/learned", headers=ADMIN).status_code == 200, "the page is not an agent"
-# private is not enough when a model's address leaves the house: a city's server in the remote box is not home
+# a city's server in the remote box: under private it is not used at all, so the learnings stay readable at home;
+# under fallback it is used, and the agent is told why it may not read them
 settings._cache["rows"].update(AGENT_PREFER="private", AGENT_REMOTE_URL="https://vllm.city.example.org/v1")
+assert c.get("/learned", headers={**ADMIN, "X-Agent": "agent"}).status_code == 200, "private never uses a public remote"
+settings._cache["rows"]["AGENT_PREFER"] = "fallback"
 r = c.get("/learned", headers={**ADMIN, "X-Agent": "agent"})
-assert r.status_code == 403 and "outside this house" in r.json()["detail"], "private, a public remote: no, and why"
+assert r.status_code == 403 and "outside this house" in r.json()["detail"], "fallback, a public remote: no, and why"
 assert c.get("/household", headers={**ADMIN, "X-Agent": "agent"}).status_code == 403
 assert c.get("/learned/search?q=smoke", headers={**ADMIN, "X-Agent": "agent"}).status_code == 403
-settings._cache["rows"]["AGENT_REMOTE_URL"] = "http://192.168.4.44:11434/v1"
+settings._cache["rows"].update(AGENT_PREFER="private", AGENT_REMOTE_URL="http://192.168.4.44:11434/v1")
 assert c.get("/learned", headers={**ADMIN, "X-Agent": "agent"}).status_code == 200, "private, a LAN remote: yes"
 settings._cache["rows"]["AGENT_REMOTE_URL"] = ""
 print("route: admin only; an agent only while every model stays home, told why otherwise")

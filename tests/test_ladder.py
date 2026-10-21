@@ -148,9 +148,15 @@ for url, home in (("http://host.docker.internal:11434/v1", True), ("http://local
                   ("https://api.anthropic.com/v1", False), ("https://vllm.city.example.org/v1", False),
                   ("http://8.8.8.8/v1", False), ("http://100.128.0.1/v1", False)):
     assert A.stays_home(url) is home, f"{url}: stays_home says {A.stays_home(url)}"
+# Under private a rung at a public address is not used at all (Tomas, 21 Oct 2026): private means nothing leaves.
 city = {"AGENT_REMOTE_URL": "https://vllm.city.example.org/v1", "AGENT_PREFER": "private"}
-assert [A.where_of(r)["where"] for r in A.ladder(city)] == ["online", "this machine"], "a public remote is online"
-assert not A.models_stay_home(city), "private with a public remote: the house's learnings would leave"
+assert [r.name for r in A.ladder(city)] == ["local"], "private used a remote model at a public address"
+assert A.models_stay_home(city), "private with a public remote: it is not used, so nothing leaves"
+assert [r.name for r in A.ladder({**city, "AGENT_REMOTE_URL": "http://192.168.4.44:11434/v1"})] == ["remote", "local"], \
+    "private dropped a remote model on the house's own network"
+city_fb = {**city, "AGENT_PREFER": "fallback"}
+assert [A.where_of(r)["where"] for r in A.ladder(city_fb)] == ["online", "this machine"], "fallback: a public remote is online"
+assert not A.models_stay_home(city_fb), "fallback with a public remote: the house's learnings would leave"
 assert A.models_stay_home({**BOTH, "AGENT_PREFER": "private"}), "private, tailnet remote, local: everything stays home"
 assert not A.models_stay_home({**BOTH, "AGENT_PREFER": "fallback"}), "fallback may reach the online rung"
 

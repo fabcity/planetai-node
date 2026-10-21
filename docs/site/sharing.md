@@ -162,7 +162,7 @@ up never travels to a NAS or a remote. The node never logs the Telegram URL, bec
 | a `private` reading | nobody: not the export, a parent, the report bundle or any agent, and on this machine's raw routes only the admin token | it is used on the page, by rules and by cells; Home Assistant discovery, the household's own automation, still receives it |
 
 At `AGENT_PREFER=private`, the default, the ask pane's model is on this machine or your network and the
-conversation never leaves, unless the remote model's address is outside your network, which the pane then says. An online model is a choice somebody here makes in Set up, and the pane says so on every
+conversation never leaves: a remote model at an address outside your network is not used. An online model is a choice somebody here makes in Set up, and the pane says so on every
 answer. A remote agent gets the MCP surface instead, which rounds, refuses and audits. See [Ask the node](ask.md).
 
 > **Gap in v0.83.0.** The `coast` and `forecast` packs, and the first start's 92 days of CAMS history, send the
