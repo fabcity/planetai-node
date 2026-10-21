@@ -98,7 +98,9 @@ the bump is a `docs/decisions/` entry. (`/health`'s `schema` is older and means 
 database schema version. Nothing else should use the name for two things.)
 
 **Readings**: `(ts, sensor_id, metric, value)` + a `sensors` row `(source, name, lat, lon, indoor, local, meta)`.
-Up: children push hourly means (`POST /aggregates`). Down: a sensor or a phone the household trusts posts raw
+Up: children push hourly means of their own sensors, each row saying whether it is indoors (`POST /aggregates`).
+A child's peers and models stay with the child, because the parent counts everything it receives as its children's.
+Down: a sensor or a phone the household trusts posts raw
 (`POST /readings`, with the node's admin token: a posted reading counts as one of the house's own). The instance
 decides what it keeps.
 
@@ -138,26 +140,30 @@ endpoints. Federated participation, if ever wanted, is a `POST` of model deltas 
 Android/iOS SDKs speak to a SuperNode that would sit next to the node's API. Nothing above the node changes.
 
 **Upstream: clusters, data centres, frontier models.**
-Every instance has one optional `UPSTREAM_MODEL_URL` (OpenAI-compatible chat/completions) and one optional
-`UPSTREAM_COMPUTE_URL` (job submission). Point the first at Ollama on the same box, at vLLM on a regional cluster
-(BSC for Barcelona, a partner HPC for Bali), or at a frontier API: the caller is identical. Point the second at
-a district aggregator with a GPU, or at a cloud job runner, for things a node can't do: Earth-model inference,
-federated training rounds, synthetic-control computation for H0-T. The node never *needs* upstream compute; it
-*can use* it. Sovereignty is preserved by what travels (hourly means, cells, model deltas: never raw), not by
-where compute happens.
+A model is two optional settings, both OpenAI-compatible: `AGENT_REMOTE_URL` for a bigger model on a machine of
+yours, and `AGENT_ONLINE_URL` with a key for a frontier API. Point the remote one at Ollama on a laptop, or at vLLM
+on a regional cluster (BSC for Barcelona, a partner HPC for Bali): the caller is identical. The node reads the
+address and decides where the model is. Loopback, a private or tailnet address, or a name only a home network
+knows, stays home. Anything else is online, so a regional cluster joins the tailnet to count as the household's
+own, and at a public address it is used only once somebody here picks `fallback` or `strongest`, the choice an
+online key needs too.
+
+Jobs a node can't do itself, like Earth-model inference, federated training rounds or synthetic-control
+computation for H0-T, need no new setting yet. A pack script that reads only its settings and writes files under
+`out/<pack>/<node>/` can already run on any machine, a district aggregator with a GPU or a cloud runner, and
+its results are read on the next poll once the folder is synced back. The `earth` scripts work this way.
+`UPSTREAM_COMPUTE_URL`, a job submission endpoint, is a named contract with no code yet: it arrives with the
+first job a node cannot run. The node never *needs* upstream compute; it *can use* it. Sovereignty is preserved
+by what travels (hourly means, cells, model deltas: never raw) and by where a model is allowed to be.
 
 **Peer: other observatories.**
 An observatory instance that isn't ours (Bali Air Dispatch today; a city's own portal tomorrow) is a *source*.
 Its readings enter through an adapter, flagged `local=false`, credited. If it exposes something like our read API,
 one generic adapter reads it. This is how the network grows without owning everyone's data.
 
-> These two names are the contract and not settings yet: no code reads them, and they are not in `.env.example`.
-> The first feature that needs upstream compute adds them with the code that reads them.
->
-> The model half exists under other names: `AGENT_REMOTE_URL` (a model on the household's own network) and
-> `AGENT_ONLINE_URL` (an online one, only when `AGENT_PREFER` allows it), both OpenAI-compatible, read by
-> `app/agent_loop.py` for the Telegram bot and by `app/ask.py` for the dashboard's ask pane.
-> `UPSTREAM_COMPUTE_URL` has no code.
+> Both model settings are read by `app/agent_loop.py`, for the Telegram bot, and by `app/ask.py`, for the
+> dashboard's ask pane and the Wall. Earlier drafts of this page named the model setting `UPSTREAM_MODEL_URL`;
+> no code ever read that name.
 
 ## 5. Where the Fab City Index plugs in
 
@@ -213,7 +219,7 @@ Bali go partial→live. *Proves:* the same code runs at two scales and ρ is mea
 
 **Stage 2: a second city, the observatory layer proper.** Barcelona node(s) on Smart Citizen's 15-year archive
 + Sentilo + Open Data BCN. The observatory reads two countries through one API. Upstream compute appears for real:
-`UPSTREAM_MODEL_URL` → vLLM at BSC or ITDel; a first federated round only if there is a model that averaging
+`AGENT_REMOTE_URL` → vLLM at BSC or ITDel, over the tailnet; a first federated round only if there is a model that averaging
 cannot express. Index: two pilots' Community and City cells live; the phase plot (ΔFCI/Δt) gets its first two points.
 → Trigger for Stage 3: 30 nodes across ≥2 bioregions, a paying operator behind most.
 

@@ -84,8 +84,8 @@ The node builds the model's context itself, from the `/issues` bundle the page a
 sentence, the digest, every watched issue's state and values, the open alerts, and the documentation for the part in
 focus. On a node whose alert engine is `shadow` or `events`, the open alerts leave out those of the heat and air
 packs the events replaced, since nobody can answer them there. The browser sends only the end of the thread: the
-question and the three exchanges before it. The Wall's narration (`prompt: wall`) has a context of its own, short
-facts anybody walking past may read: what is usual for the place, and none of the house's learnings, digests,
+question and the three exchanges before it. The Wall's narration (`prompt: wall`) is offered no tools, so the model answers without thinking, and has a
+context of its own, short facts anybody walking past may read: what is usual for the place, and none of the house's learnings, digests,
 things, alerts' words or who answered ([API](api.md#post-ask)).
 
 That context, and every tool result the model reads, has no coordinate, no sensor or station name, no sensor id and
@@ -105,7 +105,7 @@ sets the same keys.
 |---|---|
 | `AGENT_REMOTE_URL`, `AGENT_REMOTE_MODEL` | a bigger model on another machine of yours. Ollama on a laptop is `http://<laptop>.local:11434/v1`, with `OLLAMA_HOST=0.0.0.0` set on the laptop so it listens beyond itself |
 | `AGENT_ONLINE_URL`, `AGENT_ONLINE_MODEL`, `AGENT_ONLINE_KEY` | an online model: Anthropic, OpenAI or any other that speaks the OpenAI chat API |
-| `AGENT_PREFER` | `private` (the default): the model on your network, then this machine's, and never online. `fallback`: your network, then online, then this machine. `strongest`: online first |
+| `AGENT_PREFER` | `private` (the default): the model on your network, then this machine's, and never online, which includes a remote model at a public address. `fallback`: your network, then online, then this machine. `strongest`: online first |
 
 The pane tries them in that order and skips a model that does not answer for five minutes. It reaches the model on
 this machine only when `planetai agent local` set one up, so a node with no local model can still answer from a
@@ -125,7 +125,7 @@ With no model set up, the pane says so, offers the documentation search, and sho
   size, and the line to run on the node: `planetai agent local pull <tag>`. `planetai agent local` sets up Ollama and
   the loop first, and neither downloads anything until you pull.
 - A model on another machine of yours: `AGENT_REMOTE_URL` and `AGENT_REMOTE_MODEL` under Set up → Model, as in the
-  table above. It stays on your network.
+  table above. It stays on your network; at an address outside it, it counts as online.
 - Your own agent, over MCP. The card prints the `claude mcp add` line with this node's address, and `planetai agent`
   on the node prints the token. A remote agent gets the whole MCP surface; see [Bring your own agent](agents.md).
 

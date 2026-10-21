@@ -543,12 +543,12 @@ This node's hourly means, newest first, without `private` channels: `[{bucket, s
 ### POST /aggregates
 Access: children
 
-A child pushes its hourly means.
+A child pushes the hourly means of its own sensors, each row saying whether it is indoors.
 
 ```json
 {"schema": "aggregates-v0", "node": "bayu-ungasan", "scale": "community",
  "rows": [{"bucket": "2026-10-20T07:00:00+00:00", "sensor_id": "sc-1234", "metric": "pm25",
-           "mean": 18.4, "min": 12.0, "max": 25.1, "n": 12}]}
+           "mean": 18.4, "min": 12.0, "max": 25.1, "n": 12, "indoor": false}]}
 ```
 
 The parent keeps each mean as one reading of sensor `<node>/<sensor_id>`, of kind `child`. Returns `{"accepted": <n>}`.
@@ -648,7 +648,7 @@ Each document that travels between nodes names its format in `schema`: `issues-v
 
 | To | When | What travels |
 |---|---|---|
-| `POST {PARENT_API_URL}/aggregates` | Hourly, with a parent set | The last 2 hours of hourly means, with `PARENT_TOKEN` |
+| `POST {PARENT_API_URL}/aggregates` | Hourly, with a parent set | The last 2 hours of hourly means of its own sensors, with `PARENT_TOKEN` |
 | `POST {PARENT_API_URL}/events` | Hourly, after an alert in the last 36 hours | Alert timestamps |
 | Telegram | Each alert at or above `ALERT_LEVEL`, each report, once per newer release, and `getMe` once a day for the bot's name | The message, with `TELEGRAM_BOT_TOKEN` |
 | `planetai.fab.city/node0/get/VERSION` | Hourly, unless `UPDATE_CHECK=off` | Nothing about the house |
