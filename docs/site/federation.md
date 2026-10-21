@@ -36,20 +36,23 @@ A parent never sees a child's raw rows, its room names, its people, its sentence
 
 ### POST /aggregates
 
-The last two hours of `readings_1h`, the node's hourly means, leaving out every channel whose role is
-`private`:
+The last two hours of `readings_1h`, the node's hourly means, for its own sensors and its children's only
+(custody), leaving out every channel whose role is `private`. A peer's station and a model sampled at the node
+stay home: the parent would count them as its own.
 
 ```json
 {"schema": "aggregates-v0", "node": "bayu-ungasan", "scale": "community",
  "rows": [{"bucket": "2026-09-16T05:00:00+00:00", "sensor_id": "sc-19880", "metric": "pm25",
-           "mean": 12.4, "min": 9.1, "max": 17.0, "n": 12}]}
+           "mean": 12.4, "min": 9.1, "max": 17.0, "n": 12, "indoor": false}]}
 ```
 
 The parent keeps each `mean` as one reading on the child's own hour, under the sensor `<child>/<sensor_id>`
 with `source='child'`, `kind='child'`, `cadence='PT1H'` and `local=FALSE`. Custody is generated as
 `kind='child' OR (local AND kind<>'peer')`, so those rows count toward a `live` cell. The metric keeps its own
-name, so the parent's pack SQL matches it. `min`, `max` and `n` travel but the parent does not store them. A
-child's sensors have no coordinates at the parent, and pushing the same hour twice changes nothing.
+name, so the parent's pack SQL matches it. `indoor` is kept on the parent's sensor row, so an indoor kit stays
+out of outdoor means there too. `min`, `max` and `n` travel but the parent does not store them. A child's
+sensors have no coordinates at the parent. The push sends the hour in progress and, an hour later, the same hour
+complete; the parent keeps the later mean.
 
 ### POST /events
 

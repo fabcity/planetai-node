@@ -7,6 +7,24 @@
   username and, with `SPECIES_MATCH=on`, about 12 kB of GBIF maps, every 20 seconds. Node #1's answer was 13.8 kB, 12
   of them nobody read. It now names its keys, the list on the API page, and the gap note there is gone.
 
+- **A model at a public address counts as online, whatever box it was typed into.** The remote rung is for a bigger
+  model on a machine of yours, and the node took that on trust: a city's GPU server in that box was called "your
+  network", agents read what the house learned and who lives in it under `AGENT_PREFER=private`, and the Telegram bot
+  handed it the node's settings, the report bundle and the day's export. The node now reads the rung's address.
+  Loopback, a private or tailnet address and a name only a home network knows (no dot, `.local`, `.ts.net`) stay
+  home; anything else is online. Such a rung is named online on the pane, gets the pane's narrower set of tools on
+  Telegram, and closes `/learned`, `/learned/search` and `/household` to agents. A tool the bot's model names
+  without having been offered it is refused now, where before it ran.
+
+- **A parent counts only its children's own sensors, and keeps each hour complete.** The hourly push sent every
+  row that was not private, so a child's Bali Air Dispatch stations and its Open-Meteo point went up beside its
+  own kits, and the parent, which files everything it receives as its children's, would have counted them as the
+  district's measurement. Node #1 would have pushed 178 rows of other people's numbers next to its 94. The push now
+  sends custody rows only, with `indoor` on each, so a kitchen kit stays out of the parent's outdoor means. The
+  parent also kept the first mean it got for each hour, which is the hour in progress, and dropped the complete
+  one an hour later; it keeps the later one now. `tests/test_custody.py` runs the push on a database with a peer
+  in it and fails if the peer goes up.
+
 - **Ask the node, on the doors, works like a chat box again, and learn mode follows the doors.** The pane sits on its
   own grey again, as it did on the classic dashboard, so the page's paper is only ever the data; the doors had drawn
   it on the page's ground. Enter asks (Shift and Enter for a new line), where only the ASK button did. The questions

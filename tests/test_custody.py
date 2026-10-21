@@ -219,3 +219,34 @@ for forbidden in ("text", "note", "actor", "sensor_id"):
 
 print(f"rho: {both['acted']}/{both['alerts_act']} answered once a child pushes, {alone['acted']}/{alone['alerts_act']} alone")
 assert not failures, "\n".join(failures)
+
+
+# ---- 5. no peer and no model is pushed to a parent (AGENTS.md: "Peers never roll up").
+#
+# The parent stores every row it receives as kind='child', and kind='child' IS custody, so the push is the last
+# place a peer can be stopped. Until 21 Oct 2026 it filtered only `private`, and node #1 would have pushed 178
+# rows of other people's stations and Open-Meteo beside its own 94. The statement is read out of
+# app/main.py::push_aggregates, never retyped, and run on the same two databases as above.
+def push_sql() -> str:
+    import ast
+    import packs
+    tree = ast.parse(open(os.path.join(ROOT, "app/main.py")).read())
+    fn = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == "push_aggregates")
+    call = next(n for n in ast.walk(fn) if isinstance(n, ast.Call) and getattr(n.func, "attr", "") == "execute")
+    return eval(compile(ast.Expression(call.args[0]), "push_aggregates", "eval"), {"packs": packs})
+
+
+PUSH = push_sql()
+ROWS_SQL = f"SELECT CAST(bucket AS TEXT), sensor_id, metric, mean FROM ({_pg(PUSH)}) p"   # no tz objects: no pytz
+pushed_clean = sorted(clean.execute(ROWS_SQL).fetchall(), key=str)
+pushed_peer = sorted(peered.execute(ROWS_SQL).fetchall(), key=str)
+if pushed_clean != pushed_peer:
+    failures.append(f"the push to a parent changes when a peer is added: {len(pushed_clean)} -> {len(pushed_peer)} rows")
+if any(r[1] == "peer-1" for r in pushed_peer):
+    failures.append("the peer's hourly means are pushed to the parent, which would count them as its own children's")
+if not pushed_clean:
+    failures.append("the push sends nothing from a database holding node #1's own kits")
+if "indoor" not in PUSH:
+    failures.append("the push no longer carries `indoor`: a parent would average the kitchen into outdoor air")
+print(f"push: {len(pushed_clean)} rows clean, {len(pushed_peer)} with one peer, none of them the peer's")
+assert not failures, "\n".join(failures)

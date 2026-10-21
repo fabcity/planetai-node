@@ -609,9 +609,13 @@ def _event_keyboard(event_id: int, locale: str) -> list:
 def push_aggregates() -> None:
     if not PARENT():          # the function, not the setting: a bare PARENT is always truthy
         return
+    # Custody only: a peer's station or a model sampled here is context for this house, never the district's own
+    # measurement, and the parent stores everything it receives as kind='child', which is custody. `indoor`
+    # travels so the parent's outdoor means leave the kitchen out, as this node's do.
     with db() as con, con.cursor() as cur:
-        cur.execute("SELECT bucket, sensor_id, metric, mean, min, max, n FROM readings_1h r "
-                    "WHERE bucket > now() - interval '2 hours' AND " + packs.public_sql("r"))
+        cur.execute("SELECT r.bucket, r.sensor_id, r.metric, r.mean, r.min, r.max, r.n, s.indoor FROM readings_1h r "
+                    "JOIN sensors s ON s.sensor_id = r.sensor_id "
+                    "WHERE r.bucket > now() - interval '2 hours' AND s.custody AND " + packs.public_sql("r"))
         rows = [{**r, "bucket": r["bucket"].isoformat()} for r in cur.fetchall()]
     try:
         httpx.post(f"{PARENT()}/aggregates", json={"schema": AGGREGATES_V0, "node": NODE, "rows": rows, "scale": os.getenv("NODE_SCALE", "community")},
@@ -3482,15 +3486,23 @@ def offers_now() -> dict:
             "offers": [{**r, "ask": f"https://t.me/{bot}?start=offer-{r['id']}" if bot else None} for r in rows]}
 
 
+def _models_home() -> bool:
+    """Every model this node may use is on this house's own network (agent_loop.models_stay_home): AGENT_PREFER is
+    private and no rung's address leaves. The gate on what the house learned and who lives in it."""
+    import agent_loop
+    return agent_loop.models_stay_home(settings)
+
+
 @app.get("/learned")
 def learned(request: Request, authorization: str = Header("")):
     """What this node has learned (docs/SPEC_learn.md), newest checks first, each with its numbers and cases. The
     admin token only: the cases carry the household's own notes. An agent reads it only while every model this node
-    may use is on this house's own machines (AGENT_PREFER=private); otherwise it is told why not."""
+    may use is on this house's own network (_models_home); otherwise it is told why not."""
     _admin(authorization)
-    if request.headers.get("x-agent") and settings.get("AGENT_PREFER", "private") != "private":
+    if request.headers.get("x-agent") and not _models_home():
         raise HTTPException(403, "what this house learned stays with its own machines: AGENT_PREFER is not private, "
-                                 "so a model here may be online. Read it on the page, Node, What it remembers.")
+                                 "or a model is set up outside this house's network. Read it on the page, Node, "
+                                 "What it remembers.")
     rows = q("SELECT * FROM learnings ORDER BY kind, CASE status WHEN 'holding' THEN 0 WHEN 'weakening' THEN 1 "
              "WHEN 'too_early' THEN 2 ELSE 3 END, n DESC")
     # how many diary entries the node keeps, by scale: Node's "What it remembers" counts them
@@ -3507,10 +3519,11 @@ def _people() -> dict:
 @app.get("/household")
 def household(request: Request, authorization: str = Header("")):
     """Who is in the house, as the household said (SPEC_learn §8): yes or no for each of `choices`. Guarded as
-    GET /learned: the admin token, and an agent only while AGENT_PREFER=private."""
+    GET /learned: the admin token, and an agent only while every model stays home."""
     _admin(authorization)
-    if request.headers.get("x-agent") and settings.get("AGENT_PREFER", "private") != "private":
-        raise HTTPException(403, "who is in this house stays with its own machines: AGENT_PREFER is not private")
+    if request.headers.get("x-agent") and not _models_home():
+        raise HTTPException(403, "who is in this house stays with its own machines: AGENT_PREFER is not private, "
+                                 "or a model is set up outside this house's network")
     return {"people": _people(), "choices": learn.PEOPLE}
 
 
@@ -3547,8 +3560,9 @@ def learned_search(request: Request, q_: str = Query("", alias="q", max_length=2
     equals. No words lists the newest digests, of one `scale` if given. Postgres full-text search, 'simple' so English,
     Indonesian and Spanish words all match as written. Guarded as GET /learned."""
     _admin(authorization)
-    if request.headers.get("x-agent") and settings.get("AGENT_PREFER", "private") != "private":
-        raise HTTPException(403, "what this house learned stays with its own machines: AGENT_PREFER is not private")
+    if request.headers.get("x-agent") and not _models_home():
+        raise HTTPException(403, "what this house learned stays with its own machines: AGENT_PREFER is not private, "
+                                 "or a model is set up outside this house's network")
     if scale and scale not in learn.SCALES:
         raise HTTPException(422, f"scale is one of {', '.join(learn.SCALES)}")
     terms = learn.search_terms(q_)
@@ -3919,7 +3933,11 @@ def receive_aggregates(body: dict, authorization: str = Header("")):
 
     `readings.ts` is the child's own bucket, so an hourly mean enters as one reading on the hour and the
     parent's `readings_1h` view averages a single row back to itself. The child's hour survives unchanged, and
-    `readings`' UNIQUE (sensor_id, metric, ts) keeps a re-push idempotent."""
+    `readings`' UNIQUE (sensor_id, metric, ts) keeps a re-push idempotent.
+
+    A re-push also corrects: the child sends the hour in progress, then the same hour complete an hour later, so
+    the later mean replaces the earlier one. Until 21 Oct 2026 it was DO NOTHING and the parent kept every hour's
+    first, partial mean. `indoor` arrives per row since then; a child that does not send it leaves the row as it was."""
     if not AGG_TOKEN():
         raise HTTPException(403, "this node accepts no children: set AGGREGATE_TOKEN in .env and give it to them")
     if not _bearer_ok(authorization, AGG_TOKEN()):
@@ -3930,10 +3948,14 @@ def receive_aggregates(body: dict, authorization: str = Header("")):
     with db() as con, con.cursor() as cur:
         for r in rows:
             sid = f"{child}/{r['sensor_id']}"
-            cur.execute("""INSERT INTO sensors (sensor_id, source, name, local, kind, scale, cadence)
-                           VALUES (%s,'child',%s,FALSE,'child',%s,'PT1H')
-                           ON CONFLICT (sensor_id) DO UPDATE SET kind='child', scale=EXCLUDED.scale""",
-                        (sid, sid, body.get("scale", "community")))
-            cur.execute("INSERT INTO readings (ts, sensor_id, metric, value) VALUES (%s,%s,%s,%s) ON CONFLICT DO NOTHING",
+            indoor = r.get("indoor")
+            indoor = None if indoor is None else bool(indoor)
+            cur.execute("""INSERT INTO sensors (sensor_id, source, name, local, kind, scale, cadence, indoor)
+                           VALUES (%s,'child',%s,FALSE,'child',%s,'PT1H',COALESCE(%s,FALSE))
+                           ON CONFLICT (sensor_id) DO UPDATE SET kind='child', scale=EXCLUDED.scale,
+                                                                 indoor=COALESCE(%s, sensors.indoor)""",
+                        (sid, sid, body.get("scale", "community"), indoor, indoor))
+            cur.execute("INSERT INTO readings (ts, sensor_id, metric, value) VALUES (%s,%s,%s,%s) "
+                        "ON CONFLICT (sensor_id, metric, ts) DO UPDATE SET value = EXCLUDED.value",
                         (r["bucket"], sid, r["metric"], float(r["mean"])))
     return {"accepted": len(rows)}

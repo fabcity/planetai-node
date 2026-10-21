@@ -470,7 +470,8 @@ What this home chose to lend or give: `{node, cell, contact, offers: [{id, class
 
 ## What the node learned
 
-None of this changes a rule or a setting. An agent, a request with `X-Agent`, reads the house's learnings only while `AGENT_PREFER=private`.
+None of this changes a rule or a setting. An agent, a request with `X-Agent`, reads the house's learnings only while every model stays home: `AGENT_PREFER=private` and no model at an address
+outside your network.
 
 ### GET /learned
 Access: admin

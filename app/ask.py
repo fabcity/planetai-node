@@ -345,7 +345,7 @@ def ask_status():
             "rungs": [agent_loop.where_of(r) for r in order],
             # True when the question and the page's context may leave the house: an online rung is in the
             # order, which only AGENT_PREFER fallback or strongest allows.
-            "leaves": any(r.name == "online" for r in order),
+            "leaves": any(r.leaves for r in order),
             "tools": [{"name": n, "class": TOOL_CLASS[n]} for n in sorted(agent_loop.PANE_TOOLS)],
             "stored": False}
 
