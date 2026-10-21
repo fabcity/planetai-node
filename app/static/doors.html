@@ -524,7 +524,10 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
 .wnarr .nt{font:italic 300 calc(var(--wf) * 1.1)/1.34 Figtree,var(--body);letter-spacing:-.005em;margin:0;max-width:44ch;text-wrap:pretty}
 .wnarr .caret{display:inline-block;width:.42em;height:.95em;margin-left:3px;vertical-align:-.1em;background:var(--ink);animation:blink var(--motion-caret-typing) steps(1) infinite}
 @keyframes blink{50%{opacity:0}}
-@media (prefers-reduced-motion: reduce){.wnarr .caret,.wnarr.busy .dot{animation:none}}
+.wnarr .nw.roll{justify-content:flex-start;mask-image:linear-gradient(to bottom,transparent 0,#000 1.2vh,#000 calc(100% - 1.2vh),transparent 100%)}
+.wnarr .nw.roll .nt{flex:none;margin-bottom:calc(var(--wf) * 1.6);animation:wroll var(--roll-s) linear 4s infinite}
+@keyframes wroll{to{transform:translateY(calc(-1 * var(--roll-h)))}}
+@media (prefers-reduced-motion: reduce){.wnarr .caret,.wnarr.busy .dot,.wnarr .nw.roll .nt{animation:none}}
 /* A phone, a small screen or a portrait one: the columns stack, the map first, and the page scrolls. The floor never
    drops under 12 px, the layer's floor for type and controls (at 390 px wide --wf alone would be 5.7 px). */
 @media (max-width:999px),(max-height:499px),(orientation:portrait){

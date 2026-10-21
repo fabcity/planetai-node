@@ -6,7 +6,9 @@
   writing the Wall's paragraph, three minutes and more, so the request ran past the node's four-minute limit and
   the Wall showed nothing. The Wall tells its story from the facts it is handed and needs no tools, so it is
   offered none now, and a request with no tools to choose goes without thinking, as an answer after a tool result
-  already did. The same paragraph came back in 2.5 seconds.
+  already did. The same paragraph came back in 2.5 seconds. A story longer than its box was cut, its start lost
+  above the top once typing ended; now it rolls up, a line every three seconds, in a loop that brings the start
+  round again. Under reduced motion it stands still at its start.
 
 - **`/health` sends only what it says it sends.** It copied the timers' whole working state into its answer, so every
   screen polling it, at every share level and with no token, also got the programme's node list, the Telegram bot's

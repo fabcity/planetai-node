@@ -273,6 +273,11 @@ print("doors: the Wall names no sensor, room or kit, and says stale only when th
 _pg = t["wall"]["pages"]
 _wsrc = (STATIC / "doors-wall.js").read_text()
 _ws = re.search(r"const WALL_SCALES = (\[.*?\]);", _wsrc).group(1)
+# The story rolls when it is longer than its box (Tomas, 21 Oct: the end was cut and the start never came back): after
+# typing, and again when a scale gives the box its room back; still under reduced motion.
+assert "if (!NARR.typing) narrRoll();" in _wsrc and "!NARR.typing) narrRoll();" in _wsrc.split("function wallFit")[1].split("function wallHour")[0], \
+    "the Wall's story does not start rolling after typing, or when its box gets room again"
+assert re.search(r"prefers-reduced-motion: reduce\)\{[^}]*\.wnarr \.nw\.roll \.nt\{animation:none", html), "the story rolls under reduced motion"
 _ps = re.search(r"const SCALES = (\[.*?\]);", (STATIC / "walk.js").read_text()).group(1)
 assert re.findall(r"k: '(\w+)'", _ws) == re.findall(r"k: '(\w+)'", _ps) and re.findall(r"res: (\d+)", _ws) == re.findall(r"res: (\d+)", _ps)[:4], (_ws, _ps)
 for _i, _h in enumerate(_pg):
