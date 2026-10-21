@@ -379,14 +379,24 @@ async function askMode() {
   $('#q').placeholder = MODE === 'model' ? 'Ask about this place, its readings, or this page' : 'Search the docs: how do I add a sensor?';
 }
 /* The docs' answer: the sections that hold most of the question's words, each a link to the page it is from. */
-async function docsAnswer(q, why) {
-  const out = $('#qout'), base = (D.health || {}).docs || 'https://planetai.fab.city/docs/';
+async function docsHits(q, n) {
   const r = await fetch('/docs/search?q=' + encodeURIComponent(q.slice(0, 200)), { headers: DOORS_AUTH() }).catch(() => null);
-  const hits = r && r.ok ? (await r.json()).slice(0, 5) : null;
+  return r && r.ok ? (await r.json()).slice(0, n) : null;
+}
+function hitsHtml(hits) {
+  const base = (D.health || {}).docs || 'https://planetai.fab.city/docs/';
+  return `<ol class="hits">${hits.map(h => `<li><a href="${esc(base + String(h.page || '').replace(/\.md$/, '/') + (h.anchor ? '#' + h.anchor : ''))}" target="_blank" rel="noopener">${esc(h.title || h.page)}</a><p>${esc(h.snippet)}…</p></li>`).join('')}</ol>`;
+}
+async function docsAnswer(q, why) {
+  const out = $('#qout'), hits = await docsHits(q, 5);
   if (!hits) { out.textContent = WORDS.noreply; return; }
-  out.innerHTML = (why ? `<p class="fine">${esc(why)}</p>` : '') + (hits.length
-    ? `<ol class="hits">${hits.map(h => `<li><a href="${esc(base + String(h.page || '').replace(/\.md$/, '/') + (h.anchor ? '#' + h.anchor : ''))}" target="_blank" rel="noopener">${esc(h.title || h.page)}</a><p>${esc(h.snippet)}…</p></li>`).join('')}</ol>`
+  out.innerHTML = (why ? `<p class="fine">${esc(why)}</p>` : '') + (hits.length ? hitsHtml(hits)
     : '<p>Nothing in the docs holds those words. Try other ones; the docs are in English.</p>');
+}
+/* Under a model's answer, the three sections of the docs that hold most of the question's words. */
+async function docsAfter(q) {
+  const hits = await docsHits(q, 3);
+  if (hits && hits.length) $('#qout').insertAdjacentHTML('beforeend', `<p class="amode">In the docs</p>${hitsHtml(hits)}`);
 }
 $('#qform').onsubmit = async ev => {
   ev.preventDefault();
@@ -411,6 +421,7 @@ $('#qform').onsubmit = async ev => {
       }
     }
     if (!text) throw new Error('empty');
+    out.innerHTML = `<p>${esc(text)}</p>`; await docsAfter(q);
     ASKED.add(q); TURN += 3;
   } catch (e) { await docsAnswer(q, 'The model did not answer, so here is what the docs say.'); }
   finally { $('#qsend').disabled = false; learnList(); }
