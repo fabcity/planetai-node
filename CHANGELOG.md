@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **`/health` sends only what it says it sends.** It copied the timers' whole working state into its answer, so every
+  screen polling it, at every share level and with no token, also got the programme's node list, the Telegram bot's
+  username and, with `SPECIES_MATCH=on`, about 12 kB of GBIF maps, every 20 seconds. Node #1's answer was 13.8 kB, 12
+  of them nobody read. It now names its keys, the list on the API page, and the gap note there is gone.
+
 - **Ask the node, on the doors, works like a chat box again, and learn mode follows the doors.** The pane sits on its
   own grey again, as it did on the classic dashboard, so the page's paper is only ever the data; the doors had drawn
   it on the page's ground. Enter asks (Shift and Enter for a new line), where only the ASK button did. The questions

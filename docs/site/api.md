@@ -71,8 +71,6 @@ Returns `ok` (true once a poll has run), `node`, `version`, `schema`, `uptime_s`
  "cell": {"id": "...", "res": 8}, "docs": "https://planetai.fab.city/docs/", "mcp": "/mcp", "llms": "/llms.txt"}
 ```
 
-> **Gap in v0.83.0.** `/health` copies the poll loop's whole state into its answer, so every reader also gets `registry`, `bot` (the Telegram bot's username), `learned_on`, `learned_at`, and with `SPECIES_MATCH=on` `griis` and `others`.
-
 ### GET /health/sources
 Access: token
 

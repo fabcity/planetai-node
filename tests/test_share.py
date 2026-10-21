@@ -237,6 +237,15 @@ assert (s0["lat"], s0["lon"]) == main._coarse(-8.6478291, 115.1385412), \
     "open: the household's own sensor must stand at its cell's centre for an untrusted reader (R25)"
 # 15 Oct: a house on a cell's edge has sensors in the next cell; they stand at the house's point, not ~700 m off.
 _h = lan.get("/health").json()
+# /health names its keys (docs/site/api.md). It spread the timers' whole `state` until 21 Oct 2026: the node list,
+# the bot's username and 12 kB of GBIF maps went to every reader, every ~20 s, from every screen.
+main.state.update(registry={"nodes": [1]}, bot={"username": "x_bot"}, griis={"marks": 1}, others={"cells": {}},
+                  learned_on="2026-10-21", bootstrap=[{"key": "k"}])
+_hk = lan.get("/health").json()
+assert not {"registry", "bot", "griis", "others", "learned_on", "bootstrap"} & set(_hk), sorted(_hk)
+assert {"ok", "node", "version", "polls", "last_poll", "last_error", "ingested", "errors", "locale", "tz"} <= set(_hk), sorted(_hk)
+for _k in ("registry", "bot", "griis", "others", "learned_on", "bootstrap"):
+    main.state.pop(_k)
 assert main._own_point({"local": True, "kind": "sensor", "lat": -8.6528, "lon": 115.1445}) == (_h["lat"], _h["lon"]), \
     "a house's own sensor in the neighbouring cell must stand where the house does"
 assert main._own_point({"local": False, "kind": "child", "lat": -8.6528, "lon": 115.1445}) == main._coarse(-8.6528, 115.1445), \
