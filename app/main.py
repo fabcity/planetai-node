@@ -1001,24 +1001,7 @@ def bootstrap_once() -> None:
             return
         log.info("first start: bootstrapping from global open data (no sensor needed)")
         state["bootstrap"] = bootstrap.run(con, hc, float(os.environ["NODE_LAT"]), float(os.environ["NODE_LON"]))
-try:
-    bootstrap_once()
-except Exception as e:  # noqa: BLE001  — never block startup on it
-    log.warning("bootstrap failed: %s", e)
 
-try:
-    _moved = settings.migrate_briefings()
-    if _moved:
-        log.info("moved off the old briefing settings: %s. BRIEFINGS, BRIEF_MORNING and BRIEF_EVENING stay in place and are ignored",
-                 ", ".join(f"{k}={v}" for k, v in sorted(_moved.items())))
-        # ALERT_LEVEL is not moved. An update adds keys a .env is missing and never overwrites one it has, which is
-        # why nothing a household chose has ever changed underneath it — and it means the new `act` default reaches
-        # only a fresh install. Say so once, with the one command, rather than deciding for them.
-        if settings.get("ALERT_LEVEL", "act") == "warn":
-            log.info("ALERT_LEVEL is still warn, so warn-level alerts still reach the phone between reports. "
-                     "`planetai report level act` leaves them to the report; nothing is lost either way")
-except Exception as e:  # noqa: BLE001  — never block startup on it
-    log.warning("could not move off the old briefing settings: %s", e)
 
 # The things a home keeps (docs/SPEC_inventory.md): their classes and the three private counts per class, here
 # because the roles below declare those counts private at every start. The routes are with /species.
@@ -1048,14 +1031,7 @@ def load_channel_roles() -> int:
     return len(rows)
 
 
-try:
-    load_channel_roles()
-except Exception as e:  # noqa: BLE001  — a node whose schema predates 0.22 has no channel_roles table yet
-    log.warning("channel roles: %s", e)
 
-if MQTT_HOST:
-    threading.Thread(target=mqtt_thread, daemon=True, name="mqtt").start()
-    threading.Thread(target=sc_forward_thread, daemon=True, name="sc-forward").start()
 
 def poll_sources() -> None:
     poll_once(hc)
@@ -1105,18 +1081,57 @@ def _with_distance(peers: list[dict]) -> list[dict]:
     return sorted(out, key=lambda r: (r["km"] is None, r["km"] or 0))
 
 
-loop(poll_sources, POLL, delay=2)
-loop(run_rules, 60, delay=30)
-loop(refresh_usual, 3600, delay=10)
-loop(push_aggregates, 3600, delay=120)
-loop(push_events, 3600, delay=150)
-loop(check_release, 3600, delay=300)
-loop(check_registry, 3600, delay=60)
-loop(check_griis, 3600, delay=90)
-loop(check_others, 3600, delay=120)
-loop(check_learn, 3600, delay=180)
-if RETICULUM_URL:
-    loop(poll_reticulum, 300, delay=20)
+
+
+_STARTED = False
+
+
+def start() -> None:
+    """Everything the node does on its own: the first-start bootstrap, the move off the old briefing settings, the
+    channel roles, the MQTT threads and the timer loops. Run once, from the app's lifespan, never at import. Importing
+    main used to run all of it again, and a second MQTT client with the same client id knocked node #1 off its broker
+    (28 Sep 2026). A test, a pack script or `python -c "import main"` can import it now and start nothing."""
+    global _STARTED
+    if _STARTED:
+        return
+    _STARTED = True
+    try:
+        bootstrap_once()
+    except Exception as e:  # noqa: BLE001  — never block startup on it
+        log.warning("bootstrap failed: %s", e)
+    try:
+        _moved = settings.migrate_briefings()
+        if _moved:
+            log.info("moved off the old briefing settings: %s. BRIEFINGS, BRIEF_MORNING and BRIEF_EVENING stay in place and are ignored",
+                     ", ".join(f"{k}={v}" for k, v in sorted(_moved.items())))
+            # ALERT_LEVEL is not moved. An update adds keys a .env is missing and never overwrites one it has, which is
+            # why nothing a household chose has ever changed underneath it — and it means the new `act` default reaches
+            # only a fresh install. Say so once, with the one command, rather than deciding for them.
+            if settings.get("ALERT_LEVEL", "act") == "warn":
+                log.info("ALERT_LEVEL is still warn, so warn-level alerts still reach the phone between reports. "
+                         "`planetai report level act` leaves them to the report; nothing is lost either way")
+    except Exception as e:  # noqa: BLE001  — never block startup on it
+        log.warning("could not move off the old briefing settings: %s", e)
+    try:
+        load_channel_roles()
+    except Exception as e:  # noqa: BLE001  — a node whose schema predates 0.22 has no channel_roles table yet
+        log.warning("channel roles: %s", e)
+    if MQTT_HOST:
+        threading.Thread(target=mqtt_thread, daemon=True, name="mqtt").start()
+        threading.Thread(target=sc_forward_thread, daemon=True, name="sc-forward").start()
+    loop(poll_sources, POLL, delay=2)
+    loop(run_rules, 60, delay=30)
+    loop(refresh_usual, 3600, delay=10)
+    loop(push_aggregates, 3600, delay=120)
+    loop(push_events, 3600, delay=150)
+    loop(check_release, 3600, delay=300)
+    loop(check_registry, 3600, delay=60)
+    loop(check_griis, 3600, delay=90)
+    loop(check_others, 3600, delay=120)
+    loop(check_learn, 3600, delay=180)
+    if RETICULUM_URL:
+        loop(poll_reticulum, 300, delay=20)
+
 
 # ---------------------------------------------------------------- http
 from contextlib import asynccontextmanager
@@ -1124,6 +1139,7 @@ from contextlib import asynccontextmanager
 
 @asynccontextmanager
 async def _lifespan(app):
+    start()
     # the MCP session manager must run for the life of the process
     async with agent.mcp.session_manager.run():
         yield
