@@ -22,7 +22,7 @@ These are what any node has to share with node #1 to work with it. They are chea
 
 **Rules.** A rule is SQL that returns rows plus a message template. Cooldown is enforced in SQL against the `alerts` table. No rules engine, no expression language. If Postgres can't express the condition, the condition is wrong.
 
-**Up-link.** Child → parent is `POST /aggregates {schema, node, scale, rows:[{bucket, sensor_id, metric, mean, min, max, n}]}`, hourly. Raw never travels it. The parent stores rows as `<child>/<sensor_id>` with `sensors.cadence = 'PT1H'`, the metric under its own name.
+**Up-link.** Child → parent is `POST /aggregates {schema, node, scale, rows:[{bucket, sensor_id, metric, mean, min, max, n, indoor}]}`, hourly. Raw never travels it, and neither does a peer or a model: only custody rows go up. The parent stores rows as `<child>/<sensor_id>` with `sensors.cadence = 'PT1H'`, the metric under its own name, and a later push of the same hour replaces the earlier mean.
 
 **Registry.** `registry.json` in this repo. Fields: name, scale, operator, place, lat, lon, cell, sources, parent, since, contact. Adding a node is a PR. Approval is a merge.
 
