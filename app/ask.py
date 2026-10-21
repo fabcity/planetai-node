@@ -470,7 +470,10 @@ async def ask(body: AskBody, request: Request):
                 async def call(name, args):
                     res = await session.call_tool(name, args)
                     return "\n".join(getattr(x, "text", "") for x in res.content)
-                async for event, data in agent_loop.pane([m.model_dump() for m in body.messages], system, tools,
+                # The Wall tells its story from the facts in its prompt ("use only the facts in your context"), so it
+                # is offered no tools, and with none to choose the model answers without thinking (agent_loop.chat).
+                async for event, data in agent_loop.pane([m.model_dump() for m in body.messages], system,
+                                                         [] if body.prompt == "wall" else tools,
                                                          call, scrub, rungs=order):
                     yield _sse(event, _proposal(data, loc) if event == "proposal" else data)
         except Exception as e:  # noqa: BLE001

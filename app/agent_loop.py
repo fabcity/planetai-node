@@ -271,7 +271,10 @@ async def chat(hc: httpx.AsyncClient, rung: Rung, messages: list, tools: list | 
     # the result it was a model counting a list in hidden text: on node #1, gemma4:31b wrote 1,162 to 1,871
     # tokens of it at 9 to 16 a second for a 42-character sentence, and the pane waited one to three minutes.
     # Off for that round, it wrote 19. A server that does not take the field says so with a 400, once.
-    elif messages[-1].get("role") == "tool" and (rung.url, rung.model) not in NO_EFFORT:
+    # With no tools offered there is nothing to choose, so no thinking from the first call: the Wall's story, from
+    # facts it is handed, had gemma4:26b think 12,690 tokens (185 s) for 572 characters, past the timeout, and the
+    # Wall showed nothing (21 Oct 2026). Off, it wrote 635 characters in 2.5 s.
+    elif (not tools or messages[-1].get("role") == "tool") and (rung.url, rung.model) not in NO_EFFORT:
         body["reasoning_effort"] = "none"
     r = await hc.post(f"{rung.url}/chat/completions", json=body, headers=rung.headers())
     if r.status_code == 400 and body.pop("reasoning_effort", None):

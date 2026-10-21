@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **The Wall writes its story again.** Node #1's remote model, gemma4:26b, thought for about 12,700 tokens before
+  writing the Wall's paragraph, three minutes and more, so the request ran past the node's four-minute limit and
+  the Wall showed nothing. The Wall tells its story from the facts it is handed and needs no tools, so it is
+  offered none now, and a request with no tools to choose goes without thinking, as an answer after a tool result
+  already did. The same paragraph came back in 2.5 seconds. A story longer than its box was cut, its start lost
+  above the top once typing ended; now it rolls up, a line every three seconds, in a loop that brings the start
+  round again. Under reduced motion it stands still at its start.
+
 - **`private` never uses a model at a public address.** Since the last change the node named such a remote model
   online and kept the house's learnings, settings and bundles from it, but still sent it every question. With
   `AGENT_PREFER=private`, the default, it is now left off the ladder, and the log says which and why: the remote

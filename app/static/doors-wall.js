@@ -35,6 +35,7 @@ const WALL_TIME = {
   WIND_FRAME: 33,                                                           /* ms: one step of the wind's streaks */
   NARR_EVERY: 10 * 60e3,                                                    /* ms: a new reading by the node's model */
   NARR_CHAR: 1000 / 11,                                                     /* ms: one character typed, about two words a second */
+  NARR_LINE: 3000,                                                          /* ms: one line of a story longer than its box, rolling */
   STALE: 15 * 60e3,                                                         /* ms: no poll this long and the readings are old */
 };
 /* Never a name on the wall (Tomas, 14 Oct 2026): anyone in the room reads it, and a sensor's name is a room, a kit or an
@@ -173,6 +174,7 @@ function wallScale(i) {
 function wallFit() {
   const n = $('#wnarr'), r = $('.wr'); if (!n || !r) return;
   n.classList.remove('wnoroom'); if (!n.hidden && r.scrollHeight > r.clientHeight + 1) n.classList.add('wnoroom');
+  else if (!n.hidden && !NARR.typing) narrRoll();        /* a story typed while the box had no room starts rolling when it does */
 }
 function wallHour(i) {
   WALK.hour = i; const p = $('#wpage'); if (p && (WALK.sc <= 1)) { p.innerHTML = wallPage(WALK.sc, i); wallFit(); }
@@ -247,6 +249,19 @@ function narrDraw() {
     + `<span>a model’s words from the node’s figures, never a reading${NARR.where === 'online' ? ' · written online' : ''}</span></div>`
     + `<div class="nw"><p class="nt said"><span id="ntext">${esc(t)}</span>${NARR.typing ? '<i class="caret" aria-hidden="true"></i>' : ''}</p></div>`;
   if (typeof wallFit === 'function') wallFit();
+  if (!NARR.typing) narrRoll();
+}
+/* a story longer than its box rolls up, a line every NARR_LINE, in a loop with its start coming round again, once it
+   is typed (Tomas, 21 Oct: the end was cut and the start never came back). A second copy follows the first so the loop
+   has no seam; under reduced motion it stands still at its start. */
+function narrRoll() {
+  const w = $('#wnarr .nw'), p = w && w.querySelector && w.querySelector('.nt');
+  if (!p || w.classList.contains('roll') || p.offsetHeight <= w.clientHeight) return;
+  w.classList.add('roll');
+  const twin = p.cloneNode(true); twin.setAttribute('aria-hidden', 'true'); twin.querySelector('[id]')?.removeAttribute('id'); w.appendChild(twin);
+  const cs = getComputedStyle(p), h = p.offsetHeight + parseFloat(cs.marginBottom), line = parseFloat(cs.lineHeight) || 24;
+  w.style.setProperty('--roll-h', `${h}px`);
+  w.style.setProperty('--roll-s', `${(h / line) * WALL_TIME.NARR_LINE / 1000}s`);
 }
 /* the typist: one character at a time over the last text, all at once under reduced motion; then the next in ten minutes */
 function narrType() {
