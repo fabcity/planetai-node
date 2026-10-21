@@ -360,7 +360,7 @@ function tryQs(parts) {
 }
 /* Enter asks, Shift+Enter starts a new line, as in every chat box; a composition in progress (an IME) is left alone */
 $('#q').addEventListener('keydown', ev => {
-  if (ev.key === 'Enter' && !ev.shiftKey && !ev.isComposing) { ev.preventDefault(); $('#qsend').click(); }
+  if (ev.key === 'Enter' && !ev.shiftKey && !ev.isComposing && ev.keyCode !== 229) {   /* 229: Safari's IME commit */ ev.preventDefault(); $('#qsend').click(); }
 });
 $('#askbtn').onclick = () => { const open = $('#askpane').hidden; $('#askpane').hidden = !open; $('#askbtn').setAttribute('aria-expanded', String(open)); if (open) { learnList(); $('#q').focus(); } };
 $('#askclose').onclick = () => { $('#askpane').hidden = true; $('#askbtn').setAttribute('aria-expanded', 'false'); $('#learn').checked = false; learnList(); };
