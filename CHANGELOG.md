@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **A model at a public address counts as online, whatever box it was typed into.** The remote rung is for a bigger
+  model on a machine of yours, and the node took that on trust: a city's GPU server in that box was called "your
+  network", agents read what the house learned and who lives in it under `AGENT_PREFER=private`, and the Telegram bot
+  handed it the node's settings, the report bundle and the day's export. The node now reads the rung's address.
+  Loopback, a private or tailnet address and a name only a home network knows (no dot, `.local`, `.ts.net`) stay
+  home; anything else is online. Such a rung is named online on the pane, gets the pane's narrower set of tools on
+  Telegram, and closes `/learned`, `/learned/search` and `/household` to agents. A tool the bot's model names
+  without having been offered it is refused now, where before it ran.
+
 - **Ask the node, on the doors, works like a chat box again, and learn mode follows the doors.** The pane sits on its
   own grey again, as it did on the classic dashboard, so the page's paper is only ever the data; the doors had drawn
   it on the page's ground. Enter asks (Shift and Enter for a new line), where only the ASK button did. The questions
