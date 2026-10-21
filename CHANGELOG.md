@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Importing the app starts nothing.** The first-start bootstrap, the channel roles, the MQTT client and the ten
+  timer loops ran when `app/main.py` was imported. So a second import ran a second node inside the first, and its
+  MQTT client, with the same client id, knocked node #1 off its broker on 28 September. They run once now, from the
+  app's lifespan, when uvicorn starts it. A test, a pack script or `python -c "import main"` loads the code and
+  starts no thread. Nothing changes for a running node.
+
 - **What is core and what is a pack, decided.** `docs/decisions/2026-10-21-core-and-packs.md` records Tomas's
   answers: `place` and `trust` are core; species, things and offers are domains like air and heat, each a pack with
   its own issue; Home Assistant, Smart Citizen, AirGradient and PurpleAir become packs, while MQTT, Meshtastic,
