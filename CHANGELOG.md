@@ -10,6 +10,12 @@
   name and columns, so no pack's SQL changes, and it is complete whatever the table's state: an empty table only
   makes it slower. `readings` gains an index on `ts` for that live half.
 
+- **The quarter-hour view takes a tenth of the time.** `recent_15m`, which the kinded rules read about nine times a
+  minute, joined its own result to itself to put temperature and humidity side by side for `apparent`. Postgres
+  guessed one sensor where node #1 has 31, chose a nested loop and compared 2.57 million pairs for 1,604 rows: 645 ms
+  on a copy of node #1's database. Both values now come from one grouping, with no join, and the same 12,116 rows
+  take 57 ms.
+
 - **Importing the app starts nothing.** The first-start bootstrap, the channel roles, the MQTT client and the ten
   timer loops ran when `app/main.py` was imported. So a second import ran a second node inside the first, and its
   MQTT client, with the same client id, knocked node #1 off its broker on 28 September. They run once now, from the
