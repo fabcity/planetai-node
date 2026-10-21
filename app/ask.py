@@ -22,6 +22,7 @@ import asyncio
 import json
 import logging
 import os
+import math
 import re
 import secrets
 from datetime import datetime, timedelta, timezone
@@ -496,19 +497,65 @@ def _docs() -> list[dict]:
     return rows
 
 
-@router.get("/docs/search")
-def docs_search(q: str = Query(..., min_length=2, max_length=80)):
-    """This node's documentation, searched without a model: a substring, case-insensitive, twenty hits at most."""
-    needle = q.lower()
-    hits = []
-    for r in _docs():
-        text = str(r.get("text") or "")
-        i = (str(r.get("title") or "") + " " + text).lower().find(needle)
-        if i < 0:
+# Words a question carries that say nothing about what it asks, in the three languages the node speaks.
+_STOP = set("""the and for are was what how does can could should would will with this that from have has had you your
+our there their them they its into about when where which who why not but any all also just like more most some than
+then too very get got make made use used need want know tell show give here does did doing being been were
+apa yang dan untuk dari dengan ini itu ada bisa saya kami bagaimana kenapa mengapa kapan dimana siapa tidak
+que qué los las del por para con una uno como cómo cuál cuando dónde quién está son hay puedo debo este esta eso""".split())
+# A word a person uses, and the one the docs use for it.
+_SAYS = {"rho": ("ρ",), "location": ("position",), "address": ("position",)}
+_WORD = re.compile(r"[^\W_]+", re.U)
+
+
+def _terms(q: str) -> list[str]:
+    """The words of a question worth looking for: three letters or more, not a stop word, a plural's s dropped."""
+    out = []
+    for w in _WORD.findall(q.lower()):
+        if len(w) < 3 or w in _STOP:
             continue
-        j = max(0, text.lower().find(needle))
+        w = w[:-1] if len(w) > 4 and w.endswith("s") else w
+        if w not in out:
+            out.append(w)
+    return out
+
+
+@router.get("/docs/search")
+def docs_search(q: str = Query(..., min_length=2, max_length=200)):
+    """This node's documentation, searched without a model, so the ask box is a docs search where no model is
+    set up. The whole query as a phrase ranks first; otherwise each section is scored by the question's words it
+    holds, a word in its title counting three times, and a section needs most of them. Twenty hits at most, the
+    authors' style guide left out."""
+    needle, terms = q.lower().strip(), _terms(q)
+    ways = {w: (w, *_SAYS.get(w, ())) for w in terms}       # each word, and the docs' own words for it
+    rows = [r for r in _docs() if r.get("page") != "STYLE.md"]
+    # A word on every page ("node") says less than a rare one ("update"): weight each by how few sections hold it.
+    hay = [(str(r.get("title") or "") + " " + str(r.get("text") or "")).lower() for r in rows]
+    idf = {v: math.log((len(rows) + 1) / (1 + sum(v in h for h in hay))) for vs in ways.values() for v in vs}
+    scored = []
+    for r in rows:
+        title, text, page = str(r.get("title") or "").lower(), str(r.get("text") or ""), str(r.get("page") or "").lower()
+        low = text.lower()
+        if needle in title or needle in low:
+            score, at = 1000, low.find(needle)
+        elif terms:
+            found = [v for w in terms for v in ways[w] if v in title or v in low]
+            asked = [w for w in terms if any(v in title or v in low for v in ways[w])]
+            if len(asked) * 2 < len(terms) + (len(terms) > 2):     # most of the question's words, not one of them
+                continue
+            score = sum(idf[v] * (5 * (v in page) + 3 * (v in title) + (v in low)) for v in found)
+            at = min((low.find(v) for v in found if v in low), default=0)
+        else:
+            continue
+        j = max(0, at)
         snippet = text[max(0, j - 80): j + 160].strip()
-        hits.append({"page": r.get("page"), "anchor": r.get("anchor"), "title": r.get("title"), "snippet": snippet})
+        scored.append((score, {"page": r.get("page"), "anchor": r.get("anchor"), "title": r.get("title"), "snippet": snippet}))
+    scored.sort(key=lambda x: -x[0])
+    hits = []
+    for _, h in scored:
+        if any(h["page"] == x["page"] and h["anchor"] == x["anchor"] for x in hits):
+            continue
+        hits.append(h)
         if len(hits) >= 20:
             break
     return hits

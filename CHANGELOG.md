@@ -9,7 +9,10 @@
   should I know about the heat today?", "Is the air worse than usual for this hour?", never an alert number. Learn
   mode has a mark for every part of every door, 45 new ones, each quoting the section of these docs that describes
   that part, and the pane shows that quote first. The classic dashboard keeps its own marks. The Bahasa Indonesia
-  questions have not yet been read by a native speaker.
+  questions have not yet been read by a native speaker. The box is a composer now, the arrow inside it and a line
+  under it saying Enter asks, with the questions above it. With no model set up, it searches the docs:
+  `GET /docs/search` ranks sections by the words of a question, the rare ones weighing most, where it matched only the
+  whole query as one phrase.
 
 - **The install and preflight lines say `https://`.** `curl -fsSL planetai.fab.city/install | bash` made its first
   request in clear text, so anyone on the path could hand `bash` a different script before the redirect to HTTPS.

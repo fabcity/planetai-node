@@ -36,11 +36,17 @@ On the five doors, the speech-bubble icon in the header, or **Ask the node** in 
 grey, so the page's paper is only ever the data. It asks the same `POST /ask`, with the door you are on as its `view`,
 and draws only the words of the answer as they arrive. It takes one question at a time with no thread, so nothing
 asked before is sent with it. It shows no ledger line, no list of reads and no cards, so a change the model reaches
-for is not drawn there; make it in Set up. Enter asks, Shift and Enter starts a new line, and **ASK** does the same as
-Enter. Three questions are offered under the box, written by the node from tonight's figures (`digest.prompts` in
-`GET /issues`), such as "What should I know about the heat today?". With learn on, the two that the parts of the door
-carry come first. Pressing one asks it, and after each answer the next three come round. When the node does not
-answer, the box says "The node did not answer. Check this screen is on the home network, then try again."
+for is not drawn there; make it in Set up. Type in the box and press Enter, or the arrow inside the box; Shift and
+Enter starts a new line, as the line under the box says. Above the box, three questions are offered, written by the
+node from tonight's figures (`digest.prompts` in `GET /issues`), such as "What should I know about the heat today?".
+With learn on, the two that the parts of the door carry come first. Pressing one asks it, and after each answer the
+next three come round.
+
+The line at the top of the pane says what answers. With no model set up, the box is a search of these docs: the
+question's words are looked up in every section (`GET /docs/search`), the rarest words weighing most, and the five
+best sections come back as links with a line of each. When a model is set up but does not answer, the same search
+answers instead and says so. When the node itself does not answer, the box says "The node did not answer. Check this
+screen is on the home network, then try again."
 
 **Learn this page**, in the same pane, numbers every part of the door you are on, the bar and the foot included, and
 lists for each one its name, its stage in the loop, what this documentation says about it, a line on what the part

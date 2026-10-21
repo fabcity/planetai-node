@@ -245,8 +245,8 @@ way and reach the pack at its next run, see [Configuration](configuration.md#key
 ## Ask the node
 
 **Ask the node**, in the bar and the foot, opens a pane at the side of the page, on its own grey. On the doors it takes
-one question at a time and streams the answer from `POST /ask`; Enter asks, and the three questions under the box are
-the node's own, written from tonight's figures. The node searches its own notes and readings first and asks a model
+one question at a time and streams the answer from `POST /ask`; Enter asks, and the three questions above the box are
+the node's own, written from tonight's figures. With no model set up, the box searches these docs instead. The node searches its own notes and readings first and asks a model
 only if one is set up: the one Set up › Model names, the same as the Telegram bot's. That is the model `planetai agent
 local` set up on this machine, one on another machine of yours, or an online one only when `AGENT_PREFER` allows it.
 It reads and changes nothing, and the node keeps nothing asked or answered. `UI_ASK=off` removes it, and the Wall never

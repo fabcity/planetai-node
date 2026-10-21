@@ -356,22 +356,45 @@ function tryQs(parts) {
   const pool = (D.prompts || []).filter(q => !ASKED.has(q) && !mine.includes(q)), r = pool.length ? TURN % pool.length : 0;
   const qs = [...mine, ...pool.slice(r), ...pool.slice(0, r)].slice(0, 3);
   $('#try').innerHTML = qs.map(q => `<button type="button">${esc(q)}</button>`).join('');
-  document.querySelectorAll('#try button').forEach(b => b.onclick = () => { $('#q').value = b.textContent; $('#qsend').click(); });
+  document.querySelectorAll('#try button').forEach(b => b.onclick = () => { $('#q').value = b.textContent; $('#qform').requestSubmit(); });
 }
 /* Enter asks, Shift+Enter starts a new line, as in every chat box; a composition in progress (an IME) is left alone */
 $('#q').addEventListener('keydown', ev => {
-  if (ev.key === 'Enter' && !ev.shiftKey && !ev.isComposing && ev.keyCode !== 229) {   /* 229: Safari's IME commit */ ev.preventDefault(); $('#qsend').click(); }
+  if (ev.key === 'Enter' && !ev.shiftKey && !ev.isComposing && ev.keyCode !== 229) {   /* 229: Safari's IME commit */ ev.preventDefault(); $('#qform').requestSubmit(); }
 });
-$('#askbtn').onclick = () => { const open = $('#askpane').hidden; $('#askpane').hidden = !open; $('#askbtn').setAttribute('aria-expanded', String(open)); if (open) { learnList(); $('#q').focus(); } };
+$('#askbtn').onclick = () => { const open = $('#askpane').hidden; $('#askpane').hidden = !open; $('#askbtn').setAttribute('aria-expanded', String(open)); if (open) { learnList(); askMode(); $('#q').focus(); } };
 $('#askclose').onclick = () => { $('#askpane').hidden = true; $('#askbtn').setAttribute('aria-expanded', 'false'); $('#learn').checked = false; learnList(); };
 $('#learn').onchange = learnList;
 /* the token is set and cleared on Set up → This screen (doors-setup.js), kept where the dashboard keeps it */
 /* POST /ask, the node's own: it streams `event: token` blocks; only the words are drawn here, the dashboard's ask pane
    keeps the ledger of what it read. One question at a time, no thread. */
-$('#qsend').onclick = async () => {
+/* Which way the box answers: a model the node has set up, or, with none, the documentation itself, searched by the
+   question's words (GET /docs/search). Asked once per page, when the pane first opens. */
+let MODE = null;
+async function askMode() {
+  if (MODE) return;
+  const r = await fetch('/ask/status', { headers: DOORS_AUTH() }).catch(() => null);
+  MODE = r && r.ok ? 'model' : 'docs';
+  $('#amode').textContent = MODE === 'model' ? 'Answers from the model set up for this node' : 'No model is set up here, so the box searches these docs';
+  $('#q').placeholder = MODE === 'model' ? 'Ask about this place, its readings, or this page' : 'Search the docs: how do I add a sensor?';
+}
+/* The docs' answer: the sections that hold most of the question's words, each a link to the page it is from. */
+async function docsAnswer(q, why) {
+  const out = $('#qout'), base = (D.health || {}).docs || 'https://planetai.fab.city/docs/';
+  const r = await fetch('/docs/search?q=' + encodeURIComponent(q.slice(0, 200)), { headers: DOORS_AUTH() }).catch(() => null);
+  const hits = r && r.ok ? (await r.json()).slice(0, 5) : null;
+  if (!hits) { out.textContent = WORDS.noreply; return; }
+  out.innerHTML = (why ? `<p class="fine">${esc(why)}</p>` : '') + (hits.length
+    ? `<ol class="hits">${hits.map(h => `<li><a href="${esc(base + String(h.page || '').replace(/\.md$/, '/') + (h.anchor ? '#' + h.anchor : ''))}" target="_blank" rel="noopener">${esc(h.title || h.page)}</a><p>${esc(h.snippet)}…</p></li>`).join('')}</ol>`
+    : '<p>Nothing in the docs holds those words. Try other ones; the docs are in English.</p>');
+}
+$('#qform').onsubmit = async ev => {
+  ev.preventDefault();
   const q = $('#q').value.trim(), out = $('#qout'); if (!q || $('#qsend').disabled) return;
   out.textContent = '…'; $('#qsend').disabled = true;
   try {
+    await askMode();
+    if (MODE === 'docs') { await docsAnswer(q); ASKED.add(q); TURN += 3; return; }
     const r = await fetch('/ask', { method: 'POST', headers: { 'content-type': 'application/json', ...DOORS_AUTH() },
       body: JSON.stringify({ messages: [{ role: 'user', content: q }], view: view(), mode: 'advanced', focus: null }) });
     if (!r.ok || !r.body) throw new Error((await r.json().catch(() => ({}))).detail || `the node answered ${r.status}`);
@@ -387,9 +410,9 @@ $('#qsend').onclick = async () => {
         else if (ev === 'error') throw new Error(data.message);
       }
     }
-    if (!text) out.textContent = 'The node answered with nothing.';
+    if (!text) throw new Error('empty');
     ASKED.add(q); TURN += 3;
-  } catch (e) { out.textContent = WORDS.noreply; }
+  } catch (e) { await docsAnswer(q, 'The model did not answer, so here is what the docs say.'); }
   finally { $('#qsend').disabled = false; learnList(); }
 };
 
