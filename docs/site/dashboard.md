@@ -94,7 +94,7 @@ today; pressing one moves the page to that issue. Under them, the map of the sta
 station with its 15-minute mean, a red square beside one over the air's line, the house as one mark with its own
 sensors' range, and the distance rings and cells for a screen with the token. Pressing a station opens it in Data.
 Without WebGL the map is a rose of bearings and distances. With the admin token one line counts the things this home
-keeps.
+keeps, how many sit idle and how many need repair, and opens Data › Home.
 
 Land and coast change yearly and have no hours, so they are on Place, under **What is changing**. Now opens on the
 headline issue when it is drawn by the hour, else on the first issue that is. Under 480 px everything is one column,
@@ -142,7 +142,10 @@ nothing here says so.
 
 Nothing is labelled on the map itself: every mark leaves on a thin leader to a ruled margin, **At the house · by
 position**, one row per mark with its distance in metres from the node, measured by the node (`GET /geo/measure`, and
-`GET /nearby` for public stations). The inspector is one line under the map. The scale rail (Street, Block, Cell,
+`GET /nearby` for public stations). The inspector is one line under the map. With nothing pressed it says what is in view;
+press a station, an image, a place to make or a cell and the line gives its facts, and with the token how far it is
+from the node and which cell it is in. A station of this house says it counts toward the cell; a public one is shown
+and never counted. The scale rail (Street, Block, Cell,
 Village, District, Island, Radio) and the tools sit on the map: zoom, back to the node's cell, **Inspect**, **Measure**
 with **Done**, **From the house**, and save as PNG. The resolution drawn follows the zoom, and rungs 6 and coarser, the
 cells that may leave the machine, are dotted.
@@ -178,7 +181,7 @@ with a link to finish setting up. Under it, the version, uptime, readings since 
 | **Fab City Index cells** | the Index cells this node computes from its hourly buckets, "N of 20", each with its value and provenance word |
 | **What it remembers** | admin token only, and never leaves the machine: the **Diary** as a table by day, week, month or year, each entry opening as the node wrote it, with a search; **What is usual** (the shape of the day inside and out, the week against the three before); **What worked**, per alert, the change inside when somebody acted and when nobody did, and the node's verdict; **Who lives here?**, five boxes that rank the learnings by who they matter to. `#node/remember/day/<date>` opens one entry |
 | **The nodes around it** | the nodes listed and heard by radio, then a globe at most a third of the screen high |
-| **Running** | the machine under the node and how long its disk lasts |
+| **Running** | the version and schema, how long since the restart and the polls since, then, with the token, the processor, memory, temperature and disk, with how long the disk lasts, and the mesh in the house |
 | **What this node will not do, at any stage** | the five refusals in plain words, each beside a link to where it can be checked |
 
 ## Data

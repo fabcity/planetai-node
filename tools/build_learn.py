@@ -305,7 +305,7 @@ MARKS = [
      "Press a station to open its readings in Data. Without WebGL the map is drawn as a rose of "
      "bearings and distances instead."),
     ("now-things", "What this home keeps", "dashboard.md", "Now",
-     "With the admin token one line counts", "the things this home\nkeeps.",
+     "With the admin token one line counts", "and opens Data › Home.",
      "The line counts the things, how many sit idle and how many need repair, and opens the list in "
      "Data › Home. Only a thing you mark to lend or give is ever published."),
     ("place-head", "The ground this node stands on", "dashboard.md", "Place",
@@ -325,7 +325,7 @@ MARKS = [
      "Every distance in the margin is measured by the node from its own point. Without the token the "
      "house's marks say withheld, because together they would place the house."),
     ("place-tools", "The inspector and the tools", "dashboard.md", "Place",
-     "The inspector is one line under the map.", "and save as PNG.",
+     "press a station, an image, a place to make", "shown\nand never counted.",
      "Press a mark, a margin row or a cell and its facts appear in this line. Measure and From the "
      "house ask the node for the distance, so the page never works one out itself."),
     ("place-orbit", "From orbit", "dashboard.md", "Place",
@@ -373,7 +373,7 @@ MARKS = [
      "Each listed node lights its own coarse cell on the planet's grid, with a line from this node to "
      "every other node that has a point."),
     ("node-running", "Running", "dashboard.md", "Node",
-     "the machine under the node and how long its disk lasts", "how long its disk lasts",
+     "the version and schema, how long since the restart", "and the mesh in the house",
      "The version, the uptime and the readings since the last restart, then the processor, memory and "
      "disk, which need the token. Set up › Machine has the full view."),
     ("node-refusals", "What this node will not do", "how-it-works.md", "Refusals that hold at every stage",

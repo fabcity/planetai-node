@@ -1027,7 +1027,7 @@
      "Apakah mesinnya bekerja terlalu berat?"
     ]
    },
-   "quote": "the machine under the node and how long its disk lasts",
+   "quote": "the version and schema, how long since the restart and the polls since, then, with the token, the processor, memory, temperature and disk, with how long the disk lasts, and the mesh in the house",
    "section": "Node",
    "title": "Running",
    "url": "https://planetai.fab.city/docs/dashboard/#node"
@@ -1195,7 +1195,7 @@
      "Apa yang bisa kami pinjamkan ke tetangga?"
     ]
    },
-   "quote": "With the admin token one line counts the things this home\nkeeps.",
+   "quote": "With the admin token one line counts the things this home\nkeeps, how many sit idle and how many need repair, and opens Data › Home.",
    "section": "Now",
    "title": "What this home keeps",
    "url": "https://planetai.fab.city/docs/dashboard/#now"
@@ -1507,7 +1507,7 @@
      "Sel apa ini, dan seberapa besar?"
     ]
    },
-   "quote": "The inspector is one line under the map. The scale rail (Street, Block, Cell,\nVillage, District, Island, Radio) and the tools sit on the map: zoom, back to the node's cell, **Inspect**, **Measure**\nwith **Done**, **From the house**, and save as PNG.",
+   "quote": "press a station, an image, a place to make or a cell and the line gives its facts, and with the token how far it is\nfrom the node and which cell it is in. A station of this house says it counts toward the cell; a public one is shown\nand never counted.",
    "section": "Place",
    "title": "The inspector and the tools",
    "url": "https://planetai.fab.city/docs/dashboard/#place"
