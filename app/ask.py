@@ -520,6 +520,24 @@ def _terms(q: str) -> list[str]:
     return out
 
 
+def _plain(text: str) -> str:
+    """A section's words as a person reads them: no code blocks or tables, a link reduced to its words, no markdown marks."""
+    t = re.sub(r"```.*?```", " ", text, flags=re.S)
+    t = re.sub(r"(?:\|[^|]*){3,}\|?", " ", t)                     # a table, flattened onto one line
+    t = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", t)
+    t = re.sub(r"[`*#>]+|(?<!\w)-{2,}(?!\w)", " ", t)
+    return re.sub(r"\s+", " ", t).strip()
+
+
+def _snippet(plain: str, words: list[str]) -> str:
+    """The sentence holding the first word found, and what follows it, cut at a word: about 220 characters."""
+    low = plain.lower()
+    at = min((low.find(w) for w in words if w and w in low), default=0)
+    start = plain.rfind(". ", 0, at) + 2 if plain.rfind(". ", 0, at) >= 0 else 0
+    cut = plain[start: start + 240]
+    return cut if len(plain) <= start + 240 else cut[: cut.rfind(" ")]
+
+
 @router.get("/docs/search")
 def docs_search(q: str = Query(..., min_length=2, max_length=200)):
     """This node's documentation, searched without a model, so the ask box is a docs search where no model is
@@ -534,21 +552,21 @@ def docs_search(q: str = Query(..., min_length=2, max_length=200)):
     idf = {v: math.log((len(rows) + 1) / (1 + sum(v in h for h in hay))) for vs in ways.values() for v in vs}
     scored = []
     for r in rows:
-        title, text, page = str(r.get("title") or "").lower(), str(r.get("text") or ""), str(r.get("page") or "").lower()
+        title, page = str(r.get("title") or "").lower(), str(r.get("page") or "").lower()
+        raw = str(r.get("text") or "")
+        text = _plain(raw) or re.sub(r"\s+", " ", re.sub(r"[|`*#>]+|-{2,}", " ", raw)).strip()   # a section that is all table
         low = text.lower()
         if needle in title or needle in low:
-            score, at = 1000, low.find(needle)
+            score = 1000
         elif terms:
             found = [v for w in terms for v in ways[w] if v in title or v in low]
             asked = [w for w in terms if any(v in title or v in low for v in ways[w])]
             if len(asked) * 2 < len(terms) + (len(terms) > 2):     # most of the question's words, not one of them
                 continue
             score = sum(idf[v] * (5 * (v in page) + 3 * (v in title) + (v in low)) for v in found)
-            at = min((low.find(v) for v in found if v in low), default=0)
         else:
             continue
-        j = max(0, at)
-        snippet = text[max(0, j - 80): j + 160].strip()
+        snippet = _snippet(text, [needle] + [v for vs in ways.values() for v in vs])
         scored.append((score, {"page": r.get("page"), "anchor": r.get("anchor"), "title": r.get("title"), "snippet": snippet}))
     scored.sort(key=lambda x: -x[0])
     hits = []
