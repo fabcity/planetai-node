@@ -157,8 +157,8 @@ Nothing, unless you give the online rung a key and set `AGENT_PREFER` to somethi
 settings describe `AGENT_ONLINE_KEY` as "The only thing that lets household data leave your network." With
 `AGENT_PREFER=private` a key that is set is never used. The remote rung is meant for a machine of yours; the
 node reads its address, and a remote model at a public address (a city's server, a rented GPU) counts as online.
-The bot then hands it no settings, report bundle or day's export, the pane names it online, and agents stop
-reading what the house learned. The bot's writes appear in the audit trail as
+With `AGENT_PREFER=private` it is not used at all. With `fallback` or `strongest` the bot hands it no settings,
+report bundle or day's export, the pane names it online, and agents stop reading what the house learned. The bot's writes appear in the audit trail as
 `<AGENT_NAME>/<rung>` (`local-model/local` by default), and tool arguments whose names contain `KEY`, `TOKEN` or
 `PASS` are masked in its log.
 

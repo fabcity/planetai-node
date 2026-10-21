@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **`private` never uses a model at a public address.** Since the last change the node named such a remote model
+  online and kept the house's learnings, settings and bundles from it, but still sent it every question. With
+  `AGENT_PREFER=private`, the default, it is now left off the ladder, and the log says which and why: the remote
+  box is for a machine of yours, and a city's or a rented server waits for `fallback` or `strongest`, the same
+  choice an online key needs.
+
 - **`/health` sends only what it says it sends.** It copied the timers' whole working state into its answer, so every
   screen polling it, at every share level and with no token, also got the programme's node list, the Telegram bot's
   username and, with `SPECIES_MATCH=on`, about 12 kB of GBIF maps, every 20 seconds. Node #1's answer was 13.8 kB, 12

@@ -107,7 +107,7 @@ RUNTIME = {
                            "pane alike. With fallback or strongest, what somebody asks, and the page's own "
                            "sentences and numbers (never a position, a sensor's name or its id), go to the online "
                            "model's provider, and that is a choice to give up this house's sovereignty over them."),
-    "AGENT_REMOTE_URL":   ("model", "Remote model URL", False, True, "A bigger model on another machine of yours, on this network or your tailnet, OpenAI-compatible. Ollama on a laptop: http://<laptop>.local:11434/v1, with Ollama listening beyond the laptop (OLLAMA_HOST=0.0.0.0). exo: http://<host>:8082/v1. Nothing leaves your network."),
+    "AGENT_REMOTE_URL":   ("model", "Remote model URL", False, True, "A bigger model on another machine of yours, on this network or your tailnet, OpenAI-compatible. Ollama on a laptop: http://<laptop>.local:11434/v1, with Ollama listening beyond the laptop (OLLAMA_HOST=0.0.0.0). exo: http://<host>:8082/v1. Nothing leaves your network: an address outside it is not used while Model preference is private."),
     "AGENT_REMOTE_MODEL": ("model", "Remote model", False, True, "e.g. gpt-oss-120b or qwen3:8b"),
     "AGENT_ONLINE_URL":   ("model", "Online model URL", False, True, "https://api.anthropic.com/v1 or https://api.openai.com/v1"),
     "AGENT_ONLINE_MODEL": ("model", "Online model", False, True, "e.g. claude-sonnet-4-6"),
