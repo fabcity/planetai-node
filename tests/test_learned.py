@@ -177,7 +177,16 @@ settings._cache["rows"]["AGENT_PREFER"] = "fallback"
 r = c.get("/learned", headers={**ADMIN, "X-Agent": "agent"})
 assert r.status_code == 403 and "AGENT_PREFER" in r.json()["detail"], "an agent that may be online: no, and why"
 assert c.get("/learned", headers=ADMIN).status_code == 200, "the page is not an agent"
-print("route: admin only; an agent only while AGENT_PREFER=private, told why otherwise")
+# private is not enough when a model's address leaves the house: a city's server in the remote box is not home
+settings._cache["rows"].update(AGENT_PREFER="private", AGENT_REMOTE_URL="https://vllm.city.example.org/v1")
+r = c.get("/learned", headers={**ADMIN, "X-Agent": "agent"})
+assert r.status_code == 403 and "outside this house" in r.json()["detail"], "private, a public remote: no, and why"
+assert c.get("/household", headers={**ADMIN, "X-Agent": "agent"}).status_code == 403
+assert c.get("/learned/search?q=smoke", headers={**ADMIN, "X-Agent": "agent"}).status_code == 403
+settings._cache["rows"]["AGENT_REMOTE_URL"] = "http://192.168.4.44:11434/v1"
+assert c.get("/learned", headers={**ADMIN, "X-Agent": "agent"}).status_code == 200, "private, a LAN remote: yes"
+settings._cache["rows"]["AGENT_REMOTE_URL"] = ""
+print("route: admin only; an agent only while every model stays home, told why otherwise")
 # GET /learned/place: the place's usual hours for a screen with no token (the Wall), and nothing of the house
 _sql = []
 main.q = lambda sql, *a: _sql.append(sql) or [{"key": "outdoor-pm25", "issue": "air", "metric": "pm25", "statement": "s", "numbers": {"high_hour": 18}}]

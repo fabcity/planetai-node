@@ -81,7 +81,7 @@ Start with `health_check`, then `status`.
 | `cells` | none | the Fab City Index cells with value, unit and state |
 | `packs` | none | the loaded packs: id, kind, description |
 | `export_day` | `day?` (default yesterday) | the open-data export for that day |
-| `learned` | `query?`, `scale?` | with nothing, what the house learned: what worked, what is usual, the alerts that may not fit, each in the node's own sentence. With `query` (a few keywords) it searches those and the diary of days, weeks, months and years; `scale` narrows to one size, and alone gives the newest. Answers only while `AGENT_PREFER=private`, and says why otherwise |
+| `learned` | `query?`, `scale?` | with nothing, what the house learned: what worked, what is usual, the alerts that may not fit, each in the node's own sentence. With `query` (a few keywords) it searches those and the diary of days, weeks, months and years; `scale` narrows to one size, and alone gives the newest. Answers only while `AGENT_PREFER=private` and no model sits at an address outside your network, and says why otherwise |
 | `settings_get` | none | every runtime setting with its group, help and value; the node's secrets and the keys a pack lists under `secrets:` are masked, bootstrap keys are read-only |
 | `maintenance` | `task`: update, backup, restore, restart, logs, doctor, storage, ui, telegram | the `planetai` command to run on the node, what it does and where. It runs nothing |
 | `act` | `alert_id`, `note` (required), `agent="agent"` | writes: records `stage: acted` for that alert with the agent as actor, and returns `{recorded, alert_id, by}` |

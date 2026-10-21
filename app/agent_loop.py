@@ -24,10 +24,12 @@ Alerts do not pass through the model. The node sends them; the model answers que
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 import json
 import logging
 import os
 import time
+from urllib.parse import urlparse
 
 import httpx
 import re
@@ -85,10 +87,32 @@ MAX_ROUNDS = 8
 SKIP_FOR = 300
 
 
+HOME_SUFFIXES = (".local", ".lan", ".home.arpa", ".internal", ".ts.net")
+TAILNET = ipaddress.ip_network("100.64.0.0/10")     # CGNAT, where Tailscale puts every node
+
+
+def stays_home(url: str) -> bool:
+    """True when a model at `url` is on this house's own network: loopback, a private or tailnet address, or a
+    name only a home network resolves (no dot, .local, .ts.net...). Judged by the address and never by the box it
+    was typed into: a city's GPU server in AGENT_REMOTE_URL was labelled "your network" and handed what the house
+    learned, while the page said nothing left. No DNS lookup, so a public name always counts as leaving."""
+    host = (urlparse(url).hostname or "").lower()
+    if not host:
+        return False
+    if "." not in host or host.endswith(HOME_SUFFIXES):
+        return True
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    return ip.is_private or ip.is_loopback or ip.is_link_local or (ip.version == 4 and ip in TAILNET)
+
+
 class Rung:
     def __init__(self, name, url, model, key="", small=False):
         self.name, self.url, self.model, self.key, self.small = name, url.rstrip("/"), model, key, small
         self.skip_until = 0.0
+        self.leaves = not stays_home(self.url)
 
     def headers(self):
         h = {"content-type": "application/json"}
@@ -334,10 +358,12 @@ async def ask(session: ClientSession, tools: list[dict], user: str, history: lis
     last_err = None
     async with httpx.AsyncClient(timeout=240) as hc:
         for rung in order:
+            # A rung that leaves the house gets what the pane gets: no settings, no report bundle, no day's export.
+            tools_ = [t for t in tools if t["function"]["name"] not in PANE_WITHHELD] if rung.leaves else tools
             messages = [{"role": "system", "content": SYSTEM}, *(history or []), {"role": "user", "content": user}]
             try:
                 for _ in range(MAX_ROUNDS):
-                    msg = await chat(hc, rung, messages, tools)
+                    msg = await chat(hc, rung, messages, tools_)
                     messages.append(msg)
                     calls = msg.get("tool_calls") or []
                     if not calls:
@@ -355,7 +381,11 @@ async def ask(session: ClientSession, tools: list[dict], user: str, history: lis
                         if isinstance(args, str):
                             try: args = json.loads(args)
                             except Exception: args = {}
-                        spec = next((t for t in tools if t["function"]["name"] == fn), {}).get("function", {}).get("parameters", {}).get("properties", {})
+                        if fn not in {t["function"]["name"] for t in tools_}:
+                            messages.append({"role": "tool", "tool_call_id": c.get("id", fn),
+                                             "content": f"tool error: {fn} is not offered to a model outside this house"})
+                            continue
+                        spec = next((t for t in tools_ if t["function"]["name"] == fn), {}).get("function", {}).get("parameters", {}).get("properties", {})
                         if "agent" in spec:
                             args.setdefault("agent", f"{NAME}/{rung.name}")
                         shown = {k: ("****" if ("KEY" in k or "TOKEN" in k or "PASS" in k) else v) for k, v in args.items()} if fn != "settings_set" else {"changes": sorted((args.get("changes") or {}).keys())}
@@ -491,11 +521,20 @@ def recommend() -> dict:
 def where_of(rung: Rung) -> dict:
     """Where a rung runs, in the words the pane prints: this machine, your network, or online.
 
-    `online` is the one that leaves the house: the pane says so in its header and on every answer it gives."""
-    from urllib.parse import urlparse
+    `online` is any rung that leaves the house, by its address (stays_home), whatever its name: the pane says so in
+    its header and on every answer it gives."""
     host = urlparse(rung.url).hostname or rung.url
-    return {"rung": rung.name, "model": rung.model, "host": host,
-            "where": {"local": "this machine", "remote": "your network"}.get(rung.name, "online")}
+    where = "online" if rung.leaves else {"local": "this machine"}.get(rung.name, "your network")
+    return {"rung": rung.name, "model": rung.model, "host": host, "where": where, "leaves": rung.leaves}
+
+
+def models_stay_home(cfg) -> bool:
+    """What the house learned, and who lives in it, may reach a model only while this is true: AGENT_PREFER is
+    private AND no rung the ladder would build leaves the house. `cfg` is anything with .get(key), the settings
+    module included."""
+    if (cfg.get("AGENT_PREFER") or os.getenv("AGENT_PREFER") or "private") != "private":
+        return False
+    return not any(r.leaves for r in ladder(cfg))
 
 
 def pane_rungs(cfg: dict, with_local: bool = True) -> list[Rung]:

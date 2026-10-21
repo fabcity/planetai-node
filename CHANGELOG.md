@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **A model at a public address counts as online, whatever box it was typed into.** The remote rung is for a bigger
+  model on a machine of yours, and the node took that on trust: a city's GPU server in that box was called "your
+  network", agents read what the house learned and who lives in it under `AGENT_PREFER=private`, and the Telegram bot
+  handed it the node's settings, the report bundle and the day's export. The node now reads the rung's address.
+  Loopback, a private or tailnet address and a name only a home network knows (no dot, `.local`, `.ts.net`) stay
+  home; anything else is online. Such a rung is named online on the pane, gets the pane's narrower set of tools on
+  Telegram, and closes `/learned`, `/learned/search` and `/household` to agents. A tool the bot's model names
+  without having been offered it is refused now, where before it ran.
+
 - **A parent counts only its children's own sensors, and keeps each hour complete.** The hourly push sent every
   row that was not private, so a child's Bali Air Dispatch stations and its Open-Meteo point went up beside its
   own kits, and the parent, which files everything it receives as its children's, would have counted them as the

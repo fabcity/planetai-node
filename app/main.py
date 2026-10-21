@@ -3481,15 +3481,23 @@ def offers_now() -> dict:
             "offers": [{**r, "ask": f"https://t.me/{bot}?start=offer-{r['id']}" if bot else None} for r in rows]}
 
 
+def _models_home() -> bool:
+    """Every model this node may use is on this house's own network (agent_loop.models_stay_home): AGENT_PREFER is
+    private and no rung's address leaves. The gate on what the house learned and who lives in it."""
+    import agent_loop
+    return agent_loop.models_stay_home(settings)
+
+
 @app.get("/learned")
 def learned(request: Request, authorization: str = Header("")):
     """What this node has learned (docs/SPEC_learn.md), newest checks first, each with its numbers and cases. The
     admin token only: the cases carry the household's own notes. An agent reads it only while every model this node
-    may use is on this house's own machines (AGENT_PREFER=private); otherwise it is told why not."""
+    may use is on this house's own network (_models_home); otherwise it is told why not."""
     _admin(authorization)
-    if request.headers.get("x-agent") and settings.get("AGENT_PREFER", "private") != "private":
+    if request.headers.get("x-agent") and not _models_home():
         raise HTTPException(403, "what this house learned stays with its own machines: AGENT_PREFER is not private, "
-                                 "so a model here may be online. Read it on the page, Node, What it remembers.")
+                                 "or a model is set up outside this house's network. Read it on the page, Node, "
+                                 "What it remembers.")
     rows = q("SELECT * FROM learnings ORDER BY kind, CASE status WHEN 'holding' THEN 0 WHEN 'weakening' THEN 1 "
              "WHEN 'too_early' THEN 2 ELSE 3 END, n DESC")
     # how many diary entries the node keeps, by scale: Node's "What it remembers" counts them
@@ -3506,10 +3514,11 @@ def _people() -> dict:
 @app.get("/household")
 def household(request: Request, authorization: str = Header("")):
     """Who is in the house, as the household said (SPEC_learn §8): yes or no for each of `choices`. Guarded as
-    GET /learned: the admin token, and an agent only while AGENT_PREFER=private."""
+    GET /learned: the admin token, and an agent only while every model stays home."""
     _admin(authorization)
-    if request.headers.get("x-agent") and settings.get("AGENT_PREFER", "private") != "private":
-        raise HTTPException(403, "who is in this house stays with its own machines: AGENT_PREFER is not private")
+    if request.headers.get("x-agent") and not _models_home():
+        raise HTTPException(403, "who is in this house stays with its own machines: AGENT_PREFER is not private, "
+                                 "or a model is set up outside this house's network")
     return {"people": _people(), "choices": learn.PEOPLE}
 
 
@@ -3546,8 +3555,9 @@ def learned_search(request: Request, q_: str = Query("", alias="q", max_length=2
     equals. No words lists the newest digests, of one `scale` if given. Postgres full-text search, 'simple' so English,
     Indonesian and Spanish words all match as written. Guarded as GET /learned."""
     _admin(authorization)
-    if request.headers.get("x-agent") and settings.get("AGENT_PREFER", "private") != "private":
-        raise HTTPException(403, "what this house learned stays with its own machines: AGENT_PREFER is not private")
+    if request.headers.get("x-agent") and not _models_home():
+        raise HTTPException(403, "what this house learned stays with its own machines: AGENT_PREFER is not private, "
+                                 "or a model is set up outside this house's network")
     if scale and scale not in learn.SCALES:
         raise HTTPException(422, f"scale is one of {', '.join(learn.SCALES)}")
     terms = learn.search_terms(q_)
