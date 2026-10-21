@@ -72,8 +72,12 @@ way the Wall says it ("Sea, 5 km off"), and a sensor's name never appears.
 Every ten minutes the Wall asks `POST /ask` with `prompt: wall`, so the model is the one chosen in Set up › Model
 (`AGENT_PREFER`). The node tells it to speak like a calm neighbour in six to eight plain sentences: what is happening
 inside, how it compares with the street and the neighbourhood, what it suggests for an ordinary day, and what the next
-hours may bring, with no units, at most two numbers, and never saying that anything is safe. The Wall types the text
-at a reading pace. The last text stays up while the next is written, held in the page's memory and never stored. The
+hours may bring, with no units, at most two numbers, and never saying that anything is safe. The model is offered no
+tools, since every fact it may use is in the request, so it answers without thinking first: a few seconds on node #1's
+remote model, where thinking had taken more than four minutes and the box stayed empty. The Wall types the text at a
+reading pace. A story taller than its box then rolls up, a line every three seconds, in a loop that brings its start
+round again; under reduced motion it stands still at its start. The last text stays up while the next is written,
+held in the page's memory and never stored. The
 box calls itself a model's words from the node's figures, never a reading, and says "written online" when the
 keeper's choice sent the question out. With no model on the node, or `UI_ASK=off`, there is no box.
 

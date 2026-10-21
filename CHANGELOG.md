@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **The docs say what the node does after #302 to #306.** The Architecture page named a model setting,
+  `UPSTREAM_MODEL_URL`, that no code ever read; it now names `AGENT_REMOTE_URL` and `AGENT_ONLINE_URL`, says a
+  regional cluster joins the tailnet to count as the household's own, and says how a job already runs on another
+  machine (a pack script that writes files under `out/`). The Spec's TimescaleDB line said "swap the image", which
+  would land on the collation trap the compose file warns about; it now says dump and restore. The Spec also
+  admitted nothing about `main.py` naming metrics it is not meant to name, and now lists them. The API, concepts,
+  configuration, ask, bot and Wall pages and `.env.example` say that a child sends only its own sensors, that a
+  remote model at a public address counts as online, and that the Wall's story rolls when it is longer than its box.
+
 - **The Wall writes its story again.** Node #1's remote model, gemma4:26b, thought for about 12,700 tokens before
   writing the Wall's paragraph, three minutes and more, so the request ran past the node's four-minute limit and
   the Wall showed nothing. The Wall tells its story from the facts it is handed and needs no tools, so it is

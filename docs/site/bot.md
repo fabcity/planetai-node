@@ -55,7 +55,7 @@ Three rungs, all speaking the OpenAI-compatible chat protocol with tools:
 | rung | what | settings | default model |
 |---|---|---|---|
 | `online` | Anthropic, OpenAI or Gemini with a key; the only rung that sends anything off your network | `AGENT_ONLINE_URL` and `AGENT_ONLINE_KEY`, both required; an Anthropic URL also gets `x-api-key` | `AGENT_ONLINE_MODEL` = `claude-sonnet-4-6` |
-| `remote` | a bigger model on the tailnet: a laptop's Ollama, exo, llama.cpp | `AGENT_REMOTE_URL`, optional `AGENT_REMOTE_KEY` | `AGENT_REMOTE_MODEL` = `gpt-oss-120b` |
+| `remote` | a bigger model on the tailnet: a laptop's Ollama, exo, llama.cpp. At a public address it counts as online | `AGENT_REMOTE_URL`, optional `AGENT_REMOTE_KEY` | `AGENT_REMOTE_MODEL` = `gpt-oss-120b` |
 | `local` | Ollama on this machine, always present | `OLLAMA_URL` + `/v1`; the container's `MODEL`, set from `AGENT_MODEL` | `qwen3:4b` |
 
 `AGENT_PREFER` sets the order. Its default, `private`, removes the online rung, so a node that never chose sends

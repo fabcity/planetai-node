@@ -191,11 +191,11 @@ ask pane reads the same keys on every question. See [The bot](bot.md) and [Ask t
 
 | Setting | Default | Values | Meaning | Kind |
 |---|---|---|---|---|
-| `AGENT_PREFER` | `private` | `private`, `fallback`, `strongest` | `private` never uses the online model, so nothing leaves your network. `fallback` tries your remote model, then online, then local. `strongest` puts online first. | runtime · public · outward · restart |
+| `AGENT_PREFER` | `private` | `private`, `fallback`, `strongest` | `private` never uses the online model, or a remote one at an address outside your network, so nothing leaves it. `fallback` tries your remote model, then online, then local. `strongest` puts online first. | runtime · public · outward · restart |
 | `AGENT_ONLINE_URL` | blank | `https://api.anthropic.com/v1`, `https://api.openai.com/v1`, … | An OpenAI-compatible online endpoint, the URL and nothing else. Use an `https` address: the key travels in the `Authorization` header. A value not starting with `http` is skipped. | runtime · outward · restart |
 | `AGENT_ONLINE_MODEL` | `claude-sonnet-4-6` | model id | Pick one from `GET $AGENT_ONLINE_URL/models`; a retired model answers 404, which looks like a bad key. | runtime · public · outward · restart |
 | `AGENT_ONLINE_KEY` | blank | secret | The one thing that lets household data leave your network. | runtime · secret · outward · restart |
-| `AGENT_REMOTE_URL` | blank | `http://<host>:8082/v1` | A bigger model on another machine of yours, OpenAI-compatible. | runtime · restart |
+| `AGENT_REMOTE_URL` | blank | `http://<host>:8082/v1` | A bigger model on another machine of yours, OpenAI-compatible. An address outside your network counts as online. | runtime · restart |
 | `AGENT_REMOTE_MODEL` | `gpt-oss-120b` | model id | e.g. `gpt-oss-120b` or `qwen3:8b`. | runtime · public · restart |
 | `AGENT_REMOTE_KEY` | blank | secret | If that server asks for one. | runtime · secret · restart |
 | `EYES_MODEL` | blank = off | Ollama model id | A vision model in this machine's Ollama that describes each image and files what it sees under the [flows](https://planetai.fab.city/vocab/flows/1.0/) classes. The picture never leaves the machine and the model is never asked about people. On 16 GB, `qwen2.5vl:7b`. | runtime · public |
@@ -206,7 +206,7 @@ ask pane reads the same keys on every question. See [The bot](bot.md) and [Ask t
 
 ## Parent and children
 
-A node with a parent posts hourly means to `PARENT_API_URL/aggregates` and alert timestamps to
+A node with a parent posts the hourly means of its own sensors to `PARENT_API_URL/aggregates` and alert timestamps to
 `PARENT_API_URL/events`, with `PARENT_TOKEN` as Bearer and `NODE_SCALE` as `scale`. Values and times go up;
 where, what was said and who said it stay. See [Federation](federation.md).
 
