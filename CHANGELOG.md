@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **`/health` sends only what it says it sends.** It copied the timers' whole working state into its answer, so every
+  screen polling it, at every share level and with no token, also got the programme's node list, the Telegram bot's
+  username and, with `SPECIES_MATCH=on`, about 12 kB of GBIF maps, every 20 seconds. Node #1's answer was 13.8 kB, 12
+  of them nobody read. It now names its keys, the list on the API page, and the gap note there is gone.
+
 - **A model at a public address counts as online, whatever box it was typed into.** The remote rung is for a bigger
   model on a machine of yours, and the node took that on trust: a city's GPU server in that box was called "your
   network", agents read what the house learned and who lives in it under `AGENT_PREFER=private`, and the Telegram bot

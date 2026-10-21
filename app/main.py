@@ -101,8 +101,8 @@ reticulum_state = {"ok": False, "address": None, "destinations": 0, "announce_s"
                    "announcing": False, "peers": [], "last": None}
 STARTED = time.time()
 state = {"polls": 0, "last_poll": None, "last_error": None, "ingested": 0}
-# Whether the last message to Telegram went through, for GET /health/sources. Not in `state`: /health spreads that
-# to every reader at every share level, and whether this house's alerts reach it is not theirs to read.
+# Whether the last message to Telegram went through, for GET /health/sources. Kept apart from `state`, which /health
+# once spread to every reader at every share level: whether this house's alerts reach it is not theirs to read.
 tg_state: dict = {"ok": None, "at": None}
 
 
@@ -1356,7 +1356,12 @@ def health(request: Request):
     return {"ok": state["last_poll"] is not None, "node": NODE, "version": os.getenv("NODE_VERSION", "?"),
             "schema": schema, "uptime_s": int(time.time() - STARTED),
             **_published_position(bool(getattr(request.state, "share_trusted", False))),
-            "city": os.getenv("NODE_CITY", ""), **state,
+            "city": os.getenv("NODE_CITY", ""),
+            # Named, never `**state`: state is the timers' scratchpad, and spreading it sent every reader at every
+            # share level the programme's node list, the bot's username and, with SPECIES_MATCH on, 12 kB of GBIF
+            # maps, every ~20 s from every screen. The keys below are docs/site/api.md's list for this route.
+            **{k: state.get(k) for k in ("polls", "last_poll", "last_error", "ingested")}, "errors": state.get("errors", {}),
+            **({"release": state["release"]} if "release" in state else {}),
             # The household's own language, so the page can be written in it. /issues carries every
             # sentence in all three and carries no way to choose — `snap.locale` was read by the
             # dashboard and set by nothing, so the test fell through to 'en' on every node, in every
