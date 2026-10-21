@@ -39,7 +39,7 @@ minutes with nobody there.
 With the monitor still attached:
 
 ```bash
-curl -fsSL planetai.fab.city/install | bash
+curl -fsSL https://planetai.fab.city/install | bash
 planetai mesh      # reachable as <name>.<tailnet>.ts.net from anywhere, no open ports; needs Homebrew
 ```
 

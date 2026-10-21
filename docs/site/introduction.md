@@ -7,7 +7,7 @@ stations and models around them, tells the people there in plain sentences what 
 and measures whether it worked. Raw readings stay on the machine that recorded them.
 
 ```bash
-curl -fsSL planetai.fab.city/install | bash
+curl -fsSL https://planetai.fab.city/install | bash
 ```
 
 The installer asks four questions and has the node running in about two minutes. After that, `planetai telegram`

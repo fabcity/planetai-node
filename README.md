@@ -24,7 +24,7 @@ node. Raw readings stay on the machine; only summaries travel.
 > report decides what gets fixed first. Write to **info@fab.city** with what broke, what helped, what did not.
 
 ```bash
-curl -fsSL planetai.fab.city/install | bash
+curl -fsSL https://planetai.fab.city/install | bash
 ```
 
 Four questions, two minutes, running. Then `planetai telegram` for the alerts and `planetai ui` for the dashboard.

@@ -21,7 +21,7 @@ never to do.
 **1. Read the machine before you promise anything.**
 
 ```bash
-curl -fsSL planetai.fab.city/preflight | bash
+curl -fsSL https://planetai.fab.city/preflight | bash
 ```
 
 It installs nothing and takes four seconds. `--json` if you want to parse it. Read the exit code, not
@@ -41,7 +41,7 @@ anyway "to see". A node that half-installs on an unsupported machine costs an ev
 **2. Install.**
 
 ```bash
-curl -fsSL planetai.fab.city/install | bash
+curl -fsSL https://planetai.fab.city/install | bash
 ```
 
 Four questions: a name, the place, what the node is for, the sensor if they have one. The only sensor it offers

@@ -11,7 +11,7 @@ One installer covers all of them and detects which it is on. Before you install,
 machine qualifies, and every failing row carries the command that fixes it on that machine:
 
 ```bash
-curl -fsSL planetai.fab.city/preflight | bash        # nothing installed yet
+curl -fsSL https://planetai.fab.city/preflight | bash        # nothing installed yet
 planetai preflight                                    # on a node
 planetai preflight --json                             # to paste into an issue
 ```

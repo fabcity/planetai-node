@@ -27,7 +27,7 @@ Basics → Alert language, or `ALERT_LOCALE=es` in `.env`.
 Open a terminal and paste:
 
 ```bash
-curl -fsSL planetai.fab.city/install | bash
+curl -fsSL https://planetai.fab.city/install | bash
 ```
 
 What happens, in order:

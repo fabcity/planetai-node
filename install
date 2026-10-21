@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#   curl -fsSL planetai.fab.city/install | bash
+#   curl -fsSL https://planetai.fab.city/install | bash
 #
 # The whole install, from a blank machine. Checks the machine, downloads the tarball and verifies its
 # published checksum, then hands off to `planetai setup`, which asks you four things and does the rest.

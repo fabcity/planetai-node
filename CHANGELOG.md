@@ -11,6 +11,11 @@
   that part, and the pane shows that quote first. The classic dashboard keeps its own marks. The Bahasa Indonesia
   questions have not yet been read by a native speaker.
 
+- **The install and preflight lines say `https://`.** `curl -fsSL planetai.fab.city/install | bash` made its first
+  request in clear text, so anyone on the path could hand `bash` a different script before the redirect to HTTPS.
+  Every page, the README, the skills and the CLI's own hints now print `curl -fsSL https://planetai.fab.city/install
+  | bash`.
+
 - **The docs, read again from the code and rewritten.** Every page of planetai.fab.city/docs was checked against main
   and rewritten to say what the node does now, once, in plain words: version history, internal dates and names, PR
   numbers and node #1's diary are gone from the pages (this file keeps them), and the long pages are about a third

@@ -7,8 +7,8 @@ your coordinates, answers on port 8080, and keeps every reading it takes on this
 a phone yet; that is the [next page](first-ten-minutes.md).
 
 > **The short way.** Six commands, in order, each one waiting for the one before:
-> 1. `curl -fsSL planetai.fab.city/preflight | bash` checks the machine.
-> 2. `curl -fsSL planetai.fab.city/install | bash` asks four questions and installs the node. Near the end it
+> 1. `curl -fsSL https://planetai.fab.city/preflight | bash` checks the machine.
+> 2. `curl -fsSL https://planetai.fab.city/install | bash` asks four questions and installs the node. Near the end it
 >    offers to fetch the map of your place; say `y`, or run `planetai run place basemap` later.
 > 3. `planetai doctor` shows every check, and under **Data sources** what is left, each with its fix. If the
 >    terminal says `planetai: command not found`, open a new one: the installer adds the command to the PATH of
@@ -22,7 +22,7 @@ a phone yet; that is the [next page](first-ten-minutes.md).
 ## 1. Check the machine
 
 ```bash
-curl -fsSL planetai.fab.city/preflight | bash
+curl -fsSL https://planetai.fab.city/preflight | bash
 ```
 
 It reads the machine in a few seconds and installs nothing. It prints one table, a row each for OS,
@@ -43,7 +43,7 @@ that is an answer.
 ## 2. Run the install line
 
 ```bash
-curl -fsSL planetai.fab.city/install | bash
+curl -fsSL https://planetai.fab.city/install | bash
 ```
 
 `/install` is a small stub. It looks up the released version and fetches the `install` script, and the preflight,
@@ -64,7 +64,7 @@ is on [Updating](updating.md#updates-are-signed).
 To put a second node somewhere else on the same machine:
 
 ```bash
-PLANETAI_HOME=~/somewhere bash -c "$(curl -fsSL planetai.fab.city/node0/install)"
+PLANETAI_HOME=~/somewhere bash -c "$(curl -fsSL https://planetai.fab.city/node0/install)"
 ```
 
 ## 3. Answer the four questions
@@ -187,7 +187,7 @@ planetai remove --keep-data  # the same, but the readings stay in their volume
 
 The Docker volume outlives the folder, and every node's compose project is `planetai`, so a fresh install finds
 the old database; the installer then refuses to give it a new password and names the two ways out
-([Troubleshooting](troubleshooting.md)). `planetai remove` deletes the volumes by name and then checks. If the node will not start at all, `curl -fsSL planetai.fab.city/remove | bash -s -- --purge` finds the
+([Troubleshooting](troubleshooting.md)). `planetai remove` deletes the volumes by name and then checks. If the node will not start at all, `curl -fsSL https://planetai.fab.city/remove | bash -s -- --purge` finds the
 containers, the four volumes, the folder, the symlink and the crontab line without running any of the node's
 own code.
 

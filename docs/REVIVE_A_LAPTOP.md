@@ -21,7 +21,7 @@ Copy what you want off the disk first. This is the step people skip.
 Then check the machine is worth it:
 
 ```bash
-curl -fsSL planetai.fab.city/preflight | bash
+curl -fsSL https://planetai.fab.city/preflight | bash
 ```
 
 If it prints *This hardware is a capable node*, the processor and the memory are settled, and the OS, which Linux
@@ -154,7 +154,7 @@ Close the lid and `ssh` in from another machine. If you get a prompt, it worked.
 The same line as everywhere else, now on a machine that can run it:
 
 ```bash
-curl -fsSL planetai.fab.city/install | bash
+curl -fsSL https://planetai.fab.city/install | bash
 ```
 
 The preflight runs first, the installer adds Docker itself, and then it asks its four questions; [Install](site/install.md)

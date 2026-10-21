@@ -48,13 +48,13 @@ A node wants a computer that stays on. In order:
    runtime for macOS has raised its floor in the last two years, and an Intel Mac will meet that wall.
 3. **Windows**, through WSL2 with Docker Desktop.
 
-`curl -fsSL planetai.fab.city/preflight | bash` reads the machine in four seconds and tells you which
+`curl -fsSL https://planetai.fab.city/preflight | bash` reads the machine in four seconds and tells you which
 case you are in. It installs nothing.
 
 ## Install
 
 ```bash
-curl -fsSL planetai.fab.city/install | bash
+curl -fsSL https://planetai.fab.city/install | bash
 ```
 
 It asks four things: a name for the node, the place (type a town; it finds the coordinates), what the node is for (a

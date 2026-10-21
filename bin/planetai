@@ -49,7 +49,7 @@ set -euo pipefail
 resolve() { local t="$1"; while [[ -L "$t" ]]; do local d; d="$(cd "$(dirname "$t")" && pwd)"; t="$(readlink "$t")"; [[ "$t" != /* ]] && t="$d/$t"; done; echo "$t"; }
 HOME_DIR="${PLANETAI_HOME:-$(cd "$(dirname "$(resolve "$0")")/.." && pwd)}"
 LOG="$HOME_DIR/.planetai-setup.log"
-cd "$HOME_DIR" 2>/dev/null || { echo "no node at $HOME_DIR. Install with: curl -fsSL planetai.fab.city/install | bash"; exit 1; }
+cd "$HOME_DIR" 2>/dev/null || { echo "no node at $HOME_DIR. Install with: curl -fsSL https://planetai.fab.city/install | bash"; exit 1; }
 # every long step appends here and nothing ever trimmed it: node #1's was 600 KB after four days. Keep the last ~200 KB.
 if [[ -f "$LOG" ]] && [[ "$(wc -c < "$LOG" | tr -d ' ')" -gt 1000000 ]]; then tail -c 200000 "$LOG" > "$LOG.tmp" && mv "$LOG.tmp" "$LOG"; fi
 
@@ -290,7 +290,7 @@ PY
     echo "  What runs here is what is in this folder, so a fix released after you downloaded it is not in it."
     echo "  One line replaces the code and keeps your settings, your data and your answers:"
     echo
-    echo "    curl -fsSL planetai.fab.city/install | bash"
+    echo "    curl -fsSL https://planetai.fab.city/install | bash"
     echo
     if [[ -t 1 ]] && ( : </dev/tty ) 2>/dev/null && confirm "  Do that now?"; then
       exec bash -c "$(curl -fsSL https://planetai.fab.city/install)"
@@ -1595,7 +1595,7 @@ cmd_remove() {
     printf '\n   %sThis matters: a fresh install into the same folder re-attaches a leftover volume and\n' "$Y"
     printf '   comes up carrying the old node\047s readings and name.%s\n' "$N"
   fi
-  echo "   To run one here again:  curl -fsSL planetai.fab.city/install | bash"
+  echo "   To run one here again:  curl -fsSL https://planetai.fab.city/install | bash"
 }
 
 cmd_restore() {
