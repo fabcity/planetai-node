@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Importing the app starts nothing.** The first-start bootstrap, the channel roles, the MQTT client and the ten
+  timer loops ran when `app/main.py` was imported. So a second import ran a second node inside the first, and its
+  MQTT client, with the same client id, knocked node #1 off its broker on 28 September. They run once now, from the
+  app's lifespan, when uvicorn starts it. A test, a pack script or `python -c "import main"` loads the code and
+  starts no thread. Nothing changes for a running node.
+
 - **The docs say what the node does after #302 to #306.** The Architecture page named a model setting,
   `UPSTREAM_MODEL_URL`, that no code ever read; it now names `AGENT_REMOTE_URL` and `AGENT_ONLINE_URL`, says a
   regional cluster joins the tailnet to count as the household's own, and says how a job already runs on another
