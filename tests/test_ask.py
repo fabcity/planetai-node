@@ -386,8 +386,13 @@ for prefer, want, leaves_, first_where in (
     check(prefer != "private" or all(r["where"] != "online" for r in st["rungs"]), "private reached the online model")
 st = local.get("/ask/status").json()
 check(st["host"] == "api.anthropic.com" and st["model"] == "claude-x", f"strongest names {st['host']} {st['model']}")
-# a remote rung at a public address leaves the house whatever box it was typed into, and the pane says so
+# a remote rung at a public address: never asked under private; under fallback it leaves the house whatever box it
+# was typed into, and the pane says so
 ROWS.update(AGENT_PREFER="private", AGENT_REMOTE_URL="https://vllm.city.example.org/v1")
+st = local.get("/ask/status").json()
+check([r["rung"] for r in st["rungs"]] == ["local"] and st["leaves"] is False,
+      f"private asked a city server: {[(r['rung'], r['host']) for r in st['rungs']]}")
+ROWS["AGENT_PREFER"] = "fallback"
 st = local.get("/ask/status").json()
 check(st["leaves"] is True and st["where"] == "online" and st["rungs"][0]["leaves"] is True,
       f"a city server in the remote box reads as {st['where']}, leaves={st['leaves']}")

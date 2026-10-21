@@ -193,7 +193,7 @@ Ollama must listen on `0.0.0.0` so the container can reach it.
 `/act 23` with no words gets a question back and records nothing. The local model gets the node's read and
 act tools, never the admin ones. At the default, `AGENT_PREFER=private`, nothing the bot is asked leaves your
 network. A bigger model on another machine of yours can sit above the local one on the
-[model ladder](bot.md) (one at a public address counts as online), and an online model is used only after someone here chooses `fallback` or `strongest`
+[model ladder](bot.md) (one at a public address waits, like an online model, for `fallback` or `strongest`), and an online model is used only after someone here chooses `fallback` or `strongest`
 and sets a key.
 
 **Now there is:** an agent on the node, answering from the node's own tools.
