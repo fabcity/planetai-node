@@ -633,7 +633,7 @@ Which model the pane asks first, where it runs and whether it answers: `{model, 
 ### POST /ask
 Access: open
 
-One answer, streamed as `text/event-stream`. Takes `{messages, view, mode, focus?, prompt?}`, at most 24 messages. The node builds the model's context from `/issues` with no coordinate, sensor name or id in it, and `prompt: wall` builds the Wall's public context instead. The model reads `learned` only for the admin or act token or this machine. The events are `token`, `tools`, `retry`, `proposal`, `done` and `error`. 404 when no model is set up.
+One answer, streamed as `text/event-stream`. Takes `{messages, view, mode, focus?, prompt?}`, at most 24 messages. The node builds the model's context from `/issues` with no coordinate, sensor name or id in it, and `prompt: wall` builds the Wall's public context instead and offers the model no tools, so it answers from that context without thinking. The model reads `learned` only for the admin or act token or this machine. The events are `token`, `tools`, `retry`, `proposal`, `done` and `error`. 404 when no model is set up.
 
 ### GET /docs/search
 Access: open

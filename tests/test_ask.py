@@ -219,6 +219,8 @@ check("The page's context:" in wall and not leaks(wall),
 r = local.post("/ask", json={"messages": [{"role": "user", "content": "speak"}], "view": "wall",
                              "mode": "advanced", "prompt": "wall"})
 check(r.status_code == 200 and SCRIPT[-1]["system"] != wall, "the wall's angle did not rotate between narrations")
+check(SCRIPT[before]["tools"] == [] and SCRIPT[-1]["tools"] == [],
+      f"the wall was offered tools, so the model thinks before its story: {SCRIPT[before]['tools']}")
 print("  wall: the page asks by name; the voice, the figures and a fresh angle ride in the system prompt")
 
 # ---------------------------------------------------------------- the Wall's facts: richer, and only the public ones
@@ -497,12 +499,14 @@ async def _thinking():
     await REAL_CHAT(_server(True), picky, list(_t), [{"type": "function"}])
     small = agent_loop.Rung("local", "http://l.test/v1", "qwen3:4b", small=True)
     await REAL_CHAT(_server(False), small, list(_t), [{"type": "function"}])
+    await REAL_CHAT(_server(False), big, list(_q), [])          # the Wall: no tools, so nothing to think about
     return got
 _got = asyncio.run(_thinking())
 check(SEEN[:2] == [None, "none"], f"thinking must choose the tool and be off after its result: {SEEN[:2]}")
 check(SEEN[2:5] == ["none", None, None] and _got.get("content") == "ok",
       f"a server that refuses reasoning_effort must be asked again without it, and not sent it next time: {SEEN[2:5]}")
-check(SEEN[5:] == [None], f"a small model has /no_think already and must not be sent reasoning_effort: {SEEN[5:]}")
+check(SEEN[5:6] == [None], f"a small model has /no_think already and must not be sent reasoning_effort: {SEEN[5:6]}")
+check(SEEN[6:] == ["none"], f"with no tools offered the first call must go without thinking (the Wall): {SEEN[6:]}")
 check(agent_loop.cap("x" * 10) == "x" * 10, "a tool result under the cap must reach the model unchanged")
 _c = agent_loop.cap("y" * 9000)
 check(_c.startswith("y" * agent_loop.TOOL_CAP) and "[cut: this result is 9000 characters" in _c and "incomplete" in _c,

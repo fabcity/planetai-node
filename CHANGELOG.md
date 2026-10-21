@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **The Wall writes its story again.** Node #1's remote model, gemma4:26b, thought for about 12,700 tokens before
+  writing the Wall's paragraph, three minutes and more, so the request ran past the node's four-minute limit and
+  the Wall showed nothing. The Wall tells its story from the facts it is handed and needs no tools, so it is
+  offered none now, and a request with no tools to choose goes without thinking, as an answer after a tool result
+  already did. The same paragraph came back in 2.5 seconds.
+
 - **`/health` sends only what it says it sends.** It copied the timers' whole working state into its answer, so every
   screen polling it, at every share level and with no token, also got the programme's node list, the Telegram bot's
   username and, with `SPECIES_MATCH=on`, about 12 kB of GBIF maps, every 20 seconds. Node #1's answer was 13.8 kB, 12
