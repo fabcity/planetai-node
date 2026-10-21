@@ -105,24 +105,31 @@ body[data-view="wall"] .bar,body[data-view="wall"] .foot{display:none}
 
 /* ---- Ask the node, and Learn inside it ---- */
 /* Everything the node says sits on its own grey, so the page's paper is only ever the data (v0.75.8). */
-.askpane{position:fixed;top:0;right:0;bottom:0;width:min(420px,100vw);background:var(--doc);border-left:1px solid var(--ink);padding:18px 20px;overflow:auto;z-index:20}
+.askpane{position:fixed;top:0;right:0;bottom:0;width:min(420px,100vw);background:var(--doc);border-left:1px solid var(--ink);padding:18px 20px 14px;z-index:20;display:flex;flex-direction:column;gap:8px}
+.askpane[hidden]{display:none}
+/* as in every chat: the conversation scrolls in the middle, the box stays at the bottom */
+.askpane .ascroll{flex:1 1 auto;min-height:0;overflow:auto;margin:0 -20px;padding:0 20px;border-top:1px solid var(--doc-line)}
+.askpane .abottom{flex:none;border-top:1px solid var(--doc-line);padding-top:6px}
+.askpane .thread{display:flex;flex-direction:column;gap:10px;padding:12px 0}
+.askpane .msg.me{align-self:flex-end;max-width:85%;background:var(--ink);color:var(--ground);padding:8px 12px;white-space:pre-wrap}
+.askpane .msg.node{align-self:stretch}
+.askpane .msg.node>p:not(.fine):not(.amode){white-space:pre-wrap;margin:0}
 .askpane .ah{display:flex;justify-content:space-between;align-items:center;font:700 var(--t-read) var(--display)}
 .askpane .ah button{background:none;border:1px solid var(--ink);width:28px;height:28px;cursor:pointer;font-size:18px;line-height:1}
 /* a label for a screen reader only */
 .vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 /* the composer: the box and its send button are one thing, the way a chat box is; the questions sit above it */
-.askpane .amode{margin:10px 0 0;font:500 var(--t-cap) var(--mono);letter-spacing:.04em;color:var(--mute)}
-.askpane .compose{position:relative;margin-top:10px;background:var(--ground);border:1px solid var(--ink)}
+.askpane .amode{margin:0;font:500 var(--t-cap) var(--mono);letter-spacing:.04em;color:var(--mute)}
+.askpane .compose{position:relative;margin-top:8px;background:var(--ground);border:1px solid var(--ink)}
 .askpane .compose:focus-within{outline:2px solid var(--ink);outline-offset:1px}
 .askpane textarea{display:block;width:100%;min-height:64px;max-height:40vh;background:none;color:var(--ink);border:0;outline:0;padding:10px 52px 10px 10px;font:var(--t-body) var(--body);resize:none}
 .askpane #qsend{position:absolute;right:8px;bottom:8px;width:34px;height:34px;display:grid;place-items:center;background:var(--ink);color:var(--ground);border:0;cursor:pointer}
 .askpane #qsend:disabled{opacity:.4;cursor:default}
 .askpane .hint{margin:6px 0 0;font:400 var(--t-cap) var(--mono);color:var(--mute)}
-.askpane #qout>p:not(.fine):not(.amode){white-space:pre-wrap;margin:12px 0 0}
 .askpane .hits{list-style:none;padding:0;margin:4px 0 0}.askpane .hits li{padding:8px 0;border-top:1px solid var(--doc-line)}
 .askpane .hits a{font-weight:600}.askpane .hits p{margin:3px 0 0;font-size:var(--t-small);color:var(--mute)}
 .try{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.try button{background:var(--ground);color:var(--ink);border:1px solid var(--doc-line);padding:4px 8px;font-size:var(--t-small);cursor:pointer;text-align:left}
-.learnsw{display:flex;gap:10px;align-items:flex-start;border-top:1px solid var(--ink);margin-top:18px;padding-top:14px;font-size:var(--t-small);cursor:pointer}
+.learnsw{display:flex;gap:10px;align-items:flex-start;font-size:var(--t-small);cursor:pointer}
 .learnsw input{margin-top:3px;accent-color:var(--ink)}
 .learnlist{padding-left:0;list-style:none;margin:12px 0 0;font-size:var(--t-small)}
 .learnlist .reads{display:block;margin-top:4px;font:500 var(--t-cap) var(--mono);color:var(--mute)}.learnlist code{font:inherit;border:1px solid var(--doc-line);padding:0 4px}
@@ -852,15 +859,18 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
 <aside class="askpane" id="askpane" hidden aria-label="Ask the node">
   <div class="ah"><b>Ask the node</b><button id="askclose" aria-label="Close">×</button></div>
   <p class="amode" id="amode"></p>
-  <div class="try" id="try" aria-label="Questions to ask"></div>
-  <form class="compose" id="qform"><label class="vh" for="q">Ask the node</label>
-    <textarea id="q" rows="2" placeholder="Ask about this place, its readings, or this page"></textarea>
-    <button type="submit" id="qsend" aria-label="Ask"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M8 13V3M3.5 7.5 8 3l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></button></form>
-  <p class="hint">Enter to ask · Shift+Enter for a new line</p>
-  <div class="answer said" id="qout" role="status" aria-live="polite"></div>
-  <p class="fine">The node searches its own notes and readings first, and asks a model only if one is set up here.</p>
-  <label class="learnsw"><input type="checkbox" id="learn"> <span><b>Learn this page</b><br>Number every part of the door you are on, and say here what each one is.</span></label>
-  <ol class="learnlist" id="learnlist"></ol>
+  <label class="learnsw"><input type="checkbox" id="learn"> <span><b>Learn this page</b> · number every part of the door you are on, and say here what each one is</span></label>
+  <div class="ascroll" id="ascroll">
+    <ol class="learnlist" id="learnlist"></ol>
+    <div class="thread" id="thread" role="log" aria-live="polite"><p class="fine" id="athello">The node searches its own notes and readings first, and asks a model only if one is set up here.</p></div>
+  </div>
+  <div class="abottom">
+    <div class="try" id="try" aria-label="Questions to ask"></div>
+    <form class="compose" id="qform"><label class="vh" for="q">Ask the node</label>
+      <textarea id="q" rows="2" placeholder="Ask about this place, its readings, or this page"></textarea>
+      <button type="submit" id="qsend" aria-label="Ask"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M8 13V3M3.5 7.5 8 3l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></button></form>
+    <p class="hint">Enter to ask · Shift+Enter for a new line</p>
+  </div>
 </aside>
 
 <link rel="stylesheet" href="/static/maplibre-gl.css">

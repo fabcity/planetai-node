@@ -34,8 +34,9 @@ asks the same model every ten minutes, draws nothing and sends nothing.
 
 On the five doors, the speech-bubble icon in the header, or **Ask the node** in the foot, opens a pane on its own
 grey, so the page's paper is only ever the data. It asks the same `POST /ask`, with the door you are on as its `view`,
-and draws only the words of the answer as they arrive. It takes one question at a time with no thread, so nothing
-asked before is sent with it. It shows no ledger line, no list of reads and no cards, so a change the model reaches
+and draws only the words of the answer as they arrive. It reads like any chat: the box is at the bottom, each question
+appears as your own line with the answer under it, and the exchanges stay on screen while the tab is open. Only the
+new question is sent, never the ones before it. It shows no ledger line, no list of reads and no cards, so a change the model reaches
 for is not drawn there; make it in Set up. Type in the box and press Enter, or the arrow inside the box; Shift and
 Enter starts a new line, as the line under the box says. Above the box, three questions are offered, written by the
 node from tonight's figures (`digest.prompts` in `GET /issues`), such as "What should I know about the heat today?".

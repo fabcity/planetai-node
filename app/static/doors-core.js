@@ -387,24 +387,34 @@ function hitsHtml(hits) {
   const base = (D.health || {}).docs || 'https://planetai.fab.city/docs/';
   return `<ol class="hits">${hits.map(h => `<li><a href="${esc(base + String(h.page || '').replace(/\.md$/, '/') + (h.anchor ? '#' + h.anchor : ''))}" target="_blank" rel="noopener">${esc(h.title || h.page)}</a><p>${esc(h.snippet)}…</p></li>`).join('')}</ol>`;
 }
-async function docsAnswer(q, why) {
-  const out = $('#qout'), hits = await docsHits(q, 5);
+async function docsAnswer(q, why, out) {
+  const hits = await docsHits(q, 5);
   if (!hits) { out.textContent = WORDS.noreply; return; }
   out.innerHTML = (why ? `<p class="fine">${esc(why)}</p>` : '') + (hits.length ? hitsHtml(hits)
     : '<p>Nothing in the docs holds those words. Try other ones; the docs are in English.</p>');
 }
 /* Under a model's answer, the three sections of the docs that hold most of the question's words. */
-async function docsAfter(q) {
+async function docsAfter(q, out) {
   const hits = await docsHits(q, 3);
-  if (hits && hits.length) $('#qout').insertAdjacentHTML('beforeend', `<p class="amode">In the docs</p>${hitsHtml(hits)}`);
+  if (hits && hits.length) out.insertAdjacentHTML('beforeend', `<p class="amode">In the docs</p>${hitsHtml(hits)}`);
+}
+/* One exchange in the thread: the question as the person's own line, the answer under it, the view kept at the newest.
+   What is shown stays in this tab; only the new question is ever sent. */
+function exchange(q) {
+  const th = $('#thread'), hello = $('#athello');
+  if (hello) hello.remove();
+  th.insertAdjacentHTML('beforeend', `<div class="msg me">${esc(q)}</div><div class="msg node answer said">…</div>`);
+  const out = th.lastElementChild, sc = $('#ascroll');
+  sc.scrollTop = sc.scrollHeight;
+  return out;
 }
 $('#qform').onsubmit = async ev => {
   ev.preventDefault();
-  const q = $('#q').value.trim(), out = $('#qout'); if (!q || $('#qsend').disabled) return;
-  out.textContent = '…'; $('#qsend').disabled = true;
+  const q = $('#q').value.trim(); if (!q || $('#qsend').disabled) return;
+  const out = exchange(q); $('#q').value = ''; $('#qsend').disabled = true;
   try {
     await askMode();
-    if (MODE === 'docs') { await docsAnswer(q); ASKED.add(q); TURN += 3; return; }
+    if (MODE === 'docs') { await docsAnswer(q, '', out); ASKED.add(q); TURN += 3; return; }
     const r = await fetch('/ask', { method: 'POST', headers: { 'content-type': 'application/json', ...DOORS_AUTH() },
       body: JSON.stringify({ messages: [{ role: 'user', content: q }], view: view(), mode: 'advanced', focus: null }) });
     if (!r.ok || !r.body) throw new Error((await r.json().catch(() => ({}))).detail || `the node answered ${r.status}`);
@@ -421,10 +431,10 @@ $('#qform').onsubmit = async ev => {
       }
     }
     if (!text) throw new Error('empty');
-    out.innerHTML = `<p>${esc(text)}</p>`; await docsAfter(q);
+    out.innerHTML = `<p>${esc(text)}</p>`; await docsAfter(q, out);
     ASKED.add(q); TURN += 3;
-  } catch (e) { await docsAnswer(q, 'The model did not answer, so here is what the docs say.'); }
-  finally { $('#qsend').disabled = false; learnList(); }
+  } catch (e) { await docsAnswer(q, 'The model did not answer, so here is what the docs say.', out); }
+  finally { $('#qsend').disabled = false; learnList(); const sc = $('#ascroll'); sc.scrollTop = sc.scrollHeight; $('#q').focus(); }
 };
 
 /* The foot of every door but the Wall: what this is, where its words are, and who it belongs to. The links are the
