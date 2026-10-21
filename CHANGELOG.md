@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **The quarter-hour view takes a tenth of the time.** `recent_15m`, which the kinded rules read about nine times a
+  minute, joined its own result to itself to put temperature and humidity side by side for `apparent`. Postgres
+  guessed one sensor where node #1 has 31, chose a nested loop and compared 2.57 million pairs for 1,604 rows: 645 ms
+  on a copy of node #1's database. Both values now come from one grouping, with no join, and the same 12,116 rows
+  take 57 ms.
+
 - **The docs say what the node does after #302 to #306.** The Architecture page named a model setting,
   `UPSTREAM_MODEL_URL`, that no code ever read; it now names `AGENT_REMOTE_URL` and `AGENT_ONLINE_URL`, says a
   regional cluster joins the tailnet to count as the household's own, and says how a job already runs on another

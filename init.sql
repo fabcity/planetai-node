@@ -248,10 +248,14 @@ WITH b AS (
   GROUP BY 1, 2, 3)
 SELECT bucket, sensor_id, metric, mean FROM b
 UNION ALL
-SELECT t.bucket, t.sensor_id, 'apparent',
-       t.mean + 0.33 * (h.mean / 100.0 * 6.105 * exp(17.27 * t.mean / (237.7 + t.mean))) - 4.0
-FROM b t JOIN b h ON h.sensor_id = t.sensor_id AND h.bucket = t.bucket AND h.metric = 'humidity'
-WHERE t.metric = 'temp';
+-- temp and humidity side by side in one grouping, not b joined to itself: Postgres guessed one sensor row where node #1
+-- has 31, chose a nested loop, and compared 2.57 million pairs for 1,604 rows, 590 of the view's 645 ms, about nine
+-- times a minute (21 Oct 2026). The same rows in 57 ms.
+SELECT bucket, sensor_id, 'apparent', t + 0.33 * (h / 100.0 * 6.105 * exp(17.27 * t / (237.7 + t))) - 4.0
+FROM (SELECT bucket, sensor_id, max(mean) FILTER (WHERE metric = 'temp') AS t,
+             max(mean) FILTER (WHERE metric = 'humidity') AS h
+      FROM b WHERE metric IN ('temp', 'humidity') GROUP BY 1, 2) p
+WHERE t IS NOT NULL AND h IS NOT NULL;
 
 -- usual_by_hour: this room's own normal for each local hour, from the fourteen complete local days before today
 -- (date_trunc in the session's NODE_TZ). Today is left out on purpose: a long hot run must not raise the bar it is
