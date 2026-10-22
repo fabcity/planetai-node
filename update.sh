@@ -233,9 +233,9 @@ done < .env.example
 # every pack and needs nothing.
 #   bali-air-dispatch  Bali Air Dispatch's ring, a pack after v0.82.3          BAD_ENABLED
 #   home-assistant     Home Assistant discovery, a pack after v0.83.0          HA_DISCOVERY
-#   smartcitizen       this node's own Smart Citizen kits, after v0.83.0      SC_USER or SC_DEVICES
+#   smartcitizen       this node's own Smart Citizen kits, after v0.83.0      SC_USER, SC_DEVICES or MQTT_HOST
 pq() { docker compose exec -T db psql -U planetai -tAc "$1" planetai 2>/dev/null | tr -d '[:space:]'; }
-for moved in bali-air-dispatch:BAD_ENABLED home-assistant:HA_DISCOVERY smartcitizen:SC_USER,SC_DEVICES; do
+for moved in bali-air-dispatch:BAD_ENABLED home-assistant:HA_DISCOVERY smartcitizen:SC_USER,SC_DEVICES,MQTT_HOST; do
   pack="${moved%%:*}" on=""
   IFS=, read -r -a keys <<< "${moved#*:}"
   for key in "${keys[@]}"; do

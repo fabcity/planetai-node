@@ -195,13 +195,17 @@ packs that can switch themselves off. An official pack without a `switch:` still
 because forecast, place, surface-heat and coast have no switch of their own and would start on every node. A wild
 pack never runs code without the flag, whatever it declares.
 
-**Public stations.** **Hooks.** A code pack can also hear the node at two points, in `hooks.py`: `on_readings(sensors, readings)` after
-every batch the node stores (a poll, an MQTT message), and `on_alert(level, text, alert_id)` with every alert it records.
-They are gated like `adapter.py` (an official pack's own switch, or `PACKS_ALLOW_CODE=1`), each pack's module is loaded
-once so what it keeps lasts, and a hook that fails is logged and never stops the node's own work. `packs/home-assistant`
-is the first: it was core code until 22 October 2026.
+**Hooks.** A code pack can also hear the node, in `hooks.py`: `on_readings(sensors, readings)` after every batch the
+node stores (a poll, an MQTT message), and `on_alert(level, text, alert_id)` with every alert it records. A pack that
+reads its own devices off the node's broker names their topics in `MQTT_TOPICS = [(topic, qos)]`; the node subscribes
+to them when it connects and hands each message to `on_mqtt(topic, payload)`, which returns `(sensors, readings)` to
+store, or `None` when the message is not its own. `status()` returns keys the node merges into `/health`. They are
+gated like `adapter.py` (an official pack's own switch, or `PACKS_ALLOW_CODE=1`), each pack's module is loaded once so
+what it keeps lasts, and a hook that fails is logged and never stops the node's own work. `packs/home-assistant` was
+the first, and `packs/smartcitizen` reads `device/sck/#` this way; both were core code until 22 October 2026. A pack
+switched on while the node runs is subscribed to at its next reconnect or restart.
 
-A pack that reads a network of other people's stations around the node says so, and the node's
+**Public stations.** A pack that reads a network of other people's stations around the node says so, and the node's
 "Air stations nearby" source, `GET /nearby` and the ring's footprint read it instead of naming a network:
 
 ```yaml

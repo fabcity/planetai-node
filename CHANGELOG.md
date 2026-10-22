@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **The kits that publish straight to the node are read by the Smart Citizen pack too.** The `device/sck/#` parser,
+  what it keeps per device, the forward to smartcitizen.me (`SC_FORWARD`) and `/health`'s `direct` key moved out of
+  `app/main.py` and `app/sources.py` into `packs/smartcitizen/hooks.py`, unchanged, so the `sck-` ids and the
+  `smartcitizen-direct` source carry on. The core names no Smart Citizen topic now. A pack's `hooks.py` can
+  declare `MQTT_TOPICS`; the node subscribes to them and hands each message to the pack's `on_mqtt`, and merges its
+  `status()` into `/health`. The direct path ran whenever a broker was set, so the pack's switch adds `MQTT_HOST`, and
+  `planetai update` adds `smartcitizen` to a listed `PACKS_ENABLED` on a node with a broker and no kit.
+
 - **The source registry is pinned at `5003e9f`.** awesome-fabcity-data #91 changed Smart Citizen's entry to
   `adapter: pack:smartcitizen`, after the cloud adapter became a pack (#316). The snapshot in `data/sources/` follows;
   275 entries, nothing else changed.

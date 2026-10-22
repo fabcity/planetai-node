@@ -6,8 +6,9 @@ this was app/sources.py. The sensor ids (`sc-<kit>`), the source name (`smartcit
 so a node's history carries on. Which kits in an account are the node's own stays in the core
 (sources.smartcitizen_account), because packs/bali-air-dispatch and packs/nearby ask it too.
 
-It runs whenever a kit is configured: `switch: [SC_USER, SC_DEVICES]` in pack.yaml, on when either is set. The kits
-that publish straight to this node's broker (device/sck/#) are still read by the core.
+It runs whenever a kit is configured or a broker is set: `switch: [SC_USER, SC_DEVICES, MQTT_HOST]` in pack.yaml, on
+when any is set. With no kit listed it asks the API nothing. The kits that publish straight to this node's broker
+(device/sck/#) are read by hooks.py, beside this.
 
 Contract: fetch(hc) -> (sensors, readings), like everything in app/sources.py.
 """

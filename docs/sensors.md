@@ -45,7 +45,7 @@ EPA 2021 correction applied, raw kept as `pm25_raw`.
 **Meshtastic** (`planetai meshtastic`). Telemetry from radios via the gateway's MQTT uplink. `MESH_INDOOR_NODES` marks the
 indoor ones. DIY pods publish to `planetai/sensors/<id>/<metric>` on the same broker.
 
-**DIY nodes, direct** (`planetai broker`). A Making Sense Bali DIY node (its v4 portal asks where to publish) sends the
+**DIY nodes, direct** (`planetai broker`, read by the `smartcitizen` pack's `hooks.py` since 22 October 2026). A Making Sense Bali DIY node (its v4 portal asks where to publish) sends the
 platform's own topics and bytes to this node's Mosquitto: `device/sck/<token>/readings`, plus a retained `meta` message
 with the name, the site, the mounting height and whether it is indoors. The parser also reads a Smart Citizen Kit's
 `readings/raw` (`{t:...,55:28.3}`, what `mqtt -host <node> -port 1883` in the kit's shell would send), but the kit's
