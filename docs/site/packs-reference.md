@@ -216,23 +216,27 @@ function, `verdicts()`, decides, and `nearby`'s scripts and `GET /nearby?audit=1
 
 Reads this node's own Smart Citizen kits from api.smartcitizen.me: the ones listed by id (`SC_DEVICES`), and the
 ones in the household's account (`SC_USER`) that published in the last three days, less `SC_EXCLUDE`. Every one is
-the house's own, so every one is stored `local`, indoor or outdoor from the kit's own `exposure`.
+the house's own, so every one is stored `local`, indoor or outdoor from the kit's own `exposure`. And the kits and
+DIY nodes that publish straight to this node's broker (`device/sck/#`, set up with `planetai broker`), stored as
+`sck-<hash>` with source `smartcitizen-direct`, and passed on to smartcitizen.me for the tokens in `SC_FORWARD`.
 
 | | |
 |---|---|
-| Kind | code, on whenever a kit is configured (`switch: [SC_USER, SC_DEVICES]`) |
+| Kind | code, on whenever a kit is configured or a broker is set (`switch: [SC_USER, SC_DEVICES, MQTT_HOST]`) |
 | Domain | `air` |
 | Requires node | `>=0.83.0` |
 | Sources | `environmental/community/smart-citizen` |
-| Needs | network to `api.smartcitizen.me` |
+| Needs | network to `api.smartcitizen.me`, and to `mqtt.smartcitizen.me:8883` for the tokens in `SC_FORWARD` |
 | Rules and cells | none: `air-quality` and `heat` decide what the readings mean |
 
-The sensor ids are `sc-<kit>` and the source is `smartcitizen`, as they were in the core until 22 October 2026,
-so a node's history carries on. Its three settings stay under Set up → Sources, where a household sets up its kits.
-Which kits in an account are the node's own stays in the core (`sources.smartcitizen_account`), because
-`bali-air-dispatch` and `nearby` ask it too. Kits that publish straight to the node's broker (`device/sck/#`) are
-still read by the core. On `planetai update`, a node that lists its packs in `PACKS_ENABLED` and has `SC_USER` or
-`SC_DEVICES` set gets `smartcitizen` added to the list, so it keeps reading its kits.
+The sensor ids are `sc-<kit>` and the source is `smartcitizen`, as they were in the core until 22 October 2026, and
+the direct path keeps its `sck-` ids and its `direct` key in `/health`, so a node's history carries on. Its three
+settings stay under Set up → Sources, where a household sets up its kits, and `SC_FORWARD` under Sharing, because it
+changes what leaves the house. Which kits in an account are the node's own stays in the core
+(`sources.smartcitizen_account`), because `bali-air-dispatch` and `nearby` ask it too. The direct path is `hooks.py`:
+the node subscribes to its `MQTT_TOPICS` and hands it every message on them. On `planetai update`, a node that lists
+its packs in `PACKS_ENABLED` and has `SC_USER`, `SC_DEVICES` or `MQTT_HOST` set gets `smartcitizen` added to the
+list, so it keeps reading its kits.
 
 ## home-assistant
 

@@ -247,7 +247,8 @@ def _official_on(d: Path) -> bool:
     the flag's meaning over for all of them at once would start forecast, place and surface-heat on every node.
 
     `switch:` may also be a list of keys, on when any of them is set and not 0: packs/smartcitizen runs whenever a kit
-    is configured (SC_USER or SC_DEVICES), as it did in the core, so no node needs a new key to keep its kits."""
+    is configured or a broker is set (SC_USER, SC_DEVICES or MQTT_HOST), as it did in the core, so no node needs a new
+    key to keep its kits."""
     import settings
     sw = _manifest(d).get("switch")
     if (d / ".wild").is_file():
@@ -273,8 +274,11 @@ def stations() -> list[dict]:
     return out
 
 
-# Hooks: a code pack's `hooks.py` hears what the node does, at two points. `on_readings(sensors, readings)` after every
-# batch the node stores (a poll, an MQTT message), and `on_alert(level, text, alert_id)` with every alert it sends.
+# Hooks: a code pack's `hooks.py` hears what the node does. `on_readings(sensors, readings)` after every batch the node
+# stores (a poll, an MQTT message), and `on_alert(level, text, alert_id)` with every alert it sends. A pack that reads
+# its own devices off the node's broker names their topics in MQTT_TOPICS, [(topic, qos)]; the node subscribes to them
+# when it connects and hands each message to `on_mqtt(topic, payload)`, which returns (sensors, readings) to store or
+# None. `status()` returns keys to merge into /health (packs/smartcitizen: `direct`).
 # Gated like an adapter: PACKS_ALLOW_CODE, or an official pack's own switch. Each pack's module is loaded once per
 # process, so what it keeps (packs/home-assistant: the entities it has announced) lasts; which packs are on is read
 # again every minute, because emit runs on every MQTT message.
@@ -304,15 +308,31 @@ def _hook_modules() -> list:
     return on
 
 
-def emit(name: str, *args) -> None:
-    """Call `name` in every pack that has it. A pack that fails is logged and never stops the node's own work."""
+def collect(name: str, *args) -> list:
+    """Call `name` in every pack that has it and keep what each returns, less None. A pack that fails is logged and
+    never stops the node's own work."""
+    out = []
     for pack, mod in _hook_modules():
         fn = getattr(mod, name, None)
         if callable(fn):
             try:
-                fn(*args)
+                got = fn(*args)
             except Exception as e:  # noqa: BLE001
                 log.warning("pack %s: %s failed (%s)", pack, name, type(e).__name__)
+                continue
+            if got is not None:
+                out.append(got)
+    return out
+
+
+def emit(name: str, *args) -> None:
+    collect(name, *args)
+
+
+def mqtt_topics() -> list[tuple[str, int]]:
+    """The broker topics the packs that are on read their devices from. Read when the node connects, so a pack
+    switched on later is subscribed at the next reconnect or restart."""
+    return [tuple(t) for _, mod in _hook_modules() for t in getattr(mod, "MQTT_TOPICS", [])]
 
 
 def adapters(hc):

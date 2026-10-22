@@ -3,7 +3,8 @@
 Smart Citizen left the core on 22 Oct 2026. What must not change is what a node stores: `sc-<kit>`, source
 `smartcitizen`, local, indoor or outdoor from the kit's exposure, the same metric names. And no node may miss a reading:
 the pack has no on/off key of its own, so its switch is the condition the core used, a kit configured (SC_USER or
-SC_DEVICES), and a node that lists its packs gets it added by update.sh.
+SC_DEVICES) or a broker set (MQTT_HOST, for the kits that publish straight to it), and a node that lists its packs gets
+it added by update.sh.
 
     PACKS_DIR=packs PYTHONPATH=app python3 tests/test_smartcitizen.py
 """
@@ -71,11 +72,12 @@ print("smartcitizen: SC_DEVICES plus the account's recent kits, less SC_EXCLUDE"
 # ---- 3. the switch is the core's old condition: a kit configured, with no PACKS_ALLOW_CODE
 d = packs.PACKS_DIR / "smartcitizen"
 for keys, want in (({"SC_USER": "tomasdiez"}, True), ({"SC_DEVICES": "19880"}, True), ({}, False),
-                   ({"SC_USER": "", "SC_DEVICES": "0"}, False)):
-    ROWS.update(SC_USER="", SC_DEVICES=""); ROWS.update(keys)
+                   ({"SC_USER": "", "SC_DEVICES": "0"}, False), ({"MQTT_HOST": "mosquitto"}, True)):
+    ROWS.update(SC_USER="", SC_DEVICES="", MQTT_HOST=""); ROWS.update(keys)
     assert packs._official_on(d) is want, (keys, want)
 assert not packs._official_on(packs.PACKS_DIR / "forecast"), "a pack with no switch still waits for PACKS_ALLOW_CODE"
-print("smartcitizen: on whenever a kit is configured, with no PACKS_ALLOW_CODE; off with none")
+ROWS["MQTT_HOST"] = ""
+print("smartcitizen: on whenever a kit is configured or a broker is set, with no PACKS_ALLOW_CODE; off with neither")
 
 # ---- 4. no missed reading: the poll still reads the kits, through the same sources.enabled() the core polls with
 ROWS.update(SC_DEVICES="19880", SC_USER="")
@@ -115,6 +117,8 @@ assert "PACKS_ENABLED=air-quality,heat,smartcitizen" in db, db
 assert run(db, "")[0] == db, "a second update changed the list again"
 _, env = run("", "SC_DEVICES=19880,19236\n" + LIST)
 assert "PACKS_ENABLED=air-quality,heat,smartcitizen" in env, env
+_, env = run("", "MQTT_HOST=mosquitto\n" + LIST)
+assert "PACKS_ENABLED=air-quality,heat,smartcitizen" in env, "a node with a broker and no kit keeps its direct path"
 db, env = run(LIST, LIST)
 assert "smartcitizen" not in db + env, "added with no kit configured"
 # node #1's own shape: an account, a Set up list of twenty, Bali Air Dispatch already in it
@@ -122,4 +126,22 @@ node1 = "SC_USER=tomasdiez\nBAD_ENABLED=1\nHA_DISCOVERY=0\nPACKS_ENABLED=air-qua
 db, _ = run(node1, "PACKS_ENABLED=\n")
 assert "PACKS_ENABLED=air-quality,coast,heat,bali-air-dispatch,smartcitizen" in db, db
 print("update.sh 5b: smartcitizen added where a kit is configured and the node lists its packs, once; never without a kit")
+# ---- 6. the direct path: the node subscribes to the pack's topics and stores what its on_mqtt returns
+TOKEN = "a1b2c3"
+DIY = b'{"data":[{"recorded_at":"2026-10-22T04:10:00Z","sensors":[{"id":237,"value":28.3},{"id":234,"value":9}]}]}'
+ROWS.update(SC_USER="", SC_DEVICES="", MQTT_HOST="mosquitto", HA_DISCOVERY="0"); packs._HOOKS["at"] = 0
+assert packs.mqtt_topics() == [("device/sck/#", 1)], packs.mqtt_topics()
+got = packs.collect("on_mqtt", f"device/sck/{TOKEN}/readings", DIY)
+assert len(got) == 1 and {m for _, _, m, _ in got[0][1]} == {"temp", "pm25"}, got
+assert got[0][0][0]["source"] == "smartcitizen-direct" and got[0][0][0]["sensor_id"].startswith("sck-"), "the same ids as in the core"
+assert packs.collect("on_mqtt", "msh/x/2/json/LongFast/!a1", b"{}") == [], "a topic no pack reads stores nothing"
+os.environ["MQTT_HOST"] = "mosquitto"
+merged = {k: v for d in packs.collect("status") for k, v in d.items()}
+assert merged["direct"]["messages"] == 1 and merged["direct"]["devices"] == 1, merged
+ROWS["MQTT_HOST"] = ""; os.environ.pop("MQTT_HOST"); packs._HOOKS["at"] = 0
+assert packs.mqtt_topics() == [] and packs.collect("on_mqtt", f"device/sck/{TOKEN}/readings", DIY) == [], "off: no topic, no dispatch"
+src = open("app/main.py").read()
+assert "device/sck" not in src.replace("packs/smartcitizen: device/sck/#", ""), "the core names no Smart Citizen topic"
+assert 'packs.collect("on_mqtt"' in src and "packs.mqtt_topics()" in src and 'packs.collect("status")' in src
+print("smartcitizen: device/sck/# subscribed, stored and counted through the pack, and only while it is on")
 print("smartcitizen: every check passed")
