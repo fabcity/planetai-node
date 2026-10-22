@@ -266,8 +266,8 @@ A pack that adds a metric says what it is, keyed on `(source, metric)`:
 
 Roles are `ambient`, `enclosure`, `device_health`, `derived`, `index` and `private`, defined on the
 [sensors](sensors.md) page. The core's `config/channels.yml` is read first; a pack may not redeclare a pair the core
-already claimed, and the duplicate is logged and dropped. A pack that adds no metric ships `channels.yml` as `[]`
-to say so, as `trust` does.
+already claimed, and the duplicate is logged and dropped. A pack that adds no metric may ship `channels.yml` as `[]`
+to say so.
 
 ## Code packs: adapters
 

@@ -1,7 +1,7 @@
 # Packs that ship
 <!-- checked: v0.83.0 -->
 
-The twenty-three core packs in `packs/`, nine data and fourteen code, hold everything the node knows about a place, and no
+The twenty-two core packs in `packs/`, eight data and fourteen code, hold everything the node knows about a place, and no
 rule in `app/` says what PM2.5 means for a household or where the nearest fab lab is. For each pack this page
 says what it reads, what it says, its rules and where each threshold comes from, its settings, and what it does
 not know. How a pack is built and loaded is on [Packs](packs.md). Wild packs, such as `xiaomi-air` and
@@ -24,7 +24,6 @@ A pack is `code` when its folder has an `adapter.py`, and code packs load only w
 | `nearby` | data | air | 1 act, 1 info | `alone` | | `stations` `status` `verify` `backfill` | `BAD_BACKFILL_DAYS`; the ring's are `bali-air-dispatch`'s |
 | `season` | data | air | 1 info | `record` | | `window` | |
 | `insight` | data | cross-domain | 2 info | `digest` | | | |
-| `trust` | data | cross-domain | 3 info | | | | |
 | `cold-start` | data | cross-domain | 3 info | | | | |
 | `forecast` | code | weather | none | `ahead` | | `fetch` `status` `verify` `windfield` | `FORECAST_*` |
 | `coast` | code | coast | 2 info | | 1 | | `COAST_MAX_KM` |
@@ -435,47 +434,6 @@ those readings. The rule names no cause for the bad hours, because the one kit w
 loud hours were the clean ones. The README's pooled correlations (r = 0.55 indoor to outdoor) are kept for the
 record; measured pairwise, one indoor kit against one outdoor kit 1.3 km apart gives r = 0.20, and the pairwise
 figure is the one to use.
-
-## trust
-
-Whether the node's own sensors are telling it the truth: coverage over the last week, channels that have
-stopped changing under a kit that still reports, and collocated sensors that disagree about the level.
-
-| | |
-|---|---|
-| Kind | data |
-| Domain | `cross-domain` |
-| Requires node | `>=0.35.0` |
-| Scales | community |
-| Needs | local sensors with at least seven days of readings on this node |
-| Scripts | none |
-| Settings | none |
-| Cells | none: a trust score is a fact about the node's instruments, and a cell for it would invite tuning the score instead of fixing the sensor |
-
-Every rule joins the same `seasoned` gate, a sensor whose first reading in the last 30 days is more than seven
-days old, because a day says more about the weather than about the instrument. All three rules are `info`
-with a seven-day cooldown, so the pack speaks in the week's instrument paragraph and never interrupts an
-evening. `channels.yml` is present and empty: the pack declares no metric of its own.
-
-### Rules
-
-| rule | level | cooldown | fires when |
-|---|---|---|---|
-| `channel_dead` | info | 10080 | a local `kind='sensor'` channel with role `ambient` or `enclosure` has all 24 of the last 24 hourly buckets present and flat (`max − min = 0`), the flat value is not 0, the kit reported within 2 hours, and another ambient channel on the same kit moved |
-| `coverage_low` | info | 10080 | a seasoned local ambient comparable channel reported for under 60% of the 168 hours in 7 days |
-| `peer_disagreement` | info | 10080 | two seasoned local ambient comparable sensors within 50 m, each with at least 100 buckets in 7 days, have a 7-day mean ratio outside 0.85 to 1.15 and an absolute difference at or above a per-metric floor (5.0 for `pm1`, `pm25`, `pm10`; 2.0 for `temp`; 5.0 for `humidity`; 0.3 kPa for `pressure`; else 15% of the pair mean). One row per pair, `sensor_id = a\|b` |
-
-`channel_dead` reads values, not timestamps, because Smart Citizen's per-reading `recorded_at` is null and a
-frozen channel still gets a fresh timestamp on every poll. A full day of flat buckets is longer than any
-night, so a light channel at dusk does not trip it. The PM floor in `peer_disagreement` is Plantower's own
-±10 µg/m³ below 100 µg/m³, halved.
-
-### What it does not know
-
-`peer_disagreement` cannot tell a badly sited sensor from a badly calibrated one, which is why its message asks
-the reader to swap the two units for a day instead of naming the wrong one. The pack does not see PurpleAir's
-`channel_disagreement` or Meshtastic's `altitude_m`, which never gets a role. None of the thresholds has met a
-burn season.
 
 ## cold-start
 

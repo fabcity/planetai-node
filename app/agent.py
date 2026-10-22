@@ -80,7 +80,7 @@ def health_check() -> dict:
     fresh = dumps and (datetime.now(timezone.utc) - datetime.fromtimestamp(dumps[-1].stat().st_mtime, timezone.utc)) < timedelta(days=2)
     chk("a backup in the last 2 days", fresh, "run `planetai backup` on the node and check `crontab -l | grep backup`")
     # judge each local sensor by whether its ambient channels are still moving, not by its timestamp: a dead
-    # channel's kit keeps stamping fresh times over the same frozen value (see packs/trust/rules.yml, channel_dead)
+    # channel's kit keeps stamping fresh times over the same frozen value (see config/rules.yml, trust/channel_dead)
     try:
         trust = _get("/trust")
     except Exception as e:  # noqa: BLE001 — this check's own fetch must not take down every other check below it

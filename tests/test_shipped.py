@@ -251,9 +251,9 @@ assert "DELETE FROM channel_roles" in _load
 
 # v0.35 — the trust pack. Node #1 held a kit at 3% coverage reporting a timestamp four minutes old, and three
 # collocated indoor kits where one read 1.5x the other two. Nothing said so.
-_trust = {r["id"]: r for r in yaml.safe_load(open("packs/trust/rules.yml"))}
+_trust = {r["id"].split("/", 1)[1]: r for r in yaml.safe_load(open("config/rules.yml")) if r["id"].startswith("trust/")}
 assert set(_trust) == {"channel_dead", "coverage_low", "peer_disagreement"}, "three rules, no more"
-assert not _os.path.exists("packs/trust/cells.yml"), "a trust score is never an Index cell"
+assert not _os.path.exists("packs/trust"), "trust is core since 22 Oct 2026, and a trust score is never an Index cell"
 assert "60" in _trust["coverage_low"]["sql"], "coverage_low's floor is 60% of the last 7 days"
 assert "50" in _trust["peer_disagreement"]["sql"], "collocation is 50 m"
 assert "0.85" in _trust["peer_disagreement"]["sql"] and "1.15" in _trust["peer_disagreement"]["sql"]
@@ -271,7 +271,31 @@ assert "last_flat_bucket" not in _trust["channel_dead"]["sql"], "the 'frozen rig
 for _r in _trust.values():
     assert set(_r["message"]) >= {"en", "id"}, "every alert speaks English and Indonesian"
     assert "µg" not in _r["message"]["en"], "statistics stay out of alert messages"
-print("the trust pack ships three rules and no cells")
+print("trust ships three core rules and no cells")
+
+# update.sh step 5c: trust leaves a node's pack lists, since its rules are the core's now, and a list that named only
+# trust stays, because an emptied list means every pack. Run the step as update.sh runs it, under set -euo pipefail.
+import subprocess as _sp, tempfile as _tf
+_u = open("update.sh").read()
+_step = _u[_u.index("# 5c."):_u.index("# 6. rebuild and restart")]
+_STUB = r"""
+pq() {   # the settings table, as a key=value file
+  if [[ "$1" == SELECT* ]]; then k="$(sed -E "s/.*key = '([A-Z_]+)'.*/\1/" <<< "$1")"; sed -n "s/^${k}=//p" "$DB"
+  else v="$(sed -E "s/.*SET value = '([^']*)'.*/\1/" <<< "$1")"; sed -i.bak "s/^PACKS_ENABLED=.*/PACKS_ENABLED=${v}/" "$DB"; rm -f "$DB.bak"; fi
+}
+"""
+def _5c(db, env):
+    with _tf.TemporaryDirectory() as t:
+        open(f"{t}/db", "w").write(db); open(f"{t}/.env", "w").write(env)
+        _sp.run(["bash", "-c", "set -euo pipefail\n" + _STUB + _step], cwd=t, env={**_os.environ, "DB": f"{t}/db"},
+                capture_output=True, text=True, check=True)
+        return open(f"{t}/db").read(), open(f"{t}/.env").read()
+assert _5c("PACKS_ENABLED=air-quality,trust,heat\n", "PACKS_ENABLED=trust,heat # mine\n") == \
+    ("PACKS_ENABLED=air-quality,heat\n", "PACKS_ENABLED=heat\n")
+assert _5c("PACKS_ENABLED=trust\n", "PACKS_ENABLED=\n") == ("PACKS_ENABLED=trust\n", "PACKS_ENABLED=\n"), "trust alone stays"
+assert _5c("PACKS_ENABLED=heat\n", "OTHER=1\n") == ("PACKS_ENABLED=heat\n", "OTHER=1\n"), "nothing to do, nothing done"
+assert _5c("", "") == ("", ""), "a node with no list at all"
+print("update.sh 5c: trust leaves the pack lists, and a list of only trust stays")
 
 # v0.35 — the rhythm rule told households the evening PM peak was "the burning and the traffic". The noise channel
 # we already store says otherwise: r(pm25, noise) = -0.24 at node #1, and the loud hours are the clean ones.
@@ -296,9 +320,11 @@ print("the trust card and its health check are wired")
 # readings in the last 2 hours). Without it, a sensor gone fully dark that happened to be flat before it died
 # reads as "1 channel frozen" on the card, and the health check's fix text calls it a kit that "still reports" —
 # both false for a sensor that is simply offline.
-assert "alive AS (\n          SELECT sensor_id, max(ts) AS kit_ts FROM readings\n          WHERE ts > now() - interval '2 hours'" in main, \
-    "/trust must join the same 'alive' CTE channel_dead uses (2-hour freshness gate), or a dead kit reads as a merely frozen channel"
-assert "JOIN alive a USING (sensor_id)" in main, "frozen_channels must be gated by the kit still being alive, not just by the flat hours"
+# 22 Oct 2026: it had drifted again, still counting six flat hours out of 24 after channel_dead moved to a full day.
+# /trust now runs channel_dead's own SQL, so the alive gate and every other condition are the rule's, by construction.
+assert 'if r["id"] == "trust/channel_dead")' in main and "AS channel_dead GROUP BY 1" in main, \
+    "/trust counts frozen channels with trust/channel_dead's own SQL, never a copy of it"
+assert "JOIN alive a USING (sensor_id)" in _trust["channel_dead"]["sql"], "frozen_channels must be gated by the kit still being alive"
 # v0.33.8 — the heat rule fired on Kuta Selatan's ordinary weather: node #1's hot room was over 32 °C apparent for
 # 86% of every reading, so 32 was its baseline, not an event. The line is 35 for the rule and 32 for the cell (a
 # count of exposure is not an interruption), and the alert texts must not move without Tomas. 9 October: they
@@ -350,7 +376,7 @@ print("the ground is drawn from the node's own coordinates and the caption is on
 # they sent node #1's household three warnings on Telegram, all wrong, and would have sent them again every
 # evening. The fault under all three: a statement about an instrument needs a week. Every rule now joins
 # `seasoned`, so a sensor with under seven days of readings on this node is never named.
-_trust = {r["id"]: r for r in yaml.safe_load(open("packs/trust/rules.yml"))}
+_trust = {r["id"].split("/", 1)[1]: r for r in yaml.safe_load(open("config/rules.yml")) if r["id"].startswith("trust/")}
 for _id in ("channel_dead", "coverage_low", "peer_disagreement"):
     assert "HAVING min(ts) < now() - interval '7 days'" in _trust[_id]["sql"], \
         f"{_id}: a sensor with under a week of readings here is never named"
@@ -377,7 +403,7 @@ else:
     # that never runs the SQL.
     assert trustdb.Node(trustdb.week(_real, _at)).run(_trust["peer_disagreement"], _at), \
         "given a week, the rules must still be able to speak — otherwise this test proves nothing"
-    print("the trust pack says nothing about a sensor younger than a week")
+    print("trust says nothing about a sensor younger than a week")
 
     # channel_dead, over Ungasan Kit's real light series (5-7 September): 0 from dusk to dawn, eleven flat hours
     # ending in the latest bucket, then 4 -> 1259 lux through the day. The v0.35 rule matched it at 21:14 with

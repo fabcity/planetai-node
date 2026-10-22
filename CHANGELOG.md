@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Trust is core, and the trust card stopped calling a working sensor frozen at night.** The three rules that
+  say whether the node's own sensors can be believed moved out of the `trust` pack to the end of `config/rules.yml`, with
+  the same ids (`trust/channel_dead`, `trust/coverage_low`, `trust/peer_disagreement`), so every alert already sent
+  keeps its cooldown and its history. `GET /trust` kept its own copy of the frozen test, still the old six flat hours
+  out of 24, and on node #1 it called Backyard (SCK)'s light channel frozen after ten dark hours; it now runs
+  `trust/channel_dead`'s own SQL, so the card and the alert say the same. `planetai update` takes `trust` out of a
+  listed `PACKS_ENABLED`, unless it was the only pack listed. The section moved from Packs that ship to Alerts.
+  Twenty-two packs ship.
+
 - **AirGradient and PurpleAir are read again, as packs.** Their readers were core adapters until v0.16, which dropped
   them from the poll by accident while `AIRGRADIENT_HOSTS`, `PURPLEAIR_HOSTS`, `SENSOR_INDOOR` and the installer's
   `--airgradient` and `--purpleair` stayed, so a node that listed a monitor read nothing from it. They are

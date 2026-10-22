@@ -6005,7 +6005,7 @@ window.PAI.register({
 /* trust · trust · decide
  *
  * What this node doubts about its own sensors. Restored from the page this replaces, as a section
- * the trust pack registers: three rules exist (channel_dead, coverage_low, peer_disagreement) and
+ * the core registers (trust was a pack until 22 Oct 2026): three rules exist (channel_dead, coverage_low, peer_disagreement) and
  * before that card nowhere on the node's own surfaces did a person see that a kit sat at 32% of the
  * week while reporting a fresh timestamp.
  *
@@ -6025,7 +6025,7 @@ const { esc, row } = window.K;
 const T = () => window.TRUST || null;
 
 window.PAI.register({
-  id: 'trust', pack: 'trust', stage: 'decide', order: 30, learn: ['trust'],
+  id: 'trust', pack: 'core', stage: 'decide', order: 30, learn: ['trust'],
   reads: ['/trust'],
   title: 'What the node doubts about its own sensors',
   needs: ['TRUST'],

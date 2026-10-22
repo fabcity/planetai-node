@@ -1971,8 +1971,8 @@
   "trust": {
    "anchor": "trust",
    "more": "The figures here are GET /trust, one row per local sensor: its coverage over seven days, the channels that stopped moving, and how old the sensor is, which explains a low coverage without a fault.",
-   "page": "packs-reference.md",
-   "page_title": "Packs that ship",
+   "page": "alerts.md",
+   "page_title": "Alerts",
    "questions": {
     "en": [
      "Are this node's sensors telling the truth?",
@@ -1988,9 +1988,9 @@
     ]
    },
    "quote": "Whether the node's own sensors are telling it the truth: coverage over the last week, channels that have\nstopped changing under a kit that still reports, and collocated sensors that disagree about the level.",
-   "section": "trust",
+   "section": "Trust",
    "title": "Whether its own sensors tell the truth",
-   "url": "https://planetai.fab.city/docs/packs-reference/#trust"
+   "url": "https://planetai.fab.city/docs/alerts/#trust"
   },
   "wall-map": {
    "anchor": "what-it-shows",

@@ -184,7 +184,7 @@ The latest value of each slow source and metric, such as a city statistic, a mod
 ### GET /trust
 Access: open
 
-One row per local sensor for the trust card, by `packs/trust/rules.yml`: `{sensor_id, name, coverage_7d, frozen_channels, age_hours}`. `coverage_7d` is the share of the last 168 hours it reported in, and `frozen_channels` counts channels flat for 6 of the last 24 hours while the kit still talks.
+One row per local sensor for the trust card: `{sensor_id, name, coverage_7d, frozen_channels, age_hours}`. `coverage_7d` is the share of the last 168 hours it reported in, and `frozen_channels` is how many of its channels the core rule `trust/channel_dead` names right now, from that rule's own SQL (a full day flat while the kit still talks, see [Alerts](alerts.md#trust)).
 
 ### GET /history
 Access: open

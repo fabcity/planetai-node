@@ -201,7 +201,7 @@ own code.
   out/                   what pack scripts write: land-change maps, timelapses, mapping briefs, the kept map (out/ground/)
   out/captures/          the household's pictures, unless CAPTURES_DIR says elsewhere
   packs/                 the rules; add a folder to add a domain
-  config/rules.yml       the two domain-blind core rules
+  config/rules.yml       the two domain-blind core rules and trust's three
   data/                  the pinned source registry and the platform floors, mounted read-only
   .planetai-release      signed or unsigned, and when, for the last install or update
   .planetai-setup.log    what setup and the CLI did

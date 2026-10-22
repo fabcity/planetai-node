@@ -209,7 +209,7 @@ MARKS = [
      "Each row is one kind of source, with the oldest and newest hourly mean this node holds for it, "
      "from GET /reach. The climate normals the node pulled at install are dated years before it was "
      "switched on; its own sensors start on the day they were first polled."),
-    ("trust", "Whether its own sensors tell the truth", "packs-reference.md", "trust",
+    ("trust", "Whether its own sensors tell the truth", "alerts.md", "Trust",
      "Whether the node's own sensors are telling it the truth", "disagree about the level.",
      "The figures here are GET /trust, one row per local sensor: its coverage over seven days, the "
      "channels that stopped moving, and how old the sensor is, which explains a low coverage without "

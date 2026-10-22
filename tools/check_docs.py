@@ -158,7 +158,7 @@ for doc in DOCS:
                 errs.append(f"{doc}: documents endpoint `{ep}`, which app/main.py does not define")
 
     for pk in set(re.findall(r"`packs/([a-z0-9-]+)/", text)) | set(re.findall(r"\bpacks/([a-z0-9-]+)\b", text)):
-        if pk not in PACKS and pk not in EXAMPLE_PACKS:
+        if pk not in PACKS and pk not in EXAMPLE_PACKS and doc != "CHANGELOG.md":   # a record: packs move, as files do
             errs.append(f"{doc}: refers to pack `{pk}`, which does not exist")
 
 # Every declared channel must be a metric some adapter actually produces. A declaration for a metric that does not
@@ -235,8 +235,8 @@ for f in sorted(glob.glob("packs/*/README.md")):
         if not re.search(rf"(?<![\d.]){re.escape(n)}(?![\d.])", body):
             errs.append(f"{f}: documents a threshold of {n}, which appears nowhere in {pack}/")
 
-if n_core_rules != 2:
-    errs.append(f"config/rules.yml has {n_core_rules} rules; docs/PACKS.md says two domain-blind core rules — check both")
+if n_core_rules != 5:
+    errs.append(f"config/rules.yml has {n_core_rules} rules; the docs say two domain-blind rules and trust's three — check both")
 
 # ---- the agent-facing layer -------------------------------------------------------------------
 # A skill is read by a machine that will act on it. Three things have to hold or it silently does not
