@@ -1,0 +1,24 @@
+id: smartcitizen
+name: Smart Citizen
+description: >-
+  This node's own Smart Citizen kits, read from api.smartcitizen.me: the ones listed by id, and the ones in the
+  household's account that published in the last three days. Every one is the house's own, indoor or outdoor from
+  the kit's own exposure.
+author: PLANETAI core (official)
+version: 1.0.0
+requires: { node: ">=0.83.0" }
+kind: code
+domain: air
+metrics: [pm25, pm10, pm1, temp, humidity, pressure, bme_iaq, gas_resistance, noise, light, eco2, tvoc]
+scales: [community]
+sources: [environmental/community/smart-citizen]
+# On whenever a kit is configured, as it was in the core: a list switch is on when any key is set and not 0
+# (docs/PACKS.md, "Code in official packs"). SC_USER, SC_DEVICES and SC_EXCLUDE stay core settings, under Set up →
+# Sources, where a household sets up its kits.
+switch: [SC_USER, SC_DEVICES]
+needs:
+  - api.smartcitizen.me
+thresholds: >-
+  None. It stores the house's own readings; the air-quality and heat packs decide what they mean.
+attribution: >-
+  Smart Citizen, smartcitizen.me (Fab Lab Barcelona, IAAC).

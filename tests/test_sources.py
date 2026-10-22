@@ -10,18 +10,8 @@ class HC:
     def __init__(s, j): s.j = j
     def get(s, url, timeout=None): return R(s.j)
 
-sc = {"name": "Bayu 2 - Indoor", "state": "has_published", "last_reading_at": "2026-09-02T03:11:31Z", "hardware": {"name": "Unknown"},
-      "location": {"exposure": "indoor", "latitude": -8.8271, "longitude": 115.15709},
-      "data": {"recorded_at": "2026-09-02T03:11:31Z", "sensors": [
-          {"id": 234, "measurement": {"name": "PM2.5"}, "value": 7.0}, {"id": 237, "measurement": {"name": "Air Temperature"}, "value": 30.4},
-          {"id": 238, "measurement": {"name": "Relative Humidity"}, "value": 63.5}, {"id": 241, "measurement": {"name": "AQI"}, "value": 55},
-          {"id": 999, "measurement": {"name": "Unknown"}, "value": 1}]}}
-s, r = sources.smartcitizen(HC(sc), [19880])
-assert s[0]["sensor_id"] == "sc-19880" and s[0]["indoor"] and s[0]["local"]
-# the Smart Citizen "AQI" channel is `Bosch BME68X - AQI`, the BME680's own gas index, not an air quality index.
-# Stored as `aqi` it sat in the same column as IQAir's real AQI from Bali Air Dispatch.
-assert {m for _, _, m, _ in r} == {"pm25", "temp", "humidity", "bme_iaq"}
-assert "aqi" not in {m for _, _, m, _ in r}, "our kits must not publish a metric named aqi"
+# Smart Citizen's cloud fetch is packs/smartcitizen since 22 Oct 2026: tests/test_smartcitizen.py.
+
 
 ag = {"serialno": "84fce612a5b4", "rco2": 612, "pm01": 4, "pm02": 9, "pm10": 11, "atmp": 29.4, "rhum": 61, "tvocIndex": 98, "noxIndex": 1, "firmware": "3.1.9", "model": "I-9PSL"}
 s, r = sources.airgradient(HC(ag), ["airgradient_84fce6.local"], -8.65, 115.22, False)
