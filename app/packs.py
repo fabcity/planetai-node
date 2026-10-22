@@ -244,10 +244,19 @@ def _official_on(d: Path) -> bool:
     """An official pack (shipped and signed with the release, so no `.wild`) that names its own `switch:` runs its
     code when that switch is 1, without PACKS_ALLOW_CODE: decision A of the sensors spec (PR #262), for the packs that
     can be switched off by themselves. An official pack without a switch still waits for the flag, because turning
-    the flag's meaning over for all of them at once would start forecast, place and surface-heat on every node."""
+    the flag's meaning over for all of them at once would start forecast, place and surface-heat on every node.
+
+    `switch:` may also be a list of keys, on when any of them is set and not 0: packs/smartcitizen runs whenever a kit
+    is configured (SC_USER or SC_DEVICES), as it did in the core, so no node needs a new key to keep its kits."""
     import settings
     sw = _manifest(d).get("switch")
-    return not (d / ".wild").is_file() and isinstance(sw, str) and settings.get(sw, "0") == "1"
+    if (d / ".wild").is_file():
+        return False
+    if isinstance(sw, str):
+        return settings.get(sw, "0") == "1"
+    if isinstance(sw, list):
+        return any((settings.get(k, "") or "").strip() not in ("", "0") for k in sw if isinstance(k, str))
+    return False
 
 
 def stations() -> list[dict]:

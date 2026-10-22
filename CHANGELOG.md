@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Smart Citizen is a pack.** Reading this node's own kits from api.smartcitizen.me moved out of `app/sources.py`
+  into `packs/smartcitizen`, unchanged: the same `sc-<kit>` ids, the same source, the same metrics, so every node's
+  history carries on. It has no on/off key of its own, so it runs on the condition the core used, a kit configured:
+  a pack's `switch:` can now be a list of keys, on when any is set and not 0. `planetai update` adds `smartcitizen` to
+  `PACKS_ENABLED` wherever a node lists its packs and has `SC_USER` or `SC_DEVICES` set, the same step as Home
+  Assistant and Bali Air Dispatch, which now reads any key set and not 0 as on. Kits that publish straight to the node's
+  broker are still read by the core, and move next.
+
 - **Home Assistant is a pack.** The discovery entities and the latest-alert sensor moved out of the core into
   `packs/home-assistant`, unchanged, as the first step of making vendor and integration code packs
   (docs/decisions/2026-10-21-core-and-packs.md). A pack can now hear the node at two points, in `hooks.py`:

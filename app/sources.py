@@ -8,8 +8,8 @@
     readings: list of tuples (ts: datetime UTC, sensor_id, metric, value)
 
 That's the whole contract. Add a source = add a function here + register it in SOURCES.
-Core ships smartcitizen (cloud API), airgradient (LAN), purpleair (LAN) and the global models; a network of public
-stations comes as a pack (packs/bali-air-dispatch is the first).
+Core ships airgradient (LAN), purpleair (LAN) and the global models. A vendor's cloud comes as a pack
+(packs/smartcitizen), and so does a network of public stations (packs/bali-air-dispatch).
 See docs/sensors.md to add another.
 """
 from __future__ import annotations
@@ -88,18 +88,8 @@ def stamp_local(sensors: list[dict], lat: float, lon: float, radius_m: float) ->
 
 
 # ---------------------------------------------------------------- Smart Citizen
-# Map on measurement *name*, not sensor id — ids change between kit generations (2.1 vs 2.3), names don't.
-SC_METRICS = {
-    "PM2.5": "pm25", "PM10": "pm10", "PM1": "pm1",
-    "Air Temperature": "temp", "Relative Humidity": "humidity", "Barometric Pressure": "pressure",
-    # `Bosch BME68X - AQI` is the BME680's own gas index, not an air quality index. Bali Air Dispatch's IQAir rows
-    # publish a real `aqi`; keeping both under one name made an average of two different quantities.
-    "AQI": "bme_iaq",
-    "Gas Resistance": "gas_resistance", "Noise Level": "noise", "Light": "light",
-    "eCO2": "eco2", "TVOC": "tvoc",
-}
-
-
+# The cloud fetch is packs/smartcitizen since 22 Oct 2026. This stays: which kits in an account are this node's own,
+# which packs/bali-air-dispatch and packs/nearby ask too.
 def smartcitizen_account(hc: httpx.Client, user: str, max_age_days: int = 3, exclude: set[int] | None = None) -> list[int]:
     """The kits in a Smart Citizen account that have published recently. They are yours: every one is local, indoor
     or outdoor from the API's `exposure` field. Distance never decides ownership — an outdoor kit up the road is your
@@ -110,36 +100,6 @@ def smartcitizen_account(hc: httpx.Client, user: str, max_age_days: int = 3, exc
     return [int(d["id"]) for d in r.json().get("devices") or []
             if d.get("state") == "has_published" and (_iso(d.get("last_reading_at")) or cutoff) > cutoff
             and int(d["id"]) not in (exclude or set())]
-
-
-def smartcitizen(hc: httpx.Client, device_ids: list[int]):
-    """Every kit here is yours (listed by id or discovered from your account), so every one is local. Indoor or
-    outdoor comes from the kit's own `exposure` field, which is what the rules use to tell the house from the street."""
-    sensors, readings = [], []
-    for did in device_ids:
-        r = hc.get(f"https://api.smartcitizen.me/v0/devices/{did}")
-        r.raise_for_status()
-        d = r.json()
-        data = d.get("data") or {}
-        loc = d.get("location") or data.get("location") or {}
-        ts = _iso(data.get("recorded_at") or d.get("last_reading_at"))
-        sid = f"sc-{did}"
-        sensors.append({
-            "sensor_id": sid, "source": "smartcitizen", "name": d.get("name") or sid,
-            "lat": loc.get("latitude"), "lon": loc.get("longitude"),
-            "indoor": (loc.get("exposure") == "indoor"),
-            "local": True,
-            "meta": {"hardware": (d.get("hardware") or {}).get("name"), "state": d.get("state"),
-                     "url": f"https://smartcitizen.me/kits/{did}"},
-        })
-        if ts is None:
-            continue
-        for s in data.get("sensors") or []:
-            m = s.get("measurement") or {}
-            metric = SC_METRICS.get(m.get("name") if isinstance(m, dict) else m)
-            if metric and s.get("value") is not None:
-                readings.append((ts, sid, metric, float(s["value"])))
-    return sensors, readings
 
 
 # ---------------------------------------------------------------- AirGradient (LAN, no cloud)
@@ -211,16 +171,6 @@ def enabled(hc: httpx.Client):
     """Yield (name, fetch) for every configured source. Failures are per-source, never fatal.
     Core adapters first, then any from packs, core and wild (docs/PACKS.md)."""
     out = []
-    ids = {int(x) for x in settings.get("SC_DEVICES", "").replace(" ", "").split(",") if x}
-    if settings.get("SC_USER", "").strip():
-        try:
-            exclude = {int(x) for x in settings.get("SC_EXCLUDE", "").replace(" ", "").split(",") if x}
-            ids |= set(smartcitizen_account(hc, settings.get("SC_USER").strip(), exclude=exclude))
-        except Exception as e:  # noqa: BLE001
-            import logging; logging.getLogger("planetai").warning("smartcitizen account discovery failed: %s", e)
-    ids = sorted(ids)
-    if ids:
-        out.append(("smartcitizen", lambda: smartcitizen(hc, ids)))
     if settings.get("OPENMETEO_ENABLED", "1") == "1" and os.getenv("NODE_LAT"):
         _lat, _lon = float(os.environ["NODE_LAT"]), float(os.environ["NODE_LON"])
         out.append(("open-meteo", lambda: openmeteo(hc, _lat, _lon)))

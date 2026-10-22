@@ -1,7 +1,7 @@
 # Packs
 
 A pack is a folder in `packs/`. It carries rules, Index cells, or an adapter for a new source. The core knows nothing
-about air, water or heat; the packs do. Twenty ship in `packs/`.
+about air, water or heat; the packs do. Twenty-one ship in `packs/`.
 
 ```
 packs/<id>/
@@ -181,6 +181,13 @@ names its own on-switch runs its `adapter.py` when that switch is `1`, without `
 
 ```yaml
 switch: BAD_ENABLED        # the pack's own key, declared under env:, off by default
+```
+
+A switch can also be a list of keys, on when any of them is set and not `0`. `packs/smartcitizen` runs whenever a
+kit is configured, as it did in the core:
+
+```yaml
+switch: [SC_USER, SC_DEVICES]
 ```
 
 This is the first step of decision A in the sensors spec (PR #262: "official packs run code by default"), taken only for

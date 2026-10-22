@@ -229,14 +229,20 @@ done < .env.example
 
 # 5b. a feature that left the core for a pack stays on where it was on (docs/decisions/2026-10-21-core-and-packs.md).
 # A node that lists its packs, in .env or in Set up (a `settings` row wins), gets the pack added to that list when the
-# pack's switch is on, or it would lose the feature on this update. An empty list is every pack and needs nothing.
-#   bali-air-dispatch  Bali Air Dispatch's ring, a pack after v0.82.3        switch BAD_ENABLED
-#   home-assistant     Home Assistant discovery, a pack after v0.83.0        switch HA_DISCOVERY
+# pack is on, or it would lose the feature on this update. On means any of its keys is set and not 0. An empty list is
+# every pack and needs nothing.
+#   bali-air-dispatch  Bali Air Dispatch's ring, a pack after v0.82.3          BAD_ENABLED
+#   home-assistant     Home Assistant discovery, a pack after v0.83.0          HA_DISCOVERY
+#   smartcitizen       this node's own Smart Citizen kits, after v0.83.0      SC_USER or SC_DEVICES
 pq() { docker compose exec -T db psql -U planetai -tAc "$1" planetai 2>/dev/null | tr -d '[:space:]'; }
-for moved in bali-air-dispatch:BAD_ENABLED home-assistant:HA_DISCOVERY; do
-  pack="${moved%%:*}" switch="${moved#*:}"
-  on="$(pq "SELECT value FROM settings WHERE key = '${switch}'")"
-  [[ -z "$on" ]] && on="$(sed -n "s/^${switch}=\([0-9]*\).*/\1/p" .env | tail -1)"
+for moved in bali-air-dispatch:BAD_ENABLED home-assistant:HA_DISCOVERY smartcitizen:SC_USER,SC_DEVICES; do
+  pack="${moved%%:*}" on=""
+  IFS=, read -r -a keys <<< "${moved#*:}"
+  for key in "${keys[@]}"; do
+    v="$(pq "SELECT value FROM settings WHERE key = '${key}'")"
+    [[ -z "$v" ]] && v="$(sed -n "s/^${key}=\([^#[:space:]]*\).*/\1/p" .env | tail -1)"
+    [[ -n "$v" && "$v" != 0 ]] && on=1
+  done
   [[ "$on" == 1 ]] || continue
   pe="$(pq "SELECT value FROM settings WHERE key = 'PACKS_ENABLED'")"
   if [[ -n "$pe" && ",$pe," != *",${pack},"* ]]; then

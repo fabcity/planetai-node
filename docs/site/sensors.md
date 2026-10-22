@@ -8,7 +8,7 @@ sensor exists is on [Before a sensor](before-a-sensor.md).
 
 ## Connect a sensor
 
-The steps use a Smart Citizen kit, the one sensor the core polls with nothing to install. The same checks work
+The steps use a Smart Citizen kit, the one sensor the node polls with nothing to install (the `smartcitizen` pack, on as soon as a kit is set). The same checks work
 for any source on this page.
 
 1. **Tell the node which kit is yours.** `planetai config set SC_DEVICES 19880` (your kit's id), or

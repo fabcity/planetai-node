@@ -1,7 +1,7 @@
 # Packs that ship
 <!-- checked: v0.83.0 -->
 
-The twenty core packs in `packs/`, nine data and eleven code, hold everything the node knows about a place, and no
+The twenty-one core packs in `packs/`, nine data and twelve code, hold everything the node knows about a place, and no
 rule in `app/` says what PM2.5 means for a household or where the nearest fab lab is. For each pack this page
 says what it reads, what it says, its rules and where each threshold comes from, its settings, and what it does
 not know. How a pack is built and loaded is on [Packs](packs.md). Wild packs, such as `xiaomi-air` and
@@ -18,6 +18,7 @@ A pack is `code` when its folder has an `adapter.py`, and code packs load only w
 | `heat` | data | heat | 2 act, 1 info; and the event engine's 3 act | | 1 | | |
 | `bali-air-dispatch` | code | air | none | | | | `BAD_ENABLED`, `BAD_RADIUS_KM`, `BAD_MIN_SEPARATION_M`, `BAD_EXCLUDE`, `BAD_INCLUDE_INDOOR` |
 | `home-assistant` | code | none | none | | | | `HA_DISCOVERY` (declared by the core) |
+| `smartcitizen` | code | air | none | | | | `SC_USER`, `SC_DEVICES`, `SC_EXCLUDE` (declared by the core) |
 | `nearby` | data | air | 1 act, 1 info | `alone` | | `stations` `status` `verify` `backfill` | `BAD_BACKFILL_DAYS`; the ring's are `bali-air-dispatch`'s |
 | `season` | data | air | 1 info | `record` | | `window` | |
 | `insight` | data | cross-domain | 2 info | `digest` | | | |
@@ -210,6 +211,28 @@ distance), proximity (within `BAD_MIN_SEPARATION_M`), by hand (`BAD_EXCLUDE`), a
 (an AirGradient unit mirrored by OpenAQ, collapsed on the same name within the separation radius). It cannot
 know about a kit of yours it does not poll and that sits further away than the separation radius. One
 function, `verdicts()`, decides, and `nearby`'s scripts and `GET /nearby?audit=1` call the same one.
+
+## smartcitizen
+
+Reads this node's own Smart Citizen kits from api.smartcitizen.me: the ones listed by id (`SC_DEVICES`), and the
+ones in the household's account (`SC_USER`) that published in the last three days, less `SC_EXCLUDE`. Every one is
+the house's own, so every one is stored `local`, indoor or outdoor from the kit's own `exposure`.
+
+| | |
+|---|---|
+| Kind | code, on whenever a kit is configured (`switch: [SC_USER, SC_DEVICES]`) |
+| Domain | `air` |
+| Requires node | `>=0.83.0` |
+| Sources | `environmental/community/smart-citizen` |
+| Needs | network to `api.smartcitizen.me` |
+| Rules and cells | none: `air-quality` and `heat` decide what the readings mean |
+
+The sensor ids are `sc-<kit>` and the source is `smartcitizen`, as they were in the core until 22 October 2026,
+so a node's history carries on. Its three settings stay under Set up → Sources, where a household sets up its kits.
+Which kits in an account are the node's own stays in the core (`sources.smartcitizen_account`), because
+`bali-air-dispatch` and `nearby` ask it too. Kits that publish straight to the node's broker (`device/sck/#`) are
+still read by the core. On `planetai update`, a node that lists its packs in `PACKS_ENABLED` and has `SC_USER` or
+`SC_DEVICES` set gets `smartcitizen` added to the list, so it keeps reading its kits.
 
 ## home-assistant
 
