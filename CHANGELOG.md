@@ -26,9 +26,9 @@
   `status()` into `/health`. The direct path ran whenever a broker was set, so the pack's switch adds `MQTT_HOST`, and
   `planetai update` adds `smartcitizen` to a listed `PACKS_ENABLED` on a node with a broker and no kit.
 
-- **The source registry is pinned at `5003e9f`.** awesome-fabcity-data #91 changed Smart Citizen's entry to
-  `adapter: pack:smartcitizen`, after the cloud adapter became a pack (#316). The snapshot in `data/sources/` follows;
-  275 entries, nothing else changed.
+- **The source registry is pinned at `f57237f`.** awesome-fabcity-data #91 changed Smart Citizen's entry to
+  `adapter: pack:smartcitizen`, after the cloud adapter became a pack (#316), and #92 AirGradient's to
+  `adapter: pack:airgradient`, after #319. The snapshot in `data/sources/` follows; 275 entries, nothing else changed.
 
 - **Smart Citizen is a pack.** Reading this node's own kits from api.smartcitizen.me moved out of `app/sources.py`
   into `packs/smartcitizen`, unchanged: the same `sc-<kit>` ids, the same source, the same metrics, so every node's

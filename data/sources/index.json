@@ -5147,7 +5147,7 @@
     "url": "https://data.gov.hr/ckan/dataset/geoportal-kvaliteta-zraka"
   },
   {
-    "adapter": "core:airgradient",
+    "adapter": "pack:airgradient",
     "added": "2026-05-04",
     "api": "https://api.airgradient.com/public/api/v1",
     "cell": "Environmental|Community",
