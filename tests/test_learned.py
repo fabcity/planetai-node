@@ -359,9 +359,10 @@ assert learn.alert_line("air-quality/indoor_pm25_high", {"older": True}, "es") =
 assert learn.alert_line("heat", {"lungs": True}) == "" and learn.alert_line("nearby/x", {"older": True}) == "", "nobody at more risk, no line"
 assert learn.alert_line("heat", {"older": True}, "fr").startswith("This matters"), "an unknown locale speaks English"
 SENT = []
-main.mesh_send = lambda text: SENT.append(("mesh", text))
-main.RETICULUM_URL = "http://reticulum"
-main.TG = lambda: ("123:abc", ["109"])
+import channels  # noqa: E402 — notify and its channels live there since 22 Oct
+channels.mesh_send = lambda text: SENT.append(("mesh", text))
+channels.RETICULUM_URL = "http://reticulum"
+channels.TG = lambda: ("123:abc", ["109"])
 class P:
     def raise_for_status(self): return None
 main.httpx.post = lambda url, json=None, timeout=None: (SENT.append(("tg" if "telegram" in url else "ret", json)), P())[1]
@@ -380,7 +381,7 @@ SENT.clear()
 assert not any("child" in str(x) for k, x in SENT if k != "tg"), "never the mesh or Reticulum"
 main.q = lambda sql, *a: (_ for _ in ()).throw(RuntimeError("no table"))
 assert main._alert_home("heat") == "", "a profile that cannot be read never stops an alert"
-rr = SRC[SRC.index("def run_rules"):SRC.index("def notify")]
+rr = SRC[SRC.index("def run_rules"):SRC.index("def _alert_home")]
 assert 'home=_alert_home(rule["id"]) if level == "act" else ""' in rr and 'home=_alert_home(m.event.issue) if m.event.level == "act" else ""' in rr, \
     "both engines, act level only"
 assert "INSERT INTO alerts (rule_id, sensor_id, level, text) VALUES (%s,%s,%s,%s)" in rr and "_alert_home" not in rr.split("INSERT INTO alerts")[0][-400:], \

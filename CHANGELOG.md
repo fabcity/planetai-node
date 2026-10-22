@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **The ways an alert leaves have a module of their own.** `notify()` (Telegram, the LoRa mesh, the Reticulum bridge),
+  the Home Assistant discovery and alert sensor, and the state they keep moved from `app/main.py` into
+  `app/channels.py`, word for word. Home Assistant becomes a pack next (docs/decisions/2026-10-21-core-and-packs.md);
+  until then it sits with the other channels. Nothing a node sends changes.
+
 - **Tokens and share levels have a module of their own.** The `SHARE_LEVEL` allowlists, the node's tokens and the
   checks every route calls (`_admin`, `_pull_ok`, `_shows_private`, the constant-time `_bearer_ok`, `_is_local`) moved
   from `app/main.py` into `app/auth.py`, word for word, so a router in another module can check a token without
