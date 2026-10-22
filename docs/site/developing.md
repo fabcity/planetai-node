@@ -22,7 +22,7 @@ Add a sensor or a source. An adapter is one function returning `(sensors, readin
 
 Write a rule, a cell or a pack: [Packs](packs.md). A pack for one place is a wild pack in its own repository, listed
 at [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs), and does not come here as a pull
-request. The 19 packs in `packs/` are core, and a wild pack joins them by promotion. Start from a core pack of the
+request. The 20 packs in `packs/` are core, and a wild pack joins them by promotion. Start from a core pack of the
 same kind, say in the README where the thresholds come from and which place you wrote for, and make the rule end in
 something a person does.
 
@@ -163,7 +163,7 @@ app/          main.py (api, loops, notify) · sources.py (adapters) · index.py 
               requires.py (which node a pack needs) · fundamentals.py (the sources every node needs) · learn.py (what it learns)
               ask.py (the dashboard's ask pane) · bootstrap.py · ground.py · reticulum_bridge.py · issues/ · static/ (the dashboard)
 bin/planetai  the operator CLI
-packs/        the nineteen core packs; see Packs
+packs/        the twenty core packs; see Packs
 config/       rules.yml (two domain-blind rules) · channels.yml · mosquitto · reticulum
 data/         sources/ (the pinned registry) · strings/ · env_defaults.yml · frozen_layer.txt · platform_floors.yml · mac_ceilings.yml
 skills/       setup-node · troubleshoot-node · connect-agent · publish-to-index · preflight · land · write-a-pack

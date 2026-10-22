@@ -50,6 +50,7 @@ def run(mode, buttons=False):
 
     packs, index, events_pg, settings, log = NS(), NS(), NS(), NS(), NS()
     packs.load_rules = lambda: [OLD, OTHER, KINDED]
+    packs.emit = lambda *a: None          # Home Assistant and any other hook: a pack since 22 Oct
     index.run_ro = lambda cur, sql: (sqls.append(sql), [{"sensor_id": "s", "x": 1}])[1]
     events_pg.candidates = lambda rule, rows: ["cand"]
     events_pg.run = lambda cur, cands, m, now: (ran.append((cands, m)),
@@ -61,7 +62,6 @@ def run(mode, buttons=False):
     g = dict(packs=packs, index=index, events_pg=events_pg, settings=settings, log=log, db=db, _act=actions,
              notify=lambda lvl, text, keyboard=None, home="": (notified.append(text), sent_levels.append(lvl), kbs.append(keyboard)),
              _alert_home=lambda issue: "",
-             ha_alert=lambda *a: None,
              run_report=lambda cur: None, _quiet=lambda lvl: False, LOCALE=lambda: "en", _local_now=lambda: "now")
     exec(code, g)
     g["run_rules"]()

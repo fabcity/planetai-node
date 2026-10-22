@@ -1,7 +1,7 @@
 # Packs
 
 A pack is a folder in `packs/`. It carries rules, Index cells, or an adapter for a new source. The core knows nothing
-about air, water or heat; the packs do. Nineteen ship in `packs/`.
+about air, water or heat; the packs do. Twenty ship in `packs/`.
 
 ```
 packs/<id>/
@@ -11,6 +11,7 @@ packs/<id>/
   rules.yml     alerts: SQL that returns rows, one message per row
   cells.yml     Index cells: SQL that returns one `value`
   adapter.py    a new source; code packs only
+  hooks.py      on_readings, on_alert: what the pack does with what the node stores and sends; code packs only
   channels.yml  what a pack's own metrics ARE — ambient, enclosure, index, etc.
   README.md     where the thresholds come from, what the pack assumes
 ```
@@ -187,7 +188,13 @@ packs that can switch themselves off. An official pack without a `switch:` still
 because forecast, place, surface-heat and coast have no switch of their own and would start on every node. A wild
 pack never runs code without the flag, whatever it declares.
 
-**Public stations.** A pack that reads a network of other people's stations around the node says so, and the node's
+**Public stations.** **Hooks.** A code pack can also hear the node at two points, in `hooks.py`: `on_readings(sensors, readings)` after
+every batch the node stores (a poll, an MQTT message), and `on_alert(level, text, alert_id)` with every alert it records.
+They are gated like `adapter.py` (an official pack's own switch, or `PACKS_ALLOW_CODE=1`), each pack's module is loaded
+once so what it keeps lasts, and a hook that fails is logged and never stops the node's own work. `packs/home-assistant`
+is the first: it was core code until 22 October 2026.
+
+A pack that reads a network of other people's stations around the node says so, and the node's
 "Air stations nearby" source, `GET /nearby` and the ring's footprint read it instead of naming a network:
 
 ```yaml

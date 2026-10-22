@@ -52,7 +52,15 @@ print("doors: the theme's fonts/jetbrains-mono-latin.woff2 answers 200")
 # the unit /issues names for a metric is the unit the node stores it in, which Home Assistant is told too: pressure
 # said hPa over kPa values, and the Data door read 99.8 hPa beside the model's 996 (14 Oct 2026)
 from issues import engine as _engine  # noqa: E402
-_off = {m: (u, _engine.METRICS[m]["unit"]) for m, (u, _) in __import__("channels").HA_UNITS.items() if u and m in _engine.METRICS and _engine.METRICS[m]["unit"] != u}
+def _ha_units():
+    """HA_UNITS from packs/home-assistant, where Home Assistant lives since 22 Oct (not importable as a package)."""
+    import importlib.util as _iu
+    _spec = _iu.spec_from_file_location("ha_hooks", "packs/home-assistant/hooks.py")
+    _m = _iu.module_from_spec(_spec); _spec.loader.exec_module(_m)
+    return _m.HA_UNITS
+
+
+_off = {m: (u, _engine.METRICS[m]["unit"]) for m, (u, _) in _ha_units().items() if u and m in _engine.METRICS and _engine.METRICS[m]["unit"] != u}
 assert not _off, _off
 print("doors: every metric's unit on the page is the unit the node stores it in")
 

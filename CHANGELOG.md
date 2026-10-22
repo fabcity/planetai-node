@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Home Assistant is a pack.** The discovery entities and the latest-alert sensor moved out of the core into
+  `packs/home-assistant`, unchanged, as the first step of making vendor and integration code packs
+  (docs/decisions/2026-10-21-core-and-packs.md). A pack can now hear the node at two points, in `hooks.py`:
+  `on_readings` after every batch it stores and `on_alert` with every alert it records; a hook that fails never stops
+  the node. The switch is still `HA_DISCOVERY`, still declared by the core so Set up marks it as outward. Nothing a node
+  sends changes, and no node loses it: `planetai update` adds `home-assistant` to `PACKS_ENABLED` wherever a node lists
+  its packs and has `HA_DISCOVERY=1`, the same step that kept Bali Air Dispatch on, now one loop for both.
+  `planetai packs add` counts a pack with `hooks.py` as a code pack and warns as it does for `adapter.py`.
+
 - **The ways an alert leaves have a module of their own.** `notify()` (Telegram, the LoRa mesh, the Reticulum bridge),
   the Home Assistant discovery and alert sensor, and the state they keep moved from `app/main.py` into
   `app/channels.py`, word for word. Home Assistant becomes a pack next (docs/decisions/2026-10-21-core-and-packs.md);

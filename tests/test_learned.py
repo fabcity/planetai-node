@@ -442,7 +442,7 @@ settings._cache["rows"]["LEARN_PUSH"] = "off"
 assert main._morning(Cur(), MON, 900) == ""
 settings._cache["rows"]["LEARN_PUSH"] = "all"
 RR = SRC[SRC.index("def run_report"):SRC.index("def _morning")]
-assert 'notify("info", text, home=memory, home_before_last=True)' in RR and 'ha_alert("info", text, None)' in RR, "Telegram alone carries the memory"
+assert 'notify("info", text, home=memory, home_before_last=True)' in RR and 'packs.emit("on_alert", "info", text, None)' in RR, "Telegram alone carries the memory"
 assert "text, text, not quiet" in RR and "bool(memory)" in RR, "the stored report is the report; it only says it carried the memory"
 assert 'memory = "" if quiet else _morning(' in RR, "a held report carries nothing; the next one sent does"
 assert "status_since = CASE WHEN learnings.status IS DISTINCT FROM EXCLUDED.status THEN current_date" in SRC

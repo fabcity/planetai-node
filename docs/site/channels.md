@@ -12,8 +12,9 @@ there, part of [ρ](rho.md).
 | Reticulum (LXMF) | `act` alerts, full text | no | `act <id> [note]` | `planetai reticulum` |
 | Home Assistant | every alert, sent or not, and every report sent, as entity state | no (LAN) | no | `planetai homeassistant` |
 
-Telegram, the mesh and Reticulum are all reached from `notify()` in `app/main.py`. Home Assistant is a separate
-call, `ha_alert()`, made for every alert the node records, including the ones `notify()` does not send.
+Telegram, the mesh and Reticulum are all reached from `notify()` in `app/channels.py`. Home Assistant is a pack,
+`packs/home-assistant`, which hears every alert the node records through its `on_alert` hook, including the ones
+`notify()` does not send.
 
 With `ALERT_ENGINE=events` the heat and air-quality rules still record their alerts, and Home Assistant still gets
 them, but they are not sent. The event engine sends one message per event through the same `notify()`, so an `act`
@@ -119,7 +120,7 @@ Node-to-node data over Reticulum (a district and a community node with no intern
 2. **Add them in Home Assistant**: Settings → Devices & services → Add integration → MQTT. Discovery does the
    rest: a device per sensor, and a *latest alert* text sensor on the node itself.
 
-Each metric of each local sensor, and of the model and portal points, is published as a discovery entity, grouped
+It is the `home-assistant` pack, switched on by `HA_DISCOVERY=1`. Each metric of each local sensor, and of the model and portal points, is published as a discovery entity, grouped
 under a device per sensor with a suggested area of Indoor or Outdoor. Other people's reference stations are not
 published. States are retained at `planetai/<node>/<sensor>/<metric>` and expire after an hour of silence. The
 *latest alert* sensor carries the first line of the latest alert or report, with `level`, `alert_id` and `ts` as
