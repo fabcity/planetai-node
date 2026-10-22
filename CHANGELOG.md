@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Hourly means without regrouping every reading.** `readings_1h` was a view that grouped every reading the node had
+  ever stored each time anything read it: 434 ms on node #1 for the last two hours, 2.7 s for the ninety days
+  `/issues/days` draws. The finished hours now sit in a table, `readings_1h_done`, filled by the app (the last 26 hours
+  every hour, all of it on start and once a day), and the view reads that table and groups only the hours after it,
+  live. On a copy of node #1: 55 ms to under 1 ms for two hours, 283 ms to 20 ms for ninety days. The view keeps its
+  name and columns, so no pack's SQL changes, and it is complete whatever the table's state: an empty table only
+  makes it slower. `readings` gains an index on `ts` for that live half.
+
 - **The quarter-hour view takes a tenth of the time.** `recent_15m`, which the kinded rules read about nine times a
   minute, joined its own result to itself to put temperature and humidity side by side for `apparent`. Postgres
   guessed one sensor where node #1 has 31, chose a nested loop and compared 2.57 million pairs for 1,604 rows: 645 ms

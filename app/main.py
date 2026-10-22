@@ -458,6 +458,31 @@ def _morning(cur, due, used: int) -> str:
         return ""
 
 
+# readings_1h_done (init.sql): the finished hours behind the readings_1h view. The live half of that view starts where
+# this table ends, so the table only ever has to be right, never complete. The last hour is left live too, because a
+# child pushes the hour in progress and then the same hour complete. Both statements cut at the start of `since`'s
+# hour: a cut at 05:23 kept the 05:00 row and recomputed 05:00 from the readings after 05:23, a duplicate key.
+HOURLY_DELETE = "DELETE FROM readings_1h_done WHERE bucket >= date_trunc('hour', %(since)s::timestamptz)"
+HOURLY_INSERT = ("INSERT INTO readings_1h_done (bucket, sensor_id, metric, mean, min, max, n) "
+                 "SELECT date_trunc('hour', ts), sensor_id, metric, avg(value), min(value), max(value), count(*) "
+                 "FROM readings WHERE ts >= date_trunc('hour', %(since)s::timestamptz) AND ts < date_trunc('hour', now()) - INTERVAL '1 hour' "
+                 "GROUP BY 1, 2, 3")
+
+
+def refresh_hourly() -> None:
+    """The last 26 hours every hour, which catches a late push or a radio that caught up; the whole table on the first
+    run after a start and on the first run of each local day, which catches a backfill or a deletion. One transaction,
+    so a reader sees the old hours until the new ones are in. A full rebuild took 0.6 s on a copy of node #1."""
+    today = _local_now().date().isoformat()
+    full = state.get("hourly_full_on") != today
+    with db() as con, con.transaction(), con.cursor() as cur:
+        since = "-infinity" if full else (datetime.now(timezone.utc) - timedelta(hours=26)).isoformat()
+        cur.execute(HOURLY_DELETE, {"since": since})
+        cur.execute(HOURLY_INSERT, {"since": since})
+    if full:
+        state["hourly_full_on"] = today
+
+
 def refresh_usual() -> None:
     """usual_by_hour is materialized (init.sql): rebuild it hourly, in this connection's NODE_TZ, so a rule's
     "usual for this hour" is the household's hour. A plain REFRESH takes an ACCESS EXCLUSIVE lock, so a rule reading
@@ -1121,6 +1146,7 @@ def start() -> None:
         threading.Thread(target=sc_forward_thread, daemon=True, name="sc-forward").start()
     loop(poll_sources, POLL, delay=2)
     loop(run_rules, 60, delay=30)
+    loop(refresh_hourly, 3600, delay=5)
     loop(refresh_usual, 3600, delay=10)
     loop(push_aggregates, 3600, delay=120)
     loop(push_events, 3600, delay=150)
