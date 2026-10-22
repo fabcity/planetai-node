@@ -7,6 +7,19 @@
   `app/channels.py`, word for word. Home Assistant becomes a pack next (docs/decisions/2026-10-21-core-and-packs.md);
   until then it sits with the other channels. Nothing a node sends changes.
 
+- **Tokens and share levels have a module of their own.** The `SHARE_LEVEL` allowlists, the node's tokens and the
+  checks every route calls (`_admin`, `_pull_ok`, `_shows_private`, the constant-time `_bearer_ok`, `_is_local`) moved
+  from `app/main.py` into `app/auth.py`, word for word, so a router in another module can check a token without
+  importing the whole app. The two middlewares stay in `main.py` beside the app. Nothing a node answers changes.
+
+- **The node keeps its database connections open.** Every request, rule, poll and MQTT message opened a new
+  connection and closed it: 12.8 ms each on node #1, against 0.26 ms for one already open, and `/issues` alone opened
+  five or more. `app/db.py` now keeps four open and hands them out, each carrying the same session settings as before
+  (`NODE_TZ`, the node's coordinates); a busier moment, or a database that is down, gets a direct connection as
+  before, so nothing ever waits on the pool and a node whose database is down still fails at once. It opens on first
+  use and closes when the app stops. The
+  image adds `psycopg-pool`, the psycopg project's own companion package, through `psycopg[binary,pool]`.
+
 - **Hourly means without regrouping every reading.** `readings_1h` was a view that grouped every reading the node had
   ever stored each time anything read it: 434 ms on node #1 for the last two hours, 2.7 s for the ninety days
   `/issues/days` draws. The finished hours now sit in a table, `readings_1h_done`, filled by the app (the last 26 hours
