@@ -9,6 +9,14 @@
   out of 24, and on node #1 it called Backyard (SCK)'s light channel frozen after ten dark hours; it now runs
   `trust/channel_dead`'s own SQL, so the card and the alert say the same. `planetai update` takes `trust` out of a
   listed `PACKS_ENABLED`, unless it was the only pack listed. The section moved from Packs that ship to Alerts.
+  Twenty-two packs ship.
+
+- **AirGradient and PurpleAir are read again, as packs.** Their readers were core adapters until v0.16, which dropped
+  them from the poll by accident while `AIRGRADIENT_HOSTS`, `PURPLEAIR_HOSTS`, `SENSOR_INDOOR` and the installer's
+  `--airgradient` and `--purpleair` stayed, so a node that listed a monitor read nothing from it. They are
+  `packs/airgradient` and `packs/purpleair` now, moved unchanged from `app/sources.py`: the same `ag-` and `pa-` ids,
+  the same EPA 2021 correction with the raw value kept. Each is on whenever its hosts are set, and `planetai update`
+  adds it to `PACKS_ENABLED` wherever a node lists its packs and has those hosts. Twenty-three packs ship.
 
 - **The kits that publish straight to the node are read by the Smart Citizen pack too.** The `device/sck/#` parser,
   what it keeps per device, the forward to smartcitizen.me (`SC_FORWARD`) and `/health`'s `direct` key moved out of

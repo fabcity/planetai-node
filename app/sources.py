@@ -8,8 +8,9 @@
     readings: list of tuples (ts: datetime UTC, sensor_id, metric, value)
 
 That's the whole contract. Add a source = add a function here + register it in SOURCES.
-Core ships airgradient (LAN), purpleair (LAN) and the global models. A vendor's cloud comes as a pack
-(packs/smartcitizen), and so does a network of public stations (packs/bali-air-dispatch).
+Core ships the global models and open portals. A vendor's device comes as a pack, on the LAN (packs/airgradient,
+packs/purpleair) or through its cloud (packs/smartcitizen), and so does a network of public stations
+(packs/bali-air-dispatch).
 See docs/sensors.md to add another.
 """
 from __future__ import annotations
@@ -100,70 +101,6 @@ def smartcitizen_account(hc: httpx.Client, user: str, max_age_days: int = 3, exc
     return [int(d["id"]) for d in r.json().get("devices") or []
             if d.get("state") == "has_published" and (_iso(d.get("last_reading_at")) or cutoff) > cutoff
             and int(d["id"]) not in (exclude or set())]
-
-
-# ---------------------------------------------------------------- AirGradient (LAN, no cloud)
-# Every AirGradient ONE / Open Air exposes http://airgradient_<serial>.local/measures/current on your WiFi.
-# Fields (firmware 3.x): pm01 pm02 pm10 pm003Count rco2 atmp rhum tvocIndex noxIndex serialno model firmware.
-# Newer firmware adds *Compensated fields; we take the raw pm02 and apply EPA 2021 ourselves so the audit trail is ours.
-# Set AIRGRADIENT_HOSTS=airgradient_84fce6.local,192.168.1.52   (hostname or IP, comma-separated)
-AG_METRICS = {"pm01": "pm1", "pm10": "pm10", "rco2": "co2", "atmp": "temp", "rhum": "humidity",
-              "tvocIndex": "tvoc_index", "noxIndex": "nox_index"}
-
-
-def airgradient(hc: httpx.Client, hosts: list[str], lat: float | None, lon: float | None, indoor: bool):
-    sensors, readings = [], []
-    ts = datetime.now(timezone.utc)
-    for host in hosts:
-        d = hc.get(f"http://{host}/measures/current", timeout=10).json()
-        serial = str(d.get("serialno") or host.replace(".local", "")).lower()
-        sid = f"ag-{serial}"
-        sensors.append({"sensor_id": sid, "source": "airgradient", "name": f"AirGradient {d.get('model', '')} {serial}".strip(),
-                        "lat": lat, "lon": lon, "indoor": indoor, "local": True,
-                        "meta": {"host": host, "firmware": d.get("firmware"), "model": d.get("model"),
-                                 "correction": "EPA 2021 applied to pm02 (Plantower)"}})
-        for k, metric in AG_METRICS.items():
-            if d.get(k) is not None:
-                readings.append((ts, sid, metric, float(d[k])))
-        if d.get("pm02") is not None:
-            raw = float(d["pm02"])
-            readings.append((ts, sid, "pm25_raw", raw))
-            rh = float(d["rhum"]) if d.get("rhum") is not None else 50.0
-            readings.append((ts, sid, "pm25", max(0.0, epa_2021_correct(raw, rh))))
-    return sensors, readings
-
-
-# ---------------------------------------------------------------- PurpleAir (LAN, no cloud)
-# Every PurpleAir sensor serves http://<ip>/json?live=true on its WiFi. Fields: pm2_5_cf_1, pm2_5_cf_1_b (two laser
-# channels), pm2_5_atm, pm10_0_cf_1, current_humidity, current_temp_f, pressure, SensorId, lat, lon, Geo.
-# EPA 2021 is defined on the A/B average of cf_1 — we do exactly that. Temp is °F and reads high; we convert, not correct.
-# Set PURPLEAIR_HOSTS=192.168.1.60   (IP; the .local name is unreliable on PurpleAir)
-def purpleair(hc: httpx.Client, hosts: list[str], lat: float | None, lon: float | None, indoor: bool):
-    sensors, readings = [], []
-    ts = datetime.now(timezone.utc)
-    for host in hosts:
-        d = hc.get(f"http://{host}/json?live=true", timeout=10).json()
-        sid = f"pa-{str(d.get('SensorId') or host).replace(':', '').lower()}"
-        sensors.append({"sensor_id": sid, "source": "purpleair", "name": f"PurpleAir {d.get('Geo') or sid}",
-                        "lat": d.get("lat") or lat, "lon": d.get("lon") or lon, "indoor": indoor, "local": True,
-                        "meta": {"host": host, "hardware": d.get("hardwarediscovered"), "correction": "EPA 2021 on mean(cf_1 A,B)"}})
-        chans = [float(d[k]) for k in ("pm2_5_cf_1", "pm2_5_cf_1_b") if d.get(k) is not None]
-        if chans:
-            raw = sum(chans) / len(chans)
-            rh = float(d.get("current_humidity", 50.0))
-            readings.append((ts, sid, "pm25_raw", raw))
-            readings.append((ts, sid, "pm25", max(0.0, epa_2021_correct(raw, rh))))
-            if len(chans) == 2 and abs(chans[0] - chans[1]) > max(5.0, 0.7 * raw):
-                readings.append((ts, sid, "channel_disagreement", abs(chans[0] - chans[1])))   # a laser is failing; rule on this later
-        if d.get("pm10_0_cf_1") is not None:
-            readings.append((ts, sid, "pm10", float(d["pm10_0_cf_1"])))
-        if d.get("current_humidity") is not None:
-            readings.append((ts, sid, "humidity", float(d["current_humidity"])))
-        if d.get("current_temp_f") is not None:
-            readings.append((ts, sid, "temp", (float(d["current_temp_f"]) - 32) * 5 / 9))
-        if d.get("pressure") is not None:
-            readings.append((ts, sid, "pressure", float(d["pressure"]) / 10))   # hPa → kPa
-    return sensors, readings
 
 
 # ---------------------------------------------------------------- registry

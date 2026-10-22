@@ -49,9 +49,8 @@ comes to write it.
    and says how many state that no licence is published (4); a fold under it lists all sixteen with each licence
    as filed. The page fetches `/sources` the first time somebody opens Network, and never before.
 
-> **Gap in v0.83.0.** The registry counts `core:airgradient` among the sources that are read, and the AirGradient
-> function exists in `app/sources.py`, but the poll loop never calls it ([Sensors](sensors.md#what-ships)). The
-> registry records that the code exists, not that a node runs it.
+The registry records that the code exists on node main, not that a given node runs it: an adapter in a pack reads
+only on a node with that pack on. Up to v0.83.0 it counted `core:airgradient` while the poll loop never called it.
 
 ## Three counts per cell
 

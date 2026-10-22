@@ -32,15 +32,14 @@ account is read as yours; indoor/outdoor from each kit's own `exposure`. `SC_EXC
 Metrics are mapped by measurement name, since sensor ids differ between kit generations. Not humidity-corrected: the
 Seeed HM-3301 is not a Plantower and the EPA correction was not derived for it.
 
-**AirGradient** (`AIRGRADIENT_HOSTS=airgradient_abc.local`). Read on the LAN, never through the cloud. Plantower inside:
-EPA 2021 correction applied, raw kept as `pm25_raw`.
+**AirGradient** (the `airgradient` pack, `AIRGRADIENT_HOSTS=airgradient_abc.local`). Read on the LAN, never through
+the cloud. Plantower inside: EPA 2021 correction applied, raw kept as `pm25_raw`.
 
-**PurpleAir** (`PURPLEAIR_HOSTS=192.168.1.50`). LAN, `/json`. Two Plantower channels averaged; corrected; raw kept.
+**PurpleAir** (the `purpleair` pack, `PURPLEAIR_HOSTS=192.168.1.50`). LAN, `/json`. Two Plantower channels averaged;
+corrected; raw kept.
 
-> **Not polled in this version.** Both adapters are written and tested, but `sources.enabled()` does not register
-> them, so a host you set is used only to keep your own kit out of the Bali Air Dispatch ring. A regression to be
-> fixed, not a decision; until then the sensors a node reads on its own are a Smart Citizen kit, Meshtastic radios and,
-> through the `xiaomi-air` wild pack, Xiaomi purifiers.
+Both were core adapters that v0.16 dropped from the poll by accident; from 22 October 2026 they are packs, read again
+whenever a host is listed. `SENSOR_INDOOR=1` marks the units of both as indoors.
 
 **Meshtastic** (`planetai meshtastic`). Telemetry from radios via the gateway's MQTT uplink. `MESH_INDOOR_NODES` marks the
 indoor ones. DIY pods publish to `planetai/sensors/<id>/<metric>` on the same broker.
