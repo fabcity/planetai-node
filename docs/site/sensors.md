@@ -67,13 +67,12 @@ switch: it runs when that switch is on.
 | Fab labs (`make` pack) | `MAKE_ENABLED=1` and `PACKS_ALLOW_CODE=1`; `MAKE_ENABLED` ships as `0` | `facility` | never | One row per active fab lab within `MAKE_RADIUS_KM` (50), from the Fab Lab Network directory, with no readings. `meta` holds the slug, capabilities, city, distance and the lab's URL, never an email or a phone number. The directory is not openly licensed; read [the report page](report.md#the-nearest-place-to-make-or-fix) before you turn it on. |
 | Other code packs | the pack's own settings | as declared | as declared | `coast` (Open-Meteo Marine), `forecast` (BMKG, Open-Meteo), `earth` (AlphaEarth embeddings), `earth-engine` (Dynamic World, Sentinel-2, VIIRS), `place` (OpenStreetMap into PostGIS), `fire` (NASA FIRMS, also `FIRE_ENABLED=1`), `surface-heat` (Landsat and MODIS through Planetary Computer). See [Packs that ship](packs-reference.md). |
 
-> **Gap in v0.83.0.** Two LAN adapters are written and tested but never polled. AirGradient (`AIRGRADIENT_HOSTS`,
-> read on the LAN, EPA 2021 correction with the raw value kept as `pm25_raw`) and PurpleAir (`PURPLEAIR_HOSTS`,
-> `/json`, two Plantower channels averaged and corrected) have functions in `app/sources.py` and rows in
-> `config/channels.yml`, and `sources.enabled()` never calls them. The AirGradient hosts you set are used only to
-> keep those units out of the Bali Air Dispatch ring, and `SENSOR_INDOOR` shows under Set up → Sources with nothing
-> reading it. The changelog records both adapters as shipped, so this is a regression. The one polled indoor PM2.5
-> source on the LAN is the `xiaomi-air` wild pack, and `planetai setup` offers only Smart Citizen.
+**AirGradient and PurpleAir, on the LAN.** The `airgradient` pack reads each host in `AIRGRADIENT_HOSTS` at
+`/measures/current`, and the `purpleair` pack each host in `PURPLEAIR_HOSTS` at `/json?live=true`, never through the
+cloud. PM2.5 gets the EPA 2021 correction and the raw value is kept as `pm25_raw`; PurpleAir averages its two
+Plantower channels first, and stores `channel_disagreement` when they drift apart, because one laser is failing.
+`SENSOR_INDOOR=1` marks both kinds as indoors. Each pack is on whenever its hosts are set. Both were core adapters
+that v0.16 dropped from the poll by accident, and up to v0.83.0 a host you listed was read by nothing.
 
 The node also carries the network's list of everything that could be measured here, with the code that reads each
 entry where any exists: `planetai sources`, or `GET /sources`. [The source registry](sources.md) explains it.
@@ -129,8 +128,8 @@ The rules, the report's digest and the dashboard all use this order.
 Optical PM sensors over-read in humid air, and Bali runs at 45 to 70% RH. `epa_2021_correct(pm_raw, rh)` is the US
 EPA 2021 Plantower correction: a raw 28 at Bali humidity becomes about 15. Near-zero raw values in dry air lift to 1
 or 2, which is a property of the regression and means nothing for health. It is for Plantower lasers (PurpleAir,
-AirGradient, a DIY PMS5003), and not for Smart Citizen, Xiaomi, IQAir, AQICN or Airly. Its only callers are the
-AirGradient and PurpleAir functions in the gap above, so no polled source applies it.
+AirGradient, a DIY PMS5003), and not for Smart Citizen, Xiaomi, IQAir, AQICN or Airly. Its callers are the
+`airgradient` and `purpleair` packs.
 
 ## Siting
 

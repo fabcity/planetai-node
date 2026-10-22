@@ -1,7 +1,7 @@
 # Packs that ship
 <!-- checked: v0.83.0 -->
 
-The twenty-one core packs in `packs/`, nine data and twelve code, hold everything the node knows about a place, and no
+The twenty-three core packs in `packs/`, nine data and fourteen code, hold everything the node knows about a place, and no
 rule in `app/` says what PM2.5 means for a household or where the nearest fab lab is. For each pack this page
 says what it reads, what it says, its rules and where each threshold comes from, its settings, and what it does
 not know. How a pack is built and loaded is on [Packs](packs.md). Wild packs, such as `xiaomi-air` and
@@ -19,6 +19,8 @@ A pack is `code` when its folder has an `adapter.py`, and code packs load only w
 | `bali-air-dispatch` | code | air | none | | | | `BAD_ENABLED`, `BAD_RADIUS_KM`, `BAD_MIN_SEPARATION_M`, `BAD_EXCLUDE`, `BAD_INCLUDE_INDOOR` |
 | `home-assistant` | code | none | none | | | | `HA_DISCOVERY` (declared by the core) |
 | `smartcitizen` | code | air | none | | | | `SC_USER`, `SC_DEVICES`, `SC_EXCLUDE` (declared by the core) |
+| `airgradient` | code | air | none | | | | `AIRGRADIENT_HOSTS`, `SENSOR_INDOOR` (declared by the core) |
+| `purpleair` | code | air | none | | | | `PURPLEAIR_HOSTS`, `SENSOR_INDOOR` (declared by the core) |
 | `nearby` | data | air | 1 act, 1 info | `alone` | | `stations` `status` `verify` `backfill` | `BAD_BACKFILL_DAYS`; the ring's are `bali-air-dispatch`'s |
 | `season` | data | air | 1 info | `record` | | `window` | |
 | `insight` | data | cross-domain | 2 info | `digest` | | | |
@@ -237,6 +239,48 @@ changes what leaves the house. Which kits in an account are the node's own stays
 the node subscribes to its `MQTT_TOPICS` and hands it every message on them. On `planetai update`, a node that lists
 its packs in `PACKS_ENABLED` and has `SC_USER`, `SC_DEVICES` or `MQTT_HOST` set gets `smartcitizen` added to the
 list, so it keeps reading its kits.
+
+## airgradient
+
+Reads this node's own AirGradient ONE and Open Air monitors on the household's WiFi, each host in
+`AIRGRADIENT_HOSTS` at `http://<host>/measures/current`, never through AirGradient's cloud. PM2.5 is the EPA 2021
+correction of the raw Plantower value, which is kept beside it as `pm25_raw`. CO2, temperature, humidity, PM1, PM10
+and the TVOC and NOx indexes are stored as the monitor gives them.
+
+| | |
+|---|---|
+| Kind | code, on whenever a host is listed (`switch: [AIRGRADIENT_HOSTS]`) |
+| Domain | `air` |
+| Requires node | `>=0.83.0` |
+| Sources | `environmental/community/airgradient` |
+| Needs | the monitors' own addresses on this node's network |
+| Rules and cells | none: `air-quality` and `heat` decide what the readings mean |
+
+The sensor ids are `ag-<serial>` and the source is `airgradient`. The monitors take the node's own coordinates, and
+`SENSOR_INDOOR=1` marks them as indoors. This was a core adapter until v0.16 dropped it from the poll by accident,
+while the setting and the installer's `--airgradient` stayed; it reads again as a pack from 22 October 2026. On
+`planetai update`, a node that lists its packs in `PACKS_ENABLED` and has `AIRGRADIENT_HOSTS` set gets
+`airgradient` added to the list.
+
+## purpleair
+
+Reads this node's own PurpleAir sensors on the household's WiFi, each host in `PURPLEAIR_HOSTS` at
+`http://<ip>/json?live=true`; use the IP, the `.local` name is unreliable. PM2.5 is the EPA 2021 correction of the
+mean of the two laser channels, with the raw mean kept as `pm25_raw`, and a gap between the channels larger than
+5 µg/m³ and 70% of the reading is stored as `channel_disagreement`, because one laser is failing. Temperature is
+converted from °F, not corrected, and pressure from hPa to kPa.
+
+| | |
+|---|---|
+| Kind | code, on whenever a host is listed (`switch: [PURPLEAIR_HOSTS]`) |
+| Domain | `air` |
+| Requires node | `>=0.83.0` |
+| Needs | the sensors' own addresses on this node's network |
+| Rules and cells | none: `air-quality` and `heat` decide what the readings mean |
+
+The sensor ids are `pa-<sensor id>` and the source is `purpleair`. A sensor that reports its own coordinates keeps
+them; otherwise it takes the node's. Like `airgradient`, it was a core adapter that v0.16 dropped from the poll, and
+it reads again as a pack from 22 October 2026, added to a listed `PACKS_ENABLED` on update.
 
 ## home-assistant
 

@@ -123,8 +123,8 @@ from the code's default, both are given.
 | `SC_DEVICES` | blank | comma-separated kit ids | Smart Citizen kits read from the cloud API, the number in `smartcitizen.me/kits/<id>`. Always yours, at this address. | runtime |
 | `SC_USER` | blank | username | Reads every kit on a Smart Citizen account instead; indoor or outdoor comes from each kit. Also used by `/nearby?audit=1`. | runtime |
 | `SC_EXCLUDE` | blank | comma-separated kit ids | Account kits that belong to another site. | runtime |
-| `AIRGRADIENT_HOSTS` | blank | hostnames or IPs | AirGradient ONE or Open Air units on your WiFi. See [Known gaps](#known-gaps). | runtime |
-| `PURPLEAIR_HOSTS` | blank | IPs | PurpleAir units on your WiFi; use the IP, the `.local` name is unreliable. See [Known gaps](#known-gaps). | runtime |
+| `AIRGRADIENT_HOSTS` | blank | hostnames or IPs | AirGradient ONE or Open Air units on your WiFi, read by the `airgradient` pack whenever this is set. | runtime |
+| `PURPLEAIR_HOSTS` | blank | IPs | PurpleAir units on your WiFi, read by the `purpleair` pack whenever this is set; use the IP, the `.local` name is unreliable. | runtime |
 | `SENSOR_INDOOR` | `0` | `1`, `0` | Whether the LAN sensors above are indoors. See [Known gaps](#known-gaps). | runtime · public |
 | `OPENMETEO_ENABLED` | `1` | `1`, `0` | Open-Meteo weather and the CAMS air model at the node's coordinates. Free, no key, anywhere. Context only, never rolled into an Index cell. | runtime · public |
 | `BOOTSTRAP` | `1` | `1`, `0` | On first start, fills the database with 92 days of CAMS history and NASA POWER climatology at these coordinates. Skipped once there is CAMS history older than two days. | env only |
@@ -321,10 +321,6 @@ decide.
 | `NODE_ISSUES` | `air,heat,land,coast` | `heat,air` | `heat,air` | `air,heat` | `coast,heat,air,land` | `air,heat` |
 
 ## Known gaps
-
-> **Gap in v0.83.0.** `AIRGRADIENT_HOSTS` and `PURPLEAIR_HOSTS` are declared and their adapters exist and are
-> tested, but the node does not poll them. `AIRGRADIENT_HOSTS` only keeps those units out of the station packs' ring
-> of neighbours, and nothing reads `PURPLEAIR_HOSTS` or `SENSOR_INDOOR`.
 
 > **Gap in v0.83.0.** `REPORT_DEPTH` is declared, validated and offered in Set up, and nothing reads it.
 

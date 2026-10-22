@@ -10,16 +10,24 @@ class HC:
     def __init__(s, j): s.j = j
     def get(s, url, timeout=None): return R(s.j)
 
-# Smart Citizen's cloud fetch is packs/smartcitizen since 22 Oct 2026: tests/test_smartcitizen.py.
+# Smart Citizen's cloud fetch is packs/smartcitizen since 22 Oct 2026: tests/test_smartcitizen.py. AirGradient and
+# PurpleAir are packs too since the same day; their readers are checked here, their switch in tests/test_lan_air.py.
+import importlib.util
+
+
+def _pack(name):
+    spec = importlib.util.spec_from_file_location(f"pack_{name}", f"packs/{name}/adapter.py")
+    mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
+    return mod
 
 
 ag = {"serialno": "84fce612a5b4", "rco2": 612, "pm01": 4, "pm02": 9, "pm10": 11, "atmp": 29.4, "rhum": 61, "tvocIndex": 98, "noxIndex": 1, "firmware": "3.1.9", "model": "I-9PSL"}
-s, r = sources.airgradient(HC(ag), ["airgradient_84fce6.local"], -8.65, 115.22, False)
+s, r = _pack("airgradient").airgradient(HC(ag), ["airgradient_84fce6.local"], -8.65, 115.22, False)
 m = {k: v for _, _, k, v in r}
 assert s[0]["sensor_id"] == "ag-84fce612a5b4" and m["pm25_raw"] == 9.0 and 4 < m["pm25"] < 7 and m["co2"] == 612
 
 pa = {"SensorId": "84:f3:eb:12:34:56", "Geo": "PurpleAir-3456", "lat": -8.53, "lon": 115.40, "pm2_5_cf_1": 47.8, "pm2_5_cf_1_b": 46.9, "pm10_0_cf_1": 52.1, "current_humidity": 62, "current_temp_f": 94, "pressure": 1006.2}
-s, r = sources.purpleair(HC(pa), ["192.168.1.60"], None, None, False)
+s, r = _pack("purpleair").purpleair(HC(pa), ["192.168.1.60"], None, None, False)
 m = {k: v for _, _, k, v in r}
 assert s[0]["sensor_id"] == "pa-84f3eb123456" and 34 < m["pm25"] < 38, "EPA correction of ~47 raw @62% RH should land ~36 (BAD's Klungkung row)"
 assert abs(m["temp"] - 34.4) < 0.1 and abs(m["pressure"] - 100.62) < 0.01
