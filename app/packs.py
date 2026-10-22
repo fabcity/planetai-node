@@ -5,6 +5,7 @@ A pack is a folder in packs/ with a pack.yaml and any of:
     rules.yml    extra alert rules (SQL + message)      DATA — no code, safe to merge from anyone
     cells.yml    extra Index cells (SQL → fci-cells-v0) DATA — no code
     adapter.py   a source adapter (Python function)     CODE — runs with the node's privileges
+    hooks.py     on_readings / on_alert, called by emit()  CODE — the same
 
 Data packs are the default and the point: most useful contributions are a rule and a threshold that
 someone learned the hard way in their city. Code packs need review — see docs/PACKS.md.
@@ -17,6 +18,7 @@ from __future__ import annotations
 import importlib.util
 import logging
 import os
+import time
 from pathlib import Path
 
 import yaml
@@ -74,7 +76,7 @@ def manifests() -> list[dict]:
             log.warning("pack %s: bad pack.yaml (%s)", d.name, e); continue
         m["id"] = m.get("id", d.name)
         m["path"] = str(d)
-        m["kind"] = "code" if (d / "adapter.py").is_file() else "data"
+        m["kind"] = "code" if (d / "adapter.py").is_file() or (d / "hooks.py").is_file() else "data"
         out.append(m)
     return out
 
@@ -216,7 +218,7 @@ def agent_scripts() -> list[str]:
     out = []
     for f in sorted(PACKS_DIR.glob("*/*.py")):
         d, name = f.parent, f.stem
-        if name == "adapter" or not (d / "pack.yaml").is_file():
+        if name in ("adapter", "hooks") or not (d / "pack.yaml").is_file():     # the node calls these; nobody runs them
             continue
         # ponytail: wild means `.wild` beside pack.yaml, written by `planetai packs add`; a pack copied in by hand
         # counts as core. A list of core ids shipped with the release would close that, if hand-copied packs spread.
@@ -260,6 +262,48 @@ def stations() -> list[dict]:
             out.append({**s, "pack": m["id"], "name": m.get("name") or m["id"], "switch": sw,
                         "on": isinstance(sw, str) and settings.get(sw, "0") == "1"})
     return out
+
+
+# Hooks: a code pack's `hooks.py` hears what the node does, at two points. `on_readings(sensors, readings)` after every
+# batch the node stores (a poll, an MQTT message), and `on_alert(level, text, alert_id)` with every alert it sends.
+# Gated like an adapter: PACKS_ALLOW_CODE, or an official pack's own switch. Each pack's module is loaded once per
+# process, so what it keeps (packs/home-assistant: the entities it has announced) lasts; which packs are on is read
+# again every minute, because emit runs on every MQTT message.
+_HOOKS: dict = {"at": 0.0, "on": []}
+_HOOK_MODULES: dict = {}
+
+
+def _hook_modules() -> list:
+    if time.time() - _HOOKS["at"] < 60:
+        return _HOOKS["on"]
+    on = []
+    for d in _enabled():
+        f = d / "hooks.py"
+        if not f.is_file() or not (_allow_code() or _official_on(d)):
+            continue
+        if f not in _HOOK_MODULES:
+            try:
+                spec = importlib.util.spec_from_file_location(f"planetai_pack_{d.name}_hooks", f)
+                mod = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(mod)  # type: ignore[union-attr]
+                _HOOK_MODULES[f] = mod
+            except Exception as e:  # noqa: BLE001
+                log.warning("pack %s: hooks.py failed to load (%s)", d.name, e)
+                continue
+        on.append((d.name, _HOOK_MODULES[f]))
+    _HOOKS.update(at=time.time(), on=on)
+    return on
+
+
+def emit(name: str, *args) -> None:
+    """Call `name` in every pack that has it. A pack that fails is logged and never stops the node's own work."""
+    for pack, mod in _hook_modules():
+        fn = getattr(mod, name, None)
+        if callable(fn):
+            try:
+                fn(*args)
+            except Exception as e:  # noqa: BLE001
+                log.warning("pack %s: %s failed (%s)", pack, name, type(e).__name__)
 
 
 def adapters(hc):

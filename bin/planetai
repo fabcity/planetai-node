@@ -1301,7 +1301,7 @@ print(e[0].get("source", ""), e[0].get("commit", "-"), e[0].get("status", "liste
   if [[ -e "packs/$id" && ! -f "packs/$id/.wild" ]]; then
     fail "packs/$id is already here and did not come from packs add: it is a core pack, or one put there by hand. A wild pack never replaces it."
   fi
-  local kind=data verb=added; if [[ -f "$from/adapter.py" ]]; then kind=code; fi
+  local kind=data verb=added; if [[ -f "$from/adapter.py" || -f "$from/hooks.py" ]]; then kind=code; fi
   if [[ -d "packs/$id" ]]; then verb="updated from $(wildget "$id" commit | cut -c1-12)"; rm -rf "packs/$id"; fi
   mkdir -p packs && mv "$from" "packs/$id"
   printf 'source=%s\ncommit=%s\nadded=%s\n' "$src" "$sha" "$(date +%F)" > "packs/$id/.wild"
@@ -1310,7 +1310,7 @@ print(e[0].get("source", ""), e[0].get("commit", "-"), e[0].get("status", "liste
   elif [[ "$status" != "reviewed" ]]; then warn "it is listed, not reviewed: nobody who keeps the wild list has read it."
   fi
   if [[ "$kind" == code ]]; then
-    warn "a code pack runs Python with this node's privileges, and only with PACKS_ALLOW_CODE=1. Read packs/$id/adapter.py first."
+    warn "a code pack runs Python with this node's privileges, and only with PACKS_ALLOW_CODE=1. Read its adapter.py and hooks.py first."
   fi
   local why; why="$(packs_refused "$id" | cut -f2-)"
   if [[ -n "$why" ]]; then warn "it will not load on this node: $why."; fi
@@ -1330,7 +1330,7 @@ cmd_run() {
     echo "available:"
     for f in packs/*/*.py; do
       local p s; p="$(basename "$(dirname "$f")")"; s="$(basename "$f" .py)"
-      [[ "$s" == "adapter" ]] && continue
+      [[ "$s" == "adapter" || "$s" == "hooks" ]] && continue
       # the first line of the module docstring, wherever the docstring starts; a file without one shows nothing,
       # not its first import line
       local desc; desc="$(awk '

@@ -69,8 +69,8 @@ from auth import (AGG_TOKEN, SHARE_LEVEL, ACT_TOKEN, _SHARE_OFF, _SHARE_OPEN, _S
 def PARENT_TOKEN():
     return settings.get("PARENT_TOKEN", "").strip()
 RETICULUM_URL = os.getenv("RETICULUM_URL", "").strip()       # the reticulum bridge, e.g. http://reticulum:4243
-from channels import (TG, MESH_ALERTS, MESH_GATEWAY_NUM, HA_DISCOVERY, mesh_state, tg_state,  # noqa: E402,F401
-                      mesh_send, ha_publish, ha_alert, notify)  # Telegram, the mesh, LXMF, Home Assistant (app/channels.py)
+from channels import (TG, MESH_ALERTS, MESH_GATEWAY_NUM, mesh_state, tg_state,  # noqa: E402,F401
+                      mesh_send, notify)  # Telegram, the mesh, LXMF (app/channels.py); Home Assistant is packs/home-assistant
 # Kits and DIY nodes publishing Smart Citizen's own wire format to this node's broker (sources.smartcitizen_mqtt).
 # `queued` is what still has to reach smartcitizen.me for the devices in SC_FORWARD.
 sc_state = {"devices": 0, "messages": 0, "last": None, "forwarded": 0, "forward_failed": 0, "queued": 0}
@@ -128,7 +128,7 @@ def poll_once(hc: httpx.Client) -> None:
                     )
                     state["ingested"] += cur.rowcount if cur.rowcount and cur.rowcount > 0 else 0
             log.info("%s: %d sensors, %d readings", name, len(sensors), len(readings))
-            ha_publish(sensors, readings)
+            packs.emit("on_readings", sensors, readings)
     state["polls"] += 1
     state["last_poll"] = datetime.now(timezone.utc).isoformat()
     state["last_error"] = " | ".join(errors) if errors else None   # clears when every source succeeds
@@ -155,7 +155,7 @@ def _store(sensors, readings) -> None:
         if readings:
             cur.executemany("INSERT INTO readings (ts, sensor_id, metric, value) VALUES (%s,%s,%s,%s) ON CONFLICT DO NOTHING", readings)
             state["ingested"] += max(cur.rowcount or 0, 0)      # rowcount, not len: duplicates are dropped
-    ha_publish(sensors, readings)
+    packs.emit("on_readings", sensors, readings)
 
 
 def mqtt_thread() -> None:
@@ -323,7 +323,7 @@ def run_report(cur) -> None:
     # Telegram and Home Assistant; the memory rides Telegram alone, never HA, and sits above the invitation, so the
     # sign-off stays the last thing the household reads (design review, 14 Oct)
     notify("info", text, home=memory, home_before_last=True)
-    ha_alert("info", text, None)
+    packs.emit("on_alert", "info", text, None)
     log.info("report %d sent: %d hours, %d words", rid, every + held, len(text.split()))
 
 
@@ -446,7 +446,7 @@ def run_rules() -> None:
                     # asking; a number a household is expected to quote back was a chore, and 15 of node #1's 37
                     # act alerts got an answer, nine of them in two dashboard batch-clicks a day later.
                     notify(level, text, home=_alert_home(rule["id"]) if level == "act" else "")
-                ha_alert(level, text, alert_id)
+                packs.emit("on_alert", level, text, alert_id)
         if mode in ("shadow", "events"):
             try:
                 decided = events_pg.run(cur, cands, mode, _local_now())
@@ -2383,7 +2383,7 @@ def report_now(authorization: str = Header("")):
                     (every, text, text, Jsonb(b.get("cells") or [])))
         rid = cur.fetchone()["id"]
     notify("info", text)
-    ha_alert("info", text, None)
+    packs.emit("on_alert", "info", text, None)
     log.info("report %d sent on request: %d hours, %d words", rid, every, len(text.split()))
     return {"id": rid, "text": text, "depth": "sheet", "rung": "node", "sent": True}
 
@@ -2795,7 +2795,7 @@ def test_alert(authorization: str = Header("")):
     else:
         closing = f"👉 Reply {how} to show me how you close the loop." if how.startswith("/") else f"👉 In the terminal, {how} records that you closed the loop."
     notify("act", f"{text}\n\n{closing}")      # the hint already carries the number; a bare #id on the end taught nothing
-    ha_alert("act", text, alert_id)
+    packs.emit("on_alert", "act", text, alert_id)
     return {"ok": True, "alert_id": alert_id}
 
 

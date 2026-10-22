@@ -1,7 +1,7 @@
 # Packs that ship
 <!-- checked: v0.83.0 -->
 
-The nineteen core packs in `packs/`, nine data and ten code, hold everything the node knows about a place, and no
+The twenty core packs in `packs/`, nine data and eleven code, hold everything the node knows about a place, and no
 rule in `app/` says what PM2.5 means for a household or where the nearest fab lab is. For each pack this page
 says what it reads, what it says, its rules and where each threshold comes from, its settings, and what it does
 not know. How a pack is built and loaded is on [Packs](packs.md). Wild packs, such as `xiaomi-air` and
@@ -17,6 +17,7 @@ A pack is `code` when its folder has an `adapter.py`, and code packs load only w
 | `air-quality` | data | air | 4 act, 2 warn; and the event engine's 3 act, 1 warn | | 3 | | |
 | `heat` | data | heat | 2 act, 1 info; and the event engine's 3 act | | 1 | | |
 | `bali-air-dispatch` | code | air | none | | | | `BAD_ENABLED`, `BAD_RADIUS_KM`, `BAD_MIN_SEPARATION_M`, `BAD_EXCLUDE`, `BAD_INCLUDE_INDOOR` |
+| `home-assistant` | code | none | none | | | | `HA_DISCOVERY` (declared by the core) |
 | `nearby` | data | air | 1 act, 1 info | `alone` | | `stations` `status` `verify` `backfill` | `BAD_BACKFILL_DAYS`; the ring's are `bali-air-dispatch`'s |
 | `season` | data | air | 1 info | `record` | | `window` | |
 | `insight` | data | cross-domain | 2 info | `digest` | | | |
@@ -209,6 +210,26 @@ distance), proximity (within `BAD_MIN_SEPARATION_M`), by hand (`BAD_EXCLUDE`), a
 (an AirGradient unit mirrored by OpenAQ, collapsed on the same name within the separation radius). It cannot
 know about a kit of yours it does not poll and that sits further away than the separation radius. One
 function, `verdicts()`, decides, and `nearby`'s scripts and `GET /nearby?audit=1` call the same one.
+
+## home-assistant
+
+Publishes this house's own sensors to Home Assistant as entities, one device per physical sensor, and the node's latest
+alert as a text sensor, over MQTT discovery, retained. The node publishes and Home Assistant automates; it never
+addresses a device. Setting it up is on [Channels](channels.md#home-assistant).
+
+| | |
+|---|---|
+| Kind | code, run by its own switch (`switch: HA_DISCOVERY`); `hooks.py`, no `adapter.py` |
+| Domain | none: it carries what the node stores and sends |
+| Requires node | `>=0.83.0` |
+| Needs | the MQTT broker (`MQTT_HOST`), which `planetai homeassistant` sets up |
+| Rules and cells | none |
+
+It hears the node through two hooks: `on_readings` after every batch the node stores, and `on_alert` with every alert
+it records. `HA_DISCOVERY` is still declared by the core, so Set up keeps marking it as a setting that changes what
+leaves the machine; a pack cannot declare that of a key yet. It was core code until 22 October 2026. On
+`planetai update`, a node that lists its packs in `PACKS_ENABLED` and has `HA_DISCOVERY=1` gets `home-assistant`
+added to the list, so it keeps publishing.
 
 ## nearby
 

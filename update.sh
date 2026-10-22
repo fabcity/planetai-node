@@ -227,24 +227,28 @@ while IFS= read -r line; do
 done < .env.example
 [[ $NEW -eq 0 ]] && echo "   nothing new" || warn "${NEW} new setting(s) added with defaults — review .env"
 
-# 5b. a source that left the core for a pack stays on where it was on. Bali Air Dispatch became packs/bali-air-dispatch
-# (after v0.82.3): a node that lists its packs, in .env or in Set up (a `settings` row wins), gets it added to that list
-# when its switch is on, or it would lose the ring on this update. An empty list is every pack and needs nothing.
+# 5b. a feature that left the core for a pack stays on where it was on (docs/decisions/2026-10-21-core-and-packs.md).
+# A node that lists its packs, in .env or in Set up (a `settings` row wins), gets the pack added to that list when the
+# pack's switch is on, or it would lose the feature on this update. An empty list is every pack and needs nothing.
+#   bali-air-dispatch  Bali Air Dispatch's ring, a pack after v0.82.3        switch BAD_ENABLED
+#   home-assistant     Home Assistant discovery, a pack after v0.83.0        switch HA_DISCOVERY
 pq() { docker compose exec -T db psql -U planetai -tAc "$1" planetai 2>/dev/null | tr -d '[:space:]'; }
-badon="$(pq "SELECT value FROM settings WHERE key = 'BAD_ENABLED'")"
-[[ -z "$badon" ]] && badon="$(sed -n 's/^BAD_ENABLED=\([0-9]*\).*/\1/p' .env | tail -1)"
-if [[ "$badon" == 1 ]]; then
+for moved in bali-air-dispatch:BAD_ENABLED home-assistant:HA_DISCOVERY; do
+  pack="${moved%%:*}" switch="${moved#*:}"
+  on="$(pq "SELECT value FROM settings WHERE key = '${switch}'")"
+  [[ -z "$on" ]] && on="$(sed -n "s/^${switch}=\([0-9]*\).*/\1/p" .env | tail -1)"
+  [[ "$on" == 1 ]] || continue
   pe="$(pq "SELECT value FROM settings WHERE key = 'PACKS_ENABLED'")"
-  if [[ -n "$pe" && ",$pe," != *,bali-air-dispatch,* ]]; then
-    pq "UPDATE settings SET value = value || ',bali-air-dispatch' WHERE key = 'PACKS_ENABLED'" >/dev/null
-    echo "   + bali-air-dispatch in the packs Set up lists (Bali Air Dispatch is a pack now)"
+  if [[ -n "$pe" && ",$pe," != *",${pack},"* ]]; then
+    pq "UPDATE settings SET value = value || ',${pack}' WHERE key = 'PACKS_ENABLED'" >/dev/null
+    echo "   + ${pack} in the packs Set up lists (it is a pack now)"
   fi
   pe="$(sed -n 's/^PACKS_ENABLED=\([^#[:space:]]*\).*/\1/p' .env | tail -1)"
-  if [[ -n "$pe" && ",$pe," != *,bali-air-dispatch,* ]]; then
-    sed -i.bak "s|^PACKS_ENABLED=${pe}|PACKS_ENABLED=${pe},bali-air-dispatch|" .env && rm -f .env.bak
-    echo "   + bali-air-dispatch in PACKS_ENABLED in .env (Bali Air Dispatch is a pack now)"
+  if [[ -n "$pe" && ",$pe," != *",${pack},"* ]]; then
+    sed -i.bak "s|^PACKS_ENABLED=${pe}|PACKS_ENABLED=${pe},${pack}|" .env && rm -f .env.bak
+    echo "   + ${pack} in PACKS_ENABLED in .env (it is a pack now)"
   fi
-fi
+done
 
 # 6. rebuild and restart
 say "rebuilding"

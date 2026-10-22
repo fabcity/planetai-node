@@ -9,7 +9,7 @@ There are two tiers:
 
 | | core | wild |
 |---|---|---|
-| lives in | `packs/` in the node's repository, nineteen of them | its author's own repository, or a folder in [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs) |
+| lives in | `packs/` in the node's repository, twenty of them | its author's own repository, or a folder in [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs) |
 | reaches a node | with every release | `planetai packs add` |
 | checked by | the node's `make lint` and tests, on every commit | the wild-packs repository's CI, against the node's `main`, every week |
 | kept by | the node's maintainers | its author |
@@ -24,6 +24,7 @@ packs/<id>/
   cells.yml     Index cells: SQL that returns one `value`
   channels.yml  what the pack's own metrics ARE: ambient, enclosure, device_health, derived, index, private
   adapter.py    a new source; its presence makes this a code pack
+  hooks.py      on_readings and on_alert, what the pack does with what the node stores and sends; also code
   *.py          scripts, run with `planetai run <pack> <script>`
   README.md     where the thresholds came from, which place they were written for, what the pack does not know
 ```
