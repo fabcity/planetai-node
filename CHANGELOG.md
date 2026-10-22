@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **The ways an alert leaves have a module of their own.** `notify()` (Telegram, the LoRa mesh, the Reticulum bridge),
+  the Home Assistant discovery and alert sensor, and the state they keep moved from `app/main.py` into
+  `app/channels.py`, word for word. Home Assistant becomes a pack next (docs/decisions/2026-10-21-core-and-packs.md);
+  until then it sits with the other channels. Nothing a node sends changes.
+
 - **Hourly means without regrouping every reading.** `readings_1h` was a view that grouped every reading the node had
   ever stored each time anything read it: 434 ms on node #1 for the last two hours, 2.7 s for the ninety days
   `/issues/days` draws. The finished hours now sit in a table, `readings_1h_done`, filled by the app (the last 26 hours
