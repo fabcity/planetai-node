@@ -256,6 +256,23 @@ for moved in bali-air-dispatch:BAD_ENABLED home-assistant:HA_DISCOVERY smartciti
   fi
 done
 
+# 5c. a pack that became core leaves the lists (docs/decisions/2026-10-21-core-and-packs.md): its rules run on every
+# node now, so a list that names it names nothing. A list that named only it stays, because emptied it would mean
+# every pack. trust, core after v0.83.0.
+without() { tr , '\n' <<< "$1" | { grep -vx "$2" || true; } | paste -sd , -; }
+for gone in trust; do
+  pe="$(pq "SELECT value FROM settings WHERE key = 'PACKS_ENABLED'")"
+  if [[ ",$pe," == *",${gone},"* && -n "$(without "$pe" "$gone")" ]]; then
+    pq "UPDATE settings SET value = '$(without "$pe" "$gone")' WHERE key = 'PACKS_ENABLED'" >/dev/null
+    echo "   - ${gone} out of the packs Set up lists (it is core now)"
+  fi
+  pe="$(sed -n 's/^PACKS_ENABLED=\([^#[:space:]]*\).*/\1/p' .env | tail -1)"
+  if [[ ",$pe," == *",${gone},"* && -n "$(without "$pe" "$gone")" ]]; then
+    sed -i.bak "s/^PACKS_ENABLED=.*/PACKS_ENABLED=$(without "$pe" "$gone")/" .env && rm -f .env.bak
+    echo "   - ${gone} out of PACKS_ENABLED in .env (it is core now)"
+  fi
+done
+
 # 6. rebuild and restart
 say "rebuilding"
 spin "building the image (pip installs; a minute or two)" docker compose build app || die "the image did not build; the node keeps running the version it had. See $ULOG"

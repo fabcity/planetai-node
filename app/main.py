@@ -1442,37 +1442,18 @@ def reach():
 
 @app.get("/trust")
 def trust():
-    """One row per local sensor, for the dashboard's trust card and the agent's health check — never both computing
-    it themselves and drifting apart from packs/trust/rules.yml. coverage_7d is the percentage of the last 168
-    hourly buckets its ambient channels reported in, same arithmetic as the coverage_low rule. frozen_channels
-    counts its ambient/enclosure channels that match all three of channel_dead's conditions: flat for 6+ hours in
-    the last 24, still flat in the latest bucket, AND the kit itself still producing raw readings in the last 2
-    hours (the `alive` CTE below) — a channel whose kit has gone dark entirely is not "frozen", it is offline, and
-    channel_dead would never fire for it. age_hours is how long since its first ever reading: under 168, the
-    sensor has not lived a full week yet, so a low coverage_7d there is not a fault, just an incomplete week."""
-    return q("""
-        WITH ours AS (
-          SELECT r.sensor_id, r.metric
-          FROM readings_1h r JOIN sensors s USING (sensor_id)
-          JOIN channel_roles c ON c.source = s.source AND c.metric = r.metric
-          WHERE s.local AND s.kind = 'sensor' AND c.role IN ('ambient', 'enclosure')
-          GROUP BY 1, 2),
-        frozen_stat AS (
-          SELECT o.sensor_id, o.metric,
-                 max(r.bucket) AS last_bucket,
-                 max(r.bucket) FILTER (WHERE r.max - r.min = 0) AS last_flat_bucket,
-                 count(*) FILTER (WHERE r.max - r.min = 0) AS flat_hours
-          FROM ours o JOIN readings_1h r ON r.sensor_id = o.sensor_id AND r.metric = o.metric
-          WHERE r.bucket > now() - interval '24 hours'
-          GROUP BY 1, 2),
-        alive AS (
-          SELECT sensor_id, max(ts) AS kit_ts FROM readings
-          WHERE ts > now() - interval '2 hours' GROUP BY 1),
-        frozen AS (
-          SELECT fs.sensor_id, count(*) AS frozen_channels
-          FROM frozen_stat fs JOIN alive a USING (sensor_id)
-          WHERE fs.flat_hours >= 6 AND fs.last_bucket = fs.last_flat_bucket
-          GROUP BY 1),
+    """One row per local sensor, for the dashboard's trust card and the agent's health check. coverage_7d is the
+    percentage of the last 168 hourly buckets its ambient channels reported in, the arithmetic coverage_low uses.
+    frozen_channels is how many rows trust/channel_dead returns for it right now: the rule's own SQL, run here, so
+    the card and the alert cannot disagree. Until 22 Oct 2026 this endpoint kept its own copy, still the v0.35 form
+    (six flat hours out of 24) months after the rule moved to a full flat day so that dusk on a light channel stopped
+    counting. age_hours is how long since its first ever reading: under 168 the sensor has not lived a full week, so a
+    low coverage_7d is not a fault, and channel_dead does not name it yet."""
+    dead = next(r["sql"] for r in packs.load_rules() if r["id"] == "trust/channel_dead")
+    return q(f"""
+        WITH frozen AS (
+          SELECT sensor_id, count(*) AS frozen_channels FROM ({dead}
+          ) AS channel_dead GROUP BY 1),
         have AS (
           SELECT r.sensor_id, count(DISTINCT r.bucket) AS hours
           FROM readings_1h r JOIN sensors s USING (sensor_id)

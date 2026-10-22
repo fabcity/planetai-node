@@ -138,17 +138,53 @@ mesh (first line only, with `MESH_ALERTS=1`) and to the Reticulum bridge for LXM
 separate call, `ha_alert()`, made for every recorded alert whether it was sent or not. Setting each one up is on
 [Channels](channels.md).
 
-## The two rules the core knows
+## The rules the core knows
 
-The core names no metric. Its two rules in `config/rules.yml` are about the instruments:
+The core names no metric. Its rules in `config/rules.yml` are about the instruments. Two say whether a sensor is
+heard at all:
 
 | rule | level | cooldown | fires when |
 |---|---|---|---|
-| `sensor_silent` | warn | 720 min | a local sensor's newest reading is more than 90 minutes old (`silent_minutes > 90`; the `trust` pack's `channel_dead` checks the values) |
+| `sensor_silent` | warn | 720 min | a local sensor's newest reading is more than 90 minutes old (`silent_minutes > 90`; `trust/channel_dead`, below, checks the values) |
 | `daily_pulse` | info | 100000 min | once, on an old node. The report replaced it, and it stays so existing nodes lose nothing until they update |
 
-Every other rule (`air-quality/indoor_pm25_high`, `heat/heat_danger`, `nearby/only_here` and the rest) is a pack's,
-and is listed with its condition and cooldown on [Packs that ship](packs-reference.md).
+and three, under [Trust](#trust), whether what it says can be believed. Every other rule
+(`air-quality/indoor_pm25_high`, `heat/heat_danger`, `nearby/only_here` and the rest) is a pack's, and is listed with
+its condition and cooldown on [Packs that ship](packs-reference.md).
+
+## Trust
+
+Whether the node's own sensors are telling it the truth: coverage over the last week, channels that have
+stopped changing under a kit that still reports, and collocated sensors that disagree about the level.
+
+Its three rules are the core's, at the end of `config/rules.yml`, and run on every node. They were the `trust` pack
+until 22 October 2026 and keep its ids, `trust/channel_dead`, `trust/coverage_low` and `trust/peer_disagreement`, so
+an alert already sent keeps its cooldown and its history. There is no cell: a trust score is a fact about the node's
+instruments, and a cell for it would invite tuning the score instead of fixing the sensor.
+
+Every rule joins the same `seasoned` gate, a sensor whose first reading in the last 30 days is more than seven
+days old, because a day says more about the weather than about the instrument. All three rules are `info`
+with a seven-day cooldown, so they speak in the week's instrument paragraph and never interrupt an evening.
+
+| rule | level | cooldown | fires when |
+|---|---|---|---|
+| `trust/channel_dead` | info | 10080 | a local `kind='sensor'` channel with role `ambient` or `enclosure` has all 24 of the last 24 hourly buckets present and flat (`max − min = 0`), the flat value is not 0, the kit reported within 2 hours, and another ambient channel on the same kit moved |
+| `trust/coverage_low` | info | 10080 | a seasoned local ambient comparable channel reported for under 60% of the 168 hours in 7 days |
+| `trust/peer_disagreement` | info | 10080 | two seasoned local ambient comparable sensors within 50 m, each with at least 100 buckets in 7 days, have a 7-day mean ratio outside 0.85 to 1.15 and an absolute difference at or above a per-metric floor (5.0 for `pm1`, `pm25`, `pm10`; 2.0 for `temp`; 5.0 for `humidity`; 0.3 kPa for `pressure`; else 15% of the pair mean). One row per pair, `sensor_id = a\|b` |
+
+`channel_dead` reads values, not timestamps, because Smart Citizen's per-reading `recorded_at` is null and a
+frozen channel still gets a fresh timestamp on every poll. A full day of flat buckets is longer than any
+night, so a light channel at dusk does not trip it. The PM floor in `peer_disagreement` is Plantower's own
+±10 µg/m³ below 100 µg/m³, halved.
+
+`GET /trust`, which the trust card and the agent's health check read, counts a sensor's frozen channels by running
+`trust/channel_dead`'s own SQL, so the card and the alert say the same thing. Until 22 October 2026 it kept a copy
+of the older test, six flat hours out of 24, and called a light channel frozen every night.
+
+`peer_disagreement` cannot tell a badly sited sensor from a badly calibrated one, which is why its message asks
+the reader to swap the two units for a day instead of naming the wrong one. They do not see PurpleAir's
+`channel_disagreement` or Meshtastic's `altitude_m`, which never gets a role. None of the thresholds has met a
+burn season.
 
 ## Answering an alert
 

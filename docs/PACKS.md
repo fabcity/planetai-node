@@ -1,7 +1,7 @@
 # Packs
 
 A pack is a folder in `packs/`. It carries rules, Index cells, or an adapter for a new source. The core knows nothing
-about air, water or heat; the packs do. Twenty-one ship in `packs/`.
+about air, water or heat; the packs do. Twenty ship in `packs/`.
 
 ```
 packs/<id>/
@@ -407,7 +407,6 @@ reaches no issue and is not named as deliberately outside them fails `tests/test
 | nearby | data | air | the ring of other people's stations: is this address worse than everywhere, or is everywhere worse — no cell, by design; reads what `bali-air-dispatch` stores |
 | season | data | air | the same ring across time: is this week worse than its own preceding two months, paired per station — no cell, same reason as `nearby` |
 | forecast | code | — feeds air and heat | wind and rain for the next day, from BMKG and Open-Meteo — context for the report, no alerts, no cell |
-| trust | data | — the instruments | coverage, frozen channels, collocated disagreement — needs a week of a sensor before it names it; all three `info`, no cell, by design |
 | cold-start | data | air (`modelled_air_today`, `sensor_vs_model`), heat (`hotter_than_normal`) | day one with no hardware: modelled air, normals |
 | open-data-health | data | — the loop and the Index | a CKAN portal's maintenance state → Governance\|City |
 | coast | code | coast | waves, swell, sea temperature (Open-Meteo Marine, key-free) |
