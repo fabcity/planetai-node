@@ -104,14 +104,7 @@ tg_state: dict = {"ok": None, "at": None}
 NODE_TZ = os.getenv("NODE_TZ", "").strip() or "UTC"
 
 
-def db():
-    # Rules and cells use `current_setting('TimeZone')` to find local midnight and local hours. Postgres defaults
-    # to UTC, which put day boundaries and "evening" eight hours out in Bali. Set the session timezone from
-    # NODE_TZ, in the connection options so it costs no extra round trip.
-    # also hand the node's coordinates to SQL as custom settings, so rules can rank references by distance
-    lat, lon = os.getenv("NODE_LAT", "0") or "0", os.getenv("NODE_LON", "0") or "0"
-    return psycopg.connect(DB, row_factory=dict_row, autocommit=True,
-                           options=f"-c timezone={NODE_TZ} -c planetai.lat={lat} -c planetai.lon={lon}")
+from db import db  # noqa: E402 — the pool, and the session settings every connection carries (app/db.py)
 
 
 # ---------------------------------------------------------------- ingest
@@ -1164,6 +1157,8 @@ async def _lifespan(app):
     # the MCP session manager must run for the life of the process
     async with agent.mcp.session_manager.run():
         yield
+    import db as _db  # noqa: PLC0415 — the module, not the db() main uses
+    _db.close()
 
 
 app = FastAPI(title="planetai-node", lifespan=_lifespan)
