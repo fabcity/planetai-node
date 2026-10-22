@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Tokens and share levels have a module of their own.** The `SHARE_LEVEL` allowlists, the node's tokens and the
+  checks every route calls (`_admin`, `_pull_ok`, `_shows_private`, the constant-time `_bearer_ok`, `_is_local`) moved
+  from `app/main.py` into `app/auth.py`, word for word, so a router in another module can check a token without
+  importing the whole app. The two middlewares stay in `main.py` beside the app. Nothing a node answers changes.
+
 - **The node keeps its database connections open.** Every request, rule, poll and MQTT message opened a new
   connection and closed it: 12.8 ms each on node #1, against 0.26 ms for one already open, and `/issues` alone opened
   five or more. `app/db.py` now keeps four open and hands them out, each carrying the same session settings as before

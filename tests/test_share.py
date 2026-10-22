@@ -14,7 +14,7 @@ import ast
 import os
 import re
 
-SRC = open("app/main.py").read()
+SRC = open("app/main.py").read() + open("app/auth.py").read()   # auth.py: the allowlists, since 22 Oct
 SETTINGS = open("app/settings.py").read()
 ENV = open(".env.example").read()
 # The page is three files since the renderer landed: a skeleton, a script and a

@@ -142,7 +142,7 @@ for rows in (new.values(), bad.values(), good):
             check(False, f"{r['id']}: a cross with no fix")
 
 # ---- 3. the route
-main = open(os.path.join(ROOT, "app/main.py")).read()
+main = open(os.path.join(ROOT, "app/main.py")).read() + open(os.path.join(ROOT, "app/auth.py")).read()
 route = main[main.index('@app.get("/health/sources")'):]
 route = route[:route.index("\n\n\n")]
 check("fundamentals.assess(" in route and "r.ts <= now()" in route, "GET /health/sources calls assess(), bounded by now()")
