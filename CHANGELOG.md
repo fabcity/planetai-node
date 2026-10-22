@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **The source registry is pinned at `5003e9f`.** awesome-fabcity-data #91 changed Smart Citizen's entry to
+  `adapter: pack:smartcitizen`, after the cloud adapter became a pack (#316). The snapshot in `data/sources/` follows;
+  275 entries, nothing else changed.
+
 - **Smart Citizen is a pack.** Reading this node's own kits from api.smartcitizen.me moved out of `app/sources.py`
   into `packs/smartcitizen`, unchanged: the same `sc-<kit>` ids, the same source, the same metrics, so every node's
   history carries on. It has no on/off key of its own, so it runs on the condition the core used, a kit configured:

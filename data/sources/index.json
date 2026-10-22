@@ -5273,7 +5273,7 @@
     "url": "https://openlittermap.com/"
   },
   {
-    "adapter": "core:smartcitizen",
+    "adapter": "pack:smartcitizen",
     "added": "2026-05-04",
     "api": "https://api.smartcitizen.me/v0",
     "cell": "Environmental|Community",
