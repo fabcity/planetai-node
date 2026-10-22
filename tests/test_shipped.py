@@ -14,7 +14,7 @@ env = open(".env.example").read()
 # wrong one.
 gui = "".join(open("app/static/" + f).read()
                 for f in ("index.html", "dashboard.js", "dashboard.css"))
-main = open("app/main.py").read()
+main = open("app/main.py").read() + open("app/auth.py").read()   # auth.py: tokens and allowlists, since 22 Oct
 
 # v0.17 storage
 assert "${DATA_DIR:-db}" in open("docker-compose.yml").read(), "compose: DATA_DIR volume var"

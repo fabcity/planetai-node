@@ -15,7 +15,7 @@ import re
 import sys
 
 SQL = open("init.sql").read()
-SRC = open("app/main.py").read()
+SRC = open("app/main.py").read() + open("app/auth.py").read()   # auth.py: the allowlists, since 22 Oct
 
 # ---------------------------------------------------------------- the schema
 m = re.search(r"CREATE TABLE IF NOT EXISTS captures \((.*?)\n\);", SQL, re.S)

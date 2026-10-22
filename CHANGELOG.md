@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Tokens and share levels have a module of their own.** The `SHARE_LEVEL` allowlists, the node's tokens and the
+  checks every route calls (`_admin`, `_pull_ok`, `_shows_private`, the constant-time `_bearer_ok`, `_is_local`) moved
+  from `app/main.py` into `app/auth.py`, word for word, so a router in another module can check a token without
+  importing the whole app. The two middlewares stay in `main.py` beside the app. Nothing a node answers changes.
+
 - **Hourly means without regrouping every reading.** `readings_1h` was a view that grouped every reading the node had
   ever stored each time anything read it: 434 ms on node #1 for the last two hours, 2.7 s for the ninety days
   `/issues/days` draws. The finished hours now sit in a table, `readings_1h_done`, filled by the app (the last 26 hours
