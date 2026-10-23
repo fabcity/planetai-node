@@ -22,7 +22,7 @@ The pack design record asks every new thing on a node which decision it informs.
 | analysis | issue | the decision |
 |---|---|---|
 | Sun and shade | heat | Which hours the yard, the street and the roof are in sun, and where a panel gets the most. Also whether the outdoor sensor itself sits in sun, which is when its temperature reads high. |
-| Trees, 3-30-300 | heat, land | Whether the home sees three trees, whether the cell has 30% canopy, whether a park lies within 300 m, and where one more tree would shade the most. |
+| Trees, 3-30-300 | heat, land | Whether three trees stand within 30 m of the home, whether the cell has 30% canopy, whether a park of 1 ha or more is within a 300 m walk, and where one more tree would shade the most. |
 | Built form | land | How densely the cell is built, how tall, and how that changed from 2016 to 2023. |
 | Street structure | air | Which streets near the sensor carry through movement, to help read a PM2.5 spike. It reads the network's shape and counts no traffic. |
 
@@ -83,13 +83,17 @@ refreshes. The page draws what the node says, as the doors decision requires.
 height over the tangent of the sun's altitude, every 10 minutes from sunrise to sunset, on today and on the two
 solstices and the equinox. Trees cast a disc of their crown at their height. The node keeps sun hours on a 2 m grid
 and per roof, and reads three numbers from them: the hours of sun at the outdoor sensor's point today, the share of
-the cell's ground in shade at 13:00, and the roofs with the most sun hours in a year. Sun hours on a roof are
-derived; kWh from a panel would be a second model on top, so it is not computed. Method: NOAA solar position; the
+the cell's ground in shade at 13:00, and the roofs with the most sun hours in a year. Sun hours on a roof follow §4:
+derived when every height and crown that shades the roof is mapped, modelled otherwise. kWh from a panel would be a
+second model on top, so it is not computed. Method: NOAA solar position; the
 same shadow casting as urban:SCAN's, on a CPU.
 
 **Trees, 3-30-300.** Konijnendijk's rule, three parts read separately. *3*: mapped trees and canopy crowns within 30 m of
-the home's point. *30*: canopy share of the node's res-8 cell. *300*: the walk to the nearest park of 1 ha or more, on
-the place pack's own walking network. A tree mapped in OpenStreetMap is derived; a crown from the 1 m model is
+the home's point. The rule asks for three trees seen from the home, and the node draws no lines of sight, so the count
+within 30 m stands in for it and the page says "within 30 m", never "seen". *30*: canopy share of the node's res-8
+cell. *300*: a park of 1 ha or more within a 300 m walk, on the place pack's own walking network. The rule says 300 m
+to the nearest park; the 1 ha floor and the walk are this spec's choices, so a verge of grass does not count and a park
+behind a wall with no gate is not near (§8). A tree mapped in OpenStreetMap is derived; a crown from the 1 m model is
 modelled. Where one more tree would shade the most is the sun grid's longest-lit ground within 20 m of a path.
 
 **Built form.** Berghauser Pont and Haupt's Spacematrix per res-9 child of the node's res-8 cell: ground space index
@@ -128,6 +132,8 @@ left open. This spec does not decide it.
   it on node #3, the class 0 bench, before step 3 merges.
 - **The ground.** On a slope the hill shades too. GLO-30 is 30 m, coarse beside a 2 m grid; it waits until the
   flat version has run on node #1.
+- **The 300 m park.** The 1 ha floor and the walk are this spec's choices (§5). A smaller floor, or a straight
+  line, would count more homes as near a park.
 - **The ODbL export question** (§6).
 - **One pack or two.** This spec puts it in the place pack, which already holds the geometries. Splitting it out is
   open if the place pack grows too large to read.
