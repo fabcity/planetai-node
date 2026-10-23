@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **What the house learned, and who lives in it, have a module of their own.** `GET /learned`, `/learned/place`,
+  `/learned/search` and `GET`/`PUT /household` moved out of `app/main.py` into `app/household.py`, unchanged; the
+  morning report and the alert line read the household from there.
+
 - **The machine and storage routes have a module of their own.** `GET /machine` and `GET /storage` moved out of
   `app/main.py` into `app/machine.py`, unchanged.
 
