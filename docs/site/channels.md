@@ -79,6 +79,13 @@ on [Radios](radios.md).
 
 ## Reticulum, LXMF
 
+**Read the licence before you turn it on.** The bridge installs `rns` and `lxmf`, which are under the
+[Reticulum License](https://github.com/markqvist/Reticulum/blob/1.5.4/LICENSE): MIT with two conditions, and not an
+open-source licence. You may not use them in a system that can purposefully harm people, or directly or indirectly
+in making a dataset to train an AI or machine-learning model. The node does neither. If you share the image you
+built, include that licence with it. What it means for the node is in
+[the decision record](https://github.com/fabcity/planetai-node/blob/main/docs/decisions/2026-10-23-reticulum-licence.md).
+
 The bridge container (compose profile `reticulum`) gives the node an LXMF address that Sideband can message. It
 posts answers to `POST /actions` with `ACT_TOKEN`, and reads that token when its container is created, so run
 `planetai ui` first if the node has no `ACT_TOKEN` yet: it creates one.
