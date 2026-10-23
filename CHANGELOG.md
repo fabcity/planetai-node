@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **The briefing's leftovers are gone.** `GET /briefing`, a redirect kept for a dashboard left open through v0.38,
+  and the start-up step that moved the old `BRIEFINGS` and `BRIEF_*` keys onto the report schedule. Every node has
+  started on v0.38 or later since September, so both had nothing left to do. A node updating straight from before
+  v0.38 would start on the default report schedule, six and six, instead of its old briefing hours.
+
 - **Trust is core, and the trust card stopped calling a working sensor frozen at night.** The three rules that
   say whether the node's own sensors can be believed moved out of the `trust` pack to the end of `config/rules.yml`, with
   the same ids (`trust/channel_dead`, `trust/coverage_low`, `trust/peer_disagreement`), so every alert already sent

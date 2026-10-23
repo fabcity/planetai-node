@@ -339,30 +339,6 @@ def num(key: str, default: int) -> int:
     return int(v) if v.isdigit() else default
 
 
-def brief_migration(current: dict) -> dict:
-    """What a node on the old two-briefings schedule should be set to when it updates: the REPORT_* rows to write,
-    or nothing at all. Pure, so the test can run this function rather than a copy of its rule.
-
-    A node with BRIEF_MORNING=7 keeps seven o'clock and keeps speaking twice a day; it does not start speaking four
-    times a day because someone ran an update. A fresh install has none of the old keys, gets nothing written here,
-    and takes 6 and 6 from the defaults."""
-    if any((current.get(k) or "").strip() in CHOICES[k] for k in ("REPORT_EVERY", "REPORT_ANCHOR")):
-        return {}
-    if not any((current.get(k) or "").strip() for k in RETIRED[:3]):
-        return {}
-    anchor = (current.get("BRIEF_MORNING") or "").strip()
-    return {"REPORT_EVERY": "12", "REPORT_ANCHOR": anchor if anchor in CHOICES["REPORT_ANCHOR"] else "6"}
-
-
-def migrate_briefings() -> dict:
-    """Run brief_migration against this node and write what it says. Returns what was written, for the log."""
-    current = {k: get(k, "") for k in (*RETIRED, "REPORT_EVERY", "REPORT_ANCHOR")}
-    writes = brief_migration(current)
-    for k, v in writes.items():
-        set(k, v)
-    return writes
-
-
 def _mask(v: str) -> str:
     return ("•••• set" if v else "") if v is not None else ""
 

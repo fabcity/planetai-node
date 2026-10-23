@@ -929,8 +929,8 @@ _STARTED = False
 
 
 def start() -> None:
-    """Everything the node does on its own: the first-start bootstrap, the move off the old briefing settings, the
-    channel roles, the MQTT threads and the timer loops. Run once, from the app's lifespan, never at import. Importing
+    """Everything the node does on its own: the first-start bootstrap, the channel roles, the MQTT threads and the
+    timer loops. Run once, from the app's lifespan, never at import. Importing
     main used to run all of it again, and a second MQTT client with the same client id knocked node #1 off its broker
     (28 Sep 2026). A test, a pack script or `python -c "import main"` can import it now and start nothing."""
     global _STARTED
@@ -941,19 +941,6 @@ def start() -> None:
         bootstrap_once()
     except Exception as e:  # noqa: BLE001  — never block startup on it
         log.warning("bootstrap failed: %s", e)
-    try:
-        _moved = settings.migrate_briefings()
-        if _moved:
-            log.info("moved off the old briefing settings: %s. BRIEFINGS, BRIEF_MORNING and BRIEF_EVENING stay in place and are ignored",
-                     ", ".join(f"{k}={v}" for k, v in sorted(_moved.items())))
-            # ALERT_LEVEL is not moved. An update adds keys a .env is missing and never overwrites one it has, which is
-            # why nothing a household chose has ever changed underneath it — and it means the new `act` default reaches
-            # only a fresh install. Say so once, with the one command, rather than deciding for them.
-            if settings.get("ALERT_LEVEL", "act") == "warn":
-                log.info("ALERT_LEVEL is still warn, so warn-level alerts still reach the phone between reports. "
-                         "`planetai report level act` leaves them to the report; nothing is lost either way")
-    except Exception as e:  # noqa: BLE001  — never block startup on it
-        log.warning("could not move off the old briefing settings: %s", e)
     try:
         load_channel_roles()
     except Exception as e:  # noqa: BLE001  — a node whose schema predates 0.22 has no channel_roles table yet
@@ -2327,14 +2314,6 @@ def report_now(authorization: str = Header("")):
     packs.emit("on_alert", "info", text, None)
     log.info("report %d sent on request: %d hours, %d words", rid, every, len(text.split()))
     return {"id": rid, "text": text, "depth": "sheet", "rung": "node", "sent": True}
-
-
-@app.get("/briefing", include_in_schema=False)
-def briefing_moved(kind: str = "morning"):
-    """Gone in v0.38. A dashboard left open in a browser through the update still asks for this; answer it with
-    where the report lives now rather than a 404 in a screen nobody is looking at."""
-    from fastapi.responses import RedirectResponse
-    return RedirectResponse("/report/latest", status_code=301)
 
 
 @app.get("/history")
