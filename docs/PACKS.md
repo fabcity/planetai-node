@@ -426,6 +426,7 @@ reaches no issue and is not named as deliberately outside them fails `tests/test
 | surface-heat | code | heat | the ground in this node's own cell against the land 1–3 km around, from Landsat at 30 m, and the ground at night from MODIS (Planetary Computer, key-free) — readouts and a report line, no alert, no cell |
 | earth-engine | code | — Dynamic World, Sentinel-2, VIIRS | tree cover, built-up, NDVI, night lights (Google Earth Engine) |
 | earth | code | land | this node's own copy of the AlphaEarth embeddings: the land change computed here, and a picture of the place for every year |
+| terrain | code | water | this node's own square of Copernicus elevation, filled and routed: how much ground drains through the node's point, and the next day's rain on it — readouts, no alert, no cell |
 | place | code | — the ground, its own band | what is around the node from OpenStreetMap, in PostGIS: buildings, shops, schools, clinics, roads, green, walking distances |
 | thingdata | code | — repair knowledge, its own catalogue | a ThingData server's things, guides and stories, and how much of the catalogue anyone has written down how to fix |
 | make | code | — places, not numbers | the nearest active fab labs and what each can do, from the Fab Lab Network directory — display-only, no metrics, no cell and no alert, by design |
