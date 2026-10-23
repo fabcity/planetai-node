@@ -52,7 +52,7 @@ readouts:
   - metric: terrain_upslope_near_ha
     sensor_id: terrain-point
     unit: ha
-    dp: 0
+    dp: 1
     label: { en: largest flow within 60 m, id: aliran terbesar dalam 60 m, es: mayor flujo a menos de 60 m }
 
 where:

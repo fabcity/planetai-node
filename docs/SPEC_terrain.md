@@ -84,7 +84,7 @@ Apache-2.0 node. WhiteboxTools would be a binary download. None of them is neede
 4. Keep three numbers for the node's point, computed once and cached as a file like `earth`, because the surface
    does not change between releases: `terrain_upslope_ha`, `terrain_hollow_m`, and `terrain_upslope_near_ha`,
    the largest upslope area within 60 m. A typed address is rarely right to the pixel, and at node #1 the flow line
-   one pixel off was 17 times the point's own. Slope and the per-H3-cell numbers were left out: nothing reads them
+   within 60 m was 7 times the point's own. Slope and the per-H3-cell numbers were left out: nothing reads them
    yet.
 
 The probe ran this on node #1's square from a laptop: 4.9 s to read 323 × 327 pixels over HTTPS, 0.2 s to fill,
@@ -97,7 +97,7 @@ The probe ran this on node #1's square from a laptop: 4.9 s to read 323 × 327 p
   them will be rooflines and tree edges, not ground.
 - **The node's point** (`NODE_LAT`/`NODE_LON` from node #1's own `.env`): 156.8 m high. 0.09 ha drains through
   it, which is its own pixel alone, and there is no hollow: the house's pixel is a local high. The largest flow
-  within 60 m drains 1.5 ha.
+  within 60 m (a circle, measured from the pixel centres) drains 0.6 ha.
 - The draft of this spec measured 1.04 ha and a 0.32 m hollow, at −8.819, 115.164. That is the published,
   rounded point, 330 m west of the house. On a 30 m surface, 330 m is somewhere else, so the pack reads the
   node's own coordinates and never the published ones.
@@ -132,7 +132,7 @@ mean something.
   water stood or ran at this place on a day the forecast said X mm. Until then there is no line to set.
 
 The issue's `context_plain`, once it has a hero (below): "36 m³ could run onto this point in the next day, if none of it soaks in.
-Rain forecast 40 mm, ground draining here 0.1 ha, hollow 0.0 m, largest flow within 60 m 2 ha."
+Rain forecast 40 mm, ground draining here 0.1 ha, hollow 0.0 m, largest flow within 60 m 0.6 ha."
 
 **No hero yet.** A context issue's figures sentence is rendered inside its hero (`engine._plain`), and a hero needs a
 sign in `app/static/signs.svg`. There is no water sign, and a new sign is design work in planetai-design, held to the

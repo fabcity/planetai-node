@@ -163,19 +163,28 @@ def read(cov: dict):
         crs = dss[0].crs
         bounds = transform_bounds("EPSG:4326", crs, lon - dlon, lat - dlat, lon + dlon, lat + dlat)
         nodata = dss[0].nodata
-        arr, tr = merge(dss, bounds=bounds, nodata=nodata if nodata is not None else 0)
+        if cov["kind"] == "file":       # outside the file is missing, never ground at 0 m: float, NaN-filled
+            arr, tr = merge(dss, bounds=bounds, nodata=nodata if nodata is not None else float("nan"), dtype="float64")
+        else:                           # a missing Copernicus neighbour tile is the sea, which GLO writes as 0
+            arr, tr = merge(dss, bounds=bounds, nodata=0)
     finally:
         for d in dss:
             d.close()
     z = arr[0].astype("float64")
-    # GLO stores the sea as exactly 0 and has no nodata; an operator's file says its own nodata. Land below sea
-    # level (a polder) is negative and stays land.
-    sea = (z == nodata) if nodata is not None else (z == 0)
+    # GLO stores the sea as exactly 0 and has no nodata. An operator's file marks outside with its own nodata, NaN
+    # included (NaN never equals NaN), and a 0 in it is ground at sea level. Land below sea level (a polder) is
+    # negative and stays land either way.
+    if cov["kind"] == "file":
+        sea = np.isnan(z) | ((z == nodata) if nodata is not None and not math.isnan(nodata) else False)
+        z[sea] = 0.0
+    else:
+        sea = z == 0
     if crs.is_geographic:
         dx = abs(tr.a) * 111320.0 * math.cos(math.radians(lat))
         dy = abs(tr.e) * 111320.0
     else:
-        dx, dy = abs(tr.a), abs(tr.e)       # ponytail: assumes a projected CRS in metres, which every UTM DEM is
+        unit = crs.linear_units_factor[1]  # metres per CRS unit: 1 for UTM, 0.3048 for a state plane in feet
+        dx, dy = abs(tr.a) * unit, abs(tr.e) * unit
     xs, ys = transform("EPSG:4326", crs, [lon], [lat])
     col, row = ~tr * (xs[0], ys[0])
     return z, np.asarray(sea), dx, dy, (int(row), int(col))
@@ -259,7 +268,10 @@ def compute(z, sea, dx: float, dy: float, rc: tuple[int, int]) -> dict:
     if not (0 <= r < H and 0 <= c < W) or sea[r, c]:
         raise RuntimeError("the node's point is outside the square or on the sea")
     n = max(1, math.ceil(NEAR_M / min(dx, dy)))
-    near = acc[max(0, r - n):r + n + 1, max(0, c - n):c + n + 1]
+    r0, c0 = max(0, r - n), max(0, c - n)
+    rows, cols = np.ogrid[r0:min(H, r + n + 1), c0:min(W, c + n + 1)]
+    within = np.hypot((rows - r) * dy, (cols - c) * dx) <= NEAR_M          # a circle; the point itself always counts
+    near = acc[r0:r + n + 1, c0:c + n + 1][within]
     land = ~sea
     px = dx * dy
     return {
@@ -316,8 +328,8 @@ def fetch(hc):                                                                  
             log.info("terrain: nothing computed for this point yet: planetai run terrain fetch")
             _state["warned"] = True
         return [], []
-    if r.get("publish") is False:
-        return [], []                       # an operator's DEM with no licence typed in: computed, never shown
+    if r["dem"]["kind"] == "file" and not os.getenv("TERRAIN_DEM_LICENCE"):
+        return [], []           # an operator's DEM with no licence typed in now: computed, never shown
     lat, lon, radius = aoi()
     t = datetime.fromisoformat(r["computed_at"])
     p = r["point"]
@@ -326,7 +338,8 @@ def fetch(hc):                                                                  
                 (t, "terrain-point", "terrain_hollow_m", round(p["hollow_m"], 2))]
     fc = rain()
     meta = {"dem": r["dem"], "radius_m": radius, "pixel_m": p["pixel_m"], "near_m": p["near_m"],
-            "release": r.get("release"), "attribution": r.get("attribution", ATTRIBUTION)}
+            "release": r.get("release"),
+            "attribution": os.getenv("TERRAIN_DEM_LICENCE") if r["dem"]["kind"] == "file" else ATTRIBUTION}
     if fc:
         hour = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
         readings += [(hour, "terrain-point", "rain_24h_mm", round(fc["mm"], 1)),

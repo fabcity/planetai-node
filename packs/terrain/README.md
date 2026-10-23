@@ -30,7 +30,9 @@ open sea or nothing was published, and the pack says so.
 
 **Your own DEM** (a drone survey, a national LiDAR) goes in `TERRAIN_DEM_PATH`, and its licence, in words, in
 `TERRAIN_DEM_LICENCE`. With the licence blank the node computes from the file and shows nothing: a survey you paid
-for is not automatically yours to publish.
+for is not automatically yours to publish. The licence is read on every poll, so clearing it stops new rows at the
+next one. Rows already stored stay in this node's database, like any source's, and the issue keeps showing the last
+one with its age.
 
 ## The arithmetic
 
@@ -71,5 +73,5 @@ from one source only: BMKG if it has rows, else Open-Meteo. Adding both would do
 
 Node #1, Ungasan, Bali, 23 October 2026: one tile, 323 × 327 pixels of 30.6 × 30.9 m, read in 5–25 s over HTTPS
 and computed in under a second. At the node's own point, 0.09 ha drains through it and there is no hollow: the
-house's pixel is a local high. The largest flow within 60 m drains 1.5 ha. Nothing here was tuned for that place.
+house's pixel is a local high. The largest flow within 60 m drains 0.6 ha. Nothing here was tuned for that place.
 There is no threshold to tune.

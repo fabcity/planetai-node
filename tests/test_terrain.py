@@ -74,6 +74,17 @@ check(abs(p["hollow_m"] - 8.0) < 0.01, "compute reports the pit's depth")
 check(p["upslope_m2"] >= 900.0, "the point drains at least its own pixel")
 check(p["upslope_near_m2"] >= p["upslope_m2"], "the largest flow near is at least the point's own")
 check(p["stuck"] == 0, "compute's own stuck count is zero")
+# The "within 60 m" figure is a circle. At 90 m a pixel no neighbour is within 60 m, so a huge flow next door
+# must not count; at 30 m the cell beside it (30 m) does and the diagonal two out (85 m) does not.
+flat = np.zeros((9, 9)) + 5.0
+acc_big = np.ones((9, 9)); acc_big[4, 5] = 999; acc_big[6, 6] = 777
+A_fill, A_steep, A_acc = A.fill, A.steepest, A.accumulate
+A.accumulate = lambda f, sea, k: acc_big
+p90 = A.compute(flat, np.zeros((9, 9), dtype=bool), 90.0, 90.0, (4, 4))
+p30 = A.compute(flat, np.zeros((9, 9), dtype=bool), 30.0, 30.0, (4, 4))
+A.accumulate = A_acc
+check(p90["upslope_near_m2"] == 1 * 8100.0, f"at 90 m only the point itself is within 60 m, got {p90['upslope_near_m2']}")
+check(p30["upslope_near_m2"] == 999 * 900.0, f"at 30 m the neighbour counts, got {p30['upslope_near_m2']}")
 try:
     A.compute(z, np.ones(z.shape, dtype=bool), 30.0, 30.0, (3, 3))
     fails.append("a point on the sea should refuse")
@@ -111,8 +122,15 @@ A.rain = lambda: None
 _, readings = A.fetch(None)
 check({m for _, _, m, _ in readings} == {"terrain_upslope_ha", "terrain_upslope_near_ha", "terrain_hollow_m"},
       "no forecast: terrain rows only, no water figure")
-A.result_file().write_text(json.dumps(kept | {"publish": False}))
+A.result_file().write_text(json.dumps(kept | {"dem": {"kind": "file", "path": "/x.tif", "tiles": [], "missing": []}}))
+os.environ.pop("TERRAIN_DEM_LICENCE", None)
 check(A.fetch(None) == ([], []), "an operator's DEM with no licence is never shown")
+os.environ["TERRAIN_DEM_LICENCE"] = "CC BY 4.0, our own drone survey"
+sensors, _ = A.fetch(None)
+check(sensors and sensors[0]["meta"]["attribution"] == "CC BY 4.0, our own drone survey",
+      "with a licence typed in it is shown, under that licence, read at the poll and not at the fetch")
+os.environ.pop("TERRAIN_DEM_LICENCE")
+check(A.fetch(None) == ([], []), "clearing the licence stops the rows at the next poll")
 A.result_file().write_text(json.dumps(kept | {"lat": lat + 0.01}))
 check(A.result() == {}, "a result kept around another point does not describe this one")
 

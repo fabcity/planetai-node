@@ -5,6 +5,7 @@ every land cell in it drains (the one check that fails if the fill breaks), and 
 """
 import os
 import sys
+from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(__file__))
 import adapter as A                                                              # noqa: E402
@@ -44,10 +45,14 @@ if r and cov["kind"] != "none":
 try:
     import psycopg
     with psycopg.connect(os.environ["DATABASE_URL"]) as con, con.cursor() as cur:
+        # Only rows of THIS fetch: the terrain rows carry the fetch's own timestamp, so an older fetch's rows
+        # still in the database do not pass for this one.
         cur.execute("SELECT metric, value, ts FROM observations WHERE sensor_id = 'terrain-point' ORDER BY metric")
         rows = cur.fetchall()
-    step(5, bool(rows), ", ".join(f"{m} {v:g}" for m, v, _ in rows) if rows else
-         "no terrain-point rows yet: is terrain in PACKS_ENABLED, and has the node polled since the fetch?")
+    t = r and datetime.fromisoformat(r["computed_at"])
+    mine = [(m, v) for m, v, ts in rows if t and (ts == t or (m in ("rain_24h_mm", "water_24h_m3") and ts > t))]
+    step(5, any(m == "terrain_upslope_ha" for m, _ in mine), ", ".join(f"{m} {v:g}" for m, v in mine) if mine else
+         "no terrain-point rows from this fetch yet: is terrain in PACKS_ENABLED, and has the node polled since?")
 except Exception as e:  # noqa: BLE001
     step(5, False, f"the database did not answer ({type(e).__name__})")
 
