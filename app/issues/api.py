@@ -113,10 +113,12 @@ def issues_days(days: int = Query(7, ge=1, le=engine.DAYS_MAX), locale: str = Qu
 
 def _earth():
     """`/earth`'s body, or None. The earth pack's record has exactly one reader in this repo and it
-    is `main.earth()`; land's region column asks it rather than opening the pack's files again."""
-    import main                    # noqa: PLC0415
+    is that pack's own `earth()` (packs/earth/routes.py); land's region column asks it rather than opening the
+    pack's files again, and gets None while the pack is off."""
+    import packs                   # noqa: PLC0415
     try:
-        return main.earth()
+        mod = packs.module("earth", "routes")
+        return mod.earth() if mod else None
     except Exception as e:  # noqa: BLE001
         log.warning("issues: /earth did not answer (%s: %s) — land falls back", type(e).__name__, str(e)[:120])
         return None

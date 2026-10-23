@@ -13,7 +13,7 @@ packs/<id>/
   issue.yml     the issue this pack watches, its `key:`, name, metric, line, `alert:`, sentences (air-quality, heat, coast, earth)
   adapter.py    a new source; code packs only
   hooks.py      on_readings, on_alert: what the pack does with what the node stores and sends; code packs only
-  routes.py     a FastAPI `router`: the pack's own HTTP routes (GET /forecast, /nearby); official packs only
+  routes.py     a FastAPI `router`: the pack's own HTTP routes (GET /forecast, /nearby, /earth); official packs only
   channels.yml  what a pack's own metrics ARE — ambient, enclosure, index, etc.
   README.md     where the thresholds come from, what the pack assumes
 ```
@@ -212,7 +212,9 @@ The node mounts every official pack's router when it starts, and each route answ
 its pack, so switching a pack off in Set up takes its routes with it, no restart. Read the database with
 `from db import q`, never by importing main. A path the pack lists under `share: {open: [/its/path]}` joins what a
 household on `SHARE_LEVEL=open` shares with its own WiFi; a wild pack can neither mount routes nor widen that list.
-`forecast` (GET /forecast) and `nearby` (GET /nearby) were the first, core routes until 23 October 2026.
+`forecast` (GET /forecast), `nearby` (GET /nearby), `earth` (GET /earth, /earth/change.png, /earth/year.png) and
+`earth-engine` (GET /earth/frame.png) serve theirs, core routes until 23 October 2026. `/ground/*` stays in the core:
+it serves three packs' files (place's map, earth-engine's imagery, forecast's wind), and place is becoming core.
 
 **Public stations.** A pack that reads a network of other people's stations around the node says so, and the node's
 "Air stations nearby" source, `GET /nearby` and the ring's footprint read it instead of naming a network:
