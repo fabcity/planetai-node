@@ -461,7 +461,7 @@ print("geo: grid, cell, measure and rings answer this machine and a token, refus
 # The ground kept on disk (GET /ground/*): served from out/ground/ by name, private like /place/geojson.
 import gzip as _gz, importlib.util as _iu, json as _json, sqlite3 as _sq, tempfile as _tf
 from pathlib import Path as _P
-_out = _P(_tf.mkdtemp()); main.OUT = _out; (_out / "ground" / "glyphs" / "Noto Sans Regular").mkdir(parents=True)
+_out = _P(_tf.mkdtemp()); main.OUT = main.basemap.OUT = _out; (_out / "ground" / "glyphs" / "Noto Sans Regular").mkdir(parents=True)
 _db = _sq.connect(_out / "ground" / "vector.mbtiles")
 _db.executescript("CREATE TABLE tiles (zoom_level INTEGER, tile_column INTEGER, tile_row INTEGER, tile_data BLOB);")
 _db.execute("INSERT INTO tiles VALUES (15, 26866, ?, ?)", ((1 << 15) - 1 - 17189, _gz.compress(b"mvt")))

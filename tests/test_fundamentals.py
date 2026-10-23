@@ -146,7 +146,7 @@ main = open(os.path.join(ROOT, "app/main.py")).read() + open(os.path.join(ROOT, 
 route = main[main.index('@app.get("/health/sources")'):]
 route = route[:route.index("\n\n\n")]
 check("fundamentals.assess(" in route and "r.ts <= now()" in route, "GET /health/sources calls assess(), bounded by now()")
-check("map_at=fundamentals.map_fetched(str(_ground()))" in route, "GET /health/sources reads the map where GET /ground/* serves it from")
+check("map_at=fundamentals.map_fetched(str(basemap.ground_dir()))" in route, "GET /health/sources reads the map where GET /ground/* serves it from")
 share = main[main.index("_SHARE_OFF = ("):main.index("_SHARE = {")]
 check("/health/sources" not in share, "GET /health/sources is on no share level's list: it needs a token or this machine")
 check('"telegram"' not in main[main.index("state = {"):main.index("state = {") + 300],

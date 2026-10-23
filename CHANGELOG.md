@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **The ground map's routes have a module of their own.** `GET /ground/meta`, `/ground/wind`, `/ground/glyphs/...` and
+  `/ground/{layer}/{z}/{x}/{y}` moved out of `app/main.py` into `app/basemap.py`, unchanged, the first of the route
+  groups the architecture review takes out of `main.py`. They stay in the core: they serve the place pack's map, the
+  earth-engine pack's imagery and the forecast pack's wind.
+
 - **The earth routes are their packs'.** `GET /earth`, `/earth/change.png` and `/earth/year.png` moved into
   `packs/earth/routes.py`, and `GET /earth/frame.png` into `packs/earth-engine/routes.py`, each answering 404 while its
   pack is off and sharing itself from its `pack.yaml`. The earth routes read the square through the pack's own

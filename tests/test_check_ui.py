@@ -35,6 +35,7 @@ def tree():
     for f in (ROOT / "app" / "static").glob("doors*.*"):
         shutil.copy(f, tmp / "app" / "static" / f.name)
     shutil.copy(ROOT / "app" / "main.py", tmp / "app" / "main.py")
+    shutil.copy(ROOT / "app" / "basemap.py", tmp / "app" / "basemap.py")   # GET /ground/*, a core router
     for f in (ROOT / "packs").glob("*/routes.py"):          # a pack's own routes are the node's too (/forecast)
         (tmp / "packs" / f.parent.name).mkdir(parents=True, exist_ok=True)
         shutil.copy(f, tmp / "packs" / f.parent.name / "routes.py")
