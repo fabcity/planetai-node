@@ -1,7 +1,7 @@
 # Packs
 
 A pack is a folder in `packs/`. It carries rules, Index cells, or an adapter for a new source. The core knows nothing
-about air, water or heat; the packs do. Twenty-two ship in `packs/`.
+about air, water or heat; the packs do. Twenty-three ship in `packs/`.
 
 ```
 packs/<id>/
