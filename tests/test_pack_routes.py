@@ -60,7 +60,7 @@ assert r.status_code == 200 and r.json()["years"] == [] and "hint" in r.json(), 
 assert c.get("/earth/frame.png?year=2016", headers=H).status_code == 404, "no frame, the route's own 404"
 ROWS["PACKS_ENABLED"] = "earth"
 assert c.get("/earth", headers=H).json()["imagery"]["sentinel"] == [], "earth-engine off: no imagery listed"
-assert "pack is not on" in c.get("/earth/frame.png?year=2016", headers=H).json()["detail"]
+assert "pack is off" in c.get("/earth/frame.png?year=2016", headers=H).json()["detail"]
 ROWS["PACKS_ENABLED"] = ""
 print("  /earth answers from the earth pack, /earth/frame.png from earth-engine")
 
@@ -68,7 +68,7 @@ print("  /earth answers from the earth pack, /earth/frame.png from earth-engine"
 ROWS["PACKS_ENABLED"] = "air-quality,heat"
 for path in ("/forecast", "/nearby", "/earth", "/earth/year.png?year=2020"):
     r = c.get(path, headers=H)
-    assert r.status_code == 404 and "pack is not on" in r.json()["detail"], (path, r.status_code, r.text)
+    assert r.status_code == 404 and "pack is off" in r.json()["detail"], (path, r.status_code, r.text)
 ROWS["PACKS_ENABLED"] = ""
 assert c.get("/forecast", headers=H).status_code == 200, "back on, back"
 print("  and 404 while their pack is off, with no restart")

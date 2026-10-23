@@ -265,6 +265,10 @@ def _official_on(d: Path) -> bool:
     return False
 
 
+# Each official pack's routes.py as routers() mounted it, by pack id.
+ROUTES: dict = {}
+
+
 def routers() -> list:
     """Every official pack's `routes.py` router, for main to mount when it is imported (docs/PACKS.md, "Routes").
 
@@ -278,7 +282,7 @@ def routers() -> list:
     def gate(pack: str):
         def on():
             if pack not in {d.name for d in _enabled()}:
-                raise HTTPException(404, f"the {pack} pack is not on on this node")
+                raise HTTPException(404, f"the {pack} pack is off on this node")
         return on
 
     out = []
@@ -294,6 +298,7 @@ def routers() -> list:
             log.warning("pack %s: routes.py failed to load (%s)", d.name, e)
             continue
         if getattr(mod, "router", None) is not None:
+            ROUTES[d.name] = mod         # the module that serves them: what a test patches
             r = APIRouter(dependencies=[Depends(gate(d.name))])
             r.include_router(mod.router)
             out.append(r)
