@@ -265,6 +265,12 @@ def _official_on(d: Path) -> bool:
     return False
 
 
+def footprints() -> list[dict]:
+    """Where each enabled pack's word reaches (pack.yaml `footprint:`), each with its pack id: what the page draws as
+    a claim (app/issues/geometry.py::claims), so the core names no pack's radius."""
+    return [{**m["footprint"], "pack": m["id"]} for m in manifests() if isinstance(m.get("footprint"), dict)]
+
+
 def stations() -> list[dict]:
     """The enabled packs that read public stations around the node (pack.yaml `stations:`), each with its pack id,
     name, `switch` and whether that switch is on. What "Air stations nearby", GET /nearby and the ring's footprint

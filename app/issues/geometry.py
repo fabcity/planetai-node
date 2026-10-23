@@ -232,29 +232,33 @@ def _claim(lat, lon, *, key, name, what, footprint_m, shape, declared, where, no
     return out
 
 
-def claims(lat: float, lon: float, settings, ring: dict | None = None) -> list[dict]:
+def _pack_claim(lat, lon, settings, fp: dict) -> dict:
+    """One pack's `footprint:` (pack.yaml) as a claim: its radius is the setting it names, in its unit."""
+    v = settings.num(fp["setting"], fp.get("default", 0))
+    native = fp.get("native_m")
+    return _claim(lat, lon, key=fp["key"], name=fp["name"], what=fp["what"],
+                  footprint_m=v * (1000 if fp.get("unit") == "km" else 1), shape=fp.get("shape", "circle"),
+                  native_res=contains(native) if native else None, base_res=int(fp.get("base_res", 9)),
+                  declared=f"{fp['setting']}={v}" + (f", at {native} m a pixel" if native else ""),
+                  where=f"packs/{fp['pack']}/pack.yaml", note=(fp.get("note") or "").strip())
+
+
+def claims(lat: float, lon: float, settings, ring: dict | None = None, footprints: list | None = None) -> list[dict]:
     """What each source's word covers, as the compacted cell set that covers it. Every footprint is a number a pack or
     a preset already declares; each names the file it came from. Ordered widest first. `ring` is the stations pack
-    that is on (packs.stations()); without one there is no ring to claim."""
+    that is on (packs.stations()); without one there is no ring to claim. `footprints` are the enabled packs' own
+    (packs.footprints(): coast, earth, place); until 23 Oct 2026 they were written out here."""
+    if footprints is None:
+        import packs                 # noqa: PLC0415
+        footprints = packs.footprints()
     pub = publication()
     rk = (ring or {}).get("radius")
     out = [
-        _claim(lat, lon, key="coast", name="The sea", what="waves and sea-surface temperature at the nearest ocean cell",
-               footprint_m=settings.num("COAST_MAX_KM", 30) * 1000, shape="circle", native_res=None, base_res=7,
-               declared=f"COAST_MAX_KM={settings.num('COAST_MAX_KM', 30)}", where="packs/coast/pack.yaml",
-               note="the pack refuses if the nearest ocean cell is further than this; the model cell it reads is not "
-                    "declared anywhere, so the refusal radius is the only footprint there is"),
+        *[_pack_claim(lat, lon, settings, fp) for fp in footprints],
         *([_claim(lat, lon, key="ring", name="The ring", what="public stations this node is allowed to read",
                   footprint_m=settings.num(rk, 15) * 1000, shape="circle", native_res=None, base_res=8,
                   declared=f"{rk}={settings.num(rk, 15)}", where=f"packs/{ring['pack']}/pack.yaml",
                   note="")] if rk else []),
-        _claim(lat, lon, key="region", name="The square this node keeps", what="AlphaEarth satellite embeddings, year against year",
-               footprint_m=settings.num("EARTH_RADIUS_M", 5000), shape="square", native_res=contains(10), base_res=9,
-               declared=f"EARTH_RADIUS_M={settings.num('EARTH_RADIUS_M', 5000)}, at 10 m a pixel", where="packs/earth/pack.yaml",
-               note="the only source whose own resolution is finer than a household sensor, and the only one whose footprint is a square"),
-        _claim(lat, lon, key="place", name="The kilometre it draws", what="the plan: buildings, water, green, from OpenStreetMap",
-               footprint_m=settings.num("PLACE_RADIUS_M", 1000), shape="circle", native_res=None, base_res=10,
-               declared=f"PLACE_RADIUS_M={settings.num('PLACE_RADIUS_M', 1000)}", where="packs/place/pack.yaml", note=""),
         _claim(lat, lon, key="yard", name="The street", what="this node's own ground",
                footprint_m=settings.num("LOCAL_RADIUS_M", 500), shape="circle", native_res=None, base_res=11,
                declared=f"LOCAL_RADIUS_M={settings.num('LOCAL_RADIUS_M', 500)}", where=".env", note=""),
