@@ -296,6 +296,22 @@ for owned in air:air-quality heat:heat coast:coast land:earth; do
   fi
 done
 
+# 5e. a feature that left the core with no switch of its own (docs/decisions/2026-10-21-core-and-packs.md) was on for
+# every node, so a node that lists its packs gets it added: it would otherwise lose it on this update. things (the
+# things a home keeps and its offers, after v0.83.0).
+for always in things; do
+  pe="$(pq "SELECT value FROM settings WHERE key = 'PACKS_ENABLED'")"
+  if [[ -n "$pe" && ",$pe," != *",${always},"* ]]; then
+    pq "UPDATE settings SET value = value || ',${always}' WHERE key = 'PACKS_ENABLED'" >/dev/null
+    echo "   + ${always} in the packs Set up lists (it is a pack now)"
+  fi
+  pe="$(sed -n 's/^PACKS_ENABLED=\([^#[:space:]]*\).*/\1/p' .env | tail -1)"
+  if [[ -n "$pe" && ",$pe," != *",${always},"* ]]; then
+    sed -i.bak "s/^PACKS_ENABLED=.*/PACKS_ENABLED=${pe},${always}/" .env && rm -f .env.bak
+    echo "   + ${always} in PACKS_ENABLED in .env (it is a pack now)"
+  fi
+done
+
 # 6. rebuild and restart
 say "rebuilding"
 spin "building the image (pip installs; a minute or two)" docker compose build app || die "the image did not build; the node keeps running the version it had. See $ULOG"

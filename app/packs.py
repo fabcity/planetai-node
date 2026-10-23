@@ -300,15 +300,23 @@ def routers() -> list:
     return out
 
 
-def shared_open() -> set[str]:
-    """The paths official packs put on the `open` share list (pack.yaml `share: {open: [...]}`), read by app/auth.py
-    when it is imported. A wild pack cannot widen what a household shares."""
+def shared(level: str = "open") -> set[str]:
+    """The paths official packs put on a share list (pack.yaml `share: {open: [...], off: [...]}`), read by app/auth.py
+    when it is imported. `off` is every level, so a path on it is on `open` too. A wild pack cannot widen what a
+    household shares."""
     out = set()
     for d in sorted(PACKS_DIR.iterdir()) if PACKS_DIR.is_dir() else []:
         if (d / "pack.yaml").is_file() and not (d / ".wild").is_file():
             share = _manifest(d).get("share") or {}
-            out |= {p for p in (share.get("open") or []) if isinstance(p, str) and p.startswith("/")}
+            for lv in (("off",) if level == "off" else ("off", "open")):
+                # a bare `off:` is YAML for false, so that key is read too
+                got = share.get(lv) or (share.get(False) if lv == "off" else None) or []
+                out |= {p for p in got if isinstance(p, str) and p.startswith("/")}
     return out
+
+
+def shared_open() -> set[str]:
+    return shared("open")
 
 
 def footprints() -> list[dict]:

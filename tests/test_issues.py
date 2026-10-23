@@ -51,7 +51,7 @@ assert all(yaml.safe_load((ROOT / f"packs/{pk}/issue.yml").read_text())["key"] =
 # update.sh step 5d: a node that lists its packs keeps the issues it draws, by gaining the pack that ships each one.
 import os as _os, subprocess as _sp, tempfile as _tf
 _u = open(ROOT / "update.sh").read()
-_step = _u[_u.index("# 5d."):_u.index("# 6. rebuild and restart")]
+_step = _u[_u.index("# 5d."):_u.index("# 5e.")]
 _STUB = r"""
 pq() {   # the settings table, as a key=value file
   if [[ "$1" == SELECT* ]]; then k="$(sed -E "s/.*key = '([A-Z_]+)'.*/\1/" <<< "$1")"; sed -n "s/^${k}=//p" "$DB"

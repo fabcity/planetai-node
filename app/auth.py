@@ -48,7 +48,7 @@ def ACT_TOKEN():
 # there too, but the route drops what it says relative to the node (is_node, cells_from_node, *_polar) for a
 # caller without a token: asked at res 15 cell by cell, those would find the house. The phone's walk needs both
 # (Tomas, 12 Oct 2026: one phone mode, no token, for the person running the node).
-_SHARE_OFF = (frozenset({"/", "/ui", "/tester", "/health", "/llms.txt", "/settings", "/export", "/presence", "/nodes", "/offers"}), ("/static/",))
+_SHARE_OFF = (frozenset({"/", "/ui", "/tester", "/health", "/llms.txt", "/settings", "/export", "/presence", "/nodes"}), ("/static/",))
 _SHARE_OPEN = (_SHARE_OFF[0] | frozenset({
     "/stats", "/sensors", "/observations", "/alerts", "/series", "/sparks", "/rho", "/cells", "/packs", "/trust",
     "/report/latest", "/readings", "/reach", "/shape", "/effect",
@@ -62,7 +62,8 @@ _SHARE_OPEN = (_SHARE_OFF[0] | frozenset({
 }), ("/static/", "/exports/", "/issues", "/sources/", "/ground/"))
 # A pack's own routes add themselves (pack.yaml `share:`, packs.shared_open()), the forecast and nearby packs first.
 import packs as _packs  # noqa: E402
-_SHARE_OPEN = (_SHARE_OPEN[0] | frozenset(_packs.shared_open()), _SHARE_OPEN[1])
+_SHARE_OFF = (_SHARE_OFF[0] | frozenset(_packs.shared("off")), _SHARE_OFF[1])     # /offers: the things pack
+_SHARE_OPEN = (_SHARE_OPEN[0] | frozenset(_packs.shared("open")), _SHARE_OPEN[1])
 _SHARE = {"off": _SHARE_OFF, "open": _SHARE_OPEN}
 
 

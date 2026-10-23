@@ -1,7 +1,7 @@
 # Packs
 
 A pack is a folder in `packs/`. It carries rules, Index cells, or an adapter for a new source. The core knows nothing
-about air, water or heat; the packs do. Twenty-three ship in `packs/`.
+about air, water or heat; the packs do. Twenty-four ship in `packs/`.
 
 ```
 packs/<id>/
@@ -211,7 +211,8 @@ switched on while the node runs is subscribed to at its next reconnect or restar
 The node mounts every official pack's router when it starts, and each route answers 404 while the node does not load
 its pack, so switching a pack off in Set up takes its routes with it, no restart. Read the database with
 `from db import q`, never by importing main. A path the pack lists under `share: {open: [/its/path]}` joins what a
-household on `SHARE_LEVEL=open` shares with its own WiFi; a wild pack can neither mount routes nor widen that list.
+household on `SHARE_LEVEL=open` shares with its own WiFi, and one under `share: {"off": [...]}` (quoted: YAML reads a
+bare off as false) is answered at every level, as `/offers` is; a wild pack can neither mount routes nor widen that list.
 `forecast` (GET /forecast), `nearby` (GET /nearby), `earth` (GET /earth, /earth/change.png, /earth/year.png) and
 `earth-engine` (GET /earth/frame.png) serve theirs, core routes until 23 October 2026. `/ground/*` stays in the core:
 it serves three packs' files (place's map, earth-engine's imagery, forecast's wind), and place is becoming core.

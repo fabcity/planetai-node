@@ -10,6 +10,13 @@
   model with roofs and trees in it, it sees the street, not the yard. Your own DEM goes in `TERRAIN_DEM_PATH`.
   `docs/SPEC_terrain.md` has why there is no wetness index.
 
+- **The things a home keeps are a pack.** `GET`/`POST /things`, `PATCH`/`DELETE /things/{id}` and `GET /offers` moved
+  out of `app/main.py` into `packs/things/routes.py`, unchanged, as things and offers are a category a node watches
+  (docs/decisions/2026-10-21-core-and-packs.md). The table stays in `init.sql` and the private role on the counts
+  stays the core's. `/offers` keeps its place on every share level through `share: {"off": [...]}` in the pack's
+  `pack.yaml`, a key that has to be quoted because YAML reads a bare `off` as false. With the pack off the routes
+  answer 404 and the export carries no offers; `planetai update` adds `things` wherever a node lists its packs.
+
 - **The Reticulum bridge has its own repository.** `reticulum_bridge.py`, its Dockerfile and its config template moved
   to [fabcity/planetai-reticulum](https://github.com/fabcity/planetai-reticulum), Apache-2.0, so the core never
   imports `RNS` or `LXMF` (decision 2 of `docs/decisions/2026-10-23-reticulum-licence.md`). `planetai reticulum`
