@@ -51,7 +51,7 @@ def ACT_TOKEN():
 _SHARE_OFF = (frozenset({"/", "/ui", "/tester", "/health", "/llms.txt", "/settings", "/export", "/presence", "/nodes", "/offers"}), ("/static/",))
 _SHARE_OPEN = (_SHARE_OFF[0] | frozenset({
     "/stats", "/sensors", "/observations", "/alerts", "/series", "/sparks", "/rho", "/cells", "/packs", "/trust",
-    "/nearby", "/forecast", "/earth", "/earth/change.png", "/earth/year.png", "/earth/frame.png",
+    "/earth", "/earth/change.png", "/earth/year.png", "/earth/frame.png",
     "/report/latest", "/readings", "/reach", "/shape", "/effect",
     "/history", "/exports", "/sources",
     # The ask pane. Its context and every tool result are scrubbed of positions, names and ids (app/ask.py), so
@@ -61,6 +61,9 @@ _SHARE_OPEN = (_SHARE_OFF[0] | frozenset({
     # What the node learned about the place (outdoor stations' usual hours), never the house's: the Wall reads it.
     "/learned/place",
 }), ("/static/", "/exports/", "/issues", "/sources/", "/ground/"))
+# A pack's own routes add themselves (pack.yaml `share:`, packs.shared_open()), the forecast and nearby packs first.
+import packs as _packs  # noqa: E402
+_SHARE_OPEN = (_SHARE_OPEN[0] | frozenset(_packs.shared_open()), _SHARE_OPEN[1])
 _SHARE = {"off": _SHARE_OFF, "open": _SHARE_OPEN}
 
 

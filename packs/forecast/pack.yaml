@@ -31,3 +31,6 @@ needs:
 attribution: >-
   Weather forecast data from BMKG (Badan Meteorologi, Klimatologi, dan Geofisika), api.bmkg.go.id.
   Model forecast from Open-Meteo, open-meteo.com, CC-BY 4.0 — free tier is non-commercial use only.
+# The paths this pack's routes.py serves that a household on SHARE_LEVEL=open shares with its own WiFi (app/auth.py).
+share:
+  open: [/forecast]

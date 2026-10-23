@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **A pack serves its own routes.** `GET /forecast` and `GET /nearby` moved out of `app/main.py` into
+  `packs/forecast/routes.py` and `packs/nearby/routes.py`, unchanged. The node mounts each official pack's router at
+  start and answers 404 while that pack is off, and a pack puts its paths on the `open` share list with
+  `share: {open: [...]}` in its `pack.yaml`, where they were written into `app/auth.py`. `q()` lives in `app/db.py`
+  now, so a pack's routes read the database without importing main.
+
 - **A pack draws its own footprint.** The sea, the square the earth pack keeps and the kilometre the place pack draws
   were written out in `app/issues/geometry.py`. Each is a `footprint:` in its pack's `pack.yaml` now (the setting that
   holds the radius, its unit, shape and grain), read while the pack is on, so a node without the place pack no

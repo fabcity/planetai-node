@@ -6,13 +6,14 @@ about air, water or heat; the packs do. Twenty-two ship in `packs/`.
 ```
 packs/<id>/
   pack.yaml     id, name, description, kind (data | code), version, requires:, domain:, sources:, needs:, pip:, env:,
-                secrets:, switch:, stations:, footprint:, agent_scripts:, readouts:, sections:, (read by people only) author:, attribution:,
+                secrets:, switch:, stations:, footprint:, share:, agent_scripts:, readouts:, sections:, (read by people only) author:, attribution:,
                 metrics:, scales:, thresholds:
   rules.yml     alerts: SQL that returns rows, one message per row
   cells.yml     Index cells: SQL that returns one `value`
   issue.yml     the issue this pack watches, its `key:`, name, metric, line, `alert:`, sentences (air-quality, heat, coast, earth)
   adapter.py    a new source; code packs only
   hooks.py      on_readings, on_alert: what the pack does with what the node stores and sends; code packs only
+  routes.py     a FastAPI `router`: the pack's own HTTP routes (GET /forecast, /nearby); official packs only
   channels.yml  what a pack's own metrics ARE — ambient, enclosure, index, etc.
   README.md     where the thresholds come from, what the pack assumes
 ```
@@ -205,6 +206,13 @@ gated like `adapter.py` (an official pack's own switch, or `PACKS_ALLOW_CODE=1`)
 what it keeps lasts, and a hook that fails is logged and never stops the node's own work. `packs/home-assistant` was
 the first, and `packs/smartcitizen` reads `device/sck/#` this way; both were core code until 22 October 2026. A pack
 switched on while the node runs is subscribed to at its next reconnect or restart.
+
+**Routes.** An official pack can serve its own HTTP routes from a `routes.py` that defines `router = APIRouter()`.
+The node mounts every official pack's router when it starts, and each route answers 404 while the node does not load
+its pack, so switching a pack off in Set up takes its routes with it, no restart. Read the database with
+`from db import q`, never by importing main. A path the pack lists under `share: {open: [/its/path]}` joins what a
+household on `SHARE_LEVEL=open` shares with its own WiFi; a wild pack can neither mount routes nor widen that list.
+`forecast` (GET /forecast) and `nearby` (GET /nearby) were the first, core routes until 23 October 2026.
 
 **Public stations.** A pack that reads a network of other people's stations around the node says so, and the node's
 "Air stations nearby" source, `GET /nearby` and the ring's footprint read it instead of naming a network:

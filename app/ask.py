@@ -283,10 +283,16 @@ def wall_reads() -> tuple[list, dict | None]:
     except Exception:  # noqa: BLE001
         usual = []
     try:
-        fc = main.forecast(WALL_FORECAST_HOURS)
+        fc = _read_forecast(WALL_FORECAST_HOURS)
     except Exception:  # noqa: BLE001
         fc = None
     return usual, fc
+
+
+def _read_forecast(hours: int) -> dict | None:
+    """GET /forecast's own answer, from the forecast pack (packs/forecast/routes.py), or None while it is off."""
+    mod = packs.module("forecast", "routes")
+    return mod.forecast(hours) if mod else None
 
 
 AGENT_KEYS = ("AGENT_PREFER", "AGENT_REMOTE_URL", "AGENT_REMOTE_MODEL", "AGENT_REMOTE_KEY",

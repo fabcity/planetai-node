@@ -109,7 +109,7 @@ def _db():
     raise RuntimeError("no database in this test")
 main.db = _db
 main.q = lambda sql, *a: [{"name": s.get("name")} for s in FIX["sensors"]] if "FROM sensors" in sql else []
-main.forecast = lambda hours=24: None   # the Wall reads it (ask.wall_reads); never the database in this test
+ask._read_forecast = lambda hours=24: None   # the Wall reads it (ask.wall_reads); never the database in this test
 import inspect                                       # noqa: E402
 _sig = inspect.signature(issues_api.issues_now).parameters
 assert all(p.default is not inspect.Parameter.empty for p in _sig.values()), \
@@ -263,10 +263,10 @@ _FC = {"hours": [  # the capture's as_of is 19:22 +08:00: one hour gone, three t
     {"ts": "2026-10-06 22:00:00+08:00", "source": "forecast-bmkg", "fc_temp": 27.4, "fc_rain": 0.1},
     {"ts": "2026-10-06 22:00:00+08:00", "source": "forecast-om", "fc_temp": 33.0},
     {"ts": "2026-10-07 09:00:00+08:00", "source": "forecast-bmkg", "fc_temp": 17.0}]}
-_q, _fc, _ch = main.q, main.forecast, ask.packs.channels
+_q, _fc, _ch = main.q, ask._read_forecast, ask.packs.channels
 main.q = lambda sql, *a: ([{"name": s.get("name"), "room": None, "source_name": None} for s in FIX2["sensors"]]
                           if "FROM sensors" in sql else _LEARNED if "FROM learnings" in sql else [])
-main.forecast = lambda hours=24: _FC
+ask._read_forecast = lambda hours=24: _FC
 ask.packs.channels = lambda: [{"source": "thingdata", "metric": "thing_uses", "role": "private"}]
 issues_api.issues_now = lambda: DOC2
 os.environ.update(NODE_LAT=str(LAT2), NODE_LON=str(LON2))   # rounds to -8.82; "-8.8190" in a label starts -8.81
@@ -317,7 +317,7 @@ for _ in range(len(_all)):
     local.post("/ask", json={"messages": [{"role": "user", "content": "speak"}], "view": "wall", "prompt": "wall"})
     seen_angles.add(SCRIPT[-1]["system"].split("This time, start from ", 1)[1].split(".", 1)[0])
 check(seen_angles <= set(ask.wall_angles(wctx)) and len(seen_angles) > 5, f"the wall's angles rotate within its facts: {seen_angles}")
-main.q, main.forecast, ask.packs.channels = _q, _fc, _ch
+main.q, ask._read_forecast, ask.packs.channels = _q, _fc, _ch
 issues_api.issues_now = lambda: DOC
 del os.environ["NODE_LAT"], os.environ["NODE_LON"]
 print("  wall facts: day, WHO line, stations, the place's usual, next hours, land, sea and a pack's section; nothing private")
