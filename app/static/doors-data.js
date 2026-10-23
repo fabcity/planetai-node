@@ -313,6 +313,7 @@ async function thingsBlock() {
   const el = $('#d-things');
   if (CARDLG && CARDLG.open) return;   // a refresh must not wipe an edit in progress
   const r = await doorsFetch('/things').catch(() => null);
+  if (r && r.status === 404) { el.innerHTML = `<h2>Things</h2><p class="fine">The things pack is off on this node. Switch it on in Set up, under Packs, to keep a list of what this home has here.</p>`; return; }
   const j = r && r.ok ? await r.json().catch(() => null) : null;
   if (!j) { el.innerHTML = `<h2>Things</h2><p class="fine">What this home keeps stays private to this house and never leaves it. Unlock this screen with the admin key in ${UNLOCK_AT} to see it.</p>`; return; }
   const s = j.summary;
@@ -414,7 +415,9 @@ const imgStatus = a => !a ? 'not described' : a.confirmed_by ? `confirmed by ${a
 async function imagesBlock() {
   const el = $('#d-images');
   if (CARDLG && CARDLG.open) return;   // a refresh must not wipe an edit in progress
-  const rows = await doorsFetch('/captures?limit=500').then(r => (r.ok ? r.json() : null)).catch(() => null);
+  const rr = await doorsFetch('/captures?limit=500').catch(() => null);
+  if (rr && rr.status === 404) { el.innerHTML = `<h2>Images</h2><p class="fine">The eyes pack is off on this node. Switch it on in Set up, under Packs, to keep pictures of this place here.</p>`; return; }
+  const rows = rr && rr.ok ? await rr.json().catch(() => null) : null;
   TKEEP = await doorsFetch('/things').then(r => (r.ok ? r.json() : null)).catch(() => null);
   if (!rows) { el.innerHTML = `<h2>Images</h2><p class="fine">Images stay private to this house: the picture and where it was taken. Unlock this screen in ${UNLOCK_AT} to see them.</p>`; return; }
   // what a person here has confirmed, per species (SPEC_species §4): the model's guesses are not in it

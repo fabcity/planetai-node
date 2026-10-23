@@ -154,11 +154,11 @@ test_rho_pg|PYTHONPATH=app PACKS_DIR=packs python3 tests/test_rho_pg.py
 test_actions|PYTHONPATH=app python3 tests/test_actions.py
 test_agent_buttons|PYTHONPATH=app python3 tests/test_agent_buttons.py
 test_nodes_registry|PYTHONPATH=app python3 tests/test_nodes_registry.py
-test_captures|PYTHONPATH=app python3 tests/test_captures.py
+test_captures|PACKS_DIR=packs PYTHONPATH=app python3 tests/test_captures.py
 test_private|PYTHONPATH=app python3 tests/test_private.py
-test_things|PYTHONPATH=app python3 tests/test_things.py
+test_things|PACKS_DIR=packs PYTHONPATH=app python3 tests/test_things.py
 test_rooms|PYTHONPATH=app python3 tests/test_rooms.py
-test_offers|PYTHONPATH=app python3 tests/test_offers.py
+test_offers|PACKS_DIR=packs PYTHONPATH=app python3 tests/test_offers.py
 test_bot_pictures|PYTHONPATH=app python3 tests/test_bot_pictures.py
 test_learned|PACKS_DIR=packs PYTHONPATH=app python3 tests/test_learned.py
 test_events_wire|PACKS_DIR=packs PYTHONPATH=app python3 tests/test_events_wire.py

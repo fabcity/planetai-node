@@ -1,7 +1,7 @@
 # Packs that ship
 <!-- checked: v0.83.0 -->
 
-The twenty-two core packs in `packs/`, six data and sixteen code, hold everything the node knows about a place, and no
+The twenty-four core packs in `packs/`, six data and eighteen code, hold everything the node knows about a place, and no
 rule in `app/` says what PM2.5 means for a household or where the nearest fab lab is. For each pack this page
 says what it reads, what it says, its rules and where each threshold comes from, its settings, and what it does
 not know. How a pack is built and loaded is on [Packs](packs.md). Wild packs, such as `xiaomi-air` and
@@ -35,6 +35,8 @@ A pack is `code` when its folder has an `adapter.py`, and code packs load only w
 | `fire` | code | air | 1 act, 1 warn, 1 info | | | | `FIRE_*`, `FIRMS_MAP_KEY` |
 | `open-data-health` | data | governance | 1 warn | | 2 | | `CKAN_PORTALS` (core adapter) |
 | `thingdata` | code | repair | 1 warn | | 2 | | `THINGDATA_*` |
+| `things` | code | things | none | | | | none (the Telegram bot's token, the core's) |
+| `eyes` | code | species | none | | | | `CAPTURES_DIR`, `EYES_MODEL`, `SPECIES_MATCH` (declared by the core) |
 | `example-cooking-hours` | data | (none) | 1 info | | | | |
 
 That is 36 rules with a message (29, and the 7 only the event engine reads), 5 report contributors and 12
@@ -1030,6 +1032,50 @@ The cell keys are literals and say City. A node whose server covers a region sho
 ThingData entities carry no coordinates, so a server three continents away counts the same as the one down
 the road. The pack cannot tell whether a guide is any good, whether anyone followed it, or whether a thing was
 repaired.
+
+## things
+
+The things this home keeps and the ones it offers: `GET /things`, `POST /things`, `PATCH` and `DELETE /things/{id}`
+(the admin token only) and `GET /offers` (every share level, by the household's choice). One row per thing, with how
+often it is used, whether it works and whether it is offered; three private counts per class (`stock`, `idle`,
+`repair`) written as readings on the node's own survey sensor whenever one changes, so a readout, a rule or a cell can
+use them and nothing sends them. An offer is a public line at the node's res-8 cell, with a link to the node's Telegram
+bot, which passes one message on to the household.
+
+| | |
+|---|---|
+| Kind | code: `routes.py`, no adapter |
+| Domain | `things` |
+| Requires node | `>=0.83.0` |
+| Shares | `/offers` on every level (`share: {"off": [/offers]}`) |
+| Rules and cells | none yet |
+
+Core until 24 October 2026. The `things` table stays in `init.sql`, and the private role on the counts stays declared
+by the core, so a node that switches this pack off keeps its readings private and loses no row. With the pack off,
+`/things` and `/offers` answer 404 and the daily export carries no offers. On `planetai update`, a node that lists its
+packs in `PACKS_ENABLED` gets `things` added, because every node had it.
+
+## eyes
+
+The pictures a household takes of its own place, and what is in them: `POST`/`GET /captures`, `PATCH`/`DELETE
+/captures/{id}`, `GET /captures/{id}/file`, `POST /captures/{id}/describe` and `GET /species`. A picture is cleaned on
+arrival (its location kept as a cell, never a point) and kept on its own disk. The image model on this house's own
+network describes it as findings in the flows classes, the model's until a person confirms one. With `SPECIES_MATCH` on,
+a finding's scientific name is asked of GBIF, and two weekly reads say whether this country lists it as introduced or
+invasive (GRIIS) and how many open records others have made in the node's seven cells.
+
+| | |
+|---|---|
+| Kind | code: `routes.py` and two weekly jobs (`check_griis`, `check_others`), no adapter |
+| Domain | `species` |
+| Requires node | `>=0.83.0` |
+| Needs | a disk for the pictures; the image model on the house's network; `api.gbif.org` with `SPECIES_MATCH` on |
+| Rules and cells | none: a finding is the model's until a person confirms it |
+
+Core until 24 October 2026. The `captures` table stays in `init.sql` and the pictures stay where they are; the three
+settings stay the core's, because two of them change what leaves the house. With the pack off, the routes answer 404,
+the Data door says so, and the weekly reads do not run. On `planetai update`, a node that lists its packs in
+`PACKS_ENABLED` gets `eyes` added, because every node had it.
 
 ## example-cooking-hours
 
