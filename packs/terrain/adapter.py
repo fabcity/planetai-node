@@ -193,7 +193,7 @@ def read(cov: dict):
         dx, dy = abs(tr.a) * unit, abs(tr.e) * unit
     xs, ys = transform("EPSG:4326", crs, [lon], [lat])
     col, row = ~tr * (xs[0], ys[0])
-    return z, np.asarray(sea), dx, dy, (int(row), int(col))
+    return z, np.asarray(sea), dx, dy, (row, col)      # fractional: the point inside its pixel, for the 60 m circle
 
 
 # ---------------------------------------------------------------- the arithmetic, numpy and heapq only
@@ -262,21 +262,24 @@ def stuck(f, sea, drop) -> int:
     return int((inner & (drop <= 0)).sum())
 
 
-def compute(z, sea, dx: float, dy: float, rc: tuple[int, int]) -> dict:
+def compute(z, sea, dx: float, dy: float, rc: tuple[float, float]) -> dict:
     """Everything the pack keeps: the node's pixel, the largest flow within NEAR_M, and the square's shape."""
     import numpy as np
     f = fill(z, sea)
     k, drop = steepest(f, dx, dy)
     acc = accumulate(f, sea, k)
     depth = f - z
-    r, c = rc
+    rf, cf = rc                                     # the point, in pixel units (row, col) from the window's corner
+    r, c = int(rf), int(cf)                         # the pixel it falls in
     H, W = z.shape
     if not (0 <= r < H and 0 <= c < W) or sea[r, c]:
         raise RuntimeError("the node's point is outside the square or on the sea")
-    n = max(1, math.ceil(NEAR_M / min(dx, dy)))
+    n = math.ceil(NEAR_M / min(dx, dy)) + 1
     r0, c0 = max(0, r - n), max(0, c - n)
     rows, cols = np.ogrid[r0:min(H, r + n + 1), c0:min(W, c + n + 1)]
-    within = np.hypot((rows - r) * dy, (cols - c) * dx) <= NEAR_M          # a circle; the point itself always counts
+    # A circle from the point itself to each pixel's centre; the point's own pixel always counts.
+    within = np.hypot((rows + 0.5 - rf) * dy, (cols + 0.5 - cf) * dx) <= NEAR_M
+    within[r - r0, c - c0] = True
     near = acc[r0:r + n + 1, c0:c + n + 1][within]
     land = ~sea
     px = dx * dy

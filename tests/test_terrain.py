@@ -80,11 +80,20 @@ flat = np.zeros((9, 9)) + 5.0
 acc_big = np.ones((9, 9)); acc_big[4, 5] = 999; acc_big[6, 6] = 777
 A_fill, A_steep, A_acc = A.fill, A.steepest, A.accumulate
 A.accumulate = lambda f, sea, k: acc_big
-p90 = A.compute(flat, np.zeros((9, 9), dtype=bool), 90.0, 90.0, (4, 4))
-p30 = A.compute(flat, np.zeros((9, 9), dtype=bool), 30.0, 30.0, (4, 4))
+p90 = A.compute(flat, np.zeros((9, 9), dtype=bool), 90.0, 90.0, (4.5, 4.5))
+p30 = A.compute(flat, np.zeros((9, 9), dtype=bool), 30.0, 30.0, (4.5, 4.5))
 A.accumulate = A_acc
 check(p90["upslope_near_m2"] == 1 * 8100.0, f"at 90 m only the point itself is within 60 m, got {p90['upslope_near_m2']}")
 check(p30["upslope_near_m2"] == 999 * 900.0, f"at 30 m the neighbour counts, got {p30['upslope_near_m2']}")
+# Measured from the point, not its pixel: pixel (4, 6)'s centre is 45 m from the east corner of pixel (4, 4) and
+# 76 m from its west corner. The pixel the point falls in is the same both times.
+acc_far = np.ones((9, 9)); acc_far[4, 6] = 999
+A.accumulate = lambda f, sea, k: acc_far
+far = A.compute(flat, np.zeros((9, 9), dtype=bool), 30.0, 30.0, (4.99, 4.99))
+near = A.compute(flat, np.zeros((9, 9), dtype=bool), 30.0, 30.0, (4.0, 4.0))
+A.accumulate = A_acc
+check(far["upslope_near_m2"] == 999 * 900.0, "an off-centre point near the neighbour reaches it")
+check(near["upslope_near_m2"] < 999 * 900.0, "the same pixel, its other corner, does not")
 try:
     A.compute(z, np.ones(z.shape, dtype=bool), 30.0, 30.0, (3, 3))
     fails.append("a point on the sea should refuse")
