@@ -11,8 +11,7 @@ kind: code
 domain: water
 metrics: [terrain_upslope_ha, terrain_upslope_near_ha, terrain_hollow_m, rain_24h_mm, water_24h_m3]
 scales: [city]
-# sources: the registry entry is filed (awesome-fabcity-data #96) and not in the vendored pin yet. When it is,
-#   sources: [environmental/planet/copernicus-dem-glo30]
+sources: [environmental/planet/copernicus-dem-glo30]
 pip: [rasterio, numpy]
 env:
   # No padding after `=`: a value pasted after spaces makes the line `VAR= value`, which shell reads as a command.

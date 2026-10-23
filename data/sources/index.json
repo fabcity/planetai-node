@@ -1708,6 +1708,45 @@
     "url": "https://www.openstreetmap.org/"
   },
   {
+    "added": "2026-10-23",
+    "api": "s3://overturemaps-us-west-2/release/2026-10-21.0/theme=places/type=place/",
+    "assisted_by": "Claude Code",
+    "auth": "none",
+    "cell": "Economic|Community",
+    "description": "88 million points of interest worldwide (shops, workshops, repair, services), merged by the Overture Maps\nFoundation from Meta, Microsoft, Foursquare, BrightQuery, AllThePlaces and others. Monthly GeoParquet release.\n",
+    "feeds_cells": [
+      "Economic|Community"
+    ],
+    "license": "CDLA-Permissive-2.0 AND Apache-2.0 AND CC0-1.0, per source; see notes",
+    "name": "Overture Maps Places",
+    "notes": "VERIFIED 2026-10-23, release 2026-10-21.0 (schema v2.0.0).\n\nLICENCE. Places only. Overture's other themes (buildings, transportation, base, divisions) are ODbL and are not\nthis entry. Read on Overture's attribution page: Places has no theme-wide licence, it is licensed per source.\nMeta, Microsoft, BrightQuery, Uberall, PinMeTo, DAC, OpenTravel and others: \"Available under CDLA Permissive 2.0.\"\nFoursquare: \"Copyright 2024 Foursquare Labs, Inc. All rights reserved. Available under Apache 2.0\", with a\nNOTICE.txt. AllThePlaces: \"Available under CC0 1.0.\" All three are open, with no share-alike. Records carry\nsources[].dataset and sources[].license, and every source row in both boxes read had both. The schema makes\nsources[].license optional, so where it is absent go by the attribution page or ask the provider.\n\nENDPOINT. Anonymous S3, us-west-2, no key. Read with DuckDB 1.5.5 over httpfs, filtering on the bbox column.\nThe release notes give 88,418,121 places, up 8.55 % on September.\n\nREAD. Barcelona, a 2 x 2 km box round Plaça de Catalunya (2.158-2.182 E, 41.378-41.396 N): 25,821 places,\n11,905 with confidence >= 0.7. operating_status: 16,488 open, 1,204 permanently_closed, 2 temporarily_closed,\n8,127 not stated. Making and repair, by taxonomy.primary: 91 IT and computer repair, 36 automotive repair, 36\nhardware stores, 33 manufacturers, 20 industrial equipment makers, 19 furniture makers, 19 phone repair.\nDenpasar, a 2.5 x 2.3 km box round Puputan square (115.205-115.228 E, 8.646-8.667 S): 3,775 places, 1,142 with\nconfidence >= 0.7. 19 textile makers, 18 motorcycle repair, 14 industrial equipment makers, 9 IT repair,\n1 metal fabricator. Only these two places were read.\n\nTHE TRAP. Status is near-empty outside the sources that carry it: in Denpasar 3,768 of 3,775 places have no\noperating_status, so a count there is a count of listings, open or not. In Barcelona 31,203 source rows are\nBrightQuery's, which the release notes say reached Spain this month, so its coverage may move again. Read confidence and status before counting anything as a door.\n\nWHY THIS CELL. \"Businesses per km2 within the radius\" and repair access for Economic|Community, with permissive\nlicences where OSM's ODbL would bind what a node publishes. WHAT IT DOES NOT CLAIM. A listing is not an open\ndoor, and no fab lab is identified as one: there is no makerspace category in either box.\n",
+    "pillar": "economic",
+    "pilot_relevance": [
+      "global"
+    ],
+    "places": [
+      "barcelona",
+      "bali"
+    ],
+    "reviews": [],
+    "scale": "community",
+    "slug": "economic/community/overture-places",
+    "status": "candidate",
+    "tags": [
+      "places",
+      "poi",
+      "businesses",
+      "premises",
+      "repair",
+      "amenities",
+      "geoparquet",
+      "overture",
+      "gers"
+    ],
+    "upstream_listed_in": [],
+    "url": "https://docs.overturemaps.org/guides/places/"
+  },
+  {
     "act_kind": "facility",
     "added": "2026-09-22",
     "api": "https://community.preciousplastic.com/api/map-pins",
@@ -3964,6 +4003,41 @@
     "url": "https://github.com/kratzert/Caravan"
   },
   {
+    "added": "2026-10-23",
+    "api": "https://rapidmapping.emergency.copernicus.eu/backend/dashboard-api/public-activations/?code=<EMSR code>",
+    "assisted_by": "Claude Code",
+    "auth": "none",
+    "cell": "Environmental|Bioregion",
+    "description": "Mapped flood extents from Copernicus Emergency Management Service activations: observed flood, maximum\nextent and depth as GeoJSON and shapefiles per area of interest, with affected-area tables. Run by the\nEuropean Commission's Joint Research Centre.\n",
+    "feeds_cells": [],
+    "license": "Copernicus, Regulation (EU) 2021/696: \"free, full and open access\"; credit \"Copernicus Emergency Management Service (© European Union, 2012-<year>)\"",
+    "name": "Copernicus EMS Rapid Mapping, flood delineations",
+    "notes": "VERIFIED 2026-10-23, not yet read for a real territory.\n\nLICENCE. The portal's terms (mapping.emergency.copernicus.eu/terms-and-conditions, modified\n07/06/2023): \"users shall have a free, full and open access to Copernicus Service Information\nwithout any express or implied warranty\", under Regulation (EU) 2021/696. They add \"Some data as\nproduced by the CEMS On-Demand Mapping are restricted according to article 53\". The citation\nguidelines require \"Copernicus Emergency Management Service (© European Union, 2012-present_year)\"\nwhenever the data is distributed. One conflict: the ISO metadata inside a product\n(EMSR788_AOI01_DEL_MONIT02_observedEventA_v1.xml) says \"conditions to access and use unknown\". This\nentry reads the data under the terms page.\n\nENDPOINT. GET /activations/api/activations/?limit=2000 on mapping.emergency.copernicus.eu lists\nevery activation, key-free: 1,068, of which 350 are floods, from 2012-07-09 to EMSR935 (Valencia,\n19 Oct 2026). The detail record with areas of interest and products comes from the backend URL in\n`api`. I fetched it for all 350 floods: 90 answered 200 (23 from 2023, 30 from 2024, 21 from 2025,\n16 from 2026). 260 answered 403 \"Authentication credentials were not provided\". That covers every\nflood from 2012 to 2022 and 24 since; the portal asks those for a per-activation username and\npassword. The 90 open ones hold 590 areas and 1,216 products (933 delineation, 250 grading). For\nEMSR788 (Ille-et-Vilaine, Jan 2025), observedEventA came as a 5.4 MB GeoJSON of polygons tagged\n\"Riverine flood\", and the product zip (24 MB, via a signed S3 redirect) held the same layers as\nshapefiles plus floodDepthA, maximumFloodExtentA, a summary table and a PDF map.\n\nPLACES. Places whose centroid in fci-index public/data/coordinates.json falls inside an open\nactivation's area: ljubljana (EMSR680, Aug 2023) and rennes (EMSR788, two areas). Floods near\nParis, Montpellier and Bergisches (2016-2021, seen in geoid-flood) sit in the 403 part.\n\nWHY NO CELL. Environmental|Bioregion keeps flood out of its rows because its only flood source\nforecast. This one records what was mapped after a flood, so a maintainer could revisit that\nnote. I did not change the cell.\n\nWHAT IT DOES NOT CLAIM. Only floods someone activated the service for, and only the areas\nmapped, so a place with no activation may still have flooded. The extent is what one image saw\non its date.\n",
+    "pillar": "environmental",
+    "pilot_relevance": [],
+    "places": [
+      "ljubljana",
+      "rennes"
+    ],
+    "reviews": [],
+    "scale": "bioregion",
+    "slug": "environmental/bioregion/cems-rapid-mapping-floods",
+    "status": "candidate",
+    "tags": [
+      "flooding",
+      "natural-hazards",
+      "earth-observation",
+      "emergency-mapping",
+      "copernicus",
+      "cems",
+      "geojson",
+      "europe",
+      "global"
+    ],
+    "upstream_listed_in": [],
+    "url": "https://mapping.emergency.copernicus.eu/activations/"
+  },
+  {
     "added": "2026-09-09",
     "api": null,
     "cell": "Environmental|Bioregion",
@@ -4050,6 +4124,47 @@
       "awesome-public-datasets"
     ],
     "url": "https://www.gbif.org/"
+  },
+  {
+    "added": "2026-10-23",
+    "api": "https://huggingface.co/datasets/links-ads/geoid-flood/tree/main",
+    "assisted_by": "Claude Code",
+    "auth": "none",
+    "cell": "Environmental|Bioregion",
+    "description": "Mapped flood extents for 219 Copernicus EMS Rapid Mapping flood activations in 65 countries, 2016-2026, as\n10 m tiles with Sentinel-1, Sentinel-2 and DEM layers and validated labels. Built by Fondazione LINKS (Turin) to train\nflood-mapping models.\n",
+    "feeds_cells": [],
+    "license": "CC-BY-4.0",
+    "name": "GEOID-Flood (flood segmentation benchmark from Copernicus EMS Rapid Mapping)",
+    "notes": "VERIFIED 2026-10-23, not yet read for a real territory.\n\nLICENCE. The dataset card reads \"The GEOID-Flood compilation, splits and labels: CC BY 4.0\", and\nasks that three notices be carried forward: modified Copernicus Sentinel-1 and -2 data\n(2016-2026), \"Copernicus Emergency Management Service Rapid Mapping products, © European Union\",\nand the `dem` layer under the Copernicus WorldDEM-30 licence. I read both upstream terms. CEMS\n(mapping.emergency.copernicus.eu/terms-and-conditions, modified 07/06/2023): \"users shall have a\nfree, full and open access to Copernicus Service Information\", with the source credited when\nredistributing. The WorldDEM-30 licence grants reproduction, distribution and modification free of\ncharge, worldwide, if its © DLR / Airbus notice and a no-liability sentence travel with the\ndata. The code at github.com/links-ads/geoid-flood is MIT, which covers the code only.\n\nENDPOINT. Hugging Face, not gated (2,760 downloads at the time of reading). Tar shards of\nCloud-Optimized GeoTIFFs by split and layer, 584 GB in all; the `label` layer alone is 0.1 GB.\nA sample label raster (EMSR712-10-0_label.tif) downloaded key-free, 9,464 bytes. Labels: 0\nbackground, 1 permanent water, 2 flooded water, 255 not mapped. The two tile_catalog.parquet files\n(633 KB and 93 KB) list 15,477 tiles over 221 activation ids with polygon, event date and\ncountry.\n\nPLACES. Tile centres within 20 km of each place's centroid in fci-index\npublic/data/coordinates.json: paris 25 tiles (EMSR165, May-June 2016; EMSR265, Jan 2018), rennes\n12 (EMSR788, Jan 2025), montpellier 11 (EMSR188, Oct 2016), ljubljana 9 (EMSR680, Aug 2023),\nbergisches 8 (EMSR497, Feb 2021; EMSR517, Jul 2021), augsburg 4 (EMSR728, May 2024), zagreb 1\n(EMSR275, Mar 2018, 16 km out).\n\nWHY NO CELL. Environmental|Bioregion carries natural hazards, but its notes keep flood out of\nthe rows on purpose. This dataset is a sample: only floods CEMS was activated for, only the areas\nit mapped, cut to what a benchmark needed. It cannot count floods or say a place did not flood.\nIts use for a node is a model trained on it, mapping water from Sentinel-1 over its own cell,\nand the past extents for the seven places above.\n\nWHAT IT DOES NOT CLAIM. Not a flood record and not a risk map. A flooded pixel is water seen by\nradar on one post-event pass, so peak extent may be missed. The upstream itself, CEMS Rapid\nMapping vector delineations for every public activation, is not filed here yet.\n",
+    "pillar": "environmental",
+    "pilot_relevance": [],
+    "places": [
+      "paris",
+      "rennes",
+      "montpellier",
+      "bergisches",
+      "ljubljana",
+      "augsburg",
+      "zagreb"
+    ],
+    "reviews": [],
+    "scale": "bioregion",
+    "slug": "environmental/bioregion/geoid-flood",
+    "status": "candidate",
+    "tags": [
+      "flooding",
+      "natural-hazards",
+      "earth-observation",
+      "sentinel-1",
+      "sentinel-2",
+      "sar",
+      "machine-learning",
+      "benchmark",
+      "copernicus",
+      "cems"
+    ],
+    "upstream_listed_in": [],
+    "url": "https://huggingface.co/datasets/links-ads/geoid-flood"
   },
   {
     "added": "2026-09-09",
@@ -5213,6 +5328,48 @@
     "url": "https://baliairdispatch.com/"
   },
   {
+    "added": "2026-10-23",
+    "api": "https://data.cocorahs.org/export/exportreports.aspx",
+    "assisted_by": "Claude Code",
+    "auth": "none",
+    "cell": "Environmental|Community",
+    "description": "Volunteers read a standard rain gauge every morning and report rain, hail and snow. Run by the Colorado\nClimate Center; covers the United States, Canada and the Bahamas, with a key-free daily export.\n",
+    "feeds_cells": [],
+    "license": "CC-BY-4.0",
+    "name": "CoCoRaHS (Community Collaborative Rain, Hail and Snow Network)",
+    "notes": "VERIFIED 2026-10-23, not yet read for a real territory.\n\nLICENCE. The Data Usage Policy (cocorahs.org/Content.aspx?page=datausagepolicy) reads \"Unless\notherwise noted, all CoCoRaHS content and data are released under a Creative Commons Attribution 4.0\nLicense\", and asks \"that everyone who uses CoCoRaHS data to please acknowledge its source when\ndisplaying it\". Older copies of the same policy and some app listings say CC BY 3.0; the live page\nsays 4.0.\n\nENDPOINT. exportreports.aspx?ReportType=Daily&dtf=1&Format=CSV&State=MA&ReportDateType=reportdate\n&Date=10/22/2026 returned 203 Massachusetts reports as CSV: station number, name, lat/lon,\nTotalPrecipAmt (inches), new and total snow and their water equivalent. Country=CAN returned 386\nCanadian reports for the same day. One reading a day per gauge, with its observation time.\n\nPLACES. Distinct stations reporting on 22 Oct 2026 within 10 km of each place's centroid in fci-index\npublic/data/coordinates.json: somerville 8, oakland 7, cambridge 6, boston 5, sacramento 3,\nmontreal 3, charlotte 2, detroit 2. None within 10 km of bas-saint-laurent's centroid.\n\nWHY NO CELL. Rainfall is weather, and no Index cell has a rainfall row today, so feeds_cells is\nempty, as for open-meteo and bmkg-prakiraan-cuaca. A node would read it for decisions about water\nat home: whether the garden needs watering, how much a roof could have caught.\n\nWHAT IT DOES NOT CLAIM. Manual gauges, read once a day: no rainfall rate, no hourly totals. A\nday with no report has no reading, so a gap cannot be summed as zero rain.\n",
+    "pillar": "environmental",
+    "pilot_relevance": [
+      "boston"
+    ],
+    "places": [
+      "boston",
+      "cambridge",
+      "somerville",
+      "oakland",
+      "sacramento",
+      "montreal",
+      "charlotte",
+      "detroit"
+    ],
+    "reviews": [],
+    "scale": "community",
+    "slug": "environmental/community/cocorahs",
+    "status": "candidate",
+    "tags": [
+      "weather",
+      "precipitation",
+      "rain",
+      "snow",
+      "hail",
+      "citizen-science",
+      "volunteer-observers",
+      "north-america"
+    ],
+    "upstream_listed_in": [],
+    "url": "https://www.cocorahs.org/"
+  },
+  {
     "added": "2026-05-04",
     "api": "https://api.inaturalist.org/v1",
     "cell": "Environmental|Community",
@@ -5271,6 +5428,47 @@
     "updated": "2026-10-12",
     "upstream_listed_in": [],
     "url": "https://openlittermap.com/"
+  },
+  {
+    "added": "2026-10-23",
+    "api": "https://api.opensensemap.org/",
+    "assisted_by": "Claude Code",
+    "auth": "none",
+    "cell": "Environmental|Community",
+    "description": "Citizen sensor stations worldwide, mostly senseBox and Sensor.Community kits, reporting temperature,\nhumidity, pressure and PM2.5/PM10 every few minutes. Run by the senseBox team in Münster, key-free API.\n",
+    "feeds_cells": [
+      "Environmental|City"
+    ],
+    "license": "PDDL-1.0",
+    "name": "openSenseMap",
+    "notes": "VERIFIED 2026-10-23, not yet read for a real territory.\n\nLICENCE. The API documentation (docs.opensensemap.org, \"Source code and Licenses\") reads \"The data\nobtainable through the openSenseMap API at https://api.opensensemap.org/ is licensed under the Public\nDomain Dedication and License 1.0\". sensebox.de/en/opensensemap says the same of \"All published\nmeasurements\". The API code is MIT; that covers the software, not the data.\n\nENDPOINT. Key-free JSON, no rate-limit headers seen, cache-control max-age=300. GET /stats read\n[17165, 10388123910, 6129]: stations, measurements, measurements in the last minute.\nGET /boxes?exposure=outdoor&date=<7 days ago> returned 2,756 outdoor stations with a reading in the\nlast week. Sensor titles are free text, mostly German: 2,368 carry \"PM2.5\", 2,331 \"Temperatur\",\n2,118 \"rel. Luftfeuchte\", 1,352 \"Luftdruck\" (in Pa; 259 more in hPa). Wind and rain are rare (43\n\"Windrichtung\", 16 \"Regenrate\"). A reader has to map each title and unit to a metric.\n\nPLACES. Counted from that list within 15 km of each place's centroid in fci-index\npublic/data/coordinates.json, keeping places with three or more outdoor PM2.5 stations: hamburg 20,\namsterdam 7, augsburg 6, paris 5, bergisches 3. One or two stations also sit near barcelona,\nljubljana, toulouse, zagreb, sao-paulo, detroit, linz, rennes, velsen; none within 15 km of bali.\n\nWHY THIS CELL. Environmental|City's air-quality row (PM2.5, days over the WHO 24h guideline), as for\nsensor-community. It is other people's kit, so a node reads it as a ring around itself, never as its\nown custody, and it cannot fill Environmental|Community.\n\nWHAT IT DOES NOT CLAIM. 2,055 of the 2,756 are \"luftdaten_*\" models: Sensor.Community kits whose\nowners also post to openSenseMap. Counting both registries double-counts\none device. Low-cost PM sensors are not reference instruments, and \"outdoor\" is what the owner\ndeclared.\n",
+    "pillar": "environmental",
+    "pilot_relevance": [
+      "global"
+    ],
+    "places": [
+      "hamburg",
+      "amsterdam",
+      "augsburg",
+      "paris",
+      "bergisches"
+    ],
+    "reviews": [],
+    "scale": "community",
+    "slug": "environmental/community/opensensemap",
+    "status": "candidate",
+    "tags": [
+      "weather",
+      "air-quality",
+      "pm25",
+      "temperature",
+      "citizen-science",
+      "open-hardware",
+      "sensebox",
+      "global"
+    ],
+    "upstream_listed_in": [],
+    "url": "https://opensensemap.org/"
   },
   {
     "adapter": "pack:smartcitizen",
@@ -5332,6 +5530,40 @@
     ],
     "upstream_listed_in": [],
     "url": "https://microsoft.github.io/aurora/"
+  },
+  {
+    "added": "2026-10-23",
+    "api": "https://copernicus-dem-30m.s3.amazonaws.com/readme.html",
+    "assisted_by": "Claude Code",
+    "auth": "none",
+    "cell": "Environmental|Planet",
+    "description": "Heights of the Earth's land surface every 30 m, buildings and trees included, from the TanDEM-X radar mission.\nPublished by the Copernicus programme as one-degree Cloud-Optimized GeoTIFFs on AWS. A node reads its own square\nto see where rain runs and where it stands.\n",
+    "feeds_cells": [],
+    "license": "Copernicus WorldDEM-30 licence (COP-DEM-GLO-30-F): reproduction, distribution and adaptation, free, worldwide, with a © notice and a no-liability sentence that pass to every later user. An open permission, not a named licence. See notes.",
+    "name": "Copernicus DEM GLO-30 (global 30 m surface elevation)",
+    "notes": "VERIFIED 2026-10-23.\n\nLICENCE. Read from the licence text, not a portal label: \"Licence for Copernicus DEM instance\nCOP-DEM-GLO-30-F Global 30m Full, Free & Open\" (PDF dated 29 Oct 2020, linked from the AWS\nbucket), and the same -F text again in ESA's June 2025 bundle\ncopernicus_contributing_mission_data_access_v2_cop_dem_licenses.pdf. Art. 4 grants reproduction,\ndistribution, communication to the public, and \"adaptation, modification and combination with\nother data\". Art. 5: free of charge. Art. 3: worldwide, no time limit. No non-commercial clause.\nArt. 6 requires the notice \"© DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018\nprovided under COPERNICUS by the European Union and ESA; all rights reserved\" (prefixed \"produced\nusing Copernicus WorldDEM-30\" on derived data), the sentence \"The organisations in charge of the\nCopernicus programme by law or by delegation do not incur any liability for any use of the\nCopernicus WorldDEM-30\", no implied endorsement, and the same obligations bound on anyone we pass\ndata to. It terminates only on breach. TRAP: the same 2025 bundle licenses GLO-30-R and EEA-10-R\n\"for non-commercial activities\" only. Those are the Copernicus Data Space instances. Read the AWS\n-F files and nothing else.\n\nENDPOINT. s3://copernicus-dem-30m (eu-central-1), anonymous HTTPS range requests, no key. Tiles are\nCopernicus_DSM_COG_10_<S09_00>_<E115_00>_DEM.tif. tileList.txt lists 26,450 tiles at 30 m and 26,475\nat 90 m (s3://copernicus-dem-90m). The 25 missing at 30 m are N38-N41 E043-E050 (Georgia, Armenia,\nAzerbaijan). The Data Space says those were released in 2023_1, but they are not on AWS. Bucket\nobjects were last modified 9 May 2022, the 2021 release. Newer releases (to 2024_1) are only on the\nData Space.\n\nREAD. The tile S09_00_E115_00 (16.4 MB) for PLANETAI node #1 in Bali. A 10 km window read in 4.9 s:\n323 x 327 pixels of 30.6 x 30.9 m, land 0.2-219.6 m, 27.8 % sea (stored as 0). Of the 61 Index\nplaces, 60 centroids fall on a 30 m tile. Georgia's does not, but it has a 90 m tile. Only Bali was\nread, so only Bali is in places.\n\nWHAT IT IS NOT. A surface model: \"including buildings, infrastructure and vegetation\", so roofs and\ncanopy are in the heights. Heights are above EGM2008. It says where water would run on that surface,\nnot that it did. 30 m is a street block, never a yard.\n",
+    "pillar": "environmental",
+    "pilot_relevance": [],
+    "places": [
+      "bali"
+    ],
+    "reviews": [],
+    "scale": "planet",
+    "slug": "environmental/planet/copernicus-dem-glo30",
+    "status": "candidate",
+    "tags": [
+      "elevation",
+      "dem",
+      "dsm",
+      "terrain",
+      "hydrology",
+      "flooding",
+      "copernicus",
+      "earth-observation",
+      "cog"
+    ],
+    "upstream_listed_in": [],
+    "url": "https://registry.opendata.aws/copernicus-dem/"
   },
   {
     "added": "2026-09-22",
@@ -5764,6 +5996,42 @@
     ],
     "upstream_listed_in": [],
     "url": "https://data.bmkg.go.id/prakiraan-cuaca/"
+  },
+  {
+    "added": "2026-10-23",
+    "api": "mqtts://everyone:everyone@globalbroker.meteo.fr:8883",
+    "assisted_by": "Claude Code",
+    "auth": "none",
+    "cell": "Environmental|Region",
+    "description": "Hourly observations from BMKG's synoptic stations across Indonesia (temperature, humidity, pressure, wind, rain,\ncloud, visibility), published as WMO core data through WIS2 global brokers and caches, key-free.\n",
+    "feeds_cells": [],
+    "license": "WMO Unified Data Policy, core data (free and unrestricted)",
+    "name": "BMKG hourly SYNOP observations on WMO WIS2",
+    "notes": "VERIFIED 2026-10-23, not yet read for a real territory.\n\nLICENCE. The WIS2 Global Discovery Catalogue record urn:wmo:md:id-bmkg:surface-based-observations\n(created 2026-08-21) carries \"wmo:dataPolicy\": \"core\". WMO's code register (codes.wmo.int/wmdr/\nDataPolicy/core) defines it: \"WMO Members shall provide core data on a free and unrestricted basis\",\nciting Resolution 1 (Cg-Ext(2021)). That covers these observations only. BMKG's forecast API is a\nseparate product under BMKG's own terms (see bmkg-prakiraan-cuaca).\n\nENDPOINT. No HTTP API. Subscribe over MQTT (user and password \"everyone\") to\ncache/a/wis2/id-bmkg/data/core/weather/surface-based-observations/# on any of the four global\nbrokers listed in the record. Listening on Météo-France's from 04:26 to 05:11 UTC on 23 Oct 2026\ncaught 342 notifications, all for 05:00 UTC: 56 distinct reports (54 synop, 2 ship), each\nannounced by six global caches. Each notification names the station's WIGOS id and coordinates,\ncarries the BUFR4 message inline (base64) and links the cached file. Bali's report, WIGOS\n0-20000-0-97230 (Ngurah Rai, -8.750, 115.177), was published at 05:00:02. Its file at\ngc.wis.cma.cn downloaded key-free (HTTP 200, 387 bytes, starts \"BUFR\"). The BMKG node itself\n(wis2node.bmkg.go.id) answered 403 from Bali. A reader needs a BUFR decoder such as ecCodes. I did\nnot decode a value.\n\nWHY NO CELL. Weather, the same as open-meteo and bmkg-prakiraan-cuaca: no Index cell has a row for\nit. A node would read it as the official reference beside its own sensors and the community\nstations around it.\n\nWHAT IT DOES NOT CLAIM. Bali has one station in this feed, at the airport on the southern coast.\nIt says nothing about the highlands or the north. Only 54 stations reported in the hour I\nlistened. I did not check whether the rest report at 3-hourly main hours.\n",
+    "pillar": "environmental",
+    "pilot_relevance": [
+      "bali"
+    ],
+    "places": [
+      "bali"
+    ],
+    "reviews": [],
+    "scale": "region",
+    "slug": "environmental/region/bmkg-synop-wis2",
+    "status": "candidate",
+    "tags": [
+      "weather",
+      "observations",
+      "synop",
+      "indonesia",
+      "bmkg",
+      "wmo",
+      "wis2",
+      "bufr",
+      "government"
+    ],
+    "upstream_listed_in": [],
+    "url": "https://wis2-gdc.weather.gc.ca/collections/wis2-discovery-metadata/items/urn:wmo:md:id-bmkg:surface-based-observations"
   },
   {
     "added": "2026-10-13",
@@ -8395,6 +8663,44 @@
     ],
     "upstream_listed_in": [],
     "url": "https://human-settlement.emergency.copernicus.eu/"
+  },
+  {
+    "added": "2026-10-23",
+    "api": "https://data.humdata.org/api/3/action/package_show?id=kontur-population-dataset",
+    "assisted_by": "Claude Code",
+    "auth": "none",
+    "cell": "Social|City",
+    "description": "Population counts for every inhabited H3 hexagon on Earth at resolution 8 (about 0.7 km2 each), fused by\nKontur from GHSL, Facebook HRSL, Microsoft buildings and OpenStreetMap. Published on HDX, globally and per country.\n",
+    "feeds_cells": [
+      "Social|City"
+    ],
+    "license": "CC BY, version not stated; see notes",
+    "name": "Kontur Population (400 m H3 hexagons)",
+    "notes": "VERIFIED 2026-10-23.\n\nLICENCE. Read on Kontur's own dataset page: \"Kontur Population is available under Creative Commons Attribution\nInternational (CC BY) license. You can use it for any purpose, even commercially.\" The page names no version,\nand HDX's licence field for every Kontur package read (global, Indonesia, Spain) is an unversioned cc-by.\n\"International\" points at the 4.0 suite, but nobody has confirmed it, so `license` records no version.\nEvery CC BY version allows any use with attribution, so criterion 1 is met either way. Attribution to Kontur; the sources it fuses (GHSL CC BY 4.0,\nOSM ODbL among them) are Kontur's to answer for, and Kontur publishes the fusion under CC BY.\n\nENDPOINT. HDX CKAN API, no key. The global file kontur_population_20231101.gpkg.gz is 2.44 GB on Kontur's S3\n(geodata-eu-central-1-kontur-public). Per-country packages are kontur-population-<country>: Spain 22 MB, Indonesia\n64 MB gzipped. Each GeoPackage holds one table `population` (fid, geom in EPSG:3857, h3 TEXT, population REAL).\nSpain: 286,702 hexagons, 47,551,642 people. Indonesia: 874,919 hexagons, 277,542,182 people.\n\nREAD, with h3 4.5.0, cells at resolution 8. Barcelona, Plaça de Catalunya, cell 88394460e5fffff: 18,262 people\nin 0.716 km2; its ring of 7 sums 103,615; the 91-cell disk at k=5 has 75 cells present and sums 918,712. Denpasar,\nPuputan square, cell 8895a4c2edfffff: 4,928 in 0.642 km2; ring of 7 sums 35,563; k=5 has all 91 and sums 421,701.\nThose are the only two places read, so they are the only two in places.\n\nABSENCE. Only hexagons with people are stored. The 16 Barcelona cells missing from that disk are sea. A missing\nhexagon means zero people modelled, never no data: a reader must fill 0, not leave a gap.\n\nVINTAGE. The newest release is 2023-11-01, and HDX has listed nothing newer since. It inherits GHSL and HRSL\nepochs underneath, so read it as a circa-2020 picture, older than its file date.\n\nWHY THIS CELL. Population density for Social|City, already on the H3 grid, so it needs no raster-to-cell step.\nWHAT IT DOES NOT CLAIM. A model, not a register. Where it disagrees with the municipal padron, the padron wins.\nA review should sum it inside one real municipal boundary and record the gap to the census. Like any entry, it\ngoes live only with a usable review in reviews/ or an adapter.\n",
+    "pillar": "social",
+    "pilot_relevance": [
+      "global"
+    ],
+    "places": [
+      "barcelona",
+      "bali"
+    ],
+    "reviews": [],
+    "scale": "city",
+    "slug": "social/city/kontur-population",
+    "status": "candidate",
+    "tags": [
+      "population",
+      "density",
+      "h3",
+      "hexagon",
+      "grid",
+      "gridded",
+      "denominator",
+      "hdx"
+    ],
+    "upstream_listed_in": [],
+    "url": "https://www.kontur.io/datasets/population-dataset/"
   },
   {
     "added": "2026-09-11",

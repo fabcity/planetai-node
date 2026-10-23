@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Naming `water` in `NODE_ISSUES` now turns the terrain pack on.** On a node that lists its packs, `planetai
+  update` adds the pack that ships each issue it draws (step 5d). Water was missing from that list, so naming it
+  drew nothing on such a node, node #1 included. The registry is pinned to awesome-fabcity-data `7d645f3` (283
+  entries, up from 275), which carries Copernicus DEM GLO-30, and `terrain` names it in `sources:`.
+
 - **A new pack, `terrain`, and a new issue, `water`: where the next day's rain goes.** `planetai run terrain fetch`
   reads the node's own 10 km square of Copernicus DEM GLO-30 once, about half a megabyte, fills its hollows and
   routes water downhill. Each poll then multiplies the ground draining through the node's point by the next 24 hours

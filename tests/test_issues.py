@@ -68,7 +68,11 @@ _db, _ = _5d("NODE_ISSUES=air,heat\nPACKS_ENABLED=smartcitizen,heat\n", "")
 assert _db.endswith("PACKS_ENABLED=smartcitizen,heat,air-quality\n"), _db
 assert _5d(_db, "")[0] == _db, "a second update changed the list again"
 _, _env = _5d("", "NODE_ISSUES=\nPACKS_ENABLED=heat\n")
-assert "PACKS_ENABLED=heat,air-quality,coast,earth" in _env, "NODE_ISSUES empty draws every issue: every owner"
+assert "PACKS_ENABLED=heat,air-quality,coast,earth,terrain" in _env, "NODE_ISSUES empty draws every issue: every owner"
+# Every shipped issue's pack is in 5d's list: on 23 Oct 2026 `water` shipped without it, so naming water in a node's
+# NODE_ISSUES drew nothing on a node that lists its packs (node #1 does).
+_pairs = set(_step.split("for owned in ", 1)[1].split(";", 1)[0].split())
+assert _pairs == {f"{k}:{pk}" for k, pk in OWNER.items()}, _pairs
 assert _5d("NODE_ISSUES=air\n", "PACKS_ENABLED=\n") == ("NODE_ISSUES=air\n", "PACKS_ENABLED=\n"), "an empty list is every pack"
 print("  update.sh 5d: a node that lists its packs gains the pack of each issue it draws, once")
 
