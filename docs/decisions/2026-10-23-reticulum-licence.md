@@ -97,6 +97,10 @@ bridge built on them needs one of the choices below before the relicence PR land
 | `lxmf` | `1.1.1` | same |
 | `httpx` | `0.28.1` | same; BSD-3, pinned so the image builds the same everywhere |
 
+`planetai update` builds only the app image, so a node's bridge keeps the versions it was first built with until
+`planetai reticulum` runs again (it builds with `--build`). Nodes built before this change carry whatever PyPI had that
+day, all of it under the same licence.
+
 Upstream is already at `rns` 1.5.5 and `lxmf` 1.2.0, under the same text. Moving a pin is its own PR, and it reads
 `LICENSE` at the new tag first.
 
