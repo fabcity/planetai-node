@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **The machine and storage routes have a module of their own.** `GET /machine` and `GET /storage` moved out of
+  `app/main.py` into `app/machine.py`, unchanged.
+
 - **The place and map-workbench routes have a module of their own.** `GET /place/geojson`, `/geo/grid`, `/geo/cell`,
   `/geo/measure`, `/geo/planet` and `/geo/rings` moved out of `app/main.py` into `app/geo.py`, unchanged, mounted
   where they were so no route changes order. The docs and page checks read every core router now, not one by name.
