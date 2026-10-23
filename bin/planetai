@@ -1058,13 +1058,38 @@ T
 }
 
 # ---------------------------------------------------------------- reticulum: an LXMF address for the node
+# The bridge has its own repository, fabcity/planetai-reticulum (Apache-2.0): rns and lxmf are under the Reticulum
+# License, and the AGPL this repository is moving to allows no extra conditions inside it
+# (docs/decisions/2026-10-23-reticulum-licence.md). A node fetches it the way `packs add` fetches a wild pack, with
+# curl and tar at one pinned commit, and builds the image itself; Fab City publishes no image with rns in it.
+# Moving the pin is its own PR, after reading rns's and lxmf's LICENSE at the versions that commit installs.
+RETICULUM_REPO="fabcity/planetai-reticulum"
+RETICULUM_REF="48d852e9af4f6cd05283b80123d7d21963063fce"
+reticulum_fetch() {
+  [[ "$(cat reticulum/.ref 2>/dev/null)" == "$RETICULUM_REF" ]] && return 0
+  local tmp; tmp="$(mktemp -d)"
+  if ! { curl -fsSL "https://codeload.github.com/$RETICULUM_REPO/tar.gz/$RETICULUM_REF" -o "$tmp/r.tgz" \
+         && tar xzf "$tmp/r.tgz" -C "$tmp" 2>>"$LOG" && [[ -f "$tmp/planetai-reticulum-$RETICULUM_REF/Dockerfile" ]]; }; then
+    rm -rf "$tmp"; fail "could not download the bridge, $RETICULUM_REPO at ${RETICULUM_REF:0:12}"
+  fi
+  rm -rf reticulum && mv "$tmp/planetai-reticulum-$RETICULUM_REF" reticulum && echo "$RETICULUM_REF" > reticulum/.ref
+  rm -rf "$tmp"
+}
+
 cmd_reticulum() {
+  # `planetai reticulum build`: what update.sh runs on a node with the bridge on, so it runs the commit its release pins
+  if [[ "${1:-}" == build ]]; then reticulum_fetch; docker compose build reticulum >>"$LOG" 2>&1 || fail "the bridge did not build; see $LOG"; return; fi
   step "Reticulum"
   echo "  Gives this node an address on a Reticulum network: encrypted, works over TCP (LAN or tailnet) today and over"
   echo "  a LoRa RNode when one is plugged in. People message it from Sideband; 'act <id>' closes an alert's loop;"
   echo "  alerts go out to the addresses you list."
+  echo "  rns and lxmf are under the Reticulum License, which is not an open licence. Read what it asks of you first:"
+  echo "    https://planetai.fab.city/docs/channels/"
   echo
-  [[ -f config/reticulum/config ]] || cp config/reticulum/config.tpl config/reticulum/config
+  say "fetching the bridge from $RETICULUM_REPO at ${RETICULUM_REF:0:12}"
+  reticulum_fetch
+  mkdir -p config/reticulum
+  [[ -f config/reticulum/config ]] || cp reticulum/config.tpl config/reticulum/config
   envset RETICULUM_URL http://reticulum:4243
   profiles_add reticulum
   say "building and starting the bridge (first time: a minute)"
@@ -2379,7 +2404,7 @@ case "${1:-help}" in
   update) cmd_update;;  backup) cmd_backup;;  config) shift; cmd_config "$@";;  logs) shift; cmd_logs "$@";;
   start) cmd_start;;  stop) cmd_stop;;  restart) cmd_restart;;  sensors) shift; cmd_sensors "$@";;  cells) shift; cmd_cells "$@";;
   mesh) shift; cmd_mesh "$@";;
-  meshtastic) cmd_meshtastic;;  reticulum) cmd_reticulum;;  broker) cmd_broker;;
+  meshtastic) cmd_meshtastic;;  reticulum) shift; cmd_reticulum "$@";;  broker) cmd_broker;;
   radio) shift; cmd_radio "$@";;
   homeassistant|ha) cmd_homeassistant;;
   packs) shift; cmd_packs "$@";;
