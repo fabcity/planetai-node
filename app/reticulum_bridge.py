@@ -15,7 +15,8 @@ Transport is whatever config/reticulum/config enables: the TCP server always (re
 tailnet); an RNode LoRa radio when its block is uncommented and the device is passed into the container.
 
 Identity and LXMF storage persist in /data. Deleting that volume gives the node a new address.
-Written against rns/lxmf 0.9.x; the LXMF API is small and stable, but validate with a Sideband client on first run.
+rns and lxmf are pinned in Dockerfile.reticulum. Their licence adds two conditions to MIT and is not an open licence;
+docs/decisions/2026-10-23-reticulum-licence.md says what that means for this bridge. Validate with a Sideband client on first run.
 """
 from __future__ import annotations
 

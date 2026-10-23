@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Reticulum's licence is read, and the bridge is pinned.** `rns` 1.5.4, `lxmf` 1.1.1 and `httpx` 0.28.1, the versions
+  node #1 runs; they were unpinned. `rns` and `lxmf` are under the Reticulum License, MIT with two conditions (no system
+  able to purposefully harm people, no use in making an AI training dataset), which is not an open licence. The
+  channels page says so before an operator turns the bridge on; `docs/decisions/2026-10-23-reticulum-licence.md` reads
+  each condition against the node and lists what Tomas decides.
+
 - **Presence on Reticulum has a module of its own.** `GET /presence`, the floor no announced cell may be finer than
   (`PRESENCE_RES_FLOOR`), and the thread that asks the bridge whom it has heard moved out of `app/main.py` into
   `app/presence.py`, unchanged. The dashboard now says the floor is in `app/presence.py`.

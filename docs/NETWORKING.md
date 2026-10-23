@@ -31,7 +31,8 @@ enough for telemetry and one-line alerts. Everything about the radios is on [Rad
 The bridge container gives the node an LXMF address. `act <id>` sent from Sideband records an action, and alerts go
 to `RETICULUM_ALERT_DESTINATIONS`. With `RETICULUM_PRESENCE=1` it also announces, every half hour, the node's name
 and its H3 cell rounded to `RETICULUM_PRESENCE_RES` (3 by default, never finer than 6). It runs over TCP; an RNode
-LoRa interface is a commented block in `config/reticulum/config.tpl`.
+LoRa interface is a commented block in `config/reticulum/config.tpl`. `rns` and `lxmf` are pinned and are under the Reticulum License,
+which is not an open licence: [docs/decisions/2026-10-23-reticulum-licence.md](decisions/2026-10-23-reticulum-licence.md).
 
 ## What connects to what
 
