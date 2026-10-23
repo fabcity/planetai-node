@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **A new pack, `terrain`, and a new issue, `water`: where the next day's rain goes.** `planetai run terrain fetch`
+  reads the node's own 10 km square of Copernicus DEM GLO-30 once, about half a megabyte, fills its hollows and
+  routes water downhill. Each poll then multiplies the ground draining through the node's point by the next 24 hours
+  of forecast rain, from BMKG if it has rows, else Open-Meteo, never both. Add `water` to `NODE_ISSUES` to see it.
+  It is context: readouts, no line and no alert, and no hero until there is a water sign. At 30 m and on a surface
+  model with roofs and trees in it, it sees the street, not the yard. Your own DEM goes in `TERRAIN_DEM_PATH`.
+  `docs/SPEC_terrain.md` has why there is no wetness index.
+
 - **Presence on Reticulum has a module of its own.** `GET /presence`, the floor no announced cell may be finer than
   (`PRESENCE_RES_FLOOR`), and the thread that asks the bridge whom it has heard moved out of `app/main.py` into
   `app/presence.py`, unchanged. The dashboard now says the floor is in `app/presence.py`.
