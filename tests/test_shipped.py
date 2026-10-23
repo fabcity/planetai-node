@@ -150,8 +150,9 @@ assert "a household would ignore" in open("packs/earth/README.md").read(), \
 for _n in ("0.0414", "0.0404", "0.0164", "0.0151"):
     assert _n in open("packs/earth/README.md").read(), f"the README must carry the {_n} measurement"
 # v0.33.1 — every comparison is reachable, so a NAS can archive the ones that cannot be recomputed cheaply
-assert 'def _earth_changes' in main and '"changes": changes' in main
-assert 'pattern=r"^(\\d{4}_\\d{4})?$"' in main, "main.py: the pair must be a pattern, not a path"
+_er = open("packs/earth/routes.py").read()          # the earth routes are the pack's since 23 Oct 2026
+assert 'pack.changes()' in _er and '"changes": changes' in _er
+assert 'pattern=r"^(\\d{4}_\\d{4})?$"' in _er, "packs/earth/routes.py: the pair must be a pattern, not a path"
 assert 'def earth(ddir)' in open("tools/nas/pull.py").read(), "tools/nas/pull.py: archive the earth results"
 print("one land-change number, its alert, and the results a NAS can archive")
 # v0.33.3 — `planetai update` ships a pack's code, not its libraries. Node #1 got ModuleNotFoundError nine
@@ -187,9 +188,10 @@ print("change --all is documented; tests/test_earth.py runs it")
 assert _os.path.exists("packs/earth/frames.py"), "packs/earth/frames.py"
 assert "def fit_view" in open("packs/earth/adapter.py").read(), "the projection must be fittable once"
 assert '"view"' in open("packs/earth/frames.py").read(), "the projection must be kept, not refitted per year"
-assert '@app.get("/earth/year.png")' in main and 'f"year_{year}.png"' in main, \
-    "main.py: a frame is addressed by an integer year, never by a name from the request"
-assert '"frames": frames' in main and '"dir": str(d)' in main
+_er = open("packs/earth/routes.py").read()          # the earth routes are the pack's since 23 Oct 2026
+assert '@router.get("/earth/year.png")' in _er and 'f"year_{year}.png"' in _er, \
+    "packs/earth/routes.py: a frame is addressed by an integer year, never by a name from the request"
+assert '"frames": frames' in _er and '"dir": str(d)' in _er
 # The satellite card's controls are hooked by data-sat= rather than by ids: the same component is
 # drawn more than once on a page (the node's own record and the imagery), and an id cannot be.
 #
@@ -213,8 +215,8 @@ assert "not a photograph" in gui.lower() or "Not a photograph" in gui, \
     "gui: a rendering of a model must not be presented as a photograph"
 print("the years render, animate, and are not called photographs")
 assert 'libexpat1' in open("app/Dockerfile").read(), "app/Dockerfile: rasterio cannot import without libexpat1"
-assert '@app.get("/earth")' in main and '@app.get("/earth/change.png")' in main
-assert 'Path(str((want or {}).get("png", ""))).name' in main, "main.py: the png name must be stripped of path components"
+assert '@router.get("/earth")' in _er and '@router.get("/earth/change.png")' in _er
+assert 'Path(str((want or {}).get("png", ""))).name' in _er, "the png name must be stripped of path components"
 # The earth card became the `satellite` component, drawn twice on the Land band — the node's own
 # AlphaEarth record and the Earth Engine imagery — which is why it is a component and not an id.
 assert 'data-component="satellite"' in gui, "gui: the satellite card"

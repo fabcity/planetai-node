@@ -51,7 +51,6 @@ def ACT_TOKEN():
 _SHARE_OFF = (frozenset({"/", "/ui", "/tester", "/health", "/llms.txt", "/settings", "/export", "/presence", "/nodes", "/offers"}), ("/static/",))
 _SHARE_OPEN = (_SHARE_OFF[0] | frozenset({
     "/stats", "/sensors", "/observations", "/alerts", "/series", "/sparks", "/rho", "/cells", "/packs", "/trust",
-    "/earth", "/earth/change.png", "/earth/year.png", "/earth/frame.png",
     "/report/latest", "/readings", "/reach", "/shape", "/effect",
     "/history", "/exports", "/sources",
     # The ask pane. Its context and every tool result are scrubbed of positions, names and ids (app/ask.py), so

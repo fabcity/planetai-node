@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **The earth routes are their packs'.** `GET /earth`, `/earth/change.png` and `/earth/year.png` moved into
+  `packs/earth/routes.py`, and `GET /earth/frame.png` into `packs/earth-engine/routes.py`, each answering 404 while its
+  pack is off and sharing itself from its `pack.yaml`. The earth routes read the square through the pack's own
+  `cache()` and `changes()`, so the copy of that rule `app/main.py` kept is gone. `/earth` lists the Sentinel-2 and
+  Landsat years only while earth-engine is on, and `/issues` reads the land record from the earth pack. `/ground/*`
+  stays in the core, because it serves three packs' files.
+
 - **A pack serves its own routes.** `GET /forecast` and `GET /nearby` moved out of `app/main.py` into
   `packs/forecast/routes.py` and `packs/nearby/routes.py`, unchanged. The node mounts each official pack's router at
   start and answers 404 while that pack is off, and a pack puts its paths on the `open` share list with
