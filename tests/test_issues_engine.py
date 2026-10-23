@@ -329,7 +329,7 @@ for declared in ("air,heat", "heat,air"):
 # 8: an undeclared issue is still shown, greyed, as not watched here
 part = run(declared="air,heat", earth=EARTH)
 check(part["order"] == ["air", "heat"], f"order is {part['order']}")
-check(part["undeclared"] == ["coast", "land"], f"undeclared is {part['undeclared']}")
+check(part["undeclared"] == ["coast", "land", "water"], f"undeclared is {part['undeclared']}")
 check(part["issues"]["land"]["state"] == "none" and part["issues"]["land"]["watched"] is False,
       "an undeclared issue is none and not watched")
 check(part["issues"]["land"]["reason"]["code"] == "not_watched",

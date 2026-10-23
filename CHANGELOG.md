@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **A new pack, `terrain`, and a new issue, `water`: where the next day's rain goes.** `planetai run terrain fetch`
+  reads the node's own 10 km square of Copernicus DEM GLO-30 once, about half a megabyte, fills its hollows and
+  routes water downhill. Each poll then multiplies the ground draining through the node's point by the next 24 hours
+  of forecast rain, from BMKG if it has rows, else Open-Meteo, never both. Add `water` to `NODE_ISSUES` to see it.
+  It is context: readouts, no line and no alert, and no hero until there is a water sign. At 30 m and on a surface
+  model with roofs and trees in it, it sees the street, not the yard. Your own DEM goes in `TERRAIN_DEM_PATH`.
+  `docs/SPEC_terrain.md` has why there is no wetness index.
+
 - **Captures, the image model and species are a pack, `eyes`.** Every `/captures` route, `POST /captures/{id}/describe`
   and `GET /species` moved out of `app/main.py` into `packs/eyes/routes.py`, unchanged, with the weekly reads of this
   country's introduced and invasive species (GRIIS) and of others' open records in the node's cells, which the node's

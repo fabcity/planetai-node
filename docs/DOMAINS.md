@@ -8,7 +8,7 @@ nothing.
 ## Issues: what a domain is called in the house
 
 A domain is what a pack declares. An issue is what a household calls it, and there are fewer of them: air, heat,
-land and coast. An issue is something a place can be better or worse at, that somebody living there recognises by
+land, coast and water. An issue is something a place can be better or worse at, that somebody living there recognises by
 name.
 
 Not every domain is an issue. Weather feeds air and heat (wind for working out where a smell came from, the
@@ -23,6 +23,7 @@ and on an ask, never a number.
 | heat | `heat`, `surface-heat` | sensed | 35 °C apparent, measured at node #1: this place's line, not a global one |
 | land | `earth` (the change), `earth-engine` (built, trees) | context | none, because a year-over-year change is not a threshold |
 | coast | `coast`, and the wild pack `posidonia` | context | none |
+| water | `terrain` | context | none yet: it waits for a household to say how much rain is too much here |
 
 | pack | domain | what it is to the issues |
 |---|---|---|
