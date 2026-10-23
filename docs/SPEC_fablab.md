@@ -129,18 +129,20 @@ lab/community node as parent", and Reticulum "needs to play a role". What the no
 - **The drone service needs neither.** A home reads the lab's mosaics from OpenAerialMap, as it reads anyone's.
 - **Parent.** A home already names one in `PARENT_API_URL`. Today that link runs on one `AGGREGATE_TOKEN` shared by
   every child, which lets any child write as a sibling (SPEC_identity §1). A lab with many homes makes that worse,
-  so the parent step waits for node keys.
+  so the parent step waits for node keys. The link runs on HTTPS over the tailnet, never over Reticulum (Tomas, 23
+  October).
 - **Reticulum.** The node already runs it in its own container (`app/Dockerfile.reticulum`, `app/reticulum_bridge.py`).
   It gives each node an LXMF address and, with `RETICULUM_PRESENCE=1`, announces the body of `GET /presence` every
   half hour. SPEC_discovery puts Tailscale first and Reticulum after (22 September). A lab could add `kind: fablab`
   and the services it runs to that same body, so homes in radio or TCP reach hear what the lab offers with no
-  registry and no internet. Its address is a key kept in `reticulum:/data`, the key SPEC_identity needs. LoRa
+  registry and no internet. Its address is a key kept in `reticulum:/data`; the node key SPEC_identity needs stays
+  the core's own, since the bridge is leaving the core. LoRa
   carries the announce and short messages, never a mosaic.
-- **Owed before Reticulum does more.** Its licence was never read for the node. The Reticulum License (read 23
-  October) is MIT plus two conditions: no use in a system able to purposefully harm people, and no use, "directly
-  or indirectly", in making an AI or machine-learning training dataset. It is not an OSI licence. `rns` is installed
-  unpinned. The node trains no model, since SPEC_learn is retrieval only, but a node with open data and a language
-  model needs that clause read carefully before Reticulum carries more than presence and alerts.
+- **What Reticulum may carry, decided 23 October.** Its licence (MIT plus no use in a system able to purposefully
+  harm people, and none "directly or indirectly" in making an AI training dataset) is read in
+  [the decision record](decisions/2026-10-23-reticulum-licence.md). Tomas: the optional bridge is acceptable, it
+  moves out of the core before the AGPL relicence, and it carries discovery and messages to people. Aggregates, and
+  anything else that becomes an open dataset, go over HTTPS.
 
 **Holochain, later, for bigger nodes.** Tomas sees it as a future feature of lab and community nodes, the base of a
 data economy around them: who flew, who processed, who used the result. Read 23 October: 0.7.1 is the current

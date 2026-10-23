@@ -3,7 +3,7 @@
 **Read 23 October 2026.** The bridge has installed `rns` and `lxmf` since v0.8 (4 September 2026) and nobody had read
 their licence for the node. SPEC_fablab §7 (branch `lab-services-2026-10-23`) now points lab and community nodes at
 Reticulum for discovery and parent links, so it was read before that goes further. This record pins both packages
-and says what the licence means for each use. It decides nothing that is Tomas's: that list is at the end.
+and says what the licence means for each use. Tomas decided the four open questions the same day; they are at the end.
 
 ## What the node does with Reticulum
 
@@ -104,15 +104,20 @@ day, all of it under the same licence.
 Upstream is already at `rns` 1.5.5 and `lxmf` 1.2.0, under the same text. Moving a pin is its own PR, and it reads
 `LICENSE` at the new tag first.
 
-## Open for Tomas
+## Decided by Tomas, 23 October
 
-1. **Does an optional component under a non-open licence pass our rule?** Three ways: keep it as it is, off by
-   default with the licence named in the docs (this PR); move the bridge out of the core into a wild pack in its own
-   repository; or pin `rns` 0.9.4 and `lxmf` 0.6.3, the last MIT releases, which are eighteen months old, get no
-   fixes, and have not been tried against today's Sideband.
-2. **The bridge under AGPL.** Before the relicence PR: an additional permission under AGPL §7 for the bridge (it
-   needs the same consents as the relicence), the bridge out of the core (as in 1), or the bridge dropped.
-3. **Parent links in SPEC_fablab §7.** Keep aggregates on HTTPS over the tailnet and use Reticulum for discovery and
-   messages only, or ask first.
-4. **Whether to write to Mark Qvist.** One question settles 3 and narrows 1: does carrying aggregates that end up in
-   an open, CC BY dataset count as indirect use in creating a training dataset? Writing to him is yours to do.
+He answered the four questions this record left open:
+
+1. **An optional component under a non-open licence is acceptable.** The bridge stays as it is: off until an
+   operator runs `planetai reticulum`, with the licence named on the channels page before they do.
+2. **The bridge leaves the core.** It moves out before the relicence PR lands, so the AGPL core never imports `RNS`
+   or `LXMF`. Where it goes and how a node installs it is the next piece of work, and until then nothing changes on a
+   node.
+3. **Parent links run on HTTPS over the tailnet.** Reticulum carries discovery (presence) and messages to and from
+   people, nothing that becomes an Index cell. SPEC_fablab §7 says the same.
+4. **No message to Mark Qvist yet.** The training-dataset clause stays read as in this record, and the question in
+   it is kept for when it is needed.
+
+Before he answered, the four options were: keep the bridge, move it to its own repository, or pin `rns` 0.9.4 and
+`lxmf` 0.6.3 (the last MIT releases); for AGPL, a §7 exception, the move, or dropping the bridge; for parent links,
+HTTPS or asking first.
