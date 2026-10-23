@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Tomas decided what Reticulum is for.** The optional bridge under a non-open licence is acceptable; it leaves the
+  core before the AGPL relicence; parent links run on HTTPS over the tailnet, and Reticulum carries discovery and
+  messages to people only. Recorded in `docs/decisions/2026-10-23-reticulum-licence.md` and SPEC_fablab §7.
+
 - **Reticulum's licence is read, and the bridge is pinned.** `rns` 1.5.4, `lxmf` 1.1.1 and `httpx` 0.28.1, the versions
   node #1 runs; they were unpinned. `rns` and `lxmf` are under the Reticulum License, MIT with two conditions (no system
   able to purposefully harm people, no use in making an AI training dataset), which is not an open licence. The
