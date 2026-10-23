@@ -7,7 +7,7 @@ description: >-
 author: PLANETAI core (official)
 version: 0.1.0
 requires: { node: ">=0.40.0" }
-kind: data
+kind: code          # its scripts (stations, status, verify, backfill) run with the node's privileges; its rules are data
 domain: air
 metrics: [pm25, pm25_raw, pm10, pm1, temp, humidity]
 scales: [community]

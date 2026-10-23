@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **A pack the node does not load runs nothing.** An agent could still run the scripts of a pack left out of
+  `PACKS_ENABLED`, or refused by its `requires:`, and the report and `/issues` still imported its code: the nearest
+  fab lab was worded by `packs/make` on a node that had switched `make` off. `packs.module()` and `run_pack_script`
+  now answer only for packs the node loads, and say so when one is not. `planetai packs install` builds `pip:` and
+  adds `env:` for those packs only, read from `GET /packs`, and from every folder only when the node is down. A pack
+  is `code` whenever it ships Python, so `nearby` and `season`, which ship scripts, now say so.
+
 - **Trust is core, and the trust card stopped calling a working sensor frozen at night.** The three rules that
   say whether the node's own sensors can be believed moved out of the `trust` pack to the end of `config/rules.yml`, with
   the same ids (`trust/channel_dead`, `trust/coverage_low`, `trust/peer_disagreement`), so every alert already sent

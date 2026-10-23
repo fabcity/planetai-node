@@ -1,7 +1,7 @@
 # Packs that ship
 <!-- checked: v0.83.0 -->
 
-The twenty-two core packs in `packs/`, eight data and fourteen code, hold everything the node knows about a place, and no
+The twenty-two core packs in `packs/`, six data and sixteen code, hold everything the node knows about a place, and no
 rule in `app/` says what PM2.5 means for a household or where the nearest fab lab is. For each pack this page
 says what it reads, what it says, its rules and where each threshold comes from, its settings, and what it does
 not know. How a pack is built and loaded is on [Packs](packs.md). Wild packs, such as `xiaomi-air` and
@@ -21,8 +21,8 @@ A pack is `code` when its folder has an `adapter.py`, and code packs load only w
 | `smartcitizen` | code | air | none | | | | `SC_USER`, `SC_DEVICES`, `SC_EXCLUDE` (declared by the core) |
 | `airgradient` | code | air | none | | | | `AIRGRADIENT_HOSTS`, `SENSOR_INDOOR` (declared by the core) |
 | `purpleair` | code | air | none | | | | `PURPLEAIR_HOSTS`, `SENSOR_INDOOR` (declared by the core) |
-| `nearby` | data | air | 1 act, 1 info | `alone` | | `stations` `status` `verify` `backfill` | `BAD_BACKFILL_DAYS`; the ring's are `bali-air-dispatch`'s |
-| `season` | data | air | 1 info | `record` | | `window` | |
+| `nearby` | code | air | 1 act, 1 info | `alone` | | `stations` `status` `verify` `backfill` | `BAD_BACKFILL_DAYS`; the ring's are `bali-air-dispatch`'s |
+| `season` | code | air | 1 info | `record` | | `window` | |
 | `insight` | data | cross-domain | 2 info | `digest` | | | |
 | `cold-start` | data | cross-domain | 3 info | | | | |
 | `forecast` | code | weather | none | `ahead` | | `fetch` `status` `verify` `windfield` | `FORECAST_*` |
@@ -309,7 +309,7 @@ when it is everywhere, and in the report when there is no ring worth the name.
 
 | | |
 |---|---|
-| Kind | data |
+| Kind | code: its rules are data, and it ships scripts |
 | Domain | `air` |
 | Requires node | `>=0.40.0` |
 | Metrics | `pm25`, `pm25_raw`, `pm10`, `pm1`, `temp`, `humidity` |
@@ -365,7 +365,7 @@ worse than the weeks before it. It is two SQL rules and a script, with no fetch 
 
 | | |
 |---|---|
-| Kind | data |
+| Kind | code: its rules are data, and it ships a script |
 | Domain | `air` |
 | Requires node | `>=0.40.0` |
 | Metrics | `pm25` |
