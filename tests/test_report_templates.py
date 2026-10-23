@@ -163,7 +163,7 @@ for rule in report.BEYOND:
 assert not any(r.startswith("heat/") for r in report.THRESHOLDS), \
     "heat_stress_now watches an apparent temperature no column holds; it gets an outcome in v0.39, not a guess here"
 # the heat line the report names is the issue's own, the one the page and the alerts name
-assert report.HEAT_LINE == float(yaml.safe_load(open("app/issues/heat.yml"))["line"]["value"]), "two heat lines"
+assert report.HEAT_LINE == float(yaml.safe_load(open("packs/heat/issue.yml"))["line"]["value"]), "two heat lines"
 print("every threshold the report quotes is the rule's own")
 
 # Every language carries every phrase. A key in one dict and not another is a report with a hole in it.

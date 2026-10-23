@@ -280,7 +280,7 @@ The `headline` is the issue of the most serious open event, when there is one (`
 the issue with the highest state; among issues in the same state, the one that moved most in the last three hours, and
 an exact tie goes to the declared order. The node sends that rule as `headline_rule`. The same object comes back from
 the `issues` MCP tool, so an agent and the household describe the same evening in the same words. The declarations are
-one file per issue in `app/issues/*.yml`; see [Issues](issues.md).
+one `issue.yml` per issue, in the pack that watches it; see [Issues](issues.md).
 
 ## What a screen without a token sees
 

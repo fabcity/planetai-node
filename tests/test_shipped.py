@@ -293,7 +293,7 @@ print("trust ships three core rules and no cells")
 # trust stays, because an emptied list means every pack. Run the step as update.sh runs it, under set -euo pipefail.
 import subprocess as _sp, tempfile as _tf
 _u = open("update.sh").read()
-_step = _u[_u.index("# 5c."):_u.index("# 6. rebuild and restart")]
+_step = _u[_u.index("# 5c."):_u.index("# 5d.")]
 _STUB = r"""
 pq() {   # the settings table, as a key=value file
   if [[ "$1" == SELECT* ]]; then k="$(sed -E "s/.*key = '([A-Z_]+)'.*/\1/" <<< "$1")"; sed -n "s/^${k}=//p" "$DB"

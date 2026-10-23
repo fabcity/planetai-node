@@ -548,7 +548,7 @@ def pack_readouts(decl: dict[str, dict], manifests: list[dict]) -> dict[str, dic
             continue
         for key, rows in ro.items():
             if key not in decl:
-                _warn_once("pack %s: readouts for %r, which no app/issues/*.yml declares; ignoring them", pid, key)
+                _warn_once("pack %s: readouts for %r, which no issue on this node declares; ignoring them", pid, key)
                 continue
             if not isinstance(rows, list):
                 _warn_once("pack %s: readouts.%s must be a list; ignoring it", pid, key)
@@ -731,35 +731,49 @@ def _distance_problems(where: str, spec) -> list[str]:
     return p
 
 
-def load(path: Path | str | None = None) -> dict[str, dict]:
-    """Every issue declared in `path` (this directory by default), keyed by file stem. With the default, the
-    readouts the enabled packs add are merged in (`pack_readouts`).
+def _read(f: Path, key: str, out: dict) -> None:
+    """One issue file into `out` under `key`. A file that does not parse or does not validate is logged and dropped:
+    one bad issue must not cost the household the other three."""
+    try:
+        d = yaml.safe_load(f.read_text()) or {}
+    except Exception as e:  # noqa: BLE001
+        log.warning("issue %s: does not parse (%s)", f, e)
+        return
+    key = d.get("key") or key
+    if key in out:
+        log.warning("issue %s: %r is already declared; keeping the first", f, key)
+        return
+    bad = _problems(key, d)
+    if bad:
+        for b in bad:
+            log.warning("issue %s: %s", f, b)
+        return
+    d["key"] = key
+    out[key] = d
 
-    A file that does not parse or does not validate is logged and dropped: one bad issue must not
-    cost the household the other three.
+
+def load(path: Path | str | None = None) -> dict[str, dict]:
+    """Every issue this node declares, keyed by its `key:` (a file's stem, when it has none).
+
+    An issue belongs to the pack that watches it: `packs/<id>/issue.yml`, read while that pack is loaded, so a node
+    that does not watch the coast has no coast issue (docs/decisions/2026-10-21-core-and-packs.md, point 2). The four
+    that shipped in this directory until 23 Oct 2026 are there now: air in air-quality, heat in heat, coast in coast,
+    land in earth. A file in this directory is still read first, as the core's own. With the default path the readouts
+    the enabled packs add are merged in (`pack_readouts`). A validator or a test that names a directory gets the files
+    in it alone.
     """
     out: dict[str, dict] = {}
     for f in sorted(Path(path or HERE).glob("*.yml")):
-        try:
-            d = yaml.safe_load(f.read_text()) or {}
-        except Exception as e:  # noqa: BLE001
-            log.warning("issue %s: does not parse (%s)", f.name, e)
-            continue
-        bad = _problems(f.stem, d)
-        if bad:
-            for b in bad:
-                log.warning("issue %s: %s", f.name, b)
-            continue
-        d["key"] = f.stem
-        out[f.stem] = d
+        _read(f, f.stem, out)
     if path is None:
-        # The node's own issues are what the files say plus what its enabled packs add. A validator or a test that
-        # names a directory gets the files alone.
         try:
             import packs  # app/packs.py: the one place that knows which packs are on
+            for d in packs._enabled():
+                if (d / "issue.yml").is_file():
+                    _read(d / "issue.yml", d.name, out)
             out = pack_readouts(out, packs.manifests())
-        except Exception as e:  # noqa: BLE001 — the packs are an addition; without them the issues still stand
-            log.warning("issues: could not read the packs' readouts (%s)", e)
+        except Exception as e:  # noqa: BLE001 — the packs are an addition; without them the core's issues still stand
+            log.warning("issues: could not read the packs' issues and readouts (%s)", e)
     return out
 
 
@@ -774,7 +788,7 @@ def order(declared: str, available: dict[str, dict]) -> tuple[list[str], list[st
     keep = [n for n in names if n in available]
     dropped = [n for n in names if n not in available]
     for n in dropped:
-        log.warning("NODE_ISSUES names %r, which no app/issues/*.yml declares — dropping it", n)
+        log.warning("NODE_ISSUES names %r, which no issue on this node declares (is its pack on?) — dropping it", n)
     seen, uniq = set(), []
     for n in keep:
         if n not in seen:

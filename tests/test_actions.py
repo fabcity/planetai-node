@@ -11,8 +11,8 @@ import actions as A
 import events as E
 
 ROOT = Path(__file__).resolve().parent.parent
-heat = yaml.safe_load((ROOT / "app/issues/heat.yml").read_text())
-air = yaml.safe_load((ROOT / "app/issues/air.yml").read_text())
+heat = yaml.safe_load((ROOT / "packs/heat/issue.yml").read_text())
+air = yaml.safe_load((ROOT / "packs/air-quality/issue.yml").read_text())
 
 night = dict(inside_temp=29.3, outside_temp=24.9, outside_pm25=10, inside_pm25=8, hour=20, home_has=set(),
              where={"inside"}, kind="sustained")

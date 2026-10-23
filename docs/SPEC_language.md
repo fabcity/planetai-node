@@ -1,6 +1,6 @@
 # The node's language
 
-How the node speaks, in three layers, and the rules every string in it obeys. This document is the authority for `app/issues/*.yml` sentence templates, the `PLAIN_WORDS` family in `app/issues/__init__.py` **[changed: that is where it lives]**, the agent prompts in `agent_loop.py`, and any future surface that addresses a household. When a string and this document disagree, the string is wrong.
+How the node speaks, in three layers, and the rules every string in it obeys. This document is the authority for the sentence templates in each pack's `issue.yml`, the `PLAIN_WORDS` family in `app/issues/__init__.py` **[changed: that is where it lives]**, the agent prompts in `agent_loop.py`, and any future surface that addresses a household. When a string and this document disagree, the string is wrong.
 
 **[new]** In full, the authority covers every word table in `app/issues/__init__.py` (`PLAIN_WORDS`, `REASON_WORDS`, `CMP_WORDS`, `SPAN_WORDS`, `NOUN_WORDS`, `PROMPT_WORDS`, `SIMPLE_WORDS`) and all three prompts that speak for the node: `SYSTEM` (the Telegram bot), `PANE_SYSTEM` (the ask pane), and the Wall's "thinking aloud" prompt, which today sits in `app/static/doors-wall.js:73`.
 

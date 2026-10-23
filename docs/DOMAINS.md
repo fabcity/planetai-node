@@ -38,7 +38,7 @@ and on an ask, never a number.
 A sensed issue has eyes on it and rules that can ask somebody to do something. A context issue informs and never
 asks: it has no act-level rules, and land's cadence is a year.
 
-The declarations are `app/issues/*.yml`, one file per issue. Each holds the issue's name in three languages, its
+The declarations are one `issue.yml` per issue, in the pack that watches it: `packs/air-quality/issue.yml`, `packs/heat/issue.yml`, `packs/coast/issue.yml` and `packs/earth/issue.yml` (land). An issue is read while its pack is on. Each holds the issue's name in three languages, its
 metric and unit, its line and that line's source, which packs feed it, how each of the four distances is computed
 (`room`, `yard`, `ring` and `region`, printed on the page as house, street, ring and region), and its sentence
 templates, each marking with `|` where its title ends and its tagline begins. A fifth issue is a fifth file plus a

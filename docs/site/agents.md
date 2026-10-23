@@ -107,7 +107,7 @@ Doesn't fit, with an `event_id` and no `alert_id`) are rows there too. No MCP to
 - A model or a portal is `partial`, whatever its quality. `live` means measured here.
 - Alerts say what to do in one sentence and name the threshold's source. Do not add alerts a household would ignore.
 - Nothing runs pip on the host. The CLI runs on Apple's Python 3.9 with the standard library only.
-- The dashboard names no metric. Issues are declared in `app/issues/*.yml`, ordered by `NODE_ISSUES` and served at
+- The dashboard names no metric. Issues are declared in each pack's `issue.yml`, ordered by `NODE_ISSUES` and served at
   `GET /issues`. The node computes and the page draws.
 - Do not put the node's database on IPFS. Only the daily export goes to the commons.
 - Peers never roll up, and never drive an alert or a report line. Custody, a generated column
