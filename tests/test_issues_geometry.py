@@ -109,6 +109,13 @@ class S:  # the settings module's two readers, over the preset node #1 was captu
         return str(S._v.get(k, d))
 
 RING = {"pack": "bali-air-dispatch", "radius": "BAD_RADIUS_KM"}   # what packs.stations() gives with the pack on
+# The pack claims are the packs' own `footprint:` (pack.yaml) since 23 Oct 2026, read while the pack is on.
+import packs as _packs  # noqa: E402
+_fp = {f["pack"]: f["key"] for f in _packs.footprints()}
+if _fp != {"coast": "coast", "earth": "region", "place": "place"}:
+    fails.append(f"coast, earth and place declare the three pack footprints; got {_fp}")
+if [c["key"] for c in G.claims(LAT, LON, S, footprints=[])] != ["yard", "room"]:
+    fails.append("with no pack footprint on, only the core's own two claims are drawn")
 C = {c["key"]: c for c in G.claims(LAT, LON, S, RING)}
 if [c["key"] for c in G.claims(LAT, LON, S)] != ["coast", "region", "place", "yard", "room"]:
     fails.append("no stations pack on, no ring claimed")

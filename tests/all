@@ -133,7 +133,7 @@ test_issues_engine|PACKS_DIR=packs PYTHONPATH=app python3 tests/test_issues_engi
 test_pack_readouts|PYTHONPATH=app python3 tests/test_pack_readouts.py
 test_pack_sections|PYTHONPATH=app python3 tests/test_pack_sections.py
 test_requires|PYTHONPATH=app python3 tests/test_requires.py
-test_issues_geometry|PYTHONPATH=app python3 tests/test_issues_geometry.py
+test_issues_geometry|PACKS_DIR=packs PYTHONPATH=app python3 tests/test_issues_geometry.py
 test_earth_frames|PYTHONPATH=app python3 tests/test_earth_frames.py
 test_check_ui|python3 tests/test_check_ui.py
 test_learn|python3 tests/test_learn.py

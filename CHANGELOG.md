@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **A pack draws its own footprint.** The sea, the square the earth pack keeps and the kilometre the place pack draws
+  were written out in `app/issues/geometry.py`. Each is a `footprint:` in its pack's `pack.yaml` now (the setting that
+  holds the radius, its unit, shape and grain), read while the pack is on, so a node without the place pack no
+  longer draws the place pack's kilometre. On every other node the claims are the same, cell for cell.
+
 - **The core stopped naming the air and heat packs.** Which pack an issue's alerts belong to, what they are judged
   on, what a learning calls them and the line the report names were four maps in `app/events_pg.py`, `app/learn.py`
   and `app/report.py`. They are read from the packs now: the issue's pack and `metric` from its `issue.yml`
