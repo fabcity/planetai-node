@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **The place and map-workbench routes have a module of their own.** `GET /place/geojson`, `/geo/grid`, `/geo/cell`,
+  `/geo/measure`, `/geo/planet` and `/geo/rings` moved out of `app/main.py` into `app/geo.py`, unchanged, mounted
+  where they were so no route changes order. The docs and page checks read every core router now, not one by name.
+
 - **The ground map's routes have a module of their own.** `GET /ground/meta`, `/ground/wind`, `/ground/glyphs/...` and
   `/ground/{layer}/{z}/{x}/{y}` moved out of `app/main.py` into `app/basemap.py`, unchanged, the first of the route
   groups the architecture review takes out of `main.py`. They stay in the core: they serve the place pack's map, the

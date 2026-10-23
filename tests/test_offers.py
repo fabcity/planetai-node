@@ -16,7 +16,7 @@ from pathlib import Path
 
 SRC = open("app/main.py").read() + open("app/auth.py").read()   # auth.py: the allowlists, since 22 Oct
 assert '"/presence", "/nodes", "/offers"}' in SRC, "/offers is open at every SHARE_LEVEL: each line was chosen to be public"
-exp = SRC[SRC.index("def export("):SRC.index('@app.get("/place/geojson")')]
+exp = SRC[SRC.index("def export("):SRC.index("import geo  # noqa: E402")]   # /place/geojson followed it until app/geo.py
 assert '"offers": offers_now()["offers"]' in exp, "the daily export carries the offers"
 
 # ---------------------------------------------------------------- the node: only what the household chose, at its cell

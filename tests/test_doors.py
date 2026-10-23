@@ -92,7 +92,7 @@ from types import SimpleNamespace  # noqa: E402
 os.environ.setdefault("NODE_LAT", "-8.819"); os.environ.setdefault("NODE_LON", "115.164")
 _rq = lambda t: SimpleNamespace(state=SimpleNamespace(share_trusted=t))  # noqa: E731
 _kw = dict(id=None, lat=-8.8, lon=115.17, res=14, children=15, polar=True)
-_open, _mine = main.geo_cell(_rq(False), **_kw), main.geo_cell(_rq(True), **_kw)
+_open, _mine = main.geo.geo_cell(_rq(False), **_kw), main.geo.geo_cell(_rq(True), **_kw)
 assert not {"is_node", "cells_from_node", "ring_polar", "children_polar"} & set(_open) and _open["ring"] == _mine["ring"], _open.keys()
 assert {"is_node", "cells_from_node", "ring_polar", "children_polar"} <= set(_mine)
 print("doors: a phone with no token gets the map and the cells, never where they stand from the house")
