@@ -28,10 +28,11 @@ enough for telemetry and one-line alerts. Everything about the radios is on [Rad
 
 ## Reticulum
 
-The bridge container gives the node an LXMF address. `act <id>` sent from Sideband records an action, and alerts go
+The bridge container gives the node an LXMF address. It lives in its own repository, [`fabcity/planetai-reticulum`](https://github.com/fabcity/planetai-reticulum), which
+`planetai reticulum` fetches at a pinned commit and builds on the node. `act <id>` sent from Sideband records an action, and alerts go
 to `RETICULUM_ALERT_DESTINATIONS`. With `RETICULUM_PRESENCE=1` it also announces, every half hour, the node's name
 and its H3 cell rounded to `RETICULUM_PRESENCE_RES` (3 by default, never finer than 6). It runs over TCP; an RNode
-LoRa interface is a commented block in `config/reticulum/config.tpl`. `rns` and `lxmf` are pinned and are under the Reticulum License,
+LoRa interface is a commented block in its `config.tpl`, which becomes `config/reticulum/config`. `rns` and `lxmf` are pinned and are under the Reticulum License,
 which is not an open licence: [docs/decisions/2026-10-23-reticulum-licence.md](decisions/2026-10-23-reticulum-licence.md).
 
 ## What connects to what
