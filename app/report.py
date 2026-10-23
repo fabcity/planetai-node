@@ -370,7 +370,7 @@ THRESHOLDS = {
     "air-quality/outdoor_pm25_high":     ("pm25", 55.5, "line_epa_all"),
     "air-quality/inside_worse_ventilate": ("pm25", 15.0, "line_who"),
 }
-# This house's heat line, feels-like. The same number as app/issues/heat.yml's `line.value`; the test holds them equal.
+# This house's heat line, feels-like. The same number as packs/heat/issue.yml's `line.value`; the test holds them equal.
 HEAT_LINE = 35.0
 
 # What the node may mention beyond its own sensors: an observation that crossed a line a rule on this node cares

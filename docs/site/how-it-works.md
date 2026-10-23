@@ -184,7 +184,7 @@ Everything else leaves only when somebody here turns it on:
 | what a metric means, thresholds, messages | a pack's `rules.yml`; see [Packs](packs.md) |
 | which cells the node fills | a pack's `cells.yml` |
 | what a metric *is*: ambient, the box, battery, derived | `channels.yml`, core and per pack |
-| what a place watches, and in which order | `NODE_ISSUES`, declared in `app/issues/*.yml`; see [Issues](issues.md) |
+| what a place watches, and in which order | `NODE_ISSUES`, declared in each pack's `issue.yml`; see [Issues](issues.md) |
 | how the node speaks | `ALERT_LOCALE`, `ALERT_LEVEL`, `QUIET_*`, `REPORT_*`; see [Configuration](configuration.md) |
 | whether an act needs a decision first | `DECISION_REQUIRED` (default `0`) |
 | whether heat and air alerts are sent as events | `ALERT_ENGINE` (`rules`, `shadow` or `events`; default `rules`) |

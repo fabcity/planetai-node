@@ -10,6 +10,7 @@ packs/<id>/
                 metrics:, scales:, thresholds:
   rules.yml     alerts: SQL that returns rows, one message per row
   cells.yml     Index cells: SQL that returns one `value`
+  issue.yml     the issue this pack watches, its `key:`, name, line, sentences (air-quality, heat, coast, earth)
   adapter.py    a new source; code packs only
   hooks.py      on_readings, on_alert: what the pack does with what the node stores and sends; code packs only
   channels.yml  what a pack's own metrics ARE — ambient, enclosure, index, etc.
@@ -387,14 +388,16 @@ pictogram is not in `signs.svg`, whose numeral is neither a distance the issue f
 readouts, whose rule dots name a distance the issue does not have, or whose rule draws a line the
 issue does not declare.
 
-A pack that brings an issue of its own will declare its hero the same way, in the `issue.yml` beside
-its `pack.yaml`. The node does not load an issue from a pack yet; until it does, a new issue is a new
-file in `app/issues/`.
+A pack that brings an issue of its own declares it in the `issue.yml` beside its `pack.yaml`, with a `key:` (the
+issue's id, as `NODE_ISSUES` names it), and its hero the same way. The node reads it while the pack is on, so a node
+that does not watch the coast has no coast issue. Since 23 October 2026 the four that shipped in `app/issues/` live
+in their packs: air in `air-quality`, heat in `heat`, coast in `coast`, land in `earth`. A new issue is a pack with an
+`issue.yml`, and `app/issues/` keeps only the engine.
 
 ## What ships
 
 The `issue` column is which band of the dashboard a pack feeds. It comes from the pack's `domain:`,
-except for a cross-domain pack, whose rules are claimed one by one in `app/issues/*.yml`. A pack that
+except for a cross-domain pack, whose rules are claimed one by one in an `issue.yml`. A pack that
 reaches no issue and is not named as deliberately outside them fails `tests/test_issues.py` — see
 [`DOMAINS.md`](DOMAINS.md).
 

@@ -7,6 +7,9 @@
 # The id and es strings below are ASSISTANT-WRITTEN and have not been read by a native speaker.
 # See CHANGELOG.md. Fix them in place; nothing else changes.
 
+# This pack's issue (app/issues/__init__.py::load reads it while the pack is on). Until 23 Oct 2026, app/issues/air.yml.
+key: air
+
 name:
   en: Air
   id: Udara

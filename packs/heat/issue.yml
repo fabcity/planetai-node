@@ -2,6 +2,9 @@
 #
 # The id and es strings below are ASSISTANT-WRITTEN and have not been read by a native speaker.
 
+# This pack's issue (app/issues/__init__.py::load reads it while the pack is on). Until 23 Oct 2026, app/issues/heat.yml.
+key: heat
+
 name:
   en: Heat
   id: Panas

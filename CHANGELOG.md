@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **An issue ships in the pack that watches it.** Air, heat, coast and land moved from `app/issues/` into
+  `packs/air-quality/issue.yml`, `packs/heat/issue.yml`, `packs/coast/issue.yml` and `packs/earth/issue.yml`,
+  unchanged but for a `key:` line, and the node reads each one while its pack is on. A node that does not watch the
+  coast now has no coast issue, and a new issue is a pack with an `issue.yml`; `app/issues/` keeps only the engine.
+  `planetai update` adds the pack of each issue a node draws to a listed `PACKS_ENABLED`, so no node loses a page.
+
 - **The briefing's leftovers are gone.** `GET /briefing`, a redirect kept for a dashboard left open through v0.38,
   and the start-up step that moved the old `BRIEFINGS` and `BRIEF_*` keys onto the report schedule. Every node has
   started on v0.38 or later since September, so both had nothing left to do. A node updating straight from before

@@ -819,7 +819,7 @@ _run = engine._day(_sv[:-1] + [30], _bk, {"value": 15}, _now)
 check(_run["until"] == "19:30" and _run["running"], "_day: an hour still running ends now, and says it is running")
 # Audit 15 Oct: "clean now … past the WHO line until 10:47" at 10:47 read as still over. A running hour is said in words.
 import yaml as _y
-for _f in ("app/issues/air.yml", "app/issues/heat.yml"):
+for _f in ("packs/air-quality/issue.yml", "packs/heat/issue.yml"):
     for _loc, _sx in _y.safe_load(open(_f))["sentences"].items():
         _dw = _sx.get("day") or {}
         check(_dw.get("recent") and "{t}" in _dw.get("at", ""), f"{_f} {_loc}: day needs `at` and `recent` for a running hour")

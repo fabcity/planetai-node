@@ -89,7 +89,7 @@ planetai radio init         # LoRa radios: the fleet, then `radio provision <rol
 - A model or a portal is `partial`, whatever its quality. `live` means measured here.
 - Alerts say what to do in one sentence and name the threshold's source. Do not add alerts a household would ignore.
 - Nothing runs pip on the host. The node's Python is Apple's 3.9 with the standard library only. The CLI must stay that way.
-- The dashboard names no metric. Issues are declared in `app/issues/*.yml`, ordered by `NODE_ISSUES`, and
+- The dashboard names no metric. Issues are declared in each pack's `issue.yml` (`packs/air-quality/issue.yml` and three more), ordered by `NODE_ISSUES`, and
   served at `GET /issues`. The node computes; the page draws. A number the page works out for itself is a bug.
 - Do not put the node's database on IPFS. Only the daily export goes to the commons.
 - **A `private` reading never leaves.** A metric a pack declares `role: private` is used here like any other and is

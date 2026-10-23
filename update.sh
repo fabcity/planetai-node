@@ -276,6 +276,26 @@ for gone in trust; do
   fi
 done
 
+# 5d. an issue ships in the pack that watches it since 23 Oct 2026 (packs/<id>/issue.yml), and is read only while
+# that pack is on. A node that lists its packs and names the issue in NODE_ISSUES (or leaves NODE_ISSUES empty, which
+# draws every issue) gets the pack added, or the issue would vanish from its page on this update.
+issues_named="$(pq "SELECT value FROM settings WHERE key = 'NODE_ISSUES'")"
+[[ -z "$issues_named" ]] && issues_named="$(sed -n 's/^NODE_ISSUES=\([^#[:space:]]*\).*/\1/p' .env | tail -1)"
+for owned in air:air-quality heat:heat coast:coast land:earth; do
+  issue="${owned%%:*}" pack="${owned#*:}"
+  [[ -z "$issues_named" || ",$issues_named," == *",${issue},"* ]] || continue
+  pe="$(pq "SELECT value FROM settings WHERE key = 'PACKS_ENABLED'")"
+  if [[ -n "$pe" && ",$pe," != *",${pack},"* ]]; then
+    pq "UPDATE settings SET value = value || ',${pack}' WHERE key = 'PACKS_ENABLED'" >/dev/null
+    echo "   + ${pack} in the packs Set up lists (it carries the ${issue} issue now)"
+  fi
+  pe="$(sed -n 's/^PACKS_ENABLED=\([^#[:space:]]*\).*/\1/p' .env | tail -1)"
+  if [[ -n "$pe" && ",$pe," != *",${pack},"* ]]; then
+    sed -i.bak "s/^PACKS_ENABLED=.*/PACKS_ENABLED=${pe},${pack}/" .env && rm -f .env.bak
+    echo "   + ${pack} in PACKS_ENABLED in .env (it carries the ${issue} issue now)"
+  fi
+done
+
 # 6. rebuild and restart
 say "rebuilding"
 spin "building the image (pip installs; a minute or two)" docker compose build app || die "the image did not build; the node keeps running the version it had. See $ULOG"

@@ -32,7 +32,7 @@ the export and the node list, and announces nothing finer than resolution 6 over
 node computes the whole table and the page draws it.
 
 **Issue.** What a household calls a quality of its place: `air`, `heat`, `land`, `coast`, with water, noise
-and energy designed. Declared one file each in `app/issues/*.yml`, ordered by `NODE_ISSUES`, the keeper's
+and energy designed. Declared one file each, an `issue.yml` in the pack that watches it, ordered by `NODE_ISSUES`, the keeper's
 order, most important first. An issue is *sensed* when it has eyes on it and rules that can ask for
 something, *context* when it informs and never asks. See [Issues](issues.md).
 
