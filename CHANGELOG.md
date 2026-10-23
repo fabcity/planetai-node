@@ -10,6 +10,15 @@
   model with roofs and trees in it, it sees the street, not the yard. Your own DEM goes in `TERRAIN_DEM_PATH`.
   `docs/SPEC_terrain.md` has why there is no wetness index.
 
+- **The Reticulum bridge has its own repository.** `reticulum_bridge.py`, its Dockerfile and its config template moved
+  to [fabcity/planetai-reticulum](https://github.com/fabcity/planetai-reticulum), Apache-2.0, so the core never
+  imports `RNS` or `LXMF` (decision 2 of `docs/decisions/2026-10-23-reticulum-licence.md`). `planetai reticulum`
+  downloads it at the commit `RETICULUM_REF` pins in `bin/planetai`, with curl and tar like `packs add`, and builds it
+  on the node; nobody publishes an image with `rns` in it. `planetai update` fetches and rebuilds it where the bridge
+  is on, which it never did before. The service and its `reticulum` volume keep their names, so a node keeps its LXMF
+  address. `tests/test_peers_persist.py` moved with it (88 suites); `test_shipped.py` now fails if anything here
+  imports `RNS` or `LXMF`.
+
 - **Tomas decided what Reticulum is for.** The optional bridge under a non-open licence is acceptable; it leaves the
   core before the AGPL relicence; parent links run on HTTPS over the tailnet, and Reticulum carries discovery and
   messages to people only. Recorded in `docs/decisions/2026-10-23-reticulum-licence.md` and SPEC_fablab §7.

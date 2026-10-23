@@ -112,7 +112,8 @@ He answered the four questions this record left open:
    operator runs `planetai reticulum`, with the licence named on the channels page before they do.
 2. **The bridge leaves the core.** It moves out before the relicence PR lands, so the AGPL core never imports `RNS`
    or `LXMF`. Where it goes and how a node installs it is the next piece of work, and until then nothing changes on a
-   node.
+   node. *Done 23 October, on his word:* the bridge is fabcity/planetai-reticulum, Apache-2.0, fetched at a pinned
+   commit and built on the node (see the CHANGELOG).
 3. **Parent links run on HTTPS over the tailnet.** Reticulum carries discovery (presence) and messages to and from
    people, nothing that becomes an Index cell. SPEC_fablab §7 says the same.
 4. **No message to Mark Qvist yet.** The training-dataset clause stays read as in this record, and the question in

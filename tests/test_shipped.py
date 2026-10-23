@@ -556,7 +556,6 @@ assert 'esc(s.url)}" target="_blank" rel="noopener"' in gui, \
 
 # v0.48 — presence. A node announcing "I am here" on Reticulum is the node speaking unprompted, so it is
 # its own setting and it is off until somebody turns it on; SHARE_LEVEL governs what a node ANSWERS.
-_bridge = open("app/reticulum_bridge.py").read()
 assert '"RETICULUM_PRESENCE":' in settings and '"RETICULUM_PRESENCE_RES":' in settings, \
     "app/settings.py: presence is a runtime setting, so a household can turn it off from the dashboard"
 _presm = open("app/presence.py").read()           # presence has a module of its own since 24 Oct 2026
@@ -576,22 +575,25 @@ _pres = _presm[_presm.index('@router.get("/presence")'):_presm.index("def _node_
 # nodes it had just heard, with a name and a distance in it. The bridge registers PresenceHandler at
 # import and unconditionally, so a node has always listened; RETICULUM_PRESENCE governs whether it
 # SPEAKS. The copy predated the handler and shipped in three languages. Seen on node #1, v0.53-2.
-_bridge = open("app/reticulum_bridge.py").read()
-assert "register_announce_handler" in _bridge, (
-    "the bridge no longer collects other nodes' announces — if that is deliberate, the dashboard has "
-    "to say so again, and this assertion is what stops it being said while the handler still runs")
+# The bridge is fabcity/planetai-reticulum since 23 Oct 2026; its tests/test_peers.py holds the handler there.
 for _claim in ("does not yet listen", "belum mendengarkan", "todavía no escucha"):
     assert _claim not in gui, (
-        f"dashboard.js still tells the household {_claim!r} while reticulum_bridge.py registers an "
+        f"dashboard.js still tells the household {_claim!r} while the bridge registers an "
         "announce handler and the Network view lists heard peers above it")
 assert "cell_to_parent" in _pres and "_presence_res()" in _pres, \
     "the announced cell is a COARSE parent of this node's own cell, never the cell itself"
-assert "register_announce_handler" in _bridge, \
-    "the bridge has to listen as well as announce, or no node ever hears another"
-assert 'aspect_filter = "planetai.presence"' in _bridge, "on its own aspect, not on LXMF delivery"
-assert "/peers" in _bridge, "and hand what it heard to the node"
-assert "if h == RNS.hexrep(PRESENCE.hash" in _bridge, "a node must not list its own announce as a peer"
-print("presence: off by default, coarse by construction, and the bridge listens as well as announces")
+print("presence: off by default, and coarse by construction")
+
+# Decision 2 of docs/decisions/2026-10-23-reticulum-licence.md: the AGPL core never imports RNS or LXMF. The bridge
+# is fabcity/planetai-reticulum, fetched at one pinned commit and built on the node; the core talks to it over HTTP.
+import glob as _glob  # noqa: E402
+_rns = [f for f in _glob.glob("**/*.py", recursive=True) if not f.startswith(("reticulum/", "docs/"))
+        and re.search(r"^\s*(import|from)\s+(RNS|LXMF)\b", open(f, encoding="utf-8").read(), re.M)]
+assert not _rns, f"these import RNS or LXMF, which belong in fabcity/planetai-reticulum: {_rns}"
+assert compose["services"]["reticulum"]["build"] == {"context": "./reticulum"}, \
+    "the bridge is built from the copy planetai reticulum fetches, not from anything in this repository"
+assert re.search(r'^RETICULUM_REF="[0-9a-f]{40}"$', cli, re.M), "the bridge is pinned to one full commit, never a branch"
+print("the core imports neither RNS nor LXMF; the bridge comes from its own repository at a pinned commit")
 
 # the scripts each pack promises in its README
 for _p, _s in (("nearby", ("stations", "status", "verify", "backfill")),

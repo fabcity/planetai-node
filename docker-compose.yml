@@ -108,13 +108,17 @@ services:
     logging: { driver: json-file, options: { max-size: "5m", max-file: "2" } }
 
   reticulum:
-    build: { context: ./app, dockerfile: Dockerfile.reticulum }
+    # The bridge lives in fabcity/planetai-reticulum, Apache-2.0, because rns and lxmf are under the Reticulum
+    # License and this repository is moving to the AGPL (docs/decisions/2026-10-23-reticulum-licence.md).
+    # `planetai reticulum` fetches it into ./reticulum at RETICULUM_REF (bin/planetai) and builds it here, on the
+    # operator's machine. The node talks to it over HTTP only.
+    build: { context: ./reticulum }
     profiles: [reticulum]
     restart: unless-stopped
     # No env_file here, on purpose (F2 of the 18 September design review). `env_file: .env` handed this
     # container every secret the node holds — the Telegram bot token, the online model key, the admin
     # token, the database password — to a process whose whole job is to speak to a public radio mesh.
-    # It reads eight variables and this is all eight; `grep getenv app/reticulum_bridge.py` is the list.
+    # It reads eight variables and this is all eight; the bridge's tests/test_peers.py holds it to this list.
     # A new one has to be added here, which is the point: it is a decision, not a default.
     environment:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
