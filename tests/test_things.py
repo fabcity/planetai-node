@@ -35,7 +35,7 @@ import main                                       # noqa: E402
 import packs                                      # noqa: E402
 from fastapi.testclient import TestClient         # noqa: E402
 
-assert "vehicle" in main.THING_CLASSES and "vehicle" in main.EYES_CLASSES, "cars, motorbikes and trucks have a class"
+assert "vehicle" in main.THING_CLASSES and "vehicle" in packs.ROUTES["eyes"].EYES_CLASSES, "cars, motorbikes and trucks have a class"
 assert "vehicle" in open("app/static/doors-data.js").read(), "and the Data door can file a finding under it"
 ROWS = [{"id": 2, "added_at": "2026-10-13T01:00:00+00:00", "class": "tool", "name": "cordless drill", "count": 1,
          "used": "yearly", "condition": "works", "offer": "lend", "capture_id": None, "note": None},
@@ -124,7 +124,8 @@ print("private: the counts are declared private by core, and /observations shows
 JS = open("app/static/doors-data.js").read()
 assert "capture_id: +id" in JS and "a.confirmed_by && TKEEP" in JS, "a confirmed finding becomes a thing with its photo linked"
 assert "TKEEP.classes.includes(f.class)" in JS, "only the classes a home keeps are offered"
-cd = SRC[SRC.index("def capture_delete"):SRC.index("@app.get(\"/captures/{cid}/file\")")]
+_ER = open("packs/eyes/routes.py").read()          # the captures routes are the eyes pack's since 24 Oct 2026
+cd = _ER[_ER.index("def capture_delete"):_ER.index("@router.get(\"/captures/{cid}/file\")")]
 assert "UPDATE things SET capture_id = NULL WHERE capture_id = %s" in cd, "a deleted photo leaves its things, unlinked"
 print("from a photo: a confirmed finding in a household class adds a thing, linked; deleting the photo unlinks it")
 # ---------------------------------------------------------------- a pack since 24 Oct 2026, and no node loses it
@@ -145,9 +146,9 @@ def _5e(db_, env):
                 capture_output=True, text=True, check=True)
         return open(f"{t}/db").read(), open(f"{t}/.env").read()
 _db, _ = _5e("PACKS_ENABLED=air-quality,heat\n", "")
-assert _db == "PACKS_ENABLED=air-quality,heat,things\n", _db
+assert _db == "PACKS_ENABLED=air-quality,heat,things,eyes\n", _db
 assert _5e(_db, "")[0] == _db, "a second update changed the list again"
-assert _5e("", "PACKS_ENABLED=heat\n")[1] == "PACKS_ENABLED=heat,things\n"
+assert _5e("", "PACKS_ENABLED=heat\n")[1] == "PACKS_ENABLED=heat,things,eyes\n"
 assert _5e("PACKS_ENABLED=\n", "PACKS_ENABLED=\n") == ("PACKS_ENABLED=\n", "PACKS_ENABLED=\n"), "an empty list is every pack"
-print("update.sh 5e: a node that lists its packs gets things added, once")
+print("update.sh 5e: a node that lists its packs gets things and eyes added, once")
 print("things: every check passed")

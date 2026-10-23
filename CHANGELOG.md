@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Captures, the image model and species are a pack, `eyes`.** Every `/captures` route, `POST /captures/{id}/describe`
+  and `GET /species` moved out of `app/main.py` into `packs/eyes/routes.py`, unchanged, with the weekly reads of this
+  country's introduced and invasive species (GRIIS) and of others' open records in the node's cells, which the node's
+  timers now run only while the pack is on. The table, the pictures and the settings stay where they were. With the
+  pack off the routes answer 404 and the Data door says so; `planetai update` adds `eyes` wherever a node lists its
+  packs. A route of a pack that is off answers `the <pack> pack is off on this node`.
+
 - **The things a home keeps are a pack.** `GET`/`POST /things`, `PATCH`/`DELETE /things/{id}` and `GET /offers` moved
   out of `app/main.py` into `packs/things/routes.py`, unchanged, as things and offers are a category a node watches
   (docs/decisions/2026-10-21-core-and-packs.md). The table stays in `init.sql` and the private role on the counts
