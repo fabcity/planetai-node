@@ -152,7 +152,7 @@ def metres(cid: str, lat: float, lon: float) -> list[float]:
     return out
 
 
-FLOOR_RES = 6            # PRESENCE_RES_FLOOR in app/main.py: the finest any node may announce
+FLOOR_RES = 6            # PRESENCE_RES_FLOOR in app/presence.py: the finest any node may announce
 
 
 def _circle(lat: float, lon: float, r_m: float, n: int = 90) -> list[list[float]]:

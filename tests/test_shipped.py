@@ -559,16 +559,17 @@ assert 'esc(s.url)}" target="_blank" rel="noopener"' in gui, \
 _bridge = open("app/reticulum_bridge.py").read()
 assert '"RETICULUM_PRESENCE":' in settings and '"RETICULUM_PRESENCE_RES":' in settings, \
     "app/settings.py: presence is a runtime setting, so a household can turn it off from the dashboard"
-assert re.search(r'PRESENCE_RES_FLOOR\s*=\s*[0-6]\b', main), \
-    "main.py: a floor on how exact the announced cell may be. Without it a settings box publishes a street."
-assert "min(r, PRESENCE_RES_FLOOR)" in main, "the floor has to be applied, not merely declared"
+_presm = open("app/presence.py").read()           # presence has a module of its own since 24 Oct 2026
+assert re.search(r'PRESENCE_RES_FLOOR\s*=\s*[0-6]\b', _presm), \
+    "app/presence.py: a floor on how exact the announced cell may be. Without it a settings box publishes a street."
+assert "min(r, PRESENCE_RES_FLOOR)" in _presm, "the floor has to be applied, not merely declared"
 assert '"/presence"' in main[main.index("_SHARE_OFF = "):main.index("_SHARE = {")], \
     ("/presence must answer at SHARE_LEVEL=off: the reticulum bridge is another container with no token, "
      "and on the `open` list only it would be refused on a default node and never announce")
-assert '"enabled": False' in main, "/presence says nothing at all until presence is on"
+assert '"enabled": False' in _presm, "/presence says nothing at all until presence is on"
 # scoped to /presence's own body: cell_to_parent also appears in the distance helper, so a bare
 # substring check passed even with the coarsening taken out of the thing that announces
-_pres = main[main.index('@app.get("/presence")'):main.index("def _cell(")]
+_pres = _presm[_presm.index('@router.get("/presence")'):_presm.index("def _node_cell(")]
 
 # The Network view printed "It announces; it does not yet listen. Nothing here collects the announces
 # other Reticulum nodes make" on every node whose bridge was up — directly beneath the card listing the

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Presence on Reticulum has a module of its own.** `GET /presence`, the floor no announced cell may be finer than
+  (`PRESENCE_RES_FLOOR`), and the thread that asks the bridge whom it has heard moved out of `app/main.py` into
+  `app/presence.py`, unchanged. The dashboard now says the floor is in `app/presence.py`.
+
 - **What the house learned, and who lives in it, have a module of their own.** `GET /learned`, `/learned/place`,
   `/learned/search` and `GET`/`PUT /household` moved out of `app/main.py` into `app/household.py`, unchanged; the
   morning report and the alert line read the household from there.

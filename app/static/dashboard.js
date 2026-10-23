@@ -1522,7 +1522,7 @@ const NAV_HONEST = {
     + `that drew a door there would be drawing the planet.`,
   /* The floor, as a position rather than a paragraph. */
   floor: () => `Everything finer than resolution ${H.settings.PRESENCE_RES_FLOOR} is this machine’s `
-    + `own. That is the floor no settings box may pass — app/main.py — and this node announces `
+    + `own. That is the floor no settings box may pass — app/presence.py — and this node announces `
     + `itself at resolution ${H.settings.RETICULUM_PRESENCE_RES}, `
     + `${km2(H.radio.area_m2)}, which is the whole of what a stranger on the radio learns `
     + `about where it is.`,
@@ -4887,7 +4887,7 @@ function leaves(ctx) {
       left: who('Over the radio', `RETICULUM_PRESENCE_RES ${pres == null ? '\u2014' : pres}`),
       line: `A cell and nothing else \u2014 never a coordinate. A stranger listening learns which `
         + `${km2(R.area_m2)} of the planet this node is somewhere inside, and no settings box may `
-        + `take it finer than resolution ${floor}: that floor is in app/main.py, not in a form.`,
+        + `take it finer than resolution ${floor}: that floor is in app/presence.py, not in a form.`,
       qty: [{ num: 'leaves.radio', value: edge(R.edge_m),
         cmp: `to an edge of the cell this node announces itself in, at resolution ${R.res}` }] })
     + row({ id: 'leaves-health', component: 'leaves', ref: 'grain-line', cols,
@@ -4985,7 +4985,7 @@ window.PAI.register({
       { id: 'grain-lines', label: 'The two marks on the ladder',
         text: `The two marks on the ladder are the product’s own lines, not this `
         + `page’s. Resolution ${H.settings.PRESENCE_RES_FLOOR} and coarser may leave this machine — `
-        + `it is PRESENCE_RES_FLOOR in app/main.py, the finest any node may announce. Past resolution `
+        + `it is PRESENCE_RES_FLOOR in app/presence.py, the finest any node may announce. Past resolution `
         + `${H.publication.res} is finer than this node is willing to say where it is: GET /health `
         + 'rounds a coordinate to three decimals, about 110 m, and no reading from it may be drawn '
         + 'finer than that.' },
