@@ -161,7 +161,7 @@ app/          main.py (api, loops, notify) · sources.py (adapters) · index.py 
               events.py · events_pg.py · events_wire.py · actions.py (the alert-event engine, its store, its /issues block and
               the action it chooses)
               requires.py (which node a pack needs) · fundamentals.py (the sources every node needs) · learn.py (what it learns)
-              ask.py (the dashboard's ask pane) · bootstrap.py · ground.py · reticulum_bridge.py · issues/ · static/ (the dashboard)
+              ask.py (the dashboard's ask pane) · bootstrap.py · ground.py · issues/ · static/ (the dashboard)
 bin/planetai  the operator CLI
 packs/        the twenty-four core packs; see Packs
 config/       rules.yml (two domain-blind rules, trust's three) · channels.yml · mosquitto · reticulum

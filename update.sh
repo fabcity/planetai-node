@@ -315,6 +315,12 @@ done
 # 6. rebuild and restart
 say "rebuilding"
 spin "building the image (pip installs; a minute or two)" docker compose build app || die "the image did not build; the node keeps running the version it had. See $ULOG"
+# The Reticulum bridge, where it is on, fetched again when bin/planetai pins a new commit and rebuilt, so the node runs
+# the bridge its release names. Before 23 Oct 2026 an update never rebuilt it. Its identity is in the `reticulum`
+# volume, so the address stays. A bridge that does not build is not a failed update: the old one keeps running.
+case ",$(envval COMPOSE_PROFILES)," in *,reticulum,*)
+  spin "building the Reticulum bridge" ./bin/planetai reticulum build || warn "the Reticulum bridge did not build; it keeps running the one it had. See $ULOG";;
+esac
 # stamp the version the node now runs, so /health and planetai status report it: from git in a clone, from the
 # VERSION file the tarball carries otherwise. After the build, not
 # before: a failed build must not leave .env claiming a version the containers never ran.
