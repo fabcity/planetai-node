@@ -87,7 +87,7 @@ Start with `health_check`, then `status`.
 | `act` | `alert_id`, `note` (required), `agent="agent"` | writes: records `stage: acted` for that alert with the agent as actor, and returns `{recorded, alert_id, by}` |
 | `report_now` | `agent="agent"` | writes: a report, written and sent now |
 | `settings_set` | `changes: {KEY: value}`, `agent="agent"` | writes: changes runtime settings, live within 20 seconds; a blank returns the key to `.env` |
-| `run_pack_script` | `pack`, `script`, `args?`, `agent="agent"` | runs code: `packs/<pack>/<script>.py` inside the container (15-minute limit), and returns exit code, stdout, stderr and `by`. Every script of a core pack runs. A wild pack's script runs only if its `pack.yaml` lists it under `agent_scripts:`, otherwise the answer is an `error` pointing to `planetai run <pack> <script>` on the node's terminal. A pack's `adapter.py` is never a script here |
+| `run_pack_script` | `pack`, `script`, `args?`, `agent="agent"` | runs code: `packs/<pack>/<script>.py` inside the container (15-minute limit), and returns exit code, stdout, stderr and `by`. Every script of a core pack runs. A wild pack's script runs only if its `pack.yaml` lists it under `agent_scripts:`, otherwise the answer is an `error` pointing to `planetai run <pack> <script>` on the node's terminal. A pack's `adapter.py` is never a script here, and a pack the node does not load (left out of `PACKS_ENABLED`, or refused by its `requires:`) runs nothing |
 
 > **Gap in v0.83.0.** `readings` answers with its error for every sensor. It looks the sensor up at the top level of
 > `/sparks`, and the hourly means sit under `series`. Use `series` or `history` instead.

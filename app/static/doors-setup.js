@@ -307,7 +307,7 @@ function sConsequences(body, desc, packs, drawn) {
       const ids = packs.map(p => p.id), was = drawn ? drawn.split(',') : ids, now = v ? v.split(',') : ids;
       for (const p of packs.filter(x => x.kind === 'code' && now.includes(x.id) && !was.includes(x.id)))
         out.push({ key: 'PACKS_ENABLED', label: p.name || p.id, to: 'on', code: true,
-          help: `A code pack: its adapter.py runs on this machine with the node’s privileges, while Allow code packs is on. ${p.description || ''}`.trim() });
+          help: `A code pack: its Python (an adapter, hooks or scripts) runs on this machine with the node’s privileges. ${p.description || ''}`.trim() });
       continue;
     }
     const r = rows.find(x => x.key === k) || {};

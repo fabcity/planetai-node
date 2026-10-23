@@ -1122,21 +1122,31 @@ cmd_homeassistant() {
 # in this CLI needs a third-party library — a tool that reports what is installed must not itself need installing.
 # Handles `pip: [a, b]` and a block list of `- a` lines.
 # `env:` lines from pack.yaml, same awk approach as pack_pips (no PyYAML on a node).
+# Both read the packs this node loads, as GET /packs answers, so `install` neither builds a library nor adds a setting
+# for a pack left out of PACKS_ENABLED. With the node down, every folder: what is on disk is all that can be known.
+pack_yamls() {
+  local ids; ids="$(api /packs 2>/dev/null | python3 -c 'import json,sys; print(" ".join(p["id"] for p in json.load(sys.stdin)))' 2>/dev/null)"
+  if [[ -z "$ids" ]]; then ls packs/*/pack.yaml 2>/dev/null; return; fi
+  local id; for id in $ids; do [[ -f "packs/${id}/pack.yaml" ]] && echo "packs/${id}/pack.yaml"; done
+}
+
 pack_envs() {
+  local f; f="$(pack_yamls)"; [[ -n "$f" ]] || return 0
   awk '
     /^env:[[:space:]]*$/ { inenv=1; next }
     inenv && /^[[:space:]]*-[[:space:]]*/ { s=$0; sub(/^[[:space:]]*-[[:space:]]*/,"",s); gsub(/^"|"$/,"",s); if(s!="") print s; next }
     inenv && /^[^[:space:]-]/ { inenv=0 }
-  ' packs/*/pack.yaml 2>/dev/null
+  ' $f 2>/dev/null
 }
 
 pack_pips() {
+  local f; f="$(pack_yamls)"; [[ -n "$f" ]] || return 0
   awk '
     /^pip:[[:space:]]*\[/ { s=$0; sub(/^pip:[[:space:]]*\[/,"",s); sub(/\].*$/,"",s); n=split(s,a,","); for(i=1;i<=n;i++){ gsub(/[[:space:]"'"'"']/,"",a[i]); if(a[i]!="") print a[i] } ; next }
     /^pip:[[:space:]]*$/ { inpip=1; next }
     inpip && /^[[:space:]]*-[[:space:]]*/ { s=$0; sub(/^[[:space:]]*-[[:space:]]*/,"",s); gsub(/[[:space:]"'"'"']/,"",s); if(s!="") print s; next }
     inpip { inpip=0 }
-  ' packs/*/pack.yaml 2>/dev/null | sort -u
+  ' $f 2>/dev/null | sort -u
 }
 
 cmd_packs() {
@@ -1204,7 +1214,7 @@ packs_install() {
   done < <(pack_envs)
   [[ $added -gt 0 ]] && warn "${added} pack setting(s) added to .env — fill them in, then planetai restart" || true
 
-  # pip: lists from every pack folder present. A rebuild installs for all of them, enabled or not; cheap and simple.
+  # pip: lists from the packs this node loads (pack_yamls), so a pack left out of PACKS_ENABLED adds nothing to the image.
   local reqs; reqs="$(pack_pips)"
   if [[ -z "$reqs" ]]; then say "no code pack declares Python dependencies; nothing to install"; return; fi
   if [[ "$(cat app/requirements-packs.txt 2>/dev/null)" == "$reqs" ]]; then
