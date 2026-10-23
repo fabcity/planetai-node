@@ -69,11 +69,6 @@ def PARENT_TOKEN():
 RETICULUM_URL = os.getenv("RETICULUM_URL", "").strip()       # the reticulum bridge, e.g. http://reticulum:4243
 from channels import (TG, MESH_ALERTS, MESH_GATEWAY_NUM, mesh_state, tg_state,  # noqa: E402,F401
                       mesh_send, notify)  # Telegram, the mesh, LXMF (app/channels.py); Home Assistant is packs/home-assistant
-# What the Reticulum bridge says about itself, refreshed on its own thread. /health is called every
-# twenty seconds by every screen in the house, so it must never make an outbound request of its own:
-# a bridge that is down would turn the node's own health check into a timeout.
-reticulum_state = {"ok": False, "address": None, "destinations": 0, "announce_s": None,
-                   "announcing": False, "peers": [], "last": None}
 STARTED = time.time()
 state = {"polls": 0, "last_poll": None, "last_error": None, "ingested": 0}
 
@@ -880,52 +875,6 @@ def poll_sources() -> None:
     poll_once(hc)
 
 
-def poll_reticulum() -> None:
-    """Ask the bridge who it is. It announces itself on Reticulum every RETICULUM_ANNOUNCE_S — an
-    "I am here, I am planetai <node>" with no data attached — and this is the node's only window
-    onto whether that is actually happening."""
-    if not RETICULUM_URL:
-        return
-    r = httpx.get(f"{RETICULUM_URL}/health", timeout=5).json()
-    peers = []
-    try:
-        peers = httpx.get(f"{RETICULUM_URL}/peers", timeout=5).json().get("peers", [])
-    except Exception as e:  # noqa: BLE001 — an older bridge has no /peers, which is not an error
-        log.debug("reticulum: no peers from the bridge (%s)", e)
-    reticulum_state.update({"ok": bool(r.get("ok")), "address": r.get("address"),
-                            "destinations": r.get("destinations", 0),
-                            "announce_s": int(os.getenv("RETICULUM_ANNOUNCE_S", "1800")),
-                            "announcing": bool(r.get("announcing")),
-                            "peers": _with_distance(peers),
-                            "last": datetime.now(timezone.utc).isoformat()})
-
-
-def _with_distance(peers: list[dict]) -> list[dict]:
-    """How far each heard node is, from its coarse cell to ours. Neither end published a position.
-
-    The distance is between two cell CENTRES, so it carries the coarseness of whichever cell is
-    blunter — at res 3 two nodes in the same cell read 0 km and are somewhere within sixty. That is
-    the point of it, and `res` travels with the answer so the page can say so.
-    """
-    here = _cell()
-    out = []
-    for p in peers or []:
-        row = {k: p.get(k) for k in ("node", "cell", "res", "version", "kind", "first", "last", "hash")}
-        row["km"] = None
-        try:
-            import h3  # noqa: PLC0415
-            if here and here.get("id") and p.get("cell"):
-                a = h3.cell_to_latlng(h3.cell_to_parent(here["id"], int(p["res"])))
-                b = h3.cell_to_latlng(p["cell"])
-                row["km"] = round(sources.km(a[0], a[1], b[0], b[1]))
-        except Exception as e:  # noqa: BLE001 — a malformed cell from a stranger must not break the poll
-            log.debug("reticulum: no distance for %s (%s)", p.get("node"), e)
-        out.append(row)
-    return sorted(out, key=lambda r: (r["km"] is None, r["km"] or 0))
-
-
-
-
 _STARTED = False
 
 
@@ -960,7 +909,7 @@ def start() -> None:
     loop(check_others, 3600, delay=120)
     loop(check_learn, 3600, delay=180)
     if RETICULUM_URL:
-        loop(poll_reticulum, 300, delay=20)
+        loop(presence.poll_reticulum, 300, delay=20)
 
 
 # ---------------------------------------------------------------- http
@@ -1152,7 +1101,7 @@ def health(request: Request):
             "docs": DOCS_URL, "mcp": "/mcp", "llms": "/llms.txt",
             **({"mesh": mesh_state} if MQTT_HOST else {}),
             **{k: v for d in packs.collect("status") if isinstance(d, dict) for k, v in d.items()},  # packs/smartcitizen: direct
-            **({"reticulum": reticulum_state} if RETICULUM_URL else {})}
+            **({"reticulum": presence.reticulum_state} if RETICULUM_URL else {})}
 
 
 @app.get("/health/sources")
@@ -1183,20 +1132,6 @@ def health_sources(backup_age: float | None = None):
     return {"ok": not any(r["ok"] is False for r in rows), "missing": sum(r["ok"] is False for r in rows), "sources": rows}
 
 
-# Nothing finer than this may be announced. res 6 is roughly 3 km across; below that a node is
-# telling an open radio network which neighbourhood it is in, and that is not a thing anyone should
-# be able to do by typing a number into a settings box.
-PRESENCE_RES_FLOOR = 6
-
-
-def _presence_res() -> int:
-    try:
-        r = int(settings.get("RETICULUM_PRESENCE_RES", "3") or 3)
-    except ValueError:
-        return 3
-    return max(0, min(r, PRESENCE_RES_FLOOR))
-
-
 @app.get("/nodes")
 def nodes():
     """The nodes the programme lists (registry.json on main, read by check_registry). `read` is null until the
@@ -1206,33 +1141,8 @@ def nodes():
             **({"error": k["error"]} if k.get("error") else {})}
 
 
-@app.get("/presence")
-def presence():
-    """What this node is willing to announce about itself, and whether it is announcing at all.
-
-    The Reticulum bridge asks this — it has no h3 and no settings of its own — and announces exactly
-    what comes back, or nothing when `enabled` is false. Open on purpose at every share level: when
-    presence is on, this is the same handful of facts the node is already broadcasting to any radio
-    within reach, and when it is off it answers with nothing but that.
-
-    The cell is the node's own res-8 cell rounded UP to a coarse parent: at the default res 3 that is
-    an area about sixty kilometres across, which names an island and not an address. Distance between
-    two nodes is then two cell centres, and neither of them ever published a position.
-    """
-    on = settings.get("RETICULUM_PRESENCE", "0") == "1"
-    if not on:
-        return {"enabled": False}
-    here = _cell()
-    res = _presence_res()
-    cell = None
-    if here and here.get("id"):
-        try:
-            import h3  # noqa: PLC0415 — only this path needs it
-            cell = h3.cell_to_parent(here["id"], res)
-        except Exception as e:  # noqa: BLE001
-            log.warning("presence: could not coarsen %s to res %d (%s)", here.get("id"), res, e)
-    return {"enabled": True, "node": NODE, "cell": cell, "res": res,
-            "version": os.getenv("NODE_VERSION", "?"), "kind": os.getenv("NODE_KIND", "") or None}
+import presence  # noqa: E402 — GET /presence, poll_reticulum, reticulum_state (app/presence.py)
+app.include_router(presence.router)
 
 
 def _published_position(trusted: bool = False) -> dict:
