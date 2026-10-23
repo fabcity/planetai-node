@@ -176,8 +176,8 @@ def live(cur, decl: dict, locale: str, now: dt.datetime) -> dict:
     answers = [dict(x) for x in cur.fetchall()]
     covered, contexts = {}, {}
     for e in events:
-        # Until Plan 2 writes alerts.event_id, an event covers its issue's packs' rows inside its own window.
-        packs = [p for p, i in P.PACK_ISSUE.items() if i == e["issue"]] or [e["issue"]]
+        # Until Plan 2 writes alerts.event_id, an event covers its issue's pack's rows inside its own window.
+        packs = [(decl.get(e["issue"]) or {}).get("pack") or e["issue"]]      # the pack that ships the issue
         cur.execute("SELECT id FROM alerts WHERE event_id = %s OR (split_part(rule_id, '/', 1) = ANY(%s) "
                     "AND ts >= %s AND ts <= %s)", (e["id"], packs, e["opened_at"], e["cleared_at"] or now))
         covered[e["id"]] = [x["id"] for x in cur.fetchall()]

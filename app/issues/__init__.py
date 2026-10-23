@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 from pathlib import Path
 
 import yaml
@@ -731,7 +732,7 @@ def _distance_problems(where: str, spec) -> list[str]:
     return p
 
 
-def _read(f: Path, key: str, out: dict) -> None:
+def _read(f: Path, key: str, out: dict, pack: str | None = None) -> None:
     """One issue file into `out` under `key`. A file that does not parse or does not validate is logged and dropped:
     one bad issue must not cost the household the other three."""
     try:
@@ -749,7 +750,22 @@ def _read(f: Path, key: str, out: dict) -> None:
             log.warning("issue %s: %s", f, b)
         return
     d["key"] = key
+    if pack:
+        d["pack"] = pack                  # the pack that ships it: owners() reads this
     out[key] = d
+
+
+_OWNERS: dict = {"at": 0.0, "map": {}}
+
+
+def owners() -> dict[str, dict]:
+    """{pack id: the declaration of the issue it ships}, for the packs this node loads. What the core used to hard-code
+    as PACK_ISSUE, ISSUE_PACK and PACK_METRIC (events_pg, events_wire, learn): which pack an issue's alerts are, and
+    what they are judged on, is the issue's own file. Read again every minute, because run_rules asks for every kinded
+    rule and learn for every row it names."""
+    if time.time() - _OWNERS["at"] > 60:
+        _OWNERS.update(at=time.time(), map={d["pack"]: d for d in load().values() if d.get("pack")})
+    return _OWNERS["map"]
 
 
 def load(path: Path | str | None = None) -> dict[str, dict]:
@@ -770,7 +786,7 @@ def load(path: Path | str | None = None) -> dict[str, dict]:
             import packs  # app/packs.py: the one place that knows which packs are on
             for d in packs._enabled():
                 if (d / "issue.yml").is_file():
-                    _read(d / "issue.yml", d.name, out)
+                    _read(d / "issue.yml", d.name, out, pack=d.name)
             out = pack_readouts(out, packs.manifests())
         except Exception as e:  # noqa: BLE001 — the packs are an addition; without them the core's issues still stand
             log.warning("issues: could not read the packs' issues and readouts (%s)", e)

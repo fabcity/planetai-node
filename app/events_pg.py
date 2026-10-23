@@ -12,8 +12,6 @@ import issues
 import settings
 
 log = logging.getLogger("planetai")
-# a pack's domain is its issue unless a rule says otherwise
-PACK_ISSUE = {"air-quality": "air", "heat": "heat"}
 HOME_ITEMS = ("purifier", "ac", "fan", "windows")
 
 
@@ -22,7 +20,7 @@ def candidates(rule: dict, rows: list[dict]) -> list[E.Candidate]:
     if not kind:
         return []                                     # report-only: never interrupts (SPEC_alerts §3)
     pack = rule["id"].split("/", 1)[0]
-    issue = rule.get("issue") or PACK_ISSUE.get(pack, pack)
+    issue = rule.get("issue") or (issues.owners().get(pack) or {}).get("key", pack)   # the issue its pack ships
     out = []
     for r in rows:
         if r.get("value") is None or r.get("line") is None:

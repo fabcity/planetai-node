@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **The core stopped naming the air and heat packs.** Which pack an issue's alerts belong to, what they are judged
+  on, what a learning calls them and the line the report names were four maps in `app/events_pg.py`, `app/learn.py`
+  and `app/report.py`. They are read from the packs now: the issue's pack and `metric` from its `issue.yml`
+  (`issues.owners()`), a learning's name from a rule's `name:` or the issue's `alert:`, and the report's line from a
+  rule's `line: {value, label}`. Nothing a household reads changes; a new domain pack gets all of it by declaring it.
+
 - **An issue ships in the pack that watches it.** Air, heat, coast and land moved from `app/issues/` into
   `packs/air-quality/issue.yml`, `packs/heat/issue.yml`, `packs/coast/issue.yml` and `packs/earth/issue.yml`,
   unchanged but for a `key:` line, and the node reads each one while its pack is on. A node that does not watch the
