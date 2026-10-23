@@ -68,3 +68,11 @@ def close() -> None:
             _pool.close()
             _pool = None
 
+
+def q(sql: str, *args) -> list[dict]:
+    """Rows as dicts, a datetime as its ISO string: what every read route returns. Here rather than in main, so a
+    pack's routes.py can read the database without importing main (packs.routers())."""
+    from datetime import datetime   # noqa: PLC0415
+    with db() as con, con.cursor() as cur:
+        cur.execute(sql, args)
+        return [{k: (v.isoformat() if isinstance(v, datetime) else v) for k, v in r.items()} for r in cur.fetchall()]

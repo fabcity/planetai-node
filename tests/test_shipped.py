@@ -523,7 +523,8 @@ assert re.search(r"^BAD_RADIUS_KM=15$", _benv, re.M), \
 # coordinate, grouped by the cell it falls in, with its own distance and its own 15-minute mean. Two
 # station lists on one page would be the design error, so each assertion below is the finding the old
 # card carried, read off the section that carries it now. Each still goes red if the capability goes.
-assert "def nearby(" in main and "def forecast(" in main, "main.py: /nearby and /forecast"
+assert "def nearby(" in open("packs/nearby/routes.py").read() and "def forecast(" in open("packs/forecast/routes.py").read(), \
+    "/nearby and /forecast, served by their packs since 23 Oct 2026"
 assert 'data-card="forecast"' in gui, "the dashboard: the forecast card"
 assert re.search(r"^function drawForecast\(", gui, re.M), \
     "drawForecast must be top level: defined inside another body it still parses, and check_ui.py cannot see it"

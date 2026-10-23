@@ -5,6 +5,7 @@
   · every field it reads off /stats rows is a column of the stats view
   · anything the script hides with .hidden is not un-hidden by a display rule
 Run: python3 tools/check_ui.py"""
+import glob
 import json
 import pathlib
 import re
@@ -31,6 +32,9 @@ for i in sorted(used - have):
 
 main = open("app/main.py").read()
 routes = set(re.findall(r'@app\.(?:get|post|put)\("(/[a-z_./{}-]*)"', main))   # paths may nest: /place/geojson
+# a pack's own routes (packs/<id>/routes.py, mounted by packs.routers() with no prefix): /forecast, /nearby
+for _f in glob.glob("packs/*/routes.py"):
+    routes |= set(re.findall(r'@router\.(?:get|post|put)\("(/[a-z_./{}-]*)"', open(_f).read()))
 # app/issues/api.py is an APIRouter mounted with include_router, and this FastAPI version defers
 # that — app.routes holds an _IncludedRouter with no .path, so nothing here can see /issues by
 # importing. Read its decorators and put the router's own prefix back on the front.

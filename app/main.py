@@ -80,7 +80,7 @@ state = {"polls": 0, "last_poll": None, "last_error": None, "ingested": 0}
 NODE_TZ = os.getenv("NODE_TZ", "").strip() or "UTC"
 
 
-from db import db  # noqa: E402 — the pool, and the session settings every connection carries (app/db.py)
+from db import db, q  # noqa: E402 — the pool, the session settings every connection carries, and rows as dicts (app/db.py)
 
 
 # ---------------------------------------------------------------- ingest
@@ -1092,15 +1092,11 @@ async def _share_level(request, call_next):
 app.include_router(issues.api.router)  # GET /issues and /issues/fixtures/<name>; see app/issues/
 import ask  # noqa: E402 — GET /ask/status, POST /ask, GET /docs/search: the dashboard's ask pane
 app.include_router(ask.router)
+for _r in packs.routers():           # GET /forecast, /nearby: each official pack's routes.py, 404 while that pack is off
+    app.include_router(_r)
 
 for _r in agent.http_routes():        # MCP at exactly /mcp, no trailing-slash redirect
     app.router.routes.append(_r)
-
-
-def q(sql: str, *args):
-    with db() as con, con.cursor() as cur:
-        cur.execute(sql, args)
-        return [{k: (v.isoformat() if isinstance(v, datetime) else v) for k, v in r.items()} for r in cur.fetchall()]
 
 
 @app.get("/health")
@@ -1457,100 +1453,6 @@ def trust():
         WHERE s.local AND s.kind = 'sensor'
         ORDER BY s.name
     """)
-
-
-@app.get("/nearby")
-def nearby(audit: bool = False):
-    """The ring: other people's stations around this node, and where this node sits inside it.
-
-    `?audit=1` calls the archive and returns a verdict for every station it lists, which is the same answer
-    `planetai run nearby stations` prints. Without it this reads only what is already stored, so the dashboard
-    never waits on someone else's server.
-
-    A station excluded after it was already stored keeps its row and stops getting readings, so `reporting` goes
-    false and it leaves the ring's numbers within two hours on its own. The row is left alone rather than deleted:
-    what it measured while it was in the ring was still measured.
-    """
-    on = [p for p in packs.stations() if p["on"]]
-    src = [p["source"] for p in on]
-    ring = q("""
-        SELECT s.sensor_id, s.name, s.lat, s.lon, s.indoor, s.meta->>'network' AS network,
-               round((s.meta->>'km')::numeric, 2) AS km,
-               round(st.mean_1h::numeric, 1) AS pm25,
-               round(st.silent_minutes::numeric) AS silent_minutes, st.last_ts,
-               (st.silent_minutes IS NOT NULL AND st.silent_minutes < 120) AS reporting
-        FROM sensors s LEFT JOIN stats st
-          ON st.sensor_id = s.sensor_id AND st.metric = 'pm25'
-        WHERE s.source = ANY(%s) AND NOT s.local
-          -- a station excluded after it was stored keeps its row but stops getting readings. Drop it from the
-          -- list after a day rather than leaving it on the card as a neighbour that never answers.
-          AND st.last_ts > now() - interval '24 hours'
-        ORDER BY (s.meta->>'km')::numeric NULLS LAST""", src)
-    shape = q("""
-        WITH ring AS (
-          SELECT st.mean_1h AS pm,
-                 sqrt(power((st.lat - current_setting('planetai.lat')::float) * 111320, 2)
-                    + power((st.lon - current_setting('planetai.lon')::float) * 111320
-                            * cos(radians(current_setting('planetai.lat')::float)), 2)) / 1000 AS km
-          FROM stats st JOIN sensors sn USING (sensor_id)
-          WHERE sn.source = ANY(%s) AND NOT st.local AND NOT st.indoor AND st.kind = 'sensor' AND st.metric = 'pm25'
-            AND st.mean_1h IS NOT NULL AND st.silent_minutes < 120 AND st.lat IS NOT NULL),
-        mine AS (
-          SELECT avg(mean_1h) AS pm, count(*) AS n FROM stats
-          WHERE local AND NOT indoor AND kind = 'sensor' AND metric = 'pm25'
-            AND mean_1h IS NOT NULL AND silent_minutes < 120)
-        SELECT (SELECT count(*) FROM ring)                                                        AS stations,
-               (SELECT round(min(pm)::numeric, 1) FROM ring)                                      AS lowest,
-               (SELECT round(percentile_cont(0.25) WITHIN GROUP (ORDER BY pm)::numeric, 1) FROM ring) AS p25,
-               (SELECT round(percentile_cont(0.5)  WITHIN GROUP (ORDER BY pm)::numeric, 1) FROM ring) AS median,
-               (SELECT round(percentile_cont(0.75) WITHIN GROUP (ORDER BY pm)::numeric, 1) FROM ring) AS p75,
-               (SELECT round(max(pm)::numeric, 1) FROM ring)                                      AS highest,
-               (SELECT round(min(km)::numeric, 1) FROM ring)                                      AS nearest_km,
-               (SELECT round(pm::numeric, 1) FROM mine)                                           AS mine,
-               (SELECT n FROM mine)                                                               AS mine_sensors""", src)
-    out = {"ring": ring, **(shape[0] if shape else {}),
-           "radius_km": max([float(settings.get(p["radius"], "15") or 15) for p in on if p.get("radius")] or [0.0]),
-           "attribution": [w for p in on for w in (p.get("attribution") or [])]
-           + (["and the network named in each station's `network` field"] if on else [])}
-    m, med = out.get("mine"), out.get("median")
-    out["mine_minus_ring"] = None if m is None or med is None else round(float(m) - float(med), 1)
-    if audit:
-        out["audit"] = []
-        try:
-            hc = httpx.Client(timeout=30, headers={"user-agent": "planetai-node"})
-            for p in on:
-                mod = packs.module(p["pack"])
-                out["audit"] += mod.audit(hc) if mod and hasattr(mod, "audit") else []
-        except Exception as e:  # noqa: BLE001  — a source that is down must not take the endpoint down
-            out["audit_error"] = f"{type(e).__name__}: {str(e)[:160]}"
-    return out
-
-
-@app.get("/forecast")
-def forecast(hours: int = Query(24, ge=1, le=72)):
-    """Official and model weather for this point: where the wind comes from, when rain is expected, and when the
-    forecast was issued. Context for reading this node's own air. The node fetches it; it does not predict."""
-    who = q("""SELECT sensor_id, name, lat, lon, meta FROM sensors
-               WHERE source IN ('forecast-bmkg','forecast-om','forecast-gap') ORDER BY sensor_id""")
-    rows = q("""SELECT sensor_id, ts, metric, value FROM readings
-                WHERE sensor_id IN ('forecast-bmkg','forecast-om','forecast-gap')
-                  AND ts > now() - interval '3 hours' AND ts < now() + make_interval(hours => %s)
-                ORDER BY ts, sensor_id, metric""", hours)
-    steps: dict = {}
-    for r in rows:
-        steps.setdefault((str(r["ts"]), r["sensor_id"]), {})[r["metric"]] = r["value"]
-    lat, lon = float(os.getenv("NODE_LAT", 0) or 0), float(os.getenv("NODE_LON", 0) or 0)
-    out = {"point": {"lat": lat, "lon": lon},
-           "sources": [{"sensor_id": w["sensor_id"], "name": w["name"], "lat": w["lat"], "lon": w["lon"],
-                        "issued": (w["meta"] or {}).get("issued"), "fetched": (w["meta"] or {}).get("fetched"),
-                        "km_from_node": (w["meta"] or {}).get("km_from_node")} for w in who],
-           "hours": [{"ts": k[0], "source": k[1], **v} for k, v in sorted(steps.items())],
-           "attribution": ["BMKG (Badan Meteorologi, Klimatologi, dan Geofisika), api.bmkg.go.id",
-                           "Open-Meteo, open-meteo.com, CC-BY 4.0 (free tier: non-commercial use only)"]}
-    # a forecast for somewhere else is still a forecast, but the card has to say so rather than imply this point
-    far = [w for w in out["sources"] if (w.get("km_from_node") or 0) > 10]
-    out["far_from_node"] = [{"sensor_id": w["sensor_id"], "km": w["km_from_node"]} for w in far] or None
-    return out
 
 
 @app.get("/observations")

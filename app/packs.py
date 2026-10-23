@@ -265,6 +265,52 @@ def _official_on(d: Path) -> bool:
     return False
 
 
+def routers() -> list:
+    """Every official pack's `routes.py` router, for main to mount when it is imported (docs/PACKS.md, "Routes").
+
+    Found by file, because main is imported before any setting is read (no database opens at import, which
+    tests/test_wire.py holds). So every official pack with routes is mounted, and each route checks on every request
+    that this node loads its pack, answering 404 when it does not: PACKS_ENABLED can change in Set up without a
+    restart. A wild pack's routes are not mounted at all. ponytail: when one needs to, it is the same gate plus
+    PACKS_ALLOW_CODE."""
+    from fastapi import APIRouter, Depends, HTTPException  # noqa: PLC0415 — the loader works without FastAPI
+
+    def gate(pack: str):
+        def on():
+            if pack not in {d.name for d in _enabled()}:
+                raise HTTPException(404, f"the {pack} pack is not on on this node")
+        return on
+
+    out = []
+    for f in sorted(PACKS_DIR.glob("*/routes.py")):
+        d = f.parent
+        if (d / ".wild").is_file() or not (d / "pack.yaml").is_file():
+            continue
+        try:
+            spec = importlib.util.spec_from_file_location(f"planetai_pack_{d.name}_routes", f)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)  # type: ignore[union-attr]
+        except Exception as e:  # noqa: BLE001 — a broken pack costs its own routes, never the node
+            log.warning("pack %s: routes.py failed to load (%s)", d.name, e)
+            continue
+        if getattr(mod, "router", None) is not None:
+            r = APIRouter(dependencies=[Depends(gate(d.name))])
+            r.include_router(mod.router)
+            out.append(r)
+    return out
+
+
+def shared_open() -> set[str]:
+    """The paths official packs put on the `open` share list (pack.yaml `share: {open: [...]}`), read by app/auth.py
+    when it is imported. A wild pack cannot widen what a household shares."""
+    out = set()
+    for d in sorted(PACKS_DIR.iterdir()) if PACKS_DIR.is_dir() else []:
+        if (d / "pack.yaml").is_file() and not (d / ".wild").is_file():
+            share = _manifest(d).get("share") or {}
+            out |= {p for p in (share.get("open") or []) if isinstance(p, str) and p.startswith("/")}
+    return out
+
+
 def footprints() -> list[dict]:
     """Where each enabled pack's word reaches (pack.yaml `footprint:`), each with its pack id: what the page draws as
     a claim (app/issues/geometry.py::claims), so the core names no pack's radius."""
