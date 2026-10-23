@@ -39,6 +39,8 @@ CLI = open("bin/planetai").read()
 MAIN = open("app/main.py").read()
 # a pack's own routes (packs/<id>/routes.py, mounted by packs.routers()) are the node's endpoints too
 MAIN += "\n".join(open(f).read().replace("@router.", "@app.") for f in sorted(glob.glob("packs/*/routes.py")))
+# and a core module's router mounted with no prefix (app/basemap.py: GET /ground/*)
+MAIN += "\n".join(open(f).read().replace("@router.", "@app.") for f in ("app/basemap.py",))
 ENVEX = open(".env.example").read()
 CODE = "\n".join(open(f).read() for f in glob.glob("app/*.py") + glob.glob("packs/*/*.py")) + CLI + \
        "\n".join(open(f).read() for f in ("install.sh", "update.sh", "backup.sh", "install", "docker-compose.yml"))
