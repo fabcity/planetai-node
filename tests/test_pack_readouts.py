@@ -129,6 +129,7 @@ importlib.reload(packs)
 # which a node without PACKS_ALLOW_CODE=1 never does. A second pack declaring readouts must be added here on purpose.
 assert [m["id"] for m in packs.manifests() if m.get("readouts")] == ["surface-heat"], "a new shipped pack declares readouts"
 shipped = I.load()
+assert all(shipped[k].pop("pack") for k in shipped), "a pack's issue knows the pack that ships it (issues.owners)"
 assert {k: v for k, v in shipped.items() if k != "heat"} == {k: v for k, v in FILES.items() if k != "heat"}
 own = FILES["heat"].get("readouts") or []
 added = shipped["heat"]["readouts"][len(own):]

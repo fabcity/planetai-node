@@ -121,7 +121,7 @@ test_pack_secrets|PYTHONPATH=app python3 tests/test_pack_secrets.py
 test_pack_agent_scripts|PYTHONPATH=app python3 tests/test_pack_agent_scripts.py
 test_ladder|PYTHONPATH=app python3 tests/test_ladder.py
 test_report_schedule|PYTHONPATH=/tmp/stub:app python3 tests/test_report_schedule.py
-test_report_templates|PYTHONPATH=/tmp/stub:app python3 tests/test_report_templates.py
+test_report_templates|PACKS_DIR=packs PYTHONPATH=/tmp/stub:app python3 tests/test_report_templates.py
 test_shipped|python3 tests/test_shipped.py
 test_share|PYTHONPATH=app python3 tests/test_share.py
 test_ask|PACKS_DIR=packs PYTHONPATH=app python3 tests/test_ask.py
@@ -150,7 +150,7 @@ test_fire|python3 tests/test_fire.py
 test_check_theme|python3 tests/test_check_theme.py
 test_wire|PYTHONPATH=app python3 tests/test_wire.py
 test_events|PYTHONPATH=app python3 tests/test_events.py
-test_events_pg|PYTHONPATH=app python3 tests/test_events_pg.py
+test_events_pg|PACKS_DIR=packs PYTHONPATH=app python3 tests/test_events_pg.py
 test_rho_pg|PYTHONPATH=app PACKS_DIR=packs python3 tests/test_rho_pg.py
 test_actions|PYTHONPATH=app python3 tests/test_actions.py
 test_agent_buttons|PYTHONPATH=app python3 tests/test_agent_buttons.py
@@ -161,7 +161,7 @@ test_things|PYTHONPATH=app python3 tests/test_things.py
 test_rooms|PYTHONPATH=app python3 tests/test_rooms.py
 test_offers|PYTHONPATH=app python3 tests/test_offers.py
 test_bot_pictures|PYTHONPATH=app python3 tests/test_bot_pictures.py
-test_learned|PYTHONPATH=app python3 tests/test_learned.py
+test_learned|PACKS_DIR=packs PYTHONPATH=app python3 tests/test_learned.py
 test_events_wire|PACKS_DIR=packs PYTHONPATH=app python3 tests/test_events_wire.py
 test_figures_wire|PACKS_DIR=packs PYTHONPATH=app python3 tests/test_figures_wire.py
 test_run_rules_modes|python3 tests/test_run_rules_modes.py

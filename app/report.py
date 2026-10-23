@@ -359,17 +359,18 @@ def _fit(b: dict) -> dict:
 
 
 # ---------------------------------------------------------------------------------------------------- the sheet
-# What an act-level rule watches, the line it watches for, and whose line that is, so the report can say whether the
-# value came back down and name the line with its unit (Tomas, 14 Oct: never a bare "35.5"). The numbers are the
-# rules' own; tests/test_report_templates.py refuses a value here that is not in that rule's SQL, the same way a pack
-# README's thresholds are checked against its files. A rule that is not here gets no sentence rather than a guessed
-# one: heat speaks through HEAT_LINE and the open episodes instead.
-THRESHOLDS = {
-    "air-quality/indoor_pm25_high":      ("pm25", 35.5, "line_epa"),
-    "air-quality/outside_worse_keep_shut": ("pm25", 35.5, "line_epa"),
-    "air-quality/outdoor_pm25_high":     ("pm25", 55.5, "line_epa_all"),
-    "air-quality/inside_worse_ventilate": ("pm25", 15.0, "line_who"),
-}
+def thresholds() -> dict:
+    """{rule id: (metric, line, whose line)}: what an act-level rule watches, the line it watches for, and whose line
+    that is, so the report can say whether the value came back down and name the line with its unit (Tomas, 14 Oct:
+    never a bare "35.5"). A rule declares it as `line: {value, label}` in its pack's rules.yml, and the metric is its
+    issue's own (issues.owners()); until 23 Oct 2026 this was a map here naming air-quality's four rules.
+    tests/test_report_templates.py refuses a value that is not in that rule's SQL, the same way a pack README's
+    thresholds are checked against its files. A rule without one gets no sentence rather than a guessed one: heat
+    speaks through HEAT_LINE and the open episodes instead."""
+    import issues                    # noqa: PLC0415
+    own = issues.owners()
+    return {r["id"]: ((own.get(r["id"].split("/")[0]) or {}).get("metric"), float(r["line"]["value"]), r["line"]["label"])
+            for r in packs.load_rules() if isinstance(r.get("line"), dict) and "/" in r["id"]}
 # This house's heat line, feels-like. The same number as packs/heat/issue.yml's `line.value`; the test holds them equal.
 HEAT_LINE = 35.0
 
@@ -582,9 +583,9 @@ def sheet(b: dict, locale: str = "en") -> str:
             rooms=rooms, at=hm, line=t["line_heat"].format(n=_n(HEAT_LINE))))
         if len(told) == 2:
             break
-    still_above, places = None, set()
+    still_above, places, lines = None, set(), thresholds()
     for a in [x for x in b.get("alerts") or [] if x.get("level") == "act"]:
-        watch = THRESHOLDS.get(a.get("rule") or "")
+        watch = lines.get(a.get("rule") or "")
         if not watch:
             continue
         metric, line, owner = watch

@@ -10,6 +10,8 @@
 # This pack's issue (app/issues/__init__.py::load reads it while the pack is on). Until 23 Oct 2026, app/issues/air.yml.
 key: air
 
+alert: an air alert           # what its alerts are called in a learning (learn.alert_name), English only
+
 name:
   en: Air
   id: Udara

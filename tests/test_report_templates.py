@@ -150,9 +150,12 @@ for _f in sorted(__import__("glob").glob("packs/*/rules.yml")):
 
 # The thresholds the report quotes are the rules' own. A number here that is not in that rule's SQL is a second
 # copy waiting to drift, which is exactly what the pack-README gate exists for.
-for rule, (metric, line, owner) in report.THRESHOLDS.items():
+LINES = report.thresholds()
+assert set(LINES) == {"air-quality/indoor_pm25_high", "air-quality/outside_worse_keep_shut", "air-quality/outdoor_pm25_high",
+                      "air-quality/inside_worse_ventilate"}, sorted(LINES)
+for rule, (metric, line, owner) in LINES.items():
     assert all(owner in report.T[loc] for loc in report.T), f"{rule}: no words for whose line {owner} is"
-    assert rule in RULES, f"{rule} is in THRESHOLDS but no pack ships it"
+    assert rule in RULES, f"{rule} has a report line but no pack ships it"
     sql = RULES[rule]["sql"]
     # the whole number, not a prefix of it: plain `"35" in sql` is satisfied by the 35.5 it is meant to catch
     assert re.search(rf"(?<![\d.]){re.escape(report._n(line))}(?![\d.])", sql), \
@@ -160,7 +163,7 @@ for rule, (metric, line, owner) in report.THRESHOLDS.items():
     assert metric in sql, f"{rule}: the report watches {metric}, its SQL does not mention it"
 for rule in report.BEYOND:
     assert rule in RULES, f"{rule} is in BEYOND but no pack ships it"
-assert not any(r.startswith("heat/") for r in report.THRESHOLDS), \
+assert not any(r.startswith("heat/") for r in LINES), \
     "heat_stress_now watches an apparent temperature no column holds; it gets an outcome in v0.39, not a guess here"
 # the heat line the report names is the issue's own, the one the page and the alerts name
 assert report.HEAT_LINE == float(yaml.safe_load(open("packs/heat/issue.yml"))["line"]["value"]), "two heat lines"

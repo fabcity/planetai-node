@@ -10,7 +10,7 @@ packs/<id>/
                 metrics:, scales:, thresholds:
   rules.yml     alerts: SQL that returns rows, one message per row
   cells.yml     Index cells: SQL that returns one `value`
-  issue.yml     the issue this pack watches, its `key:`, name, line, sentences (air-quality, heat, coast, earth)
+  issue.yml     the issue this pack watches, its `key:`, name, metric, line, `alert:`, sentences (air-quality, heat, coast, earth)
   adapter.py    a new source; code packs only
   hooks.py      on_readings, on_alert: what the pack does with what the node stores and sends; code packs only
   channels.yml  what a pack's own metrics ARE — ambient, enclosure, index, etc.

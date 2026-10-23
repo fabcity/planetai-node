@@ -12,6 +12,8 @@
 # level, 35.5 µg/m³", "this house's heat line, 35 °C feels-like"). The id and es wording of those line
 # clauses is ASSISTANT-WRITTEN.
 - id: indoor_pm25_high
+  name: unhealthy air inside                  # what the household calls it (learn.alert_name); `line:` is the line the report names
+  line: {value: 35.5, label: line_epa}
   level: act
   cooldown_minutes: 120
   # WHAT THIS RULE WATCHES, so the node can say how long an action took to work. The rule's SQL reads
@@ -31,6 +33,8 @@
     es: "😷 El aire dentro de {name} no es saludable ahora mismo — supera el nivel insalubre de la EPA de EE. UU., {line} µg/m³.\n\nHay partículas finas suficientes para afectar a personas con asma, a niños y a mayores, y para cansar a cualquiera en unas horas.\n\nEnciende el purificador si tienes uno. Antes de abrir una ventana, mira si fuera está mejor; muchas veces no lo está."
 
 - id: outside_worse_keep_shut
+  name: dirtier air outside than in
+  line: {value: 35.5, label: line_epa}
   level: act
   cooldown_minutes: 180
   sql: |
@@ -66,6 +70,8 @@
     es: "🌫️ Fuera está peor que dentro en {name}.\n\nEl aire de la calle lleva más humo o polvo que tus habitaciones, y el edificio lo está dejando fuera. Abrir lo dejaría entrar.\n\nMantén ventanas y puertas cerradas hasta que el aire de fuera despeje."
 
 - id: inside_worse_ventilate
+  name: smoke or dust inside
+  line: {value: 15.0, label: line_who}
   level: act
   cooldown_minutes: 180
   sql: |
@@ -101,6 +107,8 @@
     es: "🔥 Dentro está peor que fuera en {name}.\n\nAlgo en la casa está haciendo humo o polvo fino: la cocina, incienso, una vela, un espiral antimosquitos. El aire de fuera está más limpio que el que respiras.\n\nAbre una o dos ventanas y deja que corra. Se despeja más rápido de lo que un purificador lo atrapa."
 
 - id: outdoor_pm25_high
+  name: unhealthy air outside
+  line: {value: 55.5, label: line_epa_all}
   level: act
   cooldown_minutes: 180
   watch: {metric: pm25, over: 55.5}

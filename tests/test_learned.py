@@ -79,6 +79,14 @@ assert set(learn.VERDICT_WORDS) == {"helps", "no_clear_difference", "worse", "to
 for r in (row, early, n1, same, alone, street):
     assert r["statement"].index(learn.VERDICT_WORDS[r["numbers"]["verdict"]]) < 60, "the plain meaning leads"
 assert learn.alert_name("air-quality/some_new_rule") == "an air alert" and learn.alert_name("nearby/x") == "nearby/x"
+# The names and the pack of each issue come from the packs since 23 Oct 2026: a rule's `name:`, its issue's `alert:`,
+# the pack that ships the issue. The core keeps no map naming air-quality or heat.
+assert learn.alert_name("air-quality/indoor_pm25_high") == "unhealthy air inside" and learn.alert_name("heat/events") == "a heat alert"
+assert learn._issue_packs() == {"air": "air-quality", "heat": "heat", "coast": "coast", "land": "earth"}, learn._issue_packs()
+assert learn._metric("air-quality") == "pm25" and learn._metric("heat") == "apparent" and learn._metric("nearby") is None
+import events_pg as _epg, report as _rep  # noqa: E402
+for _mod, _gone in ((learn, ("PACK_METRIC", "ISSUE_PACK", "ALERT_NAMES")), (_epg, ("PACK_ISSUE",)), (_rep, ("THRESHOLDS",))):
+    assert not any(hasattr(_mod, g) for g in _gone), f"{_mod.__name__} keeps a hard-coded pack map again"
 ranked = sorted(learn.rank([n1, {"kind": "usual", "key": "indoor-heat", "issue": "heat", "numbers": {}}], {}), key=lambda r: r["kind"] != "worked")
 assert ranked[0]["name"] == "an air alert" and ranked[0]["verdict"] == learn.VERDICT_WORDS["worse"], ranked[0]
 assert ranked[1]["name"] == "the feels-like temperature inside" and ranked[1]["verdict"] is None
