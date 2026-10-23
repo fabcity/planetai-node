@@ -7,6 +7,11 @@
   drew nothing on such a node, node #1 included. The registry is pinned to awesome-fabcity-data `7d645f3` (283
   entries, up from 275), which carries Copernicus DEM GLO-30, and `terrain` names it in `sources:`.
 
+- **`planetai run forecast verify` no longer fails right after a fetch.** It asked the pack's poll clock, which says
+  "not due" for `FORECAST_POLL_HOURS` after every fetch, so "the adapter returns" failed with the forecast stored. At
+  a due moment it touched the clock and stored nothing, and the node then skipped its own forecast for six hours. It
+  now reads the forecast directly and leaves the clock alone.
+
 - **A new pack, `terrain`, and a new issue, `water`: where the next day's rain goes.** `planetai run terrain fetch`
   reads the node's own 10 km square of Copernicus DEM GLO-30 once, about half a megabyte, fills its hollows and
   routes water downhill. Each poll then multiplies the ground draining through the node's point by the next 24 hours
