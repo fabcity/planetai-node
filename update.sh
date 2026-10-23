@@ -298,8 +298,8 @@ done
 
 # 5e. a feature that left the core with no switch of its own (docs/decisions/2026-10-21-core-and-packs.md) was on for
 # every node, so a node that lists its packs gets it added: it would otherwise lose it on this update. things (the
-# things a home keeps and its offers, after v0.83.0).
-for always in things; do
+# things a home keeps and its offers) and eyes (captures, the image model, species), both after v0.83.0.
+for always in things eyes; do
   pe="$(pq "SELECT value FROM settings WHERE key = 'PACKS_ENABLED'")"
   if [[ -n "$pe" && ",$pe," != *",${always},"* ]]; then
     pq "UPDATE settings SET value = value || ',${always}' WHERE key = 'PACKS_ENABLED'" >/dev/null
