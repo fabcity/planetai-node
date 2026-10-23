@@ -1,7 +1,7 @@
 # Packs that ship
 <!-- checked: v0.83.0 -->
 
-The twenty-two core packs in `packs/`, six data and sixteen code, hold everything the node knows about a place, and no
+The twenty-three core packs in `packs/`, six data and seventeen code, hold everything the node knows about a place, and no
 rule in `app/` says what PM2.5 means for a household or where the nearest fab lab is. For each pack this page
 says what it reads, what it says, its rules and where each threshold comes from, its settings, and what it does
 not know. How a pack is built and loaded is on [Packs](packs.md). Wild packs, such as `xiaomi-air` and
@@ -29,6 +29,7 @@ A pack is `code` when its folder has an `adapter.py`, and code packs load only w
 | `coast` | code | coast | 2 info | | 1 | | `COAST_MAX_KM` |
 | `surface-heat` | code | heat | none | `ground` | | | `SURFACE_HEAT_*` |
 | `earth` | code | land | none | | 1 | `fetch` `change` `frames` `status` `verify` `similar` | `EARTH_*` |
+| `terrain` | code | water | none | | | `coverage` `fetch` `verify` | `TERRAIN_*` |
 | `earth-engine` | code | land | none | | 1 | `timelapse` `verify` `basemap` | `EE_*`, `GROUND_SAT_WIDE_KM` |
 | `place` | code | place | 1 info | | 1 | `refresh` `gaps` `verify` `basemap` | `PLACE_*`, `GROUND_*` |
 | `make` | code | make | none | the nearest-lab line | | | `MAKE_*` |
@@ -689,6 +690,55 @@ with no space after `=`: `VAR= value` is read by the shell as a command.
 places: for 2024 to 2025 the mean is 0.0414 in Kuta Selatan, 0.0404 in Boston, 0.0164 in Barcelona and 0.0151
 in Santiago. Change the coordinates or the radius and `fetch` re-reads every cached year; a correction under 1%
 of the radius (never less than 25 m) is recorded as `point_drift_m` and leaves the cache alone.
+
+## terrain
+
+Where the next day's rain goes around the node. It reads its own square of Copernicus DEM GLO-30 once, on
+command, fills the hollows (priority-flood) and routes water downhill (D8), with numpy and a heap and no hydrology
+library. Each poll multiplies the ground that drains through the node's point by the next 24 hours of forecast
+rain. Nothing in it is specific to Bali, and it has no threshold to tune.
+
+| | |
+|---|---|
+| Kind | code |
+| Domain | `water` |
+| Requires node | `>=0.76` |
+| Metrics | `terrain_upslope_ha`, `terrain_upslope_near_ha`, `terrain_hollow_m`, `rain_24h_mm`, `water_24h_m3` |
+| Scales | city |
+| Sources | none in `pack.yaml` yet; the registry entry is `environmental/planet/copernicus-dem-glo30` |
+| Needs | `PACKS_ALLOW_CODE=1`; `rasterio` and `numpy` (`pip:`, the same as `earth`); network to `copernicus-dem-30m.s3.amazonaws.com` (or `-90m`) on the fetch only, about half a megabyte for 10 km. No key. The `forecast` pack for the rain |
+| Cells | none: a surface model is not measured here |
+| Attribution | "produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved", and the licence's no-liability sentence, carried with every row |
+
+The adapter writes `terrain-point` (`kind='model'`, `scale='city'`, `local=False`). The three terrain rows carry
+the fetch's own timestamp; `rain_24h_mm` and `water_24h_m3` are stamped on the hour. The rain is `fc_rain` summed
+over the rows timestamped in the next 24 hours, from one source only, BMKG if it has rows, else Open-Meteo:
+adding both would double it. `water_24h_m3` is that rain on the upslope area, as if none of it soaked in. The pack
+ships the `water` issue (`packs/terrain/issue.yml`): context, four readouts, no line and no hero, so it never
+leads. Add `water` to `NODE_ISSUES` to draw it.
+
+### Scripts
+
+- `planetai run terrain coverage`: which elevation this point would use, before anything is downloaded: your own file, GLO-30, GLO-90 where the 30 m tile is not public (25 tiles in the Caucasus on AWS), or none.
+- `planetai run terrain fetch`: read the square, fill, route, keep `out/terrain/<node>/terrain.json`. Run it again only when the node moves, the radius changes or the DEM changes.
+- `planetai run terrain verify`: five checks, including that every land cell drains to the window's edge or the sea after the fill, and that rows from this fetch reached the database.
+
+### Settings
+
+| setting | default | meaning |
+|---|---|---|
+| `TERRAIN_RADIUS_M` | `5000` | half-width of the square, in metres. Water from further uphill than this is not counted |
+| `TERRAIN_DEM_PATH` | empty | a GeoTIFF of your own (a drone survey, a national LiDAR), used instead of Copernicus |
+| `TERRAIN_DEM_LICENCE` | empty | that file's licence, in words. Read on every poll: blank means the node computes from the file and sends no rows |
+
+### What it does not know
+
+GLO-30 is a surface model: roofs and canopy are in the heights, and a 30 m pixel is a street block, so the pack
+speaks at region distance and never for the yard. It does not know the soil, the drains or the gutters. There is
+no wetness index and no percentile: on a filled pixel the index is mostly its slope clip, and a percentile gives
+every square a wettest tenth. At node #1 the house's own pixel drains 0.09 ha and the largest flow within 60 m
+drains 0.6 ha. The AWS copy is the 2021 release; the newer Copernicus Data Space copies are licensed for
+non-commercial use, and the pack does not read them.
 
 ## earth-engine
 
