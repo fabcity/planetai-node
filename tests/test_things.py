@@ -1,6 +1,6 @@
 """The things a home keeps (docs/SPEC_inventory.md step 2): the table, the routes, the three private counts per class.
 
-Structural half reads init.sql and app/main.py: the table is kept as captures are (never in pack SQL, never on a road
+Structural half reads init.sql and app/main.py (the routes are packs/things since 24 Oct 2026): the table is kept as captures are (never in pack SQL, never on a road
 out), and its counts are declared `private`. Request half drives the routes with the database stubbed.
 
 Run: PYTHONPATH=app python3 tests/test_things.py
@@ -41,7 +41,8 @@ ROWS = [{"id": 2, "added_at": "2026-10-13T01:00:00+00:00", "class": "tool", "nam
          "used": "yearly", "condition": "works", "offer": "lend", "capture_id": None, "note": None},
         {"id": 1, "added_at": "2026-10-13T00:00:00+00:00", "class": "furniture", "name": "chairs", "count": 4,
          "used": "weekly", "condition": "needs_repair", "offer": "no", "capture_id": None, "note": None}]
-main.q = lambda sql, *a: [dict(r) for r in ROWS] if "FROM things" in sql else []
+import db                                         # noqa: E402 — the things pack's routes read through db (packs/things)
+db.q = main.q = lambda sql, *a: [dict(r) for r in ROWS] if "FROM things" in sql else []
 DONE = []
 
 
@@ -70,7 +71,7 @@ class Con:
     def cursor(self): return Cur()
 
 
-main.db = lambda: Con()
+db.db = main.db = lambda: Con()
 c = TestClient(main.app)
 ADMIN, ACT = {"Authorization": "Bearer admin-tok"}, {"Authorization": "Bearer act-tok"}
 assert c.get("/things").status_code in (401, 403) and c.get("/things", headers=ACT).status_code == 401, "admin only"
@@ -126,4 +127,27 @@ assert "TKEEP.classes.includes(f.class)" in JS, "only the classes a home keeps a
 cd = SRC[SRC.index("def capture_delete"):SRC.index("@app.get(\"/captures/{cid}/file\")")]
 assert "UPDATE things SET capture_id = NULL WHERE capture_id = %s" in cd, "a deleted photo leaves its things, unlinked"
 print("from a photo: a confirmed finding in a household class adds a thing, linked; deleting the photo unlinks it")
+# ---------------------------------------------------------------- a pack since 24 Oct 2026, and no node loses it
+# update.sh step 5e: a node that lists its packs gets `things` added, because it was on for every node in the core.
+import subprocess as _sp, tempfile as _tf  # noqa: E402
+_u = open("update.sh").read()
+_step = _u[_u.index("# 5e."):_u.index("# 6. rebuild and restart")]
+_STUB = r"""
+pq() {   # the settings table, as a key=value file
+  if [[ "$1" == SELECT* ]]; then k="$(sed -E "s/.*key = '([A-Z_]+)'.*/\1/" <<< "$1")"; sed -n "s/^${k}=//p" "$DB"
+  else add="$(sed -E "s/.*\|\| ',([a-z-]+)'.*/\1/" <<< "$1")"; sed -i.bak -E "s/^(PACKS_ENABLED=.+)$/\1,${add}/" "$DB"; rm -f "$DB.bak"; fi
+}
+"""
+def _5e(db_, env):
+    with _tf.TemporaryDirectory() as t:
+        open(f"{t}/db", "w").write(db_); open(f"{t}/.env", "w").write(env)
+        _sp.run(["bash", "-c", "set -euo pipefail\n" + _STUB + _step], cwd=t, env={**os.environ, "DB": f"{t}/db"},
+                capture_output=True, text=True, check=True)
+        return open(f"{t}/db").read(), open(f"{t}/.env").read()
+_db, _ = _5e("PACKS_ENABLED=air-quality,heat\n", "")
+assert _db == "PACKS_ENABLED=air-quality,heat,things\n", _db
+assert _5e(_db, "")[0] == _db, "a second update changed the list again"
+assert _5e("", "PACKS_ENABLED=heat\n")[1] == "PACKS_ENABLED=heat,things\n"
+assert _5e("PACKS_ENABLED=\n", "PACKS_ENABLED=\n") == ("PACKS_ENABLED=\n", "PACKS_ENABLED=\n"), "an empty list is every pack"
+print("update.sh 5e: a node that lists its packs gets things added, once")
 print("things: every check passed")

@@ -313,6 +313,7 @@ async function thingsBlock() {
   const el = $('#d-things');
   if (CARDLG && CARDLG.open) return;   // a refresh must not wipe an edit in progress
   const r = await doorsFetch('/things').catch(() => null);
+  if (r && r.status === 404) { el.innerHTML = `<h2>Things</h2><p class="fine">The things pack is off on this node. Switch it on in Set up, under Packs, to keep a list of what this home has here.</p>`; return; }
   const j = r && r.ok ? await r.json().catch(() => null) : null;
   if (!j) { el.innerHTML = `<h2>Things</h2><p class="fine">What this home keeps stays private to this house and never leaves it. Unlock this screen with the admin key in ${UNLOCK_AT} to see it.</p>`; return; }
   const s = j.summary;

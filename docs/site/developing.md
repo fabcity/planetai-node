@@ -163,7 +163,7 @@ app/          main.py (api, loops, notify) · sources.py (adapters) · index.py 
               requires.py (which node a pack needs) · fundamentals.py (the sources every node needs) · learn.py (what it learns)
               ask.py (the dashboard's ask pane) · bootstrap.py · ground.py · reticulum_bridge.py · issues/ · static/ (the dashboard)
 bin/planetai  the operator CLI
-packs/        the twenty-two core packs; see Packs
+packs/        the twenty-three core packs; see Packs
 config/       rules.yml (two domain-blind rules, trust's three) · channels.yml · mosquitto · reticulum
 data/         sources/ (the pinned registry) · strings/ · env_defaults.yml · frozen_layer.txt · platform_floors.yml · mac_ceilings.yml
 skills/       setup-node · troubleshoot-node · connect-agent · publish-to-index · preflight · land · write-a-pack

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **The things a home keeps are a pack.** `GET`/`POST /things`, `PATCH`/`DELETE /things/{id}` and `GET /offers` moved
+  out of `app/main.py` into `packs/things/routes.py`, unchanged, as things and offers are a category a node watches
+  (docs/decisions/2026-10-21-core-and-packs.md). The table stays in `init.sql` and the private role on the counts
+  stays the core's. `/offers` keeps its place on every share level through `share: {"off": [...]}` in the pack's
+  `pack.yaml`, a key that has to be quoted because YAML reads a bare `off` as false. With the pack off the routes
+  answer 404 and the export carries no offers; `planetai update` adds `things` wherever a node lists its packs.
+
 - **Presence on Reticulum has a module of its own.** `GET /presence`, the floor no announced cell may be finer than
   (`PRESENCE_RES_FLOOR`), and the thread that asks the bridge whom it has heard moved out of `app/main.py` into
   `app/presence.py`, unchanged. The dashboard now says the floor is in `app/presence.py`.
