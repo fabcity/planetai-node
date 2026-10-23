@@ -131,7 +131,7 @@ lab/community node as parent", and Reticulum "needs to play a role". What the no
   every child, which lets any child write as a sibling (SPEC_identity §1). A lab with many homes makes that worse,
   so the parent step waits for node keys. The link runs on HTTPS over the tailnet, never over Reticulum (Tomas, 23
   October).
-- **Reticulum.** The node already runs it in its own container (`app/Dockerfile.reticulum`, `app/reticulum_bridge.py`).
+- **Reticulum.** The node already runs it in its own container, built from fabcity/planetai-reticulum since 23 October.
   It gives each node an LXMF address and, with `RETICULUM_PRESENCE=1`, announces the body of `GET /presence` every
   half hour. SPEC_discovery puts Tailscale first and Reticulum after (22 September). A lab could add `kind: fablab`
   and the services it runs to that same body, so homes in radio or TCP reach hear what the lab offers with no

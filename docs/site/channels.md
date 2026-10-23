@@ -86,11 +86,13 @@ in making a dataset to train an AI or machine-learning model. The node does neit
 built, include that licence with it. What it means for the node is in
 [the decision record](https://github.com/fabcity/planetai-node/blob/main/docs/decisions/2026-10-23-reticulum-licence.md).
 
-The bridge container (compose profile `reticulum`) gives the node an LXMF address that Sideband can message. It
-posts answers to `POST /actions` with `ACT_TOKEN`, and reads that token when its container is created, so run
+The bridge has its own repository, [`fabcity/planetai-reticulum`](https://github.com/fabcity/planetai-reticulum), under Apache-2.0, so the node's own code never takes in `rns` or
+`lxmf`. It runs in its own container (compose profile `reticulum`) and gives the node an LXMF address that Sideband
+can message. It posts answers to `POST /actions` with `ACT_TOKEN`, and reads that token when its container is created, so run
 `planetai ui` first if the node has no `ACT_TOKEN` yet: it creates one.
 
-1. **Run `planetai reticulum`.** It builds and starts the bridge and prints
+1. **Run `planetai reticulum`.** It downloads the bridge at the commit this release pins, builds it on this
+   machine, starts it and prints
    `● this node's LXMF address: <address>`, then what to do in Sideband: add a TCP Client interface to this machine's LAN address on port 4242,
    and start a conversation with the address above. A phone can now reach the node over Reticulum with no internet
    in between.
@@ -109,7 +111,7 @@ The bridge does not read `.env`. It receives eight variables from `docker-compos
 `NODE_API_URL`, `RETICULUM_CONFIGDIR`, `RETICULUM_DATA`, `RETICULUM_ALERT_DESTINATIONS`, `RETICULUM_ANNOUNCE_S`
 and `ACT_TOKEN`. The Telegram token, the admin token and the database password stay out of a process whose job is
 to speak to a radio mesh. The transport is TCP; an RNode LoRa interface is a commented block in
-`config/reticulum/config.tpl`.
+`config/reticulum/config`, copied from the bridge's `config.tpl` the first time.
 
 Presence is separate and off by default: with `RETICULUM_PRESENCE=1` the bridge announces the node's name and a
 coarse H3 cell every half hour, at `RETICULUM_PRESENCE_RES` (3) and never finer than resolution 6, whatever the
