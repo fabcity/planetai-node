@@ -76,7 +76,7 @@ def manifests() -> list[dict]:
             log.warning("pack %s: bad pack.yaml (%s)", d.name, e); continue
         m["id"] = m.get("id", d.name)
         m["path"] = str(d)
-        m["kind"] = "code" if (d / "adapter.py").is_file() or (d / "hooks.py").is_file() else "data"
+        m["kind"] = "code" if any(d.glob("*.py")) else "data"    # nearby and season run scripts: code, though no adapter
         out.append(m)
     return out
 
@@ -113,7 +113,12 @@ def module(pack: str, name: str = "adapter"):
     `make` line never appeared. Neither said anything, because both swallow the failure by design.
 
     One place knows this path, and it is the one that already reads every pack. This also stops
-    mutating sys.path on each call, which the two workarounds did once per request."""
+    mutating sys.path on each call, which the two workarounds did once per request.
+
+    A pack this node does not load (left out of PACKS_ENABLED, or refused by `requires:`) has no module either: the
+    report and /issues worded the nearest fab lab with packs/make's code on a node that had switched make off."""
+    if pack not in {d.name for d in _enabled()}:
+        return None
     d = PACKS_DIR / pack
     f = d / f"{name}.py"
     if not f.is_file():
@@ -216,9 +221,9 @@ def agent_scripts() -> list[str]:
     log, a photo of the home) and the node's own terminal is the only place that should see it. `planetai run`
     still runs every script."""
     out = []
-    for f in sorted(PACKS_DIR.glob("*/*.py")):
+    for f in sorted(f for d in _enabled() for f in d.glob("*.py")):          # a pack this node does not load runs nothing
         d, name = f.parent, f.stem
-        if name in ("adapter", "hooks") or not (d / "pack.yaml").is_file():     # the node calls these; nobody runs them
+        if name in ("adapter", "hooks"):                                       # the node calls these; nobody runs them
             continue
         # ponytail: wild means `.wild` beside pack.yaml, written by `planetai packs add`; a pack copied in by hand
         # counts as core. A list of core ids shipped with the release would close that, if hand-copied packs spread.

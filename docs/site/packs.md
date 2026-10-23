@@ -151,12 +151,12 @@ raw template, braces and all.
 | `id` | the pack's name; defaults to the folder |
 | `name` | what a person calls it; the Packs card in Set up shows it, and falls back to `id` |
 | `description` | shown by `planetai packs` and `GET /packs` |
-| `kind: data` | `data` or `code`; overwritten from the presence of `adapter.py`, so it only documents the intent |
+| `kind: data` | `data` or `code`; the loader overwrites it: `code` when the pack ships any `.py` file (an adapter, hooks or a script), `data` when it ships none |
 | `version: 0.1.0` | the pack's own version, returned in `GET /packs`; nothing compares it |
 | `requires: {node: ">=0.76"}` | the node versions the pack loads on. A node outside the range does not load it, says so once in its log, and lists it under "not loaded" in `planetai packs`. Declare at least `>=0.76` for `readouts` or `sections`, which an older node ignores without a word |
 | `domain` | which dashboard issue the pack feeds (`air`, `heat`, `land`, `coast`, …). A cross-domain pack's rules are claimed one by one in `app/issues/*.yml`. A pack that reaches no issue and is not one of the domains outside them (`weather`, `place`, `governance`, `repair`) fails `tests/test_issues.py`. See [Issues](issues.md) |
 | `sources: [environmental/community/bali-air-dispatch]` | the registry ids of the data sources it reads. `make lint` runs `tools/check_registry.py`, which fails and names any id that is not an entry in the registry the node carries. See [The source registry](sources.md) |
-| `pip: [earthengine-api]` | libraries `planetai packs install` builds into the image, once, as the union of every pack folder's list |
+| `pip: [earthengine-api]` | libraries `planetai packs install` builds into the image, once, as the union of the lists of the packs this node loads (every folder, when the node is down) |
 | `env: ["# comment", "KEY=default"]` | settings `planetai packs install` appends to `.env` under a dated marker when the key is absent; a comment line travels with the key under it. No space after `=` |
 | `secrets: [CAMERA_WYZE_BRIDGE_TOKEN]` | which of its `env` keys are secrets. Set up and the agent's `settings_get` mask them once saved, like the node's own tokens; a key not listed here is shown to anyone holding the admin token |
 | `switch: BAD_ENABLED` | the pack's own on-switch, one of its `env` keys. A core pack that names one runs its `adapter.py` when the switch is `1`, without `PACKS_ALLOW_CODE`; a wild pack still needs the flag. Set up draws any pack's `…_ENABLED` key as a switch |

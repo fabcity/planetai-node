@@ -160,6 +160,22 @@ assert "def require(" in open("packs/earth/adapter.py").read(), "packs/earth/ada
 for _s in ("fetch", "change", "similar"):
     assert "A.require(" in open(f"packs/earth/{_s}.py").read(), f"packs/earth/{_s}.py must preflight its libraries"
 assert "planetai packs install" in open("update.sh").read(), "update.sh must say when a pack needs installing"
+# `packs install` built `pip:` and added `env:` for every pack folder, enabled or not (review 21 Oct, loader fixes).
+# It reads the packs the node loads, from GET /packs; with the node down, every folder.
+import subprocess as _sp2, tempfile as _tf2
+_cli = open("bin/planetai").read()
+_fns = _cli[_cli.index("pack_yamls() {"):_cli.index("cmd_packs() {")]
+with _tf2.TemporaryDirectory() as _t:
+    for _id, _y in (("earth", "pip: [rasterio, numpy]\nenv:\n  - EARTH_X=1\n"), ("place", "pip: [earthengine-api]\n"),
+                    ("heat", "id: heat\n")):
+        _os.makedirs(f"{_t}/packs/{_id}"); open(f"{_t}/packs/{_id}/pack.yaml", "w").write(_y)
+    def _run(api_out):
+        sh = f'api() {{ printf %s {api_out!r}; }}\n' + _fns + "\npack_pips; echo ---; pack_envs\n"
+        return _sp2.run(["bash", "-c", sh], cwd=_t, capture_output=True, text=True, check=True).stdout
+    assert _run('[{"id": "heat"}, {"id": "place"}]') == "earthengine-api\n---\n", "only the loaded packs' pip: and env:"
+    assert _run('[{"id": "earth"}]') == "numpy\nrasterio\n---\nEARTH_X=1\n"
+    assert _run("") == "earthengine-api\nnumpy\nrasterio\n---\nEARTH_X=1\n", "node down: every folder on disk"
+print("packs install builds and adds only for the packs the node loads")
 assert 'grep -q "planetai packs install" <<<' in open("update.sh").read(), "under pipefail, not a pipe into grep -q"
 print("a pack that lacks its libraries says which command installs them")
 # v0.33.8 — `planetai run earth change --all` is documented. Its behaviour, and the refusal of an argument
@@ -459,7 +475,7 @@ import os as _os  # noqa: E402
 # both packs exist and are what they say they are
 _np = yaml.safe_load(open("packs/nearby/pack.yaml"))
 _fp = yaml.safe_load(open("packs/forecast/pack.yaml"))
-assert _np["kind"] == "data" and _np["scales"] == ["community"], "nearby: a data pack about this address"
+assert _np["kind"] == "code" and _np["scales"] == ["community"], "nearby: rules that are data, scripts that are code, about this address"
 assert _fp["kind"] == "code" and _fp["scales"] == ["community"], "forecast: a code pack about this address"
 assert not _os.path.exists("packs/nearby/adapter.py"), \
     "nearby has no adapter: the Bali Air Dispatch fetch lives in packs/bali-air-dispatch, and a second one would " \
