@@ -29,9 +29,9 @@ Where the 30 m tile is not public, the pack uses **GLO-90**. On 23 October 2026 
 open sea or nothing was published, and the pack says so.
 
 **Your own DEM** (a drone survey, a national LiDAR) goes in `TERRAIN_DEM_PATH`, and its licence, in words, in
-`TERRAIN_DEM_LICENCE`. With the licence blank the node computes from the file and shows nothing: a survey you paid
+`TERRAIN_DEM_LICENCE`. With the licence blank the node computes from the file and sends no rows: a survey you paid
 for is not automatically yours to publish. The licence is read on every poll, so clearing it stops new rows at the
-next one. Rows already stored stay in this node's database, like any source's, and the issue keeps showing the last
+next one. Changing `TERRAIN_DEM_PATH` does too, until `fetch` runs on the new file. Rows already stored stay in this node's database, like any source's, and the issue keeps showing the last
 one with its age.
 
 ## The arithmetic

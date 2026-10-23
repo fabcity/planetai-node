@@ -78,6 +78,12 @@ def result() -> dict:
     lat, lon, radius = aoi()
     if r.get("radius_m") != radius or metres(r["lat"], r["lon"], lat, lon) > max(radius * 0.01, 25.0):
         return {}
+    # Nor a result from another DEM: a file computed before TERRAIN_DEM_PATH changed (or was cleared) must not be
+    # shown under the licence typed for the current one, and Copernicus must not stand in for a file.
+    path = os.getenv("TERRAIN_DEM_PATH") or ""
+    dem = r.get("dem") or {}
+    if (dem.get("kind") == "file") != bool(path) or (path and dem.get("path") != path):
+        return {}
     return r
 
 

@@ -123,6 +123,10 @@ _, readings = A.fetch(None)
 check({m for _, _, m, _ in readings} == {"terrain_upslope_ha", "terrain_upslope_near_ha", "terrain_hollow_m"},
       "no forecast: terrain rows only, no water figure")
 A.result_file().write_text(json.dumps(kept | {"dem": {"kind": "file", "path": "/x.tif", "tiles": [], "missing": []}}))
+check(A.result() == {}, "a file's result is not this node's when TERRAIN_DEM_PATH is unset")
+os.environ["TERRAIN_DEM_PATH"] = "/y.tif"
+check(A.result() == {}, "nor when TERRAIN_DEM_PATH names another file")
+os.environ["TERRAIN_DEM_PATH"] = "/x.tif"
 os.environ.pop("TERRAIN_DEM_LICENCE", None)
 check(A.fetch(None) == ([], []), "an operator's DEM with no licence is never shown")
 os.environ["TERRAIN_DEM_LICENCE"] = "CC BY 4.0, our own drone survey"
@@ -131,6 +135,9 @@ check(sensors and sensors[0]["meta"]["attribution"] == "CC BY 4.0, our own drone
       "with a licence typed in it is shown, under that licence, read at the poll and not at the fetch")
 os.environ.pop("TERRAIN_DEM_LICENCE")
 check(A.fetch(None) == ([], []), "clearing the licence stops the rows at the next poll")
+A.result_file().write_text(json.dumps(kept))
+check(A.result() == {}, "a Copernicus result is not this node's once TERRAIN_DEM_PATH names a file")
+os.environ.pop("TERRAIN_DEM_PATH")
 A.result_file().write_text(json.dumps(kept | {"lat": lat + 0.01}))
 check(A.result() == {}, "a result kept around another point does not describe this one")
 
