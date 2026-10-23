@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **The briefing's leftovers are gone.** `GET /briefing`, a redirect kept for a dashboard left open through v0.38,
+  and the start-up step that moved the old `BRIEFINGS` and `BRIEF_*` keys onto the report schedule. Every node has
+  started on v0.38 or later since September, so both had nothing left to do. A node updating straight from before
+  v0.38 would start on the default report schedule, six and six, instead of its old briefing hours.
+
 - **A pack the node does not load runs nothing.** An agent could still run the scripts of a pack left out of
   `PACKS_ENABLED`, or refused by its `requires:`, and the report and `/issues` still imported its code: the nearest
   fab lab was worded by `packs/make` on a node that had switched `make` off. `packs.module()` and `run_pack_script`

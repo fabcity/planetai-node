@@ -88,7 +88,7 @@ written under the names of their day, are left out instead. A token reads the re
 
 These are on neither list: `/place/geojson` (the shape of your building and what is around it), the `/geo/` routes
 other than `/geo/cell` (each one locates the node), `/machine` and `/storage`, `/settings/raw`, `/settings/phone`,
-`/backups` and `/backups/<name>`, `/report/bundle`, `GET /aggregates`, `/briefing`, `GET /actions` and the whole of
+`/backups` and `/backups/<name>`, `/report/bundle`, `GET /aggregates`, `GET /actions` and the whole of
 `/captures`. So is every write, and `/mcp` checks the admin token itself.
 
 Two writes pass the sharing check because their path is on a list for reading, and their handler refuses them

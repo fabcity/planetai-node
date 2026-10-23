@@ -132,13 +132,6 @@ Access: public
 
 The mono font, at the fixed path `planetai-theme.css` asks for.
 
-### GET /briefing
-Access: token
-
-A 301 to `/report/latest`, for a dashboard left open from before the report replaced the briefing.
-
-> **Gap in v0.83.0.** `/briefing` is on neither allowlist, so a stale dashboard with no token gets 403 instead of the redirect.
-
 ## Sensors and readings
 
 These routes read what the node has measured, from the sensor list down to raw readings and hourly means.

@@ -104,7 +104,7 @@ assert not re.search(r"^BRIEF", env, re.M), ".env.example: the briefing keys are
 assert "BRIEF_HOUR" not in open("docker-compose.yml").read(), "compose: the agent's own report hour is gone"
 assert "def run_report" in main and "def briefing(" not in main and "def run_briefings(" not in main, "main.py: one scheduler"
 assert "def report_latest" in main and "def report_bundle" in main and "def report_now" in main, "main.py: the report endpoints"
-assert 'RedirectResponse("/report/latest", status_code=301)' in main, "main.py: /briefing must not 404 a dashboard left open"
+assert '"/briefing"' not in main, "main.py: the v0.38 redirect for a dashboard left open through that update is gone (23 Oct 2026)"
 assert "reports_due" in open("init.sql").read() and "held_quiet" in open("init.sql").read(), "init.sql: the reports table"
 assert "def bundle(" in open("app/report.py").read() and "def sheet(" in open("app/report.py").read(), "app/report.py"
 assert "FROM reports ORDER BY ts DESC LIMIT 1" in main, "main.py: /report/latest orders by ts — a report written on request has no due hour"
