@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Presence is announced a minute after an update, not half an hour.** `planetai update` starts the app and the
+  Reticulum bridge together; the bridge's first `GET /presence` found no node and it waited `RETICULUM_ANNOUNCE_S`
+  (30 min) to ask again. It now asks every 30 s, ten times at most. `RETICULUM_REF` moves to planetai-reticulum
+  `b84c24f`.
 - **The Reticulum bridge has its own repository.** `reticulum_bridge.py`, its Dockerfile and its config template moved
   to [fabcity/planetai-reticulum](https://github.com/fabcity/planetai-reticulum), Apache-2.0, so the core never
   imports `RNS` or `LXMF` (decision 2 of `docs/decisions/2026-10-23-reticulum-licence.md`). `planetai reticulum`

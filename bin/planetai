@@ -1064,7 +1064,7 @@ T
 # curl and tar at one pinned commit, and builds the image itself; Fab City publishes no image with rns in it.
 # Moving the pin is its own PR, after reading rns's and lxmf's LICENSE at the versions that commit installs.
 RETICULUM_REPO="fabcity/planetai-reticulum"
-RETICULUM_REF="48d852e9af4f6cd05283b80123d7d21963063fce"
+RETICULUM_REF="b84c24f374faabc984d4e726ba616f2d7e8b8a1a"
 reticulum_fetch() {
   [[ "$(cat reticulum/.ref 2>/dev/null)" == "$RETICULUM_REF" ]] && return 0
   local tmp; tmp="$(mktemp -d)"
