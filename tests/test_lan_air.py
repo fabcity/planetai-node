@@ -3,7 +3,8 @@
 Both readers were core adapters until v0.16 (5 Sep 2026) dropped them from the poll by accident, while the settings and
 the installer's flags stayed: a node that set AIRGRADIENT_HOSTS read nothing. They are packs since 22 Oct 2026, on
 whenever their hosts are set, so nobody needs a new key, and update.sh adds them where a node lists its packs.
-The readers' payloads are checked in tests/test_sources.py.
+The readers' payloads are checked in tests/test_sources.py. They borrow the EPA 2021 correction from packs/air-quality,
+which since 24 Oct 2026 also carries the CAMS model the core used to poll (section 2b).
 
     PACKS_DIR=packs PYTHONPATH=app python3 tests/test_lan_air.py
 """
@@ -69,6 +70,38 @@ assert not {"airgradient", "purpleair"} & {n for n, _ in sources.enabled(HC())},
 ROWS.update(PACKS_ENABLED="", AIRGRADIENT_HOSTS="", PURPLEAIR_HOSTS="", SENSOR_INDOOR="")
 print("lan air: the poll reads every listed host, indoors from SENSOR_INDOOR, and nothing with no host")
 
+# ---- 2b. CAMS is packs/air-quality's, on with Global models as it was in the core, and its correction is borrowed
+class AQ:
+    """Open-Meteo's air-quality API, now and hourly."""
+    def get(s, url, params=None, timeout=None):
+        assert url == "https://air-quality-api.open-meteo.com/v1/air-quality", url
+        if "hourly" in params:
+            return R({"hourly": {"time": ["2026-10-23T00:00", "2026-10-23T01:00"], "pm2_5": [12.0, None], "pm10": [20.0, 21.0]}})
+        return R({"current": {"time": "2026-10-24T03:00", "pm2_5": 18.4, "pm10": 30.1, "uv_index": 9.0}})
+    def raise_for_status(s): pass
+
+
+R.raise_for_status = lambda s: None
+assert not hasattr(sources, "openmeteo_air") and not hasattr(sources, "epa_2021_correct"), "one copy, in the pack"
+assert "air-quality" not in {n for n, _ in sources.enabled(AQ())}, "OPENMETEO_ENABLED=0: no CAMS, as in the core"
+ROWS["OPENMETEO_ENABLED"] = "1"
+got = dict(sources.enabled(AQ()))
+s, r = got["air-quality"]()
+assert s[0]["sensor_id"] == "cams-point" and s[0]["source"] == "open-meteo-cams" and s[0]["kind"] == "model", s
+assert {m: v for _, _, m, v in r} == {"pm25_model": 18.4, "pm10_model": 30.1, "uv_index": 9.0}, r
+assert r[0][0].isoformat() == "2026-10-24T03:00:00+00:00", "Open-Meteo's UTC time without a zone, read as UTC"
+air = packs.module("air-quality")
+s, r = air.history(AQ(), -8.65, 115.22)
+assert [(t.hour, m, v) for t, _, m, v in r] == [(0, "pm25_model", 12.0), (0, "pm10_model", 20.0), (1, "pm10_model", 21.0)], r
+ROWS["PACKS_ENABLED"] = "heat"
+assert packs.module("air-quality") is None and "air-quality" not in {n for n, _ in sources.enabled(AQ())}
+ag = packs.module("air-quality", on_only=False)
+assert ag and round(ag.epa_2021_correct(28, 65), 1) == 14.8, "a node with the air pack off still corrects a Plantower"
+ROWS.update(PACKS_ENABLED="", OPENMETEO_ENABLED="0")
+src = open("app/bootstrap.py").read()
+assert 'packs.module("air-quality")' in src and "air.history(hc, lat, lon)" in src, "the first start takes its 92 days from the pack"
+print("lan air: CAMS polls from packs/air-quality under OPENMETEO_ENABLED, and its EPA correction is there with the pack off")
+
 # ---- 3. update.sh step 5b: added where hosts are set and the node lists its packs, once
 src = open("update.sh").read()
 block = src[src.index("# 5b."):src.index("# 6. rebuild and restart")]
@@ -97,5 +130,11 @@ _, env = run("", "PURPLEAIR_HOSTS=192.168.1.60\n" + LIST)
 assert "PACKS_ENABLED=air-quality,heat,purpleair" in env and "airgradient" not in env, env
 db, env = run(LIST, LIST)
 assert "airgradient" not in db + env and "purpleair" not in db + env, "added with no host"
+ISS = "NODE_ISSUES=heat\n"                      # 5d would add air-quality for the air issue; 5b must stand alone
+db, _ = run("OPENMETEO_ENABLED=1\nPACKS_ENABLED=heat\n" + ISS, "")
+assert "PACKS_ENABLED=heat,air-quality" in db, db
+db, env = run("PACKS_ENABLED=heat\n" + ISS, "OPENMETEO_ENABLED=0\nPACKS_ENABLED=heat\n" + ISS)
+assert "air-quality" not in db + env, "Global models off: CAMS was off, so nothing to keep"
+print("update.sh 5b: air-quality added where Global models is on and the node lists its packs")
 print("update.sh 5b: airgradient and purpleair added where their hosts are set and the node lists its packs, once")
 print("lan air: every check passed")

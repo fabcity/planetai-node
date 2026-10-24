@@ -119,6 +119,10 @@ bad = by(F.assess({**cfg, "TELEGRAM_BOT_TOKEN": "1:x"}, [s for s in seen if s["s
 check(bad["weather"]["state"] == "quiet" and "429" in (bad["weather"]["detail"] or "") and bad["weather"]["fix"] == F.FUNDAMENTALS[3]["fix_quiet"],
       "a model that stopped answering: quiet, its own last error, the quiet fix", bad["weather"])
 check(bad["satellite-air"]["ok"] is True, "CAMS is judged on its own rows, not on Open-Meteo's error")
+cams = by(F.assess(cfg, [s for s in seen if s["source"] != "open-meteo-cams"], polled=True,
+                   last_error="air-quality: 502 Bad Gateway"))["satellite-air"]
+check(cams["state"] == "quiet" and cams["detail"] == "last error: 502 Bad Gateway",
+      "CAMS is packs/air-quality's adapter since 24 Oct 2026: its rows are open-meteo-cams, its error the pack's", cams)
 ring = by(F.assess(cfg, [s for s in seen if s["source"] != "baliairdispatch"], polled=True, stations=ST_ON,
                    last_error="bali-air-dispatch: ReadTimeout"))["nearby-stations"]
 check(ring["state"] == "quiet" and ring["detail"] == "last error: ReadTimeout" and ring["fix"].startswith("Bali Air Dispatch has not"),

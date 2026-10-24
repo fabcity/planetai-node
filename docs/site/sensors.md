@@ -128,8 +128,9 @@ The rules, the report's digest and the dashboard all use this order.
 Optical PM sensors over-read in humid air, and Bali runs at 45 to 70% RH. `epa_2021_correct(pm_raw, rh)` is the US
 EPA 2021 Plantower correction: a raw 28 at Bali humidity becomes about 15. Near-zero raw values in dry air lift to 1
 or 2, which is a property of the regression and means nothing for health. It is for Plantower lasers (PurpleAir,
-AirGradient, a DIY PMS5003), and not for Smart Citizen, Xiaomi, IQAir, AQICN or Airly. Its callers are the
-`airgradient` and `purpleair` packs.
+AirGradient, a DIY PMS5003), and not for Smart Citizen, Xiaomi, IQAir, AQICN or Airly. It lives in the
+`air-quality` pack, and its callers are the `airgradient` and `purpleair` packs, which borrow it even where
+`air-quality` is off.
 
 ## Siting
 

@@ -40,25 +40,6 @@ def km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return 12742 * math.asin(math.sqrt(a))
 
 
-def epa_2021_correct(pm_raw: float, rh: float) -> float:
-    """US EPA 2021 humidity correction for Plantower-based sensors (PurpleAir, AirGradient, DIY PMS5003).
-    Barkjohn et al. 2021, extended 2022. Same formula Bali Air Dispatch applies before publishing those networks.
-    Do NOT apply to Smart Citizen (Seeed HM-3301) or Nafas/IQAir/AQICN, which are published as-supplied.
-    Verify coefficients against https://www.epa.gov before relying on this for anything published."""
-    x, h = pm_raw, rh
-    if x <= 30:
-        return 0.524 * x - 0.0862 * h + 5.75
-    if x <= 50:
-        w = x / 20 - 1.5
-        return (0.786 * w + 0.524 * (1 - w)) * x - 0.0862 * h + 5.75
-    if x <= 210:
-        return 0.786 * x - 0.0862 * h + 5.75
-    if x <= 260:
-        w = x / 50 - 4.2
-        return (0.69 * w + 0.786 * (1 - w)) * x - 0.0862 * h * (1 - w) + 2.966 * w + 5.75 * (1 - w) + 8.84e-4 * x * x * w
-    return 2.966 + 0.69 * x + 8.84e-4 * x * x
-
-
 # ---------------------------------------------------------------- is this sensor at this node?
 # `packs/place/adapter.py` has its own metres(); core must not import from a pack, so this is the second copy.
 # Equirectangular: within a metre of haversine at a kilometre, about nine metres at eight, and cheap. Measured on
@@ -111,7 +92,6 @@ def enabled(hc: httpx.Client):
     if settings.get("OPENMETEO_ENABLED", "1") == "1" and os.getenv("NODE_LAT"):
         _lat, _lon = float(os.environ["NODE_LAT"]), float(os.environ["NODE_LON"])
         out.append(("open-meteo", lambda: openmeteo(hc, _lat, _lon)))
-        out.append(("open-meteo-cams", lambda: openmeteo_air(hc, _lat, _lon)))
     portals = dict(p.split("=", 1) for p in settings.get("CKAN_PORTALS", "").split(",") if "=" in p)
     if portals:
         out.append(("ckan", lambda: ckan(hc, portals, settings.get("CKAN_SCALE", "city"))))
@@ -173,37 +153,6 @@ def ckan(hc: httpx.Client, portals: dict[str, str], scale: str = "city"):
                      (now, sid, "datasets_fresh_90d", float(fresh)),
                      (now, sid, "datasets_fresh_pct", 100.0 * fresh / total if total else 0.0)]
     return sensors, readings
-
-
-# ---------------------------------------------------------------- Open-Meteo Air Quality (CAMS) — zero-config
-# Free, key-free, global. Copernicus Atmosphere Monitoring Service: satellite + model reanalysis, ~11 km grid.
-# This is the adapter that makes a node useful before any hardware exists: modelled PM2.5 at your coordinates,
-# anywhere on earth, from the first minute. It is a MODEL, not a measurement — kind='model', never 'live' in a cell,
-# and it is the thing your sensor gets compared against, not the thing that replaces it.
-# Attribution required: CAMS ENSEMBLE data provider and Open-Meteo. Carried in sensors.meta.
-OM_AIR = "pm2_5,pm10,dust,aerosol_optical_depth,carbon_monoxide,nitrogen_dioxide,ozone,uv_index"
-OM_AIR_MAP = {"pm2_5": "pm25_model", "pm10": "pm10_model", "dust": "dust", "aerosol_optical_depth": "aod",
-              "carbon_monoxide": "co", "nitrogen_dioxide": "no2", "ozone": "o3", "uv_index": "uv_index"}
-OM_AIR_URL = "https://air-quality-api.open-meteo.com/v1/air-quality"
-
-
-def _om_air_sensor(lat, lon):
-    return {"sensor_id": "cams-point", "source": "open-meteo-cams", "name": "CAMS air quality (model point sample)",
-            "lat": lat, "lon": lon, "indoor": False, "local": False, "kind": "model", "scale": "planet",
-            "cadence": "PT1H",
-            "meta": {"model": "Copernicus CAMS global/European ensemble via open-meteo.com",
-                     "attribution": "CAMS ENSEMBLE data provider and Open-Meteo",
-                     "note": "modelled, not measured — the baseline a local sensor is compared against"}}
-
-
-def openmeteo_air(hc: httpx.Client, lat: float, lon: float):
-    r = hc.get(OM_AIR_URL, params={"latitude": round(lat, 3), "longitude": round(lon, 3), "current": OM_AIR, "timezone": "UTC"})
-    r.raise_for_status()
-    cur = (r.json().get("current") or {})
-    t = cur.get("time")
-    ts = _iso(t if not t or str(t).endswith("Z") else f"{t}Z") or datetime.now(timezone.utc)
-    readings = [(ts, "cams-point", m, float(cur[k])) for k, m in OM_AIR_MAP.items() if cur.get(k) is not None]
-    return [_om_air_sensor(lat, lon)], readings
 
 
 # ---------------------------------------------------------------- Meshtastic (LoRa mesh, via the gateway's MQTT uplink)

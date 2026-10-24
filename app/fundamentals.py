@@ -73,8 +73,10 @@ FUNDAMENTALS = [
      "fix_quiet": None},
 ]
 
-# which adapter (sources.enabled) answers for which source, to name its last error; a stations pack answers by its id
-ADAPTER = {"weather": "open-meteo", "satellite-air": "open-meteo-cams"}
+# which source's rows judge a fundamental, and which adapter (sources.enabled) names its last error: the core's adapter is
+# named for its source, a pack's adapter by the pack's id (CAMS is packs/air-quality's since 24 Oct 2026)
+SOURCE = {"weather": "open-meteo", "satellite-air": "open-meteo-cams"}
+ADAPTER = {"weather": "open-meteo", "satellite-air": "air-quality"}
 
 
 def _age(minutes):
@@ -148,7 +150,7 @@ def assess(cfg: dict, seen: list[dict], polled: bool, last_error: str | None = N
             adapter, words = first.get("pack", ""), {"name": first.get("name", ""), "switch": first.get("switch", "")}
         elif fid in ("weather", "satellite-air"):
             configured = (cfg.get("OPENMETEO_ENABLED") or "1") == "1"
-            minutes = youngest(lambda r: r["source"] == ADAPTER[fid])
+            minutes = youngest(lambda r: r["source"] == SOURCE[fid])
         elif fid == "backup":
             minutes, configured = backup_minutes, backup_minutes is not None
         elif fid == "map":

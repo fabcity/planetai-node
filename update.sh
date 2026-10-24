@@ -236,9 +236,10 @@ done < .env.example
 #   smartcitizen       this node's own Smart Citizen kits, after v0.83.0      SC_USER, SC_DEVICES or MQTT_HOST
 #   airgradient        AirGradient monitors on the WiFi, after v0.83.0        AIRGRADIENT_HOSTS
 #   purpleair          PurpleAir sensors on the WiFi, after v0.83.0           PURPLEAIR_HOSTS
+#   air-quality        the CAMS model at this point, after v0.83.0            OPENMETEO_ENABLED
 pq() { docker compose exec -T db psql -U planetai -tAc "$1" planetai 2>/dev/null | tr -d '[:space:]'; }
 for moved in bali-air-dispatch:BAD_ENABLED home-assistant:HA_DISCOVERY smartcitizen:SC_USER,SC_DEVICES,MQTT_HOST \
-           airgradient:AIRGRADIENT_HOSTS purpleair:PURPLEAIR_HOSTS; do
+           airgradient:AIRGRADIENT_HOSTS purpleair:PURPLEAIR_HOSTS air-quality:OPENMETEO_ENABLED; do
   pack="${moved%%:*}" on=""
   IFS=, read -r -a keys <<< "${moved#*:}"
   for key in "${keys[@]}"; do
