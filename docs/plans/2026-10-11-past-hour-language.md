@@ -85,7 +85,7 @@ This plan does it as Task 2 if yes, and skips Task 2 if no. The other tasks do n
 | file | change |
 | --- | --- |
 | `tests/test_issues_engine.py` | Task 1: pin the live split. Task 3: pin `hours` |
-| `app/issues/air.yml`, `heat.yml` | Task 2 (if yes): `{line}` after the why. Task 3: a `past` block per locale |
+| `packs/air-quality/issue.yml`, `heat.yml` | Task 2 (if yes): `{line}` after the why. Task 3: a `past` block per locale |
 | `app/issues/engine.py` | Task 3: `_line_key()` lifted out of `_sentence_parts`; `_hour_parts()`; `hours` on the wire |
 | `tests/data/wire/issues-v0.json` | Task 3: regenerated |
 | `app/static/doors-load.js` | Task 4: `hours: tr(it.hours)` |

@@ -13,7 +13,7 @@ if (typeof window !== 'undefined') window.PAI_AUTH = DOORS_AUTH;
    rooms and which /issues' asks stand in for. Asked without a token they are a 403 every time: noise in the node's log
    and the console, and nothing drawn. So a screen holding no token at all does not ask; it gets a stand-in 403 and
    each caller draws what it draws locked. With any token the page asks as before, and the node decides. */
-const DOORS_LOCKED = /^\/?(health\/sources|aggregates|actions|alerts|geo\/(planet|measure|rings|grid)|things|learned|captures|species|household|machine|storage|place\/geojson)\b/;
+const DOORS_LOCKED = /^\/?(health\/sources|aggregates|actions|alerts|geo\/(planet|measure|rings|grid)|things|learned(?!\/place)|captures|species|household|machine|storage|place\/geojson)\b/;
 const doorsFetch = (p, init = {}) => !DOORS_TOKEN() && DOORS_LOCKED.test(p) ? Promise.resolve(new Response('{}', { status: 403 }))
   : fetch(p, { ...init, headers: { ...DOORS_AUTH(), ...(init.headers || {}) } });
 /* A wire time in the node's own zone (/health tz) as 'YYYY-MM-DDTHH:MM'. /health and /issues' as_of are written in
@@ -96,6 +96,8 @@ function buildD(A, locale) {
     reach: A.reach || [], sensors: A.sensors || [], observations: A.observations || [], index_cells: A.cells || [],
     geometry: { ladder: G.ladder || [], radio: G.radio || {}, grain: G.grain_table || [], publication: G.publication || {} },
     point: [H.lon, H.lat], stats15, raw, actions, alerts: A.alerts || asks.acts || [], notes: !!A.actions, asks,
+    /* the ask pane's questions, written by the node from tonight's figures (/issues digest.prompts) */
+    prompts: ((I.digest || {}).prompts || {})[L] || ((I.digest || {}).prompts || {}).en || [],
   };
 }
 
@@ -136,4 +138,14 @@ async function loadD(routes = DOORS_ROUTES) {
   return buildD(A, (A.health || {}).locale || 'en');
 }
 
-if (typeof module !== 'undefined') module.exports = { buildD, doorsLocal, doorsFetch, DOORS_LOCKED };
+/* The household's words for the engine's own (pre-launch audit, 15 Oct): a state, an event's kind, and the two
+   sentences a screen says when it cannot answer. One table for the doors and the phone, which both load this file. */
+const WORDS = {
+  state: { act: 'act now', notable: 'worth a look', quiet: 'fine', context: 'background', none: 'not read' },
+  kind: { spike: 'a sudden rise', unusual: 'higher than usual for this hour', sustained: 'high for an hour', danger: 'dangerous' },
+  locked: 'This screen can’t answer yet. Ask whoever set up the node to unlock it, or answer on Telegram.',
+  noreply: 'The node did not answer. Check this screen is on the home network, then try again.',
+};
+const stateWord = s => WORDS.state[s] || s, kindWord = k => WORDS.kind[k] || k;
+
+if (typeof module !== 'undefined') module.exports = { buildD, doorsLocal, doorsFetch, DOORS_LOCKED, WORDS, stateWord, kindWord };

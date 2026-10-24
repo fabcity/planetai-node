@@ -14,7 +14,7 @@ import ast
 import os
 import re
 
-SRC = open("app/main.py").read()
+SRC = open("app/main.py").read() + open("app/auth.py").read()   # auth.py: the allowlists, since 22 Oct
 SETTINGS = open("app/settings.py").read()
 ENV = open(".env.example").read()
 # The page is three files since the renderer landed: a skeleton, a script and a
@@ -149,7 +149,7 @@ except ImportError:
 import logging
 import time
 logging.disable(logging.WARNING)      # main.py logs a failed bootstrap connect on import; that is the point of the stub
-os.environ.update(ADMIN_TOKEN="admin-tok", ACT_TOKEN="act-tok", NODE_LAT="-8.6478291", NODE_LON="115.1385412",
+os.environ.update(ADMIN_TOKEN="admin-tok", ACT_TOKEN="act-tok", AGGREGATE_TOKEN="agg-tok", NODE_LAT="-8.6478291", NODE_LON="115.1385412",
                   NODE_NAME="bayu-2", DATABASE_URL="postgresql://unused/never-connected")
 import settings                                    # noqa: F811 — the same module; the stub below is what matters
 settings._cache = {"at": time.time() + 1e9, "rows": {}}     # never touch a database: get() falls through to the environment
@@ -182,6 +182,20 @@ assert local.get("/sensors").status_code == 200, "off: this machine still reads 
 assert lan.get("/health").status_code == 200 and lan.get("/").status_code == 200, "off: the shell stays readable"
 assert lan.get("/export").status_code != 403, "off: backup.sh fetches /export over the published port to write the daily file"
 print("off: /sensors refused from the WiFi, answered to a token and to this machine")
+
+# A child node holds AGGREGATE_TOKEN, and a child is another household (15 Oct 2026): it may push, never read as one.
+CHILD = {"Authorization": "Bearer agg-tok"}
+for lv in ("off", "open"):
+    level(lv)
+    assert lan.get("/place/geojson", headers=CHILD).status_code == 403, f"{lv}: a child read its parent's building"
+    assert lan.get("/health", headers=CHILD).json().get("position") == "cell", f"{lv}: a child read its parent's point"
+assert lan.get("/sensors", headers=CHILD).json()[0]["meta"].get("host") is None, "open: a child read the unredacted row"
+level("off")
+assert lan.get("/sensors", headers=CHILD).status_code == 403, "off: a child read /sensors"
+_lan5 = TestClient(main.app, raise_server_exceptions=False)    # the push reaches the database, which is stubbed to raise
+assert _lan5.post("/aggregates", json={}, headers=CHILD).status_code != 403, "a child's push must still pass SHARE_LEVEL"
+assert lan.post("/aggregates", json={}).status_code == 401, "a push with no token is refused by the route itself"
+print("child token: pushes pass, reads are a stranger's")
 
 for lv in ("off", "open"):
     level(lv)
@@ -221,7 +235,59 @@ assert s0["meta"]["licence"] == "CC BY 4.0", "open: provenance must survive the 
 assert dp(s0["lat"]) <= 3 and dp(s0["lon"]) <= 3, f"open: /sensors hands out {s0['lat']},{s0['lon']}"
 assert (s0["lat"], s0["lon"]) == main._coarse(-8.6478291, 115.1385412), \
     "open: the household's own sensor must stand at its cell's centre for an untrusted reader (R25)"
-assert s0["name"] == "Kitchen, upstairs", "open: the sensor's name is on the dashboard and stays"
+# 15 Oct: a house on a cell's edge has sensors in the next cell; they stand at the house's point, not ~700 m off.
+_h = lan.get("/health").json()
+# /health names its keys (docs/site/api.md). It spread the timers' whole `state` until 21 Oct 2026: the node list,
+# the bot's username and 12 kB of GBIF maps went to every reader, every ~20 s, from every screen.
+main.state.update(registry={"nodes": [1]}, bot={"username": "x_bot"}, griis={"marks": 1}, others={"cells": {}},
+                  learned_on="2026-10-21", bootstrap=[{"key": "k"}])
+_hk = lan.get("/health").json()
+assert not {"registry", "bot", "griis", "others", "learned_on", "bootstrap"} & set(_hk), sorted(_hk)
+assert {"ok", "node", "version", "polls", "last_poll", "last_error", "ingested", "errors", "locale", "tz"} <= set(_hk), sorted(_hk)
+for _k in ("registry", "bot", "griis", "others", "learned_on", "bootstrap"):
+    main.state.pop(_k)
+assert main._own_point({"local": True, "kind": "sensor", "lat": -8.6528, "lon": 115.1445}) == (_h["lat"], _h["lon"]), \
+    "a house's own sensor in the neighbouring cell must stand where the house does"
+assert main._own_point({"local": False, "kind": "child", "lat": -8.6528, "lon": 115.1445}) == main._coarse(-8.6528, 115.1445), \
+    "a child's row is another house: its own cell's centre"
+# Tomas, 15 Oct 2026: a screen without a key never reads what the house calls its rooms or its sensors.
+main._HOUSE.update(at=time.time() + 1e9, map=[("Kitchen, upstairs", "Sensor 1")])   # the database is stubbed out
+r = lan.get("/sensors"); s0 = r.json()[0]
+assert s0["name"] == "Sensor 1" and "Kitchen" not in r.text, f"open: the house's own name reached a stranger: {s0['name']}"
+assert lan.get("/sensors", headers=ADMIN).json()[0]["name"] == "Kitchen, upstairs", "a key still reads the house's names"
+# gzip is the outermost layer (main.py, after _share_level): what it compresses is the relabelled answer
+from starlette.middleware.gzip import GZipMiddleware as _GZ  # noqa: E402
+assert issubclass(main.app.user_middleware[0].cls, _GZ), [m.cls for m in main.app.user_middleware]
+_q1 = main.q                                                  # twenty kits, so the answer is big enough to compress
+main.q = lambda sql, *a: [dict(ROW, sensor_id=f"ag-{i}", meta=dict(ROW["meta"])) for i in range(20)] if "FROM sensors" in sql else []
+r = lan.get("/sensors", headers={"Accept-Encoding": "gzip"})
+main.q = _q1
+assert r.headers.get("content-encoding") == "gzip", f"a {len(r.content)}-byte JSON answer went out uncompressed"
+assert "Kitchen" not in r.text and r.json()[0]["name"] == "Sensor 1", "a compressed answer carried the house's names"
+_seen = []                                                      # /mcp passes through as it was (SPEC_mobile §9)
+async def _probe(scope, receive, send):
+    _seen.append(scope["path"])
+    await send({"type": "http.response.start", "status": 200, "headers": [(b"content-type", b"application/json")]})
+    await send({"type": "http.response.body", "body": b"x" * 5000})
+_mw = main.app.user_middleware[0]
+from starlette.testclient import TestClient as _TC  # noqa: E402
+_raw = _TC(_mw.cls(_probe, **_mw.kwargs))
+assert _raw.get("/mcp", headers={"Accept-Encoding": "gzip"}).headers.get("content-encoding") is None, "/mcp was gzipped"
+assert _raw.get("/issues", headers={"Accept-Encoding": "gzip"}).headers.get("content-encoding") == "gzip"
+print("open: answers are gzipped after the house's labels are swapped, never before; /mcp is left as it was")
+main._HOUSE.update(map=[("K ROOM - BAYU HOLES", "Sensor 1"), ("Kids", "Room A")])
+_q0 = main.q
+main.q = lambda sql, *a: ([{"id": 1, "ts": "2026-10-15T10:00:00+08:00", "rule_id": "x", "sensor_id": "ag-1", "level": "act",
+                                 "text": "The air in K ROOM - BAYU HOLES is unhealthy", "acted_at": None}] if "FROM alerts" in sql
+                          else _q0(sql, *a))
+_al = lan.get("/alerts").json()
+assert _al and _al[0]["text"] is None and "BAYU" not in lan.get("/alerts").text, f"open: an alert's sentence reached a stranger: {_al}"
+assert main._unhoused(b'{"rooms": ["Kids"], "t": "Smoke in Kids"}', "/issues") == b'{"rooms": ["Room A"], "t": "Smoke in Room A"}'
+assert main._unlabelled("Smoke or dust in Kids and K ROOM - BAYU HOLES") == "Smoke or dust in Room A and Sensor 1", \
+    "/export's alert lines travel as CC BY whoever asked for them: they carry Room A, never the house's names"
+assert "_unlabelled(a[\"text\"]" in SRC, "/export must swap the house's labels in its alert lines"
+main.q = _q0; main._HOUSE.update(at=0.0, map=[])
+print("open: rooms and the house's sensor names are swapped for Room A / Sensor 1; old alert sentences left out")
 print("open: sensors readable, hostnames and firmware gone, own sensors at their cell's centre")
 
 # A FACILITY IS NOT A SENSOR, and the filter above was written about sensors. A fab lab is somebody
@@ -415,7 +481,7 @@ print("geo: grid, cell, measure and rings answer this machine and a token, refus
 # The ground kept on disk (GET /ground/*): served from out/ground/ by name, private like /place/geojson.
 import gzip as _gz, importlib.util as _iu, json as _json, sqlite3 as _sq, tempfile as _tf
 from pathlib import Path as _P
-_out = _P(_tf.mkdtemp()); main.OUT = _out; (_out / "ground" / "glyphs" / "Noto Sans Regular").mkdir(parents=True)
+_out = _P(_tf.mkdtemp()); main.OUT = main.basemap.OUT = _out; (_out / "ground" / "glyphs" / "Noto Sans Regular").mkdir(parents=True)
 _db = _sq.connect(_out / "ground" / "vector.mbtiles")
 _db.executescript("CREATE TABLE tiles (zoom_level INTEGER, tile_column INTEGER, tile_row INTEGER, tile_data BLOB);")
 _db.execute("INSERT INTO tiles VALUES (15, 26866, ?, ?)", ((1 << 15) - 1 - 17189, _gz.compress(b"mvt")))

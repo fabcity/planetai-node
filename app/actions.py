@@ -116,8 +116,9 @@ def _fields(issue: dict, rooms: str, peak, ctx: dict) -> dict:
               "outside_temp": ctx.get("outside_temp"), "inside_temp": ctx.get("inside_temp"),
               "outside_pm25": ctx.get("outside_pm25"), "inside_pm25": ctx.get("inside_pm25"),
               "outside_source": ctx.get("outside_source") or "outside",
-              "line": f"{float(line_v):g} {unit}".strip() if line_v is not None else "—"}
-    return {k: (v if k in ("rooms", "outside_source", "line") else fmt(k, v)) for k, v in fields.items()}
+              "line": f"{float(line_v):g} {unit}".strip() if line_v is not None else "—",
+              "unhealthy": f"{float(issue['unhealthy']):g} {unit}".strip() if issue.get("unhealthy") is not None else "—"}
+    return {k: (v if k in ("rooms", "outside_source", "line", "unhealthy") else fmt(k, v)) for k, v in fields.items()}
 
 
 def render(issue: dict, msg, ctx: dict, locale: str) -> tuple[str, str | None]:

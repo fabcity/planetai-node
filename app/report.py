@@ -359,18 +359,19 @@ def _fit(b: dict) -> dict:
 
 
 # ---------------------------------------------------------------------------------------------------- the sheet
-# What an act-level rule watches, the line it watches for, and whose line that is, so the report can say whether the
-# value came back down and name the line with its unit (Tomas, 14 Oct: never a bare "35.5"). The numbers are the
-# rules' own; tests/test_report_templates.py refuses a value here that is not in that rule's SQL, the same way a pack
-# README's thresholds are checked against its files. A rule that is not here gets no sentence rather than a guessed
-# one: heat speaks through HEAT_LINE and the open episodes instead.
-THRESHOLDS = {
-    "air-quality/indoor_pm25_high":      ("pm25", 35.5, "line_epa"),
-    "air-quality/outside_worse_keep_shut": ("pm25", 35.5, "line_epa"),
-    "air-quality/outdoor_pm25_high":     ("pm25", 55.5, "line_epa_all"),
-    "air-quality/inside_worse_ventilate": ("pm25", 15.0, "line_who"),
-}
-# This house's heat line, feels-like. The same number as app/issues/heat.yml's `line.value`; the test holds them equal.
+def thresholds() -> dict:
+    """{rule id: (metric, line, whose line)}: what an act-level rule watches, the line it watches for, and whose line
+    that is, so the report can say whether the value came back down and name the line with its unit (Tomas, 14 Oct:
+    never a bare "35.5"). A rule declares it as `line: {value, label}` in its pack's rules.yml, and the metric is its
+    issue's own (issues.owners()); until 23 Oct 2026 this was a map here naming air-quality's four rules.
+    tests/test_report_templates.py refuses a value that is not in that rule's SQL, the same way a pack README's
+    thresholds are checked against its files. A rule without one gets no sentence rather than a guessed one: heat
+    speaks through HEAT_LINE and the open episodes instead."""
+    import issues                    # noqa: PLC0415
+    own = issues.owners()
+    return {r["id"]: ((own.get(r["id"].split("/")[0]) or {}).get("metric"), float(r["line"]["value"]), r["line"]["label"])
+            for r in packs.load_rules() if isinstance(r.get("line"), dict) and "/" in r["id"]}
+# This house's heat line, feels-like. The same number as packs/heat/issue.yml's `line.value`; the test holds them equal.
 HEAT_LINE = 35.0
 
 # What the node may mention beyond its own sensors: an observation that crossed a line a rule on this node cares
@@ -379,7 +380,7 @@ HEAT_LINE = 35.0
 BEYOND = {
     "coast/heavy_swell": ("beyond_swell", lambda o: (o.get(("marine-point", "swell_height_m")) or 0) >= 2.5
                                                 and (o.get(("marine-point", "swell_period_s")) or 0) >= 12),
-    "air-quality/indoor_pm25_high": ("beyond_satellite", lambda o: (o.get(("cams-point", "pm25_model")) or 0) > ACT),
+    "air-quality/indoor_pm25_high": ("beyond_satellite", lambda o: (o.get(("cams-point", "pm25_model")) or 0) > 35.5),
 }
 
 # One dict per language. Every phrase a household reads is in here; the code decides which key, never the words,
@@ -406,7 +407,7 @@ T = {
         "high_humidity": "{place} was more humid than usual.",
         "low_humidity": "{place} was drier than usual.",
         "beyond_swell": "Out at sea a big, long-period swell is arriving.",
-        "beyond_satellite": "The satellite model puts the whole district past the WHO's first interim target, 35 µg/m³.",
+        "beyond_satellite": "The European air model puts the whole district past the US EPA's unhealthy level, 35.5 µg/m³.",
         "heat_over": "In {rooms} it has felt past {line}, since {at}.",
         "heat_usual": "In {rooms} it has been hotter than usual since {at}.",
         "line_heat": "this house's heat line, {n} °C feels-like",
@@ -419,7 +420,12 @@ T = {
         "make": "Nearest place to make or fix something: {where}.",
         "todo_above": "{place} is the one to deal with before the next report.",
         "todo_quiet": "Check {place}: it has stopped sending.",
-        "todo_health": "The node itself needs a look: {fix}",
+        "health_poll": "The node has stopped reading its sensors. Check it is switched on.",
+        "health_backup": "The last backup did not run. Whoever set up the node can check it.",
+        "health_frozen": "A sensor is stuck on the same number: {place}. Switching it off and on again usually fixes it.",
+        "health_quiet": "A sensor has gone quiet: {place}.",
+        "health_quiet_any": "A sensor has gone quiet.",
+        "health_other": "The node itself needs a look. Whoever set it up can see what on the Node page.",
         "todo_none": "Nothing needs doing before the next report.",
         "ask": "Ask me anything about the air, the heat or the sea.",
     },
@@ -438,7 +444,7 @@ T = {
         "high_humidity": "{place} lebih lembap dari biasanya.",
         "low_humidity": "{place} lebih kering dari biasanya.",
         "beyond_swell": "Di laut ombak besar berperiode panjang sedang datang.",
-        "beyond_satellite": "Model satelit menempatkan seluruh kecamatan di atas target antara pertama WHO, 35 µg/m³.",
+        "beyond_satellite": "Model udara Eropa menempatkan seluruh kecamatan di atas batas tidak sehat US EPA, 35.5 µg/m³.",
         "heat_over": "Di {rooms} terasa melewati {line}, sejak {at}.",
         "heat_usual": "Di {rooms} lebih panas dari biasanya sejak {at}.",
         "line_heat": "batas panas rumah ini, {n} °C terasa",
@@ -450,7 +456,12 @@ T = {
         "make": "Tempat terdekat untuk membuat atau memperbaiki sesuatu: {where}.",
         "todo_above": "{place} yang perlu diurus sebelum laporan berikutnya.",
         "todo_quiet": "Cek {place}: sudah tidak mengirim data.",
-        "todo_health": "Node-nya sendiri perlu dilihat: {fix}",
+        "health_poll": "Node berhenti membaca sensornya. Pastikan node menyala.",
+        "health_backup": "Cadangan terakhir tidak berjalan. Orang yang memasang node bisa memeriksanya.",
+        "health_frozen": "Sebuah sensor terus menunjukkan angka yang sama: {place}. Biasanya beres jika dimatikan lalu dinyalakan lagi.",
+        "health_quiet": "Sebuah sensor tidak mengirim lagi: {place}.",
+        "health_quiet_any": "Sebuah sensor tidak mengirim lagi.",
+        "health_other": "Node-nya sendiri perlu dilihat. Orang yang memasangnya bisa melihat apa di halaman Node.",
         "todo_none": "Tidak ada yang perlu dilakukan sebelum laporan berikutnya.",
         "ask": "Tanya apa saja tentang udara, panas, atau laut.",
     },
@@ -461,7 +472,7 @@ T = {
         "state_bad": "😷 El aire de dentro está insalubre ahora mismo.",
         "state_warm": "🌫️ El aire de dentro está a medias: ni limpio ni insalubre.",
         "state_clean": "✅ El aire de dentro está limpio.",
-        "state_no_sensor": "🛰️ Aún no hay sensor dentro, así que esto es la comuna y no tus habitaciones.",
+        "state_no_sensor": "🛰️ Aún no hay sensor dentro, así que esto es la zona y no tus habitaciones.",
         "high_pm25": "El aire en {place} estuvo más sucio de lo habitual.",
         "low_pm25": "El aire en {place} estuvo más limpio de lo habitual.",
         "high_temp": "En {place} hizo más calor de lo habitual.",
@@ -469,7 +480,7 @@ T = {
         "high_humidity": "En {place} hubo más humedad de lo habitual.",
         "low_humidity": "En {place} el aire estuvo más seco de lo habitual.",
         "beyond_swell": "Mar adentro llega un oleaje grande y de periodo largo.",
-        "beyond_satellite": "El modelo satelital pone toda la comuna por encima de la primera meta intermedia de la OMS, 35 µg/m³.",
+        "beyond_satellite": "El modelo europeo del aire pone toda la zona por encima del nivel insalubre de la US EPA, 35.5 µg/m³.",
         "heat_over": "En {rooms} la sensación pasa de {line}, desde las {at}.",
         "heat_usual": "En {rooms} hace más calor de lo habitual desde las {at}.",
         "line_heat": "el límite de calor de esta casa, {n} °C de sensación",
@@ -481,11 +492,30 @@ T = {
         "make": "El lugar más cercano para fabricar o reparar algo: {where}.",
         "todo_above": "{place} es lo que hay que atender antes del próximo informe.",
         "todo_quiet": "Revisa {place}: dejó de enviar datos.",
-        "todo_health": "El nodo mismo necesita una revisión: {fix}",
+        "health_poll": "El nodo dejó de leer sus sensores. Comprueba que está encendido.",
+        "health_backup": "La última copia de seguridad no se hizo. Quien instaló el nodo puede revisarlo.",
+        "health_frozen": "Un sensor se quedó en el mismo número: {place}. Apagarlo y encenderlo de nuevo suele arreglarlo.",
+        "health_quiet": "Un sensor dejó de enviar: {place}.",
+        "health_quiet_any": "Un sensor dejó de enviar.",
+        "health_other": "El nodo mismo necesita una revisión. Quien lo instaló puede ver qué en la página Nodo.",
         "todo_none": "No hay nada que hacer antes del próximo informe.",
         "ask": "Pregúntame lo que quieras sobre el aire, el calor o el mar.",
     },
 }
+
+
+# app/agent.py::health_check's `fix` is for whoever runs the node (shell commands, ids); the morning message says the
+# same failure in the household's words, keyed by the check's name. A check not listed here gets health_other.
+HEALTH = {"polled in the last 15 min": "health_poll", "a backup in the last 2 days": "health_backup",
+          "no local sensor's ambient channel is frozen": "health_frozen", "LoRa radios heard in the last hour": "health_quiet"}
+
+
+def _health_line(check: dict, t: dict) -> str:
+    key = HEALTH.get(check.get("check"), "health_other")
+    who = ", ".join(_place({"name": n}) for n in check.get("who") or [])
+    if key in ("health_frozen", "health_quiet") and not who:   # never the id: no name, no name in the sentence
+        key = "health_quiet_any" if key == "health_quiet" else "health_other"
+    return t[key].format(place=who)
 
 
 def _place(row: dict) -> str:
@@ -553,9 +583,9 @@ def sheet(b: dict, locale: str = "en") -> str:
             rooms=rooms, at=hm, line=t["line_heat"].format(n=_n(HEAT_LINE))))
         if len(told) == 2:
             break
-    still_above, places = None, set()
+    still_above, places, lines = None, set(), thresholds()
     for a in [x for x in b.get("alerts") or [] if x.get("level") == "act"]:
-        watch = THRESHOLDS.get(a.get("rule") or "")
+        watch = lines.get(a.get("rule") or "")
         if not watch:
             continue
         metric, line, owner = watch
@@ -622,7 +652,7 @@ def sheet(b: dict, locale: str = "en") -> str:
     elif quiet:
         tail.append(t["todo_quiet"].format(place=_place(quiet)))
     elif bad_check:
-        tail.append(t["todo_health"].format(fix=bad_check["fix"].split(";")[0].split(".")[0]))
+        tail.append(_health_line(bad_check, t))
     else:
         tail.append(t["todo_none"])
     parts.append(" ".join(tail))

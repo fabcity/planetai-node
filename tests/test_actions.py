@@ -11,8 +11,8 @@ import actions as A
 import events as E
 
 ROOT = Path(__file__).resolve().parent.parent
-heat = yaml.safe_load((ROOT / "app/issues/heat.yml").read_text())
-air = yaml.safe_load((ROOT / "app/issues/air.yml").read_text())
+heat = yaml.safe_load((ROOT / "packs/heat/issue.yml").read_text())
+air = yaml.safe_load((ROOT / "packs/air-quality/issue.yml").read_text())
 
 night = dict(inside_temp=29.3, outside_temp=24.9, outside_pm25=10, inside_pm25=8, hour=20, home_has=set(),
              where={"inside"}, kind="sustained")
@@ -67,6 +67,12 @@ kids = E.Event(issue="air", kind="spike", level="warn", opened_at=t0, last_seen_
 said, _ = A.render(air, E.Message(kids, "open", True, None), dict(cook, outside_pm25=11), "en")
 assert said == ("📈 Smoke or dust in Kids and Living Room: 48 µg/m³; the WHO line is 15 µg/m³."
                 "\nOpen the windows and run the purifier for 30 minutes. Outside is cleaner, at 11 µg/m³."), said
+# Urgent air names the EPA's 35.5, everyday air the WHO's 15 (Tomas, 14 Oct; audit, 15 Oct)
+for kind in ("sustained", "danger"):
+    for loc in ("en", "id", "es"):
+        u, _ = A.render(air, E.Message(E.Event(issue="air", kind=kind, level="act", opened_at=t0, last_seen_at=t0,
+                                               peak=48.2, rooms={"Kids"}), "open", True, None), cook, loc)
+        assert "35.5 µg/m³" in u and "WHO" not in u and "OMS" not in u, (kind, loc, u)
 for loc in ("en", "id", "es"):
     for key, issue, ctx in (("air", air, dict(cook, outside_pm25=11)), ("heat", heat, night)):
         for kind in issue["events"]:

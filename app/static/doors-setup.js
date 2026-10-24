@@ -23,10 +23,10 @@ const SETUP_GROUPS = {
   model: ['Model', 'Which model answers, here and on Telegram alike. The strongest one the node can reach is used, and its keys are under Keys.'],
   packs: ['Packs', 'Which packs load, each with its own settings in its card. Code packs stay off until you allow them; read one before you do.'],
   keys: ['Keys', 'Every secret in one place. Each is masked once saved and never shown again.'],
-  sharing: ['Sharing', 'Who may read this node, and everything it sends or announces beyond this machine. Readings stay here; hourly means, Index cells and ρ travel.'],
+  sharing: ['Sharing', 'Who may read this node, and everything it sends or announces beyond this machine. Raw readings stay here; only hourly averages, Index scores and the share of alerts answered leave.'],
   system: ['System', 'Tuning numbers, and what is read once at start: the port, extra containers, backups, the poll interval.'],
 };
-const SETUP_BOOLS = /^(BAD_ENABLED|OPENMETEO_ENABLED|SENSOR_INDOOR|MESH_ALERTS|HA_DISCOVERY|EXPORT_ENABLED|IPFS_PUBLISH|QUIET_HOURS|BAD_INCLUDE_INDOOR|PACKS_ALLOW_CODE)$/;
+const SETUP_BOOLS = /^(OPENMETEO_ENABLED|SENSOR_INDOOR|MESH_ALERTS|HA_DISCOVERY|EXPORT_ENABLED|IPFS_PUBLISH|QUIET_HOURS|PACKS_ALLOW_CODE)$/;
 /* What a screen without the token gets at each level: the node's own rule (app/main.py _SHARE_OFF / _SHARE_OPEN). */
 const SHARE_WORDS = {
   off: ['Off', 'A screen on this network without the token gets the page, the node’s name and the daily open export. Nothing else.'],
@@ -63,11 +63,11 @@ function setupDraw() {
   if (!d) { el.innerHTML = `<p class="fine">GET /settings did not answer this screen.</p>`; return; }
   const unlocked = !!d.unlocked, rows = d.runtime || [], g = SETUP.group;
   const setHere = k => rows.filter(r => r.group === k && r.source === 'gui').length;
-  el.innerHTML = `<header class="sh"><div class="k">Set up · ${esc(D.node.name)}</div><h1>How this node was told to behave.</h1>`
+  el.innerHTML = `<header class="sh" data-learn="settings" data-reads="/settings" data-pack="core"><div class="k">Set up · ${esc(D.node.name)}</div><h1>How this node was told to behave.</h1>`
     + `<p class="lede">Everything here is live within about twenty seconds; nothing needs a restart. A blank field hands the setting back to <code>.env</code>, and a value set here overrides it.</p></header>`
-    + `<div class="sgrid"><nav class="snav" aria-label="Set up sections">${SECTIONS().map(s => `<a href="#setup/${s}" class="${s === g ? 'on' : ''}" data-s="${s}">`
+    + `<div class="sgrid" data-learn="setup-sections" data-reads="/settings /health/sources"><nav class="snav" aria-label="Set up sections">${SECTIONS().map(s => `<a href="#setup/${s}" class="${s === g ? 'on' : ''}" data-s="${s}">`
       + `<span>${esc(sName(s))}</span>${s === 'screen' ? `<i>${unlocked ? 'unlocked' : 'locked'}</i>` : s === 'updates' ? (D.health.release || {}).newer ? '<i>new</i>' : '' : s === 'machine' ? (SETUP.storage && SETUP.storage.days_left != null ? `<i>${sDays(SETUP.storage.days_left)}</i>` : '') : setHere(s) ? `<i>${setHere(s)} set</i>` : ''}</a>`).join('')}</nav>`
-    + `<section class="spane" aria-live="polite">${sTodo()}${g === 'screen' ? sScreen(unlocked) : g === 'updates' ? sUpdates() : g === 'machine' ? sMachine() : g === 'rooms' ? sRooms(unlocked) : sGroup(g, unlocked)}</section></div>`
+    + `<section class="spane" aria-live="polite" data-learn="setup-save" data-reads="/settings /actions">${sTodo()}${g === 'screen' ? sScreen(unlocked) : g === 'updates' ? sUpdates() : g === 'machine' ? sMachine() : g === 'rooms' ? sRooms(unlocked) : sGroup(g, unlocked)}</section></div>`
     + `<div class="sbar" id="sbar" hidden><span id="scount"></span><span class="sp"></span><button type="button" class="sbtn" id="sdiscard">Discard</button><button type="button" class="sbtn primary" id="ssave">Save changes</button></div>`;
   sqa('.snav a').forEach(a => a.onclick = ev => {
     ev.preventDefault();
@@ -128,7 +128,7 @@ function sRow(r, unlocked) {
       `<label class="opt ${(r.value || 'off') === v ? 'on' : ''}"><input type="radio" name="SHARE_LEVEL" value="${v}" data-key="SHARE_LEVEL" ${(r.value || 'off') === v ? 'checked' : ''}${dis}><b>${t}</b><span>${s2}</span></label>`).join('')}</div>`;
     return `<div class="srow wide">${left}${ctl}${err}</div>`;
   }
-  if (SETUP_BOOLS.test(r.key)) {
+  if (SETUP_BOOLS.test(r.key) || (r.pack && /_ENABLED$/.test(r.key))) {   /* a pack's own on-switch, whichever pack */
     const on = r.value === '1';
     ctl = `<button type="button" role="switch" aria-checked="${on}" aria-labelledby="${id}" id="${id}" class="sw ${on ? 'on' : ''}" data-key="${esc(r.key)}" data-bool="1"${dis}><span>${on ? 'on' : 'off'}</span></button>`;
   } else {
@@ -153,14 +153,14 @@ function sGroup(g, unlocked) {
         + `<div><b>${esc(p.name || p.id)}</b><div class="sm">${esc(p.kind || '')}${p.domain ? ` · ${esc(p.domain)}` : ''} · v${esc(p.version || '')} · ${esc(p.author || '')}</div><p class="help">${esc(p.description || '')}</p></div></div>`
         + rows.filter(r => r.pack === p.id).map(r => sRow(r, unlocked)).join('') + `</section>`; }).join('')}</div>` + body;
   }
-  /* what is read once at start: one table, and the way to change it said once */
-  const B = (d.bootstrap || []).filter(b => (b.group || 'system') === g);
+  /* what is read once at start: one table, and the way to change it said once. Grafana's three keys are its own block. */
+  const B = (d.bootstrap || []).filter(b => (b.group || 'system') === g && !/^GRAFANA_/.test(b.key));
   const boot = B.length ? `<h3 class="sub2">Read at start</h3><p class="blurb">Change these in <code>.env</code> on the node, then run <code>planetai restart</code>.</p>`
     + `<table class="tbl ro"><tr><th>setting</th><th class="hide">key</th><th>value</th></tr>${B.map(b => `<tr><td>${esc(b.label)}</td><td class="hide mono">${esc(b.key)}</td>`
       + `<td class="mono">${b.value ? esc(b.value) : '<span class="fine">not set</span>'}</td></tr>`).join('')}</table>` : '';
   const changed = (SETUP.history || []).filter(a => rows.some(r => String(a.note || '').split(', ').includes(r.key))).slice(0, 5);
   return `<h2>${esc(sTitle(g))}</h2><p class="blurb">${esc((SETUP_GROUPS[g] || [])[1] || 'This node declares this group. planetai config shows the same keys.')}</p>${gate}`
-    + `<div class="rows">${body}</div>${boot}`
+    + `<div class="rows">${body}</div>${g === 'system' ? sGrafana(d.bootstrap || []) : ''}${boot}`
     + (changed.length ? `<div class="hist"><div class="k">changed lately</div>${changed.map(a => `<p><span class="mono">${esc(wdhm(a.ts))}</span> · ${esc(a.actor || 'someone')} · ${esc(a.note || '')}</p>`).join('')}</div>` : '');
 }
 
@@ -245,6 +245,25 @@ function sStorageBody(S) {
       .map(([t, v]) => `<div class="srow"><div class="sl"><label>${t}</label></div><div class="sc txt">${v}</div></div>`).join('') + `</div>`;
 }
 
+/* Grafana (docs/site/grafana.md, Tomas 24 Oct 2026: "I don't see it in the set up menu"): whether it runs, where, and how
+   to open it. It listens on the node's own machine unless GRAFANA_BIND opens it, so the way in from a laptop is a tunnel.
+   Its keys are read at start; the password is only ever "set" or not (settings.BOOTSTRAP_SECRET). */
+function sGrafana(B) {
+  const v = k => (B.find(b => b.key === k) || {}).value || '';
+  const on = v('COMPOSE_PROFILES').split(',').map(x => x.trim()).includes('grafana');
+  const bind = v('GRAFANA_BIND') || '127.0.0.1', port = v('GRAFANA_PORT') || '3000', host = location.hostname || 'the node';
+  const loop = bind === '127.0.0.1' || bind === 'localhost', docs = (D.health.docs || 'https://planetai.fab.city/docs/') + 'grafana/';
+  const open = !on ? `Off. Turn it on with <code>planetai grafana</code> on the node; <code>planetai grafana off</code> stops it again.`
+    : loop ? `On, on the node’s own machine only. From a laptop: <code>ssh -L ${esc(port)}:localhost:${esc(port)} &lt;the node’s machine&gt;</code>, then open <code>http://localhost:${esc(port)}</code>.`
+    : `On, open to this network: <a href="http://${esc(host)}:${esc(port)}" target="_blank" rel="noopener">http://${esc(host)}:${esc(port)} ↗</a>`;
+  return `<h3 class="sub2" id="grafana">Grafana</h3><p class="blurb">Your own charts over this node’s raw readings, beside this dashboard. It reads everything, room names and private counts included, and none of the dashboard’s rules: a model looks like a measurement unless you tell them apart.</p><div class="rows">`
+    + [['State', open],
+       ['Address', `<code>${esc(bind)}:${esc(port)}</code>${loop ? '' : ' · <b>every screen on the network can reach the sign-in</b>'}`],
+       ['Password', v('GRAFANA_ADMIN_PASSWORD') ? 'set (<code>GRAFANA_ADMIN_PASSWORD</code>)' : `not set: Grafana’s <code>admin</code> login is <code>admin</code>. Set <code>GRAFANA_ADMIN_PASSWORD</code> in <code>.env</code> before you open it to the network.`],
+       ['Read more', `<a href="${esc(docs)}" target="_blank" rel="noopener">Grafana: turning it on, what it can read, what it will not tell you ↗</a>`]]
+      .map(([t, x]) => `<div class="srow"><div class="sl"><label>${t}</label></div><div class="sc txt">${x}</div></div>`).join('') + `</div>`;
+}
+
 function sUpdates() {
   const h = D.health, rel = h.release || {}, docs = h.docs || 'https://planetai.fab.city/docs/';
   /* the release check asks once a day, so its answer ages within the day — "checked 2026-10-08"
@@ -307,7 +326,7 @@ function sConsequences(body, desc, packs, drawn) {
       const ids = packs.map(p => p.id), was = drawn ? drawn.split(',') : ids, now = v ? v.split(',') : ids;
       for (const p of packs.filter(x => x.kind === 'code' && now.includes(x.id) && !was.includes(x.id)))
         out.push({ key: 'PACKS_ENABLED', label: p.name || p.id, to: 'on', code: true,
-          help: `A code pack: its adapter.py runs on this machine with the node’s privileges, while Allow code packs is on. ${p.description || ''}`.trim() });
+          help: `A code pack: its Python (an adapter, hooks or scripts) runs on this machine with the node’s privileges. ${p.description || ''}`.trim() });
       continue;
     }
     const r = rows.find(x => x.key === k) || {};

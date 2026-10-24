@@ -22,6 +22,7 @@
 #   planetai mesh           join the tailnet: reach this node from anywhere, no open ports
 #   planetai meshtastic     LoRa sensors and alerts via a gateway radio (sets up the broker, prints gateway settings)
 #   planetai broker         a DIY node publishing straight to this node (sets up the broker, prints the portal values)
+#   planetai radio          LoRa radios: provision by role, the node as their USB gateway, federate nodes (tools/radio.py)
 #   planetai reticulum      give the node an LXMF address: encrypted messaging over TCP or LoRa (RNode)
 #   planetai homeassistant  publish sensors and alerts as Home Assistant entities (MQTT discovery)
 #   planetai packs          what is loaded; `packs install` adds code-pack settings to .env and their libraries to the image
@@ -31,6 +32,7 @@
 #   planetai backup         dump + export + copy now, instead of waiting for 03:17
 #   planetai restore <f>    replace the live database with a dump (takes a safety backup first)
 #   planetai ipfs           publish each day's export to IPFS
+#   planetai grafana        your own panels over this node's readings, beside the dashboard; `grafana off` stops it
 #   planetai agent          connect an AI agent: the MCP endpoint, the token, config snippets
 #   planetai agent local    a model on this machine (Ollama) that runs the node and answers on Telegram; `agent stop` stops it
 #   planetai run <pack> <script> [args]   run a script a pack ships; output lands in out/
@@ -48,7 +50,7 @@ set -euo pipefail
 resolve() { local t="$1"; while [[ -L "$t" ]]; do local d; d="$(cd "$(dirname "$t")" && pwd)"; t="$(readlink "$t")"; [[ "$t" != /* ]] && t="$d/$t"; done; echo "$t"; }
 HOME_DIR="${PLANETAI_HOME:-$(cd "$(dirname "$(resolve "$0")")/.." && pwd)}"
 LOG="$HOME_DIR/.planetai-setup.log"
-cd "$HOME_DIR" 2>/dev/null || { echo "no node at $HOME_DIR. Install with: curl -fsSL planetai.fab.city/install | bash"; exit 1; }
+cd "$HOME_DIR" 2>/dev/null || { echo "no node at $HOME_DIR. Install with: curl -fsSL https://planetai.fab.city/install | bash"; exit 1; }
 # every long step appends here and nothing ever trimmed it: node #1's was 600 KB after four days. Keep the last ~200 KB.
 if [[ -f "$LOG" ]] && [[ "$(wc -c < "$LOG" | tr -d ' ')" -gt 1000000 ]]; then tail -c 200000 "$LOG" > "$LOG.tmp" && mv "$LOG.tmp" "$LOG"; fi
 
@@ -80,7 +82,7 @@ version() { git describe --tags --always 2>/dev/null || cat VERSION 2>/dev/null 
 # and `update.sh`; tests/test_release_consistency.sh fails if the four drift. A node should be able to
 # say what it trusts without anybody having to read a file on it — that is what `planetai version` is for.
 read -r -d '' ALLOWED_SIGNERS <<'SIGNERS' || true
-fabcity ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINbgbaRosyOEVk7c4iBHc5iXn9H7F1s9QGwhXBGt+qay fabcity
+fabcity ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGvxokFMBrpVd/yz/zAhYzIMTp4MZTPp+y5ulSoDX71/ fabcity
 SIGNERS
 # Never fails: `planetai version` is what somebody runs when nothing else works.
 signer_fingerprint() {
@@ -289,7 +291,7 @@ PY
     echo "  What runs here is what is in this folder, so a fix released after you downloaded it is not in it."
     echo "  One line replaces the code and keeps your settings, your data and your answers:"
     echo
-    echo "    curl -fsSL planetai.fab.city/install | bash"
+    echo "    curl -fsSL https://planetai.fab.city/install | bash"
     echo
     if [[ -t 1 ]] && ( : </dev/tty ) 2>/dev/null && confirm "  Do that now?"; then
       exec bash -c "$(curl -fsSL https://planetai.fab.city/install)"
@@ -429,7 +431,7 @@ boxes = {"bali": (-9.2, -8.0, 114.4, 115.8), "barcelona": (41.25, 41.55, 1.9, 2.
 print(next((k for k, (a, b, c, d) in boxes.items() if a < lat < b and c < lon < d), ""))' "$lat" "$lon")"
   [[ -n "$pilot" ]] && city="$pilot"
   local bad=0; [[ "$pilot" == bali ]] && bad=1
-  [[ $bad -eq 1 ]] && say "that's Bali: the island air archive (Bali Air Dispatch) will be used as your outdoor reference." \
+  [[ $bad -eq 1 ]] && say "that's Bali: the island's public stations (the bali-air-dispatch pack) will be your outdoor reference." \
                     || say "outdoor reference: the global CAMS model at your coordinates (no key, works everywhere)."
 
   # 3. what kind of node — decides defaults, not the Index scale (a house is still a Community-scale observation)
@@ -447,15 +449,11 @@ print(next((k for k, (a, b, c, d) in boxes.items() if a < lat < b and c < lon < 
   local sensor sc ag pa indoor=0        # not `kind`: that already holds home|business|community|district from question 3
   choose sensor "   Pick one. You can add more later." \
     "None yet. Start with the global models and add hardware when I have it." \
-    "Smart Citizen kit (I have the number from its smartcitizen.me URL)" \
-    "AirGradient on my WiFi" \
-    "PurpleAir on my WiFi"
+    "Smart Citizen kit (I have the number from its smartcitizen.me URL)"
+  # AirGradient and PurpleAir come back when the air-sensors pack reads them (the sensors spec, PR #262, step 3): until
+  # then the node never read either, and an operator who picked one got no reading and no first alert.
   case "$sensor" in
     Smart*) ask sc "   Kit number" ""; [[ "$sc" =~ ^[0-9]+$ ]] || fail "a Smart Citizen kit number is digits only, e.g. 19880" ;;
-    AirGradient*) ask ag "   Its hostname or IP (on the device's sticker, or in your router)" "airgradient_XXXXXX.local"
-                  confirm "   Is it indoors?" && indoor=1 ;;
-    PurpleAir*)   ask pa "   Its IP address (from your router; the .local name is unreliable)" ""
-                  confirm "   Is it indoors?" && indoor=1 ;;
   esac
 
   # summary
@@ -472,14 +470,13 @@ print(next((k for k, (a, b, c, d) in boxes.items() if a < lat < b and c < lon < 
   envset NODE_TZ "$tz"; envset NODE_CITY "$city"; envset NODE_KIND "$kind"
   [[ -n "${sc:-}" ]] && envset SC_DEVICES "$sc"; [[ -n "${ag:-}" ]] && envset AIRGRADIENT_HOSTS "$ag"
   [[ -n "${pa:-}" ]] && envset PURPLEAIR_HOSTS "$pa"; [[ $indoor -eq 1 ]] && envset SENSOR_INDOOR 1
-  [[ $bad -eq 0 ]] && envset BAD_ENABLED 0
 
   # install
   step "Installing"
   local flags=(--name "$name" --lat "$lat" --lon "$lon")
   [[ -n "$pilot" ]] && flags+=(--preset "$pilot")     # the pilot's portal and references; the coordinates typed here still win
   [[ -n "${sc:-}" ]] && flags+=(--sc "$sc"); [[ -n "${ag:-}" ]] && flags+=(--airgradient "$ag"); [[ -n "${pa:-}" ]] && flags+=(--purpleair "$pa")
-  [[ $indoor -eq 1 ]] && flags+=(--indoor); [[ $bad -eq 0 ]] && flags+=(--no-bad)
+  [[ $indoor -eq 1 ]] && flags+=(--indoor)
   chmod +x install.sh backup.sh update.sh 2>/dev/null || true
   # NOT wrapped in spin(): install.sh prints named steps with elapsed time, and hiding them behind one
   # spinner line is precisely what left a tester watching "building the node" for four minutes and then
@@ -501,7 +498,7 @@ finish_setup() {
   spin "waiting for the first answer" bash -c 'for i in $(seq 1 30); do curl -sf "http://localhost:$(grep ^APP_PORT= .env | cut -d= -f2 | sed "s/[[:space:]]*#.*$//" | tr -d " " || echo 8080)/health" >/dev/null && exit 0; sleep 1; done; exit 1' || true
   api /health >/dev/null || fail "the node is not answering on port $(port). Look at: planetai logs"
   cmd_doctor quiet || true
-
+  [[ -f out/ground/vector.mbtiles ]] || offer_map
   what_next
 }
 
@@ -707,21 +704,44 @@ if mode != "full" and todo:
         print("   %d. %s" % (i, r["fix"]))
         if r.get("setup") and not r.get("command") and r["state"] == "missing":
             print("      %shttp://localhost:%s/%s%s" % (D, port, r["setup"], N))
+# the first unfinished step to offer, and whether the map is missing: it has an offer of its own, after the first
+f = next((r for r in todo if r["id"] != "map"), None) or {"command": "", "setup": "", "name": ""}
 if todo:
-    f = todo[0]
-    print("\x1f" + (f["command"] or "") + "\x1f" + (f["setup"] or "") + "\x1f" + f["name"])
+    print("\x1f" + (f["command"] or "") + "\x1f" + (f["setup"] or "") + "\x1f" + f["name"] + "\x1f"
+          + ("1" if any(r["id"] == "map" for r in todo) else ""))
 ' "$mode" "$(port)" "$G" "$R" "$D" "$B" "$N")" || return 1
   first="${out##*$'\n'}"; [[ "$first" == $'\x1f'* ]] && out="${out%$'\n'*}" || first=""
   printf '%s\n' "$out"
   [[ "$mode" == "--guide" && -n "$first" ]] || return 0
   [[ -t 1 ]] && ( : </dev/tty ) 2>/dev/null || return 0     # no terminal (cron, an agent, a pipe): the list is enough
-  local cmd anchor name; IFS=$'\x1f' read -r _ cmd anchor name <<< "$first"
-  if [[ -n "$cmd" ]]; then printf '\n  Do the first one now: %s%s%s?  %s[y]%s yes   %s[Enter]%s later\n  ' "$B" "$cmd" "$N" "$B" "$N" "$B" "$N"
-  else printf '\n  Open %s in Set up now?  %s[y]%s open the dashboard   %s[Enter]%s later\n  ' "$name" "$B" "$N" "$B" "$N"; fi
-  local k; IFS= read -r -n1 k </dev/tty || k=""; echo
-  [[ "$k" == [yY] ]] || return 0
-  if [[ -n "$cmd" ]]; then "$HOME_DIR/bin/planetai" ${cmd#planetai }
-  else local u="http://localhost:$(port)/$anchor"; open "$u" 2>/dev/null || xdg-open "$u" 2>/dev/null || echo "  open $u in a browser"; fi
+  local cmd anchor name map k; IFS=$'\x1f' read -r _ cmd anchor name map <<< "$first"
+  if [[ -n "$name" ]]; then
+    if [[ -n "$cmd" ]]; then printf '\n  Do the first one now: %s%s%s?  %s[y]%s yes   %s[Enter]%s later\n  ' "$B" "$cmd" "$N" "$B" "$N" "$B" "$N"
+    else printf '\n  Open %s in Set up now?  %s[y]%s open the dashboard   %s[Enter]%s later\n  ' "$name" "$B" "$N" "$B" "$N"; fi
+    # a whole line, not -n1: a "y" then Enter would leave the Enter to answer the map's question below
+    IFS= read -r k </dev/tty || k=""
+    if [[ "$k" == [yY]* ]]; then
+      if [[ -n "$cmd" ]]; then "$HOME_DIR/bin/planetai" ${cmd#planetai }
+      else local u="http://localhost:$(port)/$anchor"; open "$u" 2>/dev/null || xdg-open "$u" 2>/dev/null || echo "  open $u in a browser"; fi
+    fi
+  fi
+  [[ "$map" == 1 ]] && offer_map
+  return 0
+}
+
+# The map of this place, its own question (Tomas, 19 Oct 2026: "it should be one of the basic setup steps"): what it
+# fetches and who learns what, said before it runs, as packs/place/basemap.py's docstring says it. Asked only in a
+# terminal: the doctor's --guide (install, update) and setup, never with --yes, from cron or by an agent.
+offer_map() {
+  [[ -t 1 ]] && ( : </dev/tty ) 2>/dev/null || return 0
+  local km; km="$(setting GROUND_RADIUS_KM 2>/dev/null || true)"; km="${km:-$(envget GROUND_RADIUS_KM || true)}"; km="${km:-12}"
+  printf '\n  %sThe map of this place%s: OpenStreetMap streets, buildings and names, and drone imagery where somebody flew,\n' "$B" "$N"
+  printf '  fetched once onto this node (a few minutes, up to tens of MB). build.protomaps.com and OpenAerialMap learn roughly\n'
+  printf '  where this node is: the squares within %s km of it. After that nothing is sent; tiles are read from out/ground/.\n' "$km"
+  printf '  Fetch it now: %splanetai run place basemap%s?  %s[y]%s yes   %s[Enter]%s later\n  ' "$B" "$N" "$B" "$N" "$B" "$N"
+  local k; IFS= read -r k </dev/tty || k=""            # a whole line, so its Enter never answers what_next's question
+  [[ "$k" == [yY]* ]] || return 0
+  "$HOME_DIR/bin/planetai" run place basemap || warn "the map did not finish; run it again later: planetai run place basemap"
 }
 
 cmd_logs() { docker compose logs -f --tail=80 "${1:-app}"; }
@@ -1039,13 +1059,38 @@ T
 }
 
 # ---------------------------------------------------------------- reticulum: an LXMF address for the node
+# The bridge has its own repository, fabcity/planetai-reticulum (Apache-2.0): rns and lxmf are under the Reticulum
+# License, and the AGPL this repository is moving to allows no extra conditions inside it
+# (docs/decisions/2026-10-23-reticulum-licence.md). A node fetches it the way `packs add` fetches a wild pack, with
+# curl and tar at one pinned commit, and builds the image itself; Fab City publishes no image with rns in it.
+# Moving the pin is its own PR, after reading rns's and lxmf's LICENSE at the versions that commit installs.
+RETICULUM_REPO="fabcity/planetai-reticulum"
+RETICULUM_REF="b84c24f374faabc984d4e726ba616f2d7e8b8a1a"
+reticulum_fetch() {
+  [[ "$(cat reticulum/.ref 2>/dev/null)" == "$RETICULUM_REF" ]] && return 0
+  local tmp; tmp="$(mktemp -d)"
+  if ! { curl -fsSL "https://codeload.github.com/$RETICULUM_REPO/tar.gz/$RETICULUM_REF" -o "$tmp/r.tgz" \
+         && tar xzf "$tmp/r.tgz" -C "$tmp" 2>>"$LOG" && [[ -f "$tmp/planetai-reticulum-$RETICULUM_REF/Dockerfile" ]]; }; then
+    rm -rf "$tmp"; fail "could not download the bridge, $RETICULUM_REPO at ${RETICULUM_REF:0:12}"
+  fi
+  rm -rf reticulum && mv "$tmp/planetai-reticulum-$RETICULUM_REF" reticulum && echo "$RETICULUM_REF" > reticulum/.ref
+  rm -rf "$tmp"
+}
+
 cmd_reticulum() {
+  # `planetai reticulum build`: what update.sh runs on a node with the bridge on, so it runs the commit its release pins
+  if [[ "${1:-}" == build ]]; then reticulum_fetch; docker compose build reticulum >>"$LOG" 2>&1 || fail "the bridge did not build; see $LOG"; return; fi
   step "Reticulum"
   echo "  Gives this node an address on a Reticulum network: encrypted, works over TCP (LAN or tailnet) today and over"
   echo "  a LoRa RNode when one is plugged in. People message it from Sideband; 'act <id>' closes an alert's loop;"
   echo "  alerts go out to the addresses you list."
+  echo "  rns and lxmf are under the Reticulum License, which is not an open licence. Read what it asks of you first:"
+  echo "    https://planetai.fab.city/docs/channels/"
   echo
-  [[ -f config/reticulum/config ]] || cp config/reticulum/config.tpl config/reticulum/config
+  say "fetching the bridge from $RETICULUM_REPO at ${RETICULUM_REF:0:12}"
+  reticulum_fetch
+  mkdir -p config/reticulum
+  [[ -f config/reticulum/config ]] || cp reticulum/config.tpl config/reticulum/config
   envset RETICULUM_URL http://reticulum:4243
   profiles_add reticulum
   say "building and starting the bridge (first time: a minute)"
@@ -1103,21 +1148,31 @@ cmd_homeassistant() {
 # in this CLI needs a third-party library — a tool that reports what is installed must not itself need installing.
 # Handles `pip: [a, b]` and a block list of `- a` lines.
 # `env:` lines from pack.yaml, same awk approach as pack_pips (no PyYAML on a node).
+# Both read the packs this node loads, as GET /packs answers, so `install` neither builds a library nor adds a setting
+# for a pack left out of PACKS_ENABLED. With the node down, every folder: what is on disk is all that can be known.
+pack_yamls() {
+  local ids; ids="$(api /packs 2>/dev/null | python3 -c 'import json,sys; print(" ".join(p["id"] for p in json.load(sys.stdin)))' 2>/dev/null)"
+  if [[ -z "$ids" ]]; then ls packs/*/pack.yaml 2>/dev/null; return; fi
+  local id; for id in $ids; do [[ -f "packs/${id}/pack.yaml" ]] && echo "packs/${id}/pack.yaml"; done
+}
+
 pack_envs() {
+  local f; f="$(pack_yamls)"; [[ -n "$f" ]] || return 0
   awk '
     /^env:[[:space:]]*$/ { inenv=1; next }
     inenv && /^[[:space:]]*-[[:space:]]*/ { s=$0; sub(/^[[:space:]]*-[[:space:]]*/,"",s); gsub(/^"|"$/,"",s); if(s!="") print s; next }
     inenv && /^[^[:space:]-]/ { inenv=0 }
-  ' packs/*/pack.yaml 2>/dev/null
+  ' $f 2>/dev/null
 }
 
 pack_pips() {
+  local f; f="$(pack_yamls)"; [[ -n "$f" ]] || return 0
   awk '
     /^pip:[[:space:]]*\[/ { s=$0; sub(/^pip:[[:space:]]*\[/,"",s); sub(/\].*$/,"",s); n=split(s,a,","); for(i=1;i<=n;i++){ gsub(/[[:space:]"'"'"']/,"",a[i]); if(a[i]!="") print a[i] } ; next }
     /^pip:[[:space:]]*$/ { inpip=1; next }
     inpip && /^[[:space:]]*-[[:space:]]*/ { s=$0; sub(/^[[:space:]]*-[[:space:]]*/,"",s); gsub(/[[:space:]"'"'"']/,"",s); if(s!="") print s; next }
     inpip { inpip=0 }
-  ' packs/*/pack.yaml 2>/dev/null | sort -u
+  ' $f 2>/dev/null | sort -u
 }
 
 cmd_packs() {
@@ -1185,7 +1240,7 @@ packs_install() {
   done < <(pack_envs)
   [[ $added -gt 0 ]] && warn "${added} pack setting(s) added to .env — fill them in, then planetai restart" || true
 
-  # pip: lists from every pack folder present. A rebuild installs for all of them, enabled or not; cheap and simple.
+  # pip: lists from the packs this node loads (pack_yamls), so a pack left out of PACKS_ENABLED adds nothing to the image.
   local reqs; reqs="$(pack_pips)"
   if [[ -z "$reqs" ]]; then say "no code pack declares Python dependencies; nothing to install"; return; fi
   if [[ "$(cat app/requirements-packs.txt 2>/dev/null)" == "$reqs" ]]; then
@@ -1282,7 +1337,7 @@ print(e[0].get("source", ""), e[0].get("commit", "-"), e[0].get("status", "liste
   if [[ -e "packs/$id" && ! -f "packs/$id/.wild" ]]; then
     fail "packs/$id is already here and did not come from packs add: it is a core pack, or one put there by hand. A wild pack never replaces it."
   fi
-  local kind=data verb=added; if [[ -f "$from/adapter.py" ]]; then kind=code; fi
+  local kind=data verb=added; if [[ -f "$from/adapter.py" || -f "$from/hooks.py" ]]; then kind=code; fi
   if [[ -d "packs/$id" ]]; then verb="updated from $(wildget "$id" commit | cut -c1-12)"; rm -rf "packs/$id"; fi
   mkdir -p packs && mv "$from" "packs/$id"
   printf 'source=%s\ncommit=%s\nadded=%s\n' "$src" "$sha" "$(date +%F)" > "packs/$id/.wild"
@@ -1291,7 +1346,7 @@ print(e[0].get("source", ""), e[0].get("commit", "-"), e[0].get("status", "liste
   elif [[ "$status" != "reviewed" ]]; then warn "it is listed, not reviewed: nobody who keeps the wild list has read it."
   fi
   if [[ "$kind" == code ]]; then
-    warn "a code pack runs Python with this node's privileges, and only with PACKS_ALLOW_CODE=1. Read packs/$id/adapter.py first."
+    warn "a code pack runs Python with this node's privileges, and only with PACKS_ALLOW_CODE=1. Read its adapter.py and hooks.py first."
   fi
   local why; why="$(packs_refused "$id" | cut -f2-)"
   if [[ -n "$why" ]]; then warn "it will not load on this node: $why."; fi
@@ -1311,7 +1366,7 @@ cmd_run() {
     echo "available:"
     for f in packs/*/*.py; do
       local p s; p="$(basename "$(dirname "$f")")"; s="$(basename "$f" .py)"
-      [[ "$s" == "adapter" ]] && continue
+      [[ "$s" == "adapter" || "$s" == "hooks" ]] && continue
       # the first line of the module docstring, wherever the docstring starts; a file without one shows nothing,
       # not its first import line
       local desc; desc="$(awk '
@@ -1346,7 +1401,7 @@ cmd_ui() {
   echo "  On this machine:      http://localhost:${p}/"
   [[ -n "$ip" ]] && echo "  On your network:      http://${ip}:${p}/"
   [[ -n "$(envget MESH_NAME)" ]] && echo "  On the tailnet:       http://$(envget MESH_NAME):${p}/"
-  echo "  On a wall screen:     add  #wall  — the dark register, moves its own ladder; needs SHARE_LEVEL=open"
+  echo "  On a wall screen:     add  #wall  (the Wall door: walks out from the house, never shows a room; needs SHARE_LEVEL=open)"
   echo
   local lvl; lvl="$(setting SHARE_LEVEL)"; lvl="${lvl:-off}"
   if [[ "$lvl" == "off" ]]; then
@@ -1453,13 +1508,13 @@ proj()  { printf '%s' "${COMPOSE_PROJECT_NAME:-$(basename "$PWD")}"; }
 # basename "$PWD" is "/".
 node_volumes() { local pj="${1:-$(proj)}"
   { { docker volume ls -q --filter "label=com.docker.compose.project=$pj" 2>/dev/null || true
-      docker volume ls -q 2>/dev/null | grep -E "^${pj}_(db|mosquitto|reticulum|ipfsdata)$" || true
+      docker volume ls -q 2>/dev/null | grep -E "^${pj}_(db|mosquitto|reticulum|ipfsdata|grafana|grafana-secret)$" || true
     } | sort -u; } || true
 }
 # The names a node's volumes WOULD have, computable with no daemon at all. When docker is unreachable
 # we cannot list what exists, but we can still tell somebody exactly what to delete later — deleting
 # the folder is what otherwise leaves that data with nothing left on the machine that names it.
-node_volume_names() { local pj="${1:-$(proj)}" v; for v in db mosquitto reticulum ipfsdata; do printf '%s_%s\n' "$pj" "$v"; done; }
+node_volume_names() { local pj="${1:-$(proj)}" v; for v in db mosquitto reticulum ipfsdata grafana grafana-secret; do printf '%s_%s\n' "$pj" "$v"; done; }
 
 cmd_remove() {
   local keep=0; [[ "${1:-}" == "--keep-data" ]] && keep=1
@@ -1576,7 +1631,7 @@ cmd_remove() {
     printf '\n   %sThis matters: a fresh install into the same folder re-attaches a leftover volume and\n' "$Y"
     printf '   comes up carrying the old node\047s readings and name.%s\n' "$N"
   fi
-  echo "   To run one here again:  curl -fsSL planetai.fab.city/install | bash"
+  echo "   To run one here again:  curl -fsSL https://planetai.fab.city/install | bash"
 }
 
 cmd_restore() {
@@ -1615,6 +1670,30 @@ cmd_ipfs() {
 }
 
 
+cmd_grafana() {
+  step "Grafana"
+  if [[ "${1:-}" == "off" ]]; then
+    envset COMPOSE_PROFILES "$(envget COMPOSE_PROFILES | tr ',' '\n' | { grep -vx grafana || true; } | paste -sd, -)"
+    docker compose --profile grafana rm -sf grafana grafana-role >>"$LOG" 2>&1 || true
+    docker compose exec -T db psql -U planetai -d planetai -qc "DROP ROLE IF EXISTS planetai_grafana" >>"$LOG" 2>&1 \
+      || warn "could not drop the planetai_grafana login; see $LOG"
+    say "off. The login is gone; your own dashboards stay in the grafana volume for next time."
+    return
+  fi
+  echo "  Your own panels over this node's readings, beside the dashboard. It reads the database read-only, as"
+  echo "  planetai_grafana: every table but settings, raw readings included. A starter dashboard is in the PLANETAI folder;"
+  echo "  Save as makes a copy that is yours. docs/site/grafana.md lists what Grafana will not tell you on its own."
+  echo
+  profiles_add grafana
+  docker compose up -d grafana >>"$LOG" 2>&1 || fail "could not start grafana; see $LOG"
+  local bind port; bind="$(envget GRAFANA_BIND)"; port="$(envget GRAFANA_PORT)"
+  say "http://${bind:-127.0.0.1}:${port:-3000}"
+  if [[ -z "$(envget GRAFANA_ADMIN_PASSWORD)" ]]; then
+    warn "the login is admin / admin until you change it; set GRAFANA_ADMIN_PASSWORD in .env before GRAFANA_BIND=0.0.0.0"
+  fi
+}
+
+
 # ---------------------------------------------------------------- agents: the node as tools over MCP
 cmd_agent() {
   step "Agents"
@@ -1639,7 +1718,7 @@ cmd_agent() {
   cat <<JSON
     {"mcpServers": {"planetai-$(envget NODE_NAME)": {"type": "http",
       "url": "http://${dns:-<node>}:${p}/mcp",
-      "headers": {"Authorization": "Bearer ${tok:-<ADMIN_TOKEN>}", "X-Agent": "tomas-claude"}}}}
+      "headers": {"Authorization": "Bearer ${tok:-<ADMIN_TOKEN>}", "X-Agent": "kitchen-claude"}}}}
 JSON
   echo
   echo "  A local model on this machine (Ollama with an MCP client, e.g. mcphost or oterm): same URL with localhost."
@@ -2317,7 +2396,7 @@ open(os.environ["REG"], "w").write(out + "\n")'
        --body "Sent by \`planetai hello\` from $name. The merge is the approval (SPEC.md §2, docs/SPEC_hello.md §5)." ) \
     || fail "could not open the pull request. The change is in $repo; or by hand: $edit"
   rm -rf "$tmp"
-  say "sent. When it is merged, every node lists $name within six hours."
+  say "sent. When it is merged, every node lists $name within the hour."
 }
 
 cmd_version() {
@@ -2325,6 +2404,21 @@ cmd_version() {
   # Who this node will take code from. SECURITY.md publishes the same fingerprint; if the two disagree,
   # something replaced bin/planetai and this line is the one that says so.
   echo "  updates signed by  fabcity  $(signer_fingerprint)"
+}
+
+cmd_radio() {
+  # Python, not Bash: it talks to radios through the meshtastic package, which the CLI's Python 3.9 floor does not
+  # carry. So it is its own file and says what to install rather than failing on an import.
+  # `python3 -m pip` installs for the very python3 that runs radio.py (a bare pip3 can belong to another one), and
+  # Apple's Python 3.9 needs pyobjc below 12: 12.0 was yanked for 3.9 and does not build there (node #1, 17 Oct).
+  # On its own it is the guide, which needs neither package and says how to install them as its first step.
+  if [[ $# -gt 0 ]] && ! python3 -c 'import meshtastic, paho.mqtt' 2>/dev/null; then
+    pins=""
+    [[ "$(uname)" == Darwin ]] && python3 -c 'import sys; sys.exit(sys.version_info >= (3, 10))' 2>/dev/null \
+      && pins='"pyobjc-core<12" "pyobjc-framework-Cocoa<12" "pyobjc-framework-CoreBluetooth<12" "pyobjc-framework-libdispatch<12" '
+    fail "planetai radio needs two packages for $(command -v python3):  python3 -m pip install --user ${pins}meshtastic paho-mqtt"
+  fi
+  exec python3 "$HOME_DIR/tools/radio.py" "$@"   # $HOME_DIR, not dirname $0: the CLI runs through ~/.local/bin
 }
 
 case "${1:-help}" in
@@ -2335,7 +2429,8 @@ case "${1:-help}" in
   update) cmd_update;;  backup) cmd_backup;;  config) shift; cmd_config "$@";;  logs) shift; cmd_logs "$@";;
   start) cmd_start;;  stop) cmd_stop;;  restart) cmd_restart;;  sensors) shift; cmd_sensors "$@";;  cells) shift; cmd_cells "$@";;
   mesh) shift; cmd_mesh "$@";;
-  meshtastic) cmd_meshtastic;;  reticulum) cmd_reticulum;;  broker) cmd_broker;;
+  meshtastic) cmd_meshtastic;;  reticulum) shift; cmd_reticulum "$@";;  broker) cmd_broker;;
+  radio) shift; cmd_radio "$@";;
   homeassistant|ha) cmd_homeassistant;;
   packs) shift; cmd_packs "$@";;
   sources) shift; cmd_sources "$@";;
@@ -2343,7 +2438,7 @@ case "${1:-help}" in
   storage) shift; cmd_storage "$@";;
   remove|uninstall) shift; cmd_remove "$@";;
   restore) shift; cmd_restore "$@";;
-  ipfs) cmd_ipfs;;
+  ipfs) cmd_ipfs;;  grafana) shift; cmd_grafana "$@";;
   agent|agents|mcp)
     case "${2:-}" in
       local) if [[ "${3:-}" == pull ]]; then shift 3; cmd_agent_local_pull "$@"; else cmd_agent_local; fi;;

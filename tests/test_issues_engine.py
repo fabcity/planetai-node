@@ -227,8 +227,8 @@ land = no_earth["issues"]["land"]
 check(land["stack"]["region"] is None, "with no earth record land's region is empty")
 check(land["state"] == "none" and land["reason"]["code"] == "no_source",
       f"with no earth record land is {land['state']}/{land['reason']['code']}, expected none/no_source")
-check("earth fetch" in land["sentence"]["en"] or "satellite record" in land["sentence"]["en"],
-      f"land must say how to get a record: {land['sentence']['en']}")
+check("satellite" in land["sentence"]["en"] and "planetai" not in land["sentence"]["en"],
+      f"land says there is no record yet, in the household's words, never the command: {land['sentence']['en']}")
 check(land["readouts"], "land keeps its built and trees readouts with no change record")
 # and the mechanism is gone, not just unused
 from issues import _distance_problems  # noqa: E402
@@ -329,7 +329,7 @@ for declared in ("air,heat", "heat,air"):
 # 8: an undeclared issue is still shown, greyed, as not watched here
 part = run(declared="air,heat", earth=EARTH)
 check(part["order"] == ["air", "heat"], f"order is {part['order']}")
-check(part["undeclared"] == ["coast", "land"], f"undeclared is {part['undeclared']}")
+check(part["undeclared"] == ["coast", "land", "water"], f"undeclared is {part['undeclared']}")
 check(part["issues"]["land"]["state"] == "none" and part["issues"]["land"]["watched"] is False,
       "an undeclared issue is none and not watched")
 check(part["issues"]["land"]["reason"]["code"] == "not_watched",
@@ -470,6 +470,21 @@ else:
     band = next((v for s in st for v in s["series"].values() if v), None)
     if not band or band[0].get("min") is None or band[0].get("max") is None or band[0].get("n") is None:
         fails.append(f"readings_1h has min/max/n in the fixture, so a station's series must carry them: {band}")
+    keys = {k for s in st for k in s["series"]}
+    if not keys <= set(engine.METRICS):
+        fails.append(f"a station's series carries only the metrics the page may show (dashboard.js looks each up in "
+                     f"`metrics`, and an unknown one threw): {sorted(keys - set(engine.METRICS))}")
+    long = [v for s in st for pts in s["series"].values() for p in pts for v in (p["mean"], p["min"], p["max"])
+            if isinstance(v, float) and v != round(v, 2)]
+    if long:
+        fails.append(f"a station's hourly values are rounded to two decimals, as its read is: {long[:3]}")
+    _two = engine._stations([], [{"sensor_id": "x", "metric": "lora_util_pct", "bucket": "2026-10-24T00:00:00+08:00",
+                                  "mean": 1.234567, "min": 0, "max": 2, "n": 3},
+                                 {"sensor_id": "x", "metric": "pm25", "bucket": "2026-10-24T00:00:00+08:00",
+                                  "mean": 7.891234, "min": 1, "max": 9, "n": 3}], -8.8, 115.1, True,
+                            [{"sensor_id": "x", "name": "x", "lat": -8.8, "lon": 115.1, "last_heard": "2026-10-23"}])
+    if [list(s["series"]) for s in _two] != [["pm25"]] or _two[0]["series"]["pm25"][0]["mean"] != 7.89:
+        fails.append(f"_stations keeps pm25 at two decimals and drops a radio's lora_util_pct: {_two}")
 
 m = body.get("metrics", {})
 if m.get("pm25", {}).get("issue") != "air" or m.get("temp", {}).get("dp") != 1:
@@ -481,6 +496,9 @@ if len(a.get("acts", [])) != 21 or len(a.get("actions", [])) != 11 or a.get("lev
                  f"{len(a.get('actions', []))}, {a.get('levels')}")
 if any("\n" in x["text"] or len(x["text"]) > 160 for x in a.get("acts", [])):
     fails.append("an ask's text is its first line, at most 160 characters")
+if any(x.get("level") != "act" for x in a.get("acts", [])):
+    fails.append("every act carries level act: the dashboard's ledger draws a rule quiet when its latest ask has none, "
+                 f"and drew every rule quiet: {[x.get('level') for x in a.get('acts', [])][:5]}")
 
 mesh = body.get("mesh")
 if not mesh or mesh["gateway"] != "!8f491db0" or mesh["packets"] != 12:
@@ -671,12 +689,14 @@ check(_D21["en"] == "This house has 5 stations of its own; the nearest other sta
       "has asked 101 times and somebody answered 7; the usual wait was 112 minutes.",
       f"digest.simple reads {_D21['en']!r}")
 _P21 = engine.replay(_F21, Settings(NODE_ISSUES="air,heat,land,coast"), DECL)["digest"]["prompts"]
-# The three the pane opens with are unchanged; after them, the pool it rotates through (28 Sep 2026).
-check(_P21["en"][:3] == ["Why is heat what the node leads with?", "What should I do about alert #168?",
-                         "What does the line for heat mean?"], f"digest.prompts opens with {_P21['en'][:3]}")
-check(len(_P21["en"]) > 3 and "What is air like right now?" in _P21["en"]
-      and any(re.fullmatch(r"What should I do about alert #(?!168\b)\d+\?", q) for q in _P21["en"]),
-      f"digest.prompts has no pool to rotate through: {_P21['en']}")
+# The three the pane opens with, in a household's words and never an alert number; after them, the pool it rotates through.
+check(_P21["en"][:3] == ["What should I know about the heat today?", "What can I do about the heat right now?",
+                         "Where does the line for the heat come from?"], f"digest.prompts opens with {_P21['en'][:3]}")
+check(len(_P21["en"]) > 3 and "How is the air right now?" in _P21["en"]
+      and "Is the heat worse than usual for this hour?" in _P21["en"]
+      and not any("#" in q for l in I.LOCALES for q in _P21[l]),
+      f"digest.prompts has no pool to rotate through, or names an alert number: {_P21['en']}")
+check(_P21["es"][0] == "\u00bfQu\u00e9 deber\u00eda saber hoy sobre el calor?", f"digest.prompts es: {_P21['es'][:2]}")
 check(all(len(_P21[l]) == len(_P21["en"]) <= engine.PROMPTS_MAX and len(set(_P21[l])) == len(_P21[l])
           and all("{" not in q for q in _P21[l]) for l in I.LOCALES), f"digest.prompts: {_P21}")
 check(set(_D21) == set(I.LOCALES) and all(v and "{" not in v for v in _D21.values()),
@@ -811,9 +831,16 @@ _tz = timezone(timedelta(hours=8))
 _bk = [datetime(2026, 10, 14, 19, tzinfo=_tz) - timedelta(hours=23 - i) for i in range(24)]
 _sv = [30 if b.hour <= 11 or b.day == 13 else 5 for b in _bk]
 _now = datetime(2026, 10, 14, 19, 30, tzinfo=_tz)
-check(engine._day(_sv, _bk, {"value": 15}, _now) == {"over": 12, "until": "12:00", "part": "morning"},
+check(engine._day(_sv, _bk, {"value": 15}, _now) == {"over": 12, "until": "12:00", "running": False, "part": "morning"},
       f"_day: {engine._day(_sv, _bk, {'value': 15}, _now)}")
-check(engine._day(_sv[:-1] + [30], _bk, {"value": 15}, _now)["until"] == "19:30", "_day: an hour still running ends now")
+_run = engine._day(_sv[:-1] + [30], _bk, {"value": 15}, _now)
+check(_run["until"] == "19:30" and _run["running"], "_day: an hour still running ends now, and says it is running")
+# Audit 15 Oct: "clean now … past the WHO line until 10:47" at 10:47 read as still over. A running hour is said in words.
+import yaml as _y
+for _f in ("packs/air-quality/issue.yml", "packs/heat/issue.yml"):
+    for _loc, _sx in _y.safe_load(open(_f))["sentences"].items():
+        _dw = _sx.get("day") or {}
+        check(_dw.get("recent") and "{t}" in _dw.get("at", ""), f"{_f} {_loc}: day needs `at` and `recent` for a running hour")
 check(engine._day([5] * 24, _bk, {"value": 15}, _now) is None and engine._day(_sv, _bk, None, _now) is None,
       "_day: no hour over, or no line, is no day")
 # near the line after a day over it is "better", not "clean"; over the line now keeps the hour's words

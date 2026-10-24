@@ -21,7 +21,7 @@ never to do.
 **1. Read the machine before you promise anything.**
 
 ```bash
-curl -fsSL planetai.fab.city/preflight | bash
+curl -fsSL https://planetai.fab.city/preflight | bash
 ```
 
 It installs nothing and takes four seconds. `--json` if you want to parse it. Read the exit code, not
@@ -41,10 +41,12 @@ anyway "to see". A node that half-installs on an unsupported machine costs an ev
 **2. Install.**
 
 ```bash
-curl -fsSL planetai.fab.city/install | bash
+curl -fsSL https://planetai.fab.city/install | bash
 ```
 
-Four questions: a name, the place, what the node is for, the sensor if they have one. If they cannot sit
+Four questions: a name, the place, what the node is for, the sensor if they have one. The only sensor it offers
+is a Smart Citizen kit: the node does not read an AirGradient or a PurpleAir yet, so do not suggest either until
+the `air-sensors` pack reads them. If they cannot sit
 at a terminal for it, `planetai setup --answers node.json` takes the same answers as a file — the JSON
 shape is in `bin/planetai`.
 
@@ -66,8 +68,11 @@ Do not skip `planetai test-alert`; it is the only proof the whole path works end
 
 ```bash
 planetai ui        # the dashboard's address and the token for its settings pages
-planetai doctor    # every check, with the fix written next to any failure
+planetai doctor    # every check, with the fix written next to any failure, then the node's data sources
 ```
+
+If the home has sensors in more than one room, name each room in Set up › Rooms: every alert and report then says
+"Kids" or "Kitchen", not the kit's own name, and a screen without the token still reads only "Room A".
 
 Then say the three things `docs/START_HERE.md` says: what a good week looks like, that ρ only moves when a
 person tells the node they acted, and that this is beta and info@fab.city wants to hear what broke.

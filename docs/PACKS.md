@@ -1,16 +1,19 @@
 # Packs
 
 A pack is a folder in `packs/`. It carries rules, Index cells, or an adapter for a new source. The core knows nothing
-about air, water or heat; the packs do. Seventeen ship in `packs/`.
+about air, water or heat; the packs do. Twenty-five ship in `packs/`.
 
 ```
 packs/<id>/
   pack.yaml     id, name, description, kind (data | code), version, requires:, domain:, sources:, needs:, pip:, env:,
-                secrets:, agent_scripts:, readouts:, sections:, (read by people only) author:, attribution:,
+                secrets:, switch:, stations:, footprint:, share:, agent_scripts:, readouts:, sections:, (read by people only) author:, attribution:,
                 metrics:, scales:, thresholds:
   rules.yml     alerts: SQL that returns rows, one message per row
   cells.yml     Index cells: SQL that returns one `value`
+  issue.yml     the issue this pack watches, its `key:`, name, metric, line, `alert:`, sentences (air-quality, heat, coast, earth)
   adapter.py    a new source; code packs only
+  hooks.py      on_readings, on_alert: what the pack does with what the node stores and sends; code packs only
+  routes.py     a FastAPI `router`: the pack's own HTTP routes (GET /forecast, /nearby, /earth); official packs only
   channels.yml  what a pack's own metrics ARE — ambient, enclosure, index, etc.
   README.md     where the thresholds come from, what the pack assumes
 ```
@@ -174,6 +177,61 @@ asks for a node newer than the latest release.
 
 `adapter.py` with `fetch(hc) -> (sensors, readings)`, the same contract as `app/sources.py`. Off unless
 `PACKS_ALLOW_CODE=1`: a pack runs with the node's privileges, so read it first.
+
+**Code in official packs.** A pack shipped in this repository (signed with the release, so it has no `.wild`) that
+names its own on-switch runs its `adapter.py` when that switch is `1`, without `PACKS_ALLOW_CODE`:
+
+```yaml
+switch: BAD_ENABLED        # the pack's own key, declared under env:, off by default
+```
+
+A switch can also be a list of keys, on when any of them is set and not `0`. `packs/smartcitizen` runs whenever a
+kit is configured, as it did in the core:
+
+```yaml
+switch: [SC_USER, SC_DEVICES]
+```
+
+This is the first step of decision A in the sensors spec (PR #262: "official packs run code by default"), taken only for
+packs that can switch themselves off. An official pack without a `switch:` still waits for `PACKS_ALLOW_CODE=1`,
+because forecast, place, surface-heat and coast have no switch of their own and would start on every node. A wild
+pack never runs code without the flag, whatever it declares.
+
+**Hooks.** A code pack can also hear the node, in `hooks.py`: `on_readings(sensors, readings)` after every batch the
+node stores (a poll, an MQTT message), and `on_alert(level, text, alert_id)` with every alert it records. A pack that
+reads its own devices off the node's broker names their topics in `MQTT_TOPICS = [(topic, qos)]`; the node subscribes
+to them when it connects and hands each message to `on_mqtt(topic, payload)`, which returns `(sensors, readings)` to
+store, or `None` when the message is not its own. `status()` returns keys the node merges into `/health`. They are
+gated like `adapter.py` (an official pack's own switch, or `PACKS_ALLOW_CODE=1`), each pack's module is loaded once so
+what it keeps lasts, and a hook that fails is logged and never stops the node's own work. `packs/home-assistant` was
+the first, and `packs/smartcitizen` reads `device/sck/#` this way; both were core code until 22 October 2026. A pack
+switched on while the node runs is subscribed to at its next reconnect or restart.
+
+**Routes.** An official pack can serve its own HTTP routes from a `routes.py` that defines `router = APIRouter()`.
+The node mounts every official pack's router when it starts, and each route answers 404 while the node does not load
+its pack, so switching a pack off in Set up takes its routes with it, no restart. Read the database with
+`from db import q`, never by importing main. A path the pack lists under `share: {open: [/its/path]}` joins what a
+household on `SHARE_LEVEL=open` shares with its own WiFi, and one under `share: {"off": [...]}` (quoted: YAML reads a
+bare off as false) is answered at every level, as `/offers` is; a wild pack can neither mount routes nor widen that list.
+`forecast` (GET /forecast), `nearby` (GET /nearby), `earth` (GET /earth, /earth/change.png, /earth/year.png) and
+`earth-engine` (GET /earth/frame.png) serve theirs, core routes until 23 October 2026. `/ground/*` stays in the core:
+it serves three packs' files (place's map, earth-engine's imagery, forecast's wind), and place is becoming core.
+
+**Public stations.** A pack that reads a network of other people's stations around the node says so, and the node's
+"Air stations nearby" source, `GET /nearby` and the ring's footprint read it instead of naming a network:
+
+```yaml
+stations:
+  source: baliairdispatch          # the `source` its sensors carry
+  prefix: bad-                     # its sensor ids start with this, for the station's link and attribution
+  radius: BAD_RADIUS_KM            # the key that sets how far the ring reaches
+  box: [-9.2, -8.0, 114.4, 115.8]  # south, north, west, east: where the network has stations
+  url: https://baliairdispatch.com/
+  attribution: ["Bali Air Dispatch, baliairdispatch.com"]
+```
+
+A node inside `box` with the pack off is told to turn it on; a node outside every box is told nothing.
+`packs/bali-air-dispatch` is the first.
 
 Dependencies and settings are declared in `pack.yaml`; `planetai packs` lists what is loaded and what is missing, and
 `planetai packs install` installs the libraries into the image once and
@@ -341,32 +399,35 @@ pictogram is not in `signs.svg`, whose numeral is neither a distance the issue f
 readouts, whose rule dots name a distance the issue does not have, or whose rule draws a line the
 issue does not declare.
 
-A pack that brings an issue of its own will declare its hero the same way, in the `issue.yml` beside
-its `pack.yaml`. The node does not load an issue from a pack yet; until it does, a new issue is a new
-file in `app/issues/`.
+A pack that brings an issue of its own declares it in the `issue.yml` beside its `pack.yaml`, with a `key:` (the
+issue's id, as `NODE_ISSUES` names it), and its hero the same way. The node reads it while the pack is on, so a node
+that does not watch the coast has no coast issue. Since 23 October 2026 the four that shipped in `app/issues/` live
+in their packs: air in `air-quality`, heat in `heat`, coast in `coast`, land in `earth`. A new issue is a pack with an
+`issue.yml`, and `app/issues/` keeps only the engine.
 
 ## What ships
 
 The `issue` column is which band of the dashboard a pack feeds. It comes from the pack's `domain:`,
-except for a cross-domain pack, whose rules are claimed one by one in `app/issues/*.yml`. A pack that
+except for a cross-domain pack, whose rules are claimed one by one in an `issue.yml`. A pack that
 reaches no issue and is not named as deliberately outside them fails `tests/test_issues.py` — see
 [`DOMAINS.md`](DOMAINS.md).
 
 | pack | kind | issue | what |
 |---|---|---|---|
-| air-quality | data | air | PM2.5 rules (inside/outside, spikes), cells |
+| air-quality | code | air | PM2.5 rules (inside/outside, spikes), cells; the CAMS model at the node's point, and the EPA 2021 correction AirGradient and PurpleAir borrow |
 | heat | data | heat | apparent temperature, heat stress, nights over 28 °C, a Social cell |
 | insight | data | air (`agreement`, `rhythm`) | the air three ways, contributed to every report; daily agreement between indoor, street and model |
-| nearby | data | air | the ring of other people's stations: is this address worse than everywhere, or is everywhere worse — no cell, by design |
+| bali-air-dispatch | code | air | the island's public stations as this node's ring, from Bali Air Dispatch (eight networks, key-free) — Bali only, off until `BAD_ENABLED=1`, which `presets/bali.env` sets; no alert, no cell |
+| nearby | data | air | the ring of other people's stations: is this address worse than everywhere, or is everywhere worse — no cell, by design; reads what `bali-air-dispatch` stores |
 | season | data | air | the same ring across time: is this week worse than its own preceding two months, paired per station — no cell, same reason as `nearby` |
 | forecast | code | — feeds air and heat | wind and rain for the next day, from BMKG and Open-Meteo — context for the report, no alerts, no cell |
-| trust | data | — the instruments | coverage, frozen channels, collocated disagreement — needs a week of a sensor before it names it; all three `info`, no cell, by design |
 | cold-start | data | air (`modelled_air_today`, `sensor_vs_model`), heat (`hotter_than_normal`) | day one with no hardware: modelled air, normals |
 | open-data-health | data | — the loop and the Index | a CKAN portal's maintenance state → Governance\|City |
 | coast | code | coast | waves, swell, sea temperature (Open-Meteo Marine, key-free) |
 | surface-heat | code | heat | the ground in this node's own cell against the land 1–3 km around, from Landsat at 30 m, and the ground at night from MODIS (Planetary Computer, key-free) — readouts and a report line, no alert, no cell |
 | earth-engine | code | — Dynamic World, Sentinel-2, VIIRS | tree cover, built-up, NDVI, night lights (Google Earth Engine) |
 | earth | code | land | this node's own copy of the AlphaEarth embeddings: the land change computed here, and a picture of the place for every year |
+| terrain | code | water | this node's own square of Copernicus elevation, filled and routed: how much ground drains through the node's point, and the next day's rain on it — readouts, no alert, no cell |
 | place | code | — the ground, its own band | what is around the node from OpenStreetMap, in PostGIS: buildings, shops, schools, clinics, roads, green, walking distances |
 | thingdata | code | — repair knowledge, its own catalogue | a ThingData server's things, guides and stories, and how much of the catalogue anyone has written down how to fix |
 | make | code | — places, not numbers | the nearest active fab labs and what each can do, from the Fab Lab Network directory — display-only, no metrics, no cell and no alert, by design |

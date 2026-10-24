@@ -24,10 +24,12 @@ Alerts do not pass through the model. The node sends them; the model answers que
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 import json
 import logging
 import os
 import time
+from urllib.parse import urlparse
 
 import httpx
 import re
@@ -85,10 +87,32 @@ MAX_ROUNDS = 8
 SKIP_FOR = 300
 
 
+HOME_SUFFIXES = (".local", ".lan", ".home.arpa", ".internal", ".ts.net")
+TAILNET = ipaddress.ip_network("100.64.0.0/10")     # CGNAT, where Tailscale puts every node
+
+
+def stays_home(url: str) -> bool:
+    """True when a model at `url` is on this house's own network: loopback, a private or tailnet address, or a
+    name only a home network resolves (no dot, .local, .ts.net...). Judged by the address and never by the box it
+    was typed into: a city's GPU server in AGENT_REMOTE_URL was labelled "your network" and handed what the house
+    learned, while the page said nothing left. No DNS lookup, so a public name always counts as leaving."""
+    host = (urlparse(url).hostname or "").lower()
+    if not host:
+        return False
+    if "." not in host or host.endswith(HOME_SUFFIXES):
+        return True
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    return ip.is_private or ip.is_loopback or ip.is_link_local or (ip.version == 4 and ip in TAILNET)
+
+
 class Rung:
     def __init__(self, name, url, model, key="", small=False):
         self.name, self.url, self.model, self.key, self.small = name, url.rstrip("/"), model, key, small
         self.skip_until = 0.0
+        self.leaves = not stays_home(self.url)
 
     def headers(self):
         h = {"content-type": "application/json"}
@@ -125,7 +149,14 @@ def ladder(cfg: dict) -> list[Rung]:
     rungs.append(Rung("local", os.getenv("OLLAMA_URL", "http://host.docker.internal:11434") + "/v1", os.getenv("MODEL", "qwen3:4b"), small=True))
     prefer = g("AGENT_PREFER", "private")
     if prefer == "private":
-        rungs = [r for r in rungs if r.name != "online"]
+        # Nothing leaves: no online rung, and no rung whose address is outside this house's network, whatever box it
+        # was typed into. A city's GPU server in the remote box is used only once somebody here picks fallback or
+        # strongest, the same choice an online key needs.
+        for r in rungs:
+            if r.name != "online" and r.leaves:
+                log.warning("%s rung not used: %s is outside this network and Model preference is private",
+                            r.name, urlparse(r.url).hostname)
+        rungs = [r for r in rungs if r.name != "online" and not r.leaves]
     elif prefer == "fallback":
         # Your own big model, then the online one, then the small local model last.
         #
@@ -194,7 +225,7 @@ def clean(text: str) -> str:
 # rather than retyped, so a tool added there cannot quietly appear in a model's menu here.
 #
 # NOTHING IS REMOVED FROM THE MCP SURFACE. A person operating an agent over the tailnet still has all
-# twenty. This is only what the model running unattended on the box is handed.
+# twenty-one. This is only what the model running unattended on the box is handed.
 from tool_classes import TOOL_CLASS  # noqa: E402 — a table and nothing else; see that module's docstring
 
 LOCAL_CLASSES = ("read", "act")
@@ -240,7 +271,10 @@ async def chat(hc: httpx.AsyncClient, rung: Rung, messages: list, tools: list | 
     # the result it was a model counting a list in hidden text: on node #1, gemma4:31b wrote 1,162 to 1,871
     # tokens of it at 9 to 16 a second for a 42-character sentence, and the pane waited one to three minutes.
     # Off for that round, it wrote 19. A server that does not take the field says so with a 400, once.
-    elif messages[-1].get("role") == "tool" and (rung.url, rung.model) not in NO_EFFORT:
+    # With no tools offered there is nothing to choose, so no thinking from the first call: the Wall's story, from
+    # facts it is handed, had gemma4:26b think 12,690 tokens (185 s) for 572 characters, past the timeout, and the
+    # Wall showed nothing (21 Oct 2026). Off, it wrote 635 characters in 2.5 s.
+    elif (not tools or messages[-1].get("role") == "tool") and (rung.url, rung.model) not in NO_EFFORT:
         body["reasoning_effort"] = "none"
     r = await hc.post(f"{rung.url}/chat/completions", json=body, headers=rung.headers())
     if r.status_code == 400 and body.pop("reasoning_effort", None):
@@ -279,7 +313,8 @@ def stack_text(data: dict, one: str = "") -> str:
         issues, head = data.get("issues") or {}, data.get("headline")
         rows = [(k, issues[k]) for k in (data.get("order") or []) if k in issues]
     if not rows:
-        return "No issues are declared on this node yet. Set NODE_ISSUES under Set up → Basics."
+        return T("The node is not watching anything yet; whoever set it up can choose what in Set up.",
+                 es="El nodo todavía no vigila nada; quien lo instaló puede elegir qué en Configurar.")
     out = []
     for key, iss in rows:
         name = (iss.get("name") or {}).get(LOCALE) or key
@@ -333,10 +368,12 @@ async def ask(session: ClientSession, tools: list[dict], user: str, history: lis
     last_err = None
     async with httpx.AsyncClient(timeout=240) as hc:
         for rung in order:
+            # A rung that leaves the house gets what the pane gets: no settings, no report bundle, no day's export.
+            tools_ = [t for t in tools if t["function"]["name"] not in PANE_WITHHELD] if rung.leaves else tools
             messages = [{"role": "system", "content": SYSTEM}, *(history or []), {"role": "user", "content": user}]
             try:
                 for _ in range(MAX_ROUNDS):
-                    msg = await chat(hc, rung, messages, tools)
+                    msg = await chat(hc, rung, messages, tools_)
                     messages.append(msg)
                     calls = msg.get("tool_calls") or []
                     if not calls:
@@ -354,7 +391,11 @@ async def ask(session: ClientSession, tools: list[dict], user: str, history: lis
                         if isinstance(args, str):
                             try: args = json.loads(args)
                             except Exception: args = {}
-                        spec = next((t for t in tools if t["function"]["name"] == fn), {}).get("function", {}).get("parameters", {}).get("properties", {})
+                        if fn not in {t["function"]["name"] for t in tools_}:
+                            messages.append({"role": "tool", "tool_call_id": c.get("id", fn),
+                                             "content": f"tool error: {fn} is not offered to a model outside this house"})
+                            continue
+                        spec = next((t for t in tools_ if t["function"]["name"] == fn), {}).get("function", {}).get("parameters", {}).get("properties", {})
                         if "agent" in spec:
                             args.setdefault("agent", f"{NAME}/{rung.name}")
                         shown = {k: ("****" if ("KEY" in k or "TOKEN" in k or "PASS" in k) else v) for k, v in args.items()} if fn != "settings_set" else {"changes": sorted((args.get("changes") or {}).keys())}
@@ -374,9 +415,12 @@ async def ask(session: ClientSession, tools: list[dict], user: str, history: lis
                 last_err = e
                 rung.skip_until = time.time() + SKIP_FOR
                 log.warning("[%s] unavailable (%s: %s); trying the next rung", rung.name, type(e).__name__, str(e)[:100])
-    why = type(last_err).__name__ if last_err else 'none configured'
-    return T(f"No model answered ({why}). On the node: `ollama list`, and check AGENT_* in .env.",
-             es=f"Ningún modelo respondió ({why}). En el nodo: `ollama list`, y revisa AGENT_* en .env."), "none"
+    # The admin detail is the log's; the household gets what still works and who can fix it.
+    log.warning("no model answered: %s", type(last_err).__name__ if last_err else "none configured")
+    return T("I can't answer questions right now. Alerts and the morning report still work. "
+             "Whoever set up the node can fix this in Set up › Model.",
+             es="Ahora no puedo responder preguntas. Las alertas y el informe de la mañana siguen funcionando. "
+                "Quien instaló el nodo puede arreglarlo en Configurar › Modelo."), "none"
 
 
 # ---------------------------------------------------------------------------------------- the dashboard's pane
@@ -487,11 +531,20 @@ def recommend() -> dict:
 def where_of(rung: Rung) -> dict:
     """Where a rung runs, in the words the pane prints: this machine, your network, or online.
 
-    `online` is the one that leaves the house: the pane says so in its header and on every answer it gives."""
-    from urllib.parse import urlparse
+    `online` is any rung that leaves the house, by its address (stays_home), whatever its name: the pane says so in
+    its header and on every answer it gives."""
     host = urlparse(rung.url).hostname or rung.url
-    return {"rung": rung.name, "model": rung.model, "host": host,
-            "where": {"local": "this machine", "remote": "your network"}.get(rung.name, "online")}
+    where = "online" if rung.leaves else {"local": "this machine"}.get(rung.name, "your network")
+    return {"rung": rung.name, "model": rung.model, "host": host, "where": where, "leaves": rung.leaves}
+
+
+def models_stay_home(cfg) -> bool:
+    """What the house learned, and who lives in it, may reach a model only while this is true: AGENT_PREFER is
+    private AND no rung the ladder would build leaves the house. `cfg` is anything with .get(key), the settings
+    module included."""
+    if (cfg.get("AGENT_PREFER") or os.getenv("AGENT_PREFER") or "private") != "private":
+        return False
+    return not any(r.leaves for r in ladder(cfg))
 
 
 def pane_rungs(cfg: dict, with_local: bool = True) -> list[Rung]:
@@ -787,14 +840,16 @@ async def keep_picture(hc, m: dict, chat: str) -> bool:
         body = {}
     if r.status_code in (401, 403):
         log.warning("picture from chat %s refused by the node: %s", chat, r.status_code)
-        await say("The node refused this bot's token, so the picture was not kept. The agent's ADMIN_TOKEN is not the "
-                  "app's: both read it from the node's .env.",
-                  "El nodo rechazó el token de este bot y la imagen no se guardó. El ADMIN_TOKEN del agente no es el de "
-                  "la app: los dos lo leen del .env del nodo.")
+        await say("The node did not accept this picture. Whoever set up the node needs to check the bot's access.",
+                  "El nodo no aceptó esta imagen. Quien instaló el nodo tiene que revisar el acceso del bot.")
     elif r.status_code >= 400:
-        why = str(body.get("detail") or r.status_code)[:300]   # the node's own sentence: it names no token
+        why = str(body.get("detail") or "")[:300]   # the node's own sentence: it names no token; a bare status is the log's
         log.warning("picture from chat %s refused by the node: %s", chat, r.status_code)
-        await say(f"The node did not keep it: {why}", f"El nodo no la guardó: {why}")
+        if why:
+            await say(f"The node did not keep it: {why}", f"El nodo no la guardó: {why}")
+        else:
+            await say("The node did not keep it; send it again in a minute.",
+                      "El nodo no la guardó; envíala de nuevo en un minuto.")
     elif body.get("duplicate"):
         await say("That picture is already kept.", "Esa imagen ya está guardada.")
     elif body.get("describing"):
@@ -829,8 +884,8 @@ async def handle_callback(hc, cq: dict, pending: dict) -> None:
     if not parsed:
         if qid:
             await telegram("answerCallbackQuery", callback_query_id=qid,
-                           text=T("This button is from another time; the event it belonged to is no longer mine.",
-                                  es="Este botón es de otro momento; el evento al que pertenecía ya no es mío."))
+                           text=T("This alert is already closed, so there is nothing to answer.",
+                                  es="Esta alerta ya está cerrada, así que no hay nada que responder."))
         return
     eid, stage = parsed
     try:
@@ -911,6 +966,7 @@ async def main():
     if TG_TOKEN() and CHATS():
         await announce_buttons(hc)
     offset, history, pins, pending = 0, {}, {}, {}
+    told_unknown: set[str] = set()     # unknown chats already told why the node is quiet
     while True:
         if not TG_TOKEN():
             await asyncio.sleep(30); continue
@@ -947,13 +1003,18 @@ async def main():
                 except Exception as e:  # noqa: BLE001
                     log.warning("offer relay failed: %s", type(e).__name__)
                 log.info("message from chat %s ignored: not in TELEGRAM_CHAT_IDS %s", chat, sorted(CHATS()))
+                # once per chat per run, so a second person in the house learns why it is quiet (audit, 15 Oct)
+                if chat not in told_unknown:
+                    told_unknown.add(chat)
+                    await telegram("sendMessage", chat_id=chat, text=T(
+                        f"This node answers its household only. To be added, ask whoever set it up to add this chat: {chat}.",
+                        es=f"Este nodo solo responde a su casa. Para entrar, pide a quien lo instaló que añada este chat: {chat}."))
                 continue
             note_eid = note_pending(pending, chat, text, time.monotonic())
             if note_eid is not None:
                 try:
                     await _post_answer(hc, note_eid, "dismissed", _name_of(m.get("from") or {}), note=text)
-                    said = T(f"Kept as the note for event #{note_eid}.",
-                             es=f"Anotado como la nota del evento #{note_eid}.")
+                    said = T("Note kept with that alert.", es="Nota guardada con esa alerta.")
                 except Exception as e:  # noqa: BLE001
                     log.warning("note on event #%s failed: %s: %s", note_eid, type(e).__name__, str(e)[:200])
                     said = T("⚠️ I could not keep that note on the node. The Doesn't fit stands; the note is lost.",
@@ -967,18 +1028,18 @@ async def main():
                     # where the person's own sentence belongs — and rho is built out of those sentences.
                     # Asking costs one message and gets something true.
                     await telegram("sendMessage", chat_id=chat,
-                                   text=T(f"What did you do about #{parts[1]}? Send it as:  /act {parts[1]} <what you did>",
-                                          es=f"¿Qué hiciste con la #{parts[1]}? Envíalo así:  /act {parts[1]} <lo que hiciste>"))
+                                   text=T(f"What did you do about it? Send it with your words:  /act {parts[1]} <what you did>",
+                                          es=f"¿Qué hiciste? Envíalo con tus palabras:  /act {parts[1]} <lo que hiciste>"))
                     continue
                 if len(parts) >= 3 and parts[1].isdigit():
                     try:
                         async with node_session(hc) as (session, _t):
                             await session.call_tool("act", {"alert_id": int(parts[1]), "note": parts[2], "agent": f"{NAME}/telegram"})
-                        said = T(f"Recorded: you acted on #{parts[1]}.", es=f"Anotado: actuaste sobre #{parts[1]}.")
+                        said = T("Recorded what you did.", es="Anotado lo que hiciste.")
                     except Exception as e:  # noqa: BLE001
                         log.warning("act on #%s failed: %s: %s", parts[1], type(e).__name__, str(e)[:200])
-                        said = T(f"⚠️ I could not record that on the node ({type(e).__name__}). Nothing was written; try again in a moment.",
-                                 es=f"⚠️ No pude anotarlo en el nodo ({type(e).__name__}). No se escribió nada; inténtalo de nuevo en un momento.")
+                        said = T("⚠️ I couldn't record that. Nothing was saved; try again in a minute.",
+                                 es="⚠️ No pude anotarlo. No se guardó nada; inténtalo de nuevo en un minuto.")
                     await telegram("sendMessage", chat_id=chat, text=said)
                     continue
             if text.startswith("/learned"):
@@ -1011,8 +1072,8 @@ async def main():
                                                        for x in rows)
                 except Exception as e:  # noqa: BLE001
                     log.warning("/learned failed: %s: %s", type(e).__name__, str(e)[:200])
-                    said = T(f"⚠️ I could not read what the node learned ({type(e).__name__}).",
-                             es=f"⚠️ No pude leer lo que aprendió el nodo ({type(e).__name__}).")
+                    said = T("⚠️ I couldn't read what the node learned. Try again in a minute.",
+                             es="⚠️ No pude leer lo que aprendió el nodo. Inténtalo de nuevo en un minuto.")
                 await telegram("sendMessage", chat_id=chat, text=said)
                 continue
             if text.startswith("/stack"):
@@ -1027,8 +1088,8 @@ async def main():
                     said = stack_text(_tool_json(res), arg)
                 except Exception as e:  # noqa: BLE001
                     log.warning("/stack failed: %s: %s", type(e).__name__, str(e)[:200])
-                    said = T(f"⚠️ I could not read the node ({type(e).__name__}). Nothing is wrong with your air; this is me.",
-                             es=f"⚠️ No pude leer el nodo ({type(e).__name__}). Tu aire está bien; el problema soy yo.")
+                    said = T("⚠️ I can't reach the node right now, so I can't say how the air is. Try again in a minute.",
+                             es="⚠️ Ahora no llego al nodo, así que no puedo decir cómo está el aire. Prueba en un minuto.")
                 await telegram("sendMessage", chat_id=chat, text=said)
                 continue
             if text.startswith("/model"):
@@ -1044,7 +1105,8 @@ async def main():
             except Exception as e:  # noqa: BLE001
                 # The node itself, not a model: say so plainly rather than letting a model guess at it.
                 log.warning("no session to the node for chat %s: %s: %s", chat, type(e).__name__, str(e)[:200])
-                answer, rung = f"⚠️ I could not open a session to the node just now ({type(e).__name__}). It may be restarting — try again in a moment.", "none"
+                answer, rung = T("⚠️ I couldn't reach the node just now. It may be restarting; try again in a minute.",
+                                 es="⚠️ Ahora no pude llegar al nodo. Puede que se esté reiniciando; inténtalo de nuevo en un minuto."), "none"
             history.setdefault(chat, []).extend([{"role": "user", "content": text}, {"role": "assistant", "content": answer}])
             log.info("chat %s via %s: %.1fs", chat, rung, time.time() - t0)
             await telegram("sendMessage", chat_id=chat, text=answer[:4000])

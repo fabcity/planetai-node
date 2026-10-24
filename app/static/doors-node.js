@@ -31,7 +31,7 @@ VIEWS.node = function () {
   FLOWOBS && FLOWOBS.disconnect(); CLOCK.off('node-flow');
   const R = D.registry, h = D.health;
   const say = src => { const v = verdict(D, src);
-    return `<h1 data-learn="1" class="verdict ${v.ok ? '' : 'bad'}">${v.head}.</h1><p class="vline said" data-role="sentence">${esc(v.text)}`
+    return `<h1 class="verdict ${v.ok ? '' : 'bad'}">${v.head}.</h1><p class="vline said" data-role="sentence">${esc(v.text)}`
       + `${src && src.missing ? ` <a href="#setup">To finish setting up →</a>` : ''}</p>`; };
   $('#nodehead').innerHTML = `<div class="k">Node · ${esc(R.name)}, in ${esc(R.place)}</div><div id="verdict">${say(null)}</div>
     <p class="lede mono">planetai-node ${esc(h.version)} · up ${fmt(h.uptime_s / 3600, 1)} h · ${h.ingested.toLocaleString('en')} readings since the restart · cell ${esc(h.cell.id)} · ${esc(h.tz)}</p>`;
@@ -49,7 +49,7 @@ VIEWS.node = function () {
 /* THE INDEX CELLS this node holds (GET /cells), under the flow that counts them; moved from Data (phase 4b, 15 Oct).
    #node/cells lands here, and so does Data's old #data/cells. */
 function cellsBlock() {
-  $('#cells').innerHTML = `<h2>Fab City Index cells, ${new Set(D.index_cells.map(c => c.cell)).size} of 20</h2><table class="tbl"><tr><th>cell</th><th class="n">value</th><th class="hide">unit</th><th>word</th></tr>`
+  $('#cells').innerHTML = `<h2>Fab City Index cells, ${new Set(D.index_cells.map(c => c.cell)).size} of 20</h2><p class="fine">Computed by this node from its hourly buckets, ${esc(wdhm(D.as_of))}; each row says its word.</p><table class="tbl"><tr><th>cell</th><th class="n">value</th><th class="hide">unit</th><th>word</th></tr>`
     + D.index_cells.map(c => `<tr><td>${esc(c.cell.replace('|', ' · '))}</td><td class="n">${fmt(c.value, 2)}</td><td class="hide">${esc(c.unit)}</td><td>${prov(c.state)}</td></tr>`).join('') + `</table>`;
 }
 
@@ -299,7 +299,7 @@ async function running(kept) {
     ...hw,
     ['Mesh in the house', mesh ? `${mesh.root_topic} · gateway ${mesh.gateway}` : 'no mesh broker set', mesh ? `${mesh.packets} packets` : 'off'],
     ['Radio', ret && ret.announce_s ? `announces its cell every ${ret.announce_s / 60} min` : 'no radio bridge set', ret && ret.ok ? 'on' : 'off'],
-    ['This screen', DOORS_TOKEN() ? 'holds a token: it draws the map, the cells and the counts' : `at SHARE_LEVEL=${D.share || 'off'} without a token: the map, the cells and the counts stay on the node`,
+    ['This screen', DOORS_TOKEN() ? 'holds a token: it draws the map, the cells and the counts' : `${D.share === 'open' ? 'shared openly on this network' : 'not shared with this network'}, without a key: the map, the cells and the counts stay on the node`,
       DOORS_TOKEN() ? 'unlocked' : 'locked']]
     .map(([t, s2, c]) => `<div class="lrow"><span class="t">${t}</span><span class="s">${t === 'The machine' || /class="nm"/.test(s2) ? s2.replace(/^([^<]*)/, m => esc(m)) : esc(s2)}</span><span class="c">${/^<a /.test(c) ? c : esc(c)}</span></div>`).join('')
     + `<p class="fine">${M ? 'The machine as the node’s containers see it. ' : ''}<a href="#setup/machine">Set up → Machine</a> has all of it, and how long the disk lasts.</p>`;

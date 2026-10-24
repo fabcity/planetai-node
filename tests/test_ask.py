@@ -109,7 +109,7 @@ def _db():
     raise RuntimeError("no database in this test")
 main.db = _db
 main.q = lambda sql, *a: [{"name": s.get("name")} for s in FIX["sensors"]] if "FROM sensors" in sql else []
-main.forecast = lambda hours=24: None   # the Wall reads it (ask.wall_reads); never the database in this test
+ask._read_forecast = lambda hours=24: None   # the Wall reads it (ask.wall_reads); never the database in this test
 import inspect                                       # noqa: E402
 _sig = inspect.signature(issues_api.issues_now).parameters
 assert all(p.default is not inspect.Parameter.empty for p in _sig.values()), \
@@ -219,6 +219,8 @@ check("The page's context:" in wall and not leaks(wall),
 r = local.post("/ask", json={"messages": [{"role": "user", "content": "speak"}], "view": "wall",
                              "mode": "advanced", "prompt": "wall"})
 check(r.status_code == 200 and SCRIPT[-1]["system"] != wall, "the wall's angle did not rotate between narrations")
+check(SCRIPT[before]["tools"] == [] and SCRIPT[-1]["tools"] == [],
+      f"the wall was offered tools, so the model thinks before its story: {SCRIPT[before]['tools']}")
 print("  wall: the page asks by name; the voice, the figures and a fresh angle ride in the system prompt")
 
 # ---------------------------------------------------------------- the Wall's facts: richer, and only the public ones
@@ -261,10 +263,10 @@ _FC = {"hours": [  # the capture's as_of is 19:22 +08:00: one hour gone, three t
     {"ts": "2026-10-06 22:00:00+08:00", "source": "forecast-bmkg", "fc_temp": 27.4, "fc_rain": 0.1},
     {"ts": "2026-10-06 22:00:00+08:00", "source": "forecast-om", "fc_temp": 33.0},
     {"ts": "2026-10-07 09:00:00+08:00", "source": "forecast-bmkg", "fc_temp": 17.0}]}
-_q, _fc, _ch = main.q, main.forecast, ask.packs.channels
+_q, _fc, _ch = main.q, ask._read_forecast, ask.packs.channels
 main.q = lambda sql, *a: ([{"name": s.get("name"), "room": None, "source_name": None} for s in FIX2["sensors"]]
                           if "FROM sensors" in sql else _LEARNED if "FROM learnings" in sql else [])
-main.forecast = lambda hours=24: _FC
+ask._read_forecast = lambda hours=24: _FC
 ask.packs.channels = lambda: [{"source": "thingdata", "metric": "thing_uses", "role": "private"}]
 issues_api.issues_now = lambda: DOC2
 os.environ.update(NODE_LAT=str(LAT2), NODE_LON=str(LON2))   # rounds to -8.82; "-8.8190" in a label starts -8.81
@@ -315,7 +317,7 @@ for _ in range(len(_all)):
     local.post("/ask", json={"messages": [{"role": "user", "content": "speak"}], "view": "wall", "prompt": "wall"})
     seen_angles.add(SCRIPT[-1]["system"].split("This time, start from ", 1)[1].split(".", 1)[0])
 check(seen_angles <= set(ask.wall_angles(wctx)) and len(seen_angles) > 5, f"the wall's angles rotate within its facts: {seen_angles}")
-main.q, main.forecast, ask.packs.channels = _q, _fc, _ch
+main.q, ask._read_forecast, ask.packs.channels = _q, _fc, _ch
 issues_api.issues_now = lambda: DOC
 del os.environ["NODE_LAT"], os.environ["NODE_LON"]
 print("  wall facts: day, WHO line, stations, the place's usual, next hours, land, sea and a pack's section; nothing private")
@@ -384,6 +386,17 @@ for prefer, want, leaves_, first_where in (
     check(prefer != "private" or all(r["where"] != "online" for r in st["rungs"]), "private reached the online model")
 st = local.get("/ask/status").json()
 check(st["host"] == "api.anthropic.com" and st["model"] == "claude-x", f"strongest names {st['host']} {st['model']}")
+# a remote rung at a public address: never asked under private; under fallback it leaves the house whatever box it
+# was typed into, and the pane says so
+ROWS.update(AGENT_PREFER="private", AGENT_REMOTE_URL="https://vllm.city.example.org/v1")
+st = local.get("/ask/status").json()
+check([r["rung"] for r in st["rungs"]] == ["local"] and st["leaves"] is False,
+      f"private asked a city server: {[(r['rung'], r['host']) for r in st['rungs']]}")
+ROWS["AGENT_PREFER"] = "fallback"
+st = local.get("/ask/status").json()
+check(st["leaves"] is True and st["where"] == "online" and st["rungs"][0]["leaves"] is True,
+      f"a city server in the remote box reads as {st['where']}, leaves={st['leaves']}")
+ROWS["AGENT_REMOTE_URL"] = "http://macbook.local:11434/v1"
 ROWS["AGENT_PREFER"] = "private"
 os.environ["COMPOSE_PROFILES"] = "mqtt"
 st = local.get("/ask/status")
@@ -454,6 +467,12 @@ hits = local.get("/docs/search", params={"q": "map_tiles"}).json()
 check(hits and all({"page", "anchor", "title", "snippet"} <= set(h) for h in hits)
       and any("MAP_TILES" in h["snippet"] for h in hits), f"/docs/search found {hits[:2]}")
 check(local.get("/docs/search", params={"q": "x"}).status_code == 422, "a one-letter search should be refused")
+# A question is searched by its words, rare ones weighing most, so the box works as a docs search with no model.
+for q, page in [("how do I add a sensor?", "sensors.md"), ("What is rho?", "rho.md"), ("How do I update the node?", "cli.md")]:
+    got = local.get("/docs/search", params={"q": q}).json()
+    check(got and got[0]["page"] == page, f"/docs/search {q!r} led with {[(h['page'], h['anchor']) for h in got[:3]]}")
+check(not any(h["page"] == "STYLE.md" for h in local.get("/docs/search", params={"q": "renderer"}).json()),
+      "/docs/search returned the authors' style guide")
 settings._cache["rows"]["SHARE_LEVEL"] = "off"
 check(all(lan.get(p, params={"q": "air"}).status_code == 403 for p in ("/ask/status", "/docs/search")),
       "at SHARE_LEVEL=off the pane's routes must need a token from the WiFi")
@@ -485,12 +504,14 @@ async def _thinking():
     await REAL_CHAT(_server(True), picky, list(_t), [{"type": "function"}])
     small = agent_loop.Rung("local", "http://l.test/v1", "qwen3:4b", small=True)
     await REAL_CHAT(_server(False), small, list(_t), [{"type": "function"}])
+    await REAL_CHAT(_server(False), big, list(_q), [])          # the Wall: no tools, so nothing to think about
     return got
 _got = asyncio.run(_thinking())
 check(SEEN[:2] == [None, "none"], f"thinking must choose the tool and be off after its result: {SEEN[:2]}")
 check(SEEN[2:5] == ["none", None, None] and _got.get("content") == "ok",
       f"a server that refuses reasoning_effort must be asked again without it, and not sent it next time: {SEEN[2:5]}")
-check(SEEN[5:] == [None], f"a small model has /no_think already and must not be sent reasoning_effort: {SEEN[5:]}")
+check(SEEN[5:6] == [None], f"a small model has /no_think already and must not be sent reasoning_effort: {SEEN[5:6]}")
+check(SEEN[6:] == ["none"], f"with no tools offered the first call must go without thinking (the Wall): {SEEN[6:]}")
 check(agent_loop.cap("x" * 10) == "x" * 10, "a tool result under the cap must reach the model unchanged")
 _c = agent_loop.cap("y" * 9000)
 check(_c.startswith("y" * agent_loop.TOOL_CAP) and "[cut: this result is 9000 characters" in _c and "incomplete" in _c,

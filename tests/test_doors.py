@@ -52,7 +52,15 @@ print("doors: the theme's fonts/jetbrains-mono-latin.woff2 answers 200")
 # the unit /issues names for a metric is the unit the node stores it in, which Home Assistant is told too: pressure
 # said hPa over kPa values, and the Data door read 99.8 hPa beside the model's 996 (14 Oct 2026)
 from issues import engine as _engine  # noqa: E402
-_off = {m: (u, _engine.METRICS[m]["unit"]) for m, (u, _) in main.HA_UNITS.items() if u and m in _engine.METRICS and _engine.METRICS[m]["unit"] != u}
+def _ha_units():
+    """HA_UNITS from packs/home-assistant, where Home Assistant lives since 22 Oct (not importable as a package)."""
+    import importlib.util as _iu
+    _spec = _iu.spec_from_file_location("ha_hooks", "packs/home-assistant/hooks.py")
+    _m = _iu.module_from_spec(_spec); _spec.loader.exec_module(_m)
+    return _m.HA_UNITS
+
+
+_off = {m: (u, _engine.METRICS[m]["unit"]) for m, (u, _) in _ha_units().items() if u and m in _engine.METRICS and _engine.METRICS[m]["unit"] != u}
 assert not _off, _off
 print("doors: every metric's unit on the page is the unit the node stores it in")
 
@@ -84,7 +92,7 @@ from types import SimpleNamespace  # noqa: E402
 os.environ.setdefault("NODE_LAT", "-8.819"); os.environ.setdefault("NODE_LON", "115.164")
 _rq = lambda t: SimpleNamespace(state=SimpleNamespace(share_trusted=t))  # noqa: E731
 _kw = dict(id=None, lat=-8.8, lon=115.17, res=14, children=15, polar=True)
-_open, _mine = main.geo_cell(_rq(False), **_kw), main.geo_cell(_rq(True), **_kw)
+_open, _mine = main.geo.geo_cell(_rq(False), **_kw), main.geo.geo_cell(_rq(True), **_kw)
 assert not {"is_node", "cells_from_node", "ring_polar", "children_polar"} & set(_open) and _open["ring"] == _mine["ring"], _open.keys()
 assert {"is_node", "cells_from_node", "ring_polar", "children_polar"} <= set(_mine)
 print("doors: a phone with no token gets the map and the cells, never where they stand from the house")
@@ -167,7 +175,9 @@ assert r["stats"] == 18 and r["point"] == [115.164, -8.819], "the point is /heal
 print("doors: without the token the hourly table is absent and the ledger carries no notes")
 
 # the flow: counts from the hourly table, alerts and answers in its window (matched flow.json exactly on 7 Oct)
-assert r["flow"] == {"b": 24, "ids": 21, "alerts": 30, "answers": 7, "counted": True}, r["flow"]
+# 7 answers in /actions and 2 left on alert events, which /actions without events=1 does not return (audit, 15 Oct)
+assert r["flow"] == {"b": 24, "ids": 21, "alerts": 30, "answers": 9, "counted": True}, r["flow"]
+assert r["flowLocked"]["answers"] >= 2, f"a screen with no token counts the events' answers too: {r['flowLocked']}"
 assert r["flowLocked"]["counted"] is False and r["flowLocked"]["ids"] == 0 and r["flowLocked"]["b"] == 24
 print("doors: the flow counts what the hourly table counted, and says it did not count without it")
 assert r["aheadLast"] == r["fullLast"] and r["aheadN"] == r["fullN"], "a forecast hour ahead of /issues entered the replayed table"
@@ -219,19 +229,23 @@ const calls = []; globalThis.fetch = p => { calls.push(p); return Promise.resolv
   const locked = await L.doorsFetch('/things'), cap = await L.doorsFetch('/captures/3/file?w=96'), open = await L.doorsFetch('/stats');
   const core = fs.readFileSync('./app/static/doors-core.js', 'utf8'), pick = n => core.match(new RegExp('^const ' + n + ' = .*$', 'm'))[0];
   const F = JSON.parse(fs.readFileSync('%s', 'utf8')), els = {};
-  const ctx = { D: L.buildD({ ...F, days: F.issues_days }, 'en'), VIEWS: {}, $: q => (els[q] ||= {}), out: null };
+  const ctx = { D: L.buildD({ ...F, days: F.issues_days }, 'en'), VIEWS: {}, $: q => (els[q] ||= {}), out: null, doorsLocal: L.doorsLocal };
   vm.createContext(ctx);
-  vm.runInContext(['esc', 'fmt', 'plain', 'said', 'num', 'unitOf', 'labelOf'].map(pick).join('\n') + '\n' + fs.readFileSync('./app/static/doors-wall.js', 'utf8')
+  vm.runInContext(['esc', 'fmt', 'plain', 'said', 'num', 'unitOf', 'labelOf', 'loc', 'dayOf'].map(pick).join('\n') + '\n' + fs.readFileSync('./app/static/doors-wall.js', 'utf8')
     + '\nconst now15 = s => ((D.stats15[s.sensor_id] || {}).pm25 || [])[0] ?? null, st = D.sensors.filter(s => s.kind === "sensor");'
     + ' const hv = st.filter(s => s.local).map(now15).filter(v => v != null), house = hv.length ? hv.reduce((a, b) => a + b) / hv.length : null;'
     + ' const say = Array(30).fill("Close the windows facing the street").join(" ") + ".";'
-    + ' $("#wnarr").classList = { toggle() {} }; const nd = () => { narrDraw(); return { hidden: $("#wnarr").hidden, html: $("#wnarr").innerHTML, note: $("#wnote").textContent }; };'
+    + ' $("#wnarr").classList = { toggle() {}, add() {}, remove() {} }; const nd = () => { narrDraw(); return { hidden: $("#wnarr").hidden, html: $("#wnarr").innerHTML, note: $("#wnote").textContent }; };'
     + ' const narr = { empty: nd() }; NARR.busy = true; narr.asking = nd(); NARR.err = "The node’s model did not answer: 500"; narr.err = nd();'
     + ' NARR.prev = "The air inside is calm."; narr.kept = nd(); NARR.busy = false; NARR.err = null; NARR.shown = "The air"; NARR.typing = true; narr.typing = nd();'
     + ' out = { ask: D.order.map(k => wallAsk(D.issues[k])).join(" "), cap: wallCaption(house, st.filter(s => !s.local).map(now15), D.issues.air.line),'
     + ' caps: [wallCaption(10, [20, 5], 15), wallCaption(20, [], 15), wallCaption(null, [16], 15, "at 15:00"), wallCaption(5, [], null)], narr,'
     + ' long: wallAsk({ asking: [{ says: say }] }), short: oneLine("Open the windows. Then wait."),'
-    + ' fresh: wallStale({ last_poll: new Date().toISOString() }), old: wallStale({ last_poll: "2026-10-06T11:19:50+00:00" }), none: wallStale({}) };', ctx);
+    + ' fresh: wallStale({ last_poll: new Date().toISOString() }), old: wallStale({ last_poll: "2026-10-06T11:19:50+00:00" }), none: wallStale({}) };'
+    /* the walk's four pages, at the day's last hour, with a place learning shaped as GET /learned/place answers it */
+    + ' WALK.place = [{ issue: "air", numbers: { by_hour: Object.fromEntries([...Array(24)].map((_, h) => [h, 10 + h %% 5])), days: 28 }, checked_at: "2026-10-06T08:00:00+08:00" }];'
+    + ' out.pages = [0, 1, 2, 3].map(i => wallPage(i, 23)); out.when = [wallWhen(new Date().toISOString()), wallWhen("2025-07-01T08:00:00+08:00")];'
+    + ' WALK.place = []; out.bare = wallPage(1, 23);', ctx);
   const pm = fs.readFileSync('./app/static/doors-placemap.js', 'utf8').match(/function packRows[\s\S]*?\n}\n/)[0];
   vm.runInContext('const LAYERS = [{ id: "index" }, { id: "earth" }];' + pm + 'packRows(); out.pack = LAYERS.map(l => l.none);', ctx);
   console.log(JSON.stringify({
@@ -252,6 +266,9 @@ for _p in _paths:
     for _q in ([_p.split("(")[0] + y for y in _p.split("(")[1].rstrip(")").split("|")] if "(" in _p else [_p]):
         _opened = _q in main._SHARE_OPEN[0] or _q.startswith(main._SHARE_OPEN[1])
         assert not _opened or _q == "/alerts", f"{_q} answers a screen without a token at SHARE_LEVEL=open; doorsFetch must ask it"
+_lk = json.loads(subprocess.run(["node", "-e", "const L = require('./app/static/doors-load.js'); console.log(JSON.stringify(['/learned', '/learned/search?q=x', '/learned/place'].map(p => L.DOORS_LOCKED.test(p))))"],
+                                capture_output=True, text=True, check=True).stdout)
+assert _lk == [True, True, False], f"the house's learnings ask the token, the place's do not: {_lk}"
 print("doors: a screen with no token asks no token-only route; with one it asks as before")
 _names = {x["name"].strip() for x in json.loads(Path(FIX).read_text())["sensors"] if len(x["name"].strip()) > 3}
 _wall = json.dumps(t["wall"], ensure_ascii=False)
@@ -259,6 +276,34 @@ assert not [n for n in _names if n in _wall], [n for n in _names if n in _wall]
 assert "Nothing is asked now." in t["wall"]["ask"], "6 Oct 19:22: a stale alert and an answered event ask nothing now"
 assert t["wall"]["old"] and t["wall"]["none"] and not t["wall"]["fresh"], t["wall"]
 print("doors: the Wall names no sensor, room or kit, and says stale only when the last poll is old")
+# THE WALK (Tomas picked option A, 16 Oct): four scales, the phone's own; every figure says when and one provenance word;
+# the land is a hundred squares; floods are said to be not watched, never drawn; the learned usual only when the node has it.
+_pg = t["wall"]["pages"]
+_wsrc = (STATIC / "doors-wall.js").read_text()
+_ws = re.search(r"const WALL_SCALES = (\[.*?\]);", _wsrc).group(1)
+# The story rolls when it is longer than its box (Tomas, 21 Oct: the end was cut and the start never came back): after
+# typing, and again when a scale gives the box its room back; still under reduced motion.
+assert "if (!NARR.typing) narrRoll();" in _wsrc and "!NARR.typing) narrRoll();" in _wsrc.split("function wallFit")[1].split("function wallHour")[0], \
+    "the Wall's story does not start rolling after typing, or when its box gets room again"
+assert re.search(r"prefers-reduced-motion: reduce\)\{[^}]*\.wnarr \.nw\.roll \.nt\{animation:none", html), "the story rolls under reduced motion"
+_ps = re.search(r"const SCALES = (\[.*?\]);", (STATIC / "walk.js").read_text()).group(1)
+assert re.findall(r"k: '(\w+)'", _ws) == re.findall(r"k: '(\w+)'", _ps) and re.findall(r"res: (\d+)", _ws) == re.findall(r"res: (\d+)", _ps)[:4], (_ws, _ps)
+for _i, _h in enumerate(_pg):
+    _figs = re.findall(r'<div class="wfig">(.*?)</div>', _h)
+    assert _figs or _i == 3, f"scale {_i} draws no figure"
+    for _f in _figs:
+        assert re.search(r'class="wpw">(live|partial|model|cached|example)<', _f) and re.search(r"· \d\d:\d\d ", _f), f"a figure with no time or word: {_f}"
+    assert not re.findall(r'class="wpw">(?!(?:live|partial|model|cached|example)<)', _h), f"a word that is not one of the five on scale {_i}"
+assert "dotted: what this node learned is usual outside" in _pg[1] and "dotted" not in t["wall"]["bare"], "the usual is drawn only when learned"
+assert 'stroke-dasharray="1 6"' in _pg[1] and 'stroke-width="3"' in _pg[1] and 'stroke-dasharray="1 6"' not in _pg[0], "the street's day and its usual, dotted"
+assert re.search(r'<p class="wat">.* at <b>\d\d:00</b>: ', _pg[1]), "the replayed hour said in words, house, street and ring"
+_hund = re.search(r'<div class="whund"[^>]*>(.*?)</div>', _pg[2]).group(1)
+assert _hund.count("<i ") == 100 and re.search(r"built <b>\d+%</b>", _pg[2]), _pg[2][:400]
+assert "OpenStreetMap" in _pg[2] and "too few to tell homes from shops" in _pg[2], "the places counted, and why there is no homes-and-shops split"
+assert "<th>Floods</th><td>not watched on this node yet</td>" in _pg[3]
+assert t["wall"]["when"][1] == "Jul 2025" and re.fullmatch(r"\d\d:\d\d", t["wall"]["when"][0]), t["wall"]["when"]
+print("doors: the Wall walks the phone's four scales; every figure has its time and word; land as 100 squares; floods not invented")
+
 # 15 Oct, the Wall read from 3 m (Tomas's review of 14 Oct). Each check fails if its fix regresses.
 # The map's caption says in words what its red discs mean against the house: a clean headline beside red discs.
 _c = t["wall"]["caps"]
@@ -295,7 +340,9 @@ assert re.findall(r"getSize: (\w+)", _wjs) == ["wf", "wf"], "the map's words are
 # CHROME: a wall is not operated. The back button, the chips and the hour strip are .wchrome, invisible until a pointer
 # or the keyboard is in them; the back button is the first thing in keyboard order.
 assert "#wallv .wchrome{opacity:0" in _wcss and "#wallv .wchrome:hover,#wallv .wchrome:focus-within{opacity:1}" in _wcss
-assert re.search(r'<div class="wtop wchrome"><button class="wback"', _wjs) and 'id="wtime" class="flowtime wchrome"' in _wjs
+assert re.search(r'<div class="wtop wchrome"><button class="wback"', _wjs) and 'class="wrail" id="wrail"' in _wjs and "flowtime" not in _wjs, \
+    "the rail is how a reader knows the scale: never chrome; the hour strip is gone"
+assert "#wallv .wrail button" in _wcss and "#wallv .wback,#wallv .wchips button,#wallv .wrail button{min-height:44px;min-width:44px}" in _wcss
 for _gone in ("share level", "#wall", "more</a>", "readings in", "next in", "Read at", "replay with the token"):
     assert _gone not in _wjs.lower().replace("#wallv", ""), f"admin chrome is back on the Wall: {_gone}"
 print("doors: nothing on the Wall is under 28 px at 1920x1080, and its chrome shows only under a pointer or the keyboard")
@@ -310,7 +357,7 @@ const out = {};
 for (const [name, path] of Object.entries(JSON.parse(process.argv[1]))) {
   const F = JSON.parse(fs.readFileSync(path, 'utf8')), els = {}, D = L.buildD({ ...F, days: F.issues_days }, 'en');
   D.now = D.buckets.length - 1;
-  const ctx = { D, S: { issue: null, i: D.now }, doorsLocal: L.doorsLocal, VIEWS: {}, $: q => (els[q] ||= {}), document: { querySelectorAll: () => [] } };
+  const ctx = { D, S: { issue: null, i: D.now }, doorsLocal: L.doorsLocal, WORDS: L.WORDS, stateWord: L.stateWord, kindWord: L.kindWord, VIEWS: {}, $: q => (els[q] ||= {}), document: { querySelectorAll: () => [] } };
   vm.createContext(ctx);
   vm.runInContext(['esc', 'loc', 'dayOf', 'fmt', 'said', 'num', 'unitOf', 'labelOf', 'NODE', 'sign', 'PROV', 'prov', 'ISSUES_DRAWN'].map(pick).join('\n') + '\n'
     + 'let NOWL = null;\n' + (now.includes('function usualLine') ? fn(now, 'usualLine') : '') + fn(now, 'rows')
@@ -320,7 +367,7 @@ for (const [name, path] of Object.entries(JSON.parse(process.argv[1]))) {
     + fs.readFileSync('./app/static/doors-wall.js', 'utf8').match(/function wallAsk[\s\S]*?\n}\n/)[0], ctx);
   /* the phone's Decide card, its own copy of the helpers (mobile.js says why) */
   const mob = fs.readFileSync('./app/static/mobile.js', 'utf8'), mpick = n => mob.match(new RegExp('^const ' + n + ' = .*$', 'm'))[0];
-  const pctx = { D, leadKey: null, doorsLocal: L.doorsLocal, DOORS_TOKEN: () => '' };
+  const pctx = { D, leadKey: null, doorsLocal: L.doorsLocal, kindWord: L.kindWord, DOORS_TOKEN: () => '' };
   vm.createContext(pctx);
   vm.runInContext(['esc', 'hhmm', 'fmt', 'said', 'ANSWER_STAGE'].map(mpick).join('\n') + '\n' + fn(mob, 'decideHTML'), pctx);
   out[name] = Object.fromEntries(D.order.map(k => {
@@ -366,8 +413,8 @@ _nowjs = (STATIC / "doors-now.js").read_text()
 assert 'id="rail"' not in _nowh and "function rail(" not in _nowjs and 'id="cellink" title="This node\'s cell, on Place"' in _nowh, \
     "the grain rail is back on Now"
 # the parts in reading order, each keeping its learn mark: lead, figure, distances, buttons, then the house's states
-_marks = re.findall(r'data-learn="([a-z]+)"', _nowh)
-assert _marks == ["lead", "figure", "distances", "buttons", "states", "custody"], _marks
+_marks = re.findall(r'data-learn="([a-z-]+)"', _nowh)
+assert _marks == ["now-sentence", "figure", "now-distances", "now-todo", "now-worked", "now-rows", "now-around", "now-things"], _marks
 assert _nowh.index('id="decide"') < _nowh.index('id="nremember"') < _nowh.index('class="rcol"'), "What to do, then Did it work, then around"
 # heads name the reader's question, in sentence case; no engine stage shouted on Now
 assert "Around the house</h2>" in _nowh and "`Right now · " in _nowjs and '<h2 class="nh">What to do</h2>' in _nowjs
@@ -489,7 +536,7 @@ _dh = html[html.index('data-view="data"'):html.index("<!-- WALL -->")]
 assert not re.search(r'id="d-(learned|usual|diary)"', _dh) and "learnedBlock" not in _dj and 'href="#node/remember"' in _dh, \
     "Data no longer holds the diary, what is usual or what worked; it points to Node"
 _wall = (STATIC / "doors-wall.js").read_text() + (STATIC / "doors-wallmap.js").read_text()
-assert "/learned" not in _wall and "/household" not in _wall, "the Wall never reads the house's learnings"
+assert "/learned" not in _wall.replace("/learned/place", "") and "/household" not in _wall, "the Wall never reads the house's learnings"
 print("doors: Data points to Node for the diary; the Wall reads none of it")
 
 # The WHO line (Tomas, 14 Oct 2026: "put the WHO line in graphics as reference"): every drawing of PM2.5 draws the
@@ -564,13 +611,20 @@ for _v in _learn.VERDICT_WORDS:
     assert re.search(rf"const VERDICT_W = {{[^}}]*\b{_v}:", _nodejs), f"Node has no words for the verdict {_v}"
 # PHASE 4a, Place and Node (Tomas, 14–15 Oct 2026). Each check fails if its fix regresses.
 _place = html[html.index('<section class="page view" data-view="place"'):html.index("<!-- DATA -->")]
-assert _place.index('class="bench"') < _place.index('id="pspecies"') < _place.index('id="pyearly"') < _place.index('class="cols2"'), \
-    "the species table, then Changes by the year, sit below the map"
+# OPTION A (Tomas, 15 Oct: "I like A"): under the map, three columns: where the readings come from, the species, what is changing
+assert _place.index('class="bench"') < _place.index('class="pcols"') < _place.index('id="reach"') < _place.index('id="pspecies"') \
+    < _place.index('id="pyearly"') < _place.index('id="soon"'), "the three columns sit below the map, in their order"
+assert 'id="pmargin"' in _place and 'id="pleads"' in _place and 'class="inspect"' in _place and 'id="lybtn"' not in _place, \
+    "the margin and its leaders beside the map, the inspector one line under it, no layer sheet"
 assert "'#pyearly').innerHTML = yearly()" in (STATIC / "doors-place.js").read_text(), "Land and Coast are drawn below the map"
 _css = html[html.index("/* ================= PLACE: the workbench"):html.index("/* ================= NODE")]
 assert re.search(r"\.tools button\{min-width:44px;height:44px", _css), "the map's tools are 44 px targets"
-assert "max-height" not in re.search(r"#layers\{display:block\}[^\n]*", _css).group(0) and "#layers{display:block;overflow" not in _css, \
-    "no inner scroller in the layer list"
+_drop = re.search(r"\.lydrop\{[^}]*\}", _css).group(0)
+assert "max-height" not in _drop and "overflow" not in _drop, "no inner scroller in the layer drop-down"
+assert re.search(r"\.lystrip\{[^}]*overflow-x:auto", _css) and ".page[data-view=\"place\"]{max-width:1440px}" in _css, \
+    "the strip scrolls inside itself; the map takes the content's full width"
+assert re.search(r"\.mapc\{display:grid;grid-template-columns:minmax\(0,1fr\) 300px", _css) and ".mapc #map{aspect-ratio:auto;height:560px" in _css, \
+    "the map is landscape, 560 px high, with a 300 px margin"
 assert "overflow-x:auto" not in html[html.index("/* ================= NODE"):].split("\n")[1], "the flow never scrolls sideways"
 pprog = r"""
 const fs = require('fs'), vm = require('vm'), d3 = require('./app/static/d3.min.js');
@@ -582,10 +636,10 @@ const F = JSON.parse(fs.readFileSync('%s', 'utf8')), D = L.buildD({ ...F, days: 
 const out = {};
 /* five on by default; the rest off */
 out.on = eval(pm.match(/const LAYERS = \[[\s\S]*?\n\];/)[0] + '; LAYERS').filter(l => l.on && !l.parent).map(l => l.id);
-out.house = /id: 'house-l'[^\n]*getText: \(\) => 'This house'/.test(pm);
+out.house = !/id: '(house|species)-l'/.test(pm) && /name: 'This house', ll: D\.point/.test(pm);
 out.tools = /\['from', '⌂'/.test(pm) && /class="done" data-t="done"/.test(pm);
 const mk = () => { const els = {}; return q => (els[q] ||= { innerHTML: '', textContent: '', clientWidth: 600, clientHeight: 600, style: {}, appendChild() {}, setAttribute() {}, onclick: null }); };
-const page = tok => ({ D, d3, $: mk(), console, Response, UNLOCK_AT: '<a href="#setup/screen">Set up › This screen</a>',
+const page = tok => ({ D, d3, $: mk(), console, Response, DOORS_TOKEN: () => (tok ? 't' : ''), sign: id => `<svg data-s="${id}"></svg>`, UNLOCK_AT: '<a href="#setup/screen">Set up › This screen</a>',
   doorsFetch: p => Promise.resolve(!tok ? new Response('{}', { status: 403 }) : new Response(JSON.stringify(
     p.startsWith('/species') ? { species: [{ key: 3152559, name: 'Hibiscus rosa-sinensis L.', rank: 'SPECIES', count: 2, images: 1, others: 14 }] }
     : p.startsWith('/captures') ? [{ id: 2, outside: false, analysis: { confirmed_by: 'T', findings: [{ taxon: { key: 3152559 } }] } }] : {}), { status: 200 })) });
@@ -615,7 +669,9 @@ const page = tok => ({ D, d3, $: mk(), console, Response, UNLOCK_AT: '<a href="#
   c.window = c; c.D = { ...D, ngeo: null, ngeoErr: 'GET /geo/cell answered 403' }; vm.createContext(c);
   vm.runInContext(pm + '\nwindow.placeMap()', c);
   await new Promise(r => setTimeout(r, 50));
-  out.flat = { map: c.$('#map').innerHTML, layers: c.$('#layers').innerHTML, facts: c.$('#facts').innerHTML, btn: c.$('#lybtn').innerHTML };
+  out.flat = { map: c.$('#map').innerHTML, layers: c.$('#layers').innerHTML, facts: c.$('#facts').innerHTML, margin: c.$('#pmargin').innerHTML, drop: {} };
+  /* a group pressed opens its rows; the flat branch of placeMap() draws the strip again */
+  for (const g of ['Base', 'Readings', 'Packs']) { c.__PM.gopen = g; vm.runInContext('window.placeMap()', c); await new Promise(r => setTimeout(r, 10)); out.flat.drop[g] = c.$('#layers').innerHTML; }
   console.log(JSON.stringify(out));
 })();
 """ % replayed(FIX)
@@ -628,11 +684,17 @@ assert '<table class="tbl species">' in pp["sp"] and "gbif.org/species/3152559" 
 assert "<table" not in pp["spLocked"] and "#setup/screen" in pp["spLocked"], pp["spLocked"]
 print("doors: the species confirmed here are a table below the map; without the token one line says where to unlock")
 _f = pp["flat"]
-assert "<svg" in _f["map"] and "This house" in _f["map"] and "no WebGL" in _f["map"], _f["map"][:300]
-assert 'data-l="own"' in _f["layers"] and 'data-l="street"' in _f["layers"] and "live map only" in _f["layers"], _f["layers"][:300]
-# locked, the images cannot draw, so four of the five are on and the phone's button says so
-assert "Resolution" in _f["facts"] and _f["btn"] == "Layers <b>4</b>", (_f["facts"][:200], _f["btn"])
-print("doors: without WebGL Place draws the still map, the layer list and the facts")
+assert "<svg" in _f["map"] and 'class="house"' in _f["map"] and "This house" not in _f["map"] and "no WebGL" in _f["map"], _f["map"][:300]
+# the strip: five groups, closed until pressed; each opens its own rows
+assert all(f'data-g="{g}"' in _f["layers"] for g in ("Base", "Grid", "Readings", "Images", "Packs")) and 'class="lydrop" id="lydrop" hidden' in _f["layers"], _f["layers"][:400]
+assert 'data-l="street"' in _f["drop"]["Base"] and 'data-l="own"' in _f["drop"]["Readings"] and "live map only" in _f["drop"]["Packs"], _f["drop"]
+assert 'data-l="own"' not in _f["drop"]["Base"], "a group's drop-down holds its own rows only"
+# locked, the images cannot draw, so four of the five are on and the strip says so; the inspector is one line
+assert "In view" in _f["facts"] and "res 8 in view" in _f["facts"] and "Layers <small>4 of" in _f["layers"], (_f["facts"][:200], _f["layers"][:200])
+# the margin names the house, never the map; without the token the house's own rows say withheld and keep their place
+assert "This house" in _f["margin"] and _f["margin"].count("<b>withheld</b>") == 2 and "This house’s stations" in _f["margin"], _f["margin"][:600]
+assert _f["margin"].index("withheld") < _f["margin"].index("This house</span>"), "withheld rows stand where the house is, first" 
+print("doors: Place, option A: a strip of five groups, the house named in the margin (withheld rows without the token), the inspector one line; without WebGL the map draws still")
 assert pp["v"]["ok"] and pp["v"]["head"] == "Working" and re.match(r"Last reading 19:19; 6 of 6 sensors, \d+ of 20 stations heard in the last hour\.$", pp["v"]["text"]), pp["v"]
 assert not pp["vStale"]["ok"] and pp["vStale"]["head"] == "Needs a look" and "the last reading was at" in pp["vStale"]["text"].lower(), pp["vStale"]
 assert not pp["vErr"]["ok"] and "forecast loop failed" in pp["vErr"]["text"], pp["vErr"]
@@ -694,6 +756,10 @@ assert 'id="cells"' in html[html.index("<!-- NODE -->"):] and 'id="cells"' not i
 print("doors: every anchor Data had lands on its tab and element; the Index cells and the diary land on Node")
 _m = _d["models"]
 assert _m.count("<table") == 1 and ">yearly" in _m and ">hourly" in _m and "P1Y" not in _m and "PT1H" not in _m, "one table, cadence in words"
+# every source links to where it publishes, in a new tab (Tomas, 15 Oct)
+assert 'href="https://open-meteo.com/' in _m and 'target="_blank" rel="noopener">source ↗' in _m, "a model's source links out, in a new tab"
+_dj = (STATIC / "doors-data.js").read_text()
+assert "smartcitizen.me/kits/" in _dj and "srcLink({ ...r.s" in _dj, "every sensor row links to its source"
 assert "years" not in _m.lower().replace("yearly", "") and "fc_" not in _m and "lead" not in _m, "the node's own counters are not drawn"
 assert ">hPa<" in _m and ">%<" in _m and _m.count('class="grp"') >= 5, "a unit column, a row per source"
 print("doors: the models are one table, a row per source, a unit, hourly not PT1H, no internal counters")
@@ -733,6 +799,11 @@ assert _c["key"][0]["to"] == "a new value" and "sk-x" not in json.dumps(_c["key"
 _setup = (STATIC / "doors-setup.js").read_text()
 assert "confirm(" not in _setup[_setup.index("async function sSave"):] and "sConfirm(c)" in _setup and "Save anyway" in _setup and 'data-a="back"' in _setup
 assert "Read at start" in _setup and _setup.count("planetai restart") == 1, "what is read at start is one table, its instruction said once"
+_gf = _setup[_setup.index("function sGrafana"):_setup.index("function sUpdates")]
+assert "sGrafana(d.bootstrap" in _setup and "g === 'system' ? sGrafana" in _setup, "Set up › System draws the Grafana block"
+assert "!/^GRAFANA_/.test(b.key)" in _setup, "Grafana's keys are its block, not three more rows in the start-time table"
+assert "planetai grafana" in _gf and "ssh -L" in _gf and "grafana/" in _gf, "the block says how to turn it on, how to reach it, and links its page"
+assert "GRAFANA_ADMIN_PASSWORD') ?" in _gf and "esc(v('GRAFANA_ADMIN_PASSWORD'))" not in _gf, "the password is only ever set or not"
 print("doors: Set up asks before a change that leaves the machine or runs code, in the setting's own words, and never otherwise")
 
 # 44 px targets: the tab bars (Data's and Set up's), Set up's switches and buttons, the ledger's filter; the tab bar
@@ -744,4 +815,14 @@ for _sel in (".snav a{display:flex;justify-content:space-between;align-items:cen
     assert _sel in html, f"lost: {_sel}"
 assert "gear.setAttribute('aria-current', 'page')" in (STATIC / "doors-core.js").read_text()
 print("doors: every tab, switch and button in Data and Set up is a 44 px target; the gear shows Set up is open")
+# the Wall shows no alert answers (Tomas, 16 Oct): no row of answered alerts, no rings around the house
+_w = (STATIC / "doors-wall.js").read_text() + (STATIC / "doors-wallmap.js").read_text()
+assert not re.search(r"rhoRow|RHO_ROW|wrho|F\.answers|F\.alerts|answers back", _w), "the Wall shows answers to alerts again"
+assert ".wrho" not in html
+print("doors: the Wall counts no answers to alerts, in words or rings")
+
+# a newer release is one small line in the bar, hidden until /health says so, and it opens Set up › Updates
+assert re.search(r'<header class="bar"[^>]*>.*id="relnote" href="#setup/updates"[^>]*hidden.*</header>', html, re.S)
+assert "$('#relnote').hidden = !rel.newer" in js
+print("doors: a newer release shows in the bar, and only then")
 print("all doors checks passed")

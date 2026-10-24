@@ -66,37 +66,73 @@ CREATE TABLE IF NOT EXISTS actions (
   note      TEXT
 );
 
--- Hourly means. A plain view is fine until this node holds millions of rows; then materialize it.
+-- Hourly means. Finished hours are kept in readings_1h_done; the view reads them and groups only the readings from
+-- the table's last hour onward, live. Until 22 Oct 2026 the view grouped every reading ever stored on every read:
+-- 434 ms for the last two hours on node #1, 2.7 s for ninety days. app/main.py::refresh_hourly fills the table: the
+-- last 26 hours every hour (late child pushes, a radio that caught up), the whole of it on start and once a day
+-- (a backfill, a deletion). The live half starts where the table ends, so an empty or stale table makes the view
+-- slower, never shorter. Buckets are cut in the session's time zone, NODE_TZ, as the view always cut them.
+CREATE TABLE IF NOT EXISTS readings_1h_done (
+  bucket    TIMESTAMPTZ NOT NULL,
+  sensor_id TEXT NOT NULL,
+  metric    TEXT NOT NULL,
+  mean      DOUBLE PRECISION,
+  min       DOUBLE PRECISION,
+  max       DOUBLE PRECISION,
+  n         BIGINT,
+  PRIMARY KEY (sensor_id, metric, bucket)
+);
+CREATE INDEX IF NOT EXISTS readings_1h_done_bucket ON readings_1h_done (bucket);
+CREATE INDEX IF NOT EXISTS readings_ts ON readings (ts);    -- the live half reads only the last hour or two
 DROP VIEW IF EXISTS readings_1h CASCADE;
 CREATE VIEW readings_1h AS
-SELECT date_trunc('hour', ts) AS bucket, sensor_id, metric,
-       avg(value) AS mean, min(value) AS min, max(value) AS max, count(*) AS n
-FROM readings GROUP BY 1, 2, 3;
+SELECT d.bucket, d.sensor_id, d.metric, d.mean, d.min, d.max, d.n FROM readings_1h_done d
+UNION ALL
+SELECT date_trunc('hour', r.ts) AS bucket, r.sensor_id, r.metric,
+       avg(r.value) AS mean, min(r.value) AS min, max(r.value) AS max, count(*) AS n
+FROM readings r
+WHERE r.ts >= (SELECT COALESCE(max(bucket) + INTERVAL '1 hour', '-infinity'::timestamptz) FROM readings_1h_done)
+GROUP BY 1, 2, 3;
 
--- Rolling stats per sensor/metric, used by rules. One row per (sensor, metric).
+-- Rolling stats per sensor/metric, used by rules. One row per (sensor, metric). Aggregated on (sensor_id, metric) alone
+-- and joined to the sensor after: grouping on all nine columns sorted every reading of the day by them, 320 ms on
+-- node #1 (24 Oct 2026), 133 ms this way, the same rows. Rolling stats are for sensors only: slow sources (portals,
+-- models) live in the `observations` view.
 DROP VIEW IF EXISTS stats CASCADE;
 CREATE VIEW stats AS
-SELECT r.sensor_id, r.metric, s.indoor, s.local, s.kind, s.scale, s.lat, s.lon, s.name,
-       (array_agg(r.value ORDER BY r.ts DESC))[1]                          AS last,
-       max(r.ts)                                                             AS last_ts,
-       extract(epoch FROM now() - max(r.ts)) / 60                            AS silent_minutes,
-       avg(r.value) FILTER (WHERE r.ts > now() - interval '15 minutes')      AS mean_15m,
-       avg(r.value) FILTER (WHERE r.ts > now() - interval '1 hour')          AS mean_1h,
-       avg(r.value) FILTER (WHERE r.ts > now() - interval '24 hours')        AS mean_24h
-FROM readings r JOIN sensors s USING (sensor_id)
--- rolling stats are for sensors only; slow sources (portals, models) live in the `observations` view
-WHERE r.ts > now() - interval '24 hours' AND s.kind = 'sensor'
-GROUP BY r.sensor_id, r.metric, s.indoor, s.local, s.kind, s.scale, s.lat, s.lon, s.name;
+SELECT a.sensor_id, a.metric, s.indoor, s.local, s.kind, s.scale, s.lat, s.lon, s.name,
+       a.last, a.last_ts, extract(epoch FROM now() - a.last_ts) / 60 AS silent_minutes,
+       a.mean_15m, a.mean_1h, a.mean_24h
+FROM (SELECT r.sensor_id, r.metric,
+             (array_agg(r.value ORDER BY r.ts DESC))[1]                       AS last,
+             max(r.ts)                                                          AS last_ts,
+             avg(r.value) FILTER (WHERE r.ts > now() - interval '15 minutes')   AS mean_15m,
+             avg(r.value) FILTER (WHERE r.ts > now() - interval '1 hour')       AS mean_1h,
+             avg(r.value) FILTER (WHERE r.ts > now() - interval '24 hours')     AS mean_24h
+      FROM readings r
+      WHERE r.ts > now() - interval '24 hours'
+        AND r.sensor_id IN (SELECT sensor_id FROM sensors WHERE kind = 'sensor')
+      GROUP BY r.sensor_id, r.metric) a
+JOIN sensors s ON s.sensor_id = a.sensor_id;
 
 -- Slow-moving numbers (a city statistic, a satellite point sample, a survey) don't belong in a 24h rolling view.
--- One row per source per metric per period, latest wins.
+-- One row per source per metric per period, latest wins. Found by walking readings_lookup, (sensor_id, metric,
+-- ts DESC): each metric of each non-sensor, then its newest row. DISTINCT ON sorted every row those sources ever
+-- wrote, 66,067 for 93 on node #1 (24 Oct 2026, 221 ms); this reads about one index entry per answer (6 ms).
 DROP VIEW IF EXISTS observations CASCADE;
 CREATE VIEW observations AS
-SELECT DISTINCT ON (r.sensor_id, r.metric)
-       r.sensor_id, r.metric, r.value, r.ts, s.name, s.kind, s.scale, s.local, s.cadence, s.meta
-FROM readings r JOIN sensors s USING (sensor_id)
-WHERE s.kind <> 'sensor'
-ORDER BY r.sensor_id, r.metric, r.ts DESC;
+WITH RECURSIVE m AS (
+  SELECT s.sensor_id, (SELECT min(r.metric) FROM readings r WHERE r.sensor_id = s.sensor_id) AS metric
+  FROM sensors s WHERE s.kind <> 'sensor'
+  UNION ALL
+  SELECT m.sensor_id, (SELECT min(r.metric) FROM readings r WHERE r.sensor_id = m.sensor_id AND r.metric > m.metric)
+  FROM m WHERE m.metric IS NOT NULL
+)
+SELECT m.sensor_id, m.metric, l.value, l.ts, s.name, s.kind, s.scale, s.local, s.cadence, s.meta
+FROM m JOIN sensors s ON s.sensor_id = m.sensor_id
+CROSS JOIN LATERAL (SELECT r.value, r.ts FROM readings r WHERE r.sensor_id = m.sensor_id AND r.metric = m.metric
+                    ORDER BY r.ts DESC LIMIT 1) l
+WHERE m.metric IS NOT NULL;
 
 -- Where this node's schema is. Read by update.sh and reported at /health.
 CREATE TABLE IF NOT EXISTS schema_version (version TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now());
@@ -248,10 +284,14 @@ WITH b AS (
   GROUP BY 1, 2, 3)
 SELECT bucket, sensor_id, metric, mean FROM b
 UNION ALL
-SELECT t.bucket, t.sensor_id, 'apparent',
-       t.mean + 0.33 * (h.mean / 100.0 * 6.105 * exp(17.27 * t.mean / (237.7 + t.mean))) - 4.0
-FROM b t JOIN b h ON h.sensor_id = t.sensor_id AND h.bucket = t.bucket AND h.metric = 'humidity'
-WHERE t.metric = 'temp';
+-- temp and humidity side by side in one grouping, not b joined to itself: Postgres guessed one sensor row where node #1
+-- has 31, chose a nested loop, and compared 2.57 million pairs for 1,604 rows, 590 of the view's 645 ms, about nine
+-- times a minute (21 Oct 2026). The same rows in 57 ms.
+SELECT bucket, sensor_id, 'apparent', t + 0.33 * (h / 100.0 * 6.105 * exp(17.27 * t / (237.7 + t))) - 4.0
+FROM (SELECT bucket, sensor_id, max(mean) FILTER (WHERE metric = 'temp') AS t,
+             max(mean) FILTER (WHERE metric = 'humidity') AS h
+      FROM b WHERE metric IN ('temp', 'humidity') GROUP BY 1, 2) p
+WHERE t IS NOT NULL AND h IS NOT NULL;
 
 -- usual_by_hour: this room's own normal for each local hour, from the fourteen complete local days before today
 -- (date_trunc in the session's NODE_TZ). Today is left out on purpose: a long hot run must not raise the bar it is

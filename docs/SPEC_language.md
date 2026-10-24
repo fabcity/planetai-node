@@ -1,6 +1,6 @@
 # The node's language
 
-How the node speaks, in three layers, and the rules every string in it obeys. This document is the authority for `app/issues/*.yml` sentence templates, the `PLAIN_WORDS` family in `app/issues/__init__.py` **[changed: that is where it lives]**, the agent prompts in `agent_loop.py`, and any future surface that addresses a household. When a string and this document disagree, the string is wrong.
+How the node speaks, in three layers, and the rules every string in it obeys. This document is the authority for the sentence templates in each pack's `issue.yml`, the `PLAIN_WORDS` family in `app/issues/__init__.py` **[changed: that is where it lives]**, the agent prompts in `agent_loop.py`, and any future surface that addresses a household. When a string and this document disagree, the string is wrong.
 
 **[new]** In full, the authority covers every word table in `app/issues/__init__.py` (`PLAIN_WORDS`, `REASON_WORDS`, `CMP_WORDS`, `SPAN_WORDS`, `NOUN_WORDS`, `PROMPT_WORDS`, `SIMPLE_WORDS`) and all three prompts that speak for the node: `SYSTEM` (the Telegram bot), `PANE_SYSTEM` (the ask pane), and the Wall's "thinking aloud" prompt, which today sits in `app/static/doors-wall.js:73`.
 
@@ -68,7 +68,7 @@ The pair travels together. Every consumer renders `sentence` + `plain`, or state
 | ask pane | in context (already: `sentence`, `plain`) | same | `about` in context when focused **[changed: to be added in `app/ask.py`]** |
 | Telegram bot | answer's first line | one number when it drives the advice | when the person asks "what is…" |
 | Wall, thinking aloud **[new]** | the whole paragraph is words | none: its prompt already bans units and allows at most two numbers | none |
-| alerts (events) | first clause, words only ("Smoke or dust in Kids and Living Room") **[changed 14 Oct]** | one reading, then whose line with its unit ("48 µg/m³; the WHO line is 15 µg/m³"); the outside only in the action, as its reason | the action card |
+| alerts (events) | first clause, words only ("Smoke or dust in Kids and Living Room") **[changed 14 Oct]** | one reading, then whose line with its unit ("48 µg/m³; the WHO line is 15 µg/m³"; when the air is unhealthy for an hour or dangerous, "the US EPA's unhealthy level is 35.5 µg/m³" **[changed 15 Oct]**); the outside only in the action, as its reason | the action card |
 | MCP / API | `hero.sentence` | `hero.plain`, `hero.value` | `about` in the issue document |
 
 ## The `about` key

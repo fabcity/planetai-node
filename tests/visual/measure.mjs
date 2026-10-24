@@ -499,7 +499,9 @@ async function serveNodeAPI(route, u) {
     const sse = (e, d) => `event: ${e}\ndata: ${JSON.stringify(d)}\n\n`;
     /* A model that takes its time, so the pane's waiting state can be looked at. */
     if (process.env.PAI_ASK_SLOW) await new Promise(r => setTimeout(r, Number(process.env.PAI_ASK_SLOW)));
-    const words = 'I have put MAP_TILES on a card. Nothing changed; you decide.'.split(' ');
+    /* PAI_ASK_LONG=1: a narration as long as the Wall's model writes (six to eight sentences), for the Wall's box */
+    const words = (process.env.PAI_ASK_LONG === '1' ? Array(8).fill('The air outside has stayed under the line all day and the house is a little cleaner still.').join(' ')
+      : 'I have put MAP_TILES on a card. Nothing changed; you decide.').split(' ');
     await route.fulfill({ status: 200, contentType: 'text/event-stream', body:
       sse('tools', { tool: 'issues', ms: 12 })
       + sse('proposal', { tool: 'settings_set', args: { changes: { MAP_TILES: 'on' } }, setting: 'MAP_TILES',
@@ -3128,8 +3130,9 @@ async function mobile() {
         btn: !!document.querySelector('#capopen'),
         line: document.querySelector('.capture .dm')?.textContent || '',
       }));
-      ok(!capLocked.btn && capLocked.line.includes('Unlock this phone') && capLocked.line.includes('to add images'),
-        `a locked phone is offered the unlock, not the button: "${capLocked.line}"`);
+      // audit, 15 Oct: a locked phone is offered nothing it cannot use; the Node section's own Unlock is the way in
+      ok(!capLocked.btn && capLocked.line === '',
+        `a locked phone shows no image button and no add-images line: "${capLocked.line}"`);
       await r0.browser.close();
     }
     await r.browser.close();
@@ -3226,6 +3229,82 @@ async function mobile() {
   process.exit(1);
 }
 
+/* ------------------------------------------------------------------ the Wall's walk (16 Oct, option A)
+ * The Wall walks out a scale at a time (doors-wall.js). Against the committed fixture, at 1920×1080 on a TV and at 390 on a
+ * phone, this presses each scale on the rail and reads the drawing: one viewport, nothing under the 28 px floor outside
+ * the chrome, every figure with its time and one of the five provenance words, no room or sensor name; under reduced
+ * motion two reads 1.5 s apart are the same scale and hour and the walk's clock is not subscribed; with motion on and
+ * the replay loop shortened to 2.4 s, the hours step and the scale moves on; on a touch phone the rail is 44 px. */
+async function wallwalk() {
+  const bad = [], ok = (c, what) => { if (!c) bad.push(what); };
+  const fx = JSON.parse(fs.readFileSync(path.join(HERE, '..', '..', 'app', 'issues', 'fixtures', `${FIXTURE}.json`), 'utf8'));
+  const names = (fx.sensors || []).filter(x => x.local && (x.name || '').trim().length > 3).map(x => x.name.trim());
+  const read = page => page.evaluate(([names]) => {
+    const W = document.querySelector('#wallv'), r = document.querySelector('.wr');
+    const txt = [...W.querySelectorAll('*')].filter(e => [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim()) && e.getClientRects().length && !e.closest('.wchrome'));
+    const figs = [...W.querySelectorAll('.wfig')].map(f => f.textContent);
+    return { sc: [...document.querySelectorAll('#wrail button.on')].map(b => b.dataset.sc), hour: WALK.hour, sub: CLOCK.subs.has('wall-walk'),
+      h: document.documentElement.scrollHeight, w: document.documentElement.scrollWidth, over: r ? r.scrollHeight - r.clientHeight : 0,
+      small: txt.filter(e => parseFloat(getComputedStyle(e).fontSize) < 27.5).map(e => `${e.tagName}.${e.className}`).slice(0, 3),
+      undated: figs.filter(f => !/\d\d:\d\d/.test(f) || !/(live|partial|model|cached|example)/.test(f)).slice(0, 2),
+      /* the narration under the page: drawn, and neither over the page nor past the screen */
+      narr: (n => n && n.getClientRects().length ? (() => { const a = n.getBoundingClientRect(), pg = document.querySelector('#wpage'), c = r.getBoundingClientRect();
+        return { over: Math.round(pg.getBoundingClientRect().top + pg.scrollHeight - a.top), past: Math.round(a.bottom - c.bottom) }; })() : null)(document.querySelector('#wnarr')),
+      words: [...W.querySelectorAll('.wpw')].map(e => e.textContent).filter(x => !['live', 'partial', 'model', 'cached', 'example'].includes(x)),
+      named: names.filter(n => W.textContent.includes(n)), rail: [...document.querySelectorAll('#wrail button')].map(b => { const q = b.getBoundingClientRect(); return [q.width, q.height]; }) };
+  }, [names]);
+  const was = [process.env.PAI_ASK_MODEL, process.env.PAI_ASK_LONG];
+  process.env.PAI_ASK_MODEL = 'rig-model'; process.env.PAI_ASK_LONG = '1';      /* a model that answers, at length */
+  let narrSeen = 0;
+  for (const [w, h, touch] of [[1920, 1080, false], [390, 844, true]]) {
+    const r = await openRig({ w, h, touch, dark: true });
+    await r.page.goto(`${POP}/?fixture=${FIXTURE}#wall`, { waitUntil: 'domcontentloaded' });
+    await r.page.waitForSelector('#wpage .wfig', { timeout: 30000 }).catch(() => bad.push(`${w}: the Wall drew no page`));
+    for (let i = 0; i < 4; i++) {
+      await r.page.click(`#wrail button[data-sc="${i}"]`); await r.page.waitForTimeout(500);
+      const g = await read(r.page), tag = `${w} scale ${i}`;
+      if (process.env.PAI_WALL_SHOTS === '1') await r.page.screenshot({ path: path.join(OUT, `wallwalk_${w}_${i}.png`) });
+      ok(g.sc.length === 1 && g.sc[0] === String(i), `${tag}: the rail marks ${g.sc.join(',') || 'nothing'}`);
+      ok(g.w <= w, `${tag}: the page is ${g.w} px wide`);
+      if (!touch) { ok(g.h <= h, `${tag}: the Wall is ${g.h} px on a ${h} px screen`); ok(g.over <= 1, `${tag}: the page runs ${g.over} px past the screen`);
+        ok(!g.small.length, `${tag}: under the 28 px floor: ${g.small.join(', ')}`); }
+      ok(!g.undated.length, `${tag}: a figure with no time or word: ${g.undated.join(' | ')}`);
+      ok(!g.words.length, `${tag}: a provenance word that is not one of the five: ${g.words.join(', ')}`);
+      ok(!g.named.length, `${tag}: names a room or sensor: ${g.named.join(', ')}`);
+      if (!touch && g.narr) { narrSeen += 1; ok(g.narr.over <= 1 && g.narr.past <= 1, `${tag}: the narration covers the page by ${g.narr.over} px, runs ${g.narr.past} px past the screen`); }
+      if (touch) ok(g.rail.every(([a, b]) => a >= 44 && b >= 44), `${tag}: a rail button under 44 px: ${JSON.stringify(g.rail)}`);
+    }
+    if (!touch) {
+      ok(narrSeen >= 2, `the narration drew on ${narrSeen} of 4 scales`);
+      const a = await read(r.page); await r.page.waitForTimeout(1500); const b = await read(r.page);
+      ok(a.sc[0] === b.sc[0] && a.hour === b.hour && !b.sub, `reduced motion: the walk moved (${a.sc}/${a.hour} → ${b.sc}/${b.hour}, subscribed ${b.sub})`);
+    }
+    await r.browser.close();
+  }
+  [process.env.PAI_ASK_MODEL, process.env.PAI_ASK_LONG] = was; for (const [k, v] of [['PAI_ASK_MODEL', was[0]], ['PAI_ASK_LONG', was[1]]]) if (v == null) delete process.env[k];
+  { const browser = await chromium.launch();
+    /* openRig holds reduced motion on; this context turns it off and serves the same page, fixture and routes */
+    const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 }, reducedMotion: 'no-preference' });
+    await ctx.route('**/*', async route => { const u = new URL(route.request().url()); if (u.origin !== POP) return route.continue();
+      const doc = docFor(u), file = doc || (u.pathname.startsWith('/static/') ? u.pathname.slice(8) : null);
+      if (file && !file.includes('/')) { const p = fs.existsSync(path.join(STATIC, file)) ? path.join(STATIC, file) : path.join(STATIC, 'fonts', file);
+        if (fs.existsSync(p)) return route.fulfill({ status: 200, body: fs.readFileSync(p), headers: { 'content-type': MIME[path.extname(p)] || 'application/octet-stream' } }); }
+      if (await serveNodeAPI(route, u)) return; return route.continue(); });
+    const page = await ctx.newPage();
+    await page.goto(`${POP}/?fixture=${FIXTURE}#wall`, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#wpage .wfig', { timeout: 30000 }).catch(() => bad.push('motion: the Wall drew no page'));
+    await page.evaluate(() => document.documentElement.style.setProperty('--motion-replay-loop', '2.4s'));
+    const seen = [];
+    for (let k = 0; k < 14; k++) { seen.push(await page.evaluate(() => [document.querySelector('#wrail button.on').dataset.sc, WALK.hour])); await page.waitForTimeout(250); }
+    const hours = new Set(seen.map(x => x[1])), scales = new Set(seen.map(x => x[0]));
+    ok(hours.size >= 4 && seen.every(x => Number.isInteger(x[1])), `motion: the hours did not step (${[...hours].join(',')})`);
+    ok(scales.size >= 2, `motion: the walk stayed on scale ${[...scales].join(',')} for a whole day's replay`);
+    await browser.close(); }
+  if (!bad.length) console.log('  wallwalk: four scales at 1920×1080 and 390, each one screen, dated and worded, no names, the narration under the page; still under reduced motion, stepping with motion on; 44 px scale names on a phone');
+  for (const b of bad) console.log('FAIL wallwalk:', b);
+  if (bad.length) process.exitCode = 1;
+}
+
 /* ------------------------------------------------------------------ the doors' Data and Set up (phase 4b)
  *
  * Data is tabs routed #data/<tab> and Set up is sections routed #setup/<section>, so a door's overflow is a
@@ -3309,6 +3388,29 @@ async function doors() {
       if (shots && (s === '#setup/basics' || s === '#setup/sharing' || s === '#setup/screen'))
         await r.page.screenshot({ path: path.join(OUT, `doors_${s.slice(1).replace('/', '-')}_${tag}.jpg`), fullPage: true, type: 'jpeg', quality: 78 });
     }
+    /* Place, option A (Tomas, 15 Oct): the layers a strip of five groups that scrolls inside itself, a press opens one
+       group's rows; the map at the content's width; the house named in the margin, its own rows withheld without the
+       token; 44 px targets on a phone; nothing scrolls sideways */
+    await go(r.page, '#place'); await wait(r.page, '#layers .lystrip'); await r.page.waitForTimeout(600);
+    const pl = await r.page.evaluate(() => {
+      const vis = x => x.getClientRects().length, sel = '#layers .lystrip button, .tools button, #pmargin button.mr, .pviews button, .scales button';
+      return { groups: document.querySelectorAll('#layers .lystrip button[data-g]').length, map: Math.round(document.getElementById('map').getBoundingClientRect().width),
+        small: [...document.querySelectorAll(sel)].filter(vis).map(x => x.getBoundingClientRect()).filter(b => b.height < 44 || b.width < 44).length,
+        margin: document.getElementById('pmargin').innerText, facts: document.getElementById('facts').innerText };
+    });
+    ok(pl.groups === 5, `${tag} #place: the strip has ${pl.groups} groups, not 5`);
+    ok(w < 768 || pl.map >= 1000, `${tag} #place: the map is ${pl.map}px wide, not the content's width`);
+    ok(w >= 768 || !pl.small, `${tag} #place: ${pl.small} target(s) under 44 × 44 px`);
+    ok(/This house/.test(pl.margin) && (tok || /withheld/.test(pl.margin)), `${tag} #place: the margin reads ${pl.margin.slice(0, 120)}`);
+    ok(/In view/i.test(pl.facts), `${tag} #place: the inspector line reads ${pl.facts.slice(0, 80)}`);
+    await r.page.click('#layers button[data-g="Readings"]'); await r.page.waitForTimeout(200);
+    const dd = await r.page.evaluate(() => { const d = document.getElementById('lydrop'); return { open: !d.hidden, rows: d.querySelectorAll('.ly').length }; });
+    ok(dd.open && dd.rows === 4, `${tag} #place: Readings opened ${dd.rows} rows (${dd.open ? 'open' : 'closed'})`);
+    { const o = await overflowAt(r.page); ok(o <= 1, `${tag} #place: the page scrolls ${o}px sideways with a drop-down open`); }
+    if (shots) await r.page.screenshot({ path: path.join(OUT, `doors_place_${tag}.jpg`), fullPage: true, type: 'jpeg', quality: 78 });
+    await r.page.click('#layers button[data-g="Readings"]'); await r.page.waitForTimeout(200);
+    ok(await r.page.evaluate(() => document.getElementById('lydrop').hidden), `${tag} #place: a second press did not close the drop-down`);
+    panes += 1;
     /* the consequences step, unlocked only: open sharing asks first; a plain setting saves at once */
     if (tok && w === 1440 && !dark) {
       const puts = []; r.page.on('request', q => { if (q.method() === 'PUT' && q.url().endsWith('/settings')) puts.push(q.postData()); });
@@ -3330,9 +3432,39 @@ async function doors() {
       ok(k && !c2 && puts.length === 1, `a plain setting (${k}) asked first, or did not save (${puts.length} PUT)`);
       said.push(`the consequences step: SHARE_LEVEL=open asks and sends nothing until Save anyway; ${k} saves at once`);
     }
+    /* Learn this page, on every door: each part the door shows is listed once, in the order it is seen, with what the
+       docs say about it (the quote), and a link to the section; a part on a hidden tab or view is not listed */
+    if (!dark) {
+      await go(r.page, '#now'); await r.page.click('#askbtn'); await r.page.check('#learn');
+      const WANT = { '#now': ['now-sentence', 'now-todo', 'now-rows'], '#place': ['place-head', 'place-layers', 'place-map', 'place-tools'],
+        '#node': ['node-verdict', 'node-flow', 'node-refusals'], '#data/readings': ['data-head', 'data-readings', 'data-week'],
+        '#data/home': ['data-images', 'data-things'], '#setup': ['settings', 'setup-sections', 'setup-save'], '#wall': ['wall-never', 'wall-sentence', 'wall-map'] };
+      const NOT = { '#place': ['place-orbit', 'place-changed', 'earth'], '#data/home': ['data-ledger', 'data-readings'], '#wall': ['bar', 'foot'] };
+      let parts = 0;
+      for (const [h, want] of Object.entries(WANT)) {
+        await go(r.page, h); await r.page.waitForTimeout(h === '#setup' || h === '#wall' ? 1200 : 600);
+        const L = await r.page.evaluate(() => {
+          const items = [...document.querySelectorAll('#learnlist li')], ap = document.getElementById('askpane');
+          return { got: items.map(li => li.dataset.learnItem), nums: items.map(li => li.querySelector('i').textContent),
+            bare: items.filter(li => !(li.querySelector('blockquote') || {}).textContent || !li.querySelector('a[href^="https://planetai.fab.city/docs/"]')).map(li => li.dataset.learnItem),
+            unknown: items.map(li => li.dataset.learnItem).filter(k => !D.learn[k]), wide: ap.scrollWidth - ap.clientWidth };
+        });
+        parts += L.got.length;
+        for (const k of want) ok(L.got.includes(k), `${tag} ${h}: learn does not list ${k} (${L.got.join(' ')})`);
+        for (const k of NOT[h] || []) ok(!L.got.includes(k), `${tag} ${h}: learn lists ${k}, which is not on the screen`);
+        ok(new Set(L.got).size === L.got.length, `${tag} ${h}: a part is listed twice (${L.got.join(' ')})`);
+        ok(L.nums.every((n, i) => +n === i + 1), `${tag} ${h}: the parts are numbered ${L.nums.join(',')}`);
+        ok(!L.bare.length, `${tag} ${h}: ${L.bare.join(', ')} listed without the docs' quote or the link to its section`);
+        ok(!L.unknown.length, `${tag} ${h}: ${L.unknown.join(', ')} has no mark in learn.json`);
+        ok(L.wide <= 1, `${tag} ${h}: the learn list scrolls ${L.wide}px sideways`);
+        if (shots && h === '#now') await r.page.screenshot({ path: path.join(OUT, `doors_learn_${tag}.jpg`), type: 'jpeg', quality: 78 });
+      }
+      await r.page.click('#askclose');
+      said.push(`${tag} learn: ${parts} parts over seven doors and tabs, each with its quote and docs link`);
+    }
     await r.browser.close();
   }
-  if (!bad.length) { console.log(`  doors: ${panes} panes of Data and Set up at 390/1440, paper/dark, locked/token: no sideways scroll, `
+  if (!bad.length) { console.log(`  doors: ${panes} panes of Data, Set up and Place at 390/1440, paper/dark, locked/token: no sideways scroll, `
     + `44 px tabs, one tab's sections at a time, every old Data anchor lands${said.length ? '; ' + said.join('; ') : ''}`); return; }
   for (const b of bad) console.log('FAIL doors:', b);
   process.exit(1);
@@ -3362,5 +3494,6 @@ else if (cmd === 'overflow') await overflow(rest);
 else if (cmd === 'list') jobs().forEach(j => console.log(j.name));
 else if (cmd === 'mobile') await mobile();
 else if (cmd === 'doors') await doors();
-else { console.error('usage: measure.mjs render|shots|plates|plate-list|steps|stall|press|asking|extend|anchors|sheets|header|targets|audit|overflow|analyse|list|mobile|doors');
+else if (cmd === 'wallwalk') await wallwalk();
+else { console.error('usage: measure.mjs render|shots|plates|plate-list|steps|stall|press|asking|extend|anchors|sheets|header|targets|audit|overflow|analyse|list|mobile|doors|wallwalk');
   process.exit(2); }

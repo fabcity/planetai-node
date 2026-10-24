@@ -22,6 +22,7 @@ import asyncio
 import json
 import logging
 import os
+import math
 import re
 import secrets
 from datetime import datetime, timedelta, timezone
@@ -282,10 +283,16 @@ def wall_reads() -> tuple[list, dict | None]:
     except Exception:  # noqa: BLE001
         usual = []
     try:
-        fc = main.forecast(WALL_FORECAST_HOURS)
+        fc = _read_forecast(WALL_FORECAST_HOURS)
     except Exception:  # noqa: BLE001
         fc = None
     return usual, fc
+
+
+def _read_forecast(hours: int) -> dict | None:
+    """GET /forecast's own answer, from the forecast pack (packs/forecast/routes.py), or None while it is off."""
+    mod = packs.module("forecast", "routes")
+    return mod.forecast(hours) if mod else None
 
 
 AGENT_KEYS = ("AGENT_PREFER", "AGENT_REMOTE_URL", "AGENT_REMOTE_MODEL", "AGENT_REMOTE_KEY",
@@ -344,7 +351,7 @@ def ask_status():
             "rungs": [agent_loop.where_of(r) for r in order],
             # True when the question and the page's context may leave the house: an online rung is in the
             # order, which only AGENT_PREFER fallback or strongest allows.
-            "leaves": any(r.name == "online" for r in order),
+            "leaves": any(r.leaves for r in order),
             "tools": [{"name": n, "class": TOOL_CLASS[n]} for n in sorted(agent_loop.PANE_TOOLS)],
             "stored": False}
 
@@ -469,7 +476,10 @@ async def ask(body: AskBody, request: Request):
                 async def call(name, args):
                     res = await session.call_tool(name, args)
                     return "\n".join(getattr(x, "text", "") for x in res.content)
-                async for event, data in agent_loop.pane([m.model_dump() for m in body.messages], system, tools,
+                # The Wall tells its story from the facts in its prompt ("use only the facts in your context"), so it
+                # is offered no tools, and with none to choose the model answers without thinking (agent_loop.chat).
+                async for event, data in agent_loop.pane([m.model_dump() for m in body.messages], system,
+                                                         [] if body.prompt == "wall" else tools,
                                                          call, scrub, rungs=order):
                     yield _sse(event, _proposal(data, loc) if event == "proposal" else data)
         except Exception as e:  # noqa: BLE001
@@ -496,19 +506,83 @@ def _docs() -> list[dict]:
     return rows
 
 
-@router.get("/docs/search")
-def docs_search(q: str = Query(..., min_length=2, max_length=80)):
-    """This node's documentation, searched without a model: a substring, case-insensitive, twenty hits at most."""
-    needle = q.lower()
-    hits = []
-    for r in _docs():
-        text = str(r.get("text") or "")
-        i = (str(r.get("title") or "") + " " + text).lower().find(needle)
-        if i < 0:
+# Words a question carries that say nothing about what it asks, in the three languages the node speaks.
+_STOP = set("""the and for are was what how does can could should would will with this that from have has had you your
+our there their them they its into about when where which who why not but any all also just like more most some than
+then too very get got make made use used need want know tell show give here does did doing being been were
+apa yang dan untuk dari dengan ini itu ada bisa saya kami bagaimana kenapa mengapa kapan dimana siapa tidak
+que qué los las del por para con una uno como cómo cuál cuando dónde quién está son hay puedo debo este esta eso""".split())
+# A word a person uses, and the one the docs use for it.
+_SAYS = {"rho": ("ρ",), "location": ("position",), "address": ("position",)}
+_WORD = re.compile(r"[^\W_]+", re.U)
+
+
+def _terms(q: str) -> list[str]:
+    """The words of a question worth looking for: three letters or more, not a stop word, a plural's s dropped."""
+    out = []
+    for w in _WORD.findall(q.lower()):
+        if len(w) < 3 or w in _STOP:
             continue
-        j = max(0, text.lower().find(needle))
-        snippet = text[max(0, j - 80): j + 160].strip()
-        hits.append({"page": r.get("page"), "anchor": r.get("anchor"), "title": r.get("title"), "snippet": snippet})
+        w = w[:-1] if len(w) > 4 and w.endswith("s") else w
+        if w not in out:
+            out.append(w)
+    return out
+
+
+def _plain(text: str) -> str:
+    """A section's words as a person reads them: no code blocks or tables, a link reduced to its words, no markdown marks."""
+    t = re.sub(r"```.*?```", " ", text, flags=re.S)
+    t = re.sub(r"(?:\|[^|]*){3,}\|?", " ", t)                     # a table, flattened onto one line
+    t = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", t)
+    t = re.sub(r"[`*#>]+|(?<!\w)-{2,}(?!\w)", " ", t)
+    return re.sub(r"\s+", " ", t).strip()
+
+
+def _snippet(plain: str, words: list[str]) -> str:
+    """The sentence holding the first word found, and what follows it, cut at a word: about 220 characters."""
+    low = plain.lower()
+    at = min((low.find(w) for w in words if w and w in low), default=0)
+    start = plain.rfind(". ", 0, at) + 2 if plain.rfind(". ", 0, at) >= 0 else 0
+    cut = plain[start: start + 240]
+    return cut if len(plain) <= start + 240 else cut[: cut.rfind(" ")]
+
+
+@router.get("/docs/search")
+def docs_search(q: str = Query(..., min_length=2, max_length=200)):
+    """This node's documentation, searched without a model, so the ask box is a docs search where no model is
+    set up. The whole query as a phrase ranks first; otherwise each section is scored by the question's words it
+    holds, a word in its title counting three times, and a section needs most of them. Twenty hits at most, the
+    authors' style guide left out."""
+    needle, terms = q.lower().strip(), _terms(q)
+    ways = {w: (w, *_SAYS.get(w, ())) for w in terms}       # each word, and the docs' own words for it
+    rows = [r for r in _docs() if r.get("page") != "STYLE.md"]
+    # A word on every page ("node") says less than a rare one ("update"): weight each by how few sections hold it.
+    hay = [(str(r.get("title") or "") + " " + str(r.get("text") or "")).lower() for r in rows]
+    idf = {v: math.log((len(rows) + 1) / (1 + sum(v in h for h in hay))) for vs in ways.values() for v in vs}
+    scored = []
+    for r in rows:
+        title, page = str(r.get("title") or "").lower(), str(r.get("page") or "").lower()
+        raw = str(r.get("text") or "")
+        text = _plain(raw) or re.sub(r"\s+", " ", re.sub(r"[|`*#>]+|-{2,}", " ", raw)).strip()   # a section that is all table
+        low = text.lower()
+        if needle in title or needle in low:
+            score = 1000
+        elif terms:
+            found = [v for w in terms for v in ways[w] if v in title or v in low]
+            asked = [w for w in terms if any(v in title or v in low for v in ways[w])]
+            if len(asked) * 2 < len(terms) + (len(terms) > 2):     # most of the question's words, not one of them
+                continue
+            score = sum(idf[v] * (5 * (v in page) + 3 * (v in title) + (v in low)) for v in found)
+        else:
+            continue
+        snippet = _snippet(text, [needle] + [v for vs in ways.values() for v in vs])
+        scored.append((score, {"page": r.get("page"), "anchor": r.get("anchor"), "title": r.get("title"), "snippet": snippet}))
+    scored.sort(key=lambda x: -x[0])
+    hits = []
+    for _, h in scored:
+        if any(h["page"] == x["page"] and h["anchor"] == x["anchor"] for x in hits):
+            continue
+        hits.append(h)
         if len(hits) >= 20:
             break
     return hits

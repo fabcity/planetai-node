@@ -15,7 +15,7 @@ import re
 import sys
 
 SQL = open("init.sql").read()
-SRC = open("app/main.py").read()
+SRC = open("app/main.py").read() + open("app/auth.py").read() + open("packs/eyes/routes.py").read()   # auth.py: the allowlists, since 22 Oct; the eyes pack, since 24 Oct
 
 # ---------------------------------------------------------------- the schema
 m = re.search(r"CREATE TABLE IF NOT EXISTS captures \((.*?)\n\);", SQL, re.S)
@@ -108,7 +108,10 @@ os.environ.update(ADMIN_TOKEN="admin-tok", ACT_TOKEN="act-tok", BACKUP_TOKEN="ba
 import settings                                    # noqa: E402
 settings._cache = {"at": time.time() + 1e9, "rows": {}}
 import main                                       # noqa: E402
-assert main.CAPTURES_DIR == TMP, "PLANETAI_CAPTURES must steer the folder in tests"
+import db                                         # noqa: E402
+import packs                                      # noqa: E402
+E = packs.ROUTES["eyes"]                          # the eyes pack's routes, as main mounted them (packs/eyes, 24 Oct 2026)
+assert E.CAPTURES_DIR == TMP, "PLANETAI_CAPTURES must steer the folder in tests"
 
 def level(v):
     settings._cache["rows"]["SHARE_LEVEL"] = v
@@ -128,7 +131,7 @@ def qstub(sql, *a):
     if "WHERE kind" in sql and a:                       # the route filters kind in SQL; the stub plays the db
         rows = [r for r in rows if r["kind"] == a[0]]
     return rows
-main.q = qstub
+db.q = main.q = qstub
 
 class FakeCur:
     def __init__(self):
@@ -156,7 +159,7 @@ class FakeCon:
         return False
     def cursor(self):
         return CUR
-main.db = lambda: FakeCon()
+db.db = main.db = lambda: FakeCon()
 
 def jpeg(with_gps=True):
     im = Image.new("RGB", (64, 64), (200, 30, 30))
@@ -285,10 +288,10 @@ assert r.status_code == 404, "no such capture"
 print("GET file: the picture to a token, 401 to the backup token, 404 when there is none")
 
 # ---- the folder gone: a clear 503, never a quiet loss
-main.CAPTURES_DIR = os.path.join(TMP, "gone")
+E.CAPTURES_DIR = os.path.join(TMP, "gone")
 r = local.post("/captures", files={"photo": ("p.jpg", jpeg(False), "image/jpeg")}, data={"kind": "phone"})
 assert r.status_code == 503 and "CAPTURES_DIR" in r.json()["detail"], r.text
-main.CAPTURES_DIR = TMP
+E.CAPTURES_DIR = TMP
 print("folder: missing or unwritable is a clear 503 that names CAPTURES_DIR")
 
 # ---- the cleaning keeps HEIC showable, when the install can read one
@@ -297,7 +300,7 @@ try:
     pillow_heif.register_heif_opener()
     buf = io.BytesIO()
     Image.new("RGB", (32, 32), (30, 30, 200)).save(buf, "HEIF")
-    cleaned, mime, _, _ = main._clean_picture(buf.getvalue())
+    cleaned, mime, _, _ = E._clean_picture(buf.getvalue())
     assert mime == "image/jpeg" and Image.open(io.BytesIO(cleaned)).format == "JPEG", "HEIC becomes JPEG"
     print("cleaning: a HEIC becomes a JPEG any screen can show")
 except Exception as e:
@@ -307,7 +310,7 @@ except Exception as e:
 buf = io.BytesIO()
 Image.new("RGB", (32, 32), (200, 30, 30)).save(buf, "MPO", save_all=True, append_images=[Image.new("RGB", (8, 8))])
 assert Image.open(io.BytesIO(buf.getvalue())).format == "MPO", "the fixture really is an MPO"
-cleaned, mime, _, _ = main._clean_picture(buf.getvalue())
+cleaned, mime, _, _ = E._clean_picture(buf.getvalue())
 assert mime == "image/jpeg" and Image.open(io.BytesIO(cleaned)).size == (32, 32), "an MPO keeps its first frame as a JPEG"
 print("cleaning: a drone's MPO becomes a JPEG of its main frame")
 
@@ -321,11 +324,11 @@ class FakeOllama:
     async def __aexit__(self, *a): return False
     async def post(self, url, json):
         SENT.append((url, json))
-        said = main.json.dumps(ANSWER) if "format" in json else "Roofs and a car park from above, four coconut palms."
+        said = E.json.dumps(ANSWER) if "format" in json else "Roofs and a car park from above, four coconut palms."
         return main.httpx.Response(200, json={"message": {"content": said}})
 main.httpx.AsyncClient = FakeOllama
 q0 = main.q
-main.q = lambda sql, *a: ([{"file": "seen.jpg", "kind": "drone", "note": "the banjar", "analysis": ANALYSIS[0]}]
+db.q = main.q = lambda sql, *a: ([{"file": "seen.jpg", "kind": "drone", "note": "the banjar", "analysis": ANALYSIS[0]}]
                           if a and a[0] == 7 else [])
 settings._cache["rows"]["EYES_MODEL"] = ""
 assert lan.post("/captures/7/describe", headers=ACT).status_code == 409, "no image model set: a clear 409"
@@ -344,7 +347,7 @@ assert url.endswith("/api/chat") and look["model"] == "qwen2.5vl:7b" and look["m
 assert "people" in look["messages"][0]["content"] and "the banjar" in look["messages"][0]["content"], "asked never to describe people, told the note"
 assert "format" not in look and "images" not in filed["messages"][0], "it looks in words first, then files those words"
 assert "four coconut palms" in filed["messages"][0]["content"] and "Never people" in filed["messages"][0]["content"]
-assert filed["format"]["properties"]["findings"]["items"]["properties"]["class"]["enum"] == list(main.EYES_CLASSES), "classes are the flows profile's"
+assert filed["format"]["properties"]["findings"]["items"]["properties"]["class"]["enum"] == list(E.EYES_CLASSES), "classes are the flows profile's"
 assert a["summary"].startswith("Roofs and a car park"), "the summary is what it saw"
 assert a["vocab"] == "https://planetai.fab.city/vocab/flows/1.0/" and a["model"] == "qwen2.5vl:7b" and a["by"] == "model" and not a["confirmed_by"]
 assert [f["class"] for f in a["findings"]] == ["plant", "waste_residual", "other"], "an unknown class is other; a blank or 'none' name is dropped"
@@ -392,7 +395,7 @@ assert not any("taxon" in f for f in a["findings"]), "no yes, no key"
 settings._cache["rows"]["SPECIES_MATCH"] = "on"
 a = lan.post("/captures/7/describe", headers=ACT).json()["analysis"]
 assert [p["name"] for _, p in ASKED] == ["Cocos nucifera", "Arecaceae", "Bombus", "Nonsuchia fakea"], ASKED
-assert all(u == main.GBIF_MATCH and set(p) == {"name", "strict"} and p["strict"] == "true" for u, p in ASKED), "the name and nothing else, strictly"
+assert all(u == E.GBIF_MATCH and set(p) == {"name", "strict"} and p["strict"] == "true" for u, p in ASKED), "the name and nothing else, strictly"
 t = [f.get("taxon") for f in a["findings"]]
 assert t[0] == {"key": 2735117, "name": "Cocos nucifera L.", "rank": "species", "match": "exact", "source": "gbif"}, t[0]
 assert t[1]["rank"] == "family", "a palm stays a family: the rank is what GBIF matched"
@@ -420,11 +423,11 @@ import zipfile
 ZI = os.path.join(TMP, "zoneinfo"); os.makedirs(ZI, exist_ok=True)
 open(os.path.join(ZI, "zone.tab"), "w").write("# comment\nID\t-0507+11924\tAsia/Makassar\tBali\nES\t+4024-00341\tEurope/Madrid\tSpain\n")
 open(os.path.join(ZI, "iso3166.tab"), "w").write("# comment\nES\tSpain\nID\tIndonesia\n")
-main.ZONEINFO = main.Path(ZI)
+E.ZONEINFO = E.Path(ZI)
 os.environ["NODE_TZ"] = "Asia/Makassar"
-assert main.node_country() == ("ID", "Indonesia"), main.node_country()
+assert E.node_country() == ("ID", "Indonesia"), E.node_country()
 os.environ["NODE_TZ"] = "UTC"
-assert main.node_country() is None, "a zone in no country is no country"
+assert E.node_country() is None, "a zone in no country is no country"
 buf = io.BytesIO()
 with zipfile.ZipFile(buf, "w") as z:
     z.writestr("meta.xml", '<archive xmlns="http://rs.tdwg.org/dwc/text/"><core><files><location>taxon.txt</location></files></core>'
@@ -432,7 +435,7 @@ with zipfile.ZipFile(buf, "w") as z:
                '<coreid index="0"/><field index="1" term="http://rs.gbif.org/terms/1.0/isInvasive"/></extension></archive>')
     z.writestr("profile.txt", "id\tisInvasive\n84000\tInvasive\n84001\tNull\n84002\tInvasive\n")
 ARCHIVE = buf.getvalue()
-assert main._griis_invasive(ARCHIVE) == {"84000", "84002"}, "isInvasive, read where meta.xml says"
+assert E._griis_invasive(ARCHIVE) == {"84000", "84002"}, "isInvasive, read where meta.xml says"
 buf = io.BytesIO()
 with zipfile.ZipFile(buf, "w") as z:   # the 2022 format: no isInvasive, the distribution's degree of establishment
     z.writestr("meta.xml", '<archive xmlns="http://rs.tdwg.org/dwc/text/"><extension rowType="http://rs.gbif.org/terms/1.0/Distribution" '
@@ -440,9 +443,9 @@ with zipfile.ZipFile(buf, "w") as z:   # the 2022 format: no isInvasive, the dis
                '<field index="2" term="http://rs.tdwg.org/dwc/terms/degreeOfEstablishment"/></extension></archive>')
     z.writestr("distribution.txt", "id\tcountryCode\tdegreeOfEstablishment\n1\tUS\testablished (category C3)\n"
                "2\tUS\tinvasive (category D2)\n3\tUS\twidespread invasive (category E)\n")
-assert main._griis_invasive(buf.getvalue()) == {"2", "3"}, "degreeOfEstablishment: invasive and widespread invasive"
+assert E._griis_invasive(buf.getvalue()) == {"2", "3"}, "degreeOfEstablishment: invasive and widespread invasive"
 LISTING = [{"taxonID": "84000", "nubKey": 2925303}, {"taxonID": "84001", "nubKey": 2970418}, {"taxonID": "84002"}, {"taxonID": "9", "nubKey": 1}]
-assert main.griis_marks(LISTING, main._griis_invasive(ARCHIVE)) == {2925303: "invasive", 2970418: "introduced", 1: "introduced"}, \
+assert E.griis_marks(LISTING, E._griis_invasive(ARCHIVE)) == {2925303: "invasive", 2970418: "introduced", 1: "introduced"}, \
     "every listed taxon with a Backbone key is introduced, the archive's flag makes it invasive"
 HC = []
 class FakeHC:
@@ -460,21 +463,21 @@ class FakeHC:
 hc0, main.hc = main.hc, FakeHC()
 settings._cache["rows"]["SPECIES_MATCH"] = "off"
 main.state["griis"] = {"marks": {}}
-main.check_griis()
+E.check_griis()
 assert "griis" not in main.state and HC == [], "off: nothing asked, nothing kept"
 settings._cache["rows"]["SPECIES_MATCH"] = "on"
 os.environ["NODE_TZ"] = "Asia/Makassar"
-main.check_griis()
+E.check_griis()
 g = main.state["griis"]
 assert g["dataset"] == "ds-id" and g["marks"] == {2925303: "invasive", 2970418: "introduced", 1: "introduced"} and g["name"] == "Indonesia", g
 assert all("api.gbif.org" in u or u == "https://ipt/a.zip" for u, _ in HC) and HC[1][1]["datasetKey"] == "ds-id", HC
-n = len(HC); main.check_griis()
+n = len(HC); E.check_griis()
 assert len(HC) == n, "read weekly, not every hour"
 # the marks on a finding: invasive, introduced through a synonym, unmarked when not listed (never "native")
 GBIF.update({"Lantana camara": {"usageKey": 2925303, "scientificName": "Lantana camara L.", "rank": "SPECIES", "matchType": "EXACT", "kingdom": "Plantae"},
              "Leucaena glauca": {"usageKey": 555, "acceptedUsageKey": 2970418, "scientificName": "Leucaena glauca", "rank": "SPECIES",
                                  "matchType": "EXACT", "kingdom": "Plantae"}})
-fs = main._taxa(main._findings([{"class": "plant", "name": "a", "scientific": "Lantana camara"},
+fs = E._taxa(E._findings([{"class": "plant", "name": "a", "scientific": "Lantana camara"},
                                 {"class": "plant", "name": "b", "scientific": "Leucaena glauca"},
                                 {"class": "plant", "name": "c", "scientific": "Cocos nucifera"}]))
 assert (fs[0]["taxon"]["introduced"], fs[0]["taxon"]["where"]) == ("invasive", "Indonesia"), fs[0]
@@ -483,15 +486,15 @@ assert "introduced" not in fs[2]["taxon"] and "where" not in fs[2]["taxon"], "no
 # a country GRIIS has no list for says so on the finding
 os.environ["NODE_TZ"] = "Europe/Madrid"
 main.state.pop("griis")
-main.check_griis()
+E.check_griis()
 assert main.state["griis"]["why"] == "GRIIS publishes no checklist for Spain" and "marks" not in main.state["griis"]
-t = main._taxa(main._findings([{"class": "plant", "name": "c", "scientific": "Cocos nucifera"}]))[0]["taxon"]
+t = E._taxa(E._findings([{"class": "plant", "name": "c", "scientific": "Cocos nucifera"}]))[0]["taxon"]
 assert t["introduced"] is None and t["where"] == "GRIIS publishes no checklist for Spain", t
 main.hc = hc0; main.state.pop("griis"); os.environ["NODE_TZ"] = "Asia/Makassar"
 settings._cache["rows"]["SPECIES_MATCH"] = "off"
 print("introduced: the country from NODE_TZ, its GRIIS list read weekly with the yes, invasive or introduced on the taxon, unlisted unmarked")
 # ---- what others recorded here (SPEC_species step 3): open GBIF records in the seven cells, counted, nothing else kept
-w = main._cell_wkt("8895a4c843fffff")
+w = E._cell_wkt("8895a4c843fffff")
 pts = [tuple(map(float, xy.split())) for xy in w[len("POLYGON(("):-2].split(",")]
 assert len(pts) == 7 and pts[0] == pts[-1], "a closed hexagon"
 assert sum((x2 - x1) * (y2 + y1) for (x1, y1), (x2, y2) in zip(pts, pts[1:])) < 0, "counter-clockwise, as GBIF asks"
@@ -500,29 +503,29 @@ class FakeOcc:
     def get(self, url, params=None, timeout=None):
         OCC.append((url, list(params)))
         geo = dict(params)["geometry"]
-        n = 3 if geo == main._cell_wkt(sorted(main._node_cells()[0])[0]) else 1
+        n = 3 if geo == E._cell_wkt(sorted(E._node_cells()[0])[0]) else 1
         return main.httpx.Response(200, request=main.httpx.Request("GET", url), json={"count": 9, "facets": [
             {"field": "SPECIES_KEY", "counts": [{"name": "2925303", "count": n}, {"name": "2970418", "count": 2}]},
             {"field": "FAMILY_KEY", "counts": [{"name": "7681", "count": 5}]}]})
 hc0, main.hc = main.hc, FakeOcc()
 settings._cache["rows"]["SPECIES_MATCH"] = "off"
 main.state["others"] = {"cells": {}}
-main.check_others()
+E.check_others()
 assert "others" not in main.state and OCC == [], "off: nothing asked, nothing kept"
 settings._cache["rows"]["SPECIES_MATCH"] = "on"
-main.check_others()
+E.check_others()
 o = main.state["others"]["cells"]
 assert len(OCC) == 7 and len(o) == 7, "one request per cell of the seven"
 assert all(u.endswith("/occurrence/search") and ("license", "CC0_1_0") in q and ("license", "CC_BY_4_0") in q
            and ("limit", "0") in q and not any(k in ("lat", "lon", "decimalLatitude") for k, _ in q) for u, q in OCC), \
     "open licences only, counts only, the cell's shape and no point"
 assert sum(c[2925303] for c in o.values()) == 3 + 6 and all(c[7681] == 5 for c in o.values())
-main.check_others()
+E.check_others()
 assert len(OCC) == 7, "read weekly, not every hour"
 GBIF["Arecaceae"] = {"usageKey": 7681, "scientificName": "Arecaceae", "rank": "FAMILY", "matchType": "EXACT", "kingdom": "Plantae"}
 GBIF["Leucaena glauca"] = {"usageKey": 555, "acceptedUsageKey": 2970418, "scientificName": "Leucaena glauca", "rank": "SPECIES",
                            "matchType": "EXACT", "kingdom": "Plantae"}
-fs = main._taxa(main._findings([{"class": "plant", "name": "a", "scientific": "Lantana camara"},
+fs = E._taxa(E._findings([{"class": "plant", "name": "a", "scientific": "Lantana camara"},
                                 {"class": "plant", "name": "b", "scientific": "Arecaceae"},
                                 {"class": "plant", "name": "c", "scientific": "Leucaena glauca"},
                                 {"class": "plant", "name": "d", "scientific": "Cocos nucifera"}]))
@@ -544,7 +547,7 @@ SEEN = [{"id": 1, "cell": C10, "analysis": {"confirmed_by": "Tomas", "findings":
             {"class": "plant", "name": "palms", "count": 2, "scientific": "Cocos nucifera", "taxon": {"key": 2735117, "name": "Cocos nucifera L.", "rank": "species"}},
             {"class": "animal", "name": "gecko", "scientific": "Hemidactylus"}]}}]
 SQL = []
-main.q = lambda sql, *a: (SQL.append(sql), SEEN)[1]
+db.q = main.q = lambda sql, *a: (SQL.append(sql), SEEN)[1]
 level("off")
 assert lan.get("/species").status_code == 403, "a stranger reads no species: where a picture was taken is the household's"
 r = lan.get("/species", headers=ACT)
@@ -558,12 +561,12 @@ home8 = _h3.cell_to_parent(C10, 8)
 assert [x["count"] for x in lan.get(f"/species?cell={home8}", headers=ACT).json()["species"]] == [4, 1], "a coarser cell answers inside it"
 assert lan.get(f"/species?cell={C10}", headers=ACT).json()["species"][0]["images"] == 1
 assert lan.get("/species?cell=nope", headers=ACT).status_code == 422
-main.q = q0
+db.q = main.q = q0
 print("species here: confirmed findings only, per taxon or typed name, any cell, behind the images' token; never a reading")
 # the upload's box: describe=1 describes the new image after the upload answers; unticked, nothing is asked
 called = []
-main._describe, d0 = (lambda cid, model: called.append((cid, model)) or __import__("asyncio").sleep(0)), main._describe
-main.q = q0
+E._describe, d0 = (lambda cid, model: called.append((cid, model)) or __import__("asyncio").sleep(0)), E._describe
+db.q = main.q = q0
 DUPROWS.clear()
 r = local.post("/captures", files={"photo": ("a.jpg", jpeg(False) + b"box", "image/jpeg")}, data={"kind": "phone"})
 assert r.status_code == 200 and r.json()["describing"] is False and called == [], "unticked: not described"
@@ -573,7 +576,7 @@ assert called == [(7, "qwen2.5vl:7b")], f"the box describes the new image: {call
 settings._cache["rows"]["EYES_MODEL"] = ""
 r = local.post("/captures", files={"photo": ("a.jpg", jpeg(False) + b"box3", "image/jpeg")}, data={"kind": "phone", "describe": "1"})
 assert r.json()["describing"] is False, "no image model: the box says so instead of pretending"
-main._describe = d0
+E._describe = d0
 print("image model: local Ollama with flows classes and no people; kept as the model's; confirmed or edited by a name; the upload box describes")
 
 # ---- the Data door edits an image's words, and the admin token deletes one

@@ -150,9 +150,12 @@ for _f in sorted(__import__("glob").glob("packs/*/rules.yml")):
 
 # The thresholds the report quotes are the rules' own. A number here that is not in that rule's SQL is a second
 # copy waiting to drift, which is exactly what the pack-README gate exists for.
-for rule, (metric, line, owner) in report.THRESHOLDS.items():
+LINES = report.thresholds()
+assert set(LINES) == {"air-quality/indoor_pm25_high", "air-quality/outside_worse_keep_shut", "air-quality/outdoor_pm25_high",
+                      "air-quality/inside_worse_ventilate"}, sorted(LINES)
+for rule, (metric, line, owner) in LINES.items():
     assert all(owner in report.T[loc] for loc in report.T), f"{rule}: no words for whose line {owner} is"
-    assert rule in RULES, f"{rule} is in THRESHOLDS but no pack ships it"
+    assert rule in RULES, f"{rule} has a report line but no pack ships it"
     sql = RULES[rule]["sql"]
     # the whole number, not a prefix of it: plain `"35" in sql` is satisfied by the 35.5 it is meant to catch
     assert re.search(rf"(?<![\d.]){re.escape(report._n(line))}(?![\d.])", sql), \
@@ -160,10 +163,10 @@ for rule, (metric, line, owner) in report.THRESHOLDS.items():
     assert metric in sql, f"{rule}: the report watches {metric}, its SQL does not mention it"
 for rule in report.BEYOND:
     assert rule in RULES, f"{rule} is in BEYOND but no pack ships it"
-assert not any(r.startswith("heat/") for r in report.THRESHOLDS), \
+assert not any(r.startswith("heat/") for r in LINES), \
     "heat_stress_now watches an apparent temperature no column holds; it gets an outcome in v0.39, not a guess here"
 # the heat line the report names is the issue's own, the one the page and the alerts name
-assert report.HEAT_LINE == float(yaml.safe_load(open("app/issues/heat.yml"))["line"]["value"]), "two heat lines"
+assert report.HEAT_LINE == float(yaml.safe_load(open("packs/heat/issue.yml"))["line"]["value"]), "two heat lines"
 print("every threshold the report quotes is the rule's own")
 
 # Every language carries every phrase. A key in one dict and not another is a report with a hole in it.
@@ -173,7 +176,7 @@ for loc, d in report.T.items():
     # The report's whole placeholder vocabulary. A phrase may only ask for something the code fills,
     # so a typo like {palce} fails here rather than reaching a person as a literal brace. Growing this
     # tuple is how the vocabulary grows — {where} arrived with packs/make.
-    PLACEHOLDERS = ("{place}", "{n}", "{fix}", "{where}", "{at}", "{line}", "{rooms}")
+    PLACEHOLDERS = ("{place}", "{n}", "{where}", "{at}", "{line}", "{rooms}")
     for k, v in d.items():
         bare = v
         for ph in PLACEHOLDERS:
@@ -234,6 +237,12 @@ CASES["the node itself is unwell"] = _b(
     health={"ok": False, "checks": [{"check": "a backup in the last 2 days", "ok": False,
                                      "fix": "run `planetai backup` on the node; check `crontab -l`"}]})
 CASES["a node at minute five"] = copy.deepcopy(EMPTY)
+for _case, _c in (("the node stopped polling", {"check": "polled in the last 15 min", "fix": "check `planetai logs`"}),
+                  ("a radio went quiet", {"check": "LoRa radios heard in the last hour", "fix": "radio(s) msh-a1 silent",
+                                          "who": ["Bayu - Garden"]}),
+                  ("a radio with no name went quiet", {"check": "LoRa radios heard in the last hour", "fix": "radio(s) msh-a1"}),
+                  ("a check the report has no words for", {"check": "something new", "fix": "`planetai doctor`"})):
+    CASES[_case] = _b(sensors_quiet=[], alerts=[], open_act=[], health={"ok": False, "checks": [dict(_c, ok=False)]})
 
 seen_keys = set()
 for name, b in CASES.items():
@@ -350,4 +359,21 @@ _src_err = _b(alerts=[], open_act=[], sensors_quiet=[], health={"ok": False, "ch
               "fix": "errors: open-meteo: Client error '429 Too Many Requests' for url 'https://api.open-meteo.com/v1/forecast"}]})
 _se = report.sheet(_src_err, "en")
 assert "429" not in _se and "http" not in _se and report.T["en"]["todo_none"] in _se, "a refusing source is the keeper's, not the house's to-do"
+# 15 Oct: a failing health check reached the morning as its admin `fix` ("run `planetai backup`", "radio(s) msh-…
+# silent"). The house gets its own line per check, names a sensor by its room, and never the id or a command.
+_FIX = {"polled in the last 15 min": "the poll loop is stuck or the node just started; check `planetai logs`",
+        "a backup in the last 2 days": "run `planetai backup` on the node and check `crontab -l | grep backup`",
+        "LoRa radios heard in the last hour": "radio(s) msh-a1b2 have been silent for hours. `planetai logs mosquitto`",
+        "no local sensor's ambient channel is frozen": "Bayu - Kitchen has a channel stuck",
+        "something new": "`planetai doctor`"}
+for _chk, _fix in _FIX.items():
+    for _who in ([], ["Bayu - Kitchen"]):
+        _c = {"check": _chk, "ok": False, "fix": _fix, **({"who": _who} if _who else {})}
+        for _loc in ("en", "id", "es"):
+            _s = report.sheet(_b(alerts=[], open_act=[], sensors_quiet=[], health={"ok": False, "checks": [_c]}), _loc)
+            assert not re.search(r"planetai|crontab|msh-|`|\{|poll loop", _s), (_chk, _loc, _s)
+            _todo = _s.split("\n\n")[-2]
+            assert "Bayu" not in _todo and ("Kitchen" in _todo) == bool(
+                _who and _chk in ("LoRa radios heard in the last hour", "no local sensor's ambient channel is frozen")), (_chk, _loc, _todo)
+print("a failing health check reaches the morning in the household's words, by room, never as its admin fix")
 print(f"the sheet renders in three languages across {len(CASES)} states, under 100 words, with nothing unfilled")

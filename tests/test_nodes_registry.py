@@ -40,8 +40,9 @@ class App:
 
 
 ns = {"settings": Settings(), "state": {}, "hc": Client(), "time": time, "datetime": datetime, "timezone": timezone,
-      "app": App()}
-tree = ast.parse((ROOT / "app" / "main.py").read_text())
+      "app": App(),
+      "_packs": type("P", (), {"shared": staticmethod(lambda level="open": set())})()}   # auth.py adds the packs' paths
+tree = ast.parse((ROOT / "app" / "main.py").read_text() + (ROOT / "app" / "auth.py").read_text())   # _SHARE_OFF is in auth.py
 for node in tree.body:
     named = node.name if isinstance(node, ast.FunctionDef) else \
         next((t.id for t in getattr(node, "targets", []) if isinstance(t, ast.Name)), None)

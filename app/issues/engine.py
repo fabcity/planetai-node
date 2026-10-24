@@ -42,7 +42,7 @@ import actions as A
 import packs
 
 from . import (CMP_WORDS, DAY_PARTS, DIGEST_WORDS, DISTANCES, HEADLINE_RULE, HERO_WORDS, JOIN_WORDS, LABEL_WORDS,
-               LOCALES, NOUN_WORDS, PLAIN_WORDS, PROMPT_WORDS, REASON_WORDS, SIMPLE_WORDS,
+               LOCALES, NOUN_WORDS, PLAIN_WORDS, PROMPT_WORDS, REASON_WORDS, SIMPLE_WORDS, prompt_issue,
                SPAN_WORDS, WHERE_WORDS, order, pack_sections)
 from . import geometry
 from .schema import CLOSED_STAGES, is_open, is_seen, place_of, stage_of
@@ -83,14 +83,15 @@ METRICS = {
 }
 
 
-def _source_of(sensor_id: str) -> dict:
-    """Where a station's data comes from, read off its id the way app/sources.py assigns them."""
+def _source_of(sensor_id: str, ring: list[dict] | tuple = ()) -> dict:
+    """Where a station's data comes from, read off its id the way app/sources.py assigns them, or off the `prefix` a
+    stations pack declares (`ring` is packs.stations())."""
     if sensor_id.startswith("sc-"):
         return {"source": "smartcitizen", "url": f"https://smartcitizen.me/kits/{sensor_id[3:]}",
                 "attribution": "Smart Citizen, smartcitizen.me"}
-    if sensor_id.startswith("bad-"):
-        return {"source": "baliairdispatch", "url": "https://baliairdispatch.com",
-                "attribution": "Bali Air Dispatch, baliairdispatch.com"}
+    for p in ring:
+        if p.get("prefix") and sensor_id.startswith(p["prefix"]):
+            return {"source": p["source"], "url": p.get("url"), "attribution": ", ".join(p.get("attribution") or []) or None}
     if sensor_id.startswith("msh-"):
         return {"source": "meshtastic", "url": None, "attribution": None}
     return {"source": "unknown", "url": None, "attribution": None}
@@ -109,10 +110,11 @@ def _stations(stats: list[dict], hourly: list[dict], lat: float, lon: float, sit
     `silent` is the stations heard within SILENT_DAYS and not in the last day; they keep a row with `last_heard`,
     unless a station heard today stands at the same point."""
     import h3  # noqa: PLC0415 — only this path needs it, and geometry.py already requires it
+    ring = packs.stations()
     def row(r: dict) -> dict:
         return {"sensor_id": r["sensor_id"], "name": r.get("name"), "lat": r["lat"], "lon": r["lon"],
                 "local": bool(r.get("local")), "indoor": bool(r.get("indoor")), "kind": r.get("kind") or "sensor",
-                **_source_of(r["sensor_id"]),
+                **_source_of(r["sensor_id"], ring),
                 "km": round(h3.great_circle_distance((lat, lon), (r["lat"], r["lon"]), unit="km"), 1) if sited
                 else None,
                 "read": {}, "series": {}}
@@ -127,9 +129,10 @@ def _stations(stats: list[dict], hourly: list[dict], lat: float, lon: float, sit
                                        "silent_minutes": None if r.get("silent_minutes") is None
                                        else round(r["silent_minutes"])}
     # The archive of silence (docs/SPEC_dashboard_figures.md §3.3): a station heard in the last 30 days and not in the
-    # last day keeps its row, with when it was last heard. Unless a station heard today stands at the same point: Bali
-    # Air Dispatch relays Smart Citizen kits as bad-sc-<kit> and AirGradient ones through OpenAQ, so a relay that
-    # stopped is a second road to a kit that still reports, and listing it would call a working kit dead.
+    # last day keeps its row, with when it was last heard. Unless a station heard today stands at the same point: an
+    # archive of public stations relays kits under its own ids (Bali Air Dispatch: Smart Citizen as bad-sc-<kit>,
+    # AirGradient through OpenAQ), so a relay that stopped is a second road to a kit that still reports, and listing
+    # it would call a working kit dead.
     heard = {(round(float(s["lat"]), 5), round(float(s["lon"]), 5)) for s in by.values()}
     for r in silent or []:
         if r.get("lat") is None or r.get("lon") is None or r["sensor_id"] in by:
@@ -138,13 +141,18 @@ def _stations(stats: list[dict], hourly: list[dict], lat: float, lon: float, sit
             continue
         lh = r.get("last_heard")
         by[r["sensor_id"]] = {**row(r), "last_heard": lh.isoformat() if hasattr(lh, "isoformat") else lh}
+    # The metrics the page may show, as `read` already is, and two decimals, as `read` already is. Every metric a station
+    # reported was 215 kB of node #1's 510 kB /issues (24 Oct 2026), and the dashboard's station notes look each key
+    # up in `metrics`: a radio's lora_channel_pct threw there, and the notes vanished without a word.
+    def r2(v):
+        return None if v is None else round(float(v), 2)
     for h in hourly or []:
         s = by.get(h.get("sensor_id"))
-        if s is None:
+        if s is None or h.get("metric") not in METRICS:
             continue
         s["series"].setdefault(h["metric"], []).append(
             {"t": h["bucket"] if isinstance(h["bucket"], str) else h["bucket"].isoformat(),
-             "mean": h.get("mean"), "min": h.get("min"), "max": h.get("max"), "n": h.get("n")})
+             "mean": r2(h.get("mean")), "min": r2(h.get("min")), "max": r2(h.get("max")), "n": h.get("n")})
     for s in by.values():
         for k in s["series"]:
             s["series"][k].sort(key=lambda x: x["t"])
@@ -199,8 +207,12 @@ def _asks_ledger(alerts: list[dict], actions: list[dict], facilities: list[dict]
         return str(t or "").split("\n")[0][:160]
 
     return {
+        # `level` rides along although every act is level act: the dashboard's ledger draws a rule at full weight when
+        # its latest ask says `act` and quiet otherwise, and without the key every rule drew quiet (24 Oct 2026). The
+        # doors stand these in for /alerts on a screen without a token, and read `level` off them too.
         "acts": [{"id": a.get("id"), "ts": a["ts"] if isinstance(a.get("ts"), str) else a["ts"].isoformat(),
-                  "rule_id": a.get("rule_id"), "sensor_id": a.get("sensor_id"), "text": first_line(a.get("text"))}
+                  "rule_id": a.get("rule_id"), "sensor_id": a.get("sensor_id"), "level": a.get("level"),
+                  "text": first_line(a.get("text"))}
                  for a in alerts if a.get("level") == "act"],
         "actions": [{"alert_id": x.get("alert_id"), "stage": x.get("stage"), "actor": x.get("actor"),
                      "ts": x["ts"] if isinstance(x.get("ts"), str) else x["ts"].isoformat()} for x in actions],
@@ -301,29 +313,32 @@ PROMPTS_MAX = 12
 
 
 def _prompts(out: dict, headline: str | None) -> dict:
-    """The ask pane's questions. The first three are the ones it opens with: why the lead leads, the oldest
-    open alert (or whether anything is asking), and what the lead's line means (or, with no line, where its
-    number comes from). After them, the pool the pane rotates through: every other issue with a reading as
-    it is now, the two newest of the other open alerts, and every other issue's line. Only two more alerts,
-    because node #1 had ten open and the pool became six copies of one question. An issue that is context
-    (land, coast: the satellite's year) is not asked about "right now". Nothing repeats, and there are at
-    most PROMPTS_MAX. The order is the same in every locale, so a rotation lands on the same question in each."""
-    opens = sorted((a for v in out.values() for a in (v.get("open_asks") or []) if a.get("id") is not None),
-                   key=lambda a: str(a.get("ts")))
-    oldest = opens[0] if opens else None
+    """The ask pane's questions. The first three are the ones it opens with: what to know about the lead today,
+    what can be done about the issue of the oldest open alert (or whether anything needs doing), and where the
+    lead's line comes from (or, with no line, whether its number is measured here). After them, the pool the
+    pane rotates through: every other issue as it is now, whether the lead and the others are worse than usual
+    for the hour, what can be done about the issues of other open alerts, and every other issue's line. An issue
+    that is context (land, coast: the satellite's year) is not asked about "right now" or "usual". Nothing
+    repeats, and there are at most PROMPTS_MAX. The order is the same in every locale, so a rotation lands on the
+    same question in each."""
+    opens = sorted(((k, a) for k, v in out.items() for a in (v.get("open_asks") or []) if a.get("id") is not None),
+                   key=lambda ka: str(ka[1].get("ts")))
     others = [k for k, v in out.items() if k != headline and v.get("state") not in (None, "none")]
+    live = lambda k: (out.get(k) or {}).get("state") not in (None, "none", "context")  # noqa: E731
     said = {}
     for loc in LOCALES:
         w = PROMPT_WORDS[loc]
-        nm = lambda k: ((out.get(k) or {}).get("name") or {}).get(loc, k or "").lower()  # noqa: E731
+        nm = lambda k: prompt_issue(((out.get(k) or {}).get("name") or {}).get(loc, k or ""), loc)  # noqa: E731
         line = lambda k: w["line" if (out[k].get("line") or {}).get("value") is not None else "model"].format(issue=nm(k))  # noqa: E731
         qs = [w["lead"].format(issue=nm(headline))] if headline else []
-        qs.append(w["ask"].format(id=oldest["id"]) if oldest else w["quiet"])
+        qs.append(w["act"].format(issue=nm(opens[0][0])) if opens else w["quiet"])
         if headline:
             qs.append(line(headline))
-        qs += [w["now"].format(issue=nm(k)) for k in others if out[k].get("state") != "context"]
-        qs += [w["ask"].format(id=a["id"]) for a in list(reversed(opens[1:]))[:2]]
+        qs += [w["now"].format(issue=nm(k)) for k in others if live(k)]
+        qs += [w["usual"].format(issue=nm(k)) for k in ([headline] if headline else []) + others if live(k)]
+        qs += [w["act"].format(issue=nm(k)) for k, _ in opens[1:]]
         qs += [line(k) for k in others]
+        qs = [q.replace(" de el ", " del ") for q in qs] if loc == "es" else qs   # de + el is del
         said[loc] = list(dict.fromkeys(qs))[:PROMPTS_MAX]
     return said
 
@@ -867,8 +882,10 @@ def _day(series: list[float | None] | None, buckets: list, line: dict | None, no
     """Today's hours over the line, counted the way GET /issues/days counts them for the "N h over the line today"
     beside the title: the same series, the same strict `>`, the node's local day. {over, until, part}, or None.
 
-    `until` is the end of the last hour over, or now if that hour is still running; `part` is the part of the day that
-    held most of the hours over, the later one on a tie (over from 00:00 to 11:00 is a morning, as the house tells it)."""
+    `until` is the end of the last hour over, or now if that hour is still running, and then `running` is true: the
+    hour's mean is over while the reading that put the title under is not, so the clock time would be this minute and
+    the sentence would read as still over (audit, 15 Oct). `part` is the part of the day that held most of the hours
+    over, the later one on a tie (over from 00:00 to 11:00 is a morning, as the house tells it)."""
     if line is None or not series or len(series) != len(buckets) or not buckets:
         return None
     lv, tz = float(line["value"]), tz or getattr(buckets[-1], "tzinfo", None)
@@ -880,7 +897,8 @@ def _day(series: list[float | None] | None, buckets: list, line: dict | None, no
         return None
     parts = [max(p for p in DAY_PARTS if p[0] <= h.hour) for h in over]
     part = max(DAY_PARTS, key=lambda p: (parts.count(p), p[0]))[1]
-    return {"over": len(over), "until": _hhmm(min(over[-1] + timedelta(hours=1), local(now))), "part": part}
+    end = over[-1] + timedelta(hours=1)
+    return {"over": len(over), "until": _hhmm(min(end, local(now))), "running": end > local(now), "part": part}
 
 
 def _trend(series: list[float | None], compare: dict) -> str:
@@ -1030,7 +1048,8 @@ def _sentence_parts(d, stack, state, headline_dist, verb_key, loc, compare, attr
         and day["over"] >= DAY_OVER_HOURS and line_key in ("under", "near") else None
     if said_day:
         tpl, dw = said_day, block["day"]
-        slots.update(part=dw["parts"][day["part"]], until=day["until"],
+        until = dw.get("recent", "a few minutes ago") if day.get("running") else dw.get("at", "{t}").format(t=day["until"])
+        slots.update(part=dw["parts"][day["part"]], until=until,
                      hours=dw["hours"][0 if day["over"] == 1 else 1].format(n=day["over"]),
                      where=_where(d, day.get("distance") or headline_dist, loc))
 
@@ -1232,7 +1251,8 @@ def _values(spec: dict, hourly: dict, buckets: list, keep) -> list:
     for b in buckets:
         per: dict[str, dict] = {}
         for r in hourly.get(b, []):
-            if not keep(r) or r["metric"] not in spec["metrics"]:
+            # the metric first: it is a set lookup, and keep() asked place_of 130,524 times a /issues/days on node #1
+            if r["metric"] not in spec["metrics"] or not keep(r):
                 continue
             per.setdefault(r["sensor_id"], {})[r["metric"]] = r.get("mean")
         v, _, _ = _combine(per, spec["metrics"], spec.get("function"), spec["aggregate"])
@@ -1280,10 +1300,24 @@ USUAL_SQL = "SELECT sensor_id, metric, hour, median, p90 FROM usual_by_hour"
 # The archive of silence (docs/SPEC_dashboard_figures.md §3.3): stations heard within SILENT_DAYS and not in the last
 # day. `stats` holds the last 24 hours only, so without this a station silent for a day leaves /issues with no word.
 SILENT_DAYS = 30
-SILENT_SQL = ("SELECT s.sensor_id, s.name, s.lat, s.lon, s.local, s.indoor, s.kind, max(r.ts) AS last_heard "
-              "FROM readings r JOIN sensors s USING (sensor_id) "
-              "WHERE s.kind = 'sensor' AND r.ts > now() - make_interval(days => %s) "
-              "GROUP BY 1, 2, 3, 4, 5, 6, 7 HAVING max(r.ts) <= now() - interval '24 hours'")
+# Stations heard in the last day are left out first (their newest index entry answers that), and only the quiet ones
+# are walked, newest row per metric off readings_lookup. Grouping 30 days of every station's readings took ~300 ms on
+# node #1 (24 Oct 2026) to name four; this takes ~27 ms, the same four at the same times.
+SILENT_SQL = ("WITH RECURSIVE quiet AS ("
+              " SELECT s.sensor_id FROM sensors s WHERE s.kind = 'sensor' AND NOT EXISTS ("
+              "  SELECT 1 FROM readings r WHERE r.sensor_id = s.sensor_id AND r.ts > now() - interval '24 hours')"
+              "), m AS ("
+              " SELECT q.sensor_id, (SELECT min(r.metric) FROM readings r WHERE r.sensor_id = q.sensor_id) AS metric"
+              " FROM quiet q"
+              " UNION ALL"
+              " SELECT m.sensor_id, (SELECT min(r.metric) FROM readings r"
+              "  WHERE r.sensor_id = m.sensor_id AND r.metric > m.metric) FROM m WHERE m.metric IS NOT NULL"
+              ") SELECT s.sensor_id, s.name, s.lat, s.lon, s.local, s.indoor, s.kind, max(l.ts) AS last_heard"
+              " FROM m JOIN sensors s USING (sensor_id)"
+              " CROSS JOIN LATERAL (SELECT r.ts FROM readings r WHERE r.sensor_id = m.sensor_id AND r.metric = m.metric"
+              "  ORDER BY r.ts DESC LIMIT 1) l"
+              " WHERE m.metric IS NOT NULL GROUP BY 1, 2, 3, 4, 5, 6, 7"
+              " HAVING max(l.ts) > now() - make_interval(days => %s)")
 
 
 def _optional(cur, sql: str, *args) -> list[dict] | None:
@@ -1463,6 +1497,7 @@ def _geometry(lat: float, lon: float, settings, stations: list[dict], peers) -> 
     """
     import h3  # noqa: PLC0415 — only this path needs it, same lazy import _stations already uses
     floor = geometry.FLOOR_RES
+    ring = next((p for p in packs.stations() if p["on"] and p.get("radius")), None)
     pub = geometry.publication()
     peer_rows = [{"cell": p.get("cell"), "res": p.get("res"), "km": p.get("km")} for p in (peers or [])]
     return {
@@ -1470,10 +1505,10 @@ def _geometry(lat: float, lon: float, settings, stations: list[dict], peers) -> 
         "ladder": geometry.ladder(lat, lon),
         "nav": geometry.plates(lat, lon, stations),
         "grain_table": geometry.grain_table(lat, lon, stations, floor_res=floor, publication_res=pub["res"]),
-        "claims": geometry.claims(lat, lon, settings),
+        "claims": geometry.claims(lat, lon, settings, ring),
         "radio": geometry.radio(lat, lon, settings, peer_rows),
         "settings": {k: settings.num(k, d) for k, d in (
-            ("LOCAL_RADIUS_M", 500), ("BAD_RADIUS_KM", 15), ("EARTH_RADIUS_M", 5000),
+            ("LOCAL_RADIUS_M", 500), *([(ring["radius"], 15)] if ring else []), ("EARTH_RADIUS_M", 5000),
             ("PLACE_RADIUS_M", 1000), ("RETICULUM_PRESENCE_RES", 3))} | {"PRESENCE_RES_FLOOR": floor},
         "source": f"h3 {h3.__version__}, computed by this node",
     }

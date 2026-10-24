@@ -6,7 +6,7 @@ such as cars, motorbikes, trucks in the street, to household inventories of reso
 order (the private role first, one spec with three sources, build first what serves a decision), chose (A) in the pack design
 record (#175) and named the first source: "household idle things first".*
 
-**Status: proposed, 13 October 2026; nothing here is built.** Each step in §8 is its own pull request, run on node
+**Status: steps 1–4 built in v0.82 (#224, #225, #227, #228); step 5 (cell totals) waits on the upstream tiers. Proposed 13 October 2026.** Each step in §8 is its own pull request, run on node
 #1 before it merges. The street and the place (§7) get their own specs later.
 
 ## 1 · What it serves

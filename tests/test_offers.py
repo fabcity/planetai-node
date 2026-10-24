@@ -14,10 +14,10 @@ import re
 import time
 from pathlib import Path
 
-SRC = open("app/main.py").read()
-assert '"/presence", "/nodes", "/offers"}' in SRC, "/offers is open at every SHARE_LEVEL: each line was chosen to be public"
-exp = SRC[SRC.index("def export("):SRC.index('@app.get("/place/geojson")')]
-assert '"offers": offers_now()["offers"]' in exp, "the daily export carries the offers"
+SRC = open("app/main.py").read() + open("app/auth.py").read()   # auth.py: the allowlists, since 22 Oct
+assert '"off": [/offers]' in open("packs/things/pack.yaml").read(), "/offers is open at every SHARE_LEVEL: each line was chosen to be public"
+exp = SRC[SRC.index("def export("):SRC.index("import geo  # noqa: E402")]   # /place/geojson followed it until app/geo.py
+assert '"offers": _offers()' in exp and 'packs.module("things", "routes")' in SRC, "the daily export carries the offers, from the things pack"
 
 # ---------------------------------------------------------------- the node: only what the household chose, at its cell
 logging.disable(logging.WARNING)
@@ -29,8 +29,12 @@ import main                                       # noqa: E402
 import h3                                         # noqa: E402
 from fastapi.testclient import TestClient         # noqa: E402
 
+import auth                                       # noqa: E402
+import db                                         # noqa: E402 — the things pack's routes read through db (packs/things)
+import packs                                      # noqa: E402
+assert "/offers" in auth._SHARE_OFF[0], "the pack's share: off puts /offers on every level"
 SQL = []
-main.q = lambda sql, *a: (SQL.append(sql), [{"id": 4, "class": "tool", "name": "cordless drill", "condition": "works",
+db.q = main.q = lambda sql, *a: (SQL.append(sql), [{"id": 4, "class": "tool", "name": "cordless drill", "condition": "works",
                                              "offer": "lend", "count": 1}])[1]
 main.state["bot"] = {"username": "bayu_planetai_bot", "asked": time.time()}
 settings._cache["rows"].update(TELEGRAM_BOT_TOKEN="123:abc", TELEGRAM_CHAT_IDS="109")
@@ -43,7 +47,7 @@ assert o["cell"] == h3.latlng_to_cell(-8.6478291, 115.1385412, 8), "the node's o
 assert "lat" not in str(o) and "capture" not in str(o), "no point, no photo"
 assert o["offers"][0]["ask"] == "https://t.me/bayu_planetai_bot?start=offer-4" and o["contact"] == "https://t.me/bayu_planetai_bot"
 settings._cache["rows"].update(TELEGRAM_BOT_TOKEN="")
-assert main.offers_now()["offers"][0]["ask"] is None, "no bot, no link: the offer still stands"
+assert packs.module("things", "routes").offers_now()["offers"][0]["ask"] is None, "no bot, no link: the offer still stands"
 print("node: /offers open, only lend or give, only class, name, condition and count, at the node's cell, with the bot's link")
 
 # ---------------------------------------------------------------- the bot: one message passed on, with a name to answer

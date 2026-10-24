@@ -16,12 +16,27 @@ from __future__ import annotations
 
 import math
 import statistics
+import time
 from datetime import datetime, timedelta, timezone
 
-# The metric a rule is judged on, when its own `watch` does not name one, by pack. inside_worse_ventilate fires on a
-# relation (inside worse than outside) and has no line, but what it asks you to change is still PM2.5.
-# ponytail: two issues; a pack that wants its own declares `watch: {metric}` on its rules
-PACK_METRIC = {"air-quality": "pm25", "heat": "apparent"}
+
+
+def _owned() -> dict:
+    """{pack id: the issue it ships} (app/issues/__init__.py::owners). What used to be PACK_METRIC and ISSUE_PACK here:
+    a rule is judged on its issue's `metric` when its own `watch` names none (inside_worse_ventilate fires on a relation,
+    inside worse than outside, and has no line, but what it asks you to change is still PM2.5), and the event engine's
+    episodes of an issue are counted under `<its pack>/events`."""
+    import issues                    # noqa: PLC0415 — issues imports packs, which a pure test of this module never needs
+    return issues.owners()
+
+
+def _metric(pack: str) -> str | None:
+    return (_owned().get(pack) or {}).get("metric")
+
+
+def _issue_packs() -> dict:
+    """{issue: the pack that ships it}."""
+    return {d["key"]: p for p, d in _owned().items()}
 # Hours after the act that make "after": air changes within the hour, a room's heat over several.
 AFTER = {"pm25": (1, 2), "apparent": (3, 6), "temp": (3, 6)}
 UNIT = {"pm25": "µg/m³", "apparent": "°C", "temp": "°C"}
@@ -81,19 +96,27 @@ VERDICT_WORDS = {"helps": "acting on it helps",
                  "worse": "acting on it seemed to make it worse than leaving it",
                  "too_early": "too few to be sure whether acting on it helps",
                  "gone": "this alert no longer rings here; what it showed is kept"}
-# What the household calls an alert, for a learning's lead and the bot's /learned. A rule not here is named by its
-# pack ("an air alert"), never by its id.
-ALERT_NAMES = {"air-quality/events": "an air alert", "heat/events": "a heat alert",
-               "air-quality/indoor_pm25_high": "unhealthy air inside", "air-quality/inside_worse_ventilate": "smoke or dust inside",
-               "air-quality/outside_worse_keep_shut": "dirtier air outside than in",
-               "air-quality/outdoor_pm25_high": "unhealthy air outside",
-               "heat/heat_stress_now": "heat inside", "heat/heat_danger": "dangerous heat inside"}
+# What the household calls an alert, for a learning's lead and the bot's /learned. A rule without a name of its own is
+# named by its issue ("an air alert"), never by its id.
+# A rule says its own name (`name:` in its pack's rules.yml); an issue what its alerts are called (`alert:` in its
+# issue.yml), which names the event engine's episodes and any rule of that pack without a name of its own.
+_NAMES: dict = {"at": 0.0, "map": {}}
+
+
+def _rule_names() -> dict:
+    if time.time() - _NAMES["at"] > 60:
+        import packs                 # noqa: PLC0415
+        _NAMES.update(at=time.time(), map={r["id"]: r["name"] for r in packs.load_rules()
+                                           if isinstance(r, dict) and isinstance(r.get("name"), str)})
+    return _NAMES["map"]
 
 
 def alert_name(key: str) -> str:
-    pack = (key or "").split("/")[0]
-    return (ALERT_NAMES.get(key) or GROUP_WORDS.get(key)
-            or {"air-quality": "an air alert", "heat": "a heat alert"}.get(pack) or key)
+    pack, _, rule = (key or "").partition("/")
+    alert = (_owned().get(pack) or {}).get("alert")
+    if rule == "events":
+        return alert or key
+    return _rule_names().get(key) or GROUP_WORDS.get(key) or alert or key
 
 
 def verdict(metric: str, status: str, a: dict, u: dict) -> str:
@@ -144,8 +167,7 @@ def summarise(rule: str, metric: str, acted: list[dict], unanswered: list[dict],
 # ON A NODE WHOSE EVENT ENGINE SPEAKS (ALERT_ENGINE=events), the packs it replaced still write `alerts` rows that are
 # never sent. Counting those as "left unanswered" counted alerts nobody received (node #1, 14 Oct: 58 silent heat rows
 # against 4 heat messages since the switch). So a row of a replaced pack after the switch is silent and left out, and
-# the engine's own episodes that were sent stand in for them, under `<pack>/events`.
-ISSUE_PACK = {"air": "air-quality", "heat": "heat"}
+# the engine's own episodes that were sent stand in for them, under `<pack>/events` (_issue_packs()).
 
 
 def replaced(rules: list, mode: str) -> set:
@@ -191,18 +213,20 @@ def learn_worked(q, rules: list[dict], live: set, was: dict, replaced: set = fro
     alerts = [a for a in alerts if not silent(a["rule_id"], a["ts"], replaced, since)]
     events = sent_events(q) if since else []
     names = {r["name"]: r["sensor_id"] for r in q("SELECT sensor_id, name FROM sensors WHERE name IS NOT NULL")} if events else {}
+    owner = _issue_packs()
     for e in events:   # an episode is a case on its first room's sensor, like an alert on its sensor
         sid = next((names[r] for r in (e["rooms"] or []) if r in names), None)
-        if sid and e["issue"] in ISSUE_PACK:
-            alerts.append({"id": None, "ts": e["opened_at"], "rule_id": f"{ISSUE_PACK[e['issue']]}/events", "sensor_id": sid,
+        if sid and e["issue"] in owner:
+            key = f"{owner[e['issue']]}/events"
+            alerts.append({"id": None, "ts": e["opened_at"], "rule_id": key, "sensor_id": sid,
                            "acted_at": e["acted_at"], "answered": e["answered"], "note": e["note"]})
-            watch.setdefault(f"{ISSUE_PACK[e['issue']]}/events", PACK_METRIC[ISSUE_PACK[e["issue"]]])
-            live = live | {f"{ISSUE_PACK[e['issue']]}/events"}
+            watch.setdefault(key, _metric(owner[e["issue"]]))
+            live = live | {key}
     if not alerts:
         return []
     want = {}
     for rid in dict.fromkeys(a["rule_id"] for a in alerts):
-        metric = watch.get(rid) or PACK_METRIC.get(rid.split("/")[0] if "/" in rid else "")
+        metric = watch.get(rid) or (_metric(rid.split("/")[0]) if "/" in rid else None)
         if metric in AFTER:
             want[rid] = metric
     if not want:
@@ -398,7 +422,7 @@ def learn_asks(q, live: set, replaced: set = frozenset(), since=None) -> list[di
                     "statement": f"This alert no longer sends here: since {day} the event engine speaks for this issue, "
                                  f"once per episode (see {k.split('/')[0]}/events). It still records, silently."})
     ev = sent_events(q, ASKS_DAYS) if since else []
-    for issue, pack in ISSUE_PACK.items():
+    for issue, pack in _issue_packs().items():
         mine = [{"hour": e["hour"], "acted": e["acted"], "dismissed": e["dismissed"], "answered": e["answered"]}
                 for e in ev if e["issue"] == issue]
         r = asks_row(f"{pack}/events", mine, True)
@@ -520,7 +544,8 @@ def write_digests(q, have: set, prev_numbers: dict, today=None, replaced: set = 
                     AND l.ts >= %s::date AND l.ts < %s::date""", begin.isoformat(), today.isoformat())
     alerts = [a for a in alerts if not silent(a["rule_id"], a["ts"], replaced, since)]
     if replaced:
-        alerts += [{"rule_id": f"{ISSUE_PACK.get(e['issue'], e['issue'])}/events", "name": e["issue"],
+        owner = _issue_packs()
+        alerts += [{"rule_id": f"{owner.get(e['issue'], e['issue'])}/events", "name": e["issue"],
                     "d": _aware(e["opened_at"]).date(), "acted": e["acted"]}
                    for e in sent_events(q) if begin <= _aware(e["opened_at"]).date() < today]
     notes = q("""SELECT ts::date AS d, note FROM actions

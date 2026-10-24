@@ -1522,7 +1522,7 @@ const NAV_HONEST = {
     + `that drew a door there would be drawing the planet.`,
   /* The floor, as a position rather than a paragraph. */
   floor: () => `Everything finer than resolution ${H.settings.PRESENCE_RES_FLOOR} is this machine’s `
-    + `own. That is the floor no settings box may pass — app/main.py — and this node announces `
+    + `own. That is the floor no settings box may pass — app/presence.py — and this node announces `
     + `itself at resolution ${H.settings.RETICULUM_PRESENCE_RES}, `
     + `${km2(H.radio.area_m2)}, which is the whole of what a stranger on the radio learns `
     + `about where it is.`,
@@ -4887,7 +4887,7 @@ function leaves(ctx) {
       left: who('Over the radio', `RETICULUM_PRESENCE_RES ${pres == null ? '\u2014' : pres}`),
       line: `A cell and nothing else \u2014 never a coordinate. A stranger listening learns which `
         + `${km2(R.area_m2)} of the planet this node is somewhere inside, and no settings box may `
-        + `take it finer than resolution ${floor}: that floor is in app/main.py, not in a form.`,
+        + `take it finer than resolution ${floor}: that floor is in app/presence.py, not in a form.`,
       qty: [{ num: 'leaves.radio', value: edge(R.edge_m),
         cmp: `to an edge of the cell this node announces itself in, at resolution ${R.res}` }] })
     + row({ id: 'leaves-health', component: 'leaves', ref: 'grain-line', cols,
@@ -4985,7 +4985,7 @@ window.PAI.register({
       { id: 'grain-lines', label: 'The two marks on the ladder',
         text: `The two marks on the ladder are the product’s own lines, not this `
         + `page’s. Resolution ${H.settings.PRESENCE_RES_FLOOR} and coarser may leave this machine — `
-        + `it is PRESENCE_RES_FLOOR in app/main.py, the finest any node may announce. Past resolution `
+        + `it is PRESENCE_RES_FLOOR in app/presence.py, the finest any node may announce. Past resolution `
         + `${H.publication.res} is finer than this node is willing to say where it is: GET /health `
         + 'rounds a coordinate to three decimals, about 110 m, and no reading from it may be drawn '
         + 'finer than that.' },
@@ -6005,7 +6005,7 @@ window.PAI.register({
 /* trust · trust · decide
  *
  * What this node doubts about its own sensors. Restored from the page this replaces, as a section
- * the trust pack registers: three rules exist (channel_dead, coverage_low, peer_disagreement) and
+ * the core registers (trust was a pack until 22 Oct 2026): three rules exist (channel_dead, coverage_low, peer_disagreement) and
  * before that card nowhere on the node's own surfaces did a person see that a kit sat at 32% of the
  * week while reporting a fresh timestamp.
  *
@@ -6025,7 +6025,7 @@ const { esc, row } = window.K;
 const T = () => window.TRUST || null;
 
 window.PAI.register({
-  id: 'trust', pack: 'trust', stage: 'decide', order: 30, learn: ['trust'],
+  id: 'trust', pack: 'core', stage: 'decide', order: 30, learn: ['trust'],
   reads: ['/trust'],
   title: 'What the node doubts about its own sensors',
   needs: ['TRUST'],
@@ -9145,7 +9145,7 @@ const groupTitle = g => (GROUPS[g] || [g.charAt(0).toUpperCase() + g.slice(1)])[
 const groupBlurb = g => (GROUPS[g] || [])[1]
   || 'This node declares this group and the dashboard has no words for it yet. planetai config shows the same keys.';
 
-const BOOLS = /^(BAD_ENABLED|OPENMETEO_ENABLED|SENSOR_INDOOR|MESH_ALERTS|HA_DISCOVERY|EXPORT_ENABLED|IPFS_PUBLISH|QUIET_HOURS|BAD_INCLUDE_INDOOR|PACKS_ALLOW_CODE)$/;
+const BOOLS = /^(OPENMETEO_ENABLED|SENSOR_INDOOR|MESH_ALERTS|HA_DISCOVERY|EXPORT_ENABLED|IPFS_PUBLISH|QUIET_HOURS|PACKS_ALLOW_CODE)$/;
 
 function unlock() {
   const t = q('#tok').value.trim();
@@ -9238,7 +9238,7 @@ async function loadSetup() {
     // Where the node's refusal is written when it refuses. Empty until then, and aria-live so a
     // reader who is not looking at this field still hears why the save did not take.
     const err = `<p class="err" id="err-${r.key}" role="alert" hidden></p>`;
-    if (BOOLS.test(r.key)) {
+    if (BOOLS.test(r.key) || (r.pack && /_ENABLED$/.test(r.key))) {
       const on = r.value === '1';
       return `<div class="field">${left}<div><button type="button" role="switch" aria-checked="${on}"`
         + ` aria-labelledby="${lbl}" aria-describedby="help-${r.key}" id="${id}" class="switch ${on ? 'on' : ''}"`

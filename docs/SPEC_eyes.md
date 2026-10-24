@@ -8,7 +8,7 @@ also would like the node to be able to expand its mapping capabilities beyond it
 contiguous cells and still being a private node. When a node decides to map more, it can be promoted to a community
 node." The five points below were put to him the same morning; Tomas: "All looks fine".*
 
-**Status: proposed, 12 October 2026; nothing here is built.** Each step in §7 is its own pull request, run on node #1
+**Status: step 1 and most of step 2 built in v0.82 (#217, #250); findings are not readings yet, online models (step 3) not built. Proposed 12 October 2026.** Each step in §7 is its own pull request, run on node #1
 before it merges.
 
 ## 1 · What exists

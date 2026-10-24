@@ -79,6 +79,14 @@ assert set(learn.VERDICT_WORDS) == {"helps", "no_clear_difference", "worse", "to
 for r in (row, early, n1, same, alone, street):
     assert r["statement"].index(learn.VERDICT_WORDS[r["numbers"]["verdict"]]) < 60, "the plain meaning leads"
 assert learn.alert_name("air-quality/some_new_rule") == "an air alert" and learn.alert_name("nearby/x") == "nearby/x"
+# The names and the pack of each issue come from the packs since 23 Oct 2026: a rule's `name:`, its issue's `alert:`,
+# the pack that ships the issue. The core keeps no map naming air-quality or heat.
+assert learn.alert_name("air-quality/indoor_pm25_high") == "unhealthy air inside" and learn.alert_name("heat/events") == "a heat alert"
+assert learn._issue_packs() == {"air": "air-quality", "heat": "heat", "coast": "coast", "land": "earth", "water": "terrain"}, learn._issue_packs()
+assert learn._metric("air-quality") == "pm25" and learn._metric("heat") == "apparent" and learn._metric("nearby") is None
+import events_pg as _epg, report as _rep  # noqa: E402
+for _mod, _gone in ((learn, ("PACK_METRIC", "ISSUE_PACK", "ALERT_NAMES")), (_epg, ("PACK_ISSUE",)), (_rep, ("THRESHOLDS",))):
+    assert not any(hasattr(_mod, g) for g in _gone), f"{_mod.__name__} keeps a hard-coded pack map again"
 ranked = sorted(learn.rank([n1, {"kind": "usual", "key": "indoor-heat", "issue": "heat", "numbers": {}}], {}), key=lambda r: r["kind"] != "worked")
 assert ranked[0]["name"] == "an air alert" and ranked[0]["verdict"] == learn.VERDICT_WORDS["worse"], ranked[0]
 assert ranked[1]["name"] == "the feels-like temperature inside" and ranked[1]["verdict"] is None
@@ -165,7 +173,7 @@ settings._cache = {"at": time.time() + 1e9, "rows": {"SHARE_LEVEL": "open"}}
 import main                                       # noqa: E402
 from fastapi.testclient import TestClient         # noqa: E402
 
-main.q = lambda sql, *a: [{"scale": "day", "n": 40}] if "FROM digests" in sql else [{"kind": "worked", "key": "k", "status": "holding", "statement": "s", "numbers": {}}]
+main.q = main.household.q = lambda sql, *a: [{"scale": "day", "n": 40}] if "FROM digests" in sql else [{"kind": "worked", "key": "k", "status": "holding", "statement": "s", "numbers": {}}]
 c = TestClient(main.app)
 ADMIN = {"Authorization": "Bearer admin-tok"}
 assert c.get("/learned").status_code in (401, 403) and c.get("/learned", headers={"Authorization": "Bearer act-tok"}).status_code == 401
@@ -177,7 +185,31 @@ settings._cache["rows"]["AGENT_PREFER"] = "fallback"
 r = c.get("/learned", headers={**ADMIN, "X-Agent": "agent"})
 assert r.status_code == 403 and "AGENT_PREFER" in r.json()["detail"], "an agent that may be online: no, and why"
 assert c.get("/learned", headers=ADMIN).status_code == 200, "the page is not an agent"
-print("route: admin only; an agent only while AGENT_PREFER=private, told why otherwise")
+# a city's server in the remote box: under private it is not used at all, so the learnings stay readable at home;
+# under fallback it is used, and the agent is told why it may not read them
+settings._cache["rows"].update(AGENT_PREFER="private", AGENT_REMOTE_URL="https://vllm.city.example.org/v1")
+assert c.get("/learned", headers={**ADMIN, "X-Agent": "agent"}).status_code == 200, "private never uses a public remote"
+settings._cache["rows"]["AGENT_PREFER"] = "fallback"
+r = c.get("/learned", headers={**ADMIN, "X-Agent": "agent"})
+assert r.status_code == 403 and "outside this house" in r.json()["detail"], "fallback, a public remote: no, and why"
+assert c.get("/household", headers={**ADMIN, "X-Agent": "agent"}).status_code == 403
+assert c.get("/learned/search?q=smoke", headers={**ADMIN, "X-Agent": "agent"}).status_code == 403
+settings._cache["rows"].update(AGENT_PREFER="private", AGENT_REMOTE_URL="http://192.168.4.44:11434/v1")
+assert c.get("/learned", headers={**ADMIN, "X-Agent": "agent"}).status_code == 200, "private, a LAN remote: yes"
+settings._cache["rows"]["AGENT_REMOTE_URL"] = ""
+print("route: admin only; an agent only while every model stays home, told why otherwise")
+# GET /learned/place: the place's usual hours for a screen with no token (the Wall), and nothing of the house
+_sql = []
+main.q = main.household.q = lambda sql, *a: _sql.append(sql) or [{"key": "outdoor-pm25", "issue": "air", "metric": "pm25", "statement": "s", "numbers": {"high_hour": 18}}]
+r = c.get("/learned/place")
+assert r.status_code == 200 and r.json()["learnings"][0]["key"] == "outdoor-pm25", r.text
+assert "kind = 'usual'" in _sql[0] and "scope = 'place'" in _sql[0] and "status = 'holding'" in _sql[0] and "cases" not in _sql[0], _sql
+settings._cache["rows"]["SHARE_LEVEL"] = "off"
+assert c.get("/learned/place").status_code == 403, "at SHARE_LEVEL=off a screen with no token reads nothing of it"
+settings._cache["rows"]["SHARE_LEVEL"] = "open"
+assert "/learned/place" in main._SHARE_OPEN[0] and "/learned" not in main._SHARE_OPEN[0] and "/learned/search" not in main._SHARE_OPEN[0]
+print("route: /learned/place answers the place's usual hours on the open list; /learned and its search stay the house's")
+
 # ---------------------------------------------------------------- what is usual (step 2)
 from datetime import date  # noqa: E402
 assert learn.theil_sen([1, 2, 3, 100, 5]) == 1.0, "a slope one odd day cannot drag"
@@ -275,7 +307,7 @@ assert learn.search_terms("was this October smokier?") == "was | this | october 
 assert learn.search_terms("a & b | c:* !! ') ;") == "", "nothing of tsquery's own syntax gets through"
 assert learn.search_terms("asap ok") == "asap", "words of three letters or more"
 LOG = []
-main.q = lambda sql, *a: (LOG.append((sql, a)), [])[1]
+main.q = main.household.q = lambda sql, *a: (LOG.append((sql, a)), [])[1]
 settings._cache["rows"]["AGENT_PREFER"] = "private"
 assert c.get("/learned/search?q=smoke", headers=ADMIN).status_code == 200
 assert "to_tsquery('simple', %s)" in LOG[-1][0] and LOG[-1][1][0] == "smoke", "the words go as a parameter"
@@ -311,8 +343,8 @@ class HCon:
     def __enter__(self): return self
     def __exit__(self, *a): return False
     def cursor(self): return HCur()
-main.db = lambda: HCon()
-main.q = lambda sql, *a: [{"people": {"older": True}}] if "FROM household" in sql else []
+main.db = main.household.db = lambda: HCon()
+main.q = main.household.q = lambda sql, *a: [{"people": {"older": True}}] if "FROM household" in sql else []
 settings._cache["rows"]["AGENT_PREFER"] = "private"
 assert c.get("/household").status_code in (401, 403) and c.get("/household", headers={"Authorization": "Bearer act-tok"}).status_code == 401
 h = c.get("/household", headers=ADMIN).json()
@@ -324,7 +356,7 @@ assert c.put("/household", json={"people": {"older": True}}, headers={**ADMIN, "
 settings._cache["rows"]["AGENT_PREFER"] = "fallback"
 assert c.get("/household", headers={**ADMIN, "X-Agent": "agent"}).status_code == 403
 settings._cache["rows"]["AGENT_PREFER"] = "private"
-main.q = lambda sql, *a: [{"people": {"lungs": True}}] if "FROM household" in sql else [] if "FROM digests" in sql else [{"kind": "worked", "key": "air-quality/x", "issue": "air-quality", "status": "holding", "statement": "s"}]
+main.q = main.household.q = lambda sql, *a: [{"people": {"lungs": True}}] if "FROM household" in sql else [] if "FROM digests" in sql else [{"kind": "worked", "key": "air-quality/x", "issue": "air-quality", "status": "holding", "statement": "s"}]
 assert c.get("/learned", headers=ADMIN).json()["learnings"][0]["for_whom"] == ["someone with asthma or another lung condition"]
 print("household: yes or no for five, one private row, admin only, never written by an agent; learnings say who they matter to")
 # ---------------------------------------------------------------- who, in the alert (Tomas: "yes, add it to the alerts")
@@ -335,9 +367,10 @@ assert learn.alert_line("air-quality/indoor_pm25_high", {"older": True}, "es") =
 assert learn.alert_line("heat", {"lungs": True}) == "" and learn.alert_line("nearby/x", {"older": True}) == "", "nobody at more risk, no line"
 assert learn.alert_line("heat", {"older": True}, "fr").startswith("This matters"), "an unknown locale speaks English"
 SENT = []
-main.mesh_send = lambda text: SENT.append(("mesh", text))
-main.RETICULUM_URL = "http://reticulum"
-main.TG = lambda: ("123:abc", ["109"])
+import channels  # noqa: E402 — notify and its channels live there since 22 Oct
+channels.mesh_send = lambda text: SENT.append(("mesh", text))
+channels.RETICULUM_URL = "http://reticulum"
+channels.TG = lambda: ("123:abc", ["109"])
 class P:
     def raise_for_status(self): return None
 main.httpx.post = lambda url, json=None, timeout=None: (SENT.append(("tg" if "telegram" in url else "ret", json)), P())[1]
@@ -354,9 +387,9 @@ main.notify("info", "🌡️ It is hot inside.\n\nNothing needs doing.\n\nAsk me
 assert [j for k, j in SENT if k == "tg"][0]["text"] == "🌡️ It is hot inside.\n\nNothing needs doing.\n\n📔 Yesterday.\n\nAsk me anything.", SENT
 SENT.clear()
 assert not any("child" in str(x) for k, x in SENT if k != "tg"), "never the mesh or Reticulum"
-main.q = lambda sql, *a: (_ for _ in ()).throw(RuntimeError("no table"))
+main.q = main.household.q = lambda sql, *a: (_ for _ in ()).throw(RuntimeError("no table"))
 assert main._alert_home("heat") == "", "a profile that cannot be read never stops an alert"
-rr = SRC[SRC.index("def run_rules"):SRC.index("def notify")]
+rr = SRC[SRC.index("def run_rules"):SRC.index("def _alert_home")]
 assert 'home=_alert_home(rule["id"]) if level == "act" else ""' in rr and 'home=_alert_home(m.event.issue) if m.event.level == "act" else ""' in rr, \
     "both engines, act level only"
 assert "INSERT INTO alerts (rule_id, sensor_id, level, text) VALUES (%s,%s,%s,%s)" in rr and "_alert_home" not in rr.split("INSERT INTO alerts")[0][-400:], \
@@ -366,7 +399,7 @@ print("alerts: act-level heat and air say who here they matter to, in the househ
 # A readout (/stats) answers `private` rows to the household's own tokens or this machine, never to anyone the page
 # answers at SHARE_LEVEL=open, nor to a parent's or a backup's token.
 SQLS = []
-main.q = lambda sql, *a: (SQLS.append(sql), [])[1]
+main.q = main.household.q = lambda sql, *a: (SQLS.append(sql), [])[1]
 settings._cache["rows"].update(SHARE_LEVEL="open", ACT_TOKEN="act-tok", AGG_TOKEN="agg-tok")
 for hdr, private in (({}, False), ({"Authorization": "Bearer agg-tok"}, False), ({"Authorization": "Bearer act-tok"}, True), (ADMIN, True)):
     SQLS.clear()
@@ -406,7 +439,7 @@ class Cur:
         return [{"kind": "worked", "key": "heat/events", "issue": "heat", "status": "holding", "statement": "Acted on 5 times: cooler."}]
 
 
-main.q = lambda sql, *a: [{"people": {}}]
+main.q = main.household.q = lambda sql, *a: [{"people": {}}]
 settings._cache["rows"]["LEARN_PUSH"] = "all"
 MON = datetime(2026, 10, 19, 6)
 m = main._morning(Cur(), MON, 900)
@@ -417,7 +450,7 @@ settings._cache["rows"]["LEARN_PUSH"] = "off"
 assert main._morning(Cur(), MON, 900) == ""
 settings._cache["rows"]["LEARN_PUSH"] = "all"
 RR = SRC[SRC.index("def run_report"):SRC.index("def _morning")]
-assert 'notify("info", text, home=memory, home_before_last=True)' in RR and 'ha_alert("info", text, None)' in RR, "Telegram alone carries the memory"
+assert 'notify("info", text, home=memory, home_before_last=True)' in RR and 'packs.emit("on_alert", "info", text, None)' in RR, "Telegram alone carries the memory"
 assert "text, text, not quiet" in RR and "bool(memory)" in RR, "the stored report is the report; it only says it carried the memory"
 assert 'memory = "" if quiet else _morning(' in RR, "a held report carries nothing; the next one sent does"
 assert "status_since = CASE WHEN learnings.status IS DISTINCT FROM EXCLUDED.status THEN current_date" in SRC

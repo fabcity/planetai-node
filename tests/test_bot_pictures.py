@@ -150,10 +150,11 @@ send(photo)
 assert said() == ["The node did not keep it: a GIF is not a picture this node keeps (jpeg, png, heic or webp)"]
 NODE_ANSWER[0] = Resp(401, {"detail": "the captures answer only this machine or Authorization: Bearer ***"})
 send(photo)
-assert "refused this bot's token" in said()[0] and "ADMIN_TOKEN" in said()[0]
+assert said() == ["The node did not accept this picture. Whoever set up the node needs to check the bot's access."], \
+    "the household is told who can fix it, never the token's name"
 NODE_ANSWER[0] = Resp(502)
 send(photo)
-assert said() == ["The node did not keep it: 502"], "an answer that is not JSON still gets a reply"
+assert said() == ["The node did not keep it; send it again in a minute."], "an answer that is not JSON still gets a reply, with no status code"
 NODE_ANSWER[0] = Resp(200, {"ok": True, "capture": {"id": 7}, "describing": True})
 print("a duplicate, no image model, a refusal and a token the node refuses are each said plainly")
 

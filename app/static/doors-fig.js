@@ -8,6 +8,7 @@ function dayWeek(o) {
   const m = { l: narrow ? 46 : 74 * B, r: narrow ? 52 : 64 * B, t: 40 * B }, H1 = narrow ? 190 : (o.h1 || 220), rowH = narrow ? 13 : 15 * B, gap = 34 * B;
   const iw = W - m.l - m.r, nD = o.week === false ? 0 : D.dates.length, H = m.t + H1 + (nD ? gap + nD * rowH : 0) + 26;
   svg.attr('viewBox', `0 0 ${W} ${H}`).attr('width', W).attr('height', H).selectAll('*').remove();
+  svg.attr('aria-label', `${it.name || k}, hour by hour${nD ? ', and the last seven days' : ''}`);   /* the figure's own name; the sentence describes it */
   const date = dayOf(D.buckets[S.i]);
   const x = d3.scaleLinear([0, 24], [m.l, m.l + iw]);
   const idx = h => D.at[date + '|' + h];
@@ -113,8 +114,10 @@ function dayWeek(o) {
       const j = D.at[dt + '|' + h]; if (j == null) continue;
       const v = sd[j], over = it.line != null && v != null && v > it.line;
       g.append('rect').attr('x', x(h) + 1).attr('y', yy + 1).attr('width', x(h + 1) - x(h) - 2).attr('height', rowH - 2)
-        .attr('fill', v == null ? `url(#hatch-${uid})` : over ? 'var(--signal-worse)' : 'currentColor').attr('opacity', v == null || over ? 1 : shade(v))
+        .attr('fill', v == null ? `url(#hatch-${uid})` : 'currentColor').attr('opacity', v == null ? 1 : over ? .9 : shade(v))
         .style('cursor', 'pointer').on('click', () => o.pick && o.pick(j));
+      /* over the line: an ink cell with a red tick on top, never a red fill (the layer) */
+      if (over) g.append('rect').attr('x', x(h) + 1).attr('y', yy + 1).attr('width', x(h + 1) - x(h) - 2).attr('height', 2.5).attr('fill', 'var(--signal-worse)').attr('pointer-events', 'none');
     }
     g.append('text').attr('x', m.l + iw + 8).attr('y', yy + rowH - 3).attr('class', pd && pd.over ? 'lab' : '').text(pd ? (pd.over ? `${pd.over} h` : '0') : '');
     if (dt === date) g.append('rect').attr('x', m.l).attr('y', yy).attr('width', iw).attr('height', rowH).attr('fill', 'none').attr('stroke', 'currentColor').attr('stroke-width', 1.5);
