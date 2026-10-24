@@ -470,6 +470,21 @@ else:
     band = next((v for s in st for v in s["series"].values() if v), None)
     if not band or band[0].get("min") is None or band[0].get("max") is None or band[0].get("n") is None:
         fails.append(f"readings_1h has min/max/n in the fixture, so a station's series must carry them: {band}")
+    keys = {k for s in st for k in s["series"]}
+    if not keys <= set(engine.METRICS):
+        fails.append(f"a station's series carries only the metrics the page may show (dashboard.js looks each up in "
+                     f"`metrics`, and an unknown one threw): {sorted(keys - set(engine.METRICS))}")
+    long = [v for s in st for pts in s["series"].values() for p in pts for v in (p["mean"], p["min"], p["max"])
+            if isinstance(v, float) and v != round(v, 2)]
+    if long:
+        fails.append(f"a station's hourly values are rounded to two decimals, as its read is: {long[:3]}")
+    _two = engine._stations([], [{"sensor_id": "x", "metric": "lora_util_pct", "bucket": "2026-10-24T00:00:00+08:00",
+                                  "mean": 1.234567, "min": 0, "max": 2, "n": 3},
+                                 {"sensor_id": "x", "metric": "pm25", "bucket": "2026-10-24T00:00:00+08:00",
+                                  "mean": 7.891234, "min": 1, "max": 9, "n": 3}], -8.8, 115.1, True,
+                            [{"sensor_id": "x", "name": "x", "lat": -8.8, "lon": 115.1, "last_heard": "2026-10-23"}])
+    if [list(s["series"]) for s in _two] != [["pm25"]] or _two[0]["series"]["pm25"][0]["mean"] != 7.89:
+        fails.append(f"_stations keeps pm25 at two decimals and drops a radio's lora_util_pct: {_two}")
 
 m = body.get("metrics", {})
 if m.get("pm25", {}).get("issue") != "air" or m.get("temp", {}).get("dp") != 1:

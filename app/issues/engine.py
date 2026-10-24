@@ -141,13 +141,18 @@ def _stations(stats: list[dict], hourly: list[dict], lat: float, lon: float, sit
             continue
         lh = r.get("last_heard")
         by[r["sensor_id"]] = {**row(r), "last_heard": lh.isoformat() if hasattr(lh, "isoformat") else lh}
+    # The metrics the page may show, as `read` already is, and two decimals, as `read` already is. Every metric a station
+    # reported was 215 kB of node #1's 510 kB /issues (24 Oct 2026), and the dashboard's station notes look each key
+    # up in `metrics`: a radio's lora_channel_pct threw there, and the notes vanished without a word.
+    def r2(v):
+        return None if v is None else round(float(v), 2)
     for h in hourly or []:
         s = by.get(h.get("sensor_id"))
-        if s is None:
+        if s is None or h.get("metric") not in METRICS:
             continue
         s["series"].setdefault(h["metric"], []).append(
             {"t": h["bucket"] if isinstance(h["bucket"], str) else h["bucket"].isoformat(),
-             "mean": h.get("mean"), "min": h.get("min"), "max": h.get("max"), "n": h.get("n")})
+             "mean": r2(h.get("mean")), "min": r2(h.get("min")), "max": r2(h.get("max")), "n": h.get("n")})
     for s in by.values():
         for k in s["series"]:
             s["series"][k].sort(key=lambda x: x["t"])

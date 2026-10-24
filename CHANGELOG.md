@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **A station's hourly series carries the metrics the page can show, at two decimals.** `/issues` sent every metric
+  every station reported, a radio's channel load and a sensor's raw counts included: 215 kB of node #1's 510 kB. The
+  dashboard's notes for the stations section look each one up in the page's metric list, so a radio's
+  `lora_channel_pct` threw there and the notes vanished with no word on node #1. Now `series` holds the same metrics as
+  `read`, rounded like it.
+
 - **`GET /issues` answers in about a third of the time, `/issues/days` in under a third.** Measured on node #1:
   `/issues` took 6 to 11 s, mostly re-reading files. Every pack.yaml, rules.yml, cells.yml and issue.yml was parsed
   223 times a request with the pure-Python YAML loader; `packs.read_yaml()` now parses each once per change of the
