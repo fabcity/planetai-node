@@ -1,6 +1,9 @@
 # Changelog
 
-## Unreleased
+## v0.90.0 — 2026-10-24 — The core and the packs, apart
+
+- **The source registry is pinned at `cd90289`.** awesome-fabcity-data #100: the adapter check lives in this node's
+  lint now, so the registry stopped checking out node main; the BMKG entry's notes say so. Still 283 entries.
 
 - **Set up is easier to read.** The menu groups its twelve sections under five headings (this place, what it
   reads, how it speaks, who can see it, the machine). Point at a section, or tab to it, and it says what it is for
