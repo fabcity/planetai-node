@@ -234,3 +234,32 @@ for _f in ("app/issues/engine.py", "app/report.py"):
     assert "path.insert" not in _src, \
         f"{_f} is putting a pack on sys.path again; packs.module() imports it by file"
 print("packs.module finds a pack's adapter, and neither caller builds the path itself")
+
+# packs.read_yaml: parsed once per change of the file (GET /issues parsed every pack.yaml 223 times a request), and a
+# copy each time, because every caller sets keys on what it gets
+import tempfile  # noqa: E402
+import time  # noqa: E402
+sys.path.insert(0, "app")
+import packs as _packs  # noqa: E402
+with tempfile.TemporaryDirectory() as _d:
+    _f = __import__("pathlib").Path(_d) / "pack.yaml"
+    _f.write_text("id: one\nmetrics: [pm25]\n")
+    _a = _packs.read_yaml(_f); _a["metrics"].append("changed"); _a["id"] = "changed"
+    assert _packs.read_yaml(_f) == {"id": "one", "metrics": ["pm25"]}, "read_yaml handed out the cached object itself"
+    time.sleep(0.01)
+    _f.write_text("id: two\n")
+    assert _packs.read_yaml(_f) == {"id": "two"}, "read_yaml served the old parse of a file that changed"
+    _f.unlink()
+    try:
+        _packs.read_yaml(_f)
+        raise AssertionError("read_yaml served a deleted file from its cache")
+    except FileNotFoundError:
+        pass
+    _f.write_text("id: [unclosed\n")
+    try:
+        _packs.read_yaml(_f)
+        raise AssertionError("read_yaml parsed a broken file")
+    except __import__("yaml").YAMLError:
+        pass
+print("packs.read_yaml: one parse per change of the file, a copy each time, missing and broken files raise")
+

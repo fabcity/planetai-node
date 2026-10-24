@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **`GET /issues` answers in about a third of the time, `/issues/days` in under a third.** Measured on node #1:
+  `/issues` took 6 to 11 s, mostly re-reading files. Every pack.yaml, rules.yml, cells.yml and issue.yml was parsed
+  223 times a request with the pure-Python YAML loader; `packs.read_yaml()` now parses each once per change of the
+  file, with libyaml. The six footprint coverings are computed once per radius instead of once per request (1.4 s of
+  h3). Three reads were rewritten to stop sorting rows they then threw away, each checked row for row against the
+  old one on node #1 and in `tests/test_views_pg.py`: the `observations` view walks the readings index (221 ms →
+  5 ms), the `stats` view aggregates before it joins (320 → 133 ms, and the rules read it every poll), and the
+  stations gone quiet are found without grouping 30 days of readings (300 → 27 ms). `/issues/days` tested each
+  hourly row's metric after asking where it stands, 130,524 times; now it asks the metric first (1.7 → 0.5 s).
+
 - **Grafana, for the keeper.** `planetai grafana` starts Grafana (profile `grafana`, off by default) on loopback
   port 3000, beside the dashboard: your own panels over the node's readings. It reads the database as
   `planetai_grafana`, a member of `planetai_ro` (every table but `settings`), read-only, 30 s per query, four

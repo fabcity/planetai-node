@@ -214,6 +214,18 @@ if _centre and _centre["edge_m"] != _g8["edge_m"]:
     fails.append(f"the plate's centre cell and the grain table disagree about one cell's edge: "
                  f"{_centre['edge_m']} m and {_g8['edge_m']} m")
 
+# The coverings are cached (geometry._covering, 24 Oct 2026): a second call is the same answer, a claim the caller
+# changes does not change the next one. A changed radius is a new key: S0's zero-radius ring above is that case.
+_a = G.claims(LAT, LON, S, RING)
+_b = __import__("copy").deepcopy(G.claims(LAT, LON, S, RING))       # a snapshot, not the same lists
+if _a != _b:
+    fails.append("two calls to claims() with the same settings gave different coverings")
+_a[0]["cells"].append("not-a-cell"); _a[0]["drawn"]["cells"] = -1
+if G.claims(LAT, LON, S, RING) != _b:
+    fails.append("changing one claims() result changed the next: the cached covering is shared, not copied")
+if G._covering.cache_info().hits == 0:
+    fails.append("claims() never hit its covering cache: every request pays for h3 again")
+
 for f in fails:
     print("FAIL", f)
 print("ok" if not fails else f"{len(fails)} failure(s)")

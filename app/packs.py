@@ -15,6 +15,7 @@ no dependency resolution, no lifecycle hooks. If a pack is broken the node logs 
 """
 from __future__ import annotations
 
+import copy
 import importlib.util
 import logging
 import os
@@ -26,6 +27,23 @@ import yaml
 log = logging.getLogger("planetai.packs")
 PACKS_DIR = Path(os.getenv("PACKS_DIR", "/app/packs"))
 CORE_CHANNELS = Path(os.getenv("CHANNELS_PATH", "/app/config/channels.yml"))
+
+# Every pack.yaml, rules.yml, cells.yml, channels.yml and issue.yml, parsed once per change of the file. GET /issues
+# parsed them 223 times a request with the pure-Python loader, about 3 of its 6.5 s on node #1 (24 Oct 2026).
+_YAML: dict = {}
+_LOADER = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
+
+
+def read_yaml(f: Path):
+    """`yaml.safe_load(f.read_text())`, cached on the file's mtime and size, with libyaml when the image has it. A
+    copy each time: every caller sets keys on what it gets (a rule's namespaced id, a cell's pack). A file that is
+    missing or does not parse raises exactly as before, and is parsed again on the next call."""
+    st = f.stat()
+    stamp = (st.st_mtime_ns, st.st_size)
+    hit = _YAML.get(f)
+    if hit is None or hit[0] != stamp:
+        hit = _YAML[f] = (stamp, yaml.load(f.read_text(), Loader=_LOADER))  # noqa: S506 — a safe loader
+    return copy.deepcopy(hit[1])
 
 
 def _allow_code() -> bool:
@@ -53,7 +71,7 @@ def _enabled() -> list[Path]:
         # A pack written for a newer node may read a column, a route or a setting this one does not have. It is
         # refused whole, rules and adapter alike, with one line in the log, and not half-loaded.
         try:
-            spec = ((yaml.safe_load((d / "pack.yaml").read_text()) or {}).get("requires") or {}).get("node")
+            spec = ((read_yaml(d / "pack.yaml") or {}).get("requires") or {}).get("node")
         except Exception:  # noqa: BLE001 — a pack.yaml that does not parse is reported where it is read
             spec = None
         why = requires.check(spec, here)
@@ -71,7 +89,7 @@ def manifests() -> list[dict]:
     out = []
     for d in _enabled():
         try:
-            m = yaml.safe_load((d / "pack.yaml").read_text()) or {}
+            m = read_yaml(d / "pack.yaml") or {}
         except Exception as e:  # noqa: BLE001
             log.warning("pack %s: bad pack.yaml (%s)", d.name, e); continue
         m["id"] = m.get("id", d.name)
@@ -95,7 +113,7 @@ def load_rules() -> list[dict]:
     alert's condition stopped being true. A rule that has been renamed or deleted can never fire again, so counting
     its silence as a cleared condition would turn every retired rule into a success."""
     try:
-        core = yaml.safe_load(CORE_RULES.read_text()) or []
+        core = read_yaml(CORE_RULES) or []
     except FileNotFoundError:
         core = []
     return core + alerts()            # a pack rule with `contributes:` is part of the report, not an alert
@@ -144,7 +162,7 @@ def rules() -> list[dict]:
         if not f.is_file():
             continue
         try:
-            for r in yaml.safe_load(f.read_text()) or []:
+            for r in read_yaml(f) or []:
                 r["id"] = f"{d.name}/{r['id']}"
                 out.append(r)
         except Exception as e:  # noqa: BLE001
@@ -171,7 +189,7 @@ def cells() -> list[dict]:
         if not f.is_file():
             continue
         try:
-            for c in yaml.safe_load(f.read_text()) or []:
+            for c in read_yaml(f) or []:
                 c["pack"] = d.name
                 out.append(c)
         except Exception as e:  # noqa: BLE001
@@ -201,7 +219,7 @@ def channels() -> list[dict]:
         if not f.exists():
             continue
         try:
-            decls = yaml.safe_load(f.read_text()) or []
+            decls = read_yaml(f) or []
         except Exception as e:  # noqa: BLE001
             log.warning("channels.yml in %s did not parse: %s", who, e); continue
         for c in decls:
@@ -232,7 +250,7 @@ def agent_scripts() -> list[str]:
         # counts as core. A list of core ids shipped with the release would close that, if hand-copied packs spread.
         if (d / ".wild").is_file():
             try:
-                listed = (yaml.safe_load((d / "pack.yaml").read_text()) or {}).get("agent_scripts")
+                listed = (read_yaml(d / "pack.yaml") or {}).get("agent_scripts")
             except Exception:  # noqa: BLE001 — a pack.yaml that does not parse lists nothing
                 listed = None
             if not (isinstance(listed, list) and name in listed):
@@ -243,7 +261,7 @@ def agent_scripts() -> list[str]:
 
 def _manifest(d: Path) -> dict:
     try:
-        return yaml.safe_load((d / "pack.yaml").read_text()) or {}
+        return read_yaml(d / "pack.yaml") or {}
     except Exception:  # noqa: BLE001 — a pack.yaml that does not parse is reported where manifests() reads it
         return {}
 
