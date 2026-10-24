@@ -26,6 +26,30 @@ const SETUP_GROUPS = {
   sharing: ['Sharing', 'Who may read this node, and everything it sends or announces beyond this machine. Raw readings stay here; only hourly averages, Index scores and the share of alerts answered leave.'],
   system: ['System', 'Tuning numbers, and what is read once at start: the port, extra containers, backups, the poll interval.'],
 };
+/* The menu in five categories, each section with one line on what it holds (Tomas, 24 Oct 2026: "group by categories,
+   and make a hover explainer of what the menu contains, it is difficult to grasp"). A group a pack or a newer node
+   declares that no category names goes to the last one, so nothing a node declares is ever left out of the menu. */
+const SETUP_CATS = [
+  ['This place', ['basics', 'rooms']],
+  ['What it reads', ['sources', 'packs']],
+  ['How it speaks', ['alerts', 'model']],
+  ['Who can see it', ['sharing', 'keys', 'screen']],
+  ['The machine', ['system', 'machine', 'updates']],
+];
+const SETUP_TIPS = {
+  basics: 'This place: what it watches and in which order, its language, and how its page opens.',
+  rooms: 'The room each of your own sensors is in. Alerts and every page use these names.',
+  sources: 'Your sensors and accounts, and the public stations and global models around you.',
+  packs: 'Which packs this node loads, and each pack’s own settings.',
+  alerts: 'When the reports come, what is allowed to interrupt you, and how a loop is closed.',
+  model: 'Which model answers questions, here and on Telegram.',
+  sharing: 'Who on your network can read this node, and what leaves it.',
+  keys: 'Every secret: tokens and API keys. Masked once saved, never shown again.',
+  screen: 'Unlock this screen with the admin token to change settings, or lock it again.',
+  system: 'Tuning numbers, Grafana, and what is read once at start.',
+  machine: 'The computer the node runs on: its disk, and how long the space lasts.',
+  updates: 'Which version runs, whether a newer one is out, and how to update.',
+};
 const SETUP_BOOLS = /^(OPENMETEO_ENABLED|SENSOR_INDOOR|MESH_ALERTS|HA_DISCOVERY|EXPORT_ENABLED|IPFS_PUBLISH|QUIET_HOURS|PACKS_ALLOW_CODE)$/;
 /* What a screen without the token gets at each level: the node's own rule (app/main.py _SHARE_OFF / _SHARE_OPEN). */
 const SHARE_WORDS = {
@@ -36,7 +60,22 @@ const sq = s => document.querySelector('#setupv2 ' + s), sqa = s => document.que
 const sTitle = g => (SETUP_GROUPS[g] || [g.charAt(0).toUpperCase() + g.slice(1)])[0];
 const sGroups = d => { const seen = []; for (const r of d.runtime || []) if (!seen.includes(r.group)) seen.push(r.group);
   for (const b of d.bootstrap || []) if (b.group && !seen.includes(b.group)) seen.push(b.group); return seen; };
-const SECTIONS = () => [...(SETUP.desc ? sGroups(SETUP.desc) : []), 'rooms', 'machine', 'screen', 'updates'];
+const SECTIONS = () => sCats().flatMap(([, secs]) => secs);
+/* the categories as this node has them: a declared group in its category, any other one in the last */
+const sCats = () => {
+  const have = new Set([...(SETUP.desc ? sGroups(SETUP.desc) : []), 'rooms', 'machine', 'screen', 'updates']);
+  const named = new Set(SETUP_CATS.flatMap(([, secs]) => secs));
+  const cats = SETUP_CATS.map(([t, secs]) => [t, secs.filter(x => have.has(x))]);
+  cats[cats.length - 1][1].push(...[...have].filter(x => !named.has(x)));
+  return cats.filter(([, secs]) => secs.length);
+};
+/* what a section holds, for its explainer: its settings' names, or its packs' */
+const sHolds = g => {
+  const d = SETUP.desc || {}, rows = (d.runtime || []).filter(r => r.group === g && !r.pack);
+  const names = g === 'packs' ? (SETUP.packs || []).map(p => p.name || p.id) : rows.map(r => r.label);
+  if (!names.length) return '';
+  return names.length > 6 ? `${names.slice(0, 6).join(', ')} and ${names.length - 6} more` : names.join(', ');
+};
 const sName = g => ({ screen: 'This screen', updates: 'Updates', machine: 'Machine', rooms: 'Rooms' })[g] || sTitle(g);
 
 VIEWS.setup = async function () {
@@ -65,8 +104,11 @@ function setupDraw() {
   const setHere = k => rows.filter(r => r.group === k && r.source === 'gui').length;
   el.innerHTML = `<header class="sh" data-learn="settings" data-reads="/settings" data-pack="core"><div class="k">Set up · ${esc(D.node.name)}</div><h1>How this node was told to behave.</h1>`
     + `<p class="lede">Everything here is live within about twenty seconds; nothing needs a restart. A blank field hands the setting back to <code>.env</code>, and a value set here overrides it.</p></header>`
-    + `<div class="sgrid" data-learn="setup-sections" data-reads="/settings /health/sources"><nav class="snav" aria-label="Set up sections">${SECTIONS().map(s => `<a href="#setup/${s}" class="${s === g ? 'on' : ''}" data-s="${s}">`
-      + `<span>${esc(sName(s))}</span>${s === 'screen' ? `<i>${unlocked ? 'unlocked' : 'locked'}</i>` : s === 'updates' ? (D.health.release || {}).newer ? '<i>new</i>' : '' : s === 'machine' ? (SETUP.storage && SETUP.storage.days_left != null ? `<i>${sDays(SETUP.storage.days_left)}</i>` : '') : setHere(s) ? `<i>${setHere(s)} set</i>` : ''}</a>`).join('')}</nav>`
+    + `<div class="sgrid" data-learn="setup-sections" data-reads="/settings /health/sources"><nav class="snav" aria-label="Set up sections">${sCats().map(([cat, secs]) => `<div class="scat" aria-hidden="true">${esc(cat)}</div>`
+      + secs.map(s => { const holds = sHolds(s);
+        return `<a href="#setup/${s}" class="${s === g ? 'on' : ''}" data-s="${s}" aria-describedby="tip-${s}">`
+        + `<span>${esc(sName(s))}</span>${s === 'screen' ? `<i>${unlocked ? 'unlocked' : 'locked'}</i>` : s === 'updates' ? (D.health.release || {}).newer ? '<i>new</i>' : '' : s === 'machine' ? (SETUP.storage && SETUP.storage.days_left != null ? `<i>${sDays(SETUP.storage.days_left)}</i>` : '') : setHere(s) ? `<i>${setHere(s)} set</i>` : ''}`
+        + `<span class="tip" role="tooltip" id="tip-${s}"><b>${esc(sName(s))}</b>${esc(SETUP_TIPS[s] || (SETUP_GROUPS[s] || [])[1] || '')}${holds ? `<em>Holds: ${esc(holds)}</em>` : ''}</span></a>`; }).join('')).join('')}</nav>`
     + `<section class="spane" aria-live="polite" data-learn="setup-save" data-reads="/settings /actions">${sTodo()}${g === 'screen' ? sScreen(unlocked) : g === 'updates' ? sUpdates() : g === 'machine' ? sMachine() : g === 'rooms' ? sRooms(unlocked) : sGroup(g, unlocked)}</section></div>`
     + `<div class="sbar" id="sbar" hidden><span id="scount"></span><span class="sp"></span><button type="button" class="sbtn" id="sdiscard">Discard</button><button type="button" class="sbtn primary" id="ssave">Save changes</button></div>`;
   sqa('.snav a').forEach(a => a.onclick = ev => {
@@ -80,7 +122,15 @@ function setupDraw() {
   const lockB = sq('#slock'); if (lockB) lockB.onclick = () => { try { localStorage.removeItem('planetai_admin'); localStorage.removeItem('planetai_act'); } catch (e) { /* none */ } location.reload(); };
   sq('#ssave').onclick = () => sSave(); sq('#sdiscard').onclick = () => { SETUP.dirty = false; setupDraw(); };
   sqa('[data-room]').forEach(f => f.onsubmit = sRoom);
+  /* a pack card opens on its own (Tomas, 24 Oct 2026: "Bali Air Dispatch itself", not the rows inside it); the pane's
+     button opens or closes every card, and this browser remembers the choice */
+  sqa('.px').forEach(b => b.onclick = () => { const card = b.closest('.pcard'), open = !card.classList.contains('open');
+    card.classList.toggle('open', open); b.setAttribute('aria-expanded', String(open)); b.textContent = open ? '−' : '+'; });
+  const all = sq('#sopenall'); if (all) all.onclick = () => { const on = !sOpenAll();
+    try { localStorage.setItem('planetai_setup_packs_open', on ? '1' : ''); } catch (e) { /* a private window: this page only */ SETUP.openAll = on; }
+    setupDraw(); };
 }
+const sOpenAll = () => { try { return localStorage.getItem('planetai_setup_packs_open') === '1'; } catch (e) { return !!SETUP.openAll; } };
 
 /* To finish setting up (15 Oct 2026): the node's fundamental sources that are not running, most important first, each
    with the node's own fix and a link to the section it is set in. The list and the words are GET /health/sources
@@ -149,9 +199,12 @@ function sGroup(g, unlocked) {
   if (g === 'packs') {
     const on = ((d.runtime || []).find(r => r.key === 'PACKS_ENABLED') || {}).value || '', only = on ? on.split(',').map(x => x.trim()) : null;
     body = `<div class="packs">${SETUP.packs.map(p => { const live = !only || only.includes(p.id);
-      return `<section class="pcard"><div class="ph"><button type="button" role="switch" class="sw ${live ? 'on' : ''}" aria-checked="${live}" data-pack="${esc(p.id)}" aria-label="${esc(p.name)}"${unlocked ? '' : ' disabled'}><span>${live ? 'on' : 'off'}</span></button>`
-        + `<div><b>${esc(p.name || p.id)}</b><div class="sm">${esc(p.kind || '')}${p.domain ? ` · ${esc(p.domain)}` : ''} · v${esc(p.version || '')} · ${esc(p.author || '')}</div><p class="help">${esc(p.description || '')}</p></div></div>`
-        + rows.filter(r => r.pack === p.id).map(r => sRow(r, unlocked)).join('') + `</section>`; }).join('')}</div>` + body;
+      const mine = rows.filter(r => r.pack === p.id), open = sOpenAll(), n = mine.length;
+      return `<section class="pcard${open ? ' open' : ''}" id="pack-${esc(p.id)}"><div class="ph"><button type="button" role="switch" class="sw ${live ? 'on' : ''}" aria-checked="${live}" data-pack="${esc(p.id)}" aria-label="${esc(p.name)}"${unlocked ? '' : ' disabled'}><span>${live ? 'on' : 'off'}</span></button>`
+        + `<div class="pt"><b>${esc(p.name || p.id)}</b><div class="sm">${esc(p.kind || '')}${p.domain ? ` · ${esc(p.domain)}` : ''} · v${esc(p.version || '')} · ${n ? `${n} setting${n === 1 ? '' : 's'}` : 'no settings'}</div></div>`
+        + `<button type="button" class="px" aria-expanded="${open}" aria-controls="pbody-${esc(p.id)}" aria-label="${esc(p.name || p.id)}: what it does and its settings">${open ? '−' : '+'}</button></div>`
+        + `<div class="pbody" id="pbody-${esc(p.id)}"><p class="help">${esc(p.description || '')}</p><div class="sm">${esc(p.author || '')}</div>`
+        + mine.map(r => sRow(r, unlocked)).join('') + `</div></section>`; }).join('')}</div>` + body;
   }
   /* what is read once at start: one table, and the way to change it said once. Grafana's three keys are its own block. */
   const B = (d.bootstrap || []).filter(b => (b.group || 'system') === g && !/^GRAFANA_/.test(b.key));
@@ -159,7 +212,7 @@ function sGroup(g, unlocked) {
     + `<table class="tbl ro"><tr><th>setting</th><th class="hide">key</th><th>value</th></tr>${B.map(b => `<tr><td>${esc(b.label)}</td><td class="hide mono">${esc(b.key)}</td>`
       + `<td class="mono">${b.value ? esc(b.value) : '<span class="fine">not set</span>'}</td></tr>`).join('')}</table>` : '';
   const changed = (SETUP.history || []).filter(a => rows.some(r => String(a.note || '').split(', ').includes(r.key))).slice(0, 5);
-  return `<h2>${esc(sTitle(g))}</h2><p class="blurb">${esc((SETUP_GROUPS[g] || [])[1] || 'This node declares this group. planetai config shows the same keys.')}</p>${gate}`
+  return `<div class="dh"><h2>${esc(sTitle(g))}</h2>${g === 'packs' && SETUP.packs.length ? `<button type="button" class="sbtn sdet" id="sopenall" aria-pressed="${sOpenAll()}">${sOpenAll() ? 'Close all packs' : 'Open all packs'}</button>` : ''}</div><p class="blurb">${esc((SETUP_GROUPS[g] || [])[1] || 'This node declares this group. planetai config shows the same keys.')}</p>${gate}`
     + `<div class="rows">${body}</div>${g === 'system' ? sGrafana(d.bootstrap || []) : ''}${boot}`
     + (changed.length ? `<div class="hist"><div class="k">changed lately</div>${changed.map(a => `<p><span class="mono">${esc(wdhm(a.ts))}</span> · ${esc(a.actor || 'someone')} · ${esc(a.note || '')}</p>`).join('')}</div>` : '');
 }

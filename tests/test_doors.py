@@ -799,6 +799,18 @@ assert _c["key"][0]["to"] == "a new value" and "sk-x" not in json.dumps(_c["key"
 _setup = (STATIC / "doors-setup.js").read_text()
 assert "confirm(" not in _setup[_setup.index("async function sSave"):] and "sConfirm(c)" in _setup and "Save anyway" in _setup and 'data-a="back"' in _setup
 assert "Read at start" in _setup and _setup.count("planetai restart") == 1, "what is read at start is one table, its instruction said once"
+# Set up in categories (24 Oct 2026): every section in the menu has its explainer, a group no category names still
+# reaches the menu (in the last one), and what leaves the machine is said on the closed row, never only inside the fold
+_cats = sorted(set(re.findall(r"'([a-z]+)'", _setup[_setup.index("const SETUP_CATS"):_setup.index("const SETUP_TIPS")])))
+_tips = sorted(re.findall(r"^  ([a-z]+): '", _setup[_setup.index("const SETUP_TIPS"):_setup.index("const SETUP_BOOLS")], re.M))
+assert _cats == _tips, f"a section in the menu has no explainer, or an explainer no section: {_cats} vs {_tips}"
+assert "cats[cats.length - 1][1].push(...[...have].filter(x => !named.has(x)))" in _setup, "an unnamed group must still reach the menu"
+_grp = _setup[_setup.index("function sGroup"):_setup.index("function sGrafana")]
+assert 'class="pbody"' in _grp and "mine.map(r => sRow(r, unlocked))" in _grp[_grp.index('class="pbody"'):], "a pack's settings are inside its fold"
+assert _grp.index('data-pack="${esc(p.id)}"') < _grp.index('class="pbody"'), "a pack's on/off switch stays on the closed card"
+assert 'class="more"' not in _setup and "class=\"sx\"" not in _setup, "rows are not folded one by one: the pack is (Tomas, 24 Oct 2026)"
+assert 'role="tooltip"' in _setup and 'aria-describedby="tip-${s}"' in _setup, "the explainer is tied to its section for a screen reader"
+print("doors: Set up's menu in categories, every section explained, each pack folded with its switch outside")
 _gf = _setup[_setup.index("function sGrafana"):_setup.index("function sUpdates")]
 assert "sGrafana(d.bootstrap" in _setup and "g === 'system' ? sGrafana" in _setup, "Set up › System draws the Grafana block"
 assert "!/^GRAFANA_/.test(b.key)" in _setup, "Grafana's keys are its block, not three more rows in the start-time table"
