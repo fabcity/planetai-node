@@ -231,7 +231,7 @@ backups and the pictures folder. See [Storage](storage.md).
 | `EXPORT_ENABLED` | `1` | `1`, `0` | Each night writes yesterday's `exports/<node>/YYYY-MM-DD.json`: hourly means, cells, alerts and ρ, never raw. | bootstrap |
 | `IPFS_PUBLISH` | `0` | `1`, `0` | Adds each export to IPFS and records the CID in `exports/<node>/CIDS.txt`. `planetai ipfs` turns it on. | bootstrap |
 | `APP_PORT` | `8080` | port | The host port, on every interface. Change it if 8080 is taken. | bootstrap |
-| `COMPOSE_PROFILES` | blank | `mqtt`, `agent`, `ipfs`, `reticulum` | Which optional containers run. Set by `planetai meshtastic`, `agent local`, `ipfs` and `reticulum`; leave it alone. | bootstrap |
+| `COMPOSE_PROFILES` | blank | `mqtt`, `agent`, `ipfs`, `reticulum`, `grafana` | Which optional containers run. Set by `planetai meshtastic`, `agent local`, `ipfs`, `reticulum` and `grafana`; leave it alone. | bootstrap |
 
 ## Packs
 

@@ -27,6 +27,7 @@ first refusal in the repository: "No raw readings leave the instance that record
 | `1883` | the MQTT broker, with the `mqtt` profile (`planetai meshtastic`, `planetai broker`) | a client with the broker's user and password; anonymous clients are refused |
 | `4001` | the IPFS swarm, with the `ipfs` profile | the IPFS network, which sees only the daily export |
 | `4242` | Reticulum, with the `reticulum` profile | Sideband, NomadNet and other nodes on the LAN or tailnet |
+| `3000` (`GRAFANA_PORT`) | Grafana, with the `grafana` profile, on loopback unless `GRAFANA_BIND` says otherwise | whoever signs in to Grafana, who reads every table but `settings` ([Grafana](grafana.md)) |
 
 Postgres (`5432`), the IPFS API (`5001`, `8085`) and the Reticulum bridge's API (`4243`) bind `127.0.0.1` only.
 The API is on every interface because the things that read it are on the network: the NAS that pulls backups, the

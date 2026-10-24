@@ -32,6 +32,7 @@
 #   planetai backup         dump + export + copy now, instead of waiting for 03:17
 #   planetai restore <f>    replace the live database with a dump (takes a safety backup first)
 #   planetai ipfs           publish each day's export to IPFS
+#   planetai grafana        your own panels over this node's readings, beside the dashboard; `grafana off` stops it
 #   planetai agent          connect an AI agent: the MCP endpoint, the token, config snippets
 #   planetai agent local    a model on this machine (Ollama) that runs the node and answers on Telegram; `agent stop` stops it
 #   planetai run <pack> <script> [args]   run a script a pack ships; output lands in out/
@@ -1507,13 +1508,13 @@ proj()  { printf '%s' "${COMPOSE_PROJECT_NAME:-$(basename "$PWD")}"; }
 # basename "$PWD" is "/".
 node_volumes() { local pj="${1:-$(proj)}"
   { { docker volume ls -q --filter "label=com.docker.compose.project=$pj" 2>/dev/null || true
-      docker volume ls -q 2>/dev/null | grep -E "^${pj}_(db|mosquitto|reticulum|ipfsdata)$" || true
+      docker volume ls -q 2>/dev/null | grep -E "^${pj}_(db|mosquitto|reticulum|ipfsdata|grafana|grafana-secret)$" || true
     } | sort -u; } || true
 }
 # The names a node's volumes WOULD have, computable with no daemon at all. When docker is unreachable
 # we cannot list what exists, but we can still tell somebody exactly what to delete later — deleting
 # the folder is what otherwise leaves that data with nothing left on the machine that names it.
-node_volume_names() { local pj="${1:-$(proj)}" v; for v in db mosquitto reticulum ipfsdata; do printf '%s_%s\n' "$pj" "$v"; done; }
+node_volume_names() { local pj="${1:-$(proj)}" v; for v in db mosquitto reticulum ipfsdata grafana grafana-secret; do printf '%s_%s\n' "$pj" "$v"; done; }
 
 cmd_remove() {
   local keep=0; [[ "${1:-}" == "--keep-data" ]] && keep=1
@@ -1666,6 +1667,30 @@ cmd_ipfs() {
   echo "  Persistence: a CID lives while some node pins it. This node pins its own; for durability beyond this machine,"
   echo "  set a pinning service (Pinata, web3.storage, Filebase) in rclone as a remote, or ask a partner node to pin yours."
   echo "  Publish now instead of waiting:  planetai backup"
+}
+
+
+cmd_grafana() {
+  step "Grafana"
+  if [[ "${1:-}" == "off" ]]; then
+    envset COMPOSE_PROFILES "$(envget COMPOSE_PROFILES | tr ',' '\n' | { grep -vx grafana || true; } | paste -sd, -)"
+    docker compose --profile grafana rm -sf grafana grafana-role >>"$LOG" 2>&1 || true
+    docker compose exec -T db psql -U planetai -d planetai -qc "DROP ROLE IF EXISTS planetai_grafana" >>"$LOG" 2>&1 \
+      || warn "could not drop the planetai_grafana login; see $LOG"
+    say "off. The login is gone; your own dashboards stay in the grafana volume for next time."
+    return
+  fi
+  echo "  Your own panels over this node's readings, beside the dashboard. It reads the database read-only, as"
+  echo "  planetai_grafana: every table but settings, raw readings included. A starter dashboard is in the PLANETAI folder;"
+  echo "  Save as makes a copy that is yours. docs/site/grafana.md lists what Grafana will not tell you on its own."
+  echo
+  profiles_add grafana
+  docker compose up -d grafana >>"$LOG" 2>&1 || fail "could not start grafana; see $LOG"
+  local bind port; bind="$(envget GRAFANA_BIND)"; port="$(envget GRAFANA_PORT)"
+  say "http://${bind:-127.0.0.1}:${port:-3000}"
+  if [[ -z "$(envget GRAFANA_ADMIN_PASSWORD)" ]]; then
+    warn "the login is admin / admin until you change it; set GRAFANA_ADMIN_PASSWORD in .env before GRAFANA_BIND=0.0.0.0"
+  fi
 }
 
 
@@ -2413,7 +2438,7 @@ case "${1:-help}" in
   storage) shift; cmd_storage "$@";;
   remove|uninstall) shift; cmd_remove "$@";;
   restore) shift; cmd_restore "$@";;
-  ipfs) cmd_ipfs;;
+  ipfs) cmd_ipfs;;  grafana) shift; cmd_grafana "$@";;
   agent|agents|mcp)
     case "${2:-}" in
       local) if [[ "${3:-}" == pull ]]; then shift 3; cmd_agent_local_pull "$@"; else cmd_agent_local; fi;;

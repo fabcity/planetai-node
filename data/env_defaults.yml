@@ -134,6 +134,15 @@ DECISION_REQUIRED:
 COMPOSE_PROFILES:
   default: ""
   help: "---- optional layers (set by `planetai meshtastic` / `planetai reticulum`; leave alone by hand) ---- Which extra containers to run: mqtt, reticulum, or both, comma-separated. Empty = the two base containers only."
+GRAFANA_PORT:
+  default: "3000"
+  help: "Grafana (profile grafana, `planetai grafana`): the port, the address it listens on (127.0.0.1 = this machine only; 0.0.0.0 = the house network, after a password) and its admin password (blank = admin). docs/site/grafana.md"
+GRAFANA_BIND:
+  default: "127.0.0.1"
+  help: "Grafana (profile grafana, `planetai grafana`): the port, the address it listens on (127.0.0.1 = this machine only; 0.0.0.0 = the house network, after a password) and its admin password (blank = admin). docs/site/grafana.md"
+GRAFANA_ADMIN_PASSWORD:
+  default: ""
+  help: "Grafana (profile grafana, `planetai grafana`): the port, the address it listens on (127.0.0.1 = this machine only; 0.0.0.0 = the house network, after a password) and its admin password (blank = admin). docs/site/grafana.md"
 MQTT_HOST:
   default: ""
   help: "Meshtastic via MQTT. The gateway radio publishes to the node's Mosquitto with these credentials."

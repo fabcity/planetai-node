@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **Grafana, for the keeper.** `planetai grafana` starts Grafana (profile `grafana`, off by default) on loopback
+  port 3000, beside the dashboard: your own panels over the node's readings. It reads the database as
+  `planetai_grafana`, a member of `planetai_ro` (every table but `settings`), read-only, 30 s per query, four
+  connections, in `NODE_TZ`; a one-shot `grafana-role` container makes the login and keeps its password in a
+  volume, so nothing goes in `.env` and Grafana is handed no secret of the node's. A starter dashboard, "keeper's
+  view · no provenance", fills itself from the node's sensors: every room hourly, a room by hour of day, a room
+  against outside, when each sensor was heard, every outdoor station with the model, and the radios, with the alert
+  events drawn over them. Every query stops at `now()` (the forecast's rows are dated ahead) and every line breaks
+  at a silence. `planetai grafana off` drops the login. New page: docs/site/grafana.md, with what Grafana will not
+  tell you. This answers the Grafana question in docs/NEXT_RELEASE.md as its keeper's surface, and is §5 of
+  docs/SPEC_dashboard_figures.md, built. Proven on a copy of node #1's database.
+
 - **The CAMS model and the EPA 2021 correction are the air-quality pack's.** `openmeteo_air` and the correction left
   `app/sources.py`, and the 92-day first-start history left `app/bootstrap.py`, for `packs/air-quality/adapter.py`,
   unchanged: the same `cams-point` sensor, `open-meteo-cams` source and metrics. The pack runs it on

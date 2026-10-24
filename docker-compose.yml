@@ -141,8 +141,56 @@ services:
     # For an RNode LoRa radio on Linux, add:   devices: ["/dev/ttyACM0:/dev/ttyACM0"]   and uncomment its block in config
     logging: { driver: json-file, options: { max-size: "5m", max-file: "2" } }
 
+  # Grafana for the keeper: their own panels over this node's readings, beside the dashboard and never instead of
+  # it (docs/site/grafana.md). profile: grafana (planetai grafana sets it). It reads the database as
+  # planetai_grafana, a login made by grafana-role below: a member of planetai_ro (init.sql), so every table but
+  # settings, read-only, 30 s per query. The password is generated into the grafana-secret volume; nothing in .env.
+  grafana-role:
+    image: imresamu/postgis:16-3.4-alpine   # db's own image: it has psql, so nothing new to pull
+    profiles: [grafana]
+    restart: "no"
+    entrypoint: ["sh", "/role.sh"]
+    environment:
+      PGHOST: db
+      PGUSER: planetai
+      PGDATABASE: planetai
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      NODE_TZ: ${NODE_TZ:-UTC}
+    volumes:
+      - ./config/grafana/role.sh:/role.sh:ro
+      - grafana-secret:/secret
+    depends_on:
+      db: { condition: service_healthy }
+    logging: { driver: json-file, options: { max-size: "1m", max-file: "1" } }
+
+  grafana:
+    image: grafana/grafana-oss:13.0.2   # pinned 24 Oct 2026: a new Grafana is a decision, not a pull
+    profiles: [grafana]
+    restart: unless-stopped
+    # Loopback by default. GRAFANA_BIND=0.0.0.0 opens it to the LAN, after GRAFANA_ADMIN_PASSWORD is set: the
+    # admin can add any datasource, and admin/admin is the first thing anyone tries.
+    ports: ["${GRAFANA_BIND:-127.0.0.1}:${GRAFANA_PORT:-3000}:3000"]
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_DATE_FORMATS_DEFAULT_TIMEZONE: ${NODE_TZ:-browser}
+      # A node may have no route out, and the household's readings are nobody's analytics.
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+    volumes:
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./config/grafana/dashboards:/etc/grafana/dashboards:ro
+      - grafana:/var/lib/grafana            # the keeper's own dashboards, kept across updates
+      - grafana-secret:/secret:ro
+    depends_on:
+      grafana-role: { condition: service_completed_successfully }
+    logging: { driver: json-file, options: { max-size: "5m", max-file: "2" } }
+
 volumes:
   db: {}
   mosquitto: {}
   reticulum: {}
   ipfsdata: {}
+  grafana: {}
+  grafana-secret: {}
