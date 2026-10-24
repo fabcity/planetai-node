@@ -5532,6 +5532,7 @@
     "url": "https://microsoft.github.io/aurora/"
   },
   {
+    "adapter": "pack:terrain",
     "added": "2026-10-23",
     "api": "https://copernicus-dem-30m.s3.amazonaws.com/readme.html",
     "assisted_by": "Claude Code",
@@ -5781,7 +5782,7 @@
     "url": "https://open-meteo.com/"
   },
   {
-    "adapter": "core:openmeteo_air",
+    "adapter": "pack:air-quality",
     "added": "2026-09-18",
     "api": "https://air-quality-api.open-meteo.com/v1/air-quality",
     "auth": "none",
@@ -5790,7 +5791,7 @@
     "feeds_cells": [],
     "license": "CC-BY-4.0 (Open-Meteo) with mandatory attribution to CAMS / Copernicus as data provider",
     "name": "Open-Meteo Air Quality API (Copernicus CAMS)",
-    "notes": "Model output, not measurement: at a node this is the reference row, never\n`live`. Free for non-commercial use; commercial use needs an Open-Meteo\nsubscription. PLANETAI: `app/sources.py::openmeteo_air()` samples it hourly\nat the node's coordinates as sensor `cams-point` (kind=model, scale=planet)\nand `app/bootstrap.py::cams_history()` pulls the 92-day history at first\nstart. Where no public sensor is within reach, the indoor/outdoor rule\ncompares against this and names it in the alert.\n\nPLANETAI: two readers. `app/sources.py::openmeteo_air()` samples it hourly and\n`app/bootstrap.py::cams_history()` backfills 92 days at first start; `adapter` names the first.\n`feeds_cells` is empty on purpose: both write `pm25_model` to a sensor stamped `kind='model'`,\nand every pack cell requires `s.custody` or `s.kind='sensor'`. This is a boundary condition a\nlocal reading is compared against, not an Index cell. Deliberate — see docs/SPEC_custody.md.\n",
+    "notes": "Model output, not measurement: at a node this is the reference row, never\n`live`. Free for non-commercial use; commercial use needs an Open-Meteo\nsubscription. PLANETAI: `packs/air-quality/adapter.py` samples it hourly at\nthe node's coordinates as sensor `cams-point` (kind=model, scale=planet),\nand its `history()` pulls the 92 days at first start. Both were core\n(`app/sources.py`, `app/bootstrap.py`) until fabcity/planetai-node#344.\nWhere no public sensor is within reach, the indoor/outdoor rule compares\nagainst this and names it in the alert.\n\n`feeds_cells` is empty on purpose: it writes `pm25_model` to a sensor\nstamped `kind='model'`, and every pack cell requires `s.custody` or\n`s.kind='sensor'`. A boundary condition a local reading is compared\nagainst, not an Index cell. See docs/SPEC_custody.md.\n",
     "pillar": "environmental",
     "pilot_relevance": [
       "global"
