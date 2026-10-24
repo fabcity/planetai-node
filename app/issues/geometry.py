@@ -15,6 +15,8 @@ says which custody a reading carries.
 """
 from __future__ import annotations
 
+import copy
+import functools
 import math
 
 import h3
@@ -191,8 +193,16 @@ def cells_at(cells: list[str], res: int) -> int:
 
 
 def _claim(lat, lon, *, key, name, what, footprint_m, shape, declared, where, note, native_res, base_res) -> dict:
-    out = {"key": key, "name": name, "what": what, "footprint_m": footprint_m, "shape": shape,
-           "declared": declared, "where": where, "note": note, "native": None}
+    return {"key": key, "name": name, "what": what, "footprint_m": footprint_m, "shape": shape,
+            "declared": declared, "where": where, "note": note,
+            **copy.deepcopy(_covering(lat, lon, footprint_m, shape, native_res, base_res))}
+
+
+# The same six coverings on every GET /issues: about 1.4 s of h3 a request on node #1 (24 Oct 2026). Pure in its
+# arguments, so a changed radius or resolution is a new key, and 64 is more claims than a node has settings for.
+@functools.lru_cache(maxsize=64)
+def _covering(lat, lon, footprint_m, shape, native_res, base_res) -> dict:
+    out = {"native": None}
     if footprint_m <= 0:
         # not a floor: a radius of zero or less is a source declaring no ground, not a typo to round up. Publish
         # the claim with an empty covering rather than invent a metre nobody declared — h3.polygon_to_cells raises

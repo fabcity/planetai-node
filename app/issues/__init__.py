@@ -736,7 +736,8 @@ def _read(f: Path, key: str, out: dict, pack: str | None = None) -> None:
     """One issue file into `out` under `key`. A file that does not parse or does not validate is logged and dropped:
     one bad issue must not cost the household the other three."""
     try:
-        d = yaml.safe_load(f.read_text()) or {}
+        import packs              # noqa: PLC0415 — the one cached reader (packs.read_yaml)
+        d = packs.read_yaml(f) or {}
     except Exception as e:  # noqa: BLE001
         log.warning("issue %s: does not parse (%s)", f, e)
         return

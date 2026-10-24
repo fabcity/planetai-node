@@ -1242,7 +1242,8 @@ def _values(spec: dict, hourly: dict, buckets: list, keep) -> list:
     for b in buckets:
         per: dict[str, dict] = {}
         for r in hourly.get(b, []):
-            if not keep(r) or r["metric"] not in spec["metrics"]:
+            # the metric first: it is a set lookup, and keep() asked place_of 130,524 times a /issues/days on node #1
+            if r["metric"] not in spec["metrics"] or not keep(r):
                 continue
             per.setdefault(r["sensor_id"], {})[r["metric"]] = r.get("mean")
         v, _, _ = _combine(per, spec["metrics"], spec.get("function"), spec["aggregate"])
@@ -1290,10 +1291,24 @@ USUAL_SQL = "SELECT sensor_id, metric, hour, median, p90 FROM usual_by_hour"
 # The archive of silence (docs/SPEC_dashboard_figures.md §3.3): stations heard within SILENT_DAYS and not in the last
 # day. `stats` holds the last 24 hours only, so without this a station silent for a day leaves /issues with no word.
 SILENT_DAYS = 30
-SILENT_SQL = ("SELECT s.sensor_id, s.name, s.lat, s.lon, s.local, s.indoor, s.kind, max(r.ts) AS last_heard "
-              "FROM readings r JOIN sensors s USING (sensor_id) "
-              "WHERE s.kind = 'sensor' AND r.ts > now() - make_interval(days => %s) "
-              "GROUP BY 1, 2, 3, 4, 5, 6, 7 HAVING max(r.ts) <= now() - interval '24 hours'")
+# Stations heard in the last day are left out first (their newest index entry answers that), and only the quiet ones
+# are walked, newest row per metric off readings_lookup. Grouping 30 days of every station's readings took ~300 ms on
+# node #1 (24 Oct 2026) to name four; this takes ~27 ms, the same four at the same times.
+SILENT_SQL = ("WITH RECURSIVE quiet AS ("
+              " SELECT s.sensor_id FROM sensors s WHERE s.kind = 'sensor' AND NOT EXISTS ("
+              "  SELECT 1 FROM readings r WHERE r.sensor_id = s.sensor_id AND r.ts > now() - interval '24 hours')"
+              "), m AS ("
+              " SELECT q.sensor_id, (SELECT min(r.metric) FROM readings r WHERE r.sensor_id = q.sensor_id) AS metric"
+              " FROM quiet q"
+              " UNION ALL"
+              " SELECT m.sensor_id, (SELECT min(r.metric) FROM readings r"
+              "  WHERE r.sensor_id = m.sensor_id AND r.metric > m.metric) FROM m WHERE m.metric IS NOT NULL"
+              ") SELECT s.sensor_id, s.name, s.lat, s.lon, s.local, s.indoor, s.kind, max(l.ts) AS last_heard"
+              " FROM m JOIN sensors s USING (sensor_id)"
+              " CROSS JOIN LATERAL (SELECT r.ts FROM readings r WHERE r.sensor_id = m.sensor_id AND r.metric = m.metric"
+              "  ORDER BY r.ts DESC LIMIT 1) l"
+              " WHERE m.metric IS NOT NULL GROUP BY 1, 2, 3, 4, 5, 6, 7"
+              " HAVING max(l.ts) > now() - make_interval(days => %s)")
 
 
 def _optional(cur, sql: str, *args) -> list[dict] | None:
