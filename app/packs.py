@@ -101,7 +101,7 @@ def load_rules() -> list[dict]:
     return core + alerts()            # a pack rule with `contributes:` is part of the report, not an alert
 
 
-def module(pack: str, name: str = "adapter"):
+def module(pack: str, name: str = "adapter", on_only: bool = True):
     """A pack's own module, imported from PACKS_DIR, or None if it is not on this node.
 
     `packs` in app/ is this LOADER, not a package: the pack directories live under PACKS_DIR and
@@ -116,8 +116,11 @@ def module(pack: str, name: str = "adapter"):
     mutating sys.path on each call, which the two workarounds did once per request.
 
     A pack this node does not load (left out of PACKS_ENABLED, or refused by `requires:`) has no module either: the
-    report and /issues worded the nearest fab lab with packs/make's code on a node that had switched make off."""
-    if pack not in {d.name for d in _enabled()}:
+    report and /issues worded the nearest fab lab with packs/make's code on a node that had switched make off.
+
+    `on_only=False` is for one official pack borrowing another's pure function, whatever this node loads: AirGradient
+    and PurpleAir take the EPA 2021 correction from packs/air-quality, and a node with that pack off still needs it."""
+    if on_only and pack not in {d.name for d in _enabled()}:
         return None
     d = PACKS_DIR / pack
     f = d / f"{name}.py"

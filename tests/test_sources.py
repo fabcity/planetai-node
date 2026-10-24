@@ -1,4 +1,4 @@
-"""Offline adapter tests against saved payload shapes. Run: PYTHONPATH=/tmp/stub:app python3 tests/test_sources.py
+"""Offline adapter tests against saved payload shapes. Run: PACKS_DIR=packs PYTHONPATH=/tmp/stub:app python3 tests/test_sources.py
 (stub httpx first: mkdir -p /tmp/stub && echo "class Client: pass" > /tmp/stub/httpx.py)"""
 import sources
 
@@ -32,7 +32,7 @@ m = {k: v for _, _, k, v in r}
 assert s[0]["sensor_id"] == "pa-84f3eb123456" and 34 < m["pm25"] < 38, "EPA correction of ~47 raw @62% RH should land ~36 (BAD's Klungkung row)"
 assert abs(m["temp"] - 34.4) < 0.1 and abs(m["pressure"] - 100.62) < 0.01
 
-assert round(sources.epa_2021_correct(28, 65), 1) == 14.8   # BAD's worked example: raw 28 -> ~15
+assert round(_pack("air-quality").epa_2021_correct(28, 65), 1) == 14.8   # BAD's worked example: raw 28 -> ~15
 
 # `local` is ours AND here. An adapter says whether a sensor is ours; distance says whether it is at this node.
 # Node #1 moved to Ungasan and kept three kits 1.2 km away marked local, so its "house" was three kits in

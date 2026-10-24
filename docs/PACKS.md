@@ -414,7 +414,7 @@ reaches no issue and is not named as deliberately outside them fails `tests/test
 
 | pack | kind | issue | what |
 |---|---|---|---|
-| air-quality | data | air | PM2.5 rules (inside/outside, spikes), cells |
+| air-quality | code | air | PM2.5 rules (inside/outside, spikes), cells; the CAMS model at the node's point, and the EPA 2021 correction AirGradient and PurpleAir borrow |
 | heat | data | heat | apparent temperature, heat stress, nights over 28 °C, a Social cell |
 | insight | data | air (`agreement`, `rhythm`) | the air three ways, contributed to every report; daily agreement between indoor, street and model |
 | bali-air-dispatch | code | air | the island's public stations as this node's ring, from Bali Air Dispatch (eight networks, key-free) — Bali only, off until `BAD_ENABLED=1`, which `presets/bali.env` sets; no alert, no cell |

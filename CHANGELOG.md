@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **The CAMS model and the EPA 2021 correction are the air-quality pack's.** `openmeteo_air` and the correction left
+  `app/sources.py`, and the 92-day first-start history left `app/bootstrap.py`, for `packs/air-quality/adapter.py`,
+  unchanged: the same `cams-point` sensor, `open-meteo-cams` source and metrics. The pack runs it on
+  `OPENMETEO_ENABLED`, the key that ran it in the core, and `planetai update` adds `air-quality` where a node lists
+  its packs and has that key on (step 5b). AirGradient and PurpleAir borrow the correction even where the pack is
+  off. A CAMS error is now named `air-quality` in the log and in Data sources. This finishes Phase 2's decision
+  table (docs/decisions/2026-10-21-core-and-packs.md).
+
 - **Presence is announced a minute after an update, not half an hour.** `planetai update` starts the app and the
   Reticulum bridge together; the bridge's first `GET /presence` found no node and it waited `RETICULUM_ANNOUNCE_S`
   (30 min) to ask again. It now asks every 30 s, ten times at most. `RETICULUM_REF` moves to planetai-reticulum

@@ -101,7 +101,7 @@ test_test_alert|bash tests/test_test_alert.sh
 test_packs_add|bash tests/test_packs_add.sh
 test_update_guard|bash tests/test_update_guard.sh
 test_sweep|python3 tests/test_sweep.py
-test_sources|PYTHONPATH=/tmp/stub:app python3 tests/test_sources.py
+test_sources|PACKS_DIR=packs PYTHONPATH=/tmp/stub:app python3 tests/test_sources.py
 test_nearby|PYTHONPATH=/tmp/stub:app python3 tests/test_nearby.py
 test_season|PYTHONPATH=/tmp/stub:app python3 tests/test_season.py
 test_measures|PYTHONPATH=tests python3 tests/test_measures.py

@@ -1,7 +1,7 @@
 # Packs that ship
 <!-- checked: v0.83.0 -->
 
-The twenty-five core packs in `packs/`, six data and nineteen code, hold everything the node knows about a place, and no
+The twenty-five core packs in `packs/`, five data and twenty code, hold everything the node knows about a place, and no
 rule in `app/` says what PM2.5 means for a household or where the nearest fab lab is. For each pack this page
 says what it reads, what it says, its rules and where each threshold comes from, its settings, and what it does
 not know. How a pack is built and loaded is on [Packs](packs.md). Wild packs, such as `xiaomi-air` and
@@ -10,11 +10,12 @@ added with `planetai packs add`.
 
 A pack is `code` when its folder has an `adapter.py`, and code packs load only with `PACKS_ALLOW_CODE=1`;
 `make` also needs `MAKE_ENABLED=1` and `fire` `FIRE_ENABLED=1`. `bali-air-dispatch` names its own
-`switch: BAD_ENABLED` and runs on that switch alone.
+`switch: BAD_ENABLED` and runs on that switch alone, and `air-quality` reads the CAMS model on
+`OPENMETEO_ENABLED`, the key that ran it in the core.
 
 | pack | kind | domain | rules | report | cells | scripts | settings |
 |---|---|---|---|---|---|---|---|
-| `air-quality` | data | air | 4 act, 2 warn; and the event engine's 3 act, 1 warn | | 3 | | |
+| `air-quality` | code | air | 4 act, 2 warn; and the event engine's 3 act, 1 warn | | 3 | | `OPENMETEO_ENABLED` (declared by the core) |
 | `heat` | data | heat | 2 act, 1 info; and the event engine's 3 act | | 1 | | |
 | `bali-air-dispatch` | code | air | none | | | | `BAD_ENABLED`, `BAD_RADIUS_KM`, `BAD_MIN_SEPARATION_M`, `BAD_EXCLUDE`, `BAD_INCLUDE_INDOOR` |
 | `home-assistant` | code | none | none | | | | `HA_DISCOVERY` (declared by the core) |
@@ -53,14 +54,14 @@ against a Smart Citizen kit and the public stations from Bali Air Dispatch.
 
 | | |
 |---|---|
-| Kind | data |
+| Kind | code |
 | Domain | `air` |
-| Requires node | `>=0.2.0` |
-| Metrics | `pm25`, `pm10`, `pm1`, `humidity` |
+| Requires node | `>=0.83.0` |
+| Metrics | `pm25`, `pm10`, `pm1`, `humidity`; from CAMS `pm25_model`, `pm10_model`, `dust`, `aod`, `co`, `no2`, `o3`, `uv_index` |
 | Scales | community, city |
 | Needs | a low-cost PM sensor at the address, and for the comparison rules at least one outdoor reference (below) |
 | Scripts | none |
-| Settings | none of its own; the SQL reads `planetai.lat` and `planetai.lon` and whatever sources the node polls |
+| Settings | `OPENMETEO_ENABLED` runs its adapter, the CAMS model at the node's point each poll; the SQL reads `planetai.lat` and `planetai.lon` and whatever sources the node polls |
 
 ### Rules
 
@@ -451,7 +452,7 @@ own sensors carry the story.
 | Requires node | `>=0.3.0` |
 | Scales | community, planet |
 | Sources | `environmental/planet/open-meteo`, `environmental/planet/nasa-power` |
-| Needs | the `BOOTSTRAP` step on first start (92 days of CAMS hourly history, NASA POWER monthly normals) and the core `open-meteo` and `open-meteo-cams` adapters. All free, key-free, global |
+| Needs | the `BOOTSTRAP` step on first start (92 days of CAMS hourly history, NASA POWER monthly normals) the core's `open-meteo` adapter and the CAMS model the `air-quality` pack reads. All free, key-free, global |
 | Scripts | none |
 | Settings | none |
 | Cells | none: nothing here measures your place |

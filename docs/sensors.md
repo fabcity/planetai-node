@@ -97,7 +97,7 @@ digest and the dashboard. Averaging every station within 15 km once put an Uluwa
 
 ## The EPA 2021 humidity correction
 
-Optical PM sensors over-read in humid air. Bali runs 45–70% RH. `epa_2021_correct(pm_raw, rh)` implements the US EPA 2021
+Optical PM sensors over-read in humid air. Bali runs 45–70% RH. `epa_2021_correct(pm_raw, rh)` in `packs/air-quality/adapter.py` implements the US EPA 2021
 Plantower correction; raw 28 at Bali humidity → about 15. Near-zero raw in dry air lifts to 1–2: a property of the
 regression, no health meaning. Apply to PurpleAir, AirGradient, DIY PMS5003. Do not apply to Smart Citizen, IQAir,
 AQICN, Airly.

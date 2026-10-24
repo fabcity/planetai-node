@@ -1,9 +1,10 @@
 """PurpleAir, read on the household's own WiFi, no cloud.
 
 A pack since 22 Oct 2026; until then this was app/sources.py, moved unchanged: the sensor ids (`pa-<serial>`), the
-source name (`purpleair`) and the settings (PURPLEAIR_HOSTS, SENSOR_INDOOR) are the same, and the EPA 2021 correction stays the
-core's (sources.epa_2021_correct). Its readers were dropped from the poll in v0.16 (5 Sep 2026) by accident, while
-the setting and the installer's flag stayed, so a node that set PURPLEAIR_HOSTS read nothing from then until this pack.
+source name (`purpleair`) and the settings (PURPLEAIR_HOSTS, SENSOR_INDOOR) are the same, and the EPA 2021 correction
+is packs/air-quality's since 24 Oct 2026 (its epa_2021_correct, borrowed whether or not that pack is on). Its readers
+were dropped from the poll in v0.16 (5 Sep 2026) by accident, while the setting and the installer's flag stayed, so a
+node that set PURPLEAIR_HOSTS read nothing from then until this pack.
 
 It runs whenever PURPLEAIR_HOSTS is set: `switch: [PURPLEAIR_HOSTS]` in pack.yaml.
 
@@ -19,7 +20,9 @@ import httpx
 
 sys.path.insert(0, "/app")
 import settings  # noqa: E402
-from sources import epa_2021_correct  # noqa: E402
+import packs  # noqa: E402
+
+epa_2021_correct = packs.module("air-quality", on_only=False).epa_2021_correct
 
 # Every PurpleAir sensor serves http://<ip>/json?live=true on its WiFi. Fields: pm2_5_cf_1, pm2_5_cf_1_b (two laser
 # channels), pm2_5_atm, pm10_0_cf_1, current_humidity, current_temp_f, pressure, SensorId, lat, lon, Geo.
