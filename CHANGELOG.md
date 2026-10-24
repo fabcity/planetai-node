@@ -8,6 +8,13 @@
   `lora_channel_pct` threw there and the notes vanished with no word on node #1. Now `series` holds the same metrics as
   `read`, rounded like it.
 
+- **Answers are gzipped.** A screen that asks for it (every browser does) gets JSON, script and styles above 1 kB
+  compressed: `GET /issues` went out as 510 kB on node #1 and is about 88 kB now, for every screen, the doors and the
+  phone page included. Level 5, which costs node #1 20 ms on that body where Starlette's default 9 costs 95. Left as
+  they were: `/mcp`, the `/ask` event stream, the backups, the photos and map images, and the vector tiles (already
+  gzipped). The compression is the last thing a response passes through, so a screen without a key still gets the
+  house's rooms relabelled first. This is docs/SPEC_mobile.md §9's v1.1.
+
 - **`GET /issues` answers in about a third of the time, `/issues/days` in under a third.** Measured on node #1:
   `/issues` took 6 to 11 s, mostly re-reading files. Every pack.yaml, rules.yml, cells.yml and issue.yml was parsed
   223 times a request with the pure-Python YAML loader; `packs.read_yaml()` now parses each once per change of the
