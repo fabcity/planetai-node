@@ -1,5 +1,5 @@
 # When it goes wrong
-<!-- checked: v0.83.0 -->
+<!-- checked: v0.90.0 -->
 
 Each entry starts from what is on your screen, then says how to check it and how to fix it. Many of the faults
 people met early on are fixed in the current release, so the first thing to try is almost always the install line.

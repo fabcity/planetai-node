@@ -1,5 +1,5 @@
 # Design
-<!-- checked: v0.83.0 -->
+<!-- checked: v0.90.0 -->
 
 The design language every PLANETAI surface is drawn in: the colours and the one thing each means, the type, the four
 card kinds, the signs and the motion. [The dashboard](dashboard.md), [the Wall](wall.md) and the phone page all follow

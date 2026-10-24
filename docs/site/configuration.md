@@ -1,11 +1,11 @@
 # Configuration
-<!-- checked: v0.83.0 -->
+<!-- checked: v0.90.0 -->
 
 A setting is a decision the household makes about its node: which sensors count as its own, what it
 watches first, when it may interrupt somebody, what a stranger on the WiFi may read, whether a question
 may leave the house for an online model. This page lists every setting a node has, where its value comes
-from and what it defaults to, grouped by what the node does with it. At v0.83.0 that is 62 runtime keys,
-17 bootstrap keys, 39 keys declared by packs, and the keys read only from the environment.
+from and what it defaults to, grouped by what the node does with it. At v0.90.0 that is 62 runtime keys,
+20 bootstrap keys, 42 keys declared by packs, and the keys read only from the environment.
 
 ## How a setting is read
 
@@ -88,7 +88,7 @@ from the code's default, both are given.
 | `NODE_CITY` | `unknown`; `.env.example` `bali` | pilot key or slug | The city key in Index cells, `/health` and `/export`, and what `planetai sources` filters the registry by. `planetai setup` sets `bali`, `barcelona`, `boston` or `santiago` inside those boxes, else a slug of the place. | bootstrap |
 | `NODE_LAT`, `NODE_LON` | `0`; `.env.example` `-8.8271`, `115.15709` | decimal degrees | The node's position. Published as the centre of its resolution-8 cell in `/health`, `/export` and an untrusted `/sensors` and `/stats`; three decimals to this machine or a token; unrounded in `/forecast`, `/earth` and `/place/geojson`. `install.sh` refuses to start without them. | bootstrap |
 | `NODE_TZ` | `UTC`; `.env.example` `Asia/Makassar` | IANA name | The database session time zone, so local midnight and local hours in rules, reports, quiet hours and `/shape`. Also the agent container's `TZ`. | bootstrap |
-| `NODE_ISSUES` | blank = every issue; `.env.example` `air,heat,land,coast` | comma list of `air`, `heat`, `land`, `coast` | What this place watches, most important first. The dashboard starts at the first; the one with something to say takes the top. An unknown name is dropped with a line in the log. Your preset guessed this, so change it. | runtime · public |
+| `NODE_ISSUES` | blank = every issue; `.env.example` `air,heat,land,coast` | comma list of `air`, `heat`, `land`, `coast`, `water` | What this place watches, most important first. The dashboard starts at the first; the one with something to say takes the top. An unknown name is dropped with a line in the log. Your preset guessed this, so change it. | runtime · public |
 | `NODE_VERSION` | written by `install.sh` and `update.sh` | string | `git describe`, the `VERSION` file, or `dev`. Shown in `/health`, `/presence` and `/export`. | env only |
 | `LOCAL_RADIUS_M` | `500` | metres | How far from the node a sensor can be and still count as its own. A kit of yours further away stays out of the ambient average and out of every `live` claim. | runtime · public |
 
@@ -96,7 +96,7 @@ from the code's default, both are given.
 
 | Setting | Default | Values | Meaning | Kind |
 |---|---|---|---|---|
-| `SHARE_LEVEL` | `off` | `off`, `open` | What a request with no token may read. `off`: the dashboard shell, `/health` with the position rounded, the daily export, the layout and `/nodes`. `open`: the whole read API to anything on your network, so a wall screen or a phone works without a token, with rooms and sensors named Room A and Sensor 1; writes still need a token. A request with a token reads everything at either level. See [Sharing and security](sharing.md). | runtime · public · outward |
+| `SHARE_LEVEL` | `off` | `off`, `open` | What a request with no token may read. `off`: the dashboard shell, `/health` with the position rounded, the daily export, the layout, `/nodes`, and `/offers` while the `things` pack is on. `open`: the whole read API to anything on your network, so a wall screen or a phone works without a token, with rooms and sensors named Room A and Sensor 1; writes still need a token. A request with a token reads everything at either level. See [Sharing and security](sharing.md). | runtime · public · outward |
 | `ADMIN_TOKEN` | blank; `install.sh` makes one | hex string | Opens `PUT /settings`, `/settings/raw`, `/settings/phone`, `POST /readings`, `/report/now`, `/test-alert` and all of `/mcp`, and works wherever `BACKUP_TOKEN` or `ACT_TOKEN` would. `planetai ui` creates and prints it. | env only · secret |
 | `BACKUP_TOKEN` | blank; `update.sh` makes one | string | Read-only: lets a NAS fetch `/backups`, `/backups/<name>` and `/report/bundle`, and nothing secret. | runtime · secret |
 | `POSTGRES_PASSWORD` | `change-me`; `install.sh` replaces it | string | The database password. | env only · secret |
@@ -113,7 +113,7 @@ from the code's default, both are given.
 | `UI_LAYOUT` | blank | JSON | Order and visibility of the dashboard's cards, written by Arrange mode. Blank restores the default. Every screen can read it at every level. | runtime · public |
 | `MAP_TILES` | `off` | `off`, `on` | `on` draws live satellite and street tiles, and each tile request tells a tile server which square of the planet this house looks at. `off` uses the node's own copy of OpenStreetMap. | runtime · public · outward |
 | `UPDATE_CHECK` | `on` | `on`, `off` | Every hour, asks planetai.fab.city which release is current; when one is newer, the page's top bar, `planetai doctor` and Telegram (once per version) say so. Nothing is installed. The same switch reads the programme's list of nodes (`registry.json`) hourly for `GET /nodes`. The request carries nothing about the house but shows its internet address; `off` asks neither. | runtime · public · outward |
-| `SPECIES_MATCH` | `off` | `on`, `off` | `on` asks `api.gbif.org` which taxon a typed scientific name is (GBIF Backbone, CC BY 4.0), sending only the name. Weekly it also reads this country's GRIIS list of introduced and invasive species (the country from `NODE_TZ`) and counts open records in the node's seven cells, which tells GBIF an area about 2 km across. See [Sharing and security](sharing.md). | runtime · public · outward |
+| `SPECIES_MATCH` | `off` | `on`, `off` | `on` asks `api.gbif.org` which taxon a typed scientific name is (GBIF Backbone, CC BY 4.0), sending only the name. Weekly it also reads this country's GRIIS list of introduced and invasive species (the country from `NODE_TZ`) and counts open records in the node's seven cells, which tells GBIF an area about 2 km across. The weekly reads run only while the `eyes` pack is on. See [Sharing and security](sharing.md). | runtime · public · outward |
 | `STATIONS_SHOWN` | `3` | integer, `0` = all | How many neighbourhood stations the dashboard lists, nearest first. Your own hardware is always listed and not counted. To collect fewer stations, lower the station pack's radius instead. | runtime · public |
 
 ## What it reads
@@ -126,8 +126,8 @@ from the code's default, both are given.
 | `AIRGRADIENT_HOSTS` | blank | hostnames or IPs | AirGradient ONE or Open Air units on your WiFi, read by the `airgradient` pack whenever this is set. | runtime |
 | `PURPLEAIR_HOSTS` | blank | IPs | PurpleAir units on your WiFi, read by the `purpleair` pack whenever this is set; use the IP, the `.local` name is unreliable. | runtime |
 | `SENSOR_INDOOR` | `0` | `1`, `0` | Whether the LAN sensors above are indoors. See [Known gaps](#known-gaps). | runtime · public |
-| `OPENMETEO_ENABLED` | `1` | `1`, `0` | Open-Meteo weather and the CAMS air model at the node's coordinates. Free, no key, anywhere. Context only, never rolled into an Index cell. | runtime · public |
-| `BOOTSTRAP` | `1` | `1`, `0` | On first start, fills the database with 92 days of CAMS history and NASA POWER climatology at these coordinates. Skipped once there is CAMS history older than two days. | env only |
+| `OPENMETEO_ENABLED` | `1` | `1`, `0` | Open-Meteo weather at the node's coordinates, and the CAMS air model through the `air-quality` pack, whose switch this is. Free, no key, anywhere. Context only, never rolled into an Index cell. | runtime · public |
+| `BOOTSTRAP` | `1` | `1`, `0` | On first start, fills the database with 92 days of CAMS history (while the `air-quality` pack is on) and NASA POWER climatology at these coordinates. Skipped once there is CAMS history older than two days. | env only |
 | `CKAN_PORTALS` | blank | `slug=url,slug=url` | CKAN open-data portals to watch, for the `Governance\|City` cell. The presets fill this per city. | runtime · outward |
 | `CKAN_SCALE` | `city` | scale | The scale stamped on CKAN observations. | env only |
 | `POLL_SECONDS` | `300` | seconds | How often the source loop polls. | bootstrap |
@@ -154,7 +154,7 @@ Sources that come as packs (stations, forecast, earth and place data, fab labs) 
 | `ALERT_MAX_PER_DAY` | `4` | whole number | With the event engine, pushes a day outside danger. Danger is never held. | runtime |
 | `HOME_HAS` | blank | `purifier`, `ac`, `fan`, `windows` | What this home has; the event engine suggests only these. | runtime |
 | `ALERT_LOCALE` | `en` | `en`, `id`, `es` | Language of the alerts, the reports, the test alert and the bot. The dashboard and terminal stay in English. | runtime · public |
-| `HA_DISCOVERY` | `0` | `1`, `0` | Publishes local sensors and alerts as Home Assistant entities over MQTT. `planetai homeassistant` sets it. | runtime · public · outward |
+| `HA_DISCOVERY` | `0` | `1`, `0` | Publishes local sensors and alerts as Home Assistant entities over MQTT, through the `home-assistant` pack, whose switch this is. `planetai homeassistant` sets it. | runtime · public · outward |
 | `MESH_ALERTS` | `0` | `1`, `0` | Sends the first line of act-level alerts back over the LoRa mesh. Needs downlink on the gateway's channel. | runtime · public · outward |
 | `MESH_GATEWAY_NODE_NUM` | `0` | decimal | The gateway radio's node number, the sender for downlink. | runtime |
 | `RADIO_PEERS` | blank | `name=host:1883:password,…` | Other nodes this broker bridges to with `planetai radio federate`. Only `fabcity/` topics cross, never a reading. | env only |
@@ -241,7 +241,7 @@ backups and the pictures folder. See [Storage](storage.md).
 | Setting | Default | Values | Meaning | Kind |
 |---|---|---|---|---|
 | `PACKS_ENABLED` | blank = every pack in `packs/` | pack ids | Which packs load. | runtime · public |
-| `PACKS_ALLOW_CODE` | `0` | `1`, `0` | Data packs always load. Code packs (`adapter.py`) run Python with the node's privileges: read them, then set `1`. | runtime · public |
+| `PACKS_ALLOW_CODE` | `0` | `1`, `0` | Data packs always load. Code packs (`adapter.py`) run Python with the node's privileges: read them, then set `1`. An official pack with its own `switch:` runs on that switch alone. | runtime · public |
 | `PACKS_DIR` | `/app/packs` | path in the container | The pack directory. | env only |
 | `PACK_OUT` | `/app/out` | path in the container | Where packs write, mounted from `./out`. | env only |
 | `RULES_PATH` | `/app/config/rules.yml` | path in the container | The core rules file. | env only |
@@ -294,6 +294,9 @@ alone.
 | `FIRMS_MAP_KEY` | fire | blank | Optional free NASA FIRMS key, so the pack fetches only the regional box. Masked once saved. |
 | `SURFACE_HEAT_RING_KM` | surface-heat | `3` | Outer edge of the ring the node's cell is compared with, in km; it starts at 1 km. |
 | `SURFACE_HEAT_MIN_CLEAR` | surface-heat | `0.5` | The share of cell and ring that must be clear land for a scene to count. |
+| `TERRAIN_RADIUS_M` | terrain | `5000` | Half-width of the square around the node, in metres. Water from further uphill is not counted. Needs `PACKS_ALLOW_CODE=1`. |
+| `TERRAIN_DEM_PATH` | terrain | blank | A GeoTIFF of your own (a drone survey, a national LiDAR), used instead of Copernicus DEM GLO-30. |
+| `TERRAIN_DEM_LICENCE` | terrain | blank | That file's licence, in words. Blank and the node computes from it and shows nothing. |
 | `COAST_MAX_KM` | coast | `30` | Refuses to report if the nearest ocean grid cell is further than this. Also a runtime key (public), and it moves the dashboard's drawn footprint too. |
 
 Two pack settings are read but declared in no `pack.yaml`, so they are env only: `OVERPASS_URL` (default
@@ -325,9 +328,9 @@ decide.
 
 ## Known gaps
 
-> **Gap in v0.83.0.** `REPORT_DEPTH` is declared, validated and offered in Set up, and nothing reads it.
+> **Gap in v0.90.0.** `REPORT_DEPTH` is declared, validated and offered in Set up, and nothing reads it.
 
-> **Gap in v0.83.0.** Three runtime keys are stored and shown as in force when set from the dashboard, and a reader
+> **Gap in v0.90.0.** Three runtime keys are stored and shown as in force when set from the dashboard, and a reader
 > ignores the database value. `/presence`, the only reader of `NODE_KIND`, reads the environment. The Reticulum
 > bridge reads `ACT_TOKEN` and `RETICULUM_ALERT_DESTINATIONS` from its own environment (the app itself does read the
 > `ACT_TOKEN` override). Set these in `.env` and restart.

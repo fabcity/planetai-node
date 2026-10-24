@@ -1,5 +1,5 @@
 # Domains
-<!-- checked: v0.83.0 -->
+<!-- checked: v0.90.0 -->
 
 The core measures nothing in particular. It polls sources, stores readings, runs rules and fills Index cells. Which
 readings, which rules and which cells is a pack's business. `grep pm25 app/packs.py`, the loader, returns
@@ -13,13 +13,13 @@ name.
 
 Not every domain is an issue. Weather feeds air and heat (wind for working out where a smell came from, the
 forecast for the day ahead), but nobody asks how the weather is doing as a quality of their place. Place is the
-ground everything else sits on. Governance is the loop and the Index. Trust is the node's own instruments. Repair
+ground everything else sits on. Governance is the loop and the Index. Trust is the node's own instruments, and the core's. Repair
 is a catalogue of what can be fixed, kept by people. Make is where the nearest workshop is, a line on the report
 and on an ask, never a number.
 
 | issue | packs | kind | the line, and where it comes from |
 |---|---|---|---|
-| air | `air-quality`, `nearby`, `season`, `fire`, `bali-air-dispatch` | sensed | 15 µg/m³, the WHO 2021 24-hour mean |
+| air | `air-quality`, `nearby`, `season`, `fire`, `bali-air-dispatch`, `smartcitizen`, `airgradient`, `purpleair` | sensed | 15 µg/m³, the WHO 2021 24-hour mean |
 | heat | `heat`, `surface-heat` | sensed | 35 °C apparent, measured at node #1: this place's line, not a global one |
 | land | `earth` (the change), `earth-engine` (built, trees) | context | none, because a year-over-year change is not a threshold |
 | coast | `coast`, and the wild pack `posidonia` | context | none |
@@ -32,18 +32,20 @@ and on an ask, never a number.
 | `open-data-health` | governance | the loop and the Index |
 | `thingdata` | repair | a catalogue of repair knowledge somebody maintains |
 | `make` | make | the nearest fab labs, as places; no metric, no rule, no cell |
-| `trust` | cross-domain | the instruments |
+| `home-assistant` | none | carries what the node stores and sends; no rule, no cell |
+| `things` | things | what the home keeps and offers; no rule, no cell |
+| `eyes` | species | the household's pictures and what is in them; no rule, no cell |
 | `insight`, `cold-start` | cross-domain | each rule belongs to the issue it names |
 | `example-cooking-hours` | none | its one rule belongs to air |
 
 A sensed issue has eyes on it and rules that can ask somebody to do something. A context issue informs and never
 asks: it has no act-level rules, and land's cadence is a year.
 
-The declarations are one `issue.yml` per issue, in the pack that watches it: `packs/air-quality/issue.yml`, `packs/heat/issue.yml`, `packs/coast/issue.yml` and `packs/earth/issue.yml` (land). An issue is read while its pack is on. Each holds the issue's name in three languages, its
+The declarations are one `issue.yml` per issue, in the pack that watches it: `packs/air-quality/issue.yml`, `packs/heat/issue.yml`, `packs/coast/issue.yml`, `packs/earth/issue.yml` (land) and `packs/terrain/issue.yml` (water). An issue is read while its pack is on. Each holds the issue's name in three languages, its
 metric and unit, its line and that line's source, which packs feed it, how each of the four distances is computed
 (`room`, `yard`, `ring` and `region`, printed on the page as house, street, ring and region), and its sentence
-templates, each marking with `|` where its title ends and its tagline begins. A fifth issue is a fifth file plus a
-pack that declares its domain. `tests/test_issues.py` checks that by loading a synthetic `water.yml`, and it also
+templates, each marking with `|` where its title ends and its tagline begins. A sixth issue is a sixth file plus a
+pack that declares its domain. `tests/test_issues.py` checks that by loading a synthetic tap-water issue, and it also
 checks that every enabled pack's alerts reach an issue or the pack is named as deliberately not one, so a new alert
 cannot arrive unmapped.
 
@@ -74,16 +76,18 @@ Air came first because Bali has the sensors and the burning season. Every other 
 |---|---|---|
 | air | `air-quality`, `nearby`, `season`, `bali-air-dispatch` | PM2.5 inside and outside, spikes, WHO and US EPA lines, the public stations around the node |
 | air | `fire` | NASA FIRMS fires near the node, crossed with the wind |
+| air | `smartcitizen`, `airgradient`, `purpleair` | this house's own kits and monitors |
 | heat | `heat` | apparent temperature from temperature and humidity, heat stress, nights over 28 °C |
 | heat | `surface-heat` | the ground's temperature from Landsat and MODIS |
 | coast | `coast` | waves and sea temperature |
 | land | `earth`, `earth-engine` | change, built-up, tree cover |
+| water | `terrain` | where the next day's rain goes, from the ground's shape and the forecast |
 | governance | `open-data-health`, and ρ in the core | the loop and the Index |
-| trust | `trust` | the node's own instruments: whether they are frozen, missing hours or disagreeing with a neighbour |
+| trust | the core (`config/rules.yml`) | the node's own instruments: whether they are frozen, missing hours or disagreeing with a neighbour |
 
 ## Not written yet
 
-Water, energy, noise and classroom CO₂ have the same shape and no pack yet. What each would watch and what it
+Water quality, energy, noise and classroom CO₂ have the same shape and no pack yet. What each would watch and what it
 needs is on [Packs](site/packs.md#packs-nobody-has-written-yet).
 
 ## Writing one

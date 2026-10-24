@@ -1,5 +1,5 @@
 # Bring your own agent
-<!-- checked: v0.83.0 -->
+<!-- checked: v0.90.0 -->
 
 An agent is a guest on the machine, never a part of it. It can read everything the node knows and help the person in
 front of it install, diagnose and run the node in plain language. It drafts and a person dispatches: no agent

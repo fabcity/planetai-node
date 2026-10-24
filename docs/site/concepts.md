@@ -1,5 +1,5 @@
 # Concepts
-<!-- checked: v0.83.0 -->
+<!-- checked: v0.90.0 -->
 
 The words the other pages use, each with what it means in the code. Several come in pairs that sound alike
 and are not (`local` and `custody`, domain and issue, `kind` and `scale`, decided and acted). Most of them
@@ -13,8 +13,8 @@ lowercase with dashes), a position (`NODE_LAT`, `NODE_LON`), a time zone (`NODE_
 
 ![Nested H3 cells around the node, resolution 6 to 12](img/cell-ladder.svg "The edges are H3 averages. The node's own resolution 8 cell is drawn heavy.")
 
-**Kind** (`NODE_KIND`): `home`, `business`, `community` or `district`, what the node is for. It decides
-the defaults and which packs load, and it is separate from the Index scale; the setup wizard sets
+**Kind** (`NODE_KIND`): `home`, `business`, `community` or `district`, what the node is for. No code reads
+it for a default or a pack; `/presence` announces it. It is separate from the Index scale; the setup wizard sets
 `NODE_SCALE=city` when the kind is `district`.
 
 **Scale** (`NODE_SCALE`): `community`, `city` or `region`, one of the Full Stack Metrics Framework's
@@ -31,14 +31,14 @@ the export and the node list, and announces nothing finer than resolution 6 over
 110 m are finer than the node says where it is, because `/health` rounds its position to three decimals. The
 node computes the whole table and the page draws it.
 
-**Issue.** What a household calls a quality of its place: `air`, `heat`, `land`, `coast`, with water, noise
+**Issue.** What a household calls a quality of its place: `air`, `heat`, `land`, `coast`, `water`, with noise
 and energy designed. Declared one file each, an `issue.yml` in the pack that watches it, ordered by `NODE_ISSUES`, the keeper's
 order, most important first. An issue is *sensed* when it has eyes on it and rules that can ask for
 something, *context* when it informs and never asks. See [Issues](issues.md).
 
 **Domain.** What a pack declares it is about. There are more domains than issues: weather feeds air and heat,
 but nobody asks how the weather is doing as a quality of their place. `place` is the ground, `governance` the
-loop and the Index, `trust` the instruments.
+loop and the Index. Trust in the instruments has no pack: its rules are the core's.
 
 ## Sources and sensors
 
@@ -86,7 +86,7 @@ they are casa · calle · alrededores · región. The keys stay as they are on t
 place that is not a column. A distance says whose instrument it is and has no scale: nothing maps a distance
 to an H3 resolution.
 
-**Registry.** A pinned snapshot of `awesome-fabcity-data`, 275 entries at `db77fcc`, served at `/sources` and
+**Registry.** A pinned snapshot of `awesome-fabcity-data`, 283 entries at `cd90289`, served at `/sources` and
 listed by `planetai sources`. Most entries are things this place could measure; some are places to go and
 designs to build. See [The source registry](sources.md).
 
@@ -173,8 +173,9 @@ four steps picked it: `event`, `state`, `moved` or `order`.
 
 **Pack.** A folder in `packs/` with a `pack.yaml`. A *core* pack ships in this repository; every other pack is
 *wild*, added with `planetai packs add` and pinned to a commit, and marked by a `.wild` file. A *data pack* is
-YAML only: rules, cells, channel roles. A *code pack* also carries an `adapter.py` and runs only when
-`PACKS_ALLOW_CODE=1`. The `make` pack, which names the nearest fab lab, needs `MAKE_ENABLED=1` as well, because
+YAML only: rules, cells, channel roles. A *code pack* also ships Python (an `adapter.py`, `hooks.py`, `routes.py` or
+scripts); its adapter and hooks run only when `PACKS_ALLOW_CODE=1`, or, for a core pack that names its own
+`switch:`, when that switch is on. The `make` pack, which names the nearest fab lab, needs `MAKE_ENABLED=1` as well, because
 the directory it reads is not openly licensed. See [Packs](packs.md).
 
 ## The Index and its cells
@@ -208,7 +209,8 @@ boundary conditions, context published downward and never rolled up, which is th
 ## Reaching the node
 
 **`SHARE_LEVEL`.** What a request with no token may read. At `off` that is the dashboard shell, `/health`,
-`/presence`, `/llms.txt`, the daily export, the programme's node list at `/nodes`, and `/settings` reduced to
+`/presence`, `/llms.txt`, the daily export, the programme's node list at `/nodes`, `/offers` while the
+`things` pack is on, and `/settings` reduced to
 the layout and the sharing level. At `open` it is the whole read API, which is what a wall screen without a
 token needs, plus the map's public layers under `/ground/*` and `/geo/cell` without its node-relative fields.
 Two more levels, `cell` and `means`, are named and refused. Every untrusted JSON answer names the house's rooms

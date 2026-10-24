@@ -1,5 +1,5 @@
 # A Mac mini as an always-on node
-<!-- checked: v0.83.0 -->
+<!-- checked: v0.90.0 -->
 
 A laptop is for trying a node, a Mac mini is for leaving one running. It takes an hour, once, with a monitor
 plugged in for the permission dialogs. Any Apple Silicon mini works, the 8 GB base model included. A 2018 Intel

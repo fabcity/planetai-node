@@ -1,5 +1,5 @@
 # Packs that ship
-<!-- checked: v0.83.0 -->
+<!-- checked: v0.90.0 -->
 
 The twenty-five core packs in `packs/`, five data and twenty code, hold everything the node knows about a place, and no
 rule in `app/` says what PM2.5 means for a household or where the nearest fab lab is. For each pack this page
@@ -8,10 +8,12 @@ not know. How a pack is built and loaded is on [Packs](packs.md). Wild packs, su
 `posidonia`, are listed at [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs) and
 added with `planetai packs add`.
 
-A pack is `code` when its folder has an `adapter.py`, and code packs load only with `PACKS_ALLOW_CODE=1`;
-`make` also needs `MAKE_ENABLED=1` and `fire` `FIRE_ENABLED=1`. `bali-air-dispatch` names its own
-`switch: BAD_ENABLED` and runs on that switch alone, and `air-quality` reads the CAMS model on
-`OPENMETEO_ENABLED`, the key that ran it in the core.
+A pack is `code` when its folder has any `.py` file, and a code pack's adapter and hooks run only with
+`PACKS_ALLOW_CODE=1`; `make` also needs `MAKE_ENABLED=1` and `fire` `FIRE_ENABLED=1`. A pack that names its own
+`switch:` runs on that switch alone: `bali-air-dispatch` on `BAD_ENABLED`, `home-assistant` on `HA_DISCOVERY`,
+`smartcitizen`, `airgradient` and `purpleair` whenever their keys are set, and `air-quality` reads the CAMS model on
+`OPENMETEO_ENABLED`, the key that ran it in the core. A pack's `routes.py` is mounted at start and answers 404 while
+the pack is off.
 
 | pack | kind | domain | rules | report | cells | scripts | settings |
 |---|---|---|---|---|---|---|---|
@@ -41,7 +43,7 @@ A pack is `code` when its folder has an `adapter.py`, and code packs load only w
 | `eyes` | code | species | none | | | | `CAPTURES_DIR`, `EYES_MODEL`, `SPECIES_MATCH` (declared by the core) |
 | `example-cooking-hours` | data | (none) | 1 info | | | | |
 
-That is 36 rules with a message (29, and the 7 only the event engine reads), 5 report contributors and 12
+That is 33 rules with a message (26, and the 7 only the event engine reads), 5 report contributors and 12
 cells. Every message is in `en`, `id` and `es`; the node picks `message[ALERT_LOCALE]` and falls back to `en`.
 Cooldowns below are in minutes, per `(rule, sensor_id)`. A report contributor (`contributes: report`) has no
 message and is never sent: its row goes into the report bundle under the rule's id.
@@ -452,7 +454,7 @@ own sensors carry the story.
 | Requires node | `>=0.3.0` |
 | Scales | community, planet |
 | Sources | `environmental/planet/open-meteo`, `environmental/planet/nasa-power` |
-| Needs | the `BOOTSTRAP` step on first start (92 days of CAMS hourly history, NASA POWER monthly normals) the core's `open-meteo` adapter and the CAMS model the `air-quality` pack reads. All free, key-free, global |
+| Needs | the `BOOTSTRAP` step on first start (92 days of CAMS hourly history while `air-quality` is on, NASA POWER monthly normals), the core's `open-meteo` adapter and the CAMS model the `air-quality` pack reads. All free, key-free, global |
 | Scripts | none |
 | Settings | none |
 | Cells | none: nothing here measures your place |
@@ -708,7 +710,7 @@ rain. Nothing in it is specific to Bali, and it has no threshold to tune.
 | Requires node | `>=0.76` |
 | Metrics | `terrain_upslope_ha`, `terrain_upslope_near_ha`, `terrain_hollow_m`, `rain_24h_mm`, `water_24h_m3` |
 | Scales | city |
-| Sources | none in `pack.yaml` yet; the registry entry is `environmental/planet/copernicus-dem-glo30` |
+| Sources | `environmental/planet/copernicus-dem-glo30` |
 | Needs | `PACKS_ALLOW_CODE=1`; `rasterio` and `numpy` (`pip:`, the same as `earth`); network to `copernicus-dem-30m.s3.amazonaws.com` (or `-90m`) on the fetch only, about half a megabyte for 10 km. No key. The `forecast` pack for the rain |
 | Cells | none: a surface model is not measured here |
 | Attribution | "produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved", and the licence's no-liability sentence, carried with every row |
@@ -1154,7 +1156,7 @@ files, `pack.yaml` and `rules.yml`, and no README.
 
 Cooking hours are fixed in the SQL, 20:00 to 23:59, and the pack cannot tell cooking from any other source of
 indoor smoke at that hour. The comment on its `kind: data` line explains the distinction for every pack: data
-means rules and cells only, and code means the folder ships `adapter.py`.
+means rules and cells only, and code means the folder ships `adapter.py`; the loader now counts any `.py` file.
 
 ## Where this leads
 

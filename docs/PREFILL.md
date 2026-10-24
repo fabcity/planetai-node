@@ -1,11 +1,11 @@
 # What a node knows before it has a sensor
-<!-- checked: v0.83.0 -->
+<!-- checked: v0.90.0 -->
 
 On its first start, with an empty database, the node reads these for its own coordinates:
 
 | source | what | span | cost |
 |---|---|---|---|
-| Copernicus CAMS (through Open-Meteo) | hourly PM2.5, PM10, O₃, NO₂, dust and UV, on an 11 km grid | PM2.5 and PM10 for the last 92 days, then all of them live | free, no key |
+| Copernicus CAMS (through Open-Meteo, the `air-quality` pack, while it is on) | hourly PM2.5, PM10, O₃, NO₂, dust and UV, on an 11 km grid | PM2.5 and PM10 for the last 92 days, then all of them live | free, no key |
 | NASA POWER | monthly normals for sunlight, temperature, rain, humidity and wind | 1981 to now | free, no key |
 | Open-Meteo | the weather now: temperature, humidity, wind, rain | live | free, no key |
 | OpenStreetMap Nominatim | the place name | once | free |

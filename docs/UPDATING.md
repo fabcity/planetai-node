@@ -1,5 +1,5 @@
 # Updating
-<!-- checked: v0.83.0 -->
+<!-- checked: v0.90.0 -->
 
 One command brings the node to the published release. Your settings, readings, backups, exports and the packs you
 added stay.
@@ -18,8 +18,13 @@ planetai update
    stops here and names it; delete the wild copy with `rm -rf packs/<id>` and update again.
 3. **Applies `init.sql`**, which is idempotent.
 4. **Adds new settings** from `.env.example` to `.env` with their defaults, under a dated marker. Nothing you set is
-   overwritten.
-5. **Rebuilds and restarts**, checks the database, the app, the readings, the views and the packs, prints the schema
+   overwritten, with one exception: on a node that lists its packs in `PACKS_ENABLED` (in `.env` or in Set up), it
+   adds each pack that took over something the node already did, so nothing is lost: `home-assistant`,
+   `smartcitizen`, `airgradient`, `purpleair`, `air-quality` and `bali-air-dispatch` where their switch is on, the
+   pack of each issue `NODE_ISSUES` names (`water` brings `terrain`), and `things` and `eyes` always. It takes `trust`
+   out, since it is core now, unless it was the only pack listed. An empty list is every pack and is left alone.
+5. **Rebuilds and restarts**, and on a node with the Reticulum bridge on, fetches the bridge at the commit this
+   release pins and rebuilds it; a bridge that does not build keeps running the one it had. Then it checks the database, the app, the readings, the views and the packs, prints the schema
    before and after, and ends on `updated. Nothing was lost:` with the counts of readings, alerts and actions.
 6. **Runs `planetai doctor`**, ending with **To finish setting up**. In a terminal it offers to do the first item,
    and to fetch the map if the node has none; from cron or an agent it only prints. A cross there never fails an

@@ -29,7 +29,7 @@ def pack(name, yaml_, scripts, wild=False):
         (d / name / ".wild").write_text("source=someone/cam\ncommit=abc\nadded=2026-10-03\n")
 
 
-pack("heat", "id: heat\n", ["verify", "adapter"])
+pack("heat", "id: heat\n", ["verify", "adapter", "routes"])   # routes.py is mounted, never run (24 Oct 2026)
 pack("cam", "id: cam\nagent_scripts: [status]\n", ["status", "events", "snapshot", "adapter"], wild=True)
 pack("rain", "id: rain\n", ["verify"], wild=True)
 pack("odd", "id: odd\nagent_scripts: verify\n", ["verify"], wild=True)
@@ -37,7 +37,7 @@ pack("broken", "id: [broken\n", ["verify"], wild=True)
 
 got = packs.agent_scripts()
 assert got == ["cam/status", "heat/verify"], got
-print("  core scripts are all reachable; a wild pack offers only what it lists, and an adapter never")
+print("  core scripts are all reachable; a wild pack offers only what it lists, and an adapter or routes.py never")
 
 r = agent.run_pack_script("heat", "verify")
 assert r["exit"] == 0 and r["stdout"].strip() == "heat verify ran", r

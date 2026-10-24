@@ -1,5 +1,5 @@
 # The dashboard
-<!-- checked: v0.83.0 -->
+<!-- checked: v0.90.0 -->
 
 The dashboard is where a household reads its node: what it observed about the place, what it asks of the people
 there, whether that worked, and what the machine itself is doing. The node computes and the page draws, so every
@@ -57,7 +57,7 @@ The foot closes every door but the Wall: what the node is in one line, its versi
 explained" (this page), `llms.txt` for agents, Ask the node, Set up, **Unlock this screen**, today's open export (CC BY
 4.0) and links to PLANETAI, Fab City and the source.
 
-> **Gap in v0.83.0.** The doors read the node when the page opens, and again only after an answer on Now or an
+> **Gap in v0.90.0.** The doors read the node when the page opens, and again only after an answer on Now or an
 > unlock; nothing re-reads it while the page stays open. A Wall left on keeps the figures of the moment it was opened,
 > and only its narration is new every ten minutes. Reload the page, or use the classic wall, which re-reads on
 > `POLL_SECONDS`.
@@ -195,7 +195,7 @@ Every reading the node holds, one tab at a time, routed `#data/<tab>`. The tab b
 |---|---|
 | **Readings** | every kind of reading as a tile, with the median of its sources' 15-minute means now. Press one to draw every source that reads it over 24 hours on one scale, each linked to where its source publishes it (the hourly table needs the token). Then every issue at every distance over seven days, and the hours over the line per day |
 | **Models and satellite** | one table: a row per value the models and the satellite give for this point, how often it is fetched, its unit |
-| **Home** | **Images**, newest first: when and who, what took it, the note, what the image model saw and whether somebody here confirmed it. A row opens the image to edit, confirm or delete. Then the species confirmed, and **Things**, what this home keeps, how often each is used, its state and whether it is offered (admin token) |
+| **Home** | **Images**, newest first: when and who, what took it, the note, what the image model saw and whether somebody here confirmed it. A row opens the image to edit, confirm or delete. Then the species confirmed, and **Things**, what this home keeps, how often each is used, its state and whether it is offered (admin token). With the `eyes` or `things` pack off, its part says so |
 | **Ledger** | every decision, newest first, a run of the same answer as one row ("decided ×10"), who answered in words, and a filter by stage. Without a token, only the time and the stage |
 | **API** | every route on this node, one line each, with a search |
 
@@ -210,8 +210,10 @@ words what is happening. It names no sensor, room or person, and shows what is a
 
 ## Set up
 
-The gear opens Set up, a page of its own with a sticky list of sections. The first eight are the setting groups;
-the last four are about this screen and this machine.
+The gear opens Set up, a page of its own with a sticky list of its twelve sections under five headings: This place
+(Basics, Rooms), What it reads (Sources, Packs), How it speaks (Alerts, Model), Who can see it (Sharing, Keys, This
+screen) and The machine (System, Machine, Updates). Point at a section, or tab to it, and it says what it is for and
+which settings it holds.
 
 ![Set up, locked: the sections on the left and the token form](img/setup.jpg "Set up on a screen without a token: everything is visible, nothing can be changed until it is unlocked.")
 
@@ -221,10 +223,10 @@ the last four are about this screen and this machine.
 | **Sources** | your sensors and accounts, the public stations and portals around you. A source that comes as a pack is set in its card under Packs |
 | **Alerts** | reports at the hours you choose, what interrupts between them, quiet hours, which engine sends the heat and air messages (`ALERT_ENGINE`), how many it may send a day (`ALERT_MAX_PER_DAY`), what this home has (`HOME_HAS`), mesh alerts, and whether an act needs a decision first |
 | **Model** | which model answers, on the ask pane and on Telegram alike |
-| **Packs** | which packs load, and one card per pack with its switch, what it is and its own settings; a key the pack lists under `secrets:` is masked once saved |
+| **Packs** | which packs load, and one line per pack: its switch, its name and how many settings it has. **+** opens what it does and its settings, and **Open all packs** opens every one, remembered by this browser; a key the pack lists under `secrets:` is masked once saved |
 | **Keys** | every secret, masked once saved and never shown again |
 | **Sharing** | who may read this node, and everything it sends or announces beyond this machine |
-| **System** | tuning numbers, how the classic ground is drawn (`UI_GROUND`), the layout Arrange writes, and what is read once at start |
+| **System** | tuning numbers, how the classic ground is drawn (`UI_GROUND`), the layout Arrange writes, whether [Grafana](grafana.md) is running and how to open it, and what is read once at start |
 | **Rooms** | the household's word for where each of its sensors is, which every alert, the report and every page then use. Never on the Wall; a screen without the token reads "Room A" and "Sensor 1", see [Sharing](sharing.md#rooms-and-sensor-names-stay-in-the-house) |
 | **Machine** | the machine under the node (`GET /machine`) and how long its disk lasts (`GET /storage`) |
 | **This screen** | the two token fields and **Unlock this screen**. With the admin token, **Show the code** under "A phone" draws a QR code that opens the phone page holding the token for closing a loop |
@@ -368,7 +370,7 @@ fixture. When a poll gets no answer the figures stay, the pill says `stale`, and
 node has not answered for N min". The asking screen is held at least `--motion-asking-hold` (3 s) on a load or a press
 of **↻**, never on a routine poll.
 
-> **Gap in v0.83.0.** On the classic dashboard at `SHARE_LEVEL=off`, a browser that has never stored a token draws
+> **Gap in v0.90.0.** On the classic dashboard at `SHARE_LEVEL=off`, a browser that has never stored a token draws
 > the refused page on every view, Set up included, so there is nowhere to enter one. Unlock the screen on the doors
 > (`/`), which keeps the token in the same place, then open `/?layout=classic`.
 
@@ -432,7 +434,7 @@ Every section is registered with the page contract: `id`, `pack`, `stage`, `titl
 
 Optional keys are `order`, `needs`, `controls`, `wall`, `learn`, `notes`, `level` and `anchor`. `reads` names the
 routes the section's data comes from, printed beside its title as links that open the JSON it was drawn from;
-`tools/check_ui.py` fails a section with no `reads` or a route `app/main.py` does not define. A section whose `needs`
+`tools/check_ui.py` fails a section with no `reads` or a route that neither `app/main.py`, a core router nor a pack's `routes.py` defines. A section whose `needs`
 are not on this node prints one line in their place ("The &lt;pack&gt; pack has nothing here yet: … is not on this node."),
 never a blank and never a guess. A section that throws says that it did not render and why, and every other section
 still draws. The notes every section wants to make are gathered at the foot, in *Where these numbers come from*.
@@ -448,7 +450,7 @@ Twenty-four sections are registered:
 | | Network | This node, and what moves through it · What this page is made of · What leaves this house by radio (reticulum) · The mesh in this house (meshtastic) · The hardware in this house (hardware) · What this place could read, and where it could go · What this page asked of the world (place) |
 | **decide** | Now | What to do about it |
 | | Network | Whose word, over how much ground · What each rung is worth |
-| | Historical | What the node doubts about its own sensors (trust) |
+| | Historical | What the node doubts about its own sensors |
 | **act** | Now | What was asked, and what was answered · What was decided, and by whom |
 | **measure** | Now | Whether it worked · Which of these worked · Every figure on this page, and where it came from |
 
@@ -488,10 +490,11 @@ none), **Decide about this**, which records `stage: decided` and moves nothing, 
 `stage: acted`. With `DECISION_REQUIRED=1` the node refuses an act with 409 unless a decision was recorded against the
 same alert first, and the page prints the node's sentence. When nothing is open, Decide says so in words.
 
-"Whose word, over how much ground" covers with H3 cells the six footprints this node already declares, from `COAST_MAX_KM` for the sea to the three decimals `/health` rounds a position to. Each produces one number, and its card says how many cells of the rung you are on that one number has to cover.
+"Whose word, over how much ground" covers with H3 cells the footprints this node already declares, six with every
+pack on, from `COAST_MAX_KM` for the sea to the three decimals `/health` rounds a position to. Each produces one number, and its card says how many cells of the rung you are on that one number has to cover.
 
-The other four are the stations pack's radius (`BAD_RADIUS_KM` in Bali), `EARTH_RADIUS_M`, `PLACE_RADIUS_M` and
-`LOCAL_RADIUS_M`. The node sends the coverings in `GET /issues` as `geometry.claims`, widest first.
+The other four are the stations pack's radius (`BAD_RADIUS_KM` in Bali), `EARTH_RADIUS_M` and `PLACE_RADIUS_M` (each a
+`footprint:` in its pack's `pack.yaml`, and counted only while that pack is on), and `LOCAL_RADIUS_M`. The node sends the coverings in `GET /issues` as `geometry.claims`, widest first.
 
 ### Act
 

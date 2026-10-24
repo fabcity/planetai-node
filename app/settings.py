@@ -38,7 +38,7 @@ TTL = 20
 RUNTIME = {
     # basics — what this place is, what it watches, and how its page opens. What matters here is decided by the people who live here.
     "NODE_ISSUES":        ("basics", "What this place watches, in order", False, False,
-                           "The issues this node reports, most important first: air, heat, land, coast. The first "
+                           "The issues this node reports, most important first: air, heat, land, coast, water. The first "
                            "one is where the page starts, and the one with something to say takes the top of it. A "
                            "name nothing declares is ignored with a line in the log; blank means every issue there "
                            "is, in the packs' own order. Your preset guessed for this place \u2014 change it: what "

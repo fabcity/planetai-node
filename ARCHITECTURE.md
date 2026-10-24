@@ -1,5 +1,5 @@
 # PLANETAI. Architecture
-<!-- checked: v0.83.0 -->
+<!-- checked: v0.90.0 -->
 
 The whole system on one page. What exists today is marked. What does not exist yet is drawn anyway, because the
 contracts between layers cannot be added later.
@@ -50,7 +50,7 @@ a node anywhere on earth can sample a global model at its coordinates. Same core
 
 | `sensors.kind` | what it is | cadence | scales it serves | shipped |
 |---|---|---|---|---|
-| `sensor` | a device on your LAN or a nearby public one | minutes | Community, City | Smart Citizen, Meshtastic over MQTT; AirGradient and PurpleAir written, not polled |
+| `sensor` | a device on your LAN or a nearby public one | minutes | Community, City | Meshtastic over MQTT in the core; Smart Citizen, and AirGradient and PurpleAir on the LAN, as packs |
 | `portal` | an open-data or statistical API | days to months | City, Region, Bioregion | `ckan` (any CKAN portal) |
 | `model` | a global model sampled at a point | hours | Planet, Bioregion | `openmeteo` |
 | `survey` | people answering | campaign | Community, City | **not built** as a campaign: the four empty Social cells. The one `survey` row is `things:<node>`, the counts of the things a home keeps |
@@ -201,11 +201,11 @@ instrument. This is the H0-A hypothesis reduced to a table with four columns.
 
 Not a roadmap. Each stage names what exists, what it proves, and the trigger for the next.
 
-**Stage 0: now.** One node, two containers by default (a broker, a Reticulum bridge, the local model's loop and IPFS
-are optional profiles), Sense: adapters across sensor, portal, model and map classes, in the core and in packs.
-Observe: Postgres, hourly view, read API. Act: two domain-blind core rules plus whatever the loaded packs contribute
-(twenty-four core packs ship, and wild packs are added per node), to
-Telegram, the mesh, and Home Assistant; `POST /actions` records what a person did.
+**Stage 0: now.** One node, two containers by default (a broker, a Reticulum bridge built from its own repository,
+the local model's loop, IPFS and Grafana are optional profiles), Sense: adapters across sensor, portal, model and map classes, in the core and in packs.
+Observe: Postgres, hourly view, read API. Act: two domain-blind core rules and the three trust rules, plus whatever the loaded packs contribute
+(twenty-five core packs ship, some serving their own routes, and wild packs are added per node), to
+Telegram, the mesh, and Home Assistant through its pack; `POST /actions` records what a person did.
 Index: `GET /cells` emits `Environmental|Community` live and ρ partial. Compute: one Mac mini. *Proves:* a reading
 becomes a message someone acts on, and the node reports that fact as a cell.
 → Trigger for Stage 1: five nodes alive 30 days, at least one `acted` row per node.

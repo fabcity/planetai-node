@@ -2,6 +2,9 @@
 
 ## v0.90.0 — 2026-10-24 — The core and the packs, apart
 
+- **An agent is no longer offered a pack's `routes.py` as a script.** Since packs serve their own routes, each
+  `routes.py` was listed among the scripts an agent may run; the node mounts it and nobody runs it.
+
 - **The source registry is pinned at `cd90289`.** awesome-fabcity-data #100: the adapter check lives in this node's
   lint now, so the registry stopped checking out node main; the BMKG entry's notes say so. Still 283 entries.
 
@@ -44,7 +47,8 @@
 
 - **Grafana, for the keeper.** `planetai grafana` starts Grafana (profile `grafana`, off by default) on loopback
   port 3000, beside the dashboard: your own panels over the node's readings. It reads the database as
-  `planetai_grafana`, a member of `planetai_ro` (every table but `settings`), read-only, 30 s per query, four
+  `planetai_grafana`, a member of `planetai_ro` (every table but `settings` and the household's own: pictures,
+  things, learnings, digests, who lives there), read-only, 30 s per query, four
   connections, in `NODE_TZ`; a one-shot `grafana-role` container makes the login and keeps its password in a
   volume, so nothing goes in `.env` and Grafana is handed no secret of the node's. A starter dashboard, "keeper's
   view · no provenance", fills itself from the node's sensors: every room hourly, a room by hour of day, a room

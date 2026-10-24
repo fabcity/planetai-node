@@ -1,5 +1,5 @@
 # ρ: the loop closed
-<!-- checked: v0.83.0 -->
+<!-- checked: v0.90.0 -->
 
 ρ (rho) is the share of the node's act-level asks (alerts and events it sent, and its children's alerts) that a
 person answered within 24 hours. It is the node's
@@ -35,7 +35,7 @@ third row adds nothing.
 
 ![ρ: of the act-level asks sent, the share that got an answer within 24 hours](img/rho.svg "The first acknowledged or acted answer stops the clock. The figures are an example.")
 
-> **Gap in v0.83.0.** A child pushes every `alerts` row to its parent, the unsent ones included, and none of its
+> **Gap in v0.90.0.** A child pushes every `alerts` row to its parent, the unsent ones included, and none of its
 > events. A parent's pooled ρ therefore counts a child on `ALERT_ENGINE=events` the old way.
 
 `GET /rho` on node #1, an events node:

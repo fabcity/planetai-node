@@ -1,5 +1,5 @@
 # Channels
-<!-- checked: v0.83.0 -->
+<!-- checked: v0.90.0 -->
 
 A channel is how an alert leaves the node and reaches the people it is for. This page connects four of them. Two
 (Telegram and Reticulum) also carry the answer back, which is how an alert becomes a row in `actions` and, from
