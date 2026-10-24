@@ -496,6 +496,9 @@ if len(a.get("acts", [])) != 21 or len(a.get("actions", [])) != 11 or a.get("lev
                  f"{len(a.get('actions', []))}, {a.get('levels')}")
 if any("\n" in x["text"] or len(x["text"]) > 160 for x in a.get("acts", [])):
     fails.append("an ask's text is its first line, at most 160 characters")
+if any(x.get("level") != "act" for x in a.get("acts", [])):
+    fails.append("every act carries level act: the dashboard's ledger draws a rule quiet when its latest ask has none, "
+                 f"and drew every rule quiet: {[x.get('level') for x in a.get('acts', [])][:5]}")
 
 mesh = body.get("mesh")
 if not mesh or mesh["gateway"] != "!8f491db0" or mesh["packets"] != 12:
