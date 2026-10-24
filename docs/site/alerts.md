@@ -1,5 +1,5 @@
 # Alerts
-<!-- checked: v0.83.0 -->
+<!-- checked: v0.90.0 -->
 
 An alert is the node asking a person to do something. When a reading crosses a line, the node sends the household
 one plain message, then records what somebody did about it. Every answer is a row in
@@ -15,7 +15,7 @@ The node has two ways of turning rules into messages, chosen with `ALERT_ENGINE`
 
 ## From a rule to a message
 
-Every 60 seconds the rules loop runs each loaded rule (the two in `config/rules.yml` and every pack's
+Every 60 seconds the rules loop runs each loaded rule (the five in `config/rules.yml` and every pack's
 `rules.yml`) as the read-only database role `planetai_ro`, which can read every table but `settings` and write
 nothing. Every row a rule's SQL returns is a candidate alert for the `sensor_id` in that row, or for `node` if the
 row has none. A rule that declares a `kind:` belongs to the event engine and is skipped here. For each candidate:
@@ -25,8 +25,8 @@ row has none. A rule that declares a `kind:` belongs to the event engine and is 
 2. **Message.** The template for `ALERT_LOCALE` (falling back to English) is filled with the row's columns by
    Python's `str.format`, and `{line}` with the rule's `watch.over`. A `None` renders as a dash. A template that
    does not fit its row is sent as the raw template.
-3. **Record.** The alert is inserted into `alerts` and published to Home Assistant whatever its level. From here
-   it is on the dashboard.
+3. **Record.** The alert is inserted into `alerts` and handed to every pack's `on_alert` hook whatever its level
+   (the `home-assistant` pack publishes it there). From here it is on the dashboard.
 4. **Send.** It goes out through `notify()` only if its level reaches `ALERT_LEVEL` and quiet hours do not hold it.
    On `ALERT_ENGINE=events` a heat or air-quality alert is not sent at all; the engine sends instead.
 
@@ -113,7 +113,7 @@ A rule names its threshold's source in its pack's README, and the sentences carr
 rule may not print a number its SQL did not compute.
 
 On the classic dashboard, which is what a node on `rules` shows in Decide, a third paragraph that opens with 👉 is
-drawn on its own on the alert card as "what this node suggests". The `trust` and `nearby` rules, among others,
+drawn on its own on the alert card as "what this node suggests". The `trust/` and `nearby` rules, among others,
 open it so. The `air-quality`, `heat` and `fire` rules do not, so their cards say there is no suggestion, and the
 page does not invent one.
 
@@ -123,7 +123,7 @@ terminal, planetai act N records that you closed the loop.` when it does not.
 
 ## Languages
 
-`ALERT_LOCALE` is `en`, `id` or `es`. Every rule with a message carries all three: the two core rules and the 36
+`ALERT_LOCALE` is `en`, `id` or `es`. Every rule with a message carries all three: the five core rules and the 33
 messaged rules in the packs that ship. The report, the test alert and the Telegram bot's own replies follow the
 same setting; the bot's few fixed lines fall back to English for `id`. The presets set `id` for Bali, `es` for
 Menorca, Barcelona and Santiago, and `en` for Boston and Delhi.
@@ -134,8 +134,8 @@ Menorca, Barcelona and Santiago, and `en` for Boston and Delhi.
 text opens with its own sign. An `act` heat or air alert that weighs on someone ticked under *Who is in the house*
 ends, in Telegram only, with one line such as "This matters more here: you said there is a child under five." That
 line never goes to the mesh, Reticulum, Home Assistant or the stored text. An `act` alert also goes to the LoRa
-mesh (first line only, with `MESH_ALERTS=1`) and to the Reticulum bridge for LXMF delivery. Home Assistant is a
-separate call, `ha_alert()`, made for every recorded alert whether it was sent or not. Setting each one up is on
+mesh (first line only, with `MESH_ALERTS=1`) and to the Reticulum bridge for LXMF delivery. Home Assistant is the
+`home-assistant` pack's `on_alert` hook, which hears every recorded alert whether it was sent or not. Setting each one up is on
 [Channels](channels.md).
 
 ## The rules the core knows

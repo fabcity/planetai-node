@@ -1,5 +1,5 @@
 # Platforms
-<!-- checked: v0.83.0 -->
+<!-- checked: v0.90.0 -->
 
 This page says which machines can run a node, the oldest OS each one needs, and what to do with a machine below
 that floor. Linux comes first, macOS second and Windows third. A node's home is a box that stays on, and a laptop
@@ -99,8 +99,8 @@ The database image runs on arm64, and no Pi has run a node yet.
 
 The node's database is `imresamu/postgis:16-3.4-alpine`, a build of the PostGIS recipe published for both
 `linux/amd64` and `linux/arm64` under one tag, on Alpine. The other images a node pulls are multi-arch too:
-`python:3.12-slim` for the app, `eclipse-mosquitto:2` for the `mqtt` profile and `ipfs/kubo:v0.43.0` for the `ipfs`
-profile. CI runs the real installer end to end on an arm64 runner, which proves the images resolve and the database
+`python:3.12-slim` for the app, `eclipse-mosquitto:2` for the `mqtt` profile, `ipfs/kubo:v0.43.0` for the `ipfs`
+profile and `grafana/grafana-oss:13.0.2` for the `grafana` profile. CI runs the real installer end to end on an arm64 runner, which proves the images resolve and the database
 comes up. It proves nothing about an SD card, or a 4 GB board in a warm cupboard.
 
 The image stays on Alpine on purpose. Alpine uses musl, which records no collation version, and every existing

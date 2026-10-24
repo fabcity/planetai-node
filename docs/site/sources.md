@@ -1,5 +1,5 @@
 # The source registry
-<!-- checked: v0.83.0 -->
+<!-- checked: v0.90.0 -->
 
 A node measures what its adapters read. The registry is the network's shared list of what could be measured at
 each pillar and scale, and of the places a person could go to act on it, carried inside every node as a
@@ -11,22 +11,23 @@ comes to write it.
 
 1. **List it.** Run `planetai sources`. It prints `registered in awesome-fabcity-data, read from the node:`, then one
    line per entry: the slug, the status, the first 40 characters of the licence, the pilots, and the code that
-   reads it. By default it shows this node's pilot (`NODE_CITY`) and the `global` rows, 107 entries on a `bali`
+   reads it. By default it shows this node's pilot (`NODE_CITY`) and the `global` rows, 111 entries on a `bali`
    node; `--all` shows every entry. It ends with the totals:
 
    ```
-     107 of 275 entries. The last column is the code that reads it. A cell with sources and a blank column is one nobody has written an adapter for yet.
-     across 19 cells: capable 12 / reviewed 17 / candidate 52
+     111 of 283 entries. The last column is the code that reads it. A cell with sources and a blank column is one nobody has written an adapter for yet.
+     across 19 cells: capable 12 / reviewed 17 / candidate 55
      capable = live with an adapter. reviewed = live, backed by an adapter or a usable review. candidate = verified, unread.
-     counted nowhere: 8 deprecated, 1 paywalled, 3 planned, 4 stale. A node cannot call them, so they are in no cell number.
    ```
+
+   With `--all` it adds `counted nowhere: 8 deprecated, 1 paywalled, 3 planned, 4 stale.`
 
    With the containers down it reads `data/sources/index.json` off the disk and says `read from data/sources (the
    node is not answering)`. The answer is the same either way, because the registry is a file in the release.
-2. **Filter it to one cell.** `planetai sources --all --cell 'Social|City'` lists the 12 entries filed for that
+2. **Filter it to one cell.** `planetai sources --all --cell 'Social|City'` lists the 13 entries filed for that
    cell, from the Barcelona electoral sections to the US Census ACS, and the last column is blank on every one.
    That is a part of the Index no node fills yet, with the sources that could fill it named. The footer says
-   `Social|City: capable 0 / reviewed 1 / candidate 7`; the reviewed entry is `social/city/ine-spain`, whose review
+   `Social|City: capable 0 / reviewed 1 / candidate 8`; the reviewed entry is `social/city/ine-spain`, whose review
    found it usable. The counts are the registry's whole count for that cell whatever the other filters, and they
    come from `feeds_cells`, so they include `social/region/worldpop`, filed under `Social|Region`. The other
    filters are `--pillar`, `--scale` and `--json`.
@@ -42,10 +43,10 @@ comes to write it.
    `data/sources/data/environmental/community/bali-air-dispatch.yaml`. A slug that is not in the pin answers 404
    and names the pin.
 4. **See it on the Network view.** On the dashboard, Network has a section headed **What this place could read,
-   and where it could go**, with three rows. *Registered, and read* shows `pin db77fcc · synced 2026-10-19` (the
-   pin links to the registry on GitHub at that commit), says `275 sources registered; 17 have code on this node
-   that reads them` with the thirteen adapter strings, and draws `17/275`. *What a cell could use* reads `across 19
-   cells` with `12 capable`, `17 reviewed` and `52 candidate`. *Places to act* counts the 16 act sources by kind
+   and where it could go**, with three rows. *Registered, and read* shows `pin cd90289 · synced 2026-10-24` (the
+   pin links to the registry on GitHub at that commit), says `283 sources registered; 18 have code on this node
+   that reads them` with the fourteen adapter strings, and draws `18/283`. *What a cell could use* reads `across 19
+   cells` with `12 capable`, `17 reviewed` and `55 candidate`. *Places to act* counts the 16 act sources by kind
    and says how many state that no licence is published (4); a fold under it lists all sixteen with each licence
    as filed. The page fetches `/sources` the first time somebody opens Network, and never before.
 
@@ -66,10 +67,10 @@ An entry counts against every cell in its `feeds_cells`, and against its own `ce
 `feeds_cells` key. An entry with `feeds_cells: []` counts in no cell. No `deprecated`, `stale`, `paywalled` or
 `planned` entry counts anywhere. `capable` is always part of `reviewed`.
 
-At `db77fcc` that is 12 capable, 17 reviewed and 52 candidate across 19 cells. Of the seventeen entries with an
-`adapter`, seven say `feeds_cells: []` (`fablabs-io` is one) and two (`airgradient`, `smart-citizen`) feed two
-cells each, which makes 12. Reviews add five to `reviewed`. The 47 `candidate` entries make 52, because ten of
-them feed two cells each and five feed none. `Governance|City` has 32 entries filed under it and counts capable 4,
+At `cd90289` that is 12 capable, 17 reviewed and 55 candidate across 19 cells. Of the eighteen entries with an
+`adapter`, eight say `feeds_cells: []` (`fablabs-io` is one) and two (`airgradient`, `smart-citizen`) feed two
+cells each, which makes 12. Reviews add five to `reviewed`. The 55 `candidate` entries also make 55, because ten
+of them feed two cells each and ten feed none. `Governance|City` has 32 entries filed under it and counts capable 4,
 reviewed 4, candidate 0: the four CKAN portals that `core:ckan` reads.
 
 ## One entry
@@ -90,7 +91,7 @@ The fields a node uses, from the schema at the pin:
 | `act_kind` | for an act source: `facility`, `equipment`, `design`, `repair`, `material`, `match` or `network` |
 | `notes` | the long form: quirks, rate limits, and the licence clauses a source turns on |
 
-The files still carry `wired_in_planetai`, the hand-set boolean that `adapter` replaced. It is deprecated upstream,
+`wired_in_planetai`, the hand-set boolean that `adapter` replaced, is retired upstream: no entry carries it now,
 and the node reads only `adapter`.
 
 `cell` and `feeds_cells` answer different questions. Bali Air Dispatch is filed under `Environmental|Community`,
@@ -105,21 +106,22 @@ a copy at `data/sources/`, mounted read-only into the app container:
 
 | path | what it is |
 |---|---|
-| `data/sources/REGISTRY_VERSION` | the pin: `sha=db77fcc274f2050fd2df4b7b5b6b46a678543018`, `short=db77fcc`, `synced=2026-10-19`, `entries=275`, and the upstream URL |
-| `data/sources/data/<pillar>/<scale>/<slug>.yaml` | the 275 entries as filed |
+| `data/sources/REGISTRY_VERSION` | the pin: `sha=cd90289edd506d7a91d897f17f04f03cd7063426`, `short=cd90289`, `synced=2026-10-24`, `entries=283`, and the upstream URL |
+| `data/sources/data/<pillar>/<scale>/<slug>.yaml` | the 283 entries as filed |
 | `data/sources/schema/dataset.schema.json` | the schema they are checked against |
 | `data/sources/reviews/`, `data/sources/cells/` | the reviews filed for entries, and one file for each of the twenty cells |
 | `data/sources/index.json` | the YAML folded into one JSON list, with `slug` and `cell` taken from each file's path, and a `reviews` list on every entry (`[]` when there are none) |
 
-At `db77fcc` the 275 entries are 120 economic, 68 governance, 61 environmental and 26 social. By status, 212 are
-`live`, 47 `candidate`, 8 `deprecated`, 4 `stale`, 3 `planned` and 1 `paywalled`. Seventeen carry an `adapter`,
+At `cd90289` the 283 entries are 121 economic, 68 governance, 67 environmental and 27 social. By status, 212 are
+`live`, 55 `candidate`, 8 `deprecated`, 4 `stale`, 3 `planned` and 1 `paywalled`. Eighteen carry an `adapter`,
 four carry a review, and sixteen are act sources.
 
 `app/registry.py` and `bin/planetai` read `index.json`, so the CLI needs no YAML library on the host. The app
 caches it on the file's modification time, so a re-pin that arrives with `planetai update` is picked up without a
 restart. The directory is `SOURCES_DIR`, default `/app/data/sources`. Nothing in this repository edits an entry:
 `tools/check_registry.py` rebuilds `index.json` from the YAML and fails `make lint` if they differ, if a review
-names an entry the pin does not carry, or if a `cells/` file is not named for its own cell.
+names an entry the pin does not carry, if a `cells/` file is not named for its own cell, if a pack reads an entry
+that names no `adapter`, or if an `adapter` names a pack or a core function this tree does not have.
 
 The copy is pinned rather than fetched. [`docs/SOURCES.md`](../SOURCES.md) gives the reasons: a node with no uplink
 answers the same question as one in Barcelona, every node in a release answers it the same way, and a change to
@@ -160,10 +162,10 @@ and not open, because that is a judgement about somebody else's terms.
   `feeds_cells` as above. `registered` carries the `reviewed` count, and `adapter` is true when `capable` is above
   0. A cell with registered sources and no adapter has no `/cells` row at all, because a node only emits rows it
   can compute; `planetai sources --cell` answers that half.
-- **`planetai doctor`.** One row: `source registry: 275 entries · awesome-fabcity-data @ db77fcc · synced
-  2026-10-19`. It goes amber when the pin is over 180 days old and red when `data/sources/` is missing.
+- **`planetai doctor`.** One row: `source registry: 283 entries · awesome-fabcity-data @ cd90289 · synced
+  2026-10-24`. It goes amber when the pin is over 180 days old and red when `data/sources/` is missing.
 - **Packs.** Every id in a pack's `sources:` must resolve to an entry at the pin, or `make lint` fails and names
-  the id; 15 resolve. The `fire` pack's is `environmental/bioregion/nasa-firms`, a `candidate` filed with
+  the id; 18 resolve. The `fire` pack's is `environmental/bioregion/nasa-firms`, a `candidate` filed with
   `adapter: pack:fire`, `auth: none` (only its area API needs a key) and `feeds_cells: []`: read, and feeding no
   cell yet.
 
@@ -197,7 +199,7 @@ One entry, as filed. A 404 names the pin the node carries and points back at `/s
 3. On a development machine, re-pin with `tools/sync_registry.sh <the merge sha>`. It prints the upstream URL,
    the short sha and the number of entries.
 4. Run `python3 tools/check_registry.py` (part of `make lint`). It prints `<n> registry entries @ <short>, <m> pack
-   source ids resolve` with the new count and pin. If something is wrong it prints `x the vendored registry does
+   source ids resolve, <k> adapters name something here` with the new count and pin. If something is wrong it prints `x the vendored registry does
    not hold` and one line per problem, a sync stopped half-way among them.
 5. Commit `data/sources/` and nothing else, with one line in `CHANGELOG.md`. Every release syncs the registry
    before it is tagged (`docs/NEXT_RELEASE.md`).
@@ -207,7 +209,7 @@ One entry, as filed. A 404 names the pin the node carries and points back at `/s
 
 To fill a blank adapter column, write the adapter, a function in `app/sources.py` or a code pack (see
 [Packs](packs.md) and [Adding a source](sensors.md#adding-a-source) on the sensors page), and then set the
-`adapter` string upstream, which the registry's CI checks against this repository.
+`adapter` string upstream; once it is re-pinned, `tools/check_registry.py` checks it against this tree in `make lint`.
 
 > **Note.** "Registry" names two things here. This page is the source registry, `data/sources/`. `registry.json`
 > at the repository root is the list of nodes, described on [Federation](federation.md); the node reads it from

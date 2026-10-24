@@ -36,7 +36,8 @@ def run(js, *extra, built=("v0.73", "v0.73")):
     for sub, tag in zip(("assets/p", "staging/assets"), built):
         (d / sub).mkdir(parents=True)
         if tag:
-            (d / sub / "hooks-x.js").write_text(f'Ed={{tag:"{tag}",asOf:"{today}",count:87}}')
+            # without asOf: Vite drops properties no page reads, and at v0.90 RELEASE.asOf was one (24 Oct 2026)
+            (d / sub / "hooks-x.js").write_text(f'Ed={{tag:"{tag}",packs:{{total:25,code:20}},count:87}}')
     r = subprocess.run(TOOL + ["--site", str(d), *extra], capture_output=True, text=True, cwd=ROOT)
     shutil.rmtree(d)
     return r.returncode, r.stdout + r.stderr

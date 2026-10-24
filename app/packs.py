@@ -244,7 +244,7 @@ def agent_scripts() -> list[str]:
     out = []
     for f in sorted(f for d in _enabled() for f in d.glob("*.py")):          # a pack this node does not load runs nothing
         d, name = f.parent, f.stem
-        if name in ("adapter", "hooks"):                                       # the node calls these; nobody runs them
+        if name in ("adapter", "hooks", "routes"):                             # the node calls these; nobody runs them
             continue
         # ponytail: wild means `.wild` beside pack.yaml, written by `planetai packs add`; a pack copied in by hand
         # counts as core. A list of core ids shipped with the release would close that, if hand-copied packs spread.

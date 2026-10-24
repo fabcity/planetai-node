@@ -1,5 +1,5 @@
 # Developing and contributing
-<!-- checked: v0.83.0 -->
+<!-- checked: v0.90.0 -->
 
 This page is for the person who changes the node itself: a new adapter, a rule, a pack, a fix. A household updates
 by running `planetai update` and cannot review what arrives, so every change here passes the gates, a review and CI
@@ -22,7 +22,7 @@ Add a sensor or a source. An adapter is one function returning `(sensors, readin
 
 Write a rule, a cell or a pack: [Packs](packs.md). A pack for one place is a wild pack in its own repository, listed
 at [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs), and does not come here as a pull
-request. The 21 packs in `packs/` are core, and a wild pack joins them by promotion. Start from a core pack of the
+request. The 25 packs in `packs/` are core, and a wild pack joins them by promotion. Start from a core pack of the
 same kind, say in the README where the thresholds come from and which place you wrote for, and make the rule end in
 something a person does.
 
@@ -70,7 +70,7 @@ extra packages on the dev machine (`pyyaml`; `sqlglot` for the rules; `markdown`
 `requirements.txt` for the import check), and a gate whose package is missing says it skipped. CI installs them all,
 so nothing skips there.
 
-`make test` runs `tests/all`: 85 offline suites, one line each with a count at the end. It exits non-zero when a
+`make test` runs `tests/all`: 91 offline suites, one line each with a count at the end. It exits non-zero when a
 suite fails, when a check skipped that nobody declared, or when the list and the count disagree. A new suite needs
 its own line in `tests/all` and the count raised, or it never runs.
 
@@ -90,7 +90,9 @@ uncommitted or unpushed work.
 Give the pull request a line under `## Unreleased` in `CHANGELOG.md`, written for the person running a node: what
 changed for them. A pull request that changes what a node runs (`app/`, `bin/`, `packs/`, `config/`, `presets/`,
 `init.sql`, the installers, `docker-compose.yml`) fails CI without one; a change that truly needs none carries the
-label `no changelog`. Schema changes go in `init.sql` additively, so a node updates in place.
+label `no changelog`. Schema changes go in `init.sql` additively, so a node updates in place. A new feature, setting
+or command also needs a place a household would look (a Set up row, a line on the page that uses it) and a page or
+section here; say in the pull request where both are (AGENTS.md, "Anything new is visible").
 
 Most changes need one maintainer's review. `init.sql`, the contracts in `SPEC.md`, `install`, `install.sh`,
 `update.sh` and `bin/planetai` need two, because those are what a household runs without reading. `GOVERNANCE.md`
@@ -156,15 +158,17 @@ The steps in order are in [docs/WORKFLOW.md](../../docs/WORKFLOW.md), the key an
 ## Layout of the repository
 
 ```
-app/          main.py (api, loops, notify) · sources.py (adapters) · index.py (cells, ρ) · packs.py · settings.py
+app/          main.py (api, loops) · db.py (the pool, q()) · auth.py (tokens, share levels) · channels.py (notify)
+              basemap.py · geo.py · machine.py · household.py · presence.py (route groups moved out of main.py)
+              sources.py (adapters) · index.py (cells, ρ) · packs.py · settings.py
               registry.py (the source registry) · report.py · agent.py (MCP) · tool_classes.py · agent_loop.py (the bot)
               events.py · events_pg.py · events_wire.py · actions.py (the alert-event engine, its store, its /issues block and
               the action it chooses)
               requires.py (which node a pack needs) · fundamentals.py (the sources every node needs) · learn.py (what it learns)
               ask.py (the dashboard's ask pane) · bootstrap.py · ground.py · issues/ · static/ (the dashboard)
 bin/planetai  the operator CLI
-packs/        the twenty-four core packs; see Packs
-config/       rules.yml (two domain-blind rules, trust's three) · channels.yml · mosquitto · reticulum
+packs/        the twenty-five core packs, some with their own routes.py; see Packs
+config/       rules.yml (two domain-blind rules, trust's three) · channels.yml · mosquitto · grafana
 data/         sources/ (the pinned registry) · strings/ · env_defaults.yml · frozen_layer.txt · platform_floors.yml · mac_ceilings.yml
 skills/       setup-node · troubleshoot-node · connect-agent · publish-to-index · preflight · land · write-a-pack
               · release-docs

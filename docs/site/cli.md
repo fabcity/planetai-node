@@ -1,5 +1,5 @@
 # Command line
-<!-- checked: v0.83.0 -->
+<!-- checked: v0.90.0 -->
 
 `planetai` is how the person who keeps a node looks after it from the machine it runs on: install it, check
 it is alive, record what somebody did about an alert, change a setting, update it and keep its data safe.
@@ -12,7 +12,7 @@ has (Apple's 3.9 on a Mac, standard library only). `planetai` on its own prints 
 does not know gets "there is no `planetai <word>` in this node", the node's version, and the advice to run
 `planetai update`, because new commands arrive with releases.
 
-> **Gap in v0.83.0.** The list `planetai` prints leaves out four commands that exist: `preflight`, `sources`,
+> **Gap in v0.90.0.** The list `planetai` prints leaves out four commands that exist: `preflight`, `sources`,
 > `config unset` and `agent local pull`. The tables below are complete.
 
 Only three things ask for `sudo`: `mesh` (to install and join Tailscale), `agent local` on a machine with
@@ -146,9 +146,9 @@ Where the data lives, and why never on a network mount: [Storage](storage.md).
 | command | what it does | sudo |
 |---|---|---|
 | `planetai telegram` | Checks the bot token, waits up to two minutes for your first message to learn the chat id, saves both, sends a hello and restarts the app. | no |
-| `planetai homeassistant` (`ha`) | Starts the broker if there is none, sets `HA_DISCOVERY=1`, and prints what to enter in Home Assistant's MQTT integration. | no |
+| `planetai homeassistant` (`ha`) | Starts the broker if there is none, sets `HA_DISCOVERY=1`, and prints what to enter in Home Assistant's MQTT integration. On a node that lists its packs in `PACKS_ENABLED`, add `home-assistant` there too. | no |
 | `planetai mesh [up\|status\|down]` | Installs Tailscale and joins your tailnet under the node's name, then prints how to reach it. `TS_AUTHKEY` in the environment joins without a browser. Records `MESH_NAME`. | yes |
-| `planetai reticulum` | Starts the LXMF bridge (profile `reticulum`), prints the node's address and how to reach it from Sideband. | no |
+| `planetai reticulum` | Downloads the LXMF bridge from fabcity/planetai-reticulum at the commit `RETICULUM_REF` pins, builds it, starts it (profile `reticulum`), and prints the node's address and how to reach it from Sideband. | no |
 | `planetai hello [--remove]` | Lists this node on every node's map. It shows the entry a stranger would see (name, the centre of its cell, the place, who runs it, an optional contact) and opens the pull request to `registry.json` with `gh`, or prints the entry and the edit link. Once merged, nodes see it within the hour. `--remove` takes the node off. | no |
 
 See [Channels](channels.md) and [Federation](federation.md).
@@ -186,10 +186,10 @@ there; it prints the exact line for your Python when they are missing. See [Radi
 
 Each line is a slug, status, licence, the pilots it matters to, and the code that reads it (`core:ckan`, `pack:coast`,
 or blank when nothing on this node does). The counts below the list cover the whole registry, or one cell with
-`--cell`. With the snapshot v0.83.0 carries (`awesome-fabcity-data` at `db77fcc`, 275 entries, synced 2026-10-19):
+`--cell`. With the snapshot v0.90.0 carries (`awesome-fabcity-data` at `cd90289`, 283 entries, synced 2026-10-24):
 
 ```
-  across 19 cells: capable 12 / reviewed 17 / candidate 52
+  across 19 cells: capable 12 / reviewed 17 / candidate 55
   capable = live with an adapter. reviewed = live, backed by an adapter or a usable review. candidate = verified, unread.
 ```
 

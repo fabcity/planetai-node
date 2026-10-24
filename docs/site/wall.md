@@ -1,5 +1,5 @@
 # Wall mode
-<!-- checked: v0.83.0 -->
+<!-- checked: v0.90.0 -->
 
 The Wall is the node on a screen in a living room or a lab, read from about three metres by people who know nothing
 about air science, and operated by nobody. It shows the moment, what is asked of the house and what the node's model
@@ -22,7 +22,7 @@ http://<node>:8080/#wall
    a step. If the screen has reduced motion on, nothing moves: the Wall holds the street at the last hour.
 4. **Reload it now and then.** The Wall reads the node when the page opens.
 
-> **Gap in v0.83.0.** The Wall does not re-read the node while it stays open: its figures are those of the moment it
+> **Gap in v0.90.0.** The Wall does not re-read the node while it stays open: its figures are those of the moment it
 > was opened, and only the narration is new every ten minutes. Reload the screen, or put the classic wall up instead,
 > which re-reads on `POLL_SECONDS`.
 
@@ -129,7 +129,7 @@ engine is `shadow` or `events` it can read "Nothing has been asked." while Decid
 "Read at … · the node has not answered for N min". If the wall throws while it draws, it says "The wall did not
 render:" and why, rather than going black.
 
-> **Gap in v0.83.0.** On the classic wall the share level in the top bar always reads `off`, because `/health`
+> **Gap in v0.90.0.** On the classic wall the share level in the top bar always reads `off`, because `/health`
 > carries no share level, and the bold `stale` in the foot is a fixed label that shows whether or not the node is
 > answering. The as-of time beside it is the one to read.
 

@@ -442,7 +442,7 @@ MARKS = [
      "A new text comes every ten minutes from the model chosen in Set up › Model, and the box says it "
      "is a model's words, written from the node's figures."),
     ("setup-sections", "The sections", "dashboard.md", "Set up",
-     "The gear opens Set up", "this screen and this machine.",
+     "The gear opens Set up", "(System, Machine, Updates).",
      "A section with something set here says how many. This screen says locked or unlocked."),
     ("setup-save", "Saving a change", "dashboard.md", "Set up",
      "A save sends only the fields you edited.", "the actor `dashboard`",

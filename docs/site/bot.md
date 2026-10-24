@@ -1,5 +1,5 @@
 # The bot and the model ladder
-<!-- checked: v0.83.0 -->
+<!-- checked: v0.90.0 -->
 
 The bot adds conversation to a node. Somebody in the house asks "is the air bad right now?" on Telegram and gets an
 answer read from the node's own tools. Somebody says "I closed the windows" and the bot records it, in their words,
@@ -44,7 +44,7 @@ same 17, local, remote or online. A person driving an agent over the tailnet sti
 `act` needs the person's own words. The tool refuses `acted`, `done`, `ok` or another placeholder as the note and
 tells the model to ask.
 
-> **Gap in v0.83.0.** The bot's system prompt tells the model to "give the exact command from `maintenance`" for a
+> **Gap in v0.90.0.** The bot's system prompt tells the model to "give the exact command from `maintenance`" for a
 > task that needs the node's shell, and `maintenance` is one of the four tools the loop withholds. Asked to update or
 > back up the node, the bot cannot look the command up. The commands are in [The command line](cli.md).
 
@@ -68,7 +68,7 @@ URL is logged and ignored.
 The dashboard's ask pane walks the same ladder from the same settings, so one choice governs both; see
 [Ask the node](ask.md).
 
-> **Gap in v0.83.0.** The Model group's description in Set up, on the classic dashboard and on the doors, still reads
+> **Gap in v0.90.0.** The Model group's description in Set up, on the classic dashboard and on the doors, still reads
 > "The strongest one the node can reach is used." The default is `private`, and `/model` in Telegram prints the order
 > in force.
 
@@ -122,7 +122,8 @@ A picture sent to the bot is kept on the node, the same as **+ Add an image** on
 from Telegram and posts it to `POST /captures` ([API](api.md)) with the sender's first name as `actor`, the caption as
 the note, and `describe=1`. It answers "Kept." and says where the picture is and whether the image model
 (`EYES_MODEL`) is describing it. A picture the node already has (the same file, by its sha256) gets "That picture is
-already kept.", and one the node refuses gets the node's own reason.
+already kept.", and one the node refuses gets the node's own reason. Pictures are the `eyes` pack's: with it off the
+node refuses every one, and the reply is "The node did not keep it: the eyes pack is off on this node".
 
 - Sent as a photo, Telegram recompresses it and drops its EXIF, so the node takes the largest size, dates it by the
   message and places it in the node's own cell.

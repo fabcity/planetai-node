@@ -1,11 +1,11 @@
 # Data schema
-<!-- checked: v0.83.0 -->
+<!-- checked: v0.90.0 -->
 
 Everything the node knows sits in one Postgres database, `planetai`, on the machine itself. A pack's rules and cells are SQL written against the tables and views on this page, and a person debugging a node at 9 pm reads the same ones with `psql`. The raw readings live in `readings` and stay here: "No raw readings leave the instance that recorded them" (ARCHITECTURE.md). What goes up to a parent is `readings_1h`, the hourly means, and the timestamps in `alerts` and `actions`.
 
 `init.sql` is the whole schema, and it is written to be run twice: `CREATE TABLE IF NOT EXISTS`, `ALTER TABLE … ADD COLUMN IF NOT EXISTS`, and `DROP VIEW` then `CREATE VIEW`. Postgres runs it on its own only when the data volume is first created, so `update.sh` applies the same file to the existing database on every update, and `planetai restore` applies it after a restore. There are no other migration files. Schema changes are additive by rule (SPEC §5): no dropped columns, no renames, no destructive migrations, which is what makes a rollback a `git checkout <tag>` and a restart instead of a restore. The one column ever dropped is `events.cleared_at`, which nothing had written. `schema_version` records where a node is, and `/health` reports it.
 
-`init.sql` holds 17 tables, 4 views, 1 materialized view, 1 trigger and 1 role, and the `place` pack adds four tables of its own.
+`init.sql` holds 18 tables, 4 views, 1 materialized view, 1 trigger and 1 role, and the `place` pack adds four tables of its own.
 
 ## Tables
 
@@ -42,7 +42,7 @@ A facility has no readings. `kind = 'facility'` is a place with a name and a poi
 | `metric` | text | lowercase, no unit in the name |
 | `value` | double | |
 
-Unique on `(sensor_id, metric, ts)`, so polling twice is harmless; indexed `(sensor_id, metric, ts desc)`.
+Unique on `(sensor_id, metric, ts)`, so polling twice is harmless; indexed `(sensor_id, metric, ts desc)` and on `ts` alone.
 
 ### `alerts`
 
@@ -164,7 +164,7 @@ What each `(source, metric)` is, written at every start from `config/channels.ym
 
 ### `captures`
 
-The pictures a household keeps ([`docs/SPEC_eyes.md`](../SPEC_eyes.md)): `id`, `ts` (when it was taken), `received_at`, `kind` (`microscope` · `phone` · `camera` · `drone` · `balloon`), `cell` (H3 res 10), `lat` and `lon` (the exact point, or null), `outside` and `at_home` (both computed once on arrival), `actor`, `note`, `file` (a name inside `CAPTURES_DIR`, never a path), `sha256` (unique), `bytes`, `mime`, `meta` (the household's key: value lines) and `analysis` (what the image model found, null until described). The file is in `CAPTURES_DIR`, never in the database. Revoked from `planetai_ro`, and in no export, aggregate or push.
+The pictures a household keeps ([`docs/SPEC_eyes.md`](../SPEC_eyes.md)): `id`, `ts` (when it was taken), `received_at`, `kind` (`microscope` · `phone` · `camera` · `drone` · `balloon`), `cell` (H3 res 10), `lat` and `lon` (the exact point, or null), `outside` and `at_home` (both computed once on arrival), `actor`, `note`, `file` (a name inside `CAPTURES_DIR`, never a path), `sha256` (unique), `bytes`, `mime`, `meta` (the household's key: value lines) and `analysis` (what the image model found, null until described). Written by `/captures`, the eyes pack's routes. The file is in `CAPTURES_DIR`, never in the database. Revoked from `planetai_ro`, and in no export, aggregate or push.
 
 ### `household`
 
@@ -180,7 +180,7 @@ What the node learned: `kind` and `key` (the primary key together), `issue`, `me
 
 ### `things`
 
-What a home keeps ([`docs/SPEC_inventory.md`](../SPEC_inventory.md)): `id`, `added_at`, `class`, `name`, `count`, `used` (`weekly` · `monthly` · `yearly` · `never`), `condition` (`works` · `needs_repair` · `broken`), `offer` (`no` · `lend` · `give`), `capture_id` and `note`. Written by `/things`. Revoked from `planetai_ro`, so no pack SQL reads it, and named by no export or push. Its counts per class reach `readings` as the private `stock.<class>`, `idle.<class>` and `repair.<class>`.
+What a home keeps ([`docs/SPEC_inventory.md`](../SPEC_inventory.md)): `id`, `added_at`, `class`, `name`, `count`, `used` (`weekly` · `monthly` · `yearly` · `never`), `condition` (`works` · `needs_repair` · `broken`), `offer` (`no` · `lend` · `give`), `capture_id` and `note`. Written by `/things`, the things pack's routes. Revoked from `planetai_ro`, so no pack SQL reads it, and named by no export or push. Its counts per class reach `readings` as the private `stock.<class>`, `idle.<class>` and `repair.<class>`.
 
 ### `readings_1h_done`
 
@@ -208,7 +208,7 @@ Sensors land in `stats`. Slow sources (portals, models, maps) land in `observati
 
 ## The read-only role
 
-`planetai_ro` is `NOLOGIN`, has `SELECT` on every table except `settings`, `captures`, `things`, `learnings`, `digests` and `household`, and writes nothing. Every rule and every cell runs as it, one statement at a time with `SET LOCAL ROLE`, so a rule cannot read a token into an alert text or change a row.
+`planetai_ro` is `NOLOGIN`, has `SELECT` on every table except `settings`, `captures`, `things`, `learnings`, `digests` and `household`, and writes nothing. Every rule and every cell runs as it, one statement at a time with `SET LOCAL ROLE`, so a rule cannot read a token into an alert text or change a row. Grafana's login, `planetai_grafana`, is a member of it, made by the `grafana-role` container and not by `init.sql` ([Grafana](grafana.md)).
 
 ## Time and place inside the database
 

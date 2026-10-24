@@ -1,5 +1,5 @@
 # Install
-<!-- checked: v0.83.0 -->
+<!-- checked: v0.90.0 -->
 
 This page puts the node itself on a machine: two containers, a database on this disk, and the loops that read
 your place every five minutes. Once it is done the node has pulled the air model and the climate normals for
@@ -91,8 +91,9 @@ The place is the answer that matters most: it fixes the H3 cell the node stands 
 which a sensor counts as this node's own. Without a sensor the node still knows your weather, the satellite air
 model for your district and forty years of climate for your coordinates; see [Before a sensor](before-a-sensor.md).
 
-> **Only Smart Citizen, for now.** The installer offers the one kit the node reads. AirGradient and PurpleAir come
-> back as choices when the `air-sensors` pack reads them. Details on the [sensors](sensors.md) page.
+> **Only Smart Citizen, for now.** The installer offers one kit. AirGradient and PurpleAir are read by their own
+> packs, `airgradient` and `purpleair`, each on once `AIRGRADIENT_HOSTS` or `PURPLEAIR_HOSTS` is set in Set up ›
+> Sources. Details on the [sensors](sensors.md) page.
 
 ### Without a terminal
 
@@ -108,7 +109,7 @@ planetai setup --answers node.json
 
 `place` is geocoded with Open-Meteo, first hit, or replaced by `"lat"` and `"lon"`. `kind` is `home` (the default),
 `business`, `community` or `district`. `sensor` is `{}` or one of `{"sc": "19880"}`, `{"sc_user": "name"}`,
-`{"airgradient": "host"}`, `{"purpleair": "ip"}`; the last two are written to `.env` and not read yet. The answers
+`{"airgradient": "host"}`, `{"purpleair": "ip"}`; the last two set `AIRGRADIENT_HOSTS` and `PURPLEAIR_HOSTS`. The answers
 become `install.sh` flags and the installer runs with `--yes`. It needs `python3`, standard library only, and ends
 with `installed. planetai status --json for the state; planetai ui for the token.`
 

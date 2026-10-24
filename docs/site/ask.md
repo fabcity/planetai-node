@@ -1,5 +1,5 @@
 # Ask the node
-<!-- checked: v0.83.0 -->
+<!-- checked: v0.90.0 -->
 
 The dashboard can be asked about what it shows. A pane opens beside the page and talks to the model Set up names for
 this node, the same one the Telegram bot uses, through the same tools. It reads the page and the node, it explains,

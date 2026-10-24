@@ -1,10 +1,11 @@
 # How it works
-<!-- checked: v0.83.0 -->
+<!-- checked: v0.90.0 -->
 
 A node is two containers on one machine. `db` is Postgres with PostGIS, reachable only from the machine itself.
-`app` is one Python process that answers the HTTP API on port 8080 and runs ten loops in the background, an
-eleventh when the Reticulum bridge is on. Four more containers are optional: the Mosquitto broker for radios and
-DIY sensors, the `agent` container for the Telegram bot, the Reticulum bridge and an IPFS node for the export. Everything a node
+`app` is one Python process that answers the HTTP API on port 8080 and runs eleven loops in the background, a
+twelfth when the Reticulum bridge is on. Five more containers are optional: the Mosquitto broker for radios and
+DIY sensors, the `agent` container for the Telegram bot, the Reticulum bridge, an IPFS node for the export and
+Grafana, with a one-shot `grafana-role` that makes its login. Everything a node
 does is one of those loops or one of the API's answers, and this page follows a reading through all of it.
 
 ![The containers on the machine, and what they reach outside](img/containers.svg "The app and the database always run; the dashed containers run only when their profile is on.")
@@ -105,19 +106,22 @@ A pack's `cells.yml` computes the other Index cells the node has the data to fil
 |---|---|---|
 | poll | `POLL_SECONDS` (300) | asks every enabled adapter for sensors and readings and upserts them; a source that fails leaves its error in `/health.last_error`, and a loop that fails outright appears under its name in `/health.errors` |
 | rules and report | 60 s | writes the [report](report.md) if its hour is due, then runs every rule as `planetai_ro` |
+| hourly means | hourly | fills `readings_1h_done` with the finished hours, the last 26 every hour and all of them on the first run after a start and of each local day; `readings_1h` reads it |
 | usual for the hour | hourly | rebuilds `usual_by_hour`, each room's usual for each local hour over the fourteen complete days before today, which the event rules read |
 | push aggregates | hourly | if `PARENT_API_URL` is set, posts the last two hours of hourly means to the parent's `/aggregates` |
 | push events | hourly | if `PARENT_API_URL` is set, posts this node's alert timestamps of the last 36 hours to the parent's `/events` |
 | release check | hourly | unless `UPDATE_CHECK=off`, asks planetai.fab.city which version is current and says so in `/health`, the page's top bar and once per version on Telegram. It installs nothing |
 | node list | hourly | unless `UPDATE_CHECK=off`, reads the programme's `registry.json` from GitHub and serves it at `/nodes`, each other node's point to one decimal and no contact |
-| introduced species | hourly | only with `SPECIES_MATCH=on`: once a week reads the country's GRIIS checklist from GBIF |
-| others' records | hourly | only with `SPECIES_MATCH=on`: once a week counts GBIF's open records in each of the node's seven res-8 cells |
+| introduced species | hourly | only with the `eyes` pack on and `SPECIES_MATCH=on`: once a week reads the country's GRIIS checklist from GBIF |
+| others' records | hourly | only with the `eyes` pack on and `SPECIES_MATCH=on`: once a week counts GBIF's open records in each of the node's seven res-8 cells |
 | what the house learned | hourly | once a local day, in its first hour: what worked, what is usual, the alerts that may not fit, and the diary's entries |
 | Reticulum | 300 s | only with `RETICULUM_URL` set: asks the bridge for its health and the peers it has heard, for `/health.reticulum`. The bridge itself turns an `act <id>` message into `POST /actions` |
 
-With `MQTT_HOST` set, two threads run as well. One subscribes to the broker for Meshtastic radios and DIY
-sensors and, with `HA_DISCOVERY=1`, publishes Home Assistant discovery entities. The other passes the messages
-of the devices listed in `SC_FORWARD` on to smartcitizen.me unchanged.
+With `MQTT_HOST` set, one more thread subscribes to the broker for Meshtastic radios, DIY sensors and the
+topics a loaded pack's `hooks.py` names in `MQTT_TOPICS` (the `smartcitizen` pack's `device/sck/#`). That pack
+passes the messages of the devices listed in `SC_FORWARD` on to smartcitizen.me unchanged, on a thread of its
+own, and with `HA_DISCOVERY=1` the `home-assistant` pack publishes discovery entities after every batch of
+readings.
 
 Every document the node sends or serves as a contract carries a `schema` key: `issues-v0`, `days-v0`,
 `export-v0`, `report-v0`, and the two pushes, `aggregates-v0` and `events-v0`. See [Federation](federation.md).
@@ -204,7 +208,7 @@ by aggregation. No agent dispatches without a human row in `actions`. No layer r
 function. No scale is skipped: a city aggregator is built from nodes, not declared from above. The longer
 form, with the staging from one node to a bioregion, is [Architecture](architecture.md).
 
-> **Gap in v0.83.0.** Some of that staging is not built. The Act layer in `ARCHITECTURE.md` ends in a
+> **Gap in v0.90.0.** Some of that staging is not built. The Act layer in `ARCHITECTURE.md` ends in a
 > fabrication ticket when a decision is physical; there is no such ticket and no `fabricate` stage, and no job
 > has been handed to a workshop. The `make` pack, off until `MAKE_ENABLED=1`, only names the nearest fab lab.
 > Nodes finding each other (`docs/SPEC_discovery.md`) is not built. A node as a key rather than a name

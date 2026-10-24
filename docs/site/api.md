@@ -1,9 +1,9 @@
 # HTTP API
-<!-- checked: v0.83.0 -->
+<!-- checked: v0.90.0 -->
 
 Every node exposes the same API on port 8080. The dashboard, the `planetai` command, the MCP tools, a NAS pulling backups, Home Assistant and a parent node are all clients of it, and none of them has a private path in. A request carries a token as `Authorization: Bearer <token>` or carries nothing, and the `SHARE_LEVEL` setting decides what a request with nothing may read.
 
-The port is published on every interface of the host (`APP_PORT`, default 8080); Postgres listens on `127.0.0.1:5432` only. The node speaks plain HTTP, the tailnet encrypts the hop, and the [sharing page](sharing.md) says what to do on a network that is not a tailnet. Answers are JSON unless a route says otherwise.
+The port is published on every interface of the host (`APP_PORT`, default 8080); Postgres listens on `127.0.0.1:5432` only. The node speaks plain HTTP, the tailnet encrypts the hop, and the [sharing page](sharing.md) says what to do on a network that is not a tailnet. Answers are JSON unless a route says otherwise. A request that asks for gzip, as every browser does, gets JSON, scripts and styles above 1 kB compressed; `/mcp`, the `/ask` stream, the backups and the images are sent as they are.
 
 ## Access rules
 
@@ -19,7 +19,7 @@ A request is trusted when it comes from loopback or carries a household token: `
 | `act` | Loopback with no token; from anywhere else `ACT_TOKEN` or `ADMIN_TOKEN`. |
 | `children` | `AGGREGATE_TOKEN`, which a parent gives its children. It opens `POST /aggregates` and `POST /events` and nothing else. |
 
-The `off` allowlist, the default, is `/`, `/ui`, `/tester`, `/health`, `/llms.txt`, `/settings`, `/export`, `/presence`, `/nodes`, `/offers` and anything under `/static/`. The `open` allowlist adds `/stats`, `/sensors`, `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/trust`, `/nearby`, `/forecast`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, `/ask`, `/ask/status`, `/docs/search`, `/geo/cell`, `/learned/place`, and anything under `/exports/`, `/issues`, `/sources/` or `/ground/`. Any other value counts as `off`. The lists match the path whatever the method, so at `open` an anonymous `POST /readings` reaches the handler and gets 401. A path with no route also gets 403.
+The `off` allowlist, the default, is `/`, `/ui`, `/tester`, `/health`, `/llms.txt`, `/settings`, `/export`, `/presence`, `/nodes`, `/offers` and anything under `/static/`. The `open` allowlist adds `/stats`, `/sensors`, `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/trust`, `/nearby`, `/forecast`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, `/ask`, `/ask/status`, `/docs/search`, `/geo/cell`, `/learned/place`, and anything under `/exports/`, `/issues`, `/sources/` or `/ground/`. The pack routes among them (`/offers`, `/nearby`, `/forecast` and the `/earth` paths) are put there by their pack's `pack.yaml` (`share:`). Any other value counts as `off`. The lists match the path whatever the method, so at `open` an anonymous `POST /readings` reaches the handler and gets 401. A path with no route also gets 403.
 
 Tokens travel in the `Authorization` header only, never in a query string, and are compared in constant time. `ADMIN_TOKEN` is in `.env`, the other three in settings, and `planetai ui` prints them. An optional `X-Agent` header names the caller; `PUT /settings` writes it to the ledger.
 
@@ -44,6 +44,8 @@ The middlewares answer `{"error": "..."}`. A share-level 403 names the level and
 
 For a path no level opens it ends "No share level opens this one, so it always needs a token from anywhere but the node itself." `/mcp` without the admin token is 401 `{"error": "the agent surface needs Authorization: Bearer <ADMIN_TOKEN>"}`.
 
+Some routes are a pack's, served from `packs/<id>/routes.py`: `/forecast` (forecast), `/nearby` (nearby), `/earth`, `/earth/change.png` and `/earth/year.png` (earth), `/earth/frame.png` (earth-engine), every `/captures` route and `/species` (eyes), and `/things` and `/offers` (things). While its pack is off on the node, such a route answers 404 `{"detail": "the <pack> pack is off on this node"}`.
+
 Handlers answer `{"detail": "..."}`. The token checks:
 
 | Check | Token not set on the node | Wrong or missing in the request |
@@ -62,10 +64,10 @@ Access: public
 
 What every screen in the house polls. Answers at every `SHARE_LEVEL` and never makes an outbound request of its own.
 
-Returns `ok` (true once a poll has run), `node`, `version`, `schema`, `uptime_s`, `lat`, `lon`, `position` (`cell` or `point`), `city`, `polls`, `last_poll`, `last_error`, `ingested`, `errors` (each loop's last error), `locale`, `tz`, `cell` (`{id, res, edge_m, caption}`, null before setup), `docs`, `mcp` and `llms`. With their features on it adds `mesh` and `direct` (`MQTT_HOST`), `reticulum` (`RETICULUM_URL`) and `release` (`{latest, current, newer, checked, asked}` from the hourly check, with `UPDATE_CHECK=on`). `schema` starts with `unreachable` when the database refuses the app, usually a wrong password after a reinstall; `planetai doctor` says why.
+Returns `ok` (true once a poll has run), `node`, `version`, `schema`, `uptime_s`, `lat`, `lon`, `position` (`cell` or `point`), `city`, `polls`, `last_poll`, `last_error`, `ingested`, `errors` (each loop's last error), `locale`, `tz`, `cell` (`{id, res, edge_m, caption}`, null before setup), `docs`, `mcp` and `llms`. With their features on it adds `mesh` (`MQTT_HOST`), `direct` (`MQTT_HOST` with the smartcitizen pack on), `reticulum` (`RETICULUM_URL`) and `release` (`{latest, current, newer, checked, asked}` from the hourly check, with `UPDATE_CHECK=on`). `schema` starts with `unreachable` when the database refuses the app, usually a wrong password after a reinstall; `planetai doctor` says why.
 
 ```json
-{"ok": true, "node": "bayu-ungasan", "version": "v0.83.0", "schema": "0.61", "uptime_s": 86121,
+{"ok": true, "node": "bayu-ungasan", "version": "v0.90.0", "schema": "0.61", "uptime_s": 86121,
  "lat": -8.825, "lon": 115.159, "position": "cell", "city": "bali", "polls": 287,
  "last_poll": "2026-10-20T08:35:02+00:00", "errors": {}, "locale": "id", "tz": "Asia/Makassar",
  "cell": {"id": "...", "res": 8}, "docs": "https://planetai.fab.city/docs/", "mcp": "/mcp", "llms": "/llms.txt"}
@@ -221,6 +223,8 @@ Returns `{schema: "issues-v0", order, undeclared, dropped, headline, as_of, lead
 
 - `headline` is the issue of an open alert event, or else the one with the highest state; `lead.by` says which step picked it (`event`, `state`, `moved` or `order`).
 - Each issue carries `state`, `reason`, `name`, `metric`, `unit`, `line`, `stack`, `series`, `buckets`, `readouts`, `provenance`, `trend`, `open_asks`, `sentence`, `title` and `tagline` (by locale), `asking` (what the house is asked about it now), `hero` (what the page draws when it leads), `about`, and `usual` with `usual_absent`.
+- `stations` is every station with a position: its `read` (the 15-minute mean per metric) and its hourly `series`, both only for the metrics in `metrics`, at two decimals.
+- `asks` is the act ledger: `acts` (every act-level alert, first line, with its `level`), `actions`, `levels` and `where`.
 - `digest` holds a sentence per stage and locale, the ask pane's `prompts` and the `simple` paragraph.
 - `sections` are the readouts enabled packs declare under `sections:`, such as the shipped `fire` and `surface-heat`.
 - `events` is the alert events (see [Alerts](alerts.md)): the engine (`rules`, `shadow` or `events`), the button labels, the `open` events with `asking`, the `recent` ones and `sent_24h`.
@@ -512,7 +516,7 @@ The Index cells this node can compute, in the `fci-cells-v0` row shape. Domain c
 ### GET /sources
 Access: open
 
-The network's registry of what can be measured, a pinned copy of `awesome-fabcity-data` in `data/sources/`; at v0.83.0, pin `db77fcc` with 275 entries. Filters `?pillar=`, `?scale=`, `?cell=`, `?pilot=`, `?wired=` and `?status=`, combined with AND. Returns `{registry, counts, count, sources}`, where `counts` gives every cell its `capable`, `reviewed` and `candidate` numbers (12, 17 and 52 over 19 cells at this pin). See [the source registry](sources.md). 503 when the registry is missing.
+The network's registry of what can be measured, a pinned copy of `awesome-fabcity-data` in `data/sources/`; at v0.90.0, pin `cd90289` with 283 entries. Filters `?pillar=`, `?scale=`, `?cell=`, `?pilot=`, `?wired=` and `?status=`, combined with AND. Returns `{registry, counts, count, sources}`, where `counts` gives every cell its `capable`, `reviewed` and `candidate` numbers (12, 17 and 55 over 19 cells at this pin). See [the source registry](sources.md). 503 when the registry is missing.
 
 ### GET /sources/{pillar}/{scale}/{slug}
 Access: open
@@ -556,11 +560,11 @@ A child pushes one row per alert it raised, timestamps only: `alert_id`, `rule`,
 ### GET /export
 Access: public
 
-One day of this node as open data under CC BY 4.0, for `?day=YYYY-MM-DD`: hourly means, the Index cells, the first line of each alert, ρ and the offers. Never raw readings, `private` channels or secrets, and the node's own sensors are named by role (`indoor-1`). `backup.sh` writes it every night to `exports/<node>/YYYY-MM-DD.json`.
+One day of this node as open data under CC BY 4.0, for `?day=YYYY-MM-DD`: hourly means, the Index cells, the first line of each alert, ρ and, with the things pack on, the offers. Never raw readings, `private` channels or secrets, and the node's own sensors are named by role (`indoor-1`). `backup.sh` writes it every night to `exports/<node>/YYYY-MM-DD.json`.
 
 ```json
 {"schema": "export-v0", "node": "bayu-ungasan", "lat": -8.825, "lon": 115.159, "day": "2026-10-19",
- "version": "v0.83.0", "licence": "CC BY 4.0",
+ "version": "v0.90.0", "licence": "CC BY 4.0",
  "hourly": [{"t": "2026-10-19T00:00:00+08:00", "sensor": "indoor-1", "metric": "pm25", "mean": 11.2, "n": 12}],
  "alerts": [], "cells": [], "rho": {}, "offers": []}
 ```
@@ -646,7 +650,7 @@ Each document that travels between nodes names its format in `schema`: `issues-v
 | Telegram | Each alert at or above `ALERT_LEVEL`, each report, once per newer release, and `getMe` once a day for the bot's name | The message, with `TELEGRAM_BOT_TOKEN` |
 | `planetai.fab.city/node0/get/VERSION` | Hourly, unless `UPDATE_CHECK=off` | Nothing about the house |
 | GitHub's `registry.json` | Hourly, unless `UPDATE_CHECK=off` | Nothing about the house |
-| GBIF | With `SPECIES_MATCH=on`: each new scientific name, and weekly the country's checklist and the record counts for the seven cells | A name, a country, seven cells |
+| GBIF | With `SPECIES_MATCH=on` and the eyes pack on: each new scientific name, and weekly the country's checklist and the record counts for the seven cells | A name, a country, seven cells |
 | `POST {RETICULUM_URL}/send` | Each act-level alert | The alert text |
 | MQTT | Each act-level alert (`MESH_ALERTS=1`), Home Assistant discovery (`HA_DISCOVERY=1`) | The alert's first line, discovery and state topics |
 

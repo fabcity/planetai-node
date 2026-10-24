@@ -1,5 +1,5 @@
 # PLANETAI Node. Spec v0.1
-<!-- checked: v0.83.0 -->
+<!-- checked: v0.90.0 -->
 
 Two containers by default. `ARCHITECTURE.md` is the whole system; this document is the node. Everything here is
 either a contract that must survive rewrites, or a retired piece with the condition that brings it back.
@@ -14,7 +14,7 @@ These are what any node has to share with node #1 to work with it. They are chea
 
 **Indoor.** `sensors.indoor` is carried on every sensor and honoured by every rule. Indoor sensors never enter an ambient average. Inherited from Bali Air Dispatch's `suspected_indoor`.
 
-**Domain neutrality.** The core evaluates rules and cells; it does not know what a metric means. Thresholds, messages and pillar mappings live in packs; `app/main.py`, `app/index.py` and `app/packs.py` must name no domain metric. `index.py` and `packs.py` keep to it. `main.py` does not yet: `/nearby` and the default of `/series`, `/shape` and `/sparks` name `pm25`, `/forecast` names the forecast pack's sensors, and `/place/geojson` reads the place pack's tables. They move out with their packs. Adapters in `app/sources.py` do name metrics: they translate a device's fields into the schema, which is a driver's job, not a domain's.
+**Domain neutrality.** The core evaluates rules and cells; it does not know what a metric means. Thresholds, messages and pillar mappings live in packs; `app/main.py`, `app/index.py` and `app/packs.py` must name no domain metric. `index.py` and `packs.py` keep to it. `main.py` does not yet: the default of `/series`, `/shape` and `/sparks` names `pm25`, and `/place/geojson`, in `app/geo.py`, reads the place pack's tables. `/nearby` and `/forecast` moved out with their packs, into `packs/<id>/routes.py`. Adapters in `app/sources.py` do name metrics: they translate a device's fields into the schema, which is a driver's job, not a domain's.
 
 **Metric names.** Lowercase, no units in the name. Air today: `pm25 pm25_raw pm10 pm1 temp humidity pressure aqi gas_resistance noise light eco2 tvoc co2 tvoc_index nox_index`. Other domains propose their own in `docs/DOMAINS.md`: first pack to ship a metric names it. Units are fixed: µg/m³, °C, %, kPa. `pm25` is the *published* value; if a correction was applied, the uncorrected figure sits next to it as `pm25_raw`. Never overwrite raw.
 
@@ -37,7 +37,7 @@ These are what any node has to share with node #1 to work with it. They are chea
 | | |
 |---|---|
 | `db` | `imresamu/postgis:16-3.4-alpine` (Postgres 16 and PostGIS 3.4, for amd64 and arm64). Bound to localhost. Volume `db`. Nightly `pg_dump` via `backup.sh`. |
-| `app` | Python 3.12. Ten timer threads (poll, rules, the hourly refresh of the usual-for-the-hour view, the aggregates and events pushes, the release check, the read of the programme's node list, GBIF's invasive-species checklist and its records nearby, and the daily learnings and diary), an eleventh for Reticulum when it is on and two more for MQTT when a broker is set, + FastAPI on :8080. `app/main.py` is ~3,900 lines. |
+| `app` | Python 3.12. Eleven timer threads (poll, rules, the hourly table behind `readings_1h`, the hourly refresh of the usual-for-the-hour view, the aggregates and events pushes, the release check, the read of the programme's node list, GBIF's invasive-species checklist and its records nearby, which run only while the eyes pack is on, and the daily learnings and diary), a twelfth for Reticulum when it is on and two more for MQTT when a broker is set, + FastAPI on :8080. `app/main.py` is ~2,200 lines, with route groups in `app/basemap.py`, `geo.py`, `machine.py`, `household.py` and `presence.py`, and a pack's routes in its own `routes.py`. |
 
 `GET /health /sensors /readings /stats /alerts /aggregates /cells /rho` · `POST /aggregates` (parent) · `POST /actions` (ρ) · `POST /readings` (downstream contributors, admin token).
 
@@ -45,7 +45,7 @@ Compute at node #1: an M-series Mac. Postgres and one Python process idle at abo
 
 ## 3. Sources (adapters)
 
-An adapter is a function returning `(sensors, readings)`. Two are described here; `docs/sensors.md` has the rest.
+An adapter is a function returning `(sensors, readings)`. Two are described here, both packs now (`packs/smartcitizen`, `packs/bali-air-dispatch`); `docs/sensors.md` has the rest.
 
 - `smartcitizen`: polls `api.smartcitizen.me/v0/devices/<id>`. Maps on measurement *name* so SCK 2.1 and 2.3 both work. Marks `indoor` from the kit's `exposure`. `local = TRUE`.
 - `baliairdispatch`: polls `baliairdispatch.com/api/v1/latest`. Drops `stale`, `suspected_indoor` and `suspected_malfunctioning`, keeps stations within `BAD_RADIUS_KM`, and excludes this node's own hardware three ways (ids it polls, `BAD_MIN_SEPARATION_M`, `BAD_EXCLUDE`) plus one device arriving under two networks' ids. Stores `pm25` and `pm25_raw`. `local = FALSE`, always. Attribution: Bali Air Dispatch + the row's network.
@@ -83,7 +83,7 @@ stays readable.
 | **Mesh (Tailscale)** | ~~node #2 exists on a different network~~ **fired** | `planetai mesh`; `PARENT_API_URL` becomes a tailnet hostname. See `docs/NETWORKING.md` |
 | **Headscale** (self-hosted control plane) | a partner's governance requires no third-party coordinator, or the free tier is exceeded | swap the login server; nothing else changes |
 | **MQTT broker** | ~~the first sensor that publishes~~ **fired, shipped** | `mqtt` profile; `planetai meshtastic`; `msh/#` and `planetai/sensors/#` |
-| **Reticulum** bridge (LXMF inbox/outbox) | **shipped**: `planetai reticulum`, TCP today, RNode a config block | `reticulum` profile |
+| **Reticulum** bridge (LXMF inbox/outbox) | **shipped**: `planetai reticulum`, TCP today, RNode a config block | `reticulum` profile, built on the node from [fabcity/planetai-reticulum](https://github.com/fabcity/planetai-reticulum) at the commit `RETICULUM_REF` pins |
 | **Reticulum** node-to-node data transport | a district and a community node with no internet between them | Transport-enabled node + store-and-forward; see `docs/NETWORKING.md §3` |
 | **Node registry service + signed handshake** | `registry.json` PRs stop scaling: roughly 30 nodes or a second operator org | FastAPI + SQLite, Ed25519 identity, human approval |
 | **Federated learning (Flower)** | a model exists whose parameters can't be averaged by the hourly push, *and* the sovereignty claim is being examined by someone outside the team | self-hosted SuperLink at the district, SuperNodes at hubs; FedAvg first, FedProx when climates diverge |
@@ -94,9 +94,9 @@ stays readable.
 | **Telegram reply → action** | ~~the first operator who says "I did it" in the chat instead of curl~~ **fired, shipped**: `/act <id> <what you did>` to the bot | a 20-line webhook that maps a reply to `#<alert_id>` into `POST /actions` |
 | **Cells → Airtable / index.fab.city** | the Index surface wants to pull from a node rather than read Airtable | aggregator (or a cron) pushes `GET /cells` rows into `FCI Observations`; states preserved |
 | **Upstream compute** | a job a node's hardware can't run | `UPSTREAM_COMPUTE_URL`, a job submission endpoint: one branch in `run_pack_script` and `planetai run` that sends `{pack, script, env}` and unpacks the files it gets back into `PACK_OUT`, for scripts that never touch the database. No code yet. Models already attach upstream through `AGENT_REMOTE_URL` and `AGENT_ONLINE_URL` (ARCHITECTURE §4) |
-| **Separate notifier service** | a second channel (WhatsApp Business) with its own auth lifecycle | until then, a function. Telegram, the LoRa mesh, LXMF and Home Assistant are four channels and all four are still functions, called from `notify()` and `ha_alert()`. The trigger is an auth lifecycle, not a channel count. |
+| **Separate notifier service** | a second channel (WhatsApp Business) with its own auth lifecycle | until then, a function. Telegram, the LoRa mesh, LXMF and Home Assistant are four channels and all four are still functions: `notify()` in `app/channels.py`, and the home-assistant pack's `on_alert` hook. The trigger is an auth lifecycle, not a channel count. |
 | **Artifacts from packs** | **shipped**: `out/` is mounted writable and `planetai run <pack> <script>` executes a pack's scripts | `packs/earth-engine/timelapse.py` is the worked example |
-| **A native install, with no container runtime** | the database stops needing PostGIS: a SQLite-able `place`, or `place` moved out of the app. Spiked and dropped: `db` is a PostGIS image (`imresamu/postgis:16-3.4-alpine`), and the app needs PostGIS outside the pack (`app/main.py` serves `/place/geojson` with `ST_AsGeoJSON`, `ST_SimplifyPreserveTopology` and `ST_DWithin` on a geography), so a native node is a SQL port, not a packaging change | uv-managed venv + launchd/systemd. Costed at 5 to 8 days plus a migration for the live nodes and a permanent second SQL dialect across 85 call sites, 17 psycopg importers, `config/rules.yml` and both lint gates. Not worth it while Colima installs with one command on every macOS ≥ 13.5 |
+| **A native install, with no container runtime** | the database stops needing PostGIS: a SQLite-able `place`, or `place` moved out of the app. Spiked and dropped: `db` is a PostGIS image (`imresamu/postgis:16-3.4-alpine`), and the app needs PostGIS outside the pack (`app/geo.py` serves `/place/geojson` with `ST_AsGeoJSON`, `ST_SimplifyPreserveTopology` and `ST_DWithin`), so a native node is a SQL port, not a packaging change | uv-managed venv + launchd/systemd. Costed at 5 to 8 days plus a migration for the live nodes and a permanent second SQL dialect across 85 call sites, 17 psycopg importers, `config/rules.yml` and both lint gates. Not worth it while Colima installs with one command on every macOS ≥ 13.5 |
 | **`place` as an optional pack, and the plan view with it** | a machine that must run a node and cannot run PostGIS, or an operator who does not want the plan view. Agreed in principle and not built: with the native path dropped, nothing calls for it | `/place/geojson` returns 410 and the dashboard says which card is absent and why, the way it already does for a missing source |
 
 The rule: a piece comes back when its trigger fires, with a PR that names the trigger. Not before.

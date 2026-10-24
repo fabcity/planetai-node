@@ -1,5 +1,5 @@
 # Where the data lives
-<!-- checked: v0.83.0 -->
+<!-- checked: v0.90.0 -->
 
 `planetai storage` shows all of this on one screen. `GET /storage`, for a token or this machine at every
 `SHARE_LEVEL`, gives the sizes as numbers: the database, `out/`, the backups (and what `BACKUP_KEEP` days of dumps
@@ -83,8 +83,8 @@ infrastructure. rclone's `crypt` backend encrypts the copy if you want that.
 ## The export
 
 `/export?day=YYYY-MM-DD`, written every night to `exports/<node>/`: the hourly mean, min and max per sensor and
-metric, the Index cells, the alerts (first line only), ρ, and the household's offers (class, name, condition and
-count at the cell). Your own sensors are named by role (`indoor-1`, `outdoor-2`), never by device id. The position
+metric, the Index cells, the alerts (first line only), ρ, and, while the `things` pack is on, the household's offers (class, name,
+condition and count at the cell). Your own sensors are named by role (`indoor-1`, `outdoor-2`), never by device id. The position
 is the centre of the node's resolution-8 cell, not its point. No raw rows, no tokens, no chat ids. CC BY 4.0,
 stated in the file.
 

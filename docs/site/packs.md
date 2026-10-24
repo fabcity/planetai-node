@@ -1,5 +1,5 @@
 # Packs
-<!-- checked: v0.83.0 -->
+<!-- checked: v0.90.0 -->
 
 A pack is how a place teaches its node what to watch and what to say about it. The core names no metric: what
 `pm25` means, which line matters in this house, and the sentence a person should read at 9 pm are all written in a
@@ -9,7 +9,7 @@ There are two tiers:
 
 | | core | wild |
 |---|---|---|
-| lives in | `packs/` in the node's repository, twenty-one of them | its author's own repository, or a folder in [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs) |
+| lives in | `packs/` in the node's repository, twenty-five of them | its author's own repository, or a folder in [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs) |
 | reaches a node | with every release | `planetai packs add` |
 | checked by | the node's `make lint` and tests, on every commit | the wild-packs repository's CI, against the node's `main`, every week |
 | kept by | the node's maintainers | its author |
@@ -19,12 +19,14 @@ reads it, how to add a wild pack, and one small data pack built step by step.
 
 ```
 packs/<id>/
-  pack.yaml     id, name, description, version, requires, domain, sources:, pip:, env:, secrets:, readouts:, sections:
+  pack.yaml     id, name, description, version, requires, domain, sources:, pip:, env:, secrets:, switch:, share:, footprint:, readouts:, sections:
   rules.yml     alerts: SQL that returns rows, one message per row; or a contribution to the report
   cells.yml     Index cells: SQL that returns one `value`
+  issue.yml     the dashboard issue this pack ships, read while the pack is on (see Issues)
   channels.yml  what the pack's own metrics ARE: ambient, enclosure, device_health, derived, index, private
   adapter.py    a new source; its presence makes this a code pack
-  hooks.py      on_readings and on_alert, what the pack does with what the node stores and sends; also code
+  hooks.py      on_readings and on_alert, what the pack does with what the node stores and sends; MQTT_TOPICS and on_mqtt, what it reads off the broker; also code
+  routes.py     the pack's own HTTP routes, mounted at start for a core pack and 404 while it is off; also code
   *.py          scripts, run with `planetai run <pack> <script>`
   README.md     where the thresholds came from, which place they were written for, what the pack does not know
 ```
@@ -49,19 +51,20 @@ blank means every pack, otherwise a comma list of ids. The loader reads the fold
 mounted into the app container, so a folder you add is seen within a minute without a restart. A folder that
 `planetai packs add` put there carries a `.wild` file beside its `pack.yaml`; any other folder counts as core.
 
-A pack is a code pack if its folder has an `adapter.py`. The loader sets `kind` from that file and ignores the
-`kind:` line in `pack.yaml`. An adapter runs with the node's privileges and network access, so it runs only with
-`PACKS_ALLOW_CODE=1`: read it first. Without that setting the node logs `pack <id> ships code; set
+A pack is a code pack if its folder has any `.py` file. The loader sets `kind` from that and ignores the
+`kind:` line in `pack.yaml`. An adapter or hooks runs with the node's privileges and network access, so it runs only
+with `PACKS_ALLOW_CODE=1`: read it first. Without that setting the node logs `pack <id> ships code; set
 PACKS_ALLOW_CODE=1 to run it (read <path> first)` and loads the pack's rules and cells anyway.
 
 Because blank `PACKS_ENABLED` means every pack, a pack that must stay off by default has its own setting. `make`
 waits for `MAKE_ENABLED=1`, because it reads a directory that is not openly licensed, and `fire` for
 `FIRE_ENABLED=1`, for the bandwidth; both also need `PACKS_ALLOW_CODE=1`. `bali-air-dispatch` names `BAD_ENABLED` as
-its `switch:`, and a core pack with a switch runs its adapter when the switch is `1`, without `PACKS_ALLOW_CODE`.
+its `switch:`, and a core pack with a switch runs its adapter and hooks when the switch is `1`, without
+`PACKS_ALLOW_CODE`; `air-quality`, `home-assistant`, `smartcitizen`, `airgradient` and `purpleair` have one too.
 
 A `pack.yaml`, `rules.yml`, `cells.yml` or adapter that does not parse is logged and skipped, and the rest of the
 node carries on. Every installed pack's `env:` keys, enabled or not, appear in Set up → Packs with their help text
-and default. Rule ids are namespaced `<pack>/<id>`; the two core rules keep bare ids.
+and default. Rule ids are namespaced `<pack>/<id>`; the core's rules in `config/rules.yml` keep the ids written there.
 
 ## Your first data pack
 
@@ -154,14 +157,14 @@ raw template, braces and all.
 | `kind: data` | `data` or `code`; the loader overwrites it: `code` when the pack ships any `.py` file (an adapter, hooks or a script), `data` when it ships none |
 | `version: 0.1.0` | the pack's own version, returned in `GET /packs`; nothing compares it |
 | `requires: {node: ">=0.76"}` | the node versions the pack loads on. A node outside the range does not load it, says so once in its log, and lists it under "not loaded" in `planetai packs`. Declare at least `>=0.76` for `readouts` or `sections`, which an older node ignores without a word |
-| `domain` | which dashboard issue the pack feeds (`air`, `heat`, `land`, `coast`, …). A cross-domain pack's rules are claimed one by one in an `issue.yml`. A pack that reaches no issue and is not one of the domains outside them (`weather`, `place`, `governance`, `repair`) fails `tests/test_issues.py`. See [Issues](issues.md) |
+| `domain` | which dashboard issue the pack feeds (`air`, `heat`, `land`, `coast`, …). A cross-domain pack's rules are claimed one by one in an `issue.yml`. A pack that reaches no issue, is not one of the domains outside them (`weather`, `place`, `governance`, `repair`) and ships an alert no issue claims fails `tests/test_issues.py`. See [Issues](issues.md) |
 | `sources: [environmental/community/bali-air-dispatch]` | the registry ids of the data sources it reads. `make lint` runs `tools/check_registry.py`, which fails and names any id that is not an entry in the registry the node carries. See [The source registry](sources.md) |
 | `pip: [earthengine-api]` | libraries `planetai packs install` builds into the image, once, as the union of the lists of the packs this node loads (every folder, when the node is down) |
 | `footprint:` | where the pack's word reaches, drawn on the page as the cells that cover it: `key`, `name`, `what`, the `setting` that holds the radius with its `default` and `unit` (`km` or `m`), `shape` (`circle` or `square`), `base_res`, and `native_m` when the source has a grain of its own (earth's 10 m). Read while the pack is on; coast, earth and place declare one |
-| `share: {open: [/path]}` | the paths this pack's `routes.py` serves that join the `open` share list (a wild pack's are ignored). `forecast`, `nearby`, `earth` and `earth-engine` declare theirs |
+| `share: {open: [/path]}` | the paths this pack's `routes.py` serves that join the `open` share list, or with `"off"` (quoted, since YAML reads a bare `off` as false) every share level. A wild pack's are ignored. `forecast`, `nearby`, `earth` and `earth-engine` declare `open`, `things` declares `"off"` |
 | `env: ["# comment", "KEY=default"]` | settings `planetai packs install` appends to `.env` under a dated marker when the key is absent; a comment line travels with the key under it. No space after `=` |
 | `secrets: [CAMERA_WYZE_BRIDGE_TOKEN]` | which of its `env` keys are secrets. Set up and the agent's `settings_get` mask them once saved, like the node's own tokens; a key not listed here is shown to anyone holding the admin token |
-| `switch: BAD_ENABLED` | the pack's own on-switch, one of its `env` keys. A core pack that names one runs its `adapter.py` when the switch is `1`, without `PACKS_ALLOW_CODE`; a wild pack still needs the flag. Set up draws any pack's `…_ENABLED` key as a switch |
+| `switch: BAD_ENABLED` | the pack's own on-switch, usually one of its `env` keys. A core pack that names one runs its `adapter.py` and `hooks.py` when the switch is `1`, without `PACKS_ALLOW_CODE`; a wild pack still needs the flag. It may be a list of keys, on when any is set and not 0 (`smartcitizen`: `[SC_USER, SC_DEVICES, MQTT_HOST]`). Set up draws any pack's `…_ENABLED` key as a switch |
 | `stations: {source, prefix, radius, box, url, attribution}` | a network of other people's stations the pack reads, for "Air stations nearby", `GET /nearby` and the ring on the map. `box` (south, north, west, east) is where the network has stations; `radius` names the key that sets how far the ring reaches |
 | `agent_scripts: [verify]` | which of a wild pack's scripts a connected agent may run through `run_pack_script`. Leave it out and none do; a core pack's are all open, and `planetai run` runs every script either way. No agent can run `adapter.py` as a script |
 | `readouts: {air: [ … ]}` | numbers the pack adds to an issue, in the shape an issue file uses; shown in Figures, and in the sentence of a context issue. It adds and never replaces. See [PACKS.md](https://github.com/fabcity/planetai-node/blob/main/docs/PACKS.md#readouts-on-an-issue) |
@@ -203,7 +206,7 @@ included. The first rule in `packs/air-quality/rules.yml`, with its message shor
 | `line: {value, label}` | no | the line the report names when it says whether the reading came back under it after the alert; `label` is whose line it is (`line_epa`, `line_who`), a key of the report's own words. The test fails if the number is not in the SQL |
 | `message` | unless `contributes` | a string or `{en, id, es}`, filled with the row by `str.format`; a `None` renders as a dash |
 | `contributes: report` | instead of `message` | never sent; the first row lands in the report bundle under the rule's id |
-| `kind`, `issue` | no | makes the rule the event engine's. `kind` is `ahead`, `unusual`, `spike`, `sustained` or `danger`; `issue` (default `heat` for the `heat` pack, `air` for `air-quality`, else the pack's id) is the story its rows fold into. Every row must carry `value`, `line` and, optionally, `over` (false for a row inside the margin, which keeps an open event open and never opens one). Under `ALERT_ENGINE=rules` the rule is skipped; under `shadow` and `events` it writes no `alerts` row. See [Alerts](alerts.md#the-event-engine) |
+| `kind`, `issue` | no | makes the rule the event engine's. `kind` is `ahead`, `unusual`, `spike`, `sustained` or `danger`; `issue` (default the issue the pack ships in its `issue.yml`, else the pack's id) is the story its rows fold into. Every row must carry `value`, `line` and, optionally, `over` (false for a row inside the margin, which keeps an open event open and never opens one). Under `ALERT_ENGINE=rules` the rule is skipped; under `shadow` and `events` it writes no `alerts` row. See [Alerts](alerts.md#the-event-engine) |
 
 The node picks `message[ALERT_LOCALE]` and falls back to `en`. Every shipped rule carries all three languages, and
 every `{placeholder}` in every language must be a column the top-level `SELECT` returns, or `{line}` with a
@@ -296,7 +299,7 @@ planetai run season window            # every paired station, its week, its base
 ```
 
 They run inside the app container, where the dependencies are, with `PACK_OUT=/app/out`. `out/` is the one writable
-path, and what they write there is yours to send anywhere. Every `*.py` in a pack except `adapter.py` is listed, so
+path, and what they write there is yours to send anywhere. Every `*.py` in a pack except `adapter.py` and `hooks.py` is listed, so
 a helper module shows up too (`place/satellite.py` does).
 
 ## A dashboard section
@@ -367,7 +370,7 @@ Each of these would fill a gap the node has today. Take the one whose sensor you
 
 | pack | what it would watch | Index cell | what it needs |
 |---|---|---|---|
-| classroom | CO₂ over 1,200 ppm for 20 minutes: open the windows | `Social\|Community` | a CO₂ sensor the node reads (the AirGradient adapter is written and not yet polled, see [Sensors](sensors.md)) |
+| classroom | CO₂ over 1,200 ppm for 20 minutes: open the windows | `Social\|Community` | a CO₂ sensor the node reads (the `airgradient` pack reads an AirGradient monitor's, see [Packs that ship](packs-reference.md#airgradient)) |
 | outage | grid up and down, as outage hours | `Economic\|Community` | a smart plug on the broker |
 | water | turbidity, TDS and tank level: is the well safe, will the tank last to the rain | `Environmental\|Community` | a DIY probe on an ESP32, over MQTT |
 | lab machines | hours run, jobs, material in and out | `Economic\|Community` | a fab lab's job log, from Fabman or a CSV |

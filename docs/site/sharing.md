@@ -1,5 +1,5 @@
 # Sharing and security
-<!-- checked: v0.83.0 -->
+<!-- checked: v0.90.0 -->
 
 Read this page before you open the node to anyone else: a wall screen in the house, a phone, a neighbour's
 network, a parent node. It says what a reader without a token may see, which token opens what, what leaves the
@@ -144,21 +144,22 @@ up never travels to a NAS or a remote. The node never logs the Telegram URL, bec
 | hourly means and alert timestamps | a parent node, hourly, if `PARENT_API_URL` is set | values and timestamps; never where, never text, never who |
 | the daily export | anyone (CC BY 4.0) | your own sensors by role (`indoor-1`, `outdoor-2`), no raw rows, no chat ids |
 | a presence announce | the Reticulum network, every half hour, only with `RETICULUM_PRESENCE=1` | the H3 cell rounded up to `RETICULUM_PRESENCE_RES` (3), with a floor of resolution 6 that no setting goes under |
-| the node's coordinates | Open-Meteo, for weather and the CAMS air model, with `OPENMETEO_ENABLED=1` | rounded to three decimals by the two core adapters |
+| the node's coordinates | Open-Meteo, for weather and the CAMS air model, with `OPENMETEO_ENABLED=1` | rounded to three decimals for the current weather and the current CAMS reading |
 | a request for the fab lab directory | gitlab.fabcloud.org (`MAKE_SOURCE=archive`) or api.fablabs.io (`live`), only with `MAKE_ENABLED=1` and `PACKS_ALLOW_CODE=1` | no coordinates: the whole directory comes down and the node works out the distances |
 | fires nearby | firms.modaps.eosdis.nasa.gov, at most every three hours, only with `FIRE_ENABLED=1` and `PACKS_ALLOW_CODE=1` | the name of a regional file; with `FIRMS_MAP_KEY`, a box `FIRE_REGION_KM` (150) round the node, to three decimals |
 | the ground's heat | planetarycomputer.microsoft.com, anonymously, once a day, with the `surface-heat` pack on and `PACKS_ALLOW_CODE=1` | the node's own point, unrounded, in each scene search |
 | a request for the current version | planetai.fab.city, every hour, with `UPDATE_CHECK=on` (the default) | one file. Fab City's host sees this house's internet address and that a node lives there. `off` means the node never asks |
 | a request for the list of nodes | raw.githubusercontent.com (`registry.json` on the repository's main), every hour, with `UPDATE_CHECK=on` | one file, as above. `off` means the node never asks |
 | a species name | api.gbif.org, when a plant or animal in an image is given a scientific name, with `SPECIES_MATCH=on` (off by default) | the scientific name only, never the picture or where it was taken. GBIF sees this house's internet address and the names asked |
-| the country's list of introduced and invasive species | api.gbif.org and the checklist's archive host, weekly, with `SPECIES_MATCH=on` | which country's GRIIS checklist to read (the country comes from `NODE_TZ`) |
-| the open records others made nearby | api.gbif.org, weekly, with `SPECIES_MATCH=on` | the shape of each of the node's seven resolution-8 cells, which places the node to within about 2 km. Only counts come back, from CC0 and CC BY records |
+| the country's list of introduced and invasive species | api.gbif.org and the checklist's archive host, weekly, with `SPECIES_MATCH=on` and the `eyes` pack on | which country's GRIIS checklist to read (the country comes from `NODE_TZ`) |
+| the open records others made nearby | api.gbif.org, weekly, with `SPECIES_MATCH=on` and the `eyes` pack on | the shape of each of the node's seven resolution-8 cells, which places the node to within about 2 km. Only counts come back, from CC0 and CC BY records |
 | who lives here, in an alert | the household's own Telegram chats, only for an act-level heat or air alert that weighs on someone ticked in Node › What it remembers | one line naming who ("a child under five"), never a name or an age; never over the mesh, Reticulum or Home Assistant, and never in the stored alert text |
+| the ground's height | copernicus-dem-30m.s3.amazonaws.com, once, only when somebody runs `planetai run terrain fetch` and `TERRAIN_DEM_PATH` is blank | the one to four 1° tiles the square touches, and the parts of them that hold the node's square, `TERRAIN_RADIUS_M` (5000) round it |
 | the square the node's own map covers | build.protomaps.com and OpenAerialMap (`planetai run place basemap`) or Earth Engine under the node's own project (`planetai run earth-engine basemap`), once, only when somebody runs the command | the tiles, the finest of them `GROUND_RADIUS_KM` (12) round the node; afterwards the node serves the map at `/ground/*` and sends nothing |
 | the square being looked at | a tile server, per tile, only with `MAP_TILES=on` | the tile's own square; `off` (the default) draws from the node's local copy of OpenStreetMap |
 | a question to the bot | an online model, only if you gave it a key and changed `AGENT_PREFER` from its default, `private` | the question and the tool results the model asked for |
 | a question in the dashboard's ask pane | the model Set up names: this machine, one on your network, or an online provider only with `AGENT_PREFER` set to `fallback` or `strongest` | the question and the page's own sentences and numbers, with no position, name or id; the node keeps no transcript |
-| an offer | anyone: `GET /offers` at every level, and the daily export | only a thing the household marked lend or give: its class, name, condition and count, at the node's own resolution-8 cell, with a link to the node's Telegram bot. Never a note, a photo, how often it is used or a point |
+| an offer | anyone, while the `things` pack is on: `GET /offers` at every level, and the daily export | only a thing the household marked lend or give: its class, name, condition and count, at the node's own resolution-8 cell, with a link to the node's Telegram bot. Never a note, a photo, how often it is used or a point |
 | raw readings | nobody | nothing |
 | a `private` reading | nobody: not the export, a parent, the report bundle or any agent, and on this machine's raw routes only the admin token | it is used on the page, by rules and by cells; Home Assistant discovery, the household's own automation, still receives it |
 
@@ -166,8 +167,9 @@ At `AGENT_PREFER=private`, the default, the ask pane's model is on this machine 
 conversation never leaves: a remote model at an address outside your network is not used. An online model is a choice somebody here makes in Set up, and the pane says so on every
 answer. A remote agent gets the MCP surface instead, which rounds, refuses and audits. See [Ask the node](ask.md).
 
-> **Gap in v0.83.0.** The `coast` and `forecast` packs, and the first start's 92 days of CAMS history, send the
-> node's full-precision coordinates to Open-Meteo; only the two core adapters in `app/sources.py` round them. The
+> **Gap in v0.90.0.** The `coast` and `forecast` packs, and the first start's 92 days of CAMS history, send the
+> node's full-precision coordinates to Open-Meteo; only the weather adapter in `app/sources.py` and the
+> `air-quality` pack's current reading round them. The
 > first start also sends them to NASA POWER and OSM Nominatim. The containers run as root.
 
 ## Signed updates
@@ -186,7 +188,7 @@ you trust and to tell us if it happens twice.
 `planetai version` prints what this node trusts, and `planetai doctor` says whether the last update checked:
 
 ```
-planetai-node v0.83.0  ·  a Fab City project  ·  <name> @ <city>
+planetai-node v0.90.0  ·  a Fab City project  ·  <name> @ <city>
   updates signed by  fabcity  SHA256:OrUQK/jsjNjpei1U8B5tyuEWY36/gwYWXrgVF+5ycIY
 ```
 

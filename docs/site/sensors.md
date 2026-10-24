@@ -1,5 +1,5 @@
 # Sensors and sources
-<!-- checked: v0.83.0 -->
+<!-- checked: v0.90.0 -->
 
 This page connects the things that measure your place to the node. Once a sensor of yours is polled, the rules
 have a room to fire on, and its hourly means can count toward this place's cell in the Fab City Index. Whether
@@ -56,7 +56,7 @@ switch: it runs when that switch is on.
 | source | turned on by | `kind` | `local` | what it reads |
 |---|---|---|---|---|
 | Smart Citizen | `SC_DEVICES=19880,…` or `SC_USER=name` (every kit on the account; `SC_EXCLUDE` drops some) | `sensor` | yes, then narrowed by `LOCAL_RADIUS_M` | The public API, no key. Metrics are mapped by measurement name, so SCK 2.1 and 2.3 both work. `indoor` comes from each kit's own `exposure`. No humidity correction: the Seeed HM-3301 is not a Plantower, and the EPA correction was not derived for it. |
-| Open-Meteo and CAMS | `OPENMETEO_ENABLED=1` (default) | `model` | never | Weather now at the node's coordinates, and PM2.5, PM10, O₃, NO₂, dust and UV from the Copernicus model at 11 km, as `cams-point`. Free, no key, anywhere. Never in an ambient average. |
+| Open-Meteo and CAMS | `OPENMETEO_ENABLED=1` (default) | `model` | never | Weather now at the node's coordinates (core), and PM2.5, PM10, O₃, NO₂, dust and UV from the Copernicus model at 11 km, as `cams-point` (the `air-quality` pack, on the same key). Free, no key, anywhere. Never in an ambient average. |
 | NASA POWER | the first-start bootstrap (`BOOTSTRAP=1`) | `model` | never | Forty years of monthly temperature, humidity and rain normals, as `power-point`. |
 | CKAN portals | `CKAN_PORTALS=slug=url,…` (five of the six presets name one; `delhi` leaves it blank) | `portal` | never | A portal's upkeep (datasets in total, the share touched in 90 days) for the `open-data-health` pack's `Governance\|City` cell. Scale from `CKAN_SCALE` (`city`). |
 | Meshtastic radios | `MQTT_HOST` (set by `planetai meshtastic`) | `sensor` | yes | Telemetry from radios through the gateway, on `msh/#`, each reading filed under the radio that measured it. `MESH_INDOOR_NODES=!id,!id` marks the indoor ones. A radio's own temperature, humidity and pressure are its box, not the street. [Radios](radios.md) has the setup and the metrics. DIY pods publish to `planetai/sensors/<id>/<metric>` on the same broker. |
@@ -65,7 +65,7 @@ switch: it runs when that switch is on.
 | Xiaomi purifiers (`xiaomi-air` wild pack, listed at [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs)) | `planetai packs add xiaomi-air`, then `XIAOMI_PURIFIERS=Living Room@192.168.4.98=<token>,…` and `planetai packs install` (installs python-miio) | `sensor` | yes (no coordinates, so it stays local) | Mi Home purifiers read on the LAN over miio/MIoT, always `indoor`: `pm25`, `temp`, `humidity`, `filter_life`, and `pm10` where the model reports it. Ids are `xm-<mac6>`. You extract each unit's 32-hex token once with xiaomi-cloud-tokens-extractor; after that nothing talks to the Xiaomi cloud. The pack lists that line under `secrets:`, so Set up shows it masked once saved. No EPA correction, because the sensor is not a Plantower. |
 | ThingData (`thingdata` pack) | `THINGDATA_INSTANCES=slug=url,…` | `portal` | never | A repair-knowledge server's catalogue: things described, guides, stories, and whether anyone is still writing. Scale from `THINGDATA_SCALE` (`city`). |
 | Fab labs (`make` pack) | `MAKE_ENABLED=1` and `PACKS_ALLOW_CODE=1`; `MAKE_ENABLED` ships as `0` | `facility` | never | One row per active fab lab within `MAKE_RADIUS_KM` (50), from the Fab Lab Network directory, with no readings. `meta` holds the slug, capabilities, city, distance and the lab's URL, never an email or a phone number. The directory is not openly licensed; read [the report page](report.md#the-nearest-place-to-make-or-fix) before you turn it on. |
-| Other code packs | the pack's own settings | as declared | as declared | `coast` (Open-Meteo Marine), `forecast` (BMKG, Open-Meteo), `earth` (AlphaEarth embeddings), `earth-engine` (Dynamic World, Sentinel-2, VIIRS), `place` (OpenStreetMap into PostGIS), `fire` (NASA FIRMS, also `FIRE_ENABLED=1`), `surface-heat` (Landsat and MODIS through Planetary Computer). See [Packs that ship](packs-reference.md). |
+| Other code packs | the pack's own settings | as declared | as declared | `coast` (Open-Meteo Marine), `forecast` (BMKG, Open-Meteo), `earth` (AlphaEarth embeddings), `earth-engine` (Dynamic World, Sentinel-2, VIIRS), `place` (OpenStreetMap into PostGIS), `terrain` (Copernicus DEM GLO-30), `fire` (NASA FIRMS, also `FIRE_ENABLED=1`), `surface-heat` (Landsat and MODIS through Planetary Computer). See [Packs that ship](packs-reference.md). |
 
 **AirGradient and PurpleAir, on the LAN.** The `airgradient` pack reads each host in `AIRGRADIENT_HOSTS` at
 `/measures/current`, and the `purpleair` pack each host in `PURPLEAIR_HOSTS` at `/json?live=true`, never through the
@@ -105,8 +105,8 @@ Several of these come from Bali Air Dispatch's methodology.
    channel. Smart Citizen's per-reading timestamp is empty on the kits node #1 reads, so the adapter stamps every
    channel with one kit-level time at each poll. A channel that has stopped producing new values still gets a
    fresh timestamp, and its frozen value is stored again under it. That pulls the 24-hour mean toward the frozen
-   number and shrinks its variance, so a dying channel looks steadier. The `trust` pack's `channel_dead` rule
-   looks at the value instead.
+   number and shrinks its variance, so a dying channel looks steadier. The core rule `trust/channel_dead`
+   (`config/rules.yml`) looks at the value instead.
 3. **A daily mean can be one reading.** Check `n` before trusting an aggregate.
 4. **Instants are UTC, days are local.** Daily buckets use `NODE_TZ`. Bali's 9 am burning peak vanishes on a UTC
    day.
@@ -116,7 +116,7 @@ Several of these come from Bali Air Dispatch's methodology.
    that way.
 8. **Sensors in the same place disagree.** Three kits at one address read the same air and one runs about 1.5
    times the other two. Collocation is the cheapest calibration a node can run, and most nodes have it by accident.
-   The `trust` pack's `peer_disagreement` rule reads it.
+   The core rule `trust/peer_disagreement` reads it.
 
 ## Where "outside" comes from
 
@@ -153,7 +153,7 @@ place it was written for.
 
 ## Adding a source
 
-An adapter is one function in `app/sources.py` (a device driver the core should know) or in a pack's `adapter.py`
+An adapter is one function in `app/sources.py` (an open protocol the core speaks, such as CKAN) or in a pack's `adapter.py`
 (a source that belongs to a domain, see [Packs](packs.md)), returning two lists:
 
 ```python

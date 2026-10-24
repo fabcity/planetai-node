@@ -1,6 +1,7 @@
 #!/bin/sh
 # Grafana's login to this node's database (docker-compose.yml, profile grafana). planetai_grafana is a member of
-# planetai_ro, which init.sql grants SELECT on every table but settings and nothing else; on top of that every
+# planetai_ro, which init.sql grants SELECT on every table but settings, captures, things, learnings, digests and
+# household, and nothing else; on top of that every
 # session it opens is read-only, a query stops at 30 s so a month-wide panel cannot starve the node, and it holds
 # four connections at most. The session timezone is the node's, as app/main.py::db() sets it, so a panel's hour
 # of day is the household's hour. Run on every start; the password is made once and kept in the volume.

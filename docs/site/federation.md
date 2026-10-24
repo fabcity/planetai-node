@@ -1,5 +1,5 @@
 # Federation and the Index
-<!-- checked: v0.83.0 -->
+<!-- checked: v0.90.0 -->
 
 This is the part that joins the network. With a parent set, a house becomes one cell in a district's picture
 without its readings leaving the house: every hour it sends up hourly means and the timestamps of its alerts,
@@ -184,7 +184,7 @@ enters `sensors`, `cells` or any count.
 
 The daily export (`GET /export?day=`, written nightly to `exports/<node>/`, `schema: export-v0`) is what a
 parent, the Index, a researcher or the commons should receive: hourly mean, min, max and count per sensor and
-metric, the cells, the first line of each alert, ρ, what the household offers (`offers`), and the centre of
+metric, the cells, the first line of each alert, ρ, what the household offers (`offers`, while the things pack is on), and the centre of
 the node's resolution-8 cell in place of its coordinates. Your own sensors are named by role (`indoor-1`,
 `outdoor-2`) instead of by id. There are no raw rows, no tokens and no chat ids, and CC BY 4.0 is stated in the
 file as `licence`. Each source's own attribution is in its sensor's `meta` on `/sensors`, not in the export.
