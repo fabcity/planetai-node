@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **A station's hourly series carries the metrics the page can show, at two decimals.** `/issues` sent every metric
+  every station reported, a radio's channel load and a sensor's raw counts included: 215 kB of node #1's 510 kB. The
+  dashboard's notes for the stations section look each one up in the page's metric list, so a radio's
+  `lora_channel_pct` threw there and the notes vanished with no word on node #1. Now `series` holds the same metrics as
+  `read`, rounded like it.
+
 - **Answers are gzipped.** A screen that asks for it (every browser does) gets JSON, script and styles above 1 kB
   compressed: `GET /issues` went out as 510 kB on node #1 and is about 88 kB now, for every screen, the doors and the
   phone page included. Level 5, which costs node #1 20 ms on that body where Starlette's default 9 costs 95. Left as
