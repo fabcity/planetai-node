@@ -14,6 +14,7 @@ places: [bali]
 tags: [elevation, dem, dsm, terrain, hydrology, flooding, copernicus, earth-observation, cog]
 added: 2026-10-23
 assisted_by: Claude Code
+adapter: pack:terrain
 feeds_cells: []
 auth: none
 upstream_listed_in: []
