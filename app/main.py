@@ -912,6 +912,27 @@ async def _share_level(request, call_next):
     return Response(body, status_code=resp.status_code, headers=headers)
 
 
+# Registered last, so it is the outermost layer: it compresses what _share_level has already relabelled, and
+# _share_level reads a plain body. GET /issues went out as 510 kB of plain JSON on node #1 (24 Oct 2026); gzip makes it
+# about 88 kB. Level 5, not Starlette's 9: 20 ms against 95 ms for that body on node #1, for 5 kB more. Files that are
+# compressed already are left alone (vector tiles say so in content-encoding; these say it in their type). This is
+# docs/SPEC_mobile.md §9's v1.1.
+from starlette.middleware.gzip import GZipMiddleware  # noqa: E402
+
+
+class _GZipButMCP(GZipMiddleware):
+    """Not /mcp: docs/SPEC_mobile.md §9 leaves the agent surface as it was, whatever it answers in."""
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http" and scope["path"].startswith("/mcp"):
+            return await self.app(scope, receive, send)
+        await super().__call__(scope, receive, send)
+
+
+app.add_middleware(_GZipButMCP, minimum_size=1000, compresslevel=5,
+                   exclude_content_types=("text/event-stream", "application/gzip", "image/jpeg", "image/png",
+                                          "image/webp", "image/heic"))
+
+
 app.include_router(issues.api.router)  # GET /issues and /issues/fixtures/<name>; see app/issues/
 import ask  # noqa: E402 — GET /ask/status, POST /ask, GET /docs/search: the dashboard's ask pane
 app.include_router(ask.router)
