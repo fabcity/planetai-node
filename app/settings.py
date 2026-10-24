@@ -206,7 +206,12 @@ BOOTSTRAP = {
     "NODE_NAME": "Name", "NODE_CITY": "City key", "NODE_LAT": "Latitude", "NODE_LON": "Longitude", "NODE_TZ": "Time zone",
     "NODE_SCALE": "Scale", "APP_PORT": "Port", "COMPOSE_PROFILES": "Extra containers", "MQTT_HOST": "Broker",
     "BACKUP_DIR": "Backups", "BACKUP_REMOTE": "Off-machine copy", "BACKUP_KEEP": "Days of backups kept", "DATA_DIR": "Database location", "CAPTURES_DIR": "Pictures folder", "EXPORT_ENABLED": "Daily export", "IPFS_PUBLISH": "IPFS", "POLL_SECONDS": "Poll interval",
+    # Grafana (docs/site/grafana.md): on when COMPOSE_PROFILES names it, which `planetai grafana` does. Set up draws
+    # these as one block, with whether it is on and how to open it (Tomas, 24 Oct 2026: it was nowhere on the page).
+    "GRAFANA_BIND": "Grafana address", "GRAFANA_PORT": "Grafana port", "GRAFANA_ADMIN_PASSWORD": "Grafana password",
 }
+# Read at start and never shown: Set up says only whether it is set. Every other bootstrap value is printed as it is.
+BOOTSTRAP_SECRET = {"GRAFANA_ADMIN_PASSWORD"}
 
 # Values a key refuses. Most settings are free text on purpose — a node has to keep running through a typo — but a
 # report interval the scheduler cannot honour would make the node silent instead of wrong, which is worse. The help
@@ -494,6 +499,7 @@ def describe(unlocked: bool = False, public: frozenset | set = PUBLIC) -> dict:
             "choices": None, "outward": k in OUTWARD, "runs_code": k in RUNS_CODE,
             "default": r["default"], "pack": r["pack"]})
     for k, label in BOOTSTRAP.items():
-        out["bootstrap"].append({"key": k, "label": label, "value": os.getenv(k, ""),
-                                 "group": BOOTSTRAP_GROUP.get(k, "system")})
+        v = os.getenv(k, "")
+        out["bootstrap"].append({"key": k, "label": label, "value": ("set" if v else "") if k in BOOTSTRAP_SECRET else v,
+                                 "group": BOOTSTRAP_GROUP.get(k, "system"), "secret": k in BOOTSTRAP_SECRET})
     return out

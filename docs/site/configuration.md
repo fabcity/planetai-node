@@ -232,6 +232,9 @@ backups and the pictures folder. See [Storage](storage.md).
 | `IPFS_PUBLISH` | `0` | `1`, `0` | Adds each export to IPFS and records the CID in `exports/<node>/CIDS.txt`. `planetai ipfs` turns it on. | bootstrap |
 | `APP_PORT` | `8080` | port | The host port, on every interface. Change it if 8080 is taken. | bootstrap |
 | `COMPOSE_PROFILES` | blank | `mqtt`, `agent`, `ipfs`, `reticulum`, `grafana` | Which optional containers run. Set by `planetai meshtastic`, `agent local`, `ipfs`, `reticulum` and `grafana`; leave it alone. | bootstrap |
+| `GRAFANA_BIND` | `127.0.0.1` | address | Where Grafana listens. `0.0.0.0` opens it to the network; set `GRAFANA_ADMIN_PASSWORD` first. Set up › System shows it. See [Grafana](grafana.md). | bootstrap |
+| `GRAFANA_PORT` | `3000` | port | Grafana's port. | bootstrap |
+| `GRAFANA_ADMIN_PASSWORD` | blank = `admin` | text | The password of Grafana's `admin` login. Set up says only whether it is set. | bootstrap, secret |
 
 ## Packs
 

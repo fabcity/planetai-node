@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Grafana is in Set up.** Set up › System says whether Grafana is running, at which address, whether its password
+  is set (never the password), how to open it from a laptop, and links to its docs page. Its three keys are read at
+  start, so they are changed in `.env` and `planetai grafana`, as before.
+
 - **The alert ledger draws an act at full weight again.** On a node that sends alerts (not events), Act's rows are
   drawn at full weight when a rule's latest ask is level act and quieter otherwise; `/issues` published the asks
   without their level, so every row was drawn quiet. Each ask carries `level` now. The doors read it too, on a screen
