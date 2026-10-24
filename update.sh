@@ -281,7 +281,7 @@ done
 # draws every issue) gets the pack added, or the issue would vanish from its page on this update.
 issues_named="$(pq "SELECT value FROM settings WHERE key = 'NODE_ISSUES'")"
 [[ -z "$issues_named" ]] && issues_named="$(sed -n 's/^NODE_ISSUES=\([^#[:space:]]*\).*/\1/p' .env | tail -1)"
-for owned in air:air-quality heat:heat coast:coast land:earth; do
+for owned in air:air-quality heat:heat coast:coast land:earth water:terrain; do
   issue="${owned%%:*}" pack="${owned#*:}"
   [[ -z "$issues_named" || ",$issues_named," == *",${issue},"* ]] || continue
   pe="$(pq "SELECT value FROM settings WHERE key = 'PACKS_ENABLED'")"

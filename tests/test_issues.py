@@ -4,7 +4,7 @@
   · every enabled pack's domain reaches an issue, or is named here as deliberately not one
   · every alert rule a cross-domain pack ships is claimed by an issue, or named here
   · the line each issue names is the same number as the pack rule it points at
-  · a synthetic water.yml loads and appears, with no code change anywhere
+  · a synthetic tap-water issue loads and appears, with no code change anywhere
   · NODE_ISSUES parsing: unknown names dropped, empty falls back, duplicates collapse
 
 Run: PACKS_DIR=packs PYTHONPATH=app python3 tests/test_issues.py
@@ -34,9 +34,9 @@ logging.getLogger("planetai.issues").setLevel(logging.ERROR)
 fails = []
 DECL = I.load()
 
-# --- the four shipped files validate -------------------------------------------------------------
+# --- the five shipped files validate -------------------------------------------------------------
 # Since 23 Oct 2026 an issue ships in the pack that watches it (packs/<id>/issue.yml), read while that pack is on.
-OWNER = {"air": "air-quality", "heat": "heat", "land": "earth", "coast": "coast"}
+OWNER = {"air": "air-quality", "heat": "heat", "land": "earth", "coast": "coast", "water": "terrain"}
 for want, pk in OWNER.items():
     if want not in DECL:
         raw = yaml.safe_load((ROOT / f"packs/{pk}/issue.yml").read_text()) or {}
@@ -68,7 +68,11 @@ _db, _ = _5d("NODE_ISSUES=air,heat\nPACKS_ENABLED=smartcitizen,heat\n", "")
 assert _db.endswith("PACKS_ENABLED=smartcitizen,heat,air-quality\n"), _db
 assert _5d(_db, "")[0] == _db, "a second update changed the list again"
 _, _env = _5d("", "NODE_ISSUES=\nPACKS_ENABLED=heat\n")
-assert "PACKS_ENABLED=heat,air-quality,coast,earth" in _env, "NODE_ISSUES empty draws every issue: every owner"
+assert "PACKS_ENABLED=heat,air-quality,coast,earth,terrain" in _env, "NODE_ISSUES empty draws every issue: every owner"
+# Every shipped issue's pack is in 5d's list: on 23 Oct 2026 `water` shipped without it, so naming water in a node's
+# NODE_ISSUES drew nothing on a node that lists its packs (node #1 does).
+_pairs = set(_step.split("for owned in ", 1)[1].split(";", 1)[0].split())
+assert _pairs == {f"{k}:{pk}" for k, pk in OWNER.items()}, _pairs
 assert _5d("NODE_ISSUES=air\n", "PACKS_ENABLED=\n") == ("NODE_ISSUES=air\n", "PACKS_ENABLED=\n"), "an empty list is every pack"
 print("  update.sh 5d: a node that lists its packs gains the pack of each issue it draws, once")
 
@@ -182,12 +186,14 @@ for key, d in DECL.items():
                      f"the two moved; they must say the same thing.")
 
 # --- a fifth issue is a fifth file ---------------------------------------------------------------
+# Tap water, not `water`: since 23 Oct 2026 the terrain pack ships a real `water` issue (where rain runs), so the
+# synthetic one needs a key of its own.
 WATER = {
-    "name": {"en": "Water", "id": "Air bersih", "es": "Agua"},
+    "name": {"en": "Tap water", "id": "Air bersih", "es": "Agua del grifo"},
     "kind": "sensed", "metric": "turbidity", "unit": "NTU", "dp": 1,
     "compare": {"mode": "ratio", "margin": 1.5},
     "line": {"value": 5, "unit": "NTU", "source": "WHO drinking-water guideline", "sql": None},
-    "packs": {"domains": ["water"], "rules": []},
+    "packs": {"domains": ["tapwater"], "rules": []},
     "distances": {
         "room": {"from": "stats", "place": "room", "metrics": ["turbidity"], "field": "mean_15m",
                  "aggregate": "mean"},
@@ -199,19 +205,19 @@ WATER = {
     "empty": {loc: "No water sensor here yet." for loc in I.LOCALES},
 }
 with tempfile.TemporaryDirectory() as tmp:
-    for k, pk in OWNER.items():                       # the four shipped issues, as files in one directory
+    for k, pk in OWNER.items():                       # the five shipped issues, as files in one directory
         shutil.copy(ROOT / f"packs/{pk}/issue.yml", Path(tmp) / f"{k}.yml")
-    (Path(tmp) / "water.yml").write_text(yaml.safe_dump(WATER, allow_unicode=True))
+    (Path(tmp) / "tapwater.yml").write_text(yaml.safe_dump(WATER, allow_unicode=True))
     five = I.load(tmp)
-    if "water" not in five:
-        fails.append("a synthetic water.yml did not load — adding an issue is not one file after all")
-    elif five["water"]["name"]["en"] != "Water":
-        fails.append("water.yml loaded but its name did not survive")
+    if "tapwater" not in five:
+        fails.append("a synthetic tapwater.yml did not load — adding an issue is not one file after all")
+    elif five["tapwater"]["name"]["en"] != "Tap water":
+        fails.append("tapwater.yml loaded but its name did not survive")
     if len(five) != len(DECL) + 1:
-        fails.append(f"loading five files gave {len(five)} issues")
-    got, dropped = I.order("air,water,heat", five)
-    if got != ["air", "water", "heat"]:
-        fails.append(f"NODE_ISSUES=air,water,heat gave {got} — a new issue must be orderable at once")
+        fails.append(f"loading six files gave {len(five)} issues")
+    got, dropped = I.order("air,tapwater,heat", five)
+    if got != ["air", "tapwater", "heat"]:
+        fails.append(f"NODE_ISSUES=air,tapwater,heat gave {got} — a new issue must be orderable at once")
     if dropped:
         fails.append(f"nothing should have been dropped, but {dropped} was")
 

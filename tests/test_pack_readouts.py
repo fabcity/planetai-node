@@ -31,7 +31,7 @@ ISSUES = tmp / "issues"; ISSUES.mkdir()
 for _f in sorted((ROOT / "packs").glob("*/issue.yml")):
     shutil.copy(_f, ISSUES / f"{_f.parent.name}.yml")
 FILES = I.load(ISSUES)
-assert set(FILES) == {"air", "heat", "coast", "land"}, set(FILES)
+assert set(FILES) == {"air", "heat", "coast", "land", "water"}, set(FILES)
 LABEL = {"en": "NEA PSI", "id": "PSI NEA", "es": "PSI de NEA"}
 
 
@@ -60,8 +60,9 @@ print("  a pack's readouts follow the issue's own, in the order of the packs' id
 assert metrics(merged({"id": "p", "readouts": {"air": [ro()]}}), "air") == [("psi", "nea-psi")]
 print("  an issue with no readouts of its own (air) takes a pack's")
 
-d = merged({"id": "p", "readouts": {"water": [ro()]}})
-assert d == FILES and any("'water'" in m and "no issue on this node" in m for m in logs), logs
+# `noise`, not `water`: water is a real issue since the terrain pack (23 Oct 2026).
+d = merged({"id": "p", "readouts": {"noise": [ro()]}})
+assert d == FILES and any("'noise'" in m and "no issue on this node" in m for m in logs), logs
 print("  a readout for an issue nobody declared is left out, and the log says which")
 
 for bad, why in ((ro(label={"en": "PSI"}), "label in every locale"), (ro(unit=None), "needs a unit"),
@@ -84,9 +85,9 @@ for shape in (["psi"], "psi", {"air": "psi"}):
 assert merged({"id": "p"}, {"id": "q", "readouts": None}) == FILES
 print("  readouts that are not a mapping of lists are ignored, and a pack without them changes nothing")
 
-bad = {"id": "p", "readouts": {"water": [ro()]}}
+bad = {"id": "p", "readouts": {"noise": [ro()]}}
 merged(bad); I.pack_readouts(copy.deepcopy(FILES), [bad]); I.pack_readouts(copy.deepcopy(FILES), [bad])
-assert sum("'water'" in m for m in logs) == 1, logs
+assert sum("'noise'" in m for m in logs) == 1, logs
 print("  a pack's mistake is logged once, not on every /issues request")
 
 # ---------------------------------------------------------------- load(), from a real packs folder
