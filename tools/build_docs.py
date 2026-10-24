@@ -76,6 +76,7 @@ NAV = [
         ("dashboard", "docs/site/dashboard.md"),
         ("wall", "docs/site/wall.md"),
         ("design", "docs/site/design.md"),
+        ("grafana", "docs/site/grafana.md", "Grafana"),
     ]),
     ("Agents", [
         ("ask", "docs/site/ask.md"),

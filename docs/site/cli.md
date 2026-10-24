@@ -136,6 +136,8 @@ The settings themselves, and what each one does, are on [Configuration](configur
 | `planetai storage set keep <days>` | Days of dumps kept (`BACKUP_KEEP`). |
 | `planetai storage set data` | Refuses, and explains why the database stays on an internal disk. |
 | `planetai ipfs` | Starts Kubo (profile `ipfs`) and turns on publishing of each day's export; CIDs land in `exports/<node>/CIDS.txt`. |
+| `planetai grafana` | Starts Grafana (profile `grafana`) on loopback, with a read-only database login and a starter dashboard: your own panels over the node's readings. [Grafana](grafana.md). |
+| `planetai grafana off` | Stops it, takes it out of `COMPOSE_PROFILES` and drops its database login. Your own dashboards stay in the `grafana` volume. |
 
 Where the data lives, and why never on a network mount: [Storage](storage.md).
 
