@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Presence is announced a minute after an update, not half an hour.** `planetai update` starts the app and the
+  Reticulum bridge together; the bridge's first `GET /presence` found no node and it waited `RETICULUM_ANNOUNCE_S`
+  (30 min) to ask again. It now asks every 30 s, ten times at most. `RETICULUM_REF` moves to planetai-reticulum
+  `b84c24f`.
+
 - **Naming `water` in `NODE_ISSUES` now turns the terrain pack on.** On a node that lists its packs, `planetai
   update` adds the pack that ships each issue it draws (step 5d). Water was missing from that list, so naming it
   drew nothing on such a node, node #1 included. The registry is pinned to awesome-fabcity-data `7d645f3` (283
