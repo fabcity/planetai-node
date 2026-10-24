@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **The registry's adapter check runs in `make lint`, against the pin.** `tools/check_registry.py` fails
+  when a pack reads an entry that names no `adapter`, or when an `adapter` names a pack or a core function
+  this tree does not have. It was the registry's `scripts/wired.py`, which read this repository's live
+  main, so it went red on the registry with no commit there every time a reader left the core. Now the move
+  and its re-pin are one node PR.
+
 - **The source registry is pinned at `a3f5cae`.** awesome-fabcity-data #99 names `pack:air-quality` as what reads
   the Open-Meteo CAMS entry, since the reader moved there in #344, and the pin also picks up #98: Copernicus DEM
   GLO-30 names `pack:terrain`. Still 283 entries.
