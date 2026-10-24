@@ -25,6 +25,10 @@ the sync script refuses a branch name.
 
 Nothing in this repository edits a source entry. `make lint` fails if anything did:
 `tools/check_registry.py` re-derives `index.json` from the YAML and compares it byte for byte.
+It also checks each entry's `adapter` against this tree, both ways: an entry a pack reads must name
+an adapter, and every `pack:<id>` or `core:<fn>` must exist here. Moving a reader (the CAMS model left
+`core:openmeteo_air` for `pack:air-quality` on 24 Oct 2026) is a registry PR first, then one node PR
+with the move and the re-pin together.
 
 ## Reading it
 
@@ -84,6 +88,7 @@ emits rows it can compute — so that half of the question is `planetai sources 
 2. Wait for the merge. What a pack may name is what the registry has *published*.
 3. On a dev machine, re-pin: `tools/sync_registry.sh <the merge sha>`. It refuses a branch name.
 4. Commit the diff — `data/sources/` and nothing else — and put one line in `CHANGELOG.md`.
-5. Only now may a `packs/*/pack.yaml` name it in `sources:`. `make lint` enforces that order.
+5. Only now may a `packs/*/pack.yaml` name it in `sources:`, and the entry must name an `adapter:`
+   (that pack, unless something else here reads it). `make lint` enforces both.
 
 The entry travels to the node in the next release, with everything else.
