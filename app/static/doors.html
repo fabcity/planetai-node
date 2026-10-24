@@ -622,16 +622,27 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
 .snav a i{font-style:normal;color:var(--mute);letter-spacing:.04em;text-transform:none}
 .snav a.on{background:var(--ink);color:var(--ground);padding-left:10px}.snav a.on i{color:var(--ground);opacity:.75}
 .snav a:not(.on):hover{padding-left:6px}
+/* the menu in categories, and each section's explainer on hover or keyboard focus (24 Oct 2026): ink on paper, square,
+   no shadow; a phone has no hover, so there it stays off and the section's own blurb says the same */
+.snav .scat{font:600 var(--t-cap) var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--mute);padding:16px 0 6px}
+.snav .scat:first-child{padding-top:0}
+.snav a{position:relative}
+.snav a .tip{display:none;position:absolute;left:calc(100% + 14px);top:-1px;z-index:20;width:280px;padding:10px 12px;background:var(--ground);color:var(--ink);border:1px solid var(--ink);font:400 var(--t-small)/1.45 var(--body);letter-spacing:0;text-transform:none;white-space:normal;pointer-events:none}
+.snav a .tip b{display:block;font:600 var(--t-cap) var(--mono);letter-spacing:.14em;text-transform:uppercase;margin-bottom:4px}
+.snav a .tip em{display:block;font:500 var(--t-cap)/1.5 var(--mono);font-style:normal;color:var(--mute);margin-top:6px}
+@media (hover:hover){.snav a:hover .tip{display:block}}
+.snav a:focus-visible .tip{display:block}
 .spane{padding:18px 0 120px 32px;min-width:0}
 .spane h2{margin:0 0 6px}.spane .blurb{max-width:68ch;color:var(--mute);margin:0 0 16px}
 .spane .gate{border:1px solid var(--ink);padding:10px 14px;margin:0 0 16px;max-width:68ch}
 .spane .gate a{color:var(--ink)}
-#setupv2 .srow{display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,340px);gap:10px 28px;padding:16px 0;border-top:1px solid var(--hair);align-items:start}
+#setupv2 .srow{display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,340px);gap:10px 28px;padding:12px 0;border-top:1px solid var(--hair);align-items:start}
 #setupv2 .srow.wide{grid-template-columns:minmax(0,1fr)}
 #setupv2 .srow .sl label{font:600 var(--t-read)/1.3 var(--body);display:block}
 #setupv2 .srow .sm{font:500 var(--t-cap) var(--mono);color:var(--mute);margin-top:3px;display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center}
 #setupv2 .srow .sm code{font:inherit;color:var(--ink)}
 #setupv2 .srow .help{margin:6px 0 0;color:var(--mute);font-size:var(--t-small);max-width:62ch}
+#setupv2 .sdet{margin-left:auto}
 #setupv2 .srow .out,.sbar .out{border:1px solid var(--ink);padding:0 5px;color:var(--ink);font:600 var(--t-cap) var(--mono);letter-spacing:.04em}
 #setupv2 .srow .sc input,#setupv2 .srow .sc select{width:100%;background:var(--ground);color:var(--ink);border:1px solid var(--ink);border-radius:0;padding:8px 10px;font:500 var(--t-small) var(--mono)}
 #setupv2 .srow .sc input:focus-visible,#setupv2 .srow .sc select:focus-visible,#setupv2 .sw:focus-visible,.sbtn:focus-visible,.share .opt:focus-within{outline:2px solid var(--ink);outline-offset:2px}
@@ -651,7 +662,13 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
 .share .opt.on{background:var(--ink);color:var(--ground)}.share .opt.on span{color:var(--ground);opacity:.85}
 .packs{display:flex;flex-direction:column;border-top:1px solid var(--ink);margin-bottom:18px;max-width:860px}
 .pcard{border-right:1px solid var(--ink);border-bottom:1px solid var(--ink);border-left:1px solid var(--ink);padding:16px 20px}
-.pcard .ph{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:start}
+.pcard .ph{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:16px;align-items:center}
+/* a pack card folds to its switch, its name and how many settings it has; + opens what it does and every setting, in
+   full (Tomas, 24 Oct 2026: fold the pack, not the rows inside it) */
+.pcard .px{width:44px;height:44px;border:1px solid var(--ink);background:none;color:var(--ink);font:500 18px/1 var(--mono);cursor:pointer;border-radius:0}
+.pcard .px:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.pcard .pbody{display:none}.pcard.open .pbody{display:block}
+.pcard .pbody > .help{margin-top:12px}
 .pcard .ph b{font:600 var(--t-read) var(--body)}.pcard .sm{font:500 var(--t-cap) var(--mono);color:var(--mute);margin-top:2px}
 .pcard .help{margin:8px 0 0;color:var(--mute);font-size:var(--t-small);line-height:1.5;max-width:72ch;overflow-wrap:break-word;word-break:normal}
 #setupv2 .pcard .srow{grid-template-columns:minmax(0,1fr) minmax(220px,340px);gap:10px 28px;padding:14px 0 0;border-top:1px solid var(--hair);margin-top:12px}
@@ -678,6 +695,7 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
 #stoast.bad{background:var(--ground);color:var(--ink);border:2px solid var(--signal-worse)}
 @media (max-width:760px){.sgrid{grid-template-columns:minmax(0,1fr)}.snav{position:static;flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--ink);padding:0}
   .snav a{flex-shrink:0;border-top:0;border-right:1px solid var(--hair);padding:0 12px;white-space:nowrap}.snav a.on{padding-left:12px}.spane{padding-left:0}
+  .snav{flex-wrap:wrap;overflow:visible}.snav .scat{flex:1 0 100%;padding:10px 12px 4px;border-top:1px solid var(--hair)}.snav .scat:first-child{border-top:0;padding-top:8px}.snav a .tip{display:none!important}
   #setupv2 .srow{grid-template-columns:minmax(0,1fr)}.share,.unlock2{grid-template-columns:minmax(0,1fr)}.share .opt+.opt{border-left:0;border-top:1px solid var(--ink)}}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 .asking{display:none}

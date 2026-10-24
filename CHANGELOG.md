@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Set up is easier to read.** The menu groups its twelve sections under five headings (this place, what it
+  reads, how it speaks, who can see it, the machine). Point at a section, or tab to it, and it says what it is for
+  and which settings it holds. Under Packs each pack is one line, its switch, its name and how many settings it has;
+  + opens what it does and all its settings, and "Open all packs" opens every one, remembered by that browser.
+
 - **Grafana is in Set up.** Set up › System says whether Grafana is running, at which address, whether its password
   is set (never the password), how to open it from a laptop, and links to its docs page. Its three keys are read at
   start, so they are changed in `.env` and `planetai grafana`, as before.
