@@ -14,6 +14,10 @@
   tell you. This answers the Grafana question in docs/NEXT_RELEASE.md as its keeper's surface, and is §5 of
   docs/SPEC_dashboard_figures.md, built. Proven on a copy of node #1's database.
 
+- **The source registry is pinned at `a3f5cae`.** awesome-fabcity-data #99 names `pack:air-quality` as what reads
+  the Open-Meteo CAMS entry, since the reader moved there in #344, and the pin also picks up #98: Copernicus DEM
+  GLO-30 names `pack:terrain`. Still 283 entries.
+
 - **The CAMS model and the EPA 2021 correction are the air-quality pack's.** `openmeteo_air` and the correction left
   `app/sources.py`, and the 92-day first-start history left `app/bootstrap.py`, for `packs/air-quality/adapter.py`,
   unchanged: the same `cams-point` sensor, `open-meteo-cams` source and metrics. The pack runs it on
