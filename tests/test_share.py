@@ -255,6 +255,26 @@ main._HOUSE.update(at=time.time() + 1e9, map=[("Kitchen, upstairs", "Sensor 1")]
 r = lan.get("/sensors"); s0 = r.json()[0]
 assert s0["name"] == "Sensor 1" and "Kitchen" not in r.text, f"open: the house's own name reached a stranger: {s0['name']}"
 assert lan.get("/sensors", headers=ADMIN).json()[0]["name"] == "Kitchen, upstairs", "a key still reads the house's names"
+# gzip is the outermost layer (main.py, after _share_level): what it compresses is the relabelled answer
+from starlette.middleware.gzip import GZipMiddleware as _GZ  # noqa: E402
+assert issubclass(main.app.user_middleware[0].cls, _GZ), [m.cls for m in main.app.user_middleware]
+_q1 = main.q                                                  # twenty kits, so the answer is big enough to compress
+main.q = lambda sql, *a: [dict(ROW, sensor_id=f"ag-{i}", meta=dict(ROW["meta"])) for i in range(20)] if "FROM sensors" in sql else []
+r = lan.get("/sensors", headers={"Accept-Encoding": "gzip"})
+main.q = _q1
+assert r.headers.get("content-encoding") == "gzip", f"a {len(r.content)}-byte JSON answer went out uncompressed"
+assert "Kitchen" not in r.text and r.json()[0]["name"] == "Sensor 1", "a compressed answer carried the house's names"
+_seen = []                                                      # /mcp passes through as it was (SPEC_mobile §9)
+async def _probe(scope, receive, send):
+    _seen.append(scope["path"])
+    await send({"type": "http.response.start", "status": 200, "headers": [(b"content-type", b"application/json")]})
+    await send({"type": "http.response.body", "body": b"x" * 5000})
+_mw = main.app.user_middleware[0]
+from starlette.testclient import TestClient as _TC  # noqa: E402
+_raw = _TC(_mw.cls(_probe, **_mw.kwargs))
+assert _raw.get("/mcp", headers={"Accept-Encoding": "gzip"}).headers.get("content-encoding") is None, "/mcp was gzipped"
+assert _raw.get("/issues", headers={"Accept-Encoding": "gzip"}).headers.get("content-encoding") == "gzip"
+print("open: answers are gzipped after the house's labels are swapped, never before; /mcp is left as it was")
 main._HOUSE.update(map=[("K ROOM - BAYU HOLES", "Sensor 1"), ("Kids", "Room A")])
 _q0 = main.q
 main.q = lambda sql, *a: ([{"id": 1, "ts": "2026-10-15T10:00:00+08:00", "rule_id": "x", "sensor_id": "ag-1", "level": "act",

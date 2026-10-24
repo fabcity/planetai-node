@@ -320,7 +320,7 @@ the gate once.
 **v1, one pull request: the phone page.** §4 to §8 as written. Releasable alone: on a desk nothing changes, and on a
 phone the worst case is the page with "Full dashboard" at its foot.
 
-**v1.1, its own pull request: gzip.** Starlette's `GZipMiddleware` on JSON, JavaScript and CSS above 1 kB, excluding
+**v1.1, its own pull request: gzip.** (Built 24 Oct 2026, level 5, `/mcp` and already-compressed types left out.) Starlette's `GZipMiddleware` on JSON, JavaScript and CSS above 1 kB, excluding
 `/mcp`, `text/event-stream` and any response that already sets `content-encoding` (the vector tiles). It takes
 `/issues` from 507 kB to about 73 kB for every screen, the doors included, and is the change that brings the title
 under 1.5 s. Whether the Starlette in the app image already skips event streams and pre-encoded responses is
