@@ -153,14 +153,14 @@ function sGroup(g, unlocked) {
         + `<div><b>${esc(p.name || p.id)}</b><div class="sm">${esc(p.kind || '')}${p.domain ? ` · ${esc(p.domain)}` : ''} · v${esc(p.version || '')} · ${esc(p.author || '')}</div><p class="help">${esc(p.description || '')}</p></div></div>`
         + rows.filter(r => r.pack === p.id).map(r => sRow(r, unlocked)).join('') + `</section>`; }).join('')}</div>` + body;
   }
-  /* what is read once at start: one table, and the way to change it said once */
-  const B = (d.bootstrap || []).filter(b => (b.group || 'system') === g);
+  /* what is read once at start: one table, and the way to change it said once. Grafana's three keys are its own block. */
+  const B = (d.bootstrap || []).filter(b => (b.group || 'system') === g && !/^GRAFANA_/.test(b.key));
   const boot = B.length ? `<h3 class="sub2">Read at start</h3><p class="blurb">Change these in <code>.env</code> on the node, then run <code>planetai restart</code>.</p>`
     + `<table class="tbl ro"><tr><th>setting</th><th class="hide">key</th><th>value</th></tr>${B.map(b => `<tr><td>${esc(b.label)}</td><td class="hide mono">${esc(b.key)}</td>`
       + `<td class="mono">${b.value ? esc(b.value) : '<span class="fine">not set</span>'}</td></tr>`).join('')}</table>` : '';
   const changed = (SETUP.history || []).filter(a => rows.some(r => String(a.note || '').split(', ').includes(r.key))).slice(0, 5);
   return `<h2>${esc(sTitle(g))}</h2><p class="blurb">${esc((SETUP_GROUPS[g] || [])[1] || 'This node declares this group. planetai config shows the same keys.')}</p>${gate}`
-    + `<div class="rows">${body}</div>${boot}`
+    + `<div class="rows">${body}</div>${g === 'system' ? sGrafana(d.bootstrap || []) : ''}${boot}`
     + (changed.length ? `<div class="hist"><div class="k">changed lately</div>${changed.map(a => `<p><span class="mono">${esc(wdhm(a.ts))}</span> · ${esc(a.actor || 'someone')} · ${esc(a.note || '')}</p>`).join('')}</div>` : '');
 }
 
@@ -243,6 +243,25 @@ function sStorageBody(S) {
        ['Room left', `${left}. When it runs short: <code>planetai storage set backups &lt;a dir on another disk&gt;</code> moves the backups, and a larger disk for DATA_DIR moves the database.`],
        ['Which disk', `the disk under ${esc(k.path || 'out/')}, as the node’s container sees it. On Linux the database is on it too unless DATA_DIR moves it; on macOS the database lives in the container engine’s own disk. <code>planetai doctor</code> checks the host’s.`]]
       .map(([t, v]) => `<div class="srow"><div class="sl"><label>${t}</label></div><div class="sc txt">${v}</div></div>`).join('') + `</div>`;
+}
+
+/* Grafana (docs/site/grafana.md, Tomas 24 Oct 2026: "I don't see it in the set up menu"): whether it runs, where, and how
+   to open it. It listens on the node's own machine unless GRAFANA_BIND opens it, so the way in from a laptop is a tunnel.
+   Its keys are read at start; the password is only ever "set" or not (settings.BOOTSTRAP_SECRET). */
+function sGrafana(B) {
+  const v = k => (B.find(b => b.key === k) || {}).value || '';
+  const on = v('COMPOSE_PROFILES').split(',').map(x => x.trim()).includes('grafana');
+  const bind = v('GRAFANA_BIND') || '127.0.0.1', port = v('GRAFANA_PORT') || '3000', host = location.hostname || 'the node';
+  const loop = bind === '127.0.0.1' || bind === 'localhost', docs = (D.health.docs || 'https://planetai.fab.city/docs/') + 'grafana/';
+  const open = !on ? `Off. Turn it on with <code>planetai grafana</code> on the node; <code>planetai grafana off</code> stops it again.`
+    : loop ? `On, on the node’s own machine only. From a laptop: <code>ssh -L ${esc(port)}:localhost:${esc(port)} &lt;the node’s machine&gt;</code>, then open <code>http://localhost:${esc(port)}</code>.`
+    : `On, open to this network: <a href="http://${esc(host)}:${esc(port)}" target="_blank" rel="noopener">http://${esc(host)}:${esc(port)} ↗</a>`;
+  return `<h3 class="sub2" id="grafana">Grafana</h3><p class="blurb">Your own charts over this node’s raw readings, beside this dashboard. It reads everything, room names and private counts included, and none of the dashboard’s rules: a model looks like a measurement unless you tell them apart.</p><div class="rows">`
+    + [['State', open],
+       ['Address', `<code>${esc(bind)}:${esc(port)}</code>${loop ? '' : ' · <b>every screen on the network can reach the sign-in</b>'}`],
+       ['Password', v('GRAFANA_ADMIN_PASSWORD') ? 'set (<code>GRAFANA_ADMIN_PASSWORD</code>)' : `not set: Grafana’s <code>admin</code> login is <code>admin</code>. Set <code>GRAFANA_ADMIN_PASSWORD</code> in <code>.env</code> before you open it to the network.`],
+       ['Read more', `<a href="${esc(docs)}" target="_blank" rel="noopener">Grafana: turning it on, what it can read, what it will not tell you ↗</a>`]]
+      .map(([t, x]) => `<div class="srow"><div class="sl"><label>${t}</label></div><div class="sc txt">${x}</div></div>`).join('') + `</div>`;
 }
 
 function sUpdates() {

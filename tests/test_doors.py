@@ -799,6 +799,11 @@ assert _c["key"][0]["to"] == "a new value" and "sk-x" not in json.dumps(_c["key"
 _setup = (STATIC / "doors-setup.js").read_text()
 assert "confirm(" not in _setup[_setup.index("async function sSave"):] and "sConfirm(c)" in _setup and "Save anyway" in _setup and 'data-a="back"' in _setup
 assert "Read at start" in _setup and _setup.count("planetai restart") == 1, "what is read at start is one table, its instruction said once"
+_gf = _setup[_setup.index("function sGrafana"):_setup.index("function sUpdates")]
+assert "sGrafana(d.bootstrap" in _setup and "g === 'system' ? sGrafana" in _setup, "Set up › System draws the Grafana block"
+assert "!/^GRAFANA_/.test(b.key)" in _setup, "Grafana's keys are its block, not three more rows in the start-time table"
+assert "planetai grafana" in _gf and "ssh -L" in _gf and "grafana/" in _gf, "the block says how to turn it on, how to reach it, and links its page"
+assert "GRAFANA_ADMIN_PASSWORD') ?" in _gf and "esc(v('GRAFANA_ADMIN_PASSWORD'))" not in _gf, "the password is only ever set or not"
 print("doors: Set up asks before a change that leaves the machine or runs code, in the setting's own words, and never otherwise")
 
 # 44 px targets: the tab bars (Data's and Set up's), Set up's switches and buttons, the ledger's filter; the tab bar
