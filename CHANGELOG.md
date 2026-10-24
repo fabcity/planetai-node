@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **The alert ledger draws an act at full weight again.** On a node that sends alerts (not events), Act's rows are
+  drawn at full weight when a rule's latest ask is level act and quieter otherwise; `/issues` published the asks
+  without their level, so every row was drawn quiet. Each ask carries `level` now. The doors read it too, on a screen
+  without a token, where the asks stand in for `/alerts`.
+
 - **A station's hourly series carries the metrics the page can show, at two decimals.** `/issues` sent every metric
   every station reported, a radio's channel load and a sensor's raw counts included: 215 kB of node #1's 510 kB. The
   dashboard's notes for the stations section look each one up in the page's metric list, so a radio's

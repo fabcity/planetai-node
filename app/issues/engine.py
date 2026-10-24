@@ -207,8 +207,12 @@ def _asks_ledger(alerts: list[dict], actions: list[dict], facilities: list[dict]
         return str(t or "").split("\n")[0][:160]
 
     return {
+        # `level` rides along although every act is level act: the dashboard's ledger draws a rule at full weight when
+        # its latest ask says `act` and quiet otherwise, and without the key every rule drew quiet (24 Oct 2026). The
+        # doors stand these in for /alerts on a screen without a token, and read `level` off them too.
         "acts": [{"id": a.get("id"), "ts": a["ts"] if isinstance(a.get("ts"), str) else a["ts"].isoformat(),
-                  "rule_id": a.get("rule_id"), "sensor_id": a.get("sensor_id"), "text": first_line(a.get("text"))}
+                  "rule_id": a.get("rule_id"), "sensor_id": a.get("sensor_id"), "level": a.get("level"),
+                  "text": first_line(a.get("text"))}
                  for a in alerts if a.get("level") == "act"],
         "actions": [{"alert_id": x.get("alert_id"), "stage": x.get("stage"), "actor": x.get("actor"),
                      "ts": x["ts"] if isinstance(x.get("ts"), str) else x["ts"].isoformat()} for x in actions],
