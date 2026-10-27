@@ -27,6 +27,7 @@
 #   planetai homeassistant  publish sensors and alerts as Home Assistant entities (MQTT discovery)
 #   planetai packs          what is loaded; `packs install` adds code-pack settings to .env and their libraries to the image
 #   planetai packs add <id>  a wild pack from fabcity/planetai-wild-packs; or <owner>/<repo>[/<folder>][@<ref>] from GitHub
+#   planetai packs cron     let Install on the dashboard's Set up › Packs reach this machine (`packs pending` runs it)
 #   planetai ui             the dashboard: where it is, and the token that unlocks its settings pages
 #   planetai storage        where the data lives, where backups and copies go, exports, IPFS; `set` to change
 #   planetai backup         dump + export + copy now, instead of waiting for 03:17
@@ -646,6 +647,7 @@ print("%s|%s|%s" % (r.get("latest", ""), r.get("current", ""), "1" if r.get("new
   fi
   # Telegram and the age of the last backup are not checks here: they are data sources, in the block below, where
   # a new node's two expected crosses read as the next steps they are rather than as a broken node.
+  chk "Install on the page reaches the node" "grep -q planetai-packs <<< \"\$(crontab -l 2>/dev/null)\""   "no crontab line for it: planetai packs cron"
   chk "nightly backup scheduled" "grep -q planetai-backup <<< \"\$(crontab -l 2>/dev/null)\""   "no cron entry. Add it: (crontab -l 2>/dev/null; echo '17 3 * * * cd $PWD && ./backup.sh >/dev/null 2>&1 # planetai-backup') | crontab -   (macOS: give cron Full Disk Access first)"
   # the disk the node lives on: the database volume and the backups share it by default; when it fills, Postgres stops
   local freek; freek="$(df -Pk . 2>/dev/null | awk 'NR==2{print $4}')"; freek="${freek:-0}"
@@ -1185,6 +1187,8 @@ cmd_packs() {
   # appended to .env surprised the first tester who only wanted to see what was loaded (6 Sep 2026).
   if [[ "${1:-}" == "install" ]]; then packs_install; return; fi
   if [[ "${1:-}" == "add" ]]; then shift; packs_add "$@"; return; fi
+  if [[ "${1:-}" == "pending" ]]; then packs_pending; return; fi
+  if [[ "${1:-}" == "cron" ]]; then packs_cron; return; fi
   step "Packs"
   local loaded wild; loaded="$(api /packs || true)"; wild="$(wild_ids)"
   if [[ -z "$loaded" ]]; then
@@ -1297,7 +1301,8 @@ for f in sorted(glob.glob("packs/*/pack.yaml")):
 
 packs_add() {
   FAIL_WHAT="The pack was not added."
-  local spec="${1:-}" src="" ref="" status="" want=""
+  # `expect` is the commit the page showed the person (packs_pending); anything else is refused, never installed.
+  local spec="${1:-}" expect="${2:-}" src="" ref="" status="" want=""
   [[ -n "$spec" ]] || fail "say which pack:  planetai packs add <id>  (one on the wild list)  or  planetai packs add <owner>/<repo>[/<folder>][@<ref>]"
   step "Packs: add $spec"
   if [[ "$spec" != */* ]]; then
@@ -1331,6 +1336,8 @@ print(e[0].get("source", ""), e[0].get("commit", "-"), e[0].get("status", "liste
          || fail "GitHub does not know $owner/$repo${ref:+ at $ref}"
   fi
   [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || fail "GitHub answered something that is not a commit for $owner/$repo${ref:+ at $ref}"
+  [[ -z "$expect" || "$sha" == "$expect" ]] \
+    || fail "the pack changed since you read it: the list now gives ${sha:0:12}, the page showed ${expect:0:12}. Look at it again."
 
   local tmp; tmp="$(mktemp -d)"; trap "rm -rf '$tmp'" EXIT   # expanded now: at exit, the local is gone
   curl -fsSL "https://codeload.github.com/$owner/$repo/tar.gz/$sha" -o "$tmp/p.tgz" \
@@ -1379,6 +1386,61 @@ print(e[0].get("source", ""), e[0].get("commit", "-"), e[0].get("status", "liste
   fi
   packs_install "packs/$id/pack.yaml"
   say "planetai restart loads it. To remove it: delete packs/$id and restart."
+}
+
+# ---------------------------------------------------------------- packs pending: an Install pressed on the page
+# Set up › Packs writes out/requests/pack-add.json, {id, commit}, and the crontab line `packs cron` adds runs this when
+# that file is there (docs/decisions/2026-10-27-pack-install-from-the-page.md). Nothing in the request is trusted but
+# an id, which packs_add looks up on the wild list itself, and a commit, which must be the one packs_add resolves for
+# it now: GitHub serves a fork's commit under the parent's name, so a request free to name any commit could install
+# anyone's code. What happens goes to pack-add.status, which the page reads back through GET /packs/install.
+packs_pending() {
+  local q=out/requests; local req="$q/pack-add.json" st="$q/pack-add.status" plog="$q/pack-add.log"
+  [[ -f "$req" ]] || return 0
+  # One at a time: a rebuild takes minutes and cron starts another run every minute. mkdir is the lock (a Mac has no
+  # flock); one left by a run that died is taken back after half an hour.
+  find "$q/lock" -maxdepth 0 -mmin +30 -exec rmdir {} \; 2>/dev/null || true
+  mkdir "$q/lock" 2>/dev/null || return 0
+  local id commit
+  read -r id commit < <(python3 -c 'import json, re, sys
+try:
+    d = json.load(open(sys.argv[1]))
+except ValueError:
+    d = {}
+i, c = str(d.get("id", "")), str(d.get("commit", ""))
+print(i if re.fullmatch(r"[a-z0-9][a-z0-9-]*", i) else "-", c if re.fullmatch(r"[0-9a-f]{40}", c) else "-")' "$req")
+  rm -f "$req"
+  pending_say() { python3 -c 'import json, sys, time
+print(json.dumps({"state": sys.argv[1], "id": sys.argv[2], "commit": sys.argv[3], "line": sys.argv[4], "t": int(time.time())}))' "$@" > "$st.tmp" && mv "$st.tmp" "$st"; }
+  if [[ "$id" == "-" || "$commit" == "-" ]]; then
+    pending_say failed "" "" "the request was not a pack id and a commit, so nothing was fetched"; rmdir "$q/lock"; return 0
+  fi
+  if [[ -e "packs/$id" ]]; then
+    pending_say failed "$id" "$commit" "packs/$id is already here. To update a wild pack: planetai packs add $id, on the node"; rmdir "$q/lock"; return 0
+  fi
+  date "+%F %T asked from the page: $id at $commit" > "$plog"
+  pending_say running "$id" "$commit" "fetching $id at ${commit:0:12} and installing it"
+  # colours off in the log, which the page quotes
+  if ( B='' D='' G='' Y='' R='' BL='' N=''; packs_add "$id" "$commit" ) >>"$plog" 2>&1 </dev/null; then
+    pending_say running "$id" "$commit" "installed; restarting the node to load it"
+    if cmd_restart >>"$plog" 2>&1; then pending_say done "$id" "$commit" "installed at ${commit:0:12} and loaded"
+    else pending_say failed "$id" "$commit" "installed, but the node did not restart. On the node: planetai restart"; fi
+  else
+    # A new pack that failed half-way (its libraries did not build) is taken out again, so the restart never loads it.
+    rm -rf "packs/$id"
+    pending_say failed "$id" "$commit" "$(awk '/^─/{n++; next} n==2 && NF {sub(/^ +/, ""); print; exit}' "$plog")"
+  fi
+  rmdir "$q/lock"
+}
+
+# The crontab line packs_pending runs from: a test of one file every minute, and the command only when the page asked.
+# The PATH is cron's own plus where Docker lives on a Mac (Homebrew, Colima, Docker Desktop's link).
+packs_cron() {
+  command -v crontab >/dev/null || { warn "no crontab on this machine, so Install on the page cannot reach it. Use planetai packs add <id>."; return 0; }
+  grep -q planetai-packs <<< "$(crontab -l 2>/dev/null)" && return 0
+  ( crontab -l 2>/dev/null
+    echo "* * * * * [ -f '$PWD/out/requests/pack-add.json' ] && cd '$PWD' && PATH=/opt/homebrew/bin:/usr/local/bin:\$PATH bin/planetai packs pending >/dev/null 2>&1 # planetai-packs"
+  ) | crontab - && say "Install on Set up › Packs reaches this machine (a crontab line, checked every minute)"
 }
 
 

@@ -19,7 +19,7 @@ A request is trusted when it comes from loopback or carries a household token: `
 | `act` | Loopback with no token; from anywhere else `ACT_TOKEN` or `ADMIN_TOKEN`. |
 | `children` | `AGGREGATE_TOKEN`, which a parent gives its children. It opens `POST /aggregates` and `POST /events` and nothing else. |
 
-The `off` allowlist, the default, is `/`, `/ui`, `/workbench`, `/tester`, `/health`, `/llms.txt`, `/settings`, `/export`, `/presence`, `/nodes`, `/offers` and anything under `/static/`. The `open` allowlist adds `/stats`, `/sensors`, `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/trust`, `/nearby`, `/forecast`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, `/ask`, `/ask/status`, `/docs/search`, `/geo/cell`, `/learned/place`, and anything under `/exports/`, `/issues`, `/sources/` or `/ground/`. The pack routes among them (`/offers`, `/nearby`, `/forecast` and the `/earth` paths) are put there by their pack's `pack.yaml` (`share:`). Any other value counts as `off`. The lists match the path whatever the method, so at `open` an anonymous `POST /readings` reaches the handler and gets 401. A path with no route also gets 403.
+The `off` allowlist, the default, is `/`, `/ui`, `/workbench`, `/tester`, `/health`, `/llms.txt`, `/settings`, `/export`, `/presence`, `/nodes`, `/offers` and anything under `/static/`. The `open` allowlist adds `/stats`, `/sensors`, `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/packs/all`, `/trust`, `/nearby`, `/forecast`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, `/ask`, `/ask/status`, `/docs/search`, `/geo/cell`, `/learned/place`, and anything under `/exports/`, `/issues`, `/sources/` or `/ground/`. The pack routes among them (`/offers`, `/nearby`, `/forecast` and the `/earth` paths) are put there by their pack's `pack.yaml` (`share:`). Any other value counts as `off`. The lists match the path whatever the method, so at `open` an anonymous `POST /readings` reaches the handler and gets 401. A path with no route also gets 403.
 
 Tokens travel in the `Authorization` header only, never in a query string, and are compared in constant time. `ADMIN_TOKEN` is in `.env`, the other three in settings, and `planetai ui` prints them. An optional `X-Agent` header names the caller; `PUT /settings` writes it to the ledger.
 
@@ -542,6 +542,29 @@ One registry entry, such as `economic/community/fablabs-io`.
 Access: open
 
 The packs this node has loaded: each `pack.yaml` as parsed, with `id`, `path` and `kind` (`data` or `code`).
+
+### GET /packs/all
+Access: open
+
+Every pack this node could run: each pack folder on its disk and each pack on the wild list that is not, under
+`packs`, with `tier` (`core` or `wild`), `installed`, `on` (in `PACKS_ENABLED`, or that list is empty), `loaded`, and
+`why` when it is not loaded (`switched off`, a code pack waiting, a `requires:` it does not meet, `not installed`).
+Wild packs carry `source`, `commit`, `added` and `status`. `list` says whether the wild list was read (once an hour).
+
+### GET /packs/preview?id=
+Access: admin token
+
+What installing a listed wild pack would bring, read from its `pack.yaml` at the commit it would be installed at:
+`author`, `status`, `source`, `commit`, `code_url`, `kind`, `metrics`, `needs`, `pip`, `settings`, and `loads_here`
+(null, or why it would not load). Writes nothing.
+
+### POST /packs/install
+Access: admin token; refused to a request carrying `X-Agent`
+
+`{"id": "<listed id>", "commit": "<the commit /packs/preview returned>"}`. Writes one request to `out/requests/` for
+`planetai packs pending` on the host, which installs that commit only if the wild list still gives it, then restarts
+the app. 409 while another install runs, or when the pack is here already. `GET /packs/install` (admin token) says how
+it is going: `idle`, `waiting` (with `stuck` after three minutes), `running`, `done` or `failed`, with the node's `line`.
 
 ## Federation
 

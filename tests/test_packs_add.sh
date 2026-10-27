@@ -34,12 +34,19 @@ p="$(mk future "$S3" "" future)"; printf 'requires: { node: ">=99.0.0" }\n' >> "
 p="$(mk blockfuture "$S3" "" block-future)"; printf 'requires:\n  node: ">=99.0.0"\n' >> "$p/pack.yaml"  # the same, block form
 p="$(mk synop "$S3" "" synop)"; echo "def fetch(hc): return [], []" > "$p/adapter.py"                  # deps and a setting, like bmkg-synop
 printf 'pip:\n  - pybufrkit\n  - bitstring\nenv:\n  - "SYNOP_STATION="\n' >> "$p/pack.yaml"
+# for `packs pending`: listed packs hosted in the wild repository, one of them with libraries to build
+mk planetai-wild-packs "$S2" packs/ebb ebb >/dev/null
+mk planetai-wild-packs "$S2" packs/flow flow >/dev/null
+p="$(mk planetai-wild-packs "$S2" packs/deps deps)"; echo "def fetch(hc): return [], []" > "$p/adapter.py"; printf 'pip:\n  - cowsay\n' >> "$p/pack.yaml"
 mkdir -p "$d/tgz"
 for top in "$d"/src/*; do n="$(basename "$top")"; tar czf "$d/tgz/$n.tgz" -C "$d/src" "$n"; done
 
 cat > "$d/packs.json" <<J
 [{"id": "tide", "source": "fabcity/planetai-wild-packs/packs/tide", "status": "listed"},
- {"id": "liar", "source": "someone/liar", "commit": "$S3", "status": "reviewed"}]
+ {"id": "liar", "source": "someone/liar", "commit": "$S3", "status": "reviewed"},
+ {"id": "ebb", "source": "fabcity/planetai-wild-packs/packs/ebb", "status": "listed"},
+ {"id": "flow", "source": "fabcity/planetai-wild-packs/packs/flow", "status": "listed"},
+ {"id": "deps", "source": "fabcity/planetai-wild-packs/packs/deps", "status": "listed"}]
 J
 
 # ---------------------------------------------------------------- the stubs
@@ -124,7 +131,7 @@ expect_refused "an id the list and the pack disagree on is refused" "pack.yaml s
 expect_refused "an id that is not the node's folder shape is refused" "lowercase letters, digits and hyphens" "$N/packs/under_score" -- add someone/underscored
 expect_refused "a pack with symbolic links is refused" "symbolic links" "$N/packs/links" -- add someone/links
 expect_refused "a folder with no pack.yaml is refused" "no pack.yaml" "" -- add someone/nopack
-expect_refused "an id that is not on the list is refused, and the list's ids are named" "which has liar, tide" "" -- add nosuch
+expect_refused "an id that is not on the list is refused, and the list's ids are named" "which has deps, ebb, flow, liar, tide" "" -- add nosuch
 expect_refused "a path that climbs out is refused before anything is fetched" "is not owner/repo" "" -- add someone/rain/../../etc
 expect_refused "no argument says how to call it" "say which pack" "" -- add
 [ -z "$(ls -A "$N/packs" | grep -vxE 'heat|rain-gauge|tide|future|block-future')" ] && ok "after every refusal, packs/ holds what was added and nothing else" \
@@ -188,6 +195,44 @@ out="$(pa add someone/synop)"; rc=$?; rm -f "$d/build-fails"
 : > "$d/docker.log"; out="$(pa install)"
 grep -qx pybufrkit "$N/app/requirements-packs.txt" 2>/dev/null && grep -q "compose build app" "$d/docker.log" \
   && ok "so packs install, run again, builds" || bad "the retry did not build: $out"
+
+# ---------------------------------------------------------------- packs pending: an Install pressed on the page
+# The page writes out/requests/pack-add.json; the crontab line runs `packs pending`, which trusts an id on the list and
+# a commit that must be the one it resolves itself (docs/decisions/2026-10-27-pack-install-from-the-page.md).
+Q="$N/out/requests"; mkdir -p "$Q"
+st() { python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d["state"] + "|" + d.get("line", ""))' "$Q/pack-add.status" 2>/dev/null; }
+ask() { printf '{"id": "%s", "commit": "%s", "at": 1}' "$1" "$2" > "$Q/pack-add.json"; }
+: > "$d/docker.log"
+out="$(pa pending)"; [ $? -eq 0 ] && [ ! -e "$Q/pack-add.status" ] && [ ! -s "$d/docker.log" ] \
+  && ok "pending with no request does nothing and writes nothing" || bad "pending with no request did something: $out"
+ask ebb "$S2"; out="$(pa pending)"
+if [ -f "$N/packs/ebb/pack.yaml" ] && grep -qx "commit=$S2" "$N/packs/ebb/.wild" && [ "$(st)" = "done|installed at ${S2:0:12} and loaded" ] \
+   && [ ! -e "$Q/pack-add.json" ] && [ ! -e "$Q/lock" ] && grep -q "compose up -d --force-recreate app" "$d/docker.log"; then
+  ok "a request for a listed pack at the commit the list gives now: installed, the app restarted, done said, the request and the lock gone"
+else bad "the request was not carried out: $(st) / $(ls -A "$Q") / $out"; fi
+ask flow "$S1"; pa pending >/dev/null
+[ ! -e "$N/packs/flow" ] && grep -q "^failed|the pack changed since you read it: the list now gives ${S2:0:12}, the page showed ${S1:0:12}" <<< "$(st)" \
+  && ok "any other commit is refused, with the commit the page showed and the one the list gives" || bad "a request at another commit: $(st)"
+printf '{"id": "../etc", "commit": "x"}' > "$Q/pack-add.json"; pa pending >/dev/null
+[ "$(st)" = "failed|the request was not a pack id and a commit, so nothing was fetched" ] && [ ! -e "$Q/pack-add.json" ] \
+  && ok "a request that is not an id and a commit fetches nothing, and is not tried again" || bad "a malformed request: $(st)"
+ask ebb "$S2"; pa pending >/dev/null
+grep -q "^failed|packs/ebb is already here. To update a wild pack: planetai packs add ebb" <<< "$(st)" \
+  && ok "a pack already here is not installed again from the page; updating it is the terminal's" || bad "a second request for ebb: $(st)"
+ask flow "$S2"; mkdir "$Q/lock"; pa pending >/dev/null
+[ -e "$Q/pack-add.json" ] && [ ! -e "$N/packs/flow" ] && ok "while another run holds the lock, the request waits for the next minute" || bad "the lock was ignored"
+rmdir "$Q/lock"; rm -f "$Q/pack-add.json"
+touch "$d/build-fails"; ask deps "$S2"; pa pending >/dev/null; rm -f "$d/build-fails"
+[ ! -e "$N/packs/deps" ] && grep -q "^failed|rebuild failed, so nothing was recorded" <<< "$(st)" && [ ! -e "$Q/lock" ] \
+  && ok "a new pack whose libraries do not build is taken out again, and the page gets packs add's own line" || bad "a failed build: $(st) / $(ls "$N/packs")"
+
+# ---------------------------------------------------------------- packs cron: the line, once
+printf '#!/bin/sh\nif [ "$1" = -l ]; then cat "%s/crontab" 2>/dev/null; else cat > "%s/crontab.new" && mv "%s/crontab.new" "%s/crontab"; fi\n' "$d" "$d" "$d" "$d" > "$d/bin/crontab"; chmod +x "$d/bin/crontab"
+echo "17 3 * * * cd /x && ./backup.sh # planetai-backup" > "$d/crontab"
+pa cron >/dev/null; pa cron >/dev/null
+[ "$(grep -c planetai-packs "$d/crontab")" -eq 1 ] && grep -q planetai-backup "$d/crontab" \
+  && grep -q "^\* \* \* \* \* \[ -f '$N/out/requests/pack-add.json' \] && cd '$N' && PATH=/opt/homebrew/bin:/usr/local/bin:\$PATH bin/planetai packs pending" "$d/crontab" \
+  && ok "packs cron adds one line, beside the backup's, that runs pending only when the page asked" || bad "the crontab: $(cat "$d/crontab")"
 
 echo
 [ "$fails" -eq 0 ] && { echo "packs add: pinned, one folder, refusals write nothing, core and wild listed apart"; exit 0; }

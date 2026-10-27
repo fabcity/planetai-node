@@ -799,7 +799,9 @@ assert [x["label"] for x in _c["pack"]] == ["B"] == [x["label"] for x in _c["pac
 assert _c["key"][0]["to"] == "a new value" and "sk-x" not in json.dumps(_c["key"]), "a secret is never repeated back"
 _setup = (STATIC / "doors-setup.js").read_text()
 assert "confirm(" not in _setup[_setup.index("async function sSave"):] and "sConfirm(c)" in _setup and "Save anyway" in _setup and 'data-a="back"' in _setup
-assert "Read at start" in _setup and _setup.count("planetai restart") == 1, "what is read at start is one table, its instruction said once"
+# counted as the .env instruction, not every `planetai restart`: a wild pack's card says how to remove it (27 Oct)
+assert "Read at start" in _setup and _setup.count("<code>.env</code> on the node, then run <code>planetai restart</code>") == 1 \
+    and "edit .env" not in _setup, "what is read at start is one table, its instruction said once"
 # Set up in categories (24 Oct 2026): every section in the menu has its explainer, a group no category names still
 # reaches the menu (in the last one), and what leaves the machine is said on the closed row, never only inside the fold
 _cats = sorted(set(re.findall(r"'([a-z]+)'", _setup[_setup.index("const SETUP_CATS"):_setup.index("const SETUP_TIPS")])))

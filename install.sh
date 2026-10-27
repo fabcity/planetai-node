@@ -534,6 +534,8 @@ step_ok
 if need crontab && ! grep -q planetai-backup <<< "$(crontab -l 2>/dev/null)"; then
   ( crontab -l 2>/dev/null; echo "17 3 * * * cd $(pwd) && ./backup.sh >/dev/null 2>&1 # planetai-backup" ) | crontab - 2>/dev/null && say "nightly backup scheduled (03:17)"
 fi
+# ---- the line that lets Install on Set up › Packs reach this machine (best effort, as above)
+bin/planetai packs cron 2>/dev/null || true
 
 echo
 if grep -qE 'api\.telegram\.org/bot[0-9]+:' <<< "$(docker compose logs app 2>/dev/null)"; then

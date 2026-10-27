@@ -570,6 +570,40 @@ def check_release() -> None:
         notify("info", words.format(latest=known["latest"], here=known["current"] or "an older version"))
 
 
+# A pack new on the wild list is said once, like a release (Tomas, 27 Oct 2026). Same switch, same hour, same table:
+# a row `pack:<id>` per pack, so a restart never says it twice. The first read writes every id as already known,
+# dated at the epoch so the Packs section does not mark them new: otherwise a node's first hour would announce eight.
+WILD_WORDS = {
+    "en": "A new pack is on the PLANETAI list: {name}, by {author}. It reads {reads}. To look at it and install it: "
+          "Set up › Packs on this node's page.",
+    "es": "Hay un pack nuevo en la lista de PLANETAI: {name}, de {author}. Lee {reads}. Para verlo e instalarlo: "
+          "Configurar › Packs en la página de este nodo.",
+    "id": "Ada pack baru di daftar PLANETAI: {name}, oleh {author}. Ia membaca {reads}. Untuk melihat dan memasangnya: "
+          "Set up › Packs di halaman node ini.",
+}
+
+
+def check_wild() -> None:
+    if settings.get("UPDATE_CHECK", "on") == "off" or _quiet("info"):
+        return
+    rows = wild.listed()
+    if not rows:
+        return
+    with db() as con, con.cursor() as cur:
+        cur.execute("SELECT 1 FROM release_notices WHERE version LIKE 'pack:%%' LIMIT 1")
+        first = cur.fetchone() is None
+        new = []
+        for e in rows:
+            cur.execute("INSERT INTO release_notices (version, told_at) VALUES (%s, CASE WHEN %s THEN 'epoch'::timestamptz "
+                        "ELSE now() END) ON CONFLICT DO NOTHING RETURNING version", ("pack:" + e["id"], first))
+            if cur.fetchone() and not first:
+                new.append(e)
+    words = WILD_WORDS.get(settings.get("ALERT_LOCALE", "en"), WILD_WORDS["en"])
+    for e in new:
+        notify("info", words.format(name=e.get("name") or e["id"], author=e.get("author") or "someone",
+                                    reads=(e.get("reads") or "").rstrip(".")[:1].lower() + (e.get("reads") or "").rstrip(".")[1:]))
+
+
 
 # ---------------------------------------------------------------- the nodes the programme lists (docs/SPEC_hello.md)
 # registry.json on main, the file a node joins by pull request. Read from main and not from this release, so a node
@@ -793,6 +827,7 @@ def start() -> None:
     loop(push_aggregates, 3600, delay=120)
     loop(push_events, 3600, delay=150)
     loop(check_release, 3600, delay=300)
+    loop(check_wild, 3600, delay=330)
     loop(check_registry, 3600, delay=60)
     loop(check_firmware, 6 * 3600, delay=120)
     loop(_pack_job("eyes", "check_griis"), 3600, delay=90)     # the eyes pack's weekly reads, while it is on
@@ -1519,6 +1554,8 @@ import geo  # noqa: E402 — GET /place/geojson, /geo/* (app/geo.py)
 app.include_router(geo.router)
 import machine  # noqa: E402 — GET /machine, /storage (app/machine.py)
 app.include_router(machine.router)
+import wild  # noqa: E402 — GET /packs/all, /packs/preview, POST /packs/install (app/wild.py)
+app.include_router(wild.router)
 
 
 @app.get("/report/latest")
