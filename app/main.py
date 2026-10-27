@@ -1753,12 +1753,19 @@ def workbench():
     The page is the shell, so it answers at every SHARE_LEVEL like /ui; what it then reads is gated as always, and it
     asks for the token when a read is refused. app/static/workbench.html is a copy of sensors/index.html in
     fabcity/planetai: edit it there and copy it here. Its one stylesheet link points at the site's /kit/, which the
-    node serves under /static/."""
+    node serves under /static/. Here it wears the node's chrome, not the site's: workbench-node.html puts the doors'
+    bar and register in front of the site's nav and hides it, so the page reads as one more page of this node."""
     from fastapi.responses import HTMLResponse
     f = STATIC / "workbench.html"
     if not f.exists():
         raise HTTPException(404, "the sensors workbench is not shipped in this build")
-    body = f.read_text().replace('href="/kit/planetai-theme.css"', 'href="/static/planetai-theme.css"')
+    body = f.read_text()
+    for old, new in (('href="/kit/planetai-theme.css"', 'href="/static/planetai-theme.css"'),
+                     ('<html lang="en" data-theme="dark">', '<html lang="en">'),   # the node's register decides
+                     ('<nav class="top"', (STATIC / "workbench-node.html").read_text() + '<nav class="top"')):
+        if old not in body:   # a new copy from the site moved one of these; fail here, not as the site's chrome
+            raise HTTPException(500, f"workbench.html no longer has {old!r}; update workbench() in app/main.py")
+        body = body.replace(old, new, 1)
     return HTMLResponse(body, headers={"cache-control": "no-cache, must-revalidate"})
 
 

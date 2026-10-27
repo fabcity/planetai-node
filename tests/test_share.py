@@ -535,6 +535,10 @@ for _lv in ("off", "open"):
     _wb = lan.get("/workbench")
     assert _wb.status_code == 200, f"/workbench refused a stranger at SHARE_LEVEL={_lv}"
     assert 'href="/static/planetai-theme.css"' in _wb.text and 'href="/kit/' not in _wb.text, "/workbench must point the stylesheet at /static/"
+    assert '<header class="nbar">' in _wb.text and _wb.text.index('class="nbar"') < _wb.text.index('<nav class="top"'), "/workbench must wear the node's bar"
+    _dt = re.findall(r"^  (\w+): \['([^']+)'", open("app/static/doors-data.js").read().split("const DTABS = {")[1].split("};")[0], re.M)
+    assert _dt and all(f'href="/#data/{k}">{t}</a>' in _wb.text for k, t in _dt), "the workbench's Data tabs must be DTABS, in doors-data.js"
+    assert "planetai_theme" in _wb.text and 'data-theme="dark">' not in _wb.text.split("<head>")[0], "/workbench must take the node's register"
     _old = lan.get("/tester", follow_redirects=False)
     assert _old.status_code == 308 and _old.headers["location"] == "/workbench", "/tester must send a bookmark to /workbench"
 level("off")
