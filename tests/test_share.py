@@ -529,4 +529,15 @@ for _lv in ("off", "open"):
 level("off")
 print("storage and machine: the keeper's, refused to the LAN at every level")
 
+# The workbench is a shell like /ui: it answers a stranger at every level, and the reads behind it stay gated.
+for _lv in ("off", "open"):
+    level(_lv)
+    _wb = lan.get("/workbench")
+    assert _wb.status_code == 200, f"/workbench refused a stranger at SHARE_LEVEL={_lv}"
+    assert 'href="/static/planetai-theme.css"' in _wb.text and 'href="/kit/' not in _wb.text, "/workbench must point the stylesheet at /static/"
+    _old = lan.get("/tester", follow_redirects=False)
+    assert _old.status_code == 308 and _old.headers["location"] == "/workbench", "/tester must send a bookmark to /workbench"
+level("off")
+print("workbench: answers at every level, stylesheet under /static/, /tester redirects")
+
 print("all share-level checks passed")

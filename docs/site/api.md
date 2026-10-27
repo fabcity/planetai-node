@@ -19,7 +19,7 @@ A request is trusted when it comes from loopback or carries a household token: `
 | `act` | Loopback with no token; from anywhere else `ACT_TOKEN` or `ADMIN_TOKEN`. |
 | `children` | `AGGREGATE_TOKEN`, which a parent gives its children. It opens `POST /aggregates` and `POST /events` and nothing else. |
 
-The `off` allowlist, the default, is `/`, `/ui`, `/tester`, `/health`, `/llms.txt`, `/settings`, `/export`, `/presence`, `/nodes`, `/offers` and anything under `/static/`. The `open` allowlist adds `/stats`, `/sensors`, `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/trust`, `/nearby`, `/forecast`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, `/ask`, `/ask/status`, `/docs/search`, `/geo/cell`, `/learned/place`, and anything under `/exports/`, `/issues`, `/sources/` or `/ground/`. The pack routes among them (`/offers`, `/nearby`, `/forecast` and the `/earth` paths) are put there by their pack's `pack.yaml` (`share:`). Any other value counts as `off`. The lists match the path whatever the method, so at `open` an anonymous `POST /readings` reaches the handler and gets 401. A path with no route also gets 403.
+The `off` allowlist, the default, is `/`, `/ui`, `/workbench`, `/tester`, `/health`, `/llms.txt`, `/settings`, `/export`, `/presence`, `/nodes`, `/offers` and anything under `/static/`. The `open` allowlist adds `/stats`, `/sensors`, `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/trust`, `/nearby`, `/forecast`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, `/ask`, `/ask/status`, `/docs/search`, `/geo/cell`, `/learned/place`, and anything under `/exports/`, `/issues`, `/sources/` or `/ground/`. The pack routes among them (`/offers`, `/nearby`, `/forecast` and the `/earth` paths) are put there by their pack's `pack.yaml` (`share:`). Any other value counts as `off`. The lists match the path whatever the method, so at `open` an anonymous `POST /readings` reaches the handler and gets 401. A path with no route also gets 403.
 
 Tokens travel in the `Authorization` header only, never in a query string, and are compared in constant time. `ADMIN_TOKEN` is in `.env`, the other three in settings, and `planetai ui` prints them. An optional `X-Agent` header names the caller; `PUT /settings` writes it to the ledger.
 
@@ -119,10 +119,15 @@ Access: public
 
 The dashboard: the five doors by default, the older dashboard with `?layout=classic`, the phone page with `?layout=mobile` (or `walk`). All of them read the same routes with the same token.
 
+### GET /workbench
+Access: public
+
+The sensors workbench, the same page as `planetai.fab.city/sensors/`, reading this node's `/health`, `/sensors`, `/readings` and `/nodes`, and asking for the token when a read is refused. The site's Connect button opens it, because a browser does not let the site read a node on the house network. It reads boards over USB only at `http://localhost:8080/workbench`, where the browser counts the page as secure. 404 when the build does not ship it.
+
 ### GET /tester
 Access: public
 
-The sensor bench, the same page as `makingsense.fablabbali.com/test/`, reading this node's `/health`, `/sensors`, `/readings` and `/nodes`. It reads boards over USB only at `http://localhost:8080/tester`, where the browser counts the page as secure. 404 when the build does not ship it.
+The old address of the sensor bench. It redirects to `/workbench` (308).
 
 ### GET /static/{name}
 Access: public

@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **`/workbench`: the sensors workbench from planetai.fab.city/sensors, served by the node.** The site's Network
+  tab told people to open their node's address followed by /workbench, and no node served it: they got a 404, or
+  the error again. A browser does not let planetai.fab.city read a node on the house network, with a token or
+  without, so the site's Connect button now opens this route in a new tab. It is the same page, reading the node's
+  own /health, /sensors, /readings and /nodes, and it asks for the token when a read is refused. `/tester`, the
+  older copy of Making Sense Bali's test page, now redirects here. `app/static/workbench.html` is a copy of
+  `sensors/index.html` in fabcity/planetai.
+
 - **`planetai packs add` installs the whole pack in one run.** It used to record the Python libraries and settings of
   the packs the running node had loaded, which cannot include a pack fetched a second before, so a new wild pack came
   without them. And on a node whose packs were chosen in Set up, the new pack stayed off without a word. Now its

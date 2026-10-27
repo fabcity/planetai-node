@@ -1705,20 +1705,31 @@ def ui(layout: str = ""):
     return HTMLResponse(body, headers={"cache-control": "no-cache, must-revalidate"})
 
 
-@app.get("/tester", include_in_schema=False)
-def tester():
-    """The sensor bench (Making Sense Bali's makingsense.fablabbali.com/test/, the same file). Served here it reads this
-    node's /health, /sensors, /readings and /nodes on its own origin, which a page from anywhere else cannot (no CORS,
-    and http from https is blocked), and draws every device the node knows in layers. It reads boards over USB too,
-    but only where the browser counts the page as secure: on this machine (localhost), not from across the LAN.
+@app.get("/workbench", include_in_schema=False)
+def workbench():
+    """The sensors workbench (planetai.fab.city/sensors/, the same file). Served here it reads this node's /health,
+    /sensors, /readings and /nodes on its own origin, which a page from anywhere else cannot (no CORS, and http from
+    https is blocked), and draws every device the node knows in layers. That site's Connect button opens this route.
+    It reads boards over USB too, but only where the browser counts the page as secure: on this machine (localhost),
+    not from across the LAN.
 
     The page is the shell, so it answers at every SHARE_LEVEL like /ui; what it then reads is gated as always, and it
-    asks for the token when a read is refused. app/static/tester.html is a copy: edit it in makingsensebali/test/."""
+    asks for the token when a read is refused. app/static/workbench.html is a copy of sensors/index.html in
+    fabcity/planetai: edit it there and copy it here. Its one stylesheet link points at the site's /kit/, which the
+    node serves under /static/."""
     from fastapi.responses import HTMLResponse
-    f = STATIC / "tester.html"
+    f = STATIC / "workbench.html"
     if not f.exists():
-        raise HTTPException(404, "the sensor bench is not shipped in this build")
-    return HTMLResponse(f.read_text(), headers={"cache-control": "no-cache, must-revalidate"})
+        raise HTTPException(404, "the sensors workbench is not shipped in this build")
+    body = f.read_text().replace('href="/kit/planetai-theme.css"', 'href="/static/planetai-theme.css"')
+    return HTMLResponse(body, headers={"cache-control": "no-cache, must-revalidate"})
+
+
+@app.get("/tester", include_in_schema=False)
+def tester():
+    """The sensor bench's old address (v0.83 to v0.90). The workbench replaced it; a bookmark lands there."""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse("/workbench", status_code=308)
 
 
 # What this machine is for, in the words of docs/site/introduction.md; tools/check_site.py holds this, the
