@@ -177,7 +177,7 @@ there; it prints the exact line for your Python when they are missing. See [Radi
 | command | what it does |
 |---|---|
 | `planetai packs` | What is loaded (or on disk, when the node is down), core and wild apart, where each wild pack came from, and whether `packs install` has work to do. |
-| `planetai packs add <id>` | Fetches a wild pack from the list at fabcity/planetai-wild-packs, at the commit it was listed at, into `packs/<id>`, then runs `packs install`. |
+| `planetai packs add <id>` | Fetches a wild pack from the list at fabcity/planetai-wild-packs, at the commit it was listed at, into `packs/<id>`, then runs `packs install` for it. A node with packs chosen in Set up gets it added to that list. |
 | `planetai packs add <owner>/<repo>[/<folder>][@<ref>]` | The same for any pack on GitHub, pinned to the commit the ref names. Refuses an id a core pack already has. |
 | `planetai packs install` | Adds every pack's missing `env:` keys to `.env` under a dated marker, records their `pip:` lists and rebuilds the image once. |
 | `planetai run` | Lists every pack script with its first line. |

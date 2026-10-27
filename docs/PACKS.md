@@ -41,7 +41,10 @@ planetai restart
 It always pins: a branch or tag is resolved to the commit it names, and that commit is written to `packs/<id>/.wild`
 with where the pack came from. It refuses an id that is already a folder here and did not come from `packs add` (a
 core pack, or one you put there by hand), an id that is not the folder shape, a pack with symbolic links, and, for a
-pack from the list, an id the list and the pack disagree on. It runs `planetai packs install` afterwards. Running it
+pack from the list, an id the list and the pack disagree on. It runs `planetai packs install` afterwards, with the new
+pack's `pip:` and `env:` lines included although the running node cannot list it until it restarts. On a node whose
+`PACKS_ENABLED` was saved in Set up, it adds the id to that list, the same way `planetai update` adds a pack, or says
+the pack stays off and prints `planetai config set PACKS_ENABLED …` when it cannot write it. Running it
 again on the same pack replaces it with the new commit. `planetai packs` lists core and wild apart and says where
 each wild pack came from. To remove one, delete `packs/<id>` and restart. If a later release ships a core pack with
 the same id (a wild pack promoted into the release), `planetai update` stops before it changes anything, names the

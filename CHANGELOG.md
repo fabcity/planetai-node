@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- **`planetai packs add` installs the whole pack in one run.** It used to record the Python libraries and settings of
+  the packs the running node had loaded, which cannot include a pack fetched a second before, so a new wild pack came
+  without them. And on a node whose packs were chosen in Set up, the new pack stayed off without a word. Now its
+  `pip:` and `env:` lines go in with the rest, and it joins the Set up list (or the command prints how to switch it on).
+
 ## v0.90.0 — 2026-10-24 — The core and the packs, apart
 
 - **An agent is no longer offered a pack's `routes.py` as a script.** Since packs serve their own routes, each
