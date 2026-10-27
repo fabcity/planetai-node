@@ -1765,7 +1765,7 @@ def workbench():
     /sensors, /readings and /nodes on its own origin, which a page from anywhere else cannot (no CORS, and http from
     https is blocked), and draws every device the node knows in layers. That site's Connect button opens this route.
     It reads boards over USB too, but only where the browser counts the page as secure: on this machine (localhost),
-    not from across the LAN.
+    or from a laptop whose Chrome was told to trust this node's address (docs/decisions/2026-10-27-serial-on-the-lan.md).
 
     The page is the shell, so it answers at every SHARE_LEVEL like /ui; what it then reads is gated as always, and it
     asks for the token when a read is refused. app/static/workbench.html is a copy of sensors/index.html in

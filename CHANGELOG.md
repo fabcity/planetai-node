@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **A laptop on the LAN can flash and test over USB.** Chrome opens a USB port only on a secure page, so from
+  `http://<node>:8080` the Flash and USB buttons stayed off. Now the workbench says how to fix that on the laptop, once:
+  Chrome's flag `chrome://flags/#unsafely-treat-insecure-origin-as-secure` with the page's own address filled in, in
+  English, Bahasa Indonesia and Spanish. The node serves nothing new. Self-signed https, a local CA and `tailscale cert`
+  were measured against it: `docs/decisions/2026-10-27-serial-on-the-lan.md`.
+
 - **The workbench is a Data tab now, and it flashes with no internet.** Data › Workbench draws a reduced copy of the
   sensors workbench in the pane, under the same side menu, instead of opening a page of its own: Flash (the Bayu and
   every Meshtastic board), Test over USB and Network, without the site's nav, the demo, the node dialog or the long

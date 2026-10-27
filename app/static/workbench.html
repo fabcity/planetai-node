@@ -328,7 +328,7 @@ footer.foot a:hover { text-decoration:underline; }
               <button slot="activate" class="btn act" type="button" data-t="f.btn">Connect and flash</button>
               <span slot="unsupported"></span><span slot="not-allowed"></span>
             </esp-web-install-button>
-            <div class="unsupported" data-th="f.unsupported">This browser cannot open a USB port. Use <strong>Chrome or Edge on a laptop</strong>, on this page's https address. Phones, Safari and Firefox do not support Web Serial.</div>
+            <div class="unsupported" data-th="f.unsupported">This browser cannot open a USB port. Use <strong>Chrome or Edge on a laptop</strong>. Phones, Safari and Firefox do not support Web Serial.</div>
             <button class="btn" type="button" data-act="testit" data-t="f.testit">Test it</button>
           </div>
           <p class="note worse" id="diy-missing" hidden data-t="f1.missing">The firmware image could not be read from Making Sense Bali's firmware folder. Check the connection, or flash from the Arduino IDE as the build guide describes.</p>
@@ -368,7 +368,7 @@ footer.foot a:hover { text-decoration:underline; }
               <button slot="activate" class="btn act" type="button" data-t="f.btn">Connect and flash</button>
               <span slot="unsupported"></span><span slot="not-allowed"></span>
             </esp-web-install-button>
-            <div class="unsupported" data-th="f.unsupported">This browser cannot open a USB port. Use <strong>Chrome or Edge on a laptop</strong>, on this page's https address. Phones, Safari and Firefox do not support Web Serial.</div>
+            <div class="unsupported" data-th="f.unsupported">This browser cannot open a USB port. Use <strong>Chrome or Edge on a laptop</strong>. Phones, Safari and Firefox do not support Web Serial.</div>
           </div>
           <p class="note worse" data-t="f2.xiao.note">Antenna on before power, always. Never use the phone app's over-the-air update on this board: Seeed says it can brick it.</p>
         </div>
@@ -569,7 +569,7 @@ const STR = {
   'f.btn':'Connect and flash','f.testit':'Test it',
   'port.h':'The USB port is busy','port.ok':'OK',
   'port.p':'Another program has this board\'s port open, so the flasher cannot use it. Close the serial monitor in the Arduino IDE, and any other tab with this page or another flasher, then press Connect and flash again. If it still fails, unplug the board, plug it back in and try once more.',
-  'f.unsupported':'This browser cannot open a USB port. Use <strong>Chrome or Edge on a laptop</strong>, on this page\'s https address. Phones, Safari and Firefox do not support Web Serial.',
+  'f.unsupported':'This browser cannot open a USB port. Use <strong>Chrome or Edge on a laptop</strong>. Phones, Safari and Firefox do not support Web Serial.',
   'f.insecure':'Flashing needs this page on https or on the node machine itself (localhost). From across the LAN, open <a href="https://planetai.fab.city/sensors/">planetai.fab.city/sensors</a> to flash; the test and the network view work here.',
   'f.noload':'The flasher could not load. It comes from this page\'s own folder or, served by a node, from unpkg.com: open the page once with the internet on.',
   'f1.missing':'The firmware image could not be read from Making Sense Bali\'s firmware folder. Check the connection, or flash from the Arduino IDE as the build guide describes.',
@@ -609,6 +609,7 @@ const STR = {
   'node.url':'Address','node.tok':'Token (optional)','node.off':'Disconnect','node.go':'Connect',
   'serial.no':'This browser cannot open a USB port. Use Chrome or Edge on a laptop. The demo, the replay and the node view still work here.',
   'serial.insecure':'USB needs this page on https or on localhost. Open planetai.fab.city/sensors for USB.',
+  'serial.flag':'USB from across the LAN needs one step in this laptop\'s Chrome, once: open chrome://flags/#unsafely-treat-insecure-origin-as-secure, paste {o}, choose Enabled, then Relaunch.',
   'L.usb':'USB on this computer','L.node':'the node','L.mesh':'mesh radios','L.wifi':'WiFi pods to the broker','L.cloud':'Smart Citizen platform','L.lan':'LAN devices','L.public':'stations and models','L.peers':'other nodes','L.indoor':'indoors','L.outdoor':'outdoors',
   'ago.s':'s ago','ago.m':'min ago','ago.h':'h ago','never':'waiting for the first reading','stale':'no new reading for',
   'c.board':'Board talking','c.board.no':'Nothing from the board yet. Press reset on it, or check the cable is a data cable.','c.lines':'lines',
@@ -639,7 +640,7 @@ const STR = {
   'f.btn':'Hubungkan dan flash','f.testit':'Uji',
   'port.h':'Port USB sedang dipakai','port.ok':'OK',
   'port.p':'Ada program lain yang sedang membuka port board ini, jadi flasher tidak bisa memakainya. Tutup serial monitor di Arduino IDE dan tab lain yang membuka halaman ini atau flasher lain, lalu tekan Hubungkan dan flash lagi. Kalau masih gagal, cabut board-nya, colok lagi, dan coba sekali lagi.',
-  'f.unsupported':'Browser ini tidak bisa membuka port USB. Gunakan <strong>Chrome atau Edge di laptop</strong>, di alamat https halaman ini. Ponsel, Safari dan Firefox tidak mendukung Web Serial.',
+  'f.unsupported':'Browser ini tidak bisa membuka port USB. Gunakan <strong>Chrome atau Edge di laptop</strong>. Ponsel, Safari dan Firefox tidak mendukung Web Serial.',
   'f.insecure':'Flash butuh halaman ini di https atau di mesin node itu sendiri (localhost). Dari LAN, buka <a href="https://planetai.fab.city/sensors/">planetai.fab.city/sensors</a> untuk flash; uji dan tampilan jaringan tetap jalan di sini.',
   'f.noload':'Flasher tidak bisa dimuat. Ia datang dari folder halaman ini atau, bila disajikan node, dari unpkg.com: buka halaman sekali saat ada internet.',
   'f1.missing':'Image firmware tidak terbaca dari folder firmware Making Sense Bali. Periksa koneksi, atau flash dari Arduino IDE seperti panduan perakitan.',
@@ -679,6 +680,7 @@ const STR = {
   'node.url':'Alamat','node.tok':'Token (opsional)','node.off':'Putuskan','node.go':'Hubungkan',
   'serial.no':'Browser ini tidak bisa membuka port USB. Gunakan Chrome atau Edge di laptop. Demo, putar ulang, dan tampilan node tetap jalan di sini.',
   'serial.insecure':'USB butuh halaman ini di https atau localhost. Buka planetai.fab.city/sensors untuk USB.',
+  'serial.flag':'USB dari LAN butuh satu langkah di Chrome laptop ini, sekali saja: buka chrome://flags/#unsafely-treat-insecure-origin-as-secure, tempel {o}, pilih Enabled, lalu Relaunch.',
   'L.usb':'USB di komputer ini','L.node':'node','L.mesh':'radio mesh','L.wifi':'pod WiFi ke broker','L.cloud':'platform Smart Citizen','L.lan':'perangkat LAN','L.public':'stasiun dan model','L.peers':'node lain','L.indoor':'dalam ruangan','L.outdoor':'luar ruangan',
   'ago.s':'dtk lalu','ago.m':'mnt lalu','ago.h':'jam lalu','never':'menunggu bacaan pertama','stale':'tidak ada bacaan baru selama',
   'c.board':'Papan bicara','c.board.no':'Belum ada apa pun dari papan. Tekan reset, atau pastikan kabelnya kabel data.','c.lines':'baris',
@@ -709,7 +711,7 @@ const STR = {
   'f.btn':'Conectar y flashear','f.testit':'Probarlo',
   'port.h':'El puerto USB está ocupado','port.ok':'OK',
   'port.p':'Otro programa tiene abierto el puerto de esta placa, así que el flasher no puede usarlo. Cierra el monitor serie del IDE de Arduino y cualquier otra pestaña con esta página u otro flasher, y vuelve a pulsar Conectar y flashear. Si sigue fallando, desconecta la placa, vuelve a conectarla y prueba otra vez.',
-  'f.unsupported':'Este navegador no puede abrir un puerto USB. Usa <strong>Chrome o Edge en un portátil</strong>, en la dirección https de esta página. Móviles, Safari y Firefox no admiten Web Serial.',
+  'f.unsupported':'Este navegador no puede abrir un puerto USB. Usa <strong>Chrome o Edge en un portátil</strong>. Móviles, Safari y Firefox no admiten Web Serial.',
   'f.insecure':'Flashear necesita esta página en https o en la propia máquina del nodo (localhost). Desde la LAN, abre <a href="https://planetai.fab.city/sensors/">planetai.fab.city/sensors</a> para flashear; la prueba y la vista de red funcionan aquí.',
   'f.noload':'El flasheador no pudo cargarse. Viene de la carpeta de esta página o, servida por un nodo, de unpkg.com: abre la página una vez con internet.',
   'f1.missing':'No se pudo leer la imagen del firmware de la carpeta de firmware de Making Sense Bali. Revisa la conexión, o flashea desde el IDE de Arduino como dice la guía de montaje.',
@@ -749,6 +751,7 @@ const STR = {
   'node.url':'Dirección','node.tok':'Token (opcional)','node.off':'Desconectar','node.go':'Conectar',
   'serial.no':'Este navegador no puede abrir un puerto USB. Usa Chrome o Edge en un portátil. La demo, la reproducción y la vista del nodo siguen funcionando aquí.',
   'serial.insecure':'El USB necesita esta página en https o en localhost. Abre planetai.fab.city/sensors para el USB.',
+  'serial.flag':'El USB desde la LAN necesita un paso en el Chrome de este portátil, una sola vez: abre chrome://flags/#unsafely-treat-insecure-origin-as-secure, pega {o}, elige Enabled y pulsa Relaunch.',
   'L.usb':'USB en este ordenador','L.node':'el nodo','L.mesh':'radios de la malla','L.wifi':'pods WiFi al broker','L.cloud':'plataforma Smart Citizen','L.lan':'dispositivos de la LAN','L.public':'estaciones y modelos','L.peers':'otros nodos','L.indoor':'interior','L.outdoor':'exterior',
   'ago.s':'s','ago.m':'min','ago.h':'h','never':'esperando la primera lectura','stale':'sin lectura nueva desde hace',
   'c.board':'La placa habla','c.board.no':'Nada de la placa todavía. Pulsa reset, o comprueba que el cable es de datos.','c.lines':'líneas',
@@ -1046,10 +1049,13 @@ function mtFromRadio(d, buf){
 /* ---------- USB ---------- */
 const hasSerial = 'serial' in navigator;
 const secure = window.isSecureContext;
+// http and not secure is a node opened from across the LAN: Chrome's flag for this exact origin makes it secure
+// (docs/decisions/2026-10-27-serial-on-the-lan.md in planetai-node). file:// and the rest keep the old advice.
+const lanHint = () => location.protocol === 'http:' ? t('serial.flag').replace('{o}', location.origin) : '';
 let usbCount = 0;
 function serialHint(){
   const el = document.getElementById('serialhint');
-  const msg = !secure ? t('serial.insecure') : (!hasSerial ? t('serial.no') : '');
+  const msg = !secure ? (lanHint() || t('serial.insecure')) : (!hasSerial ? t('serial.no') : '');
   if (el) el.textContent = msg;
   const b = document.getElementById('btnusb'); if (b) b.disabled = !(hasSerial && secure);
   document.querySelectorAll('[data-act="usb"]').forEach(x => x.disabled = !(hasSerial && secure));
@@ -1873,7 +1879,7 @@ function fillFlash(){
   if (meta) meta.textContent = [diy && diy.version ? 'Bayu ' + diy.version : '', f ? 'Meshtastic ' + f.version : ''].filter(Boolean).join(' · ');
   const fb = document.getElementById('flashbanner');
   if (fb) {
-    const msg = !secure ? t('f.insecure') : (flash.ewt === 'no' ? esc(t('f.noload')) : '');
+    const msg = !secure ? (esc(lanHint()) || t('f.insecure')) : (flash.ewt === 'no' ? esc(t('f.noload')) : '');
     fb.innerHTML = msg; fb.classList.toggle('show', !!msg);
   }
 }
