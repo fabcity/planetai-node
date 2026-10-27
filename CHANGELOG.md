@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **The radio docs and `/workbench` no longer say a PM sensor needs 5 V.** Seeed rates the Grove HM3301 for 3.3 V or
+  5 V, and its Grove SEN54 and SEN55 carry a regulator for 3.3 V. The Tracker section now says to try one PM sensor
+  before a batch, and the workbench's "no sensor" and "PM reads 0" hints stop sending people to measure 5 V.
+
 - **`/workbench`: the sensors workbench from planetai.fab.city/sensors, served by the node.** The site's Network
   tab told people to open their node's address followed by /workbench, and no node served it: they got a 404, or
   the error again. A browser does not let planetai.fab.city read a node on the house network, with a token or
