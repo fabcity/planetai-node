@@ -70,7 +70,7 @@ extra packages on the dev machine (`pyyaml`; `sqlglot` for the rules; `markdown`
 `requirements.txt` for the import check), and a gate whose package is missing says it skipped. CI installs them all,
 so nothing skips there.
 
-`make test` runs `tests/all`: 91 offline suites, one line each with a count at the end. It exits non-zero when a
+`make test` runs `tests/all`: 92 offline suites, one line each with a count at the end. It exits non-zero when a
 suite fails, when a check skipped that nobody declared, or when the list and the count disagree. A new suite needs
 its own line in `tests/all` and the count raised, or it never runs.
 

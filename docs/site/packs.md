@@ -10,7 +10,7 @@ There are two tiers:
 | | core | wild |
 |---|---|---|
 | lives in | `packs/` in the node's repository, twenty-five of them | its author's own repository, or a folder in [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs) |
-| reaches a node | with every release | `planetai packs add` |
+| reaches a node | with every release | Install in Set up › Packs, or `planetai packs add` |
 | checked by | the node's `make lint` and tests, on every commit | the wild-packs repository's CI, against the node's `main`, every week |
 | kept by | the node's maintainers | its author |
 
@@ -32,6 +32,34 @@ packs/<id>/
 ```
 
 ## Add a wild pack
+
+### From the page
+
+1. **Open Set up › Packs and unlock the screen** with the admin token. Every pack this node could run is there:
+   the core packs and the wild packs on its disk, each with its switch, and under *On the wild list, not here yet*
+   every listed pack this node does not have. A pack that is on but does not run says why on its line: a code pack
+   waiting for Allow code packs, or one written for a newer node. A pack that is new on the list is marked *new*,
+   and the household was told on its channels, once, the way a new release is told.
+2. **Press Install.** Nothing is fetched yet. The node reads the pack's `pack.yaml` at the commit it would install,
+   and shows who wrote it, whether anyone who keeps the list has reviewed it, the repository and the commit (with a
+   link to read the code there), what it reads, whether it runs code on this machine, the Python libraries it adds
+   and the settings it will ask for. A pack that would not load on this node cannot be installed.
+3. **Press Install again.** The card says *Asked. The node picks it up within a minute.*, then what the node is
+   doing: fetching it, building its libraries into the image when it has any (a few minutes), restarting. When it
+   says *Installed*, the pack is in the list above, switched on, with its settings in its card. A code pack runs
+   once Allow code packs is on.
+
+Only the admin token can install, at every share level, and an agent cannot. The page never fetches anything
+itself: it writes the request into `out/requests/`, and a crontab line that `planetai packs cron` adds (the
+installer and every update add it) runs `planetai packs pending` on the node, which reads the wild list again and
+installs only that pack at the commit the page showed. If the list moved since, it refuses and says so. If the card
+says the request was not picked up, run `planetai packs pending` on the node, then `planetai packs cron`. A failed
+install leaves nothing behind and the card quotes why; the whole log is `out/requests/pack-add.log`.
+
+The page installs only packs on the wild list. To update a wild pack, or to add one that is not listed, use the
+terminal. To remove one: in the node's folder, `rm -rf packs/<id>`, then `planetai restart`. Its card says the same.
+
+### From the terminal
 
 1. **Run `planetai packs add <id>`** with an id from the wild list, such as `posidonia`,
    or `planetai packs add <owner>/<repo>[/<folder>][@<ref>]` for any pack on GitHub. The node fetches the

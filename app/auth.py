@@ -50,7 +50,7 @@ def ACT_TOKEN():
 # (Tomas, 12 Oct 2026: one phone mode, no token, for the person running the node).
 _SHARE_OFF = (frozenset({"/", "/ui", "/workbench", "/tester", "/health", "/llms.txt", "/settings", "/export", "/presence", "/nodes"}), ("/static/",))
 _SHARE_OPEN = (_SHARE_OFF[0] | frozenset({
-    "/stats", "/sensors", "/observations", "/alerts", "/series", "/sparks", "/rho", "/cells", "/packs", "/trust",
+    "/stats", "/sensors", "/observations", "/alerts", "/series", "/sparks", "/rho", "/cells", "/packs", "/packs/all", "/trust",
     "/report/latest", "/readings", "/reach", "/shape", "/effect",
     "/history", "/exports", "/sources",
     # The ask pane. Its context and every tool result are scrubbed of positions, names and ids (app/ask.py), so

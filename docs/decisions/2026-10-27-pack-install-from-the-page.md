@@ -26,7 +26,7 @@ Asked by Tomas, 27 October 2026. Nothing is built until he approves this note.
 
 **1. The page asks, the host does.** `POST /packs/install` writes one request, `out/requests/pack-add.json`, holding
 only `{id, commit, actor, at}`. A crontab line on the host, written by `install.sh` and added by `update.sh` the way
-the backup line is, runs `planetai packs pending` every minute. With no request it does nothing and exits. With one,
+the backup line is, tests for that file every minute and runs `planetai packs pending` only when it is there. With one,
 it runs the same `packs_add` the terminal runs, then restarts the app, and writes what happened to
 `out/requests/pack-add.status` as it goes. The app reads that file back for the page.
 
@@ -81,7 +81,8 @@ While the app restarts the page cannot reach it, so it says "restarting" and kee
 after three minutes means the crontab line is missing, and the card says so: `planetai packs pending` on the node,
 and `planetai doctor` checks the line. A failure shows `packs add`'s own last line and keeps the log in
 `out/requests/pack-add.log`. A new pack whose install fails is removed again, so a half-installed folder is never
-loaded at the restart. An update of a pack already installed keeps the version that was there. One install at a time:
+loaded at the restart. The page installs only a pack that is not here; updating one stays `planetai packs add <id>`
+in the terminal. One install at a time:
 a second press while one runs gets 409 and the line of the one running.
 
 **6. The list.** A new `GET /packs/all`, gated like `GET /packs`, returns every pack folder on disk and every wild
@@ -95,16 +96,24 @@ every row from this, so a pack switched off stays on the page with its switch.
 eight wild packs are code, so an install usually ends with "installed, on, waiting for Allow code packs" and that
 switch one row above. See the second question below.
 
-## For Tomas
+**8. A new pack on the list is news, like a new release.** The node reads the wild list every hour, as it asks for
+the newest release, under the same `UPDATE_CHECK` switch. A pack that appears on the list after the node's first
+read is said once, on the household's channels (`info`, held back by quiet hours like the release line), and the
+Packs section marks it new. The first read of the list says nothing: every pack on it would be news.
 
-1. **The mechanism**: a crontab line every minute running `planetai packs pending` (1). `update.sh` would add that
-   line to every node that updates, the way `install.sh` adds the backup line. Yes?
-2. **Code packs after one click**: leave Allow code packs to its own switch (7), or offer an unticked box in the
-   confirmation that turns it on. The box would turn it on for every code pack on the node, not this one alone, and
-   would say so. I recommend leaving it to its own switch.
-3. **Removing a pack from the page** is not in this note. It stays `rm -rf packs/<id>` and a restart. A later change?
-4. **The test on node #1**: I would install bmkg-synop from the page, because it is a code pack with `pip:` lines,
-   so it goes through the rebuild and the restart, and it reads the airport station near node #1.
+## What Tomas decided
+
+On 27 October 2026:
+
+1. *"It could be every hour and user can get a notification about a new pack, similarly when there is a new
+   release."* The hourly read is the list, and the notice comes from it (8). The pickup of a pressed Install stays
+   every minute, because an hour on "waiting" reads as broken, and the crontab line tests for the request file
+   before it runs anything, so a minute with no request starts nothing but that test. Told to Tomas; one number to
+   change if he wants the hour anyway.
+2. Allow code packs stays its own switch (7).
+3. *"Can turn on and off. Remove should be done in the terminal, can give instructions."* Every pack keeps its
+   switch, an installed one switched off included, and a wild pack's card says how to remove it.
+4. The test on node #1 is bmkg-synop, installed from the page.
 
 ## Built after approval
 

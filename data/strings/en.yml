@@ -264,13 +264,13 @@ strings:
     en: "✓ backup.sh made executable"
   - key: install:535
     en: "nightly backup scheduled (03:17)"
-  - key: install:540
+  - key: install:542
     en: "a Telegram bot token is visible in this node's container logs (from a version before v0.4.3)."
-  - key: install:541
+  - key: install:543
     en: "Revoke it: message @BotFather -> /revoke -> pick the bot -> put the new token in .env -> make restart"
-  - key: install:546
+  - key: install:548
     en: "first start pulls ~4,400 rows of history for your location (CAMS 92 days + NASA POWER normals)."
-  - key: install:551
-    en: "install OK — , steps in s, on localhost"
   - key: install:553
+    en: "install OK — , steps in s, on localhost"
+  - key: install:555
     en: "First reading lands within s."
