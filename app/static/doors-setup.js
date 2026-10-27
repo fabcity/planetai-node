@@ -15,7 +15,7 @@
    key with choices offers only them; a secret is write-only; the pack switches write PACKS_ENABLED; what is read at
    start is shown and never sent. ponytail: the group words are copied from dashboard.js (GROUPS) because four suites
    read that pane out of that file by name; one copy when / becomes the doors. */
-const SETUP = { desc: null, packs: [], sources: null, group: null, loaded: {}, drawnPacks: '', dirty: false, history: null };
+const SETUP = { desc: null, packs: [], listed: [], wild: null, job: null, sources: null, group: null, loaded: {}, drawnPacks: '', dirty: false, history: null };
 const SETUP_GROUPS = {
   basics: ['Basics', 'This place: what it watches, in order, what kind of node it is, its language and how its page opens. Its name, city, position and time zone are read once at start.'],
   sources: ['Sources', 'What the node reads: your sensors, your account, and the public stations and portals around you. Sources that come as packs are switched on and set under Packs.'],
@@ -88,7 +88,11 @@ VIEWS.setup = async function () {
 async function setupLoad() {
   const tok = (() => { try { return localStorage.getItem('planetai_admin') || ''; } catch (e) { return ''; } })();
   SETUP.desc = await fetch('/settings', { headers: tok ? { authorization: 'Bearer ' + tok } : {} }).then(r => r.json()).catch(() => null);
-  SETUP.packs = await doorsFetch('/packs').then(r => r.ok ? r.json() : []).catch(() => []);
+  /* every pack this node could run: what is on its disk, and the wild list's packs that are not (app/wild.py) */
+  const all = await doorsFetch('/packs/all').then(r => r.ok ? r.json() : null).catch(() => null);
+  SETUP.packs = all ? all.packs.filter(p => p.installed) : []; SETUP.listed = all ? all.packs.filter(p => !p.installed) : []; SETUP.wild = all ? all.list : null;
+  SETUP.job = tok ? await doorsFetch('/packs/install').then(r => r.ok ? r.json() : null).catch(() => null) : null;
+  if (SETUP.job && /waiting|running/.test(SETUP.job.state)) sPoll();
   [SETUP.storage, SETUP.machine] = await Promise.all(['storage', 'machine'].map(r => doorsFetch('/' + r).then(x => x.ok ? x.json() : null).catch(() => null)));
   SETUP.history = tok ? await doorsFetch('/actions?stage=settings&limit=40').then(r => r.ok ? r.json() : null).catch(() => null) : null;
   SETUP.sources = tok ? await doorsFetch('/health/sources').then(r => r.ok ? r.json() : null).catch(() => null) : null;
@@ -107,7 +111,7 @@ function setupDraw() {
     + `<div class="sgrid" data-learn="setup-sections" data-reads="/settings /health/sources"><nav class="snav" aria-label="Set up sections">${sCats().map(([cat, secs]) => `<div class="scat" aria-hidden="true">${esc(cat)}</div>`
       + secs.map(s => { const holds = sHolds(s);
         return `<a href="#setup/${s}" class="${s === g ? 'on' : ''}" data-s="${s}" aria-describedby="tip-${s}">`
-        + `<span>${esc(sName(s))}</span>${s === 'screen' ? `<i>${unlocked ? 'unlocked' : 'locked'}</i>` : s === 'updates' ? (D.health.release || {}).newer ? '<i>new</i>' : '' : s === 'machine' ? (SETUP.storage && SETUP.storage.days_left != null ? `<i>${sDays(SETUP.storage.days_left)}</i>` : '') : setHere(s) ? `<i>${setHere(s)} set</i>` : ''}`
+        + `<span>${esc(sName(s))}</span>${s === 'screen' ? `<i>${unlocked ? 'unlocked' : 'locked'}</i>` : s === 'updates' ? (D.health.release || {}).newer ? '<i>new</i>' : '' : s === 'machine' ? (SETUP.storage && SETUP.storage.days_left != null ? `<i>${sDays(SETUP.storage.days_left)}</i>` : '') : s === 'packs' && SETUP.listed.some(p => p.new) ? '<i>new</i>' : setHere(s) ? `<i>${setHere(s)} set</i>` : ''}`
         + `<span class="tip" role="tooltip" id="tip-${s}"><b>${esc(sName(s))}</b>${esc(SETUP_TIPS[s] || (SETUP_GROUPS[s] || [])[1] || '')}${holds ? `<em>Holds: ${esc(holds)}</em>` : ''}</span></a>`; }).join('')).join('')}</nav>`
     + `<section class="spane" aria-live="polite" data-learn="setup-save" data-reads="/settings /actions">${sTodo()}${g === 'screen' ? sScreen(unlocked) : g === 'updates' ? sUpdates() : g === 'machine' ? sMachine() : g === 'rooms' ? sRooms(unlocked) : sGroup(g, unlocked)}</section></div>`
     + `<div class="sbar" id="sbar" hidden><span id="scount"></span><span class="sp"></span><button type="button" class="sbtn" id="sdiscard">Discard</button><button type="button" class="sbtn primary" id="ssave">Save changes</button></div>`;
@@ -129,8 +133,71 @@ function setupDraw() {
   const all = sq('#sopenall'); if (all) all.onclick = () => { const on = !sOpenAll();
     try { localStorage.setItem('planetai_setup_packs_open', on ? '1' : ''); } catch (e) { /* a private window: this page only */ SETUP.openAll = on; }
     setupDraw(); };
+  sqa('[data-install]').forEach(b => b.onclick = () => sInstall(b.dataset.install));
 }
 const sOpenAll = () => { try { return localStorage.getItem('planetai_setup_packs_open') === '1'; } catch (e) { return !!SETUP.openAll; } };
+
+/* INSTALL A WILD PACK (docs/decisions/2026-10-27-pack-install-from-the-page.md). Before anything is fetched the keeper
+   reads what the node read from the pack's pack.yaml at the commit it would install: who wrote it, where it comes
+   from, whether it runs code here and what libraries it adds. Install sends that commit and nothing else; the host
+   picks the request up within a minute and this page follows it through the fetch, a rebuild and the restart. */
+async function sInstall(id) {
+  let p = sq('#sinstall');
+  if (!p) { p = document.createElement('div'); p.id = 'sinstall'; p.className = 'sconfirm'; p.setAttribute('role', 'alertdialog'); p.setAttribute('aria-labelledby', 'sinstall-h'); $('#setupv2').append(p); }
+  const close = () => { p.hidden = true; const b = sq(`[data-install="${id}"]`); b && b.focus(); };
+  p.onkeydown = e => { if (e.key === 'Escape') close(); };
+  p.innerHTML = `<h3 id="sinstall-h">Reading ${esc(id)} at the commit it would be installed at…</h3>`; p.hidden = false;
+  const r = await doorsFetch('/packs/preview?id=' + encodeURIComponent(id)).catch(() => null);
+  const v = r ? await r.json().catch(() => ({})) : {};
+  if (!(r && r.ok)) {
+    p.innerHTML = `<h3 id="sinstall-h">Could not read ${esc(id)}</h3><p>${esc(typeof v.detail === 'string' ? v.detail : 'The node did not answer.')}</p><div class="acts"><button type="button" class="sbtn" data-a="back">Back</button></div>`;
+    p.querySelector('[data-a=back]').onclick = close; p.querySelector('[data-a=back]').focus(); return;
+  }
+  const allow = ((SETUP.desc.runtime || []).find(x => x.key === 'PACKS_ALLOW_CODE') || {}).value === '1', stop = v.refused || v.loads_here;
+  const li = (b, t) => `<li><b>${b}</b><p>${t}</p></li>`;
+  p.innerHTML = `<h3 id="sinstall-h">Install ${esc(v.name)}?</h3><p>Nothing has been fetched yet. This is what the node read from its <code>pack.yaml</code> at the commit it would install.</p><ul>`
+    + li('Who wrote it', `${esc(v.author || 'not said')}. ${v.status === 'reviewed' ? 'Reviewed: somebody who keeps the wild list has read it.' : 'Listed, not reviewed: nobody who keeps the wild list has read it.'}${v.licence ? ` ${esc(v.licence)}.` : ''}`)
+    + li('Where it comes from', `<code>${esc(v.source)}</code> at commit <code>${esc(v.commit.slice(0, 12))}</code>. <a href="${esc(v.code_url)}" target="_blank" rel="noopener">Read its code at this commit</a>.`)
+    + li('What it reads', `${esc(v.reads)}${v.metrics.length ? ` (${esc(v.metrics.join(', '))})` : ''}.${v.needs ? ` ${esc(v.needs)}` : ''}`)
+    + (v.kind === 'code' ? li('<span class="why">runs code here</span>', `Its Python runs on this machine with the node’s privileges and everything it holds. It runs only while Allow code packs is on, ${allow ? 'which it is on this node' : 'which it is not on this node yet: that switch is above, once you have read the code'}.`) : '')
+    + (v.pip.length ? li('Libraries it adds', `Installed into the node’s image, a rebuild of a few minutes: ${v.pip.map(x => `<code>${esc(x)}</code>`).join(' ')}`) : '')
+    + (v.settings.length ? li('Settings it asks for', `${v.settings.map(x => `<code>${esc(x)}</code>`).join(' ')}, in its card here once it is installed.`) : '')
+    + (stop ? li('It cannot be installed here', esc(v.refused || `It would not load on this node: ${v.loads_here}`)) : '')
+    + `</ul><div class="acts"><button type="button" class="sbtn" data-a="back">Back</button>${stop ? '' : '<button type="button" class="sbtn primary" data-a="go">Install</button>'}</div>`;
+  p.querySelector('[data-a=back]').onclick = close; p.querySelector('[data-a=back]').focus();
+  const go = p.querySelector('[data-a=go]'); if (!go) return;
+  go.onclick = async () => {
+    go.disabled = true;
+    const q = await fetch('/packs/install', { method: 'POST', headers: { 'content-type': 'application/json', ...DOORS_AUTH() }, body: JSON.stringify({ id, commit: v.commit }) }).catch(() => null);
+    const j = q ? await q.json().catch(() => ({})) : {};
+    if (!(q && q.ok)) { go.disabled = false; return toast2(typeof j.detail === 'string' ? j.detail : 'The node did not take the request.', true); }
+    p.hidden = true; SETUP.job = { ...j, pip: v.pip.length > 0, waited_s: 0 }; sJobShow(); sPoll();
+  };
+}
+function sJobLine(j) {
+  const sha = (j.commit || '').slice(0, 12);
+  if (j.state === 'waiting') return j.stuck ? `Asked ${Math.round(j.waited_s / 60)} minutes ago and not picked up: this node has no crontab line for it. On the node: planetai packs pending, then planetai packs cron so the next one is picked up by itself.`
+    : 'Asked. The node picks it up within a minute.';
+  if (j.state === 'running') return `${j.line}${j.pip && /fetching/.test(j.line || '') ? ', with a rebuild of a few minutes' : ''}…`;
+  if (j.state === 'restarting') return 'The node is restarting to load it. This page keeps asking.';
+  if (j.state === 'done') return `Installed at ${sha}. It is in the list above, switched on.`;
+  if (j.state === 'failed') return `Not installed: ${j.line || 'the node did not say why'}. The whole log is out/requests/pack-add.log on the node.`;
+  return '';
+}
+function sJobShow() { const el = SETUP.job && sq('#pjob-' + SETUP.job.id); if (el) el.textContent = sJobLine(SETUP.job); }
+/* every four seconds while an install runs. The node goes away while it restarts, and that is said, not shown as an error */
+function sPoll() {
+  clearTimeout(SETUP.poll);
+  SETUP.poll = setTimeout(async () => {
+    const r = await doorsFetch('/packs/install').catch(() => null), was = SETUP.job || {};
+    const j = r && r.ok ? await r.json().catch(() => null) : null;
+    SETUP.job = j ? { ...j, pip: was.pip } : (/running|restarting/.test(was.state) ? { ...was, state: 'restarting' } : was);
+    sJobShow();
+    if (/waiting|running|restarting/.test(SETUP.job.state)) return sPoll();
+    if (SETUP.job.state === 'done') { toast2(`${SETUP.job.id} is installed.`); if (!SETUP.dirty) { await setupLoad(); setupDraw(); } }
+    if (SETUP.job.state === 'failed') toast2(`${SETUP.job.id} was not installed.`, true);
+  }, 4000);
+}
 
 /* To finish setting up (15 Oct 2026): the node's fundamental sources that are not running, most important first, each
    with the node's own fix and a link to the section it is set in. The list and the words are GET /health/sources
@@ -200,11 +267,25 @@ function sGroup(g, unlocked) {
     const on = ((d.runtime || []).find(r => r.key === 'PACKS_ENABLED') || {}).value || '', only = on ? on.split(',').map(x => x.trim()) : null;
     body = `<div class="packs">${SETUP.packs.map(p => { const live = !only || only.includes(p.id);
       const mine = rows.filter(r => r.pack === p.id), open = sOpenAll(), n = mine.length;
+      /* why a pack that is on does not run: the node's words (GET /packs/all). Off says so on its switch. */
+      const why = live && p.why && p.why !== 'switched off' ? ` · <b>${esc(p.why)}</b>` : '';
       return `<section class="pcard${open ? ' open' : ''}" id="pack-${esc(p.id)}"><div class="ph"><button type="button" role="switch" class="sw ${live ? 'on' : ''}" aria-checked="${live}" data-pack="${esc(p.id)}" aria-label="${esc(p.name)}"${unlocked ? '' : ' disabled'}><span>${live ? 'on' : 'off'}</span></button>`
-        + `<div class="pt"><b>${esc(p.name || p.id)}</b><div class="sm">${esc(p.kind || '')}${p.domain ? ` · ${esc(p.domain)}` : ''} · v${esc(p.version || '')} · ${n ? `${n} setting${n === 1 ? '' : 's'}` : 'no settings'}</div></div>`
+        + `<div class="pt"><b>${esc(p.name || p.id)}</b><div class="sm">${p.tier === 'wild' ? 'wild · ' : ''}${esc(p.kind || '')}${p.domain ? ` · ${esc(p.domain)}` : ''} · v${esc(p.version || '')} · ${n ? `${n} setting${n === 1 ? '' : 's'}` : 'no settings'}${why}</div></div>`
         + `<button type="button" class="px" aria-expanded="${open}" aria-controls="pbody-${esc(p.id)}" aria-label="${esc(p.name || p.id)}: what it does and its settings">${open ? '−' : '+'}</button></div>`
         + `<div class="pbody" id="pbody-${esc(p.id)}"><p class="help">${esc(p.description || '')}</p><div class="sm">${esc(p.author || '')}</div>`
+        + (p.tier === 'wild' ? `<p class="help">From ${esc(p.source || 'a repository')} at ${esc((p.commit || '').slice(0, 12))}, added ${esc(p.added || '')}. To update it, on the node: <code>planetai packs add ${esc(p.id)}</code>. To remove it, in the node’s folder: <code>rm -rf packs/${esc(p.id)}</code>, then <code>planetai restart</code>.</p>` : '')
         + mine.map(r => sRow(r, unlocked)).join('') + `</div></section>`; }).join('')}</div>` + body;
+    /* the wild list's packs that are not on this disk (decision 2026-10-27): Install asks the host, which fetches it */
+    const W = SETUP.wild || {};
+    body += `<h3 class="sub2">On the wild list, not here yet</h3><p class="blurb">Packs other people wrote, each in its own repository and listed at fabcity/planetai-wild-packs. Install shows who wrote one, where it comes from and what it brings before anything is fetched. Then the node fetches it, installs it and restarts, in a minute or a few.</p>`
+      + (W.read === false || !SETUP.wild ? `<p class="gate">This node could not read the wild list just now${W.error ? ` (${esc(W.error)})` : ''}, so only the packs on its disk are above.</p>` : '')
+      + (SETUP.listed.length ? `<div class="packs">${SETUP.listed.map(p => `<section class="pcard" id="pack-${esc(p.id)}"><div class="ph">`
+        + `<button type="button" class="sbtn" data-install="${esc(p.id)}"${unlocked ? '' : ' disabled title="Unlock this screen with the admin token to install"'}>Install</button>`
+        + `<div class="pt"><b>${esc(p.name)}</b>${p.new ? '<i class="new">new</i>' : ''}<div class="sm">wild · ${esc(p.kind)} · ${p.status === 'reviewed' ? 'reviewed' : 'listed, not reviewed'} · ${esc(p.author)}</div></div>`
+        + `<button type="button" class="px" aria-expanded="false" aria-controls="pbody-${esc(p.id)}" aria-label="${esc(p.name)}: what it reads">+</button></div>`
+        + `<p class="pjob" id="pjob-${esc(p.id)}" role="status">${SETUP.job && SETUP.job.id === p.id ? esc(sJobLine(SETUP.job)) : ''}</p>`
+        + `<div class="pbody" id="pbody-${esc(p.id)}"><p class="help">It reads ${esc(p.reads)}</p><div class="sm">${esc(p.source)} · ${esc(p.licence)} · tested with ${esc(p.tested_with)}</div></div></section>`).join('')}</div>`
+        : W.read ? '<p class="fine">Every pack on the wild list is installed here.</p>' : '');
   }
   /* what is read once at start: one table, and the way to change it said once. Grafana's three keys are its own block. */
   const B = (d.bootstrap || []).filter(b => (b.group || 'system') === g && !/^GRAFANA_/.test(b.key));

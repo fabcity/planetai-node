@@ -262,7 +262,8 @@ ALTER TABLE events DROP COLUMN IF EXISTS cleared_at;
 INSERT INTO schema_version (version) VALUES ('0.51') ON CONFLICT DO NOTHING;
 
 -- The releases this node has told its household about, one row each, so a restart or an hourly re-check never
--- sends the same "a new version is out" twice. Written by check_release() in app/main.py; nothing else reads it.
+-- sends the same "a new version is out" twice. Written by check_release() in app/main.py. Rows `pack:<id>` are the
+-- wild-list packs it has told them about (check_wild), and GET /packs/all reads those to mark a pack new.
 CREATE TABLE IF NOT EXISTS release_notices (
   version  TEXT PRIMARY KEY,
   told_at  TIMESTAMPTZ NOT NULL DEFAULT now()

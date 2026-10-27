@@ -361,6 +361,8 @@ if grep -q "planetai packs install" <<< "$(./bin/planetai packs 2>/dev/null)"; t
   warn "a pack here declares Python libraries or settings this image does not have yet."
   warn "Run:  planetai packs install     (a rebuild, a few minutes)  then  planetai restart"
 fi
+# The crontab line Install on Set up › Packs needs (v0.91), on a node installed before it existed. Adds nothing twice.
+./bin/planetai packs cron 2>/dev/null || true
 if [[ -f config/rules.yml.before-update ]] && ! diff -q config/rules.yml config/rules.yml.before-update >/dev/null 2>&1; then
   warn "config/rules.yml changed in this update. Your previous copy: config/rules.yml.before-update"
   warn "If you had edited thresholds, re-apply them — or better, move them into a pack (docs/PACKS.md)."

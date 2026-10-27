@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **Set up › Packs lists every pack a node could run, and installs a wild one from the page.** The core packs and the
+  wild packs on the disk are all there with their switches, a pack switched off included: it used to drop off the page,
+  so it could only be turned back on from the terminal. Under them are the packs on the wild list this node does not
+  have, each with an Install button. Install shows who wrote the pack, its repository and commit, what it reads,
+  whether it runs code here and the libraries it adds, before anything is fetched. Then the node fetches it, builds
+  it in and restarts, and the card says each step. Only the admin token can install, never a screen on the network
+  and never an agent. A crontab line (`planetai packs cron`, added by the installer and by this update) picks the
+  request up within a minute and installs only that commit of a listed pack. A pack new on the wild list is told to
+  the household once, like a new release. Decision: `docs/decisions/2026-10-27-pack-install-from-the-page.md`.
+
 - **The radio docs and `/workbench` no longer say a PM sensor needs 5 V.** Seeed rates the Grove HM3301 for 3.3 V or
   5 V, and its Grove SEN54 and SEN55 carry a regulator for 3.3 V. The Tracker section now says to try one PM sensor
   before a batch, and the workbench's "no sensor" and "PM reads 0" hints stop sending people to measure 5 V.

@@ -159,7 +159,7 @@ for doc in DOCS:
                       "/actions", "/aggregates", "/observations", "/send", "/install"):
                 errs.append(f"{doc}: documents endpoint `{ep}`, which app/main.py does not define")
 
-    for pk in set(re.findall(r"`packs/([a-z0-9-]+)/", text)) | set(re.findall(r"\bpacks/([a-z0-9-]+)\b", text)):
+    for pk in set(re.findall(r"`packs/([a-z0-9-]+)/", text)) | set(re.findall(r"(?<!/)\bpacks/([a-z0-9-]+)\b", text)):   # `/packs/all` is a route, not a folder
         if pk not in PACKS and pk not in EXAMPLE_PACKS and doc != "CHANGELOG.md":   # a record: packs move, as files do
             errs.append(f"{doc}: refers to pack `{pk}`, which does not exist")
 
