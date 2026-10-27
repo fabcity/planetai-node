@@ -10,6 +10,12 @@
   older copy of Making Sense Bali's test page, now redirects here. `app/static/workbench.html` is a copy of
   `sensors/index.html` in fabcity/planetai.
 
+- **The workbench looks like the node, not the website.** It came with planetai.fab.city's menu and footer, dark by
+  default, so opening it from the node felt like leaving for another site. Served by the node it now has the node's own
+  bar: its name, the five doors, Paper and Dark, the docs and Set up. It follows the register you chose on the other
+  pages, and its title is the size of a door's. Set up › Sources links to it. The file is still the site's copy;
+  `app/static/workbench-node.html` is the only part that belongs to the node.
+
 - **`planetai packs add` installs the whole pack in one run.** It used to record the Python libraries and settings of
   the packs the running node had loaded, which cannot include a pack fetched a second before, so a new wild pack came
   without them. And on a node whose packs were chosen in Set up, the new pack stayed off without a word. Now its
