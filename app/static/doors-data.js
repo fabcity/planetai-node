@@ -77,7 +77,8 @@ VIEWS.data = function () {
   const total = Object.values(S2).reduce((a, m) => a + Object.values(m).reduce((b, arr) => b + arr.filter(Boolean).length, 0), 0);
   $('#datahead').innerHTML = `<div class="k">Data · everything this node holds, as it reads it</div><h1>Every reading, drawn.</h1>
     <p class="lede">${D.raw ? `${total.toLocaleString('en')} hourly values from ${Object.keys(S2).length} sources over the last 24 hours` : 'The hourly values with the token'}, seven days of every issue at every distance, ${D.observations.length} model and satellite values and ${D.actions.length} decisions. Today’s open export, CC BY 4.0: <a class="mono" href="/export?day=${dayOf(D.buckets[D.now])}">GET /export?day=${dayOf(D.buckets[D.now])}</a>.</p>`;
-  $('#dnav').innerHTML = Object.entries(DTABS).map(([id, [t]]) => `<a href="#data/${id}" data-t="${id}"${id === r.tab ? ' class="on" aria-current="page"' : ''}>${t}</a>`).join('');
+  $('#dnav').innerHTML = Object.entries(DTABS).map(([id, [t]]) => `<a href="#data/${id}" data-t="${id}"${id === r.tab ? ' class="on" aria-current="page"' : ''}>${t}</a>`).join('')
+    + '<a href="/workbench#test">Workbench</a>';   /* its own page, the Data door's sixth tab */
   for (const [id, [, secs]] of Object.entries(DTABS)) for (const sec of secs) { const el = document.getElementById(sec); if (el) el.hidden = id !== r.tab; }
   DTABS[r.tab][2]();
   const go = FOCUS ? (FOCUS !== FOCUSED && FOCUS) : r.el;

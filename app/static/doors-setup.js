@@ -212,7 +212,7 @@ function sGroup(g, unlocked) {
     + `<table class="tbl ro"><tr><th>setting</th><th class="hide">key</th><th>value</th></tr>${B.map(b => `<tr><td>${esc(b.label)}</td><td class="hide mono">${esc(b.key)}</td>`
       + `<td class="mono">${b.value ? esc(b.value) : '<span class="fine">not set</span>'}</td></tr>`).join('')}</table>` : '';
   const changed = (SETUP.history || []).filter(a => rows.some(r => String(a.note || '').split(', ').includes(r.key))).slice(0, 5);
-  return `<div class="dh"><h2>${esc(sTitle(g))}</h2>${g === 'packs' && SETUP.packs.length ? `<button type="button" class="sbtn sdet" id="sopenall" aria-pressed="${sOpenAll()}">${sOpenAll() ? 'Close all packs' : 'Open all packs'}</button>` : ''}</div><p class="blurb">${esc((SETUP_GROUPS[g] || [])[1] || 'This node declares this group. planetai config shows the same keys.')}</p>${gate}`
+  return `<div class="dh"><h2>${esc(sTitle(g))}</h2>${g === 'packs' && SETUP.packs.length ? `<button type="button" class="sbtn sdet" id="sopenall" aria-pressed="${sOpenAll()}">${sOpenAll() ? 'Close all packs' : 'Open all packs'}</button>` : ''}</div><p class="blurb">${esc((SETUP_GROUPS[g] || [])[1] || 'This node declares this group. planetai config shows the same keys.')}</p>${g === 'sources' ? '<p class="blurb">A sensor of your own: flash it, plug it in and watch each of its sensors read on <a href="/workbench#test">the workbench</a>.</p>' : ''}${gate}`
     + `<div class="rows">${body}</div>${g === 'system' ? sGrafana(d.bootstrap || []) : ''}${boot}`
     + (changed.length ? `<div class="hist"><div class="k">changed lately</div>${changed.map(a => `<p><span class="mono">${esc(wdhm(a.ts))}</span> · ${esc(a.actor || 'someone')} · ${esc(a.note || '')}</p>`).join('')}</div>` : '');
 }
