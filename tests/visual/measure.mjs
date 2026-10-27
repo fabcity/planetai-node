@@ -3333,7 +3333,9 @@ async function doors() {
     await r.page.waitForTimeout(400);
     /* the loading screen holds at least 1.2 s (ASKING's floor); a shot taken under it is a shot of nothing */
     ok(await r.page.waitForSelector('#asking:not(.on)', { state: 'attached', timeout: 6000 }).then(() => true, () => false), `${tag}: the loading screen never closed`);
-    const tabs = await r.page.evaluate(() => [...document.querySelectorAll('#dnav a')].map(a => a.getAttribute('href')));
+    /* the tabs drawn in this page; Workbench is the bar's last link and its own page (/workbench), walked there, not here */
+    const tabs = await r.page.evaluate(() => [...document.querySelectorAll('#dnav a[href^="#data/"]')].map(a => a.getAttribute('href')));
+    ok(await r.page.evaluate(() => !!document.querySelector('#dnav a[href="/workbench#test"]')), `${tag}: Data has no Workbench tab`);
     ok(tabs.length >= 4, `${tag}: Data lists ${tabs.length} tabs`);
     const seen = new Set();
     for (const t of tabs) {
