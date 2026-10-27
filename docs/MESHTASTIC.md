@@ -148,9 +148,11 @@ The sensor profile turns on environment and air-quality telemetry every 15 minut
 off, and without it a PM, CO2 or formaldehyde sensor sends nothing, so a sensor radio
 provisioned without it needs provisioning again.
 
-The Tracker's Grove port is 3.3 V. A SEN54, a SEN55 or any PM sensor with a fan needs 5 V and does not appear, so
-on a Tracker use a BME280, BME680, SHT4x or AHT10, and put PM on a mains-powered kit. The gateway can carry a
-sensor too, under the same rules: keep its role `CLIENT` and mark it indoor.
+The Tracker's Grove port is 3.3 V. Seeed rates the Grove HM3301 for 3.3 V or 5 V, and its Grove SEN54 and SEN55
+carry a regulator for a 3.3 V supply, so a PM sensor can go on a Tracker. A SEN54 on a Tracker once did not appear at
+all and the reason was never found, so try one before fitting a batch. A PM sensor's fan runs whenever it measures,
+which a battery feels. The gateway can carry a sensor too, under the same rules: keep its role `CLIENT` and mark it
+indoor.
 
 Do not fit an MLX90632. It sends the temperature of whatever it points at as the radio's `temperature`, nothing in
 the packet says so, and the node would file a surface as `temp`. An MLX90614 is safe, because its object
