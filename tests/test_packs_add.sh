@@ -64,7 +64,7 @@ case "\$url" in
   *) exit 22 ;;
 esac
 STUB
-printf '#!/bin/sh\necho "docker $*" >> "%s/docker.log"\n' "$d" > "$d/bin/docker"
+printf '#!/bin/sh\necho "docker $*" >> "%s/docker.log"\n[ "$2" = build ] && [ -f "%s/build-fails" ] && exit 1\nexit 0\n' "$d" "$d" > "$d/bin/docker"
 chmod +x "$d/bin/curl" "$d/bin/docker"
 
 # ---------------------------------------------------------------- a node: one core pack and an .env
@@ -81,6 +81,8 @@ grep -qx "source=someone/rain" "$N/packs/rain-gauge/.wild" 2>/dev/null && grep -
   && ok "HEAD is resolved to its commit, and the commit is what .wild records" || bad ".wild does not pin $S1: $(cat "$N/packs/rain-gauge/.wild" 2>&1)"
 grep -q "not on the wild list" <<< "$out" && grep -q "PACKS_ALLOW_CODE=1" <<< "$out" \
   && ok "a pack from off the list says nobody checked it, and a code pack says what turning it on means" || bad "the warnings are missing: $out"
+grep -q "the node is not answering, so whether Set up limits" <<< "$out" \
+  && ok "with the node down, it says the saved pack list cannot be read" || bad "no node-down warning: $out"
 grep -qx "RAIN_URL=" "$N/.env" && ok "packs install ran after: the pack's setting is in .env" || bad "RAIN_URL is not in .env: $(cat "$N/.env")"
 [ ! -s "$d/docker.log" ] && ok "no pip: lines, so no rebuild" || bad "docker was called with nothing to install: $(cat "$d/docker.log")"
 
@@ -171,12 +173,21 @@ grep -qx '{"PACKS_ENABLED":"heat,rain-gauge,tide,synop"}' "$d/put.log" 2>/dev/nu
   && ok "a list saved in Set up gets the new pack, and says so" || bad "PACKS_ENABLED was not extended: $(cat "$d/put.log" 2>&1) / $out"
 sed -i.bak '/^ADMIN_TOKEN=/d' "$N/.env" && rm -f "$N/.env.bak"
 out="$(pa add someone/synop)"
-[ "$(wc -l < "$d/put.log")" -eq 1 ] && grep -q "planetai config set PACKS_ENABLED heat,rain-gauge,tide,synop" <<< "$out" \
-  && ok "with no token to write it, it says the pack stays off and the command that turns it on" || bad "no switch-on hint: $out"
+[ "$(wc -l < "$d/put.log")" -eq 1 ] && grep -q "planetai ui (it creates the admin token), then planetai config set PACKS_ENABLED heat,rain-gauge,tide,synop" <<< "$out" \
+  && ok "with no token to write it, it says the pack stays off, and how to make the token and turn it on" || bad "no switch-on hint: $out"
 printf '{"runtime": [{"key": "PACKS_ENABLED", "value": ""}]}' > "$d/settings-api.json"
 out="$(pa add someone/synop)"; rm -f "$d/node-up"
 [ "$(wc -l < "$d/put.log")" -eq 1 ] && ! grep -q "PACKS_ENABLED" <<< "$out" \
   && ok "an empty list is every pack, and is left alone" || bad "an empty PACKS_ENABLED was touched: $out"
+
+# ---------------------------------------------------------------- a build that fails records nothing, so the next run builds
+rm -f "$N/app/requirements-packs.txt"; touch "$d/build-fails"
+out="$(pa add someone/synop)"; rc=$?; rm -f "$d/build-fails"
+[ $rc -ne 0 ] && [ ! -e "$N/app/requirements-packs.txt" ] && grep -q "rebuild failed, so nothing was recorded" <<< "$out" \
+  && ok "a failed build leaves the dependency list as it was" || bad "a failed build kept its list (exit $rc): $out"
+: > "$d/docker.log"; out="$(pa install)"
+grep -qx pybufrkit "$N/app/requirements-packs.txt" 2>/dev/null && grep -q "compose build app" "$d/docker.log" \
+  && ok "so packs install, run again, builds" || bad "the retry did not build: $out"
 
 echo
 [ "$fails" -eq 0 ] && { echo "packs add: pinned, one folder, refusals write nothing, core and wild listed apart"; exit 0; }
