@@ -51,7 +51,8 @@ const DTABS = {
   models: ['Models and satellite', ['models'], () => modelsBlock()],
   home: ['Home', ['d-images', 'd-things'], () => { imagesBlock(); thingsBlock(); }],
   ledger: ['Ledger', ['ledger', 'dnote'], () => ledgerBlock()],
-  api: ['API', ['api'], () => apiBlock()] };
+  api: ['API', ['api'], () => apiBlock()],
+  workbench: ['Workbench', ['d-workbench'], () => workbenchBlock()] };
 /* an anchor Data used to have: the tab that holds that section now; and what moved to Node, with Node's own anchor */
 const DOLD = { 'd-readings': 'readings', metrics: 'readings', sensors: 'readings', issues7: 'readings', perday: 'readings', 'd-images': 'home', 'd-things': 'home' };
 const DNODE = { cells: 'cells', 'd-learned': 'remember', 'd-usual': 'remember', 'd-diary': 'remember' };
@@ -77,8 +78,7 @@ VIEWS.data = function () {
   const total = Object.values(S2).reduce((a, m) => a + Object.values(m).reduce((b, arr) => b + arr.filter(Boolean).length, 0), 0);
   $('#datahead').innerHTML = `<div class="k">Data · everything this node holds, as it reads it</div><h1>Every reading, drawn.</h1>
     <p class="lede">${D.raw ? `${total.toLocaleString('en')} hourly values from ${Object.keys(S2).length} sources over the last 24 hours` : 'The hourly values with the token'}, seven days of every issue at every distance, ${D.observations.length} model and satellite values and ${D.actions.length} decisions. Today’s open export, CC BY 4.0: <a class="mono" href="/export?day=${dayOf(D.buckets[D.now])}">GET /export?day=${dayOf(D.buckets[D.now])}</a>.</p>`;
-  $('#dnav').innerHTML = Object.entries(DTABS).map(([id, [t]]) => `<a href="#data/${id}" data-t="${id}"${id === r.tab ? ' class="on" aria-current="page"' : ''}>${t}</a>`).join('')
-    + '<a href="/workbench#test">Workbench</a>';   /* its own page, the Data door's sixth tab */
+  $('#dnav').innerHTML = Object.entries(DTABS).map(([id, [t]]) => `<a href="#data/${id}" data-t="${id}"${id === r.tab ? ' class="on" aria-current="page"' : ''}>${t}</a>`).join('');
   for (const [id, [, secs]] of Object.entries(DTABS)) for (const sec of secs) { const el = document.getElementById(sec); if (el) el.hidden = id !== r.tab; }
   DTABS[r.tab][2]();
   const go = FOCUS ? (FOCUS !== FOCUSED && FOCUS) : r.el;
@@ -88,6 +88,27 @@ VIEWS.data = function () {
     if (el) { el.scrollIntoView({ block: FOCUS ? 'center' : 'start' }); if (FOCUS) el.classList.add('focus'); }
   });
 };
+
+/* THE WORKBENCH (Tomas, 27 Oct 2026: "embeds in the same data menu", "a reduced version of the full workbench",
+   "able to run offline in the node"). The node's copy of planetai.fab.city/sensors, served at /workbench and reduced
+   there (workbench-node.html), drawn in a frame so its own styles and script stay out of the doors. The frame is made
+   once and kept, so a refresh of Data never reloads a flash in progress; #data/workbench/<flash|test|network> picks
+   its view. Its height follows its page. The full workbench is linked only when planetai.fab.city answers. */
+function workbenchBlock() {
+  const sec = $('#d-workbench'), view = decodeURIComponent(location.hash.split('/')[2] || '');
+  let f = sec.querySelector('iframe');
+  if (f) { if (view && f.contentWindow && f.contentWindow.location.hash !== '#' + view) f.contentWindow.location.hash = view; return; }
+  sec.innerHTML = `<div class="dsh"><h2>Flash and test a sensor</h2><p class="blurb">Flash the Bayu and every Meshtastic radio, test a board over USB and see the network this node hears. It works with no internet: the firmware and the flasher are kept on this node. <span id="wbfull"></span></p></div>
+    <iframe src="/workbench${view ? '#' + encodeURIComponent(view) : ''}" title="Sensors workbench" allow="serial"></iframe>`;
+  f = sec.querySelector('iframe');
+  f.onload = () => {
+    const d = f.contentDocument; if (!d || !d.body) return;
+    new ResizeObserver(() => { f.style.height = d.body.offsetHeight + 'px'; }).observe(d.body);
+  };
+  fetch('https://planetai.fab.city/sensors/manifest.webmanifest', { mode: 'no-cors', cache: 'no-store', signal: AbortSignal.timeout(5000) })
+    .then(() => { $('#wbfull').innerHTML = '<a href="https://planetai.fab.city/sensors/" target="_blank" rel="noopener">The full workbench, on planetai.fab.city ↗</a>'; })
+    .catch(() => {});
+}
 
 function metricTiles() {
   const S2 = D.raw ? D.raw.series : {}, src = {}, now = {};

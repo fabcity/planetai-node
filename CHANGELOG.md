@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **The workbench is a Data tab now, and it flashes with no internet.** Data › Workbench draws a reduced copy of the
+  sensors workbench in the pane, under the same side menu, instead of opening a page of its own: Flash (the Bayu and
+  every Meshtastic board), Test over USB and Network, without the site's nav, the demo, the node dialog or the long
+  explanations. The full workbench on planetai.fab.city is linked when the node can reach it. The flasher (ESP Web
+  Tools 10.4.0) ships in the node, and the node keeps its own copy of the firmware in `out/firmware/`, refreshed every
+  six hours while it is online, each Meshtastic binary checked against the release's `SHA256SUMS` (about 17 MB).
+  `/workbench` opened on its own, as the site's Connect opens it, lands on `/#data/workbench`. USB still needs the page
+  on localhost or https, as before.
+
 - **Set up › Packs lists every pack a node could run, and installs a wild one from the page.** The core packs and the
   wild packs on the disk are all there with their switches, a pack switched off included: it used to drop off the page,
   so it could only be turned back on from the terminal. Under them are the packs on the wild list this node does not

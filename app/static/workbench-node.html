@@ -1,85 +1,41 @@
-<!-- The node's own bar over the workbench (app/main.py workbench() puts this in front of the site's nav, which it hides).
-     workbench.html stays a byte copy of the site's sensors/index.html; this is the only part that is the node's. The bar
-     is doors.html's: who, the five doors, the register, the docs and Set up. The workbench is the Data door's sixth tab
-     (Tomas, 27 Oct 2026), so Data is the open door and the Data tabs run under the bar; their names are DTABS in
-     doors-data.js, and tests/test_share.py holds the two lists together. The register is the doors' own
-     (planetai_theme, light or dark, else the system's), so a reader's choice holds across every page of this node. -->
+<!-- The node's layer over the workbench (app/main.py workbench() puts this in front of the site's nav). workbench.html
+     stays a byte copy of the site's sensors/index.html; this is the only part that is the node's.
+     The workbench is the Data door's Workbench tab (Tomas, 27 Oct 2026: "embeds in the same data menu", "a reduced
+     version of the full workbench"): doors-data.js draws this page in a frame under the Data tabs, so the doors are
+     the chrome and this page brings none. A page opened on its own (the site's Connect, a bookmark) goes to
+     /#data/workbench, at the same view. Reduced: the three views stay whole (flash every board, Bayu and Meshtastic;
+     test over USB; the network), and what the node already does, or what only the site needs, is hidden: the site's
+     nav, head and foot, Connect a node (this page is the node), the demo and the log replay, Keep for offline (the
+     node keeps the firmware itself), and the long explanations, which the full workbench on planetai.fab.city keeps.
+     The register is the doors' (planetai_theme), followed when the doors change it. -->
 <style>
-nav.top, footer.foot .top { display:none; }
-:root { --max:1240px; --pad:clamp(16px,3vw,40px); }
-html { scroll-padding-top:72px; }
-body { font-size:15px; }
-.nbar { display:flex; align-items:center; gap:18px; padding:14px var(--pad); border-bottom:1px solid var(--ink); flex-wrap:wrap; font-family:var(--body); }
-.nbar .who { font:700 20px/1.2 var(--fc-font-display, var(--sans)); letter-spacing:-.02em; text-decoration:none; }
-.nbar .who small { font:400 13px var(--body); color:var(--mute); margin-left:6px; }
-.nbar .doors { display:flex; border:1px solid var(--ink); }
-.nbar .doors a { padding:5px 14px; font-size:13px; text-decoration:none; border-right:1px solid var(--ink); }
-.nbar .doors a:last-child { border-right:0; }
-.nbar .sp { flex:1; }
-.nbar .doors a.on { background:var(--ink); color:var(--ground); font-weight:600; }
-/* the Data tabs, as the doors' side menu draws a section: a word in the body face, a wash on hover, ink when open */
-.ntabs { display:flex; flex-wrap:wrap; align-items:center; gap:2px 4px; padding:8px var(--pad); border-bottom:1px solid var(--ink); }
-.ntabs .k { font:600 11px var(--mono); letter-spacing:.14em; text-transform:uppercase; color:var(--mute); margin-right:10px; }
-.ntabs a { display:inline-flex; align-items:center; min-height:36px; padding:0 12px; font:400 15px var(--body); text-decoration:none; }
-.ntabs a:not(.on):hover { background:color-mix(in srgb, var(--ink) 4%, var(--ground)); text-decoration:underline; text-underline-offset:3px; }
-.ntabs a.on { background:var(--ink); color:var(--ground); font-weight:600; }
-.nbar .reg { display:flex; border:1px solid var(--ink); }
-.nbar .reg button { padding:4px 10px; font:500 11px var(--mono); letter-spacing:.1em; }
-.nbar .reg button.on { background:var(--ink); color:var(--ground); }
-.nbar .iconbtn { display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; border:1px solid var(--ink); color:var(--ink); text-decoration:none; }
-.nbar .iconbtn + .iconbtn { margin-left:-10px; }
-.nbar .iconbtn svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.5; stroke-linecap:square; }
-.nbar .iconbtn:hover, .nbar .doors a:not(.on):hover { background:color-mix(in srgb, var(--ink) 4%, var(--ground)); }
-/* the page's head at a door's size: a kicker, a head, one paragraph; the tab line sticks to the top, there is no nav over it */
-.ptitle { padding:26px 0 18px; }
-.ptitle h1 { font-size:clamp(26px,3.1vw,44px); line-height:1.08; max-width:none; }
-.ptitle .lede { margin-top:10px; font-size:15px; max-width:76ch; }
-.ptitle .meta { margin-top:12px; font-size:11px; }
-.eyebrow { font-size:11px; letter-spacing:.08em; }
-.bar { top:0; }
-.chap h2 { font-size:clamp(24px,2.6vw,34px); }
-.empty-state h2 { font-size:24px; }
-footer.foot { padding:18px 0 28px; border-top-color:var(--ink); }
-footer.foot .legal { border-top:0; margin-top:0; padding-top:0; }
-@media (max-width:480px) {
-  .nbar { gap:8px; padding:10px 16px; } .nbar .sp { display:none; } .nbar .who { margin-right:auto; font-size:18px; }
-  .nbar .iconbtn { width:44px; height:44px; order:1; } .nbar .iconbtn + .iconbtn { margin-left:0; }
-  .nbar .doors { order:2; flex-basis:100%; } .nbar .doors a { flex:1; display:flex; align-items:center; justify-content:center; min-height:44px; padding:0 4px; }
-  .nbar .reg { order:3; } .ntabs { padding:6px 16px; } .ntabs .k { flex-basis:100%; } .ntabs a { min-height:44px; } .nbar .reg button { min-height:44px; padding:0 12px; }
-}
+nav.top, header.ptitle, footer.foot, a.skip, #keep, #btnnode, #btndemo, label[for="filelog"], [data-act="demo"],
+#vflash .chap > p.lede, #vflash .board > p:not(.note), #vflash .chap:first-of-type .pair > .panel + .panel,
+[data-t="f2.after.p"], [data-t^="f2.why.p"] { display:none !important; }
+html { scroll-padding-top:0; }
+body { font-size:15px; background:var(--ground); min-height:0; }   /* the frame follows the body's height; 100vh would pin it */
+.bar { position:static; top:auto; }
+.wrap, .bar > div { padding-left:0; padding-right:0; max-width:none; }
+.chap { padding-top:18px; }
+.chap h2 { font-size:clamp(22px,2.4vw,30px); }
+#netsvg { height:min(64vh, 620px); }
 </style>
-<header class="nbar">
-  <a class="who" id="nwho" href="/">this node</a>
-  <nav class="doors" aria-label="Doors"><a href="/#now">Now</a><a href="/#place">Place</a><a href="/#node">Node</a><a href="/#data" class="on" aria-current="page">Data</a><a href="/#wall">Wall</a></nav>
-  <span class="sp"></span>
-  <div class="reg" role="group" aria-label="Register"><button type="button" data-r="light">PAPER</button><button type="button" data-r="dark">DARK</button></div>
-  <a class="iconbtn" href="https://planetai.fab.city/docs/" target="_blank" rel="noopener" aria-label="Documentation (opens planetai.fab.city)" title="Documentation"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 2.5h7l3.5 3.5v11.5h-10.5zM12 2.5v3.5h3.5M7.5 10h5M7.5 12.5h5M7.5 15h3"/></svg></a>
-  <a class="iconbtn" href="/#setup" aria-label="Set up" title="Set up"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8.6 2h2.8l.4 2.2 1.5.7 1.9-1.3 2 2-1.3 1.9.7 1.5 2.2.4v2.8l-2.2.4-.7 1.5 1.3 1.9-2 2-1.9-1.3-1.5.7-.4 2.2H8.6l-.4-2.2-1.5-.7-1.9 1.3-2-2 1.3-1.9-.7-1.5L1.2 11.4V8.6l2.2-.4.7-1.5-1.3-1.9 2-2 1.9 1.3 1.5-.7z"/><circle cx="10" cy="10" r="2.6"/></svg></a>
-</header>
-<nav class="ntabs" aria-label="Data tabs"><span class="k">Data</span><a href="/#data/readings">Readings</a><a href="/#data/models">Models and satellite</a><a href="/#data/home">Home</a><a href="/#data/ledger">Ledger</a><a href="/#data/api">API</a><a href="/workbench#test" class="on" aria-current="page">Workbench</a></nav>
 <script>
 (function () {
-  var root = document.documentElement, t = null;
-  try { t = localStorage.getItem('planetai_theme'); } catch (e) { /* no storage here */ }
-  if (t !== 'light' && t !== 'dark') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  var set = function (v) {
-    root.setAttribute('data-theme', v);
-    document.querySelectorAll('.nbar .reg button').forEach(function (b) { b.classList.toggle('on', b.dataset.r === v); });
-    var m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = v === 'dark' ? '#171717' : '#F9F5F2';
+  if (window.parent === window) { location.replace('/#data/workbench' + (location.hash.length > 1 ? '/' + location.hash.slice(1) : '')); return; }
+  var root = document.documentElement;
+  var theme = function () {
+    var t = null; try { t = localStorage.getItem('planetai_theme'); } catch (e) { /* no storage here */ }
+    if (t !== 'light' && t !== 'dark') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    root.setAttribute('data-theme', t);
   };
-  set(t);
-  document.querySelectorAll('.nbar .reg button').forEach(function (b) {
-    b.onclick = function () {
-      set(b.dataset.r); try { localStorage.setItem('planetai_theme', b.dataset.r); } catch (e) {}
-      // the workbench draws its canvases from the layer's tokens: read them again in the new register
-      if (typeof readPal === 'function') readPal();
-      if (typeof renderNet === 'function' && typeof VIEW !== 'undefined' && VIEW === 'net') renderNet();
-    };
+  theme();
+  // the doors' register switch writes planetai_theme; a frame of the same origin hears it as a storage event
+  addEventListener('storage', function (e) {
+    if (e.key !== 'planetai_theme') return;
+    theme();
+    if (typeof readPal === 'function') readPal();
+    if (typeof renderNet === 'function' && typeof VIEW !== 'undefined' && VIEW === 'net') renderNet();
   });
-  fetch('/health', { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (h) {
-    if (!h || !h.node) return;
-    var w = document.getElementById('nwho'), s = document.createElement('small');
-    w.textContent = h.node; s.textContent = h.city || ''; w.appendChild(s);
-  }).catch(function () {});
 })();
 </script>

@@ -529,19 +529,43 @@ for _lv in ("off", "open"):
 level("off")
 print("storage and machine: the keeper's, refused to the LAN at every level")
 
-# The workbench is a shell like /ui: it answers a stranger at every level, and the reads behind it stay gated.
+# The workbench is a shell like /ui: it answers a stranger at every level, and the reads behind it stay gated. It is
+# the Data door's Workbench tab (Tomas, 27 Oct 2026): doors-data.js frames it, so it brings no chrome of its own, and
+# it flashes from this node, offline: the flasher under /static/vendor/, the firmware under /static/firmware/ once
+# app/firmware.py has kept a copy, and the site's addresses only before that.
+import tempfile as _wbtf
+_wbout, main.OUT = main.OUT, _P(_wbtf.mkdtemp())
+_dt = re.findall(r"^  (\w+): \['([^']+)'", open("app/static/doors-data.js").read().split("const DTABS = {")[1].split("};")[0], re.M)
+assert ("workbench", "Workbench") in _dt, "the workbench must be one of the Data door's tabs (DTABS in doors-data.js)"
+assert 'id="d-workbench"' in open("app/static/doors.html").read(), "doors.html must hold the Workbench tab's section"
 for _lv in ("off", "open"):
     level(_lv)
     _wb = lan.get("/workbench")
     assert _wb.status_code == 200, f"/workbench refused a stranger at SHARE_LEVEL={_lv}"
     assert 'href="/static/planetai-theme.css"' in _wb.text and 'href="/kit/' not in _wb.text, "/workbench must point the stylesheet at /static/"
-    assert '<header class="nbar">' in _wb.text and _wb.text.index('class="nbar"') < _wb.text.index('<nav class="top"'), "/workbench must wear the node's bar"
-    _dt = re.findall(r"^  (\w+): \['([^']+)'", open("app/static/doors-data.js").read().split("const DTABS = {")[1].split("};")[0], re.M)
-    assert _dt and all(f'href="/#data/{k}">{t}</a>' in _wb.text for k, t in _dt), "the workbench's Data tabs must be DTABS, in doors-data.js"
+    assert "location.replace('/#data/workbench'" in _wb.text and _wb.text.index("window.parent === window") < _wb.text.index('<nav class="top"'), \
+        "/workbench opened on its own must go to the Data door's tab"
+    assert 'class="nbar"' not in _wb.text, "framed in the Data door, /workbench must not draw a second bar"
     assert "planetai_theme" in _wb.text and 'data-theme="dark">' not in _wb.text.split("<head>")[0], "/workbench must take the node's register"
+    assert "new URL('/static/vendor/esp-web-tools/install-button.js'" in _wb.text, "the flasher must come from this node"
+    assert "makingsense.fablabbali.com/flash/firmware/';" in _wb.text and "'https://planetai.fab.city/sensors/firmware/meshtastic/'" in _wb.text, \
+        "with no copy kept yet, the firmware comes from where the site reads it"
+    assert lan.get("/static/vendor/esp-web-tools/install-button.js").status_code == 200, f"the flasher refused a stranger at SHARE_LEVEL={_lv}"
+    for _bad in ("/static/vendor/esp-web-tools/..%2F..%2Fdoors.html", "/static/vendor/esp-web-tools/x.html"):
+        assert lan.get(_bad).status_code == 404, f"{_bad} must not be served"
     _old = lan.get("/tester", follow_redirects=False)
     assert _old.status_code == 308 and _old.headers["location"] == "/workbench", "/tester must send a bookmark to /workbench"
+# with a copy kept, the page and the files are this node's
+for _f, _b in (("bayu/manifest.json", b"{}"), ("meshtastic/files.json", b"{}"), ("meshtastic/2.7/fw.uf2", b"uf2")):
+    (main.OUT / "firmware" / _f).parent.mkdir(parents=True, exist_ok=True)
+    (main.OUT / "firmware" / _f).write_bytes(_b)
+_wb = lan.get("/workbench").text
+assert "const FW = '/static/firmware/';" in _wb and "const MT_FW = '/static/firmware/meshtastic/';" in _wb, "a kept copy must be what the page flashes"
+assert lan.get("/static/firmware/meshtastic/2.7/fw.uf2").content == b"uf2", "a kept firmware file must answer a stranger"
+for _bad in ("/static/firmware/..%2F..%2Fetc%2Fpasswd", "/static/firmware/meshtastic", "/static/firmware/nothing.bin"):
+    assert lan.get(_bad).status_code == 404, f"{_bad} must not be served"
+main.OUT = _wbout
 level("off")
-print("workbench: answers at every level, stylesheet under /static/, /tester redirects")
+print("workbench: the Data door's tab, offline flasher and firmware, answers at every level, /tester redirects")
 
 print("all share-level checks passed")

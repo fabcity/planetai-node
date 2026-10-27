@@ -3333,9 +3333,9 @@ async function doors() {
     await r.page.waitForTimeout(400);
     /* the loading screen holds at least 1.2 s (ASKING's floor); a shot taken under it is a shot of nothing */
     ok(await r.page.waitForSelector('#asking:not(.on)', { state: 'attached', timeout: 6000 }).then(() => true, () => false), `${tag}: the loading screen never closed`);
-    /* the tabs drawn in this page; Workbench is the bar's last link and its own page (/workbench), walked there, not here */
+    /* the tabs drawn in this page, Workbench among them: the node's /workbench in a frame (Tomas, 27 Oct 2026) */
     const tabs = await r.page.evaluate(() => [...document.querySelectorAll('#dnav a[href^="#data/"]')].map(a => a.getAttribute('href')));
-    ok(await r.page.evaluate(() => !!document.querySelector('#dnav a[href="/workbench#test"]')), `${tag}: Data has no Workbench tab`);
+    ok(tabs.includes('#data/workbench'), `${tag}: Data has no Workbench tab`);
     ok(tabs.length >= 4, `${tag}: Data lists ${tabs.length} tabs`);
     const seen = new Set();
     for (const t of tabs) {
@@ -3352,6 +3352,10 @@ async function doors() {
       for (const id of g.vis) { ok(!seen.has(id), `${tag} ${t}: #${id} is drawn on two tabs`); seen.add(id); }
       ok(!g.small, `${tag} ${t}: ${g.small} tab(s) under 44 × 44 px`);
       const o = await overflowAt(r.page); ok(o <= 1, `${tag} ${t}: the page scrolls ${o}px sideways`);
+      if (t === '#data/workbench') {
+        const f = await r.page.evaluate(() => { const x = document.querySelector('#d-workbench iframe'); return x && { src: x.getAttribute('src'), allow: x.getAttribute('allow'), w: x.getBoundingClientRect().width }; });
+        ok(f && /^\/workbench(#|$)/.test(f.src) && /\bserial\b/.test(f.allow || '') && f.w > 200, `${tag}: the Workbench tab must frame /workbench with USB allowed (${JSON.stringify(f)})`);
+      }
       if (t === '#data/readings') {
         await r.page.evaluate(() => window.scrollTo(0, 1600)); await r.page.waitForTimeout(150);
         const top = await r.page.evaluate(() => document.getElementById('dnav').getBoundingClientRect().top);
