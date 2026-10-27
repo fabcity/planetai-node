@@ -37,7 +37,9 @@ packs/<id>/
    or `planetai packs add <owner>/<repo>[/<folder>][@<ref>]` for any pack on GitHub. The node fetches the
    commit, pins it, and prints `● <id>: added, a data pack, from <source> at <commit>`. It warns when the pack is
    not on the list, or is listed and not yet reviewed, and when it is a code pack. Then it adds any settings the
-   pack declares to `.env`, as `planetai packs install` does.
+   pack declares to `.env` and its Python libraries to the image, as `planetai packs install` does. If the
+   packs this node loads were chosen in Set up › Packs, the new one joins that list; if it cannot write the list,
+   it says so and prints the command that does.
 2. **Run `planetai restart`, then `planetai packs`.** The pack is under `wild:` with where it came from, the
    commit and the day it was added, and which of its scripts an agent may run. Run `planetai packs add` again to
    update it. To remove it, delete `packs/<id>` and restart.
