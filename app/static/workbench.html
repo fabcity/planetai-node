@@ -609,6 +609,7 @@ const STR = {
   'node.url':'Address','node.tok':'Token (optional)','node.off':'Disconnect','node.go':'Connect',
   'serial.no':'This browser cannot open a USB port. Use Chrome or Edge on a laptop. The demo, the replay and the node view still work here.',
   'serial.insecure':'USB needs this page on https or on localhost. Open planetai.fab.city/sensors for USB.',
+  'serial.flag':'USB from across the LAN needs one step in this laptop\'s Chrome, once: open chrome://flags/#unsafely-treat-insecure-origin-as-secure, paste {o}, choose Enabled, then Relaunch.',
   'L.usb':'USB on this computer','L.node':'the node','L.mesh':'mesh radios','L.wifi':'WiFi pods to the broker','L.cloud':'Smart Citizen platform','L.lan':'LAN devices','L.public':'stations and models','L.peers':'other nodes','L.indoor':'indoors','L.outdoor':'outdoors',
   'ago.s':'s ago','ago.m':'min ago','ago.h':'h ago','never':'waiting for the first reading','stale':'no new reading for',
   'c.board':'Board talking','c.board.no':'Nothing from the board yet. Press reset on it, or check the cable is a data cable.','c.lines':'lines',
@@ -679,6 +680,7 @@ const STR = {
   'node.url':'Alamat','node.tok':'Token (opsional)','node.off':'Putuskan','node.go':'Hubungkan',
   'serial.no':'Browser ini tidak bisa membuka port USB. Gunakan Chrome atau Edge di laptop. Demo, putar ulang, dan tampilan node tetap jalan di sini.',
   'serial.insecure':'USB butuh halaman ini di https atau localhost. Buka planetai.fab.city/sensors untuk USB.',
+  'serial.flag':'USB dari LAN butuh satu langkah di Chrome laptop ini, sekali saja: buka chrome://flags/#unsafely-treat-insecure-origin-as-secure, tempel {o}, pilih Enabled, lalu Relaunch.',
   'L.usb':'USB di komputer ini','L.node':'node','L.mesh':'radio mesh','L.wifi':'pod WiFi ke broker','L.cloud':'platform Smart Citizen','L.lan':'perangkat LAN','L.public':'stasiun dan model','L.peers':'node lain','L.indoor':'dalam ruangan','L.outdoor':'luar ruangan',
   'ago.s':'dtk lalu','ago.m':'mnt lalu','ago.h':'jam lalu','never':'menunggu bacaan pertama','stale':'tidak ada bacaan baru selama',
   'c.board':'Papan bicara','c.board.no':'Belum ada apa pun dari papan. Tekan reset, atau pastikan kabelnya kabel data.','c.lines':'baris',
@@ -749,6 +751,7 @@ const STR = {
   'node.url':'Dirección','node.tok':'Token (opcional)','node.off':'Desconectar','node.go':'Conectar',
   'serial.no':'Este navegador no puede abrir un puerto USB. Usa Chrome o Edge en un portátil. La demo, la reproducción y la vista del nodo siguen funcionando aquí.',
   'serial.insecure':'El USB necesita esta página en https o en localhost. Abre planetai.fab.city/sensors para el USB.',
+  'serial.flag':'El USB desde la LAN necesita un paso en el Chrome de este portátil, una sola vez: abre chrome://flags/#unsafely-treat-insecure-origin-as-secure, pega {o}, elige Enabled y pulsa Relaunch.',
   'L.usb':'USB en este ordenador','L.node':'el nodo','L.mesh':'radios de la malla','L.wifi':'pods WiFi al broker','L.cloud':'plataforma Smart Citizen','L.lan':'dispositivos de la LAN','L.public':'estaciones y modelos','L.peers':'otros nodos','L.indoor':'interior','L.outdoor':'exterior',
   'ago.s':'s','ago.m':'min','ago.h':'h','never':'esperando la primera lectura','stale':'sin lectura nueva desde hace',
   'c.board':'La placa habla','c.board.no':'Nada de la placa todavía. Pulsa reset, o comprueba que el cable es de datos.','c.lines':'líneas',
@@ -1046,10 +1049,13 @@ function mtFromRadio(d, buf){
 /* ---------- USB ---------- */
 const hasSerial = 'serial' in navigator;
 const secure = window.isSecureContext;
+// http and not secure is a node opened from across the LAN: Chrome's flag for this exact origin makes it secure
+// (docs/decisions/2026-10-27-serial-on-the-lan.md in planetai-node). file:// and the rest keep the old advice.
+const lanHint = () => location.protocol === 'http:' ? t('serial.flag').replace('{o}', location.origin) : '';
 let usbCount = 0;
 function serialHint(){
   const el = document.getElementById('serialhint');
-  const msg = !secure ? t('serial.insecure') : (!hasSerial ? t('serial.no') : '');
+  const msg = !secure ? (lanHint() || t('serial.insecure')) : (!hasSerial ? t('serial.no') : '');
   if (el) el.textContent = msg;
   const b = document.getElementById('btnusb'); if (b) b.disabled = !(hasSerial && secure);
   document.querySelectorAll('[data-act="usb"]').forEach(x => x.disabled = !(hasSerial && secure));
@@ -1873,7 +1879,7 @@ function fillFlash(){
   if (meta) meta.textContent = [diy && diy.version ? 'Bayu ' + diy.version : '', f ? 'Meshtastic ' + f.version : ''].filter(Boolean).join(' · ');
   const fb = document.getElementById('flashbanner');
   if (fb) {
-    const msg = !secure ? t('f.insecure') : (flash.ewt === 'no' ? esc(t('f.noload')) : '');
+    const msg = !secure ? (esc(lanHint()) || t('f.insecure')) : (flash.ewt === 'no' ? esc(t('f.noload')) : '');
     fb.innerHTML = msg; fb.classList.toggle('show', !!msg);
   }
 }
