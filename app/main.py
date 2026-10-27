@@ -619,6 +619,22 @@ def check_registry() -> None:
 
 
 
+def check_firmware() -> None:
+    """Every six hours, bring this node's copy of the workbench's firmware up to date (app/firmware.py), so the
+    workbench flashes with no internet. UPDATE_CHECK=off asks nothing, the same switch as the registry read."""
+    if settings.get("UPDATE_CHECK", "on") == "off":
+        return
+    import firmware
+
+    def get(u: str) -> bytes:
+        r = hc.get(u, timeout=120)
+        r.raise_for_status()
+        return r.content
+    n = firmware.mirror(OUT / "firmware", get)
+    if any(n.values()):
+        log.info("firmware kept for the workbench: %s new file(s)", n)
+
+
 # ---------------------------------------------------------------- what the node learns (docs/SPEC_learn.md)
 def check_learn() -> None:
     """Once a local day, re-check what this house learned (app/learn.py): what worked, what is usual, and the asks
@@ -778,6 +794,7 @@ def start() -> None:
     loop(push_events, 3600, delay=150)
     loop(check_release, 3600, delay=300)
     loop(check_registry, 3600, delay=60)
+    loop(check_firmware, 6 * 3600, delay=120)
     loop(_pack_job("eyes", "check_griis"), 3600, delay=90)     # the eyes pack's weekly reads, while it is on
     loop(_pack_job("eyes", "check_others"), 3600, delay=120)
     loop(check_learn, 3600, delay=180)
@@ -1716,19 +1733,30 @@ def workbench():
     The page is the shell, so it answers at every SHARE_LEVEL like /ui; what it then reads is gated as always, and it
     asks for the token when a read is refused. app/static/workbench.html is a copy of sensors/index.html in
     fabcity/planetai: edit it there and copy it here. Its one stylesheet link points at the site's /kit/, which the
-    node serves under /static/. Here it wears the node's chrome, not the site's: workbench-node.html puts the doors'
-    bar and register in front of the site's nav and hides it, so the page reads as one more page of this node."""
+    node serves under /static/.
+
+    Here it is the Data door's Workbench tab (Tomas, 27 Oct 2026: "embeds in the same data menu", reduced, offline):
+    doors-data.js draws it in a frame, and workbench-node.html hides the site's nav and what a node does not need,
+    takes the doors' register, and sends a page opened on its own (the site's Connect) to /#data/workbench. The
+    flasher is vendored under /static/vendor/, and the firmware comes from this node's own copy (app/firmware.py)
+    once it has one; before that, from where the site reads it."""
     from fastapi.responses import HTMLResponse
     f = STATIC / "workbench.html"
     if not f.exists():
         raise HTTPException(404, "the sensors workbench is not shipped in this build")
-    body = f.read_text()
+    body, fw = f.read_text(), OUT / "firmware"
     for old, new in (('href="/kit/planetai-theme.css"', 'href="/static/planetai-theme.css"'),
                      ('<html lang="en" data-theme="dark">', '<html lang="en">'),   # the node's register decides
-                     ('<nav class="top"', (STATIC / "workbench-node.html").read_text() + '<nav class="top"')):
+                     ('<nav class="top"', (STATIC / "workbench-node.html").read_text() + '<nav class="top"'),
+                     ("new URL('vendor/esp-web-tools/", "new URL('/static/vendor/esp-web-tools/"),
+                     ("const FW = 'https://makingsense.fablabbali.com/flash/firmware/';",
+                      "const FW = '/static/firmware/';" if (fw / "bayu" / "manifest.json").exists() else None),
+                     ("const MT_FW = location.pathname.startsWith('/sensors/') ? location.origin + '/sensors/firmware/meshtastic/' : 'https://planetai.fab.city/sensors/firmware/meshtastic/';",
+                      "const MT_FW = '/static/firmware/meshtastic/';" if (fw / "meshtastic" / "files.json").exists() else None)):
         if old not in body:   # a new copy from the site moved one of these; fail here, not as the site's chrome
             raise HTTPException(500, f"workbench.html no longer has {old!r}; update workbench() in app/main.py")
-        body = body.replace(old, new, 1)
+        if new is not None:
+            body = body.replace(old, new, 1)
     return HTMLResponse(body, headers={"cache-control": "no-cache, must-revalidate"})
 
 
@@ -1737,6 +1765,30 @@ def tester():
     """The sensor bench's old address (v0.83 to v0.90). The workbench replaced it; a bookmark lands there."""
     from fastapi.responses import RedirectResponse
     return RedirectResponse("/workbench", status_code=308)
+
+
+@app.get("/static/vendor/esp-web-tools/{name}", include_in_schema=False)
+def workbench_flasher(name: str):
+    """ESP Web Tools 10.4.0 (Apache-2.0), the workbench's flasher, vendored as the site vendors it, so the node flashes
+    with no internet. A flat name in one folder, like /static/{name}: nothing a caller sends walks the filesystem."""
+    from fastapi.responses import FileResponse
+    p = STATIC / "vendor" / "esp-web-tools" / name
+    if not re.fullmatch(r"[A-Za-z0-9_.-]+\.(js|txt)", name) or not p.is_file():
+        raise HTTPException(404, "no such file")
+    return FileResponse(p, headers=NO_CACHE)
+
+
+@app.get("/static/firmware/{path:path}", include_in_schema=False)
+def workbench_firmware(path: str):
+    """This node's copy of the firmware the workbench flashes (app/firmware.py). The images are public releases, so
+    they answer at every SHARE_LEVEL, under /static/ like the page's other parts. The path must resolve inside the
+    copy."""
+    from fastapi.responses import FileResponse
+    root = (OUT / "firmware").resolve()
+    p = (root / path).resolve()
+    if not p.is_relative_to(root) or not p.is_file():
+        raise HTTPException(404, "this node keeps no such firmware file")
+    return FileResponse(p, headers=NO_CACHE)
 
 
 # What this machine is for, in the words of docs/site/introduction.md; tools/check_site.py holds this, the

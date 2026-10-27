@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **The workbench is a Data tab now, and it flashes with no internet.** Data › Workbench draws a reduced copy of the
+  sensors workbench in the pane, under the same side menu, instead of opening a page of its own: Flash (the Bayu and
+  every Meshtastic board), Test over USB and Network, without the site's nav, the demo, the node dialog or the long
+  explanations. The full workbench on planetai.fab.city is linked when the node can reach it. The flasher (ESP Web
+  Tools 10.4.0) ships in the node, and the node keeps its own copy of the firmware in `out/firmware/`, refreshed every
+  six hours while it is online, each Meshtastic binary checked against the release's `SHA256SUMS` (about 17 MB).
+  `/workbench` opened on its own, as the site's Connect opens it, lands on `/#data/workbench`. USB still needs the page
+  on localhost or https, as before.
+
 - **The radio docs and `/workbench` no longer say a PM sensor needs 5 V.** Seeed rates the Grove HM3301 for 3.3 V or
   5 V, and its Grove SEN54 and SEN55 carry a regulator for 3.3 V. The Tracker section now says to try one PM sensor
   before a batch, and the workbench's "no sensor" and "PM reads 0" hints stop sending people to measure 5 V.

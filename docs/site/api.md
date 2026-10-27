@@ -122,7 +122,7 @@ The dashboard: the five doors by default, the older dashboard with `?layout=clas
 ### GET /workbench
 Access: public
 
-The sensors workbench, the same page as `planetai.fab.city/sensors/`, reading this node's `/health`, `/sensors`, `/readings` and `/nodes`, and asking for the token when a read is refused. The site's Connect button opens it, because a browser does not let the site read a node on the house network. It reads boards over USB only at `http://localhost:8080/workbench`, where the browser counts the page as secure. 404 when the build does not ship it.
+The sensors workbench, a reduced copy of `planetai.fab.city/sensors/` that the dashboard shows as the Data door's Workbench tab (`/#data/workbench`, with `/flash`, `/test` or `/network` after it for one view). It flashes the Bayu and the Meshtastic radios, tests a board over USB, and draws the network this node hears from its `/health`, `/sensors`, `/readings` and `/nodes`, asking for the token when a read is refused. It runs with no internet: the flasher comes from `/static/vendor/esp-web-tools/`, and the firmware from the node's own copy under `/static/firmware/`, which the node refreshes every six hours while it is online. Until the first copy is made, the firmware comes from where the site reads it. Opened on its own, as the site's Connect button opens it, the page goes to `/#data/workbench` at the same view. Browsers only open a USB port where they count the page as secure, so flashing and USB tests work at `http://localhost:8080/` on the node machine, not from across the LAN. 404 when the build does not ship it.
 
 ### GET /tester
 Access: public
@@ -133,6 +133,16 @@ The old address of the sensor bench. It redirects to `/workbench` (308).
 Access: public
 
 The files the dashboard cannot inline, by name only; any other name is 404 `no such asset`. The names are `node-ground.svg`, `jetbrains-mono-latin.woff2`, `FunnelSans-VariableFont_wght.ttf`, `Figtree-VariableFont_wght.ttf`, `Figtree-Italic-VariableFont_wght.ttf`, `dashboard.js`, `dashboard.css`, `d3.min.js`, `plot.umd.min.js`, `planetai-theme.css`, `tokens.css`, `signs.svg`, `kilometre-cells.json`, `learn.json`, `maplibre-gl.js`, `maplibre-gl.css`, `deck.gl.min.js`, `qrcode.js`, `mobile.html`, `mobile.js`, `walk.js`, `world-land-110m.json`, `docs_site.json`, and `doors-<name>.js` for `load`, `nodegeo`, `core`, `fig`, `now`, `placemap`, `place`, `data`, `flow`, `wallmap`, `wall`, `node` and `setup`. `node-ground.svg` is drawn from `NODE_LAT` and `NODE_LON` when they are set, and `?variant=paper` draws it in the paper register.
+
+### GET /static/vendor/esp-web-tools/{name}
+Access: public
+
+ESP Web Tools 10.4.0 (Apache-2.0), the workbench's flasher, kept in the node so it flashes offline. A flat file name in that one folder; anything else is 404.
+
+### GET /static/firmware/{path:path}
+Access: public
+
+The node's copy of the firmware the workbench flashes: `meshtastic/` as `planetai.fab.city/sensors/firmware/meshtastic/` publishes it, each binary checked against that release's `SHA256SUMS`, and `bayu/` as Making Sense Bali publishes it. Refreshed every six hours while the node is online (not at all with `UPDATE_CHECK=off`), and an old build is deleted once nothing names it. A path outside the copy is 404.
 
 ### GET /static/fonts/jetbrains-mono-latin.woff2
 Access: public
