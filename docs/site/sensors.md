@@ -33,6 +33,47 @@ for any source on this page.
 If step 3 says `outdoor` for a kit that is inside, fix it on the Smart Citizen platform. The adapter takes
 `indoor` from each kit's own `exposure`, and every air rule depends on it.
 
+## Flash and test a board
+
+A sensor you build yourself, the Bayu or a Meshtastic radio, gets its firmware from the node. Data › Workbench on
+the dashboard (`/#data/workbench`) flashes every one of these boards, tests a board over USB and draws the network
+the node hears, with no internet. Use Chrome or Edge on a laptop. Phones, Safari and Firefox open the page but have
+no Web Serial, so they cannot reach a board.
+
+1. **Open the workbench where the browser allows USB.** On the node machine, `http://localhost:8080/#data/workbench`
+   works as it is. From another laptop on the LAN, Chrome opens a USB port only for an address it was told to
+   trust, and the Flash view says so in a dashed box with this node's address filled in. Do it once on that
+   laptop: open `chrome://flags/#unsafely-treat-insecure-origin-as-secure`, paste the address exactly as the box
+   shows it (`http://192.168.1.20:8080`), choose Enabled and press Relaunch. The box is gone and the buttons are
+   live. The flag covers that one address, so a node that changes address needs the new one pasted, and a DHCP
+   reservation on the router saves you that. Why a flag and not https on the node:
+   [the decision](https://github.com/fabcity/planetai-node/blob/main/docs/decisions/2026-10-27-serial-on-the-lan.md).
+2. **Flash.** In the Flash view, the Bayu card installs the newest Bayu firmware on a Seeed XIAO ESP32-S3 or an
+   ESP32-C3 SuperMini. Plug the board in with a data cable (a charge-only cable shows no port), press Connect and
+   flash, pick the port and let it run, about a minute. If no port appears, hold BOOT while you plug it in.
+   Reflashing keeps the sensor's saved WiFi, token and name. The ESP32-S3 Meshtastic boards, the XIAO and the
+   Heltec, flash the same way. The nRF52840 boards take a `.uf2` file instead: download it from their card,
+   double-click the board's reset button, and copy the file onto the drive that appears. Keep every radio in a mesh
+   on the same firmware version; radios on different versions stop hearing each other and nothing says so.
+3. **Test.** In the Test view, press Connect a board by USB and pick the port that says USB JTAG/serial or
+   usbmodem. The board appears as a card marked `port open`, with what it reads, Restart board and Disconnect.
+   Save readings (CSV) keeps what it read on this laptop. Pulling the cable turns the card to `unplugged`.
+4. **Find it on the network.** The Network view draws what the node knows: every sensor that publishes to it, every
+   radio its gateway hears, the platforms and stations it reads, the nodes it lists, and the boards on this
+   laptop's USB. A browser cannot scan a network, so a board the node has never heard from is not on the map yet.
+   The reads behind it need the token on a node that is not open; the page asks for it.
+
+A flashed Bayu still has to be told where to publish. On first boot it opens its setup portal, and to send its
+readings to this node you type what `planetai broker` prints on the node machine (the DIY nodes row under
+[What ships](#what-ships)). A Meshtastic radio takes its region and channel from the node, not from this page:
+[Meshtastic, the LoRa mesh](channels.md#meshtastic-the-lora-mesh).
+
+The flasher, ESP Web Tools 10.4.0, ships in the node, and the firmware is the node's own copy, refreshed every six hours while the node is online, with each Meshtastic binary checked against
+its release's `SHA256SUMS`. Until that first copy is made the firmware comes from where planetai.fab.city reads it,
+so a new node needs the internet once. The full workbench, with a demo, a log replay and the long explanations, is
+at [planetai.fab.city/sensors](https://planetai.fab.city/sensors/), and the tab links to it when the node can
+reach it.
+
 ## Who may be counted
 
 `local` is two facts at once. The adapter says whether a sensor is yours, and the node checks whether it is here:
