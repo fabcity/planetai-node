@@ -5,7 +5,7 @@
    routes it reads and its stage; every figure carries its comparison; the node's words are never shouted; provenance
    is a pill in ink. The scales are Place's: the kicker links there and draws no rail. */
 VIEWS.now = function () {
-  rows(); drawNow();
+  rows(); declaredBands(); drawNow();
   aroundMap($('#rose')); thingsLine($('#nthings')); rememberLoad().then(() => decision());   /* the usual hour joins "Nothing is asked now" */
 };
 /* YESTERDAY and DID IT WORK: the short part of the diary (Tomas, 14 Oct: the diary split between Now and Node, whose
@@ -208,6 +208,33 @@ document.addEventListener('click', async ev => {
     D = await loadD().then(d => Object.assign(d, { learn: D.learn, dates: D.dates, at: D.at, now: D.now, sens: D.sens, ngeo: D.ngeo })); VIEWS.now();
   } catch (e) { out.textContent = WORDS.noreply; b.disabled = false; }
 });
+
+/* BANDS A PACK DECLARES (docs/PACKS.md, A declared section). A wild pack ships no script, so it declares its band in
+   its pack.yaml and the node serves it in /issues, with its numbers in it. Now draws each with its own row, beside the
+   part of Now of the same stage (Tomas, 31 Oct): observe under the issue rows, decide and act under What to do (Now
+   has no act part of its own), measure under Did it work. Readout cards only. A reading the node has no row for is
+   not drawn, and the band says how many have not arrived; the pack's note is the fine print under it. */
+const DECL_STAGES = ['observe', 'decide', 'act', 'measure'];
+const DECL_AT = { observe: '#ndecl-observe', decide: '#ndecl-decide', act: '#ndecl-decide', measure: '#ndecl-measure' };
+function declaredBands() {
+  const seen = new Set(), at = {}, ord = x => Number.isInteger(x.order) ? x.order : 50;
+  (D.sections || []).filter(x => x && x.id && DECL_AT[x.stage] && !seen.has(x.id) && seen.add(x.id))
+    .sort((a, b) => DECL_STAGES.indexOf(a.stage) - DECL_STAGES.indexOf(b.stage) || ord(a) - ord(b))
+    .forEach(x => (at[DECL_AT[x.stage]] ||= []).push(declaredBand(x)));
+  for (const m of new Set(Object.values(DECL_AT))) { const el = $(m); el.innerHTML = (at[m] || []).join(''); el.hidden = !at[m]; }
+}
+function declaredBand(x) {
+  const rows = x.readouts || [], want = x.expected || rows.length, missing = want - rows.length, pk = esc(x.pack);
+  const card = r => `<div class="row decl" data-kind="readout"><span class="n">${said(r.label || r.metric)}</span>`
+    + `<span class="v">${num(`${x.id}.${r.sensor_id || 'x'}.${r.metric}`, fmt(r.value, r.dp), `the ${x.pack} pack’s figure, beside nothing of this node’s`)}<small>${esc(r.unit || '')}</small></span>`
+    + `<span class="sub">${esc(r.source || x.pack)}${r.provenance ? ` ${prov(r.provenance)}` : ''}${r.age_minutes != null ? ` · ${ago(r.age_minutes)} old` : ''}</span></div>`;
+  return `<section class="decl" id="decl-${esc(x.id)}" data-learn="now-bands" data-reads="/issues" data-stage="${esc(x.stage)}" data-pack="${pk}" data-kind="readout">`
+    + `<h3 class="nh">${said(x.title || x.id)} <small class="nk">${pk}</small></h3><div class="rows">${rows.map(card).join('')}</div>`
+    + (missing > 0 ? `<p class="fine">${rows.length
+      ? `${missing} of the ${want} readings the ${pk} pack declares ${missing === 1 ? 'has' : 'have'} not arrived on this node yet.`
+      : `None of the ${want} readings the ${pk} pack declares has arrived on this node yet.`}</p>` : '')
+    + `<p class="fine">${x.note ? `${esc(x.note)} ` : ''}Declared by the ${pk} pack in its pack.yaml: the node reads these numbers and the page draws them with its own cards; the pack ships no code for this page.</p></section>`;
+}
 
 /* Around the house: the issues drawn by the hour, one row each; a row moves the page to that issue. Land and Coast
    change yearly and have no hours, so they are not here: Place says them, beside the ground (doors-place.js). */

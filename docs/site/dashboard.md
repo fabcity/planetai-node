@@ -96,6 +96,14 @@ sensors' range, and the distance rings and cells for a screen with the token. Pr
 Without WebGL the map is a rose of bearings and distances. With the admin token one line counts the things this home
 keeps, how many sit idle and how many need repair, and opens Data › Home.
 
+**A pack's own band.** A pack can declare a band in its `pack.yaml` (a wild pack has no other way onto the page, it
+ships no code for it), and Now draws it next to the part with the same stage: `observe` under the issue rows,
+`decide` and `act` under What to do, `measure` under Did it work. Each band is the pack's title with its name beside
+it, one row per reading the node holds, with the reading's source, how it was got and how old it is, and a line
+saying how many of the readings it declares have not arrived yet. The pack's note is the small print under it. On
+node #1 that is the rice around the house (`paddy`) and the airport's weather station (`bmkg-synop`). How to declare
+one: [docs/PACKS.md](../../docs/PACKS.md).
+
 Land and coast change yearly and have no hours, so they are on Place, under **What is changing**. Now opens on the
 headline issue when it is drawn by the hour, else on the first issue that is. Under 480 px everything is one column,
 the bar is three rows of 44 px targets, and the week is one row a day, the whole row a target.
