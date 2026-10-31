@@ -361,9 +361,11 @@ sections:
 
 The node reads each readout's latest row, as it does an issue's, and serves the section in `/issues` as `sections`,
 with the numbers already in it and each one's age. The page turns it into a band in its stage, on Now, with the
-pack's name beside the title and `GET /issues` as its route. A reading the node has no row for is not drawn, and the
+pack's name beside the title and `GET /issues` as its route. On the doors (the default page) the band sits next to
+Now's own part of that stage: `observe` under the issue rows, `decide` and `act` under What to do, `measure` under
+Did it work (`tests/test_doors_sections.py`). A reading the node has no row for is not drawn, and the
 band says how many have not arrived. A core pack's section is the exception: a core pack is on every node whether or
-not its keeper turned it on, so its section stays out of `/issues` until the node holds at least one of its rows. Its note, at the foot of the page, says which pack declared it and that the pack
+not its keeper turned it on, so its section stays out of `/issues` until the node holds at least one of its rows. Its note, at the foot of the page (on the doors, under the band), says which pack declared it and that the pack
 ships no code for this page. A declared section draws readout cards only: a stack, a series or a row needs the
 shell's own code. One that is not well formed, or whose id another pack already took, is left out with a line in the
 log; one whose id the page already has is listed under "Registration problems". `tests/test_pack_sections.py` holds

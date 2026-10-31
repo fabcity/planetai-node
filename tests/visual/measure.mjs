@@ -2955,7 +2955,7 @@ const docFor = u => {
   const layout = u.searchParams.get('layout');
   return layout === 'mobile' ? 'mobile.html' : layout === 'classic' ? 'index.html' : 'doors.html';
 };
-const openRig = async ({ w = 390, h = 844, touch = true, dark = false, token = null, mem = null, throttle = false, locked = false, wireDays = null, admin = null } = {}) => {
+const openRig = async ({ w = 390, h = 844, touch = true, dark = false, token = null, mem = null, throttle = false, locked = false, wireDays = null, admin = null, sections = null } = {}) => {
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ viewport: { width: w, height: h }, isMobile: touch, hasTouch: touch,
     deviceScaleFactor: 1, colorScheme: dark ? 'dark' : 'light', reducedMotion: 'reduce' });
@@ -2977,6 +2977,13 @@ const openRig = async ({ w = 390, h = 844, touch = true, dark = false, token = n
         return route.fulfill({ status: 200, contentType: 'application/json',
           body: JSON.stringify({ ...snap, issues_days: derived }) });
       }
+    }
+    /* sections: the capture with these declared bands in /issues, as the node serves a pack's sections */
+    const sm = sections && u.pathname.match(/^\/issues\/fixtures\/([a-z0-9][a-z0-9._-]{0,63})$/);
+    if (sm) {
+      const snap = computeNodeData(decodeURIComponent(sm[1])).snapshot;
+      if (snap) return route.fulfill({ status: 200, contentType: 'application/json',
+        body: JSON.stringify({ ...snap, issues: { ...snap.issues, sections } }) });
     }
     const doc = docFor(u);
     let file = doc || (u.pathname.startsWith('/static/') ? u.pathname.slice(8) : null);
@@ -3467,6 +3474,40 @@ async function doors() {
       }
       await r.page.click('#askclose');
       said.push(`${tag} learn: ${parts} parts over seven doors and tabs, each with its quote and docs link`);
+    }
+    await r.browser.close();
+  }
+  /* A pack's declared band on Now (31 Oct 2026: until then the doors drew none). An observe band sits in Around the
+     house under the issue rows, a measure band under Did it work; each row a 44 px readout, nothing scrolls sideways. */
+  const ro = (metric, value, en) => ({ metric, sensor_id: 'rig-square', unit: 'ha', dp: 0, value, label: { en }, source: 'Sentinel-2', provenance: 'partial', age_minutes: 4000 });
+  const SEC = [
+    { id: 'rig-rice', pack: 'rig', stage: 'observe', order: 48, title: { en: 'Rice around this node, from Sentinel-2' }, expected: 3,
+      note: { en: 'Declared for the gate: a long note, so the small print has to wrap inside the column it is in and not push the page sideways.' },
+      readouts: [ro('rice_ha', 639, 'rice'), ro('rice_lost_ha', 7.6, 'green a year ago, bare or built now')] },
+    { id: 'rig-did', pack: 'rig', stage: 'measure', title: { en: 'What the rig measured' }, expected: 1, readouts: [ro('m', 1, 'one')] }];
+  for (const w of [390, 1440]) for (const dark of [false, true]) {
+    const tag = `${w}_${dark ? 'dark' : 'paper'}_sections`;
+    const r = await openRig({ w, h: w < 768 ? 844 : 900, touch: w < 768, dark, sections: SEC });
+    /* a phone with no remembered layout is sent to the phone page (mobile.html), which draws no declared band yet */
+    await r.page.goto(`${POP}/?layout=doors&fixture=${FIXTURE}#now`, { waitUntil: 'domcontentloaded' });
+    const got = await wait(r.page, '#decl-rig-rice .row').then(() => true, () => false);
+    await r.page.waitForSelector('#asking:not(.on)', { state: 'attached', timeout: 6000 }).catch(() => {});
+    ok(got, `${tag}: Now drew no declared band`);
+    if (got) {
+      const m = await r.page.evaluate(() => {
+        const b = id => document.getElementById(id), rows = [...b('decl-rig-rice').querySelectorAll('.row')];
+        return { rcol: !!b('decl-rig-rice').closest('.rcol'), under: !!(b('rows').compareDocumentPosition(b('decl-rig-rice')) & 4),
+          did: !!b('decl-rig-did') && !!(b('decide').compareDocumentPosition(b('decl-rig-did')) & 4) && !b('decl-rig-did').closest('.rcol'),
+          h: rows.map(x => Math.round(x.getBoundingClientRect().height)), waiting: b('decl-rig-rice').textContent.includes('1 of the 3 readings'),
+          wide: document.documentElement.scrollWidth - document.documentElement.clientWidth };
+      });
+      ok(m.rcol && m.under, `${tag}: the observe band is not under Around the house's rows`);
+      ok(m.did, `${tag}: the measure band is not in the left column after What to do`);
+      ok(m.h.length === 2 && m.h.every(x => x >= 44), `${tag}: the band's rows are ${m.h.join(',')} px (two of at least 44)`);
+      ok(m.waiting, `${tag}: the band does not say how many readings have not arrived`);
+      ok(m.wide <= 1, `${tag}: Now scrolls ${m.wide}px sideways with a declared band`);
+      if (shots) await r.page.screenshot({ path: path.join(OUT, `doors_sections_${tag}.jpg`), type: 'jpeg', quality: 78, fullPage: true });
+      said.push(`${tag}: the declared bands sit beside their stage`);
     }
     await r.browser.close();
   }

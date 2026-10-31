@@ -651,7 +651,7 @@ const page = tok => ({ D, d3, $: mk(), console, Response, DOORS_TOKEN: () => (to
     await new Promise(r => setTimeout(r, 20)); out[tok ? 'sp' : 'spLocked'] = c.$('#pspecies').innerHTML;
   }
   /* the verdict, on the capture, stale, and with a failing loop */
-  const v = new vm.Script(['loc', 'dayOf'].map(pick).join('\n') + '\n' + node.match(/^const ago = .*$/m)[0] + '\n' + fn(node, 'verdict') + 'verdict');
+  const v = new vm.Script(['loc', 'dayOf', 'ago'].map(pick).join('\n') + '\n' + fn(node, 'verdict') + 'verdict');
   const vc = { D, doorsLocal: L.doorsLocal }; vm.createContext(vc); const verdict = v.runInContext(vc);
   out.v = verdict(D); out.vStale = verdict({ ...D, health: { ...D.health, last_poll: '2026-10-06T08:00:00+00:00' } });
   out.vErr = verdict({ ...D, health: { ...D.health, errors: { forecast: 'boom' } } });

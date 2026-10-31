@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **A wild pack's band shows on the default page.** A section a pack declares in its `pack.yaml` drew only in the
+  classic layout (`?layout=classic`), so on the doors every wild pack's band was missing: on node #1 the rice from
+  `paddy` and the airport weather from `bmkg-synop` could only be seen there. Now draws each band next to its own part
+  of the same stage: `observe` under the issue rows, `decide` and `act` under What to do, `measure` under Did it
+  work. They use Now's issue rows, say how many readings have not arrived, and carry the pack's note under them. The
+  classic layout and the Wall (`wall: true`) are as they were.
+
 - **A laptop on the LAN can flash and test over USB.** Chrome opens a USB port only on a secure page, so from
   `http://<node>:8080` the Flash and USB buttons stayed off. Now the workbench says how to fix that on the laptop, once:
   Chrome's flag `chrome://flags/#unsafely-treat-insecure-origin-as-secure` with the page's own address filled in, in

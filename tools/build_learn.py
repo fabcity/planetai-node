@@ -300,6 +300,10 @@ MARKS = [
      "**Around the house.** A row for each issue", "moves the page to that issue.",
      "Each row carries the node's state word, the value now and today's hours over the line. Press one "
      "and the whole door moves to that issue."),
+    ("now-bands", "A pack's own band", "dashboard.md", "Now",
+     "**A pack's own band.** A pack can declare a band", "`measure` under Did it work.",
+     "Each row is one reading the node holds, with its source, how it was got and how old it is. The small print "
+     "under the band is the pack's own note, and says the pack ships no code for this page."),
     ("now-around", "The stations around the house", "dashboard.md", "Now",
      "Under them, the map of the stations", "for a screen with the token.",
      "Press a station to open its readings in Data. Without WebGL the map is drawn as a rose of "
@@ -612,6 +616,9 @@ QUESTIONS = {
     'now-rows': {"en": ['Which of these needs a look today?', 'Was it too hot or the air too dirty at any hour today?'],
         "id": ['Mana di antara ini yang perlu diperhatikan hari ini?', 'Apakah hari ini ada jam yang terlalu panas atau udaranya terlalu kotor?'],
         "es": ['¿Cuál de estos hay que mirar hoy?', '¿Hubo alguna hora hoy con demasiado calor o el aire muy sucio?']},
+    'now-bands': {"en": ['Where does this band come from?', 'Why have some of these readings not arrived?'],
+        "id": ['Dari mana bagian ini berasal?', 'Mengapa sebagian bacaan ini belum datang?'],
+        "es": ['¿De dónde viene este bloque?', '¿Por qué no han llegado algunas de estas lecturas?']},
     'now-around': {"en": ['Is the air outside worse than in our house?', 'Which station near us has the dirtiest air?'],
         "id": ['Apakah udara di luar lebih buruk daripada di rumah kami?', 'Stasiun mana di dekat kami yang udaranya paling kotor?'],
         "es": ['¿El aire de fuera está peor que el de casa?', '¿Qué estación cercana tiene el aire más sucio?']},

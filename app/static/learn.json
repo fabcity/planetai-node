@@ -1104,6 +1104,30 @@
    "title": "The stations around the house",
    "url": "https://planetai.fab.city/docs/dashboard/#now"
   },
+  "now-bands": {
+   "anchor": "now",
+   "more": "Each row is one reading the node holds, with its source, how it was got and how old it is. The small print under the band is the pack's own note, and says the pack ships no code for this page.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "Where does this band come from?",
+     "Why have some of these readings not arrived?"
+    ],
+    "es": [
+     "¿De dónde viene este bloque?",
+     "¿Por qué no han llegado algunas de estas lecturas?"
+    ],
+    "id": [
+     "Dari mana bagian ini berasal?",
+     "Mengapa sebagian bacaan ini belum datang?"
+    ]
+   },
+   "quote": "**A pack's own band.** A pack can declare a band in its `pack.yaml` (a wild pack has no other way onto the page, it\nships no code for it), and Now draws it next to the part with the same stage: `observe` under the issue rows,\n`decide` and `act` under What to do, `measure` under Did it work.",
+   "section": "Now",
+   "title": "A pack's own band",
+   "url": "https://planetai.fab.city/docs/dashboard/#now"
+  },
   "now-distances": {
    "anchor": "now",
    "more": "Each distance carries its own provenance word, so you can see which number was measured in this house and which came from a public station or a model.",
@@ -2214,6 +2238,7 @@
   "now-todo",
   "now-worked",
   "now-rows",
+  "now-bands",
   "now-around",
   "now-things",
   "place-head",

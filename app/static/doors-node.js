@@ -14,7 +14,6 @@
 let FLOWOBS = null;
 /* the verdict: Working, or Needs a look and why. Heard is a reading in the last hour (/stats silent_minutes); a poll is
    stale after 15 minutes of /issues' as_of, the Wall's rule, so a capture is judged at its own time. */
-const ago = m => m < 90 ? `${Math.round(m)} min` : m < 48 * 60 ? `${Math.round(m / 60)} h` : `${Math.round(m / 1440)} days`;
 function verdict(D, src) {
   const h = D.health, heard = s => Object.values(D.stats15[s.sensor_id] || {}).some(v => v[1] != null && v[1] <= 60);
   const own = D.sensors.filter(s => s.local && s.kind === 'sensor'), pub = D.sensors.filter(s => !s.local && s.kind === 'sensor');

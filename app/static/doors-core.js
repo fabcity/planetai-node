@@ -32,6 +32,7 @@ const sign = (id, cls = '') => `<svg class="sg ${cls}" aria-hidden="true"><use h
 const PROV = ['live', 'partial', 'model', 'cached', 'example'];
 const prov = w => PROV.includes(w) ? `<span class="pill">${sign('sign-prov-' + w)}${w}</span>` : `<span class="gap">${esc(w)}</span>`;
 // Every numeral carries its comparison: data-num names it, data-cmp says against what (the visual gate reads both).
+const ago = m => m < 90 ? `${Math.round(m)} min` : m < 48 * 60 ? `${Math.round(m / 60)} h` : `${Math.round(m / 1440)} days`;   /* an age in minutes, said the way the Node door and Now's declared bands say it */
 const num = (key, v, cmp, inner) => `<span data-num="${esc(key)}" data-cmp="${esc(cmp)}">${inner ?? esc(v)}</span>`;
 const unitOf = m => (D.metrics[m] || {}).unit || '';
 const labelOf = m => (D.metrics[m] || {}).label || m.replace(/_/g, ' ');

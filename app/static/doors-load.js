@@ -98,6 +98,9 @@ function buildD(A, locale) {
     point: [H.lon, H.lat], stats15, raw, actions, alerts: A.alerts || asks.acts || [], notes: !!A.actions, asks,
     /* the ask pane's questions, written by the node from tonight's figures (/issues digest.prompts) */
     prompts: ((I.digest || {}).prompts || {})[L] || ((I.digest || {}).prompts || {}).en || [],
+    /* the bands a pack declares in its pack.yaml, with the node's numbers in them (docs/PACKS.md, A declared section) */
+    sections: (I.sections || []).map(x => ({ ...x, title: tr(x.title), note: tr(x.note),
+      readouts: (x.readouts || []).map(r => ({ ...r, label: tr(r.label) })) })),
   };
 }
 
