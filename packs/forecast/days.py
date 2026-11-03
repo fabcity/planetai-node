@@ -37,9 +37,9 @@ def _r(x: float, dp: int):
 
 
 def _judge(x: float, line: dict) -> tuple:
-    """(the value as shown, its state). The state is read off the value as shown, so a page never says 15 is over 15."""
-    v = _r(x, line.get("dp", 0))
-    return v, _line_key({"kind": "sensed"}, v, line)
+    """(the value as shown, its state). The state is the engine's, read off the unrounded figure as /issues reads it;
+    only the value is rounded for the page."""
+    return _r(x, line.get("dp", 0)), _line_key({"kind": "sensed"}, x, line)
 
 
 def _wettest(rain: list, end: datetime) -> str | None:
@@ -160,7 +160,9 @@ def _sources(who: list[dict], rows: list[dict], openmeteo: bool, coast: bool) ->
 def _source(w: dict) -> dict:
     m = w.get("meta") or {}
     return {"sensor_id": w["sensor_id"], "name": w["name"], "lat": w["lat"], "lon": w["lon"],
-            "issued": m.get("issued"), "fetched": m.get("fetched"), "km_from_node": m.get("km_from_node")}
+            "issued": m.get("issued"), "fetched": m.get("fetched"),
+            # BMKG's meta says km_from_node, the sea's says distance_km (the adapter writes both as they are)
+            "km_from_node": m["km_from_node"] if m.get("km_from_node") is not None else m.get("distance_km")}
 
 
 def answer(*, who: list[dict], rows: list[dict], issue_lines: dict, ahead: list[dict], tz: str, now: datetime,
@@ -168,6 +170,12 @@ def answer(*, who: list[dict], rows: list[dict], issue_lines: dict, ahead: list[
     """The whole GET /forecast body (schema forecast-v0) from the sensors, the readings (sensor_id, ts, metric, value;
     ts as ISO text or datetimes), the issues' lines and the packs' `ahead` lines. The dict is written out as a literal
     so tools/check_wire.py can read its keys."""
+    # a source that is switched off draws nothing: its last fetch sits up to 72 h in the future and would keep showing.
+    # Open-Meteo's three sources and the gap against BMKG (derived from it) go with FORECAST_OPENMETEO; the sea also
+    # needs the coast pack.
+    off = {OM, CAMS, MARINE, GAP} if not openmeteo else ({MARINE} if not coast else set())
+    who = [w for w in who if base(w["sensor_id"]) not in off]
+    rows = [r for r in rows if base(r["sensor_id"]) not in off]
     steps: dict = {}
     for r in rows:
         steps.setdefault((_utc(r["ts"]), r["sensor_id"]), {})[r["metric"]] = r["value"]

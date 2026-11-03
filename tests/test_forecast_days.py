@@ -66,6 +66,22 @@ for v in (3, 14, 16):
     got = build([step(3, 15, CAMS, fc_pm25=v)])[0]["rows"]["air"]["state"]
     assert got == engine._line_key({"kind": "sensed"}, v, {"value": 15}), "the engine's own comparison"
 
+# the state is the engine's on the figure as measured, not as shown: only `value` is rounded
+a = build([step(3, 15, CAMS, fc_pm25=15.3)])[0]["rows"]["air"]
+assert a["value"] == 15 and a["state"] == "over" and a["hours_over"] == 1, "15.3 is over 15; shown as 15, rounding must not flip it"
+a = build([step(3, 15, CAMS, fc_pm25=14.0)])[0]["rows"]["air"]
+assert a["state"] == "near" and a["hours_over"] == 0 and a["value"] == 14
+for v in (13.46, 13.5, 14.96, 15.0, 15.04, 15.4, 16.6):
+    got = build([step(3, 15, CAMS, fc_pm25=v)])[0]["rows"]["air"]
+    assert got["state"] == engine._line_key({"kind": "sensed"}, v, {"value": 15}) and got["hours_over"] == (v > 15), v
+for t in range(26, 40):          # a heat figure a hair over the line, which one decimal rounds down onto it
+    ap = engine.apparent(t, 70)
+    if round(ap, 1) < ap and ap - round(ap, 1) < 0.05:
+        break
+hl = {"heat": {"value": round(ap, 1), "unit": "°C", "dp": 1}}
+h = build([step(3, 15, OM, fc_temp=t, fc_humidity=70)], lines=hl)[0]["rows"]["heat"]
+assert h["value"] == hl["heat"]["value"] and h["state"] == "over" and h["hours_over"] == 1, (ap, h)
+
 # ---- heat: the max of `apparent` as the engine computes it, against the heat issue's line
 hot = [step(3, 15, OM, fc_temp=33, fc_humidity=80), step(3, 16, OM, fc_temp=28, fc_humidity=60),
        step(3, 17, OM, fc_temp=34, fc_humidity=85)]
@@ -113,6 +129,8 @@ cells = {CAMS: "own", C1: "n1", C2: "n2"}
 com = build([step(3, 15, CAMS, fc_pm25=20), step(3, 15, C1, fc_pm25=10), step(3, 15, C2, fc_pm25=30)], own=cells)
 assert com[0]["rows"]["air"]["value"] == 20 and com[0]["rows"]["air"]["cells"] == 3 \
     and com[0]["rows"]["air"]["cells_over"] == 2, com[0]["rows"]["air"]
+assert build([step(3, 15, CAMS, fc_pm25=20), step(3, 15, C1, fc_pm25=15.3), step(3, 15, C2, fc_pm25=14.0)],
+             own=cells)[0]["rows"]["air"]["cells_over"] == 2, "cells over are counted on the unrounded day value too"
 solo = build([step(3, 15, CAMS, fc_pm25=20)], own={CAMS: "own"})[0]["rows"]["air"]
 assert "cells" not in solo and "cells_over" not in solo, "one cell is no territory"
 assert "air" not in build([step(3, 15, C1, fc_pm25=10), step(3, 15, C2, fc_pm25=30)], own=cells)[0]["rows"], \
@@ -157,7 +175,8 @@ FETCHED = "2026-11-03T05:00:00+00:00"
 OWN_META = dict(fetched=FETCHED, issued=None, km_from_node=0.0)
 W_OM = sensor(OM, "Open-Meteo forecast", POINT["lat"], POINT["lon"], cell="own", **OWN_META)
 W_CAMS = sensor(CAMS, "Open-Meteo CAMS air forecast", POINT["lat"], POINT["lon"], cell="own", **OWN_META)
-W_MAR = sensor(MAR, "Open-Meteo Marine forecast, sea cell 3 km off", -8.86, 115.16, cell="sea", **OWN_META)
+W_MAR = sensor(MAR, "Open-Meteo Marine forecast, sea cell 3 km off", -8.86, 115.16, cell="sea", fetched=FETCHED,
+               issued=None, distance_km=3.2)       # the marine adapter writes distance_km, not km_from_node
 W_BMKG = sensor(BMKG, "BMKG forecast, Ungasan", -8.82, 115.16, cell="bmkg", issued="2026-11-03T00:00:00+00:00",
                 fetched=FETCHED, km_from_node=1.2)
 BM_FNS = dict(fc_temp=lambda i: 28 + (4 if 10 <= hr(i) <= 16 else 0), fc_humidity=lambda i: 78, fc_rain=lambda i: 0.0)
@@ -183,6 +202,7 @@ def ahead_surf():
     return packs.ahead_lines(NOW, TZ)
 
 
+marine_rows = synth(MAR, **marine_fns())
 FULL_ROWS = (synth(OM, **om_fns()) + synth(CAMS, **cams_fns()) + synth(MAR, **marine_fns()) + bmkg_rows())
 full = answer([W_BMKG, W_OM, W_CAMS, W_MAR], FULL_ROWS, ahead=ahead_surf())
 NEIGH = [("forecast-om-8a1", 2), ("forecast-om-8a2", -3), ("forecast-cams-8a1", 4), ("forecast-cams-8a2", -3)]
@@ -228,6 +248,9 @@ assert {s["sensor_id"]: s.get("cells") for s in community["sources"]} == {BMKG: 
 assert set(community["sources"][1]) == {"sensor_id", "name", "lat", "lon", "issued", "fetched", "km_from_node", "cells"}
 assert {h["source"] for h in community["hours"]} == {BMKG, OM, CAMS, MAR}, {h["source"] for h in community["hours"]}
 assert community["far_from_node"] is None
+assert [s["km_from_node"] for s in community["sources"]][3] == 3.2, "the sea's distance is read from the key the adapter writes"
+assert answer([dict(W_MAR, meta={**W_MAR["meta"], "distance_km": 22.0})], marine_rows)["far_from_node"] == \
+    [{"sensor_id": MAR, "km": 22.0}], "a sea cell far from the node is said"
 w = answer([dict(W_BMKG, meta={**W_BMKG["meta"], "km_from_node": 14.0})], bmkg_rows())
 assert w["far_from_node"] == [{"sensor_id": BMKG, "km": 14.0}]
 assert max(h["ts"] for h in answer([W_OM], FULL_ROWS, hours=6)["hours"]) <= (NOW + timedelta(hours=6)).isoformat() \
@@ -237,6 +260,15 @@ assert max(h["ts"] for h in answer([W_OM], FULL_ROWS, hours=6)["hours"]) <= (NOW
 gone = answer([W_BMKG, W_OM], synth(OM, **om_fns()) + bmkg_rows())
 assert {"sensor_id": CAMS, "absent": True} in gone["sources"] and {"sensor_id": MAR, "absent": True} in gone["sources"]
 assert {"sensor_id": MAR, "absent": True} not in answer([W_OM], synth(OM, **om_fns()), coast=False)["sources"], "no coast, no sea asked"
+ALL_WHO = [W_BMKG, W_OM, W_CAMS, W_MAR, sensor("forecast-gap", "BMKG against Open-Meteo")]
+stale = answer(ALL_WHO, FULL_ROWS + synth("forecast-gap", fc_temp_gap=lambda i: 1.0), openmeteo=False, coast=False)
+assert stale == FIXTURES["om_off"], "Open-Meteo switched off: the last fetch's om, cams, marine and gap rows are not drawn for 72 h"
+nocoast = answer(ALL_WHO, FULL_ROWS)
+assert nocoast["openmeteo"] is True
+nocoast = answer(ALL_WHO, FULL_ROWS, coast=False)
+assert all("sea" not in x["rows"] for x in nocoast["days"]) and all(x["rows"].get("air") for x in nocoast["days"][:2])
+assert MAR not in {s["sensor_id"] for s in nocoast["sources"]} and MAR not in {h["source"] for h in nocoast["hours"]}, \
+    "coast off drops the sea and keeps the rest of Open-Meteo"
 off = FIXTURES["om_off"]
 assert off["openmeteo"] is False and not any(s.get("absent") for s in off["sources"]), "off is not absent"
 assert [s["sensor_id"] for s in off["sources"]] == [BMKG]
@@ -275,6 +307,13 @@ assert got[0]["days"]["2026-11-05"] == {"en": "two", "es": "dos", "id": "dua"}
 assert lines_for([], META) == [], "a pack that is off gives no line"
 assert lines_for([MANS], dict(META, fetched="2026-11-02T05:00:00+00:00")) == [], "yesterday's fetch is not tomorrow's line"
 assert lines_for([MANS], dict(META, fetched="2026-11-02T17:00:00+00:00")) != [], "17:00 UTC is 01:00 on the 3rd in Bali: today"
+import time  # noqa: E402
+os.environ["TZ"] = "America/Los_Angeles"; time.tzset()
+try:
+    assert lines_for([MANS], dict(META, fetched="2026-11-02T10:00:00")) == [], "a stamp with no zone is UTC, not the host's"
+    assert lines_for([MANS], dict(META, fetched="2026-11-03T05:00:00")) != []
+finally:
+    os.environ.pop("TZ"); time.tzset()
 assert lines_for([MANS], None) == [], "a sensor with no meta"
 assert lines_for([MANS], dict(META, fetched=None)) == []
 part = lines_for([MANS], {k: v for k, v in META.items() if "_es_" not in k})
@@ -305,6 +344,23 @@ for i, bad in enumerate(BAD):
     assert len(seen) == 1 and "surf" in seen[0] and "ahead" in seen[0], (i, bad, seen)
 seen.clear()
 assert lines_for([{"id": "surf"}], META) == [] and seen == [], "no ahead: is no problem"
+
+# a broken issue file must not cost /forecast its wind, rain and sea (the Wall reads it too)
+os.environ.setdefault("DATABASE_URL", "postgresql://unused/never-connected")
+try:
+    import routes  # noqa: E402
+except ImportError:
+    print("  forecast days: routes check skipped (pip install -r app/requirements.txt)")
+else:
+    import issues  # noqa: E402
+    real = issues.load
+    def boom(*a, **k): raise ValueError("issue file does not parse")
+    issues.load = boom
+    try:
+        assert routes._issue_lines() == {}, "no lines, so air and heat rows are left out and the rest is served"
+    finally:
+        issues.load = real
+    assert set(routes._issue_lines()) == {"air", "heat"}
 
 print("  forecast days: cuts, rows, territory, sources, ahead lines and the four whole answers hold")
 sys.exit(0)

@@ -6,6 +6,7 @@ A route of this pack since 23 Oct 2026; until then app/main.py, moved unchanged.
 """
 from __future__ import annotations
 
+import logging
 import os
 import sys
 from datetime import datetime, timezone
@@ -18,14 +19,29 @@ import packs  # noqa: E402
 import settings  # noqa: E402
 from db import NODE_TZ, q  # noqa: E402
 
+log = logging.getLogger("planetai.forecast")
 router = APIRouter()
+
+
+_said: set = set()
+
+
+def _warn_once(msg: str, *args) -> None:
+    text = msg % args
+    if text not in _said:
+        _said.add(text)
+        log.warning(text)
 
 
 def _issue_lines() -> dict:
     """The line, unit and decimals of the air and heat issues as the engine loads them. A pack that is off has no
     issue, so its row is left out of `days`."""
     from issues import load  # noqa: PLC0415 — the engine's own loader: one place knows what an issue's line is
-    decl = load()
+    try:
+        decl = load()
+    except Exception as e:  # noqa: BLE001 — the Wall reads this too; wind, rain and the sea do not need an issue file
+        _warn_once("forecast: the issues did not load (%s); Next days has no air or heat rows", e)
+        return {}
     return {k: {"value": d["line"]["value"], "unit": d["line"].get("unit", d.get("unit")), "dp": d.get("dp", 0)}
             for k in ("air", "heat") if (d := decl.get(k)) and d.get("line")}
 
