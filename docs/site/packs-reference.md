@@ -516,11 +516,11 @@ not do by looking out of the window.
 | `FORECAST_BMKG` | `1` | poll BMKG: 3-hourly, three days, no key. `ws` is km/h, `wd_deg` is where the wind comes from, `tp` is rain in mm for the step |
 | `FORECAST_BMKG_ADM4` | empty | the Permendagri village code for this point, such as `51.03.05.2002` for Ungasan, Kuta Selatan. Without a code the pack logs one line and idles |
 | `FORECAST_OPENMETEO` | `0` | poll Open-Meteo, hourly, anywhere: its weather, the CAMS air and, while `coast` is on, the sea. Off because its free tier is non-commercial only, which is the operator's decision |
-| `FORECAST_POLL_HOURS` | `6` | how often the pack asks, whatever `POLL_SECONDS` is; each source keeps its own stamp in `out/forecast.<source>.last` across restarts, and one that fails is asked again after 30 minutes. Both publishers update a few times a day, and Open-Meteo's free tier is 10,000 calls a day per IP with each wind-field point counting as one |
+| `FORECAST_POLL_HOURS` | `6` | how often the pack asks, whatever `POLL_SECONDS` is; each source keeps its own stamp in `out/forecast.<source>.last` across restarts, and one that fails is asked again after 30 minutes, and the wind field keeps a stamp of its own. Both publishers update a few times a day, and Open-Meteo's free tier is 10,000 calls a day per IP with each wind-field point counting as one |
 | `FORECAST_WIND_N` | `8` | points a side of the wind field: 8 × 8 |
 | `FORECAST_WIND_KM` | `30` | half-width of the wind field's square, in km |
 
-It also reads `NODE_LAT`, `NODE_LON` and `NODE_SCALE`, which decides how many points Open-Meteo and CAMS are asked for: 1 at `home`, 7 at `community`, 19 at `city` and `region`.
+It also reads `NODE_LAT`, `NODE_LON` and `NODE_SCALE`, which decides how many points Open-Meteo and CAMS are asked for: 7 at `community`, 19 at `city` and `region`.
 
 ### What it does not know
 

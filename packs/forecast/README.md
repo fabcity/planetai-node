@@ -38,7 +38,9 @@ place is still a forecast, but it is not this address's.
 BMKG allows 60 requests a minute per IP and it enforces it — finding the code above cost a `429` that took several
 minutes to clear. `FORECAST_POLL_HOURS=6` is far inside it; BMKG publishes twice a day, so anything faster is
 asking a cache the same question. Each source keeps its own stamp (`out/forecast.<source>.last`): one that fails is
-asked again after 30 minutes, not on the next 300 s poll, and the others are not held back.
+asked again after 30 minutes, not on the next 300 s poll, and the others are not held back. The stamp is written before
+the request, so an `out/` that cannot be written stops the fetch before anything is asked. The wind field has its own
+stamp (`out/forecast.wind.last`), behind the same `FORECAST_OPENMETEO` switch, so a refused field never asks the points again.
 
 ## The sources, and which of them are on
 

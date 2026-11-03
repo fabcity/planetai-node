@@ -13,7 +13,7 @@
   weather with gusts, the chance of rain, sun, evaporation and soil moisture, the CAMS air (PM2.5 and UV) and, while
   `coast` is on, Open-Meteo Marine (waves and swell). One switch turns on all three and it stays off by default,
   because Open-Meteo's free tier is non-commercial, and using it is the operator's call. Open-Meteo and CAMS are asked
-  for the node's ground at its `NODE_SCALE`, 7 points on a community node, 19 on a city or region node, 1 at home,
+  for the node's ground at its `NODE_SCALE`, 7 points on a community node and 19 on a city or region node,
   each a sensor tagged with its cell. A newer forecast now replaces the stored value for an hour still ahead, where
   the first one used to win; a past hour and any measurement are never rewritten, and `observations` stops at now, so
   a forecast's furthest hour is no longer a sensor's latest reading. Each source keeps its own stamp, and one that

@@ -57,7 +57,9 @@ the node's territory at that scale:
   tagged with its H3 cell, so pieces 2 and 3 can ask "where in this territory" and not only "how much".
 
 The view (§5) reads a territory the same way Now does: the value at the node's own cell first, and for a larger node
-the worst cell and how much of the area is over the line ("over in 7 of 20 cells"). Node #1 is a community node
+the worst cell and how much of the area is over the line ("over in 7 of 20 cells"). A cell here is a distinct model
+grid point, the place Open-Meteo answered from, not a sensor: res-7 neighbours are ~2.5 km apart and the models are
+10 to 44 km, so several sensors often share one point. `cells` and `cells_over` show only with two or more points. Node #1 is a community node
 (`NODE_SCALE=community`; the valid values are community, city and region, default community), so it fetches the
 7-point grid for Open-Meteo and CAMS. Open-Meteo counts each location as a call, so a 20-cell node adds about 240
 calls a day across the three sources at four fetches a day.
@@ -80,14 +82,18 @@ which is how BMKG and Open-Meteo forecasts are kept today.
 - Horizon: 72 hours (`HOURS = 72`; the comments that already say "up to 48 h" are corrected). BMKG keeps what it
   publishes inside that.
 - Open-Meteo's free tier is non-commercial, and the pack says using it is the operator's decision, so the three
-  Open-Meteo forecasts are opt-in behind the existing `FORECAST_OPENMETEO` (§10). On node #1 they are on. Each is one call per due poll,
-  four polls a day, so about 12 calls a day against the 10,000 per IP that node #1 already strains with the 65-point
-  wind field (unchanged here).
+  Open-Meteo forecasts are opt-in behind the existing `FORECAST_OPENMETEO` (§10). On node #1 they are on. Open-Meteo
+  counts every location as a call, and a community node with Open-Meteo and the coast pack on asks, per due poll, 7
+  locations for the weather, 65 for the wind field, 7 for the air and 1 for the sea. At four polls a day that is
+  4 × (7 + 65 + 7 + 1) = 320 location-calls a day against the 10,000 per IP that node #1 already strains; the wind
+  field is most of it and is unchanged here.
 - `fc_lead_hours` stays, per source, and the new sources store it too.
 - `channels.yml` declares every new metric the way the existing `fc_` ones are: `role: derived, comparable: false`,
   with units (my call, builder check: there is no `model` role and adding one touches core classification).
-- The pack's stamp file is touched only after a fetch that worked, and each source keeps its own stamp, so one
-  refused call (a 429) does not hold the others for six hours (my call).
+- Each source keeps its own stamp (the wind field too, `forecast.wind.last`), so one refused call (a 429) does not hold
+  the others for six hours (my call). The stamp is written before the request, as the 30-minute retry mark, and
+  replaced by the full wait once the source answered: an `out/` that cannot be written then stops the fetch before
+  anything is asked, and never leaves a source due again on the next 300 s poll.
 
 ### Revisions
 
@@ -130,7 +136,8 @@ furthest future hour (docs/SPEC_alerts.md says so). It gets `ts <= now()`, like 
 - Air and heat take their line, unit, margin and state words (over, near, under) from their issue, through the
   engine's own comparison, so the two views cannot disagree about what "over" means (my call, builder check).
   - Air: the line is a 24-hour mean (WHO 15), so the day's value is the mean of its hours, with the peak hour beside
-    it. `hours_over` counts hourly values above the line.
+    it. `hours_over` counts the hours above the line, and `n` the hours the value covers: a 3-hourly source (BMKG)
+    counts each value as 3 hours, an hourly one as 1.
   - Heat: the line is on `apparent` as the heat issue computes it (Steadman's form from temperature and humidity,
     35 °C). The route computes it the same way from `fc_temp` and `fc_humidity` with the engine's own function,
     and the day's value is its maximum. Open-Meteo's own apparent temperature includes wind and sun and is not
@@ -178,7 +185,8 @@ or "nothing looks good". `docs/PACKS.md` documents `ahead:` next to `sections:`.
   most 15:00–18:00". The sea reads "waves 1.4 m".
 - Pressing a row draws its 72 hours as a series card under it, with the line, and a "now" mark at the left.
 - Under the rows, one line of provenance per source, as pills: "BMKG, issued 06:00", "Open-Meteo, fetched 08:12",
-  "CAMS", "Open-Meteo Marine", and "10 km from this node" where `far_from_node` says so. Then one sentence: these
+  "CAMS", "Open-Meteo Marine", and "10 km from this node" where `far_from_node` says so, and for the sea where its own source's `km_from_node` does
+  (the sea is never in `far_from_node`, which the classic card reads as the weather point). Then one sentence: these
   come from models, the node does not forecast, and they never send anything.
 - With the forecast pack off, Next days shows one line and a link to Set up to turn it on.
 - Card kinds, signs, theme and every rule the visual gate measures apply. Nothing new in the frozen layer.

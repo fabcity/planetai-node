@@ -41,7 +41,8 @@ text cut at 160 characters and shown as plain text.
 
 Air and heat carry a word, over, near or under, worked out by the engine's comparison against the issue's own
 line. It is the same comparison that writes the state on Now and on each issue, so the two cannot disagree about what
-"over" means. Beside it, "2 h over 35" counts the forecast hours above the line. A row whose issue is off on the node
+"over" means. Beside it, "2 h over 35" counts the forecast hours above the line. BMKG gives a value every three hours, so each of its
+values counts for three. A row whose issue is off on the node
 is left out.
 
 ## Where each number comes from
@@ -78,15 +79,16 @@ The node asks Open-Meteo and CAMS for the ground it covers, at its `NODE_SCALE`,
 
 | `NODE_SCALE` | points |
 |---|---|
-| `home` | 1, the node itself (a value only the forecast pack takes, for a single-point node) |
 | `community` (the default) | 7, the node's resolution-7 H3 cell and the six around it |
 | `city` | 19, the node's resolution-6 cell and two rings around it |
 | `region` | 19, the node's resolution-5 cell and two rings around it |
 
 The node's own point is at its coordinates, the others at their cells' centres, and each one is a sensor
-(`forecast-om-<cell>`, `forecast-cams-<cell>`) tagged with its cell. BMKG and the sea stay one point. The number in
-a row is the node's own cell, and where there are more cells, air and heat add how many of them go over the line,
-"over in 1 of 7 cells". Open-Meteo counts each location as one call against a daily limit per IP. On a community
+(`forecast-om-<cell>`, `forecast-cams-<cell>`) tagged with the cell it was asked for. BMKG and the sea stay one point.
+The number in a row is the node's own point. The models are coarser than the cells, Open-Meteo's weather works on a grid
+of about 10 to 25 km and CAMS on about 44 km, so several of the seven points usually come back from the same model
+cell. Next days counts the model's own grid points, where each sensor was answered from, and when there are two or
+more, air and heat add how many of them go over the line, "over in 1 of 3 cells". Open-Meteo counts each location as one call against a daily limit per IP. On a community
 node each poll sends 7 locations for the weather and 7 for the air, beside the wind field's 65 and, while `coast` is
 on, one for the sea.
 

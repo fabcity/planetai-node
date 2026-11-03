@@ -175,7 +175,7 @@ def _fig(v, dp, unit) -> str:
 
 def _forecast(fc: dict | None, now) -> str | None:
     """The next few hours from one forecast source (BMKG first, the official one, else Open-Meteo). Only hours
-    still to come: readings hold the forecast's rows up to 48 h ahead, timestamped in the future."""
+    still to come: readings hold the forecast's rows up to 72 h ahead, timestamped in the future."""
     end = now + timedelta(hours=WALL_FORECAST_HOURS)
     hours = [h for h in (fc or {}).get("hours") or [] if now < learn._aware(h["ts"]) <= end]
     src = next((s for s in ("forecast-bmkg", "forecast-om") if any(h.get("source") == s for h in hours)), None)
