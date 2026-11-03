@@ -53,7 +53,9 @@ evil["lines"][0]["title"]["en"] = "<i>Surf</i>"
 evil["lines"][0]["days"]["2026-11-04"]["en"] = '<b>x</b><img src=x onerror="alert(1)">'
 far = json.loads(json.dumps(FX["om_off"]))
 far["far_from_node"] = [{"sensor_id": "forecast-bmkg", "km": 14.2}]
-CASES = [["full", FX["full"], "en"], ["om_off", FX["om_off"], "en"], ["none", FX["none"], "en"], ["community", FX["community"], "en"],
+farsea = json.loads(json.dumps(FX["full"]))
+next(x for x in farsea["sources"] if x["sensor_id"] == "forecast-marine")["km_from_node"] = 22.0   # far_from_node stays null: the sea is not in it
+CASES = [["farsea", farsea, "en"], ["full", FX["full"], "en"], ["om_off", FX["om_off"], "en"], ["none", FX["none"], "en"], ["community", FX["community"], "en"],
          ["evil", evil, "en"], ["far", far, "en"], ["es", FX["full"], "es"], ["id", FX["full"], "id"],
          ["off", {"off": True}, "en"], ["fail", None, "en"], ["old", {"point": {}, "sources": [], "hours": []}, "en"],
          ["locked", {"locked": True}, "en"]]
@@ -100,6 +102,8 @@ srcs = [text(s) for s in full["sources"]]
 assert srcs == ["BMKG, issued 08:00", "Open-Meteo, fetched 13:00", "CAMS, fetched 13:00", "Open-Meteo Marine, fetched 13:00"], srcs
 assert [text(s) for s in out["community"]["sources"]][1] == "Open-Meteo, fetched 13:00 · 3 cells"
 assert [text(s) for s in out["far"]["sources"]] == ["BMKG, issued 08:00 14 km from this node"], out["far"]["sources"]
+assert farsea["far_from_node"] is None
+assert [text(s) for s in out["farsea"]["sources"]][3] == "Open-Meteo Marine, fetched 13:00 22 km from this node", out["farsea"]["sources"]
 assert all('class="pill"' in s for s in full["sources"])
 print("  the sources as pills in the node's own time, the cells counted, and a source more than 10 km away says so")
 

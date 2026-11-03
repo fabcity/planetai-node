@@ -227,14 +227,14 @@
           "line": 35,
           "state": "near",
           "hours_over": 0,
-          "n": 3
+          "n": 9
         },
         "wind_rain": {
           "gust": null,
           "rain_mm": 0.0,
           "rain_hours": null,
           "source": "forecast-bmkg",
-          "n": 3
+          "n": 9
         }
       }
     },
@@ -250,15 +250,15 @@
           "source": "forecast-bmkg",
           "line": 35,
           "state": "over",
-          "hours_over": 2,
-          "n": 8
+          "hours_over": 6,
+          "n": 24
         },
         "wind_rain": {
           "gust": null,
           "rain_mm": 0.0,
           "rain_hours": null,
           "source": "forecast-bmkg",
-          "n": 8
+          "n": 24
         }
       }
     },
@@ -274,15 +274,15 @@
           "source": "forecast-bmkg",
           "line": 35,
           "state": "over",
-          "hours_over": 2,
-          "n": 8
+          "hours_over": 6,
+          "n": 24
         },
         "wind_rain": {
           "gust": null,
           "rain_mm": 0.0,
           "rain_hours": null,
           "source": "forecast-bmkg",
-          "n": 8
+          "n": 24
         }
       }
     }

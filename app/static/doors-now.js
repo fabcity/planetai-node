@@ -535,12 +535,14 @@ function nextFrom(f, locale) {
     cells: days.map(d => (l.days || {})[d.date] ? said(packWord(l.days[d.date], locale)) : '') }));
   if (!out.rows.length && !out.lines.length) return { ...none, empty: (f.sources || []).length || f.openmeteo !== false ? W.waiting : w(W.none, { setup }) };
   const far = new Map((f.far_from_node || []).map(x => [x.sensor_id, x.km]));
+  /* the sea is never in far_from_node (the classic card reads its first entry as the weather point), so its own distance comes from its source */
+  const km = s => far.get(s.sensor_id) ?? (s.sensor_id === 'forecast-marine' && s.km_from_node > 10 ? s.km_from_node : null);
   out.sources = (f.sources || []).map(s => {
     const n = NX_SRC[s.sensor_id] || s.name || s.sensor_id, at = s.issued || s.fetched;
     if (s.absent) return `<span class="gap">${esc(w(W.absent, { s: n }))}</span>`;
     return `<span class="pill">${esc(at ? w(s.issued ? W.issued : W.fetched, { s: n, t: hhmm(at) }) : n)}`
       + `${s.cells > 1 ? ' · ' + w(W.ncells, { n: num(`next.cells.${s.sensor_id}`, s.cells, 'the cells this node forecasts') }) : ''}</span>`
-      + (far.has(s.sensor_id) ? ` <span class="pill">${w(W.far, { km: num(`next.far.${s.sensor_id}`, Math.round(far.get(s.sensor_id)), 'more than 10 km is another place') })}</span>` : '');
+      + (km(s) != null ? ` <span class="pill">${w(W.far, { km: num(`next.far.${s.sensor_id}`, Math.round(km(s)), 'more than 10 km is another place') })}</span>` : '');
   });
   out.notes = [W.models, ...(f.openmeteo === false ? [w(W.optin, { setup })] : [])];
   return out;

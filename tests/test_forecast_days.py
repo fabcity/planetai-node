@@ -123,6 +123,18 @@ both = build(hot + [step(3, 15, BMKG, fc_temp=30, fc_humidity=70, fc_rain=1, fc_
 assert both["heat"]["source"] == OM and both["heat"]["also"] == [BMKG], both["heat"]
 assert both["wind_rain"]["source"] == OM and both["wind_rain"]["also"] == [BMKG]
 
+# ---- hours, not steps: BMKG is 3-hourly, so each of its values stands for 3 hours; Open-Meteo and CAMS are hourly
+bm3 = build([step(3, 15, BMKG, fc_temp=33, fc_humidity=80), step(3, 18, BMKG, fc_temp=28, fc_humidity=60),
+             step(3, 21, BMKG, fc_temp=34, fc_humidity=85)])[0]["rows"]["heat"]
+assert bm3["hours_over"] == 6 and bm3["n"] == 9, ("two 3-hourly steps over the line are 6 hours over, of 9 hours", bm3)
+bm_one = build([step(3, 15, BMKG, fc_temp=34, fc_humidity=85), step(3, 18, BMKG, fc_temp=34, fc_humidity=85),
+                step(4, 15, BMKG, fc_temp=34, fc_humidity=85)])[1]["rows"]["heat"]
+assert bm_one["hours_over"] == 3 and bm_one["n"] == 3, "a day with one value takes the cadence from the source's own series"
+assert build([step(3, 15, BMKG, fc_temp=34, fc_humidity=85)])[0]["rows"]["heat"]["n"] == 1, "one value alone, nothing to measure a step by: 1 h"
+bw = build([step(3, 15, BMKG, fc_rain=1), step(3, 18, BMKG, fc_rain=2)])[0]["rows"]["wind_rain"]
+assert bw["n"] == 6, "wind and rain count hours too"
+assert build([step(3, 15, MAR, fc_wave_m=1.0), step(3, 16, MAR, fc_wave_m=1.2)])[0]["rows"]["sea"]["n"] == 2
+
 # ---- a community: the node's own cell is the value, the others say how many cells are over
 C1, C2 = "forecast-cams-8a1", "forecast-cams-8a2"
 cells = {CAMS: "own", C1: "n1", C2: "n2"}
@@ -138,6 +150,20 @@ assert "air" not in build([step(3, 15, C1, fc_pm25=10), step(3, 15, C2, fc_pm25=
 hc = build([step(3, 15, OM, fc_temp=36, fc_humidity=80), step(3, 15, "forecast-om-8a1", fc_temp=24, fc_humidity=50)],
            own={OM: "own", "forecast-om-8a1": "n1"})[0]["rows"]["heat"]
 assert hc["cells"] == 2 and hc["cells_over"] == 1 and hc["state"] == "over"
+
+# ---- cells are distinct model grid points, not sensors: res-7 neighbours sit 2.5 km apart and the models are 10-44 km
+same = build([step(3, 15, OM, fc_temp=36, fc_humidity=80)] + [step(3, 15, f"forecast-om-n{i}", fc_temp=36, fc_humidity=80)
+                                                          for i in range(6)], own={OM: "g0", **{f"forecast-om-n{i}": "g0" for i in range(6)}})
+assert "cells" not in same[0]["rows"]["heat"] and "cells_over" not in same[0]["rows"]["heat"], "7 sensors, one grid point: no territory"
+pts = {OM: "A", "forecast-om-n0": "A", "forecast-om-n1": "A", "forecast-om-n2": "B", "forecast-om-n3": "B",
+       "forecast-om-n4": "B", "forecast-om-n5": "C"}
+vals = {"A": (36, 80), "B": (24, 50), "C": (25, 50)}
+three = build([step(3, 15, sid, fc_temp=vals[g][0], fc_humidity=vals[g][1]) for sid, g in pts.items()], own=pts)[0]["rows"]["heat"]
+assert three["cells"] == 3 and three["cells_over"] == 1, ("3 grid points, one over, however many sensors sit on it", three)
+air3 = build([step(3, 15, CAMS, fc_pm25=20)] + [step(3, 15, f"forecast-cams-n{i}", fc_pm25=v) for i, v in enumerate((20, 20, 5, 5, 5, 8))],
+             own={CAMS: "A", "forecast-cams-n0": "A", "forecast-cams-n1": "A", "forecast-cams-n2": "B", "forecast-cams-n3": "B",
+                  "forecast-cams-n4": "B", "forecast-cams-n5": "C"})[0]["rows"]["air"]
+assert air3["cells"] == 3 and air3["cells_over"] == 1, air3
 
 # ---- the whole answer, from rows as the database hands them back
 POINT = {"lat": -8.8271, "lon": 115.15709}
@@ -242,6 +268,12 @@ assert set(community["days"][1]["rows"]["heat"]) == ROW_KEYS["heat"] | {"cells",
 assert community["days"][0]["rows"]["air"]["cells"] == 3
 assert community["days"][0]["rows"]["air"]["cells_over"] == 1, community["days"][0]["rows"]["air"]
 
+# the same sensors on ONE answered grid point (lat, lon as Open-Meteo answered): no cells in the rows, one in `sources`
+one_pt = [dict(w, lat=-8.8, lon=115.1) for w in com_who if w["sensor_id"] in (OM, CAMS) or "-8a" in w["sensor_id"]]
+dup = answer([W_BMKG, W_MAR] + one_pt, com_rows, ahead=ahead_surf(), hours=72)
+assert all("cells" not in r for x in dup["days"] for r in x["rows"].values()), "7 sensors on one model cell are one cell"
+assert {s["sensor_id"]: s.get("cells") for s in dup["sources"]} == {BMKG: None, OM: 1, CAMS: 1, MAR: None}, dup["sources"]
+
 # sources: one entry a source, the cells counted; hours: the node's own point, never a neighbour
 assert [s["sensor_id"] for s in community["sources"]] == [BMKG, OM, CAMS, MAR]
 assert {s["sensor_id"]: s.get("cells") for s in community["sources"]} == {BMKG: None, OM: 3, CAMS: 3, MAR: None}
@@ -253,8 +285,12 @@ assert h_om["apparent"] == round(engine.apparent(h_om["fc_temp"], h_om["fc_humid
 assert all("apparent" not in h for h in full["hours"] if "fc_temp" not in h), "no temperature, no feels-like"
 assert community["far_from_node"] is None
 assert [s["km_from_node"] for s in community["sources"]][3] == 3.2, "the sea's distance is read from the key the adapter writes"
-assert answer([dict(W_MAR, meta={**W_MAR["meta"], "distance_km": 22.0})], marine_rows)["far_from_node"] == \
-    [{"sensor_id": MAR, "km": 22.0}], "a sea cell far from the node is said"
+far_sea = answer([dict(W_MAR, meta={**W_MAR["meta"], "distance_km": 22.0})], marine_rows)
+assert far_sea["far_from_node"] is None, "the sea is never the weather point: the classic card reads far_from_node[0] as that"
+assert next(x for x in far_sea["sources"] if x["sensor_id"] == MAR)["km_from_node"] == 22.0, "a sea cell far from the node is still said, through its source"
+both_far = answer([dict(W_BMKG, meta={**W_BMKG["meta"], "km_from_node": 14.0}), dict(W_MAR, meta={**W_MAR["meta"], "distance_km": 22.0})],
+                  bmkg_rows() + marine_rows)
+assert both_far["far_from_node"] == [{"sensor_id": BMKG, "km": 14.0}], "only the weather point is far_from_node[0]"
 w = answer([dict(W_BMKG, meta={**W_BMKG["meta"], "km_from_node": 14.0})], bmkg_rows())
 assert w["far_from_node"] == [{"sensor_id": BMKG, "km": 14.0}]
 assert max(h["ts"] for h in answer([W_OM], FULL_ROWS, hours=6)["hours"]) <= (NOW + timedelta(hours=6)).isoformat() \
