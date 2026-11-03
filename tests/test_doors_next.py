@@ -29,9 +29,9 @@ const block = n => now.match(new RegExp('^const ' + n + ' = [\\s\\S]*?\\n};\\n',
 const one = n => now.match(new RegExp('^const ' + n + ' = .*$', 'm'))[0];
 const cases = JSON.parse(process.argv[1]), out = {};
 for (const [name, f, locale] of cases) {
-  const ctx = { D: { tz: 'Asia/Makassar', locale }, doorsLocal: L.doorsLocal };
+  const ctx = { D: { tz: 'Asia/Makassar', locale }, doorsLocal: L.doorsLocal, WORDS: L.WORDS };
   vm.createContext(ctx);
-  vm.runInContext(['esc', 'WD', 'loc', 'dayOf', 'dLabel', 'fmt', 'said', 'num'].map(pick).join('\n') + '\n' + block('NX') + one('NX_SRC') + '\n'
+  vm.runInContext(['esc', 'WD', 'loc', 'dayOf', 'dLabel', 'fmt', 'said', 'num', 'UNLOCK_AT'].map(pick).join('\n') + '\n' + block('NX') + one('NX_SRC') + '\n'
     + fn(now, 'packWord') + fn(now, 'nxCell') + fn(now, 'nextFrom') + 'var got = nextFrom(F, D.locale);', Object.assign(ctx, { F: f }));
   out[name] = ctx.got;
 }
@@ -55,7 +55,8 @@ far = json.loads(json.dumps(FX["om_off"]))
 far["far_from_node"] = [{"sensor_id": "forecast-bmkg", "km": 14.2}]
 CASES = [["full", FX["full"], "en"], ["om_off", FX["om_off"], "en"], ["none", FX["none"], "en"], ["community", FX["community"], "en"],
          ["evil", evil, "en"], ["far", far, "en"], ["es", FX["full"], "es"], ["id", FX["full"], "id"],
-         ["off", {"off": True}, "en"], ["fail", None, "en"], ["old", {"point": {}, "sources": [], "hours": []}, "en"]]
+         ["off", {"off": True}, "en"], ["fail", None, "en"], ["old", {"point": {}, "sources": [], "hours": []}, "en"],
+         ["locked", {"locked": True}, "en"]]
 r = subprocess.run(["node", "-e", prog, json.dumps(CASES)], capture_output=True, text=True, cwd=ROOT)
 assert r.returncode == 0, r.stderr[-3000:]
 out = json.loads(r.stdout)
@@ -102,12 +103,15 @@ assert [text(s) for s in out["far"]["sources"]] == ["BMKG, issued 08:00 14 km fr
 assert all('class="pill"' in s for s in full["sources"])
 print("  the sources as pills in the node's own time, the cells counted, and a source more than 10 km away says so")
 
-for o in ("none", "off", "fail", "old"):
+for o in ("none", "off", "fail", "old", "locked"):
     assert out[o]["rows"] == [] and out[o]["lines"] == [] and out[o]["empty"], (o, out[o])
-assert text(out["none"]["empty"]).startswith("No forecast reaches this node: BMKG covers Indonesia only") and 'href="#setup/packs"' in out["none"]["empty"]
+assert text(out["none"]["empty"]) == "No forecast source answers for this place. Turn one on in Set up → Packs → forecast." \
+    and 'href="#setup/packs"' in out["none"]["empty"], "an Indonesian node with no BMKG code is not told BMKG covers Indonesia only"
+assert text(out["locked"]["empty"]).startswith("This screen can’t answer yet.") and 'href="#setup/screen"' in out["locked"]["empty"], \
+    "a 401 or 403 is the doors' locked line and the way to unlock"
 assert text(out["off"]["empty"]) == "The forecast pack is off on this node. Turn it on in Set up → Packs → forecast." and 'href="#setup/packs"' in out["off"]["empty"]
 assert 'href="#setup/packs"' in out["fail"]["empty"] and text(out["old"]["empty"]) == "No forecast has arrived on this node yet."
-print("  no source, the pack off, no answer, an older node: one line saying why, never an empty grid")
+print("  no source, the pack off, no answer, a locked screen, an older node: one line saying why, never an empty grid")
 
 ev = out["evil"]["lines"][0]
 assert "<i>" not in ev["title"] and "&lt;i&gt;Surf&lt;/i&gt;" in ev["title"], ev["title"]
@@ -140,6 +144,14 @@ sw = re.search(r'<div class="reg nowsw" id="nowsw"[^>]*>(.*?)</div>', nowh)
 assert sw and 'data-nv="now"' in sw.group(1) and 'data-nv="next"' in sw.group(1), "the switch is the register's, at the top of Now"
 assert nowh.index('id="nowsw"') < nowh.index('class="kick"') and 'id="next"' in nowh
 nx = re.search(r'<section [^>]*id="next"[^>]*>', nowh).group(0)
+assert 'aria-pressed="true"' in sw.group(1).split('data-nv="next"')[0] and 'data-nv="next" aria-pressed="false"' in sw.group(1), \
+    "the switch says which is pressed from the first paint"
+assert "aria-live" not in nx, "a press would read the whole grid again"
+src = (ROOT / "app/static/doors-now.js").read_text()
+assert "setAttribute('aria-pressed'" in src.split("VIEWS.now = function")[1].split("};")[0], "the switch's aria-pressed follows .on"
+assert 'class="linep"' in src and "lineLab(" in src.split("function nxSeries")[1], "the series' line is the doors' .linep with lineLab"
+assert '<span class="vh">' in src.split("async function drawNext")[1], "each cell says its day to a screen reader"
+assert re.search(r"\.focus\(\)", src.split("async function drawNext")[1].split("\n}\n")[0]), "a pressed row keeps the focus"
 assert 'data-learn="now-next"' in nx and 'data-reads="/forecast"' in nx and 'data-kind="readout"' in nx, nx
 src = (ROOT / "app/static/doors-now.js").read_text()
 assert src.count("planetai_now_view") == 1 and "localStorage.setItem(NOW_VIEW" in src
@@ -151,5 +163,27 @@ assert "'/forecast?hours=72'" in load and "/forecast" not in load.split("const D
 core = (ROOT / "app/static/doors-core.js").read_text()
 assert ".bar .reg button" in core and "querySelectorAll('.reg button')" not in core, "the theme switch would take the Now switch's buttons"
 print("  the switch sits at the top of Now and is kept in try/catch; /forecast is asked only for Next days")
+
+# the forecast is kept for 30 minutes, and a failure (no answer, locked, the pack off) never: lifted drawNext, stubbed DOM
+prog_cache = r"""
+const fs = require('fs'), vm = require('vm'), now = fs.readFileSync('./app/static/doors-now.js', 'utf8');
+const fn = (src, n) => src.match(new RegExp('(?:async )?function ' + n + '\\b[\\s\\S]*?\\n}\\n'))[0];
+const one = n => now.match(new RegExp('^const ' + n + ' = .*$', 'm'))[0];
+const answers = [null, { locked: true }, { off: true }, { days: [] }, { days: [] }], asked = [];
+let t = 0;
+const el = { innerHTML: '', clientWidth: 600, querySelectorAll: () => [], querySelector: () => null };
+const ctx = { $: () => el, view: () => 'now', nowView: () => 'next', nextFrom: () => ({ empty: 'x' }), D: {}, Date: { now: () => t },
+  loadForecast: async () => { asked.push(t); return answers.shift(); } };
+vm.createContext(ctx);
+vm.runInContext(one('NX_FRESH') + '\n' + one('NEXT') + '\n' + fn(now, 'drawNext'), ctx);
+(async () => {
+  for (const at of [0, 1, 2, 3, 4, 5, 60e3 * 29, 60e3 * 31, 60e3 * 32]) { t = at; await vm.runInContext('drawNext()', ctx); }
+  console.log(JSON.stringify(asked));
+})();
+"""
+rc = subprocess.run(["node", "-e", prog_cache], capture_output=True, text=True, cwd=ROOT)
+assert rc.returncode == 0, rc.stderr[-2000:]
+assert json.loads(rc.stdout) == [0, 1, 2, 3, 60e3 * 31], rc.stdout
+print("  no answer, locked and the pack off are asked again on the next showing; an answer is kept 30 minutes")
 print("doors next: Now · Next days draws the forecast-v0 answer as row cards, three days, sources and the models sentence")
 sys.exit(0)

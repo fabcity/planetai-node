@@ -808,7 +808,7 @@ section.decl{margin-top:22px}.row.decl{cursor:default}   /* a pack's declared ba
           tappable row per day. -->
 <div id="content" tabindex="-1"></div>
 <main class="face view" data-view="now">
-  <div class="reg nowsw" id="nowsw" role="group" aria-label="Now or the next days"><button data-nv="now" class="on">Now</button><button data-nv="next">Next days</button></div>
+  <div class="reg nowsw" id="nowsw" role="group" aria-label="Now or the next days"><button data-nv="now" class="on" aria-pressed="true">Now</button><button data-nv="next" aria-pressed="false">Next days</button></div>
   <div class="kick"><p class="nk" id="kick"></p><span class="kr"><button class="now" id="back" hidden>Back to now</button><a href="#place" class="mono" id="cellink" title="This node's cell, on Place"></a></span></div>
   <div class="lcol">
     <div class="hero">
@@ -833,7 +833,7 @@ section.decl{margin-top:22px}.row.decl{cursor:default}   /* a pack's declared ba
     <figure class="around" data-learn="now-around" data-reads="/sensors /stats" data-stage="observe" data-pack="air-quality" data-kind="stack"><div id="rose"></div><figcaption class="fine" id="rosecap"></figcaption></figure>
     <p class="fine" id="nthings" data-learn="now-things" data-reads="/things" data-stage="observe" data-pack="core" data-kind="row" hidden></p>
   </div>
-  <section id="next" data-learn="now-next" data-reads="/forecast" data-stage="observe" data-pack="forecast" data-kind="readout" aria-label="Next days" aria-live="polite"></section>
+  <section id="next" data-learn="now-next" data-reads="/forecast" data-stage="observe" data-pack="forecast" data-kind="readout" aria-label="Next days"></section>
 </main>
 
 <!-- PLACE -->

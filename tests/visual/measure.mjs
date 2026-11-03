@@ -2982,6 +2982,8 @@ const openRig = async ({ w = 390, h = 844, touch = true, dark = false, token = n
      * wrote), or a 404 for name 'off', as a node with the forecast pack off; the name can change between presses */
     if (forecast && u.pathname === '/forecast') return forecast.name === 'off'
       ? route.fulfill({ status: 404, contentType: 'application/json', body: '{"detail":"Not Found"}' })
+      : forecast.name === 'locked' ? route.fulfill({ status: 403, contentType: 'application/json', body: REFUSAL('/forecast') })
+      : forecast.name === 'down' ? route.fulfill({ status: 500, contentType: 'text/plain', body: 'Internal Server Error' })
       : route.fulfill({ status: 200, contentType: 'application/json',
         body: fs.readFileSync(path.join(ROOT, 'tests', 'data', 'forecast', `${forecast.name}.json`)) });
     /* sections: the capture with these declared bands in /issues, as the node serves a pack's sections */
@@ -3631,6 +3633,8 @@ async function doors() {
         const box = nx.getBoundingClientRect(), cells = q('.nxc').map(c => c.getBoundingClientRect());
         let kept = null; try { kept = localStorage.getItem('planetai_now_view'); } catch (e) {}
         return { hash: location.hash, kept, on: (document.querySelector('#nowsw .on') || {}).dataset?.nv,
+          aria: [...document.querySelectorAll('#nowsw button')].map(b => b.getAttribute('aria-pressed')).join(','),
+          days: q('.nrow .nxc').every(c => /^(Today|Tomorrow|[A-Z][a-z]{2}), /.test((c.querySelector('.vh') || {}).textContent || '')),
           rows: q('.nrow').map(x => x.dataset.k || 'line'), cols: q('.nxhead > span').filter(vis).length,
           small: targets.filter(x => x.height < 44 || x.width < 44).length, n: targets.length,
           outside: cells.filter(c => c.right > box.right + 1 || c.left < box.left - 1).length,
@@ -3638,19 +3642,24 @@ async function doors() {
           wide: document.documentElement.scrollWidth - document.documentElement.clientWidth };
       });
       ok(m.hash === '#now/next' && m.kept === 'next' && m.on === 'next', `${tag}: the switch did not take (${m.hash}, kept ${m.kept}, on ${m.on})`);
+      ok(m.aria === 'false,true', `${tag}: the switch's aria-pressed is ${m.aria}`);
+      ok(m.days, `${tag}: a cell does not say its day to a screen reader`);
       ok(JSON.stringify(m.rows) === JSON.stringify(['air', 'heat', 'wind_rain', 'sea', 'line']), `${tag}: the rows are ${m.rows.join(',')}`);
       ok(m.cols === (w < 768 ? 3 : 4) && !m.outside, `${tag}: ${m.cols} heads, ${m.outside} cells outside the view`);
       ok(m.nowHidden, `${tag}: Now's columns still show under Next days`);
       ok(m.n && !m.small, `${tag}: ${m.small} of ${m.n} targets under 44 × 44 px`);
       ok(m.wide <= 1, `${tag}: Next days scrolls ${m.wide}px sideways`);
-      await r.page.click('#next button.nrow[data-k="air"]');
+      /* by the keyboard, as a screen reader's user presses it: the focus stays on the row through the redraw */
+      await r.page.focus('#next button.nrow[data-k="air"]'); await r.page.keyboard.press('Enter'); await r.page.waitForTimeout(200);
       const s = await r.page.evaluate(() => {
         const f = document.querySelector('#next .nxs'), b = document.querySelector('#next button.nrow[data-k="air"]');
-        return f ? { under: b.nextElementSibling === f, line: !!f.querySelector('svg [data-line]'), path: !!f.querySelector('svg path'),
+        return f ? { under: b.nextElementSibling === f, line: !!f.querySelector('svg line.linep[data-line]'), path: !!f.querySelector('svg path'),
+          focus: document.activeElement === b, lab: [...f.querySelectorAll('svg text.lab')].some(t => /^(WHO|line) 15$/.test(t.textContent)),
           now: [...f.querySelectorAll('svg text')].some(t => t.textContent === 'now'), pressed: b.getAttribute('aria-pressed'),
           wide: document.documentElement.scrollWidth - document.documentElement.clientWidth } : null;
       });
-      ok(s && s.under && s.line && s.path && s.now && s.pressed === 'true', `${tag}: pressing air drew no 72 h series with its line (${JSON.stringify(s)})`);
+      ok(s && s.under && s.line && s.lab && s.path && s.now && s.pressed === 'true', `${tag}: pressing air drew no 72 h series with its line (${JSON.stringify(s)})`);
+      ok(s && s.focus, `${tag}: the focus left the row pressed`);
       ok(s && s.wide <= 1, `${tag}: the series scrolls sideways`);
       if (shots) await r.page.screenshot({ path: path.join(OUT, `doors_next_${tag}.jpg`), type: 'jpeg', quality: 78, fullPage: true });
       const says = async name => { fc.name = name; await r.page.click('#nowsw button[data-nv="now"]'); await wait(r.page, '#rows .row').catch(() => {});
@@ -3661,16 +3670,24 @@ async function doors() {
       const off = await says('om_off');
       ok(off.rows === 2 && off.text.includes('Air, the sea and more hours come from Open-Meteo, which is off on this node. Turn it on in Set up → Packs → forecast.'),
         `${tag}: Open-Meteo off drew ${off.rows} rows without the opt-in line`);
-      for (const [name, want] of [['none', 'No forecast reaches this node'], ['off', 'The forecast pack is off on this node']]) {
+      for (const [name, want] of [['none', 'No forecast source answers for this place'], ['off', 'The forecast pack is off on this node'],
+                                  ['locked', 'This screen can’t answer yet']]) {
         const x = await says(name);
         ok(!x.rows && x.text.includes(want) && !x.small, `${tag}: ${name} drew ${x.rows} rows (${x.text.slice(0, 80)}), ${x.small} small links`);
       }
+      /* a failure is never kept: the node down, then up, and Next days reached by the door, not the switch, asks again */
+      fc.name = 'down'; await r.page.click('#nowsw button[data-nv="now"]'); await wait(r.page, '#rows .row').catch(() => {});
+      await r.page.click('#nowsw button[data-nv="next"]'); await r.page.waitForTimeout(400);
+      const down = await r.page.evaluate(() => document.getElementById('next').querySelectorAll('.nrow').length);
+      fc.name = 'full'; await go(r.page, '#place'); await go(r.page, '#now'); await r.page.waitForTimeout(400);
+      const up = await r.page.evaluate(() => ({ hash: location.hash, rows: document.getElementById('next').querySelectorAll('.nrow').length }));
+      ok(!down && up.hash === '#now/next' && up.rows === 5, `${tag}: after a failure, Next days by the door drew ${up.rows} rows at ${up.hash}`);
       await r.page.click('#nowsw button[data-nv="now"]');
       const back = await wait(r.page, '#rows .row').then(() => r.page.evaluate(() => ({ hash: location.hash,
         kept: (() => { try { return localStorage.getItem('planetai_now_view'); } catch (e) { return null; } })(),
         next: document.getElementById('next').getClientRects().length })), () => null);
       ok(back && back.hash === '#now' && back.kept === 'now' && !back.next, `${tag}: the switch back to Now did not take (${JSON.stringify(back)})`);
-      said.push(`${tag}: Next days toggles and is kept, three days fit, 44 px targets, air's 72 h with its line; opt-in, no source and pack off each one line`);
+      said.push(`${tag}: Next days toggles and is kept, three days fit, 44 px targets, air's 72 h with its line; opt-in, no source, pack off and locked each one line; Enter keeps the focus; a failure is asked again`);
     }
     await r.browser.close();
   }

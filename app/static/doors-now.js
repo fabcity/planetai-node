@@ -9,7 +9,7 @@ VIEWS.now = function () {
      map among them) are never drawn into a hidden column */
   const nx = nowView() === 'next', W = NX[D.locale] || NX.en;
   $('main[data-view="now"]').classList.toggle('nx', nx);
-  document.querySelectorAll('#nowsw button').forEach(b => { b.classList.toggle('on', (b.dataset.nv === 'next') === nx); b.textContent = W[b.dataset.nv]; });
+  document.querySelectorAll('#nowsw button').forEach(b => { const on = (b.dataset.nv === 'next') === nx; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); b.textContent = W[b.dataset.nv]; });
   if (nx) { if (location.hash !== '#now/next') history.replaceState(null, '', '#now/next'); return drawNext(); }
   rows(); drawDeclared(); drawAsks(); drawNow();
   aroundMap($('#rose')); thingsLine($('#nthings')); rememberLoad().then(() => decision());   /* the usual hour joins "Nothing is asked now" */
@@ -473,27 +473,27 @@ const NX = {
     issued: '{s}, issued {t}', fetched: '{s}, fetched {t}', ncells: '{n} cells', far: '{km} km from this node', absent: '{s}: nothing fetched yet',
     models: 'These come from models. The node does not forecast, and nothing here sends a message.',
     optin: 'Air, the sea and more hours come from Open-Meteo, which is off on this node. Turn it on in {setup}.',
-    none: 'No forecast reaches this node: BMKG covers Indonesia only, and Open-Meteo is off. Turn it on in {setup}.',
+    none: 'No forecast source answers for this place. Turn one on in {setup}.',
     waiting: 'No forecast has arrived on this node yet.', off: 'The forecast pack is off on this node. Turn it on in {setup}.',
-    fail: 'The node gave no forecast just now. Try again, or look at the pack in {setup}.', h72: '{t}, the next 72 hours', nowmark: 'now', line: 'line {v}' },
+    fail: 'The node gave no forecast just now. Try again, or look at the pack in {setup}.', h72: '{t}, the next 72 hours', nowmark: 'now' },
   es: { now: 'Ahora', next: 'Próximos días', today: 'Hoy', tomorrow: 'Mañana', air: 'Aire', heat: 'Calor', wind_rain: 'Viento y lluvia', sea: 'Mar',
     over: 'sobre', near: 'cerca', under: 'bajo', hover: '{h} h sobre {line}', peak: 'pico {v} a las {t}', cells: 'sobre la línea en {n} de {m} celdas',
     gusts: 'rachas {v} km/h', rain: '{v} mm, sobre todo {t}', dry: 'sin lluvia', waves: 'olas {v} m',
     issued: '{s}, emitido {t}', fetched: '{s}, descargado {t}', ncells: '{n} celdas', far: 'a {km} km de este nodo', absent: '{s}: nada descargado todavía',
     models: 'Esto viene de modelos. El nodo no pronostica, y nada de aquí envía un mensaje.',
     optin: 'El aire, el mar y más horas vienen de Open-Meteo, que está apagado en este nodo. Actívalo en {setup}.',
-    none: 'Ningún pronóstico llega a este nodo: BMKG cubre solo Indonesia, y Open-Meteo está apagado. Actívalo en {setup}.',
+    none: 'Ninguna fuente de pronóstico responde para este lugar. Activa una en {setup}.',
     waiting: 'Todavía no ha llegado ningún pronóstico a este nodo.', off: 'El pack forecast está apagado en este nodo. Actívalo en {setup}.',
-    fail: 'El nodo no dio un pronóstico ahora. Inténtalo de nuevo, o mira el pack en {setup}.', h72: '{t}, las próximas 72 horas', nowmark: 'ahora', line: 'línea {v}' },
+    fail: 'El nodo no dio un pronóstico ahora. Inténtalo de nuevo, o mira el pack en {setup}.', h72: '{t}, las próximas 72 horas', nowmark: 'ahora' },
   id: { now: 'Sekarang', next: 'Hari berikutnya', today: 'Hari ini', tomorrow: 'Besok', air: 'Udara', heat: 'Panas', wind_rain: 'Angin dan hujan', sea: 'Laut',
     over: 'di atas', near: 'dekat', under: 'di bawah', hover: '{h} jam di atas {line}', peak: 'puncak {v} pukul {t}', cells: 'di atas garis di {n} dari {m} sel',
     gusts: 'hembusan {v} km/h', rain: '{v} mm, terbanyak {t}', dry: 'tidak hujan', waves: 'ombak {v} m',
     issued: '{s}, terbit {t}', fetched: '{s}, diambil {t}', ncells: '{n} sel', far: '{km} km dari node ini', absent: '{s}: belum ada yang diambil',
     models: 'Ini berasal dari model. Node tidak membuat prakiraan, dan tidak ada yang di sini mengirim pesan.',
     optin: 'Udara, laut, dan lebih banyak jam berasal dari Open-Meteo, yang mati di node ini. Nyalakan di {setup}.',
-    none: 'Tidak ada prakiraan yang menjangkau node ini: BMKG hanya mencakup Indonesia, dan Open-Meteo mati. Nyalakan di {setup}.',
+    none: 'Tidak ada sumber prakiraan yang menjawab untuk tempat ini. Nyalakan satu di {setup}.',
     waiting: 'Belum ada prakiraan yang sampai di node ini.', off: 'Pack forecast mati di node ini. Nyalakan di {setup}.',
-    fail: 'Node tidak memberi prakiraan sekarang. Coba lagi, atau lihat pack di {setup}.', h72: '{t}, 72 jam ke depan', nowmark: 'sekarang', line: 'garis {v}' },
+    fail: 'Node tidak memberi prakiraan sekarang. Coba lagi, atau lihat pack di {setup}.', h72: '{t}, 72 jam ke depan', nowmark: 'sekarang' },
 };
 const NX_SRC = { 'forecast-bmkg': 'BMKG', 'forecast-om': 'Open-Meteo', 'forecast-cams': 'CAMS', 'forecast-marine': 'Open-Meteo Marine' };
 /* one day's cell of one row: every number a data-num with what it is against */
@@ -512,12 +512,14 @@ function nxCell(k, r, date, W) {
     + '</span>';
 }
 /* GET /forecast → what drawNext draws: { heads, rows, lines, sources, notes, empty }. `empty` is one line instead of
-   the grid: the pack off ({ off: true }), no answer (null), or nothing forecast for this place yet */
+   the grid: the pack off ({ off: true }), a locked screen ({ locked: true }), no answer (null), or nothing forecast for
+   this place yet */
 function nextFrom(f, locale) {
   const W = NX[locale] || NX.en, w = (s, o) => s.replace(/\{(\w+)\}/g, (m, x) => o[x] ?? m);
   const setup = '<a href="#setup/packs">Set up → Packs → forecast</a>', none = { heads: [], rows: [], lines: [], sources: [], notes: [], empty: null };
   if (!f) return { ...none, empty: w(W.fail, { setup }) };
   if (f.off) return { ...none, empty: w(W.off, { setup }) };
+  if (f.locked) return { ...none, empty: `${esc(WORDS.locked)} ${UNLOCK_AT}` };
   const days = (f.days || []).slice(0, 3), hours = f.hours || [], out = { ...none };
   out.heads = days.map((d, i) => ({ date: d.date, word: d.part === 'rest' ? W.today : i === 1 ? W.tomorrow : '', label: dLabel(d.date) }));
   for (const k of ['air', 'heat', 'wind_rain', 'sea']) {
@@ -543,21 +545,29 @@ function nextFrom(f, locale) {
   out.notes = [W.models, ...(f.openmeteo === false ? [w(W.optin, { setup })] : [])];
   return out;
 }
-/* the forecast asked once a showing of Next days (pressing the switch asks again); the row whose 72 h are open */
-const NEXT = { p: null, open: null };
+/* the forecast is kept 30 minutes (pressing the switch asks again); no answer, a locked screen and the pack off are
+   never kept, so the next showing, by the switch, the door or a link, asks again. `open` is the row whose 72 h show. */
+const NX_FRESH = 30 * 60e3;
+const NEXT = { p: null, at: 0, open: null };
 async function drawNext() {
-  const f = await (NEXT.p ||= loadForecast());
+  if (!NEXT.p || Date.now() - NEXT.at > NX_FRESH) { NEXT.p = loadForecast(); NEXT.at = Date.now(); }
+  const f = await NEXT.p;
+  if (!f || f.off || f.locked) NEXT.p = null;
   if (view() !== 'now' || nowView() !== 'next') return;
   const el = $('#next'), x = nextFrom(f, D.locale);
   if (x.empty) { el.innerHTML = `<p class="nxempty">${x.empty}</p>`; return; }
-  const cols = cs => cs.map(c => `<span class="nxc">${c || '<span class="x">—</span>'}</span>`).join('');
+  /* the heads are drawn for the eye; each cell says its own day to a screen reader */
+  const day = x.heads.map(h => `<span class="vh">${esc(h.word ? `${h.word}, ${h.label}` : h.label)}: </span>`);
+  const cols = cs => cs.map((c, i) => `<span class="nxc">${day[i] || ''}${c || '<span class="x">—</span>'}</span>`).join('');
   el.innerHTML = `<div class="nxhead" aria-hidden="true"><span></span>${x.heads.map(h => `<span>${h.word ? `<b>${esc(h.word)}</b> ` : ''}${esc(h.label)}</span>`).join('')}</div>`
     + x.rows.map(r => (r.series ? `<button class="row nrow" data-k="${r.key}" data-kind="readout" aria-pressed="${NEXT.open === r.key}">` : `<div class="row nrow decl" data-kind="readout">`)
       + `<span class="n">${esc(r.title)} <small class="nk">${esc(r.src)}</small></span>${cols(r.cells)}${r.series ? '</button>' : '</div>'}`
       + (r.series && NEXT.open === r.key ? nxSeries(r, el.clientWidth) : '')).join('')
     + x.lines.map(l => `<div class="row nrow decl" data-kind="readout"><span class="n">${l.title}</span>${cols(l.cells)}</div>`).join('')
     + `<p class="nxsrc">${x.sources.join(' ')}</p>` + x.notes.map(n => `<p class="fine">${n}</p>`).join('');
-  el.querySelectorAll('button.nrow').forEach(b => b.onclick = () => { NEXT.open = NEXT.open === b.dataset.k ? null : b.dataset.k; drawNext(); });
+  /* a press redraws the grid; the focus stays on the row pressed, so a keyboard and a screen reader keep their place */
+  el.querySelectorAll('button.nrow').forEach(b => b.onclick = () => { const k = b.dataset.k; NEXT.open = NEXT.open === k ? null : k;
+    drawNext().then(() => { const n = el.querySelector(`button.nrow[data-k="${k}"]`); if (n) n.focus(); }); });
 }
 /* a row's 72 hours, under it: the series, its line dashed, "now" at the left, each local midnight a tick; an hour over
    the line a red tick on the floor (the mark carries the red, the words stay ink) */
@@ -570,8 +580,9 @@ function nxSeries(r, width) {
   let g = `<line x1="${L}" x2="${L}" y1="${T}" y2="${H - B + 4}" stroke="currentColor"/><text x="${L}" y="${H - 6}" class="lab">${esc(W.nowmark)}</text>`;
   g += s.pts.filter(p => hourOf(p[0]) === 0).map(p => { const X = x(Date.parse(p[0])).toFixed(1);
     return `<line x1="${X}" x2="${X}" y1="${T}" y2="${H - B + 4}" stroke="currentColor" stroke-opacity=".25"/>${X > L + 40 ? `<text x="${+X + 3}" y="${H - 6}">${esc(dLabel(dayOf(p[0])).split(',')[0])}</text>` : ''}`; }).join('');
-  if (s.line != null) g += `<line data-line x1="${L}" x2="${Wd - R}" y1="${y(s.line).toFixed(1)}" y2="${y(s.line).toFixed(1)}" stroke="currentColor" stroke-dasharray="4 3"/>`
-    + `<text x="${Wd - R}" y="${(y(s.line) - 4).toFixed(1)}" text-anchor="end" class="lab">${esc(W.line.replace('{v}', s.line))} ${esc(s.unit || '')}</text>`
+  /* the line as the doors draw it everywhere: .linep, labelled by lineLab ("WHO 15" for the air) */
+  if (s.line != null) g += `<line data-line class="linep" x1="${L}" x2="${Wd - R}" y1="${y(s.line).toFixed(1)}" y2="${y(s.line).toFixed(1)}"/>`
+    + `<text x="${Wd - R}" y="${(y(s.line) - 4).toFixed(1)}" text-anchor="end" class="lab">${esc(lineLab({ ...((D.issues || {})[r.key] || {}), line: s.line }))}</text>`
     + s.pts.filter(p => p[1] > s.line).map(p => `<rect x="${(x(Date.parse(p[0])) - 1).toFixed(1)}" y="${H - B - 3}" width="2" height="3" fill="var(--signal-worse)"/>`).join('');
   g += `<path d="${s.pts.map((p, i) => `${i ? 'L' : 'M'}${x(ts[i]).toFixed(1)},${y(p[1]).toFixed(1)}`).join('')}" fill="none" stroke="currentColor" stroke-width="1.5"/>`
     + `<text x="${x(ts[iPk]).toFixed(1)}" y="${(y(vs[iPk]) - 5).toFixed(1)}" text-anchor="middle" class="num" data-num="next.${r.key}.max" data-cmp="${esc(s.line != null ? `the line ${s.line}` : 'no line')}">${fmt(vs[iPk], dp)}</text>`;
@@ -584,7 +595,7 @@ document.addEventListener('click', ev => {
   const b = ev.target.closest && ev.target.closest('#nowsw button[data-nv]');
   if (!b) return;
   try { localStorage.setItem(NOW_VIEW, b.dataset.nv); } catch (e) { /* no storage here */ }
-  if (b.dataset.nv === 'next') NEXT.p = null;
+  if (b.dataset.nv === 'next') NEXT.p = null;   /* asked again */
   const h = b.dataset.nv === 'next' ? '#now/next' : '#now';
   if (location.hash !== h) location.hash = h; else VIEWS.now();
 });

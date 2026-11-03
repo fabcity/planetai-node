@@ -143,10 +143,10 @@ async function loadD(routes = DOORS_ROUTES) {
 }
 
 /* GET /forecast for Now's Next days (docs/SPEC_next_days.md §4), asked only while Next days is shown, never with the
-   routes above. The node's answer; { off: true } when the forecast pack is off (the route is not there, 404); null when
-   the node did not answer. */
+   routes above. The node's answer; { off: true } when the forecast pack is off (the route is not there, 404);
+   { locked: true } when this screen may not read it (401, 403); null when the node did not answer. */
 const loadForecast = () => doorsFetch('/forecast?hours=72')
-  .then(r => r.status === 404 ? { off: true } : r.ok ? r.json() : null).catch(() => null);
+  .then(r => r.status === 404 ? { off: true } : r.status === 401 || r.status === 403 ? { locked: true } : r.ok ? r.json() : null).catch(() => null);
 
 /* The household's words for the engine's own (pre-launch audit, 15 Oct): a state, an event's kind, and the two
    sentences a screen says when it cannot answer. One table for the doors and the phone, which both load this file. */
