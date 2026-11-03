@@ -12,13 +12,15 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from datetime import datetime, timedelta, timezone
 
 log = logging.getLogger("planetai.forecast")
 
 BMKG = "https://api.bmkg.go.id/publik/prakiraan-cuaca"
 OPEN_METEO = "https://api.open-meteo.com/v1/forecast"
-HOURS = 24                      # what the card and the report need; the sources offer three days
+HOURS = 72                      # what the Next days view needs: today's rest, tomorrow and the day after
+WIND_HOURS = 24                 # the map's wind field shows the next day only, as it always has
 
 
 def _utc(s: str | None) -> datetime | None:
@@ -74,42 +76,65 @@ def bmkg(hc, adm4: str, node_lat: float, node_lon: float):
     return sensors, readings
 
 
-OM_HOURLY = ("temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,wind_direction_10m,cloud_cover")
+OM_HOURLY = ("temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,wind_direction_10m,cloud_cover,"
+             "wind_gusts_10m,precipitation_probability,shortwave_radiation,et0_fao_evapotranspiration,soil_moisture_0_to_1cm")
 OM_MAP = {"temperature_2m": "fc_temp", "relative_humidity_2m": "fc_humidity", "precipitation": "fc_rain",
-          "wind_speed_10m": "fc_wind_speed", "wind_direction_10m": "fc_wind_direction", "cloud_cover": "fc_cloud"}
+          "wind_speed_10m": "fc_wind_speed", "wind_direction_10m": "fc_wind_direction", "cloud_cover": "fc_cloud",
+          "wind_gusts_10m": "fc_wind_gusts", "precipitation_probability": "fc_rain_prob",
+          "shortwave_radiation": "fc_shortwave", "et0_fao_evapotranspiration": "fc_et0",
+          "soil_moisture_0_to_1cm": "fc_soil_moisture"}
 
 
-def openmeteo(hc, lat: float, lon: float):
-    """Open-Meteo's hourly forecast. `wind_speed_10m` is km/h by default, the same unit BMKG publishes, so the
-    two are comparable without conversion — checked against the API's own `hourly_units` in verify.
-
-    Open-Meteo publishes no issue time: there is no analysis_date in the response, and `generationtime_ms` is how
-    long the request took, not when the model ran. The node records when IT fetched, and says so rather than
-    dressing a fetch time up as a model run."""
-    r = hc.get(OPEN_METEO, params={"latitude": lat, "longitude": lon, "hourly": OM_HOURLY,
-                                   "forecast_days": 2, "timezone": "UTC"})
+def _om_points(hc, url: str, points: list[dict], hourly: str):
+    """One Open-Meteo request for every point, three days. One location answers a dict and several answer a list in
+    the order asked; both come back as a list, and a short answer is refused rather than matched to the wrong place."""
+    r = hc.get(url, params={"latitude": ",".join(str(p["lat"]) for p in points),
+                            "longitude": ",".join(str(p["lon"]) for p in points),
+                            "hourly": hourly, "forecast_days": 3, "timezone": "UTC"})
     r.raise_for_status()
     d = r.json()
+    d = d if isinstance(d, list) else [d]
+    if len(d) != len(points):
+        raise ValueError(f"Open-Meteo answered {len(d)} points for {len(points)} asked")
+    return d
+
+
+def _om_rows(d: dict, sid: str, mapping: dict, fetched: datetime) -> list:
+    """The hourly rows of one point from `fetched - 1 h` to HOURS ahead, each with how far ahead it is."""
     h = d.get("hourly") or {}
     times = h.get("time") or []
-    fetched = datetime.now(timezone.utc)
-    sid = "forecast-om"
-    sensors = [_sensor(sid, "Open-Meteo forecast (model point sample)", d.get("latitude"), d.get("longitude"),
-                       {"fetched": fetched.isoformat(), "issued": None,
-                        "note": "Open-Meteo publishes no model run time; `fetched` is when this node asked.",
-                        "licence": "CC-BY 4.0, free tier non-commercial only",
-                        "attribution": "Open-Meteo, open-meteo.com"})]
     cutoff = fetched + timedelta(hours=HOURS)
     readings = []
     for i, t in enumerate(times):
         ts = _utc(t if str(t).endswith("Z") else f"{t}Z")
         if ts is None or ts < fetched - timedelta(hours=1) or ts > cutoff:
             continue
-        for key, metric in OM_MAP.items():
+        for key, metric in mapping.items():
             v = (h.get(key) or [None] * len(times))[i]
             if v is not None:
                 readings.append((ts, sid, metric, float(v)))
         readings.append((ts, sid, "fc_lead_hours", round((ts - fetched).total_seconds() / 3600, 1)))
+    return readings
+
+
+def openmeteo(hc, points: list[dict]):
+    """Open-Meteo's hourly forecast at each point, {"sid", "cell", "lat", "lon"}, in one request. `wind_speed_10m` is
+    km/h by default, the same unit BMKG publishes, so the two are comparable without conversion — checked against the
+    API's own `hourly_units` in verify.
+
+    Open-Meteo publishes no issue time: there is no analysis_date in the response, and `generationtime_ms` is how
+    long the request took, not when the model ran. The node records when IT fetched, and says so rather than
+    dressing a fetch time up as a model run."""
+    answers = _om_points(hc, OPEN_METEO, points, OM_HOURLY)
+    fetched = datetime.now(timezone.utc)
+    sensors, readings = [], []
+    for p, d in zip(points, answers):
+        sensors.append(_sensor(p["sid"], "Open-Meteo forecast (model point sample)", d.get("latitude"), d.get("longitude"),
+                               {"fetched": fetched.isoformat(), "issued": None, "cell": p.get("cell"),
+                                "note": "Open-Meteo publishes no model run time; `fetched` is when this node asked.",
+                                "licence": "CC-BY 4.0, free tier non-commercial only",
+                                "attribution": "Open-Meteo, open-meteo.com"}))
+        readings += _om_rows(d, p["sid"], OM_MAP, fetched)
     return sensors, readings
 
 
@@ -142,7 +167,7 @@ def wind_field(hc, lat: float, lon: float, km: float = WIND_KM, n: int = WIND_N)
         raise ValueError(f"Open-Meteo answered {len(d)} points for {len(pts)} asked")
     fetched = datetime.now(timezone.utc)
     times = [f"{t}Z" for t in (d[0].get("hourly") or {}).get("time", [])]
-    keep = [i for i, t in enumerate(times) if fetched - timedelta(hours=1) <= _utc(t) <= fetched + timedelta(hours=HOURS)]
+    keep = [i for i, t in enumerate(times) if fetched - timedelta(hours=1) <= _utc(t) <= fetched + timedelta(hours=WIND_HOURS)]
     grid = lambda key: [[[(p.get("hourly") or {}).get(key, [None] * len(times))[i] for p in d[j * n:(j + 1) * n]]  # noqa: E731
                          for j in range(n)] for i in keep]
     me = (d[-1].get("hourly") or {})
@@ -191,26 +216,57 @@ def _km(lat1, lon1, lat2, lon2):
     return 12742 * math.asin(math.sqrt(a))
 
 
-def _due() -> bool:
-    """Once every FORECAST_POLL_HOURS, not on every core poll. The pack runs in the node's 300 s loop, so without this
-    it asked Open-Meteo for 65 points ~275 times a day and spent the whole IP's free tier by 14:00 in Bali (13 Oct).
-    The stamp is touched on every attempt, success or not, and lives in out/, so a restart or a 429 does not ask again.
-    A forecast already stored is never overwritten (ON CONFLICT DO NOTHING), so asking more often gains nothing."""
-    import time
+RETRY_S = 1800                  # a refused or unreachable source is asked again after half an hour
+
+
+def _stamp_file(source: str):
     from pathlib import Path
-    stamp = Path(os.getenv("PACK_OUT", "/app/out")) / "forecast.last"
-    if stamp.is_file() and time.time() - stamp.stat().st_mtime < float(os.getenv("FORECAST_POLL_HOURS", "6")) * 3600:
-        return False
-    stamp.parent.mkdir(parents=True, exist_ok=True)
-    stamp.touch()
-    return True
+    return Path(os.getenv("PACK_OUT", "/app/out")) / f"forecast.{source}.last"
+
+
+def _due(source: str, force: bool = False) -> bool:
+    """Is this source due? One stamp a source, out/forecast.<source>.last, and its mtime is the one clock: a source that
+    answered waits FORECAST_POLL_HOURS (default 6), one that failed waits RETRY_S, and a source never asked is due.
+    The pack runs in the node's 300 s loop, so without the wait it asked Open-Meteo for 65 points ~275 times a day and
+    spent the whole IP's free tier by 14:00 in Bali (13 Oct). Open-Meteo's daily limit is per IP, so a refused call
+    is not retried on the next poll either: that would hit an IP already over its cap about 200 times a day. One
+    source failing never holds back another, because each has its own stamp. The stamp lives in out/, so a restart
+    does not ask again. `force` is `planetai run forecast fetch` and verify: now, and the clocks are left alone."""
+    if force:
+        return True
+    f = _stamp_file(source)
+    return not f.is_file() or time.time() - f.stat().st_mtime >= float(os.getenv("FORECAST_POLL_HOURS", "6")) * 3600
+
+
+def _stamp(source: str, ok: bool = True) -> None:
+    """After an attempt. The mtime is set so that `_due` stays one comparison: now when it answered, and far enough
+    back that it is due again in RETRY_S when it did not (never longer than the poll itself)."""
+    poll = float(os.getenv("FORECAST_POLL_HOURS", "6")) * 3600
+    f = _stamp_file(source)
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.touch()
+    t = time.time() - (0 if ok else poll - min(RETRY_S, poll))
+    os.utime(f, (t, t))
+
+
+def _try(source: str, force: bool, what: str, call):
+    """Run `call` if `source` is due; stamp the attempt. Returns what it returned, or None when it was not due or failed.
+    A source that is down is never an alert: log once and carry on with the others."""
+    if not _due(source, force):
+        return None
+    try:
+        out = call()
+    except Exception as e:  # noqa: BLE001
+        log.warning("forecast: %s not fetched (%s)", what, e)
+        out = None
+    if not force:
+        _stamp(source, ok=out is not None)
+    return out
 
 
 def fetch(hc, force: bool = False):
-    """Both sources if both are configured, either alone, and nothing at all without complaint. A source that is
-    down is never an alert: log once and return what we have. `force` is `planetai run forecast fetch`: now."""
-    if not force and not _due():
-        return [], []
+    """Every source that is configured and due, each on its own clock; one refused or down does not hold the others.
+    `force` is `planetai run forecast fetch`: now."""
     lat, lon = float(os.environ["NODE_LAT"]), float(os.environ["NODE_LON"])
     sensors, readings, bm, om = [], [], [], []
     adm4 = os.getenv("FORECAST_BMKG_ADM4", "").strip()
@@ -218,19 +274,27 @@ def fetch(hc, force: bool = False):
         if not adm4:
             log.info("forecast: FORECAST_BMKG_ADM4 is not set — `planetai run forecast verify` finds the code for this point")
         else:
-            try:
-                s, bm = bmkg(hc, adm4, lat, lon); sensors += s; readings += bm
-            except Exception as e:  # noqa: BLE001
-                log.warning("forecast: BMKG unreachable (%s); the pack idles until it answers", e)
+            got = _try("bmkg", force, "BMKG", lambda: bmkg(hc, adm4, lat, lon))
+            if got:
+                sensors += got[0]; readings += got[1]; bm = got[1]
     if os.getenv("FORECAST_OPENMETEO", "0") == "1":
-        try:
-            s, om = openmeteo(hc, lat, lon); sensors += s; readings += om
-        except Exception as e:  # noqa: BLE001
-            log.warning("forecast: Open-Meteo unreachable (%s)", e)
-        try:                     # the field the map draws moving; same source, same switch, same cadence
-            write_wind_field(hc, lat, lon)
-        except Exception as e:  # noqa: BLE001
-            log.warning("forecast: wind field not refreshed (%s); the last one stays", e)
+        node = {"sid": "forecast-om", "cell": None, "lat": lat, "lon": lon}   # the territory (Task 4) fills `cell`
+
+        wind_failed = []
+
+        def om_source():
+            got = openmeteo(hc, [node])
+            try:                 # the field the map draws moving; same source, same switch, same stamp
+                write_wind_field(hc, lat, lon)
+            except Exception as e:  # noqa: BLE001
+                log.warning("forecast: wind field not refreshed (%s); the last one stays", e)
+                wind_failed.append(1)
+            return got
+        got = _try("om", force, "Open-Meteo", om_source)
+        if got:
+            sensors += got[0]; readings += got[1]; om = got[1]
+            if wind_failed and not force:
+                _stamp("om", ok=False)      # the points are stored; the field is asked again in RETRY_S
     if bm and om:
         s, g = gap(bm, om); sensors += s; readings += g
     return sensors, readings

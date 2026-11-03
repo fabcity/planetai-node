@@ -67,7 +67,8 @@ for key, metric in (("t", "fc_temp"), ("hu", "fc_humidity"), ("ws", "fc_wind_spe
 om = fixture("openmeteo_ungasan_2026-09-07.json")
 assert om["hourly_units"]["wind_speed_10m"] == "km/h", \
     "BMKG publishes km/h; if Open-Meteo ever changes default units the gap channel silently compares apples to pears"
-osens, oread = A.openmeteo(HC(om), LAT, LON)
+PT = {"sid": "forecast-om", "cell": None, "lat": LAT, "lon": LON}
+osens, oread = A.openmeteo(HC(om), [PT])
 assert osens[0]["sensor_id"] == "forecast-om" and osens[0]["kind"] == "model"
 # Open-Meteo has no model run time. Recording a fetch time as an issue time would be inventing provenance.
 assert osens[0]["meta"]["issued"] is None and osens[0]["meta"]["fetched"], \
@@ -123,8 +124,47 @@ try:
 except ValueError:
     pass
 
+# ---- 72 hours, and the five variables a day needs. A synthetic answer built from now, so the cut is where we say it is.
+def om_payload(extra=(), hours=100):
+    """An Open-Meteo hourly answer: every OM_HOURLY key, value = the hour's index, starting two hours ago."""
+    t0 = dt.datetime.now(dt.timezone.utc).replace(minute=0, second=0, microsecond=0) - dt.timedelta(hours=2)
+    keys = A.OM_HOURLY.split(",") + list(extra)
+    h = {"time": [(t0 + dt.timedelta(hours=i)).strftime("%Y-%m-%dT%H:%M") for i in range(hours)]}
+    h.update({k: [float(i) for i in range(hours)] for k in keys})
+    return {"latitude": LAT, "longitude": LON, "hourly": h}
+
+
+assert A.HOURS == 72
+_, rows = A.openmeteo(HC(om_payload()), [PT])
+now = dt.datetime.now(dt.timezone.utc)
+assert rows and max(ts for ts, *_ in rows) <= now + dt.timedelta(hours=72), "nothing past 72 hours is kept"
+assert max(ts for ts, *_ in rows) > now + dt.timedelta(hours=70), "and the 72 hours are kept, not 24"
+assert min(ts for ts, *_ in rows) >= now - dt.timedelta(hours=1), "the past is not kept"
+NEW5 = {"wind_gusts_10m": "fc_wind_gusts", "precipitation_probability": "fc_rain_prob", "shortwave_radiation": "fc_shortwave",
+        "et0_fao_evapotranspiration": "fc_et0", "soil_moisture_0_to_1cm": "fc_soil_moisture"}
+for k, m in NEW5.items():
+    assert k in A.OM_HOURLY.split(",") and A.OM_MAP[k] == m, (k, m)
+assert {m for _ts, _s, m, _v in rows} >= set(NEW5.values()) | {"fc_lead_hours"}
+# a multi-point answer is a list, and every point gets its own sensor, its cell in its meta
+pts = [PT, {"sid": "forecast-om-8a1", "cell": "8a1", "lat": LAT + .1, "lon": LON}]
+ss, rr = A.openmeteo(HC([om_payload(), om_payload()]), pts)
+assert [x["sensor_id"] for x in ss] == ["forecast-om", "forecast-om-8a1"] and ss[1]["meta"]["cell"] == "8a1"
+assert {s for _ts, s, *_ in rr} == {"forecast-om", "forecast-om-8a1"}
+try:
+    A.openmeteo(HC([om_payload()]), pts); raise AssertionError("a short answer must be refused")
+except ValueError:
+    pass
+import yaml  # noqa: E402,F811
+ch = {(c["source"], c["metric"]): c for c in yaml.safe_load(open(os.path.join(ROOT, "packs/forecast/channels.yml")))}
+pk = yaml.safe_load(open(os.path.join(ROOT, "packs/forecast/pack.yaml")))
+for m, u in (("fc_wind_gusts", "km/h"), ("fc_rain_prob", "%"), ("fc_shortwave", "W/m²"), ("fc_et0", "mm"), ("fc_soil_moisture", "m³/m³")):
+    c = ch[("forecast-om", m)]
+    assert c["role"] == "derived" and c["comparable"] is False and c["unit"] == u, (m, c)
+    assert m in pk["metrics"], f"{m} is declared in pack.yaml"
+
 # ---- the cadence. The pack runs in the core 300 s loop; FORECAST_POLL_HOURS is how often it may ask, and a restart
 # or a failed fetch must not ask again sooner. 13 Oct: asking every poll spent Open-Meteo's daily limit by 06:15 UTC.
+# Each source has its own stamp, out/forecast.<source>.last, so one that is refused does not hold the others.
 import tempfile  # noqa: E402
 os.environ["PACK_OUT"] = tempfile.mkdtemp()
 calls = []
@@ -132,14 +172,82 @@ class Count:
     def get(s, url, params=None, headers=None, timeout=None): calls.append(url); raise RuntimeError("429")
 os.environ.update(FORECAST_OPENMETEO="1", FORECAST_BMKG="0", NODE_LAT=str(LAT), NODE_LON=str(LON), FORECAST_POLL_HOURS="6")
 A.fetch(Count()); first = len(calls)
-assert first == 2, f"the first poll asks Open-Meteo twice, the point and the field: {calls}"
+assert first == 1, f"a refused point is asked once and the field is not tried behind it: {calls}"
 A.fetch(Count()); A.fetch(Count())
-assert len(calls) == first, "a second poll inside FORECAST_POLL_HOURS asks nothing, even after a failure"
+assert len(calls) == first, "a second poll inside the retry wait asks nothing, even after a failure"
 A.fetch(Count(), force=True)
 assert len(calls) == 2 * first, "`planetai run forecast fetch` asks now"
-stamp = os.path.join(os.environ["PACK_OUT"], "forecast.last"); os.utime(stamp, (0, 0))
+stamp = lambda src: os.path.join(os.environ["PACK_OUT"], f"forecast.{src}.last")  # noqa: E731
+assert not os.path.exists(os.path.join(os.environ["PACK_OUT"], "forecast.last")), "one stamp a source, not one for the pack"
+os.utime(stamp("om"), (0, 0))
 A.fetch(Count())
 assert len(calls) == 3 * first, "once the hours have passed, it asks again"
+
+
+def aged(src, minutes):
+    """Move a stamp `minutes` further into the past and say whether the source is due."""
+    m = os.stat(stamp(src)).st_mtime - minutes * 60
+    os.utime(stamp(src), (m, m))
+    return A._due(src)
+
+
+# a failure makes the source due again in 30 minutes: not on the next 300 s poll, and not after six hours
+assert A.RETRY_S == 1800
+A._stamp("om", ok=False)
+assert not A._due("om") and not aged("om", 25), "a refused source is not asked again on the next poll or two"
+assert aged("om", 10), "...but it is asked again after half an hour"
+# a success is the full wait
+A._stamp("om")
+assert not aged("om", 31) and not aged("om", 300) and aged("om", 60), "a source that answered waits FORECAST_POLL_HOURS"
+assert A._due("om", force=True) and A._due("never-stamped"), "force asks, and a source never asked is due"
+os.environ["FORECAST_POLL_HOURS"] = "0.1"            # a poll shorter than the retry: the retry never waits longer than the poll
+A._stamp("om", ok=False)
+assert aged("om", 7), "the retry wait is never longer than FORECAST_POLL_HOURS"
+os.environ["FORECAST_POLL_HOURS"] = "6"
+
+
+class Route:
+    """A fake hc that answers by URL, records what it was asked, and fails the URLs in `down`."""
+    def __init__(s, down=()): s.down, s.asked = set(down), []
+    def get(s, url, params=None, headers=None, timeout=None):
+        s.asked.append(url)
+        if url in s.down:
+            raise RuntimeError("429")
+        return R({A.BMKG: bm, A.OPEN_METEO: om_payload()}[url])
+
+
+def fresh(**env):
+    os.environ["PACK_OUT"] = tempfile.mkdtemp()
+    os.environ.update({"FORECAST_BMKG": "0", "FORECAST_OPENMETEO": "1", "FORECAST_BMKG_ADM4": ADM4}); os.environ.update(env)
+    A.write_wind_field = lambda *a: None                  # the field is one more call on the om stamp; counted above
+
+
+# one source refused: the others still fetch and store, and only the refused one waits 30 minutes
+fresh(FORECAST_BMKG="1")
+hc = Route(down=[A.OPEN_METEO]); sens, rd = A.fetch(hc)
+assert {s["sensor_id"] for s in sens} == {"forecast-bmkg"}, "BMKG answered and is stored"
+assert not A._due("bmkg") and not A._due("om")
+assert aged("om", 31) and not aged("bmkg", 31), "the refused one retries in 30 minutes, the other in six hours"
+# two due sources make exactly two calls, a source that is not due makes none
+fresh(FORECAST_BMKG="1")
+hc = Route(); A.fetch(hc)
+assert sorted(hc.asked) == sorted([A.BMKG, A.OPEN_METEO]), f"bmkg and om are due: {hc.asked}"
+hc = Route(); A.fetch(hc)
+assert hc.asked == [], "neither is due now"
+os.utime(stamp("om"), (0, 0))
+hc = Route(); A.fetch(hc)
+assert hc.asked == [A.OPEN_METEO], f"only om is due again: {hc.asked}"
+# the point answers and the field is refused: the points are stored, and om is asked again in 30 minutes
+fresh(FORECAST_BMKG="0")
+def _no_field(*a): raise RuntimeError("429")
+A.write_wind_field = _no_field
+sens, rd = A.fetch(Route())
+assert [s["sensor_id"] for s in sens] == ["forecast-om"] and rd, "the point forecast is kept"
+assert not A._due("om") and aged("om", 31), "and the field is asked again in half an hour, not six hours"
+# Open-Meteo off (the default) asks it nothing, BMKG still answers
+fresh(FORECAST_BMKG="1"); os.environ.pop("FORECAST_OPENMETEO")
+hc = Route(); sens, rd = A.fetch(hc)
+assert hc.asked == [A.BMKG] and [s["sensor_id"] for s in sens] == ["forecast-bmkg"], hc.asked
 
 print(f"test_forecast: ok — {loc['desa']}, {km*1000:.0f} m from the node, issued {issued:%d %b %H:%M} UTC, "
       f"{len(readings)} readings, {len(gr)} gap values, and not one thing it can say out loud")

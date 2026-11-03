@@ -1,6 +1,6 @@
 # forecast
 
-**What it adds** — the next day of wind and rain for this point, from the meteorological agency that covers it.
+**What it adds** — the next three days of wind and rain for this point, from the meteorological agency that covers it.
 It answers the question that follows "is the air bad": is it arriving or leaving. A reading of 40 µg/m³ with the
 wind turning offshore and rain at four means something different from the same 40 with still air all night.
 
@@ -35,7 +35,8 @@ place is still a forecast, but it is not this address's.
 
 BMKG allows 60 requests a minute per IP and it enforces it — finding the code above cost a `429` that took several
 minutes to clear. `FORECAST_POLL_HOURS=6` is far inside it; BMKG publishes twice a day, so anything faster is
-asking a cache the same question.
+asking a cache the same question. Each source keeps its own stamp (`out/forecast.<source>.last`): one that fails is
+asked again after 30 minutes, not on the next 300 s poll, and the others are not held back.
 
 ## Two sources, and only one of them is on
 
