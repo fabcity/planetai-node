@@ -178,7 +178,7 @@ details .in{padding:0 0 16px;color:var(--mute);font-size:var(--t-small);max-widt
 
 /* ================= NOW ================= */
 /* one bold block (the sentence and its day), then quiet parts under sentence-case heads; mono only for units, times, values */
-.face{max-width:1240px;margin:0 auto;padding:18px clamp(16px,3vw,40px) 40px;display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:0 48px;grid-template-areas:"kick kick" "l r"}
+.face{max-width:1240px;margin:0 auto;padding:18px clamp(16px,3vw,40px) 40px;display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:0 48px;grid-template-areas:"sw sw" "kick kick" "l r" "nx nx"}
 .lcol{grid-area:l;min-width:0}.rcol{grid-area:r;min-width:0;align-content:start}
 .kick{grid-area:kick;display:flex;justify-content:space-between;gap:6px 16px;align-items:baseline;flex-wrap:wrap;margin-bottom:6px}
 .kick .kr{display:flex;gap:12px;align-items:baseline}.kick .kr a{font-size:var(--t-cap);color:var(--mute)}
@@ -233,6 +233,22 @@ section.decl{margin-top:22px}.row.decl{cursor:default}   /* a pack's declared ba
 .around{margin:18px 0 0}
 .over{display:inline-block;width:8px;height:8px;background:var(--signal-worse);margin-right:6px}
 #rose svg{display:block;overflow:visible}
+/* Now · Next days (SPEC_next_days §5): the switch is the register's, at the top of Now; Next days is one row card a
+   thing over three day columns (the rest of today, tomorrow, the day after), the row's 72 h a series card under it */
+.nowsw{grid-area:sw;justify-self:start;margin-bottom:12px}.nowsw button{min-height:44px;min-width:44px;padding:0 14px;color:var(--ink)}
+.face.nx>.kick,.face.nx>.lcol,.face.nx>.rcol,.face:not(.nx)>#next{display:none}
+#next{grid-area:nx;min-width:0}
+.nxhead,.nrow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px 12px}
+.nxhead{font:500 var(--t-cap)/1.4 var(--mono);color:var(--mute);padding:0 10px 6px 8px;border-bottom:1px solid var(--ink)}
+.nxhead b{font:600 var(--t-small) var(--body);color:var(--ink)}.nxhead>span:first-child,.nrow .n{grid-column:1 / -1}.nxhead>span:first-child{display:none}
+.nrow .n small{font-weight:500;margin-left:6px}.nxc{min-width:0;font:500 var(--t-small)/1.4 var(--body);overflow-wrap:anywhere}
+.nxc .state{margin-left:4px;display:inline-block}.nxc .sub{display:block;margin-top:4px}
+.nrow[aria-pressed="true"] .nk,.nrow[aria-pressed="true"] .x{color:var(--ground);opacity:.75}
+.nxs{margin:0;padding:10px 0;border-bottom:1px solid var(--hair)}.nxs svg{display:block;width:100%;height:auto;overflow:visible}.nxs .fine{margin-top:4px}
+.nxsrc{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 0}
+#next .fine a,.nxempty a{display:inline-flex;align-items:center;min-height:44px}
+.nxempty{font:600 var(--t-read)/1.3 var(--body);margin:0;max-width:64ch}
+@media (min-width:761px){.nxhead,.nrow{grid-template-columns:13em repeat(3,minmax(0,1fr))}.nxhead>span:first-child{display:block}.nrow .n,.nxhead>span:first-child{grid-column:auto}}
 .aroundmap{position:relative;border:1px solid var(--rule,currentColor);border-color:color-mix(in srgb,currentColor 18%,transparent)}
 .aroundmap .maplibregl-ctrl-scale{background:transparent;border-color:currentColor;color:inherit;font:12px/1.4 "JetBrains Mono",monospace}
 .lt{display:grid;grid-template-columns:16px 72px minmax(0,1fr);align-items:baseline;gap:8px;font-size:var(--t-small);padding:7px 0;border-top:1px solid var(--hair)}
@@ -583,7 +599,7 @@ section.decl{margin-top:22px}.row.decl{cursor:default}   /* a pack's declared ba
 .h3grid{fill:none;stroke:var(--ink);stroke-width:.4;opacity:.5}.h3lit{fill:var(--cells);fill-opacity:.13;stroke:var(--cells);stroke-width:1.5}
 
 @media (max-width:1080px){
-  .face{grid-template-columns:minmax(0,1fr);grid-template-areas:"kick" "l" "r"}.rcol{margin-top:28px}
+  .face{grid-template-columns:minmax(0,1fr);grid-template-areas:"sw" "kick" "l" "r" "nx"}.rcol{margin-top:28px}
   .pcols{grid-template-columns:minmax(0,1fr);gap:28px}
   .mapc{grid-template-columns:minmax(0,1fr) 260px}.bench:not([data-pview="map"]){grid-template-columns:minmax(0,1fr)}.altc{border-right:0;border-bottom:1px solid var(--ink)}
   .sms{grid-template-columns:repeat(2,minmax(0,1fr))}.cols2{grid-template-columns:1fr}
@@ -792,6 +808,7 @@ section.decl{margin-top:22px}.row.decl{cursor:default}   /* a pack's declared ba
           tappable row per day. -->
 <div id="content" tabindex="-1"></div>
 <main class="face view" data-view="now">
+  <div class="reg nowsw" id="nowsw" role="group" aria-label="Now or the next days"><button data-nv="now" class="on">Now</button><button data-nv="next">Next days</button></div>
   <div class="kick"><p class="nk" id="kick"></p><span class="kr"><button class="now" id="back" hidden>Back to now</button><a href="#place" class="mono" id="cellink" title="This node's cell, on Place"></a></span></div>
   <div class="lcol">
     <div class="hero">
@@ -816,6 +833,7 @@ section.decl{margin-top:22px}.row.decl{cursor:default}   /* a pack's declared ba
     <figure class="around" data-learn="now-around" data-reads="/sensors /stats" data-stage="observe" data-pack="air-quality" data-kind="stack"><div id="rose"></div><figcaption class="fine" id="rosecap"></figcaption></figure>
     <p class="fine" id="nthings" data-learn="now-things" data-reads="/things" data-stage="observe" data-pack="core" data-kind="row" hidden></p>
   </div>
+  <section id="next" data-learn="now-next" data-reads="/forecast" data-stage="observe" data-pack="forecast" data-kind="readout" aria-label="Next days" aria-live="polite"></section>
 </main>
 
 <!-- PLACE -->

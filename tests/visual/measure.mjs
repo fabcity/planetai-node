@@ -2955,7 +2955,7 @@ const docFor = u => {
   const layout = u.searchParams.get('layout');
   return layout === 'mobile' ? 'mobile.html' : layout === 'classic' ? 'index.html' : 'doors.html';
 };
-const openRig = async ({ w = 390, h = 844, touch = true, dark = false, token = null, mem = null, throttle = false, locked = false, wireDays = null, admin = null, sections = null, alerts = null } = {}) => {
+const openRig = async ({ w = 390, h = 844, touch = true, dark = false, token = null, mem = null, throttle = false, locked = false, wireDays = null, admin = null, sections = null, alerts = null, forecast = null } = {}) => {
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ viewport: { width: w, height: h }, isMobile: touch, hasTouch: touch,
     deviceScaleFactor: 1, colorScheme: dark ? 'dark' : 'light', reducedMotion: 'reduce' });
@@ -2978,6 +2978,12 @@ const openRig = async ({ w = 390, h = 844, touch = true, dark = false, token = n
           body: JSON.stringify({ ...snap, issues_days: derived }) });
       }
     }
+    /* forecast: { name } answers /forecast with tests/data/forecast/<name>.json (the answers packs/forecast/days.py
+     * wrote), or a 404 for name 'off', as a node with the forecast pack off; the name can change between presses */
+    if (forecast && u.pathname === '/forecast') return forecast.name === 'off'
+      ? route.fulfill({ status: 404, contentType: 'application/json', body: '{"detail":"Not Found"}' })
+      : route.fulfill({ status: 200, contentType: 'application/json',
+        body: fs.readFileSync(path.join(ROOT, 'tests', 'data', 'forecast', `${forecast.name}.json`)) });
     /* sections: the capture with these declared bands in /issues, as the node serves a pack's sections */
     /* alerts: these first in the capture's /alerts, as a node serves an alert a pack's rule sent with buttons */
     const am = alerts && u.pathname.match(/^\/issues\/fixtures\/([a-z0-9][a-z0-9._-]{0,63})$/);
@@ -3600,6 +3606,71 @@ async function doors() {
         `${tag}: the presses posted ${JSON.stringify(posts)}`);
       if (shots) await r.page.screenshot({ path: path.join(OUT, `doors_asks_${tag}.jpg`), type: 'jpeg', quality: 78, fullPage: true });
       said.push(`${tag}: a pack's buttons under What to do, answered and then the note`);
+    }
+    await r.browser.close();
+  }
+  /* Now · Next days (SPEC_next_days §5, 3 Nov 2026): the switch toggles and is kept; the three day columns fit with
+     nothing scrolling sideways; every target is 44 px; a row pressed draws its 72 h with the line; and with Open-Meteo
+     off, no source, or the pack off, Next days says so in a line and never draws an empty grid. */
+  for (const w of [390, 1440]) for (const dark of [false, true]) {
+    const tag = `${w}_${dark ? 'dark' : 'paper'}_next`, fc = { name: 'full' };
+    const r = await openRig({ w, h: w < 768 ? 844 : 900, touch: w < 768, dark, forecast: fc });
+    await r.page.goto(`${POP}/?layout=doors&fixture=${FIXTURE}#now`, { waitUntil: 'domcontentloaded' });
+    const nowUp = await wait(r.page, '#rows .row').then(() => true, () => false);
+    await r.page.waitForSelector('#asking:not(.on)', { state: 'attached', timeout: 6000 }).catch(() => {});
+    ok(nowUp, `${tag}: Now did not draw`);
+    const asked0 = r.reqs.filter(p => p === '/forecast').length;
+    ok(!asked0, `${tag}: Now asked /forecast before Next days was shown`);
+    await r.page.click('#nowsw button[data-nv="next"]');
+    const got = await wait(r.page, '#next button.nrow').then(() => true, () => false);
+    ok(got, `${tag}: Next days drew no rows`);
+    if (got) {
+      const m = await r.page.evaluate(() => {
+        const nx = document.getElementById('next'), q = s => [...nx.querySelectorAll(s)], vis = el => el.getClientRects().length > 0;
+        const targets = [...q('button, a'), ...document.querySelectorAll('#nowsw button')].filter(vis).map(b => b.getBoundingClientRect());
+        const box = nx.getBoundingClientRect(), cells = q('.nxc').map(c => c.getBoundingClientRect());
+        let kept = null; try { kept = localStorage.getItem('planetai_now_view'); } catch (e) {}
+        return { hash: location.hash, kept, on: (document.querySelector('#nowsw .on') || {}).dataset?.nv,
+          rows: q('.nrow').map(x => x.dataset.k || 'line'), cols: q('.nxhead > span').filter(vis).length,
+          small: targets.filter(x => x.height < 44 || x.width < 44).length, n: targets.length,
+          outside: cells.filter(c => c.right > box.right + 1 || c.left < box.left - 1).length,
+          nowHidden: !vis(document.querySelector('.lcol')) && !vis(document.querySelector('.rcol')),
+          wide: document.documentElement.scrollWidth - document.documentElement.clientWidth };
+      });
+      ok(m.hash === '#now/next' && m.kept === 'next' && m.on === 'next', `${tag}: the switch did not take (${m.hash}, kept ${m.kept}, on ${m.on})`);
+      ok(JSON.stringify(m.rows) === JSON.stringify(['air', 'heat', 'wind_rain', 'sea', 'line']), `${tag}: the rows are ${m.rows.join(',')}`);
+      ok(m.cols === (w < 768 ? 3 : 4) && !m.outside, `${tag}: ${m.cols} heads, ${m.outside} cells outside the view`);
+      ok(m.nowHidden, `${tag}: Now's columns still show under Next days`);
+      ok(m.n && !m.small, `${tag}: ${m.small} of ${m.n} targets under 44 × 44 px`);
+      ok(m.wide <= 1, `${tag}: Next days scrolls ${m.wide}px sideways`);
+      await r.page.click('#next button.nrow[data-k="air"]');
+      const s = await r.page.evaluate(() => {
+        const f = document.querySelector('#next .nxs'), b = document.querySelector('#next button.nrow[data-k="air"]');
+        return f ? { under: b.nextElementSibling === f, line: !!f.querySelector('svg [data-line]'), path: !!f.querySelector('svg path'),
+          now: [...f.querySelectorAll('svg text')].some(t => t.textContent === 'now'), pressed: b.getAttribute('aria-pressed'),
+          wide: document.documentElement.scrollWidth - document.documentElement.clientWidth } : null;
+      });
+      ok(s && s.under && s.line && s.path && s.now && s.pressed === 'true', `${tag}: pressing air drew no 72 h series with its line (${JSON.stringify(s)})`);
+      ok(s && s.wide <= 1, `${tag}: the series scrolls sideways`);
+      if (shots) await r.page.screenshot({ path: path.join(OUT, `doors_next_${tag}.jpg`), type: 'jpeg', quality: 78, fullPage: true });
+      const says = async name => { fc.name = name; await r.page.click('#nowsw button[data-nv="now"]'); await wait(r.page, '#rows .row').catch(() => {});
+        await r.page.click('#nowsw button[data-nv="next"]'); await r.page.waitForTimeout(500);
+        return r.page.evaluate(() => { const nx = document.getElementById('next');
+          return { rows: nx.querySelectorAll('.nrow').length, text: nx.textContent.replace(/\s+/g, ' '),
+            small: [...nx.querySelectorAll('a')].filter(a => a.getBoundingClientRect().height < 44).length }; }); };
+      const off = await says('om_off');
+      ok(off.rows === 2 && off.text.includes('Air, the sea and more hours come from Open-Meteo, which is off on this node. Turn it on in Set up → Packs → forecast.'),
+        `${tag}: Open-Meteo off drew ${off.rows} rows without the opt-in line`);
+      for (const [name, want] of [['none', 'No forecast reaches this node'], ['off', 'The forecast pack is off on this node']]) {
+        const x = await says(name);
+        ok(!x.rows && x.text.includes(want) && !x.small, `${tag}: ${name} drew ${x.rows} rows (${x.text.slice(0, 80)}), ${x.small} small links`);
+      }
+      await r.page.click('#nowsw button[data-nv="now"]');
+      const back = await wait(r.page, '#rows .row').then(() => r.page.evaluate(() => ({ hash: location.hash,
+        kept: (() => { try { return localStorage.getItem('planetai_now_view'); } catch (e) { return null; } })(),
+        next: document.getElementById('next').getClientRects().length })), () => null);
+      ok(back && back.hash === '#now' && back.kept === 'now' && !back.next, `${tag}: the switch back to Now did not take (${JSON.stringify(back)})`);
+      said.push(`${tag}: Next days toggles and is kept, three days fit, 44 px targets, air's 72 h with its line; opt-in, no source and pack off each one line`);
     }
     await r.browser.close();
   }

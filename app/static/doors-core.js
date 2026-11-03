@@ -75,7 +75,7 @@ const VIEWS = {};
 /* the reader's register: what they chose last on this screen, else what their system asks for */
 let userTheme = (() => { try { const t = localStorage.getItem('planetai_theme'); if (t === 'light' || t === 'dark') return t; } catch (e) { /* no storage here */ }
   return matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; })();
-document.querySelectorAll('.reg button').forEach(o => o.classList.toggle('on', o.dataset.r === userTheme));
+document.querySelectorAll('.bar .reg button').forEach(o => o.classList.toggle('on', o.dataset.r === userTheme));
 function route() {
   const v = view();
   document.querySelectorAll('.view').forEach(el => { el.hidden = el.dataset.view !== v; });
@@ -313,9 +313,9 @@ async function refused(e) {
     try { if (t1) localStorage.setItem('planetai_admin', t1); if (t2) localStorage.setItem('planetai_act', t2); } catch (x) { /* no storage here */ } location.reload(); };
 }
 
-document.querySelectorAll('.reg button').forEach(b => b.onclick = () => {
+document.querySelectorAll('.bar .reg button').forEach(b => b.onclick = () => {
   userTheme = b.dataset.r; try { localStorage.setItem('planetai_theme', userTheme); } catch (e) { /* no storage here */ }
-  document.querySelectorAll('.reg button').forEach(o => o.classList.toggle('on', o === b)); route(); });
+  document.querySelectorAll('.bar .reg button').forEach(o => o.classList.toggle('on', o === b)); route(); });
 
 /* ---------- Ask the node, and Learn inside it ----------
    Learn is the node's own learn mode (app/static/learn.json): every part names a mark, and the list says what the

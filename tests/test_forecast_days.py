@@ -204,16 +204,16 @@ def ahead_surf():
 
 marine_rows = synth(MAR, **marine_fns())
 FULL_ROWS = (synth(OM, **om_fns()) + synth(CAMS, **cams_fns()) + synth(MAR, **marine_fns()) + bmkg_rows())
-full = answer([W_BMKG, W_OM, W_CAMS, W_MAR], FULL_ROWS, ahead=ahead_surf())
+full = answer([W_BMKG, W_OM, W_CAMS, W_MAR], FULL_ROWS, ahead=ahead_surf(), hours=72)   # what Next days asks
 NEIGH = [("forecast-om-8a1", 2), ("forecast-om-8a2", -3), ("forecast-cams-8a1", 4), ("forecast-cams-8a2", -3)]
 com_rows = FULL_ROWS + [r for sid, k in NEIGH for r in synth(sid, **(om_fns(k) if "om" in sid else cams_fns(k * 3)))]
 com_who = [W_BMKG, W_OM, W_CAMS, W_MAR] + [sensor(sid, f"Open-Meteo {sid}", cell=sid[-3:], fetched=FETCHED)
                                           for sid, _ in NEIGH]
-community = answer(com_who, com_rows, ahead=ahead_surf())
+community = answer(com_who, com_rows, ahead=ahead_surf(), hours=72)
 FIXTURES = {
     "full": full,
-    "om_off": answer([W_BMKG], bmkg_rows(), openmeteo=False, coast=False),
-    "none": answer([], [], openmeteo=False, coast=False),
+    "om_off": answer([W_BMKG], bmkg_rows(), openmeteo=False, coast=False, hours=72),
+    "none": answer([], [], openmeteo=False, coast=False, hours=72),
     "community": community,
 }
 
@@ -247,6 +247,10 @@ assert [s["sensor_id"] for s in community["sources"]] == [BMKG, OM, CAMS, MAR]
 assert {s["sensor_id"]: s.get("cells") for s in community["sources"]} == {BMKG: None, OM: 3, CAMS: 3, MAR: None}
 assert set(community["sources"][1]) == {"sensor_id", "name", "lat", "lon", "issued", "fetched", "km_from_node", "cells"}
 assert {h["source"] for h in community["hours"]} == {BMKG, OM, CAMS, MAR}, {h["source"] for h in community["hours"]}
+# an hour with temperature and humidity carries the feels-like heat's line is on (Next days draws heat's 72 h with it)
+h_om = next(h for h in full["hours"] if h["source"] == OM and "fc_temp" in h)
+assert h_om["apparent"] == round(engine.apparent(h_om["fc_temp"], h_om["fc_humidity"]), 1), h_om
+assert all("apparent" not in h for h in full["hours"] if "fc_temp" not in h), "no temperature, no feels-like"
 assert community["far_from_node"] is None
 assert [s["km_from_node"] for s in community["sources"]][3] == 3.2, "the sea's distance is read from the key the adapter writes"
 assert answer([dict(W_MAR, meta={**W_MAR["meta"], "distance_km": 22.0})], marine_rows)["far_from_node"] == \
@@ -261,7 +265,7 @@ gone = answer([W_BMKG, W_OM], synth(OM, **om_fns()) + bmkg_rows())
 assert {"sensor_id": CAMS, "absent": True} in gone["sources"] and {"sensor_id": MAR, "absent": True} in gone["sources"]
 assert {"sensor_id": MAR, "absent": True} not in answer([W_OM], synth(OM, **om_fns()), coast=False)["sources"], "no coast, no sea asked"
 ALL_WHO = [W_BMKG, W_OM, W_CAMS, W_MAR, sensor("forecast-gap", "BMKG against Open-Meteo")]
-stale = answer(ALL_WHO, FULL_ROWS + synth("forecast-gap", fc_temp_gap=lambda i: 1.0), openmeteo=False, coast=False)
+stale = answer(ALL_WHO, FULL_ROWS + synth("forecast-gap", fc_temp_gap=lambda i: 1.0), openmeteo=False, coast=False, hours=72)
 assert stale == FIXTURES["om_off"], "Open-Meteo switched off: the last fetch's om, cams, marine and gap rows are not drawn for 72 h"
 nocoast = answer(ALL_WHO, FULL_ROWS)
 assert nocoast["openmeteo"] is True

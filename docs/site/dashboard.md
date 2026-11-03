@@ -104,6 +104,15 @@ saying how many of the readings it declares have not arrived yet. The pack's not
 node #1 that is the rice around the house (`paddy`) and the airport's weather station (`bmkg-synop`). How to declare
 one: [docs/PACKS.md](../../docs/PACKS.md).
 
+**Next days.** The switch at the top of Now turns the door to the next three days, from the next hour to the end of the
+day after tomorrow. Each thing gets a row in the order of Now's rows: air and heat, then wind and rain, then the sea,
+then a line from any pack that declares one with `ahead:` in its `pack.yaml`. A cell has the day's number, the state
+word against the issue's line, and for air and heat how many hours go over it. Press a row and its 72 hours are drawn
+under it, with the line. Under the rows each source is a pill with the time it was issued or fetched, then the page
+says "These come from models. The node does not forecast, and nothing here sends a message." With Open-Meteo off only
+BMKG's weather shows, where BMKG covers the node, and a line says where to turn Open-Meteo on. The screen remembers
+the choice, and `#now/next` links to it.
+
 Land and coast change yearly and have no hours, so they are on Place, under **What is changing**. Now opens on the
 headline issue when it is drawn by the hour, else on the first issue that is. Under 480 px everything is one column,
 the bar is three rows of 44 px targets, and the week is one row a day, the whole row a target.

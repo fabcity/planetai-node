@@ -5,6 +5,12 @@
    routes it reads and its stage; every figure carries its comparison; the node's words are never shouted; provenance
    is a pill in ink. The scales are Place's: the kicker links there and draws no rail. */
 VIEWS.now = function () {
+  /* Now · Next days (SPEC_next_days §5): the switch at the top says which; Next days draws alone, so Now's parts (the
+     map among them) are never drawn into a hidden column */
+  const nx = nowView() === 'next', W = NX[D.locale] || NX.en;
+  $('main[data-view="now"]').classList.toggle('nx', nx);
+  document.querySelectorAll('#nowsw button').forEach(b => { b.classList.toggle('on', (b.dataset.nv === 'next') === nx); b.textContent = W[b.dataset.nv]; });
+  if (nx) { if (location.hash !== '#now/next') history.replaceState(null, '', '#now/next'); return drawNext(); }
   rows(); drawDeclared(); drawAsks(); drawNow();
   aroundMap($('#rose')); thingsLine($('#nthings')); rememberLoad().then(() => decision());   /* the usual hour joins "Nothing is asked now" */
 };
@@ -446,3 +452,139 @@ document.addEventListener('keydown', ev => {
   S.i = Math.max(0, Math.min(D.now, S.i + step)); drawNow(); $('#svg').focus(); ev.preventDefault();
 });
 $('#back').onclick = () => { S.i = D.now; drawNow(); };
+
+/* NOW · NEXT DAYS (docs/SPEC_next_days.md §5). GET /forecast?hours=72 (forecast-v0, packs/forecast/days.py) drawn as
+   a row card per thing, in the order of Now's rows (air, heat), then wind and rain, the sea, then the packs' lines;
+   three columns, the rest of today, tomorrow and the day after. A cell is the day's number with its comparison, the
+   state word in ink, and for air and heat the hours over the line. A row pressed draws its 72 hours under it, with
+   the line. The sources are pills, then one sentence: these are models. Asked only while Next days is shown. */
+const NOW_VIEW = 'planetai_now_view';
+/* which of the two Now shows: #now/next, else the reader's last choice when the address names only Now */
+function nowView() {
+  if (location.hash === '#now/next') return 'next';
+  if (!/^(#now)?$/.test(location.hash)) return 'now';
+  try { return localStorage.getItem(NOW_VIEW) === 'next' ? 'next' : 'now'; } catch (e) { return 'now'; }   /* no storage here */
+}
+/* the page's words in the node's locale (/health locale); {x} is filled with HTML this file built */
+const NX = {
+  en: { now: 'Now', next: 'Next days', today: 'Today', tomorrow: 'Tomorrow', air: 'Air', heat: 'Heat', wind_rain: 'Wind and rain', sea: 'Sea',
+    over: 'over', near: 'near', under: 'under', hover: '{h} h over {line}', peak: 'peak {v} at {t}', cells: 'over in {n} of {m} cells',
+    gusts: 'gusts {v} km/h', rain: '{v} mm, most {t}', dry: 'no rain', waves: 'waves {v} m',
+    issued: '{s}, issued {t}', fetched: '{s}, fetched {t}', ncells: '{n} cells', far: '{km} km from this node', absent: '{s}: nothing fetched yet',
+    models: 'These come from models. The node does not forecast, and nothing here sends a message.',
+    optin: 'Air, the sea and more hours come from Open-Meteo, which is off on this node. Turn it on in {setup}.',
+    none: 'No forecast reaches this node: BMKG covers Indonesia only, and Open-Meteo is off. Turn it on in {setup}.',
+    waiting: 'No forecast has arrived on this node yet.', off: 'The forecast pack is off on this node. Turn it on in {setup}.',
+    fail: 'The node gave no forecast just now. Try again, or look at the pack in {setup}.', h72: '{t}, the next 72 hours', nowmark: 'now', line: 'line {v}' },
+  es: { now: 'Ahora', next: 'Próximos días', today: 'Hoy', tomorrow: 'Mañana', air: 'Aire', heat: 'Calor', wind_rain: 'Viento y lluvia', sea: 'Mar',
+    over: 'sobre', near: 'cerca', under: 'bajo', hover: '{h} h sobre {line}', peak: 'pico {v} a las {t}', cells: 'sobre la línea en {n} de {m} celdas',
+    gusts: 'rachas {v} km/h', rain: '{v} mm, sobre todo {t}', dry: 'sin lluvia', waves: 'olas {v} m',
+    issued: '{s}, emitido {t}', fetched: '{s}, descargado {t}', ncells: '{n} celdas', far: 'a {km} km de este nodo', absent: '{s}: nada descargado todavía',
+    models: 'Esto viene de modelos. El nodo no pronostica, y nada de aquí envía un mensaje.',
+    optin: 'El aire, el mar y más horas vienen de Open-Meteo, que está apagado en este nodo. Actívalo en {setup}.',
+    none: 'Ningún pronóstico llega a este nodo: BMKG cubre solo Indonesia, y Open-Meteo está apagado. Actívalo en {setup}.',
+    waiting: 'Todavía no ha llegado ningún pronóstico a este nodo.', off: 'El pack forecast está apagado en este nodo. Actívalo en {setup}.',
+    fail: 'El nodo no dio un pronóstico ahora. Inténtalo de nuevo, o mira el pack en {setup}.', h72: '{t}, las próximas 72 horas', nowmark: 'ahora', line: 'línea {v}' },
+  id: { now: 'Sekarang', next: 'Hari berikutnya', today: 'Hari ini', tomorrow: 'Besok', air: 'Udara', heat: 'Panas', wind_rain: 'Angin dan hujan', sea: 'Laut',
+    over: 'di atas', near: 'dekat', under: 'di bawah', hover: '{h} jam di atas {line}', peak: 'puncak {v} pukul {t}', cells: 'di atas garis di {n} dari {m} sel',
+    gusts: 'hembusan {v} km/h', rain: '{v} mm, terbanyak {t}', dry: 'tidak hujan', waves: 'ombak {v} m',
+    issued: '{s}, terbit {t}', fetched: '{s}, diambil {t}', ncells: '{n} sel', far: '{km} km dari node ini', absent: '{s}: belum ada yang diambil',
+    models: 'Ini berasal dari model. Node tidak membuat prakiraan, dan tidak ada yang di sini mengirim pesan.',
+    optin: 'Udara, laut, dan lebih banyak jam berasal dari Open-Meteo, yang mati di node ini. Nyalakan di {setup}.',
+    none: 'Tidak ada prakiraan yang menjangkau node ini: BMKG hanya mencakup Indonesia, dan Open-Meteo mati. Nyalakan di {setup}.',
+    waiting: 'Belum ada prakiraan yang sampai di node ini.', off: 'Pack forecast mati di node ini. Nyalakan di {setup}.',
+    fail: 'Node tidak memberi prakiraan sekarang. Coba lagi, atau lihat pack di {setup}.', h72: '{t}, 72 jam ke depan', nowmark: 'sekarang', line: 'garis {v}' },
+};
+const NX_SRC = { 'forecast-bmkg': 'BMKG', 'forecast-om': 'Open-Meteo', 'forecast-cams': 'CAMS', 'forecast-marine': 'Open-Meteo Marine' };
+/* one day's cell of one row: every number a data-num with what it is against */
+function nxCell(k, r, date, W) {
+  const w = (s, o) => s.replace(/\{(\w+)\}/g, (m, x) => o[x] ?? m), id = `next.${k}.${date}`, t = x => `<span class="mono">${esc(x)}</span>`;
+  if (k === 'sea') return w(W.waves, { v: num(id, fmt(r.value, 1), 'the day’s highest wave, no line') });
+  if (k === 'wind_rain') return [r.gust != null ? w(W.gusts, { v: num(id + '.gust', fmt(r.gust, 0), 'the day’s highest gust, no line') }) : '',
+    r.rain_mm ? (r.rain_hours ? w(W.rain, { v: num(id + '.rain', fmt(r.rain_mm, 1), 'the day’s total, no line'), t: t(r.rain_hours) })
+      : `${num(id + '.rain', fmt(r.rain_mm, 1), 'the day’s total, no line')} mm`) : W.dry].filter(Boolean).join(' · ');
+  const dp = k === 'air' ? 0 : 1, cmp = `the day’s ${r.of}, against the line, ${r.line} ${r.unit}`;
+  return `<span class="v">${num(id, fmt(r.value, dp), cmp)}<small>${said(r.unit)}</small></span> <span class="state">${esc(W[r.state] || r.state)}</span>`
+    + `<span class="sub">${r.hours_over ? '<span class="over" aria-hidden="true"></span>' : ''}`
+    + w(W.hover, { h: num(id + '.over', r.hours_over, `of ${r.n} hours forecast`), line: num(id + '.line', r.line, `the ${k} issue’s line, ${r.unit}`) })
+    + (r.peak != null ? ' · ' + w(W.peak, { v: num(id + '.peak', fmt(r.peak, dp), cmp), t: t(r.peak_at) }) : '')
+    + (r.cells ? ' · ' + w(W.cells, { n: num(id + '.cells', r.cells_over, `of ${r.cells} cells`), m: num(id + '.of', r.cells, 'the cells this node forecasts') }) : '')
+    + '</span>';
+}
+/* GET /forecast → what drawNext draws: { heads, rows, lines, sources, notes, empty }. `empty` is one line instead of
+   the grid: the pack off ({ off: true }), no answer (null), or nothing forecast for this place yet */
+function nextFrom(f, locale) {
+  const W = NX[locale] || NX.en, w = (s, o) => s.replace(/\{(\w+)\}/g, (m, x) => o[x] ?? m);
+  const setup = '<a href="#setup/packs">Set up → Packs → forecast</a>', none = { heads: [], rows: [], lines: [], sources: [], notes: [], empty: null };
+  if (!f) return { ...none, empty: w(W.fail, { setup }) };
+  if (f.off) return { ...none, empty: w(W.off, { setup }) };
+  const days = (f.days || []).slice(0, 3), hours = f.hours || [], out = { ...none };
+  out.heads = days.map((d, i) => ({ date: d.date, word: d.part === 'rest' ? W.today : i === 1 ? W.tomorrow : '', label: dLabel(d.date) }));
+  for (const k of ['air', 'heat', 'wind_rain', 'sea']) {
+    const first = days.map(d => (d.rows || {})[k]).find(Boolean);
+    if (!first) continue;
+    const mine = hours.filter(h => h.source === first.source);
+    const metric = { air: 'fc_pm25', heat: 'apparent', sea: 'fc_wave_m' }[k] || (mine.some(h => h.fc_wind_gusts != null) ? 'fc_wind_gusts' : 'fc_rain');
+    const pts = mine.filter(h => h[metric] != null).map(h => [h.ts, h[metric]]);
+    out.rows.push({ key: k, title: W[k], src: NX_SRC[first.source] || first.source, cells: days.map(d => (d.rows || {})[k] ? nxCell(k, d.rows[k], d.date, W) : ''),
+      series: pts.length > 1 ? { metric, unit: first.unit || { fc_wind_gusts: 'km/h', fc_rain: 'mm' }[metric], line: first.line ?? null, pts } : null });
+  }
+  out.lines = (f.lines || []).map(l => ({ id: l.id || l.pack, title: said(packWord(l.title, locale)),
+    cells: days.map(d => (l.days || {})[d.date] ? said(packWord(l.days[d.date], locale)) : '') }));
+  if (!out.rows.length && !out.lines.length) return { ...none, empty: (f.sources || []).length || f.openmeteo !== false ? W.waiting : w(W.none, { setup }) };
+  const far = new Map((f.far_from_node || []).map(x => [x.sensor_id, x.km]));
+  out.sources = (f.sources || []).map(s => {
+    const n = NX_SRC[s.sensor_id] || s.name || s.sensor_id, at = s.issued || s.fetched;
+    if (s.absent) return `<span class="gap">${esc(w(W.absent, { s: n }))}</span>`;
+    return `<span class="pill">${esc(at ? w(s.issued ? W.issued : W.fetched, { s: n, t: hhmm(at) }) : n)}`
+      + `${s.cells > 1 ? ' · ' + w(W.ncells, { n: num(`next.cells.${s.sensor_id}`, s.cells, 'the cells this node forecasts') }) : ''}</span>`
+      + (far.has(s.sensor_id) ? ` <span class="pill">${w(W.far, { km: num(`next.far.${s.sensor_id}`, Math.round(far.get(s.sensor_id)), 'more than 10 km is another place') })}</span>` : '');
+  });
+  out.notes = [W.models, ...(f.openmeteo === false ? [w(W.optin, { setup })] : [])];
+  return out;
+}
+/* the forecast asked once a showing of Next days (pressing the switch asks again); the row whose 72 h are open */
+const NEXT = { p: null, open: null };
+async function drawNext() {
+  const f = await (NEXT.p ||= loadForecast());
+  if (view() !== 'now' || nowView() !== 'next') return;
+  const el = $('#next'), x = nextFrom(f, D.locale);
+  if (x.empty) { el.innerHTML = `<p class="nxempty">${x.empty}</p>`; return; }
+  const cols = cs => cs.map(c => `<span class="nxc">${c || '<span class="x">—</span>'}</span>`).join('');
+  el.innerHTML = `<div class="nxhead" aria-hidden="true"><span></span>${x.heads.map(h => `<span>${h.word ? `<b>${esc(h.word)}</b> ` : ''}${esc(h.label)}</span>`).join('')}</div>`
+    + x.rows.map(r => (r.series ? `<button class="row nrow" data-k="${r.key}" data-kind="readout" aria-pressed="${NEXT.open === r.key}">` : `<div class="row nrow decl" data-kind="readout">`)
+      + `<span class="n">${esc(r.title)} <small class="nk">${esc(r.src)}</small></span>${cols(r.cells)}${r.series ? '</button>' : '</div>'}`
+      + (r.series && NEXT.open === r.key ? nxSeries(r, el.clientWidth) : '')).join('')
+    + x.lines.map(l => `<div class="row nrow decl" data-kind="readout"><span class="n">${l.title}</span>${cols(l.cells)}</div>`).join('')
+    + `<p class="nxsrc">${x.sources.join(' ')}</p>` + x.notes.map(n => `<p class="fine">${n}</p>`).join('');
+  el.querySelectorAll('button.nrow').forEach(b => b.onclick = () => { NEXT.open = NEXT.open === b.dataset.k ? null : b.dataset.k; drawNext(); });
+}
+/* a row's 72 hours, under it: the series, its line dashed, "now" at the left, each local midnight a tick; an hour over
+   the line a red tick on the floor (the mark carries the red, the words stay ink) */
+function nxSeries(r, width) {
+  const W = NX[D.locale] || NX.en, s = r.series, Wd = Math.max(280, width || 600), H = 150, L = 6, R = 6, T = 20, B = 22;
+  const ts = s.pts.map(p => Date.parse(p[0])), vs = s.pts.map(p => p[1]), t0 = ts[0], t1 = ts[ts.length - 1];
+  const hi = Math.max(...vs, s.line ?? -Infinity), lo = s.metric === 'apparent' ? Math.min(...vs, s.line ?? Infinity) - 2 : Math.min(0, ...vs);
+  const x = t => L + (t - t0) / (t1 - t0 || 1) * (Wd - L - R), y = v => T + (hi - v) / (hi - lo || 1) * (H - T - B);
+  const iPk = vs.indexOf(Math.max(...vs)), dp = s.metric === 'fc_wave_m' || s.metric === 'apparent' ? 1 : 0;
+  let g = `<line x1="${L}" x2="${L}" y1="${T}" y2="${H - B + 4}" stroke="currentColor"/><text x="${L}" y="${H - 6}" class="lab">${esc(W.nowmark)}</text>`;
+  g += s.pts.filter(p => hourOf(p[0]) === 0).map(p => { const X = x(Date.parse(p[0])).toFixed(1);
+    return `<line x1="${X}" x2="${X}" y1="${T}" y2="${H - B + 4}" stroke="currentColor" stroke-opacity=".25"/>${X > L + 40 ? `<text x="${+X + 3}" y="${H - 6}">${esc(dLabel(dayOf(p[0])).split(',')[0])}</text>` : ''}`; }).join('');
+  if (s.line != null) g += `<line data-line x1="${L}" x2="${Wd - R}" y1="${y(s.line).toFixed(1)}" y2="${y(s.line).toFixed(1)}" stroke="currentColor" stroke-dasharray="4 3"/>`
+    + `<text x="${Wd - R}" y="${(y(s.line) - 4).toFixed(1)}" text-anchor="end" class="lab">${esc(W.line.replace('{v}', s.line))} ${esc(s.unit || '')}</text>`
+    + s.pts.filter(p => p[1] > s.line).map(p => `<rect x="${(x(Date.parse(p[0])) - 1).toFixed(1)}" y="${H - B - 3}" width="2" height="3" fill="var(--signal-worse)"/>`).join('');
+  g += `<path d="${s.pts.map((p, i) => `${i ? 'L' : 'M'}${x(ts[i]).toFixed(1)},${y(p[1]).toFixed(1)}`).join('')}" fill="none" stroke="currentColor" stroke-width="1.5"/>`
+    + `<text x="${x(ts[iPk]).toFixed(1)}" y="${(y(vs[iPk]) - 5).toFixed(1)}" text-anchor="middle" class="num" data-num="next.${r.key}.max" data-cmp="${esc(s.line != null ? `the line ${s.line}` : 'no line')}">${fmt(vs[iPk], dp)}</text>`;
+  const cap = W.h72.replace('{t}', r.title);
+  return `<figure class="nxs" data-kind="series"><svg viewBox="0 0 ${Wd} ${H}" role="img" aria-label="${esc(cap)}">${g}</svg>`
+    + `<figcaption class="fine">${esc(cap)} · ${esc(r.src)}${s.unit ? ` · ${said(s.unit)}` : ''}</figcaption></figure>`;
+}
+/* the switch: the choice kept for the next visit, and the address carries it (#now/next) so it can be linked */
+document.addEventListener('click', ev => {
+  const b = ev.target.closest && ev.target.closest('#nowsw button[data-nv]');
+  if (!b) return;
+  try { localStorage.setItem(NOW_VIEW, b.dataset.nv); } catch (e) { /* no storage here */ }
+  if (b.dataset.nv === 'next') NEXT.p = null;
+  const h = b.dataset.nv === 'next' ? '#now/next' : '#now';
+  if (location.hash !== h) location.hash = h; else VIEWS.now();
+});

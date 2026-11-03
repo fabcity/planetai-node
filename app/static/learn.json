@@ -1152,6 +1152,30 @@
    "title": "House, street, ring and region",
    "url": "https://planetai.fab.city/docs/dashboard/#now"
   },
+  "now-next": {
+   "anchor": "now",
+   "more": "The rows are drawn from GET /forecast, asked only while Next days is shown. Press a row for its 72 hours against the line. These are models: nothing on this part asks you to act or sends a message.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "Will the air be over the line tomorrow?",
+     "How sure is a forecast three days out?"
+    ],
+    "es": [
+     "¿Mañana el aire estará sobre la línea?",
+     "¿Qué tan seguro es un pronóstico a tres días?"
+    ],
+    "id": [
+     "Apakah udara besok akan di atas garis?",
+     "Seberapa pasti prakiraan tiga hari ke depan?"
+    ]
+   },
+   "quote": "Each thing gets a row in the order of Now's rows: air and heat, then wind and rain, then the sea,\nthen a line from any pack that declares one with `ahead:` in its `pack.yaml`. A cell has the day's number, the state\nword against the issue's line, and for air and heat how many hours go over it.",
+   "section": "Now",
+   "title": "The next three days",
+   "url": "https://planetai.fab.city/docs/dashboard/#now"
+  },
   "now-rows": {
    "anchor": "now",
    "more": "Each row carries the node's state word, the value now and today's hours over the line. Press one and the whole door moves to that issue.",
@@ -2239,6 +2263,7 @@
   "now-worked",
   "now-rows",
   "now-bands",
+  "now-next",
   "now-around",
   "now-things",
   "place-head",

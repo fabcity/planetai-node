@@ -181,7 +181,11 @@ def answer(*, who: list[dict], rows: list[dict], issue_lines: dict, ahead: list[
         steps.setdefault((_utc(r["ts"]), r["sensor_id"]), {})[r["metric"]] = r["value"]
     every = [{"ts": k[0], "source": k[1], **v} for k, v in sorted(steps.items())]
     cutoff = _utc(now + timedelta(hours=hours))
-    own = [h for h in every if base(h["source"]) == h["source"] and h["ts"] <= cutoff]
+    # an hour with temperature and humidity also carries the feels-like heat's line is on, from the engine's own
+    # function, so Next days draws heat's 72 h against its line and the page never computes it a second way
+    own = [{**h, **({"apparent": _r(apparent(h["fc_temp"], h["fc_humidity"]), 1)}
+                    if h.get("fc_temp") is not None and h.get("fc_humidity") is not None else {})}
+           for h in every if base(h["source"]) == h["source"] and h["ts"] <= cutoff]
     srcs = _sources(who, rows, openmeteo, coast)
     # a forecast for somewhere else is still a forecast, but the card has to say so rather than imply this point
     far = [{"sensor_id": s["sensor_id"], "km": s["km_from_node"]} for s in srcs if (s.get("km_from_node") or 0) > 10]

@@ -304,6 +304,10 @@ MARKS = [
      "**A pack's own band.** A pack can declare a band", "`measure` under Did it work.",
      "Each row is one reading the node holds, with its source, how it was got and how old it is. The small print "
      "under the band is the pack's own note, and says the pack ships no code for this page."),
+    ("now-next", "The next three days", "dashboard.md", "Now",
+     "Each thing gets a row in the order", "how many hours go over it.",
+     "The rows are drawn from GET /forecast, asked only while Next days is shown. Press a row for its 72 hours "
+     "against the line. These are models: nothing on this part asks you to act or sends a message."),
     ("now-around", "The stations around the house", "dashboard.md", "Now",
      "Under them, the map of the stations", "for a screen with the token.",
      "Press a station to open its readings in Data. Without WebGL the map is drawn as a rose of "
@@ -619,6 +623,9 @@ QUESTIONS = {
     'now-bands': {"en": ['Where does this band come from?', 'Why have some of these readings not arrived?'],
         "id": ['Dari mana bagian ini berasal?', 'Mengapa sebagian bacaan ini belum datang?'],
         "es": ['¿De dónde viene este bloque?', '¿Por qué no han llegado algunas de estas lecturas?']},
+    'now-next': {"en": ['Will the air be over the line tomorrow?', 'How sure is a forecast three days out?'],
+        "id": ['Apakah udara besok akan di atas garis?', 'Seberapa pasti prakiraan tiga hari ke depan?'],
+        "es": ['¿Mañana el aire estará sobre la línea?', '¿Qué tan seguro es un pronóstico a tres días?']},
     'now-around': {"en": ['Is the air outside worse than in our house?', 'Which station near us has the dirtiest air?'],
         "id": ['Apakah udara di luar lebih buruk daripada di rumah kami?', 'Stasiun mana di dekat kami yang udaranya paling kotor?'],
         "es": ['¿El aire de fuera está peor que el de casa?', '¿Qué estación cercana tiene el aire más sucio?']},
