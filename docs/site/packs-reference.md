@@ -476,18 +476,19 @@ sensor fault. Seeing that signal is the reason to run a node at all.
 
 ## forecast
 
-Official and model weather for this point over the next day, wind direction and rain, as context for reading
-the node's own air. It fetches and does not predict, and it never sends an alert. BMKG, Indonesia's
-meteorological agency, is the source that is on by default; Open-Meteo works anywhere.
+Official and model weather for this point over the next 72 hours, as context for reading the node's own air.
+It fetches and does not predict, and it never sends an alert. BMKG, Indonesia's meteorological agency, is the source
+that is on by default; Open-Meteo works anywhere and is off until the operator turns it on. Now draws it under
+[Next days](next-days.md).
 
 | | |
 |---|---|
 | Kind | code |
 | Domain | `weather` |
 | Requires node | `>=0.40.0` |
-| Metrics | `fc_temp`, `fc_humidity`, `fc_wind_speed`, `fc_wind_direction`, `fc_cloud`, `fc_rain`, `fc_lead_hours`, `fc_temp_gap`, `fc_wind_speed_gap` |
+| Metrics | `fc_temp`, `fc_humidity`, `fc_wind_speed`, `fc_wind_direction`, `fc_cloud`, `fc_rain`, `fc_wind_gusts`, `fc_rain_prob`, `fc_shortwave`, `fc_et0`, `fc_soil_moisture`, `fc_pm25`, `fc_uv`, `fc_wave_m`, `fc_swell_m`, `fc_swell_s`, `fc_swell_dir`, `fc_lead_hours`, `fc_temp_gap`, `fc_wind_speed_gap` |
 | Scales | community |
-| Needs | `PACKS_ALLOW_CODE=1`; network to `api.bmkg.go.id` and `api.open-meteo.com`; correct node coordinates; for BMKG, a village code |
+| Needs | `PACKS_ALLOW_CODE=1`; network to `api.bmkg.go.id`, `api.open-meteo.com`, `air-quality-api.open-meteo.com` and `marine-api.open-meteo.com`; correct node coordinates; for BMKG, a village code |
 | Cells | none: a forecast is not measured here |
 | Attribution | BMKG must be named inside the application and is, on the card and in the export; Open-Meteo is CC BY 4.0, free tier non-commercial |
 
@@ -514,18 +515,18 @@ not do by looking out of the window.
 |---|---|---|
 | `FORECAST_BMKG` | `1` | poll BMKG: 3-hourly, three days, no key. `ws` is km/h, `wd_deg` is where the wind comes from, `tp` is rain in mm for the step |
 | `FORECAST_BMKG_ADM4` | empty | the Permendagri village code for this point, such as `51.03.05.2002` for Ungasan, Kuta Selatan. Without a code the pack logs one line and idles |
-| `FORECAST_OPENMETEO` | `0` | poll Open-Meteo, hourly, anywhere. Off because its free tier is non-commercial only, which is the operator's decision |
-| `FORECAST_POLL_HOURS` | `6` | how often the pack asks, whatever `POLL_SECONDS` is; a stamp in `out/forecast.last` keeps it across restarts and failures. Both publishers update a few times a day, and Open-Meteo's free tier is 10,000 calls a day per IP with each wind-field point counting as one |
+| `FORECAST_OPENMETEO` | `0` | poll Open-Meteo, hourly, anywhere: its weather, the CAMS air and, while `coast` is on, the sea. Off because its free tier is non-commercial only, which is the operator's decision |
+| `FORECAST_POLL_HOURS` | `6` | how often the pack asks, whatever `POLL_SECONDS` is; each source keeps its own stamp in `out/forecast.<source>.last` across restarts, and one that fails is asked again after 30 minutes. Both publishers update a few times a day, and Open-Meteo's free tier is 10,000 calls a day per IP with each wind-field point counting as one |
 | `FORECAST_WIND_N` | `8` | points a side of the wind field: 8 × 8 |
 | `FORECAST_WIND_KM` | `30` | half-width of the wind field's square, in km |
 
-It also reads `NODE_LAT` and `NODE_LON`.
+It also reads `NODE_LAT`, `NODE_LON` and `NODE_SCALE`, which decides how many points Open-Meteo and CAMS are asked for: 1 at `home`, 7 at `community`, 19 at `city` and `region`.
 
 ### What it does not know
 
 A forecast is often wrong, and the pack keeps it apart from what the node measures. Every channel in
-`channels.yml` is `role: derived`, `comparable: false` (sources `forecast-bmkg`, `forecast-om` and
-`forecast-gap`), and the `fc_` prefix is a second guard. Each value is stored at its valid time with
+`channels.yml` is `role: derived`, `comparable: false` (sources `forecast-bmkg`, `forecast-om`, `forecast-cams`,
+`forecast-marine` and `forecast-gap`), and the `fc_` prefix is a second guard. Each value is stored at its valid time with
 `fc_lead_hours` beside it. Open-Meteo publishes no model run time, so its rows say `fetched`, not `issued`. With
 both sources on, `forecast-gap` records how far apart they are on temperature and wind for the same hour.
 

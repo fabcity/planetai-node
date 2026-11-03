@@ -340,7 +340,7 @@ The ring of other people's stations around this node, from what is stored, so th
 ### GET /forecast
 Access: open
 
-Official and model weather for this point, from `forecast-bmkg`, `forecast-om` and `forecast-gap`. `?hours=` 1 to 72 (default 24). Returns `{point, sources, hours, attribution, far_from_node}`, where `far_from_node` lists any source more than 10 km away.
+Official and model weather for this point, from `forecast-bmkg`, `forecast-om`, `forecast-cams`, `forecast-marine` and `forecast-gap`. `?hours=` 1 to 72 (default 24). Returns `{point, sources, hours, attribution, far_from_node, days, lines, openmeteo, schema}`, where `far_from_node` lists any source more than 10 km away, `days` and `lines` are what [Next days](next-days.md) draws, and `schema` is `forecast-v0`.
 
 ### GET /earth
 Access: open

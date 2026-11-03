@@ -74,6 +74,7 @@ NAV = [
     ]),
     ("Dashboard", [
         ("dashboard", "docs/site/dashboard.md"),
+        ("next-days", "docs/site/next-days.md"),
         ("wall", "docs/site/wall.md"),
         ("design", "docs/site/design.md"),
         ("grafana", "docs/site/grafana.md", "Grafana"),

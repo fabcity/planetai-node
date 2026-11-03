@@ -722,7 +722,7 @@
   },
   "forecast": {
    "anchor": "forecast",
-   "more": "The card is drawn from GET /forecast: the wind and the rain for the hours ahead, and a forecast point more than 10 km from the node is said to be another place. Nothing on this card can raise an alert.",
+   "more": "The card is drawn from GET /forecast: the wind and the rain for the hours ahead, and a forecast point more than 10 km from the node is said to be another place. Now › Next days draws its 72 hours. Nothing on this card can raise an alert.",
    "page": "packs-reference.md",
    "page_title": "Packs that ship",
    "questions": {
@@ -739,7 +739,7 @@
      "Mengapa prakiraan adalah konteks, bukan ramalan?"
     ]
    },
-   "quote": "Official and model weather for this point over the next day, wind direction and rain, as context for reading\nthe node's own air. It fetches and does not predict, and it never sends an alert.",
+   "quote": "Official and model weather for this point over the next 72 hours, as context for reading the node's own air.\nIt fetches and does not predict, and it never sends an alert.",
    "section": "forecast",
    "title": "Context, not a prediction",
    "url": "https://planetai.fab.city/docs/packs-reference/#forecast"

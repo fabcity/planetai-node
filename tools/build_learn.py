@@ -142,8 +142,8 @@ MARKS = [
     ("forecast", "Context, not a prediction", "packs-reference.md", "forecast",
      "Official and model weather for this point", "it never sends an alert.",
      "The card is drawn from GET /forecast: the wind and the rain for the hours ahead, and a "
-     "forecast point more than 10 km from the node is said to be another place. Nothing on this "
-     "card can raise an alert."),
+     "forecast point more than 10 km from the node is said to be another place. Now › Next days draws "
+     "its 72 hours. Nothing on this card can raise an alert."),
     ("events", "What an alert event is", "dashboard.md", "The sections",
      "An event is the bot's own unit", "the message it sent.",
      "Decide is the first section under the lead. The numeral is red only when the peak is past the "

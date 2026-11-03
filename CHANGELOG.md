@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- **Now looks three days ahead.** The switch at the top of Now, "Now · Next days", shows the rest of today, tomorrow
+  and the day after, one row each for air, heat, wind and rain, and the sea, then a line from any pack that declares
+  one with `ahead:` in its `pack.yaml`; the `surf` wild pack is the first. Air and heat carry the state word against
+  their issue's line, by the engine's own comparison, with the hours over it, and a pressed row draws its 72 hours.
+  Under the rows each source says when it was issued or fetched, and the page says the numbers come from models and
+  that nothing here sends a message. `#now/next` links to it. `GET /forecast` adds `days`, `lines` and `openmeteo`,
+  pinned as the wire contract `forecast-v0`. The page is documented in `docs/site/next-days.md`. Behind it the
+  forecast pack keeps 72 hours, from BMKG as before, and with `FORECAST_OPENMETEO=1` from Open-Meteo's weather with
+  gusts, the chance of rain, sun, evaporation and soil moisture, the CAMS air (PM2.5 and UV) and, while `coast` is on,
+  Open-Meteo Marine (waves and swell). One switch turns on all three and it stays off by default, because Open-Meteo's
+  free tier is non-commercial, and using it is the operator's call. Open-Meteo and CAMS are asked for the node's
+  ground at its `NODE_SCALE`, 7 points on a community node, 19 on a city or region node, 1 at home, each a sensor
+  tagged with its cell. A newer forecast now replaces the stored value for an hour still ahead, where the first one
+  used to win; a past hour and any measurement are never rewritten, and `observations` stops at now, so a forecast's
+  furthest hour is no longer a sensor's latest reading. Each source keeps its own stamp, and one that fails is asked
+  again after 30 minutes without holding the others.
+
 - **A pack's rule can ask with buttons.** A rule that returns a `buttons` column, rows of buttons with a text in each
   language, a `value`, and optionally a `stage` and a question to ask, gets them stored with its alert. With
   `TELEGRAM_BUTTONS=1` they go to Telegram as a keyboard, and Now lists them under What to do. Each press is one
