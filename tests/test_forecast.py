@@ -150,6 +150,12 @@ pts = [PT, {"sid": "forecast-om-8a1", "cell": "8a1", "lat": LAT + .1, "lon": LON
 ss, rr = A.openmeteo(HC([om_payload(), om_payload()]), pts)
 assert [x["sensor_id"] for x in ss] == ["forecast-om", "forecast-om-8a1"] and ss[1]["meta"]["cell"] == "8a1"
 assert {s for _ts, s, *_ in rr} == {"forecast-om", "forecast-om-8a1"}
+# the sensor's place is where the model ANSWERED from, and the cell asked for is in meta: Days counts cells by the first
+ans = [dict(om_payload(), latitude=-8.75, longitude=115.25), dict(om_payload(), latitude=-8.75, longitude=115.25)]
+ss2, _ = A.openmeteo(HC(ans), pts)
+assert {(x["lat"], x["lon"]) for x in ss2} == {(-8.75, 115.25)} and [x["meta"]["cell"] for x in ss2] == [None, "8a1"], ss2
+cs2, _ = A.cams(HC(ans), pts)
+assert {(x["lat"], x["lon"]) for x in cs2} == {(-8.75, 115.25)} and cs2[1]["meta"]["cell"] == "8a1"
 try:
     A.openmeteo(HC([om_payload()]), pts); raise AssertionError("a short answer must be refused")
 except ValueError:
@@ -229,14 +235,14 @@ class Count:
     def get(s, url, params=None, headers=None, timeout=None): calls.append(url); raise RuntimeError("429")
 os.environ.update(FORECAST_OPENMETEO="1", FORECAST_BMKG="0", NODE_LAT=str(LAT), NODE_LON=str(LON), FORECAST_POLL_HOURS="6")
 A.fetch(Count()); first = len(calls)
-assert first == 2, f"a refused point is asked once, the field is not tried behind it, and the air is asked too: {calls}"
+assert first == 3, f"the refused point, the wind field on its own stamp, and the air are each asked once: {calls}"
 A.fetch(Count()); A.fetch(Count())
 assert len(calls) == first, "a second poll inside the retry wait asks nothing, even after a failure"
 A.fetch(Count(), force=True)
 assert len(calls) == 2 * first, "`planetai run forecast fetch` asks now"
 stamp = lambda src: os.path.join(os.environ["PACK_OUT"], f"forecast.{src}.last")  # noqa: E731
 assert not os.path.exists(os.path.join(os.environ["PACK_OUT"], "forecast.last")), "one stamp a source, not one for the pack"
-for src in ("om", "cams"):
+for src in ("om", "wind", "cams"):
     os.utime(stamp(src), (0, 0))
 A.fetch(Count())
 assert len(calls) == 3 * first, "once the hours have passed, it asks again"
@@ -280,7 +286,7 @@ def fresh(**env):
     os.environ["PACK_OUT"] = tempfile.mkdtemp()
     os.environ.update({"FORECAST_BMKG": "0", "FORECAST_OPENMETEO": "1", "FORECAST_BMKG_ADM4": ADM4}); os.environ.update(env)
     coast[0] = False
-    A.write_wind_field = lambda *a: None                  # the field is one more call on the om stamp; counted above
+    A.write_wind_field = lambda *a: {}                    # the field is its own source ("wind"); counted above. None would be a failure
 
 
 # an unwritable out/ asks nothing: the stamp is written before the request, so the failure is before it, not after
@@ -311,13 +317,25 @@ assert hc.asked == [], "nothing is due now"
 os.utime(stamp("om"), (0, 0))
 hc = Route(); A.fetch(hc)
 assert hc.asked == [A.OPEN_METEO], f"only om is due again: {hc.asked}"
-# the point answers and the field is refused: the points are stored, and om is asked again in 30 minutes
+# the point answers and the field is refused: the points are stored on om's own clock, and only the field is asked again
+# in 30 minutes, as a source of its own, so a field-only failure never re-asks the 7 + 7 points
 fresh(FORECAST_BMKG="0")
 def _no_field(*a): raise RuntimeError("429")
 A.write_wind_field = _no_field
 sens, rd = A.fetch(Route())
 assert [s["sensor_id"] for s in sens] == ["forecast-om", "forecast-cams"] and rd, "the point forecast is kept"
-assert not A._due("om") and aged("om", 31), "and the field is asked again in half an hour, not six hours"
+assert not A._due("om") and not aged("om", 31) and aged("om", 340), "om keeps its full wait"
+assert not A._due("wind") and aged("wind", 31), "and the field is asked again in half an hour, not six hours"
+hc = Route(); wind_asked = []
+A.write_wind_field = lambda *a: wind_asked.append(1) or {}
+A._stamp("om")
+os.utime(stamp("wind"), (0, 0))
+sens, rd = A.fetch(hc)
+assert hc.asked == [] and wind_asked == [1], f"only the field is due: om and cams are not asked again: {hc.asked}"
+fresh(FORECAST_BMKG="0"); os.environ["FORECAST_OPENMETEO"] = "0"; wind_asked.clear()
+A.write_wind_field = lambda *a: wind_asked.append(1) or {}
+A.fetch(Route())
+assert wind_asked == [] and not os.path.exists(stamp("wind")), "the field is behind the same FORECAST_OPENMETEO switch"
 # ---- marine runs only while the coast pack is on, and only with Open-Meteo on
 fresh(FORECAST_BMKG="0")
 hc = Route(); A.fetch(hc)

@@ -196,7 +196,7 @@ def _pack_on(pid: str) -> bool:
     return pid in {d.name for d in packs._enabled()}
 
 
-WIND_N = int(os.getenv("FORECAST_WIND_N", "8"))            # points a side: 64, as Bali Air Dispatch draws its field
+WIND_N = int(os.getenv("FORECAST_WIND_N", "8"))            # points a side: 8 x 8 = 64, as Bali Air Dispatch draws its field
 WIND_KM = float(os.getenv("FORECAST_WIND_KM", "30"))       # half-width of the square, km
 
 
@@ -375,23 +375,13 @@ def fetch(hc, force: bool = False):
         node = territory.points(scale, lat, lon, "forecast-om")   # the weather and the air take the territory
         sea = territory.points("home", lat, lon, "forecast-marine")   # the sea is one point, the API snaps it to water
 
-        wind_failed = []
-
-        def om_source():
-            got = openmeteo(hc, node)
-            try:                 # the field the map draws moving; same source, same switch, same stamp
-                write_wind_field(hc, lat, lon)
-            except Exception as e:  # noqa: BLE001
-                log.warning("forecast: wind field not refreshed (%s); the last one stays", e)
-                wind_failed.append(1)
-            return got
-        got = _try("om", force, "Open-Meteo", om_source)
+        got = _try("om", force, "Open-Meteo", lambda: openmeteo(hc, node))
         if got:
             sensors += got[0]; readings += got[1]
             om = [r for r in got[1] if r[1] == "forecast-om"]   # the gap is against the node's own point, not a neighbouring cell
             _save_rows("om", om)
-            if wind_failed and not force:
-                _stamp("om", ok=False)      # the points are stored; the field is asked again in RETRY_S
+        # the field the map draws moving: same switch, its own stamp, so a refused field never re-asks the points
+        _try("wind", force, "the wind field", lambda: write_wind_field(hc, lat, lon))
         got = _try("cams", force, "Open-Meteo air", lambda: cams(hc, node))
         if got:
             sensors += got[0]; readings += got[1]
