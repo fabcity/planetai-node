@@ -12,10 +12,13 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
 import time
 from datetime import datetime, timedelta, timezone
 
 log = logging.getLogger("planetai.forecast")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # the pack loader does not put the pack on the path
+import territory  # noqa: E402
 
 BMKG = "https://api.bmkg.go.id/publik/prakiraan-cuaca"
 OPEN_METEO = "https://api.open-meteo.com/v1/forecast"
@@ -364,12 +367,14 @@ def fetch(hc, force: bool = False):
                 sensors += got[0]; readings += got[1]; bm = got[1]
                 _save_rows("bmkg", bm)
     if os.getenv("FORECAST_OPENMETEO", "0") == "1":
-        node = {"sid": "forecast-om", "cell": None, "lat": lat, "lon": lon}   # the territory (Task 4) fills `cell`
+        scale = os.getenv("NODE_SCALE", "community")
+        node = territory.points(scale, lat, lon, "forecast-om")   # the weather and the air take the territory
+        sea = territory.points("home", lat, lon, "forecast-marine")   # the sea is one point, the API snaps it to water
 
         wind_failed = []
 
         def om_source():
-            got = openmeteo(hc, [node])
+            got = openmeteo(hc, node)
             try:                 # the field the map draws moving; same source, same switch, same stamp
                 write_wind_field(hc, lat, lon)
             except Exception as e:  # noqa: BLE001
@@ -382,11 +387,11 @@ def fetch(hc, force: bool = False):
             _save_rows("om", om)
             if wind_failed and not force:
                 _stamp("om", ok=False)      # the points are stored; the field is asked again in RETRY_S
-        got = _try("cams", force, "Open-Meteo air", lambda: cams(hc, [node]))
+        got = _try("cams", force, "Open-Meteo air", lambda: cams(hc, node))
         if got:
             sensors += got[0]; readings += got[1]
         if _pack_on("coast"):               # the sea is the coast pack's question; without it there is nobody to ask for
-            got = _try("marine", force, "Open-Meteo marine", lambda: marine(hc, [node]))
+            got = _try("marine", force, "Open-Meteo marine", lambda: marine(hc, sea))
             if got:
                 sensors += got[0]; readings += got[1]
     if bm or om:         # either one fresh is enough: the other is what it last stored

@@ -220,6 +220,7 @@ assert (ch[("forecast-cams", "fc_pm25")]["unit"], ch[("forecast-marine", "fc_swe
 # or a failed fetch must not ask again sooner. 13 Oct: asking every poll spent Open-Meteo's daily limit by 06:15 UTC.
 # Each source has its own stamp, out/forecast.<source>.last, so one that is refused does not hold the others.
 import tempfile  # noqa: E402
+os.environ["NODE_SCALE"] = "home"   # one point a source, so these fixtures answer one payload; the territory is tests/test_forecast_territory.py
 real_pack_on, coast = A._pack_on, [False]
 A._pack_on = lambda pid: coast[0] and pid == "coast"     # never the host's own PACKS_DIR: coast is off unless a test turns it on
 os.environ["PACK_OUT"] = tempfile.mkdtemp()
