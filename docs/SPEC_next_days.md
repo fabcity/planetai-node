@@ -61,8 +61,9 @@ the worst cell and how much of the area is over the line ("over in 7 of 20 cells
 grid point, the place Open-Meteo answered from, not a sensor: res-7 neighbours are ~2.5 km apart and the models are
 10 to 44 km, so several sensors often share one point. `cells` and `cells_over` show only with two or more points. Node #1 is a community node
 (`NODE_SCALE=community`; the valid values are community, city and region, default community), so it fetches the
-7-point grid for Open-Meteo and CAMS. Open-Meteo counts each location as a call, so a 20-cell node adds about 240
-calls a day across the three sources at four fetches a day.
+7-point grid for Open-Meteo and CAMS. Open-Meteo counts each location as a call, so a 19-point city or region node
+asks for 38 locations a poll for the weather and the air, about 150 a day at four polls, beside the 65-point wind
+field and one point of sea. On node #1 (3 Nov) all 7 points of each answered from a single model cell.
 
 ### What it keeps, per source
 
