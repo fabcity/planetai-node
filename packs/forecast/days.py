@@ -1,0 +1,189 @@
+"""What GET /forecast says about the next days, from the hours the node stored (docs/SPEC_next_days.md §4). Pure: no
+database, no environment, no clock of its own. routes.py reads the rows and hands them in.
+
+Days are local. The first is "rest", from the next whole hour to midnight, then tomorrow and the day after. Air and
+heat are judged with the engine's own comparison (issues.engine._line_key, apparent) against the line the issue
+declares, so this view and /issues cannot disagree about what "over" means. A row whose source or issue is off is
+left out, and a day with nothing to say has `rows: {}`.
+"""
+from __future__ import annotations
+
+from datetime import datetime, time, timedelta, timezone
+from zoneinfo import ZoneInfo
+
+from issues.engine import _line_key, apparent
+
+OM, CAMS, MARINE, BMKG, GAP = "forecast-om", "forecast-cams", "forecast-marine", "forecast-bmkg", "forecast-gap"
+BASES = (BMKG, OM, CAMS, MARINE, GAP)
+ATTRIBUTION = ["BMKG (Badan Meteorologi, Klimatologi, dan Geofisika), api.bmkg.go.id",
+               "Open-Meteo, open-meteo.com, CC-BY 4.0 (free tier: non-commercial use only)"]
+
+
+def base(sid: str) -> str:
+    """`forecast-om-8a1` is a neighbouring cell of `forecast-om`; the bare id is the node's own point."""
+    return next((b for b in BASES if sid == b or sid.startswith(b + "-")), sid)
+
+
+def _dt(ts) -> datetime:
+    return ts if isinstance(ts, datetime) else datetime.fromisoformat(ts)
+
+
+def _utc(ts) -> str:
+    return _dt(ts).astimezone(timezone.utc).isoformat()
+
+
+def _r(x: float, dp: int):
+    return round(x) if dp == 0 else round(x, dp)
+
+
+def _judge(x: float, line: dict) -> tuple:
+    """(the value as shown, its state). The state is read off the value as shown, so a page never says 15 is over 15."""
+    v = _r(x, line.get("dp", 0))
+    return v, _line_key({"kind": "sensed"}, v, line)
+
+
+def _wettest(rain: list, end: datetime) -> str | None:
+    """The 3 hours with the most rain, "HH:00–HH:00" local; a block stops at the day's end. None with no rain."""
+    best, at = 0.0, None
+    for t0, _ in rain:
+        s = sum(v for t, v in rain if t0 <= t < t0 + timedelta(hours=3))
+        if s > best:
+            best, at = s, t0
+    if at is None:
+        return None
+    return f"{at:%H:00}–{min(at + timedelta(hours=3), end):%H:00}"
+
+
+def build(hours: list[dict], lines: dict, tz: str, now: datetime, own_cells: dict) -> list[dict]:
+    """The `days` array. `hours` are steps {"ts", "source", <metric>: value} of every forecast sensor, neighbouring
+    cells included; `lines` is {"air": {value, unit, dp}, "heat": {…}} for the issues this node has on;
+    `own_cells` is {sensor_id: its H3 cell}, which is what counts a territory's cells."""
+    zone = ZoneInfo(tz)
+    local = now.astimezone(zone)
+    first = local.date()
+    start = local.replace(minute=0, second=0, microsecond=0)
+    if start < local:
+        start += timedelta(hours=1)
+    days = []
+    for k in range(3):
+        d = first + timedelta(days=k)
+        end = datetime.combine(d + timedelta(days=1), time(0), tzinfo=zone)
+        lo = start if k == 0 else datetime.combine(d, time(0), tzinfo=zone)
+        mine = [(_dt(h["ts"]).astimezone(zone), h) for h in hours]
+        mine = [(t, h) for t, h in mine if lo <= t < end]
+        days.append({"date": d.isoformat(), "part": "rest" if k == 0 else "day",
+                     "rows": _rows(mine, lines, end, own_cells)})
+    return days
+
+
+def _rows(steps, lines, end, own_cells) -> dict:
+    def series(source, metric):
+        return [(t, h[metric]) for t, h in steps if h["source"] == source and h.get(metric) is not None]
+
+    def over(per_sid, line) -> dict:
+        """cells and cells_over, only when more than one cell has a figure."""
+        cell = {}
+        for sid, x in per_sid.items():
+            cell[own_cells.get(sid, sid)] = x
+        if len(cell) < 2:
+            return {}
+        return {"cells": len(cell), "cells_over": sum(_judge(x, line)[1] == "over" for x in cell.values())}
+
+    def sids(root, metric):
+        return {h["source"] for _, h in steps if base(h["source"]) == root and h.get(metric) is not None}
+
+    rows = {}
+    line = lines.get("air")
+    vals = series(CAMS, "fc_pm25")
+    if line and vals:
+        mean = sum(v for _, v in vals) / len(vals)
+        peak_t, peak = max(vals, key=lambda tv: tv[1])
+        value, state = _judge(mean, line)
+        per = {s: (lambda x: sum(v for _, v in x) / len(x))(series(s, "fc_pm25")) for s in sids(CAMS, "fc_pm25")}
+        rows["air"] = {"value": value, "unit": line.get("unit"), "metric": "fc_pm25", "of": "mean",
+                       "peak": _r(peak, line.get("dp", 0)), "peak_at": f"{peak_t:%H:%M}", "source": CAMS,
+                       "line": line["value"], "state": state, "hours_over": sum(v > line["value"] for _, v in vals),
+                       "n": len(vals), **over(per, line)}
+
+    line = lines.get("heat")
+    if line:
+        def at(source):
+            return [(t, apparent(h["fc_temp"], h["fc_humidity"])) for t, h in steps
+                    if h["source"] == source and h.get("fc_temp") is not None and h.get("fc_humidity") is not None]
+        src = next((s for s in (OM, BMKG) if at(s)), None)
+        if src:
+            vals = at(src)
+            value, state = _judge(max(v for _, v in vals), line)
+            other = [s for s in (OM, BMKG) if s != src and at(s)]
+            per = {s: max(v for _, v in at(s)) for s in {h["source"] for _, h in steps if base(h["source"]) == OM
+                   and h.get("fc_temp") is not None and h.get("fc_humidity") is not None}} if src == OM else {}
+            rows["heat"] = {"value": value, "unit": line.get("unit"), "metric": "apparent", "of": "max", "source": src,
+                            "line": line["value"], "state": state, "hours_over": sum(v > line["value"] for _, v in vals),
+                            "n": len(vals), **({"also": other} if other else {}), **over(per, line)}
+
+    def wr(source):
+        return series(source, "fc_wind_gusts"), series(source, "fc_rain")
+    src = next((s for s in (OM, BMKG) if any(wr(s))), None)
+    if src:
+        gust, rain = wr(src)
+        total = sum(v for _, v in rain)
+        other = [s for s in (OM, BMKG) if s != src and any(wr(s))]
+        rows["wind_rain"] = {"gust": _r(max(v for _, v in gust), 0) if gust else None,
+                             "rain_mm": round(total, 1) if rain else None,
+                             "rain_hours": _wettest(rain, end), "source": src,
+                             "n": len({t for t, _ in gust + rain}), **({"also": other} if other else {})}
+
+    wave = series(MARINE, "fc_wave_m")
+    if wave:
+        rows["sea"] = {"value": round(max(v for _, v in wave), 1), "unit": "m", "metric": "fc_wave_m", "of": "max",
+                       "source": MARINE, "n": len(wave)}
+    return rows
+
+
+def _sources(who: list[dict], rows: list[dict], openmeteo: bool, coast: bool) -> list[dict]:
+    """One entry a source: the node's own sensor's, with `cells` for the ones that cover a territory. A source whose
+    switch is on and that has no rows is named as absent; one that is off is not mentioned."""
+    out = []
+    for b in BASES:
+        mine = sorted((w for w in who if base(w["sensor_id"]) == b), key=lambda w: w["sensor_id"])
+        own = next((w for w in mine if w["sensor_id"] == b), mine[0] if mine else None)
+        if own is None or not any(base(r["sensor_id"]) == b for r in rows):
+            if (b in (OM, CAMS) and openmeteo) or (b == MARINE and openmeteo and coast):
+                out.append({"sensor_id": b, "absent": True})
+            elif own is not None:
+                out.append(_source(own))
+            continue
+        out.append({**_source(own), **({"cells": len(mine)} if b in (OM, CAMS) else {})})
+    return out
+
+
+def _source(w: dict) -> dict:
+    m = w.get("meta") or {}
+    return {"sensor_id": w["sensor_id"], "name": w["name"], "lat": w["lat"], "lon": w["lon"],
+            "issued": m.get("issued"), "fetched": m.get("fetched"), "km_from_node": m.get("km_from_node")}
+
+
+def answer(*, who: list[dict], rows: list[dict], issue_lines: dict, ahead: list[dict], tz: str, now: datetime,
+           point: dict, hours: int, openmeteo: bool, coast: bool) -> dict:
+    """The whole GET /forecast body (schema forecast-v0) from the sensors, the readings (sensor_id, ts, metric, value;
+    ts as ISO text or datetimes), the issues' lines and the packs' `ahead` lines. The dict is written out as a literal
+    so tools/check_wire.py can read its keys."""
+    steps: dict = {}
+    for r in rows:
+        steps.setdefault((_utc(r["ts"]), r["sensor_id"]), {})[r["metric"]] = r["value"]
+    every = [{"ts": k[0], "source": k[1], **v} for k, v in sorted(steps.items())]
+    cutoff = _utc(now + timedelta(hours=hours))
+    own = [h for h in every if base(h["source"]) == h["source"] and h["ts"] <= cutoff]
+    srcs = _sources(who, rows, openmeteo, coast)
+    # a forecast for somewhere else is still a forecast, but the card has to say so rather than imply this point
+    far = [{"sensor_id": s["sensor_id"], "km": s["km_from_node"]} for s in srcs if (s.get("km_from_node") or 0) > 10]
+    cells = {w["sensor_id"]: (w.get("meta") or {}).get("cell") for w in who}
+    return {"point": point,
+            "sources": srcs,
+            "hours": own,
+            "attribution": ATTRIBUTION,
+            "far_from_node": far or None,
+            "days": build(every, issue_lines, tz, now, cells),
+            "lines": ahead,
+            "openmeteo": openmeteo,
+            "schema": "forecast-v0"}

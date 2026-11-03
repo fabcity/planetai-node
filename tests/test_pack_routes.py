@@ -50,6 +50,8 @@ H = {"Authorization": "Bearer admin-tok"}
 r = c.get("/forecast", headers=H)
 assert r.status_code == 200 and r.json()["hours"] == [] and r.json()["point"] == {"lat": -8.8, "lon": 115.1}, r.text
 assert "BMKG" in r.json()["attribution"][0]
+assert r.json()["schema"] == "forecast-v0" and r.json()["lines"] == [] and r.json()["openmeteo"] is False, r.text
+assert [d["rows"] for d in r.json()["days"]] == [{}, {}, {}], "no rows at all is three empty days, not an error"
 r = c.get("/nearby", headers=H)
 assert r.status_code == 200 and r.json()["ring"] == [], r.text
 print("  /forecast and /nearby answer from their packs while the packs are on")

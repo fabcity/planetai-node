@@ -430,6 +430,30 @@ shell's own code. One that is not well formed, or whose id another pack already 
 log; one whose id the page already has is listed under "Registration problems". `tests/test_pack_sections.py` holds
 this, on both sides.
 
+### A line in Next days
+
+A pack can add one line to Next days, the three-day view on Now, with `ahead:` in its `pack.yaml`. Surf is the shape
+it was made for: one short sentence for tomorrow and one for the day after.
+
+```yaml
+ahead:
+  id: surf                              # lowercase letters, digits and hyphens
+  title: { en: Surf, es: Olas, id: Ombak }
+  sensor: surf                          # the sensor whose meta holds the text
+  days: [ahead_d1, ahead_d2]            # meta keys for tomorrow and the day after, written without a locale
+```
+
+The node puts the locale in itself: `ahead_d1` is read as `ahead_en_d1`, `ahead_es_d1` and `ahead_id_d1`, so your
+adapter writes six keys into that sensor's meta (`ahead_en_d1`, `ahead_en_d2`, and the same for `es` and `id`) next
+to its `fetched`. A locale you leave out is left out of the line. Each text is cut at 160 characters, and the page
+escapes it, so write plain text with no markup: "Uluwatu 16:00–18:00 · Impossibles 16:00–18:00", or "nothing looks good".
+
+The node serves the line in `GET /forecast` as `lines`, only while the pack is on and the sensor's `fetched` is
+today in the node's own timezone. That is what keeps `_d1` meaning tomorrow: a fetch from yesterday would have it
+meaning today, so the line goes quiet until the pack fetches again. One that is not well formed (an id with capitals,
+a title missing a locale, `days` with anything but two keys) is left out with one line in the log, and the rest of
+the pack loads as before. `tests/test_forecast_days.py` holds this, on both sides.
+
 ## The hero
 
 The lead of the page is a slot. Whichever issue the node's rule puts first, the page draws its
