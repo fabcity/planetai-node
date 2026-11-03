@@ -59,8 +59,8 @@ the node's territory at that scale:
 The view (§5) reads a territory the same way Now does: the value at the node's own cell first, and for a larger node
 the worst cell and how much of the area is over the line ("over in 7 of 20 cells"). Node #1 is a community node
 (`NODE_SCALE=community`; the valid values are community, city and region, default community), so it fetches the
-7-point grid for Open-Meteo and CAMS, and the grid is proven there as well as in a community fixture. Open-Meteo counts each location as a call, so a 20-cell node adds about 240 calls a day across the
-three sources at four fetches a day.
+7-point grid for Open-Meteo and CAMS. Open-Meteo counts each location as a call, so a 20-cell node adds about 240
+calls a day across the three sources at four fetches a day.
 
 ### What it keeps, per source
 

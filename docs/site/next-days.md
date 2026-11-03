@@ -2,12 +2,13 @@
 <!-- checked: v0.90.0 -->
 
 The switch at the top of Now, "Now · Next days", turns the page to the rest of today, tomorrow and the day after,
-read against the same lines Now uses for what is happening. It helps with what a household decides a day ahead, like
-whether the air will be bad tonight or whether the surf is worth getting up for. `#now/next` links straight to it, and
-the screen remembers which side you left it on.
+read against the same lines Now uses for what is happening. It shows whether the air will go over the line tonight, and
+whether tomorrow's surf is worth getting up for. `#now/next` links straight to it, and the screen remembers which side
+you left it on.
 
-Everything on it comes from forecast models the node asks. The node keeps the next 72 hours from each of them and
-reads them against its issues' lines, over its territory.
+Everything on it comes from forecasts the node fetches, from BMKG and from the models Open-Meteo serves. The node keeps
+the next 72 hours of each, and judges air and heat against its own issues' lines, at its own point and across the
+cells around it.
 
 <!-- Screenshot: Next days on node #1, at desktop width. It is added once node #1 runs this version. -->
 
@@ -33,8 +34,8 @@ would not be the same number as the line, and the node does not store it.
 
 A pack adds its line with `ahead:` in its `pack.yaml` ([docs/PACKS.md](../../docs/PACKS.md) says how). The `surf`
 wild pack writes the spots and windows that look good, "Uluwatu 16:00–18:00 · Impossibles 16:00–18:00", or "nothing
-looks good". The node shows a pack's line only while the pack is on and only from a fetch made today, at most 160
-characters a day, as plain text.
+looks good". The node shows a pack's line only while the pack is on and only from a fetch made today, with each day's
+text cut at 160 characters and shown as plain text.
 
 ## The state word
 
@@ -56,17 +57,18 @@ Sun, evaporation and soil moisture are kept and not drawn on this page. Where BM
 temperature or the rain, the row takes Open-Meteo's hours and names BMKG beside it.
 
 Under the rows each source has a pill with its time: BMKG says when it issued its forecast, and Open-Meteo, which
-publishes no model run time, says when the node fetched it. A source more than 10 km from the node says how far, and
-the page ends with "These come from models. The node does not forecast, and nothing here sends a message."
+publishes no model run time, says when the node fetched it. A source more than 10 km from the node says how far. After
+the pills comes the sentence "These come from models. The node does not forecast, and nothing here sends a message.",
+and with Open-Meteo off, the line about turning it on follows it.
 
 ## Turning Open-Meteo on
 
 Open-Meteo's free tier is for non-commercial use only. Whether your node fits that is your decision as its operator,
-so the three Open-Meteo sources stay off until you turn them on, all with one switch: Set up › Packs › forecast, or
-`planetai config set FORECAST_OPENMETEO 1`.
+so the three Open-Meteo sources stay off until you turn them on. One switch turns on all three, in Set up → Packs →
+forecast or with `planetai config set FORECAST_OPENMETEO 1`.
 
-With it off, Next days shows BMKG's heat, wind and rain where BMKG covers the node, with no gusts, and one line
-under the rows: "Air, the sea and more hours come from Open-Meteo, which is off on this node. Turn it on
+With it off, Next days shows BMKG's heat, wind and rain where BMKG covers the node, with no gusts, and after the
+models sentence one more line: "Air, the sea and more hours come from Open-Meteo, which is off on this node. Turn it on
 in Set up → Packs → forecast." Outside Indonesia nothing answers with it off, so the page says that in one line, with
 the same link, in place of the grid.
 
@@ -76,7 +78,7 @@ The node asks Open-Meteo and CAMS for the ground it covers, at its `NODE_SCALE`,
 
 | `NODE_SCALE` | points |
 |---|---|
-| `home` | 1, the node itself |
+| `home` | 1, the node itself (a value only the forecast pack takes, for a single-point node) |
 | `community` (the default) | 7, the node's resolution-7 H3 cell and the six around it |
 | `city` | 19, the node's resolution-6 cell and two rings around it |
 | `region` | 19, the node's resolution-5 cell and two rings around it |
@@ -84,8 +86,9 @@ The node asks Open-Meteo and CAMS for the ground it covers, at its `NODE_SCALE`,
 The node's own point is at its coordinates, the others at their cells' centres, and each one is a sensor
 (`forecast-om-<cell>`, `forecast-cams-<cell>`) tagged with its cell. BMKG and the sea stay one point. The number in
 a row is the node's own cell, and where there are more cells, air and heat add how many of them go over the line,
-"over in 1 of 7 cells". Open-Meteo counts each location as one call against a daily limit per IP, so a community
-node spends 14 calls a poll on the weather and the air.
+"over in 1 of 7 cells". Open-Meteo counts each location as one call against a daily limit per IP. On a community
+node each poll sends 7 locations for the weather and 7 for the air, beside the wind field's 65 and, while `coast` is
+on, one for the sea.
 
 ## When a forecast is revised
 
@@ -96,10 +99,11 @@ overwrite a measurement. A source that fails is asked again after 30 minutes, an
 
 ## Nothing here sends a message
 
-The forecast pack fetches and stops. It does not predict, and none of its rules has a level or a message.
-[tests/test_forecast.py](../../tests/test_forecast.py) fails if one grows either. Next days draws, and asks nothing of
-the household. A forecast is never read as a measurement, either. Its channels are `derived` and not comparable, and
-it reaches no cell, no Index value and none of Now's live figures.
+The forecast pack fetches and stops. It does not predict, and its one rule, `ahead`, gives the daily report a line
+about wind and rain, with no level and no message. [tests/test_forecast.py](../../tests/test_forecast.py) fails if a
+rule here is anything but a report line or carries a message. Next days only draws what the pack fetched, and asks
+nothing of the household. A forecast is never read as a measurement either. Its channels are `derived` and not
+comparable, so a forecast never counts in a cell, and Now's live figures never read one.
 
 ## Reading it from a script
 

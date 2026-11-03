@@ -1,7 +1,7 @@
 # forecast
 
 **What it adds:** the next 72 hours of weather for the node's ground, from the meteorological agency that covers it,
-and with Open-Meteo on, the air and the sea too. Now draws them under Next days
+and with Open-Meteo on, the air too, and the sea while the `coast` pack is on. Now draws them under Next days
 ([docs/site/next-days.md](../../docs/site/next-days.md)). It answers the question that follows "is the air bad": is it
 arriving or leaving. A reading of 40 µg/m³ with the wind turning offshore and rain at four means something different
 from the same 40 with still air all night.
@@ -65,8 +65,9 @@ Open-Meteo's weather and the CAMS air are asked for the node's ground at its `NO
 around it. `city` and `region` are 19 each, the resolution-6 or resolution-5 cell with two rings around it. The node's
 own point keeps the node's coordinates and the plain sensor id (`forecast-om`, `forecast-cams`), the others sit at
 their cells' centres as `forecast-om-<cell>` and `forecast-cams-<cell>`, and every sensor carries its `cell` in meta.
-The sea and BMKG stay one point each. Open-Meteo counts each location as a call against its daily limit per IP, so a
-community node spends 14 calls a poll here, beside the wind field's 64.
+The sea and BMKG stay one point each. Open-Meteo counts each location as a call against its daily limit per IP, so
+each poll on a community node sends 7 locations for the weather and 7 for the air, beside the wind field's 65 (8 × 8
+and the node's own point) and, while `coast` is on, one for the sea.
 
 ## The gap between the two
 
