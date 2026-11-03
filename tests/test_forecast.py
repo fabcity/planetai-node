@@ -178,10 +178,21 @@ class Spy:
     def get(s, url, params=None, headers=None, timeout=None): asked.append((url, params)); return R(s.j)
 
 
+# 72 hours ahead is asked for, not whatever is left of the UTC day: forecast_days=4 always reaches past now + 72 h, and
+# the rows are trimmed at HOURS. The wind field keeps its own two days.
+asked.clear()
+_, rr = A.openmeteo(Spy(om_payload(hours=140)), [PT])
+assert asked[0][1]["forecast_days"] * 24 >= 72 + 24, "from midnight UTC, four days always reaches 72 h ahead"
+assert max(t for t, *_ in rr) <= dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=72), "an answer longer than 72 h is trimmed"
+asked.clear(); A.wind_field(Spy(wg), LAT, LON)
+assert asked[0][1]["forecast_days"] == 2, "the map's wind field keeps its own next day"
+asked.clear()
+
 cams_pts = [PT, {"sid": "forecast-om-8a1", "cell": "8a1", "lat": LAT + .1, "lon": LON}]
 cs, cr = A.cams(Spy([hourly_payload(["pm2_5", "uv_index"]), hourly_payload(["pm2_5", "uv_index"])]), cams_pts)
 assert len(asked) == 1, "one call for all points"
-assert asked[0][0] == A.CAMS and asked[0][1]["hourly"] == "pm2_5,uv_index" and asked[0][1]["forecast_days"] == 3
+assert asked[0][1]["forecast_days"] * 24 >= 72 + 24
+assert asked[0][0] == A.CAMS and asked[0][1]["hourly"] == "pm2_5,uv_index" and asked[0][1]["forecast_days"] == 4
 assert asked[0][1]["latitude"].count(",") == 1, "multi-location: the points go in one request"
 assert [x["sensor_id"] for x in cs] == ["forecast-cams", "forecast-cams-8a1"] and cs[1]["meta"]["cell"] == "8a1"
 assert {m for _t, _s, m, _v in cr} == {"fc_pm25", "fc_uv", "fc_lead_hours"}
@@ -194,7 +205,7 @@ ms_keys = ["wave_height", "swell_wave_height", "swell_wave_period", "swell_wave_
 os.environ["COAST_MAX_KM"] = "30"
 asked.clear()
 ms, mr = A.marine(Spy(hourly_payload(ms_keys, LAT - .035, LON - .03)), [PT])
-assert len(asked) == 1 and asked[0][0] == A.MARINE and asked[0][1]["hourly"] == ",".join(ms_keys) and asked[0][1]["forecast_days"] == 3
+assert len(asked) == 1 and asked[0][0] == A.MARINE and asked[0][1]["hourly"] == ",".join(ms_keys) and asked[0][1]["forecast_days"] == 4
 assert [x["sensor_id"] for x in ms] == ["forecast-marine"]
 assert (ms[0]["lat"], ms[0]["lon"]) == (LAT - .035, LON - .03), "the sea cell the API snapped to is stored"
 assert {m for _t, _s, m, _v in mr} == {"fc_wave_m", "fc_swell_m", "fc_swell_s", "fc_swell_dir", "fc_lead_hours"}
@@ -209,6 +220,8 @@ assert (ch[("forecast-cams", "fc_pm25")]["unit"], ch[("forecast-marine", "fc_swe
 # or a failed fetch must not ask again sooner. 13 Oct: asking every poll spent Open-Meteo's daily limit by 06:15 UTC.
 # Each source has its own stamp, out/forecast.<source>.last, so one that is refused does not hold the others.
 import tempfile  # noqa: E402
+real_pack_on, coast = A._pack_on, [False]
+A._pack_on = lambda pid: coast[0] and pid == "coast"     # never the host's own PACKS_DIR: coast is off unless a test turns it on
 os.environ["PACK_OUT"] = tempfile.mkdtemp()
 calls = []
 class Count:
@@ -265,6 +278,7 @@ class Route:
 def fresh(**env):
     os.environ["PACK_OUT"] = tempfile.mkdtemp()
     os.environ.update({"FORECAST_BMKG": "0", "FORECAST_OPENMETEO": "1", "FORECAST_BMKG_ADM4": ADM4}); os.environ.update(env)
+    coast[0] = False
     A.write_wind_field = lambda *a: None                  # the field is one more call on the om stamp; counted above
 
 
@@ -291,12 +305,10 @@ sens, rd = A.fetch(Route())
 assert [s["sensor_id"] for s in sens] == ["forecast-om", "forecast-cams"] and rd, "the point forecast is kept"
 assert not A._due("om") and aged("om", 31), "and the field is asked again in half an hour, not six hours"
 # ---- marine runs only while the coast pack is on, and only with Open-Meteo on
-real_pack_on, coast = A._pack_on, [False]
-A._pack_on = lambda pid: coast[0] and pid == "coast"
 fresh(FORECAST_BMKG="0")
 hc = Route(); A.fetch(hc)
 assert A.MARINE not in hc.asked and A.CAMS in hc.asked, f"coast is off, so no sea: {hc.asked}"
-coast[0] = True; fresh(FORECAST_BMKG="0")
+fresh(FORECAST_BMKG="0"); coast[0] = True
 hc = Route(); sens, rd = A.fetch(hc)
 assert hc.asked.count(A.MARINE) == 1 and {s["sensor_id"] for s in sens} == {"forecast-om", "forecast-cams", "forecast-marine"}, hc.asked
 for sid in ("forecast-om", "forecast-cams", "forecast-marine"):
@@ -309,14 +321,50 @@ fresh(FORECAST_BMKG="0"); os.environ.pop("FORECAST_OPENMETEO")
 hc = Route(); A.fetch(hc)
 assert hc.asked == [], "FORECAST_OPENMETEO unset is off"
 # a sea cell too far off: asked once, stamped as answered, and nothing stored
-fresh(FORECAST_BMKG="0")
+fresh(FORECAST_BMKG="0"); coast[0] = True
 class FarSea(Route):
     def get(s, url, params=None, headers=None, timeout=None):
         return R(hourly_payload(ms_keys, LAT + 1.0, LON)) if url == A.MARINE else Route.get(s, url, params, headers, timeout)
 sens, rd = A.fetch(FarSea())
 assert "forecast-marine" not in {s["sensor_id"] for s in sens} and not A._due("marine") and not aged("marine", 31), \
     "a node that is not coastal is not asked again in half an hour"
-A._pack_on = real_pack_on
+A._pack_on = real_pack_on                              # the dedicated test below is the real loader
+
+# ---- the gap survives the sources keeping different clocks. One source is fetched alone, the other's last rows are on
+# disk (out/forecast.<source>.rows.json, future hours only), and the gap is computed against them.
+def future(metric, sid, k0=1, n=6, f=lambda i: 20.0 + i):
+    t0 = dt.datetime.now(dt.timezone.utc).replace(minute=0, second=0, microsecond=0)
+    return [(t0 + dt.timedelta(hours=k0 + i), sid, metric, f(i)) for i in range(n)]
+
+
+bmkg_calls = []
+fake_bmkg = lambda hc, adm4, la, lo: (bmkg_calls.append(1) or [A._sensor("forecast-bmkg", "BMKG", la, lo, {})],  # noqa: E731
+                                      future("fc_temp", "forecast-bmkg") + future("fc_wind_speed", "forecast-bmkg", f=lambda i: 10.0))
+real_bmkg, A.bmkg = A.bmkg, fake_bmkg
+fresh(FORECAST_BMKG="1"); A._stamp("om"); A._stamp("cams")
+A._save_rows("om", future("fc_temp", "forecast-om", k0=-3, f=lambda i: 23.0 + i) + future("fc_wind_speed", "forecast-om", k0=-3, f=lambda i: 12.0)
+             + future("fc_cloud", "forecast-om", k0=-3))
+hc = Route(); sens, rd = A.fetch(hc)
+assert hc.asked == [] and bmkg_calls == [1], "only bmkg is due"
+gp = [(t, m, v) for t, s_, m, v in rd if s_ == "forecast-gap"]
+assert {m for _t, m, _v in gp} == {"fc_temp_gap", "fc_wind_speed_gap"} and "forecast-gap" in {x["sensor_id"] for x in sens}, \
+    "bmkg alone, om's last rows on disk: the gap is still made"
+assert all(t > dt.datetime.now(dt.timezone.utc) for t, _m, _v in gp), "only future hours, the stored past is dropped"
+assert {v for _t, m, v in gp if m == "fc_wind_speed_gap"} == {2.0} and {v for _t, m, v in gp if m == "fc_temp_gap"} == {7.0}, "the hours both cover: 1 and 2 ahead"
+# the same the other way round: om fetched alone against bmkg's stored rows
+fresh(FORECAST_BMKG="1"); A._stamp("bmkg"); A._stamp("cams")
+A._save_rows("bmkg", future("fc_temp", "forecast-bmkg"))
+sens, rd = A.fetch(Route())
+assert any(m == "fc_temp_gap" for _t, _s, m, _v in rd), "om alone, bmkg's last rows on disk: the gap is still made"
+# nothing stored for the other source: no gap and no error
+fresh(FORECAST_BMKG="1"); A._stamp("om"); A._stamp("cams")
+sens, rd = A.fetch(Route())
+assert [x["sensor_id"] for x in sens] == ["forecast-bmkg"] and not any(m.endswith("_gap") for _t, _s, m, _v in rd)
+open(A._rows_file("om"), "w").write("{not json")
+os.utime(stamp("bmkg"), (0, 0))
+sens, rd = A.fetch(Route())
+assert [x["sensor_id"] for x in sens] == ["forecast-bmkg"], "a rows file that does not parse is no gap, not a failure"
+A.bmkg = real_bmkg
 
 # _pack_on asks the loader that decides it: PACKS_ENABLED, or every pack in PACKS_DIR when that is blank
 import packs as P  # noqa: E402

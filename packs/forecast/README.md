@@ -38,7 +38,7 @@ minutes to clear. `FORECAST_POLL_HOURS=6` is far inside it; BMKG publishes twice
 asking a cache the same question. Each source keeps its own stamp (`out/forecast.<source>.last`): one that fails is
 asked again after 30 minutes, not on the next 300 s poll, and the others are not held back.
 
-## Two sources, and only one of them is on
+## The sources, and which of them are on
 
 **BMKG** (`FORECAST_BMKG=1`, Indonesia). 3-hourly, three days, no key. `ws` is km/h, `wd_deg` is the direction the
 wind comes **from**, `tp` is rain in millimetres for the step. BMKG publishes no probability, so the node does not
@@ -48,8 +48,14 @@ invent one. Attribution is required and is on the card and in the export.
 makes this pack work for nodes #2 in Barcelona and #3 in Santiago, where BMKG does not. **Its free tier is
 non-commercial use only.** That is the operator's decision and not ours, so it is off until it is turned on.
 
+**CAMS air and the sea** (also `FORECAST_OPENMETEO=1`, one switch for all three Open-Meteo sources). `forecast-cams` is
+PM2.5 and the UV index for the next 72 hours, `forecast-marine` is wave height and swell height, period and direction. The
+sea is asked only while the `coast` pack is on, at the node's own point; Open-Meteo snaps it to the nearest sea cell,
+the sensor sits at that cell, and one farther than `COAST_MAX_KM` (30) is refused, as the coast pack refuses it.
+
 When both are on, a third derived channel records how far apart they are on temperature and wind for the same
-hour. Neither is the truth; a wide gap is the node saying so out loud rather than picking a favourite.
+hour. Neither is the truth; a wide gap is the node saying so out loud rather than picking a favourite. The sources keep their own clocks, so the gap is made against the other
+source's last stored hours (`out/forecast.<source>.rows.json`, future hours only) when only one was fetched.
 
 ## The issue time, stored per value
 
@@ -87,11 +93,6 @@ planetai run forecast status    # the next day: wind, rain, temperature, and whe
 Weather forecast data from **BMKG** (Badan Meteorologi, Klimatologi, dan Geofisika), api.bmkg.go.id — BMKG must be
 named as the data source inside the application, and is, on the card and in the export.
 Model forecast from **Open-Meteo**, open-meteo.com, CC-BY 4.0.
-
-**CAMS air and the sea** (also `FORECAST_OPENMETEO=1`, one switch for all three Open-Meteo sources). `forecast-cams` is
-PM2.5 and the UV index for three days, `forecast-marine` is wave height and swell height, period and direction. The
-sea is asked only while the `coast` pack is on, at the node's own point; Open-Meteo snaps it to the nearest sea cell,
-the sensor sits at that cell, and one farther than `COAST_MAX_KM` (30) is refused, as the coast pack refuses it.
 
 ## The wind field
 

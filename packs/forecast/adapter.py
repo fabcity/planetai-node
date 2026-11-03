@@ -88,11 +88,14 @@ OM_MAP = {"temperature_2m": "fc_temp", "relative_humidity_2m": "fc_humidity", "p
 
 
 def _om_points(hc, url: str, points: list[dict], hourly: str):
-    """One Open-Meteo request for every point, three days. One location answers a dict and several answer a list in
+    """One Open-Meteo request for every point. `forecast_days=4` counts from midnight UTC, so it always reaches past
+    now + HOURS (three days would leave ~52 h at 20:00 UTC); `_om_rows` trims at HOURS. The ask is days, not
+    `forecast_hours`, because only the weather API's support for that is certain.
+    One location answers a dict and several answer a list in
     the order asked; both come back as a list, and a short answer is refused rather than matched to the wrong place."""
     r = hc.get(url, params={"latitude": ",".join(str(p["lat"]) for p in points),
                             "longitude": ",".join(str(p["lon"]) for p in points),
-                            "hourly": hourly, "forecast_days": 3, "timezone": "UTC"})
+                            "hourly": hourly, "forecast_days": 4, "timezone": "UTC"})
     r.raise_for_status()
     d = r.json()
     d = d if isinstance(d, list) else [d]
@@ -146,8 +149,8 @@ MARINE_MAP = {"wave_height": "fc_wave_m", "swell_wave_height": "fc_swell_m", "sw
 
 
 def cams(hc, points: list[dict]):
-    """CAMS air at each point, one request through Open-Meteo's air-quality API: PM2.5 (µg/m³) and the UV index, three
-    days. A point's id is the same as its weather point's with `forecast-cams` for `forecast-om`. A model of what the
+    """CAMS air at each point, one request through Open-Meteo's air-quality API: PM2.5 (µg/m³) and the UV index, the next
+    72 hours. A point's id is the same as its weather point's with `forecast-cams` for `forecast-om`. A model of what the
     air will do, never a reading: it is stored `derived` and `comparable: false`, like every fc_ metric."""
     answers = _om_points(hc, CAMS, points, ",".join(CAMS_MAP))
     fetched = datetime.now(timezone.utc)
@@ -164,7 +167,7 @@ def cams(hc, points: list[dict]):
 
 
 def marine(hc, points: list[dict]):
-    """Waves and swell, three days, at the node's own point (the first of `points`; the sea is never a grid here).
+    """Waves and swell, the next 72 hours, at the node's own point (the first of `points`; the sea is never a grid here).
     Open-Meteo Marine snaps the ask to the nearest sea cell itself, so the cell it answers with is stored as the
     sensor's place, and a cell farther than COAST_MAX_KM (default 30, the coast pack's own rule) is refused: an
     inland node would otherwise be given a number about a sea it has never seen."""
@@ -301,6 +304,36 @@ def _stamp(source: str, ok: bool = True) -> None:
     os.utime(f, (t, t))
 
 
+GAP_METRICS = ("fc_temp", "fc_wind_speed")
+
+
+def _rows_file(source: str):
+    return _stamp_file(source).with_name(f"forecast.{source}.rows.json")
+
+
+def _save_rows(source: str, readings: list) -> None:
+    """The last rows this source answered, only the metrics the gap compares, in out/. Sources keep different clocks
+    (one that failed retries alone), so the gap against the other source has to read what that one last stored. A
+    file, not module state: the pack is re-imported and a module forgets. Written whole, then moved into place."""
+    import json
+    f = _rows_file(source)
+    f.parent.mkdir(parents=True, exist_ok=True)
+    tmp = f.with_name(f.name + ".part")
+    tmp.write_text(json.dumps([[ts.isoformat(), sid, m, v] for ts, sid, m, v in readings if m in GAP_METRICS]))
+    tmp.replace(f)
+
+
+def _load_rows(source: str) -> list:
+    """That source's last stored rows, future hours only. Nothing stored, or a file that does not parse, is no rows."""
+    import json
+    try:
+        rows = [(_utc(t), sid, m, float(v)) for t, sid, m, v in json.loads(_rows_file(source).read_text())]
+    except (OSError, ValueError, TypeError):
+        return []
+    now = datetime.now(timezone.utc)
+    return [r for r in rows if r[0] is not None and r[0] > now]
+
+
 def _try(source: str, force: bool, what: str, call):
     """Run `call` if `source` is due; stamp the attempt. Returns what it returned, or None when it was not due or failed.
     A source that is down is never an alert: log once and carry on with the others."""
@@ -329,6 +362,7 @@ def fetch(hc, force: bool = False):
             got = _try("bmkg", force, "BMKG", lambda: bmkg(hc, adm4, lat, lon))
             if got:
                 sensors += got[0]; readings += got[1]; bm = got[1]
+                _save_rows("bmkg", bm)
     if os.getenv("FORECAST_OPENMETEO", "0") == "1":
         node = {"sid": "forecast-om", "cell": None, "lat": lat, "lon": lon}   # the territory (Task 4) fills `cell`
 
@@ -345,6 +379,7 @@ def fetch(hc, force: bool = False):
         got = _try("om", force, "Open-Meteo", om_source)
         if got:
             sensors += got[0]; readings += got[1]; om = got[1]
+            _save_rows("om", om)
             if wind_failed and not force:
                 _stamp("om", ok=False)      # the points are stored; the field is asked again in RETRY_S
         got = _try("cams", force, "Open-Meteo air", lambda: cams(hc, [node]))
@@ -354,6 +389,6 @@ def fetch(hc, force: bool = False):
             got = _try("marine", force, "Open-Meteo marine", lambda: marine(hc, [node]))
             if got:
                 sensors += got[0]; readings += got[1]
-    if bm and om:
-        s, g = gap(bm, om); sensors += s; readings += g
+    if bm or om:         # either one fresh is enough: the other is what it last stored
+        s, g = gap(bm or _load_rows("bmkg"), om or _load_rows("om")); sensors += s; readings += g
     return sensors, readings
