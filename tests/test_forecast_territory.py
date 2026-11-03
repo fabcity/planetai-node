@@ -60,8 +60,9 @@ class HC:
         return R(out if len(out) > 1 else out[0])
 
 
-def run(**env):
-    os.environ["PACK_OUT"] = tempfile.mkdtemp()
+def run(keep=False, **env):
+    if not keep:
+        os.environ["PACK_OUT"] = tempfile.mkdtemp()
     os.environ.update(FORECAST_BMKG="0", FORECAST_OPENMETEO="1", NODE_LAT=str(LAT), NODE_LON=str(LON))
     os.environ.pop("NODE_SCALE", None); os.environ.update(env)
     A._pack_on = lambda pid: pid == "coast"
@@ -91,5 +92,48 @@ hc, sens, _ = run(NODE_SCALE="home")
 assert len(n_of(sens, "forecast-om")) == 1 and len(n_of(sens, "forecast-cams")) == 1
 hc, sens, _ = run(NODE_SCALE="city")
 assert len(n_of(sens, "forecast-om")) == 19 and len(n_of(sens, "forecast-cams")) == 19 and len(n_of(sens, "forecast-marine")) == 1
+hc, sens, _ = run(NODE_SCALE="Home")
+assert len(n_of(sens, "forecast-om")) == 1, "NODE_SCALE is read case-insensitively (app/index.py capitalizes it)"
+hc, sens, _ = run(NODE_SCALE=" CITY ")
+assert len(n_of(sens, "forecast-om")) == 19, "and trimmed"
+
+# ---- the gap is BMKG against the node's OWN Open-Meteo point, never a neighbouring cell's
+# own = 30, every neighbour = 20, BMKG = 30: the right gap is 0, fresh and read back from the rows file.
+class Hot(HC):
+    def get(s, url, params=None, headers=None, timeout=None):
+        r = HC.get(s, url, params, headers, timeout)
+        if url == A.OPEN_METEO:
+            for i, d in enumerate(r.j):
+                v = 30.0 if i == 0 else 20.0
+                d["hourly"]["temperature_2m"] = [v] * len(d["hourly"]["time"])
+                d["hourly"]["wind_speed_10m"] = [v] * len(d["hourly"]["time"])
+        return r
+
+
+T0 = dt.datetime.now(dt.timezone.utc).replace(minute=0, second=0, microsecond=0) + dt.timedelta(hours=5)
+A.bmkg = lambda hc, adm4, la, lo: ([{"sensor_id": "forecast-bmkg"}],
+                                   [(T0 + dt.timedelta(hours=i), "forecast-bmkg", m, 30.0) for i in range(3)
+                                    for m in ("fc_temp", "fc_wind_speed")])
+
+
+def gaps(rd):
+    g = [(m, v) for _t, s, m, v in rd if s == "forecast-gap"]
+    assert {m for m, _ in g} == {"fc_temp_gap", "fc_wind_speed_gap"}, g
+    return {v for _m, v in g}
+
+
+os.environ["PACK_OUT"] = tempfile.mkdtemp()
+os.environ.update(FORECAST_BMKG="1", FORECAST_BMKG_ADM4="51.03.05.2002", FORECAST_OPENMETEO="1")
+os.environ.pop("NODE_SCALE", None)
+A._pack_on = lambda pid: False
+sens, rd = A.fetch(Hot())
+assert len(n_of(sens, "forecast-om")) == 7
+assert gaps(rd) == {0.0}, f"fresh: the gap is against the node's own point: {gaps(rd)}"
+saved = {sid for _t, sid, *_ in A._load_rows("om")}
+assert saved == {"forecast-om"}, f"the rows file keeps the own point only: {saved}"
+os.utime(A._stamp_file("bmkg"), (0, 0))                  # only BMKG is due now, so the gap reads om from the file
+sens, rd = A.fetch(Hot())
+assert [s["sensor_id"] for s in sens if s["sensor_id"] != "forecast-gap"] == ["forecast-bmkg"], sens
+assert gaps(rd) == {0.0}, f"from the rows file: {gaps(rd)}"
 print("test_forecast_territory: ok")
 sys.exit(0)

@@ -367,7 +367,7 @@ def fetch(hc, force: bool = False):
                 sensors += got[0]; readings += got[1]; bm = got[1]
                 _save_rows("bmkg", bm)
     if os.getenv("FORECAST_OPENMETEO", "0") == "1":
-        scale = os.getenv("NODE_SCALE", "community")
+        scale = os.getenv("NODE_SCALE", "community").strip().lower()
         node = territory.points(scale, lat, lon, "forecast-om")   # the weather and the air take the territory
         sea = territory.points("home", lat, lon, "forecast-marine")   # the sea is one point, the API snaps it to water
 
@@ -383,7 +383,8 @@ def fetch(hc, force: bool = False):
             return got
         got = _try("om", force, "Open-Meteo", om_source)
         if got:
-            sensors += got[0]; readings += got[1]; om = got[1]
+            sensors += got[0]; readings += got[1]
+            om = [r for r in got[1] if r[1] == "forecast-om"]   # the gap is against the node's own point, not a neighbouring cell
             _save_rows("om", om)
             if wind_failed and not force:
                 _stamp("om", ok=False)      # the points are stored; the field is asked again in RETRY_S
