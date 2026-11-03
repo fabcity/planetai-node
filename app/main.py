@@ -45,6 +45,7 @@ import registry
 import report
 import settings
 import sources
+import store
 
 log = logging.getLogger("planetai")
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"), format="%(asctime)s %(levelname)s %(message)s")
@@ -107,11 +108,7 @@ def poll_once(hc: httpx.Client) -> None:
                          **s, "meta": Jsonb(s.get("meta") or {})},
                     )
                 if readings:
-                    cur.executemany(
-                        "INSERT INTO readings (ts, sensor_id, metric, value) VALUES (%s,%s,%s,%s) ON CONFLICT DO NOTHING",
-                        readings,
-                    )
-                    state["ingested"] += cur.rowcount if cur.rowcount and cur.rowcount > 0 else 0
+                    state["ingested"] += store.insert_readings(cur, readings)
             log.info("%s: %d sensors, %d readings", name, len(sensors), len(readings))
             packs.emit("on_readings", sensors, readings)
     state["polls"] += 1

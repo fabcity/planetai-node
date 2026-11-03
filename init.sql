@@ -135,6 +135,7 @@ WITH RECURSIVE m AS (
 SELECT m.sensor_id, m.metric, l.value, l.ts, s.name, s.kind, s.scale, s.local, s.cadence, s.meta
 FROM m JOIN sensors s ON s.sensor_id = m.sensor_id
 CROSS JOIN LATERAL (SELECT r.value, r.ts FROM readings r WHERE r.sensor_id = m.sensor_id AND r.metric = m.metric
+                      AND r.ts <= now()          -- a forecast hour is not an observation yet
                     ORDER BY r.ts DESC LIMIT 1) l
 WHERE m.metric IS NOT NULL;
 
