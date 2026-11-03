@@ -10,6 +10,13 @@ Tomas, 3 Nov: the node should help make future decisions, "storms coming, risk o
 long)", "a climate intelligence machine". Now answers what is happening. Nothing on the page answers what is coming,
 although the node already asks several models about the next day and throws most of the answer away.
 
+Tomas, 3 Nov, on what makes it worth having: "I dont want to replicate a home weather station, or an existing app,
+it is the amount of data that the node process that makes it interesting." A forecast app already shows tomorrow's
+temperature. Next days earns its place by putting the forecasts beside what only this node holds: its own sensors'
+usual hours, the issues' lines, the fires around it, the water on its land, the surf at its spots, and later the
+crops, the orchard and the panels on its roof. And it reads the node's whole territory at the node's scale, not one
+point.
+
 The first decisions it serves are the household's own, a day or two ahead: whether to surf tomorrow, whether the air
 will be bad tonight, whether the heat will peak, whether to bring things in before wind and rain.
 
@@ -39,16 +46,37 @@ Anti-goals
 
 ## 3. What the node keeps
 
+### Territory and scale
+
+A node has a scale (home, community, city, region; `NODE_SCALE` and its H3 cells). The forecasts are fetched for
+the node's territory at that scale:
+
+- home: the node's point, as today;
+- community and larger: a grid over the node's own cells, in one multi-location request per source, the way the
+  wind field already asks for 65 points in one call. Each grid point is a sensor (`forecast-om-<cell>` and so on)
+  tagged with its H3 cell, so pieces 2 and 3 can ask "where in this territory" and not only "how much".
+
+The view (§5) reads a territory the same way Now does: the value at the node's own cell first, and for a larger node
+the worst cell and how much of the area is over the line ("over in 7 of 20 cells"). Node #1 is a home node, so on
+node #1 everything is one point; the grid is built and tested with a community fixture, and proven on the next
+community node. Open-Meteo counts each location as a call, so a 20-cell node adds about 240 calls a day across the
+three sources at four fetches a day.
+
+### What it keeps, per source
+
 All forecast data lives in the `forecast` pack (core, can be off), under `fc_` metrics, as future-timestamped rows,
 which is how BMKG and Open-Meteo forecasts are kept today.
 
 | sensor | from | metrics | every |
 |---|---|---|---|
 | `forecast-bmkg` (exists) | BMKG, 3-hourly | fc_temp, fc_humidity, fc_wind_speed, fc_wind_direction, fc_cloud, fc_rain | 6 h |
-| `forecast-om` (exists) | Open-Meteo forecast, hourly | as today + fc_wind_gusts, fc_rain_prob | 6 h |
+| `forecast-om` (exists) | Open-Meteo forecast, hourly | as today + fc_wind_gusts, fc_rain_prob, fc_shortwave, fc_et0, fc_soil_moisture | 6 h |
 | `forecast-cams` (new) | Open-Meteo air quality (CAMS), hourly | fc_pm25, fc_uv | 6 h |
 | `forecast-marine` (new) | Open-Meteo marine, hourly, at the sea point `coast` already snaps to | fc_wave_m, fc_swell_m, fc_swell_s, fc_swell_dir | 6 h, only while `coast` is on |
 
+- `fc_shortwave` (solar radiation), `fc_et0` (evapotranspiration) and `fc_soil_moisture` are stored and not drawn
+  yet. They are what a solar pack, an orchard or garden pack, crop cycles at community and region scale, and the
+  fire and flood outlooks of piece 2 will read, and keeping them costs nothing: they ride in the same call.
 - Horizon: 72 hours (`HOURS = 72`; the comments that already say "up to 48 h" are corrected). BMKG keeps what it
   publishes inside that.
 - Open-Meteo's free tier is non-commercial, and the pack says using it is the operator's decision. Whether the three
@@ -175,18 +203,27 @@ or "nothing looks good". `docs/PACKS.md` documents `ahead:` next to `sections:`.
 the site is rebuilt and deployed after release. `docs/PACKS.md` documents `ahead:`. The forecast pack's README is
 updated for the new sources and the 72 hours. CHANGELOG.
 
-## 8. Calls made at the builder check
+## 8. What this must serve later
+
+Not built here; named so this piece stores what they will need:
+- piece 2, outlooks: storm (gusts, rain rate), flood (rain over days against the terrain pack's water and soil
+  moisture), fire (days since rain, humidity, wind, evapotranspiration, FIRMS hotspots);
+- piece 3, correlations across everything the node holds, by cell;
+- packs Tomas named on 3 Nov: home energy (solar production against `fc_shortwave`), a home orchard or garden, and
+  crop and harvest cycles at community, city and region scale.
+
+## 9. Calls made at the builder check
 
 Marked "(my call, builder check)" above: `derived` role, per-source stamps, the narrow revision rule, air as a daily
 mean and heat as computed apparent through the engine's own comparison, the wire check, the `ahead:` locale and date
 rules, and the phone page later.
 
-## 9. Tomas's call
+## 10. Tomas's call
 
 Whether the Open-Meteo forecasts (weather, CAMS air, marine) are on by default on every node, or only where the
 operator turns them on. Their free tier is non-commercial.
 
-## 10. Left to the builder
+## 11. Left to the builder
 
 - How the adapters share the Open-Meteo call code.
 - The exact `days` field names beyond those shown, as long as the wire contract pins them.
