@@ -27,7 +27,7 @@ const pick = n => core.match(new RegExp('^const ' + n + ' = .*$', 'm'))[0];
 const fn = (src, n) => src.match(new RegExp('function ' + n + '\\b[\\s\\S]*?\\n}\\n'))[0];
 const block = n => now.match(new RegExp('^const ' + n + ' = [\\s\\S]*?\\n};\\n', 'm'))[0];
 const one = n => now.match(new RegExp('^const ' + n + ' = .*$', 'm'))[0];
-const cases = JSON.parse(process.argv[1]), out = {};
+const cases = JSON.parse(require('fs').readFileSync(0, 'utf8')), out = {};
 for (const [name, f, locale] of cases) {
   const ctx = { D: { tz: 'Asia/Makassar', locale }, doorsLocal: L.doorsLocal, WORDS: L.WORDS };
   vm.createContext(ctx);
@@ -59,7 +59,7 @@ CASES = [["farsea", farsea, "en"], ["full", FX["full"], "en"], ["om_off", FX["om
          ["evil", evil, "en"], ["far", far, "en"], ["es", FX["full"], "es"], ["id", FX["full"], "id"],
          ["off", {"off": True}, "en"], ["fail", None, "en"], ["old", {"point": {}, "sources": [], "hours": []}, "en"],
          ["locked", {"locked": True}, "en"]]
-r = subprocess.run(["node", "-e", prog, json.dumps(CASES)], capture_output=True, text=True, cwd=ROOT)
+r = subprocess.run(["node", "-e", prog], input=json.dumps(CASES), capture_output=True, text=True, cwd=ROOT)   # stdin: Linux caps one argument at 128 KB
 assert r.returncode == 0, r.stderr[-3000:]
 out = json.loads(r.stdout)
 text = lambda h: re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", h)).replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").strip()  # noqa: E731
