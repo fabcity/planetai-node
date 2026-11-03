@@ -316,6 +316,17 @@ os.environ["TZ"] = "America/Los_Angeles"; time.tzset()
 try:
     assert lines_for([MANS], dict(META, fetched="2026-11-02T10:00:00")) == [], "a stamp with no zone is UTC, not the host's"
     assert lines_for([MANS], dict(META, fetched="2026-11-03T05:00:00")) != []
+    # a date alone is the date the pack meant (surf writes the spot's local date): it is compared as a local date, never
+    # read as UTC midnight, which west of UTC is yesterday evening and kept the line off all day
+    LA = "America/Los_Angeles"
+    la_now = datetime(2026, 11, 3, 20, 0, tzinfo=ZoneInfo(LA))      # 04:00 UTC on the 4th
+    packs.manifests, packs._sensor_meta = (lambda: [MANS]), (lambda sid: dict(META, fetched="2026-11-03") if sid == "surf" else None)
+    west = packs.ahead_lines(la_now, LA)
+    assert west and list(west[0]["days"]) == ["2026-11-04", "2026-11-05"], ("a date-only fetched that is today west of UTC", west)
+    packs._sensor_meta = lambda sid: dict(META, fetched="2026-11-02") if sid == "surf" else None
+    assert packs.ahead_lines(la_now, LA) == [], "yesterday's date is not today"
+    packs._sensor_meta = lambda sid: dict(META, fetched="2026-11-04T03:00:00") if sid == "surf" else None
+    assert packs.ahead_lines(la_now, LA) != [], "a naive stamp stays UTC: 03:00 UTC on the 4th is 19:00 on the 3rd there"
 finally:
     os.environ.pop("TZ"); time.tzset()
 assert lines_for([MANS], None) == [], "a sensor with no meta"

@@ -400,7 +400,7 @@ def ahead_lines(now, tz: str) -> list[dict]:
     """The `lines` of GET /forecast: each loaded pack's `ahead:` text for tomorrow and the day after, in en, es and id.
     The node adds the locale to the pack's keys (`ahead_d1` is read as `ahead_en_d1`), cuts each text at 160 characters,
     and serves a line only while its sensor's meta `fetched` is today in `tz`, so `_d1` is always tomorrow."""
-    from datetime import datetime, timedelta, timezone  # noqa: PLC0415
+    from datetime import date as _date, datetime, timedelta, timezone  # noqa: PLC0415
     from zoneinfo import ZoneInfo  # noqa: PLC0415
     zone = ZoneInfo(tz)
     today = now.astimezone(zone).date()
@@ -421,8 +421,12 @@ def ahead_lines(now, tz: str) -> list[dict]:
             meta = _sensor_meta(a["sensor"]) or {}
             fetched = None
             if meta.get("fetched"):
-                t = datetime.fromisoformat(meta["fetched"])
-                fetched = (t if t.tzinfo else t.replace(tzinfo=timezone.utc)).astimezone(zone).date()   # no zone is UTC, as learn._aware
+                f = str(meta["fetched"])
+                if re.fullmatch(r"\d{4}-\d{2}-\d{2}", f):
+                    fetched = _date.fromisoformat(f)   # a date alone is the local date the pack meant, never UTC midnight
+                else:
+                    t = datetime.fromisoformat(f)
+                    fetched = (t if t.tzinfo else t.replace(tzinfo=timezone.utc)).astimezone(zone).date()   # no zone is UTC, as learn._aware
         except Exception as e:  # noqa: BLE001 — no database, a stamp that is not a date: no line
             log.warning("pack %s: ahead: could not read %s (%s)", m.get("id", "?"), a["sensor"], e)
             continue

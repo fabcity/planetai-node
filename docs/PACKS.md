@@ -449,7 +449,8 @@ to its `fetched`. A locale you leave out is left out of the line. Each text is c
 escapes it, so write plain text with no markup: "Uluwatu 16:00–18:00 · Impossibles 16:00–18:00", or "nothing looks good".
 
 The node serves the line in `GET /forecast` as `lines`, only while the pack is on and the sensor's `fetched` is
-today in the node's own timezone. That is what keeps `_d1` meaning tomorrow: a fetch from yesterday would have it
+today in the node's own timezone. `fetched` can be a time with its zone or a plain date (`2026-11-03`). A plain date
+is taken as the date where the node is, and a time with no zone is read as UTC. That is what keeps `_d1` meaning tomorrow: a fetch from yesterday would have it
 meaning today, so the line goes quiet until the pack fetches again. One that is not well formed (an id with capitals,
 a title missing a locale, `days` with anything but two keys) is left out with one line in the log, and the rest of
 the pack loads as before. `tests/test_forecast_days.py` holds this, on both sides.
