@@ -339,16 +339,20 @@ def _load_rows(source: str) -> list:
 
 def _try(source: str, force: bool, what: str, call):
     """Run `call` if `source` is due; stamp the attempt. Returns what it returned, or None when it was not due or failed.
-    A source that is down is never an alert: log once and carry on with the others."""
+    A source that is down is never an alert: log once and carry on with the others. The retry stamp is written BEFORE
+    the request and replaced by the full one after it answered, so an out/ that cannot be written raises before
+    anything is asked, not after (stamped after, the source was due again in 300 s: the 13 Oct cap)."""
     if not _due(source, force):
         return None
+    if not force:
+        _stamp(source, ok=False)
     try:
         out = call()
     except Exception as e:  # noqa: BLE001
         log.warning("forecast: %s not fetched (%s)", what, e)
-        out = None
-    if not force:
-        _stamp(source, ok=out is not None)
+        return None
+    if not force and out is not None:
+        _stamp(source)
     return out
 
 

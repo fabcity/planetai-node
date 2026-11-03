@@ -283,6 +283,19 @@ def fresh(**env):
     A.write_wind_field = lambda *a: None                  # the field is one more call on the om stamp; counted above
 
 
+# an unwritable out/ asks nothing: the stamp is written before the request, so the failure is before it, not after
+# (stamped after, the source was due again in 300 s: ~20,700 location-calls a day on a community node, the cap of 13 Oct)
+fresh(FORECAST_BMKG="1")
+os.environ["PACK_OUT"] = os.path.join(tempfile.mkdtemp(), "out")
+open(os.environ["PACK_OUT"], "w").write("a file where the folder should be")
+hc = Route()
+try:
+    A.fetch(hc)
+    raise AssertionError("an unwritable out/ must stop the fetch")
+except OSError:
+    pass
+assert hc.asked == [], f"nothing may be asked when the stamp cannot be written: {hc.asked}"
+
 # one source refused: the others still fetch and store, and only the refused one waits 30 minutes
 fresh(FORECAST_BMKG="1")
 hc = Route(down=[A.OPEN_METEO]); sens, rd = A.fetch(hc)
