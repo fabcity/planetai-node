@@ -1,6 +1,6 @@
 # SPEC: Next days
 
-Status: design, 3 Nov 2026. Not built. Piece 1 of three agreed with Tomas on 3 Nov: (1) the stored future and a Next
+Status: design approved by Tomas, 3 Nov 2026. Not built. Piece 1 of three agreed with Tomas on 3 Nov: (1) the stored future and a Next
 days view on Now, (2) hazard outlooks for storm, flood and fire, (3) correlations between indicators that are not
 usually read together. Pieces 2 and 3 read what this one stores. They get their own specs.
 
@@ -79,8 +79,8 @@ which is how BMKG and Open-Meteo forecasts are kept today.
   fire and flood outlooks of piece 2 will read, and keeping them costs nothing: they ride in the same call.
 - Horizon: 72 hours (`HOURS = 72`; the comments that already say "up to 48 h" are corrected). BMKG keeps what it
   publishes inside that.
-- Open-Meteo's free tier is non-commercial, and the pack says using it is the operator's decision. Whether the three
-  Open-Meteo forecasts are on by default is Tomas's call (§9). On node #1 they are on. Each is one call per due poll,
+- Open-Meteo's free tier is non-commercial, and the pack says using it is the operator's decision, so the three
+  Open-Meteo forecasts are opt-in behind the existing `FORECAST_OPENMETEO` (§10). On node #1 they are on. Each is one call per due poll,
   four polls a day, so about 12 calls a day against the 10,000 per IP that node #1 already strains with the 65-point
   wind field (unchanged here).
 - `fc_lead_hours` stays, per source, and the new sources store it too.
@@ -220,8 +220,10 @@ rules, and the phone page later.
 
 ## 10. Tomas's call
 
-Whether the Open-Meteo forecasts (weather, CAMS air, marine) are on by default on every node, or only where the
-operator turns them on. Their free tier is non-commercial.
+Decided 3 Nov ("Approve, opt-in only"): the Open-Meteo forecasts (weather, CAMS air, marine) stay off by default,
+as `FORECAST_OPENMETEO=0` is today; one switch turns all three on, in Set up and in `.env`. Node #1 turns it on. With
+it off, Next days shows what BMKG gives (weather only, where BMKG covers the node) and one line saying the rest is off
+and where to turn it on. Their free tier is non-commercial, and using it is the operator's decision.
 
 ## 11. Left to the builder
 
