@@ -19,6 +19,8 @@ log = logging.getLogger("planetai.forecast")
 
 BMKG = "https://api.bmkg.go.id/publik/prakiraan-cuaca"
 OPEN_METEO = "https://api.open-meteo.com/v1/forecast"
+CAMS = "https://air-quality-api.open-meteo.com/v1/air-quality"
+MARINE = "https://marine-api.open-meteo.com/v1/marine"
 HOURS = 72                      # what the Next days view needs: today's rest, tomorrow and the day after
 WIND_HOURS = 24                 # the map's wind field shows the next day only, as it always has
 
@@ -136,6 +138,56 @@ def openmeteo(hc, points: list[dict]):
                                 "attribution": "Open-Meteo, open-meteo.com"}))
         readings += _om_rows(d, p["sid"], OM_MAP, fetched)
     return sensors, readings
+
+
+CAMS_MAP = {"pm2_5": "fc_pm25", "uv_index": "fc_uv"}
+MARINE_MAP = {"wave_height": "fc_wave_m", "swell_wave_height": "fc_swell_m", "swell_wave_period": "fc_swell_s",
+              "swell_wave_direction": "fc_swell_dir"}
+
+
+def cams(hc, points: list[dict]):
+    """CAMS air at each point, one request through Open-Meteo's air-quality API: PM2.5 (µg/m³) and the UV index, three
+    days. A point's id is the same as its weather point's with `forecast-cams` for `forecast-om`. A model of what the
+    air will do, never a reading: it is stored `derived` and `comparable: false`, like every fc_ metric."""
+    answers = _om_points(hc, CAMS, points, ",".join(CAMS_MAP))
+    fetched = datetime.now(timezone.utc)
+    sensors, readings = [], []
+    for p, d in zip(points, answers):
+        sid = "forecast-cams" + p["sid"].removeprefix("forecast-om")
+        sensors.append(_sensor(sid, "CAMS air forecast via Open-Meteo (model point sample)", d.get("latitude"), d.get("longitude"),
+                               {"fetched": fetched.isoformat(), "issued": None, "cell": p.get("cell"),
+                                "note": "Open-Meteo publishes no model run time; `fetched` is when this node asked.",
+                                "licence": "CC-BY 4.0, free tier non-commercial only",
+                                "attribution": "Open-Meteo Air Quality, open-meteo.com; Copernicus Atmosphere Monitoring Service"}))
+        readings += _om_rows(d, sid, CAMS_MAP, fetched)
+    return sensors, readings
+
+
+def marine(hc, points: list[dict]):
+    """Waves and swell, three days, at the node's own point (the first of `points`; the sea is never a grid here).
+    Open-Meteo Marine snaps the ask to the nearest sea cell itself, so the cell it answers with is stored as the
+    sensor's place, and a cell farther than COAST_MAX_KM (default 30, the coast pack's own rule) is refused: an
+    inland node would otherwise be given a number about a sea it has never seen."""
+    p = points[0]
+    d = _om_points(hc, MARINE, [p], ",".join(MARINE_MAP))[0]
+    fetched = datetime.now(timezone.utc)
+    cell_lat, cell_lon = float(d["latitude"]), float(d["longitude"])
+    km = _km(p["lat"], p["lon"], cell_lat, cell_lon)
+    if km > float(os.getenv("COAST_MAX_KM", "30")):
+        log.info("forecast: nearest sea cell is %.0f km away; this node is not coastal (COAST_MAX_KM), no sea forecast", km)
+        return [], []
+    sensor = _sensor("forecast-marine", f"Open-Meteo Marine forecast, sea cell {km:.0f} km off", cell_lat, cell_lon,
+                     {"fetched": fetched.isoformat(), "issued": None, "cell": p.get("cell"), "distance_km": round(km, 1),
+                      "note": "Open-Meteo publishes no model run time; `fetched` is when this node asked.",
+                      "licence": "CC-BY 4.0, free tier non-commercial only",
+                      "attribution": "Open-Meteo Marine, open-meteo.com; Copernicus Marine / MFWAM"})
+    return [sensor], _om_rows(d, "forecast-marine", MARINE_MAP, fetched)
+
+
+def _pack_on(pid: str) -> bool:
+    """Is that pack loaded on this node? Asks the loader (app/packs.py), which reads PACKS_ENABLED from Settings."""
+    import packs
+    return pid in {d.name for d in packs._enabled()}
 
 
 WIND_N = int(os.getenv("FORECAST_WIND_N", "8"))            # points a side: 64, as Bali Air Dispatch draws its field
@@ -295,6 +347,13 @@ def fetch(hc, force: bool = False):
             sensors += got[0]; readings += got[1]; om = got[1]
             if wind_failed and not force:
                 _stamp("om", ok=False)      # the points are stored; the field is asked again in RETRY_S
+        got = _try("cams", force, "Open-Meteo air", lambda: cams(hc, [node]))
+        if got:
+            sensors += got[0]; readings += got[1]
+        if _pack_on("coast"):               # the sea is the coast pack's question; without it there is nobody to ask for
+            got = _try("marine", force, "Open-Meteo marine", lambda: marine(hc, [node]))
+            if got:
+                sensors += got[0]; readings += got[1]
     if bm and om:
         s, g = gap(bm, om); sensors += s; readings += g
     return sensors, readings

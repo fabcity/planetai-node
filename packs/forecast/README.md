@@ -88,6 +88,11 @@ Weather forecast data from **BMKG** (Badan Meteorologi, Klimatologi, dan Geofisi
 named as the data source inside the application, and is, on the card and in the export.
 Model forecast from **Open-Meteo**, open-meteo.com, CC-BY 4.0.
 
+**CAMS air and the sea** (also `FORECAST_OPENMETEO=1`, one switch for all three Open-Meteo sources). `forecast-cams` is
+PM2.5 and the UV index for three days, `forecast-marine` is wave height and swell height, period and direction. The
+sea is asked only while the `coast` pack is on, at the node's own point; Open-Meteo snaps it to the nearest sea cell,
+the sensor sits at that cell, and one farther than `COAST_MAX_KM` (30) is refused, as the coast pack refuses it.
+
 ## The wind field
 
 With `FORECAST_OPENMETEO=1`, each poll also keeps Open-Meteo's hourly 10 m wind for the next day at

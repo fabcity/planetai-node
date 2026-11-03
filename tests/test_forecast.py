@@ -162,6 +162,49 @@ for m, u in (("fc_wind_gusts", "km/h"), ("fc_rain_prob", "%"), ("fc_shortwave", 
     assert c["role"] == "derived" and c["comparable"] is False and c["unit"] == u, (m, c)
     assert m in pk["metrics"], f"{m} is declared in pack.yaml"
 
+# ---- Task 3: CAMS air and marine. Names and units were read from the live APIs' own hourly_units.
+def hourly_payload(keys, lat=LAT, lon=LON, hours=100):
+    t0 = dt.datetime.now(dt.timezone.utc).replace(minute=0, second=0, microsecond=0) - dt.timedelta(hours=2)
+    h = {"time": [(t0 + dt.timedelta(hours=i)).strftime("%Y-%m-%dT%H:%M") for i in range(hours)]}
+    h.update({k: [float(i) for i in range(hours)] for k in keys})
+    return {"latitude": lat, "longitude": lon, "hourly": h}
+
+
+assert A.CAMS == "https://air-quality-api.open-meteo.com/v1/air-quality"
+assert A.MARINE == "https://marine-api.open-meteo.com/v1/marine"
+asked = []
+class Spy:
+    def __init__(s, j): s.j = j
+    def get(s, url, params=None, headers=None, timeout=None): asked.append((url, params)); return R(s.j)
+
+
+cams_pts = [PT, {"sid": "forecast-om-8a1", "cell": "8a1", "lat": LAT + .1, "lon": LON}]
+cs, cr = A.cams(Spy([hourly_payload(["pm2_5", "uv_index"]), hourly_payload(["pm2_5", "uv_index"])]), cams_pts)
+assert len(asked) == 1, "one call for all points"
+assert asked[0][0] == A.CAMS and asked[0][1]["hourly"] == "pm2_5,uv_index" and asked[0][1]["forecast_days"] == 3
+assert asked[0][1]["latitude"].count(",") == 1, "multi-location: the points go in one request"
+assert [x["sensor_id"] for x in cs] == ["forecast-cams", "forecast-cams-8a1"] and cs[1]["meta"]["cell"] == "8a1"
+assert {m for _t, _s, m, _v in cr} == {"fc_pm25", "fc_uv", "fc_lead_hours"}
+assert max(t for t, *_ in cr) <= dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=72)
+# a single-point answer is a dict, a multi-point answer a list: both parse
+cs1, cr1 = A.cams(Spy(hourly_payload(["pm2_5", "uv_index"])), [PT])
+assert [x["sensor_id"] for x in cs1] == ["forecast-cams"] and cr1
+
+ms_keys = ["wave_height", "swell_wave_height", "swell_wave_period", "swell_wave_direction"]
+os.environ["COAST_MAX_KM"] = "30"
+asked.clear()
+ms, mr = A.marine(Spy(hourly_payload(ms_keys, LAT - .035, LON - .03)), [PT])
+assert len(asked) == 1 and asked[0][0] == A.MARINE and asked[0][1]["hourly"] == ",".join(ms_keys) and asked[0][1]["forecast_days"] == 3
+assert [x["sensor_id"] for x in ms] == ["forecast-marine"]
+assert (ms[0]["lat"], ms[0]["lon"]) == (LAT - .035, LON - .03), "the sea cell the API snapped to is stored"
+assert {m for _t, _s, m, _v in mr} == {"fc_wave_m", "fc_swell_m", "fc_swell_s", "fc_swell_dir", "fc_lead_hours"}
+assert A.marine(Spy(hourly_payload(ms_keys, LAT + 1.0, LON)), [PT]) == ([], []), "a sea cell 110 km off is not this node's sea (COAST_MAX_KM)"
+for src, mets in (("forecast-cams", ("fc_pm25", "fc_uv")), ("forecast-marine", ("fc_wave_m", "fc_swell_m", "fc_swell_s", "fc_swell_dir"))):
+    for m in mets + ("fc_lead_hours",):
+        c = ch[(src, m)]
+        assert c["role"] == "derived" and c["comparable"] is False and c["unit"], (src, m, c)
+assert (ch[("forecast-cams", "fc_pm25")]["unit"], ch[("forecast-marine", "fc_swell_dir")]["unit"]) == ("µg/m³", "°")
+
 # ---- the cadence. The pack runs in the core 300 s loop; FORECAST_POLL_HOURS is how often it may ask, and a restart
 # or a failed fetch must not ask again sooner. 13 Oct: asking every poll spent Open-Meteo's daily limit by 06:15 UTC.
 # Each source has its own stamp, out/forecast.<source>.last, so one that is refused does not hold the others.
@@ -172,14 +215,15 @@ class Count:
     def get(s, url, params=None, headers=None, timeout=None): calls.append(url); raise RuntimeError("429")
 os.environ.update(FORECAST_OPENMETEO="1", FORECAST_BMKG="0", NODE_LAT=str(LAT), NODE_LON=str(LON), FORECAST_POLL_HOURS="6")
 A.fetch(Count()); first = len(calls)
-assert first == 1, f"a refused point is asked once and the field is not tried behind it: {calls}"
+assert first == 2, f"a refused point is asked once, the field is not tried behind it, and the air is asked too: {calls}"
 A.fetch(Count()); A.fetch(Count())
 assert len(calls) == first, "a second poll inside the retry wait asks nothing, even after a failure"
 A.fetch(Count(), force=True)
 assert len(calls) == 2 * first, "`planetai run forecast fetch` asks now"
 stamp = lambda src: os.path.join(os.environ["PACK_OUT"], f"forecast.{src}.last")  # noqa: E731
 assert not os.path.exists(os.path.join(os.environ["PACK_OUT"], "forecast.last")), "one stamp a source, not one for the pack"
-os.utime(stamp("om"), (0, 0))
+for src in ("om", "cams"):
+    os.utime(stamp(src), (0, 0))
 A.fetch(Count())
 assert len(calls) == 3 * first, "once the hours have passed, it asks again"
 
@@ -213,7 +257,9 @@ class Route:
         s.asked.append(url)
         if url in s.down:
             raise RuntimeError("429")
-        return R({A.BMKG: bm, A.OPEN_METEO: om_payload()}[url])
+        return R({A.BMKG: bm, A.OPEN_METEO: om_payload(),
+                   A.CAMS: hourly_payload(["pm2_5", "uv_index"]),
+                   A.MARINE: hourly_payload(ms_keys, LAT - .035, LON - .03)}[url])
 
 
 def fresh(**env):
@@ -225,15 +271,15 @@ def fresh(**env):
 # one source refused: the others still fetch and store, and only the refused one waits 30 minutes
 fresh(FORECAST_BMKG="1")
 hc = Route(down=[A.OPEN_METEO]); sens, rd = A.fetch(hc)
-assert {s["sensor_id"] for s in sens} == {"forecast-bmkg"}, "BMKG answered and is stored"
-assert not A._due("bmkg") and not A._due("om")
-assert aged("om", 31) and not aged("bmkg", 31), "the refused one retries in 30 minutes, the other in six hours"
+assert {s["sensor_id"] for s in sens} == {"forecast-bmkg", "forecast-cams"}, "BMKG and the air answered and are stored"
+assert not A._due("bmkg") and not A._due("cams") and not A._due("om")
+assert aged("om", 31) and not aged("bmkg", 31) and not aged("cams", 31), "the refused one retries in 30 minutes, the others in six hours"
 # two due sources make exactly two calls, a source that is not due makes none
-fresh(FORECAST_BMKG="1")
+fresh(FORECAST_BMKG="1"); A._stamp("om")
 hc = Route(); A.fetch(hc)
-assert sorted(hc.asked) == sorted([A.BMKG, A.OPEN_METEO]), f"bmkg and om are due: {hc.asked}"
+assert sorted(hc.asked) == sorted([A.BMKG, A.CAMS]), f"bmkg and cams are due, om is not: {hc.asked}"
 hc = Route(); A.fetch(hc)
-assert hc.asked == [], "neither is due now"
+assert hc.asked == [], "nothing is due now"
 os.utime(stamp("om"), (0, 0))
 hc = Route(); A.fetch(hc)
 assert hc.asked == [A.OPEN_METEO], f"only om is due again: {hc.asked}"
@@ -242,8 +288,48 @@ fresh(FORECAST_BMKG="0")
 def _no_field(*a): raise RuntimeError("429")
 A.write_wind_field = _no_field
 sens, rd = A.fetch(Route())
-assert [s["sensor_id"] for s in sens] == ["forecast-om"] and rd, "the point forecast is kept"
+assert [s["sensor_id"] for s in sens] == ["forecast-om", "forecast-cams"] and rd, "the point forecast is kept"
 assert not A._due("om") and aged("om", 31), "and the field is asked again in half an hour, not six hours"
+# ---- marine runs only while the coast pack is on, and only with Open-Meteo on
+real_pack_on, coast = A._pack_on, [False]
+A._pack_on = lambda pid: coast[0] and pid == "coast"
+fresh(FORECAST_BMKG="0")
+hc = Route(); A.fetch(hc)
+assert A.MARINE not in hc.asked and A.CAMS in hc.asked, f"coast is off, so no sea: {hc.asked}"
+coast[0] = True; fresh(FORECAST_BMKG="0")
+hc = Route(); sens, rd = A.fetch(hc)
+assert hc.asked.count(A.MARINE) == 1 and {s["sensor_id"] for s in sens} == {"forecast-om", "forecast-cams", "forecast-marine"}, hc.asked
+for sid in ("forecast-om", "forecast-cams", "forecast-marine"):
+    assert any(s == sid and m == "fc_lead_hours" for _t, s, m, _v in rd), f"{sid} stores how far ahead each value is"
+assert not A._due("om") and not A._due("cams") and not A._due("marine"), "each of the three has stamped its own clock"
+fresh(FORECAST_BMKG="0"); os.environ["FORECAST_OPENMETEO"] = "0"
+hc = Route(); sens, rd = A.fetch(hc)
+assert hc.asked == [] and not sens, f"Open-Meteo is off, and that switch gates the air and the sea too: {hc.asked}"
+fresh(FORECAST_BMKG="0"); os.environ.pop("FORECAST_OPENMETEO")
+hc = Route(); A.fetch(hc)
+assert hc.asked == [], "FORECAST_OPENMETEO unset is off"
+# a sea cell too far off: asked once, stamped as answered, and nothing stored
+fresh(FORECAST_BMKG="0")
+class FarSea(Route):
+    def get(s, url, params=None, headers=None, timeout=None):
+        return R(hourly_payload(ms_keys, LAT + 1.0, LON)) if url == A.MARINE else Route.get(s, url, params, headers, timeout)
+sens, rd = A.fetch(FarSea())
+assert "forecast-marine" not in {s["sensor_id"] for s in sens} and not A._due("marine") and not aged("marine", 31), \
+    "a node that is not coastal is not asked again in half an hour"
+A._pack_on = real_pack_on
+
+# _pack_on asks the loader that decides it: PACKS_ENABLED, or every pack in PACKS_DIR when that is blank
+import packs as P  # noqa: E402
+_real_dir = P.PACKS_DIR
+P.PACKS_DIR = __import__("pathlib").Path(tempfile.mkdtemp())
+for pid in ("coast", "forecast"):
+    (P.PACKS_DIR / pid).mkdir(); (P.PACKS_DIR / pid / "pack.yaml").write_text(f"id: {pid}\n")
+os.environ["PACKS_ENABLED"] = "forecast"
+assert A._pack_on("forecast") and not A._pack_on("coast")
+os.environ["PACKS_ENABLED"] = "forecast,coast"
+assert A._pack_on("coast")
+P.PACKS_DIR = _real_dir; os.environ.pop("PACKS_ENABLED")
+
 # Open-Meteo off (the default) asks it nothing, BMKG still answers
 fresh(FORECAST_BMKG="1"); os.environ.pop("FORECAST_OPENMETEO")
 hc = Route(); sens, rd = A.fetch(hc)
