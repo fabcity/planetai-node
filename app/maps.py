@@ -680,8 +680,14 @@ def daily_readings() -> None:
     """Hourly, once a local day: how many drawings the household has made and how much ground they cover, on the
     node's own `place-gis` survey sensor. Both are `private` (config/channels.yml), so no road out of the house carries
     them. The reading's time is the start of the node's local day (the session runs in NODE_TZ), so a later call the
-    same day updates that row and a duplicate is impossible. An agent's map and a child's are not the household's."""
+    same day updates that row and a duplicate is impossible. Nothing is written, and no sensor made, until the
+    household has drawn something. An agent's map and a child's are not the household's."""
     with db() as con, con.transaction(), con.cursor() as cur:
+        cur.execute("""SELECT EXISTS (SELECT 1 FROM sensors WHERE sensor_id = 'place-gis') AS known,
+                              EXISTS (SELECT 1 FROM place_marks k JOIN place_maps m ON m.id = k.map_id
+                                       WHERE m.agent IS NULL AND m.from_node IS NULL) AS drew""")
+        if not any(cur.fetchone().values()):
+            return          # a node that never drew has no sensor and no zeros; once it has one, it keeps writing
         cur.execute("""INSERT INTO sensors (sensor_id, source, name, kind, local, indoor, cadence)
                        VALUES ('place-gis', 'place', 'What this home has drawn', 'survey', TRUE, FALSE, 'P1D')
                        ON CONFLICT (sensor_id) DO NOTHING""")

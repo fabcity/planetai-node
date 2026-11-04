@@ -398,16 +398,25 @@ assert one("SELECT count(*) AS n FROM place_maps WHERE from_node = 'kid'")["n"] 
 httpx.post = real_post
 print("  the parent keeps a child's map whole, read-only, and lets it go on delete")
 
+ac.execute("DELETE FROM place_maps WHERE id = %s", (SH,))
+ac.execute("DELETE FROM actions WHERE stage = 'place' OR choice LIKE 'place.mark:%%' OR alert_id IN (%s, %s)", (A, A2))
+ac.execute("DELETE FROM place_maps WHERE id IN (%s, %s)", (mid, AG))
+ac.execute("DELETE FROM alerts WHERE id IN (%s, %s)", (A, A2))
+ac.execute("DELETE FROM alert_events WHERE id = %s", (E,))
 # ---------------------------------------------------------------- the daily count
+import index  # noqa: E402
 import packs  # noqa: E402
 
 main.load_channel_roles()                                 # the table the private test selects through; main.start() fills it on a node
+SENSOR = lambda: ac.execute("SELECT count(*) AS n FROM sensors WHERE sensor_id = 'place-gis'").fetchone()["n"]  # noqa: E731
 READ = lambda: ac.execute("SELECT metric, value FROM readings WHERE sensor_id = 'place-gis' "   # noqa: E731
                           "AND ts = date_trunc('day', now()) ORDER BY metric").fetchall()
+assert one("SELECT count(*) AS n FROM place_marks k JOIN place_maps m ON m.id = k.map_id WHERE m.agent IS NULL AND m.from_node IS NULL")["n"] == 0
 maps.daily_readings()
-before = {x["metric"]: x["value"] for x in READ()}
-assert set(before) == {"marks", "marked_area_m2"}, before
+assert SENSOR() == 0 and READ() == [], "a node that never drew has no place-gis sensor and no zeros"
 HM = c.post("/place/maps", json={"name": "Count me", "actor": "Tomas"}, headers=H).json()["map"]["id"]
+maps.daily_readings()
+assert SENSOR() == 0, "a map with nothing drawn on it is not a drawing"
 for lon in (115.167, 115.169):
     ring = [[lon, -8.819], [lon + .001, -8.819], [lon + .001, -8.818], [lon, -8.819]]
     assert c.post(f"/place/maps/{HM}/marks", headers=H, json={"type": "Feature", "actor": "Tomas",
@@ -422,20 +431,30 @@ maps.daily_readings()
 maps.daily_readings()
 got = {x["metric"]: x["value"] for x in READ()}
 assert len(READ()) == 2, "a second call the same day updates the row, never a second one"
-assert got["marks"] == before["marks"] + 2, (before, got)
-assert abs(got["marked_area_m2"] - before["marked_area_m2"] - area) < 1, "an agent's map and a child's map are not the household's"
-assert one("SELECT count(*) AS n FROM sensors WHERE sensor_id = 'place-gis' AND source = 'place' AND local AND NOT indoor")["n"] == 1
+assert got["marks"] == 2, got
+assert abs(got["marked_area_m2"] - area) < 1, "an agent's map and a child's map are not the household's"
+assert SENSOR() == 1 and one("SELECT count(*) AS n FROM sensors WHERE sensor_id = 'place-gis' AND source = 'place' AND local AND NOT indoor")["n"] == 1
 leak = ac.execute("SELECT metric FROM readings WHERE sensor_id = 'place-gis' AND " + packs.public_sql("readings")).fetchall()
 assert leak == [], "both counts are private: nothing reads them through public_sql"
-ac.execute("DELETE FROM place_maps WHERE id IN (%s, %s, %s)", (HM, AGM, KM))
+
+# The Index cell gate counts in-custody sensors, and place-gis is local, so it has custody. A private reading is no
+# instrument: one real outdoor sensor plus the drawing count is still one sensor, and so still thin.
+ac.execute("""INSERT INTO sensors (sensor_id, source, name, indoor, local, kind) VALUES ('sc-ix-1', 'smartcitizen', 'ix', FALSE, TRUE, 'sensor')""")
+ac.execute("INSERT INTO readings (ts, sensor_id, metric, value) VALUES (now() - interval '10 minutes', 'sc-ix-1', 'pm25', 8)")
+ac.execute("INSERT INTO readings (ts, sensor_id, metric, value) VALUES (now() - interval '10 minutes', 'place-gis', 'marks', 2)")
+counts = index._buckets(ac.cursor())
+assert counts["sensors"] == 1, ("the drawing count made one sensor read as two", counts)
+assert counts["sensors"] < 2, "so a non-community node's cell stays partial, one kitchen is one kitchen"
+ac.execute("DELETE FROM readings WHERE sensor_id = 'sc-ix-1'")
+ac.execute("DELETE FROM sensors WHERE sensor_id = 'sc-ix-1'")
+
+ac.execute("DELETE FROM place_maps WHERE id = %s", (HM,))
+maps.daily_readings()
+assert {x["metric"]: x["value"] for x in READ()} == {"marks": 0, "marked_area_m2": 0}, "a node that drew and erased it all records zero"
+ac.execute("DELETE FROM place_maps WHERE id IN (%s, %s)", (AGM, KM))
 ac.execute("DELETE FROM readings WHERE sensor_id = 'place-gis'")
 ac.execute("DELETE FROM sensors WHERE sensor_id = 'place-gis'")
-print("  once a local day, the household's drawings are counted: two private readings, one row each")
+print("  the drawing count: nothing before the first drawing, then one private row a day; it never lifts an Index cell off one sensor")
 
-ac.execute("DELETE FROM place_maps WHERE id = %s", (SH,))
-ac.execute("DELETE FROM actions WHERE stage = 'place' OR choice LIKE 'place.mark:%%' OR alert_id IN (%s, %s)", (A, A2))
-ac.execute("DELETE FROM place_maps WHERE id IN (%s, %s)", (mid, AG))
-ac.execute("DELETE FROM alerts WHERE id IN (%s, %s)", (A, A2))
-ac.execute("DELETE FROM alert_events WHERE id = %s", (E,))
 print("maps: every check passed")
 sys.exit(0)
