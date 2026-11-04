@@ -616,7 +616,7 @@ assert _place.index('id="cake"') < _place.index('class="mapc"') < _place.index('
     < _place.index('id="ptools"') < _place.index('class="plow"') < _place.index('id="ptable"') < _place.index('id="pfigures"'), \
     "the cake, the screen with its status line and the marks around the house, the tools; then the lower band"
 assert 'class="pcols"' not in _place and 'id="reach"' not in _place and 'id="layers"' not in _place and 'id="pleads"' not in _place, "the old workbench is gone"
-assert "'#pfigures').innerHTML = `<h3 class=\"ph\">the place in figures</h3>` + yearly()" in (STATIC / "doors-place.js").read_text(), "Land and Coast are the place's figures"
+assert "'#pfigures').innerHTML = `<h3 class=\"pmh\">the place in figures</h3>` + yearly()" in (STATIC / "doors-place.js").read_text(), "Land and Coast are the place's figures"
 _css = html[html.index("/* ================= PLACE: a small GIS"):html.index("/* ================= NODE")]
 assert re.search(r"\.tools button,\.zoom button\{width:44px;height:44px", _css), "the map's tools are 44 px targets"
 assert "box-shadow:0 0 0 1px #000,0 0 0 5px #1b1b1b,0 0 0 6px #000" in _css and "border-radius:10px" in _css, "the screen sits in its bezel"
@@ -626,6 +626,11 @@ _v2 = _css[:_css.index("#pedges{")]   # the v2 rules; the swatches after them pr
 _v2 = _v2.replace(_v2[_v2.index(".mapc{--ink"):_v2.index(".mapw{")], "")   # the screen's own values and its bezel
 assert not re.search(r"#[0-9A-Fa-f]{3,6}\b", _v2), "no raw colour outside the screen: the frozen layer's names"
 assert re.search(r"@media \(max-width:760px\)\{[^@]*\.bench\{grid-template-columns:minmax\(0,1fr\)", html), "a phone: one column, the screen first"
+assert ".phour button{width:44px;height:44px" in _css and "min-height:44px;padding:0 12px" in _css and "#altbar button{background:none;border:1px solid var(--hair);border-radius:999px;color:var(--ink);width:44px;height:44px" in _css, \
+    "every target on the screen is 44 px: the hour, the rungs, the satellite's years"
+assert re.search(r"@media \(max-width:760px\)\{[^@]*#cake,#ptools\{display:none;position:fixed;left:0;right:0;bottom:0", html), "a phone's cake and tools are a sheet over the lower band"
+assert re.search(r"#cake,#ptools\{height:0;min-height:100%;overflow-y:auto", _css), "the cake and the tools scroll inside the bench, which the screen's column sets"
+assert not re.search(r"(^|[},])\.ph[ ,{]", _css, re.M), "Place's headings are .pmh: .ph is Set up's pack card"
 assert "overflow-x:auto" not in html[html.index("/* ================= NODE"):].split("\n")[1], "the flow never scrolls sideways"
 pprog = r"""
 const fs = require('fs'), vm = require('vm'), d3 = require('./app/static/d3.min.js');
@@ -687,8 +692,11 @@ assert "<svg" in _f["map"] and 'class="house"' in _f["map"] and "This house" not
 # the cake: every section in McHarg's order turned over, a row per layer, the not-yet rows dotted and disabled
 _ck = _f["cake"]
 assert [m for m in re.findall(r'data-cake="([a-z]+)"', _ck)] == ["results", "microclimate", "flows", "built", "animals", "plants", "soil", "water", "ground", "frame"], _ck[:300]
-assert re.search(r'data-l="terrain"><button class="ly soon" aria-pressed="false" disabled>', _ck) and "GLO-30" in _ck, "a row the node cannot fill stays, dotted, with its source"
-assert re.search(r'data-l="public"><button class="ly on" aria-pressed="true">', _ck), "a layer that is on says so to a screen reader"
+assert re.search(r'data-l="terrain"><button class="ly soon" aria-pressed="false" aria-disabled="true" title="GLO-30 · not yet">', _ck), "a row the node cannot fill stays, dotted, with its source"
+# one line a row (the v2 drawing): the dot, the name and one word for the source; the sentence is the title, and the status line on a press
+assert "<small>GLO-30</small></button>" in _ck and "<small>" not in _ck.replace("</span><small>", "") , "a row is one line: its source word inside the row"
+assert re.search(r'data-l="images"><button class="ly off held" aria-pressed="false" aria-disabled="true" title="withheld · unlock this screen in Set up › This screen">.*?token-only</small>', _ck), "withheld stays visible, in a word"
+assert re.search(r'data-l="public"><button class="ly on" aria-pressed="true" title="hollow · display only, never alert">', _ck), "a layer that is on says so to a screen reader"
 assert "live map only" in _ck and 'data-l="index"' not in _ck and "lystrip" not in _ck, "no strip; the Index is a figure"
 # locked, the images cannot draw, so four of the five are on; the status line says so
 assert "In view" in _f["facts"] and "res 8 in view" in _f["facts"] and re.search(r"4 of \d+ layers on", _f["facts"]), _f["facts"][:400]

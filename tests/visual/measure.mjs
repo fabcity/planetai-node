@@ -3469,7 +3469,7 @@ async function doors() {
         margin: document.getElementById('pmargin').innerText, facts: document.getElementById('facts').innerText };
     });
     ok(pl.secs === 10, `${tag} #place: the cake has ${pl.secs} sections, not 10`);
-    ok(pl.bg === 'rgb(0, 0, 0)', `${tag} #place: the screen is ${pl.bg}, not black`);
+    ok(pl.bg === 'rgb(23, 25, 29)', `${tag} #place: the screen is ${pl.bg}, not PAL.dark's land`);
     ok(pl.cake && pl.tools >= 10, `${tag} #place: the cake is ${pl.cake ? 'drawn' : 'not drawn'}, ${pl.tools} tools listed`);
     ok(w < 768 || pl.map >= 700, `${tag} #place: the screen is ${pl.map}px wide`);
     ok(w >= 768 || !pl.small, `${tag} #place: ${pl.small} target(s) under 44 × 44 px`);
@@ -3511,7 +3511,7 @@ async function doors() {
       const WANT = { '#now': ['now-sentence', 'now-todo', 'now-rows'], '#place': ['place-head', 'place-map'].concat(w < 768 ? [] : ['place-layers', 'place-tools']),   /* a phone keeps the cake and the tools in closed sheets */
         '#node': ['node-verdict', 'node-flow', 'node-refusals'], '#data/readings': ['data-head', 'data-readings', 'data-week'],
         '#data/home': ['data-images', 'data-things'], '#setup': ['settings', 'setup-sections', 'setup-save'], '#wall': ['wall-never', 'wall-sentence', 'wall-map'] };
-      const NOT = { '#place': ['place-orbit', 'place-changed', 'earth'], '#data/home': ['data-ledger', 'data-readings'], '#wall': ['bar', 'foot'] };
+      const NOT = { '#place': ['place-orbit', 'earth'], '#data/home': ['data-ledger', 'data-readings'], '#wall': ['bar', 'foot'] };
       let parts = 0;
       for (const [h, want] of Object.entries(WANT)) {
         await go(r.page, h); await r.page.waitForTimeout(h === '#setup' || h === '#wall' ? 1200 : 600);

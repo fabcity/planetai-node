@@ -46,37 +46,37 @@ const mayLeave = r => r <= 6;
    switched on. `soon` is a row the node cannot fill at all yet: it stays, dotted, naming the source it would draw from.
    FIVE ON (Tomas, 15 Oct): the street, the node's cell, the outdoor kit, the public stations and the images. */
 const LAYERS = [
-  { id: 'own', cake: 'microclimate', pack: 'core', name: 'Outdoor kit', sub: 'this house’s stations outside · filled', on: true },
-  { id: 'public', cake: 'microclimate', pack: 'nearby', name: 'Public stations', sub: 'hollow · display only, never alert', on: true },
-  { id: 'wind', cake: 'microclimate', pack: 'forecast', name: 'Wind, moving', sub: 'Open-Meteo field round the node', on: false, need: 'wind', still: true },
-  { id: 'models', cake: 'microclimate', pack: 'core', name: 'Model points', sub: 'sea, air, land, weather', on: false },
-  { id: 'flowlog', cake: 'flows', pack: 'flows', name: 'The flows log', sub: 'made, used, fixed and taken in, by class and ring', soon: true, empty: true },
-  { id: 'labs', cake: 'flows', pack: 'make', name: 'Places to make', sub: 'from fablabs.io', on: false },
-  { id: 'satonly', cake: 'built', pack: 'place', name: 'Only the satellite knows', sub: 'buildings missing from OSM', on: false, minz: 12.5 },
-  { id: 'radio', cake: 'built', pack: 'reticulum', name: 'What leaves by radio', sub: 'the res-3 cell it announces', on: false, maxz: 10 },
+  { id: 'own', cake: 'microclimate', pack: 'core', src: 'this house', name: 'Outdoor kit', sub: 'this house’s stations outside · filled', on: true },
+  { id: 'public', cake: 'microclimate', pack: 'nearby', src: 'nearby', name: 'Public stations', sub: 'hollow · display only, never alert', on: true },
+  { id: 'wind', cake: 'microclimate', pack: 'forecast', src: 'Open-Meteo', name: 'Wind, moving', sub: 'Open-Meteo field round the node', on: false, need: 'wind', still: true },
+  { id: 'models', cake: 'microclimate', pack: 'core', src: 'models', name: 'Model points', sub: 'sea, air, land, weather', on: false },
+  { id: 'flowlog', cake: 'flows', pack: 'flows', src: 'flows', name: 'The flows log', sub: 'made, used, fixed and taken in, by class and ring', soon: true, empty: true },
+  { id: 'labs', cake: 'flows', pack: 'make', src: 'fablabs.io', name: 'Places to make', sub: 'from fablabs.io', on: false },
+  { id: 'satonly', cake: 'built', pack: 'place', src: 'satellite', name: 'Only the satellite knows', sub: 'buildings missing from OSM', on: false, minz: 12.5 },
+  { id: 'radio', cake: 'built', pack: 'reticulum', src: 'res 3', name: 'What leaves by radio', sub: 'the res-3 cell it announces', on: false, maxz: 10 },
   /* the species somebody here confirmed in the household's images (SPEC_species §4), token-only: GET /species. GBIF's
      open records are a count per species (the list under this row), never points, so nothing hollow is drawn for them. */
-  { id: 'species', cake: 'animals', pack: 'core', name: 'Species confirmed here', sub: 'at the image’s point', on: true },
+  { id: 'species', cake: 'animals', pack: 'core', src: 'confirmed', name: 'Species confirmed here', sub: 'at the image’s point', on: true },
   /* no shape on this map, whatever the node holds: the change is a picture in UTM metres with its own words burned in.
      packRows() says where it is instead. */
-  { id: 'earth', cake: 'plants', pack: 'earth', name: 'Land change raster', sub: 'AlphaEarth, year on year', empty: true },
-  { id: 'canopy', cake: 'plants', pack: 'place', name: 'Canopy', sub: 'Meta/WRI, 1 m', soon: true, empty: true },
-  { id: 'soilgrids', cake: 'soil', pack: 'place', name: 'Soil', sub: 'SoilGrids 2.0, 250 m', soon: true, empty: true },
-  { id: 'soilsamples', cake: 'soil', pack: 'core', name: 'Soil samples', sub: 'taken here', soon: true, empty: true },
-  { id: 'rain', cake: 'water', pack: 'terrain', name: 'Where the rain goes', sub: 'the terrain pack', soon: true, empty: true },
-  { id: 'watersamples', cake: 'water', pack: 'core', name: 'Water samples', sub: 'taken here', soon: true, empty: true },
-  { id: 'terrain', cake: 'ground', pack: 'terrain', name: 'Terrain', sub: 'GLO-30', soon: true, empty: true },
-  { id: 'geology', cake: 'ground', pack: 'place', name: 'Geology', sub: 'no open source chosen yet', soon: true, empty: true },
+  { id: 'earth', cake: 'plants', pack: 'earth', src: 'AlphaEarth', name: 'Land change raster', sub: 'AlphaEarth, year on year', empty: true },
+  { id: 'canopy', cake: 'plants', pack: 'place', src: 'Meta/WRI', name: 'Canopy', sub: 'Meta/WRI, 1 m', soon: true, empty: true },
+  { id: 'soilgrids', cake: 'soil', pack: 'place', src: 'SoilGrids', name: 'Soil', sub: 'SoilGrids 2.0, 250 m', soon: true, empty: true },
+  { id: 'soilsamples', cake: 'soil', pack: 'core', src: 'samples', name: 'Soil samples', sub: 'taken here', soon: true, empty: true },
+  { id: 'rain', cake: 'water', pack: 'terrain', src: 'terrain', name: 'Where the rain goes', sub: 'the terrain pack', soon: true, empty: true },
+  { id: 'watersamples', cake: 'water', pack: 'core', src: 'samples', name: 'Water samples', sub: 'taken here', soon: true, empty: true },
+  { id: 'terrain', cake: 'ground', pack: 'terrain', src: 'GLO-30', name: 'Terrain', sub: 'GLO-30', soon: true, empty: true },
+  { id: 'geology', cake: 'ground', pack: 'place', src: 'no source', name: 'Geology', sub: 'no open source chosen yet', soon: true, empty: true },
   /* the frame: the cell, the grid, the base maps, the household's own images (SPEC_eyes step 1). The street map carries
      its names: one row, not two. */
-  { id: 'mine', cake: 'frame', pack: 'core', name: 'The cell it stands in', sub: 'at the resolution in view', on: true },
-  { id: 'grid', cake: 'frame', pack: 'core', name: 'H3 cells at this scale', sub: 'dotted where a cell may leave', on: false },
-  { id: 'street', cake: 'frame', pack: 'place', name: 'Street map', sub: 'OpenStreetMap, with its names, kept on this node', on: true, still: true },
-  { id: 'imagery', cake: 'frame', pack: 'earth-engine', name: 'Satellite, 10 m', sub: 'Sentinel-2, composited by this node', on: false, need: 'imagery' },
-  { id: 'drone', cake: 'frame', pack: 'place', name: 'Drone imagery', sub: 'OpenAerialMap, where somebody flew', on: false, need: 'drone', minz: 13 },
-  { id: 'rings', cake: 'frame', pack: 'nearby', name: 'Distance rings', sub: '2, 5 and 15 km', on: false },
-  { id: 'images', cake: 'frame', pack: 'core', name: 'Images', sub: 'what the household added', on: true },
-  { id: 'peers', cake: 'frame', pack: 'reticulum', name: 'Nodes heard nearby', sub: 'their announced cells', empty: true },
+  { id: 'mine', cake: 'frame', pack: 'core', src: 'H3', name: 'The cell it stands in', sub: 'at the resolution in view', on: true },
+  { id: 'grid', cake: 'frame', pack: 'core', src: 'H3', name: 'H3 cells at this scale', sub: 'dotted where a cell may leave', on: false },
+  { id: 'street', cake: 'frame', pack: 'place', src: 'OSM', name: 'Street map', sub: 'OpenStreetMap, with its names, kept on this node', on: true, still: true },
+  { id: 'imagery', cake: 'frame', pack: 'earth-engine', src: 'Sentinel-2', name: 'Satellite, 10 m', sub: 'Sentinel-2, composited by this node', on: false, need: 'imagery' },
+  { id: 'drone', cake: 'frame', pack: 'place', src: 'OAM', name: 'Drone imagery', sub: 'OpenAerialMap, where somebody flew', on: false, need: 'drone', minz: 13 },
+  { id: 'rings', cake: 'frame', pack: 'nearby', src: '2 · 5 · 15 km', name: 'Distance rings', sub: '2, 5 and 15 km', on: false },
+  { id: 'images', cake: 'frame', pack: 'core', src: 'this house', name: 'Images', sub: 'what the household added', on: true },
+  { id: 'peers', cake: 'frame', pack: 'reticulum', src: 'radio', name: 'Nodes heard nearby', sub: 'their announced cells', empty: true },
 ];
 LAYERS.forEach(l => { PM.on[l.id] = !!l.on && !l.empty; PM.alpha[l.id] = 1; });
 const ON = () => LAYERS.filter(l => PM.on[l.id]).length;   // the status line's count
@@ -92,7 +92,7 @@ function imageRows() {
   const kinds = d3.rollups(C, v => v.length, c => c.kind).map(([k, v]) => `${v} ${(KIND[k] || k).toLowerCase()}`).join(', ');
   im.locked = sp.locked = !PM.caps; im.empty = !C.length; sp.empty = !S.length;
   im.none = 'none yet · + Add an image, above the map'; sp.none = 'none confirmed yet · confirm what an image shows in Data › Images';
-  im.sub = `${C.length} · ${kinds}`;
+  im.sub = `${C.length} · ${kinds}`; im.src = `${C.length} here`; sp.src = `${S.length} here`;
   sp.sub = `${S.length} confirmed · ${S.slice(0, 2).map(short).join(', ')}${S.length > 2 ? ', …' : ''}`;
   PM.on.images = !im.empty; PM.on.species = !sp.empty;
 }
@@ -386,7 +386,7 @@ function margin() {
   if (more) rows = rows.sort((a, b) => far(a) - far(b)).slice(0, MAX - 1);
   rows.sort((a, b) => far(a) - far(b) || (a.held ? -1 : b.held ? 1 : 0));
   const dist = m => m.house ? '0 m' : m.m != null ? fmtM(m.m) : DIST.get(m.key) != null ? fmtM(DIST.get(m.key)) : tok ? '…' : '—';
-  el.innerHTML = `<div class="ph">around the house <b>nearest first</b></div>`
+  el.innerHTML = `<div class="pmh">around the house <b>nearest first</b></div>`
     + rows.map((m, i) => m.held ? `<div class="mr held">${WH}<span>${esc(m.held)}</span><b>withheld</b></div>`
       : `<button class="mr" data-i="${i}">${m.house ? sign('sign-house') : `<i class="sw ${m.sw}" aria-hidden="true"></i>`}<span class="said">${esc(m.name)}</span><b>${dist(m)}</b></button>`).join('')
     + (more ? `<div class="mr"><i></i><span>+ ${more} more, further from the house</span><b></b></div>` : '')
@@ -411,21 +411,30 @@ function margin() {
 
 /* ---------------------------------------------------------------- the cake (SPEC_place_microgis §4, §5)
    The left column: results, then the layers from the sky down to the ground, then the frame (doors-cake.js). A section is
-   its name and how many of its rows are on; a row is an OP-XY dot (filled with a ring on, hollow off, dotted not yet), the
-   layer's name, and under it its source, or why it cannot draw. The wind's hour and a layer's opacity sit under their
-   rows; the species confirmed here open under theirs (#spd, moved in, never redrawn). */
+   its name and how many of its rows are on; a row is one line, as in the v2 drawing: an OP-XY dot (filled with a ring on,
+   hollow off, dotted not yet), the layer's name and a word for its source, or for why it cannot draw (token-only, not
+   here, live map). The whole sentence, with its unlock link or its command, is the row's title and goes to the status
+   line under the screen when the row is pressed. The wind's hour and a layer's opacity sit under their rows; the species
+   confirmed here open under theirs (#spd, moved in, never redrawn). */
 const BY = Object.fromEntries(LAYERS.map(l => [l.id, l]));
+/* a layer as the cake says it: `off` cannot be switched, `brief` is the word on the row, `long` the sentence (html) */
+function about(l) {
+  const z = PM.map ? PM.map.getZoom() : 0, flatOff = PM.flat && !FLAT.includes(l.id), off = l.empty || flatOff;
+  const hidden = PM.on[l.id] && !PM.flat && ((l.minz != null && z < l.minz) || (l.maxz != null && z > l.maxz));
+  const zoom = hidden ? (l.minz != null && z < l.minz ? 'zoom in' : 'zoom out') : '';
+  const long = l.soon ? `${esc(l.sub)} · not yet` : flatOff ? 'drawn on the live map only' : l.locked ? `withheld · unlock this screen in ${UNLOCK_AT}`
+    : off ? l.none || `The ${l.pack} pack has nothing here yet${l.why ? ` · <code>${esc(l.why)}</code>` : ''}` : esc(l.sub) + (zoom ? ` · ${zoom} to see` : '');
+  const brief = l.soon ? esc(l.src) : flatOff ? 'live map' : l.locked ? `${WH}token-only` : off ? 'not here' : zoom || esc(l.src);
+  return { off, brief, long };
+}
 function panel() {
-  const z = PM.map ? PM.map.getZoom() : 0, spd = document.getElementById && document.getElementById('spd');
+  const spd = document.getElementById && document.getElementById('spd');
   const row = r => {
-    const l = BY[r.id], soon = r.state === 'soon';
-    const hidden = PM.on[l.id] && !PM.flat && ((l.minz != null && z < l.minz) || (l.maxz != null && z > l.maxz));
-    const off = l.empty || (PM.flat && !FLAT.includes(l.id));
-    const why = soon ? `${esc(l.sub)} · not yet` : PM.flat && !FLAT.includes(l.id) ? 'drawn on the live map only' : l.locked ? `${WH}withheld · unlock this screen in ${UNLOCK_AT}` : l.none ? l.none : `The ${l.pack} pack has nothing here yet${l.why ? ` · <code>${esc(l.why)}</code>` : ''}`;
-    return `<div class="lyr" data-l="${l.id}"><button class="ly ${r.state}" aria-pressed="${r.state === 'on'}"${off ? ' disabled' : ''}><i aria-hidden="true"></i><span>${esc(l.name)}</span></button>`
-      + `<small>${off ? why : esc(l.sub)}${hidden ? ` · ${l.minz != null && z < l.minz ? 'zoom in to see' : 'zoom out to see'}` : ''}</small>`
+    const l = BY[r.id], a = about(l);
+    return `<div class="lyr" data-l="${l.id}"><button class="ly ${r.state}${l.locked ? ' held' : ''}" aria-pressed="${r.state === 'on'}"${a.off ? ' aria-disabled="true"' : ''} title="${esc(a.long.replace(/<[^>]+>/g, ''))}">`
+      + `<i aria-hidden="true"></i><span>${esc(l.name)}</span><small>${a.brief}</small></button>`
       + (l.id === 'wind' && PM.on.wind && PM.wind ? `<label class="whr"><span>now</span><input type="range" min="0" max="${PM.wind.times.length - 1 - nowIdx()}" step="1" value="${PM.windStep}" aria-label="Hours ahead"><b>${PM.windStep ? `+${PM.windStep} h` : 'now'}</b></label>` : '')
-      + (off || l.still || PM.flat ? '' : `<input class="op" type="range" min="0" max="1" step="0.05" value="${PM.alpha[l.id]}" aria-label="${esc(l.name)} opacity" ${PM.on[l.id] ? '' : 'disabled'}>`)
+      + (a.off || l.still || PM.flat ? '' : `<input class="op" type="range" min="0" max="1" step="0.05" value="${PM.alpha[l.id]}" aria-label="${esc(l.name)} opacity" ${PM.on[l.id] ? '' : 'disabled'}>`)
       + (l.id === 'species' ? '<div data-slot="species"></div>' : '') + `</div>`;
   };
   $('#cake').innerHTML = cakeSections(LAYERS, PM.on).map(s => `<section class="ck" data-cake="${s.id}"><h3><span>${esc(s.name)}</span>`
@@ -433,7 +442,8 @@ function panel() {
   const slot = document.querySelector('#cake [data-slot="species"]'); if (spd && slot) slot.replaceWith(spd);
   document.querySelectorAll('#cake .lyr').forEach(w => {
     const id = w.dataset.l, b = w.querySelector('button.ly'), op = w.querySelector('.op'), wh = w.querySelector('.whr input');
-    b.onclick = () => setLayer(id, !PM.on[id]);
+    /* a press says the row's whole sentence in the status line; a row that can switch, switches */
+    b.onclick = () => { PM.pick = { kind: 'layer', id }; if (about(BY[id]).off) facts(); else setLayer(id, !PM.on[id]); };
     if (wh) wh.oninput = () => { PM.windStep = +wh.value; w.querySelector('.whr b').textContent = PM.windStep ? `+${PM.windStep} h` : 'now'; windResample(); facts(); hourPill(); };
     if (op) op.oninput = () => { PM.alpha[id] = +op.value; applyBase(); redraw(); };
   });
@@ -526,6 +536,8 @@ async function facts() {
       if (!DOORS_TOKEN()) return;
       const [d, c] = await Promise.all([fromNode(s.lon, s.lat), cellAt(s.lon, s.lat, r)]);
       put(head + row('from this node', fmtM(d)) + pm + row('cell at res ' + r, c.id) + tail);
+    } else if (o && o.kind === 'layer') {
+      const l = BY[o.id]; put(`<span class="k">${esc(l.name)}</span><span>${about(l).long}</span>` + hint(`the ${esc(l.pack)} pack`));
     } else if (o && o.kind === 'model') {
       put(`<span class="k">Model points here · ${o.ss.length}</span>` + o.ss.map(x => `<span class="said">${esc(x.name)}</span>`).join('') + prov('model') + hint('a model is partial, whatever its quality'));
     } else if (o && o.kind === 'cell') {

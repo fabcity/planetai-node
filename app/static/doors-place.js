@@ -32,8 +32,10 @@ VIEWS.place = function () {
   });
   speciesBlock(); placeTools(); figures(); placeMap(); layer();
 };
-/* `/` puts the cursor in the Ask line, on Place, unless something is being typed already */
+/* `/` puts the cursor in the Ask line, on Place, unless something is being typed already; Esc closes a phone's sheet */
 document.addEventListener('keydown', e => {
+  const bench = document.querySelector('.bench');
+  if (e.key === 'Escape' && bench && bench.dataset.sheet) { document.querySelector(`.psbar [data-s="${bench.dataset.sheet}"]`).click(); return; }
   if (e.key !== '/' || view() !== 'place' || e.target.closest('input, textarea, select, [contenteditable]')) return;
   e.preventDefault(); $('#paskq').focus();
 });
@@ -104,12 +106,14 @@ const TOOLS = [
   ['fitness', [['One more tree', 'fit.tree'], ['A roof for a panel', 'fit.roof'], ['A garden bed', 'fit.grow'], ['Catching rain', 'fit.rain']]],
 ];
 function placeTools() {
-  const on = (window.__PM || { on: {} }).on, tok = !!DOORS_TOKEN();
-  $('#ptools').innerHTML = TOOLS.map(([h, ts]) => `<h3 class="ph">${h}</h3>` + ts.map(([n, id, l]) => l
+  const on = (window.__PM || { on: {} }).on, tok = !!DOORS_TOKEN(), a = document.activeElement;
+  const keep = a && a.closest && a.closest('#ptools') && a.dataset.layer;   // a press from here keeps its focus through the redraw
+  $('#ptools').innerHTML = TOOLS.map(([h, ts]) => `<h3 class="pmh">${h}</h3>` + ts.map(([n, id, l]) => l
     ? `<button class="tl${on[l] ? ' on' : ''}" aria-pressed="${!!on[l]}" data-layer="${l}"${tok ? '' : ' disabled'}><span>${n}</span><code>${id}</code></button>`
     : `<div class="tl soon" title="${id}"><span>${n}</span><code>not yet</code></div>`).join('')).join('')
     + (tok ? '' : `<p class="fine">Tools run on this node with a token. Unlock this screen in Set up.</p>`);
   document.querySelectorAll('#ptools button[data-layer]').forEach(b => b.onclick = () => window.placeLayer(b.dataset.layer, !on[b.dataset.layer]));
+  const b = keep && document.querySelector(`#ptools [data-layer="${keep}"]`); if (b) b.focus();
 }
 window.placeTools = placeTools;
 
@@ -117,7 +121,7 @@ window.placeTools = placeTools;
    the hour), the Index cells, and what is not here yet. */
 function figures() {
   const ch = ((D.earth || {}).changes || []).slice(-1)[0], nI = new Set(D.index_cells.map(c => c.cell)).size;
-  $('#pfigures').innerHTML = `<h3 class="ph">the place in figures</h3>` + yearly()
+  $('#pfigures').innerHTML = `<h3 class="pmh">the place in figures</h3>` + yearly()
     + `<div class="fr"><span>Index cells<small>of the Fab City Index for this place · <a href="#node/cells">Node › Index cells</a></small></span>`
     + `<b>${num('place.index', `${nI} of 20`, 'cells of the Fab City Index holding a value')} ${prov('partial')}</b></div>`
     + `<div class="fr"><span>Production and trade · Water and soil · Forecast<small>coming to this place: no adapter, no source, or no village code yet</small></span><b><span class="soon">not yet</span></b></div>`
