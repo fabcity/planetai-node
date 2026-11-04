@@ -9,7 +9,7 @@ Everything on it comes from forecasts the node fetches, from BMKG and from the m
 the next 72 hours of each, and judges air and heat against its own issues' lines, at its own point and across the
 cells around it.
 
-![Next days on node #1: air, heat, wind and rain, the sea and surf for today, tomorrow and the day after](img/next-days.jpg "Node #1 in Ungasan on 3 Nov 2026, with Open-Meteo on.")
+![Next days on node #1: air, heat, wind and rain, the sea and surf for today, tomorrow and the day after](img/next-days.jpg "Node #1 in Ungasan on 4 Nov 2026, with Open-Meteo on.")
 
 ## What it shows
 
