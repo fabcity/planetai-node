@@ -417,6 +417,17 @@ def maps_():
         return {"maps": [_shown(m) for m in cur.fetchall()], "palette": {str(k): h for k, (h, _) in PALETTE.items()}}
 
 
+@router.get("/place/maps/{map_id}/marks")
+def map_marks(map_id: int):
+    """A map's drawings, each with its id, as the page draws and edits them. Reading writes nothing to the ledger: a
+    download (map_download) is a row, the screen drawing what it holds is not."""
+    with db() as con, con.cursor() as cur:
+        if not _one(cur, "SELECT id FROM place_maps WHERE id = %s", map_id):
+            raise HTTPException(404, "No such map.")
+        cur.execute(_MARK + " WHERE map_id = %s ORDER BY id", (map_id,))
+        return {"marks": cur.fetchall()}
+
+
 @router.post("/place/maps")
 def map_new(body: dict, request: Request):
     """{"name": "Garden plan", "owner": "Tomas"?, "actor": "Tomas"} → {"map": …}."""

@@ -646,7 +646,7 @@ const out = {};
 /* five on by default; the rest off */
 out.on = eval(pm.match(/const LAYERS = \[[\s\S]*?\n\];/)[0] + '; LAYERS').filter(l => l.on).map(l => l.id);
 out.house = !/id: '(house|species)-l'/.test(pm) && /name: 'This house', ll: D\.point/.test(pm);
-out.tools = /\['from', '⌂'/.test(pm) && /class="done" data-t="done"/.test(pm);
+out.tools = /\['From the house', 'geo\.measure', null, 'from'\]/.test(place) && !/\['inspect'/.test(pm);
 const mk = () => { const els = {}; return q => (els[q] ||= { innerHTML: '', textContent: '', clientWidth: 600, clientHeight: 600, style: {}, appendChild() {}, setAttribute() {}, onclick: null }); };
 const page = tok => ({ D, d3, $: mk(), console, Response, DOORS_TOKEN: () => (tok ? 't' : ''), sign: id => `<svg data-s="${id}"></svg>`, UNLOCK_AT: '<a href="#setup/screen">Set up › This screen</a>',
   doorsFetch: p => Promise.resolve(!tok ? new Response('{}', { status: 403 }) : new Response(JSON.stringify(
@@ -676,16 +676,16 @@ const page = tok => ({ D, d3, $: mk(), console, Response, DOORS_TOKEN: () => (to
     document: { documentElement: { dataset: {} }, querySelector: () => null, querySelectorAll: () => [], createElement: () => ({ style: {}, setAttribute: noop }), addEventListener: noop },
     maplibregl: { Map: function () { throw new Error('Failed to initialize WebGL'); } }, deck: {} });
   c.window = c; c.D = { ...D, ngeo: null, ngeoErr: 'GET /geo/cell answered 403' }; vm.createContext(c);
-  vm.runInContext(fs.readFileSync('./app/static/doors-cake.js', 'utf8') + '\n' + pm + '\nwindow.placeMap()', c);
+  vm.runInContext(fs.readFileSync('./app/static/doors-cake.js', 'utf8') + '\n' + fs.readFileSync('./app/static/doors-draw.js', 'utf8') + '\n' + pm + '\nwindow.placeMap()', c);
   await new Promise(r => setTimeout(r, 50));
-  out.flat = { map: c.$('#map').innerHTML, cake: c.$('#cake').innerHTML, facts: c.$('#facts').innerHTML, margin: c.$('#pmargin').innerHTML };
+  out.flat ={ map: c.$('#map').innerHTML, cake: c.$('#cake').innerHTML, facts: c.$('#facts').innerHTML, margin: c.$('#pmargin').innerHTML };
   console.log(JSON.stringify(out));
 })();
 """ % replayed(FIX)
 pp = json.loads(subprocess.run(["node"], input=pprog, capture_output=True, text=True, check=True).stdout)
 assert sorted(pp["on"]) == ["images", "mine", "own", "public", "species", "street"], pp["on"]
 print("doors: Place opens with five layers on: the street, the node's cell, its sensors, the public stations, the images (and their species)")
-assert pp["house"] and pp["tools"], "the house is named on the map; From the house and Done are tools"
+assert pp["house"] and pp["tools"], "the house is named on the map; From the house is a tool in the right column, Inspect is gone"
 assert '<table class="tbl species">' in pp["sp"] and "gbif.org/species/3152559" in pp["sp"] and "in the seven cells" in pp["sp"] \
     and "14 in the seven cells" in pp["sp"], pp["sp"]
 assert "<table" not in pp["spLocked"] and "#setup/screen" in pp["spLocked"], pp["spLocked"]
@@ -746,7 +746,11 @@ vm.runInContext(['esc', 'WD', 'loc', 'dayOf', 'dLabel', 'wdhm', 'fmt', 'lineLab'
    real.modelsBlock(); out.models = $('#models').innerHTML;
    tok = 'x'; real.ledgerBlock(); out.ledger = $('#ledger').innerHTML;
    LSTAGE = 'decided'; real.ledgerBlock(); out.decided = $('#ledger').innerHTML; LSTAGE = '';
-   tok = ''; real.ledgerBlock(); out.locked = $('#ledger').innerHTML;`, ctx);
+   tok = ''; real.ledgerBlock(); out.locked = $('#ledger').innerHTML;
+   D.actions.unshift({ ts: '2026-10-06T09:00:00+08:00', stage: 'place', actor: 'Tomas', choice: 'drew', note: 'Rain garden on Garden plan (mark 12)', alert_id: null },
+     { ts: '2026-10-06T09:01:00+08:00', stage: 'place', actor: 'Tomas', choice: 'drew', note: 'Hose run on Garden plan (mark 13)', alert_id: null });
+   tok = 'x'; real.ledgerBlock(); out.place = $('#ledger').innerHTML;
+   LSTAGE = 'place'; real.ledgerBlock(); out.placeOnly = $('#ledger').innerHTML; LSTAGE = '';`, ctx);
 console.log(JSON.stringify(ctx.out));
 """
 _d = json.loads(subprocess.run(["node", "-e", dprog, FIX], capture_output=True, text=True, check=True).stdout)
@@ -782,6 +786,11 @@ assert ">gui<" not in _l and "local-model/" not in re.sub(r'title="[^"]*"', "", 
 assert 'data-st="decided"' in _l and "acted</td>" not in _x and "decided" in _x, "the stage filter keeps one stage"
 assert "<th>who</th>" not in _k and "Tomas" not in _k and "The air" not in _k and "UNLOCK" not in _k and "Set up › This screen" in _k, "a locked ledger names nobody"
 print("doors: the ledger collapses repeats, says who in words, filters by stage; locked, the time and the stage only")
+_pl, _po = _d["place"], _d["placeOnly"]
+assert 'data-st="place"' in _pl and "Rain garden on Garden plan" in _po and "Hose run on Garden plan" in _po, _po[-600:]
+assert "(mark 12)" not in _po and "×2" not in _po and "decided" not in re.sub(r'<div class="lfilt".*?</div>', "", _po), \
+    "a drawing is its own row, in words, under the place filter; the node's key stays out"
+print("doors: the ledger's place stage: a filter, and a row per drawing, saying what was drawn on which map")
 
 # Set up's consequences step: a change that leaves the machine or runs code asks first, in the setting's own words;
 # a plain change, or turning one off, does not. Read from the node's own describe() and pack list.
@@ -890,5 +899,98 @@ _names = re.findall(r"id: '[a-z0-9]+'.*? name: '([^']+)'", pm.split("const LAYER
 assert len(_names) == 25 and max(map(len, _names)) <= 14, ("a cake row's name must fit the 216 px column", sorted(_names, key=len)[-3:])
 assert "<h2><span>${esc(s.name)}</span>" in pm and "#cake .ck>h2{" in html and "#cake h2" not in html and "<h3><span>" not in pm, "cake headings are h2 under the page's h1"
 print("  place: one map, black screen, the cake on the left, tools on the right")
+
+# Drawing on the screen, and your maps (SPEC_place_microgis §4, §10). Booted in node with a map that does nothing and a
+# deck that records its layers: the keys and the readout on the screen with a token and none without, your maps above
+# the cake's results, the open map's table in the lower band, and every name and label from the node escaped.
+_lk2 = json.loads(subprocess.run(["node", "-e", "const L = require('./app/static/doors-load.js'); console.log(JSON.stringify(['/place/maps', '/place/marks/3', '/place/maps/3/marks', '/place/geojson'].map(p => L.DOORS_LOCKED.test(p))))"],
+                                 capture_output=True, text=True, check=True).stdout)
+assert _lk2 == [True, True, True, True], f"a tokenless screen never asks for the household's maps: {_lk2}"
+mprog = r"""
+const fs = require('fs'), vm = require('vm'), d3 = require('./app/static/d3.min.js');
+const L = require('./app/static/doors-load.js');
+const core = fs.readFileSync('./app/static/doors-core.js', 'utf8'), pick = n => core.match(new RegExp('^const ' + n + ' = .*$', 'm'))[0];
+const src = ['doors-cake.js', 'doors-draw.js', 'doors-placemap.js'].map(f => fs.readFileSync('./app/static/' + f, 'utf8')).join('\n');
+const place = fs.readFileSync('./app/static/doors-place.js', 'utf8'), fn = (s, n) => s.match(new RegExp('function ' + n + '\\(' + '[\\s\\S]*?\\n}\\n'))[0];
+const F = JSON.parse(fs.readFileSync('%s', 'utf8')), D = L.buildD({ ...F, days: F.issues_days }, 'en');
+const BAD = '<img src=x onerror=1>';
+const MAPS = { maps: [{ id: 3, name: BAD, owner: 'Tomas', agent: null, shared: false, held: false, share_error: null, from_node: null, marks: 2, updated_at: '2026-11-04T10:00:00Z' },
+  { id: 4, name: 'Rain on the street', owner: null, agent: null, shared: false, held: false, share_error: null, from_node: null, marks: 0, updated_at: '2026-11-03T10:00:00Z' }],
+  palette: { 1: '#FFFFFF', 2: '#FFE600', 3: '#9BFF2E', 4: '#00E5FF', 5: '#FF3DCB', 6: '#FF3B30' } };
+const MARKS = { marks: [
+  { id: 11, map_id: 3, kind: 'area', colour: 3, label: BAD, note: 'catch the roof’s water', capture_id: null, length_m: null, area_m2: 312.4, alert_id: null, event_id: null,
+    geometry: { type: 'Polygon', coordinates: [[[115.167, -8.819], [115.168, -8.819], [115.168, -8.818], [115.167, -8.819]]] } },
+  { id: 12, map_id: 3, kind: 'line', colour: 2, label: 'Hose run', note: null, capture_id: 7, length_m: 102.4, area_m2: null, alert_id: null, event_id: null,
+    geometry: { type: 'LineString', coordinates: [[115.167, -8.819], [115.168, -8.819]] } }] };
+const noop = () => {};
+const el = () => ({ innerHTML: '', textContent: '', hidden: false, style: {}, dataset: {}, kids: [], className: '', attrs: {},
+  setAttribute(k, v) { this.attrs[k] = v; }, getAttribute(k) { return this.attrs[k]; }, appendChild(x) { this.kids.push(x); }, append(...x) { this.kids.push(...x); },
+  querySelector: () => null, querySelectorAll: () => [], addEventListener: noop, remove: noop, focus: noop, closest: () => null, contains: () => false,
+  getContext: () => ({ setTransform: noop, clearRect: noop }), clientWidth: 900, clientHeight: 560 });
+async function boot(tok) {
+  const els = {}, map = el(), asked = [], drawn = {};
+  const ask = p => { asked.push(p); if (!tok && L.DOORS_LOCKED.test(p)) return Promise.resolve(new Response('{}', { status: 403 }));
+    const b = p.startsWith('/place/maps/3/marks') ? MARKS : p.startsWith('/place/maps/4/marks') ? { marks: [] } : p.startsWith('/place/maps') ? MAPS
+      : p.startsWith('/captures') ? [] : p.startsWith('/species') ? { species: [] } : {};
+    return Promise.resolve(new Response(JSON.stringify(b), { status: 200 })); };
+  const layer = function (props) { return { id: props && props.id, props }; };
+  const c = { D, d3, console, Response, setTimeout, clearTimeout, $: q => (els[q] ||= el()), DOORS_TOKEN: () => (tok ? 't' : ''), DOORS_AUTH: () => ({}), doorsFetch: ask,
+    UNLOCK_AT: '<a href="#setup/screen">Set up › This screen</a>', sign: id => `<svg data-s="${id}"></svg>`, prov: w => w, lastRaw: () => null, plain: s => s,
+    hhmm: s => s, when: s => s, dLabel: s => s, dayOf: s => s, CLOCK: { reduced: () => true, on: noop, off: noop }, view: () => 'place', location: { origin: 'http://node' },
+    devicePixelRatio: 1, localStorage: { getItem: () => null, setItem: noop },
+    document: { documentElement: { dataset: {} }, querySelector: () => null, querySelectorAll: () => [], createElement: () => el(), addEventListener: noop, getElementById: () => null, activeElement: null },
+    maplibregl: { ScaleControl: function () {}, Map: function () { return Object.assign(map, { on: noop, once: noop, addControl: noop, getContainer: () => map,
+      getCanvas: () => ({ style: {} }), touchZoomRotate: { disableRotation: noop }, doubleClickZoom: { enable: noop, disable: noop }, getZoom: () => 13.6, resize: noop,
+      project: () => ({ x: 450, y: 280 }), getCenter: () => ({ lng: 115.167, lat: -8.819 }) }); } },
+    deck: new Proxy({}, { get: (t, k) => k === 'MapboxOverlay' ? function () { return { setProps: o => { (o.layers || []).forEach(l => { drawn[l.id] = l.props; }); } }; } : layer }) };
+  c.window = c; vm.createContext(c);
+  vm.runInContext(['esc', 'fmt'].map(pick).join('\n') + '\n' + src + '\nwindow.placeMap()', c);
+  await new Promise(r => setTimeout(r, 80));
+  const keys = map.kids.find(x => x.className === 'dkeys'), pan = map.kids.find(x => x.className === 'dpanel');
+  return { keys: keys ? keys.innerHTML : null, panel: pan ? pan.innerHTML : null, read: c.$('#dread').innerHTML, cake: c.$('#cake').innerHTML,
+    table: c.$('#ptable').innerHTML, asked, drawn: Object.fromEntries(Object.entries(drawn).filter(([k]) => k.startsWith('draw-')).map(([k, v]) => [k, (v.data || []).length])) };
+}
+(async () => {
+  const out = { tok: await boot(true), locked: await boot(false) };
+  /* From the house, in the right column: a tool row that runs with the token */
+  const els = {}, c = { $: q => (els[q] ||= el()), DOORS_TOKEN: () => 't', document: { activeElement: null, querySelectorAll: () => [], querySelector: () => null }, window: { __PM: { on: {}, tool: 'select' } } };
+  vm.createContext(c); vm.runInContext(place.match(/const TOOLS = [\s\S]*?\n\];\n/)[0] + fn(place, 'placeTools') + 'placeTools()', c);
+  out.ptools = c.$('#ptools').innerHTML;
+  console.log(JSON.stringify(out));
+})();
+""" % replayed(FIX)
+M = json.loads(subprocess.run(["node"], input=mprog, capture_output=True, text=True, check=True).stdout)
+_t, _x = M["tok"], M["locked"]
+_keys = re.findall(r'<button[^>]*aria-label="([^"]+)"[^>]*aria-pressed="(true|false)"', _t["keys"] or "")
+assert [k for k, _ in _keys] == ["Select", "Marker", "Line, with distance", "Area, with surface", "Note", "Image"] and [p for _, p in _keys].count("true") == 1, _keys
+assert re.search(r'<button[^>]*aria-label="Undo"', _t["keys"]) and _keys[0][1] == "true", "an Undo key, and Select pressed to start"
+assert all(f"<small>{k}</small>" in _t["keys"] for k in "VMLANI"), "the letter in each key's corner"
+assert 'id="dread" class="dread" aria-live="polite"' in _t["panel"], "the readout says the finished figure to a screen reader"
+assert "&lt;img src=x onerror=1&gt;" in _t["read"], "the readout names the open map, escaped"
+print("  place: six drawing keys and Undo on the screen, Select pressed; the readout is aria-live and names the open map")
+_ck = _t["cake"]
+assert _ck.index('id="ymaps"') < _ck.index('data-cake="results"'), "your maps sit above the results"
+assert _ck.index('class="ly map') < _ck.index('class="ly new"') and ">New map<" in _ck, "a square-dot row per map, then New map"
+assert _ck.count('class="ly map') == 2 and "2 drawn" in _ck and "0 drawn" in _ck, _ck[:800]
+assert "<img src=x" not in _ck and "&lt;img src=x onerror=1&gt;" in _ck, "a map's name is the household's text, escaped"
+_tb = _t["table"]
+assert "<img src=x" not in _tb and _tb.count("&lt;img src=x onerror=1&gt;") == 2, "the table's head and the drawing's label, escaped"
+assert "<table" in _tb and "312 m²" in _tb and "102 m" in _tb and "catch the roof’s water" in _tb and 'data-k="11"' in _tb and 'data-k="12"' in _tb, _tb[:900]
+assert "#9BFF2E" in _tb and _tb.count('class="mth"') == 1, "a swatch in the drawing's own colour, one thumbnail for the one image"
+assert _t["drawn"].get("draw-area") == 1 and _t["drawn"].get("draw-line") == 1, ("the drawings are deck.gl layers, so the PNG holds them", _t["drawn"])
+assert "/place/maps" in _t["asked"] and "/place/maps/3/marks" in _t["asked"], _t["asked"]
+print("  place: your maps above the cake, then New map; the open map's table in the lower band; names and labels escaped")
+assert _x["keys"] is None and _x["panel"] is None, "without the token no key is drawn"
+_ys = re.sub(r"<[^>]+>", "", _x["cake"][_x["cake"].index('id="ymaps"'):_x["cake"].index('data-cake="results"')])
+assert "Your maps are kept on this node. Unlock this screen in Set up to draw." in _ys and 'class="ly new"' not in _x["cake"], _ys
+assert not [p for p in _x["asked"] if p.startswith(("/place/maps", "/place/marks"))], "a tokenless screen does not ask for maps"
+print("  place: without the token, your maps say where they are and how to unlock; no key, no New map")
+assert 'data-tool="from"' in M["ptools"] and "From the house" in M["ptools"], M["ptools"][:400]
+_css = html[html.index("/* ================= PLACE: a small GIS"):html.index("/* ================= NODE")]
+assert ".dkeys button{width:44px;height:44px" in _css and re.search(r"\.dkeys button:focus-visible[^{]*\{outline:2px solid var\(--cells\)", _css), \
+    "44 px keys; focus on the black screen is the cells' blue, as the hour pill's"
+assert "p.cells" in pm[pm.index("function drawLayers"):pm.index("function drawLayers") + 4000], "a drawing in focus is outlined in the cells' blue"
+assert ".ly.map i{border-radius:2px}" in _css, "a map's dot is square, a layer's round"
+print("  place: From the house in the right column; 44 px keys; focus is the cells' blue on the screen")
 
 print("all doors checks passed")

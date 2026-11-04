@@ -145,6 +145,18 @@ r = draw("marker", "Point", [115.167, -8.819], image=999999999)
 assert r.status_code == 404 and r.json()["detail"] == "That picture is not on this node.", r.text
 print("  a drawing is stored with PostGIS's own area and length; a crossed area and a seventh colour are refused")
 
+# the screen reads a map's drawings back with their ids, and reading is not a ledger row (a download is)
+n_rows = one("SELECT count(*) AS n FROM actions WHERE stage = 'place'")["n"]
+r = c.get(f"/place/maps/{mid}/marks", headers=H)
+assert r.status_code == 200, r.text
+got = r.json()["marks"]
+assert [k["id"] for k in got][:1] == [kid] and got[0]["geometry"]["type"] == "Polygon" and got[0]["label"] == "Rain garden", got[:1]
+assert abs(got[0]["area_m2"] - real) / real < 0.01 and len(got) == 2, got
+assert one("SELECT count(*) AS n FROM actions WHERE stage = 'place'")["n"] == n_rows, "reading a map writes nothing"
+assert c.get("/place/maps/999999999/marks", headers=H).status_code == 404
+assert c.get(f"/place/maps/{mid}/marks").status_code in (401, 403), "a stranger reads no drawing"
+print("  a map's drawings read back with their ids and PostGIS's measures, and reading writes no ledger row")
+
 for label in ("Rain garden, west", "Rain garden, west edge"):
     r = c.patch(f"/place/marks/{kid}", json={"label": label, "actor": "Tomas"}, headers=H)
     assert r.status_code == 200 and r.json()["mark"]["label"] == label, r.text

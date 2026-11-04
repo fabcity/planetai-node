@@ -403,6 +403,11 @@ Access: token
 
 The household's maps, each with how many drawings it holds, and the six drawing colours: `{maps: [{id, name, owner, agent, shared, held, share_error, from_node, marks, updated_at}], palette}`. A map with `from_node` set came from a child node and is read-only here. `share_error` says why a shared map has not gone up, and `held` is true while a drawing on the house keeps it here.
 
+### GET /place/maps/{map_id}/marks
+Access: token
+
+A map's drawings as the Place screen draws them: `{marks: [{id, map_id, kind, colour, label, note, capture_id, length_m, area_m2, drawn_by, alert_id, event_id, updated_at, geometry}]}`, `geometry` as GeoJSON in WGS84 and the measures PostGIS's. Any map may be read, an agent's or a child's too. Reading writes nothing to the ledger.
+
 ### POST /place/maps
 Access: token
 

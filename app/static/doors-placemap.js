@@ -19,7 +19,7 @@
    GET /place/geojson. Without the token the map says what it is not drawing, and why. */
 
 (function () {
-const PM = { map: null, overlay: null, res: 8, tool: 'inspect', measure: [], hover: null, pick: null,
+const PM = { map: null, overlay: null, res: 8, tool: 'select', measure: [], hover: null, pick: null,
   on: {}, alpha: {}, plan: null, land: null };
 
 /* ---------------------------------------------------------------- the palette, by register */
@@ -329,7 +329,7 @@ function layers() {
     getRadius: 9, getLineColor: A(p.cells, 1), getLineWidth: 2 }));
   /* named in the list under the screen, "This house · 0 m": labels never sit on the house (Tomas, 15 Oct, option A) */
   if (PM.measure.length) {
-    const path = PM.measure.concat(PM.hover && PM.tool === 'measure' ? [PM.hover] : []);
+    const path = PM.measure;
     /* each placed leg labelled with the node's own metres for it; the leg to the cursor is drawn, not measured */
     const legs = (PM.measured && PM.measured.points === PM.measure.length) ? PM.measured.legs_m : [];
     const lab = PM.measure.map((q, i) => ({ q, t: i ? (legs[i - 1] != null ? fmtM(legs[i - 1]) : '…') : PM.from ? '' : 'start' })).filter(d => d.t);
@@ -338,7 +338,7 @@ function layers() {
     out.push(new Dk.TextLayer({ characterSet: 'auto', id: 'measure-l', data: lab, getPosition: d => d.q, getText: d => d.t, getSize: 11, fontFamily: 'JetBrains Mono, monospace',
       getColor: A(p.ink, 1), getPixelOffset: [0, -14], background: true, getBackgroundColor: A(p.halo, .95), backgroundPadding: [4, 2] }));
   }
-  return out;
+  return out.concat(drawLayers(p, Dk, px, dashed, A));
 }
 const redraw = () => { if (PM.flat) flat(); else if (PM.overlay) PM.overlay.setProps({ layers: layers() }); margin(); };
 
@@ -437,7 +437,8 @@ function panel() {
       + (a.off || l.still || PM.flat ? '' : `<input class="op" type="range" min="0" max="1" step="0.05" value="${PM.alpha[l.id]}" aria-label="${esc(l.name)} opacity" ${PM.on[l.id] ? '' : 'disabled'}>`)
       + (l.id === 'species' ? '<div data-slot="species"></div>' : '') + `</div>`;
   };
-  $('#cake').innerHTML = cakeSections(LAYERS, PM.on).map(s => `<section class="ck" data-cake="${s.id}"><h2><span>${esc(s.name)}</span>`
+  const fo = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.f;
+  $('#cake').innerHTML = yourMaps() + cakeSections(LAYERS, PM.on).map(s => `<section class="ck" data-cake="${s.id}"><h2><span>${esc(s.name)}</span>`
     + `<b>${s.rows.length ? `${s.rows.filter(r => r.state === 'on').length} of ${s.rows.length}` : 'none yet'}</b></h2>${s.rows.map(row).join('')}</section>`).join('');
   const slot = document.querySelector('#cake [data-slot="species"]'); if (spd && slot) slot.replaceWith(spd);
   document.querySelectorAll('#cake .lyr').forEach(w => {
@@ -447,6 +448,8 @@ function panel() {
     if (wh) wh.oninput = () => { PM.windStep = +wh.value; w.querySelector('.whr b').textContent = PM.windStep ? `+${PM.windStep} h` : 'now'; windResample(); facts(); hourPill(); };
     if (op) op.oninput = () => { PM.alpha[id] = +op.value; applyBase(); redraw(); };
   });
+  wireMaps();
+  const f = fo && document.querySelector(`#ymaps [data-f="${fo}"]`); if (f) f.focus();   // a press in your maps keeps its focus
 }
 /* one switch, from the cake or from a tool (doors-place.js): the map, the cake, the credits and the tools follow it */
 function setLayer(id, on) {
@@ -486,34 +489,460 @@ async function fly(r) {
   PM.map.easeTo({ center: [(bb[0] + bb[2]) / 2, (bb[1] + bb[3]) / 2], zoom: Math.log2(px * mPerPx(0) / EDGE(r)),
     duration: CLOCK.reduced() ? 0 : 700 });
 }
-/* The tools (Tomas, 15 Oct): 44 px targets, the active one says its word, measuring ends on Done (a double click still
-   does), and the house is one tap away: From the house measures from the node's own point to the next tap. On the
-   screen they are one column at the top right, select to export, and zoom apart at the bottom right (§4). */
-const MEASURING = () => PM.tool === 'measure' || PM.tool === 'from';
+/* The screen's right edge (Tomas, 15 Oct; SPEC_place_microgis §4): 44 px targets, back to the house and the PNG, zoom
+   apart at the bottom right. Measuring became the line key and Inspect became Select (the drawing keys, below); From the
+   house is a tool in the right column (doors-place.js), and ends on a second press or Esc. */
+const MEASURING = () => PM.tool === 'from';
 function tools() {
   const el = document.createElement('div'), zm = document.createElement('div'); el.className = 'tools'; zm.className = 'zoom';
-  const T = [['inspect', '↖', 'Inspect: tap a feature', 'Inspect'], ['measure', '⟷', 'Measure: tap points, then Done', 'Measure'],
-    ['from', '⌂', 'Distance from the house: tap a point', 'From the house'], ['fit', '⌖', 'Back to this node’s cell'], ['png', '⤓', 'Save this view as a PNG']];
-  const btn = ([k, g, t, w]) => `<button data-t="${k}" title="${t}" aria-label="${t}" class="${k === PM.tool ? 'on' : ''}"><span class="g" aria-hidden="true">${g}</span>${w ? `<span class="w">${w}</span>` : ''}</button>`;
-  el.innerHTML = T.map(btn).join('') + `<button class="done" data-t="done" hidden>Done</button>`;
+  const btn = ([k, g, t]) => `<button data-t="${k}" title="${t}" aria-label="${t}"><span class="g" aria-hidden="true">${g}</span></button>`;
+  el.innerHTML = [['fit', '⌖', 'Back to this node’s cell'], ['png', '⤓', 'Save this view as a PNG']].map(btn).join('');
   zm.innerHTML = [['in', '+', 'Zoom in'], ['out', '−', 'Zoom out']].map(btn).join('');
   PM.setTool = k => {
-    PM.tool = k; PM.hover = null;
-    if (MEASURING()) { PM.measure = []; PM.measured = null; PM.from = k === 'from'; }
-    el.querySelectorAll('button[data-t]').forEach(b => b.classList.toggle('on', b.dataset.t === PM.tool));
-    el.querySelector('.done').hidden = !MEASURING();
-    PM.map.getCanvas().style.cursor = MEASURING() ? 'crosshair' : ''; redraw(); facts();
+    const d = PM.draw;
+    PM.tool = k; PM.hover = null; d.state = null; d.hover = null; d.corner = null; d.err = '';
+    if (MEASURING()) { PM.measure = []; PM.measured = null; PM.from = true; } else if (PM.measure.length) { PM.measure = []; PM.measured = null; PM.from = false; }
+    /* a double press finishes a line, so it zooms only while nothing is being drawn */
+    PM.map.doubleClickZoom[k === 'select' || k === 'from' ? 'enable' : 'disable']();
+    if (PM.keys) PM.keys.querySelectorAll('button[data-k]').forEach(b => { if (b.dataset.k !== 'undo') b.setAttribute('aria-pressed', String(b.dataset.k === k)); });
+    if (k === 'image' && d.sel != null) picker(d.sel);
+    readout(); drawForm(); redraw(); facts(); if (window.placeTools) window.placeTools();
   };
   el.onclick = e => {
     const k = e.target.closest('button')?.dataset.t; if (!k) return;
     if (k === 'in') PM.map.zoomIn(); else if (k === 'out') PM.map.zoomOut(); else if (k === 'fit') fly(8);
     else if (k === 'png') { const a = document.createElement('a'); a.download = `place-res${PM.res}.png`; PM.map.triggerRepaint(); PM.map.once('render', () => { a.href = PM.map.getCanvas().toDataURL('image/png'); a.click(); }); }
-    else if (k === 'done') PM.setTool('inspect');
-    else PM.setTool(k);
   };
   zm.onclick = el.onclick;
-  PM.map.getContainer().append(el, zm);
+  const box = PM.map.getContainer(); box.append(el, zm);
+  /* the keys and the readout: only for a screen holding the token, since every drawing is the household's */
+  if (!DOORS_TOKEN()) return;
+  const keys = PM.keys = document.createElement('div'), pan = document.createElement('div');
+  keys.className = 'dkeys'; keys.setAttribute('role', 'toolbar'); keys.setAttribute('aria-label', 'Draw'); keys.innerHTML = keysHTML();
+  pan.className = 'dpanel'; pan.innerHTML = '<div id="dread" class="dread" aria-live="polite"></div><div id="dform" class="dform" hidden></div>';
+  keys.onclick = e => { const b = e.target.closest('button[data-k]'); if (!b) return; if (b.dataset.k === 'undo') undo(); else PM.setTool(b.dataset.k); };
+  box.append(keys, pan);
+  readout();
 }
+
+/* ---------------------------------------------------------------- drawing, and your maps (SPEC_place_microgis §4, §8, §10)
+   The keys on the screen's left edge, the readout beside them and, under it, a form for the drawing in hand. A drawing is
+   a GeoJSON feature in one of the household's named maps (app/maps.py, token-only), drawn here as deck.gl layers in the
+   same overlay as the rest, so the PNG holds it. While somebody draws, the readout's figure is the page's sphere
+   (doors-draw.js); once kept, the measure is PostGIS's. Nothing needs a drag: a press adds a point, a press on a corner
+   and then on its new place moves it, and the keyboard does all of it from the map's centre. Drawing colours are the
+   node's palette (GET /place/maps), on the screen and in the table's swatches, never on the page around them. */
+const MARKS = {};                 // map id → its drawings, as GET /place/maps/{id}/marks answers them
+const UNDO = [];                  // what ⌘Z takes back, newest last: each one a call back to the node
+PM.draw = { map: null, state: null, sel: null, colour: 1, corner: null, hover: null, via: null, edit: null, asked: null, naming: false,
+  pick: null, err: '', mapErr: '', said: '', preview: null, focusLabel: false };
+PM.mapOff = new Set();
+const DRAWS = ['marker', 'line', 'area', 'note'];
+const DRAWING = () => DRAWS.includes(PM.tool);
+const KEYNAME = { select: 'Select', marker: 'Marker', line: 'Line, with distance', area: 'Area, with surface', note: 'Note', image: 'Image' };
+const TOOLWORD = { select: 'select', marker: 'marker', line: 'line', area: 'area', note: 'note', image: 'image', from: 'from the house' };
+const KEYICON = { select: '<path d="M5 3l12 6-5 2-2 5z"/>', marker: '<path d="M10 18s-5-5.2-5-9a5 5 0 0110 0c0 3.8-5 9-5 9z"/><circle cx="10" cy="9" r="1.8"/>',
+  line: '<circle cx="4" cy="15" r="1.6"/><circle cx="16" cy="5" r="1.6"/><path d="M5.3 13.8L14.7 6.2" stroke-dasharray="2 2"/>',
+  area: '<path d="M4 6l7-3 5 5-3 8-9-2z"/>', note: '<path d="M4 4h12v9l-3 3H4z"/><path d="M13 16v-3h3"/>',
+  image: '<rect x="3" y="5" width="14" height="10" rx="1"/><circle cx="8" cy="9" r="1.5"/><path d="M3 14l4-3 3 2 3-3 4 4"/>',
+  undo: '<path d="M7 5L3 9l4 4"/><path d="M3 9h9a5 5 0 010 10h-2"/>' };
+/* the mockup's READ words for the two keys doors-draw.js's figure() has no hint for */
+const HINT_SEL = 'Press a drawing to change its colour, note or image.';
+const HINT_IMG = 'The image stays on this node; its location is the drawing’s, never the file’s.';
+const MAPKEY = 'planetai_place_map';
+const actor = () => { try { return localStorage.getItem('planetai_actor') || ''; } catch (e) { return ''; } };
+const send = (method, p, body) => doorsFetch(API + p, { method, headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined })
+  .then(async r => ({ ...(await r.json().catch(() => ({}))), ok: r.ok, status: r.status }))
+  .catch(e => ({ ok: false, status: 0, detail: `The node did not answer: ${e.message}` }));
+const refused = r => (typeof r.detail === 'string' ? r.detail : `The node refused it (${r.status}).`);
+const mapById = id => (PM.maps || []).find(m => m.id === id) || null;
+const openMap = () => mapById(PM.draw.map);
+const mine = m => !!m && !m.agent && !m.from_node;
+const markById = id => (id == null ? null : Object.values(MARKS).flat().find(k => k.id === id) || null);
+const shownMarks = () => (PM.maps || []).filter(m => !PM.mapOff.has(m.id)).flatMap(m => MARKS[m.id] || []);
+const geomOf = k => (PM.draw.preview && PM.draw.preview.id === k.id ? PM.draw.preview.geometry : k.geometry);
+/* a drawing's points as they were pressed: an area's ring without its closing point */
+const ptsOf = k => { const g = geomOf(k); return g.type === 'Point' ? [g.coordinates] : g.type === 'LineString' ? g.coordinates : g.coordinates[0].slice(0, -1); };
+const centreOf = k => { const q = ptsOf(k); return [d3.mean(q, p => p[0]), d3.mean(q, p => p[1])]; };
+const colourOf = n => (PM.palette && PM.palette[n] ? [1, 3, 5].map(i => parseInt(PM.palette[n].slice(i, i + 2), 16)) : P().ink);
+const measureOf = k => (k.kind === 'area' && k.area_m2 != null ? fmtArea(k.area_m2).split(' · ')[0] : k.kind === 'line' && k.length_m != null ? fmtLen(k.length_m) : '—');
+const remember = id => { PM.draw.map = id; try { localStorage.setItem(MAPKEY, String(id)); } catch (e) { /* no storage here */ } };
+/* the issues asked on Now (engine _asking), each as the Done button carries it: an event, else an alert */
+const openIssues = () => (D.order || []).flatMap(k => ((D.issues[k] || {}).asking || []).slice(0, 1)
+  .map(a => ({ name: D.issues[k].name, issue: a.event_id != null ? { event_id: a.event_id } : { alert_id: a.alert_id } })));
+const tiedTo = k => {
+  if (k.alert_id == null && k.event_id == null) return '';
+  const o = openIssues().find(x => (x.issue.event_id != null ? x.issue.event_id === k.event_id : x.issue.alert_id === k.alert_id));
+  return o ? o.name : 'an issue';
+};
+
+/* the keys: six tools and Undo, the letter small in a corner, the pressed one filled */
+const keysHTML = () => KEYS.map(([k, l]) => `<button type="button" class="${k === 'marker' ? 'gap' : ''}" data-k="${k}" aria-label="${KEYNAME[k]}" aria-pressed="${PM.tool === k}" title="${KEYNAME[k]} · ${l}">`
+  + `<svg viewBox="0 0 20 20" aria-hidden="true">${KEYICON[k]}</svg><small>${l}</small></button>`).join('')
+  + `<button type="button" class="gap" data-k="undo" aria-label="Undo" title="Undo · ⌘Z or Ctrl+Z"><svg viewBox="0 0 20 20" aria-hidden="true">${KEYICON.undo}</svg><small>⌘Z</small></button>`;
+
+/* the readout: the tool and the open map, the figure large, the six colours, one line of what to do. The figure
+   follows the pointer, so it is hidden from a screen reader; what was kept is said once, in the .vh line. */
+function figureNow() {
+  const d = PM.draw, k = markById(d.sel), T = PM.tool;
+  if (T === 'from') return { v: PM.measured ? fmtM(PM.measured.total_m) : '', hint: 'Press any point and the node measures it from its own point.' };
+  if (DRAWS.includes(T) && !openMap()) return { v: '', hint: 'Make a map first with New map, at the top of the left column.' };
+  if (k && d.corner != null) return { v: esc(k.label || k.kind), hint: 'Press the corner’s new place, or move it with the arrows.' };
+  if (DRAWS.includes(T) && (!k || (d.state && d.state.pts.length))) {
+    const f = figure(d.state || drawState(T), d.hover);
+    return { v: f.value ? `${esc(f.value)}<small>${esc(f.unit)}</small>` : '', hint: f.hint };
+  }
+  if (T === 'image' && !k) return { v: 'from Data › Images<small>or a new photo</small>', hint: HINT_IMG };
+  return { v: k ? `${esc(k.label || k.kind)}<small>${esc(k.kind)} · ${esc(measureOf(k))}</small>` : '', hint: T === 'image' ? HINT_IMG : HINT_SEL };
+}
+function readout() {
+  const el = $('#dread'); if (!el || !PM.map || !DOORS_TOKEN()) return;
+  const d = PM.draw, m = openMap(), k = markById(d.sel), f = figureNow(), cur = k ? k.colour : d.colour;
+  el.innerHTML = `<div class="t"><span>${TOOLWORD[PM.tool] || ''}</span><span>${m ? esc(m.name) : 'no map yet'}</span></div>`
+    + `<div class="v" aria-hidden="true">${f.v}</div>`
+    + (PM.palette ? `<div class="sw" role="group" aria-label="Colour">${[1, 2, 3, 4, 5, 6].map(n => `<button type="button" data-c="${n}" aria-label="Colour ${n}" aria-pressed="${n === cur}">`
+      + `<i style="background:${esc(PM.palette[n])}"></i></button>`).join('')}<em>colour</em></div>` : '')
+    + `<div class="hint">${esc(f.hint)}</div>${d.err ? `<p class="err">${esc(d.err)}</p>` : ''}<span class="vh">${esc(d.said)}</span>`;
+  d.said = '';
+  el.querySelectorAll('[data-c]').forEach(b => b.onclick = () => {
+    const n = +b.dataset.c, s = markById(PM.draw.sel);
+    if (s && mine(mapById(s.map_id))) patch(s.id, { colour: n }); else { PM.draw.colour = n; readout(); redraw(); }
+  });
+}
+/* only the figure and the hint, as the pointer moves */
+function figureOnly() {
+  const el = $('#dread'), f = figureNow(), v = el && el.querySelector && el.querySelector('.v'), h = el && el.querySelector && el.querySelector('.hint');
+  if (v) v.innerHTML = f.v; if (h) h.textContent = f.hint;
+}
+
+/* the form under the readout, for the drawing in hand: its label and note (saved as each changes), an image, Delete,
+   and the issue it answers, which needs the person's own words (§8: tying writes the issue's acted step) */
+function drawForm() {
+  const el = $('#dform'); if (!el) return;
+  const d = PM.draw, k = markById(d.sel), m = k && mapById(k.map_id);
+  if (d.pick && markById(d.pick.id)) {
+    const C = d.pick.caps;
+    el.innerHTML = `<p>An image for ${esc(markById(d.pick.id).label || 'this drawing')}</p><div class="acts"><button type="button" data-a="newimg">A new photo</button><button type="button" data-a="back">Back</button></div>`
+      + (C == null ? '<p>Asking the node for its images…</p>' : !C.length ? '<p>No image is on this node yet.</p>'
+        : `<div class="caps">${C.map(c => `<button type="button" data-cap="${+c.id}">${esc(KIND[c.kind] || c.kind)} · ${esc(c.note || 'no note')} <small>${esc(when(c.ts))}</small></button>`).join('')}</div>`);
+  } else if (!k) { el.hidden = true; el.innerHTML = ''; return; }
+  else if (!mine(m)) {
+    el.innerHTML = `<p>${m && m.from_node ? `This map came from ${esc(m.from_node)}; it is read-only here.` : `This is ${esc(m && m.agent)}’s map.`}</p>`;
+  } else {
+    const iss = openIssues(), tied = tiedTo(k);
+    el.innerHTML = `<label>Label<input data-a="label" maxlength="80" value="${esc(k.label || '')}"></label>`
+      + `<label>Note<textarea data-a="note" rows="2" maxlength="500">${esc(k.note || '')}</textarea></label>`
+      + `<div class="acts"><button type="button" data-a="image">${k.capture_id ? 'Another image' : 'Add an image'}</button>`
+      + (k.capture_id ? '<button type="button" data-a="noimage">Take the image off</button>' : '') + '<button type="button" data-a="delete">Delete it</button></div>'
+      + (tied ? `<p>Tied to ${esc(tied)}. It counts as what you did.</p><div class="acts"><button type="button" data-a="untie">Untie it</button></div>`
+        : iss.length ? `<label>The issue it answers<select data-a="issue"><option value="">none</option>${iss.map((x, i) => `<option value="${i}">${esc(x.name)}</option>`).join('')}</select></label>`
+          + '<label>What you did<input data-a="words" maxlength="500" placeholder="in your own words"></label><div class="acts"><button type="button" data-a="tie">Tie it</button></div>'
+        : '<p>Nothing is asked on Now, so there is no issue to tie it to.</p>');
+  }
+  el.hidden = false;
+  const q = a => el.querySelector(`[data-a="${a}"]`), on = (a, f) => { const x = q(a); if (x) x.onclick = f; };
+  ['label', 'note'].forEach(a => { const x = q(a); if (x) x.onchange = () => patch(k.id, { [a]: x.value }); });
+  on('image', () => picker(k.id)); on('noimage', () => patch(k.id, { image: null })); on('delete', () => del(k.id));
+  on('untie', () => patch(k.id, { issue: null }, false));
+  on('tie', () => { const i = q('issue').value; if (i === '') { d.err = 'Choose the issue it answers first.'; readout(); return; }
+    patch(k.id, { issue: openIssues()[+i].issue, words: q('words').value }, false); });
+  on('back', () => { d.pick = null; drawForm(); });
+  on('newimg', () => { const id = d.pick.id; window.placeAddImage && window.placeAddImage({ at: centreOf(markById(id)), done: c => { d.pick = null; patch(id, { image: c }); } }); });
+  el.querySelectorAll('[data-cap]').forEach(b => b.onclick = () => { const id = d.pick.id; d.pick = null; patch(id, { image: +b.dataset.cap }); });
+  if (d.focusLabel && q('label')) { d.focusLabel = false; q('label').focus(); }
+}
+function picker(id) {
+  const d = PM.draw; d.pick = { id, caps: null }; drawForm();
+  ask('captures?limit=200').catch(() => []).then(c => { if (d.pick && d.pick.id === id) { d.pick.caps = c || []; drawForm(); } });
+}
+/* after a change, everything that shows it; the form keeps what somebody is typing in it */
+function after() {
+  const f = $('#dform');
+  readout(); if (!(f && f.contains && f.contains(document.activeElement))) drawForm(); redraw(); mapTable(); panel();
+}
+
+/* ---- the node's side: keep, change, delete, each one undoable */
+async function finish() {
+  const d = PM.draw, s = d.state, m = openMap();
+  if (!s || !canFinish(s) || !m) return;
+  d.state = null; d.hover = null;
+  const r = await send('POST', `place/maps/${m.id}/marks`, { ...toFeature(s, { colour: d.colour }), actor: actor() });
+  if (!r.ok) { d.err = refused(r); after(); return; }
+  (MARKS[m.id] ||= []).push(r.mark); m.marks += 1; remember(m.id);
+  d.sel = r.mark.id; d.err = r.warn || ''; d.focusLabel = s.kind === 'note';
+  d.said = `Kept in ${m.name}. ${r.mark.kind}${measureOf(r.mark) === '—' ? '' : `, ${measureOf(r.mark)}`}.`;
+  UNDO.push(() => del(r.mark.id, false));
+  after();
+}
+async function patch(id, body, undoable = true) {
+  const k = markById(id); if (!k) return null;
+  const was = { geometry: k.geometry, label: k.label, note: k.note, colour: k.colour, image: k.capture_id };
+  const r = await send('PATCH', `place/marks/${id}`, { ...body, actor: actor() });
+  PM.draw.preview = null;
+  if (!r.ok) { PM.draw.err = refused(r); after(); return r; }
+  const L = MARKS[k.map_id], i = L.findIndex(x => x.id === id); if (i >= 0) L[i] = r.mark;
+  if (undoable) { const back = Object.fromEntries(Object.keys(body).map(x => [x, was[x]])); UNDO.push(() => patch(id, back, false)); }
+  PM.draw.err = r.warn || ''; after(); return r;
+}
+async function del(id, undoable = true) {
+  const k = markById(id), d = PM.draw; if (!k) return;
+  const r = await send('DELETE', `place/marks/${id}?actor=${encodeURIComponent(actor())}`);
+  if (!r.ok) { d.err = refused(r); after(); return; }
+  MARKS[k.map_id] = MARKS[k.map_id].filter(x => x.id !== id); const m = mapById(k.map_id); if (m) m.marks -= 1;
+  if (d.sel === id) d.sel = null;
+  /* undone, it is drawn again: a new drawing with the same shape and words */
+  if (undoable) UNDO.push(async () => {
+    const b = await send('POST', `place/maps/${k.map_id}/marks`, { type: 'Feature', geometry: k.geometry, actor: actor(),
+      properties: { kind: k.kind, label: k.label, note: k.note, colour: k.colour, image: k.capture_id } });
+    if (b.ok && MARKS[k.map_id]) { MARKS[k.map_id].push(b.mark); if (m) m.marks += 1; d.sel = b.mark.id; } else if (!b.ok) d.err = refused(b);
+    after();
+  });
+  after();
+}
+function undo() {
+  const d = PM.draw;
+  if (d.state && d.state.pts.length) { d.state = backPt(d.state); readout(); redraw(); return; }
+  const u = UNDO.pop(); if (u) u();
+}
+
+/* ---- presses on the screen */
+const pickOf = h => {
+  const o = h && h.object, id = h && h.layer && h.layer.id;
+  return !o ? null : (id === 'own' || id === 'public') ? { kind: 'station', s: o } : id === 'models' ? { kind: 'model', ss: o.ss, p: o.p }
+    : id === 'labs' ? { kind: 'lab', s: o } : id === 'images' ? { kind: 'image', c: o } : id === 'species' ? { kind: 'image', c: o.c }
+    : (id === 'grid' || id === 'grid-dot' || id === 'mine' || id === 'radio') ? { kind: 'cell', id: o.id } : null;
+};
+function select(id) {
+  const d = PM.draw; d.sel = id; d.corner = null; d.pick = null; PM.pick = null; popup(null);
+  readout(); drawForm(); redraw(); mapTable();
+}
+function press(e) {
+  const d = PM.draw, q = [e.lngLat.lng, e.lngLat.lat];
+  const hit = PM.overlay.pickObject({ x: e.point.x, y: e.point.y, radius: 8 }), id = (hit && hit.layer && hit.layer.id) || '';
+  const k = id.startsWith('draw-') && hit.object && hit.object.geometry ? hit.object : null;
+  if (DRAWING()) { pressDraw(q, e.point); return; }
+  if (PM.tool === 'image') {
+    /* a drawing takes the image; an empty place gets a marker to carry it */
+    if (k) { select(k.id); picker(k.id); return; }
+    if (!openMap()) { readout(); return; }
+    d.state = addPt(drawState('marker'), q); finish().then(() => { if (d.sel != null) picker(d.sel); });
+    return;
+  }
+  if (id === 'draw-corner' && hit.object.k != null && hit.object.k === d.sel) { d.corner = hit.object.i; readout(); redraw(); return; }
+  if (d.corner != null && d.sel != null) { moveCorner(q); return; }
+  if (k) { select(k.id); return; }
+  d.sel = null; d.corner = null; PM.pick = pickOf(hit); popup(PM.pick); facts(); readout(); drawForm(); redraw(); mapTable();
+}
+function pressDraw(q, pt) {
+  const d = PM.draw; if (!openMap()) { readout(); return; }
+  const s = d.state || drawState(PM.tool);
+  /* a press on the first corner closes an area: toFeature closes the ring, so that press is not a point of it */
+  if (s.kind === 'area' && s.pts.length >= 3) { const f = PM.map.project(s.pts[0]); if (Math.hypot(f.x - pt.x, f.y - pt.y) <= 10) { finish(); return; } }
+  d.state = addPt(s, q); d.via = 'click'; d.sel = null; d.corner = null;
+  if (s.kind === 'marker' || s.kind === 'note') { finish(); return; }
+  readout(); drawForm(); redraw();
+}
+/* Enter: with the keyboard the map's centre is the cursor. It adds a point there, and finishes once the shape can be
+   one and the centre has not moved since the last point; after pressing with the mouse it finishes at once. */
+function enter() {
+  const d = PM.draw, s = d.state; if (!DRAWING()) return false;
+  const c = PM.map.getCenter(), q = [c.lng, c.lat], last = s && s.pts[s.pts.length - 1];
+  const a = last && PM.map.project(last), b = PM.map.project(q), still = !!a && Math.hypot(a.x - b.x, a.y - b.y) < 2;
+  if (s && canFinish(s) && (d.via === 'click' || still)) { finish(); return true; }
+  if (!openMap()) { readout(); return true; }
+  d.state = addPt(s || drawState(PM.tool), q); d.via = 'key'; d.sel = null;
+  if (PM.tool === 'marker' || PM.tool === 'note') finish(); else { readout(); redraw(); }   // one point is the whole of it
+  return true;
+}
+/* a corner moves to a press, or by the arrows a few pixels at a time; the node keeps it half a second after the last */
+function moveCorner(q) {
+  const d = PM.draw, k = markById(d.sel); if (!k) return;
+  const pts = ptsOf(k).map(p => [...p]); pts[d.corner] = q; d.corner = null;
+  patch(k.id, { geometry: toFeature({ kind: k.kind, pts }).geometry });
+}
+function nudge(dx, dy) {
+  const d = PM.draw, k = markById(d.sel); if (!k) return;
+  const pts = ptsOf(k).map(p => [...p]), s = PM.map.project(pts[d.corner]), ll = PM.map.unproject([s.x + dx, s.y + dy]);
+  pts[d.corner] = [ll.lng, ll.lat];
+  d.preview = { id: k.id, geometry: toFeature({ kind: k.kind, pts }).geometry }; redraw();
+  clearTimeout(d.nudged); d.nudged = setTimeout(() => d.preview && patch(k.id, { geometry: d.preview.geometry }), 500);
+}
+/* the keys from the keyboard (V M L A N I, ⌘Z), Enter, Backspace, Esc and the arrows; never while somebody types */
+function onKey(e) {
+  if (view() !== 'place' || !PM.map || !DOORS_TOKEN()) return;
+  const t = e.target, d = PM.draw, k = e.key, within = sel => !!(t && t.closest && t.closest(sel));
+  if (within('input, textarea, select, [contenteditable], dialog')) return;
+  if ((e.metaKey || e.ctrlKey) && !e.shiftKey && (k === 'z' || k === 'Z')) { e.preventDefault(); undo(); return; }
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const key = (KEYS.find(([, l]) => l === k.toUpperCase()) || [])[0];
+  if (key && k.length === 1) { e.preventDefault(); PM.setTool(key); return; }
+  if (k === 'Escape') {
+    if (MEASURING()) { PM.setTool('select'); return; }
+    if (d.state) d.state = null; else if (d.corner != null) d.corner = null; else if (d.pick) d.pick = null; else if (d.sel != null) d.sel = null; else return;
+    readout(); drawForm(); redraw(); mapTable(); return;
+  }
+  if (k === 'Backspace' && d.state && d.state.pts.length) { e.preventDefault(); d.state = backPt(d.state); readout(); redraw(); return; }
+  if (k === 'Enter' && !within('button, a')) { if (enter()) e.preventDefault(); return; }
+  const arrow = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[k];
+  if (!arrow) return;
+  if (d.corner != null && d.sel != null) { e.preventDefault(); e.stopPropagation(); const n = e.shiftKey ? 10 : 2; nudge(arrow[0] * n, arrow[1] * n); return; }
+  /* on a key of the screen the arrows pan; on the map's canvas MapLibre pans by itself */
+  if (within('.mapc') && !within('.maplibregl-canvas-container')) { e.preventDefault(); PM.map.panBy([arrow[0] * 80, arrow[1] * 80]); }
+}
+
+/* ---- the drawings, as deck.gl layers: an area filled at .28 with a 2 px edge, a line dashed with each leg's metres,
+   pins, notes as labels; corners as small squares while drawing or in hand. The one in hand is ringed in the cells'
+   blue, the screen's focus colour. */
+function drawLayers(p, Dk, px, dashed, A) {
+  /* deck.gl keeps a layer's state by id, so a layer that can be one of two kinds has an id for each */
+  const d = PM.draw, ms = shownMarks(), sel = markById(d.sel), C = k => colourOf(k.colour), out = [];
+  const of = kind => ms.filter(k => k.kind === kind), area = of('area'), line = of('line'), pin = of('marker');
+  const mono = 'JetBrains Mono, monospace', sans = 'Figtree, sans-serif', white = [255, 255, 255, 255];
+  if (sel && !PM.mapOff.has(sel.map_id)) {
+    const g = geomOf(sel), ring = g.type === 'Polygon' ? g.coordinates[0] : g.type === 'LineString' ? g.coordinates : null;
+    out.push(ring ? new Dk.PathLayer({ id: 'draw-focus-path', data: [{ ring }], getPath: x => x.ring, ...px, getColor: A(p.cells, 1), getWidth: 6 })
+      : new Dk.ScatterplotLayer({ id: 'draw-focus-pin', data: [{ q: g.coordinates }], getPosition: x => x.q, ...px, stroked: true, filled: false, getRadius: 12, getLineColor: A(p.cells, 1), getLineWidth: 2 }));
+  }
+  out.push(new Dk.PolygonLayer({ id: 'draw-area', data: area, getPolygon: k => geomOf(k).coordinates[0], ...px, pickable: true, filled: true, stroked: true,
+    getFillColor: k => A(C(k), .28), getLineColor: k => A(C(k), 1), getLineWidth: 2 }));
+  out.push(new Dk.PathLayer({ id: 'draw-line', data: line, getPath: k => geomOf(k).coordinates, ...px, pickable: true, getColor: k => A(C(k), 1), getWidth: 2,
+    extensions: [dashed], getDashArray: [6, 4] }));
+  const legs = line.flatMap(k => { const c = geomOf(k).coordinates;
+    return c.slice(1).map((q, i) => ({ q: [(c[i][0] + q[0]) / 2, (c[i][1] + q[1]) / 2], t: fmtLen(lengthM([c[i], q])), c: C(k) })); });
+  out.push(new Dk.TextLayer({ characterSet: 'auto', id: 'draw-legs', data: legs, getPosition: x => x.q, getText: x => x.t, getSize: 10, fontFamily: mono,
+    getColor: x => A(x.c, 1), getPixelOffset: [0, -9], background: true, getBackgroundColor: [0, 0, 0, 150], backgroundPadding: [3, 1] }));
+  out.push(new Dk.ScatterplotLayer({ id: 'draw-pin', data: pin, getPosition: k => geomOf(k).coordinates, ...px, pickable: true, stroked: true, filled: true,
+    getRadius: 6, getFillColor: k => A(C(k), 1), getLineColor: [0, 0, 0, 255], getLineWidth: 1.2 }));
+  out.push(new Dk.TextLayer({ characterSet: 'auto', id: 'draw-note', data: of('note'), getPosition: k => geomOf(k).coordinates, getText: k => k.label || 'note',
+    pickable: true, getSize: 11, fontFamily: sans, getColor: white, background: true, getBackgroundColor: [20, 20, 20, 235], getBorderColor: k => A(C(k), 1),
+    getBorderWidth: 1, backgroundPadding: [6, 4] }));
+  const lab = [...area, ...pin, ...line].filter(k => k.label || tiedTo(k)).map(k => ({ k, q: k.kind === 'marker' ? geomOf(k).coordinates : centreOf(k),
+    t: [k.label, k.kind === 'area' && k.area_m2 != null ? measureOf(k) : '', tiedTo(k) && `for ${tiedTo(k)}`].filter(Boolean).join('\n') }));
+  out.push(new Dk.TextLayer({ characterSet: 'auto', id: 'draw-label', data: lab, getPosition: x => x.q, getText: x => x.t, getSize: 11, fontFamily: sans,
+    getColor: white, getPixelOffset: x => (x.k.kind === 'marker' ? [0, -18] : [0, 0]), background: true, getBackgroundColor: [0, 0, 0, 150], backgroundPadding: [3, 1] }));
+  /* the shape being drawn, with the pointer as its next point */
+  const s = d.state, c = colourOf(d.colour);
+  if (s && s.pts.length) {
+    const path = d.hover ? [...s.pts, d.hover] : s.pts;
+    out.push(s.kind === 'area' && path.length >= 3
+      ? new Dk.PolygonLayer({ id: 'draw-now-area', data: [{ path }], getPolygon: x => x.path, ...px, filled: true, stroked: true, getFillColor: A(c, .28), getLineColor: A(c, 1), getLineWidth: 2 })
+      : new Dk.PathLayer({ id: 'draw-now-path', data: [{ path }], getPath: x => x.path, ...px, getColor: A(c, 1), getWidth: 2, extensions: [dashed], getDashArray: [6, 4] }));
+  }
+  const cs = s ? s.pts.map((q, i) => ({ q, i, c })) : sel && !PM.mapOff.has(sel.map_id) ? ptsOf(sel).map((q, i) => ({ q, i, k: sel.id, c: p.cells, on: i === d.corner })) : [];
+  out.push(new Dk.TextLayer({ characterSet: 'auto', id: 'draw-corner', data: cs, getPosition: x => x.q, getText: () => '■', getSize: 14, fontFamily: mono,
+    getColor: x => A(x.c, 1), pickable: true }));
+  out.push(new Dk.TextLayer({ characterSet: 'auto', id: 'draw-corner-in', data: cs, getPosition: x => x.q, getText: () => '■', getSize: 7, fontFamily: mono,
+    getColor: x => (x.on ? A(p.cells, 1) : [0, 0, 0, 255]) }));
+  return out;
+}
+
+/* ---- your maps, the top of the left column: a row per map (a square dot, a layer's is round) that shows or hides it,
+   its name opening what can be done to it, then New map. The open map is where new drawings go: the one last drawn in,
+   remembered per browser. Deleting and sharing each ask once, in the row, and a second press does it. */
+function yourMaps() {
+  const M = PM.maps, d = PM.draw, tok = !!DOORS_TOKEN();
+  const head = `<h2><span>your maps</span>${tok && M ? `<b>${M.length || 'none yet'}</b>` : ''}</h2>`, wrap = h => `<section id="ymaps" aria-label="Your maps">${head}${h}</section>`;
+  if (!tok) return wrap('<p class="fine">Your maps are kept on this node. Unlock this screen in <a href="#setup/screen">Set up</a> to draw.</p>');
+  if (!M) return wrap(PM.mapsErr ? '<p class="fine">The node did not give this screen its maps just now. Try again in a minute.</p>' : '');
+  const row = m => { const on = !PM.mapOff.has(m.id);
+    return `<div class="ly map${on ? '' : ' off'}${m.id === d.map ? ' open' : ''}" data-m="${m.id}">`
+      + `<button type="button" class="ymd" data-f="d${m.id}" aria-pressed="${on}" aria-label="${esc(m.name)}, on the screen"><i aria-hidden="true"></i></button>`
+      + `<button type="button" class="ymn" data-f="n${m.id}" aria-expanded="${d.edit === m.id}" title="${esc(m.name)}${m.id === d.map ? ' · new drawings go here' : ''}">`
+      + `<span>${esc(m.name)}</span><small>${+m.marks} drawn</small></button></div>` + (d.edit === m.id ? editor(m) : ''); };
+  return wrap(M.map(row).join('')
+    + (d.naming ? `<div class="ynew"><input id="ynew" data-f="ynew" maxlength="80" aria-label="The new map’s name" placeholder="Garden plan"><button type="button" class="ybtn" data-a="keep">Keep</button></div>`
+      : '<button type="button" class="ly new" data-f="new"><i aria-hidden="true"></i><span>New map</span></button>')
+    + (d.mapErr ? `<p class="fine" role="status">${esc(d.mapErr)}</p>` : ''));
+}
+function editor(m) {
+  const d = PM.draw, asked = kind => d.asked && d.asked.id === m.id && d.asked.kind === kind, f = a => `data-a="${a}" data-f="${a}${m.id}"`;
+  if (!mine(m)) return `<div class="yed"><p class="fine">${m.from_node ? `This map came from ${esc(m.from_node)}; it is read-only here.` : `This is ${esc(m.agent)}’s map.`}</p></div>`;
+  return `<div class="yed" data-m="${m.id}">` + (m.id === d.map ? '' : `<button type="button" class="ybtn" ${f('open')}>Draw in this map</button>`)
+    + `<label>Name<input ${f('name')} maxlength="80" value="${esc(m.name)}"></label><label>Whose map<input ${f('owner')} maxlength="80" value="${esc(m.owner || '')}"></label>`
+    + `<button type="button" class="ybtn" ${f('share')}>${m.shared && !m.held ? 'Stop sharing' : 'Share'}</button>`
+    + (asked('share') || m.share_error ? `<p class="fine" role="status">${esc(asked('share') ? d.asked.text : m.share_error)}</p>` : '')
+    + `<button type="button" class="ybtn" ${f('delete')}>Delete</button>`
+    + (asked('delete') ? `<p class="fine" role="status">Delete ${esc(m.name)} and its ${+m.marks} drawing${m.marks === 1 ? '' : 's'}? Press Delete again.</p>` : '') + `</div>`;
+}
+function wireMaps() {
+  const box = document.getElementById && document.getElementById('ymaps'), d = PM.draw; if (!box) return;
+  const idOf = b => +b.closest('[data-m]').dataset.m;
+  box.querySelectorAll('.ymd').forEach(b => b.onclick = () => { const id = idOf(b); if (!PM.mapOff.delete(id)) PM.mapOff.add(id);
+    if (!MARKS[id]) placeMaps(); else { panel(); redraw(); } });
+  box.querySelectorAll('.ymn').forEach(b => b.onclick = () => { const id = idOf(b); d.edit = d.edit === id ? null : id; d.asked = null; panel(); });
+  const nw = box.querySelector('.ly.new'); if (nw) nw.onclick = () => { d.naming = true; panel(); const i = document.getElementById('ynew'); if (i) i.focus(); };
+  const ni = document.getElementById('ynew');
+  if (ni) { ni.onkeydown = e => { if (e.key === 'Enter') newMap(ni.value); if (e.key === 'Escape') { d.naming = false; panel(); } };
+    box.querySelector('[data-a="keep"]').onclick = () => newMap(ni.value); }
+  box.querySelectorAll('.yed[data-m]').forEach(ed => {
+    const m = mapById(+ed.dataset.m), x = a => ed.querySelector(`[data-a="${a}"]`); if (!m) return;
+    if (x('open')) x('open').onclick = () => { remember(m.id); after(); };
+    x('name').onchange = async () => { const r = await mapPatch(m, { name: x('name').value }); if (!r.ok) d.mapErr = refused(r); after(); };
+    x('owner').onchange = async () => { const r = await mapPatch(m, { owner: x('owner').value.trim() || null }); if (!r.ok) d.mapErr = refused(r); after(); };
+    x('share').onclick = () => share(m); x('delete').onclick = () => mapDelete(m);
+  });
+}
+async function mapPatch(m, body) {
+  const r = await send('PATCH', `place/maps/${m.id}`, { ...body, actor: actor() });
+  if (r.ok) { Object.assign(m, r.map); PM.draw.asked = null; PM.draw.mapErr = ''; }
+  return r;
+}
+/* the first press brings back the node's own warning (409), shown in the row; the second sends it, exactly */
+async function share(m) {
+  const d = PM.draw, again = d.asked && d.asked.id === m.id && d.asked.kind === 'share';
+  const r = await mapPatch(m, m.shared && !m.held && !again ? { shared: false } : again ? { shared: true, confirm: 'exact' } : { shared: true });
+  if (!r.ok) d.asked = { id: m.id, kind: 'share', text: refused(r) };
+  panel(); mapTable();
+}
+async function mapDelete(m) {
+  const d = PM.draw;
+  if (!(d.asked && d.asked.id === m.id && d.asked.kind === 'delete')) { d.asked = { id: m.id, kind: 'delete' }; panel(); return; }
+  const r = await send('DELETE', `place/maps/${m.id}?confirm=${encodeURIComponent(m.name)}&actor=${encodeURIComponent(actor())}`);
+  d.asked = null;
+  if (!r.ok) { d.mapErr = refused(r); panel(); return; }
+  PM.maps = PM.maps.filter(x => x.id !== m.id); delete MARKS[m.id]; d.edit = null;
+  if (d.sel != null && !markById(d.sel)) d.sel = null;
+  if (d.map === m.id) d.map = PM.maps.length ? PM.maps[0].id : null;
+  after();
+}
+async function newMap(name) {
+  const d = PM.draw, r = await send('POST', 'place/maps', { name, actor: actor() });
+  if (!r.ok) { d.mapErr = refused(r); panel(); return; }
+  d.naming = false; d.mapErr = ''; PM.maps = [r.map, ...(PM.maps || [])]; MARKS[r.map.id] = []; remember(r.map.id);
+  after();
+}
+/* the maps and the drawings of the ones on the screen, asked again: the left column, the lower band and the screen */
+async function placeMaps() {
+  const d = PM.draw;
+  if (!DOORS_TOKEN()) { PM.maps = null; panel(); return; }
+  try { const g = await ask('place/maps'); PM.maps = g.maps || []; PM.palette = g.palette || null; PM.mapsErr = null; } catch (e) { PM.maps = null; PM.mapsErr = e.message; }
+  const M = PM.maps || [];
+  let keep = null; try { keep = +localStorage.getItem(MAPKEY) || null; } catch (e) { /* no storage here */ }
+  if (!mapById(d.map)) d.map = mapById(keep) ? keep : M.length ? M[0].id : null;
+  await Promise.all(M.filter(m => !PM.mapOff.has(m.id) || m.id === d.map)
+    .map(m => ask(`place/maps/${m.id}/marks`).then(r => { MARKS[m.id] = r.marks || []; }).catch(() => {})));
+  Object.keys(MARKS).forEach(id => { if (!mapById(+id)) delete MARKS[id]; });
+  panel(); mapTable(); readout(); drawForm(); redraw();
+}
+/* the lower band's left: the open map as a table, a row per drawing that puts it in hand */
+let PTABLE = null;
+function mapTable() {
+  const el = $('#ptable'); if (!el) return;
+  if (PTABLE == null) PTABLE = el.innerHTML;
+  const m = openMap(), K = m && MARKS[m.id];
+  if (!K) { el.innerHTML = PTABLE; return; }
+  const sw = k => `<span class="msw" style="background:${esc((PM.palette || {})[k.colour] || 'transparent')}"></span>`;
+  el.innerHTML = `<h3 class="pmh"><span>${esc(m.name)}</span><b>${K.length} drawn · ${m.shared ? 'shared with the node upstream' : 'yours, kept on this node'}</b></h3>`
+    + (K.length ? '<div class="tscroll"><table class="tbl mtbl"><tr><th>drawing</th><th>kind</th><th class="n">measure</th><th>note</th><th>image</th><th>issue</th></tr>'
+      + K.map(k => `<tr${k.id === PM.draw.sel ? ' class="on"' : ''}><td><button type="button" class="mrow" data-k="${k.id}">${sw(k)}${esc(k.label || k.kind)}</button></td>`
+        + `<td>${esc(k.kind)}</td><td class="n">${esc(measureOf(k))}</td><td>${esc(k.note || '')}</td>`
+        + `<td>${k.capture_id ? `<img class="mth" data-cap="${+k.capture_id}" alt="image ${+k.capture_id}">` : ''}</td><td>${esc(tiedTo(k))}</td></tr>`).join('') + '</table></div>'
+      : '<p class="fine">Nothing drawn in it yet. Choose a key on the screen’s left edge and press the map.</p>');
+  el.querySelectorAll('.mrow').forEach(b => b.onclick = () => { const k = markById(+b.dataset.k); if (!k) return;
+    PM.mapOff.delete(k.map_id); select(k.id); if (PM.map) PM.map.easeTo({ center: centreOf(k), duration: CLOCK.reduced() ? 0 : 500 }); });
+  el.querySelectorAll('img.mth').forEach(i => imgBlob(+i.dataset.cap).then(b => { if (b) { i.src = URL.createObjectURL(b); i.onload = () => URL.revokeObjectURL(i.src); } }));
+}
+window.placeMaps = placeMaps;
 
 /* ---------------------------------------------------------------- the inspector: one line under the map (option A)
    In view, the node's own cell as the lede says it; a mark, a margin row or a cell pressed says its facts in the same
@@ -526,9 +955,7 @@ async function facts() {
   try {
     const m = PM.measured && PM.measured.points === PM.measure.length && PM.measure.length > 1 ? PM.measured : null;
     if (PM.tool === 'from') {
-      put(`<span class="k">From the house</span><b>${m ? fmtM(m.total_m) : '—'}</b>` + hint('tap any point: the node measures it from its own point (GET /geo/measure) · Done when you have it'));
-    } else if (PM.tool === 'measure') {
-      put(`<span class="k">Measure</span><b>${m ? fmtM(m.total_m) : '—'}</b>` + row('points', PM.measure.length) + hint('tap to add a point, Done to finish, Esc to clear · great-circle, by the node'));
+      put(`<span class="k">From the house</span><b>${m ? fmtM(m.total_m) : '—'}</b>` + hint('tap any point: the node measures it from its own point (GET /geo/measure) · press the tool again, or Esc, when you have it'));
     } else if (o && o.kind === 'station') {
       const s = o.s, v = lastRaw(s.sensor_id, 'pm25');
       const head = `<span class="k">${s.local ? 'This house’s station' : 'Public station'}</span><b class="said">${esc(plain(s.name || s.sensor_id))}</b>`;
@@ -751,7 +1178,7 @@ async function placeMap() {
     if (D.ngeo) GRID = { res: 8, edge_m: EDGE(8), node: D.ngeo.c8.id, nodeRing: loop(D.ngeo.c8.ring), cells: [] };
     console.warn('Place: no live map', e);
     PM.flat = `This browser gave the map no WebGL, so the node’s answers are drawn still: its cell, the stations, the rings and the images. Panning, the scales and measuring need the live map.`;
-    flat(); panel(); facts(); credits(); margin();
+    flat(); panel(); facts(); credits(); margin(); placeMaps();
     if (!D.ngeo) offline(D.ngeoErr || 'no token');
     ask('geo/rings?km=2,5,15').then(x => { RINGS = x.rings.map(g => ({ km: g.km, path: g.ring.map(([la, ln]) => [ln, la]) })); flat(); }).catch(() => {});
     return;
@@ -759,16 +1186,10 @@ async function placeMap() {
   map.touchZoomRotate.disableRotation();
   map.addControl(new maplibregl.ScaleControl({ maxWidth: 110, unit: 'metric' }), 'bottom-left');   // above the rungs: the zoom and the credit hold the right
   PM.overlay = new deck.MapboxOverlay({ interleaved: true, layers: [], pickingRadius: 8,
-    onHover: info => { PM.hoverDot = !!(info.object && DOTS.includes(info.layer.id)); },
-    /* deck.gl owns the cursor in interleaved mode: a dot says it can be clicked, the measure tool keeps its cross */
-    getCursor: ({ isDragging }) => isDragging ? 'grabbing' : MEASURING() ? 'crosshair' : PM.hoverDot ? 'pointer' : 'grab',
-    onClick: info => {
-      if (MEASURING()) return;
-      const o = info.object, id = info.layer && info.layer.id;
-      PM.pick = !o ? null : (id === 'own' || id === 'public') ? { kind: 'station', s: o } : id === 'models' ? { kind: 'model', ss: o.ss, p: o.p }
-        : id === 'labs' ? { kind: 'lab', s: o } : id === 'images' ? { kind: 'image', c: o } : id === 'species' ? { kind: 'image', c: o.c } : (id === 'grid' || id === 'grid-dot' || id === 'mine' || id === 'radio') ? { kind: 'cell', id: o.id } : null;
-      popup(PM.pick); facts();
-    } });
+    onHover: info => { PM.hoverDot = !!(info.object && (DOTS.includes(info.layer.id) || info.layer.id.startsWith('draw-'))); },
+    /* deck.gl owns the cursor in interleaved mode: a dot says it can be clicked, drawing and measuring keep the cross.
+       A press is the map's own click (press(), below), which asks the overlay what is under it. */
+    getCursor: ({ isDragging }) => isDragging ? 'grabbing' : MEASURING() || DRAWING() || PM.draw.corner != null ? 'crosshair' : PM.hoverDot ? 'pointer' : 'grab' });
   map.addControl(PM.overlay);
   tools();
   WIND.cv = document.createElement('canvas'); WIND.cv.className = 'windcv'; WIND.cv.setAttribute('aria-hidden', 'true');
@@ -782,23 +1203,26 @@ async function placeMap() {
     cellFacts(D.geometry.radio.mine).then(c => { RADIO = { id: c.id, path: loop(c.ring) }; redraw(); }).catch(() => {});
   });
   map.on('moveend', () => { const r = resFor(map.getZoom()); if (r !== PM.res) { PM.res = r; chrome(); } redraw(); panel(); loadGrid(); });
-  map.on('mousemove', e => { const ll = [e.lngLat.lng, e.lngLat.lat]; if (PM.tool === 'measure' && PM.measure.length) { PM.hover = ll; redraw(); } });
+  map.on('mousemove', e => { const d = PM.draw; if (DRAWING() && d.state && d.state.pts.length) { d.hover = [e.lngLat.lng, e.lngLat.lat]; figureOnly(); redraw(); } });
   map.on('click', e => {
     if (PM.tool === 'from') {
       const q = [e.lngLat.lng, e.lngLat.lat]; PM.measure = [D.point, q]; PM.measured = null; redraw(); facts();
-      fromNode(q[0], q[1]).then(d => { if (PM.measure[1] === q) { PM.measured = { points: 2, legs_m: [d], total_m: d }; redraw(); facts(); } }).catch(x => offline(x.message));
+      fromNode(q[0], q[1]).then(d => { if (PM.measure[1] === q) { PM.measured = { points: 2, legs_m: [d], total_m: d }; redraw(); facts(); figureOnly(); } }).catch(x => offline(x.message));
       return;
     }
-    if (PM.tool !== 'measure') return;
-    PM.measure.push([e.lngLat.lng, e.lngLat.lat]); redraw(); facts();
-    if (PM.measure.length > 1) {
-      const pts = PM.measure.slice();
-      ask(`geo/measure?path=${pts.map(q => q.map(v => v.toFixed(6)).join(',')).join(';')}`)
-        .then(m => { if (pts.length === PM.measure.length) { PM.measured = m; redraw(); facts(); } }).catch(e => offline(e.message));
-    }
+    press(e);
   });
-  map.on('dblclick', e => { if (!MEASURING()) return; e.preventDefault(); PM.setTool('inspect'); });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape' && PM.measure.length) { PM.measure = []; PM.measured = null; PM.hover = null; redraw(); facts(); } });
+  map.on('dblclick', e => {
+    if (MEASURING()) { e.preventDefault(); PM.setTool('select'); return; }
+    const d = PM.draw; if (!DRAWING() || !d.state) return;
+    e.preventDefault();
+    /* a double press is two presses and then this: the second press's point is the first one's again */
+    const q = d.state.pts, a = q.length >= 2 && PM.map.project(q[q.length - 1]), b = a && PM.map.project(q[q.length - 2]);
+    if (a && Math.hypot(a.x - b.x, a.y - b.y) < 6) d.state = backPt(d.state);
+    finish();
+  });
+  document.addEventListener('keydown', onKey, true);   // capture: an arrow moving a corner must not also pan the map
+  placeMaps();
 }
 window.placeMap = placeMap; window.placeLayer = setLayer; window.__PM = PM;   // __PM for the rig
 /* the Images panel added one: ask again, so its kind's row and its square appear */

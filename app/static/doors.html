@@ -271,8 +271,8 @@ section.decl{margin-top:22px}.row.decl{cursor:default}   /* a pack's declared ba
 .pask input::placeholder{color:var(--mute)}
 .pask kbd{font:400 10.5px/17px var(--mono);color:var(--mute);border:1px solid var(--hair);border-radius:4px;padding:0 5px}
 .addimg{background:none;border:1px solid var(--ink);border-radius:999px;padding:0 16px;font:400 var(--t-small) var(--body);color:var(--ink);cursor:pointer;min-height:44px;white-space:nowrap}
-.pmh,#cake .ck>h2{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:12px 0 2px;font:400 var(--t-cap) var(--body);letter-spacing:.02em;color:var(--mute)}
-.pmh b,#cake .ck>h2 b{font:400 10.5px var(--mono)}
+.pmh,#ymaps>h2,#cake .ck>h2{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:12px 0 2px;font:400 var(--t-cap) var(--body);letter-spacing:.02em;color:var(--mute)}
+.pmh b,#ymaps>h2 b,#cake .ck>h2 b{font:400 10.5px var(--mono)}
 /* three columns: the cake, the screen, the tools */
 .bench{display:grid;grid-template-columns:216px minmax(0,1fr) 286px;margin-top:16px;border-top:1px solid var(--hair);border-bottom:1px solid var(--hair)}
 #cake{padding:0 16px 16px 0;border-right:1px solid var(--hair);min-width:0}
@@ -289,6 +289,18 @@ section.decl{margin-top:22px}.row.decl{cursor:default}   /* a pack's declared ba
 .ly i{width:8px;height:8px;border-radius:50%;margin-left:3px;background:var(--ink);box-shadow:0 0 0 2px var(--ground),0 0 0 3px var(--ink)}
 .ly.off{color:var(--mute)}.ly.off i{background:none;box-shadow:inset 0 0 0 1px var(--mute)}
 .ly.soon{color:var(--mute)}.ly.soon i{width:6px;height:6px;margin-left:4px;background:none;box-shadow:none;border:1px dotted var(--mute)}
+/* your maps, above the cake: a map's dot is square, a layer's round; the dot shows or hides it, the name opens it */
+.ly.map i{border-radius:2px}
+.ly.map{grid-template-columns:22px minmax(0,1fr);gap:0;padding:0;cursor:default}.ly.map:hover{background:none}
+.ly.map>button{display:grid;align-items:center;min-height:inherit;padding:0 0 0 8px;border:0;border-radius:6px;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.ly.map>button:hover{background:var(--raise)}.ly.map .ymn{grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:0 8px 0 4px}
+.ly.map.open .ymn span{font-weight:500}
+.ly.new{color:var(--mute)}.ly.new i{background:none;box-shadow:none;font:400 13px/8px var(--body)}.ly.new i::before{content:'+';margin-left:-1px}
+.ly.new span{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px}
+.yed,.ynew{display:flex;flex-direction:column;gap:6px;margin:4px 0 10px 22px;font:400 var(--t-cap) var(--body);color:var(--mute)}.yed .fine{margin:0}
+.yed label{display:flex;flex-direction:column;gap:2px}
+.yed input,.ynew input{min-height:32px;padding:0 8px;border:1px solid var(--hair);background:none;color:var(--ink);font:400 var(--t-small) var(--body)}
+.ybtn{align-self:flex-start;min-height:32px;padding:0 14px;border:1px solid var(--ink);border-radius:999px;background:none;color:var(--ink);font:400 var(--t-cap) var(--body);cursor:pointer}
 .lyr .op{display:none;width:calc(100% - 22px);margin:6px 0 2px 22px;accent-color:var(--ink);height:14px}
 .lyr:has(.ly.on):hover .op,.lyr:has(.ly.on):focus-within .op{display:block}
 .lyr .whr{display:grid;grid-template-columns:auto minmax(0,1fr) 44px;gap:8px;align-items:center;margin:6px 0 2px 22px;font:400 10.5px var(--mono);color:var(--mute)}
@@ -312,14 +324,11 @@ button.tl{cursor:pointer}button.tl:hover:not(:disabled):not(.on){background:var(
 .mapc .tools,.mapc .zoom,.mapc .scales,.phour,.altc{background:var(--chip);border:1px solid var(--hair);border-radius:10px}
 .tools{position:absolute;top:12px;right:12px;z-index:3;display:flex;flex-direction:column}
 .zoom{position:absolute;right:12px;bottom:12px;z-index:3;display:flex;flex-direction:column}
-/* 44 px targets (Tomas, 15 Oct); the active tool says its word beside it, and measuring ends on Done */
+/* 44 px targets (Tomas, 15 Oct): back to the house and the PNG at the top right, zoom at the bottom right */
 .tools button,.zoom button{width:44px;height:44px;position:relative;display:grid;place-items:center;padding:0;border:0;background:none;color:var(--ink);font:300 18px/1 var(--mono);cursor:pointer}
-.tools button+button,.zoom button+button{border-top:1px solid var(--hair)}.tools button[data-t="fit"]{border-top-width:4px}
+.tools button+button,.zoom button+button{border-top:1px solid var(--hair)}
 .tools button:first-child,.zoom button:first-child{border-radius:9px 9px 0 0}.tools button[data-t="png"],.zoom button:last-child{border-radius:0 0 9px 9px}
 .tools button.on{background:var(--ink);color:var(--ground)}.tools button:hover:not(.on),.zoom button:hover{background:var(--raise)}
-.tools .w{display:none;position:absolute;right:calc(100% + 6px);top:50%;transform:translateY(-50%);padding:5px 10px;border:1px solid var(--hair);border-radius:999px;background:var(--chip);color:var(--ink);font:400 var(--t-cap)/1 var(--body);white-space:nowrap}
-.tools button.on .w{display:block}
-.tools button.done{position:absolute;top:calc(100% + 6px);right:-1px;width:auto;padding:0 16px;border:0;border-radius:999px;background:var(--ink);color:var(--ground);font:500 var(--t-small)/1 var(--body)}.tools button.done[hidden]{display:none}
 .mapc #mapbar{position:absolute;left:12px;bottom:12px;z-index:3;padding:0;border:0;display:block;max-width:calc(100% - 210px)}
 .scales{display:flex;gap:2px;padding:3px;border-radius:999px!important;overflow-x:auto;scrollbar-width:none}
 #mapbar .scales button{display:flex;gap:5px;align-items:center;width:auto;height:auto;min-height:44px;padding:0 12px;border:0;border-radius:999px;background:none;color:var(--mute);cursor:pointer;font:400 11px var(--body);white-space:nowrap}
@@ -337,6 +346,33 @@ button.tl{cursor:pointer}button.tl:hover:not(:disabled):not(.on){background:var(
 #altbar button{background:none;border:1px solid var(--hair);border-radius:999px;color:var(--ink);width:44px;height:44px;cursor:pointer}#altbar .cmp{margin-left:auto;display:flex;gap:6px;align-items:center;min-height:44px}
 #mapalt .photo{width:100%;display:block}
 .mapc .flatnote{top:54px}.mapc .nonode{right:68px;bottom:56px}   /* under the hour; above the rungs, clear of the zoom */
+/* the drawing keys (SPEC_place_microgis §4, §10): a column of 44 px keys on the screen's left edge, the letter small in
+   a corner, the pressed one filled with the screen's ink; focus is the cells' blue, as everywhere on the screen. Beside
+   them the readout, the device's own screen line, and under it the form for the drawing in hand. */
+.dkeys{position:absolute;left:12px;top:12px;z-index:3;display:flex;flex-direction:column;background:var(--chip);border:1px solid var(--hair);border-radius:10px;overflow:hidden}
+.dkeys button{width:44px;height:44px;position:relative;display:grid;place-items:center;padding:0;border:0;background:none;color:var(--ink);cursor:pointer}
+.dkeys button+button{border-top:1px solid var(--hair)}.dkeys button.gap{border-top-width:5px}
+.dkeys button[aria-pressed="true"]{background:var(--ink);color:var(--ground)}.dkeys button:hover:not([aria-pressed="true"]){background:var(--raise)}
+.dkeys button:focus-visible,.dpanel button:focus-visible{outline:2px solid var(--cells);outline-offset:-3px}
+.dkeys svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+.dkeys small{position:absolute;right:3px;bottom:2px;font:400 8.5px var(--mono);opacity:.55}
+/* with the keys on the screen the hour moves right, beside the column at the top right, clear of the readout */
+.mapc:has(.dkeys) .phour{left:auto;right:68px;transform:none}
+.dpanel{position:absolute;left:68px;top:12px;z-index:3;display:flex;flex-direction:column;gap:6px;width:min(330px,calc(100% - 136px));max-height:calc(100% - 84px);overflow:auto;scrollbar-width:thin}
+.dread,.dform{background:var(--chip);border:1px solid var(--hair);border-radius:10px;padding:8px 12px 9px;color:var(--ink)}.dform[hidden]{display:none}
+.dread .t{display:flex;gap:8px;font:400 11px var(--body);color:var(--mute)}.dread .t span:last-child{margin-left:auto;font:400 10px var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dread .v{min-height:28px;margin:1px 0 2px;font:400 22px var(--mono);letter-spacing:-.01em}.dread .v small{margin-left:6px;font-size:12px;color:var(--mute)}
+.dread .sw{display:flex;flex-wrap:wrap;align-items:center}.dread .sw em{margin-left:auto;font:normal 400 11px var(--body);color:var(--mute)}
+.dread .sw button{flex:none;width:44px;height:44px;display:grid;place-items:center;padding:0;border:0;background:none;cursor:pointer}
+.dread .sw i{width:14px;height:14px;border-radius:50%;display:block}.dread .sw button[aria-pressed="true"] i{box-shadow:0 0 0 2px var(--ground),0 0 0 3px var(--ink)}
+.dread .hint{margin-top:2px;padding-top:5px;border-top:1px solid var(--hair);font:400 10.5px/1.4 var(--body);color:var(--mute)}
+.dread .err,.dform p{margin:6px 0 0;font:400 11px/1.4 var(--body);color:var(--ink)}.dform p{color:var(--mute)}
+.dform label{display:flex;flex-direction:column;gap:2px;margin-bottom:6px;font:400 10.5px var(--body);color:var(--mute)}
+.dform input,.dform textarea,.dform select{min-height:44px;padding:0 8px;border:1px solid var(--hair);border-radius:6px;background:var(--ground);color:var(--ink);font:400 var(--t-small) var(--body)}
+.dform textarea{padding:8px;resize:vertical}.dform .acts{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0}
+.dform button{min-height:44px;padding:0 14px;border:1px solid var(--hair);border-radius:999px;background:none;color:var(--ink);font:400 var(--t-small) var(--body);cursor:pointer}
+.dform button:hover{background:var(--raise)}.dform .caps{display:flex;flex-direction:column;max-height:220px;overflow:auto;margin-top:6px}
+.dform .caps button{border-radius:6px;text-align:left}.dform .caps small{font:400 10px var(--mono);color:var(--mute)}
 /* under the screen: the status line (the inspector), then the marks around the house, nearest first */
 #facts.inspect{display:flex;flex-wrap:wrap;gap:4px 16px;align-items:baseline;padding:12px 6px 8px;font:400 10.5px/1.5 var(--mono);color:var(--mute)}
 #facts b{font-weight:500;color:var(--ink)}#facts .fi small{color:var(--mute);font:inherit;margin-right:6px}#facts .hint{margin-left:auto}#facts .said{font-family:var(--body)}
@@ -348,6 +384,11 @@ button.tl{cursor:pointer}button.tl:hover:not(:disabled):not(.on){background:var(
 /* the lower band: what is selected or returned, and the place in figures */
 .plow{display:grid;grid-template-columns:minmax(0,1fr) 340px;border-bottom:1px solid var(--hair)}
 .plow>section{padding:0 20px 18px 0;min-width:0}.plow>section+section{padding:0 0 18px 20px;border-left:1px solid var(--hair)}.plow .fr b{white-space:nowrap}
+/* the open map's table: a swatch in the drawing's own colour is the one place a drawing colour sits off the screen */
+.mtbl .mrow{display:inline-flex;align-items:center;min-height:32px;padding:0;border:0;background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.mtbl .mrow:hover{text-decoration:underline;text-underline-offset:3px}.mtbl tr.on td{background:var(--raise)}
+.msw{display:inline-block;width:10px;height:10px;margin-right:8px;border-radius:50%;box-shadow:0 0 0 1px var(--ink)}
+.mth{width:26px;height:20px;object-fit:cover;border-radius:3px;vertical-align:middle}
 #pedges{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2;overflow:visible}
 #pedges text{font:500 11px var(--mono);fill:var(--ink);paint-order:stroke;stroke:var(--ground);stroke-width:3px}#pedges .pub{fill:var(--ground);stroke:var(--ink);stroke-width:1.4}#pedges path{fill:none;stroke:var(--ink);stroke-width:1.5}
 .wh{flex:none;vertical-align:-2px;margin-right:6px}.wh rect,.wh path{fill:none;stroke:var(--signal-worse);stroke-width:1.5}

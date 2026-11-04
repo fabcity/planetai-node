@@ -27,7 +27,7 @@ VIEWS.place = function () {
     if ($('#askpane').hidden) $('#askbtn').click();
     if (q) { $('#q').value = q; $('#paskq').value = ''; $('#qform').requestSubmit(); }
   };
-  if ($('#addimg')) $('#addimg').onclick = addImage;
+  if ($('#addimg')) $('#addimg').onclick = () => addImage();
   /* a phone: the cake and the tools are two disclosures under the screen */
   document.querySelectorAll('.psbar button').forEach(b => b.onclick = () => {
     const bench = document.querySelector('.bench'), open = bench.dataset.sheet === b.dataset.s ? '' : b.dataset.s;
@@ -104,21 +104,24 @@ window.placeAlt = layer;
 
 /* THE TOOLS, the right-hand column (SPEC_place_microgis §6): the ones that run today, and the analyses and fitness tools
    the spec names, each with a dotted "not yet" until the place pack computes it. A tool that runs is a row that shows
-   its command id; the chosen one is filled. Rings ask GET /geo/rings, which answers a token only. */
+   its command id; the chosen one is filled. Rings ask GET /geo/rings, which answers a token only. From the house is a
+   tool of the screen (doors-placemap.js PM.setTool): the node measures the next press from its own point. */
 const TOOLS = [
-  ['tools', [['Rings and distance', 'geo.rings', 'rings'], ['Sun and shade', 'place.sun'], ['Trees, 3-30-300', 'place.trees'], ['Built form', 'place.built'],
+  ['tools', [['Rings and distance', 'geo.rings', 'rings'], ['From the house', 'geo.measure', null, 'from'], ['Sun and shade', 'place.sun'], ['Trees, 3-30-300', 'place.trees'], ['Built form', 'place.built'],
     ['Sealed ground', 'place.sealed'], ['Streets', 'place.streets'], ['Walk to', 'place.walk'], ['What changed', 'place.changed'], ['Where the rain goes', 'water.runoff']]],
   ['fitness', [['One more tree', 'fit.tree'], ['A roof for a panel', 'fit.roof'], ['A garden bed', 'fit.grow'], ['Catching rain', 'fit.rain']]],
 ];
 function placeTools() {
-  const on = (window.__PM || { on: {} }).on, tok = !!DOORS_TOKEN(), a = document.activeElement;
-  const keep = a && a.closest && a.closest('#ptools') && a.dataset.layer;   // a press from here keeps its focus through the redraw
-  $('#ptools').innerHTML = TOOLS.map(([h, ts]) => `<h3 class="pmh">${h}</h3>` + ts.map(([n, id, l]) => l
-    ? `<button class="tl${on[l] ? ' on' : ''}" aria-pressed="${!!on[l]}" data-layer="${l}"${tok ? '' : ' disabled'}><span>${n}</span><code>${id}</code></button>`
+  const PM = window.__PM || { on: {} }, on = PM.on, tok = !!DOORS_TOKEN(), a = document.activeElement;
+  const keep = a && a.closest && a.closest('#ptools') && (a.dataset.layer || a.dataset.tool);   // a press from here keeps its focus through the redraw
+  const btn = (n, id, attr, pressed) => `<button class="tl${pressed ? ' on' : ''}" aria-pressed="${pressed}" ${attr}${tok ? '' : ' disabled'}><span>${n}</span><code>${id}</code></button>`;
+  $('#ptools').innerHTML = TOOLS.map(([h, ts]) => `<h3 class="pmh">${h}</h3>` + ts.map(([n, id, l, t]) => l ? btn(n, id, `data-layer="${l}"`, !!on[l])
+    : t ? btn(n, id, `data-tool="${t}"`, PM.tool === t)
     : `<div class="tl soon" title="${id}"><span>${n}</span><code>not yet</code></div>`).join('')).join('')
     + (tok ? '' : `<p class="fine">Tools run on this node with a token. Unlock this screen in Set up.</p>`);
   document.querySelectorAll('#ptools button[data-layer]').forEach(b => b.onclick = () => window.placeLayer(b.dataset.layer, !on[b.dataset.layer]));
-  const b = keep && document.querySelector(`#ptools [data-layer="${keep}"]`); if (b) b.focus();
+  document.querySelectorAll('#ptools button[data-tool]').forEach(b => b.onclick = () => PM.setTool && PM.setTool(PM.tool === b.dataset.tool ? 'select' : b.dataset.tool));
+  const b = keep && document.querySelector(`#ptools [data-layer="${keep}"], #ptools [data-tool="${keep}"]`); if (b) b.focus();
 }
 window.placeTools = placeTools;
 
@@ -134,9 +137,10 @@ function figures() {
 }
 
 /* ADD AN IMAGE — a quiet button in the header, and a dialog: the file (picked or dropped), what took it, a note,
-   who. POST /captures with this screen's token; the map's Images layers and the Data door's list then ask again. */
+   who. POST /captures with this screen's token; the map's Images layers and the Data door's list then ask again.
+   The image key on the screen opens the same dialog for a drawing (`to`: its point, and what to do with the picture). */
 const IKIND = { phone: 'Phone', camera: 'Fixed camera', microscope: 'Microscope', drone: 'Drone', balloon: 'Balloon or kite' };
-function addImage() {
+function addImage(to) {
   let who = ''; try { who = localStorage.getItem('planetai_actor') || ''; } catch (e) { /* no storage here */ }
   const dl = $('#imgdlg');
   if (!DOORS_TOKEN()) { dl.innerHTML = `<p>Images stay private to this house. Unlock this screen in Set up › This screen to see or add them.</p><form method="dialog"><button>Close</button></form>`; dl.showModal(); return; }
@@ -159,12 +163,15 @@ function addImage() {
     if (!who) try { localStorage.setItem('planetai_actor', by); } catch (x) { /* no storage here */ }
     const fd = new FormData(); fd.append('photo', file, file.name || 'image.jpg'); fd.append('kind', $('#imgkind').value);
     fd.append('note', $('#imgnote').value); fd.append('actor', by); fd.append('describe', $('#imgseen').checked ? '1' : '');
+    if (to && to.at) { fd.append('lon', to.at[0]); fd.append('lat', to.at[1]); }
     btn.disabled = true; out.textContent = 'Sending it to the node…';
     try {
       const r = await fetch('/captures', { method: 'POST', headers: DOORS_AUTH(), body: fd }), b = await r.json().catch(() => ({}));
       if (!r.ok) { out.textContent = b.detail || `the node refused it (${r.status})`; return; }
       if (b.describing) setTimeout(() => window.placeImagesChanged && window.placeImagesChanged(), 40000);   // its description, once the model is done
       dl.close(); if (window.placeImagesChanged) window.placeImagesChanged();
+      if (to && to.done && b.capture) to.done(b.capture.id);
     } catch (x) { out.textContent = `The node did not answer: ${x.message}`; } finally { btn.disabled = false; }
   };
 }
+window.placeAddImage = addImage;
