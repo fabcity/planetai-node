@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **What to do says when it asked once.** The card's head line said "asked since 07:14 · still open" over the node's
+  own "asked at 07:14, and still true"; the head now names only the issue. The fire pack's source line under its band
+  said "Fires within 150 km", so "fires nearby" read as 150 km when it counts the 25 km ring; it now reads "NASA FIRMS,
+  VIIRS satellites: nearby is within 25 km, the region 150 km", from `FIRE_LOCAL_KM` and `FIRE_REGION_KM`.
+
 - **Now looks three days ahead.** Next days, under What to do on Now, shows the rest of today, tomorrow and the day
   after, one row each for air, heat, wind and rain, and the sea, then a line from any pack that declares
   one with `ahead:` in its `pack.yaml`; the `surf` wild pack is the first. Air and heat carry the state word against

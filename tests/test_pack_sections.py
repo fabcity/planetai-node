@@ -77,7 +77,7 @@ shipped = I.pack_sections(packs.manifests())
 assert sorted((s["id"], s.get("core"), s["wall"]) for s in shipped) == [("fire", True, True), ("surface-heat", True, True)], shipped
 assert engine._sections(shipped, [], now) == [], "a core section nobody turned on must not draw an empty band"
 fire_row = {"sensor_id": "firms-fires", "metric": "fires_region_24h", "value": 51.0, "kind": "model",
-            "name": "Fires within 150 km (NASA FIRMS, VIIRS satellites)", "ts": "2026-10-02T06:40:00+00:00"}
+            "name": "NASA FIRMS, VIIRS satellites: nearby is within 25 km, the region 150 km", "ts": "2026-10-02T06:40:00+00:00"}
 got = engine._sections(shipped, [fire_row], now)
 assert len(got) == 1 and got[0]["expected"] == 5 and "core" not in got[0] and "FIRMS" in got[0]["readouts"][0]["source"], got
 assert engine._sections([{**sec(), "pack": "p"}], [], now)[0]["readouts"] == []
