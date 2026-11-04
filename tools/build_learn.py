@@ -317,23 +317,23 @@ MARKS = [
      "The line counts the things, how many sit idle and how many need repair, and opens the list in "
      "Data › Home. Only a thing you mark to lend or give is ever published."),
     ("place-head", "The ground this node stands on", "dashboard.md", "Place",
-     "The ground this node stands on.", "and three views:",
-     "The cell id is printed whole. Type a question in the line on the right and the Ask pane opens with "
+     "The ground this node stands on.", "to get there)",
+     "The cell id is printed whole. Type a question in the line under it and the Ask pane opens with "
      "it; press / to get there from anywhere on this door."),
     ("place-image", "Add an image", "dashboard.md", "Place",
      "**+ Add an image** (token only)", "describes it.",
      "The picture stays on this node, cleaned of EXIF and GPS, and lands on the map where its own GPS "
      "says it was taken, else in the node's cell."),
     ("place-layers", "The layers", "dashboard.md", "Place",
-     "Each row has its swatch", "nothing here says so.",
+     "**What the place is made of.**", "how many of its rows are on.",
      "What this place is made of, from the sky to the ground, and what the node does not hold yet. A filled "
      "dot is on, a hollow one off, and a dotted one is a layer the node cannot draw yet, named by its source."),
-    ("place-map", "The map and its margin", "dashboard.md", "Place",
-     "Nothing is labelled on the map itself", "for public stations).",
-     "Every distance in the margin is measured by the node from its own point. Without the token the "
+    ("place-map", "The screen", "dashboard.md", "Place",
+     "**The screen.**", "by day and at night.",
+     "Every distance on this door is measured by the node from its own point. Without the token the "
      "house's marks say withheld, because together they would place the house."),
-    ("place-tools", "The inspector and the tools", "dashboard.md", "Place",
-     "press a station, an image, a place to make", "shown\nand never counted.",
+    ("place-tools", "The tools", "dashboard.md", "Place",
+     "**The tools.**", "and its name sits in a pill while it is on.",
      "The tools that run on this node today, and the ones still to come, marked not yet. Rings and "
      "distance draws the 2, 5 and 15 km rings from the node's own point. Without a token they stay quiet."),
     ("place-orbit", "From orbit", "dashboard.md", "Place",
@@ -345,7 +345,7 @@ MARKS = [
      "Only what a person here confirmed in an image is counted. Where a picture was taken places the "
      "house, so the table needs the token."),
     ("place-changing", "What is changing", "dashboard.md", "Place",
-     "**What is\nchanging**", "water and soil).",
+     "**The place in figures**", "and the forecast.",
      "Land and coast change yearly, so they are here and not on Now. What the node cannot read yet is "
      "named here as missing."),
     ("node-verdict", "Working, or needs a look", "dashboard.md", "Node",

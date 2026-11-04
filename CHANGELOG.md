@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Place is drawn as what the ground is made of.** The door has a list on the left that runs from the sky down to the
+  ground, one line a row with a dot for on, off, or not held yet, and a black screen in the middle that stays black on
+  the light page and the dark one. On the right is a column of tools. Rings and distance runs today, and the sun and
+  shade, trees, built form, sealed ground, streets, walking, what changed, where the rain goes and four fitness tools
+  are listed as not yet. Under the screen are a line for what you pressed and the list around the house, and below
+  that, what you selected and the place in figures. The rooms are gone from Place, and the hectare squares view is gone
+  until What changed runs as a tool. On a phone the layers and the tools open as a sheet over the lower part of the
+  page. The page is documented under Place in `docs/site/dashboard.md`.
+
 - **Now looks three days ahead.** Next days, under What to do on Now, shows the rest of today, tomorrow and the day
   after, one row each for air, heat, wind and rain, and the sea, then a line from any pack that declares
   one with `ahead:` in its `pack.yaml`; the `surf` wild pack is the first. Air and heat carry the state word against

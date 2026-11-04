@@ -1339,14 +1339,14 @@
      "Apa yang belum bisa diukur node ini?"
     ]
    },
-   "quote": "**What is\nchanging**: land and coast with the node's sentence and figure, the Index cells, and what is not here yet (production\nand trade, water and soil).",
+   "quote": "**The place in figures** holds what changes yearly and has no hours, land and coast with the node's sentence and\nfigure, the Index cells, and what is not here yet: production and trade, water and soil, and the forecast.",
    "section": "Place",
    "title": "What is changing",
    "url": "https://planetai.fab.city/docs/dashboard/#place"
   },
   "place-head": {
    "anchor": "place",
-   "more": "The cell id is printed whole. Type a question in the line on the right and the Ask pane opens with it; press / to get there from anywhere on this door.",
+   "more": "The cell id is printed whole. Type a question in the line under it and the Ask pane opens with it; press / to get there from anywhere on this door.",
    "page": "dashboard.md",
    "page_title": "The dashboard",
    "questions": {
@@ -1363,7 +1363,7 @@
      "Menurut satelit, apa yang berubah di sini?"
     ]
    },
-   "quote": "The ground this node stands on. The head gives the cell's id, resolution, edge and area (and the node's position, for\na screen with the token), and three views:",
+   "quote": "The ground this node stands on. The head gives the cell's id, resolution, edge and area, and the node's position for a\nscreen with the token. Under it is a line to ask the node about this place (press `/` to get there)",
    "section": "Place",
    "title": "The ground this node stands on",
    "url": "https://planetai.fab.city/docs/dashboard/#place"
@@ -1411,14 +1411,14 @@
      "Dari mana peta jalan ini berasal?"
     ]
    },
-   "quote": "Each row has its swatch, what it draws and from where, its pack and its opacity. Five start\non: the street map, the node's cell, the house's stations, the public stations and the images. A layer whose pack has\nnothing here says so.",
+   "quote": "**What the place is made of.** On the left is a list of what the node can show about the ground around the house,\nfrom the sky down to the ground. Its headings, in order, are results, microclimate, flows, built, animals, plants,\nsoil, water, ground and frame, and each says how many of its rows are on.",
    "section": "Place",
    "title": "The layers",
    "url": "https://planetai.fab.city/docs/dashboard/#place"
   },
   "place-map": {
    "anchor": "place",
-   "more": "Every distance in the margin is measured by the node from its own point. Without the token the house's marks say withheld, because together they would place the house.",
+   "more": "Every distance on this door is measured by the node from its own point. Without the token the house's marks say withheld, because together they would place the house.",
    "page": "dashboard.md",
    "page_title": "The dashboard",
    "questions": {
@@ -1435,9 +1435,9 @@
      "Mengapa beberapa tanda disembunyikan?"
     ]
    },
-   "quote": "Nothing is labelled on the map itself: every mark leaves on a thin leader to a ruled margin, **At the house · by\nposition**, one row per mark with its distance in metres from the node, measured by the node (`GET /geo/measure`, and\n`GET /nearby` for public stations).",
+   "quote": "**The screen.** In the middle is the map, on a black screen in a bezel. It stays black on the light page and on the\ndark one, so the marks read the same by day and at night.",
    "section": "Place",
-   "title": "The map and its margin",
+   "title": "The screen",
    "url": "https://planetai.fab.city/docs/dashboard/#place"
   },
   "place-orbit": {
@@ -1459,7 +1459,7 @@
      "Apakah bangunan di sekitar kami bertambah?"
     ]
    },
-   "quote": "the node's Sentinel-2 annual medians, then and now side by side, with the hectares that changed between them by its AlphaEarth record",
+   "quote": "the node's Sentinel-2 annual medians,\nthen and now side by side, with the hectares that changed between them by its AlphaEarth record",
    "section": "Place",
    "title": "From orbit",
    "url": "https://planetai.fab.city/docs/dashboard/#place"
@@ -1483,7 +1483,7 @@
      "Menurut catatan orang lain, makhluk apa lagi yang hidup di sekitar sini?"
     ]
    },
-   "quote": "**Species confirmed here**: a table of what somebody here confirmed\nin an image, how often, where, and GBIF's open records by others in the node's seven cells, token only.",
+   "quote": "**Species confirmed here** is the list under the species row: a table of what somebody here confirmed in an image,\nhow often, where, and GBIF's open records by others in the node's seven cells, token only.",
    "section": "Place",
    "title": "Species confirmed here",
    "url": "https://planetai.fab.city/docs/dashboard/#place"
@@ -1507,9 +1507,9 @@
      "Sel apa ini, dan seberapa besar?"
     ]
    },
-   "quote": "press a station, an image, a place to make or a cell and the line gives its facts, and with the token how far it is\nfrom the node and which cell it is in. A station of this house says it counts toward the cell; a public one is shown\nand never counted.",
+   "quote": "**The tools.** On the right is a column of what the node could do with this place. **Rings and distance** works today:\nit draws the 2, 5 and 15 km rings from the node's point, and its name sits in a pill while it is on.",
    "section": "Place",
-   "title": "The inspector and the tools",
+   "title": "The tools",
    "url": "https://planetai.fab.city/docs/dashboard/#place"
   },
   "presence": {
