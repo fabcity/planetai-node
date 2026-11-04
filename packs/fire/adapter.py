@@ -249,7 +249,7 @@ def fetch(hc):
     if first:                              # the week the 7-day file brought, a day at a time; no wind for the past
         for d in range(1, 7):
             readings += summarise(spots, now - timedelta(days=d), lat, lon, local_km, region_km, None)
-    sensor = {"sensor_id": SENSOR, "source": SOURCE, "name": f"Fires within {region_km:.0f} km (NASA FIRMS, VIIRS satellites)",
+    sensor = {"sensor_id": SENSOR, "source": SOURCE, "name": f"NASA FIRMS, VIIRS satellites: nearby is within {local_km:.0f} km, the region {region_km:.0f} km",
               "lat": None, "lon": None, "indoor": False, "local": False, "kind": "model", "scale": "bioregion",
               "cadence": "PT3H",
               "meta": {"attribution": "NASA FIRMS, VIIRS 375 m active fire detections (CC0)", "local_km": local_km,

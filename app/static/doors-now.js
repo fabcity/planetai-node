@@ -164,8 +164,9 @@ function decision() {
   let evs = ask && ask.event_id != null ? D.events.filter(e => e.id === ask.event_id) : [];
   if (ask && !evs.length) {
     /* an alert still true that no event stands for (answered on Telegram), or an event this screen has no row for */
-    $('#decide').innerHTML = head + `<div class="decide"><p class="nk">${said(it.name)} · asked since <span class="mono">${hhmm(ask.since)}</span> · still open</p>`
-      + `<p class="dq">${said(ask.says || '')}</p>${ask.how ? `<p class="dm">${said(ask.how)}</p>` : ''}` + line + `</div>`;
+    /* the node's own words say when it was asked (Wall and phone say the same), so the head names only the issue */
+    $('#decide').innerHTML = head + `<div class="decide"><p class="nk">${said(it.name)}</p>`
+      + `<p class="dq">${ask.says ? said(ask.says) : `asked at <span class="mono">${hhmm(ask.since)}</span>`}</p>${ask.how ? `<p class="dm">${said(ask.how)}</p>` : ''}` + line + `</div>`;
     return;
   }
   if (!evs.length) evs = evAt(k, S.i);
