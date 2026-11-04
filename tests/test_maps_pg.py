@@ -51,9 +51,9 @@ print("  both tables exist and PostGIS is on")
 
 cur.execute("INSERT INTO place_maps (name) VALUES ('t') RETURNING id")
 mid = cur.fetchone()["id"]
-cur.execute("SELECT shared, from_node, remote_id, pushed_at, push_tried_at FROM place_maps WHERE id = %s", (mid,))
+cur.execute("SELECT shared, held, from_node, remote_id, pushed_at, push_tried_at FROM place_maps WHERE id = %s", (mid,))
 row = cur.fetchone()
-assert row == {"shared": False, "from_node": None, "remote_id": None, "pushed_at": None, "push_tried_at": None}, row
+assert row == {"shared": False, "held": False, "from_node": None, "remote_id": None, "pushed_at": None, "push_tried_at": None}, row
 cur.execute("""INSERT INTO place_marks (map_id, kind, geom) VALUES
   (%s, 'area', ST_GeomFromText('POLYGON((115.167 -8.819,115.168 -8.819,115.168 -8.818,115.167 -8.819))',4326))""", (mid,))
 cur.execute("SELECT colour FROM place_marks WHERE map_id = %s", (mid,))
@@ -200,7 +200,7 @@ assert r.status_code == 200 and r.json()["map"]["name"] == "Garden"
 g = c.get("/place/maps", headers=H).json()
 assert set(g["palette"]) == {"1", "2", "3", "4", "5", "6"} and g["palette"]["3"].startswith("#"), g["palette"]
 m = next(x for x in g["maps"] if x["id"] == mid)
-assert set(m) == {"id", "name", "owner", "agent", "shared", "share_error", "from_node", "marks", "updated_at"}, m
+assert set(m) == {"id", "name", "owner", "agent", "shared", "held", "share_error", "from_node", "marks", "updated_at"}, m
 assert m["marks"] == 2 and m["owner"] == "Tomas", m
 r = c.delete(f"/place/maps/{mid}?confirm=garden", headers=H)
 assert r.status_code == 409 and r.json()["detail"] == "Deleting needs the map's name.", r.text
@@ -275,7 +275,7 @@ HOUSE = "This drawing sits on the house. Press Share again to send the map with 
 NOT_YET = "The node upstream does not take maps yet."
 SH = c.post("/place/maps", json={"name": "Walk to the beach", "actor": "Tomas"}, headers=H).json()["map"]["id"]
 share = lambda body, mid=SH: c.patch(f"/place/maps/{mid}", json={"actor": "Tomas", **body}, headers=H)  # noqa: E731
-row = lambda mid=SH: one("SELECT shared, share_error, push_tried_at, updated_at FROM place_maps WHERE id = %s", mid)  # noqa: E731
+row = lambda mid=SH: one("SELECT shared, held, share_error, push_tried_at, updated_at FROM place_maps WHERE id = %s", mid)  # noqa: E731
 
 
 def push():
@@ -331,11 +331,22 @@ print("  a parent that predates maps is said so; the map stays shared and is tri
 r = c.post(f"/place/maps/{SH}/marks", headers=H, json={"type": "Feature", "actor": "Tomas", "properties": {"kind": "marker"},
            "geometry": {"type": "Point", "coordinates": [115.15709, -8.8271]}})          # the node's own point
 assert r.status_code == 200 and r.json()["warn"] == HOUSE, r.text
-assert row()["share_error"] == HOUSE and push() == [], "a drawing on the house holds the map"
+assert row()["held"] is True and push() == [], "a drawing on the house holds the map"
+m = next(x for x in c.get("/place/maps", headers=H).json()["maps"] if x["id"] == SH)
+assert m["held"] is True and m["share_error"] == HOUSE, m
 ac.execute("UPDATE place_maps SET push_tried_at = now() - interval '2 hours' WHERE id = %s", (SH,))
 assert push() == [], "the hour's retry never releases a held map"
+# The hold is a flag, not the sentence: a row whose words were written by an older release, and a sentence reworded
+# since, both stay held.
+ac.execute("UPDATE place_maps SET share_error = 'an older wording of the warning' WHERE id = %s", (SH,))
+was, maps.ON_HOUSE = maps.ON_HOUSE, "Reworded: this drawing is on the house."
+assert push() == [], "a held map stays held whatever its share_error says"
+m = next(x for x in c.get("/place/maps", headers=H).json()["maps"] if x["id"] == SH)
+assert m["share_error"] == "Reworded: this drawing is on the house.", "the sentence is rendered from the flag"
+maps.ON_HOUSE = was
 assert share({"shared": True}).json()["detail"] == WARN
-assert share({"shared": True, "confirm": "exact"}).json()["map"]["share_error"] is None
+r = share({"shared": True, "confirm": "exact"}).json()["map"]
+assert r["share_error"] is None and r["held"] is False, r
 assert push() == [("put", SH)] and len(sent[0]["body"]["geojson"]["features"]) == 2
 print("  a drawing on the house's own cell holds a shared map until Share is pressed again")
 

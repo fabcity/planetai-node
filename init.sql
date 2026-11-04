@@ -559,6 +559,9 @@ CREATE TABLE IF NOT EXISTS place_marks (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+-- held: a drawing landed on the house's own res-10 cell while the map was shared, and nothing goes upstream until the
+-- household presses Share again. A flag, never the sentence the page shows: rewording that must not release a hold.
+ALTER TABLE place_maps ADD COLUMN IF NOT EXISTS held BOOLEAN NOT NULL DEFAULT false;
 CREATE INDEX IF NOT EXISTS place_marks_geom_gist ON place_marks USING GIST (geom);
 CREATE INDEX IF NOT EXISTS place_marks_map ON place_marks (map_id);
 -- A shared map unshared or deleted here, whose delete the node upstream has not had yet. No foreign key: a deleted

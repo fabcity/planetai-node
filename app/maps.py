@@ -322,7 +322,7 @@ def tie(cur, mark_id: int, issue: dict | None, words: str, actor: str) -> None:
 
 # ---------------------------------------------------------------- reads and guards
 
-_MAP = """SELECT p.id, p.name, p.owner, p.agent, p.shared, p.share_error, p.from_node, p.updated_at,
+_MAP = """SELECT p.id, p.name, p.owner, p.agent, p.shared, p.held, p.share_error, p.from_node, p.updated_at,
                  (SELECT count(*) FROM place_marks k WHERE k.map_id = p.id)::int AS marks
             FROM place_maps p"""
 _MARK = """SELECT id, map_id, kind, colour, label, note, capture_id, length_m, area_m2, drawn_by, alert_id, event_id,
@@ -367,7 +367,8 @@ def _yours(m: dict) -> None:
 
 def _house_hold(cur, shared: bool, map_id: int, mark_id: int) -> dict:
     """A drawing on the house's own res-10 cell holds a shared map: nothing goes up until Share is pressed again (§5).
-    The hold is the sentence in `share_error`, which push_maps() never retries past. {"warn": …} or {}."""
+    The hold is the `held` flag, which push_maps() never sends past; the sentence is only what the page shows.
+    {"warn": …} or {}."""
     try:
         house = geo.home_cell(10) if shared else None
     except HTTPException:
@@ -380,8 +381,15 @@ def _house_hold(cur, shared: bool, map_id: int, mark_id: int) -> dict:
                 (json.dumps({"type": "Polygon", "coordinates": [ring + ring[:1]]}), mark_id))
     if not cur.fetchone()["on_house"]:
         return {}
-    cur.execute("UPDATE place_maps SET share_error = %s WHERE id = %s", (ON_HOUSE, map_id))
+    cur.execute("UPDATE place_maps SET held = true WHERE id = %s", (map_id,))
     return {"warn": ON_HOUSE}
+
+
+def _shown(m: dict) -> dict:
+    """A map as the page reads it: a held map says why in `share_error`, in today's words."""
+    if m["held"]:
+        m["share_error"] = ON_HOUSE
+    return m
 
 
 @contextmanager
@@ -406,7 +414,7 @@ def maps_():
     """The maps, each with how many drawings it holds, and the palette the drawings' colour numbers mean."""
     with db() as con, con.cursor() as cur:
         cur.execute(_MAP + " ORDER BY p.updated_at DESC, p.id DESC")
-        return {"maps": cur.fetchall(), "palette": {str(k): h for k, (h, _) in PALETTE.items()}}
+        return {"maps": [_shown(m) for m in cur.fetchall()], "palette": {str(k): h for k, (h, _) in PALETTE.items()}}
 
 
 @router.post("/place/maps")
@@ -419,7 +427,7 @@ def map_new(body: dict, request: Request):
         cur.execute("INSERT INTO place_maps (name, owner) VALUES (%s, %s) RETURNING id", (name, _text(body.get("owner"), 80)))
         mid = cur.fetchone()["id"]
         ledger(cur, _actor(request, body), "drew", name, f"map:{mid}")
-        return {"map": _one(cur, _MAP + " WHERE p.id = %s", mid)}
+        return {"map": _shown(_one(cur, _MAP + " WHERE p.id = %s", mid))}
 
 
 @router.patch("/place/maps/{map_id}")
@@ -446,16 +454,16 @@ def map_edit(map_id: int, body: dict, request: Request):
             if body.get("confirm") != "exact":
                 raise HTTPException(409, SHARE_WARNING)
             # pushed_at cleared: the next push sends it whole, whatever the parent had before
-            cur.execute("""UPDATE place_maps SET shared = true, shared_at = now(), share_error = NULL, pushed_at = NULL,
-                             push_tried_at = NULL WHERE id = %s""", (map_id,))
+            cur.execute("""UPDATE place_maps SET shared = true, held = false, shared_at = now(), share_error = NULL,
+                             pushed_at = NULL, push_tried_at = NULL WHERE id = %s""", (map_id,))
             cur.execute("DELETE FROM place_maps_unshared WHERE map_id = %s", (map_id,))
             ledger(cur, _actor(request, body), "shared", sets.get("name", m["name"]), f"map:{map_id}")
         elif body.get("shared") is False and m["shared"]:
             _owe_delete(cur, map_id)
-            cur.execute("""UPDATE place_maps SET shared = false, share_error = NULL, pushed_at = NULL, push_tried_at = NULL
-                            WHERE id = %s""", (map_id,))
+            cur.execute("""UPDATE place_maps SET shared = false, held = false, share_error = NULL, pushed_at = NULL,
+                             push_tried_at = NULL WHERE id = %s""", (map_id,))
             ledger(cur, _actor(request, body), "unshared", sets.get("name", m["name"]), f"map:{map_id}")
-        return {"map": _one(cur, _MAP + " WHERE p.id = %s", map_id)}
+        return {"map": _shown(_one(cur, _MAP + " WHERE p.id = %s", map_id))}
 
 
 def _owe_delete(cur, map_id: int) -> None:
@@ -599,9 +607,8 @@ def push_maps() -> None:
         cur.execute("SELECT map_id FROM place_maps_unshared WHERE tried_at IS NULL OR tried_at < now() - interval '1 hour'")
         out = [(r["map_id"], "delete", None, None) for r in cur.fetchall()]
         cur.execute("""SELECT id, name, owner, updated_at FROM place_maps
-                        WHERE shared AND from_node IS NULL AND (pushed_at IS NULL OR updated_at > pushed_at)
-                          AND (share_error IS NULL OR (share_error <> %s AND push_tried_at < now() - interval '1 hour'))""",
-                    (ON_HOUSE,))
+                        WHERE shared AND NOT held AND from_node IS NULL AND (pushed_at IS NULL OR updated_at > pushed_at)
+                          AND (share_error IS NULL OR push_tried_at < now() - interval '1 hour')""")
         for m in cur.fetchall():
             cur.execute(_MARK + " WHERE map_id = %s ORDER BY id", (m["id"],))
             out.append((m["id"], "put", feature_collection(m, cur.fetchall(), node), m["updated_at"]))
@@ -623,11 +630,10 @@ def push_maps() -> None:
                 cur.execute("DELETE FROM place_maps_unshared WHERE map_id = %s", (map_id,))
             else:
                 # pushed_at is the snapshot's own time, so a change made while this was in flight goes next minute;
-                # a hold written meanwhile stays a hold
-                cur.execute("""UPDATE place_maps SET push_tried_at = now(),
-                                 share_error = CASE WHEN share_error = %(house)s THEN share_error ELSE %(err)s END,
+                # `held` is not touched, so a hold written meanwhile stays a hold
+                cur.execute("""UPDATE place_maps SET push_tried_at = now(), share_error = %(err)s,
                                  pushed_at = CASE WHEN %(err)s::text IS NULL THEN %(snap)s ELSE pushed_at END
-                                WHERE id = %(id)s AND shared""", {"house": ON_HOUSE, "err": error, "snap": snap, "id": map_id})
+                                WHERE id = %(id)s AND shared""", {"err": error, "snap": snap, "id": map_id})
 
 
 @received.post("/place/maps/received")

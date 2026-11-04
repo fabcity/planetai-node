@@ -401,7 +401,7 @@ Circles round the node, `?km=` up to eight distances (default `2,5,15`). Returns
 ### GET /place/maps
 Access: token
 
-The household's maps, each with how many drawings it holds, and the six drawing colours: `{maps: [{id, name, owner, agent, shared, share_error, from_node, marks, updated_at}], palette}`. A map with `from_node` set came from a child node and is read-only here. `share_error` says why a shared map has not gone up.
+The household's maps, each with how many drawings it holds, and the six drawing colours: `{maps: [{id, name, owner, agent, shared, held, share_error, from_node, marks, updated_at}], palette}`. A map with `from_node` set came from a child node and is read-only here. `share_error` says why a shared map has not gone up, and `held` is true while a drawing on the house keeps it here.
 
 ### POST /place/maps
 Access: token
