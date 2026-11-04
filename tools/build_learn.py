@@ -142,7 +142,7 @@ MARKS = [
     ("forecast", "Context, not a prediction", "packs-reference.md", "forecast",
      "Official and model weather for this point", "it never sends an alert.",
      "The card is drawn from GET /forecast: the wind and the rain for the hours ahead, and a "
-     "forecast point more than 10 km from the node is said to be another place. Now › Next days draws "
+     "forecast point more than 10 km from the node is said to be another place. Next days on Now draws "
      "its 72 hours. Nothing on this card can raise an alert."),
     ("events", "What an alert event is", "dashboard.md", "The sections",
      "An event is the bot's own unit", "the message it sent.",
@@ -302,11 +302,11 @@ MARKS = [
      "and the whole door moves to that issue."),
     ("now-bands", "A pack's own band", "dashboard.md", "Now",
      "**A pack's own band.** A pack can declare a band", "`measure` under Did it work.",
-     "Each row is one reading the node holds, with its source, how it was got and how old it is. The small print "
-     "under the band is the pack's own note, and says the pack ships no code for this page."),
+     "Each row is one reading the node holds. Its source, how it was got and how old it is are said once under the "
+     "band's title, and again on a row only where they change. The pack's own note is folded under How this is read."),
     ("now-next", "The next three days", "dashboard.md", "Now",
      "Each thing gets a row in the order", "how many hours go over it.",
-     "The rows are drawn from GET /forecast, asked only while Next days is shown. Press a row for its 72 hours "
+     "The rows are drawn from GET /forecast, asked when Now is drawn and kept for 30 minutes. Press a row for its 72 hours "
      "against the line. These are models: nothing on this part asks you to act or sends a message."),
     ("now-around", "The stations around the house", "dashboard.md", "Now",
      "Under them, the map of the stations", "for a screen with the token.",

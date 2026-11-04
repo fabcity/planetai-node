@@ -5,14 +5,11 @@
    routes it reads and its stage; every figure carries its comparison; the node's words are never shouted; provenance
    is a pill in ink. The scales are Place's: the kicker links there and draws no rail. */
 VIEWS.now = function () {
-  /* Now · Next days (SPEC_next_days §5): the switch at the top says which; Next days draws alone, so Now's parts (the
-     map among them) are never drawn into a hidden column */
-  const nx = nowView() === 'next', W = NX[D.locale] || NX.en;
-  $('main[data-view="now"]').classList.toggle('nx', nx);
-  document.querySelectorAll('#nowsw button').forEach(b => { const on = (b.dataset.nv === 'next') === nx; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); b.textContent = W[b.dataset.nv]; });
-  if (nx) { if (location.hash !== '#now/next') history.replaceState(null, '', '#now/next'); return drawNext(); }
   rows(); drawDeclared(); drawAsks(); drawNow();
   aroundMap($('#rose')); thingsLine($('#nthings')); rememberLoad().then(() => decision());   /* the usual hour joins "Nothing is asked now" */
+  /* Next days (SPEC_next_days §5) is a part of Now; #now/next, the address the switch kept until 4 Nov, scrolls to it */
+  $('#nexth').textContent = (NX[D.locale] || NX.en).next;
+  drawNext().then(() => { if (location.hash === '#now/next' && !NEXT.shown) { NEXT.shown = true; $('#nexth').scrollIntoView(); } });
 };
 /* YESTERDAY and DID IT WORK: the short part of the diary (Tomas, 14 Oct: the diary split between Now and Node, whose
    "What it remembers" keeps the record). Under the decision and quiet: yesterday's day entry said plainly from its own
@@ -304,6 +301,7 @@ document.addEventListener('submit', async ev => {
 function drawDeclared() {
   const at = declaredBands(D.sections);
   for (const m of ['observe', 'decide', 'measure']) { const el = $('#ndecl-' + m); el.innerHTML = at[m] || ''; el.hidden = !at[m]; }
+  $('#alsoread').hidden = !at.observe;   /* the observe bands have a row of their own, under both columns */
 }
 
 /* Around the house: the issues drawn by the hour, one row each; a row moves the page to that issue. Land and Coast
@@ -457,14 +455,7 @@ $('#back').onclick = () => { S.i = D.now; drawNow(); };
    a row card per thing, in the order of Now's rows (air, heat), then wind and rain, the sea, then the packs' lines;
    three columns, the rest of today, tomorrow and the day after. A cell is the day's number with its comparison, the
    state word in ink, and for air and heat the hours over the line. A row pressed draws its 72 hours under it, with
-   the line. The sources are pills, then one sentence: these are models. Asked only while Next days is shown. */
-const NOW_VIEW = 'planetai_now_view';
-/* which of the two Now shows: #now/next, else the reader's last choice when the address names only Now */
-function nowView() {
-  if (location.hash === '#now/next') return 'next';
-  if (!/^(#now)?$/.test(location.hash)) return 'now';
-  try { return localStorage.getItem(NOW_VIEW) === 'next' ? 'next' : 'now'; } catch (e) { return 'now'; }   /* no storage here */
-}
+   the line. The sources are pills, then one sentence: these are models. */
 /* the page's words in the node's locale (/health locale); {x} is filled with HTML this file built */
 const NX = {
   en: { now: 'Now', next: 'Next days', today: 'Today', tomorrow: 'Tomorrow', air: 'Air', heat: 'Heat', wind_rain: 'Wind and rain', sea: 'Sea',
@@ -547,15 +538,15 @@ function nextFrom(f, locale) {
   out.notes = [W.models, ...(f.openmeteo === false ? [w(W.optin, { setup })] : [])];
   return out;
 }
-/* the forecast is kept 30 minutes (pressing the switch asks again); no answer, a locked screen and the pack off are
-   never kept, so the next showing, by the switch, the door or a link, asks again. `open` is the row whose 72 h show. */
+/* the forecast is kept 30 minutes, so Now's refresh does not ask again; no answer, a locked screen and the pack off are
+   never kept, so the next drawing of Now asks again. `open` is the row whose 72 h show; `shown`, #now/next scrolled. */
 const NX_FRESH = 30 * 60e3;
-const NEXT = { p: null, at: 0, open: null };
+const NEXT = { p: null, at: 0, open: null, shown: false };
 async function drawNext() {
   if (!NEXT.p || Date.now() - NEXT.at > NX_FRESH) { NEXT.p = loadForecast(); NEXT.at = Date.now(); }
   const f = await NEXT.p;
   if (!f || f.off || f.locked) NEXT.p = null;
-  if (view() !== 'now' || nowView() !== 'next') return;
+  if (view() !== 'now') return;
   const el = $('#next'), x = nextFrom(f, D.locale);
   if (x.empty) { el.innerHTML = `<p class="nxempty">${x.empty}</p>`; return; }
   /* the heads are drawn for the eye; each cell says its own day to a screen reader */
@@ -592,12 +583,3 @@ function nxSeries(r, width) {
   return `<figure class="nxs" data-kind="series"><svg viewBox="0 0 ${Wd} ${H}" role="img" aria-label="${esc(cap)}">${g}</svg>`
     + `<figcaption class="fine">${esc(cap)} · ${esc(r.src)}${s.unit ? ` · ${said(s.unit)}` : ''}</figcaption></figure>`;
 }
-/* the switch: the choice kept for the next visit, and the address carries it (#now/next) so it can be linked */
-document.addEventListener('click', ev => {
-  const b = ev.target.closest && ev.target.closest('#nowsw button[data-nv]');
-  if (!b) return;
-  try { localStorage.setItem(NOW_VIEW, b.dataset.nv); } catch (e) { /* no storage here */ }
-  if (b.dataset.nv === 'next') NEXT.p = null;   /* asked again */
-  const h = b.dataset.nv === 'next' ? '#now/next' : '#now';
-  if (location.hash !== h) location.hash = h; else VIEWS.now();
-});

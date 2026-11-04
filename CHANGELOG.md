@@ -2,12 +2,16 @@
 
 ## Unreleased
 
-- **Now looks three days ahead.** The switch at the top of Now, "Now · Next days", shows the rest of today, tomorrow
-  and the day after, one row each for air, heat, wind and rain, and the sea, then a line from any pack that declares
+- **Now looks three days ahead.** Next days, under What to do on Now, shows the rest of today, tomorrow and the day
+  after, one row each for air, heat, wind and rain, and the sea, then a line from any pack that declares
   one with `ahead:` in its `pack.yaml`; the `surf` wild pack is the first. Air and heat carry the state word against
   their issue's line, by the engine's own comparison, with the hours over it, and a pressed row draws its 72 hours.
   Under the rows each source says when it was issued or fetched, and the page says the numbers come from models and
   that nothing here sends a message. `#now/next` links to it. The page is documented in `docs/site/next-days.md`.
+
+  The packs' own readings (fires, the ground's heat, a weather station, the rice) moved under both columns of Now,
+  in **Also read here**. Each band says its source once, under its title, and folds the pack's note under "How this
+  is read". The sentence about pack.yaml under every band is gone from Now; `docs/PACKS.md` still says it.
 
   The forecast pack behind it keeps 72 hours, from BMKG as before, and with `FORECAST_OPENMETEO=1` from Open-Meteo's
   weather with gusts, the chance of rain, sun, evaporation and soil moisture, the CAMS air (PM2.5 and UV) and, while

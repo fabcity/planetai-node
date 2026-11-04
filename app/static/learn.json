@@ -722,7 +722,7 @@
   },
   "forecast": {
    "anchor": "forecast",
-   "more": "The card is drawn from GET /forecast: the wind and the rain for the hours ahead, and a forecast point more than 10 km from the node is said to be another place. Now › Next days draws its 72 hours. Nothing on this card can raise an alert.",
+   "more": "The card is drawn from GET /forecast: the wind and the rain for the hours ahead, and a forecast point more than 10 km from the node is said to be another place. Next days on Now draws its 72 hours. Nothing on this card can raise an alert.",
    "page": "packs-reference.md",
    "page_title": "Packs that ship",
    "questions": {
@@ -1106,7 +1106,7 @@
   },
   "now-bands": {
    "anchor": "now",
-   "more": "Each row is one reading the node holds, with its source, how it was got and how old it is. The small print under the band is the pack's own note, and says the pack ships no code for this page.",
+   "more": "Each row is one reading the node holds. Its source, how it was got and how old it is are said once under the band's title, and again on a row only where they change. The pack's own note is folded under How this is read.",
    "page": "dashboard.md",
    "page_title": "The dashboard",
    "questions": {
@@ -1123,7 +1123,7 @@
      "Mengapa sebagian bacaan ini belum datang?"
     ]
    },
-   "quote": "**A pack's own band.** A pack can declare a band in its `pack.yaml` (a wild pack has no other way onto the page, it\nships no code for it), and Now draws it next to the part with the same stage: `observe` under the issue rows,\n`decide` and `act` under What to do, `measure` under Did it work.",
+   "quote": "**A pack's own band.** A pack can declare a band in its `pack.yaml` (a wild pack has no other way onto the page, it\nships no code for it), and Now draws it next to the part with the same stage: `decide` and `act` under What to do,\n`measure` under Did it work.",
    "section": "Now",
    "title": "A pack's own band",
    "url": "https://planetai.fab.city/docs/dashboard/#now"
@@ -1154,7 +1154,7 @@
   },
   "now-next": {
    "anchor": "now",
-   "more": "The rows are drawn from GET /forecast, asked only while Next days is shown. Press a row for its 72 hours against the line. These are models: nothing on this part asks you to act or sends a message.",
+   "more": "The rows are drawn from GET /forecast, asked when Now is drawn and kept for 30 minutes. Press a row for its 72 hours against the line. These are models: nothing on this part asks you to act or sends a message.",
    "page": "dashboard.md",
    "page_title": "The dashboard",
    "questions": {
@@ -1171,7 +1171,7 @@
      "Seberapa pasti prakiraan tiga hari ke depan?"
     ]
    },
-   "quote": "Each thing gets a row in the order of Now's rows: air and heat, then wind and rain, then the sea,\nthen a line from any pack that declares one with `ahead:` in its `pack.yaml`. A cell has the day's number, the state\nword against the issue's line, and for air and heat how many hours go over it.",
+   "quote": "Each thing gets a row in the order of Now's rows: air and heat, then wind and rain, then the sea, then a line from any\npack that declares one with `ahead:` in its `pack.yaml`. A cell has the day's number, the state word against the issue's\nline, and for air and heat how many hours go over it.",
    "section": "Now",
    "title": "The next three days",
    "url": "https://planetai.fab.city/docs/dashboard/#now"

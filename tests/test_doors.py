@@ -414,7 +414,7 @@ assert 'id="rail"' not in _nowh and "function rail(" not in _nowjs and 'id="cell
     "the grain rail is back on Now"
 # the parts in reading order, each keeping its learn mark: lead, figure, distances, buttons, then the house's states
 _marks = re.findall(r'data-learn="([a-z-]+)"', _nowh)
-assert _marks == ["now-sentence", "figure", "now-distances", "now-todo", "now-worked", "now-rows", "now-around", "now-things", "now-next"], _marks
+assert _marks == ["now-sentence", "figure", "now-distances", "now-todo", "now-worked", "now-next", "now-rows", "now-around", "now-things"], _marks
 assert _nowh.index('id="decide"') < _nowh.index('id="nremember"') < _nowh.index('class="rcol"'), "What to do, then Did it work, then around"
 # heads name the reader's question, in sentence case; no engine stage shouted on Now
 assert "Around the house</h2>" in _nowh and "`Right now · " in _nowjs and '<h2 class="nh">What to do</h2>' in _nowjs

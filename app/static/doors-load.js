@@ -142,8 +142,8 @@ async function loadD(routes = DOORS_ROUTES) {
   return buildD(A, (A.health || {}).locale || 'en');
 }
 
-/* GET /forecast for Now's Next days (docs/SPEC_next_days.md §4), asked only while Next days is shown, never with the
-   routes above. The node's answer; { off: true } when the forecast pack is off (the route is not there, 404);
+/* GET /forecast for Now's Next days (docs/SPEC_next_days.md §4), asked when Now is drawn and kept 30 minutes there
+   (doors-now.js), never with the routes above. The node's answer; { off: true } when the forecast pack is off (the route is not there, 404);
    { locked: true } when this screen may not read it (401, 403); null when the node did not answer. */
 const loadForecast = () => doorsFetch('/forecast?hours=72')
   .then(r => r.status === 404 ? { off: true } : r.status === 401 || r.status === 403 ? { locked: true } : r.ok ? r.json() : null).catch(() => null);
@@ -162,7 +162,7 @@ const stateWord = s => WORDS.state[s] || s, kindWord = k => WORDS.kind[k] || k;
    its pack.yaml and the node serves it in /issues, with its numbers in it. The doors' Now and the phone page both draw
    them, so the drawing lives here, beside WORDS; esc, said, num, fmt, prov and ago are each page's own (doors-core.js,
    mobile.js). Readout rows only. A reading the node has no row for is not drawn, and the band says how many have not
-   arrived; the pack's note is the fine print under it. Each band joins the part of Now of its stage, and act joins
+   arrived; the pack's note is folded under it, "How this is read". Each band joins the part of Now of its stage, and act joins
    decide: neither page has an act part of its own. Returns { observe, decide, measure }, each the bands' HTML. */
 const DECL_STAGES = ['observe', 'decide', 'act', 'measure'];
 const DECL_AT = { observe: 'observe', decide: 'decide', act: 'decide', measure: 'measure' };
@@ -175,15 +175,18 @@ function declaredBands(sections) {
 }
 function declaredBand(x) {
   const rows = x.readouts || [], want = x.expected || rows.length, missing = want - rows.length, pk = esc(x.pack);
-  const card = r => `<div class="row decl" data-kind="readout"><span class="n">${said(r.label || r.metric)}</span>`
+  /* where a reading comes from is said once, under the head, and again on a row only where it changes (4 Nov: the same
+     source line under five rows was most of the band) */
+  const from = r => `${esc(r.source || x.pack)}${r.provenance ? ` ${prov(r.provenance)}` : ''}${r.age_minutes != null ? ` · ${ago(r.age_minutes)} old` : ''}`;
+  const subs = rows.map(from), card = (r, i) => `<div class="row decl" data-kind="readout"><span class="n">${said(r.label || r.metric)}</span>`
     + `<span class="v">${num(`${x.id}.${r.sensor_id || 'x'}.${r.metric}`, fmt(r.value, r.dp), `the ${x.pack} pack’s figure, beside nothing of this node’s`)}<small>${esc(r.unit || '')}</small></span>`
-    + `<span class="sub">${esc(r.source || x.pack)}${r.provenance ? ` ${prov(r.provenance)}` : ''}${r.age_minutes != null ? ` · ${ago(r.age_minutes)} old` : ''}</span></div>`;
+    + (i && subs[i] !== subs[i - 1] ? `<span class="sub">${subs[i]}</span>` : '') + '</div>';
   return `<section class="decl" id="decl-${esc(x.id)}" data-learn="now-bands" data-reads="/issues" data-stage="${esc(x.stage)}" data-pack="${pk}" data-kind="readout">`
-    + `<h3 class="nh">${said(x.title || x.id)} <small class="nk">${pk}</small></h3><div class="rows">${rows.map(card).join('')}</div>`
+    + `<h3 class="nh">${said(x.title || x.id)}</h3>${rows.length ? `<p class="fine src">${subs[0]}</p>` : ''}<div class="rows">${rows.map(card).join('')}</div>`
     + (missing > 0 ? `<p class="fine">${rows.length
       ? `${missing} of the ${want} readings the ${pk} pack declares ${missing === 1 ? 'has' : 'have'} not arrived on this node yet.`
       : `None of the ${want} readings the ${pk} pack declares has arrived on this node yet.`}</p>` : '')
-    + `<p class="fine">${x.note ? `${esc(x.note)} ` : ''}Declared by the ${pk} pack in its pack.yaml: the node reads these numbers and the page draws them with its own cards; the pack ships no code for this page.</p></section>`;
+    + (x.note ? `<details class="how"><summary>How this is read</summary><p class="in">${esc(x.note)}</p></details>` : '') + '</section>';
 }
 
 if (typeof module !== 'undefined') module.exports = { buildD, doorsLocal, doorsFetch, DOORS_LOCKED, WORDS, stateWord, kindWord };

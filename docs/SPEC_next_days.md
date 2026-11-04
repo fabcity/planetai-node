@@ -25,7 +25,7 @@ will be bad tonight, whether the heat will peak, whether to bring things in befo
 Goals
 - The node keeps the next 72 hours from every model it already reads, and a newer forecast replaces an older one for
   the same hour.
-- Now has a switch, "Now · Next days". Next days shows today (the rest of it), tomorrow and the day after, one row per
+- Now has a Next days part. It shows today (the rest of it), tomorrow and the day after, one row per
   thing the node watches, with the day's number, a word for its state against the issue's own line where it has
   one, and where the number comes from.
 - A pack can put its own line in Next days (surf: tomorrow's spots and windows).
@@ -175,10 +175,11 @@ or "nothing looks good". `docs/PACKS.md` documents `ahead:` next to `sections:`.
 
 ## 5. The view
 
-- A switch at the top of Now, "Now · Next days", in the style of the register switch (`.reg`, `button.on`). The
-  choice is remembered in the browser like the register, and the address carries it (`#now/next`) so it can be
-  linked. The doors' own phone layout (≤480 px) gets it with the rest of Now. The separate phone page
-  (`mobile.html`) gets it in a follow-up, after the doors version has run on node #1 (my call, builder check).
+- A part of Now, under What to do, headed "Next days" and drawn with the rest of Now. `#now/next` scrolls to it so
+  it can be linked. Until 4 Nov this was a switch at the top of Now, "Now · Next days"; Tomas found it read as a
+  second tab bar under the doors, so the switch and the choice the browser kept are gone. The doors' own phone layout
+  (≤480 px) gets it with the rest of Now. The separate phone page (`mobile.html`) gets it in a follow-up, after the
+  doors version has run on node #1 (my call, builder check).
 - Next days is one row card per thing, in the order of Now's rows (air, heat), then wind and rain, then the sea, then
   pack lines. Three columns: Today (rest), Tomorrow, the day after, headed by weekday and date.
 - A cell holds the day's number with its unit and `data-num`, the state word against the line (in ink, never by

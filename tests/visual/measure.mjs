@@ -3549,12 +3549,12 @@ async function doors() {
     if (got) {
       const m = await r.page.evaluate(() => {
         const b = id => document.getElementById(id), rows = [...b('decl-rig-rice').querySelectorAll('.row')];
-        return { rcol: !!b('decl-rig-rice').closest('.rcol'), under: !!(b('rows').compareDocumentPosition(b('decl-rig-rice')) & 4),
+        return { rcol: !!b('decl-rig-rice').closest('#alsoread:not([hidden])'), under: !!(document.querySelector('.rcol').compareDocumentPosition(b('decl-rig-rice')) & 4),
           did: !!b('decl-rig-did') && !!(b('decide').compareDocumentPosition(b('decl-rig-did')) & 4) && !b('decl-rig-did').closest('.rcol'),
           h: rows.map(x => Math.round(x.getBoundingClientRect().height)), waiting: b('decl-rig-rice').textContent.includes('1 of the 3 readings'),
           wide: document.documentElement.scrollWidth - document.documentElement.clientWidth };
       });
-      ok(m.rcol && m.under, `${tag}: the observe band is not under Around the house's rows`);
+      ok(m.rcol && m.under, `${tag}: the observe band is not in Also read here, under both columns`);
       ok(m.did, `${tag}: the measure band is not in the left column after What to do`);
       ok(m.h.length === 2 && m.h.every(x => x >= 44), `${tag}: the band's rows are ${m.h.join(',')} px (two of at least 44)`);
       ok(m.waiting, `${tag}: the band does not say how many readings have not arrived`);
@@ -3611,44 +3611,41 @@ async function doors() {
     }
     await r.browser.close();
   }
-  /* Now · Next days (SPEC_next_days §5, 3 Nov 2026): the switch toggles and is kept; the three day columns fit with
-     nothing scrolling sideways; every target is 44 px; a row pressed draws its 72 h with the line; and with Open-Meteo
-     off, no source, or the pack off, Next days says so in a line and never draws an empty grid. */
+  /* Next days (SPEC_next_days §5): a part of Now under What to do since 4 Nov 2026 (it was a switch). It draws with Now;
+     the three day columns fit with nothing scrolling sideways; every target is 44 px; a row pressed draws its 72 h with
+     the line; with Open-Meteo off, no source, or the pack off it says so in a line and never draws an empty grid; and
+     #now/next scrolls to it. */
   for (const w of [390, 1440]) for (const dark of [false, true]) {
     const tag = `${w}_${dark ? 'dark' : 'paper'}_next`, fc = { name: 'full' };
     const r = await openRig({ w, h: w < 768 ? 844 : 900, touch: w < 768, dark, forecast: fc });
-    await r.page.goto(`${POP}/?layout=doors&fixture=${FIXTURE}#now`, { waitUntil: 'domcontentloaded' });
-    const nowUp = await wait(r.page, '#rows .row').then(() => true, () => false);
+    /* the forecast is kept 30 minutes; a new answer needs a fresh page */
+    const open = async (hash = '#now') => { await r.page.goto('about:blank');   /* a goto that changes only the hash does not load the page */
+      await r.page.goto(`${POP}/?layout=doors&fixture=${FIXTURE}${hash}`, { waitUntil: 'domcontentloaded' });
+      await wait(r.page, '#rows .row').catch(() => {}); await r.page.waitForTimeout(500); };
+    await open();
     await r.page.waitForSelector('#asking:not(.on)', { state: 'attached', timeout: 6000 }).catch(() => {});
-    ok(nowUp, `${tag}: Now did not draw`);
-    const asked0 = r.reqs.filter(p => p === '/forecast').length;
-    ok(!asked0, `${tag}: Now asked /forecast before Next days was shown`);
-    await r.page.click('#nowsw button[data-nv="next"]');
+    ok(!(await r.page.$('#nowsw')), `${tag}: the Now · Next days switch is back`);
     const got = await wait(r.page, '#next button.nrow').then(() => true, () => false);
-    ok(got, `${tag}: Next days drew no rows`);
+    ok(got, `${tag}: Next days drew no rows on Now`);
     if (got) {
       const m = await r.page.evaluate(() => {
         const nx = document.getElementById('next'), q = s => [...nx.querySelectorAll(s)], vis = el => el.getClientRects().length > 0;
-        const targets = [...q('button, a'), ...document.querySelectorAll('#nowsw button')].filter(vis).map(b => b.getBoundingClientRect());
+        const targets = q('button, a').filter(vis).map(b => b.getBoundingClientRect());
         const box = nx.getBoundingClientRect(), cells = q('.nxc').map(c => c.getBoundingClientRect());
-        let kept = null; try { kept = localStorage.getItem('planetai_now_view'); } catch (e) {}
-        return { hash: location.hash, kept, on: (document.querySelector('#nowsw .on') || {}).dataset?.nv,
-          aria: [...document.querySelectorAll('#nowsw button')].map(b => b.getAttribute('aria-pressed')).join(','),
-          days: q('.nrow .nxc').every(c => /^(Today|Tomorrow|[A-Z][a-z]{2}), /.test((c.querySelector('.vh') || {}).textContent || '')),
+        return { days: q('.nrow .nxc').every(c => /^(Today|Tomorrow|[A-Z][a-z]{2}), /.test((c.querySelector('.vh') || {}).textContent || '')),
           rows: q('.nrow').map(x => x.dataset.k || 'line'), cols: q('.nxhead > span').filter(vis).length,
           small: targets.filter(x => x.height < 44 || x.width < 44).length, n: targets.length,
           outside: cells.filter(c => c.right > box.right + 1 || c.left < box.left - 1).length,
-          nowHidden: !vis(document.querySelector('.lcol')) && !vis(document.querySelector('.rcol')),
+          place: !!nx.closest('.lcol') && document.getElementById('decide').getBoundingClientRect().bottom <= box.top,
+          nowShown: vis(document.querySelector('.lcol')) && vis(document.querySelector('.rcol')),
           wide: document.documentElement.scrollWidth - document.documentElement.clientWidth };
       });
-      ok(m.hash === '#now/next' && m.kept === 'next' && m.on === 'next', `${tag}: the switch did not take (${m.hash}, kept ${m.kept}, on ${m.on})`);
-      ok(m.aria === 'false,true', `${tag}: the switch's aria-pressed is ${m.aria}`);
       ok(m.days, `${tag}: a cell does not say its day to a screen reader`);
       ok(JSON.stringify(m.rows) === JSON.stringify(['air', 'heat', 'wind_rain', 'sea', 'line']), `${tag}: the rows are ${m.rows.join(',')}`);
       ok(m.cols === (w < 768 ? 3 : 4) && !m.outside, `${tag}: ${m.cols} heads, ${m.outside} cells outside the view`);
-      ok(m.nowHidden, `${tag}: Now's columns still show under Next days`);
+      ok(m.place && m.nowShown, `${tag}: Next days is not under What to do in Now's left column`);
       ok(m.n && !m.small, `${tag}: ${m.small} of ${m.n} targets under 44 × 44 px`);
-      ok(m.wide <= 1, `${tag}: Next days scrolls ${m.wide}px sideways`);
+      ok(m.wide <= 1, `${tag}: Now scrolls ${m.wide}px sideways with Next days`);
       /* by the keyboard, as a screen reader's user presses it: the focus stays on the row through the redraw */
       await r.page.focus('#next button.nrow[data-k="air"]'); await r.page.keyboard.press('Enter'); await r.page.waitForTimeout(200);
       const s = await r.page.evaluate(() => {
@@ -3662,8 +3659,7 @@ async function doors() {
       ok(s && s.focus, `${tag}: the focus left the row pressed`);
       ok(s && s.wide <= 1, `${tag}: the series scrolls sideways`);
       if (shots) await r.page.screenshot({ path: path.join(OUT, `doors_next_${tag}.jpg`), type: 'jpeg', quality: 78, fullPage: true });
-      const says = async name => { fc.name = name; await r.page.click('#nowsw button[data-nv="now"]'); await wait(r.page, '#rows .row').catch(() => {});
-        await r.page.click('#nowsw button[data-nv="next"]'); await r.page.waitForTimeout(500);
+      const says = async name => { fc.name = name; await open();
         return r.page.evaluate(() => { const nx = document.getElementById('next');
           return { rows: nx.querySelectorAll('.nrow').length, text: nx.textContent.replace(/\s+/g, ' '),
             small: [...nx.querySelectorAll('a')].filter(a => a.getBoundingClientRect().height < 44).length }; }); };
@@ -3675,19 +3671,16 @@ async function doors() {
         const x = await says(name);
         ok(!x.rows && x.text.includes(want) && !x.small, `${tag}: ${name} drew ${x.rows} rows (${x.text.slice(0, 80)}), ${x.small} small links`);
       }
-      /* a failure is never kept: the node down, then up, and Next days reached by the door, not the switch, asks again */
-      fc.name = 'down'; await r.page.click('#nowsw button[data-nv="now"]'); await wait(r.page, '#rows .row').catch(() => {});
-      await r.page.click('#nowsw button[data-nv="next"]'); await r.page.waitForTimeout(400);
-      const down = await r.page.evaluate(() => document.getElementById('next').querySelectorAll('.nrow').length);
+      /* a failure is never kept: the node down, then up, and Now drawn again by the door asks again */
+      const down = (await says('down')).rows;
       fc.name = 'full'; await go(r.page, '#place'); await go(r.page, '#now'); await r.page.waitForTimeout(400);
-      const up = await r.page.evaluate(() => ({ hash: location.hash, rows: document.getElementById('next').querySelectorAll('.nrow').length }));
-      ok(!down && up.hash === '#now/next' && up.rows === 5, `${tag}: after a failure, Next days by the door drew ${up.rows} rows at ${up.hash}`);
-      await r.page.click('#nowsw button[data-nv="now"]');
-      const back = await wait(r.page, '#rows .row').then(() => r.page.evaluate(() => ({ hash: location.hash,
-        kept: (() => { try { return localStorage.getItem('planetai_now_view'); } catch (e) { return null; } })(),
-        next: document.getElementById('next').getClientRects().length })), () => null);
-      ok(back && back.hash === '#now' && back.kept === 'now' && !back.next, `${tag}: the switch back to Now did not take (${JSON.stringify(back)})`);
-      said.push(`${tag}: Next days toggles and is kept, three days fit, 44 px targets, air's 72 h with its line; opt-in, no source, pack off and locked each one line; Enter keeps the focus; a failure is asked again`);
+      const up = await r.page.evaluate(() => document.getElementById('next').querySelectorAll('.nrow').length);
+      ok(!down && up === 5, `${tag}: after a failure, Now by the door drew ${up} rows of Next days`);
+      /* the address the switch kept until 4 Nov still lands on Next days */
+      await open('#now/next');
+      const landed = await r.page.evaluate(() => { const t = document.getElementById('nexth').getBoundingClientRect().top; return t >= -1 && t < innerHeight; });
+      ok(landed, `${tag}: #now/next did not scroll to Next days`);
+      said.push(`${tag}: Next days under What to do, three days fit, 44 px targets, air's 72 h with its line; opt-in, no source, pack off and locked each one line; Enter keeps the focus; a failure is asked again; #now/next lands on it`);
     }
     await r.browser.close();
   }

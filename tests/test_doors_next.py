@@ -1,10 +1,11 @@
-"""Now · Next days on the doors (docs/SPEC_next_days.md §5).
+"""Next days, a part of Now on the doors (docs/SPEC_next_days.md §5).
 
 nextFrom(forecast, locale) turns GET /forecast?hours=72 (the forecast-v0 answers in tests/data/forecast/, which
 packs/forecast/days.py wrote) into what drawNext() draws: a row card per thing in the order of Now's rows (air, heat),
 then wind and rain, the sea, then the packs' lines; three day columns; the sources as pills; the sentence that says
 these are models. It is lifted out of doors-now.js and run in node, as tests/test_doors_asks.py does, in en, es and id.
-nowView() is which of the two Now shows: #now/next, else the choice kept under planetai_now_view.
+Until 4 Nov 2026 a switch at the top of Now ("Now · Next days") showed one or the other; now Next days is drawn with Now,
+under What to do, and #now/next scrolls to it.
 Run: python3 tests/test_doors_next.py
 """
 import json
@@ -35,16 +36,6 @@ for (const [name, f, locale] of cases) {
     + fn(now, 'packWord') + fn(now, 'nxCell') + fn(now, 'nextFrom') + 'var got = nextFrom(F, D.locale);', Object.assign(ctx, { F: f }));
   out[name] = ctx.got;
 }
-/* which of the two Now shows: the address first, then the kept choice; storage that throws is no choice */
-const views = [];
-for (const [hash, kept, throws] of [['#now/next', null, false], ['#now', 'next', false], ['', 'next', false], ['#now', 'now', false],
-                                     ['#now', null, false], ['#now/next', null, true], ['#now', null, true], ['#place', 'next', false]]) {
-  const ctx = { location: { hash }, localStorage: { getItem: k => { if (throws) throw new Error('no storage'); return k === 'planetai_now_view' ? kept : null; } } };
-  vm.createContext(ctx);
-  vm.runInContext(one('NOW_VIEW') + '\n' + fn(now, 'nowView') + 'var got = nowView();', ctx);
-  views.push(ctx.got);
-}
-out.views = views;
 console.log(JSON.stringify(out));
 """
 
@@ -139,34 +130,29 @@ assert out["om_off"]["rows"][1]["series"]["metric"] == "fc_rain" and out["om_off
 assert all(p[0] < q[0] for p, q in zip(ser["air"]["pts"], ser["air"]["pts"][1:])), "the hours in order"
 print("  each row carries its 72 hours from its own source, with its line where it has one")
 
-assert out["views"] == ["next", "next", "next", "now", "now", "next", "now", "now"], out["views"]
-print("  #now/next selects Next days; #now alone keeps the reader's last choice; no storage is no choice")
 
 html = (ROOT / "app/static/doors.html").read_text()
 nowh = html[html.index('<main class="face view" data-view="now">'):html.index("<!-- PLACE -->")]
-sw = re.search(r'<div class="reg nowsw" id="nowsw"[^>]*>(.*?)</div>', nowh)
-assert sw and 'data-nv="now"' in sw.group(1) and 'data-nv="next"' in sw.group(1), "the switch is the register's, at the top of Now"
-assert nowh.index('id="nowsw"') < nowh.index('class="kick"') and 'id="next"' in nowh
+assert "nowsw" not in nowh and "data-nv" not in nowh, "the switch is gone: Next days is a part of Now"
+lcol = nowh[nowh.index('<div class="lcol">'):nowh.index('<div class="rcol">')]
+assert lcol.index('id="decide"') < lcol.index('id="nexth"') < lcol.index('id="next"'), "Next days sits in the left column, under What to do"
 nx = re.search(r'<section [^>]*id="next"[^>]*>', nowh).group(0)
-assert 'aria-pressed="true"' in sw.group(1).split('data-nv="next"')[0] and 'data-nv="next" aria-pressed="false"' in sw.group(1), \
-    "the switch says which is pressed from the first paint"
-assert "aria-live" not in nx, "a press would read the whole grid again"
+assert 'aria-labelledby="nexth"' in nx and "aria-live" not in nx, "a press would read the whole grid again"
 src = (ROOT / "app/static/doors-now.js").read_text()
-assert "setAttribute('aria-pressed'" in src.split("VIEWS.now = function")[1].split("};")[0], "the switch's aria-pressed follows .on"
+vnow = src.split("VIEWS.now = function")[1].split("\n};")[0]
+assert "drawNext()" in vnow and "#now/next" in vnow and "scrollIntoView" in vnow, "Now draws Next days, and #now/next scrolls to it"
 assert 'class="linep"' in src and "lineLab(" in src.split("function nxSeries")[1], "the series' line is the doors' .linep with lineLab"
 assert '<span class="vh">' in src.split("async function drawNext")[1], "each cell says its day to a screen reader"
 assert re.search(r"\.focus\(\)", src.split("async function drawNext")[1].split("\n}\n")[0]), "a pressed row keeps the focus"
 assert 'data-learn="now-next"' in nx and 'data-reads="/forecast"' in nx and 'data-kind="readout"' in nx, nx
 src = (ROOT / "app/static/doors-now.js").read_text()
-assert src.count("planetai_now_view") == 1 and "localStorage.setItem(NOW_VIEW" in src
-for m in re.finditer(r"localStorage\.(get|set)Item\(NOW_VIEW", src):
-    assert "try {" in src[max(0, m.start() - 60):m.start()], "every storage access is wrapped"
+assert "planetai_now_view" not in src and "nowView" not in src, "no choice is kept: there is nothing to choose"
 load = (ROOT / "app/static/doors-load.js").read_text()
 assert "'/forecast?hours=72'" in load and "/forecast" not in load.split("const DOORS_ROUTES")[1].split("};")[0], \
-    "/forecast is asked when Next days is shown, never on every load"
+    "/forecast is asked by Now's Next days and kept there, never with the routes every door reads"
 core = (ROOT / "app/static/doors-core.js").read_text()
 assert ".bar .reg button" in core and "querySelectorAll('.reg button')" not in core, "the theme switch would take the Now switch's buttons"
-print("  the switch sits at the top of Now and is kept in try/catch; /forecast is asked only for Next days")
+print("  Next days is a part of Now under What to do, no switch and nothing kept; /forecast is Now's own ask")
 
 # the forecast is kept for 30 minutes, and a failure (no answer, locked, the pack off) never: lifted drawNext, stubbed DOM
 prog_cache = r"""
@@ -176,7 +162,7 @@ const one = n => now.match(new RegExp('^const ' + n + ' = .*$', 'm'))[0];
 const answers = [null, { locked: true }, { off: true }, { days: [] }, { days: [] }], asked = [];
 let t = 0;
 const el = { innerHTML: '', clientWidth: 600, querySelectorAll: () => [], querySelector: () => null };
-const ctx = { $: () => el, view: () => 'now', nowView: () => 'next', nextFrom: () => ({ empty: 'x' }), D: {}, Date: { now: () => t },
+const ctx = { $: () => el, view: () => 'now', nextFrom: () => ({ empty: 'x' }), D: {}, Date: { now: () => t },
   loadForecast: async () => { asked.push(t); return answers.shift(); } };
 vm.createContext(ctx);
 vm.runInContext(one('NX_FRESH') + '\n' + one('NEXT') + '\n' + fn(now, 'drawNext'), ctx);
@@ -189,5 +175,5 @@ rc = subprocess.run(["node", "-e", prog_cache], capture_output=True, text=True, 
 assert rc.returncode == 0, rc.stderr[-2000:]
 assert json.loads(rc.stdout) == [0, 1, 2, 3, 60e3 * 31], rc.stdout
 print("  no answer, locked and the pack off are asked again on the next showing; an answer is kept 30 minutes")
-print("doors next: Now · Next days draws the forecast-v0 answer as row cards, three days, sources and the models sentence")
+print("doors next: Next days on Now draws the forecast-v0 answer as row cards, three days, sources and the models sentence")
 sys.exit(0)

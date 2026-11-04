@@ -1,10 +1,9 @@
 # Next days
 <!-- checked: v0.90.0 -->
 
-The switch at the top of Now, "Now · Next days", turns the page to the rest of today, tomorrow and the day after,
-read against the same lines Now uses for what is happening. It shows whether the air will go over the line tonight, and
-whether tomorrow's surf is worth getting up for. `#now/next` links straight to it, and the screen remembers which side
-you left it on.
+Next days is on Now, under What to do: the rest of today, tomorrow and the day after, read against the same lines Now
+uses for what is happening. It shows whether the air will go over the line tonight, and whether tomorrow's surf is worth
+getting up for. `#now/next` links straight to it.
 
 Everything on it comes from forecasts the node fetches, from BMKG and from the models Open-Meteo serves. The node keeps
 the next 72 hours of each, and judges air and heat against its own issues' lines, at its own point and across the
