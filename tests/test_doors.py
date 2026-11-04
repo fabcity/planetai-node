@@ -724,7 +724,7 @@ const L = require('./app/static/doors-load.js'), d3 = require('./app/static/d3.m
 const F = JSON.parse(fs.readFileSync(process.argv[1], 'utf8'));
 const core = fs.readFileSync('./app/static/doors-core.js', 'utf8'), pick = n => core.match(new RegExp('^(?:const|function) ' + n + '\\b.*$', 'm'))[0];
 const els = {}, mk = id => ({ id, innerHTML: '', hidden: false, classList: { add() {}, remove() {}, toggle() {} }, querySelectorAll: () => [], querySelector: () => null, scrollIntoView() {} });
-const ctx = { D: L.buildD({ ...F, days: F.issues_days }, 'en'), d3, doorsLocal: L.doorsLocal, VIEWS: {}, setTimeout: f => f(), CSS: { escape: x => x },
+const ctx = { D: L.buildD({ ...F, days: F.issues_days }, 'en'), buildD: L.buildD, F, d3, doorsLocal: L.doorsLocal, VIEWS: {}, setTimeout: f => f(), CSS: { escape: x => x },
   $: q => (els[q.slice(1)] ||= mk(q.slice(1))), document: { getElementById: id => (els[id] ||= mk(id)), querySelector: () => null, querySelectorAll: () => [] },
   location: { hash: '', replace(h) { this.replaced = h; } }, tok: '', out: {} };
 ctx.DOORS_TOKEN = () => ctx.tok;
@@ -747,8 +747,12 @@ vm.runInContext(['esc', 'WD', 'loc', 'dayOf', 'dLabel', 'wdhm', 'fmt', 'lineLab'
    tok = 'x'; real.ledgerBlock(); out.ledger = $('#ledger').innerHTML;
    LSTAGE = 'decided'; real.ledgerBlock(); out.decided = $('#ledger').innerHTML; LSTAGE = '';
    tok = ''; real.ledgerBlock(); out.locked = $('#ledger').innerHTML;
-   D.actions.unshift({ ts: '2026-10-06T09:00:00+08:00', stage: 'place', actor: 'Tomas', choice: 'drew', note: 'Rain garden on Garden plan (mark 12)', alert_id: null },
-     { ts: '2026-10-06T09:01:00+08:00', stage: 'place', actor: 'Tomas', choice: 'drew', note: 'Hose run on Garden plan (mark 13)', alert_id: null });
+   /* the place rows come from their own route (GET /actions?stage=place), never through D.actions, which the flow counts as answers */
+   const n = D.actions.length;
+   D = buildD({ ...F, days: F.issues_days, place_actions: [
+     { ts: '2026-10-06T09:00:00+08:00', stage: 'place', actor: 'Tomas', choice: 'drew', note: 'Rain garden on Garden plan (mark 12)', alert_id: null },
+     { ts: '2026-10-06T09:01:00+08:00', stage: 'place', actor: 'Tomas', choice: 'drew', note: 'Hose run on Garden plan (mark 13)', alert_id: null }] }, 'en');
+   out.flowActions = { before: n, after: D.actions.length, place: D.actions.filter(a => a.stage === 'place').length };
    tok = 'x'; real.ledgerBlock(); out.place = $('#ledger').innerHTML;
    LSTAGE = 'place'; real.ledgerBlock(); out.placeOnly = $('#ledger').innerHTML; LSTAGE = '';`, ctx);
 console.log(JSON.stringify(ctx.out));
@@ -787,6 +791,13 @@ assert 'data-st="decided"' in _l and "acted</td>" not in _x and "decided" in _x,
 assert "<th>who</th>" not in _k and "Tomas" not in _k and "The air" not in _k and "UNLOCK" not in _k and "Set up › This screen" in _k, "a locked ledger names nobody"
 print("doors: the ledger collapses repeats, says who in words, filters by stage; locked, the time and the stage only")
 _pl, _po = _d["place"], _d["placeOnly"]
+assert _d["flowActions"]["before"] == _d["flowActions"]["after"] and _d["flowActions"]["place"] == 0, \
+    ("the flow's answers are D.actions; place rows stay out of them", _d["flowActions"])
+_ld = (STATIC / "doors-load.js").read_text()
+assert "place_actions: 'actions?stage=place&limit=500'" in _ld, "the ledger's place rows have their own route"
+assert "for (const k of ['readings_1h', 'actions', 'place_actions', 'alerts']) delete A[k]" in _ld, "a replayed capture drops them without the token"
+assert json.loads(subprocess.run(["node", "-e", "console.log(require('./app/static/doors-load.js').DOORS_LOCKED.test('/actions?stage=place&limit=500'))"],
+                                 capture_output=True, text=True, check=True).stdout), "a tokenless screen never asks for them"
 assert 'data-st="place"' in _pl and "Rain garden on Garden plan" in _po and "Hose run on Garden plan" in _po, _po[-600:]
 assert "(mark 12)" not in _po and "×2" not in _po and "decided" not in re.sub(r'<div class="lfilt".*?</div>', "", _po), \
     "a drawing is its own row, in words, under the place filter; the node's key stays out"
@@ -1071,6 +1082,35 @@ assert ".ly.map i{border-radius:2px}" in _css, "a map's dot is square, a layer's
 assert "'The image stays on this node. The map only names which one it is, and the file never leaves.'" in pm and "never the file’s" not in pm, \
     "the image hint says only what is true: a photo's own GPS still wins on the node"
 print("  place: From the house in the right column; 44 px keys; focus is the cells' blue on the screen")
+
+# Share's second press sends the map exactly, so only the node's own warning (409, code share_warning) may arm it.
+# A 500, or "no node upstream", shows its words and the next press asks for the warning again (final review I3).
+sprog = r"""
+const fs = require('fs'), vm = require('vm'), pm = fs.readFileSync('./app/static/doors-placemap.js', 'utf8');
+const lift = n => pm.match(new RegExp('^(?:async )?function ' + n + '\\([\\s\\S]*?\\n}\\n', 'm'))[0];
+const WARN = { code: 'share_warning', text: 'Sharing sends every drawing in this map…' };
+const answers = [], sent = [];
+const c = { PM: { draw: { asked: null } }, panel() {}, mapTable() {}, actor: () => 'Tomas',
+  send: async (m, p, body) => { sent.push(body); return answers.shift(); } };
+vm.createContext(c);
+vm.runInContext(pm.match(/^const refused = .*$/m)[0] + '\n' + lift('mapPatch') + lift('share'), c);
+const m = { id: 3, shared: false, held: false }, out = {};
+const press = async a => { answers.push(a); await c.share(m); return { body: sent[sent.length - 1], shown: c.PM.draw.asked && c.PM.draw.asked.text }; };
+(async () => {
+  out.e500 = await press({ ok: false, status: 500, detail: 'Internal Server Error' });
+  out.after500 = await press({ ok: false, status: 409, detail: 'There is no node upstream to share with. Set PARENT in Set up first.' });
+  out.afterParent = await press({ ok: false, status: 409, detail: WARN });
+  out.confirm = await press({ ok: true, status: 200, map: { shared: true } });
+  console.log(JSON.stringify(out));
+})();
+"""
+_s = json.loads(subprocess.run(["node", "-e", sprog], capture_output=True, text=True, check=True).stdout)
+assert _s["e500"]["body"] == {"shared": True, "actor": "Tomas"} and _s["e500"]["shown"] == "Internal Server Error", _s["e500"]
+assert _s["after500"]["body"] == {"shared": True, "actor": "Tomas"}, ("a 500 armed the second press", _s["after500"])
+assert _s["afterParent"]["body"] == {"shared": True, "actor": "Tomas"}, ("no node upstream armed the second press", _s["afterParent"])
+assert _s["afterParent"]["shown"] == "Sharing sends every drawing in this map…", "the warning is shown in its own words"
+assert _s["confirm"]["body"] == {"shared": True, "confirm": "exact", "actor": "Tomas"}, ("the warning arms the second press", _s["confirm"])
+print("  place: only the node's warning arms Share's second press; a 500 or no node upstream does not")
 
 # Downloads in four formats, the satellite first, the years below the map, drone pins (SPEC_place_microgis §4, Task 8)
 _g = M["gis"]

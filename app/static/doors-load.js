@@ -35,6 +35,9 @@ const DOORS_ROUTES = {
   place_yearly: 'history?sensor_id=place-point&metric=sat_buildings_yearly',
   /* token-only (doorsFetch): a screen without the token gets null and says so */
   readings_1h: 'aggregates?hours=24', actions: 'actions?limit=2000', alerts: 'alerts?limit=500',
+  /* the drawings' rows: GET /actions without a stage returns only answers to alerts, which the flow counts, so the
+     ledger on Data asks for these apart and only it reads them */
+  place_actions: 'actions?stage=place&limit=500',
 };
 
 function buildD(A, locale) {
@@ -100,6 +103,7 @@ function buildD(A, locale) {
     reach: A.reach || [], sensors: A.sensors || [], observations: A.observations || [], index_cells: A.cells || [],
     geometry: { ladder: G.ladder || [], radio: G.radio || {}, grain: G.grain_table || [], publication: G.publication || {} },
     point: [H.lon, H.lat], stats15, raw, actions, alerts: A.alerts || asks.acts || [], notes: !!A.actions, asks,
+    placeActions: A.place_actions || [],   /* the ledger's alone (ledgerBlock); never in actions, which the flow counts */
     /* the ask pane's questions, written by the node from tonight's figures (/issues digest.prompts) */
     prompts: ((I.digest || {}).prompts || {})[L] || ((I.digest || {}).prompts || {}).en || [],
     /* the bands a pack declares in its pack.yaml, with the node's numbers in them (docs/PACKS.md, A declared section) */
@@ -136,7 +140,7 @@ async function loadD(routes = DOORS_ROUTES) {
     A = await get('issues/fixtures/' + encodeURIComponent(FIX)) || {};
     A.days = A.issues_days; A.settings = await get('settings');
     /* the capture holds token-only answers too; a screen without the token is shown what a node would show it */
-    if (!DOORS_TOKEN()) for (const k of ['readings_1h', 'actions', 'alerts']) delete A[k];
+    if (!DOORS_TOKEN()) for (const k of ['readings_1h', 'actions', 'place_actions', 'alerts']) delete A[k];
   } else {
     const keys = Object.keys(routes), got = await Promise.all(keys.map(k => get(routes[k])));
     A = Object.fromEntries(keys.map((k, i) => [k, got[i]]));

@@ -661,7 +661,8 @@ const actor = () => { try { return localStorage.getItem('planetai_actor') || '';
 const send = (method, p, body) => doorsFetch(API + p, { method, headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined })
   .then(async r => ({ ...(await r.json().catch(() => ({}))), ok: r.ok, status: r.status }))
   .catch(e => ({ ok: false, status: 0, detail: `The node did not answer: ${e.message}` }));
-const refused = r => (typeof r.detail === 'string' ? r.detail : `The node refused it (${r.status}).`);
+/* the node's sentence: a string, or {code, text} where the page acts on the code (the share warning) */
+const refused = r => (typeof r.detail === 'string' ? r.detail : r.detail && typeof r.detail.text === 'string' ? r.detail.text : `The node refused it (${r.status}).`);
 const mapById = id => (PM.maps || []).find(m => m.id === id) || null;
 const openMap = () => mapById(PM.draw.map);
 const mine = m => !!m && !m.agent && !m.from_node;
@@ -1009,11 +1010,12 @@ async function mapPatch(m, body) {
   if (r.ok) { Object.assign(m, r.map); PM.draw.asked = null; PM.draw.mapErr = ''; }
   return r;
 }
-/* the first press brings back the node's own warning (409), shown in the row; the second sends it, exactly */
+/* the first press brings back the node's own warning (409, code share_warning), shown in the row; the second sends
+   it, exactly. Any other refusal is shown too, and arms nothing: the next press asks for the warning again. */
 async function share(m) {
-  const d = PM.draw, again = d.asked && d.asked.id === m.id && d.asked.kind === 'share';
+  const d = PM.draw, again = d.asked && d.asked.id === m.id && d.asked.kind === 'share' && d.asked.armed;
   const r = await mapPatch(m, m.shared && !m.held && !again ? { shared: false } : again ? { shared: true, confirm: 'exact' } : { shared: true });
-  if (!r.ok) d.asked = { id: m.id, kind: 'share', text: refused(r) };
+  if (!r.ok) d.asked = { id: m.id, kind: 'share', text: refused(r), armed: !!r.detail && r.detail.code === 'share_warning' };
   panel(); mapTable();
 }
 async function mapDelete(m) {

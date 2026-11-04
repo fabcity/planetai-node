@@ -78,6 +78,14 @@ o2 = json.loads(r2.stdout)
 assert ">Voy</span></button>" in o2["es"]["html"] and ">Going</span></button>" in o2["id"]["html"] and ">Going</span></button>" in o2["en"]["html"], o2
 print("  a button says the page's locale, else English: never a dict")
 
+# a drawing tied to the alert on Place answers it with choice "place.mark:<id>": Now says so in words, never the key
+tied = [{"ts": "2026-11-03T08:10:00+08:00", "alert_id": 1, "stage": "acted", "actor": "<b>ana</b>", "note": "dug a swale", "choice": "place.mark:12"}]
+r3 = subprocess.run(["node", "-e", prog, json.dumps([[ALERTS[0]], tied, NOW])], capture_output=True, text=True, cwd=ROOT)
+assert r3.returncode == 0, r3.stderr[-2000:]
+h3 = json.loads(r3.stdout)["en"]["html"]
+assert "answered: a drawing on Place by &lt;b&gt;ana&lt;/b&gt; at 08:10 · “dug a swale”" in h3 and "place.mark" not in h3, h3
+print("  a drawing tied to the alert reads as a drawing on Place, never place.mark:12")
+
 assert {k: out["none"][k] for k in ("innerHTML", "hidden")} == {"innerHTML": "", "hidden": True}, out["none"]
 print("  nothing asked (or no token, so no /alerts): #asks stays hidden and empty")
 

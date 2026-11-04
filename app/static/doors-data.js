@@ -496,7 +496,8 @@ const runs = (A, key) => A.reduce((o, a) => { const r = o[o.length - 1];
 const ledgerWhat = a => a.stage === 'place' ? `${a.choice || ''} ${String(a.note || '').replace(/ \((map|mark) \d+\)$/, '')}`.trim() : plain(a.text) || a.rule || '';
 let LSTAGE = '';
 function ledgerBlock() {
-  const tok = !!DOORS_TOKEN(), all = [...D.actions].sort((a, b) => b.ts.localeCompare(a.ts));
+  /* the drawings' rows (D.placeActions, their own route) join the answers here and nowhere else */
+  const tok = !!DOORS_TOKEN(), all = [...D.actions, ...(D.placeActions || [])].sort((a, b) => b.ts.localeCompare(a.ts));
   const stages = [...new Set(all.map(a => a.stage))];
   if (LSTAGE && !stages.includes(LSTAGE)) LSTAGE = '';
   const A = all.filter(a => !LSTAGE || a.stage === LSTAGE);
