@@ -840,4 +840,22 @@ print("doors: the Wall counts no answers to alerts, in words or rings")
 assert re.search(r'<header class="bar"[^>]*>.*id="relnote" href="#setup/updates"[^>]*hidden.*</header>', html, re.S)
 assert "$('#relnote').hidden = !rel.newer" in js
 print("doors: a newer release shows in the bar, and only then")
+# the Place cake (SPEC_place_microgis §5): the layers in McHarg's order turned over, sky first, and no indoor sensor outside
+cake = subprocess.run(["node", "-e", """
+const K = require('./app/static/doors-cake.js');
+const L = [{id:'own', cake:'microclimate', name:'Outdoor kit'}, {id:'soil1', cake:'soil', name:'SoilGrids', soon:true},
+           {id:'street', cake:'frame', name:'Street map'}];
+console.log(JSON.stringify({ids: K.CAKE.map(s => s.id), secs: K.cakeSections(L, {own:true, street:false}),
+  out: K.outside([{sensor_id:'a', indoor:true}, {sensor_id:'b', indoor:false}, {sensor_id:'c'}]).map(s => s.sensor_id)}));
+"""], capture_output=True, text=True, check=True)
+C = json.loads(cake.stdout)
+assert C["ids"] == ["results", "microclimate", "flows", "built", "animals", "plants", "soil", "water", "ground", "frame"], C["ids"]
+sec = {s["id"]: s for s in C["secs"]}
+assert [r["state"] for r in sec["microclimate"]["rows"]] == ["on"]
+assert [r["state"] for r in sec["soil"]["rows"]] == ["soon"]
+assert [r["state"] for r in sec["frame"]["rows"]] == ["off"]
+assert sec["water"]["rows"] == [] and sec["water"]["classes"] == ["water"] and sec["water"]["ceiling"] == "freshwater"
+assert C["out"] == ["b", "c"], C["out"]
+print("  place: the cake in McHarg's order, sky first; nothing indoor")
+
 print("all doors checks passed")
