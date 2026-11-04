@@ -674,3 +674,21 @@ def map_received(body: dict, authorization: str = Header("")):
                         {"g": _geometry(kind, f["geometry"]), "map": mid, "kind": kind, "colour": colour,
                          "label": _text(p.get("label"), 80), "note": _text(p.get("note"), 500), "by": _text(p.get("drawn_by"), 80)})
     return {"ok": True, "marks": len(feats)}
+
+
+def daily_readings() -> None:
+    """Hourly, once a local day: how many drawings the household has made and how much ground they cover, on the
+    node's own `place-gis` survey sensor. Both are `private` (config/channels.yml), so no road out of the house carries
+    them. The reading's time is the start of the node's local day (the session runs in NODE_TZ), so a later call the
+    same day updates that row and a duplicate is impossible. An agent's map and a child's are not the household's."""
+    with db() as con, con.transaction(), con.cursor() as cur:
+        cur.execute("""INSERT INTO sensors (sensor_id, source, name, kind, local, indoor, cadence)
+                       VALUES ('place-gis', 'place', 'What this home has drawn', 'survey', TRUE, FALSE, 'P1D')
+                       ON CONFLICT (sensor_id) DO NOTHING""")
+        cur.execute("""SELECT count(*) AS marks, coalesce(sum(k.area_m2), 0) AS marked_area_m2
+                         FROM place_marks k JOIN place_maps m ON m.id = k.map_id
+                        WHERE m.agent IS NULL AND m.from_node IS NULL""")
+        n = cur.fetchone()
+        for metric in ("marks", "marked_area_m2"):
+            cur.execute("INSERT INTO readings (ts, sensor_id, metric, value) VALUES (date_trunc('day', now()), 'place-gis', %s, %s) "
+                        "ON CONFLICT (sensor_id, metric, ts) DO UPDATE SET value = EXCLUDED.value", (metric, float(n[metric])))

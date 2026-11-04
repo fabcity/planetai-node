@@ -833,6 +833,7 @@ def start() -> None:
     loop(push_aggregates, 3600, delay=120)
     loop(push_events, 3600, delay=150)
     loop(maps.push_maps, 60, delay=140)         # a shared map, at most once a minute (app/maps.py)
+    loop(maps.daily_readings, 3600, delay=200)  # a private count of what was drawn, once a local day
     loop(check_release, 3600, delay=300)
     loop(check_wild, 3600, delay=330)
     loop(check_registry, 3600, delay=60)

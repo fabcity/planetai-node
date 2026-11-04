@@ -92,6 +92,7 @@ import time  # noqa: E402
 logging.disable(logging.WARNING)                         # httpx logs every request at INFO
 
 os.environ.update(DATABASE_URL=url, ADMIN_TOKEN="admin-tok", ACT_TOKEN="act-tok")
+os.environ.setdefault("CHANNELS_PATH", "config/channels.yml")   # the daily count is private by this file
 import settings  # noqa: E402
 
 SET = {"BACKUP_TOKEN": "backup-tok"}
@@ -396,6 +397,40 @@ assert recv({**doc, "op": "delete", "geojson": None}).status_code == 200
 assert one("SELECT count(*) AS n FROM place_maps WHERE from_node = 'kid'")["n"] == 0
 httpx.post = real_post
 print("  the parent keeps a child's map whole, read-only, and lets it go on delete")
+
+# ---------------------------------------------------------------- the daily count
+import packs  # noqa: E402
+
+main.load_channel_roles()                                 # the table the private test selects through; main.start() fills it on a node
+READ = lambda: ac.execute("SELECT metric, value FROM readings WHERE sensor_id = 'place-gis' "   # noqa: E731
+                          "AND ts = date_trunc('day', now()) ORDER BY metric").fetchall()
+maps.daily_readings()
+before = {x["metric"]: x["value"] for x in READ()}
+assert set(before) == {"marks", "marked_area_m2"}, before
+HM = c.post("/place/maps", json={"name": "Count me", "actor": "Tomas"}, headers=H).json()["map"]["id"]
+for lon in (115.167, 115.169):
+    ring = [[lon, -8.819], [lon + .001, -8.819], [lon + .001, -8.818], [lon, -8.819]]
+    assert c.post(f"/place/maps/{HM}/marks", headers=H, json={"type": "Feature", "actor": "Tomas",
+                  "properties": {"kind": "area"}, "geometry": {"type": "Polygon", "coordinates": [ring]}}).status_code == 200
+AGM = one("INSERT INTO place_maps (name, agent) VALUES ('Agent count', 'ask') RETURNING id")["id"]
+KM = one("INSERT INTO place_maps (name, from_node, remote_id) VALUES ('Kid count', 'kid', 99) RETURNING id")["id"]
+for m_ in (AGM, KM):
+    ac.execute("INSERT INTO place_marks (map_id, kind, geom, area_m2) VALUES (%s, 'area', ST_GeomFromText("
+               "'POLYGON((0 0,0 1,1 1,0 0))',4326), 5000)", (m_,))
+area = one("SELECT sum(area_m2) AS a FROM place_marks WHERE map_id = %s", HM)["a"]
+maps.daily_readings()
+maps.daily_readings()
+got = {x["metric"]: x["value"] for x in READ()}
+assert len(READ()) == 2, "a second call the same day updates the row, never a second one"
+assert got["marks"] == before["marks"] + 2, (before, got)
+assert abs(got["marked_area_m2"] - before["marked_area_m2"] - area) < 1, "an agent's map and a child's map are not the household's"
+assert one("SELECT count(*) AS n FROM sensors WHERE sensor_id = 'place-gis' AND source = 'place' AND local AND NOT indoor")["n"] == 1
+leak = ac.execute("SELECT metric FROM readings WHERE sensor_id = 'place-gis' AND " + packs.public_sql("readings")).fetchall()
+assert leak == [], "both counts are private: nothing reads them through public_sql"
+ac.execute("DELETE FROM place_maps WHERE id IN (%s, %s, %s)", (HM, AGM, KM))
+ac.execute("DELETE FROM readings WHERE sensor_id = 'place-gis'")
+ac.execute("DELETE FROM sensors WHERE sensor_id = 'place-gis'")
+print("  once a local day, the household's drawings are counted: two private readings, one row each")
 
 ac.execute("DELETE FROM place_maps WHERE id = %s", (SH,))
 ac.execute("DELETE FROM actions WHERE stage = 'place' OR choice LIKE 'place.mark:%%' OR alert_id IN (%s, %s)", (A, A2))
