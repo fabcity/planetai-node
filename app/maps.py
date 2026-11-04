@@ -14,15 +14,20 @@ from __future__ import annotations
 import json
 import math
 import os
+import re
+import unicodedata
+import xml.etree.ElementTree as ET
 from contextlib import contextmanager
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import psycopg
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response
 
 import events_pg
 from auth import ACT_TOKEN, _bearer_ok, _is_local
-from db import db
+from db import NODE_TZ, db
 
 
 def _household(request: Request, authorization: str = Header("")) -> None:
@@ -154,6 +159,97 @@ def _fields(src: dict) -> dict:
             raise HTTPException(422, "An image is a picture's number on this node.")
         out["capture_id"] = i
     return out
+
+
+# ---------------------------------------------------------------- downloads
+
+_SCHEMA = "planetai.place.map/v0"
+_DXF_LAYER = {"marker": "MARKERS", "line": "LINES", "area": "AREAS", "note": "NOTES"}
+_TEXT_H = 1.5                                              # metres: a label on a garden plan
+
+
+def feature_collection(map_row: dict, marks: list[dict], node: str) -> dict:
+    """The map as GeoJSON in WGS84: the same shape the page draws, and what a pull from another node reads back.
+    `image` is the picture's capture id and never a file."""
+    def props(m):
+        at = m.get("updated_at")
+        return {"kind": m["kind"], "label": m.get("label"), "note": m.get("note"), "colour": m["colour"],
+                "colour_hex": PALETTE[m["colour"]][0], "length_m": m.get("length_m"), "area_m2": m.get("area_m2"),
+                "image": m.get("capture_id"), "drawn_by": m.get("drawn_by"), "updated_at": at.isoformat() if at else None}
+    return {"type": "FeatureCollection", "schema": _SCHEMA, "map": map_row["name"], "owner": map_row.get("owner"),
+            "node": node, "features": [{"type": "Feature", "properties": props(m), "geometry": m["geometry"]} for m in marks]}
+
+
+def to_kml(fc: dict) -> str:
+    """KML 2.2 for Google Earth and QGIS. Each Placemark carries the drawing's colour (KML wants aabbggrr).
+    ponytail: geometry is written here from the GeoJSON rather than read back from ST_AsKML; the three shapes are
+    the same coordinates, and the pure function stays testable without a database."""
+    ns = "http://www.opengis.net/kml/2.2"
+    ET.register_namespace("", ns)
+    q = lambda t: f"{{{ns}}}{t}"                           # noqa: E731
+    clean = lambda t: re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", str(t))   # noqa: E731 — XML 1.0 refuses these
+    root = ET.Element(q("kml"))
+    doc = ET.SubElement(root, q("Document"))
+    ET.SubElement(doc, q("name")).text = clean(fc["map"])
+    for f in fc["features"]:
+        p, g = f["properties"], f["geometry"]
+        pm = ET.SubElement(doc, q("Placemark"))
+        ET.SubElement(pm, q("name")).text = clean(p["label"] or p["kind"])
+        if p["note"]:
+            ET.SubElement(pm, q("description")).text = clean(p["note"])
+        h = p["colour_hex"]
+        kc = "ff" + h[5:7] + h[3:5] + h[1:3]
+        st = ET.SubElement(pm, q("Style"))
+        for tag in ("IconStyle", "LineStyle", "PolyStyle"):
+            ET.SubElement(ET.SubElement(st, q(tag)), q("color")).text = kc
+        c = g["coordinates"]
+        line = lambda pts: " ".join(",".join(map(str, pt)) for pt in pts)   # noqa: E731
+        if g["type"] == "Point":
+            ET.SubElement(ET.SubElement(pm, q("Point")), q("coordinates")).text = line([c])
+        elif g["type"] == "LineString":
+            ET.SubElement(ET.SubElement(pm, q("LineString")), q("coordinates")).text = line(c)
+        else:
+            ring = ET.SubElement(ET.SubElement(ET.SubElement(pm, q("Polygon")), q("outerBoundaryIs")), q("LinearRing"))
+            ET.SubElement(ring, q("coordinates")).text = line(c[0])
+    return '<?xml version="1.0" encoding="UTF-8"?>\n' + ET.tostring(root, encoding="unicode")
+
+
+def utm_epsg(lon: float, lat: float) -> int:
+    """The WGS84 UTM zone a point lies in: 326zz north of the equator, 327zz south."""
+    zone = min(60, max(1, int((lon + 180) // 6) + 1))
+    return (32600 if lat >= 0 else 32700) + zone
+
+
+def to_dxf(features_xy: list[dict], epsg: int) -> str:
+    """AutoCAD R12 DXF, hand-written: every CAD reads it. Each item is {kind, label, note, colour, xy}, `xy` the
+    drawing's vertices already in metres of `epsg`, which the first comment line says. Non-ASCII text is written the
+    way AutoCAD writes it (\\U+00F1), because R12 has no encoding."""
+    def txt(t):
+        return "".join(ch if ord(ch) < 128 else f"\\U+{ord(ch):04X}" for ch in " ".join(str(t).split()))
+    out = [999, f"EPSG:{epsg}, metres", 0, "SECTION", 2, "HEADER", 9, "$ACADVER", 1, "AC1009", 0, "ENDSEC",
+           0, "SECTION", 2, "TABLES", 0, "TABLE", 2, "LTYPE", 70, 1, 0, "LTYPE", 2, "CONTINUOUS", 70, 0, 3, "Solid line",
+           72, 65, 73, 0, 40, 0.0, 0, "ENDTAB", 0, "TABLE", 2, "LAYER", 70, len(_DXF_LAYER)]
+    for name in _DXF_LAYER.values():
+        out += [0, "LAYER", 2, name, 70, 0, 62, 7, 6, "CONTINUOUS"]
+    out += [0, "ENDTAB", 0, "ENDSEC", 0, "SECTION", 2, "ENTITIES"]
+    xyz = lambda x, y: [10, f"{x:.3f}", 20, f"{y:.3f}", 30, 0]   # noqa: E731
+    for f in features_xy:
+        layer, aci, pts = _DXF_LAYER[f["kind"]], PALETTE[f["colour"]][1], f["xy"]
+        head = [8, layer, 62, aci]
+        if f["kind"] in ("marker", "note"):
+            out += [0, "POINT", *head, *xyz(*pts[0])]
+        else:
+            out += [0, "POLYLINE", *head, 66, 1, *xyz(0, 0), 70, 1 if f["kind"] == "area" else 0]
+            for x, y in pts:
+                out += [0, "VERTEX", 8, layer, *xyz(x, y)]
+            out += [0, "SEQEND", 8, layer]
+        x, y = pts[0]
+        for t in (f.get("label"), f.get("note")):
+            if t and txt(t):
+                out += [0, "TEXT", 8, _DXF_LAYER["note"], 62, aci, *xyz(x, y), 40, _TEXT_H, 1, txt(t)]
+                y -= _TEXT_H * 1.5                         # a note sits under its label
+    out += [0, "ENDSEC", 0, "EOF"]
+    return "\n".join(map(str, out)) + "\n"
 
 
 # ---------------------------------------------------------------- the ledger and the issue
@@ -313,6 +409,45 @@ def map_delete(map_id: int, request: Request, confirm: str = Query(""), actor: s
         cur.execute("DELETE FROM place_maps WHERE id = %s", (map_id,))
         ledger(cur, _actor(request, {"actor": actor}), "deleted", m["name"], f"map:{map_id}")
     return {"ok": True}
+
+
+_MIME = {"geojson": "application/geo+json", "kml": "application/vnd.google-earth.kml+xml", "dxf": "image/vnd.dxf"}
+
+
+def _slug(text: str) -> str:
+    plain = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
+    return re.sub(r"[^a-z0-9]+", "-", plain.lower()).strip("-")
+
+
+@router.get("/place/maps/{map_id:int}.{ext}")
+def map_download(map_id: int, ext: str, request: Request, actor: str = Query("")):
+    """.geojson, .kml or .dxf of a map, as a file named <node>-<map>-<date>. DXF is in the metres of the UTM zone the
+    node stands in, so it opens in a CAD at a scale. Any map may be read, an agent's too; each download is a ledger row."""
+    if ext not in _MIME:
+        raise HTTPException(404, "A map downloads as .geojson, .kml or .dxf.")
+    node = os.getenv("NODE_NAME", "node")
+    with db() as con, con.transaction(), con.cursor() as cur:
+        cur.execute("SELECT id, name, owner FROM place_maps WHERE id = %s", (map_id,))
+        m = cur.fetchone()
+        if not m:
+            raise HTTPException(404, "No such map.")
+        if ext == "dxf":
+            lat, lon = float(os.getenv("NODE_LAT", 0) or 0), float(os.getenv("NODE_LON", 0) or 0)
+            if not (lat or lon):
+                raise HTTPException(409, "This node has no NODE_LAT and NODE_LON yet, so there is no UTM zone to draw in.")
+            epsg = utm_epsg(lon, lat)
+            cur.execute("""SELECT kind, colour, label, note, ST_AsGeoJSON(ST_Transform(geom, %s))::json AS g
+                             FROM place_marks WHERE map_id = %s ORDER BY id""", (epsg, map_id))
+            vertices = {"Point": lambda c: [c], "LineString": lambda c: c, "Polygon": lambda c: c[0]}
+            body = to_dxf([{**r, "xy": vertices[r["g"]["type"]](r["g"]["coordinates"])} for r in cur.fetchall()], epsg)
+        else:
+            cur.execute(_MARK + " WHERE map_id = %s ORDER BY id", (map_id,))
+            fc = feature_collection(m, cur.fetchall(), node)
+            body = json.dumps(fc) if ext == "geojson" else to_kml(fc)
+        ledger(cur, _actor(request, {"actor": actor}), f"downloaded:{ext}", m["name"], f"map:{map_id}")
+    day = datetime.now(ZoneInfo(NODE_TZ)).strftime("%Y-%m-%d")
+    return Response(body, media_type=_MIME[ext], headers={
+        "Content-Disposition": f'attachment; filename="{_slug(node) or "node"}-{_slug(m["name"]) or "map"}-{day}.{ext}"'})
 
 
 # ---------------------------------------------------------------- drawings

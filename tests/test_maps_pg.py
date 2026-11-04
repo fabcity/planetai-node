@@ -207,6 +207,52 @@ assert one("SELECT count(*) AS n FROM place_marks WHERE map_id = %s", mid)["n"] 
 assert one("SELECT choice FROM actions WHERE stage = 'place' AND note LIKE %s ORDER BY ts DESC LIMIT 1", f"%(map {mid})")["choice"] == "deleted"
 print("  the list carries counts and the palette; deleting a map needs its name and takes its drawings")
 
+# ---------------------------------------------------------------- the downloads
+# The node's own point picks the UTM zone: 8.8 S, 115.2 E is zone 50 south (EPSG 32750), central meridian 117 E.
+os.environ.update(NODE_NAME="bayu-ungasan", NODE_LAT="-8.8271", NODE_LON="115.15709")
+DL = c.post("/place/maps", json={"name": "Rain & Garden / plan", "actor": "Tomas"}, headers=H).json()["map"]["id"]
+for kind, gtype, coords, props in (("area", "Polygon", [RING], {"label": "Rain garden", "colour": 3}),
+                                   ("line", "LineString", [[115.167, -8.819], [115.168, -8.819]], {}),
+                                   ("marker", "Point", [115.167, -8.819], {"label": "Pozo"}),
+                                   ("note", "Point", [115.1675, -8.8185], {"note": "Water is here"})):
+    assert c.post(f"/place/maps/{DL}/marks", headers=H, json={"type": "Feature", "actor": "Tomas",
+                  "properties": {"kind": kind, **props}, "geometry": {"type": gtype, "coordinates": coords}}).status_code == 200
+
+r = c.get(f"/place/maps/{DL}.geojson", headers=H)
+assert r.status_code == 200 and r.headers["content-type"].startswith("application/geo+json"), r.headers
+assert r.headers["content-disposition"] == f'attachment; filename="bayu-ungasan-rain-garden-plan-{time.strftime("%Y-%m-%d", time.gmtime())}.geojson"', r.headers
+fc = r.json()
+assert fc["schema"] == "planetai.place.map/v0" and fc["node"] == "bayu-ungasan" and fc["map"] == "Rain & Garden / plan"
+assert len(fc["features"]) == 4 and fc["features"][0]["properties"]["area_m2"] > 1000, fc["features"][0]
+
+r = c.get(f"/place/maps/{DL}.kml", headers=H)
+assert r.status_code == 200 and r.headers["content-type"].startswith("application/vnd.google-earth.kml+xml")
+assert r.headers["content-disposition"].endswith('.kml"')
+import xml.etree.ElementTree as ET  # noqa: E402
+assert len(ET.fromstring(r.text).findall(".//{http://www.opengis.net/kml/2.2}Placemark")) == 4
+
+r = c.get(f"/place/maps/{DL}.dxf", headers=H)
+assert r.status_code == 200 and r.headers["content-disposition"].endswith('.dxf"') and r.text.startswith("999\nEPSG:32750, metres")
+assert r.text.count("\nPOLYLINE\n") == 2 and r.text.count("\nPOINT\n") == 2 and r.text.count("\nTEXT\n") == 3
+want = one("SELECT ST_X(g) AS x, ST_Y(g) AS y FROM (SELECT ST_Transform(ST_SetSRID(ST_Point(115.167, -8.819), 4326), 32750) AS g) t")
+body = r.text.split("\nPOINT\n")[1].split("\n")                 # 8 layer, MARKERS, 62, ACI, 10, x, 20, y …
+x, y = float(body[body.index("10") + 1]), float(body[body.index("20") + 1])
+assert abs(x - want["x"]) < 0.01 and abs(y - want["y"]) < 0.01, (x, y, want)
+assert abs(y - 9.02e6) < 0.05e6 and abs(x - 300000) < 10000, "metres on the node's own zone: 117 E is 500000, this is 1.9 degrees west"
+assert c.get(f"/place/maps/{DL}.pdf", headers=H).status_code == 404
+assert c.get("/place/maps/999999999.dxf", headers=H).status_code == 404
+assert c.get(f"/place/maps/{DL}.dxf").status_code in (401, 403), "a download is the household's alone"
+assert c.get(f"/place/maps/{DL}.dxf", headers={"Authorization": "Bearer backup-tok"}).status_code == 401
+assert c.get(f"/place/maps/{DL}.dxf", headers=H).status_code == 200      # a second one, inside the minute
+assert c.get(f"/place/maps/{DL}.kml?actor=Tomas", headers=H).status_code == 200
+assert one("SELECT choice, actor FROM actions WHERE stage = 'place' AND note LIKE %s ORDER BY ts DESC LIMIT 1", f"%(map {DL})") \
+    == {"choice": "downloaded:kml", "actor": "Tomas"}
+assert one("SELECT count(*) AS n FROM actions WHERE choice = 'downloaded:dxf' AND note LIKE %s", f"%(map {DL})")["n"] == 1, "two dxf downloads in a minute are one row"
+AGD = one("INSERT INTO place_maps (name, agent) VALUES ('Shade', 'ask') RETURNING id")["id"]
+assert c.get(f"/place/maps/{AGD}.geojson", headers=H).status_code == 200, "the household may read an agent's map, only not edit it"
+ac.execute("DELETE FROM place_maps WHERE id IN (%s, %s)", (DL, AGD))
+print("  a map downloads as GeoJSON, KML and DXF, in UTM metres on the node's zone, one ledger row each")
+
 ac.execute("DELETE FROM actions WHERE stage = 'place' OR choice LIKE 'place.mark:%%' OR alert_id IN (%s, %s)", (A, A2))
 ac.execute("DELETE FROM place_maps WHERE id IN (%s, %s)", (mid, AG))
 ac.execute("DELETE FROM alerts WHERE id IN (%s, %s)", (A, A2))
