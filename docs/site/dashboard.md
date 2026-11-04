@@ -1,5 +1,5 @@
 # The dashboard
-<!-- checked: v0.90.0 -->
+<!-- checked: v0.91.0 -->
 
 The dashboard is where a household reads its node: what it observed about the place, what it asks of the people
 there, whether that worked, and what the machine itself is doing. The node computes and the page draws, so every
@@ -57,7 +57,7 @@ The foot closes every door but the Wall: what the node is in one line, its versi
 explained" (this page), `llms.txt` for agents, Ask the node, Set up, **Unlock this screen**, today's open export (CC BY
 4.0) and links to PLANETAI, Fab City and the source.
 
-> **Gap in v0.90.0.** The doors read the node when the page opens, and again only after an answer on Now or an
+> **Gap in v0.91.0.** The doors read the node when the page opens, and again only after an answer on Now or an
 > unlock; nothing re-reads it while the page stays open. A Wall left on keeps the figures of the moment it was opened,
 > and only its narration is new every ten minutes. Reload the page, or use the classic wall, which re-reads on
 > `POLL_SECONDS`.
@@ -82,6 +82,10 @@ when, and when a Not now asks again. An alert still true that no event stands fo
 buttons, because it is answered on Telegram. When nothing is asked the section is one plain line, "Nothing is asked
 now.", with the hour this issue is usually worst for a screen holding the admin token. A past hour shows what was open
 then, and is read, never answered. An issue with no line says the node only reports it and never asks you to act.
+
+When a pack's rule has asked with buttons of its own, each of its alerts from the last 72 hours that nobody has
+answered is a card of its own under this one, with the alert's text and its rows of buttons. A press is one answer, and
+a button that asks a question opens a line for the words. A screen without the token draws none of these.
 
 **Did it work** and **Yesterday** (admin token only). For the issue on screen: the last time the node asked, what was
 done, what the air or heat inside did in the hours after against the street, and the node's verdict from what it
@@ -241,7 +245,7 @@ which settings it holds.
 | **Sources** | your sensors and accounts, the public stations and portals around you. A source that comes as a pack is set in its card under Packs |
 | **Alerts** | reports at the hours you choose, what interrupts between them, quiet hours, which engine sends the heat and air messages (`ALERT_ENGINE`), how many it may send a day (`ALERT_MAX_PER_DAY`), what this home has (`HOME_HAS`), mesh alerts, and whether an act needs a decision first |
 | **Model** | which model answers, on the ask pane and on Telegram alike |
-| **Packs** | which packs load, and one line per pack: its switch, its name and how many settings it has. **+** opens what it does and its settings, and **Open all packs** opens every one, remembered by this browser; a key the pack lists under `secrets:` is masked once saved |
+| **Packs** | every pack on the disk, one line each, a switched-off pack included: its switch, its name and how many settings it has. **+** opens what it does and its settings, and **Open all packs** opens every one, remembered by this browser; a key the pack lists under `secrets:` is masked once saved. Under them are the packs on the wild list this node does not have yet, each with **Install**, which shows who wrote the pack, where it comes from and what it brings before anything is fetched. Only the admin token can install |
 | **Keys** | every secret, masked once saved and never shown again |
 | **Sharing** | who may read this node, and everything it sends or announces beyond this machine |
 | **System** | tuning numbers, how the classic ground is drawn (`UI_GROUND`), the layout Arrange writes, whether [Grafana](grafana.md) is running and how to open it, and what is read once at start |
@@ -392,7 +396,7 @@ fixture. When a poll gets no answer the figures stay, the pill says `stale`, and
 node has not answered for N min". The asking screen is held at least `--motion-asking-hold` (3 s) on a load or a press
 of **↻**, never on a routine poll.
 
-> **Gap in v0.90.0.** On the classic dashboard at `SHARE_LEVEL=off`, a browser that has never stored a token draws
+> **Gap in v0.91.0.** On the classic dashboard at `SHARE_LEVEL=off`, a browser that has never stored a token draws
 > the refused page on every view, Set up included, so there is nowhere to enter one. Unlock the screen on the doors
 > (`/`), which keeps the token in the same place, then open `/?layout=classic`.
 

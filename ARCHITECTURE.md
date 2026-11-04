@@ -1,5 +1,5 @@
 # PLANETAI. Architecture
-<!-- checked: v0.90.0 -->
+<!-- checked: v0.91.0 -->
 
 The whole system on one page. What exists today is marked. What does not exist yet is drawn anyway, because the
 contracts between layers cannot be added later.
@@ -90,6 +90,7 @@ key, and `tools/check_wire.py` in `make lint` holds their top-level shape agains
 | `aggregates-v0` | the child's hourly push body | `app/main.py::push_aggregates` |
 | `events-v0` | the child's ρ push body | `app/main.py::push_events` |
 | `days-v0` | `GET /issues/days?days=`, the same hourly series over up to 90 days | `app/issues/engine.py::days` |
+| `forecast-v0` | `GET /forecast?hours=`, the forecast pack's next 72 hours, its days and the packs' lines | `packs/forecast/days.py::answer` |
 
 A receiver that sees a `schema` it does not know logs once and processes what it recognises. It never refuses,
 because a parent one release behind has to keep accepting a child one release ahead. A document with
@@ -108,7 +109,8 @@ decides what it keeps.
 Exactly the `FCI Observations` row. Every instance exposes `GET /cells`. The Index surface (or the aggregator above)
 pulls them. Provenance `state` travels end to end and is never upgraded on the way.
 
-**Actions**: `{alert_id, stage: acknowledged|decided|acted, ts, note}` via `POST /actions`. This is how ρ is
+**Actions**: `{alert_id, stage: acknowledged|decided|acted, ts, note}` via `POST /actions`, with a `choice` when the
+alert came with a pack's buttons. This is how ρ is
 measured: detect (alert `ts`) → decide (`acknowledged`) → deploy (`acted`) → measure (`measured`, derived by the
 node and never posted). `decided` is a record and enters no ρ. Five FCC-era stages collapse to these four at an
 address; `fabricate` appears between decide and act when the action is a part.

@@ -1,5 +1,5 @@
 # Introduction
-<!-- checked: v0.90.0 -->
+<!-- checked: v0.91.0 -->
 
 PLANETAI is hyperlocal compute and intelligence for distributed production, and a node is its
 unit: one computer per place, on hardware the place already owns. It reads your own sensors and the public
@@ -63,8 +63,9 @@ Raw readings stay on the machine. A parent node, if you name one, gets hourly me
 the daily open export carries hourly means, the Index cells, the first line of each alert and ρ under CC BY 4.0.
 By default no question goes to a model outside your network (`AGENT_PREFER=private`) and the dashboard fetches
 no live map tiles (`MAP_TILES=off`). Every hour the node asks planetai.fab.city whether a newer version is out
-and reads the programme's list of nodes from GitHub; both show the house's internet address and nothing else,
-and `UPDATE_CHECK=off` stops both. The full list is in
+and reads the programme's lists of nodes and of wild packs from GitHub. Every six hours it refreshes its own copy of
+the workbench's firmware. All of them show the house's internet address and nothing else, and `UPDATE_CHECK=off`
+stops them. The full list is in
 [How it works](how-it-works.md#what-leaves-the-machine-and-what-never-does).
 
 ## What a node is not
@@ -85,7 +86,7 @@ sensor alive and the alerts correct".
 
 ## What these pages are
 
-This is the reference for the node at v0.90, read from its code. Where a page and the code disagree, the code
+This is the reference for the node at v0.91, read from its code. Where a page and the code disagree, the code
 wins and the page has a bug; the link at the foot of every page opens its source on GitHub. The sidebar follows
 the order a node is built in:
 

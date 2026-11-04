@@ -1,5 +1,5 @@
 # Domains
-<!-- checked: v0.90.0 -->
+<!-- checked: v0.91.0 -->
 
 The core measures nothing in particular. It polls sources, stores readings, runs rules and fills Index cells. Which
 readings, which rules and which cells is a pack's business. `grep pm25 app/packs.py`, the loader, returns
@@ -12,7 +12,7 @@ land, coast and water. An issue is something a place can be better or worse at, 
 name.
 
 Not every domain is an issue. Weather feeds air and heat (wind for working out where a smell came from, the
-forecast for the day ahead), but nobody asks how the weather is doing as a quality of their place. Place is the
+forecast for the days ahead), but nobody asks how the weather is doing as a quality of their place. Place is the
 ground everything else sits on. Governance is the loop and the Index. Trust is the node's own instruments, and the core's. Repair
 is a catalogue of what can be fixed, kept by people. Make is where the nearest workshop is, a line on the report
 and on an ask, never a number.

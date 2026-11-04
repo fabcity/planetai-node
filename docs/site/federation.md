@@ -1,5 +1,5 @@
 # Federation and the Index
-<!-- checked: v0.90.0 -->
+<!-- checked: v0.91.0 -->
 
 This is the part that joins the network. With a parent set, a house becomes one cell in a district's picture
 without its readings leaving the house: every hour it sends up hourly means and the timestamps of its alerts,

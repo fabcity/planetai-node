@@ -1,5 +1,5 @@
 # PLANETAI Node. Spec v0.1
-<!-- checked: v0.90.0 -->
+<!-- checked: v0.91.0 -->
 
 Two containers by default. `ARCHITECTURE.md` is the whole system; this document is the node. Everything here is
 either a contract that must survive rewrites, or a retired piece with the condition that brings it back.
@@ -28,7 +28,7 @@ These are what any node has to share with node #1 to work with it. They are chea
 
 **Cells.** `fci-cells-v0`: `{city, cell:"Pillar|Scale", value, unit, source, observed_at, state}`. Exactly the `FCI Observations` row. `state` is never upgraded by aggregation.
 
-**Actions.** `{alert_id, stage: acknowledged|decided|acted, actor, note}`. ρ is computed from these against `alerts`; `decided` enters no ρ, and `measured` is derived by the node, never posted. An alert event's answer is `{event_id, stage: acknowledged|acted|dismissed, actor, note}` instead (`docs/SPEC_alerts.md`): one row with no `alert_id`, which no ρ query reads. This is the only place ρ can be measured, so this table is the Index's instrument, not an app feature.
+**Actions.** `{alert_id, stage: acknowledged|decided|acted, actor, note}`, and `choice` when a pack's rule asked with buttons: the button's `value`, which sets the stage, one row per person. ρ is computed from these against `alerts`; `decided` enters no ρ, and `measured` is derived by the node, never posted. An alert event's answer is `{event_id, stage: acknowledged|acted|dismissed, actor, note}` instead (`docs/SPEC_alerts.md`): one row with no `alert_id`, which no ρ query reads. This is the only place ρ can be measured, so this table is the Index's instrument, not an app feature.
 
 **Scale vocabulary.** `community | city | region | bioregion | planet`: the Full Stack Metrics Framework's scales. A node has one. It's metadata, not code.
 
@@ -37,7 +37,7 @@ These are what any node has to share with node #1 to work with it. They are chea
 | | |
 |---|---|
 | `db` | `imresamu/postgis:16-3.4-alpine` (Postgres 16 and PostGIS 3.4, for amd64 and arm64). Bound to localhost. Volume `db`. Nightly `pg_dump` via `backup.sh`. |
-| `app` | Python 3.12. Eleven timer threads (poll, rules, the hourly table behind `readings_1h`, the hourly refresh of the usual-for-the-hour view, the aggregates and events pushes, the release check, the read of the programme's node list, GBIF's invasive-species checklist and its records nearby, which run only while the eyes pack is on, and the daily learnings and diary), a twelfth for Reticulum when it is on and two more for MQTT when a broker is set, + FastAPI on :8080. `app/main.py` is ~2,200 lines, with route groups in `app/basemap.py`, `geo.py`, `machine.py`, `household.py` and `presence.py`, and a pack's routes in its own `routes.py`. |
+| `app` | Python 3.12. Thirteen timer threads (poll, rules, the hourly table behind `readings_1h`, the hourly refresh of the usual-for-the-hour view, the aggregates and events pushes, the release check, the read of the wild packs' list, the read of the programme's node list, the six-hourly copy of the sensors' firmware, GBIF's invasive-species checklist and its records nearby, which run only while the eyes pack is on, and the daily learnings and diary), a fourteenth for Reticulum when it is on and two more for MQTT when a broker is set, + FastAPI on :8080. `app/main.py` is ~2,300 lines, with route groups in `app/basemap.py`, `geo.py`, `machine.py`, `household.py` and `presence.py`, and a pack's routes in its own `routes.py`. |
 
 `GET /health /sensors /readings /stats /alerts /aggregates /cells /rho` · `POST /aggregates` (parent) · `POST /actions` (ρ) · `POST /readings` (downstream contributors, admin token).
 

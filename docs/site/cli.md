@@ -1,5 +1,5 @@
 # Command line
-<!-- checked: v0.90.0 -->
+<!-- checked: v0.91.0 -->
 
 `planetai` is how the person who keeps a node looks after it from the machine it runs on: install it, check
 it is alive, record what somebody did about an alert, change a setting, update it and keep its data safe.
@@ -12,7 +12,7 @@ has (Apple's 3.9 on a Mac, standard library only). `planetai` on its own prints 
 does not know gets "there is no `planetai <word>` in this node", the node's version, and the advice to run
 `planetai update`, because new commands arrive with releases.
 
-> **Gap in v0.90.0.** The list `planetai` prints leaves out four commands that exist: `preflight`, `sources`,
+> **Gap in v0.91.0.** The list `planetai` prints leaves out four commands that exist: `preflight`, `sources`,
 > `config unset` and `agent local pull`. The tables below are complete.
 
 Only three things ask for `sudo`: `mesh` (to install and join Tailscale), `agent local` on a machine with
@@ -41,7 +41,8 @@ Docker. The installer says what each `sudo` is for before it asks.
 
 The doctor checks that Docker runs, the containers are up, the database answers, the node answers on its port and
 can log in to the database, the coordinates are set, `.env` has no space after an `=`, the backup folder is mounted,
-the captures folder is writable, a nightly backup is scheduled and more than 1 GB is free. With the `mqtt` profile
+the captures folder is writable, the crontab line that lets Install on Set up › Packs reach the node is there, a nightly
+backup is scheduled and more than 1 GB is free. With the `mqtt` profile
 it checks the broker and that mesh packets arrive; with `reticulum`, the bridge. A few rows state a fact rather than
 pass or fail:
 
@@ -80,7 +81,7 @@ do the first one. `--json` prints `{"ok": …, "checks": [{"check", "ok", "warn"
 |---|---|
 | `planetai report` (`report now`) | Writes a report now, sends it, and prints it. |
 | `planetai report last` | The last report, when it was written, over how many hours, and whether quiet hours held it. |
-| `planetai act <id> [note]` | Records that you acted on alert `<id>`, with your login name as the actor, and prints ρ. |
+| `planetai act <id> [note]` | Records that you acted on alert `<id>`, with your login name as the actor, and prints ρ. Every word after the id is the note, quoted or not. |
 | `planetai sensors [--json]` | Every sensor the node reads, yours or reference, indoor or outdoor. |
 | `planetai cells [--json]` | The Index cells the node can fill, with value, state and unit. |
 | `planetai snapshot [--out FILE]` | One JSON file of what the node answers, read with the admin token, for a design round or a bug report. |
@@ -149,7 +150,7 @@ Where the data lives, and why never on a network mount: [Storage](storage.md).
 | `planetai homeassistant` (`ha`) | Starts the broker if there is none, sets `HA_DISCOVERY=1`, and prints what to enter in Home Assistant's MQTT integration. On a node that lists its packs in `PACKS_ENABLED`, add `home-assistant` there too. | no |
 | `planetai mesh [up\|status\|down]` | Installs Tailscale and joins your tailnet under the node's name, then prints how to reach it. `TS_AUTHKEY` in the environment joins without a browser. Records `MESH_NAME`. | yes |
 | `planetai reticulum` | Downloads the LXMF bridge from fabcity/planetai-reticulum at the commit `RETICULUM_REF` pins, builds it, starts it (profile `reticulum`), and prints the node's address and how to reach it from Sideband. | no |
-| `planetai hello [--remove]` | Lists this node on every node's map. It shows the entry a stranger would see (name, the centre of its cell, the place, who runs it, an optional contact) and opens the pull request to `registry.json` with `gh`, or prints the entry and the edit link. Once merged, nodes see it within the hour. `--remove` takes the node off. | no |
+| `planetai hello [--remove]` | Lists this node on every node's map. It shows the entry a stranger would see (name, the centre of its cell, the place, who runs it, an optional contact) and opens the pull request to `registry.json` with `gh`, or prints the entry and the edit link. It first brings your fork's `main` up to fabcity's with `gh repo sync`, so an old fork does not undo other entries, and stops with that command to run if your `main` has commits of its own. A node already listed sends `registry: update <name>`. Once merged, nodes see it within the hour. `--remove` takes the node off. | no |
 
 See [Channels](channels.md) and [Federation](federation.md).
 
@@ -180,13 +181,14 @@ there; it prints the exact line for your Python when they are missing. See [Radi
 | `planetai packs add <id>` | Fetches a wild pack from the list at fabcity/planetai-wild-packs, at the commit it was listed at, into `packs/<id>`, then runs `packs install` for it. A node with packs chosen in Set up gets it added to that list. |
 | `planetai packs add <owner>/<repo>[/<folder>][@<ref>]` | The same for any pack on GitHub, pinned to the commit the ref names. Refuses an id a core pack already has. |
 | `planetai packs install` | Adds every pack's missing `env:` keys to `.env` under a dated marker, records their `pip:` lists and rebuilds the image once. |
+| `planetai packs cron` | Adds the crontab line that checks every minute for an Install pressed on Set up › Packs and runs `planetai packs pending`, which fetches that commit of a listed wild pack and installs it. The installer and `planetai update` add it too. Only the admin token on the page can ask. |
 | `planetai run` | Lists every pack script with its first line. |
 | `planetai run <pack> <script> [args]` | Runs it inside the app container, with `PACK_OUT=/app/out` and the pack keys saved from Set up in its environment. |
 | `planetai sources [--all] [--pillar P] [--scale S] [--cell 'Pillar\|Scale'] [--json]` | What the source registry lists for this place: entries relevant to `NODE_CITY` or `global`, or all of them with `--all`. Reads the node, or `data/sources/index.json` when the node is down. |
 
 Each line is a slug, status, licence, the pilots it matters to, and the code that reads it (`core:ckan`, `pack:coast`,
 or blank when nothing on this node does). The counts below the list cover the whole registry, or one cell with
-`--cell`. With the snapshot v0.90.0 carries (`awesome-fabcity-data` at `cd90289`, 283 entries, synced 2026-10-24):
+`--cell`. With the snapshot v0.91.0 carries (`awesome-fabcity-data` at `7bf12a4`, 284 entries, synced 2026-11-04):
 
 ```
   across 19 cells: capable 12 / reviewed 17 / candidate 55

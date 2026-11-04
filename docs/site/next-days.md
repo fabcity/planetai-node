@@ -1,5 +1,5 @@
 # Next days
-<!-- checked: v0.90.0 -->
+<!-- checked: v0.91.0 -->
 
 Next days is on Now, under What to do: the rest of today, tomorrow and the day after, read against the same lines Now
 uses for what is happening. It shows whether the air will go over the line tonight, and whether tomorrow's surf is worth
@@ -54,7 +54,7 @@ is left out.
 | Open-Meteo Marine | wave height, and the swell's height, period and direction | the sea cell nearest the node, refused past 30 km | the same switch, with the `coast` pack on |
 
 Sun, evaporation and soil moisture are kept and not drawn on this page. Where BMKG and Open-Meteo both give the
-temperature or the rain, the row takes Open-Meteo's hours and names BMKG beside it.
+temperature or the rain, the row takes Open-Meteo's hours and says so beside its title, and `GET /forecast` lists BMKG under `also`.
 
 Under the rows each source has a pill with its time: BMKG says when it issued its forecast, and Open-Meteo, which
 publishes no model run time, says when the node fetched it. A source more than 10 km from the node says how far. After
