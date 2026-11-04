@@ -1147,12 +1147,14 @@ assert re.search(r"@media \(min-width:1081px\)\{[^@]*\.bench\.rc\{grid-template-
     "the tools fold to a 36 px strip where they are a column"
 assert re.search(r"\.bench\.lc \.pfold\[data-fold=\"lc\"\],\.bench\.rc \.pfold\[data-fold=\"rc\"\]\{[^}]*width:36px", _css) and "writing-mode:vertical-rl" in _css, \
     "a folded side is a 36 px strip with its name written down it, and the strip is the button that opens it"
+assert '.pfold[data-fold="lc"]{grid-row:1/2;grid-column:1/2;' in _css and '.pfold[data-fold="rc"]{grid-row:1/2;grid-column:3/4}' in _css, \
+    "each strip is held by the screen's row: under 1081 px the tools are a second row, and the strip must not lie over them"
 assert ".bench.lc.rc .mapc #map{height:max(560px,calc(100vh - 80px))}" in _css, "map only: the screen takes the window's height, less the header"
 assert re.search(r"\.mapc:fullscreen\{[^}]*\}\.mapc:fullscreen \.mapw\{[^}]*height:100%\}\.mapc:fullscreen #map\{flex:1", _css), "full screen: the screen fills it"
 _ph9 = re.search(r"@media \(max-width:760px\)\{\n  \.phead[^@]*", html).group(0)
 assert ".bench{position:relative}.pfold{display:none}" in _css and re.search(r"@media \(min-width:761px\)\{\n  \.pfold\{position:absolute", _css) \
     and '.tools [data-t="wide"]{display:none}' in _ph9, "a phone has no sides to fold: the sheet holds them"
-assert ".dkeys{top:auto;bottom:12px;flex-direction:row}" in _ph9 and ".dpanel{top:auto;bottom:66px;" in _ph9, "a phone: the keys a row along the bottom, the readout above them"
+assert ".dkeys{top:auto;bottom:12px;flex-direction:row}" in _ph9 and ".dpanel{top:auto;bottom:66px;left:12px;right:12px;width:auto;max-height:calc(100% - 328px)}" in _ph9, "a phone: the keys a row along the bottom, the readout above them"
 assert ".dlmenu{left:12px;right:68px;width:auto}" in _ph9 and ".pbase{top:124px;bottom:auto;left:12px;right:auto}" in _ph9 and ".mapc #mapbar{top:64px;bottom:auto;" in _ph9 \
     and ".mapc:has(.dkeys) .phour" in _ph9, "a phone: the menu, the base switch, the rungs and the hour each have their own place, clear of the keys"
 for _n in ("doors-place.js", "doors-placemap.js"):
@@ -1163,21 +1165,24 @@ const fs = require('fs'), vm = require('vm');
 const place = fs.readFileSync('./app/static/doors-place.js', 'utf8'), noop = () => {};
 function load({ store = {}, fsOk = true, broken = false } = {}) {
   const cls = new Set(), keys = [], seen = { resized: 0, full: 0, scrolled: 0 };
-  const btn = f => ({ dataset: { fold: f }, attrs: {}, title: '', setAttribute(k, v) { this.attrs[k] = v; }, getAttribute(k) { return this.attrs[k]; } });
+  const btn = f => ({ dataset: { fold: f }, attrs: {}, title: '', setAttribute(k, v) { this.attrs[k] = v; }, getAttribute(k) { return this.attrs[k]; }, focus() { doc.activeElement = this; } });
   const folds = [btn('lc'), btn('rc')], wide = btn('wide');
   const bench = { dataset: {}, classList: { contains: x => cls.has(x), add: x => cls.add(x), toggle: (x, on) => ((on === undefined ? !cls.has(x) : on) ? cls.add(x) : cls.delete(x)) } };
-  const screen = { requestFullscreen: () => { seen.full++; }, scrollIntoView: () => { seen.scrolled++; } };
+  const screen = { requestFullscreen: () => { seen.full++; return Promise.reject(new Error('refused')); }, scrollIntoView: () => { seen.scrolled++; } };
+  /* a cake row with focus, inside #cake; the tools hold none */
+  const row = { name: 'row' }, cake = { contains: x => x === row }, ptools = { contains: () => false };
   const ls = broken ? { getItem() { throw new Error('denied'); }, setItem() { throw new Error('denied'); } } : { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); } };
-  const c = { VIEWS: {}, D: {}, console, view: () => 'place', localStorage: ls, $: () => ({ addEventListener: noop }),
-    document: { fullscreenEnabled: fsOk, fullscreenElement: null, addEventListener: (t, f) => { if (t === 'keydown') keys.push(f); },
-      querySelector: q => (q === '.bench' ? bench : q === '.mapc' ? screen : q === '.tools [data-t="wide"]' ? wide : null),
-      querySelectorAll: q => (q === '.pfold' ? folds : []) } };
+  const doc = { fullscreenEnabled: fsOk, fullscreenElement: null, activeElement: null, addEventListener: (t, f) => { if (t === 'keydown') keys.push(f); },
+      querySelector: q => (q === '.bench' ? bench : q === '.mapc' ? screen : q === '.tools [data-t="wide"]' ? wide : q === '#cake' ? cake : q === '#ptools' ? ptools
+        : q === '.pfold[data-fold="lc"]' ? folds[0] : q === '.pfold[data-fold="rc"]' ? folds[1] : null),
+      querySelectorAll: q => (q === '.pfold' ? folds : []) };
+  const c = { VIEWS: {}, D: {}, console, view: () => 'place', localStorage: ls, $: () => ({ addEventListener: noop }), document: doc };
   c.window = c; c.__PM = { map: { resize: () => { seen.resized++; } } }; vm.createContext(c); vm.runInContext(place, c);
   const typing = sel => /input/.test(sel) ? {} : null;
-  const key = (k, o = {}) => keys.forEach(f => f({ key: k, target: { closest: o.typing ? typing : () => null }, preventDefault: noop, metaKey: false, ctrlKey: !!o.ctrl, altKey: false }));
+  const key = (k, o = {}) => keys.forEach(f => f({ key: k, target: { closest: o.typing ? typing : () => null }, preventDefault: noop, metaKey: !!o.meta, ctrlKey: !!o.ctrl, altKey: !!o.alt }));
   const state = () => ({ cls: [...cls].sort().join(' '), labels: folds.map(b => `${b.attrs['aria-label']}:${b.attrs['aria-expanded']}`), title: folds[0].title,
     wide: wide.attrs['aria-pressed'], store: store.planetai_place_folds, ...seen });
-  return { folds, key, state, store };
+  return { folds, key, state, store, doc, row };
 }
 const out = {}, a = load();
 out.start = a.state();
@@ -1190,6 +1195,11 @@ a.key('F'); out.full = a.state();
 out.reload = load({ store: { planetai_place_folds: a.store.planetai_place_folds } }).state();
 const n = load({ fsOk: false }); n.key('f'); out.noFs = n.state();
 const b = load({ broken: true }); b.key('['); out.broken = b.state();
+/* focus on a cake row: `[` hides it, and focus goes to the layers' strip, not to the page */
+const fo = load(); fo.doc.activeElement = fo.row; fo.key('['); out.focus = fo.doc.activeElement === fo.folds[0] ? 'strip' : fo.doc.activeElement ? fo.doc.activeElement.name : 'body';
+/* Option on a Spanish or German Mac, AltGr (Ctrl+Alt) on Windows: `[` still folds; with ⌘ it does not */
+const al = load(); al.key('[', { alt: true }); al.key(']', { ctrl: true, alt: true }); out.alt = al.state();
+const me = load(); me.key('[', { meta: true }); me.key('\\', { meta: true }); out.meta = me.state();
 console.log(JSON.stringify(out));
 """
 _r = subprocess.run(["node"], input=fprog, capture_output=True, text=True)
@@ -1205,6 +1215,10 @@ assert F9["wideOn"]["cls"] == "lc rc" and F9["wideOn"]["scrolled"] == 1, ("\\ fo
 assert F9["full"]["full"] == 1 and F9["noFs"]["full"] == 0, "F asks for full screen on the screen, only where the browser has it"
 assert F9["reload"]["cls"] == "lc rc" and F9["reload"]["labels"] == ["Show the layers:false", "Show the tools:false"], ("a reload keeps the folds", F9["reload"])
 assert F9["broken"]["cls"] == "lc", ("without storage the page is still right: it folds, it just forgets", F9["broken"])
+assert F9["focus"] == "strip", ("a side folded from the keyboard hands focus to its strip", F9["focus"])
+assert F9["alt"]["cls"] == "lc rc" and F9["meta"]["cls"] == "", ("Option and AltGr fold; ⌘ does not", F9["alt"], F9["meta"])
+assert "(document.fullscreenElement ? document.exitFullscreen() : sc.requestFullscreen()).catch(() => {})" in (STATIC / "doors-place.js").read_text(), \
+    "a refused full screen is caught, never an unhandled rejection"
 print("  place: each side folds by its arrow and by [ or ], \\ is map only, F full screen; never while typing; remembered in try/catch")
 
 print("all doors checks passed")

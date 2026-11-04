@@ -3508,6 +3508,13 @@ async function doors() {
       await r.page.keyboard.press('\\'); await r.page.waitForTimeout(300);
       const f3 = await fd();
       ok(f3.map < 1300 && f3.folds.join() === 'Hide the layers:true:28,Hide the tools:true:28', `${tag} place-folded: \\ left the screen ${f3.map}px, the folds ${f3.folds.join(', ')}`);
+      /* at 900 px the tools are a row under the screen: the folded layers' strip must stop at the screen's row, not lie
+         over the tool rows and take their presses */
+      await r.page.setViewportSize({ width: 900, height: 900 }); await r.page.keyboard.press('['); await r.page.waitForTimeout(300);
+      const hit = await r.page.evaluate(() => { const t = document.querySelector('#ptools .tl'); t.scrollIntoView({ block: 'center' }); const b = t.getBoundingClientRect();
+        const e = document.elementFromPoint(b.left + 4, b.top + b.height / 2); return { tool: !!(e && e.closest('#ptools')), strip: !!(e && e.closest('.pfold')), cls: document.querySelector('.bench').className }; });
+      ok(hit.cls.includes('lc') && hit.tool && !hit.strip, `${tag} place-folded: at 900 px a press on a tool row's left edge lands on ${hit.strip ? 'the folded strip' : 'something else'} (${hit.cls})`);
+      await r.page.keyboard.press('['); await r.page.setViewportSize({ width: 1440, height: 900 }); await r.page.waitForTimeout(300);
       panes += 1;
     }
     /* the consequences step, unlocked only: open sharing asks first; a plain setting saves at once */

@@ -40,9 +40,14 @@ VIEWS.place = function () {
    browser's own, on the screen, so the keys, the readout and the controls come along. Each side is remembered in this
    browser, read and written in try/catch: without storage the page opens unfolded and folds all the same. */
 const PLACE_FOLDS = 'planetai_place_folds', placeBench = () => document.querySelector('.bench');
+const FOLD_SIDE = { lc: '#cake', rc: '#ptools' };
 function foldSide(sides, on) {
-  const b = placeBench(); if (!b) return;
-  sides.split(' ').forEach(f => b.classList.toggle(f, on));
+  const b = placeBench(), a = document.activeElement; if (!b) return;
+  sides.split(' ').forEach(f => {
+    b.classList.toggle(f, on);
+    /* a side folded from the keyboard hides the row that had focus: focus goes to its strip, not to the page */
+    const side = on && a && document.querySelector(FOLD_SIDE[f]); if (side && side.contains(a)) document.querySelector(`.pfold[data-fold="${f}"]`).focus();
+  });
   try { localStorage.setItem(PLACE_FOLDS, ['lc', 'rc'].filter(f => b.classList.contains(f)).join(' ')); } catch (e) { /* no storage here */ }
   sayFolds();
 }
@@ -63,7 +68,7 @@ function mapOnly() {
 }
 function fullScreen() {
   const sc = document.querySelector('.mapc'); if (!document.fullscreenEnabled || !sc) return;
-  if (document.fullscreenElement) document.exitFullscreen(); else sc.requestFullscreen();
+  (document.fullscreenElement ? document.exitFullscreen() : sc.requestFullscreen()).catch(() => {});   /* refused: the screen stays as it is */
 }
 window.placeWide = mapOnly; window.placeFull = fullScreen;
 { let s = ''; try { s = localStorage.getItem(PLACE_FOLDS) || ''; } catch (e) { /* no storage here */ }
@@ -83,9 +88,13 @@ $('#askbtn').addEventListener('click', closeSheet);   /* the sheet sits above th
 document.addEventListener('keydown', e => {
   const b = placeBench(), k = e.key;
   if (k === 'Escape' && b && b.dataset.sheet) { closeSheet(); return; }
-  if (view() !== 'place' || e.metaKey || e.ctrlKey || e.altKey || e.target.closest('input, textarea, select, [contenteditable], dialog, .dlmenu')) return;
-  if (k === '[' || k === ']') { const f = k === '[' ? 'lc' : 'rc'; foldSide(f, !b.classList.contains(f)); return; }
-  if (k === '\\') { mapOnly(); return; }
+  if (view() !== 'place' || e.target.closest('input, textarea, select, [contenteditable], dialog, .dlmenu')) return;
+  /* `[` `]` `\` take Option on a Spanish or German Mac and AltGr (Ctrl+Alt) on Windows: only ⌘ and a bare Ctrl stop them */
+  if ((k === '[' || k === ']' || k === '\\') && !e.metaKey && !(e.ctrlKey && !e.altKey)) {
+    if (k === '\\') mapOnly(); else { const f = k === '[' ? 'lc' : 'rc'; foldSide(f, !b.classList.contains(f)); }
+    return;
+  }
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
   if (k === 'f' || k === 'F') { fullScreen(); return; }
   if (k !== '/' || D.askOff) return;
   e.preventDefault(); $('#paskq').focus();
