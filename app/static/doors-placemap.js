@@ -655,7 +655,7 @@ const KEYICON = { select: '<path d="M5 3l12 6-5 2-2 5z"/>', marker: '<path d="M1
 /* the mockup's READ words for the two keys doors-draw.js's figure() has no hint for */
 const HINT_SEL = 'Press a drawing to change its colour, note or image.';
 /* not the mockup's "its location is the drawing's": a photo's own GPS still wins on the node (packs/eyes) */
-const HINT_IMG = 'The image stays on this node. The map only says which image it is, never sends the file.';
+const HINT_IMG = 'The image stays on this node. The map only names which one it is, and the file never leaves.';
 const MAPKEY = 'planetai_place_map';
 const actor = () => { try { return localStorage.getItem('planetai_actor') || ''; } catch (e) { return ''; } };
 const send = (method, p, body) => doorsFetch(API + p, { method, headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined })

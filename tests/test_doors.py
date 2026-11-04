@@ -1068,7 +1068,7 @@ assert ".dkeys button{width:44px;height:44px" in _css and re.search(r"\.dkeys bu
     "44 px keys; focus on the black screen is the cells' blue, as the hour pill's"
 assert "p.cells" in pm[pm.index("function drawLayers"):pm.index("function drawLayers") + 4000], "a drawing in focus is outlined in the cells' blue"
 assert ".ly.map i{border-radius:2px}" in _css, "a map's dot is square, a layer's round"
-assert "'The image stays on this node. The map only says which image it is, never sends the file.'" in pm and "never the file’s" not in pm, \
+assert "'The image stays on this node. The map only names which one it is, and the file never leaves.'" in pm and "never the file’s" not in pm, \
     "the image hint says only what is true: a photo's own GPS still wins on the node"
 print("  place: From the house in the right column; 44 px keys; focus is the cells' blue on the screen")
 
