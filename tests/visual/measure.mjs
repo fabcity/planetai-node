@@ -3468,7 +3468,9 @@ async function doors() {
         small: [...document.querySelectorAll(sel)].filter(vis).map(x => x.getBoundingClientRect()).filter(b => b.height < 44 || b.width < 44).length,
         cut: [...document.querySelectorAll('#cake .ly span')].filter(x => x.scrollWidth > x.clientWidth).map(x => x.textContent),
         h: [...document.querySelectorAll('#cake .ck > h2')].length,
-        margin: document.getElementById('pmargin').innerText, facts: document.getElementById('facts').innerText };
+        margin: document.getElementById('pmargin').innerText, facts: document.getElementById('facts').innerText,
+        sheet: getComputedStyle(document.getElementById('cake')).position, first: (document.getElementById('cake').firstElementChild || {}).id,
+        folds: [...document.querySelectorAll('.pfold')].filter(vis).length };
     });
     ok(pl.secs === 10, `${tag} #place: the cake has ${pl.secs} sections, not 10`);
     ok(pl.bg === 'rgb(23, 25, 29)', `${tag} #place: the screen is ${pl.bg}, not PAL.dark's land`);
@@ -3479,6 +3481,8 @@ async function doors() {
     ok(w >= 768 || !pl.small, `${tag} #place: ${pl.small} target(s) under 44 × 44 px`);
     ok(/This house/.test(pl.margin) && (tok || /withheld/.test(pl.margin)), `${tag} #place: the list under the screen reads ${pl.margin.slice(0, 120)}`);
     ok(/In view/i.test(pl.facts), `${tag} #place: the status line reads ${pl.facts.slice(0, 80)}`);
+    /* a phone keeps the bottom sheet, your maps first in it, and has no side to fold (SPEC_place_microgis §10) */
+    ok(w >= 768 || (pl.sheet === 'fixed' && pl.first === 'ymaps' && !pl.folds), `${tag} #place: the phone's sheet is ${pl.sheet}, opens on ${pl.first}, ${pl.folds} fold key(s) drawn`);
     const pressed = () => r.page.evaluate(() => document.querySelector('#cake [data-l="rings"] button').getAttribute('aria-pressed'));
     await r.page.click('#cake [data-l="rings"] button'); await r.page.waitForTimeout(200);
     ok(await pressed() === 'true', `${tag} #place: pressing Rings did not switch it on`);
@@ -3487,6 +3491,25 @@ async function doors() {
     await r.page.click('#cake [data-l="rings"] button'); await r.page.waitForTimeout(200);
     ok(await pressed() === 'false', `${tag} #place: a second press did not switch Rings off`);
     panes += 1;
+    /* place-folded (SPEC_place_microgis §4): the layers by their arrow, the tools by `]`; both folded, the screen takes the
+       page's width, each side a 36 px strip that says what it holds; a reload keeps the folds; `\\` opens both again */
+    if (w === 1440) {
+      const fd = () => r.page.evaluate(() => ({ map: Math.round(document.getElementById('map').getBoundingClientRect().width),
+        folds: [...document.querySelectorAll('.pfold')].map(x => `${x.getAttribute('aria-label')}:${x.getAttribute('aria-expanded')}:${Math.round(x.getBoundingClientRect().width)}`) }));
+      await r.page.click('.pfold[data-fold="lc"]'); await r.page.keyboard.press(']'); await r.page.waitForTimeout(300);
+      const f1 = await fd();
+      ok(f1.map >= 1300, `${tag} place-folded: the screen is ${f1.map}px wide with both sides folded`);
+      ok(f1.folds.join() === 'Show the layers:false:36,Show the tools:false:36', `${tag} place-folded: the strips read ${f1.folds.join(', ')}`);
+      { const o = await overflowAt(r.page); ok(o <= 1, `${tag} place-folded: the page scrolls ${o}px sideways`); }
+      if (shots) await r.page.screenshot({ path: path.join(OUT, `doors_place-folded_${tag}.jpg`), type: 'jpeg', quality: 78 });
+      await r.page.reload({ waitUntil: 'domcontentloaded' }); await r.page.waitForSelector('#cake .ck', { state: 'attached', timeout: 20000 }); await r.page.waitForTimeout(600);
+      const f2 = await fd();
+      ok(f2.map >= 1300 && f2.folds.join() === f1.folds.join(), `${tag} place-folded: after a reload the screen is ${f2.map}px, the strips ${f2.folds.join(', ')}`);
+      await r.page.keyboard.press('\\'); await r.page.waitForTimeout(300);
+      const f3 = await fd();
+      ok(f3.map < 1300 && f3.folds.join() === 'Hide the layers:true:28,Hide the tools:true:28', `${tag} place-folded: \\ left the screen ${f3.map}px, the folds ${f3.folds.join(', ')}`);
+      panes += 1;
+    }
     /* the consequences step, unlocked only: open sharing asks first; a plain setting saves at once */
     if (tok && w === 1440 && !dark) {
       const puts = []; r.page.on('request', q => { if (q.method() === 'PUT' && q.url().endsWith('/settings')) puts.push(q.postData()); });

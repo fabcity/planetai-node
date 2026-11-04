@@ -280,6 +280,26 @@ section.decl{margin-top:22px}.row.decl{cursor:default}   /* a pack's declared ba
 /* the screen's column sets the bench's height; the cake and the tools fill it and scroll inside it */
 #cake,#ptools{height:0;min-height:100%;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
 .bench>#spd,.psbar{display:none}
+/* folding (SPEC_place_microgis §4): a small arrow on each side's inner edge, at its top; folded, the side is a 36 px strip
+   with its name down it, and the strip is the arrow's own button, so a press on it opens the side again. Both folded is
+   map only: the screen takes the window's height less the header, and the page's gutters narrow. A phone has the sheet. */
+.bench{position:relative}.pfold{display:none}
+@media (min-width:761px){
+  .pfold{position:absolute;top:8px;z-index:4;display:grid;place-items:center;width:28px;height:28px;padding:0;border:1px solid var(--hair);border-radius:50%;background:var(--ground);color:var(--mute);cursor:pointer}
+  .pfold:hover{color:var(--ink)}.pfold svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.5}.pfold span{display:none}
+  .pfold[data-fold="lc"]{left:202px}.pfold[data-fold="rc"]{right:272px}
+  .bench.lc .pfold[data-fold="lc"],.bench.rc .pfold[data-fold="rc"]{top:0;bottom:0;width:36px;height:auto;align-content:start;gap:10px;padding:12px 0;border:0;border-radius:0;background:none}
+  .bench.lc .pfold[data-fold="lc"]{left:0}.bench.rc .pfold[data-fold="rc"]{right:0}.bench.lc .pfold[data-fold="lc"]:hover,.bench.rc .pfold[data-fold="rc"]:hover{background:var(--raise)}
+  .bench.lc .pfold[data-fold="lc"] svg,.bench.rc .pfold[data-fold="rc"] svg{transform:scaleX(-1)}
+  .bench.lc .pfold[data-fold="lc"] span,.bench.rc .pfold[data-fold="rc"] span{display:block;writing-mode:vertical-rl;font:400 11px var(--body);letter-spacing:.04em}
+  .bench.lc{grid-template-columns:36px minmax(0,1fr) 286px}.bench.lc #cake{padding:0;overflow:hidden}.bench.lc #cake>*{display:none}
+  .bench.lc.rc .mapc #map{height:max(560px,calc(100vh - 80px))}.page[data-view="place"]:has(.bench.lc.rc){padding-left:16px;padding-right:16px}.bench.lc.rc .pmid{padding:12px 6px 0}
+}
+@media (min-width:1081px){
+  .bench.rc{grid-template-columns:216px minmax(0,1fr) 36px}.bench.lc.rc{grid-template-columns:36px minmax(0,1fr) 36px}
+  .bench.rc #ptools{padding:0;overflow:hidden}.bench.rc #ptools>*{display:none}
+}
+@media (min-width:761px) and (max-width:1080px){.bench.lc{grid-template-columns:36px minmax(0,1fr)}.pfold[data-fold="rc"]{display:none}}   /* the tools sit under the screen */
 /* a layer: the OP-XY dot (filled with a ring on, hollow off, dotted not yet), its name, and under it its source */
 .lyr{padding:0}#facts code{font:inherit;border:1px solid var(--hair);padding:0 3px}
 .ly{display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:8px;align-items:center;width:100%;min-height:26px;margin:0;padding:0 8px;border:0;border-radius:6px;background:none;color:var(--ink);font:400 var(--t-small)/1.25 var(--body);text-align:left;cursor:pointer}
@@ -328,8 +348,10 @@ button.tl{cursor:pointer}button.tl:hover:not(:disabled):not(.on){background:var(
 .tools button,.zoom button{width:44px;height:44px;position:relative;display:grid;place-items:center;padding:0;border:0;background:none;color:var(--ink);font:300 18px/1 var(--mono);cursor:pointer}
 .tools button+button,.zoom button+button{border-top:1px solid var(--hair)}
 .tools button:first-child,.zoom button:first-child{border-radius:9px 9px 0 0}.tools button:last-child,.zoom button:last-child{border-radius:0 0 9px 9px}
-.tools button.gap{border-top-width:5px}.tools button[aria-disabled="true"]{color:var(--mute);cursor:default}
-.tools button.on,.tools button[aria-expanded="true"]{background:var(--ink);color:var(--ground)}.tools button:hover:not(.on):not([aria-disabled="true"]):not([aria-expanded="true"]),.zoom button:hover{background:var(--raise)}
+.tools button.gap{border-top-width:5px}
+.tools button.on,.tools button[aria-expanded="true"],.tools button[aria-pressed="true"]{background:var(--ink);color:var(--ground)}.tools button:hover:not(.on):not([aria-expanded="true"]):not([aria-pressed="true"]),.zoom button:hover{background:var(--raise)}
+/* full screen: the screen alone, its keys, readout and controls with it */
+.mapc:fullscreen{margin:0;border-radius:0;box-shadow:none}.mapc:fullscreen .mapw{display:flex;flex-direction:column;height:100%}.mapc:fullscreen #map{flex:1;height:auto}
 /* the download menu beside the column, and the base switch beside the zoom (SPEC_place_microgis §4) */
 .dlmenu{position:absolute;right:68px;top:12px;z-index:5;width:250px;padding:6px;color:var(--ink)}.dlmenu[hidden],.pbase[hidden]{display:none}
 .dlmenu .dlh{margin:0;padding:4px 8px 6px;font:400 10.5px var(--body);color:var(--mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -679,7 +701,7 @@ button.tl{cursor:pointer}button.tl:hover:not(:disabled):not(.on){background:var(
 @media (max-width:760px){
   .phead{grid-template-columns:minmax(0,1fr)}
   .bench{grid-template-columns:minmax(0,1fr);border-bottom:0}.pmid{display:contents}
-  .mapc{order:1;margin:6px 6px 14px}.mapc #map{height:440px}
+  .mapc{order:1;margin:6px 6px 14px}.mapc #map{height:500px}
   .psbar{order:2;display:flex;gap:8px;margin-bottom:4px}
   .psbar button{flex:1;min-height:44px;border:1px solid var(--ink);border-radius:999px;background:none;color:var(--ink);font:400 var(--t-small) var(--body);cursor:pointer}
   .psbar button[aria-expanded="true"]{background:var(--ink);color:var(--ground)}
@@ -689,8 +711,15 @@ button.tl{cursor:pointer}button.tl:hover:not(:disabled):not(.on){background:var(
   .bench[data-sheet="cake"] .psbar,.bench[data-sheet="tools"] .psbar{position:fixed;left:0;right:0;bottom:60vh;z-index:51;margin:0;padding:8px 16px;background:var(--ground)}
   #facts.inspect{order:4}#pmargin{order:5;grid-template-columns:minmax(0,1fr)}#pmargin .mr{min-height:44px}
   .ly,.tl,.spd summary{min-height:44px}
-  .mapc #mapbar{max-width:calc(100% - 72px)}.mapc .maplibregl-ctrl-bottom-left{bottom:68px}#mapcredit{position:static;max-width:none;padding:4px 12px 6px;text-align:left}
-  .phour{left:12px;transform:none}   /* left: the active tool's word needs the top right */
+  #mapcredit{position:static;max-width:none;padding:4px 12px 6px;text-align:left}
+  /* the screen's chrome (§10): the hour, the rungs and the base down the top left, the column and the zoom down the right,
+     the keys a row along the bottom with the readout above them, the download menu across the top */
+  .mapc .phour,.mapc:has(.dkeys) .phour{left:12px;right:auto;transform:none}
+  .mapc #mapbar{top:64px;bottom:auto;max-width:calc(100% - 80px)}.pbase{top:124px;bottom:auto;left:12px;right:auto}.mapc .maplibregl-ctrl-bottom-left{top:184px;bottom:auto}
+  .tools [data-t="wide"]{display:none}.tools [data-t="wide"]+button{border-top:0;border-radius:9px 9px 0 0}
+  .zoom{top:164px;bottom:auto}.dlmenu{left:12px;right:68px;width:auto}
+  .dkeys{top:auto;bottom:12px;flex-direction:row}.dkeys button+button{border-top:0;border-left:1px solid var(--hair)}.dkeys button.gap{border-top-width:0;border-left-width:3px}
+  .dpanel{top:auto;bottom:66px;left:12px;right:12px;width:auto;max-height:calc(100% - 240px)}.dread .dsw em{display:none}
   .plow{grid-template-columns:minmax(0,1fr)}.plow>section+section{padding:0 0 18px;border-left:0;border-top:1px solid var(--hair)}
 }
 @media (max-width:560px){
@@ -927,12 +956,14 @@ button.tl{cursor:pointer}button.tl:hover:not(:disabled):not(.on){background:var(
     <div class="prow"><form id="pask" class="pask"><label class="vh" for="paskq">Ask the node about this place</label><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 4h14v10H8l-4 3v-3H3z"/></svg><input id="paskq" autocomplete="off" placeholder="Ask about this place"><kbd>/</kbd></form><span id="paddimg"></span></div></div>
   <div class="bench">
     <nav id="cake" aria-label="What this place is made of" data-learn="place-layers" data-reads="/health /issues /packs" data-stage="observe" data-pack="place"></nav>
+    <button type="button" class="pfold" data-fold="lc" aria-controls="cake" aria-expanded="true" aria-label="Hide the layers" title="Hide the layers · ["><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M9 3L5 7l4 4"/></svg><span>layers</span></button>
     <div class="pmid">
       <div class="mapc" data-learn="place-map" data-reads="/place/geojson /sensors /issues" data-stage="observe" data-pack="place"><div class="mapw"><div id="mapbar"></div><div id="map"></div><div id="phour" class="phour"></div><svg id="pedges" aria-hidden="true"></svg><p id="mapcredit"></p></div></div>
       <div class="psbar"><button data-s="cake" aria-expanded="false" aria-controls="cake">Layers</button><button data-s="tools" aria-expanded="false" aria-controls="ptools">Tools</button></div>
       <div id="facts" class="inspect" aria-live="polite"></div>
       <aside id="pmargin" aria-label="Around the house"></aside>
     </div>
+    <button type="button" class="pfold" data-fold="rc" aria-controls="ptools" aria-expanded="true" aria-label="Hide the tools" title="Hide the tools · ]"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M5 3l4 4-4 4"/></svg><span>tools</span></button>
     <aside id="ptools" aria-label="Tools" data-learn="place-tools" data-reads="/geo/rings /geo/measure /geo/cell" data-stage="observe" data-pack="core"></aside>
     <details id="spd" class="spd"><summary>the list</summary><section id="pspecies" class="pspecies" data-learn="place-species" data-reads="/species /captures" data-stage="observe" data-pack="core"></section></details>
   </div>

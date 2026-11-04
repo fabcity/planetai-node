@@ -891,7 +891,7 @@ for i in ("cake", "ptools", "ptable", "pfigures", "pask"):
     assert f'id="{i}"' in html, i
 assert "Where the readings come from" not in html, "each cake row names its source instead"
 assert "Tools run on this node with a token. Unlock this screen in Set up." in pl, "a tokenless screen says why the tools are quiet"
-assert "$('#pask').hidden = !!D.askOff" in pl and "D.askOff || view() !== 'place'" in pl, "UI_ASK off: the Place Ask line is not drawn and `/` does nothing"
+assert "$('#pask').hidden = !!D.askOff" in pl and "if (k !== '/' || D.askOff) return;" in pl, "UI_ASK off: the Place Ask line is not drawn and `/` does nothing"
 assert "if (D.askOff) return;" in pl.split("$('#pask').onsubmit")[1].split("};")[0], "a submit on a hidden Ask line reaches nothing"
 assert ".pask[hidden]{display:none}" in html, "hidden wins over the flex row"
 assert "$('#askbtn').addEventListener('click', closeSheet)" in pl, "Ask opens over a phone's sheet: the sheet closes first"
@@ -948,6 +948,7 @@ async function boot(tok, o = {}) {
     hhmm: s => s, when: s => s, dLabel: s => s, dayOf: s => s, CLOCK: { reduced: () => true, on: noop, off: noop }, view: () => 'place', location: { origin: 'http://node' },
     devicePixelRatio: 1, localStorage: { getItem: () => null, setItem: noop },
     document: { documentElement: { dataset: {} }, querySelector: () => null, querySelectorAll: () => [], createElement: () => el(), getElementById: () => null, activeElement: null,
+      fullscreenEnabled: o.fs !== false, fullscreenElement: null,
       addEventListener: (t, f) => { if (t === 'keydown') keys.push(f); } },
     maplibregl: { ScaleControl: function () {}, Map: function () { return Object.assign(map, { on: (t, f) => (ons[t] ||= []).push(f), once: (t, f) => { onced.push(t); renders.push(f); }, addControl: noop,
       getContainer: () => map, triggerRepaint: noop, getLayer: () => null,
@@ -997,6 +998,9 @@ async function boot(tok, o = {}) {
         get: (t, k) => k === 'measureText' ? s => ({ width: String(s).length * 5 }) : k in t ? t[k] : (...a) => calls.push([k, ...a]), set: (t, k, v) => { t[k] = v; return true; } }) };
       const mk = c.document.createElement; c.document.createElement = t => (t === 'canvas' ? cv : mk(t));
       renders.forEach(f => f()); c.document.createElement = mk;
+      /* Map only and Full screen are wired: each press goes to the folding (doors-place.js) */
+      c.placeWide = () => { r.wide = (r.wide || 0) + 1; }; c.placeFull = () => { r.full = (r.full || 0) + 1; };
+      col.onclick({ target: btn({ t: 'wide' }) }); col.onclick({ target: btn({ t: 'full' }) });
       r.ops = calls.map(x => x[0]); r.texts = calls.filter(x => x[0] === 'fillText').map(x => x[1]); r.pngSaved = SAVED.filter(n => n.endsWith('.png'));
       r.credit = c.$('#mapcredit').textContent;
       /* a press that closes the menu does nothing else, even with the marker key pressed */
@@ -1011,6 +1015,8 @@ async function boot(tok, o = {}) {
       /* a pin pressed flies to its flight */
       (ons.click || []).forEach(f => f({ lngLat: { lng: 115.16, lat: -8.82 }, point: { x: 1, y: 1 } })); r.eased = eased;
       return r; } });
+  /* a browser without element full screen (Safari on iPhone) gets no Full screen key */
+  out.nofs = await boot(true, { fs: false, then: async ({ map }) => ({ col: map.kids.find(x => x.className === 'tools').innerHTML }) });
   /* a node without imagery keeps the streets as its base */
   out.plain = await boot(true, { then: async ({ c }) => ({ imagery: c.__PM.on.imagery }) });
   /* From the house, in the right column: a tool row that runs with the token */
@@ -1123,5 +1129,82 @@ assert re.search(r"ha changed.*model", _ch, re.S), "the AlphaEarth hectares, wit
 _bars = _ch[_ch.index('class="years"'):]
 assert _bars.count("<i ") == 8 and "2016" in _bars and "2023" in _bars, _bars[:400]
 print("  place: what changed, year on year, under the map: the then-and-now pair, its arrows, the hectares (model) and a bar a year")
+
+# Folding sides, map only, full screen, the phone (SPEC_place_microgis §4, §10, Task 9)
+_g = M["gis"]
+assert "aria-disabled" not in _g["col"] and "not yet" not in _g["col"], "Map only and Full screen are keys now, not placeholders"
+assert re.search(r'data-t="wide"[^>]*aria-label="Map only" title="Map only · \\" aria-pressed="false"', _g["col"]) \
+    and re.search(r'data-t="full"[^>]*aria-label="Full screen" title="Full screen · F" aria-pressed="false"', _g["col"]), _g["col"]
+assert _g.get("wide") == 1 and _g.get("full") == 1, ("a press on each goes to the folding", _g.get("wide"), _g.get("full"))
+assert re.findall(r'aria-label="([^"]+)"', M["nofs"]["col"]) == ["Map only", "Back to this node’s cell", "Download"], M["nofs"]["col"]
+print("  place: Map only and Full screen are wired; where the browser has no element full screen its key is not drawn")
+_pl = html[html.index('<section class="page view" data-view="place"'):html.index("<!-- DATA -->")]
+_fb = re.findall(r'<button type="button" class="pfold" data-fold="(lc|rc)" aria-controls="(cake|ptools)" aria-expanded="true" aria-label="(Hide the layers|Hide the tools)" title="[^"]+ · ([\[\]])">', _pl)
+assert _fb == [("lc", "cake", "Hide the layers", "["), ("rc", "ptools", "Hide the tools", "]")], _fb
+_css = html[html.index("/* ================= PLACE: a small GIS"):html.index("/* ================= NODE")]
+assert re.search(r"@media \(min-width:761px\)\{[^@]*\.bench\.lc\{grid-template-columns:36px minmax\(0,1fr\) 286px\}", _css), "the layers fold to a 36 px strip"
+assert re.search(r"@media \(min-width:1081px\)\{[^@]*\.bench\.rc\{grid-template-columns:216px minmax\(0,1fr\) 36px\}\.bench\.lc\.rc\{grid-template-columns:36px minmax\(0,1fr\) 36px\}", _css), \
+    "the tools fold to a 36 px strip where they are a column"
+assert re.search(r"\.bench\.lc \.pfold\[data-fold=\"lc\"\],\.bench\.rc \.pfold\[data-fold=\"rc\"\]\{[^}]*width:36px", _css) and "writing-mode:vertical-rl" in _css, \
+    "a folded side is a 36 px strip with its name written down it, and the strip is the button that opens it"
+assert ".bench.lc.rc .mapc #map{height:max(560px,calc(100vh - 80px))}" in _css, "map only: the screen takes the window's height, less the header"
+assert re.search(r"\.mapc:fullscreen\{[^}]*\}\.mapc:fullscreen \.mapw\{[^}]*height:100%\}\.mapc:fullscreen #map\{flex:1", _css), "full screen: the screen fills it"
+_ph9 = re.search(r"@media \(max-width:760px\)\{\n  \.phead[^@]*", html).group(0)
+assert ".bench{position:relative}.pfold{display:none}" in _css and re.search(r"@media \(min-width:761px\)\{\n  \.pfold\{position:absolute", _css) \
+    and '.tools [data-t="wide"]{display:none}' in _ph9, "a phone has no sides to fold: the sheet holds them"
+assert ".dkeys{top:auto;bottom:12px;flex-direction:row}" in _ph9 and ".dpanel{top:auto;bottom:66px;" in _ph9, "a phone: the keys a row along the bottom, the readout above them"
+assert ".dlmenu{left:12px;right:68px;width:auto}" in _ph9 and ".pbase{top:124px;bottom:auto;left:12px;right:auto}" in _ph9 and ".mapc #mapbar{top:64px;bottom:auto;" in _ph9 \
+    and ".mapc:has(.dkeys) .phour" in _ph9, "a phone: the menu, the base switch, the rungs and the hour each have their own place, clear of the keys"
+for _n in ("doors-place.js", "doors-placemap.js"):
+    _bare = [ln for ln in (STATIC / _n).read_text().splitlines() if "localStorage." in ln and not re.search(r"try \{[^}]*localStorage\.", ln)]
+    assert not _bare, (f"{_n}: storage read or written outside try", _bare)
+fprog = r"""
+const fs = require('fs'), vm = require('vm');
+const place = fs.readFileSync('./app/static/doors-place.js', 'utf8'), noop = () => {};
+function load({ store = {}, fsOk = true, broken = false } = {}) {
+  const cls = new Set(), keys = [], seen = { resized: 0, full: 0, scrolled: 0 };
+  const btn = f => ({ dataset: { fold: f }, attrs: {}, title: '', setAttribute(k, v) { this.attrs[k] = v; }, getAttribute(k) { return this.attrs[k]; } });
+  const folds = [btn('lc'), btn('rc')], wide = btn('wide');
+  const bench = { dataset: {}, classList: { contains: x => cls.has(x), add: x => cls.add(x), toggle: (x, on) => ((on === undefined ? !cls.has(x) : on) ? cls.add(x) : cls.delete(x)) } };
+  const screen = { requestFullscreen: () => { seen.full++; }, scrollIntoView: () => { seen.scrolled++; } };
+  const ls = broken ? { getItem() { throw new Error('denied'); }, setItem() { throw new Error('denied'); } } : { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); } };
+  const c = { VIEWS: {}, D: {}, console, view: () => 'place', localStorage: ls, $: () => ({ addEventListener: noop }),
+    document: { fullscreenEnabled: fsOk, fullscreenElement: null, addEventListener: (t, f) => { if (t === 'keydown') keys.push(f); },
+      querySelector: q => (q === '.bench' ? bench : q === '.mapc' ? screen : q === '.tools [data-t="wide"]' ? wide : null),
+      querySelectorAll: q => (q === '.pfold' ? folds : []) } };
+  c.window = c; c.__PM = { map: { resize: () => { seen.resized++; } } }; vm.createContext(c); vm.runInContext(place, c);
+  const typing = sel => /input/.test(sel) ? {} : null;
+  const key = (k, o = {}) => keys.forEach(f => f({ key: k, target: { closest: o.typing ? typing : () => null }, preventDefault: noop, metaKey: false, ctrlKey: !!o.ctrl, altKey: false }));
+  const state = () => ({ cls: [...cls].sort().join(' '), labels: folds.map(b => `${b.attrs['aria-label']}:${b.attrs['aria-expanded']}`), title: folds[0].title,
+    wide: wide.attrs['aria-pressed'], store: store.planetai_place_folds, ...seen });
+  return { folds, key, state, store };
+}
+const out = {}, a = load();
+out.start = a.state();
+a.folds[0].onclick(); out.left = a.state();
+a.key(']'); out.both = a.state();
+a.key('[', { typing: true }); a.key(']', { ctrl: true }); out.typing = a.state();
+a.key('\\'); out.wideOff = a.state();
+a.key('\\'); out.wideOn = a.state();
+a.key('F'); out.full = a.state();
+out.reload = load({ store: { planetai_place_folds: a.store.planetai_place_folds } }).state();
+const n = load({ fsOk: false }); n.key('f'); out.noFs = n.state();
+const b = load({ broken: true }); b.key('['); out.broken = b.state();
+console.log(JSON.stringify(out));
+"""
+_r = subprocess.run(["node"], input=fprog, capture_output=True, text=True)
+assert _r.returncode == 0, _r.stderr[-3000:]
+F9 = json.loads(_r.stdout)
+assert F9["start"]["cls"] == "" and F9["start"]["labels"] == ["Hide the layers:true", "Hide the tools:true"], F9["start"]
+assert F9["left"]["cls"] == "lc" and F9["left"]["labels"][0] == "Show the layers:false" and F9["left"]["title"] == "Show the layers · [" \
+    and F9["left"]["store"] == "lc" and F9["left"]["resized"] >= 1, ("the arrow folds the layers, says so, remembers it and resizes the map", F9["left"])
+assert F9["both"]["cls"] == "lc rc" and F9["both"]["wide"] == "true" and F9["both"]["store"] == "lc rc", ("] folds the tools; both folded is map only", F9["both"])
+assert F9["typing"]["cls"] == "lc rc" and F9["typing"]["store"] == "lc rc", "never while somebody types, never with Ctrl"
+assert F9["wideOff"]["cls"] == "" and F9["wideOff"]["store"] == "" and F9["wideOff"]["wide"] == "false", ("\\ opens both", F9["wideOff"])
+assert F9["wideOn"]["cls"] == "lc rc" and F9["wideOn"]["scrolled"] == 1, ("\\ folds both and brings the whole screen into the window", F9["wideOn"])
+assert F9["full"]["full"] == 1 and F9["noFs"]["full"] == 0, "F asks for full screen on the screen, only where the browser has it"
+assert F9["reload"]["cls"] == "lc rc" and F9["reload"]["labels"] == ["Show the layers:false", "Show the tools:false"], ("a reload keeps the folds", F9["reload"])
+assert F9["broken"]["cls"] == "lc", ("without storage the page is still right: it folds, it just forgets", F9["broken"])
+print("  place: each side folds by its arrow and by [ or ], \\ is map only, F full screen; never while typing; remembered in try/catch")
 
 print("all doors checks passed")

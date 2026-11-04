@@ -35,13 +35,59 @@ VIEWS.place = function () {
   });
   speciesBlock(); placeTools(); figures(); placeMap(); layer();
 };
-/* `/` puts the cursor in the Ask line, on Place, unless something is being typed already; Esc closes a phone's sheet */
-const closeSheet = () => { const bench = document.querySelector('.bench'); if (bench && bench.dataset.sheet) document.querySelector(`.psbar [data-s="${bench.dataset.sheet}"]`).click(); };
+/* FOLDING (SPEC_place_microgis §4): each side folds to a 36 px strip with its name down it, and a press on the strip
+   opens it again; Map only folds both, and the screen takes the window's height (doors.html); Full screen is the
+   browser's own, on the screen, so the keys, the readout and the controls come along. Each side is remembered in this
+   browser, read and written in try/catch: without storage the page opens unfolded and folds all the same. */
+const PLACE_FOLDS = 'planetai_place_folds', placeBench = () => document.querySelector('.bench');
+function foldSide(sides, on) {
+  const b = placeBench(); if (!b) return;
+  sides.split(' ').forEach(f => b.classList.toggle(f, on));
+  try { localStorage.setItem(PLACE_FOLDS, ['lc', 'rc'].filter(f => b.classList.contains(f)).join(' ')); } catch (e) { /* no storage here */ }
+  sayFolds();
+}
+/* the arrows and Map only say what a press does next; the map takes its new size (a still map is drawn again) */
+function sayFolds() {
+  const b = placeBench(), PM = window.__PM || {};
+  document.querySelectorAll('.pfold').forEach(x => {
+    const hid = b.classList.contains(x.dataset.fold), say = `${hid ? 'Show' : 'Hide'} the ${x.dataset.fold === 'lc' ? 'layers' : 'tools'}`;
+    x.setAttribute('aria-expanded', String(!hid)); x.setAttribute('aria-label', say); x.title = `${say} · ${x.dataset.fold === 'lc' ? '[' : ']'}`;
+  });
+  const w = document.querySelector('.tools [data-t="wide"]'); if (w) w.setAttribute('aria-pressed', String(b.classList.contains('lc') && b.classList.contains('rc')));
+  if (PM.map) PM.map.resize(); else if (PM.flat && window.placeMap) window.placeMap();
+}
+/* Map only: both fold, and the whole screen comes into the window; pressed again, both open */
+function mapOnly() {
+  const b = placeBench(), both = b.classList.contains('lc') && b.classList.contains('rc');
+  foldSide('lc rc', !both); if (!both) document.querySelector('.mapc').scrollIntoView({ block: 'center' });
+}
+function fullScreen() {
+  const sc = document.querySelector('.mapc'); if (!document.fullscreenEnabled || !sc) return;
+  if (document.fullscreenElement) document.exitFullscreen(); else sc.requestFullscreen();
+}
+window.placeWide = mapOnly; window.placeFull = fullScreen;
+{ let s = ''; try { s = localStorage.getItem(PLACE_FOLDS) || ''; } catch (e) { /* no storage here */ }
+  const b = placeBench();
+  if (b) { s.split(' ').filter(f => f === 'lc' || f === 'rc').forEach(f => b.classList.add(f)); sayFolds(); }
+  document.querySelectorAll('.pfold').forEach(x => { x.onclick = () => foldSide(x.dataset.fold, !placeBench().classList.contains(x.dataset.fold)); }); }
+document.addEventListener('fullscreenchange', () => {
+  const x = document.querySelector('.tools [data-t="full"]'), PM = window.__PM || {};
+  if (x) x.setAttribute('aria-pressed', String(!!document.fullscreenElement));
+  if (PM.map) PM.map.resize();
+});
+
+/* `/` puts the cursor in the Ask line, on Place; `[` and `]` fold a side, `\` is Map only, F full screen. None while
+   somebody types, in a dialog or in the download menu: onKey's guard (doors-placemap.js). Esc closes a phone's sheet. */
+const closeSheet = () => { const b = placeBench(); if (b && b.dataset.sheet) document.querySelector(`.psbar [data-s="${b.dataset.sheet}"]`).click(); };
 $('#askbtn').addEventListener('click', closeSheet);   /* the sheet sits above the Ask pane: Ask opens, the sheet closes */
 document.addEventListener('keydown', e => {
-  const bench = document.querySelector('.bench');
-  if (e.key === 'Escape' && bench && bench.dataset.sheet) { closeSheet(); return; }
-  if (e.key !== '/' || D.askOff || view() !== 'place' || e.target.closest('input, textarea, select, [contenteditable]')) return;
+  const b = placeBench(), k = e.key;
+  if (k === 'Escape' && b && b.dataset.sheet) { closeSheet(); return; }
+  if (view() !== 'place' || e.metaKey || e.ctrlKey || e.altKey || e.target.closest('input, textarea, select, [contenteditable], dialog, .dlmenu')) return;
+  if (k === '[' || k === ']') { const f = k === '[' ? 'lc' : 'rc'; foldSide(f, !b.classList.contains(f)); return; }
+  if (k === '\\') { mapOnly(); return; }
+  if (k === 'f' || k === 'F') { fullScreen(); return; }
+  if (k !== '/' || D.askOff) return;
   e.preventDefault(); $('#paskq').focus();
 });
 

@@ -510,14 +510,16 @@ async function fly(r) {
    right, with the base switch beside it. Measuring became the line key and Inspect became Select (the drawing keys,
    below); From the house is a tool in the right column (doors-place.js), and ends on a second press or Esc. */
 const MEASURING = () => PM.tool === 'from';
-const COL = [['wide', 'Map only'], ['full', 'Full screen'], ['fit', 'Back to this node’s cell'], ['dl', 'Download']];
+const COL = [['wide', 'Map only', '\\'], ['full', 'Full screen', 'F'], ['fit', 'Back to this node’s cell'], ['dl', 'Download']];
 function tools() {
   const el = document.createElement('div'), zm = document.createElement('div'), menu = PM.dlm = document.createElement('div'), base = PM.basesw = document.createElement('div');
   el.className = 'tools'; zm.className = 'zoom'; menu.className = 'dlmenu'; menu.id = 'dlmenu'; menu.hidden = true; base.className = 'pbase';
   menu.setAttribute('role', 'group'); menu.setAttribute('aria-label', 'Download'); base.setAttribute('role', 'group'); base.setAttribute('aria-label', 'Base map');
-  /* Map only and Full screen fold the sides and fill the window: drawn here, wired with the folding (not yet) */
-  el.innerHTML = COL.map(([k, t]) => `<button type="button" data-t="${k}" class="${k === 'fit' || k === 'dl' ? 'gap' : ''}" aria-label="${t}"`
-    + (k === 'wide' || k === 'full' ? ` aria-disabled="true" title="${t} · not yet"` : ` title="${t}"`)
+  /* Map only folds both sides, Full screen is the browser's own on the screen (doors-place.js): its key is not drawn where
+     the browser has no element full screen (Safari on iPhone) */
+  const bench = document.querySelector('.bench'), both = !!bench && bench.classList.contains('lc') && bench.classList.contains('rc');
+  el.innerHTML = COL.filter(([k]) => k !== 'full' || document.fullscreenEnabled).map(([k, t, key]) => `<button type="button" data-t="${k}" class="${k === 'fit' || k === 'dl' ? 'gap' : ''}" aria-label="${t}" title="${key ? `${t} · ${key}` : t}"`
+    + (k === 'wide' ? ` aria-pressed="${both}"` : k === 'full' ? ` aria-pressed="${!!document.fullscreenElement}"` : '')
     + (k === 'dl' ? ' aria-expanded="false" aria-controls="dlmenu"' : '')
     + `><svg viewBox="0 0 20 20" aria-hidden="true">${KEYICON[k]}</svg></button>`).join('');
   zm.innerHTML = [['in', '+', 'Zoom in'], ['out', '−', 'Zoom out']].map(([k, g, t]) => `<button data-t="${k}" title="${t}" aria-label="${t}"><span class="g" aria-hidden="true">${g}</span></button>`).join('');
@@ -535,6 +537,7 @@ function tools() {
   el.onclick = e => {
     const k = e.target.closest('button')?.dataset.t; if (!k) return;
     if (k === 'in') PM.map.zoomIn(); else if (k === 'out') PM.map.zoomOut(); else if (k === 'fit') fly(8); else if (k === 'dl') dlMenu(menu.hidden);
+    else if (k === 'wide') window.placeWide(); else if (k === 'full') window.placeFull();
   };
   zm.onclick = el.onclick;
   menu.onclick = e => { const k = e.target.closest('button')?.dataset.dl; if (k) download(k); };
