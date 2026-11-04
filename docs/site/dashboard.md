@@ -157,29 +157,50 @@ and if the row cannot draw, why: **token-only**, **not here**, **live map**, or 
 start on: this house's outdoor kit, the public stations, the species, the cell the node stands in, the street map
 and the images. Nothing from inside the house is listed or drawn on Place, and neither are the rooms.
 
-**The screen.** In the middle is the map, on a black screen in a bezel. It stays black on the light page and on the dark one. The hour is a pill at the top, the node's last reading. When
-the wind is on it shows the wind's hour, and arrows step it. The scale rungs are at the bottom left, street, block,
-cell, village and district, and the credit sits at the foot. The resolution drawn follows the zoom, and a cell that may
-leave the machine is dotted. On the right edge are the screen's own tools, **Inspect**, **Measure** with **Done**,
-**From the house**, back to the node's cell, and save as PNG, with zoom apart below them.
+**The screen.** In the middle is the map, on a black screen that stays black on the light page and the dark one. It
+opens on the satellite where the node holds it, and a switch at the bottom right changes the base. Zoomed out, a pin
+marks each drone flight the node holds. The hour is a pill at the top, the node's last reading, or the wind's hour when
+the wind is on. The scale rungs, street, block, cell, village and district, are at the bottom left and the credit at the
+foot. A cell that may leave the machine is dotted. On the right edge are **Map only**, **Full screen**, back to the
+node's cell and **Download**.
 
-When the satellite row is on and the node holds Sentinel-2 years, the screen shows the node's Sentinel-2 annual medians,
-then and now side by side, with the hectares that changed between them by its AlphaEarth record.
+**Drawing.** With the token, the keys on the screen's left edge are **Select** (V), **Marker** (M), **Line** (L),
+**Area** (A), **Note** (N), **Image** (I) and **Undo** (⌘Z). Each press on the map adds a point, and a marker or a note
+is done with one. A line ends on a double press, an area when you press its first corner again. Enter adds a point at
+the centre, and Enter again without moving finishes the shape, so the keyboard alone can draw. Backspace takes a point
+back, Esc drops the shape. The readout beside the keys gives the length or the surface as you draw, then the node's own
+measure once it is kept. With Select, press a drawing for its label, note, colour and image. Press a point and then its
+new place to move it, or use the arrows, with `.` for the next point. An image stays on this node, the map only says
+which one.
+
+**Your maps** sit at the top of the left column. Every drawing goes into one, kept on this node, and the open map's
+drawings are listed under the screen. Each drawing, change, download and share is a row in the ledger on Data.
+**Download** gives the open map as a PNG of the screen with its credit and a scale bar, GeoJSON for QGIS, KML for
+Google Earth, or DXF for CAD in metres, in the node's UTM zone. **Share** sends it to the node upstream. The first press
+says what goes, every drawing at its exact place, and the second sends it. If you draw on the house itself the map
+waits until you press Share again.
+
+When Now is asking about an issue, choose it in the drawing's form, say what you did in your own words and press **Tie
+it**. The rain garden you drew then counts as what you did about it, as Done does on Now.
+
+**Folding.** Each side folds by the arrow on its edge, or `[` and `]`, into a strip with its name. `\` or **Map only**
+folds both and the screen takes the window, and **Full screen** or F takes the whole display. This browser remembers
+the folds. On a phone the keys run along the bottom of the screen.
 
 Under the screen one line says what is in view. Press a station, an image, a place to make or a cell and the line
 gives its facts, and with the token how far it is from the node and which cell it is in. A station of this house says
 it counts toward the cell; a public one is shown and never counted. Below it is the list around the house, nearest
 first, with the distance in metres measured by the node (`GET /geo/measure`, and `GET /nearby` for public stations).
 
-**The tools.** On the right is a column of what the node could do with this place. **Rings and distance** works today.
-It draws the 2, 5 and 15 km rings from the node's point, and its name sits in a pill while it is on. The rest, sun and
-shade, trees, built form, sealed ground, streets, walking, what changed, where the rain goes, and four fitness tools,
-carry a dotted **not yet**. A screen without a token reads "Tools run on this node with a token. Unlock this screen in Set up." under them. On a phone the layers and the tools each open
-from a bar under the screen as a sheet that rises over the lower part of the page, and Esc closes it.
+**The tools.** On the right is a column of what the node could do with this place. **Rings and distance** draws the 2,
+5 and 15 km rings from the node's point. **From the house** measures from the node's point to any point you press. The
+rest carry a dotted **not yet**. A screen without a token reads "Tools run on this node with a token. Unlock this
+screen in Set up." under them. On a phone the layers and the tools each open from a bar under the screen as a sheet,
+and Esc closes it.
 
-The lower part has two halves. **Selected** is where a tool's rows will be listed, one row for each thing it found.
-**The place in figures** holds what changes yearly and has no hours, land and coast with the node's sentence and
-figure, the Index cells, and what is not here yet (production and trade, water and soil, and the forecast).
+The lower part has two halves. The open map's table is on the left. On the right is what changed year on year, the
+satellite then and now with the hectares that changed and a bar a year for the buildings it counts, and under it
+**The place in figures**, which holds land and coast and the Index cells, and lists what is not here yet.
 
 The grid, the rings and every distance are the node's own answers from `GET /geo/*`, and the plan is
 `GET /place/geojson`; all of them need a token at every sharing level, because together they place the house. Without

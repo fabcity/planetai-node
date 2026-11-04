@@ -329,15 +329,15 @@ MARKS = [
      "What this place is made of, with the sky at the top and the ground at the bottom, and what the node does not hold yet. A filled "
      "dot is on, a hollow one off, and a dotted one is a layer the node cannot draw yet, named by its source."),
     ("place-map", "The screen", "dashboard.md", "Place",
-     "**The screen.**", "and on the dark one.",
+     "**The screen.**", "the dark one.",
      "Every distance on this door is measured by the node from its own point. Without the token the "
      "house's marks say withheld, because together they would place the house."),
     ("place-tools", "The tools", "dashboard.md", "Place",
-     "**The tools.**", "sits in a pill while it is on.",
+     "**The tools.**", "15 km rings from the node's point.",
      "The tools that run on this node today, and the ones still to come, marked not yet. Rings and "
      "distance draws the 2, 5 and 15 km rings from the node's own point. Without a token they stay quiet."),
     ("place-orbit", "From orbit", "dashboard.md", "Place",
-     "the node's Sentinel-2 annual medians", "by its AlphaEarth record",
+     "what changed year on year", "the buildings it counts",
      "Two of the node's own Sentinel-2 years side by side, from files it already holds. Nothing is "
      "fetched while you look."),
     ("place-species", "Species confirmed here", "dashboard.md", "Place",
@@ -345,7 +345,7 @@ MARKS = [
      "Only what a person here confirmed in an image is counted. Where a picture was taken places the "
      "house, so the table needs the token."),
     ("place-changing", "What is changing", "dashboard.md", "Place",
-     "**The place in figures**", "and the forecast).",
+     "**The place in figures**", "what is not here yet.",
      "Land and coast change yearly, so they are here and not on Now. What the node cannot read yet is "
      "named here as missing."),
     ("node-verdict", "Working, or needs a look", "dashboard.md", "Node",

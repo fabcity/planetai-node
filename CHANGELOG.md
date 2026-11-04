@@ -11,6 +11,20 @@
   view is gone until What changed runs as a tool. On a phone the layers and the tools open as a sheet over the lower
   part of the page.
 
+- **You can draw on Place now, and keep what you draw in named maps.** With the token, the keys on the screen's left
+  edge drop a marker or a note, draw a line with its length or an area with its surface, and add an image, by press or
+  with the keyboard alone, and PostGIS measures what you keep. A map downloads as a PNG of the screen with its credit and
+  scale, as GeoJSON or KML, or as DXF in metres of the node's UTM zone. Share sends a map to the node upstream at its
+  exact place, after a plain warning, and a drawing on the house holds it until you press Share again. A drawing tied
+  to an issue on Now, with what you did in your own words, counts as acting on it. The satellite opens first, the
+  yearly change moved under the map, drone flights show as pins when you zoom out, and the two sides fold, with `\` for
+  the map only and F for full screen. Place in `docs/site/dashboard.md` says how.
+
+  Under it, `init.sql` enables PostGIS and adds `place_maps` and `place_marks`. Every drawing, change, download and
+  share is a `place` row in the ledger, and a private daily count of drawings goes to the sensor `place-gis`, never
+  out and never into an Index cell. A parent takes a child's shared map on `POST /place/maps/received` with its own
+  `AGGREGATE_TOKEN` and keeps it read-only. The routes are in `docs/site/api.md`.
+
 ## v0.91.0 — 2026-11-04 — Now looks ahead
 
 Under What to do on Now there's the rest of today, tomorrow and the day after, with the air and the heat judged
