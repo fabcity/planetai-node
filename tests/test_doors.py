@@ -928,8 +928,13 @@ const el = () => ({ innerHTML: '', textContent: '', hidden: false, style: {}, da
   querySelector: () => null, querySelectorAll: () => [], addEventListener: noop, remove: noop, focus: noop, closest: () => null, contains: () => false,
   getContext: () => ({ setTransform: noop, clearRect: noop }), clientWidth: 900, clientHeight: 560 });
 async function boot(tok) {
-  const els = {}, map = el(), asked = [], drawn = {};
-  const ask = p => { asked.push(p); if (!tok && L.DOORS_LOCKED.test(p)) return Promise.resolve(new Response('{}', { status: 403 }));
+  const els = {}, map = el(), asked = [], drawn = {}, patched = [], keys = [];
+  /* the lower band's row buttons, as mapTable() wires them */
+  const rows = [{ dataset: { k: '11' } }, { dataset: { k: '12' } }];
+  els['#ptable'] = Object.assign(el(), { querySelectorAll: q => (q === '.mrow' ? rows : []) });
+  const ask = (p, init = {}) => { asked.push(p); if (!tok && L.DOORS_LOCKED.test(p)) return Promise.resolve(new Response('{}', { status: 403 }));
+    if (init.method === 'PATCH') { const b = JSON.parse(init.body); patched.push(b);
+      return Promise.resolve(new Response(JSON.stringify({ mark: { ...MARKS.marks.find(k => p.endsWith('/' + k.id)), ...b } }), { status: 200 })); }
     const b = p.startsWith('/place/maps/3/marks') ? MARKS : p.startsWith('/place/maps/4/marks') ? { marks: [] } : p.startsWith('/place/maps') ? MAPS
       : p.startsWith('/captures') ? [] : p.startsWith('/species') ? { species: [] } : {};
     return Promise.resolve(new Response(JSON.stringify(b), { status: 200 })); };
@@ -938,17 +943,29 @@ async function boot(tok) {
     UNLOCK_AT: '<a href="#setup/screen">Set up › This screen</a>', sign: id => `<svg data-s="${id}"></svg>`, prov: w => w, lastRaw: () => null, plain: s => s,
     hhmm: s => s, when: s => s, dLabel: s => s, dayOf: s => s, CLOCK: { reduced: () => true, on: noop, off: noop }, view: () => 'place', location: { origin: 'http://node' },
     devicePixelRatio: 1, localStorage: { getItem: () => null, setItem: noop },
-    document: { documentElement: { dataset: {} }, querySelector: () => null, querySelectorAll: () => [], createElement: () => el(), addEventListener: noop, getElementById: () => null, activeElement: null },
+    document: { documentElement: { dataset: {} }, querySelector: () => null, querySelectorAll: () => [], createElement: () => el(), getElementById: () => null, activeElement: null,
+      addEventListener: (t, f) => { if (t === 'keydown') keys.push(f); } },
     maplibregl: { ScaleControl: function () {}, Map: function () { return Object.assign(map, { on: noop, once: noop, addControl: noop, getContainer: () => map,
       getCanvas: () => ({ style: {} }), touchZoomRotate: { disableRotation: noop }, doubleClickZoom: { enable: noop, disable: noop }, getZoom: () => 13.6, resize: noop,
-      project: () => ({ x: 450, y: 280 }), getCenter: () => ({ lng: 115.167, lat: -8.819 }) }); } },
+      project: ([x, y]) => ({ x: x * 1e4, y: -y * 1e4 }), unproject: ([x, y]) => ({ lng: x / 1e4, lat: -y / 1e4 }), easeTo: noop,
+      getCenter: () => ({ lng: 115.167, lat: -8.819 }) }); } },
     deck: new Proxy({}, { get: (t, k) => k === 'MapboxOverlay' ? function () { return { setProps: o => { (o.layers || []).forEach(l => { drawn[l.id] = l.props; }); } }; } : layer }) };
   c.window = c; vm.createContext(c);
   vm.runInContext(['esc', 'fmt'].map(pick).join('\n') + '\n' + src + '\nwindow.placeMap()', c);
   await new Promise(r => setTimeout(r, 80));
-  const keys = map.kids.find(x => x.className === 'dkeys'), pan = map.kids.find(x => x.className === 'dpanel');
-  return { keys: keys ? keys.innerHTML : null, panel: pan ? pan.innerHTML : null, read: c.$('#dread').innerHTML, cake: c.$('#cake').innerHTML,
-    table: c.$('#ptable').innerHTML, asked, drawn: Object.fromEntries(Object.entries(drawn).filter(([k]) => k.startsWith('draw-')).map(([k, v]) => [k, (v.data || []).length])) };
+  const kk = map.kids.find(x => x.className === 'dkeys'), pan = map.kids.find(x => x.className === 'dpanel');
+  const out = { keys: kk ? kk.innerHTML : null, panel: pan ? pan.innerHTML : null, read: c.$('#dread').innerHTML, cake: c.$('#cake').innerHTML,
+    table: c.$('#ptable').innerHTML, asked };
+  /* without a mouse: the row puts the area in hand, an arrow moves its first point, the full stop steps, the next arrow moves the second */
+  if (tok) {
+    const key = k => keys.forEach(f => f({ key: k, target: { closest: () => null }, preventDefault: noop, stopPropagation: noop, shiftKey: false, metaKey: false, ctrlKey: false, altKey: false }));
+    rows[0].onclick(); out.held = c.$('#dread').innerHTML;
+    key('ArrowRight'); await new Promise(r => setTimeout(r, 650));
+    key('.'); out.stepped = c.$('#dread').innerHTML;
+    key('ArrowUp'); await new Promise(r => setTimeout(r, 650));
+    out.patched = patched;
+  }
+  return { ...out, drawn: Object.fromEntries(Object.entries(drawn).filter(([k]) => k.startsWith('draw-')).map(([k, v]) => [k, (v.data || []).length])) };
 }
 (async () => {
   const out = { tok: await boot(true), locked: await boot(false) };
@@ -965,9 +982,16 @@ _keys = re.findall(r'<button[^>]*aria-label="([^"]+)"[^>]*aria-pressed="(true|fa
 assert [k for k, _ in _keys] == ["Select", "Marker", "Line, with distance", "Area, with surface", "Note", "Image"] and [p for _, p in _keys].count("true") == 1, _keys
 assert re.search(r'<button[^>]*aria-label="Undo"', _t["keys"]) and _keys[0][1] == "true", "an Undo key, and Select pressed to start"
 assert all(f"<small>{k}</small>" in _t["keys"] for k in "VMLANI"), "the letter in each key's corner"
-assert 'id="dread" class="dread" aria-live="polite"' in _t["panel"], "the readout says the finished figure to a screen reader"
+assert 'id="dsaid" class="vh" aria-live="polite"' in _t["panel"] and 'id="dread" class="dread">' in _t["panel"], \
+    "only the finished figure is live; the readout that follows the pointer is not"
 assert "&lt;img src=x onerror=1&gt;" in _t["read"], "the readout names the open map, escaped"
-print("  place: six drawing keys and Undo on the screen, Select pressed; the readout is aria-live and names the open map")
+print("  place: six drawing keys and Undo on the screen, Select pressed; the kept figure is aria-live; the readout names the open map")
+_ring = [[115.167, -8.819], [115.168, -8.819], [115.168, -8.818]]
+_p1, _p2 = [x["geometry"]["coordinates"][0] for x in _t["patched"]]
+assert "Arrows move point 1 of 3. Press . for the next point." in _t["held"] and "point 2 of 3" in _t["stepped"], (_t["held"], _t["stepped"])
+assert _p1[0] != _ring[0] and _p1[1:3] == _ring[1:3] and _p1[0] == _p1[-1], ("the first arrow moves the first point, the ring stays closed", _p1)
+assert _p2[0] == _p1[0] and _p2[1] != _ring[1] and _p2[1][1] > _ring[1][1] and _p2[2] == _ring[2], ("after the full stop the arrow moves the second point, up", _p2)
+print("  place: without a mouse, a drawing in hand moves point by point: the arrows move one, the full stop steps to the next")
 _ck = _t["cake"]
 assert _ck.index('id="ymaps"') < _ck.index('data-cake="results"'), "your maps sit above the results"
 assert _ck.index('class="ly map') < _ck.index('class="ly new"') and ">New map<" in _ck, "a square-dot row per map, then New map"
@@ -987,10 +1011,13 @@ assert not [p for p in _x["asked"] if p.startswith(("/place/maps", "/place/marks
 print("  place: without the token, your maps say where they are and how to unlock; no key, no New map")
 assert 'data-tool="from"' in M["ptools"] and "From the house" in M["ptools"], M["ptools"][:400]
 _css = html[html.index("/* ================= PLACE: a small GIS"):html.index("/* ================= NODE")]
-assert ".dkeys button{width:44px;height:44px" in _css and re.search(r"\.dkeys button:focus-visible[^{]*\{outline:2px solid var\(--cells\)", _css), \
+assert ".dkeys button{width:44px;height:44px" in _css and re.search(r"\.dkeys button:focus-visible,\.dpanel button:focus-visible,\.dpanel input:focus-visible,"
+                                                                    r"\.dpanel textarea:focus-visible,\.dpanel select:focus-visible\{outline:2px solid var\(--cells\)", _css), \
     "44 px keys; focus on the black screen is the cells' blue, as the hour pill's"
 assert "p.cells" in pm[pm.index("function drawLayers"):pm.index("function drawLayers") + 4000], "a drawing in focus is outlined in the cells' blue"
 assert ".ly.map i{border-radius:2px}" in _css, "a map's dot is square, a layer's round"
+assert "'The image stays on this node. The map only says which image it is, never sends the file.'" in pm and "never the file’s" not in pm, \
+    "the image hint says only what is true: a photo's own GPS still wins on the node"
 print("  place: From the house in the right column; 44 px keys; focus is the cells' blue on the screen")
 
 print("all doors checks passed")

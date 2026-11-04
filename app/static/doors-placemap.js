@@ -519,7 +519,7 @@ function tools() {
   if (!DOORS_TOKEN()) return;
   const keys = PM.keys = document.createElement('div'), pan = document.createElement('div');
   keys.className = 'dkeys'; keys.setAttribute('role', 'toolbar'); keys.setAttribute('aria-label', 'Draw'); keys.innerHTML = keysHTML();
-  pan.className = 'dpanel'; pan.innerHTML = '<div id="dread" class="dread" aria-live="polite"></div><div id="dform" class="dform" hidden></div>';
+  pan.className = 'dpanel'; pan.innerHTML = '<div id="dread" class="dread"></div><p id="dsaid" class="vh" aria-live="polite"></p><div id="dform" class="dform" hidden></div>';
   keys.onclick = e => { const b = e.target.closest('button[data-k]'); if (!b) return; if (b.dataset.k === 'undo') undo(); else PM.setTool(b.dataset.k); };
   box.append(keys, pan);
   readout();
@@ -534,7 +534,7 @@ function tools() {
    node's palette (GET /place/maps), on the screen and in the table's swatches, never on the page around them. */
 const MARKS = {};                 // map id → its drawings, as GET /place/maps/{id}/marks answers them
 const UNDO = [];                  // what ⌘Z takes back, newest last: each one a call back to the node
-PM.draw = { map: null, state: null, sel: null, colour: 1, corner: null, hover: null, via: null, edit: null, asked: null, naming: false,
+PM.draw = { map: null, state: null, sel: null, colour: 1, corner: null, kc: 0, hover: null, via: null, edit: null, asked: null, naming: false,
   pick: null, err: '', mapErr: '', said: '', preview: null, focusLabel: false };
 PM.mapOff = new Set();
 const DRAWS = ['marker', 'line', 'area', 'note'];
@@ -548,7 +548,8 @@ const KEYICON = { select: '<path d="M5 3l12 6-5 2-2 5z"/>', marker: '<path d="M1
   undo: '<path d="M7 5L3 9l4 4"/><path d="M3 9h9a5 5 0 010 10h-2"/>' };
 /* the mockup's READ words for the two keys doors-draw.js's figure() has no hint for */
 const HINT_SEL = 'Press a drawing to change its colour, note or image.';
-const HINT_IMG = 'The image stays on this node; its location is the drawing’s, never the file’s.';
+/* not the mockup's "its location is the drawing's": a photo's own GPS still wins on the node (packs/eyes) */
+const HINT_IMG = 'The image stays on this node. The map only says which image it is, never sends the file.';
 const MAPKEY = 'planetai_place_map';
 const actor = () => { try { return localStorage.getItem('planetai_actor') || ''; } catch (e) { return ''; } };
 const send = (method, p, body) => doorsFetch(API + p, { method, headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined })
@@ -582,7 +583,8 @@ const keysHTML = () => KEYS.map(([k, l]) => `<button type="button" class="${k ==
   + `<button type="button" class="gap" data-k="undo" aria-label="Undo" title="Undo · ⌘Z or Ctrl+Z"><svg viewBox="0 0 20 20" aria-hidden="true">${KEYICON.undo}</svg><small>⌘Z</small></button>`;
 
 /* the readout: the tool and the open map, the figure large, the six colours, one line of what to do. The figure
-   follows the pointer, so it is hidden from a screen reader; what was kept is said once, in the .vh line. */
+   follows the pointer, so it is hidden from a screen reader; the live region is #dsaid alone, written only when a
+   drawing is kept (§10: the finished figure, not every mouse move). */
 function figureNow() {
   const d = PM.draw, k = markById(d.sel), T = PM.tool;
   if (T === 'from') return { v: PM.measured ? fmtM(PM.measured.total_m) : '', hint: 'Press any point and the node measures it from its own point.' };
@@ -593,17 +595,20 @@ function figureNow() {
     return { v: f.value ? `${esc(f.value)}<small>${esc(f.unit)}</small>` : '', hint: f.hint };
   }
   if (T === 'image' && !k) return { v: 'from Data › Images<small>or a new photo</small>', hint: HINT_IMG };
-  return { v: k ? `${esc(k.label || k.kind)}<small>${esc(k.kind)} · ${esc(measureOf(k))}</small>` : '', hint: T === 'image' ? HINT_IMG : HINT_SEL };
+  /* the keyboard's point: the arrows move it, the full stop steps to the next (no mouse needed, §10) */
+  const n = k && T === 'select' && mine(mapById(k.map_id)) ? ptsOf(k).length : 0;
+  const keys = n > 1 ? ` Arrows move point ${d.kc % n + 1} of ${n}. Press . for the next point.` : n ? ' Arrows move it.' : '';
+  return { v: k ? `${esc(k.label || k.kind)}<small>${esc(k.kind)} · ${esc(measureOf(k))}</small>` : '', hint: T === 'image' ? HINT_IMG : HINT_SEL + keys };
 }
 function readout() {
   const el = $('#dread'); if (!el || !PM.map || !DOORS_TOKEN()) return;
   const d = PM.draw, m = openMap(), k = markById(d.sel), f = figureNow(), cur = k ? k.colour : d.colour;
   el.innerHTML = `<div class="t"><span>${TOOLWORD[PM.tool] || ''}</span><span>${m ? esc(m.name) : 'no map yet'}</span></div>`
     + `<div class="v" aria-hidden="true">${f.v}</div>`
-    + (PM.palette ? `<div class="sw" role="group" aria-label="Colour">${[1, 2, 3, 4, 5, 6].map(n => `<button type="button" data-c="${n}" aria-label="Colour ${n}" aria-pressed="${n === cur}">`
+    + (PM.palette ? `<div class="dsw" role="group" aria-label="Colour">${[1, 2, 3, 4, 5, 6].map(n => `<button type="button" data-c="${n}" aria-label="Colour ${n}" aria-pressed="${n === cur}">`
       + `<i style="background:${esc(PM.palette[n])}"></i></button>`).join('')}<em>colour</em></div>` : '')
-    + `<div class="hint">${esc(f.hint)}</div>${d.err ? `<p class="err">${esc(d.err)}</p>` : ''}<span class="vh">${esc(d.said)}</span>`;
-  d.said = '';
+    + `<div class="hint">${esc(f.hint)}</div>${d.err ? `<p class="err">${esc(d.err)}</p>` : ''}`;
+  const live = $('#dsaid'); if (d.said && live) { live.textContent = d.said; d.said = ''; }
   el.querySelectorAll('[data-c]').forEach(b => b.onclick = () => {
     const n = +b.dataset.c, s = markById(PM.draw.sel);
     if (s && mine(mapById(s.map_id))) patch(s.id, { colour: n }); else { PM.draw.colour = n; readout(); redraw(); }
@@ -612,7 +617,7 @@ function readout() {
 /* only the figure and the hint, as the pointer moves */
 function figureOnly() {
   const el = $('#dread'), f = figureNow(), v = el && el.querySelector && el.querySelector('.v'), h = el && el.querySelector && el.querySelector('.hint');
-  if (v) v.innerHTML = f.v; if (h) h.textContent = f.hint;
+  if (v && v.innerHTML !== f.v) v.innerHTML = f.v; if (h && h.textContent !== f.hint) h.textContent = f.hint;
 }
 
 /* the form under the readout, for the drawing in hand: its label and note (saved as each changes), an image, Delete,
@@ -664,15 +669,16 @@ function after() {
 /* ---- the node's side: keep, change, delete, each one undoable */
 async function finish() {
   const d = PM.draw, s = d.state, m = openMap();
-  if (!s || !canFinish(s) || !m) return;
+  if (!s || !canFinish(s) || !m) return null;
   d.state = null; d.hover = null;
   const r = await send('POST', `place/maps/${m.id}/marks`, { ...toFeature(s, { colour: d.colour }), actor: actor() });
-  if (!r.ok) { d.err = refused(r); after(); return; }
+  if (!r.ok) { d.err = refused(r); after(); return null; }
   (MARKS[m.id] ||= []).push(r.mark); m.marks += 1; remember(m.id);
   d.sel = r.mark.id; d.err = r.warn || ''; d.focusLabel = s.kind === 'note';
   d.said = `Kept in ${m.name}. ${r.mark.kind}${measureOf(r.mark) === '—' ? '' : `, ${measureOf(r.mark)}`}.`;
   UNDO.push(() => del(r.mark.id, false));
   after();
+  return r.mark.id;
 }
 async function patch(id, body, undoable = true) {
   const k = markById(id); if (!k) return null;
@@ -713,7 +719,7 @@ const pickOf = h => {
     : (id === 'grid' || id === 'grid-dot' || id === 'mine' || id === 'radio') ? { kind: 'cell', id: o.id } : null;
 };
 function select(id) {
-  const d = PM.draw; d.sel = id; d.corner = null; d.pick = null; PM.pick = null; popup(null);
+  const d = PM.draw; d.sel = id; d.corner = null; d.kc = 0; d.pick = null; PM.pick = null; popup(null);
   readout(); drawForm(); redraw(); mapTable();
 }
 function press(e) {
@@ -725,7 +731,8 @@ function press(e) {
     /* a drawing takes the image; an empty place gets a marker to carry it */
     if (k) { select(k.id); picker(k.id); return; }
     if (!openMap()) { readout(); return; }
-    d.state = addPt(drawState('marker'), q); finish().then(() => { if (d.sel != null) picker(d.sel); });
+    /* the picker opens only for the marker just kept: a refused one leaves nothing in hand to attach to */
+    d.sel = null; d.state = addPt(drawState('marker'), q); finish().then(id => { if (id != null) picker(id); });
     return;
   }
   if (id === 'draw-corner' && hit.object.k != null && hit.object.k === d.sel) { d.corner = hit.object.i; readout(); redraw(); return; }
@@ -760,14 +767,16 @@ function moveCorner(q) {
   const pts = ptsOf(k).map(p => [...p]); pts[d.corner] = q; d.corner = null;
   patch(k.id, { geometry: toFeature({ kind: k.kind, pts }).geometry });
 }
-function nudge(dx, dy) {
+function nudge(i, dx, dy) {
   const d = PM.draw, k = markById(d.sel); if (!k) return;
-  const pts = ptsOf(k).map(p => [...p]), s = PM.map.project(pts[d.corner]), ll = PM.map.unproject([s.x + dx, s.y + dy]);
-  pts[d.corner] = [ll.lng, ll.lat];
+  const pts = ptsOf(k).map(p => [...p]), s = PM.map.project(pts[i]), ll = PM.map.unproject([s.x + dx, s.y + dy]);
+  pts[i] = [ll.lng, ll.lat];
   d.preview = { id: k.id, geometry: toFeature({ kind: k.kind, pts }).geometry }; redraw();
   clearTimeout(d.nudged); d.nudged = setTimeout(() => d.preview && patch(k.id, { geometry: d.preview.geometry }), 500);
 }
-/* the keys from the keyboard (V M L A N I, ⌘Z), Enter, Backspace, Esc and the arrows; never while somebody types */
+/* the keys from the keyboard (V M L A N I, ⌘Z), Enter, Backspace, Esc, the arrows and the full stop; never while
+   somebody types. With a drawing in hand the arrows move one of its points (a corner pressed, else the keyboard's point,
+   the first to start) and `.` steps to the next: a drawing is edited without a mouse (§10). */
 function onKey(e) {
   if (view() !== 'place' || !PM.map || !DOORS_TOKEN()) return;
   const t = e.target, d = PM.draw, k = e.key, within = sel => !!(t && t.closest && t.closest(sel));
@@ -783,9 +792,11 @@ function onKey(e) {
   }
   if (k === 'Backspace' && d.state && d.state.pts.length) { e.preventDefault(); d.state = backPt(d.state); readout(); redraw(); return; }
   if (k === 'Enter' && !within('button, a')) { if (enter()) e.preventDefault(); return; }
+  const held = PM.tool === 'select' && markById(d.sel), editable = held && mine(mapById(held.map_id));
+  if (k === '.' && editable) { e.preventDefault(); d.corner = null; d.kc = (d.kc + 1) % ptsOf(held).length; readout(); redraw(); return; }
   const arrow = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[k];
   if (!arrow) return;
-  if (d.corner != null && d.sel != null) { e.preventDefault(); e.stopPropagation(); const n = e.shiftKey ? 10 : 2; nudge(arrow[0] * n, arrow[1] * n); return; }
+  if (editable) { e.preventDefault(); e.stopPropagation(); const n = e.shiftKey ? 10 : 2; nudge(d.corner != null ? d.corner : d.kc % ptsOf(held).length, arrow[0] * n, arrow[1] * n); return; }
   /* on a key of the screen the arrows pan; on the map's canvas MapLibre pans by itself */
   if (within('.mapc') && !within('.maplibregl-canvas-container')) { e.preventDefault(); PM.map.panBy([arrow[0] * 80, arrow[1] * 80]); }
 }
@@ -828,7 +839,7 @@ function drawLayers(p, Dk, px, dashed, A) {
       ? new Dk.PolygonLayer({ id: 'draw-now-area', data: [{ path }], getPolygon: x => x.path, ...px, filled: true, stroked: true, getFillColor: A(c, .28), getLineColor: A(c, 1), getLineWidth: 2 })
       : new Dk.PathLayer({ id: 'draw-now-path', data: [{ path }], getPath: x => x.path, ...px, getColor: A(c, 1), getWidth: 2, extensions: [dashed], getDashArray: [6, 4] }));
   }
-  const cs = s ? s.pts.map((q, i) => ({ q, i, c })) : sel && !PM.mapOff.has(sel.map_id) ? ptsOf(sel).map((q, i) => ({ q, i, k: sel.id, c: p.cells, on: i === d.corner })) : [];
+  const cs = s ? s.pts.map((q, i) => ({ q, i, c })) : sel && !PM.mapOff.has(sel.map_id) ? ptsOf(sel).map((q, i) => ({ q, i, k: sel.id, c: p.cells, on: i === (d.corner != null ? d.corner : d.kc % ptsOf(sel).length) })) : [];
   out.push(new Dk.TextLayer({ characterSet: 'auto', id: 'draw-corner', data: cs, getPosition: x => x.q, getText: () => '■', getSize: 14, fontFamily: mono,
     getColor: x => A(x.c, 1), pickable: true }));
   out.push(new Dk.TextLayer({ characterSet: 'auto', id: 'draw-corner-in', data: cs, getPosition: x => x.q, getText: () => '■', getSize: 7, fontFamily: mono,
@@ -939,7 +950,7 @@ function mapTable() {
         + `<td>${k.capture_id ? `<img class="mth" data-cap="${+k.capture_id}" alt="image ${+k.capture_id}">` : ''}</td><td>${esc(tiedTo(k))}</td></tr>`).join('') + '</table></div>'
       : '<p class="fine">Nothing drawn in it yet. Choose a key on the screen’s left edge and press the map.</p>');
   el.querySelectorAll('.mrow').forEach(b => b.onclick = () => { const k = markById(+b.dataset.k); if (!k) return;
-    PM.mapOff.delete(k.map_id); select(k.id); if (PM.map) PM.map.easeTo({ center: centreOf(k), duration: CLOCK.reduced() ? 0 : 500 }); });
+    PM.mapOff.delete(k.map_id); if (PM.setTool && PM.tool !== 'select') PM.setTool('select'); select(k.id); if (PM.map) PM.map.easeTo({ center: centreOf(k), duration: CLOCK.reduced() ? 0 : 500 }); });
   el.querySelectorAll('img.mth').forEach(i => imgBlob(+i.dataset.cap).then(b => { if (b) { i.src = URL.createObjectURL(b); i.onload = () => URL.revokeObjectURL(i.src); } }));
 }
 window.placeMaps = placeMaps;
