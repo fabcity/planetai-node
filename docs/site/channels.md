@@ -1,5 +1,5 @@
 # Channels
-<!-- checked: v0.90.0 -->
+<!-- checked: v0.91.0 -->
 
 A channel is how an alert leaves the node and reaches the people it is for. This page connects four of them. Two
 (Telegram and Reticulum) also carry the answer back, which is how an alert becomes a row in `actions` and, from
@@ -7,7 +7,7 @@ there, part of [ρ](rho.md).
 
 | channel | receives | needs internet | answers back | set up with |
 |---|---|---|---|---|
-| Telegram | every alert that reaches the floor; every report, the day's first with the morning memory; the bot's replies | yes | `/act <id> <words>`, and the event buttons, when the bot runs | `planetai telegram` |
+| Telegram | every alert that reaches the floor; every report, the day's first with the morning memory; the bot's replies | yes | `/act <id> <words>`, and the buttons under an event or a rule's alert, when the bot runs | `planetai telegram` |
 | Meshtastic (LoRa mesh) | `act` alerts, first line only | no | no | `planetai meshtastic`, then `MESH_ALERTS=1` |
 | Reticulum (LXMF) | `act` alerts, full text | no | `act <id> [note]` | `planetai reticulum` |
 | Home Assistant | every alert, sent or not, and every report sent, as entity state | no (LAN) | no | `planetai homeassistant` |
@@ -47,8 +47,10 @@ token is in it, so `api.telegram.org/bot` in `planetai logs` would be a leak.
 Answering on Telegram is the [bot](bot.md), which runs in the separate `agent` container. `/act 12 closed the
 windows` records an `acted` row with the actor `<AGENT_NAME>/telegram` (`local-model/telegram` by default) and
 replies "Recorded what you did." `/act 12` with no words records nothing, and the bot asks "What did you do about
-it? Send it with your words:  /act 12 &lt;what you did&gt;". `/act` answers alerts; an event is answered with its
-Done, Not now and Doesn't fit buttons, which the bot draws once it has announced itself (`TELEGRAM_BUTTONS=1`).
+it? Send it with your words:  /act 12 &lt;what you did&gt;". `/act` answers alerts. An event is answered with its
+Done, Not now and Doesn't fit buttons, and a pack's rule can put buttons of its own under its alert. The bot draws
+both once it has announced itself (`TELEGRAM_BUTTONS=1`), and a keyboard Telegram refuses is dropped, so the message
+still arrives.
 `/stack` answers from the node's own arithmetic, with no model.
 
 ## Meshtastic, the LoRa mesh

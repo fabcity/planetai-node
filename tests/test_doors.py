@@ -396,7 +396,10 @@ assert "Nothing is asked now." in _fg["heat"]["wall"] and "answered: Done" in _f
 # no /issues/days, so no event row: Now says the node's own words for it rather than "nothing is asked".
 assert "3 things are asked of this house." in _ev["air"]["wall"] and "an event open since 07:18 (danger)" in _ev["air"]["now"], _ev["air"]
 # 21 Sep, rules: heat's alert is still true and no event stands for it; Now draws the alert, the Wall counts it
-assert "One thing is asked of this house." in _ru["heat"]["wall"] and "asked since" in _ru["heat"]["now"] and "Reply /act" in _ru["heat"]["now"], _ru["heat"]
+assert "One thing is asked of this house." in _ru["heat"]["wall"] and "and still true" in _ru["heat"]["now"] and "Reply /act" in _ru["heat"]["now"], _ru["heat"]
+# the card says when it was asked once, in the node's own words (4 Nov: "asked since 07:14 · still open" sat over "asked at 07:14, and still true")
+_t = re.search(r"asked at (\d\d:\d\d), and still true", _ru["heat"]["now"]).group(1)
+assert re.sub(r"<[^>]+>", "", _ru["heat"]["now"]).count(_t) == 1 and "still open" not in _ru["heat"]["now"], _ru["heat"]["now"]
 _rows = {n: (c.pop("_rows"), c.pop("_yearly")) for n, c in a.items()}
 for _cap in a.values():
     for _k, _v in _cap.items():

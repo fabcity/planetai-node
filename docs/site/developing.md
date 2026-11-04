@@ -1,5 +1,5 @@
 # Developing and contributing
-<!-- checked: v0.90.0 -->
+<!-- checked: v0.91.0 -->
 
 This page is for the person who changes the node itself: a new adapter, a rule, a pack, a fix. A household updates
 by running `planetai update` and cannot review what arrives, so every change here passes the gates, a review and CI
@@ -70,7 +70,7 @@ extra packages on the dev machine (`pyyaml`; `sqlglot` for the rules; `markdown`
 `requirements.txt` for the import check), and a gate whose package is missing says it skipped. CI installs them all,
 so nothing skips there.
 
-`make test` runs `tests/all`: 92 offline suites, one line each with a count at the end. It exits non-zero when a
+`make test` runs `tests/all`: 105 offline suites, one line each with a count at the end. It exits non-zero when a
 suite fails, when a check skipped that nobody declared, or when the list and the count disagree. A new suite needs
 its own line in `tests/all` and the count raised, or it never runs.
 
@@ -166,6 +166,8 @@ app/          main.py (api, loops) · db.py (the pool, q()) · auth.py (tokens, 
               the action it chooses)
               requires.py (which node a pack needs) · fundamentals.py (the sources every node needs) · learn.py (what it learns)
               ask.py (the dashboard's ask pane) · bootstrap.py · ground.py · issues/ · static/ (the dashboard)
+              store.py (how a reading is written) · buttons.py (a rule's buttons) · wild.py (wild packs on Set up)
+              firmware.py (the firmware the workbench flashes)
 bin/planetai  the operator CLI
 packs/        the twenty-five core packs, some with their own routes.py; see Packs
 config/       rules.yml (two domain-blind rules, trust's three) · channels.yml · mosquitto · grafana

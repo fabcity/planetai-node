@@ -1,9 +1,9 @@
 # How it works
-<!-- checked: v0.90.0 -->
+<!-- checked: v0.91.0 -->
 
 A node is two containers on one machine. `db` is Postgres with PostGIS, reachable only from the machine itself.
-`app` is one Python process that answers the HTTP API on port 8080 and runs eleven loops in the background, a
-twelfth when the Reticulum bridge is on. Five more containers are optional: the Mosquitto broker for radios and
+`app` is one Python process that answers the HTTP API on port 8080 and runs thirteen loops in the background, a
+fourteenth when the Reticulum bridge is on. Five more containers are optional: the Mosquitto broker for radios and
 DIY sensors, the `agent` container for the Telegram bot, the Reticulum bridge, an IPFS node for the export and
 Grafana, with a one-shot `grafana-role` that makes its login. Everything a node
 does is one of those loops or one of the API's answers, and this page follows a reading through all of it.
@@ -53,7 +53,7 @@ year. `GET /reach` says how far back each kind of source can be asked. Every nod
 
 ### Decide
 
-On the page, Decide is "what to do about it", the first section under the lead on Now. It draws a card for
+On the page, Decide is What to do on Now, under the sentence and its day. It draws a card for
 each issue with an open act-level alert, showing what was seen and "what this node suggests", which is the
 rule's own last line when that line begins with 👉. A node running the event engine draws one card per open
 event instead, with the action for the readings as they are now and three answers. A person may record a
@@ -66,7 +66,7 @@ record. With `DECISION_REQUIRED=1` (off by default) the node refuses an `acted` 
 
 ### Act
 
-A rule is SQL that returns rows, plus a message template, a level and a cooldown. The rules loop runs every
+A rule is SQL that returns rows, plus a message template, a level and a cooldown, and if it wants an answer, buttons. The rules loop runs every
 rule once a minute as the read-only role `planetai_ro`, and every row that comes back is a candidate alert.
 A cooldown per rule and sensor stops it repeating, the level decides whether it interrupts anyone, and quiet
 hours hold everything but `act`. The alert goes out on [Telegram](channels.md), the LoRa mesh, LXMF and Home
@@ -74,7 +74,8 @@ Assistant.
 
 When a person does something about it, that is a row in `actions`, and it can come from five places: the
 dashboard's **I did this** (which needs `ACT_TOKEN` or `ADMIN_TOKEN` in the browser), `planetai act`,
-`/act <id> <what you did>` in Telegram, the MCP `act` tool, or an `act <id>` message over Reticulum. An agent
+`/act <id> <what you did>` in Telegram, the MCP `act` tool, or an `act <id>` message over Reticulum. A rule's buttons
+are a sixth, on Telegram with `TELEGRAM_BUTTONS=1` and under What to do on Now: each press is a row with a `choice`. An agent
 drafts and never dispatches, so nothing is recorded as done without that row.
 
 A rule that declares a `kind` (the heat and air-quality rules do) takes another path when `ALERT_ENGINE` is
@@ -112,6 +113,8 @@ A pack's `cells.yml` computes the other Index cells the node has the data to fil
 | push events | hourly | if `PARENT_API_URL` is set, posts this node's alert timestamps of the last 36 hours to the parent's `/events` |
 | release check | hourly | unless `UPDATE_CHECK=off`, asks planetai.fab.city which version is current and says so in `/health`, the page's top bar and once per version on Telegram. It installs nothing |
 | node list | hourly | unless `UPDATE_CHECK=off`, reads the programme's `registry.json` from GitHub and serves it at `/nodes`, each other node's point to one decimal and no contact |
+| wild packs | hourly | unless `UPDATE_CHECK=off`, reads the list of wild packs from GitHub and tells the household once about a pack that is new on it |
+| workbench firmware | 6 hours | unless `UPDATE_CHECK=off`, keeps a copy of the Bayu and Meshtastic firmware in `out/firmware/`, so the workbench flashes with no internet |
 | introduced species | hourly | only with the `eyes` pack on and `SPECIES_MATCH=on`: once a week reads the country's GRIIS checklist from GBIF |
 | others' records | hourly | only with the `eyes` pack on and `SPECIES_MATCH=on`: once a week counts GBIF's open records in each of the node's seven res-8 cells |
 | what the house learned | hourly | once a local day, in its first hour: what worked, what is usual, the alerts that may not fit, and the diary's entries |
@@ -124,7 +127,8 @@ own, and with `HA_DISCOVERY=1` the `home-assistant` pack publishes discovery ent
 readings.
 
 Every document the node sends or serves as a contract carries a `schema` key: `issues-v0`, `days-v0`,
-`export-v0`, `report-v0`, and the two pushes, `aggregates-v0` and `events-v0`. See [Federation](federation.md).
+`export-v0`, `report-v0`, `forecast-v0` (what `GET /forecast` returns), and the two pushes, `aggregates-v0` and
+`events-v0`. See [Federation](federation.md).
 
 ## One shape at every scale
 
@@ -163,9 +167,10 @@ edge) reaches a reader the node does not know: `/health`, `/export`, and the hou
 shape of the building behind `/place/geojson` needs a token at every sharing level.
 
 Alerts go out on the channels you connect, so an alert sent by Telegram passes through Telegram's servers.
-Every hour the node asks planetai.fab.city which version is current and reads the programme's list of nodes
-from GitHub. Neither request carries anything about the house, but each shows the house's internet address to
-the host it asks; `UPDATE_CHECK=off` in Set up → Sharing stops both.
+Every hour the node asks planetai.fab.city which version is current and reads the programme's list of nodes and
+the list of wild packs from GitHub, and every six hours it fetches the workbench's firmware from planetai.fab.city
+and Making Sense Bali. None of these requests carries anything about the house, but each shows the house's
+internet address to the host it asks; `UPDATE_CHECK=off` in Set up → Sharing stops them all.
 
 Everything else leaves only when somebody here turns it on:
 
@@ -208,7 +213,7 @@ by aggregation. No agent dispatches without a human row in `actions`. No layer r
 function. No scale is skipped: a city aggregator is built from nodes, not declared from above. The longer
 form, with the staging from one node to a bioregion, is [Architecture](architecture.md).
 
-> **Gap in v0.90.0.** Some of that staging is not built. The Act layer in `ARCHITECTURE.md` ends in a
+> **Gap in v0.91.0.** Some of that staging is not built. The Act layer in `ARCHITECTURE.md` ends in a
 > fabrication ticket when a decision is physical; there is no such ticket and no `fabricate` stage, and no job
 > has been handed to a workshop. The `make` pack, off until `MAKE_ENABLED=1`, only names the nearest fab lab.
 > Nodes finding each other (`docs/SPEC_discovery.md`) is not built. A node as a key rather than a name

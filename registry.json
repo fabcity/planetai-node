@@ -2,18 +2,6 @@
   "_": "PLANETAI node directory. Adding a node = a pull request. This file is the registry until there are too many nodes for a file.",
   "nodes": [
     {
-      "name": "larsbcn",
-      "scale": "community",
-      "operator": "Lars Petrova Taylor",
-      "place": "Barcelona",
-      "cell": "88394460e5fffff",
-      "lat": 41.385,
-      "lon": 2.174,
-      "sources": ["ckan", "nasa-power", "open-meteo", "open-meteo-cams"],
-      "parent": null,
-      "since": "2026-10"
-    },
-    {
       "name": "bayu-ungasan",
       "scale": "community",
       "operator": "Fab Lab Bali",
@@ -25,6 +13,18 @@
       "parent": null,
       "since": "2026-09",
       "contact": "fablabbali@gmail.com"
+    },
+    {
+      "name": "barcelona",
+      "scale": "community",
+      "operator": "Lars FAB City",
+      "place": "Barcelona Sant Andreu",
+      "cell": "88394460e5fffff",
+      "lat": 41.385,
+      "lon": 2.174,
+      "sources": ["earth-engine", "landsat-lst", "modis-lst", "nasa-power", "open-meteo", "open-meteo-cams", "open-meteo-marine", "openaerialmap", "openstreetmap", "sentinel-2", "terrain"],
+      "parent": null,
+      "since": "2026-10"
     }
   ]
 }

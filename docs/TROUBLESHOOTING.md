@@ -1,5 +1,5 @@
 # When it goes wrong
-<!-- checked: v0.90.0 -->
+<!-- checked: v0.91.0 -->
 
 Each entry starts from what is on your screen, then says how to check it and how to fix it. Many of the faults
 people met early on are fixed in the current release, so the first thing to try is almost always the install line.
@@ -169,7 +169,7 @@ curl -fsSL https://planetai.fab.city/remove | bash -s -- --purge
 To do it by hand, step by step:
 
 ```bash
-docker ps -aq --filter label=com.docker.compose.project=planetai | xargs -r docker rm -f; docker volume ls -q | grep '^planetai_' | xargs -r docker volume rm; rm -rf ~/planetai ~/.local/bin/planetai; crontab -l 2>/dev/null | grep -v planetai-backup | crontab -; hash -r
+docker ps -aq --filter label=com.docker.compose.project=planetai | xargs -r docker rm -f; docker volume ls -q | grep '^planetai_' | xargs -r docker volume rm; rm -rf ~/planetai ~/.local/bin/planetai; crontab -l 2>/dev/null | grep -vE 'planetai-(backup|packs)' | crontab -; hash -r
 ```
 
 Then this prints nothing at all:

@@ -1,5 +1,5 @@
 # Packs
-<!-- checked: v0.90.0 -->
+<!-- checked: v0.91.0 -->
 
 A pack is how a place teaches its node what to watch and what to say about it. The core names no metric: what
 `pm25` means, which line matters in this house, and the sentence a person should read at 9 pm are all written in a
@@ -19,7 +19,7 @@ reads it, how to add a wild pack, and one small data pack built step by step.
 
 ```
 packs/<id>/
-  pack.yaml     id, name, description, version, requires, domain, sources:, pip:, env:, secrets:, switch:, share:, footprint:, readouts:, sections:
+  pack.yaml     id, name, description, version, requires, domain, sources:, pip:, env:, secrets:, switch:, share:, footprint:, readouts:, sections:, ahead:
   rules.yml     alerts: SQL that returns rows, one message per row; or a contribution to the report
   cells.yml     Index cells: SQL that returns one `value`
   issue.yml     the dashboard issue this pack ships, read while the pack is on (see Issues)
@@ -199,6 +199,7 @@ raw template, braces and all.
 | `agent_scripts: [verify]` | which of a wild pack's scripts a connected agent may run through `run_pack_script`. Leave it out and none do; a core pack's are all open, and `planetai run` runs every script either way. No agent can run `adapter.py` as a script |
 | `readouts: {air: [ … ]}` | numbers the pack adds to an issue, in the shape an issue file uses; shown in Figures, and in the sentence of a context issue. It adds and never replaces. See [PACKS.md](https://github.com/fabcity/planetai-node/blob/main/docs/PACKS.md#readouts-on-an-issue) |
 | `sections: [ … ]` | a band the pack declares on the dashboard as data, drawn with the page's own readout cards. See [A dashboard section](#a-dashboard-section) |
+| `ahead: {id, title, sensor, days}` | one line the pack adds to [Next days](next-days.md), the three-day view on Now: the `sensor` whose meta holds a text for tomorrow and for the day after, and the two meta keys. Served in `GET /forecast` as `lines`. See [A line in Next days](https://github.com/fabcity/planetai-node/blob/main/docs/PACKS.md#a-line-in-next-days) |
 | `needs: [api.bmkg.go.id]` | hosts the pack reaches, for people to read |
 | `author`, `attribution` | who wrote it and answers for it; the licence line a source asks to be credited with |
 | `metrics: [pm25, pm10]`, `scales: [community, city]` | what it measures and at which scales, for a reader choosing a pack. No code reads either: the channels a pack really produces are in `channels.yml`, and the cells it fills in `cells.yml` |
@@ -240,7 +241,12 @@ included. The first rule in `packs/air-quality/rules.yml`, with its message shor
 
 The node picks `message[ALERT_LOCALE]` and falls back to `en`. Every shipped rule carries all three languages, and
 every `{placeholder}` in every language must be a column the top-level `SELECT` returns, or `{line}` with a
-`watch:`.
+`watch:`, or `{act}`. The node fills `{act}` with the alert's own number as the household answers it, `/act 812`
+where the Telegram bot runs and `planetai act 812` where it does not, so a message can say which number to answer.
+
+A rule can also ask with buttons. Return a `buttons` column and the node stores them with the alert. With
+`TELEGRAM_BUTTONS=1` they go to Telegram as a keyboard, and Now lists them under What to do. How to write them is
+under [Buttons](https://github.com/fabcity/planetai-node/blob/main/docs/PACKS.md#buttons).
 
 End a message with a paragraph that starts with 👉 and says what a person does; the classic dashboard's Decide
 card shows it as "what this node suggests" (see [Alerts](alerts.md#what-an-alert-says)). A rule that treats indoor
@@ -337,7 +343,10 @@ a helper module shows up too (`place/satellite.py` does).
 Any pack, wild or core, can declare a section in its `pack.yaml`, as data. The node reads each readout's latest
 row and serves the section in `GET /issues` under `sections` (a core pack's section only once a row of it exists).
 The page draws it as a band in its stage on Now, with the pack's name beside the title, using its own readout cards
-and no code from the pack:
+and no code from the pack. On the doors it sits next to Now's own part of that stage: `observe` under the issue rows,
+`decide` and `act` under What to do, `measure` under Did it work. The phone page draws the same band in its one
+column. The pack's `note:`, when it has one, is folded under "How this is read", and the source is said once, under
+the title:
 
 ```yaml
 sections:

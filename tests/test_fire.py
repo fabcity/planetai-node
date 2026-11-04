@@ -152,6 +152,8 @@ check("first start takes the 7-day file, once per satellite",
       [c[1].rsplit("/", 1)[1] for c in hc.calls] == ["J1_VIIRS_C2_SouthEast_Asia_7d.csv", "J2_VIIRS_C2_SouthEast_Asia_7d.csv"], hc.calls)
 check("the sensor is a model, not local, and not at the house", sensors[0]["kind"] == "model" and sensors[0]["local"] is False
       and sensors[0]["lat"] is None and sensors[0]["sensor_id"] == "firms-fires", sensors)
+check("its name gives both rings, so 'nearby' under it is not read as 150 km (4 Nov: it said only 150 km)",
+      sensors[0]["name"] == "NASA FIRMS, VIIRS satellites: nearby is within 25 km, the region 150 km", sensors[0]["name"])
 check("first start also writes the six days before, without upwind",
       sum(1 for r in readings if r[2] == "fires_region_24h") == 7 and sum(1 for r in readings if r[2] == "fires_region_upwind") == 1)
 now_set = {r[2]: r[3] for r in readings if r[0] == max(x[0] for x in readings)}

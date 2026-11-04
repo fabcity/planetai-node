@@ -1,5 +1,5 @@
 # Sharing and security
-<!-- checked: v0.90.0 -->
+<!-- checked: v0.91.0 -->
 
 Read this page before you open the node to anyone else: a wall screen in the house, a phone, a neighbour's
 network, a parent node. It says what a reader without a token may see, which token opens what, what leaves the
@@ -44,8 +44,8 @@ There are two levels. `cell` and `means` are named in the setting's help and ref
 
 | level | a request with no token, from another machine, may read |
 |---|---|
-| `off` (default) | 10 paths and the static files: `/` and `/ui` (the dashboard shell), `/tester` (the sensor bench, a shell like `/ui`), `/health` with the centre of the node's resolution-8 cell, `/llms.txt`, `/settings` reduced to the layout and the sharing level, the daily CC BY 4.0 `/export`, `/presence`, `/nodes` (the programme's public list of nodes), `/offers` (what the household chose to lend or give), and anything under `/static/`. Everything else is refused with a sentence naming the setting. |
-| `open` | 39 paths and 5 prefixes: the `off` list, and `/sensors` and `/stats` (the household's own sensors at the point `/health` publishes, the rest to three decimals, metadata cut to the provenance keys), `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/trust`, `/nearby`, `/forecast`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, the ask pane's `/ask`, `/ask/status` and `/docs/search`, `/geo/cell` without the fields that place a cell relative to the node (`is_node`, `cells_from_node`, `ring_polar`, `children_polar`), `/learned/place` (what the node learned is usual for the outdoor sensors, never the house), and anything under `/exports/`, `/issues`, `/sources/` and `/ground/`. What a wall screen or a phone with no token needs. |
+| `off` (default) | 11 paths and the static files: `/` and `/ui` (the dashboard shell), `/workbench` (the sensors workbench, a shell like `/ui`) and `/tester` (which sends you to it), `/health` with the centre of the node's resolution-8 cell, `/llms.txt`, `/settings` reduced to the layout and the sharing level, the daily CC BY 4.0 `/export`, `/presence`, `/nodes` (the programme's public list of nodes), `/offers` (what the household chose to lend or give), and anything under `/static/`. Everything else is refused with a sentence naming the setting. |
+| `open` | 41 paths and 5 prefixes: the `off` list, and `/sensors` and `/stats` (the household's own sensors at the point `/health` publishes, the rest to three decimals, metadata cut to the provenance keys), `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/packs/all`, `/trust`, `/nearby`, `/forecast`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, the ask pane's `/ask`, `/ask/status` and `/docs/search`, `/geo/cell` without the fields that place a cell relative to the node (`is_node`, `cells_from_node`, `ring_polar`, `children_polar`), `/learned/place` (what the node learned is usual for the outdoor sensors, never the house), and anything under `/exports/`, `/issues`, `/sources/` and `/ground/`. What a wall screen or a phone with no token needs. |
 
 A refused request gets 403 and a sentence. For a path that `open` would answer it ends "Set SHARE_LEVEL to open in
 the dashboard's Set up view to let anything on your network read it." For a path no level opens it ends "No share
@@ -120,9 +120,9 @@ All travel as `Authorization: Bearer <token>` and are compared in constant time.
 
 | token | opens | where it comes from | give it to |
 |---|---|---|---|
-| `ADMIN_TOKEN` | every write and secret read: `PUT /settings`, `/settings/raw`, `/settings/phone`, `POST /readings`, `/report/now`, `/test-alert`, the whole of `/mcp`, and what `BACKUP_TOKEN` and `ACT_TOKEN` open. Not `POST /aggregates` or `POST /events`, which take `AGGREGATE_TOKEN` only | made by the installer; `planetai ui` prints it | yourself and your agent. Treat it like a password |
+| `ADMIN_TOKEN` | every write and secret read: `PUT /settings`, `/settings/raw`, `/settings/phone`, `POST /readings`, `/report/now`, `/test-alert`, `POST /packs/install`, the whole of `/mcp`, and what `BACKUP_TOKEN` and `ACT_TOKEN` open. Not `POST /aggregates` or `POST /events`, which take `AGGREGATE_TOKEN` only | made by the installer; `planetai ui` prints it | yourself and your agent. Treat it like a password |
 | `BACKUP_TOKEN` | read-only pulls: `/backups`, `/backups/<name>`, `/report/bundle`. It cannot read `/settings/raw` | made by `update.sh` when blank; `planetai ui` prints it (`planetai storage` says only whether it is set) | a NAS |
-| `ACT_TOKEN` | `POST /actions` from off the machine: an act, an acknowledgement, a decision or an answer to an alert event (`event_id`). It cannot read a secret or change a setting | `planetai ui` makes it; Set up › This screen shows it to the admin as a QR code for a phone | a phone, the dashboard's forms in a browser you trust, the Reticulum bridge |
+| `ACT_TOKEN` | `POST /actions` from off the machine: an act, an acknowledgement, a decision or an answer to an alert event (`event_id`) or a pack's button (`alert_id` and `choice`). It cannot read a secret or change a setting | `planetai ui` makes it; Set up › This screen shows it to the admin as a QR code for a phone | a phone, the dashboard's forms in a browser you trust, the Reticulum bridge |
 | `AGGREGATE_TOKEN` | what this node demands on `POST /aggregates` and `POST /events`; unset, the node accepts no children | you set it | your children, as their `PARENT_TOKEN` |
 | `PARENT_TOKEN` | sent with this node's hourly pushes to `PARENT_API_URL` | your parent's operator | the node itself |
 
@@ -150,6 +150,9 @@ up never travels to a NAS or a remote. The node never logs the Telegram URL, bec
 | the ground's heat | planetarycomputer.microsoft.com, anonymously, once a day, with the `surface-heat` pack on and `PACKS_ALLOW_CODE=1` | the node's own point, unrounded, in each scene search |
 | a request for the current version | planetai.fab.city, every hour, with `UPDATE_CHECK=on` (the default) | one file. Fab City's host sees this house's internet address and that a node lives there. `off` means the node never asks |
 | a request for the list of nodes | raw.githubusercontent.com (`registry.json` on the repository's main), every hour, with `UPDATE_CHECK=on` | one file, as above. `off` means the node never asks |
+| a request for the list of wild packs | raw.githubusercontent.com (`packs.json` in fabcity/planetai-wild-packs), every hour, with `UPDATE_CHECK=on`, and when Set up › Packs is opened | one file, as above. `off` means the loop never asks |
+| a request for the workbench's firmware | planetai.fab.city (Meshtastic) and makingsense.fablabbali.com (the Bayu), every six hours, with `UPDATE_CHECK=on` | files that every node asks for, as above. `off` means the node never asks |
+| the node's ground, for the next three days | Open-Meteo, for its weather and the CAMS air, and for the sea while the `coast` pack is on, with `FORECAST_OPENMETEO=1` (off by default) and `PACKS_ALLOW_CODE=1`, every six hours | the node's own point unrounded and the centres of the cells round it, 7 points on a community node and 19 on a city or region node, and a wind field of 65 points within `FORECAST_WIND_KM` (30) |
 | a species name | api.gbif.org, when a plant or animal in an image is given a scientific name, with `SPECIES_MATCH=on` (off by default) | the scientific name only, never the picture or where it was taken. GBIF sees this house's internet address and the names asked |
 | the country's list of introduced and invasive species | api.gbif.org and the checklist's archive host, weekly, with `SPECIES_MATCH=on` and the `eyes` pack on | which country's GRIIS checklist to read (the country comes from `NODE_TZ`) |
 | the open records others made nearby | api.gbif.org, weekly, with `SPECIES_MATCH=on` and the `eyes` pack on | the shape of each of the node's seven resolution-8 cells, which places the node to within about 2 km. Only counts come back, from CC0 and CC BY records |
@@ -167,10 +170,10 @@ At `AGENT_PREFER=private`, the default, the ask pane's model is on this machine 
 conversation never leaves: a remote model at an address outside your network is not used. An online model is a choice somebody here makes in Set up, and the pane says so on every
 answer. A remote agent gets the MCP surface instead, which rounds, refuses and audits. See [Ask the node](ask.md).
 
-> **Gap in v0.90.0.** The `coast` and `forecast` packs, and the first start's 92 days of CAMS history, send the
-> node's full-precision coordinates to Open-Meteo; only the weather adapter in `app/sources.py` and the
-> `air-quality` pack's current reading round them. The
-> first start also sends them to NASA POWER and OSM Nominatim. The containers run as root.
+> **Gap in v0.91.0.** The `coast` pack, the `forecast` pack when `FORECAST_OPENMETEO=1`, and the first start's 92 days
+> of CAMS history send the node's full-precision coordinates to Open-Meteo; only the weather adapter in
+> `app/sources.py` and the `air-quality` pack's current reading round them. The first start also sends them to NASA
+> POWER and OSM Nominatim. The containers run as root.
 
 ## Signed updates
 
@@ -188,7 +191,7 @@ you trust and to tell us if it happens twice.
 `planetai version` prints what this node trusts, and `planetai doctor` says whether the last update checked:
 
 ```
-planetai-node v0.90.0  ·  a Fab City project  ·  <name> @ <city>
+planetai-node v0.91.0  ·  a Fab City project  ·  <name> @ <city>
   updates signed by  fabcity  SHA256:OrUQK/jsjNjpei1U8B5tyuEWY36/gwYWXrgVF+5ycIY
 ```
 

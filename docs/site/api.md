@@ -1,5 +1,5 @@
 # HTTP API
-<!-- checked: v0.90.0 -->
+<!-- checked: v0.91.0 -->
 
 Every node exposes the same API on port 8080. The dashboard, the `planetai` command, the MCP tools, a NAS pulling backups, Home Assistant and a parent node are all clients of it, and none of them has a private path in. A request carries a token as `Authorization: Bearer <token>` or carries nothing, and the `SHARE_LEVEL` setting decides what a request with nothing may read.
 
@@ -27,7 +27,7 @@ Loopback is the socket's peer address, never a header: `X-Forwarded-For` is not 
 
 An untrusted caller gets less, in four ways:
 
-- Room names: each local sensor's `room`, `name` and `source_name` become `Room A`, `Room B`, `Sensor 1` and so on, in every field and sentence. Alert sentences written under older names are left out: `/alerts` answers `text: null`, and so do the alert texts in `/issues`.
+- Room names: each local sensor's `room`, `name` and `source_name` become `Room A`, `Room B`, `Sensor 1` and so on, in every field and sentence. Alert sentences written under older names are left out: `/alerts` answers `text: null` and `buttons: null`, and so do the alert texts in `/issues`.
 - Positions: nothing finer than the node's resolution-8 cell: `/health` and `/export` carry its centre, the household's own sensors in `/sensors` and `/stats` stand there (a child's at its own cell's centre), and other sensors are rounded to 3 decimals. `/forecast` and `/earth` carry the exact point and are `open`, while `/place/geojson` and most `/geo/` routes are `token`.
 - Private values: a channel a pack declares `private`, such as the counts of what a home keeps, is in `/readings`, `/history`, `/series`, `/sparks` and `/observations` only for `ADMIN_TOKEN`, and in `/stats` for `ADMIN_TOKEN`, `ACT_TOKEN` or loopback. A request carrying `X-Agent` never gets one.
 - Who answered: the `actor` and `note` of every answer in `/issues` are null.
@@ -67,7 +67,7 @@ What every screen in the house polls. Answers at every `SHARE_LEVEL` and never m
 Returns `ok` (true once a poll has run), `node`, `version`, `schema`, `uptime_s`, `lat`, `lon`, `position` (`cell` or `point`), `city`, `polls`, `last_poll`, `last_error`, `ingested`, `errors` (each loop's last error), `locale`, `tz`, `cell` (`{id, res, edge_m, caption}`, null before setup), `docs`, `mcp` and `llms`. With their features on it adds `mesh` (`MQTT_HOST`), `direct` (`MQTT_HOST` with the smartcitizen pack on), `reticulum` (`RETICULUM_URL`) and `release` (`{latest, current, newer, checked, asked}` from the hourly check, with `UPDATE_CHECK=on`). `schema` starts with `unreachable` when the database refuses the app, usually a wrong password after a reinstall; `planetai doctor` says why.
 
 ```json
-{"ok": true, "node": "bayu-ungasan", "version": "v0.90.0", "schema": "0.61", "uptime_s": 86121,
+{"ok": true, "node": "bayu-ungasan", "version": "v0.91.0", "schema": "0.61", "uptime_s": 86121,
  "lat": -8.825, "lon": 115.159, "position": "cell", "city": "bali", "polls": 287,
  "last_poll": "2026-10-20T08:35:02+00:00", "errors": {}, "locale": "id", "tz": "Asia/Makassar",
  "cell": {"id": "...", "res": 8}, "docs": "https://planetai.fab.city/docs/", "mcp": "/mcp", "llms": "/llms.txt"}
@@ -189,7 +189,7 @@ Rolling statistics per sensor and metric over 24 hours, for sensors only: `last`
 ### GET /observations
 Access: open
 
-The latest value of each slow source and metric, such as a city statistic, a model point or a survey: `sensor_id`, `metric`, `value`, `ts`, `name`, `kind`, `scale`, `local`, `cadence`, `meta`.
+The latest value of each slow source and metric, up to now (a forecast hour still ahead is not one), such as a city statistic, a model point or a survey: `sensor_id`, `metric`, `value`, `ts`, `name`, `kind`, `scale`, `local`, `cadence`, `meta`.
 
 ### GET /trust
 Access: open
@@ -266,12 +266,12 @@ The node asks and a person answers. Every client uses the same two routes, `GET 
 ### GET /alerts
 Access: open
 
-Alerts newest first, with the id `planetai act <id>` needs: `[{id, ts, rule_id, sensor_id, level, text, acted_at}]`. `?limit=` 0 to 1000 (default 50) and `?since_hours=` up to 2160 (0 is no bound). `acted_at` is the time of the first `acknowledged` or `acted` answer.
+Alerts newest first, with the id `planetai act <id>` needs: `[{id, ts, rule_id, sensor_id, level, text, buttons, acted_at}]`. `buttons` is null, or the rows of buttons the rule asked with (`{text, value, stage, ask}` each, `text` and `ask` by locale). `?limit=` 0 to 1000 (default 50) and `?since_hours=` up to 2160 (0 is no bound). `acted_at` is the time of the first `acknowledged` or `acted` answer.
 
 ### GET /actions
 Access: token
 
-Every answer a person gave, newest first: `[{ts, alert_id, stage, actor, note}]`. `?limit=` up to 5000 (default 500), `?stage=` one stage (`settings` gives the node's own settings rows), and `?events=1` adds the answers to alert events with their `event_id`.
+Every answer a person gave, newest first: `[{ts, alert_id, stage, actor, note, choice}]`, where `choice` is the value of the button pressed, or null. `?limit=` up to 5000 (default 500), `?stage=` one stage (`settings` gives the node's own settings rows), and `?events=1` adds the answers to alert events with their `event_id`.
 
 > **Careful.** The handler checks no token of its own, so `BACKUP_TOKEN` and `ACT_TOKEN` read the household's notes too.
 
@@ -290,7 +290,9 @@ A person closes the loop. From loopback it needs no token; from anywhere else `A
 | `acted` | Somebody did the thing. Counts for ρ and closes the alert |
 | `decided` | Somebody said what they would do. Moves nothing |
 
-An alert event is answered with `event_id` in place of `alert_id`: `{"event_id": 3, "stage": "dismissed", "actor": "made", "note": "ran the AC instead"}`. Done is `acted`, Not now `acknowledged`, Doesn't fit `dismissed`. Any other stage, or both ids, is 400, and an unknown alert or event is 404. The node derives `measured` itself (see [`/rho`](#get-rho)). With `DECISION_REQUIRED=1`, an `acted` post is 409 until the alert has a `decided` row. `actor` is cut to 80 characters and `note` to 500. Returns `{"ok": true}`.
+An alert event is answered with `event_id` in place of `alert_id`: `{"event_id": 3, "stage": "dismissed", "actor": "made", "note": "ran the AC instead"}`. Done is `acted`, Not now `acknowledged`, Doesn't fit `dismissed`. Any other stage, or both ids, is 400, and an unknown alert or event is 404.
+
+An alert that asked with buttons takes `{"alert_id": 12, "choice": "good", "actor": "ibu wayan", "note": ""}`, where `choice` is the `value` of one of its buttons. The button sets the stage, and a `stage` sent beside it is ignored. A `choice` the alert did not offer is 400, and an alert older than 72 hours is 409 `this question has closed`. Each person's choice on an alert is one row: a repeat press writes nothing, and a later note from the same person replaces the earlier one. The node derives `measured` itself (see [`/rho`](#get-rho)). With `DECISION_REQUIRED=1`, an `acted` post is 409 until the alert has a `decided` row. `actor` is cut to 80 characters and `note` to 500. Returns `{"ok": true}`.
 
 ### POST /test-alert
 Access: admin
@@ -340,7 +342,7 @@ The ring of other people's stations around this node, from what is stored, so th
 ### GET /forecast
 Access: open
 
-Official and model weather for this point, from `forecast-bmkg`, `forecast-om`, `forecast-cams`, `forecast-marine` and `forecast-gap`. `?hours=` 1 to 72 (default 24). Returns `{point, sources, hours, attribution, far_from_node, days, lines, openmeteo, schema}`, where `far_from_node` lists any source more than 10 km away, `days` and `lines` are what [Next days](next-days.md) draws, and `schema` is `forecast-v0`.
+Official and model weather for this point, from `forecast-bmkg`, `forecast-om`, `forecast-cams`, `forecast-marine` and `forecast-gap`. `?hours=` 1 to 72 (default 24). Returns `{point, sources, hours, attribution, far_from_node, days, lines, openmeteo, schema}`, where `far_from_node` lists any source more than 10 km away (the sea is left out), `days` and `lines` are what [Next days](next-days.md) draws, and `schema` is `forecast-v0`.
 
 ### GET /earth
 Access: open
@@ -531,7 +533,7 @@ The Index cells this node can compute, in the `fci-cells-v0` row shape. Domain c
 ### GET /sources
 Access: open
 
-The network's registry of what can be measured, a pinned copy of `awesome-fabcity-data` in `data/sources/`; at v0.90.0, pin `cd90289` with 283 entries. Filters `?pillar=`, `?scale=`, `?cell=`, `?pilot=`, `?wired=` and `?status=`, combined with AND. Returns `{registry, counts, count, sources}`, where `counts` gives every cell its `capable`, `reviewed` and `candidate` numbers (12, 17 and 55 over 19 cells at this pin). See [the source registry](sources.md). 503 when the registry is missing.
+The network's registry of what can be measured, a pinned copy of `awesome-fabcity-data` in `data/sources/`; at v0.91.0, pin `7bf12a4` with 284 entries. Filters `?pillar=`, `?scale=`, `?cell=`, `?pilot=`, `?wired=` and `?status=`, combined with AND. Returns `{registry, counts, count, sources}`, where `counts` gives every cell its `capable`, `reviewed` and `candidate` numbers (12, 17 and 55 over 19 cells at this pin). See [the source registry](sources.md). 503 when the registry is missing.
 
 ### GET /sources/{pillar}/{scale}/{slug}
 Access: open
@@ -602,7 +604,7 @@ One day of this node as open data under CC BY 4.0, for `?day=YYYY-MM-DD`: hourly
 
 ```json
 {"schema": "export-v0", "node": "bayu-ungasan", "lat": -8.825, "lon": 115.159, "day": "2026-10-19",
- "version": "v0.90.0", "licence": "CC BY 4.0",
+ "version": "v0.91.0", "licence": "CC BY 4.0",
  "hourly": [{"t": "2026-10-19T00:00:00+08:00", "sensor": "indoor-1", "metric": "pm25", "mean": 11.2, "n": 12}],
  "alerts": [], "cells": [], "rho": {}, "offers": []}
 ```
@@ -677,7 +679,7 @@ This documentation searched without a model, `?q=` of 2 to 200 characters: the w
 
 ## Wire formats
 
-Each document that travels between nodes names its format in `schema`: `issues-v0`, `export-v0`, `report-v0`, `aggregates-v0`, `events-v0` and `days-v0`. A receiver never refuses on it: an unknown value is logged once and the fields it knows are read.
+Each document that travels between nodes names its format in `schema`: `issues-v0`, `export-v0`, `report-v0`, `aggregates-v0`, `events-v0`, `days-v0` and `forecast-v0`. A receiver never refuses on it: an unknown value is logged once and the fields it knows are read.
 
 ## What the node calls out
 

@@ -1,5 +1,5 @@
 # Alerts
-<!-- checked: v0.90.0 -->
+<!-- checked: v0.91.0 -->
 
 An alert is the node asking a person to do something. When a reading crosses a line, the node sends the household
 one plain message, then records what somebody did about it. Every answer is a row in
@@ -23,15 +23,31 @@ row has none. A rule that declares a `kind:` belongs to the event engine and is 
 1. **Cooldown.** If an `alerts` row for the same rule and sensor is newer than `cooldown_minutes` (default 60),
    nothing happens.
 2. **Message.** The template for `ALERT_LOCALE` (falling back to English) is filled with the row's columns by
-   Python's `str.format`, and `{line}` with the rule's `watch.over`. A `None` renders as a dash. A template that
+   Python's `str.format`, `{line}` with the rule's `watch.over`, and `{act}` with the alert's own answer line, `/act 812`
+   where the bot runs and `planetai act 812` where it does not. A `None` renders as a dash. A template that
    does not fit its row is sent as the raw template.
-3. **Record.** The alert is inserted into `alerts` and handed to every pack's `on_alert` hook whatever its level
+3. **Record.** The alert is inserted into `alerts`, with its buttons if the rule offered valid ones, and handed to every pack's `on_alert` hook whatever its level
    (the `home-assistant` pack publishes it there). From here it is on the dashboard.
 4. **Send.** It goes out through `notify()` only if its level reaches `ALERT_LEVEL` and quiet hours do not hold it.
    On `ALERT_ENGINE=events` a heat or air-quality alert is not sent at all; the engine sends instead.
+   With `TELEGRAM_BUTTONS=1` the alert's buttons go with it to Telegram as a keyboard.
 
 How to write a rule, with every key, the tables its SQL may read and the lint that checks it, is on
 [Packs](packs.md#rules).
+
+### Asking with buttons
+
+A rule can return a `buttons` column: rows of buttons, each with its text in the languages it writes, a `value`, and
+optionally a `stage` (`acted` by default, or `acknowledged`) and a question to ask when the button is pressed. The node
+stores them with the alert. Telegram draws them as a keyboard when `TELEGRAM_BUTTONS=1`, and Now lists them under What
+to do. A column that does not validate costs the alert its buttons and nothing else, with one warning in the log, and a
+keyboard Telegram refuses is dropped and the message sent again without it.
+
+Each press is one `POST /actions` with a `choice`, which sets the stage. The node refuses a choice the alert did not
+offer (400) and an alert older than 72 hours (409, "this question has closed"). It keeps one row for each person's
+choice on an alert, and a later note from the same person replaces the earlier one. When a button asks a question,
+the reply from the person who pressed is kept as the note. An `acknowledged` button answers the whole alert. How to
+write them is on [Packs](packs.md#rules).
 
 ## Levels
 
@@ -117,7 +133,7 @@ drawn on its own on the alert card as "what this node suggests". The `trust/` an
 open it so. The `air-quality`, `heat` and `fire` rules do not, so their cards say there is no suggestion, and the
 page does not invent one.
 
-An alert asks for nothing back and carries no id. The test alert (`POST /test-alert`, `planetai test-alert`) is
+An alert asks for nothing back and carries no id, unless its message says `{act}` or its rule offers buttons. The test alert (`POST /test-alert`, `planetai test-alert`) is
 the exception: it ends with `👉 Reply /act N to show me how you close the loop.` when the bot runs, or `👉 In the
 terminal, planetai act N records that you closed the loop.` when it does not.
 
@@ -192,7 +208,8 @@ An alert's `acted_at` is null until somebody answers it. An answer is a row in `
 a note; the six stages, and which of them count in ρ, are on [ρ](rho.md#stages), and every way of recording one is
 under [Recording an action](rho.md#recording-an-action).
 
-`POST /actions` takes `acknowledged`, `acted` and `decided` for an `alert_id`, and refuses the rest with a 400.
+`POST /actions` takes `acknowledged`, `acted` and `decided` for an `alert_id`, and refuses the rest with a 400. With a
+`choice` instead of a stage it takes the stage from the alert's button.
 Given an `event_id` instead (not both), it takes `acknowledged`, `acted` and `dismissed`, writes one row with the
 `event_id` and no `alert_id`, and answers 404 for an event that does not exist. ρ and the funnel count an event's
 answer; `GET /effect` does not, because it joins `actions` to `alerts`.
@@ -218,14 +235,14 @@ the condition stopping. No rule carries a `recovery` block.
 
 ## Reading them
 
-`GET /alerts?limit=50` lists the most recent with `id, ts, rule_id, sensor_id, level, text, acted_at`, and is where
-an alert's id comes from. `GET /actions` lists every answer with its stage, actor and note, and answers only a
+`GET /alerts?limit=50` lists the most recent with `id, ts, rule_id, sensor_id, level, text, buttons, acted_at`, and is where
+an alert's id comes from. `GET /actions` lists every answer with its stage, actor, note and `choice`, and answers only a
 token or the machine itself, because a note is a household's own words about its own house; `GET
 /actions?events=1` adds the answers given to events, with their `event_id`. `GET /issues` carries the events as
 `events`: what is open, its action chosen from now, the message it sent, its latest answer, whether it is still
 `asking`, and the alerts it covers. `planetai status` shows the last three alerts and ρ.
 
-On the dashboard, Decide draws each open event once, and each open alert on a node on `rules`. *What was asked,
+On the dashboard, Decide (What to do on the doors) draws each open event once, and each open alert on a node on `rules`. *What was asked,
 and what was answered* is the record of what was sent and answered, and *What was decided, and by whom* is the
 ledger of answers. The report's second part says, per room, where the window's act alerts stand now.
 

@@ -11,6 +11,24 @@
   view is gone until What changed runs as a tool. On a phone the layers and the tools open as a sheet over the lower
   part of the page.
 
+## v0.91.0 — 2026-11-04 — Now looks ahead
+
+Under What to do on Now there's the rest of today, tomorrow and the day after, with the air and the heat judged
+against the same lines the node uses right now, the wind and rain, the sea, and a line from any pack that has
+something to say about tomorrow (surf is the first). BMKG answers for nodes in Indonesia. For the air, the sea and the
+gusts you need Open-Meteo, `FORECAST_OPENMETEO=1`, its free tier is for non-commercial use, so it stays off until you
+decide. A rule can ask with buttons now, on Telegram and on Now. The workbench is a tab in Data and flashes a sensor
+with no internet, and Set up › Packs installs a wild pack from the page. This release changes the page and the packs
+together, so if something looks off after you update, tell me what you saw and on which screen.
+
+- **The source registry is pinned at `7bf12a4`.** awesome-fabcity-data #101 adds Copernicus Sentinel-2 L2A on
+  Planetary Computer, the imagery the `paddy` wild pack reads, as a candidate. 284 entries.
+
+- **What to do says when it asked once.** The card's head line said "asked since 07:14 · still open" over the node's
+  own "asked at 07:14, and still true"; the head now names only the issue. The fire pack's source line under its band
+  said "Fires within 150 km", so "fires nearby" read as 150 km when it counts the 25 km ring; it now reads "NASA FIRMS,
+  VIIRS satellites: nearby is within 25 km, the region 150 km", from `FIRE_LOCAL_KM` and `FIRE_REGION_KM`.
+
 - **Now looks three days ahead.** Next days, under What to do on Now, shows the rest of today, tomorrow and the day
   after, one row each for air, heat, wind and rain, and the sea, then a line from any pack that declares
   one with `ahead:` in its `pack.yaml`; the `surf` wild pack is the first. Air and heat carry the state word against

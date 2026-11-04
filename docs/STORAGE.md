@@ -1,5 +1,5 @@
 # Where the data lives
-<!-- checked: v0.90.0 -->
+<!-- checked: v0.91.0 -->
 
 `planetai storage` shows all of this on one screen. `GET /storage`, for a token or this machine at every
 `SHARE_LEVEL`, gives the sizes as numbers: the database, `out/`, the backups (and what `BACKUP_KEEP` days of dumps
@@ -11,7 +11,7 @@ seven days' rate of readings.
 | live database | a local disk on the node | no | nobody |
 | backups | `BACKUP_DIR`, or pulled by a NAS | yes | an rclone remote |
 | daily exports (open data) | `exports/<node>/` | yes | IPFS, a parent node, the Index, anyone |
-| artifacts (images, briefs, the kept map in `out/ground/`) | `out/` | yes | whoever you send them to |
+| artifacts (images, briefs, the kept map in `out/ground/`, the workbench's firmware in `out/firmware/`) | `out/` | yes | whoever you send them to |
 | the household's pictures | `CAPTURES_DIR` (`./out/captures`); `planetai storage set captures <dir>` | yes, as files | nobody: no export, parent or dump carries them |
 
 ## The database stays on a local disk
