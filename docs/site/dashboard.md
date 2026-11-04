@@ -139,8 +139,8 @@ hours over the line that day, from `GET /issues/days`.
 
 ## Place
 
-The ground this node stands on. The head gives the cell's id, resolution, edge and area, and the node's position for a
-screen with the token. Under it is a line to ask the node about this place (press `/` to get there) and **+ Add an
+The ground around the house. The head gives the cell's id, resolution, edge and area, and the node's position for a
+screen with the token. Under it is a line to ask the node about this place (press `/` to get there; `UI_ASK=off` removes it) and **+ Add an
 image**. Below that, the door has three columns around one screen.
 
 **What the place is made of.** On the left is a list of what the node can show about the ground around the house.

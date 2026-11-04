@@ -265,13 +265,14 @@ section.decl{margin-top:22px}.row.decl{cursor:default}   /* a pack's declared ba
 .phead h1{font-weight:300;letter-spacing:-.02em;margin-bottom:4px}
 .prow{display:flex;gap:12px;align-items:center}
 .pask{flex:1;min-width:0;display:flex;align-items:center;gap:10px;height:44px;border-bottom:1px solid var(--ink)}
+.pask[hidden]{display:none}
 .pask svg{width:15px;height:15px;flex:none;fill:none;stroke:var(--ink);stroke-width:1.4}
 .pask input{flex:1;min-width:0;height:100%;border:0;background:none;color:var(--ink);font:300 var(--t-body) var(--body);outline-offset:4px}
 .pask input::placeholder{color:var(--mute)}
 .pask kbd{font:400 10.5px/17px var(--mono);color:var(--mute);border:1px solid var(--hair);border-radius:4px;padding:0 5px}
 .addimg{background:none;border:1px solid var(--ink);border-radius:999px;padding:0 16px;font:400 var(--t-small) var(--body);color:var(--ink);cursor:pointer;min-height:44px;white-space:nowrap}
-.pmh,#cake h3{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:12px 0 2px;font:400 var(--t-cap) var(--body);letter-spacing:.02em;color:var(--mute)}
-.pmh b,#cake h3 b{font:400 10.5px var(--mono)}
+.pmh,#cake h2{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:12px 0 2px;font:400 var(--t-cap) var(--body);letter-spacing:.02em;color:var(--mute)}
+.pmh b,#cake h2 b{font:400 10.5px var(--mono)}
 /* three columns: the cake, the screen, the tools */
 .bench{display:grid;grid-template-columns:216px minmax(0,1fr) 286px;margin-top:16px;border-top:1px solid var(--hair);border-bottom:1px solid var(--hair)}
 #cake{padding:0 16px 16px 0;border-right:1px solid var(--hair);min-width:0}
@@ -637,6 +638,7 @@ button.tl{cursor:pointer}button.tl:hover:not(:disabled):not(.on){background:var(
   .ly,.tl,.spd summary{min-height:44px}
   .mapc #mapbar{max-width:calc(100% - 72px)}.mapc .maplibregl-ctrl-bottom-left{bottom:68px}#mapcredit{position:static;max-width:none;padding:4px 12px 6px;text-align:left}
   .phour{left:12px;transform:none}   /* left: the active tool's word needs the top right */
+  .altc{top:64px;max-height:calc(100% - 140px)}   /* under the hour, not over it */
   .plow{grid-template-columns:minmax(0,1fr)}.plow>section+section{padding:0 0 18px;border-left:0;border-top:1px solid var(--hair)}
 }
 @media (max-width:560px){

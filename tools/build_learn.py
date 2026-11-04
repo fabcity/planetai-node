@@ -316,10 +316,10 @@ MARKS = [
      "With the admin token one line counts", "and opens Data › Home.",
      "The line counts the things, how many sit idle and how many need repair, and opens the list in "
      "Data › Home. Only a thing you mark to lend or give is ever published."),
-    ("place-head", "The ground this node stands on", "dashboard.md", "Place",
-     "The ground this node stands on.", "to get there)",
+    ("place-head", "The ground around the house", "dashboard.md", "Place",
+     "The ground around the house.", "removes it)",
      "The cell id is printed whole. Type a question in the line under it and the Ask pane opens with "
-     "it; press / to get there from anywhere on this door."),
+     "it; press / to get there from anywhere on this door. With UI_ASK off the line is not there."),
     ("place-image", "Add an image", "dashboard.md", "Place",
      "**+ Add an image** (token only)", "describes it.",
      "The picture stays on this node, cleaned of EXIF and GPS, and lands on the map where its own GPS "

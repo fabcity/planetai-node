@@ -3466,22 +3466,26 @@ async function doors() {
       return { secs: document.querySelectorAll('#cake .ck').length, map: Math.round(document.getElementById('map').getBoundingClientRect().width),
         bg: getComputedStyle(scr).backgroundColor, cake: vis(document.getElementById('cake')), tools: document.querySelectorAll('#ptools .tl').length,
         small: [...document.querySelectorAll(sel)].filter(vis).map(x => x.getBoundingClientRect()).filter(b => b.height < 44 || b.width < 44).length,
+        cut: [...document.querySelectorAll('#cake .ly span')].filter(x => x.scrollWidth > x.clientWidth).map(x => x.textContent),
+        h: [...document.querySelectorAll('#cake .ck > h2')].length,
         margin: document.getElementById('pmargin').innerText, facts: document.getElementById('facts').innerText };
     });
     ok(pl.secs === 10, `${tag} #place: the cake has ${pl.secs} sections, not 10`);
     ok(pl.bg === 'rgb(23, 25, 29)', `${tag} #place: the screen is ${pl.bg}, not PAL.dark's land`);
     ok(pl.cake && pl.tools >= 10, `${tag} #place: the cake is ${pl.cake ? 'drawn' : 'not drawn'}, ${pl.tools} tools listed`);
     ok(w < 768 || pl.map >= 700, `${tag} #place: the screen is ${pl.map}px wide`);
+    ok(!pl.cut.length, `${tag} #place: cake name(s) cut off: ${pl.cut.join(', ')}`);
+    ok(pl.h === pl.secs, `${tag} #place: ${pl.h} cake headings are h2, of ${pl.secs}`);
     ok(w >= 768 || !pl.small, `${tag} #place: ${pl.small} target(s) under 44 × 44 px`);
     ok(/This house/.test(pl.margin) && (tok || /withheld/.test(pl.margin)), `${tag} #place: the list under the screen reads ${pl.margin.slice(0, 120)}`);
     ok(/In view/i.test(pl.facts), `${tag} #place: the status line reads ${pl.facts.slice(0, 80)}`);
     const pressed = () => r.page.evaluate(() => document.querySelector('#cake [data-l="rings"] button').getAttribute('aria-pressed'));
     await r.page.click('#cake [data-l="rings"] button'); await r.page.waitForTimeout(200);
-    ok(await pressed() === 'true', `${tag} #place: pressing Distance rings did not switch it on`);
+    ok(await pressed() === 'true', `${tag} #place: pressing Rings did not switch it on`);
     { const o = await overflowAt(r.page); ok(o <= 1, `${tag} #place: the page scrolls ${o}px sideways with the cake open`); }
     if (shots) await r.page.screenshot({ path: path.join(OUT, `doors_place_${tag}.jpg`), fullPage: true, type: 'jpeg', quality: 78 });
     await r.page.click('#cake [data-l="rings"] button'); await r.page.waitForTimeout(200);
-    ok(await pressed() === 'false', `${tag} #place: a second press did not switch Distance rings off`);
+    ok(await pressed() === 'false', `${tag} #place: a second press did not switch Rings off`);
     panes += 1;
     /* the consequences step, unlocked only: open sharing asks first; a plain setting saves at once */
     if (tok && w === 1440 && !dark) {

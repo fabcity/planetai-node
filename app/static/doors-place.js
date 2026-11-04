@@ -18,9 +18,12 @@ VIEWS.place = function () {
     <h1>The ground around the house</h1>
     <p class="lede mono">${esc(h.cell.id)} · res ${h.cell.res} · ${h.cell.edge_m} m edge · ${area.toFixed(2)} km²${DOORS_TOKEN() ? ` · ${fmt(D.point[1], 3)}, ${fmt(D.point[0], 3)}` : ''}</p>`;
   $('#paddimg').innerHTML = DOORS_TOKEN() ? `<button class="addimg" id="addimg" data-learn="place-image" data-reads="/captures" data-stage="observe" data-pack="core" title="An image this household took: it lands on the map where it was taken">+ Add an image</button>` : '';
-  /* the Ask line opens the node's own Ask pane with its question: one place to ask, whichever door it was typed on */
+  /* the Ask line opens the node's own Ask pane with its question: one place to ask, whichever door it was typed on.
+     UI_ASK off is the keeper's switch for every ask, so the line is not drawn at all. */
+  $('#pask').hidden = !!D.askOff;
   $('#pask').onsubmit = e => {
     e.preventDefault(); const q = $('#paskq').value.trim();
+    if (D.askOff) return;
     if ($('#askpane').hidden) $('#askbtn').click();
     if (q) { $('#q').value = q; $('#paskq').value = ''; $('#qform').requestSubmit(); }
   };
@@ -33,10 +36,12 @@ VIEWS.place = function () {
   speciesBlock(); placeTools(); figures(); placeMap(); layer();
 };
 /* `/` puts the cursor in the Ask line, on Place, unless something is being typed already; Esc closes a phone's sheet */
+const closeSheet = () => { const bench = document.querySelector('.bench'); if (bench && bench.dataset.sheet) document.querySelector(`.psbar [data-s="${bench.dataset.sheet}"]`).click(); };
+$('#askbtn').addEventListener('click', closeSheet);   /* the sheet sits above the Ask pane: Ask opens, the sheet closes */
 document.addEventListener('keydown', e => {
   const bench = document.querySelector('.bench');
-  if (e.key === 'Escape' && bench && bench.dataset.sheet) { document.querySelector(`.psbar [data-s="${bench.dataset.sheet}"]`).click(); return; }
-  if (e.key !== '/' || view() !== 'place' || e.target.closest('input, textarea, select, [contenteditable]')) return;
+  if (e.key === 'Escape' && bench && bench.dataset.sheet) { closeSheet(); return; }
+  if (e.key !== '/' || D.askOff || view() !== 'place' || e.target.closest('input, textarea, select, [contenteditable]')) return;
   e.preventDefault(); $('#paskq').focus();
 });
 

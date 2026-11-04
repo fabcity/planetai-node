@@ -1346,7 +1346,7 @@
   },
   "place-head": {
    "anchor": "place",
-   "more": "The cell id is printed whole. Type a question in the line under it and the Ask pane opens with it; press / to get there from anywhere on this door.",
+   "more": "The cell id is printed whole. Type a question in the line under it and the Ask pane opens with it; press / to get there from anywhere on this door. With UI_ASK off the line is not there.",
    "page": "dashboard.md",
    "page_title": "The dashboard",
    "questions": {
@@ -1363,9 +1363,9 @@
      "Menurut satelit, apa yang berubah di sini?"
     ]
    },
-   "quote": "The ground this node stands on. The head gives the cell's id, resolution, edge and area, and the node's position for a\nscreen with the token. Under it is a line to ask the node about this place (press `/` to get there)",
+   "quote": "The ground around the house. The head gives the cell's id, resolution, edge and area, and the node's position for a\nscreen with the token. Under it is a line to ask the node about this place (press `/` to get there; `UI_ASK=off` removes it)",
    "section": "Place",
-   "title": "The ground this node stands on",
+   "title": "The ground around the house",
    "url": "https://planetai.fab.city/docs/dashboard/#place"
   },
   "place-image": {

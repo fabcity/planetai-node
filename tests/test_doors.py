@@ -692,11 +692,11 @@ assert "<svg" in _f["map"] and 'class="house"' in _f["map"] and "This house" not
 # the cake: every section in McHarg's order turned over, a row per layer, the not-yet rows dotted and disabled
 _ck = _f["cake"]
 assert [m for m in re.findall(r'data-cake="([a-z]+)"', _ck)] == ["results", "microclimate", "flows", "built", "animals", "plants", "soil", "water", "ground", "frame"], _ck[:300]
-assert re.search(r'data-l="terrain"><button class="ly soon" aria-pressed="false" aria-disabled="true" title="GLO-30 · not yet">', _ck), "a row the node cannot fill stays, dotted, with its source"
+assert re.search(r'data-l="terrain"><button class="ly soon" aria-pressed="false" aria-disabled="true" title="Terrain · GLO-30 · not yet">', _ck), "a row the node cannot fill stays, dotted, with its source"
 # one line a row (the v2 drawing): the dot, the name and one word for the source; the sentence is the title, and the status line on a press
 assert "<small>GLO-30</small></button>" in _ck and "<small>" not in _ck.replace("</span><small>", "") , "a row is one line: its source word inside the row"
-assert re.search(r'data-l="images"><button class="ly off held" aria-pressed="false" aria-disabled="true" title="withheld · unlock this screen in Set up › This screen">.*?token-only</small>', _ck), "withheld stays visible, in a word"
-assert re.search(r'data-l="public"><button class="ly on" aria-pressed="true" title="hollow · display only, never alert">', _ck), "a layer that is on says so to a screen reader"
+assert re.search(r'data-l="images"><button class="ly off held" aria-pressed="false" aria-disabled="true" title="Images · withheld · unlock this screen in Set up › This screen">.*?token-only</small>', _ck), "withheld stays visible, in a word"
+assert re.search(r'data-l="public"><button class="ly on" aria-pressed="true" title="Stations · hollow · display only, never alert">', _ck), "a layer that is on says so to a screen reader"
 assert "live map only" in _ck and 'data-l="index"' not in _ck and "lystrip" not in _ck, "no strip; the Index is a figure"
 # locked, the images cannot draw, so four of the five are on; the status line says so
 assert "In view" in _f["facts"] and "res 8 in view" in _f["facts"] and re.search(r"4 of \d+ layers on", _f["facts"]), _f["facts"][:400]
@@ -879,6 +879,13 @@ for i in ("cake", "ptools", "ptable", "pfigures", "pask"):
     assert f'id="{i}"' in html, i
 assert "Where the readings come from" not in html, "each cake row names its source instead"
 assert "Tools run on this node with a token. Unlock this screen in Set up." in pl, "a tokenless screen says why the tools are quiet"
+assert "$('#pask').hidden = !!D.askOff" in pl and "D.askOff || view() !== 'place'" in pl, "UI_ASK off: the Place Ask line is not drawn and `/` does nothing"
+assert "if (D.askOff) return;" in pl.split("$('#pask').onsubmit")[1].split("};")[0], "a submit on a hidden Ask line reaches nothing"
+assert ".pask[hidden]{display:none}" in html, "hidden wins over the flex row"
+assert "$('#askbtn').addEventListener('click', closeSheet)" in pl, "Ask opens over a phone's sheet: the sheet closes first"
+_names = re.findall(r"id: '[a-z0-9]+'.*? name: '([^']+)'", pm.split("const LAYERS = [")[1].split("];")[0])
+assert len(_names) == 25 and max(map(len, _names)) <= 14, ("a cake row's name must fit the 216 px column", sorted(_names, key=len)[-3:])
+assert "<h2><span>${esc(s.name)}</span>" in pm and "#cake h2{" in html and "<h3><span>" not in pm, "cake headings are h2 under the page's h1"
 print("  place: one map, black screen, the cake on the left, tools on the right")
 
 print("all doors checks passed")
