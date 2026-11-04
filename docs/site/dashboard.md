@@ -165,23 +165,24 @@ foot. A cell that may leave the machine is dotted. On the right edge are **Map o
 node's cell and **Download**.
 
 **Drawing.** With the token, the keys on the screen's left edge are **Select** (V), **Marker** (M), **Line** (L),
-**Area** (A), **Note** (N), **Image** (I) and **Undo** (⌘Z). Each press on the map adds a point, and a marker or a note
-is done with one. A line ends on a double press, an area when you press its first corner again. Enter adds a point at
-the centre, and Enter again without moving finishes the shape, so the keyboard alone can draw. Backspace takes a point
-back, Esc drops the shape. The readout beside the keys gives the length or the surface as you draw, then the node's own
-measure once it is kept. With Select, press a drawing for its label, note, colour and image. Press a point and then its
-new place to move it, or use the arrows, with `.` for the next point. An image stays on this node, the map only says
-which one.
+**Area** (A), **Note** (N), **Image** (I) and **Undo** (⌘Z or Ctrl+Z). Each press on the map adds a point, and a marker
+or a note is done with one. A line ends on a double press, an area when you press its first corner again. Enter adds a
+point at the map's centre, and Enter again without moving finishes the shape, so the keyboard alone can draw. Backspace
+takes a point back, Esc drops the shape. The readout beside the keys gives the length or the surface as you draw, then
+the node's own measure once it is kept. With Select, press a drawing for its label, note, colour and image. Press a
+point and then its new place to move it, or use the arrows, with `.` for the next point. An image stays on this node,
+the map only says which one.
 
-**Your maps** sit at the top of the left column. Every drawing goes into one, kept on this node, and the open map's
-drawings are listed under the screen. Each drawing, change, download and share is a row in the ledger on Data.
-**Download** gives the open map as a PNG of the screen with its credit and a scale bar, GeoJSON for QGIS, KML for
-Google Earth, or DXF for CAD in metres, in the node's UTM zone. **Share** sends it to the node upstream. The first press
-says what goes, every drawing at its exact place, and the second sends it. If you draw on the house itself the map
-waits until you press Share again.
+**Your maps** sit at the top of the left column. Every drawing goes into one, kept on this node, and each drawing,
+change, download and share is a row in the ledger on Data. **Download** gives the screen as a PNG with its credit and a
+scale bar, and the open map as GeoJSON for QGIS, KML for Google Earth, or DXF for CAD in metres, in the node's UTM zone.
+**Everything on the screen** gives the PNG and each map on the screen in all three. **Share** sends a map to the node
+upstream. The first press says what goes, every drawing at its exact place with its labels and notes, and who can see
+it upstream. The second sends it. If a drawing touches the cell the house stands in, a shared map stops sending until
+you press Share again. **Stop sharing** ends it, and this node asks the node upstream to delete the map.
 
-When Now is asking about an issue, choose it in the drawing's form, say what you did in your own words and press **Tie
-it**. The rain garden you drew then counts as what you did about it, as Done does on Now.
+To answer an issue from Now, open the drawing's form, choose the issue, say what you did in your own words and press
+**Tie it**. The rain garden you drew then counts as what you did about it, as Done does on Now.
 
 **Folding.** Each side folds by the arrow on its edge, or `[` and `]`, into a strip with its name. `\` or **Map only**
 folds both and the screen takes the window, and **Full screen** or F takes the whole display. This browser remembers

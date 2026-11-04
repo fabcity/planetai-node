@@ -115,7 +115,8 @@ under its alert, with an `alert_id` and a `choice`. No MCP tool writes any of th
   (`kind='child' OR (local AND kind<>'peer')`), is the only thing a cell may count.
 - State is never upgraded by aggregation. A parent's cell is `partial` if any input was.
 - Exact place never leaves. A coarse cell may, and says how coarse. The Reticulum announce is an H3 cell never finer
-  than resolution 6, roughly 3 km across.
+  than resolution 6, roughly 3 km across. The one exception is a Place map the household chooses to share, which goes to
+  the node upstream with its exact coordinates, labels and notes, after a plain warning.
 - Exactly one node per pilot writes to the Index's spine.
 - `act` needs the person's own words. It has no default note and refuses a placeholder. ρ is the share of act-level
   alerts a human answered, and a row written without anything a human said is a model measuring itself. If they did

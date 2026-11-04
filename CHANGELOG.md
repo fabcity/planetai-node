@@ -13,17 +13,19 @@
 
 - **You can draw on Place now, and keep what you draw in named maps.** With the token, the keys on the screen's left
   edge drop a marker or a note, draw a line with its length or an area with its surface, and add an image, by press or
-  with the keyboard alone, and PostGIS measures what you keep. A map downloads as a PNG of the screen with its credit and
-  scale, as GeoJSON or KML, or as DXF in metres of the node's UTM zone. Share sends a map to the node upstream at its
-  exact place, after a plain warning, and a drawing on the house holds it until you press Share again. A drawing tied
-  to an issue on Now, with what you did in your own words, counts as acting on it. The satellite opens first, the
+  with the keyboard alone, and PostGIS measures what you keep. The screen downloads as a PNG with its credit and scale,
+  and a map as GeoJSON or KML, or as DXF in metres of the node's UTM zone. Share sends a map to the node upstream, every
+  drawing at its exact place with its labels and notes, where the people holding that node's token can see it. It goes
+  after a plain warning, and a drawing that touches the house's own cell holds it until you press Share again. A drawing
+  tied to an issue on Now, with what you did in your own words, counts as acting on it. The satellite opens first, the
   yearly change moved under the map, drone flights show as pins when you zoom out, and the two sides fold, with `\` for
   the map only and F for full screen. Place in `docs/site/dashboard.md` says how.
 
-  Under it, `init.sql` enables PostGIS and adds `place_maps` and `place_marks`. Every drawing, change, download and
-  share is a `place` row in the ledger, and a private daily count of drawings goes to the sensor `place-gis`, never
-  out and never into an Index cell. A parent takes a child's shared map on `POST /place/maps/received` with its own
-  `AGGREGATE_TOKEN` and keeps it read-only. The routes are in `docs/site/api.md`.
+  For whoever runs the node, `init.sql` enables PostGIS and adds `place_maps` and `place_marks`. Every drawing, change,
+  download and share is a `place` row in the ledger, and a private daily count of drawings goes to the sensor
+  `place-gis`, never out and never into an Index cell. A parent takes a child's shared map on
+  `POST /place/maps/received` with its own `AGGREGATE_TOKEN` and keeps it read-only. The routes are in
+  `docs/site/api.md`.
 
 ## v0.91.0 — 2026-11-04 — Now looks ahead
 
