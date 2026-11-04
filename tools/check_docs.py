@@ -175,7 +175,9 @@ def _metrics(src: str) -> set:
 
 
 # pm25, pm25_raw and aqi are written by readings.append(...) tuples in core that none of the shapes above catch.
-_produced = {"pm25", "pm25_raw", "aqi"}
+# marks and marked_area_m2 are the Place maps' own counts (config/channels.yml, source: place): derived from place_marks
+# by the node, never appended by an adapter.
+_produced = {"pm25", "pm25_raw", "aqi", "marks", "marked_area_m2"}
 for _a in ["app/sources.py"] + sorted(glob.glob("packs/*/adapter.py")):
     _produced |= _metrics(open(_a).read())
 for f in ["config/channels.yml"] + sorted(glob.glob("packs/*/channels.yml")):

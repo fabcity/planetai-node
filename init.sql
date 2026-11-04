@@ -4,6 +4,15 @@
 -- Rules: CREATE TABLE IF NOT EXISTS · ALTER TABLE ADD COLUMN IF NOT EXISTS · DROP VIEW then CREATE (column
 -- lists change between versions, and CREATE OR REPLACE VIEW cannot reorder columns).
 
+-- PostGIS first: Place maps (place_maps, place_marks below) store geometry, so a database without the extension must
+-- stop the whole apply here, with a sentence that says why, before anything else is touched. The db image in
+-- docker-compose.yml is PostGIS and its user may create extensions, so on a current node this is a no-op.
+DO $$ BEGIN
+  CREATE EXTENSION IF NOT EXISTS postgis;
+EXCEPTION WHEN OTHERS THEN
+  RAISE EXCEPTION 'PostGIS is not in this database: Place maps need the imresamu/postgis image docker-compose.yml names. Run planetai update after the db image is current.';
+END $$;
+
 CREATE TABLE IF NOT EXISTS sensors (
   sensor_id TEXT PRIMARY KEY,           -- 'sc-19880' | 'bad-pa-46949' | 'ag-<serial>' ...
   source    TEXT NOT NULL,              -- 'smartcitizen' | 'baliairdispatch' | 'airgradient' ...
@@ -184,7 +193,7 @@ CREATE TABLE IF NOT EXISTS settings (
 -- runs on every apply, so a later pair would have it re-add the five-stage check over rows that already say
 -- `dismissed`, and under ON_ERROR_STOP update.sh would stop with the constraint dropped.
 ALTER TABLE actions DROP CONSTRAINT IF EXISTS actions_stage_check;
-ALTER TABLE actions ADD CONSTRAINT actions_stage_check CHECK (stage IN ('acknowledged','acted','measured','settings','decided','dismissed'));
+ALTER TABLE actions ADD CONSTRAINT actions_stage_check CHECK (stage IN ('acknowledged','acted','measured','settings','decided','dismissed','place'));
 INSERT INTO schema_version (version) VALUES ('0.20') ON CONFLICT DO NOTHING;
 
 -- Pack SQL (rules.yml, cells.yml) runs as planetai_ro: SELECT on every table except settings, no writes. A "data pack,
@@ -509,3 +518,47 @@ END $$;
 DROP TRIGGER IF EXISTS sensors_room ON sensors;
 CREATE TRIGGER sensors_room BEFORE INSERT OR UPDATE ON sensors FOR EACH ROW EXECUTE FUNCTION sensors_room_is_the_name();
 INSERT INTO schema_version (version) VALUES ('0.61') ON CONFLICT DO NOTHING;
+
+-- 0.62: Place maps (4 Nov 2026, docs/superpowers/specs/2026-11-04-place-light-gis-design.md §5). Named maps of drawings
+-- on the Place door: a marker, a line, an area or a note, each with a colour 1-6 (a number, so the palette can change
+-- without a migration). `length_m` and `area_m2` are written by the server from geom::geography on every insert and
+-- update. A map with `agent` set is an agent's own. `from_node` and `remote_id` are both NULL for a map drawn here; a
+-- map pulled from another node carries both, and the pair is unique. `run_id`, `alert_id` and `event_id` are plain
+-- columns until the tables they point at are in the schema (the run table arrives with the tool-runs pull request).
+CREATE TABLE IF NOT EXISTS place_maps (
+  id            BIGSERIAL PRIMARY KEY,
+  name          TEXT NOT NULL,
+  owner         TEXT,
+  agent         TEXT,
+  shared        BOOLEAN NOT NULL DEFAULT false,
+  shared_at     TIMESTAMPTZ,
+  share_error   TEXT,
+  pushed_at     TIMESTAMPTZ,
+  push_tried_at TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  from_node     TEXT,
+  remote_id     BIGINT,
+  UNIQUE (from_node, remote_id)
+);
+CREATE TABLE IF NOT EXISTS place_marks (
+  id         BIGSERIAL PRIMARY KEY,
+  map_id     BIGINT NOT NULL REFERENCES place_maps ON DELETE CASCADE,
+  kind       TEXT NOT NULL CHECK (kind IN ('marker','line','area','note')),
+  geom       geometry(Geometry, 4326) NOT NULL,
+  colour     SMALLINT NOT NULL DEFAULT 1 CHECK (colour BETWEEN 1 AND 6),
+  label      TEXT,
+  note       TEXT,
+  capture_id BIGINT REFERENCES captures ON DELETE SET NULL,
+  length_m   REAL,
+  area_m2    REAL,
+  drawn_by   TEXT,
+  run_id     BIGINT,
+  alert_id   BIGINT,
+  event_id   BIGINT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS place_marks_geom_gist ON place_marks USING GIST (geom);
+CREATE INDEX IF NOT EXISTS place_marks_map ON place_marks (map_id);
+INSERT INTO schema_version (version) VALUES ('0.62') ON CONFLICT DO NOTHING;
