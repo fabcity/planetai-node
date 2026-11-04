@@ -321,14 +321,24 @@ button.tl{cursor:pointer}button.tl:hover:not(:disabled):not(.on){background:var(
  
   position:relative;margin:6px;border-radius:10px;overflow:hidden;background:var(--ground);color:var(--ink);box-shadow:0 0 0 1px #000,0 0 0 5px #1b1b1b,0 0 0 6px #000}
 .mapw{position:relative;min-width:0}.mapc #map{aspect-ratio:auto;height:560px;width:100%;position:relative;background:var(--ground)}
-.mapc .tools,.mapc .zoom,.mapc .scales,.phour,.altc{background:var(--chip);border:1px solid var(--hair);border-radius:10px}
+.mapc .tools,.mapc .zoom,.mapc .scales,.phour,.dlmenu,.pbase{background:var(--chip);border:1px solid var(--hair);border-radius:10px}
 .tools{position:absolute;top:12px;right:12px;z-index:3;display:flex;flex-direction:column}
 .zoom{position:absolute;right:12px;bottom:12px;z-index:3;display:flex;flex-direction:column}
-/* 44 px targets (Tomas, 15 Oct): back to the house and the PNG at the top right, zoom at the bottom right */
+/* 44 px targets (Tomas, 15 Oct): the right column at the top right (map only, full screen, back to the cell, download), zoom at the bottom right */
 .tools button,.zoom button{width:44px;height:44px;position:relative;display:grid;place-items:center;padding:0;border:0;background:none;color:var(--ink);font:300 18px/1 var(--mono);cursor:pointer}
 .tools button+button,.zoom button+button{border-top:1px solid var(--hair)}
-.tools button:first-child,.zoom button:first-child{border-radius:9px 9px 0 0}.tools button[data-t="png"],.zoom button:last-child{border-radius:0 0 9px 9px}
-.tools button.on{background:var(--ink);color:var(--ground)}.tools button:hover:not(.on),.zoom button:hover{background:var(--raise)}
+.tools button:first-child,.zoom button:first-child{border-radius:9px 9px 0 0}.tools button:last-child,.zoom button:last-child{border-radius:0 0 9px 9px}
+.tools button.gap{border-top-width:5px}.tools button[aria-disabled="true"]{color:var(--mute);cursor:default}
+.tools button.on,.tools button[aria-expanded="true"]{background:var(--ink);color:var(--ground)}.tools button:hover:not(.on):not([aria-disabled="true"]):not([aria-expanded="true"]),.zoom button:hover{background:var(--raise)}
+/* the download menu beside the column, and the base switch beside the zoom (SPEC_place_microgis §4) */
+.dlmenu{position:absolute;right:68px;top:12px;z-index:5;width:250px;padding:6px;color:var(--ink)}.dlmenu[hidden],.pbase[hidden]{display:none}
+.dlmenu .dlh{margin:0;padding:4px 8px 6px;font:400 10.5px var(--body);color:var(--mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dlmenu button{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;padding:0 8px;border:0;border-radius:6px;background:none;color:var(--ink);font:400 12.5px var(--body);text-align:left;cursor:pointer}
+.dlmenu button:hover:not(:disabled){background:var(--raise)}.dlmenu button:disabled{color:var(--mute);cursor:default}
+.dlmenu code{margin-left:auto;font:400 10px var(--mono);color:var(--mute)}.dlmenu hr{border:0;border-top:1px solid var(--hair);margin:5px 2px}.dlmenu .err{margin:6px 8px 2px;font:400 11px/1.4 var(--body)}
+.pbase{position:absolute;right:68px;bottom:12px;z-index:3;display:flex;gap:2px;padding:3px;border-radius:999px}
+.pbase button{min-height:44px;padding:0 12px;border:0;border-radius:999px;background:none;color:var(--mute);font:400 11px var(--body);cursor:pointer}
+.pbase button[aria-pressed="true"]{background:var(--ink);color:var(--ground)}.mapc:has(.pbase:not([hidden])) #mapcredit{bottom:68px}
 .mapc #mapbar{position:absolute;left:12px;bottom:12px;z-index:3;padding:0;border:0;display:block;max-width:calc(100% - 210px)}
 .scales{display:flex;gap:2px;padding:3px;border-radius:999px!important;overflow-x:auto;scrollbar-width:none}
 #mapbar .scales button{display:flex;gap:5px;align-items:center;width:auto;height:auto;min-height:44px;padding:0 12px;border:0;border-radius:999px;background:none;color:var(--mute);cursor:pointer;font:400 11px var(--body);white-space:nowrap}
@@ -340,11 +350,6 @@ button.tl{cursor:pointer}button.tl:hover:not(:disabled):not(.on){background:var(
 .mapc .maplibregl-ctrl-scale{background:none;border:1px solid var(--mute);border-top:0;color:var(--mute);font:400 10px var(--mono);padding:0 5px;border-radius:0}
 .mapc .maplibregl-ctrl-bottom-left{left:12px;bottom:50px}.maplibregl-ctrl-bottom-left .maplibregl-ctrl{margin:0}
 #mapcredit{position:absolute;right:68px;bottom:12px;z-index:3;margin:0;max-width:40%;font:400 10px/1.3 var(--body);color:var(--mute);text-align:right;pointer-events:none}
-/* the satellite's then and now, on the screen while its row is on: photographs beside the map, never on it */
-.altc{position:absolute;left:12px;top:12px;z-index:4;width:min(380px,calc(100% - 140px));max-height:calc(100% - 80px);overflow:auto;color:var(--ink)}.altc[hidden]{display:none}
-#altbar{display:flex;gap:6px;align-items:center;padding:6px 8px;border-bottom:1px solid var(--hair);font:400 var(--t-cap) var(--body)}
-#altbar button{background:none;border:1px solid var(--hair);border-radius:999px;color:var(--ink);width:44px;height:44px;cursor:pointer}#altbar .cmp{margin-left:auto;display:flex;gap:6px;align-items:center;min-height:44px}
-#mapalt .photo{width:100%;display:block}
 .mapc .flatnote{top:54px}.mapc .nonode{right:68px;bottom:56px}   /* under the hour; above the rungs, clear of the zoom */
 /* the drawing keys (SPEC_place_microgis §4, §10): a column of 44 px keys on the screen's left edge, the letter small in
    a corner, the pressed one filled with the screen's ink; focus is the cells' blue, as everywhere on the screen. Beside
@@ -353,8 +358,8 @@ button.tl{cursor:pointer}button.tl:hover:not(:disabled):not(.on){background:var(
 .dkeys button{width:44px;height:44px;position:relative;display:grid;place-items:center;padding:0;border:0;background:none;color:var(--ink);cursor:pointer}
 .dkeys button+button{border-top:1px solid var(--hair)}.dkeys button.gap{border-top-width:5px}
 .dkeys button[aria-pressed="true"]{background:var(--ink);color:var(--ground)}.dkeys button:hover:not([aria-pressed="true"]){background:var(--raise)}
-.dkeys button:focus-visible,.dpanel button:focus-visible,.dpanel input:focus-visible,.dpanel textarea:focus-visible,.dpanel select:focus-visible{outline:2px solid var(--cells);outline-offset:-3px}
-.dkeys svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+.tools button:focus-visible,.zoom button:focus-visible,.dlmenu button:focus-visible,.pbase button:focus-visible,.dkeys button:focus-visible,.dpanel button:focus-visible,.dpanel input:focus-visible,.dpanel textarea:focus-visible,.dpanel select:focus-visible{outline:2px solid var(--cells);outline-offset:-3px}
+.dkeys svg,.tools svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
 .dkeys small{position:absolute;right:3px;bottom:2px;font:400 8.5px var(--mono);opacity:.55}
 /* with the keys on the screen the hour moves right, beside the column at the top right, clear of the readout */
 .mapc:has(.dkeys) .phour{left:auto;right:68px;transform:none}
@@ -385,6 +390,12 @@ button.tl{cursor:pointer}button.tl:hover:not(:disabled):not(.on){background:var(
 /* the lower band: what is selected or returned, and the place in figures */
 .plow{display:grid;grid-template-columns:minmax(0,1fr) 340px;border-bottom:1px solid var(--hair)}
 .plow>section{padding:0 20px 18px 0;min-width:0}.plow>section+section{padding:0 0 18px 20px;border-left:1px solid var(--hair)}.plow .fr b{white-space:nowrap}
+/* what changed, year on year: the satellite's then and now, beside the map and never on it, then a bar a year */
+#altbar{display:flex;gap:6px;align-items:center;padding:4px 0;font:400 var(--t-cap) var(--body)}
+#altbar button{background:none;border:1px solid var(--hair);border-radius:999px;color:var(--ink);width:44px;height:44px;cursor:pointer}#altbar .cmp{margin-left:auto;display:flex;gap:6px;align-items:center;min-height:44px}
+#pchange .pair{height:auto}#pchange .pair figure{aspect-ratio:1}#pchange .photo{width:100%;display:block}
+.years{display:grid;gap:3px;align-items:end;height:50px;margin-top:8px}.years i{background:var(--ink);opacity:.55;border-radius:1px}
+.yl{display:grid;gap:3px;margin:3px 0 10px;font:400 9.5px var(--mono);color:var(--mute);text-align:center}
 /* the open map's table: a swatch in the drawing's own colour is the one place a drawing colour sits off the screen */
 .mtbl .mrow{display:inline-flex;align-items:center;min-height:32px;padding:0;border:0;background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
 .mtbl .mrow:hover{text-decoration:underline;text-underline-offset:3px}.mtbl tr.on td{background:var(--raise)}
@@ -428,7 +439,7 @@ button.tl{cursor:pointer}button.tl:hover:not(:disabled):not(.on){background:var(
 #map{aspect-ratio:1;width:100%;overflow:hidden}
 #map .photo{width:100%;height:100%;object-fit:cover;display:block}
 .pair{display:grid;grid-template-columns:1fr 1fr;height:100%}.pair figure{margin:0;position:relative}.pair img{width:100%;height:100%;object-fit:contain;display:block;background:var(--ink)}
-#mapalt:has(.pair){aspect-ratio:auto;display:flex;flex-direction:column}#mapalt .pair{height:auto}#mapalt .pair figure{aspect-ratio:1}.pairnote{padding:8px 12px;border-top:1px solid var(--ink);font-size:var(--t-small);background:var(--ground)}
+.pairnote{padding:8px 12px;border-top:1px solid var(--ink);font-size:var(--t-small);background:var(--ground)}
 .pair figcaption{position:absolute;left:8px;top:8px;background:var(--ground);border:1px solid var(--ink);font:600 var(--t-cap) var(--mono);padding:1px 6px}
 .yearly{max-width:760px;margin:6px 0 4px}
 .fr{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--hair);font-size:var(--t-small);align-items:baseline}
@@ -680,7 +691,6 @@ button.tl{cursor:pointer}button.tl:hover:not(:disabled):not(.on){background:var(
   .ly,.tl,.spd summary{min-height:44px}
   .mapc #mapbar{max-width:calc(100% - 72px)}.mapc .maplibregl-ctrl-bottom-left{bottom:68px}#mapcredit{position:static;max-width:none;padding:4px 12px 6px;text-align:left}
   .phour{left:12px;transform:none}   /* left: the active tool's word needs the top right */
-  .altc{top:64px;max-height:calc(100% - 140px)}   /* under the hour, not over it */
   .plow{grid-template-columns:minmax(0,1fr)}.plow>section+section{padding:0 0 18px;border-left:0;border-top:1px solid var(--hair)}
 }
 @media (max-width:560px){
@@ -918,8 +928,7 @@ button.tl{cursor:pointer}button.tl:hover:not(:disabled):not(.on){background:var(
   <div class="bench">
     <nav id="cake" aria-label="What this place is made of" data-learn="place-layers" data-reads="/health /issues /packs" data-stage="observe" data-pack="place"></nav>
     <div class="pmid">
-      <div class="mapc" data-learn="place-map" data-reads="/place/geojson /sensors /issues" data-stage="observe" data-pack="place"><div class="mapw"><div id="mapbar"></div><div id="map"></div><div id="phour" class="phour"></div><svg id="pedges" aria-hidden="true"></svg><p id="mapcredit"></p>
-        <div class="altc" hidden data-learn="place-orbit" data-reads="/earth" data-stage="observe" data-pack="earth"><div id="altbar"></div><div id="mapalt"></div></div></div></div>
+      <div class="mapc" data-learn="place-map" data-reads="/place/geojson /sensors /issues" data-stage="observe" data-pack="place"><div class="mapw"><div id="mapbar"></div><div id="map"></div><div id="phour" class="phour"></div><svg id="pedges" aria-hidden="true"></svg><p id="mapcredit"></p></div></div>
       <div class="psbar"><button data-s="cake" aria-expanded="false" aria-controls="cake">Layers</button><button data-s="tools" aria-expanded="false" aria-controls="ptools">Tools</button></div>
       <div id="facts" class="inspect" aria-live="polite"></div>
       <aside id="pmargin" aria-label="Around the house"></aside>
@@ -930,7 +939,8 @@ button.tl{cursor:pointer}button.tl:hover:not(:disabled):not(.on){background:var(
   <dialog id="imgdlg" class="imgdlg" aria-label="Add an image"></dialog>
   <div class="plow">
     <section id="ptable" aria-label="Selected"><h3 class="pmh">selected</h3><p class="fine">When a tool runs, what it returns is listed here, a row for each thing it found.</p></section>
-    <section id="pfigures" data-learn="place-changing" data-reads="/issues /cells /sources" data-stage="observe" data-pack="core"></section>
+    <section aria-label="What changed"><div id="pchange" data-learn="place-orbit" data-reads="/earth /history" data-stage="observe" data-pack="earth"></div>
+      <div id="pfigures" data-learn="place-changing" data-reads="/issues /cells /sources" data-stage="observe" data-pack="core"></div></section>
   </div>
 </section>
 

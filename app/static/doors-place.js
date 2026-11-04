@@ -2,9 +2,9 @@
 /* PLACE — the ground around the house, as a small GIS (SPEC_place_microgis §4, the v2 drawing of 4 Nov 2026): the cake
    on the left (doors-placemap.js panel(), doors-cake.js), the screen in the middle, black in both registers, with its
    tools, scales and hour on it, the tool column on the right, and a lower band: what is selected or returned, and the
-   place in figures. One map: From orbit is the satellite's then and now, drawn on the screen when the satellite row is
-   on; What changed is a tool. Every layer is real geometry: H3 cells from the node (GET /geo/*), the plan from
-   OpenStreetMap, the stations at their own coordinates, the satellite frames as photographs.
+   place in figures. One map: the satellite is its base where the node holds it, and the then and now sits in the lower
+   band under "what changed, year on year". Every layer is real geometry: H3 cells from the node (GET /geo/*), the plan
+   from OpenStreetMap, the stations at their own coordinates, the satellite frames as photographs.
 
    Kept from PHASE 4a (14–15 Oct): the species as a table (never cards), token only, with GBIF's open records counted
    and never drawn; five layers on; no WebGL draws the map still; 44 px tools, Done ends measuring, From the house is
@@ -74,33 +74,44 @@ async function speciesBlock() {
     + `</table></div><p class="fine">Only what somebody here confirmed counts: the image model’s guesses do not. Seen here counts every confirmed one, in ${S.reduce((a, x) => a + x.images, 0)} image${S.reduce((a, x) => a + x.images, 0) === 1 ? '' : 's'}; open records are GBIF’s, by others, in this node’s seven cells.</p>`;
 }
 
-/* THE SATELLITE, THEN AND NOW, on the screen while the satellite row is on (From orbit, as it was a view until 4 Nov).
-   The latest pass on the right, fixed; the past on the left, stepped through the passes the node keeps. Single shows
-   one year at a time. The hectares that changed between the two are the node's own count (AlphaEarth, GET /earth),
-   drawn only for a pair it computed. The photographs are not registered to the node's point, so they sit beside the
-   map, never on it. */
+/* WHAT CHANGED, YEAR ON YEAR, the lower band's right (SPEC_place_microgis §4; over the satellite on the screen until
+   4 Nov). The latest pass on the right, fixed; the past on the left, stepped through the passes the node keeps. Single
+   shows one year at a time. The hectares that changed between the two are the node's own count (AlphaEarth, GET /earth),
+   drawn only for a pair it computed. Under them the buildings the satellite counts round the node, a bar a year (the
+   place pack's Open Buildings series, GET /history). The photographs are not registered to the node's point, so they
+   sit beside the map, never on it. */
 function layer() {
-  const box = document.querySelector('.altc'), el = $('#mapalt'), PM = window.__PM, ys = (D.earth || {}).sentinel || [];
-  box.hidden = !(PM && PM.on.imagery && ys.length);
-  if (box.hidden) { el.innerHTML = ''; $('#altbar').innerHTML = ''; return; }
-  const NOW = ys[ys.length - 1]; if (!ys.includes(YEAR)) YEAR = NOW;
-  if (!ys.includes(PAST) || PAST === NOW) PAST = ys[0];
-  const past = ys.filter(y => y !== NOW);
-  const ch = (D.earth.changes || []).find(c => c.year_a === PAST && c.year_b === NOW)
-    || (D.earth.changes || []).find(c => c.year_a <= PAST + 1 && c.year_b === NOW);
-  $('#altbar').innerHTML = COMPARE
-    ? `<span class="k">then</span><button id="yp" aria-label="Earlier">‹</button><b class="mono">${PAST}</b><button id="yn" aria-label="Later">›</button><span class="k">· now</span><b class="mono">${NOW}</b>`
-      + `<label class="cmp"><input type="checkbox" id="cmp" checked> then and now</label>`
-    : `<button id="yp" aria-label="Earlier">‹</button><b class="mono">${YEAR}</b><button id="yn" aria-label="Later">›</button><label class="cmp"><input type="checkbox" id="cmp"> then and now</label>`;
-  el.innerHTML = (COMPARE
-    ? `<div class="pair"><figure><img src="${SAT(PAST)}" alt="Sentinel-2, ${PAST}"><figcaption>then · ${PAST}</figcaption></figure><figure><img src="${SAT(NOW)}" alt="Sentinel-2, ${NOW}"><figcaption>now · ${NOW}</figcaption></figure></div>`
-      + (ch ? `<div class="pairnote">${ch.year_a} → ${ch.year_b}: ${num('earth.change.pair', ch.hectares_over_threshold.toFixed(1), `pixels past the change threshold ${ch.threshold}, of ${ch.pixels.toLocaleString('en')}`)} ha changed, ${(ch.share_over_threshold * 100).toFixed(1)} % of the ground, by the node’s AlphaEarth record ${prov('model')}</div>` : '')
-    : `<img class="photo" src="${SAT(YEAR)}" alt="Sentinel-2 annual median, ${YEAR}, about 3 km across">`)
-    + `<p class="pairnote fine">${D.earth.credit.map(esc).join(' ')} About 3 km across, not registered to the node’s point.</p>`;
+  const el = $('#pchange'), ys = (D.earth || {}).sentinel || [], Y = D.place_yearly || [];
+  let h = `<h3 class="pmh">what changed, year on year <b>Sentinel-2 · AlphaEarth</b></h3>`;
+  if (!ys.length && !Y.length) { el.innerHTML = h + '<p class="fine">This node holds no satellite years yet.</p>'; return; }
+  if (ys.length) {
+    const NOW = ys[ys.length - 1]; if (!ys.includes(YEAR)) YEAR = NOW;
+    if (!ys.includes(PAST) || PAST === NOW) PAST = ys[0];
+    const ch = (D.earth.changes || []).find(c => c.year_a === PAST && c.year_b === NOW)
+      || (D.earth.changes || []).find(c => c.year_a <= PAST + 1 && c.year_b === NOW);
+    h += `<div id="altbar">` + (COMPARE
+      ? `<span class="k">then</span><button id="yp" aria-label="Earlier">‹</button><b class="mono">${PAST}</b><button id="yn" aria-label="Later">›</button><span class="k">· now</span><b class="mono">${NOW}</b>`
+        + `<label class="cmp"><input type="checkbox" id="cmp" checked> then and now</label>`
+      : `<button id="yp" aria-label="Earlier">‹</button><b class="mono">${YEAR}</b><button id="yn" aria-label="Later">›</button><label class="cmp"><input type="checkbox" id="cmp"> then and now</label>`) + '</div>'
+      + (COMPARE
+        ? `<div class="pair"><figure><img src="${SAT(PAST)}" alt="Sentinel-2, ${PAST}"><figcaption>then · ${PAST}</figcaption></figure><figure><img src="${SAT(NOW)}" alt="Sentinel-2, ${NOW}"><figcaption>now · ${NOW}</figcaption></figure></div>`
+          + (ch ? `<div class="pairnote">${ch.year_a} → ${ch.year_b}: ${num('earth.change.pair', ch.hectares_over_threshold.toFixed(1), `pixels past the change threshold ${ch.threshold}, of ${ch.pixels.toLocaleString('en')}`)} ha changed, ${(ch.share_over_threshold * 100).toFixed(1)} % of the ground, by the node’s AlphaEarth record ${prov('model')}</div>` : '')
+        : `<img class="photo" src="${SAT(YEAR)}" alt="Sentinel-2 annual median, ${YEAR}, about 3 km across">`)
+      + `<p class="pairnote fine">${D.earth.credit.map(esc).join(' ')} About 3 km across, not registered to the node’s point.</p>`;
+  }
+  if (Y.length) {
+    const top = Math.max(...Y.map(r => r.value)) || 1, a = Y[0], z = Y[Y.length - 1];
+    h += `<div class="fr"><span>Buildings the satellite counts<small>Open Buildings, around the node, a bar for each year</small></span>`
+      + `<b>${num('place.buildings.yearly', `${Math.round(a.value)} → ${Math.round(z.value)}`, `the satellite’s count in ${a.year} against ${z.year}`)} ${prov('model')}</b></div>`
+      + `<div class="years" style="grid-template-columns:repeat(${Y.length},1fr)">${Y.map(r => `<i style="height:${Math.max(1, Math.round(48 * r.value / top))}px" title="${r.year}: ${Math.round(r.value)}"></i>`).join('')}</div>`
+      + `<div class="yl" style="grid-template-columns:repeat(${Y.length},1fr)">${Y.map(r => `<span>${r.year}</span>`).join('')}</div>`;
+  }
+  el.innerHTML = h;
+  if (!ys.length) return;
+  const NOW = ys[ys.length - 1], past = ys.filter(y => y !== NOW);
   const step = d => { if (COMPARE) PAST = past[Math.max(0, Math.min(past.length - 1, past.indexOf(PAST) + d))]; else YEAR = ys[Math.max(0, Math.min(ys.length - 1, ys.indexOf(YEAR) + d))]; layer(); };
   $('#yp').onclick = () => step(-1); $('#yn').onclick = () => step(1); $('#cmp').onchange = e => { COMPARE = e.target.checked; layer(); };
 }
-window.placeAlt = layer;
 
 /* THE TOOLS, the right-hand column (SPEC_place_microgis §6): the ones that run today, and the analyses and fitness tools
    the spec names, each with a dotted "not yet" until the place pack computes it. A tool that runs is a row that shows

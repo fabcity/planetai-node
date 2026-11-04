@@ -31,6 +31,8 @@ function doorsLocal(iso, tz) {
 const DOORS_ROUTES = {
   issues: 'issues', days: 'issues/days?days=7', health: 'health', rho: 'rho', earth: 'earth', reach: 'reach',
   sensors: 'sensors', observations: 'observations', cells: 'cells', stats: 'stats', settings: 'settings',
+  /* the buildings the satellite counts around the node, a reading a year (the place pack, packs/place/README.md) */
+  place_yearly: 'history?sensor_id=place-point&metric=sat_buildings_yearly',
   /* token-only (doorsFetch): a screen without the token gets null and says so */
   readings_1h: 'aggregates?hours=24', actions: 'actions?limit=2000', alerts: 'alerts?limit=500',
 };
@@ -94,6 +96,7 @@ function buildD(A, locale) {
     share: setting('SHARE_LEVEL'), settings: A.settings || null, askOff: setting('UI_ASK') === 'off',   /* the keeper's switch for every ask, the dashboard's and the doors' */ rho: A.rho || {}, health: H,
     earth: A.earth ? { years: E.years || [], changes: E.changes || [], radius_m: E.radius_m, change: E.latest || null,
       sentinel: img.sentinel || [], landsat: img.landsat || [], credit: img.credit || [] } : null,
+    place_yearly: (A.place_yearly || []).map(r => ({ year: +String(r.ts).slice(0, 4), value: r.value })),
     reach: A.reach || [], sensors: A.sensors || [], observations: A.observations || [], index_cells: A.cells || [],
     geometry: { ladder: G.ladder || [], radio: G.radio || {}, grain: G.grain_table || [], publication: G.publication || {} },
     point: [H.lon, H.lat], stats15, raw, actions, alerts: A.alerts || asks.acts || [], notes: !!A.actions, asks,

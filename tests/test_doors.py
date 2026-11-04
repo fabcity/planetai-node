@@ -923,33 +923,39 @@ const MARKS = { marks: [
   { id: 12, map_id: 3, kind: 'line', colour: 2, label: 'Hose run', note: null, capture_id: 7, length_m: 102.4, area_m2: null, alert_id: null, event_id: null,
     geometry: { type: 'LineString', coordinates: [[115.167, -8.819], [115.168, -8.819]] } }] };
 const noop = () => {};
+const SAVED = [];   /* every file the page hands the browser to save, by its name */
 const el = () => ({ innerHTML: '', textContent: '', hidden: false, style: {}, dataset: {}, kids: [], className: '', attrs: {},
   setAttribute(k, v) { this.attrs[k] = v; }, getAttribute(k) { return this.attrs[k]; }, appendChild(x) { this.kids.push(x); }, append(...x) { this.kids.push(...x); },
   querySelector: () => null, querySelectorAll: () => [], addEventListener: noop, remove: noop, focus: noop, closest: () => null, contains: () => false,
+  click() { if (this.download) SAVED.push(this.download); },
   getContext: () => ({ setTransform: noop, clearRect: noop }), clientWidth: 900, clientHeight: 560 });
-async function boot(tok) {
-  const els = {}, map = el(), asked = [], drawn = {}, patched = [], keys = [];
+async function boot(tok, o = {}) {
+  const els = {}, map = el(), asked = [], drawn = {}, patched = [], keys = [], ons = {}, onced = [], eased = [];
   /* the lower band's row buttons, as mapTable() wires them */
   const rows = [{ dataset: { k: '11' } }, { dataset: { k: '12' } }];
   els['#ptable'] = Object.assign(el(), { querySelectorAll: q => (q === '.mrow' ? rows : []) });
   const ask = (p, init = {}) => { asked.push(p); if (!tok && L.DOORS_LOCKED.test(p)) return Promise.resolve(new Response('{}', { status: 403 }));
     if (init.method === 'PATCH') { const b = JSON.parse(init.body); patched.push(b);
       return Promise.resolve(new Response(JSON.stringify({ mark: { ...MARKS.marks.find(k => p.endsWith('/' + k.id)), ...b } }), { status: 200 })); }
-    const b = p.startsWith('/place/maps/3/marks') ? MARKS : p.startsWith('/place/maps/4/marks') ? { marks: [] } : p.startsWith('/place/maps') ? MAPS
+    const f = p.match(/^\/place\/maps\/(\d+)\.(geojson|kml|dxf)\?/);
+    if (f) return Promise.resolve(new Response('x', { status: 200, headers: { 'content-disposition': `attachment; filename="n-${f[1]}.${f[2]}"` } }));
+    const b = p.startsWith('/ground/meta') && o.meta ? o.meta : p.startsWith('/place/maps/3/marks') ? MARKS : p.startsWith('/place/maps/4/marks') ? { marks: [] } : p.startsWith('/place/maps') ? MAPS
       : p.startsWith('/captures') ? [] : p.startsWith('/species') ? { species: [] } : {};
     return Promise.resolve(new Response(JSON.stringify(b), { status: 200 })); };
   const layer = function (props) { return { id: props && props.id, props }; };
-  const c = { D, d3, console, Response, setTimeout, clearTimeout, $: q => (els[q] ||= el()), DOORS_TOKEN: () => (tok ? 't' : ''), DOORS_AUTH: () => ({}), doorsFetch: ask,
+  const c = { D: o.D || D, d3, console, Response, URL, doorsLocal: L.doorsLocal, setTimeout, clearTimeout, $: q => (els[q] ||= el()), DOORS_TOKEN: () => (tok ? 't' : ''), DOORS_AUTH: () => ({}), doorsFetch: ask,
     UNLOCK_AT: '<a href="#setup/screen">Set up › This screen</a>', sign: id => `<svg data-s="${id}"></svg>`, prov: w => w, lastRaw: () => null, plain: s => s,
     hhmm: s => s, when: s => s, dLabel: s => s, dayOf: s => s, CLOCK: { reduced: () => true, on: noop, off: noop }, view: () => 'place', location: { origin: 'http://node' },
     devicePixelRatio: 1, localStorage: { getItem: () => null, setItem: noop },
     document: { documentElement: { dataset: {} }, querySelector: () => null, querySelectorAll: () => [], createElement: () => el(), getElementById: () => null, activeElement: null,
       addEventListener: (t, f) => { if (t === 'keydown') keys.push(f); } },
-    maplibregl: { ScaleControl: function () {}, Map: function () { return Object.assign(map, { on: noop, once: noop, addControl: noop, getContainer: () => map,
-      getCanvas: () => ({ style: {} }), touchZoomRotate: { disableRotation: noop }, doubleClickZoom: { enable: noop, disable: noop }, getZoom: () => 13.6, resize: noop,
-      project: ([x, y]) => ({ x: x * 1e4, y: -y * 1e4 }), unproject: ([x, y]) => ({ lng: x / 1e4, lat: -y / 1e4 }), easeTo: noop,
+    maplibregl: { ScaleControl: function () {}, Map: function () { return Object.assign(map, { on: (t, f) => (ons[t] ||= []).push(f), once: t => onced.push(t), addControl: noop,
+      getContainer: () => map, triggerRepaint: noop, getLayer: () => null,
+      getCanvas: () => ({ style: {} }), touchZoomRotate: { disableRotation: noop }, doubleClickZoom: { enable: noop, disable: noop }, getZoom: () => o.zoom || 13.6, resize: noop,
+      project: ([x, y]) => ({ x: x * 1e4, y: -y * 1e4 }), unproject: ([x, y]) => ({ lng: x / 1e4, lat: -y / 1e4 }), easeTo: a => eased.push(a),
       getCenter: () => ({ lng: 115.167, lat: -8.819 }) }); } },
-    deck: new Proxy({}, { get: (t, k) => k === 'MapboxOverlay' ? function () { return { setProps: o => { (o.layers || []).forEach(l => { drawn[l.id] = l.props; }); } }; } : layer }) };
+    deck: new Proxy({}, { get: (t, k) => k === 'MapboxOverlay' ? function () { return { setProps: x => { (x.layers || []).forEach(l => { drawn[l.id] = l.props; }); },
+      pickObject: () => (o.hit ? o.hit(drawn) : null) }; } : layer }) };
   c.window = c; vm.createContext(c);
   vm.runInContext(['esc', 'fmt'].map(pick).join('\n') + '\n' + src + '\nwindow.placeMap()', c);
   await new Promise(r => setTimeout(r, 80));
@@ -965,10 +971,32 @@ async function boot(tok) {
     key('ArrowUp'); await new Promise(r => setTimeout(r, 650));
     out.patched = patched;
   }
+  if (o.then) Object.assign(out, await o.then({ c, map, ons, drawn, asked, onced, eased }));
   return { ...out, drawn: Object.fromEntries(Object.entries(drawn).filter(([k]) => k.startsWith('draw-')).map(([k, v]) => [k, (v.data || []).length])) };
 }
 (async () => {
   const out = { tok: await boot(true), locked: await boot(false) };
+  /* the screen's right column, the download menu, the base and the drone pins: a node holding imagery and two drone
+     flights, seen from zoom 12, below the drone layer's 13 */
+  const fl = [{ provider: 'Bayu', title: 'a', gsd_m: 0.04, date: '2024-03-15', bbox: [115.15, -8.83, 115.17, -8.81] },
+    { provider: 'Made', title: 'b', gsd_m: 0.031, date: '2025-11-02', bbox: [115.10, -8.80, 115.12, -8.78] }];
+  const META = { on_disk: { imagery: true, drone: true }, layers: { imagery: { passes: 3, from: '2025-01', to: '2025-12', bytes: 1 }, drone: { bytes: 1, mosaics: fl } } };
+  const btn = d => ({ closest: () => ({ dataset: d }) });
+  out.gis = await boot(true, { zoom: 12, meta: META, hit: dr => (dr['drone-pins'] ? { layer: { id: 'drone-pins' }, object: dr['drone-pins'].data[0] } : null),
+    then: async ({ c, map, ons, drawn, asked, onced, eased }) => {
+      const col = map.kids.find(x => x.className === 'tools'), menu = map.kids.find(x => x.className === 'dlmenu'), base = map.kids.find(x => x.className === 'pbase');
+      const r = { col: col && col.innerHTML, imagery: c.__PM.on.imagery, base: base && base.innerHTML,
+        pins: (drawn['drone-pins'] || {}).data, pinText: (drawn['drone-pins-l'] || {}).data };
+      col.onclick({ target: btn({ t: 'dl' }) }); r.menu = menu && menu.innerHTML; r.menuShown = menu && !menu.hidden;
+      /* everything on the screen, with the second map hidden: the PNG and the open map's three files */
+      c.__PM.mapOff.add(4); SAVED.length = 0;
+      menu.onclick({ target: btn({ dl: 'all' }) }); await new Promise(x => setTimeout(x, 60));
+      r.files = asked.filter(p => /^\/place\/maps\/\d+\.[a-z]+\?/.test(p)); r.saved = [...SAVED]; r.png = onced.includes('render');
+      /* a pin pressed flies to its flight */
+      (ons.click || []).forEach(f => f({ lngLat: { lng: 115.16, lat: -8.82 }, point: { x: 1, y: 1 } })); r.eased = eased;
+      return r; } });
+  /* a node without imagery keeps the streets as its base */
+  out.plain = await boot(true, { then: async ({ c }) => ({ imagery: c.__PM.on.imagery }) });
   /* From the house, in the right column: a tool row that runs with the token */
   const els = {}, c = { $: q => (els[q] ||= el()), DOORS_TOKEN: () => 't', document: { activeElement: null, querySelectorAll: () => [], querySelector: () => null }, window: { __PM: { on: {}, tool: 'select' } } };
   vm.createContext(c); vm.runInContext(place.match(/const TOOLS = [\s\S]*?\n\];\n/)[0] + fn(place, 'placeTools') + 'placeTools()', c);
@@ -976,7 +1004,9 @@ async function boot(tok) {
   console.log(JSON.stringify(out));
 })();
 """ % replayed(FIX)
-M = json.loads(subprocess.run(["node"], input=mprog, capture_output=True, text=True, check=True).stdout)
+_r = subprocess.run(["node"], input=mprog, capture_output=True, text=True)
+assert _r.returncode == 0, _r.stderr[-3000:]
+M = json.loads(_r.stdout)
 _t, _x = M["tok"], M["locked"]
 _keys = re.findall(r'<button[^>]*aria-label="([^"]+)"[^>]*aria-pressed="(true|false)"', _t["keys"] or "")
 assert [k for k, _ in _keys] == ["Select", "Marker", "Line, with distance", "Area, with surface", "Note", "Image"] and [p for _, p in _keys].count("true") == 1, _keys
@@ -1019,5 +1049,53 @@ assert ".ly.map i{border-radius:2px}" in _css, "a map's dot is square, a layer's
 assert "'The image stays on this node. The map only says which image it is, never sends the file.'" in pm and "never the file’s" not in pm, \
     "the image hint says only what is true: a photo's own GPS still wins on the node"
 print("  place: From the house in the right column; 44 px keys; focus is the cells' blue on the screen")
+
+# Downloads in four formats, the satellite first, the years below the map, drone pins (SPEC_place_microgis §4, Task 8)
+_g = M["gis"]
+_col = re.findall(r'<button[^>]*aria-label="([^"]+)"', _g["col"] or "")
+assert _col == ["Map only", "Full screen", "Back to this node’s cell", "Download"], _col
+_dl = re.findall(r'<button[^>]*aria-label="([^"]+)"', _g["menu"] or "")
+assert _dl == ["Image of the screen · PNG", "For upstream and QGIS · GeoJSON", "For Google Earth, phones · KML", "For CAD, in metres · DXF",
+               "Everything on the screen"], _dl
+assert _g["menuShown"], "Download opens its menu"
+assert "getCanvas().toDataURL('image/png')" in pm, "the PNG is the canvas, drawings and all"
+assert _g["png"] and sorted(_g["saved"]) == ["n-3.dxf", "n-3.geojson", "n-3.kml"] and len(_g["files"]) == 3, \
+    ("everything on the screen: the PNG, then each visible map's three files, one download each", _g["files"], _g["saved"])
+print("  place: the right column reads Map only, Full screen, Back to this node’s cell, Download; the menu offers four formats and everything on the screen")
+assert _g["imagery"] is True and M["plain"]["imagery"] is False, "the satellite is the base where the node holds imagery, the streets elsewhere"
+_bs = re.findall(r'<button[^>]*aria-pressed="(true|false)"[^>]*>([a-z]+)<', _g["base"] or "")
+assert [b for _, b in _bs] == ["satellite", "streets", "drone"] and [p for p, _ in _bs] == ["true", "false", "false"], _bs
+print("  place: satellite on at load where the node holds it; the base switch reads satellite · streets · drone")
+assert len(_g["pins"] or []) == 2 and [round(v, 6) for v in _g["pins"][0]["q"]] == [115.16, -8.82], _g["pins"]
+assert [x["t"] for x in _g["pinText"]] == ["drone, 4 cm, Mar 2024", "drone, 3 cm, Nov 2025"], _g["pinText"]
+assert any(e.get("zoom") == 16 and [round(v, 6) for v in e.get("center")] == [115.16, -8.82] for e in _g["eased"]), ("a pin pressed flies to its flight at zoom 16", _g["eased"])
+print("  place: below zoom 13 each drone flight is a pin, named by its resolution and month; pressed, it flies there at 16")
+_pl = html[html.index('<section class="page view" data-view="place"'):html.index("<!-- DATA -->")]
+assert "altc" not in html and "mapalt" not in html, "the then-and-now pair is off the screen"
+assert _pl.index('class="plow"') < _pl.index('id="ptable"') < _pl.index('id="pchange"') < _pl.index('id="pfigures"'), "what changed sits in the lower band's right"
+_dr = (STATIC / "doors-load.js").read_text()
+assert "place_yearly: 'history?sensor_id=place-point&metric=sat_buildings_yearly'" in _dr, "the yearly count is the node's own series, GET /history"
+yprog = r"""
+const fs = require('fs'), vm = require('vm');
+const L = require('./app/static/doors-load.js');
+const core = fs.readFileSync('./app/static/doors-core.js', 'utf8'), pick = n => core.match(new RegExp('^const ' + n + ' = .*$', 'm'))[0];
+const place = fs.readFileSync('./app/static/doors-place.js', 'utf8'), fn = (s, n) => s.match(new RegExp('function ' + n + '\\(' + '[\\s\\S]*?\\n}\\n'))[0];
+const F = JSON.parse(fs.readFileSync('%s', 'utf8'));
+const Y = [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023].map((y, i) => ({ ts: `${y}-07-01T08:00:00+08:00`, value: 98.4 + i * 4.2 }));
+const D = L.buildD({ ...F, days: F.issues_days, place_yearly: Y }, 'en');
+const els = {}, c = { D, sign: () => '', $: q => (els[q] ||= { innerHTML: '' }), window: {} }; vm.createContext(c);
+vm.runInContext(['esc', 'num', 'PROV', 'prov', 'SAT'].map(pick).join('\n') + '\nlet YEAR = 2025, COMPARE = true, PAST = null;\n' + fn(place, 'layer') + 'layer()', c);
+const none = L.buildD({ ...F, days: F.issues_days }, 'en');
+console.log(JSON.stringify({ yearly: D.place_yearly, none: none.place_yearly, html: c.$('#pchange').innerHTML }));
+""" % replayed(FIX)
+_y = json.loads(subprocess.run(["node"], input=yprog, capture_output=True, text=True, check=True).stdout)
+assert _y["none"] == [] and [r["year"] for r in _y["yearly"]] == list(range(2016, 2024)), _y["yearly"]
+_ch = _y["html"]
+assert "what changed, year on year" in _ch and 'class="pair"' in _ch and "then · 2016" in _ch and "now · 2025" in _ch, _ch[:600]
+assert 'aria-label="Earlier"' in _ch and 'aria-label="Later"' in _ch, "the year arrows came along"
+assert re.search(r"ha changed.*model", _ch, re.S), "the AlphaEarth hectares, with their model word"
+_bars = _ch[_ch.index('class="years"'):]
+assert _bars.count("<i ") == 8 and "2016" in _bars and "2023" in _bars, _bars[:400]
+print("  place: what changed, year on year, under the map: the then-and-now pair, its arrows, the hectares (model) and a bar a year")
 
 print("all doors checks passed")

@@ -228,6 +228,8 @@ function groundRows() {
   const yrs = ((D.earth || {}).sentinel || []).length;
   set('imagery', G.imagery ? `Sentinel-2, ${im.passes} passes, ${(im.from || '').slice(0, 7)} to ${(im.to || '').slice(0, 7)} · ${mb(im.bytes)}`
     : yrs ? `${yrs} Sentinel-2 years, then and now · no map layer yet: planetai run earth-engine basemap` : null, !G.imagery && !yrs, 'planetai run earth-engine basemap');
+  /* the satellite is the base wherever the node holds it (SPEC_place_microgis §4, Defaults); elsewhere the streets */
+  if (G.imagery) PM.on.imagery = true;
   const dr = m.drone || {}, ms = dr.mosaics || [];
   const W = PM.wind;
   set('wind', W ? `Open-Meteo, ${W.n * W.n} points over ${W.km * 2} km, hourly · read ${hhmm(W.fetched)}` : null, !W,
@@ -327,6 +329,18 @@ function layers() {
   /* the node itself, always: a ring, not a dot, because /health publishes its cell's centre to strangers */
   out.push(new Dk.ScatterplotLayer({ id: 'node', data: [{ p: D.point }], getPosition: d => d.p, ...px, stroked: true, filled: false,
     getRadius: 9, getLineColor: A(p.cells, 1), getLineWidth: 2 }));
+  /* below the drone layer's zoom, each flight is a pin at its bbox's centre, named by its resolution and month; a press
+     flies there (press()). The pin is the screen's chip, light on dark, never a drawing colour. */
+  const fl = (((PM.meta || {}).layers || {}).drone || {}).mosaics || [];
+  if ((PM.ground || {}).drone && z < 13 && fl.length) {
+    const pins = fl.filter(x => x.bbox).map(x => ({ q: [(x.bbox[0] + x.bbox[2]) / 2, (x.bbox[1] + x.bbox[3]) / 2],
+      t: ['drone', x.gsd_m && `${Math.round(x.gsd_m * 100)} cm`, x.date && d3.utcFormat('%b %Y')(new Date(x.date))].filter(Boolean).join(', ') }));
+    out.push(new Dk.ScatterplotLayer({ id: 'drone-pins', data: pins, getPosition: d => d.q, ...px, pickable: true, stroked: true, filled: true,
+      getRadius: 10, getFillColor: [20, 20, 20, 235], getLineColor: A(p.ink, 1), getLineWidth: 1.2 }));
+    out.push(new Dk.TextLayer({ characterSet: 'auto', id: 'drone-pins-l', data: pins, getPosition: d => d.q, getText: d => d.t, pickable: true, getSize: 11,
+      fontFamily: 'Figtree, sans-serif', getColor: A(p.ink, 1), getTextAnchor: 'start', getPixelOffset: [15, 0], background: true,
+      getBackgroundColor: [20, 20, 20, 235], backgroundPadding: [4, 2] }));
+  }
   /* named in the list under the screen, "This house · 0 m": labels never sit on the house (Tomas, 15 Oct, option A) */
   if (PM.measure.length) {
     const path = PM.measure;
@@ -454,8 +468,8 @@ function panel() {
 /* one switch, from the cake or from a tool (doors-place.js): the map, the cake, the credits and the tools follow it */
 function setLayer(id, on) {
   const a = document.activeElement, inCake = !!(a && a.closest && a.closest('#cake'));
-  PM.on[id] = on; applyBase(); redraw(); panel(); credits(); windSync(); facts(); hourPill();
-  if (window.placeAlt) window.placeAlt(); if (window.placeTools) window.placeTools();
+  PM.on[id] = on; applyBase(); redraw(); panel(); credits(); windSync(); facts(); hourPill(); baseSwitch();
+  if (window.placeTools) window.placeTools();
   const b = inCake && document.querySelector(`#cake [data-l="${id}"] button`); if (b) b.focus();
 }
 
@@ -489,15 +503,23 @@ async function fly(r) {
   PM.map.easeTo({ center: [(bb[0] + bb[2]) / 2, (bb[1] + bb[3]) / 2], zoom: Math.log2(px * mPerPx(0) / EDGE(r)),
     duration: CLOCK.reduced() ? 0 : 700 });
 }
-/* The screen's right edge (Tomas, 15 Oct; SPEC_place_microgis §4): 44 px targets, back to the house and the PNG, zoom
-   apart at the bottom right. Measuring became the line key and Inspect became Select (the drawing keys, below); From the
-   house is a tool in the right column (doors-place.js), and ends on a second press or Esc. */
+/* The screen's right edge, top to bottom (SPEC_place_microgis §4): Map only and Full screen, back to this node's cell,
+   and Download, whose menu holds the image of the screen and the open map in three formats. Zoom sits apart at the bottom
+   right, with the base switch beside it. Measuring became the line key and Inspect became Select (the drawing keys,
+   below); From the house is a tool in the right column (doors-place.js), and ends on a second press or Esc. */
 const MEASURING = () => PM.tool === 'from';
+const COL = [['wide', 'Map only'], ['full', 'Full screen'], ['fit', 'Back to this node’s cell'], ['dl', 'Download']];
 function tools() {
-  const el = document.createElement('div'), zm = document.createElement('div'); el.className = 'tools'; zm.className = 'zoom';
-  const btn = ([k, g, t]) => `<button data-t="${k}" title="${t}" aria-label="${t}"><span class="g" aria-hidden="true">${g}</span></button>`;
-  el.innerHTML = [['fit', '⌖', 'Back to this node’s cell'], ['png', '⤓', 'Save this view as a PNG']].map(btn).join('');
-  zm.innerHTML = [['in', '+', 'Zoom in'], ['out', '−', 'Zoom out']].map(btn).join('');
+  const el = document.createElement('div'), zm = document.createElement('div'), menu = PM.dlm = document.createElement('div'), base = PM.basesw = document.createElement('div');
+  el.className = 'tools'; zm.className = 'zoom'; menu.className = 'dlmenu'; menu.id = 'dlmenu'; menu.hidden = true; base.className = 'pbase';
+  menu.setAttribute('role', 'group'); menu.setAttribute('aria-label', 'Download'); base.setAttribute('role', 'group'); base.setAttribute('aria-label', 'Base map');
+  /* Map only and Full screen fold the sides and fill the window: drawn here, wired with the folding (not yet) */
+  el.innerHTML = COL.map(([k, t]) => `<button type="button" data-t="${k}" class="${k === 'fit' || k === 'dl' ? 'gap' : ''}" aria-label="${t}"`
+    + (k === 'wide' || k === 'full' ? ` aria-disabled="true" title="${t} · not yet"` : ` title="${t}"`)
+    + (k === 'dl' ? ' aria-expanded="false" aria-controls="dlmenu"' : '')
+    + `><svg viewBox="0 0 20 20" aria-hidden="true">${KEYICON[k]}</svg></button>`).join('');
+  zm.innerHTML = [['in', '+', 'Zoom in'], ['out', '−', 'Zoom out']].map(([k, g, t]) => `<button data-t="${k}" title="${t}" aria-label="${t}"><span class="g" aria-hidden="true">${g}</span></button>`).join('');
+  PM.dlb = el.querySelector('[data-t="dl"]');
   PM.setTool = k => {
     const d = PM.draw;
     PM.tool = k; PM.hover = null; d.state = null; d.hover = null; d.corner = null; d.err = '';
@@ -510,11 +532,13 @@ function tools() {
   };
   el.onclick = e => {
     const k = e.target.closest('button')?.dataset.t; if (!k) return;
-    if (k === 'in') PM.map.zoomIn(); else if (k === 'out') PM.map.zoomOut(); else if (k === 'fit') fly(8);
-    else if (k === 'png') { const a = document.createElement('a'); a.download = `place-res${PM.res}.png`; PM.map.triggerRepaint(); PM.map.once('render', () => { a.href = PM.map.getCanvas().toDataURL('image/png'); a.click(); }); }
+    if (k === 'in') PM.map.zoomIn(); else if (k === 'out') PM.map.zoomOut(); else if (k === 'fit') fly(8); else if (k === 'dl') dlMenu(menu.hidden);
   };
   zm.onclick = el.onclick;
-  const box = PM.map.getContainer(); box.append(el, zm);
+  menu.onclick = e => { const k = e.target.closest('button')?.dataset.dl; if (k) download(k); };
+  menu.onkeydown = e => { if (e.key === 'Escape') { dlMenu(false); if (PM.dlb) PM.dlb.focus(); } };
+  base.onclick = e => { const b = e.target.closest('button')?.dataset.b; if (!b) return; PM.on.drone = b === 'drone'; setLayer('imagery', b === 'satellite'); };
+  const box = PM.map.getContainer(); box.append(el, zm, menu, base); baseSwitch();
   /* the keys and the readout: only for a screen holding the token, since every drawing is the household's */
   if (!DOORS_TOKEN()) return;
   const keys = PM.keys = document.createElement('div'), pan = document.createElement('div');
@@ -523,6 +547,54 @@ function tools() {
   keys.onclick = e => { const b = e.target.closest('button[data-k]'); if (!b) return; if (b.dataset.k === 'undo') undo(); else PM.setTool(b.dataset.k); };
   box.append(keys, pan);
   readout();
+}
+
+/* The base: satellite · streets · drone, each only where the node holds it. The rasters sit over the street map and
+   under its names, so streets is both rasters off. */
+function baseSwitch() {
+  const el = PM.basesw, G = PM.ground || {}; if (!el) return;
+  const now = PM.on.drone && G.drone ? 'drone' : PM.on.imagery && G.imagery ? 'satellite' : 'streets';
+  const B = [G.imagery && 'satellite', 'streets', G.drone && 'drone'].filter(Boolean);
+  el.hidden = B.length < 2;
+  el.innerHTML = B.map(b => `<button type="button" data-b="${b}" aria-pressed="${b === now}">${b}</button>`).join('');
+}
+/* DOWNLOAD (§4, §11): the image of the screen is the canvas, drawings and all; the open map's GeoJSON, KML and DXF are
+   the node's own files (GET /place/maps/{id}.ext, token-only, each one a ledger row), fetched with the token and handed
+   to the browser under the node's name for them. Everything on the screen is the image and each map on the screen in
+   its three formats, one download each: no zip. */
+const slug = t => String(t || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+const onScreen = () => (PM.maps || []).filter(m => !PM.mapOff.has(m.id));
+function dlMenu(open) {
+  const menu = PM.dlm; if (!menu) return;
+  menu.hidden = !open; if (PM.dlb) PM.dlb.setAttribute('aria-expanded', String(open));
+  if (!open) return;
+  const m = openMap(), no = m ? '' : ' disabled', n = 1 + 3 * onScreen().length;
+  const it = (k, t, f, x = '') => `<button type="button" data-dl="${k}" aria-label="${t} · ${f}"${x}><span>${t}</span><code>${f}</code></button>`;
+  menu.innerHTML = `<p class="dlh">download ${m ? esc(m.name) : 'this screen'}</p>`
+    + it('png', 'Image of the screen', 'PNG') + it('geojson', 'For upstream and QGIS', 'GeoJSON', no) + it('kml', 'For Google Earth, phones', 'KML', no) + it('dxf', 'For CAD, in metres', 'DXF', no)
+    + `<hr><button type="button" data-dl="all" aria-label="Everything on the screen"><span>Everything on the screen</span><code>${n} file${n === 1 ? '' : 's'}</code></button>`
+    + (PM.dlErr ? `<p class="err" role="status">${esc(PM.dlErr)}</p>` : '');
+  const f = menu.querySelector('button'); if (f) f.focus();
+}
+const save = (href, name) => { const a = document.createElement('a'); a.href = href; a.download = name; a.click(); };
+function png(m) {
+  const name = `${slug(D.node.name) || 'node'}-${slug(m ? m.name : 'place') || 'map'}-${doorsLocal(new Date().toISOString(), D.tz).slice(0, 10)}.png`;
+  PM.map.triggerRepaint(); PM.map.once('render', () => save(PM.map.getCanvas().toDataURL('image/png'), name));
+}
+async function mapFile(m, ext) {
+  try {
+    const r = await doorsFetch(`${API}place/maps/${m.id}.${ext}?actor=${encodeURIComponent(actor())}`);
+    if (!r.ok) { PM.dlErr = `${m.name}, ${ext}: ${refused({ ...(await r.json().catch(() => ({}))), status: r.status })}`; return; }
+    const name = ((r.headers.get('content-disposition') || '').match(/filename="([^"]+)"/) || [])[1] || `${slug(m.name)}.${ext}`;
+    const u = URL.createObjectURL(await r.blob()); save(u, name); setTimeout(() => URL.revokeObjectURL(u), 1000);
+  } catch (e) { PM.dlErr = `The node did not answer: ${e.message}`; }
+}
+async function download(k) {
+  const m = openMap(), all = k === 'all'; PM.dlErr = '';
+  dlMenu(false); if (PM.dlb) PM.dlb.focus();
+  if (k === 'png' || all) png(m);
+  for (const x of all ? onScreen() : k !== 'png' && m ? [m] : []) for (const ext of all ? ['geojson', 'kml', 'dxf'] : [k]) await mapFile(x, ext);
+  if (PM.dlErr) dlMenu(true);   // a file the node refused says why, in the menu
 }
 
 /* ---------------------------------------------------------------- drawing, and your maps (SPEC_place_microgis §4, §8, §10)
@@ -545,7 +617,10 @@ const KEYICON = { select: '<path d="M5 3l12 6-5 2-2 5z"/>', marker: '<path d="M1
   line: '<circle cx="4" cy="15" r="1.6"/><circle cx="16" cy="5" r="1.6"/><path d="M5.3 13.8L14.7 6.2" stroke-dasharray="2 2"/>',
   area: '<path d="M4 6l7-3 5 5-3 8-9-2z"/>', note: '<path d="M4 4h12v9l-3 3H4z"/><path d="M13 16v-3h3"/>',
   image: '<rect x="3" y="5" width="14" height="10" rx="1"/><circle cx="8" cy="9" r="1.5"/><path d="M3 14l4-3 3 2 3-3 4 4"/>',
-  undo: '<path d="M7 5L3 9l4 4"/><path d="M3 9h9a5 5 0 010 10h-2"/>' };
+  undo: '<path d="M7 5L3 9l4 4"/><path d="M3 9h9a5 5 0 010 10h-2"/>',
+  /* the right column's, from the mockup */
+  wide: '<path d="M3 10h14M6 7l-3 3 3 3M14 7l3 3-3 3"/>', full: '<path d="M3 7V3h4M13 3h4v4M17 13v4h-4M7 17H3v-4"/>',
+  fit: '<path d="M3 9l7-6 7 6v8H3z"/>', dl: '<path d="M10 3v10M6 9l4 4 4-4M4 17h12"/>' };
 /* the mockup's READ words for the two keys doors-draw.js's figure() has no hint for */
 const HINT_SEL = 'Press a drawing to change its colour, note or image.';
 /* not the mockup's "its location is the drawing's": a photo's own GPS still wins on the node (packs/eyes) */
@@ -727,6 +802,10 @@ function press(e) {
   const hit = PM.overlay.pickObject({ x: e.point.x, y: e.point.y, radius: 8 }), id = (hit && hit.layer && hit.layer.id) || '';
   const k = id.startsWith('draw-') && hit.object && hit.object.geometry ? hit.object : null;
   if (DRAWING()) { pressDraw(q, e.point); return; }
+  if (id.startsWith('drone-pins') && hit.object) {
+    if (!PM.on.drone) setLayer('drone', true);
+    PM.map.easeTo({ center: hit.object.q, zoom: 16, duration: CLOCK.reduced() ? 0 : 900 }); return;
+  }
   if (PM.tool === 'image') {
     /* a drawing takes the image; an empty place gets a marker to carry it */
     if (k) { select(k.id); picker(k.id); return; }
@@ -1216,6 +1295,7 @@ async function placeMap() {
   map.on('moveend', () => { const r = resFor(map.getZoom()); if (r !== PM.res) { PM.res = r; chrome(); } redraw(); panel(); loadGrid(); });
   map.on('mousemove', e => { const d = PM.draw; if (DRAWING() && d.state && d.state.pts.length) { d.hover = [e.lngLat.lng, e.lngLat.lat]; figureOnly(); redraw(); } });
   map.on('click', e => {
+    if (PM.dlm && !PM.dlm.hidden) dlMenu(false);
     if (PM.tool === 'from') {
       const q = [e.lngLat.lng, e.lngLat.lat]; PM.measure = [D.point, q]; PM.measured = null; redraw(); facts();
       fromNode(q[0], q[1]).then(d => { if (PM.measure[1] === q) { PM.measured = { points: 2, legs_m: [d], total_m: d }; redraw(); facts(); figureOnly(); } }).catch(x => offline(x.message));
