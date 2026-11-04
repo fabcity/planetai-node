@@ -242,15 +242,17 @@ function packRows() {
   const ea = LAYERS.find(l => l.id === 'earth'), nE = ((D.earth || {}).changes || []).length;
   ea.none = nE ? `${nE} comparison${nE === 1 ? '' : 's'} · a count, not a shape: Land, in the figures below` : null;
 }
-function credits() {
+/* the credits each layer on the screen owes, the same words on the screen and burned into the PNG */
+function creditList() {
   const m = (PM.meta && PM.meta.layers) || {}, c = [];
   if (PM.on.street && PM.ground && PM.ground.vector) c.push('© OpenStreetMap contributors · Protomaps');
   if (PM.on.imagery && m.imagery) c.push(m.imagery.attribution);
   if (PM.on.drone && m.drone) c.push((m.drone.mosaics || []).map(x => `${x.provider} via OpenAerialMap, CC BY 4.0`).join(' · '));
   if (PM.on.wind && PM.wind) c.push('wind: Open-Meteo, CC BY 4.0');
   c.push('Natural Earth');
-  const el = $('#mapcredit'); if (el) el.textContent = c.join(' · ');
+  return c.filter(Boolean);
 }
+function credits() { const el = $('#mapcredit'); if (el) el.textContent = creditList().join(' · '); }
 
 /* ---------------------------------------------------------------- the data, drawn by deck.gl */
 function layers() {
@@ -536,7 +538,7 @@ function tools() {
   };
   zm.onclick = el.onclick;
   menu.onclick = e => { const k = e.target.closest('button')?.dataset.dl; if (k) download(k); };
-  menu.onkeydown = e => { if (e.key === 'Escape') { dlMenu(false); if (PM.dlb) PM.dlb.focus(); } };
+  menu.onkeydown = e => { if (e.key === 'Escape') { e.stopPropagation(); dlMenu(false); if (PM.dlb) PM.dlb.focus(); } };
   base.onclick = e => { const b = e.target.closest('button')?.dataset.b; if (!b) return; PM.on.drone = b === 'drone'; setLayer('imagery', b === 'satellite'); };
   const box = PM.map.getContainer(); box.append(el, zm, menu, base); baseSwitch();
   /* the keys and the readout: only for a screen holding the token, since every drawing is the household's */
@@ -579,7 +581,33 @@ function dlMenu(open) {
 const save = (href, name) => { const a = document.createElement('a'); a.href = href; a.download = name; a.click(); };
 function png(m) {
   const name = `${slug(D.node.name) || 'node'}-${slug(m ? m.name : 'place') || 'map'}-${doorsLocal(new Date().toISOString(), D.tz).slice(0, 10)}.png`;
-  PM.map.triggerRepaint(); PM.map.once('render', () => save(PM.map.getCanvas().toDataURL('image/png'), name));
+  PM.map.triggerRepaint(); PM.map.once('render', () => save(screenImage().toDataURL('image/png'), name));
+}
+/* The map's canvas holds the base and the drawings; the scale bar and the credit are page elements, so the image would
+   leave without its attribution (ODbL, CC BY, Copernicus: §4 puts both in the PNG). They are drawn onto a copy here,
+   in a dark strip along the foot that reads on the satellite and on the black street map. */
+function screenImage() {
+  const src = PM.map.getCanvas(), k = src.width / (src.clientWidth || src.width) || 1, W = src.width / k;
+  const cv = document.createElement('canvas'); cv.width = src.width; cv.height = src.height;
+  const x = cv.getContext('2d'); x.drawImage(src, 0, 0); x.scale(k, k);
+  /* the scale: the longest round length under 120 px, at the map's centre */
+  const c = PM.map.getCenter(), mpp = 40075016.686 * Math.cos(c.lat * Math.PI / 180) / (512 * 2 ** PM.map.getZoom());
+  const len = [1, 2, 5].flatMap(a => [1, 10, 100, 1e3, 1e4, 1e5].map(b => a * b)).sort((a, b) => a - b).filter(v => v / mpp <= 120).pop() || 1;
+  const bar = len / mpp, label = len >= 1000 ? `${len / 1000} km` : `${len} m`;
+  /* the credit, wrapped at its own dots to fit beside the scale */
+  x.font = '400 10px Figtree, sans-serif';
+  const room = W - bar - 90, lines = [];
+  for (const piece of creditList().join(' · ').split(' · ')) {
+    const last = lines[lines.length - 1], next = last ? `${last} · ${piece}` : piece;
+    if (last && x.measureText(next).width > room) lines.push(piece); else lines[lines.length ? lines.length - 1 : 0] = next;
+  }
+  const H = src.height / k, strip = 10 + 13 * Math.max(1, lines.length);
+  x.fillStyle = 'rgba(20,20,20,.85)'; x.fillRect(0, H - strip, W, strip);
+  x.fillStyle = '#F9F5F2'; x.strokeStyle = '#F9F5F2'; x.lineWidth = 1.5; x.textBaseline = 'middle';
+  x.beginPath(); x.moveTo(10, H - strip / 2 - 3); x.lineTo(10, H - strip / 2 + 3); x.lineTo(10 + bar, H - strip / 2 + 3); x.lineTo(10 + bar, H - strip / 2 - 3); x.stroke();
+  x.textAlign = 'left'; x.fillText(label, 16 + bar, H - strip / 2);
+  x.textAlign = 'right'; lines.forEach((t, i) => x.fillText(t, W - 10, H - strip + 11.5 + 13 * i));
+  return cv;
 }
 async function mapFile(m, ext) {
   try {
@@ -859,7 +887,8 @@ function nudge(i, dx, dy) {
 function onKey(e) {
   if (view() !== 'place' || !PM.map || !DOORS_TOKEN()) return;
   const t = e.target, d = PM.draw, k = e.key, within = sel => !!(t && t.closest && t.closest(sel));
-  if (within('input, textarea, select, [contenteditable], dialog')) return;
+  /* the download menu keeps its keys: onKey listens in the capture phase, so the menu's own Esc cannot stop it */
+  if (within('input, textarea, select, [contenteditable], dialog, .dlmenu')) return;
   if ((e.metaKey || e.ctrlKey) && !e.shiftKey && (k === 'z' || k === 'Z')) { e.preventDefault(); undo(); return; }
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const key = (KEYS.find(([, l]) => l === k.toUpperCase()) || [])[0];
@@ -1295,7 +1324,7 @@ async function placeMap() {
   map.on('moveend', () => { const r = resFor(map.getZoom()); if (r !== PM.res) { PM.res = r; chrome(); } redraw(); panel(); loadGrid(); });
   map.on('mousemove', e => { const d = PM.draw; if (DRAWING() && d.state && d.state.pts.length) { d.hover = [e.lngLat.lng, e.lngLat.lat]; figureOnly(); redraw(); } });
   map.on('click', e => {
-    if (PM.dlm && !PM.dlm.hidden) dlMenu(false);
+    if (PM.dlm && !PM.dlm.hidden) { dlMenu(false); return; }   // a press that closes the menu does nothing else
     if (PM.tool === 'from') {
       const q = [e.lngLat.lng, e.lngLat.lat]; PM.measure = [D.point, q]; PM.measured = null; redraw(); facts();
       fromNode(q[0], q[1]).then(d => { if (PM.measure[1] === q) { PM.measured = { points: 2, legs_m: [d], total_m: d }; redraw(); facts(); figureOnly(); } }).catch(x => offline(x.message));

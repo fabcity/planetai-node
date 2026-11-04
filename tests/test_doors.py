@@ -930,7 +930,7 @@ const el = () => ({ innerHTML: '', textContent: '', hidden: false, style: {}, da
   click() { if (this.download) SAVED.push(this.download); },
   getContext: () => ({ setTransform: noop, clearRect: noop }), clientWidth: 900, clientHeight: 560 });
 async function boot(tok, o = {}) {
-  const els = {}, map = el(), asked = [], drawn = {}, patched = [], keys = [], ons = {}, onced = [], eased = [];
+  const els = {}, map = el(), asked = [], drawn = {}, patched = [], keys = [], ons = {}, onced = [], eased = [], renders = [];
   /* the lower band's row buttons, as mapTable() wires them */
   const rows = [{ dataset: { k: '11' } }, { dataset: { k: '12' } }];
   els['#ptable'] = Object.assign(el(), { querySelectorAll: q => (q === '.mrow' ? rows : []) });
@@ -949,9 +949,9 @@ async function boot(tok, o = {}) {
     devicePixelRatio: 1, localStorage: { getItem: () => null, setItem: noop },
     document: { documentElement: { dataset: {} }, querySelector: () => null, querySelectorAll: () => [], createElement: () => el(), getElementById: () => null, activeElement: null,
       addEventListener: (t, f) => { if (t === 'keydown') keys.push(f); } },
-    maplibregl: { ScaleControl: function () {}, Map: function () { return Object.assign(map, { on: (t, f) => (ons[t] ||= []).push(f), once: t => onced.push(t), addControl: noop,
+    maplibregl: { ScaleControl: function () {}, Map: function () { return Object.assign(map, { on: (t, f) => (ons[t] ||= []).push(f), once: (t, f) => { onced.push(t); renders.push(f); }, addControl: noop,
       getContainer: () => map, triggerRepaint: noop, getLayer: () => null,
-      getCanvas: () => ({ style: {} }), touchZoomRotate: { disableRotation: noop }, doubleClickZoom: { enable: noop, disable: noop }, getZoom: () => o.zoom || 13.6, resize: noop,
+      getCanvas: () => ({ style: {}, width: 1800, height: 1120, clientWidth: 900 }), touchZoomRotate: { disableRotation: noop }, doubleClickZoom: { enable: noop, disable: noop }, getZoom: () => o.zoom || 13.6, resize: noop,
       project: ([x, y]) => ({ x: x * 1e4, y: -y * 1e4 }), unproject: ([x, y]) => ({ lng: x / 1e4, lat: -y / 1e4 }), easeTo: a => eased.push(a),
       getCenter: () => ({ lng: 115.167, lat: -8.819 }) }); } },
     deck: new Proxy({}, { get: (t, k) => k === 'MapboxOverlay' ? function () { return { setProps: x => { (x.layers || []).forEach(l => { drawn[l.id] = l.props; }); },
@@ -971,7 +971,7 @@ async function boot(tok, o = {}) {
     key('ArrowUp'); await new Promise(r => setTimeout(r, 650));
     out.patched = patched;
   }
-  if (o.then) Object.assign(out, await o.then({ c, map, ons, drawn, asked, onced, eased }));
+  if (o.then) Object.assign(out, await o.then({ c, map, ons, drawn, asked, onced, eased, renders, keys }));
   return { ...out, drawn: Object.fromEntries(Object.entries(drawn).filter(([k]) => k.startsWith('draw-')).map(([k, v]) => [k, (v.data || []).length])) };
 }
 (async () => {
@@ -980,10 +980,10 @@ async function boot(tok, o = {}) {
      flights, seen from zoom 12, below the drone layer's 13 */
   const fl = [{ provider: 'Bayu', title: 'a', gsd_m: 0.04, date: '2024-03-15', bbox: [115.15, -8.83, 115.17, -8.81] },
     { provider: 'Made', title: 'b', gsd_m: 0.031, date: '2025-11-02', bbox: [115.10, -8.80, 115.12, -8.78] }];
-  const META = { on_disk: { imagery: true, drone: true }, layers: { imagery: { passes: 3, from: '2025-01', to: '2025-12', bytes: 1 }, drone: { bytes: 1, mosaics: fl } } };
+  const META = { on_disk: { imagery: true, drone: true }, layers: { imagery: { passes: 3, from: '2025-01', to: '2025-12', bytes: 1, attribution: 'Contains modified Copernicus Sentinel data' }, drone: { bytes: 1, mosaics: fl } } };
   const btn = d => ({ closest: () => ({ dataset: d }) });
   out.gis = await boot(true, { zoom: 12, meta: META, hit: dr => (dr['drone-pins'] ? { layer: { id: 'drone-pins' }, object: dr['drone-pins'].data[0] } : null),
-    then: async ({ c, map, ons, drawn, asked, onced, eased }) => {
+    then: async ({ c, map, ons, drawn, asked, onced, eased, renders, keys }) => {
       const col = map.kids.find(x => x.className === 'tools'), menu = map.kids.find(x => x.className === 'dlmenu'), base = map.kids.find(x => x.className === 'pbase');
       const r = { col: col && col.innerHTML, imagery: c.__PM.on.imagery, base: base && base.innerHTML,
         pins: (drawn['drone-pins'] || {}).data, pinText: (drawn['drone-pins-l'] || {}).data };
@@ -992,6 +992,22 @@ async function boot(tok, o = {}) {
       c.__PM.mapOff.add(4); SAVED.length = 0;
       menu.onclick({ target: btn({ dl: 'all' }) }); await new Promise(x => setTimeout(x, 60));
       r.files = asked.filter(p => /^\/place\/maps\/\d+\.[a-z]+\?/.test(p)); r.saved = [...SAVED]; r.png = onced.includes('render');
+      /* the PNG is composed: the map's canvas, then the scale and the credit drawn on a copy, which is what is saved */
+      const calls = [], cv = { width: 0, height: 0, toDataURL: () => 'data:composed', getContext: () => new Proxy({}, {
+        get: (t, k) => k === 'measureText' ? s => ({ width: String(s).length * 5 }) : k in t ? t[k] : (...a) => calls.push([k, ...a]), set: (t, k, v) => { t[k] = v; return true; } }) };
+      const mk = c.document.createElement; c.document.createElement = t => (t === 'canvas' ? cv : mk(t));
+      renders.forEach(f => f()); c.document.createElement = mk;
+      r.ops = calls.map(x => x[0]); r.texts = calls.filter(x => x[0] === 'fillText').map(x => x[1]); r.pngSaved = SAVED.filter(n => n.endsWith('.png'));
+      r.credit = c.$('#mapcredit').textContent;
+      /* a press that closes the menu does nothing else, even with the marker key pressed */
+      c.__PM.setTool('marker'); col.onclick({ target: btn({ t: 'dl' }) }); const before = asked.length;
+      (ons.click || []).forEach(f => f({ lngLat: { lng: 115.16, lat: -8.82 }, point: { x: 1, y: 1 } })); await new Promise(x => setTimeout(x, 30));
+      r.closeOnly = { hidden: menu.hidden, asked: asked.slice(before), state: c.__PM.draw.state };
+      c.__PM.setTool('select');
+      /* Esc in the menu closes it and leaves the drawing in hand */
+      c.__PM.draw.sel = 11; col.onclick({ target: btn({ t: 'dl' }) });
+      const esc = { key: 'Escape', target: { closest: q => (q.includes('.dlmenu') ? {} : null) }, preventDefault: noop, stopPropagation: noop, shiftKey: false, metaKey: false, ctrlKey: false, altKey: false };
+      keys.forEach(f => f(esc)); menu.onkeydown(esc); r.escKept = c.__PM.draw.sel; r.escClosed = menu.hidden;
       /* a pin pressed flies to its flight */
       (ons.click || []).forEach(f => f({ lngLat: { lng: 115.16, lat: -8.82 }, point: { x: 1, y: 1 } })); r.eased = eased;
       return r; } });
@@ -1058,9 +1074,19 @@ _dl = re.findall(r'<button[^>]*aria-label="([^"]+)"', _g["menu"] or "")
 assert _dl == ["Image of the screen · PNG", "For upstream and QGIS · GeoJSON", "For Google Earth, phones · KML", "For CAD, in metres · DXF",
                "Everything on the screen"], _dl
 assert _g["menuShown"], "Download opens its menu"
-assert "getCanvas().toDataURL('image/png')" in pm, "the PNG is the canvas, drawings and all"
+assert "save(screenImage().toDataURL('image/png'), name)" in pm and "x.drawImage(src, 0, 0)" in pm, "the PNG is the canvas, drawings and all, composed"
 assert _g["png"] and sorted(_g["saved"]) == ["n-3.dxf", "n-3.geojson", "n-3.kml"] and len(_g["files"]) == 3, \
     ("everything on the screen: the PNG, then each visible map's three files, one download each", _g["files"], _g["saved"])
+assert _g["ops"][:2] == ["drawImage", "scale"], ("the map canvas first, then the page pixels", _g["ops"][:4])
+_tx = " · ".join(_g["texts"])
+assert all(x in _tx for x in _g["credit"].split(" · ")) and "Copernicus" in _tx and "Natural Earth" in _tx, ("the PNG carries the credit #mapcredit shows", _g["texts"], _g["credit"])
+assert any(re.fullmatch(r"\d+ (m|km)", t) for t in _g["texts"]), ("the PNG carries a scale in metres", _g["texts"])
+assert "stroke" in _g["ops"] and _g["pngSaved"], "a scale bar is drawn, and the composed image is what is saved"
+print("  place: the PNG carries the credit line and a scale bar, drawn on a copy of the map's canvas")
+assert _g["closeOnly"]["hidden"] and not [p for p in _g["closeOnly"]["asked"] if "/marks" in p] and not _g["closeOnly"]["state"], \
+    ("a press that closes the menu drops no marker", _g["closeOnly"])
+assert _g["escClosed"] and _g["escKept"] == 11, "Esc in the menu closes it and keeps the drawing in hand"
+print("  place: closing the menu, by a press or Esc, does nothing else on the screen")
 print("  place: the right column reads Map only, Full screen, Back to this node’s cell, Download; the menu offers four formats and everything on the screen")
 assert _g["imagery"] is True and M["plain"]["imagery"] is False, "the satellite is the base where the node holds imagery, the streets elsewhere"
 _bs = re.findall(r'<button[^>]*aria-pressed="(true|false)"[^>]*>([a-z]+)<', _g["base"] or "")
