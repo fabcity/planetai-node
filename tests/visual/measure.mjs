@@ -3454,28 +3454,34 @@ async function doors() {
       if (shots && (s === '#setup/basics' || s === '#setup/sharing' || s === '#setup/screen'))
         await r.page.screenshot({ path: path.join(OUT, `doors_${s.slice(1).replace('/', '-')}_${tag}.jpg`), fullPage: true, type: 'jpeg', quality: 78 });
     }
-    /* Place, option A (Tomas, 15 Oct): the layers a strip of five groups that scrolls inside itself, a press opens one
-       group's rows; the map at the content's width; the house named in the margin, its own rows withheld without the
-       token; 44 px targets on a phone; nothing scrolls sideways */
-    await go(r.page, '#place'); await wait(r.page, '#layers .lystrip'); await r.page.waitForTimeout(600);
+    /* Place (SPEC_place_microgis §4, 4 Nov 2026): the cake on the left in its ten sections, the black screen, the tools on
+       the right; on a phone the screen first and the cake and the tools as two disclosures. The house named in the list
+       under the screen, its own rows withheld without the token; 44 px targets on a phone; nothing scrolls sideways;
+       a cake row pressed switches its layer and says so */
+    await go(r.page, '#place'); await r.page.waitForSelector('#cake .ck', { state: 'attached', timeout: 20000 }); await r.page.waitForTimeout(600);
+    if (w < 768) { await r.page.click('.psbar button[data-s="cake"]'); await r.page.waitForTimeout(150); }
     const pl = await r.page.evaluate(() => {
-      const vis = x => x.getClientRects().length, sel = '#layers .lystrip button, .tools button, #pmargin button.mr, .pviews button, .scales button';
-      return { groups: document.querySelectorAll('#layers .lystrip button[data-g]').length, map: Math.round(document.getElementById('map').getBoundingClientRect().width),
+      const vis = x => x.getClientRects().length, sel = '#cake .ly, #ptools .tl, .tools button, .zoom button, #pmargin button.mr, .scales button, .psbar button';
+      const scr = document.querySelector('.mapc');
+      return { secs: document.querySelectorAll('#cake .ck').length, map: Math.round(document.getElementById('map').getBoundingClientRect().width),
+        bg: getComputedStyle(scr).backgroundColor, cake: vis(document.getElementById('cake')), tools: document.querySelectorAll('#ptools .tl').length,
         small: [...document.querySelectorAll(sel)].filter(vis).map(x => x.getBoundingClientRect()).filter(b => b.height < 44 || b.width < 44).length,
         margin: document.getElementById('pmargin').innerText, facts: document.getElementById('facts').innerText };
     });
-    ok(pl.groups === 5, `${tag} #place: the strip has ${pl.groups} groups, not 5`);
-    ok(w < 768 || pl.map >= 1000, `${tag} #place: the map is ${pl.map}px wide, not the content's width`);
+    ok(pl.secs === 10, `${tag} #place: the cake has ${pl.secs} sections, not 10`);
+    ok(pl.bg === 'rgb(0, 0, 0)', `${tag} #place: the screen is ${pl.bg}, not black`);
+    ok(pl.cake && pl.tools >= 10, `${tag} #place: the cake is ${pl.cake ? 'drawn' : 'not drawn'}, ${pl.tools} tools listed`);
+    ok(w < 768 || pl.map >= 700, `${tag} #place: the screen is ${pl.map}px wide`);
     ok(w >= 768 || !pl.small, `${tag} #place: ${pl.small} target(s) under 44 × 44 px`);
-    ok(/This house/.test(pl.margin) && (tok || /withheld/.test(pl.margin)), `${tag} #place: the margin reads ${pl.margin.slice(0, 120)}`);
-    ok(/In view/i.test(pl.facts), `${tag} #place: the inspector line reads ${pl.facts.slice(0, 80)}`);
-    await r.page.click('#layers button[data-g="Readings"]'); await r.page.waitForTimeout(200);
-    const dd = await r.page.evaluate(() => { const d = document.getElementById('lydrop'); return { open: !d.hidden, rows: d.querySelectorAll('.ly').length }; });
-    ok(dd.open && dd.rows === 4, `${tag} #place: Readings opened ${dd.rows} rows (${dd.open ? 'open' : 'closed'})`);
-    { const o = await overflowAt(r.page); ok(o <= 1, `${tag} #place: the page scrolls ${o}px sideways with a drop-down open`); }
+    ok(/This house/.test(pl.margin) && (tok || /withheld/.test(pl.margin)), `${tag} #place: the list under the screen reads ${pl.margin.slice(0, 120)}`);
+    ok(/In view/i.test(pl.facts), `${tag} #place: the status line reads ${pl.facts.slice(0, 80)}`);
+    const pressed = () => r.page.evaluate(() => document.querySelector('#cake [data-l="rings"] button').getAttribute('aria-pressed'));
+    await r.page.click('#cake [data-l="rings"] button'); await r.page.waitForTimeout(200);
+    ok(await pressed() === 'true', `${tag} #place: pressing Distance rings did not switch it on`);
+    { const o = await overflowAt(r.page); ok(o <= 1, `${tag} #place: the page scrolls ${o}px sideways with the cake open`); }
     if (shots) await r.page.screenshot({ path: path.join(OUT, `doors_place_${tag}.jpg`), fullPage: true, type: 'jpeg', quality: 78 });
-    await r.page.click('#layers button[data-g="Readings"]'); await r.page.waitForTimeout(200);
-    ok(await r.page.evaluate(() => document.getElementById('lydrop').hidden), `${tag} #place: a second press did not close the drop-down`);
+    await r.page.click('#cake [data-l="rings"] button'); await r.page.waitForTimeout(200);
+    ok(await pressed() === 'false', `${tag} #place: a second press did not switch Distance rings off`);
     panes += 1;
     /* the consequences step, unlocked only: open sharing asks first; a plain setting saves at once */
     if (tok && w === 1440 && !dark) {
@@ -3502,7 +3508,7 @@ async function doors() {
        docs say about it (the quote), and a link to the section; a part on a hidden tab or view is not listed */
     if (!dark) {
       await go(r.page, '#now'); await r.page.click('#askbtn'); await r.page.check('#learn');
-      const WANT = { '#now': ['now-sentence', 'now-todo', 'now-rows'], '#place': ['place-head', 'place-layers', 'place-map', 'place-tools'],
+      const WANT = { '#now': ['now-sentence', 'now-todo', 'now-rows'], '#place': ['place-head', 'place-map'].concat(w < 768 ? [] : ['place-layers', 'place-tools']),   /* a phone keeps the cake and the tools in closed sheets */
         '#node': ['node-verdict', 'node-flow', 'node-refusals'], '#data/readings': ['data-head', 'data-readings', 'data-week'],
         '#data/home': ['data-images', 'data-things'], '#setup': ['settings', 'setup-sections', 'setup-save'], '#wall': ['wall-never', 'wall-sentence', 'wall-map'] };
       const NOT = { '#place': ['place-orbit', 'place-changed', 'earth'], '#data/home': ['data-ledger', 'data-readings'], '#wall': ['bar', 'foot'] };

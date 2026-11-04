@@ -1320,30 +1320,6 @@
    "title": "One cell in a district's picture",
    "url": "https://planetai.fab.city/docs/federation/"
   },
-  "place-changed": {
-   "anchor": "place",
-   "more": "Each square is ten hectares the node's AlphaEarth record marks as changed between two years, and the share of built ground, trees, crops and water within 1 km sits beside them.",
-   "page": "dashboard.md",
-   "page_title": "The dashboard",
-   "questions": {
-    "en": [
-     "How much land around us changed this year?",
-     "Are we losing trees around here?"
-    ],
-    "es": [
-     "¿Cuánto terreno cambió a nuestro alrededor este año?",
-     "¿Se están perdiendo árboles por aquí?"
-    ],
-    "id": [
-     "Seberapa banyak lahan di sekitar kami yang berubah tahun ini?",
-     "Apakah pepohonan di sekitar sini berkurang?"
-    ]
-   },
-   "quote": "the hectares that changed year on year (one square per 10 ha), and what the ground within 1 km is made of: built, trees, crops, water, by satellite",
-   "section": "Place",
-   "title": "What changed",
-   "url": "https://planetai.fab.city/docs/dashboard/#place"
-  },
   "place-changing": {
    "anchor": "place",
    "more": "Land and coast change yearly, so they are here and not on Now. What the node cannot read yet is named here as missing.",
@@ -1370,7 +1346,7 @@
   },
   "place-head": {
    "anchor": "place",
-   "more": "The cell id is printed whole. The three buttons switch between the map, the satellite then and now, and what changed year on year.",
+   "more": "The cell id is printed whole. Type a question in the line on the right and the Ask pane opens with it; press / to get there from anywhere on this door.",
    "page": "dashboard.md",
    "page_title": "The dashboard",
    "questions": {
@@ -1418,7 +1394,7 @@
   },
   "place-layers": {
    "anchor": "place",
-   "more": "Eighteen layers in five groups sit in the strip. Press a group to open its rows and switch a layer on or off.",
+   "more": "What this place is made of, from the sky to the ground, and what the node does not hold yet. A filled dot is on, a hollow one off, and a dotted one is a layer the node cannot draw yet, named by its source.",
    "page": "dashboard.md",
    "page_title": "The dashboard",
    "questions": {
@@ -1488,30 +1464,6 @@
    "title": "From orbit",
    "url": "https://planetai.fab.city/docs/dashboard/#place"
   },
-  "place-reach": {
-   "anchor": "place",
-   "more": "Each row is one kind of source with the oldest and newest hour this node holds for it, and under them the public stations within 5 km.",
-   "page": "dashboard.md",
-   "page_title": "The dashboard",
-   "questions": {
-    "en": [
-     "How long has this node been measuring here?",
-     "Which public stations are close to us?"
-    ],
-    "es": [
-     "¿Desde cuándo mide este nodo aquí?",
-     "¿Qué estaciones públicas tenemos cerca?"
-    ],
-    "id": [
-     "Sudah berapa lama node ini mengukur di sini?",
-     "Stasiun publik mana yang dekat dengan kami?"
-    ]
-   },
-   "quote": "**Where the readings come from**: how far back each kind of source reaches, from\n`GET /reach`, and the public stations within 5 km.",
-   "section": "Place",
-   "title": "Where the readings come from",
-   "url": "https://planetai.fab.city/docs/dashboard/#place"
-  },
   "place-species": {
    "anchor": "place",
    "more": "Only what a person here confirmed in an image is counted. Where a picture was taken places the house, so the table needs the token.",
@@ -1538,7 +1490,7 @@
   },
   "place-tools": {
    "anchor": "place",
-   "more": "Press a mark, a margin row or a cell and its facts appear in this line. Measure and From the house ask the node for the distance, so the page never works one out itself.",
+   "more": "The tools that run on this node today, and the ones still to come, marked not yet. Rings and distance draws the 2, 5 and 15 km rings from the node's own point. Without a token they stay quiet.",
    "page": "dashboard.md",
    "page_title": "The dashboard",
    "questions": {
@@ -2272,8 +2224,6 @@
   "place-map",
   "place-tools",
   "place-orbit",
-  "place-changed",
-  "place-reach",
   "place-species",
   "place-changing",
   "node-verdict",

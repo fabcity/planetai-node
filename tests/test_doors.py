@@ -247,7 +247,7 @@ const calls = []; globalThis.fetch = p => { calls.push(p); return Promise.resolv
     + ' out.pages = [0, 1, 2, 3].map(i => wallPage(i, 23)); out.when = [wallWhen(new Date().toISOString()), wallWhen("2025-07-01T08:00:00+08:00")];'
     + ' WALK.place = []; out.bare = wallPage(1, 23);', ctx);
   const pm = fs.readFileSync('./app/static/doors-placemap.js', 'utf8').match(/function packRows[\s\S]*?\n}\n/)[0];
-  vm.runInContext('const LAYERS = [{ id: "index" }, { id: "earth" }];' + pm + 'packRows(); out.pack = LAYERS.map(l => l.none);', ctx);
+  vm.runInContext('const LAYERS = [{ id: "earth" }];' + pm + 'packRows(); out.pack = LAYERS.map(l => l.none);', ctx);
   console.log(JSON.stringify({
     utc: L.doorsLocal('2026-10-14T11:52:07.1+00:00', tz), z: L.doorsLocal('2026-10-14T11:52:00Z', tz), own: L.doorsLocal('2026-10-14T19:00:00+08:00', tz),
     midnight: L.doorsLocal('2026-10-14T17:30:00+00:00', tz), bare: L.doorsLocal('2026-10-14T11:52:00', tz), notz: L.doorsLocal('2026-10-14T11:52:00+00:00', null),
@@ -437,9 +437,9 @@ for _sel in (".iconbtn{width:44px;height:44px", ".doors a{flex:1;display:flex;al
     assert _sel in _ph, f"the phone bar lost a 44 px target: {_sel}"
 assert ".week button{" in html and "min-height:44px" in html[html.index(".week button{"):][:400] and "week: !phone" in _nowjs
 print("doors: Now reads in order: the sentence and its day, the distances, What to do (framed only when asked), Did it work, around the house; land and coast on Place")
-# 6. Place's Index and land-change rows say what the node holds (node #1: 6 of 20, nine years compared), not "nothing"
-assert t["wall"]["pack"][0].startswith("6 of 20 hold a value") and "What changed" in t["wall"]["pack"][1], t["wall"]["pack"]
-print("doors: Place's Index and land-change rows say what the node holds and where it is drawn")
+# 6. Place's land-change row says what the node holds (node #1: nine years compared) and where it is, not "nothing"
+assert re.match(r"\d+ comparisons · a count, not a shape: Land, in the figures below$", t["wall"]["pack"][0]), t["wall"]["pack"]
+print("doors: Place's land-change row says what the node holds and where it is drawn")
 # 11. A locked part points to where a screen is unlocked, Set up › This screen, never "under Node".
 assert "under Node" not in js and "UNLOCK_AT" in _dj, "unlocking lives in Set up › This screen (#setup/screen)"
 # 13. Without the token the ledger draws stages and times only (/issues gives no names; test_events_wire holds that).
@@ -611,20 +611,21 @@ for _v in _learn.VERDICT_WORDS:
     assert re.search(rf"const VERDICT_W = {{[^}}]*\b{_v}:", _nodejs), f"Node has no words for the verdict {_v}"
 # PHASE 4a, Place and Node (Tomas, 14–15 Oct 2026). Each check fails if its fix regresses.
 _place = html[html.index('<section class="page view" data-view="place"'):html.index("<!-- DATA -->")]
-# OPTION A (Tomas, 15 Oct: "I like A"): under the map, three columns: where the readings come from, the species, what is changing
-assert _place.index('class="bench"') < _place.index('class="pcols"') < _place.index('id="reach"') < _place.index('id="pspecies"') \
-    < _place.index('id="pyearly"') < _place.index('id="soon"'), "the three columns sit below the map, in their order"
-assert 'id="pmargin"' in _place and 'id="pleads"' in _place and 'class="inspect"' in _place and 'id="lybtn"' not in _place, \
-    "the margin and its leaders beside the map, the inspector one line under it, no layer sheet"
-assert "'#pyearly').innerHTML = yearly()" in (STATIC / "doors-place.js").read_text(), "Land and Coast are drawn below the map"
-_css = html[html.index("/* ================= PLACE: the workbench"):html.index("/* ================= NODE")]
-assert re.search(r"\.tools button\{min-width:44px;height:44px", _css), "the map's tools are 44 px targets"
-_drop = re.search(r"\.lydrop\{[^}]*\}", _css).group(0)
-assert "max-height" not in _drop and "overflow" not in _drop, "no inner scroller in the layer drop-down"
-assert re.search(r"\.lystrip\{[^}]*overflow-x:auto", _css) and ".page[data-view=\"place\"]{max-width:1440px}" in _css, \
-    "the strip scrolls inside itself; the map takes the content's full width"
-assert re.search(r"\.mapc\{display:grid;grid-template-columns:minmax\(0,1fr\) 300px", _css) and ".mapc #map{aspect-ratio:auto;height:560px" in _css, \
-    "the map is landscape, 560 px high, with a 300 px margin"
+# SPEC_place_microgis §4 (4 Nov 2026): the cake | the screen | the tools, then the lower band: selected | the place in figures
+assert _place.index('id="cake"') < _place.index('class="mapc"') < _place.index('id="facts"') < _place.index('id="pmargin"') \
+    < _place.index('id="ptools"') < _place.index('class="plow"') < _place.index('id="ptable"') < _place.index('id="pfigures"'), \
+    "the cake, the screen with its status line and the marks around the house, the tools; then the lower band"
+assert 'class="pcols"' not in _place and 'id="reach"' not in _place and 'id="layers"' not in _place and 'id="pleads"' not in _place, "the old workbench is gone"
+assert "'#pfigures').innerHTML = `<h3 class=\"ph\">the place in figures</h3>` + yearly()" in (STATIC / "doors-place.js").read_text(), "Land and Coast are the place's figures"
+_css = html[html.index("/* ================= PLACE: a small GIS"):html.index("/* ================= NODE")]
+assert re.search(r"\.tools button,\.zoom button\{width:44px;height:44px", _css), "the map's tools are 44 px targets"
+assert "box-shadow:0 0 0 1px #000,0 0 0 5px #1b1b1b,0 0 0 6px #000" in _css and "border-radius:10px" in _css, "the screen sits in its bezel"
+assert re.search(r"\.bench\{display:grid;grid-template-columns:216px minmax\(0,1fr\) 286px", _css) and ".page[data-view=\"place\"]{max-width:1440px}" in _css, \
+    "216 px of cake, the screen, 286 px of tools"
+_v2 = _css[:_css.index("#pedges{")]   # the v2 rules; the swatches after them predate it
+_v2 = _v2.replace(_v2[_v2.index(".mapc{--ink"):_v2.index(".mapw{")], "")   # the screen's own values and its bezel
+assert not re.search(r"#[0-9A-Fa-f]{3,6}\b", _v2), "no raw colour outside the screen: the frozen layer's names"
+assert re.search(r"@media \(max-width:760px\)\{[^@]*\.bench\{grid-template-columns:minmax\(0,1fr\)", html), "a phone: one column, the screen first"
 assert "overflow-x:auto" not in html[html.index("/* ================= NODE"):].split("\n")[1], "the flow never scrolls sideways"
 pprog = r"""
 const fs = require('fs'), vm = require('vm'), d3 = require('./app/static/d3.min.js');
@@ -635,7 +636,7 @@ const fn = (src, n) => src.match(new RegExp('(?:async )?function ' + n + '\\(' +
 const F = JSON.parse(fs.readFileSync('%s', 'utf8')), D = L.buildD({ ...F, days: F.issues_days }, 'en');
 const out = {};
 /* five on by default; the rest off */
-out.on = eval(pm.match(/const LAYERS = \[[\s\S]*?\n\];/)[0] + '; LAYERS').filter(l => l.on && !l.parent).map(l => l.id);
+out.on = eval(pm.match(/const LAYERS = \[[\s\S]*?\n\];/)[0] + '; LAYERS').filter(l => l.on).map(l => l.id);
 out.house = !/id: '(house|species)-l'/.test(pm) && /name: 'This house', ll: D\.point/.test(pm);
 out.tools = /\['from', '⌂'/.test(pm) && /class="done" data-t="done"/.test(pm);
 const mk = () => { const els = {}; return q => (els[q] ||= { innerHTML: '', textContent: '', clientWidth: 600, clientHeight: 600, style: {}, appendChild() {}, setAttribute() {}, onclick: null }); };
@@ -667,17 +668,15 @@ const page = tok => ({ D, d3, $: mk(), console, Response, DOORS_TOKEN: () => (to
     document: { documentElement: { dataset: {} }, querySelector: () => null, querySelectorAll: () => [], createElement: () => ({ style: {}, setAttribute: noop }), addEventListener: noop },
     maplibregl: { Map: function () { throw new Error('Failed to initialize WebGL'); } }, deck: {} });
   c.window = c; c.D = { ...D, ngeo: null, ngeoErr: 'GET /geo/cell answered 403' }; vm.createContext(c);
-  vm.runInContext(pm + '\nwindow.placeMap()', c);
+  vm.runInContext(fs.readFileSync('./app/static/doors-cake.js', 'utf8') + '\n' + pm + '\nwindow.placeMap()', c);
   await new Promise(r => setTimeout(r, 50));
-  out.flat = { map: c.$('#map').innerHTML, layers: c.$('#layers').innerHTML, facts: c.$('#facts').innerHTML, margin: c.$('#pmargin').innerHTML, drop: {} };
-  /* a group pressed opens its rows; the flat branch of placeMap() draws the strip again */
-  for (const g of ['Base', 'Readings', 'Packs']) { c.__PM.gopen = g; vm.runInContext('window.placeMap()', c); await new Promise(r => setTimeout(r, 10)); out.flat.drop[g] = c.$('#layers').innerHTML; }
+  out.flat = { map: c.$('#map').innerHTML, cake: c.$('#cake').innerHTML, facts: c.$('#facts').innerHTML, margin: c.$('#pmargin').innerHTML };
   console.log(JSON.stringify(out));
 })();
 """ % replayed(FIX)
 pp = json.loads(subprocess.run(["node"], input=pprog, capture_output=True, text=True, check=True).stdout)
-assert pp["on"] == ["street", "mine", "own", "public", "images"], pp["on"]
-print("doors: Place opens with five layers on: the street, the node's cell, its sensors, the public stations, the images")
+assert sorted(pp["on"]) == ["images", "mine", "own", "public", "species", "street"], pp["on"]
+print("doors: Place opens with five layers on: the street, the node's cell, its sensors, the public stations, the images (and their species)")
 assert pp["house"] and pp["tools"], "the house is named on the map; From the house and Done are tools"
 assert '<table class="tbl species">' in pp["sp"] and "gbif.org/species/3152559" in pp["sp"] and "in the seven cells" in pp["sp"] \
     and "14 in the seven cells" in pp["sp"], pp["sp"]
@@ -685,16 +684,18 @@ assert "<table" not in pp["spLocked"] and "#setup/screen" in pp["spLocked"], pp[
 print("doors: the species confirmed here are a table below the map; without the token one line says where to unlock")
 _f = pp["flat"]
 assert "<svg" in _f["map"] and 'class="house"' in _f["map"] and "This house" not in _f["map"] and "no WebGL" in _f["map"], _f["map"][:300]
-# the strip: five groups, closed until pressed; each opens its own rows
-assert all(f'data-g="{g}"' in _f["layers"] for g in ("Base", "Grid", "Readings", "Images", "Packs")) and 'class="lydrop" id="lydrop" hidden' in _f["layers"], _f["layers"][:400]
-assert 'data-l="street"' in _f["drop"]["Base"] and 'data-l="own"' in _f["drop"]["Readings"] and "live map only" in _f["drop"]["Packs"], _f["drop"]
-assert 'data-l="own"' not in _f["drop"]["Base"], "a group's drop-down holds its own rows only"
-# locked, the images cannot draw, so four of the five are on and the strip says so; the inspector is one line
-assert "In view" in _f["facts"] and "res 8 in view" in _f["facts"] and "Layers <small>4 of" in _f["layers"], (_f["facts"][:200], _f["layers"][:200])
+# the cake: every section in McHarg's order turned over, a row per layer, the not-yet rows dotted and disabled
+_ck = _f["cake"]
+assert [m for m in re.findall(r'data-cake="([a-z]+)"', _ck)] == ["results", "microclimate", "flows", "built", "animals", "plants", "soil", "water", "ground", "frame"], _ck[:300]
+assert re.search(r'data-l="terrain"><button class="ly soon" aria-pressed="false" disabled>', _ck) and "GLO-30" in _ck, "a row the node cannot fill stays, dotted, with its source"
+assert re.search(r'data-l="public"><button class="ly on" aria-pressed="true">', _ck), "a layer that is on says so to a screen reader"
+assert "live map only" in _ck and 'data-l="index"' not in _ck and "lystrip" not in _ck, "no strip; the Index is a figure"
+# locked, the images cannot draw, so four of the five are on; the status line says so
+assert "In view" in _f["facts"] and "res 8 in view" in _f["facts"] and re.search(r"4 of \d+ layers on", _f["facts"]), _f["facts"][:400]
 # the margin names the house, never the map; without the token the house's own rows say withheld and keep their place
 assert "This house" in _f["margin"] and _f["margin"].count("<b>withheld</b>") == 2 and "This house’s stations" in _f["margin"], _f["margin"][:600]
 assert _f["margin"].index("withheld") < _f["margin"].index("This house</span>"), "withheld rows stand where the house is, first" 
-print("doors: Place, option A: a strip of five groups, the house named in the margin (withheld rows without the token), the inspector one line; without WebGL the map draws still")
+print("doors: Place: the cake in its sections, the house named in the list under the screen (withheld rows first without the token), the status line; without WebGL the map draws still")
 assert pp["v"]["ok"] and pp["v"]["head"] == "Working" and re.match(r"Last reading 19:19; 6 of 6 sensors, \d+ of 20 stations heard in the last hour\.$", pp["v"]["text"]), pp["v"]
 assert not pp["vStale"]["ok"] and pp["vStale"]["head"] == "Needs a look" and "the last reading was at" in pp["vStale"]["text"].lower(), pp["vStale"]
 assert not pp["vErr"]["ok"] and "forecast loop failed" in pp["vErr"]["text"], pp["vErr"]
@@ -857,5 +858,19 @@ assert [r["state"] for r in sec["frame"]["rows"]] == ["off"]
 assert sec["water"]["rows"] == [] and sec["water"]["classes"] == ["water"] and sec["water"]["ceiling"] == "freshwater"
 assert C["out"] == ["b", "c"], C["out"]
 print("  place: the cake in McHarg's order, sky first; nothing indoor")
+
+# the Place door redrawn (SPEC_place_microgis §4): the cake left, a black screen, the tools right, a lower band
+pm = (STATIC / "doors-placemap.js").read_text(); pl = (STATIC / "doors-place.js").read_text()
+assert "const P = () => PAL.dark" in pm, "the screen is black in both registers (SPEC_place_microgis §4)"
+assert "outside(D.sensors)" in pm and pm.count("D.sensors") == pm.count("outside(D.sensors)"), "Place draws no indoor sensor"
+assert "D.sensors" not in pl, "doors-place.js reads no sensor of its own"
+assert all("cake:" in l for l in re.findall(r"\{ id: '[a-z]+'.*?\}", pm.split("const LAYERS = [")[1].split("];")[0])), "every layer names its cake section"
+assert "group:" not in pm.split("const LAYERS = [")[1].split("];")[0] and "id: 'index'" not in pm, "no layer groups, and the Index cells are figures"
+assert "PVIEWS" not in pl and 'class="pviews"' not in html, "one map: From orbit and What changed are no longer views"
+for i in ("cake", "ptools", "ptable", "pfigures", "pask"):
+    assert f'id="{i}"' in html, i
+assert "Where the readings come from" not in html, "each cake row names its source instead"
+assert "Tools run on this node with a token. Unlock this screen in Set up." in pl, "a tokenless screen says why the tools are quiet"
+print("  place: one map, black screen, the cake on the left, tools on the right")
 
 print("all doors checks passed")
