@@ -177,8 +177,8 @@ the map only says which one.
 change, download and share is a row in the ledger on Data. **Download** gives the screen as a PNG with its credit and a
 scale bar, and the open map as GeoJSON for QGIS, KML for Google Earth, or DXF for CAD in metres, in the node's UTM zone.
 **Everything on the screen** gives the PNG and each map on the screen in all three. **Share** sends a map to the node
-upstream. The first press says what goes, every drawing at its exact place with its labels and notes, and who can see
-it upstream. The second sends it. If a drawing touches the cell the house stands in, a shared map stops sending until
+upstream. The first press says what goes, every drawing at its exact place with its labels, notes and measures, and
+who can see it upstream. Who drew each one stays here. The second press sends it. If a drawing touches the cell the house stands in, a shared map stops sending until
 you press Share again. **Stop sharing** ends it, and this node asks the node upstream to delete the map.
 
 To answer an issue from Now, open the drawing's form, choose the issue, say what you did in your own words and press

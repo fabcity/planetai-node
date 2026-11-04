@@ -416,7 +416,7 @@ A new map, `{"name": "Garden plan", "owner"?: "Tomas", "actor": "Tomas"}`. Retur
 ### PATCH /place/maps/{map_id}
 Access: token
 
-Rename it, change its owner, or share it: `{"shared": true, "confirm": "exact"}`. Without `confirm` the answer is 409 with the warning the page shows before the second press, and with no `PARENT_API_URL` it is 409 too. `{"shared": false}` takes it back off the node upstream. 403 for an agent's map or one from a child.
+Rename it, change its owner, or share it: `{"shared": true, "confirm": "exact"}`. Without `confirm` the answer is 409 with `detail` `{"code": "share_warning", "text": …}`, the warning the page shows before the second press. With no `PARENT_API_URL` it is 409 too, with only a sentence. `{"shared": false}` takes it back off the node upstream. 403 for an agent's map or one from a child.
 
 ### DELETE /place/maps/{map_id}
 Access: token
@@ -436,7 +436,7 @@ A drawing, as a GeoJSON Feature whose `properties` are `{kind: marker | line | a
 ### PATCH /place/marks/{mark_id}
 Access: token
 
-Any of `geometry`, `label`, `note`, `colour`, `image`, and `issue` with `words` to tie the drawing to an open issue as its acted step. Returns `{mark}`.
+Any of `geometry`, `label`, `note`, `colour`, `image`, and `issue` with `words` to tie the drawing to an open issue as its acted step. Tying it again to the same issue keeps the act's time. Returns `{mark}`, and `warn` when a new geometry on a shared map touches the house's own res-10 cell.
 
 ### DELETE /place/marks/{mark_id}
 Access: token
@@ -645,7 +645,7 @@ A child sends a map its household shared, whole, at most once a minute after eac
  "geojson": {"type": "FeatureCollection", "map": "Garden plan", "owner": "Tomas", "features": [...]}}
 ```
 
-The parent keeps it under the child's name and map id, its drawings replaced on each `put`, and lists it read-only in `GET /place/maps`. A picture's number is the child's and is dropped. Returns `{"ok": true}`.
+The parent keeps it under the child's name and map id, its drawings replaced on each `put`, and lists it read-only in `GET /place/maps`. A picture's number is the child's and is dropped. A drawing carries no `drawn_by`, and the parent keeps none. A map holds 2,000 drawings and 20,000 points at most (413), a drawing 1,000 points (422), and a colour is 1 to 6 (422). Returns `{"ok": true, "marks": <n>}` for a `put` and `{"ok": true}` for a `delete`.
 
 ### POST /events
 Access: children

@@ -110,8 +110,8 @@ planetai radio init         # LoRa radios: the fleet, then `radio provision <rol
   leaves, as an H3 cell rounded UP to a coarse parent with `res` beside it and a floor of res 6 no settings box
   can go under.
   One exception, by the owner's ruling of 4 Nov 2026: a Place map the household chooses to share goes to the node
-  upstream with its exact coordinates, labels and notes, after the plain warning, and is held here while a drawing
-  sits on the house.
+  upstream with its exact coordinates, labels, notes and measures, after the plain warning, and is held here while a
+  drawing touches the cell the house stands in.
 - **Exactly one node per pilot writes to the spine.** A pilot is a city in the Index's `ALLOWED_CITIES`. Every
   other node computes its cells, shows them, and passes them no further.
 - When a document and a skill disagree, the document wins and the skill has a bug. Fix the skill, not the doc.

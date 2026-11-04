@@ -437,8 +437,8 @@ To be appended to "Invariants. Do not break these." as sentences:
   floor of res 6 that no settings box can go under (`main.py:735`, `PRESENCE_RES_FLOOR`). That floor is the
   invariant. "No geometry at any rung" would be a nicer sentence and it would be false. One exception, by the
   owner's ruling of 4 Nov 2026: a Place map the household chooses to share goes to the node upstream with its exact
-  coordinates, labels and notes, after the plain warning, and is held while a drawing sits on the house's own cell
-  (`app/maps.py`, `push_maps`).
+  coordinates, labels, notes and measures, after the plain warning, and is held while a drawing touches the cell the
+  house stands in (`app/maps.py`, `push_maps`).
 - **Exactly one node per pilot writes to the spine.** A pilot is a city in `ALLOWED_CITIES`. Every other node
   computes its cells, shows them, and passes them no further.
 
