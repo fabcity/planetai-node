@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- **Place is drawn as what the ground is made of.** The door has a list on the left with the sky at the top and the
+  ground at the bottom, one line a row with a dot for on, off, or not held yet, and a black screen in the middle that
+  stays black on the light page and the dark one. On the right is a column of tools. Rings and distance runs today, and
+  the sun and shade, trees, built form, sealed ground, streets, walking, what changed, where the rain goes and four
+  fitness tools are listed as not yet. Under the screen are a line for what you pressed and the list around the house,
+  and below that, what you selected and the place in figures. The rooms are gone from Place, and the hectare squares
+  view is gone until What changed runs as a tool. On a phone the layers and the tools open as a sheet over the lower
+  part of the page.
+
 ## v0.91.0 — 2026-11-04 — Now looks ahead
 
 Under What to do on Now there's the rest of today, tomorrow and the day after, with the air and the heat judged

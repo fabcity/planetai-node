@@ -1,47 +1,56 @@
 'use strict';
-/* PLACE — the geographic context, as a landscape workbench (option A, Tomas 15 Oct 2026: "I like A"): the map at the
-   content's full width, the fourteen layers as a strip of five groups above it, labels on leaders to a ruled margin
-   (doors-placemap.js), the inspector one line under the map, and three equal columns below: where the readings come
-   from, the species confirmed here, what is changing. Every layer is real geometry: H3 cells from the node (GET /geo/*),
-   the coast from Natural Earth 1:10m, the plan from OpenStreetMap, the stations at their own coordinates, the satellite
-   frames as photographs.
+/* PLACE — the ground around the house, as a small GIS (SPEC_place_microgis §4, the v2 drawing of 4 Nov 2026): the cake
+   on the left (doors-placemap.js panel(), doors-cake.js), the screen in the middle, black in both registers, with its
+   tools, scales and hour on it, the tool column on the right, and a lower band: what is selected or returned, and the
+   place in figures. One map: From orbit is the satellite's then and now, drawn on the screen when the satellite row is
+   on; What changed is a tool. Every layer is real geometry: H3 cells from the node (GET /geo/*), the plan from
+   OpenStreetMap, the stations at their own coordinates, the satellite frames as photographs.
 
    Kept from PHASE 4a (14–15 Oct): the species as a table (never cards), token only, with GBIF's open records counted
-   and never drawn; five layers on (street, the node's cell, own sensors, public stations, images); no WebGL draws the
-   map still; 44 px tools, Done ends measuring, From the house is one tap; the cell's own edge and area in km², once.
-   Land and Coast sit under What is changing. */
+   and never drawn; five layers on; no WebGL draws the map still; 44 px tools, Done ends measuring, From the house is
+   one tap; the cell's own edge and area in km², once. */
 const GEO = {};
 async function geo(name, url) { return GEO[name] || (GEO[name] = await fetch(url).then(r => r.json())); }
-/* Three views of the place: the map (placemap.js, every layer that has a position), and the two that do not —
-   the Sentinel frames are photographs not registered to the node's point, and the change is a count, not a shape. */
-let PVIEW = 'map', YEAR = 2025, COMPARE = true, PAST = null;   /* From orbit opens as then | now (Tomas, 7 Oct) */
-const PVIEWS = [['map', 'Map', 'every layer with a position'], ['orbit', 'From orbit', 'then and now, Sentinel-2'], ['change', 'What changed', 'AlphaEarth, year on year']];
+let YEAR = 2025, COMPARE = true, PAST = null;   /* the satellite opens as then | now (Tomas, 7 Oct) */
 VIEWS.place = function () {
   const h = D.health, area = D.geometry.ladder.find(l => l.res === h.cell.res).own_area_m2 / 1e6;   // the node's own figure for this cell, not the resolution's average
-  /* option A (15 Oct): the views and + Add an image at the header's right, the map below at full width */
-  $('#placehead').innerHTML = `<div><div class="k">Place · ${said(D.registry.place)}</div>
-    <h1>The ground this node stands on.</h1>
-    <p class="lede mono">${esc(h.cell.id)} · res ${h.cell.res} · ${h.cell.edge_m} m edge · ${area.toFixed(2)} km²${DOORS_TOKEN() ? ` · ${fmt(D.point[1], 3)}, ${fmt(D.point[0], 3)}` : ''}</p></div>
-    <div class="prow"><nav class="pviews" aria-label="Views of the place">${PVIEWS.map(([id, t, s]) => `<button class="${id === PVIEW ? 'on' : ''}" data-p="${id}"><b>${t}</b><span>${s}</span></button>`).join('')}</nav>`
-    + (DOORS_TOKEN() ? `<button class="addimg" id="addimg" data-learn="place-image" data-reads="/captures" data-stage="observe" data-pack="core" title="An image this household took: it lands on the map where it was taken">+ Add an image</button>` : '') + `</div>`;
-  /* the issues that change yearly and have no hours (Land, Coast): Now is for the hour, so they are said here, below
-     the ground they describe — the engine's own sentence, the region's figure and its provenance (15 Oct) */
-  $('#pyearly').innerHTML = yearly();
+  $('#placehead').innerHTML = `<div class="k">Place · ${said(D.registry.place)}</div>
+    <h1>The ground around the house</h1>
+    <p class="lede mono">${esc(h.cell.id)} · res ${h.cell.res} · ${h.cell.edge_m} m edge · ${area.toFixed(2)} km²${DOORS_TOKEN() ? ` · ${fmt(D.point[1], 3)}, ${fmt(D.point[0], 3)}` : ''}</p>`;
+  $('#paddimg').innerHTML = DOORS_TOKEN() ? `<button class="addimg" id="addimg" data-learn="place-image" data-reads="/captures" data-stage="observe" data-pack="core" title="An image this household took: it lands on the map where it was taken">+ Add an image</button>` : '';
+  /* the Ask line opens the node's own Ask pane with its question: one place to ask, whichever door it was typed on.
+     UI_ASK off is the keeper's switch for every ask, so the line is not drawn at all. */
+  $('#pask').hidden = !!D.askOff;
+  $('#pask').onsubmit = e => {
+    e.preventDefault(); const q = $('#paskq').value.trim();
+    if (D.askOff) return;
+    if ($('#askpane').hidden) $('#askbtn').click();
+    if (q) { $('#q').value = q; $('#paskq').value = ''; $('#qform').requestSubmit(); }
+  };
   if ($('#addimg')) $('#addimg').onclick = addImage;
-  speciesBlock();
-  document.querySelectorAll('.pviews button').forEach(b => b.onclick = () => { PVIEW = b.dataset.p; VIEWS.place(); });
-  document.querySelector('.bench').dataset.pview = PVIEW;
-  document.querySelector('.altc').dataset.learn = PVIEW === 'change' ? 'place-changed' : 'place-orbit';   /* one frame, two views: learn names the one drawn */
-  if (PVIEW === 'map') placeMap(); else layer();
-  reach(); changing();
+  /* a phone: the cake and the tools are two disclosures under the screen */
+  document.querySelectorAll('.psbar button').forEach(b => b.onclick = () => {
+    const bench = document.querySelector('.bench'), open = bench.dataset.sheet === b.dataset.s ? '' : b.dataset.s;
+    bench.dataset.sheet = open; document.querySelectorAll('.psbar button').forEach(x => x.setAttribute('aria-expanded', String(x.dataset.s === open)));
+  });
+  speciesBlock(); placeTools(); figures(); placeMap(); layer();
 };
+/* `/` puts the cursor in the Ask line, on Place, unless something is being typed already; Esc closes a phone's sheet */
+const closeSheet = () => { const bench = document.querySelector('.bench'); if (bench && bench.dataset.sheet) document.querySelector(`.psbar [data-s="${bench.dataset.sheet}"]`).click(); };
+$('#askbtn').addEventListener('click', closeSheet);   /* the sheet sits above the Ask pane: Ask opens, the sheet closes */
+document.addEventListener('keydown', e => {
+  const bench = document.querySelector('.bench');
+  if (e.key === 'Escape' && bench && bench.dataset.sheet) { closeSheet(); return; }
+  if (e.key !== '/' || D.askOff || view() !== 'place' || e.target.closest('input, textarea, select, [contenteditable]')) return;
+  e.preventDefault(); $('#paskq').focus();
+});
 
 function yearly() {
   const ks = D.order.filter(k => !ISSUES_DRAWN(k) && ((D.issues[k].stack || {}).region || {}).value != null);
   return ks.map(k => { const it = D.issues[k], g = it.stack.region;
       return `<div class="fr" data-k="${k}"><span>${said(it.name)}<small class="said">${esc(it.title || it.sentence || '')}</small></span><b><span class="${k === 'land' ? 'sat' : ''}">${num(`${k}.region`, fmt(g.value, 1), 'no line: it informs, it never asks')} ${said(it.unit)}</span> ${prov(g.provenance || 'model')}${g.age_minutes != null ? ` <small class="mono">${esc(wdhm(new Date(Date.parse(D.as_of) - g.age_minutes * 6e4).toISOString()))}</small>` : ''}</b></div>`; }).join('');
 }
-/* SPECIES CONFIRMED HERE (Tomas, 15 Oct: "species list should sit below the map"): /species, one row per taxon a person
+/* SPECIES CONFIRMED HERE (Tomas, 15 Oct; under the cake's species row since 4 Nov): /species, one row per taxon a person
    here confirmed, as Data › Images reads it. Where is said from the confirming images' own `outside`, which the node
    measured on arrival against its seven cells. Open records are GBIF's, counted by the node in the same seven cells. */
 async function speciesBlock() {
@@ -65,83 +74,66 @@ async function speciesBlock() {
     + `</table></div><p class="fine">Only what somebody here confirmed counts: the image model’s guesses do not. Seen here counts every confirmed one, in ${S.reduce((a, x) => a + x.images, 0)} image${S.reduce((a, x) => a + x.images, 0) === 1 ? '' : 's'}; open records are GBIF’s, by others, in this node’s seven cells.</p>`;
 }
 
-/* a fact: its name, its figure, where it is from — and, when it has one, its provenance word as the node draws it */
-const facts = (rows, note) => rows.map(([t, v, s, w]) => `<div class="fr"><span>${esc(t)}${s ? `<small class="said">${esc(s)}</small>` : ''}</span><b>${esc(v)}${w ? ' ' + prov(w) : ''}</b></div>`).join('') + (note ? `<p class="fine">${note}</p>` : '');
-/* counted in the node's own cell sign: filled for the count, faint for the rest, in the satellite's orange (dashboard.js of20) */
-const of20 = v => `<span class="signs">${d3.range(20).map(i => sign('sign-cell', i < Math.round(v * 20) ? 'on sat' : 'off sat')).join('')}</span>`;
-
-async function layer() {
-  const el = $('#mapalt'); $('#altbar').innerHTML = ''; el.innerHTML = '';
-  const LAYER = PVIEW;
-  if (!D.earth || !(D.earth.sentinel || []).length && LAYER === 'orbit') {
-    el.innerHTML = `<p class="fine">This node holds no satellite frames yet: <code>planetai run earth frames</code> fetches them.</p>`; $('#altfacts').innerHTML = ''; return;
-  }
-  if (LAYER === 'orbit') {
-    /* Then | now: the latest pass on the right, fixed; the past on the left, stepped through the passes the node
-       keeps. Single shows one year at a time. The hectares that changed between the two are the node's own count
-       (AlphaEarth, GET /earth), drawn only for a pair it computed. */
-    const ys = D.earth.sentinel, NOW = ys[ys.length - 1]; if (!ys.includes(YEAR)) YEAR = NOW;
-    if (!ys.includes(PAST) || PAST === NOW) PAST = ys[0];
-    const past = ys.filter(y => y !== NOW);
-    const ch = (D.earth.changes || []).find(c => c.year_a === PAST && c.year_b === NOW)
-      || (D.earth.changes || []).find(c => c.year_a <= PAST + 1 && c.year_b === NOW);
-    $('#altbar').innerHTML = COMPARE
-      ? `<span class="k">then</span><button id="yp" aria-label="Earlier">‹</button><b class="mono">${PAST}</b><button id="yn" aria-label="Later">›</button><span class="k">· now</span><b class="mono">${NOW}</b>`
-        + `<label class="cmp"><input type="checkbox" id="cmp" checked> then and now</label>`
-      : `<button id="yp" aria-label="Earlier">‹</button><b class="mono">${YEAR}</b><button id="yn" aria-label="Later">›</button><label class="cmp"><input type="checkbox" id="cmp"> then and now</label>`;
-    el.innerHTML = COMPARE
-      ? `<div class="pair"><figure><img src="${SAT(PAST)}" alt="Sentinel-2, ${PAST}"><figcaption>then · ${PAST}</figcaption></figure><figure><img src="${SAT(NOW)}" alt="Sentinel-2, ${NOW}"><figcaption>now · ${NOW}</figcaption></figure></div>`
-        + (ch ? `<div class="pairnote">${ch.year_a} → ${ch.year_b}: ${num('earth.change.pair', ch.hectares_over_threshold.toFixed(1), `pixels past the change threshold ${ch.threshold}, of ${ch.pixels.toLocaleString('en')}`)} ha changed, ${(ch.share_over_threshold * 100).toFixed(1)} % of the ground, by the node’s AlphaEarth record ${prov('model')}</div>` : '')
-      : `<img class="photo" src="${SAT(YEAR)}" alt="Sentinel-2 annual median, ${YEAR}, about 3 km across">`;
-    const step = d => { if (COMPARE) PAST = past[Math.max(0, Math.min(past.length - 1, past.indexOf(PAST) + d))]; else YEAR = ys[Math.max(0, Math.min(ys.length - 1, ys.indexOf(YEAR) + d))]; layer(); };
-    $('#yp').onclick = () => step(-1); $('#yn').onclick = () => step(1); $('#cmp').onchange = e => { COMPARE = e.target.checked; layer(); };
-    $('#altfacts').innerHTML = facts([['Passes kept', ys.join(' · '), 'Sentinel-2 annual medians'], ['Landsat passes', D.earth.landsat.join(' · ')], ['Across', 'about 3 km'], ['Brightness', 'matched across years']],
-      `${D.earth.credit.map(esc).join(' ')} Only the structure differs between years. The photograph is not registered to the node’s point, so nothing is drawn over it.`);
-  }
-
-  if (LAYER === 'change') {
-    const E = D.earth, all = E.changes || [], ch = all.filter(c => c.year_b - c.year_a === 1).sort((a, b) => a.year_a - b.year_a), span = all.find(c => c.year_b - c.year_a > 1);
-    const row = (c, t, cls = '') => `<div class="lrow ${cls}"><span class="t">${t}<small>${(c.share_over_threshold * 100).toFixed(2)} % of pixels</small></span>`
-      + `<span class="signs">${d3.range(Math.round(c.hectares_over_threshold / 10)).map(() => sign('sign-cell', 'on sat')).join('')}</span><span class="c">${num('earth.change.' + c.year_b, c.hectares_over_threshold.toFixed(1), `pixels that moved more than ${D.earth.change.threshold}`)} ha</span></div>`;
-    el.innerHTML = `<div class="chg"><div class="k">Hectares that changed, one square per 10 ha</div>${ch.map(c => row(c, `${c.year_a} → ${c.year_b}`)).join('')}${span ? row(span, `${span.year_a} → ${span.year_b}`, 'span') : ''}</div>`;
-    const O = Object.fromEntries(D.observations.filter(o => o.sensor_id === 'ee-point').map(o => [o.metric, o.value]));
-    $('#altfacts').innerHTML = `<div class="k">What the ground is made of, within 1 km</div>`
-      + [['built', O.built_frac], ['trees', O.tree_frac], ['crops', O.crop_frac], ['water', O.water_frac]].filter(([, v]) => v != null)
-        .map(([t, v]) => `<div class="fr col"><span>${t} <small>twentieths of the ground</small></span>${of20(v)}<b>${fmt(v * 100, 0)} % ${prov('model')}</b></div>`).join('')
-      + facts([['Vegetation (NDVI median)', fmt(O.ndvi_median, 2)], ['Night lights', fmt(O.night_lights, 1), 'VIIRS radiance'], ['Changed when it moved more than', `${E.change.threshold}`, `AlphaEarth, ${E.change.metres_per_pixel} m pixels, ${E.radius_m * 2 / 1000} km square`]],
-        'Orange is what only the satellite knows, and nothing else on this door is orange. Every figure here is a model’s description of the ground, never a reading.');
-  }
-
+/* THE SATELLITE, THEN AND NOW, on the screen while the satellite row is on (From orbit, as it was a view until 4 Nov).
+   The latest pass on the right, fixed; the past on the left, stepped through the passes the node keeps. Single shows
+   one year at a time. The hectares that changed between the two are the node's own count (AlphaEarth, GET /earth),
+   drawn only for a pair it computed. The photographs are not registered to the node's point, so they sit beside the
+   map, never on it. */
+function layer() {
+  const box = document.querySelector('.altc'), el = $('#mapalt'), PM = window.__PM, ys = (D.earth || {}).sentinel || [];
+  box.hidden = !(PM && PM.on.imagery && ys.length);
+  if (box.hidden) { el.innerHTML = ''; $('#altbar').innerHTML = ''; return; }
+  const NOW = ys[ys.length - 1]; if (!ys.includes(YEAR)) YEAR = NOW;
+  if (!ys.includes(PAST) || PAST === NOW) PAST = ys[0];
+  const past = ys.filter(y => y !== NOW);
+  const ch = (D.earth.changes || []).find(c => c.year_a === PAST && c.year_b === NOW)
+    || (D.earth.changes || []).find(c => c.year_a <= PAST + 1 && c.year_b === NOW);
+  $('#altbar').innerHTML = COMPARE
+    ? `<span class="k">then</span><button id="yp" aria-label="Earlier">‹</button><b class="mono">${PAST}</b><button id="yn" aria-label="Later">›</button><span class="k">· now</span><b class="mono">${NOW}</b>`
+      + `<label class="cmp"><input type="checkbox" id="cmp" checked> then and now</label>`
+    : `<button id="yp" aria-label="Earlier">‹</button><b class="mono">${YEAR}</b><button id="yn" aria-label="Later">›</button><label class="cmp"><input type="checkbox" id="cmp"> then and now</label>`;
+  el.innerHTML = (COMPARE
+    ? `<div class="pair"><figure><img src="${SAT(PAST)}" alt="Sentinel-2, ${PAST}"><figcaption>then · ${PAST}</figcaption></figure><figure><img src="${SAT(NOW)}" alt="Sentinel-2, ${NOW}"><figcaption>now · ${NOW}</figcaption></figure></div>`
+      + (ch ? `<div class="pairnote">${ch.year_a} → ${ch.year_b}: ${num('earth.change.pair', ch.hectares_over_threshold.toFixed(1), `pixels past the change threshold ${ch.threshold}, of ${ch.pixels.toLocaleString('en')}`)} ha changed, ${(ch.share_over_threshold * 100).toFixed(1)} % of the ground, by the node’s AlphaEarth record ${prov('model')}</div>` : '')
+    : `<img class="photo" src="${SAT(YEAR)}" alt="Sentinel-2 annual median, ${YEAR}, about 3 km across">`)
+    + `<p class="pairnote fine">${D.earth.credit.map(esc).join(' ')} About 3 km across, not registered to the node’s point.</p>`;
+  const step = d => { if (COMPARE) PAST = past[Math.max(0, Math.min(past.length - 1, past.indexOf(PAST) + d))]; else YEAR = ys[Math.max(0, Math.min(ys.length - 1, ys.indexOf(YEAR) + d))]; layer(); };
+  $('#yp').onclick = () => step(-1); $('#yn').onclick = () => step(1); $('#cmp').onchange = e => { COMPARE = e.target.checked; layer(); };
 }
+window.placeAlt = layer;
 
-/* WHERE THE READINGS COME FROM and WHAT IS CHANGING (option A, 15 Oct): the first and last of the three columns under
-   the map. Every row is a figure with its date and its provenance word: how far back each kind of source reaches
-   (/reach), the public stations by the node's own distances (/nearby), the Index cells, and what is not here yet. */
-const PV = { sensor: 'live', model: 'model', map: 'cached', survey: 'partial' };
-async function reach() {
-  const R = D.reach || [], word = { map: 'The satellite', model: 'Models read for this point', sensor: 'The kit in and around this house', survey: 'Survey' };
-  const back = r => r.days >= 730 ? fmt(r.days / 365.25, 1) + ' yr' : r.days + ' d';
-  const rows = R.map(r => `<div class="fr"><span>${word[r.kind] || esc(r.kind)}<small>${r.sources} source${r.sources === 1 ? '' : 's'} · ${r.buckets.toLocaleString('en')} hours · since ${dLabel(dayOf(r.oldest))} ${r.oldest.slice(0, 4)}</small></span>`
-    + `<b>${num(`place.reach.${r.kind}`, back(r), 'how far back this kind of source reaches here')} ${prov(PV[r.kind] || 'partial')}</b></div>`);
-  $('#reach').innerHTML = rows.join('');
-  /* the public stations, at the node's own distances: open at every share level, display only */
-  const N = await doorsFetch('/nearby').then(r => (r.ok ? r.json() : null)).catch(() => null), ring = ((N || {}).ring || []).filter(x => x.km <= 5);
-  if (ring.length) {
-    const km = ring.map(x => x.km), last = ring.map(x => x.last_ts).filter(Boolean).sort().pop();
-    rows.splice(1, 0, `<div class="fr"><span>Public stations<small>${ring.length} within 5 km · display only${last ? ` · heard ${dLabel(dayOf(last))}` : ''}</small></span>`
-      + `<b>${num('place.nearby', `${fmt(d3.min(km), 1)}–${fmt(d3.max(km), 1)} km`, 'the nearest and the furthest within 5 km, from the node’s point')} ${prov('partial')}</b></div>`);
-    $('#reach').innerHTML = rows.join('');
-  }
+/* THE TOOLS, the right-hand column (SPEC_place_microgis §6): the ones that run today, and the analyses and fitness tools
+   the spec names, each with a dotted "not yet" until the place pack computes it. A tool that runs is a row that shows
+   its command id; the chosen one is filled. Rings ask GET /geo/rings, which answers a token only. */
+const TOOLS = [
+  ['tools', [['Rings and distance', 'geo.rings', 'rings'], ['Sun and shade', 'place.sun'], ['Trees, 3-30-300', 'place.trees'], ['Built form', 'place.built'],
+    ['Sealed ground', 'place.sealed'], ['Streets', 'place.streets'], ['Walk to', 'place.walk'], ['What changed', 'place.changed'], ['Where the rain goes', 'water.runoff']]],
+  ['fitness', [['One more tree', 'fit.tree'], ['A roof for a panel', 'fit.roof'], ['A garden bed', 'fit.grow'], ['Catching rain', 'fit.rain']]],
+];
+function placeTools() {
+  const on = (window.__PM || { on: {} }).on, tok = !!DOORS_TOKEN(), a = document.activeElement;
+  const keep = a && a.closest && a.closest('#ptools') && a.dataset.layer;   // a press from here keeps its focus through the redraw
+  $('#ptools').innerHTML = TOOLS.map(([h, ts]) => `<h3 class="pmh">${h}</h3>` + ts.map(([n, id, l]) => l
+    ? `<button class="tl${on[l] ? ' on' : ''}" aria-pressed="${!!on[l]}" data-layer="${l}"${tok ? '' : ' disabled'}><span>${n}</span><code>${id}</code></button>`
+    : `<div class="tl soon" title="${id}"><span>${n}</span><code>not yet</code></div>`).join('')).join('')
+    + (tok ? '' : `<p class="fine">Tools run on this node with a token. Unlock this screen in Set up.</p>`);
+  document.querySelectorAll('#ptools button[data-layer]').forEach(b => b.onclick = () => window.placeLayer(b.dataset.layer, !on[b.dataset.layer]));
+  const b = keep && document.querySelector(`#ptools [data-layer="${keep}"]`); if (b) b.focus();
 }
-function changing() {
+window.placeTools = placeTools;
+
+/* THE PLACE IN FIGURES, the lower band's right: the issues that change yearly and have no hours (Land, Coast; Now is for
+   the hour), the Index cells, and what is not here yet. */
+function figures() {
   const ch = ((D.earth || {}).changes || []).slice(-1)[0], nI = new Set(D.index_cells.map(c => c.cell)).size;
-  $('#soon').innerHTML = `<div class="fr"><span>Index cells<small>of the Fab City Index for this place · <a href="#node/cells">Node › Index cells</a></small></span>`
+  $('#pfigures').innerHTML = `<h3 class="pmh">the place in figures</h3>` + yearly()
+    + `<div class="fr"><span>Index cells<small>of the Fab City Index for this place · <a href="#node/cells">Node › Index cells</a></small></span>`
     + `<b>${num('place.index', `${nI} of 20`, 'cells of the Fab City Index holding a value')} ${prov('partial')}</b></div>`
     + `<div class="fr"><span>Production and trade · Water and soil · Forecast<small>coming to this place: no adapter, no source, or no village code yet</small></span><b><span class="soon">not yet</span></b></div>`
     + (ch ? `<p class="fine">Land: AlphaEarth, ${ch.year_a} → ${ch.year_b}.</p>` : '');
 }
 
-/* ADD AN IMAGE — a quiet button beside the views, and a dialog: the file (picked or dropped), what took it, a note,
+/* ADD AN IMAGE — a quiet button in the header, and a dialog: the file (picked or dropped), what took it, a note,
    who. POST /captures with this screen's token; the map's Images layers and the Data door's list then ask again. */
 const IKIND = { phone: 'Phone', camera: 'Fixed camera', microscope: 'Microscope', drone: 'Drone', balloon: 'Balloon or kite' };
 function addImage() {

@@ -316,44 +316,36 @@ MARKS = [
      "With the admin token one line counts", "and opens Data › Home.",
      "The line counts the things, how many sit idle and how many need repair, and opens the list in "
      "Data › Home. Only a thing you mark to lend or give is ever published."),
-    ("place-head", "The ground this node stands on", "dashboard.md", "Place",
-     "The ground this node stands on.", "and three views:",
-     "The cell id is printed whole. The three buttons switch between the map, the satellite then and "
-     "now, and what changed year on year."),
+    ("place-head", "The ground around the house", "dashboard.md", "Place",
+     "The ground around the house.", "removes it)",
+     "The cell id is printed whole. Type a question in the line under it and the Ask pane opens with "
+     "it; press / to get there from anywhere on this door. With UI_ASK off the line is not there."),
     ("place-image", "Add an image", "dashboard.md", "Place",
      "**+ Add an image** (token only)", "describes it.",
      "The picture stays on this node, cleaned of EXIF and GPS, and lands on the map where its own GPS "
      "says it was taken, else in the node's cell."),
     ("place-layers", "The layers", "dashboard.md", "Place",
-     "Each row has its swatch", "nothing here says so.",
-     "Eighteen layers in five groups sit in the strip. Press a group to open its rows and switch a "
-     "layer on or off."),
-    ("place-map", "The map and its margin", "dashboard.md", "Place",
-     "Nothing is labelled on the map itself", "for public stations).",
-     "Every distance in the margin is measured by the node from its own point. Without the token the "
+     "**What the place is made of.**", "the ground at the bottom.",
+     "What this place is made of, with the sky at the top and the ground at the bottom, and what the node does not hold yet. A filled "
+     "dot is on, a hollow one off, and a dotted one is a layer the node cannot draw yet, named by its source."),
+    ("place-map", "The screen", "dashboard.md", "Place",
+     "**The screen.**", "and on the dark one.",
+     "Every distance on this door is measured by the node from its own point. Without the token the "
      "house's marks say withheld, because together they would place the house."),
-    ("place-tools", "The inspector and the tools", "dashboard.md", "Place",
-     "press a station, an image, a place to make", "shown\nand never counted.",
-     "Press a mark, a margin row or a cell and its facts appear in this line. Measure and From the "
-     "house ask the node for the distance, so the page never works one out itself."),
+    ("place-tools", "The tools", "dashboard.md", "Place",
+     "**The tools.**", "sits in a pill while it is on.",
+     "The tools that run on this node today, and the ones still to come, marked not yet. Rings and "
+     "distance draws the 2, 5 and 15 km rings from the node's own point. Without a token they stay quiet."),
     ("place-orbit", "From orbit", "dashboard.md", "Place",
      "the node's Sentinel-2 annual medians", "by its AlphaEarth record",
      "Two of the node's own Sentinel-2 years side by side, from files it already holds. Nothing is "
      "fetched while you look."),
-    ("place-changed", "What changed", "dashboard.md", "Place",
-     "the hectares that changed year on year", "water, by satellite",
-     "Each square is ten hectares the node's AlphaEarth record marks as changed between two years, and "
-     "the share of built ground, trees, crops and water within 1 km sits beside them."),
-    ("place-reach", "Where the readings come from", "dashboard.md", "Place",
-     "**Where the readings come from**", "within 5 km.",
-     "Each row is one kind of source with the oldest and newest hour this node holds for it, and under "
-     "them the public stations within 5 km."),
     ("place-species", "Species confirmed here", "dashboard.md", "Place",
      "**Species confirmed here**", "token only.",
      "Only what a person here confirmed in an image is counted. Where a picture was taken places the "
      "house, so the table needs the token."),
     ("place-changing", "What is changing", "dashboard.md", "Place",
-     "**What is\nchanging**", "water and soil).",
+     "**The place in figures**", "and the forecast).",
      "Land and coast change yearly, so they are here and not on Now. What the node cannot read yet is "
      "named here as missing."),
     ("node-verdict", "Working, or needs a look", "dashboard.md", "Node",
@@ -650,12 +642,6 @@ QUESTIONS = {
     'place-orbit': {"en": ['What did this place look like a few years ago?', 'Has there been more building around us?'],
         "id": ['Seperti apa tempat ini beberapa tahun lalu?', 'Apakah bangunan di sekitar kami bertambah?'],
         "es": ['¿Cómo era este lugar hace unos años?', '¿Se ha construido más a nuestro alrededor?']},
-    'place-changed': {"en": ['How much land around us changed this year?', 'Are we losing trees around here?'],
-        "id": ['Seberapa banyak lahan di sekitar kami yang berubah tahun ini?', 'Apakah pepohonan di sekitar sini berkurang?'],
-        "es": ['¿Cuánto terreno cambió a nuestro alrededor este año?', '¿Se están perdiendo árboles por aquí?']},
-    'place-reach': {"en": ['How long has this node been measuring here?', 'Which public stations are close to us?'],
-        "id": ['Sudah berapa lama node ini mengukur di sini?', 'Stasiun publik mana yang dekat dengan kami?'],
-        "es": ['¿Desde cuándo mide este nodo aquí?', '¿Qué estaciones públicas tenemos cerca?']},
     'place-species': {"en": ['Which plants and animals have we found here?', "What else lives around here, by other people's records?"],
         "id": ['Tumbuhan dan hewan apa saja yang sudah kami temukan di sini?', 'Menurut catatan orang lain, makhluk apa lagi yang hidup di sekitar sini?'],
         "es": ['¿Qué plantas y animales hemos encontrado aquí?', '¿Qué más vive por aquí, según lo que otros han registrado?']},

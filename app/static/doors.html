@@ -256,92 +256,117 @@ section.decl{margin-top:22px}.row.decl{cursor:default}   /* a pack's declared ba
 .lt{display:grid;grid-template-columns:16px 72px minmax(0,1fr);align-items:baseline;gap:8px;font-size:var(--t-small);padding:7px 0;border-top:1px solid var(--hair)}
 .lt .t{font:500 var(--t-cap)/1.9 var(--mono)}
 
-/* ================= PLACE: the workbench ================= */
-.page[data-view="place"]{max-width:1440px}   /* the map takes the content's full width, 1060 × 560 at 1440 */
-.bench{margin-top:16px}   /* option A (Tomas, 15 Oct): the layers a strip above the map, the map full width, the inspector one line under it */
-.bench[data-pview="map"] .altc,.bench[data-pview="map"] #altfacts{display:none}
-.bench:not([data-pview="map"]) #layers,.bench:not([data-pview="map"]) .mapc,.bench:not([data-pview="map"]) #facts,.bench:not([data-pview="map"]) #mapcredit{display:none}
-.bench:not([data-pview="map"]){display:grid;grid-template-columns:minmax(0,1fr) 300px;border:1px solid var(--ink)}
-.altc{border-right:1px solid var(--ink);min-width:0}#altfacts{padding:14px}
-#altbar{display:flex;gap:8px;align-items:center;justify-content:center;padding:8px;border-bottom:1px solid var(--hair)}#altbar:empty{display:none}
-#altbar button{background:none;border:1px solid var(--ink);width:28px;height:26px;cursor:pointer}#altbar .cmp{font-size:var(--t-small);margin-left:14px;display:flex;gap:6px;align-items:center}
-#mapalt{aspect-ratio:16/10;width:100%;overflow:hidden}#mapalt .photo{width:100%;height:100%;object-fit:contain;display:block;background:var(--ink)}
-/* views of the place: three, as a segmented strip under the lede */
-.pviews{display:flex;border:1px solid var(--ink);width:max-content;max-width:100%;margin-top:14px;overflow-x:auto}
-.pviews button{background:none;border:0;border-right:1px solid var(--ink);padding:6px 14px;text-align:left;cursor:pointer}.pviews button:last-child{border-right:0}
-.pviews b{display:block;font:600 var(--t-small) var(--body)}.pviews span{display:block;font:500 var(--t-cap) var(--mono);color:var(--mute)}
-.pviews button.on{background:var(--ink);color:var(--ground)}.pviews button.on span{color:var(--ground);opacity:.7}
-/* the map: neutral ground, data the only colour (R36). Square chrome on the map, 1 px ink, mono labels. */
-.mapc{display:grid;grid-template-columns:minmax(0,1fr) 300px;border:1px solid var(--ink);position:relative;min-width:0}
-.mapw{position:relative;min-width:0;border-right:1px solid var(--ink)}.mapc #map{aspect-ratio:auto;height:560px;width:100%;position:relative}
-/* the margin (the move of option A): every mark near the house leaves the map on a leader to a ruled row; nothing is labelled on the point */
-#pmargin{padding:14px 14px 10px 22px;display:flex;flex-direction:column;min-width:0}#pmargin .mhp{display:none}#pmargin .mhd{margin-bottom:8px}
-#pmargin .mr{display:grid;grid-template-columns:18px minmax(0,1fr) auto;gap:8px;align-items:center;min-height:40px;width:100%;padding:0;border:0;border-bottom:1px solid var(--hair);background:none;color:var(--ink);text-align:left;font:var(--t-small)/1.25 var(--body)}
-#pmargin button.mr{cursor:pointer}#pmargin button.mr:hover span{text-decoration:underline;text-underline-offset:3px}#pmargin .mr b{font:500 var(--t-cap) var(--mono);white-space:nowrap}
-#pmargin .mr>i,#pmargin .mr>.sg{justify-self:center}#pmargin .fine{margin:auto 0 0;padding-top:10px}
-#pleads,#pedges{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2;overflow:visible}
-#pleads polyline{fill:none;stroke:var(--ink);stroke-width:.75;stroke-opacity:.7}
+/* ================= PLACE: a small GIS (SPEC_place_microgis §4, the v2 drawing of 4 Nov 2026) =================
+   Teenage Engineering's light type and flat surfaces, mono's hairlines, OP-XY's black screen and dot switches, OneSoil's
+   plain layer list. The page keeps the node's register. The screen is black in both, so inside it the frozen layer's
+   names take the screen's values, and whatever is drawn there (the still map, popups, notes, the satellite) follows. */
+.page[data-view="place"]{max-width:1440px}
+.phead{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,440px);gap:12px 40px;align-items:end}.phead>div{min-width:0}
+.phead h1{font-weight:300;letter-spacing:-.02em;margin-bottom:4px}
+.prow{display:flex;gap:12px;align-items:center}
+.pask{flex:1;min-width:0;display:flex;align-items:center;gap:10px;height:44px;border-bottom:1px solid var(--ink)}
+.pask[hidden]{display:none}
+.pask svg{width:15px;height:15px;flex:none;fill:none;stroke:var(--ink);stroke-width:1.4}
+.pask input{flex:1;min-width:0;height:100%;border:0;background:none;color:var(--ink);font:300 var(--t-body) var(--body);outline-offset:4px}
+.pask input::placeholder{color:var(--mute)}
+.pask kbd{font:400 10.5px/17px var(--mono);color:var(--mute);border:1px solid var(--hair);border-radius:4px;padding:0 5px}
+.addimg{background:none;border:1px solid var(--ink);border-radius:999px;padding:0 16px;font:400 var(--t-small) var(--body);color:var(--ink);cursor:pointer;min-height:44px;white-space:nowrap}
+.pmh,#cake .ck>h2{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:12px 0 2px;font:400 var(--t-cap) var(--body);letter-spacing:.02em;color:var(--mute)}
+.pmh b,#cake .ck>h2 b{font:400 10.5px var(--mono)}
+/* three columns: the cake, the screen, the tools */
+.bench{display:grid;grid-template-columns:216px minmax(0,1fr) 286px;margin-top:16px;border-top:1px solid var(--hair);border-bottom:1px solid var(--hair)}
+#cake{padding:0 16px 16px 0;border-right:1px solid var(--hair);min-width:0}
+#ptools{padding:0 0 16px 16px;border-left:1px solid var(--hair);min-width:0}
+/* the screen's column sets the bench's height; the cake and the tools fill it and scroll inside it */
+#cake,#ptools{height:0;min-height:100%;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.bench>#spd,.psbar{display:none}
+/* a layer: the OP-XY dot (filled with a ring on, hollow off, dotted not yet), its name, and under it its source */
+.lyr{padding:0}#facts code{font:inherit;border:1px solid var(--hair);padding:0 3px}
+.ly{display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:8px;align-items:center;width:100%;min-height:26px;margin:0;padding:0 8px;border:0;border-radius:6px;background:none;color:var(--ink);font:400 var(--t-small)/1.25 var(--body);text-align:left;cursor:pointer}
+.ly:hover{background:var(--raise)}.ly[aria-disabled="true"]{cursor:help}
+.ly span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ly small{font:400 10.5px var(--mono);color:var(--mute);white-space:nowrap}
+.ly.held small{color:var(--ink)}.ly small .wh{width:10px;height:10px;margin-right:3px;vertical-align:-1px}
+.ly i{width:8px;height:8px;border-radius:50%;margin-left:3px;background:var(--ink);box-shadow:0 0 0 2px var(--ground),0 0 0 3px var(--ink)}
+.ly.off{color:var(--mute)}.ly.off i{background:none;box-shadow:inset 0 0 0 1px var(--mute)}
+.ly.soon{color:var(--mute)}.ly.soon i{width:6px;height:6px;margin-left:4px;background:none;box-shadow:none;border:1px dotted var(--mute)}
+.lyr .op{display:none;width:calc(100% - 22px);margin:6px 0 2px 22px;accent-color:var(--ink);height:14px}
+.lyr:has(.ly.on):hover .op,.lyr:has(.ly.on):focus-within .op{display:block}
+.lyr .whr{display:grid;grid-template-columns:auto minmax(0,1fr) 44px;gap:8px;align-items:center;margin:6px 0 2px 22px;font:400 10.5px var(--mono);color:var(--mute)}
+.lyr .whr input{accent-color:var(--ink);width:100%}.lyr .whr b{font-weight:500;color:var(--ink);text-align:right}
+/* the species confirmed here open under their row */
+.spd{margin:4px 0 0 22px;border:0}.spd summary{display:flex;align-items:center;min-height:28px;padding:0;font:400 var(--t-cap) var(--body);color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+.pspecies h2{font:500 var(--t-small) var(--body);margin:4px 0}.pspecies .tbl{font-size:var(--t-cap)}.pspecies .tbl .hide{display:none}
+/* a tool: a plain row with its command id; the chosen one a filled pill; one that does not run yet, a dotted "not yet" */
+.tl{display:flex;align-items:center;gap:8px;width:100%;min-height:28px;margin:0;padding:0 8px;border:0;border-radius:999px;background:none;color:var(--ink);font:400 var(--t-small) var(--body);text-align:left}
+button.tl{cursor:pointer}button.tl:hover:not(:disabled):not(.on){background:var(--raise)}button.tl:disabled{color:var(--mute);cursor:default}
+.tl code{margin-left:auto;font:400 10px var(--mono);color:var(--mute)}
+.tl.on{background:var(--ink);color:var(--ground)}.tl.on code{color:var(--ground);opacity:.6}
+.tl.soon{color:var(--mute)}.tl.soon code{border:1px dotted var(--mute);border-radius:999px;padding:0 6px;font:400 10.5px var(--body)}
+#ptools .fine{margin-top:12px}
+/* the screen: black glass in a bezel, its controls on it as chips */
+.pmid{min-width:0;padding:12px 12px 0}
+.mapc{--ink:#F9F5F2;--ground:#17191D;--mute:#A3A19F;--hair:#3A3F47;--raise:#2B2E34;--cells:#7FA5E8;--chip:rgba(28,31,35,.92);   /* doors-placemap.js PAL.dark */
+ 
+  position:relative;margin:6px;border-radius:10px;overflow:hidden;background:var(--ground);color:var(--ink);box-shadow:0 0 0 1px #000,0 0 0 5px #1b1b1b,0 0 0 6px #000}
+.mapw{position:relative;min-width:0}.mapc #map{aspect-ratio:auto;height:560px;width:100%;position:relative;background:var(--ground)}
+.mapc .tools,.mapc .zoom,.mapc .scales,.phour,.altc{background:var(--chip);border:1px solid var(--hair);border-radius:10px}
+.tools{position:absolute;top:12px;right:12px;z-index:3;display:flex;flex-direction:column}
+.zoom{position:absolute;right:12px;bottom:12px;z-index:3;display:flex;flex-direction:column}
+/* 44 px targets (Tomas, 15 Oct); the active tool says its word beside it, and measuring ends on Done */
+.tools button,.zoom button{width:44px;height:44px;position:relative;display:grid;place-items:center;padding:0;border:0;background:none;color:var(--ink);font:300 18px/1 var(--mono);cursor:pointer}
+.tools button+button,.zoom button+button{border-top:1px solid var(--hair)}.tools button[data-t="fit"]{border-top-width:4px}
+.tools button:first-child,.zoom button:first-child{border-radius:9px 9px 0 0}.tools button[data-t="png"],.zoom button:last-child{border-radius:0 0 9px 9px}
+.tools button.on{background:var(--ink);color:var(--ground)}.tools button:hover:not(.on),.zoom button:hover{background:var(--raise)}
+.tools .w{display:none;position:absolute;right:calc(100% + 6px);top:50%;transform:translateY(-50%);padding:5px 10px;border:1px solid var(--hair);border-radius:999px;background:var(--chip);color:var(--ink);font:400 var(--t-cap)/1 var(--body);white-space:nowrap}
+.tools button.on .w{display:block}
+.tools button.done{position:absolute;top:calc(100% + 6px);right:-1px;width:auto;padding:0 16px;border:0;border-radius:999px;background:var(--ink);color:var(--ground);font:500 var(--t-small)/1 var(--body)}.tools button.done[hidden]{display:none}
+.mapc #mapbar{position:absolute;left:12px;bottom:12px;z-index:3;padding:0;border:0;display:block;max-width:calc(100% - 210px)}
+.scales{display:flex;gap:2px;padding:3px;border-radius:999px!important;overflow-x:auto;scrollbar-width:none}
+#mapbar .scales button{display:flex;gap:5px;align-items:center;width:auto;height:auto;min-height:44px;padding:0 12px;border:0;border-radius:999px;background:none;color:var(--mute);cursor:pointer;font:400 11px var(--body);white-space:nowrap}
+.scales b{font-weight:400}.scales span{font:400 10px var(--mono);opacity:.75}.scales button.leave span{text-decoration:underline dotted;text-underline-offset:2px}
+#mapbar .scales button.on{background:var(--ink);color:var(--ground)}
+.phour{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:3;display:flex;align-items:center;gap:0;min-height:44px;padding:0 6px;border-radius:999px;font:400 11.5px var(--mono);color:var(--ink);white-space:nowrap}
+.phour:empty{display:none}.phour b{font-weight:400;padding:0 8px}
+.phour button{width:44px;height:44px;border:0;border-radius:50%;background:none;color:var(--mute);cursor:pointer;font:400 14px var(--body)}.phour button:disabled{opacity:.35;cursor:default}
+.mapc .maplibregl-ctrl-scale{background:none;border:1px solid var(--mute);border-top:0;color:var(--mute);font:400 10px var(--mono);padding:0 5px;border-radius:0}
+.mapc .maplibregl-ctrl-bottom-left{left:12px;bottom:50px}.maplibregl-ctrl-bottom-left .maplibregl-ctrl{margin:0}
+#mapcredit{position:absolute;right:68px;bottom:12px;z-index:3;margin:0;max-width:40%;font:400 10px/1.3 var(--body);color:var(--mute);text-align:right;pointer-events:none}
+/* the satellite's then and now, on the screen while its row is on: photographs beside the map, never on it */
+.altc{position:absolute;left:12px;top:12px;z-index:4;width:min(380px,calc(100% - 140px));max-height:calc(100% - 80px);overflow:auto;color:var(--ink)}.altc[hidden]{display:none}
+#altbar{display:flex;gap:6px;align-items:center;padding:6px 8px;border-bottom:1px solid var(--hair);font:400 var(--t-cap) var(--body)}
+#altbar button{background:none;border:1px solid var(--hair);border-radius:999px;color:var(--ink);width:44px;height:44px;cursor:pointer}#altbar .cmp{margin-left:auto;display:flex;gap:6px;align-items:center;min-height:44px}
+#mapalt .photo{width:100%;display:block}
+.mapc .flatnote{top:54px}.mapc .nonode{right:68px;bottom:56px}   /* under the hour; above the rungs, clear of the zoom */
+/* under the screen: the status line (the inspector), then the marks around the house, nearest first */
+#facts.inspect{display:flex;flex-wrap:wrap;gap:4px 16px;align-items:baseline;padding:12px 6px 8px;font:400 10.5px/1.5 var(--mono);color:var(--mute)}
+#facts b{font-weight:500;color:var(--ink)}#facts .fi small{color:var(--mute);font:inherit;margin-right:6px}#facts .hint{margin-left:auto}#facts .said{font-family:var(--body)}
+#pmargin{padding:0 6px 14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));column-gap:24px}
+#pmargin .pmh,#pmargin .fine{grid-column:1/-1}#pmargin .fine{margin:10px 0 0}
+#pmargin .mr{display:grid;grid-template-columns:18px minmax(0,1fr) auto;gap:8px;align-items:center;min-height:32px;width:100%;padding:0;border:0;border-bottom:1px solid var(--hair);background:none;color:var(--ink);text-align:left;font:400 var(--t-small)/1.25 var(--body)}
+#pmargin button.mr{cursor:pointer}#pmargin button.mr:hover span{text-decoration:underline;text-underline-offset:3px}#pmargin .mr b{font:400 var(--t-cap) var(--mono);white-space:nowrap}
+#pmargin .mr>i,#pmargin .mr>.sg{justify-self:center}
+/* the lower band: what is selected or returned, and the place in figures */
+.plow{display:grid;grid-template-columns:minmax(0,1fr) 340px;border-bottom:1px solid var(--hair)}
+.plow>section{padding:0 20px 18px 0;min-width:0}.plow>section+section{padding:0 0 18px 20px;border-left:1px solid var(--hair)}.plow .fr b{white-space:nowrap}
+#pedges{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2;overflow:visible}
 #pedges text{font:500 11px var(--mono);fill:var(--ink);paint-order:stroke;stroke:var(--ground);stroke-width:3px}#pedges .pub{fill:var(--ground);stroke:var(--ink);stroke-width:1.4}#pedges path{fill:none;stroke:var(--ink);stroke-width:1.5}
 .wh{flex:none;vertical-align:-2px;margin-right:6px}.wh rect,.wh path{fill:none;stroke:var(--signal-worse);stroke-width:1.5}
-.mapc #mapbar{position:absolute;left:12px;bottom:12px;z-index:3;padding:0;border:0;display:block;max-width:calc(100% - 140px)}
-.scales{display:flex;background:var(--ground);border:1px solid var(--ink);overflow-x:auto}
-.scales button,#mapbar .scales button{background:none;border:0;border-right:1px solid var(--hair);padding:5px 10px 4px;cursor:pointer;width:auto;height:auto;text-align:center;line-height:1.15}
-.scales button:last-child{border-right:0}.scales b{display:block;font:600 var(--t-cap) var(--body);letter-spacing:.02em}
-.scales span{display:block;font:500 12px var(--mono);color:var(--mute)}.scales button.leave span{text-decoration:underline dotted;text-underline-offset:2px}
-.scales button.on,#mapbar .scales button.on{background:var(--ink);color:var(--ground)}.scales button.on span{color:var(--ground);opacity:.75}
-.tools{position:absolute;top:12px;left:12px;z-index:3;display:flex;flex-direction:column;align-items:flex-start}   /* each button its own box: the active one widens alone */
-/* 44 px targets (Tomas, 15 Oct); the active tool says its word, and measuring ends on Done */
-.tools button{min-width:44px;height:44px;display:flex;align-items:center;padding:0;background:var(--ground);border:1px solid var(--ink);margin-top:-1px;font:400 18px/1 var(--mono);cursor:pointer;color:var(--ink)}
-.tools .g{width:44px;flex:none;text-align:center}.tools .w{display:none;font:600 var(--t-small)/1 var(--body);padding-right:14px;white-space:nowrap}.tools button.on .w{display:inline}
-.tools button.done{justify-content:center;background:var(--ink);color:var(--ground);font:600 var(--t-small)/1 var(--body);padding:0 14px}.tools button.done[hidden]{display:none}
-.tools button[data-t="inspect"],.tools button[data-t="png"],.tools button.done{margin-top:6px}
-.tools button.on{background:var(--ink);color:var(--ground)}.tools button:hover:not(.on){background:var(--raise)}
-.mapc .maplibregl-ctrl-scale{background:var(--ground);border:1px solid var(--ink);border-top:0;color:var(--ink);font:500 12px var(--mono);padding:1px 6px;border-radius:0}
 .maplibregl-ctrl-bottom-right{right:12px;bottom:12px}.maplibregl-ctrl-bottom-right .maplibregl-ctrl{margin:0}
 .maplibregl-ctrl-bottom-left{left:8px;bottom:8px}.maplibregl-ctrl-bottom-left .maplibregl-ctrl{margin:0}
-/* the layers: a strip of five groups above the map, each opening its rows (the legend: a swatch, the pack, its opacity) in a drop-down over the map */
-#layers{position:relative;z-index:4}
-.lystrip{display:flex;border:1px solid var(--ink);border-bottom:0;overflow-x:auto;scrollbar-width:none}   /* a phone scrolls the strip inside itself, never the page */
-.lystrip>*{flex:none;display:flex;gap:8px;align-items:center;min-height:42px;padding:0 14px;border:0;border-right:1px solid var(--ink);background:none;color:var(--ink);font:600 var(--t-small) var(--body);white-space:nowrap}
-.lystrip button{cursor:pointer}.lystrip small{font:500 var(--t-cap) var(--mono);color:var(--mute)}
-.lystrip button[aria-expanded="true"]{background:var(--ink);color:var(--ground)}.lystrip button[aria-expanded="true"] small{color:var(--ground)}
-.lystrip .base{margin-left:auto;border-right:0;font-weight:500;gap:10px}
-.pcols .tbl .hide{display:none}.pcols .fr b{white-space:nowrap}
-.lydrop{position:absolute;top:100%;left:0;width:340px;max-width:100%;background:var(--ground);border:1px solid var(--ink)}.lydrop[hidden]{display:none}   /* it grows with its rows: no inner scroller over a map that pans (15 Oct) */
-#layers .ly.sub{padding-left:34px}
 .sw.pt-sp::before{content:'◆';font:14px/12px var(--mono)}
 .flatmap .house{fill:none;stroke:var(--cells);stroke-width:2}.flatmap .gl{font:14px var(--mono);fill:var(--ink);text-anchor:middle;dominant-baseline:central}
 .flatmap .rl{font:500 12px var(--mono);fill:var(--mute)}
 .flatnote{position:absolute;left:12px;right:12px;top:12px;z-index:3;margin:0;background:var(--ground);border:1px dashed var(--ink);padding:8px 10px;font:500 var(--t-cap)/1.45 var(--mono)}
-.pspecies{margin-top:28px}.pspecies h2{margin-top:0}
-#layers .ly{padding:6px 12px 6px;border-bottom:1px solid var(--hair)}
-#layers .ly label{display:grid;grid-template-columns:14px 18px minmax(0,1fr) auto;gap:8px;align-items:start;cursor:pointer}
-#layers .ly input[type=checkbox]{appearance:none;width:13px;height:13px;border:1px solid var(--ink);margin:2px 0 0;background:var(--ground);cursor:pointer}
-#layers .ly input[type=checkbox]:checked{background:var(--ink);box-shadow:inset 0 0 0 2px var(--ground)}
-#layers .ly .nm{font:500 var(--t-small)/1.3 var(--body)}#layers .ly .nm small{display:block;font:500 10.5px/1.35 var(--mono);color:var(--mute);margin-top:2px}
-#layers .ly .pk{font:500 9.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mute);border:1px solid var(--hair);padding:0 4px;margin-top:2px}
-#layers .ly:not(.on) .nm{color:var(--mute)}#layers .ly.empty .nm small{font-style:normal}#layers .ly.empty .sw{opacity:.3}
-#layers .ly.empty input{border-style:dashed;cursor:not-allowed}
-#layers .op{display:none;width:calc(100% - 40px);margin:6px 0 2px 40px;accent-color:var(--ink);height:14px}
-#layers .ly.on:hover .op,#layers .ly.on:focus-within .op{display:block}
-#layers .cost{margin:4px 0 0 40px;font:500 10.5px/1.35 var(--mono);color:var(--ink);border-left:2px solid var(--satellite-only);padding-left:6px}
 .sw{width:18px;height:14px;display:block;margin-top:1px;border:1px solid transparent}
-.sw.fill-land{background:#F1EFEB;border-color:#B9B4AC}.sw.fill-bldg{background:#CFCBC4}.sw.fill-photo{background:linear-gradient(135deg,#59614a,#8a8f7b 50%,#3f4a52)}
-.sw.fill-cell{background:color-mix(in srgb,var(--cells) 14%,transparent);border:2px solid var(--cells)}.sw.fill-sat{background:var(--satellite-only);opacity:.8}
-.sw.line-grid{border:1px solid var(--ink);opacity:.35}.sw.line-dot{border:1.5px dotted var(--ink)}.sw.line-ring{border:1px dashed var(--ink);border-radius:50%;width:14px;margin-left:2px}
 .sw.pt-own,.sw.pt-pub{width:10px;height:10px;border-radius:50%;margin:3px 4px;border:1.5px solid var(--ink)}.sw.pt-own{background:var(--ink)}
-.sw.pt-model::before{content:'◇';font:16px/12px var(--mono)}.sw.pt-lab::before{content:'△';font:14px/12px var(--mono)}.sw.pt-wind::before{content:'≈';font:600 16px/12px var(--body)}
-:root[data-theme="dark"] .sw.fill-land{background:#17191D;border-color:#3A3F47}:root[data-theme="dark"] .sw.fill-bldg{background:#2B2E34}
-#mapcredit{margin:0;padding:3px 12px 5px;font:500 12px/1.4 var(--mono);color:var(--mute);border-top:1px solid var(--hair)}
+.sw.pt-model::before{content:'◇';font:16px/12px var(--mono)}
 .pmpop .maplibregl-popup-content{background:var(--ground);color:var(--ink);border:1px solid var(--ink);border-radius:0;box-shadow:none;padding:10px 26px 10px 12px;display:flex;flex-direction:column;gap:4px;font:var(--t-small)/1.35 var(--body)}
 .pmpop .maplibregl-popup-content b{font:600 var(--t-body)/1.25 var(--body)}.pmpop .maplibregl-popup-content .mono{font-size:var(--t-cap);color:var(--mute)}
 .pmpop .maplibregl-popup-content a{font:600 var(--t-small) var(--body);color:var(--ink);margin-top:4px;text-underline-offset:3px}
-.pmpop .maplibregl-popup-close-button{font:400 18px/1 var(--mono);color:var(--ink);width:24px;height:24px;border-radius:0}
+.pmpop .maplibregl-popup-close-button{font:400 18px/1 var(--mono);color:var(--ink);width:44px;height:44px;border-radius:0}
 .pmpop .maplibregl-popup-tip{border-top-color:var(--ink);border-bottom-color:var(--ink)}
 .sw.txt::before{content:'Aa';font:600 11px/14px var(--body)}
 .sw.pt-img::before{content:'■';font:14px/12px var(--mono)}.pmimg{width:100%;max-height:160px;object-fit:cover;background:var(--hair)}
-.phead{display:flex;justify-content:space-between;align-items:flex-end;gap:12px 20px;flex-wrap:wrap}.prow{display:flex;flex-wrap:wrap;gap:10px;align-items:stretch}.prow .pviews{margin-top:0}
-.addimg{background:none;border:1px solid var(--ink);padding:6px 14px;font:600 var(--t-small) var(--body);color:var(--ink);cursor:pointer;min-height:44px}
 .imgdlg{border:1px solid var(--ink);border-radius:0;background:var(--ground);color:var(--ink);padding:18px;width:min(420px,calc(100vw - 32px))}
 .imgdlg::backdrop{background:rgba(0,0,0,.35)}.cardlg{width:min(1000px,calc(100vw - 32px));max-height:calc(100vh - 48px);overflow:auto}.cardlg:not(:has(img)){width:min(560px,calc(100vw - 32px))}#d-images>.acts,#d-things>.acts{margin:0 0 12px}#d-images>.acts button,#d-things>.acts button{min-height:44px;border:1px solid var(--ink);border-radius:0;background:none;color:var(--ink);padding:0 14px;font:600 var(--t-small) var(--body);cursor:pointer}#d-images>.acts button:focus-visible,#d-things>.acts button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}#d-images h3{margin-top:24px}.cardlg .icard input,.cardlg .icard textarea{font:var(--t-small) var(--body)}@media (min-width:760px){.cardlg .icards.one .icard{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px 20px;align-items:start}.cardlg .icards.one .icard>img{grid-row:1/span 30;position:sticky;top:0}}.cardlg .dhead{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:0 0 12px}.cardlg .dhead h3{margin:0}.cardlg .icards.one{grid-template-columns:minmax(0,1fr)}.imgdlg form{display:flex;flex-direction:column;gap:10px}.imgdlg label{display:flex;flex-direction:column;gap:4px;font:var(--t-small) var(--body)}
 .imgdlg .drop{border:1px dashed var(--ink);padding:14px;cursor:pointer}.imgdlg .drop input{font:inherit}.imgdlg form.over .drop{background:color-mix(in srgb,var(--cells) 8%,transparent)}
@@ -351,27 +376,18 @@ section.decl{margin-top:22px}.row.decl{cursor:default}   /* a pack's declared ba
 .icard img{width:100%;aspect-ratio:4/3;object-fit:cover;background:var(--hair)}.icard .fine{margin:0}.icard label{display:flex;flex-direction:column;gap:3px;font:var(--t-cap) var(--mono);color:var(--mute)}
 .icard select,.icard input,.icard textarea{min-height:44px;border:1px solid var(--ink);background:none;color:var(--ink);padding:6px 10px;border-radius:0;font:var(--t-small) var(--body)}
 .icard .acts{display:flex;gap:8px;flex-wrap:wrap}.icard .seen{border-left:2px solid var(--hair);padding-left:8px}.icard .seen p{margin:0 0 3px}.frow{display:grid;grid-template-columns:minmax(0,1fr) 3.6em auto 32px;gap:4px;align-items:center;margin:0 0 4px}.icard .frow select,.icard .frow input{min-height:36px;padding:2px 6px;min-width:0}.frow label{flex-direction:row;align-items:center;gap:2px}.icard .frow button,.icard .seen [data-g=add]{min-height:36px;padding:0 8px}.frow [data-g=name],.frow [data-g=sci],.frow>span{grid-column:1/-1}.frow [hidden]{display:none}.imgdlg label.tick{flex-direction:row}.imgdlg label.tick input{min-height:0;margin:0 8px 0 0;vertical-align:middle}.icard button{min-height:44px;border:1px solid var(--ink);background:none;color:var(--ink);padding:0 12px;font:600 var(--t-small) var(--body);cursor:pointer}
-#layers .ly code{font:inherit;border:1px solid var(--hair);padding:0 3px}
 .srow.focus,section.focus{outline:2px solid var(--cells);outline-offset:4px}
 .windcv{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2}
 #wfield{position:relative}.wallmap{position:relative}.wallmap .windcv{z-index:1}
-#layers .whr{display:grid;grid-template-columns:auto minmax(0,1fr) 44px;gap:8px;align-items:center;margin:6px 0 2px 40px;font:500 10.5px var(--mono);color:var(--mute)}
-#layers .whr input{accent-color:var(--ink);width:100%}#layers .whr b{font-weight:600;color:var(--ink);text-align:right}
 .nonode{position:absolute;left:12px;right:56px;bottom:40px;z-index:3;margin:0;background:var(--ground);border:1px dashed var(--ink);padding:8px 10px;font:500 var(--t-cap)/1.45 var(--mono)}
-/* the inspector: one line under the map; a mark or a margin row pressed says its facts here */
-#facts.inspect{display:flex;flex-wrap:wrap;gap:6px 22px;align-items:baseline;border:1px solid var(--ink);border-top:0;padding:10px 14px;font:500 var(--t-cap)/1.45 var(--mono)}
-#facts b{font-weight:600}#facts .fi small{color:var(--mute);font:inherit;margin-right:6px}#facts .hint{margin-left:auto;color:var(--mute)}#facts .said{font-family:var(--body)}
-.pcols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:36px;margin-top:34px}.pcols h2{margin-top:0}.pcols .fine{margin-top:8px}
 #mapbar{display:flex;gap:8px;align-items:center;justify-content:center;padding:8px;border-bottom:1px solid var(--hair)}
 #mapbar:empty{display:none}
 #mapbar button{background:none;border:1px solid var(--ink);width:28px;height:26px;cursor:pointer}
-#mapbar .cmp{font-size:var(--t-small);margin-left:14px;display:flex;gap:6px;align-items:center}
 #map{aspect-ratio:1;width:100%;overflow:hidden}
 #map .photo{width:100%;height:100%;object-fit:cover;display:block}
 .pair{display:grid;grid-template-columns:1fr 1fr;height:100%}.pair figure{margin:0;position:relative}.pair img{width:100%;height:100%;object-fit:contain;display:block;background:var(--ink)}
 #mapalt:has(.pair){aspect-ratio:auto;display:flex;flex-direction:column}#mapalt .pair{height:auto}#mapalt .pair figure{aspect-ratio:1}.pairnote{padding:8px 12px;border-top:1px solid var(--ink);font-size:var(--t-small);background:var(--ground)}
 .pair figcaption{position:absolute;left:8px;top:8px;background:var(--ground);border:1px solid var(--ink);font:600 var(--t-cap) var(--mono);padding:1px 6px}
-.chg{padding:16px}.chg .lrow{grid-template-columns:120px minmax(0,1fr) auto}.chg .span{border-top:1px solid var(--ink)}
 .yearly{max-width:760px;margin:6px 0 4px}
 .fr{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--hair);font-size:var(--t-small);align-items:baseline}
 .fr small{display:block;font:500 var(--t-cap) var(--mono);color:var(--mute)}.fr b{font:600 var(--t-small) var(--mono);text-align:right}
@@ -602,17 +618,28 @@ section.decl{margin-top:22px}.row.decl{cursor:default}   /* a pack's declared ba
 
 @media (max-width:1080px){
   .face{grid-template-columns:minmax(0,1fr);grid-template-areas:"kick" "l" "r" "al"}.rcol{margin-top:28px}
-  .pcols{grid-template-columns:minmax(0,1fr);gap:28px}
-  .mapc{grid-template-columns:minmax(0,1fr) 260px}.bench:not([data-pview="map"]){grid-template-columns:minmax(0,1fr)}.altc{border-right:0;border-bottom:1px solid var(--ink)}
+  .bench{grid-template-columns:216px minmax(0,1fr)}#ptools{grid-column:1 / -1;height:auto;min-height:0;border-left:0;border-top:1px solid var(--hair);padding:0 0 16px;columns:2;column-gap:32px}
   .sms{grid-template-columns:repeat(2,minmax(0,1fr))}.cols2{grid-template-columns:1fr}
 }
-/* a phone: the strip scrolls inside itself, the margin becomes the list Around the house under the map (option A, 15 Oct) */
-@media (max-width:700px){
-  .mapc{grid-template-columns:minmax(0,1fr)}.mapw{border-right:0;border-bottom:1px solid var(--ink)}.mapc #map{height:440px}#pleads{display:none}.scales button,#mapbar .scales button{min-height:44px}.pviews button{min-height:44px}
-  .tools{left:auto;right:8px;top:8px;align-items:flex-end}.mapc #mapbar{left:8px;bottom:8px;max-width:calc(100% - 68px)}
-  #pmargin{padding:0 14px 12px}#pmargin .mhd{display:none}#pmargin .mhp{display:block;margin:14px 0 4px}#pmargin .mr{min-height:44px}
-  .lystrip>*{min-height:44px;padding:0 12px}.lydrop{width:auto;right:0}
-  .phead>div{min-width:0}.prow{width:100%}.prow .pviews{flex:1;width:auto}.pviews button{flex:1}.pviews button span{display:none}
+/* a phone (SPEC_place_microgis §4): one column, the screen first, then the cake and the tools as two disclosures, then the
+   rest; every target 44 px */
+@media (max-width:760px){
+  .phead{grid-template-columns:minmax(0,1fr)}
+  .bench{grid-template-columns:minmax(0,1fr);border-bottom:0}.pmid{display:contents}
+  .mapc{order:1;margin:6px 6px 14px}.mapc #map{height:440px}
+  .psbar{order:2;display:flex;gap:8px;margin-bottom:4px}
+  .psbar button{flex:1;min-height:44px;border:1px solid var(--ink);border-radius:999px;background:none;color:var(--ink);font:400 var(--t-small) var(--body);cursor:pointer}
+  .psbar button[aria-expanded="true"]{background:var(--ink);color:var(--ground)}
+  #cake,#ptools{display:none;position:fixed;left:0;right:0;bottom:0;z-index:50;height:60vh;min-height:0;grid-column:auto;columns:auto;
+    padding:4px 16px 24px;border:0;border-top:1px solid var(--ink);background:var(--ground)}
+  .bench[data-sheet="cake"] #cake,.bench[data-sheet="tools"] #ptools{display:block}
+  .bench[data-sheet="cake"] .psbar,.bench[data-sheet="tools"] .psbar{position:fixed;left:0;right:0;bottom:60vh;z-index:51;margin:0;padding:8px 16px;background:var(--ground)}
+  #facts.inspect{order:4}#pmargin{order:5;grid-template-columns:minmax(0,1fr)}#pmargin .mr{min-height:44px}
+  .ly,.tl,.spd summary{min-height:44px}
+  .mapc #mapbar{max-width:calc(100% - 72px)}.mapc .maplibregl-ctrl-bottom-left{bottom:68px}#mapcredit{position:static;max-width:none;padding:4px 12px 6px;text-align:left}
+  .phour{left:12px;transform:none}   /* left: the active tool's word needs the top right */
+  .altc{top:64px;max-height:calc(100% - 140px)}   /* under the hour, not over it */
+  .plow{grid-template-columns:minmax(0,1fr)}.plow>section+section{padding:0 0 18px;border-left:0;border-top:1px solid var(--hair)}
 }
 @media (max-width:560px){
   .doors a{padding:5px 8px}.lrow{grid-template-columns:minmax(0,1fr) auto}.lrow .s{grid-column:1 / -1;grid-row:2}
@@ -844,20 +871,24 @@ section.decl{margin-top:22px}.row.decl{cursor:default}   /* a pack's declared ba
 
 <!-- PLACE -->
 <section class="page view" data-view="place" hidden>
-  <div id="placehead" class="phead" data-learn="place-head" data-reads="/health /issues" data-stage="observe" data-pack="place"></div>
+  <div class="phead"><div id="placehead" data-learn="place-head" data-reads="/health /issues" data-stage="observe" data-pack="place"></div>
+    <div class="prow"><form id="pask" class="pask"><label class="vh" for="paskq">Ask the node about this place</label><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 4h14v10H8l-4 3v-3H3z"/></svg><input id="paskq" autocomplete="off" placeholder="Ask about this place"><kbd>/</kbd></form><span id="paddimg"></span></div></div>
   <div class="bench">
-    <nav id="layers" aria-label="Layers" data-learn="place-layers" data-reads="/health /issues /packs" data-stage="observe" data-pack="place"></nav>
-    <div class="mapc" data-learn="place-map" data-reads="/place/geojson /sensors /issues" data-stage="observe" data-pack="place"><div class="mapw"><div id="mapbar"></div><div id="map"></div><svg id="pedges" aria-hidden="true"></svg></div><aside id="pmargin" aria-label="At the house, by position"></aside><svg id="pleads" aria-hidden="true"></svg></div>
-    <div id="facts" class="inspect" aria-live="polite" data-learn="place-tools" data-reads="/geo/cell /geo/measure" data-stage="observe" data-pack="core"></div>
-    <p id="mapcredit"></p>
-    <div class="altc" data-learn="place-orbit" data-reads="/earth" data-stage="observe" data-pack="earth"><div id="altbar"></div><div id="mapalt"></div></div>
-    <aside id="altfacts" data-learn="earth" data-reads="/issues /earth" data-stage="observe" data-pack="earth"></aside>
+    <nav id="cake" aria-label="What this place is made of" data-learn="place-layers" data-reads="/health /issues /packs" data-stage="observe" data-pack="place"></nav>
+    <div class="pmid">
+      <div class="mapc" data-learn="place-map" data-reads="/place/geojson /sensors /issues" data-stage="observe" data-pack="place"><div class="mapw"><div id="mapbar"></div><div id="map"></div><div id="phour" class="phour"></div><svg id="pedges" aria-hidden="true"></svg><p id="mapcredit"></p>
+        <div class="altc" hidden data-learn="place-orbit" data-reads="/earth" data-stage="observe" data-pack="earth"><div id="altbar"></div><div id="mapalt"></div></div></div></div>
+      <div class="psbar"><button data-s="cake" aria-expanded="false" aria-controls="cake">Layers</button><button data-s="tools" aria-expanded="false" aria-controls="ptools">Tools</button></div>
+      <div id="facts" class="inspect" aria-live="polite"></div>
+      <aside id="pmargin" aria-label="Around the house"></aside>
+    </div>
+    <aside id="ptools" aria-label="Tools" data-learn="place-tools" data-reads="/geo/rings /geo/measure /geo/cell" data-stage="observe" data-pack="core"></aside>
+    <details id="spd" class="spd"><summary>the list</summary><section id="pspecies" class="pspecies" data-learn="place-species" data-reads="/species /captures" data-stage="observe" data-pack="core"></section></details>
   </div>
   <dialog id="imgdlg" class="imgdlg" aria-label="Add an image"></dialog>
-  <div class="pcols">
-    <section data-learn="place-reach" data-reads="/reach /nearby" data-stage="observe" data-pack="core" data-kind="row"><h2>Where the readings come from</h2><div id="reach"></div></section>
-    <section id="pspecies" class="pspecies" data-learn="place-species" data-reads="/species /captures" data-stage="observe" data-pack="core" data-kind="row"></section>
-    <section data-learn="place-changing" data-reads="/issues /cells /sources" data-stage="observe" data-pack="core" data-kind="row"><h2>What is changing</h2><div id="pyearly"></div><div id="soon"></div></section>
+  <div class="plow">
+    <section id="ptable" aria-label="Selected"><h3 class="pmh">selected</h3><p class="fine">When a tool runs, what it returns is listed here, a row for each thing it found.</p></section>
+    <section id="pfigures" data-learn="place-changing" data-reads="/issues /cells /sources" data-stage="observe" data-pack="core"></section>
   </div>
 </section>
 
@@ -941,6 +972,7 @@ section.decl{margin-top:22px}.row.decl{cursor:default}   /* a pack's declared ba
 <script src="/static/doors-core.js"></script>
 <script src="/static/doors-fig.js"></script>
 <script src="/static/doors-now.js"></script>
+<script src="/static/doors-cake.js"></script>
 <script src="/static/doors-placemap.js"></script>
 <script src="/static/doors-place.js"></script>
 <script src="/static/doors-data.js"></script>

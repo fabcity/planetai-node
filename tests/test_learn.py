@@ -146,7 +146,7 @@ for k, name in sorted(dkeys.items()):
         f"describes that part, or add it to REUSED here only if its quote describes the doors part too.")
 for door in ("now", "place", "node", "data", "wall", "setup"):
     assert any(k.startswith(door + "-") for k in dkeys), f"the {door} door marks none of its parts"
-for k in ("place-changed", "place-orbit", "place-image", "wall-narration", "setup-save", "bar", "foot"):
+for k in ("place-orbit", "place-image", "wall-narration", "setup-save", "bar", "foot"):
     assert k in dkeys, f"no doors part names '{k}'"
 # the list says what the docs say: the quote is the main text, then the page's line, the reads and the docs link
 core = DOORS_SRC["doors-core.js"]

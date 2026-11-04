@@ -1320,30 +1320,6 @@
    "title": "One cell in a district's picture",
    "url": "https://planetai.fab.city/docs/federation/"
   },
-  "place-changed": {
-   "anchor": "place",
-   "more": "Each square is ten hectares the node's AlphaEarth record marks as changed between two years, and the share of built ground, trees, crops and water within 1 km sits beside them.",
-   "page": "dashboard.md",
-   "page_title": "The dashboard",
-   "questions": {
-    "en": [
-     "How much land around us changed this year?",
-     "Are we losing trees around here?"
-    ],
-    "es": [
-     "¿Cuánto terreno cambió a nuestro alrededor este año?",
-     "¿Se están perdiendo árboles por aquí?"
-    ],
-    "id": [
-     "Seberapa banyak lahan di sekitar kami yang berubah tahun ini?",
-     "Apakah pepohonan di sekitar sini berkurang?"
-    ]
-   },
-   "quote": "the hectares that changed year on year (one square per 10 ha), and what the ground within 1 km is made of: built, trees, crops, water, by satellite",
-   "section": "Place",
-   "title": "What changed",
-   "url": "https://planetai.fab.city/docs/dashboard/#place"
-  },
   "place-changing": {
    "anchor": "place",
    "more": "Land and coast change yearly, so they are here and not on Now. What the node cannot read yet is named here as missing.",
@@ -1363,14 +1339,14 @@
      "Apa yang belum bisa diukur node ini?"
     ]
    },
-   "quote": "**What is\nchanging**: land and coast with the node's sentence and figure, the Index cells, and what is not here yet (production\nand trade, water and soil).",
+   "quote": "**The place in figures** holds what changes yearly and has no hours, land and coast with the node's sentence and\nfigure, the Index cells, and what is not here yet (production and trade, water and soil, and the forecast).",
    "section": "Place",
    "title": "What is changing",
    "url": "https://planetai.fab.city/docs/dashboard/#place"
   },
   "place-head": {
    "anchor": "place",
-   "more": "The cell id is printed whole. The three buttons switch between the map, the satellite then and now, and what changed year on year.",
+   "more": "The cell id is printed whole. Type a question in the line under it and the Ask pane opens with it; press / to get there from anywhere on this door. With UI_ASK off the line is not there.",
    "page": "dashboard.md",
    "page_title": "The dashboard",
    "questions": {
@@ -1387,9 +1363,9 @@
      "Menurut satelit, apa yang berubah di sini?"
     ]
    },
-   "quote": "The ground this node stands on. The head gives the cell's id, resolution, edge and area (and the node's position, for\na screen with the token), and three views:",
+   "quote": "The ground around the house. The head gives the cell's id, resolution, edge and area, and the node's position for a\nscreen with the token. Under it is a line to ask the node about this place (press `/` to get there; `UI_ASK=off` removes it)",
    "section": "Place",
-   "title": "The ground this node stands on",
+   "title": "The ground around the house",
    "url": "https://planetai.fab.city/docs/dashboard/#place"
   },
   "place-image": {
@@ -1418,7 +1394,7 @@
   },
   "place-layers": {
    "anchor": "place",
-   "more": "Eighteen layers in five groups sit in the strip. Press a group to open its rows and switch a layer on or off.",
+   "more": "What this place is made of, with the sky at the top and the ground at the bottom, and what the node does not hold yet. A filled dot is on, a hollow one off, and a dotted one is a layer the node cannot draw yet, named by its source.",
    "page": "dashboard.md",
    "page_title": "The dashboard",
    "questions": {
@@ -1435,14 +1411,14 @@
      "Dari mana peta jalan ini berasal?"
     ]
    },
-   "quote": "Each row has its swatch, what it draws and from where, its pack and its opacity. Five start\non: the street map, the node's cell, the house's stations, the public stations and the images. A layer whose pack has\nnothing here says so.",
+   "quote": "**What the place is made of.** On the left is a list of what the node can show about the ground around the house.\nThe sky is at the top of the list and the ground at the bottom.",
    "section": "Place",
    "title": "The layers",
    "url": "https://planetai.fab.city/docs/dashboard/#place"
   },
   "place-map": {
    "anchor": "place",
-   "more": "Every distance in the margin is measured by the node from its own point. Without the token the house's marks say withheld, because together they would place the house.",
+   "more": "Every distance on this door is measured by the node from its own point. Without the token the house's marks say withheld, because together they would place the house.",
    "page": "dashboard.md",
    "page_title": "The dashboard",
    "questions": {
@@ -1459,9 +1435,9 @@
      "Mengapa beberapa tanda disembunyikan?"
     ]
    },
-   "quote": "Nothing is labelled on the map itself: every mark leaves on a thin leader to a ruled margin, **At the house · by\nposition**, one row per mark with its distance in metres from the node, measured by the node (`GET /geo/measure`, and\n`GET /nearby` for public stations).",
+   "quote": "**The screen.** In the middle is the map, on a black screen in a bezel. It stays black on the light page and on the dark one.",
    "section": "Place",
-   "title": "The map and its margin",
+   "title": "The screen",
    "url": "https://planetai.fab.city/docs/dashboard/#place"
   },
   "place-orbit": {
@@ -1483,33 +1459,9 @@
      "Apakah bangunan di sekitar kami bertambah?"
     ]
    },
-   "quote": "the node's Sentinel-2 annual medians, then and now side by side, with the hectares that changed between them by its AlphaEarth record",
+   "quote": "the node's Sentinel-2 annual medians,\nthen and now side by side, with the hectares that changed between them by its AlphaEarth record",
    "section": "Place",
    "title": "From orbit",
-   "url": "https://planetai.fab.city/docs/dashboard/#place"
-  },
-  "place-reach": {
-   "anchor": "place",
-   "more": "Each row is one kind of source with the oldest and newest hour this node holds for it, and under them the public stations within 5 km.",
-   "page": "dashboard.md",
-   "page_title": "The dashboard",
-   "questions": {
-    "en": [
-     "How long has this node been measuring here?",
-     "Which public stations are close to us?"
-    ],
-    "es": [
-     "¿Desde cuándo mide este nodo aquí?",
-     "¿Qué estaciones públicas tenemos cerca?"
-    ],
-    "id": [
-     "Sudah berapa lama node ini mengukur di sini?",
-     "Stasiun publik mana yang dekat dengan kami?"
-    ]
-   },
-   "quote": "**Where the readings come from**: how far back each kind of source reaches, from\n`GET /reach`, and the public stations within 5 km.",
-   "section": "Place",
-   "title": "Where the readings come from",
    "url": "https://planetai.fab.city/docs/dashboard/#place"
   },
   "place-species": {
@@ -1531,14 +1483,14 @@
      "Menurut catatan orang lain, makhluk apa lagi yang hidup di sekitar sini?"
     ]
    },
-   "quote": "**Species confirmed here**: a table of what somebody here confirmed\nin an image, how often, where, and GBIF's open records by others in the node's seven cells, token only.",
+   "quote": "**Species confirmed here** is the list under the species row: a table of what somebody here confirmed in an image,\nhow often, where, and GBIF's open records by others in the node's seven cells, token only.",
    "section": "Place",
    "title": "Species confirmed here",
    "url": "https://planetai.fab.city/docs/dashboard/#place"
   },
   "place-tools": {
    "anchor": "place",
-   "more": "Press a mark, a margin row or a cell and its facts appear in this line. Measure and From the house ask the node for the distance, so the page never works one out itself.",
+   "more": "The tools that run on this node today, and the ones still to come, marked not yet. Rings and distance draws the 2, 5 and 15 km rings from the node's own point. Without a token they stay quiet.",
    "page": "dashboard.md",
    "page_title": "The dashboard",
    "questions": {
@@ -1555,9 +1507,9 @@
      "Sel apa ini, dan seberapa besar?"
     ]
    },
-   "quote": "press a station, an image, a place to make or a cell and the line gives its facts, and with the token how far it is\nfrom the node and which cell it is in. A station of this house says it counts toward the cell; a public one is shown\nand never counted.",
+   "quote": "**The tools.** On the right is a column of what the node could do with this place. **Rings and distance** works today.\nIt draws the 2, 5 and 15 km rings from the node's point, and its name sits in a pill while it is on.",
    "section": "Place",
-   "title": "The inspector and the tools",
+   "title": "The tools",
    "url": "https://planetai.fab.city/docs/dashboard/#place"
   },
   "presence": {
@@ -2272,8 +2224,6 @@
   "place-map",
   "place-tools",
   "place-orbit",
-  "place-changed",
-  "place-reach",
   "place-species",
   "place-changing",
   "node-verdict",
