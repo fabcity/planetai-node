@@ -7,10 +7,15 @@
 -- PostGIS first: Place maps (place_maps, place_marks below) store geometry, so a database without the extension must
 -- stop the whole apply here, with a sentence that says why, before anything else is touched. The db image in
 -- docker-compose.yml is PostGIS and its user may create extensions, so on a current node this is a no-op.
+-- update.sh applies this file BEFORE `docker compose up -d` swaps the db image, so "run planetai update" alone would
+-- fail the same way forever: the sentence names the step that brings the db up on the new image first. psql prints
+-- the ERROR and its DETAIL on stderr, which update.sh leaves on the terminal; DETAIL keeps Postgres's own reason, so a
+-- permissions failure is not hidden behind the image.
 DO $$ BEGIN
   CREATE EXTENSION IF NOT EXISTS postgis;
 EXCEPTION WHEN OTHERS THEN
-  RAISE EXCEPTION 'PostGIS is not in this database: Place maps need the imresamu/postgis image docker-compose.yml names. Run planetai update after the db image is current.';
+  RAISE EXCEPTION 'PostGIS is not in this database, and Place maps need it. Where the node is installed, run docker compose up -d db. That starts the database on the PostGIS image docker-compose.yml names. Then run planetai update again.'
+    USING DETAIL = 'Postgres said: ' || SQLERRM;
 END $$;
 
 CREATE TABLE IF NOT EXISTS sensors (

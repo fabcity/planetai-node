@@ -9,7 +9,8 @@ import sys
 import xml.etree.ElementTree as ET
 
 os.environ.setdefault("DATABASE_URL", "postgresql://unused/never-connected")   # db.py opens nothing at import
-from maps import PALETTE, check_feature, feature_collection, to_dxf, to_kml, utm_epsg  # noqa: E402
+from fastapi import HTTPException  # noqa: E402
+from maps import PALETTE, _fields, check_feature, feature_collection, to_dxf, to_kml, utm_epsg  # noqa: E402
 
 
 def feature(kind, gtype, coords):
@@ -46,6 +47,18 @@ for bad in (None, [], {"type": "Feature"}, {"type": "Feature", "properties": {"k
     assert isinstance(check_feature(bad), str), bad          # refused in words, never a 500
 print("  markers and notes are one point; kinds, coordinates and shapes that are not GeoJSON are refused in words")
 
+# A drawing's corners are checked against each other, O(n²), on a request thread: a drawing has a ceiling, here and on
+# the parent's /place/maps/received, before that check runs.
+_long = [[115 + i * 1e-5, -8.8] for i in range(1001)]
+assert check_feature(feature("line", "LineString", _long)) == "A drawing has 1,000 points at most.", "1,001 points are refused"
+assert check_feature(feature("line", "LineString", _long[:1000])) is None, "1,000 points are a drawing"
+for bad in ([2], "2", 2.5, True, 7, None):
+    try:
+        _fields({"colour": bad}); raise AssertionError(f"colour {bad!r} was taken")
+    except HTTPException as e:
+        assert e.status_code == 422 and e.detail == "A colour is a number from 1 to 6.", (bad, e.detail)   # never a 500
+print("  a drawing has 1,000 points at most; a colour that is not 1 to 6, a list included, is refused in words")
+
 assert set(PALETTE) == {1, 2, 3, 4, 5, 6} and all(h.startswith("#") and 1 <= aci <= 255 for h, aci in PALETTE.values())
 assert len({h.lower() for h, _ in PALETTE.values()}) == 6 and len({a for _, a in PALETTE.values()}) == 6
 print("  six colours, each a hex for the screen and an ACI number for DXF")
@@ -66,7 +79,11 @@ fc = feature_collection({"id": 3, "name": "Garden plan", "owner": "Tomas"},
 assert fc["schema"] == "planetai.place.map/v0" and fc["map"] == "Garden plan" and fc["node"] == "bayu-ungasan"
 assert fc["owner"] == "Tomas" and fc["type"] == "FeatureCollection"
 p = fc["features"][0]["properties"]
+# the household's own download keeps who drew each drawing; what goes to the node upstream names nobody
 assert set(p) == {"kind", "label", "note", "colour", "colour_hex", "length_m", "area_m2", "image", "drawn_by", "updated_at"}, p
+assert p["drawn_by"] == "Tomas"
+up = feature_collection({"id": 3, "name": "Garden plan", "owner": "Tomas"}, [mark_row(kind="area")], "bayu-ungasan", upstream=True)
+assert set(up["features"][0]["properties"]) == set(p) - {"drawn_by"}, up["features"][0]["properties"]
 assert p["colour_hex"] == PALETTE[3][0] and p["image"] == 9 and fc["features"][0]["geometry"]["type"] == "Polygon"
 k = to_kml(fc)
 ET.fromstring(k)                                          # valid XML with the hostile label
@@ -78,7 +95,7 @@ pts = feature_collection({"id": 3, "name": "m", "owner": None},
                           mark_row(kind="line", geometry={"type": "LineString", "coordinates": [[115.1, -8.8], [115.2, -8.8]]})], "n")
 assert ET.fromstring(to_kml(pts)).find(".//k:Point/k:coordinates", ns).text == "115.1,-8.8"
 assert ET.fromstring(to_kml(pts)).find(".//k:LineString/k:coordinates", ns).text == "115.1,-8.8 115.2,-8.8"
-print("  GeoJSON carries the contract's properties, KML is valid XML for a hostile label")
+print("  GeoJSON carries the contract's properties, without drawn_by upstream; KML is valid XML for a hostile label")
 
 ring = [[500000, 9025000], [500010, 9025000], [500010, 9025010], [500000, 9025000]]
 d = to_dxf([{"kind": "area", "label": "two\nlines", "note": "", "colour": 3, "xy": ring}], 32750)

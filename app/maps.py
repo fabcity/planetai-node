@@ -51,9 +51,10 @@ received = APIRouter()                                     # a child's writes: A
 SHARE_WARNING = ("Sharing sends every drawing in this map, at its exact place, with its labels, notes and measures, to "
                  "the node upstream, where the people holding its token can see it. Press Share again to send it.")
 NO_PARENT = "There is no node upstream to share with. Set PARENT in Set up first."
-ON_HOUSE = "This drawing sits on the house. Press Share again to send the map with it."
+ON_HOUSE = "This drawing touches the cell the house stands in. Press Share again to send the map with it."
 NOT_YET = "The node upstream does not take maps yet."
 NOT_SENT = "The map did not reach the node upstream. The node tries again in an hour."
+NO_TOKEN = "The node upstream did not take this node's token. Set PARENT_TOKEN in Set up to the one it gave you."
 
 # Colour → (hex for the screen, AutoCAD Colour Index for DXF). A drawing stores the number, so this can change without
 # a migration. None is the satellite's orange or the cells' blue, and each reads on the satellite and on black.
@@ -62,6 +63,12 @@ PALETTE: dict[int, tuple[str, int]] = {
 
 _TYPE = {"marker": "Point", "note": "Point", "line": "LineString", "area": "Polygon"}
 _COORDS = "Every point needs a longitude and a latitude."
+# ponytail: ceilings, not a queue. _crosses() is O(n²) on the request thread: 1,000 corners take 0.2 s and 5,000 took
+# 4.6 s on a Mac. Nobody taps 1,000 points by hand; an import of surveyed outlines would need a bigger cap and a
+# faster check (a sweep line, or PostGIS's ST_IsSimple) first.
+MAX_POINTS = 1_000                                         # one drawing
+MAX_DRAWINGS, MAX_MAP_POINTS = 2_000, 20_000               # a child's shared map, on /place/maps/received
+TOO_BIG = "A shared map holds 2,000 drawings and 20,000 points at most."
 
 
 # ---------------------------------------------------------------- what a drawing must be
@@ -103,7 +110,7 @@ def _meet(p1, p2, p3, p4) -> bool:
 
 def _crosses(ring: list) -> bool:
     """Any two sides that are not neighbours touch or cross.
-    ponytail: O(n²) crossing check, fine below a few hundred corners."""
+    ponytail: O(n²) crossing check, held to MAX_POINTS corners (0.2 s at 1,000)."""
     pts = ring[:-1]
     n = len(pts)
     for i in range(n):
@@ -115,12 +122,24 @@ def _crosses(ring: list) -> bool:
     return False
 
 
+def _points(feature) -> int:
+    """How many points a drawing claims, counted before any is checked: a Point is one, a line its points, an area its
+    outlines' points. Anything else counts one, and check_feature() refuses it in words."""
+    g = feature.get("geometry") if isinstance(feature, dict) else None
+    c = g.get("coordinates") if isinstance(g, dict) else None
+    if not (isinstance(c, list) and c and isinstance(c[0], list)):
+        return 1
+    return sum(len(x) if isinstance(x, list) and x and isinstance(x[0], list) else 1 for x in c)
+
+
 def check_feature(feature: dict) -> str | None:
     """The sentence a drawing is refused with, or None. Its kind says which geometry it must be."""
     props = feature.get("properties") if isinstance(feature, dict) else None
     kind = props.get("kind") if isinstance(props, dict) else None
     if kind not in _TYPE:
         return "A drawing is a marker, a line, an area or a note."
+    if _points(feature) > MAX_POINTS:
+        return "A drawing has 1,000 points at most."
     geom = feature.get("geometry")
     gtype, c = (geom.get("type"), geom.get("coordinates")) if isinstance(geom, dict) else (None, None)
     if kind in ("marker", "note"):
@@ -168,7 +187,7 @@ def _fields(src: dict) -> dict:
         out["note"] = _text(src["note"], 500)
     if "colour" in src:
         c = src["colour"]
-        if isinstance(c, bool) or c not in PALETTE:
+        if isinstance(c, bool) or not isinstance(c, int) or c not in PALETTE:     # a list is unhashable: refused, not a 500
             raise HTTPException(422, "A colour is a number from 1 to 6.")
         out["colour"] = c
     if "image" in src:
@@ -186,14 +205,18 @@ _DXF_LAYER = {"marker": "MARKERS", "line": "LINES", "area": "AREAS", "note": "NO
 _TEXT_H = 1.5                                              # metres: a label on a garden plan
 
 
-def feature_collection(map_row: dict, marks: list[dict], node: str) -> dict:
+def feature_collection(map_row: dict, marks: list[dict], node: str, upstream: bool = False) -> dict:
     """The map as GeoJSON in WGS84: the same shape the page draws, and what a pull from another node reads back.
-    `image` is the picture's capture id and never a file."""
+    `image` is the picture's capture id and never a file. `upstream` is the copy push_maps() sends: it leaves out
+    `drawn_by`, so no household member's name goes up (§5 lists what does); the household's own download keeps it."""
     def props(m):
         at = m.get("updated_at")
-        return {"kind": m["kind"], "label": m.get("label"), "note": m.get("note"), "colour": m["colour"],
-                "colour_hex": PALETTE[m["colour"]][0], "length_m": m.get("length_m"), "area_m2": m.get("area_m2"),
-                "image": m.get("capture_id"), "drawn_by": m.get("drawn_by"), "updated_at": at.isoformat() if at else None}
+        p = {"kind": m["kind"], "label": m.get("label"), "note": m.get("note"), "colour": m["colour"],
+             "colour_hex": PALETTE[m["colour"]][0], "length_m": m.get("length_m"), "area_m2": m.get("area_m2"),
+             "image": m.get("capture_id"), "drawn_by": m.get("drawn_by"), "updated_at": at.isoformat() if at else None}
+        if upstream:
+            del p["drawn_by"]
+        return p
     return {"type": "FeatureCollection", "schema": _SCHEMA, "map": map_row["name"], "owner": map_row.get("owner"),
             "node": node, "features": [{"type": "Feature", "properties": props(m), "geometry": m["geometry"]} for m in marks]}
 
@@ -290,9 +313,11 @@ def tie(cur, mark_id: int, issue: dict | None, words: str, actor: str) -> None:
     """A drawing as an issue's acted step (§8): the row the Done button writes, with `choice = 'place.mark:<id>'` and the
     person's own words. Written here, not through POST /actions, whose choice check would refuse it. `issue` is
     `{"alert_id": A}` or `{"event_id": E}`, the way the Done button on that issue carries it; None unties, deleting the
-    row. Tying again replaces it. Deleting the drawing keeps it, because the person did act."""
+    row. Tying again replaces it; to the same issue it keeps the act's time, so new words do not move it out of ρ's
+    24 h, and to another issue it is a new act. Deleting the drawing keeps it, because the person did act."""
     choice = f"place.mark:{mark_id}"
-    cur.execute("DELETE FROM actions WHERE stage = 'acted' AND choice = %s", (choice,))
+    cur.execute("DELETE FROM actions WHERE stage = 'acted' AND choice = %s RETURNING ts, alert_id, event_id", (choice,))
+    was = cur.fetchone()
     alert_id = event_id = None
     if issue is not None:
         words = str(words or "").strip()
@@ -315,8 +340,9 @@ def tie(cur, mark_id: int, issue: dict | None, words: str, actor: str) -> None:
             if not cur.fetchone():
                 raise HTTPException(404, "no such event")
             event_id = iid
-        cur.execute("INSERT INTO actions (alert_id, event_id, stage, actor, note, choice) VALUES (%s,%s,'acted',%s,%s,%s)",
-                    (alert_id, event_id, actor, words[:500], choice))
+        ts = was["ts"] if was and (was["alert_id"], was["event_id"]) == (alert_id, event_id) else None
+        cur.execute("INSERT INTO actions (ts, alert_id, event_id, stage, actor, note, choice) "
+                    "VALUES (COALESCE(%s, now()), %s, %s, 'acted', %s, %s, %s)", (ts, alert_id, event_id, actor, words[:500], choice))
     cur.execute("UPDATE place_marks SET alert_id = %s, event_id = %s WHERE id = %s", (alert_id, event_id, mark_id))
 
 
@@ -444,7 +470,8 @@ def map_new(body: dict, request: Request):
 @router.patch("/place/maps/{map_id}")
 def map_edit(map_id: int, body: dict, request: Request):
     """{"name"?, "owner"?, "shared"?, "confirm"?, "actor"} → {"map": …}. `"shared": true` needs a node upstream and
-    `"confirm": "exact"`, which the page sends on the second press, after the warning; without it, 409 and the warning.
+    `"confirm": "exact"`, which the page sends on the second press, after the warning; without it, 409 with
+    `{"code": "share_warning", "text": SHARE_WARNING}`.
     It also releases a map a drawing on the house held. `"shared": false` owes the node upstream one delete."""
     sets = {}
     if "name" in body:
@@ -463,7 +490,8 @@ def map_edit(map_id: int, body: dict, request: Request):
             if not PARENT():
                 raise HTTPException(409, NO_PARENT)
             if body.get("confirm") != "exact":
-                raise HTTPException(409, SHARE_WARNING)
+                # the code is what the page arms its second press on; any other refusal is only words
+                raise HTTPException(409, {"code": "share_warning", "text": SHARE_WARNING})
             # pushed_at cleared: the next push sends it whole, whatever the parent had before
             cur.execute("""UPDATE place_maps SET shared = true, held = false, shared_at = now(), share_error = NULL,
                              pushed_at = NULL, push_tried_at = NULL WHERE id = %s""", (map_id,))
@@ -607,8 +635,9 @@ def mark_delete(mark_id: int, request: Request, actor: str = Query("")):
 def push_maps() -> None:
     """Child side, every minute: each shared map changed since it last went up is sent whole (`put`), and each map
     unshared or deleted since is sent as a `delete`. Two changes inside a minute are one put. A failed send keeps the
-    map shared, says why in `share_error` and waits an hour; a 404 is a parent from before maps. A map a drawing on the
-    house holds is never sent until the household presses Share again."""
+    map shared, says why in `share_error` and waits an hour; a 404 is a parent from before maps, a 401 or 403 a token
+    to fix rather than an hour to wait. A map a drawing on the house holds is never sent until the household presses
+    Share again."""
     if not PARENT():          # the function, not the setting: a bare PARENT is always truthy
         return
     node = os.getenv("NODE_NAME", "node")
@@ -622,20 +651,20 @@ def push_maps() -> None:
                           AND (share_error IS NULL OR push_tried_at < now() - interval '1 hour')""")
         for m in cur.fetchall():
             cur.execute(_MARK + " WHERE map_id = %s ORDER BY id", (m["id"],))
-            out.append((m["id"], "put", feature_collection(m, cur.fetchall(), node), m["updated_at"]))
+            out.append((m["id"], "put", feature_collection(m, cur.fetchall(), node, upstream=True), m["updated_at"]))
     for map_id, op, fc, snap in out:
         try:
             r = httpx.post(f"{PARENT()}/place/maps/received",
                            json={"schema": _SCHEMA, "node": node, "map_id": map_id, "op": op, "geojson": fc},
                            headers={"Authorization": f"Bearer {PARENT_TOKEN()}"} if PARENT_TOKEN() else {}, timeout=30)
-            if r.status_code != 404:
+            error = {404: NOT_YET, 401: NO_TOKEN, 403: NO_TOKEN}.get(r.status_code)
+            if not error:
                 r.raise_for_status()
-            error = NOT_YET if r.status_code == 404 else None
         except Exception as e:  # noqa: BLE001
             log.warning("map %s %s to parent failed: %s", map_id, op, e)
             error = NOT_SENT
         with db() as con, con.cursor() as cur:
-            if op == "delete" and error == NOT_SENT:
+            if op == "delete" and error in (NOT_SENT, NO_TOKEN):
                 cur.execute("UPDATE place_maps_unshared SET tried_at = now() WHERE map_id = %s", (map_id,))
             elif op == "delete":                           # sent, or a parent with no maps to delete it from
                 cur.execute("DELETE FROM place_maps_unshared WHERE map_id = %s", (map_id,))
@@ -665,9 +694,13 @@ def map_received(body: dict, authorization: str = Header("")):
             return {"ok": True}
         fc = body.get("geojson") if isinstance(body.get("geojson"), dict) else {}
         feats = fc.get("features") if isinstance(fc.get("features"), list) else []
+        if len(feats) > MAX_DRAWINGS or sum(map(_points, feats)) > MAX_MAP_POINTS:
+            raise HTTPException(413, TOO_BIG)              # before any outline is compared with itself
         for f in feats:
             if refusal := check_feature(f):
                 raise HTTPException(422, refusal)
+            if "colour" in f["properties"]:
+                _fields({"colour": f["properties"]["colour"]})
         cur.execute("""INSERT INTO place_maps (name, owner, from_node, remote_id) VALUES (%s, %s, %s, %s)
                        ON CONFLICT (from_node, remote_id) DO UPDATE SET name = EXCLUDED.name, owner = EXCLUDED.owner,
                                                                         updated_at = now()
@@ -676,14 +709,14 @@ def map_received(body: dict, authorization: str = Header("")):
         cur.execute("DELETE FROM place_marks WHERE map_id = %s", (mid,))
         for f in feats:
             p, kind = f["properties"], f["properties"]["kind"]
-            colour = p.get("colour") if p.get("colour") in PALETTE and not isinstance(p.get("colour"), bool) else 1
+            colour = p.get("colour", 1)
             cur.execute("""WITH g AS (SELECT ST_SetSRID(ST_GeomFromGeoJSON(%(g)s::text), 4326) AS geom)
-                           INSERT INTO place_marks (map_id, kind, geom, colour, label, note, drawn_by, length_m, area_m2)
-                           SELECT %(map)s, %(kind)s, geom, %(colour)s, %(label)s, %(note)s, %(by)s,
+                           INSERT INTO place_marks (map_id, kind, geom, colour, label, note, length_m, area_m2)
+                           SELECT %(map)s, %(kind)s, geom, %(colour)s, %(label)s, %(note)s,
                                   CASE WHEN %(kind)s = 'line' THEN ST_Length(geom::geography) END,
                                   CASE WHEN %(kind)s = 'area' THEN ST_Area(geom::geography) END FROM g""",
                         {"g": _geometry(kind, f["geometry"]), "map": mid, "kind": kind, "colour": colour,
-                         "label": _text(p.get("label"), 80), "note": _text(p.get("note"), 500), "by": _text(p.get("drawn_by"), 80)})
+                         "label": _text(p.get("label"), 80), "note": _text(p.get("note"), 500)})
     return {"ok": True, "marks": len(feats)}
 
 

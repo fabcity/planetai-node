@@ -181,15 +181,25 @@ acted = lambda: ac.execute("SELECT alert_id, event_id, actor, note FROM actions 
 assert acted() == [{"alert_id": A, "event_id": None, "actor": "Tomas", "note": "dug the swale"}], acted()
 c.patch(f"/place/marks/{kid}", json={"issue": {"alert_id": A}, "words": "dug the swale, planted vetiver", "actor": "Tomas"}, headers=H)
 assert [x["note"] for x in acted()] == ["dug the swale, planted vetiver"], "tying again replaces the row, never a second"
+# the act happened when it was first tied: words edited later keep its time, so it stays in ρ's 24 h window
+ac.execute("UPDATE actions SET ts = now() - interval '20 hours' WHERE stage = 'acted' AND choice = %s", (f"place.mark:{kid}",))
+was_ts = one("SELECT ts FROM actions WHERE stage = 'acted' AND choice = %s", f"place.mark:{kid}")["ts"]
+c.patch(f"/place/marks/{kid}", json={"issue": {"alert_id": A}, "words": "dug the swale, planted vetiver and lemongrass", "actor": "Tomas"}, headers=H)
+row_ = one("SELECT ts, note FROM actions WHERE stage = 'acted' AND choice = %s", f"place.mark:{kid}")
+assert row_["ts"] == was_ts and row_["note"].endswith("lemongrass"), ("re-tying to the same issue moved the act's time", row_, was_ts)
 r = c.patch(f"/place/marks/{kid}", json={"issue": None, "actor": "Tomas"}, headers=H)
 assert r.status_code == 200 and r.json()["mark"]["alert_id"] is None and acted() == [], "untying deletes the row"
 assert c.patch(f"/place/marks/{kid}", json={"issue": {"alert_id": 999999999}, "words": "x"}, headers=H).status_code == 404
 E = one("INSERT INTO alert_events (issue, kind, level, opened_at, last_seen_at) VALUES ('heat', 'sustained', 'act', now(), now()) RETURNING id")["id"]
+c.patch(f"/place/marks/{kid}", json={"issue": {"alert_id": A}, "words": "dug the swale", "actor": "Tomas"}, headers=H)
+ac.execute("UPDATE actions SET ts = now() - interval '20 hours' WHERE stage = 'acted' AND choice = %s", (f"place.mark:{kid}",))
 c.patch(f"/place/marks/{kid}", json={"issue": {"event_id": E}, "words": "shaded the west wall", "actor": "Tomas"}, headers=H)
 assert acted() == [{"alert_id": None, "event_id": E, "actor": "Tomas", "note": "shaded the west wall"}], acted()
+assert one("SELECT ts > now() - interval '1 minute' AS new FROM actions WHERE stage = 'acted' AND choice = %s", f"place.mark:{kid}")["new"], \
+    "a tie to a different issue is a new act, at its own time"
 assert c.delete(f"/place/marks/{kid}?actor=Tomas", headers=H).status_code == 200
 assert len(acted()) == 1, "deleting the drawing keeps the act: the person did act"
-print("  tying: needs the person's words, writes the Done row, untying deletes it, deleting the drawing keeps it")
+print("  tying: needs the person's words, writes the Done row, keeps its time when the words change, untying deletes it, deleting the drawing keeps it")
 
 SET["DECISION_REQUIRED"] = "1"
 A2 = one("INSERT INTO alerts (ts, rule_id, sensor_id, level, text) VALUES (now(), 't', 'sc-1', 'act', 'x') RETURNING id")["id"]
@@ -239,6 +249,7 @@ assert r.headers["content-disposition"] == f'attachment; filename="bayu-ungasan-
 fc = r.json()
 assert fc["schema"] == "planetai.place.map/v0" and fc["node"] == "bayu-ungasan" and fc["map"] == "Rain & Garden / plan"
 assert len(fc["features"]) == 4 and fc["features"][0]["properties"]["area_m2"] > 1000, fc["features"][0]
+assert fc["features"][0]["properties"]["drawn_by"] == "Tomas", "the household's own download keeps who drew it"
 
 r = c.get(f"/place/maps/{DL}.kml", headers=H)
 assert r.status_code == 200 and r.headers["content-type"].startswith("application/vnd.google-earth.kml+xml")
@@ -282,9 +293,11 @@ def recorder(url, json=None, headers=None, timeout=None):
 
 
 httpx.post = recorder
-WARN = ("Sharing sends every drawing in this map, at its exact place, with its labels, notes and measures, to the node "
+WARN_TEXT = ("Sharing sends every drawing in this map, at its exact place, with its labels, notes and measures, to the node "
         "upstream, where the people holding its token can see it. Press Share again to send it.")
-HOUSE = "This drawing sits on the house. Press Share again to send the map with it."
+WARN = {"code": "share_warning", "text": WARN_TEXT}
+HOUSE = "This drawing touches the cell the house stands in. Press Share again to send the map with it."
+TOKEN = "The node upstream did not take this node's token. Set PARENT_TOKEN in Set up to the one it gave you."
 NOT_YET = "The node upstream does not take maps yet."
 SH = c.post("/place/maps", json={"name": "Walk to the beach", "actor": "Tomas"}, headers=H).json()["map"]["id"]
 share = lambda body, mid=SH: c.patch(f"/place/maps/{mid}", json={"actor": "Tomas", **body}, headers=H)  # noqa: E731
@@ -299,6 +312,7 @@ def push():
 
 r = share({"shared": True, "confirm": "exact"})
 assert r.status_code == 409 and r.json()["detail"] == "There is no node upstream to share with. Set PARENT in Set up first.", r.text
+assert "share_warning" not in r.text, "no node upstream is a plain refusal: the page must not arm the second press on it"
 assert push() == [], "no PARENT, nothing sent"
 SET.update(PARENT_API_URL="http://parent.test", PARENT_TOKEN="kid-tok")
 r = share({"shared": True})
@@ -320,6 +334,8 @@ assert s["url"] == "http://parent.test/place/maps/received" and s["auth"] == "Be
 assert set(s["body"]) == {"schema", "node", "map_id", "op", "geojson"} and s["body"]["schema"] == "planetai.place.map/v0"
 assert s["body"]["node"] == "bayu-ungasan" and s["body"]["geojson"]["map"] == "Walk to the beach"
 assert [f["properties"]["label"] for f in s["body"]["geojson"]["features"]] == ["Path"], "both changes in the one put"
+assert all("drawn_by" not in f["properties"] for f in s["body"]["geojson"]["features"]), "no name goes upstream"
+assert "Tomas" not in str([f["properties"] for f in s["body"]["geojson"]["features"]]), "who drew it stays here"
 assert push() == [], "nothing changed since: nothing sent"
 print("  a shared map changed twice goes up once, whole, with the parent's token")
 
@@ -341,6 +357,15 @@ answer[0] = 200
 assert push() == [("put", SH)] and row()["share_error"] is None, row()
 print("  a parent that predates maps is said so; the map stays shared and is tried again after an hour")
 
+for code in (401, 403):
+    answer[0] = code
+    c.patch(f"/place/marks/{SK}", json={"note": f"refused {code}", "actor": "Tomas"}, headers=H)
+    assert push() == [("put", SH)] and row()["share_error"] == TOKEN, (code, row())
+    ac.execute("UPDATE place_maps SET push_tried_at = now() - interval '61 minutes' WHERE id = %s", (SH,))
+answer[0] = 200
+assert push() == [("put", SH)] and row()["share_error"] is None, row()
+print("  a parent that refuses this node's token says to fix PARENT_TOKEN, not to wait")
+
 r = c.post(f"/place/maps/{SH}/marks", headers=H, json={"type": "Feature", "actor": "Tomas", "properties": {"kind": "marker"},
            "geometry": {"type": "Point", "coordinates": [115.15709, -8.8271]}})          # the node's own point
 assert r.status_code == 200 and r.json()["warn"] == HOUSE, r.text
@@ -361,11 +386,29 @@ assert share({"shared": True}).json()["detail"] == WARN
 r = share({"shared": True, "confirm": "exact"}).json()["map"]
 assert r["share_error"] is None and r["held"] is False, r
 assert push() == [("put", SH)] and len(sent[0]["body"]["geojson"]["features"]) == 2
-print("  a drawing on the house's own cell holds a shared map until Share is pressed again")
+# a drawing drawn away from the house and then moved onto its cell holds the map the same way
+ac.execute("DELETE FROM place_marks WHERE map_id = %s AND kind = 'marker'", (SH,))
+import geo  # noqa: E402
+import h3  # noqa: E402
+lat, lon = h3.cell_to_latlng(geo.home_cell(10))
+r = c.patch(f"/place/marks/{SK}", json={"geometry": {"type": "LineString", "coordinates": [[115.167, -8.819], [lon, lat]]},
+                                        "actor": "Tomas"}, headers=H)
+assert r.status_code == 200 and r.json().get("warn") == HOUSE, r.text
+assert row()["held"] is True and push() == [], "moved onto the house, the map is held and nothing goes up"
+ac.execute("UPDATE place_maps SET push_tried_at = now() - interval '2 hours' WHERE id = %s", (SH,))
+assert push() == [], "the hour's retry never releases it"
+assert share({"shared": True, "confirm": "exact"}).json()["map"]["held"] is False
+assert push() == [("put", SH)], "Share pressed again sends it"
+print("  a drawing on the house's own cell holds a shared map until Share is pressed again, drawn there or moved there")
 
 r = share({"shared": False})
 assert r.status_code == 200 and r.json()["map"]["shared"] is False
 assert one("SELECT choice FROM actions WHERE stage = 'place' AND note LIKE %s ORDER BY ts DESC LIMIT 1", f"%(map {SH})")["choice"] == "unshared"
+answer[0] = 401
+assert push() == [("delete", SH)] and push() == [], "a refused token: the delete waits"
+assert one("SELECT count(*) AS n FROM place_maps_unshared WHERE map_id = %s", SH)["n"] == 1, "a delete the parent refused stays owed"
+ac.execute("UPDATE place_maps_unshared SET tried_at = now() - interval '61 minutes' WHERE map_id = %s", (SH,))
+answer[0] = 200
 assert push() == [("delete", SH)] and sent[0]["body"]["geojson"] is None, sent
 assert push() == [], "one delete"
 SD = c.post("/place/maps", json={"name": "Gone soon", "actor": "Tomas"}, headers=H).json()["map"]["id"]
@@ -393,6 +436,22 @@ RV = one("SELECT id, name, owner FROM place_maps WHERE from_node = 'kid' AND rem
 assert RV["name"] == "Kid's garden" and RV["owner"] == "Ana", RV
 assert one("SELECT count(*) AS n FROM place_marks WHERE map_id = %s AND capture_id IS NULL", RV["id"])["n"] == 2, \
     "the child's picture numbers mean nothing here"
+named = {**doc, "geojson": {**doc["geojson"], "features": [{**FEAT("n", 115.1), "properties": {**FEAT("n", 115.1)["properties"], "drawn_by": "Ana"}}]}}
+assert recv(named).status_code == 200
+assert one("SELECT count(*) AS n FROM place_marks WHERE map_id = %s AND drawn_by IS NOT NULL", RV["id"])["n"] == 0, "a parent keeps no name"
+# a child's map has a ceiling, checked before any outline is compared with itself; a bad colour is refused, never a 500
+big = lambda feats: {**doc, "geojson": {**doc["geojson"], "features": feats}}  # noqa: E731
+r = recv(big([FEAT(str(i), 115.1) for i in range(2001)]))
+assert r.status_code == 413 and r.json()["detail"] == "A shared map holds 2,000 drawings and 20,000 points at most.", r.text
+line = lambda n: {"type": "Feature", "properties": {"kind": "line"},  # noqa: E731
+                  "geometry": {"type": "LineString", "coordinates": [[115 + i * 1e-5, -8.8] for i in range(n)]}}
+r = recv(big([line(1000)] * 21))
+assert r.status_code == 413 and r.json()["detail"] == "A shared map holds 2,000 drawings and 20,000 points at most.", r.text
+r = recv(big([line(1001)]))
+assert r.status_code == 422 and r.json()["detail"] == "A drawing has 1,000 points at most.", r.text
+r = recv(big([{**FEAT("x", 115.1), "properties": {"kind": "marker", "colour": [2]}}]))
+assert r.status_code == 422 and r.json()["detail"] == "A colour is a number from 1 to 6.", r.text
+assert one("SELECT count(*) AS n FROM place_marks WHERE map_id = %s", RV["id"])["n"] == 1, "a refused put changes nothing"
 r = recv({**doc, "geojson": {**doc["geojson"], "features": [FEAT("c", 115.3)]}})
 assert r.status_code == 200 and one("SELECT id FROM place_maps WHERE from_node = 'kid' AND remote_id = 7")["id"] == RV["id"]
 assert [x["label"] for x in ac.execute("SELECT label FROM place_marks WHERE map_id = %s", (RV["id"],)).fetchall()] == ["c"]
@@ -467,6 +526,30 @@ ac.execute("DELETE FROM place_maps WHERE id IN (%s, %s)", (AGM, KM))
 ac.execute("DELETE FROM readings WHERE sensor_id = 'place-gis'")
 ac.execute("DELETE FROM sensors WHERE sensor_id = 'place-gis'")
 print("  the drawing count: nothing before the first drawing, then one private row a day; it never lifts an Index cell off one sensor")
+
+# ---------------------------------------------------------------- init.sql without PostGIS
+# A database where PostGIS cannot be created stops init.sql at its first statement, with the step that fixes it and
+# Postgres's own reason beside it. A role that may not create extensions is the faithful case: postgis is not trusted.
+import re  # noqa: E402
+from pathlib import Path  # noqa: E402
+block = re.search(r"DO \$\$ BEGIN\n  CREATE EXTENSION IF NOT EXISTS postgis;.*?END \$\$;", Path("init.sql").read_text(), re.S).group(0)
+ac.execute("DROP DATABASE IF EXISTS pai_no_postgis")
+ac.execute("DROP ROLE IF EXISTS pai_no_postgis")
+ac.execute("CREATE ROLE pai_no_postgis")
+ac.execute("CREATE DATABASE pai_no_postgis")
+bare = psycopg.connect(psycopg.conninfo.make_conninfo(url, dbname="pai_no_postgis"), autocommit=True)
+bare.execute("SET ROLE pai_no_postgis")
+try:
+    bare.execute(block)
+    raise AssertionError("init.sql went on without PostGIS")
+except psycopg.errors.RaiseException as e:
+    said = e.diag.message_primary
+    assert "docker compose up -d db" in said and "planetai update" in said, said
+    assert "permission denied" in (e.diag.message_detail or ""), ("Postgres's own reason is hidden", e.diag.message_detail)
+bare.close()
+ac.execute("DROP DATABASE pai_no_postgis")
+ac.execute("DROP ROLE pai_no_postgis")
+print("  without PostGIS, init.sql stops first, says to bring up the db image, then update, and keeps Postgres's reason")
 
 print("maps: every check passed")
 sys.exit(0)
