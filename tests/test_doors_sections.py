@@ -1,8 +1,8 @@
 """Sections a pack declares, on the doors (the default page since 2026-10-07).
 
 Until 31 Oct 2026 only the classic layout drew them, so every wild pack's band (paddy, bmkg-synop on node #1) was
-invisible on a node's default page. Now draws each one beside the part of Now with the same stage: observe under the
-issue rows, decide and act under What to do, measure under Did it work. The section comes from the engine
+invisible on a node's default page. Now draws each one beside the part of Now with the same stage: decide and act under
+What to do, measure under Did it work, and since 4 Nov observe in Also read here, a row under both columns. The section comes from the engine
 (engine._sections), through buildD(), into declaredBands() (doors-load.js, shared with the phone page) and
 doors-now.js's drawDeclared(), lifted out and run in node. The phone's own placing is tests/test_mobile_sections.py.
 Run: PYTHONPATH=app python3 tests/test_doors_sections.py
@@ -55,6 +55,10 @@ for (const lc of ['en', 'id']) {
   vm.runInContext(['esc', 'fmt', 'said', 'sign', 'NODE', 'PROV', 'prov', 'ago', 'num'].map(pick).join('\n') + '\n'
     + load.match(/^const DECL_STAGES = .*$/m)[0] + '\n' + load.match(/^const DECL_AT = .*$/m)[0] + '\n'
     + fn(load, 'declaredBands') + fn(load, 'declaredBand') + fn(now, 'drawDeclared') + 'drawDeclared();', ctx);
+  /* two sources in one band: each row says its source only where it changes from the row above */
+  if (lc === 'en') out.mixed = vm.runInContext('declaredBand(' + JSON.stringify({ id: 'mx', pack: 'surface-heat', stage: 'observe', readouts: [
+    { metric: 'a', value: 1, source: 'Landsat', age_minutes: 120 }, { metric: 'b', value: 2, source: 'Landsat', age_minutes: 120 },
+    { metric: 'c', value: 3, source: 'MODIS', age_minutes: 120 }, { metric: 'd', value: 4, source: 'MODIS', age_minutes: 120 }] }) + ')', ctx);
   out[lc] = Object.fromEntries(Object.entries(els).map(([k, v]) => [k, { hidden: v.hidden, html: v.innerHTML }]));
 }
 console.log(JSON.stringify(out));
@@ -73,16 +77,20 @@ print("  each band sits beside Now's part of its stage, in its pack's order; act
 
 rice = ob["html"][ob["html"].index('id="decl-rice"'):]
 assert 'data-stage="observe"' in rice and 'data-pack="paddy"' in rice and 'data-learn="now-bands"' in rice and 'data-reads="/issues"' in rice, rice[:300]
-assert 'rice title</span> <small class="nk">paddy</small></h3>' in rice, rice[:300]
+assert 'rice title</span></h3><p class="fine src">' in rice and "· 2 h old</p>" in rice, rice[:300]
 assert rice.count('class="row decl" data-kind="readout"') == 2, rice
 assert '<span data-num="rice.s.m0" data-cmp="the paddy pack’s figure, beside nothing of this node’s">639.0</span><small>ha</small>' in rice, rice
-assert "· 2 h old" in rice, rice
-print("  a band is the pack's title beside its name, one readout row per reading the node holds, each figure with its comparison and age")
+assert '<span class="sub">' not in rice, "the source is said once, under the head"
+mx = out["mixed"]
+assert mx.count('<span class="sub">') == 1 and mx.index('class="fine src">Landsat') < mx.index('<span class="sub">MODIS'), mx
+print("  a band is the pack's title, its source and age once under it, one readout row per reading the node holds, each figure with "
+      "its comparison; a row says its source again only where it changes")
 
 assert "1 of the 3 readings the paddy pack declares has not arrived on this node yet." in rice, rice
 assert "None of the 2 readings the p pack declares has arrived on this node yet." in me["html"], me["html"]
-assert "Why. Declared by the paddy pack in its pack.yaml" in rice and "the pack ships no code for this page" in rice
-print("  the band counts what has not arrived, and its note says which pack declared it and that it ships no code")
+assert '<details class="how"><summary>How this is read</summary><p class="in">Why.</p></details>' in rice, rice
+assert "ships no code" not in json.dumps(out), "the developers' sentence left Now (docs/PACKS.md says it)"
+print("  the band counts what has not arrived, and its note is folded under How this is read")
 
 assert "rice judul" in idn["#ndecl-observe"]["html"] and "m0 label id" in idn["#ndecl-observe"]["html"] and "Mengapa." in idn["#ndecl-observe"]["html"]
 print("  titles, labels and notes are read in the page's locale")
@@ -90,6 +98,7 @@ print("  titles, labels and notes are read in the page's locale")
 # a node with no declared section: every mount stays hidden and empty
 r2 = subprocess.run(["node", "-e", prog, "[]"], capture_output=True, text=True)
 assert r2.returncode == 0, r2.stderr[-2000:]
+assert not en["#alsoread"]["hidden"], "Also read here stayed hidden with observe bands"
 for k, v in json.loads(r2.stdout)["en"].items():
     assert v == {"hidden": True, "html": ""}, (k, v)
 print("  a node with no declared section draws nothing on Now")
@@ -97,8 +106,9 @@ print("  a node with no declared section draws nothing on Now")
 html = (STATIC / "doors.html").read_text()
 nowh = html[html.index('<main class="face view" data-view="now">'):html.index("<!-- PLACE -->")]
 assert nowh.index('id="decide"') < nowh.index('id="ndecl-decide"') < nowh.index('id="nremember"') < nowh.index('id="ndecl-measure"') \
-    < nowh.index('class="rcol"') < nowh.index('id="rows"') < nowh.index('id="ndecl-observe"') < nowh.index('class="around"'), "a mount moved"
+    < nowh.index('id="next"') < nowh.index('class="rcol"') < nowh.index('id="rows"') < nowh.index('class="around"') \
+    < nowh.index('id="alsoread"') < nowh.index('id="ndecl-observe"'), "a mount moved"
 assert "drawDeclared();" in (STATIC / "doors-now.js").read_text().split("VIEWS.now = function")[1].split("};")[0]
 assert "sections" not in (STATIC / "doors-wall.js").read_text(), "the Wall door does not take the declared bands; wall: true is the classic wall's"
-print("  the three mounts sit where the design put them, Now draws them on every visit, and the Wall door is unchanged")
+print("  the three mounts sit where the design put them (observe in Also read here, under both columns), Now draws them on every visit, and the Wall door is unchanged")
 print("doors sections: a pack's declared band draws on Now, beside its stage, with Now's own readout rows")

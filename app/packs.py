@@ -19,6 +19,7 @@ import copy
 import importlib.util
 import logging
 import os
+import re
 import time
 from pathlib import Path
 
@@ -362,6 +363,84 @@ def stations() -> list[dict]:
         if isinstance(s, dict) and s.get("source"):
             out.append({**s, "pack": m["id"], "name": m.get("name") or m["id"], "switch": sw,
                         "on": isinstance(sw, str) and settings.get(sw, "0") == "1"})
+    return out
+
+
+# `ahead:` in a pack.yaml adds one line to Next days (docs/PACKS.md, "A line in Next days"). Checked on every read, said
+# once per process, like a section: a mistake costs the pack its line and nothing else.
+AHEAD_LOCALES = ("en", "es", "id")
+AHEAD_CHARS = 160
+_AHEAD_SAID: set = set()
+
+
+def _ahead_problems(a) -> list[str]:
+    if not isinstance(a, dict):
+        return ["ahead must be a mapping"]
+    p = []
+    if not isinstance(a.get("id"), str) or not re.fullmatch(r"[a-z0-9][a-z0-9-]*", a["id"]):
+        p.append("its id must be lowercase letters, digits and hyphens")
+    if not isinstance(a.get("sensor"), str) or not a["sensor"]:
+        p.append("it needs the sensor whose meta holds the text")
+    t = a.get("title")
+    if not (isinstance(t, dict) and all(isinstance(t.get(loc), str) and t[loc] for loc in AHEAD_LOCALES)):
+        p.append("it needs a title in en, es and id")
+    d = a.get("days")
+    if not (isinstance(d, list) and len(d) == 2 and all(isinstance(k, str) and "_" in k.strip("_") for k in d)):
+        p.append("days must be exactly two meta keys, written without a locale (ahead_d1)")
+    return p
+
+
+def _sensor_meta(sid: str) -> dict | None:
+    from db import q  # noqa: PLC0415 — packs is imported before any database is configured
+    rows = q("SELECT meta FROM sensors WHERE sensor_id = %s", sid)
+    return (rows[0]["meta"] or {}) if rows else None
+
+
+def ahead_lines(now, tz: str) -> list[dict]:
+    """The `lines` of GET /forecast: each loaded pack's `ahead:` text for tomorrow and the day after, in en, es and id.
+    The node adds the locale to the pack's keys (`ahead_d1` is read as `ahead_en_d1`), cuts each text at 160 characters,
+    and serves a line only while its sensor's meta `fetched` is today in `tz`, so `_d1` is always tomorrow."""
+    from datetime import date as _date, datetime, timedelta, timezone  # noqa: PLC0415
+    from zoneinfo import ZoneInfo  # noqa: PLC0415
+    zone = ZoneInfo(tz)
+    today = now.astimezone(zone).date()
+    dates = [(today + timedelta(days=k)).isoformat() for k in (1, 2)]
+    out = []
+    for m in manifests():
+        a = m.get("ahead")
+        if a is None:
+            continue
+        bad = _ahead_problems(a)
+        if bad:
+            text = f"pack {m.get('id', '?')}: ahead: {'; '.join(bad)}; leaving its line out"
+            if text not in _AHEAD_SAID:
+                _AHEAD_SAID.add(text)
+                log.warning(text)
+            continue
+        try:
+            meta = _sensor_meta(a["sensor"]) or {}
+            fetched = None
+            if meta.get("fetched"):
+                f = str(meta["fetched"])
+                if re.fullmatch(r"\d{4}-\d{2}-\d{2}", f):
+                    fetched = _date.fromisoformat(f)   # a date alone is the local date the pack meant, never UTC midnight
+                else:
+                    t = datetime.fromisoformat(f)
+                    fetched = (t if t.tzinfo else t.replace(tzinfo=timezone.utc)).astimezone(zone).date()   # no zone is UTC, as learn._aware
+        except Exception as e:  # noqa: BLE001 — no database, a stamp that is not a date: no line
+            log.warning("pack %s: ahead: could not read %s (%s)", m.get("id", "?"), a["sensor"], e)
+            continue
+        if fetched != today:
+            continue
+        days = {}
+        for date, key in zip(dates, a["days"]):
+            head, _, tail = key.rpartition("_")
+            texts = {loc: str(meta[f"{head}_{loc}_{tail}"]).strip()[:AHEAD_CHARS] for loc in AHEAD_LOCALES
+                     if isinstance(meta.get(f"{head}_{loc}_{tail}"), str) and meta[f"{head}_{loc}_{tail}"].strip()}
+            if texts:
+                days[date] = texts
+        if days:
+            out.append({"pack": m.get("id", "?"), "id": a["id"], "title": a["title"], "days": days})
     return out
 
 

@@ -77,7 +77,7 @@ rice = en[at(en, 'id="decl-rice"'):at(en, 'id="decl-worked"')]
 assert 'data-stage="observe"' in rice and 'data-pack="paddy"' in rice and rice.count('class="row decl" data-kind="readout"') == 2, rice[:400]
 assert '<span data-num="rice.s.m0" data-cmp="the paddy pack’s figure, beside nothing of this node’s">639.0</span><small>ha</small>' in rice
 assert "· 2 h old" in rice and "1 of the 3 readings the paddy pack declares has not arrived on this node yet." in rice
-assert "the pack ships no code for this page" in rice
+assert '<summary>How this is read</summary><p class="in">Why.</p>' in rice and "ships no code" not in rice
 print("  the doors' band, character for character: its rows, each figure's comparison and age, what has not arrived, the note")
 
 assert "rice judul" in idn and "m0 label id" in idn and "Mengapa." in idn

@@ -9,6 +9,7 @@ Run: RHO_PG_URL=postgresql://planetai:x@127.0.0.1:5432/planetai PYTHONPATH=app P
 """
 import os
 import sys
+from datetime import timedelta
 
 url = os.getenv("RHO_PG_URL")
 if not url:
@@ -35,7 +36,8 @@ GROUP BY r.sensor_id, r.metric, s.indoor, s.local, s.kind, s.scale, s.lat, s.lon
 OLD_OBS = """
 SELECT DISTINCT ON (r.sensor_id, r.metric) r.sensor_id, r.metric, r.value, r.ts, s.name, s.kind, s.scale, s.local,
        s.cadence, s.meta::text AS meta
-FROM readings r JOIN sensors s USING (sensor_id) WHERE s.kind <> 'sensor' ORDER BY r.sensor_id, r.metric, r.ts DESC"""
+FROM readings r JOIN sensors s USING (sensor_id) WHERE s.kind <> 'sensor' AND r.ts <= now()   -- a forecast hour is not an observation yet
+ORDER BY r.sensor_id, r.metric, r.ts DESC"""
 OLD_SILENT = """
 SELECT s.sensor_id, s.name, s.lat, s.lon, s.local, s.indoor, s.kind, max(r.ts) AS last_heard
 FROM readings r JOIN sensors s USING (sensor_id)
@@ -96,9 +98,9 @@ q("SELECT sensor_id, metric, value, ts, name, kind, scale, local, cadence, meta:
 new = cur.fetchall()
 same(old, new, "observations")
 fc = next(r for r in new if r["sensor_id"] == "v-fc")
-assert fc["value"] == 31, "observations: the newest row wins even when it is stamped in the future, as before"
+assert fc["value"] == 28, "observations: a row stamped in the future is not an observation yet, the newest one that has happened is"
 assert {r["sensor_id"] for r in new} == {"v-model", "v-fc", "v-portal", "v-child"} and len(new) == 5, new
-print(f"  observations: {len(new)} rows, the same as DISTINCT ON's, the future forecast row and the old portal row kept")
+print(f"  observations: {len(new)} rows, the same as DISTINCT ON's up to now, the future forecast row left out and the old portal row kept")
 
 days = ns["SILENT_DAYS"]
 q(OLD_SILENT, days); old = cur.fetchall()
@@ -106,6 +108,32 @@ q(ns["SILENT_SQL"], days); new = cur.fetchall()
 same(old, new, "the archive of silence")
 assert [r["sensor_id"] for r in new] == ["v-quiet"], new
 print("  silence: the station quiet three days and nothing else, at the same time as the old query")
+
+# the revision rule (app/store.py, docs/SPEC_next_days.md §3): a newer model run replaces a forecast hour that has not
+# happened yet; nothing else is ever overwritten
+from store import insert_readings  # noqa: E402
+q("INSERT INTO sensors (sensor_id, source, name, lat, lon, indoor, local, kind, scale, meta) "
+  "VALUES ('v-rev', 'test', 'V-REV', -8.8, 115.1, false, false, 'model', 'community', '{}')")
+q("SELECT now() AS t"); t0 = cur.fetchone()["t"]
+future, past = t0 + timedelta(hours=5), t0 - timedelta(hours=5)
+
+
+def stored(metric, ts):
+    q("SELECT value FROM readings WHERE sensor_id = 'v-rev' AND metric = %s AND ts = %s", metric, ts)
+    return [r["value"] for r in cur.fetchall()]
+
+
+insert_readings(cur, [(future, "v-rev", "fc_temp", 30.0)]); insert_readings(cur, [(future, "v-rev", "fc_temp", 31.0)])
+assert stored("fc_temp", future) == [31.0], "a future fc_ row written twice keeps the second value: the newer run wins"
+insert_readings(cur, [(past, "v-rev", "fc_rain", 1.0)]); insert_readings(cur, [(past, "v-rev", "fc_rain", 2.0)])
+assert stored("fc_rain", past) == [1.0], "a past fc_ row keeps the first: it stays as it was when it last was the future"
+insert_readings(cur, [(future, "v-rev", "uv_index", 8.0)]); insert_readings(cur, [(future, "v-rev", "uv_index", 9.0)])
+assert stored("uv_index", future) == [8.0], "a future row that is not a forecast metric keeps the first: a measured clock is never rewritten"
+insert_readings(cur, [(past, "v-rev", "fc_wind", 10.0), (future, "v-rev", "fc_wind", 40.0)])
+q("SELECT value, ts FROM observations WHERE sensor_id = 'v-rev' AND metric = 'fc_wind'")
+got = cur.fetchall()
+assert [(r["value"], r["ts"]) for r in got] == [(10.0, past)], f"observations returns the past hour, not the future one: {got}"
+print("  revisions: a future fc_ hour takes the newer run; a past one, a measured one and observations stay as they were")
 
 con.rollback()
 print("views: every check passed")

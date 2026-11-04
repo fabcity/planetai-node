@@ -142,8 +142,8 @@ MARKS = [
     ("forecast", "Context, not a prediction", "packs-reference.md", "forecast",
      "Official and model weather for this point", "it never sends an alert.",
      "The card is drawn from GET /forecast: the wind and the rain for the hours ahead, and a "
-     "forecast point more than 10 km from the node is said to be another place. Nothing on this "
-     "card can raise an alert."),
+     "forecast point more than 10 km from the node is said to be another place. Next days on Now draws "
+     "its 72 hours. Nothing on this card can raise an alert."),
     ("events", "What an alert event is", "dashboard.md", "The sections",
      "An event is the bot's own unit", "the message it sent.",
      "Decide is the first section under the lead. The numeral is red only when the peak is past the "
@@ -302,8 +302,12 @@ MARKS = [
      "and the whole door moves to that issue."),
     ("now-bands", "A pack's own band", "dashboard.md", "Now",
      "**A pack's own band.** A pack can declare a band", "`measure` under Did it work.",
-     "Each row is one reading the node holds, with its source, how it was got and how old it is. The small print "
-     "under the band is the pack's own note, and says the pack ships no code for this page."),
+     "Each row is one reading the node holds. Its source, how it was got and how old it is are said once under the "
+     "band's title, and again on a row only where they change. The pack's own note is folded under How this is read."),
+    ("now-next", "The next three days", "dashboard.md", "Now",
+     "Each thing gets a row in the order", "how many hours go over it.",
+     "The rows are drawn from GET /forecast, asked when Now is drawn and kept for 30 minutes. Press a row for its 72 hours "
+     "against the line. These are models: nothing on this part asks you to act or sends a message."),
     ("now-around", "The stations around the house", "dashboard.md", "Now",
      "Under them, the map of the stations", "for a screen with the token.",
      "Press a station to open its readings in Data. Without WebGL the map is drawn as a rose of "
@@ -619,6 +623,9 @@ QUESTIONS = {
     'now-bands': {"en": ['Where does this band come from?', 'Why have some of these readings not arrived?'],
         "id": ['Dari mana bagian ini berasal?', 'Mengapa sebagian bacaan ini belum datang?'],
         "es": ['¿De dónde viene este bloque?', '¿Por qué no han llegado algunas de estas lecturas?']},
+    'now-next': {"en": ['Will the air be over the line tomorrow?', 'How sure is a forecast three days out?'],
+        "id": ['Apakah udara besok akan di atas garis?', 'Seberapa pasti prakiraan tiga hari ke depan?'],
+        "es": ['¿Mañana el aire estará sobre la línea?', '¿Qué tan seguro es un pronóstico a tres días?']},
     'now-around': {"en": ['Is the air outside worse than in our house?', 'Which station near us has the dirtiest air?'],
         "id": ['Apakah udara di luar lebih buruk daripada di rumah kami?', 'Stasiun mana di dekat kami yang udaranya paling kotor?'],
         "es": ['¿El aire de fuera está peor que el de casa?', '¿Qué estación cercana tiene el aire más sucio?']},

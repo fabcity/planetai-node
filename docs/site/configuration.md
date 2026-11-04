@@ -271,7 +271,7 @@ alone.
 | `THINGDATA_MAX` | thingdata | `5000` | Refuses to count a larger collection rather than report a truncated total. |
 | `FORECAST_BMKG` | forecast | `1` | Reads BMKG, Indonesia's meteorological agency. |
 | `FORECAST_BMKG_ADM4` | forecast | blank | The village code BMKG needs. `planetai run forecast verify` checks it is near the node. |
-| `FORECAST_OPENMETEO` | forecast | `0` | Reads Open-Meteo, which works anywhere but whose free tier is non-commercial only, so it is your call. |
+| `FORECAST_OPENMETEO` | forecast | `0` | Reads Open-Meteo, which works anywhere but whose free tier is non-commercial only, so it is your call. One switch for its weather, the CAMS air and, with `coast` on, the sea; [Next days](next-days.md) draws them. |
 | `FORECAST_POLL_HOURS` | forecast | `6` | How often to ask. `planetai run forecast fetch` asks now. |
 | `FORECAST_WIND_N` | forecast | `8` | The map's wind field, points a side (64 points). Only with `FORECAST_OPENMETEO=1`. |
 | `FORECAST_WIND_KM` | forecast | `30` | The wind field's half-width, in km. |

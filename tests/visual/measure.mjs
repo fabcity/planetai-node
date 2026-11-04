@@ -2955,7 +2955,7 @@ const docFor = u => {
   const layout = u.searchParams.get('layout');
   return layout === 'mobile' ? 'mobile.html' : layout === 'classic' ? 'index.html' : 'doors.html';
 };
-const openRig = async ({ w = 390, h = 844, touch = true, dark = false, token = null, mem = null, throttle = false, locked = false, wireDays = null, admin = null, sections = null, alerts = null } = {}) => {
+const openRig = async ({ w = 390, h = 844, touch = true, dark = false, token = null, mem = null, throttle = false, locked = false, wireDays = null, admin = null, sections = null, alerts = null, forecast = null } = {}) => {
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ viewport: { width: w, height: h }, isMobile: touch, hasTouch: touch,
     deviceScaleFactor: 1, colorScheme: dark ? 'dark' : 'light', reducedMotion: 'reduce' });
@@ -2978,6 +2978,14 @@ const openRig = async ({ w = 390, h = 844, touch = true, dark = false, token = n
           body: JSON.stringify({ ...snap, issues_days: derived }) });
       }
     }
+    /* forecast: { name } answers /forecast with tests/data/forecast/<name>.json (the answers packs/forecast/days.py
+     * wrote), or a 404 for name 'off', as a node with the forecast pack off; the name can change between presses */
+    if (forecast && u.pathname === '/forecast') return forecast.name === 'off'
+      ? route.fulfill({ status: 404, contentType: 'application/json', body: '{"detail":"Not Found"}' })
+      : forecast.name === 'locked' ? route.fulfill({ status: 403, contentType: 'application/json', body: REFUSAL('/forecast') })
+      : forecast.name === 'down' ? route.fulfill({ status: 500, contentType: 'text/plain', body: 'Internal Server Error' })
+      : route.fulfill({ status: 200, contentType: 'application/json',
+        body: fs.readFileSync(path.join(ROOT, 'tests', 'data', 'forecast', `${forecast.name}.json`)) });
     /* sections: the capture with these declared bands in /issues, as the node serves a pack's sections */
     /* alerts: these first in the capture's /alerts, as a node serves an alert a pack's rule sent with buttons */
     const am = alerts && u.pathname.match(/^\/issues\/fixtures\/([a-z0-9][a-z0-9._-]{0,63})$/);
@@ -3541,12 +3549,12 @@ async function doors() {
     if (got) {
       const m = await r.page.evaluate(() => {
         const b = id => document.getElementById(id), rows = [...b('decl-rig-rice').querySelectorAll('.row')];
-        return { rcol: !!b('decl-rig-rice').closest('.rcol'), under: !!(b('rows').compareDocumentPosition(b('decl-rig-rice')) & 4),
+        return { rcol: !!b('decl-rig-rice').closest('#alsoread:not([hidden])'), under: !!(document.querySelector('.rcol').compareDocumentPosition(b('decl-rig-rice')) & 4),
           did: !!b('decl-rig-did') && !!(b('decide').compareDocumentPosition(b('decl-rig-did')) & 4) && !b('decl-rig-did').closest('.rcol'),
           h: rows.map(x => Math.round(x.getBoundingClientRect().height)), waiting: b('decl-rig-rice').textContent.includes('1 of the 3 readings'),
           wide: document.documentElement.scrollWidth - document.documentElement.clientWidth };
       });
-      ok(m.rcol && m.under, `${tag}: the observe band is not under Around the house's rows`);
+      ok(m.rcol && m.under, `${tag}: the observe band is not in Also read here, under both columns`);
       ok(m.did, `${tag}: the measure band is not in the left column after What to do`);
       ok(m.h.length === 2 && m.h.every(x => x >= 44), `${tag}: the band's rows are ${m.h.join(',')} px (two of at least 44)`);
       ok(m.waiting, `${tag}: the band does not say how many readings have not arrived`);
@@ -3600,6 +3608,79 @@ async function doors() {
         `${tag}: the presses posted ${JSON.stringify(posts)}`);
       if (shots) await r.page.screenshot({ path: path.join(OUT, `doors_asks_${tag}.jpg`), type: 'jpeg', quality: 78, fullPage: true });
       said.push(`${tag}: a pack's buttons under What to do, answered and then the note`);
+    }
+    await r.browser.close();
+  }
+  /* Next days (SPEC_next_days §5): a part of Now under What to do since 4 Nov 2026 (it was a switch). It draws with Now;
+     the three day columns fit with nothing scrolling sideways; every target is 44 px; a row pressed draws its 72 h with
+     the line; with Open-Meteo off, no source, or the pack off it says so in a line and never draws an empty grid; and
+     #now/next scrolls to it. */
+  for (const w of [390, 1440]) for (const dark of [false, true]) {
+    const tag = `${w}_${dark ? 'dark' : 'paper'}_next`, fc = { name: 'full' };
+    const r = await openRig({ w, h: w < 768 ? 844 : 900, touch: w < 768, dark, forecast: fc });
+    /* the forecast is kept 30 minutes; a new answer needs a fresh page */
+    const open = async (hash = '#now') => { await r.page.goto('about:blank');   /* a goto that changes only the hash does not load the page */
+      await r.page.goto(`${POP}/?layout=doors&fixture=${FIXTURE}${hash}`, { waitUntil: 'domcontentloaded' });
+      await wait(r.page, '#rows .row').catch(() => {}); await r.page.waitForTimeout(500); };
+    await open();
+    await r.page.waitForSelector('#asking:not(.on)', { state: 'attached', timeout: 6000 }).catch(() => {});
+    ok(!(await r.page.$('#nowsw')), `${tag}: the Now · Next days switch is back`);
+    const got = await wait(r.page, '#next button.nrow').then(() => true, () => false);
+    ok(got, `${tag}: Next days drew no rows on Now`);
+    if (got) {
+      const m = await r.page.evaluate(() => {
+        const nx = document.getElementById('next'), q = s => [...nx.querySelectorAll(s)], vis = el => el.getClientRects().length > 0;
+        const targets = q('button, a').filter(vis).map(b => b.getBoundingClientRect());
+        const box = nx.getBoundingClientRect(), cells = q('.nxc').map(c => c.getBoundingClientRect());
+        return { days: q('.nrow .nxc').every(c => /^(Today|Tomorrow|[A-Z][a-z]{2}), /.test((c.querySelector('.vh') || {}).textContent || '')),
+          rows: q('.nrow').map(x => x.dataset.k || 'line'), cols: q('.nxhead > span').filter(vis).length,
+          small: targets.filter(x => x.height < 44 || x.width < 44).length, n: targets.length,
+          outside: cells.filter(c => c.right > box.right + 1 || c.left < box.left - 1).length,
+          place: !!nx.closest('.lcol') && document.getElementById('decide').getBoundingClientRect().bottom <= box.top,
+          nowShown: vis(document.querySelector('.lcol')) && vis(document.querySelector('.rcol')),
+          wide: document.documentElement.scrollWidth - document.documentElement.clientWidth };
+      });
+      ok(m.days, `${tag}: a cell does not say its day to a screen reader`);
+      ok(JSON.stringify(m.rows) === JSON.stringify(['air', 'heat', 'wind_rain', 'sea', 'line']), `${tag}: the rows are ${m.rows.join(',')}`);
+      ok(m.cols === (w < 768 ? 3 : 4) && !m.outside, `${tag}: ${m.cols} heads, ${m.outside} cells outside the view`);
+      ok(m.place && m.nowShown, `${tag}: Next days is not under What to do in Now's left column`);
+      ok(m.n && !m.small, `${tag}: ${m.small} of ${m.n} targets under 44 × 44 px`);
+      ok(m.wide <= 1, `${tag}: Now scrolls ${m.wide}px sideways with Next days`);
+      /* by the keyboard, as a screen reader's user presses it: the focus stays on the row through the redraw */
+      await r.page.focus('#next button.nrow[data-k="air"]'); await r.page.keyboard.press('Enter'); await r.page.waitForTimeout(200);
+      const s = await r.page.evaluate(() => {
+        const f = document.querySelector('#next .nxs'), b = document.querySelector('#next button.nrow[data-k="air"]');
+        return f ? { under: b.nextElementSibling === f, line: !!f.querySelector('svg line.linep[data-line]'), path: !!f.querySelector('svg path'),
+          focus: document.activeElement === b, lab: [...f.querySelectorAll('svg text.lab')].some(t => /^(WHO|line) 15$/.test(t.textContent)),
+          now: [...f.querySelectorAll('svg text')].some(t => t.textContent === 'now'), pressed: b.getAttribute('aria-pressed'),
+          wide: document.documentElement.scrollWidth - document.documentElement.clientWidth } : null;
+      });
+      ok(s && s.under && s.line && s.lab && s.path && s.now && s.pressed === 'true', `${tag}: pressing air drew no 72 h series with its line (${JSON.stringify(s)})`);
+      ok(s && s.focus, `${tag}: the focus left the row pressed`);
+      ok(s && s.wide <= 1, `${tag}: the series scrolls sideways`);
+      if (shots) await r.page.screenshot({ path: path.join(OUT, `doors_next_${tag}.jpg`), type: 'jpeg', quality: 78, fullPage: true });
+      const says = async name => { fc.name = name; await open();
+        return r.page.evaluate(() => { const nx = document.getElementById('next');
+          return { rows: nx.querySelectorAll('.nrow').length, text: nx.textContent.replace(/\s+/g, ' '),
+            small: [...nx.querySelectorAll('a')].filter(a => a.getBoundingClientRect().height < 44).length }; }); };
+      const off = await says('om_off');
+      ok(off.rows === 2 && off.text.includes('Air, the sea and more hours come from Open-Meteo, which is off on this node. Turn it on in Set up → Packs → forecast.'),
+        `${tag}: Open-Meteo off drew ${off.rows} rows without the opt-in line`);
+      for (const [name, want] of [['none', 'No forecast source answers for this place'], ['off', 'The forecast pack is off on this node'],
+                                  ['locked', 'This screen can’t answer yet']]) {
+        const x = await says(name);
+        ok(!x.rows && x.text.includes(want) && !x.small, `${tag}: ${name} drew ${x.rows} rows (${x.text.slice(0, 80)}), ${x.small} small links`);
+      }
+      /* a failure is never kept: the node down, then up, and Now drawn again by the door asks again */
+      const down = (await says('down')).rows;
+      fc.name = 'full'; await go(r.page, '#place'); await go(r.page, '#now'); await r.page.waitForTimeout(400);
+      const up = await r.page.evaluate(() => document.getElementById('next').querySelectorAll('.nrow').length);
+      ok(!down && up === 5, `${tag}: after a failure, Now by the door drew ${up} rows of Next days`);
+      /* the address the switch kept until 4 Nov still lands on Next days */
+      await open('#now/next');
+      const landed = await r.page.evaluate(() => { const t = document.getElementById('nexth').getBoundingClientRect().top; return t >= -1 && t < innerHeight; });
+      ok(landed, `${tag}: #now/next did not scroll to Next days`);
+      said.push(`${tag}: Next days under What to do, three days fit, 44 px targets, air's 72 h with its line; opt-in, no source, pack off and locked each one line; Enter keeps the focus; a failure is asked again; #now/next lands on it`);
     }
     await r.browser.close();
   }

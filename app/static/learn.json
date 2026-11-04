@@ -722,7 +722,7 @@
   },
   "forecast": {
    "anchor": "forecast",
-   "more": "The card is drawn from GET /forecast: the wind and the rain for the hours ahead, and a forecast point more than 10 km from the node is said to be another place. Nothing on this card can raise an alert.",
+   "more": "The card is drawn from GET /forecast: the wind and the rain for the hours ahead, and a forecast point more than 10 km from the node is said to be another place. Next days on Now draws its 72 hours. Nothing on this card can raise an alert.",
    "page": "packs-reference.md",
    "page_title": "Packs that ship",
    "questions": {
@@ -739,7 +739,7 @@
      "Mengapa prakiraan adalah konteks, bukan ramalan?"
     ]
    },
-   "quote": "Official and model weather for this point over the next day, wind direction and rain, as context for reading\nthe node's own air. It fetches and does not predict, and it never sends an alert.",
+   "quote": "Official and model weather for this point over the next 72 hours, as context for reading the node's own air.\nIt fetches and does not predict, and it never sends an alert.",
    "section": "forecast",
    "title": "Context, not a prediction",
    "url": "https://planetai.fab.city/docs/packs-reference/#forecast"
@@ -1106,7 +1106,7 @@
   },
   "now-bands": {
    "anchor": "now",
-   "more": "Each row is one reading the node holds, with its source, how it was got and how old it is. The small print under the band is the pack's own note, and says the pack ships no code for this page.",
+   "more": "Each row is one reading the node holds. Its source, how it was got and how old it is are said once under the band's title, and again on a row only where they change. The pack's own note is folded under How this is read.",
    "page": "dashboard.md",
    "page_title": "The dashboard",
    "questions": {
@@ -1123,7 +1123,7 @@
      "Mengapa sebagian bacaan ini belum datang?"
     ]
    },
-   "quote": "**A pack's own band.** A pack can declare a band in its `pack.yaml` (a wild pack has no other way onto the page, it\nships no code for it), and Now draws it next to the part with the same stage: `observe` under the issue rows,\n`decide` and `act` under What to do, `measure` under Did it work.",
+   "quote": "**A pack's own band.** A pack can declare a band in its `pack.yaml` (a wild pack has no other way onto the page, it\nships no code for it), and Now draws it next to the part with the same stage: `decide` and `act` under What to do,\n`measure` under Did it work.",
    "section": "Now",
    "title": "A pack's own band",
    "url": "https://planetai.fab.city/docs/dashboard/#now"
@@ -1150,6 +1150,30 @@
    "quote": "The four distances follow as one quiet line; a distance with no reading says `none` or `not recorded`. Point at\nan hour, drag across the day, or use the arrow keys (left and right an hour, up and down a day, End for now): the\nsentence, the distances and Decide follow the hour, and **Back to now** returns.",
    "section": "Now",
    "title": "House, street, ring and region",
+   "url": "https://planetai.fab.city/docs/dashboard/#now"
+  },
+  "now-next": {
+   "anchor": "now",
+   "more": "The rows are drawn from GET /forecast, asked when Now is drawn and kept for 30 minutes. Press a row for its 72 hours against the line. These are models: nothing on this part asks you to act or sends a message.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "Will the air be over the line tomorrow?",
+     "How sure is a forecast three days out?"
+    ],
+    "es": [
+     "¿Mañana el aire estará sobre la línea?",
+     "¿Qué tan seguro es un pronóstico a tres días?"
+    ],
+    "id": [
+     "Apakah udara besok akan di atas garis?",
+     "Seberapa pasti prakiraan tiga hari ke depan?"
+    ]
+   },
+   "quote": "Each thing gets a row in the order of Now's rows: air and heat, then wind and rain, then the sea, then a line from any\npack that declares one with `ahead:` in its `pack.yaml`. A cell has the day's number, the state word against the issue's\nline, and for air and heat how many hours go over it.",
+   "section": "Now",
+   "title": "The next three days",
    "url": "https://planetai.fab.city/docs/dashboard/#now"
   },
   "now-rows": {
@@ -2239,6 +2263,7 @@
   "now-worked",
   "now-rows",
   "now-bands",
+  "now-next",
   "now-around",
   "now-things",
   "place-head",

@@ -89,6 +89,14 @@ learned ("It helps here.", "No clear difference here yet.", "Too early to say.")
 say who lives here. Yesterday is the node's diary entry for yesterday, condensed from its own numbers, with a link to
 the whole entry on Node.
 
+**Next days.** Under What to do, the next three days, from the next hour to the end of the day after tomorrow.
+Each thing gets a row in the order of Now's rows: air and heat, then wind and rain, then the sea, then a line from any
+pack that declares one with `ahead:` in its `pack.yaml`. A cell has the day's number, the state word against the issue's
+line, and for air and heat how many hours go over it. Press a row and its 72 hours are drawn under it, with the line.
+Under the rows each source is a pill with the time it was issued or fetched, then the page says "These come from
+models. The node does not forecast, and nothing here sends a message." With Open-Meteo off only BMKG's weather shows,
+where BMKG covers the node, and a line says where to turn Open-Meteo on. `#now/next` links straight to it.
+
 **Around the house.** A row for each issue drawn by the hour, its state word, its value now and its hours over the line
 today; pressing one moves the page to that issue. Under them, the map of the stations around the house: each public
 station with its 15-minute mean, a red square beside one over the air's line, the house as one mark with its own
@@ -97,12 +105,13 @@ Without WebGL the map is a rose of bearings and distances. With the admin token 
 keeps, how many sit idle and how many need repair, and opens Data › Home.
 
 **A pack's own band.** A pack can declare a band in its `pack.yaml` (a wild pack has no other way onto the page, it
-ships no code for it), and Now draws it next to the part with the same stage: `observe` under the issue rows,
-`decide` and `act` under What to do, `measure` under Did it work. Each band is the pack's title with its name beside
-it, one row per reading the node holds, with the reading's source, how it was got and how old it is, and a line
-saying how many of the readings it declares have not arrived yet. The pack's note is the small print under it. On
-node #1 that is the rice around the house (`paddy`) and the airport's weather station (`bmkg-synop`). How to declare
-one: [docs/PACKS.md](../../docs/PACKS.md).
+ships no code for it), and Now draws it next to the part with the same stage: `decide` and `act` under What to do,
+`measure` under Did it work. The `observe` bands go under both columns, in **Also read here**, side by side on a wide
+screen. Each band is the pack's title, then where its readings come from, how they were got and how old they are, said
+once, then one row per reading the node holds. A row says its source again only when it changes. A line says how many
+of the readings it declares have not arrived yet, and the pack's note is folded under "How this is read". On node #1
+that is the fires near here (`fire`), the ground's heat (`surface-heat`), the airport's weather station (`bmkg-synop`)
+and the rice around the house (`paddy`). How to declare one: [docs/PACKS.md](../../docs/PACKS.md).
 
 Land and coast change yearly and have no hours, so they are on Place, under **What is changing**. Now opens on the
 headline issue when it is drawn by the hour, else on the first issue that is. Under 480 px everything is one column,

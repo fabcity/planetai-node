@@ -178,7 +178,7 @@ details .in{padding:0 0 16px;color:var(--mute);font-size:var(--t-small);max-widt
 
 /* ================= NOW ================= */
 /* one bold block (the sentence and its day), then quiet parts under sentence-case heads; mono only for units, times, values */
-.face{max-width:1240px;margin:0 auto;padding:18px clamp(16px,3vw,40px) 40px;display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:0 48px;grid-template-areas:"kick kick" "l r"}
+.face{max-width:1240px;margin:0 auto;padding:18px clamp(16px,3vw,40px) 40px;display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:0 48px;grid-template-areas:"kick kick" "l r" "al al"}
 .lcol{grid-area:l;min-width:0}.rcol{grid-area:r;min-width:0;align-content:start}
 .kick{grid-area:kick;display:flex;justify-content:space-between;gap:6px 16px;align-items:baseline;flex-wrap:wrap;margin-bottom:6px}
 .kick .kr{display:flex;gap:12px;align-items:baseline}.kick .kr a{font-size:var(--t-cap);color:var(--mute)}
@@ -233,6 +233,24 @@ section.decl{margin-top:22px}.row.decl{cursor:default}   /* a pack's declared ba
 .around{margin:18px 0 0}
 .over{display:inline-block;width:8px;height:8px;background:var(--signal-worse);margin-right:6px}
 #rose svg{display:block;overflow:visible}
+/* Next days (SPEC_next_days §5): a part of Now under What to do, one row card a thing over three day columns (the rest
+   of today, tomorrow, the day after), the row's 72 h a series card under it */
+.nxpart{margin-top:36px}#next{min-width:0}
+.nxhead,.nrow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px 12px}
+.nxhead{font:500 var(--t-cap)/1.4 var(--mono);color:var(--mute);padding:0 10px 6px 8px;border-bottom:1px solid var(--ink)}
+.nxhead b{font:600 var(--t-small) var(--body);color:var(--ink)}.nxhead>span:first-child,.nrow .n{grid-column:1 / -1}.nxhead>span:first-child{display:none}
+.nrow .n small{display:block;font-weight:500}.nxc{min-width:0;font:500 var(--t-small)/1.4 var(--body);overflow-wrap:anywhere}
+.nxc .state{margin-left:4px;display:inline-block}.nxc .sub{display:block;margin-top:4px}
+.nrow[aria-pressed="true"] .nk,.nrow[aria-pressed="true"] .x{color:var(--ground);opacity:.75}
+.nxs{margin:0;padding:10px 0;border-bottom:1px solid var(--hair)}.nxs svg{display:block;width:100%;height:auto;overflow:visible}.nxs .fine{margin-top:4px}
+.nxsrc{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 0}
+#next .fine a,.nxempty a{display:inline-flex;align-items:center;min-height:44px}
+.nxempty{font:600 var(--t-read)/1.3 var(--body);margin:0;max-width:64ch}
+@media (min-width:761px){.nxhead,.nrow{grid-template-columns:8.5em repeat(3,minmax(0,1fr))}.nxhead>span:first-child{display:block}.nrow .n,.nxhead>span:first-child{grid-column:auto}}
+/* what the packs read here, under both columns: each band's source said once under its head, its note folded */
+.alsoread{grid-area:al;margin-top:40px;min-width:0}.alsog{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:0 40px;align-items:start}
+.decl .src{margin:-4px 0 6px}.decl .how{border:0;margin-top:4px}
+.decl .how summary{display:flex;align-items:center;min-height:44px;padding:0;font:500 var(--t-small) var(--body);color:var(--mute);text-decoration:underline;text-underline-offset:3px}
 .aroundmap{position:relative;border:1px solid var(--rule,currentColor);border-color:color-mix(in srgb,currentColor 18%,transparent)}
 .aroundmap .maplibregl-ctrl-scale{background:transparent;border-color:currentColor;color:inherit;font:12px/1.4 "JetBrains Mono",monospace}
 .lt{display:grid;grid-template-columns:16px 72px minmax(0,1fr);align-items:baseline;gap:8px;font-size:var(--t-small);padding:7px 0;border-top:1px solid var(--hair)}
@@ -583,7 +601,7 @@ section.decl{margin-top:22px}.row.decl{cursor:default}   /* a pack's declared ba
 .h3grid{fill:none;stroke:var(--ink);stroke-width:.4;opacity:.5}.h3lit{fill:var(--cells);fill-opacity:.13;stroke:var(--cells);stroke-width:1.5}
 
 @media (max-width:1080px){
-  .face{grid-template-columns:minmax(0,1fr);grid-template-areas:"kick" "l" "r"}.rcol{margin-top:28px}
+  .face{grid-template-columns:minmax(0,1fr);grid-template-areas:"kick" "l" "r" "al"}.rcol{margin-top:28px}
   .pcols{grid-template-columns:minmax(0,1fr);gap:28px}
   .mapc{grid-template-columns:minmax(0,1fr) 260px}.bench:not([data-pview="map"]){grid-template-columns:minmax(0,1fr)}.altc{border-right:0;border-bottom:1px solid var(--ink)}
   .sms{grid-template-columns:repeat(2,minmax(0,1fr))}.cols2{grid-template-columns:1fr}
@@ -784,11 +802,15 @@ section.decl{margin-top:22px}.row.decl{cursor:default}   /* a pack's declared ba
        3. What to do: the Decide card, framed and with its buttons, only while something is asked (`asking`, or a live
           event still asking). Otherwise one plain line, "Nothing is asked now.", with the hour it is usually worst.
        4. Did it work, then Yesterday (#nremember, admin token only): quiet, no frame.
-       5. Around the house: the issues drawn by the hour as rows (Air, Heat) and the stations' map, its caption one line.
+       5. Next days (Tomas, 4 Nov: the switch "Now · Next days" was a second tab bar under the doors): the rest of today,
+          tomorrow and the day after, a part of Now under What to do. #now/next scrolls to it.
+       6. Around the house: the issues drawn by the hour as rows (Air, Heat), then the stations' map, its caption one line.
           Land and Coast change yearly and moved to Place, beside the ground.
-       6. Heads are sentence case and name the reader's question; mono is kept for units, times and values. Every part
+       7. Also read here, under both columns: the packs' observe bands side by side, each band's source once, its note
+          folded under "How this is read".
+       8. Heads are sentence case and name the reader's question; mono is kept for units, times and values. Every part
           keeps its data-learn / data-reads / data-stage / data-kind.
-       7. Phone (≤ 480 px): the same order in one column, the bar in three rows of 44 px targets, the week as one
+       9. Phone (≤ 480 px): the same order in one column, the bar in three rows of 44 px targets, the week as one
           tappable row per day. -->
 <div id="content" tabindex="-1"></div>
 <main class="face view" data-view="now">
@@ -808,14 +830,16 @@ section.decl{margin-top:22px}.row.decl{cursor:default}   /* a pack's declared ba
     <div id="ndecl-decide" hidden></div>
     <section class="nrem" id="nremember" data-learn="now-worked" data-reads="/learned /learned/search /household" data-stage="measure" data-pack="core" data-kind="readout" aria-label="Did it work, and yesterday" hidden></section>
     <div id="ndecl-measure" hidden></div>
+    <div class="nxpart"><h2 class="nh" id="nexth">Next days</h2>
+      <section id="next" data-learn="now-next" data-reads="/forecast" data-stage="observe" data-pack="forecast" data-kind="readout" aria-labelledby="nexth"></section></div>
   </div>
   <div class="rcol">
     <h2 class="nh">Around the house</h2>
     <aside data-learn="now-rows" data-reads="/issues /issues/days" data-stage="measure" data-pack="core"><div class="rows" id="rows"></div></aside>
-    <div id="ndecl-observe" hidden></div>
     <figure class="around" data-learn="now-around" data-reads="/sensors /stats" data-stage="observe" data-pack="air-quality" data-kind="stack"><div id="rose"></div><figcaption class="fine" id="rosecap"></figcaption></figure>
     <p class="fine" id="nthings" data-learn="now-things" data-reads="/things" data-stage="observe" data-pack="core" data-kind="row" hidden></p>
   </div>
+  <section class="alsoread" id="alsoread" aria-labelledby="alsoh" hidden><h2 class="nh" id="alsoh">Also read here</h2><div class="alsog" id="ndecl-observe"></div></section>
 </main>
 
 <!-- PLACE -->
