@@ -164,6 +164,7 @@ test_events_pg|PACKS_DIR=packs PYTHONPATH=app python3 tests/test_events_pg.py
 test_rho_pg|PYTHONPATH=app PACKS_DIR=packs python3 tests/test_rho_pg.py
 test_views_pg|PYTHONPATH=app PACKS_DIR=packs python3 tests/test_views_pg.py
 test_maps_pg|PYTHONPATH=app PACKS_DIR=packs python3 tests/test_maps_pg.py
+test_maps|PYTHONPATH=app python3 tests/test_maps.py
 test_actions|PYTHONPATH=app python3 tests/test_actions.py
 test_agent_buttons|PYTHONPATH=app python3 tests/test_agent_buttons.py
 test_nodes_registry|PYTHONPATH=app python3 tests/test_nodes_registry.py
@@ -200,12 +201,12 @@ printf '  %d suites: %d passed, %d failed, %d check(s) skipped\n' "$total" "$pas
 [ -n "$skip_lines" ] && printf '%s' "$skip_lines"
 [ -n "$failed_names" ] && printf '  failed:%s\n' "$failed_names"
 
-# One hundred and six is the number of suites in the list above (test_maps_pg joined 4 Nov 2026; test_doors_next joined 3 Nov 2026; test_forecast_days joined 3 Nov 2026; test_forecast_territory joined 3 Nov 2026; test_store joined 3 Nov 2026; test_action_choice and test_notify_keyboard joined 3 Nov 2026; test_doors_asks joined 3 Nov 2026; test_rule_buttons joined 3 Nov 2026; test_pack_buttons joined 3 Nov 2026; test_rule_act_placeholder joined 2 Nov 2026; test_mobile_sections joined 1 Nov 2026; test_peers_persist left with the Reticulum bridge, and
+# One hundred and seven is the number of suites in the list above (test_maps and test_maps_pg joined 4 Nov 2026; test_doors_next joined 3 Nov 2026; test_forecast_days joined 3 Nov 2026; test_forecast_territory joined 3 Nov 2026; test_store joined 3 Nov 2026; test_action_choice and test_notify_keyboard joined 3 Nov 2026; test_doors_asks joined 3 Nov 2026; test_rule_buttons joined 3 Nov 2026; test_pack_buttons joined 3 Nov 2026; test_rule_act_placeholder joined 2 Nov 2026; test_mobile_sections joined 1 Nov 2026; test_peers_persist left with the Reticulum bridge, and
 # test_terrain joined, 23 Oct 2026; test_views_pg and test_grafana joined 24 Oct). If the list and this number disagree, one of them
 # is a typo, and a runner that quietly runs twenty-five of twenty-six is the bug it was written to end.
 # (The word and the number had drifted apart by two bumps when packs/make added the forty-fourth.)
-if [ "$total" -ne 106 ]; then
-  printf '  \033[31mx\033[0m ran %d suites, expected 106 — the list in this file lost or gained a line\n' "$total"
+if [ "$total" -ne 107 ]; then
+  printf '  \033[31mx\033[0m ran %d suites, expected 107 — the list in this file lost or gained a line\n' "$total"
   exit 1
 fi
 [ "$fail" -gt 0 ] && exit 1

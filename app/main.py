@@ -1563,6 +1563,8 @@ def export(day: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$")):
 
 import geo  # noqa: E402 — GET /place/geojson, /geo/* (app/geo.py)
 app.include_router(geo.router)
+import maps  # noqa: E402 — /place/maps, /place/marks: the household's drawings (app/maps.py)
+app.include_router(maps.router)
 import machine  # noqa: E402 — GET /machine, /storage (app/machine.py)
 app.include_router(machine.router)
 import wild  # noqa: E402 — GET /packs/all, /packs/preview, POST /packs/install (app/wild.py)
@@ -2188,11 +2190,9 @@ def action(body: dict, request: Request, authorization: str = Header("")):
         # the terminal, and curl. A node in a house records an act whether or not anybody deliberated -- somebody smells
         # smoke and opens a window -- and refusing that would make the node assert a deliberation that did not happen,
         # or push the act somewhere it is never recorded at all. A node acting for a street is the case this is for.
-        if stage == "acted" and settings.num("DECISION_REQUIRED", 0):
-            cur.execute("SELECT 1 FROM actions WHERE alert_id = %s AND stage = 'decided' LIMIT 1", (body.get("alert_id"),))
-            if not cur.fetchone():
-                raise HTTPException(409, "this node is set to DECISION_REQUIRED, so an act needs a decision recorded "
-                                         "against the same alert first. Decide on the dashboard, then record what you did.")
+        # The check itself is events_pg.decision_first, which a drawing tied to an issue asks too (app/maps.py).
+        if stage == "acted" and (refusal := events_pg.decision_first(cur, body.get("alert_id"))):
+            raise HTTPException(409, refusal)
         actor, note = str(body.get("actor") or "")[:80], str(body.get("note") or "")[:500]
         if choice is not None:
             # One row per (alert, actor, choice): a repeat tap writes nothing, a later note replaces it.
