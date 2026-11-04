@@ -12,10 +12,15 @@ there is no enough zoom, a pin could help"; "Some anotation in the map is good, 
 some basic markers, store them in different maps"; "It should be compatible with upstream nodes, if there is a larger
 GIS capability by the community/fablab node"; "at this level, only one token"; "it should be possible to download an
 image or the geoJson, or any other GIS compatible file, as well as CAD (if possible)"; on the side columns: "should be
-possible to hide, or collapse … Recommend what is better". Mockup approved: "allgood, go ahead".*
+possible to hide, or collapse … Recommend what is better". Mockup approved: "allgood, go ahead". Then, on running
+tools: "the local model should be able to launch it too, or connect it via mcp with your agent should be possible, so
+there are two ways to work with it"; on agents drawing: "yes they should be able to draw. Also, all the local GIS work
+should be also recorded as actions, and data in our logs"; on whether a drawn intervention counts as acting on an open
+issue: "yes, it should".*
 
-**Status: proposed 4 November 2026. Nothing is built.** Its own pull request, separate from Part B of the Place spec,
-and run on node #1 before it merges. The approved mockup is `2026-11-04-place-light-gis-mockup.html` beside this
+**Status: proposed 4 November 2026. Nothing is built.** This design takes over Part B of `docs/SPEC_place_microgis.md`
+(its steps 2 and 3: the tool registry, the Run panel, the agent, the local model on node #1). Where the two differ,
+this one holds; §6 names each change. It is built as three pull requests (§13), each run on node #1 before it merges. The approved mockup is `2026-11-04-place-light-gis-mockup.html` beside this
 file: it is the layout authority for §4 (open it in a browser; its figures are placeholders).
 
 ## 1 · Why
@@ -45,6 +50,12 @@ node's GIS. What a home draws has to open there without a converter.
 8. Show a pin where drone imagery exists when the map is zoomed out too far to draw it.
 9. Let both side columns collapse, with a map-only key and a full-screen key.
 10. A map the owner shares goes to the community or fab lab node as GeoJSON, by the up-link the node already uses.
+11. Run a tool three ways with the same command: pressed on the page, asked of the node's own model (the Ask line,
+    Telegram), or called by an outside agent over MCP. A tool runs on what is selected, or on the house's cell.
+12. Agents draw, into a map of their own, never into the household's.
+13. Every piece of GIS work is an action in the node's ledger, with who did it; drawings and tool results are kept in
+    the database; a daily count of the work is a reading.
+14. A drawn intervention can be tied to an open issue, and then it counts as acting on it (ρ).
 
 **Non-goals** (the fab lab node's, or later)
 
@@ -66,8 +77,7 @@ node's GIS. What a home draws has to open there without a converter.
 ## 3 · Constraints from the node
 
 - One token. Writes need the token the page already carries (`planetai_admin` or `planetai_act`). The drawings and
-  their routes are token-only at every `SHARE_LEVEL`, like `/place/geojson`. An agent read (`X-Agent`) of a map is
-  allowed only the way `ask.py` already allows house tools: token-only, results scrubbed, nothing stored.
+  their routes are token-only at every `SHARE_LEVEL`, like `/place/geojson`. What an agent may read and write is §7.
 - No build step. Plain browser JS in the doors files, MapLibre 5.24 and deck.gl as vendored, no new front-end
   dependency. Lengths and areas in the browser are computed with a few lines of geodesic math. The stored figure is
   PostGIS's (`ST_Length`/`ST_Area` on geography), and the page shows the stored one once saved.
@@ -153,17 +163,26 @@ base, as now. The cake's other defaults are unchanged.
 
 ## 5 · Storage and API
 
-Two tables, created in `init.sql`:
+Two tables in core, created in `init.sql`, which gains `CREATE EXTENSION IF NOT EXISTS postgis` ahead of them: the
+db image is PostGIS (`imresamu/postgis:16-3.4-alpine`) and its user creates extensions, so drawing does not wait on
+the place pack. A node whose database lacks PostGIS must fail `planetai update` with a sentence that says so, never
+half-apply; the CI database must be the same image (*my call*). A third table, `place_tool_runs`, is §6's and
+arrives with the third pull request; until then `place_marks.run_id` is a plain column and gains its foreign key
+with it.
 
 ```
-place_maps   id BIGSERIAL PK, name TEXT NOT NULL, owner TEXT, shared BOOLEAN NOT NULL DEFAULT false,
+place_maps   id BIGSERIAL PK, name TEXT NOT NULL, owner TEXT, agent TEXT,  -- set = an agent's own map (§7)
+             shared BOOLEAN NOT NULL DEFAULT false,
              shared_at TIMESTAMPTZ, share_error TEXT, created_at, updated_at,
              from_node TEXT, remote_id BIGINT,  -- both NULL = drawn here; UNIQUE (from_node, remote_id)
 place_marks  id BIGSERIAL PK, map_id BIGINT NOT NULL REFERENCES place_maps ON DELETE CASCADE,
              kind TEXT NOT NULL CHECK (kind IN ('marker','line','area','note')),
              geom geometry(Geometry, 4326) NOT NULL, colour SMALLINT NOT NULL DEFAULT 1 CHECK (colour BETWEEN 1 AND 6),
              label TEXT, note TEXT, capture_id BIGINT REFERENCES captures ON DELETE SET NULL,
-             length_m REAL, area_m2 REAL, created_at, updated_at
+             length_m REAL, area_m2 REAL, drawn_by TEXT,  -- the person's name, or the agent's
+             run_id BIGINT,  -- kept from a tool's result (§6)
+             alert_id BIGINT, event_id BIGINT,  -- the open issue it acts on (§8)
+             created_at, updated_at
 ```
 
 `length_m` and `area_m2` are written by the server on every insert and update, from `geom::geography`. A colour is a
@@ -200,7 +219,7 @@ header names the EPSG code in a comment so a CAD user can place it. ACI colours 
 in the map's options). The drawings, the scale bar and the credit line must be in the canvas when it is read.
 
 **"Everything on the screen"** is built in the browser: the PNG plus the three files for every map that is switched on,
-in one zip. If a zip needs code the node doesn't have, it is four downloads instead (builder's call, §9).
+in one zip. If a zip needs code the node doesn't have, it is four downloads instead (builder's call, §11).
 
 **Images.** The image key opens a picker: pick an existing capture from Data › Images, or take or choose a new photo,
 which goes through `POST /captures` as kind `phone` with the drawing's point. The drawing's location is the one that
@@ -232,7 +251,95 @@ aggregates (my call, from the builder check):
 
 Nothing else about a house leaves with the map: no house point, no capture file, only the drawings and their words.
 
-## 6 · The satellite's buildings by cell
+## 6 · Tools: one list, three ways to run them
+
+Part B's registry stands (`docs/SPEC_place_microgis.md` §6): `GET /place/tools` lists every tool with its id, name,
+kind, the layers it reads, its arguments as JSON Schema and whether it can run now; `POST /place/run/<id>` returns
+`{features, figures, word, inputs, as_of}`; look tools compute in `app/geo.py`, analyses and fitness read what the
+place pack worked out; the first tools are Part B's table. What changes here:
+
+- **The tools that run in the third pull request** (*my call*): the look tools (`geo.select`, `geo.measure`,
+  `geo.area`, `geo.rings`), `place.walk`, `place.changed` and `water.runoff`, which read data the node holds today.
+  The rest of Part B's table is listed with "cannot run now" and the data it waits for, until those steps land.
+- **A tool runs on the selection.** Every tool takes an optional `on` argument: a drawing (`mark:<id>`), a map
+  (`map:<id>`), a cell (`cell:<h3>`, one of the seven), or nothing, which means the house's cell. Pressing a tool with a
+  drawing selected fills `on` with it.
+- **The Run panel** is the v2 mockup's: pressing a tool in the right column opens its settings under it, Run (Enter) is
+  the one filled button, and under it the same run is printed as the command an agent sends,
+  `place.sun {"day":"2026-11-04","at":"14:00","on":"mark:12"}`.
+- **A result shows in three places**: a row under **results** at the top of the left column (a switch like a layer,
+  with a clear), drawn on the screen, and as a table in the lower band. **Keep** on a result copies its features into
+  the open map as drawings, labelled with the tool and its settings.
+- **Every run is kept**, in a `place_tool_runs` table (id, ts, tool, args, actor, via, features, figures,
+  word, inputs; not `place_runs`, which is the place pack's OSM-fetch log),
+  whoever started it. This replaces Part B's `place_tool_runs.jsonl` file trimmed to 200 and Part B's rule that an agent's
+  run is not stored (Tomas: "all the local GIS work should be also recorded"). The conversation itself is still not
+  stored; the run is.
+- **The node's own model** runs tools through the Ask line and Telegram, as Part B planned, with a small local model on
+  node #1 (Part B step 2). Place tools are offered on a screen holding the token only, as today.
+- **Outside agents over MCP.** `app/agent.py` gains `place_tools()`, `place_run(tool, args)`, `place_maps()`,
+  `place_map(id)`, `place_draw(map, feature)` and `place_keep(run, ids)`. Part B held MCP back until the pane had run on
+  node #1; Tomas wants both ways, so both ship in the same pull request (§13). Writes need the admin token and record
+  the agent's name (`X-Agent`), as every MCP write does now.
+
+## 7 · Agents draw, and what they may see
+
+An agent draws into a map of its own, created the first time it draws and named for it ("Suggestions from Claude",
+"Suggestions from the node"). It never edits, moves or deletes a drawing in the household's maps. Each drawing keeps
+`drawn_by`. The household keeps a suggestion by moving it into one of its maps, and it stays marked as the agent's.
+
+What a model reads can go to its provider, and a drawing on a house is the house. Tomas, 4 Nov: "House network only".
+So home is the rule the node already keeps for this, `agent_loop.models_stay_home` (a model on this house's own
+network counts as home; `/learned` uses the same rule through `household._models_home()`):
+
+- **The node's own model, on a rung that is home** (on this machine or on the house's network, as gemma4:26b on the
+  LAN is for node #1 today), reads and writes drawings with their coordinates. The test is made per rung when a tool
+  is called, not once per request, because the pane falls through rungs mid-request; the scrub the model's tool
+  results pass through is built for the rung that will read them.
+- **A rung that is not home** (an online model) reads figures, measures, kinds, colours, ids and directions
+  ("north-east"), never coordinates, the house's cell ids, labels or notes: `scrub`'s existing drop list already takes
+  `note` and `name` out, and it gains `coordinates`, `bbox`, `at` arrays and H3 ids of the seven cells.
+- **Every agent over MCP is not home** (*my call*): the MCP tools cannot tell a Claude on the tailnet from one on
+  localhost, and the model behind any of them runs at its provider. So the MCP place tools return what a not-home rung
+  reads, and the agent draws by reference: `place_keep(run, ids)` keeps features a run found, and `place_draw` takes
+  a feature placed `at` a drawing, a cell by its direction, or a run's feature (`{"kind":"marker","at":"mark:12",
+  "label":"…"}`) instead of coordinates. The node does the geometry. Each MCP place tool takes the agent's name as its
+  `agent` argument, as `act` and `settings_set` do, and records it.
+- **The pane's promise changes by one line.** `ask.py` tells the household nothing is changed by the pane. Drawing
+  adds a tool class, `draw`, offered only on a screen holding the token, which writes into the agent's own map and
+  nowhere else, so the promise becomes: nothing of yours is changed; the node's model may draw in its own map.
+
+The page draws what any agent drew, and the ledger says which agent.
+
+## 8 · The ledger, the data, and acting on an issue
+
+**Actions.** The node's `actions` table is already its ledger for more than alerts (stages `settings`, `decided`,
+`dismissed` besides the three of an alert's loop), and the Data door shows it. GIS work joins it as a new stage,
+`place`, with the verb in `choice` (`drew`, `changed`, `deleted`, `kept`, `ran:<tool>`, `fetched`, `shared`,
+`unshared`, `downloaded:<format>`, `osm`) and a short note naming the map, the drawing or the tool. `actor` is the
+name the page keeps (`planetai_actor`, as captures use it), the Ask model, or the agent's `X-Agent`. Edits to one
+drawing within a minute are one row. The ledger's stage filter gains **place**.
+
+**Data.** Drawings live in `place_marks` and results in `place_tool_runs` (§5, §6). Once a day the node writes readings
+for a `place` sensor: drawings in all maps, area marked (m²), tool runs, cells fetched. They are `private`, so they
+never travel upstream and never reach an agent's provider, and they show on the Data door like any other series.
+
+**Acting on an issue** (Tomas: "yes, it should"). A drawing in one of the household's maps can be tied to an open
+issue, from the drawing's form: a short list of the issues open on Now, and a line for what the person did, in their
+own words, which is required (an `acted` note is the household's words, as v0.63 settled; the diary reads it so).
+Tying writes the row the Done button writes, from the maps route directly and not through `POST /actions`, whose
+choice check would refuse it: `stage = 'acted'`, the issue's id the way the Done button on that issue row carries it
+(`alert_id` under `ALERT_ENGINE=rules`, `event_id` when the engine owns the issue), the person's name, their words,
+and `choice = 'place.mark:<id>'`. Where the Done button would be refused (a decision required first), tying is
+refused with the same sentence. ρ then counts it as the issue's acted step. Rules, *my call*:
+
+- only a person ties: an agent's suggestion counts once a person has kept it into their map and tied it;
+- untying deletes that row, found by its `choice` (the table has no id); deleting the drawing keeps it, because the
+  person did act;
+- the drawing shows its issue in the table and on the map's label;
+- `measured` stays what it is today, the issue's own reading coming back under the line.
+
+## 9 · The satellite's buildings by cell
 
 Today `packs/place/satellite.py` fetches Open Buildings in a circle of `PLACE_RADIUS_M` (1000 m) around the node, split
 into quadrants to stay under Earth Engine's feature cap. This changes to H3 cells:
@@ -240,6 +347,11 @@ into quadrants to stay under Earth Engine's feature cap. This changes to H3 cell
 - the cells are the house's res-8 cell and its ring (`grid_disk(home, 1)`), the same seven the captures table already
   calls the node's own (`captures.outside`);
 - `footprints()` takes a cell's boundary polygon instead of a circle; a dense cell may still need splitting;
+- the place pack's published readings do not change (*my call*): `buildings`, `built_share`, `sat_buildings`,
+  `osm_building_coverage` and the rest stay counted inside the `PLACE_RADIUS_M` circle, as pack.yaml declares, and
+  `place_yearly` stays circle-based. The circle's own Open Buildings fetch stays as the default. Rows a cell fetch
+  adds beyond the circle, and OSM rows fetched beyond it, are tagged with their cell and serve the cells' counts and
+  the gaps view only, so the readings' history and the Index inputs are not broken;
 - `place_buildings_sat` gains a `cell` column; a new `place_sat_cells (cell PK, requested_at, fetched_at, buildings,
   not_in_osm, error)` holds each cell's state. A cell is pending while `requested_at` is later than `fetched_at`, or
   it has no `fetched_at` (my call);
@@ -247,18 +359,19 @@ into quadrants to stay under Earth Engine's feature cap. This changes to H3 cell
 - `POST /place/cells/{cell}/fetch` (token) refuses any cell outside the seven, records the request, and the place pack
   does the fetch on its next run or in a short job, so the page never waits on Earth Engine; the page shows "fetching"
   until `place_sat_cells` has the row;
-- the house's cell is fetched by default, as the circle is today; the other six only when pressed. A fetched cell
+- the circle's fetch covers the house's cell, which counts as fetched; the other six are fetched when pressed, each
+  counted only once it is fully covered. A fetched cell
   has a quiet **Fetch again**, and a cell whose fetch failed shows the error and **Fetch again** (my call);
 - `not_in_osm` uses the same test `gaps.py` uses (no OSM building within 3 m). OSM's own fetch has to cover the seven
   cells for that to be true: the ring's far corners are about 1.3 km out, past the 1000 m default, so the OSM refresh
-  covers the seven cells' bounds;
+  covers the seven cells' bounds, with the readings still clipped to the circle;
 - without an Earth Engine key, the section says so once and the Fetch buttons are not drawn, as the pack's other
-  satellite figures do now. Node #1 has a key (`EE_PROJECT`, `EE_KEY_FILE`) and 5,994 footprints today, so §10's
+  satellite figures do now. Node #1 has a key (`EE_PROJECT`, `EE_KEY_FILE`) and 5,994 footprints today, so §12's
   cell fetch runs there for real; the suites use a stubbed Earth Engine.
 
 `place_yearly` (buildings per year) stays as it is and feeds the lower band.
 
-## 7 · Accessibility and the phone
+## 10 · Accessibility and the phone
 
 - Every key is a `<button>` with a name and `aria-pressed`; the readout is `aria-live="polite"` for the finished
   figure, not for every mouse move.
@@ -268,13 +381,7 @@ into quadrants to stay under Earth Engine's feature cap. This changes to H3 cell
 - At 390 px: keys along the bottom of the screen, the readout above them, the sides as the bottom sheet Part A built
   with **your maps** first in it, the download and OSM keys in the screen's right column as on desktop.
 
-## 8 · Agent readiness
-
-The maps are readable by the Ask agent as one house tool, `place_maps`: the maps and their drawings with labels,
-notes and measures, no images. It belongs in Part B's tool registry and follows its rules (token-only, scrubbed,
-nothing stored). This design adds the route the tool reads; registering the tool is Part B's.
-
-## 9 · Left to the builder
+## 11 · Left to the builder
 
 - How the drawing state is held in `doors-placemap.js` (a new `PM.draw`), and whether drawings render as deck.gl
   layers or MapLibre GeoJSON layers. Either must be inside the canvas for the PNG.
@@ -285,7 +392,7 @@ nothing stored). This design adds the route the tool reads; registering the tool
 - Whether the cell fetch runs as a job from the route or on the pack's next cycle, as long as the page never blocks.
 - Copy, under the house rules: plain, first person where the household speaks, no AI patterns.
 
-## 10 · Done means
+## 12 · Done means
 
 - Node #1 on the branch: satellite on by default, the then-and-now pair in the lower band and nothing over the screen,
   a map drawn with each key, downloaded in all four formats, the DXF opened in a CAD program at the right size, the
@@ -294,3 +401,15 @@ nothing stored). This design adds the route the tool reads; registering the tool
 - The doors visual gate passes with the new panes (keys, readout, folded sides) at 1440 and 390, paper and dark.
 - `docs/site/dashboard.md`'s Place section says how to draw, keep and download a map, in Tomas's voice.
 - A design-log line in planetai-design for the drawing colours and the keys.
+
+## 13 · Three pull requests
+
+1. **Drawing and maps.** §4 and §5 without the tools: the keys and readout, named maps, the four downloads, sharing
+   with the warning, satellite by default, the then-and-now pair in the lower band, drone pins, folding sides, the
+   `place` stage in the ledger and the daily readings, acting on an issue.
+2. **Cells and OSM.** §9 and the OSM section of §4.
+3. **Tools and agents.** §6 and §7: the registry, the Run panel, `place_tool_runs`, the Ask model's tools, the MCP tools,
+   agents' maps, the local model on node #1. This is Part B of the Place spec, as changed here.
+
+Each is run on node #1 for a real cycle before it merges, with CI green first.
+
