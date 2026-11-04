@@ -1,5 +1,5 @@
 # Updating
-<!-- checked: v0.90.0 -->
+<!-- checked: v0.91.0 -->
 
 One command brings the node to the published release. Your settings, readings, backups, exports and the packs you
 added stay.
@@ -25,7 +25,8 @@ planetai update
    out, since it is core now, unless it was the only pack listed. An empty list is every pack and is left alone.
 5. **Rebuilds and restarts**, and on a node with the Reticulum bridge on, fetches the bridge at the commit this
    release pins and rebuilds it; a bridge that does not build keeps running the one it had. Then it checks the database, the app, the readings, the views and the packs, prints the schema
-   before and after, and ends on `updated. Nothing was lost:` with the counts of readings, alerts and actions.
+   before and after, and ends on `updated. Nothing was lost:` with the counts of readings, alerts and actions. On the way it adds, once, the
+crontab line that Install on Set up › Packs needs (`planetai packs cron`).
 6. **Runs `planetai doctor`**, ending with **To finish setting up**. In a terminal it offers to do the first item,
    and to fetch the map if the node has none; from cron or an agent it only prints. A cross there never fails an
    update that has succeeded.

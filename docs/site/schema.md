@@ -1,5 +1,5 @@
 # Data schema
-<!-- checked: v0.90.0 -->
+<!-- checked: v0.91.0 -->
 
 Everything the node knows sits in one Postgres database, `planetai`, on the machine itself. A pack's rules and cells are SQL written against the tables and views on this page, and a person debugging a node at 9 pm reads the same ones with `psql`. The raw readings live in `readings` and stay here: "No raw readings leave the instance that recorded them" (ARCHITECTURE.md). What goes up to a parent is `readings_1h`, the hourly means, and the timestamps in `alerts` and `actions`.
 
@@ -42,7 +42,7 @@ A facility has no readings. `kind = 'facility'` is a place with a name and a poi
 | `metric` | text | lowercase, no unit in the name |
 | `value` | double | |
 
-Unique on `(sensor_id, metric, ts)`, so polling twice is harmless; indexed `(sensor_id, metric, ts desc)` and on `ts` alone.
+Unique on `(sensor_id, metric, ts)`, so polling twice is harmless. The one exception is a forecast: a newer run replaces the value of an `fc_` metric for an hour still ahead, and a past hour or a measurement is never rewritten. Indexed `(sensor_id, metric, ts desc)` and on `ts` alone.
 
 ### `alerts`
 
@@ -55,6 +55,7 @@ Unique on `(sensor_id, metric, ts)`, so polling twice is harmless; indexed `(sen
 | `level` | text | `info` · `warn` · `act` |
 | `text` | text | the filled message |
 | `event_id` | bigint → `alert_events.id` | the event the alert fed. Nothing writes it yet, so it is null on every row |
+| `buttons` | jsonb | the buttons the rule offered with this alert, checked before they are stored; null when it offered none |
 
 Indexed `(rule_id, sensor_id, ts desc)` for the cooldown check. An alert never clears, it only cools down; an [alert event](#alert-events) is the row that opens and clears.
 
@@ -70,6 +71,7 @@ The ρ instrument: what happened after an alert, one row per answer.
 | `stage` | text | checked: `acknowledged` · `acted` · `measured` · `settings` · `decided` · `dismissed` |
 | `actor` | text | who: the name typed on the dashboard, the login name from `planetai act`, `lxmf:<hash>` from the radio bridge, an agent's name, or the `X-Agent` of a settings change |
 | `note` | text | in the person's words |
+| `choice` | text | the `value` of the alert's button that was pressed, from `POST /actions` with a `choice`; null on every other row |
 
 The six stages do different things, and two of them are never posted by a person.
 
@@ -82,7 +84,7 @@ The six stages do different things, and two of them are never posted by a person
 | `measured` | nothing | `POST /actions` refuses it. The node derives `measured` from an `acted` alert whose rule stayed silent on the same sensor for 2880 minutes; see [ρ](rho.md). A `measured` row already in the table still counts |
 | `settings` | `PUT /settings`, `planetai config set`, the `settings_set` tool | Nothing in ρ; it records who changed which keys |
 
-An `acknowledged` or `acted` row with an `event_id` answers an alert event. On `ALERT_ENGINE=events`, ρ and its funnel count each event the engine sent at act level once, answered by such a row; the rows of the packs the engine replaced are left out from its first sent message on. `GET /effect` and the push to a parent read only rows with an `alert_id`.
+An `acknowledged` or `acted` row with a `choice` answers a button of the alert's own, one row for each person's choice. An `acknowledged` or `acted` row with an `event_id` answers an alert event. On `ALERT_ENGINE=events`, ρ and its funnel count each event the engine sent at act level once, answered by a row with an `event_id`; the rows of the packs the engine replaced are left out from its first sent message on. `GET /effect` and the push to a parent read only rows with an `alert_id`.
 
 With `DECISION_REQUIRED=1`, `POST /actions` refuses an `acted` row for an alert that has no `decided` row yet. The table itself does not enforce that.
 
@@ -160,7 +162,7 @@ What each `(source, metric)` is, written at every start from `config/channels.ym
 
 ### `release_notices`
 
-`version`, `told_at`: one row per release the node has told its household about, so a restart or the hourly re-check never sends "a new version is out" twice for the same one (`UPDATE_CHECK`). Written by `check_release()` in `app/main.py`; nothing else reads it.
+`version`, `told_at`: one row per release the node has told its household about, so a restart or the hourly re-check never sends "a new version is out" twice for the same one (`UPDATE_CHECK`). Written by `check_release()` in `app/main.py`. A row `pack:<id>` is a pack on the wild list it has told them about (`check_wild`), and `GET /packs/all` reads those to mark a pack new.
 
 ### `captures`
 
@@ -198,7 +200,7 @@ The `place` pack creates `place_features` (OpenStreetMap features with a PostGIS
 |---|---|---|
 | `readings_1h` | hourly means over all readings: the finished hours from `readings_1h_done`, and the rest grouped live from where that table ends, so it is complete even when the table is behind | `bucket, sensor_id, metric, mean, min, max, n` |
 | `stats` | one per (sensor, metric), last 24 h, `kind='sensor'` only | `sensor_id, metric, indoor, local, kind, scale, lat, lon, name, last, last_ts, silent_minutes, mean_15m, mean_1h, mean_24h` |
-| `observations` | the latest row per (sensor, metric) for `kind <> 'sensor'` | `sensor_id, metric, value, ts, name, kind, scale, local, cadence, meta` |
+| `observations` | the latest row per (sensor, metric) for `kind <> 'sensor'`, as of now: a forecast hour still ahead is not an observation | `sensor_id, metric, value, ts, name, kind, scale, local, cadence, meta` |
 | `recent_15m` | quarter-hour means of the last 24 h, `kind='sensor'` only, with `apparent` (the no-wind indoor feels-like) derived wherever `temp` and `humidity` share a bucket | `bucket, sensor_id, metric, mean` |
 | `usual_by_hour` (materialized) | each room's own normal for each local hour, from the fourteen complete local days before today, for `temp`, `humidity`, `pm25` and `apparent` | `sensor_id, metric, hour, median, p75, p90, n` |
 

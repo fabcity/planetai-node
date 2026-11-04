@@ -1,5 +1,5 @@
 # Sensors and sources
-<!-- checked: v0.90.0 -->
+<!-- checked: v0.91.0 -->
 
 This page connects the things that measure your place to the node. Once a sensor of yours is polled, the rules
 have a room to fire on, and its hourly means can count toward this place's cell in the Fab City Index. Whether
@@ -106,7 +106,7 @@ switch: it runs when that switch is on.
 | Xiaomi purifiers (`xiaomi-air` wild pack, listed at [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs)) | `planetai packs add xiaomi-air`, then `XIAOMI_PURIFIERS=Living Room@192.168.4.98=<token>,…` and `planetai packs install` (installs python-miio) | `sensor` | yes (no coordinates, so it stays local) | Mi Home purifiers read on the LAN over miio/MIoT, always `indoor`: `pm25`, `temp`, `humidity`, `filter_life`, and `pm10` where the model reports it. Ids are `xm-<mac6>`. You extract each unit's 32-hex token once with xiaomi-cloud-tokens-extractor; after that nothing talks to the Xiaomi cloud. The pack lists that line under `secrets:`, so Set up shows it masked once saved. No EPA correction, because the sensor is not a Plantower. |
 | ThingData (`thingdata` pack) | `THINGDATA_INSTANCES=slug=url,…` | `portal` | never | A repair-knowledge server's catalogue: things described, guides, stories, and whether anyone is still writing. Scale from `THINGDATA_SCALE` (`city`). |
 | Fab labs (`make` pack) | `MAKE_ENABLED=1` and `PACKS_ALLOW_CODE=1`; `MAKE_ENABLED` ships as `0` | `facility` | never | One row per active fab lab within `MAKE_RADIUS_KM` (50), from the Fab Lab Network directory, with no readings. `meta` holds the slug, capabilities, city, distance and the lab's URL, never an email or a phone number. The directory is not openly licensed; read [the report page](report.md#the-nearest-place-to-make-or-fix) before you turn it on. |
-| Other code packs | the pack's own settings | as declared | as declared | `coast` (Open-Meteo Marine), `forecast` (BMKG, Open-Meteo), `earth` (AlphaEarth embeddings), `earth-engine` (Dynamic World, Sentinel-2, VIIRS), `place` (OpenStreetMap into PostGIS), `terrain` (Copernicus DEM GLO-30), `fire` (NASA FIRMS, also `FIRE_ENABLED=1`), `surface-heat` (Landsat and MODIS through Planetary Computer). See [Packs that ship](packs-reference.md). |
+| Other code packs | the pack's own settings | as declared | as declared | `coast` (Open-Meteo Marine), `forecast` (BMKG, and Open-Meteo, CAMS air and the sea once `FORECAST_OPENMETEO=1`, which ships as `0`), `earth` (AlphaEarth embeddings), `earth-engine` (Dynamic World, Sentinel-2, VIIRS), `place` (OpenStreetMap into PostGIS), `terrain` (Copernicus DEM GLO-30), `fire` (NASA FIRMS, also `FIRE_ENABLED=1`), `surface-heat` (Landsat and MODIS through Planetary Computer). See [Packs that ship](packs-reference.md). |
 
 **AirGradient and PurpleAir, on the LAN.** The `airgradient` pack reads each host in `AIRGRADIENT_HOSTS` at
 `/measures/current`, and the `purpleair` pack each host in `PURPLEAIR_HOSTS` at `/json?live=true`, never through the

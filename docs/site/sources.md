@@ -1,5 +1,5 @@
 # The source registry
-<!-- checked: v0.90.0 -->
+<!-- checked: v0.91.0 -->
 
 A node measures what its adapters read. The registry is the network's shared list of what could be measured at
 each pillar and scale, and of the places a person could go to act on it, carried inside every node as a
@@ -15,7 +15,7 @@ comes to write it.
    node; `--all` shows every entry. It ends with the totals:
 
    ```
-     111 of 283 entries. The last column is the code that reads it. A cell with sources and a blank column is one nobody has written an adapter for yet.
+     111 of 284 entries. The last column is the code that reads it. A cell with sources and a blank column is one nobody has written an adapter for yet.
      across 19 cells: capable 12 / reviewed 17 / candidate 55
      capable = live with an adapter. reviewed = live, backed by an adapter or a usable review. candidate = verified, unread.
    ```
@@ -43,9 +43,9 @@ comes to write it.
    `data/sources/data/environmental/community/bali-air-dispatch.yaml`. A slug that is not in the pin answers 404
    and names the pin.
 4. **See it on the Network view.** On the dashboard, Network has a section headed **What this place could read,
-   and where it could go**, with three rows. *Registered, and read* shows `pin cd90289 · synced 2026-10-24` (the
-   pin links to the registry on GitHub at that commit), says `283 sources registered; 18 have code on this node
-   that reads them` with the fourteen adapter strings, and draws `18/283`. *What a cell could use* reads `across 19
+   and where it could go**, with three rows. *Registered, and read* shows `pin 7bf12a4 · synced 2026-11-04` (the
+   pin links to the registry on GitHub at that commit), says `284 sources registered; 18 have code on this node
+   that reads them` with the fourteen adapter strings, and draws `18/284`. *What a cell could use* reads `across 19
    cells` with `12 capable`, `17 reviewed` and `55 candidate`. *Places to act* counts the 16 act sources by kind
    and says how many state that no licence is published (4); a fold under it lists all sixteen with each licence
    as filed. The page fetches `/sources` the first time somebody opens Network, and never before.
@@ -67,10 +67,10 @@ An entry counts against every cell in its `feeds_cells`, and against its own `ce
 `feeds_cells` key. An entry with `feeds_cells: []` counts in no cell. No `deprecated`, `stale`, `paywalled` or
 `planned` entry counts anywhere. `capable` is always part of `reviewed`.
 
-At `cd90289` that is 12 capable, 17 reviewed and 55 candidate across 19 cells. Of the eighteen entries with an
+At `7bf12a4` that is 12 capable, 17 reviewed and 55 candidate across 19 cells. Of the eighteen entries with an
 `adapter`, eight say `feeds_cells: []` (`fablabs-io` is one) and two (`airgradient`, `smart-citizen`) feed two
-cells each, which makes 12. Reviews add five to `reviewed`. The 55 `candidate` entries also make 55, because ten
-of them feed two cells each and ten feed none. `Governance|City` has 32 entries filed under it and counts capable 4,
+cells each, which makes 12. Reviews add five to `reviewed`. The 56 `candidate` entries make 55, because ten
+of them feed two cells each and eleven feed none. `Governance|City` has 32 entries filed under it and counts capable 4,
 reviewed 4, candidate 0: the four CKAN portals that `core:ckan` reads.
 
 ## One entry
@@ -106,14 +106,14 @@ a copy at `data/sources/`, mounted read-only into the app container:
 
 | path | what it is |
 |---|---|
-| `data/sources/REGISTRY_VERSION` | the pin: `sha=cd90289edd506d7a91d897f17f04f03cd7063426`, `short=cd90289`, `synced=2026-10-24`, `entries=283`, and the upstream URL |
-| `data/sources/data/<pillar>/<scale>/<slug>.yaml` | the 283 entries as filed |
+| `data/sources/REGISTRY_VERSION` | the pin: `sha=7bf12a49bc6e70e5c38592fdef6b217b5ee18eb4`, `short=7bf12a4`, `synced=2026-11-04`, `entries=284`, and the upstream URL |
+| `data/sources/data/<pillar>/<scale>/<slug>.yaml` | the 284 entries as filed |
 | `data/sources/schema/dataset.schema.json` | the schema they are checked against |
 | `data/sources/reviews/`, `data/sources/cells/` | the reviews filed for entries, and one file for each of the twenty cells |
 | `data/sources/index.json` | the YAML folded into one JSON list, with `slug` and `cell` taken from each file's path, and a `reviews` list on every entry (`[]` when there are none) |
 
-At `cd90289` the 283 entries are 121 economic, 68 governance, 67 environmental and 27 social. By status, 212 are
-`live`, 55 `candidate`, 8 `deprecated`, 4 `stale`, 3 `planned` and 1 `paywalled`. Eighteen carry an `adapter`,
+At `7bf12a4` the 284 entries are 121 economic, 68 governance, 68 environmental and 27 social. By status, 212 are
+`live`, 56 `candidate`, 8 `deprecated`, 4 `stale`, 3 `planned` and 1 `paywalled`. Eighteen carry an `adapter`,
 four carry a review, and sixteen are act sources.
 
 `app/registry.py` and `bin/planetai` read `index.json`, so the CLI needs no YAML library on the host. The app
@@ -162,8 +162,8 @@ and not open, because that is a judgement about somebody else's terms.
   `feeds_cells` as above. `registered` carries the `reviewed` count, and `adapter` is true when `capable` is above
   0. A cell with registered sources and no adapter has no `/cells` row at all, because a node only emits rows it
   can compute; `planetai sources --cell` answers that half.
-- **`planetai doctor`.** One row: `source registry: 283 entries · awesome-fabcity-data @ cd90289 · synced
-  2026-10-24`. It goes amber when the pin is over 180 days old and red when `data/sources/` is missing.
+- **`planetai doctor`.** One row: `source registry: 284 entries · awesome-fabcity-data @ 7bf12a4 · synced
+  2026-11-04`. It goes amber when the pin is over 180 days old and red when `data/sources/` is missing.
 - **Packs.** Every id in a pack's `sources:` must resolve to an entry at the pin, or `make lint` fails and names
   the id; 18 resolve. The `fire` pack's is `environmental/bioregion/nasa-firms`, a `candidate` filed with
   `adapter: pack:fire`, `auth: none` (only its area API needs a key) and `feeds_cells: []`: read, and feeding no

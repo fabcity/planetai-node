@@ -1,5 +1,5 @@
 # Install
-<!-- checked: v0.90.0 -->
+<!-- checked: v0.91.0 -->
 
 This page puts the node itself on a machine: two containers, a database on this disk, and the loops that read
 your place every five minutes. Once it is done the node has pulled the air model and the climate normals for
@@ -137,7 +137,8 @@ full log is in `.planetai-install.log`.
    volume and an update both run.
 7. **Checks.** Modules in the image, database healthy, app answering, `backup.sh` executable.
 
-Then it adds the nightly backup to your crontab (`17 3 * * *`). Unless `--no-bootstrap` was given, the first
+Then it adds the nightly backup to your crontab (`17 3 * * *`), and a second line, checked every minute, that lets
+Install on Set up › Packs reach this machine (`planetai packs cron`, [Packs](packs.md)). Unless `--no-bootstrap` was given, the first
 start pulls about 4,500 rows of history for your coordinates: 92 days of hourly PM2.5 and PM10 from the Copernicus
 air model, and NASA POWER's monthly normals, so `planetai status` has something to say within minutes. The
 installer ends with one line you can paste into an issue, starting `install OK`, with the node's name, how long
@@ -182,7 +183,7 @@ it is running, or remove it. If an earlier setup stopped before the containers e
 To start over, remove first:
 
 ```bash
-planetai remove              # containers, database, folder, cron entry, the command itself; asks twice
+planetai remove              # containers, database, folder, backup cron entry, the command itself; asks twice
 planetai remove --keep-data  # the same, but the readings stay in their volume
 ```
 
@@ -199,7 +200,7 @@ own code.
   .env                   every setting; mode 600; never committed, never pasted
   backups/               nightly pg_dump, kept BACKUP_KEEP days
   exports/<node>/        the daily CC BY 4.0 export, one JSON a day
-  out/                   what pack scripts write: land-change maps, timelapses, mapping briefs, the kept map (out/ground/)
+  out/                   what pack scripts write: land-change maps, timelapses, mapping briefs, the kept map (out/ground/), the workbench's firmware (out/firmware/)
   out/captures/          the household's pictures, unless CAPTURES_DIR says elsewhere
   packs/                 the rules; add a folder to add a domain
   config/rules.yml       the two domain-blind core rules and trust's three

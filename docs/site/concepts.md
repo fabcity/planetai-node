@@ -1,5 +1,5 @@
 # Concepts
-<!-- checked: v0.90.0 -->
+<!-- checked: v0.91.0 -->
 
 The words the other pages use, each with what it means in the code. Several come in pairs that sound alike
 and are not (`local` and `custody`, domain and issue, `kind` and `scale`, decided and acted). Most of them
@@ -86,7 +86,7 @@ they are casa · calle · alrededores · región. The keys stay as they are on t
 place that is not a column. A distance says whose instrument it is and has no scale: nothing maps a distance
 to an H3 resolution.
 
-**Registry.** A pinned snapshot of `awesome-fabcity-data`, 283 entries at `cd90289`, served at `/sources` and
+**Registry.** A pinned snapshot of `awesome-fabcity-data`, 284 entries at `7bf12a4`, served at `/sources` and
 listed by `planetai sources`. Most entries are things this place could measure; some are places to go and
 designs to build. See [The source registry](sources.md).
 
@@ -96,20 +96,21 @@ designs to build. See [The source registry](sources.md).
 `level` and a `cooldown_minutes`. There is no rules engine or expression language; if Postgres cannot
 express the condition, the condition is wrong. Core rules live in `config/rules.yml` and know no metric; a pack's
 rules live in `packs/<id>/rules.yml`, namespaced `<pack>/<id>`. A rule's message ends with its recommendation;
-where that line begins with 👉, the alert's card in Decide shows it as "what this node suggests".
+where that line begins with 👉, the alert's card in Decide shows it as "what this node suggests". A rule can also
+return a `buttons` column to ask with buttons, and write `{act}` in its message for the alert's own number to answer.
 
 **Level.** `act`: something needs doing. `warn`: something changed. `info`: everything else.
 `ALERT_LEVEL` is the floor for interrupting a person; below it an alert is still recorded, still on the
 dashboard, still in the next report.
 
-**Alert.** A row in `alerts` (`ts`, `rule_id`, `sensor_id`, `level`, `text`), whether or not it was sent.
+**Alert.** A row in `alerts` (`ts`, `rule_id`, `sensor_id`, `level`, `text`, and `buttons` when its rule offered some), whether or not it was sent.
 Three paragraphs: what is happening, what it means, what to do. An act-level alert that no one has answered
 is an *open alert*.
 
 **Cooldown.** Per rule and sensor, enforced in SQL against `alerts`: a rule does not fire again for the same
 sensor until its cooldown has passed.
 
-**Action.** A row in `actions`: `alert_id`, `stage`, `actor`, `note`. `SPEC.md` calls this table "the
+**Action.** A row in `actions`: `alert_id`, `stage`, `actor`, `note`, and `choice`, the button pressed. `SPEC.md` calls this table "the
 Index's instrument, not an app feature", and ρ is computed from it and nowhere else. A row has one of six
 stages:
 
@@ -123,7 +124,7 @@ stages:
 | `dismissed` | an alert event's advice did not fit the house |
 
 `POST /actions` takes `acknowledged`, `acted` or `decided` for an alert, and `acknowledged`, `acted` or
-`dismissed` for an alert event.
+`dismissed` for an alert event. A `choice` replaces the stage: the button sets it.
 
 **Alert event.** One story per issue per house, folded from the rows of rules that declare a `kind`: it opens,
 escalates and clears, and has at most one action chosen from what is inside, outside and in the home. It is a row

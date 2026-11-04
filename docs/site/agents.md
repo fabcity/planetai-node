@@ -1,5 +1,5 @@
 # Bring your own agent
-<!-- checked: v0.90.0 -->
+<!-- checked: v0.91.0 -->
 
 An agent is a guest on the machine, never a part of it. It can read everything the node knows and help the person in
 front of it install, diagnose and run the node in plain language. It drafts and a person dispatches: no agent
@@ -97,7 +97,8 @@ without asking. See [The bot](bot.md).
 
 `actions` also holds `decided` rows, written from the dashboard's Decide card. A decision records what somebody said
 they would do and moves nothing: it closes no alert and is not in ρ. The answers to an alert event (Done, Not now,
-Doesn't fit, with an `event_id` and no `alert_id`) are rows there too. No MCP tool writes either kind.
+Doesn't fit, with an `event_id` and no `alert_id`) are rows there too, and so is a press on a button a pack's rule put
+under its alert, with an `alert_id` and a `choice`. No MCP tool writes any of these.
 
 ## Invariants an agent must not break
 

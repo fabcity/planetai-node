@@ -1,10 +1,10 @@
 # Configuration
-<!-- checked: v0.90.0 -->
+<!-- checked: v0.91.0 -->
 
 A setting is a decision the household makes about its node: which sensors count as its own, what it
 watches first, when it may interrupt somebody, what a stranger on the WiFi may read, whether a question
 may leave the house for an online model. This page lists every setting a node has, where its value comes
-from and what it defaults to, grouped by what the node does with it. At v0.90.0 that is 62 runtime keys,
+from and what it defaults to, grouped by what the node does with it. At v0.91.0 that is 62 runtime keys,
 20 bootstrap keys, 42 keys declared by packs, and the keys read only from the environment.
 
 ## How a setting is read
@@ -146,7 +146,7 @@ Sources that come as packs (stations, forecast, earth and place data, fab labs) 
 |---|---|---|---|---|
 | `TELEGRAM_BOT_TOKEN` | blank | BotFather token | Alerts and reports to Telegram; blank sends them to the log only. `planetai telegram` sets it. | runtime · secret · outward |
 | `TELEGRAM_CHAT_IDS` | blank | comma-separated ids | Who receives them. A chat not listed here is told once that the bot answers its household only, with its id to add. | runtime · outward |
-| `TELEGRAM_BUTTONS` | `0` | `1`, `0` | The bot sets this to `1` on start, so event messages carry Done, Not now and Doesn't fit only while somebody answers them. Leave it alone. | runtime |
+| `TELEGRAM_BUTTONS` | `0` | `1`, `0` | The bot sets this to `1` on start, so event messages carry Done, Not now and Doesn't fit, and a pack rule's own buttons go to Telegram as a keyboard, only while somebody answers them. Leave it alone. | runtime |
 | `ALERT_LEVEL` | `act` | `act`, `warn`, `info` | What interrupts you between reports: only what needs doing, also what changed, or everything. All of it is recorded. | runtime · public |
 | `QUIET_HOURS` | `1` | `1`, `0` | Between the hours below only act-level alerts are sent, and a report due then is folded into the next. | runtime · public |
 | `QUIET_FROM`, `QUIET_TO` | `22`, `6` | local hour | When quiet hours start and end. | runtime · public |
@@ -272,7 +272,7 @@ alone.
 | `FORECAST_BMKG` | forecast | `1` | Reads BMKG, Indonesia's meteorological agency. |
 | `FORECAST_BMKG_ADM4` | forecast | blank | The village code BMKG needs. `planetai run forecast verify` checks it is near the node. |
 | `FORECAST_OPENMETEO` | forecast | `0` | Reads Open-Meteo, which works anywhere but whose free tier is non-commercial only, so it is your call. One switch for its weather, the CAMS air and, with `coast` on, the sea; [Next days](next-days.md) draws them. |
-| `FORECAST_POLL_HOURS` | forecast | `6` | How often to ask. `planetai run forecast fetch` asks now. |
+| `FORECAST_POLL_HOURS` | forecast | `6` | How often to ask each source; one that fails is asked again after 30 minutes. `planetai run forecast fetch` asks now. |
 | `FORECAST_WIND_N` | forecast | `8` | The map's wind field, points a side (64 points). Only with `FORECAST_OPENMETEO=1`. |
 | `FORECAST_WIND_KM` | forecast | `30` | The wind field's half-width, in km. |
 | `EARTH_RADIUS_M` | earth | `5000` | Half-width of the square around the node. 5000 is about 64 MB on disk and 103 MB pulled per year. |
@@ -328,9 +328,9 @@ decide.
 
 ## Known gaps
 
-> **Gap in v0.90.0.** `REPORT_DEPTH` is declared, validated and offered in Set up, and nothing reads it.
+> **Gap in v0.91.0.** `REPORT_DEPTH` is declared, validated and offered in Set up, and nothing reads it.
 
-> **Gap in v0.90.0.** Three runtime keys are stored and shown as in force when set from the dashboard, and a reader
+> **Gap in v0.91.0.** Three runtime keys are stored and shown as in force when set from the dashboard, and a reader
 > ignores the database value. `/presence`, the only reader of `NODE_KIND`, reads the environment. The Reticulum
 > bridge reads `ACT_TOKEN` and `RETICULUM_ALERT_DESTINATIONS` from its own environment (the app itself does read the
 > `ACT_TOKEN` override). Set these in `.env` and restart.

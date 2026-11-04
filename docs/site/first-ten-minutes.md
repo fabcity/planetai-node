@@ -1,5 +1,5 @@
 # First ten minutes
-<!-- checked: v0.90.0 -->
+<!-- checked: v0.91.0 -->
 
 The install ends with a node that reads your place and has nobody to tell. In the next ten minutes you add the
 rest of the loop: a channel to your phone, one alert that goes all the way through, a person's answer recorded
@@ -86,7 +86,7 @@ planetai act 12 "read the test alert on my phone"
   rho is now <ρ>  (<answered>/<asked> alerts answered, median <m> min)
 ```
 
-Use the alert id the test printed. On a node whose only act-level alert is the test, ρ is now `1.0`, one of
+Use the alert id the test printed. Every word after it is kept as the note, quoted or not. On a node whose only act-level alert is the test, ρ is now `1.0`, one of
 one. Write what you did in your own words, because the note is the record. Without one the CLI writes the
 placeholder `acted`, and the bot and the MCP `act` tool refuse a blank note.
 
@@ -144,7 +144,7 @@ set up.
 
 The test alert belongs to no issue, so it counts in ρ but never shows as an open alert on the page. The first
 real act-level alert from an air or heat rule does. It closes on the classic page's Now view
-(`/?layout=classic`); the doors and the phone page draw only an event's card. Until then Decide says "This
+(`/?layout=classic`); the doors and the phone page draw only an event's card and the buttons a pack's rule offers. Until then Decide says "This
 node sends alerts, not events." and "Nothing is asking for anything."
 
 1. **Read it under Decide**, the first section under the lead. Each open alert has a card with *what was

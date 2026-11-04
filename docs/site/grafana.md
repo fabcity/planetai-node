@@ -1,5 +1,5 @@
 # Grafana
-<!-- checked: v0.90.0 -->
+<!-- checked: v0.91.0 -->
 
 The dashboard draws the node the way this project decided to draw it. Grafana is for the person who keeps the node
 and wants to look at their own data their own way: a month of one room, every sensor on one chart, the hours a sensor

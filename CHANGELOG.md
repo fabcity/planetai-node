@@ -1,6 +1,17 @@
 # Changelog
 
-## Unreleased
+## v0.91.0 — 2026-11-04 — Now looks ahead
+
+Under What to do on Now there's the rest of today, tomorrow and the day after, with the air and the heat judged
+against the same lines the node uses right now, the wind and rain, the sea, and a line from any pack that has
+something to say about tomorrow (surf is the first). BMKG answers for nodes in Indonesia. For the air, the sea and the
+gusts you need Open-Meteo, `FORECAST_OPENMETEO=1`, its free tier is for non-commercial use, so it stays off until you
+decide. A rule can ask with buttons now, on Telegram and on Now. The workbench is a tab in Data and flashes a sensor
+with no internet, and Set up › Packs installs a wild pack from the page. This release changes the page and the packs
+together, so if something looks off after you update, tell me what you saw and on which screen.
+
+- **The source registry is pinned at `7bf12a4`.** awesome-fabcity-data #101 adds Copernicus Sentinel-2 L2A on
+  Planetary Computer, the imagery the `paddy` wild pack reads, as a candidate. 284 entries.
 
 - **What to do says when it asked once.** The card's head line said "asked since 07:14 · still open" over the node's
   own "asked at 07:14, and still true"; the head now names only the issue. The fire pack's source line under its band

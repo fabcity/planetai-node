@@ -1,5 +1,5 @@
 # Radios
-<!-- checked: v0.90.0 -->
+<!-- checked: v0.91.0 -->
 
 This page puts LoRa radios on the node with Meshtastic. Once they are on, a sensor can report from a field or a
 roof with no WiFi, every reading is filed under the radio that measured it, and the node can send an alert to a
@@ -24,11 +24,14 @@ through a gateway: the XIAO over WiFi, or any radio plugged into the node's own 
 
 ## Firmware
 
-**`planetai.fab.city/sensors/`** flashes the XIAO from Chrome or Edge over USB and gives you the `.uf2` and
-`-ota.zip` files for the trackers, all from the one Meshtastic release every radio shares (2.7.26). Put every radio
-on that version. The page leaves region and channel empty, because those come from the node in the next section.
-It also has firmware for the Heltec V3, LilyGO T-Beam, RAK4631 and LilyGO T-Echo; the three boards above are the
-ones a node has run.
+**Data › Workbench** on the node's dashboard (`/#data/workbench`) flashes the XIAO from Chrome or Edge over USB and
+gives you the `.uf2` and `-ota.zip` files for the trackers, all from the one Meshtastic release every radio shares
+(2.7.26). It needs no internet, because the node keeps its own copy of the firmware. The same workbench, with a demo
+and the long explanations, is at **`planetai.fab.city/sensors/`**. Put every radio on that version. The workbench
+leaves region and channel empty, because those come from the node in the next section. It also has firmware for the
+Heltec V3, LilyGO T-Beam, RAK4631 and LilyGO T-Echo; the three boards above are the ones a node has run. Chrome opens
+a USB port only on `localhost` or https, so from another laptop on the LAN follow the first step of
+[Flash and test a board](site/sensors.md#flash-and-test-a-board).
 
 A Tracker takes its file by drag and drop: double-click RST and copy the `.uf2` onto the drive that appears. On
 macOS 26 the copy fails with error -36 (Input/output error) whatever the bootloader version, so use serial DFU
@@ -73,7 +76,7 @@ command, port filled in. Everything below runs on the node's machine, with the r
 7. **Phones.** `planetai radio url` prints the link and three steps (a QR too, if `qrencode` is installed): install
    the Meshtastic app, pair over Bluetooth, open the link and accept replacing the channels.
 8. **Check it.** `planetai radio doctor --port …` goes through the usual reasons nothing arrives, one by one, and
-   the bench at `http://<this node>:8080/tester` draws every radio the node hears. A sensor's first reading comes
+   the Network view of the workbench, at `http://<this node>:8080/#data/workbench`, draws every radio the node hears. A sensor's first reading comes
    within its 15-minute interval.
 
 If `planetai radio` lists no port, the cause is usually a charge-only cable, a Tracker with its power switch off, a
@@ -158,13 +161,14 @@ Do not fit an MLX90632. It sends the temperature of whatever it points at as the
 the packet says so, and the node would file a surface as `temp`. An MLX90614 is safe, because its object
 temperature travels in a block the gateway does not pass on.
 
-## The bench
+## The workbench
 
-`http://<this node>:8080/tester` draws every device the node reads, in layers you switch on and off: mesh radios
-through the gateway, WiFi pods on the broker, devices on the LAN, Smart Citizen kits, stations and models, other
-nodes. Opened on the node's own machine (`http://localhost:8080/tester`) it also reads a board on USB, with each
-sensor animated and a checklist for sensors found, WiFi, clock and publishing. From any other laptop, read a board
-on USB at `planetai.fab.city/sensors/`, which keeps working offline once opened.
+The Network view of Data › Workbench (`http://<this node>:8080/#data/workbench`) draws every device the node reads:
+mesh radios through the gateway, sensors that publish to the node, the platforms and stations it reads, the nodes it
+lists and any board on this laptop's USB. The Test view reads a board on USB, with each sensor animated and a
+checklist for sensors found, WiFi, clock and publishing. USB needs the page on `localhost`, or on another address
+that Chrome was told to trust once ([Sensors](site/sensors.md#flash-and-test-a-board)). `/tester`, the old address of
+the bench, sends you to the workbench.
 
 ## With the phone app
 

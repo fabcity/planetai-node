@@ -1,5 +1,5 @@
 # Packs that ship
-<!-- checked: v0.90.0 -->
+<!-- checked: v0.91.0 -->
 
 The twenty-five core packs in `packs/`, five data and twenty code, hold everything the node knows about a place, and no
 rule in `app/` says what PM2.5 means for a household or where the nearest fab lab is. For each pack this page
@@ -509,6 +509,10 @@ not do by looking out of the window.
 - `planetai run forecast status`: the next day's wind, rain and temperature, and when it was issued.
 - `planetai run forecast windfield`: refresh the wind field now. Refuses unless `FORECAST_OPENMETEO=1`.
 
+`planetai run forecast days` and `planetai run forecast territory` also show in the script list, because `days.py`
+and `territory.py` are non-adapter `.py` files in the folder. They are modules `routes.py` and the adapter import, not
+commands.
+
 ### Settings
 
 | setting | default | meaning |
@@ -962,7 +966,7 @@ a day however many satellites saw it, with low confidence dropped. Upwind is wit
 from, by the node's own wind: a local kit, then the core Open-Meteo point, then `fc_wind_direction` bounded
 `ts <= now()`. Its `sections:` entry, `fire` (stage observe, `wall: true`), shows fires nearby, in the region
 and upwind, and the nearest fire's distance and bearing; it stays out of `/issues` until the node holds a row
-of it.
+of it. The source line under the band says how far each ring reaches, from `FIRE_LOCAL_KM` and `FIRE_REGION_KM`.
 
 ### Rules
 
