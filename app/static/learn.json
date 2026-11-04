@@ -1339,7 +1339,7 @@
      "Apa yang belum bisa diukur node ini?"
     ]
    },
-   "quote": "**The place in figures** holds what changes yearly and has no hours, land and coast with the node's sentence and\nfigure, the Index cells, and what is not here yet: production and trade, water and soil, and the forecast.",
+   "quote": "**The place in figures** holds what changes yearly and has no hours, land and coast with the node's sentence and\nfigure, the Index cells, and what is not here yet (production and trade, water and soil, and the forecast).",
    "section": "Place",
    "title": "What is changing",
    "url": "https://planetai.fab.city/docs/dashboard/#place"
@@ -1394,7 +1394,7 @@
   },
   "place-layers": {
    "anchor": "place",
-   "more": "What this place is made of, from the sky to the ground, and what the node does not hold yet. A filled dot is on, a hollow one off, and a dotted one is a layer the node cannot draw yet, named by its source.",
+   "more": "What this place is made of, with the sky at the top and the ground at the bottom, and what the node does not hold yet. A filled dot is on, a hollow one off, and a dotted one is a layer the node cannot draw yet, named by its source.",
    "page": "dashboard.md",
    "page_title": "The dashboard",
    "questions": {
@@ -1411,7 +1411,7 @@
      "Dari mana peta jalan ini berasal?"
     ]
    },
-   "quote": "**What the place is made of.** On the left is a list of what the node can show about the ground around the house,\nfrom the sky down to the ground. Its headings, in order, are results, microclimate, flows, built, animals, plants,\nsoil, water, ground and frame, and each says how many of its rows are on.",
+   "quote": "**What the place is made of.** On the left is a list of what the node can show about the ground around the house.\nThe sky is at the top of the list and the ground at the bottom.",
    "section": "Place",
    "title": "The layers",
    "url": "https://planetai.fab.city/docs/dashboard/#place"
@@ -1435,7 +1435,7 @@
      "Mengapa beberapa tanda disembunyikan?"
     ]
    },
-   "quote": "**The screen.** In the middle is the map, on a black screen in a bezel. It stays black on the light page and on the\ndark one, so the marks read the same by day and at night.",
+   "quote": "**The screen.** In the middle is the map, on a black screen in a bezel. It stays black on the light page and on the dark one.",
    "section": "Place",
    "title": "The screen",
    "url": "https://planetai.fab.city/docs/dashboard/#place"
@@ -1507,7 +1507,7 @@
      "Sel apa ini, dan seberapa besar?"
     ]
    },
-   "quote": "**The tools.** On the right is a column of what the node could do with this place. **Rings and distance** works today:\nit draws the 2, 5 and 15 km rings from the node's point, and its name sits in a pill while it is on.",
+   "quote": "**The tools.** On the right is a column of what the node could do with this place. **Rings and distance** works today.\nIt draws the 2, 5 and 15 km rings from the node's point, and its name sits in a pill while it is on.",
    "section": "Place",
    "title": "The tools",
    "url": "https://planetai.fab.city/docs/dashboard/#place"

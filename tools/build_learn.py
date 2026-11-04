@@ -325,15 +325,15 @@ MARKS = [
      "The picture stays on this node, cleaned of EXIF and GPS, and lands on the map where its own GPS "
      "says it was taken, else in the node's cell."),
     ("place-layers", "The layers", "dashboard.md", "Place",
-     "**What the place is made of.**", "how many of its rows are on.",
-     "What this place is made of, from the sky to the ground, and what the node does not hold yet. A filled "
+     "**What the place is made of.**", "the ground at the bottom.",
+     "What this place is made of, with the sky at the top and the ground at the bottom, and what the node does not hold yet. A filled "
      "dot is on, a hollow one off, and a dotted one is a layer the node cannot draw yet, named by its source."),
     ("place-map", "The screen", "dashboard.md", "Place",
-     "**The screen.**", "by day and at night.",
+     "**The screen.**", "and on the dark one.",
      "Every distance on this door is measured by the node from its own point. Without the token the "
      "house's marks say withheld, because together they would place the house."),
     ("place-tools", "The tools", "dashboard.md", "Place",
-     "**The tools.**", "and its name sits in a pill while it is on.",
+     "**The tools.**", "sits in a pill while it is on.",
      "The tools that run on this node today, and the ones still to come, marked not yet. Rings and "
      "distance draws the 2, 5 and 15 km rings from the node's own point. Without a token they stay quiet."),
     ("place-orbit", "From orbit", "dashboard.md", "Place",
@@ -345,7 +345,7 @@ MARKS = [
      "Only what a person here confirmed in an image is counted. Where a picture was taken places the "
      "house, so the table needs the token."),
     ("place-changing", "What is changing", "dashboard.md", "Place",
-     "**The place in figures**", "and the forecast.",
+     "**The place in figures**", "and the forecast).",
      "Land and coast change yearly, so they are here and not on Now. What the node cannot read yet is "
      "named here as missing."),
     ("node-verdict", "Working, or needs a look", "dashboard.md", "Node",

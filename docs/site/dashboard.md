@@ -143,9 +143,9 @@ The ground this node stands on. The head gives the cell's id, resolution, edge a
 screen with the token. Under it is a line to ask the node about this place (press `/` to get there) and **+ Add an
 image**. Below that, the door has three columns around one screen.
 
-**What the place is made of.** On the left is a list of what the node can show about the ground around the house,
-from the sky down to the ground. Its headings, in order, are results, microclimate, flows, built, animals, plants,
-soil, water, ground and frame, and each says how many of its rows are on. A row is one line, a dot, a name and a word
+**What the place is made of.** On the left is a list of what the node can show about the ground around the house.
+The sky is at the top of the list and the ground at the bottom. Its headings, in order, are results, microclimate,
+flows, built, animals, plants, soil, water, ground and frame, and each says how many of its rows are on, or none yet. A row is one line, a dot, a name and a word
 for where it comes from. A filled dot is on, a hollow one is off, and a dotted one is something this node does not hold
 yet, with its source beside it, such as canopy, soil, terrain, geology, the flows log, or samples of soil and water.
 Press a row to switch it on or off. The line under the screen then says what the row draws and where it comes from,
@@ -153,9 +153,8 @@ and if the row cannot draw, why: **token-only**, **not here**, **live map**, or 
 start on: this house's outdoor kit, the public stations, the species, the cell the node stands in, the street map
 and the images. Nothing from inside the house is listed or drawn on Place, and neither are the rooms.
 
-**The screen.** In the middle is the map, on a black screen in a bezel. It stays black on the light page and on the
-dark one, so the marks read the same by day and at night. The hour is a pill at the top, the node's last reading, or
-the wind's hour when the wind is on, with arrows to step it. The scale rungs are at the bottom left, street, block,
+**The screen.** In the middle is the map, on a black screen in a bezel. It stays black on the light page and on the dark one. The hour is a pill at the top, the node's last reading. When
+the wind is on it shows the wind's hour, and arrows step it. The scale rungs are at the bottom left, street, block,
 cell, village and district, and the credit sits at the foot. The resolution drawn follows the zoom, and a cell that may
 leave the machine is dotted. On the right edge are the screen's own tools, **Inspect**, **Measure** with **Done**,
 **From the house**, back to the node's cell, and save as PNG, with zoom apart below them.
@@ -168,15 +167,15 @@ gives its facts, and with the token how far it is from the node and which cell i
 it counts toward the cell; a public one is shown and never counted. Below it is the list around the house, nearest
 first, with the distance in metres measured by the node (`GET /geo/measure`, and `GET /nearby` for public stations).
 
-**The tools.** On the right is a column of what the node could do with this place. **Rings and distance** works today:
-it draws the 2, 5 and 15 km rings from the node's point, and its name sits in a pill while it is on. The rest, sun and
+**The tools.** On the right is a column of what the node could do with this place. **Rings and distance** works today.
+It draws the 2, 5 and 15 km rings from the node's point, and its name sits in a pill while it is on. The rest, sun and
 shade, trees, built form, sealed ground, streets, walking, what changed, where the rain goes, and four fitness tools,
-carry a dotted **not yet**. A screen without a token sees them quiet. On a phone the layers and the tools each open
+carry a dotted **not yet**. A screen without a token reads "Tools run on this node with a token. Unlock this screen in Set up." under them. On a phone the layers and the tools each open
 from a bar under the screen as a sheet that rises over the lower part of the page, and Esc closes it.
 
 The lower part has two halves. **Selected** is where a tool's rows will be listed, one row for each thing it found.
 **The place in figures** holds what changes yearly and has no hours, land and coast with the node's sentence and
-figure, the Index cells, and what is not here yet: production and trade, water and soil, and the forecast.
+figure, the Index cells, and what is not here yet (production and trade, water and soil, and the forecast).
 
 The grid, the rings and every distance are the node's own answers from `GET /geo/*`, and the plan is
 `GET /place/geojson`; all of them need a token at every sharing level, because together they place the house. Without
