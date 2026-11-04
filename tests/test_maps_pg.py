@@ -3,7 +3,8 @@
 On 4 Nov 2026 the light GIS put place_maps and place_marks in core, with init.sql enabling PostGIS ahead of them.
 This holds the schema's own rules where they live, in the database: a mark is a marker, line, area or note, a colour
 is 1 to 6, deleting a map takes its drawings with it, and the actions ledger accepts the stage `place`. The routes of app/maps.py are driven through the app: tokens, PostGIS's
-own measures, the ledger's one row per minute, a drawing tied to an issue, and an agent's map refused. Needs a
+own measures, the ledger's one row per minute, a drawing tied to an issue, an agent's map refused, and a shared
+map's trip upstream: the warning, one put per change, one delete, the hold on the house, and the parent's read-only copy. Needs a
 Postgres with init.sql applied, at RHO_PG_URL (CI's lint job starts one, on the PostGIS image); without it the
 suite skips.
 Run: RHO_PG_URL=postgresql://planetai:x@127.0.0.1:5432/planetai PYTHONPATH=app PACKS_DIR=packs python3 tests/test_maps_pg.py
@@ -43,6 +44,7 @@ def raises(sql, *args):
 
 
 assert table_exists("place_maps") and table_exists("place_marks"), "init.sql creates both tables"
+assert table_exists("place_maps_unshared"), "init.sql keeps the deletes still owed to the node upstream"
 cur.execute("SELECT extname FROM pg_extension WHERE extname = 'postgis'")
 assert cur.fetchone(), "init.sql enabled PostGIS"
 print("  both tables exist and PostGIS is on")
@@ -253,6 +255,138 @@ assert c.get(f"/place/maps/{AGD}.geojson", headers=H).status_code == 200, "the h
 ac.execute("DELETE FROM place_maps WHERE id IN (%s, %s)", (DL, AGD))
 print("  a map downloads as GeoJSON, KML and DXF, in UTM metres on the node's zone, one ledger row each")
 
+# ---------------------------------------------------------------- sharing upstream (§5)
+# The child's posts go to a recorder, never a real node; the same app then plays the parent for /place/maps/received.
+import httpx  # noqa: E402
+import maps  # noqa: E402
+
+sent, answer, real_post = [], [200], httpx.post
+
+
+def recorder(url, json=None, headers=None, timeout=None):
+    sent.append({"url": url, "body": json, "auth": (headers or {}).get("Authorization")})
+    return httpx.Response(answer[0], request=httpx.Request("POST", url))
+
+
+httpx.post = recorder
+WARN = ("Sharing sends every drawing in this map, at its exact place, with its labels, notes and measures, to the node "
+        "upstream, where the people holding its token can see it. Press Share again to send it.")
+HOUSE = "This drawing sits on the house. Press Share again to send the map with it."
+NOT_YET = "The node upstream does not take maps yet."
+SH = c.post("/place/maps", json={"name": "Walk to the beach", "actor": "Tomas"}, headers=H).json()["map"]["id"]
+share = lambda body, mid=SH: c.patch(f"/place/maps/{mid}", json={"actor": "Tomas", **body}, headers=H)  # noqa: E731
+row = lambda mid=SH: one("SELECT shared, share_error, push_tried_at, updated_at FROM place_maps WHERE id = %s", mid)  # noqa: E731
+
+
+def push():
+    sent.clear()
+    maps.push_maps()
+    return [(s["body"]["op"], s["body"]["map_id"]) for s in sent]
+
+
+r = share({"shared": True, "confirm": "exact"})
+assert r.status_code == 409 and r.json()["detail"] == "There is no node upstream to share with. Set PARENT in Set up first.", r.text
+assert push() == [], "no PARENT, nothing sent"
+SET.update(PARENT_API_URL="http://parent.test", PARENT_TOKEN="kid-tok")
+r = share({"shared": True})
+assert r.status_code == 409 and r.json()["detail"] == WARN, r.text
+assert row()["shared"] is False and push() == [], "the warning sends nothing"
+r = share({"shared": True, "confirm": "exact"})
+assert r.status_code == 200 and r.json()["map"]["shared"] is True, r.text
+assert one("SELECT choice FROM actions WHERE stage = 'place' AND note LIKE %s ORDER BY ts DESC LIMIT 1", f"%(map {SH})")["choice"] == "shared"
+print("  sharing needs a node upstream, then a second press after the warning")
+
+SK = c.post(f"/place/maps/{SH}/marks", headers=H, json={"type": "Feature", "actor": "Tomas", "properties": {"kind": "line"},
+            "geometry": {"type": "LineString", "coordinates": [[115.167, -8.819], [115.168, -8.819]]}}).json()
+assert "warn" not in SK, "a drawing away from the house warns of nothing"
+SK = SK["mark"]["id"]
+c.patch(f"/place/marks/{SK}", json={"label": "Path", "actor": "Tomas"}, headers=H)
+assert push() == [("put", SH)], sent
+s = sent[0]
+assert s["url"] == "http://parent.test/place/maps/received" and s["auth"] == "Bearer kid-tok", s
+assert set(s["body"]) == {"schema", "node", "map_id", "op", "geojson"} and s["body"]["schema"] == "planetai.place.map/v0"
+assert s["body"]["node"] == "bayu-ungasan" and s["body"]["geojson"]["map"] == "Walk to the beach"
+assert [f["properties"]["label"] for f in s["body"]["geojson"]["features"]] == ["Path"], "both changes in the one put"
+assert push() == [], "nothing changed since: nothing sent"
+print("  a shared map changed twice goes up once, whole, with the parent's token")
+
+before = row()["updated_at"]
+n_changed = one("SELECT count(*) AS n FROM actions WHERE choice = 'changed'")["n"]
+r = c.patch(f"/place/marks/{SK}", json={"actor": "Tomas"}, headers=H)
+assert r.status_code == 200 and r.json()["mark"]["label"] == "Path", r.text
+assert row()["updated_at"] == before and one("SELECT count(*) AS n FROM actions WHERE choice = 'changed'")["n"] == n_changed
+assert push() == [], "a PATCH that changes nothing writes nothing and resends nothing"
+print("  an empty drawing PATCH writes nothing")
+
+answer[0] = 404
+c.patch(f"/place/marks/{SK}", json={"note": "low tide only", "actor": "Tomas"}, headers=H)
+assert push() == [("put", SH)]
+assert row()["shared"] is True and row()["share_error"] == NOT_YET, row()
+assert push() == [], "a refused map waits an hour"
+ac.execute("UPDATE place_maps SET push_tried_at = now() - interval '61 minutes' WHERE id = %s", (SH,))
+answer[0] = 200
+assert push() == [("put", SH)] and row()["share_error"] is None, row()
+print("  a parent that predates maps is said so; the map stays shared and is tried again after an hour")
+
+r = c.post(f"/place/maps/{SH}/marks", headers=H, json={"type": "Feature", "actor": "Tomas", "properties": {"kind": "marker"},
+           "geometry": {"type": "Point", "coordinates": [115.15709, -8.8271]}})          # the node's own point
+assert r.status_code == 200 and r.json()["warn"] == HOUSE, r.text
+assert row()["share_error"] == HOUSE and push() == [], "a drawing on the house holds the map"
+ac.execute("UPDATE place_maps SET push_tried_at = now() - interval '2 hours' WHERE id = %s", (SH,))
+assert push() == [], "the hour's retry never releases a held map"
+assert share({"shared": True}).json()["detail"] == WARN
+assert share({"shared": True, "confirm": "exact"}).json()["map"]["share_error"] is None
+assert push() == [("put", SH)] and len(sent[0]["body"]["geojson"]["features"]) == 2
+print("  a drawing on the house's own cell holds a shared map until Share is pressed again")
+
+r = share({"shared": False})
+assert r.status_code == 200 and r.json()["map"]["shared"] is False
+assert one("SELECT choice FROM actions WHERE stage = 'place' AND note LIKE %s ORDER BY ts DESC LIMIT 1", f"%(map {SH})")["choice"] == "unshared"
+assert push() == [("delete", SH)] and sent[0]["body"]["geojson"] is None, sent
+assert push() == [], "one delete"
+SD = c.post("/place/maps", json={"name": "Gone soon", "actor": "Tomas"}, headers=H).json()["map"]["id"]
+share({"shared": True, "confirm": "exact"}, SD)
+assert push() == [("put", SD)]
+c.delete(f"/place/maps/{SD}?confirm=Gone soon&actor=Tomas", headers=H)
+assert push() == [("delete", SD)] and push() == [], "deleting a shared map sends one delete"
+print("  unsharing or deleting a shared map sends one delete")
+
+# The same app as the parent: AGGREGATE_TOKEN is what its children hold.
+SET["AGGREGATE_TOKEN"] = "agg-tok"
+AGG = {"Authorization": "Bearer agg-tok"}
+FEAT = lambda label, x: {"type": "Feature", "properties": {"kind": "marker", "label": label, "colour": 2, "image": 41},  # noqa: E731
+                         "geometry": {"type": "Point", "coordinates": [x, -8.8]}}
+doc = {"schema": "planetai.place.map/v0", "node": "kid", "map_id": 7, "op": "put",
+       "geojson": {"type": "FeatureCollection", "map": "Kid's garden", "owner": "Ana", "features": [FEAT("a", 115.1), FEAT("b", 115.2)]}}
+recv = lambda d, h=AGG: c.post("/place/maps/received", json=d, headers=h)  # noqa: E731
+assert recv(doc, H).status_code == 401, "a household token is not a child's"
+assert recv(doc, {}).status_code == 401
+assert recv({**doc, "geojson": {**doc["geojson"], "features": [{"type": "Feature", "properties": {"kind": "line"},
+            "geometry": {"type": "Point", "coordinates": [0, 0]}}]}}).status_code == 422
+r = recv(doc)
+assert r.status_code == 200, r.text
+RV = one("SELECT id, name, owner FROM place_maps WHERE from_node = 'kid' AND remote_id = 7")
+assert RV["name"] == "Kid's garden" and RV["owner"] == "Ana", RV
+assert one("SELECT count(*) AS n FROM place_marks WHERE map_id = %s AND capture_id IS NULL", RV["id"])["n"] == 2, \
+    "the child's picture numbers mean nothing here"
+r = recv({**doc, "geojson": {**doc["geojson"], "features": [FEAT("c", 115.3)]}})
+assert r.status_code == 200 and one("SELECT id FROM place_maps WHERE from_node = 'kid' AND remote_id = 7")["id"] == RV["id"]
+assert [x["label"] for x in ac.execute("SELECT label FROM place_marks WHERE map_id = %s", (RV["id"],)).fetchall()] == ["c"]
+m = next(x for x in c.get("/place/maps", headers=H).json()["maps"] if x["id"] == RV["id"])
+assert m["from_node"] == "kid" and m["marks"] == 1, m
+RO = "This map came from kid; it is read-only here."
+assert share({"name": "mine"}, RV["id"]).json() == {"detail": RO}
+assert share({"name": "mine"}, RV["id"]).status_code == 403
+assert c.post(f"/place/maps/{RV['id']}/marks", json=FEAT("d", 115.4), headers=H).json()["detail"] == RO
+RK = one("SELECT id FROM place_marks WHERE map_id = %s", RV["id"])["id"]
+assert c.patch(f"/place/marks/{RK}", json={"label": "x"}, headers=H).json()["detail"] == RO
+assert c.get(f"/place/maps/{RV['id']}.geojson", headers=H).status_code == 200, "a received map downloads"
+assert recv({**doc, "op": "delete", "geojson": None}).status_code == 200
+assert one("SELECT count(*) AS n FROM place_maps WHERE from_node = 'kid'")["n"] == 0
+httpx.post = real_post
+print("  the parent keeps a child's map whole, read-only, and lets it go on delete")
+
+ac.execute("DELETE FROM place_maps WHERE id = %s", (SH,))
 ac.execute("DELETE FROM actions WHERE stage = 'place' OR choice LIKE 'place.mark:%%' OR alert_id IN (%s, %s)", (A, A2))
 ac.execute("DELETE FROM place_maps WHERE id IN (%s, %s)", (mid, AG))
 ac.execute("DELETE FROM alerts WHERE id IN (%s, %s)", (A, A2))

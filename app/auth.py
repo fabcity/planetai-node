@@ -17,6 +17,10 @@ def SHARE_LEVEL():
     return (settings.get("SHARE_LEVEL", "off") or "off").strip().lower()
 def ACT_TOKEN():
     return settings.get("ACT_TOKEN", "").strip()
+def PARENT():
+    return settings.get("PARENT_API_URL", "").strip()
+def PARENT_TOKEN():
+    return settings.get("PARENT_TOKEN", "").strip()
 
 
 # What a request carrying no token may read at each SHARE_LEVEL: exact paths, plus the prefixes for the two routes that
@@ -75,7 +79,7 @@ def _node_tokens() -> list[str]:
     the Telegram token at /settings/raw.
 
     AGGREGATE_TOKEN is not one of them: every child node holds it, and a child is another household. Until 15 Oct
-    2026 it was, and a child read its parent's sensor rooms, point and building as if it lived there. Its two
+    2026 it was, and a child read its parent's sensor rooms, point and building as if it lived there. Its
     writes pass the middleware by path (_CHILD_WRITES) and check the token themselves."""
     return [t for t in (os.getenv("ADMIN_TOKEN", "").strip(), settings.get("BACKUP_TOKEN", "").strip(),
                         ACT_TOKEN()) if t]
@@ -83,7 +87,7 @@ def _node_tokens() -> list[str]:
 
 # What a child node sends its parent. Each route checks AGGREGATE_TOKEN itself and refuses without it, so letting
 # them past SHARE_LEVEL opens nothing to a request with no token.
-_CHILD_WRITES = frozenset({("POST", "/aggregates"), ("POST", "/events")})
+_CHILD_WRITES = frozenset({("POST", "/aggregates"), ("POST", "/events"), ("POST", "/place/maps/received")})
 
 
 def _is_local(request: Request) -> bool:

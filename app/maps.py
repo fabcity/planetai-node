@@ -7,11 +7,17 @@ must not draw or write ρ (the same reason POST /actions checks its own). PostGI
 and `area_m2` come from `geom::geography` on every insert and update, so the page computes no distance.
 
 An agent's own map (`agent` set) is refused to the household's edits in this pull request; agents become writers in
-the third (§7). Never import app/main.py from here: it starts a second MQTT client.
+the third (§7). A map received from a child node (`from_node` set) is refused to them always: it is the child's.
+Never import app/main.py from here: it starts a second MQTT client.
+
+A shared map goes to the node upstream exactly as drawn (Tomas, 4 Nov: "Exact, with a warning"), by the child's
+push, never a pull: push_maps() every minute, and POST /place/maps/received on the parent, the one route here that
+answers AGGREGATE_TOKEN and nothing else.
 """
 from __future__ import annotations
 
 import json
+import logging
 import math
 import os
 import re
@@ -21,13 +27,17 @@ from contextlib import contextmanager
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+import httpx
 import psycopg
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response
 
 import events_pg
-from auth import ACT_TOKEN, _bearer_ok, _is_local
+import geo
+from auth import ACT_TOKEN, AGG_TOKEN, PARENT, PARENT_TOKEN, _bearer_ok, _is_local
 from db import NODE_TZ, db
+
+log = logging.getLogger("planetai")
 
 
 def _household(request: Request, authorization: str = Header("")) -> None:
@@ -36,6 +46,14 @@ def _household(request: Request, authorization: str = Header("")) -> None:
 
 
 router = APIRouter(dependencies=[Depends(_household)])
+received = APIRouter()                                     # a child's writes: AGGREGATE_TOKEN, never the household's
+
+SHARE_WARNING = ("Sharing sends every drawing in this map, at its exact place, with its labels, notes and measures, to "
+                 "the node upstream, where the people holding its token can see it. Press Share again to send it.")
+NO_PARENT = "There is no node upstream to share with. Set PARENT in Set up first."
+ON_HOUSE = "This drawing sits on the house. Press Share again to send the map with it."
+NOT_YET = "The node upstream does not take maps yet."
+NOT_SENT = "The map did not reach the node upstream. The node tries again in an hour."
 
 # Colour → (hex for the screen, AutoCAD Colour Index for DXF). A drawing stores the number, so this can change without
 # a migration. None is the satellite's orange or the cells' blue, and each reads on the satellite and on black.
@@ -321,25 +339,49 @@ def _actor(request: Request, body: dict) -> str:
 
 def _map(cur, map_id: int) -> dict:
     """The map, if the household may edit it."""
-    cur.execute("SELECT id, name, agent FROM place_maps WHERE id = %s", (map_id,))
+    cur.execute("SELECT id, name, agent, from_node, shared FROM place_maps WHERE id = %s", (map_id,))
     m = cur.fetchone()
     if not m:
         raise HTTPException(404, "No such map.")
-    if m["agent"]:
-        raise HTTPException(403, f"This is {m['agent']}'s map.")
+    _yours(m)
     return m
 
 
 def _mark(cur, mark_id: int) -> dict:
     """The drawing with its map's name, if the household may edit it."""
-    cur.execute("""SELECT k.id, k.kind, k.label, k.map_id, p.name, p.agent FROM place_marks k
+    cur.execute("""SELECT k.id, k.kind, k.label, k.map_id, p.name, p.agent, p.from_node, p.shared FROM place_marks k
                    JOIN place_maps p ON p.id = k.map_id WHERE k.id = %s""", (mark_id,))
     k = cur.fetchone()
     if not k:
         raise HTTPException(404, "No such drawing.")
-    if k["agent"]:
-        raise HTTPException(403, f"This is {k['agent']}'s map.")
+    _yours(k)
     return k
+
+
+def _yours(m: dict) -> None:
+    if m["agent"]:
+        raise HTTPException(403, f"This is {m['agent']}'s map.")
+    if m["from_node"]:
+        raise HTTPException(403, f"This map came from {m['from_node']}; it is read-only here.")
+
+
+def _house_hold(cur, shared: bool, map_id: int, mark_id: int) -> dict:
+    """A drawing on the house's own res-10 cell holds a shared map: nothing goes up until Share is pressed again (§5).
+    The hold is the sentence in `share_error`, which push_maps() never retries past. {"warn": …} or {}."""
+    try:
+        house = geo.home_cell(10) if shared else None
+    except HTTPException:
+        house = None                                       # a node with no point has no house to warn about
+    if not house:
+        return {}
+    import h3  # noqa: PLC0415
+    ring = [[lng, lat] for lat, lng in h3.cell_to_boundary(house)]
+    cur.execute("SELECT ST_Intersects(geom, ST_SetSRID(ST_GeomFromGeoJSON(%s), 4326)) AS on_house FROM place_marks WHERE id = %s",
+                (json.dumps({"type": "Polygon", "coordinates": [ring + ring[:1]]}), mark_id))
+    if not cur.fetchone()["on_house"]:
+        return {}
+    cur.execute("UPDATE place_maps SET share_error = %s WHERE id = %s", (ON_HOUSE, map_id))
+    return {"warn": ON_HOUSE}
 
 
 @contextmanager
@@ -382,7 +424,9 @@ def map_new(body: dict, request: Request):
 
 @router.patch("/place/maps/{map_id}")
 def map_edit(map_id: int, body: dict, request: Request):
-    """{"name"?, "owner"?, "actor"} → {"map": …}. Sharing joins this route with the fourth task."""
+    """{"name"?, "owner"?, "shared"?, "confirm"?, "actor"} → {"map": …}. `"shared": true` needs a node upstream and
+    `"confirm": "exact"`, which the page sends on the second press, after the warning; without it, 409 and the warning.
+    It also releases a map a drawing on the house held. `"shared": false` owes the node upstream one delete."""
     sets = {}
     if "name" in body:
         sets["name"] = _text(body["name"], 80)
@@ -396,7 +440,27 @@ def map_edit(map_id: int, body: dict, request: Request):
             cur.execute(f"UPDATE place_maps SET {''.join(f'{k} = %({k})s, ' for k in sets)}updated_at = now() WHERE id = %(id)s",
                         {**sets, "id": map_id})
             ledger(cur, _actor(request, body), "changed", sets.get("name", m["name"]), f"map:{map_id}")
+        if body.get("shared") is True:
+            if not PARENT():
+                raise HTTPException(409, NO_PARENT)
+            if body.get("confirm") != "exact":
+                raise HTTPException(409, SHARE_WARNING)
+            # pushed_at cleared: the next push sends it whole, whatever the parent had before
+            cur.execute("""UPDATE place_maps SET shared = true, shared_at = now(), share_error = NULL, pushed_at = NULL,
+                             push_tried_at = NULL WHERE id = %s""", (map_id,))
+            cur.execute("DELETE FROM place_maps_unshared WHERE map_id = %s", (map_id,))
+            ledger(cur, _actor(request, body), "shared", sets.get("name", m["name"]), f"map:{map_id}")
+        elif body.get("shared") is False and m["shared"]:
+            _owe_delete(cur, map_id)
+            cur.execute("""UPDATE place_maps SET shared = false, share_error = NULL, pushed_at = NULL, push_tried_at = NULL
+                            WHERE id = %s""", (map_id,))
+            ledger(cur, _actor(request, body), "unshared", sets.get("name", m["name"]), f"map:{map_id}")
         return {"map": _one(cur, _MAP + " WHERE p.id = %s", map_id)}
+
+
+def _owe_delete(cur, map_id: int) -> None:
+    cur.execute("INSERT INTO place_maps_unshared (map_id) VALUES (%s) ON CONFLICT (map_id) DO UPDATE SET tried_at = NULL",
+                (map_id,))
 
 
 @router.delete("/place/maps/{map_id}")
@@ -406,6 +470,8 @@ def map_delete(map_id: int, request: Request, confirm: str = Query(""), actor: s
         m = _map(cur, map_id)
         if confirm != m["name"]:
             raise HTTPException(409, "Deleting needs the map's name.")
+        if m["shared"]:
+            _owe_delete(cur, map_id)
         cur.execute("DELETE FROM place_maps WHERE id = %s", (map_id,))
         ledger(cur, _actor(request, {"actor": actor}), "deleted", m["name"], f"map:{map_id}")
     return {"ok": True}
@@ -473,7 +539,7 @@ def mark_new(map_id: int, body: dict, request: Request):
         kid = cur.fetchone()["id"]
         cur.execute("UPDATE place_maps SET updated_at = now() WHERE id = %s", (map_id,))
         ledger(cur, actor, "drew", f"{f['label'] or kind} on {m['name']}", f"mark:{kid}")
-        return {"mark": _one(cur, _MARK + " WHERE id = %s", kid)}
+        return {"mark": _one(cur, _MARK + " WHERE id = %s", kid), **_house_hold(cur, m["shared"], map_id, kid)}
 
 
 @router.patch("/place/marks/{mark_id}")
@@ -489,6 +555,8 @@ def mark_edit(mark_id: int, body: dict, request: Request):
                 raise HTTPException(422, refusal)
             g = _geometry(k["kind"], body["geometry"])
         actor = _actor(request, body)
+        if not f and g is None and "issue" not in body:
+            return {"mark": _one(cur, _MARK + " WHERE id = %s", mark_id)}    # nothing to change: no row, no resend
         if "issue" in body:
             if request.headers.get("x-agent"):
                 raise HTTPException(403, "Only a person ties a drawing to an issue.")   # §8: an agent's suggestion is kept first
@@ -500,7 +568,8 @@ def mark_edit(mark_id: int, body: dict, request: Request):
                         {**f, "g": g, "id": mark_id})
         cur.execute("UPDATE place_maps SET updated_at = now() WHERE id = %s", (k["map_id"],))
         ledger(cur, actor, "changed", f"{f.get('label') or k['label'] or k['kind']} on {k['name']}", f"mark:{mark_id}")
-        return {"mark": _one(cur, _MARK + " WHERE id = %s", mark_id)}
+        return {"mark": _one(cur, _MARK + " WHERE id = %s", mark_id),
+                **(_house_hold(cur, k["shared"], k["map_id"], mark_id) if g else {})}
 
 
 @router.delete("/place/marks/{mark_id}")
@@ -512,3 +581,90 @@ def mark_delete(mark_id: int, request: Request, actor: str = Query("")):
         cur.execute("UPDATE place_maps SET updated_at = now() WHERE id = %s", (k["map_id"],))
         ledger(cur, _actor(request, {"actor": actor}), "deleted", f"{k['label'] or k['kind']} on {k['name']}", f"mark:{mark_id}")
     return {"ok": True}
+
+
+# ---------------------------------------------------------------- sharing upstream (§5)
+
+def push_maps() -> None:
+    """Child side, every minute: each shared map changed since it last went up is sent whole (`put`), and each map
+    unshared or deleted since is sent as a `delete`. Two changes inside a minute are one put. A failed send keeps the
+    map shared, says why in `share_error` and waits an hour; a 404 is a parent from before maps. A map a drawing on the
+    house holds is never sent until the household presses Share again."""
+    if not PARENT():          # the function, not the setting: a bare PARENT is always truthy
+        return
+    node = os.getenv("NODE_NAME", "node")
+    with db() as con, con.transaction(), con.cursor() as cur:
+        # one snapshot: a drawing on the house and the hold it writes are seen together or not at all
+        cur.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
+        cur.execute("SELECT map_id FROM place_maps_unshared WHERE tried_at IS NULL OR tried_at < now() - interval '1 hour'")
+        out = [(r["map_id"], "delete", None, None) for r in cur.fetchall()]
+        cur.execute("""SELECT id, name, owner, updated_at FROM place_maps
+                        WHERE shared AND from_node IS NULL AND (pushed_at IS NULL OR updated_at > pushed_at)
+                          AND (share_error IS NULL OR (share_error <> %s AND push_tried_at < now() - interval '1 hour'))""",
+                    (ON_HOUSE,))
+        for m in cur.fetchall():
+            cur.execute(_MARK + " WHERE map_id = %s ORDER BY id", (m["id"],))
+            out.append((m["id"], "put", feature_collection(m, cur.fetchall(), node), m["updated_at"]))
+    for map_id, op, fc, snap in out:
+        try:
+            r = httpx.post(f"{PARENT()}/place/maps/received",
+                           json={"schema": _SCHEMA, "node": node, "map_id": map_id, "op": op, "geojson": fc},
+                           headers={"Authorization": f"Bearer {PARENT_TOKEN()}"} if PARENT_TOKEN() else {}, timeout=30)
+            if r.status_code != 404:
+                r.raise_for_status()
+            error = NOT_YET if r.status_code == 404 else None
+        except Exception as e:  # noqa: BLE001
+            log.warning("map %s %s to parent failed: %s", map_id, op, e)
+            error = NOT_SENT
+        with db() as con, con.cursor() as cur:
+            if op == "delete" and error == NOT_SENT:
+                cur.execute("UPDATE place_maps_unshared SET tried_at = now() WHERE map_id = %s", (map_id,))
+            elif op == "delete":                           # sent, or a parent with no maps to delete it from
+                cur.execute("DELETE FROM place_maps_unshared WHERE map_id = %s", (map_id,))
+            else:
+                # pushed_at is the snapshot's own time, so a change made while this was in flight goes next minute;
+                # a hold written meanwhile stays a hold
+                cur.execute("""UPDATE place_maps SET push_tried_at = now(),
+                                 share_error = CASE WHEN share_error = %(house)s THEN share_error ELSE %(err)s END,
+                                 pushed_at = CASE WHEN %(err)s::text IS NULL THEN %(snap)s ELSE pushed_at END
+                                WHERE id = %(id)s AND shared""", {"house": ON_HOUSE, "err": error, "snap": snap, "id": map_id})
+
+
+@received.post("/place/maps/received")
+def map_received(body: dict, authorization: str = Header("")):
+    """Parent side. {schema, node, map_id, op: "put" | "delete", geojson}: a child's shared map, kept whole under
+    (from_node, remote_id) and read-only here. A put replaces every drawing; a delete removes the map. Measures are
+    PostGIS's own again; a picture's number is the child's and means nothing here, so it is dropped."""
+    if not AGG_TOKEN():
+        raise HTTPException(403, "this node accepts no children: set AGGREGATE_TOKEN in .env and give it to them")
+    if not _bearer_ok(authorization, AGG_TOKEN()):
+        raise HTTPException(401, "bad or missing Authorization: Bearer <AGGREGATE_TOKEN>")
+    child, rid, op = _text(body.get("node"), 80), body.get("map_id"), body.get("op")
+    if not child or isinstance(rid, bool) or not isinstance(rid, int) or op not in ("put", "delete"):
+        raise HTTPException(422, "A shared map says its node, its map_id and put or delete.")
+    with db() as con, con.transaction(), con.cursor() as cur:
+        if op == "delete":
+            cur.execute("DELETE FROM place_maps WHERE from_node = %s AND remote_id = %s", (child, rid))
+            return {"ok": True}
+        fc = body.get("geojson") if isinstance(body.get("geojson"), dict) else {}
+        feats = fc.get("features") if isinstance(fc.get("features"), list) else []
+        for f in feats:
+            if refusal := check_feature(f):
+                raise HTTPException(422, refusal)
+        cur.execute("""INSERT INTO place_maps (name, owner, from_node, remote_id) VALUES (%s, %s, %s, %s)
+                       ON CONFLICT (from_node, remote_id) DO UPDATE SET name = EXCLUDED.name, owner = EXCLUDED.owner,
+                                                                        updated_at = now()
+                       RETURNING id""", (_text(fc.get("map"), 80) or "map", _text(fc.get("owner"), 80), child, rid))
+        mid = cur.fetchone()["id"]
+        cur.execute("DELETE FROM place_marks WHERE map_id = %s", (mid,))
+        for f in feats:
+            p, kind = f["properties"], f["properties"]["kind"]
+            colour = p.get("colour") if p.get("colour") in PALETTE and not isinstance(p.get("colour"), bool) else 1
+            cur.execute("""WITH g AS (SELECT ST_SetSRID(ST_GeomFromGeoJSON(%(g)s::text), 4326) AS geom)
+                           INSERT INTO place_marks (map_id, kind, geom, colour, label, note, drawn_by, length_m, area_m2)
+                           SELECT %(map)s, %(kind)s, geom, %(colour)s, %(label)s, %(note)s, %(by)s,
+                                  CASE WHEN %(kind)s = 'line' THEN ST_Length(geom::geography) END,
+                                  CASE WHEN %(kind)s = 'area' THEN ST_Area(geom::geography) END FROM g""",
+                        {"g": _geometry(kind, f["geometry"]), "map": mid, "kind": kind, "colour": colour,
+                         "label": _text(p.get("label"), 80), "note": _text(p.get("note"), 500), "by": _text(p.get("drawn_by"), 80)})
+    return {"ok": True, "marks": len(feats)}

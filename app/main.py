@@ -59,15 +59,11 @@ NODE = os.getenv("NODE_NAME", "node")
 POLL = int(os.getenv("POLL_SECONDS", "300"))
 def LOCALE():
     return settings.get("ALERT_LOCALE", "en")
-def PARENT():
-    return settings.get("PARENT_API_URL", "").strip()
 MQTT_HOST = os.getenv("MQTT_HOST", "").strip()                 # set by `planetai meshtastic`; empty = no MQTT thread
 MQTT_USER, MQTT_PASS = os.getenv("MQTT_USER", ""), os.getenv("MQTT_PASS", "")
 def MESH_INDOOR():
     return {x.strip() for x in settings.get("MESH_INDOOR_NODES", "").split(",") if x.strip()}
-from auth import (AGG_TOKEN, SHARE_LEVEL, ACT_TOKEN, _SHARE_OFF, _SHARE_OPEN, _SHARE, _CHILD_WRITES, _node_tokens, _is_local, _bearer_ok, _pull_ok, _shows_private, _admin)  # noqa: E402,F401 — tokens, the share allowlists and the checks (app/auth.py)
-def PARENT_TOKEN():
-    return settings.get("PARENT_TOKEN", "").strip()
+from auth import (AGG_TOKEN, PARENT, PARENT_TOKEN, SHARE_LEVEL, ACT_TOKEN, _SHARE_OFF, _SHARE_OPEN, _SHARE, _CHILD_WRITES, _node_tokens, _is_local, _bearer_ok, _pull_ok, _shows_private, _admin)  # noqa: E402,F401 — tokens, the share allowlists and the checks (app/auth.py)
 RETICULUM_URL = os.getenv("RETICULUM_URL", "").strip()       # the reticulum bridge, e.g. http://reticulum:4243
 from channels import (TG, MESH_ALERTS, MESH_GATEWAY_NUM, mesh_state, tg_state,  # noqa: E402,F401
                       mesh_send, notify)  # Telegram, the mesh, LXMF (app/channels.py); Home Assistant is packs/home-assistant
@@ -836,6 +832,7 @@ def start() -> None:
     loop(refresh_usual, 3600, delay=10)
     loop(push_aggregates, 3600, delay=120)
     loop(push_events, 3600, delay=150)
+    loop(maps.push_maps, 60, delay=140)         # a shared map, at most once a minute (app/maps.py)
     loop(check_release, 3600, delay=300)
     loop(check_wild, 3600, delay=330)
     loop(check_registry, 3600, delay=60)
@@ -1565,6 +1562,7 @@ import geo  # noqa: E402 — GET /place/geojson, /geo/* (app/geo.py)
 app.include_router(geo.router)
 import maps  # noqa: E402 — /place/maps, /place/marks: the household's drawings (app/maps.py)
 app.include_router(maps.router)
+app.include_router(maps.received)  # POST /place/maps/received: a child's shared map, on AGGREGATE_TOKEN
 import machine  # noqa: E402 — GET /machine, /storage (app/machine.py)
 app.include_router(machine.router)
 import wild  # noqa: E402 — GET /packs/all, /packs/preview, POST /packs/install (app/wild.py)

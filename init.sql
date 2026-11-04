@@ -561,4 +561,11 @@ CREATE TABLE IF NOT EXISTS place_marks (
 );
 CREATE INDEX IF NOT EXISTS place_marks_geom_gist ON place_marks USING GIST (geom);
 CREATE INDEX IF NOT EXISTS place_marks_map ON place_marks (map_id);
+-- A shared map unshared or deleted here, whose delete the node upstream has not had yet. No foreign key: a deleted
+-- map's row is gone and its delete is still owed. `tried_at` is the last failed send; it waits an hour, as a put does.
+CREATE TABLE IF NOT EXISTS place_maps_unshared (
+  map_id   BIGINT PRIMARY KEY,
+  at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  tried_at TIMESTAMPTZ
+);
 INSERT INTO schema_version (version) VALUES ('0.62') ON CONFLICT DO NOTHING;
