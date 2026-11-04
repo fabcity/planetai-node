@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **The source registry is pinned at `7bf12a4`.** awesome-fabcity-data #101 adds Copernicus Sentinel-2 L2A on
+  Planetary Computer, the imagery the `paddy` wild pack reads, as a candidate. 284 entries.
+
 - **What to do says when it asked once.** The card's head line said "asked since 07:14 · still open" over the node's
   own "asked at 07:14, and still true"; the head now names only the issue. The fire pack's source line under its band
   said "Fires within 150 km", so "fires nearby" read as 150 km when it counts the 25 km ring; it now reads "NASA FIRMS,
