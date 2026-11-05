@@ -964,7 +964,7 @@ async function boot(tok, o = {}) {
     maplibregl: { ScaleControl: function () {}, Map: function () { return Object.assign(map, { on: (t, f) => (ons[t] ||= []).push(f), once: (t, f) => { onced.push(t); renders.push(f); }, addControl: noop,
       getContainer: () => map, triggerRepaint: noop, getLayer: () => null,
       getCanvas: () => ({ style: {}, width: 1800, height: 1120, clientWidth: 900 }), touchZoomRotate: { disableRotation: noop }, doubleClickZoom: { enable: noop, disable: noop }, getZoom: () => o.zoom || 13.6, resize: noop,
-      project: ([x, y]) => ({ x: x * 1e4, y: -y * 1e4 }), unproject: ([x, y]) => ({ lng: x / 1e4, lat: -y / 1e4 }), easeTo: a => eased.push(a),
+      project: ([x, y]) => ({ x: x * 1e4, y: -y * 1e4 }), unproject: ([x, y]) => ({ lng: x / 1e4, lat: -y / 1e4 }), easeTo: a => eased.push(a), panBy: a => (map.panned ||= []).push(a),
       getCenter: () => ({ lng: 115.167, lat: -8.819 }) }); } },
     deck: new Proxy({}, { get: (t, k) => k === 'MapboxOverlay' ? function () { return { setProps: x => { (x.layers || []).forEach(l => { drawn[l.id] = l.props; }); },
       pickObject: () => (o.hit ? o.hit(drawn) : null) }; } : layer }) };
@@ -1030,6 +1030,14 @@ async function boot(tok, o = {}) {
   out.nofs = await boot(true, { fs: false, then: async ({ map }) => ({ col: map.kids.find(x => x.className === 'tools').innerHTML }) });
   /* a node without imagery keeps the streets as its base */
   out.plain = await boot(true, { then: async ({ c }) => ({ imagery: c.__PM.on.imagery }) });
+  /* the L key pressed with the focus on the page, not the screen: once a line is started the arrows pan the map
+     (Enter adds at its centre); on the canvas MapLibre pans, so the page does not pan twice */
+  out.drawPan = await boot(true, { then: async ({ c, map, keys }) => {
+    const press = (k, inCanvas) => keys.forEach(f => f({ key: k, target: { closest: q => (inCanvas && q.includes('maplibregl-canvas-container') ? {} : null) },
+      preventDefault: noop, stopPropagation: noop, shiftKey: false, metaKey: false, ctrlKey: false, altKey: false }));
+    c.__PM.setTool('line'); press('ArrowRight'); const idle = (map.panned || []).length;
+    press('Enter'); press('ArrowRight'); const drawing = (map.panned || []).length;
+    press('ArrowRight', true); return { idle, drawing, canvas: (map.panned || []).length, pts: c.__PM.draw.state && c.__PM.draw.state.pts.length }; } });
   /* From the house, in the right column: a tool row that runs with the token */
   const els = {}, c = { $: q => (els[q] ||= el()), DOORS_TOKEN: () => 't', document: { activeElement: null, querySelectorAll: () => [], querySelector: () => null }, window: { __PM: { on: {}, tool: 'select' } } };
   vm.createContext(c); vm.runInContext(place.match(/const TOOLS = [\s\S]*?\n\];\n/)[0] + fn(place, 'placeTools') + 'placeTools()', c);
@@ -1135,6 +1143,8 @@ assert _g["escClosed"] and _g["escKept"] == 11, "Esc in the menu closes it and k
 print("  place: closing the menu, by a press or Esc, does nothing else on the screen")
 print("  place: the right column reads Map only, Full screen, Back to this node’s cell, Download; the menu offers four formats and everything on the screen")
 assert _g["imagery"] is True and M["plain"]["imagery"] is False, "the satellite is the base where the node holds imagery, the streets elsewhere"
+_dp = {k: M["drawPan"][k] for k in ("idle", "drawing", "canvas", "pts")}
+assert _dp == {"idle": 0, "drawing": 1, "canvas": 1, "pts": 1}, ("a started line pans the map from anywhere, the page's arrows are left alone before, and the canvas pans by itself", _dp)
 _bs = re.findall(r'<button[^>]*aria-pressed="(true|false)"[^>]*>([a-z]+)<', _g["base"] or "")
 assert [b for _, b in _bs] == ["satellite", "streets", "drone"] and [p for p, _ in _bs] == ["true", "false", "false"], _bs
 print("  place: satellite on at load where the node holds it; the base switch reads satellite · streets · drone")

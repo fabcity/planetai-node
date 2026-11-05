@@ -909,8 +909,11 @@ function onKey(e) {
   const arrow = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[k];
   if (!arrow) return;
   if (editable) { e.preventDefault(); e.stopPropagation(); const n = e.shiftKey ? 10 : 2; nudge(d.corner != null ? d.corner : d.kc % ptsOf(held).length, arrow[0] * n, arrow[1] * n); return; }
-  /* on a key of the screen the arrows pan; on the map's canvas MapLibre pans by itself */
-  if (within('.mapc') && !within('.maplibregl-canvas-container')) { e.preventDefault(); PM.map.panBy([arrow[0] * 80, arrow[1] * 80]); }
+  /* on a key of the screen the arrows pan, and anywhere while a shape is being drawn, since Enter adds at the map's
+     centre (node #1, 5 Nov: after the L key the arrows scrolled the page and every point landed on the first);
+     on the map's canvas MapLibre pans by itself */
+  if (within('.maplibregl-canvas-container')) return;
+  if (d.state || within('.mapc')) { e.preventDefault(); PM.map.panBy([arrow[0] * 80, arrow[1] * 80]); }
 }
 
 /* ---- the drawings, as deck.gl layers: an area filled at .28 with a 2 px edge, a line dashed with each leg's metres,
