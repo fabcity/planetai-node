@@ -3499,29 +3499,33 @@ async function doors() {
     await r.page.click('#cake [data-l="rings"] button'); await r.page.waitForTimeout(200);
     ok(await pressed() === 'false', `${tag} #place: a second press did not switch Rings off`);
     panes += 1;
-    /* place-folded (SPEC_place_microgis §4): the layers by their arrow, the tools by `]`; both folded, the screen takes the
-       page's width, each side a 36 px strip that says what it holds; a reload keeps the folds; `\\` opens both again */
+    /* place-folded (SPEC_place_microgis §4; one side since Tomas's ruling of 5 Nov 2026): the layers fold by their arrow
+       into a 36 px strip that says what it holds and the screen takes the width; `\\` is map only, the screen at the
+       window's height; a reload keeps it; `\\` again opens the left */
     if (w === 1440) {
-      const fd = () => r.page.evaluate(() => ({ map: Math.round(document.getElementById('map').getBoundingClientRect().width),
-        folds: [...document.querySelectorAll('.pfold')].map(x => `${x.getAttribute('aria-label')}:${x.getAttribute('aria-expanded')}:${Math.round(x.getBoundingClientRect().width)}`) }));
-      await r.page.click('.pfold[data-fold="lc"]'); await r.page.keyboard.press(']'); await r.page.waitForTimeout(300);
+      const fd = () => r.page.evaluate(() => { const m = document.getElementById('map').getBoundingClientRect();
+        return { map: Math.round(m.width), h: Math.round(m.height), cls: document.querySelector('.bench').className,
+          folds: [...document.querySelectorAll('.pfold')].map(x => `${x.getAttribute('aria-label')}:${x.getAttribute('aria-expanded')}:${Math.round(x.getBoundingClientRect().width)}`) }; });
+      await r.page.click('.pfold[data-fold="lc"]'); await r.page.waitForTimeout(300);
       const f1 = await fd();
-      ok(f1.map >= 1300, `${tag} place-folded: the screen is ${f1.map}px wide with both sides folded`);
-      ok(f1.folds.join() === 'Show the layers:false:36,Show the tools:false:36', `${tag} place-folded: the strips read ${f1.folds.join(', ')}`);
+      ok(f1.map >= 1250 && f1.h < 600, `${tag} place-folded: the screen is ${f1.map}x${f1.h}px with the left folded`);
+      ok(f1.folds.join() === 'Show the layers:false:36', `${tag} place-folded: the strip reads ${f1.folds.join(', ')}`);
       { const o = await overflowAt(r.page); ok(o <= 1, `${tag} place-folded: the page scrolls ${o}px sideways`); }
+      await r.page.click('.pfold[data-fold="lc"]'); await r.page.keyboard.press('\\'); await r.page.waitForTimeout(300);
+      const f2 = await fd();
+      ok(f2.map >= 1250 && f2.h >= 800 && /\bmo\b/.test(f2.cls), `${tag} place-folded: map only left the screen ${f2.map}x${f2.h}px (${f2.cls})`);
       if (shots) await r.page.screenshot({ path: path.join(OUT, `doors_place-folded_${tag}.jpg`), type: 'jpeg', quality: 78 });
       await r.page.reload({ waitUntil: 'domcontentloaded' }); await r.page.waitForSelector('#cake .ck', { state: 'attached', timeout: 20000 }); await r.page.waitForTimeout(600);
-      const f2 = await fd();
-      ok(f2.map >= 1300 && f2.folds.join() === f1.folds.join(), `${tag} place-folded: after a reload the screen is ${f2.map}px, the strips ${f2.folds.join(', ')}`);
-      await r.page.keyboard.press('\\'); await r.page.waitForTimeout(300);
       const f3 = await fd();
-      ok(f3.map < 1300 && f3.folds.join() === 'Hide the layers:true:28,Hide the tools:true:28', `${tag} place-folded: \\ left the screen ${f3.map}px, the folds ${f3.folds.join(', ')}`);
-      /* at 900 px the tools are a row under the screen: the folded layers' strip must stop at the screen's row, not lie
-         over the tool rows and take their presses */
+      ok(f3.map === f2.map && f3.h === f2.h && f3.folds.join() === 'Show the layers:false:36', `${tag} place-folded: after a reload the screen is ${f3.map}x${f3.h}px, the strip ${f3.folds.join(', ')}`);
+      await r.page.keyboard.press('\\'); await r.page.waitForTimeout(300);
+      const f4 = await fd();
+      ok(f4.map < 1250 && f4.folds.join() === 'Hide the layers:true:28', `${tag} place-folded: \\ left the screen ${f4.map}px, the fold ${f4.folds.join(', ')}`);
+      /* at 900 px the folded strip stops at the screen's row: the years band under it takes its own presses */
       await r.page.setViewportSize({ width: 900, height: 900 }); await r.page.keyboard.press('['); await r.page.waitForTimeout(300);
-      const hit = await r.page.evaluate(() => { const t = document.querySelector('#ptools .tl'); t.scrollIntoView({ block: 'center' }); const b = t.getBoundingClientRect();
-        const e = document.elementFromPoint(b.left + 4, b.top + b.height / 2); return { tool: !!(e && e.closest('#ptools')), strip: !!(e && e.closest('.pfold')), cls: document.querySelector('.bench').className }; });
-      ok(hit.cls.includes('lc') && hit.tool && !hit.strip, `${tag} place-folded: at 900 px a press on a tool row's left edge lands on ${hit.strip ? 'the folded strip' : 'something else'} (${hit.cls})`);
+      const hit = await r.page.evaluate(() => { const t = document.querySelector('.pyears'); t.scrollIntoView({ block: 'center' }); const b = t.getBoundingClientRect();
+        const e = document.elementFromPoint(b.left + 4, b.top + 20); return { band: !!(e && e.closest('.pyears')), strip: !!(e && e.closest('.pfold')), cls: document.querySelector('.bench').className }; });
+      ok(hit.cls.includes('lc') && hit.band && !hit.strip, `${tag} place-folded: at 900 px a press on the years band's left edge lands on ${hit.strip ? 'the folded strip' : 'something else'} (${hit.cls})`);
       await r.page.keyboard.press('['); await r.page.setViewportSize({ width: 1440, height: 900 }); await r.page.waitForTimeout(300);
       panes += 1;
     }
