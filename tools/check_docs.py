@@ -83,9 +83,6 @@ ENV_OK = ENV_DECLARED | ENV_IN_CODE | ENV_IN_PACKS | ENV_RETIRED | ENV_IN_MCP | 
 # deletes the entry. The two assertions under the loop are what force that deletion — an entry for a
 # document that is gone, or for something that now exists, fails the gate.
 PROPOSED = {
-    # docs/SPEC_identity.md is Phase 1 of prompt 3 of the 18 September review: approved or struck by Tomas
-    # before a line of it is written. Phase 2 deletes this entry in the commit that adds each name.
-    "docs/SPEC_identity.md": {"children", "tests/test_identity.py", "app/identity.py"},
     # MAINTAINERS.md's entry for docs/SPEC_rho.md goes here, because this commit writes that file — the
     # same gate that fired for the licence record fires for this one. What replaces it is the promise
     # the spec itself makes: tests/test_rho.py lands with Phase 2's code and deletes this line.
