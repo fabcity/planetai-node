@@ -1365,6 +1365,11 @@ async function placeMap() {
        A press is the map's own click (press(), below), which asks the overlay what is under it. */
     getCursor: ({ isDragging }) => isDragging ? 'grabbing' : MEASURING() || DRAWING() || PM.draw.corner != null ? 'crosshair' : PM.hoverDot ? 'pointer' : 'grab' });
   map.addControl(PM.overlay);
+  /* luma.gl keeps the canvas's framebuffer at the size it first saw, and deck flips its y with that height, so after the
+     screen grows taller (Full screen) every deck layer drew lower than the map by the difference (node #1, 5 Nov: the
+     cell left its place). A resize lets it go, and the next frame makes one at the new size.
+     ponytail: reaches into deck 9.4 / luma internals; drop it once deck's interleaved overlay follows a resize itself */
+  map.on('resize', () => { const c = PM.overlay._deck && PM.overlay._deck.device && PM.overlay._deck.device.canvasContext; if (c) c._framebuffer = null; });
   tools();
   WIND.cv = document.createElement('canvas'); WIND.cv.className = 'windcv'; WIND.cv.setAttribute('aria-hidden', 'true');
   WIND.ctx = WIND.cv.getContext('2d'); map.getContainer().appendChild(WIND.cv);

@@ -986,7 +986,7 @@ async function boot(tok, o = {}) {
       getCanvas: () => (map.cv ||= { style: {}, width: 1800, height: 1120, clientWidth: 900, focus: () => { map.focused = (map.focused || 0) + 1; } }), touchZoomRotate: { disableRotation: noop }, doubleClickZoom: { enable: noop, disable: noop }, getZoom: () => o.zoom || 13.6, resize: noop,
       project: ([x, y]) => ({ x: x * 1e4, y: -y * 1e4 }), unproject: ([x, y]) => ({ lng: x / 1e4, lat: -y / 1e4 }), easeTo: a => eased.push(a), panBy: a => (map.panned ||= []).push(a),
       getCenter: () => ({ lng: 115.167, lat: -8.819 }) }); } },
-    deck: new Proxy({}, { get: (t, k) => k === 'MapboxOverlay' ? function () { return { setProps: x => { (x.layers || []).forEach(l => { drawn[l.id] = l.props; }); },
+    deck: new Proxy({}, { get: (t, k) => k === 'MapboxOverlay' ? function () { return { _deck: { device: { canvasContext: { _framebuffer: 'old' } } }, setProps: x => { (x.layers || []).forEach(l => { drawn[l.id] = l.props; }); },
       pickObject: () => (o.hit ? o.hit(drawn) : null) }; } : layer }) };
   c.window = c; vm.createContext(c);
   vm.runInContext(['esc', 'fmt'].map(pick).join('\n') + '\n' + src + '\nwindow.placeMap()', c);
@@ -1052,14 +1052,16 @@ async function boot(tok, o = {}) {
   out.plain = await boot(true, { then: async ({ c }) => ({ imagery: c.__PM.on.imagery }) });
   /* the L key pressed with the focus on the page, not the screen: once a line is started the arrows pan the map
      (Enter adds at its centre); on the canvas MapLibre pans, so the page does not pan twice */
-  out.drawPan = await boot(true, { then: async ({ c, map, keys }) => {
+  out.drawPan = await boot(true, { then: async ({ c, map, keys, ons }) => {
     const press = (k, inCanvas) => keys.forEach(f => f({ key: k, target: { closest: q => (inCanvas && q.includes('maplibregl-canvas-container') ? {} : null) },
       preventDefault: noop, stopPropagation: noop, shiftKey: false, metaKey: false, ctrlKey: false, altKey: false }));
     c.__PM.setTool('line'); press('ArrowRight'); const idle = (map.panned || []).length;
     press('Enter'); press('ArrowRight'); const drawing = (map.panned || []).length;
     press('ArrowRight', true); const r = { idle, drawing, canvas: (map.panned || []).length, pts: c.__PM.draw.state && c.__PM.draw.state.pts.length };
     /* a drawing key by letter hands the focus to the map; Select keeps it where it was */
-    const f0 = map.focused || 0; press('v'); r.focusV = (map.focused || 0) - f0; press('a'); r.focusA = (map.focused || 0) - f0; return r; } });
+    const f0 = map.focused || 0; press('v'); r.focusV = (map.focused || 0) - f0; press('a'); r.focusA = (map.focused || 0) - f0;
+    /* a resize (Full screen, a fold) lets luma's framebuffer go, so deck draws at the new height */
+    (ons.resize || []).filter(f => String(f).includes('_framebuffer')).forEach(f => f()); r.fb = c.__PM.overlay._deck.device.canvasContext._framebuffer; return r; } });
   /* the map moving (node #1, 5 Nov): the pins on the screen's edge follow the map on `move`, one frame at a time, not
      only once it settles; the list under the screen waits for `moveend` */
   const pubs = D.sensors.filter(s => !s.local && s.indoor !== true && s.kind === 'sensor' && s.lat != null);
@@ -1221,6 +1223,7 @@ print("  place: closing the menu, by a press or Esc, does nothing else on the sc
 print("  place: the right column reads Map only, Full screen, Back to this node’s cell, Download; the menu offers four formats and everything on the screen")
 assert _g["imagery"] is True and M["plain"]["imagery"] is False, "the satellite is the base where the node holds imagery, the streets elsewhere"
 _dp = {k: M["drawPan"][k] for k in ("idle", "drawing", "canvas", "pts")}
+assert M["drawPan"]["fb"] is None, ("after a resize deck's framebuffer is made again at the new size", M["drawPan"]["fb"])
 assert (M["drawPan"]["focusV"], M["drawPan"]["focusA"]) == (0, 1), ("a drawing key hands the focus to the map, Select does not", M["drawPan"]["focusV"], M["drawPan"]["focusA"])
 assert _dp == {"idle": 0, "drawing": 1, "canvas": 1, "pts": 1}, ("a started line pans the map from anywhere, the page's arrows are left alone before, and the canvas pans by itself", _dp)
 _ch = M["chip"]
