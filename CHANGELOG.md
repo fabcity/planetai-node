@@ -16,7 +16,7 @@
   with the keyboard alone, and PostGIS measures what you keep. The screen downloads as a PNG with its credit and scale,
   and a map as GeoJSON or KML, or as DXF in metres of the node's UTM zone. Share sends a map to the node upstream, every
   drawing at its exact place with its labels, notes and measures, where the people holding that node's token can see
-  it. Who drew each one stays here. It goes after a plain warning, and a drawing that touches the cell the house stands
+  it. Upstream the node is the map's owner, and who drew each drawing stays here. It goes after a plain warning, and a drawing that touches the cell the house stands
   in holds it until you press Share again. A drawing
   tied to an issue on Now, with what you did in your own words, counts as acting on it. The satellite opens first, the
   yearly change moved under the map, drone flights show as pins when you zoom out, and the two sides fold, with `\` for

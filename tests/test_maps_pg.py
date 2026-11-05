@@ -433,7 +433,7 @@ assert recv({**doc, "geojson": {**doc["geojson"], "features": [{"type": "Feature
 r = recv(doc)
 assert r.status_code == 200, r.text
 RV = one("SELECT id, name, owner FROM place_maps WHERE from_node = 'kid' AND remote_id = 7")
-assert RV["name"] == "Kid's garden" and RV["owner"] == "Ana", RV
+assert RV["name"] == "Kid's garden" and RV["owner"] == "kid", RV   # a name a child sends as owner is not kept: the node owns it
 assert one("SELECT count(*) AS n FROM place_marks WHERE map_id = %s AND capture_id IS NULL", RV["id"])["n"] == 2, \
     "the child's picture numbers mean nothing here"
 named = {**doc, "geojson": {**doc["geojson"], "features": [{**FEAT("n", 115.1), "properties": {**FEAT("n", 115.1)["properties"], "drawn_by": "Ana"}}]}}

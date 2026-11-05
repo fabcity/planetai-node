@@ -208,7 +208,8 @@ _TEXT_H = 1.5                                              # metres: a label on 
 def feature_collection(map_row: dict, marks: list[dict], node: str, upstream: bool = False) -> dict:
     """The map as GeoJSON in WGS84: the same shape the page draws, and what a pull from another node reads back.
     `image` is the picture's capture id and never a file. `upstream` is the copy push_maps() sends: it leaves out
-    `drawn_by`, so no household member's name goes up (§5 lists what does); the household's own download keeps it."""
+    `drawn_by`, and its `owner` is the node (Tomas, 5 Nov: "the node is the owner"), so no household member's name
+    goes up (§5 lists what does); the household's own download keeps both."""
     def props(m):
         at = m.get("updated_at")
         p = {"kind": m["kind"], "label": m.get("label"), "note": m.get("note"), "colour": m["colour"],
@@ -217,8 +218,8 @@ def feature_collection(map_row: dict, marks: list[dict], node: str, upstream: bo
         if upstream:
             del p["drawn_by"]
         return p
-    return {"type": "FeatureCollection", "schema": _SCHEMA, "map": map_row["name"], "owner": map_row.get("owner"),
-            "node": node, "features": [{"type": "Feature", "properties": props(m), "geometry": m["geometry"]} for m in marks]}
+    return {"type": "FeatureCollection", "schema": _SCHEMA, "map": map_row["name"],
+            "owner": node if upstream else map_row.get("owner"), "node": node, "features": [{"type": "Feature", "properties": props(m), "geometry": m["geometry"]} for m in marks]}
 
 
 def to_kml(fc: dict) -> str:
@@ -704,7 +705,7 @@ def map_received(body: dict, authorization: str = Header("")):
         cur.execute("""INSERT INTO place_maps (name, owner, from_node, remote_id) VALUES (%s, %s, %s, %s)
                        ON CONFLICT (from_node, remote_id) DO UPDATE SET name = EXCLUDED.name, owner = EXCLUDED.owner,
                                                                         updated_at = now()
-                       RETURNING id""", (_text(fc.get("map"), 80) or "map", _text(fc.get("owner"), 80), child, rid))
+                       RETURNING id""", (_text(fc.get("map"), 80) or "map", child, child, rid))   # the child node owns it, never a person
         mid = cur.fetchone()["id"]
         cur.execute("DELETE FROM place_marks WHERE map_id = %s", (mid,))
         for f in feats:

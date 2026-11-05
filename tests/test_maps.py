@@ -84,6 +84,7 @@ assert set(p) == {"kind", "label", "note", "colour", "colour_hex", "length_m", "
 assert p["drawn_by"] == "Tomas"
 up = feature_collection({"id": 3, "name": "Garden plan", "owner": "Tomas"}, [mark_row(kind="area")], "bayu-ungasan", upstream=True)
 assert set(up["features"][0]["properties"]) == set(p) - {"drawn_by"}, up["features"][0]["properties"]
+assert up["owner"] == "bayu-ungasan", "upstream, the node is the map's owner, never a person"
 assert p["colour_hex"] == PALETTE[3][0] and p["image"] == 9 and fc["features"][0]["geometry"]["type"] == "Polygon"
 k = to_kml(fc)
 ET.fromstring(k)                                          # valid XML with the hostile label
