@@ -565,7 +565,7 @@ function tools() {
   const keys = PM.keys = document.createElement('div'), pan = document.createElement('div');
   keys.className = 'dkeys'; keys.setAttribute('role', 'toolbar'); keys.setAttribute('aria-label', 'Draw'); keys.innerHTML = keysHTML();
   pan.className = 'dpanel'; pan.innerHTML = '<div id="dread" class="dread"></div><p id="dsaid" class="vh" aria-live="polite"></p><div id="dform" class="dform" hidden></div>';
-  keys.onclick = e => { const b = e.target.closest('button[data-k]'); if (!b) return; if (b.dataset.k === 'undo') undo(); else PM.setTool(b.dataset.k); };
+  keys.onclick = e => { const b = e.target.closest('button[data-k]'); if (!b) return; if (b.dataset.k === 'undo') undo(); else { PM.setTool(b.dataset.k); toScreen(b.dataset.k); } };
   box.append(keys, pan);
   readout();
 }
@@ -921,6 +921,12 @@ function nudge(i, dx, dy) {
   d.preview = { id: k.id, geometry: toFeature({ kind: k.kind, pts }).geometry }; redraw();
   clearTimeout(d.nudged); d.nudged = setTimeout(() => d.preview && patch(k.id, { geometry: d.preview.geometry }), 500);
 }
+/* a drawing key hands the focus to the map, so the next Enter adds a point at its centre instead of pressing the
+   button that had the focus again (node #1, 5 Nov: Tools, Esc, L, Enter reopened Tools) */
+function toScreen(k) {
+  const c = PM.map && PM.map.getCanvas();
+  if (['marker', 'line', 'area', 'note'].includes(k) && c && c.focus) c.focus({ preventScroll: true });
+}
 /* the keys from the keyboard (V M L A N I, ⌘Z), Enter, Backspace, Esc, the arrows and the full stop; never while
    somebody types. With a drawing in hand the arrows move one of its points (a corner pressed, else the keyboard's point,
    the first to start) and `.` steps to the next: a drawing is edited without a mouse (§10). */
@@ -934,7 +940,7 @@ function onKey(e) {
   if ((e.metaKey || e.ctrlKey) && !e.shiftKey && (k === 'z' || k === 'Z')) { e.preventDefault(); undo(); return; }
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const key = (KEYS.find(([, l]) => l === k.toUpperCase()) || [])[0];
-  if (key && k.length === 1) { e.preventDefault(); PM.setTool(key); return; }
+  if (key && k.length === 1) { e.preventDefault(); PM.setTool(key); toScreen(key); return; }
   if (k === 'Escape') {
     if (MEASURING()) { PM.setTool('select'); return; }
     /* from inside the readout, Esc folds it and keeps the focus on its chip; elsewhere it folds last */
