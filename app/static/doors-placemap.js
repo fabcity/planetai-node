@@ -412,6 +412,13 @@ function margin() {
   });
   edges(all, inView, W, H);
 }
+/* while a shape is drawn and the map zooms or pans without the mouse moving (a wheel, a pinch, the + and − keys), the
+   leg to the pointer keeps its end under the pointer, not at the map point it was over before */
+function following() {
+  const d = PM.draw; if (!DRAWING() || !d.state || !d.state.pts.length || !PM.lastPt || !PM.map) return;
+  const q = PM.map.unproject([PM.lastPt.x, PM.lastPt.y]); d.hover = [q.lng, q.lat];
+  figureOnly(); if (PM.overlay) PM.overlay.setProps({ layers: layers() });
+}
 /* The margin is a list under the screen now (SPEC_place_microgis §4): no leaders. Public stations off the map: a hollow
    mark on the screen's edge, pointing at them, with the node's distance; the nearest six. They are DOM over the canvas,
    so they follow the map on every `move` (one frame at a time, below), not only when it settles: on node #1 they
@@ -708,11 +715,13 @@ const keysHTML = () => KEYS.map(([k, l]) => `<button type="button" class="${k ==
 function figureNow() {
   const d = PM.draw, k = markById(d.sel), T = PM.tool;
   if (T === 'from') return { v: PM.measured ? fmtM(PM.measured.total_m) : '', hint: 'Press any point and the node measures it from its own point.' };
-  if (DRAWS.includes(T) && !openMap()) return { v: '', hint: 'Make a map first with New map, at the top of the left column.' };
+  if ((DRAWS.includes(T) || T === 'image') && !openMap()) return { v: '', hint: 'Make a map first with New map, at the top of the left column.' };
   if (k && d.corner != null) return { v: esc(k.label || k.kind), hint: 'Press the corner’s new place, or move it with the arrows.' };
   if (DRAWS.includes(T) && (!k || (d.state && d.state.pts.length))) {
     const f = figure(d.state || drawState(T), d.hover);
-    return { v: f.value ? `${esc(f.value)}<small>${esc(f.unit)}</small>` : '', hint: f.hint };
+    /* the unit, then the rest of it apart: a narrow chip keeps "3120 m²" and the open panel says the rest */
+    const [u, ...more] = f.unit.split(' · ');
+    return { v: f.value ? `${esc(f.value)}<small>${esc(u)}</small>${more.length ? `<small class="more"> · ${esc(more.join(' · '))}</small>` : ''}` : '', hint: f.hint };
   }
   if (T === 'image' && !k) return { v: 'from Data › Images<small>or a new photo</small>', hint: HINT_IMG };
   /* the keyboard's point: the arrows move it, the full stop steps to the next (no mouse needed, §10) */
@@ -728,7 +737,7 @@ function readout() {
   el.innerHTML = `<button type="button" class="dchip" aria-expanded="${!!d.open}" aria-controls="dfull" title="${d.open ? 'Fold the colours' : 'The colours, and what to do'} · Esc folds">`
     + (PM.palette ? `<i class="dot" aria-hidden="true" style="background:${esc(PM.palette[cur])}"></i>` : '')
     + `<span class="t">${TOOLWORD[PM.tool] || ''}</span><span class="m">${m ? esc(m.name) : 'no map yet'}</span><span class="v" aria-hidden="true">${f.v}</span></button>`
-    + `<div id="dfull" class="dfull"${d.open ? '' : ' hidden'}>`
+    + `<div id="dfull" class="dfull"${d.open ? '' : ' hidden'}><div class="vf" aria-hidden="true">${f.v}</div>`
     + (PM.palette ? `<div class="dsw" role="group" aria-label="Colour">${[1, 2, 3, 4, 5, 6].map(n => `<button type="button" data-c="${n}" aria-label="Colour ${n}" aria-pressed="${n === cur}">`
       + `<i style="background:${esc(PM.palette[n])}"></i></button>`).join('')}<em>colour</em></div>` : '')
     + `<div class="hint">${esc(f.hint)}</div></div>${d.err ? `<p class="err">${esc(d.err)}</p>` : ''}`;
@@ -742,8 +751,9 @@ function readout() {
 }
 /* only the figure and the hint, as the pointer moves */
 function figureOnly() {
-  const el = $('#dread'), f = figureNow(), v = el && el.querySelector && el.querySelector('.v'), h = el && el.querySelector && el.querySelector('.hint');
-  if (v && v.innerHTML !== f.v) v.innerHTML = f.v; if (h && h.textContent !== f.hint) h.textContent = f.hint;
+  const el = $('#dread'), f = figureNow(), h = el && el.querySelector && el.querySelector('.hint');
+  ['.v', '.vf'].forEach(q => { const v = el && el.querySelector && el.querySelector(q); if (v && v.innerHTML !== f.v) v.innerHTML = f.v; });
+  if (h && h.textContent !== f.hint) h.textContent = f.hint;
 }
 
 /* the form under the readout, for the drawing in hand: its label and note (saved as each changes), an image, Delete,
@@ -758,7 +768,7 @@ function drawForm() {
         : `<div class="caps">${C.map(c => `<button type="button" data-cap="${+c.id}">${esc(KIND[c.kind] || c.kind)} · ${esc(c.note || 'no note')} <small>${esc(when(c.ts))}</small></button>`).join('')}</div>`);
   } else if (!k && PM.tool === 'image') {
     /* the Image key with nothing in hand: a photo for no drawing goes where it was taken, the header's old button */
-    el.innerHTML = '<p>Press the map, or Enter for its centre, to pin an image there. Or add a photo on its own. It lands where it was taken, else in the node’s cell.</p>'
+    el.innerHTML = `<p>${openMap() ? 'Press the map, or Enter for its centre, to pin an image there. Or add a photo on its own.' : 'Add a photo on its own.'} It lands where it was taken, else in the node’s cell.</p>`
       + '<div class="acts"><button type="button" data-a="newphoto">A new photo</button></div>';
   } else if (!k) { el.hidden = true; el.innerHTML = ''; return; }
   else if (!mine(m)) {
@@ -918,7 +928,7 @@ function onKey(e) {
   if (view() !== 'place' || !PM.map || !DOORS_TOKEN()) return;
   const t = e.target, d = PM.draw, k = e.key, within = sel => !!(t && t.closest && t.closest(sel));
   /* the download and Tools menus keep their keys: onKey listens in the capture phase, so a menu's own Esc cannot stop it */
-  if (within('input, textarea, select, [contenteditable], dialog, .dlmenu, .ptmenu')) return;
+  if (within('input, textarea, select, [contenteditable], dialog, .dlmenu, .ptools')) return;
   if ((e.metaKey || e.ctrlKey) && !e.shiftKey && (k === 'z' || k === 'Z')) { e.preventDefault(); undo(); return; }
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const key = (KEYS.find(([, l]) => l === k.toUpperCase()) || [])[0];
@@ -1355,16 +1365,18 @@ async function placeMap() {
   map.on('resize', () => { windResample(); margin(); });
   /* the DOM on the screen follows the map while it moves, once a frame; the list, the grid and the panel wait for moveend */
   let moving = 0;
-  map.on('move', () => { if (!moving) moving = requestAnimationFrame(() => { moving = 0; edges(); }); });
+  map.on('move', () => { if (!moving) moving = requestAnimationFrame(() => { moving = 0; edges(); following(); }); });
   map.on('load', () => {
     applyBase(); PM.res = resFor(map.getZoom()); redraw(); chrome(); panel(); facts(); loadGrid(); credits(); windResample(); windSync();
     ask('geo/rings?km=2,5,15').then(x => { RINGS = x.rings.map(g => ({ km: g.km, path: g.ring.map(([la, ln]) => [ln, la]) })); redraw(); }).catch(() => {});
     cellFacts(D.geometry.radio.mine).then(c => { RADIO = { id: c.id, path: loop(c.ring) }; redraw(); }).catch(() => {});
   });
   map.on('moveend', () => { const r = resFor(map.getZoom()); if (r !== PM.res) { PM.res = r; chrome(); } redraw(); panel(); loadGrid(); });
-  map.on('mousemove', e => { const d = PM.draw; if (DRAWING() && d.state && d.state.pts.length) { d.hover = [e.lngLat.lng, e.lngLat.lat]; figureOnly(); redraw(); } });
+  map.on('mousemove', e => { const d = PM.draw; PM.lastPt = e.point; if (DRAWING() && d.state && d.state.pts.length) { d.hover = [e.lngLat.lng, e.lngLat.lat]; figureOnly(); redraw(); } });
   map.on('click', e => {
     if (PM.dlm && !PM.dlm.hidden) { dlMenu(false); return; }   // a press that closes the menu does nothing else
+    const tb = document.getElementById && document.getElementById('ptoolsb');
+    if (tb && tb.getAttribute('aria-expanded') === 'true') return;   // nor one that closes Tools (doors-place.js closes it on the same press)
     if (PM.tool === 'from') {
       const q = [e.lngLat.lng, e.lngLat.lat]; PM.measure = [D.point, q]; PM.measured = null; redraw(); facts();
       fromNode(q[0], q[1]).then(d => { if (PM.measure[1] === q) { PM.measured = { points: 2, legs_m: [d], total_m: d }; redraw(); facts(); figureOnly(); } }).catch(x => offline(x.message));

@@ -3462,8 +3462,9 @@ async function doors() {
       if (shots && (s === '#setup/basics' || s === '#setup/sharing' || s === '#setup/screen'))
         await r.page.screenshot({ path: path.join(OUT, `doors_${s.slice(1).replace('/', '-')}_${tag}.jpg`), fullPage: true, type: 'jpeg', quality: 78 });
     }
-    /* Place (SPEC_place_microgis §4, 4 Nov 2026): the cake on the left in its ten sections, the black screen, the tools on
-       the right; on a phone the screen first and the cake and the tools as two disclosures. The house named in the list
+    /* Place (SPEC_place_microgis §4, 4 Nov 2026, and Tomas's changes of 5 Nov): the cake on the left in its ten sections,
+       the black screen, the tools a menu behind the Tools button on the top line; on a phone the screen first and the
+       cake as a disclosure under it. The house named in the list
        under the screen, its own rows withheld without the token; 44 px targets on a phone; nothing scrolls sideways;
        a cake row pressed switches its layer and says so */
     await go(r.page, '#place'); await r.page.waitForSelector('#cake .ck', { state: 'attached', timeout: 20000 }); await r.page.waitForTimeout(600);
@@ -3472,7 +3473,7 @@ async function doors() {
       const vis = x => x.getClientRects().length, sel = '#cake .ly, #ptools .tl, .tools button, .zoom button, #pmargin button.mr, .scales button, .psbar button';
       const scr = document.querySelector('.mapc');
       return { secs: document.querySelectorAll('#cake .ck').length, map: Math.round(document.getElementById('map').getBoundingClientRect().width),
-        bg: getComputedStyle(scr).backgroundColor, cake: vis(document.getElementById('cake')), tools: document.querySelectorAll('#ptools .tl').length,
+        bg: getComputedStyle(scr).backgroundColor, cake: vis(document.getElementById('cake')), toolsBtn: vis(document.getElementById('ptoolsb')),
         small: [...document.querySelectorAll(sel)].filter(vis).map(x => x.getBoundingClientRect()).filter(b => b.height < 44 || b.width < 44).length,
         cut: [...document.querySelectorAll('#cake .ly span')].filter(x => x.scrollWidth > x.clientWidth).map(x => x.textContent),
         h: [...document.querySelectorAll('#cake .ck > h2')].length,
@@ -3482,7 +3483,16 @@ async function doors() {
     });
     ok(pl.secs === 10, `${tag} #place: the cake has ${pl.secs} sections, not 10`);
     ok(pl.bg === 'rgb(23, 25, 29)', `${tag} #place: the screen is ${pl.bg}, not PAL.dark's land`);
-    ok(pl.cake && pl.tools >= 10, `${tag} #place: the cake is ${pl.cake ? 'drawn' : 'not drawn'}, ${pl.tools} tools listed`);
+    ok(pl.cake && pl.toolsBtn, `${tag} #place: the cake is ${pl.cake ? 'drawn' : 'not drawn'}, the Tools button ${pl.toolsBtn ? 'shown' : 'not shown'}`);
+    /* Tools opens its menu, the rows visible in it, and Esc closes it again */
+    { if (w < 768 && pl.sheet === 'fixed') { await r.page.click('.psbar button[data-s="cake"]'); await r.page.waitForTimeout(150); }   /* close the sheet over the page */
+      await r.page.click('#ptoolsb'); await r.page.waitForTimeout(150);
+      const tm = await r.page.evaluate(() => { const m = document.getElementById('ptools'), rows = [...m.querySelectorAll('.tl')].filter(x => x.getClientRects().length);
+        return { open: !m.hidden && !!m.getClientRects().length, rows: rows.length, first: rows[0] && rows[0].textContent, exp: document.getElementById('ptoolsb').getAttribute('aria-expanded') }; });
+      ok(tm.open && tm.rows === 14 && /^Rings and distance/.test(tm.first || '') && tm.exp === 'true', `${tag} #place: Tools opened ${JSON.stringify(tm)}`);
+      await r.page.keyboard.press('Escape'); await r.page.waitForTimeout(150);
+      ok(await r.page.evaluate(() => document.getElementById('ptools').hidden), `${tag} #place: Esc did not close the Tools menu`);
+      if (w < 768 && pl.sheet === 'fixed') { await r.page.click('.psbar button[data-s="cake"]'); await r.page.waitForTimeout(150); } }
     ok(w < 768 || pl.map >= 700, `${tag} #place: the screen is ${pl.map}px wide`);
     ok(!pl.cut.length, `${tag} #place: cake name(s) cut off: ${pl.cut.join(', ')}`);
     ok(pl.h === pl.secs, `${tag} #place: ${pl.h} cake headings are h2, of ${pl.secs}`);
@@ -3554,8 +3564,9 @@ async function doors() {
        docs say about it (the quote), and a link to the section; a part on a hidden tab or view is not listed */
     if (!dark) {
       await go(r.page, '#now'); await r.page.click('#askbtn'); await r.page.check('#learn');
-      /* what changed, year on year sits in the lower band since 4 Nov (SPEC_place_microgis §4): place-orbit is on the page */
-      const WANT = { '#now': ['now-sentence', 'now-todo', 'now-rows'], '#place': ['place-head', 'place-map', 'place-orbit'].concat(w < 768 ? [] : ['place-layers', 'place-tools']),   /* a phone keeps the cake and the tools in closed sheets */
+      /* what changed, year on year is a band under the screen since 5 Nov: place-orbit is on the page; Tools is on the top
+         line at every width, so place-tools is too */
+      const WANT = { '#now': ['now-sentence', 'now-todo', 'now-rows'], '#place': ['place-head', 'place-map', 'place-orbit', 'place-tools'].concat(w < 768 ? [] : ['place-layers']),   /* a phone keeps the cake in a closed sheet */
         '#node': ['node-verdict', 'node-flow', 'node-refusals'], '#data/readings': ['data-head', 'data-readings', 'data-week'],
         '#data/home': ['data-images', 'data-things'], '#setup': ['settings', 'setup-sections', 'setup-save'], '#wall': ['wall-never', 'wall-sentence', 'wall-map'] };
       const NOT = { '#place': ['earth'], '#data/home': ['data-ledger', 'data-readings'], '#wall': ['bar', 'foot'] };
@@ -3756,9 +3767,21 @@ async function placescreen() {
   const ADMIN = process.env.PAI_ADMIN_TOKEN || (process.env.PAI_ADMIN_TOKEN = 'rig-admin');
   const ground = { on_disk: { vector: false, imagery: true, drone: true }, layers: { imagery: { passes: 12, from: '2025-01', to: '2025-12', bytes: 4e6,
     attribution: 'Contains modified Copernicus Sentinel data' }, drone: { bytes: 1e6, mosaics: [{ provider: 'Bayu', gsd_m: 0.04, date: '2024-03-15', bbox: [115.16, -8.825, 115.172, -8.815] }] } } };
-  for (const w of (process.env.PAI_W ? process.env.PAI_W.split(",").map(Number) : [761, 900, 1024, 1080, 1280, 1440, 390])) for (const fold of w < 761 ? [''] : ['', 'lc']) {
-    const touch = w < 761, tag = `${w}${fold ? ' folded' : ''}`;
-    const r = await openRig({ w, h: touch ? 844 : 900, touch, admin: ADMIN, gl: true, ground, mem: 'doors' });   // a phone keeps the doors by memory
+  /* one map with one area near the node, so a row in the table puts a drawing in hand and opens the form */
+  const MAPS = { maps: [{ id: 1, name: 'Garden plan for the whole street', owner: null, agent: null, shared: false, held: false, share_error: null, from_node: null, marks: 1, updated_at: '2026-11-05T10:00:00Z' }],
+    palette: { 1: '#FFFFFF', 2: '#FFE600', 3: '#9BFF2E', 4: '#00E5FF', 5: '#FF3DCB', 6: '#FF3B30' } };
+  const MARKS = { marks: [{ id: 7, map_id: 1, kind: 'area', colour: 3, label: 'rain garden', note: null, capture_id: null, length_m: null, area_m2: 1500, alert_id: null, event_id: null,
+    geometry: { type: 'Polygon', coordinates: [[[115.1668, -8.8198], [115.168, -8.8198], [115.168, -8.8188], [115.1668, -8.8188], [115.1668, -8.8198]]] } }] };
+  const W = process.env.PAI_W ? process.env.PAI_W.split(',').map(Number) : [761, 900, 1024, 1080, 1280, 1440, 390];
+  /* a pointer at every desk width, open and folded; a finger on the phone; and a tablet (a finger at desk widths, the
+     44 px keys in the desk layout) at 768 and 1024 with the left open */
+  const cases = W.flatMap(w => (w < 761 ? [{ w, fold: '', touch: true }] : [{ w, fold: '' }, { w, fold: 'lc' }]))
+    .concat(process.env.PAI_W ? [] : [{ w: 768, fold: '', touch: true }, { w: 1024, fold: '', touch: true }]);
+  for (const { w, fold, touch = false } of cases) {
+    const tag = `${w}${fold ? ' folded' : ''}${touch && w >= 761 ? ' touch' : ''}`;
+    const r = await openRig({ w, h: w < 761 ? 844 : 900, touch, admin: ADMIN, gl: true, ground, mem: 'doors' });   // a phone keeps the doors by memory
+    await r.page.route('**/place/maps/1/marks*', q => q.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MARKS) }));
+    await r.page.route(u => new URL(u).pathname === '/place/maps', q => q.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MAPS) }));
     if (fold) await r.page.addInitScript(() => { try { localStorage.setItem('planetai_place_folds', 'lc'); } catch (e) {} });
     await r.page.goto(`${POP}/?fixture=${FIXTURE}#place`, { waitUntil: 'domcontentloaded' });
     const live = await r.page.waitForFunction(() => window.__PM && window.__PM.map && window.__PM.map.loaded() && document.querySelector('.dkeys') && document.querySelector('#dread .dchip'),
@@ -3767,15 +3790,36 @@ async function placescreen() {
       map: !!(window.__PM && window.__PM.map), flat: window.__PM && window.__PM.flat, keys: !!document.querySelector('.dkeys') }))));
     if (!live) { await r.browser.close(); continue; }
     await r.page.waitForTimeout(600);
-    for (const st of ['folded', 'open']) {
+    /* an area in progress, three corners and the pointer on a fourth: the chip's figure fits, unclipped */
+    if (w === 900 || (w === 1024 && !fold && !touch)) {   // 900 with the left open is the narrowest readout of the four, 220 px
+      const b = await r.page.evaluate(() => { const c = document.getElementById('map').getBoundingClientRect(); return { x: c.left + c.width / 2, y: c.top + c.height / 2 }; });
+      await r.page.evaluate(() => window.__PM.map.jumpTo({ zoom: 17.2 })); await r.page.waitForTimeout(400);   /* under a hectare: the longest figure, "6120 m² · 0.61 ha · 330 m round" */
+      await r.page.keyboard.press('a'); await r.page.waitForTimeout(150);
+      for (const [dx, dy] of [[-60, -40], [70, -30], [50, 60]]) { await r.page.mouse.click(b.x + dx, b.y + dy); await r.page.waitForTimeout(150); }
+      await r.page.mouse.move(b.x - 50, b.y + 50); await r.page.waitForTimeout(250);
+      const v = await r.page.evaluate(() => { const e = document.querySelector('#dread .dchip .v'), c = document.querySelector('#dread .dchip');
+        const vr = e && e.getBoundingClientRect(), cr = c && c.getBoundingClientRect();
+        return { text: e && e.innerText, sw: e && e.scrollWidth, cw: e && e.clientWidth, past: vr && cr ? Math.round(vr.right - (cr.right - 12)) : null,
+          spill: c ? c.scrollWidth - c.clientWidth : null, chip: cr && Math.round(cr.width) }; });
+      /* the figure fits: not cut by its own ellipsis, not past the chip's padding, the chip not overflowing */
+      ok(v.text && /m²|ha/.test(v.text) && v.sw <= v.cw && v.past <= 0.5 && v.spill <= 0, `${tag}: an area in progress, the chip's figure does not fit: ${JSON.stringify(v)}`);
+      seen.push(`area ${v.text} in a ${v.chip} px chip at ${tag}`);
+      await r.page.keyboard.press('Escape'); await r.page.keyboard.press('v'); await r.page.waitForTimeout(150);
+    }
+    for (const st of ['folded', 'open', 'form']) {
       if (st === 'open') { await r.page.click('#dread .dchip'); await r.page.waitForTimeout(200); }
+      if (st === 'form') { await r.page.click('#dread .dchip'); await r.page.evaluate(() => { const b = document.querySelector('#ptable .mrow'); if (b) b.click(); }); await r.page.waitForTimeout(900);
+        /* a short panel (the phone's) scrolls: bring the form into it, as a thumb would */
+        await r.page.evaluate(() => { const f = document.getElementById('dform'), p = f && f.closest('.dpanel'); if (p && f.offsetTop + f.offsetHeight > p.clientHeight) p.scrollTop = f.offsetTop; }); await r.page.waitForTimeout(100); }
       const g = await r.page.evaluate(() => {
-        const m = document.getElementById('map').getBoundingClientRect(), sel = { keys: '.dkeys', readout: '#dread .dchip', colours: '#dfull:not([hidden])',
+        const m = document.getElementById('map').getBoundingClientRect(), sel = { keys: '.dkeys', readout: '#dread .dchip', colours: '#dfull:not([hidden])', form: '#dform:not([hidden])',
           hour: '#phour', column: '.mapc .tools', rungs: '#mapbar .scales', base: '.pbase:not([hidden])', zoom: '.mapc .zoom', scale: '.maplibregl-ctrl-scale', credit: '#mapcredit' };
         const B = {};
         for (const [k, q] of Object.entries(sel)) { const e = document.querySelector(q);
           if (!e || !e.getClientRects().length || (k === 'credit' && (!e.textContent.trim() || getComputedStyle(e).position === 'static'))) continue;
-          const b = e.getBoundingClientRect(); B[k] = [b.left - m.left, b.top - m.top, b.right - m.left, b.bottom - m.top]; }
+          const b = e.getBoundingClientRect(), p = e.closest('.dpanel') && e.closest('.dpanel').getBoundingClientRect();   /* the panel scrolls: what is in it shows only inside it */
+          B[k] = [b.left - m.left, (p ? Math.max(b.top, p.top) : b.top) - m.top, b.right - m.left, (p ? Math.min(b.bottom, p.bottom) : b.bottom) - m.top];
+          if (B[k][3] <= B[k][1]) delete B[k]; }
         const over = [], ks = Object.keys(B);
         for (let i = 0; i < ks.length; i++) for (let j = i + 1; j < ks.length; j++) { const a = B[ks[i]], b = B[ks[j]];
           if (a[0] < b[2] - 0.5 && b[0] < a[2] - 0.5 && a[1] < b[3] - 0.5 && b[1] < a[3] - 0.5) over.push(`${ks[i]} × ${ks[j]}`); }
@@ -3785,17 +3829,20 @@ async function placescreen() {
         return { W: Math.round(m.width), ks, over, out: ks.filter(k => { const b = B[k]; return b[0] < -0.5 || b[1] < -0.5 || b[2] > m.width + 0.5 || b[3] > m.height + 0.5; }),
           cut: sc ? sc.scrollWidth - sc.clientWidth : 0, small: Math.min(...keys) };
       });
-      const want = ['keys', 'readout', 'hour', 'column', 'rungs', 'base', 'zoom'].concat(st === 'open' ? ['colours'] : []);
+      /* with a drawing in hand a short panel may have scrolled its chip out of view: the form must show */
+      const want = ['keys', 'hour', 'column', 'rungs', 'base', 'zoom'].concat(st === 'folded' ? ['readout'] : st === 'open' ? ['readout', 'colours'] : ['form']);
       ok(want.every(k => g.ks.includes(k)), `${tag}, readout ${st}: not drawn: ${want.filter(k => !g.ks.includes(k)).join(', ')}`);
       ok(!g.over.length, `${tag}, readout ${st} (screen ${g.W} px): overlapping: ${g.over.join(', ')}`);
       ok(!g.out.length, `${tag}, readout ${st}: off the screen: ${g.out.join(', ')}`);
       ok(g.cut <= 1, `${tag}, readout ${st}: the rungs are cut by ${g.cut} px`);
       ok(g.small >= (touch ? 44 : 36), `${tag}, readout ${st}: a key ${g.small} px across, under ${touch ? 44 : 36}`);
       seen.push(`${g.W}`);
+      if (st === 'form') await r.page.keyboard.press('Escape');
     }
     await r.browser.close();
   }
-  if (!bad.length) { console.log(`  placescreen: the keys, readout, hour, right column, rungs, base switch, zoom, scale and credit apart and on the screen at ${[...new Set(seen)].join(', ')} px of screen, the readout folded and open; keys 36 px with a pointer, 44 under a finger`); return; }
+  if (!bad.length) { const px = [...new Set(seen.filter(x => /^\d+$/.test(x)))], ar = seen.filter(x => x.startsWith('area'));
+    console.log(`  placescreen: the keys, readout, colours, form, hour, right column, rungs, base switch, zoom, scale and credit apart and on the screen at ${px.join(', ')} px of screen, readout folded, open and with a drawing in hand${cases.some(c => c.touch && c.w >= 761) ? ', a tablet\'s 44 px keys at 768 and 1024' : ''}; keys 36 px with a pointer, 44 under a finger${ar.length ? `; ${ar.join('; ')}, unclipped` : ''}`); return; }
   for (const b of bad) console.log('FAIL placescreen:', b);
   process.exit(1);
 }

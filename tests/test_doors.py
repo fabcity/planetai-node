@@ -630,7 +630,8 @@ _css = html[html.index("/* ================= PLACE: a small GIS"):html.index("/*
 assert re.search(r"\.tools button,\.zoom button\{width:var\(--k\);height:var\(--k\)", _css), "the map's tools are --k square"
 assert "--k:36px;container:place / inline-size;" in _css and "@media (pointer:coarse){.mapc{--k:44px}}" in _css, \
     "the keys inside the screen are 36 px with a pointer and 44 px under a finger (Tomas, 5 Nov 2026)"
-assert "44px" not in _css.split("@media (pointer:coarse){.mapc{--k:44px}}")[1].split("/* under the screen")[0], "no 44 px left inside the screen: --k sizes it"
+assert not re.search(r"(width|height):44px", _css.split("@media (pointer:coarse){.mapc{--k:44px}}")[1].split("/* under the screen")[0]), "no 44 px target left inside the screen: --k sizes it"
+assert ".pmpop .maplibregl-popup-close-button{font:400 18px/1 var(--mono);color:var(--ink);width:var(--k);height:var(--k)" in html, "the popup's close button follows --k too"
 assert "@container place (max-width:759px){#mapbar .scales b{display:none}" in _css and "@media (min-width:761px){@container place (max-width:559px){" in _css \
     and ".mapc .nonode{right:calc(var(--k) + 24px);bottom:56px;pointer-events:none}" in _css and "width:min(300px,calc(100% - 2 * var(--k) - 302px))" in _css, \
     "the screen's controls lay out by its own width: the rungs by number under 760 px, the base and the hour move under 560 px (tests/visual/measure.mjs placescreen proves the boxes)"
@@ -1085,6 +1086,26 @@ async function boot(tok, o = {}) {
     keys.forEach(f => f({ key: 'Enter', target: { closest: () => null }, preventDefault: noop, stopPropagation: noop, shiftKey: false, metaKey: false, ctrlKey: false, altKey: false }));
     await new Promise(r => setTimeout(r, 40));
     return { form, posted: posted.map(b => [b.properties.kind, b.geometry.coordinates]), picker: c.$('#dform').innerHTML }; } });
+  /* fix round: while a line is drawn and the map zooms without the mouse moving, the leg to the pointer keeps its end
+     under the pointer (move, in the same frame as the edge pins); Esc on the Tools button leaves the screen alone; a
+     press that closes Tools does nothing on the map; the Image key with no map says make one first */
+  out.fix = await boot(true, { then: async ({ c, map, ons, keys, posted }) => {
+    const r = {}, ev = (k, closest) => keys.forEach(f => f({ key: k, target: { closest }, preventDefault: noop, stopPropagation: noop, shiftKey: false, metaKey: false, ctrlKey: false, altKey: false }));
+    c.__PM.setTool('line');
+    (ons.click || []).forEach(f => f({ lngLat: { lng: 115.167, lat: -8.819 }, point: { x: 100, y: 100 } }));
+    (ons.mousemove || []).forEach(f => f({ lngLat: { lng: 115.168, lat: -8.8185 }, point: { x: 300, y: 200 } }));
+    r.before = c.__PM.draw.hover;
+    map.unproject = ([x, y]) => ({ lng: x / 2e4 + 115, lat: -y / 2e4 - 8 });   /* the map zoomed: the same pixel is another place */
+    (ons.move || []).forEach(f => f()); await new Promise(x => setTimeout(x, 20));
+    r.after = c.__PM.draw.hover; c.__PM.setTool('select');
+    c.__PM.draw.sel = 11; ev('Escape', q => (q.includes('.ptools') ? {} : null)); r.escTools = c.__PM.draw.sel;
+    c.__PM.draw.sel = null; c.__PM.setTool('marker'); const n = posted.length;
+    c.document.getElementById = id => (id === 'ptoolsb' ? { getAttribute: () => 'true' } : null);
+    (ons.click || []).forEach(f => f({ lngLat: { lng: 115.16, lat: -8.82 }, point: { x: 1, y: 1 } })); await new Promise(x => setTimeout(x, 30));
+    r.toolsClick = { posted: posted.length - n, state: c.__PM.draw.state };
+    c.document.getElementById = () => null; c.__PM.setTool('select');
+    c.__PM.draw.map = null; c.__PM.setTool('image'); r.noMap = { read: c.$('#dread').innerHTML, form: c.$('#dform').innerHTML };
+    return r; } });
   /* From the house, in the Tools menu: a tool row that runs with the token */
   const els = {}, c = { $: q => (els[q] ||= el()), DOORS_TOKEN: () => 't', document: { activeElement: null, querySelectorAll: () => [], querySelector: () => null }, window: { __PM: { on: {}, tool: 'select' } } };
   vm.createContext(c); vm.runInContext(place.match(/const TOOLS = [\s\S]*?\n\];\n/)[0] + fn(place, 'placeTools') + 'placeTools()', c);
@@ -1202,6 +1223,18 @@ assert _open(_ch["held"]) and "Arrows move point 1 of 3" in _ch["held"] and '<sp
 assert _shut(_ch["letGo"]["html"]) and _ch["letGo"]["sel"] is None, ("Esc lets the drawing go, and the readout it opened folds again", _ch["letGo"])
 assert 'id="dsaid" class="vh" aria-live="polite"' in _t["panel"], "the finished-figure live region stays as it was"
 print("  place: the readout is a chip with the tool, the map, the live figure and a dot; a press opens the colours; a drawing in hand opens it; Esc folds it")
+_fx = M["fix"]
+assert _fx["before"] == [115.168, -8.8185] and _fx["after"] == [115 + 300 / 2e4, -8 - 200 / 2e4], ("on move the leg's end follows the pointer's pixel", _fx["before"], _fx["after"])
+assert _fx["escTools"] == 11, "Esc on the Tools button is the menu's, not the screen's: the drawing in hand stays"
+assert _fx["toolsClick"] == {"posted": 0, "state": None}, ("a press that closes Tools drops no marker", _fx["toolsClick"])
+assert "Make a map first with New map" in _fx["noMap"]["read"] and "Add a photo on its own." in _fx["noMap"]["form"] and "Press the map" not in _fx["noMap"]["form"], \
+    ("the Image key with no map says make one first, and still offers a photo on its own", _fx["noMap"])
+assert "@container place (max-width:899px){.dchip .v small.more{display:none}}" in html and ".dchip .m{flex:0 1000 auto;" in html and "text-overflow:ellipsis}.dchip .v:empty" in html, \
+    "the chip gives way name first, then the tool; the figure ends in an ellipsis and keeps its unit when narrow"
+assert "@media (min-width:761px){#pchange .pair figure{aspect-ratio:auto;height:min(420px,calc(50vw - 40px))}#pchange .pair img{object-fit:cover;object-position:center}}" in html, \
+    "at a desk then and now are a wide frame, at most 420 px tall, cropped about the centre"
+assert "max-height:calc(100% - 3 * var(--k) - 44px)" in html, "under 560 px of screen the readout and its form stop above the hour"
+print("  place: the leg follows the pointer through a zoom; Esc and a press that close Tools touch nothing else; the Image key with no map says so")
 _im = M["image"]
 assert 'data-a="newphoto"' in _im["form"] and "A new photo" in _im["form"], ("the Image key with nothing in hand offers a photo on its own", _im["form"])
 assert _im["posted"] == [["marker", [115.167, -8.819]]] and 'data-a="newimg"' in _im["picker"], ("Enter with the Image key pins a marker at the centre and opens the picker", _im)
@@ -1296,9 +1329,9 @@ function load({ store = {}, fsOk = true, broken = false, tok = true } = {}) {
   const doc = { fullscreenEnabled: fsOk, fullscreenElement: null, activeElement: null,
       addEventListener: (t, f) => { if (t === 'keydown') keys.push(f); if (t === 'click') clicks.push(f); },
       querySelector: q => (q === '.bench' ? bench : q === '.mapc' ? screen : q === '.tools [data-t="wide"]' ? wide : q === '#cake' ? cake
-        : q === '.pfold[data-fold="lc"]' ? folds[0] : null),
+        : q === '.pfold[data-fold="lc"]' ? folds[0] : q === '.ptools' ? wrap : null),
       querySelectorAll: q => (q === '.pfold' ? folds : q === '#ptools button[data-layer]' ? menu.rows.filter(r => r.kind === 'layer') : q === '#ptools button[data-tool]' ? menu.rows.filter(r => r.kind === 'tool') : []) };
-  const els = { '#ptools': menu, '#ptoolsb': tb };
+  const els = { '#ptools': menu, '#ptoolsb': tb }, wrap = { on: {}, addEventListener(t, f) { this.on[t] = f; }, contains: x => x === tb || menu.rows.includes(x) };
   const c = { VIEWS: {}, D: {}, console, view: () => 'place', localStorage: ls, $: q => els[q] || { addEventListener: noop }, document: doc, DOORS_TOKEN: () => (tok ? 't' : '') };
   c.window = c; c.__PM = { map: { resize: () => { seen.resized++; } }, on: {}, tool: 'select', setTool: t => seen.tools.push(t) };
   c.placeLayer = (l, on) => seen.layers.push(`${l}:${on}`);
@@ -1307,7 +1340,7 @@ function load({ store = {}, fsOk = true, broken = false, tok = true } = {}) {
   const key = (k, o = {}) => keys.forEach(f => f({ key: k, target: { closest: o.typing ? typing : o.menu ? (s => /ptmenu/.test(s) ? {} : null) : () => null }, preventDefault: noop, metaKey: !!o.meta, ctrlKey: !!o.ctrl, altKey: !!o.alt }));
   const state = () => ({ cls: [...cls].sort().join(' '), labels: folds.map(b => `${b.attrs['aria-label']}:${b.attrs['aria-expanded']}`), title: folds[0].title,
     wide: wide.attrs['aria-pressed'], store: store.planetai_place_folds, ...seen });
-  return { folds, key, state, store, doc, row, tb, menu, c, click: inside => clicks.forEach(f => f({ target: { closest: s => (inside && s === '.ptools' ? {} : null) } })) };
+  return { folds, key, state, store, doc, row, tb, menu, c, wrap, click: inside => clicks.forEach(f => f({ target: { closest: s => (inside && s === '.ptools' ? {} : null) } })) };
 }
 const out = {}, a = load();
 out.start = a.state();
@@ -1336,6 +1369,9 @@ t.key('Escape', { menu: true }); out.menu.esc = { hidden: t.menu.hidden, exp: t.
 t.tb.onclick(); t.click(true); out.menu.inside = t.menu.hidden; t.click(false); out.menu.outside = t.menu.hidden;
 t.tb.onclick(); t.menu.rows.find(r => r.name === 'from').onclick(); out.menu.from = { tools: t.state().tools, hidden: t.menu.hidden, focus: t.doc.activeElement && t.doc.activeElement.name };
 t.tb.onclick(); t.menu.rows.find(r => r.name === 'rings').onclick(); out.menu.rings = t.state().layers;
+t.tb.onclick(); t.wrap.on.focusout({ relatedTarget: t.menu.rows[1] }); out.menu.focusIn = t.menu.hidden;
+t.wrap.on.focusout({ relatedTarget: null }); out.menu.focusNull = t.menu.hidden;
+t.wrap.on.focusout({ relatedTarget: { name: 'elsewhere' } }); out.menu.focusOut = t.menu.hidden;
 const lk = load({ tok: false }); lk.c.placeTools(); out.locked = { html: lk.menu.html, any: lk.menu.rows.filter(r => r.kind && !r.disabled).length };
 console.log(JSON.stringify(out));
 """
@@ -1366,6 +1402,7 @@ assert _mn["open"] and _mn["exp"] == "true" and _mn["focus"] == "rings", ("Tools
 assert _mn["esc"] == {"hidden": True, "exp": "false", "focus": "toolsb"}, ("Esc closes the menu and gives the focus back to Tools", _mn["esc"])
 assert _mn["inside"] is False and _mn["outside"] is True, "a press outside the menu closes it, one inside does not"
 assert _mn["from"] == {"tools": ["from"], "hidden": True, "focus": "toolsb"} and _mn["rings"] == ["rings:true"], ("a tool chosen runs and closes the menu", _mn)
+assert _mn["focusIn"] is False and _mn["focusNull"] is False and _mn["focusOut"] is True, ("focus leaving the menu closes it; moving within it, or a press, does not", _mn)
 assert F9["locked"]["any"] == 0 and "Tools run on this node with a token. Unlock this screen in Set up." in F9["locked"]["html"], "without the token the rows are quiet and say why"
 print("  place: Tools is one button on the top line; its menu lists the two that run, then the ones not yet; Esc or a press outside closes it")
 

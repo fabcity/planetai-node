@@ -400,8 +400,8 @@ button.tl{cursor:pointer}button.tl:hover:not(:disabled):not(.on){background:var(
 @media (min-width:761px){@container place (max-width:559px){
   .mapc:has(.dkeys) .phour,.mapc .phour{left:auto;right:12px;top:auto;bottom:calc(2 * var(--k) + 24px);transform:none}
   .pbase{left:12px;right:auto;bottom:calc(var(--k) + 28px)}.mapc .maplibregl-ctrl-bottom-left{bottom:calc(2 * var(--k) + 48px)}
-  .mapc #mapbar{max-width:calc(100% - var(--k) - 40px)}.mapc:has(.pbase:not([hidden])) #mapcredit{bottom:12px}
-  .dpanel{width:min(300px,calc(100% - 2 * var(--k) - 52px))}
+  .mapc #mapbar{max-width:calc(100% - var(--k) - 40px)}.mapc:has(.pbase:not([hidden])) #mapcredit,.mapc #mapcredit{bottom:12px;max-width:calc(100% - 6 * var(--k) - 60px)}
+  .dpanel{width:min(300px,calc(100% - 2 * var(--k) - 52px));max-height:calc(100% - 3 * var(--k) - 44px)}
 }}
 /* the readout folds to a chip (Tomas, 5 Nov 2026): the tool, the open map, the live figure and a dot in the colour; a
    press opens the colours and the hint under it, a second press or Esc folds them */
@@ -409,8 +409,15 @@ button.tl{cursor:pointer}button.tl:hover:not(:disabled):not(.on){background:var(
 .dchip{display:flex;align-items:center;gap:8px;max-width:100%;min-height:var(--k);padding:0 12px;background:var(--chip);border:1px solid var(--hair);border-radius:999px;color:var(--ink);font:400 11px var(--body);cursor:pointer;white-space:nowrap}
 .dchip:hover{background:var(--raise)}.dchip[aria-expanded="true"]{border-color:var(--ink)}
 .dchip .dot{flex:none;width:10px;height:10px;border-radius:50%;box-shadow:0 0 0 1px var(--hair)}
-.dchip .m{min-width:0;font:400 10px var(--mono);color:var(--mute);overflow:hidden;text-overflow:ellipsis}
-.dchip .v{font:400 13px var(--mono);letter-spacing:-.01em}.dchip .v:empty{display:none}.dchip .v small{margin-left:4px;font-size:10px;color:var(--mute)}
+/* when the chip is short of room the map's name gives way first, then the tool's word; the figure last, and it ends in
+   an ellipsis rather than spilling out. The figure's second half (" · 0.31 ha · 223 m round") is the open panel's on
+   a screen under 900 px: the chip keeps the number and its unit */
+.dchip>*{min-width:0}.dchip .t{flex:0 10 auto;overflow:hidden;text-overflow:ellipsis}
+.dchip .m{flex:0 1000 auto;font:400 10px var(--mono);color:var(--mute);overflow:hidden;text-overflow:ellipsis}
+.dchip .v,.dfull .vf{flex:0 1 auto;font:400 13px var(--mono);letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis}.dchip .v:empty,.dfull .vf:empty{display:none}
+.dchip .v small,.dfull .vf small{margin-left:4px;font-size:10px;color:var(--mute)}.dchip .v small.more,.dfull .vf small.more{margin-left:0}
+.dfull .vf{display:block;margin:2px 0 4px;white-space:normal}
+@container place (max-width:899px){.dchip .v small.more{display:none}}
 .dfull,.dform{background:var(--chip);border:1px solid var(--hair);border-radius:10px;padding:6px 10px 8px;color:var(--ink)}.dfull{align-self:stretch}.dfull[hidden],.dform[hidden]{display:none}
 /* the swatches are .dsw: .sw is the margin's sign class, 18 px wide */
 .dread .dsw{display:flex;flex-wrap:wrap;align-items:center}.dread .dsw em{margin-left:auto;font:normal 400 11px var(--body);color:var(--mute)}
@@ -442,6 +449,9 @@ button.tl{cursor:pointer}button.tl:hover:not(:disabled):not(.on){background:var(
 #altbar{display:flex;gap:6px;align-items:center;padding:4px 0;font:400 var(--t-cap) var(--body)}
 #altbar button{background:none;border:1px solid var(--hair);border-radius:999px;color:var(--ink);width:44px;height:44px;cursor:pointer}#altbar .cmp{margin-left:auto;display:flex;gap:6px;align-items:center;min-height:44px}
 #pchange .pair{height:auto}#pchange .pair figure{aspect-ratio:1}#pchange .photo{width:100%;display:block}
+/* at a desk the two pictures are a wide frame, no taller than the screen above them, cropped about their centre: the
+   full 3 km across, less of the north and south (Tomas, 5 Nov: they were taller than the map) */
+@media (min-width:761px){#pchange .pair figure{aspect-ratio:auto;height:min(420px,calc(50vw - 40px))}#pchange .pair img{object-fit:cover;object-position:center}}
 .years{display:grid;gap:4px;align-items:end;height:98px;margin-top:8px}.years i{background:var(--ink);opacity:.55;border-radius:1px}
 .yl{display:grid;gap:3px;margin:3px 0 10px;font:400 9.5px var(--mono);color:var(--mute);text-align:center}
 /* the open map's table: a swatch in the drawing's own colour is the one place a drawing colour sits off the screen */
@@ -464,7 +474,7 @@ button.tl{cursor:pointer}button.tl:hover:not(:disabled):not(.on){background:var(
 .pmpop .maplibregl-popup-content{background:var(--ground);color:var(--ink);border:1px solid var(--ink);border-radius:0;box-shadow:none;padding:10px 26px 10px 12px;display:flex;flex-direction:column;gap:4px;font:var(--t-small)/1.35 var(--body)}
 .pmpop .maplibregl-popup-content b{font:600 var(--t-body)/1.25 var(--body)}.pmpop .maplibregl-popup-content .mono{font-size:var(--t-cap);color:var(--mute)}
 .pmpop .maplibregl-popup-content a{font:600 var(--t-small) var(--body);color:var(--ink);margin-top:4px;text-underline-offset:3px}
-.pmpop .maplibregl-popup-close-button{font:400 18px/1 var(--mono);color:var(--ink);width:44px;height:44px;border-radius:0}
+.pmpop .maplibregl-popup-close-button{font:400 18px/1 var(--mono);color:var(--ink);width:var(--k);height:var(--k);border-radius:0}
 .pmpop .maplibregl-popup-tip{border-top-color:var(--ink);border-bottom-color:var(--ink)}
 .sw.txt::before{content:'Aa';font:600 11px/14px var(--body)}
 .sw.pt-img::before{content:'■';font:14px/12px var(--mono)}.pmimg{width:100%;max-height:160px;object-fit:cover;background:var(--hair)}
