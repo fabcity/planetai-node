@@ -627,7 +627,13 @@ assert '<button type="button" id="ptoolsb" class="ptoolsb" aria-expanded="false"
 assert 'class="pcols"' not in _place and 'id="reach"' not in _place and 'id="layers"' not in _place and 'id="pleads"' not in _place, "the old workbench is gone"
 assert "'#pfigures').innerHTML = `<h3 class=\"pmh\">the place in figures</h3>` + yearly()" in (STATIC / "doors-place.js").read_text(), "Land and Coast are the place's figures"
 _css = html[html.index("/* ================= PLACE: a small GIS"):html.index("/* ================= NODE")]
-assert re.search(r"\.tools button,\.zoom button\{width:44px;height:44px", _css), "the map's tools are 44 px targets"
+assert re.search(r"\.tools button,\.zoom button\{width:var\(--k\);height:var\(--k\)", _css), "the map's tools are --k square"
+assert "--k:36px;container:place / inline-size;" in _css and "@media (pointer:coarse){.mapc{--k:44px}}" in _css, \
+    "the keys inside the screen are 36 px with a pointer and 44 px under a finger (Tomas, 5 Nov 2026)"
+assert "44px" not in _css.split("@media (pointer:coarse){.mapc{--k:44px}}")[1].split("/* under the screen")[0], "no 44 px left inside the screen: --k sizes it"
+assert "@container place (max-width:759px){#mapbar .scales b{display:none}" in _css and "@media (min-width:761px){@container place (max-width:559px){" in _css \
+    and ".mapc .nonode{right:calc(var(--k) + 24px);bottom:56px;pointer-events:none}" in _css and "width:min(300px,calc(100% - 2 * var(--k) - 302px))" in _css, \
+    "the screen's controls lay out by its own width: the rungs by number under 760 px, the base and the hour move under 560 px (tests/visual/measure.mjs placescreen proves the boxes)"
 assert "box-shadow:0 0 0 1px #000,0 0 0 5px #1b1b1b,0 0 0 6px #000" in _css and "border-radius:10px" in _css, "the screen sits in its bezel"
 assert re.search(r"\.bench\{display:grid;grid-template-columns:216px minmax\(0,1fr\);", _css) and ".page[data-view=\"place\"]{max-width:1440px}" in _css, \
     "216 px of cake, and the screen takes the rest"
@@ -635,8 +641,9 @@ _v2 = _css[:_css.index("#pedges{")]   # the v2 rules; the swatches after them pr
 _v2 = _v2.replace(_v2[_v2.index(".mapc{--ink"):_v2.index(".mapw{")], "")   # the screen's own values and its bezel
 assert not re.search(r"#[0-9A-Fa-f]{3,6}\b", _v2), "no raw colour outside the screen: the frozen layer's names"
 assert re.search(r"@media \(max-width:760px\)\{[^@]*\.bench\{grid-template-columns:minmax\(0,1fr\)", html), "a phone: one column, the screen first"
-assert ".phour button{width:44px;height:44px" in _css and "min-height:44px;padding:0 12px" in _css and "#altbar button{background:none;border:1px solid var(--hair);border-radius:999px;color:var(--ink);width:44px;height:44px" in _css, \
-    "every target on the screen is 44 px: the hour, the rungs, the satellite's years"
+assert ".phour button{width:var(--k);height:var(--k)" in _css and ".pbase button{min-height:var(--k);padding:0 12px" in _css and "min-height:var(--k);padding:0 12px;border:0;border-radius:999px;background:none;color:var(--mute);cursor:pointer;font:400 11px" in _css \
+    and "#altbar button{background:none;border:1px solid var(--hair);border-radius:999px;color:var(--ink);width:44px;height:44px" in _css, \
+    "the hour, the base switch and the rungs follow --k; the satellite's years, on the page, keep 44 px"
 assert re.search(r"@media \(max-width:760px\)\{[^@]*#cake\{display:none;position:fixed;left:0;right:0;bottom:0", html), "a phone's cake is a sheet over the lower band"
 assert re.search(r"#cake\{height:0;min-height:100%;overflow-y:auto", _css), "the cake scrolls inside the bench, which the screen's column sets"
 assert "#ptools{" not in _css.replace("#ptools{display", ""), "no right column is styled"
@@ -952,6 +959,8 @@ async function boot(tok, o = {}) {
   /* the lower band's row buttons, as mapTable() wires them */
   const rows = [{ dataset: { k: '11' } }, { dataset: { k: '12' } }];
   els['#ptable'] = Object.assign(el(), { querySelectorAll: q => (q === '.mrow' ? rows : []) });
+  const chip = { classList: { contains: () => true }, focus() { c.document.activeElement = chip; } };
+  els['#dread'] = Object.assign(el(), { querySelector: q => (q === '.dchip' ? chip : null), contains: x => x === chip });
   const ask = (p, init = {}) => { asked.push(p); if (!tok && L.DOORS_LOCKED.test(p)) return Promise.resolve(new Response('{}', { status: 403 }));
     if (init.method === 'PATCH') { const b = JSON.parse(init.body); patched.push(b);
       return Promise.resolve(new Response(JSON.stringify({ mark: { ...MARKS.marks.find(k => p.endsWith('/' + k.id)), ...b } }), { status: 200 })); }
@@ -1059,6 +1068,18 @@ async function boot(tok, o = {}) {
     return { before, after: c.$('#pedges').innerHTML, listKept: c.$('#pmargin').innerHTML === list, moves: (ons.move || []).length }; } });
   /* the Image key, now that the top line's + Add an image is gone: with nothing in hand it offers a photo on its own, and
      Enter pins a marker at the map's centre and opens the picker, whose first button is a new photo */
+  /* the readout is a chip: folded at first, opened by a press, folded by a second; open by itself while a drawing of
+     this house's is in hand, folded when it is let go; Esc from inside it folds it and keeps the focus on the chip */
+  out.chip = await boot(true, { then: async ({ c, keys }) => {
+    const r = {}, read = () => c.$('#dread').innerHTML, chip = c.$('#dread').querySelector('.dchip');
+    const esc = inPanel => keys.forEach(f => f({ key: 'Escape', target: { closest: q => (inPanel && q === '.dpanel' ? {} : null) }, preventDefault: noop, stopPropagation: noop, shiftKey: false, metaKey: false, ctrlKey: false, altKey: false }));
+    c.__PM.draw.sel = null; c.__PM.draw.open = false; c.__PM.draw.auto = false; c.__PM.readout = null;
+    c.__PM.setTool('select'); r.start = read();
+    chip.onclick(); r.opened = read(); chip.onclick(); r.folded = read();
+    chip.onclick(); c.document.activeElement = chip; esc(true); r.escInside = { html: read(), focus: c.document.activeElement === chip };
+    c.$('#ptable').querySelectorAll('.mrow')[0].onclick(); r.held = read();
+    esc(false); r.letGo = { html: read(), sel: c.__PM.draw.sel };
+    return r; } });
   out.image = await boot(true, { then: async ({ c, keys, posted }) => {
     c.__PM.draw.sel = null; c.__PM.setTool('image'); const form = c.$('#dform').innerHTML;
     keys.forEach(f => f({ key: 'Enter', target: { closest: () => null }, preventDefault: noop, stopPropagation: noop, shiftKey: false, metaKey: false, ctrlKey: false, altKey: false }));
@@ -1108,14 +1129,14 @@ assert not [p for p in _x["asked"] if p.startswith(("/place/maps", "/place/marks
 print("  place: without the token, your maps say where they are and how to unlock; no key, no New map")
 assert 'data-tool="from"' in M["ptools"] and "From the house" in M["ptools"], M["ptools"][:400]
 _css = html[html.index("/* ================= PLACE: a small GIS"):html.index("/* ================= NODE")]
-assert ".dkeys button{width:44px;height:44px" in _css and re.search(r"\.dkeys button:focus-visible,\.dpanel button:focus-visible,\.dpanel input:focus-visible,"
+assert ".dkeys button{width:var(--k);height:var(--k)" in _css and ".dread .dsw button{flex:none;width:var(--k);height:var(--k)" in _css and re.search(r"\.dkeys button:focus-visible,\.dchip:focus-visible,\.dpanel button:focus-visible,\.dpanel input:focus-visible,"
                                                                     r"\.dpanel textarea:focus-visible,\.dpanel select:focus-visible\{outline:2px solid var\(--cells\)", _css), \
-    "44 px keys; focus on the black screen is the cells' blue, as the hour pill's"
+    "--k keys and swatches; focus on the black screen is the cells' blue, as the hour pill's"
 assert "p.cells" in pm[pm.index("function drawLayers"):pm.index("function drawLayers") + 4000], "a drawing in focus is outlined in the cells' blue"
 assert ".ly.map i{border-radius:2px}" in _css, "a map's dot is square, a layer's round"
 assert "'The image stays on this node. The map only names which one it is, and the file never leaves.'" in pm and "never the fileâ€™s" not in pm, \
     "the image hint says only what is true: a photo's own GPS still wins on the node"
-print("  place: From the house in the right column; 44 px keys; focus is the cells' blue on the screen")
+print("  place: From the house in the Tools menu; --k keys; focus is the cells' blue on the screen")
 
 # Share's second press sends the map exactly, so only the node's own warning (409, code share_warning) may arm it.
 # A 500, or "no node upstream", shows its words and the next press asks for the warning again (final review I3).
@@ -1171,6 +1192,16 @@ print("  place: the right column reads Map only, Full screen, Back to this nodeâ
 assert _g["imagery"] is True and M["plain"]["imagery"] is False, "the satellite is the base where the node holds imagery, the streets elsewhere"
 _dp = {k: M["drawPan"][k] for k in ("idle", "drawing", "canvas", "pts")}
 assert _dp == {"idle": 0, "drawing": 1, "canvas": 1, "pts": 1}, ("a started line pans the map from anywhere, the page's arrows are left alone before, and the canvas pans by itself", _dp)
+_ch = M["chip"]
+_open = lambda h: 'class="dchip" aria-expanded="true"' in h and '<div id="dfull" class="dfull">' in h
+_shut = lambda h: 'class="dchip" aria-expanded="false"' in h and '<div id="dfull" class="dfull" hidden>' in h
+assert _shut(_ch["start"]) and 'class="dot"' in _ch["start"] and 'data-c="1"' in _ch["start"], ("the readout opens folded, a chip with a dot in the colour", _ch["start"][:400])
+assert _open(_ch["opened"]) and _shut(_ch["folded"]), "a press on the chip opens the colours and the hint, a second folds them"
+assert _shut(_ch["escInside"]["html"]) and _ch["escInside"]["focus"], "Esc from inside the readout folds it and keeps the focus on the chip"
+assert _open(_ch["held"]) and "Arrows move point 1 of 3" in _ch["held"] and '<span class="v" aria-hidden="true">' in _ch["held"], ("a drawing of the house's in hand opens the colours by itself", _ch["held"][:500])
+assert _shut(_ch["letGo"]["html"]) and _ch["letGo"]["sel"] is None, ("Esc lets the drawing go, and the readout it opened folds again", _ch["letGo"])
+assert 'id="dsaid" class="vh" aria-live="polite"' in _t["panel"], "the finished-figure live region stays as it was"
+print("  place: the readout is a chip with the tool, the map, the live figure and a dot; a press opens the colours; a drawing in hand opens it; Esc folds it")
 _im = M["image"]
 assert 'data-a="newphoto"' in _im["form"] and "A new photo" in _im["form"], ("the Image key with nothing in hand offers a photo on its own", _im["form"])
 assert _im["posted"] == [["marker", [115.167, -8.819]]] and 'data-a="newimg"' in _im["picker"], ("Enter with the Image key pins a marker at the centre and opens the picker", _im)

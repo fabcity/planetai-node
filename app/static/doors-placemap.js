@@ -647,7 +647,7 @@ async function download(k) {
 const MARKS = {};                 // map id → its drawings, as GET /place/maps/{id}/marks answers them
 const UNDO = [];                  // what ⌘Z takes back, newest last: each one a call back to the node
 PM.draw = { map: null, state: null, sel: null, colour: 1, corner: null, kc: 0, hover: null, via: null, edit: null, asked: null, naming: false,
-  pick: null, err: '', mapErr: '', said: '', preview: null, focusLabel: false };
+  pick: null, err: '', mapErr: '', said: '', preview: null, focusLabel: false, open: false, auto: false };
 PM.mapOff = new Set();
 const DRAWS = ['marker', 'line', 'area', 'note'];
 const DRAWING = () => DRAWS.includes(PM.tool);
@@ -699,7 +699,10 @@ const keysHTML = () => KEYS.map(([k, l]) => `<button type="button" class="${k ==
   + `<svg viewBox="0 0 20 20" aria-hidden="true">${KEYICON[k]}</svg><small>${l}</small></button>`).join('')
   + `<button type="button" class="gap" data-k="undo" aria-label="Undo" title="Undo · ⌘Z or Ctrl+Z"><svg viewBox="0 0 20 20" aria-hidden="true">${KEYICON.undo}</svg><small>⌘Z</small></button>`;
 
-/* the readout: the tool and the open map, the figure large, the six colours, one line of what to do. The figure
+/* the readout, folded to a chip (Tomas, 5 Nov 2026): the tool, the open map, the figure while it is drawn (the distance
+   or the surface is the point of drawing) and a dot in the colour. A press on it opens the six colours and one line of
+   what to do; a second press or Esc folds them. It opens by itself while a drawing of this house's is in hand, since
+   the colours recolour it, and folds again when that drawing is let go, unless somebody opened it by hand. The figure
    follows the pointer, so it is hidden from a screen reader; the live region is #dsaid alone, written only when a
    drawing is kept (§10: the finished figure, not every mouse move). */
 function figureNow() {
@@ -720,11 +723,17 @@ function figureNow() {
 function readout() {
   const el = $('#dread'); if (!el || !PM.map || !DOORS_TOKEN()) return;
   const d = PM.draw, m = openMap(), k = markById(d.sel), f = figureNow(), cur = k ? k.colour : d.colour;
-  el.innerHTML = `<div class="t"><span>${TOOLWORD[PM.tool] || ''}</span><span>${m ? esc(m.name) : 'no map yet'}</span></div>`
-    + `<div class="v" aria-hidden="true">${f.v}</div>`
+  if (d.auto && d.sel == null) { d.open = false; d.auto = false; }   // opened for a drawing that is no longer in hand
+  const had = el.contains && el.contains(document.activeElement) && document.activeElement.classList && document.activeElement.classList.contains('dchip');
+  el.innerHTML = `<button type="button" class="dchip" aria-expanded="${!!d.open}" aria-controls="dfull" title="${d.open ? 'Fold the colours' : 'The colours, and what to do'} · Esc folds">`
+    + (PM.palette ? `<i class="dot" aria-hidden="true" style="background:${esc(PM.palette[cur])}"></i>` : '')
+    + `<span class="t">${TOOLWORD[PM.tool] || ''}</span><span class="m">${m ? esc(m.name) : 'no map yet'}</span><span class="v" aria-hidden="true">${f.v}</span></button>`
+    + `<div id="dfull" class="dfull"${d.open ? '' : ' hidden'}>`
     + (PM.palette ? `<div class="dsw" role="group" aria-label="Colour">${[1, 2, 3, 4, 5, 6].map(n => `<button type="button" data-c="${n}" aria-label="Colour ${n}" aria-pressed="${n === cur}">`
       + `<i style="background:${esc(PM.palette[n])}"></i></button>`).join('')}<em>colour</em></div>` : '')
-    + `<div class="hint">${esc(f.hint)}</div>${d.err ? `<p class="err">${esc(d.err)}</p>` : ''}`;
+    + `<div class="hint">${esc(f.hint)}</div></div>${d.err ? `<p class="err">${esc(d.err)}</p>` : ''}`;
+  const chip = el.querySelector && el.querySelector('.dchip');
+  if (chip) { chip.onclick = () => { d.open = !d.open; d.auto = false; readout(); }; if (had) chip.focus(); }
   const live = $('#dsaid'); if (d.said && live) { live.textContent = d.said; d.said = ''; }
   el.querySelectorAll('[data-c]').forEach(b => b.onclick = () => {
     const n = +b.dataset.c, s = markById(PM.draw.sel);
@@ -841,7 +850,8 @@ const pickOf = h => {
     : (id === 'grid' || id === 'grid-dot' || id === 'mine' || id === 'radio') ? { kind: 'cell', id: o.id } : null;
 };
 function select(id) {
-  const d = PM.draw; d.sel = id; d.corner = null; d.kc = 0; d.pick = null; PM.pick = null; popup(null);
+  const d = PM.draw, k = markById(id); d.sel = id; d.corner = null; d.kc = 0; d.pick = null; PM.pick = null; popup(null);
+  if (k && mine(mapById(k.map_id)) && !d.open) { d.open = true; d.auto = true; }   // the colours recolour the drawing in hand
   readout(); drawForm(); redraw(); mapTable();
 }
 function press(e) {
@@ -915,7 +925,10 @@ function onKey(e) {
   if (key && k.length === 1) { e.preventDefault(); PM.setTool(key); return; }
   if (k === 'Escape') {
     if (MEASURING()) { PM.setTool('select'); return; }
-    if (d.state) d.state = null; else if (d.corner != null) d.corner = null; else if (d.pick) d.pick = null; else if (d.sel != null) d.sel = null; else return;
+    /* from inside the readout, Esc folds it and keeps the focus on its chip; elsewhere it folds last */
+    if (d.open && within('.dpanel')) { d.open = false; d.auto = false; readout(); const c = $('#dread').querySelector('.dchip'); if (c) c.focus(); return; }
+    if (d.state) d.state = null; else if (d.corner != null) d.corner = null; else if (d.pick) d.pick = null; else if (d.sel != null) d.sel = null;
+    else if (d.open) { d.open = false; d.auto = false; } else return;
     readout(); drawForm(); redraw(); mapTable(); return;
   }
   if (k === 'Backspace' && d.state && d.state.pts.length) { e.preventDefault(); d.state = backPt(d.state); readout(); redraw(); return; }

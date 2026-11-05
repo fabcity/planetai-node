@@ -2955,8 +2955,9 @@ const docFor = u => {
   const layout = u.searchParams.get('layout');
   return layout === 'mobile' ? 'mobile.html' : layout === 'classic' ? 'index.html' : 'doors.html';
 };
-const openRig = async ({ w = 390, h = 844, touch = true, dark = false, token = null, mem = null, throttle = false, locked = false, wireDays = null, admin = null, sections = null, alerts = null, forecast = null } = {}) => {
-  const browser = await chromium.launch();
+const openRig = async ({ w = 390, h = 844, touch = true, dark = false, token = null, mem = null, throttle = false, locked = false, wireDays = null, admin = null, sections = null, alerts = null, forecast = null, gl = false, ground = null } = {}) => {
+  /* gl: software WebGL (SwiftShader), so Place draws its live map and the controls on it, which the still map has not */
+  const browser = await chromium.launch(gl ? { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] } : {});
   const ctx = await browser.newContext({ viewport: { width: w, height: h }, isMobile: touch, hasTouch: touch,
     deviceScaleFactor: 1, colorScheme: dark ? 'dark' : 'light', reducedMotion: 'reduce' });
   const reqs = [];
@@ -3005,12 +3006,19 @@ const openRig = async ({ w = 390, h = 844, touch = true, dark = false, token = n
     /* the node serves the documentation's index from data/ under this one name (main.py COMPANIONS) */
     if (file === 'docs_site.json') return route.fulfill({ status: 200, contentType: 'application/json', body: fs.readFileSync(path.join(ROOT, 'data', file)) });
     if (file) {
+      /* gl: the node serves MapLibre and deck.gl under /static/ from vendor/ (main.py); without gl they stay unserved,
+         as they always were here, so every other check keeps the still map it was written against */
       const p = file.includes('/') ? null
-        : fs.existsSync(path.join(STATIC, file)) ? path.join(STATIC, file) : path.join(STATIC, 'fonts', file);
+        : fs.existsSync(path.join(STATIC, file)) ? path.join(STATIC, file)
+        : gl && fs.existsSync(path.join(STATIC, 'vendor', file)) ? path.join(STATIC, 'vendor', file) : path.join(STATIC, 'fonts', file);
       if (p === null) return route.fulfill({ status: 404, body: 'the node serves a name, not a path' });
       if (fs.existsSync(p)) return route.fulfill({ status: 200, body: fs.readFileSync(p),
         headers: { 'content-type': MIME[path.extname(p)] || 'application/octet-stream' } });
     }
+    /* ground: this answer for /ground/meta, as a node holding a satellite layer and a drone flight; every other /ground/
+       file is not there, so the screen is black under its controls */
+    if (ground && u.pathname === '/ground/meta') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(ground) });
+    if (ground && u.pathname.startsWith('/ground/')) return route.fulfill({ status: 404, body: '' });
     /* the locked phone: /issues answers exactly the 403 body app/main.py builds at SHARE_LEVEL=off */
     if (locked && u.pathname === '/issues')
       return route.fulfill({ status: 403, contentType: 'application/json', body: REFUSAL('/issues') });
@@ -3731,6 +3739,63 @@ async function doors() {
   process.exit(1);
 }
 
+/* ------------------------------------------------------------------ the controls on the Place screen (5 Nov 2026)
+ *
+ * Tomas on node #1: "Review the size of the menus inside the map when rescaling, now they collapse." The rig's still map
+ * draws none of them, so this opens Place with software WebGL and the admin token, on a node holding a satellite layer
+ * and a drone flight (the base switch shows), at the widths in between, the left open and folded, the readout folded
+ * and opened, and asks for the boxes of the keys, the readout, the hour, the right column, the rungs, the base switch,
+ * the zoom, the scale and the credit: no two overlap, none leaves the screen, the rungs are not cut, and every key is
+ * 36 px with a pointer, 44 px under a finger. A rig that gives the screen no live map fails: it would prove nothing. */
+async function placescreen() {
+  const bad = [], ok = (c, what) => { if (!c) bad.push(what); }, seen = [];
+  const ADMIN = process.env.PAI_ADMIN_TOKEN || (process.env.PAI_ADMIN_TOKEN = 'rig-admin');
+  const ground = { on_disk: { vector: false, imagery: true, drone: true }, layers: { imagery: { passes: 12, from: '2025-01', to: '2025-12', bytes: 4e6,
+    attribution: 'Contains modified Copernicus Sentinel data' }, drone: { bytes: 1e6, mosaics: [{ provider: 'Bayu', gsd_m: 0.04, date: '2024-03-15', bbox: [115.16, -8.825, 115.172, -8.815] }] } } };
+  for (const w of (process.env.PAI_W ? process.env.PAI_W.split(",").map(Number) : [761, 900, 1024, 1080, 1280, 1440, 390])) for (const fold of w < 761 ? [''] : ['', 'lc']) {
+    const touch = w < 761, tag = `${w}${fold ? ' folded' : ''}`;
+    const r = await openRig({ w, h: touch ? 844 : 900, touch, admin: ADMIN, gl: true, ground, mem: 'doors' });   // a phone keeps the doors by memory
+    if (fold) await r.page.addInitScript(() => { try { localStorage.setItem('planetai_place_folds', 'lc'); } catch (e) {} });
+    await r.page.goto(`${POP}/?fixture=${FIXTURE}#place`, { waitUntil: 'domcontentloaded' });
+    const live = await r.page.waitForFunction(() => window.__PM && window.__PM.map && window.__PM.map.loaded() && document.querySelector('.dkeys') && document.querySelector('#dread .dchip'),
+      null, { timeout: 30000 }).then(() => true, () => false);
+    if (!live) bad.push(`${tag}: the screen drew no live map, keys or readout (no WebGL in this rig?): ` + JSON.stringify(await r.page.evaluate(() => ({ url: location.href,
+      map: !!(window.__PM && window.__PM.map), flat: window.__PM && window.__PM.flat, keys: !!document.querySelector('.dkeys') }))));
+    if (!live) { await r.browser.close(); continue; }
+    await r.page.waitForTimeout(600);
+    for (const st of ['folded', 'open']) {
+      if (st === 'open') { await r.page.click('#dread .dchip'); await r.page.waitForTimeout(200); }
+      const g = await r.page.evaluate(() => {
+        const m = document.getElementById('map').getBoundingClientRect(), sel = { keys: '.dkeys', readout: '#dread .dchip', colours: '#dfull:not([hidden])',
+          hour: '#phour', column: '.mapc .tools', rungs: '#mapbar .scales', base: '.pbase:not([hidden])', zoom: '.mapc .zoom', scale: '.maplibregl-ctrl-scale', credit: '#mapcredit' };
+        const B = {};
+        for (const [k, q] of Object.entries(sel)) { const e = document.querySelector(q);
+          if (!e || !e.getClientRects().length || (k === 'credit' && (!e.textContent.trim() || getComputedStyle(e).position === 'static'))) continue;
+          const b = e.getBoundingClientRect(); B[k] = [b.left - m.left, b.top - m.top, b.right - m.left, b.bottom - m.top]; }
+        const over = [], ks = Object.keys(B);
+        for (let i = 0; i < ks.length; i++) for (let j = i + 1; j < ks.length; j++) { const a = B[ks[i]], b = B[ks[j]];
+          if (a[0] < b[2] - 0.5 && b[0] < a[2] - 0.5 && a[1] < b[3] - 0.5 && b[1] < a[3] - 0.5) over.push(`${ks[i]} × ${ks[j]}`); }
+        const sc = document.querySelector('#mapbar .scales');
+        const keys = [...document.querySelectorAll('.dkeys button, .mapc .tools button, .mapc .zoom button, #mapbar .scales button, .pbase button, #dread .dchip, .dsw button')]
+          .filter(e => e.getClientRects().length).map(e => e.getBoundingClientRect()).map(b => Math.round(Math.min(b.width, b.height)));
+        return { W: Math.round(m.width), ks, over, out: ks.filter(k => { const b = B[k]; return b[0] < -0.5 || b[1] < -0.5 || b[2] > m.width + 0.5 || b[3] > m.height + 0.5; }),
+          cut: sc ? sc.scrollWidth - sc.clientWidth : 0, small: Math.min(...keys) };
+      });
+      const want = ['keys', 'readout', 'hour', 'column', 'rungs', 'base', 'zoom'].concat(st === 'open' ? ['colours'] : []);
+      ok(want.every(k => g.ks.includes(k)), `${tag}, readout ${st}: not drawn: ${want.filter(k => !g.ks.includes(k)).join(', ')}`);
+      ok(!g.over.length, `${tag}, readout ${st} (screen ${g.W} px): overlapping: ${g.over.join(', ')}`);
+      ok(!g.out.length, `${tag}, readout ${st}: off the screen: ${g.out.join(', ')}`);
+      ok(g.cut <= 1, `${tag}, readout ${st}: the rungs are cut by ${g.cut} px`);
+      ok(g.small >= (touch ? 44 : 36), `${tag}, readout ${st}: a key ${g.small} px across, under ${touch ? 44 : 36}`);
+      seen.push(`${g.W}`);
+    }
+    await r.browser.close();
+  }
+  if (!bad.length) { console.log(`  placescreen: the keys, readout, hour, right column, rungs, base switch, zoom, scale and credit apart and on the screen at ${[...new Set(seen)].join(', ')} px of screen, the readout folded and open; keys 36 px with a pointer, 44 under a finger`); return; }
+  for (const b of bad) console.log('FAIL placescreen:', b);
+  process.exit(1);
+}
+
 const [cmd, ...rest] = process.argv.slice(2);
 if (cmd === 'render') await render(rest.length ? rest : ['all']);
 else if (cmd === 'steps') await steps();
@@ -3756,5 +3821,6 @@ else if (cmd === 'list') jobs().forEach(j => console.log(j.name));
 else if (cmd === 'mobile') await mobile();
 else if (cmd === 'doors') await doors();
 else if (cmd === 'wallwalk') await wallwalk();
-else { console.error('usage: measure.mjs render|shots|plates|plate-list|steps|stall|press|asking|extend|anchors|sheets|header|targets|audit|overflow|analyse|list|mobile|doors|wallwalk');
+else if (cmd === 'placescreen') await placescreen();
+else { console.error('usage: measure.mjs render|shots|plates|plate-list|steps|stall|press|asking|extend|anchors|sheets|header|targets|audit|overflow|analyse|list|mobile|doors|wallwalk|placescreen');
   process.exit(2); }
