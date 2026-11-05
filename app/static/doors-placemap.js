@@ -91,7 +91,7 @@ function imageRows() {
   const im = LAYERS.find(l => l.id === 'images'), sp = LAYERS.find(l => l.id === 'species'), C = PM.caps || [], S = (PM.species || {}).species || [];
   const kinds = d3.rollups(C, v => v.length, c => c.kind).map(([k, v]) => `${v} ${(KIND[k] || k).toLowerCase()}`).join(', ');
   im.locked = sp.locked = !PM.caps; im.empty = !C.length; sp.empty = !S.length;
-  im.none = 'none yet · + Add an image, above the map'; sp.none = 'none confirmed yet · confirm what an image shows in Data › Images';
+  im.none = 'none yet · the Image key on the screen'; sp.none = 'none confirmed yet · confirm what an image shows in Data › Images';
   im.sub = `${C.length} · ${kinds}`; im.src = `${C.length} here`; sp.src = `${S.length} here`;
   sp.sub = `${S.length} confirmed · ${S.slice(0, 2).map(short).join(', ')}${S.length > 2 ? ', …' : ''}`;
   PM.on.images = !im.empty; PM.on.species = !sp.empty;
@@ -517,16 +517,16 @@ async function fly(r) {
 /* The screen's right edge, top to bottom (SPEC_place_microgis §4): Map only and Full screen, back to this node's cell,
    and Download, whose menu holds the image of the screen and the open map in three formats. Zoom sits apart at the bottom
    right, with the base switch beside it. Measuring became the line key and Inspect became Select (the drawing keys,
-   below); From the house is a tool in the right column (doors-place.js), and ends on a second press or Esc. */
+   below); From the house is in the Tools menu on the top line (doors-place.js), and ends on a second press or Esc. */
 const MEASURING = () => PM.tool === 'from';
 const COL = [['wide', 'Map only', '\\'], ['full', 'Full screen', 'F'], ['fit', 'Back to this node’s cell'], ['dl', 'Download']];
 function tools() {
   const el = document.createElement('div'), zm = document.createElement('div'), menu = PM.dlm = document.createElement('div'), base = PM.basesw = document.createElement('div');
   el.className = 'tools'; zm.className = 'zoom'; menu.className = 'dlmenu'; menu.id = 'dlmenu'; menu.hidden = true; base.className = 'pbase';
   menu.setAttribute('role', 'group'); menu.setAttribute('aria-label', 'Download'); base.setAttribute('role', 'group'); base.setAttribute('aria-label', 'Base map');
-  /* Map only folds both sides, Full screen is the browser's own on the screen (doors-place.js): its key is not drawn where
+  /* Map only folds the left and grows the screen, Full screen is the browser's own on the screen (doors-place.js): its key is not drawn where
      the browser has no element full screen (Safari on iPhone) */
-  const bench = document.querySelector('.bench'), both = !!bench && bench.classList.contains('lc') && bench.classList.contains('rc');
+  const bench = document.querySelector('.bench'), both = !!bench && bench.classList.contains('mo');
   el.innerHTML = COL.filter(([k]) => k !== 'full' || document.fullscreenEnabled).map(([k, t, key]) => `<button type="button" data-t="${k}" class="${k === 'fit' || k === 'dl' ? 'gap' : ''}" aria-label="${t}" title="${key ? `${t} · ${key}` : t}"`
     + (k === 'wide' ? ` aria-pressed="${both}"` : k === 'full' ? ` aria-pressed="${!!document.fullscreenElement}"` : '')
     + (k === 'dl' ? ' aria-expanded="false" aria-controls="dlmenu"' : '')
@@ -694,7 +694,8 @@ const tiedTo = k => {
 };
 
 /* the keys: six tools and Undo, the letter small in a corner, the pressed one filled */
-const keysHTML = () => KEYS.map(([k, l]) => `<button type="button" class="${k === 'marker' ? 'gap' : ''}" data-k="${k}" aria-label="${KEYNAME[k]}" aria-pressed="${PM.tool === k}" title="${KEYNAME[k]} · ${l}">`
+const keysHTML = () => KEYS.map(([k, l]) => `<button type="button" class="${k === 'marker' ? 'gap' : ''}" data-k="${k}" aria-label="${KEYNAME[k]}" aria-pressed="${PM.tool === k}" title="${KEYNAME[k]} · ${l}"`
+  + (k === 'image' ? ' data-learn="place-image" data-reads="/captures" data-stage="observe" data-pack="core"' : '') + '>'
   + `<svg viewBox="0 0 20 20" aria-hidden="true">${KEYICON[k]}</svg><small>${l}</small></button>`).join('')
   + `<button type="button" class="gap" data-k="undo" aria-label="Undo" title="Undo · ⌘Z or Ctrl+Z"><svg viewBox="0 0 20 20" aria-hidden="true">${KEYICON.undo}</svg><small>⌘Z</small></button>`;
 
@@ -746,6 +747,10 @@ function drawForm() {
     el.innerHTML = `<p>An image for ${esc(markById(d.pick.id).label || 'this drawing')}</p><div class="acts"><button type="button" data-a="newimg">A new photo</button><button type="button" data-a="back">Back</button></div>`
       + (C == null ? '<p>Asking the node for its images…</p>' : !C.length ? '<p>No image is on this node yet.</p>'
         : `<div class="caps">${C.map(c => `<button type="button" data-cap="${+c.id}">${esc(KIND[c.kind] || c.kind)} · ${esc(c.note || 'no note')} <small>${esc(when(c.ts))}</small></button>`).join('')}</div>`);
+  } else if (!k && PM.tool === 'image') {
+    /* the Image key with nothing in hand: a photo for no drawing goes where it was taken, the header's old button */
+    el.innerHTML = '<p>Press the map, or Enter for its centre, to pin an image there. Or add a photo on its own: it lands where it was taken, else in the node’s cell.</p>'
+      + '<div class="acts"><button type="button" data-a="newphoto">A new photo</button></div>';
   } else if (!k) { el.hidden = true; el.innerHTML = ''; return; }
   else if (!mine(m)) {
     el.innerHTML = `<p>${m && m.from_node ? `This map came from ${esc(m.from_node)}; it is read-only here.` : `This is ${esc(m && m.agent)}’s map.`}</p>`;
@@ -768,6 +773,7 @@ function drawForm() {
   on('tie', () => { const i = q('issue').value; if (i === '') { d.err = 'Choose the issue it answers first.'; readout(); return; }
     patch(k.id, { issue: openIssues()[+i].issue, words: q('words').value }, false); });
   on('back', () => { d.pick = null; drawForm(); });
+  on('newphoto', () => window.placeAddImage && window.placeAddImage());
   on('newimg', () => { const id = d.pick.id; window.placeAddImage && window.placeAddImage({ at: centreOf(markById(id)), done: c => { d.pick = null; patch(id, { image: c }); } }); });
   el.querySelectorAll('[data-cap]').forEach(b => b.onclick = () => { const id = d.pick.id; d.pick = null; patch(id, { image: +b.dataset.cap }); });
   if (d.focusLabel && q('label')) { d.focusLabel = false; q('label').focus(); }
@@ -847,18 +853,17 @@ function press(e) {
     if (!PM.on.drone) setLayer('drone', true);
     PM.map.easeTo({ center: hit.object.q, zoom: 16, duration: CLOCK.reduced() ? 0 : 900 }); return;
   }
-  if (PM.tool === 'image') {
-    /* a drawing takes the image; an empty place gets a marker to carry it */
-    if (k) { select(k.id); picker(k.id); return; }
-    if (!openMap()) { readout(); return; }
-    /* the picker opens only for the marker just kept: a refused one leaves nothing in hand to attach to */
-    d.sel = null; d.state = addPt(drawState('marker'), q); finish().then(id => { if (id != null) picker(id); });
-    return;
-  }
+  if (PM.tool === 'image') { if (k) { select(k.id); picker(k.id); } else imageAt(q); return; }
   if (id === 'draw-corner' && hit.object.k != null && hit.object.k === d.sel) { d.corner = hit.object.i; readout(); redraw(); return; }
   if (d.corner != null && d.sel != null) { moveCorner(q); return; }
   if (k) { select(k.id); return; }
   d.sel = null; d.corner = null; PM.pick = pickOf(hit); popup(PM.pick); facts(); readout(); drawForm(); redraw(); mapTable();
+}
+/* the image key on an empty place: a marker to carry the image, then the picker for it (Data's images, or a new photo).
+   The picker opens only for the marker just kept: a refused one leaves nothing in hand to attach to */
+function imageAt(q) {
+  const d = PM.draw; if (!openMap()) { readout(); return; }
+  d.sel = null; d.state = addPt(drawState('marker'), q); finish().then(id => { if (id != null) picker(id); });
 }
 function pressDraw(q, pt) {
   const d = PM.draw; if (!openMap()) { readout(); return; }
@@ -872,8 +877,10 @@ function pressDraw(q, pt) {
 /* Enter: with the keyboard the map's centre is the cursor. It adds a point there, and finishes once the shape can be
    one and the centre has not moved since the last point; after pressing with the mouse it finishes at once. */
 function enter() {
-  const d = PM.draw, s = d.state; if (!DRAWING()) return false;
-  const c = PM.map.getCenter(), q = [c.lng, c.lat], last = s && s.pts[s.pts.length - 1];
+  const d = PM.draw, s = d.state, c = PM.map.getCenter(), q = [c.lng, c.lat];
+  if (PM.tool === 'image' && d.sel == null) { imageAt(q); return true; }   // the image key from the keyboard: at the map's centre
+  if (!DRAWING()) return false;
+  const last = s && s.pts[s.pts.length - 1];
   const a = last && PM.map.project(last), b = PM.map.project(q), still = !!a && Math.hypot(a.x - b.x, a.y - b.y) < 2;
   if (s && canFinish(s) && (d.via === 'click' || still)) { finish(); return true; }
   if (!openMap()) { readout(); return true; }
@@ -900,8 +907,8 @@ function nudge(i, dx, dy) {
 function onKey(e) {
   if (view() !== 'place' || !PM.map || !DOORS_TOKEN()) return;
   const t = e.target, d = PM.draw, k = e.key, within = sel => !!(t && t.closest && t.closest(sel));
-  /* the download menu keeps its keys: onKey listens in the capture phase, so the menu's own Esc cannot stop it */
-  if (within('input, textarea, select, [contenteditable], dialog, .dlmenu')) return;
+  /* the download and Tools menus keep their keys: onKey listens in the capture phase, so a menu's own Esc cannot stop it */
+  if (within('input, textarea, select, [contenteditable], dialog, .dlmenu, .ptmenu')) return;
   if ((e.metaKey || e.ctrlKey) && !e.shiftKey && (k === 'z' || k === 'Z')) { e.preventDefault(); undo(); return; }
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const key = (KEYS.find(([, l]) => l === k.toUpperCase()) || [])[0];

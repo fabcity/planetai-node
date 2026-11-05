@@ -614,25 +614,32 @@ for _v in _learn.VERDICT_WORDS:
     assert re.search(rf"const VERDICT_W = {{[^}}]*\b{_v}:", _nodejs), f"Node has no words for the verdict {_v}"
 # PHASE 4a, Place and Node (Tomas, 14–15 Oct 2026). Each check fails if its fix regresses.
 _place = html[html.index('<section class="page view" data-view="place"'):html.index("<!-- DATA -->")]
-# SPEC_place_microgis §4 (4 Nov 2026): the cake | the screen | the tools, then the lower band: selected | the place in figures
-assert _place.index('id="cake"') < _place.index('class="mapc"') < _place.index('id="facts"') < _place.index('id="pmargin"') \
-    < _place.index('id="ptools"') < _place.index('class="plow"') < _place.index('id="ptable"') < _place.index('id="pfigures"'), \
-    "the cake, the screen with its status line and the marks around the house, the tools; then the lower band"
+# SPEC_place_microgis §4, as Tomas changed it on 5 Nov 2026: the tools a menu on the top line; the cake | the screen;
+# the years end to end; then the lower band: the open map's table | the place in figures
+assert _place.index('id="pask"') < _place.index('id="ptoolsb"') < _place.index('id="ptools"') < _place.index('id="cake"') < _place.index('class="mapc"') \
+    < _place.index('id="facts"') < _place.index('id="pmargin"') < _place.index('class="pyears"') < _place.index('id="pchange"') \
+    < _place.index('class="plow"') < _place.index('id="ptable"') < _place.index('id="pfigures"'), \
+    "Ask and Tools on the top line; the cake, the screen with its status line and the marks around the house; the years; then the lower band"
+assert 'id="paddimg"' not in _place and 'class="addimg"' not in html and "addimg" not in (STATIC / "doors-place.js").read_text(), "+ Add an image left the top line: the Image key does it"
+assert 'data-fold="rc"' not in _place and _place.count('class="pfold"') == 1 and 'data-s="tools"' not in _place, "one side menu, the left: no right column, no right fold, no tools sheet"
+assert '<button type="button" id="ptoolsb" class="ptoolsb" aria-expanded="false" aria-controls="ptools">Tools</button><div id="ptools" class="ptmenu" role="group" aria-label="Tools" hidden>' in _place, \
+    "the tools are one button with a menu it discloses"
 assert 'class="pcols"' not in _place and 'id="reach"' not in _place and 'id="layers"' not in _place and 'id="pleads"' not in _place, "the old workbench is gone"
 assert "'#pfigures').innerHTML = `<h3 class=\"pmh\">the place in figures</h3>` + yearly()" in (STATIC / "doors-place.js").read_text(), "Land and Coast are the place's figures"
 _css = html[html.index("/* ================= PLACE: a small GIS"):html.index("/* ================= NODE")]
 assert re.search(r"\.tools button,\.zoom button\{width:44px;height:44px", _css), "the map's tools are 44 px targets"
 assert "box-shadow:0 0 0 1px #000,0 0 0 5px #1b1b1b,0 0 0 6px #000" in _css and "border-radius:10px" in _css, "the screen sits in its bezel"
-assert re.search(r"\.bench\{display:grid;grid-template-columns:216px minmax\(0,1fr\) 286px", _css) and ".page[data-view=\"place\"]{max-width:1440px}" in _css, \
-    "216 px of cake, the screen, 286 px of tools"
+assert re.search(r"\.bench\{display:grid;grid-template-columns:216px minmax\(0,1fr\);", _css) and ".page[data-view=\"place\"]{max-width:1440px}" in _css, \
+    "216 px of cake, and the screen takes the rest"
 _v2 = _css[:_css.index("#pedges{")]   # the v2 rules; the swatches after them predate it
 _v2 = _v2.replace(_v2[_v2.index(".mapc{--ink"):_v2.index(".mapw{")], "")   # the screen's own values and its bezel
 assert not re.search(r"#[0-9A-Fa-f]{3,6}\b", _v2), "no raw colour outside the screen: the frozen layer's names"
 assert re.search(r"@media \(max-width:760px\)\{[^@]*\.bench\{grid-template-columns:minmax\(0,1fr\)", html), "a phone: one column, the screen first"
 assert ".phour button{width:44px;height:44px" in _css and "min-height:44px;padding:0 12px" in _css and "#altbar button{background:none;border:1px solid var(--hair);border-radius:999px;color:var(--ink);width:44px;height:44px" in _css, \
     "every target on the screen is 44 px: the hour, the rungs, the satellite's years"
-assert re.search(r"@media \(max-width:760px\)\{[^@]*#cake,#ptools\{display:none;position:fixed;left:0;right:0;bottom:0", html), "a phone's cake and tools are a sheet over the lower band"
-assert re.search(r"#cake,#ptools\{height:0;min-height:100%;overflow-y:auto", _css), "the cake and the tools scroll inside the bench, which the screen's column sets"
+assert re.search(r"@media \(max-width:760px\)\{[^@]*#cake\{display:none;position:fixed;left:0;right:0;bottom:0", html), "a phone's cake is a sheet over the lower band"
+assert re.search(r"#cake\{height:0;min-height:100%;overflow-y:auto", _css), "the cake scrolls inside the bench, which the screen's column sets"
+assert "#ptools{" not in _css.replace("#ptools{display", ""), "no right column is styled"
 assert not re.search(r"(^|[},])\.ph[ ,{]", _css, re.M), "Place's headings are .pmh: .ph is Set up's pack card"
 assert "overflow-x:auto" not in html[html.index("/* ================= NODE"):].split("\n")[1], "the flow never scrolls sideways"
 pprog = r"""
@@ -941,13 +948,15 @@ const el = () => ({ innerHTML: '', textContent: '', hidden: false, style: {}, da
   click() { if (this.download) SAVED.push(this.download); },
   getContext: () => ({ setTransform: noop, clearRect: noop }), clientWidth: 900, clientHeight: 560 });
 async function boot(tok, o = {}) {
-  const els = {}, map = el(), asked = [], drawn = {}, patched = [], keys = [], ons = {}, onced = [], eased = [], renders = [];
+  const els = {}, map = el(), asked = [], drawn = {}, patched = [], posted = [], keys = [], ons = {}, onced = [], eased = [], renders = [];
   /* the lower band's row buttons, as mapTable() wires them */
   const rows = [{ dataset: { k: '11' } }, { dataset: { k: '12' } }];
   els['#ptable'] = Object.assign(el(), { querySelectorAll: q => (q === '.mrow' ? rows : []) });
   const ask = (p, init = {}) => { asked.push(p); if (!tok && L.DOORS_LOCKED.test(p)) return Promise.resolve(new Response('{}', { status: 403 }));
     if (init.method === 'PATCH') { const b = JSON.parse(init.body); patched.push(b);
       return Promise.resolve(new Response(JSON.stringify({ mark: { ...MARKS.marks.find(k => p.endsWith('/' + k.id)), ...b } }), { status: 200 })); }
+    if (init.method === 'POST' && /^\/place\/maps\/\d+\/marks/.test(p)) { const b = JSON.parse(init.body); posted.push(b);
+      return Promise.resolve(new Response(JSON.stringify({ mark: { id: 99, map_id: 3, kind: b.properties.kind, colour: 1, label: null, note: null, capture_id: null, geometry: b.geometry } }), { status: 200 })); }
     const f = p.match(/^\/place\/maps\/(\d+)\.(geojson|kml|dxf)\?/);
     if (f) return Promise.resolve(new Response('x', { status: 200, headers: { 'content-disposition': `attachment; filename="n-${f[1]}.${f[2]}"` } }));
     const b = p.startsWith('/ground/meta') && o.meta ? o.meta : p.startsWith('/nearby') && o.nearby ? o.nearby
@@ -984,7 +993,7 @@ async function boot(tok, o = {}) {
     key('ArrowUp'); await new Promise(r => setTimeout(r, 650));
     out.patched = patched;
   }
-  if (o.then) Object.assign(out, await o.then({ c, map, ons, drawn, asked, onced, eased, renders, keys }));
+  if (o.then) Object.assign(out, await o.then({ c, map, ons, drawn, asked, onced, eased, renders, keys, posted }));
   return { ...out, drawn: Object.fromEntries(Object.entries(drawn).filter(([k]) => k.startsWith('draw-')).map(([k, v]) => [k, (v.data || []).length])) };
 }
 (async () => {
@@ -1048,7 +1057,14 @@ async function boot(tok, o = {}) {
     (ons.move || []).forEach(f => f()); (ons.move || []).forEach(f => f());   /* two moves in one frame draw once */
     await new Promise(r => setTimeout(r, 20));
     return { before, after: c.$('#pedges').innerHTML, listKept: c.$('#pmargin').innerHTML === list, moves: (ons.move || []).length }; } });
-  /* From the house, in the right column: a tool row that runs with the token */
+  /* the Image key, now that the top line's + Add an image is gone: with nothing in hand it offers a photo on its own, and
+     Enter pins a marker at the map's centre and opens the picker, whose first button is a new photo */
+  out.image = await boot(true, { then: async ({ c, keys, posted }) => {
+    c.__PM.draw.sel = null; c.__PM.setTool('image'); const form = c.$('#dform').innerHTML;
+    keys.forEach(f => f({ key: 'Enter', target: { closest: () => null }, preventDefault: noop, stopPropagation: noop, shiftKey: false, metaKey: false, ctrlKey: false, altKey: false }));
+    await new Promise(r => setTimeout(r, 40));
+    return { form, posted: posted.map(b => [b.properties.kind, b.geometry.coordinates]), picker: c.$('#dform').innerHTML }; } });
+  /* From the house, in the Tools menu: a tool row that runs with the token */
   const els = {}, c = { $: q => (els[q] ||= el()), DOORS_TOKEN: () => 't', document: { activeElement: null, querySelectorAll: () => [], querySelector: () => null }, window: { __PM: { on: {}, tool: 'select' } } };
   vm.createContext(c); vm.runInContext(place.match(/const TOOLS = [\s\S]*?\n\];\n/)[0] + fn(place, 'placeTools') + 'placeTools()', c);
   out.ptools = c.$('#ptools').innerHTML;
@@ -1155,6 +1171,11 @@ print("  place: the right column reads Map only, Full screen, Back to this node�
 assert _g["imagery"] is True and M["plain"]["imagery"] is False, "the satellite is the base where the node holds imagery, the streets elsewhere"
 _dp = {k: M["drawPan"][k] for k in ("idle", "drawing", "canvas", "pts")}
 assert _dp == {"idle": 0, "drawing": 1, "canvas": 1, "pts": 1}, ("a started line pans the map from anywhere, the page's arrows are left alone before, and the canvas pans by itself", _dp)
+_im = M["image"]
+assert 'data-a="newphoto"' in _im["form"] and "A new photo" in _im["form"], ("the Image key with nothing in hand offers a photo on its own", _im["form"])
+assert _im["posted"] == [["marker", [115.167, -8.819]]] and 'data-a="newimg"' in _im["picker"], ("Enter with the Image key pins a marker at the centre and opens the picker", _im)
+assert 'data-learn="place-image"' in pm and "on('newphoto', () => window.placeAddImage && window.placeAddImage());" in pm, "the Image key carries the image's learn mark; its photo opens #imgdlg"
+print("  place: the Image key adds a photo on its own or pinned at the map's centre by Enter, through the same dialog")
 _mv = M["move"]
 assert "<circle" in _mv["before"] and _mv["moves"] >= 1, ("the off-screen stations have edge pins, and the map listens to move", _mv["moves"], _mv["before"][:200])
 assert _mv["after"] != _mv["before"] and _mv["listKept"], ("on move the edge pins follow the map; the list waits for moveend", _mv)
@@ -1168,7 +1189,10 @@ assert any(e.get("zoom") == 16 and [round(v, 6) for v in e.get("center")] == [11
 print("  place: below zoom 13 each drone flight is a pin, named by its resolution and month; pressed, it flies there at 16")
 _pl = html[html.index('<section class="page view" data-view="place"'):html.index("<!-- DATA -->")]
 assert "altc" not in html and "mapalt" not in html, "the then-and-now pair is off the screen"
-assert _pl.index('class="plow"') < _pl.index('id="ptable"') < _pl.index('id="pchange"') < _pl.index('id="pfigures"'), "what changed sits in the lower band's right"
+assert _pl.index('class="pyears"') < _pl.index('id="pchange"') < _pl.index('class="plow"') < _pl.index('id="ptable"') < _pl.index('id="pfigures"'), \
+    "what changed is a band of its own under the screen, end to end, above the open map's table"
+assert re.search(r"\.pyears\{[^}]*\}", _css) and ".years{display:grid;gap:4px;align-items:end;height:98px" in _css and "#pchange .pair{grid-template-columns:minmax(0,1fr)}" in html, \
+    "the years are bigger: the bars twice as tall; then and now side by side, stacked on a phone"
 _dr = (STATIC / "doors-load.js").read_text()
 assert "place_yearly: 'history?sensor_id=place-point&metric=sat_buildings_yearly'" in _dr, "the yearly count is the node's own series, GET /history"
 yprog = r"""
@@ -1204,85 +1228,114 @@ assert re.findall(r'aria-label="([^"]+)"', M["nofs"]["col"]) == ["Map only", "Ba
 print("  place: Map only and Full screen are wired; where the browser has no element full screen its key is not drawn")
 _pl = html[html.index('<section class="page view" data-view="place"'):html.index("<!-- DATA -->")]
 _fb = re.findall(r'<button type="button" class="pfold" data-fold="(lc|rc)" aria-controls="(cake|ptools)" aria-expanded="true" aria-label="(Hide the layers|Hide the tools)" title="[^"]+ · ([\[\]])">', _pl)
-assert _fb == [("lc", "cake", "Hide the layers", "["), ("rc", "ptools", "Hide the tools", "]")], _fb
+assert _fb == [("lc", "cake", "Hide the layers", "[")], ("one side folds, the left", _fb)
 _css = html[html.index("/* ================= PLACE: a small GIS"):html.index("/* ================= NODE")]
-assert re.search(r"@media \(min-width:761px\)\{[^@]*\.bench\.lc\{grid-template-columns:36px minmax\(0,1fr\) 286px\}", _css), "the layers fold to a 36 px strip"
-assert re.search(r"@media \(min-width:1081px\)\{[^@]*\.bench\.rc\{grid-template-columns:216px minmax\(0,1fr\) 36px\}\.bench\.lc\.rc\{grid-template-columns:36px minmax\(0,1fr\) 36px\}", _css), \
-    "the tools fold to a 36 px strip where they are a column"
-assert re.search(r"\.bench\.lc \.pfold\[data-fold=\"lc\"\],\.bench\.rc \.pfold\[data-fold=\"rc\"\]\{[^}]*width:36px", _css) and "writing-mode:vertical-rl" in _css, \
+assert re.search(r"@media \(min-width:761px\)\{[^@]*\.bench\.lc\{grid-template-columns:36px minmax\(0,1fr\)\}", _css), "the layers fold to a 36 px strip and the screen takes the rest"
+assert ".bench.rc" not in _css and "lc.rc" not in _css and "1081px" not in _css, "no right side to fold"
+assert re.search(r"\.bench\.lc \.pfold\[data-fold=\"lc\"\]\{left:0;top:0;bottom:0;width:36px", _css) and "writing-mode:vertical-rl" in _css, \
     "a folded side is a 36 px strip with its name written down it, and the strip is the button that opens it"
-assert '.pfold[data-fold="lc"]{grid-row:1/2;grid-column:1/2;' in _css and '.pfold[data-fold="rc"]{grid-row:1/2;grid-column:3/4}' in _css, \
-    "each strip is held by the screen's row: under 1081 px the tools are a second row, and the strip must not lie over them"
-assert ".bench.lc.rc .mapc #map{height:max(560px,calc(100vh - 80px))}" in _css, "map only: the screen takes the window's height, less the header"
+assert '.pfold[data-fold="lc"]{grid-row:1/2;grid-column:1/2;' in _css, "the strip is held by the screen's row and stops at its foot"
+assert ".bench.lc.mo .mapc #map{height:max(560px,calc(100vh - 80px))}" in _css, "map only: the screen takes the window's height, less the header"
 assert re.search(r"\.mapc:fullscreen\{[^}]*\}\.mapc:fullscreen \.mapw\{[^}]*height:100%\}\.mapc:fullscreen #map\{flex:1", _css), "full screen: the screen fills it"
 _ph9 = re.search(r"@media \(max-width:760px\)\{\n  \.phead[^@]*", html).group(0)
 assert ".bench{position:relative}.pfold{display:none}" in _css and re.search(r"@media \(min-width:761px\)\{\n  \.pfold\{position:absolute", _css) \
-    and '.tools [data-t="wide"]{display:none}' in _ph9, "a phone has no sides to fold: the sheet holds them"
-assert ".dkeys{top:auto;bottom:12px;flex-direction:row}" in _ph9 and ".dpanel{top:auto;bottom:66px;left:12px;right:12px;width:auto;max-height:calc(100% - 328px)}" in _ph9, "a phone: the keys a row along the bottom, the readout above them"
-assert ".dlmenu{left:12px;right:68px;width:auto}" in _ph9 and ".pbase{top:124px;bottom:auto;left:12px;right:auto}" in _ph9 and ".mapc #mapbar{top:64px;bottom:auto;" in _ph9 \
-    and ".mapc:has(.dkeys) .phour" in _ph9, "a phone: the menu, the base switch, the rungs and the hour each have their own place, clear of the keys"
+    and '.tools [data-t="wide"]{display:none}' in _ph9, "a phone has no side to fold: the sheet holds it"
 for _n in ("doors-place.js", "doors-placemap.js"):
     _bare = [ln for ln in (STATIC / _n).read_text().splitlines() if "localStorage." in ln and not re.search(r"try \{[^}]*localStorage\.", ln)]
     assert not _bare, (f"{_n}: storage read or written outside try", _bare)
 fprog = r"""
 const fs = require('fs'), vm = require('vm');
 const place = fs.readFileSync('./app/static/doors-place.js', 'utf8'), noop = () => {};
-function load({ store = {}, fsOk = true, broken = false } = {}) {
-  const cls = new Set(), keys = [], seen = { resized: 0, full: 0, scrolled: 0 };
+function load({ store = {}, fsOk = true, broken = false, tok = true } = {}) {
+  const cls = new Set(), keys = [], clicks = [], seen = { resized: 0, full: 0, scrolled: 0, layers: [], tools: [] };
   const btn = f => ({ dataset: { fold: f }, attrs: {}, title: '', setAttribute(k, v) { this.attrs[k] = v; }, getAttribute(k) { return this.attrs[k]; }, focus() { doc.activeElement = this; } });
-  const folds = [btn('lc'), btn('rc')], wide = btn('wide');
+  const folds = [btn('lc')], wide = btn('wide');
   const bench = { dataset: {}, classList: { contains: x => cls.has(x), add: x => cls.add(x), toggle: (x, on) => ((on === undefined ? !cls.has(x) : on) ? cls.add(x) : cls.delete(x)) } };
   const screen = { requestFullscreen: () => { seen.full++; return Promise.reject(new Error('refused')); }, scrollIntoView: () => { seen.scrolled++; } };
-  /* a cake row with focus, inside #cake; the tools hold none */
-  const row = { name: 'row' }, cake = { contains: x => x === row }, ptools = { contains: () => false };
+  /* a cake row with focus, inside #cake */
+  const row = { name: 'row' }, cake = { contains: x => x === row };
+  /* the Tools button and its menu: rows are made from the menu's html, as the browser would */
+  const tb = { name: 'toolsb', attrs: {}, setAttribute(k, v) { this.attrs[k] = v; }, focus() { doc.activeElement = this; } };
+  const menu = { hidden: true, html: '', rows: [],
+    set innerHTML(h) { this.html = h; this.rows = [...h.matchAll(/<button([^>]*)>/g)].map(([, at]) => { const d = at.match(/data-(layer|tool)="([a-z]+)"/) || [];
+      return { name: d[2], kind: d[1], disabled: / disabled/.test(at), dataset: d[1] ? { [d[1]]: d[2] } : {}, focus() { doc.activeElement = this; } }; }); },
+    get innerHTML() { return this.html; },
+    querySelector: q => (q === 'button:not(:disabled)' ? menu.rows.find(r => !r.disabled) || null : null) };
   const ls = broken ? { getItem() { throw new Error('denied'); }, setItem() { throw new Error('denied'); } } : { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); } };
-  const doc = { fullscreenEnabled: fsOk, fullscreenElement: null, activeElement: null, addEventListener: (t, f) => { if (t === 'keydown') keys.push(f); },
-      querySelector: q => (q === '.bench' ? bench : q === '.mapc' ? screen : q === '.tools [data-t="wide"]' ? wide : q === '#cake' ? cake : q === '#ptools' ? ptools
-        : q === '.pfold[data-fold="lc"]' ? folds[0] : q === '.pfold[data-fold="rc"]' ? folds[1] : null),
-      querySelectorAll: q => (q === '.pfold' ? folds : []) };
-  const c = { VIEWS: {}, D: {}, console, view: () => 'place', localStorage: ls, $: () => ({ addEventListener: noop }), document: doc };
-  c.window = c; c.__PM = { map: { resize: () => { seen.resized++; } } }; vm.createContext(c); vm.runInContext(place, c);
+  const doc = { fullscreenEnabled: fsOk, fullscreenElement: null, activeElement: null,
+      addEventListener: (t, f) => { if (t === 'keydown') keys.push(f); if (t === 'click') clicks.push(f); },
+      querySelector: q => (q === '.bench' ? bench : q === '.mapc' ? screen : q === '.tools [data-t="wide"]' ? wide : q === '#cake' ? cake
+        : q === '.pfold[data-fold="lc"]' ? folds[0] : null),
+      querySelectorAll: q => (q === '.pfold' ? folds : q === '#ptools button[data-layer]' ? menu.rows.filter(r => r.kind === 'layer') : q === '#ptools button[data-tool]' ? menu.rows.filter(r => r.kind === 'tool') : []) };
+  const els = { '#ptools': menu, '#ptoolsb': tb };
+  const c = { VIEWS: {}, D: {}, console, view: () => 'place', localStorage: ls, $: q => els[q] || { addEventListener: noop }, document: doc, DOORS_TOKEN: () => (tok ? 't' : '') };
+  c.window = c; c.__PM = { map: { resize: () => { seen.resized++; } }, on: {}, tool: 'select', setTool: t => seen.tools.push(t) };
+  c.placeLayer = (l, on) => seen.layers.push(`${l}:${on}`);
+  vm.createContext(c); vm.runInContext(place, c);
   const typing = sel => /input/.test(sel) ? {} : null;
-  const key = (k, o = {}) => keys.forEach(f => f({ key: k, target: { closest: o.typing ? typing : () => null }, preventDefault: noop, metaKey: !!o.meta, ctrlKey: !!o.ctrl, altKey: !!o.alt }));
+  const key = (k, o = {}) => keys.forEach(f => f({ key: k, target: { closest: o.typing ? typing : o.menu ? (s => /ptmenu/.test(s) ? {} : null) : () => null }, preventDefault: noop, metaKey: !!o.meta, ctrlKey: !!o.ctrl, altKey: !!o.alt }));
   const state = () => ({ cls: [...cls].sort().join(' '), labels: folds.map(b => `${b.attrs['aria-label']}:${b.attrs['aria-expanded']}`), title: folds[0].title,
     wide: wide.attrs['aria-pressed'], store: store.planetai_place_folds, ...seen });
-  return { folds, key, state, store, doc, row };
+  return { folds, key, state, store, doc, row, tb, menu, c, click: inside => clicks.forEach(f => f({ target: { closest: s => (inside && s === '.ptools' ? {} : null) } })) };
 }
 const out = {}, a = load();
 out.start = a.state();
 a.folds[0].onclick(); out.left = a.state();
-a.key(']'); out.both = a.state();
-a.key('[', { typing: true }); a.key(']', { ctrl: true }); out.typing = a.state();
-a.key('\\'); out.wideOff = a.state();
+a.key(']'); out.bracket = a.state();
+a.key('[', { typing: true }); a.key('[', { ctrl: true }); out.typing = a.state();
+a.key('['); out.open = a.state();
 a.key('\\'); out.wideOn = a.state();
+a.key('\\'); out.wideOff = a.state();
 a.key('F'); out.full = a.state();
-out.reload = load({ store: { planetai_place_folds: a.store.planetai_place_folds } }).state();
+a.key('\\'); out.reload = load({ store: { planetai_place_folds: a.store.planetai_place_folds } }).state();
+out.oldRight = load({ store: { planetai_place_folds: 'lc rc' } }).state();
+out.oldRightOnly = load({ store: { planetai_place_folds: 'rc' } }).state();
 const n = load({ fsOk: false }); n.key('f'); out.noFs = n.state();
 const b = load({ broken: true }); b.key('['); out.broken = b.state();
 /* focus on a cake row: `[` hides it, and focus goes to the layers' strip, not to the page */
 const fo = load(); fo.doc.activeElement = fo.row; fo.key('['); out.focus = fo.doc.activeElement === fo.folds[0] ? 'strip' : fo.doc.activeElement ? fo.doc.activeElement.name : 'body';
 /* Option on a Spanish or German Mac, AltGr (Ctrl+Alt) on Windows: `[` still folds; with ⌘ it does not */
-const al = load(); al.key('[', { alt: true }); al.key(']', { ctrl: true, alt: true }); out.alt = al.state();
+const al = load(); al.key('[', { alt: true }); out.alt = al.state();
 const me = load(); me.key('[', { meta: true }); me.key('\\', { meta: true }); out.meta = me.state();
+/* the Tools menu: the button opens it on its first runnable row; Esc closes it and gives the focus back; a press outside
+   closes it; a tool chosen runs and closes it */
+const t = load(); t.c.placeTools(); const order = [...t.menu.html.matchAll(/<span>([^<]+)<\/span><code>([^<]+)<\/code>/g)].map(m => `${m[1]}|${m[2]}`);
+t.tb.onclick(); out.menu = { order, open: !t.menu.hidden, exp: t.tb.attrs['aria-expanded'], focus: t.doc.activeElement && t.doc.activeElement.name };
+t.key('Escape', { menu: true }); out.menu.esc = { hidden: t.menu.hidden, exp: t.tb.attrs['aria-expanded'], focus: t.doc.activeElement && t.doc.activeElement.name };
+t.tb.onclick(); t.click(true); out.menu.inside = t.menu.hidden; t.click(false); out.menu.outside = t.menu.hidden;
+t.tb.onclick(); t.menu.rows.find(r => r.name === 'from').onclick(); out.menu.from = { tools: t.state().tools, hidden: t.menu.hidden, focus: t.doc.activeElement && t.doc.activeElement.name };
+t.tb.onclick(); t.menu.rows.find(r => r.name === 'rings').onclick(); out.menu.rings = t.state().layers;
+const lk = load({ tok: false }); lk.c.placeTools(); out.locked = { html: lk.menu.html, any: lk.menu.rows.filter(r => r.kind && !r.disabled).length };
 console.log(JSON.stringify(out));
 """
 _r = subprocess.run(["node"], input=fprog, capture_output=True, text=True)
 assert _r.returncode == 0, _r.stderr[-3000:]
 F9 = json.loads(_r.stdout)
-assert F9["start"]["cls"] == "" and F9["start"]["labels"] == ["Hide the layers:true", "Hide the tools:true"], F9["start"]
+assert F9["start"]["cls"] == "" and F9["start"]["labels"] == ["Hide the layers:true"], F9["start"]
 assert F9["left"]["cls"] == "lc" and F9["left"]["labels"][0] == "Show the layers:false" and F9["left"]["title"] == "Show the layers · [" \
-    and F9["left"]["store"] == "lc" and F9["left"]["resized"] >= 1, ("the arrow folds the layers, says so, remembers it and resizes the map", F9["left"])
-assert F9["both"]["cls"] == "lc rc" and F9["both"]["wide"] == "true" and F9["both"]["store"] == "lc rc", ("] folds the tools; both folded is map only", F9["both"])
-assert F9["typing"]["cls"] == "lc rc" and F9["typing"]["store"] == "lc rc", "never while somebody types, never with Ctrl"
-assert F9["wideOff"]["cls"] == "" and F9["wideOff"]["store"] == "" and F9["wideOff"]["wide"] == "false", ("\\ opens both", F9["wideOff"])
-assert F9["wideOn"]["cls"] == "lc rc" and F9["wideOn"]["scrolled"] == 1, ("\\ folds both and brings the whole screen into the window", F9["wideOn"])
+    and F9["left"]["store"] == "lc" and F9["left"]["resized"] >= 1 and F9["left"]["wide"] == "false", ("the arrow folds the layers, says so, remembers it and resizes the map", F9["left"])
+assert F9["bracket"]["cls"] == "lc" and F9["bracket"]["store"] == "lc", ("] does nothing now: there is no right side", F9["bracket"])
+assert F9["typing"]["cls"] == "lc", "never while somebody types, never with Ctrl"
+assert F9["open"]["cls"] == "" and F9["open"]["store"] == "", ("[ opens the left again", F9["open"])
+assert F9["wideOn"]["cls"] == "lc mo" and F9["wideOn"]["wide"] == "true" and F9["wideOn"]["store"] == "lc mo" and F9["wideOn"]["scrolled"] == 1, \
+    ("\\ folds the left, grows the screen and brings it into the window", F9["wideOn"])
+assert F9["wideOff"]["cls"] == "" and F9["wideOff"]["wide"] == "false", ("\\ again opens the left", F9["wideOff"])
 assert F9["full"]["full"] == 1 and F9["noFs"]["full"] == 0, "F asks for full screen on the screen, only where the browser has it"
-assert F9["reload"]["cls"] == "lc rc" and F9["reload"]["labels"] == ["Show the layers:false", "Show the tools:false"], ("a reload keeps the folds", F9["reload"])
+assert F9["reload"]["cls"] == "lc mo" and F9["reload"]["labels"] == ["Show the layers:false"], ("a reload keeps map only", F9["reload"])
+assert F9["oldRight"]["cls"] == "lc" and F9["oldRightOnly"]["cls"] == "", ("a stored rc from an older visit is ignored", F9["oldRight"], F9["oldRightOnly"])
 assert F9["broken"]["cls"] == "lc", ("without storage the page is still right: it folds, it just forgets", F9["broken"])
 assert F9["focus"] == "strip", ("a side folded from the keyboard hands focus to its strip", F9["focus"])
-assert F9["alt"]["cls"] == "lc rc" and F9["meta"]["cls"] == "", ("Option and AltGr fold; ⌘ does not", F9["alt"], F9["meta"])
+assert F9["alt"]["cls"] == "lc" and F9["meta"]["cls"] == "", ("Option and AltGr fold; ⌘ does not", F9["alt"], F9["meta"])
 assert "(document.fullscreenElement ? document.exitFullscreen() : sc.requestFullscreen()).catch(() => {})" in (STATIC / "doors-place.js").read_text(), \
     "a refused full screen is caught, never an unhandled rejection"
-print("  place: each side folds by its arrow and by [ or ], \\ is map only, F full screen; never while typing; remembered in try/catch")
+print("  place: the left folds by its arrow and by [, \\ is map only, F full screen; a stored right fold is ignored; never while typing; remembered in try/catch")
+_mn = F9["menu"]
+assert _mn["order"][:2] == ["Rings and distance|geo.rings", "From the house|geo.measure"] and all(x.endswith("|not yet") for x in _mn["order"][2:]) and len(_mn["order"]) == 14, _mn["order"]
+assert _mn["open"] and _mn["exp"] == "true" and _mn["focus"] == "rings", ("Tools opens its menu on the first runnable row", _mn)
+assert _mn["esc"] == {"hidden": True, "exp": "false", "focus": "toolsb"}, ("Esc closes the menu and gives the focus back to Tools", _mn["esc"])
+assert _mn["inside"] is False and _mn["outside"] is True, "a press outside the menu closes it, one inside does not"
+assert _mn["from"] == {"tools": ["from"], "hidden": True, "focus": "toolsb"} and _mn["rings"] == ["rings:true"], ("a tool chosen runs and closes the menu", _mn)
+assert F9["locked"]["any"] == 0 and "Tools run on this node with a token. Unlock this screen in Set up." in F9["locked"]["html"], "without the token the rows are quiet and say why"
+print("  place: Tools is one button on the top line; its menu lists the two that run, then the ones not yet; Esc or a press outside closes it")
 
 print("all doors checks passed")
