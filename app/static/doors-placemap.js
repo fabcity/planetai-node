@@ -410,11 +410,20 @@ function margin() {
   document.querySelectorAll('#pmargin button.mr').forEach(b => b.onclick = () => {
     const m = rows[+b.dataset.i]; PM.pick = m.pick || null; if (PM.map) popup(PM.pick); facts();
   });
-  /* The margin is a list under the screen now (SPEC_place_microgis §4): no leaders. Public stations off the map: a
-     hollow mark on the screen's edge, pointing at them, with the node's distance; the nearest six. Inset from the tool
-     column on the right. */
-  const ed = $('#pedges');
+  edges(all, inView, W, H);
+}
+/* The margin is a list under the screen now (SPEC_place_microgis §4): no leaders. Public stations off the map: a hollow
+   mark on the screen's edge, pointing at them, with the node's distance; the nearest six. They are DOM over the canvas,
+   so they follow the map on every `move` (one frame at a time, below), not only when it settles: on node #1 they
+   stayed where they were through a zoom and jumped at its end (5 Nov). */
+function edges(all, inView, W, H) {
+  const ed = $('#pedges'), map = PM.map;
   if (!ed || !map) { if (ed) ed.innerHTML = ''; return; }
+  if (!all) {
+    const box = map.getContainer(); W = box.clientWidth; H = box.clientHeight;
+    all = marks().filter(m => m.pub).map(m => { const q = map.project(m.ll); return { ...m, x: q.x, y: q.y }; });
+    inView = m => m.x >= 0 && m.x <= W && m.y >= 0 && m.y <= H;
+  }
   const cx = W / 2, cy = H / 2, I = 26, IL = I, IR = 72;
   ed.setAttribute('viewBox', `0 0 ${W} ${H}`);
   ed.innerHTML = all.filter(m => m.pub && !inView(m) && m.m != null).sort((a, b) => a.m - b.m).slice(0, 6).map(m => {
@@ -1324,6 +1333,9 @@ async function placeMap() {
   map.on('movestart', () => { WIND.moving = true; if (WIND.ctx) WIND.ctx.clearRect(0, 0, WIND.w || 0, WIND.h || 0); });
   map.on('moveend', () => { WIND.moving = false; windResample(); windSync(); });
   map.on('resize', () => { windResample(); margin(); });
+  /* the DOM on the screen follows the map while it moves, once a frame; the list, the grid and the panel wait for moveend */
+  let moving = 0;
+  map.on('move', () => { if (!moving) moving = requestAnimationFrame(() => { moving = 0; edges(); }); });
   map.on('load', () => {
     applyBase(); PM.res = resFor(map.getZoom()); redraw(); chrome(); panel(); facts(); loadGrid(); credits(); windResample(); windSync();
     ask('geo/rings?km=2,5,15').then(x => { RINGS = x.rings.map(g => ({ km: g.km, path: g.ring.map(([la, ln]) => [ln, la]) })); redraw(); }).catch(() => {});

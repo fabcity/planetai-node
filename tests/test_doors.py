@@ -950,14 +950,15 @@ async function boot(tok, o = {}) {
       return Promise.resolve(new Response(JSON.stringify({ mark: { ...MARKS.marks.find(k => p.endsWith('/' + k.id)), ...b } }), { status: 200 })); }
     const f = p.match(/^\/place\/maps\/(\d+)\.(geojson|kml|dxf)\?/);
     if (f) return Promise.resolve(new Response('x', { status: 200, headers: { 'content-disposition': `attachment; filename="n-${f[1]}.${f[2]}"` } }));
-    const b = p.startsWith('/ground/meta') && o.meta ? o.meta : p.startsWith('/place/maps/3/marks') ? MARKS : p.startsWith('/place/maps/4/marks') ? { marks: [] } : p.startsWith('/place/maps') ? MAPS
+    const b = p.startsWith('/ground/meta') && o.meta ? o.meta : p.startsWith('/nearby') && o.nearby ? o.nearby
+      : p.startsWith('/place/maps/3/marks') ? MARKS : p.startsWith('/place/maps/4/marks') ? { marks: [] } : p.startsWith('/place/maps') ? MAPS
       : p.startsWith('/captures') ? [] : p.startsWith('/species') ? { species: [] } : {};
     return Promise.resolve(new Response(JSON.stringify(b), { status: 200 })); };
   const layer = function (props) { return { id: props && props.id, props }; };
   const c = { D: o.D || D, d3, console, Response, URL, doorsLocal: L.doorsLocal, setTimeout, clearTimeout, $: q => (els[q] ||= el()), DOORS_TOKEN: () => (tok ? 't' : ''), DOORS_AUTH: () => ({}), doorsFetch: ask,
     UNLOCK_AT: '<a href="#setup/screen">Set up › This screen</a>', sign: id => `<svg data-s="${id}"></svg>`, prov: w => w, lastRaw: () => null, plain: s => s,
     hhmm: s => s, when: s => s, dLabel: s => s, dayOf: s => s, CLOCK: { reduced: () => true, on: noop, off: noop }, view: () => 'place', location: { origin: 'http://node' },
-    devicePixelRatio: 1, localStorage: { getItem: () => null, setItem: noop },
+    devicePixelRatio: 1, localStorage: { getItem: () => null, setItem: noop }, requestAnimationFrame: f => setTimeout(f, 0),
     document: { documentElement: { dataset: {} }, querySelector: () => null, querySelectorAll: () => [], createElement: () => el(), getElementById: () => null, activeElement: null,
       fullscreenEnabled: o.fs !== false, fullscreenElement: null,
       addEventListener: (t, f) => { if (t === 'keydown') keys.push(f); } },
@@ -1038,6 +1039,15 @@ async function boot(tok, o = {}) {
     c.__PM.setTool('line'); press('ArrowRight'); const idle = (map.panned || []).length;
     press('Enter'); press('ArrowRight'); const drawing = (map.panned || []).length;
     press('ArrowRight', true); return { idle, drawing, canvas: (map.panned || []).length, pts: c.__PM.draw.state && c.__PM.draw.state.pts.length }; } });
+  /* the map moving (node #1, 5 Nov): the pins on the screen's edge follow the map on `move`, one frame at a time, not
+     only once it settles; the list under the screen waits for `moveend` */
+  const pubs = D.sensors.filter(s => !s.local && s.indoor !== true && s.kind === 'sensor' && s.lat != null);
+  out.move = await boot(true, { nearby: { ring: pubs.map(s => ({ sensor_id: s.sensor_id, km: 3 })) }, then: async ({ c, map, ons }) => {
+    const before = c.$('#pedges').innerHTML, list = c.$('#pmargin').innerHTML;
+    map.project = ([x, y]) => ({ x: x * 1e4 + 400, y: -y * 1e4 - 300 });
+    (ons.move || []).forEach(f => f()); (ons.move || []).forEach(f => f());   /* two moves in one frame draw once */
+    await new Promise(r => setTimeout(r, 20));
+    return { before, after: c.$('#pedges').innerHTML, listKept: c.$('#pmargin').innerHTML === list, moves: (ons.move || []).length }; } });
   /* From the house, in the right column: a tool row that runs with the token */
   const els = {}, c = { $: q => (els[q] ||= el()), DOORS_TOKEN: () => 't', document: { activeElement: null, querySelectorAll: () => [], querySelector: () => null }, window: { __PM: { on: {}, tool: 'select' } } };
   vm.createContext(c); vm.runInContext(place.match(/const TOOLS = [\s\S]*?\n\];\n/)[0] + fn(place, 'placeTools') + 'placeTools()', c);
@@ -1145,6 +1155,10 @@ print("  place: the right column reads Map only, Full screen, Back to this node�
 assert _g["imagery"] is True and M["plain"]["imagery"] is False, "the satellite is the base where the node holds imagery, the streets elsewhere"
 _dp = {k: M["drawPan"][k] for k in ("idle", "drawing", "canvas", "pts")}
 assert _dp == {"idle": 0, "drawing": 1, "canvas": 1, "pts": 1}, ("a started line pans the map from anywhere, the page's arrows are left alone before, and the canvas pans by itself", _dp)
+_mv = M["move"]
+assert "<circle" in _mv["before"] and _mv["moves"] >= 1, ("the off-screen stations have edge pins, and the map listens to move", _mv["moves"], _mv["before"][:200])
+assert _mv["after"] != _mv["before"] and _mv["listKept"], ("on move the edge pins follow the map; the list waits for moveend", _mv)
+print("  place: while the map moves, the edge pins follow it frame by frame; the list under the screen waits for it to settle")
 _bs = re.findall(r'<button[^>]*aria-pressed="(true|false)"[^>]*>([a-z]+)<', _g["base"] or "")
 assert [b for _, b in _bs] == ["satellite", "streets", "drone"] and [p for p, _ in _bs] == ["true", "false", "false"], _bs
 print("  place: satellite on at load where the node holds it; the base switch reads satellite · streets · drone")
