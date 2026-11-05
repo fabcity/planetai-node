@@ -1367,9 +1367,13 @@ async function placeMap() {
   map.addControl(PM.overlay);
   /* luma.gl keeps the canvas's framebuffer at the size it first saw, and deck flips its y with that height, so after the
      screen grows taller (Full screen) every deck layer drew lower than the map by the difference (node #1, 5 Nov: the
-     cell left its place). A resize lets it go, and the next frame makes one at the new size.
+     cell left its place). After each frame, a framebuffer that is not the canvas's size is let go and the map drawn
+     again; luma learns the new size a frame or two after the resize, so this repeats until the two agree.
      ponytail: reaches into deck 9.4 / luma internals; drop it once deck's interleaved overlay follows a resize itself */
-  map.on('resize', () => { const c = PM.overlay._deck && PM.overlay._deck.device && PM.overlay._deck.device.canvasContext; if (c) c._framebuffer = null; });
+  map.on('render', () => {
+    const c = PM.overlay._deck && PM.overlay._deck.device && PM.overlay._deck.device.canvasContext, f = c && c._framebuffer, cv = map.getCanvas();
+    if (f && (f.width !== cv.width || f.height !== cv.height)) { c._framebuffer = null; map.triggerRepaint(); }
+  });
   tools();
   WIND.cv = document.createElement('canvas'); WIND.cv.className = 'windcv'; WIND.cv.setAttribute('aria-hidden', 'true');
   WIND.ctx = WIND.cv.getContext('2d'); map.getContainer().appendChild(WIND.cv);

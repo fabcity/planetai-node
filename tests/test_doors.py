@@ -1060,8 +1060,10 @@ async function boot(tok, o = {}) {
     press('ArrowRight', true); const r = { idle, drawing, canvas: (map.panned || []).length, pts: c.__PM.draw.state && c.__PM.draw.state.pts.length };
     /* a drawing key by letter hands the focus to the map; Select keeps it where it was */
     const f0 = map.focused || 0; press('v'); r.focusV = (map.focused || 0) - f0; press('a'); r.focusA = (map.focused || 0) - f0;
-    /* a resize (Full screen, a fold) lets luma's framebuffer go, so deck draws at the new height */
-    (ons.resize || []).filter(f => String(f).includes('_framebuffer')).forEach(f => f()); r.fb = c.__PM.overlay._deck.device.canvasContext._framebuffer; return r; } });
+    /* after a frame, a framebuffer not the canvas's size (Full screen, a fold) goes, so deck draws at the new height */
+    const cc = c.__PM.overlay._deck.device.canvasContext, mine = (ons.render || []).filter(f => String(f).includes('_framebuffer'));
+    cc._framebuffer = { width: 1800, height: 1120 }; mine.forEach(f => f()); r.fbSame = !!cc._framebuffer;
+    cc._framebuffer = { width: 1108, height: 560 }; mine.forEach(f => f()); r.fb = cc._framebuffer; return r; } });
   /* the map moving (node #1, 5 Nov): the pins on the screen's edge follow the map on `move`, one frame at a time, not
      only once it settles; the list under the screen waits for `moveend` */
   const pubs = D.sensors.filter(s => !s.local && s.indoor !== true && s.kind === 'sensor' && s.lat != null);
@@ -1223,7 +1225,7 @@ print("  place: closing the menu, by a press or Esc, does nothing else on the sc
 print("  place: the right column reads Map only, Full screen, Back to this node’s cell, Download; the menu offers four formats and everything on the screen")
 assert _g["imagery"] is True and M["plain"]["imagery"] is False, "the satellite is the base where the node holds imagery, the streets elsewhere"
 _dp = {k: M["drawPan"][k] for k in ("idle", "drawing", "canvas", "pts")}
-assert M["drawPan"]["fb"] is None, ("after a resize deck's framebuffer is made again at the new size", M["drawPan"]["fb"])
+assert M["drawPan"]["fbSame"] and M["drawPan"]["fb"] is None, ("a framebuffer of the canvas's size stays; one of another size is made again", M["drawPan"]["fbSame"], M["drawPan"]["fb"])
 assert (M["drawPan"]["focusV"], M["drawPan"]["focusA"]) == (0, 1), ("a drawing key hands the focus to the map, Select does not", M["drawPan"]["focusV"], M["drawPan"]["focusA"])
 assert _dp == {"idle": 0, "drawing": 1, "canvas": 1, "pts": 1}, ("a started line pans the map from anywhere, the page's arrows are left alone before, and the canvas pans by itself", _dp)
 _ch = M["chip"]
