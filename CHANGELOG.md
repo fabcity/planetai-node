@@ -4,11 +4,12 @@
 
 - **Place is drawn as what the ground is made of.** The door has a list on the left with the sky at the top and the
   ground at the bottom, one line a row with a dot for on, off, or not held yet, and a black screen in the middle that
-  stays black on the light page and the dark one. On the right is a column of tools. Rings and distance runs today, and
-  the sun and shade, trees, built form, sealed ground, streets, walking, what changed, where the rain goes and four
-  fitness tools are listed as not yet. Under the screen are a line for what you pressed and the list around the house,
-  and below that, what you selected and the place in figures. The rooms are gone from Place, and the hectare squares
-  view is gone until What changed runs as a tool. On a phone the layers and the tools open as a sheet over the lower
+  stays black on the light page and the dark one. **Tools**, beside the ask line, opens a menu. Rings and distance and
+  From the house run today, and the sun and shade, trees, built form, sealed ground, streets, walking, what changed,
+  where the rain goes and four fitness tools are listed as not yet. Under the screen are a line for what you pressed
+  and the list around the house, then what changed year on year across the whole page, with the satellite then and now
+  side by side, and below that the open map's table and the place in figures. The rooms are gone from Place, and the
+  hectare squares view is gone until What changed runs as a tool. On a phone the layers open as a sheet over the lower
   part of the page.
 
 - **You can draw on Place now, and keep what you draw in named maps.** With the token, the keys on the screen's left
@@ -19,8 +20,11 @@
   it. Upstream the node is the map's owner, and who drew each drawing stays here. It goes after a plain warning, and a drawing that touches the cell the house stands
   in holds it until you press Share again. A drawing
   tied to an issue on Now, with what you did in your own words, counts as acting on it. The satellite opens first, the
-  yearly change moved under the map, drone flights show as pins when you zoom out, and the two sides fold, with `\` for
-  the map only and F for full screen. Place in `docs/site/dashboard.md` says how.
+  yearly change moved under the map, drone flights show as pins when you zoom out, and the layers fold with `[`, with
+  `\` for the map only and F for full screen. The readout is a small chip until you press it for the colours, the keys
+  on the screen are 36 px with a mouse and 44 px on a touch screen, and the controls on the screen keep apart at any
+  window size. The Image key adds a picture, so **+ Add an image** is gone from the top. Place in
+  `docs/site/dashboard.md` says how.
 
   For whoever runs the node, `init.sql` enables PostGIS and adds `place_maps` and `place_marks`. Every drawing, change,
   download and share is a `place` row in the ledger, and a private daily count of drawings goes to the sensor

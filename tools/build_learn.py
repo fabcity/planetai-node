@@ -320,8 +320,8 @@ MARKS = [
      "The ground around the house.", "removes it)",
      "The cell id is printed whole. Type a question in the line under it and the Ask pane opens with "
      "it; press / to get there from anywhere on this door. With UI_ASK off the line is not there."),
-    ("place-image", "Add an image", "dashboard.md", "Place",
-     "**+ Add an image** (token only)", "describes it.",
+    ("place-image", "The Image key", "dashboard.md", "Place",
+     "**The Image key** (token only)", "**A new photo** on its own.",
      "The picture stays on this node, cleaned of EXIF and GPS, and lands on the map where its own GPS "
      "says it was taken, else in the node's cell."),
     ("place-layers", "The layers", "dashboard.md", "Place",

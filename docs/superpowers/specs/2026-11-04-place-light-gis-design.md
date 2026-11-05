@@ -94,6 +94,11 @@ node's GIS. What a home draws has to open there without a converter.
 
 Layout follows the approved mockup.
 
+**5 Nov 2026, after Tomas used it on node #1:** one side menu, the left. The tools left the right column for a
+**Tools** button on the top line, in the place of **+ Add an image**, with a menu: the ones that run first, then the
+ones not yet. Only the left folds (`[`, `\` for map only, F full screen). What changed, year on year is a band of its
+own under the screen, end to end. The readout folds to a chip. The mockup still shows the right column; this note wins.
+
 **Left column.** A new top section, **your maps**: one row per map with a square dot (a map, as against a layer's round
 one), its name and how many drawings it holds, then **New map**. Below it the cake as Part A built it. Pressing a map's
 row switches it on or off; a second control on the row (or the open map's header in the lower band) renames, shares or
@@ -377,7 +382,8 @@ into quadrants to stay under Earth Engine's feature cap. This changes to H3 cell
   figure, not for every mouse move.
 - Drawing needs no drag (§4). Moving a point needs no drag.
 - Focus is visible on the black screen (the cells' blue outline, as on the hour pill).
-- 44 px targets on the screen, as Part A's map tools.
+- 44 px targets on the screen, as Part A's map tools. Tomas ruled on 5 Nov 2026 that with a pointer the keys inside
+  the screen are 36 px; under `@media (pointer: coarse)` they stay 44 px.
 - At 390 px: keys along the bottom of the screen, the readout above them, the sides as the bottom sheet Part A built
   with **your maps** first in it, the download and OSM keys in the screen's right column as on desktop.
 

@@ -72,7 +72,7 @@ const figure = (s, hover) => {
   return none;
 };
 
-/* the tool keys, in the order the right column lists them */
+/* the drawing keys, in the order the screen's left edge lists them */
 const KEYS = [['select', 'V'], ['marker', 'M'], ['line', 'L'], ['area', 'A'], ['note', 'N'], ['image', 'I']];
 
 const DRAW = { lengthM, areaM2, perimeterM, fmtLen, fmtArea, drawState, addPt, backPt, canFinish, toFeature, figure, KEYS };

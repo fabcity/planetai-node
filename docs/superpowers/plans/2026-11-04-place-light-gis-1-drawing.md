@@ -32,7 +32,8 @@ are out of scope: no OSM key, no cell fetch, no Run panel, no MCP tools here.
   the satellite's orange (`#F5A623`-ish) or the cells' blue (`PAL.dark` cells); each reads on satellite and on black.
 - Drawing needs no drag: taps add points; Enter adds at the map centre; points move by tap-then-tap or arrows.
 - 44 px targets on the screen; keys are `<button>` with `aria-label` and `aria-pressed`; the readout's finished figure
-  is `aria-live="polite"`.
+  is `aria-live="polite"`. Tomas's ruling, 5 Nov 2026, overrides the 44 px for a pointer: the keys inside the screen
+  are 36 px, and 44 px under `@media (pointer: coarse)`, so a finger keeps a finger-sized target.
 - Drawing colours appear on the screen only, never as page chrome.
 - `actions` gains stage `place`; GIS rows are coalesced: same actor, verb and drawing within 60 s is one row.
 - Copy is plain, in Tomas's voice; no AI patterns (run the avoid-ai-writing pass on user-facing copy before the PR).

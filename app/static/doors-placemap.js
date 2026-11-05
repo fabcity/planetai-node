@@ -7,7 +7,7 @@
    - mono's 1 px rules and tracked mono labels.
    - The v2 drawing (SPEC_place_microgis §4, 4 Nov 2026), after Option A (15 Oct): the cake on the left as plain rows with
      OP-XY dot switches (OneSoil's layer list), the screen black in both registers with its tools, scales and hour on it as
-     chips, the tools on the right, the inspector a status line under the screen and the marks around the house a list.
+     chips, the tools in a menu on the top line (5 Nov 2026; the right column before), the inspector a status line under the screen and the marks around the house a list.
 
    SCALE. The H3 resolution drawn follows the zoom: the finest rung whose cell is at least 56 px to an edge on
    screen. The presets fly to the node's own cell at that rung, so a press and a scroll agree. Rungs 6 and coarser
@@ -658,7 +658,7 @@ const KEYICON = { select: '<path d="M5 3l12 6-5 2-2 5z"/>', marker: '<path d="M1
   area: '<path d="M4 6l7-3 5 5-3 8-9-2z"/>', note: '<path d="M4 4h12v9l-3 3H4z"/><path d="M13 16v-3h3"/>',
   image: '<rect x="3" y="5" width="14" height="10" rx="1"/><circle cx="8" cy="9" r="1.5"/><path d="M3 14l4-3 3 2 3-3 4 4"/>',
   undo: '<path d="M7 5L3 9l4 4"/><path d="M3 9h9a5 5 0 010 10h-2"/>',
-  /* the right column's, from the mockup */
+  /* the screen's right column (Map only, Full screen, home, Download), from the mockup */
   wide: '<path d="M3 10h14M6 7l-3 3 3 3M14 7l3 3-3 3"/>', full: '<path d="M3 7V3h4M13 3h4v4M17 13v4h-4M7 17H3v-4"/>',
   fit: '<path d="M3 9l7-6 7 6v8H3z"/>', dl: '<path d="M10 3v10M6 9l4 4 4-4M4 17h12"/>' };
 /* the mockup's READ words for the two keys doors-draw.js's figure() has no hint for */
@@ -758,7 +758,7 @@ function drawForm() {
         : `<div class="caps">${C.map(c => `<button type="button" data-cap="${+c.id}">${esc(KIND[c.kind] || c.kind)} · ${esc(c.note || 'no note')} <small>${esc(when(c.ts))}</small></button>`).join('')}</div>`);
   } else if (!k && PM.tool === 'image') {
     /* the Image key with nothing in hand: a photo for no drawing goes where it was taken, the header's old button */
-    el.innerHTML = '<p>Press the map, or Enter for its centre, to pin an image there. Or add a photo on its own: it lands where it was taken, else in the node’s cell.</p>'
+    el.innerHTML = '<p>Press the map, or Enter for its centre, to pin an image there. Or add a photo on its own. It lands where it was taken, else in the node’s cell.</p>'
       + '<div class="acts"><button type="button" data-a="newphoto">A new photo</button></div>';
   } else if (!k) { el.hidden = true; el.innerHTML = ''; return; }
   else if (!mine(m)) {

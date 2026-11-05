@@ -144,8 +144,8 @@ hours over the line that day, from `GET /issues/days`.
 ## Place
 
 The ground around the house. The head gives the cell's id, resolution, edge and area, and the node's position for a
-screen with the token. Under it is a line to ask the node about this place (press `/` to get there; `UI_ASK=off` removes it) and **+ Add an
-image**. Below that, the door has three columns around one screen.
+screen with the token. Under it is a line to ask the node about this place (press `/` to get there; `UI_ASK=off` removes it) and
+**Tools**. Below that are the layers on the left and the screen beside them.
 
 **What the place is made of.** On the left is a list of what the node can show about the ground around the house.
 The sky is at the top of the list and the ground at the bottom. Its headings, in order, are results, microclimate,
@@ -162,14 +162,17 @@ opens on the satellite where the node holds it, and a switch at the bottom right
 marks each drone flight the node holds. The hour is a pill at the top, the node's last reading, or the wind's hour when
 the wind is on. The scale rungs, street, block, cell, village and district, are at the bottom left and the credit at the
 foot. A cell that may leave the machine is dotted. On the right edge are **Map only**, **Full screen**, back to the
-node's cell and **Download**.
+node's cell and **Download**. The keys on the screen are 36 px with a mouse and 44 px on a touch screen. On a narrow
+screen the rungs show only their number. Narrower still, the base switch moves above them and the hour above the zoom.
 
 **Drawing.** With the token, the keys on the screen's left edge are **Select** (V), **Marker** (M), **Line** (L),
 **Area** (A), **Note** (N), **Image** (I) and **Undo** (⌘Z or Ctrl+Z). Each press on the map adds a point, and a marker
 or a note is done with one. A line ends on a double press, an area when you press its first corner again. Enter adds a
 point at the map's centre, and Enter again without moving finishes the shape, so the keyboard alone can draw. Backspace
-takes a point back, Esc drops the shape. The readout beside the keys gives the length or the surface as you draw, then
-the node's own measure once it is kept. With Select, press a drawing for its label, note, colour and image. Press a
+takes a point back, Esc drops the shape. The readout beside the keys is a small chip with the tool, the open map, a dot
+in the colour and the length or the surface as you draw, then the node's own measure once it is kept. Press the chip
+for the six colours and a line on what to do, and press it again or Esc to fold them. With Select, press a drawing
+for its label, note, colour and image, and the colours open by themselves. Press a
 point and then its new place to move it, or use the arrows, with `.` for the next point. An image stays on this node,
 the map only says which one.
 
@@ -184,24 +187,26 @@ you press Share again. **Stop sharing** ends it, and this node asks the node ups
 To answer an issue from Now, open the drawing's form, choose the issue, say what you did in your own words and press
 **Tie it**. The rain garden you drew then counts as what you did about it, as Done does on Now.
 
-**Folding.** Each side folds by the arrow on its edge, or `[` and `]`, into a strip with its name. `\` or **Map only**
-folds both and the screen takes the window, and **Full screen** or F takes the whole display. This browser remembers
-the folds. On a phone the keys run along the bottom of the screen.
+**Folding.** The layers fold by the arrow on their edge, or `[`, into a strip with their name. `\` or **Map only**
+folds them and the screen takes the window, and **Full screen** or F takes the whole display. This browser remembers
+the fold. On a phone the keys run along the bottom of the screen.
 
 Under the screen one line says what is in view. Press a station, an image, a place to make or a cell and the line
 gives its facts, and with the token how far it is from the node and which cell it is in. A station of this house says
 it counts toward the cell; a public one is shown and never counted. Below it is the list around the house, nearest
 first, with the distance in metres measured by the node (`GET /geo/measure`, and `GET /nearby` for public stations).
 
-**The tools.** On the right is a column of what the node could do with this place. **Rings and distance** draws the 2,
-5 and 15 km rings from the node's point. **From the house** measures from the node's point to any point you press. The
-rest carry a dotted **not yet**. A screen without a token reads "Tools run on this node with a token. Unlock this
-screen in Set up." under them. On a phone the layers and the tools each open from a bar under the screen as a sheet,
-and Esc closes it.
+**The tools.** **Tools**, beside the ask line, opens a menu of what the node can do with this place. **Rings and
+distance** draws the 2, 5 and 15 km rings from the node's point. **From the house** measures from the node's point to
+any point you press. The two that run come first, and the rest carry a dotted **not yet**. Choosing one closes the
+menu, and so do Esc and a press outside it. A screen without a token reads "Tools run on this node with a token.
+Unlock this screen in Set up." in the menu. On a phone the layers open from a bar under the screen as a sheet, and Esc
+closes it.
 
-The lower part has two halves. The open map's table is on the left. On the right is what changed year on year, the
-satellite then and now with the hectares that changed and a bar a year for the buildings it counts, and under it
-**The place in figures**, which holds land and coast and the Index cells, and lists what is not here yet.
+Under the screen, across the whole page, is what changed year on year. The satellite then and now sit side by side,
+large, with the hectares that changed between them and a bar a year for the buildings it counts. On a phone the two
+pictures stack. Below that, the open map's table is on the left and **The place in figures** on the right, with land
+and coast, the Index cells, and what is not here yet.
 
 The grid, the rings and every distance are the node's own answers from `GET /geo/*`, and the plan is
 `GET /place/geojson`; all of them need a token at every sharing level, because together they place the house. Without
@@ -209,9 +214,11 @@ the token, the house's marks say **withheld** where they would stand, the rows t
 map opens on the published cell. The street map comes from `/ground/*` once `planetai run place basemap` has run; until
 then Set up lists **The map of this place** under what is left to finish.
 
-**+ Add an image** (token only) opens a dialog: the file, what took it (phone, fixed camera, microscope, drone, balloon
-or kite), a note and your name, and whether the image model on this node describes it. The image lands where its own
-GPS says it was taken, else in the node's cell; the node strips EXIF and GPS from the file and keeps it.
+**The Image key** (token only) adds a picture. Press the map, or Enter for its centre, and a marker holds the image you
+choose from Data › Images or take as **A new photo**. With nothing pressed it also offers **A new photo** on its own.
+A new photo opens a dialog with the file, what took it (phone, fixed camera, microscope, drone, balloon or kite), a
+note and your name, and whether the image model on this node describes it. The image lands where its own GPS says it
+was taken, else in the node's cell; the node strips EXIF and GPS from the file and keeps it.
 
 **Species confirmed here** is the list under the species row: a table of what somebody here confirmed in an image,
 how often, where, and GBIF's open records by others in the node's seven cells, token only.
