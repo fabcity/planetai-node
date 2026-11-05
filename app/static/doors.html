@@ -344,6 +344,7 @@ button.tl{cursor:pointer}button.tl:hover:not(:disabled):not(.on){background:var(
  
   position:relative;margin:6px;border-radius:10px;overflow:hidden;background:var(--ground);color:var(--ink);box-shadow:0 0 0 1px #000,0 0 0 5px #1b1b1b,0 0 0 6px #000}
 @media (pointer:coarse){.mapc{--k:44px}}
+.pyears{--screen:#17191D}   /* the screen's ground (PAL.dark), behind the then-and-now pictures */
 .mapw{position:relative;min-width:0}.mapc #map{aspect-ratio:auto;height:560px;width:100%;position:relative;background:var(--ground)}
 .mapc .tools,.mapc .zoom,.mapc .scales,.phour,.dlmenu,.pbase{background:var(--chip);border:1px solid var(--hair);border-radius:10px}
 .tools{position:absolute;top:12px;right:12px;z-index:3;display:flex;flex-direction:column}
@@ -449,9 +450,12 @@ button.tl{cursor:pointer}button.tl:hover:not(:disabled):not(.on){background:var(
 #altbar{display:flex;gap:6px;align-items:center;padding:4px 0;font:400 var(--t-cap) var(--body)}
 #altbar button{background:none;border:1px solid var(--hair);border-radius:999px;color:var(--ink);width:44px;height:44px;cursor:pointer}#altbar .cmp{margin-left:auto;display:flex;gap:6px;align-items:center;min-height:44px}
 #pchange .pair{height:auto}#pchange .pair figure{aspect-ratio:1}#pchange .photo{width:100%;display:block}
-/* at a desk the two pictures are a wide frame, no taller than the screen above them, cropped about their centre: the
-   full 3 km across, less of the north and south (Tomas, 5 Nov: they were taller than the map) */
-@media (min-width:761px){#pchange .pair figure{aspect-ratio:auto;height:min(420px,calc(50vw - 40px))}#pchange .pair img{object-fit:cover;object-position:center}}
+/* at a desk the pictures are no taller than 420 px (Tomas, 5 Nov: they were taller than the map) and show the whole
+   3 km square, because the hectares under them count the whole of it: each square sits centred in its half of the
+   band on the screen's dark ground. The single year the same */
+#pchange .pair figure,#pchange .photo{background:var(--screen)}#pchange .pair img{background:none}
+@media (min-width:761px){#pchange .pair figure{aspect-ratio:auto;height:min(420px,calc(50vw - 40px))}#pchange .pair img{object-fit:contain;object-position:center}
+  #pchange .photo{height:min(420px,calc(100vw - 80px));object-fit:contain;object-position:center}}
 .years{display:grid;gap:4px;align-items:end;height:98px;margin-top:8px}.years i{background:var(--ink);opacity:.55;border-radius:1px}
 .yl{display:grid;gap:3px;margin:3px 0 10px;font:400 9.5px var(--mono);color:var(--mute);text-align:center}
 /* the open map's table: a swatch in the drawing's own colour is the one place a drawing colour sits off the screen */

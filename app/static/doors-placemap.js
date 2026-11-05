@@ -415,7 +415,7 @@ function margin() {
 /* while a shape is drawn and the map zooms or pans without the mouse moving (a wheel, a pinch, the + and − keys), the
    leg to the pointer keeps its end under the pointer, not at the map point it was over before */
 function following() {
-  const d = PM.draw; if (!DRAWING() || !d.state || !d.state.pts.length || !PM.lastPt || !PM.map) return;
+  const d = PM.draw; if (!DRAWING() || !d.state || !d.state.pts.length || !PM.lastPt || !PM.map || d.hover == null) return;   // a shape from the keyboard has no leg to the pointer
   const q = PM.map.unproject([PM.lastPt.x, PM.lastPt.y]); d.hover = [q.lng, q.lat];
   figureOnly(); if (PM.overlay) PM.overlay.setProps({ layers: layers() });
 }
@@ -928,7 +928,9 @@ function onKey(e) {
   if (view() !== 'place' || !PM.map || !DOORS_TOKEN()) return;
   const t = e.target, d = PM.draw, k = e.key, within = sel => !!(t && t.closest && t.closest(sel));
   /* the download and Tools menus keep their keys: onKey listens in the capture phase, so a menu's own Esc cannot stop it */
-  if (within('input, textarea, select, [contenteditable], dialog, .dlmenu, .ptools')) return;
+  if (within('input, textarea, select, [contenteditable], dialog, .dlmenu')) return;
+  /* the Tools button and its menu keep their keys while the menu is open; once it is shut, the button is any key on the page */
+  if (within('.ptools') && $('#ptools').hidden === false) return;
   if ((e.metaKey || e.ctrlKey) && !e.shiftKey && (k === 'z' || k === 'Z')) { e.preventDefault(); undo(); return; }
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const key = (KEYS.find(([, l]) => l === k.toUpperCase()) || [])[0];

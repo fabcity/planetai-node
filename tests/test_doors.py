@@ -1099,6 +1099,13 @@ async function boot(tok, o = {}) {
     (ons.move || []).forEach(f => f()); await new Promise(x => setTimeout(x, 20));
     r.after = c.__PM.draw.hover; c.__PM.setTool('select');
     c.__PM.draw.sel = 11; ev('Escape', q => (q.includes('.ptools') ? {} : null)); r.escTools = c.__PM.draw.sel;
+    /* a tool chosen from the menu leaves the focus on the Tools button, the menu shut: the screen's keys work from there */
+    c.$('#ptools').hidden = true; c.__PM.draw.sel = null; c.__PM.setTool('from');
+    ev('Escape', q => (q.includes('.ptools') ? {} : null)); r.escFrom = c.__PM.tool;
+    ev('m', q => (q.includes('.ptools') ? {} : null)); r.mFrom = c.__PM.tool; c.$('#ptools').hidden = false; c.__PM.setTool('select');
+    /* a shape started from the keyboard has no leg to the pointer, and a zoom does not give it one */
+    c.__PM.setTool('line'); ev('Enter', () => null); const kb = c.__PM.draw.hover;
+    (ons.move || []).forEach(f => f()); await new Promise(x => setTimeout(x, 20)); r.kbLeg = [kb, c.__PM.draw.hover]; c.__PM.setTool('select');
     c.__PM.draw.sel = null; c.__PM.setTool('marker'); const n = posted.length;
     c.document.getElementById = id => (id === 'ptoolsb' ? { getAttribute: () => 'true' } : null);
     (ons.click || []).forEach(f => f({ lngLat: { lng: 115.16, lat: -8.82 }, point: { x: 1, y: 1 } })); await new Promise(x => setTimeout(x, 30));
@@ -1225,14 +1232,17 @@ assert 'id="dsaid" class="vh" aria-live="polite"' in _t["panel"], "the finished-
 print("  place: the readout is a chip with the tool, the map, the live figure and a dot; a press opens the colours; a drawing in hand opens it; Esc folds it")
 _fx = M["fix"]
 assert _fx["before"] == [115.168, -8.8185] and _fx["after"] == [115 + 300 / 2e4, -8 - 200 / 2e4], ("on move the leg's end follows the pointer's pixel", _fx["before"], _fx["after"])
-assert _fx["escTools"] == 11, "Esc on the Tools button is the menu's, not the screen's: the drawing in hand stays"
+assert _fx["escTools"] == 11, "Esc on the Tools button while its menu is open is the menu's: the drawing in hand stays"
+assert _fx["escFrom"] == "select" and _fx["mFrom"] == "marker", ("with the menu shut and the focus on Tools, Esc ends From the house and M takes the marker key", _fx["escFrom"], _fx["mFrom"])
+assert _fx["kbLeg"] == [None, None], ("a shape from the keyboard gains no leg to an old mouse pixel when the map moves", _fx["kbLeg"])
 assert _fx["toolsClick"] == {"posted": 0, "state": None}, ("a press that closes Tools drops no marker", _fx["toolsClick"])
 assert "Make a map first with New map" in _fx["noMap"]["read"] and "Add a photo on its own." in _fx["noMap"]["form"] and "Press the map" not in _fx["noMap"]["form"], \
     ("the Image key with no map says make one first, and still offers a photo on its own", _fx["noMap"])
 assert "@container place (max-width:899px){.dchip .v small.more{display:none}}" in html and ".dchip .m{flex:0 1000 auto;" in html and "text-overflow:ellipsis}.dchip .v:empty" in html, \
     "the chip gives way name first, then the tool; the figure ends in an ellipsis and keeps its unit when narrow"
-assert "@media (min-width:761px){#pchange .pair figure{aspect-ratio:auto;height:min(420px,calc(50vw - 40px))}#pchange .pair img{object-fit:cover;object-position:center}}" in html, \
-    "at a desk then and now are a wide frame, at most 420 px tall, cropped about the centre"
+assert "@media (min-width:761px){#pchange .pair figure{aspect-ratio:auto;height:min(420px,calc(50vw - 40px))}#pchange .pair img{object-fit:contain;object-position:center}" in html \
+    and "#pchange .photo{height:min(420px,calc(100vw - 80px));object-fit:contain;object-position:center}" in html and "#pchange .pair figure,#pchange .photo{background:var(--screen)}" in html \
+    and "object-fit:cover;object-position:center" not in html, "at a desk then and now are at most 420 px tall and show the whole square, the single year too, on the screen's ground"
 assert "max-height:calc(100% - 3 * var(--k) - 44px)" in html, "under 560 px of screen the readout and its form stop above the hour"
 print("  place: the leg follows the pointer through a zoom; Esc and a press that close Tools touch nothing else; the Image key with no map says so")
 _im = M["image"]
@@ -1371,6 +1381,7 @@ t.tb.onclick(); t.menu.rows.find(r => r.name === 'from').onclick(); out.menu.fro
 t.tb.onclick(); t.menu.rows.find(r => r.name === 'rings').onclick(); out.menu.rings = t.state().layers;
 t.tb.onclick(); t.wrap.on.focusout({ relatedTarget: t.menu.rows[1] }); out.menu.focusIn = t.menu.hidden;
 t.wrap.on.focusout({ relatedTarget: null }); out.menu.focusNull = t.menu.hidden;
+t.wrap.on.focusout({ relatedTarget: { name: 'canvas', closest: q => (q === '.maplibregl-canvas-container' ? {} : null) } }); out.menu.focusMap = t.menu.hidden;
 t.wrap.on.focusout({ relatedTarget: { name: 'elsewhere' } }); out.menu.focusOut = t.menu.hidden;
 const lk = load({ tok: false }); lk.c.placeTools(); out.locked = { html: lk.menu.html, any: lk.menu.rows.filter(r => r.kind && !r.disabled).length };
 console.log(JSON.stringify(out));
@@ -1402,6 +1413,7 @@ assert _mn["open"] and _mn["exp"] == "true" and _mn["focus"] == "rings", ("Tools
 assert _mn["esc"] == {"hidden": True, "exp": "false", "focus": "toolsb"}, ("Esc closes the menu and gives the focus back to Tools", _mn["esc"])
 assert _mn["inside"] is False and _mn["outside"] is True, "a press outside the menu closes it, one inside does not"
 assert _mn["from"] == {"tools": ["from"], "hidden": True, "focus": "toolsb"} and _mn["rings"] == ["rings:true"], ("a tool chosen runs and closes the menu", _mn)
+assert _mn["focusMap"] is False, "focus going to the map's canvas (a press on the map) leaves the menu to the click, which swallows that press"
 assert _mn["focusIn"] is False and _mn["focusNull"] is False and _mn["focusOut"] is True, ("focus leaving the menu closes it; moving within it, or a press, does not", _mn)
 assert F9["locked"]["any"] == 0 and "Tools run on this node with a token. Unlock this screen in Set up." in F9["locked"]["html"], "without the token the rows are quiet and say why"
 print("  place: Tools is one button on the top line; its menu lists the two that run, then the ones not yet; Esc or a press outside closes it")

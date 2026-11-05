@@ -195,7 +195,10 @@ window.placeTools = placeTools;
 $('#ptoolsb').onclick = () => toolsMenu($('#ptools').hidden);
 document.addEventListener('click', e => { if ($('#ptools').hidden === false && !e.target.closest('.ptools')) toolsMenu(false); });
 /* and when the focus leaves it (Tab out of the last row); a press elsewhere is the click above */
-{ const w = document.querySelector('.ptools'); if (w) w.addEventListener('focusout', e => { if (e.relatedTarget && !w.contains(e.relatedTarget)) toolsMenu(false); }); }
+/* A press on the map moves the focus to MapLibre's canvas before its click: that one is left to the click (doors-placemap.js
+   swallows the press while the menu is open, and the click above then closes it) */
+{ const w = document.querySelector('.ptools');
+  if (w) w.addEventListener('focusout', e => { const t = e.relatedTarget; if (t && !w.contains(t) && !(t.closest && t.closest('.maplibregl-canvas-container'))) toolsMenu(false); }); }
 
 /* THE PLACE IN FIGURES, the lower band's right: the issues that change yearly and have no hours (Land, Coast; Now is for
    the hour), the Index cells, and what is not here yet. */
