@@ -10,7 +10,7 @@ kind: code
 domain: place
 scales: [community]
 sources: []
-# On when INDEX_PLACE names a place, as `planetai place set <slug>` writes it (docs/PACKS.md, "Code in official
+# On when INDEX_PLACE names a place, as `planetai place <slug>` writes it (docs/PACKS.md, "Code in official
 # packs"). The place list the slug is checked against is places.json, generated from the registry's places.yaml.
 switch: [INDEX_PLACE]
 env:

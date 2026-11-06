@@ -268,5 +268,30 @@ else:
     assert RT.index_place()["read"]["ok"] is False
     print("  ok: GET /index/place")
 
+# ---- `planetai place`: the paths that need no node. Its home is a scratch folder whose .env points at a port nothing
+# listens on, so no running node is touched; the packs are the real ones. Setting needs the node's Set up, so that path
+# is checked only as far as it refuses and says what to run later.
+import tempfile  # noqa: E402
+
+with tempfile.TemporaryDirectory() as home:
+    os.symlink(os.path.join(ROOT, "packs"), os.path.join(home, "packs"))
+    def cli(*a, env="APP_PORT=9\nNODE_LAT=41.39\nNODE_LON=2.17\nINDEX_PLACE=barcelona\n"):
+        with open(os.path.join(home, ".env"), "w") as f:
+            f.write(env)
+        # a new session has no controlling terminal, so the suggestion cannot stop to ask
+        return subprocess.run([os.path.join(ROOT, "bin", "planetai"), "place", *a], capture_output=True, text=True,
+                              env=dict(os.environ, PLANETAI_HOME=home), start_new_session=True, stdin=subprocess.DEVNULL)
+    r = cli("not-a-place")
+    assert r.returncode == 2 and "not an Index place" in r.stdout, (r.returncode, r.stdout, r.stderr)
+    r = cli()
+    assert r.returncode == 0 and "Barcelona" in r.stdout and "planetai place barcelona" in r.stdout, (r.stdout, r.stderr)
+    r = cli(env="APP_PORT=9\nNODE_LAT=39.89\nNODE_LON=4.27\n")      # Menorca: nothing within 150 km
+    assert r.returncode == 0 and "no Fab City Index place within 150 km" in r.stdout, r.stdout
+    r = cli("barcelona")      # the node is not answering: nothing changed, and the command to run later is printed
+    assert r.returncode == 1 and "planetai place barcelona" in r.stdout, (r.returncode, r.stdout)
+    r = cli("none")           # clearing also blanks the INDEX_PLACE that init left in .env
+    assert r.returncode == 1 and "INDEX_PLACE=\n" in open(os.path.join(home, ".env")).read()
+    print("  ok: planetai place (the paths that need no node)")
+
 print("  ok: test_index_pack")
 sys.exit(0)
