@@ -3,7 +3,7 @@
 ## Unreleased
 
 - **A quick start, and Place on a page of its own.** `docs/quickstart` is a node in six steps on one page: install, a
-  sensor and the first alert, choose your packs, a model on the machine, your own agent, the map of your place, each
+  sensor and the first alert, let the packs run, a model on the machine, your own agent, the map of your place, each
   with its commands and the page that goes deeper. It is the first page of the docs and a link in the top bar of every
   page. `docs/place` is the Place door, moved out of the dashboard page with how to turn the place pack on and what to
   do when the map is thin. The sidebar's Get started is now Install. The README and the FAB26 page point at the quick
