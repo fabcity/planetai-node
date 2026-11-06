@@ -28,7 +28,9 @@ curl -fsSL https://planetai.fab.city/install | bash
 ```
 
 Four questions, two minutes, running. Then `planetai telegram` for the alerts and `planetai ui` for the dashboard.
-Walk-through in [`docs/START_HERE.md`](docs/START_HERE.md).
+Six steps, one sitting: [planetai.fab.city/docs/quickstart](https://planetai.fab.city/docs/quickstart/). The long
+version is [the essential guide](https://planetai.fab.city/docs/essential-guide/); the terminal walk-through is
+[`docs/START_HERE.md`](docs/START_HERE.md).
 
 ## What it is
 

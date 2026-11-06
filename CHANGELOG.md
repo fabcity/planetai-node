@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **A quick start, and two guides behind it.** `docs/quickstart` is a node in six steps on one page: install, a sensor
+  and the first alert, choose your packs, a model on the machine, your own agent, the map of your place, each with its
+  commands and the page that goes deeper. `docs/essential-guide` is the six steps in full, written for a lab or city
+  installing a community node, and `docs/radios-and-sensors` takes a Bayu, a Meshtastic radio or the FAB26 kit from
+  parts to a `yours` row in `planetai sensors`. The README and the FAB26 page point at the quick start; `START_HERE.md`
+  stays as the terminal walk-through.
+
 - **Place is drawn as what the ground is made of.** The door has a list on the left with the sky at the top and the
   ground at the bottom, one line a row with a dot for on, off, or not held yet, and a black screen in the middle that
   stays black on the light page and the dark one. **Tools**, beside the ask line, opens a menu. Rings and distance and

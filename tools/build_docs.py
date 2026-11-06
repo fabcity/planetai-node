@@ -40,6 +40,8 @@ NAV = [
         ("concepts", "docs/site/concepts.md"),
     ]),
     ("Get started", [
+        ("quickstart", "docs/site/quickstart.md", "Quick start"),
+        ("essential-guide", "docs/site/essential-guide.md", "The essential guide"),
         ("platforms", "docs/PLATFORMS.md"),
         ("install", "docs/site/install.md"),
         ("first-ten-minutes", "docs/site/first-ten-minutes.md"),
@@ -58,6 +60,7 @@ NAV = [
     ("Sensors and sources", [
         ("sensors", "docs/site/sensors.md"),
         ("radios", "docs/MESHTASTIC.md"),
+        ("radios-and-sensors", "docs/site/radios-and-sensors.md", "Radios and sensors"),
         ("sources", "docs/site/sources.md", "The source registry"),
         ("before-a-sensor", "docs/PREFILL.md", "Before a sensor"),
     ]),
