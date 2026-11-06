@@ -37,6 +37,11 @@ mesh_state = {"root_topic": None, "gateway": None, "packets": 0, "last": None}
 tg_state: dict = {"ok": None, "at": None}
 
 
+# Connecting to Telegram takes ~0.2 s from node #1, so 5 s to connect is generous; it bounds a chat's three tries at
+# ~28 s in any mix of drops and slow connects, four chats at ~112 s, under an MCP client's 180 s on POST /report/now.
+TG_TIMEOUT = httpx.Timeout(15, connect=5)
+
+
 def _tg_post(url: str, body: dict, waits: tuple = (3, 10)) -> httpx.Response:
     """POST to Telegram, trying again after each of `waits` (3 s, then 10 s) when the connection never opened. Node #1's
     line drops for seconds at a time, several times a day (6 Nov 2026: 9 in 20 h), and an alert sent once into a drop
@@ -44,7 +49,7 @@ def _tg_post(url: str, body: dict, waits: tuple = (3, 10)) -> httpx.Response:
     message, and a second copy of an alert is worse than a late one."""
     for wait in (*waits, None):
         try:
-            return httpx.post(url, json=body, timeout=15)
+            return httpx.post(url, json=body, timeout=TG_TIMEOUT)
         except (httpx.ConnectError, httpx.ConnectTimeout) as e:
             if wait is None:
                 raise

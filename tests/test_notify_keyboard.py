@@ -32,6 +32,7 @@ def run(statuses, keyboard=KB):
 
     def post(url, json, timeout):
         sent.append(dict(json))      # a copy: notify() edits its body between the two sends
+        assert timeout.connect == 5 and timeout.read == 15, timeout      # keeps three tries x four chats under 180 s
         a = next(answers)
         if isinstance(a, Exception):
             raise a
