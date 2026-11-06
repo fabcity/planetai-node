@@ -124,7 +124,9 @@ const pick = n => core.match(new RegExp('^const ' + n + ' = .*$', 'm'))[0], fn =
 const [alerts] = JSON.parse(process.argv[1]), out = [];
 const typing = { id: 'input' }, form = { note: { value: '' }, contains: e => e === typing };
 const el = { hidden: true, innerHTML: '', open: false, querySelector: q => q === 'form' && el.open ? form : null };
-const ctx = { D: { tz: 'Asia/Makassar', locale: 'en', alerts, actions: [] }, doorsLocal: L.doorsLocal, $: () => el, document: { activeElement: null } };
+// the fixture's alerts are dated 3 Nov 2026 and asksFrom drops anything 72 h old, so the clock is pinned as above
+const ctx = { D: { tz: 'Asia/Makassar', locale: 'en', alerts, actions: [] }, doorsLocal: L.doorsLocal, $: () => el, document: { activeElement: null },
+  Date: Object.assign(class extends Date {}, { now: () => Date.parse('2026-11-03T09:00:00+08:00') }) };
 vm.createContext(ctx);
 vm.runInContext(['esc', 'WD', 'loc', 'dayOf', 'dLabel', 'wdhm', 'said'].map(pick).join('\n') + '\n'
   + fn(now, 'asksFrom') + fn(now, 'packWord') + fn(now, 'drawAsks') + fn(now, 'askTaken'), ctx);

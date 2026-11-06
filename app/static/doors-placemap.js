@@ -72,7 +72,7 @@ const LAYERS = [
   { id: 'mine', cake: 'frame', pack: 'core', src: 'H3', name: 'Node cell', sub: 'the cell it stands in, at the resolution in view', on: true },
   { id: 'grid', cake: 'frame', pack: 'core', src: 'H3', name: 'H3 grid', sub: 'cells at this scale, dotted where a cell may leave', on: false },
   { id: 'street', cake: 'frame', pack: 'place', src: 'OSM', name: 'Street map', sub: 'OpenStreetMap, with its names, kept on this node', on: true, still: true },
-  { id: 'imagery', cake: 'frame', pack: 'earth-engine', src: 'Sentinel-2', name: 'Satellite', sub: '10 m, Sentinel-2, composited by this node', on: false, need: 'imagery' },
+  { id: 'imagery', cake: 'frame', pack: 'earth-engine', src: 'Sentinel-2', name: 'Satellite', sub: '10 m, Sentinel-2, composited by this node; from Block scale in, the street map and any drone flight', on: false, need: 'imagery' },
   { id: 'drone', cake: 'frame', pack: 'place', src: 'OAM', name: 'Drone', sub: 'drone imagery, OpenAerialMap, where somebody flew', on: false, need: 'drone', minz: 13 },
   { id: 'rings', cake: 'frame', pack: 'nearby', src: '2 · 5 · 15 km', name: 'Rings', sub: '2, 5 and 15 km', on: false },
   { id: 'images', cake: 'frame', pack: 'core', src: 'this house', name: 'Images', sub: 'what the household added', on: true },
@@ -184,8 +184,12 @@ function style(p = P()) {
     { id: 'plan-casing', type: 'line', source: 'plan', filter: k('road'), minzoom: 12, layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': p.casing, 'line-width': W(1.2, 14) } },
     { id: 'plan-road', type: 'line', source: 'plan', filter: k('road'), minzoom: 12, layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': p.road, 'line-width': W(0.6, 11) } },
     { id: 'plan-bldg', type: 'fill', source: 'plan', filter: k('building'), minzoom: 12.5, paint: { 'fill-color': p.bldg, 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 12.5, 0, 13.5, 1] } });
-  if (G.imagery) L.push({ id: 'imagery', type: 'raster', source: 'imagery', layout: { visibility: 'none' }, paint: { 'raster-fade-duration': 0 } });
+  /* Sentinel-2's grain is 10 m and its tiles stop at zoom 15: past it a map would only enlarge them (Tomas, 6 Nov:
+     "switch past Block"). So the satellite ends at SAT_MAX, the street map under it shows, and where somebody flew a
+     drone its picture comes on above the streets (drone-close, the satellite's own row). */
+  if (G.imagery) L.push({ id: 'imagery', type: 'raster', source: 'imagery', maxzoom: SAT_MAX, layout: { visibility: 'none' }, paint: { 'raster-fade-duration': 0 } });
   if (G.drone) L.push({ id: 'drone', type: 'raster', source: 'drone', minzoom: 13, layout: { visibility: 'none' }, paint: { 'raster-fade-duration': 0 } });
+  if (G.imagery && G.drone) L.push({ id: 'drone-close', type: 'raster', source: 'drone', minzoom: SAT_MAX, layout: { visibility: 'none' }, paint: { 'raster-fade-duration': 0 } });
   L.push({ id: 'plan-sat', type: 'fill', source: 'plan', filter: k('sat'), minzoom: 12.5,
     paint: { 'fill-color': `rgb(${p.sat})`, 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 12.5, 0, 13.5, 0.75] } });
   if (V && G.glyphs) {
@@ -205,12 +209,13 @@ function style(p = P()) {
 /* which base style layers each registry row owns */
 const OWNS = { street: ['land-fill', 'land-edge', 'v-earth', 'v-farm', 'v-green', 'v-built', 'v-sand', 'v-water', 'v-stream', 'v-coast', 'v-path', 'v-casing', 'v-road', 'v-bldg', 'plan-green', 'plan-casing', 'plan-road', 'plan-bldg',
     'v-road-label', 'v-poi-label', 'v-place-label'],
-  imagery: ['imagery'], drone: ['drone'], satonly: ['plan-sat'] };
+  imagery: ['imagery', 'drone-close'], drone: ['drone'], satonly: ['plan-sat'] };
+const SAT_MAX = 15;   // the satellite's last zoom; Block (15.1) and Street draw the street map
 function applyBase() {
   if (!PM.map) return;
   for (const [id, ls] of Object.entries(OWNS)) for (const l of ls) {
     if (!PM.map.getLayer(l)) continue;
-    PM.map.setLayoutProperty(l, 'visibility', PM.on[id] ? 'visible' : 'none');
+    PM.map.setLayoutProperty(l, 'visibility', PM.on[id] || (id === 'street' && PM.on.imagery) ? 'visible' : 'none');
     const t = PM.map.getLayer(l).type;
     if (t === 'raster') PM.map.setPaintProperty(l, 'raster-opacity', PM.alpha[id]);
     if (l === 'plan-sat') PM.map.setPaintProperty(l, 'fill-opacity', ['interpolate', ['linear'], ['zoom'], 12.5, 0, 13.5, 0.75 * PM.alpha[id]]);
@@ -245,8 +250,10 @@ function packRows() {
 /* the credits each layer on the screen owes, the same words on the screen and burned into the PNG */
 function creditList() {
   const m = (PM.meta && PM.meta.layers) || {}, c = [];
-  if (PM.on.street && PM.ground && PM.ground.vector) c.push('© OpenStreetMap contributors · Protomaps');
-  if (PM.on.imagery && m.imagery) c.push(m.imagery.attribution);
+  const close = PM.map && PM.map.getZoom() >= SAT_MAX, sat = PM.on.imagery && !close;
+  if ((PM.on.street || (PM.on.imagery && close)) && PM.ground && PM.ground.vector) c.push('© OpenStreetMap contributors · Protomaps');
+  if (sat && m.imagery) c.push(m.imagery.attribution);
+  if (PM.on.imagery && close && !PM.on.drone && m.drone) c.push((m.drone.mosaics || []).map(x => `${x.provider} via OpenAerialMap, CC BY 4.0`).join(' · '));
   if (PM.on.drone && m.drone) c.push((m.drone.mosaics || []).map(x => `${x.provider} via OpenAerialMap, CC BY 4.0`).join(' · '));
   if (PM.on.wind && PM.wind) c.push('wind: Open-Meteo, CC BY 4.0');
   c.push('Natural Earth');
@@ -277,7 +284,7 @@ function layers() {
   if (L.grid && G) {
     const cells = G.cells.filter(c => c.id !== G.node);
     /* over a photograph the grid is drawn light on a dark edge, as the svg ground draws hairlines over tiles */
-    const photo = (PM.on.imagery && PM.ground.imagery && z >= 8) || (PM.on.drone && PM.ground.drone && z >= 13);
+    const photo = (PM.on.imagery && PM.ground.imagery && z >= 8 && z < SAT_MAX) || (PM.on.drone && PM.ground.drone && z >= 13);
     const gc = photo ? A([255, 255, 255], .8 * a('grid')) : A(p.ink, (z >= 12.5 ? .3 : .22) * a('grid'));
     if (photo) out.push(new Dk.PathLayer({ id: 'grid-edge', data: cells, getPath: d => d.path, ...px, getColor: [0, 0, 0, Math.round(90 * a('grid'))], getWidth: 2.6 }));
     /* solid and dotted are two layers, not one with a switched extension: deck.gl cannot swap a layer's shader */
@@ -1388,7 +1395,7 @@ async function placeMap() {
     ask('geo/rings?km=2,5,15').then(x => { RINGS = x.rings.map(g => ({ km: g.km, path: g.ring.map(([la, ln]) => [ln, la]) })); redraw(); }).catch(() => {});
     cellFacts(D.geometry.radio.mine).then(c => { RADIO = { id: c.id, path: loop(c.ring) }; redraw(); }).catch(() => {});
   });
-  map.on('moveend', () => { const r = resFor(map.getZoom()); if (r !== PM.res) { PM.res = r; chrome(); } redraw(); panel(); loadGrid(); });
+  map.on('moveend', () => { const r = resFor(map.getZoom()); if (r !== PM.res) { PM.res = r; chrome(); } redraw(); panel(); loadGrid(); credits(); });
   map.on('mousemove', e => { const d = PM.draw; PM.lastPt = e.point; if (DRAWING() && d.state && d.state.pts.length) { d.hover = [e.lngLat.lng, e.lngLat.lat]; figureOnly(); redraw(); } });
   map.on('click', e => {
     if (PM.dlm && !PM.dlm.hidden) { dlMenu(false); return; }   // a press that closes the menu does nothing else
@@ -1422,7 +1429,7 @@ window.groundBase = async theme => {
   if (!PM.meta) { PM.meta = await ask('ground/meta').catch(() => null); PM.ground = (PM.meta && PM.meta.on_disk) || {}; }
   PM.land = PM.land || { type: 'FeatureCollection', features: [] };
   const p = PAL[theme === 'dark' ? 'dark' : 'light'], s = style(p);
-  s.layers = s.layers.filter(l => !['imagery', 'drone', 'plan-sat'].includes(l.id));
+  s.layers = s.layers.filter(l => !['imagery', 'drone', 'drone-close', 'plan-sat'].includes(l.id));
   if (!PM.ground.vector) s.layers[0].paint['background-color'] = p.land;
   return { style: s, palette: p, street: !!PM.ground.vector };
 };

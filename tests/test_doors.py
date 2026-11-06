@@ -981,7 +981,7 @@ async function boot(tok, o = {}) {
     document: { documentElement: { dataset: {} }, querySelector: () => null, querySelectorAll: () => [], createElement: () => el(), getElementById: () => null, activeElement: null,
       fullscreenEnabled: o.fs !== false, fullscreenElement: null,
       addEventListener: (t, f) => { if (t === 'keydown') keys.push(f); } },
-    maplibregl: { ScaleControl: function () {}, Map: function () { return Object.assign(map, { on: (t, f) => (ons[t] ||= []).push(f), once: (t, f) => { onced.push(t); renders.push(f); }, addControl: noop,
+    maplibregl: { ScaleControl: function () {}, Map: function (opts) { map.opts = opts; return Object.assign(map, { on: (t, f) => (ons[t] ||= []).push(f), once: (t, f) => { onced.push(t); renders.push(f); }, addControl: noop,
       getContainer: () => map, triggerRepaint: noop, getLayer: () => null,
       getCanvas: () => (map.cv ||= { style: {}, width: 1800, height: 1120, clientWidth: 900, focus: () => { map.focused = (map.focused || 0) + 1; } }), touchZoomRotate: { disableRotation: noop }, doubleClickZoom: { enable: noop, disable: noop }, getZoom: () => o.zoom || 13.6, resize: noop,
       project: ([x, y]) => ({ x: x * 1e4, y: -y * 1e4 }), unproject: ([x, y]) => ({ lng: x / 1e4, lat: -y / 1e4 }), easeTo: a => eased.push(a), panBy: a => (map.panned ||= []).push(a),
@@ -1048,6 +1048,12 @@ async function boot(tok, o = {}) {
       return r; } });
   /* a browser without element full screen (Safari on iPhone) gets no Full screen key */
   out.nofs = await boot(true, { fs: false, then: async ({ map }) => ({ col: map.kids.find(x => x.className === 'tools').innerHTML }) });
+  /* past Block the satellite (10 m, tiles to zoom 15) hands the base to the street map, and a drone flight comes on
+     above it; the credit line says whose picture is drawn at this zoom */
+  const SATM = { on_disk: { imagery: true, drone: true, vector: true }, layers: { imagery: { attribution: 'Contains modified Copernicus Sentinel data' }, drone: { mosaics: [{ provider: 'Bayu', bbox: [115.15, -8.83, 115.17, -8.81] }] } } };
+  const credit = async zoom => boot(true, { zoom, meta: SATM, then: async ({ c, map, ons }) => ({ credit: (map.kids.find(x => x.className === 'pbase').onclick({ target: { closest: () => ({ dataset: { b: 'satellite' } }) } }), c.$('#mapcredit').textContent),
+    layers: map.opts.style.layers.filter(l => ['imagery', 'drone', 'drone-close'].includes(l.id)).map(l => [l.id, l.minzoom ?? null, l.maxzoom ?? null]) }) });
+  out.satFar = await credit(13.6); out.satClose = await credit(16.5);
   /* a node without imagery keeps the streets as its base */
   out.plain = await boot(true, { then: async ({ c }) => ({ imagery: c.__PM.on.imagery }) });
   /* the L key pressed with the focus on the page, not the screen: once a line is started the arrows pan the map
@@ -1224,6 +1230,12 @@ assert _g["escClosed"] and _g["escKept"] == 11, "Esc in the menu closes it and k
 print("  place: closing the menu, by a press or Esc, does nothing else on the screen")
 print("  place: the right column reads Map only, Full screen, Back to this node’s cell, Download; the menu offers four formats and everything on the screen")
 assert _g["imagery"] is True and M["plain"]["imagery"] is False, "the satellite is the base where the node holds imagery, the streets elsewhere"
+_sf, _sc = M["satFar"], M["satClose"]
+assert ["imagery", None, 15] in _sf["layers"] and ["drone-close", 15, None] in _sf["layers"], ("the satellite stops at zoom 15 and a drone flight takes over past it", _sf["layers"])
+assert "Copernicus" in _sf["credit"] and "OpenStreetMap" in _sf["credit"], ("at Cell scale the satellite's credit is on the line", _sf["credit"])
+assert "Copernicus" not in _sc["credit"] and "OpenStreetMap" in _sc["credit"] and "OpenAerialMap" in _sc["credit"], \
+    ("at Street scale the street map and the drone flight are credited, not the satellite", _sc["credit"])
+print("  place: past Block the satellite gives the base to the street map and any drone flight, and the credit line follows")
 _dp = {k: M["drawPan"][k] for k in ("idle", "drawing", "canvas", "pts")}
 assert M["drawPan"]["fbSame"] and M["drawPan"]["fb"] is None, ("a framebuffer of the canvas's size stays; one of another size is made again", M["drawPan"]["fbSame"], M["drawPan"]["fb"])
 assert (M["drawPan"]["focusV"], M["drawPan"]["focusA"]) == (0, 1), ("a drawing key hands the focus to the map, Select does not", M["drawPan"]["focusV"], M["drawPan"]["focusA"])

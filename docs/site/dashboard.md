@@ -158,7 +158,9 @@ start on: this house's outdoor kit, the public stations, the species, the cell t
 and the images. Nothing from inside the house is listed or drawn on Place, and neither are the rooms.
 
 **The screen.** In the middle is the map, on a black screen that stays black on the light page and the dark one. It
-opens on the satellite where the node holds it, and a switch at the bottom right changes the base. Zoomed out, a pin
+opens on the satellite where the node holds it, and a switch at the bottom right changes the base. The satellite is
+Sentinel-2 at 10 m, so from Block scale in the street map takes over, with a drone flight on top where somebody flew
+one. Zoomed out, a pin
 marks each drone flight the node holds. The hour is a pill at the top, the node's last reading, or the wind's hour when
 the wind is on. The scale rungs, street, block, cell, village and district, are at the bottom left and the credit at the
 foot. A cell that may leave the machine is dotted. On the right edge are **Map only**, **Full screen**, back to the
