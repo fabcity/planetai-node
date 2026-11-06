@@ -54,7 +54,7 @@ is in. A sensor you built, a Bayu or a Meshtastic radio in a field, reaches the 
 weather, the satellite air model for your district and forty years of climate.
 
 Deeper: [First ten minutes](first-ten-minutes.md), [Sensors and sources](sensors.md),
-[Radios and sensors](radios-and-sensors.md).
+[Radios](../MESHTASTIC.md).
 
 ## 3. Choose your packs
 
@@ -111,8 +111,7 @@ node's cell leaves the machine. On the dashboard: Allow code packs and the place
 up › Packs; the map itself is fetched once from the terminal, and until it is, Set up lists **The map of this place**
 under what is left to finish.
 
-Deeper: [Dashboard](dashboard.md#place), [the place pack](packs-reference.md#place), [The essential guide](essential-guide.md)
-for all six steps in full.
+Deeper: [The Place door](place.md), [the place pack](packs-reference.md#place).
 
 ## Every day
 
