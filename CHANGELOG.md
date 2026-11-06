@@ -22,6 +22,12 @@
   the backup share: a node that loses it is a new node. A node updating from an older release gets its key on the
   update after this one. `planetai children` lists the nodes pushing to a parent. docs/SPEC_identity.md.
 
+- **A photo on a shared map goes up as words, and the picture only when you send it.** The node upstream gets what took
+  the photo, its note, the words you gave it and the day it was taken, and where and who stay home. It can ask for the picture,
+  and the ask reaches you within the hour at the top of your maps on Place, with who asked and for which drawing.
+  **Send** gives them the picture once, **No** keeps it here, and every ask and answer is in the ledger. Unshare the
+  map, take the image off the drawing or delete the photo, and the node upstream deletes its copy. Schema 0.64.
+
 - **Place is drawn as what the ground is made of.** The door has a list on the left with the sky at the top and the
   ground at the bottom, one line a row with a dot for on, off, or not held yet, and a black screen in the middle that
   stays black on the light page and the dark one. **Tools**, beside the ask line, opens a menu. Rings and distance and

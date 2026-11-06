@@ -779,7 +779,8 @@ function drawForm() {
       + '<div class="acts"><button type="button" data-a="newphoto">A new photo</button></div>';
   } else if (!k) { el.hidden = true; el.innerHTML = ''; return; }
   else if (!mine(m)) {
-    el.innerHTML = `<p>${m && m.from_node ? `This map came from ${esc(m.from_node)}; it is read-only here.` : `This is ${esc(m && m.agent)}’s map.`}</p>`;
+    el.innerHTML = `<p>${m && m.from_node ? `This map came from ${esc(m.from_node)}; it is read-only here.` : `This is ${esc(m && m.agent)}’s map.`}</p>`
+      + (m && m.from_node && k.photo ? photoWords(k, m) : '');
   } else {
     const iss = openIssues(), tied = tiedTo(k);
     el.innerHTML = `<label>Label<input data-a="label" maxlength="80" value="${esc(k.label || '')}"></label>`
@@ -799,10 +800,32 @@ function drawForm() {
   on('tie', () => { const i = q('issue').value; if (i === '') { d.err = 'Choose the issue it answers first.'; readout(); return; }
     patch(k.id, { issue: openIssues()[+i].issue, words: q('words').value }, false); });
   on('back', () => { d.pick = null; drawForm(); });
+  on('askphoto', () => askPhoto(k.id));
+  const img = el.querySelector('img[data-photo]');
+  if (img) doorsFetch(API + `place/marks/${k.id}/photo`).then(r => (r.ok ? r.blob() : null)).catch(() => null)
+    .then(b => { if (b) { img.src = URL.createObjectURL(b); img.onload = () => URL.revokeObjectURL(img.src); } });
   on('newphoto', () => window.placeAddImage && window.placeAddImage());
   on('newimg', () => { const id = d.pick.id; window.placeAddImage && window.placeAddImage({ at: centreOf(markById(id)), done: c => { d.pick = null; patch(id, { image: c }); } }); });
   el.querySelectorAll('[data-cap]').forEach(b => b.onclick = () => { const id = d.pick.id; d.pick = null; patch(id, { image: +b.dataset.cap }); });
   if (d.focusLabel && q('label')) { d.focusLabel = false; q('label').focus(); }
+}
+/* §14: a child's photo comes up as words. Its file comes only if somebody here asks and somebody there presses Send */
+function photoWords(k, m) {
+  const ph = k.photo, a = ph.ask, st = a && a.state;
+  const head = `<p>${esc(KIND[ph.kind] || ph.kind)} photo${ph.taken ? `, ${esc(ph.taken)}` : ''}${ph.note ? `: ${esc(ph.note)}` : ''}</p>`
+    + Object.entries(ph.meta || {}).map(([x, v]) => `<p class="fine">${esc(x)}: ${esc(v)}</p>`).join('');
+  if (st === 'sent') return head + `<img data-photo alt="The photo on ${esc(k.label || 'this drawing')}, sent by ${esc(m.from_node)}">`;
+  if (st === 'asked') return head + `<p class="fine">Asked ${esc(dayOf(a.asked_at))}${a.asked_by ? ` by ${esc(a.asked_by)}` : ''}. It comes when somebody at ${esc(m.from_node)} presses Send.</p>`;
+  return head + (st === 'no' ? `<p class="fine">${esc(m.from_node)} said no on ${esc(dayOf(a.answered_at))}.</p>` : st === 'gone' ? '<p class="fine">That photo is no longer shared.</p>' : '')
+    + `<p class="fine">The picture itself stays at ${esc(m.from_node)} unless you ask and somebody there sends it.</p>`
+    + '<div class="acts"><button type="button" data-a="askphoto">Ask for the photo</button></div>';
+}
+async function askPhoto(id) {
+  const k = markById(id); if (!k) return;
+  const r = await send('POST', `place/marks/${id}/ask`, { actor: actor() });
+  if (!r.ok) { PM.draw.err = refused(r); after(); return; }
+  const m = mapById(k.map_id);
+  k.photo.ask = r.ask; PM.draw.said = `Asked. ${m ? m.from_node : 'That node'} hears it within the hour.`; after();
 }
 function picker(id) {
   const d = PM.draw; d.pick = { id, caps: null }; drawForm();
@@ -1029,10 +1052,23 @@ function yourMaps() {
       + `<button type="button" class="ymd" data-f="d${m.id}" aria-pressed="${on}" aria-label="${esc(m.name)}, on the screen"><i aria-hidden="true"></i></button>`
       + `<button type="button" class="ymn" data-f="n${m.id}" aria-expanded="${d.edit === m.id}" title="${esc(m.name)}${m.id === d.map ? ' · new drawings go here' : ''}">`
       + `<span>${esc(m.name)}</span><small>${+m.marks} drawn</small></button></div>` + (d.edit === m.id ? editor(m) : ''); };
-  return wrap(M.map(row).join('')
+  return wrap(asksHere() + M.map(row).join('')
     + (d.naming ? `<div class="ynew"><input id="ynew" data-f="ynew" maxlength="80" aria-label="The new map’s name" placeholder="Garden plan"><button type="button" class="ybtn" data-a="keep">Keep</button></div>`
       : '<button type="button" class="ly new" data-f="new"><i aria-hidden="true"></i><span>New map</span></button>')
     + (d.mapErr ? `<p class="fine" role="status">${esc(d.mapErr)}</p>` : ''));
+}
+/* §14: the node upstream asks for a photo on a shared drawing. Only somebody here sends it, and only once */
+function asksHere() {
+  return (PM.asks || []).map(a => `<div class="yed yask" data-k="${+a.id}"><p>${esc(a.node)} asks for the photo on `
+    + a.drawings.map(x => `${esc(x.label || x.kind)} (${esc(x.map)})`).join(', ') + `.${a.asked_by ? ` ${esc(a.asked_by)}, ${esc(dayOf(a.asked_at))}.` : ''}</p>`
+    + `<p class="fine">Send gives them the picture once, No keeps it here, and both go in the ledger.</p>`
+    + '<div class="yacts"><button type="button" class="ybtn" data-a="send">Send</button><button type="button" class="ybtn" data-a="no">No</button></div></div>').join('');
+}
+async function answerAsk(id, answer) {
+  const d = PM.draw, r = await send('POST', `place/photos/asks/${id}`, { answer, actor: actor() });
+  if (r.ok || r.status === 409) PM.asks = (PM.asks || []).filter(a => a.id !== id);
+  d.mapErr = !r.ok ? refused(r) : answer === 'send' ? 'Sent. It goes up within the minute.' : 'Kept here. The node upstream hears no.';
+  panel();
 }
 function editor(m) {
   const d = PM.draw, asked = kind => d.asked && d.asked.id === m.id && d.asked.kind === kind, f = a => `data-a="${a}" data-f="${a}${m.id}"`;
@@ -1054,6 +1090,7 @@ function wireMaps() {
   const ni = document.getElementById('ynew');
   if (ni) { ni.onkeydown = e => { if (e.key === 'Enter') newMap(ni.value); if (e.key === 'Escape') { d.naming = false; panel(); } };
     box.querySelector('[data-a="keep"]').onclick = () => newMap(ni.value); }
+  box.querySelectorAll('.yask').forEach(el => el.querySelectorAll('[data-a]').forEach(b => b.onclick = () => answerAsk(+el.dataset.k, b.dataset.a)));
   box.querySelectorAll('.yed[data-m]').forEach(ed => {
     const m = mapById(+ed.dataset.m), x = a => ed.querySelector(`[data-a="${a}"]`); if (!m) return;
     if (x('open')) x('open').onclick = () => { remember(m.id); after(); };
@@ -1097,6 +1134,7 @@ async function placeMaps() {
   const d = PM.draw;
   if (!DOORS_TOKEN()) { PM.maps = null; panel(); return; }
   try { const g = await ask('place/maps'); PM.maps = g.maps || []; PM.palette = g.palette || null; PM.mapsErr = null; } catch (e) { PM.maps = null; PM.mapsErr = e.message; }
+  PM.asks = await ask('place/photos/asks').then(r => r.asks || []).catch(() => []);
   const M = PM.maps || [];
   let keep = null; try { keep = +localStorage.getItem(MAPKEY) || null; } catch (e) { /* no storage here */ }
   if (!mapById(d.map)) d.map = mapById(keep) ? keep : M.length ? M[0].id : null;

@@ -87,7 +87,8 @@ def _node_tokens() -> list[str]:
 
 # What a child node sends its parent. Each route checks AGGREGATE_TOKEN itself and refuses without it, so letting
 # them past SHARE_LEVEL opens nothing to a request with no token.
-_CHILD_WRITES = frozenset({("POST", "/aggregates"), ("POST", "/events"), ("POST", "/place/maps/received")})
+_CHILD_WRITES = frozenset({("POST", "/aggregates"), ("POST", "/events"), ("POST", "/place/maps/received"),
+                           ("POST", "/place/photos/received")})
 
 
 def _is_local(request: Request) -> bool:

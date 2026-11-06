@@ -419,3 +419,92 @@ into quadrants to stay under Earth Engine's feature cap. This changes to H3 cell
 
 Each is run on node #1 for a real cycle before it merges, with CI green first.
 
+
+## 14 · Photos on demand
+
+*Ruled by Tomas, 5 November 2026: a shared drawing's photo goes upstream as its description and category, never the
+file. The node upstream can ask for the file, and the file leaves only when somebody at home presses Send on Place.
+Every ask and every answer is a row in the ledger. The photo's own GPS and the person who took it stay home.*
+
+Until this section a shared drawing carried `image`, the child's capture number, and the parent dropped it. Home nodes
+sit behind NAT and only ever push, so an ask has to wait for the child to call, and the answer travels the same way up.
+
+**What a shared drawing says about its photo.** The upstream copy (`feature_collection(upstream=True)`) keeps `image`,
+the child's capture number, which is the handle an ask names. Beside it goes `photo`:
+
+```
+"photo": {"kind": "phone", "note": "the swale after rain", "meta": {"plant": "vetiver"}, "taken": "2026-11-05"}
+```
+
+`kind` and `note` are the capture's, `meta` is the household's own words about it (`captures.meta`), and `taken` is
+the day it was taken in the node's time zone. Never `lat`, `lon`, `cell`, `at_home`, `actor`, the file's name or its
+hash, and never the image model's `analysis`, which is a model's guess and not the household's words (*my call*). A
+drawing with no image carries `image: null`, as before, and no `photo`. Editing a photo's words in Data › Images, or deleting the photo, marks every
+map that carries it as changed, so the next minute's put says so (`packs/eyes/routes.py`).
+
+**The parent keeps the description.** `/place/maps/received` stores `photo` on the received drawing
+(`place_marks.photo JSONB`, `{ref, kind, note, meta, taken}`, `ref` being the child's number), checked like any child
+input: a known kind, a note of 500 characters at most, `meta` of 40 short strings, `taken` a date. The parent's Place
+shows it on the drawing's form, read-only: "A phone photo, 5 Nov 2026: the swale after rain".
+
+**Asking.** On the parent, the drawing's form has **Ask for the photo**. It writes one row in `place_photo_asks`:
+
+```
+place_photo_asks  id, from_node, ref, label, map_name, asked_by, asked_at,
+                  state ('asked' | 'sent' | 'no' | 'gone'), answered_at, file, mime, bytes,
+                  UNIQUE (from_node, ref)
+```
+
+One ask per photo per child. Asking again after a No opens the same row again (*my call*: a No may have been a
+mistake, and every ask is a ledger row the household sees). The route is `POST /place/marks/{id}/ask`, household token
+on the parent, refused for a drawing that is not from a child or carries no photo.
+
+**The ask reaches the child on its next push.** The child's hourly `POST /aggregates` already reaches the parent
+every hour whether or not a map changed, so the parent answers it with the asks waiting for that child:
+
+```
+{"accepted": 12, "photo_asks": [{"id": 4, "image": 31, "node": "fablab-bali", "by": "Ana", "at": "…"}]}
+```
+
+`node` is the parent's own name and `by` the name its person typed, so the household knows who is asking (*my call*:
+the asker is acting for a community node, and the household decides on it). A child that predates this ignores the
+key, and a parent that predates it never sends it. The child keeps each ask in `place_photo_asks_in`, keyed on the
+parent and its ask id, and writes `photo:asked` in its own ledger, actor the parent's name.
+
+**The child's Place shows the ask** at the top of *your maps*: "fablab-bali asks for the photo on Rain garden (Garden
+plan). Ana, 5 Nov", with **Send** and **No**. Only an ask for a photo that is on a drawing in a map shared right now is
+shown. Any other is answered `gone` by the node itself on the next minute, without a person: the photo was taken off,
+deleted, or its map unshared since.
+
+**Send and No.** `POST /place/photos/asks/{id}` with `{"answer": "send" | "no", "actor"}`, household token on the
+child. The answer is kept at once (`photo:sent` or `photo:no` in the ledger, actor the person) and goes up within the
+minute by `push_maps()`:
+
+```
+POST {PARENT}/place/photos/received   {schema, node, ask, image, answer, picture}   signed (SPEC_identity §8)
+```
+
+`picture` is the capture's own file as base64, only when the answer is `sent`, which the captures pipeline already
+cleaned of EXIF and GPS on arrival. It rides inside the JSON so the node's signature covers the file too, the way it
+covers a shared map. It is sent once: a 2xx, or a 404 or 409 saying there is no such ask or it is closed, ends the ask
+for good. A 401 or 403 about the token says to fix PARENT_TOKEN; a refusal of the key keeps the parent's sentence as
+the error, as a map's share_error does; anything else is tried again after an hour, as a map put is.
+
+**The parent keeps the file for its own token holders.** The route checks AGGREGATE_TOKEN, like every child write,
+then the child's key as a map's push is (`identity.admit`), and the ask must be the child's, for that photo, still
+`asked`. The file is opened as a picture before it is kept
+(JPEG, PNG or WebP, 25 MB at most) under `received/` in the captures folder, named by its hash. It is served by
+`GET /place/marks/{id}/photo`, household token on the parent, never BACKUP_TOKEN and never at any SHARE_LEVEL. The
+parent's ledger has `photo:received`, `photo:no` or `photo:gone`, actor the child node.
+
+**When the photo or the map goes.** The parent keeps a child's photo only while that photo is on a drawing of a map
+of that child it holds. Every put and delete from the child checks it: an ask whose photo is no longer there turns
+`gone`, and its file is deleted. So unsharing a map, deleting it, taking the image off a drawing, or deleting the photo
+at home all end with the file gone from the parent within the minute after the child's next push. On the child, an
+unanswered ask for a photo that is no longer on a shared drawing is answered `gone`; a Send pressed before the photo
+was deleted goes as `gone`, because there is no file to send.
+
+**What this does not settle.** Node identity (#380) signs the hourly push, the maps and the answers, so a signed
+child's asks and answers are its own. A child that still pushes unsigned is known by its name and the shared
+AGGREGATE_TOKEN until it updates. A pending ask is seen on Place only; a line on Now or a Telegram message for it is a
+follow-up.

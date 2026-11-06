@@ -295,7 +295,8 @@ def recorder(url, json=None, headers=None, timeout=None, content=None):
 
 httpx.post = recorder
 WARN_TEXT = ("Sharing sends every drawing in this map, at its exact place, with its labels, notes and measures, to the node "
-        "upstream, where the people holding its token can see it. Press Share again to send it.")
+        "upstream, where the people holding its token can see it. A photo on a drawing goes as what you wrote about it "
+        "and the day it was taken, and the picture stays here. Press Share again to send it.")
 WARN = {"code": "share_warning", "text": WARN_TEXT}
 HOUSE = "This drawing touches the cell the house stands in. Press Share again to send the map with it."
 TOKEN = "The node upstream did not take this node's token. Set PARENT_TOKEN in Set up to the one it gave you."
@@ -492,6 +493,210 @@ assert one("SELECT count(*) AS n FROM place_maps WHERE from_node = 'kid2'")["n"]
 assert recv({**doc, "node": "kid2", "op": "delete", "geojson": None, "map_id": 8}).status_code == 401, "nor does no key"
 httpx.post = real_post
 print("  the parent keeps a child's map whole, read-only, and lets it go on delete; a signed map is its node's")
+
+# ---------------------------------------------------------------- photos on demand (§14)
+# The same app is child and parent: the child's posts are handed to it as the parent, and its NODE_NAME is the child's
+# name on the parent's side. The child's picture is a real file in a throwaway captures folder, written with a GPS
+# block, so the parent's copy can be checked for one.
+import io  # noqa: E402
+import json as _json  # noqa: E402
+import shutil  # noqa: E402
+import tempfile  # noqa: E402
+from PIL import Image  # noqa: E402
+
+PICS = tempfile.mkdtemp()
+os.environ["PLANETAI_CAPTURES"] = PICS
+SET.update(PARENT_API_URL="http://parent.test", PARENT_TOKEN="agg-tok", AGGREGATE_TOKEN="agg-tok")
+im = Image.new("RGB", (64, 48), (40, 120, 60))
+ex = Image.Exif()
+ex[0x8825] = {1: "S", 2: (8.0, 46.0, 39.0), 3: "E", 4: (115.0, 13.0, 20.0)}
+buf = io.BytesIO()
+im.save(buf, "JPEG", exif=ex.tobytes())
+open(os.path.join(PICS, "p1.jpg"), "wb").write(buf.getvalue())
+CAP = one("""INSERT INTO captures (ts, kind, cell, lat, lon, actor, note, meta, file, sha256, bytes, mime)
+             VALUES ('2026-11-05 10:00+00', 'phone', '8a8f1a3a6a4ffff', -8.7777, 115.2222, 'Tomas', 'the swale after rain',
+                     '{"plant": "vetiver"}', 'p1.jpg', 'photos-test-sha', %s, 'image/jpeg') RETURNING id""", len(buf.getvalue()))["id"]
+
+sent.clear()
+
+
+def parent(url, json=None, headers=None, timeout=None, content=None):
+    sent.append({"url": url, "body": json if content is None else _json.loads(content)})
+    return c.post(url.replace("http://parent.test", ""), json=json, content=content, headers=headers)
+
+
+def key(seed):                                             # the child signs with this key from here on ("" for none)
+    os.environ["NODE_KEY"] = seed
+    identity._private.cache_clear()
+
+
+httpx.post = parent
+PH = c.post("/place/maps", json={"name": "Swale", "actor": "Tomas"}, headers=H).json()["map"]["id"]
+assert c.patch(f"/place/maps/{PH}", json={"shared": True, "confirm": "exact", "actor": "Tomas"}, headers=H).status_code == 200
+PK = c.post(f"/place/maps/{PH}/marks", headers=H, json={"type": "Feature", "actor": "Tomas", "properties": {
+    "kind": "marker", "label": "Rain garden", "image": CAP}, "geometry": {"type": "Point", "coordinates": [115.167, -8.819]}}).json()["mark"]["id"]
+sent.clear()
+maps.push_maps()
+put = next(x["body"] for x in sent if x["url"].endswith("/place/maps/received"))
+f0 = put["geojson"]["features"][0]["properties"]
+assert f0["image"] == CAP and f0["photo"] == {"kind": "phone", "note": "the swale after rain", "meta": {"plant": "vetiver"},
+                                              "taken": "2026-11-05"}, f0
+wire = _json.dumps(put)
+for secret in ("8.7777", "115.2222", "Tomas", "p1.jpg", "photos-test-sha", "8a8f1a3a6a4ffff"):
+    assert secret not in wire, f"{secret} went upstream with a shared photo"
+RX = one("SELECT id FROM place_maps WHERE from_node = 'bayu-ungasan' AND remote_id = %s", PH)["id"]
+rk = c.get(f"/place/maps/{RX}/marks", headers=H).json()["marks"][0]
+assert rk["photo"] == {"ref": CAP, "kind": "phone", "note": "the swale after rain", "meta": {"plant": "vetiver"},
+                       "taken": "2026-11-05", "ask": None}, rk["photo"]
+assert rk["capture_id"] is None, "the child's number is never the parent's picture"
+bad = {"schema": "planetai.place.map/v0", "node": "kid", "map_id": 8, "op": "put", "geojson": {"map": "x", "features": [
+    {"type": "Feature", "properties": {"kind": "marker", "image": 3, "photo": {"kind": "selfie"}}, "geometry": {"type": "Point", "coordinates": [0, 0]}}]}}
+r = c.post("/place/maps/received", json=bad, headers={"Authorization": "Bearer agg-tok"})
+assert r.status_code == 422 and "photo" in r.json()["detail"], r.text
+print("  a shared photo goes up as its kind, note, words and day; never its place, its taker or its file")
+
+rk = rk["id"]
+assert c.post(f"/place/marks/{rk}/ask", json={"actor": "Ana"}).status_code in (401, 403), "a stranger asks for nothing"
+assert c.post(f"/place/marks/{PK}/ask", json={"actor": "Ana"}, headers=H).status_code == 409, "a drawing of this node's own"
+r = c.post(f"/place/marks/{rk}/ask", json={"actor": "Ana"}, headers=H)
+assert r.status_code == 200 and r.json()["ask"]["state"] == "asked" and r.json()["ask"]["asked_by"] == "Ana", r.text
+AK = r.json()["ask"]["id"]
+assert c.post(f"/place/marks/{rk}/ask", json={"actor": "Ana"}, headers=H).json()["ask"]["id"] == AK
+LEDGER = lambda verb: ac.execute("SELECT actor, note FROM actions WHERE stage = 'place' AND choice = %s ORDER BY ts", (verb,)).fetchall()  # noqa: E731
+assert [x["actor"] for x in LEDGER("photo:asked")] == ["Ana"], "one ask, one ledger row"
+print("  the parent asks once a photo, by a person's name, and only for a child's drawing")
+
+agg = c.post("/aggregates", json={"schema": "aggregates-v0", "node": "bayu-ungasan", "rows": []}, headers={"Authorization": "Bearer agg-tok"}).json()
+assert [(a["id"], a["image"], a["by"]) for a in agg["photo_asks"]] == [(AK, CAP, "Ana")], agg
+assert c.post("/aggregates", json={"node": "someone-else", "rows": []}, headers={"Authorization": "Bearer agg-tok"}).json()["photo_asks"] == []
+sent.clear()
+main.NODE = os.environ["NODE_NAME"]                       # read at import, before this suite named the node
+main.push_aggregates()                                     # the child's hourly push: the ask comes back in the answer
+main.push_aggregates()
+IN = lambda: ac.execute("SELECT id, answer, answered_by, sent_at FROM place_photo_asks_in ORDER BY id").fetchall()  # noqa: E731
+assert len(IN()) == 1 and IN()[0]["answer"] is None, IN()
+assert [x["actor"] for x in LEDGER("photo:asked")] == ["Ana", "bayu-ungasan"], "the child's ledger has the ask once, by the parent's name"
+got = c.get("/place/photos/asks", headers=H).json()["asks"]
+assert len(got) == 1 and got[0]["asked_by"] == "Ana" and got[0]["node"] == "bayu-ungasan", got
+assert got[0]["drawings"] == [{"mark": PK, "label": "Rain garden", "kind": "marker", "map": "Swale"}], got
+assert c.get("/place/photos/asks").status_code in (401, 403)
+print("  the ask goes down in the answer to the child's hourly push, once, and shows on the child's Place")
+
+IA = got[0]["id"]
+assert c.post(f"/place/photos/asks/{IA}", json={"answer": "maybe"}, headers=H).status_code == 422
+assert c.post(f"/place/photos/asks/{IA}", json={"answer": "send"}, headers={**H, "X-Agent": "claude"}).status_code == 403, \
+    "only a person at home sends a photo"
+assert c.post(f"/place/photos/asks/{IA}", json={"answer": "no", "actor": "Tomas"}, headers=H).status_code == 200
+assert c.post(f"/place/photos/asks/{IA}", json={"answer": "send", "actor": "Tomas"}, headers=H).status_code == 409
+assert c.get("/place/photos/asks", headers=H).json()["asks"] == []
+sent.clear()
+maps.push_maps()
+ans = [x for x in sent if x["url"].endswith("/place/photos/received")]
+assert len(ans) == 1 and ans[0]["body"]["answer"] == "no" and ans[0]["body"]["picture"] is None, ans
+OUT = lambda: one("SELECT state, file, asked_by FROM place_photo_asks WHERE id = %s", AK)  # noqa: E731
+assert OUT()["state"] == "no" and IN()[0]["sent_at"], (OUT(), IN())
+sent.clear()
+maps.push_maps()
+assert not [x for x in sent if "photos" in x["url"]], "an answer goes once"
+assert [x["actor"] for x in LEDGER("photo:no")] == ["Tomas", "bayu-ungasan"], LEDGER("photo:no")
+print("  No is a person's, kept at once, sent once, and the parent's ask closes")
+
+r = c.post(f"/place/marks/{rk}/ask", json={"actor": "Ana"}, headers=H)
+assert r.json()["ask"]["id"] == AK and r.json()["ask"]["state"] == "asked", "after a No the same ask opens again"
+main.push_aggregates()
+assert len(IN()) == 1 and IN()[0]["answer"] is None, ("a reopened ask waits for an answer again", IN())
+assert c.post(f"/place/photos/asks/{IA}", json={"answer": "send", "actor": "Tomas"}, headers=H).status_code == 200
+key("88" * 32)                                             # the child signs from here, and its name is pinned to this key
+sent.clear()
+maps.push_maps()
+ans = [x for x in sent if x["url"].endswith("/place/photos/received")]
+assert len(ans) == 1 and ans[0]["body"]["answer"] == "sent" and ans[0]["body"]["picture"], ans
+assert set(ans[0]["body"]) == {"schema", "node", "ask", "image", "answer", "picture"}
+assert one("SELECT node_id FROM children WHERE name = 'bayu-ungasan'")["node_id"] == identity.node_id(), "pinned by the signed answer"
+o = OUT()
+assert o["state"] == "sent" and o["file"], o
+kept = os.path.join(PICS, "received", o["file"])
+back = Image.open(kept)
+assert back.size == (64, 48) and not back.getexif().get_ifd(0x8825), "the parent's copy carries no GPS"
+r = c.get(f"/place/marks/{rk}/photo", headers=H)
+assert r.status_code == 200 and r.headers["content-type"] == "image/jpeg" and r.content == open(kept, "rb").read()
+assert c.get(f"/place/marks/{rk}/photo").status_code in (401, 403), "a stranger sees no child's photo"
+assert c.get(f"/place/marks/{rk}/photo", headers={"Authorization": "Bearer backup-tok"}).status_code == 401
+assert c.get(f"/place/maps/{RX}/marks", headers=H).json()["marks"][0]["photo"]["ask"]["state"] == "sent"
+sent.clear()
+maps.push_maps()
+assert not [x for x in sent if "photos" in x["url"]], "the file goes once"
+assert [x["actor"] for x in LEDGER("photo:sent")] == ["Tomas"] and [x["actor"] for x in LEDGER("photo:received")] == ["bayu-ungasan"]
+r = c.post("/place/photos/received", json={"node": "someone-else", "ask": AK, "image": CAP, "answer": "no"},
+           headers={"Authorization": "Bearer agg-tok"})
+assert r.status_code == 404, "another child cannot answer this child's ask"
+assert c.post("/place/photos/received", json={"node": "bayu-ungasan", "ask": AK, "image": CAP, "answer": "no"},
+              headers=H).status_code == 401, "a household token is not a child's"
+r = c.post("/place/photos/received", json={"node": "bayu-ungasan", "ask": AK, "image": CAP, "answer": "no"},
+           headers={"Authorization": "Bearer agg-tok"})
+assert r.status_code == 401 and "signs its pushes here" in r.json()["detail"], "an unsigned answer under a signed name"
+assert c.post("/place/photos/received", json={"node": "bayu-ungasan", "ask": AK, "image": CAP, "answer": "sent", "picture": "**"},
+              headers={"Authorization": "Bearer agg-tok"}).status_code == 422, "a picture that is not base64"
+print("  Send uploads the file once; the parent re-writes it with no GPS and shows it to its own token holders only")
+
+assert c.patch(f"/place/maps/{PH}", json={"shared": False, "actor": "Tomas"}, headers=H).status_code == 200
+sent.clear()
+maps.push_maps()
+assert OUT()["state"] == "gone" and OUT()["file"] is None and not os.path.exists(kept), "unshared: the parent's copy is deleted"
+assert c.get(f"/place/marks/{rk}/photo", headers=H).status_code == 404
+assert LEDGER("photo:gone")[-1]["actor"] == "bayu-ungasan"
+print("  unsharing the map deletes the parent's copy of its photo")
+
+# shared again and asked again; then the photo is deleted at home before anybody answers
+assert c.patch(f"/place/maps/{PH}", json={"shared": True, "confirm": "exact", "actor": "Tomas"}, headers=H).status_code == 200
+maps.push_maps()
+rk = one("SELECT k.id FROM place_marks k JOIN place_maps m ON m.id = k.map_id WHERE m.from_node = 'bayu-ungasan' AND m.remote_id = %s", PH)["id"]
+assert c.post(f"/place/marks/{rk}/ask", json={"actor": "Ana"}, headers=H).json()["ask"]["state"] == "asked"
+main.push_aggregates()
+assert c.get("/place/photos/asks", headers=H).json()["asks"], "the ask is back on the child's Place"
+r = c.patch(f"/captures/{CAP}", json={"note": "after the rain"}, headers=H)
+if r.status_code == 404:                                   # the eyes pack is off in this app: do what its routes do
+    ac.execute("UPDATE place_maps SET updated_at = now() WHERE id IN (SELECT map_id FROM place_marks WHERE capture_id = %s)", (CAP,))
+    ac.execute("UPDATE captures SET note = 'after the rain' WHERE id = %s", (CAP,))
+    print("  - the eyes pack's routes are not loaded here: the photo's edit and delete are done in SQL")
+sent.clear()
+maps.push_maps()
+puts = [x["body"] for x in sent if x["url"].endswith("/place/maps/received")]
+assert puts and puts[0]["geojson"]["features"][0]["properties"]["photo"]["note"] == "after the rain", "a new note goes up on the next put"
+r = c.delete(f"/captures/{CAP}", headers=H)
+if r.status_code == 404:
+    ac.execute("UPDATE place_maps SET updated_at = now() WHERE id IN (SELECT map_id FROM place_marks WHERE capture_id = %s)", (CAP,))
+    ac.execute("DELETE FROM captures WHERE id = %s", (CAP,))
+sent.clear()
+maps.push_maps()
+puts = [x["body"] for x in sent if x["url"].endswith("/place/maps/received")]
+assert puts and "photo" not in puts[0]["geojson"]["features"][0]["properties"], "the deleted photo is gone from the next put"
+assert c.get("/place/photos/asks", headers=H).json()["asks"] == [] and IN()[-1]["answer"] == "gone", IN()
+assert OUT()["state"] == "gone", "the parent's ask is closed by the put, and the child's gone is taken as done"
+assert [x for x in sent if x["url"].endswith("/place/photos/received")][0]["body"]["answer"] == "gone"
+assert IN()[-1]["sent_at"], "a gone the parent had already closed is done, not retried"
+print("  a photo's new words go up with the next put; a deleted photo answers its ask gone, by the node")
+
+# another key under the child's name: the parent refuses the answer, and the child keeps it, saying why, to try again
+key("99" * 32)
+ac.execute("""INSERT INTO place_photo_asks_in (parent, ask_id, node, capture_id, answer, answered_at)
+              VALUES ('http://parent.test', 4242, 'bayu-ungasan', %s, 'no', now())""", (CAP,))
+maps._answers()
+x = one("SELECT error, sent_at FROM place_photo_asks_in WHERE ask_id = 4242")
+assert x["sent_at"] is None and "bayu-ungasan is pinned here to node" in x["error"], x
+key("")
+print("  an answer signed by another key is refused, and kept with the parent's sentence")
+
+httpx.post = real_post
+os.environ.pop("PLANETAI_CAPTURES")
+shutil.rmtree(PICS)
+ac.execute("DELETE FROM place_maps WHERE id = %s OR from_node = 'bayu-ungasan'", (PH,))
+ac.execute("DELETE FROM place_photo_asks")
+ac.execute("DELETE FROM place_photo_asks_in")
+ac.execute("DELETE FROM children WHERE name = 'bayu-ungasan'")
+ac.execute("DELETE FROM captures WHERE id = %s", (CAP,))
+for k in ("PARENT_API_URL", "PARENT_TOKEN", "AGGREGATE_TOKEN"):
+    SET.pop(k, None)
 
 ac.execute("DELETE FROM place_maps WHERE id = %s", (SH,))
 ac.execute("DELETE FROM actions WHERE stage = 'place' OR choice LIKE 'place.mark:%%' OR alert_id IN (%s, %s)", (A, A2))

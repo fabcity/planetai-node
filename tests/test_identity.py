@@ -157,7 +157,7 @@ ns = {"identity": identity, "httpx": identity.httpx, "PARENT": lambda: "http://p
       "PARENT_TOKEN": lambda: "tok", "log": None}
 exec(compile(ast.Module([fn], []), "main.py", "exec"), ns)
 as_node(D)
-assert ns["_post_parent"]("/events", {"schema": "events-v0", "node": "walk", "rows": [{"alert_id": "1"}]}) is True
+assert ns["_post_parent"]("/events", {"schema": "events-v0", "node": "walk", "rows": [{"alert_id": "1"}]}).status_code == 200
 url, sent, hdrs = Httpx.sent[-1]
 assert url == "http://parent:8080/events" and hdrs["Authorization"] == "Bearer tok" and hdrs["X-Node-Id"]
 as_node("")

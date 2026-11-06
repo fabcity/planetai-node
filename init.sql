@@ -589,3 +589,45 @@ CREATE TABLE IF NOT EXISTS children (
   last_seen  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 INSERT INTO schema_version (version) VALUES ('0.63') ON CONFLICT DO NOTHING;
+
+-- 0.64: photos on demand (5 Nov 2026, light GIS spec §14). A shared drawing's photo goes upstream as words, never the
+-- file. `photo` is what a child said about the photo on a drawing this node received: {ref, kind, note, meta, taken},
+-- `ref` the child's capture number. place_photo_asks is this node asking a child for a file, and the file once it came
+-- (a name under received/ in the captures folder). place_photo_asks_in is the node upstream asking this one: `answer`
+-- is what somebody here pressed, or 'gone' when the node answered for a photo no longer shared; `sent_at` is when the
+-- parent took the answer, after which it never goes again.
+ALTER TABLE place_marks ADD COLUMN IF NOT EXISTS photo JSONB;
+CREATE TABLE IF NOT EXISTS place_photo_asks (
+  id          BIGSERIAL PRIMARY KEY,
+  from_node   TEXT NOT NULL,
+  ref         BIGINT NOT NULL,
+  label       TEXT,
+  map_name    TEXT,
+  asked_by    TEXT,
+  asked_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  state       TEXT NOT NULL DEFAULT 'asked' CHECK (state IN ('asked','sent','no','gone')),
+  answered_at TIMESTAMPTZ,
+  file        TEXT,
+  mime        TEXT,
+  bytes       BIGINT,
+  UNIQUE (from_node, ref)
+);
+CREATE TABLE IF NOT EXISTS place_photo_asks_in (
+  id          BIGSERIAL PRIMARY KEY,
+  parent      TEXT NOT NULL,                       -- PARENT_API_URL when it came
+  ask_id      BIGINT NOT NULL,                     -- the parent's own number for it
+  node        TEXT,                                -- the parent's name, as it said it
+  asked_by    TEXT,
+  asked_at    TIMESTAMPTZ,
+  capture_id  BIGINT NOT NULL,                     -- no foreign key: a deleted photo is answered 'gone', not lost
+  got_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  answer      TEXT CHECK (answer IN ('send','no','gone')),
+  answered_by TEXT,
+  answered_at TIMESTAMPTZ,
+  sent_at     TIMESTAMPTZ,
+  tried_at    TIMESTAMPTZ,
+  error       TEXT,
+  UNIQUE (parent, ask_id)
+);
+REVOKE ALL ON place_photo_asks, place_photo_asks_in FROM planetai_ro;
+INSERT INTO schema_version (version) VALUES ('0.64') ON CONFLICT DO NOTHING;

@@ -10,7 +10,7 @@ import xml.etree.ElementTree as ET
 
 os.environ.setdefault("DATABASE_URL", "postgresql://unused/never-connected")   # db.py opens nothing at import
 from fastapi import HTTPException  # noqa: E402
-from maps import PALETTE, _fields, check_feature, feature_collection, to_dxf, to_kml, utm_epsg  # noqa: E402
+from maps import PALETTE, _fields, check_feature, feature_collection, photo_in, photo_words, to_dxf, to_kml, utm_epsg  # noqa: E402
 
 
 def feature(kind, gtype, coords):
@@ -110,6 +110,31 @@ assert d.count("\nPOINT\n") == 1 and d.count("\nPOLYLINE\n") == 1 and "\n70\n0\n
 assert "A\\U+00F1o 2026" in d and d.isascii(), "DXF R12 is ASCII; ñ is written the way AutoCAD writes it"
 assert d.count("\nTEXT\n") == 2 and "Pozo" in d, "a label and a note are each a TEXT"
 print("  DXF is R12: EPSG comment, layers, points, polylines closed for areas, text, ASCII")
+
+# A shared drawing's photo (light GIS §14): the words go up, never where, who or the file; the parent checks them.
+from datetime import datetime, timezone  # noqa: E402
+cap = {"id": 7, "kind": "drone", "note": "north field", "meta": {"crop": "rice"}, "lat": -8.7, "lon": 115.2, "actor": "Tomas",
+       "file": "x.jpg", "ts": datetime(2026, 11, 5, 3, 0, tzinfo=timezone.utc)}
+w = photo_words(cap)
+assert set(w) == {"kind", "note", "meta", "taken"} and w["kind"] == "drone" and w["meta"] == {"crop": "rice"}, w
+assert w["taken"] in ("2026-11-04", "2026-11-05") and len(w["taken"]) == 10, "the day, never the hour"
+assert photo_words({**cap, "ts": None, "meta": None}) == {"kind": "drone", "note": "north field", "meta": {}, "taken": None}
+fc = feature_collection({"name": "m", "owner": "Tomas"}, [{"kind": "marker", "colour": 1, "capture_id": 7, "photo": w,
+                         "drawn_by": "Tomas", "geometry": {"type": "Point", "coordinates": [0, 0]}}], "n", upstream=True)
+assert fc["features"][0]["properties"]["photo"] == w and fc["features"][0]["properties"]["image"] == 7
+assert "photo" not in feature_collection({"name": "m"}, [{"kind": "marker", "colour": 1, "geometry": {"type": "Point", "coordinates": [0, 0]}}],
+                                         "n", upstream=True)["features"][0]["properties"], "no image, no photo"
+assert photo_in(7, {**w, "meta": {"k" * 80: "v" * 900}}) == {"ref": 7, "kind": "drone", "note": "north field",
+                                                             "meta": {"k" * 60: "v" * 500}, "taken": w["taken"]}
+assert photo_in(None, w) is None and photo_in(7, None) is None, "an older child sends a number and no words"
+for image, photo in ((True, w), ("7", w), (7, "a photo"), (7, {**w, "kind": "selfie"}), (7, {**w, "taken": "5 Nov"}),
+                     (7, {**w, "meta": {"a": 1}}), (7, {**w, "meta": {str(i): "x" for i in range(41)}})):
+    try:
+        photo_in(image, photo)
+        raise AssertionError(f"accepted {image!r}, {photo!r}")
+    except HTTPException as e:
+        assert e.status_code == 422 and "photo" in e.detail, e.detail
+print("  a shared photo: the day it was taken, its kind, note and words; the parent refuses anything else")
 
 print("maps: every check passed")
 sys.exit(0)

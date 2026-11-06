@@ -11,11 +11,18 @@ the third (§7). A map received from a child node (`from_node` set) is refused t
 Never import app/main.py from here: it starts a second MQTT client.
 
 A shared map goes to the node upstream exactly as drawn (Tomas, 4 Nov: "Exact, with a warning"), by the child's
-push, never a pull: push_maps() every minute, and POST /place/maps/received on the parent, the one route here that
-answers AGGREGATE_TOKEN and nothing else.
+push, never a pull: push_maps() every minute, and POST /place/maps/received on the parent, one of the two routes here
+that answer AGGREGATE_TOKEN and nothing else.
+
+A shared drawing's photo goes up as words, never the file (Tomas, 5 Nov; §14): its kind, note, the household's own
+`meta` and the day it was taken. The parent may ask for the file. The ask comes down in the parent's answer to the
+child's hourly /aggregates push (asks_for, take_asks), because a parent cannot reach a home node; the file goes up only
+when somebody here presses Send, by push_maps() to POST /place/photos/received, and only while the photo is on a
+shared drawing. The parent serves it to its own token holders and deletes it once no map of that child carries it.
 """
 from __future__ import annotations
 
+import base64
 import json
 import logging
 import math
@@ -25,11 +32,14 @@ import unicodedata
 import xml.etree.ElementTree as ET
 from contextlib import contextmanager
 from datetime import datetime
+from hashlib import sha256
 from zoneinfo import ZoneInfo
 
 import psycopg
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response
+from fastapi.responses import FileResponse
+from psycopg.types.json import Jsonb
 
 import events_pg
 import geo
@@ -49,7 +59,8 @@ router = APIRouter(dependencies=[Depends(_household)])
 received = APIRouter()                                     # a child's writes: AGGREGATE_TOKEN, never the household's
 
 SHARE_WARNING = ("Sharing sends every drawing in this map, at its exact place, with its labels, notes and measures, to "
-                 "the node upstream, where the people holding its token can see it. Press Share again to send it.")
+                 "the node upstream, where the people holding its token can see it. A photo on a drawing goes as what "
+                 "you wrote about it and the day it was taken, and the picture stays here. Press Share again to send it.")
 NO_PARENT = "There is no node upstream to share with. Set PARENT in Set up first."
 ON_HOUSE = "This drawing touches the cell the house stands in. Press Share again to send the map with it."
 NOT_YET = "The node upstream does not take maps yet."
@@ -69,6 +80,16 @@ _COORDS = "Every point needs a longitude and a latitude."
 MAX_POINTS = 1_000                                         # one drawing
 MAX_DRAWINGS, MAX_MAP_POINTS = 2_000, 20_000               # a child's shared map, on /place/maps/received
 TOO_BIG = "A shared map holds 2,000 drawings and 20,000 points at most."
+
+# The two reads of the picture table this module makes, and the folder: the words a shared drawing's photo carries
+# upstream (never lat, lon, cell, at_home or actor; the pictures suite holds it to these) and the file Send sends.
+_PHOTO_WORDS = "SELECT id, kind, note, meta, ts FROM captures WHERE id = ANY(%s)"
+_PHOTO_FILE = "SELECT file, mime FROM captures WHERE id = %s"
+_PHOTO_DIR = lambda: os.getenv("PLANETAI_CAPTURES", "/app/captures")   # noqa: E731
+PHOTO_KINDS = ("microscope", "phone", "camera", "drone", "balloon")
+MAX_PHOTO = 25 * 1024 * 1024
+_PHOTOS = "planetai.place.photo/v0"
+_NO_ASK, _CLOSED = "No such ask.", "That ask is closed."   # the parent no longer wants it: the child is done
 
 
 # ---------------------------------------------------------------- what a drawing must be
@@ -198,6 +219,37 @@ def _fields(src: dict) -> dict:
     return out
 
 
+def photo_words(cap: dict) -> dict:
+    """What a shared drawing says about its photo (§14): the kind of camera, the note, the household's own words and
+    the day it was taken. Never where, never who, never the file."""
+    ts = cap.get("ts")
+    return {"kind": cap["kind"], "note": cap.get("note"), "meta": dict(cap.get("meta") or {}),
+            "taken": ts.astimezone(ZoneInfo(NODE_TZ)).date().isoformat() if ts else None}
+
+
+_NOT_A_PHOTO = "A photo is described by its kind, a note, short words and the day it was taken."
+
+
+def photo_in(image, photo) -> dict | None:
+    """A child's words about the photo on a drawing, checked as any child input is, kept with the child's number as
+    `ref`. None when the drawing names no photo; a 422 when the words are not a photo's."""
+    if photo is None or image is None:
+        return None
+    if isinstance(image, bool) or not isinstance(image, int) or not isinstance(photo, dict):
+        raise HTTPException(422, _NOT_A_PHOTO)
+    meta, taken = photo.get("meta") or {}, photo.get("taken")
+    if (photo.get("kind") not in PHOTO_KINDS or not isinstance(meta, dict) or len(meta) > 40
+            or not all(isinstance(v, str) for v in meta.values())):
+        raise HTTPException(422, _NOT_A_PHOTO)
+    if taken is not None:
+        try:
+            taken = datetime.strptime(str(taken), "%Y-%m-%d").date().isoformat()
+        except ValueError:
+            raise HTTPException(422, _NOT_A_PHOTO) from None
+    return {"ref": image, "kind": photo["kind"], "note": _text(photo.get("note"), 500),
+            "meta": {str(k)[:60]: v[:500] for k, v in meta.items()}, "taken": taken}
+
+
 # ---------------------------------------------------------------- downloads
 
 _SCHEMA = "planetai.place.map/v0"
@@ -218,6 +270,8 @@ def feature_collection(map_row: dict, marks: list[dict], node: str, upstream: bo
              "image": m.get("capture_id"), "drawn_by": m.get("drawn_by"), "updated_at": at.isoformat() if at else None}
         if upstream:
             del p["drawn_by"]
+        if m.get("photo"):
+            p["photo"] = m["photo"]                       # upstream: photo_words(); a received map's download: its words
         return p
     return {"type": "FeatureCollection", "schema": _SCHEMA, "map": map_row["name"],
             "owner": (identity.node_id() or node) if upstream else map_row.get("owner"), "node": node, "features": [{"type": "Feature", "properties": props(m), "geometry": m["geometry"]} for m in marks]}
@@ -353,7 +407,7 @@ def tie(cur, mark_id: int, issue: dict | None, words: str, actor: str) -> None:
 _MAP = """SELECT p.id, p.name, p.owner, p.agent, p.shared, p.held, p.share_error, p.from_node, p.updated_at,
                  (SELECT count(*) FROM place_marks k WHERE k.map_id = p.id)::int AS marks
             FROM place_maps p"""
-_MARK = """SELECT id, map_id, kind, colour, label, note, capture_id, length_m, area_m2, drawn_by, alert_id, event_id,
+_MARK = """SELECT id, map_id, kind, colour, label, note, capture_id, photo, length_m, area_m2, drawn_by, alert_id, event_id,
                   updated_at, ST_AsGeoJSON(geom)::json AS geometry FROM place_marks"""
 # Measured from the geometry the row ends with; `g.geom` is the new one, NULL when the geometry did not change.
 _MEASURE = """length_m = CASE WHEN m.kind = 'line' THEN ST_Length(COALESCE(g.geom, m.geom)::geography) END,
@@ -450,10 +504,19 @@ def map_marks(map_id: int):
     """A map's drawings, each with its id, as the page draws and edits them. Reading writes nothing to the ledger: a
     download (map_download) is a row, the screen drawing what it holds is not."""
     with db() as con, con.cursor() as cur:
-        if not _one(cur, "SELECT id FROM place_maps WHERE id = %s", map_id):
+        m = _one(cur, "SELECT id, from_node FROM place_maps WHERE id = %s", map_id)
+        if not m:
             raise HTTPException(404, "No such map.")
         cur.execute(_MARK + " WHERE map_id = %s ORDER BY id", (map_id,))
-        return {"marks": cur.fetchall()}
+        marks = cur.fetchall()
+        if m["from_node"]:                                  # a child's drawing: where the ask for its photo stands
+            cur.execute("SELECT ref, state, asked_by, asked_at, answered_at FROM place_photo_asks WHERE from_node = %s",
+                        (m["from_node"],))
+            asks = {a.pop("ref"): a for a in cur.fetchall()}
+            for k in marks:
+                if k["photo"]:
+                    k["photo"]["ask"] = asks.get(k["photo"]["ref"])
+        return {"marks": marks}
 
 
 @router.post("/place/maps")
@@ -653,7 +716,12 @@ def push_maps() -> None:
                           AND (share_error IS NULL OR push_tried_at < now() - interval '1 hour')""")
         for m in cur.fetchall():
             cur.execute(_MARK + " WHERE map_id = %s ORDER BY id", (m["id"],))
-            out.append((m["id"], "put", feature_collection(m, cur.fetchall(), node, upstream=True), m["updated_at"]))
+            marks = cur.fetchall()
+            cur.execute(_PHOTO_WORDS, ([k["capture_id"] for k in marks if k["capture_id"]],))
+            words = {c["id"]: photo_words(c) for c in cur.fetchall()}
+            for k in marks:
+                k["photo"] = words.get(k["capture_id"])
+            out.append((m["id"], "put", feature_collection(m, marks, node, upstream=True), m["updated_at"]))
     for map_id, op, fc, snap in out:
         try:
             # signed with this node's key (docs/SPEC_identity.md §8); a parent that refuses the key says why, in a
@@ -680,6 +748,7 @@ def push_maps() -> None:
                 cur.execute("""UPDATE place_maps SET push_tried_at = now(), share_error = %(err)s,
                                  pushed_at = CASE WHEN %(err)s::text IS NULL THEN %(snap)s ELSE pushed_at END
                                 WHERE id = %(id)s AND shared""", {"err": error, "snap": snap, "id": map_id})
+    _answers()
 
 
 async def _raw_body(request: Request) -> bytes:
@@ -691,7 +760,8 @@ async def _raw_body(request: Request) -> bytes:
 def map_received(body: dict, request: Request, raw: bytes = Depends(_raw_body), authorization: str = Header("")):
     """Parent side. {schema, node, map_id, op: "put" | "delete", geojson}: a child's shared map, kept whole under
     (from_node, remote_id) and read-only here. A put replaces every drawing; a delete removes the map. Measures are
-    PostGIS's own again; a picture's number is the child's and means nothing here, so it is dropped."""
+    PostGIS's own again. A picture's number is the child's: it is kept with the photo's words as `photo`, and the
+    file comes only when somebody here asks and somebody there sends it (§14)."""
     if not AGG_TOKEN():
         raise HTTPException(403, "this node accepts no children: set AGGREGATE_TOKEN in .env and give it to them")
     if not _bearer_ok(authorization, AGG_TOKEN()):
@@ -699,38 +769,336 @@ def map_received(body: dict, request: Request, raw: bytes = Depends(_raw_body), 
     child, rid, op = _text(body.get("node"), 80), body.get("map_id"), body.get("op")
     if not child or isinstance(rid, bool) or not isinstance(rid, int) or op not in ("put", "delete"):
         raise HTTPException(422, "A shared map says its node, its map_id and put or delete.")
+    feats = []
     with db() as con, con.transaction(), con.cursor() as cur:
         # the key pinned to this name, and no other, may write under it (docs/SPEC_identity.md §5); its ID owns the map
         owner = identity.admit(cur, child, "/place/maps/received", raw, request.headers) or child
         if op == "delete":
             cur.execute("DELETE FROM place_maps WHERE from_node = %s AND remote_id = %s", (child, rid))
-            return {"ok": True}
-        fc = body.get("geojson") if isinstance(body.get("geojson"), dict) else {}
-        feats = fc.get("features") if isinstance(fc.get("features"), list) else []
-        if len(feats) > MAX_DRAWINGS or sum(map(_points, feats)) > MAX_MAP_POINTS:
-            raise HTTPException(413, TOO_BIG)              # before any outline is compared with itself
-        for f in feats:
-            if refusal := check_feature(f):
-                raise HTTPException(422, refusal)
-            if "colour" in f["properties"]:
-                _fields({"colour": f["properties"]["colour"]})
-        cur.execute("""INSERT INTO place_maps (name, owner, from_node, remote_id) VALUES (%s, %s, %s, %s)
-                       ON CONFLICT (from_node, remote_id) DO UPDATE SET name = EXCLUDED.name, owner = EXCLUDED.owner,
-                                                                        updated_at = now()
-                       RETURNING id""", (_text(fc.get("map"), 80) or "map", owner, child, rid))   # the child node owns it, never a person
-        mid = cur.fetchone()["id"]
-        cur.execute("DELETE FROM place_marks WHERE map_id = %s", (mid,))
-        for f in feats:
-            p, kind = f["properties"], f["properties"]["kind"]
-            colour = p.get("colour", 1)
-            cur.execute("""WITH g AS (SELECT ST_SetSRID(ST_GeomFromGeoJSON(%(g)s::text), 4326) AS geom)
-                           INSERT INTO place_marks (map_id, kind, geom, colour, label, note, length_m, area_m2)
-                           SELECT %(map)s, %(kind)s, geom, %(colour)s, %(label)s, %(note)s,
-                                  CASE WHEN %(kind)s = 'line' THEN ST_Length(geom::geography) END,
-                                  CASE WHEN %(kind)s = 'area' THEN ST_Area(geom::geography) END FROM g""",
-                        {"g": _geometry(kind, f["geometry"]), "map": mid, "kind": kind, "colour": colour,
-                         "label": _text(p.get("label"), 80), "note": _text(p.get("note"), 500)})
-    return {"ok": True, "marks": len(feats)}
+        else:
+            fc = body.get("geojson") if isinstance(body.get("geojson"), dict) else {}
+            feats = fc.get("features") if isinstance(fc.get("features"), list) else []
+            if len(feats) > MAX_DRAWINGS or sum(map(_points, feats)) > MAX_MAP_POINTS:
+                raise HTTPException(413, TOO_BIG)              # before any outline is compared with itself
+            for f in feats:
+                if refusal := check_feature(f):
+                    raise HTTPException(422, refusal)
+                if "colour" in f["properties"]:
+                    _fields({"colour": f["properties"]["colour"]})
+                f["properties"]["photo"] = photo_in(f["properties"].get("image"), f["properties"].get("photo"))
+            cur.execute("""INSERT INTO place_maps (name, owner, from_node, remote_id) VALUES (%s, %s, %s, %s)
+                           ON CONFLICT (from_node, remote_id) DO UPDATE SET name = EXCLUDED.name, owner = EXCLUDED.owner,
+                                                                            updated_at = now()
+                           RETURNING id""", (_text(fc.get("map"), 80) or "map", owner, child, rid))   # the child node owns it, never a person
+            mid = cur.fetchone()["id"]
+            cur.execute("DELETE FROM place_marks WHERE map_id = %s", (mid,))
+            for f in feats:
+                p, kind = f["properties"], f["properties"]["kind"]
+                colour = p.get("colour", 1)
+                cur.execute("""WITH g AS (SELECT ST_SetSRID(ST_GeomFromGeoJSON(%(g)s::text), 4326) AS geom)
+                               INSERT INTO place_marks (map_id, kind, geom, colour, label, note, photo, length_m, area_m2)
+                               SELECT %(map)s, %(kind)s, geom, %(colour)s, %(label)s, %(note)s, %(photo)s,
+                                      CASE WHEN %(kind)s = 'line' THEN ST_Length(geom::geography) END,
+                                      CASE WHEN %(kind)s = 'area' THEN ST_Area(geom::geography) END FROM g""",
+                            {"g": _geometry(kind, f["geometry"]), "map": mid, "kind": kind, "colour": colour,
+                             "label": _text(p.get("label"), 80), "note": _text(p.get("note"), 500),
+                             "photo": Jsonb(p["photo"]) if p["photo"] else None})
+        gone = _forget(cur, child)                        # a photo no map of the child carries any more
+    _unlink(gone)
+    return {"ok": True} if op == "delete" else {"ok": True, "marks": len(feats)}
+
+
+# ---------------------------------------------------------------- photos on demand (§14)
+
+def _forget(cur, child: str) -> list[str]:
+    """Parent side: a child's photo is kept only while it is on a drawing of that child's this node holds. An ask
+    whose photo is no longer on one turns `gone`, its file with it. Returns the files to delete once committed."""
+    cur.execute("""WITH g AS (SELECT a.id, a.file FROM place_photo_asks a
+                               WHERE a.from_node = %s AND a.state IN ('asked', 'sent') AND NOT EXISTS (
+                                     SELECT 1 FROM place_marks k JOIN place_maps m ON m.id = k.map_id
+                                      WHERE m.from_node = a.from_node AND (k.photo->>'ref')::bigint = a.ref)
+                               FOR UPDATE)
+                   UPDATE place_photo_asks a SET state = 'gone', answered_at = now(), file = NULL FROM g WHERE a.id = g.id
+                   RETURNING a.id, g.file, a.label""", (child,))
+    rows = cur.fetchall()
+    for r in rows:
+        ledger(cur, child, "photo:gone", f"the photo on {r['label'] or 'a drawing'} is no longer shared", f"ask:{r['id']}")
+    return [r["file"] for r in rows if r["file"]]
+
+
+def _unlink(files: list[str]) -> None:
+    for f in files:
+        try:
+            os.remove(os.path.join(_PHOTO_DIR(), "received", os.path.basename(f)))
+        except OSError:
+            pass                                           # already gone is gone
+
+
+def _ask_out(a: dict) -> dict:
+    return {k: (v.isoformat() if isinstance(v, datetime) else v) for k, v in a.items() if k not in ("file",)}
+
+
+@router.post("/place/marks/{mark_id}/ask")
+def photo_ask(mark_id: int, body: dict, request: Request):
+    """Parent side. {"actor"} → {"ask": …}: ask the child for the file of the photo on one of its drawings. One ask a
+    photo; asking again while it waits, or after it came, changes nothing, and after a No or a gone it opens again."""
+    with db() as con, con.transaction(), con.cursor() as cur:
+        k = _one(cur, """SELECT k.label, k.photo, m.name, m.from_node FROM place_marks k JOIN place_maps m ON m.id = k.map_id
+                          WHERE k.id = %s""", mark_id)
+        if not k:
+            raise HTTPException(404, "No such drawing.")
+        if not k["from_node"]:
+            raise HTTPException(409, "This drawing is this node's own: its image is here already.")
+        if not k["photo"]:
+            raise HTTPException(409, "This drawing carries no photo.")
+        actor = _actor(request, body)
+        cur.execute("""INSERT INTO place_photo_asks (from_node, ref, label, map_name, asked_by) VALUES (%s, %s, %s, %s, %s)
+                       ON CONFLICT (from_node, ref) DO UPDATE SET state = 'asked', asked_by = EXCLUDED.asked_by,
+                              asked_at = now(), answered_at = NULL, label = EXCLUDED.label, map_name = EXCLUDED.map_name
+                        WHERE place_photo_asks.state IN ('no', 'gone')
+                       RETURNING *""", (k["from_node"], k["photo"]["ref"], k["label"], k["name"], actor or None))
+        a = cur.fetchone()
+        if a:
+            ledger(cur, actor, "photo:asked", f"the photo on {k['label'] or 'a drawing'} from {k['from_node']}", f"ask:{a['id']}")
+        else:                                              # waiting, or come: as it is
+            cur.execute("SELECT * FROM place_photo_asks WHERE from_node = %s AND ref = %s", (k["from_node"], k["photo"]["ref"]))
+            a = cur.fetchone()
+        return {"ask": _ask_out(a)}
+
+
+@router.get("/place/marks/{mark_id}/photo")
+def mark_photo(mark_id: int):
+    """Parent side: the file a child sent for the photo on this drawing, to this node's own token holders only."""
+    rows = _q1("""SELECT a.file, a.mime FROM place_marks k JOIN place_maps m ON m.id = k.map_id
+                   JOIN place_photo_asks a ON a.from_node = m.from_node AND a.ref = (k.photo->>'ref')::bigint
+                  WHERE k.id = %s AND a.state = 'sent'""", mark_id)
+    path = rows and os.path.join(_PHOTO_DIR(), "received", os.path.basename(rows["file"]))
+    if not path or not os.path.isfile(path):
+        raise HTTPException(404, "No photo has come for this drawing.")
+    return FileResponse(path, media_type=rows["mime"])
+
+
+def _q1(sql: str, *args):
+    with db() as con, con.cursor() as cur:
+        cur.execute(sql, args)
+        return cur.fetchone()
+
+
+def asks_for(child: str) -> dict:
+    """Parent side, in the answer to a child's hourly /aggregates push: what this node is waiting for from that child.
+    A parent cannot reach a home node, so this is how an ask goes down. Never fails the push it rides on."""
+    try:
+        with db() as con, con.cursor() as cur:
+            cur.execute("""SELECT id, ref, asked_by, asked_at FROM place_photo_asks
+                            WHERE from_node = %s AND state = 'asked' ORDER BY id LIMIT 50""", (child,))
+            node = os.getenv("NODE_NAME", "node")
+            return {"photo_asks": [{"id": a["id"], "image": a["ref"], "node": node, "by": a["asked_by"],
+                                    "at": a["asked_at"].isoformat()} for a in cur.fetchall()]}
+    except Exception as e:  # noqa: BLE001
+        log.warning("photo asks for %s: %s", child, e)
+        return {}
+
+
+def take_asks(reply) -> None:
+    """Child side: the asks the node upstream sent back with its answer to this node's push. Each is kept once and is a
+    ledger row; one the parent opened again after a No (a new time) waits for an answer again."""
+    asks = reply.get("photo_asks") if isinstance(reply, dict) else None
+    if not isinstance(asks, list) or not PARENT():
+        return
+    ok = lambda x: isinstance(x, int) and not isinstance(x, bool)   # noqa: E731
+    with db() as con, con.transaction(), con.cursor() as cur:
+        for a in asks[:50]:
+            if not (isinstance(a, dict) and ok(a.get("id")) and ok(a.get("image"))):
+                continue
+            try:
+                at = datetime.fromisoformat(str(a.get("at")))
+            except ValueError:
+                at = None
+            node, by = _text(a.get("node"), 80) or "the node upstream", _text(a.get("by"), 80)
+            cur.execute("""INSERT INTO place_photo_asks_in (parent, ask_id, node, asked_by, asked_at, capture_id)
+                           VALUES (%s, %s, %s, %s, %s, %s)
+                           ON CONFLICT (parent, ask_id) DO UPDATE SET node = EXCLUDED.node, asked_by = EXCLUDED.asked_by,
+                                  asked_at = EXCLUDED.asked_at, capture_id = EXCLUDED.capture_id, got_at = now(),
+                                  answer = NULL, answered_by = NULL, answered_at = NULL, sent_at = NULL,
+                                  tried_at = NULL, error = NULL
+                            WHERE place_photo_asks_in.asked_at IS DISTINCT FROM EXCLUDED.asked_at
+                           RETURNING id""", (PARENT(), a["id"], node, by, at, a["image"]))
+            r = cur.fetchone()
+            if r:
+                ledger(cur, node, "photo:asked", f"{by or 'somebody'} at {node} asked for a photo", f"ask:{r['id']}")
+
+
+_ON_SHARED = """EXISTS (SELECT 1 FROM place_marks k JOIN place_maps m ON m.id = k.map_id
+                         WHERE k.capture_id = a.capture_id AND m.shared AND m.agent IS NULL AND m.from_node IS NULL)"""
+
+
+@router.get("/place/photos/asks")
+def photo_asks():
+    """Child side: the asks waiting for somebody here, each with the shared drawings that carry the photo."""
+    with db() as con, con.cursor() as cur:
+        cur.execute("""SELECT a.id, a.node, a.asked_by, a.asked_at, a.capture_id,
+                              json_agg(json_build_object('mark', k.id, 'label', k.label, 'kind', k.kind, 'map', m.name)
+                                       ORDER BY k.id) AS drawings
+                         FROM place_photo_asks_in a JOIN place_marks k ON k.capture_id = a.capture_id
+                         JOIN place_maps m ON m.id = k.map_id AND m.shared AND m.agent IS NULL AND m.from_node IS NULL
+                        WHERE a.answer IS NULL AND a.parent = %s GROUP BY a.id ORDER BY a.got_at""", (PARENT() or "",))
+        return {"asks": cur.fetchall()}
+
+
+@router.post("/place/photos/asks/{ask_id}")
+def photo_answer(ask_id: int, body: dict, request: Request):
+    """Child side. {"answer": "send" | "no", "actor"} → {"ok": true}. Only a person at home answers: the file leaves
+    only when somebody presses Send. It goes within the minute, once (push_maps)."""
+    answer = body.get("answer")
+    if answer not in ("send", "no"):
+        raise HTTPException(422, "Answer send or no.")
+    if request.headers.get("x-agent"):
+        raise HTTPException(403, "Only a person at home answers for a photo.")
+    with db() as con, con.transaction(), con.cursor() as cur:
+        cur.execute(f"""SELECT a.id, a.node, a.answer, {_ON_SHARED} AS shared FROM place_photo_asks_in a
+                         WHERE a.id = %s FOR UPDATE""", (ask_id,))
+        a = cur.fetchone()
+        if not a:
+            raise HTTPException(404, _NO_ASK)
+        if a["answer"]:
+            raise HTTPException(409, "This ask is answered already.")
+        if not a["shared"]:
+            raise HTTPException(409, "That photo is no longer on a shared map, so there is nothing to send.")
+        actor = _actor(request, body)
+        cur.execute("UPDATE place_photo_asks_in SET answer = %s, answered_by = %s, answered_at = now() WHERE id = %s",
+                    (answer, actor or None, ask_id))
+        ledger(cur, actor, "photo:sent" if answer == "send" else "photo:no",
+               f"{'sent' if answer == 'send' else 'kept'} the photo {'to' if answer == 'send' else 'from'} {a['node']}", f"ask:{ask_id}")
+    return {"ok": True}
+
+
+def _answer(row: dict, path: str | None):
+    """One answer up to the node upstream, signed as the maps are (docs/SPEC_identity.md §8). The picture rides in it,
+    as base64, only on a Send, so the signature covers the file too."""
+    pic = None
+    if path:
+        with open(path, "rb") as fh:
+            pic = base64.b64encode(fh.read()).decode()
+    return identity.post(PARENT(), "/place/photos/received",
+                         {"schema": _PHOTOS, "node": os.getenv("NODE_NAME", "node"), "ask": row["ask_id"],
+                          "image": row["capture_id"], "answer": "sent" if path else row["answer"], "picture": pic},
+                         PARENT_TOKEN())
+
+
+def _answers() -> None:
+    """Child side, after the map pushes: an unanswered ask, or a Send not yet gone, for a photo no longer on a shared
+    drawing is answered `gone` by the node; then every answer not yet taken goes up, once."""
+    if not PARENT():
+        return
+    with db() as con, con.transaction(), con.cursor() as cur:
+        cur.execute(f"""UPDATE place_photo_asks_in a SET answer = 'gone', answered_by = NULL, answered_at = now()
+                         WHERE (a.answer IS NULL OR a.answer = 'send') AND a.sent_at IS NULL AND NOT {_ON_SHARED}
+                        RETURNING a.id, a.node""")
+        for r in cur.fetchall():
+            ledger(cur, "this node", "photo:gone", f"the photo {r['node']} asked for is no longer shared", f"ask:{r['id']}")
+        cur.execute("""SELECT id, ask_id, capture_id, answer FROM place_photo_asks_in
+                        WHERE answer IS NOT NULL AND sent_at IS NULL AND parent = %s
+                          AND (tried_at IS NULL OR tried_at < now() - interval '1 hour') ORDER BY id""", (PARENT(),))
+        todo = cur.fetchall()
+        files = {}
+        for r in todo:
+            if r["answer"] == "send":
+                cur.execute(_PHOTO_FILE, (r["capture_id"],))
+                f = cur.fetchone()
+                path = f and os.path.join(_PHOTO_DIR(), os.path.basename(f["file"]))
+                files[r["id"]] = path if path and os.path.isfile(path) else None
+    for r in todo:
+        path = files.get(r["id"])
+        if r["answer"] == "send" and not path:
+            r = {**r, "answer": "gone"}                    # pressed Send, and the file went before it could
+        try:
+            resp = _answer(r, path)
+            why = identity.refusal(resp) if resp.status_code >= 400 else ""
+            token = resp.status_code == 403 or resp.status_code == 401 and (not why or "AGGREGATE_TOKEN" in why)
+            # the parent no longer wants it (done), the token is wrong, or the key is refused and says why (as push_maps)
+            error = None if why in (_NO_ASK, _CLOSED) else NO_TOKEN if token else why if resp.status_code in (401, 409) else None
+            if not error and why not in (_NO_ASK, _CLOSED):
+                resp.raise_for_status()
+        except Exception as e:  # noqa: BLE001
+            log.warning("photo answer %s to parent failed: %s", r["id"], e)
+            error = NOT_SENT
+        with db() as con, con.cursor() as cur:
+            cur.execute("""UPDATE place_photo_asks_in SET tried_at = now(), error = %(err)s, answer = %(answer)s,
+                                  sent_at = CASE WHEN %(err)s::text IS NULL THEN now() END WHERE id = %(id)s""",
+                        {"err": error, "answer": r["answer"], "id": r["id"]})
+
+
+def _picture(raw: bytes) -> tuple[bytes, str, str]:
+    """Parent side: a child's file, opened as a picture and written again with no metadata, whatever the child did."""
+    import io  # noqa: PLC0415
+    from PIL import Image  # noqa: PLC0415
+    try:
+        im = Image.open(io.BytesIO(raw))
+        im.load()
+    except Exception:  # noqa: BLE001
+        raise HTTPException(422, "That file is not a picture.") from None
+    fmt = {"JPEG": ("JPEG", "image/jpeg", "jpg"), "PNG": ("PNG", "image/png", "png"), "WEBP": ("WEBP", "image/webp", "webp")}.get(im.format or "")
+    if not fmt:
+        raise HTTPException(422, "A photo comes as JPEG, PNG or WebP.")
+    out = io.BytesIO()
+    (im.convert("RGB") if fmt[0] == "JPEG" else im).save(out, fmt[0], quality=90)
+    return out.getvalue(), fmt[1], fmt[2]
+
+
+@received.post("/place/photos/received")
+def photo_received(body: dict, request: Request, raw: bytes = Depends(_raw_body), authorization: str = Header("")):
+    """Parent side, AGGREGATE_TOKEN only, signed as the maps are. A child's answer to an ask: `sent` with the picture
+    as base64, `no`, or `gone`. The ask must be that child's, for that photo, still waiting, and the photo still on a
+    drawing this node holds."""
+    if not AGG_TOKEN():
+        raise HTTPException(403, "this node accepts no children: set AGGREGATE_TOKEN in .env and give it to them")
+    if not _bearer_ok(authorization, AGG_TOKEN()):
+        raise HTTPException(401, "bad or missing Authorization: Bearer <AGGREGATE_TOKEN>")
+    child, ask, image, answer = _text(body.get("node"), 80), body.get("ask"), body.get("image"), body.get("answer")
+    if not child or any(isinstance(x, bool) or not isinstance(x, int) for x in (ask, image)) \
+            or answer not in ("sent", "no", "gone"):
+        raise HTTPException(422, "An answer says its node, its ask, its image, and sent, no or gone.")
+    pic = None
+    if answer == "sent":
+        b64 = body.get("picture")
+        if not isinstance(b64, str) or not b64:
+            raise HTTPException(422, "A photo sent comes with its picture.")
+        if len(b64) > (MAX_PHOTO + 2) // 3 * 4:
+            raise HTTPException(413, "A photo is 25 MB at most.")
+        try:
+            pic = base64.b64decode(b64, validate=True)
+        except ValueError:
+            raise HTTPException(422, "That file is not a picture.") from None
+    kept, gone = None, []
+    with db() as con, con.transaction(), con.cursor() as cur:
+        identity.admit(cur, child, "/place/photos/received", raw, request.headers)   # the key pinned to this name, as a map
+        cur.execute("SELECT id, state, label FROM place_photo_asks WHERE id = %s AND from_node = %s AND ref = %s FOR UPDATE",
+                    (ask, child, image))
+        a = cur.fetchone()
+        if not a:
+            raise HTTPException(404, _NO_ASK)
+        if a["state"] != "asked":
+            raise HTTPException(409, _CLOSED)
+        gone = _forget(cur, child)
+        cur.execute("SELECT state FROM place_photo_asks WHERE id = %s", (ask,))
+        if cur.fetchone()["state"] != "asked":              # _forget just closed it: the photo is no longer here
+            kept = "gone"
+        elif pic:
+            pic, mime, ext = _picture(pic)
+            name = f"{sha256(pic).hexdigest()}.{ext}"
+            os.makedirs(os.path.join(_PHOTO_DIR(), "received"), exist_ok=True)
+            with open(os.path.join(_PHOTO_DIR(), "received", name), "wb") as f:
+                f.write(pic)
+            cur.execute("""UPDATE place_photo_asks SET state = 'sent', answered_at = now(), file = %s, mime = %s, bytes = %s
+                            WHERE id = %s""", (name, mime, len(pic), ask))
+            kept = "sent"
+            ledger(cur, child, "photo:received", f"the photo on {a['label'] or 'a drawing'}", f"ask:{ask}")
+        else:
+            cur.execute("UPDATE place_photo_asks SET state = %s, answered_at = now() WHERE id = %s", (answer, ask))
+            kept = answer
+            ledger(cur, child, f"photo:{answer}", f"the photo on {a['label'] or 'a drawing'}", f"ask:{ask}")
+    _unlink(gone)
+    return {"ok": True, "state": kept}
 
 
 def daily_readings() -> None:
