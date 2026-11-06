@@ -81,9 +81,9 @@ class R:
 class HC:
     """Answers by URL and writes down every call. A value that is an Exception is raised instead."""
     def __init__(s, place=BCN, sha=SHA, reg=REG):
-        s.calls, s.place, s.sha, s.reg = [], place, sha, reg
+        s.calls, s.timeouts, s.place, s.sha, s.reg = [], [], place, sha, reg
     def get(s, url, params=None, headers=None, timeout=None):
-        s.calls.append(url)
+        s.calls.append(url); s.timeouts.append(timeout)
         out = (s.sha and {"sha": s.sha}) if "api.github.com" in url else s.reg if url.endswith("/index.json") else s.place
         if isinstance(s.sha, Exception) and "api.github.com" in url:
             raise s.sha
@@ -109,7 +109,7 @@ E = A.convert(REG)
 assert len(E) == 293 and all("slug" in e and "cell" in e and e["reviews"] is not None for e in E), len(E)
 ex = next(e for e in E if e["slug"] == "economic/bioregion/exiobase")
 assert ex["cell"] == "Economic|Bioregion" and ex["pillar"] == "economic", ex["cell"]
-assert "id" not in ex or ex["id"] == ex["slug"]
+assert ex["id"] == ex["slug"]
 assert A.convert({"entries": [{"id": "a/b/c", "pillar": "social", "scale": "city"}]}) == [
     {"slug": "a/b/c", "cell": "Social|City", "id": "a/b/c", "pillar": "social", "scale": "city", "reviews": []}]
 
@@ -123,6 +123,7 @@ rg = cur.rows["registry"]
 assert rg["ok"] and rg["sha"] == SHA and len(rg["body"]) == 293 and rg["body"][0]["slug"]
 assert hc.calls[0] == "https://index.fab.city/api/v0/places/barcelona.json", hc.calls
 assert all(c.startswith("https://") for c in hc.calls) and len(hc.calls) == 3, hc.calls
+assert hc.timeouts == [20, 20, 20], hc.timeouts       # every read has a timeout, and it is 20 s
 # the sha has not moved: the registry body is not fetched again, the row is still ok
 n = len(hc.calls)
 assert A.read(hc, cur, "barcelona", NOW + dt.timedelta(days=1)) == {"place": True, "registry": True}
@@ -158,6 +159,22 @@ assert cur.rows["place"]["body"] == good
 cur = Cur()
 assert A.read(HC(place=ACC), cur, "accra", NOW)["place"] is True and cur.rows["place"]["body"]["place"] == ACC["place"]
 
+# a stored place is only kept for the slug it was read for: Barcelona's file is not Accra's, or a typo's
+cur = Cur()
+A.read(HC(), cur, "barcelona", NOW)
+assert A.read(HC(), cur, "barcelone", NOW + dt.timedelta(days=1))["place"] is False
+assert cur.rows["place"]["body"] is None and cur.rows["place"]["ok"] is False
+assert cur.rows["place"]["error"] == "not an Index place: barcelone"
+A.read(HC(), cur, "barcelona", NOW)
+assert A.read(HC(place=dict(ACC, format="x")), cur, "accra", NOW)["place"] is False       # a failed read, another place
+assert cur.rows["place"]["body"] is None and "format" in cur.rows["place"]["error"]
+
+# a sha that is not a commit sha is an error, and nothing is fetched from raw.githubusercontent
+cur, hc = Cur(), HC(sha="main")
+assert A.read(hc, cur, "barcelona", NOW) == {"place": True, "registry": False}
+assert "not a commit sha" in cur.rows["registry"]["error"] and cur.rows["registry"]["body"] is None
+assert not any("raw.githubusercontent" in c for c in hc.calls), hc.calls
+
 # a body over 8 MB is refused before it is parsed
 class Big(R):
     def __init__(s): s.j, s.content, s.headers = {}, b"", {"content-length": str(9 * 1024 * 1024)}
@@ -180,6 +197,15 @@ assert A.fetch(hc) == ([], []) and len(hc.calls) == n, hc.calls
 A._now = lambda: NOW + dt.timedelta(hours=25)
 A.fetch(hc)
 assert len(hc.calls) == n + 2, hc.calls
+# a blank field in Set up reaches the pack as an empty string: the defaults stand, nothing raises
+os.environ["INDEX_REFRESH_HOURS"] = ""
+os.environ["INDEX_URL"] = ""
+store, hc = Cur(), HC()
+A._now = lambda: NOW
+assert A.fetch(hc) == ([], []) and hc.calls[0] == "https://index.fab.city/api/v0/places/barcelona.json", hc.calls
+n = len(hc.calls)
+A._now = lambda: NOW + dt.timedelta(hours=1)
+assert A.fetch(hc) == ([], []) and len(hc.calls) == n, "a blank refresh is 24 h"
 os.environ["INDEX_PLACE"] = ""
 before = len(hc.calls)
 A._now = lambda: NOW + dt.timedelta(days=9)

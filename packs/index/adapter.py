@@ -16,6 +16,7 @@ import datetime as dt
 import json
 import logging
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
@@ -56,22 +57,23 @@ def convert(upstream: dict) -> list:
 
 
 def _get(hc, url: str, headers=None):
-    """GET one https URL and return its parsed JSON, refusing anything over MAX_BYTES (the header is checked first,
-    so a huge body is never read, and the length again, since a header can be absent or wrong)."""
+    """GET one https URL and return its parsed JSON, refusing anything over MAX_BYTES. The cap protects parsing and
+    storage, not the download: the body has already arrived when the header and the length are checked."""
     assert url.startswith("https://"), url
-    r = hc.get(url, headers=headers or {}, timeout=30)
+    r = hc.get(url, headers=headers or {}, timeout=20)
     r.raise_for_status()
     if int(r.headers.get("content-length") or 0) > MAX_BYTES or len(r.content) > MAX_BYTES:
         raise ValueError("the answer is over 8 MB")
     return r.json()
 
 
-def _put(cur, what, now, ok, error, sha=None, body=None):
-    """Upsert one row. A failed read passes no body and no sha, and the row keeps the ones it had."""
+def _put(cur, what, now, ok, error, sha=None, body=None, keep=lambda body: True):
+    """Upsert one row. A failed read passes no body and no sha, and the row keeps the ones it had, unless keep(body)
+    says that body is not this read's to keep (a place file for a place the node is no longer configured for)."""
     cur.execute("SELECT sha, fetched_at, ok, error, body FROM index_reads WHERE what = %s", (what,))
     prev = cur.fetchone() or (None, None, None, None, None)
     sha = sha if ok else prev[0]
-    body = body if ok else prev[4]
+    body = body if ok else prev[4] if prev[4] is not None and keep(prev[4]) else None
     cur.execute("INSERT INTO index_reads (what, sha, fetched_at, ok, error, body) VALUES (%s, %s, %s, %s, %s, %s::jsonb) "
                 "ON CONFLICT (what) DO UPDATE SET sha = EXCLUDED.sha, fetched_at = EXCLUDED.fetched_at, "
                 "ok = EXCLUDED.ok, error = EXCLUDED.error, body = EXCLUDED.body",
@@ -83,14 +85,18 @@ def _prev(cur, what):
     return cur.fetchone()
 
 
+def _is(body, slug) -> bool:
+    return isinstance(body, dict) and (body.get("place") or {}).get("slug") == slug
+
+
 def _place(hc, cur, slug, now) -> bool:
     try:
-        base = os.getenv("INDEX_URL", "https://index.fab.city").rstrip("/")
+        base = (os.getenv("INDEX_URL") or "https://index.fab.city").rstrip("/")
         body = _get(hc, f"{base}/api/v0/places/{slug}.json")
         if body.get("format") != "fci-api-v0":
             raise ValueError(f"not the Index's format: format is {body.get('format')!r}, not 'fci-api-v0'")
     except Exception as e:  # noqa: BLE001
-        _put(cur, "place", now, False, str(e))
+        _put(cur, "place", now, False, str(e), keep=lambda b: _is(b, slug))
         return False
     _put(cur, "place", now, True, None, body=body)
     return True
@@ -100,6 +106,8 @@ def _registry(hc, cur, now) -> bool:
     try:
         sha = _get(hc, f"https://api.github.com/repos/{REPO}/commits/main",
                    {"Accept": "application/vnd.github+json"})["sha"]
+        if not isinstance(sha, str) or not re.fullmatch(r"[0-9a-f]{40}", sha):
+            raise ValueError(f"not a commit sha: {str(sha)[:40]!r}")
         prev = _prev(cur, "registry")
         if prev and prev[0] == sha and prev[2] and prev[4] is not None:
             body = prev[4]              # same commit, same file: touch the row, fetch nothing
@@ -117,7 +125,7 @@ def read(hc, cur, slug, now) -> dict:
     the registry included: a node pointed at a typo has nothing to ask for until it is fixed."""
     ensure(cur)
     if not PL.known(slug, PL.load()):
-        _put(cur, "place", now, False, f"not an Index place: {slug}")
+        _put(cur, "place", now, False, f"not an Index place: {slug}", keep=lambda b: _is(b, slug))
         return {"place": False, "registry": False}
     return {"place": _place(hc, cur, slug, now), "registry": _registry(hc, cur, now)}
 
@@ -140,7 +148,7 @@ def fetch(hc):
     slug = os.getenv("INDEX_PLACE", "").strip()
     if not slug:
         return [], []
-    hours = float(os.getenv("INDEX_REFRESH_HOURS", "24"))
+    hours = float(os.getenv("INDEX_REFRESH_HOURS") or "24")
     now = _now()
     with _cursor() as cur:
         ensure(cur)
