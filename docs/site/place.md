@@ -13,7 +13,8 @@ Copernicus DEM, and `surface-heat` the ground's heat from Landsat and MODIS.
 
 ## Turn it on
 
-The place pack runs code, so it needs the switch once:
+The place pack runs code, so it needs the switch once. If Set up › Packs loads only some packs, keep `place` among
+them first, or the commands below install libraries for a pack that never polls:
 
 ```bash
 planetai config set PACKS_ALLOW_CODE 1   # or Set up › Packs, which asks once before saving a key that runs code here

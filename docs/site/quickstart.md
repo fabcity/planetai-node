@@ -7,8 +7,8 @@ something needs doing and counts whether anyone did. [Introduction](introduction
 something you can check and a link to the page that goes deeper.
 
 You need a computer that stays on. Linux on x86 is the first choice, then a Mac on macOS 13 or newer, then Windows
-through WSL2. It needs 4 GB of memory (8 GB under WSL2, 16 GB if you want the model in step 4) and 3 GB of disk, and
-you need Telegram on a phone.
+through WSL2. It needs 4 GB of memory (8 GB under WSL2, 16 GB if you want the larger model in step 4) and 3 GB of
+disk, plus the model's own 3.4 to 6.6 GB if you take step 4. You also need Telegram on a phone.
 
 The commands run on the node's machine. Where the dashboard can do the same, the step says where in **Set up**, the
 page behind the gear that the admin token from `planetai ui` unlocks. A setting saved there is live within 20 seconds
@@ -34,20 +34,20 @@ Deeper: [Install](install.md), [Platforms](platforms.md), [Revive a laptop](revi
 ## 2. Your sensor and the first alert
 
 ```bash
-planetai config set SC_DEVICES 19880    # your Smart Citizen kit, if you skipped it at install
+planetai config set SC_DEVICES <kit>    # your kit's number from its smartcitizen.me URL, if you skipped it at install
 planetai sensors                        # after the next poll
 planetai telegram                       # make a bot with @BotFather, paste its token, message it once
 planetai test-alert                     # one real alert, through the whole path to your phone
-planetai act 12 read it on my phone     # the alert's number, as test-alert printed it
+planetai act <id> read it on my phone   # the number test-alert printed, and what you did in your own words
 ```
 
 `planetai sensors` marks each sensor `yours`, inside the 500 m, or `reference`. An AirGradient or a PurpleAir on
 your WiFi goes in `AIRGRADIENT_HOSTS` or `PURPLEAIR_HOSTS` the same way; a Bayu or a Meshtastic radio comes in through
 `planetai broker` or `planetai radio`. Without a sensor the node still reads the public stations and models.
 
-It worked when the test alert is on your phone and `planetai act` answers `1/1 alerts answered`. That share of
-alerts somebody acted on is ρ, and it is what the Index measures. On the dashboard, sensors go in Set up › Sources, and
-Data › Workbench flashes and tests a board you built.
+It worked when the test alert is on your phone and `planetai act` answers `recorded: you acted on #<id>`, then prints
+ρ, the share of alerts somebody acted on, which is what the Index measures. On the dashboard, sensors go in Set up ›
+Sources, and Data › Workbench flashes and tests a board you built.
 
 Deeper: [First ten minutes](first-ten-minutes.md), [Sensors and sources](sensors.md), [Radios](radios.md).
 
@@ -78,11 +78,12 @@ Deeper: [Packs that ship](packs-reference.md), [Packs](packs.md) for a wild pack
 
 ```bash
 planetai agent local                    # installs Ollama and starts the loop; downloads no model
-planetai agent local pull qwen3.5:9b    # 6.6 GB, for 16 GB of memory; qwen3.5:4b (3.4 GB) for 8 GB
+planetai agent local pull <tag>        # the tag it printed: qwen3.5:9b (6.6 GB) at 16 GB, qwen3.5:4b (3.4 GB) below
 ```
 
 `planetai agent local` prints the tag that fits this machine's memory, and on Linux how to make Ollama listen on
-`0.0.0.0` so the node's container reaches it. The model talks through the bot from step 2.
+`0.0.0.0` so the node's container reaches it. Ollama has no password, so keep port 11434 closed to other machines
+with the firewall. The model talks through the bot from step 2.
 
 It worked when your bot answers "is the node healthy?" from the node's own readings, and `/act 23 closed the windows`
 records an action as `planetai act` does. The same model answers the ask pane on the dashboard. A bigger model on
@@ -93,13 +94,13 @@ Deeper: [The bot](bot.md), [Ask the node](ask.md), [the model tags](../MODELS.md
 ## 5. Your own agent
 
 ```bash
-planetai agent    # the MCP address, the token, and a block for Claude Desktop, Claude Code or Cursor
 planetai mesh     # only if the agent runs on another computer: joins your tailnet and opens no port
+planetai agent    # the MCP address, the token, and a block for Claude Desktop, Claude Code or Cursor
 ```
 
 The node is an MCP server at `/mcp`. Paste the block into your agent's MCP settings and change its `X-Agent` name
-to one you will recognise, because every write the agent makes is logged under it. After `planetai mesh`, the block
-carries the node's tailnet address.
+to one you will recognise, because every write the agent makes is logged under it. Run after `planetai mesh`, the
+block carries the node's tailnet address.
 
 It worked when the agent calls `health_check` and `status` and tells you the node's name and its last poll. An agent
 you drive gets twenty-one tools, and its `act` tool records what a person did, in their own words.
@@ -113,9 +114,10 @@ planetai run place basemap    # if you said no at install: streets, buildings an
 planetai run place gaps       # what is unmapped within the kilometre, for a mapping afternoon
 ```
 
-The `place` pack runs once step 3 allows code, and its first poll fetches the kilometre around the node from
-OpenStreetMap. Open the Place door on the dashboard. The rings and every distance from the house need the admin token,
-because together they place the house; nothing finer than the node's cell leaves the machine.
+The `place` pack runs once step 3 allows code, as long as you left it switched on there, and its first poll fetches
+the kilometre around the node from OpenStreetMap. Open the Place door on the dashboard. The rings and every distance
+from the house need the admin token, because together they place the house; nothing finer than the node's cell leaves
+the machine.
 
 It worked when the Place door draws your streets and Set up no longer lists **The map of this place** under what is
 left to finish. A zero in the place's figures means unmapped, and `place gaps` says what to map.
