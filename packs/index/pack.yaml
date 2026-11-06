@@ -18,6 +18,9 @@ env:
   - "INDEX_PLACE="
   - "INDEX_URL=https://index.fab.city"
   - "INDEX_REFRESH_HOURS=24"
+# /index/place carries a public place's name and numbers and nothing about the house: the Place door reads it on every screen.
+share:
+  open: [/index/place]
 needs:
   - index.fab.city
 attribution: "Fab City Index, CC BY 4.0, Fab City Foundation; awesome-fabcity-data"

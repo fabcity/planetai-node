@@ -122,11 +122,25 @@ function placeTools() {
 }
 window.placeTools = placeTools;
 
+/* THE FAB CITY INDEX ROW (GET /index/place): the city's own file, read by the node once a day. The date is the file's,
+   never the node's last try; a range (simulated: no cell measured yet) is said as a range, never as a score of 0. */
+function indexRow(P) {
+  if (!P) return `<div class="fr"><span>Fab City Index<small>Choose this node's Index place: run <code>planetai place</code> on the node</small></span><b><span class="soon">not chosen</span></b></div>`;
+  const nm = esc((P.place || {}).name || P.chosen), sc = P.score, r = P.read || {}, d = x => esc(String(x || '').slice(0, 10));
+  const n = ((P.registry || {}).filed_here) || 0, st = (sc || {}).status, g = x => String(+x.toFixed(3));
+  const when = r.at ? `${r.ok ? 'read' : 'last read'} ${d(r.at)}${r.ok ? '' : ` · tried ${d(r.tried)}`}` : 'not read yet';
+  const val = !sc ? '<span class="soon">not read</span>' : sc.fci != null ? num('place.fci', g(sc.fci), 'the Fab City Index for this place, 0 to 1')
+    : num('place.fci.range', '', 'the Fab City Index for this place: a range until a cell is measured', `${g(sc.fci_range[0])} – ${g(sc.fci_range[1])}`);
+  const ind = (P.indicators || []).filter(i => i.latest).slice(0, 3).map(i => `<div class="fr"><span>${esc(i.label)}<small>${esc(i.latest.year)} · ${esc(i.unit)}</small></span><b>${num('place.index.' + i.label, g(i.latest.value), `${i.label}, ${i.latest.year}`)}</b></div>`).join('');
+  const lk = P.links && /^https:\/\//.test(P.links.page || '') ? ` · <a href="${esc(P.links.page)}" target="_blank" rel="noopener">${nm} on the Index</a>` : '';
+  return `<div class="fr"><span>${nm}${sc ? ` · ${esc(sc.status_label)}` : ''}<small>Fab City Index · ${when} · ${n} source${n === 1 ? '' : 's'} filed for ${nm} in the registry${lk}</small></span>`
+    + `<b>${val}${['partial', 'simulated'].includes(st) ? ' ' + prov('partial') : sc ? ' ' + prov('live') : ''}</b></div>` + ind;
+}
 /* THE PLACE IN FIGURES, the lower band's right: the issues that change yearly and have no hours (Land, Coast; Now is for
    the hour), the Index cells, and what is not here yet. */
 function figures() {
   const ch = ((D.earth || {}).changes || []).slice(-1)[0], nI = new Set(D.index_cells.map(c => c.cell)).size;
-  $('#pfigures').innerHTML = `<h3 class="pmh">the place in figures</h3>` + yearly()
+  $('#pfigures').innerHTML = `<h3 class="pmh">the place in figures</h3>` + yearly() + indexRow(D.index_place)
     + `<div class="fr"><span>Index cells<small>of the Fab City Index for this place · <a href="#node/cells">Node › Index cells</a></small></span>`
     + `<b>${num('place.index', `${nI} of 20`, 'cells of the Fab City Index holding a value')} ${prov('partial')}</b></div>`
     + `<div class="fr"><span>Production and trade · Water and soil · Forecast<small>coming to this place: no adapter, no source, or no village code yet</small></span><b><span class="soon">not yet</span></b></div>`

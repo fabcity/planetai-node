@@ -33,6 +33,7 @@ const DOORS_ROUTES = {
   sensors: 'sensors', observations: 'observations', cells: 'cells', stats: 'stats', settings: 'settings',
   /* token-only (doorsFetch): a screen without the token gets null and says so */
   readings_1h: 'aggregates?hours=24', actions: 'actions?limit=2000', alerts: 'alerts?limit=500',
+  index_place: 'index/place',   /* the index pack's: 404 while the pack is off, so null */
 };
 
 function buildD(A, locale) {
@@ -94,7 +95,7 @@ function buildD(A, locale) {
     share: setting('SHARE_LEVEL'), settings: A.settings || null, askOff: setting('UI_ASK') === 'off',   /* the keeper's switch for every ask, the dashboard's and the doors' */ rho: A.rho || {}, health: H,
     earth: A.earth ? { years: E.years || [], changes: E.changes || [], radius_m: E.radius_m, change: E.latest || null,
       sentinel: img.sentinel || [], landsat: img.landsat || [], credit: img.credit || [] } : null,
-    reach: A.reach || [], sensors: A.sensors || [], observations: A.observations || [], index_cells: A.cells || [],
+    reach: A.reach || [], sensors: A.sensors || [], observations: A.observations || [], index_cells: A.cells || [], index_place: A.index_place || null,
     geometry: { ladder: G.ladder || [], radio: G.radio || {}, grain: G.grain_table || [], publication: G.publication || {} },
     point: [H.lon, H.lat], stats15, raw, actions, alerts: A.alerts || asks.acts || [], notes: !!A.actions, asks,
     /* the ask pane's questions, written by the node from tonight's figures (/issues digest.prompts) */

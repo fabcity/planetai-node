@@ -211,5 +211,62 @@ before = len(hc.calls)
 A._now = lambda: NOW + dt.timedelta(days=9)
 assert A.fetch(hc) == ([], []) and len(hc.calls) == before, "no place named, nothing read"
 
+# ---- GET /index/place (routes.py): what the adapter stored, for the slug the node is set to
+os.environ.setdefault("DATABASE_URL", "postgresql://unused/never-connected")
+try:
+    import importlib.util
+    import time
+    import settings as ST
+except ImportError:
+    print("  index route: checks skipped (pip install -r app/requirements.txt)")
+else:
+    spec = importlib.util.spec_from_file_location("index_routes", os.path.join(ROOT, "packs/index/routes.py"))
+    RT = importlib.util.module_from_spec(spec); spec.loader.exec_module(RT)
+    ST._cache = {"at": time.time() + 1e9, "rows": {}}
+
+    def serve(cur, chosen="barcelona", pinned=([], {})):
+        """The route as the node would answer it, with `cur`'s rows in index_reads and `pinned` for registry.load()."""
+        os.environ["INDEX_PLACE"] = chosen
+        RT.q = lambda sql, *a: [dict(what=w, **r) for w, r in cur.rows.items()]
+        RT.registry.load = lambda: pinned
+        return RT.index_place()
+
+    cur = Cur()
+    A.read(HC(), cur, "barcelona", NOW)
+    o = serve(cur)
+    assert o["chosen"] == "barcelona" and o["place"] == BCN["place"] and o["place"]["name"] == "Barcelona", o["place"]
+    assert o["read"] == {"at": BCN["generated"], "ok": True, "error": None, "tried": NOW}, o["read"]
+    assert o["score"] == BCN["score"] and o["links"] == {"page": BCN["links"]["page"], "report": BCN["links"]["report"]}
+    assert len(o["indicators"]) == len(BCN["indicators"]) and o["indicators"][0]["latest"] == {"year": 2022, "value": 91.3}, o["indicators"][0]
+    assert set(o["indicators"][0]) == {"label", "unit", "latest", "source"}
+    assert o["registry"] == {"sha": SHA, "at": NOW, "from": "live", "filed_here": 35}, o["registry"]
+    # a place whose file is Accra's range: no fci, a range, and no indicators to show
+    cur = Cur()
+    A.read(HC(place=ACC), cur, "accra", NOW)
+    o = serve(cur, "accra")
+    assert o["score"]["fci"] is None and o["score"]["fci_range"] == [0, 0] and o["indicators"] == [], o["score"]
+    # nothing stored: not read, the pinned registry stands in, and the chosen place is still named from the list
+    pin = [{"slug": "a", "places": ["barcelona"]}, {"slug": "b", "places": ["bali"]}, {"slug": "c"}]
+    o = serve(Cur(), pinned=(pin, {"sha": "abc1234"}))
+    assert o["read"]["ok"] is False and o["read"]["at"] is None and o["score"] is None and o["indicators"] == [] and o["links"] is None
+    assert o["place"]["name"] == "Barcelona" and o["registry"] == {"sha": "abc1234", "at": None, "from": "pinned", "filed_here": 1}, o
+    # a failed read keeps the last body and says why; the date is the body's own, the attempt is later
+    cur = Cur()
+    A.read(HC(), cur, "barcelona", NOW)
+    A.read(HC(place=dict(BCN, format="x")), cur, "barcelona", NOW + dt.timedelta(days=2))
+    o = serve(cur)
+    assert o["read"]["ok"] is False and "format" in o["read"]["error"] and o["read"]["at"] == BCN["generated"], o["read"]
+    assert o["read"]["tried"] == NOW + dt.timedelta(days=2) and o["score"] == BCN["score"]
+    # a body for another slug is no body, even before the adapter has cleared it
+    cur = Cur()
+    A.read(HC(), cur, "barcelona", NOW)
+    o = serve(cur, "accra")
+    assert o["place"]["slug"] == "accra" and o["score"] is None and o["read"]["at"] is None and o["indicators"] == [], o
+    # the table is not there yet (the adapter has not run): no rows, not a 500
+    def boom(sql, *a): raise RuntimeError('relation "index_reads" does not exist')
+    os.environ["INDEX_PLACE"] = "barcelona"; RT.q = boom
+    assert RT.index_place()["read"]["ok"] is False
+    print("  ok: GET /index/place")
+
 print("  ok: test_index_pack")
 sys.exit(0)
