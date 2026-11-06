@@ -141,16 +141,20 @@ The token is kept, so nothing forces anybody to update on a schedule.
   node that has updated.
 - Not built: a setting to refuse unsigned pushes outright. It belongs to the release after every listed node has a key.
 
-## 8 · `push_maps`, once branch place-gis-2026-11-04 merges
+## 8 · Shared maps (#377)
 
-Not touched here. When it merges, `push_maps` and `POST /place/maps/received` need the same three changes as the two
-routes above, and nothing else:
+`push_maps` and `POST /place/maps/received` take the same three steps as the two routes above:
 
-1. the child posts through `_post_parent("/place/maps/received", payload)`, which signs it;
-2. the parent's handler takes the raw body (`raw: bytes = Depends(_raw_body)`) and calls `identity.admit(cur, name,
-   "/place/maps/received", raw, headers, listed)` after the token check;
-3. the map's `owner` is the node: the pinned name, or better its `node_id`, which `admit` returns, never a person and
-   never `body["node"]` unchecked.
+1. the child posts through `identity.post(PARENT(), "/place/maps/received", payload, PARENT_TOKEN())`, which signs the
+   bytes it sends (`_post_parent` in main.py is the same call with the refusal raised);
+2. the parent's handler takes the raw body (`raw: bytes = Depends(_raw_body)`) and calls `identity.admit` after the
+   token check, before a `put` writes or a `delete` deletes;
+3. the map's `owner` is the node: its ID, which the child also sends as the GeoJSON's `owner`, or its name when it
+   pushes unsigned. Never a person, and never `body["node"]` unchecked.
+
+A key refused by the parent (a 409, or a 401 that does not name the token) becomes the map's `share_error`, in the
+parent's own sentence. The registry's list reaches `admit` as `identity.LISTED`, which `check_registry` sets, so a map
+pushed before any aggregate cannot take a listed name either.
 
 ## 9 · Tests
 

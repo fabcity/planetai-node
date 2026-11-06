@@ -650,10 +650,10 @@ A child sends a map its household shared, whole, at most once a minute after eac
 
 ```json
 {"schema": "planetai.place.map/v0", "node": "bayu-ungasan", "map_id": 7, "op": "put",
- "geojson": {"type": "FeatureCollection", "map": "Garden plan", "owner": "bayu-ungasan", "features": [...]}}
+ "geojson": {"type": "FeatureCollection", "map": "Garden plan", "owner": "cc5gqlek2e2rhfy6", "features": [...]}}
 ```
 
-The parent keeps it under the child's name and map id, its drawings replaced on each `put`, and lists it read-only in `GET /place/maps`. A picture's number is the child's and is dropped. The map's `owner` is the child node, never a person, and a drawing carries no `drawn_by`. A map holds 2,000 drawings and 20,000 points at most (413), a drawing 1,000 points (422), and a colour is 1 to 6 (422). Returns `{"ok": true, "marks": <n>}` for a `put` and `{"ok": true}` for a `delete`.
+The parent keeps it under the child's name and map id, its drawings replaced on each `put`, and lists it read-only in `GET /place/maps`. A picture's number is the child's and is dropped. The map's `owner` is the child node, never a person: its ID when the push is signed (as `/aggregates` is, and pinned the same way), its name when it is not. A drawing carries no `drawn_by`. A map holds 2,000 drawings and 20,000 points at most (413), a drawing 1,000 points (422), and a colour is 1 to 6 (422). Returns `{"ok": true, "marks": <n>}` for a `put` and `{"ok": true}` for a `delete`.
 
 ### POST /events
 Access: children

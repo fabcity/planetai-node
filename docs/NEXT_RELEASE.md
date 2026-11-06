@@ -282,11 +282,9 @@ minutes loses the question, never the dismissal; persistence comes with the lear
 
 ## 6. Node identity, what is left (docs/SPEC_identity.md, 5 November 2026)
 
-Built on branch `node-identity-2026-11-05`: the key, the ID, signed pushes, trust on first use, `/children`.
+Built on branch `node-identity-2026-11-05`, on top of #377: the key, the ID, signed pushes (shared maps
+included, owned by the node's ID), trust on first use, `/children`. Schema `0.63`, after #377's `0.62`.
 
-1. **`push_maps` signs too, once #377 merges.** Spec §8 says the three changes. The map's `owner` is the node.
-2. **#377 and this branch both move `tests/all`** (rule 1 above). Whichever merges second rebases its count. This
-   one takes schema `0.63` so the two never share a number.
-3. **The two registry entries have no key.** Each gets one when its keeper says `planetai hello` after updating.
-4. **Refusing unsigned pushes outright** is a setting for the release after every listed node has a key. Not built.
+1. **The two registry entries have no key.** Each gets one when its keeper says `planetai hello` after updating.
+2. **Refusing unsigned pushes outright** is a setting for the release after every listed node has a key. Not built.
 

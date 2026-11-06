@@ -3,6 +3,8 @@
     node_id()                   this node's ID: the first 16 base32 characters of sha256(public key). None without NODE_KEY.
     public_key()                its public key, base64. Both are public: /health publishes them.
     headers(route, body)        the four X-Node-* headers that sign `body` for the parent's `route`. {} without a key.
+    post(parent, route, payload, token)
+                                every push upstream: serialises `payload` once, signs those bytes, posts them.
     admit(cur, name, route, body, headers, listed)
                                 parent side: verify the signature, pin the child's key on first contact, refuse a
                                 changed one. Raises HTTPException with a sentence.
@@ -14,16 +16,19 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import json
 import logging
 import os
 import time
 from functools import lru_cache
 
+import httpx
 from fastapi import HTTPException
 
 log = logging.getLogger("planetai.identity")
 VERSION = "planetai-node-v1"
-SKEW = 600          # seconds either way; the whole replay defence, because both signed routes are idempotent upserts
+SKEW = 600          # seconds either way; the whole replay defence, because every signed route is an idempotent upsert
+LISTED: list = []   # registry.json's nodes, as main.check_registry last read them: a listed name pins only to its id
 
 
 def id_of(key_b64: str) -> str:
@@ -77,6 +82,26 @@ def headers(route: str, body: bytes) -> dict:
             "X-Node-Signature": base64.b64encode(k.sign(_message(route, ts, body))).decode()}
 
 
+def post(parent: str, route: str, payload: dict, token: str = "") -> httpx.Response:
+    """POST `payload` to `parent` + `route`, signed. The bytes signed are the bytes sent, so the body is serialised
+    here and posted as content, never json=: json= would serialise it again after signing. Raises httpx.HTTPError when
+    the parent cannot be reached; a refusal comes back as the response, for the caller to say."""
+    body = json.dumps(payload).encode()
+    h = {"Content-Type": "application/json", **headers(route, body)}
+    if token:
+        h["Authorization"] = f"Bearer {token}"
+    return httpx.post(f"{parent}{route}", content=body, headers=h, timeout=30)
+
+
+def refusal(r: httpx.Response) -> str:
+    """The sentence a parent refused with, or "" when it gave none (a proxy's HTML error page)."""
+    try:
+        why = r.json().get("detail")
+    except Exception:  # noqa: BLE001
+        why = None
+    return why if isinstance(why, str) else ""
+
+
 def verify(route: str, body: bytes, h) -> tuple[str, str] | None:
     """(node_id, public_key) for a good signature, None for an unsigned push. Raises 401 for anything else."""
     nid, key, ts, sig = (h.get(f"x-node-{k}", "") for k in ("id", "key", "ts", "signature"))
@@ -127,7 +152,7 @@ def admit(cur, name: str, route: str, body: bytes, h, listed: list | None = None
                                  f"NODE_NAME back to {other['name']}, or run `planetai children forget {other['name']}` "
                                  "on this parent.")
     if not (mine and mine["node_id"]):
-        listed_id = next((n.get("id") for n in listed or [] if n.get("name") == name and n.get("id")), None)
+        listed_id = next((n.get("id") for n in (LISTED if listed is None else listed) if n.get("name") == name and n.get("id")), None)
         if listed_id and listed_id != nid:
             raise HTTPException(409, f"registry.json lists {name} as node {listed_id}, and this push is signed by node "
                                      f"{nid}. If {name} has a new key, its keeper runs `planetai hello` to list it.")

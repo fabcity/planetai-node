@@ -152,7 +152,8 @@ class Httpx:
 
 tree = ast.parse((ROOT / "app" / "main.py").read_text())
 fn = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "_post_parent")
-ns = {"json": json, "identity": identity, "httpx": Httpx(), "PARENT": lambda: "http://parent:8080",
+identity.httpx = Httpx()                     # identity.post is the one place a push is posted
+ns = {"identity": identity, "httpx": identity.httpx, "PARENT": lambda: "http://parent:8080",
       "PARENT_TOKEN": lambda: "tok", "log": None}
 exec(compile(ast.Module([fn], []), "main.py", "exec"), ns)
 as_node(D)
@@ -171,7 +172,30 @@ for name in ("receive_aggregates", "receive_events"):
 print("  ok  the child signs the bytes it posts, and both receive routes admit before they write")
 
 
-# 5 · every registry.json entry that carries a key carries the ID that key hashes to
+# 5 · a shared map (app/maps.py): pushed through identity.post, admitted before it is written, owned by the node's ID
+os.environ.setdefault("DATABASE_URL", "postgresql://unused/never-connected")   # db.py opens nothing at import
+import maps  # noqa: E402
+
+msrc = (ROOT / "app" / "maps.py").read_text()
+mtree = ast.parse(msrc)
+seg = lambda name: ast.get_source_segment(msrc, next(n for n in mtree.body if isinstance(n, ast.FunctionDef) and n.name == name))  # noqa: E731
+assert 'identity.post(PARENT(), "/place/maps/received"' in seg("push_maps") and "httpx.post" not in seg("push_maps")
+rcv = seg("map_received")
+assert "Depends(_raw_body)" in rcv and rcv.index("_bearer_ok(authorization, AGG_TOKEN())") < rcv.index("identity.admit(cur, child,")
+assert rcv.index("identity.admit(") < rcv.index("DELETE FROM place_maps"), "a delete is admitted too"
+as_node(A)
+assert maps.feature_collection({"name": "m", "owner": "Ana"}, [], "bayu", upstream=True)["owner"] == nid
+assert maps.feature_collection({"name": "m", "owner": "Ana"}, [], "bayu")["owner"] == "Ana", "at home, the household's"
+as_node("")
+assert maps.feature_collection({"name": "m"}, [], "bayu", upstream=True)["owner"] == "bayu", "no key: the node's name"
+identity.LISTED = [{"name": "listed-one", "id": nid}]
+refused(lambda: identity.admit(Cursor(), "listed-one", "/place/maps/received", body,
+                               signed(E, "/place/maps/received", body)), 409, "registry.json lists listed-one")
+identity.LISTED = []
+print("  ok  a shared map is signed, admitted before it is written or deleted, owned by the node's ID; the registry holds")
+
+
+# 6 · every registry.json entry that carries a key carries the ID that key hashes to
 for n in json.loads((ROOT / "registry.json").read_text())["nodes"]:
     if n.get("key") or n.get("id"):
         assert n.get("key") and identity.id_of(n["key"]) == n.get("id"), f"registry.json: {n['name']}'s id is not its key's"

@@ -467,25 +467,16 @@ def push_aggregates() -> None:
 
 
 def _post_parent(route: str, payload: dict) -> bool:
-    """POST `payload` to the parent, signed by this node's key (app/identity.py). The bytes signed are the bytes sent,
-    so the body is serialised here and posted as content, never json=. A parent that refuses says why in a sentence
+    """POST `payload` to the parent, signed by this node's key (identity.post). A parent that refuses says why in a sentence
     (a changed key, a bad clock), and that sentence is raised, so loop() puts it in /health's errors where the keeper
     reads it. A parent that cannot be reached is logged, as before, and asked again on the next push."""
-    body = json.dumps(payload).encode()
-    h = {"Content-Type": "application/json", **identity.headers(route, body)}
-    if PARENT_TOKEN():
-        h["Authorization"] = f"Bearer {PARENT_TOKEN()}"
     try:
-        r = httpx.post(f"{PARENT()}{route}", content=body, headers=h, timeout=30)
+        r = identity.post(PARENT(), route, payload, PARENT_TOKEN())
     except httpx.HTTPError as e:
         log.warning("push of %s to parent failed: %s", route, e)     # a parent offline is normal; it is asked again in an hour
         return False
     if r.status_code >= 400:
-        try:
-            why = r.json().get("detail")
-        except Exception:  # noqa: BLE001 — a proxy's HTML error page
-            why = None
-        raise RuntimeError(f"the parent refused {route} ({r.status_code}): {why or r.reason_phrase}")
+        raise RuntimeError(f"the parent refused {route} ({r.status_code}): {identity.refusal(r) or r.reason_phrase}")
     return True
 
 
@@ -670,6 +661,7 @@ def check_registry() -> None:
         return
     state["registry"] = {"nodes": nodes, "read": datetime.now(timezone.utc).isoformat(timespec="seconds"),
                          "asked": time.time()}
+    identity.LISTED = nodes          # a listed name pins only to its listed id (docs/SPEC_identity.md §6)
 
 
 
@@ -2270,7 +2262,7 @@ def _admit(cur, body: dict, route: str, raw: bytes, request: Request) -> str:
     child sends, and its rows are stored under it as before; what changes is that only the key pinned to that name
     may write under it."""
     child = str(body.get("node") or "?")
-    identity.admit(cur, child, route, raw, request.headers, (state.get("registry") or {}).get("nodes"))
+    identity.admit(cur, child, route, raw, request.headers)
     return child
 
 

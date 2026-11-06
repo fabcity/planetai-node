@@ -11,7 +11,7 @@
 
 - **Each node is a key.** A node now makes its own key when it is installed, `NODE_KEY` in `.env`, and its ID is a
   short hash of the public key. It shows in Set up › Sharing, in `planetai status` and in `GET /health`. A child signs
-  everything it pushes to its parent, and the parent pins the child's name to its key the first time it hears from it.
+  everything it pushes to its parent, shared maps included (a map's owner is the node's ID), and the parent pins the child's name to its key the first time it hears from it.
   A push under that name from another key is refused, with a sentence saying what to run. The shared
   `AGGREGATE_TOKEN` stays. A child with no key yet still pushes as before. Keep a copy of `.env` somewhere that is not
   the backup share: a node that loses it is a new node. A node updating from an older release gets its key on the
