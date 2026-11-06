@@ -128,6 +128,14 @@ answers the same question as one in Barcelona, every node in a release answers i
 what a node believes about the network is a diff somebody reviewed. `tools/sync_registry.sh` takes a commit and
 refuses a branch or a tag for the same reason.
 
+A node with the `index` pack on reads one more copy, once a day: it asks GitHub which commit awesome-fabcity-data's
+`main` is at, and keeps that commit's `index.json`. The Fab City Index row on Place counts the sources filed for the
+node's place from it. Every list on the node, `planetai sources`, `GET /sources`, the `/cells` counts and the Network
+view, still reads the pin and says its date as `pin 7bf12a4 · synced 2026-11-04`. The row gives the count and not
+the copy it came from; `GET /index/place` says: `registry.from` is `live` or `pinned`, `sha` is the commit, and `at` is
+when the node last asked. If GitHub does not answer, the node keeps the last copy it read, and with none it counts from
+the pin.
+
 ## Act sources
 
 Sixteen entries carry `role: act`: places to go and things to build with. The `make` pack reads the first two. The

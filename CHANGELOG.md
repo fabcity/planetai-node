@@ -11,6 +11,14 @@
   view is gone until What changed runs as a tool. On a phone the layers and the tools open as a sheet over the lower
   part of the page.
 
+- **A node can say which Fab City Index place it belongs to.** `planetai place` suggests the nearest of the 61 places the
+  Index tracks, from a centre that asserts no border, and you confirm it or pick another or none; setup asks the same
+  question. With a place chosen, the new `index` pack reads that place's file from index.fab.city once a day, and the
+  source registry at the commit `main` points to, and keeps the last good copy of each. The request is the place's slug
+  and nothing about the house. The figures band on Place has a Fab City Index row: the place and its label, its FCI or
+  its range while no cell is measured, up to three indicators with their year, and how many registry sources are filed
+  for it. The node shows the Index's numbers and does not work them out. `GET /index/place` serves it.
+
 ## v0.91.0 — 2026-11-04 — Now looks ahead
 
 Under What to do on Now there's the rest of today, tomorrow and the day after, with the air and the heat judged
