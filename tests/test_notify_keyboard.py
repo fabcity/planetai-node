@@ -75,6 +75,19 @@ assert len(sent) == 3 and channels.tg_state["ok"] is False and slept == [3, 10],
 print("  three tries at most, then it gives up as before")
 
 slept.clear()
+channels.TG = lambda: ("tok", ["1", "2"])
+run([down, down, down, 200])
+assert [m["chat_id"] for m in sent] == ["1", "1", "1", "2"] and channels.tg_state["ok"] is True, sent
+assert slept == [3, 10], "the next chat gets one try once the line is known to be down, not three"
+print("  after one chat gives up, the next still gets its alert, in one try")
+
+slept.clear()
+run([down, down, down, down])
+assert len(sent) == 4 and slept == [3, 10] and channels.tg_state["ok"] is False, (sent, slept)
+print("  with the line down, a second chat costs one try, not three (POST /report/now stays under 180 s)")
+channels.TG = lambda: ("tok", ["1"])
+
+slept.clear()
 run([httpx.ReadTimeout("late")])
 assert len(sent) == 1 and channels.tg_state["ok"] is False and slept == [], "a read timeout may have arrived: no second copy"
 print("  a read timeout is never retried")

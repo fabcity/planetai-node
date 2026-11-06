@@ -37,12 +37,12 @@ mesh_state = {"root_topic": None, "gateway": None, "packets": 0, "last": None}
 tg_state: dict = {"ok": None, "at": None}
 
 
-def _tg_post(url: str, body: dict) -> httpx.Response:
-    """POST to Telegram, trying twice more (3 s, then 10 s later) when the connection never opened. Node #1's line drops
-    for seconds at a time, several times a day (6 Nov 2026: 9 in 20 h), and an alert sent once into a drop was simply
-    gone. Only a connection that never opened is retried: after a read timeout Telegram may already have the message,
-    and a second copy of an alert is worse than a late one."""
-    for wait in (3, 10, None):
+def _tg_post(url: str, body: dict, waits: tuple = (3, 10)) -> httpx.Response:
+    """POST to Telegram, trying again after each of `waits` (3 s, then 10 s) when the connection never opened. Node #1's
+    line drops for seconds at a time, several times a day (6 Nov 2026: 9 in 20 h), and an alert sent once into a drop
+    was simply gone. Only a connection that never opened is retried: after a read timeout Telegram may already have the
+    message, and a second copy of an alert is worse than a late one."""
+    for wait in (*waits, None):
         try:
             return httpx.post(url, json=body, timeout=15)
         except (httpx.ConnectError, httpx.ConnectTimeout) as e:
@@ -84,6 +84,9 @@ def notify(level: str, text: str, keyboard: list | None = None, home: str = "", 
     tok, chats = TG()
     if not tok or not chats:
         return
+    # Once one chat has spent its retries the line is down, and the chats after it get one try each: four chats
+    # retrying in turn could hold POST /report/now past an MCP client's 180 s, though the report is already stored.
+    waits = (3, 10)
     for chat in chats:
         try:
             said = f"{icon} {text}".strip()
@@ -92,12 +95,12 @@ def notify(level: str, text: str, keyboard: list | None = None, home: str = "", 
             if keyboard:
                 body["reply_markup"] = {"inline_keyboard": keyboard}
             url = f"https://api.telegram.org/bot{tok}/sendMessage"
-            r = _tg_post(url, body)
+            r = _tg_post(url, body, waits)
             if r.status_code == 400 and "reply_markup" in body:
                 # the message is never lost over its buttons (SPEC_alerts §7): a keyboard Telegram refuses is dropped once
                 log.warning("telegram -> %s refused the keyboard; sending the message without its buttons", chat)
                 body.pop("reply_markup")
-                r = _tg_post(url, body)
+                r = _tg_post(url, body, waits)
             r.raise_for_status()
             log.info("telegram -> %s ok", chat)
             tg_state.update(ok=True, at=time.time())
@@ -105,3 +108,5 @@ def notify(level: str, text: str, keyboard: list | None = None, home: str = "", 
             # never interpolate the exception's URL: httpx puts the token in it
             log.warning("telegram -> %s failed: %s", chat, type(e).__name__)
             tg_state.update(ok=False, at=time.time())
+            if isinstance(e, (httpx.ConnectError, httpx.ConnectTimeout)):
+                waits = ()
