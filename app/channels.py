@@ -37,6 +37,21 @@ mesh_state = {"root_topic": None, "gateway": None, "packets": 0, "last": None}
 tg_state: dict = {"ok": None, "at": None}
 
 
+def _tg_post(url: str, body: dict) -> httpx.Response:
+    """POST to Telegram, trying twice more (3 s, then 10 s later) when the connection never opened. Node #1's line drops
+    for seconds at a time, several times a day (6 Nov 2026: 9 in 20 h), and an alert sent once into a drop was simply
+    gone. Only a connection that never opened is retried: after a read timeout Telegram may already have the message,
+    and a second copy of an alert is worse than a late one."""
+    for wait in (3, 10, None):
+        try:
+            return httpx.post(url, json=body, timeout=15)
+        except (httpx.ConnectError, httpx.ConnectTimeout) as e:
+            if wait is None:
+                raise
+            log.warning("telegram unreachable (%s); trying again in %d s", type(e).__name__, wait)
+            time.sleep(wait)
+
+
 def mesh_send(text: str) -> None:
     """Send `text` over the LoRa mesh via the gateway's MQTT downlink. Needs a root topic learned from an uplink."""
     if not (MQTT_HOST and MESH_ALERTS() and mesh_state["root_topic"]):
@@ -77,12 +92,12 @@ def notify(level: str, text: str, keyboard: list | None = None, home: str = "", 
             if keyboard:
                 body["reply_markup"] = {"inline_keyboard": keyboard}
             url = f"https://api.telegram.org/bot{tok}/sendMessage"
-            r = httpx.post(url, json=body, timeout=15)
+            r = _tg_post(url, body)
             if r.status_code == 400 and "reply_markup" in body:
                 # the message is never lost over its buttons (SPEC_alerts §7): a keyboard Telegram refuses is dropped once
                 log.warning("telegram -> %s refused the keyboard; sending the message without its buttons", chat)
                 body.pop("reply_markup")
-                r = httpx.post(url, json=body, timeout=15)
+                r = _tg_post(url, body)
             r.raise_for_status()
             log.info("telegram -> %s ok", chat)
             tg_state.update(ok=True, at=time.time())

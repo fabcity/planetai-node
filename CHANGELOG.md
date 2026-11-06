@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **An alert sent while the internet drops for a moment still arrives.** If the connection to Telegram never opens,
+  the node tries again 3 seconds later and then 10 seconds after that. Node #1's line drops like this several times a
+  day, and an alert sent into one of those drops used to be lost. A send that timed out waiting for an answer is not
+  tried again, because Telegram may already have it, and a second copy of an alert is worse than a late one.
+
 - **Place is drawn as what the ground is made of.** The door has a list on the left with the sky at the top and the
   ground at the bottom, one line a row with a dot for on, off, or not held yet, and a black screen in the middle that
   stays black on the light page and the dark one. **Tools**, beside the ask line, opens a menu. Rings and distance and
