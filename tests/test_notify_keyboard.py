@@ -97,4 +97,8 @@ slept.clear()
 run([down, 400, 200])
 assert len(sent) == 3 and "reply_markup" not in sent[2] and channels.tg_state["ok"] is True, sent
 print("  the keyboard fallback still works after a drop")
+import pathlib
+route = (pathlib.Path(__file__).resolve().parent.parent / "app/main.py").read_text().split("def report_now(")[1].split("\n@app.")[0]
+assert "threading.Thread(target=notify" in route and "\n    notify(" not in route, "POST /report/now waits on Telegram again"
+print("  POST /report/now hands the send to a thread, so a down line never holds the request")
 print("test_notify_keyboard: all checks passed")

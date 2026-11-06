@@ -1617,7 +1617,9 @@ def report_now(authorization: str = Header("")):
                        VALUES (%s, 'sheet', 'node', %s, %s, TRUE, FALSE, %s) RETURNING id""",
                     (every, text, text, Jsonb(b.get("cells") or [])))
         rid = cur.fetchone()["id"]
-    notify("info", text)
+    # Telegram's retries can take minutes when the line is down (channels._tg_post) and an MCP client gives up at 180 s,
+    # though the report is already stored: the caller gets it now, and the phone gets it when the line lets it through.
+    threading.Thread(target=notify, args=("info", text), daemon=True, name="report-send").start()
     packs.emit("on_alert", "info", text, None)
     log.info("report %d sent on request: %d hours, %d words", rid, every, len(text.split()))
     return {"id": rid, "text": text, "depth": "sheet", "rung": "node", "sent": True}
