@@ -52,5 +52,138 @@ assert run("--known", "bali").returncode == 0
 assert run("--known", "bali-ish").returncode == 2
 assert run().returncode not in (0, 2)
 
+# ---- the daily read (adapter.py). The fixtures are Barcelona and Accra as index.fab.city served them on 6 Nov
+# 2026 and the registry's index.json at the commit the Barcelona file names, saved whole.
+import datetime as dt  # noqa: E402
+import copy  # noqa: E402
+import adapter as A  # noqa: E402
+
+
+def fixture(n):
+    with open(os.path.join(ROOT, "tests/data", n)) as f:
+        return json.load(f)
+
+
+BCN = fixture("index_place_barcelona_2026-11-06.json")
+ACC = fixture("index_place_accra_2026-11-06.json")
+REG = fixture("registry_index_8099744.json")
+SHA = BCN["registry_commit"]
+NOW = dt.datetime(2026, 11, 6, 8, 0, tzinfo=dt.timezone.utc)
+
+
+class R:
+    def __init__(s, j, headers=None):
+        s.j, s.content, s.headers = j, json.dumps(j).encode(), headers or {}
+    def raise_for_status(s): pass
+    def json(s): return s.j
+
+
+class HC:
+    """Answers by URL and writes down every call. A value that is an Exception is raised instead."""
+    def __init__(s, place=BCN, sha=SHA, reg=REG):
+        s.calls, s.place, s.sha, s.reg = [], place, sha, reg
+    def get(s, url, params=None, headers=None, timeout=None):
+        s.calls.append(url)
+        out = (s.sha and {"sha": s.sha}) if "api.github.com" in url else s.reg if url.endswith("/index.json") else s.place
+        if isinstance(s.sha, Exception) and "api.github.com" in url:
+            raise s.sha
+        return R(out)
+
+
+class Cur:
+    """A dict where index_reads would be: the two statements the adapter issues, keyed on their first word."""
+    def __init__(s): s.rows, s.one = {}, None
+    def execute(s, q, a=()):
+        q = q.strip().upper()
+        if q.startswith("SELECT"):
+            r = s.rows.get(a[0])
+            s.one = (r["sha"], r["fetched_at"], r["ok"], r["error"], r["body"]) if r else None
+        elif q.startswith("INSERT"):
+            what, sha, at, ok, err, body = a
+            s.rows[what] = dict(sha=sha, fetched_at=at, ok=ok, error=err, body=None if body is None else json.loads(body))
+    def fetchone(s): return s.one
+
+
+# convert: the upstream dict's entries, in the node's entry shape
+E = A.convert(REG)
+assert len(E) == 293 and all("slug" in e and "cell" in e and e["reviews"] is not None for e in E), len(E)
+ex = next(e for e in E if e["slug"] == "economic/bioregion/exiobase")
+assert ex["cell"] == "Economic|Bioregion" and ex["pillar"] == "economic", ex["cell"]
+assert "id" not in ex or ex["id"] == ex["slug"]
+assert A.convert({"entries": [{"id": "a/b/c", "pillar": "social", "scale": "city"}]}) == [
+    {"slug": "a/b/c", "cell": "Social|City", "id": "a/b/c", "pillar": "social", "scale": "city", "reviews": []}]
+
+# a place that reads: Barcelona is stored whole with its format, and the registry by its sha
+cur, hc = Cur(), HC()
+assert A.read(hc, cur, "barcelona", NOW) == {"place": True, "registry": True}
+pl = cur.rows["place"]
+assert pl["ok"] is True and pl["error"] is None and pl["body"]["format"] == "fci-api-v0"
+assert pl["body"]["place"] == BCN["place"] and pl["fetched_at"] == NOW
+rg = cur.rows["registry"]
+assert rg["ok"] and rg["sha"] == SHA and len(rg["body"]) == 293 and rg["body"][0]["slug"]
+assert hc.calls[0] == "https://index.fab.city/api/v0/places/barcelona.json", hc.calls
+assert all(c.startswith("https://") for c in hc.calls) and len(hc.calls) == 3, hc.calls
+# the sha has not moved: the registry body is not fetched again, the row is still ok
+n = len(hc.calls)
+assert A.read(hc, cur, "barcelona", NOW + dt.timedelta(days=1)) == {"place": True, "registry": True}
+assert len(hc.calls) == n + 2 and not any(c.endswith("/index.json") for c in hc.calls[n:]), hc.calls[n:]
+
+# an unknown slug is said, and nothing leaves the node
+cur, hc = Cur(), HC()
+assert A.read(hc, cur, "barcelone", NOW)["place"] is False
+assert hc.calls == [], hc.calls
+assert cur.rows["place"]["ok"] is False and cur.rows["place"]["error"] == "not an Index place: barcelone"
+
+# GitHub down: the registry keeps what it had, with its sha, and says why; the place is still read
+cur, hc = Cur(), HC()
+A.read(hc, cur, "barcelona", NOW)
+before = copy.deepcopy(cur.rows["registry"])
+hc = HC(sha=RuntimeError("github is down"))
+assert A.read(hc, cur, "barcelona", NOW + dt.timedelta(days=1)) == {"place": True, "registry": False}
+rg = cur.rows["registry"]
+assert rg["ok"] is False and "github is down" in rg["error"]
+assert rg["body"] == before["body"] and rg["sha"] == before["sha"]
+assert cur.rows["place"]["ok"] is True
+
+# a body that is not the Index's format is refused and the last good one stays
+cur = Cur()
+A.read(HC(), cur, "barcelona", NOW)
+good = copy.deepcopy(cur.rows["place"]["body"])
+bad = dict(BCN, format="x")
+assert A.read(HC(place=bad), cur, "barcelona", NOW + dt.timedelta(days=1))["place"] is False
+assert cur.rows["place"]["ok"] is False and "format" in cur.rows["place"]["error"]
+assert cur.rows["place"]["body"] == good
+
+# the other place reads the same way (Accra is a different shape of place, same format)
+cur = Cur()
+assert A.read(HC(place=ACC), cur, "accra", NOW)["place"] is True and cur.rows["place"]["body"]["place"] == ACC["place"]
+
+# a body over 8 MB is refused before it is parsed
+class Big(R):
+    def __init__(s): s.j, s.content, s.headers = {}, b"", {"content-length": str(9 * 1024 * 1024)}
+cur = Cur()
+class HCBig(HC):
+    def get(s, url, **k): return Big()
+assert A.read(HCBig(), cur, "barcelona", NOW)["place"] is False and "8 MB" in cur.rows["place"]["error"]
+
+# once a day: two fetches an hour apart make one set of calls
+os.environ["INDEX_PLACE"] = "barcelona"
+os.environ.pop("INDEX_REFRESH_HOURS", None)
+store, hc = Cur(), HC()
+A._cursor = lambda: __import__("contextlib").nullcontext(store)
+A._now = lambda: NOW
+assert A.fetch(hc) == ([], [])
+n = len(hc.calls)
+assert n == 3, n
+A._now = lambda: NOW + dt.timedelta(hours=1)
+assert A.fetch(hc) == ([], []) and len(hc.calls) == n, hc.calls
+A._now = lambda: NOW + dt.timedelta(hours=25)
+A.fetch(hc)
+assert len(hc.calls) == n + 2, hc.calls
+os.environ["INDEX_PLACE"] = ""
+before = len(hc.calls)
+A._now = lambda: NOW + dt.timedelta(days=9)
+assert A.fetch(hc) == ([], []) and len(hc.calls) == before, "no place named, nothing read"
+
 print("  ok: test_index_pack")
 sys.exit(0)
