@@ -162,12 +162,26 @@ assert A.read(HC(place=ACC), cur, "accra", NOW)["place"] is True and cur.rows["p
 # a stored place is only kept for the slug it was read for: Barcelona's file is not Accra's, or a typo's
 cur = Cur()
 A.read(HC(), cur, "barcelona", NOW)
+assert cur.rows["place"]["sha"] == "barcelona", "the place row says which slug it was read for"
 assert A.read(HC(), cur, "barcelone", NOW + dt.timedelta(days=1))["place"] is False
+assert cur.rows["place"]["sha"] == "barcelone", "an unknown slug is stored too"
 assert cur.rows["place"]["body"] is None and cur.rows["place"]["ok"] is False
 assert cur.rows["place"]["error"] == "not an Index place: barcelone"
 A.read(HC(), cur, "barcelona", NOW)
 assert A.read(HC(place=dict(ACC, format="x")), cur, "accra", NOW)["place"] is False       # a failed read, another place
 assert cur.rows["place"]["body"] is None and "format" in cur.rows["place"]["error"]
+assert cur.rows["place"]["sha"] == "accra", "a failed read is stored for its slug, so it is not skipped as fresh for another"
+# a failed read for the same slug keeps the last body, and the slug
+cur = Cur()
+A.read(HC(), cur, "barcelona", NOW)
+A.read(HC(place=dict(BCN, format="x")), cur, "barcelona", NOW + dt.timedelta(hours=2))
+assert cur.rows["place"]["body"] == BCN and cur.rows["place"]["sha"] == "barcelona" and cur.rows["place"]["ok"] is False
+# a place file whose `place` is not an object is not Barcelona's, and does not raise
+assert A._is(dict(BCN, place="barcelona"), "barcelona") is False and A._is(dict(BCN, place=[1]), "barcelona") is False and A._is([], "x") is False
+cur = Cur()
+A.read(HC(), cur, "barcelona", NOW)
+cur.rows["place"]["body"]["place"] = ["not", "an", "object"]
+assert A.read(HC(place=dict(BCN, format="x")), cur, "barcelona", NOW)["place"] is False and cur.rows["place"]["body"] is None
 
 # a sha that is not a commit sha is an error, and nothing is fetched from raw.githubusercontent
 cur, hc = Cur(), HC(sha="main")
@@ -197,6 +211,27 @@ assert A.fetch(hc) == ([], []) and len(hc.calls) == n, hc.calls
 A._now = lambda: NOW + dt.timedelta(hours=25)
 A.fetch(hc)
 assert len(hc.calls) == n + 2, hc.calls
+# INDEX_PLACE changes: the row was read for another slug, so it is read at the next poll, not a day later
+os.environ["INDEX_PLACE"] = "barcelona"; os.environ["INDEX_REFRESH_HOURS"] = " 24 "     # padded, as a pasted value is
+store, hc = Cur(), HC()
+A._now = lambda: NOW
+A.fetch(hc)
+n = len(hc.calls)
+assert store.rows["place"]["sha"] == "barcelona"
+os.environ["INDEX_PLACE"] = "accra"
+hc.place = ACC
+A._now = lambda: NOW + dt.timedelta(hours=1)
+A.fetch(hc)
+assert len(hc.calls) > n and hc.calls[n] == "https://index.fab.city/api/v0/places/accra.json", hc.calls[n:]
+assert store.rows["place"]["body"]["place"] == ACC["place"] and store.rows["place"]["sha"] == "accra"
+n = len(hc.calls)
+A._now = lambda: NOW + dt.timedelta(hours=2)
+A.fetch(hc)
+assert len(hc.calls) == n, "the same slug within the day is still skipped"
+os.environ["INDEX_PLACE"] = "barcelone"                   # a typo is said at once, and stored for itself
+A.fetch(hc)
+assert store.rows["place"]["error"] == "not an Index place: barcelone" and store.rows["place"]["sha"] == "barcelone" and len(hc.calls) == n
+os.environ["INDEX_PLACE"] = "barcelona"; os.environ.pop("INDEX_REFRESH_HOURS")
 # a blank field in Set up reaches the pack as an empty string: the defaults stand, nothing raises
 os.environ["INDEX_REFRESH_HOURS"] = ""
 os.environ["INDEX_URL"] = ""
@@ -262,6 +297,29 @@ else:
     A.read(HC(), cur, "barcelona", NOW)
     o = serve(cur, "accra")
     assert o["place"]["slug"] == "accra" and o["score"] is None and o["read"]["at"] is None and o["indicators"] == [], o
+    # a slug the Index does not know, as the adapter stores it: no place, and the error says why
+    cur = Cur()
+    A.read(HC(), cur, "barcelone", NOW)
+    o = serve(cur, "barcelone")
+    assert o["chosen"] == "barcelone" and o["place"] is None and o["read"]["error"] == "not an Index place: barcelone" and o["read"]["ok"] is False, o
+    # nothing chosen: the pack's routes follow PACKS_ENABLED, not its switch, so the route answers 200 with an empty chosen
+    o = serve(Cur(), "")
+    assert o["chosen"] == "" and o["place"] is None and o["score"] is None and o["indicators"] == [] and o["links"] is None, o
+    # a file whose parts are not the shape it had: absent, never a 500
+    for bad in ("x", ["x"], 7):
+        cur = Cur()
+        A.read(HC(), cur, "barcelona", NOW)
+        b = cur.rows["place"]["body"]
+        b["links"], b["score"] = bad, bad
+        o = serve(cur)
+        assert o["links"] is None and o["score"] is None and o["place"]["slug"] == "barcelona", o
+        b["indicators"] = bad
+        assert serve(cur)["indicators"] == []
+        b["indicators"] = [bad, None, {"label": "A", "series": bad}, {"label": "B", "series": [bad]}, {"label": "C", "series": [{"year": 1, "value": 2}]}]
+        assert [i["label"] for i in serve(cur)["indicators"]] == ["A", "B", "C"] and [i["latest"] for i in serve(cur)["indicators"]] == [None, None, {"year": 1, "value": 2}]
+        b["place"] = bad
+        o = serve(cur)
+        assert o["place"]["name"] == "Barcelona" and o["read"]["at"] is None, "a place that is not an object is no body: the chosen name stands"
     # the table is not there yet (the adapter has not run): no rows, not a 500
     def boom(sql, *a): raise RuntimeError('relation "index_reads" does not exist')
     os.environ["INDEX_PLACE"] = "barcelona"; RT.q = boom
@@ -289,8 +347,13 @@ with tempfile.TemporaryDirectory() as home:
     assert r.returncode == 0 and "no Fab City Index place within 150 km" in r.stdout, r.stdout
     r = cli("barcelona")      # the node is not answering: nothing changed, and the command to run later is printed
     assert r.returncode == 1 and "planetai place barcelona" in r.stdout, (r.returncode, r.stdout)
-    r = cli("none")           # clearing also blanks the INDEX_PLACE that init left in .env
+    r = cli("none")           # clearing also blanks the INDEX_PLACE that init left in .env, and says so
     assert r.returncode == 1 and "INDEX_PLACE=\n" in open(os.path.join(home, ".env")).read()
+    assert "blank in .env" in r.stdout and "planetai place none" in r.stdout and "nothing was changed" not in r.stdout, r.stdout
+    r = cli()
+    assert "belongs to barcelona" in r.stdout, r.stdout     # the current setting first, then the suggestion
+    r = cli(env="APP_PORT=9\nNODE_LAT=41.39\nNODE_LON=2.17\n")
+    assert "no Index place yet" in r.stdout, r.stdout
     print("  ok: planetai place (the paths that need no node)")
 
 print("  ok: test_index_pack")

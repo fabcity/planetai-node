@@ -31,9 +31,12 @@ function doorsLocal(iso, tz) {
 const DOORS_ROUTES = {
   issues: 'issues', days: 'issues/days?days=7', health: 'health', rho: 'rho', earth: 'earth', reach: 'reach',
   sensors: 'sensors', observations: 'observations', cells: 'cells', stats: 'stats', settings: 'settings',
+  /* the index pack's: a 404 when PACKS_ENABLED leaves the pack out (null here), and a 200 with `chosen: ""` when the
+     pack is loaded and INDEX_PLACE is empty; the pack's routes answer by PACKS_ENABLED, not by its switch. indexRow
+     reads both as "not chosen". */
+  index_place: 'index/place',
   /* token-only (doorsFetch): a screen without the token gets null and says so */
   readings_1h: 'aggregates?hours=24', actions: 'actions?limit=2000', alerts: 'alerts?limit=500',
-  index_place: 'index/place',   /* the index pack's: 404 while the pack is off, so null */
 };
 
 function buildD(A, locale) {

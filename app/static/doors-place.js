@@ -123,18 +123,25 @@ function placeTools() {
 window.placeTools = placeTools;
 
 /* THE FAB CITY INDEX ROW (GET /index/place): the city's own file, read by the node once a day. The date is the file's,
-   never the node's last try; a range (simulated: no cell measured yet) is said as a range, never as a score of 0. */
+   never the node's last try, said in the node's zone; a range (simulated: no cell measured yet) is said as a range, never
+   as a score of 0. The numbers are the Index's, a portal's, so they are `partial` and, when the last read failed, `cached`:
+   `live` is only what this node measured. A figure the Index sent as null is a dash and a row is skipped, never a throw
+   that would stop the map below. The pack's route answers 200 with no `chosen` when INDEX_PLACE is empty. */
 function indexRow(P) {
-  if (!P) return `<div class="fr"><span>Fab City Index<small>Choose this node's Index place: run <code>planetai place</code> on the node</small></span><b><span class="soon">not chosen</span></b></div>`;
-  const nm = esc((P.place || {}).name || P.chosen), sc = P.score, r = P.read || {}, d = x => esc(String(x || '').slice(0, 10));
-  const n = ((P.registry || {}).filed_here) || 0, st = (sc || {}).status, g = x => String(+x.toFixed(3));
+  const a = (h, t) => `<a href="${esc(h)}" target="_blank" rel="noopener">${t}</a>`;
+  if (!P || !P.chosen) return `<div class="fr"><span>Fab City Index<small>Choose this node's Index place: run <code>planetai place</code> on the node. How the Index counts a place: ${a('https://index.fab.city/method', 'index.fab.city/method')}</small></span><b><span class="soon">not chosen</span></b></div>`;
+  if (!P.place) return `<div class="fr"><span>${esc(P.chosen)}<small>Fab City Index · not an Index place. Run <code>planetai place</code> on the node to choose one</small></span><b><span class="soon">not an Index place</span></b></div>`;
+  const nm = esc(P.place.name || P.chosen), sc = P.score, r = P.read || {}, d = x => esc(loc(x).slice(0, 10));
+  const n = ((P.registry || {}).filed_here) || 0, fin = x => typeof x === 'number' && isFinite(x), g = x => fin(x) ? String(+x.toFixed(3)) : '–';
   const when = r.at ? `${r.ok ? 'read' : 'last read'} ${d(r.at)}${r.ok ? '' : ` · tried ${d(r.tried)}`}` : 'not read yet';
-  const val = !sc ? '<span class="soon">not read</span>' : sc.fci != null ? num('place.fci', g(sc.fci), 'the Fab City Index for this place, 0 to 1')
-    : num('place.fci.range', '', 'the Fab City Index for this place: a range until a cell is measured', `${g(sc.fci_range[0])} – ${g(sc.fci_range[1])}`);
-  const ind = (P.indicators || []).filter(i => i.latest).slice(0, 3).map(i => `<div class="fr"><span>${esc(i.label)}<small>${esc(i.latest.year)} · ${esc(i.unit)}</small></span><b>${num('place.index.' + i.label, g(i.latest.value), `${i.label}, ${i.latest.year}`)}</b></div>`).join('');
-  const lk = P.links && /^https:\/\//.test(P.links.page || '') ? ` · <a href="${esc(P.links.page)}" target="_blank" rel="noopener">${nm} on the Index</a>` : '';
-  return `<div class="fr"><span>${nm}${sc ? ` · ${esc(sc.status_label)}` : ''}<small>Fab City Index · ${when} · ${n} source${n === 1 ? '' : 's'} filed for ${nm} in the registry${lk}</small></span>`
-    + `<b>${val}${['partial', 'simulated'].includes(st) ? ' ' + prov('partial') : sc ? ' ' + prov('live') : ''}</b></div>` + ind;
+  const rg = sc && Array.isArray(sc.fci_range) ? sc.fci_range : null;
+  const val = !sc ? null : fin(sc.fci) ? num('place.fci', g(sc.fci), 'the Fab City Index for this place, 0 to 1')
+    : rg ? num('place.fci.range', '', 'the Fab City Index for this place: a range until a cell is measured', `${g(rg[0])} – ${g(rg[1])}`) : null;
+  const ind = (Array.isArray(P.indicators) ? P.indicators : []).filter(i => i && i.latest && fin(i.latest.value)).slice(0, 3)
+    .map((i, k) => `<div class="fr"><span>${esc(i.label)}<small>${esc(i.latest.year)} · ${esc(i.unit)}${i.source ? ` · ${esc(String(i.source).split(': http')[0])}` : ''}</small></span><b>${num('place.index.' + k, g(i.latest.value), `${i.label}, ${i.latest.year}`)}</b></div>`).join('');
+  const lk = P.links && /^https:\/\//.test(P.links.page || '') ? ` · ${a(P.links.page, `${nm} on the Index`)}` : '';
+  return `<div class="fr"><span>${nm}${sc && sc.status_label ? ` · ${esc(sc.status_label)}` : ''}<small>Fab City Index · ${when} · ${n} source${n === 1 ? '' : 's'} filed for ${nm} in the registry${lk}</small></span>`
+    + `<b>${val || '<span class="soon">not read</span>'}${val ? ' ' + prov(r.ok ? 'partial' : 'cached') : ''}</b></div>` + ind;
 }
 /* THE PLACE IN FIGURES, the lower band's right: the issues that change yearly and have no hours (Land, Coast; Now is for
    the hour), the Index cells, and what is not here yet. */

@@ -448,6 +448,8 @@ print(next((k for k, (a, b, c, d) in boxes.items() if a < lat < b and c < lon < 
       python3 packs/index/place.py --known "$iplace" && break
       warn "'$iplace' is not an Index place. packs/index/places.json lists them."
     done
+  else
+    say "no Fab City Index place within 150 km. If this node belongs to one, planetai place <slug> sets it later."
   fi
 
   # 3. what kind of node — decides defaults, not the Index scale (a house is still a Community-scale observation)
@@ -1938,8 +1940,10 @@ packs_switch_on() {
 # distance and the list live in packs/index/place.py, so nothing here redoes the sums. The choice is INDEX_PLACE, set
 # where Set up sets it (runtime_set), and the index pack joins PACKS_ENABLED when that list is there without it.
 cmd_place() {
-  local arg="${1:-}" slug="" lat lon near name
+  local arg="${1:-}" slug="" lat lon near name cur
   if [[ -z "$arg" ]]; then
+    cur="$(setting INDEX_PLACE)"
+    if [[ -n "$cur" ]]; then say "this node belongs to $cur now"; else say "this node belongs to no Index place yet"; fi
     lat="$(envget NODE_LAT)"; lon="$(envget NODE_LON)"
     [[ -n "$lat" && -n "$lon" ]] || fail "this node has no coordinates (NODE_LAT, NODE_LON in .env), so there is nothing to suggest from. planetai place <slug> sets one."
     near="$(python3 packs/index/place.py --nearest "$lat" "$lon")" || fail "could not read packs/index/places.json"
@@ -1961,7 +1965,8 @@ cmd_place() {
     if [[ -n "$slug" ]]; then say "this node belongs to $slug; the Place door shows its Index row within a day"; packs_switch_on index
     else say "this node belongs to no Index place"; fi
   else
-    warn "the node is not answering (or has no admin token), so nothing was changed. Once it is up: planetai place ${slug:-none}"
+    if [[ -n "$slug" ]]; then warn "the node is not answering (or has no admin token), so nothing was changed. Once it is up: planetai place $slug"
+    else warn "the node is not answering (or has no admin token): INDEX_PLACE is blank in .env now, and the node's own setting is cleared when you run planetai place none once it is up."; fi
     [[ -n "$(envget ADMIN_TOKEN)" ]] || echo "  planetai ui creates the admin token first."
     return 1
   fi

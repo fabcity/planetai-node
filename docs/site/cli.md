@@ -118,9 +118,9 @@ file, `snapshot-<node>-<YYYY-MM-DDTHHMM>.json` by default, holds no raw readings
 | `planetai report every N` | Hours between reports (`REPORT_EVERY`): 3, 4, 6, 8, 12 or 24. |
 | `planetai report at H` | The local hour the report rhythm counts from (`REPORT_ANCHOR`), 0 to 23. |
 | `planetai report level act\|warn\|info` | What interrupts you between reports (`ALERT_LEVEL`). |
-| `planetai place` | Suggests the Fab City Index place nearest to this node's coordinates (within 150 km) and asks. The centre is approximate and the house stays with you: only the place's slug is saved, as `INDEX_PLACE`, and the index pack joins the packs this node loads. Setup asks the same at install. |
+| `planetai place` | Suggests the Fab City Index place nearest to this node's coordinates (within 150 km) and asks. The centre is approximate and the house stays with you: only the place's slug is saved, as `INDEX_PLACE`, and the index pack joins the packs this node loads. It says first which place the node belongs to now. Setup asks the same at install, and says so when nothing is within 150 km. |
 | `planetai place <slug>` | Sets it to that place, a slug from `packs/index/places.json`; anything else exits 2 with "not an Index place". With the node down nothing changes and the command to run later is printed. |
-| `planetai place none` | Clears it, so the Place door stops showing an Index row. |
+| `planetai place none` | Clears it, so the Place door's Index row says **not chosen**. With the node down it blanks `INDEX_PLACE` in `.env` and says the node's own setting is cleared when you run it again once the node answers. |
 | `planetai ui` (`dashboard`) | The dashboard's addresses, the `#wall` one included, the sharing level and the admin, backup and act tokens. Creates `ADMIN_TOKEN` and `ACT_TOKEN` if missing. |
 | `planetai test-alert` | Fires one act-level alert through every channel and waits up to 90 seconds for it. It adds a rule that fires within a minute and removes it as soon as its alert appears, so one message arrives. |
 

@@ -5,9 +5,12 @@ Two reads, both plain GETs of public files, neither carrying anything about the 
   registry  the commit sha of awesome-fabcity-data's main from GitHub, then that commit's index.json, converted to
             the entry shape app/registry.py reads. The body is fetched only when the sha has moved.
 
-Each lands in one row of index_reads (what, sha, fetched_at, ok, error, body). A read that fails or is not what was
-asked for never replaces the body: it keeps the last good one and says why in `error`, so a stale file reads as
-stale instead of as empty. The pack stores and serves; it computes no score. fetch() returns no readings.
+Each lands in one row of index_reads (what, sha, fetched_at, ok, error, body). On the `place` row `sha` holds the slug
+the row was read for, on success and on failure; on the `registry` row it is the commit. A read that fails or is not
+what was asked for never replaces the body: it keeps the last good one and says why in `error`, so a stale file reads
+as stale instead of as empty. It keeps it only for the same slug: another place's file is dropped, and a row read for
+another slug is not skipped as fresh, so changing INDEX_PLACE is read at the next poll, not a day later. The pack
+stores and serves; it computes no score. fetch() returns no readings.
 """
 from __future__ import annotations
 
@@ -68,11 +71,12 @@ def _get(hc, url: str, headers=None):
 
 
 def _put(cur, what, now, ok, error, sha=None, body=None, keep=lambda body: True):
-    """Upsert one row. A failed read passes no body and no sha, and the row keeps the ones it had, unless keep(body)
-    says that body is not this read's to keep (a place file for a place the node is no longer configured for)."""
+    """Upsert one row. A failed read passes no body, and the row keeps the one it had unless keep(body) says that body is
+    not this read's to keep (a place file for a place the node is no longer configured for). It keeps its old sha too
+    unless a sha is passed: the place row passes its slug on failure as well, the registry row passes none."""
     cur.execute("SELECT sha, fetched_at, ok, error, body FROM index_reads WHERE what = %s", (what,))
     prev = cur.fetchone() or (None, None, None, None, None)
-    sha = sha if ok else prev[0]
+    sha = sha if ok or sha is not None else prev[0]
     body = body if ok else prev[4] if prev[4] is not None and keep(prev[4]) else None
     cur.execute("INSERT INTO index_reads (what, sha, fetched_at, ok, error, body) VALUES (%s, %s, %s, %s, %s, %s::jsonb) "
                 "ON CONFLICT (what) DO UPDATE SET sha = EXCLUDED.sha, fetched_at = EXCLUDED.fetched_at, "
@@ -86,7 +90,8 @@ def _prev(cur, what):
 
 
 def _is(body, slug) -> bool:
-    return isinstance(body, dict) and (body.get("place") or {}).get("slug") == slug
+    p = body.get("place") if isinstance(body, dict) else None
+    return isinstance(p, dict) and p.get("slug") == slug
 
 
 def _place(hc, cur, slug, now) -> bool:
@@ -96,9 +101,9 @@ def _place(hc, cur, slug, now) -> bool:
         if body.get("format") != "fci-api-v0":
             raise ValueError(f"not the Index's format: format is {body.get('format')!r}, not 'fci-api-v0'")
     except Exception as e:  # noqa: BLE001
-        _put(cur, "place", now, False, str(e), keep=lambda b: _is(b, slug))
+        _put(cur, "place", now, False, str(e), sha=slug, keep=lambda b: _is(b, slug))
         return False
-    _put(cur, "place", now, True, None, body=body)
+    _put(cur, "place", now, True, None, sha=slug, body=body)
     return True
 
 
@@ -125,7 +130,7 @@ def read(hc, cur, slug, now) -> dict:
     the registry included: a node pointed at a typo has nothing to ask for until it is fixed."""
     ensure(cur)
     if not PL.known(slug, PL.load()):
-        _put(cur, "place", now, False, f"not an Index place: {slug}", keep=lambda b: _is(b, slug))
+        _put(cur, "place", now, False, f"not an Index place: {slug}", sha=slug, keep=lambda b: _is(b, slug))
         return {"place": False, "registry": False}
     return {"place": _place(hc, cur, slug, now), "registry": _registry(hc, cur, now)}
 
@@ -143,17 +148,17 @@ def _now():
 
 
 def fetch(hc):
-    """The node's poll calls this often; it reads when the last `place` row is older than INDEX_REFRESH_HOURS. A
-    failed read is dated too, so a host that is down is asked once a day, not at every poll."""
+    """The node's poll calls this often; it reads when the last `place` row is older than INDEX_REFRESH_HOURS, or was
+    read for another slug. A failed read is dated too, so a host that is down is asked once a day, not at every poll."""
     slug = os.getenv("INDEX_PLACE", "").strip()
     if not slug:
         return [], []
-    hours = float(os.getenv("INDEX_REFRESH_HOURS") or "24")
+    hours = float((os.getenv("INDEX_REFRESH_HOURS") or "").strip() or "24")
     now = _now()
     with _cursor() as cur:
         ensure(cur)
         last = _prev(cur, "place")
-        if last and last[1] and now - last[1] < dt.timedelta(hours=hours):
+        if last and last[0] == slug and last[1] and now - last[1] < dt.timedelta(hours=hours):
             return [], []
         r = read(hc, cur, slug, now)
     if not all(r.values()):

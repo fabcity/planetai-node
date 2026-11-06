@@ -903,11 +903,14 @@ once a day, stores them, and serves them. It computes no score, and the node nev
 Each lands in one row of `index_reads` (`what`, `sha`, `fetched_at`, `ok`, `error`, `body`). A read that fails, times
 out after 20 seconds, is over 8 MB or is not the format asked for never replaces the stored body. The row keeps the
 last good one and says why in `error`, and a failed read is dated too, so a host that is down is asked once a day and
-not at every poll. A slug the Index does not track is said in the row and nothing is requested. No request carries the
-node's coordinates, its id or its address.
+not at every poll. The place row's `sha` holds the slug it was read for, on success and on failure, so a node whose
+`INDEX_PLACE` changed reads the new place at the next poll and not a day later, and a failed read keeps the last file
+only for the same slug. A slug the Index does not track is said in the row and nothing is requested. No request
+carries the node's coordinates, its id or its address.
 
 `GET /index/place` reads only those rows, so the dashboard never waits on index.fab.city. It trusts the stored place
-file for the chosen slug and no other, and the pack clears another slug's file on its next read. When the registry
+file for the chosen slug and no other, and the pack clears another slug's file on its next read. Its routes follow
+`PACKS_ENABLED` and not the pack's switch, so with `INDEX_PLACE` empty the route still answers, with nothing chosen. When the registry
 copy it read is there, the count of sources filed for the place comes from it. When it is not, the count comes from the
 pinned copy in `data/sources/`, and the answer's `registry.from` says `pinned`.
 
@@ -915,7 +918,7 @@ pinned copy in `data/sources/`, and the answer's `registry.from` says `pinned`.
 
 | setting | default | meaning |
 |---|---|---|
-| `INDEX_PLACE` | empty | the Index place this node belongs to, a slug from `places.json`. Empty is off, and the Place door says no place is chosen |
+| `INDEX_PLACE` | empty | the Index place this node belongs to, a slug from `places.json`. Empty is off: nothing is read, and the Place door says no place is chosen |
 | `INDEX_URL` | `https://index.fab.city` | where the place file is read from |
 | `INDEX_REFRESH_HOURS` | `24` | how long a read stays good before the poll reads again |
 

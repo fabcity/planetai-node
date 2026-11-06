@@ -907,16 +907,27 @@ const pick = n => core.match(new RegExp('^const ' + n + ' = .*$', 'm'))[0], fn =
 const F = JSON.parse(fs.readFileSync('%s', 'utf8')), out = {};
 for (const [k, ip] of Object.entries(JSON.parse(process.argv[1]))) {
   const D = L.buildD({ ...F, days: F.issues_days, index_place: ip }, 'en'), els = {};
-  const c = { D, $: q => (els[q] ||= {}), sign: id => `<svg data-s="${id}"></svg>` };
+  const c = { D, $: q => (els[q] ||= {}), sign: id => `<svg data-s="${id}"></svg>`, doorsLocal: L.doorsLocal };
   vm.createContext(c);
-  vm.runInContext(['esc', 'num', 'PROV', 'prov'].map(pick).join('\n') + '\nfunction yearly() { return ""; }\n' + fn('indexRow') + fn('figures') + 'figures()', c);
-  out[k] = els['#pfigures'].innerHTML;
+  try { vm.runInContext(['esc', 'loc', 'num', 'PROV', 'prov'].map(pick).join('\n') + '\nfunction yearly() { return ""; }\n' + fn('indexRow') + fn('figures') + 'figures()', c); out[k] = els['#pfigures'].innerHTML; } catch (e) { out[k] = 'THROWS ' + e.message; }
 }
 console.log(JSON.stringify(out));
 """ % FIX
 _ip = json.loads(subprocess.run(["node", "-e", iprog, json.dumps({
     "bcn": _route(_idx), "acc": dict(_route(_acc), registry={"sha": "8099744", "at": None, "from": "live", "filed_here": 0}), "none": None, "stale": _route(_idx, "2026-11-08T08:00:00+00:00", False, "HTTP 503"),
-    "unread": dict(_route(_idx), read={"at": None, "ok": False, "error": "x", "tried": None}, score=None, indicators=[], links=None)})],
+    "unread": dict(_route(_idx), read={"at": None, "ok": False, "error": "x", "tried": None}, score=None, indicators=[], links=None),
+    # the route's real shapes: the pack answers 200 with nothing chosen (its routes follow PACKS_ENABLED, not its switch),
+    # an unknown slug has no place, and the Index may send a null where it has no figure
+    "empty": {"chosen": "", "place": None, "read": {"at": None, "ok": False, "error": None, "tried": None}, "score": None, "indicators": [], "links": None,
+              "registry": {"sha": "x", "at": None, "from": "pinned", "filed_here": 0}},
+    "typo": {"chosen": "barcelone", "place": None, "read": {"at": None, "ok": False, "error": "not an Index place: barcelone", "tried": "2026-11-06T08:00:00+00:00"},
+             "score": None, "indicators": [], "links": None, "registry": {"sha": "x", "at": None, "from": "pinned", "filed_here": 0}},
+    "nullval": dict(_route(_idx), indicators=[{"label": "A", "unit": "u", "source": "s", "latest": {"year": 2022, "value": None}},
+                                              {"label": "B", "unit": "u", "source": "s", "latest": {"year": 2023, "value": 5}}, None, {"label": "C", "latest": None}]),
+    "nullrange": dict(_route(_acc), score=dict(_acc["score"], fci=None, fci_range=None)),
+    "nullbounds": dict(_route(_acc), score=dict(_acc["score"], fci=None, fci_range=[None, 0.5])),
+    "nofci": dict(_route(_idx), score=dict(_idx["score"], fci=None, fci_range=None)),
+    "nolabel": dict(_route(_idx), score={"status": "partial", "fci": 0.4})})],
     capture_output=True, text=True, check=True).stdout)
 _b = _ip["bcn"]
 assert "Barcelona · Partial" in _b and ">0.454<" in _b and "read 2026-11-05" in _b and "35 sources filed for Barcelona in the registry" in _b, _b
@@ -928,6 +939,32 @@ assert "Accra · Simulated" in _a and ">0 – 0<" in _a and "FCI 0" not in _a an
 assert "Choose this node's Index place" in _ip["none"] and "<code>planetai place</code>" in _ip["none"] and "Index cells" in _ip["none"], _ip["none"]
 assert "last read 2026-11-05 · tried 2026-11-08" in _ip["stale"] and ">0.454<" in _ip["stale"], "a failed read keeps the last values and dates them by the file"
 assert "not read yet" in _ip["unread"] and "not read</span>" in _ip["unread"] and "data-num=\"place.fci\"" not in _ip["unread"], _ip["unread"]
+_row = lambda h: h.split("Index cells<small>")[0]
+assert "sign-prov-partial" in _row(_b) and "sign-prov-live" not in _row(_b), "the Index's numbers are a portal's: partial, never live"
+assert "sign-prov-cached" in _row(_ip["stale"]) and "sign-prov-partial" not in _row(_ip["stale"]), "a failed read is cached"
+assert "sign-prov-partial" in _row(_a) and "sign-prov-live" not in _row(_a)
+assert "sign-prov" not in _row(_ip["unread"]), "nothing read, nothing to say the provenance of"
+assert "THROWS" not in "".join(_ip.values()), {k: v for k, v in _ip.items() if "THROWS" in v}
+# nothing chosen, from the route as it answers with INDEX_PLACE empty: not chosen, no nameless row
+_e = _ip["empty"]
+assert "Choose this node's Index place" in _e and "<code>planetai place</code>" in _e and "not chosen" in _e and "not read yet" not in _e and "sources filed" not in _e, _e
+assert 'href="https://index.fab.city/method"' in _e and "Index cells" in _e, "where to read how the Index counts a place, and the figures below still draw"
+# a slug the Index does not know: said with the slug, not as "not read yet"
+_t = _ip["typo"]
+assert "barcelone" in _t and "not an Index place" in _t and "<code>planetai place</code>" in _t and "not read yet" not in _t and "sources filed" not in _t, _t
+# the Index sent nulls: the row draws what it has and does not throw, so the map below it still draws
+_n = _ip["nullval"]
+assert "THROWS" not in _n and _n.count('data-num="place.index.') == 1 and ">5<" in _n and "<span>B<small>" in _n and "<span>A<small>" not in _n and "<span>C<small>" not in _n and "Index cells" in _n and "place.index.0" in _n, _n
+assert "THROWS" not in _ip["nullrange"] and "not read</span>" in _ip["nullrange"] and 'data-num="place.fci' not in _ip["nullrange"] and "Accra" in _ip["nullrange"], _ip["nullrange"]
+assert ">– – 0.5<" in _ip["nullbounds"] or ">– – 0.5" in _ip["nullbounds"], _ip["nullbounds"]
+assert "not read</span>" in _ip["nofci"] and 'data-num="place.fci' not in _ip["nofci"] and "sign-prov" not in _row(_ip["nofci"]), "neither a figure nor a range: not read"
+assert "Barcelona<small>" in _ip["nolabel"] and "Barcelona · <" not in _ip["nolabel"] and ">0.4<" in _ip["nolabel"], _ip["nolabel"]
+# each indicator says its source, cut before any link, and is keyed by its place in the row (two labels can be the same)
+assert "2022 · index, 0-100 · Idescat, based on INE&#39;s" in _b or "2022 · index, 0-100 · Idescat, based on INE's" in _b, _b
+assert ": http" not in _b and "idescat.cat" not in _b and "Generalitat de Catalunya 69zu-w48s" in _b, "the source line stops before its link"
+assert all(f'data-num="place.index.{k}"' in _b for k in range(3)) and "place.index.Residual" not in _b
+# the read dates are the node's own zone, not a slice of the UTC string
+assert "esc(loc(x).slice(0, 10))" in (STATIC / "doors-place.js").read_text() and "String(x || '').slice(0, 10)" not in (STATIC / "doors-place.js").read_text()
 assert "index_place: 'index/place'" in (STATIC / "doors-load.js").read_text() and "index_place: A.index_place || null" in (STATIC / "doors-load.js").read_text()
 print("doors: Place's Fab City Index row says the city's label and figure, a range as a range, and where to choose a place")
 
