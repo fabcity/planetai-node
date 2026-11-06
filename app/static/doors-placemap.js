@@ -7,7 +7,7 @@
    - mono's 1 px rules and tracked mono labels.
    - The v2 drawing (SPEC_place_microgis §4, 4 Nov 2026), after Option A (15 Oct): the cake on the left as plain rows with
      OP-XY dot switches (OneSoil's layer list), the screen black in both registers with its tools, scales and hour on it as
-     chips, the tools on the right, the inspector a status line under the screen and the marks around the house a list.
+     chips, the tools in a menu on the top line (5 Nov 2026; the right column before), the inspector a status line under the screen and the marks around the house a list.
 
    SCALE. The H3 resolution drawn follows the zoom: the finest rung whose cell is at least 56 px to an edge on
    screen. The presets fly to the node's own cell at that rung, so a press and a scroll agree. Rungs 6 and coarser
@@ -19,7 +19,7 @@
    GET /place/geojson. Without the token the map says what it is not drawing, and why. */
 
 (function () {
-const PM = { map: null, overlay: null, res: 8, tool: 'inspect', measure: [], hover: null, pick: null,
+const PM = { map: null, overlay: null, res: 8, tool: 'select', measure: [], hover: null, pick: null,
   on: {}, alpha: {}, plan: null, land: null };
 
 /* ---------------------------------------------------------------- the palette, by register */
@@ -72,7 +72,7 @@ const LAYERS = [
   { id: 'mine', cake: 'frame', pack: 'core', src: 'H3', name: 'Node cell', sub: 'the cell it stands in, at the resolution in view', on: true },
   { id: 'grid', cake: 'frame', pack: 'core', src: 'H3', name: 'H3 grid', sub: 'cells at this scale, dotted where a cell may leave', on: false },
   { id: 'street', cake: 'frame', pack: 'place', src: 'OSM', name: 'Street map', sub: 'OpenStreetMap, with its names, kept on this node', on: true, still: true },
-  { id: 'imagery', cake: 'frame', pack: 'earth-engine', src: 'Sentinel-2', name: 'Satellite', sub: '10 m, Sentinel-2, composited by this node', on: false, need: 'imagery' },
+  { id: 'imagery', cake: 'frame', pack: 'earth-engine', src: 'Sentinel-2', name: 'Satellite', sub: '10 m, Sentinel-2, composited by this node; from Block scale in, the street map and any drone flight', on: false, need: 'imagery' },
   { id: 'drone', cake: 'frame', pack: 'place', src: 'OAM', name: 'Drone', sub: 'drone imagery, OpenAerialMap, where somebody flew', on: false, need: 'drone', minz: 13 },
   { id: 'rings', cake: 'frame', pack: 'nearby', src: '2 · 5 · 15 km', name: 'Rings', sub: '2, 5 and 15 km', on: false },
   { id: 'images', cake: 'frame', pack: 'core', src: 'this house', name: 'Images', sub: 'what the household added', on: true },
@@ -91,7 +91,7 @@ function imageRows() {
   const im = LAYERS.find(l => l.id === 'images'), sp = LAYERS.find(l => l.id === 'species'), C = PM.caps || [], S = (PM.species || {}).species || [];
   const kinds = d3.rollups(C, v => v.length, c => c.kind).map(([k, v]) => `${v} ${(KIND[k] || k).toLowerCase()}`).join(', ');
   im.locked = sp.locked = !PM.caps; im.empty = !C.length; sp.empty = !S.length;
-  im.none = 'none yet · + Add an image, above the map'; sp.none = 'none confirmed yet · confirm what an image shows in Data › Images';
+  im.none = 'none yet · the Image key on the screen'; sp.none = 'none confirmed yet · confirm what an image shows in Data › Images';
   im.sub = `${C.length} · ${kinds}`; im.src = `${C.length} here`; sp.src = `${S.length} here`;
   sp.sub = `${S.length} confirmed · ${S.slice(0, 2).map(short).join(', ')}${S.length > 2 ? ', …' : ''}`;
   PM.on.images = !im.empty; PM.on.species = !sp.empty;
@@ -184,8 +184,12 @@ function style(p = P()) {
     { id: 'plan-casing', type: 'line', source: 'plan', filter: k('road'), minzoom: 12, layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': p.casing, 'line-width': W(1.2, 14) } },
     { id: 'plan-road', type: 'line', source: 'plan', filter: k('road'), minzoom: 12, layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': p.road, 'line-width': W(0.6, 11) } },
     { id: 'plan-bldg', type: 'fill', source: 'plan', filter: k('building'), minzoom: 12.5, paint: { 'fill-color': p.bldg, 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 12.5, 0, 13.5, 1] } });
-  if (G.imagery) L.push({ id: 'imagery', type: 'raster', source: 'imagery', layout: { visibility: 'none' }, paint: { 'raster-fade-duration': 0 } });
+  /* Sentinel-2's grain is 10 m and its tiles stop at zoom 15: past it a map would only enlarge them (Tomas, 6 Nov:
+     "switch past Block"). So the satellite ends at SAT_MAX, the street map under it shows, and where somebody flew a
+     drone its picture comes on above the streets (drone-close, the satellite's own row). */
+  if (G.imagery) L.push({ id: 'imagery', type: 'raster', source: 'imagery', maxzoom: SAT_MAX, layout: { visibility: 'none' }, paint: { 'raster-fade-duration': 0 } });
   if (G.drone) L.push({ id: 'drone', type: 'raster', source: 'drone', minzoom: 13, layout: { visibility: 'none' }, paint: { 'raster-fade-duration': 0 } });
+  if (G.imagery && G.drone) L.push({ id: 'drone-close', type: 'raster', source: 'drone', minzoom: SAT_MAX, layout: { visibility: 'none' }, paint: { 'raster-fade-duration': 0 } });
   L.push({ id: 'plan-sat', type: 'fill', source: 'plan', filter: k('sat'), minzoom: 12.5,
     paint: { 'fill-color': `rgb(${p.sat})`, 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 12.5, 0, 13.5, 0.75] } });
   if (V && G.glyphs) {
@@ -205,12 +209,13 @@ function style(p = P()) {
 /* which base style layers each registry row owns */
 const OWNS = { street: ['land-fill', 'land-edge', 'v-earth', 'v-farm', 'v-green', 'v-built', 'v-sand', 'v-water', 'v-stream', 'v-coast', 'v-path', 'v-casing', 'v-road', 'v-bldg', 'plan-green', 'plan-casing', 'plan-road', 'plan-bldg',
     'v-road-label', 'v-poi-label', 'v-place-label'],
-  imagery: ['imagery'], drone: ['drone'], satonly: ['plan-sat'] };
+  imagery: ['imagery', 'drone-close'], drone: ['drone'], satonly: ['plan-sat'] };
+const SAT_MAX = 15;   // the satellite's last zoom; Block (15.1) and Street draw the street map
 function applyBase() {
   if (!PM.map) return;
   for (const [id, ls] of Object.entries(OWNS)) for (const l of ls) {
     if (!PM.map.getLayer(l)) continue;
-    PM.map.setLayoutProperty(l, 'visibility', PM.on[id] ? 'visible' : 'none');
+    PM.map.setLayoutProperty(l, 'visibility', PM.on[id] || (id === 'street' && PM.on.imagery) ? 'visible' : 'none');
     const t = PM.map.getLayer(l).type;
     if (t === 'raster') PM.map.setPaintProperty(l, 'raster-opacity', PM.alpha[id]);
     if (l === 'plan-sat') PM.map.setPaintProperty(l, 'fill-opacity', ['interpolate', ['linear'], ['zoom'], 12.5, 0, 13.5, 0.75 * PM.alpha[id]]);
@@ -228,6 +233,8 @@ function groundRows() {
   const yrs = ((D.earth || {}).sentinel || []).length;
   set('imagery', G.imagery ? `Sentinel-2, ${im.passes} passes, ${(im.from || '').slice(0, 7)} to ${(im.to || '').slice(0, 7)} · ${mb(im.bytes)}`
     : yrs ? `${yrs} Sentinel-2 years, then and now · no map layer yet: planetai run earth-engine basemap` : null, !G.imagery && !yrs, 'planetai run earth-engine basemap');
+  /* the satellite is the base wherever the node holds it (SPEC_place_microgis §4, Defaults); elsewhere the streets */
+  if (G.imagery) PM.on.imagery = true;
   const dr = m.drone || {}, ms = dr.mosaics || [];
   const W = PM.wind;
   set('wind', W ? `Open-Meteo, ${W.n * W.n} points over ${W.km * 2} km, hourly · read ${hhmm(W.fetched)}` : null, !W,
@@ -240,15 +247,19 @@ function packRows() {
   const ea = LAYERS.find(l => l.id === 'earth'), nE = ((D.earth || {}).changes || []).length;
   ea.none = nE ? `${nE} comparison${nE === 1 ? '' : 's'} · a count, not a shape: Land, in the figures below` : null;
 }
-function credits() {
+/* the credits each layer on the screen owes, the same words on the screen and burned into the PNG */
+function creditList() {
   const m = (PM.meta && PM.meta.layers) || {}, c = [];
-  if (PM.on.street && PM.ground && PM.ground.vector) c.push('© OpenStreetMap contributors · Protomaps');
-  if (PM.on.imagery && m.imagery) c.push(m.imagery.attribution);
+  const close = PM.map && PM.map.getZoom() >= SAT_MAX, sat = PM.on.imagery && !close;
+  if ((PM.on.street || (PM.on.imagery && close)) && PM.ground && PM.ground.vector) c.push('© OpenStreetMap contributors · Protomaps');
+  if (sat && m.imagery) c.push(m.imagery.attribution);
+  if (PM.on.imagery && close && !PM.on.drone && m.drone) c.push((m.drone.mosaics || []).map(x => `${x.provider} via OpenAerialMap, CC BY 4.0`).join(' · '));
   if (PM.on.drone && m.drone) c.push((m.drone.mosaics || []).map(x => `${x.provider} via OpenAerialMap, CC BY 4.0`).join(' · '));
   if (PM.on.wind && PM.wind) c.push('wind: Open-Meteo, CC BY 4.0');
   c.push('Natural Earth');
-  const el = $('#mapcredit'); if (el) el.textContent = c.join(' · ');
+  return c.filter(Boolean);
 }
+function credits() { const el = $('#mapcredit'); if (el) el.textContent = creditList().join(' · '); }
 
 /* ---------------------------------------------------------------- the data, drawn by deck.gl */
 function layers() {
@@ -273,7 +284,7 @@ function layers() {
   if (L.grid && G) {
     const cells = G.cells.filter(c => c.id !== G.node);
     /* over a photograph the grid is drawn light on a dark edge, as the svg ground draws hairlines over tiles */
-    const photo = (PM.on.imagery && PM.ground.imagery && z >= 8) || (PM.on.drone && PM.ground.drone && z >= 13);
+    const photo = (PM.on.imagery && PM.ground.imagery && z >= 8 && z < SAT_MAX) || (PM.on.drone && PM.ground.drone && z >= 13);
     const gc = photo ? A([255, 255, 255], .8 * a('grid')) : A(p.ink, (z >= 12.5 ? .3 : .22) * a('grid'));
     if (photo) out.push(new Dk.PathLayer({ id: 'grid-edge', data: cells, getPath: d => d.path, ...px, getColor: [0, 0, 0, Math.round(90 * a('grid'))], getWidth: 2.6 }));
     /* solid and dotted are two layers, not one with a switched extension: deck.gl cannot swap a layer's shader */
@@ -327,9 +338,21 @@ function layers() {
   /* the node itself, always: a ring, not a dot, because /health publishes its cell's centre to strangers */
   out.push(new Dk.ScatterplotLayer({ id: 'node', data: [{ p: D.point }], getPosition: d => d.p, ...px, stroked: true, filled: false,
     getRadius: 9, getLineColor: A(p.cells, 1), getLineWidth: 2 }));
+  /* below the drone layer's zoom, each flight is a pin at its bbox's centre, named by its resolution and month; a press
+     flies there (press()). The pin is the screen's chip, light on dark, never a drawing colour. */
+  const fl = (((PM.meta || {}).layers || {}).drone || {}).mosaics || [];
+  if ((PM.ground || {}).drone && z < 13 && fl.length) {
+    const pins = fl.filter(x => x.bbox).map(x => ({ q: [(x.bbox[0] + x.bbox[2]) / 2, (x.bbox[1] + x.bbox[3]) / 2],
+      t: ['drone', x.gsd_m && `${Math.round(x.gsd_m * 100)} cm`, x.date && d3.utcFormat('%b %Y')(new Date(x.date))].filter(Boolean).join(', ') }));
+    out.push(new Dk.ScatterplotLayer({ id: 'drone-pins', data: pins, getPosition: d => d.q, ...px, pickable: true, stroked: true, filled: true,
+      getRadius: 10, getFillColor: [20, 20, 20, 235], getLineColor: A(p.ink, 1), getLineWidth: 1.2 }));
+    out.push(new Dk.TextLayer({ characterSet: 'auto', id: 'drone-pins-l', data: pins, getPosition: d => d.q, getText: d => d.t, pickable: true, getSize: 11,
+      fontFamily: 'Figtree, sans-serif', getColor: A(p.ink, 1), getTextAnchor: 'start', getPixelOffset: [15, 0], background: true,
+      getBackgroundColor: [20, 20, 20, 235], backgroundPadding: [4, 2] }));
+  }
   /* named in the list under the screen, "This house · 0 m": labels never sit on the house (Tomas, 15 Oct, option A) */
   if (PM.measure.length) {
-    const path = PM.measure.concat(PM.hover && PM.tool === 'measure' ? [PM.hover] : []);
+    const path = PM.measure;
     /* each placed leg labelled with the node's own metres for it; the leg to the cursor is drawn, not measured */
     const legs = (PM.measured && PM.measured.points === PM.measure.length) ? PM.measured.legs_m : [];
     const lab = PM.measure.map((q, i) => ({ q, t: i ? (legs[i - 1] != null ? fmtM(legs[i - 1]) : '…') : PM.from ? '' : 'start' })).filter(d => d.t);
@@ -338,7 +361,7 @@ function layers() {
     out.push(new Dk.TextLayer({ characterSet: 'auto', id: 'measure-l', data: lab, getPosition: d => d.q, getText: d => d.t, getSize: 11, fontFamily: 'JetBrains Mono, monospace',
       getColor: A(p.ink, 1), getPixelOffset: [0, -14], background: true, getBackgroundColor: A(p.halo, .95), backgroundPadding: [4, 2] }));
   }
-  return out;
+  return out.concat(drawLayers(p, Dk, px, dashed, A));
 }
 const redraw = () => { if (PM.flat) flat(); else if (PM.overlay) PM.overlay.setProps({ layers: layers() }); margin(); };
 
@@ -394,11 +417,27 @@ function margin() {
   document.querySelectorAll('#pmargin button.mr').forEach(b => b.onclick = () => {
     const m = rows[+b.dataset.i]; PM.pick = m.pick || null; if (PM.map) popup(PM.pick); facts();
   });
-  /* The margin is a list under the screen now (SPEC_place_microgis §4): no leaders. Public stations off the map: a
-     hollow mark on the screen's edge, pointing at them, with the node's distance; the nearest six. Inset from the tool
-     column on the right. */
-  const ed = $('#pedges');
+  edges(all, inView, W, H);
+}
+/* while a shape is drawn and the map zooms or pans without the mouse moving (a wheel, a pinch, the + and − keys), the
+   leg to the pointer keeps its end under the pointer, not at the map point it was over before */
+function following() {
+  const d = PM.draw; if (!DRAWING() || !d.state || !d.state.pts.length || !PM.lastPt || !PM.map || d.hover == null) return;   // a shape from the keyboard has no leg to the pointer
+  const q = PM.map.unproject([PM.lastPt.x, PM.lastPt.y]); d.hover = [q.lng, q.lat];
+  figureOnly(); if (PM.overlay) PM.overlay.setProps({ layers: layers() });
+}
+/* The margin is a list under the screen now (SPEC_place_microgis §4): no leaders. Public stations off the map: a hollow
+   mark on the screen's edge, pointing at them, with the node's distance; the nearest six. They are DOM over the canvas,
+   so they follow the map on every `move` (one frame at a time, below), not only when it settles: on node #1 they
+   stayed where they were through a zoom and jumped at its end (5 Nov). */
+function edges(all, inView, W, H) {
+  const ed = $('#pedges'), map = PM.map;
   if (!ed || !map) { if (ed) ed.innerHTML = ''; return; }
+  if (!all) {
+    const box = map.getContainer(); W = box.clientWidth; H = box.clientHeight;
+    all = marks().filter(m => m.pub).map(m => { const q = map.project(m.ll); return { ...m, x: q.x, y: q.y }; });
+    inView = m => m.x >= 0 && m.x <= W && m.y >= 0 && m.y <= H;
+  }
   const cx = W / 2, cy = H / 2, I = 26, IL = I, IR = 72;
   ed.setAttribute('viewBox', `0 0 ${W} ${H}`);
   ed.innerHTML = all.filter(m => m.pub && !inView(m) && m.m != null).sort((a, b) => a.m - b.m).slice(0, 6).map(m => {
@@ -437,7 +476,8 @@ function panel() {
       + (a.off || l.still || PM.flat ? '' : `<input class="op" type="range" min="0" max="1" step="0.05" value="${PM.alpha[l.id]}" aria-label="${esc(l.name)} opacity" ${PM.on[l.id] ? '' : 'disabled'}>`)
       + (l.id === 'species' ? '<div data-slot="species"></div>' : '') + `</div>`;
   };
-  $('#cake').innerHTML = cakeSections(LAYERS, PM.on).map(s => `<section class="ck" data-cake="${s.id}"><h2><span>${esc(s.name)}</span>`
+  const fo = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.f;
+  $('#cake').innerHTML = yourMaps() + cakeSections(LAYERS, PM.on).map(s => `<section class="ck" data-cake="${s.id}"><h2><span>${esc(s.name)}</span>`
     + `<b>${s.rows.length ? `${s.rows.filter(r => r.state === 'on').length} of ${s.rows.length}` : 'none yet'}</b></h2>${s.rows.map(row).join('')}</section>`).join('');
   const slot = document.querySelector('#cake [data-slot="species"]'); if (spd && slot) slot.replaceWith(spd);
   document.querySelectorAll('#cake .lyr').forEach(w => {
@@ -447,12 +487,14 @@ function panel() {
     if (wh) wh.oninput = () => { PM.windStep = +wh.value; w.querySelector('.whr b').textContent = PM.windStep ? `+${PM.windStep} h` : 'now'; windResample(); facts(); hourPill(); };
     if (op) op.oninput = () => { PM.alpha[id] = +op.value; applyBase(); redraw(); };
   });
+  wireMaps();
+  const f = fo && document.querySelector(`#ymaps [data-f="${fo}"]`); if (f) f.focus();   // a press in your maps keeps its focus
 }
 /* one switch, from the cake or from a tool (doors-place.js): the map, the cake, the credits and the tools follow it */
 function setLayer(id, on) {
   const a = document.activeElement, inCake = !!(a && a.closest && a.closest('#cake'));
-  PM.on[id] = on; applyBase(); redraw(); panel(); credits(); windSync(); facts(); hourPill();
-  if (window.placeAlt) window.placeAlt(); if (window.placeTools) window.placeTools();
+  PM.on[id] = on; applyBase(); redraw(); panel(); credits(); windSync(); facts(); hourPill(); baseSwitch();
+  if (window.placeTools) window.placeTools();
   const b = inCake && document.querySelector(`#cake [data-l="${id}"] button`); if (b) b.focus();
 }
 
@@ -486,34 +528,602 @@ async function fly(r) {
   PM.map.easeTo({ center: [(bb[0] + bb[2]) / 2, (bb[1] + bb[3]) / 2], zoom: Math.log2(px * mPerPx(0) / EDGE(r)),
     duration: CLOCK.reduced() ? 0 : 700 });
 }
-/* The tools (Tomas, 15 Oct): 44 px targets, the active one says its word, measuring ends on Done (a double click still
-   does), and the house is one tap away: From the house measures from the node's own point to the next tap. On the
-   screen they are one column at the top right, select to export, and zoom apart at the bottom right (§4). */
-const MEASURING = () => PM.tool === 'measure' || PM.tool === 'from';
+/* The screen's right edge, top to bottom (SPEC_place_microgis §4): Map only and Full screen, back to this node's cell,
+   and Download, whose menu holds the image of the screen and the open map in three formats. Zoom sits apart at the bottom
+   right, with the base switch beside it. Measuring became the line key and Inspect became Select (the drawing keys,
+   below); From the house is in the Tools menu on the top line (doors-place.js), and ends on a second press or Esc. */
+const MEASURING = () => PM.tool === 'from';
+const COL = [['wide', 'Map only', '\\'], ['full', 'Full screen', 'F'], ['fit', 'Back to this node’s cell'], ['dl', 'Download']];
 function tools() {
-  const el = document.createElement('div'), zm = document.createElement('div'); el.className = 'tools'; zm.className = 'zoom';
-  const T = [['inspect', '↖', 'Inspect: tap a feature', 'Inspect'], ['measure', '⟷', 'Measure: tap points, then Done', 'Measure'],
-    ['from', '⌂', 'Distance from the house: tap a point', 'From the house'], ['fit', '⌖', 'Back to this node’s cell'], ['png', '⤓', 'Save this view as a PNG']];
-  const btn = ([k, g, t, w]) => `<button data-t="${k}" title="${t}" aria-label="${t}" class="${k === PM.tool ? 'on' : ''}"><span class="g" aria-hidden="true">${g}</span>${w ? `<span class="w">${w}</span>` : ''}</button>`;
-  el.innerHTML = T.map(btn).join('') + `<button class="done" data-t="done" hidden>Done</button>`;
-  zm.innerHTML = [['in', '+', 'Zoom in'], ['out', '−', 'Zoom out']].map(btn).join('');
+  const el = document.createElement('div'), zm = document.createElement('div'), menu = PM.dlm = document.createElement('div'), base = PM.basesw = document.createElement('div');
+  el.className = 'tools'; zm.className = 'zoom'; menu.className = 'dlmenu'; menu.id = 'dlmenu'; menu.hidden = true; base.className = 'pbase';
+  menu.setAttribute('role', 'group'); menu.setAttribute('aria-label', 'Download'); base.setAttribute('role', 'group'); base.setAttribute('aria-label', 'Base map');
+  /* Map only folds the left and grows the screen, Full screen is the browser's own on the screen (doors-place.js): its key is not drawn where
+     the browser has no element full screen (Safari on iPhone) */
+  const bench = document.querySelector('.bench'), both = !!bench && bench.classList.contains('mo');
+  el.innerHTML = COL.filter(([k]) => k !== 'full' || document.fullscreenEnabled).map(([k, t, key]) => `<button type="button" data-t="${k}" class="${k === 'fit' || k === 'dl' ? 'gap' : ''}" aria-label="${t}" title="${key ? `${t} · ${key}` : t}"`
+    + (k === 'wide' ? ` aria-pressed="${both}"` : k === 'full' ? ` aria-pressed="${!!document.fullscreenElement}"` : '')
+    + (k === 'dl' ? ' aria-expanded="false" aria-controls="dlmenu"' : '')
+    + `><svg viewBox="0 0 20 20" aria-hidden="true">${KEYICON[k]}</svg></button>`).join('');
+  zm.innerHTML = [['in', '+', 'Zoom in'], ['out', '−', 'Zoom out']].map(([k, g, t]) => `<button data-t="${k}" title="${t}" aria-label="${t}"><span class="g" aria-hidden="true">${g}</span></button>`).join('');
+  PM.dlb = el.querySelector('[data-t="dl"]');
   PM.setTool = k => {
-    PM.tool = k; PM.hover = null;
-    if (MEASURING()) { PM.measure = []; PM.measured = null; PM.from = k === 'from'; }
-    el.querySelectorAll('button[data-t]').forEach(b => b.classList.toggle('on', b.dataset.t === PM.tool));
-    el.querySelector('.done').hidden = !MEASURING();
-    PM.map.getCanvas().style.cursor = MEASURING() ? 'crosshair' : ''; redraw(); facts();
+    const d = PM.draw;
+    PM.tool = k; PM.hover = null; d.state = null; d.hover = null; d.corner = null; d.err = '';
+    if (MEASURING()) { PM.measure = []; PM.measured = null; PM.from = true; } else if (PM.measure.length) { PM.measure = []; PM.measured = null; PM.from = false; }
+    /* a double press finishes a line, so it zooms only while nothing is being drawn */
+    PM.map.doubleClickZoom[k === 'select' || k === 'from' ? 'enable' : 'disable']();
+    if (PM.keys) PM.keys.querySelectorAll('button[data-k]').forEach(b => { if (b.dataset.k !== 'undo') b.setAttribute('aria-pressed', String(b.dataset.k === k)); });
+    if (k === 'image' && d.sel != null) picker(d.sel);
+    readout(); drawForm(); redraw(); facts(); if (window.placeTools) window.placeTools();
   };
   el.onclick = e => {
     const k = e.target.closest('button')?.dataset.t; if (!k) return;
-    if (k === 'in') PM.map.zoomIn(); else if (k === 'out') PM.map.zoomOut(); else if (k === 'fit') fly(8);
-    else if (k === 'png') { const a = document.createElement('a'); a.download = `place-res${PM.res}.png`; PM.map.triggerRepaint(); PM.map.once('render', () => { a.href = PM.map.getCanvas().toDataURL('image/png'); a.click(); }); }
-    else if (k === 'done') PM.setTool('inspect');
-    else PM.setTool(k);
+    if (k === 'in') PM.map.zoomIn(); else if (k === 'out') PM.map.zoomOut(); else if (k === 'fit') fly(8); else if (k === 'dl') dlMenu(menu.hidden);
+    else if (k === 'wide') window.placeWide(); else if (k === 'full') window.placeFull();
   };
   zm.onclick = el.onclick;
-  PM.map.getContainer().append(el, zm);
+  menu.onclick = e => { const k = e.target.closest('button')?.dataset.dl; if (k) download(k); };
+  menu.onkeydown = e => { if (e.key === 'Escape') { e.stopPropagation(); dlMenu(false); if (PM.dlb) PM.dlb.focus(); } };
+  base.onclick = e => { const b = e.target.closest('button')?.dataset.b; if (!b) return; PM.on.drone = b === 'drone'; setLayer('imagery', b === 'satellite'); };
+  const box = PM.map.getContainer(); box.append(el, zm, menu, base); baseSwitch();
+  /* the keys and the readout: only for a screen holding the token, since every drawing is the household's */
+  if (!DOORS_TOKEN()) return;
+  const keys = PM.keys = document.createElement('div'), pan = document.createElement('div');
+  keys.className = 'dkeys'; keys.setAttribute('role', 'toolbar'); keys.setAttribute('aria-label', 'Draw'); keys.innerHTML = keysHTML();
+  pan.className = 'dpanel'; pan.innerHTML = '<div id="dread" class="dread"></div><p id="dsaid" class="vh" aria-live="polite"></p><div id="dform" class="dform" hidden></div>';
+  keys.onclick = e => { const b = e.target.closest('button[data-k]'); if (!b) return; if (b.dataset.k === 'undo') undo(); else { PM.setTool(b.dataset.k); toScreen(b.dataset.k); } };
+  box.append(keys, pan);
+  readout();
 }
+
+/* The base: satellite · streets · drone, each only where the node holds it. The rasters sit over the street map and
+   under its names, so streets is both rasters off. */
+function baseSwitch() {
+  const el = PM.basesw, G = PM.ground || {}; if (!el) return;
+  const now = PM.on.drone && G.drone ? 'drone' : PM.on.imagery && G.imagery ? 'satellite' : 'streets';
+  const B = [G.imagery && 'satellite', 'streets', G.drone && 'drone'].filter(Boolean);
+  el.hidden = B.length < 2;
+  el.innerHTML = B.map(b => `<button type="button" data-b="${b}" aria-pressed="${b === now}">${b}</button>`).join('');
+}
+/* DOWNLOAD (§4, §11): the image of the screen is the canvas, drawings and all; the open map's GeoJSON, KML and DXF are
+   the node's own files (GET /place/maps/{id}.ext, token-only, each one a ledger row), fetched with the token and handed
+   to the browser under the node's name for them. Everything on the screen is the image and each map on the screen in
+   its three formats, one download each: no zip. */
+const slug = t => String(t || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+const onScreen = () => (PM.maps || []).filter(m => !PM.mapOff.has(m.id));
+function dlMenu(open) {
+  const menu = PM.dlm; if (!menu) return;
+  menu.hidden = !open; if (PM.dlb) PM.dlb.setAttribute('aria-expanded', String(open));
+  if (!open) return;
+  const m = openMap(), no = m ? '' : ' disabled', n = 1 + 3 * onScreen().length;
+  const it = (k, t, f, x = '') => `<button type="button" data-dl="${k}" aria-label="${t} · ${f}"${x}><span>${t}</span><code>${f}</code></button>`;
+  menu.innerHTML = `<p class="dlh">download ${m ? esc(m.name) : 'this screen'}</p>`
+    + it('png', 'Image of the screen', 'PNG') + it('geojson', 'For upstream and QGIS', 'GeoJSON', no) + it('kml', 'For Google Earth, phones', 'KML', no) + it('dxf', 'For CAD, in metres', 'DXF', no)
+    + `<hr><button type="button" data-dl="all" aria-label="Everything on the screen"><span>Everything on the screen</span><code>${n} file${n === 1 ? '' : 's'}</code></button>`
+    + (PM.dlErr ? `<p class="err" role="status">${esc(PM.dlErr)}</p>` : '');
+  const f = menu.querySelector('button'); if (f) f.focus();
+}
+const save = (href, name) => { const a = document.createElement('a'); a.href = href; a.download = name; a.click(); };
+function png(m) {
+  const name = `${slug(D.node.name) || 'node'}-${slug(m ? m.name : 'place') || 'map'}-${doorsLocal(new Date().toISOString(), D.tz).slice(0, 10)}.png`;
+  PM.map.triggerRepaint(); PM.map.once('render', () => save(screenImage().toDataURL('image/png'), name));
+}
+/* The map's canvas holds the base and the drawings; the scale bar and the credit are page elements, so the image would
+   leave without its attribution (ODbL, CC BY, Copernicus: §4 puts both in the PNG). They are drawn onto a copy here,
+   in a dark strip along the foot that reads on the satellite and on the black street map. */
+function screenImage() {
+  const src = PM.map.getCanvas(), k = src.width / (src.clientWidth || src.width) || 1, W = src.width / k;
+  const cv = document.createElement('canvas'); cv.width = src.width; cv.height = src.height;
+  const x = cv.getContext('2d'); x.drawImage(src, 0, 0); x.scale(k, k);
+  /* the scale: the longest round length under 120 px, at the map's centre */
+  const c = PM.map.getCenter(), mpp = 40075016.686 * Math.cos(c.lat * Math.PI / 180) / (512 * 2 ** PM.map.getZoom());
+  const len = [1, 2, 5].flatMap(a => [1, 10, 100, 1e3, 1e4, 1e5].map(b => a * b)).sort((a, b) => a - b).filter(v => v / mpp <= 120).pop() || 1;
+  const bar = len / mpp, label = len >= 1000 ? `${len / 1000} km` : `${len} m`;
+  /* the credit, wrapped at its own dots to fit beside the scale */
+  x.font = '400 10px Figtree, sans-serif';
+  const room = W - bar - 90, lines = [];
+  for (const piece of creditList().join(' · ').split(' · ')) {
+    const last = lines[lines.length - 1], next = last ? `${last} · ${piece}` : piece;
+    if (last && x.measureText(next).width > room) lines.push(piece); else lines[lines.length ? lines.length - 1 : 0] = next;
+  }
+  const H = src.height / k, strip = 10 + 13 * Math.max(1, lines.length);
+  x.fillStyle = 'rgba(20,20,20,.85)'; x.fillRect(0, H - strip, W, strip);
+  x.fillStyle = '#F9F5F2'; x.strokeStyle = '#F9F5F2'; x.lineWidth = 1.5; x.textBaseline = 'middle';
+  x.beginPath(); x.moveTo(10, H - strip / 2 - 3); x.lineTo(10, H - strip / 2 + 3); x.lineTo(10 + bar, H - strip / 2 + 3); x.lineTo(10 + bar, H - strip / 2 - 3); x.stroke();
+  x.textAlign = 'left'; x.fillText(label, 16 + bar, H - strip / 2);
+  x.textAlign = 'right'; lines.forEach((t, i) => x.fillText(t, W - 10, H - strip + 11.5 + 13 * i));
+  return cv;
+}
+async function mapFile(m, ext) {
+  try {
+    const r = await doorsFetch(`${API}place/maps/${m.id}.${ext}?actor=${encodeURIComponent(actor())}`);
+    if (!r.ok) { PM.dlErr = `${m.name}, ${ext}: ${refused({ ...(await r.json().catch(() => ({}))), status: r.status })}`; return; }
+    const name = ((r.headers.get('content-disposition') || '').match(/filename="([^"]+)"/) || [])[1] || `${slug(m.name)}.${ext}`;
+    const u = URL.createObjectURL(await r.blob()); save(u, name); setTimeout(() => URL.revokeObjectURL(u), 1000);
+  } catch (e) { PM.dlErr = `The node did not answer: ${e.message}`; }
+}
+async function download(k) {
+  const m = openMap(), all = k === 'all'; PM.dlErr = '';
+  dlMenu(false); if (PM.dlb) PM.dlb.focus();
+  if (k === 'png' || all) png(m);
+  for (const x of all ? onScreen() : k !== 'png' && m ? [m] : []) for (const ext of all ? ['geojson', 'kml', 'dxf'] : [k]) await mapFile(x, ext);
+  if (PM.dlErr) dlMenu(true);   // a file the node refused says why, in the menu
+}
+
+/* ---------------------------------------------------------------- drawing, and your maps (SPEC_place_microgis §4, §8, §10)
+   The keys on the screen's left edge, the readout beside them and, under it, a form for the drawing in hand. A drawing is
+   a GeoJSON feature in one of the household's named maps (app/maps.py, token-only), drawn here as deck.gl layers in the
+   same overlay as the rest, so the PNG holds it. While somebody draws, the readout's figure is the page's sphere
+   (doors-draw.js); once kept, the measure is PostGIS's. Nothing needs a drag: a press adds a point, a press on a corner
+   and then on its new place moves it, and the keyboard does all of it from the map's centre. Drawing colours are the
+   node's palette (GET /place/maps), on the screen and in the table's swatches, never on the page around them. */
+const MARKS = {};                 // map id → its drawings, as GET /place/maps/{id}/marks answers them
+const UNDO = [];                  // what ⌘Z takes back, newest last: each one a call back to the node
+PM.draw = { map: null, state: null, sel: null, colour: 1, corner: null, kc: 0, hover: null, via: null, edit: null, asked: null, naming: false,
+  pick: null, err: '', mapErr: '', said: '', preview: null, focusLabel: false, open: false, auto: false };
+PM.mapOff = new Set();
+const DRAWS = ['marker', 'line', 'area', 'note'];
+const DRAWING = () => DRAWS.includes(PM.tool);
+const KEYNAME = { select: 'Select', marker: 'Marker', line: 'Line, with distance', area: 'Area, with surface', note: 'Note', image: 'Image' };
+const TOOLWORD = { select: 'select', marker: 'marker', line: 'line', area: 'area', note: 'note', image: 'image', from: 'from the house' };
+const KEYICON = { select: '<path d="M5 3l12 6-5 2-2 5z"/>', marker: '<path d="M10 18s-5-5.2-5-9a5 5 0 0110 0c0 3.8-5 9-5 9z"/><circle cx="10" cy="9" r="1.8"/>',
+  line: '<circle cx="4" cy="15" r="1.6"/><circle cx="16" cy="5" r="1.6"/><path d="M5.3 13.8L14.7 6.2" stroke-dasharray="2 2"/>',
+  area: '<path d="M4 6l7-3 5 5-3 8-9-2z"/>', note: '<path d="M4 4h12v9l-3 3H4z"/><path d="M13 16v-3h3"/>',
+  image: '<rect x="3" y="5" width="14" height="10" rx="1"/><circle cx="8" cy="9" r="1.5"/><path d="M3 14l4-3 3 2 3-3 4 4"/>',
+  undo: '<path d="M7 5L3 9l4 4"/><path d="M3 9h9a5 5 0 010 10h-2"/>',
+  /* the screen's right column (Map only, Full screen, home, Download), from the mockup */
+  wide: '<path d="M3 10h14M6 7l-3 3 3 3M14 7l3 3-3 3"/>', full: '<path d="M3 7V3h4M13 3h4v4M17 13v4h-4M7 17H3v-4"/>',
+  fit: '<path d="M3 9l7-6 7 6v8H3z"/>', dl: '<path d="M10 3v10M6 9l4 4 4-4M4 17h12"/>' };
+/* the mockup's READ words for the two keys doors-draw.js's figure() has no hint for */
+const HINT_SEL = 'Press a drawing to change its colour, note or image.';
+/* not the mockup's "its location is the drawing's": a photo's own GPS still wins on the node (packs/eyes) */
+const HINT_IMG = 'The image stays on this node. The map only names which one it is, and the file never leaves.';
+const MAPKEY = 'planetai_place_map';
+const actor = () => { try { return localStorage.getItem('planetai_actor') || ''; } catch (e) { return ''; } };
+const send = (method, p, body) => doorsFetch(API + p, { method, headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined })
+  .then(async r => ({ ...(await r.json().catch(() => ({}))), ok: r.ok, status: r.status }))
+  .catch(e => ({ ok: false, status: 0, detail: `The node did not answer: ${e.message}` }));
+/* the node's sentence: a string, or {code, text} where the page acts on the code (the share warning) */
+const refused = r => (typeof r.detail === 'string' ? r.detail : r.detail && typeof r.detail.text === 'string' ? r.detail.text : `The node refused it (${r.status}).`);
+const mapById = id => (PM.maps || []).find(m => m.id === id) || null;
+const openMap = () => mapById(PM.draw.map);
+const mine = m => !!m && !m.agent && !m.from_node;
+const markById = id => (id == null ? null : Object.values(MARKS).flat().find(k => k.id === id) || null);
+const shownMarks = () => (PM.maps || []).filter(m => !PM.mapOff.has(m.id)).flatMap(m => MARKS[m.id] || []);
+const geomOf = k => (PM.draw.preview && PM.draw.preview.id === k.id ? PM.draw.preview.geometry : k.geometry);
+/* a drawing's points as they were pressed: an area's ring without its closing point */
+const ptsOf = k => { const g = geomOf(k); return g.type === 'Point' ? [g.coordinates] : g.type === 'LineString' ? g.coordinates : g.coordinates[0].slice(0, -1); };
+const centreOf = k => { const q = ptsOf(k); return [d3.mean(q, p => p[0]), d3.mean(q, p => p[1])]; };
+const colourOf = n => (PM.palette && PM.palette[n] ? [1, 3, 5].map(i => parseInt(PM.palette[n].slice(i, i + 2), 16)) : P().ink);
+const measureOf = k => (k.kind === 'area' && k.area_m2 != null ? fmtArea(k.area_m2).split(' · ')[0] : k.kind === 'line' && k.length_m != null ? fmtLen(k.length_m) : '—');
+const remember = id => { PM.draw.map = id; try { localStorage.setItem(MAPKEY, String(id)); } catch (e) { /* no storage here */ } };
+/* the issues asked on Now (engine _asking), each as the Done button carries it: an event, else an alert */
+const openIssues = () => (D.order || []).flatMap(k => ((D.issues[k] || {}).asking || []).slice(0, 1)
+  .map(a => ({ name: D.issues[k].name, issue: a.event_id != null ? { event_id: a.event_id } : { alert_id: a.alert_id } })));
+const tiedTo = k => {
+  if (k.alert_id == null && k.event_id == null) return '';
+  const o = openIssues().find(x => (x.issue.event_id != null ? x.issue.event_id === k.event_id : x.issue.alert_id === k.alert_id));
+  return o ? o.name : 'an issue';
+};
+
+/* the keys: six tools and Undo, the letter small in a corner, the pressed one filled */
+const keysHTML = () => KEYS.map(([k, l]) => `<button type="button" class="${k === 'marker' ? 'gap' : ''}" data-k="${k}" aria-label="${KEYNAME[k]}" aria-pressed="${PM.tool === k}" title="${KEYNAME[k]} · ${l}"`
+  + (k === 'image' ? ' data-learn="place-image" data-reads="/captures" data-stage="observe" data-pack="core"' : '') + '>'
+  + `<svg viewBox="0 0 20 20" aria-hidden="true">${KEYICON[k]}</svg><small>${l}</small></button>`).join('')
+  + `<button type="button" class="gap" data-k="undo" aria-label="Undo" title="Undo · ⌘Z or Ctrl+Z"><svg viewBox="0 0 20 20" aria-hidden="true">${KEYICON.undo}</svg><small>⌘Z</small></button>`;
+
+/* the readout, folded to a chip (Tomas, 5 Nov 2026): the tool, the open map, the figure while it is drawn (the distance
+   or the surface is the point of drawing) and a dot in the colour. A press on it opens the six colours and one line of
+   what to do; a second press or Esc folds them. It opens by itself while a drawing of this house's is in hand, since
+   the colours recolour it, and folds again when that drawing is let go, unless somebody opened it by hand. The figure
+   follows the pointer, so it is hidden from a screen reader; the live region is #dsaid alone, written only when a
+   drawing is kept (§10: the finished figure, not every mouse move). */
+function figureNow() {
+  const d = PM.draw, k = markById(d.sel), T = PM.tool;
+  if (T === 'from') return { v: PM.measured ? fmtM(PM.measured.total_m) : '', hint: 'Press any point and the node measures it from its own point.' };
+  if ((DRAWS.includes(T) || T === 'image') && !openMap()) return { v: '', hint: 'Make a map first with New map, at the top of the left column.' };
+  if (k && d.corner != null) return { v: esc(k.label || k.kind), hint: 'Press the corner’s new place, or move it with the arrows.' };
+  if (DRAWS.includes(T) && (!k || (d.state && d.state.pts.length))) {
+    const f = figure(d.state || drawState(T), d.hover);
+    /* the unit, then the rest of it apart: a narrow chip keeps "3120 m²" and the open panel says the rest */
+    const [u, ...more] = f.unit.split(' · ');
+    return { v: f.value ? `${esc(f.value)}<small>${esc(u)}</small>${more.length ? `<small class="more"> · ${esc(more.join(' · '))}</small>` : ''}` : '', hint: f.hint };
+  }
+  if (T === 'image' && !k) return { v: 'from Data › Images<small>or a new photo</small>', hint: HINT_IMG };
+  /* the keyboard's point: the arrows move it, the full stop steps to the next (no mouse needed, §10) */
+  const n = k && T === 'select' && mine(mapById(k.map_id)) ? ptsOf(k).length : 0;
+  const keys = n > 1 ? ` Arrows move point ${d.kc % n + 1} of ${n}. Press . for the next point.` : n ? ' Arrows move it.' : '';
+  return { v: k ? `${esc(k.label || k.kind)}<small>${esc(k.kind)} · ${esc(measureOf(k))}</small>` : '', hint: T === 'image' ? HINT_IMG : HINT_SEL + keys };
+}
+function readout() {
+  const el = $('#dread'); if (!el || !PM.map || !DOORS_TOKEN()) return;
+  const d = PM.draw, m = openMap(), k = markById(d.sel), f = figureNow(), cur = k ? k.colour : d.colour;
+  if (d.auto && d.sel == null) { d.open = false; d.auto = false; }   // opened for a drawing that is no longer in hand
+  const had = el.contains && el.contains(document.activeElement) && document.activeElement.classList && document.activeElement.classList.contains('dchip');
+  el.innerHTML = `<button type="button" class="dchip" aria-expanded="${!!d.open}" aria-controls="dfull" title="${d.open ? 'Fold the colours' : 'The colours, and what to do'} · Esc folds">`
+    + (PM.palette ? `<i class="dot" aria-hidden="true" style="background:${esc(PM.palette[cur])}"></i>` : '')
+    + `<span class="t">${TOOLWORD[PM.tool] || ''}</span><span class="m">${m ? esc(m.name) : 'no map yet'}</span><span class="v" aria-hidden="true">${f.v}</span></button>`
+    + `<div id="dfull" class="dfull"${d.open ? '' : ' hidden'}><div class="vf" aria-hidden="true">${f.v}</div>`
+    + (PM.palette ? `<div class="dsw" role="group" aria-label="Colour">${[1, 2, 3, 4, 5, 6].map(n => `<button type="button" data-c="${n}" aria-label="Colour ${n}" aria-pressed="${n === cur}">`
+      + `<i style="background:${esc(PM.palette[n])}"></i></button>`).join('')}<em>colour</em></div>` : '')
+    + `<div class="hint">${esc(f.hint)}</div></div>${d.err ? `<p class="err">${esc(d.err)}</p>` : ''}`;
+  const chip = el.querySelector && el.querySelector('.dchip');
+  if (chip) { chip.onclick = () => { d.open = !d.open; d.auto = false; readout(); }; if (had) chip.focus(); }
+  const live = $('#dsaid'); if (d.said && live) { live.textContent = d.said; d.said = ''; }
+  el.querySelectorAll('[data-c]').forEach(b => b.onclick = () => {
+    const n = +b.dataset.c, s = markById(PM.draw.sel);
+    if (s && mine(mapById(s.map_id))) patch(s.id, { colour: n }); else { PM.draw.colour = n; readout(); redraw(); }
+  });
+}
+/* only the figure and the hint, as the pointer moves */
+function figureOnly() {
+  const el = $('#dread'), f = figureNow(), h = el && el.querySelector && el.querySelector('.hint');
+  ['.v', '.vf'].forEach(q => { const v = el && el.querySelector && el.querySelector(q); if (v && v.innerHTML !== f.v) v.innerHTML = f.v; });
+  if (h && h.textContent !== f.hint) h.textContent = f.hint;
+}
+
+/* the form under the readout, for the drawing in hand: its label and note (saved as each changes), an image, Delete,
+   and the issue it answers, which needs the person's own words (§8: tying writes the issue's acted step) */
+function drawForm() {
+  const el = $('#dform'); if (!el) return;
+  const d = PM.draw, k = markById(d.sel), m = k && mapById(k.map_id);
+  if (d.pick && markById(d.pick.id)) {
+    const C = d.pick.caps;
+    el.innerHTML = `<p>An image for ${esc(markById(d.pick.id).label || 'this drawing')}</p><div class="acts"><button type="button" data-a="newimg">A new photo</button><button type="button" data-a="back">Back</button></div>`
+      + (C == null ? '<p>Asking the node for its images…</p>' : !C.length ? '<p>No image is on this node yet.</p>'
+        : `<div class="caps">${C.map(c => `<button type="button" data-cap="${+c.id}">${esc(KIND[c.kind] || c.kind)} · ${esc(c.note || 'no note')} <small>${esc(when(c.ts))}</small></button>`).join('')}</div>`);
+  } else if (!k && PM.tool === 'image') {
+    /* the Image key with nothing in hand: a photo for no drawing goes where it was taken, the header's old button */
+    el.innerHTML = `<p>${openMap() ? 'Press the map, or Enter for its centre, to pin an image there. Or add a photo on its own.' : 'Add a photo on its own.'} It lands where it was taken, else in the node’s cell.</p>`
+      + '<div class="acts"><button type="button" data-a="newphoto">A new photo</button></div>';
+  } else if (!k) { el.hidden = true; el.innerHTML = ''; return; }
+  else if (!mine(m)) {
+    el.innerHTML = `<p>${m && m.from_node ? `This map came from ${esc(m.from_node)}; it is read-only here.` : `This is ${esc(m && m.agent)}’s map.`}</p>`;
+  } else {
+    const iss = openIssues(), tied = tiedTo(k);
+    el.innerHTML = `<label>Label<input data-a="label" maxlength="80" value="${esc(k.label || '')}"></label>`
+      + `<label>Note<textarea data-a="note" rows="2" maxlength="500">${esc(k.note || '')}</textarea></label>`
+      + `<div class="acts"><button type="button" data-a="image">${k.capture_id ? 'Another image' : 'Add an image'}</button>`
+      + (k.capture_id ? '<button type="button" data-a="noimage">Take the image off</button>' : '') + '<button type="button" data-a="delete">Delete it</button></div>'
+      + (tied ? `<p>Tied to ${esc(tied)}. It counts as what you did.</p><div class="acts"><button type="button" data-a="untie">Untie it</button></div>`
+        : iss.length ? `<label>The issue it answers<select data-a="issue"><option value="">none</option>${iss.map((x, i) => `<option value="${i}">${esc(x.name)}</option>`).join('')}</select></label>`
+          + '<label>What you did<input data-a="words" maxlength="500" placeholder="in your own words"></label><div class="acts"><button type="button" data-a="tie">Tie it</button></div>'
+        : '<p>Nothing is asked on Now, so there is no issue to tie it to.</p>');
+  }
+  el.hidden = false;
+  const q = a => el.querySelector(`[data-a="${a}"]`), on = (a, f) => { const x = q(a); if (x) x.onclick = f; };
+  ['label', 'note'].forEach(a => { const x = q(a); if (x) x.onchange = () => patch(k.id, { [a]: x.value }); });
+  on('image', () => picker(k.id)); on('noimage', () => patch(k.id, { image: null })); on('delete', () => del(k.id));
+  on('untie', () => patch(k.id, { issue: null }, false));
+  on('tie', () => { const i = q('issue').value; if (i === '') { d.err = 'Choose the issue it answers first.'; readout(); return; }
+    patch(k.id, { issue: openIssues()[+i].issue, words: q('words').value }, false); });
+  on('back', () => { d.pick = null; drawForm(); });
+  on('newphoto', () => window.placeAddImage && window.placeAddImage());
+  on('newimg', () => { const id = d.pick.id; window.placeAddImage && window.placeAddImage({ at: centreOf(markById(id)), done: c => { d.pick = null; patch(id, { image: c }); } }); });
+  el.querySelectorAll('[data-cap]').forEach(b => b.onclick = () => { const id = d.pick.id; d.pick = null; patch(id, { image: +b.dataset.cap }); });
+  if (d.focusLabel && q('label')) { d.focusLabel = false; q('label').focus(); }
+}
+function picker(id) {
+  const d = PM.draw; d.pick = { id, caps: null }; drawForm();
+  ask('captures?limit=200').catch(() => []).then(c => { if (d.pick && d.pick.id === id) { d.pick.caps = c || []; drawForm(); } });
+}
+/* after a change, everything that shows it; the form keeps what somebody is typing in it */
+function after() {
+  const f = $('#dform');
+  readout(); if (!(f && f.contains && f.contains(document.activeElement))) drawForm(); redraw(); mapTable(); panel();
+}
+
+/* ---- the node's side: keep, change, delete, each one undoable */
+async function finish() {
+  const d = PM.draw, s = d.state, m = openMap();
+  if (!s || !canFinish(s) || !m) return null;
+  d.state = null; d.hover = null;
+  const r = await send('POST', `place/maps/${m.id}/marks`, { ...toFeature(s, { colour: d.colour }), actor: actor() });
+  if (!r.ok) { d.err = refused(r); after(); return null; }
+  (MARKS[m.id] ||= []).push(r.mark); m.marks += 1; remember(m.id);
+  d.sel = r.mark.id; d.err = r.warn || ''; d.focusLabel = s.kind === 'note';
+  d.said = `Kept in ${m.name}. ${r.mark.kind}${measureOf(r.mark) === '—' ? '' : `, ${measureOf(r.mark)}`}.`;
+  UNDO.push(() => del(r.mark.id, false));
+  after();
+  return r.mark.id;
+}
+async function patch(id, body, undoable = true) {
+  const k = markById(id); if (!k) return null;
+  const was = { geometry: k.geometry, label: k.label, note: k.note, colour: k.colour, image: k.capture_id };
+  const r = await send('PATCH', `place/marks/${id}`, { ...body, actor: actor() });
+  PM.draw.preview = null;
+  if (!r.ok) { PM.draw.err = refused(r); after(); return r; }
+  const L = MARKS[k.map_id], i = L.findIndex(x => x.id === id); if (i >= 0) L[i] = r.mark;
+  if (undoable) { const back = Object.fromEntries(Object.keys(body).map(x => [x, was[x]])); UNDO.push(() => patch(id, back, false)); }
+  PM.draw.err = r.warn || ''; after(); return r;
+}
+async function del(id, undoable = true) {
+  const k = markById(id), d = PM.draw; if (!k) return;
+  const r = await send('DELETE', `place/marks/${id}?actor=${encodeURIComponent(actor())}`);
+  if (!r.ok) { d.err = refused(r); after(); return; }
+  MARKS[k.map_id] = MARKS[k.map_id].filter(x => x.id !== id); const m = mapById(k.map_id); if (m) m.marks -= 1;
+  if (d.sel === id) d.sel = null;
+  /* undone, it is drawn again: a new drawing with the same shape and words */
+  if (undoable) UNDO.push(async () => {
+    const b = await send('POST', `place/maps/${k.map_id}/marks`, { type: 'Feature', geometry: k.geometry, actor: actor(),
+      properties: { kind: k.kind, label: k.label, note: k.note, colour: k.colour, image: k.capture_id } });
+    if (b.ok && MARKS[k.map_id]) { MARKS[k.map_id].push(b.mark); if (m) m.marks += 1; d.sel = b.mark.id; } else if (!b.ok) d.err = refused(b);
+    after();
+  });
+  after();
+}
+function undo() {
+  const d = PM.draw;
+  if (d.state && d.state.pts.length) { d.state = backPt(d.state); readout(); redraw(); return; }
+  const u = UNDO.pop(); if (u) u();
+}
+
+/* ---- presses on the screen */
+const pickOf = h => {
+  const o = h && h.object, id = h && h.layer && h.layer.id;
+  return !o ? null : (id === 'own' || id === 'public') ? { kind: 'station', s: o } : id === 'models' ? { kind: 'model', ss: o.ss, p: o.p }
+    : id === 'labs' ? { kind: 'lab', s: o } : id === 'images' ? { kind: 'image', c: o } : id === 'species' ? { kind: 'image', c: o.c }
+    : (id === 'grid' || id === 'grid-dot' || id === 'mine' || id === 'radio') ? { kind: 'cell', id: o.id } : null;
+};
+function select(id) {
+  const d = PM.draw, k = markById(id); d.sel = id; d.corner = null; d.kc = 0; d.pick = null; PM.pick = null; popup(null);
+  if (k && mine(mapById(k.map_id)) && !d.open) { d.open = true; d.auto = true; }   // the colours recolour the drawing in hand
+  readout(); drawForm(); redraw(); mapTable();
+}
+function press(e) {
+  const d = PM.draw, q = [e.lngLat.lng, e.lngLat.lat];
+  const hit = PM.overlay.pickObject({ x: e.point.x, y: e.point.y, radius: 8 }), id = (hit && hit.layer && hit.layer.id) || '';
+  const k = id.startsWith('draw-') && hit.object && hit.object.geometry ? hit.object : null;
+  if (DRAWING()) { pressDraw(q, e.point); return; }
+  if (id.startsWith('drone-pins') && hit.object) {
+    if (!PM.on.drone) setLayer('drone', true);
+    PM.map.easeTo({ center: hit.object.q, zoom: 16, duration: CLOCK.reduced() ? 0 : 900 }); return;
+  }
+  if (PM.tool === 'image') { if (k) { select(k.id); picker(k.id); } else imageAt(q); return; }
+  if (id === 'draw-corner' && hit.object.k != null && hit.object.k === d.sel) { d.corner = hit.object.i; readout(); redraw(); return; }
+  if (d.corner != null && d.sel != null) { moveCorner(q); return; }
+  if (k) { select(k.id); return; }
+  d.sel = null; d.corner = null; PM.pick = pickOf(hit); popup(PM.pick); facts(); readout(); drawForm(); redraw(); mapTable();
+}
+/* the image key on an empty place: a marker to carry the image, then the picker for it (Data's images, or a new photo).
+   The picker opens only for the marker just kept: a refused one leaves nothing in hand to attach to */
+function imageAt(q) {
+  const d = PM.draw; if (!openMap()) { readout(); return; }
+  d.sel = null; d.state = addPt(drawState('marker'), q); finish().then(id => { if (id != null) picker(id); });
+}
+function pressDraw(q, pt) {
+  const d = PM.draw; if (!openMap()) { readout(); return; }
+  const s = d.state || drawState(PM.tool);
+  /* a press on the first corner closes an area: toFeature closes the ring, so that press is not a point of it */
+  if (s.kind === 'area' && s.pts.length >= 3) { const f = PM.map.project(s.pts[0]); if (Math.hypot(f.x - pt.x, f.y - pt.y) <= 10) { finish(); return; } }
+  d.state = addPt(s, q); d.via = 'click'; d.sel = null; d.corner = null;
+  if (s.kind === 'marker' || s.kind === 'note') { finish(); return; }
+  readout(); drawForm(); redraw();
+}
+/* Enter: with the keyboard the map's centre is the cursor. It adds a point there, and finishes once the shape can be
+   one and the centre has not moved since the last point; after pressing with the mouse it finishes at once. */
+function enter() {
+  const d = PM.draw, s = d.state, c = PM.map.getCenter(), q = [c.lng, c.lat];
+  if (PM.tool === 'image' && d.sel == null) { imageAt(q); return true; }   // the image key from the keyboard: at the map's centre
+  if (!DRAWING()) return false;
+  const last = s && s.pts[s.pts.length - 1];
+  const a = last && PM.map.project(last), b = PM.map.project(q), still = !!a && Math.hypot(a.x - b.x, a.y - b.y) < 2;
+  if (s && canFinish(s) && (d.via === 'click' || still)) { finish(); return true; }
+  if (!openMap()) { readout(); return true; }
+  d.state = addPt(s || drawState(PM.tool), q); d.via = 'key'; d.sel = null;
+  if (PM.tool === 'marker' || PM.tool === 'note') finish(); else { readout(); redraw(); }   // one point is the whole of it
+  return true;
+}
+/* a corner moves to a press, or by the arrows a few pixels at a time; the node keeps it half a second after the last */
+function moveCorner(q) {
+  const d = PM.draw, k = markById(d.sel); if (!k) return;
+  const pts = ptsOf(k).map(p => [...p]); pts[d.corner] = q; d.corner = null;
+  patch(k.id, { geometry: toFeature({ kind: k.kind, pts }).geometry });
+}
+function nudge(i, dx, dy) {
+  const d = PM.draw, k = markById(d.sel); if (!k) return;
+  const pts = ptsOf(k).map(p => [...p]), s = PM.map.project(pts[i]), ll = PM.map.unproject([s.x + dx, s.y + dy]);
+  pts[i] = [ll.lng, ll.lat];
+  d.preview = { id: k.id, geometry: toFeature({ kind: k.kind, pts }).geometry }; redraw();
+  clearTimeout(d.nudged); d.nudged = setTimeout(() => d.preview && patch(k.id, { geometry: d.preview.geometry }), 500);
+}
+/* a drawing key hands the focus to the map, so the next Enter adds a point at its centre instead of pressing the
+   button that had the focus again (node #1, 5 Nov: Tools, Esc, L, Enter reopened Tools) */
+function toScreen(k) {
+  const c = PM.map && PM.map.getCanvas();
+  if (['marker', 'line', 'area', 'note'].includes(k) && c && c.focus) c.focus({ preventScroll: true });
+}
+/* the keys from the keyboard (V M L A N I, ⌘Z), Enter, Backspace, Esc, the arrows and the full stop; never while
+   somebody types. With a drawing in hand the arrows move one of its points (a corner pressed, else the keyboard's point,
+   the first to start) and `.` steps to the next: a drawing is edited without a mouse (§10). */
+function onKey(e) {
+  if (view() !== 'place' || !PM.map || !DOORS_TOKEN()) return;
+  const t = e.target, d = PM.draw, k = e.key, within = sel => !!(t && t.closest && t.closest(sel));
+  /* the download and Tools menus keep their keys: onKey listens in the capture phase, so a menu's own Esc cannot stop it */
+  if (within('input, textarea, select, [contenteditable], dialog, .dlmenu')) return;
+  /* the Tools button and its menu keep their keys while the menu is open; once it is shut, the button is any key on the page */
+  if (within('.ptools') && $('#ptools').hidden === false) return;
+  if ((e.metaKey || e.ctrlKey) && !e.shiftKey && (k === 'z' || k === 'Z')) { e.preventDefault(); undo(); return; }
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const key = (KEYS.find(([, l]) => l === k.toUpperCase()) || [])[0];
+  if (key && k.length === 1) { e.preventDefault(); PM.setTool(key); toScreen(key); return; }
+  if (k === 'Escape') {
+    if (MEASURING()) { PM.setTool('select'); return; }
+    /* from inside the readout, Esc folds it and keeps the focus on its chip; elsewhere it folds last */
+    if (d.open && within('.dpanel')) { d.open = false; d.auto = false; readout(); const c = $('#dread').querySelector('.dchip'); if (c) c.focus(); return; }
+    if (d.state) d.state = null; else if (d.corner != null) d.corner = null; else if (d.pick) d.pick = null; else if (d.sel != null) d.sel = null;
+    else if (d.open) { d.open = false; d.auto = false; } else return;
+    readout(); drawForm(); redraw(); mapTable(); return;
+  }
+  if (k === 'Backspace' && d.state && d.state.pts.length) { e.preventDefault(); d.state = backPt(d.state); readout(); redraw(); return; }
+  if (k === 'Enter' && !within('button, a')) { if (enter()) e.preventDefault(); return; }
+  const held = PM.tool === 'select' && markById(d.sel), editable = held && mine(mapById(held.map_id));
+  if (k === '.' && editable) { e.preventDefault(); d.corner = null; d.kc = (d.kc + 1) % ptsOf(held).length; readout(); redraw(); return; }
+  const arrow = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[k];
+  if (!arrow) return;
+  if (editable) { e.preventDefault(); e.stopPropagation(); const n = e.shiftKey ? 10 : 2; nudge(d.corner != null ? d.corner : d.kc % ptsOf(held).length, arrow[0] * n, arrow[1] * n); return; }
+  /* on a key of the screen the arrows pan, and anywhere while a shape is being drawn, since Enter adds at the map's
+     centre (node #1, 5 Nov: after the L key the arrows scrolled the page and every point landed on the first);
+     on the map's canvas MapLibre pans by itself */
+  if (within('.maplibregl-canvas-container')) return;
+  if (d.state || within('.mapc')) { e.preventDefault(); PM.map.panBy([arrow[0] * 80, arrow[1] * 80]); }
+}
+
+/* ---- the drawings, as deck.gl layers: an area filled at .28 with a 2 px edge, a line dashed with each leg's metres,
+   pins, notes as labels; corners as small squares while drawing or in hand. The one in hand is ringed in the cells'
+   blue, the screen's focus colour. */
+function drawLayers(p, Dk, px, dashed, A) {
+  /* deck.gl keeps a layer's state by id, so a layer that can be one of two kinds has an id for each */
+  const d = PM.draw, ms = shownMarks(), sel = markById(d.sel), C = k => colourOf(k.colour), out = [];
+  const of = kind => ms.filter(k => k.kind === kind), area = of('area'), line = of('line'), pin = of('marker');
+  const mono = 'JetBrains Mono, monospace', sans = 'Figtree, sans-serif', white = [255, 255, 255, 255];
+  if (sel && !PM.mapOff.has(sel.map_id)) {
+    const g = geomOf(sel), ring = g.type === 'Polygon' ? g.coordinates[0] : g.type === 'LineString' ? g.coordinates : null;
+    out.push(ring ? new Dk.PathLayer({ id: 'draw-focus-path', data: [{ ring }], getPath: x => x.ring, ...px, getColor: A(p.cells, 1), getWidth: 6 })
+      : new Dk.ScatterplotLayer({ id: 'draw-focus-pin', data: [{ q: g.coordinates }], getPosition: x => x.q, ...px, stroked: true, filled: false, getRadius: 12, getLineColor: A(p.cells, 1), getLineWidth: 2 }));
+  }
+  out.push(new Dk.PolygonLayer({ id: 'draw-area', data: area, getPolygon: k => geomOf(k).coordinates[0], ...px, pickable: true, filled: true, stroked: true,
+    getFillColor: k => A(C(k), .28), getLineColor: k => A(C(k), 1), getLineWidth: 2 }));
+  out.push(new Dk.PathLayer({ id: 'draw-line', data: line, getPath: k => geomOf(k).coordinates, ...px, pickable: true, getColor: k => A(C(k), 1), getWidth: 2,
+    extensions: [dashed], getDashArray: [6, 4] }));
+  const legs = line.flatMap(k => { const c = geomOf(k).coordinates;
+    return c.slice(1).map((q, i) => ({ q: [(c[i][0] + q[0]) / 2, (c[i][1] + q[1]) / 2], t: fmtLen(lengthM([c[i], q])), c: C(k) })); });
+  out.push(new Dk.TextLayer({ characterSet: 'auto', id: 'draw-legs', data: legs, getPosition: x => x.q, getText: x => x.t, getSize: 10, fontFamily: mono,
+    getColor: x => A(x.c, 1), getPixelOffset: [0, -9], background: true, getBackgroundColor: [0, 0, 0, 150], backgroundPadding: [3, 1] }));
+  out.push(new Dk.ScatterplotLayer({ id: 'draw-pin', data: pin, getPosition: k => geomOf(k).coordinates, ...px, pickable: true, stroked: true, filled: true,
+    getRadius: 6, getFillColor: k => A(C(k), 1), getLineColor: [0, 0, 0, 255], getLineWidth: 1.2 }));
+  out.push(new Dk.TextLayer({ characterSet: 'auto', id: 'draw-note', data: of('note'), getPosition: k => geomOf(k).coordinates, getText: k => k.label || 'note',
+    pickable: true, getSize: 11, fontFamily: sans, getColor: white, background: true, getBackgroundColor: [20, 20, 20, 235], getBorderColor: k => A(C(k), 1),
+    getBorderWidth: 1, backgroundPadding: [6, 4] }));
+  const lab = [...area, ...pin, ...line].filter(k => k.label || tiedTo(k)).map(k => ({ k, q: k.kind === 'marker' ? geomOf(k).coordinates : centreOf(k),
+    t: [k.label, k.kind === 'area' && k.area_m2 != null ? measureOf(k) : '', tiedTo(k) && `for ${tiedTo(k)}`].filter(Boolean).join('\n') }));
+  out.push(new Dk.TextLayer({ characterSet: 'auto', id: 'draw-label', data: lab, getPosition: x => x.q, getText: x => x.t, getSize: 11, fontFamily: sans,
+    getColor: white, getPixelOffset: x => (x.k.kind === 'marker' ? [0, -18] : [0, 0]), background: true, getBackgroundColor: [0, 0, 0, 150], backgroundPadding: [3, 1] }));
+  /* the shape being drawn, with the pointer as its next point */
+  const s = d.state, c = colourOf(d.colour);
+  if (s && s.pts.length) {
+    const path = d.hover ? [...s.pts, d.hover] : s.pts;
+    out.push(s.kind === 'area' && path.length >= 3
+      ? new Dk.PolygonLayer({ id: 'draw-now-area', data: [{ path }], getPolygon: x => x.path, ...px, filled: true, stroked: true, getFillColor: A(c, .28), getLineColor: A(c, 1), getLineWidth: 2 })
+      : new Dk.PathLayer({ id: 'draw-now-path', data: [{ path }], getPath: x => x.path, ...px, getColor: A(c, 1), getWidth: 2, extensions: [dashed], getDashArray: [6, 4] }));
+  }
+  const cs = s ? s.pts.map((q, i) => ({ q, i, c })) : sel && !PM.mapOff.has(sel.map_id) ? ptsOf(sel).map((q, i) => ({ q, i, k: sel.id, c: p.cells, on: i === (d.corner != null ? d.corner : d.kc % ptsOf(sel).length) })) : [];
+  out.push(new Dk.TextLayer({ characterSet: 'auto', id: 'draw-corner', data: cs, getPosition: x => x.q, getText: () => '■', getSize: 14, fontFamily: mono,
+    getColor: x => A(x.c, 1), pickable: true }));
+  out.push(new Dk.TextLayer({ characterSet: 'auto', id: 'draw-corner-in', data: cs, getPosition: x => x.q, getText: () => '■', getSize: 7, fontFamily: mono,
+    getColor: x => (x.on ? A(p.cells, 1) : [0, 0, 0, 255]) }));
+  return out;
+}
+
+/* ---- your maps, the top of the left column: a row per map (a square dot, a layer's is round) that shows or hides it,
+   its name opening what can be done to it, then New map. The open map is where new drawings go: the one last drawn in,
+   remembered per browser. Deleting and sharing each ask once, in the row, and a second press does it. */
+function yourMaps() {
+  const M = PM.maps, d = PM.draw, tok = !!DOORS_TOKEN();
+  const head = `<h2><span>your maps</span>${tok && M ? `<b>${M.length || 'none yet'}</b>` : ''}</h2>`, wrap = h => `<section id="ymaps" aria-label="Your maps">${head}${h}</section>`;
+  if (!tok) return wrap('<p class="fine">Your maps are kept on this node. Unlock this screen in <a href="#setup/screen">Set up</a> to draw.</p>');
+  if (!M) return wrap(PM.mapsErr ? '<p class="fine">The node did not give this screen its maps just now. Try again in a minute.</p>' : '');
+  const row = m => { const on = !PM.mapOff.has(m.id);
+    return `<div class="ly map${on ? '' : ' off'}${m.id === d.map ? ' open' : ''}" data-m="${m.id}">`
+      + `<button type="button" class="ymd" data-f="d${m.id}" aria-pressed="${on}" aria-label="${esc(m.name)}, on the screen"><i aria-hidden="true"></i></button>`
+      + `<button type="button" class="ymn" data-f="n${m.id}" aria-expanded="${d.edit === m.id}" title="${esc(m.name)}${m.id === d.map ? ' · new drawings go here' : ''}">`
+      + `<span>${esc(m.name)}</span><small>${+m.marks} drawn</small></button></div>` + (d.edit === m.id ? editor(m) : ''); };
+  return wrap(M.map(row).join('')
+    + (d.naming ? `<div class="ynew"><input id="ynew" data-f="ynew" maxlength="80" aria-label="The new map’s name" placeholder="Garden plan"><button type="button" class="ybtn" data-a="keep">Keep</button></div>`
+      : '<button type="button" class="ly new" data-f="new"><i aria-hidden="true"></i><span>New map</span></button>')
+    + (d.mapErr ? `<p class="fine" role="status">${esc(d.mapErr)}</p>` : ''));
+}
+function editor(m) {
+  const d = PM.draw, asked = kind => d.asked && d.asked.id === m.id && d.asked.kind === kind, f = a => `data-a="${a}" data-f="${a}${m.id}"`;
+  if (!mine(m)) return `<div class="yed"><p class="fine">${m.from_node ? `This map came from ${esc(m.from_node)}; it is read-only here.` : `This is ${esc(m.agent)}’s map.`}</p></div>`;
+  return `<div class="yed" data-m="${m.id}">` + (m.id === d.map ? '' : `<button type="button" class="ybtn" ${f('open')}>Draw in this map</button>`)
+    + `<label>Name<input ${f('name')} maxlength="80" value="${esc(m.name)}"></label><label>Whose map<input ${f('owner')} maxlength="80" value="${esc(m.owner || '')}"></label>`
+    + `<button type="button" class="ybtn" ${f('share')}>${m.shared && !m.held ? 'Stop sharing' : 'Share'}</button>`
+    + (asked('share') || m.share_error ? `<p class="fine" role="status">${esc(asked('share') ? d.asked.text : m.share_error)}</p>` : '')
+    + `<button type="button" class="ybtn" ${f('delete')}>Delete</button>`
+    + (asked('delete') ? `<p class="fine" role="status">Delete ${esc(m.name)} and its ${+m.marks} drawing${m.marks === 1 ? '' : 's'}? Press Delete again.</p>` : '') + `</div>`;
+}
+function wireMaps() {
+  const box = document.getElementById && document.getElementById('ymaps'), d = PM.draw; if (!box) return;
+  const idOf = b => +b.closest('[data-m]').dataset.m;
+  box.querySelectorAll('.ymd').forEach(b => b.onclick = () => { const id = idOf(b); if (!PM.mapOff.delete(id)) PM.mapOff.add(id);
+    if (!MARKS[id]) placeMaps(); else { panel(); redraw(); } });
+  box.querySelectorAll('.ymn').forEach(b => b.onclick = () => { const id = idOf(b); d.edit = d.edit === id ? null : id; d.asked = null; panel(); });
+  const nw = box.querySelector('.ly.new'); if (nw) nw.onclick = () => { d.naming = true; panel(); const i = document.getElementById('ynew'); if (i) i.focus(); };
+  const ni = document.getElementById('ynew');
+  if (ni) { ni.onkeydown = e => { if (e.key === 'Enter') newMap(ni.value); if (e.key === 'Escape') { d.naming = false; panel(); } };
+    box.querySelector('[data-a="keep"]').onclick = () => newMap(ni.value); }
+  box.querySelectorAll('.yed[data-m]').forEach(ed => {
+    const m = mapById(+ed.dataset.m), x = a => ed.querySelector(`[data-a="${a}"]`); if (!m) return;
+    if (x('open')) x('open').onclick = () => { remember(m.id); after(); };
+    x('name').onchange = async () => { const r = await mapPatch(m, { name: x('name').value }); if (!r.ok) d.mapErr = refused(r); after(); };
+    x('owner').onchange = async () => { const r = await mapPatch(m, { owner: x('owner').value.trim() || null }); if (!r.ok) d.mapErr = refused(r); after(); };
+    x('share').onclick = () => share(m); x('delete').onclick = () => mapDelete(m);
+  });
+}
+async function mapPatch(m, body) {
+  const r = await send('PATCH', `place/maps/${m.id}`, { ...body, actor: actor() });
+  if (r.ok) { Object.assign(m, r.map); PM.draw.asked = null; PM.draw.mapErr = ''; }
+  return r;
+}
+/* the first press brings back the node's own warning (409, code share_warning), shown in the row; the second sends
+   it, exactly. Any other refusal is shown too, and arms nothing: the next press asks for the warning again. */
+async function share(m) {
+  const d = PM.draw, again = d.asked && d.asked.id === m.id && d.asked.kind === 'share' && d.asked.armed;
+  const r = await mapPatch(m, m.shared && !m.held && !again ? { shared: false } : again ? { shared: true, confirm: 'exact' } : { shared: true });
+  if (!r.ok) d.asked = { id: m.id, kind: 'share', text: refused(r), armed: !!r.detail && r.detail.code === 'share_warning' };
+  panel(); mapTable();
+}
+async function mapDelete(m) {
+  const d = PM.draw;
+  if (!(d.asked && d.asked.id === m.id && d.asked.kind === 'delete')) { d.asked = { id: m.id, kind: 'delete' }; panel(); return; }
+  const r = await send('DELETE', `place/maps/${m.id}?confirm=${encodeURIComponent(m.name)}&actor=${encodeURIComponent(actor())}`);
+  d.asked = null;
+  if (!r.ok) { d.mapErr = refused(r); panel(); return; }
+  PM.maps = PM.maps.filter(x => x.id !== m.id); delete MARKS[m.id]; d.edit = null;
+  if (d.sel != null && !markById(d.sel)) d.sel = null;
+  if (d.map === m.id) d.map = PM.maps.length ? PM.maps[0].id : null;
+  after();
+}
+async function newMap(name) {
+  const d = PM.draw, r = await send('POST', 'place/maps', { name, actor: actor() });
+  if (!r.ok) { d.mapErr = refused(r); panel(); return; }
+  d.naming = false; d.mapErr = ''; PM.maps = [r.map, ...(PM.maps || [])]; MARKS[r.map.id] = []; remember(r.map.id);
+  after();
+}
+/* the maps and the drawings of the ones on the screen, asked again: the left column, the lower band and the screen */
+async function placeMaps() {
+  const d = PM.draw;
+  if (!DOORS_TOKEN()) { PM.maps = null; panel(); return; }
+  try { const g = await ask('place/maps'); PM.maps = g.maps || []; PM.palette = g.palette || null; PM.mapsErr = null; } catch (e) { PM.maps = null; PM.mapsErr = e.message; }
+  const M = PM.maps || [];
+  let keep = null; try { keep = +localStorage.getItem(MAPKEY) || null; } catch (e) { /* no storage here */ }
+  if (!mapById(d.map)) d.map = mapById(keep) ? keep : M.length ? M[0].id : null;
+  await Promise.all(M.filter(m => !PM.mapOff.has(m.id) || m.id === d.map)
+    .map(m => ask(`place/maps/${m.id}/marks`).then(r => { MARKS[m.id] = r.marks || []; }).catch(() => {})));
+  Object.keys(MARKS).forEach(id => { if (!mapById(+id)) delete MARKS[id]; });
+  panel(); mapTable(); readout(); drawForm(); redraw();
+}
+/* the lower band's left: the open map as a table, a row per drawing that puts it in hand */
+let PTABLE = null;
+function mapTable() {
+  const el = $('#ptable'); if (!el) return;
+  if (PTABLE == null) PTABLE = el.innerHTML;
+  const m = openMap(), K = m && MARKS[m.id];
+  if (!K) { el.innerHTML = PTABLE; return; }
+  const sw = k => `<span class="msw" style="background:${esc((PM.palette || {})[k.colour] || 'transparent')}"></span>`;
+  el.innerHTML = `<h3 class="pmh"><span>${esc(m.name)}</span><b>${K.length} drawn · ${m.shared ? 'shared with the node upstream' : 'yours, kept on this node'}</b></h3>`
+    + (K.length ? '<div class="tscroll"><table class="tbl mtbl"><tr><th>drawing</th><th>kind</th><th class="n">measure</th><th>note</th><th>image</th><th>issue</th></tr>'
+      + K.map(k => `<tr${k.id === PM.draw.sel ? ' class="on"' : ''}><td><button type="button" class="mrow" data-k="${k.id}">${sw(k)}${esc(k.label || k.kind)}</button></td>`
+        + `<td>${esc(k.kind)}</td><td class="n">${esc(measureOf(k))}</td><td>${esc(k.note || '')}</td>`
+        + `<td>${k.capture_id ? `<img class="mth" data-cap="${+k.capture_id}" alt="image ${+k.capture_id}">` : ''}</td><td>${esc(tiedTo(k))}</td></tr>`).join('') + '</table></div>'
+      : '<p class="fine">Nothing drawn in it yet. Choose a key on the screen’s left edge and press the map.</p>');
+  el.querySelectorAll('.mrow').forEach(b => b.onclick = () => { const k = markById(+b.dataset.k); if (!k) return;
+    PM.mapOff.delete(k.map_id); if (PM.setTool && PM.tool !== 'select') PM.setTool('select'); select(k.id); if (PM.map) PM.map.easeTo({ center: centreOf(k), duration: CLOCK.reduced() ? 0 : 500 }); });
+  el.querySelectorAll('img.mth').forEach(i => imgBlob(+i.dataset.cap).then(b => { if (b) { i.src = URL.createObjectURL(b); i.onload = () => URL.revokeObjectURL(i.src); } }));
+}
+window.placeMaps = placeMaps;
 
 /* ---------------------------------------------------------------- the inspector: one line under the map (option A)
    In view, the node's own cell as the lede says it; a mark, a margin row or a cell pressed says its facts in the same
@@ -526,9 +1136,7 @@ async function facts() {
   try {
     const m = PM.measured && PM.measured.points === PM.measure.length && PM.measure.length > 1 ? PM.measured : null;
     if (PM.tool === 'from') {
-      put(`<span class="k">From the house</span><b>${m ? fmtM(m.total_m) : '—'}</b>` + hint('tap any point: the node measures it from its own point (GET /geo/measure) · Done when you have it'));
-    } else if (PM.tool === 'measure') {
-      put(`<span class="k">Measure</span><b>${m ? fmtM(m.total_m) : '—'}</b>` + row('points', PM.measure.length) + hint('tap to add a point, Done to finish, Esc to clear · great-circle, by the node'));
+      put(`<span class="k">From the house</span><b>${m ? fmtM(m.total_m) : '—'}</b>` + hint('tap any point: the node measures it from its own point (GET /geo/measure) · press the tool again, or Esc, when you have it'));
     } else if (o && o.kind === 'station') {
       const s = o.s, v = lastRaw(s.sensor_id, 'pm25');
       const head = `<span class="k">${s.local ? 'This house’s station' : 'Public station'}</span><b class="said">${esc(plain(s.name || s.sensor_id))}</b>`;
@@ -751,7 +1359,7 @@ async function placeMap() {
     if (D.ngeo) GRID = { res: 8, edge_m: EDGE(8), node: D.ngeo.c8.id, nodeRing: loop(D.ngeo.c8.ring), cells: [] };
     console.warn('Place: no live map', e);
     PM.flat = `This browser gave the map no WebGL, so the node’s answers are drawn still: its cell, the stations, the rings and the images. Panning, the scales and measuring need the live map.`;
-    flat(); panel(); facts(); credits(); margin();
+    flat(); panel(); facts(); credits(); margin(); placeMaps();
     if (!D.ngeo) offline(D.ngeoErr || 'no token');
     ask('geo/rings?km=2,5,15').then(x => { RINGS = x.rings.map(g => ({ km: g.km, path: g.ring.map(([la, ln]) => [ln, la]) })); flat(); }).catch(() => {});
     return;
@@ -759,46 +1367,58 @@ async function placeMap() {
   map.touchZoomRotate.disableRotation();
   map.addControl(new maplibregl.ScaleControl({ maxWidth: 110, unit: 'metric' }), 'bottom-left');   // above the rungs: the zoom and the credit hold the right
   PM.overlay = new deck.MapboxOverlay({ interleaved: true, layers: [], pickingRadius: 8,
-    onHover: info => { PM.hoverDot = !!(info.object && DOTS.includes(info.layer.id)); },
-    /* deck.gl owns the cursor in interleaved mode: a dot says it can be clicked, the measure tool keeps its cross */
-    getCursor: ({ isDragging }) => isDragging ? 'grabbing' : MEASURING() ? 'crosshair' : PM.hoverDot ? 'pointer' : 'grab',
-    onClick: info => {
-      if (MEASURING()) return;
-      const o = info.object, id = info.layer && info.layer.id;
-      PM.pick = !o ? null : (id === 'own' || id === 'public') ? { kind: 'station', s: o } : id === 'models' ? { kind: 'model', ss: o.ss, p: o.p }
-        : id === 'labs' ? { kind: 'lab', s: o } : id === 'images' ? { kind: 'image', c: o } : id === 'species' ? { kind: 'image', c: o.c } : (id === 'grid' || id === 'grid-dot' || id === 'mine' || id === 'radio') ? { kind: 'cell', id: o.id } : null;
-      popup(PM.pick); facts();
-    } });
+    onHover: info => { PM.hoverDot = !!(info.object && (DOTS.includes(info.layer.id) || info.layer.id.startsWith('draw-'))); },
+    /* deck.gl owns the cursor in interleaved mode: a dot says it can be clicked, drawing and measuring keep the cross.
+       A press is the map's own click (press(), below), which asks the overlay what is under it. */
+    getCursor: ({ isDragging }) => isDragging ? 'grabbing' : MEASURING() || DRAWING() || PM.draw.corner != null ? 'crosshair' : PM.hoverDot ? 'pointer' : 'grab' });
   map.addControl(PM.overlay);
+  /* luma.gl keeps the canvas's framebuffer at the size it first saw, and deck flips its y with that height, so after the
+     screen grows taller (Full screen) every deck layer drew lower than the map by the difference (node #1, 5 Nov: the
+     cell left its place). After each frame, a framebuffer that is not the canvas's size is let go and the map drawn
+     again; luma learns the new size a frame or two after the resize, so this repeats until the two agree.
+     ponytail: reaches into deck 9.4 / luma internals; drop it once deck's interleaved overlay follows a resize itself */
+  map.on('render', () => {
+    const c = PM.overlay._deck && PM.overlay._deck.device && PM.overlay._deck.device.canvasContext, f = c && c._framebuffer, cv = map.getCanvas();
+    if (f && (f.width !== cv.width || f.height !== cv.height)) { c._framebuffer = null; map.triggerRepaint(); }
+  });
   tools();
   WIND.cv = document.createElement('canvas'); WIND.cv.className = 'windcv'; WIND.cv.setAttribute('aria-hidden', 'true');
   WIND.ctx = WIND.cv.getContext('2d'); map.getContainer().appendChild(WIND.cv);
   map.on('movestart', () => { WIND.moving = true; if (WIND.ctx) WIND.ctx.clearRect(0, 0, WIND.w || 0, WIND.h || 0); });
   map.on('moveend', () => { WIND.moving = false; windResample(); windSync(); });
   map.on('resize', () => { windResample(); margin(); });
+  /* the DOM on the screen follows the map while it moves, once a frame; the list, the grid and the panel wait for moveend */
+  let moving = 0;
+  map.on('move', () => { if (!moving) moving = requestAnimationFrame(() => { moving = 0; edges(); following(); }); });
   map.on('load', () => {
     applyBase(); PM.res = resFor(map.getZoom()); redraw(); chrome(); panel(); facts(); loadGrid(); credits(); windResample(); windSync();
     ask('geo/rings?km=2,5,15').then(x => { RINGS = x.rings.map(g => ({ km: g.km, path: g.ring.map(([la, ln]) => [ln, la]) })); redraw(); }).catch(() => {});
     cellFacts(D.geometry.radio.mine).then(c => { RADIO = { id: c.id, path: loop(c.ring) }; redraw(); }).catch(() => {});
   });
-  map.on('moveend', () => { const r = resFor(map.getZoom()); if (r !== PM.res) { PM.res = r; chrome(); } redraw(); panel(); loadGrid(); });
-  map.on('mousemove', e => { const ll = [e.lngLat.lng, e.lngLat.lat]; if (PM.tool === 'measure' && PM.measure.length) { PM.hover = ll; redraw(); } });
+  map.on('moveend', () => { const r = resFor(map.getZoom()); if (r !== PM.res) { PM.res = r; chrome(); } redraw(); panel(); loadGrid(); credits(); });
+  map.on('mousemove', e => { const d = PM.draw; PM.lastPt = e.point; if (DRAWING() && d.state && d.state.pts.length) { d.hover = [e.lngLat.lng, e.lngLat.lat]; figureOnly(); redraw(); } });
   map.on('click', e => {
+    if (PM.dlm && !PM.dlm.hidden) { dlMenu(false); return; }   // a press that closes the menu does nothing else
+    const tb = document.getElementById && document.getElementById('ptoolsb');
+    if (tb && tb.getAttribute('aria-expanded') === 'true') return;   // nor one that closes Tools (doors-place.js closes it on the same press)
     if (PM.tool === 'from') {
       const q = [e.lngLat.lng, e.lngLat.lat]; PM.measure = [D.point, q]; PM.measured = null; redraw(); facts();
-      fromNode(q[0], q[1]).then(d => { if (PM.measure[1] === q) { PM.measured = { points: 2, legs_m: [d], total_m: d }; redraw(); facts(); } }).catch(x => offline(x.message));
+      fromNode(q[0], q[1]).then(d => { if (PM.measure[1] === q) { PM.measured = { points: 2, legs_m: [d], total_m: d }; redraw(); facts(); figureOnly(); } }).catch(x => offline(x.message));
       return;
     }
-    if (PM.tool !== 'measure') return;
-    PM.measure.push([e.lngLat.lng, e.lngLat.lat]); redraw(); facts();
-    if (PM.measure.length > 1) {
-      const pts = PM.measure.slice();
-      ask(`geo/measure?path=${pts.map(q => q.map(v => v.toFixed(6)).join(',')).join(';')}`)
-        .then(m => { if (pts.length === PM.measure.length) { PM.measured = m; redraw(); facts(); } }).catch(e => offline(e.message));
-    }
+    press(e);
   });
-  map.on('dblclick', e => { if (!MEASURING()) return; e.preventDefault(); PM.setTool('inspect'); });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape' && PM.measure.length) { PM.measure = []; PM.measured = null; PM.hover = null; redraw(); facts(); } });
+  map.on('dblclick', e => {
+    if (MEASURING()) { e.preventDefault(); PM.setTool('select'); return; }
+    const d = PM.draw; if (!DRAWING() || !d.state) return;
+    e.preventDefault();
+    /* a double press is two presses and then this: the second press's point is the first one's again */
+    const q = d.state.pts, a = q.length >= 2 && PM.map.project(q[q.length - 1]), b = a && PM.map.project(q[q.length - 2]);
+    if (a && Math.hypot(a.x - b.x, a.y - b.y) < 6) d.state = backPt(d.state);
+    finish();
+  });
+  document.addEventListener('keydown', onKey, true);   // capture: an arrow moving a corner must not also pan the map
+  placeMaps();
 }
 window.placeMap = placeMap; window.placeLayer = setLayer; window.__PM = PM;   // __PM for the rig
 /* the Images panel added one: ask again, so its kind's row and its square appear */
@@ -809,7 +1429,7 @@ window.groundBase = async theme => {
   if (!PM.meta) { PM.meta = await ask('ground/meta').catch(() => null); PM.ground = (PM.meta && PM.meta.on_disk) || {}; }
   PM.land = PM.land || { type: 'FeatureCollection', features: [] };
   const p = PAL[theme === 'dark' ? 'dark' : 'light'], s = style(p);
-  s.layers = s.layers.filter(l => !['imagery', 'drone', 'plan-sat'].includes(l.id));
+  s.layers = s.layers.filter(l => !['imagery', 'drone', 'drone-close', 'plan-sat'].includes(l.id));
   if (!PM.ground.vector) s.layers[0].paint['background-color'] = p.land;
   return { style: s, palette: p, street: !!PM.ground.vector };
 };

@@ -36,11 +36,6 @@ NODE_TZ = os.getenv("NODE_TZ", "").strip() or "UTC"
 router = APIRouter()
 
 
-def _here() -> tuple[float, float]:
-    from geo import _here as here    # noqa: PLC0415 — the node's point, as the map workbench reads it
-    return here()
-
-
 # ---------------------------------------------------------------- introduced or invasive (docs/SPEC_species.md §3)
 # GRIIS, the Global Register of Introduced and Invasive Species, publishes one checklist per country on GBIF under CC BY
 # 4.0, all from one publisher (ISSG). The node finds its own country's by title, offline from NODE_TZ, and keeps a map
@@ -218,9 +213,8 @@ def _node_cells() -> tuple[set, str]:
     """The node's seven res-8 cells (its own and the six touching it, SPEC_eyes §5) and its own res-10 cell —
     the yardsticks `outside` and `at_home` are measured with once, on arrival."""
     import h3  # noqa: PLC0415
-    lat, lon = _here()
-    home8 = h3.latlng_to_cell(lat, lon, 8)
-    return set(h3.grid_disk(home8, 1)), h3.latlng_to_cell(lat, lon, 10)
+    from geo import home_cell  # noqa: PLC0415
+    return set(h3.grid_disk(home_cell(8), 1)), home_cell(10)
 
 
 def _clean_picture(raw: bytes) -> tuple[bytes, str, str | None, tuple[float, float] | None]:

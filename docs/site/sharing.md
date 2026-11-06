@@ -123,8 +123,8 @@ All travel as `Authorization: Bearer <token>` and are compared in constant time.
 | `ADMIN_TOKEN` | every write and secret read: `PUT /settings`, `/settings/raw`, `/settings/phone`, `POST /readings`, `/report/now`, `/test-alert`, `POST /packs/install`, the whole of `/mcp`, and what `BACKUP_TOKEN` and `ACT_TOKEN` open. Not `POST /aggregates` or `POST /events`, which take `AGGREGATE_TOKEN` only | made by the installer; `planetai ui` prints it | yourself and your agent. Treat it like a password |
 | `BACKUP_TOKEN` | read-only pulls: `/backups`, `/backups/<name>`, `/report/bundle`. It cannot read `/settings/raw` | made by `update.sh` when blank; `planetai ui` prints it (`planetai storage` says only whether it is set) | a NAS |
 | `ACT_TOKEN` | `POST /actions` from off the machine: an act, an acknowledgement, a decision or an answer to an alert event (`event_id`) or a pack's button (`alert_id` and `choice`). It cannot read a secret or change a setting | `planetai ui` makes it; Set up › This screen shows it to the admin as a QR code for a phone | a phone, the dashboard's forms in a browser you trust, the Reticulum bridge |
-| `AGGREGATE_TOKEN` | what this node demands on `POST /aggregates` and `POST /events`; unset, the node accepts no children | you set it | your children, as their `PARENT_TOKEN` |
-| `PARENT_TOKEN` | sent with this node's hourly pushes to `PARENT_API_URL` | your parent's operator | the node itself |
+| `AGGREGATE_TOKEN` | what this node demands on `POST /aggregates`, `POST /events` and `POST /place/maps/received`; unset, the node accepts no children | you set it | your children, as their `PARENT_TOKEN` |
+| `PARENT_TOKEN` | sent with this node's hourly pushes to `PARENT_API_URL`, and with each shared Place map | your parent's operator | the node itself |
 
 Any of the three household tokens (admin, backup, act) passes the sharing check at every level, so each reads the
 whole read API. The aggregate token does not. Every child holds it, and a child is another household, so it pushes

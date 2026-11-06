@@ -59,15 +59,11 @@ NODE = os.getenv("NODE_NAME", "node")
 POLL = int(os.getenv("POLL_SECONDS", "300"))
 def LOCALE():
     return settings.get("ALERT_LOCALE", "en")
-def PARENT():
-    return settings.get("PARENT_API_URL", "").strip()
 MQTT_HOST = os.getenv("MQTT_HOST", "").strip()                 # set by `planetai meshtastic`; empty = no MQTT thread
 MQTT_USER, MQTT_PASS = os.getenv("MQTT_USER", ""), os.getenv("MQTT_PASS", "")
 def MESH_INDOOR():
     return {x.strip() for x in settings.get("MESH_INDOOR_NODES", "").split(",") if x.strip()}
-from auth import (AGG_TOKEN, SHARE_LEVEL, ACT_TOKEN, _SHARE_OFF, _SHARE_OPEN, _SHARE, _CHILD_WRITES, _node_tokens, _is_local, _bearer_ok, _pull_ok, _shows_private, _admin)  # noqa: E402,F401 — tokens, the share allowlists and the checks (app/auth.py)
-def PARENT_TOKEN():
-    return settings.get("PARENT_TOKEN", "").strip()
+from auth import (AGG_TOKEN, PARENT, PARENT_TOKEN, SHARE_LEVEL, ACT_TOKEN, _SHARE_OFF, _SHARE_OPEN, _SHARE, _CHILD_WRITES, _node_tokens, _is_local, _bearer_ok, _pull_ok, _shows_private, _admin)  # noqa: E402,F401 — tokens, the share allowlists and the checks (app/auth.py)
 RETICULUM_URL = os.getenv("RETICULUM_URL", "").strip()       # the reticulum bridge, e.g. http://reticulum:4243
 from channels import (TG, MESH_ALERTS, MESH_GATEWAY_NUM, mesh_state, tg_state,  # noqa: E402,F401
                       mesh_send, notify)  # Telegram, the mesh, LXMF (app/channels.py); Home Assistant is packs/home-assistant
@@ -836,6 +832,8 @@ def start() -> None:
     loop(refresh_usual, 3600, delay=10)
     loop(push_aggregates, 3600, delay=120)
     loop(push_events, 3600, delay=150)
+    loop(maps.push_maps, 60, delay=140)         # a shared map, at most once a minute (app/maps.py)
+    loop(maps.daily_readings, 3600, delay=200)  # a private count of what was drawn, once a local day
     loop(check_release, 3600, delay=300)
     loop(check_wild, 3600, delay=330)
     loop(check_registry, 3600, delay=60)
@@ -1563,6 +1561,9 @@ def export(day: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$")):
 
 import geo  # noqa: E402 — GET /place/geojson, /geo/* (app/geo.py)
 app.include_router(geo.router)
+import maps  # noqa: E402 — /place/maps, /place/marks: the household's drawings (app/maps.py)
+app.include_router(maps.router)
+app.include_router(maps.received)  # POST /place/maps/received: a child's shared map, on AGGREGATE_TOKEN
 import machine  # noqa: E402 — GET /machine, /storage (app/machine.py)
 app.include_router(machine.router)
 import wild  # noqa: E402 — GET /packs/all, /packs/preview, POST /packs/install (app/wild.py)
@@ -1931,7 +1932,7 @@ COMPANIONS = {
     # The five doors (/?layout=doors): the loader that builds their one object from the routes, then one file per door,
     # as planetai-design's prototype kept them. Natural Earth's coast for the Node door's world (NOTICE).
     **{f"doors-{n}.js": (STATIC / f"doors-{n}.js", "application/javascript")
-       for n in ("load", "nodegeo", "core", "fig", "now", "cake", "placemap", "place", "data", "flow", "wallmap", "wall", "node", "setup")},
+       for n in ("load", "nodegeo", "core", "fig", "now", "cake", "draw", "placemap", "place", "data", "flow", "wallmap", "wall", "node", "setup")},
     # The phone page (/?layout=mobile): the shell and its script, which reuses doors-load.js.
     "mobile.html": (STATIC / "mobile.html", "text/html"),
     "mobile.js": (STATIC / "mobile.js", "application/javascript"),
@@ -2188,11 +2189,9 @@ def action(body: dict, request: Request, authorization: str = Header("")):
         # the terminal, and curl. A node in a house records an act whether or not anybody deliberated -- somebody smells
         # smoke and opens a window -- and refusing that would make the node assert a deliberation that did not happen,
         # or push the act somewhere it is never recorded at all. A node acting for a street is the case this is for.
-        if stage == "acted" and settings.num("DECISION_REQUIRED", 0):
-            cur.execute("SELECT 1 FROM actions WHERE alert_id = %s AND stage = 'decided' LIMIT 1", (body.get("alert_id"),))
-            if not cur.fetchone():
-                raise HTTPException(409, "this node is set to DECISION_REQUIRED, so an act needs a decision recorded "
-                                         "against the same alert first. Decide on the dashboard, then record what you did.")
+        # The check itself is events_pg.decision_first, which a drawing tied to an issue asks too (app/maps.py).
+        if stage == "acted" and (refusal := events_pg.decision_first(cur, body.get("alert_id"))):
+            raise HTTPException(409, refusal)
         actor, note = str(body.get("actor") or "")[:80], str(body.get("note") or "")[:500]
         if choice is not None:
             # One row per (alert, actor, choice): a repeat tap writes nothing, a later note replaces it.

@@ -35,6 +35,7 @@ FORMATS = {
     "report-v0":     ("app/main.py", ("func", "report_latest")),
     "aggregates-v0": ("app/main.py", ("post", "push_aggregates")),
     "events-v0":     ("app/main.py", ("post", "push_events")),
+    "maps-v0":       ("app/maps.py", ("post", "push_maps")),        # a shared map, child to parent (§5 of the light GIS)
     "days-v0":       ("app/issues/engine.py", ("func", "days")),
     "forecast-v0":   ("packs/forecast/days.py", ("func", "answer")),   # what GET /forecast returns; routes.py reads and hands in
 }

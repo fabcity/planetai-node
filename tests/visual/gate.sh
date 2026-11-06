@@ -270,3 +270,8 @@ node tests/visual/measure.mjs doors
 # figure dated with one of the five provenance words and no room or sensor named; still under reduced motion, stepping
 # hour by hour and then to the next scale with motion on; a 44 px rail on a touch phone.
 node tests/visual/measure.mjs wallwalk
+
+# The controls on the Place screen (5 Nov 2026): the keys, the readout, the hour, the right column, the rungs, the base
+# switch, the zoom, the scale and the credit, with software WebGL so the live map draws them, at the widths in between,
+# the left open and folded: no two overlap, none leaves the screen, keys 36 px with a pointer and 44 px under a finger.
+node tests/visual/measure.mjs placescreen

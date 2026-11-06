@@ -398,6 +398,51 @@ Access: token
 
 Circles round the node, `?km=` up to eight distances (default `2,5,15`). Returns `{rings: [{km, ring}]}`.
 
+### GET /place/maps
+Access: token
+
+The household's maps, each with how many drawings it holds, and the six drawing colours: `{maps: [{id, name, owner, agent, shared, held, share_error, from_node, marks, updated_at}], palette}`. A map with `from_node` set came from a child node and is read-only here. `share_error` says why a shared map has not gone up, and `held` is true while a drawing on the house keeps it here.
+
+### GET /place/maps/{map_id}/marks
+Access: token
+
+A map's drawings as the Place screen draws them: `{marks: [{id, map_id, kind, colour, label, note, capture_id, length_m, area_m2, drawn_by, alert_id, event_id, updated_at, geometry}]}`, `geometry` as GeoJSON in WGS84 and the measures PostGIS's. Any map may be read, an agent's or a child's too. Reading writes nothing to the ledger.
+
+### POST /place/maps
+Access: token
+
+A new map, `{"name": "Garden plan", "owner"?: "Tomas", "actor": "Tomas"}`. Returns `{map}`.
+
+### PATCH /place/maps/{map_id}
+Access: token
+
+Rename it, change its owner, or share it: `{"shared": true, "confirm": "exact"}`. Without `confirm` the answer is 409 with `detail` `{"code": "share_warning", "text": …}`, the warning the page shows before the second press. With no `PARENT_API_URL` it is 409 too, with only a sentence. `{"shared": false}` takes it back off the node upstream. 403 for an agent's map or one from a child.
+
+### DELETE /place/maps/{map_id}
+Access: token
+
+`?confirm=<the map's name>&actor=<who>`. The map goes with its drawings, and from the node upstream too if it was shared.
+
+### GET /place/maps/{map_id:int}.{ext}
+Access: token
+
+The map as `.geojson`, `.kml` or `.dxf` (R12, in metres of the UTM zone the node stands in), as a file named `<node>-<map>-<date>`.
+
+### POST /place/maps/{map_id}/marks
+Access: token
+
+A drawing, as a GeoJSON Feature whose `properties` are `{kind: marker | line | area | note, label?, note?, colour?: 1-6, image?}`. Returns `{mark}`, measured by PostGIS. On a shared map, a drawing on the house's own res-10 cell also returns `warn` and holds the map until it is shared again.
+
+### PATCH /place/marks/{mark_id}
+Access: token
+
+Any of `geometry`, `label`, `note`, `colour`, `image`, and `issue` with `words` to tie the drawing to an open issue as its acted step. Tying it again to the same issue keeps the act's time. Returns `{mark}`, and `warn` when a new geometry on a shared map touches the house's own res-10 cell.
+
+### DELETE /place/marks/{mark_id}
+Access: token
+
+`?actor=<who>`. A tie to an issue stays in the ledger.
+
 ### GET /ground/meta
 Access: open
 
@@ -590,6 +635,18 @@ A child pushes the hourly means of its own sensors, each row saying whether it i
 
 The parent keeps each mean as one reading of sensor `<node>/<sensor_id>`, of kind `child`. Returns `{"accepted": <n>}`.
 
+### POST /place/maps/received
+Access: children
+
+A child sends a map its household shared, whole, at most once a minute after each change, and a `delete` when it is unshared or deleted.
+
+```json
+{"schema": "planetai.place.map/v0", "node": "bayu-ungasan", "map_id": 7, "op": "put",
+ "geojson": {"type": "FeatureCollection", "map": "Garden plan", "owner": "bayu-ungasan", "features": [...]}}
+```
+
+The parent keeps it under the child's name and map id, its drawings replaced on each `put`, and lists it read-only in `GET /place/maps`. A picture's number is the child's and is dropped. The map's `owner` is the child node, never a person, and a drawing carries no `drawn_by`. A map holds 2,000 drawings and 20,000 points at most (413), a drawing 1,000 points (422), and a colour is 1 to 6 (422). Returns `{"ok": true, "marks": <n>}` for a `put` and `{"ok": true}` for a `delete`.
+
 ### POST /events
 Access: children
 
@@ -679,7 +736,7 @@ This documentation searched without a model, `?q=` of 2 to 200 characters: the w
 
 ## Wire formats
 
-Each document that travels between nodes names its format in `schema`: `issues-v0`, `export-v0`, `report-v0`, `aggregates-v0`, `events-v0`, `days-v0` and `forecast-v0`. A receiver never refuses on it: an unknown value is logged once and the fields it knows are read.
+Each document that travels between nodes names its format in `schema`: `issues-v0`, `export-v0`, `report-v0`, `aggregates-v0`, `events-v0`, `days-v0`, `forecast-v0` and `planetai.place.map/v0`. A receiver never refuses on it: an unknown value is logged once and the fields it knows are read.
 
 ## What the node calls out
 
@@ -687,6 +744,7 @@ Each document that travels between nodes names its format in `schema`: `issues-v
 |---|---|---|
 | `POST {PARENT_API_URL}/aggregates` | Hourly, with a parent set | The last 2 hours of hourly means of its own sensors, with `PARENT_TOKEN` |
 | `POST {PARENT_API_URL}/events` | Hourly, after an alert in the last 36 hours | Alert timestamps |
+| `POST {PARENT_API_URL}/place/maps/received` | Within a minute of a change to a map the household shared | The map's drawings, at their exact place, with their labels, notes and measures |
 | Telegram | Each alert at or above `ALERT_LEVEL`, each report, once per newer release, and `getMe` once a day for the bot's name | The message, with `TELEGRAM_BOT_TOKEN` |
 | `planetai.fab.city/node0/get/VERSION` | Hourly, unless `UPDATE_CHECK=off` | Nothing about the house |
 | GitHub's `registry.json` | Hourly, unless `UPDATE_CHECK=off` | Nothing about the house |

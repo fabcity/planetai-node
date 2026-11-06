@@ -128,7 +128,7 @@ Buttons in [Packs](https://github.com/fabcity/planetai-node/blob/main/docs/PACKS
 
 ## Sending a picture
 
-A picture sent to the bot is kept on the node, the same as **+ Add an image** on the dashboard. The bot fetches it
+A picture sent to the bot is kept on the node, the same as one added with the Image key on Place. The bot fetches it
 from Telegram and posts it to `POST /captures` ([API](api.md)) with the sender's first name as `actor`, the caption as
 the note, and `describe=1`. It answers "Kept." and says where the picture is and whether the image model
 (`EYES_MODEL`) is describing it. A picture the node already has (the same file, by its sha256) gets "That picture is

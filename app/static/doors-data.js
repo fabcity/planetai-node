@@ -491,18 +491,22 @@ const dspan = (a, b) => dwhen(a) === dwhen(b) ? dwhen(a) : dayOf(a) === dayOf(b)
 /* consecutive rows (newest first) with the same key become one: [{ a: the newest row, n, first, last }] */
 const runs = (A, key) => A.reduce((o, a) => { const r = o[o.length - 1];
   if (r && key(r.a) === key(a)) { r.n += 1; r.first = a.ts; } else o.push({ a, n: 1, first: a.ts, last: a.ts }); return o; }, []);
+/* what a row answered: an alert's words, or for a drawing the node's own note for it ("drew Rain garden on Garden plan"),
+   without the "(mark 12)" the node keys it by */
+const ledgerWhat = a => a.stage === 'place' ? `${a.choice || ''} ${String(a.note || '').replace(/ \((map|mark) \d+\)$/, '')}`.trim() : plain(a.text) || a.rule || '';
 let LSTAGE = '';
 function ledgerBlock() {
-  const tok = !!DOORS_TOKEN(), all = [...D.actions].sort((a, b) => b.ts.localeCompare(a.ts));
+  /* the drawings' rows (D.placeActions, their own route) join the answers here and nowhere else */
+  const tok = !!DOORS_TOKEN(), all = [...D.actions, ...(D.placeActions || [])].sort((a, b) => b.ts.localeCompare(a.ts));
   const stages = [...new Set(all.map(a => a.stage))];
   if (LSTAGE && !stages.includes(LSTAGE)) LSTAGE = '';
   const A = all.filter(a => !LSTAGE || a.stage === LSTAGE);
-  const R = runs(A, a => [a.stage, a.alert_id, tok ? a.actor : '', tok ? a.text || a.rule : ''].join('|'));
+  const R = runs(A, a => [a.stage, a.alert_id, tok ? a.actor : '', tok ? ledgerWhat(a) : ''].join('|'));
   const stage = r => `${esc(r.a.stage)}${r.n > 1 ? ` <b class="x2">×${r.n}</b>` : ''}`;
   const filt = `<div class="lfilt" role="group" aria-label="Show one stage">${['', ...stages].map(x => `<button type="button" data-st="${esc(x)}" aria-pressed="${x === LSTAGE}">${x ? esc(x) : 'every stage'}${x ? ` <span>${all.filter(a => a.stage === x).length}</span>` : ''}</button>`).join('')}</div>`;
   $('#ledger').innerHTML = `<h2>Every decision, ${all.length}</h2>${filt}`
     + (tok ? `<table class="tbl ledger"><tr><th>when</th><th>stage</th><th class="hide">who</th><th>what it answered</th></tr>`
-      + R.map(r => `<tr><td class="mono tw">${dspan(r.first, r.last)}</td><td class="ts">${stage(r)}</td><td class="hide" title="${esc(r.a.actor || '')}">${esc(actorWord(r.a.actor))}</td><td>${esc(plain(r.a.text) || r.a.rule || '')}</td></tr>`).join('') + `</table>`
+      + R.map(r => `<tr><td class="mono tw">${dspan(r.first, r.last)}</td><td class="ts">${stage(r)}</td><td class="hide" title="${esc(r.a.actor || '')}">${esc(actorWord(r.a.actor))}</td><td>${esc(ledgerWhat(r.a))}</td></tr>`).join('') + `</table>`
       : `<table class="tbl ledger"><tr><th>when</th><th>stage</th></tr>` + R.map(r => `<tr><td class="mono tw">${dspan(r.first, r.last)}</td><td class="ts">${stage(r)}</td></tr>`).join('') + `</table>`
         + `<p class="fine">Who answered, and what each alert said, stay private to this house. Unlock this screen in ${UNLOCK_AT} to see them.</p>`);
   document.querySelectorAll('#ledger [data-st]').forEach(b => b.onclick = () => { LSTAGE = b.dataset.st; ledgerBlock(); });

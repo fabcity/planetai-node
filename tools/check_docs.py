@@ -41,8 +41,9 @@ MAIN = open("app/main.py").read()
 MAIN += "\n".join(open(f).read().replace("@router.", "@app.") for f in sorted(glob.glob("packs/*/routes.py")))
 # and every core module's router mounted with no prefix (app/basemap.py: GET /ground/*, and the groups review item 15
 # takes out of main.py); app/issues/api.py has its own prefix and is read where /issues is
-MAIN += "\n".join(open(f).read().replace("@router.", "@app.") for f in sorted(glob.glob("app/*.py"))
-                   if f != "app/main.py" and "APIRouter()" in open(f).read())
+# (app/maps.py has two: the household's and a child's, so any router name counts)
+MAIN += "\n".join(re.sub(r"^@\w+\.(get|post|put|delete|patch)\(", r"@app.\1(", open(f).read(), flags=re.M)
+                   for f in sorted(glob.glob("app/*.py")) if f != "app/main.py" and "APIRouter()" in open(f).read())
 ENVEX = open(".env.example").read()
 CODE = "\n".join(open(f).read() for f in glob.glob("app/*.py") + glob.glob("packs/*/*.py")) + CLI + \
        "\n".join(open(f).read() for f in ("install.sh", "update.sh", "backup.sh", "install", "docker-compose.yml"))
@@ -175,7 +176,9 @@ def _metrics(src: str) -> set:
 
 
 # pm25, pm25_raw and aqi are written by readings.append(...) tuples in core that none of the shapes above catch.
-_produced = {"pm25", "pm25_raw", "aqi"}
+# marks and marked_area_m2 are the Place maps' own counts (config/channels.yml, source: place): derived from place_marks
+# by the node, never appended by an adapter.
+_produced = {"pm25", "pm25_raw", "aqi", "marks", "marked_area_m2"}
 for _a in ["app/sources.py"] + sorted(glob.glob("packs/*/adapter.py")):
     _produced |= _metrics(open(_a).read())
 for f in ["config/channels.yml"] + sorted(glob.glob("packs/*/channels.yml")):

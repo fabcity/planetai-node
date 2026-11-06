@@ -614,25 +614,40 @@ for _v in _learn.VERDICT_WORDS:
     assert re.search(rf"const VERDICT_W = {{[^}}]*\b{_v}:", _nodejs), f"Node has no words for the verdict {_v}"
 # PHASE 4a, Place and Node (Tomas, 14–15 Oct 2026). Each check fails if its fix regresses.
 _place = html[html.index('<section class="page view" data-view="place"'):html.index("<!-- DATA -->")]
-# SPEC_place_microgis §4 (4 Nov 2026): the cake | the screen | the tools, then the lower band: selected | the place in figures
-assert _place.index('id="cake"') < _place.index('class="mapc"') < _place.index('id="facts"') < _place.index('id="pmargin"') \
-    < _place.index('id="ptools"') < _place.index('class="plow"') < _place.index('id="ptable"') < _place.index('id="pfigures"'), \
-    "the cake, the screen with its status line and the marks around the house, the tools; then the lower band"
+# SPEC_place_microgis §4, as Tomas changed it on 5 Nov 2026: the tools a menu on the top line; the cake | the screen;
+# the years end to end; then the lower band: the open map's table | the place in figures
+assert _place.index('id="pask"') < _place.index('id="ptoolsb"') < _place.index('id="ptools"') < _place.index('id="cake"') < _place.index('class="mapc"') \
+    < _place.index('id="facts"') < _place.index('id="pmargin"') < _place.index('class="pyears"') < _place.index('id="pchange"') \
+    < _place.index('class="plow"') < _place.index('id="ptable"') < _place.index('id="pfigures"'), \
+    "Ask and Tools on the top line; the cake, the screen with its status line and the marks around the house; the years; then the lower band"
+assert 'id="paddimg"' not in _place and 'class="addimg"' not in html and "addimg" not in (STATIC / "doors-place.js").read_text(), "+ Add an image left the top line: the Image key does it"
+assert 'data-fold="rc"' not in _place and _place.count('class="pfold"') == 1 and 'data-s="tools"' not in _place, "one side menu, the left: no right column, no right fold, no tools sheet"
+assert '<button type="button" id="ptoolsb" class="ptoolsb" aria-expanded="false" aria-controls="ptools">Tools</button><div id="ptools" class="ptmenu" role="group" aria-label="Tools" hidden>' in _place, \
+    "the tools are one button with a menu it discloses"
 assert 'class="pcols"' not in _place and 'id="reach"' not in _place and 'id="layers"' not in _place and 'id="pleads"' not in _place, "the old workbench is gone"
 assert "'#pfigures').innerHTML = `<h3 class=\"pmh\">the place in figures</h3>` + yearly()" in (STATIC / "doors-place.js").read_text(), "Land and Coast are the place's figures"
 _css = html[html.index("/* ================= PLACE: a small GIS"):html.index("/* ================= NODE")]
-assert re.search(r"\.tools button,\.zoom button\{width:44px;height:44px", _css), "the map's tools are 44 px targets"
+assert re.search(r"\.tools button,\.zoom button\{width:var\(--k\);height:var\(--k\)", _css), "the map's tools are --k square"
+assert "--k:36px;container:place / inline-size;" in _css and "@media (pointer:coarse){.mapc{--k:44px}}" in _css, \
+    "the keys inside the screen are 36 px with a pointer and 44 px under a finger (Tomas, 5 Nov 2026)"
+assert not re.search(r"(width|height):44px", _css.split("@media (pointer:coarse){.mapc{--k:44px}}")[1].split("/* under the screen")[0]), "no 44 px target left inside the screen: --k sizes it"
+assert ".pmpop .maplibregl-popup-close-button{font:400 18px/1 var(--mono);color:var(--ink);width:var(--k);height:var(--k)" in html, "the popup's close button follows --k too"
+assert "@container place (max-width:759px){#mapbar .scales b{display:none}" in _css and "@media (min-width:761px){@container place (max-width:559px){" in _css \
+    and ".mapc .nonode{right:calc(var(--k) + 24px);bottom:56px;pointer-events:none}" in _css and "width:min(300px,calc(100% - 2 * var(--k) - 302px))" in _css, \
+    "the screen's controls lay out by its own width: the rungs by number under 760 px, the base and the hour move under 560 px (tests/visual/measure.mjs placescreen proves the boxes)"
 assert "box-shadow:0 0 0 1px #000,0 0 0 5px #1b1b1b,0 0 0 6px #000" in _css and "border-radius:10px" in _css, "the screen sits in its bezel"
-assert re.search(r"\.bench\{display:grid;grid-template-columns:216px minmax\(0,1fr\) 286px", _css) and ".page[data-view=\"place\"]{max-width:1440px}" in _css, \
-    "216 px of cake, the screen, 286 px of tools"
+assert re.search(r"\.bench\{display:grid;grid-template-columns:216px minmax\(0,1fr\);", _css) and ".page[data-view=\"place\"]{max-width:1440px}" in _css, \
+    "216 px of cake, and the screen takes the rest"
 _v2 = _css[:_css.index("#pedges{")]   # the v2 rules; the swatches after them predate it
 _v2 = _v2.replace(_v2[_v2.index(".mapc{--ink"):_v2.index(".mapw{")], "")   # the screen's own values and its bezel
 assert not re.search(r"#[0-9A-Fa-f]{3,6}\b", _v2), "no raw colour outside the screen: the frozen layer's names"
 assert re.search(r"@media \(max-width:760px\)\{[^@]*\.bench\{grid-template-columns:minmax\(0,1fr\)", html), "a phone: one column, the screen first"
-assert ".phour button{width:44px;height:44px" in _css and "min-height:44px;padding:0 12px" in _css and "#altbar button{background:none;border:1px solid var(--hair);border-radius:999px;color:var(--ink);width:44px;height:44px" in _css, \
-    "every target on the screen is 44 px: the hour, the rungs, the satellite's years"
-assert re.search(r"@media \(max-width:760px\)\{[^@]*#cake,#ptools\{display:none;position:fixed;left:0;right:0;bottom:0", html), "a phone's cake and tools are a sheet over the lower band"
-assert re.search(r"#cake,#ptools\{height:0;min-height:100%;overflow-y:auto", _css), "the cake and the tools scroll inside the bench, which the screen's column sets"
+assert ".phour button{width:var(--k);height:var(--k)" in _css and ".pbase button{min-height:var(--k);padding:0 12px" in _css and "min-height:var(--k);padding:0 12px;border:0;border-radius:999px;background:none;color:var(--mute);cursor:pointer;font:400 11px" in _css \
+    and "#altbar button{background:none;border:1px solid var(--hair);border-radius:999px;color:var(--ink);width:44px;height:44px" in _css, \
+    "the hour, the base switch and the rungs follow --k; the satellite's years, on the page, keep 44 px"
+assert re.search(r"@media \(max-width:760px\)\{[^@]*#cake\{display:none;position:fixed;left:0;right:0;bottom:0", html), "a phone's cake is a sheet over the lower band"
+assert re.search(r"#cake\{height:0;min-height:100%;overflow-y:auto", _css), "the cake scrolls inside the bench, which the screen's column sets"
+assert "#ptools{" not in _css.replace("#ptools{display", ""), "no right column is styled"
 assert not re.search(r"(^|[},])\.ph[ ,{]", _css, re.M), "Place's headings are .pmh: .ph is Set up's pack card"
 assert "overflow-x:auto" not in html[html.index("/* ================= NODE"):].split("\n")[1], "the flow never scrolls sideways"
 pprog = r"""
@@ -646,7 +661,7 @@ const out = {};
 /* five on by default; the rest off */
 out.on = eval(pm.match(/const LAYERS = \[[\s\S]*?\n\];/)[0] + '; LAYERS').filter(l => l.on).map(l => l.id);
 out.house = !/id: '(house|species)-l'/.test(pm) && /name: 'This house', ll: D\.point/.test(pm);
-out.tools = /\['from', '⌂'/.test(pm) && /class="done" data-t="done"/.test(pm);
+out.tools = /\['From the house', 'geo\.measure', null, 'from'\]/.test(place) && !/\['inspect'/.test(pm);
 const mk = () => { const els = {}; return q => (els[q] ||= { innerHTML: '', textContent: '', clientWidth: 600, clientHeight: 600, style: {}, appendChild() {}, setAttribute() {}, onclick: null }); };
 const page = tok => ({ D, d3, $: mk(), console, Response, DOORS_TOKEN: () => (tok ? 't' : ''), sign: id => `<svg data-s="${id}"></svg>`, UNLOCK_AT: '<a href="#setup/screen">Set up › This screen</a>',
   doorsFetch: p => Promise.resolve(!tok ? new Response('{}', { status: 403 }) : new Response(JSON.stringify(
@@ -676,16 +691,16 @@ const page = tok => ({ D, d3, $: mk(), console, Response, DOORS_TOKEN: () => (to
     document: { documentElement: { dataset: {} }, querySelector: () => null, querySelectorAll: () => [], createElement: () => ({ style: {}, setAttribute: noop }), addEventListener: noop },
     maplibregl: { Map: function () { throw new Error('Failed to initialize WebGL'); } }, deck: {} });
   c.window = c; c.D = { ...D, ngeo: null, ngeoErr: 'GET /geo/cell answered 403' }; vm.createContext(c);
-  vm.runInContext(fs.readFileSync('./app/static/doors-cake.js', 'utf8') + '\n' + pm + '\nwindow.placeMap()', c);
+  vm.runInContext(fs.readFileSync('./app/static/doors-cake.js', 'utf8') + '\n' + fs.readFileSync('./app/static/doors-draw.js', 'utf8') + '\n' + pm + '\nwindow.placeMap()', c);
   await new Promise(r => setTimeout(r, 50));
-  out.flat = { map: c.$('#map').innerHTML, cake: c.$('#cake').innerHTML, facts: c.$('#facts').innerHTML, margin: c.$('#pmargin').innerHTML };
+  out.flat ={ map: c.$('#map').innerHTML, cake: c.$('#cake').innerHTML, facts: c.$('#facts').innerHTML, margin: c.$('#pmargin').innerHTML };
   console.log(JSON.stringify(out));
 })();
 """ % replayed(FIX)
 pp = json.loads(subprocess.run(["node"], input=pprog, capture_output=True, text=True, check=True).stdout)
 assert sorted(pp["on"]) == ["images", "mine", "own", "public", "species", "street"], pp["on"]
 print("doors: Place opens with five layers on: the street, the node's cell, its sensors, the public stations, the images (and their species)")
-assert pp["house"] and pp["tools"], "the house is named on the map; From the house and Done are tools"
+assert pp["house"] and pp["tools"], "the house is named on the map; From the house is a tool in the right column, Inspect is gone"
 assert '<table class="tbl species">' in pp["sp"] and "gbif.org/species/3152559" in pp["sp"] and "in the seven cells" in pp["sp"] \
     and "14 in the seven cells" in pp["sp"], pp["sp"]
 assert "<table" not in pp["spLocked"] and "#setup/screen" in pp["spLocked"], pp["spLocked"]
@@ -724,7 +739,7 @@ const L = require('./app/static/doors-load.js'), d3 = require('./app/static/d3.m
 const F = JSON.parse(fs.readFileSync(process.argv[1], 'utf8'));
 const core = fs.readFileSync('./app/static/doors-core.js', 'utf8'), pick = n => core.match(new RegExp('^(?:const|function) ' + n + '\\b.*$', 'm'))[0];
 const els = {}, mk = id => ({ id, innerHTML: '', hidden: false, classList: { add() {}, remove() {}, toggle() {} }, querySelectorAll: () => [], querySelector: () => null, scrollIntoView() {} });
-const ctx = { D: L.buildD({ ...F, days: F.issues_days }, 'en'), d3, doorsLocal: L.doorsLocal, VIEWS: {}, setTimeout: f => f(), CSS: { escape: x => x },
+const ctx = { D: L.buildD({ ...F, days: F.issues_days }, 'en'), buildD: L.buildD, F, d3, doorsLocal: L.doorsLocal, VIEWS: {}, setTimeout: f => f(), CSS: { escape: x => x },
   $: q => (els[q.slice(1)] ||= mk(q.slice(1))), document: { getElementById: id => (els[id] ||= mk(id)), querySelector: () => null, querySelectorAll: () => [] },
   location: { hash: '', replace(h) { this.replaced = h; } }, tok: '', out: {} };
 ctx.DOORS_TOKEN = () => ctx.tok;
@@ -746,7 +761,15 @@ vm.runInContext(['esc', 'WD', 'loc', 'dayOf', 'dLabel', 'wdhm', 'fmt', 'lineLab'
    real.modelsBlock(); out.models = $('#models').innerHTML;
    tok = 'x'; real.ledgerBlock(); out.ledger = $('#ledger').innerHTML;
    LSTAGE = 'decided'; real.ledgerBlock(); out.decided = $('#ledger').innerHTML; LSTAGE = '';
-   tok = ''; real.ledgerBlock(); out.locked = $('#ledger').innerHTML;`, ctx);
+   tok = ''; real.ledgerBlock(); out.locked = $('#ledger').innerHTML;
+   /* the place rows come from their own route (GET /actions?stage=place), never through D.actions, which the flow counts as answers */
+   const n = D.actions.length;
+   D = buildD({ ...F, days: F.issues_days, place_actions: [
+     { ts: '2026-10-06T09:00:00+08:00', stage: 'place', actor: 'Tomas', choice: 'drew', note: 'Rain garden on Garden plan (mark 12)', alert_id: null },
+     { ts: '2026-10-06T09:01:00+08:00', stage: 'place', actor: 'Tomas', choice: 'drew', note: 'Hose run on Garden plan (mark 13)', alert_id: null }] }, 'en');
+   out.flowActions = { before: n, after: D.actions.length, place: D.actions.filter(a => a.stage === 'place').length };
+   tok = 'x'; real.ledgerBlock(); out.place = $('#ledger').innerHTML;
+   LSTAGE = 'place'; real.ledgerBlock(); out.placeOnly = $('#ledger').innerHTML; LSTAGE = '';`, ctx);
 console.log(JSON.stringify(ctx.out));
 """
 _d = json.loads(subprocess.run(["node", "-e", dprog, FIX], capture_output=True, text=True, check=True).stdout)
@@ -782,6 +805,18 @@ assert ">gui<" not in _l and "local-model/" not in re.sub(r'title="[^"]*"', "", 
 assert 'data-st="decided"' in _l and "acted</td>" not in _x and "decided" in _x, "the stage filter keeps one stage"
 assert "<th>who</th>" not in _k and "Tomas" not in _k and "The air" not in _k and "UNLOCK" not in _k and "Set up › This screen" in _k, "a locked ledger names nobody"
 print("doors: the ledger collapses repeats, says who in words, filters by stage; locked, the time and the stage only")
+_pl, _po = _d["place"], _d["placeOnly"]
+assert _d["flowActions"]["before"] == _d["flowActions"]["after"] and _d["flowActions"]["place"] == 0, \
+    ("the flow's answers are D.actions; place rows stay out of them", _d["flowActions"])
+_ld = (STATIC / "doors-load.js").read_text()
+assert "place_actions: 'actions?stage=place&limit=500'" in _ld, "the ledger's place rows have their own route"
+assert "for (const k of ['readings_1h', 'actions', 'place_actions', 'alerts']) delete A[k]" in _ld, "a replayed capture drops them without the token"
+assert json.loads(subprocess.run(["node", "-e", "console.log(require('./app/static/doors-load.js').DOORS_LOCKED.test('/actions?stage=place&limit=500'))"],
+                                 capture_output=True, text=True, check=True).stdout), "a tokenless screen never asks for them"
+assert 'data-st="place"' in _pl and "Rain garden on Garden plan" in _po and "Hose run on Garden plan" in _po, _po[-600:]
+assert "(mark 12)" not in _po and "×2" not in _po and "decided" not in re.sub(r'<div class="lfilt".*?</div>', "", _po), \
+    "a drawing is its own row, in words, under the place filter; the node's key stays out"
+print("doors: the ledger's place stage: a filter, and a row per drawing, saying what was drawn on which map")
 
 # Set up's consequences step: a change that leaves the machine or runs code asks first, in the setting's own words;
 # a plain change, or turning one off, does not. Read from the node's own describe() and pack list.
@@ -882,7 +917,7 @@ for i in ("cake", "ptools", "ptable", "pfigures", "pask"):
     assert f'id="{i}"' in html, i
 assert "Where the readings come from" not in html, "each cake row names its source instead"
 assert "Tools run on this node with a token. Unlock this screen in Set up." in pl, "a tokenless screen says why the tools are quiet"
-assert "$('#pask').hidden = !!D.askOff" in pl and "D.askOff || view() !== 'place'" in pl, "UI_ASK off: the Place Ask line is not drawn and `/` does nothing"
+assert "$('#pask').hidden = !!D.askOff" in pl and "if (k !== '/' || D.askOff) return;" in pl, "UI_ASK off: the Place Ask line is not drawn and `/` does nothing"
 assert "if (D.askOff) return;" in pl.split("$('#pask').onsubmit")[1].split("};")[0], "a submit on a hidden Ask line reaches nothing"
 assert ".pask[hidden]{display:none}" in html, "hidden wins over the flex row"
 assert "$('#askbtn').addEventListener('click', closeSheet)" in pl, "Ask opens over a phone's sheet: the sheet closes first"
@@ -890,5 +925,517 @@ _names = re.findall(r"id: '[a-z0-9]+'.*? name: '([^']+)'", pm.split("const LAYER
 assert len(_names) == 25 and max(map(len, _names)) <= 14, ("a cake row's name must fit the 216 px column", sorted(_names, key=len)[-3:])
 assert "<h2><span>${esc(s.name)}</span>" in pm and "#cake .ck>h2{" in html and "#cake h2" not in html and "<h3><span>" not in pm, "cake headings are h2 under the page's h1"
 print("  place: one map, black screen, the cake on the left, tools on the right")
+
+# Drawing on the screen, and your maps (SPEC_place_microgis §4, §10). Booted in node with a map that does nothing and a
+# deck that records its layers: the keys and the readout on the screen with a token and none without, your maps above
+# the cake's results, the open map's table in the lower band, and every name and label from the node escaped.
+_lk2 = json.loads(subprocess.run(["node", "-e", "const L = require('./app/static/doors-load.js'); console.log(JSON.stringify(['/place/maps', '/place/marks/3', '/place/maps/3/marks', '/place/geojson'].map(p => L.DOORS_LOCKED.test(p))))"],
+                                 capture_output=True, text=True, check=True).stdout)
+assert _lk2 == [True, True, True, True], f"a tokenless screen never asks for the household's maps: {_lk2}"
+mprog = r"""
+const fs = require('fs'), vm = require('vm'), d3 = require('./app/static/d3.min.js');
+const L = require('./app/static/doors-load.js');
+const core = fs.readFileSync('./app/static/doors-core.js', 'utf8'), pick = n => core.match(new RegExp('^const ' + n + ' = .*$', 'm'))[0];
+const src = ['doors-cake.js', 'doors-draw.js', 'doors-placemap.js'].map(f => fs.readFileSync('./app/static/' + f, 'utf8')).join('\n');
+const place = fs.readFileSync('./app/static/doors-place.js', 'utf8'), fn = (s, n) => s.match(new RegExp('function ' + n + '\\(' + '[\\s\\S]*?\\n}\\n'))[0];
+const F = JSON.parse(fs.readFileSync('%s', 'utf8')), D = L.buildD({ ...F, days: F.issues_days }, 'en');
+const BAD = '<img src=x onerror=1>';
+const MAPS = { maps: [{ id: 3, name: BAD, owner: 'Tomas', agent: null, shared: false, held: false, share_error: null, from_node: null, marks: 2, updated_at: '2026-11-04T10:00:00Z' },
+  { id: 4, name: 'Rain on the street', owner: null, agent: null, shared: false, held: false, share_error: null, from_node: null, marks: 0, updated_at: '2026-11-03T10:00:00Z' }],
+  palette: { 1: '#FFFFFF', 2: '#FFE600', 3: '#9BFF2E', 4: '#00E5FF', 5: '#FF3DCB', 6: '#FF3B30' } };
+const MARKS = { marks: [
+  { id: 11, map_id: 3, kind: 'area', colour: 3, label: BAD, note: 'catch the roof’s water', capture_id: null, length_m: null, area_m2: 312.4, alert_id: null, event_id: null,
+    geometry: { type: 'Polygon', coordinates: [[[115.167, -8.819], [115.168, -8.819], [115.168, -8.818], [115.167, -8.819]]] } },
+  { id: 12, map_id: 3, kind: 'line', colour: 2, label: 'Hose run', note: null, capture_id: 7, length_m: 102.4, area_m2: null, alert_id: null, event_id: null,
+    geometry: { type: 'LineString', coordinates: [[115.167, -8.819], [115.168, -8.819]] } }] };
+const noop = () => {};
+const SAVED = [];   /* every file the page hands the browser to save, by its name */
+const el = () => ({ innerHTML: '', textContent: '', hidden: false, style: {}, dataset: {}, kids: [], className: '', attrs: {},
+  setAttribute(k, v) { this.attrs[k] = v; }, getAttribute(k) { return this.attrs[k]; }, appendChild(x) { this.kids.push(x); }, append(...x) { this.kids.push(...x); },
+  querySelector: () => null, querySelectorAll: () => [], addEventListener: noop, remove: noop, focus: noop, closest: () => null, contains: () => false,
+  click() { if (this.download) SAVED.push(this.download); },
+  getContext: () => ({ setTransform: noop, clearRect: noop }), clientWidth: 900, clientHeight: 560 });
+async function boot(tok, o = {}) {
+  const els = {}, map = el(), asked = [], drawn = {}, patched = [], posted = [], keys = [], ons = {}, onced = [], eased = [], renders = [];
+  /* the lower band's row buttons, as mapTable() wires them */
+  const rows = [{ dataset: { k: '11' } }, { dataset: { k: '12' } }];
+  els['#ptable'] = Object.assign(el(), { querySelectorAll: q => (q === '.mrow' ? rows : []) });
+  const chip = { classList: { contains: () => true }, focus() { c.document.activeElement = chip; } };
+  els['#dread'] = Object.assign(el(), { querySelector: q => (q === '.dchip' ? chip : null), contains: x => x === chip });
+  const ask = (p, init = {}) => { asked.push(p); if (!tok && L.DOORS_LOCKED.test(p)) return Promise.resolve(new Response('{}', { status: 403 }));
+    if (init.method === 'PATCH') { const b = JSON.parse(init.body); patched.push(b);
+      return Promise.resolve(new Response(JSON.stringify({ mark: { ...MARKS.marks.find(k => p.endsWith('/' + k.id)), ...b } }), { status: 200 })); }
+    if (init.method === 'POST' && /^\/place\/maps\/\d+\/marks/.test(p)) { const b = JSON.parse(init.body); posted.push(b);
+      return Promise.resolve(new Response(JSON.stringify({ mark: { id: 99, map_id: 3, kind: b.properties.kind, colour: 1, label: null, note: null, capture_id: null, geometry: b.geometry } }), { status: 200 })); }
+    const f = p.match(/^\/place\/maps\/(\d+)\.(geojson|kml|dxf)\?/);
+    if (f) return Promise.resolve(new Response('x', { status: 200, headers: { 'content-disposition': `attachment; filename="n-${f[1]}.${f[2]}"` } }));
+    const b = p.startsWith('/ground/meta') && o.meta ? o.meta : p.startsWith('/nearby') && o.nearby ? o.nearby
+      : p.startsWith('/place/maps/3/marks') ? MARKS : p.startsWith('/place/maps/4/marks') ? { marks: [] } : p.startsWith('/place/maps') ? MAPS
+      : p.startsWith('/captures') ? [] : p.startsWith('/species') ? { species: [] } : {};
+    return Promise.resolve(new Response(JSON.stringify(b), { status: 200 })); };
+  const layer = function (props) { return { id: props && props.id, props }; };
+  const c = { D: o.D || D, d3, console, Response, URL, doorsLocal: L.doorsLocal, setTimeout, clearTimeout, $: q => (els[q] ||= el()), DOORS_TOKEN: () => (tok ? 't' : ''), DOORS_AUTH: () => ({}), doorsFetch: ask,
+    UNLOCK_AT: '<a href="#setup/screen">Set up › This screen</a>', sign: id => `<svg data-s="${id}"></svg>`, prov: w => w, lastRaw: () => null, plain: s => s,
+    hhmm: s => s, when: s => s, dLabel: s => s, dayOf: s => s, CLOCK: { reduced: () => true, on: noop, off: noop }, view: () => 'place', location: { origin: 'http://node' },
+    devicePixelRatio: 1, localStorage: { getItem: () => null, setItem: noop }, requestAnimationFrame: f => setTimeout(f, 0),
+    document: { documentElement: { dataset: {} }, querySelector: () => null, querySelectorAll: () => [], createElement: () => el(), getElementById: () => null, activeElement: null,
+      fullscreenEnabled: o.fs !== false, fullscreenElement: null,
+      addEventListener: (t, f) => { if (t === 'keydown') keys.push(f); } },
+    maplibregl: { ScaleControl: function () {}, Map: function (opts) { map.opts = opts; return Object.assign(map, { on: (t, f) => (ons[t] ||= []).push(f), once: (t, f) => { onced.push(t); renders.push(f); }, addControl: noop,
+      getContainer: () => map, triggerRepaint: noop, getLayer: () => null,
+      getCanvas: () => (map.cv ||= { style: {}, width: 1800, height: 1120, clientWidth: 900, focus: () => { map.focused = (map.focused || 0) + 1; } }), touchZoomRotate: { disableRotation: noop }, doubleClickZoom: { enable: noop, disable: noop }, getZoom: () => o.zoom || 13.6, resize: noop,
+      project: ([x, y]) => ({ x: x * 1e4, y: -y * 1e4 }), unproject: ([x, y]) => ({ lng: x / 1e4, lat: -y / 1e4 }), easeTo: a => eased.push(a), panBy: a => (map.panned ||= []).push(a),
+      getCenter: () => ({ lng: 115.167, lat: -8.819 }) }); } },
+    deck: new Proxy({}, { get: (t, k) => k === 'MapboxOverlay' ? function () { return { _deck: { device: { canvasContext: { _framebuffer: 'old' } } }, setProps: x => { (x.layers || []).forEach(l => { drawn[l.id] = l.props; }); },
+      pickObject: () => (o.hit ? o.hit(drawn) : null) }; } : layer }) };
+  c.window = c; vm.createContext(c);
+  vm.runInContext(['esc', 'fmt'].map(pick).join('\n') + '\n' + src + '\nwindow.placeMap()', c);
+  await new Promise(r => setTimeout(r, 80));
+  const kk = map.kids.find(x => x.className === 'dkeys'), pan = map.kids.find(x => x.className === 'dpanel');
+  const out = { keys: kk ? kk.innerHTML : null, panel: pan ? pan.innerHTML : null, read: c.$('#dread').innerHTML, cake: c.$('#cake').innerHTML,
+    table: c.$('#ptable').innerHTML, asked };
+  /* without a mouse: the row puts the area in hand, an arrow moves its first point, the full stop steps, the next arrow moves the second */
+  if (tok) {
+    const key = k => keys.forEach(f => f({ key: k, target: { closest: () => null }, preventDefault: noop, stopPropagation: noop, shiftKey: false, metaKey: false, ctrlKey: false, altKey: false }));
+    rows[0].onclick(); out.held = c.$('#dread').innerHTML;
+    key('ArrowRight'); await new Promise(r => setTimeout(r, 650));
+    key('.'); out.stepped = c.$('#dread').innerHTML;
+    key('ArrowUp'); await new Promise(r => setTimeout(r, 650));
+    out.patched = patched;
+  }
+  if (o.then) Object.assign(out, await o.then({ c, map, ons, drawn, asked, onced, eased, renders, keys, posted }));
+  return { ...out, drawn: Object.fromEntries(Object.entries(drawn).filter(([k]) => k.startsWith('draw-')).map(([k, v]) => [k, (v.data || []).length])) };
+}
+(async () => {
+  const out = { tok: await boot(true), locked: await boot(false) };
+  /* the screen's right column, the download menu, the base and the drone pins: a node holding imagery and two drone
+     flights, seen from zoom 12, below the drone layer's 13 */
+  const fl = [{ provider: 'Bayu', title: 'a', gsd_m: 0.04, date: '2024-03-15', bbox: [115.15, -8.83, 115.17, -8.81] },
+    { provider: 'Made', title: 'b', gsd_m: 0.031, date: '2025-11-02', bbox: [115.10, -8.80, 115.12, -8.78] }];
+  const META = { on_disk: { imagery: true, drone: true }, layers: { imagery: { passes: 3, from: '2025-01', to: '2025-12', bytes: 1, attribution: 'Contains modified Copernicus Sentinel data' }, drone: { bytes: 1, mosaics: fl } } };
+  const btn = d => ({ closest: () => ({ dataset: d }) });
+  out.gis = await boot(true, { zoom: 12, meta: META, hit: dr => (dr['drone-pins'] ? { layer: { id: 'drone-pins' }, object: dr['drone-pins'].data[0] } : null),
+    then: async ({ c, map, ons, drawn, asked, onced, eased, renders, keys }) => {
+      const col = map.kids.find(x => x.className === 'tools'), menu = map.kids.find(x => x.className === 'dlmenu'), base = map.kids.find(x => x.className === 'pbase');
+      const r = { col: col && col.innerHTML, imagery: c.__PM.on.imagery, base: base && base.innerHTML,
+        pins: (drawn['drone-pins'] || {}).data, pinText: (drawn['drone-pins-l'] || {}).data };
+      col.onclick({ target: btn({ t: 'dl' }) }); r.menu = menu && menu.innerHTML; r.menuShown = menu && !menu.hidden;
+      /* everything on the screen, with the second map hidden: the PNG and the open map's three files */
+      c.__PM.mapOff.add(4); SAVED.length = 0;
+      menu.onclick({ target: btn({ dl: 'all' }) }); await new Promise(x => setTimeout(x, 60));
+      r.files = asked.filter(p => /^\/place\/maps\/\d+\.[a-z]+\?/.test(p)); r.saved = [...SAVED]; r.png = onced.includes('render');
+      /* the PNG is composed: the map's canvas, then the scale and the credit drawn on a copy, which is what is saved */
+      const calls = [], cv = { width: 0, height: 0, toDataURL: () => 'data:composed', getContext: () => new Proxy({}, {
+        get: (t, k) => k === 'measureText' ? s => ({ width: String(s).length * 5 }) : k in t ? t[k] : (...a) => calls.push([k, ...a]), set: (t, k, v) => { t[k] = v; return true; } }) };
+      const mk = c.document.createElement; c.document.createElement = t => (t === 'canvas' ? cv : mk(t));
+      renders.forEach(f => f()); c.document.createElement = mk;
+      /* Map only and Full screen are wired: each press goes to the folding (doors-place.js) */
+      c.placeWide = () => { r.wide = (r.wide || 0) + 1; }; c.placeFull = () => { r.full = (r.full || 0) + 1; };
+      col.onclick({ target: btn({ t: 'wide' }) }); col.onclick({ target: btn({ t: 'full' }) });
+      r.ops = calls.map(x => x[0]); r.texts = calls.filter(x => x[0] === 'fillText').map(x => x[1]); r.pngSaved = SAVED.filter(n => n.endsWith('.png'));
+      r.credit = c.$('#mapcredit').textContent;
+      /* a press that closes the menu does nothing else, even with the marker key pressed */
+      c.__PM.setTool('marker'); col.onclick({ target: btn({ t: 'dl' }) }); const before = asked.length;
+      (ons.click || []).forEach(f => f({ lngLat: { lng: 115.16, lat: -8.82 }, point: { x: 1, y: 1 } })); await new Promise(x => setTimeout(x, 30));
+      r.closeOnly = { hidden: menu.hidden, asked: asked.slice(before), state: c.__PM.draw.state };
+      c.__PM.setTool('select');
+      /* Esc in the menu closes it and leaves the drawing in hand */
+      c.__PM.draw.sel = 11; col.onclick({ target: btn({ t: 'dl' }) });
+      const esc = { key: 'Escape', target: { closest: q => (q.includes('.dlmenu') ? {} : null) }, preventDefault: noop, stopPropagation: noop, shiftKey: false, metaKey: false, ctrlKey: false, altKey: false };
+      keys.forEach(f => f(esc)); menu.onkeydown(esc); r.escKept = c.__PM.draw.sel; r.escClosed = menu.hidden;
+      /* a pin pressed flies to its flight */
+      (ons.click || []).forEach(f => f({ lngLat: { lng: 115.16, lat: -8.82 }, point: { x: 1, y: 1 } })); r.eased = eased;
+      return r; } });
+  /* a browser without element full screen (Safari on iPhone) gets no Full screen key */
+  out.nofs = await boot(true, { fs: false, then: async ({ map }) => ({ col: map.kids.find(x => x.className === 'tools').innerHTML }) });
+  /* past Block the satellite (10 m, tiles to zoom 15) hands the base to the street map, and a drone flight comes on
+     above it; the credit line says whose picture is drawn at this zoom */
+  const SATM = { on_disk: { imagery: true, drone: true, vector: true }, layers: { imagery: { attribution: 'Contains modified Copernicus Sentinel data' }, drone: { mosaics: [{ provider: 'Bayu', bbox: [115.15, -8.83, 115.17, -8.81] }] } } };
+  const credit = async zoom => boot(true, { zoom, meta: SATM, then: async ({ c, map, ons }) => ({ credit: (map.kids.find(x => x.className === 'pbase').onclick({ target: { closest: () => ({ dataset: { b: 'satellite' } }) } }), c.$('#mapcredit').textContent),
+    layers: map.opts.style.layers.filter(l => ['imagery', 'drone', 'drone-close'].includes(l.id)).map(l => [l.id, l.minzoom ?? null, l.maxzoom ?? null]) }) });
+  out.satFar = await credit(13.6); out.satClose = await credit(16.5);
+  /* a node without imagery keeps the streets as its base */
+  out.plain = await boot(true, { then: async ({ c }) => ({ imagery: c.__PM.on.imagery }) });
+  /* the L key pressed with the focus on the page, not the screen: once a line is started the arrows pan the map
+     (Enter adds at its centre); on the canvas MapLibre pans, so the page does not pan twice */
+  out.drawPan = await boot(true, { then: async ({ c, map, keys, ons }) => {
+    const press = (k, inCanvas) => keys.forEach(f => f({ key: k, target: { closest: q => (inCanvas && q.includes('maplibregl-canvas-container') ? {} : null) },
+      preventDefault: noop, stopPropagation: noop, shiftKey: false, metaKey: false, ctrlKey: false, altKey: false }));
+    c.__PM.setTool('line'); press('ArrowRight'); const idle = (map.panned || []).length;
+    press('Enter'); press('ArrowRight'); const drawing = (map.panned || []).length;
+    press('ArrowRight', true); const r = { idle, drawing, canvas: (map.panned || []).length, pts: c.__PM.draw.state && c.__PM.draw.state.pts.length };
+    /* a drawing key by letter hands the focus to the map; Select keeps it where it was */
+    const f0 = map.focused || 0; press('v'); r.focusV = (map.focused || 0) - f0; press('a'); r.focusA = (map.focused || 0) - f0;
+    /* after a frame, a framebuffer not the canvas's size (Full screen, a fold) goes, so deck draws at the new height */
+    const cc = c.__PM.overlay._deck.device.canvasContext, mine = (ons.render || []).filter(f => String(f).includes('_framebuffer'));
+    cc._framebuffer = { width: 1800, height: 1120 }; mine.forEach(f => f()); r.fbSame = !!cc._framebuffer;
+    cc._framebuffer = { width: 1108, height: 560 }; mine.forEach(f => f()); r.fb = cc._framebuffer; return r; } });
+  /* the map moving (node #1, 5 Nov): the pins on the screen's edge follow the map on `move`, one frame at a time, not
+     only once it settles; the list under the screen waits for `moveend` */
+  const pubs = D.sensors.filter(s => !s.local && s.indoor !== true && s.kind === 'sensor' && s.lat != null);
+  out.move = await boot(true, { nearby: { ring: pubs.map(s => ({ sensor_id: s.sensor_id, km: 3 })) }, then: async ({ c, map, ons }) => {
+    const before = c.$('#pedges').innerHTML, list = c.$('#pmargin').innerHTML;
+    map.project = ([x, y]) => ({ x: x * 1e4 + 400, y: -y * 1e4 - 300 });
+    (ons.move || []).forEach(f => f()); (ons.move || []).forEach(f => f());   /* two moves in one frame draw once */
+    await new Promise(r => setTimeout(r, 20));
+    return { before, after: c.$('#pedges').innerHTML, listKept: c.$('#pmargin').innerHTML === list, moves: (ons.move || []).length }; } });
+  /* the Image key, now that the top line's + Add an image is gone: with nothing in hand it offers a photo on its own, and
+     Enter pins a marker at the map's centre and opens the picker, whose first button is a new photo */
+  /* the readout is a chip: folded at first, opened by a press, folded by a second; open by itself while a drawing of
+     this house's is in hand, folded when it is let go; Esc from inside it folds it and keeps the focus on the chip */
+  out.chip = await boot(true, { then: async ({ c, keys }) => {
+    const r = {}, read = () => c.$('#dread').innerHTML, chip = c.$('#dread').querySelector('.dchip');
+    const esc = inPanel => keys.forEach(f => f({ key: 'Escape', target: { closest: q => (inPanel && q === '.dpanel' ? {} : null) }, preventDefault: noop, stopPropagation: noop, shiftKey: false, metaKey: false, ctrlKey: false, altKey: false }));
+    c.__PM.draw.sel = null; c.__PM.draw.open = false; c.__PM.draw.auto = false; c.__PM.readout = null;
+    c.__PM.setTool('select'); r.start = read();
+    chip.onclick(); r.opened = read(); chip.onclick(); r.folded = read();
+    chip.onclick(); c.document.activeElement = chip; esc(true); r.escInside = { html: read(), focus: c.document.activeElement === chip };
+    c.$('#ptable').querySelectorAll('.mrow')[0].onclick(); r.held = read();
+    esc(false); r.letGo = { html: read(), sel: c.__PM.draw.sel };
+    return r; } });
+  out.image = await boot(true, { then: async ({ c, keys, posted }) => {
+    c.__PM.draw.sel = null; c.__PM.setTool('image'); const form = c.$('#dform').innerHTML;
+    keys.forEach(f => f({ key: 'Enter', target: { closest: () => null }, preventDefault: noop, stopPropagation: noop, shiftKey: false, metaKey: false, ctrlKey: false, altKey: false }));
+    await new Promise(r => setTimeout(r, 40));
+    return { form, posted: posted.map(b => [b.properties.kind, b.geometry.coordinates]), picker: c.$('#dform').innerHTML }; } });
+  /* fix round: while a line is drawn and the map zooms without the mouse moving, the leg to the pointer keeps its end
+     under the pointer (move, in the same frame as the edge pins); Esc on the Tools button leaves the screen alone; a
+     press that closes Tools does nothing on the map; the Image key with no map says make one first */
+  out.fix = await boot(true, { then: async ({ c, map, ons, keys, posted }) => {
+    const r = {}, ev = (k, closest) => keys.forEach(f => f({ key: k, target: { closest }, preventDefault: noop, stopPropagation: noop, shiftKey: false, metaKey: false, ctrlKey: false, altKey: false }));
+    c.__PM.setTool('line');
+    (ons.click || []).forEach(f => f({ lngLat: { lng: 115.167, lat: -8.819 }, point: { x: 100, y: 100 } }));
+    (ons.mousemove || []).forEach(f => f({ lngLat: { lng: 115.168, lat: -8.8185 }, point: { x: 300, y: 200 } }));
+    r.before = c.__PM.draw.hover;
+    map.unproject = ([x, y]) => ({ lng: x / 2e4 + 115, lat: -y / 2e4 - 8 });   /* the map zoomed: the same pixel is another place */
+    (ons.move || []).forEach(f => f()); await new Promise(x => setTimeout(x, 20));
+    r.after = c.__PM.draw.hover; c.__PM.setTool('select');
+    c.__PM.draw.sel = 11; ev('Escape', q => (q.includes('.ptools') ? {} : null)); r.escTools = c.__PM.draw.sel;
+    /* a tool chosen from the menu leaves the focus on the Tools button, the menu shut: the screen's keys work from there */
+    c.$('#ptools').hidden = true; c.__PM.draw.sel = null; c.__PM.setTool('from');
+    ev('Escape', q => (q.includes('.ptools') ? {} : null)); r.escFrom = c.__PM.tool;
+    ev('m', q => (q.includes('.ptools') ? {} : null)); r.mFrom = c.__PM.tool; c.$('#ptools').hidden = false; c.__PM.setTool('select');
+    /* a shape started from the keyboard has no leg to the pointer, and a zoom does not give it one */
+    c.__PM.setTool('line'); ev('Enter', () => null); const kb = c.__PM.draw.hover;
+    (ons.move || []).forEach(f => f()); await new Promise(x => setTimeout(x, 20)); r.kbLeg = [kb, c.__PM.draw.hover]; c.__PM.setTool('select');
+    c.__PM.draw.sel = null; c.__PM.setTool('marker'); const n = posted.length;
+    c.document.getElementById = id => (id === 'ptoolsb' ? { getAttribute: () => 'true' } : null);
+    (ons.click || []).forEach(f => f({ lngLat: { lng: 115.16, lat: -8.82 }, point: { x: 1, y: 1 } })); await new Promise(x => setTimeout(x, 30));
+    r.toolsClick = { posted: posted.length - n, state: c.__PM.draw.state };
+    c.document.getElementById = () => null; c.__PM.setTool('select');
+    c.__PM.draw.map = null; c.__PM.setTool('image'); r.noMap = { read: c.$('#dread').innerHTML, form: c.$('#dform').innerHTML };
+    return r; } });
+  /* From the house, in the Tools menu: a tool row that runs with the token */
+  const els = {}, c = { $: q => (els[q] ||= el()), DOORS_TOKEN: () => 't', document: { activeElement: null, querySelectorAll: () => [], querySelector: () => null }, window: { __PM: { on: {}, tool: 'select' } } };
+  vm.createContext(c); vm.runInContext(place.match(/const TOOLS = [\s\S]*?\n\];\n/)[0] + fn(place, 'placeTools') + 'placeTools()', c);
+  out.ptools = c.$('#ptools').innerHTML;
+  console.log(JSON.stringify(out));
+})();
+""" % replayed(FIX)
+_r = subprocess.run(["node"], input=mprog, capture_output=True, text=True)
+assert _r.returncode == 0, _r.stderr[-3000:]
+M = json.loads(_r.stdout)
+_t, _x = M["tok"], M["locked"]
+_keys = re.findall(r'<button[^>]*aria-label="([^"]+)"[^>]*aria-pressed="(true|false)"', _t["keys"] or "")
+assert [k for k, _ in _keys] == ["Select", "Marker", "Line, with distance", "Area, with surface", "Note", "Image"] and [p for _, p in _keys].count("true") == 1, _keys
+assert re.search(r'<button[^>]*aria-label="Undo"', _t["keys"]) and _keys[0][1] == "true", "an Undo key, and Select pressed to start"
+assert all(f"<small>{k}</small>" in _t["keys"] for k in "VMLANI"), "the letter in each key's corner"
+assert 'id="dsaid" class="vh" aria-live="polite"' in _t["panel"] and 'id="dread" class="dread">' in _t["panel"], \
+    "only the finished figure is live; the readout that follows the pointer is not"
+assert "&lt;img src=x onerror=1&gt;" in _t["read"], "the readout names the open map, escaped"
+print("  place: six drawing keys and Undo on the screen, Select pressed; the kept figure is aria-live; the readout names the open map")
+_ring = [[115.167, -8.819], [115.168, -8.819], [115.168, -8.818]]
+_p1, _p2 = [x["geometry"]["coordinates"][0] for x in _t["patched"]]
+assert "Arrows move point 1 of 3. Press . for the next point." in _t["held"] and "point 2 of 3" in _t["stepped"], (_t["held"], _t["stepped"])
+assert _p1[0] != _ring[0] and _p1[1:3] == _ring[1:3] and _p1[0] == _p1[-1], ("the first arrow moves the first point, the ring stays closed", _p1)
+assert _p2[0] == _p1[0] and _p2[1] != _ring[1] and _p2[1][1] > _ring[1][1] and _p2[2] == _ring[2], ("after the full stop the arrow moves the second point, up", _p2)
+print("  place: without a mouse, a drawing in hand moves point by point: the arrows move one, the full stop steps to the next")
+_ck = _t["cake"]
+assert _ck.index('id="ymaps"') < _ck.index('data-cake="results"'), "your maps sit above the results"
+assert _ck.index('class="ly map') < _ck.index('class="ly new"') and ">New map<" in _ck, "a square-dot row per map, then New map"
+assert _ck.count('class="ly map') == 2 and "2 drawn" in _ck and "0 drawn" in _ck, _ck[:800]
+assert "<img src=x" not in _ck and "&lt;img src=x onerror=1&gt;" in _ck, "a map's name is the household's text, escaped"
+_tb = _t["table"]
+assert "<img src=x" not in _tb and _tb.count("&lt;img src=x onerror=1&gt;") == 2, "the table's head and the drawing's label, escaped"
+assert "<table" in _tb and "312 m²" in _tb and "102 m" in _tb and "catch the roof’s water" in _tb and 'data-k="11"' in _tb and 'data-k="12"' in _tb, _tb[:900]
+assert "#9BFF2E" in _tb and _tb.count('class="mth"') == 1, "a swatch in the drawing's own colour, one thumbnail for the one image"
+assert _t["drawn"].get("draw-area") == 1 and _t["drawn"].get("draw-line") == 1, ("the drawings are deck.gl layers, so the PNG holds them", _t["drawn"])
+assert "/place/maps" in _t["asked"] and "/place/maps/3/marks" in _t["asked"], _t["asked"]
+print("  place: your maps above the cake, then New map; the open map's table in the lower band; names and labels escaped")
+assert _x["keys"] is None and _x["panel"] is None, "without the token no key is drawn"
+_ys = re.sub(r"<[^>]+>", "", _x["cake"][_x["cake"].index('id="ymaps"'):_x["cake"].index('data-cake="results"')])
+assert "Your maps are kept on this node. Unlock this screen in Set up to draw." in _ys and 'class="ly new"' not in _x["cake"], _ys
+assert not [p for p in _x["asked"] if p.startswith(("/place/maps", "/place/marks"))], "a tokenless screen does not ask for maps"
+print("  place: without the token, your maps say where they are and how to unlock; no key, no New map")
+assert 'data-tool="from"' in M["ptools"] and "From the house" in M["ptools"], M["ptools"][:400]
+_css = html[html.index("/* ================= PLACE: a small GIS"):html.index("/* ================= NODE")]
+assert ".dkeys button{width:var(--k);height:var(--k)" in _css and ".dread .dsw button{flex:none;width:var(--k);height:var(--k)" in _css and re.search(r"\.dkeys button:focus-visible,\.dchip:focus-visible,\.dpanel button:focus-visible,\.dpanel input:focus-visible,"
+                                                                    r"\.dpanel textarea:focus-visible,\.dpanel select:focus-visible\{outline:2px solid var\(--cells\)", _css), \
+    "--k keys and swatches; focus on the black screen is the cells' blue, as the hour pill's"
+assert "p.cells" in pm[pm.index("function drawLayers"):pm.index("function drawLayers") + 4000], "a drawing in focus is outlined in the cells' blue"
+assert ".ly.map i{border-radius:2px}" in _css, "a map's dot is square, a layer's round"
+assert "'The image stays on this node. The map only names which one it is, and the file never leaves.'" in pm and "never the file’s" not in pm, \
+    "the image hint says only what is true: a photo's own GPS still wins on the node"
+print("  place: From the house in the Tools menu; --k keys; focus is the cells' blue on the screen")
+
+# Share's second press sends the map exactly, so only the node's own warning (409, code share_warning) may arm it.
+# A 500, or "no node upstream", shows its words and the next press asks for the warning again (final review I3).
+sprog = r"""
+const fs = require('fs'), vm = require('vm'), pm = fs.readFileSync('./app/static/doors-placemap.js', 'utf8');
+const lift = n => pm.match(new RegExp('^(?:async )?function ' + n + '\\([\\s\\S]*?\\n}\\n', 'm'))[0];
+const WARN = { code: 'share_warning', text: 'Sharing sends every drawing in this map…' };
+const answers = [], sent = [];
+const c = { PM: { draw: { asked: null } }, panel() {}, mapTable() {}, actor: () => 'Tomas',
+  send: async (m, p, body) => { sent.push(body); return answers.shift(); } };
+vm.createContext(c);
+vm.runInContext(pm.match(/^const refused = .*$/m)[0] + '\n' + lift('mapPatch') + lift('share'), c);
+const m = { id: 3, shared: false, held: false }, out = {};
+const press = async a => { answers.push(a); await c.share(m); return { body: sent[sent.length - 1], shown: c.PM.draw.asked && c.PM.draw.asked.text }; };
+(async () => {
+  out.e500 = await press({ ok: false, status: 500, detail: 'Internal Server Error' });
+  out.after500 = await press({ ok: false, status: 409, detail: 'There is no node upstream to share with. Set PARENT in Set up first.' });
+  out.afterParent = await press({ ok: false, status: 409, detail: WARN });
+  out.confirm = await press({ ok: true, status: 200, map: { shared: true } });
+  console.log(JSON.stringify(out));
+})();
+"""
+_s = json.loads(subprocess.run(["node", "-e", sprog], capture_output=True, text=True, check=True).stdout)
+assert _s["e500"]["body"] == {"shared": True, "actor": "Tomas"} and _s["e500"]["shown"] == "Internal Server Error", _s["e500"]
+assert _s["after500"]["body"] == {"shared": True, "actor": "Tomas"}, ("a 500 armed the second press", _s["after500"])
+assert _s["afterParent"]["body"] == {"shared": True, "actor": "Tomas"}, ("no node upstream armed the second press", _s["afterParent"])
+assert _s["afterParent"]["shown"] == "Sharing sends every drawing in this map…", "the warning is shown in its own words"
+assert _s["confirm"]["body"] == {"shared": True, "confirm": "exact", "actor": "Tomas"}, ("the warning arms the second press", _s["confirm"])
+print("  place: only the node's warning arms Share's second press; a 500 or no node upstream does not")
+
+# Downloads in four formats, the satellite first, the years below the map, drone pins (SPEC_place_microgis §4, Task 8)
+_g = M["gis"]
+_col = re.findall(r'<button[^>]*aria-label="([^"]+)"', _g["col"] or "")
+assert _col == ["Map only", "Full screen", "Back to this node’s cell", "Download"], _col
+_dl = re.findall(r'<button[^>]*aria-label="([^"]+)"', _g["menu"] or "")
+assert _dl == ["Image of the screen · PNG", "For upstream and QGIS · GeoJSON", "For Google Earth, phones · KML", "For CAD, in metres · DXF",
+               "Everything on the screen"], _dl
+assert _g["menuShown"], "Download opens its menu"
+assert "save(screenImage().toDataURL('image/png'), name)" in pm and "x.drawImage(src, 0, 0)" in pm, "the PNG is the canvas, drawings and all, composed"
+assert _g["png"] and sorted(_g["saved"]) == ["n-3.dxf", "n-3.geojson", "n-3.kml"] and len(_g["files"]) == 3, \
+    ("everything on the screen: the PNG, then each visible map's three files, one download each", _g["files"], _g["saved"])
+assert _g["ops"][:2] == ["drawImage", "scale"], ("the map canvas first, then the page pixels", _g["ops"][:4])
+_tx = " · ".join(_g["texts"])
+assert all(x in _tx for x in _g["credit"].split(" · ")) and "Copernicus" in _tx and "Natural Earth" in _tx, ("the PNG carries the credit #mapcredit shows", _g["texts"], _g["credit"])
+assert any(re.fullmatch(r"\d+ (m|km)", t) for t in _g["texts"]), ("the PNG carries a scale in metres", _g["texts"])
+assert "stroke" in _g["ops"] and _g["pngSaved"], "a scale bar is drawn, and the composed image is what is saved"
+print("  place: the PNG carries the credit line and a scale bar, drawn on a copy of the map's canvas")
+assert _g["closeOnly"]["hidden"] and not [p for p in _g["closeOnly"]["asked"] if "/marks" in p] and not _g["closeOnly"]["state"], \
+    ("a press that closes the menu drops no marker", _g["closeOnly"])
+assert _g["escClosed"] and _g["escKept"] == 11, "Esc in the menu closes it and keeps the drawing in hand"
+print("  place: closing the menu, by a press or Esc, does nothing else on the screen")
+print("  place: the right column reads Map only, Full screen, Back to this node’s cell, Download; the menu offers four formats and everything on the screen")
+assert _g["imagery"] is True and M["plain"]["imagery"] is False, "the satellite is the base where the node holds imagery, the streets elsewhere"
+_sf, _sc = M["satFar"], M["satClose"]
+assert ["imagery", None, 15] in _sf["layers"] and ["drone-close", 15, None] in _sf["layers"], ("the satellite stops at zoom 15 and a drone flight takes over past it", _sf["layers"])
+assert "Copernicus" in _sf["credit"] and "OpenStreetMap" in _sf["credit"], ("at Cell scale the satellite's credit is on the line", _sf["credit"])
+assert "Copernicus" not in _sc["credit"] and "OpenStreetMap" in _sc["credit"] and "OpenAerialMap" in _sc["credit"], \
+    ("at Street scale the street map and the drone flight are credited, not the satellite", _sc["credit"])
+print("  place: past Block the satellite gives the base to the street map and any drone flight, and the credit line follows")
+_dp = {k: M["drawPan"][k] for k in ("idle", "drawing", "canvas", "pts")}
+assert M["drawPan"]["fbSame"] and M["drawPan"]["fb"] is None, ("a framebuffer of the canvas's size stays; one of another size is made again", M["drawPan"]["fbSame"], M["drawPan"]["fb"])
+assert (M["drawPan"]["focusV"], M["drawPan"]["focusA"]) == (0, 1), ("a drawing key hands the focus to the map, Select does not", M["drawPan"]["focusV"], M["drawPan"]["focusA"])
+assert _dp == {"idle": 0, "drawing": 1, "canvas": 1, "pts": 1}, ("a started line pans the map from anywhere, the page's arrows are left alone before, and the canvas pans by itself", _dp)
+_ch = M["chip"]
+_open = lambda h: 'class="dchip" aria-expanded="true"' in h and '<div id="dfull" class="dfull">' in h
+_shut = lambda h: 'class="dchip" aria-expanded="false"' in h and '<div id="dfull" class="dfull" hidden>' in h
+assert _shut(_ch["start"]) and 'class="dot"' in _ch["start"] and 'data-c="1"' in _ch["start"], ("the readout opens folded, a chip with a dot in the colour", _ch["start"][:400])
+assert _open(_ch["opened"]) and _shut(_ch["folded"]), "a press on the chip opens the colours and the hint, a second folds them"
+assert _shut(_ch["escInside"]["html"]) and _ch["escInside"]["focus"], "Esc from inside the readout folds it and keeps the focus on the chip"
+assert _open(_ch["held"]) and "Arrows move point 1 of 3" in _ch["held"] and '<span class="v" aria-hidden="true">' in _ch["held"], ("a drawing of the house's in hand opens the colours by itself", _ch["held"][:500])
+assert _shut(_ch["letGo"]["html"]) and _ch["letGo"]["sel"] is None, ("Esc lets the drawing go, and the readout it opened folds again", _ch["letGo"])
+assert 'id="dsaid" class="vh" aria-live="polite"' in _t["panel"], "the finished-figure live region stays as it was"
+print("  place: the readout is a chip with the tool, the map, the live figure and a dot; a press opens the colours; a drawing in hand opens it; Esc folds it")
+_fx = M["fix"]
+assert _fx["before"] == [115.168, -8.8185] and _fx["after"] == [115 + 300 / 2e4, -8 - 200 / 2e4], ("on move the leg's end follows the pointer's pixel", _fx["before"], _fx["after"])
+assert _fx["escTools"] == 11, "Esc on the Tools button while its menu is open is the menu's: the drawing in hand stays"
+assert _fx["escFrom"] == "select" and _fx["mFrom"] == "marker", ("with the menu shut and the focus on Tools, Esc ends From the house and M takes the marker key", _fx["escFrom"], _fx["mFrom"])
+assert _fx["kbLeg"] == [None, None], ("a shape from the keyboard gains no leg to an old mouse pixel when the map moves", _fx["kbLeg"])
+assert _fx["toolsClick"] == {"posted": 0, "state": None}, ("a press that closes Tools drops no marker", _fx["toolsClick"])
+assert "Make a map first with New map" in _fx["noMap"]["read"] and "Add a photo on its own." in _fx["noMap"]["form"] and "Press the map" not in _fx["noMap"]["form"], \
+    ("the Image key with no map says make one first, and still offers a photo on its own", _fx["noMap"])
+assert "@container place (max-width:899px){.dchip .v small.more{display:none}}" in html and ".dchip .m{flex:0 1000 auto;" in html and "text-overflow:ellipsis}.dchip .v:empty" in html, \
+    "the chip gives way name first, then the tool; the figure ends in an ellipsis and keeps its unit when narrow"
+assert "@media (min-width:761px){#pchange .pair figure{aspect-ratio:auto;height:min(420px,calc(50vw - 40px))}#pchange .pair img{object-fit:contain;object-position:center}" in html \
+    and "#pchange .photo{height:min(420px,calc(100vw - 80px));object-fit:contain;object-position:center}" in html and "#pchange .pair figure,#pchange .photo{background:var(--screen)}" in html \
+    and "object-fit:cover;object-position:center" not in html, "at a desk then and now are at most 420 px tall and show the whole square, the single year too, on the screen's ground"
+assert "max-height:calc(100% - 3 * var(--k) - 44px)" in html, "under 560 px of screen the readout and its form stop above the hour"
+print("  place: the leg follows the pointer through a zoom; Esc and a press that close Tools touch nothing else; the Image key with no map says so")
+_im = M["image"]
+assert 'data-a="newphoto"' in _im["form"] and "A new photo" in _im["form"], ("the Image key with nothing in hand offers a photo on its own", _im["form"])
+assert _im["posted"] == [["marker", [115.167, -8.819]]] and 'data-a="newimg"' in _im["picker"], ("Enter with the Image key pins a marker at the centre and opens the picker", _im)
+assert 'data-learn="place-image"' in pm and "on('newphoto', () => window.placeAddImage && window.placeAddImage());" in pm, "the Image key carries the image's learn mark; its photo opens #imgdlg"
+print("  place: the Image key adds a photo on its own or pinned at the map's centre by Enter, through the same dialog")
+_mv = M["move"]
+assert "<circle" in _mv["before"] and _mv["moves"] >= 1, ("the off-screen stations have edge pins, and the map listens to move", _mv["moves"], _mv["before"][:200])
+assert _mv["after"] != _mv["before"] and _mv["listKept"], ("on move the edge pins follow the map; the list waits for moveend", _mv)
+print("  place: while the map moves, the edge pins follow it frame by frame; the list under the screen waits for it to settle")
+_bs = re.findall(r'<button[^>]*aria-pressed="(true|false)"[^>]*>([a-z]+)<', _g["base"] or "")
+assert [b for _, b in _bs] == ["satellite", "streets", "drone"] and [p for p, _ in _bs] == ["true", "false", "false"], _bs
+print("  place: satellite on at load where the node holds it; the base switch reads satellite · streets · drone")
+assert len(_g["pins"] or []) == 2 and [round(v, 6) for v in _g["pins"][0]["q"]] == [115.16, -8.82], _g["pins"]
+assert [x["t"] for x in _g["pinText"]] == ["drone, 4 cm, Mar 2024", "drone, 3 cm, Nov 2025"], _g["pinText"]
+assert any(e.get("zoom") == 16 and [round(v, 6) for v in e.get("center")] == [115.16, -8.82] for e in _g["eased"]), ("a pin pressed flies to its flight at zoom 16", _g["eased"])
+print("  place: below zoom 13 each drone flight is a pin, named by its resolution and month; pressed, it flies there at 16")
+_pl = html[html.index('<section class="page view" data-view="place"'):html.index("<!-- DATA -->")]
+assert "altc" not in html and "mapalt" not in html, "the then-and-now pair is off the screen"
+assert _pl.index('class="pyears"') < _pl.index('id="pchange"') < _pl.index('class="plow"') < _pl.index('id="ptable"') < _pl.index('id="pfigures"'), \
+    "what changed is a band of its own under the screen, end to end, above the open map's table"
+assert re.search(r"\.pyears\{[^}]*\}", _css) and ".years{display:grid;gap:4px;align-items:end;height:98px" in _css and "#pchange .pair{grid-template-columns:minmax(0,1fr)}" in html, \
+    "the years are bigger: the bars twice as tall; then and now side by side, stacked on a phone"
+_dr = (STATIC / "doors-load.js").read_text()
+assert "place_yearly: 'history?sensor_id=place-point&metric=sat_buildings_yearly'" in _dr, "the yearly count is the node's own series, GET /history"
+yprog = r"""
+const fs = require('fs'), vm = require('vm');
+const L = require('./app/static/doors-load.js');
+const core = fs.readFileSync('./app/static/doors-core.js', 'utf8'), pick = n => core.match(new RegExp('^const ' + n + ' = .*$', 'm'))[0];
+const place = fs.readFileSync('./app/static/doors-place.js', 'utf8'), fn = (s, n) => s.match(new RegExp('function ' + n + '\\(' + '[\\s\\S]*?\\n}\\n'))[0];
+const F = JSON.parse(fs.readFileSync('%s', 'utf8'));
+const Y = [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023].map((y, i) => ({ ts: `${y}-07-01T08:00:00+08:00`, value: 98.4 + i * 4.2 }));
+const D = L.buildD({ ...F, days: F.issues_days, place_yearly: Y }, 'en');
+const els = {}, c = { D, sign: () => '', $: q => (els[q] ||= { innerHTML: '' }), window: {} }; vm.createContext(c);
+vm.runInContext(['esc', 'num', 'PROV', 'prov', 'SAT'].map(pick).join('\n') + '\nlet YEAR = 2025, COMPARE = true, PAST = null;\n' + fn(place, 'layer') + 'layer()', c);
+const none = L.buildD({ ...F, days: F.issues_days }, 'en');
+console.log(JSON.stringify({ yearly: D.place_yearly, none: none.place_yearly, html: c.$('#pchange').innerHTML }));
+""" % replayed(FIX)
+_y = json.loads(subprocess.run(["node"], input=yprog, capture_output=True, text=True, check=True).stdout)
+assert _y["none"] == [] and [r["year"] for r in _y["yearly"]] == list(range(2016, 2024)), _y["yearly"]
+_ch = _y["html"]
+assert "what changed, year on year" in _ch and 'class="pair"' in _ch and "then · 2016" in _ch and "now · 2025" in _ch, _ch[:600]
+assert 'aria-label="Earlier"' in _ch and 'aria-label="Later"' in _ch, "the year arrows came along"
+assert re.search(r"ha changed.*model", _ch, re.S), "the AlphaEarth hectares, with their model word"
+_bars = _ch[_ch.index('class="years"'):]
+assert _bars.count("<i ") == 8 and "2016" in _bars and "2023" in _bars, _bars[:400]
+print("  place: what changed, year on year, under the map: the then-and-now pair, its arrows, the hectares (model) and a bar a year")
+
+# Folding sides, map only, full screen, the phone (SPEC_place_microgis §4, §10, Task 9)
+_g = M["gis"]
+assert "aria-disabled" not in _g["col"] and "not yet" not in _g["col"], "Map only and Full screen are keys now, not placeholders"
+assert re.search(r'data-t="wide"[^>]*aria-label="Map only" title="Map only · \\" aria-pressed="false"', _g["col"]) \
+    and re.search(r'data-t="full"[^>]*aria-label="Full screen" title="Full screen · F" aria-pressed="false"', _g["col"]), _g["col"]
+assert _g.get("wide") == 1 and _g.get("full") == 1, ("a press on each goes to the folding", _g.get("wide"), _g.get("full"))
+assert re.findall(r'aria-label="([^"]+)"', M["nofs"]["col"]) == ["Map only", "Back to this node’s cell", "Download"], M["nofs"]["col"]
+print("  place: Map only and Full screen are wired; where the browser has no element full screen its key is not drawn")
+_pl = html[html.index('<section class="page view" data-view="place"'):html.index("<!-- DATA -->")]
+_fb = re.findall(r'<button type="button" class="pfold" data-fold="(lc|rc)" aria-controls="(cake|ptools)" aria-expanded="true" aria-label="(Hide the layers|Hide the tools)" title="[^"]+ · ([\[\]])">', _pl)
+assert _fb == [("lc", "cake", "Hide the layers", "[")], ("one side folds, the left", _fb)
+_css = html[html.index("/* ================= PLACE: a small GIS"):html.index("/* ================= NODE")]
+assert re.search(r"@media \(min-width:761px\)\{[^@]*\.bench\.lc\{grid-template-columns:36px minmax\(0,1fr\)\}", _css), "the layers fold to a 36 px strip and the screen takes the rest"
+assert ".bench.rc" not in _css and "lc.rc" not in _css and "1081px" not in _css, "no right side to fold"
+assert re.search(r"\.bench\.lc \.pfold\[data-fold=\"lc\"\]\{left:0;top:0;bottom:0;width:36px", _css) and "writing-mode:vertical-rl" in _css, \
+    "a folded side is a 36 px strip with its name written down it, and the strip is the button that opens it"
+assert '.pfold[data-fold="lc"]{grid-row:1/2;grid-column:1/2;' in _css, "the strip is held by the screen's row and stops at its foot"
+assert ".bench.lc.mo .mapc #map{height:max(560px,calc(100vh - 80px))}" in _css, "map only: the screen takes the window's height, less the header"
+assert re.search(r"\.mapc:fullscreen\{[^}]*\}\.mapc:fullscreen \.mapw\{[^}]*height:100%\}\.mapc:fullscreen #map\{flex:1", _css), "full screen: the screen fills it"
+_ph9 = re.search(r"@media \(max-width:760px\)\{\n  \.phead[^@]*", html).group(0)
+assert ".bench{position:relative}.pfold{display:none}" in _css and re.search(r"@media \(min-width:761px\)\{\n  \.pfold\{position:absolute", _css) \
+    and '.tools [data-t="wide"]{display:none}' in _ph9, "a phone has no side to fold: the sheet holds it"
+for _n in ("doors-place.js", "doors-placemap.js"):
+    _bare = [ln for ln in (STATIC / _n).read_text().splitlines() if "localStorage." in ln and not re.search(r"try \{[^}]*localStorage\.", ln)]
+    assert not _bare, (f"{_n}: storage read or written outside try", _bare)
+fprog = r"""
+const fs = require('fs'), vm = require('vm');
+const place = fs.readFileSync('./app/static/doors-place.js', 'utf8'), noop = () => {};
+function load({ store = {}, fsOk = true, broken = false, tok = true } = {}) {
+  const cls = new Set(), keys = [], clicks = [], seen = { resized: 0, full: 0, scrolled: 0, layers: [], tools: [] };
+  const btn = f => ({ dataset: { fold: f }, attrs: {}, title: '', setAttribute(k, v) { this.attrs[k] = v; }, getAttribute(k) { return this.attrs[k]; }, focus() { doc.activeElement = this; } });
+  const folds = [btn('lc')], wide = btn('wide');
+  const bench = { dataset: {}, classList: { contains: x => cls.has(x), add: x => cls.add(x), toggle: (x, on) => ((on === undefined ? !cls.has(x) : on) ? cls.add(x) : cls.delete(x)) } };
+  const screen = { requestFullscreen: () => { seen.full++; return Promise.reject(new Error('refused')); }, scrollIntoView: () => { seen.scrolled++; } };
+  /* a cake row with focus, inside #cake */
+  const row = { name: 'row' }, cake = { contains: x => x === row };
+  /* the Tools button and its menu: rows are made from the menu's html, as the browser would */
+  const tb = { name: 'toolsb', attrs: {}, setAttribute(k, v) { this.attrs[k] = v; }, focus() { doc.activeElement = this; } };
+  const menu = { hidden: true, html: '', rows: [],
+    set innerHTML(h) { this.html = h; this.rows = [...h.matchAll(/<button([^>]*)>/g)].map(([, at]) => { const d = at.match(/data-(layer|tool)="([a-z]+)"/) || [];
+      return { name: d[2], kind: d[1], disabled: / disabled/.test(at), dataset: d[1] ? { [d[1]]: d[2] } : {}, focus() { doc.activeElement = this; } }; }); },
+    get innerHTML() { return this.html; },
+    querySelector: q => (q === 'button:not(:disabled)' ? menu.rows.find(r => !r.disabled) || null : null) };
+  const ls = broken ? { getItem() { throw new Error('denied'); }, setItem() { throw new Error('denied'); } } : { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); } };
+  const doc = { fullscreenEnabled: fsOk, fullscreenElement: null, activeElement: null,
+      addEventListener: (t, f) => { if (t === 'keydown') keys.push(f); if (t === 'click') clicks.push(f); },
+      querySelector: q => (q === '.bench' ? bench : q === '.mapc' ? screen : q === '.tools [data-t="wide"]' ? wide : q === '#cake' ? cake
+        : q === '.pfold[data-fold="lc"]' ? folds[0] : q === '.ptools' ? wrap : null),
+      querySelectorAll: q => (q === '.pfold' ? folds : q === '#ptools button[data-layer]' ? menu.rows.filter(r => r.kind === 'layer') : q === '#ptools button[data-tool]' ? menu.rows.filter(r => r.kind === 'tool') : []) };
+  const els = { '#ptools': menu, '#ptoolsb': tb }, wrap = { on: {}, addEventListener(t, f) { this.on[t] = f; }, contains: x => x === tb || menu.rows.includes(x) };
+  const c = { VIEWS: {}, D: {}, console, view: () => 'place', localStorage: ls, $: q => els[q] || { addEventListener: noop }, document: doc, DOORS_TOKEN: () => (tok ? 't' : '') };
+  c.window = c; c.__PM = { map: { resize: () => { seen.resized++; } }, on: {}, tool: 'select', setTool: t => seen.tools.push(t) };
+  c.placeLayer = (l, on) => seen.layers.push(`${l}:${on}`);
+  vm.createContext(c); vm.runInContext(place, c);
+  const typing = sel => /input/.test(sel) ? {} : null;
+  const key = (k, o = {}) => keys.forEach(f => f({ key: k, target: { closest: o.typing ? typing : o.menu ? (s => /ptmenu/.test(s) ? {} : null) : () => null }, preventDefault: noop, metaKey: !!o.meta, ctrlKey: !!o.ctrl, altKey: !!o.alt }));
+  const state = () => ({ cls: [...cls].sort().join(' '), labels: folds.map(b => `${b.attrs['aria-label']}:${b.attrs['aria-expanded']}`), title: folds[0].title,
+    wide: wide.attrs['aria-pressed'], store: store.planetai_place_folds, ...seen });
+  return { folds, key, state, store, doc, row, tb, menu, c, wrap, click: inside => clicks.forEach(f => f({ target: { closest: s => (inside && s === '.ptools' ? {} : null) } })) };
+}
+const out = {}, a = load();
+out.start = a.state();
+a.folds[0].onclick(); out.left = a.state();
+a.key(']'); out.bracket = a.state();
+a.key('[', { typing: true }); a.key('[', { ctrl: true }); out.typing = a.state();
+a.key('['); out.open = a.state();
+a.key('\\'); out.wideOn = a.state();
+a.key('\\'); out.wideOff = a.state();
+a.key('F'); out.full = a.state();
+a.key('\\'); out.reload = load({ store: { planetai_place_folds: a.store.planetai_place_folds } }).state();
+out.oldRight = load({ store: { planetai_place_folds: 'lc rc' } }).state();
+out.oldRightOnly = load({ store: { planetai_place_folds: 'rc' } }).state();
+const n = load({ fsOk: false }); n.key('f'); out.noFs = n.state();
+const b = load({ broken: true }); b.key('['); out.broken = b.state();
+/* focus on a cake row: `[` hides it, and focus goes to the layers' strip, not to the page */
+const fo = load(); fo.doc.activeElement = fo.row; fo.key('['); out.focus = fo.doc.activeElement === fo.folds[0] ? 'strip' : fo.doc.activeElement ? fo.doc.activeElement.name : 'body';
+/* Option on a Spanish or German Mac, AltGr (Ctrl+Alt) on Windows: `[` still folds; with ⌘ it does not */
+const al = load(); al.key('[', { alt: true }); out.alt = al.state();
+const me = load(); me.key('[', { meta: true }); me.key('\\', { meta: true }); out.meta = me.state();
+/* the Tools menu: the button opens it on its first runnable row; Esc closes it and gives the focus back; a press outside
+   closes it; a tool chosen runs and closes it */
+const t = load(); t.c.placeTools(); const order = [...t.menu.html.matchAll(/<span>([^<]+)<\/span><code>([^<]+)<\/code>/g)].map(m => `${m[1]}|${m[2]}`);
+t.tb.onclick(); out.menu = { order, open: !t.menu.hidden, exp: t.tb.attrs['aria-expanded'], focus: t.doc.activeElement && t.doc.activeElement.name };
+t.key('Escape', { menu: true }); out.menu.esc = { hidden: t.menu.hidden, exp: t.tb.attrs['aria-expanded'], focus: t.doc.activeElement && t.doc.activeElement.name };
+t.tb.onclick(); t.click(true); out.menu.inside = t.menu.hidden; t.click(false); out.menu.outside = t.menu.hidden;
+t.tb.onclick(); t.menu.rows.find(r => r.name === 'from').onclick(); out.menu.from = { tools: t.state().tools, hidden: t.menu.hidden, focus: t.doc.activeElement && t.doc.activeElement.name };
+t.tb.onclick(); t.menu.rows.find(r => r.name === 'rings').onclick(); out.menu.rings = t.state().layers;
+t.tb.onclick(); t.wrap.on.focusout({ relatedTarget: t.menu.rows[1] }); out.menu.focusIn = t.menu.hidden;
+t.wrap.on.focusout({ relatedTarget: null }); out.menu.focusNull = t.menu.hidden;
+t.wrap.on.focusout({ relatedTarget: { name: 'canvas', closest: q => (q === '.maplibregl-canvas-container' ? {} : null) } }); out.menu.focusMap = t.menu.hidden;
+t.wrap.on.focusout({ relatedTarget: { name: 'elsewhere' } }); out.menu.focusOut = t.menu.hidden;
+const lk = load({ tok: false }); lk.c.placeTools(); out.locked = { html: lk.menu.html, any: lk.menu.rows.filter(r => r.kind && !r.disabled).length };
+console.log(JSON.stringify(out));
+"""
+_r = subprocess.run(["node"], input=fprog, capture_output=True, text=True)
+assert _r.returncode == 0, _r.stderr[-3000:]
+F9 = json.loads(_r.stdout)
+assert F9["start"]["cls"] == "" and F9["start"]["labels"] == ["Hide the layers:true"], F9["start"]
+assert F9["left"]["cls"] == "lc" and F9["left"]["labels"][0] == "Show the layers:false" and F9["left"]["title"] == "Show the layers · [" \
+    and F9["left"]["store"] == "lc" and F9["left"]["resized"] >= 1 and F9["left"]["wide"] == "false", ("the arrow folds the layers, says so, remembers it and resizes the map", F9["left"])
+assert F9["bracket"]["cls"] == "lc" and F9["bracket"]["store"] == "lc", ("] does nothing now: there is no right side", F9["bracket"])
+assert F9["typing"]["cls"] == "lc", "never while somebody types, never with Ctrl"
+assert F9["open"]["cls"] == "" and F9["open"]["store"] == "", ("[ opens the left again", F9["open"])
+assert F9["wideOn"]["cls"] == "lc mo" and F9["wideOn"]["wide"] == "true" and F9["wideOn"]["store"] == "lc mo" and F9["wideOn"]["scrolled"] == 1, \
+    ("\\ folds the left, grows the screen and brings it into the window", F9["wideOn"])
+assert F9["wideOff"]["cls"] == "" and F9["wideOff"]["wide"] == "false", ("\\ again opens the left", F9["wideOff"])
+assert F9["full"]["full"] == 1 and F9["noFs"]["full"] == 0, "F asks for full screen on the screen, only where the browser has it"
+assert F9["reload"]["cls"] == "lc mo" and F9["reload"]["labels"] == ["Show the layers:false"], ("a reload keeps map only", F9["reload"])
+assert F9["oldRight"]["cls"] == "lc" and F9["oldRightOnly"]["cls"] == "", ("a stored rc from an older visit is ignored", F9["oldRight"], F9["oldRightOnly"])
+assert F9["broken"]["cls"] == "lc", ("without storage the page is still right: it folds, it just forgets", F9["broken"])
+assert F9["focus"] == "strip", ("a side folded from the keyboard hands focus to its strip", F9["focus"])
+assert F9["alt"]["cls"] == "lc" and F9["meta"]["cls"] == "", ("Option and AltGr fold; ⌘ does not", F9["alt"], F9["meta"])
+assert "(document.fullscreenElement ? document.exitFullscreen() : sc.requestFullscreen()).catch(() => {})" in (STATIC / "doors-place.js").read_text(), \
+    "a refused full screen is caught, never an unhandled rejection"
+print("  place: the left folds by its arrow and by [, \\ is map only, F full screen; a stored right fold is ignored; never while typing; remembered in try/catch")
+_mn = F9["menu"]
+assert _mn["order"][:2] == ["Rings and distance|geo.rings", "From the house|geo.measure"] and all(x.endswith("|not yet") for x in _mn["order"][2:]) and len(_mn["order"]) == 14, _mn["order"]
+assert _mn["open"] and _mn["exp"] == "true" and _mn["focus"] == "rings", ("Tools opens its menu on the first runnable row", _mn)
+assert _mn["esc"] == {"hidden": True, "exp": "false", "focus": "toolsb"}, ("Esc closes the menu and gives the focus back to Tools", _mn["esc"])
+assert _mn["inside"] is False and _mn["outside"] is True, "a press outside the menu closes it, one inside does not"
+assert _mn["from"] == {"tools": ["from"], "hidden": True, "focus": "toolsb"} and _mn["rings"] == ["rings:true"], ("a tool chosen runs and closes the menu", _mn)
+assert _mn["focusMap"] is False, "focus going to the map's canvas (a press on the map) leaves the menu to the click, which swallows that press"
+assert _mn["focusIn"] is False and _mn["focusNull"] is False and _mn["focusOut"] is True, ("focus leaving the menu closes it; moving within it, or a press, does not", _mn)
+assert F9["locked"]["any"] == 0 and "Tools run on this node with a token. Unlock this screen in Set up." in F9["locked"]["html"], "without the token the rows are quiet and say why"
+print("  place: Tools is one button on the top line; its menu lists the two that run, then the ones not yet; Esc or a press outside closes it")
 
 print("all doors checks passed")

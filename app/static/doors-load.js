@@ -13,7 +13,7 @@ if (typeof window !== 'undefined') window.PAI_AUTH = DOORS_AUTH;
    rooms and which /issues' asks stand in for. Asked without a token they are a 403 every time: noise in the node's log
    and the console, and nothing drawn. So a screen holding no token at all does not ask; it gets a stand-in 403 and
    each caller draws what it draws locked. With any token the page asks as before, and the node decides. */
-const DOORS_LOCKED = /^\/?(health\/sources|aggregates|actions|alerts|geo\/(planet|measure|rings|grid)|things|learned(?!\/place)|captures|species|household|machine|storage|place\/geojson)\b/;
+const DOORS_LOCKED = /^\/?(health\/sources|aggregates|actions|alerts|geo\/(planet|measure|rings|grid)|things|learned(?!\/place)|captures|species|household|machine|storage|place\/geojson|place\/maps|place\/marks)\b/;
 const doorsFetch = (p, init = {}) => !DOORS_TOKEN() && DOORS_LOCKED.test(p) ? Promise.resolve(new Response('{}', { status: 403 }))
   : fetch(p, { ...init, headers: { ...DOORS_AUTH(), ...(init.headers || {}) } });
 /* A wire time in the node's own zone (/health tz) as 'YYYY-MM-DDTHH:MM'. /health and /issues' as_of are written in
@@ -31,8 +31,13 @@ function doorsLocal(iso, tz) {
 const DOORS_ROUTES = {
   issues: 'issues', days: 'issues/days?days=7', health: 'health', rho: 'rho', earth: 'earth', reach: 'reach',
   sensors: 'sensors', observations: 'observations', cells: 'cells', stats: 'stats', settings: 'settings',
+  /* the buildings the satellite counts around the node, a reading a year (the place pack, packs/place/README.md) */
+  place_yearly: 'history?sensor_id=place-point&metric=sat_buildings_yearly',
   /* token-only (doorsFetch): a screen without the token gets null and says so */
   readings_1h: 'aggregates?hours=24', actions: 'actions?limit=2000', alerts: 'alerts?limit=500',
+  /* the drawings' rows: GET /actions without a stage returns only answers to alerts, which the flow counts, so the
+     ledger on Data asks for these apart and only it reads them */
+  place_actions: 'actions?stage=place&limit=500',
 };
 
 function buildD(A, locale) {
@@ -94,9 +99,11 @@ function buildD(A, locale) {
     share: setting('SHARE_LEVEL'), settings: A.settings || null, askOff: setting('UI_ASK') === 'off',   /* the keeper's switch for every ask, the dashboard's and the doors' */ rho: A.rho || {}, health: H,
     earth: A.earth ? { years: E.years || [], changes: E.changes || [], radius_m: E.radius_m, change: E.latest || null,
       sentinel: img.sentinel || [], landsat: img.landsat || [], credit: img.credit || [] } : null,
+    place_yearly: (A.place_yearly || []).map(r => ({ year: +String(r.ts).slice(0, 4), value: r.value })),
     reach: A.reach || [], sensors: A.sensors || [], observations: A.observations || [], index_cells: A.cells || [],
     geometry: { ladder: G.ladder || [], radio: G.radio || {}, grain: G.grain_table || [], publication: G.publication || {} },
     point: [H.lon, H.lat], stats15, raw, actions, alerts: A.alerts || asks.acts || [], notes: !!A.actions, asks,
+    placeActions: A.place_actions || [],   /* the ledger's alone (ledgerBlock); never in actions, which the flow counts */
     /* the ask pane's questions, written by the node from tonight's figures (/issues digest.prompts) */
     prompts: ((I.digest || {}).prompts || {})[L] || ((I.digest || {}).prompts || {}).en || [],
     /* the bands a pack declares in its pack.yaml, with the node's numbers in them (docs/PACKS.md, A declared section) */
@@ -133,7 +140,7 @@ async function loadD(routes = DOORS_ROUTES) {
     A = await get('issues/fixtures/' + encodeURIComponent(FIX)) || {};
     A.days = A.issues_days; A.settings = await get('settings');
     /* the capture holds token-only answers too; a screen without the token is shown what a node would show it */
-    if (!DOORS_TOKEN()) for (const k of ['readings_1h', 'actions', 'alerts']) delete A[k];
+    if (!DOORS_TOKEN()) for (const k of ['readings_1h', 'actions', 'place_actions', 'alerts']) delete A[k];
   } else {
     const keys = Object.keys(routes), got = await Promise.all(keys.map(k => get(routes[k])));
     A = Object.fromEntries(keys.map((k, i) => [k, got[i]]));

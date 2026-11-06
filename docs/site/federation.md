@@ -195,8 +195,9 @@ file as `licence`. Each source's own attribution is in its sensor's `meta` on `/
 No raw readings leave the instance that recorded them. No cell is upgraded from `mock` or `partial` to `live` by
 aggregation. No agent dispatches without a human row in `actions`. No layer requires a cloud provider to
 function. No scale is skipped: a city aggregator is built from nodes, not declared from above. Peers never roll
-up and never drive an alert or a report line. Exact place never leaves; a coarse cell may, and says how coarse.
-Exactly one node per pilot writes to the spine.
+up and never drive an alert or a report line. Exact place never leaves, except a Place map the household chooses
+to share, which goes up with its exact coordinates, labels, notes and measures after a plain warning; a coarse cell
+may, and says how coarse. Exactly one node per pilot writes to the spine.
 
 ## Where the network is
 
