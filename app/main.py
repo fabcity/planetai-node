@@ -462,22 +462,28 @@ def push_aggregates() -> None:
                     "JOIN sensors s ON s.sensor_id = r.sensor_id "
                     "WHERE r.bucket > now() - interval '2 hours' AND s.custody AND " + packs.public_sql("r"))
         rows = [{**r, "bucket": r["bucket"].isoformat()} for r in cur.fetchall()]
-    if _post_parent("/aggregates", {"schema": AGGREGATES_V0, "node": NODE, "rows": rows, "scale": os.getenv("NODE_SCALE", "community")}):
+    r = _post_parent("/aggregates", {"schema": AGGREGATES_V0, "node": NODE, "rows": rows, "scale": os.getenv("NODE_SCALE", "community")})
+    if r:
         log.info("pushed %d hourly rows to parent", len(rows))
+        try:
+            maps.take_asks(r.json())   # the parent's asks for a shared photo come back in its answer (light GIS §14)
+        except Exception as e:  # noqa: BLE001
+            log.warning("photo asks from parent: %s", e)
 
 
-def _post_parent(route: str, payload: dict) -> bool:
-    """POST `payload` to the parent, signed by this node's key (identity.post). A parent that refuses says why in a sentence
-    (a changed key, a bad clock), and that sentence is raised, so loop() puts it in /health's errors where the keeper
-    reads it. A parent that cannot be reached is logged, as before, and asked again on the next push."""
+def _post_parent(route: str, payload: dict) -> "httpx.Response | None":   # quoted: test_identity lifts it without the __future__ import
+    """POST `payload` to the parent, signed by this node's key (identity.post), and return its answer. A parent that
+    refuses says why in a sentence (a changed key, a bad clock), and that sentence is raised, so loop() puts it in
+    /health's errors where the keeper reads it. A parent that cannot be reached is logged, as before, asked again on the
+    next push, and None comes back."""
     try:
         r = identity.post(PARENT(), route, payload, PARENT_TOKEN())
     except httpx.HTTPError as e:
         log.warning("push of %s to parent failed: %s", route, e)     # a parent offline is normal; it is asked again in an hour
-        return False
+        return None
     if r.status_code >= 400:
         raise RuntimeError(f"the parent refused {route} ({r.status_code}): {identity.refusal(r) or r.reason_phrase}")
-    return True
+    return r
 
 
 # ---------------------------------------------------------------- hourly push (child -> parent): rho
@@ -2366,4 +2372,4 @@ def receive_aggregates(body: dict, request: Request, raw: bytes = Depends(_raw_b
             cur.execute("INSERT INTO readings (ts, sensor_id, metric, value) VALUES (%s,%s,%s,%s) "
                         "ON CONFLICT (sensor_id, metric, ts) DO UPDATE SET value = EXCLUDED.value",
                         (r["bucket"], sid, r["metric"], float(r["mean"])))
-    return {"accepted": len(rows)}
+    return {"accepted": len(rows), **maps.asks_for(child)}   # a home node is behind NAT: an ask goes down here (§14)

@@ -81,6 +81,15 @@ upstream. The first press says what goes, every drawing at its exact place with 
 who can see it upstream. Upstream the node is the map's owner, and who drew each drawing stays here. The second press sends it. If a drawing touches the cell the house stands in, a shared map stops sending until
 you press Share again. **Stop sharing** ends it, and this node asks the node upstream to delete the map.
 
+**A photo on a shared map** goes up as words. The node upstream gets what took it, its note, the words you gave it on
+Data › Images and the day it was taken, and the picture stays here, with where it was taken and who took it. The node
+upstream can ask for the picture. The ask reaches this node within the hour and sits at the top of your maps, with who
+asked and for which drawing. **Send** gives them the picture once, **No** keeps it here, and both go in the ledger.
+Unshare the map, take the image off the drawing or delete the photo, and the node upstream deletes its copy.
+
+On a node that takes maps from others, a child's drawing with a photo says what the photo is, and **Ask for the photo**
+asks for it. It comes when somebody there presses Send, and only the people with this node's token can see it.
+
 To answer an issue from Now, open the drawing's form, choose the issue, say what you did in your own words and press
 **Tie it**. The rain garden you drew then counts as what you did about it, as Done does on Now.
 

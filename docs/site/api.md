@@ -448,6 +448,26 @@ Access: token
 
 `?actor=<who>`. A tie to an issue stays in the ledger.
 
+### POST /place/marks/{mark_id}/ask
+Access: token
+
+On a parent, ask a child for the photo on one of its drawings: `{"actor": "Ana"}`. Returns `{ask}`, whose `state` is `asked`, `sent`, `no` or `gone`. There is one ask per photo. Asking again while it waits, or after the photo came, changes nothing, and after a No or a `gone` it opens again. 409 for a drawing of this node's own, or one with no photo. The child hears it in the answer to its next hourly push.
+
+### GET /place/marks/{mark_id}/photo
+Access: token
+
+On a parent, the file a child sent for the photo on this drawing. 404 until somebody at the child presses Send, and again once the photo is no longer on a map the child shares.
+
+### GET /place/photos/asks
+Access: token
+
+On a child, what the node upstream asked for and nobody here has answered: `{asks: [{id, node, asked_by, asked_at, capture_id, drawings: [{mark, label, kind, map}]}]}`. Only a photo on a drawing in a map shared right now is listed.
+
+### POST /place/photos/asks/{ask_id}
+Access: token
+
+On a child, the answer: `{"answer": "send" | "no", "actor": "Tomas"}`. Only a person answers, so a request with `X-Agent` gets 403. The answer goes up within the minute, once, with the file on a Send. 409 when it is answered already or the photo is no longer shared.
+
 ### GET /ground/meta
 Access: open
 
@@ -646,7 +666,7 @@ A child pushes the hourly means of its own sensors, each row saying whether it i
            "mean": 18.4, "min": 12.0, "max": 25.1, "n": 12, "indoor": false}]}
 ```
 
-The parent keeps each mean as one reading of sensor `<node>/<sensor_id>`, of kind `child`. Returns `{"accepted": <n>}`.
+The parent keeps each mean as one reading of sensor `<node>/<sensor_id>`, of kind `child`. Returns `{"accepted": <n>, "photo_asks": [...]}`, the photos this node asked that child for, each `{id, image, node, by, at}`. A parent cannot reach a home node, so this is how an ask goes down.
 
 ### POST /place/maps/received
 Access: children
@@ -658,7 +678,12 @@ A child sends a map its household shared, whole, at most once a minute after eac
  "geojson": {"type": "FeatureCollection", "map": "Garden plan", "owner": "cc5gqlek2e2rhfy6", "features": [...]}}
 ```
 
-The parent keeps it under the child's name and map id, its drawings replaced on each `put`, and lists it read-only in `GET /place/maps`. A picture's number is the child's and is dropped. The map's `owner` is the child node, never a person: its ID when the push is signed (as `/aggregates` is, and pinned the same way), its name when it is not. A drawing carries no `drawn_by`. A map holds 2,000 drawings and 20,000 points at most (413), a drawing 1,000 points (422), and a colour is 1 to 6 (422). Returns `{"ok": true, "marks": <n>}` for a `put` and `{"ok": true}` for a `delete`.
+The parent keeps it under the child's name and map id, its drawings replaced on each `put`, and lists it read-only in `GET /place/maps`. A drawing with a photo carries `image`, the child's number for it, and `photo`, `{kind, note, meta, taken}`, with `taken` the day it was taken. Where it was taken and who took it do not travel. The parent keeps both as the drawing's `photo`, and the file comes only on an ask. The map's `owner` is the child node, never a person: its ID when the push is signed (as `/aggregates` is, and pinned the same way), its name when it is not. A drawing carries no `drawn_by`. A map holds 2,000 drawings and 20,000 points at most (413), a drawing 1,000 points (422), and a colour is 1 to 6 (422). Returns `{"ok": true, "marks": <n>}` for a `put` and `{"ok": true}` for a `delete`. A photo that is no longer on any map of that child's closes its ask, and the file the child sent for it is deleted.
+
+### POST /place/photos/received
+Access: children
+
+A child's answer to an ask, signed as a shared map is: `{schema: "planetai.place.photo/v0", node, ask, image, answer, picture}`, with `answer` one of `sent`, `no` or `gone`, and `picture` the file as base64 with a `sent` (null otherwise). The ask has to be that child's, for that photo, still waiting (404, 409). The picture is opened and written again with no metadata. It is a JPEG, PNG or WebP of 25 MB at most. Returns `{"ok": true, "state": …}`.
 
 ### POST /events
 Access: children
@@ -761,7 +786,7 @@ This documentation searched without a model, `?q=` of 2 to 200 characters: the w
 
 ## Wire formats
 
-Each document that travels between nodes names its format in `schema`: `issues-v0`, `export-v0`, `report-v0`, `aggregates-v0`, `events-v0`, `days-v0`, `forecast-v0` and `planetai.place.map/v0`. A receiver never refuses on it: an unknown value is logged once and the fields it knows are read.
+Each document that travels between nodes names its format in `schema`: `issues-v0`, `export-v0`, `report-v0`, `aggregates-v0`, `events-v0`, `days-v0`, `forecast-v0`, `planetai.place.map/v0` and `planetai.place.photo/v0`. A receiver never refuses on it: an unknown value is logged once and the fields it knows are read.
 
 ## What the node calls out
 
@@ -769,7 +794,8 @@ Each document that travels between nodes names its format in `schema`: `issues-v
 |---|---|---|
 | `POST {PARENT_API_URL}/aggregates` | Hourly, with a parent set | The last 2 hours of hourly means of its own sensors, with `PARENT_TOKEN` |
 | `POST {PARENT_API_URL}/events` | Hourly, after an alert in the last 36 hours | Alert timestamps |
-| `POST {PARENT_API_URL}/place/maps/received` | Within a minute of a change to a map the household shared | The map's drawings, at their exact place, with their labels, notes and measures |
+| `POST {PARENT_API_URL}/place/maps/received` | Within a minute of a change to a map the household shared | The map's drawings, at their exact place, with their labels, notes and measures, and each photo's kind, note, words and day |
+| `POST {PARENT_API_URL}/place/photos/received` | Within a minute of somebody here answering an ask for a photo | The answer, and with a Send the photo's file, which lost its GPS when it came into this node |
 | Telegram | Each alert at or above `ALERT_LEVEL`, each report, once per newer release, and `getMe` once a day for the bot's name | The message, with `TELEGRAM_BOT_TOKEN` |
 | `planetai.fab.city/node0/get/VERSION` | Hourly, unless `UPDATE_CHECK=off` | Nothing about the house |
 | GitHub's `registry.json` | Hourly, unless `UPDATE_CHECK=off` | Nothing about the house |

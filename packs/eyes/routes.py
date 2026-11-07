@@ -390,6 +390,10 @@ def species(request: Request, authorization: str = Header(""), cell: str | None 
     return {"cell": cell, "species": [{**x, "images": len(x["images"]), "cells": len(x["cells"])} for x in rows]}
 
 
+# A map that carries this photo has changed: its words, or the photo itself, are part of what a shared map sends.
+_MAPS_WITH = "UPDATE place_maps SET updated_at = now() WHERE id IN (SELECT map_id FROM place_marks WHERE capture_id = %s)"
+
+
 @router.patch("/captures/{cid}")
 def capture_patch(cid: int, body: dict, request: Request, authorization: str = Header("")):
     """The household edits an image's words: `note`, `kind`, and `meta` (an object of short strings, replaced whole).
@@ -424,6 +428,7 @@ def capture_patch(cid: int, body: dict, request: Request, authorization: str = H
     if not sets:
         raise HTTPException(422, "nothing to change: note, kind, meta, findings or confirm")
     with _db.db() as con, con.cursor() as cur:
+        cur.execute(_MAPS_WITH, (cid,))   # a shared map says the new words upstream on its next put (light GIS §14)
         cur.execute(f"UPDATE captures SET {', '.join(sets)} WHERE id = %s RETURNING *", (*vals, cid))
         row = cur.fetchone()
     if not row:
@@ -438,6 +443,7 @@ def capture_delete(cid: int, request: Request, authorization: str = Header("")):
     if not _is_local(request):
         _admin(authorization)
     with _db.db() as con, con.cursor() as cur:
+        cur.execute(_MAPS_WITH, (cid,))   # before the foreign key clears it: the next put says the photo is gone
         cur.execute("DELETE FROM captures WHERE id = %s RETURNING file", (cid,))
         row = cur.fetchone()
         if row:   # a thing added from this photo stays, without a link to a picture that is gone
