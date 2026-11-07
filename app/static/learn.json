@@ -1321,10 +1321,10 @@
    "url": "https://planetai.fab.city/docs/federation/"
   },
   "place-changing": {
-   "anchor": "place",
+   "anchor": "what-changed",
    "more": "Land and coast change yearly, so they are here and not on Now. What the node cannot read yet is named here as missing.",
-   "page": "dashboard.md",
-   "page_title": "The dashboard",
+   "page": "place.md",
+   "page_title": "The Place door",
    "questions": {
     "en": [
      "Is the coast near us changing?",
@@ -1340,15 +1340,15 @@
     ]
    },
    "quote": "**The place in figures** on the right, with land\nand coast, the Index cells, and what is not here yet.",
-   "section": "Place",
+   "section": "What changed",
    "title": "What is changing",
-   "url": "https://planetai.fab.city/docs/dashboard/#place"
+   "url": "https://planetai.fab.city/docs/place/#what-changed"
   },
   "place-head": {
-   "anchor": "place",
+   "anchor": "the-head",
    "more": "The cell id is printed whole. Type a question in the line under it and the Ask pane opens with it; press / to get there from anywhere on this door. With UI_ASK off the line is not there.",
-   "page": "dashboard.md",
-   "page_title": "The dashboard",
+   "page": "place.md",
+   "page_title": "The Place door",
    "questions": {
     "en": [
      "How big is the area this node covers?",
@@ -1363,16 +1363,16 @@
      "Menurut satelit, apa yang berubah di sini?"
     ]
    },
-   "quote": "The ground around the house. The head gives the cell's id, resolution, edge and area, and the node's position for a\nscreen with the token. Under it is a line to ask the node about this place (press `/` to get there; `UI_ASK=off` removes it)",
-   "section": "Place",
+   "quote": "The head gives the cell's id, resolution, edge and area, and the node's position for a\nscreen with the token. Under it is a line to ask the node about this place (press `/` to get there; `UI_ASK=off` removes it)",
+   "section": "The head",
    "title": "The ground around the house",
-   "url": "https://planetai.fab.city/docs/dashboard/#place"
+   "url": "https://planetai.fab.city/docs/place/#the-head"
   },
   "place-image": {
-   "anchor": "place",
+   "anchor": "images-and-species",
    "more": "The picture stays on this node, cleaned of EXIF and GPS, and lands on the map where its own GPS says it was taken, else in the node's cell.",
-   "page": "dashboard.md",
-   "page_title": "The dashboard",
+   "page": "place.md",
+   "page_title": "The Place door",
    "questions": {
     "en": [
      "What happens to a photo I add here?",
@@ -1388,15 +1388,15 @@
     ]
    },
    "quote": "**The Image key** (token only) adds a picture. Press the map, or Enter for its centre, and a marker holds the image you\nchoose from Data › Images or take as **A new photo**. With nothing pressed it also offers **A new photo** on its own.",
-   "section": "Place",
+   "section": "Images and species",
    "title": "The Image key",
-   "url": "https://planetai.fab.city/docs/dashboard/#place"
+   "url": "https://planetai.fab.city/docs/place/#images-and-species"
   },
   "place-layers": {
-   "anchor": "place",
+   "anchor": "the-layers",
    "more": "What this place is made of, with the sky at the top and the ground at the bottom, and what the node does not hold yet. A filled dot is on, a hollow one off, and a dotted one is a layer the node cannot draw yet, named by its source.",
-   "page": "dashboard.md",
-   "page_title": "The dashboard",
+   "page": "place.md",
+   "page_title": "The Place door",
    "questions": {
     "en": [
      "Which layer shows the public air stations?",
@@ -1411,16 +1411,16 @@
      "Dari mana peta jalan ini berasal?"
     ]
    },
-   "quote": "**What the place is made of.** On the left is a list of what the node can show about the ground around the house.\nThe sky is at the top of the list and the ground at the bottom.",
-   "section": "Place",
+   "quote": "On the left is a list of what the node can show about the ground around the house.\nThe sky is at the top of the list and the ground at the bottom.",
+   "section": "The layers",
    "title": "The layers",
-   "url": "https://planetai.fab.city/docs/dashboard/#place"
+   "url": "https://planetai.fab.city/docs/place/#the-layers"
   },
   "place-map": {
-   "anchor": "place",
+   "anchor": "the-screen",
    "more": "Every distance on this door is measured by the node from its own point. Without the token the house's marks say withheld, because together they would place the house.",
-   "page": "dashboard.md",
-   "page_title": "The dashboard",
+   "page": "place.md",
+   "page_title": "The Place door",
    "questions": {
     "en": [
      "How far is the nearest station from our house?",
@@ -1435,16 +1435,16 @@
      "Mengapa beberapa tanda disembunyikan?"
     ]
    },
-   "quote": "**The screen.** In the middle is the map, on a black screen that stays black on the light page and the dark one.",
-   "section": "Place",
+   "quote": "In the middle is the map, on a black screen that stays black on the light page and the dark one.",
+   "section": "The screen",
    "title": "The screen",
-   "url": "https://planetai.fab.city/docs/dashboard/#place"
+   "url": "https://planetai.fab.city/docs/place/#the-screen"
   },
   "place-orbit": {
-   "anchor": "place",
+   "anchor": "what-changed",
    "more": "Two of the node's own Sentinel-2 years side by side, from files it already holds. Nothing is fetched while you look.",
-   "page": "dashboard.md",
-   "page_title": "The dashboard",
+   "page": "place.md",
+   "page_title": "The Place door",
    "questions": {
     "en": [
      "What did this place look like a few years ago?",
@@ -1460,15 +1460,15 @@
     ]
    },
    "quote": "what changed year on year. The satellite then and now sit side by side,\nlarge, with the hectares that changed between them and a bar a year for the buildings it counts",
-   "section": "Place",
+   "section": "What changed",
    "title": "From orbit",
-   "url": "https://planetai.fab.city/docs/dashboard/#place"
+   "url": "https://planetai.fab.city/docs/place/#what-changed"
   },
   "place-species": {
-   "anchor": "place",
+   "anchor": "images-and-species",
    "more": "Only what a person here confirmed in an image is counted. Where a picture was taken places the house, so the table needs the token.",
-   "page": "dashboard.md",
-   "page_title": "The dashboard",
+   "page": "place.md",
+   "page_title": "The Place door",
    "questions": {
     "en": [
      "Which plants and animals have we found here?",
@@ -1484,15 +1484,15 @@
     ]
    },
    "quote": "**Species confirmed here** is the list under the species row: a table of what somebody here confirmed in an image,\nhow often, where, and GBIF's open records by others in the node's seven cells, token only.",
-   "section": "Place",
+   "section": "Images and species",
    "title": "Species confirmed here",
-   "url": "https://planetai.fab.city/docs/dashboard/#place"
+   "url": "https://planetai.fab.city/docs/place/#images-and-species"
   },
   "place-tools": {
-   "anchor": "place",
+   "anchor": "the-tools",
    "more": "The tools that run on this node today, and the ones still to come, marked not yet. Rings and distance draws the 2, 5 and 15 km rings from the node's own point. Without a token they stay quiet.",
-   "page": "dashboard.md",
-   "page_title": "The dashboard",
+   "page": "place.md",
+   "page_title": "The Place door",
    "questions": {
     "en": [
      "How far is that point from the house?",
@@ -1507,10 +1507,10 @@
      "Sel apa ini, dan seberapa besar?"
     ]
    },
-   "quote": "**The tools.** **Tools**, beside the ask line, opens a menu of what the node can do with this place. **Rings and\ndistance** draws the 2, 5 and 15 km rings from the node's point.",
-   "section": "Place",
+   "quote": "**Tools**, beside the ask line, opens a menu of what the node can do with this place. **Rings and\ndistance** draws the 2, 5 and 15 km rings from the node's point.",
+   "section": "The tools",
    "title": "The tools",
-   "url": "https://planetai.fab.city/docs/dashboard/#place"
+   "url": "https://planetai.fab.city/docs/place/#the-tools"
   },
   "presence": {
    "anchor": "reticulum-lxmf",
