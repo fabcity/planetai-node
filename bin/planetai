@@ -28,6 +28,7 @@
 #   planetai packs          what is loaded; `packs install` adds code-pack settings to .env and their libraries to the image
 #   planetai packs add <id>  a wild pack from fabcity/planetai-wild-packs; or <owner>/<repo>[/<folder>][@<ref>] from GitHub
 #   planetai packs cron     let Install on the dashboard's Set up › Packs reach this machine (`packs pending` runs it)
+#   planetai place          the Fab City Index place this node belongs to: suggests the nearest; `place <slug>` sets it, `place none` clears it
 #   planetai ui             the dashboard: where it is, and the token that unlocks its settings pages
 #   planetai storage        where the data lives, where backups and copies go, exports, IPFS; `set` to change
 #   planetai backup         dump + export + copy now, instead of waiting for 03:17
@@ -436,6 +437,22 @@ print(next((k for k, (a, b, c, d) in boxes.items() if a < lat < b and c < lon < 
   [[ $bad -eq 1 ]] && say "that's Bali: the island's public stations (the bali-air-dispatch pack) will be your outdoor reference." \
                     || say "outdoor reference: the global CAMS model at your coordinates (no key, works everywhere)."
 
+  # the Fab City Index place the node belongs to: a suggestion from the coordinates, the household decides. The pilot
+  # boxes and the city key above stay as they are; this is only INDEX_PLACE, written with the other answers below.
+  local iplace="" inear; inear="$(python3 packs/index/place.py --nearest "$lat" "$lon" 2>/dev/null || echo null)"
+  if [[ "$inear" != null && -n "$inear" ]]; then
+    iplace="$(json 'print(d["slug"])' <<< "$inear")"
+    say "the nearest Fab City Index place is $(json 'print(d["name"] + ", " + d["country"])' <<< "$inear"). Its centre is approximate."
+    while :; do
+      ask iplace "   Index place (Enter keeps it, another slug picks that one, none for none)" "$iplace"
+      [[ "$iplace" == none ]] && { iplace=""; break; }
+      python3 packs/index/place.py --known "$iplace" && break
+      warn "'$iplace' is not an Index place. packs/index/places.json lists them."
+    done
+  else
+    say "no Fab City Index place within 150 km. If this node belongs to one, planetai place <slug> sets it later."
+  fi
+
   # 3. what kind of node — decides defaults, not the Index scale (a house is still a Community-scale observation)
   step "3. What is this node for?"
   local kind_label kind
@@ -460,8 +477,8 @@ print(next((k for k, (a, b, c, d) in boxes.items() if a < lat < b and c < lon < 
 
   # summary
   step "Here's the plan"
-  printf '   name        %s\n   place       %s (%s, %s)\n   time zone   %s\n   city key    %s\n   sensor      %s\n   outside     %s\n' \
-    "$name" "${nm:-$place}" "$lat" "$lon" "$tz" "$city" "${sc:+Smart Citizen $sc}${ag:+AirGradient $ag}${pa:+PurpleAir $pa}${sc:-${ag:-${pa:-none, models only}}}" \
+  printf '   name        %s\n   place       %s (%s, %s)\n   time zone   %s\n   city key    %s\n   Index place %s\n   sensor      %s\n   outside     %s\n' \
+    "$name" "${nm:-$place}" "$lat" "$lon" "$tz" "$city" "${iplace:-none}" "${sc:+Smart Citizen $sc}${ag:+AirGradient $ag}${pa:+PurpleAir $pa}${sc:-${ag:-${pa:-none, models only}}}" \
     "$([[ $bad -eq 1 ]] && echo 'Bali Air Dispatch + CAMS' || echo 'CAMS model')"
   echo
   confirm "Install with these?" || { echo "ok, nothing changed."; exit 0; }
@@ -470,6 +487,8 @@ print(next((k for k, (a, b, c, d) in boxes.items() if a < lat < b and c < lon < 
   # point is that a failure anywhere below this line leaves them on disk, so a re-run can offer them back.
   envset NODE_NAME "$name"; envset NODE_LAT "$lat"; envset NODE_LON "$lon"
   envset NODE_TZ "$tz"; envset NODE_CITY "$city"; envset NODE_KIND "$kind"
+  # the node is not up yet, so the choice goes where first-run answers go; finish_setup puts the pack on the list once it answers
+  [[ -n "$iplace" ]] && envset INDEX_PLACE "$iplace"
   [[ -n "${sc:-}" ]] && envset SC_DEVICES "$sc"; [[ -n "${ag:-}" ]] && envset AIRGRADIENT_HOSTS "$ag"
   [[ -n "${pa:-}" ]] && envset PURPLEAIR_HOSTS "$pa"; [[ $indoor -eq 1 ]] && envset SENSOR_INDOOR 1
 
@@ -499,6 +518,7 @@ finish_setup() {
   spin "starting with your settings" docker compose up -d --force-recreate app || fail "the app container did not restart with your settings"
   spin "waiting for the first answer" bash -c 'for i in $(seq 1 30); do curl -sf "http://localhost:$(grep ^APP_PORT= .env | cut -d= -f2 | sed "s/[[:space:]]*#.*$//" | tr -d " " || echo 8080)/health" >/dev/null && exit 0; sleep 1; done; exit 1' || true
   api /health >/dev/null || fail "the node is not answering on port $(port). Look at: planetai logs"
+  [[ -z "$(envget INDEX_PLACE)" ]] || packs_switch_on index     # a re-run on a node whose packs were chosen in Set up
   cmd_doctor quiet || true
   [[ -f out/ground/vector.mbtiles ]] || offer_map
   what_next
@@ -1371,22 +1391,7 @@ print(e[0].get("source", ""), e[0].get("commit", "-"), e[0].get("status", "liste
   fi
   local why; why="$(packs_refused "$id" | cut -f2-)"
   if [[ -n "$why" ]]; then warn "it will not load on this node: $why."; fi
-  # A node whose packs were chosen in Set up loads only that list, and a pack added after it would stay off without a
-  # word. Asking for the pack is asking for it on, so it joins the list the way update.sh adds a pack, in the database
-  # the dashboard writes, with the token in .env. Empty means every pack and is left alone. With the node down the list
-  # in the database cannot be read, and .env may say nothing while the database names every pack but this one.
-  local cfg on fix; cfg="$(api /settings || true)"
-  if [[ -z "$cfg" ]]; then
-    warn "the node is not answering, so whether Set up limits the packs it loads cannot be read. Once it is up: planetai config get PACKS_ENABLED, and if that is a list without $id, switch it on in Set up → Packs."
-  else
-    on="$(json "print(([r['value'] for r in d['runtime'] if r['key']=='PACKS_ENABLED'] or [''])[0])" <<< "$cfg" | tr -d " ")"
-    fix="planetai config set PACKS_ENABLED $on,$id"; [[ -n "$(envget ADMIN_TOKEN)" ]] || fix="planetai ui (it creates the admin token), then $fix"
-    if [[ -n "$on" && ",$on," != *",$id,"* ]]; then
-      if runtime_set PACKS_ENABLED "$on,$id"; then say "$id joins the packs this node loads (Set up → Packs)"
-      else warn "this node loads only the packs listed in Set up → Packs, and $id is not one of them. Switch it on there, or: $fix"
-      fi
-    fi
-  fi
+  packs_switch_on "$id"
   packs_install "packs/$id/pack.yaml"
   say "planetai restart loads it. To remove it: delete packs/$id and restart."
 }
@@ -1910,6 +1915,64 @@ runtime_set() {
   # reach the node" for that sent people looking at Docker for a typo.
   [[ "$code" == 400 ]] && warn "$(json 'print(d.get("detail") or d)' <<< "$out" 2>/dev/null || echo "$out")"
   return 1
+}
+
+# packs_switch_on ID: put a pack on the list Set up limits this node to.
+# A node whose packs were chosen in Set up loads only that list, and a pack added after it would stay off without a
+# word. Asking for the pack is asking for it on, so it joins the list the way update.sh adds a pack, in the database
+# the dashboard writes, with the token in .env. Empty means every pack and is left alone. With the node down the list
+# in the database cannot be read, and .env may say nothing while the database names every pack but this one.
+packs_switch_on() {
+  local id="$1"
+  local cfg on fix; cfg="$(api /settings || true)"
+  if [[ -z "$cfg" ]]; then
+    warn "the node is not answering, so whether Set up limits the packs it loads cannot be read. Once it is up: planetai config get PACKS_ENABLED, and if that is a list without $id, switch it on in Set up → Packs."
+  else
+    on="$(json "print(([r['value'] for r in d['runtime'] if r['key']=='PACKS_ENABLED'] or [''])[0])" <<< "$cfg" | tr -d " ")"
+    fix="planetai config set PACKS_ENABLED $on,$id"; [[ -n "$(envget ADMIN_TOKEN)" ]] || fix="planetai ui (it creates the admin token), then $fix"
+    if [[ -n "$on" && ",$on," != *",$id,"* ]]; then
+      if runtime_set PACKS_ENABLED "$on,$id"; then say "$id joins the packs this node loads (Set up → Packs)"
+      else warn "this node loads only the packs listed in Set up → Packs, and $id is not one of them. Switch it on there, or: $fix"
+      fi
+    fi
+  fi
+}
+
+# ---------------------------------------------------------------- place: which Fab City Index place this node belongs to
+# `place` suggests the nearest one from NODE_LAT/NODE_LON and asks; `place <slug>` sets it; `place none` clears it. The
+# distance and the list live in packs/index/place.py, so nothing here redoes the sums. The choice is INDEX_PLACE, set
+# where Set up sets it (runtime_set), and the index pack joins PACKS_ENABLED when that list is there without it.
+cmd_place() {
+  local arg="${1:-}" slug="" lat lon near name cur
+  if [[ -z "$arg" ]]; then
+    cur="$(setting INDEX_PLACE)"
+    if [[ -n "$cur" ]]; then say "this node belongs to $cur now"; else say "this node belongs to no Index place yet"; fi
+    lat="$(envget NODE_LAT)"; lon="$(envget NODE_LON)"
+    [[ -n "$lat" && -n "$lon" ]] || fail "this node has no coordinates (NODE_LAT, NODE_LON in .env), so there is nothing to suggest from. planetai place <slug> sets one."
+    near="$(python3 packs/index/place.py --nearest "$lat" "$lon")" || fail "could not read packs/index/places.json"
+    if [[ "$near" == null ]]; then
+      say "no Fab City Index place within 150 km of this node. If it belongs to one anyway, planetai place <slug> (the slugs are in packs/index/places.json)."
+      return 0
+    fi
+    slug="$(json 'print(d["slug"])' <<< "$near")"; name="$(json 'print(d["name"] + ", " + d["country"])' <<< "$near")"
+    say "the nearest Fab City Index place is $name ($slug). Its centre is approximate; the house stays with you."
+    if ! ( : </dev/tty ) 2>/dev/null; then echo "  To choose it: planetai place $slug"; return 0; fi
+    confirm "   Does this node belong to $name?" || { echo "  ok, nothing changed. planetai place <slug> picks another, planetai place none clears it."; return 0; }
+  elif [[ "$arg" != none ]]; then
+    python3 packs/index/place.py --known "$arg" || { warn "'$arg' is not an Index place (packs/index/places.json lists them)."; return 2; }
+    slug="$arg"
+  fi
+  # blank = back to the environment, so an INDEX_PLACE left in .env (init writes one) has to go too, or `none` would not
+  [[ -n "$slug" || -z "$(envget INDEX_PLACE)" ]] || envset INDEX_PLACE ""
+  if runtime_set INDEX_PLACE "$slug"; then
+    if [[ -n "$slug" ]]; then say "this node belongs to $slug; the Place door shows its Index row within a day"; packs_switch_on index
+    else say "this node belongs to no Index place"; fi
+  else
+    if [[ -n "$slug" ]]; then warn "the node is not answering (or has no admin token), so nothing was changed. Once it is up: planetai place $slug"
+    else warn "the node is not answering (or has no admin token): INDEX_PLACE is blank in .env now, and the node's own setting is cleared when you run planetai place none once it is up."; fi
+    [[ -n "$(envget ADMIN_TOKEN)" ]] || echo "  planetai ui creates the admin token first."
+    return 1
+  fi
 }
 
 # ---------------------------------------------------------------- the rest
@@ -2554,6 +2617,7 @@ case "${1:-help}" in
   radio) shift; cmd_radio "$@";;
   homeassistant|ha) cmd_homeassistant;;
   packs) shift; cmd_packs "$@";;
+  place) shift; cmd_place "$@";;
   sources) shift; cmd_sources "$@";;
   ui|dashboard) cmd_ui;;
   storage) shift; cmd_storage "$@";;

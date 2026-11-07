@@ -32,6 +32,14 @@
   hectare squares view is gone until What changed runs as a tool. On a phone the layers open as a sheet over the lower
   part of the page.
 
+- **A node can say which Fab City Index place it belongs to.** `planetai place` suggests the nearest of the 61 places the
+  Index tracks, from a centre that asserts no border, and you confirm it or pick another or none; setup asks the same
+  question. With a place chosen, the new `index` pack reads that place's file from index.fab.city once a day, and the
+  source registry at the commit `main` points to, and keeps the last good copy of each. The request is the place's slug
+  and nothing about the house. The figures band on Place has a Fab City Index row: the place and its label, its FCI or
+  its range while no cell is measured, up to three indicators with their year and source, and how many registry sources
+  are filed for it. The node shows the Index's numbers and does not work them out, and marks them `partial`, or `cached`
+  when the last read failed. `GET /index/place` serves it.
 - **You can draw on Place now, and keep what you draw in named maps.** With the token, the keys on the screen's left
   edge drop a marker or a note, draw a line with its length or an area with its surface, and add an image, by press or
   with the keyboard alone, and PostGIS measures what you keep. The screen downloads as a PNG with its credit and scale,

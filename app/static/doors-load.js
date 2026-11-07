@@ -33,6 +33,10 @@ const DOORS_ROUTES = {
   sensors: 'sensors', observations: 'observations', cells: 'cells', stats: 'stats', settings: 'settings',
   /* the buildings the satellite counts around the node, a reading a year (the place pack, packs/place/README.md) */
   place_yearly: 'history?sensor_id=place-point&metric=sat_buildings_yearly',
+  /* the index pack's: a 404 when PACKS_ENABLED leaves the pack out (null here), and a 200 with `chosen: ""` when the
+     pack is loaded and INDEX_PLACE is empty; the pack's routes answer by PACKS_ENABLED, not by its switch. indexRow
+     reads both as "not chosen". */
+  index_place: 'index/place',
   /* token-only (doorsFetch): a screen without the token gets null and says so */
   readings_1h: 'aggregates?hours=24', actions: 'actions?limit=2000', alerts: 'alerts?limit=500',
   /* the drawings' rows: GET /actions without a stage returns only answers to alerts, which the flow counts, so the
@@ -100,7 +104,7 @@ function buildD(A, locale) {
     earth: A.earth ? { years: E.years || [], changes: E.changes || [], radius_m: E.radius_m, change: E.latest || null,
       sentinel: img.sentinel || [], landsat: img.landsat || [], credit: img.credit || [] } : null,
     place_yearly: (A.place_yearly || []).map(r => ({ year: +String(r.ts).slice(0, 4), value: r.value })),
-    reach: A.reach || [], sensors: A.sensors || [], observations: A.observations || [], index_cells: A.cells || [],
+    reach: A.reach || [], sensors: A.sensors || [], observations: A.observations || [], index_cells: A.cells || [], index_place: A.index_place || null,
     geometry: { ladder: G.ladder || [], radio: G.radio || {}, grain: G.grain_table || [], publication: G.publication || {} },
     point: [H.lon, H.lat], stats15, raw, actions, alerts: A.alerts || asks.acts || [], notes: !!A.actions, asks,
     placeActions: A.place_actions || [],   /* the ledger's alone (ledgerBlock); never in actions, which the flow counts */

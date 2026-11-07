@@ -111,7 +111,25 @@ closes it.
 Under the screen, across the whole page, is what changed year on year. The satellite then and now sit side by side,
 large, with the hectares that changed between them and a bar a year for the buildings it counts. On a phone the two
 pictures stack. Below that, the open map's table is on the left and **The place in figures** on the right, with land
-and coast, the Index cells, and what is not here yet.
+and coast, the place's row on the Fab City Index, the Index cells, and what is not here yet.
+
+**Fab City Index** is a row in that band, under land and coast. It names the place this node belongs to, which
+`planetai place` chooses, with the label the Index gives its score (**Partial** or **Simulated**), and then the Index's own
+number for it: the FCI, or, while no cell of the place is measured, a range. Under it come up to three of the place's
+indicators, each with its year, its unit and its source line, cut before any link, because two of Barcelona's are both
+called "Residual municipal waste per person" and only the source tells them apart. An indicator the Index sent without a
+value is left out, and a figure it sent as empty is drawn as a dash. The small line says when the Index's file was read,
+in this node's time zone, how many sources the registry files for the place, and links to the place on index.fab.city.
+A read that failed says `last read` with the date of the file the node still holds, and when it tried. The numbers come
+from the Index's own file for the place, which the `index` pack reads once a day and keeps on the node, so the page asks
+the node and never index.fab.city. The node does not recompute them, and a range stays a range and is never drawn as a
+score of 0. A portal's numbers are `partial` here, and `cached` when the last read failed; `live` is kept for what this
+node measured. The count of sources is the registry's entries that name the place, and says nothing about whether this
+node reads them. With no place chosen, or the pack not loaded, the row says **not chosen**, asks you to run
+`planetai place` on the node, and links to how the Index counts a place (index.fab.city/method). With a slug the Index
+does not track, a typo in Set up for one, the row says **not an Index place** with the slug and the same command. With a
+place chosen and nothing read yet it shows the place's name, **not read** and **not read yet**. The row is the same at
+every sharing level, and `GET /index/place` is where its source and registry details are.
 
 ## What needs the token
 

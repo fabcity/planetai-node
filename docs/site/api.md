@@ -19,7 +19,7 @@ A request is trusted when it comes from loopback or carries a household token: `
 | `act` | Loopback with no token; from anywhere else `ACT_TOKEN` or `ADMIN_TOKEN`. |
 | `children` | `AGGREGATE_TOKEN`, which a parent gives its children. It opens `POST /aggregates` and `POST /events` and nothing else. |
 
-The `off` allowlist, the default, is `/`, `/ui`, `/workbench`, `/tester`, `/health`, `/llms.txt`, `/settings`, `/export`, `/presence`, `/nodes`, `/offers` and anything under `/static/`. The `open` allowlist adds `/stats`, `/sensors`, `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/packs/all`, `/trust`, `/nearby`, `/forecast`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, `/ask`, `/ask/status`, `/docs/search`, `/geo/cell`, `/learned/place`, and anything under `/exports/`, `/issues`, `/sources/` or `/ground/`. The pack routes among them (`/offers`, `/nearby`, `/forecast` and the `/earth` paths) are put there by their pack's `pack.yaml` (`share:`). Any other value counts as `off`. The lists match the path whatever the method, so at `open` an anonymous `POST /readings` reaches the handler and gets 401. A path with no route also gets 403.
+The `off` allowlist, the default, is `/`, `/ui`, `/workbench`, `/tester`, `/health`, `/llms.txt`, `/settings`, `/export`, `/presence`, `/nodes`, `/offers` and anything under `/static/`. The `open` allowlist adds `/stats`, `/sensors`, `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/packs/all`, `/trust`, `/nearby`, `/forecast`, `/index/place`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, `/ask`, `/ask/status`, `/docs/search`, `/geo/cell`, `/learned/place`, and anything under `/exports/`, `/issues`, `/sources/` or `/ground/`. The pack routes among them (`/offers`, `/nearby`, `/forecast`, `/index/place` and the `/earth` paths) are put there by their pack's `pack.yaml` (`share:`). Any other value counts as `off`. The lists match the path whatever the method, so at `open` an anonymous `POST /readings` reaches the handler and gets 401. A path with no route also gets 403.
 
 Tokens travel in the `Authorization` header only, never in a query string, and are compared in constant time. `ADMIN_TOKEN` is in `.env`, the other three in settings, and `planetai ui` prints them. An optional `X-Agent` header names the caller; `PUT /settings` writes it to the ledger.
 
@@ -44,7 +44,7 @@ The middlewares answer `{"error": "..."}`. A share-level 403 names the level and
 
 For a path no level opens it ends "No share level opens this one, so it always needs a token from anywhere but the node itself." `/mcp` without the admin token is 401 `{"error": "the agent surface needs Authorization: Bearer <ADMIN_TOKEN>"}`.
 
-Some routes are a pack's, served from `packs/<id>/routes.py`: `/forecast` (forecast), `/nearby` (nearby), `/earth`, `/earth/change.png` and `/earth/year.png` (earth), `/earth/frame.png` (earth-engine), every `/captures` route and `/species` (eyes), and `/things` and `/offers` (things). While its pack is off on the node, such a route answers 404 `{"detail": "the <pack> pack is off on this node"}`.
+Some routes are a pack's, served from `packs/<id>/routes.py`: `/forecast` (forecast), `/nearby` (nearby), `/index/place` (index), `/earth`, `/earth/change.png` and `/earth/year.png` (earth), `/earth/frame.png` (earth-engine), every `/captures` route and `/species` (eyes), and `/things` and `/offers` (things). While its pack is off on the node, such a route answers 404 `{"detail": "the <pack> pack is off on this node"}`.
 
 Handlers answer `{"detail": "..."}`. The token checks:
 
@@ -338,6 +338,11 @@ What surrounds the node's own numbers: other people's stations, the forecast, th
 Access: open
 
 The ring of other people's stations around this node, from what is stored, so the page never waits on someone else's server. The stations come from every enabled pack that declares `stations:` (here `bali-air-dispatch`, within `BAD_RADIUS_KM`) and reported in the last 24 hours. Returns `{ring, stations, lowest, p25, median, p75, highest, nearest_km, mine, mine_sensors, radius_km, attribution, mine_minus_ring}`, each `ring` row with its `km`, `pm25` and `reporting`. `?audit=1` also asks each pack's archive for a verdict per station.
+
+### GET /index/place
+Access: open
+
+What the Fab City Index says about the place this node belongs to (`INDEX_PLACE`), from the copy the `index` pack read once a day, so the page never waits on index.fab.city. Returns `{chosen, place, read, score, indicators, links, registry}`. The route answers whenever the `index` pack is loaded, so with `INDEX_PLACE` empty it is a 200 with `chosen` empty and `place` null, and a node that leaves the pack out of `PACKS_ENABLED` answers 404. A slug the Index does not track gives a `place` of null and a `read.error` of `not an Index place: <slug>`. `read` is `{at, ok, error, tried}`: `at` is the date of the Index's own file, `tried` is the node's last attempt, and a failed read keeps the last file and says why in `error`. `score` is the file's own, with `fci` empty and `fci_range` set while no cell is measured. `indicators` are each `{label, unit, latest: {year, value}, source}`. `registry` says which source registry was counted, `from` `live` or `pinned`, and `filed_here` is how many of its sources name this place. Nothing is stored for a place other than `chosen`. A field of the stored file that is not the shape the Index sent before is left out.
 
 ### GET /forecast
 Access: open

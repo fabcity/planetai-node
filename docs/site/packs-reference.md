@@ -1,7 +1,7 @@
 # Packs that ship
 <!-- checked: v0.91.0 -->
 
-The twenty-five core packs in `packs/`, five data and twenty code, hold everything the node knows about a place, and no
+The twenty-six core packs in `packs/`, five data and twenty-one code, hold everything the node knows about a place, and no
 rule in `app/` says what PM2.5 means for a household or where the nearest fab lab is. For each pack this page
 says what it reads, what it says, its rules and where each threshold comes from, its settings, and what it does
 not know. How a pack is built and loaded is on [Packs](packs.md). Wild packs, such as `xiaomi-air` and
@@ -10,7 +10,7 @@ added with `planetai packs add`.
 
 A pack is `code` when its folder has any `.py` file, and a code pack's adapter and hooks run only with
 `PACKS_ALLOW_CODE=1`; `make` also needs `MAKE_ENABLED=1` and `fire` `FIRE_ENABLED=1`. A pack that names its own
-`switch:` runs on that switch alone: `bali-air-dispatch` on `BAD_ENABLED`, `home-assistant` on `HA_DISCOVERY`,
+`switch:` runs on that switch alone: `bali-air-dispatch` on `BAD_ENABLED`, `home-assistant` on `HA_DISCOVERY`, `index` on `INDEX_PLACE`,
 `smartcitizen`, `airgradient` and `purpleair` whenever their keys are set, and `air-quality` reads the CAMS model on
 `OPENMETEO_ENABLED`, the key that ran it in the core. A pack's `routes.py` is mounted at start and answers 404 while
 the pack is off.
@@ -35,6 +35,7 @@ the pack is off.
 | `terrain` | code | water | none | | | `coverage` `fetch` `verify` | `TERRAIN_*` |
 | `earth-engine` | code | land | none | | 1 | `timelapse` `verify` `basemap` | `EE_*`, `GROUND_SAT_WIDE_KM` |
 | `place` | code | place | 1 info | | 1 | `refresh` `gaps` `verify` `basemap` | `PLACE_*`, `GROUND_*` |
+| `index` | code | place | none | | | | `INDEX_*` |
 | `make` | code | make | none | the nearest-lab line | | | `MAKE_*` |
 | `fire` | code | air | 1 act, 1 warn, 1 info | | | | `FIRE_*`, `FIRMS_MAP_KEY` |
 | `open-data-health` | data | governance | 1 warn | | 2 | | `CKAN_PORTALS` (core adapter) |
@@ -873,6 +874,63 @@ imagery. With the `earth-engine` credentials in place, the monthly refresh also
 fetches Google Open Buildings V3 footprints (confidence at or above 0.65) and the Temporal dataset's yearly
 building count and mean height for 2016 to 2023; `GET /history?sensor_id=place-point&metric=sat_buildings_yearly`
 is the series. After a move it takes `planetai restart`, `planetai run place refresh` and a dashboard reload.
+
+## index
+
+Which Fab City Index place this node belongs to, and what the Index says about it: the place's score or range, a few
+indicators with their year and source, and how many sources the registry files for it. It reads two public files
+once a day and keeps them on the node. It computes no score of its own.
+
+| | |
+|---|---|
+| Kind | code |
+| Domain | `place` |
+| Requires node | `>=0.91.0` |
+| Metrics | none |
+| Scales | community |
+| Needs | `INDEX_PLACE` set (it is the pack's own switch, so `PACKS_ALLOW_CODE` is not needed); network to `index.fab.city`, `api.github.com` and `raw.githubusercontent.com` |
+| Shares | `/index/place` at `SHARE_LEVEL=open` |
+| Rules and cells | none: a place's numbers are the Index's, read and not recomputed |
+| Attribution | Fab City Index, CC BY 4.0, Fab City Foundation; awesome-fabcity-data |
+
+`planetai place` writes `INDEX_PLACE`, one of the 61 slugs in `packs/index/places.json` (generated from the registry's
+`places.yaml`), and, on a node that lists its packs in `PACKS_ENABLED`, adds the pack to that list. The two reads are:
+
+- the place: `INDEX_URL/api/v0/places/<slug>.json`, the Index's own file for the place, format `fci-api-v0`;
+- the registry: GitHub's current commit of awesome-fabcity-data's `main`, then that commit's `index.json`, fetched
+  only when the commit has moved since the last read.
+
+Each lands in one row of `index_reads` (`what`, `sha`, `fetched_at`, `ok`, `error`, `body`). A read that fails, times
+out after 20 seconds, is over 8 MB or is not the format asked for never replaces the stored body. The row keeps the
+last good one and says why in `error`, and a failed read is dated too, so a host that is down is asked once a day and
+not at every poll. The place row's `sha` holds the slug it was read for, on success and on failure, so a node whose
+`INDEX_PLACE` changed reads the new place at the next poll and not a day later, and a failed read keeps the last file
+only for the same slug. A slug the Index does not track is said in the row and nothing is requested. No request
+carries the node's coordinates, its id or its address.
+
+`GET /index/place` reads only those rows, so the dashboard never waits on index.fab.city. It trusts the stored place
+file for the chosen slug and no other, and the pack clears another slug's file on its next read. Its routes follow
+`PACKS_ENABLED` and not the pack's switch, so with `INDEX_PLACE` empty the route still answers, with nothing chosen. When the registry
+copy it read is there, the count of sources filed for the place comes from it. When it is not, the count comes from the
+pinned copy in `data/sources/`, and the answer's `registry.from` says `pinned`.
+
+### Settings
+
+| setting | default | meaning |
+|---|---|---|
+| `INDEX_PLACE` | empty | the Index place this node belongs to, a slug from `places.json`. Empty is off: nothing is read, and the Place door says no place is chosen |
+| `INDEX_URL` | `https://index.fab.city` | where the place file is read from |
+| `INDEX_REFRESH_HOURS` | `24` | how long a read stays good before the poll reads again |
+
+### What it does not know
+
+`places.json` carries an approximate centre for each place, used only to suggest one: a node more than 150 km from
+every centre gets no suggestion and picks by name. A centre is not a border, so the household confirms the place.
+
+The date the Place door shows is the date of the Index's own file (`read.at`), and the node's last attempt is
+`read.tried`, so a file that is two weeks old reads as two weeks old whenever the node tried since. The count of
+filed sources is how many registry entries name the place in their `places` list. It does not say that any code on
+this node reads them, and the pack reads none of them.
 
 ## make
 
