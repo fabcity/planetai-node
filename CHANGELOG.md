@@ -7,12 +7,12 @@
   day, and an alert sent into one of those drops used to be lost. A send that timed out waiting for an answer is not
   tried again, because Telegram may already have it, and a second copy of an alert is worse than a late one.
 
-- **A quick start, and two guides behind it.** `docs/quickstart` is a node in six steps on one page: install, a sensor
-  and the first alert, choose your packs, a model on the machine, your own agent, the map of your place, each with its
-  commands and the page that goes deeper. `docs/essential-guide` is the six steps in full, written for a lab or city
-  installing a community node, and `docs/radios-and-sensors` takes a Bayu, a Meshtastic radio or the FAB26 kit from
-  parts to a `yours` row in `planetai sensors`. The README and the FAB26 page point at the quick start; `START_HERE.md`
-  stays as the terminal walk-through.
+- **A quick start, and Place on a page of its own.** `docs/quickstart` is a node in six steps on one page: install, a
+  sensor and the first alert, let the packs run, a model on the machine, your own agent, the map of your place, each
+  with its commands and the page that goes deeper. It is the first page of the docs and a link in the top bar of every
+  page. `docs/place` is the Place door, moved out of the dashboard page with how to turn the place pack on and what to
+  do when the map is thin. The sidebar's Get started is now Install. The README and the FAB26 page point at the quick
+  start; `START_HERE.md` stays as the terminal walk-through.
 
 - **Each node is a key.** A node now makes its own key when it is installed, `NODE_KEY` in `.env`, and its ID is a
   short hash of the public key. It shows in Set up › Sharing, in `planetai status` and in `GET /health`. A child signs

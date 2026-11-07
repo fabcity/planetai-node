@@ -316,35 +316,35 @@ MARKS = [
      "With the admin token one line counts", "and opens Data › Home.",
      "The line counts the things, how many sit idle and how many need repair, and opens the list in "
      "Data › Home. Only a thing you mark to lend or give is ever published."),
-    ("place-head", "The ground around the house", "dashboard.md", "Place",
-     "The ground around the house.", "removes it)",
+    ("place-head", "The ground around the house", "place.md", "The head",
+     "The head gives", "removes it)",
      "The cell id is printed whole. Type a question in the line under it and the Ask pane opens with "
      "it; press / to get there from anywhere on this door. With UI_ASK off the line is not there."),
-    ("place-image", "The Image key", "dashboard.md", "Place",
+    ("place-image", "The Image key", "place.md", "Images and species",
      "**The Image key** (token only)", "**A new photo** on its own.",
      "The picture stays on this node, cleaned of EXIF and GPS, and lands on the map where its own GPS "
      "says it was taken, else in the node's cell."),
-    ("place-layers", "The layers", "dashboard.md", "Place",
-     "**What the place is made of.**", "the ground at the bottom.",
+    ("place-layers", "The layers", "place.md", "The layers",
+     "On the left is a list", "the ground at the bottom.",
      "What this place is made of, with the sky at the top and the ground at the bottom, and what the node does not hold yet. A filled "
      "dot is on, a hollow one off, and a dotted one is a layer the node cannot draw yet, named by its source."),
-    ("place-map", "The screen", "dashboard.md", "Place",
-     "**The screen.**", "the dark one.",
+    ("place-map", "The screen", "place.md", "The screen",
+     "In the middle is the map", "the dark one.",
      "Every distance on this door is measured by the node from its own point. Without the token the "
      "house's marks say withheld, because together they would place the house."),
-    ("place-tools", "The tools", "dashboard.md", "Place",
-     "**The tools.**", "15 km rings from the node's point.",
+    ("place-tools", "The tools", "place.md", "The tools",
+     "**Tools**, beside the ask line", "15 km rings from the node's point.",
      "The tools that run on this node today, and the ones still to come, marked not yet. Rings and "
      "distance draws the 2, 5 and 15 km rings from the node's own point. Without a token they stay quiet."),
-    ("place-orbit", "From orbit", "dashboard.md", "Place",
+    ("place-orbit", "From orbit", "place.md", "What changed",
      "what changed year on year", "the buildings it counts",
      "Two of the node's own Sentinel-2 years side by side, from files it already holds. Nothing is "
      "fetched while you look."),
-    ("place-species", "Species confirmed here", "dashboard.md", "Place",
+    ("place-species", "Species confirmed here", "place.md", "Images and species",
      "**Species confirmed here**", "token only.",
      "Only what a person here confirmed in an image is counted. Where a picture was taken places the "
      "house, so the table needs the token."),
-    ("place-changing", "What is changing", "dashboard.md", "Place",
+    ("place-changing", "What is changing", "place.md", "What changed",
      "**The place in figures**", "what is not here yet.",
      "Land and coast change yearly, so they are here and not on Now. What the node cannot read yet is "
      "named here as missing."),
