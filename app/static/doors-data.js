@@ -129,7 +129,7 @@ function metricTiles() {
   };
   let k = 0;
   /* every figure carries its date and its word (the layer): a tile is the median of the latest 15-minute means */
-  $('#metrics').innerHTML = `<p class="fine mdate">Medians of each source’s latest 15-minute mean, ${esc(wdhm(D.as_of))} ${prov('live')}</p>` + fams.map(([t, ms]) => `<div class="fam"><div class="fh k">${t}<span><b>${ms.length}</b> kind${ms.length === 1 ? '' : 's'}</span></div><div class="tiles">${ms.map(m => {
+  $('#metrics').innerHTML = `<p class="fine mdate">Medians of each source’s latest 15-minute mean, ${esc(wdhm(D.as_of))} ${prov('live')}</p>` + fams.map(([t, ms]) => `<div class="fam" data-fam="${esc(t)}"><div class="fh k">${t}<span><b>${ms.length}</b> kind${ms.length === 1 ? '' : 's'}</span></div><div class="tiles">${ms.map(m => {
     const n = src[m].size, md = now[m] && now[m].length ? d3.median(now[m]) : null, dp = Math.abs(md) >= 100 ? 0 : Math.abs(md) >= 10 ? 1 : 2;
     return `<button type="button" class="mt ${m === METRIC ? 'on' : ''}" data-m="${esc(m)}" aria-pressed="${m === METRIC}" style="--i:${k++}">`
       + `<span class="sym">${esc(SYM[m] || m.slice(0, 4))}</span><span class="mn said">${esc(mWord(m))}</span>${trace(m)}`

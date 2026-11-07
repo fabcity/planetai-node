@@ -19,6 +19,13 @@ const plain = s => String(s ?? '').replace(/[\p{Extended_Pictographic}\u{FE0F}\u
 const SAT = y => `/earth/frame.png?year=${y}&source=sentinel`;
 const km = ([lon1, lat1], [lon2, lat2]) => d3.geoDistance([lon1, lat1], [lon2, lat2]) * 6371;
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+/* OP-XY's header ramp (evolution variation): pairs of [name, value, unit, second line under the name, second line under
+   the value], drawn as a name cell then a value cell, in even grey steps from black to white; the type turns ink where
+   the step passes the middle. Greys only: a ramp is not a colour. */
+/* Field Synthesizer variation: one cell a figure, as the export's readout strip: an etched label, the value, a line
+   under it. pairs: [label, value, unit, sub-label, sub-value, class on the cell (warm: over the line; sig: the signal)] */
+const rampHTML = pairs => pairs.map(([k, v, u, k2, v2, cls]) =>
+  `<div class="${cls || ''}"><span class="rk">${k}</span><span class="r1"><span class="rv">${v}</span>${u ? `<span class="ru">${u}</span>` : ''}</span><span class="r2">${[k2, v2].filter(Boolean).join(' · ') || '&nbsp;'}</span></div>`).join('');
 
 /* ---- the node's rules, as helpers (docs/site/design.md, tools/check_ui.py) ---- */
 const NODE = '/static/';                           // the node's own frozen layer: theme, tokens, signs, learn.json, fonts
@@ -30,7 +37,7 @@ const UNLOCK_AT = '<a href="#setup/screen">Set up › This screen</a>';
 const sign = (id, cls = '') => `<svg class="sg ${cls}" aria-hidden="true"><use href="${NODE}signs.svg#${id}"/></svg>`;
 // Provenance is ink only and square: the glyph, then one of the five words. Anything else is an absence, not a provenance.
 const PROV = ['live', 'partial', 'model', 'cached', 'example'];
-const prov = w => PROV.includes(w) ? `<span class="pill">${sign('sign-prov-' + w)}${w}</span>` : `<span class="gap">${esc(w)}</span>`;
+const prov = w => PROV.includes(w) ? `<span class="pill pv-${w}">${sign('sign-prov-' + w)}${w}</span>` : `<span class="gap">${esc(w)}</span>`;
 // Every numeral carries its comparison: data-num names it, data-cmp says against what (the visual gate reads both).
 const ago = m => m < 90 ? `${Math.round(m)} min` : m < 48 * 60 ? `${Math.round(m / 60)} h` : `${Math.round(m / 1440)} days`;   /* an age in minutes, said the way the Node door and Now's declared bands say it */
 const num = (key, v, cmp, inner) => `<span data-num="${esc(key)}" data-cmp="${esc(cmp)}">${inner ?? esc(v)}</span>`;
@@ -68,13 +75,13 @@ function lastRaw(id, metric) {
   const s = ((D.raw.series[id] || {})[metric]) || []; for (let i = s.length - 1; i >= 0; i--) if (s[i]) return s[i][0]; return null;
 }
 
-const DOORS = ['now', 'place', 'node', 'data', 'wall', 'setup'];   /* setup is a page, opened by the gear, not a door in the menu */
+const DOORS = ['now', 'place', 'node', 'data', 'wall', 'setup', 'p'];   /* setup is a page, opened by the gear, not a door in the menu; p is a page the household made (#p/<id>, round 4) */
 /* #data/<sensor-id> opens a door at one thing: the part after the slash is the door's to read */
 const view = () => { const d = location.hash.slice(1).split('/')[0]; return DOORS.includes(d) ? d : 'now'; };
 const VIEWS = {};
 /* the reader's register: what they chose last on this screen, else what their system asks for */
 let userTheme = (() => { try { const t = localStorage.getItem('planetai_theme'); if (t === 'light' || t === 'dark') return t; } catch (e) { /* no storage here */ }
-  return matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; })();
+  return 'dark'; })();   /* Field Synthesizer variation: dark by default; the switch still offers paper */
 document.querySelectorAll('.bar .reg button').forEach(o => o.classList.toggle('on', o.dataset.r === userTheme));
 function route() {
   const v = view();
