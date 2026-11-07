@@ -45,7 +45,8 @@
   and nothing about the house. The figures band on Place has a Fab City Index row: the place and its label, its FCI or
   its range while no cell is measured, up to three indicators with their year and source, and how many registry sources
   are filed for it. The node shows the Index's numbers and does not work them out, and marks them `partial`, or `cached`
-  when the last read failed. `GET /index/place` serves it.
+  when the last read failed. `GET /index/place` serves it. The city is on Now too, in one row headed **In the city**
+  at the foot of Around the house, and Place's head says it in one line over the map that goes down to its figures.
 - **You can draw on Place now, and keep what you draw in named maps.** With the token, the keys on the screen's left
   edge drop a marker or a note, draw a line with its length or an area with its surface, and add an image, by press or
   with the keyboard alone, and PostGIS measures what you keep. The screen downloads as a PNG with its credit and scale,

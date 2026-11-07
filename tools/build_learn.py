@@ -316,6 +316,10 @@ MARKS = [
      "With the admin token one line counts", "and opens Data › Home.",
      "The line counts the things, how many sit idle and how many need repair, and opens the list in "
      "Data › Home. Only a thing you mark to lend or give is ever published."),
+    ("now-city", "The city on the Fab City Index", "dashboard.md", "Now",
+     "**In the city** closes the column", "when the last read failed.",
+     "The row comes from GET /index/place, the copy the index pack reads once a day, so Now never waits on "
+     "index.fab.city. The numbers are the Index's own; the node does not work them out."),
     ("place-head", "The ground around the house", "place.md", "The head",
      "The head gives", "removes it)",
      "The cell id is printed whole. Type a question in the line under it and the Ask pane opens with "
@@ -624,6 +628,9 @@ QUESTIONS = {
     'now-things': {"en": ['Which of our things need repair?', 'What could we lend to a neighbour?'],
         "id": ['Barang kami mana yang perlu diperbaiki?', 'Apa yang bisa kami pinjamkan ke tetangga?'],
         "es": ['¿Qué cosas nuestras necesitan arreglo?', '¿Qué podríamos prestarle a un vecino?']},
+    'now-city': {"en": ['How is our city doing on the Fab City Index?', 'Why is this a range and not a number?'],
+        "id": ['Bagaimana kota kami di Fab City Index?', 'Mengapa ini rentang dan bukan satu angka?'],
+        "es": ['¿Cómo está nuestra ciudad en el Fab City Index?', '¿Por qué es un rango y no un número?']},
     'place-head': {"en": ['How big is the area this node covers?', 'What does the satellite show changed here?'],
         "id": ['Seberapa luas area yang dicakup node ini?', 'Menurut satelit, apa yang berubah di sini?'],
         "es": ['¿Qué tamaño tiene la zona que cubre este nodo?', '¿Qué cambió aquí según el satélite?']},

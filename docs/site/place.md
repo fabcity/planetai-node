@@ -34,6 +34,9 @@ The head gives the cell's id, resolution, edge and area, and the node's position
 screen with the token. Under it is a line to ask the node about this place (press `/` to get there; `UI_ASK=off` removes it) and
 **Tools**. Below that are the layers on the left and the screen beside them.
 
+Once a Fab City Index place is chosen and read, the head has one more line: the place, its label and its FCI or range,
+and **its figures**, which goes down to the full row in the place in figures.
+
 ## The layers
 
 On the left is a list of what the node can show about the ground around the house.

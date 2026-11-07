@@ -108,6 +108,11 @@ sensors' range, and the distance rings and cells for a screen with the token. Pr
 Without WebGL the map is a rose of bearings and distances. With the admin token one line counts the things this home
 keeps, how many sit idle and how many need repair, and opens Data › Home.
 
+**In the city** closes the column once `planetai place` has chosen this node's Fab City Index place. It is one row:
+the place and the label the Index gives it, its FCI or its range, and when the Index's file was read, marked `partial`,
+or `cached` when the last read failed. It links to the place's figures on Place, which hold the indicators and the
+registry count. With no place chosen the part is not drawn, and Place says how to choose one.
+
 **A pack's own band.** A pack can declare a band in its `pack.yaml` (a wild pack has no other way onto the page, it
 ships no code for it), and Now draws it next to the part with the same stage: `decide` and `act` under What to do,
 `measure` under Did it work. The `observe` bands go under both columns, in **Also read here**, side by side on a wide
