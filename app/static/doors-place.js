@@ -15,7 +15,7 @@ VIEWS.place = function () {
   const h = D.health, area = D.geometry.ladder.find(l => l.res === h.cell.res).own_area_m2 / 1e6;   // the node's own figure for this cell, not the resolution's average
   $('#placehead').innerHTML = `<div class="k">Place · ${said(D.registry.place)}</div>
     <h1>The ground around the house</h1>
-    <p class="lede mono">${esc(h.cell.id)} · res ${h.cell.res} · ${h.cell.edge_m} m edge · ${area.toFixed(2)} km²${DOORS_TOKEN() ? ` · ${fmt(D.point[1], 3)}, ${fmt(D.point[0], 3)}` : ''}</p>`;
+    <p class="lede mono">${esc(h.cell.id)} · res ${h.cell.res} · ${h.cell.edge_m} m edge · ${area.toFixed(2)} km²${DOORS_TOKEN() ? ` · ${fmt(D.point[1], 3)}, ${fmt(D.point[0], 3)}` : ''}</p>${indexLine(D.index_place)}`;
   /* the Ask line opens the node's own Ask pane with its question: one place to ask, whichever door it was typed on.
      UI_ASK off is the keeper's switch for every ask, so the line is not drawn at all. */
   $('#pask').hidden = !!D.askOff;
@@ -31,6 +31,11 @@ VIEWS.place = function () {
     bench.dataset.sheet = open; document.querySelectorAll('.psbar button').forEach(x => x.setAttribute('aria-expanded', String(x.dataset.s === open)));
   });
   speciesBlock(); placeTools(); figures(); placeMap(); layer();
+  /* #place/figures (Now's In the city, the head's line) scrolls to the figures once route() has put the page at its top;
+     on Place itself the line scrolls there without a new address, so the map is not drawn again */
+  const go = () => $('#pfigures').scrollIntoView({ block: 'start' }), g = $('#pidxgo');
+  if (g) g.onclick = e => { e.preventDefault(); go(); };
+  if (location.hash === '#place/figures') requestAnimationFrame(go);
 };
 /* FOLDING (SPEC_place_microgis §4; one side since Tomas's 5 Nov ruling): the left folds to a 36 px strip with its name
    down it, and a press on the strip opens it again; Map only (`mo`) is the left folded and the screen at the window's
@@ -204,8 +209,9 @@ document.addEventListener('click', e => { if ($('#ptools').hidden === false && !
    never the node's last try, said in the node's zone; a range (simulated: no cell measured yet) is said as a range, never
    as a score of 0. The numbers are the Index's, a portal's, so they are `partial` and, when the last read failed, `cached`:
    `live` is only what this node measured. A figure the Index sent as null is a dash and a row is skipped, never a throw
-   that would stop the map below. The pack's route answers 200 with no `chosen` when INDEX_PLACE is empty. */
-function indexRow(P) {
+   that would stop the map below. The pack's route answers 200 with no `chosen` when INDEX_PLACE is empty. `brief` is
+   Now's In the city: the place, its label and figure and when it was read, with the rest left to Place's figures. */
+function indexRow(P, brief) {
   const a = (h, t) => `<a href="${esc(h)}" target="_blank" rel="noopener">${t}</a>`;
   if (!P || !P.chosen) return `<div class="fr"><span>Fab City Index<small>Choose this node's Index place: run <code>planetai place</code> on the node. How the Index counts a place: ${a('https://index.fab.city/method', 'index.fab.city/method')}</small></span><b><span class="soon">not chosen</span></b></div>`;
   if (!P.place) return `<div class="fr"><span>${esc(P.chosen)}<small>Fab City Index · not an Index place. Run <code>planetai place</code> on the node to choose one</small></span><b><span class="soon">not an Index place</span></b></div>`;
@@ -218,8 +224,19 @@ function indexRow(P) {
   const ind = (Array.isArray(P.indicators) ? P.indicators : []).filter(i => i && i.latest && fin(i.latest.value)).slice(0, 3)
     .map((i, k) => `<div class="fr"><span>${esc(i.label)}<small>${esc(i.latest.year)} · ${esc(i.unit)}${i.source ? ` · ${esc(String(i.source).split(': http')[0])}` : ''}</small></span><b>${num('place.index.' + k, g(i.latest.value), `${i.label}, ${i.latest.year}`)}</b></div>`).join('');
   const lk = P.links && /^https:\/\//.test(P.links.page || '') ? ` · ${a(P.links.page, `${nm} on the Index`)}` : '';
-  return `<div class="fr"><span>${nm}${sc && sc.status_label ? ` · ${esc(sc.status_label)}` : ''}<small>Fab City Index · ${when} · ${n} source${n === 1 ? '' : 's'} filed for ${nm} in the registry${lk}</small></span>`
-    + `<b>${val || '<span class="soon">not read</span>'}${val ? ' ' + prov(r.ok ? 'partial' : 'cached') : ''}</b></div>` + ind;
+  const small = brief ? `Fab City Index · ${when} · <a href="#place/figures">on Place ›</a>`
+    : `Fab City Index · ${when} · ${n} source${n === 1 ? '' : 's'} filed for ${nm} in the registry${lk}`;
+  return `<div class="fr"><span>${nm}${sc && sc.status_label ? ` · ${esc(sc.status_label)}` : ''}<small>${small}</small></span>`
+    + `<b>${val || '<span class="soon">not read</span>'}${val ? ' ' + prov(r.ok ? 'partial' : 'cached') : ''}</b></div>` + (brief ? '' : ind);
+}
+/* The head's line: the place on the Index in one line, over the map, with a way down to its figures. Nothing when no
+   place is chosen or nothing has been read: the figures band says why. */
+function indexLine(P) {
+  const sc = P && P.chosen && P.place && P.score, fin = x => typeof x === 'number' && isFinite(x), g = x => String(+x.toFixed(3));
+  const rg = sc && Array.isArray(sc.fci_range) && sc.fci_range.every(fin) ? sc.fci_range : null;
+  const v = !sc ? null : fin(sc.fci) ? g(sc.fci) : rg ? `${g(rg[0])} – ${g(rg[1])}` : null;
+  if (!v) return '';
+  return `<p class="lede mono">${esc(P.place.name || P.chosen)} on the Fab City Index${sc.status_label ? ` · ${esc(sc.status_label)}` : ''} <b>${v}</b> · <a href="#place/figures" id="pidxgo">its figures ↓</a></p>`;
 }
 /* THE PLACE IN FIGURES, the lower band's right: the issues that change yearly and have no hours (Land, Coast; Now is for
    the hour), the Index cells, and what is not here yet. */

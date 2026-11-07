@@ -7,6 +7,10 @@
 VIEWS.now = function () {
   rows(); drawDeclared(); drawAsks(); drawNow();
   aroundMap($('#rose')); thingsLine($('#nthings')); rememberLoad().then(() => decision());   /* the usual hour joins "Nothing is asked now" */
+  /* In the city: the node's Fab City Index place in one row (doors-place.js indexRow), only once a place is chosen and
+     known; choosing one is said on Place, so Now carries no setup note */
+  const P = D.index_place, city = !!(P && P.chosen && P.place);
+  $('#ncity').hidden = !city; $('#ncityrow').innerHTML = city ? indexRow(P, true) : '';
   /* Next days (SPEC_next_days §5) is a part of Now; #now/next, the address the switch kept until 4 Nov, scrolls to it */
   $('#nexth').textContent = (NX[D.locale] || NX.en).next;
   drawNext().then(() => { if (location.hash === '#now/next' && !NEXT.shown) { NEXT.shown = true; $('#nexth').scrollIntoView(); } });
