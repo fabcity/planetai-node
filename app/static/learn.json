@@ -1128,6 +1128,30 @@
    "title": "A pack's own band",
    "url": "https://planetai.fab.city/docs/dashboard/#now"
   },
+  "now-city": {
+   "anchor": "now",
+   "more": "The row comes from GET /index/place, the copy the index pack reads once a day, so Now never waits on index.fab.city. The numbers are the Index's own; the node does not work them out.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "How is our city doing on the Fab City Index?",
+     "Why is this a range and not a number?"
+    ],
+    "es": [
+     "¿Cómo está nuestra ciudad en el Fab City Index?",
+     "¿Por qué es un rango y no un número?"
+    ],
+    "id": [
+     "Bagaimana kota kami di Fab City Index?",
+     "Mengapa ini rentang dan bukan satu angka?"
+    ]
+   },
+   "quote": "**In the city** closes the column once `planetai place` has chosen this node's Fab City Index place. It is one row:\nthe place and the label the Index gives it, its FCI or its range, and when the Index's file was read, marked `partial`,\nor `cached` when the last read failed.",
+   "section": "Now",
+   "title": "The city on the Fab City Index",
+   "url": "https://planetai.fab.city/docs/dashboard/#now"
+  },
   "now-distances": {
    "anchor": "now",
    "more": "Each distance carries its own provenance word, so you can see which number was measured in this house and which came from a public station or a model.",
@@ -2218,6 +2242,7 @@
   "now-next",
   "now-around",
   "now-things",
+  "now-city",
   "place-head",
   "place-image",
   "place-layers",
