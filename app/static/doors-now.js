@@ -247,7 +247,8 @@ function drawAsks() {
     return `<div class="decide"><p class="nk">${said(String(a.rule_id || '').split('/')[0])} · asked ${esc(wdhm(a.ts))}</p>`
       + `<p class="said">${esc(text).replace(/\n/g, '<br>')}</p>`
       + rows.map(r => `<div class="ans" role="group" aria-label="Answer">${r.map(b => `<button data-al="${a.id}" data-v="${esc(b.value)}"${b.ask ? ` data-ask="${esc(packWord(b.ask, lc))}"` : ''}>${said(packWord(b.text, lc))}</button>`).join('')}</div>`).join('')
-      + answers.map(x => `<p class="dm">answered: ${esc(x.button ? packWord(x.button.text, lc) : x.choice)}${x.actor ? ` by ${esc(x.actor)}` : ''} at ${esc(hhmm(x.ts))}${x.note ? ` · “${esc(x.note)}”` : ''}</p>`).join('')
+      /* a drawing tied to the alert on Place answers it as place.mark:<id> (app/maps.py tie): said in words */
+      + answers.map(x => `<p class="dm">answered: ${esc(x.button ? packWord(x.button.text, lc) : /^place\.mark:/.test(x.choice) ? 'a drawing on Place' : x.choice)}${x.actor ? ` by ${esc(x.actor)}` : ''} at ${esc(hhmm(x.ts))}${x.note ? ` · “${esc(x.note)}”` : ''}</p>`).join('')
       + `<p class="dm" role="status"></p></div>`;
   }).join('');
 }

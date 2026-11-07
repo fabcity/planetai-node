@@ -64,10 +64,10 @@ Access: public
 
 What every screen in the house polls. Answers at every `SHARE_LEVEL` and never makes an outbound request of its own.
 
-Returns `ok` (true once a poll has run), `node`, `version`, `schema`, `uptime_s`, `lat`, `lon`, `position` (`cell` or `point`), `city`, `polls`, `last_poll`, `last_error`, `ingested`, `errors` (each loop's last error), `locale`, `tz`, `cell` (`{id, res, edge_m, caption}`, null before setup), `docs`, `mcp` and `llms`. With their features on it adds `mesh` (`MQTT_HOST`), `direct` (`MQTT_HOST` with the smartcitizen pack on), `reticulum` (`RETICULUM_URL`) and `release` (`{latest, current, newer, checked, asked}` from the hourly check, with `UPDATE_CHECK=on`). `schema` starts with `unreachable` when the database refuses the app, usually a wrong password after a reinstall; `planetai doctor` says why.
+Returns `ok` (true once a poll has run), `node`, `node_id` (the short hash of this node's key, null without `NODE_KEY`), `node_key` (its public key, base64), `version`, `schema`, `uptime_s`, `lat`, `lon`, `position` (`cell` or `point`), `city`, `polls`, `last_poll`, `last_error`, `ingested`, `errors` (each loop's last error), `locale`, `tz`, `cell` (`{id, res, edge_m, caption}`, null before setup), `docs`, `mcp` and `llms`. With their features on it adds `mesh` (`MQTT_HOST`), `direct` (`MQTT_HOST` with the smartcitizen pack on), `reticulum` (`RETICULUM_URL`) and `release` (`{latest, current, newer, checked, asked}` from the hourly check, with `UPDATE_CHECK=on`). `schema` starts with `unreachable` when the database refuses the app, usually a wrong password after a reinstall; `planetai doctor` says why.
 
 ```json
-{"ok": true, "node": "bayu-ungasan", "version": "v0.91.0", "schema": "0.61", "uptime_s": 86121,
+{"ok": true, "node": "bayu-ungasan", "node_id": "cc5gqlek2e2rhfy6", "version": "v0.91.0", "schema": "0.61", "uptime_s": 86121,
  "lat": -8.825, "lon": 115.159, "position": "cell", "city": "bali", "polls": 287,
  "last_poll": "2026-10-20T08:35:02+00:00", "errors": {}, "locale": "id", "tz": "Asia/Makassar",
  "cell": {"id": "...", "res": 8}, "docs": "https://planetai.fab.city/docs/", "mcp": "/mcp", "llms": "/llms.txt"}
@@ -93,7 +93,7 @@ What the node announces about itself on Reticulum, read by the bridge container,
 ### GET /nodes
 Access: public
 
-The nodes the programme lists, from `registry.json` on the repository's `main`, read every hour. Returns `{read, from, nodes, error?}`, and each node has `name`, `place`, `scale`, `operator`, `since`, `cell` and `ll` (`[lon, lat]` to one decimal). `UPDATE_CHECK=off` reads nothing and serves an empty list.
+The nodes the programme lists, from `registry.json` on the repository's `main`, read every hour. Returns `{read, from, nodes, error?}`, and each node has `name`, `id` (when it is listed with a key), `place`, `scale`, `operator`, `since`, `cell` and `ll` (`[lon, lat]` to one decimal). `UPDATE_CHECK=off` reads nothing and serves an empty list.
 
 ### GET /machine
 Access: token
@@ -403,6 +403,51 @@ Access: token
 
 Circles round the node, `?km=` up to eight distances (default `2,5,15`). Returns `{rings: [{km, ring}]}`.
 
+### GET /place/maps
+Access: token
+
+The household's maps, each with how many drawings it holds, and the six drawing colours: `{maps: [{id, name, owner, agent, shared, held, share_error, from_node, marks, updated_at}], palette}`. A map with `from_node` set came from a child node and is read-only here. `share_error` says why a shared map has not gone up, and `held` is true while a drawing on the house keeps it here.
+
+### GET /place/maps/{map_id}/marks
+Access: token
+
+A map's drawings as the Place screen draws them: `{marks: [{id, map_id, kind, colour, label, note, capture_id, length_m, area_m2, drawn_by, alert_id, event_id, updated_at, geometry}]}`, `geometry` as GeoJSON in WGS84 and the measures PostGIS's. Any map may be read, an agent's or a child's too. Reading writes nothing to the ledger.
+
+### POST /place/maps
+Access: token
+
+A new map, `{"name": "Garden plan", "owner"?: "Tomas", "actor": "Tomas"}`. Returns `{map}`.
+
+### PATCH /place/maps/{map_id}
+Access: token
+
+Rename it, change its owner, or share it: `{"shared": true, "confirm": "exact"}`. Without `confirm` the answer is 409 with `detail` `{"code": "share_warning", "text": …}`, the warning the page shows before the second press. With no `PARENT_API_URL` it is 409 too, with only a sentence. `{"shared": false}` takes it back off the node upstream. 403 for an agent's map or one from a child.
+
+### DELETE /place/maps/{map_id}
+Access: token
+
+`?confirm=<the map's name>&actor=<who>`. The map goes with its drawings, and from the node upstream too if it was shared.
+
+### GET /place/maps/{map_id:int}.{ext}
+Access: token
+
+The map as `.geojson`, `.kml` or `.dxf` (R12, in metres of the UTM zone the node stands in), as a file named `<node>-<map>-<date>`.
+
+### POST /place/maps/{map_id}/marks
+Access: token
+
+A drawing, as a GeoJSON Feature whose `properties` are `{kind: marker | line | area | note, label?, note?, colour?: 1-6, image?}`. Returns `{mark}`, measured by PostGIS. On a shared map, a drawing on the house's own res-10 cell also returns `warn` and holds the map until it is shared again.
+
+### PATCH /place/marks/{mark_id}
+Access: token
+
+Any of `geometry`, `label`, `note`, `colour`, `image`, and `issue` with `words` to tie the drawing to an open issue as its acted step. Tying it again to the same issue keeps the act's time. Returns `{mark}`, and `warn` when a new geometry on a shared map touches the house's own res-10 cell.
+
+### DELETE /place/marks/{mark_id}
+Access: token
+
+`?actor=<who>`. A tie to an issue stays in the ledger.
+
 ### GET /ground/meta
 Access: open
 
@@ -577,6 +622,14 @@ it is going: `idle`, `waiting` (with `stuck` after three minutes), `running`, `d
 
 A child sends its parent hourly means and alert timestamps. Raw readings do not travel this way. See [federation](federation.md).
 
+Both pushes are signed with the child's key, in four headers beside the token: `X-Node-Id`, `X-Node-Key` (the public
+key, base64), `X-Node-Ts` (unix seconds) and `X-Node-Signature`, an Ed25519 signature over
+`planetai-node-v1\n<route>\n<ts>\n<sha256 of the body, hex>`. The parent checks the token first, then the signature,
+then pins the child's name to its key on first contact. A signature that does not verify, or a timestamp more than
+10 minutes from the parent's clock, answers 401. A name pinned to another key, a key pinned under another name, or a
+name that `registry.json` lists under another ID answers 409, and the `detail` says what to run. An unsigned push is
+accepted under a name that has never signed, and refused with 401 under one that has.
+
 ### GET /aggregates
 Access: token
 
@@ -595,10 +648,34 @@ A child pushes the hourly means of its own sensors, each row saying whether it i
 
 The parent keeps each mean as one reading of sensor `<node>/<sensor_id>`, of kind `child`. Returns `{"accepted": <n>}`.
 
+### POST /place/maps/received
+Access: children
+
+A child sends a map its household shared, whole, at most once a minute after each change, and a `delete` when it is unshared or deleted.
+
+```json
+{"schema": "planetai.place.map/v0", "node": "bayu-ungasan", "map_id": 7, "op": "put",
+ "geojson": {"type": "FeatureCollection", "map": "Garden plan", "owner": "cc5gqlek2e2rhfy6", "features": [...]}}
+```
+
+The parent keeps it under the child's name and map id, its drawings replaced on each `put`, and lists it read-only in `GET /place/maps`. A picture's number is the child's and is dropped. The map's `owner` is the child node, never a person: its ID when the push is signed (as `/aggregates` is, and pinned the same way), its name when it is not. A drawing carries no `drawn_by`. A map holds 2,000 drawings and 20,000 points at most (413), a drawing 1,000 points (422), and a colour is 1 to 6 (422). Returns `{"ok": true, "marks": <n>}` for a `put` and `{"ok": true}` for a `delete`.
+
 ### POST /events
 Access: children
 
 A child pushes one row per alert it raised, timestamps only: `alert_id`, `rule`, `level`, `kind`, `raised_at`, `responded_at`, `acted_at`, `measured_at`. No text, actor or sensor travels. The parent counts them in its ρ. Returns `{"accepted": <n>}`.
+
+### GET /children
+Access: token
+
+The children this node has pinned, by name: `[{name, node_id, public_key, first_seen, last_seen}]`. `node_id` and
+`public_key` are null for a child that still pushes unsigned. Set up › Sharing and `planetai children` show it.
+
+### DELETE /children/{name}
+Access: token
+
+Forgets a child's pin, after it lost its key and came back as a new node. Its readings and events stay, and its next
+push is pinned to the key it signs with. 404 when no child of that name is pinned. `planetai children forget <name>`.
 
 ## Open data and backups
 
@@ -684,7 +761,7 @@ This documentation searched without a model, `?q=` of 2 to 200 characters: the w
 
 ## Wire formats
 
-Each document that travels between nodes names its format in `schema`: `issues-v0`, `export-v0`, `report-v0`, `aggregates-v0`, `events-v0`, `days-v0` and `forecast-v0`. A receiver never refuses on it: an unknown value is logged once and the fields it knows are read.
+Each document that travels between nodes names its format in `schema`: `issues-v0`, `export-v0`, `report-v0`, `aggregates-v0`, `events-v0`, `days-v0`, `forecast-v0` and `planetai.place.map/v0`. A receiver never refuses on it: an unknown value is logged once and the fields it knows are read.
 
 ## What the node calls out
 
@@ -692,6 +769,7 @@ Each document that travels between nodes names its format in `schema`: `issues-v
 |---|---|---|
 | `POST {PARENT_API_URL}/aggregates` | Hourly, with a parent set | The last 2 hours of hourly means of its own sensors, with `PARENT_TOKEN` |
 | `POST {PARENT_API_URL}/events` | Hourly, after an alert in the last 36 hours | Alert timestamps |
+| `POST {PARENT_API_URL}/place/maps/received` | Within a minute of a change to a map the household shared | The map's drawings, at their exact place, with their labels, notes and measures |
 | Telegram | Each alert at or above `ALERT_LEVEL`, each report, once per newer release, and `getMe` once a day for the bot's name | The message, with `TELEGRAM_BOT_TOKEN` |
 | `planetai.fab.city/node0/get/VERSION` | Hourly, unless `UPDATE_CHECK=off` | Nothing about the house |
 | GitHub's `registry.json` | Hourly, unless `UPDATE_CHECK=off` | Nothing about the house |

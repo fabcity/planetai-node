@@ -879,7 +879,7 @@ is the series. After a move it takes `planetai restart`, `planetai run place ref
 
 Which Fab City Index place this node belongs to, and what the Index says about it: the place's score or range, a few
 indicators with their year and source, and how many sources the registry files for it. It reads two public files
-once a day, stores them, and serves them. It computes no score, and the node never makes its own.
+once a day and keeps them on the node. It computes no score of its own.
 
 | | |
 |---|---|

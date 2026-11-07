@@ -2,13 +2,34 @@
 
 ## Unreleased
 
+- **An alert sent while the internet drops for a moment still arrives.** If the connection to Telegram never opens,
+  the node tries again 3 seconds later and then 10 seconds after that. Node #1's line drops like this several times a
+  day, and an alert sent into one of those drops used to be lost. A send that timed out waiting for an answer is not
+  tried again, because Telegram may already have it, and a second copy of an alert is worse than a late one.
+
+- **A quick start, and two guides behind it.** `docs/quickstart` is a node in six steps on one page: install, a sensor
+  and the first alert, choose your packs, a model on the machine, your own agent, the map of your place, each with its
+  commands and the page that goes deeper. `docs/essential-guide` is the six steps in full, written for a lab or city
+  installing a community node, and `docs/radios-and-sensors` takes a Bayu, a Meshtastic radio or the FAB26 kit from
+  parts to a `yours` row in `planetai sensors`. The README and the FAB26 page point at the quick start; `START_HERE.md`
+  stays as the terminal walk-through.
+
+- **Each node is a key.** A node now makes its own key when it is installed, `NODE_KEY` in `.env`, and its ID is a
+  short hash of the public key. It shows in Set up › Sharing, in `planetai status` and in `GET /health`. A child signs
+  everything it pushes to its parent, shared maps included (a map's owner is the node's ID), and the parent pins the child's name to its key the first time it hears from it.
+  A push under that name from another key is refused, with a sentence saying what to run. The shared
+  `AGGREGATE_TOKEN` stays. A child with no key yet still pushes as before. Keep a copy of `.env` somewhere that is not
+  the backup share: a node that loses it is a new node. A node updating from an older release gets its key on the
+  update after this one. `planetai children` lists the nodes pushing to a parent. docs/SPEC_identity.md.
+
 - **Place is drawn as what the ground is made of.** The door has a list on the left with the sky at the top and the
   ground at the bottom, one line a row with a dot for on, off, or not held yet, and a black screen in the middle that
-  stays black on the light page and the dark one. On the right is a column of tools. Rings and distance runs today, and
-  the sun and shade, trees, built form, sealed ground, streets, walking, what changed, where the rain goes and four
-  fitness tools are listed as not yet. Under the screen are a line for what you pressed and the list around the house,
-  and below that, what you selected and the place in figures. The rooms are gone from Place, and the hectare squares
-  view is gone until What changed runs as a tool. On a phone the layers and the tools open as a sheet over the lower
+  stays black on the light page and the dark one. **Tools**, beside the ask line, opens a menu. Rings and distance and
+  From the house run today, and the sun and shade, trees, built form, sealed ground, streets, walking, what changed,
+  where the rain goes and four fitness tools are listed as not yet. Under the screen are a line for what you pressed
+  and the list around the house, then what changed year on year across the whole page, with the satellite then and now
+  side by side, and below that the open map's table and the place in figures. The rooms are gone from Place, and the
+  hectare squares view is gone until What changed runs as a tool. On a phone the layers open as a sheet over the lower
   part of the page.
 
 - **A node can say which Fab City Index place it belongs to.** `planetai place` suggests the nearest of the 61 places the
@@ -19,6 +40,25 @@
   its range while no cell is measured, up to three indicators with their year and source, and how many registry sources
   are filed for it. The node shows the Index's numbers and does not work them out, and marks them `partial`, or `cached`
   when the last read failed. `GET /index/place` serves it.
+- **You can draw on Place now, and keep what you draw in named maps.** With the token, the keys on the screen's left
+  edge drop a marker or a note, draw a line with its length or an area with its surface, and add an image, by press or
+  with the keyboard alone, and PostGIS measures what you keep. The screen downloads as a PNG with its credit and scale,
+  and a map as GeoJSON or KML, or as DXF in metres of the node's UTM zone. Share sends a map to the node upstream, every
+  drawing at its exact place with its labels, notes and measures, where the people holding that node's token can see
+  it. Upstream the node is the map's owner, and who drew each drawing stays here. It goes after a plain warning, and a drawing that touches the cell the house stands
+  in holds it until you press Share again. A drawing
+  tied to an issue on Now, with what you did in your own words, counts as acting on it. The satellite opens first, the
+  yearly change moved under the map, drone flights show as pins when you zoom out, and the layers fold with `[`, with
+  `\` for the map only and F for full screen. The readout is a small chip until you press it for the colours, the keys
+  on the screen are 36 px with a mouse and 44 px on a touch screen, and the controls on the screen keep apart at any
+  window size. The Image key adds a picture, so **+ Add an image** is gone from the top. Place in
+  `docs/site/dashboard.md` says how.
+
+  For whoever runs the node, `init.sql` enables PostGIS and adds `place_maps` and `place_marks`. Every drawing, change,
+  download and share is a `place` row in the ledger, and a private daily count of drawings goes to the sensor
+  `place-gis`, never out and never into an Index cell. A parent takes a child's shared map on
+  `POST /place/maps/received` with its own `AGGREGATE_TOKEN` and keeps it read-only. The routes are in
+  `docs/site/api.md`.
 
 ## v0.91.0 — 2026-11-04 — Now looks ahead
 

@@ -84,7 +84,8 @@ planetai radio init         # LoRa radios: the fleet, then `radio provision <rol
 ## Invariants. Do not break these.
 
 - Raw readings stay on this machine. Exports and aggregates travel; rows never do.
-- `.env` holds secrets. Never print it, never paste it, never commit it. Logs containing `api.telegram.org/bot` are a leak.
+- `.env` holds secrets. Never print it, never paste it, never commit it. Logs containing `api.telegram.org/bot` are a leak. `NODE_KEY` in it is
+  the node itself (docs/SPEC_identity.md): never regenerate, blank or copy it to another node. A new key is a new node.
 - The database lives on a local disk. Never a network mount. Backups are how data reaches a NAS.
 - A model or a portal is `partial`, whatever its quality. `live` means measured here.
 - Alerts say what to do in one sentence and name the threshold's source. Do not add alerts a household would ignore.
@@ -109,6 +110,9 @@ planetai radio init         # LoRa radios: the fleet, then `radio provision <rol
   the event push carries timestamps, and neither carries where. The Reticulum announce is the one thing that
   leaves, as an H3 cell rounded UP to a coarse parent with `res` beside it and a floor of res 6 no settings box
   can go under.
+  One exception, by the owner's ruling of 4 Nov 2026: a Place map the household chooses to share goes to the node
+  upstream with its exact coordinates, labels, notes and measures, after the plain warning, and is held here while a
+  drawing touches the cell the house stands in.
 - **Exactly one node per pilot writes to the spine.** A pilot is a city in the Index's `ALLOWED_CITIES`. Every
   other node computes its cells, shows them, and passes them no further.
 - When a document and a skill disagree, the document wins and the skill has a bug. Fix the skill, not the doc.

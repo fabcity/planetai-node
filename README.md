@@ -28,7 +28,9 @@ curl -fsSL https://planetai.fab.city/install | bash
 ```
 
 Four questions, two minutes, running. Then `planetai telegram` for the alerts and `planetai ui` for the dashboard.
-Walk-through in [`docs/START_HERE.md`](docs/START_HERE.md).
+Six steps, one sitting: [planetai.fab.city/docs/quickstart](https://planetai.fab.city/docs/quickstart/). The long
+version is [the essential guide](https://planetai.fab.city/docs/essential-guide/); the terminal walk-through is
+[`docs/START_HERE.md`](docs/START_HERE.md).
 
 ## What it is
 
@@ -89,7 +91,7 @@ docs/     getting a node running   START_HERE · PLATFORMS · REVIVE_A_LAPTOP ·
           extending it             PACKS · PACK_IDEAS · SOURCES · DEVELOPING
           testing a beta           BETA_TESTER_GUIDE · FAB26_EXPERIMENT
           releasing it             WORKFLOW · NEXT_RELEASE · SIGNING
-          specs, each with status  SPEC_custody · SPEC_identity · SPEC_rho · SPEC_discovery · SPEC_decide · SPEC_alerts · SPEC_dashboard_events · SPEC_event_led_state · SPEC_dashboard_figures · SPEC_language · SPEC_journeys · SPEC_mobile · SPEC_hello · SPEC_eyes · SPEC_species · SPEC_inventory · SPEC_learn · SPEC_fablab · SPEC_radio · SPEC_place_analyses · SPEC_place_microgis · SPEC_terrain · SPEC_sensors · SPEC_next_days
+          specs, each with status  SPEC_custody · SPEC_identity · SPEC_rho · SPEC_discovery · SPEC_decide · SPEC_alerts · SPEC_dashboard_events · SPEC_event_led_state · SPEC_dashboard_figures · SPEC_language · SPEC_journeys · SPEC_mobile · SPEC_hello · SPEC_eyes · SPEC_species · SPEC_inventory · SPEC_learn · SPEC_fablab · SPEC_radio · SPEC_place_analyses · SPEC_place_microgis · SPEC_terrain · SPEC_sensors · SPEC_next_days · superpowers/specs/2026-11-04-place-light-gis-design
           proposed, then decided   proposals/ · decisions/
           the documentation site   site/ (planetai.fab.city/docs)
           the page's design rounds design/ (not shipped to nodes)

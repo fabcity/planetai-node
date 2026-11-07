@@ -120,6 +120,13 @@ if [[ -z "$(envval ADMIN_TOKEN)" ]]; then
   if grep -q "^ADMIN_TOKEN=" .env; then sed -i.bak "s|^ADMIN_TOKEN=.*|ADMIN_TOKEN=${tok}|" .env && rm -f .env.bak; else echo "ADMIN_TOKEN=${tok}" >> .env; fi
   echo "   + ADMIN_TOKEN (for the GUI; planetai ui shows it)"
 fi
+# nodes installed before node identity have no key (docs/SPEC_identity.md). Never replaced once set: a new key is a new node.
+if [[ -z "$(envval NODE_KEY)" ]]; then
+  key="$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+  [[ ${#key} -eq 64 ]] || die "could not generate this node's key (no openssl, no /dev/urandom?)"
+  if grep -q "^NODE_KEY=" .env; then sed -i.bak "s|^NODE_KEY=.*|NODE_KEY=${key}|" .env && rm -f .env.bak; else echo "NODE_KEY=${key}" >> .env; fi
+  echo "   + NODE_KEY (this node's identity; keep a copy of .env somewhere that is not the backup share)"
+fi
 PORT="${APP_PORT:-8080}"
 PULL=1; [[ "${1:-}" == "--no-pull" ]] && PULL=0
 

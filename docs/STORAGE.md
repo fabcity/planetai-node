@@ -44,7 +44,9 @@ A dump holds readings, sensors, alerts, alert events and actions, and the rows o
 things it keeps and its pictures. The picture files themselves stay in `CAPTURES_DIR`. A dump does not hold the
 rows of the `settings` table (the dashboard's values, a Telegram token saved from Set up): `backup.sh` leaves them
 out so no token travels to a NAS or a remote. After a restore the node runs on `.env`; `planetai telegram`
-reconnects the bot if it was set from the dashboard. Alert texts name places and numbers, so treat every dump and
+reconnects the bot if it was set from the dashboard. Nor does a dump hold `.env`, which has the database password
+and `NODE_KEY`, the node's identity (docs/SPEC_identity.md): keep a copy of it somewhere that is not the backup share.
+Restored with its `.env`, a node on a new machine is the same node; without it, it is a new one. Alert texts name places and numbers, so treat every dump and
 every remote as private anyway.
 
 ## A NAS that pulls

@@ -1339,7 +1339,7 @@
      "Apa yang belum bisa diukur node ini?"
     ]
    },
-   "quote": "**The place in figures** holds what changes yearly and has no hours, land and coast with the node's sentence and\nfigure, the Index cells, and what is not here yet (production and trade, water and soil, and the forecast).",
+   "quote": "**The place in figures** on the right, with land\nand coast, the Index cells, and what is not here yet.",
    "section": "Place",
    "title": "What is changing",
    "url": "https://planetai.fab.city/docs/dashboard/#place"
@@ -1387,9 +1387,9 @@
      "Bisakah node memberi tahu saya tanaman apa ini?"
     ]
    },
-   "quote": "**+ Add an image** (token only) opens a dialog: the file, what took it (phone, fixed camera, microscope, drone, balloon\nor kite), a note and your name, and whether the image model on this node describes it.",
+   "quote": "**The Image key** (token only) adds a picture. Press the map, or Enter for its centre, and a marker holds the image you\nchoose from Data › Images or take as **A new photo**. With nothing pressed it also offers **A new photo** on its own.",
    "section": "Place",
-   "title": "Add an image",
+   "title": "The Image key",
    "url": "https://planetai.fab.city/docs/dashboard/#place"
   },
   "place-layers": {
@@ -1435,7 +1435,7 @@
      "Mengapa beberapa tanda disembunyikan?"
     ]
    },
-   "quote": "**The screen.** In the middle is the map, on a black screen in a bezel. It stays black on the light page and on the dark one.",
+   "quote": "**The screen.** In the middle is the map, on a black screen that stays black on the light page and the dark one.",
    "section": "Place",
    "title": "The screen",
    "url": "https://planetai.fab.city/docs/dashboard/#place"
@@ -1459,7 +1459,7 @@
      "Apakah bangunan di sekitar kami bertambah?"
     ]
    },
-   "quote": "the node's Sentinel-2 annual medians,\nthen and now side by side, with the hectares that changed between them by its AlphaEarth record",
+   "quote": "what changed year on year. The satellite then and now sit side by side,\nlarge, with the hectares that changed between them and a bar a year for the buildings it counts",
    "section": "Place",
    "title": "From orbit",
    "url": "https://planetai.fab.city/docs/dashboard/#place"
@@ -1507,7 +1507,7 @@
      "Sel apa ini, dan seberapa besar?"
     ]
    },
-   "quote": "**The tools.** On the right is a column of what the node could do with this place. **Rings and distance** works today.\nIt draws the 2, 5 and 15 km rings from the node's point, and its name sits in a pill while it is on.",
+   "quote": "**The tools.** **Tools**, beside the ask line, opens a menu of what the node can do with this place. **Rings and\ndistance** draws the 2, 5 and 15 km rings from the node's point.",
    "section": "Place",
    "title": "The tools",
    "url": "https://planetai.fab.city/docs/dashboard/#place"

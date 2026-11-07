@@ -17,7 +17,9 @@ planetai update
    version ships a core pack with the same id as a wild pack on the node (one `planetai packs add` fetched), it
    stops here and names it; delete the wild copy with `rm -rf packs/<id>` and update again.
 3. **Applies `init.sql`**, which is idempotent.
-4. **Adds new settings** from `.env.example` to `.env` with their defaults, under a dated marker. Nothing you set is
+4. **Adds new settings** from `.env.example` to `.env` with their defaults, under a dated marker. A node with no
+   `NODE_KEY` gets one, before anything else is touched; an update never replaces a key that is there, because a
+   new key is a new node (docs/SPEC_identity.md). Nothing you set is
    overwritten, with one exception: on a node that lists its packs in `PACKS_ENABLED` (in `.env` or in Set up), it
    adds each pack that took over something the node already did, so nothing is lost: `home-assistant`,
    `smartcitizen`, `airgradient`, `purpleair`, `air-quality` and `bali-air-dispatch` where their switch is on, the

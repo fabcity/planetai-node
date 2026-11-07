@@ -2955,8 +2955,9 @@ const docFor = u => {
   const layout = u.searchParams.get('layout');
   return layout === 'mobile' ? 'mobile.html' : layout === 'classic' ? 'index.html' : 'doors.html';
 };
-const openRig = async ({ w = 390, h = 844, touch = true, dark = false, token = null, mem = null, throttle = false, locked = false, wireDays = null, admin = null, sections = null, alerts = null, forecast = null } = {}) => {
-  const browser = await chromium.launch();
+const openRig = async ({ w = 390, h = 844, touch = true, dark = false, token = null, mem = null, throttle = false, locked = false, wireDays = null, admin = null, sections = null, alerts = null, forecast = null, gl = false, ground = null } = {}) => {
+  /* gl: software WebGL (SwiftShader), so Place draws its live map and the controls on it, which the still map has not */
+  const browser = await chromium.launch(gl ? { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] } : {});
   const ctx = await browser.newContext({ viewport: { width: w, height: h }, isMobile: touch, hasTouch: touch,
     deviceScaleFactor: 1, colorScheme: dark ? 'dark' : 'light', reducedMotion: 'reduce' });
   const reqs = [];
@@ -3005,12 +3006,19 @@ const openRig = async ({ w = 390, h = 844, touch = true, dark = false, token = n
     /* the node serves the documentation's index from data/ under this one name (main.py COMPANIONS) */
     if (file === 'docs_site.json') return route.fulfill({ status: 200, contentType: 'application/json', body: fs.readFileSync(path.join(ROOT, 'data', file)) });
     if (file) {
+      /* gl: the node serves MapLibre and deck.gl under /static/ from vendor/ (main.py); without gl they stay unserved,
+         as they always were here, so every other check keeps the still map it was written against */
       const p = file.includes('/') ? null
-        : fs.existsSync(path.join(STATIC, file)) ? path.join(STATIC, file) : path.join(STATIC, 'fonts', file);
+        : fs.existsSync(path.join(STATIC, file)) ? path.join(STATIC, file)
+        : gl && fs.existsSync(path.join(STATIC, 'vendor', file)) ? path.join(STATIC, 'vendor', file) : path.join(STATIC, 'fonts', file);
       if (p === null) return route.fulfill({ status: 404, body: 'the node serves a name, not a path' });
       if (fs.existsSync(p)) return route.fulfill({ status: 200, body: fs.readFileSync(p),
         headers: { 'content-type': MIME[path.extname(p)] || 'application/octet-stream' } });
     }
+    /* ground: this answer for /ground/meta, as a node holding a satellite layer and a drone flight; every other /ground/
+       file is not there, so the screen is black under its controls */
+    if (ground && u.pathname === '/ground/meta') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(ground) });
+    if (ground && u.pathname.startsWith('/ground/')) return route.fulfill({ status: 404, body: '' });
     /* the locked phone: /issues answers exactly the 403 body app/main.py builds at SHARE_LEVEL=off */
     if (locked && u.pathname === '/issues')
       return route.fulfill({ status: 403, contentType: 'application/json', body: REFUSAL('/issues') });
@@ -3454,8 +3462,9 @@ async function doors() {
       if (shots && (s === '#setup/basics' || s === '#setup/sharing' || s === '#setup/screen'))
         await r.page.screenshot({ path: path.join(OUT, `doors_${s.slice(1).replace('/', '-')}_${tag}.jpg`), fullPage: true, type: 'jpeg', quality: 78 });
     }
-    /* Place (SPEC_place_microgis §4, 4 Nov 2026): the cake on the left in its ten sections, the black screen, the tools on
-       the right; on a phone the screen first and the cake and the tools as two disclosures. The house named in the list
+    /* Place (SPEC_place_microgis §4, 4 Nov 2026, and Tomas's changes of 5 Nov): the cake on the left in its ten sections,
+       the black screen, the tools a menu behind the Tools button on the top line; on a phone the screen first and the
+       cake as a disclosure under it. The house named in the list
        under the screen, its own rows withheld without the token; 44 px targets on a phone; nothing scrolls sideways;
        a cake row pressed switches its layer and says so */
     await go(r.page, '#place'); await r.page.waitForSelector('#cake .ck', { state: 'attached', timeout: 20000 }); await r.page.waitForTimeout(600);
@@ -3464,21 +3473,34 @@ async function doors() {
       const vis = x => x.getClientRects().length, sel = '#cake .ly, #ptools .tl, .tools button, .zoom button, #pmargin button.mr, .scales button, .psbar button';
       const scr = document.querySelector('.mapc');
       return { secs: document.querySelectorAll('#cake .ck').length, map: Math.round(document.getElementById('map').getBoundingClientRect().width),
-        bg: getComputedStyle(scr).backgroundColor, cake: vis(document.getElementById('cake')), tools: document.querySelectorAll('#ptools .tl').length,
+        bg: getComputedStyle(scr).backgroundColor, cake: vis(document.getElementById('cake')), toolsBtn: vis(document.getElementById('ptoolsb')),
         small: [...document.querySelectorAll(sel)].filter(vis).map(x => x.getBoundingClientRect()).filter(b => b.height < 44 || b.width < 44).length,
         cut: [...document.querySelectorAll('#cake .ly span')].filter(x => x.scrollWidth > x.clientWidth).map(x => x.textContent),
         h: [...document.querySelectorAll('#cake .ck > h2')].length,
-        margin: document.getElementById('pmargin').innerText, facts: document.getElementById('facts').innerText };
+        margin: document.getElementById('pmargin').innerText, facts: document.getElementById('facts').innerText,
+        sheet: getComputedStyle(document.getElementById('cake')).position, first: (document.getElementById('cake').firstElementChild || {}).id,
+        folds: [...document.querySelectorAll('.pfold')].filter(vis).length };
     });
     ok(pl.secs === 10, `${tag} #place: the cake has ${pl.secs} sections, not 10`);
     ok(pl.bg === 'rgb(23, 25, 29)', `${tag} #place: the screen is ${pl.bg}, not PAL.dark's land`);
-    ok(pl.cake && pl.tools >= 10, `${tag} #place: the cake is ${pl.cake ? 'drawn' : 'not drawn'}, ${pl.tools} tools listed`);
+    ok(pl.cake && pl.toolsBtn, `${tag} #place: the cake is ${pl.cake ? 'drawn' : 'not drawn'}, the Tools button ${pl.toolsBtn ? 'shown' : 'not shown'}`);
+    /* Tools opens its menu, the rows visible in it, and Esc closes it again */
+    { if (w < 768 && pl.sheet === 'fixed') { await r.page.click('.psbar button[data-s="cake"]'); await r.page.waitForTimeout(150); }   /* close the sheet over the page */
+      await r.page.click('#ptoolsb'); await r.page.waitForTimeout(150);
+      const tm = await r.page.evaluate(() => { const m = document.getElementById('ptools'), rows = [...m.querySelectorAll('.tl')].filter(x => x.getClientRects().length);
+        return { open: !m.hidden && !!m.getClientRects().length, rows: rows.length, first: rows[0] && rows[0].textContent, exp: document.getElementById('ptoolsb').getAttribute('aria-expanded') }; });
+      ok(tm.open && tm.rows === 14 && /^Rings and distance/.test(tm.first || '') && tm.exp === 'true', `${tag} #place: Tools opened ${JSON.stringify(tm)}`);
+      await r.page.keyboard.press('Escape'); await r.page.waitForTimeout(150);
+      ok(await r.page.evaluate(() => document.getElementById('ptools').hidden), `${tag} #place: Esc did not close the Tools menu`);
+      if (w < 768 && pl.sheet === 'fixed') { await r.page.click('.psbar button[data-s="cake"]'); await r.page.waitForTimeout(150); } }
     ok(w < 768 || pl.map >= 700, `${tag} #place: the screen is ${pl.map}px wide`);
     ok(!pl.cut.length, `${tag} #place: cake name(s) cut off: ${pl.cut.join(', ')}`);
     ok(pl.h === pl.secs, `${tag} #place: ${pl.h} cake headings are h2, of ${pl.secs}`);
     ok(w >= 768 || !pl.small, `${tag} #place: ${pl.small} target(s) under 44 × 44 px`);
     ok(/This house/.test(pl.margin) && (tok || /withheld/.test(pl.margin)), `${tag} #place: the list under the screen reads ${pl.margin.slice(0, 120)}`);
     ok(/In view/i.test(pl.facts), `${tag} #place: the status line reads ${pl.facts.slice(0, 80)}`);
+    /* a phone keeps the bottom sheet, your maps first in it, and has no side to fold (SPEC_place_microgis §10) */
+    ok(w >= 768 || (pl.sheet === 'fixed' && pl.first === 'ymaps' && !pl.folds), `${tag} #place: the phone's sheet is ${pl.sheet}, opens on ${pl.first}, ${pl.folds} fold key(s) drawn`);
     const pressed = () => r.page.evaluate(() => document.querySelector('#cake [data-l="rings"] button').getAttribute('aria-pressed'));
     await r.page.click('#cake [data-l="rings"] button'); await r.page.waitForTimeout(200);
     ok(await pressed() === 'true', `${tag} #place: pressing Rings did not switch it on`);
@@ -3487,6 +3509,36 @@ async function doors() {
     await r.page.click('#cake [data-l="rings"] button'); await r.page.waitForTimeout(200);
     ok(await pressed() === 'false', `${tag} #place: a second press did not switch Rings off`);
     panes += 1;
+    /* place-folded (SPEC_place_microgis §4; one side since Tomas's ruling of 5 Nov 2026): the layers fold by their arrow
+       into a 36 px strip that says what it holds and the screen takes the width; `\\` is map only, the screen at the
+       window's height; a reload keeps it; `\\` again opens the left */
+    if (w === 1440) {
+      const fd = () => r.page.evaluate(() => { const m = document.getElementById('map').getBoundingClientRect();
+        return { map: Math.round(m.width), h: Math.round(m.height), cls: document.querySelector('.bench').className,
+          folds: [...document.querySelectorAll('.pfold')].map(x => `${x.getAttribute('aria-label')}:${x.getAttribute('aria-expanded')}:${Math.round(x.getBoundingClientRect().width)}`) }; });
+      await r.page.click('.pfold[data-fold="lc"]'); await r.page.waitForTimeout(300);
+      const f1 = await fd();
+      ok(f1.map >= 1250 && f1.h < 600, `${tag} place-folded: the screen is ${f1.map}x${f1.h}px with the left folded`);
+      ok(f1.folds.join() === 'Show the layers:false:36', `${tag} place-folded: the strip reads ${f1.folds.join(', ')}`);
+      { const o = await overflowAt(r.page); ok(o <= 1, `${tag} place-folded: the page scrolls ${o}px sideways`); }
+      await r.page.click('.pfold[data-fold="lc"]'); await r.page.keyboard.press('\\'); await r.page.waitForTimeout(300);
+      const f2 = await fd();
+      ok(f2.map >= 1250 && f2.h >= 800 && /\bmo\b/.test(f2.cls), `${tag} place-folded: map only left the screen ${f2.map}x${f2.h}px (${f2.cls})`);
+      if (shots) await r.page.screenshot({ path: path.join(OUT, `doors_place-folded_${tag}.jpg`), type: 'jpeg', quality: 78 });
+      await r.page.reload({ waitUntil: 'domcontentloaded' }); await r.page.waitForSelector('#cake .ck', { state: 'attached', timeout: 20000 }); await r.page.waitForTimeout(600);
+      const f3 = await fd();
+      ok(f3.map === f2.map && f3.h === f2.h && f3.folds.join() === 'Show the layers:false:36', `${tag} place-folded: after a reload the screen is ${f3.map}x${f3.h}px, the strip ${f3.folds.join(', ')}`);
+      await r.page.keyboard.press('\\'); await r.page.waitForTimeout(300);
+      const f4 = await fd();
+      ok(f4.map < 1250 && f4.folds.join() === 'Hide the layers:true:28', `${tag} place-folded: \\ left the screen ${f4.map}px, the fold ${f4.folds.join(', ')}`);
+      /* at 900 px the folded strip stops at the screen's row: the years band under it takes its own presses */
+      await r.page.setViewportSize({ width: 900, height: 900 }); await r.page.keyboard.press('['); await r.page.waitForTimeout(300);
+      const hit = await r.page.evaluate(() => { const t = document.querySelector('.pyears'); t.scrollIntoView({ block: 'center' }); const b = t.getBoundingClientRect();
+        const e = document.elementFromPoint(b.left + 4, b.top + 20); return { band: !!(e && e.closest('.pyears')), strip: !!(e && e.closest('.pfold')), cls: document.querySelector('.bench').className }; });
+      ok(hit.cls.includes('lc') && hit.band && !hit.strip, `${tag} place-folded: at 900 px a press on the years band's left edge lands on ${hit.strip ? 'the folded strip' : 'something else'} (${hit.cls})`);
+      await r.page.keyboard.press('['); await r.page.setViewportSize({ width: 1440, height: 900 }); await r.page.waitForTimeout(300);
+      panes += 1;
+    }
     /* the consequences step, unlocked only: open sharing asks first; a plain setting saves at once */
     if (tok && w === 1440 && !dark) {
       const puts = []; r.page.on('request', q => { if (q.method() === 'PUT' && q.url().endsWith('/settings')) puts.push(q.postData()); });
@@ -3512,10 +3564,12 @@ async function doors() {
        docs say about it (the quote), and a link to the section; a part on a hidden tab or view is not listed */
     if (!dark) {
       await go(r.page, '#now'); await r.page.click('#askbtn'); await r.page.check('#learn');
-      const WANT = { '#now': ['now-sentence', 'now-todo', 'now-rows'], '#place': ['place-head', 'place-map'].concat(w < 768 ? [] : ['place-layers', 'place-tools']),   /* a phone keeps the cake and the tools in closed sheets */
+      /* what changed, year on year is a band under the screen since 5 Nov: place-orbit is on the page; Tools is on the top
+         line at every width, so place-tools is too */
+      const WANT = { '#now': ['now-sentence', 'now-todo', 'now-rows'], '#place': ['place-head', 'place-map', 'place-orbit', 'place-tools'].concat(w < 768 ? [] : ['place-layers']),   /* a phone keeps the cake in a closed sheet */
         '#node': ['node-verdict', 'node-flow', 'node-refusals'], '#data/readings': ['data-head', 'data-readings', 'data-week'],
         '#data/home': ['data-images', 'data-things'], '#setup': ['settings', 'setup-sections', 'setup-save'], '#wall': ['wall-never', 'wall-sentence', 'wall-map'] };
-      const NOT = { '#place': ['place-orbit', 'earth'], '#data/home': ['data-ledger', 'data-readings'], '#wall': ['bar', 'foot'] };
+      const NOT = { '#place': ['earth'], '#data/home': ['data-ledger', 'data-readings'], '#wall': ['bar', 'foot'] };
       let parts = 0;
       for (const [h, want] of Object.entries(WANT)) {
         await go(r.page, h); await r.page.waitForTimeout(h === '#setup' || h === '#wall' ? 1200 : 600);
@@ -3700,6 +3754,99 @@ async function doors() {
   process.exit(1);
 }
 
+/* ------------------------------------------------------------------ the controls on the Place screen (5 Nov 2026)
+ *
+ * Tomas on node #1: "Review the size of the menus inside the map when rescaling, now they collapse." The rig's still map
+ * draws none of them, so this opens Place with software WebGL and the admin token, on a node holding a satellite layer
+ * and a drone flight (the base switch shows), at the widths in between, the left open and folded, the readout folded
+ * and opened, and asks for the boxes of the keys, the readout, the hour, the right column, the rungs, the base switch,
+ * the zoom, the scale and the credit: no two overlap, none leaves the screen, the rungs are not cut, and every key is
+ * 36 px with a pointer, 44 px under a finger. A rig that gives the screen no live map fails: it would prove nothing. */
+async function placescreen() {
+  const bad = [], ok = (c, what) => { if (!c) bad.push(what); }, seen = [];
+  const ADMIN = process.env.PAI_ADMIN_TOKEN || (process.env.PAI_ADMIN_TOKEN = 'rig-admin');
+  const ground = { on_disk: { vector: false, imagery: true, drone: true }, layers: { imagery: { passes: 12, from: '2025-01', to: '2025-12', bytes: 4e6,
+    attribution: 'Contains modified Copernicus Sentinel data' }, drone: { bytes: 1e6, mosaics: [{ provider: 'Bayu', gsd_m: 0.04, date: '2024-03-15', bbox: [115.16, -8.825, 115.172, -8.815] }] } } };
+  /* one map with one area near the node, so a row in the table puts a drawing in hand and opens the form */
+  const MAPS = { maps: [{ id: 1, name: 'Garden plan for the whole street', owner: null, agent: null, shared: false, held: false, share_error: null, from_node: null, marks: 1, updated_at: '2026-11-05T10:00:00Z' }],
+    palette: { 1: '#FFFFFF', 2: '#FFE600', 3: '#9BFF2E', 4: '#00E5FF', 5: '#FF3DCB', 6: '#FF3B30' } };
+  const MARKS = { marks: [{ id: 7, map_id: 1, kind: 'area', colour: 3, label: 'rain garden', note: null, capture_id: null, length_m: null, area_m2: 1500, alert_id: null, event_id: null,
+    geometry: { type: 'Polygon', coordinates: [[[115.1668, -8.8198], [115.168, -8.8198], [115.168, -8.8188], [115.1668, -8.8188], [115.1668, -8.8198]]] } }] };
+  const W = process.env.PAI_W ? process.env.PAI_W.split(',').map(Number) : [761, 900, 1024, 1080, 1280, 1440, 390];
+  /* a pointer at every desk width, open and folded; a finger on the phone; and a tablet (a finger at desk widths, the
+     44 px keys in the desk layout) at 768 and 1024 with the left open */
+  const cases = W.flatMap(w => (w < 761 ? [{ w, fold: '', touch: true }] : [{ w, fold: '' }, { w, fold: 'lc' }]))
+    .concat(process.env.PAI_W ? [] : [{ w: 768, fold: '', touch: true }, { w: 1024, fold: '', touch: true }]);
+  for (const { w, fold, touch = false } of cases) {
+    const tag = `${w}${fold ? ' folded' : ''}${touch && w >= 761 ? ' touch' : ''}`;
+    const r = await openRig({ w, h: w < 761 ? 844 : 900, touch, admin: ADMIN, gl: true, ground, mem: 'doors' });   // a phone keeps the doors by memory
+    await r.page.route('**/place/maps/1/marks*', q => q.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MARKS) }));
+    await r.page.route(u => new URL(u).pathname === '/place/maps', q => q.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MAPS) }));
+    if (fold) await r.page.addInitScript(() => { try { localStorage.setItem('planetai_place_folds', 'lc'); } catch (e) {} });
+    await r.page.goto(`${POP}/?fixture=${FIXTURE}#place`, { waitUntil: 'domcontentloaded' });
+    const live = await r.page.waitForFunction(() => window.__PM && window.__PM.map && window.__PM.map.loaded() && document.querySelector('.dkeys') && document.querySelector('#dread .dchip'),
+      null, { timeout: 30000 }).then(() => true, () => false);
+    if (!live) bad.push(`${tag}: the screen drew no live map, keys or readout (no WebGL in this rig?): ` + JSON.stringify(await r.page.evaluate(() => ({ url: location.href,
+      map: !!(window.__PM && window.__PM.map), flat: window.__PM && window.__PM.flat, keys: !!document.querySelector('.dkeys') }))));
+    if (!live) { await r.browser.close(); continue; }
+    await r.page.waitForTimeout(600);
+    /* an area in progress, three corners and the pointer on a fourth: the chip's figure fits, unclipped */
+    if (w === 900 || (w === 1024 && !fold && !touch)) {   // 900 with the left open is the narrowest readout of the four, 220 px
+      const b = await r.page.evaluate(() => { const c = document.getElementById('map').getBoundingClientRect(); return { x: c.left + c.width / 2, y: c.top + c.height / 2 }; });
+      await r.page.evaluate(() => window.__PM.map.jumpTo({ zoom: 17.2 })); await r.page.waitForTimeout(400);   /* under a hectare: the longest figure, "6120 m² · 0.61 ha · 330 m round" */
+      await r.page.keyboard.press('a'); await r.page.waitForTimeout(150);
+      for (const [dx, dy] of [[-60, -40], [70, -30], [50, 60]]) { await r.page.mouse.click(b.x + dx, b.y + dy); await r.page.waitForTimeout(150); }
+      await r.page.mouse.move(b.x - 50, b.y + 50); await r.page.waitForTimeout(250);
+      const v = await r.page.evaluate(() => { const e = document.querySelector('#dread .dchip .v'), c = document.querySelector('#dread .dchip');
+        const vr = e && e.getBoundingClientRect(), cr = c && c.getBoundingClientRect();
+        return { text: e && e.innerText, sw: e && e.scrollWidth, cw: e && e.clientWidth, past: vr && cr ? Math.round(vr.right - (cr.right - 12)) : null,
+          spill: c ? c.scrollWidth - c.clientWidth : null, chip: cr && Math.round(cr.width) }; });
+      /* the figure fits: not cut by its own ellipsis, not past the chip's padding, the chip not overflowing */
+      ok(v.text && /m²|ha/.test(v.text) && v.sw <= v.cw && v.past <= 0.5 && v.spill <= 0, `${tag}: an area in progress, the chip's figure does not fit: ${JSON.stringify(v)}`);
+      seen.push(`area ${v.text} in a ${v.chip} px chip at ${tag}`);
+      await r.page.keyboard.press('Escape'); await r.page.keyboard.press('v'); await r.page.waitForTimeout(150);
+    }
+    for (const st of ['folded', 'open', 'form']) {
+      if (st === 'open') { await r.page.click('#dread .dchip'); await r.page.waitForTimeout(200); }
+      if (st === 'form') { await r.page.click('#dread .dchip'); await r.page.evaluate(() => { const b = document.querySelector('#ptable .mrow'); if (b) b.click(); }); await r.page.waitForTimeout(900);
+        /* a short panel (the phone's) scrolls: bring the form into it, as a thumb would */
+        await r.page.evaluate(() => { const f = document.getElementById('dform'), p = f && f.closest('.dpanel'); if (p && f.offsetTop + f.offsetHeight > p.clientHeight) p.scrollTop = f.offsetTop; }); await r.page.waitForTimeout(100); }
+      const g = await r.page.evaluate(() => {
+        const m = document.getElementById('map').getBoundingClientRect(), sel = { keys: '.dkeys', readout: '#dread .dchip', colours: '#dfull:not([hidden])', form: '#dform:not([hidden])',
+          hour: '#phour', column: '.mapc .tools', rungs: '#mapbar .scales', base: '.pbase:not([hidden])', zoom: '.mapc .zoom', scale: '.maplibregl-ctrl-scale', credit: '#mapcredit' };
+        const B = {};
+        for (const [k, q] of Object.entries(sel)) { const e = document.querySelector(q);
+          if (!e || !e.getClientRects().length || (k === 'credit' && (!e.textContent.trim() || getComputedStyle(e).position === 'static'))) continue;
+          const b = e.getBoundingClientRect(), p = e.closest('.dpanel') && e.closest('.dpanel').getBoundingClientRect();   /* the panel scrolls: what is in it shows only inside it */
+          B[k] = [b.left - m.left, (p ? Math.max(b.top, p.top) : b.top) - m.top, b.right - m.left, (p ? Math.min(b.bottom, p.bottom) : b.bottom) - m.top];
+          if (B[k][3] <= B[k][1]) delete B[k]; }
+        const over = [], ks = Object.keys(B);
+        for (let i = 0; i < ks.length; i++) for (let j = i + 1; j < ks.length; j++) { const a = B[ks[i]], b = B[ks[j]];
+          if (a[0] < b[2] - 0.5 && b[0] < a[2] - 0.5 && a[1] < b[3] - 0.5 && b[1] < a[3] - 0.5) over.push(`${ks[i]} × ${ks[j]}`); }
+        const sc = document.querySelector('#mapbar .scales');
+        const keys = [...document.querySelectorAll('.dkeys button, .mapc .tools button, .mapc .zoom button, #mapbar .scales button, .pbase button, #dread .dchip, .dsw button')]
+          .filter(e => e.getClientRects().length).map(e => e.getBoundingClientRect()).map(b => Math.round(Math.min(b.width, b.height)));
+        return { W: Math.round(m.width), ks, over, out: ks.filter(k => { const b = B[k]; return b[0] < -0.5 || b[1] < -0.5 || b[2] > m.width + 0.5 || b[3] > m.height + 0.5; }),
+          cut: sc ? sc.scrollWidth - sc.clientWidth : 0, small: Math.min(...keys) };
+      });
+      /* with a drawing in hand a short panel may have scrolled its chip out of view: the form must show */
+      const want = ['keys', 'hour', 'column', 'rungs', 'base', 'zoom'].concat(st === 'folded' ? ['readout'] : st === 'open' ? ['readout', 'colours'] : ['form']);
+      ok(want.every(k => g.ks.includes(k)), `${tag}, readout ${st}: not drawn: ${want.filter(k => !g.ks.includes(k)).join(', ')}`);
+      ok(!g.over.length, `${tag}, readout ${st} (screen ${g.W} px): overlapping: ${g.over.join(', ')}`);
+      ok(!g.out.length, `${tag}, readout ${st}: off the screen: ${g.out.join(', ')}`);
+      ok(g.cut <= 1, `${tag}, readout ${st}: the rungs are cut by ${g.cut} px`);
+      ok(g.small >= (touch ? 44 : 36), `${tag}, readout ${st}: a key ${g.small} px across, under ${touch ? 44 : 36}`);
+      seen.push(`${g.W}`);
+      if (st === 'form') await r.page.keyboard.press('Escape');
+    }
+    await r.browser.close();
+  }
+  if (!bad.length) { const px = [...new Set(seen.filter(x => /^\d+$/.test(x)))], ar = seen.filter(x => x.startsWith('area'));
+    console.log(`  placescreen: the keys, readout, colours, form, hour, right column, rungs, base switch, zoom, scale and credit apart and on the screen at ${px.join(', ')} px of screen, readout folded, open and with a drawing in hand${cases.some(c => c.touch && c.w >= 761) ? ', a tablet\'s 44 px keys at 768 and 1024' : ''}; keys 36 px with a pointer, 44 under a finger${ar.length ? `; ${ar.join('; ')}, unclipped` : ''}`); return; }
+  for (const b of bad) console.log('FAIL placescreen:', b);
+  process.exit(1);
+}
+
 const [cmd, ...rest] = process.argv.slice(2);
 if (cmd === 'render') await render(rest.length ? rest : ['all']);
 else if (cmd === 'steps') await steps();
@@ -3725,5 +3872,6 @@ else if (cmd === 'list') jobs().forEach(j => console.log(j.name));
 else if (cmd === 'mobile') await mobile();
 else if (cmd === 'doors') await doors();
 else if (cmd === 'wallwalk') await wallwalk();
-else { console.error('usage: measure.mjs render|shots|plates|plate-list|steps|stall|press|asking|extend|anchors|sheets|header|targets|audit|overflow|analyse|list|mobile|doors|wallwalk');
+else if (cmd === 'placescreen') await placescreen();
+else { console.error('usage: measure.mjs render|shots|plates|plate-list|steps|stall|press|asking|extend|anchors|sheets|header|targets|audit|overflow|analyse|list|mobile|doors|wallwalk|placescreen');
   process.exit(2); }

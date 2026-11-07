@@ -16,6 +16,9 @@ the files themselves.
 
 - [AGENTS.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/AGENTS.md): the front door for an agent — the routing table, the two ways in, and the invariants that must not be broken.
 - [README.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/README.md): what a node is, what it does, and the one line that installs it.
+- [docs/site/quickstart.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/site/quickstart.md): a node in six steps on one page, each with the command block and the docs page that goes deeper.
+- [docs/site/essential-guide.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/site/essential-guide.md): the six steps in full for a lab or city installing a community node: install, readings, packs, a local model, your own agent over MCP, the Place door.
+- [docs/site/radios-and-sensors.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/site/radios-and-sensors.md): a Bayu over WiFi, Meshtastic radios over LoRa and the FAB26 kit, from parts to a `yours` row in `planetai sensors`.
 - [docs/START_HERE.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/START_HERE.md): the human walk-through — which machine, the install, the first ten minutes, and the table of everything that has broken on a real node.
 
 ## Skills

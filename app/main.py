@@ -24,7 +24,7 @@ from pathlib import Path
 import httpx
 import psycopg
 import yaml
-from fastapi import FastAPI, File, Form, Header, HTTPException, Query, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Query, Request, UploadFile
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
@@ -37,6 +37,7 @@ import fundamentals
 import basemap
 import ground
 import index
+import identity
 import learn
 import issues.api
 from issues import geometry as _geo
@@ -59,15 +60,11 @@ NODE = os.getenv("NODE_NAME", "node")
 POLL = int(os.getenv("POLL_SECONDS", "300"))
 def LOCALE():
     return settings.get("ALERT_LOCALE", "en")
-def PARENT():
-    return settings.get("PARENT_API_URL", "").strip()
 MQTT_HOST = os.getenv("MQTT_HOST", "").strip()                 # set by `planetai meshtastic`; empty = no MQTT thread
 MQTT_USER, MQTT_PASS = os.getenv("MQTT_USER", ""), os.getenv("MQTT_PASS", "")
 def MESH_INDOOR():
     return {x.strip() for x in settings.get("MESH_INDOOR_NODES", "").split(",") if x.strip()}
-from auth import (AGG_TOKEN, SHARE_LEVEL, ACT_TOKEN, _SHARE_OFF, _SHARE_OPEN, _SHARE, _CHILD_WRITES, _node_tokens, _is_local, _bearer_ok, _pull_ok, _shows_private, _admin)  # noqa: E402,F401 — tokens, the share allowlists and the checks (app/auth.py)
-def PARENT_TOKEN():
-    return settings.get("PARENT_TOKEN", "").strip()
+from auth import (AGG_TOKEN, PARENT, PARENT_TOKEN, SHARE_LEVEL, ACT_TOKEN, _SHARE_OFF, _SHARE_OPEN, _SHARE, _CHILD_WRITES, _node_tokens, _is_local, _bearer_ok, _pull_ok, _shows_private, _admin)  # noqa: E402,F401 — tokens, the share allowlists and the checks (app/auth.py)
 RETICULUM_URL = os.getenv("RETICULUM_URL", "").strip()       # the reticulum bridge, e.g. http://reticulum:4243
 from channels import (TG, MESH_ALERTS, MESH_GATEWAY_NUM, mesh_state, tg_state,  # noqa: E402,F401
                       mesh_send, notify)  # Telegram, the mesh, LXMF (app/channels.py); Home Assistant is packs/home-assistant
@@ -465,13 +462,22 @@ def push_aggregates() -> None:
                     "JOIN sensors s ON s.sensor_id = r.sensor_id "
                     "WHERE r.bucket > now() - interval '2 hours' AND s.custody AND " + packs.public_sql("r"))
         rows = [{**r, "bucket": r["bucket"].isoformat()} for r in cur.fetchall()]
-    try:
-        httpx.post(f"{PARENT()}/aggregates", json={"schema": AGGREGATES_V0, "node": NODE, "rows": rows, "scale": os.getenv("NODE_SCALE", "community")},
-                   headers={"Authorization": f"Bearer {PARENT_TOKEN()}"} if PARENT_TOKEN() else {},
-                   timeout=30).raise_for_status()
+    if _post_parent("/aggregates", {"schema": AGGREGATES_V0, "node": NODE, "rows": rows, "scale": os.getenv("NODE_SCALE", "community")}):
         log.info("pushed %d hourly rows to parent", len(rows))
-    except Exception as e:  # noqa: BLE001
-        log.warning("push to parent failed: %s", e)
+
+
+def _post_parent(route: str, payload: dict) -> bool:
+    """POST `payload` to the parent, signed by this node's key (identity.post). A parent that refuses says why in a sentence
+    (a changed key, a bad clock), and that sentence is raised, so loop() puts it in /health's errors where the keeper
+    reads it. A parent that cannot be reached is logged, as before, and asked again on the next push."""
+    try:
+        r = identity.post(PARENT(), route, payload, PARENT_TOKEN())
+    except httpx.HTTPError as e:
+        log.warning("push of %s to parent failed: %s", route, e)     # a parent offline is normal; it is asked again in an hour
+        return False
+    if r.status_code >= 400:
+        raise RuntimeError(f"the parent refused {route} ({r.status_code}): {identity.refusal(r) or r.reason_phrase}")
+    return True
 
 
 # ---------------------------------------------------------------- hourly push (child -> parent): rho
@@ -513,13 +519,8 @@ def push_events() -> None:
                 for r in cur.fetchall()]
     if not rows:
         return
-    try:
-        httpx.post(f"{PARENT()}/events", json={"schema": EVENTS_V0, "node": NODE, "rows": rows, "scale": os.getenv("NODE_SCALE", "community")},
-                   headers={"Authorization": f"Bearer {PARENT_TOKEN()}"} if PARENT_TOKEN() else {},
-                   timeout=30).raise_for_status()
+    if _post_parent("/events", {"schema": EVENTS_V0, "node": NODE, "rows": rows, "scale": os.getenv("NODE_SCALE", "community")}):
         log.info("pushed %d alert events to parent", len(rows))
-    except Exception as e:  # noqa: BLE001
-        log.warning("event push to parent failed: %s", e)
 
 
 # ---------------------------------------------------------------- is there a newer release
@@ -621,7 +622,7 @@ def check_wild() -> None:
 # stay in the file, and a point is given to one decimal (about 10 km), as the Node door has always drawn another node.
 REGISTRY_URL = "https://raw.githubusercontent.com/fabcity/planetai-node/main/registry.json"
 REGISTRY_EVERY = 3600  # one small public file: a merged node is on every map within the hour
-REGISTRY_FIELDS = ("name", "place", "scale", "operator", "since", "cell")
+REGISTRY_FIELDS = ("name", "id", "place", "scale", "operator", "since", "cell")
 
 
 def listed_nodes(raw) -> list[dict]:
@@ -660,6 +661,7 @@ def check_registry() -> None:
         return
     state["registry"] = {"nodes": nodes, "read": datetime.now(timezone.utc).isoformat(timespec="seconds"),
                          "asked": time.time()}
+    identity.LISTED = nodes          # a listed name pins only to its listed id (docs/SPEC_identity.md §6)
 
 
 
@@ -836,6 +838,8 @@ def start() -> None:
     loop(refresh_usual, 3600, delay=10)
     loop(push_aggregates, 3600, delay=120)
     loop(push_events, 3600, delay=150)
+    loop(maps.push_maps, 60, delay=140)         # a shared map, at most once a minute (app/maps.py)
+    loop(maps.daily_readings, 3600, delay=200)  # a private count of what was drawn, once a local day
     loop(check_release, 3600, delay=300)
     loop(check_wild, 3600, delay=330)
     loop(check_registry, 3600, delay=60)
@@ -1031,6 +1035,8 @@ def health(request: Request):
     # out of here, and the dashboard prints it in five places. If the name is ever sensitive it comes out of all of
     # them at once, which is a different change.
     return {"ok": state["last_poll"] is not None, "node": NODE, "version": os.getenv("NODE_VERSION", "?"),
+            # who this node is (docs/SPEC_identity.md): the short hash of its public key, and the key. Public by design.
+            "node_id": identity.node_id(), "node_key": identity.public_key(),
             "schema": schema, "uptime_s": int(time.time() - STARTED),
             **_published_position(bool(getattr(request.state, "share_trusted", False))),
             "city": os.getenv("NODE_CITY", ""),
@@ -1563,6 +1569,9 @@ def export(day: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$")):
 
 import geo  # noqa: E402 — GET /place/geojson, /geo/* (app/geo.py)
 app.include_router(geo.router)
+import maps  # noqa: E402 — /place/maps, /place/marks: the household's drawings (app/maps.py)
+app.include_router(maps.router)
+app.include_router(maps.received)  # POST /place/maps/received: a child's shared map, on AGGREGATE_TOKEN
 import machine  # noqa: E402 — GET /machine, /storage (app/machine.py)
 app.include_router(machine.router)
 import wild  # noqa: E402 — GET /packs/all, /packs/preview, POST /packs/install (app/wild.py)
@@ -1616,7 +1625,9 @@ def report_now(authorization: str = Header("")):
                        VALUES (%s, 'sheet', 'node', %s, %s, TRUE, FALSE, %s) RETURNING id""",
                     (every, text, text, Jsonb(b.get("cells") or [])))
         rid = cur.fetchone()["id"]
-    notify("info", text)
+    # Telegram's retries can take minutes when the line is down (channels._tg_post) and an MCP client gives up at 180 s,
+    # though the report is already stored: the caller gets it now, and the phone gets it when the line lets it through.
+    threading.Thread(target=notify, args=("info", text), daemon=True, name="report-send").start()
     packs.emit("on_alert", "info", text, None)
     log.info("report %d sent on request: %d hours, %d words", rid, every, len(text.split()))
     return {"id": rid, "text": text, "depth": "sheet", "rung": "node", "sent": True}
@@ -1931,7 +1942,7 @@ COMPANIONS = {
     # The five doors (/?layout=doors): the loader that builds their one object from the routes, then one file per door,
     # as planetai-design's prototype kept them. Natural Earth's coast for the Node door's world (NOTICE).
     **{f"doors-{n}.js": (STATIC / f"doors-{n}.js", "application/javascript")
-       for n in ("load", "nodegeo", "core", "fig", "now", "cake", "placemap", "place", "data", "flow", "wallmap", "wall", "node", "setup")},
+       for n in ("load", "nodegeo", "core", "fig", "now", "cake", "draw", "placemap", "place", "data", "flow", "wallmap", "wall", "node", "setup")},
     # The phone page (/?layout=mobile): the shell and its script, which reuses doors-load.js.
     "mobile.html": (STATIC / "mobile.html", "text/html"),
     "mobile.js": (STATIC / "mobile.js", "application/javascript"),
@@ -2188,11 +2199,9 @@ def action(body: dict, request: Request, authorization: str = Header("")):
         # the terminal, and curl. A node in a house records an act whether or not anybody deliberated -- somebody smells
         # smoke and opens a window -- and refusing that would make the node assert a deliberation that did not happen,
         # or push the act somewhere it is never recorded at all. A node acting for a street is the case this is for.
-        if stage == "acted" and settings.num("DECISION_REQUIRED", 0):
-            cur.execute("SELECT 1 FROM actions WHERE alert_id = %s AND stage = 'decided' LIMIT 1", (body.get("alert_id"),))
-            if not cur.fetchone():
-                raise HTTPException(409, "this node is set to DECISION_REQUIRED, so an act needs a decision recorded "
-                                         "against the same alert first. Decide on the dashboard, then record what you did.")
+        # The check itself is events_pg.decision_first, which a drawing tied to an issue asks too (app/maps.py).
+        if stage == "acted" and (refusal := events_pg.decision_first(cur, body.get("alert_id"))):
+            raise HTTPException(409, refusal)
         actor, note = str(body.get("actor") or "")[:80], str(body.get("note") or "")[:500]
         if choice is not None:
             # One row per (alert, actor, choice): a repeat tap writes nothing, a later note replaces it.
@@ -2244,8 +2253,43 @@ def post_readings(body: dict, authorization: str = Header("")):
     return {"accepted": len(body.get("readings", []))}
 
 
+async def _raw_body(request: Request) -> bytes:
+    """The bytes a child signed (app/identity.py). FastAPI reads the body once for `body: dict` and keeps it, so this
+    is the same bytes, not a second read."""
+    return await request.body()
+
+
+def _admit(cur, body: dict, route: str, raw: bytes, request: Request) -> str:
+    """The child's name, once its signature and its pin hold (docs/SPEC_identity.md §5). The name is still the one the
+    child sends, and its rows are stored under it as before; what changes is that only the key pinned to that name
+    may write under it."""
+    child = str(body.get("node") or "?")
+    identity.admit(cur, child, route, raw, request.headers)
+    return child
+
+
+@app.get("/children")
+def children(authorization: str = Header("")):
+    """The children this parent has pinned: name, node_id (null while it pushes unsigned), first and last seen."""
+    _admin(authorization)
+    return q("SELECT name, node_id, public_key, first_seen, last_seen FROM children ORDER BY name")
+
+
+@app.delete("/children/{name}")
+def forget_child(name: str, authorization: str = Header("")):
+    """Forget a child's pin, when it lost its key and came back as a new node. Its readings and events stay; its next
+    push is pinned again."""
+    _admin(authorization)
+    with db() as con, con.cursor() as cur:
+        cur.execute("DELETE FROM children WHERE name = %s", (name,))
+        if not cur.rowcount:
+            raise HTTPException(404, f"no child called {name} is pinned here")
+    log.info("forgot child %s", name)
+    return {"forgotten": name}
+
+
 @app.post("/events")
-def receive_events(body: dict, authorization: str = Header("")):
+def receive_events(body: dict, request: Request, raw: bytes = Depends(_raw_body), authorization: str = Header("")):
     """Parent side. A child pushes one row per alert it raised, as timestamps: detect, decide, deploy, measure.
     The parent computes rho over its own alerts and these together (app/index.py::rho).
 
@@ -2257,10 +2301,11 @@ def receive_events(body: dict, authorization: str = Header("")):
     if not _bearer_ok(authorization, AGG_TOKEN()):
         raise HTTPException(401, "bad or missing Authorization: Bearer <AGGREGATE_TOKEN>")
     _wire_in(body, EVENTS_V0)
-    rows, child = body.get("rows", []), body.get("node", "?")
+    rows = body.get("rows", [])
     scale = body.get("scale", "community")
     kept = 0
     with db() as con, con.cursor() as cur:
+        child = _admit(cur, body, "/events", raw, request)
         for r in rows:
             if not r.get("alert_id") or not r.get("raised_at"):
                 continue                      # a row with no identity or no detect time cannot measure latency
@@ -2284,7 +2329,7 @@ def aggregates(hours: int = Query(24, ge=1, le=24 * 90)):   # ge: hours=-1 made 
 
 
 @app.post("/aggregates")
-def receive_aggregates(body: dict, authorization: str = Header("")):
+def receive_aggregates(body: dict, request: Request, raw: bytes = Depends(_raw_body), authorization: str = Header("")):
     """Parent side. Children push hourly means, stored as readings under the child's namespaced sensor ids.
     Raw readings never travel this path.
 
@@ -2307,8 +2352,8 @@ def receive_aggregates(body: dict, authorization: str = Header("")):
         raise HTTPException(401, "bad or missing Authorization: Bearer <AGGREGATE_TOKEN>")
     _wire_in(body, AGGREGATES_V0)
     rows = body.get("rows", [])
-    child = body.get("node", "?")
     with db() as con, con.cursor() as cur:
+        child = _admit(cur, body, "/aggregates", raw, request)
         for r in rows:
             sid = f"{child}/{r['sensor_id']}"
             indoor = r.get("indoor")
