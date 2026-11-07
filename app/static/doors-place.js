@@ -229,6 +229,30 @@ function indexRow(P, brief) {
   return `<div class="fr"><span>${nm}${sc && sc.status_label ? ` · ${esc(sc.status_label)}` : ''}<small>${small}</small></span>`
     + `<b>${val || '<span class="soon">not read</span>'}${val ? ' ' + prov(r.ok ? 'partial' : 'cached') : ''}</b></div>` + (brief ? '' : ind);
 }
+/* Now's city screen (Tomas, 7 Nov, after a VU readout): the Index of the node's city as the screen's one figure, a column
+   of its 20 cells beside it (lit = measured, counted not sized), the label and the read under it; the readout opens the
+   city on index.fab.city. No city chosen, or a city not on the Index: the same screen says how to get one. */
+function indexScreen(P) {
+  const a = (h, t, c) => `<a href="${esc(h)}" target="_blank" rel="noopener"${c ? ` class="${c}"` : ''}>${t}</a>`;
+  const fin = x => typeof x === 'number' && isFinite(x), g = x => String(+x.toFixed(3));
+  const sc = P && P.chosen && P.place ? P.score : null, r = (P && P.read) || {};
+  const page = P && P.links && /^https:\/\//.test(P.links.page || '') ? P.links.page : 'https://index.fab.city/';
+  const tot = (sc && sc.cells_total) || 20, m = (sc && sc.cells_measured) || 0;
+  const vu = `<span class="ixvu" aria-hidden="true">${Array.from({ length: tot }, (_, i) => `<i${tot - i <= m ? ' class="on"' : ''}></i>`).join('')}</span>`;
+  const head = t => `<p class="ixh">Fab City Index <span>[${esc(t)}]</span></p>`;
+  const get = (t, say, link) => `<div class="ix">${vu}<div>${head(t)}<p class="ixv">–</p><p class="ixs">${say}</p><p class="ixs">${link}</p></div></div>`;
+  if (!P || !P.chosen) return get('no city yet', 'This node has no city on the Index yet. Get one: run <code>planetai place</code> on the node.', a('https://index.fab.city/', 'The cities on the Index ↗'));
+  if (!P.place) return get(P.chosen, `${esc(P.chosen)} has no Fab City Index yet. Start one for it, or choose a city that has one with <code>planetai place</code>.`, a('https://index.fab.city/method', 'How a city gets its Index ↗'));
+  const rg = sc && Array.isArray(sc.fci_range) && sc.fci_range.every(fin) ? sc.fci_range : null;
+  const v = !sc ? null : fin(sc.fci) ? num('now.fci', g(sc.fci), 'the Fab City Index for this city, 0 to 1')
+    : rg ? num('now.fci.range', '', 'the Fab City Index for this city: a range until a cell is measured', `${g(rg[0])} – ${g(rg[1])}`) : null;
+  const nm = P.place.name || P.chosen, when = r.at ? `${r.ok ? 'read' : 'last read'} ${esc(loc(r.at).slice(0, 10))}` : 'not read yet';
+  const pw = r.ok ? 'partial' : 'cached', lab = sc && sc.status_label && sc.status_label.toLowerCase() !== pw ? esc(sc.status_label) + ' · ' : '';
+  return `<div class="ix">${vu}<div>${head(nm)}`
+    + `<p class="ixv">${v ? a(page, `${v}<small>of 1</small>`) : '–'}</p>`
+    + `<p class="ixs">${v ? prov(pw) + ' ' : ''}${lab}${sc ? `${m} of ${tot} cells measured · ` : ''}${when}</p>`
+    + `<p class="ixs ixl">${a(page, `${esc(nm)} on the Index ↗`)}<a href="#place/figures">its figures on Place</a></p></div></div>`;
+}
 /* The head's line: the place on the Index in one line, over the map, with a way down to its figures. Nothing when no
    place is chosen or nothing has been read: the figures band says why. */
 function indexLine(P) {

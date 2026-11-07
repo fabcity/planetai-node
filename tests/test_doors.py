@@ -417,8 +417,8 @@ assert 'id="rail"' not in _nowh and "function rail(" not in _nowjs and 'id="cell
     "the grain rail is back on Now"
 # the parts in reading order, each keeping its learn mark: lead, figure, distances, buttons, then the house's states
 _marks = re.findall(r'data-learn="([a-z-]+)"', _nowh)
-assert _marks == ["now-sentence", "figure", "now-distances", "now-todo", "now-rows", "now-around", "now-things", "now-city", "now-worked", "now-next"], _marks
-assert _nowh.index('class="rcol"') < _nowh.index('id="decide"') < _nowh.index('class="around"') < _nowh.index('id="nremember"'), "What to do, then around, then Did it work"
+assert _marks == ["now-sentence", "figure", "now-distances", "now-city", "now-around", "now-todo", "now-rows", "now-things", "now-worked", "now-next"], _marks
+assert _nowh.index('class="rcol"') < _nowh.index('id="ncity"') < _nowh.index('class="around"') < _nowh.index('id="decide"') < _nowh.index('id="nremember"'), "the city and its map, then What to do, then Did it work"
 # heads name the reader's question, in sentence case; no engine stage shouted on Now
 assert "Around the house</h2>" in _nowh and "`Right now · " in _nowjs and '<h2 class="nh">What to do</h2>' in _nowjs
 assert not re.search(r"observe · |decide · |the node’s own sentence", _nowh + _nowjs), "a capitalised engine stage is back as a head"
@@ -1014,13 +1014,13 @@ const core = fs.readFileSync('./app/static/doors-core.js', 'utf8'), place = fs.r
 const pick = n => core.match(new RegExp('^const ' + n + ' = .*$', 'm'))[0], fn = n => place.match(new RegExp('function ' + n + '\\([\\s\\S]*?\\n}\\n'))[0];
 const c = { D: { tz: 'Asia/Makassar' }, sign: id => `<svg data-s="${id}"></svg>`, doorsLocal: L.doorsLocal }, out = {};
 vm.createContext(c);
-vm.runInContext(['esc', 'loc', 'num', 'PROV', 'prov'].map(pick).join('\n') + '\n' + fn('indexRow') + fn('indexLine'), c);
+vm.runInContext(['esc', 'loc', 'num', 'PROV', 'prov'].map(pick).join('\n') + '\n' + fn('indexRow') + fn('indexLine') + fn('indexScreen'), c);
 for (const [k, ip] of Object.entries(JSON.parse(process.argv[1]))) {
-  c.P = ip; out[k] = { brief: vm.runInContext('indexRow(P, true)', c), line: vm.runInContext('indexLine(P)', c) };
+  c.P = ip; out[k] = { brief: vm.runInContext('indexRow(P, true)', c), line: vm.runInContext('indexLine(P)', c), scr: vm.runInContext('indexScreen(P)', c) };
 }
 console.log(JSON.stringify(out));
 """
-_bp = json.loads(subprocess.run(["node", "-e", bprog, json.dumps({"bcn": _route(_idx), "acc": _route(_acc), "empty": {"chosen": "", "place": None},
+_bp = json.loads(subprocess.run(["node", "-e", bprog, json.dumps({"bcn": _route(_idx), "acc": _route(_acc), "empty": {"chosen": "", "place": None}, "none": None, "notindex": {"chosen": "Ungasan", "place": None},
     "unread": dict(_route(_idx), score=None), "nullrange": dict(_route(_acc), score=dict(_acc["score"], fci=None, fci_range=None))})],
     capture_output=True, text=True, check=True).stdout)
 _bb = _bp["bcn"]["brief"]
@@ -1031,8 +1031,17 @@ assert "<b>0 – 0</b>" in _bp["acc"]["line"] and "Simulated" in _bp["acc"]["lin
 assert all(_bp[k]["line"] == "" for k in ("empty", "unread", "nullrange")), "no place or no figure: the head says nothing, the figures band says why"
 _html, _nowjs, _pl = (STATIC / "doors.html").read_text(), (STATIC / "doors-now.js").read_text(), (STATIC / "doors-place.js").read_text()
 assert 'id="ncity" data-learn="now-city" data-reads="/index/place"' in _html and 'data-pack="index"' in _html and '<h2 class="nh" id="ncityh">In the city</h2>' in _html
-assert _html.index('id="ncity"') > _html.index('<h2 class="nh">Around the house</h2>') and _html.index('id="ncity"') < _html.index('id="alsoread"'), "In the city closes the Around the house column"
-assert "$('#ncity').hidden = !city" in _nowjs and "indexRow(P, true)" in _nowjs, "Now hides the part until a place is chosen and known"
+assert _html.index('<div class="rcol">') < _html.index('id="ncity"') < _html.index('id="ncityrow"') < _html.index('id="rose"') < _html.index('id="decide"'), "In the city opens the right column: the Index over the map, in one screen"
+assert "$('#ncityrow').innerHTML = indexScreen(D.index_place)" in _nowjs and "#ncity').hidden" not in _nowjs, "Now always draws the city screen; without an Index it says how to get one"
+# the city screen (Tomas, 7 Nov): the figure large and linked to the city on the Index, 20 cells with the measured lit, the
+# label once (not beside the same provenance word), the read; no city or no Index says how to get one
+_sc = _bp["bcn"]["scr"]
+assert '>0.454<' in _sc and 'href="https://index.fab.city/city?locality=barcelona"' in _sc and "[Barcelona]" in _sc and "1 of 20 cells measured" in _sc and "read 2026-11-05" in _sc, _sc
+assert _sc.count("<i") == 20 and _sc.count('<i class="on">') == 1 and "sign-prov-partial" in _sc and "Partial ·" not in _sc and 'href="#place/figures"' in _sc, _sc
+assert "0 – 0" in _bp["acc"]["scr"] and "Simulated ·" in _bp["acc"]["scr"], "a range stays a range on the screen, with its label"
+assert all("planetai place" in _bp[k]["scr"] and 'href="https://index.fab.city/"' in _bp[k]["scr"] for k in ("empty", "none")), _bp["empty"]["scr"]
+assert "Ungasan has no Fab City Index yet" in _bp["notindex"]["scr"] and "index.fab.city/method" in _bp["notindex"]["scr"], _bp["notindex"]["scr"]
+assert '<p class="ixv">–</p>' in _bp["unread"]["scr"] and "cells measured" not in _bp["unread"]["scr"] and "sign-prov" not in _bp["unread"]["scr"], "no score read: a dash, no provenance word"
 assert "location.hash === '#place/figures'" in _pl and "e.preventDefault(); go();" in _pl, "#place/figures scrolls to the figures; on Place the line scrolls without a new address"
 print("doors: Now says the city in one row under Around the house, and Place's head says it in one line over the map")
 # Drawing on the screen, and your maps (SPEC_place_microgis §4, §10). Booted in node with a map that does nothing and a

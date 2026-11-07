@@ -1042,6 +1042,14 @@ body:not(.classic) .hero .ladder.folded{display:none}
 .face .lcol>*,.face .rcol>*{margin-top:0!important}.face .lcol,.face .rcol{margin-top:0!important;padding-top:0!important}
 .face .lcol>.hero{flex:1}.face .rcol>.nxpart{flex:1}
 .face .amod{background:var(--card);border:1px solid var(--hair);padding:0 16px 16px}
+/* In the city: the Index readout and the map in one screen at the head of the right column (Tomas, 7 Nov) */
+.ncity .scr{margin-top:0!important}.ncity .around{margin:0;border-top:1px solid var(--hair)}.ncity #rosecap{margin-top:10px}
+.ix{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;padding:10px 0 12px}
+.ixvu{display:grid;grid-template-rows:repeat(20,6px);gap:2px;width:14px;align-self:center}.ixvu i{background:var(--hair)}.ixvu i.on{background:var(--cells)}
+.ixh{font:500 var(--t-cap)/1.3 var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--cells);margin:0}.ixh span{color:var(--ink)}
+.ixv{font:600 clamp(48px,4.6vw,72px)/1 var(--mono);letter-spacing:-.04em;margin:8px 0 6px;color:var(--ink)}
+.ixv a{color:inherit;text-decoration:none;display:inline-flex;align-items:baseline;min-height:44px}.ixv small{font:500 var(--t-small) var(--mono);letter-spacing:0;color:var(--mute);margin-left:8px}
+.ixs{font:500 var(--t-small)/1.45 var(--mono);color:var(--mute);margin:2px 0 0}.ixs a{color:var(--ink);display:inline-flex;align-items:center;min-height:44px}.ixs code{color:var(--ink)}.ixl{display:flex;flex-wrap:wrap;column-gap:18px}
 .face .board{margin-top:16px}
 .pboard{margin:22px 0 0!important}
 /* Node's map of the nodes around it, full width (Tomas, 7 Nov): the node already draws it at the column's width, a
@@ -1150,14 +1158,15 @@ body:not(.classic) .hero .ladder.folded{display:none}
     </div>
   </div>
   <div class="rcol">
+    <section class="amod ncity" id="ncity" data-learn="now-city" data-reads="/index/place" data-stage="observe" data-pack="index" data-kind="readout" aria-labelledby="ncityh"><h2 class="nh" id="ncityh">In the city</h2>
+      <div class="scr" data-theme="dark"><div class="sbody" id="ncityrow"></div><figure class="around" data-learn="now-around" data-reads="/sensors /stats" data-stage="observe" data-pack="air-quality" data-kind="stack"><div class="sbody" style="padding:10px"><div id="rose"></div></div><p class="sinfo"><span>Air · the stations around it</span><span>PM2.5 now</span></p></figure></div>
+      <p class="fine" id="rosecap"></p></section>
     <section class="todo" id="decide" data-learn="now-todo" data-reads="/issues /actions /alerts" data-stage="decide" data-pack="core" data-kind="readout" aria-label="What to do"></section>
     <div id="asks" hidden></div>
     <div id="ndecl-decide" hidden></div>
     <section class="amod" aria-label="Around the house"><h2 class="nh">Around the house</h2>
     <aside data-learn="now-rows" data-reads="/issues /issues/days" data-stage="measure" data-pack="core"><div class="rows" id="rows"></div></aside>
-    <figure class="around" data-learn="now-around" data-reads="/sensors /stats" data-stage="observe" data-pack="air-quality" data-kind="stack"><div class="scr" data-theme="dark" style="margin-top:12px"><div class="sbody" style="padding:10px"><div id="rose"></div></div><p class="sinfo"><span>Air · the stations around it</span><span>PM2.5 now</span></p></div><figcaption class="fine" id="rosecap"></figcaption></figure>
     <p class="fine" id="nthings" data-learn="now-things" data-reads="/things" data-stage="observe" data-pack="core" data-kind="row" hidden></p></section>
-    <section id="ncity" data-learn="now-city" data-reads="/index/place" data-stage="observe" data-pack="index" data-kind="row" aria-labelledby="ncityh" hidden><h2 class="nh" id="ncityh">In the city</h2><div id="ncityrow"></div></section>
     <section class="nrem" id="nremember" data-learn="now-worked" data-reads="/learned /learned/search /household" data-stage="measure" data-pack="core" data-kind="readout" aria-label="Did it work, and yesterday" hidden></section>
     <div id="ndecl-measure" hidden></div>
     <div class="nxpart"><h2 class="nh" id="nexth">Next days</h2>
