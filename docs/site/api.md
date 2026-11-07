@@ -64,10 +64,10 @@ Access: public
 
 What every screen in the house polls. Answers at every `SHARE_LEVEL` and never makes an outbound request of its own.
 
-Returns `ok` (true once a poll has run), `node`, `version`, `schema`, `uptime_s`, `lat`, `lon`, `position` (`cell` or `point`), `city`, `polls`, `last_poll`, `last_error`, `ingested`, `errors` (each loop's last error), `locale`, `tz`, `cell` (`{id, res, edge_m, caption}`, null before setup), `docs`, `mcp` and `llms`. With their features on it adds `mesh` (`MQTT_HOST`), `direct` (`MQTT_HOST` with the smartcitizen pack on), `reticulum` (`RETICULUM_URL`) and `release` (`{latest, current, newer, checked, asked}` from the hourly check, with `UPDATE_CHECK=on`). `schema` starts with `unreachable` when the database refuses the app, usually a wrong password after a reinstall; `planetai doctor` says why.
+Returns `ok` (true once a poll has run), `node`, `node_id` (the short hash of this node's key, null without `NODE_KEY`), `node_key` (its public key, base64), `version`, `schema`, `uptime_s`, `lat`, `lon`, `position` (`cell` or `point`), `city`, `polls`, `last_poll`, `last_error`, `ingested`, `errors` (each loop's last error), `locale`, `tz`, `cell` (`{id, res, edge_m, caption}`, null before setup), `docs`, `mcp` and `llms`. With their features on it adds `mesh` (`MQTT_HOST`), `direct` (`MQTT_HOST` with the smartcitizen pack on), `reticulum` (`RETICULUM_URL`) and `release` (`{latest, current, newer, checked, asked}` from the hourly check, with `UPDATE_CHECK=on`). `schema` starts with `unreachable` when the database refuses the app, usually a wrong password after a reinstall; `planetai doctor` says why.
 
 ```json
-{"ok": true, "node": "bayu-ungasan", "version": "v0.91.0", "schema": "0.61", "uptime_s": 86121,
+{"ok": true, "node": "bayu-ungasan", "node_id": "cc5gqlek2e2rhfy6", "version": "v0.91.0", "schema": "0.61", "uptime_s": 86121,
  "lat": -8.825, "lon": 115.159, "position": "cell", "city": "bali", "polls": 287,
  "last_poll": "2026-10-20T08:35:02+00:00", "errors": {}, "locale": "id", "tz": "Asia/Makassar",
  "cell": {"id": "...", "res": 8}, "docs": "https://planetai.fab.city/docs/", "mcp": "/mcp", "llms": "/llms.txt"}
@@ -93,7 +93,7 @@ What the node announces about itself on Reticulum, read by the bridge container,
 ### GET /nodes
 Access: public
 
-The nodes the programme lists, from `registry.json` on the repository's `main`, read every hour. Returns `{read, from, nodes, error?}`, and each node has `name`, `place`, `scale`, `operator`, `since`, `cell` and `ll` (`[lon, lat]` to one decimal). `UPDATE_CHECK=off` reads nothing and serves an empty list.
+The nodes the programme lists, from `registry.json` on the repository's `main`, read every hour. Returns `{read, from, nodes, error?}`, and each node has `name`, `id` (when it is listed with a key), `place`, `scale`, `operator`, `since`, `cell` and `ll` (`[lon, lat]` to one decimal). `UPDATE_CHECK=off` reads nothing and serves an empty list.
 
 ### GET /machine
 Access: token
@@ -617,6 +617,14 @@ it is going: `idle`, `waiting` (with `stuck` after three minutes), `running`, `d
 
 A child sends its parent hourly means and alert timestamps. Raw readings do not travel this way. See [federation](federation.md).
 
+Both pushes are signed with the child's key, in four headers beside the token: `X-Node-Id`, `X-Node-Key` (the public
+key, base64), `X-Node-Ts` (unix seconds) and `X-Node-Signature`, an Ed25519 signature over
+`planetai-node-v1\n<route>\n<ts>\n<sha256 of the body, hex>`. The parent checks the token first, then the signature,
+then pins the child's name to its key on first contact. A signature that does not verify, or a timestamp more than
+10 minutes from the parent's clock, answers 401. A name pinned to another key, a key pinned under another name, or a
+name that `registry.json` lists under another ID answers 409, and the `detail` says what to run. An unsigned push is
+accepted under a name that has never signed, and refused with 401 under one that has.
+
 ### GET /aggregates
 Access: token
 
@@ -642,15 +650,27 @@ A child sends a map its household shared, whole, at most once a minute after eac
 
 ```json
 {"schema": "planetai.place.map/v0", "node": "bayu-ungasan", "map_id": 7, "op": "put",
- "geojson": {"type": "FeatureCollection", "map": "Garden plan", "owner": "bayu-ungasan", "features": [...]}}
+ "geojson": {"type": "FeatureCollection", "map": "Garden plan", "owner": "cc5gqlek2e2rhfy6", "features": [...]}}
 ```
 
-The parent keeps it under the child's name and map id, its drawings replaced on each `put`, and lists it read-only in `GET /place/maps`. A picture's number is the child's and is dropped. The map's `owner` is the child node, never a person, and a drawing carries no `drawn_by`. A map holds 2,000 drawings and 20,000 points at most (413), a drawing 1,000 points (422), and a colour is 1 to 6 (422). Returns `{"ok": true, "marks": <n>}` for a `put` and `{"ok": true}` for a `delete`.
+The parent keeps it under the child's name and map id, its drawings replaced on each `put`, and lists it read-only in `GET /place/maps`. A picture's number is the child's and is dropped. The map's `owner` is the child node, never a person: its ID when the push is signed (as `/aggregates` is, and pinned the same way), its name when it is not. A drawing carries no `drawn_by`. A map holds 2,000 drawings and 20,000 points at most (413), a drawing 1,000 points (422), and a colour is 1 to 6 (422). Returns `{"ok": true, "marks": <n>}` for a `put` and `{"ok": true}` for a `delete`.
 
 ### POST /events
 Access: children
 
 A child pushes one row per alert it raised, timestamps only: `alert_id`, `rule`, `level`, `kind`, `raised_at`, `responded_at`, `acted_at`, `measured_at`. No text, actor or sensor travels. The parent counts them in its ρ. Returns `{"accepted": <n>}`.
+
+### GET /children
+Access: token
+
+The children this node has pinned, by name: `[{name, node_id, public_key, first_seen, last_seen}]`. `node_id` and
+`public_key` are null for a child that still pushes unsigned. Set up › Sharing and `planetai children` show it.
+
+### DELETE /children/{name}
+Access: token
+
+Forgets a child's pin, after it lost its key and came back as a new node. Its readings and events stay, and its next
+push is pinned to the key it signs with. 404 when no child of that name is pinned. `planetai children forget <name>`.
 
 ## Open data and backups
 

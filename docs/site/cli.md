@@ -34,7 +34,7 @@ Docker. The installer says what each `sudo` is for before it asks.
 
 | command | what it does |
 |---|---|
-| `planetai status [--json]` | Version, uptime, last poll and error, sensors, the last three alerts and ρ. |
+| `planetai status [--json]` | Version, this node's ID, uptime, last poll and error, sensors, the last three alerts and ρ. |
 | `planetai doctor [quiet\|--guide\|--json]` | Every check, each failure with its fix, then the node's data sources. |
 | `planetai logs [service]` | Follows a container's log: `app` by default, or `db`, `agent`, `reticulum`, `mosquitto`. |
 | `planetai start` · `stop` · `restart` | `docker compose up -d`; `down`, data kept; recreate the app container, which is how a change in `.env` takes effect. |
@@ -151,6 +151,7 @@ Where the data lives, and why never on a network mount: [Storage](storage.md).
 | `planetai mesh [up\|status\|down]` | Installs Tailscale and joins your tailnet under the node's name, then prints how to reach it. `TS_AUTHKEY` in the environment joins without a browser. Records `MESH_NAME`. | yes |
 | `planetai reticulum` | Downloads the LXMF bridge from fabcity/planetai-reticulum at the commit `RETICULUM_REF` pins, builds it, starts it (profile `reticulum`), and prints the node's address and how to reach it from Sideband. | no |
 | `planetai hello [--remove]` | Lists this node on every node's map. It shows the entry a stranger would see (name, the centre of its cell, the place, who runs it, an optional contact) and opens the pull request to `registry.json` with `gh`, or prints the entry and the edit link. It first brings your fork's `main` up to fabcity's with `gh repo sync`, so an old fork does not undo other entries, and stops with that command to run if your `main` has commits of its own. A node already listed sends `registry: update <name>`. Once merged, nodes see it within the hour. `--remove` takes the node off. | no |
+| `planetai children [forget <name>]` | On a parent, the nodes pushing to it, each with its ID or `unsigned`, and when it was first and last seen. Each name is pinned to the key it first signed with. `forget <name>` drops one pin, after that child lost its key; its readings stay and its next push is pinned again. | no |
 
 See [Channels](channels.md) and [Federation](federation.md).
 

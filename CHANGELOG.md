@@ -9,6 +9,14 @@
   parts to a `yours` row in `planetai sensors`. The README and the FAB26 page point at the quick start; `START_HERE.md`
   stays as the terminal walk-through.
 
+- **Each node is a key.** A node now makes its own key when it is installed, `NODE_KEY` in `.env`, and its ID is a
+  short hash of the public key. It shows in Set up › Sharing, in `planetai status` and in `GET /health`. A child signs
+  everything it pushes to its parent, shared maps included (a map's owner is the node's ID), and the parent pins the child's name to its key the first time it hears from it.
+  A push under that name from another key is refused, with a sentence saying what to run. The shared
+  `AGGREGATE_TOKEN` stays. A child with no key yet still pushes as before. Keep a copy of `.env` somewhere that is not
+  the backup share: a node that loses it is a new node. A node updating from an older release gets its key on the
+  update after this one. `planetai children` lists the nodes pushing to a parent. docs/SPEC_identity.md.
+
 - **Place is drawn as what the ground is made of.** The door has a list on the left with the sky at the top and the
   ground at the bottom, one line a row with a dot for on, off, or not held yet, and a black screen in the middle that
   stays black on the light page and the dark one. **Tools**, beside the ask line, opens a menu. Rings and distance and

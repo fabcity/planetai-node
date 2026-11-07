@@ -126,7 +126,8 @@ full log is in `.planetai-install.log`.
    printing the three lines that let Podman answer to `docker` (`podman-docker`, the user `podman.socket`, and
    `DOCKER_HOST`). No node has run on Podman yet.
 2. **`.env`.** Copies `.env.example` (mode 600), applies the pilot preset if any, writes the answers, stamps
-   `NODE_VERSION`, and generates `POSTGRES_PASSWORD` and `ADMIN_TOKEN`. It refuses to start without coordinates,
+   `NODE_VERSION`, and generates `POSTGRES_PASSWORD`, `ADMIN_TOKEN` and `NODE_KEY`, the node's own key (see
+   [Federation](federation.md#each-node-is-a-key)). It refuses to start without coordinates,
    and refuses a new database password over a database volume an earlier node left behind.
 3. **Port and folders.** Checks that `APP_PORT` (8080) is free, and creates `backups`, `exports` and `out`.
 4. **The database image.** Pulls `imresamu/postgis:16-3.4-alpine` (about 162 MB, amd64 and arm64) with visible
@@ -197,7 +198,7 @@ own code.
 
 ```
 ~/planetai/
-  .env                   every setting; mode 600; never committed, never pasted
+  .env                   every setting and the node's key; mode 600; never committed, never pasted. Keep a copy off the backup share
   backups/               nightly pg_dump, kept BACKUP_KEEP days
   exports/<node>/        the daily CC BY 4.0 export, one JSON a day
   out/                   what pack scripts write: land-change maps, timelapses, mapping briefs, the kept map (out/ground/), the workbench's firmware (out/firmware/)
