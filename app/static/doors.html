@@ -235,18 +235,19 @@ section.decl{margin-top:22px}.row.decl{cursor:default}   /* a pack's declared ba
 #rose svg{display:block;overflow:visible}
 /* Next days (SPEC_next_days §5): a part of Now under What to do, one row card a thing over three day columns (the rest
    of today, tomorrow, the day after), the row's 72 h a series card under it */
-.nxpart{margin-top:36px}#next{min-width:0}
+.nxpart{margin-top:36px}#next{min-width:0;container:next/inline-size}
 .nxhead,.nrow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px 12px}
 .nxhead{font:500 var(--t-cap)/1.4 var(--mono);color:var(--mute);padding:0 10px 6px 8px;border-bottom:1px solid var(--ink)}
 .nxhead b{font:600 var(--t-small) var(--body);color:var(--ink)}.nxhead>span:first-child,.nrow .n{grid-column:1 / -1}.nxhead>span:first-child{display:none}
-.nrow .n small{display:block;font-weight:500}.nxc{min-width:0;font:500 var(--t-small)/1.4 var(--body);overflow-wrap:anywhere}
+.nrow .n small{display:block;font-weight:500}.nxc{min-width:0;font:500 var(--t-small)/1.4 var(--body);overflow-wrap:break-word}
 .nxc .state{margin-left:4px;display:inline-block}.nxc .sub{display:block;margin-top:4px}
 .nrow[aria-pressed="true"] .nk,.nrow[aria-pressed="true"] .x{color:var(--ground);opacity:.75}
 .nxs{margin:0;padding:10px 0;border-bottom:1px solid var(--hair)}.nxs svg{display:block;width:100%;height:auto;overflow:visible}.nxs .fine{margin-top:4px}
 .nxsrc{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 0}
 #next .fine a,.nxempty a{display:inline-flex;align-items:center;min-height:44px}
 .nxempty{font:600 var(--t-read)/1.3 var(--body);margin:0;max-width:64ch}
-@media (min-width:761px){.nxhead,.nrow{grid-template-columns:8.5em repeat(3,minmax(0,1fr))}.nxhead>span:first-child{display:block}.nrow .n,.nxhead>span:first-child{grid-column:auto}}
+/* the four columns by the width Next days has, not the screen's: in the right column (Field Synthesizer variation) it has three */
+@container next (min-width:560px){.nxhead,.nrow{grid-template-columns:8.5em repeat(3,minmax(0,1fr))}.nxhead>span:first-child{display:block}.nrow .n,.nxhead>span:first-child{grid-column:auto}}
 /* what the packs read here, under both columns: each band's source said once under its head, its note folded */
 .alsoread{grid-area:al;margin-top:40px;min-width:0}.alsog{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:0 40px;align-items:start}
 .decl .src{margin:-4px 0 6px}.decl .how{border:0;margin-top:4px}

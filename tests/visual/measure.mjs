@@ -3697,7 +3697,9 @@ async function doors() {
         const targets = q('button, a').filter(vis).map(b => b.getBoundingClientRect());
         const box = nx.getBoundingClientRect(), cells = q('.nxc').map(c => c.getBoundingClientRect());
         return { days: q('.nrow .nxc').every(c => /^(Today|Tomorrow|[A-Z][a-z]{2}), /.test((c.querySelector('.vh') || {}).textContent || '')),
-          rows: q('.nrow').map(x => x.dataset.k || 'line'), cols: q('.nxhead > span').filter(vis).length,
+          rows: q('.nrow').map(x => x.dataset.k || 'line'), cols: q('.nxhead > span').filter(vis).length, four: box.width >= 560,
+          broken: q('.nxc .state, .nxc .num').filter(e => { const g = document.createRange(); g.selectNodeContents(e);
+            return new Set([...g.getClientRects()].map(c => Math.round(c.top))).size > 1; }).length,
           small: targets.filter(x => x.height < 44 || x.width < 44).length, n: targets.length,
           outside: cells.filter(c => c.right > box.right + 1 || c.left < box.left - 1).length,
           place: !!nx.closest('.rcol') && document.getElementById('decide').getBoundingClientRect().bottom <= box.top,
@@ -3706,7 +3708,8 @@ async function doors() {
       });
       ok(m.days, `${tag}: a cell does not say its day to a screen reader`);
       ok(JSON.stringify(m.rows) === JSON.stringify(['air', 'heat', 'wind_rain', 'sea', 'line']), `${tag}: the rows are ${m.rows.join(',')}`);
-      ok(m.cols === (w < 768 ? 3 : 4) && !m.outside, `${tag}: ${m.cols} heads, ${m.outside} cells outside the view`);
+      ok(m.cols === (m.four ? 4 : 3) && !m.outside, `${tag}: ${m.cols} heads, ${m.outside} cells outside the view`);
+      ok(!m.broken, `${tag}: ${m.broken} figures or state boxes in Next days broken over two lines`);
       ok(m.place && m.nowShown, `${tag}: Next days is not under What to do, in its column`);
       ok(m.n && !m.small, `${tag}: ${m.small} of ${m.n} targets under 44 × 44 px`);
       ok(m.wide <= 1, `${tag}: Now scrolls ${m.wide}px sideways with Next days`);
