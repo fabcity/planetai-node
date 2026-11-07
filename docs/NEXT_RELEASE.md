@@ -279,3 +279,12 @@ minutes loses the question, never the dismissal; persistence comes with the lear
    then" branch.
 5. **Reports built from events** (§11 step 7, Plan 4): `REPORT_AT`, `REPORT_SKIP_EMPTY`, a report that
    opens with the morning plan.
+
+## 6. Node identity, what is left (docs/SPEC_identity.md, 5 November 2026)
+
+Built on branch `node-identity-2026-11-05`, on top of #377: the key, the ID, signed pushes (shared maps
+included, owned by the node's ID), trust on first use, `/children`. Schema `0.63`, after #377's `0.62`.
+
+1. **The two registry entries have no key.** Each gets one when its keeper says `planetai hello` after updating.
+2. **Refusing unsigned pushes outright** is a setting for the release after every listed node has a key. Not built.
+

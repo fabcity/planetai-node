@@ -27,12 +27,37 @@ To make one node the child of another:
    `/events` half a minute after that, then each every hour, with `Authorization: Bearer <PARENT_TOKEN>` and
    its `NODE_SCALE`. A child that was already running pushes on its next hourly turn, and `planetai restart`
    brings the first push to two minutes. In `planetai logs` the child says `pushed <N> hourly rows to
-   parent`, and `pushed <N> alert events to parent` when it raised an alert in the last 36 hours. A wrong
-   token shows as `push to parent failed:` with a 401. On the parent the child's sensors appear as
+   parent`, and `pushed <N> alert events to parent` when it raised an alert in the last 36 hours. A parent that
+   cannot be reached shows as `push of /aggregates to parent failed:`. A parent that refuses, a wrong token or a
+   changed key, shows as `the parent refused /aggregates (401): …` with the parent's own sentence, and it stays in
+   Set up › Machine on the child until a push goes through. On the parent the child's sensors appear as
    `<child>/<sensor_id>` with `kind='child'`, in the parent's custody, so they count toward a `live` cell.
    The house's raw readings are still at home.
 
 A parent never sees a child's raw rows, its room names, its people, its sentences or its coordinates.
+
+## Each node is a key
+
+The token says who may push to a parent. It does not say who is pushing: every child holds the same one. So each
+node also has its own key, made when it is installed, and signs every push with it. Its ID is a short hash of the
+public key, 16 letters and digits, and it shows in Set up › Sharing, in `planetai status` and in `GET /health`.
+Upstream, the node owns what it shares, and the key is how a parent knows which node that is.
+
+The parent trusts a child's key the first time the child pushes, and pins the child's name to it. After that a push
+under that name signed by another key is refused, with a sentence naming both IDs. The same key under another name is
+refused too, so a child cannot rename itself into a sibling, and so is an unsigned push under a name that has signed,
+so nobody can fall back on the token to speak for it.
+
+A child on an older release, with no key yet, is still accepted with the token and shows as `unsigned` in
+`planetai children` on the parent. Its first signed push pins it. A node listed in `registry.json` with a key can only
+be pinned to that key.
+
+The key is `NODE_KEY` in the node's `.env`. Nothing prints it, and the nightly dump does not hold it, because dumps
+travel to a NAS or a remote. Keep a copy of `.env` somewhere that is not the backup share; the database password is
+in it too. Put that `.env` in the folder before installing on a new machine and the node is the same node. Lose it and
+the node is new. Its parent refuses it under the old name until the parent's keeper runs
+`planetai children forget <name>`, and if it is listed, `planetai hello` sends its new key to the list. Never copy a
+node's `.env` to start a second node, because the copy is the same node.
 
 ### POST /aggregates
 

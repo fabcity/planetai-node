@@ -577,3 +577,15 @@ CREATE TABLE IF NOT EXISTS place_maps_unshared (
   tried_at TIMESTAMPTZ
 );
 INSERT INTO schema_version (version) VALUES ('0.62') ON CONFLICT DO NOTHING;
+-- 0.63: a node is a key, not a string, docs/SPEC_identity.md §5 (0.62 is the place maps of PR #377). On a parent, one
+-- row per child name, pinned to the first key that signs under it: a push signed by another key is refused, and so is
+-- an unsigned push under a name that has signed. node_id is NULL for a child that still pushes unsigned. Forgetting a row (DELETE /children/{name})
+-- keeps the child's readings and events; its next push is pinned again.
+CREATE TABLE IF NOT EXISTS children (
+  name       TEXT PRIMARY KEY,
+  node_id    TEXT UNIQUE,
+  public_key TEXT,
+  first_seen TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_seen  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+INSERT INTO schema_version (version) VALUES ('0.63') ON CONFLICT DO NOTHING;

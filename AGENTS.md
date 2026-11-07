@@ -84,7 +84,8 @@ planetai radio init         # LoRa radios: the fleet, then `radio provision <rol
 ## Invariants. Do not break these.
 
 - Raw readings stay on this machine. Exports and aggregates travel; rows never do.
-- `.env` holds secrets. Never print it, never paste it, never commit it. Logs containing `api.telegram.org/bot` are a leak.
+- `.env` holds secrets. Never print it, never paste it, never commit it. Logs containing `api.telegram.org/bot` are a leak. `NODE_KEY` in it is
+  the node itself (docs/SPEC_identity.md): never regenerate, blank or copy it to another node. A new key is a new node.
 - The database lives on a local disk. Never a network mount. Backups are how data reaches a NAS.
 - A model or a portal is `partial`, whatever its quality. `live` means measured here.
 - Alerts say what to do in one sentence and name the threshold's source. Do not add alerts a household would ignore.

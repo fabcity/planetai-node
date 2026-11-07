@@ -27,13 +27,13 @@ from contextlib import contextmanager
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-import httpx
 import psycopg
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response
 
 import events_pg
 import geo
+import identity
 from auth import ACT_TOKEN, AGG_TOKEN, PARENT, PARENT_TOKEN, _bearer_ok, _is_local
 from db import NODE_TZ, db
 
@@ -208,7 +208,8 @@ _TEXT_H = 1.5                                              # metres: a label on 
 def feature_collection(map_row: dict, marks: list[dict], node: str, upstream: bool = False) -> dict:
     """The map as GeoJSON in WGS84: the same shape the page draws, and what a pull from another node reads back.
     `image` is the picture's capture id and never a file. `upstream` is the copy push_maps() sends: it leaves out
-    `drawn_by`, and its `owner` is the node (Tomas, 5 Nov: "the node is the owner"), so no household member's name
+    `drawn_by`, and its `owner` is the node (Tomas, 5 Nov: "the node is the owner"), by its ID when it has a key
+    (docs/SPEC_identity.md), so no household member's name
     goes up (§5 lists what does); the household's own download keeps both."""
     def props(m):
         at = m.get("updated_at")
@@ -219,7 +220,7 @@ def feature_collection(map_row: dict, marks: list[dict], node: str, upstream: bo
             del p["drawn_by"]
         return p
     return {"type": "FeatureCollection", "schema": _SCHEMA, "map": map_row["name"],
-            "owner": node if upstream else map_row.get("owner"), "node": node, "features": [{"type": "Feature", "properties": props(m), "geometry": m["geometry"]} for m in marks]}
+            "owner": (identity.node_id() or node) if upstream else map_row.get("owner"), "node": node, "features": [{"type": "Feature", "properties": props(m), "geometry": m["geometry"]} for m in marks]}
 
 
 def to_kml(fc: dict) -> str:
@@ -655,10 +656,14 @@ def push_maps() -> None:
             out.append((m["id"], "put", feature_collection(m, cur.fetchall(), node, upstream=True), m["updated_at"]))
     for map_id, op, fc, snap in out:
         try:
-            r = httpx.post(f"{PARENT()}/place/maps/received",
-                           json={"schema": _SCHEMA, "node": node, "map_id": map_id, "op": op, "geojson": fc},
-                           headers={"Authorization": f"Bearer {PARENT_TOKEN()}"} if PARENT_TOKEN() else {}, timeout=30)
-            error = {404: NOT_YET, 401: NO_TOKEN, 403: NO_TOKEN}.get(r.status_code)
+            # signed with this node's key (docs/SPEC_identity.md §8); a parent that refuses the key says why, in a
+            # sentence that is the map's share_error until the parent's keeper does what it says
+            r = identity.post(PARENT(), "/place/maps/received",
+                              {"schema": _SCHEMA, "node": node, "map_id": map_id, "op": op, "geojson": fc}, PARENT_TOKEN())
+            why = identity.refusal(r) if r.status_code >= 400 else ""
+            # a parent refuses the token with 403 or with a 401 that names it; any other 401 or a 409 is about the key
+            token = r.status_code == 403 or r.status_code == 401 and (not why or "AGGREGATE_TOKEN" in why)
+            error = NOT_YET if r.status_code == 404 else NO_TOKEN if token else why if r.status_code in (401, 409) else None
             if not error:
                 r.raise_for_status()
         except Exception as e:  # noqa: BLE001
@@ -677,8 +682,13 @@ def push_maps() -> None:
                                 WHERE id = %(id)s AND shared""", {"err": error, "snap": snap, "id": map_id})
 
 
+async def _raw_body(request: Request) -> bytes:
+    """The bytes the child signed. FastAPI keeps the body it read for `body: dict`, so this is the same bytes."""
+    return await request.body()
+
+
 @received.post("/place/maps/received")
-def map_received(body: dict, authorization: str = Header("")):
+def map_received(body: dict, request: Request, raw: bytes = Depends(_raw_body), authorization: str = Header("")):
     """Parent side. {schema, node, map_id, op: "put" | "delete", geojson}: a child's shared map, kept whole under
     (from_node, remote_id) and read-only here. A put replaces every drawing; a delete removes the map. Measures are
     PostGIS's own again; a picture's number is the child's and means nothing here, so it is dropped."""
@@ -690,6 +700,8 @@ def map_received(body: dict, authorization: str = Header("")):
     if not child or isinstance(rid, bool) or not isinstance(rid, int) or op not in ("put", "delete"):
         raise HTTPException(422, "A shared map says its node, its map_id and put or delete.")
     with db() as con, con.transaction(), con.cursor() as cur:
+        # the key pinned to this name, and no other, may write under it (docs/SPEC_identity.md §5); its ID owns the map
+        owner = identity.admit(cur, child, "/place/maps/received", raw, request.headers) or child
         if op == "delete":
             cur.execute("DELETE FROM place_maps WHERE from_node = %s AND remote_id = %s", (child, rid))
             return {"ok": True}
@@ -705,7 +717,7 @@ def map_received(body: dict, authorization: str = Header("")):
         cur.execute("""INSERT INTO place_maps (name, owner, from_node, remote_id) VALUES (%s, %s, %s, %s)
                        ON CONFLICT (from_node, remote_id) DO UPDATE SET name = EXCLUDED.name, owner = EXCLUDED.owner,
                                                                         updated_at = now()
-                       RETURNING id""", (_text(fc.get("map"), 80) or "map", child, child, rid))   # the child node owns it, never a person
+                       RETURNING id""", (_text(fc.get("map"), 80) or "map", owner, child, rid))   # the child node owns it, never a person
         mid = cur.fetchone()["id"]
         cur.execute("DELETE FROM place_marks WHERE map_id = %s", (mid,))
         for f in feats:

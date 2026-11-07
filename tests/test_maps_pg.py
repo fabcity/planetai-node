@@ -287,8 +287,9 @@ import maps  # noqa: E402
 sent, answer, real_post = [], [200], httpx.post
 
 
-def recorder(url, json=None, headers=None, timeout=None):
-    sent.append({"url": url, "body": json, "auth": (headers or {}).get("Authorization")})
+def recorder(url, json=None, headers=None, timeout=None, content=None):
+    body = json if content is None else __import__("json").loads(content)     # identity.post sends the bytes it signed
+    sent.append({"url": url, "body": body, "auth": (headers or {}).get("Authorization")})
     return httpx.Response(answer[0], request=httpx.Request("POST", url))
 
 
@@ -466,8 +467,31 @@ assert c.patch(f"/place/marks/{RK}", json={"label": "x"}, headers=H).json()["det
 assert c.get(f"/place/maps/{RV['id']}.geojson", headers=H).status_code == 200, "a received map downloads"
 assert recv({**doc, "op": "delete", "geojson": None}).status_code == 200
 assert one("SELECT count(*) AS n FROM place_maps WHERE from_node = 'kid'")["n"] == 0
+# signed (docs/SPEC_identity.md §8): the child's key is pinned to its name, its ID owns the map, another key is refused
+import json as _json  # noqa: E402
+import identity  # noqa: E402
+
+
+def signed_recv(seed, d):
+    os.environ["NODE_KEY"] = seed
+    identity._private.cache_clear()
+    raw = _json.dumps(d).encode()
+    h = {**AGG, "Content-Type": "application/json", **identity.headers("/place/maps/received", raw)}
+    nid = identity.node_id()
+    os.environ["NODE_KEY"] = ""
+    identity._private.cache_clear()
+    return c.post("/place/maps/received", content=raw, headers=h), nid
+
+
+r, kid2 = signed_recv("66" * 32, {**doc, "node": "kid2", "map_id": 8})
+assert r.status_code == 200, r.text
+assert one("SELECT owner FROM place_maps WHERE from_node = 'kid2' AND remote_id = 8")["owner"] == kid2, "the node's ID owns it"
+r, _ = signed_recv("77" * 32, {**doc, "node": "kid2", "map_id": 8, "op": "delete", "geojson": None})
+assert r.status_code == 409 and f"kid2 is pinned here to node {kid2}" in r.json()["detail"], r.text
+assert one("SELECT count(*) AS n FROM place_maps WHERE from_node = 'kid2'")["n"] == 1, "another key deletes nothing"
+assert recv({**doc, "node": "kid2", "op": "delete", "geojson": None, "map_id": 8}).status_code == 401, "nor does no key"
 httpx.post = real_post
-print("  the parent keeps a child's map whole, read-only, and lets it go on delete")
+print("  the parent keeps a child's map whole, read-only, and lets it go on delete; a signed map is its node's")
 
 ac.execute("DELETE FROM place_maps WHERE id = %s", (SH,))
 ac.execute("DELETE FROM actions WHERE stage = 'place' OR choice LIKE 'place.mark:%%' OR alert_id IN (%s, %s)", (A, A2))
