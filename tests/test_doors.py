@@ -417,8 +417,8 @@ assert 'id="rail"' not in _nowh and "function rail(" not in _nowjs and 'id="cell
     "the grain rail is back on Now"
 # the parts in reading order, each keeping its learn mark: lead, figure, distances, buttons, then the house's states
 _marks = re.findall(r'data-learn="([a-z-]+)"', _nowh)
-assert _marks == ["now-sentence", "figure", "now-distances", "now-todo", "now-worked", "now-next", "now-rows", "now-around", "now-things"], _marks
-assert _nowh.index('id="decide"') < _nowh.index('id="nremember"') < _nowh.index('class="rcol"'), "What to do, then Did it work, then around"
+assert _marks == ["now-sentence", "figure", "now-distances", "now-todo", "now-rows", "now-around", "now-things", "now-worked", "now-next"], _marks
+assert _nowh.index('class="rcol"') < _nowh.index('id="decide"') < _nowh.index('class="around"') < _nowh.index('id="nremember"'), "What to do, then around, then Did it work"
 # heads name the reader's question, in sentence case; no engine stage shouted on Now
 assert "Around the house</h2>" in _nowh and "`Right now · " in _nowjs and '<h2 class="nh">What to do</h2>' in _nowjs
 assert not re.search(r"observe · |decide · |the node’s own sentence", _nowh + _nowjs), "a capitalised engine stage is back as a head"
@@ -434,7 +434,7 @@ for _n, _cap in a.items():
         assert ("Nothing is asked now." in _v["now"]) == (_v["asking"] == 0), (_n, _k, _v["now"][:300])
         assert '<h2 class="nh">What to do</h2>' in _v["now"]
 # a phone: the bar's targets, and the week, are 44 px
-_ph = html[html.index("@media (max-width:480px){"):]
+_ph = html[html.index("@media (max-width:480px){\n"):]  # the bar's block; one-line phone rules sit before it
 _ph = _ph[:_ph.index("\n}\n")]
 for _sel in (".iconbtn{width:44px;height:44px", ".doors a{flex:1;display:flex;align-items:center;justify-content:center;min-height:44px", ".reg button{min-height:44px"):
     assert _sel in _ph, f"the phone bar lost a 44 px target: {_sel}"
@@ -640,6 +640,8 @@ assert re.search(r"\.bench\{display:grid;grid-template-columns:216px minmax\(0,1
     "216 px of cake, and the screen takes the rest"
 _v2 = _css[:_css.index("#pedges{")]   # the v2 rules; the swatches after them predate it
 _v2 = _v2.replace(_v2[_v2.index(".mapc{--ink"):_v2.index(".mapw{")], "")   # the screen's own values and its bezel
+if ".scr{--ink" in _v2:   # the doors' .scr screens carry the same screen values and bezel
+    _i = _v2.index(".scr{--ink"); _v2 = _v2[:_i] + _v2[_v2.index("}", _i) + 1:]
 assert not re.search(r"#[0-9A-Fa-f]{3,6}\b", _v2), "no raw colour outside the screen: the frozen layer's names"
 assert re.search(r"@media \(max-width:760px\)\{[^@]*\.bench\{grid-template-columns:minmax\(0,1fr\)", html), "a phone: one column, the screen first"
 assert ".phour button{width:var(--k);height:var(--k)" in _css and ".pbase button{min-height:var(--k);padding:0 12px" in _css and "min-height:var(--k);padding:0 12px;border:0;border-radius:999px;background:none;color:var(--mute);cursor:pointer;font:400 11px" in _css \
@@ -966,7 +968,7 @@ _ip = json.loads(subprocess.run(["node", "-e", iprog, json.dumps({
     capture_output=True, text=True, check=True).stdout)
 _b = _ip["bcn"]
 assert "Barcelona · Partial" in _b and ">0.454<" in _b and "read 2026-11-05" in _b and "35 sources filed for Barcelona in the registry" in _b, _b
-assert 'class="pill"' in _b and "https://index.fab.city/city?locality=barcelona" in _b and _b.index("Fab City Index ·") < _b.index("Index cells"), "the row sits above Index cells"
+assert 'class="pill' in _b and "https://index.fab.city/city?locality=barcelona" in _b and _b.index("Fab City Index ·") < _b.index("Index cells"), "the row sits above Index cells"
 assert _b.count('data-num="place.index.') == 3 and "2022 · index, 0-100" in _b and ">91.3<" in _b, "the first three indicators, each with its year and unit"
 assert _b.index('data-num="place.fci"') < _b.index('data-num="place.index.'), "the figure, then the indicators under it"
 _a = _ip["acc"]
