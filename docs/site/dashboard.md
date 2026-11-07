@@ -102,16 +102,18 @@ models. The node does not forecast, and nothing here sends a message." With Open
 where BMKG covers the node, and a line says where to turn Open-Meteo on. `#now/next` links straight to it.
 
 **Around the house.** A row for each issue drawn by the hour, its state word, its value now and its hours over the line
-today; pressing one moves the page to that issue. Under them, the map of the stations around the house: each public
-station with its 15-minute mean, a red square beside one over the air's line, the house as one mark with its own
-sensors' range, and the distance rings and cells for a screen with the token. Pressing a station opens it in Data.
-Without WebGL the map is a rose of bearings and distances. With the admin token one line counts the things this home
+today; pressing one moves the page to that issue. With the admin token one line counts the things this home
 keeps, how many sit idle and how many need repair, and opens Data › Home.
 
-**In the city** closes the column once `planetai place` has chosen this node's Fab City Index place. It is one row:
-the place and the label the Index gives it, its FCI or its range, and when the Index's file was read, marked `partial`,
-or `cached` when the last read failed. It links to the place's figures on Place, which hold the indicators and the
-registry count. With no place chosen the part is not drawn, and Place says how to choose one.
+**In the city** opens the right column: one screen with the city's Fab City Index over the map of the stations
+around the house. The Index is the screen's big figure, its FCI or its range out of 1, with a column of the Index's 20
+cells beside it, one lit for each cell measured. Under the figure: the label the Index gives the city, how many cells
+are measured, and when the Index's file was read, marked `partial`, or `cached` when the last read failed. The figure
+opens the city on index.fab.city, and a link goes to its figures on Place. With no city chosen the screen says to run
+`planetai place` on the node; with a city that has no Index yet it says how a city gets one. Under it, the map: each
+public station with its 15-minute mean, a red square beside one over the air's line, the house as one mark with its
+own sensors' range, and the distance rings and cells for a screen with the token. Pressing a station opens it in Data.
+Without WebGL the map is a rose of bearings and distances.
 
 **A pack's own band.** A pack can declare a band in its `pack.yaml` (a wild pack has no other way onto the page, it
 ships no code for it), and Now draws it next to the part with the same stage: `decide` and `act` under What to do,

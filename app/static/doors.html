@@ -178,7 +178,7 @@ details .in{padding:0 0 16px;color:var(--mute);font-size:var(--t-small);max-widt
 
 /* ================= NOW ================= */
 /* one bold block (the sentence and its day), then quiet parts under sentence-case heads; mono only for units, times, values */
-.face{max-width:1240px;margin:0 auto;padding:18px clamp(16px,3vw,40px) 40px;display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:0 48px;grid-template-areas:"kick kick" "l r" "al al"}
+.face{max-width:1240px;margin:0 auto;padding:18px clamp(16px,3vw,40px) 40px;display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:0 48px;grid-template-areas:"kick kick" "l r" "al al" "bd bd"}
 .lcol{grid-area:l;min-width:0}.rcol{grid-area:r;min-width:0;align-content:start}
 .kick{grid-area:kick;display:flex;justify-content:space-between;gap:6px 16px;align-items:baseline;flex-wrap:wrap;margin-bottom:6px}
 .kick .kr{display:flex;gap:12px;align-items:baseline}.kick .kr a{font-size:var(--t-cap);color:var(--mute)}
@@ -235,18 +235,19 @@ section.decl{margin-top:22px}.row.decl{cursor:default}   /* a pack's declared ba
 #rose svg{display:block;overflow:visible}
 /* Next days (SPEC_next_days §5): a part of Now under What to do, one row card a thing over three day columns (the rest
    of today, tomorrow, the day after), the row's 72 h a series card under it */
-.nxpart{margin-top:36px}#next{min-width:0}
+.nxpart{margin-top:36px}#next{min-width:0;container:next/inline-size}
 .nxhead,.nrow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px 12px}
 .nxhead{font:500 var(--t-cap)/1.4 var(--mono);color:var(--mute);padding:0 10px 6px 8px;border-bottom:1px solid var(--ink)}
 .nxhead b{font:600 var(--t-small) var(--body);color:var(--ink)}.nxhead>span:first-child,.nrow .n{grid-column:1 / -1}.nxhead>span:first-child{display:none}
-.nrow .n small{display:block;font-weight:500}.nxc{min-width:0;font:500 var(--t-small)/1.4 var(--body);overflow-wrap:anywhere}
+.nrow .n small{display:block;font-weight:500}.nxc{min-width:0;font:500 var(--t-small)/1.4 var(--body);overflow-wrap:break-word}
 .nxc .state{margin-left:4px;display:inline-block}.nxc .sub{display:block;margin-top:4px}
 .nrow[aria-pressed="true"] .nk,.nrow[aria-pressed="true"] .x{color:var(--ground);opacity:.75}
 .nxs{margin:0;padding:10px 0;border-bottom:1px solid var(--hair)}.nxs svg{display:block;width:100%;height:auto;overflow:visible}.nxs .fine{margin-top:4px}
 .nxsrc{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 0}
 #next .fine a,.nxempty a{display:inline-flex;align-items:center;min-height:44px}
 .nxempty{font:600 var(--t-read)/1.3 var(--body);margin:0;max-width:64ch}
-@media (min-width:761px){.nxhead,.nrow{grid-template-columns:8.5em repeat(3,minmax(0,1fr))}.nxhead>span:first-child{display:block}.nrow .n,.nxhead>span:first-child{grid-column:auto}}
+/* the four columns by the width Next days has, not the screen's: in the right column (Field Synthesizer variation) it has three */
+@container next (min-width:560px){.nxhead,.nrow{grid-template-columns:8.5em repeat(3,minmax(0,1fr))}.nxhead>span:first-child{display:block}.nrow .n,.nxhead>span:first-child{grid-column:auto}}
 /* what the packs read here, under both columns: each band's source said once under its head, its note folded */
 .alsoread{grid-area:al;margin-top:40px;min-width:0}.alsog{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:0 40px;align-items:start}
 .decl .src{margin:-4px 0 6px}.decl .how{border:0;margin-top:4px}
@@ -336,6 +337,23 @@ button.tl{cursor:pointer}button.tl:hover:not(:disabled):not(.on){background:var(
 .tl code{margin-left:auto;font:400 10px var(--mono);color:var(--mute)}
 .tl.on{background:var(--ink);color:var(--ground)}.tl.on code{color:var(--ground);opacity:.6}
 .tl.soon{color:var(--mute)}.tl.soon code{border:1px dotted var(--mute);border-radius:999px;padding:0 6px;font:400 10.5px var(--body)}
+/* EVOLUTION VARIATION (6 Nov 2026): the screen Place has had since 4 Nov, given to Now's day and Node's flow, with
+   OP-XY's header ramp on top (name cell, value cell, in grey steps from black to white, a second row under each) and an
+   info line at the foot. Same tokens as .mapc (doors-placemap.js PAL.dark), same bezel; no hue the layer lacks. */
+.scr{--ink:#F9F5F2;--ground:#17191D;--mute:#A3A19F;--dim:#8A8886;--hair:#3A3F47;--raise:#2B2E34;--cells:#7FA5E8;--satellite-only:#FF931E;
+  margin:20px 6px 6px;border-radius:10px;overflow:hidden;background:var(--ground);color:var(--ink);box-shadow:0 0 0 1px #000,0 0 0 5px #1b1b1b,0 0 0 6px #000}
+.scr .sbody{padding:6px 14px 4px}.scr .fig{margin-top:6px}
+.ramp{display:grid;grid-template-columns:repeat(var(--n,8),minmax(0,1fr))}
+.ramp>div{padding:8px 10px 7px;min-width:0;overflow:hidden}
+.ramp .r1{display:flex;align-items:baseline;gap:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ramp .rk{font:400 var(--t-small)/1.2 var(--body)}.ramp .rv{font:500 20px/1.1 var(--mono);font-variant-numeric:tabular-nums}.ramp .ru{font:400 var(--t-cap) var(--mono);opacity:.8}
+.ramp .r2{display:block;font:400 var(--t-cap)/1.3 var(--mono);opacity:.75;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sinfo{font:500 var(--t-cap)/1.3 var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--mute);padding:9px 14px;border-top:1px solid var(--hair);display:flex;justify-content:space-between;gap:4px 14px;flex-wrap:wrap;margin:0}
+.scr #flow{border:0;margin:0}
+.scr ~ .figfoot,.scr + .nk{margin-top:12px}
+body:not(.classic) .hero .ladder.folded{display:none}
+@media (max-width:480px){.ramp{grid-template-columns:repeat(2,minmax(0,1fr))}.ramp .rv{font-size:17px}.scr{margin:16px 4px 4px}.scr .sbody{padding:4px 6px}}
+
 /* the screen: black glass in a bezel, its controls on it as chips */
 .pmid{min-width:0;padding:12px 12px 0}
 .mapc{--ink:#F9F5F2;--ground:#17191D;--mute:#A3A19F;--hair:#3A3F47;--raise:#2B2E34;--cells:#7FA5E8;--chip:rgba(28,31,35,.92);   /* doors-placemap.js PAL.dark */
@@ -733,7 +751,7 @@ button.tl{cursor:pointer}button.tl:hover:not(:disabled):not(.on){background:var(
 .h3grid{fill:none;stroke:var(--ink);stroke-width:.4;opacity:.5}.h3lit{fill:var(--cells);fill-opacity:.13;stroke:var(--cells);stroke-width:1.5}
 
 @media (max-width:1080px){
-  .face{grid-template-columns:minmax(0,1fr);grid-template-areas:"kick" "l" "r" "al"}.rcol{margin-top:28px}
+  .face{grid-template-columns:minmax(0,1fr);grid-template-areas:"kick" "l" "r" "al" "bd"}.rcol{margin-top:28px}
   .sms{grid-template-columns:repeat(2,minmax(0,1fr))}.cols2{grid-template-columns:1fr}
 }
 /* a phone (SPEC_place_microgis §4): one column, the screen first, then the cake and the tools as two disclosures, then the
@@ -909,6 +927,169 @@ button.tl{cursor:pointer}button.tl:hover:not(:disabled):not(.on){background:var(
    shell instead of a spinner that would lie — scripting:none, not a noscript style tag: check_ui
    lints inline style blocks and a second one would muddy it */
 @media (scripting: none){.asking{display:none !important}}
+
+/* ===================================================================================================================
+   VARIATION · FIELD SYNTHESIZER (6 Nov 2026), after Stitch's "Field Synthesizer & Instrument Interface" export
+   (DESIGN.md + code.html in planetai-design/prototypes/dashboard-variation-evolve/reference/). An evolution of the
+   doors as they ship: the same pages, parts, words and data, in the export's chassis. Dark is this variation's
+   default. Its two accents keep one job each: amber is what is engaged (the open door, a pressed answer, a live
+   source), cyan is the signal (the current hour, a cell, a source partly read). Red stays the layer's, a reading over
+   its line. Faces are the node's own: Funnel Sans for Space Grotesk, JetBrains Mono for Space Mono.
+   =================================================================================================================== */
+:root[data-theme="dark"]{--ground:#0E0E10;--ink:#F4F4F5;--mute:#A1A1AA;--dim:#71717A;--hair:#232326;--raise:#1A1A1E;
+  --card:#141416;--wire:#323236;--wire-on:#52525B;--amber:#F59E0B;--cyan:#38BDF8;--cells:#38BDF8;--prov:#F4F4F5;--doc:#141416;--doc-line:#323236}
+:root{--card:#FFFFFF;--wire:#D9D4CE;--wire-on:#8A8580;--amber:#B45309;--cyan:#0369A1}
+/* etched labels: uppercase, tracked, mono */
+.k,.nk,.sinfo,.foot b,.pill,.gap,.proto{text-transform:uppercase;letter-spacing:.08em}
+/* the doors: a segmented switch; the open door inverts and carries an amber LED */
+.doors{border-color:var(--wire)}.doors a{font:600 var(--t-small) var(--mono);text-transform:lowercase;letter-spacing:.02em;border-right-color:var(--wire);display:inline-flex;align-items:center;gap:7px}
+.doors a.on::before{content:"";width:6px;height:6px;background:var(--amber)}
+.reg,.iconbtn{border-color:var(--wire)}.reg button.on{background:var(--ink);color:var(--ground)}
+#asof::before{content:"";display:inline-block;width:6px;height:6px;background:var(--amber);margin-right:7px;vertical-align:1px}
+.bar{border-bottom-color:var(--hair);background:var(--ground)}
+/* provenance as a micro-badge: a square LED, then the word. live engaged (amber), partial signal (cyan), the rest slate */
+.pill{border-color:var(--wire);background:var(--ground);gap:6px;font-weight:700;font-size:11px}
+.pill::before{content:"";width:5px;height:5px;flex:none;background:var(--dim)}
+.pill.pv-live::before{background:var(--amber)}.pill.pv-partial::before{background:var(--cyan)}
+.pill svg.sg{display:none}
+/* module cards, each section of a door: #141416 on the chassis, one hairline, square */
+.face .hero,.face .todo,.face .nrem:not([hidden]),.face .nxpart,.face .rcol,.face .alsoread:not([hidden]),.dsec,.pcols>section,.page>section:not(.refuse){
+  background:var(--card);border:1px solid var(--hair);padding:0 16px 16px;margin-top:16px}
+.face .hero{padding-top:14px}.face .rcol{align-self:start}
+/* the etched header bar every module opens with: an LED, the label, its index */
+.face{counter-reset:mod}.page{counter-reset:mod}
+.nh:not(.wnarr>.nh),.dsec>h2,.dsh h2,.pcols>section>h2,.page>h2,.page>section>h2,.runwrap h2{counter-increment:mod;display:flex;align-items:center;gap:8px;
+  font:700 var(--t-small)/1 var(--mono)!important;letter-spacing:.1em;text-transform:uppercase;border-top:0!important;
+  margin:0 -16px 14px!important;padding:12px 16px!important;border-bottom:1px solid var(--hair)}
+.nh:not(.wnarr>.nh)::before,.dsec>h2::before,.dsh h2::before,.pcols>section>h2::before,.page>h2::before,.page>section>h2::before,.runwrap h2::before{content:"";width:6px;height:6px;flex:none;background:var(--amber)}
+.nh:not(.wnarr>.nh)::after,.dsec>h2::after,.dsh h2::after,.pcols>section>h2::after,.page>h2::after,.page>section>h2::after,.runwrap h2::after{content:"// MOD-0" counter(mod);margin-left:auto;font-weight:500;color:var(--dim);letter-spacing:.06em}
+.page>h2,.runwrap h2{margin:28px 0 0!important;background:var(--card);border:1px solid var(--hair)}
+/* hardware triggers: Done, Not now, Doesn't fit; a pressed one fills amber */
+.decide{border:1px solid var(--wire);background:var(--ground)}
+.ans{border-color:var(--wire)}.ans button{font:700 var(--t-cap) var(--mono);text-transform:uppercase;letter-spacing:.08em;border-right-color:var(--wire);display:inline-flex;align-items:center;gap:8px}
+.ans button::before{content:"";width:6px;height:6px;background:var(--dim)}
+.ans button.on{background:var(--amber);color:#0E0E10}.ans button.on::before{background:#0E0E10}
+/* rack-mount rows: the issues around the house as cards in a column; the one in front inverts */
+.rcol .rows{border-top:0;display:grid;gap:8px}.rcol .row{border:1px solid var(--wire);background:var(--ground)}
+.rcol .row[aria-pressed="true"]{background:var(--ink);color:var(--ground);border-color:var(--ink)}
+/* the screen, as the export's oscilloscope: square, a #0E0E10 ground, a faint reticle */
+.scr{border-radius:0!important;box-shadow:none!important;border:1px solid var(--wire);margin:14px 0 0!important;--ground:#0A0A0C;--cells:#38BDF8;--hair:#26262B}
+.scr .sbody{background-image:radial-gradient(rgba(244,244,245,.09) 1px,transparent 1.2px);background-size:24px 24px}
+/* the readout strip at the screen's head: cells side by side, a label over a value (not a grey ramp in this variation) */
+.ramp>div{background:transparent!important;color:var(--ink)!important;border-right:1px solid var(--hair);padding:10px 12px 9px}
+.ramp>div:last-child{border-right:0}.ramp{border-bottom:1px solid var(--hair)}
+.ramp .rk{display:block;font:700 var(--t-cap)/1.2 var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--mute);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ramp .rv{font-size:22px}.ramp .r2{color:var(--mute);opacity:1}
+.ramp .warm .rv{color:var(--signal-worse)}.ramp .sig .rv{color:var(--cyan)}
+/* the encoder bank: the four distances as dials */
+.ladder.enc{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;border-top:0;padding-top:0;margin-top:14px}
+.enc .knob{border:1px solid var(--wire);background:var(--ground);padding:10px;min-width:0;display:flex;flex-direction:column;gap:6px}
+.enc .kh{display:flex;justify-content:space-between;align-items:center;gap:6px;font:700 var(--t-cap) var(--mono);text-transform:uppercase;letter-spacing:.1em}
+.enc .kh .pill{font-size:10px;padding:1px 5px}
+.enc svg{width:100%;max-width:120px;height:auto;align-self:center;display:block}
+.enc .kf{display:block;max-width:100%;font:500 var(--t-cap) var(--mono);color:var(--mute);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.enc .knob>*{min-width:0;max-width:100%}
+.foot{border-top-color:var(--hair)}
+/* ROUND 2: colour, one hue a kind of reading (the same ten as the dark variation, air and noise brighter here), used
+   for the stroke of that reading, its LED and its figure: never a background, never good or bad */
+:root[data-theme="dark"]{--d-air:#A78BFA;--d-heat:#F2C14E;--d-water:#5BC8F5;--d-sea:#3B8FD9;--d-wind:#7EE0C3;--d-energy:#F28C28;--d-ground:#C08A48;--d-biota:#8BC34A;--d-noise:#F472B6;--d-light:#F5E9A8}
+:root{--d-air:#6D28D9;--d-heat:#8A6D00;--d-water:#0369A1;--d-sea:#1F5F8B;--d-wind:#0F766E;--d-energy:#B45309;--d-ground:#6B4F1D;--d-biota:#3F7A0C;--d-noise:#BE185D;--d-light:#7A6F2A}
+.rcol .row[data-k]{box-shadow:inset 3px 0 0 var(--dk,var(--wire))}.rcol .row[data-k="air"]{--dk:var(--d-air)}.rcol .row[data-k="heat"]{--dk:var(--d-heat)}.rcol .row[data-k="coast"]{--dk:var(--d-sea)}.rcol .row[data-k="land"]{--dk:var(--d-ground)}.rcol .row[data-k="water"]{--dk:var(--d-water)}
+.fam[data-fam="Air"]{--dk:var(--d-air)}.fam[data-fam="Weather"]{--dk:var(--d-heat)}.fam[data-fam="Sound and light"]{--dk:var(--d-noise)}.fam[data-fam="Sea"]{--dk:var(--d-sea)}.fam[data-fam="Radio"]{--dk:var(--d-energy)}.fam[data-fam="Other"]{--dk:var(--d-ground)}
+.fam .tr path{stroke:var(--dk,currentColor)!important}.fam .fh{box-shadow:inset 3px 0 0 var(--dk,transparent);padding-left:8px}
+/* the board: a grid of slots; a feed is a module with its own little screen; an empty slot is a + */
+.face .board{grid-area:bd}.board{background:var(--card);border:1px solid var(--hair);padding:0 16px 16px;margin-top:16px;min-width:0}
+.bnote{font:500 var(--t-cap)/1.5 var(--mono);color:var(--mute);margin:0 0 12px;max-width:90ch}
+.bgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.tile{border:1px solid var(--wire);background:var(--ground);min-width:0;display:flex;flex-direction:column;min-height:206px}
+.tile .th{display:flex;align-items:center;gap:7px;padding:8px 10px;border-bottom:1px solid var(--hair);min-width:0}
+.tile .th .led{width:7px;height:7px;flex:none;background:var(--dk)}
+.tile .th b{font:700 var(--t-cap) var(--mono);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.tile .th .pill{margin-left:auto;font-size:10px;padding:1px 5px}
+.tile .tx{background:none;border:1px solid var(--wire);color:var(--mute);width:24px;height:24px;flex:none;cursor:pointer;font:400 14px/1 var(--mono);padding:0}
+.tile .tx:hover{color:var(--ink);border-color:var(--wire-on)}
+.tile .tb{flex:1;background:#0A0A0C;background-image:radial-gradient(rgba(244,244,245,.08) 1px,transparent 1.2px);background-size:20px 20px;min-height:110px;color:#F4F4F5}
+.tile .tb svg{display:block;width:100%;height:100%}
+.tile .tf{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:7px 10px;border-top:1px solid var(--hair);min-width:0}
+.tile .tv{font:600 18px var(--mono);color:var(--dk);white-space:nowrap}.tile .tv small{font-size:var(--t-cap);color:var(--mute);margin-left:3px}
+.tile .ts{font:500 var(--t-cap) var(--mono);color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.tile .kinds{display:flex;gap:0;border:1px solid var(--wire)}.tile .kinds button{background:none;border:0;border-right:1px solid var(--wire);color:var(--mute);font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.06em;padding:3px 6px;cursor:pointer;min-height:24px}
+.tile .kinds button:last-child{border-right:0}.tile .kinds button[aria-pressed="true"]{background:var(--amber);color:#0E0E10}
+.tile .tk{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:0 10px 8px}
+.tile.add{align-items:center;justify-content:center;gap:10px;border-style:dashed;cursor:pointer;color:var(--mute);font:600 var(--t-cap) var(--mono);text-transform:uppercase;letter-spacing:.08em}
+.tile.add:hover,.tile.add:focus-visible{border-color:var(--amber);color:var(--ink)}
+.tile.add .plus{width:44px;height:44px;border:1px solid currentColor;display:grid;place-items:center;font:300 28px/1 var(--mono)}
+/* the picker */
+.feedpick{width:min(720px,94vw);max-height:84vh;padding:0;border:1px solid var(--wire-on);background:var(--ground);color:var(--ink)}
+.feedpick::backdrop{background:rgba(0,0,0,.6)}
+.fphead{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--hair);font:700 var(--t-small) var(--mono);text-transform:uppercase;letter-spacing:.08em}
+.fphead::before{content:"";width:7px;height:7px;background:var(--amber);margin-right:8px}.fphead b{margin-right:auto}
+.fpx{background:none;border:1px solid var(--wire);color:var(--ink);width:32px;height:32px;cursor:pointer;font-size:18px}
+#fpq{display:block;width:calc(100% - 32px);margin:12px 16px;min-height:40px;border:1px solid var(--wire);background:#0A0A0C;color:var(--ink);padding:0 10px;font:var(--t-small) var(--mono)}
+#fpq:focus{outline:0;border-color:var(--amber)}
+.fpbody{overflow:auto;max-height:calc(84vh - 130px);padding:0 16px 16px}
+.fpg{margin-top:14px}.fpg h3{font:700 var(--t-cap) var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--mute);margin:0 0 6px;display:flex;justify-content:space-between}
+.fpr{display:grid;grid-template-columns:9px minmax(0,1.3fr) minmax(0,1fr) 90px 80px auto;gap:10px;align-items:center;width:100%;min-height:44px;padding:4px 8px;background:none;border:0;border-bottom:1px solid var(--hair);color:var(--ink);text-align:left;cursor:pointer;font:var(--t-small) var(--body)}
+.fpr:hover,.fpr:focus-visible{background:var(--raise)}.fpr .led{width:7px;height:7px;background:var(--dk)}
+.fpr .m{font:600 var(--t-small) var(--body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.fpr .s{font:500 var(--t-cap) var(--mono);color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fpr .v{font:600 var(--t-small) var(--mono);color:var(--dk);text-align:right;white-space:nowrap}.fpr svg{width:80px;height:20px;display:block}
+.fpr.off{cursor:default;opacity:.62}.fpr.off .v{color:var(--mute);font-weight:500}
+.fpr .on{font:700 10px var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--mute)}
+/* ROUND 3: Now with no dead space. Both columns are stacks of modules and end on the same line: the grid stretches
+   them, and the last module of the shorter one grows (Tomas, 7 Nov: "so it does not have empty spaces like the one
+   below the map"). What to do opens the right column, beside the moment it is about. */
+.face{align-items:stretch}.face .lcol,.face .rcol{display:flex;flex-direction:column;gap:16px;min-width:0}
+.face .rcol{background:none!important;border:0!important;padding:0!important;align-self:stretch!important}
+.face .lcol>*,.face .rcol>*{margin-top:0!important}.face .lcol,.face .rcol{margin-top:0!important;padding-top:0!important}
+.face .lcol>.hero{flex:1}.face .rcol>.nxpart{flex:1}
+.face .amod{background:var(--card);border:1px solid var(--hair);padding:0 16px 16px}
+/* In the city: the Index readout and the map in one screen at the head of the right column (Tomas, 7 Nov) */
+.ncity .scr{margin-top:0!important}.ncity .around{margin:0;border-top:1px solid var(--hair)}.ncity #rosecap{margin-top:10px}
+.ix{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;padding:10px 0 12px}
+.ixvu{display:grid;grid-template-rows:repeat(20,6px);gap:2px;width:14px;align-self:center}.ixvu i{background:var(--hair)}.ixvu i.on{background:var(--cells)}
+.ixh{font:500 var(--t-cap)/1.3 var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--cells);margin:0}.ixh span{color:var(--ink)}
+.ixv{font:600 clamp(48px,4.6vw,72px)/1 var(--mono);letter-spacing:-.04em;margin:8px 0 6px;color:var(--ink)}
+.ixv a{color:inherit;text-decoration:none;display:inline-flex;align-items:baseline;min-height:44px}.ixv small{font:500 var(--t-small) var(--mono);letter-spacing:0;color:var(--mute);margin-left:8px}
+.ixs{font:500 var(--t-small)/1.45 var(--mono);color:var(--mute);margin:2px 0 0}.ixs a{color:var(--ink);display:inline-flex;align-items:center;min-height:44px}.ixs code{color:var(--ink)}.ixl{display:flex;flex-wrap:wrap;column-gap:18px}
+.face .board{margin-top:16px}
+.pboard{margin:22px 0 0!important}
+/* Node's map of the nodes around it, full width (Tomas, 7 Nov): the node already draws it at the column's width, a
+   height cap of a third of the screen was shrinking it to about half; here it spans the page on the screen's ground */
+#world{border:1px solid var(--wire);background:#0A0A0C;margin-top:12px}
+#world svg{width:100%!important;max-width:none!important;max-height:none!important;height:auto!important}
+/* ROUND 4: pages of the household's own. A + after the five doors makes one; each is a grid of boxes, wide or narrow,
+   with a + box at its end. At most PAGE_MAX pages and TILE_MAX boxes a page (doors-now.js) */
+.doors{flex-wrap:wrap}.doors a.pg{border-left:1px dashed var(--wire);max-width:calc(12ch + 24px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;padding:7px 10px;line-height:20px}
+.bar:has(.doors a.pg) .doors a{padding-left:10px;padding-right:10px}
+/* with pages of its own the doors take a row of their own under the name, the time and the icons, so nothing falls
+   to a stray second line; four pages keep that row one line down to a 1024 px screen */
+.bar:has(.doors a.pg) .doors{order:9;flex:1 0 100%;width:100%;justify-content:flex-start}
+.bar:has(.doors a.pg) .sp{order:1}
+.doors .pgadd{background:none;border:0;border-left:1px solid var(--wire);color:var(--mute);min-width:40px;min-height:34px;font:400 18px/1 var(--mono);cursor:pointer;padding:0 12px}
+.doors .pgadd:hover,.doors .pgadd:focus-visible{color:var(--ground);background:var(--amber)}
+.phd{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 20px;margin:6px 0 18px}.phd h1{margin:0!important}
+.phd .acts{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.phd .acts button,.pn button.go,.pn button.ghost{border:1px solid var(--wire);background:none;color:var(--ink);font:700 var(--t-cap) var(--mono);text-transform:uppercase;letter-spacing:.08em;min-height:36px;padding:0 12px;cursor:pointer}
+.phd .acts button:hover,.pn button.ghost:hover{border-color:var(--wire-on)}.pn button.go{background:var(--amber);border-color:var(--amber);color:#0E0E10}
+.phd input{font:600 var(--t-head)/1.1 var(--display);background:none;color:var(--ink);border:0;border-bottom:1px solid var(--amber);min-width:0;width:min(560px,90vw);padding:2px 0}
+.phd .sure{display:flex;gap:8px;align-items:center;font-size:var(--t-small);color:var(--mute)}
+.pgrid{grid-template-columns:repeat(4,minmax(0,1fr))}.pgrid .tile.w2{grid-column:span 2}.pgrid .tile{min-height:230px}
+.pgrid .tile.w2 .tb{min-height:140px}
+.tile .tw{background:none;border:1px solid var(--wire);color:var(--mute);height:24px;flex:none;cursor:pointer;font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.06em;padding:0 6px}
+.tile .tw[aria-pressed="true"]{color:var(--ink);border-color:var(--wire-on)}
+.pn{padding:4px 16px 16px}.pn label{display:block;font:700 var(--t-cap) var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--mute);margin:14px 0 6px}
+.pn input[type=text]{width:100%;min-height:42px;border:1px solid var(--wire);background:#0A0A0C;color:var(--ink);padding:0 10px;font:var(--t-body) var(--body)}
+.pn input[type=text]:focus{outline:0;border-color:var(--amber)}
+.pn .from{display:grid;gap:6px}.pn .from label{display:flex;gap:10px;align-items:center;margin:0;padding:10px;border:1px solid var(--wire);text-transform:none;letter-spacing:0;font:500 var(--t-small) var(--body);color:var(--ink);cursor:pointer}
+.pn .from label:has(input:checked){border-color:var(--amber)}.pn .from input{accent-color:var(--amber)}.pn .from small{margin-left:auto;font:500 var(--t-cap) var(--mono);color:var(--mute)}
+.pn .row2{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}.pn .lim{font-size:var(--t-small);color:var(--mute);margin-top:12px}
+@media (max-width:900px){.bgrid{grid-template-columns:repeat(2,minmax(0,1fr))}.pgrid .tile.w2{grid-column:span 2}}
+@media (max-width:520px){.pgrid .tile.w2{grid-column:auto}}
+/* on a phone the five doors fill the first row, and the pages wrap under them two to a row, the + beside the last */
+@media (max-width:480px){.bar:has(.doors a.pg) .doors a:not(.pg){flex:1 0 calc(20% - 1px);min-width:0;text-align:center;padding-left:4px;padding-right:4px}
+  .bar:has(.doors a.pg) .doors a.pg{flex:1 0 calc(50% - 23px);max-width:none;text-align:center;border-top:1px solid var(--wire);min-height:44px;line-height:30px}
+  .bar:has(.doors a.pg) .doors .pgadd{flex:0 0 44px;border-top:1px solid var(--wire);min-height:44px}}
+@media (max-width:520px){.bgrid{grid-template-columns:minmax(0,1fr)}.fpr{grid-template-columns:9px minmax(0,1fr) 70px;}.fpr .s,.fpr svg{display:none}}
+@media (max-width:640px){.ladder.enc{grid-template-columns:repeat(2,minmax(0,1fr))}.face .hero,.face .todo,.face .nxpart,.face .rcol,.dsec{padding:0 10px 12px}.nh:not(.wnarr>.nh){margin:0 -10px 12px!important;padding:12px 10px!important}}
 </style>
 </head>
 <body>
@@ -967,31 +1148,46 @@ button.tl{cursor:pointer}button.tl:hover:not(:disabled):not(.on){background:var(
   <div class="lcol">
     <div class="hero">
       <section aria-live="polite" data-learn="now-sentence" data-reads="/issues" data-stage="observe" data-pack="core" data-kind="readout"><h1 class="sentence" id="sentence"></h1></section>
+      <div class="scr" data-theme="dark" id="nscr"><div class="ramp" id="nramp" aria-label="The four distances"></div><div class="sbody">
       <section class="fig" data-learn="figure" data-reads="/issues /issues/days" data-stage="observe" data-pack="core" data-kind="series" aria-label="The day and the week">
         <svg id="svg" tabindex="0" role="img" aria-describedby="sentence"></svg>
         <div class="week" id="week" role="group" aria-label="The last seven days" hidden></div>
-      </section>
-      <p class="ladder" id="ladder" data-learn="now-distances" data-reads="/issues" data-stage="observe" data-pack="core" data-kind="stack"></p>
+      </section></div><p class="sinfo" id="ninfo"></p></div>
+      <p class="ladder enc" id="ladder" data-learn="now-distances" data-reads="/issues" data-stage="observe" data-pack="core" data-kind="stack"></p>
       <p class="nk figfoot"><span id="fighead"></span> <span id="figline"></span></p>
     </div>
+  </div>
+  <div class="rcol">
+    <section class="amod ncity" id="ncity" data-learn="now-city" data-reads="/index/place" data-stage="observe" data-pack="index" data-kind="readout" aria-labelledby="ncityh"><h2 class="nh" id="ncityh">In the city</h2>
+      <div class="scr" data-theme="dark"><div class="sbody" id="ncityrow"></div><figure class="around" data-learn="now-around" data-reads="/sensors /stats" data-stage="observe" data-pack="air-quality" data-kind="stack"><div class="sbody" style="padding:10px"><div id="rose"></div></div><p class="sinfo"><span>Air · the stations around it</span><span>PM2.5 now</span></p></figure></div>
+      <p class="fine" id="rosecap"></p></section>
     <section class="todo" id="decide" data-learn="now-todo" data-reads="/issues /actions /alerts" data-stage="decide" data-pack="core" data-kind="readout" aria-label="What to do"></section>
     <div id="asks" hidden></div>
     <div id="ndecl-decide" hidden></div>
+    <section class="amod" aria-label="Around the house"><h2 class="nh">Around the house</h2>
+    <aside data-learn="now-rows" data-reads="/issues /issues/days" data-stage="measure" data-pack="core"><div class="rows" id="rows"></div></aside>
+    <p class="fine" id="nthings" data-learn="now-things" data-reads="/things" data-stage="observe" data-pack="core" data-kind="row" hidden></p></section>
     <section class="nrem" id="nremember" data-learn="now-worked" data-reads="/learned /learned/search /household" data-stage="measure" data-pack="core" data-kind="readout" aria-label="Did it work, and yesterday" hidden></section>
     <div id="ndecl-measure" hidden></div>
     <div class="nxpart"><h2 class="nh" id="nexth">Next days</h2>
       <section id="next" data-learn="now-next" data-reads="/forecast" data-stage="observe" data-pack="forecast" data-kind="readout" aria-labelledby="nexth"></section></div>
   </div>
-  <div class="rcol">
-    <h2 class="nh">Around the house</h2>
-    <aside data-learn="now-rows" data-reads="/issues /issues/days" data-stage="measure" data-pack="core"><div class="rows" id="rows"></div></aside>
-    <figure class="around" data-learn="now-around" data-reads="/sensors /stats" data-stage="observe" data-pack="air-quality" data-kind="stack"><div id="rose"></div><figcaption class="fine" id="rosecap"></figcaption></figure>
-    <p class="fine" id="nthings" data-learn="now-things" data-reads="/things" data-stage="observe" data-pack="core" data-kind="row" hidden></p>
-    <section id="ncity" data-learn="now-city" data-reads="/index/place" data-stage="observe" data-pack="index" data-kind="row" aria-labelledby="ncityh" hidden><h2 class="nh" id="ncityh">In the city</h2><div id="ncityrow"></div></section>
-  </div>
   <section class="alsoread" id="alsoread" aria-labelledby="alsoh" hidden><h2 class="nh" id="alsoh">Also read here</h2><div class="alsog" id="ndecl-observe"></div></section>
+  <section class="board" id="board" data-board="now" aria-labelledby="boardh" data-reads="/stats /readings /issues /packs" data-stage="observe" data-pack="core" data-kind="series">
+    <h2 class="nh" id="boardh">Your board</h2><p class="bnote"></p><div class="bgrid"></div></section>
 </main>
+<dialog id="feedpick" class="feedpick" aria-labelledby="fph">
+  <div class="fphead"><b id="fph">Add a feed to the board</b><button type="button" class="fpx" id="fpclose" aria-label="Close">×</button></div>
+  <input type="search" id="fpq" placeholder="Search feeds, sensors, packs" aria-label="Search feeds">
+  <div class="fpbody" id="fpbody"></div>
+</dialog>
 
+<!-- A PAGE OF THE HOUSEHOLD'S OWN (Field Synthesizer variation, round 4): #p/<id>, made with the + after the doors -->
+<section class="page view" data-view="p" hidden><div id="pagev"></div></section>
+<dialog id="pagenew" class="feedpick" aria-labelledby="pnh">
+  <div class="fphead"><b id="pnh">A new page</b><button type="button" class="fpx" id="pnclose" aria-label="Close">×</button></div>
+  <div class="fpbody" id="pnbody"></div>
+</dialog>
 <!-- PLACE -->
 <section class="page view" data-view="place" hidden>
   <div class="phead"><div id="placehead" data-learn="place-head" data-reads="/health /issues" data-stage="observe" data-pack="place"></div>
@@ -1008,6 +1204,7 @@ button.tl{cursor:pointer}button.tl:hover:not(:disabled):not(.on){background:var(
     <details id="spd" class="spd"><summary>the list</summary><section id="pspecies" class="pspecies" data-learn="place-species" data-reads="/species /captures" data-stage="observe" data-pack="core"></section></details>
   </div>
   <dialog id="imgdlg" class="imgdlg" aria-label="Add an image"></dialog>
+  <section class="board pboard" data-board="place" data-reads="/stats /readings /observations /packs" data-stage="observe" data-pack="core" data-kind="series"><h2 class="nh">The place’s board</h2><p class="bnote"></p><div class="bgrid"></div></section>
   <section class="pyears" aria-label="What changed"><div id="pchange" data-learn="place-orbit" data-reads="/earth /history" data-stage="observe" data-pack="earth"></div></section>
   <div class="plow">
     <section id="ptable" aria-label="Selected"><h3 class="pmh">selected</h3><p class="fine">When a tool runs, what it returns is listed here, a row for each thing it found.</p></section>
@@ -1018,6 +1215,7 @@ button.tl{cursor:pointer}button.tl:hover:not(:disabled):not(.on){background:var(
 <!-- DATA -->
 <section class="page view" data-view="data" hidden>
   <div id="datahead" data-learn="data-head" data-reads="/export" data-stage="observe" data-pack="core"></div>
+  <section class="board pboard" data-board="data" data-reads="/stats /readings /observations /packs" data-stage="observe" data-pack="core" data-kind="series"><h2 class="nh">Your data board</h2><p class="bnote"></p><div class="bgrid"></div></section>
   <div class="sgrid dgrid">
     <nav class="snav" id="dnav" aria-label="Data tabs"></nav>
     <div class="dpane">
@@ -1047,7 +1245,9 @@ button.tl{cursor:pointer}button.tl:hover:not(:disabled):not(.on){background:var(
 <section class="page view" data-view="node" hidden>
   <div id="nodehead" data-learn="node-verdict" data-reads="/health" data-pack="core"></div>
   <h2>What comes in, what goes out</h2>
-  <div id="flow" data-learn="node-flow" data-reads="/health /sensors /stats /alerts /actions /rho /cells" data-pack="core" data-kind="row"></div><p class="fine" id="flownote"></p>
+  <div class="scr" data-theme="dark" id="fscr"><div class="ramp" id="framp" aria-label="What comes in, what goes out, counted"></div>
+  <div id="flow" data-learn="node-flow" data-reads="/health /sensors /stats /alerts /actions /rho /cells" data-pack="core" data-kind="row"></div><p class="sinfo" id="finfo"></p></div><p class="fine" id="flownote"></p>
+  <section class="board pboard" data-board="node" data-reads="/stats /readings /observations /packs" data-stage="observe" data-pack="core" data-kind="series"><h2 class="nh">This machine’s board</h2><p class="bnote"></p><div class="bgrid"></div></section>
   <section id="cells" data-learn="node-cells" data-reads="/cells" data-stage="measure" data-pack="core" data-kind="row"></section>
   <section id="remember" data-learn="node-remember" data-reads="/learned /learned/search /household" data-stage="measure" data-pack="core" data-kind="row" aria-label="What it remembers"></section>
   <h2>The nodes around it</h2>
