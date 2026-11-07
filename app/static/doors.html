@@ -957,11 +957,11 @@ body:not(.classic) .hero .ladder.folded{display:none}
 .face .hero{padding-top:14px}.face .rcol{align-self:start}
 /* the etched header bar every module opens with: an LED, the label, its index */
 .face{counter-reset:mod}.page{counter-reset:mod}
-.nh,.dsec>h2,.dsh h2,.pcols>section>h2,.page>h2,.page>section>h2,.runwrap h2{counter-increment:mod;display:flex;align-items:center;gap:8px;
+.nh:not(.wnarr>.nh),.dsec>h2,.dsh h2,.pcols>section>h2,.page>h2,.page>section>h2,.runwrap h2{counter-increment:mod;display:flex;align-items:center;gap:8px;
   font:700 var(--t-small)/1 var(--mono)!important;letter-spacing:.1em;text-transform:uppercase;border-top:0!important;
   margin:0 -16px 14px!important;padding:12px 16px!important;border-bottom:1px solid var(--hair)}
-.nh::before,.dsec>h2::before,.dsh h2::before,.pcols>section>h2::before,.page>h2::before,.page>section>h2::before,.runwrap h2::before{content:"";width:6px;height:6px;flex:none;background:var(--amber)}
-.nh::after,.dsec>h2::after,.dsh h2::after,.pcols>section>h2::after,.page>h2::after,.page>section>h2::after,.runwrap h2::after{content:"// MOD-0" counter(mod);margin-left:auto;font-weight:500;color:var(--dim);letter-spacing:.06em}
+.nh:not(.wnarr>.nh)::before,.dsec>h2::before,.dsh h2::before,.pcols>section>h2::before,.page>h2::before,.page>section>h2::before,.runwrap h2::before{content:"";width:6px;height:6px;flex:none;background:var(--amber)}
+.nh:not(.wnarr>.nh)::after,.dsec>h2::after,.dsh h2::after,.pcols>section>h2::after,.page>h2::after,.page>section>h2::after,.runwrap h2::after{content:"// MOD-0" counter(mod);margin-left:auto;font-weight:500;color:var(--dim);letter-spacing:.06em}
 .page>h2,.runwrap h2{margin:28px 0 0!important;background:var(--card);border:1px solid var(--hair)}
 /* hardware triggers: Done, Not now, Doesn't fit; a pressed one fills amber */
 .decide{border:1px solid var(--wire);background:var(--ground)}
@@ -1080,7 +1080,7 @@ body:not(.classic) .hero .ladder.folded{display:none}
   .bar:has(.doors a.pg) .doors a.pg{flex:1 0 calc(50% - 23px);max-width:none;text-align:center;border-top:1px solid var(--wire);min-height:44px;line-height:30px}
   .bar:has(.doors a.pg) .doors .pgadd{flex:0 0 44px;border-top:1px solid var(--wire);min-height:44px}}
 @media (max-width:520px){.bgrid{grid-template-columns:minmax(0,1fr)}.fpr{grid-template-columns:9px minmax(0,1fr) 70px;}.fpr .s,.fpr svg{display:none}}
-@media (max-width:640px){.ladder.enc{grid-template-columns:repeat(2,minmax(0,1fr))}.face .hero,.face .todo,.face .nxpart,.face .rcol,.dsec{padding:0 10px 12px}.nh{margin:0 -10px 12px!important;padding:12px 10px!important}}
+@media (max-width:640px){.ladder.enc{grid-template-columns:repeat(2,minmax(0,1fr))}.face .hero,.face .todo,.face .nxpart,.face .rcol,.dsec{padding:0 10px 12px}.nh:not(.wnarr>.nh){margin:0 -10px 12px!important;padding:12px 10px!important}}
 </style>
 </head>
 <body>
