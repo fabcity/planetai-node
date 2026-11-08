@@ -3,7 +3,7 @@
 *Asked by Tomas, 8 November 2026: "a pack for the planetai nodes that maps where the energy of a node comes from."
 Brainstormed the same day. The mockup he chose is `2026-11-08-energy-mockup.html` beside this file, option A.*
 
-**Status: design, waiting for Tomas to read it. Nothing built.**
+**Status: design, approved by Tomas for planning on 8 Nov 2026. Plan: `docs/superpowers/plans/2026-11-08-energy-pack.md`. Nothing built.**
 
 ## 1. Intent
 
