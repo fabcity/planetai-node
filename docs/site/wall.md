@@ -15,11 +15,11 @@ http://<node>:8080/#wall
 1. **Let the house read the node.** A wall screen carries no token, so it needs `SHARE_LEVEL=open`:
    `planetai config set SHARE_LEVEL open`, or Set up › Sharing. At `off` the Wall draws one line, "This screen needs
    sharing turned on.", and never a token form.
-2. **Open `/#wall` on the screen.** You should see, in the dark register and inside one viewport, the time and the
-   node's sentence at the top, the map of the stations around the house on the left, and the page for one scale on
-   the right. The bar and the foot of the other doors are gone.
-3. **Leave it.** The map walks out from the house by itself, one scale at a time, replaying each scale's day an hour
-   a step. If the screen has reduced motion on, nothing moves: the Wall holds the street at the last hour.
+2. **Open `/#wall` on the screen.** You should see, in the dark register and inside one viewport, the instruments
+   across the top, and under them the node's sentence, its own words once its model has written them, and the
+   balance. The bar and the foot of the other doors are gone.
+3. **Leave it.** The instruments replay the last 24 hours by themselves, an hour a step. If the screen has reduced
+   motion on, nothing moves: the Wall holds the last hour.
 4. **Reload it now and then.** The Wall reads the node when the page opens.
 
 > **Gap in v0.91.0.** The Wall does not re-read the node while it stays open: its figures are those of the moment it
@@ -28,44 +28,45 @@ http://<node>:8080/#wall
 
 ## What it shows
 
-![The Wall at the region scale: the sentence, the map and what the satellites see](img/wall.jpg "The Wall on node #1 at the region scale, the fourth of its four.")
+![The Wall: the instruments, the sentence, the node's words and the balance](img/wall.jpg "The Wall on node #1.")
 
 Nothing on the Wall is smaller than 28 px at 1920×1080, and the type scales with the screen. What did not fit at that
 size was cut. It reads in one order:
 
+- **The instruments**, across the top (see below).
 - **The time and the sentence**: the headline issue's title as the node writes it, with what is asked now beside it:
   the node's own sentence, how many things are asked of the house, and "Answer on Telegram, not here.", or "Nothing is
   asked now." When the node's last poll is more than 15 minutes old, the time says the readings are old.
-- **The map**: the stations around the house on the node's own map, framed on the scale's H3 cell, with the wind. The
-  house is one mark and a public station a disc, red when it is over the line. A caption under the map says in words
-  what the red discs mean against the house ("This house is under the clean-air line now; 3 stations nearby, in red,
-  are over it"), at the hour the discs show.
-- **The scale's page**, beside the map (see below).
-- **The node, thinking aloud**, under the page, only once there is text.
+- **The node, thinking aloud**, in its own screen beside the sentence, only once there is text.
+- **The balance**: the house's fine dust in one pan and the clean-air line in the other, tipped by the heavier, and
+  under it the stations nearby, one square each, red when it is over the line. A caption says it in words ("This
+  house is under the clean-air line at 19:00; 3 stations nearby, in red, are over it"), at the hour the instruments show.
 
-The back button, up to four metric chips (only metrics a station on this node reads) and a note naming the model are
-chrome: hidden until a pointer is over them or the keyboard reaches them, and always shown as 44 px targets on a touch
-screen. On a phone, a portrait screen or a small TV the two columns stack, the map first.
+The back button and a note naming the model are chrome: hidden until a pointer is over them or the keyboard reaches
+them, and always shown as 44 px targets on a touch screen. On a phone, a portrait screen or a small TV everything
+stacks, the instruments first.
 
-## The walk
+## The instruments
 
-The map walks out from the house in four scales, each framed on its own H3 cell, drawn blue with the smaller cells
-faint inside it:
+One black screen holds four instruments, each drawing one reading the node has, in line art on a rail:
 
-| scale | H3 resolution | the page beside the map |
+| instrument | what it draws | from |
 |---|---|---|
-| house | 10 | each issue's figure in the house, and the day in the house |
-| street | 9 | the street's figures, the replayed hour in words ("Air at 19:00: house 7 · street 11 · ring 8 µg/m³"), and the street's day against what the node learned is usual outside at each hour, dotted (`GET /learned/place`) |
-| ring | 6 | the land within 1 km as a hundred squares by kind (built, trees, crops, water; land cover by satellite), and the places OpenStreetMap maps there, counted. It says when the map tags too few buildings as shops or offices to tell homes from shops |
-| region | 3 | what the satellites and models see around: fires within 150 km (NASA FIRMS, `fire` pack), the ground's heat at the last clear Landsat pass and at night (`surface-heat`), fine dust over the region (CAMS), the sea's swell, each only where the node reads it, and floods as not watched on this node yet |
+| fine dust | a jar with the air drawn into it: one particle for every µg/m³ of the hour, up to 60, settling a band an hour; a tube standing at the hour; the day's curve against the line, red and dashed | the air issue, at its headline distance |
+| apparent heat | a thermometer at the hour, the house's own heat line a red tick across it | the heat issue |
+| the swell | the last 24 hours as a wave, left to right, its height the hour's swell, with a staff at the hour | Open-Meteo's marine model |
+| the wind | a vane turned to where the wind comes from, one streak behind it for every 5 km/h | Open-Meteo |
 
-Each scale holds while its day is replayed, 24 hours in 30 s, then the walk cuts to the next. A new scale is a cut,
-never a flight. The four scale names on the map say which one is drawn: pressing one holds it, pressing it again lets
-the walk go on.
+Over them a strip names each reading, says where it is from, and gives its figure, its hour and a provenance word.
+Each reading keeps its own colour on its lines and its figure, and red is only ever the line.
 
-Every figure says when it is from and carries a provenance word. A figure from `/observations` takes the node's rule
-for readouts (`model` for a model, `partial` otherwise), and what the node learned is `partial`. A source is named the
-way the Wall says it ("Sea, 5 km off"), and a sensor's name never appears.
+The instruments replay the last 24 hours, an hour every 1.25 s (30 s for the day), hold the last hour, then start the
+day again. Each hour is a step, never a slide, and nothing counts up. An instrument the node does not read says
+so. Without the admin token the sea and the wind come from the newest reading, which stands for every
+hour with its own time.
+
+Every figure says when it is from and carries a provenance word. A source is named the way the Wall says it
+("Open-Meteo", "3 sensors"), and a sensor's name never appears.
 
 ## The node, thinking aloud
 
