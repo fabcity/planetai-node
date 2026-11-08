@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- **The Wall draws the day as instruments.** One black screen holds four of them, fine dust settling in a jar with a
+- **The Wall draws the day as instruments (8 Nov).** One black screen holds four of them, fine dust settling in a jar with a
   particle for every µg/m³, the apparent heat on a thermometer, the swell as a wave and the wind on a vane, and each
   figure carries its hour and provenance word. They replay the last 24 hours an hour at a step and hold the last one,
   under reduced motion they stand still at it. Under them the node's sentence sits beside its model's words, when it

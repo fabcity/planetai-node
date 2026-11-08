@@ -81,13 +81,15 @@ const COMPASS16 = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW',
    the engine's own (dust and heat at the issue's headline distance); sea and wind are the models' hourly rows (the
    token's /aggregates). Without the token a model's latest reading stands for every hour, with its own time. */
 function wallDay24() {
-  const B = D.buckets.slice(-24), at = new Map(((D.raw || {}).buckets || []).map((b, j) => [Date.parse(b), j]));
+  /* without /issues/days there are no buckets: the replay still has its 24 hours, an hour apart up to the as-of time */
+  const B = D.buckets.length ? D.buckets.slice(-24) : [...Array(24)].map((_, i) => new Date(Date.parse(D.as_of) - (23 - i) * 3600e3).toISOString());
+  const at = new Map(((D.raw || {}).buckets || []).map((b, j) => [Date.parse(b), j]));
   const raw = (sid, m) => B.map(b => { const j = at.get(Date.parse(b)), s = j == null ? null : ((D.raw.series[sid] || {})[m] || [])[j]; return s ? s[0] : null; });
   const issue = k => {
     const it = D.issues[k], d = it && (it.hero_distance || 'room'), v = it && it.series && (it.series[d] || []).slice(-24);
     if (!v || !v.some(x => x != null)) return null;
     const s = (it.stack || {})[d] || {};
-    return { v, ts: B, d, line: it.line, lsrc: /WHO/.test(it.line_source || '') ? 'WHO' : 'this place’s own', unit: it.unit, dp: it.dp ?? 0,
+    return { v, ts: B, d, line: it.line, room: (it.series.room || []).slice(-24), rword: (it.provenance || {}).room || 'partial', lsrc: /WHO/.test(it.line_source || '') ? 'WHO' : 'this place’s own', unit: it.unit, dp: it.dp ?? 0,
       word: (it.provenance || {})[d] || s.provenance || 'partial', src: wallSrc(s.source), series: it.series, stack: it.stack };
   };
   const model = (sid, m, unit, dp, src) => {
@@ -95,9 +97,10 @@ function wallDay24() {
     if (!v.some(x => x != null)) { const o = wallObs(sid, m); if (!o) return null; v = B.map(() => o.v); ts = B.map(() => o.ts); }
     return { v, ts, unit, dp, word: 'model', src };
   };
-  const near = D.sensors.filter(s => s.kind === 'sensor' && !s.local).map(s => {
+  const near = D.sensors.filter(s => s.kind === 'sensor' && !s.local && !s.indoor).map(s => {   /* an indoor station is somebody's room, not the air nearby */
     const v = raw(s.sensor_id, 'pm25'); if (!v.some(x => x != null)) v[23] = ((D.stats15[s.sensor_id] || {}).pm25 || [])[0] ?? null; return v; });
-  return { B, dust: issue('air'), heat: issue('heat'), sea: model('marine-point', 'swell_height_m', 'm', 1, 'Open-Meteo'),
+  const dust = issue('air'), house = dust && dust.room.some(x => x != null) ? { v: dust.room, ts: B, dp: dust.dp, line: dust.line, word: dust.rword } : null;
+  return { B, dust, house, heat: issue('heat'), sea: model('marine-point', 'swell_height_m', 'm', 1, 'Open-Meteo'),
     wind: model('om-point', 'wind_speed', 'km/h', 0, 'Open-Meteo'), dir: model('om-point', 'wind_direction', '°', 0, 'Open-Meteo'), near };
 }
 const WALL = { R: null, h: null, t0: 0 };
@@ -210,7 +213,8 @@ function figSea(b, h, f, r) {
   return g + tx(x0, base - f * .4, fits(f, (x1 - x0) / 2, '24 h ago', ''));
 }
 /* fig. 4: a vane on a mast, turned to where the wind comes from at the hour; one streak for every 5 km/h behind its
-   tail (more wind is more signs, never a bigger vane) */
+   tail, up to eight (40 km/h) where the tail has room; past it the ramp's figure says it (more wind is more signs,
+   never a bigger vane) */
 function figWind(b, h, f, s, dr) {
   const sw = Math.max(1, f / 18), dw = Math.max(2, f / 9), C = WDOM.wind, base = b.y + b.h, sp = s && s.v[h], deg = dr && dr.v[h];
   let g = tx(b.x, b.y + f, fits(f, b.w, 'fig. 4 the wind', 'fig. 4 wind', 'fig. 4'));
@@ -248,9 +252,9 @@ function wallStage(el, h, f) {
 }
 /* the stage in words, for a screen reader: the four readings at the hour */
 function wallSays(h) {
-  const R = WALL.R, p = (r, w, u) => r && r.v[h] != null ? `${w} ${fmt(r.v[h], r.dp)} ${u}` : '';
+  const R = WALL.R, t = r => r.ts[h] !== R.B[h] ? ` at ${hhmm(r.ts[h])}` : '', p = (r, w, u) => r && r.v[h] != null ? `${w} ${fmt(r.v[h], r.dp)} ${u}${t(r)}` : '';
   return [`At ${hhmm(R.B[h])}`, p(R.dust, 'fine dust', 'µg/m³'), p(R.heat, 'apparent heat', '°C'), p(R.sea, 'swell', 'm'),
-    R.dir && R.dir.v[h] != null ? `wind from ${COMPASS16[Math.round(R.dir.v[h] / 22.5) % 16]}${R.wind && R.wind.v[h] != null ? ` at ${fmt(R.wind.v[h], 0)} km/h` : ''}` : ''].filter(Boolean).join(', ');
+    R.dir && R.dir.v[h] != null ? `wind from ${COMPASS16[Math.round(R.dir.v[h] / 22.5) % 16]}${t(R.dir)}${R.wind && R.wind.v[h] != null ? `, ${fmt(R.wind.v[h], 0)} km/h${t(R.wind)}` : ''}` : ''].filter(Boolean).join(', ');
 }
 /* a name cell and a value cell of a header ramp: the figure, its time and its word, or that it is not read */
 function rampPair(name, src, r, h, val, col) {
@@ -263,7 +267,8 @@ const unitOn = (v, u) => `${v}<u>${esc(u)}</u>`;
    stations nearby counted under it, one square a station, those over the line marked red; the caption says it in words */
 function wallBalance(el, h, f) {
   const W = el.clientWidth, H = el.clientHeight, r = WALL.R.dust; if (W < 6 * f || H < 4 * f || !r || r.line == null) return;
-  const v = r.v[h], sw = Math.max(1, f / 18), dw = Math.max(2, f / 9), near = WALL.R.near.map(s => s[h]).filter(x => x != null);
+  const hs = WALL.R.house;
+  const v = hs ? hs.v[h] : null, sw = Math.max(1, f / 18), dw = Math.max(2, f / 9), near = WALL.R.near.map(s => s[h]).filter(x => x != null);
   const px = W / 2, py = f * 2.1, bl = Math.min(W * .34, f * 8), th = v == null ? 0 : -Math.max(-1, Math.min(1, (v - r.line) / r.line)) * 8 * Math.PI / 180;
   const sq = f * .42, gap = f * .2, per = Math.max(1, Math.floor((W - f) / (sq + gap))), rows = Math.ceil(near.length / per), sy = H - rows * (sq + gap);
   const pivB = sy - f * .4;
@@ -293,14 +298,16 @@ function wallDraw(h) {
     + rampPair('swell', R.sea && R.sea.src, R.sea, h, R.sea && unitOn(fmt(R.sea.v[h], 1), 'm'), WDOM.sea)
     + rampPair(`wind${dir ? ` from${dir}` : ''}`, R.wind && R.wind.src, R.wind, h, R.wind && unitOn(fmt(R.wind.v[h], 0), 'km/h'), WDOM.wind);
   $('#winfo').textContent = `wall · ${D.node.place || ''} · hour ${at} of the last 24 · cell ${(D.health.cell || {}).id || ''}`;
-  $('#wbramp').innerHTML = rampPair('house, µg/m³', '', d, h, d && fmt(d.v[h], d.dp), WDOM.air);
-  $('#wcap').textContent = d ? wallCaption(d.v[h], near, d.line, `at ${at}`) : '';
+  const hs = R.house;
+  $('#wbramp').innerHTML = rampPair('house, µg/m³', '', hs, h, hs && fmt(hs.v[h], hs.dp), WDOM.air);
+  $('#wcap').textContent = d ? wallCaption(hs ? hs.v[h] : null, near, d.line, `at ${at}`) : '';
   $('#wbinfo').textContent = `${near.length} stations nearby · partial`;
   wallStage($('#wstage'), h, f); wallBalance($('#wbal'), h, f);
 }
 /* the replay's one clock: an hour every HOUR_STEP, the last held for HOLD of them, then the day again */
 function wallTick(now) {
   if (view() !== 'wall') return CLOCK.off('wall-replay');
+  if (CLOCK.reduced()) { CLOCK.off('wall-replay'); if (WALL.h !== 23) wallDraw(23); return; }   /* motion turned off while it ran */
   const i = Math.floor((now - WALL.t0) / (WALL_TIME.HOUR_STEP() * 1000)) % (24 + WALL_TIME.HOLD), h = Math.min(i, 23);
   if (h !== WALL.h) wallDraw(h);
 }
@@ -310,7 +317,11 @@ VIEWS.wall = async function () {
   if (WALL.h == null) { WALL.h = still ? 23 : 0; WALL.t0 = performance.now(); }    /* a redraw on a poll keeps the replay's hour */
   if (still) WALL.h = 23;
   WALL.R = wallDay24();
-  if (!WALL.sized) { WALL.sized = true; addEventListener('resize', () => { if (view() === 'wall') wallDraw(WALL.h ?? 23); }); }   /* the stages are drawn in their own pixels */
+  if (!WALL.sized) { WALL.sized = true; addEventListener('resize', () => { if (view() === 'wall') wallDraw(WALL.h ?? 23); });   /* the stages are drawn in their own pixels */
+    matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', e => {           /* still at the last hour, or the replay again */
+      if (view() !== 'wall') return;
+      if (e.matches) { CLOCK.off('wall-replay'); wallDraw(23); } else { WALL.t0 = performance.now(); CLOCK.on('wall-replay', wallTick); }
+    }); }
   $('#wallv').innerHTML = `
     <div class="wtop wchrome"><button class="wback" onclick="location.hash='#now'">← back</button><span class="wnote said" id="wnote"></span></div>
     <section class="wscr wlead" data-learn="wall-stage" data-reads="/issues /aggregates /observations" data-stage="observe" data-pack="core">

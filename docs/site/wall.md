@@ -39,7 +39,7 @@ size was cut. It reads in one order:
   asked now." When the node's last poll is more than 15 minutes old, the time says the readings are old.
 - **The node, thinking aloud**, in its own screen beside the sentence, only once there is text.
 - **The balance**: the house's fine dust in one pan and the clean-air line in the other, tipped by the heavier, and
-  under it the stations nearby, one square each, red when it is over the line. A caption says it in words ("This
+  under it the outdoor stations nearby, one square each, red when it is over the line. A caption says it in words ("This
   house is under the clean-air line at 19:00; 3 stations nearby, in red, are over it"), at the hour the instruments show.
 
 The back button and a note naming the model are chrome: hidden until a pointer is over them or the keyboard reaches
@@ -55,7 +55,7 @@ One black screen holds four instruments, each drawing one reading the node has, 
 | fine dust | a jar with the air drawn into it: one particle for every µg/m³ of the hour, up to 60, settling a band an hour; a tube standing at the hour; the day's curve against the line, red and dashed | the air issue, at its headline distance |
 | apparent heat | a thermometer at the hour, the house's own heat line a red tick across it | the heat issue |
 | the swell | the last 24 hours as a wave, left to right, its height the hour's swell, with a staff at the hour | Open-Meteo's marine model |
-| the wind | a vane turned to where the wind comes from, one streak behind it for every 5 km/h | Open-Meteo |
+| the wind | a vane turned to where the wind comes from, one streak behind it for every 5 km/h, up to 40 | Open-Meteo |
 
 Over them a strip names each reading, says where it is from, and gives its figure, its hour and a provenance word.
 Each reading keeps its own colour on its lines and its figure, and red is only ever the line.

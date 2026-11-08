@@ -247,7 +247,10 @@ const calls = []; globalThis.fetch = p => { calls.push(p); return Promise.resolv
     + ' function getComputedStyle() { return { fontSize: "28px" }; } $("#wallv"); Object.assign($("#wstage"), { clientWidth: 1840, clientHeight: 560 });'
     + ' Object.assign($("#wbal"), { clientWidth: 560, clientHeight: 300 }); WALL.R = wallDay24();'
     + ' out.hours = [...Array(24)].map((_, h) => { wallDraw(h); return { ramp: $("#wramp").innerHTML, bramp: $("#wbramp").innerHTML, stage: $("#wstage").innerHTML,'
-    + ' dust: WALL.R.dust && WALL.R.dust.v[h], dir: WALL.R.dir && WALL.R.dir.v[h] }; });', ctx);
+    + ' dust: WALL.R.dust && WALL.R.dust.v[h], dir: WALL.R.dir && WALL.R.dir.v[h] }; });'
+    + ' out.near = WALL.R.near.length; out.house = WALL.R.house && WALL.R.house.v; out.room = D.issues.air.series.room.slice(-24);'
+    + ' const hd = D.issues.air.hero_distance; D.issues.air.hero_distance = "yard"; out.yardHouse = wallDay24().house.v; D.issues.air.hero_distance = hd;'
+    + ' const bare = D.buckets; D.buckets = []; const n24 = wallDay24(); out.nodays = { B: n24.B, wind: n24.wind && { v: n24.wind.v } }; D.buckets = bare;', ctx);
   const pm = fs.readFileSync('./app/static/doors-placemap.js', 'utf8').match(/function packRows[\s\S]*?\n}\n/)[0];
   vm.runInContext('const LAYERS = [{ id: "earth" }];' + pm + 'packRows(); out.pack = LAYERS.map(l => l.none);', ctx);
   console.log(JSON.stringify({
@@ -297,6 +300,14 @@ for _i, _x in enumerate(_hs):
         assert _rot and abs(float(_rot.group(1)) - _x["dir"]) < 0.051, f"the vane does not turn to the hour's bearing at hour {_i}: {_x['dir']}"
 assert any(_x["dust"] for _x in _hs) and any(_x["dir"] is not None for _x in _hs), "the capture drew no dust or no wind: the checks above asserted nothing"
 assert len({_x["stage"] for _x in _hs}) > 12, "the stage does not change with the hour"
+# The balance weighs the house's own room series, and counts only outdoor stations nearby (an indoor one is a room).
+_fx = json.loads(Path(FIX).read_text())["sensors"]
+assert t["wall"]["near"] == len([x for x in _fx if x["kind"] == "sensor" and not x["local"] and not x["indoor"]]) < \
+    len([x for x in _fx if x["kind"] == "sensor" and not x["local"]]), f"the balance counts indoor stations: {t['wall']['near']}"
+assert t["wall"]["house"] == t["wall"]["room"] == t["wall"]["yardHouse"], "the house pan is not the room's series, whatever the headline distance"
+# Without /issues/days the replay keeps its 24 hours, and a model's latest reading stands for each of them.
+_nd = t["wall"]["nodays"]
+assert len(_nd["B"]) == 24 and _nd["wind"] and len(_nd["wind"]["v"]) == 24 and None not in _nd["wind"]["v"], "no buckets, no wind"
 assert t["wall"]["when"][1] == "Jul 2025" and re.fullmatch(r"\d\d:\d\d", t["wall"]["when"][0]), t["wall"]["when"]
 # Under reduced motion the Wall is one still frame at the last hour: no replay clock, and the narration's roll stands still.
 assert "if (still) WALL.h = 23;" in _wsrc and "if (!still) CLOCK.on('wall-replay', wallTick);" in _wsrc, "the replay runs under reduced motion"
