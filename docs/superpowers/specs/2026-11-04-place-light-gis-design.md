@@ -153,6 +153,16 @@ the map's centre), and **Missing buildings**, which downloads them as GeoJSON fo
 says OSM takes these traced by a person, never uploaded, and links the node's existing mapping brief
 (`planetai run place gaps`). iD cannot load a file from a LAN node by URL, which is why it is a download.
 
+Beside it, **Open the query in overpass turbo**: `https://overpass-turbo.eu/#Q=<query>&C=<lat>;<lon>;16&R`, where
+`<query>` is the place pack's own `QUERY` with `PLACE_RADIUS_M`, so anyone can see what the place numbers are made of,
+and a mapper can change it to look for what is missing. It is centred on the selected cell's centre, never the house
+point (*my call*), so its circle can sit a few hundred metres off the pack's and its counts are not the pack's. The
+query rides after `#`, which turbo reads as well as `?` and which the browser never sends to turbo's server; pressing
+it still sends the query to the Overpass server, the same one the pack uses. Turbo is MIT and maintained; the node
+neither embeds nor hosts it. Running an Overpass server for a region, with turbo pointed at it and home nodes setting
+`OVERPASS_URL` to it, is the community node's, and waits until a community has enough home nodes or needs to work
+offline.
+
 **Drone pins.** Below the drone layer's zoom (13), each mosaic in `/ground/meta`'s `drone.mosaics` draws as a pin at its
 bbox centre, labelled with its provider's resolution and date ("drone, 4 cm, Mar 2024"). Pressing a pin flies to the
 mosaic's bbox at zoom 16.
