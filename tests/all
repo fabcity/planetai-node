@@ -155,6 +155,7 @@ test_briefing|PYTHONPATH=/tmp/stub:app python3 tests/test_briefing.py
 test_earth|PYTHONPATH=/tmp/stub:app python3 tests/test_earth.py
 test_surface_heat|PYTHONPATH=/tmp/stub:app python3 tests/test_surface_heat.py
 test_terrain|PYTHONPATH=/tmp/stub:app python3 tests/test_terrain.py
+test_hydro|PYTHONPATH=/tmp/stub:app python3 tests/test_hydro.py
 test_custody|PYTHONPATH=app python3 tests/test_custody.py
 test_registry|python3 tests/test_registry.py
 test_make|PYTHONPATH=app python3 tests/test_make.py
@@ -204,12 +205,12 @@ printf '  %d suites: %d passed, %d failed, %d check(s) skipped\n' "$total" "$pas
 [ -n "$skip_lines" ] && printf '%s' "$skip_lines"
 [ -n "$failed_names" ] && printf '  failed:%s\n' "$failed_names"
 
-# One hundred and ten is the number of suites in the list above (test_index_pack joined 6 Nov 2026; test_doors_draw joined 4 Nov 2026; test_maps and test_maps_pg joined 4 Nov 2026; test_doors_next joined 3 Nov 2026; test_forecast_days joined 3 Nov 2026; test_forecast_territory joined 3 Nov 2026; test_store joined 3 Nov 2026; test_action_choice and test_notify_keyboard joined 3 Nov 2026; test_doors_asks joined 3 Nov 2026; test_rule_buttons joined 3 Nov 2026; test_pack_buttons joined 3 Nov 2026; test_rule_act_placeholder joined 2 Nov 2026; test_mobile_sections joined 1 Nov 2026; test_peers_persist left with the Reticulum bridge, and
+# One hundred and eleven is the number of suites in the list above (test_hydro joined 8 Nov 2026; test_index_pack joined 6 Nov 2026; test_doors_draw joined 4 Nov 2026; test_maps and test_maps_pg joined 4 Nov 2026; test_doors_next joined 3 Nov 2026; test_forecast_days joined 3 Nov 2026; test_forecast_territory joined 3 Nov 2026; test_store joined 3 Nov 2026; test_action_choice and test_notify_keyboard joined 3 Nov 2026; test_doors_asks joined 3 Nov 2026; test_rule_buttons joined 3 Nov 2026; test_pack_buttons joined 3 Nov 2026; test_rule_act_placeholder joined 2 Nov 2026; test_mobile_sections joined 1 Nov 2026; test_peers_persist left with the Reticulum bridge, and
 # test_terrain joined, 23 Oct 2026; test_views_pg and test_grafana joined 24 Oct). If the list and this number disagree, one of them
 # is a typo, and a runner that quietly runs twenty-five of twenty-six is the bug it was written to end.
 # (The word and the number had drifted apart by two bumps when packs/make added the forty-fourth.)
-if [ "$total" -ne 110 ]; then
-  printf '  \033[31mx\033[0m ran %d suites, expected 110 — the list in this file lost or gained a line\n' "$total"
+if [ "$total" -ne 111 ]; then
+  printf '  \033[31mx\033[0m ran %d suites, expected 111 — the list in this file lost or gained a line\n' "$total"
   exit 1
 fi
 [ "$fail" -gt 0 ] && exit 1

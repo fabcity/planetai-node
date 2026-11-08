@@ -47,7 +47,10 @@ yet, with its source beside it, such as canopy, soil, terrain, geology, the flow
 Press a row to switch it on or off. The line under the screen then says what the row draws and where it comes from,
 and if the row cannot draw, why: **token-only**, **not here**, **live map**, or **zoom in** and **zoom out**. Six rows
 start on: this house's outdoor kit, the public stations, the species, the cell the node stands in, the street map
-and the images. Nothing from inside the house is listed or drawn on Place, and neither are the rooms.
+and the images. Once the hydro pack has fetched them (`planetai run hydro fetch`), two more rows wait under water:
+Rivers draws them wider with each order and Basins the level-12 basins, the node's own brighter, and a tap on a
+river gives its flow, the ground it drains and how far it runs to the sea. Nothing from inside the house is listed or
+drawn on Place, and neither are the rooms.
 
 ## The screen
 

@@ -169,7 +169,7 @@ app/          main.py (api, loops) · db.py (the pool, q()) · auth.py (tokens, 
               store.py (how a reading is written) · buttons.py (a rule's buttons) · wild.py (wild packs on Set up)
               firmware.py (the firmware the workbench flashes)
 bin/planetai  the operator CLI
-packs/        the twenty-six core packs, some with their own routes.py; see Packs
+packs/        the twenty-seven core packs, some with their own routes.py; see Packs
 config/       rules.yml (two domain-blind rules, trust's three) · channels.yml · mosquitto · grafana
 data/         sources/ (the pinned registry) · strings/ · env_defaults.yml · frozen_layer.txt · platform_floors.yml · mac_ceilings.yml
 skills/       setup-node · troubleshoot-node · connect-agent · publish-to-index · preflight · land · write-a-pack

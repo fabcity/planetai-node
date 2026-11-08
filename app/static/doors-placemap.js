@@ -63,6 +63,9 @@ const LAYERS = [
   { id: 'canopy', cake: 'plants', pack: 'place', src: 'Meta/WRI', name: 'Canopy', sub: 'Meta/WRI, 1 m', soon: true, empty: true },
   { id: 'soilgrids', cake: 'soil', pack: 'place', src: 'SoilGrids', name: 'Soil', sub: 'SoilGrids 2.0, 250 m', soon: true, empty: true },
   { id: 'soilsamples', cake: 'soil', pack: 'core', src: 'samples', name: 'Soil samples', sub: 'taken here', soon: true, empty: true },
+  /* the rivers and basins the hydro pack kept (GET /hydro), token-only like the plan: about 500 m, a river you know by name */
+  { id: 'rivers', cake: 'water', pack: 'hydro', src: 'HydroRIVERS', name: 'Rivers', sub: 'HydroSHEDS, traced at about 500 m', on: false, empty: true },
+  { id: 'basin', cake: 'water', pack: 'hydro', src: 'HydroBASINS', name: 'Basins', sub: 'level 12, the one the node drains through drawn brighter', on: false, empty: true },
   { id: 'rain', cake: 'water', pack: 'terrain', src: 'terrain', name: 'Rain', sub: 'where the rain goes, the terrain pack', soon: true, empty: true },
   { id: 'watersamples', cake: 'water', pack: 'core', src: 'samples', name: 'Water samples', sub: 'taken here', soon: true, empty: true },
   { id: 'terrain', cake: 'ground', pack: 'terrain', src: 'GLO-30', name: 'Terrain', sub: 'GLO-30', soon: true, empty: true },
@@ -247,6 +250,15 @@ function packRows() {
   const ea = LAYERS.find(l => l.id === 'earth'), nE = ((D.earth || {}).changes || []).length;
   ea.none = nE ? `${nE} comparison${nE === 1 ? '' : 's'} · a count, not a shape: Land, in the figures below` : null;
 }
+/* after GET /hydro: a node without the pack, or before its fetch, keeps both rows and says which */
+function hydroRows() {
+  const H = PM.hydro, rv = LAYERS.find(l => l.id === 'rivers'), bs = LAYERS.find(l => l.id === 'basin');
+  const nR = ((H && H.rivers) || {}).features?.length || 0, nB = ((H && H.basins) || {}).features?.length || 0;
+  rv.empty = !nR; bs.empty = !nB; rv.why = bs.why = 'planetai run hydro fetch';
+  if (nR) { rv.src = `${nR} reaches`; rv.sub = H.sentence ? `nearest: ${H.sentence}` : rv.sub; }   // off at first: five on (Tomas, 15 Oct)
+  if (nB) bs.src = `${nB} basins`;
+  if (H && H.basin && H.basin.level4) bs.sub = `level 12 here; the node’s bioregion is level-4 basin ${H.basin.level4.pfaf_id}`;
+}
 /* the credits each layer on the screen owes, the same words on the screen and burned into the PNG */
 function creditList() {
   const m = (PM.meta && PM.meta.layers) || {}, c = [];
@@ -256,6 +268,7 @@ function creditList() {
   if (PM.on.imagery && close && !PM.on.drone && m.drone) c.push((m.drone.mosaics || []).map(x => `${x.provider} via OpenAerialMap, CC BY 4.0`).join(' · '));
   if (PM.on.drone && m.drone) c.push((m.drone.mosaics || []).map(x => `${x.provider} via OpenAerialMap, CC BY 4.0`).join(' · '));
   if (PM.on.wind && PM.wind) c.push('wind: Open-Meteo, CC BY 4.0');
+  if ((PM.on.rivers || PM.on.basin) && PM.hydro) c.push('rivers and basins: HydroSHEDS via HydroATLAS, CC BY 4.0');
   c.push('Natural Earth');
   return c.filter(Boolean);
 }
@@ -271,6 +284,18 @@ function layers() {
   const S = outside(D.sensors).filter(s => s.lat != null);
   const G = GRID, gr = G ? G.res : r;
 
+  /* the basins under the rivers: outlines, the one the node drains through drawn brighter */
+  if (L.basin && PM.hydro && PM.hydro.basins) {
+    out.push(new Dk.PathLayer({ id: 'basin', data: PM.hydro.basins.features.flatMap(f => f.geometry.coordinates.map(path => ({ path, f }))),
+      getPath: d => d.path, ...px, pickable: true, getColor: d => A([110, 190, 255], (d.f.properties.here ? 0.9 : 0.35) * a('basin')),
+      getWidth: d => (d.f.properties.here ? 2 : 1) }));
+  }
+  /* the rivers: wider with each Strahler order, so the river you know by name reads before its tributaries */
+  if (L.rivers && PM.hydro && PM.hydro.rivers) {
+    out.push(new Dk.PathLayer({ id: 'rivers', data: PM.hydro.rivers.features, getPath: f => f.geometry.coordinates, ...px, pickable: true,
+      autoHighlight: true, highlightColor: [255, 255, 255, 120], getColor: A([110, 190, 255], 0.9 * a('rivers')),
+      getWidth: f => Math.min(1 + f.properties.ord_stra * 0.8, 6), capRounded: true, jointRounded: true }));
+  }
   if (L.rings && RINGS) {
     out.push(new Dk.PathLayer({ id: 'rings', data: RINGS, getPath: d => d.path, ...px,
       getColor: A(p.ink, .45 * a('rings')), getWidth: 1, extensions: [dashed], getDashArray: [4, 4] }));
@@ -887,6 +912,7 @@ const pickOf = h => {
   const o = h && h.object, id = h && h.layer && h.layer.id;
   return !o ? null : (id === 'own' || id === 'public') ? { kind: 'station', s: o } : id === 'models' ? { kind: 'model', ss: o.ss, p: o.p }
     : id === 'labs' ? { kind: 'lab', s: o } : id === 'images' ? { kind: 'image', c: o } : id === 'species' ? { kind: 'image', c: o.c }
+    : id === 'rivers' ? { kind: 'river', p: o.properties } : id === 'basin' ? { kind: 'basin', p: o.f.properties }
     : (id === 'grid' || id === 'grid-dot' || id === 'mine' || id === 'radio') ? { kind: 'cell', id: o.id } : null;
 };
 function select(id) {
@@ -1200,6 +1226,17 @@ async function facts() {
         + row('in the seven cells', c.outside ? 'no · outside' : 'yes');
       put(head);
       put(head + row('from this node', fmtM(await fromNode(c.at[1], c.at[0]))) + hint('kept on this node, cleaned of EXIF and GPS'));
+    } else if (o && o.kind === 'river') {
+      const p = o.p;
+      put(`<span class="k">River · order ${p.ord_stra}</span><b>${fmt(p.dis_av_cms, p.dis_av_cms < 1 ? 2 : 1)} m³/s on average</b>`
+        + row('from this node', fmtM(p.dist_m)) + row('drains', `${Math.round(p.upland_skm).toLocaleString()} km²`)
+        + row(p.endorheic ? 'to where it ends inland' : 'to the sea', p.dist_dn_km < 1 ? 'here' : `${Math.round(p.dist_dn_km)} km`)
+        + prov('model') + hint('HydroSHEDS, about 500 m: a model’s long-term average, not a gauge'));
+    } else if (o && o.kind === 'basin') {
+      const p = o.p;
+      put(`<span class="k">Basin · level 12${p.here ? ' · the node’s own' : ''}</span><b>${Math.round(p.sub_area).toLocaleString()} km² of its own</b>`
+        + row('with all upstream', `${Math.round(p.up_area).toLocaleString()} km²`) + row(p.coast ? 'drains' : 'drains to', p.coast ? 'straight to the sea' : `basin ${p.next_down}`)
+        + prov('model') + hint('HydroBASINS, about 500 m'));
     } else if (o && o.kind === 'lab') {
       const head = `<span class="k">Place to make</span><b class="said">${esc(o.s.name)}</b>`;
       put(head + hint('from fablabs.io, a directory: shown, never counted'));
@@ -1311,7 +1348,7 @@ const imgBlob = id => doorsFetch(`/captures/${id}/file`).then(r => (r.ok ? r.blo
 let POP = null;
 function popup(o) {
   if (POP) { POP.remove(); POP = null; }
-  if (!o || o.kind === 'cell') return;
+  if (!o || o.kind === 'cell' || o.kind === 'river' || o.kind === 'basin') return;   // a line or an outline: the inspector says it
   let at, h;
   if (o.kind === 'station') {
     const s = o.s, v = lastRaw(s.sensor_id, 'pm25');
@@ -1381,6 +1418,7 @@ async function placeMap() {
   groundRows(); packRows();
   NEAR = new Map(((await doorsFetch('/nearby').then(r => (r.ok ? r.json() : null)).catch(() => null)) || {}).ring?.map(x => [x.sensor_id, x.km]) || []);
   [PM.caps, PM.species] = await Promise.all([ask('captures?limit=500').catch(() => null), ask('species').catch(() => null)]); imageRows();
+  PM.hydro = await ask('hydro').catch(() => null); hydroRows();
   const nodePlan = await ask('place/geojson').then(g => (g.features || []).length ? g : null).catch(() => null);
   PM.land = { type: 'FeatureCollection', features: [] }; PM.plan = nodePlan;
   if (!nodePlan && !PM.ground.vector && PM.meta) LAYERS.find(l => l.id === 'street').sub = 'the node sent no plan and holds no street map: planetai run place basemap';
