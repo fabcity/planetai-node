@@ -1,7 +1,7 @@
 # Packs that ship
 <!-- checked: v0.91.0 -->
 
-The twenty-six core packs in `packs/`, five data and twenty-one code, hold everything the node knows about a place, and no
+The twenty-seven core packs in `packs/`, five data and twenty-two code, hold everything the node knows about a place, and no
 rule in `app/` says what PM2.5 means for a household or where the nearest fab lab is. For each pack this page
 says what it reads, what it says, its rules and where each threshold comes from, its settings, and what it does
 not know. How a pack is built and loaded is on [Packs](packs.md). Wild packs, such as `xiaomi-air` and
@@ -33,6 +33,7 @@ the pack is off.
 | `surface-heat` | code | heat | none | `ground` | | | `SURFACE_HEAT_*` |
 | `earth` | code | land | none | | 1 | `fetch` `change` `frames` `status` `verify` `similar` | `EARTH_*` |
 | `terrain` | code | water | none | | | `coverage` `fetch` `verify` | `TERRAIN_*` |
+| `hydro` | code | water | none | | 1 | `fetch` `verify` | `HYDRO_RADIUS_KM` |
 | `earth-engine` | code | land | none | | 1 | `timelapse` `verify` `basemap` | `EE_*`, `GROUND_SAT_WIDE_KM` |
 | `place` | code | place | 1 info | | 1 | `refresh` `gaps` `verify` `basemap` | `PLACE_*`, `GROUND_*` |
 | `index` | code | place | none | | | | `INDEX_*` |
@@ -750,6 +751,50 @@ no wetness index and no percentile: on a filled pixel the index is mostly its sl
 every square a wettest tenth. At node #1 the house's own pixel drains 0.09 ha and the largest flow within 60 m
 drains 0.6 ha. The AWS copy is the 2021 release; the newer Copernicus Data Space copies are licensed for
 non-commercial use, and the pack does not read them.
+
+## hydro
+
+Where the rivers are around the node and which basins it drains into. It fetches its HydroSHEDS region once, on
+command (the level-1 basins say which region), keeps the rivers and level-12 basins in its square and its own basin
+at levels 12 and 4, and deletes the downloads. Each poll re-sends the nearest river's figures and the largest
+river's flow. The level-4 basin is the one index.fab.city draws as the place's bioregion.
+
+| | |
+|---|---|
+| Kind | code |
+| Domain | `water` |
+| Requires node | `>=0.91` |
+| Metrics | `river_m`, `river_flow_m3s`, `river_order`, `river_upland_km2`, `river_to_sea_km`, `river_largest_m3s`, `basin_up_km2` |
+| Scales | city |
+| Sources | `environmental/bioregion/hydroatlas-basinatlas`, `environmental/bioregion/hydroatlas-riveratlas` |
+| Needs | `PACKS_ALLOW_CODE=1`; `pyshp` (`pip:`); network to `data.hydrosheds.org` on the fetch only, 50-160 MB for a region, unpacked, read and deleted. The node keeps under 100 KB. No key |
+| Cells | none: a model traced at about 500 m is context, never a cell |
+| Attribution | "Rivers and basins: HydroSHEDS (Lehner & Grill 2013), as published in HydroATLAS v1.0 (Linke et al. 2019) under CC-BY 4.0" |
+
+The adapter writes `hydro-point` (`kind='model'`, `scale='city'`, `local=False`), every row stamped with the fetch's
+own time. The Place map draws the rivers, wider with each Strahler order, and the level-12 basins as rows of its
+water layer (`GET /hydro`, token-only). Tapping a river gives its flow, the ground it drains and its distance to
+the sea.
+
+### Scripts
+
+- `planetai run hydro fetch`: find the region, download its basins and rivers, keep the square in `out/hydro/<node>/hydro.json`. Run it again only when the node moves or the radius changes.
+- `planetai run hydro verify`: four checks, including that the nearest river in the result is the nearest line kept, and that rows from this fetch reached the database.
+
+### Settings
+
+| setting | default | meaning |
+|---|---|---|
+| `HYDRO_RADIUS_KM` | `25` | half-width of the square of rivers and basins kept around the node, in km |
+
+### What it does not know
+
+Rivers are traced from a 15 arc-second surface and start where 10 km² drains or 0.1 m³/s flows, so a canal, a
+subak channel or a small stream is not here; OpenStreetMap's waterways are, on the street map. The discharge is a
+model's long-term average, not a gauge. HydroSHEDS' own download carries its v1 licence agreement, which forbids
+passing the files on "as a stand-alone product"; the pack shows what it keeps under HydroATLAS's CC-BY 4.0, which
+publishes the same rivers and basins. At node #1 the nearest river is 5 km away and carries 0.13 m³/s; the
+largest in the square, 23 km away, carries 10.6 m³/s.
 
 ## earth-engine
 
