@@ -81,9 +81,10 @@ const COMPASS16 = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW',
    the engine's own (dust and heat at the issue's headline distance); sea and wind are the models' hourly rows (the
    token's /aggregates). Without the token a model's latest reading stands for every hour, with its own time. */
 function wallDay24() {
-  /* without /issues/days there are no buckets: the replay takes /aggregates' hours, else 24 whole hours up to the as-of time */
-  const rb = (D.raw || {}).buckets || [], top = Math.floor(Date.parse(D.as_of) / 3600e3) * 3600e3;
-  const B = D.buckets.length ? D.buckets.slice(-24) : rb.length ? rb.slice(-24) : [...Array(24)].map((_, i) => new Date(top - (23 - i) * 3600e3).toISOString());
+  /* without /issues/days there are no buckets: the replay is 24 whole hours ending at /aggregates' last hour, else at the
+     as-of time's, and the models' rows are matched to them by time, so a short history still fills its own hours */
+  const rb = (D.raw || {}).buckets || [], top = rb.length ? Date.parse(rb[rb.length - 1]) : Math.floor(Date.parse(D.as_of) / 3600e3) * 3600e3;
+  const B = D.buckets.length ? D.buckets.slice(-24) : [...Array(24)].map((_, i) => new Date(top - (23 - i) * 3600e3).toISOString());
   const at = new Map(((D.raw || {}).buckets || []).map((b, j) => [Date.parse(b), j]));
   const raw = (sid, m) => B.map(b => { const j = at.get(Date.parse(b)), s = j == null ? null : ((D.raw.series[sid] || {})[m] || [])[j]; return s ? s[0] : null; });
   const issue = k => {
@@ -321,7 +322,7 @@ VIEWS.wall = async function () {
   WALL.R = wallDay24();
   if (!WALL.sized) { WALL.sized = true; addEventListener('resize', () => { if (view() === 'wall') wallDraw(WALL.h ?? 23); });   /* the stages are drawn in their own pixels */
     matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', e => {           /* still at the last hour, or the replay again */
-      if (view() !== 'wall') return;
+      if (view() !== 'wall') { WALL.still = null; return; }   /* changed off the Wall: it starts over when it opens */
       WALL.still = e.matches;
       if (e.matches) { CLOCK.off('wall-replay'); wallDraw(23); } else { WALL.t0 = performance.now(); CLOCK.on('wall-replay', wallTick); }
     }); }

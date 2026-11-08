@@ -251,7 +251,7 @@ const calls = []; globalThis.fetch = p => { calls.push(p); return Promise.resolv
     + ' out.near = WALL.R.near.length; out.house = WALL.R.house && WALL.R.house.v; out.room = D.issues.air.series.room.slice(-24);'
     + ' const hd = D.issues.air.hero_distance; D.issues.air.hero_distance = "yard"; out.yardHouse = wallDay24().house.v; D.issues.air.hero_distance = hd;'
     + ' const bare = D.buckets; D.buckets = []; const n24 = wallDay24(); out.nodays = { B: n24.B, raw: D.raw.buckets.slice(-24), wind: n24.wind && { v: n24.wind.v } };'
-    + ' const rawb = D.raw.buckets; D.raw.buckets = []; out.nohours = wallDay24().B; D.raw.buckets = rawb; D.buckets = bare;', ctx);
+    + ' const rawb = D.raw.buckets; D.raw.buckets = []; out.nohours = wallDay24().B; out.asof = D.as_of;' + ' D.raw.buckets = rawb.slice(-5); const s5 = wallDay24(); out.short5 = { B: s5.B, wind: s5.wind.v };' + ' D.raw.buckets = rawb; D.buckets = bare;', ctx);
   const pm = fs.readFileSync('./app/static/doors-placemap.js', 'utf8').match(/function packRows[\s\S]*?\n}\n/)[0];
   vm.runInContext('const LAYERS = [{ id: "earth" }];' + pm + 'packRows(); out.pack = LAYERS.map(l => l.none);', ctx);
   console.log(JSON.stringify({
@@ -309,9 +309,15 @@ assert t["wall"]["house"] == t["wall"]["room"] == t["wall"]["yardHouse"], "the h
 # Without /issues/days the replay keeps its 24 hours, and a model's latest reading stands for each of them.
 _nd = t["wall"]["nodays"]
 assert len(_nd["B"]) == 24 and _nd["wind"] and len(_nd["wind"]["v"]) == 24 and None not in _nd["wind"]["v"], "no buckets, no wind"
-assert _nd["B"] == _nd["raw"], "without /issues/days the replay does not take /aggregates' hours"
-assert len(t["wall"]["nohours"]) == 24 and all(re.search(r"T\d\d:00:00(\.000)?Z$", b) for b in t["wall"]["nohours"]), t["wall"]["nohours"][:2]
-assert "WALL.h == null || WALL.still !== still" in _wsrc, "motion turned back on off the Wall resumes the old replay's hour"
+from datetime import datetime
+_ms = lambda s: datetime.fromisoformat(s.replace("Z", "+00:00")).timestamp()
+assert [_ms(b) for b in _nd["B"]] == [_ms(b) for b in _nd["raw"]], "without /issues/days the replay does not take /aggregates' hours"
+assert len(t["wall"]["nohours"]) == 24 and _ms(t["wall"]["nohours"][-1]) == _ms(t["wall"]["asof"]) // 3600 * 3600 and \
+    all(_ms(b) - _ms(a) == 3600 for a, b in zip(t["wall"]["nohours"], t["wall"]["nohours"][1:])), t["wall"]["nohours"][-2:]
+# Five hours of /aggregates fill the last five of the 24; the hour drawn under reduced motion is never blank.
+assert len(t["wall"]["short5"]["B"]) == 24 and _ms(t["wall"]["short5"]["B"][-1]) == _ms(_nd["raw"][-1]) and t["wall"]["short5"]["wind"][-1] is not None, t["wall"]["short5"]
+assert "WALL.h == null || WALL.still !== still" in _wsrc and "if (view() !== 'wall') { WALL.still = null; return; }" in _wsrc, \
+    "motion turned on or off off the Wall resumes the old replay's hour"
 assert t["wall"]["when"][1] == "Jul 2025" and re.fullmatch(r"\d\d:\d\d", t["wall"]["when"][0]), t["wall"]["when"]
 # Under reduced motion the Wall is one still frame at the last hour: no replay clock, and the narration's roll stands still.
 assert "{ WALL.h = still ? 23 : 0;" in _wsrc and "if (!still) CLOCK.on('wall-replay', wallTick);" in _wsrc, "the replay runs under reduced motion"
