@@ -655,6 +655,11 @@ assert '<button type="button" id="ptoolsb" class="ptoolsb" aria-expanded="false"
     "the tools are one button with a menu it discloses"
 assert 'class="pcols"' not in _place and 'id="reach"' not in _place and 'id="layers"' not in _place and 'id="pleads"' not in _place, "the old workbench is gone"
 assert "'#pfigures').innerHTML = `<h3 class=\"pmh\">the place in figures</h3>` + yearly()" in (STATIC / "doors-place.js").read_text(), "Land and Coast are the place's figures"
+# the hydro pack in the figures (8 Nov): a Rivers row from GET /hydro, and a link that turns both map rows on and flies out
+_pjs = (STATIC / "doors-place.js").read_text()
+assert '<div id="phydro"></div>' in _pjs and "doorsFetch('/hydro')" in _pjs and "planetai run hydro fetch" in _pjs, "Rivers is a row of the figures"
+assert "window.placeRivers = () => { setLayer('rivers', true); setLayer('basin', true); if (PM.map) fly(6); };" in (STATIC / "doors-placemap.js").read_text(), "on the map turns both rows on and goes to District"
+assert "river_m: 'the nearest river, away'" in (STATIC / "doors-data.js").read_text(), "Data names the hydro figures"
 _css = html[html.index("/* ================= PLACE: a small GIS"):html.index("/* ================= NODE")]
 assert re.search(r"\.tools button,\.zoom button\{width:var\(--k\);height:var\(--k\)", _css), "the map's tools are --k square"
 assert "--k:36px;container:place / inline-size;" in _css and "@media (pointer:coarse){.mapc{--k:44px}}" in _css, \
@@ -975,7 +980,7 @@ for (const [k, ip] of Object.entries(JSON.parse(process.argv[1]))) {
   const D = L.buildD({ ...F, days: F.issues_days, index_place: ip }, 'en'), els = {};
   const c = { D, $: q => (els[q] ||= {}), sign: id => `<svg data-s="${id}"></svg>`, doorsLocal: L.doorsLocal };
   vm.createContext(c);
-  try { vm.runInContext(['esc', 'loc', 'num', 'PROV', 'prov'].map(pick).join('\n') + '\nfunction yearly() { return ""; }\n' + fn('indexRow') + fn('figures') + 'figures()', c); out[k] = els['#pfigures'].innerHTML; } catch (e) { out[k] = 'THROWS ' + e.message; }
+  try { vm.runInContext(['esc', 'loc', 'num', 'PROV', 'prov'].map(pick).join('\n') + '\nfunction yearly() { return ""; }\nfunction rivers() {}\n' + fn('indexRow') + fn('figures') + 'figures()', c); out[k] = els['#pfigures'].innerHTML; } catch (e) { out[k] = 'THROWS ' + e.message; }
 }
 console.log(JSON.stringify(out));
 """ % FIX
