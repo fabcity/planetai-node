@@ -81,8 +81,9 @@ const COMPASS16 = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW',
    the engine's own (dust and heat at the issue's headline distance); sea and wind are the models' hourly rows (the
    token's /aggregates). Without the token a model's latest reading stands for every hour, with its own time. */
 function wallDay24() {
-  /* without /issues/days there are no buckets: the replay still has its 24 hours, an hour apart up to the as-of time */
-  const B = D.buckets.length ? D.buckets.slice(-24) : [...Array(24)].map((_, i) => new Date(Date.parse(D.as_of) - (23 - i) * 3600e3).toISOString());
+  /* without /issues/days there are no buckets: the replay takes /aggregates' hours, else 24 whole hours up to the as-of time */
+  const rb = (D.raw || {}).buckets || [], top = Math.floor(Date.parse(D.as_of) / 3600e3) * 3600e3;
+  const B = D.buckets.length ? D.buckets.slice(-24) : rb.length ? rb.slice(-24) : [...Array(24)].map((_, i) => new Date(top - (23 - i) * 3600e3).toISOString());
   const at = new Map(((D.raw || {}).buckets || []).map((b, j) => [Date.parse(b), j]));
   const raw = (sid, m) => B.map(b => { const j = at.get(Date.parse(b)), s = j == null ? null : ((D.raw.series[sid] || {})[m] || [])[j]; return s ? s[0] : null; });
   const issue = k => {
@@ -103,7 +104,7 @@ function wallDay24() {
   return { B, dust, house, heat: issue('heat'), sea: model('marine-point', 'swell_height_m', 'm', 1, 'Open-Meteo'),
     wind: model('om-point', 'wind_speed', 'km/h', 0, 'Open-Meteo'), dir: model('om-point', 'wind_direction', '°', 0, 'Open-Meteo'), near };
 }
-const WALL = { R: null, h: null, t0: 0 };
+const WALL = { R: null, h: null, t0: 0, still: null };
 const WDOM = { air: 'var(--d-air)', heat: 'var(--d-heat)', sea: 'var(--d-sea)', wind: 'var(--d-wind)' };
 /* SVG in the stage's own pixels: a word is --wf, a line is a pixel, at any size of wall */
 const sx = n => n.toFixed(1);
@@ -307,19 +308,21 @@ function wallDraw(h) {
 /* the replay's one clock: an hour every HOUR_STEP, the last held for HOLD of them, then the day again */
 function wallTick(now) {
   if (view() !== 'wall') return CLOCK.off('wall-replay');
-  if (CLOCK.reduced()) { CLOCK.off('wall-replay'); if (WALL.h !== 23) wallDraw(23); return; }   /* motion turned off while it ran */
+  if (CLOCK.reduced()) { WALL.still = true; CLOCK.off('wall-replay'); if (WALL.h !== 23) wallDraw(23); return; }   /* motion turned off while it ran */
   const i = Math.floor((now - WALL.t0) / (WALL_TIME.HOUR_STEP() * 1000)) % (24 + WALL_TIME.HOLD), h = Math.min(i, 23);
   if (h !== WALL.h) wallDraw(h);
 }
 VIEWS.wall = async function () {
   const k = D.lead, it = D.issues[k], still = CLOCK.reduced();
   const at = new Intl.DateTimeFormat('en-GB', { timeZone: D.tz, hour: '2-digit', minute: '2-digit' }).format(new Date(D.as_of));
-  if (WALL.h == null) { WALL.h = still ? 23 : 0; WALL.t0 = performance.now(); }    /* a redraw on a poll keeps the replay's hour */
-  if (still) WALL.h = 23;
+  /* a redraw on a poll keeps the replay's hour; motion turned on or off since the last draw, even on another door, starts it over */
+  if (WALL.h == null || WALL.still !== still) { WALL.h = still ? 23 : 0; WALL.t0 = performance.now(); }
+  WALL.still = still;
   WALL.R = wallDay24();
   if (!WALL.sized) { WALL.sized = true; addEventListener('resize', () => { if (view() === 'wall') wallDraw(WALL.h ?? 23); });   /* the stages are drawn in their own pixels */
     matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', e => {           /* still at the last hour, or the replay again */
       if (view() !== 'wall') return;
+      WALL.still = e.matches;
       if (e.matches) { CLOCK.off('wall-replay'); wallDraw(23); } else { WALL.t0 = performance.now(); CLOCK.on('wall-replay', wallTick); }
     }); }
   $('#wallv').innerHTML = `
