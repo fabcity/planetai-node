@@ -81,7 +81,8 @@ VIEWS.data = function () {
   $('#dnav').innerHTML = Object.entries(DTABS).map(([id, [t]]) => `<a href="#data/${id}" data-t="${id}"${id === r.tab ? ' class="on" aria-current="page"' : ''}>${t}</a>`).join('');
   for (const [id, [, secs]] of Object.entries(DTABS)) for (const sec of secs) { const el = document.getElementById(sec); if (el) el.hidden = id !== r.tab; }
   DTABS[r.tab][2]();
-  const go = FOCUS ? (FOCUS !== FOCUSED && FOCUS) : r.el;
+  // a tab named in the link lands on the tab bar: the board sits above it (Field Synthesizer variation)
+  const go = FOCUS ? (FOCUS !== FOCUSED && FOCUS) : r.el || (location.hash.includes('/') && 'dnav');
   if (FOCUS) FOCUSED = FOCUS;
   if (go) setTimeout(() => {                                   // after route() has scrolled to the top
     const el = document.querySelector(`.srow[data-sid="${CSS.escape(go)}"]`) || document.getElementById(go);
@@ -129,7 +130,7 @@ function metricTiles() {
   };
   let k = 0;
   /* every figure carries its date and its word (the layer): a tile is the median of the latest 15-minute means */
-  $('#metrics').innerHTML = `<p class="fine mdate">Medians of each source’s latest 15-minute mean, ${esc(wdhm(D.as_of))} ${prov('live')}</p>` + fams.map(([t, ms]) => `<div class="fam"><div class="fh k">${t}<span><b>${ms.length}</b> kind${ms.length === 1 ? '' : 's'}</span></div><div class="tiles">${ms.map(m => {
+  $('#metrics').innerHTML = `<p class="fine mdate">Medians of each source’s latest 15-minute mean, ${esc(wdhm(D.as_of))} ${prov('live')}</p>` + fams.map(([t, ms]) => `<div class="fam" data-fam="${esc(t)}"><div class="fh k">${t}<span><b>${ms.length}</b> kind${ms.length === 1 ? '' : 's'}</span></div><div class="tiles">${ms.map(m => {
     const n = src[m].size, md = now[m] && now[m].length ? d3.median(now[m]) : null, dp = Math.abs(md) >= 100 ? 0 : Math.abs(md) >= 10 ? 1 : 2;
     return `<button type="button" class="mt ${m === METRIC ? 'on' : ''}" data-m="${esc(m)}" aria-pressed="${m === METRIC}" style="--i:${k++}">`
       + `<span class="sym">${esc(SYM[m] || m.slice(0, 4))}</span><span class="mn said">${esc(mWord(m))}</span>${trace(m)}`

@@ -3614,12 +3614,12 @@ async function doors() {
       const m = await r.page.evaluate(() => {
         const b = id => document.getElementById(id), rows = [...b('decl-rig-rice').querySelectorAll('.row')];
         return { rcol: !!b('decl-rig-rice').closest('#alsoread:not([hidden])'), under: !!(document.querySelector('.rcol').compareDocumentPosition(b('decl-rig-rice')) & 4),
-          did: !!b('decl-rig-did') && !!(b('decide').compareDocumentPosition(b('decl-rig-did')) & 4) && !b('decl-rig-did').closest('.rcol'),
+          did: !!b('decl-rig-did') && !!(b('rows').compareDocumentPosition(b('decl-rig-did')) & 4) && !!b('decl-rig-did').closest('.rcol'),
           h: rows.map(x => Math.round(x.getBoundingClientRect().height)), waiting: b('decl-rig-rice').textContent.includes('1 of the 3 readings'),
           wide: document.documentElement.scrollWidth - document.documentElement.clientWidth };
       });
       ok(m.rcol && m.under, `${tag}: the observe band is not in Also read here, under both columns`);
-      ok(m.did, `${tag}: the measure band is not in the left column after What to do`);
+      ok(m.did, `${tag}: the measure band is not under Around the house, in its column`);
       ok(m.h.length === 2 && m.h.every(x => x >= 44), `${tag}: the band's rows are ${m.h.join(',')} px (two of at least 44)`);
       ok(m.waiting, `${tag}: the band does not say how many readings have not arrived`);
       ok(m.wide <= 1, `${tag}: Now scrolls ${m.wide}px sideways with a declared band`);
@@ -3647,7 +3647,7 @@ async function doors() {
     if (got) {
       const m = await r.page.evaluate(() => {
         const a = document.getElementById('asks'), bs = [...a.querySelectorAll('button')];
-        return { under: !!(document.getElementById('decide').compareDocumentPosition(a) & 4) && !a.closest('.rcol'), n: bs.length,
+        return { under: !!(document.getElementById('decide').compareDocumentPosition(a) & 4) && !!a.closest('.nstrip'), n: bs.length,
           small: bs.map(b => b.getBoundingClientRect()).filter(x => x.height < 44 || x.width < 44).length,
           seventh: a.textContent.includes('seventh'), wide: document.documentElement.scrollWidth - document.documentElement.clientWidth };
       });
@@ -3697,17 +3697,20 @@ async function doors() {
         const targets = q('button, a').filter(vis).map(b => b.getBoundingClientRect());
         const box = nx.getBoundingClientRect(), cells = q('.nxc').map(c => c.getBoundingClientRect());
         return { days: q('.nrow .nxc').every(c => /^(Today|Tomorrow|[A-Z][a-z]{2}), /.test((c.querySelector('.vh') || {}).textContent || '')),
-          rows: q('.nrow').map(x => x.dataset.k || 'line'), cols: q('.nxhead > span').filter(vis).length,
+          rows: q('.nrow').map(x => x.dataset.k || 'line'), cols: q('.nxhead > span').filter(vis).length, four: box.width >= 560,
+          broken: q('.nxc .state, .nxc .num').filter(e => { const g = document.createRange(); g.selectNodeContents(e);
+            return new Set([...g.getClientRects()].map(c => Math.round(c.top))).size > 1; }).length,
           small: targets.filter(x => x.height < 44 || x.width < 44).length, n: targets.length,
           outside: cells.filter(c => c.right > box.right + 1 || c.left < box.left - 1).length,
-          place: !!nx.closest('.lcol') && document.getElementById('decide').getBoundingClientRect().bottom <= box.top,
+          place: !!nx.closest('.lcol2') && document.getElementById('decide').getBoundingClientRect().bottom <= box.top,
           nowShown: vis(document.querySelector('.lcol')) && vis(document.querySelector('.rcol')),
           wide: document.documentElement.scrollWidth - document.documentElement.clientWidth };
       });
       ok(m.days, `${tag}: a cell does not say its day to a screen reader`);
       ok(JSON.stringify(m.rows) === JSON.stringify(['air', 'heat', 'wind_rain', 'sea', 'line']), `${tag}: the rows are ${m.rows.join(',')}`);
-      ok(m.cols === (w < 768 ? 3 : 4) && !m.outside, `${tag}: ${m.cols} heads, ${m.outside} cells outside the view`);
-      ok(m.place && m.nowShown, `${tag}: Next days is not under What to do in Now's left column`);
+      ok(m.cols === (m.four ? 4 : 3) && !m.outside, `${tag}: ${m.cols} heads, ${m.outside} cells outside the view`);
+      ok(!m.broken, `${tag}: ${m.broken} figures or state boxes in Next days broken over two lines`);
+      ok(m.place && m.nowShown, `${tag}: Next days is not under What to do, in its column`);
       ok(m.n && !m.small, `${tag}: ${m.small} of ${m.n} targets under 44 × 44 px`);
       ok(m.wide <= 1, `${tag}: Now scrolls ${m.wide}px sideways with Next days`);
       /* by the keyboard, as a screen reader's user presses it: the focus stays on the row through the redraw */
