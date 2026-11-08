@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **The Wall draws the day as instruments (8 Nov).** One black screen holds four of them, fine dust settling in a jar with a
+  particle for every µg/m³, the apparent heat on a thermometer, the swell as a wave and the wind on a vane, and each
+  figure carries its hour and provenance word. They replay the last 24 hours an hour at a step and hold the last one,
+  under reduced motion they stand still at it. Under them the node's sentence sits beside its model's words, when it
+  has written some, and a balance weighs the house against the clean-air line with the stations nearby counted. The
+  Wall's map and its four scales are gone, the map stays on Place. docs/wall.
+
 - **A node knows where its rivers are.** The new core pack `hydro` fetches HydroSHEDS once for the node's square
   (`planetai run hydro fetch`, 50-160 MB downloaded, read and deleted, under 100 KB kept) and keeps the rivers, the
   basins they drain and the basin the node sits in. Each poll re-sends the nearest river's distance, flow, order,

@@ -1950,7 +1950,7 @@ COMPANIONS = {
     # The five doors (/?layout=doors): the loader that builds their one object from the routes, then one file per door,
     # as planetai-design's prototype kept them. Natural Earth's coast for the Node door's world (NOTICE).
     **{f"doors-{n}.js": (STATIC / f"doors-{n}.js", "application/javascript")
-       for n in ("load", "nodegeo", "core", "fig", "now", "cake", "draw", "placemap", "place", "data", "flow", "wallmap", "wall", "node", "setup")},
+       for n in ("load", "nodegeo", "core", "fig", "now", "cake", "draw", "placemap", "place", "data", "flow", "wall", "node", "setup")},
     # The phone page (/?layout=mobile): the shell and its script, which reuses doors-load.js.
     "mobile.html": (STATIC / "mobile.html", "text/html"),
     "mobile.js": (STATIC / "mobile.js", "application/javascript"),

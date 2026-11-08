@@ -242,10 +242,16 @@ const calls = []; globalThis.fetch = p => { calls.push(p); return Promise.resolv
     + ' caps: [wallCaption(10, [20, 5], 15), wallCaption(20, [], 15), wallCaption(null, [16], 15, "at 15:00"), wallCaption(5, [], null)], narr,'
     + ' long: wallAsk({ asking: [{ says: say }] }), short: oneLine("Open the windows. Then wait."),'
     + ' fresh: wallStale({ last_poll: new Date().toISOString() }), old: wallStale({ last_poll: "2026-10-06T11:19:50+00:00" }), none: wallStale({}) };'
-    /* the walk's four pages, at the day's last hour, with a place learning shaped as GET /learned/place answers it */
-    + ' WALK.place = [{ issue: "air", numbers: { by_hour: Object.fromEntries([...Array(24)].map((_, h) => [h, 10 + h %% 5])), days: 28 }, checked_at: "2026-10-06T08:00:00+08:00" }];'
-    + ' out.pages = [0, 1, 2, 3].map(i => wallPage(i, 23)); out.when = [wallWhen(new Date().toISOString()), wallWhen("2025-07-01T08:00:00+08:00")];'
-    + ' WALK.place = []; out.bare = wallPage(1, 23);', ctx);
+    /* the stage, every replayed hour of the last 24, drawn at 1920x1080's floor: the ramps, the stage and the balance */
+    + ' out.when = [wallWhen(new Date().toISOString()), wallWhen("2025-07-01T08:00:00+08:00")];'
+    + ' function getComputedStyle() { return { fontSize: "28px" }; } $("#wallv"); Object.assign($("#wstage"), { clientWidth: 1840, clientHeight: 560 });'
+    + ' Object.assign($("#wbal"), { clientWidth: 560, clientHeight: 300 }); WALL.R = wallDay24();'
+    + ' out.hours = [...Array(24)].map((_, h) => { wallDraw(h); return { ramp: $("#wramp").innerHTML, bramp: $("#wbramp").innerHTML, stage: $("#wstage").innerHTML,'
+    + ' dust: WALL.R.dust && WALL.R.dust.v[h], dir: WALL.R.dir && WALL.R.dir.v[h] }; });'
+    + ' out.near = WALL.R.near.length; out.house = WALL.R.house && WALL.R.house.v; out.room = D.issues.air.series.room.slice(-24);'
+    + ' const hd = D.issues.air.hero_distance; D.issues.air.hero_distance = "yard"; out.yardHouse = wallDay24().house.v; D.issues.air.hero_distance = hd;'
+    + ' const bare = D.buckets; D.buckets = []; const n24 = wallDay24(); out.nodays = { B: n24.B, raw: D.raw.buckets.slice(-24), wind: n24.wind && { v: n24.wind.v } };'
+    + ' const rawb = D.raw.buckets; D.raw.buckets = []; out.nohours = wallDay24().B; out.asof = D.as_of;' + ' D.raw.buckets = rawb.slice(-5); const s5 = wallDay24(); out.short5 = { B: s5.B, wind: s5.wind.v };' + ' D.raw.buckets = rawb; D.buckets = bare;', ctx);
   const pm = fs.readFileSync('./app/static/doors-placemap.js', 'utf8').match(/function packRows[\s\S]*?\n}\n/)[0];
   vm.runInContext('const LAYERS = [{ id: "earth" }];' + pm + 'packRows(); out.pack = LAYERS.map(l => l.none);', ctx);
   console.log(JSON.stringify({
@@ -276,33 +282,55 @@ assert not [n for n in _names if n in _wall], [n for n in _names if n in _wall]
 assert "Nothing is asked now." in t["wall"]["ask"], "6 Oct 19:22: a stale alert and an answered event ask nothing now"
 assert t["wall"]["old"] and t["wall"]["none"] and not t["wall"]["fresh"], t["wall"]
 print("doors: the Wall names no sensor, room or kit, and says stale only when the last poll is old")
-# THE WALK (Tomas picked option A, 16 Oct): four scales, the phone's own; every figure says when and one provenance word;
-# the land is a hundred squares; floods are said to be not watched, never drawn; the learned usual only when the node has it.
-_pg = t["wall"]["pages"]
+# THE STAGE (Tomas, 8 Nov: "Yes, port it", "Drop the map"): the room's air, heat, sea and wind drawn as instruments on
+# one screen, the last 24 hours replayed on it. Every figure in a ramp says its hour and one of the five words, at
+# every hour; the jar holds a particle for every µg/m³ (counted, never sized, up to 60); the vane turns to the bearing.
 _wsrc = (STATIC / "doors-wall.js").read_text()
-_ws = re.search(r"const WALL_SCALES = (\[.*?\]);", _wsrc).group(1)
-# The story rolls when it is longer than its box (Tomas, 21 Oct: the end was cut and the start never came back): after
-# typing, and again when a scale gives the box its room back; still under reduced motion.
-assert "if (!NARR.typing) narrRoll();" in _wsrc and "!NARR.typing) narrRoll();" in _wsrc.split("function wallFit")[1].split("function wallHour")[0], \
-    "the Wall's story does not start rolling after typing, or when its box gets room again"
-assert re.search(r"prefers-reduced-motion: reduce\)\{[^}]*\.wnarr \.nw\.roll \.nt\{animation:none", html), "the story rolls under reduced motion"
-_ps = re.search(r"const SCALES = (\[.*?\]);", (STATIC / "walk.js").read_text()).group(1)
-assert re.findall(r"k: '(\w+)'", _ws) == re.findall(r"k: '(\w+)'", _ps) and re.findall(r"res: (\d+)", _ws) == re.findall(r"res: (\d+)", _ps)[:4], (_ws, _ps)
-for _i, _h in enumerate(_pg):
-    _figs = re.findall(r'<div class="wfig">(.*?)</div>', _h)
-    assert _figs or _i == 3, f"scale {_i} draws no figure"
-    for _f in _figs:
-        assert re.search(r'class="wpw">(live|partial|model|cached|example)<', _f) and re.search(r"· \d\d:\d\d ", _f), f"a figure with no time or word: {_f}"
-    assert not re.findall(r'class="wpw">(?!(?:live|partial|model|cached|example)<)', _h), f"a word that is not one of the five on scale {_i}"
-assert "dotted: what this node learned is usual outside" in _pg[1] and "dotted" not in t["wall"]["bare"], "the usual is drawn only when learned"
-assert 'stroke-dasharray="1 6"' in _pg[1] and 'stroke-width="3"' in _pg[1] and 'stroke-dasharray="1 6"' not in _pg[0], "the street's day and its usual, dotted"
-assert re.search(r'<p class="wat">.* at <b>\d\d:00</b>: ', _pg[1]), "the replayed hour said in words, house, street and ring"
-_hund = re.search(r'<div class="whund"[^>]*>(.*?)</div>', _pg[2]).group(1)
-assert _hund.count("<i ") == 100 and re.search(r"built <b>\d+%</b>", _pg[2]), _pg[2][:400]
-assert "OpenStreetMap" in _pg[2] and "too few to tell homes from shops" in _pg[2], "the places counted, and why there is no homes-and-shops split"
-assert "<th>Floods</th><td>not watched on this node yet</td>" in _pg[3]
+_hs = t["wall"]["hours"]
+assert len(_hs) == 24 and all(_x["stage"].startswith("<svg") for _x in _hs), "the stage is not drawn at every hour"
+for _i, _x in enumerate(_hs):
+    for _r in (_x["ramp"], _x["bramp"]):
+        for _v in re.findall(r'<div class="wrv"[^>]*>(.*?)</div>', _r):
+            assert re.search(r"<span>(\d\d:\d\d <span class=\"wpw\">(live|partial|model|cached|example)</span>|not read (at \d\d:\d\d|here))</span>", _v), \
+                f"a figure with no time or word at hour {_i}: {_v}"
+        assert not re.findall(r'class="wpw">(?!(?:live|partial|model|cached|example)<)', _r), f"a word that is not one of the five at hour {_i}"
+    if _x["dust"] is not None:
+        assert _x["stage"].count('r="2.8" fill="var(--d-air)"') == min(60, round(_x["dust"])), f"the jar's particles are not the hour's µg/m³ at hour {_i}"
+    if _x["dir"] is not None:
+        _rot = re.search(r"rotate\(([\d.-]+) ", _x["stage"])
+        assert _rot and abs(float(_rot.group(1)) - _x["dir"]) < 0.051, f"the vane does not turn to the hour's bearing at hour {_i}: {_x['dir']}"
+assert any(_x["dust"] for _x in _hs) and any(_x["dir"] is not None for _x in _hs), "the capture drew no dust or no wind: the checks above asserted nothing"
+assert len({_x["stage"] for _x in _hs}) > 12, "the stage does not change with the hour"
+# The balance weighs the house's own room series, and counts only outdoor stations nearby (an indoor one is a room).
+_fx = json.loads(Path(FIX).read_text())["sensors"]
+assert t["wall"]["near"] == len([x for x in _fx if x["kind"] == "sensor" and not x["local"] and not x["indoor"]]) < \
+    len([x for x in _fx if x["kind"] == "sensor" and not x["local"]]), f"the balance counts indoor stations: {t['wall']['near']}"
+assert t["wall"]["house"] == t["wall"]["room"] == t["wall"]["yardHouse"], "the house pan is not the room's series, whatever the headline distance"
+# Without /issues/days the replay keeps its 24 hours, and a model's latest reading stands for each of them.
+_nd = t["wall"]["nodays"]
+assert len(_nd["B"]) == 24 and _nd["wind"] and len(_nd["wind"]["v"]) == 24 and None not in _nd["wind"]["v"], "no buckets, no wind"
+from datetime import datetime
+_ms = lambda s: datetime.fromisoformat(s.replace("Z", "+00:00")).timestamp()
+assert [_ms(b) for b in _nd["B"]] == [_ms(b) for b in _nd["raw"]], "without /issues/days the replay does not take /aggregates' hours"
+assert len(t["wall"]["nohours"]) == 24 and _ms(t["wall"]["nohours"][-1]) == _ms(t["wall"]["asof"]) // 3600 * 3600 and \
+    all(_ms(b) - _ms(a) == 3600 for a, b in zip(t["wall"]["nohours"], t["wall"]["nohours"][1:])), t["wall"]["nohours"][-2:]
+# Five hours of /aggregates fill the last five of the 24; the hour drawn under reduced motion is never blank.
+assert len(t["wall"]["short5"]["B"]) == 24 and _ms(t["wall"]["short5"]["B"][-1]) == _ms(_nd["raw"][-1]) and t["wall"]["short5"]["wind"][-1] is not None, t["wall"]["short5"]
+assert "WALL.h == null || WALL.still !== still" in _wsrc and "if (view() !== 'wall') { WALL.still = null; return; }" in _wsrc, \
+    "motion turned on or off off the Wall resumes the old replay's hour"
 assert t["wall"]["when"][1] == "Jul 2025" and re.fullmatch(r"\d\d:\d\d", t["wall"]["when"][0]), t["wall"]["when"]
-print("doors: the Wall walks the phone's four scales; every figure has its time and word; land as 100 squares; floods not invented")
+# Under reduced motion the Wall is one still frame at the last hour: no replay clock, and the narration's roll stands still.
+assert "{ WALL.h = still ? 23 : 0;" in _wsrc and "if (!still) CLOCK.on('wall-replay', wallTick);" in _wsrc, "the replay runs under reduced motion"
+assert re.search(r"prefers-reduced-motion: reduce\)\{[^}]*\.wnarr \.nw\.roll \.nt\{animation:none", html), "the story rolls under reduced motion"
+assert "#wallv *{transition:none}" in html.replace(" !important", ""), "a step on the Wall is tweened"
+# The story rolls when it is longer than its box (Tomas, 21 Oct: the end was cut and the start never came back), a line a step.
+assert "if (!NARR.typing) narrRoll();" in _wsrc and "--roll-n" in _wsrc, "the Wall's story does not start rolling after typing"
+# The narration took the four distances' screen (Tomas, 8 Nov: "Yes, narration there"): the words, the node's own words,
+# then the balance, in that order; no map and no walk are left.
+_marks = re.findall(r'data-learn="([a-z-]+)"', _wsrc.split("VIEWS.wall = ")[1].split("/* THE NODE, THINKING ALOUD")[0])
+assert _marks == ["wall-stage", "wall-sentence", "wall-narration", "wall-balance"], _marks
+assert not re.search(r"WALL_SCALES|wallPage|WALK\b|wallMap|wallDist|wrail", _wsrc) and not (STATIC / "doors-wallmap.js").exists()
+print("doors: the Wall draws the day as instruments; every figure has its time and word; the dust counted, the vane on its bearing")
 
 # 15 Oct, the Wall read from 3 m (Tomas's review of 14 Oct). Each check fails if its fix regresses.
 # The map's caption says in words what its red discs mean against the house: a clean headline beside red discs.
@@ -333,16 +361,14 @@ assert len(_sizes) >= 18, len(_sizes)
 for _f in _sizes:
     _m = re.search(r"calc\(var\(--wf\) \* ([\d.]+)\)|var\(--wf\)|(\d[\d.]*)(px|em|rem|vw|vh)\b", _f)
     assert _m and (_m.group(0) == "var(--wf)" or (_m.group(1) and float(_m.group(1)) >= 1)), f"under the Wall's type floor: font:{_f}"
-_wjs = (STATIC / "doors-wall.js").read_text().split("/* THE NODE, THINKING ALOUD")[0] + (STATIC / "doors-wallmap.js").read_text()
-assert not re.search(r'class="(?:k|fine)\b|<small', _wjs.split("if (o.time) {")[0] + _wjs.split("if (o.time) {")[-1].split("o.time.querySelectorAll('.seg")[-1]), \
-    "a class sized outside the Wall's block, drawn on the Wall"
-assert re.findall(r"getSize: (\w+)", _wjs) == ["wf", "wf"], "the map's words are at the floor"
+_wjs = (STATIC / "doors-wall.js").read_text().split("/* THE NODE, THINKING ALOUD")[0]
+assert not re.search(r'class="(?:k|fine)\b|<small', _wjs), "a class sized outside the Wall's block, drawn on the Wall"
+assert ".wstage text{font:500 var(--wf) var(--mono)}" in _wcss, "the stage's words are at the floor"
 # CHROME: a wall is not operated. The back button, the chips and the hour strip are .wchrome, invisible until a pointer
 # or the keyboard is in them; the back button is the first thing in keyboard order.
 assert "#wallv .wchrome{opacity:0" in _wcss and "#wallv .wchrome:hover,#wallv .wchrome:focus-within{opacity:1}" in _wcss
-assert re.search(r'<div class="wtop wchrome"><button class="wback"', _wjs) and 'class="wrail" id="wrail"' in _wjs and "flowtime" not in _wjs, \
-    "the rail is how a reader knows the scale: never chrome; the hour strip is gone"
-assert "#wallv .wrail button" in _wcss and "#wallv .wback,#wallv .wchips button,#wallv .wrail button{min-height:44px;min-width:44px}" in _wcss
+assert re.search(r'<div class="wtop wchrome"><button class="wback"', _wjs) and "flowtime" not in _wjs, "the back button is first, the hour strip is gone"
+assert "#wallv .wback{min-height:44px;min-width:44px}" in _wcss
 for _gone in ("share level", "#wall", "more</a>", "readings in", "next in", "Read at", "replay with the token"):
     assert _gone not in _wjs.lower().replace("#wallv", ""), f"admin chrome is back on the Wall: {_gone}"
 print("doors: nothing on the Wall is under 28 px at 1920x1080, and its chrome shows only under a pointer or the keyboard")
@@ -541,7 +567,7 @@ print("doors: Node › What it remembers holds the diary and what worked as tabl
 _dh = html[html.index('data-view="data"'):html.index("<!-- WALL -->")]
 assert not re.search(r'id="d-(learned|usual|diary)"', _dh) and "learnedBlock" not in _dj and 'href="#node/remember"' in _dh, \
     "Data no longer holds the diary, what is usual or what worked; it points to Node"
-_wall = (STATIC / "doors-wall.js").read_text() + (STATIC / "doors-wallmap.js").read_text()
+_wall = (STATIC / "doors-wall.js").read_text()
 assert "/learned" not in _wall.replace("/learned/place", "") and "/household" not in _wall, "the Wall never reads the house's learnings"
 print("doors: Data points to Node for the diary; the Wall reads none of it")
 
@@ -883,7 +909,7 @@ for _sel in (".snav a{display:flex;justify-content:space-between;align-items:cen
 assert "gear.setAttribute('aria-current', 'page')" in (STATIC / "doors-core.js").read_text()
 print("doors: every tab, switch and button in Data and Set up is a 44 px target; the gear shows Set up is open")
 # the Wall shows no alert answers (Tomas, 16 Oct): no row of answered alerts, no rings around the house
-_w = (STATIC / "doors-wall.js").read_text() + (STATIC / "doors-wallmap.js").read_text()
+_w = (STATIC / "doors-wall.js").read_text()
 assert not re.search(r"rhoRow|RHO_ROW|wrho|F\.answers|F\.alerts|answers back", _w), "the Wall shows answers to alerts again"
 assert ".wrho" not in html
 print("doors: the Wall counts no answers to alerts, in words or rings")

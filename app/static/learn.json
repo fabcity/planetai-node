@@ -2016,28 +2016,28 @@
    "title": "Whether its own sensors tell the truth",
    "url": "https://planetai.fab.city/docs/alerts/#trust"
   },
-  "wall-map": {
+  "wall-balance": {
    "anchor": "what-it-shows",
-   "more": "The caption under the map says in words what the red discs mean against the house, at the hour they show.",
+   "more": "The caption under it says in words what the red squares mean against the house, at the hour the instruments show.",
    "page": "wall.md",
    "page_title": "Wall mode",
    "questions": {
     "en": [
-     "Which way is the wind blowing?",
-     "What do the red circles mean?"
+     "Is our air cleaner than the street?",
+     "What do the red squares mean?"
     ],
     "es": [
-     "¿Hacia dónde sopla el viento?",
-     "¿Qué significan los círculos rojos?"
+     "¿Nuestro aire está más limpio que la calle?",
+     "¿Qué significan los cuadrados rojos?"
     ],
     "id": [
-     "Ke arah mana angin bertiup?",
-     "Apa arti lingkaran merah itu?"
+     "Apakah udara kami lebih bersih dari jalan?",
+     "Apa arti kotak merah itu?"
     ]
    },
-   "quote": "**The map**: the stations around the house on the node's own map, framed on the scale's H3 cell, with the wind. The\n  house is one mark and a public station a disc, red when it is over the line.",
+   "quote": "**The balance**: the house's fine dust in one pan and the clean-air line in the other, tipped by the heavier, and\n  under it the outdoor stations nearby, one square each, red when it is over the line.",
    "section": "What it shows",
-   "title": "The map",
+   "title": "The balance",
    "url": "https://planetai.fab.city/docs/wall/#what-it-shows"
   },
   "wall-narration": {
@@ -2088,30 +2088,6 @@
    "title": "What the Wall never shows",
    "url": "https://planetai.fab.city/docs/wall/#what-the-wall-never-shows"
   },
-  "wall-page": {
-   "anchor": "the-walk",
-   "more": "At the house it draws each issue and the day inside, at the street what is usual outside, at the ring the land within 1 km, and at the region what the satellites see.",
-   "page": "wall.md",
-   "page_title": "Wall mode",
-   "questions": {
-    "en": [
-     "What is the land around us made of?",
-     "Are there fires nearby?"
-    ],
-    "es": [
-     "¿De qué está hecho el terreno de alrededor?",
-     "¿Hay incendios cerca?"
-    ],
-    "id": [
-     "Tanah di sekitar kami terdiri dari apa saja?",
-     "Apakah ada kebakaran di dekat sini?"
-    ]
-   },
-   "quote": "Every figure says when it is from and carries a provenance word. A figure from `/observations` takes the node's rule\nfor readouts (`model` for a model, `partial` otherwise), and what the node learned is `partial`. A source is named the\nway the Wall says it (\"Sea, 5 km off\"), and a sensor's name never appears.",
-   "section": "The walk",
-   "title": "The page for each scale",
-   "url": "https://planetai.fab.city/docs/wall/#the-walk"
-  },
   "wall-sentence": {
    "anchor": "what-it-shows",
    "more": "When the node's last poll is more than 15 minutes old, the time says the readings are old.",
@@ -2136,29 +2112,29 @@
    "title": "The time and the sentence",
    "url": "https://planetai.fab.city/docs/wall/#what-it-shows"
   },
-  "wall-walk": {
-   "anchor": "the-walk",
-   "more": "House, street, ring and region, each framed on its own cell. With reduced motion on, the Wall holds the street at the last hour.",
+  "wall-stage": {
+   "anchor": "the-instruments",
+   "more": "Fine dust in a jar, the heat on a thermometer, the swell as a wave and the wind on a vane. With reduced motion on, the Wall holds the last hour.",
    "page": "wall.md",
    "page_title": "Wall mode",
    "questions": {
     "en": [
-     "Why does the map keep moving out?",
-     "How do I keep it on our street?"
+     "Why do the instruments keep moving?",
+     "Which way is the wind blowing?"
     ],
     "es": [
-     "¿Por qué el mapa se va alejando?",
-     "¿Cómo lo dejo quieto en nuestra calle?"
+     "¿Por qué se mueven los instrumentos?",
+     "¿Hacia dónde sopla el viento?"
     ],
     "id": [
-     "Mengapa peta terus bergerak menjauh?",
-     "Bagaimana agar peta tetap di jalan kami?"
+     "Mengapa instrumennya terus bergerak?",
+     "Ke arah mana angin bertiup?"
     ]
    },
-   "quote": "Each scale holds while its day is replayed, 24 hours in 30 s, then the walk cuts to the next. A new scale is a cut,\nnever a flight. The four scale names on the map say which one is drawn: pressing one holds it, pressing it again lets\nthe walk go on.",
-   "section": "The walk",
-   "title": "The walk, a scale at a time",
-   "url": "https://planetai.fab.city/docs/wall/#the-walk"
+   "quote": "The instruments replay the last 24 hours, an hour every 1.25 s (30 s for the day), hold the last hour, then start the\nday again. Each hour is a step, never a slide, and nothing counts up.",
+   "section": "The instruments",
+   "title": "The instruments",
+   "url": "https://planetai.fab.city/docs/wall/#the-instruments"
   },
   "workshop": {
    "anchor": "what-it-is-for",
@@ -2271,9 +2247,8 @@
   "data-api",
   "wall-never",
   "wall-sentence",
-  "wall-map",
-  "wall-walk",
-  "wall-page",
+  "wall-stage",
+  "wall-balance",
   "wall-narration",
   "setup-sections",
   "setup-save"
