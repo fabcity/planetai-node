@@ -297,7 +297,7 @@ MARKS = [
      "This part shows only with the admin token, because it is the house's own record. The whole diary "
      "and every case are on Node, under What it remembers."),
     ("now-rows", "Every issue, a row each", "dashboard.md", "Now",
-     "**Around the house**, beside Next days. A row for each issue", "moves the page to that issue.",
+     "**Around the house**, under the map. A row for each issue", "moves the page to that issue.",
      "Each row carries the node's state word, the value now and today's hours over the line. Press one "
      "and the whole door moves to that issue."),
     ("now-bands", "A pack's own band", "dashboard.md", "Now",

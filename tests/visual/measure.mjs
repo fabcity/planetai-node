@@ -3614,12 +3614,12 @@ async function doors() {
       const m = await r.page.evaluate(() => {
         const b = id => document.getElementById(id), rows = [...b('decl-rig-rice').querySelectorAll('.row')];
         return { rcol: !!b('decl-rig-rice').closest('#alsoread:not([hidden])'), under: !!(document.querySelector('.rcol').compareDocumentPosition(b('decl-rig-rice')) & 4),
-          did: !!b('decl-rig-did') && !!(b('decide').compareDocumentPosition(b('decl-rig-did')) & 4) && !!b('decl-rig-did').closest('.rcol2'),
+          did: !!b('decl-rig-did') && !!(b('rows').compareDocumentPosition(b('decl-rig-did')) & 4) && !!b('decl-rig-did').closest('.rcol'),
           h: rows.map(x => Math.round(x.getBoundingClientRect().height)), waiting: b('decl-rig-rice').textContent.includes('1 of the 3 readings'),
           wide: document.documentElement.scrollWidth - document.documentElement.clientWidth };
       });
       ok(m.rcol && m.under, `${tag}: the observe band is not in Also read here, under both columns`);
-      ok(m.did, `${tag}: the measure band is not after What to do, in its column`);
+      ok(m.did, `${tag}: the measure band is not under Around the house, in its column`);
       ok(m.h.length === 2 && m.h.every(x => x >= 44), `${tag}: the band's rows are ${m.h.join(',')} px (two of at least 44)`);
       ok(m.waiting, `${tag}: the band does not say how many readings have not arrived`);
       ok(m.wide <= 1, `${tag}: Now scrolls ${m.wide}px sideways with a declared band`);

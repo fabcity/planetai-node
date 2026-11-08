@@ -134,7 +134,7 @@ print("  each row carries its 72 hours from its own source, with its line where 
 html = (ROOT / "app/static/doors.html").read_text()
 nowh = html[html.index('<main class="face view" data-view="now">'):html.index("<!-- PLACE -->")]
 assert "nowsw" not in nowh and "data-nv" not in nowh, "the switch is gone: Next days is a part of Now"
-assert nowh.index('class="nstrip"') < nowh.index('id="decide"') < nowh.index('class="lcol2"') < nowh.index('id="nexth"') < nowh.index('id="next"') < nowh.index('class="rcol2"'), "Next days sits under the What to do strip, on the left, beside Around the house"
+assert nowh.index('class="nstrip"') < nowh.index('id="decide"') < nowh.index('class="lcol2"') < nowh.index('id="nexth"') < nowh.index('id="next"') < nowh.index('id="alsoread"'), "Next days sits under the What to do strip, across the page"
 nx = re.search(r'<section [^>]*id="next"[^>]*>', nowh).group(0)
 assert 'aria-labelledby="nexth"' in nx and "aria-live" not in nx, "a press would read the whole grid again"
 src = (ROOT / "app/static/doors-now.js").read_text()

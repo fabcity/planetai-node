@@ -94,7 +94,7 @@ learned ("It helps here.", "No clear difference here yet.", "Too early to say.")
 say who lives here. Yesterday is the node's diary entry for yesterday, condensed from its own numbers, with a link to
 the whole entry on Node.
 
-**Next days.** Under What to do, on the left, the next three days, from the next hour to the end of the day after tomorrow.
+**Next days.** Under What to do, across the page, the next three days, from the next hour to the end of the day after tomorrow.
 Each thing gets a row in the order of Now's rows: air and heat, then wind and rain, then the sea, then a line from any
 pack that declares one with `ahead:` in its `pack.yaml`. A cell has the day's number, the state word against the issue's
 line, and for air and heat how many hours go over it. Press a row and its 72 hours are drawn under it, with the line.
@@ -102,7 +102,7 @@ Under the rows each source is a pill with the time it was issued or fetched, the
 models. The node does not forecast, and nothing here sends a message." With Open-Meteo off only BMKG's weather shows,
 where BMKG covers the node, and a line says where to turn Open-Meteo on. `#now/next` links straight to it.
 
-**Around the house**, beside Next days. A row for each issue drawn by the hour, its state word, its value now and its hours over the line
+**Around the house**, under the map. A row for each issue drawn by the hour, its state word, its value now and its hours over the line
 today; pressing one moves the page to that issue. With the admin token one line counts the things this home
 keeps, how many sit idle and how many need repair, and opens Data › Home.
 
