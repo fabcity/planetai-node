@@ -417,8 +417,11 @@ assert 'id="rail"' not in _nowh and "function rail(" not in _nowjs and 'id="cell
     "the grain rail is back on Now"
 # the parts in reading order, each keeping its learn mark: lead, figure, distances, buttons, then the house's states
 _marks = re.findall(r'data-learn="([a-z-]+)"', _nowh)
-assert _marks == ["now-sentence", "figure", "now-distances", "now-city", "now-around", "now-todo", "now-rows", "now-things", "now-worked", "now-next"], _marks
-assert _nowh.index('class="rcol"') < _nowh.index('id="ncity"') < _nowh.index('class="around"') < _nowh.index('id="decide"') < _nowh.index('id="nremember"'), "the city and its map, then What to do, then Did it work"
+assert _marks == ["now-sentence", "figure", "now-distances", "now-city", "now-around", "now-todo", "now-next", "now-rows", "now-things", "now-worked"], _marks
+assert _nowh.index('class="rcol"') < _nowh.index('id="ncity"') < _nowh.index('class="around"') < _nowh.index('class="nstrip"') < _nowh.index('id="decide"') < _nowh.index('class="lcol2"') < _nowh.index('id="next"') < _nowh.index('class="rcol2"') < _nowh.index('id="nremember"'), "the city and its map, then What to do as a strip, then Next days beside Around the house"
+_css = (STATIC / "doors.html").read_text()
+assert '"kick kick" "l r" "td td" "l2 r2"' in _css and '"kick" "l" "r" "td" "r2" "l2"' in _css and '.nstrip{grid-area:td' in _css, "What to do spans both columns, under the top row"
+assert '.nstrip .decide{display:contents}' in _css and 'new ResizeObserver(() => map.resize())' in _nowjs, "the strip is one band; the map takes the frame's height"
 # heads name the reader's question, in sentence case; no engine stage shouted on Now
 assert "Around the house</h2>" in _nowh and "`Right now · " in _nowjs and '<h2 class="nh">What to do</h2>' in _nowjs
 assert not re.search(r"observe · |decide · |the node’s own sentence", _nowh + _nowjs), "a capitalised engine stage is back as a head"

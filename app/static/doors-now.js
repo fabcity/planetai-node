@@ -376,10 +376,11 @@ async function aroundMap(el) {
   const base = await window.groundBase(theme);
   if (!NOWMAP || NOWMAP.theme !== theme || !el.contains(NOWMAP.map.getContainer())) {
     if (NOWMAP) NOWMAP.map.remove();
-    el.innerHTML = `<div class="aroundmap" style="width:${W}px;height:${H}px"></div>`;
+    el.innerHTML = `<div class="aroundmap" style="width:${W}px;min-height:${H}px"></div>`;
     let map; try { map = new maplibregl.Map({ container: el.firstChild, style: base.style, center: D.point, zoom: 11, attributionControl: false,
       dragRotate: false, pitchWithRotate: false, touchPitch: false, scrollZoom: false, fadeDuration: 0, transformRequest: window.groundRequest }); } catch (e) { NOWMAP = null; return rose(el, { size: W }); }   /* no WebGL: the rose */
     map.touchZoomRotate.disableRotation();
+    new ResizeObserver(() => map.resize()).observe(el.firstChild);   /* the frame stretches it to the screen beside it */
     /* the stations are what this map is for: the base's names step back, and the street names go */
     map.on('load', () => { if (map.getLayer('v-place-label')) map.setPaintProperty('v-place-label', 'text-opacity', .5);
       for (const l of ['v-road-label', 'v-poi-label']) if (map.getLayer(l)) map.setLayoutProperty(l, 'visibility', 'none'); });

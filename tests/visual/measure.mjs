@@ -3614,7 +3614,7 @@ async function doors() {
       const m = await r.page.evaluate(() => {
         const b = id => document.getElementById(id), rows = [...b('decl-rig-rice').querySelectorAll('.row')];
         return { rcol: !!b('decl-rig-rice').closest('#alsoread:not([hidden])'), under: !!(document.querySelector('.rcol').compareDocumentPosition(b('decl-rig-rice')) & 4),
-          did: !!b('decl-rig-did') && !!(b('decide').compareDocumentPosition(b('decl-rig-did')) & 4) && !!b('decl-rig-did').closest('.rcol'),
+          did: !!b('decl-rig-did') && !!(b('decide').compareDocumentPosition(b('decl-rig-did')) & 4) && !!b('decl-rig-did').closest('.rcol2'),
           h: rows.map(x => Math.round(x.getBoundingClientRect().height)), waiting: b('decl-rig-rice').textContent.includes('1 of the 3 readings'),
           wide: document.documentElement.scrollWidth - document.documentElement.clientWidth };
       });
@@ -3647,7 +3647,7 @@ async function doors() {
     if (got) {
       const m = await r.page.evaluate(() => {
         const a = document.getElementById('asks'), bs = [...a.querySelectorAll('button')];
-        return { under: !!(document.getElementById('decide').compareDocumentPosition(a) & 4) && !!a.closest('.rcol'), n: bs.length,
+        return { under: !!(document.getElementById('decide').compareDocumentPosition(a) & 4) && !!a.closest('.nstrip'), n: bs.length,
           small: bs.map(b => b.getBoundingClientRect()).filter(x => x.height < 44 || x.width < 44).length,
           seventh: a.textContent.includes('seventh'), wide: document.documentElement.scrollWidth - document.documentElement.clientWidth };
       });
@@ -3702,7 +3702,7 @@ async function doors() {
             return new Set([...g.getClientRects()].map(c => Math.round(c.top))).size > 1; }).length,
           small: targets.filter(x => x.height < 44 || x.width < 44).length, n: targets.length,
           outside: cells.filter(c => c.right > box.right + 1 || c.left < box.left - 1).length,
-          place: !!nx.closest('.rcol') && document.getElementById('decide').getBoundingClientRect().bottom <= box.top,
+          place: !!nx.closest('.lcol2') && document.getElementById('decide').getBoundingClientRect().bottom <= box.top,
           nowShown: vis(document.querySelector('.lcol')) && vis(document.querySelector('.rcol')),
           wide: document.documentElement.scrollWidth - document.documentElement.clientWidth };
       });

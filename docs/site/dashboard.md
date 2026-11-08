@@ -81,7 +81,8 @@ now** and **Doesn't fit**. Once somebody has answered, the buttons go and the li
 when, and when a Not now asks again. An alert still true that no event stands for is drawn the same way, without
 buttons, because it is answered on Telegram. When nothing is asked the section is one plain line, "Nothing is asked
 now.", with the hour this issue is usually worst for a screen holding the admin token. A past hour shows what was open
-then, and is read, never answered. An issue with no line says the node only reports it and never asks you to act.
+then, and is read, never answered. An issue with no line says the node only reports it and never asks you to act. What to do is one low strip across
+the whole page, under the day's screen and the city's, in small type; on a phone it follows the city.
 
 When a pack's rule has asked with buttons of its own, each of its alerts from the last 72 hours that nobody has
 answered is a card of its own under this one, with the alert's text and its rows of buttons. A press is one answer, and
@@ -93,7 +94,7 @@ learned ("It helps here.", "No clear difference here yet.", "Too early to say.")
 say who lives here. Yesterday is the node's diary entry for yesterday, condensed from its own numbers, with a link to
 the whole entry on Node.
 
-**Next days.** Under What to do, the next three days, from the next hour to the end of the day after tomorrow.
+**Next days.** Under What to do, on the left, the next three days, from the next hour to the end of the day after tomorrow.
 Each thing gets a row in the order of Now's rows: air and heat, then wind and rain, then the sea, then a line from any
 pack that declares one with `ahead:` in its `pack.yaml`. A cell has the day's number, the state word against the issue's
 line, and for air and heat how many hours go over it. Press a row and its 72 hours are drawn under it, with the line.
@@ -101,7 +102,7 @@ Under the rows each source is a pill with the time it was issued or fetched, the
 models. The node does not forecast, and nothing here sends a message." With Open-Meteo off only BMKG's weather shows,
 where BMKG covers the node, and a line says where to turn Open-Meteo on. `#now/next` links straight to it.
 
-**Around the house.** A row for each issue drawn by the hour, its state word, its value now and its hours over the line
+**Around the house**, beside Next days. A row for each issue drawn by the hour, its state word, its value now and its hours over the line
 today; pressing one moves the page to that issue. With the admin token one line counts the things this home
 keeps, how many sit idle and how many need repair, and opens Data › Home.
 

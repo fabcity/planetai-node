@@ -178,8 +178,9 @@ details .in{padding:0 0 16px;color:var(--mute);font-size:var(--t-small);max-widt
 
 /* ================= NOW ================= */
 /* one bold block (the sentence and its day), then quiet parts under sentence-case heads; mono only for units, times, values */
-.face{max-width:1240px;margin:0 auto;padding:18px clamp(16px,3vw,40px) 40px;display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:0 48px;grid-template-areas:"kick kick" "l r" "al al" "bd bd"}
+.face{max-width:1240px;margin:0 auto;padding:18px clamp(16px,3vw,40px) 40px;display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:0 48px;grid-template-areas:"kick kick" "l r" "td td" "l2 r2" "al al" "bd bd"}
 .lcol{grid-area:l;min-width:0}.rcol{grid-area:r;min-width:0;align-content:start}
+.nstrip{grid-area:td;min-width:0}.lcol2{grid-area:l2;min-width:0}.rcol2{grid-area:r2;min-width:0}
 .kick{grid-area:kick;display:flex;justify-content:space-between;gap:6px 16px;align-items:baseline;flex-wrap:wrap;margin-bottom:6px}
 .kick .kr{display:flex;gap:12px;align-items:baseline}.kick .kr a{font-size:var(--t-cap);color:var(--mute)}
 .kick .now{background:none;border:1px solid var(--ink);padding:2px 9px;font:600 var(--t-small) var(--body);cursor:pointer}
@@ -751,7 +752,7 @@ body:not(.classic) .hero .ladder.folded{display:none}
 .h3grid{fill:none;stroke:var(--ink);stroke-width:.4;opacity:.5}.h3lit{fill:var(--cells);fill-opacity:.13;stroke:var(--cells);stroke-width:1.5}
 
 @media (max-width:1080px){
-  .face{grid-template-columns:minmax(0,1fr);grid-template-areas:"kick" "l" "r" "al" "bd"}.rcol{margin-top:28px}
+  .face{grid-template-columns:minmax(0,1fr);grid-template-areas:"kick" "l" "r" "td" "r2" "l2" "al" "bd"}.rcol{margin-top:28px}
   .sms{grid-template-columns:repeat(2,minmax(0,1fr))}.cols2{grid-template-columns:1fr}
 }
 /* a phone (SPEC_place_microgis §4): one column, the screen first, then the cake and the tools as two disclosures, then the
@@ -970,8 +971,8 @@ body:not(.classic) .hero .ladder.folded{display:none}
 .ans button::before{content:"";width:6px;height:6px;background:var(--dim)}
 .ans button.on{background:var(--amber);color:#0E0E10}.ans button.on::before{background:#0E0E10}
 /* rack-mount rows: the issues around the house as cards in a column; the one in front inverts */
-.rcol .rows{border-top:0;display:grid;gap:8px}.rcol .row{border:1px solid var(--wire);background:var(--ground)}
-.rcol .row[aria-pressed="true"]{background:var(--ink);color:var(--ground);border-color:var(--ink)}
+.rcol2 .rows{border-top:0;display:grid;gap:8px}.rcol2 .row{border:1px solid var(--wire);background:var(--ground)}
+.rcol2 .row[aria-pressed="true"]{background:var(--ink);color:var(--ground);border-color:var(--ink)}
 /* the screen, as the export's oscilloscope: square, a #0E0E10 ground, a faint reticle */
 .scr{border-radius:0!important;box-shadow:none!important;border:1px solid var(--wire);margin:14px 0 0!important;--ground:#0A0A0C;--cells:#38BDF8;--hair:#26262B}
 .scr .sbody{background-image:radial-gradient(rgba(244,244,245,.09) 1px,transparent 1.2px);background-size:24px 24px}
@@ -993,7 +994,7 @@ body:not(.classic) .hero .ladder.folded{display:none}
    for the stroke of that reading, its LED and its figure: never a background, never good or bad */
 :root[data-theme="dark"]{--d-air:#A78BFA;--d-heat:#F2C14E;--d-water:#5BC8F5;--d-sea:#3B8FD9;--d-wind:#7EE0C3;--d-energy:#F28C28;--d-ground:#C08A48;--d-biota:#8BC34A;--d-noise:#F472B6;--d-light:#F5E9A8}
 :root{--d-air:#6D28D9;--d-heat:#8A6D00;--d-water:#0369A1;--d-sea:#1F5F8B;--d-wind:#0F766E;--d-energy:#B45309;--d-ground:#6B4F1D;--d-biota:#3F7A0C;--d-noise:#BE185D;--d-light:#7A6F2A}
-.rcol .row[data-k]{box-shadow:inset 3px 0 0 var(--dk,var(--wire))}.rcol .row[data-k="air"]{--dk:var(--d-air)}.rcol .row[data-k="heat"]{--dk:var(--d-heat)}.rcol .row[data-k="coast"]{--dk:var(--d-sea)}.rcol .row[data-k="land"]{--dk:var(--d-ground)}.rcol .row[data-k="water"]{--dk:var(--d-water)}
+.rcol2 .row[data-k]{box-shadow:inset 3px 0 0 var(--dk,var(--wire))}.rcol2 .row[data-k="air"]{--dk:var(--d-air)}.rcol2 .row[data-k="heat"]{--dk:var(--d-heat)}.rcol2 .row[data-k="coast"]{--dk:var(--d-sea)}.rcol2 .row[data-k="land"]{--dk:var(--d-ground)}.rcol2 .row[data-k="water"]{--dk:var(--d-water)}
 .fam[data-fam="Air"]{--dk:var(--d-air)}.fam[data-fam="Weather"]{--dk:var(--d-heat)}.fam[data-fam="Sound and light"]{--dk:var(--d-noise)}.fam[data-fam="Sea"]{--dk:var(--d-sea)}.fam[data-fam="Radio"]{--dk:var(--d-energy)}.fam[data-fam="Other"]{--dk:var(--d-ground)}
 .fam .tr path{stroke:var(--dk,currentColor)!important}.fam .fh{box-shadow:inset 3px 0 0 var(--dk,transparent);padding-left:8px}
 /* the board: a grid of slots; a feed is a module with its own little screen; an empty slot is a + */
@@ -1037,13 +1038,25 @@ body:not(.classic) .hero .ladder.folded{display:none}
 /* ROUND 3: Now with no dead space. Both columns are stacks of modules and end on the same line: the grid stretches
    them, and the last module of the shorter one grows (Tomas, 7 Nov: "so it does not have empty spaces like the one
    below the map"). What to do opens the right column, beside the moment it is about. */
-.face{align-items:stretch}.face .lcol,.face .rcol{display:flex;flex-direction:column;gap:16px;min-width:0}
+.face{align-items:stretch}.face .lcol,.face .rcol,.face .lcol2,.face .rcol2{display:flex;flex-direction:column;gap:16px;min-width:0}
 .face .rcol{background:none!important;border:0!important;padding:0!important;align-self:stretch!important}
-.face .lcol>*,.face .rcol>*{margin-top:0!important}.face .lcol,.face .rcol{margin-top:0!important;padding-top:0!important}
-.face .lcol>.hero{flex:1}.face .rcol>.nxpart{flex:1}
+.face .lcol>*,.face .rcol>*,.face .lcol2>*,.face .rcol2>*{margin-top:0!important}.face .lcol,.face .rcol{margin-top:0!important;padding-top:0!important}
+.face .lcol>.hero,.face .rcol>.ncity,.face .lcol2>.nxpart,.face .rcol2>.amod{flex:1}.face .lcol2,.face .rcol2{margin-top:16px}
+/* What to do as one strip across both columns, under the Index and the map (Tomas, 8 Nov): small text, one line when
+   nothing is asked, two at most when something is; the buttons keep their 44 px */
+.face .nstrip{display:flex;flex-direction:column;gap:8px;margin-top:16px}
+.nstrip .todo{display:flex;flex-wrap:wrap;align-items:center;gap:4px 18px;margin:0;padding:6px 12px}
+.nstrip .todo>.nh{margin:0!important;padding:0!important;border:0!important;flex:none}.nstrip .todo>.nh::after{content:none}
+.nstrip .decide{display:contents}.nstrip .todo:has(.decide){border-color:var(--wire)}
+.nstrip .nk,.nstrip .dq,.nstrip .dm,.nstrip .nothing{margin:0!important;max-width:none}
+.nstrip .dq{font:600 var(--t-small)/1.35 var(--body);flex:1 1 280px}.nstrip .nothing,.nstrip .nothing .x{font:500 var(--t-small)/1.35 var(--body)}
+.nstrip .dm:empty{display:none}
+.nstrip #asks .decide{display:flex;flex-wrap:wrap;align-items:center;gap:4px 18px;margin:0;padding:6px 12px}.nstrip #asks .decide+.decide{margin-top:8px}
 .face .amod{background:var(--card);border:1px solid var(--hair);padding:0 16px 16px}
 /* In the city: the Index readout and the map in one screen at the head of the right column (Tomas, 7 Nov) */
 .ncity .scr{margin-top:0!important}.ncity .around{margin:0;border-top:1px solid var(--hair)}.ncity #rosecap{margin-top:10px}
+/* the map takes whatever height the frame has beside the day's screen, so the frame ends with the screen, not empty */
+.ncity,.ncity .scr,.ncity .around,.ncity .around>.sbody,.ncity #rose{display:flex;flex-direction:column}.ncity .scr,.ncity .around,.ncity .around>.sbody,.ncity #rose,.ncity .aroundmap{flex:1 1 auto}.ncity .aroundmap{width:100%!important}
 .ix{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;padding:10px 0 12px}
 .ixvu{display:grid;grid-template-rows:repeat(20,6px);gap:2px;width:14px;align-self:center}.ixvu i{background:var(--hair)}.ixvu i.on{background:var(--cells)}
 .ixh{font:500 var(--t-cap)/1.3 var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--cells);margin:0}.ixh span{color:var(--ink)}
@@ -1131,9 +1144,11 @@ body:not(.classic) .hero .ladder.folded{display:none}
        2. The four distances as one quiet line under the drawing, provenance as ink pills (the drawing shows them).
        3. What to do: the Decide card, framed and with its buttons, only while something is asked (`asking`, or a live
           event still asking). Otherwise one plain line, "Nothing is asked now.", with the hour it is usually worst.
+          Since 8 Nov one low strip across both columns, under the day's screen and the city's (Tomas: "fully
+          horizontally, small text"); the pack asks and the decide bands sit in it.
        4. Did it work, then Yesterday (#nremember, admin token only): quiet, no frame.
        5. Next days (Tomas, 4 Nov: the switch "Now · Next days" was a second tab bar under the doors): the rest of today,
-          tomorrow and the day after, a part of Now under What to do. #now/next scrolls to it.
+          tomorrow and the day after, under the strip on the left, beside Around the house. #now/next scrolls to it.
        6. Around the house: the issues drawn by the hour as rows (Air, Heat), then the stations' map, its caption one line.
           Land and Coast change yearly and moved to Place, beside the ground.
        7. Also read here, under both columns: the packs' observe bands side by side, each band's source once, its note
@@ -1161,16 +1176,22 @@ body:not(.classic) .hero .ladder.folded{display:none}
     <section class="amod ncity" id="ncity" data-learn="now-city" data-reads="/index/place" data-stage="observe" data-pack="index" data-kind="readout" aria-labelledby="ncityh"><h2 class="nh" id="ncityh">In the city</h2>
       <div class="scr" data-theme="dark"><div class="sbody" id="ncityrow"></div><figure class="around" data-learn="now-around" data-reads="/sensors /stats" data-stage="observe" data-pack="air-quality" data-kind="stack"><div class="sbody" style="padding:10px"><div id="rose"></div></div><p class="sinfo"><span>Air · the stations around it</span><span>PM2.5 now</span></p></figure></div>
       <p class="fine" id="rosecap"></p></section>
+  </div>
+  <div class="nstrip">
     <section class="todo" id="decide" data-learn="now-todo" data-reads="/issues /actions /alerts" data-stage="decide" data-pack="core" data-kind="readout" aria-label="What to do"></section>
     <div id="asks" hidden></div>
     <div id="ndecl-decide" hidden></div>
+  </div>
+  <div class="lcol2">
+    <div class="nxpart"><h2 class="nh" id="nexth">Next days</h2>
+      <section id="next" data-learn="now-next" data-reads="/forecast" data-stage="observe" data-pack="forecast" data-kind="readout" aria-labelledby="nexth"></section></div>
+  </div>
+  <div class="rcol2">
     <section class="amod" aria-label="Around the house"><h2 class="nh">Around the house</h2>
     <aside data-learn="now-rows" data-reads="/issues /issues/days" data-stage="measure" data-pack="core"><div class="rows" id="rows"></div></aside>
     <p class="fine" id="nthings" data-learn="now-things" data-reads="/things" data-stage="observe" data-pack="core" data-kind="row" hidden></p></section>
     <section class="nrem" id="nremember" data-learn="now-worked" data-reads="/learned /learned/search /household" data-stage="measure" data-pack="core" data-kind="readout" aria-label="Did it work, and yesterday" hidden></section>
     <div id="ndecl-measure" hidden></div>
-    <div class="nxpart"><h2 class="nh" id="nexth">Next days</h2>
-      <section id="next" data-learn="now-next" data-reads="/forecast" data-stage="observe" data-pack="forecast" data-kind="readout" aria-labelledby="nexth"></section></div>
   </div>
   <section class="alsoread" id="alsoread" aria-labelledby="alsoh" hidden><h2 class="nh" id="alsoh">Also read here</h2><div class="alsog" id="ndecl-observe"></div></section>
   <section class="board" id="board" data-board="now" aria-labelledby="boardh" data-reads="/stats /readings /issues /packs" data-stage="observe" data-pack="core" data-kind="series">
