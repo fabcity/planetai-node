@@ -44,7 +44,7 @@ The middlewares answer `{"error": "..."}`. A share-level 403 names the level and
 
 For a path no level opens it ends "No share level opens this one, so it always needs a token from anywhere but the node itself." `/mcp` without the admin token is 401 `{"error": "the agent surface needs Authorization: Bearer <ADMIN_TOKEN>"}`.
 
-Some routes are a pack's, served from `packs/<id>/routes.py`: `/forecast` (forecast), `/nearby` (nearby), `/index/place` (index), `/earth`, `/earth/change.png` and `/earth/year.png` (earth), `/earth/frame.png` (earth-engine), every `/captures` route and `/species` (eyes), and `/things` and `/offers` (things). While its pack is off on the node, such a route answers 404 `{"detail": "the <pack> pack is off on this node"}`.
+Some routes are a pack's, served from `packs/<id>/routes.py`: `/forecast` (forecast), `/nearby` (nearby), `/index/place` (index), `/earth`, `/earth/change.png` and `/earth/year.png` (earth), `/earth/frame.png` (earth-engine), `/hydro` (hydro), every `/captures` route and `/species` (eyes), and `/things` and `/offers` (things). While its pack is off on the node, such a route answers 404 `{"detail": "the <pack> pack is off on this node"}`.
 
 Handlers answer `{"detail": "..."}`. The token checks:
 
@@ -353,6 +353,11 @@ Official and model weather for this point, from `forecast-bmkg`, `forecast-om`, 
 Access: open
 
 What the earth packs hold for this node's square: `{node, enabled, years, bytes, latest, changes, frames, dir, imagery, png, lat, lon, radius_m, attribution, hint}`, from the AlphaEarth years, the land-change comparisons and the Sentinel-2 or Landsat frames. Empty until `planetai run earth fetch`, never an error; `hint` names the next command.
+
+### GET /hydro
+Access: token
+
+What the hydro pack kept for this node's square: `{lat, lon, radius_km, region, fetched_at, release, attribution, nearest, largest, basin, rivers, basins, node, sentence, largest_sentence}`. `rivers` and `basins` are GeoJSON FeatureCollections (HydroRIVERS reaches with their distance to the node, level-12 basins with `here` on the node's own), `basin` holds the node's basin at levels 12 and 4. Before `planetai run hydro fetch` it returns `{node, rivers: null, basins: null, hint, attribution}`, never an error. Token-only, like `/place/geojson`: the nearest river's distance gives away the point.
 
 ### GET /earth/change.png
 Access: open

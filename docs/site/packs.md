@@ -9,7 +9,7 @@ There are two tiers:
 
 | | core | wild |
 |---|---|---|
-| lives in | `packs/` in the node's repository, twenty-six of them | its author's own repository, or a folder in [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs) |
+| lives in | `packs/` in the node's repository, twenty-seven of them | its author's own repository, or a folder in [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs) |
 | reaches a node | with every release | Install in Set up › Packs, or `planetai packs add` |
 | checked by | the node's `make lint` and tests, on every commit | the wild-packs repository's CI, against the node's `main`, every week |
 | kept by | the node's maintainers | its author |

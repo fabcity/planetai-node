@@ -9,6 +9,14 @@
   has written some, and a balance weighs the house against the clean-air line with the stations nearby counted. The
   Wall's map and its four scales are gone, the map stays on Place. docs/wall.
 
+- **A node knows where its rivers are.** The new core pack `hydro` fetches HydroSHEDS once for the node's square
+  (`planetai run hydro fetch`, 50-160 MB downloaded, read and deleted, under 100 KB kept) and keeps the rivers, the
+  basins they drain and the basin the node sits in. Each poll re-sends the nearest river's distance, flow, order,
+  upstream area and distance to the sea, and the largest river's flow. On Place, the water layer gains Rivers and
+  Basins rows, and a tap on a river gives its figures. The level-4 basin is the same bioregion index.fab.city draws.
+  Rivers start where 10 km² drains, so a canal or a subak channel is not in it. Shown under HydroATLAS's CC-BY 4.0.
+  Add `hydro` to `PACKS_ENABLED`. Registry pinned at `a310156`.
+
 - **An alert sent while the internet drops for a moment still arrives.** If the connection to Telegram never opens,
   the node tries again 3 seconds later and then 10 seconds after that. Node #1's line drops like this several times a
   day, and an alert sent into one of those drops used to be lost. A send that timed out waiting for an answer is not
