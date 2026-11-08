@@ -3,7 +3,7 @@
 *Asked by Tomas, 8 November 2026: "a pack for the planetai nodes that maps where the energy of a node comes from."
 Brainstormed the same day. The mockup he chose is `2026-11-08-energy-mockup.html` beside this file, option A.*
 
-**Status: design, approved for planning on 8 Nov 2026. Nothing built.**
+**Status: design, waiting for Tomas to read it. Nothing built.**
 
 ## 1. Intent
 
@@ -195,6 +195,40 @@ The per-cell numbers cover the seven cells only.
 Per cell, the row shows the MW generated inside it (from OSM) and the kW of household solar the node knows about (its
 own, from HA). Drawing follows the shared map conventions (`doors-placemap.js`, the projecting-h3-cells skill).
 
+### 5.7 In the flows vocabulary (`fabcity-flows` 1.0)
+
+Checked on 8 Nov against `packs/flows/resources.yml` (branch `flows-pack-2026-09-28`, published at
+planetai.fab.city/vocab/flows/1.0/). Energy fits the profile without a new class.
+
+- **The class is `electricity`:** kWh, physical, pillar social, ceiling climate, foundation energy, mfa none. The
+  profile's note already names this pack's two flows: "`produce.electricity.cell` is the roof;
+  `consume.electricity.beyond` is the grid."
+- **A genset is two lines:** `consume.fuel.<ring>` (litres) and `produce.electricity.cell`. That covers a hotel or a lab
+  with its own diesel, with no new class.
+- **Plants, substations, lines and cables are stock with no class**, like buildings in SPEC_place_microgis. That's why
+  they sit in the `built` row (§5.6).
+- **The household's flows are hourly kWh**, integrated from HA's W readings: `produce.electricity.cell` from the roof,
+  and `consume.electricity.<ring>` from the grid. The battery is not a flow, because it moves the roof's own kWh in time.
+  These lines stay on the machine like every flows line: `push_aggregates` leaves `source = 'flows'` out.
+- **PITO and DIDO fall out of the profile's own rule.** Physical from `beyond` is PITO, so the Java share is literally
+  the PITO share of Bali's electricity, and the roof is DIDO. The Index can read the card's split with no new logic.
+
+Two gaps:
+
+1. **The note fixes the grid at `beyond`.** This pack's whole point is that grid power comes from different rings:
+   Pesanggaran is in the city or the region, Celukan Bawang is on the island, Java is beyond. Writing every grid kWh as
+   `beyond` throws away "where comes what". **Decided by Tomas, 8 Nov:** amend the note so a grid kWh carries the
+   ring where it was made, split by this pack's shares (`consume.electricity.city`, `.region`, `.beyond`). No place has
+   logged `electricity` yet, so the class isn't frozen and the change is allowed by the profile's own rule. Each source
+   gets its ring in `grids.yml`, assigned against the Index's place boundaries. In Bali, where the Java share is a range
+   (§5.3), the split uses the range's midpoint and says so.
+2. **The flows pack is not on main.** Until `resources.yml` and the `check_rules` vocabulary assertion reach main,
+   the energy pack keeps its own metric names (`energy_roof_kwh`, `energy_grid_kwh`). When flows lands, it writes the
+   same hourly kWh as `produce.electricity.cell` and `consume.electricity.<ring>`. That switch is one step in the plan,
+   not a redesign.
+
+Hydrogen would need a new class (kg) when it comes back. That is noted here and not proposed.
+
 ## 6. Constraints
 
 - A core pack: Tomas wants it on Now for every node. `requires:` the node release it ships in.
@@ -220,6 +254,7 @@ own, from HA). Drawing follows the shared map conventions (`doors-placemap.js`, 
 - Today's indicators sit beside it, so a household or lab is moved to act.
 - Mockup **A**: the year first, today underneath.
 - **Both** Bali and Menorca in the first version. Menorca merges on recorded REE responses and is proven on `mahon1` after.
+- Grid power carries the ring where it was made (the `electricity` note in `fabcity-flows` is amended, §5.7).
 - **Live** household readings, **through Home Assistant**. No house in the fleet has solar in HA yet, so that path ships tested on recorded responses only.
 
 ## 8. My calls, open to Tomas
