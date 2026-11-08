@@ -8,7 +8,7 @@
   upstream area and distance to the sea, and the largest river's flow. On Place, the water layer gains Rivers and
   Basins rows, and a tap on a river gives its figures. The level-4 basin is the same bioregion index.fab.city draws.
   Rivers start where 10 km² drains, so a canal or a subak channel is not in it. Shown under HydroATLAS's CC-BY 4.0.
-  Add `hydro` to `PACKS_ENABLED`. Registry pinned at `89a5505`.
+  Add `hydro` to `PACKS_ENABLED`. Registry pinned at `a310156`.
 
 - **An alert sent while the internet drops for a moment still arrives.** If the connection to Telegram never opens,
   the node tries again 3 seconds later and then 10 seconds after that. Node #1's line drops like this several times a
