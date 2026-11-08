@@ -222,6 +222,16 @@ Two gaps:
    logged `electricity` yet, so the class isn't frozen and the change is allowed by the profile's own rule. Each source
    gets its ring in `grids.yml`, assigned against the Index's place boundaries. In Bali, where the Java share is a range
    (§5.3), the split uses the range's midpoint and says so.
+
+   The amended note, which **rides in the energy PR** (Tomas, 8 Nov). The flows branch is 632 commits behind main, and
+   its lint fails for reasons unrelated to this change:
+
+   > `produce.electricity.cell` is the roof. A grid kWh carries the ring where it was made, split by the energy pack's
+   > shares of the grid's sources (`consume.electricity.city`, `.region`, `.beyond`); a node with no energy pack logs
+   > it as `beyond`.
+
+   If `packs/flows/resources.yml` isn't on main when the energy PR opens, the line goes in with flows instead. The
+   published vocabulary page needs a site rebuild and deploy, and that is asked for separately.
 2. **The flows pack is not on main.** Until `resources.yml` and the `check_rules` vocabulary assertion reach main,
    the energy pack keeps its own metric names (`energy_roof_kwh`, `energy_grid_kwh`). When flows lands, it writes the
    same hourly kWh as `produce.electricity.cell` and `consume.electricity.<ring>`. That switch is one step in the plan,
