@@ -13,6 +13,7 @@ FIX = ROOT / "packs/energy/tests/fixtures"
 sys.path.insert(0, str(ROOT / "packs/energy"))
 
 import grids as G  # noqa: E402
+import mix as M  # noqa: E402
 import osm as O  # noqa: E402
 
 fails: list[str] = []
@@ -55,8 +56,43 @@ gen = O.parse({"elements": [{"type": "node", "lat": 0.0, "lon": 0.0,
 check(gen[0]["kind"] == "generator", "a generator is listed apart, so a plant's MW is never counted twice")
 check(unk[0]["fuel"] is None and unk[0]["fossil"] is None, "unlisted fuel has fossil=None")
 
+# ---------------------------------------------------------------- Bali's range (mix.py)
+g_syn = {
+    "polygon": [[0, 0], [0, 10], [10, 10], [10, 0], [0, 0]],
+    "rings": {"city": [[0, 0], [0, 5], [5, 5], [5, 0], [0, 0]]},
+    "capacity_factors": {"coal": 0.6, "solar": 0.2},
+    "links": [{"rated_mw": 100, "fossil_share": 0.8, "ring": "beyond"}],
+    "demand_mw": 400,
+}
+src = [
+    {"kind": "plant", "fuel": "coal", "fossil": True, "mw": 300, "lat": 2, "lon": 2},
+    {"kind": "plant", "fuel": "solar", "fossil": False, "mw": 100, "lat": 7, "lon": 7},
+    {"kind": "plant", "fuel": "coal", "fossil": True, "mw": None, "lat": 3, "lon": 3},
+    {"kind": "generator", "fuel": "solar", "fossil": False, "mw": 500, "lat": 2, "lon": 2},
+]
+e = M.estimate(src, g_syn)
+check(abs(e["island"] - 180 / 200) < 1e-9, "island share is 180 of 200 MW-weighted (generators and null MW excluded)")
+check(abs(e["import_max"] - 0.25) < 1e-9, "100 MW cable against 400 MW demand")
+check(abs(e["low"] - 0.875) < 1e-9 and abs(e["high"] - 0.9) < 1e-9, "range 87.5–90%")
+check(abs(e["mid"] - 0.8875) < 1e-9 and e["method"] == "capacity-factors" and e["kind"] == "estimated",
+      "mid, method and kind")
+check(abs(sum(e["split"].values()) - 1) < 1e-9, "the ring split sums to one")
+g2 = dict(g_syn, demand_mw=None)
+e2 = M.estimate(src, g2)
+check(e2["import_max"] is None and e2["mid"] is None and e2["split"]["beyond"] is None,
+      "an unknown cable rating gives no import share and no midpoint, never a guess")
+check(abs(e2["low"] - 0.8) < 1e-9 and abs(e2["high"] - 0.9) < 1e-9,
+      "unknown rating: the range runs from the island (90%) to the cable's own share (80%)")
+g3 = dict(g_syn, links=[{"rated_mw": 100, "fossil_share": None, "ring": "beyond"}])
+check(M.estimate(src, g3)["low"] is None, "a link with no known mix gives no figure")
+e_empty = M.estimate([], g_syn)
+check(e_empty["low"] is None and e_empty["island"] is None, "no known plants gives None, never 0 or 1")
+e_bali = M.estimate(bali, G.grid_for(-8.8161, 115.1635, g))
+check(e_bali["low"] is not None and 0.80 < e_bali["low"] < e_bali["high"] <= 1,
+      f"node #1 Bali range sanity, got {e_bali['low']}–{e_bali['high']}")
+
 if fails:
     print("\n".join(f"  ✗ {f}" for f in fails))
     sys.exit(1)
-print("  ✓ energy: grids and OSM sources")
+print("  ✓ energy: grids, OSM sources, and Bali's range")
 sys.exit(0)

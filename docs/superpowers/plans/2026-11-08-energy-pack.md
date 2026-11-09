@@ -92,7 +92,7 @@ Data and reading, no code. Later tasks test against what this task writes down.
 - [ ] **Step 3: Read Ember's yearly Indonesia electricity data** (CC BY 4.0). Record the latest year's fossil share
   as `links[0].fossil_share`, with the year, labelled a proxy for Java.
 - [ ] **Step 4: Find the Java–Bali cable's rated MW and Bali's average demand,** from a source whose licence allows
-  quoting. If none is found, write `rated_mw: ~`. Task 3 then gives the high end as "not known", and the card says
+  quoting. If none is found, write `rated_mw: ~`. Task 3 then runs the range to the link's own share, and the card says
   so. A guessed number is not allowed.
 - [ ] **Step 5: Settle Nusa Penida:** is it connected to Bali's main grid (submarine cable) or a separate system?
   Draw `bali.polygon` with or without it, and say which in the README.
@@ -174,8 +174,12 @@ island = Σ mw·cf[fuel] over fossil plants inside g.polygon / Σ mw·cf[fuel] o
          (kind == "plant" only: a generator is listed, never summed, since its plant already carries the MW)
 import_max = min(1, Σ link.rated_mw / g.demand_mw)    (None if any rated_mw or demand_mw is null)
 f(j) = (1 - j)·island + j·link.fossil_share
-low, high = sorted(f(0), f(import_max)); mid = (low + high) / 2      (high None when import_max None)
+low, high = sorted(f(0), f(import_max)); mid = (low + high) / 2
+import_max None (rating unknown): imports are still at most all of demand, so the range is sorted(f(0), f(1)) and
+         mid is None. Never "at least the island": that is false whenever the link is cleaner than the island
+         (Bali, 9 Nov: island 99%, Java 84%). A link with no fossil_share gives low = high = None.
 split: in-island generation by each plant's ring, times (1 - j_mid); beyond = j_mid, with j_mid = import_max / 2
+         (import_max None: city and region are shares of the island's own generation, beyond is None)
 ```
 
 - [ ] **Step 1: Write the failing tests** against a synthetic grid, so they don't depend on Task 1's values:
@@ -322,7 +326,7 @@ Layout per mockup A (`docs/superpowers/specs/2026-11-08-energy-mockup.html`):
 - [ ] **Step 1: Failing tests:**
   - an estimated body renders `95–98%` and a hatched segment;
   - a measured body renders one figure and "right now";
-  - a body with `share.high == null` renders `≥95%` and "the Java share is not known";
+  - a body with `import_max == null` renders `84–99%` and says how much comes from Java is not known;
   - an empty `sources` renders the none sentence and no bar.
 - [ ] **Step 2–4:** implement, then `bash tests/visual/gate.sh` locally. Run it locally, because string tests have
   passed a doors file that never booted.
