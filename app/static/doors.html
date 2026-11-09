@@ -682,8 +682,9 @@ body:not(.classic) .hero .ladder.folded{display:none}
    and large, is speech against the upright facts around it. Collapsed ([hidden]) until there is text. */
 .wlow .wnarr{grid-template-rows:auto minmax(0,1fr)}
 /* its label runs as one sentence, so the words keep the room: whose they are, and that they are never a reading */
-.wnarr .nh{display:block;margin:0;padding:0 0 .6vh;border-top:0;border-bottom:1px solid var(--bez);font:500 var(--wf)/1.3 var(--body);color:var(--mute)}
-.wnarr .nh>span+span::before{content:" · "}
+/* its label is a header ramp like the other screens': whose words, in black, then that they are never a reading, in grey */
+.wnarr .nh{display:flex;flex-wrap:wrap;margin:0;padding:0;border:0;font:500 var(--wf)/1.25 var(--body);color:var(--ink)}
+.wnarr .nh>span{padding:.25em .5em}.wnarr .nh>.nl{background:#000;white-space:nowrap}.wnarr .nh>span+span{flex:1 1 10em;background:#3a3a3a}
 .wnarr .nl{color:var(--ink);font-weight:600}.wnarr .nl .dot{display:inline-block;margin-right:.4em;vertical-align:.15em}
 .wnarr .dot{width:.3em;height:.3em;background:var(--ink);opacity:.35}
 /* the only two motions in the box, each a datum's cadence, stepped: the model is asked (the dot), a letter is typed (the caret) */

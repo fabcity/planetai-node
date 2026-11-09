@@ -229,6 +229,8 @@ function figHeat(b, h, f, r) {
   g += `<circle cx="${sx(cx)}" cy="${sx(bc)}" r="${sx(br * .62)}" fill="${C}"/>`;
   if (v != null) g += pth(`M${sx(cx)},${sx(bc)} L${sx(cx)},${sx(Y(v))}`, C, th * 1.1);
   else g += tx(cx + th + f * .4, yb, `not read at ${hhmm(r.ts[h])}`, 'start', 'var(--mute)');
+  const dv = r.v.filter(x => x != null), bk = cx + th + f * .3;
+  if (dv.length > 1) g += pth(`M${sx(bk + f * .18)},${sx(Y(Math.max(...dv)))} L${sx(bk)},${sx(Y(Math.max(...dv)))} L${sx(bk)},${sx(Y(Math.min(...dv)))} L${sx(bk + f * .18)},${sx(Y(Math.min(...dv)))}`, C, 1.5, ' opacity=".75"');   /* the day's range */
   if (r.line != null) g += pth(`M${sx(cx - th - f * .3)},${sx(Y(r.line))} L${sx(cx + th + f * .3)},${sx(Y(r.line))}`, 'var(--signal-worse)', f / 12)
     + tx(cx + th + f * .5, Y(r.line) + f * .35, fits(f, b.x + b.w - cx - th - f * .5, `line ${fmt(r.line, 0)}`, String(fmt(r.line, 0))))
     + tx(cx - th - f * .6, Y(r.line) + f * .35, String(fmt(r.line, 0)), 'end');
@@ -258,6 +260,9 @@ function figSea(b, h, f, r) {
   }
   /* the sea under the swell, a tone, then the swell itself in the sea's hue */
   g += fil(`${body} L${sx(x1)},${sx(pb)} L${sx(x0)},${sx(pb)} Z`, WG[2]) + pth(d.trim(), C, dw * .8);
+  const top24 = Math.max(...r.v.filter(q => q != null));
+  g += pth(`M${sx(x0)},${sx(yM - A(top24))} L${sx(x1)},${sx(yM - A(top24))}`, C, HAIR, ` stroke-dasharray="${sx(f * .2)} ${sx(f * .15)}" opacity=".6"`)
+    + tx(x0 + f * .3, yM - A(top24) - f * .3, fits(f, (x1 - x0) * .55, `day's top ${fmt(top24, 1)} m`, `top ${fmt(top24, 1)} m`, ''), 'start', C);
   const sX = x0 + (x1 - x0) * h / 23, sT = yM - Am - f * .9;
   g += pth(`M${sx(sX)},${sx(base)} L${sx(sX)},${sx(sT)}`, 'var(--ink)', sw);
   for (let q = 0; q <= mx; q += 0.5) g += pth(`M${sx(sX)},${sx(yM - A(q))} l${sx(f * (q % 1 ? .2 : .4))},0`, 'var(--ink)', sw);
@@ -286,6 +291,8 @@ function figWind(b, h, f, s, dr) {
   g += tx(cx, cy - R * .55 + f * .35, 'N', 'middle', 'var(--mute)');
   if (R > f * 4) g += [['E', R * .6, 0], ['S', 0, R * .6], ['W', -R * .6, 0]].map(([s, x, y]) => tx(cx + x, cy + y + f * .35, s, 'middle', 'var(--mute)')).join('');
   if (deg == null) return g + tx(cx, cy + f * .35, s ? `not read at ${hhmm(s.ts[h])}` : 'not read', 'middle', 'var(--mute)');
+  for (let i = 0; i < h; i++) { const q = dr.v[i]; if (q == null) continue; const a = q * Math.PI / 180;
+    g += pth(`M${sx(cx + Math.sin(a) * R * .7)},${sx(cy - Math.cos(a) * R * .7)} L${sx(cx + Math.sin(a) * R * .81)},${sx(cy - Math.cos(a) * R * .81)}`, C, sw * 1.2, ` opacity="${(.15 + .55 * i / 23).toFixed(2)}"`); }   /* the day's bearings so far */
   const tip = R * .72, tail = R * .6, n = Math.min(8, Math.round((sp ?? 0) / 5));
   let vane = pth(`M${sx(cx)},${sx(cy + tail)} L${sx(cx)},${sx(cy - tip)}`, C, dw)
     + pth(`M${sx(cx - f * .32)},${sx(cy - tip + f * .55)} L${sx(cx)},${sx(cy - tip)} L${sx(cx + f * .32)},${sx(cy - tip + f * .55)}`, C, dw)
@@ -298,13 +305,21 @@ function wallStage(el, h, f) {
   const W = el.clientWidth, H = el.clientHeight, R = WALL.R; if (W < 8 * f || H < 6 * f) return;
   const rails = [], box = (x, w, y, hh) => ({ x, w, y, h: hh });
   let B;
-  if (W >= 900) { const y = 0, hh = H - f * .9; rails.push(hh); B = [box(0, .43 * W, y, hh), box(.455 * W, .14 * W, y, hh), box(.615 * W, .2 * W, y, hh), box(.835 * W, .165 * W, y, hh)]; }
-  else { const h1 = .52 * H, h2 = H - f * .9; rails.push(h1, h2); B = [box(0, W, 0, h1), box(0, .26 * W, h1 + f * .9, h2 - h1 - f * .9), box(.29 * W, .4 * W, h1 + f * .9, h2 - h1 - f * .9), box(.72 * W, .28 * W, h1 + f * .9, h2 - h1 - f * .9)]; }
+  if (W >= 900) { const y = 0, hh = H - f * 1.6; rails.push(hh); B = [box(0, .43 * W, y, hh), box(.455 * W, .14 * W, y, hh), box(.615 * W, .2 * W, y, hh), box(.835 * W, .165 * W, y, hh)]; }
+  else { const h1 = .52 * H, h2 = H - f * 1.6; rails.push(h1, h2); B = [box(0, W, 0, h1), box(0, .26 * W, h1 + f * .9, h2 - h1 - f * .9), box(.29 * W, .4 * W, h1 + f * .9, h2 - h1 - f * .9), box(.72 * W, .28 * W, h1 + f * .9, h2 - h1 - f * .9)]; }
   let g = hatch('wst-hx') + specks(W, H, 7);
-  for (const y of rails) {
+  rails.forEach((y, k) => {
     g += pth(`M0,${sx(y)} L${W},${sx(y)}`, 'var(--ink)', Math.max(1.5, f / 14));
-    for (let x = f / 2; x < W; x += f / 2) g += pth(`M${sx(x)},${sx(y)} l0,${sx(f * ((x / f) % 5 === 0 ? .4 : (x / f) % 1 ? .12 : .22))}`, 'var(--ink)', 1, ' opacity=".5"');
-  }
+    if (k < rails.length - 1) { for (let x = f; x < W; x += f) g += pth(`M${sx(x)},${sx(y)} l0,${sx(f * .2)}`, 'var(--ink)', 1, ' opacity=".5"'); return; }
+    /* the last rail is the day being replayed: an hour a tick, every six said, and a cursor stepping with the hour */
+    for (let i = 0; i < 24; i++) {
+      const x = (i + .5) * W / 24, six = (23 - i) % 6 === 0;   /* counted back from the last hour, so the rail ends on now */
+      g += pth(`M${sx(x)},${sx(y)} l0,${sx(f * (six ? .5 : .25))}`, 'var(--ink)', six ? 1.5 : 1, six ? '' : ' opacity=".55"');
+      if (six && W / 4 > f * 3.4) g += tx(i === 23 ? x + f * .2 : x, y + f * 1.35, hhmm(R.B[i]), i === 23 ? 'end' : 'middle', 'var(--mute)');
+    }
+    const cx = (h + .5) * W / 24;
+    g += `<path d="M${sx(cx - f * .3)},${sx(y - f * .42)} L${sx(cx + f * .3)},${sx(y - f * .42)} L${sx(cx)},${sx(y - f * .04)} Z" fill="var(--ink)"/>`;
+  });
   /* each figure on its plate, drawn a little inside it */
   const p = f * .3, ins = q => ({ x: q.x + p, y: q.y + p * .6, w: q.w - 2 * p, h: q.h - p * 1.2 });
   g += B.map(q => frame({ x: q.x + 1, y: q.y + 1, w: q.w - 2, h: q.h - f * .2 }, f)).join('');
@@ -331,9 +346,9 @@ function wallBalance(el, h, f) {
   const W = el.clientWidth, H = el.clientHeight, r = WALL.R.dust; if (W < 6 * f || H < 4 * f || !r || r.line == null) return;
   const hs = WALL.R.house;
   const v = hs ? hs.v[h] : null, sw = Math.max(1, f / 18), dw = Math.max(2, f / 9), near = WALL.R.near.map(s => s[h]).filter(x => x != null);
-  const px = W / 2, py = f * 2.1, bl = Math.min(W * .34, f * 8), th = v == null ? 0 : -Math.max(-1, Math.min(1, (v - r.line) / r.line)) * 8 * Math.PI / 180;
+  const px = W / 2, bl = Math.min(W * .34, f * 8), th = v == null ? 0 : -Math.max(-1, Math.min(1, (v - r.line) / r.line)) * 8 * Math.PI / 180;
   const sq = f * .42, gap = f * .2, per = Math.max(1, Math.floor((W - f) / (sq + gap))), rows = Math.ceil(near.length / per), sy = H - rows * (sq + gap);
-  const pivB = sy - f * .4, cs = Math.cos(th), sn = Math.sin(th), bt = f * .1;
+  const pivB = sy - f * .4, py = Math.max(f * 2.1, pivB - f * 7), cs = Math.cos(th), sn = Math.sin(th), bt = f * .1;   /* a tall screen keeps the column short */
   /* a plate screwed down, a column, a knife edge; the beam a bar of tone graduated along its length; each pan hung on
      three chains, a tone in its own colour of rim */
   let g = specks(W, H, 11) + rct(px - f * 1.6, pivB - f * .32, f * 3.2, f * .32, WG[3]) + screw(px - f * 1.2, pivB - f * .16, f * .09) + screw(px + f * 1.2, pivB - f * .16, f * .09)
@@ -446,6 +461,8 @@ function narrRoll() {
   const w = $('#wnarr .nw'), p = w && w.querySelector && w.querySelector('.nt');
   if (!p || w.classList.contains('roll') || p.offsetHeight <= w.clientHeight) return;
   w.classList.add('roll');
+  { const lh = parseFloat(getComputedStyle(p).lineHeight) || 24, pad = parseFloat(getComputedStyle(w).paddingTop) || 0;   /* whole lines, never one cut across */
+    w.style.height = `${pad + Math.max(1, Math.floor((w.clientHeight - pad) / lh)) * lh}px`; }
   const twin = p.cloneNode(true); twin.setAttribute('aria-hidden', 'true'); twin.querySelector('[id]')?.removeAttribute('id'); w.appendChild(twin);
   const cs = getComputedStyle(p), h = p.offsetHeight + parseFloat(cs.marginBottom), line = parseFloat(cs.lineHeight) || 24;
   w.style.setProperty('--roll-h', `${h}px`);
