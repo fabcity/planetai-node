@@ -7,6 +7,10 @@
   with its links to index.fab.city kept. What to do is folded to one line, and **Options to act** opens the answers and
   the packs' questions. Did it work and Yesterday moved under it, across the page. On Place the open map's table is
   gone and the place in figures takes the whole band, bigger. Data's board is gone, Now and Place keep theirs.
+- **A new node no longer starts at node #1's exact position.** `.env.example` and the `NODE_LAT`/`NODE_LON` defaults
+  held it to the metre until a keeper set their own. They now hold the centre of node #1's resolution-8 cell, the point
+  `/health` already publishes. The working notes that sat in `docs/` (plans, handoffs, reviews, design audits) moved to
+  the private planetai-design repo, and AGENTS.md says they go there from now on.
 
 - **The rivers are in Place's figures.** Once the hydro pack has fetched them, the place in figures has a Rivers row:
   how far the nearest river is, its flow and how far it still runs to the sea, and the largest river in the square.
