@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **The installer tries a download again before giving up.** GitHub sometimes answers a release download with a
+  504. `install` and `update.sh` now retry the tarball, its signature and its checksum up to three times, and `install`
+  the preflight script too.
 - **A new node no longer starts at node #1's exact position.** `.env.example` and the `NODE_LAT`/`NODE_LON` defaults
   held it to the metre until a keeper set their own. They now hold the centre of node #1's resolution-8 cell, the point
   `/health` already publishes. The working notes that sat in `docs/` (plans, handoffs, reviews, design audits) moved to
