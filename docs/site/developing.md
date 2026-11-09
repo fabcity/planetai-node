@@ -111,10 +111,10 @@ says who merges what. How a merged change is tested on a node and gathered into 
 ## Looking at the page
 
 `python3 tools/shots.py` renders every fixture in Now, on the Wall and in Network at four widths into
-`docs/design/shots/`, with every request answered from disk. It fails on a page error, a component that drew its
+a `shots/` folder in `docs/design/` that git ignores, with every request answered from disk. It fails on a page error, a component that drew its
 guard box, a page that scrolls sideways or a request the fixture should not have made. It needs Chromium from a
 sibling `planetai-design` checkout (`PLANETAI_DESIGN_REPO`) and is not a gate. The dashboard's frozen visual language
-and the checks against it are in `docs/design/LANGUAGE_GAP.md`.
+and the checks against it are in `planetai-design/node-docs/design/LANGUAGE_GAP.md`.
 
 ## This documentation
 
@@ -180,7 +180,7 @@ docs/         the pages; docs/site/ the ones written for this site; design/ the 
 presets/      bali · barcelona · boston · santiago · delhi · menorca
 ```
 
-A tarball node carries none of `tests/`, `.github/`, `docs/design/`, the `tools/check_*` gates, or the bundle and
+A tarball node carries none of `tests/`, `.github/`, `planetai-design/node-docs/design/`, the `tools/check_*` gates, or the bundle and
 release scripts; `tools/bundle.sh` leaves them out.
 
 ## Where this leads

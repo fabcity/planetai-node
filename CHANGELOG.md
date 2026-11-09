@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **A new node no longer starts at node #1's exact position.** `.env.example` and the `NODE_LAT`/`NODE_LON` defaults
+  held it to the metre until a keeper set their own. They now hold the centre of node #1's resolution-8 cell, the point
+  `/health` already publishes. The working notes that sat in `docs/` (plans, handoffs, reviews, design audits) moved to
+  the private planetai-design repo, and AGENTS.md says they go there from now on.
+
 - **The rivers are in Place's figures.** Once the hydro pack has fetched them, the place in figures has a Rivers row:
   how far the nearest river is, its flow and how far it still runs to the sea, and the largest river in the square.
   Its link turns the Rivers and Basins rows on and takes the map out to District, where the rivers are in view. The
