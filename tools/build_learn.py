@@ -297,11 +297,11 @@ MARKS = [
      "This part shows only with the admin token, because it is the house's own record. The whole diary "
      "and every case are on Node, under What it remembers."),
     ("now-rows", "Every issue, a row each", "dashboard.md", "Now",
-     "**Around the house**, under the map. A row for each issue", "moves the page to that issue.",
+     "**Around the house** opens the right column. A row for each issue", "moves the page to that issue.",
      "Each row carries the node's state word, the value now and today's hours over the line. Press one "
      "and the whole door moves to that issue."),
     ("now-bands", "A pack's own band", "dashboard.md", "Now",
-     "**A pack's own band.** A pack can declare a band", "`measure` under Did it work.",
+     "**A pack's own band.** A pack can declare a band", "`measure` at the foot of the right column.",
      "Each row is one reading the node holds. Its source, how it was got and how old it is are said once under the "
      "band's title, and again on a row only where they change. The pack's own note is folded under How this is read."),
     ("now-next", "The next three days", "dashboard.md", "Now",
@@ -309,15 +309,15 @@ MARKS = [
      "The rows are drawn from GET /forecast, asked when Now is drawn and kept for 30 minutes. Press a row for its 72 hours "
      "against the line. These are models: nothing on this part asks you to act or sends a message."),
     ("now-around", "The stations around the house", "dashboard.md", "Now",
-     "Under it, the map:", "for a screen with the token.",
+     "**The air around it**, under Around the house", "the distance rings and cells.",
      "Press a station to open its readings in Data. Without WebGL the map is drawn as a rose of "
      "bearings and distances instead."),
     ("now-things", "What this home keeps", "dashboard.md", "Now",
      "With the admin token one line counts", "and opens Data › Home.",
      "The line counts the things, how many sit idle and how many need repair, and opens the list in "
      "Data › Home. Only a thing you mark to lend or give is ever published."),
-    ("now-city", "The city on the Fab City Index", "dashboard.md", "Now",
-     "**In the city** opens the right column", "one lit for each cell measured.",
+    ("now-city", "Local production capacity in the city", "dashboard.md", "Now",
+     "**Local production capacity in the city**, under the map", "one lit for each cell measured.",
      "The screen reads GET /index/place, the copy the index pack reads once a day, so Now never waits on "
      "index.fab.city. The numbers are the Index's own; the node does not work them out."),
     ("place-head", "The ground around the house", "place.md", "The head",

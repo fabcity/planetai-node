@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Now reads from the house outwards, and What to do is one line.** The right column opens with Around the house,
+  then the map of the air around it, then the city's Fab City Index, now titled Local production capacity in the city,
+  with its links to index.fab.city kept. What to do is folded to one line, and **Options to act** opens the answers and
+  the packs' questions. Did it work and Yesterday moved under it, across the page. On Place the open map's table is
+  gone and the place in figures takes the whole band, bigger. Data's board is gone, Now and Place keep theirs.
 - **The installer tries a download again before giving up.** GitHub sometimes answers a release download with a
   504. `install` and `update.sh` now retry the tarball, its signature and its checksum up to three times, and `install`
   the preflight script too.
