@@ -46,8 +46,8 @@ satellite sources; water and soil have no pack yet, and no node has handed a job
 
 ## What it does
 
-- **Connects every scale.** Sensors on WiFi (Smart Citizen, and Xiaomi purifiers through a wild pack; the AirGradient and
-  PurpleAir adapters are written and not polled in this version), radios over LoRa where there is no WiFi (Meshtastic),
+- **Connects every scale.** Sensors on WiFi (Smart Citizen, and Xiaomi purifiers through a wild pack, AirGradient and
+  PurpleAir through their packs), radios over LoRa where there is no WiFi (Meshtastic),
   public stations nearby, the city's open-data portal, Copernicus atmosphere and ocean models, Earth Engine's view of the
   land. One schema from the house to the planet.
 - **Turns awareness into action.** Alerts say what is happening, what it means, what to do. Then the node measures
