@@ -237,11 +237,13 @@ const CADENCE = { PT5M: 'every 5 minutes', PT15M: 'every 15 minutes', PT1H: 'hou
 const MINTERNAL = /^(years_cached|fc_)/;
 const MUNIT = { pm25_model: 'µg/m³', pm10_model: 'µg/m³', o3: 'µg/m³', no2: 'µg/m³', co: 'µg/m³', dust: 'µg/m³', temp_model: '°C', humidity_model: '%',
   pressure_model: 'hPa', wind_speed: 'km/h', wind_direction: '°', precipitation: 'mm', sea_surface_temp: '°C', wave_direction: '°', night_lights: 'nW/cm²/sr',
-  businesses_per_km2: 'per km²', roads_km: 'km', buildings: 'buildings', sat_buildings: 'buildings', sat_buildings_yearly: 'buildings a year' };
+  businesses_per_km2: 'per km²', roads_km: 'km', river_flow_m3s: 'm³/s', river_largest_m3s: 'm³/s', river_upland_km2: 'km²', river_to_sea_km: 'km', basin_up_km2: 'km²', river_order: 'Strahler', buildings: 'buildings', sat_buildings: 'buildings', sat_buildings_yearly: 'buildings a year' };
 const MWORD = { built_frac: 'built up', crop_frac: 'cropland', tree_frac: 'trees', water_frac: 'water', ndvi_median: 'greenness (NDVI, median)',
   land_change_score: 'land change, score', land_change_since_2017: 'land change since 2017', land_change_yoy: 'land change, last year',
   sat_buildings: 'buildings, from the satellite', sat_buildings_yearly: 'buildings added, from the satellite', sat_height_m_yearly: 'building height, from the satellite',
-  sat_confidence: 'satellite buildings, confidence', osm_building_coverage: 'buildings mapped in OpenStreetMap' };
+  sat_confidence: 'satellite buildings, confidence', osm_building_coverage: 'buildings mapped in OpenStreetMap',
+  river_m: 'the nearest river, away', river_flow_m3s: 'its flow, long-term average', river_order: 'its order', river_upland_km2: 'ground that drains into it',
+  river_to_sea_km: 'how far it still runs to the sea', river_largest_m3s: 'the largest river in the square, its flow', basin_up_km2: 'ground upstream of the node’s basin' };
 const mrow = o => {
   const m = o.metric, share = /(_frac|_share|_coverage|_confidence)$/.test(m);
   const unit = share ? '%' : MUNIT[m] ?? (/_m(_yearly)?$/.test(m) ? 'm' : /_s$/.test(m) ? 's' : /^poi_/.test(m) ? 'places' : unitOf(m));

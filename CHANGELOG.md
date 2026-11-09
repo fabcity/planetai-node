@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **The rivers are in Place's figures.** Once the hydro pack has fetched them, the place in figures has a Rivers row:
+  how far the nearest river is, its flow and how far it still runs to the sea, and the largest river in the square.
+  Its link turns the Rivers and Basins rows on and takes the map out to District, where the rivers are in view. The
+  row needs the screen's token, as the rivers on the map do. Data's Models table names the seven hydro figures and
+  gives them units.
+
 - **The Wall draws the day as instruments (8 Nov).** One black screen holds four of them, fine dust settling in a jar with a
   particle for every µg/m³, the apparent heat on a thermometer, the swell as a wave and the wind on a vane, and each
   figure carries its hour and provenance word. They replay the last 24 hours an hour at a step and hold the last one,

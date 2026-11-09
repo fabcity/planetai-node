@@ -1497,6 +1497,8 @@ async function placeMap() {
   placeMaps();
 }
 window.placeMap = placeMap; window.placeLayer = setLayer; window.__PM = PM;   // __PM for the rig
+/* the figures' Rivers row: both hydro rows on, and out to District scale, where the nearest river is in view */
+window.placeRivers = () => { setLayer('rivers', true); setLayer('basin', true); if (PM.map) fly(6); };
 /* the Images panel added one: ask again, so its kind's row and its square appear */
 window.placeImagesChanged = async () => { if (!PM.map && !PM.flat) return; [PM.caps, PM.species] = await Promise.all([ask('captures?limit=500').catch(() => null), ask('species').catch(() => null)]); imageRows(); panel(); redraw(); };
 /* The same base for the doors' other maps (Now's "around this house"): the node's own street map and names when this

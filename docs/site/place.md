@@ -126,7 +126,13 @@ closes it.
 Under the screen, across the whole page, is what changed year on year. The satellite then and now sit side by side,
 large, with the hectares that changed between them and a bar a year for the buildings it counts. On a phone the two
 pictures stack. Below that, the open map's table is on the left and **The place in figures** on the right, with land
-and coast, the place's row on the Fab City Index, the Index cells, and what is not here yet.
+and coast, the place's row on the Fab City Index, the Index cells, the rivers, and what is not here yet.
+
+**Rivers** is there once the hydro pack has fetched them, with the screen's token. It says how far the nearest river
+is, how much water it carries on average and how far it still runs to the sea, and the same for the largest river in
+the square. **on the map ↑** turns on the Rivers and Basins rows and takes the map out to District scale, where the
+nearest river is in view. Before the fetch the row says `planetai run hydro fetch`. The same seven figures are in
+Data › Models and satellite, under "Rivers within 25 km".
 
 **Fab City Index** is a row in that band, under land and coast. It names the place this node belongs to, which
 `planetai place` chooses, with the label the Index gives its score (**Partial** or **Simulated**), and then the Index's own
