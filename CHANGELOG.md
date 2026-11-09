@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **The Wall's instruments are drawn finer (9 Nov).** Each stands on a framed plate, in greys under the lines, with
+  screws, a nameplate, flanges on the jar's pipe, clips on the thermometer, guy wires on the wind's mast and a tick
+  every five degrees on its dial. Each keeps some of the day too, the heat's range as a bracket beside the tube, the
+  swell's highest line dashed over the wave, the wind's bearings so far fading behind the vane. The scale under them is
+  the day being replayed, an hour a tick, ending on now. The figures in the header are lighter and larger, the
+  narration's label is a strip like on the other screens, and its text stops on a whole line. Nothing is smaller than
+  28 px at 1920. docs/wall.
+
 - **A new node no longer starts at node #1's exact position.** `.env.example` and the `NODE_LAT`/`NODE_LON` defaults
   held it to the metre until a keeper set their own. They now hold the centre of node #1's resolution-8 cell, the point
   `/health` already publishes. The working notes that sat in `docs/` (plans, handoffs, reviews, design audits) moved to
