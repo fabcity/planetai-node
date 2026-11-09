@@ -1099,7 +1099,7 @@
      "Stasiun mana di dekat kami yang udaranya paling kotor?"
     ]
    },
-   "quote": "Under it, the map: each\npublic station with its 15-minute mean, a red square beside one over the air's line, the house as one mark with its\nown sensors' range, and the distance rings and cells for a screen with the token.",
+   "quote": "**The air around it**, under Around the house: the map of the stations around the house. Each public station has\nits 15-minute mean, a red square beside one over the air's line, the house is one mark with its own sensors' range,\nand a screen with the token gets the distance rings and cells.",
    "section": "Now",
    "title": "The stations around the house",
    "url": "https://planetai.fab.city/docs/dashboard/#now"
@@ -1123,7 +1123,7 @@
      "Mengapa sebagian bacaan ini belum datang?"
     ]
    },
-   "quote": "**A pack's own band.** A pack can declare a band in its `pack.yaml` (a wild pack has no other way onto the page, it\nships no code for it), and Now draws it next to the part with the same stage: `decide` and `act` under What to do,\n`measure` under Did it work.",
+   "quote": "**A pack's own band.** A pack can declare a band in its `pack.yaml` (a wild pack has no other way onto the page, it\nships no code for it), and Now draws it next to the part with the same stage: `decide` and `act` under What to do,\n`measure` at the foot of the right column.",
    "section": "Now",
    "title": "A pack's own band",
    "url": "https://planetai.fab.city/docs/dashboard/#now"
@@ -1147,9 +1147,9 @@
      "Mengapa ini rentang dan bukan satu angka?"
     ]
    },
-   "quote": "**In the city** opens the right column: one screen with the city's Fab City Index over the map of the stations\naround the house. The Index is the screen's big figure, its FCI or its range out of 1, with a column of the Index's 20\ncells beside it, one lit for each cell measured.",
+   "quote": "**Local production capacity in the city**, under the map: the city's Fab City Index. The Index is the screen's big figure, its FCI or its range out of 1, with a column of the Index's 20\ncells beside it, one lit for each cell measured.",
    "section": "Now",
-   "title": "The city on the Fab City Index",
+   "title": "Local production capacity in the city",
    "url": "https://planetai.fab.city/docs/dashboard/#now"
   },
   "now-distances": {
@@ -1219,7 +1219,7 @@
      "Apakah hari ini ada jam yang terlalu panas atau udaranya terlalu kotor?"
     ]
    },
-   "quote": "**Around the house**, under the map. A row for each issue drawn by the hour, its state word, its value now and its hours over the line\ntoday; pressing one moves the page to that issue.",
+   "quote": "**Around the house** opens the right column. A row for each issue drawn by the hour, its state word, its value now and its hours over the line\ntoday; pressing one moves the page to that issue.",
    "section": "Now",
    "title": "Every issue, a row each",
    "url": "https://planetai.fab.city/docs/dashboard/#now"
@@ -1363,7 +1363,7 @@
      "Apa yang belum bisa diukur node ini?"
     ]
    },
-   "quote": "**The place in figures** on the right, with land\nand coast, the place's row on the Fab City Index, the Index cells, the rivers, and what is not here yet.",
+   "quote": "**The place in figures** runs across the page, three to a row on a wide screen: land\nand coast, the place's row on the Fab City Index, the Index cells, the rivers, and what is not here yet.",
    "section": "What changed",
    "title": "What is changing",
    "url": "https://planetai.fab.city/docs/place/#what-changed"

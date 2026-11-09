@@ -125,7 +125,7 @@ closes it.
 
 Under the screen, across the whole page, is what changed year on year. The satellite then and now sit side by side,
 large, with the hectares that changed between them and a bar a year for the buildings it counts. On a phone the two
-pictures stack. Below that, the open map's table is on the left and **The place in figures** on the right, with land
+pictures stack. Below that, **The place in figures** runs across the page, three to a row on a wide screen: land
 and coast, the place's row on the Fab City Index, the Index cells, the rivers, and what is not here yet.
 
 **Rivers** is there once the hydro pack has fetched them, with the screen's token. It says how far the nearest river

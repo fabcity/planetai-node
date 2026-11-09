@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Now reads from the house outwards, and What to do is one line.** The right column opens with Around the house,
+  then the map of the air around it, then the city's Fab City Index, now titled Local production capacity in the city,
+  with its links to index.fab.city kept. What to do is folded to one line, and **Options to act** opens the answers and
+  the packs' questions. Did it work and Yesterday moved under it, across the page. On Place the open map's table is
+  gone and the place in figures takes the whole band, bigger. Data's board is gone, Now and Place keep theirs.
+
 - **The rivers are in Place's figures.** Once the hydro pack has fetched them, the place in figures has a Rivers row:
   how far the nearest river is, its flow and how far it still runs to the sea, and the largest river in the square.
   Its link turns the Rivers and Basins rows on and takes the map out to District, where the rivers are in view. The

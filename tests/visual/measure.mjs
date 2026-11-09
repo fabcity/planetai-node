@@ -3642,8 +3642,14 @@ async function doors() {
     await r.page.route('**/actions', route => route.request().method() === 'POST'
       ? (posts.push(route.request().postDataJSON()), route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' })) : route.fallback());
     await r.page.goto(`${POP}/?layout=doors&fixture=${FIXTURE}#now`, { waitUntil: 'domcontentloaded' });
-    const got = await wait(r.page, '#asks button[data-al]').then(() => true, () => false);
+    /* What to do opens folded (9 Nov): the asks hidden, the button counting them; pressed, they open */
+    const fold = await wait(r.page, '#decide .nfold').then(() => true, () => false);
     await r.page.waitForSelector('#asking:not(.on)', { state: 'attached', timeout: 6000 }).catch(() => {});
+    const shut = fold ? await r.page.evaluate(() => ({ t: document.querySelector('#decide .nfold').textContent, hid: getComputedStyle(document.getElementById('asks')).display === 'none',
+      h: document.querySelector('.nstrip').getBoundingClientRect().height })) : null;
+    ok(fold && shut.hid && /Options to act · 1/.test(shut.t), `${tag}: What to do does not open folded, its button counting the ask: ${JSON.stringify(shut)}`);
+    if (fold) await r.page.click('#decide .nfold');
+    const got = await wait(r.page, '#asks button[data-al]').then(() => true, () => false);
     ok(got, `${tag}: Now drew no pack buttons`);
     if (got) {
       const m = await r.page.evaluate(() => {
@@ -3771,7 +3777,7 @@ async function placescreen() {
   const ADMIN = process.env.PAI_ADMIN_TOKEN || (process.env.PAI_ADMIN_TOKEN = 'rig-admin');
   const ground = { on_disk: { vector: false, imagery: true, drone: true }, layers: { imagery: { passes: 12, from: '2025-01', to: '2025-12', bytes: 4e6,
     attribution: 'Contains modified Copernicus Sentinel data' }, drone: { bytes: 1e6, mosaics: [{ provider: 'Bayu', gsd_m: 0.04, date: '2024-03-15', bbox: [115.16, -8.825, 115.172, -8.815] }] } } };
-  /* one map with one area near the node, so a row in the table puts a drawing in hand and opens the form */
+  /* one map with one area near the node, so pressing it on the map puts a drawing in hand and opens the form */
   const MAPS = { maps: [{ id: 1, name: 'Garden plan for the whole street', owner: null, agent: null, shared: false, held: false, share_error: null, from_node: null, marks: 1, updated_at: '2026-11-05T10:00:00Z' }],
     palette: { 1: '#FFFFFF', 2: '#FFE600', 3: '#9BFF2E', 4: '#00E5FF', 5: '#FF3DCB', 6: '#FF3B30' } };
   const MARKS = { marks: [{ id: 7, map_id: 1, kind: 'area', colour: 3, label: 'rain garden', note: null, capture_id: null, length_m: null, area_m2: 1500, alert_id: null, event_id: null,
@@ -3812,7 +3818,10 @@ async function placescreen() {
     }
     for (const st of ['folded', 'open', 'form']) {
       if (st === 'open') { await r.page.click('#dread .dchip'); await r.page.waitForTimeout(200); }
-      if (st === 'form') { await r.page.click('#dread .dchip'); await r.page.evaluate(() => { const b = document.querySelector('#ptable .mrow'); if (b) b.click(); }); await r.page.waitForTimeout(900);
+      if (st === 'form') { await r.page.click('#dread .dchip');
+        /* the area pressed on the map (the table that put it in hand went on 9 Nov): the map jumps onto it, then a press inside it */
+        const at = await r.page.evaluate(() => { const m = window.__PM.map; m.jumpTo({ center: [115.1676, -8.8194], zoom: 17 }); const b = m.getContainer().getBoundingClientRect(), q = m.project([115.1676, -8.8194]); return { x: b.left + q.x, y: b.top + q.y }; });
+        await r.page.waitForTimeout(600); await r.page.mouse.click(at.x, at.y); await r.page.waitForTimeout(900);
         /* a short panel (the phone's) scrolls: bring the form into it, as a thumb would */
         await r.page.evaluate(() => { const f = document.getElementById('dform'), p = f && f.closest('.dpanel'); if (p && f.offsetTop + f.offsetHeight > p.clientHeight) p.scrollTop = f.offsetTop; }); await r.page.waitForTimeout(100); }
       const g = await r.page.evaluate(() => {
