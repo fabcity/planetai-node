@@ -10,6 +10,14 @@
   narration's label is a strip like on the other screens, and its text stops on a whole line. Nothing is smaller than
   28 px at 1920. docs/wall.
 
+- **Now reads from the house outwards, and What to do is one line.** The right column opens with Around the house,
+  then the map of the air around it, then the city's Fab City Index, now titled Local production capacity in the city,
+  with its links to index.fab.city kept. What to do is folded to one line, and **Options to act** opens the answers and
+  the packs' questions. Did it work and Yesterday moved under it, across the page. On Place the open map's table is
+  gone and the place in figures takes the whole band, bigger. Data's board is gone, Now and Place keep theirs.
+- **The installer tries a download again before giving up.** GitHub sometimes answers a release download with a
+  504. `install` and `update.sh` now retry the tarball, its signature and its checksum up to three times, and `install`
+  the preflight script too.
 - **A new node no longer starts at node #1's exact position.** `.env.example` and the `NODE_LAT`/`NODE_LON` defaults
   held it to the metre until a keeper set their own. They now hold the centre of node #1's resolution-8 cell, the point
   `/health` already publishes. The working notes that sat in `docs/` (plans, handoffs, reviews, design audits) moved to

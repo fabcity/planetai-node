@@ -859,7 +859,7 @@ function picker(id) {
 /* after a change, everything that shows it; the form keeps what somebody is typing in it */
 function after() {
   const f = $('#dform');
-  readout(); if (!(f && f.contains && f.contains(document.activeElement))) drawForm(); redraw(); mapTable(); panel();
+  readout(); if (!(f && f.contains && f.contains(document.activeElement))) drawForm(); redraw(); panel();
 }
 
 /* ---- the node's side: keep, change, delete, each one undoable */
@@ -918,7 +918,7 @@ const pickOf = h => {
 function select(id) {
   const d = PM.draw, k = markById(id); d.sel = id; d.corner = null; d.kc = 0; d.pick = null; PM.pick = null; popup(null);
   if (k && mine(mapById(k.map_id)) && !d.open) { d.open = true; d.auto = true; }   // the colours recolour the drawing in hand
-  readout(); drawForm(); redraw(); mapTable();
+  readout(); drawForm(); redraw();
 }
 function press(e) {
   const d = PM.draw, q = [e.lngLat.lng, e.lngLat.lat];
@@ -933,7 +933,7 @@ function press(e) {
   if (id === 'draw-corner' && hit.object.k != null && hit.object.k === d.sel) { d.corner = hit.object.i; readout(); redraw(); return; }
   if (d.corner != null && d.sel != null) { moveCorner(q); return; }
   if (k) { select(k.id); return; }
-  d.sel = null; d.corner = null; PM.pick = pickOf(hit); popup(PM.pick); facts(); readout(); drawForm(); redraw(); mapTable();
+  d.sel = null; d.corner = null; PM.pick = pickOf(hit); popup(PM.pick); facts(); readout(); drawForm(); redraw();
 }
 /* the image key on an empty place: a marker to carry the image, then the picker for it (Data's images, or a new photo).
    The picker opens only for the marker just kept: a refused one leaves nothing in hand to attach to */
@@ -1003,7 +1003,7 @@ function onKey(e) {
     if (d.open && within('.dpanel')) { d.open = false; d.auto = false; readout(); const c = $('#dread').querySelector('.dchip'); if (c) c.focus(); return; }
     if (d.state) d.state = null; else if (d.corner != null) d.corner = null; else if (d.pick) d.pick = null; else if (d.sel != null) d.sel = null;
     else if (d.open) { d.open = false; d.auto = false; } else return;
-    readout(); drawForm(); redraw(); mapTable(); return;
+    readout(); drawForm(); redraw(); return;
   }
   if (k === 'Backspace' && d.state && d.state.pts.length) { e.preventDefault(); d.state = backPt(d.state); readout(); redraw(); return; }
   if (k === 'Enter' && !within('button, a')) { if (enter()) e.preventDefault(); return; }
@@ -1136,7 +1136,7 @@ async function share(m) {
   const d = PM.draw, again = d.asked && d.asked.id === m.id && d.asked.kind === 'share' && d.asked.armed;
   const r = await mapPatch(m, m.shared && !m.held && !again ? { shared: false } : again ? { shared: true, confirm: 'exact' } : { shared: true });
   if (!r.ok) d.asked = { id: m.id, kind: 'share', text: refused(r), armed: !!r.detail && r.detail.code === 'share_warning' };
-  panel(); mapTable();
+  panel();
 }
 async function mapDelete(m) {
   const d = PM.draw;
@@ -1167,25 +1167,7 @@ async function placeMaps() {
   await Promise.all(M.filter(m => !PM.mapOff.has(m.id) || m.id === d.map)
     .map(m => ask(`place/maps/${m.id}/marks`).then(r => { MARKS[m.id] = r.marks || []; }).catch(() => {})));
   Object.keys(MARKS).forEach(id => { if (!mapById(+id)) delete MARKS[id]; });
-  panel(); mapTable(); readout(); drawForm(); redraw();
-}
-/* the lower band's left: the open map as a table, a row per drawing that puts it in hand */
-let PTABLE = null;
-function mapTable() {
-  const el = $('#ptable'); if (!el) return;
-  if (PTABLE == null) PTABLE = el.innerHTML;
-  const m = openMap(), K = m && MARKS[m.id];
-  if (!K) { el.innerHTML = PTABLE; return; }
-  const sw = k => `<span class="msw" style="background:${esc((PM.palette || {})[k.colour] || 'transparent')}"></span>`;
-  el.innerHTML = `<h3 class="pmh"><span>${esc(m.name)}</span><b>${K.length} drawn · ${m.shared ? 'shared with the node upstream' : 'yours, kept on this node'}</b></h3>`
-    + (K.length ? '<div class="tscroll"><table class="tbl mtbl"><tr><th>drawing</th><th>kind</th><th class="n">measure</th><th>note</th><th>image</th><th>issue</th></tr>'
-      + K.map(k => `<tr${k.id === PM.draw.sel ? ' class="on"' : ''}><td><button type="button" class="mrow" data-k="${k.id}">${sw(k)}${esc(k.label || k.kind)}</button></td>`
-        + `<td>${esc(k.kind)}</td><td class="n">${esc(measureOf(k))}</td><td>${esc(k.note || '')}</td>`
-        + `<td>${k.capture_id ? `<img class="mth" data-cap="${+k.capture_id}" alt="image ${+k.capture_id}">` : ''}</td><td>${esc(tiedTo(k))}</td></tr>`).join('') + '</table></div>'
-      : '<p class="fine">Nothing drawn in it yet. Choose a key on the screen’s left edge and press the map.</p>');
-  el.querySelectorAll('.mrow').forEach(b => b.onclick = () => { const k = markById(+b.dataset.k); if (!k) return;
-    PM.mapOff.delete(k.map_id); if (PM.setTool && PM.tool !== 'select') PM.setTool('select'); select(k.id); if (PM.map) PM.map.easeTo({ center: centreOf(k), duration: CLOCK.reduced() ? 0 : 500 }); });
-  el.querySelectorAll('img.mth').forEach(i => imgBlob(+i.dataset.cap).then(b => { if (b) { i.src = URL.createObjectURL(b); i.onload = () => URL.revokeObjectURL(i.src); } }));
+  panel(); readout(); drawForm(); redraw();
 }
 window.placeMaps = placeMaps;
 

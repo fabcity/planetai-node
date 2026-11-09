@@ -55,7 +55,7 @@ function nowRemember() {
   el.hidden = !NOWL;
   if (!NOWL) return;
   const day = NOWL.day, pack = LEARN_PACK[k], wd = iso => `${dLabel(dayOf(iso))} at ${hhmm(iso)}`;
-  const yest = day ? `<h3>Yesterday</h3><p>${yesterdayWords(day, k)} <a href="#node/remember/day/${esc(String(day.period_start).slice(0, 10))}">the whole entry ›</a></p>` : '';
+  const yest = day ? `<div><h3>Yesterday</h3><p>${yesterdayWords(day, k)} <a href="#node/remember/day/${esc(String(day.period_start).slice(0, 10))}">the whole entry ›</a></p></div>` : '';
   let h = '';
   /* an issue that never asks (no line) has nothing that could have worked */
   if (pack) {
@@ -75,8 +75,8 @@ function nowRemember() {
       : `<p class="x">Nothing learned yet: the node checks once a day, and needs an alert somebody acted on.</p>`;
     const who = w && (w.for_whom || []).length ? `matters here: ${said(w.for_whom.join(', '))}`
       : NOWL.people && !Object.values(NOWL.people).some(Boolean) ? '<a href="#node/remember/who">who lives here? ›</a>' : '';
-    h += `<h3>Did it work</h3><p>${asked}</p>${after}${verdict}`
-      + `<p class="dm">${who ? `${who} · ` : ''}<a href="#node/remember">every case, on Node ›</a></p>`;
+    h += `<div><h3>Did it work</h3><p>${asked}</p>${after}${verdict}`
+      + `<p class="dm">${who ? `${who} · ` : ''}<a href="#node/remember">every case, on Node ›</a></p></div>`;
   }
   h += yest;
   el.innerHTML = h;
@@ -186,7 +186,8 @@ function readout() {
    asking, else an alert still true. On 14 Oct this read the events alone and said "No event was open for air" beside a
    Wall showing an open ask. A past hour is history: the events open then. The frame (.decide) and the buttons are
    drawn only while something is asked; otherwise What to do is one plain line, with the hour it is usually worst. */
-function decision() {
+function decision() { decideLine(); stripFold(); }
+function decideLine() {
   const k = S.issue, it = D.issues[k], B = D.buttons, live = S.i === D.now, ask = live ? (it.asking || [])[0] : null;
   const head = '<h2 class="nh">What to do</h2>', usual = live ? usualLine(k) : '';
   const line = `<p class="dm">${it.line != null ? `the line <span class="mono">${fmt(it.line, it.dp)}</span> ${said(it.unit)} · ${said(it.line_source || '')}` : 'There is no limit for this, so the node only reports it. It never asks you to act.'}</p>`;
@@ -280,7 +281,25 @@ function drawAsks() {
       + answers.map(x => `<p class="dm">answered: ${esc(x.button ? packWord(x.button.text, lc) : /^place\.mark:/.test(x.choice) ? 'a drawing on Place' : x.choice)}${x.actor ? ` by ${esc(x.actor)}` : ''} at ${esc(hhmm(x.ts))}${x.note ? ` · “${esc(x.note)}”` : ''}</p>`).join('')
       + `<p class="dm" role="status"></p></div>`;
   }).join('');
+  stripFold();
 }
+/* WHAT TO DO FOLDED (Tomas, 9 Nov: "the act should be just one line collapsed, and there should be a button to unfold
+   and see the options to act"): the strip shows its head and one sentence; the button counts what can be answered
+   (the Decide card's buttons, each pack ask) and opens the rest. Open or folded holds for the visit, through redraws. */
+let NFOLD_OPEN = false;
+function stripFold() {
+  const s = $('.nstrip'), d = $('#decide'); if (!s || !d) return;
+  const n = d.querySelectorAll('.ans').length + $('#asks').querySelectorAll('.decide').length;
+  const more = n || d.querySelector('.dm') || !$('#ndecl-decide').hidden;
+  s.classList.toggle('open', NFOLD_OPEN && !!more);
+  const b = d.querySelector('.nfold') || d.appendChild(Object.assign(document.createElement('button'), { type: 'button', className: 'nfold' }));
+  b.hidden = !more; b.setAttribute('aria-expanded', String(NFOLD_OPEN));
+  b.textContent = NFOLD_OPEN ? 'Fold ↑' : n ? `Options to act · ${n} ↓` : 'More ↓';
+}
+document.addEventListener('click', ev => {
+  if (!(ev.target.closest && ev.target.closest('#decide .nfold'))) return;
+  NFOLD_OPEN = !NFOLD_OPEN; stripFold();
+});
 function actorHere() {
   try { return localStorage.getItem('planetai_actor') || ''; } catch (e) { return ''; }   /* no storage here */
 }
@@ -365,7 +384,7 @@ let NOWMAP = null;
 async function aroundMap(el) {
   /* the register of the screen it sits on, when it sits on one (evolution variation), else the page's; its colours too */
   const rgba = (v, a = 1) => window.rgba(v, a, el);
-  const theme = (el.closest('[data-theme]') || document.documentElement).dataset.theme || 'light', W = Math.min(360, el.parentNode.clientWidth), H = Math.round(W * 1.05);
+  const theme = (el.closest('[data-theme]') || document.documentElement).dataset.theme || 'light', W = Math.min(360, el.parentNode.clientWidth), H = Math.round(W * 0.75);   /* a floor: the frame grows it to the day's screen (9 Nov: with the Index under it, 1.05 overran the screen) */
   if (!window.maplibregl || !window.deck || !window.groundBase) return rose(el, { size: W });
   const M = 'pm25', line = (D.issues.air || {}).line, now15 = id => ((D.stats15[id] || {})[M] || [])[0] ?? null;
   const all = D.sensors.filter(s => s.lat != null && s.lon != null && s.source !== 'openstreetmap');
@@ -745,7 +764,7 @@ function boardList(q) {
 document.addEventListener('DOMContentLoaded', () => {
   const q = $('#fpq'); if (q) q.oninput = () => boardList(q.value);
   const c = $('#fpclose'); if (c) c.onclick = () => $('#feedpick').close();
-  for (const door of ['node', 'data', 'place']) {
+  for (const door of ['node', 'place']) {
     const v = VIEWS[door]; if (typeof v !== 'function') continue;
     VIEWS[door] = function () { const r = v.apply(this, arguments); Promise.resolve(r).then(() => drawBoard(door), () => drawBoard(door)); return r; };
   }
