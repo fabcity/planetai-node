@@ -113,6 +113,28 @@ const tx = (x, y, s, a = 'start', c = '') => `<text x="${sx(x)}" y="${sx(y)}" te
 const fits = (f, w, ...say) => say.find(s => s.length * f * 0.6 <= w) ?? '';
 const pth = (d, c, w, more = '') => `<path d="${d}" fill="none" stroke="${c}" stroke-width="${sx(w)}"${more}/>`;
 const frac = x => x - Math.floor(x), seed = (j, k) => frac(Math.sin(j * 12.9898 + k * 78.233) * 43758.5453);
+/* THE DRAWING, after the OP-XY screens (Tomas, 9 Nov 2026: "more detailed and more refined"): flat greys under
+   hairlines for bodies, glass and plates; screws, flanges, a grille, highlights, a knife edge; each figure on its own
+   registered plate; a fixed scatter of specks on the black. The detail is in the line and the tone, never in smaller
+   words: the floor stays --wf. The greys are the header ramp's own; a reading's hue stays on its stroke and its digits,
+   and the line stays red. */
+const WG = ['#111111', '#1c1c1c', '#2a2a2a', '#3b3b3b', '#555555'];
+const HAIR = 1;
+const fil = (d, g, more = '') => `<path d="${d}" fill="${g}"${more}/>`;
+const rct = (x, y, w, hh, g, c = 'var(--ink)', s = HAIR, more = '') => `<rect x="${sx(x)}" y="${sx(y)}" width="${sx(Math.max(0, w))}" height="${sx(Math.max(0, hh))}" fill="${g}" stroke="${c}" stroke-width="${sx(s)}"${more}/>`;
+const ring = (x, y, r, g, c = 'var(--ink)', s = HAIR, more = '') => `<circle cx="${sx(x)}" cy="${sx(y)}" r="${sx(r)}" fill="${g}" stroke="${c}" stroke-width="${sx(s)}"${more}/>`;
+const screw = (x, y, r) => ring(x, y, r, WG[3], 'var(--ink)', HAIR, ' stroke-opacity=".55"')
+  + pth(`M${sx(x - r * .55)},${sx(y + r * .55)} L${sx(x + r * .55)},${sx(y - r * .55)}`, 'var(--ink)', HAIR, ' opacity=".55"');
+/* a plate: a hairline round the figure and its four corner marks, the way a drawing sheet registers what is on it */
+function frame(b, f) {
+  const k = f * .45, c = [[b.x, b.y, 1, 1], [b.x + b.w, b.y, -1, 1], [b.x, b.y + b.h, 1, -1], [b.x + b.w, b.y + b.h, -1, -1]];
+  return rct(b.x, b.y, b.w, b.h, 'none', 'var(--ink)', HAIR, ' stroke-opacity=".13"')
+    + c.map(([x, y, i, j]) => pth(`M${sx(x)},${sx(y + j * k)} L${sx(x)},${sx(y)} L${sx(x + i * k)},${sx(y)}`, 'var(--ink)', 1.5, ' opacity=".55"')).join('');
+}
+/* wear: specks on the black that never move, as on an old screen's glass (seeded, so every draw is the same) */
+const specks = (W, H, k) => { let g = ''; for (let j = 0, n = Math.round(W * H / 9000); j < n; j++) g += `<circle cx="${sx(seed(j, k) * W)}" cy="${sx(seed(j, k + 1) * H)}" r="${sx(.6 + seed(j, k + 2) * .8)}" fill="var(--ink)" opacity="${(.07 + seed(j, k + 3) * .13).toFixed(2)}"/>`; return g; };
+/* a grille: a fine diagonal hatch, defined once per drawing */
+const hatch = id => `<defs><pattern id="${id}" width="5" height="5" patternUnits="userSpaceOnUse"><path d="M0,5 L5,0" stroke="var(--ink)" stroke-opacity=".32" stroke-width="1"/></pattern></defs>`;
 /* the dust's scale: twice the line, or past most of the day; an hour above it is drawn at the top and said */
 const dustTop = r => { const s = r.v.filter(x => x != null).sort((a, b) => a - b); return Math.max((r.line ?? 0) * 2, (s[Math.floor(s.length * .9)] || 1) * 1.2); };
 
@@ -123,9 +145,11 @@ function figDust(b, h, f, r) {
   const dash = r ? '' : ` stroke-dasharray="${sx(f / 3)} ${sx(f / 4)}"`;
   /* the intake: a trumpet on a stand, the chevron lit one step an hour (the air drawn in at the hour's cadence) */
   const ix = b.x + 0.07 * b.w, iw = Math.min(0.11 * b.w, 2.6 * f), rim = top + 2 * f, neck = rim + 1.8 * f, by = top + 0.5 * (base - top);
-  g += pth(`M${sx(ix - iw / 2)},${sx(rim)} L${sx(ix - iw / 7)},${sx(neck)} L${sx(ix - iw / 7)},${sx(by - iw * .4)} M${sx(ix + iw / 2)},${sx(rim)} L${sx(ix + iw / 7)},${sx(neck)} L${sx(ix + iw / 7)},${sx(by - iw * .4)}`, 'var(--ink)', sw, dash)
-    + `<ellipse cx="${sx(ix)}" cy="${sx(rim)}" rx="${sx(iw / 2)}" ry="${sx(iw / 9)}" fill="none" stroke="var(--ink)" stroke-width="${sx(sw)}"/>`
-    + `<ellipse cx="${sx(ix)}" cy="${sx(by)}" rx="${sx(iw * .55)}" ry="${sx(iw * .42)}" fill="#000" stroke="var(--ink)" stroke-width="${sx(sw)}"${dash}/>`
+  g += fil(`M${sx(ix - iw / 2)},${sx(rim)} L${sx(ix - iw / 7)},${sx(neck)} L${sx(ix + iw / 7)},${sx(neck)} L${sx(ix + iw / 2)},${sx(rim)} Z`, WG[2])
+    + rct(ix - f * .7, base - f * .26, f * 1.4, f * .26, WG[3]) + pth(`M${sx(ix - iw / 2)},${sx(rim)} L${sx(ix - iw / 7)},${sx(neck)} L${sx(ix - iw / 7)},${sx(by - iw * .4)} M${sx(ix + iw / 2)},${sx(rim)} L${sx(ix + iw / 7)},${sx(neck)} L${sx(ix + iw / 7)},${sx(by - iw * .4)}`, 'var(--ink)', sw, dash)
+    + `<ellipse cx="${sx(ix)}" cy="${sx(rim)}" rx="${sx(iw / 2)}" ry="${sx(iw / 9)}" fill="url(#wst-hx)" stroke="var(--ink)" stroke-width="${sx(sw)}"/>`
+    + `<ellipse cx="${sx(ix)}" cy="${sx(by)}" rx="${sx(iw * .55)}" ry="${sx(iw * .42)}" fill="${WG[2]}" stroke="var(--ink)" stroke-width="${sx(sw)}"${dash}/>`
+    + screw(ix - iw * .4, by - iw * .18, f * .1) + screw(ix + iw * .4, by - iw * .18, f * .1)
     + [-.15, 0, .15].map(k => pth(`M${sx(ix - iw * .35)},${sx(by + k * iw)} L${sx(ix + iw * .35)},${sx(by + k * iw)}`, 'var(--ink)', sw)).join('')
     + pth(`M${sx(ix)},${sx(by + iw * .42)} L${sx(ix)},${sx(base)}`, 'var(--ink)', sw);
   for (let k = 0; k < 3; k++) {
@@ -133,17 +157,30 @@ function figDust(b, h, f, r) {
     g += pth(`M${sx(ix - f * .3)},${sx(cy - f * .25)} L${sx(ix)},${sx(cy)} L${sx(ix + f * .3)},${sx(cy - f * .25)}`, on ? C : 'var(--ink)', on ? dw * .7 : sw, on ? '' : ' opacity=".35"');
   }
   /* the jar: a bell on a plinth, a swan neck from the intake */
-  const jx = b.x + 0.21 * b.w, jw = b.w - 0.23 * b.w, jt = top + 0.4 * f, R = Math.min(jw * .16, (base - jt) * .25), pl = base - 0.4 * f;
-  g += pth(`M${sx(ix + iw * .55)},${sx(by)} C${sx(ix + iw * 1.6)},${sx(by)} ${sx(jx - f)},${sx(jt + R + f)} ${sx(jx)},${sx(jt + R + f)}`, 'var(--ink)', sw, dash)
-    + pth(`M${sx(jx)},${sx(pl)} L${sx(jx)},${sx(jt + R)} C${sx(jx)},${sx(jt)} ${sx(jx + jw)},${sx(jt)} ${sx(jx + jw)},${sx(jt + R)} L${sx(jx + jw)},${sx(pl)}`, 'var(--ink)', sw, dash)
-    + `<rect x="${sx(jx - f * .5)}" y="${sx(pl)}" width="${sx(jw + f)}" height="${sx(base - pl)}" fill="#000" stroke="var(--ink)" stroke-width="${sx(sw)}"/>`
+  const jx = b.x + 0.21 * b.w, jw = b.w - 0.23 * b.w, jt = top + 0.4 * f, R = Math.min(jw * .16, (base - jt) * .25), pl = base - 1.15 * f;
+  const neckD = (o) => `M${sx(ix + iw * .55)},${sx(by + o)} C${sx(ix + iw * 1.6)},${sx(by + o)} ${sx(jx - f)},${sx(jt + R + f + o)} ${sx(jx)},${sx(jt + R + f + o)}`;
+  const bell = `M${sx(jx)},${sx(pl)} L${sx(jx)},${sx(jt + R)} C${sx(jx)},${sx(jt)} ${sx(jx + jw)},${sx(jt)} ${sx(jx + jw)},${sx(jt + R)} L${sx(jx + jw)},${sx(pl)}`;
+  /* the swan neck, a pipe of two walls with a flange at each end; the bell's glass, a tone with two highlights; the plinth
+     and its nameplate held by two screws */
+  g += pth(neckD(-f * .09), 'var(--ink)', sw, dash) + pth(neckD(f * .09), 'var(--ink)', sw, dash)
+    + rct(ix + iw * .55, by - f * .26, f * .14, f * .52, WG[3]) + rct(jx - f * .14, jt + R + f - f * .26, f * .14, f * .52, WG[3])
+    + fil(bell + ' Z', WG[0]) + pth(bell, 'var(--ink)', sw, dash)
+    + pth(`M${sx(jx + jw * .03)},${sx(jt + R * 1.15)} L${sx(jx + jw * .03)},${sx(pl - f * 1.4)}`, 'var(--ink)', f * .1, ' opacity=".14"')
+    + pth(`M${sx(jx + jw * .05)},${sx(jt + R * 1.4)} L${sx(jx + jw * .05)},${sx(pl - f * 2.4)}`, 'var(--ink)', HAIR, ' opacity=".22"')
+    + rct(jx - f * .5, pl, jw + f, base - pl, WG[2]);
+  const npw = Math.min(jw * .42, f * 7);
+  if (npw > f * 4) g += rct(jx + jw / 2 - npw / 2, pl + f * .13, npw, base - pl - f * .26, WG[3], 'var(--ink)', HAIR, ' stroke-opacity=".5"')
+    + screw(jx + jw / 2 - npw / 2 + f * .3, pl + (base - pl) / 2, f * .1) + screw(jx + jw / 2 + npw / 2 - f * .3, pl + (base - pl) / 2, f * .1)
+    + [-.14, .14].map(k => pth(`M${sx(jx + jw / 2 - npw / 2 + f * .7)},${sx(pl + (base - pl) * (.5 + k))} L${sx(jx + jw / 2 + npw / 2 - f * .7)},${sx(pl + (base - pl) * (.5 + k))}`, 'var(--ink)', HAIR, ' opacity=".35"')).join('');
+  g += rct(jx + jw / 2 - f * .3, jt - f * .26, f * .6, f * .2, WG[3])
     + pth(`M${sx(jx + jw / 2)},${sx(jt + R * .12)} L${sx(jx + jw / 2)},${sx(jt - f * .3)}`, 'var(--ink)', sw) + `<circle cx="${sx(jx + jw / 2)}" cy="${sx(jt - f * .45)}" r="${sx(f * .16)}" fill="none" stroke="var(--ink)" stroke-width="${sx(sw)}"/>`;
   if (!r) return g + tx(jx + jw / 2, pl - f, 'fine dust is not read here', 'middle', 'var(--mute)');
   /* inside: the meniscus tube at the left, the day's plot in the lower part, the particles falling above it */
   const p0 = jx + 0.17 * jw, p1 = jx + 0.95 * jw, q1 = pl - 0.5 * f, inT = jt + R * .7, q0 = inT + 0.42 * (q1 - inT), tv = dustTop(r);
   const X = i => p0 + (p1 - p0) * i / 23, Y = q => q1 - (q1 - q0) * Math.min(q, tv) / tv;
   const mx = jx + 0.075 * jw, mt = inT + 0.2 * f;
-  g += `<rect x="${sx(mx - f * .22)}" y="${sx(mt)}" width="${sx(f * .44)}" height="${sx(q1 - mt)}" fill="none" stroke="var(--ink)" stroke-width="${sx(sw)}"/>`;
+  g += `<rect x="${sx(mx - f * .22)}" y="${sx(mt)}" width="${sx(f * .44)}" height="${sx(q1 - mt)}" fill="${WG[1]}" stroke="var(--ink)" stroke-width="${sx(sw)}"/>`;
+  for (const i of [0, 6, 12, 18]) g += pth(`M${sx(X(i))},${sx(q0 - f * .2)} L${sx(X(i))},${sx(q1)}`, 'var(--ink)', HAIR, ' opacity=".12"');
   const MY = q => q1 - (q1 - mt) * Math.min(q, tv) / tv;
   for (let q = 0; q <= tv; q += 5) g += pth(`M${sx(mx + f * .22)},${sx(MY(q))} l${sx(f * (q % 10 ? .2 : .4))},0`, 'var(--ink)', sw);
   if (r.line != null) g += pth(`M${sx(mx - f * .4)},${sx(MY(r.line))} l${sx(f * 1.1)},0`, 'var(--signal-worse)', dw * .7);
@@ -172,8 +209,14 @@ function figHeat(b, h, f, r) {
   let g = tx(b.x, b.y + f, fits(f, b.w, 'fig. 2 apparent heat', 'fig. 2 heat', 'fig. 2'));
   const cx = b.x + 0.36 * b.w, th = f * .24, ty = b.y + 2.1 * f, br = f * .56, bc = base - 1.5 * f;
   const dash = r ? '' : ` stroke-dasharray="${sx(f / 3)} ${sx(f / 4)}"`;
-  g += pth(`M${sx(cx - th)},${sx(bc - br * .8)} L${sx(cx - th)},${sx(ty)} L${sx(cx + th)},${sx(ty)} L${sx(cx + th)},${sx(bc - br * .8)}`, 'var(--ink)', sw, dash)
+  /* the backboard the tube is clipped to, screwed to the plate; the glass a tone, a highlight down its left */
+  const bx0 = Math.max(b.x, cx - th - f * 2.3), bx1 = cx + th + f * .55, by0 = ty - f * .55, by1 = bc + br + f * .3;
+  g += rct(bx0, by0, bx1 - bx0, by1 - by0, WG[1], 'var(--ink)', HAIR, ' stroke-opacity=".35"') + screw(bx0 + f * .32, by0 + f * .32, f * .1) + screw(bx0 + f * .32, by1 - f * .32, f * .1)
+    + rct(cx - th, ty, 2 * th, bc - br * .8 - ty, WG[0], 'none', 0) + ring(cx, bc, br, WG[0], 'none', 0)
+    + pth(`M${sx(cx - th)},${sx(bc - br * .8)} L${sx(cx - th)},${sx(ty)} L${sx(cx + th)},${sx(ty)} L${sx(cx + th)},${sx(bc - br * .8)}`, 'var(--ink)', sw, dash)
     + `<circle cx="${sx(cx)}" cy="${sx(bc)}" r="${sx(br)}" fill="none" stroke="var(--ink)" stroke-width="${sx(sw)}"${dash}/>`
+    + pth(`M${sx(cx - th * .5)},${sx(ty + f * .3)} L${sx(cx - th * .5)},${sx(bc - br * 1.2)}`, 'var(--ink)', HAIR, ' opacity=".3"')
+    + rct(cx - th - f * .14, ty + f * .7, 2 * th + f * .28, f * .16, WG[3]) + rct(cx - th - f * .14, bc - br - f * .55, 2 * th + f * .28, f * .16, WG[3])
     + pth(`M${sx(cx)},${sx(bc + br)} L${sx(cx)},${sx(base)} M${sx(cx - f * .6)},${sx(base - f * .3)} L${sx(cx + f * .6)},${sx(base - f * .3)}`, 'var(--ink)', sw);
   if (!r) return g + tx(cx, ty - f * .3, 'not read', 'middle', 'var(--mute)');
   const all = r.v.concat(r.line ?? []).filter(x => x != null), lo = Math.floor(Math.min(...all) - 2), hi = Math.ceil(Math.max(...all) + 2);
@@ -197,16 +240,24 @@ function figSea(b, h, f, r) {
   const sw = Math.max(1, f / 18), dw = Math.max(2, f / 9), C = WDOM.sea, base = b.y + b.h, v = r && r.v[h];
   let g = tx(b.x, b.y + f, fits(f, b.w, 'fig. 3 the swell, 24 h', 'fig. 3 the swell', 'fig. 3 swell', 'fig. 3'));
   const x0 = b.x + 0.03 * b.w, x1 = b.x + 0.97 * b.w, yM = b.y + 0.62 * b.h, Am = Math.min(0.2 * b.h, 3 * f);
+  /* the trace's panel: a dark tone with a grid, an hour line every three hours and a half-metre line either side */
+  const pt = b.y + 1.5 * f, pb = base - f * 1.3;
+  g += rct(x0, pt, x1 - x0, pb - pt, WG[0], 'var(--ink)', HAIR, ' stroke-opacity=".3"');
+  for (let i = 0; i <= 23; i += 3) g += pth(`M${sx(x0 + (x1 - x0) * i / 23)},${sx(pt)} L${sx(x0 + (x1 - x0) * i / 23)},${sx(pb)}`, 'var(--ink)', HAIR, ' opacity=".1"');
   g += pth(`M${sx(x0)},${sx(yM)} L${sx(x1)},${sx(yM)}`, 'var(--ink)', sw, ` stroke-dasharray="${sx(sw * 2)} ${sx(f / 4)}" opacity=".5"`);
   if (!r) return g + tx((x0 + x1) / 2, yM - f * .6, 'the sea is not read here', 'middle', 'var(--mute)');
   const mx = Math.max(2, ...r.v.filter(q => q != null)) * 1.1, A = q => Am * q / mx, lam = Math.max(f * 1.6, (x1 - x0) / 8), ph = h * lam / 4;
   const at = t => { const i = Math.floor(t), a = r.v[i], z = r.v[Math.min(23, i + 1)]; return a == null ? z : z == null ? a : a + (z - a) * (t - i); };
-  let d = '';
+  for (let q = .5; q <= mx; q += .5) g += pth(`M${sx(x0)},${sx(yM - A(q))} L${sx(x1)},${sx(yM - A(q))} M${sx(x0)},${sx(yM + A(q))} L${sx(x1)},${sx(yM + A(q))}`, 'var(--ink)', HAIR, ' opacity=".07"');
+  let d = '', body = '';
   for (let x = x0; x <= x1; x += 3) {
-    const q = at(23 * (x - x0) / (x1 - x0)); if (q == null) { d += ' '; continue; }
-    d += `${/\d$/.test(d) ? 'L' : 'M'}${sx(x)},${sx(yM - A(q) * Math.sin(2 * Math.PI * (x - x0 + ph) / lam))}`;
+    const q = at(23 * (x - x0) / (x1 - x0)), y = yM - A(q ?? 0) * Math.sin(2 * Math.PI * (x - x0 + ph) / lam);
+    body += `${body ? 'L' : 'M'}${sx(x)},${sx(y)}`;
+    if (q == null) { d += ' '; continue; }
+    d += `${/\d$/.test(d) ? 'L' : 'M'}${sx(x)},${sx(y)}`;
   }
-  g += pth(d.trim(), C, dw * .8);
+  /* the sea under the swell, a tone, then the swell itself in the sea's hue */
+  g += fil(`${body} L${sx(x1)},${sx(pb)} L${sx(x0)},${sx(pb)} Z`, WG[2]) + pth(d.trim(), C, dw * .8);
   const sX = x0 + (x1 - x0) * h / 23, sT = yM - Am - f * .9;
   g += pth(`M${sx(sX)},${sx(base)} L${sx(sX)},${sx(sT)}`, 'var(--ink)', sw);
   for (let q = 0; q <= mx; q += 0.5) g += pth(`M${sx(sX)},${sx(yM - A(q))} l${sx(f * (q % 1 ? .2 : .4))},0`, 'var(--ink)', sw);
@@ -221,19 +272,24 @@ function figWind(b, h, f, s, dr) {
   const sw = Math.max(1, f / 18), dw = Math.max(2, f / 9), C = WDOM.wind, base = b.y + b.h, sp = s && s.v[h], deg = dr && dr.v[h];
   let g = tx(b.x, b.y + f, fits(f, b.w, 'fig. 4 the wind', 'fig. 4 wind', 'fig. 4'));
   const R = Math.max(f * 2, Math.min(0.42 * b.w, (b.h - 2.6 * f) / 2)), cx = b.x + b.w / 2, cy = b.y + 1.7 * f + R;
-  g += `<circle cx="${sx(cx)}" cy="${sx(cy)}" r="${sx(R)}" fill="none" stroke="var(--ink)" stroke-width="${sx(sw)}"/>`
-    + `<circle cx="${sx(cx)}" cy="${sx(cy)}" r="${sx(R * .84)}" fill="none" stroke="var(--ink)" stroke-width="${sx(sw)}" opacity=".35"/>`
-    + pth(`M${sx(cx)},${sx(cy + R)} L${sx(cx)},${sx(base)} M${sx(cx - f * .6)},${sx(base - f * .3)} L${sx(cx + f * .6)},${sx(base - f * .3)}`, 'var(--ink)', sw);
-  for (let k = 0; k < 16; k++) {
-    const a = k * Math.PI / 8, i = k % 4 ? R * .9 : R * .76;
-    g += pth(`M${sx(cx + Math.sin(a) * i)},${sx(cy - Math.cos(a) * i)} L${sx(cx + Math.sin(a) * R)},${sx(cy - Math.cos(a) * R)}`, 'var(--ink)', sw);
+  /* the mast, two walls with guy wires to a plate screwed down; the dial a ring of tone round a darker face, a tick every
+     5 degrees, longer at the eight winds, the four quarters lettered */
+  const gy = cy + R + (base - cy - R) * .4;
+  g += pth(`M${sx(cx - f * .07)},${sx(cy + R)} L${sx(cx - f * .07)},${sx(base - f * .3)} M${sx(cx + f * .07)},${sx(cy + R)} L${sx(cx + f * .07)},${sx(base - f * .3)}`, 'var(--ink)', sw)
+    + pth(`M${sx(cx)},${sx(gy)} L${sx(cx - f * 1.5)},${sx(base - f * .3)} M${sx(cx)},${sx(gy)} L${sx(cx + f * 1.5)},${sx(base - f * .3)}`, 'var(--ink)', HAIR, ' opacity=".45"')
+    + rct(cx - f * 1.8, base - f * .3, f * 3.6, f * .3, WG[3]) + screw(cx - f * 1.4, base - f * .15, f * .09) + screw(cx + f * 1.4, base - f * .15, f * .09)
+    + ring(cx, cy, R, WG[1], 'var(--ink)', sw) + ring(cx, cy, R * .84, WG[0], 'var(--ink)', sw, ' stroke-opacity=".35"');
+  for (let k = 0; k < 72; k++) {
+    const a = k * Math.PI / 36, i = R * (k % 18 === 0 ? .86 : k % 9 === 0 ? .89 : k % 3 === 0 ? .93 : .96);
+    g += pth(`M${sx(cx + Math.sin(a) * i)},${sx(cy - Math.cos(a) * i)} L${sx(cx + Math.sin(a) * R * .995)},${sx(cy - Math.cos(a) * R * .995)}`, 'var(--ink)', k % 9 ? HAIR : sw, k % 3 ? ' opacity=".5"' : '');
   }
   g += tx(cx, cy - R * .55 + f * .35, 'N', 'middle', 'var(--mute)');
+  if (R > f * 4) g += [['E', R * .6, 0], ['S', 0, R * .6], ['W', -R * .6, 0]].map(([s, x, y]) => tx(cx + x, cy + y + f * .35, s, 'middle', 'var(--mute)')).join('');
   if (deg == null) return g + tx(cx, cy + f * .35, s ? `not read at ${hhmm(s.ts[h])}` : 'not read', 'middle', 'var(--mute)');
   const tip = R * .72, tail = R * .6, n = Math.min(8, Math.round((sp ?? 0) / 5));
   let vane = pth(`M${sx(cx)},${sx(cy + tail)} L${sx(cx)},${sx(cy - tip)}`, C, dw)
     + pth(`M${sx(cx - f * .32)},${sx(cy - tip + f * .55)} L${sx(cx)},${sx(cy - tip)} L${sx(cx + f * .32)},${sx(cy - tip + f * .55)}`, C, dw)
-    + pth(`M${sx(cx)},${sx(cy + tail - f * .9)} L${sx(cx + f * .5)},${sx(cy + tail)} L${sx(cx)},${sx(cy + tail)}`, C, sw * 1.5);
+    + `<path d="M${sx(cx)},${sx(cy + tail - f * .9)} L${sx(cx + f * .5)},${sx(cy + tail)} L${sx(cx)},${sx(cy + tail)} Z" fill="${WG[3]}" stroke="${C}" stroke-width="${sx(sw * 1.5)}"/>`;
   for (let j = 0; j < n; j++) vane += pth(`M${sx(cx - f * .5 - j * f * .28)},${sx(cy + tail * .3 + j * f * .3)} l0,${sx(f * .5)}`, C, sw * 1.5);
   return g + `<g transform="rotate(${sx(deg)} ${sx(cx)} ${sx(cy)})">${vane}</g><circle cx="${sx(cx)}" cy="${sx(cy)}" r="${sx(f * .14)}" fill="var(--ink)"/>`;
 }
@@ -244,11 +300,15 @@ function wallStage(el, h, f) {
   let B;
   if (W >= 900) { const y = 0, hh = H - f * .9; rails.push(hh); B = [box(0, .43 * W, y, hh), box(.455 * W, .14 * W, y, hh), box(.615 * W, .2 * W, y, hh), box(.835 * W, .165 * W, y, hh)]; }
   else { const h1 = .52 * H, h2 = H - f * .9; rails.push(h1, h2); B = [box(0, W, 0, h1), box(0, .26 * W, h1 + f * .9, h2 - h1 - f * .9), box(.29 * W, .4 * W, h1 + f * .9, h2 - h1 - f * .9), box(.72 * W, .28 * W, h1 + f * .9, h2 - h1 - f * .9)]; }
-  let g = '';
+  let g = hatch('wst-hx') + specks(W, H, 7);
   for (const y of rails) {
     g += pth(`M0,${sx(y)} L${W},${sx(y)}`, 'var(--ink)', Math.max(1.5, f / 14));
-    for (let x = f; x < W; x += f) g += pth(`M${sx(x)},${sx(y)} l0,${sx(f * ((x / f) % 5 ? .2 : .4))}`, 'var(--ink)', 1, ' opacity=".5"');
+    for (let x = f / 2; x < W; x += f / 2) g += pth(`M${sx(x)},${sx(y)} l0,${sx(f * ((x / f) % 5 === 0 ? .4 : (x / f) % 1 ? .12 : .22))}`, 'var(--ink)', 1, ' opacity=".5"');
   }
+  /* each figure on its plate, drawn a little inside it */
+  const p = f * .3, ins = q => ({ x: q.x + p, y: q.y + p * .6, w: q.w - 2 * p, h: q.h - p * 1.2 });
+  g += B.map(q => frame({ x: q.x + 1, y: q.y + 1, w: q.w - 2, h: q.h - f * .2 }, f)).join('');
+  B = B.map(ins);
   g += figDust(B[0], h, f, R.dust) + figHeat(B[1], h, f, R.heat) + figSea(B[2], h, f, R.sea) + figWind(B[3], h, f, R.wind, R.dir);
   el.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(wallSays(h))}">${g}</svg>`;
 }
@@ -273,16 +333,23 @@ function wallBalance(el, h, f) {
   const v = hs ? hs.v[h] : null, sw = Math.max(1, f / 18), dw = Math.max(2, f / 9), near = WALL.R.near.map(s => s[h]).filter(x => x != null);
   const px = W / 2, py = f * 2.1, bl = Math.min(W * .34, f * 8), th = v == null ? 0 : -Math.max(-1, Math.min(1, (v - r.line) / r.line)) * 8 * Math.PI / 180;
   const sq = f * .42, gap = f * .2, per = Math.max(1, Math.floor((W - f) / (sq + gap))), rows = Math.ceil(near.length / per), sy = H - rows * (sq + gap);
-  const pivB = sy - f * .4;
-  let g = pth(`M${sx(px)},${sx(py)} L${sx(px)},${sx(pivB)} M${sx(px - f)},${sx(pivB)} L${sx(px + f)},${sx(pivB)}`, 'var(--ink)', sw)
-    + pth(`M${sx(px - f * .3)},${sx(py + f * .5)} L${sx(px)},${sx(py)} L${sx(px + f * .3)},${sx(py + f * .5)}`, 'var(--ink)', sw);
+  const pivB = sy - f * .4, cs = Math.cos(th), sn = Math.sin(th), bt = f * .1;
+  /* a plate screwed down, a column, a knife edge; the beam a bar of tone graduated along its length; each pan hung on
+     three chains, a tone in its own colour of rim */
+  let g = specks(W, H, 11) + rct(px - f * 1.6, pivB - f * .32, f * 3.2, f * .32, WG[3]) + screw(px - f * 1.2, pivB - f * .16, f * .09) + screw(px + f * 1.2, pivB - f * .16, f * .09)
+    + rct(px - f * .13, py + f * .45, f * .26, pivB - f * .32 - py - f * .45, WG[2])
+    + `<path d="M${sx(px - f * .34)},${sx(py + f * .55)} L${sx(px)},${sx(py)} L${sx(px + f * .34)},${sx(py + f * .55)} Z" fill="${WG[3]}" stroke="var(--ink)" stroke-width="1"/>`;
   [[-1, v, 'house', WDOM.air], [1, r.line, 'line', 'var(--ink)']].forEach(([k, q, w, c]) => {
-    const ex = px + k * bl * Math.cos(th), ey = py + k * bl * Math.sin(th), pan = ey + f * 1.3;
-    g += pth(`M${sx(ex)},${sx(ey)} L${sx(ex - f * .8)},${sx(pan)} M${sx(ex)},${sx(ey)} L${sx(ex + f * .8)},${sx(pan)}`, 'var(--ink)', sw)
-      + pth(`M${sx(ex - f * 1.1)},${sx(pan)} Q${sx(ex)},${sx(pan + f * .7)} ${sx(ex + f * 1.1)},${sx(pan)} Z`, k < 0 ? c : 'var(--signal-worse)', k < 0 ? dw * .7 : sw * 1.5)
+    const ex = px + k * bl * cs, ey = py + k * bl * sn, pan = ey + f * 1.3;
+    g += pth(`M${sx(ex)},${sx(ey)} L${sx(ex - f * .8)},${sx(pan)} M${sx(ex)},${sx(ey)} L${sx(ex)},${sx(pan + f * .25)} M${sx(ex)},${sx(ey)} L${sx(ex + f * .8)},${sx(pan)}`, 'var(--ink)', HAIR, ' stroke-dasharray="2 3" opacity=".8"')
+      + `<path d="M${sx(ex - f * 1.1)},${sx(pan)} Q${sx(ex)},${sx(pan + f * .7)} ${sx(ex + f * 1.1)},${sx(pan)} Z" fill="${WG[2]}" stroke="${k < 0 ? c : 'var(--signal-worse)'}" stroke-width="${sx(k < 0 ? dw * .7 : sw * 1.5)}"/>`
+      + ring(ex, ey, f * .09, WG[0])
       + tx(ex, ey - f * .45, q == null ? `${w} —` : `${w} ${fmt(q, r.dp)}`, 'middle', k < 0 ? c : '');
   });
-  g += pth(`M${sx(px - bl * Math.cos(th))},${sx(py - bl * Math.sin(th))} L${sx(px + bl * Math.cos(th))},${sx(py + bl * Math.sin(th))}`, 'var(--ink)', dw * .8);
+  g += `<path d="M${sx(px - bl * cs - bt * sn)},${sx(py - bl * sn + bt * cs)} L${sx(px + bl * cs - bt * sn)},${sx(py + bl * sn + bt * cs)} L${sx(px + bl * cs + bt * sn)},${sx(py + bl * sn - bt * cs)} L${sx(px - bl * cs + bt * sn)},${sx(py - bl * sn - bt * cs)} Z" fill="${WG[3]}" stroke="var(--ink)" stroke-width="1"/>`;
+  for (let i = -8; i <= 8; i++) if (i) { const tx0 = px + bl * cs * i / 9, ty0 = py + bl * sn * i / 9, l = i % 4 ? bt * 1.4 : bt * 2.6;
+    g += pth(`M${sx(tx0 + bt * sn)},${sx(ty0 - bt * cs)} L${sx(tx0 + (bt + l) * sn)},${sx(ty0 - (bt + l) * cs)}`, 'var(--ink)', HAIR, ' opacity=".7"'); }
+  g += ring(px, py, f * .07, 'var(--ink)', 'none', 0);
   const x0 = (W - Math.min(near.length, per) * (sq + gap) + gap) / 2;
   near.sort((a, b) => a - b).forEach((q, i) => {
     const over = q > r.line;
