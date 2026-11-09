@@ -4,7 +4,7 @@
  * ORIGIN. This file is the September UX review's skeleton script, moved into the repo it measures
  * and extended. It was written for Part 2 of that review and lived at
  * `planetai-design/design/audit/2026-09/ux-review/skeleton/measure.mjs` on branch
- * `ux-review-2026-09`; every number in `docs/design/UX_REVIEW_2026-09_skeleton.md` came out of it.
+ * `ux-review-2026-09`; every number in `planetai-design/node-docs/design/UX_REVIEW_2026-09_skeleton.md` came out of it.
  * Everything above the `TARGETS` section is that script, unchanged except where marked. There is
  * one of these and there must stay one of these: a second measuring script is two sets of numbers
  * that can disagree about the same page.
@@ -2229,7 +2229,7 @@ async function anchors() {
  * fixture from the 14 Sep prompt (1.4) and prove T8 still holds". Neither exists any more: the
  * 14 September prompt is not in this repository, not in `docs/`, and not anywhere on the machine
  * that wrote it, and with it went T8's definition — the target tables in
- * `docs/design/DIRECTIONS_2026-09.md` run T1, T1b, T2, T3, T4, T5, T6 and PICK adds T7 and T9.
+ * `planetai-design/node-docs/design/DIRECTIONS_2026-09.md` run T1, T1b, T2, T3, T4, T5, T6 and PICK adds T7 and T9.
  * There is no T8 to hold. So rather than invent a number and claim it was met, this proves the
  * thing that prompt and `DIRECTIONS` §"Where the new things land" were plainly about: the page
  * draws a section it has never heard of, and the targets survive it.

@@ -1362,7 +1362,7 @@ def actions(limit: int = Query(500, ge=0, le=5000), stage: str = "", events: int
     the funnel are counted from, and acknowledged, acted and measured are three different answers — collapsing
     them to "acted_at" loses the question. `issues/engine.py::_read` reads this table directly, so a snapshot
     that cannot fetch it replays with no act ledger, no stages and no funnel, and nothing says so at render
-    time (docs/design/PICK_2026-09-20.md, gap J).
+    time (planetai-design/node-docs/design/PICK_2026-09-20.md, gap J).
 
     On neither share allowlist, deliberately: `actor` and `note` are the household's own words about what they
     did in their own house. This answers a token or the machine itself, and nothing else.
