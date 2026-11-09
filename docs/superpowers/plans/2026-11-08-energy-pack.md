@@ -3,11 +3,11 @@
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** A core `energy` pack: the fossil share of the grid behind a node's cells, with its sources and distances, as
-an issue on Now (mockup A). It covers Bali (estimated, a range) and Menorca (measured hourly), and live household solar
+an issue on Now (mockup A). It covers Bali (estimated, a range) and Menorca (measured daily), and live household solar
 through Home Assistant.
 
 **Architecture:** `packs/energy/` is a code pack. Pure modules each do one job: `grids.py` (which grid, which ring),
-`osm.py` (what's there), `mix.py` (Bali range), `ree.py` (Menorca hourly), `ha.py` (the house) and `today.py` (the
+`osm.py` (what's there), `mix.py` (Bali range), `ree.py` (Menorca daily), `ha.py` (the house) and `today.py` (the
 sun). `adapter.fetch()` puts them together into readings, plus one `out/energy/result.json` that `routes.py` serves at
 `GET /energy`. Now draws the energy panel from that route. The issue itself is a terrain-shaped context issue.
 
@@ -23,7 +23,7 @@ sun). `adapter.fetch()` puts them together into readings, plus one `out/energy/r
 - Bali's headline is a range (`fossil_share_low_pct`, `fossil_share_high_pct`) while the Java share is unpublished.
   `fossil_share_pct` is used only where one measured figure exists. A measured grid also writes low = high = the
   value, so `fossil_share_low_pct` is present on every node with a grid, and the issue reads that one.
-- The headline covers the trailing 12 months on both nodes. Menorca adds `fossil_share_now_pct`.
+- The headline covers the trailing 12 months on both nodes. Menorca adds `fossil_share_day_pct`, the latest full day.
 - Household readings are `role: private` in `channels.yml`. They never leave the machine (packs.public_sql).
 - Distances are straight lines. Overpass requests send the User-Agent `planetai-node/energy (https://planetai.fab.city; info@fab.city)`.
 - A node outside every grid shows the `none` sentence and never borrows a neighbour's figure.
@@ -79,7 +79,7 @@ Data and reading, no code. Later tasks test against what this task writes down.
   rings:
     city: [[lon, lat], ...]           # Menorca island
     region: [[lon, lat], ...]         # the Balearic Islands
-  mix: { kind: measured, source: ree, geo_limit: baleares, geo_id: 8 }
+  mix: { kind: measured, source: ree, geo_limit: baleares, geo_id: 8743 }
   links:
     - { name: Mallorca–peninsula link, ring: beyond, mix_from: { source: ree, geo_limit: peninsular, geo_id: 8741 } }
 ```
@@ -205,15 +205,16 @@ check(e2["high"] is None and e2["import_max"] is None, "an unknown cable rating 
 **Interfaces:**
 - Produces:
   - `ree.URL: str`
-  - `ree.parse(doc: dict) -> list[tuple[datetime, float, float]]`: `(hour, fossil_mwh, total_mwh)`. Fossil is
-    every series REE types as non-renewable, minus storage consumption if REE reports it as negative.
+  - `ree.parse(doc: dict) -> list[tuple[date, float, float]]`: `(day, fossil_mwh, total_mwh)`, one row per day.
+    Fossil is every series REE types as non-renewable, minus storage consumption if REE reports it as negative.
+    REData's finest generation mix is the day (`time_trunc=hour` answers 400, checked 9 Nov).
   - `ree.share(rows) -> float | None`
   - `ree.months_to_fetch(have: set[str], today: date) -> list[str]`: the `YYYY-MM` keys of the trailing 12 months
     not yet held, oldest first
   - `ree.fetch(hc, state: dict, today: date) -> dict`: updates `state["months"]`, fetches at most 3 months a call,
     and returns `{"value", "now", "months", "as_of", "kind": "measured"}`, or the last good state with `stale: True`
     after an error.
-  - The peninsular link: the hours' imports count at that hour's peninsular share (`parse` of the peninsular fixture).
+  - The peninsular link: each day's imports count at that day's peninsular share (`parse` of the peninsular fixture).
   - The ring split for Menorca: `beyond` is the link's import share. REE reports the Balearic system as one, so
     `city` (Menorca) against `region` (the rest of the islands) is split by OSM capacity inside each ring polygon, and
     the route marks that split as estimated, even though the headline is measured.
@@ -221,8 +222,8 @@ check(e2["high"] is None and e2["import_max"] is None, "an unknown cable rating 
 - [ ] **Step 1: Write the failing tests** with the Task 1 fixtures:
 
 ```python
-rows = R.parse(json.load(open(FIX / "ree-baleares-<date>.json")))
-check(len(rows) == 24, "one day is 24 hours")
+rows = R.parse(json.load(open(FIX / "ree-baleares-2026-05-10.json")))
+check(len(rows) == 1 and rows[0][0] == date(2026, 5, 10), "one day is one row")
 check(all(0 <= f <= t for _, f, t in rows), "fossil never exceeds total")
 check(R.months_to_fetch(set(), date(2026, 11, 8))[0] == "2025-12", "the trailing year starts December 2025")
 check(R.months_to_fetch({"2025-12", "2026-01"}, date(2026, 11, 8))[0] == "2026-02", "held months are skipped")
@@ -235,8 +236,8 @@ check(out["months"] == 1, "headline says how many months it holds until twelve a
 ```
 
 - [ ] **Step 2:** run, FAIL. **Step 3:** implement. The state file is `out/energy/ree.json`, like fire's `_state_file`.
-  Request one month per call at `time_trunc=hour`.
-- [ ] **Step 4:** run, PASS. **Step 5: Commit** `energy: Menorca's hourly mix from REE, a trailing year`
+  Request one month per call at `time_trunc=day`, `geo_ids` from `grids.yml`.
+- [ ] **Step 4:** run, PASS. **Step 5: Commit** `energy: Menorca's daily mix from REE, a trailing year`
 
 ### Task 5: The pack, the issue and the readings (`adapter.py`, `pack.yaml`, `issue.yml`)
 
@@ -255,7 +256,7 @@ check(out["months"] == 1, "headline says how many months it holds until twelve a
   - `adapter.fetch(hc) -> (list[dict], list[tuple])`, with sensor `energy-grid` (`kind: model`, `scale: region`,
     `local: False`, `cadence: PT1H`, meta with attribution, grid id, provenance and method).
   - Metrics: `fossil_share_pct` (measured only), `fossil_share_low_pct`, `fossil_share_high_pct`,
-    `fossil_share_now_pct` (measured only), `substation_km`, `large_plant_km`, `import_share_max_pct`, `grid_months`.
+    `fossil_share_day_pct` (measured only), `substation_km`, `large_plant_km`, `import_share_max_pct`, `grid_months`.
   - `adapter.result() -> dict`, which writes and reads `out/energy/result.json`, the body `GET /energy` serves (Task 6).
   - OSM refreshes every `ENERGY_REFRESH_DAYS=30`. The mix refreshes every `ENERGY_POLL_HOURS=6`.
 
@@ -267,7 +268,7 @@ the panel instead, Task 7), `unit: "%"`, `dp: 0`, `line: ~`, and distances regio
 - [ ] **Step 1: Write the failing tests:**
   - `fetch()` with a stub `hc` that replays the fixtures returns `energy-grid` readings that include
     `fossil_share_low_pct`, with no `fossil_share_pct`, for node #1's point;
-  - it returns `fossil_share_pct`, `fossil_share_now_pct`, and `fossil_share_low_pct == fossil_share_high_pct` for mahon1's point;
+  - it returns `fossil_share_pct`, `fossil_share_day_pct`, and `fossil_share_low_pct == fossil_share_high_pct` for mahon1's point;
   - it returns `([], [])` for Barcelona;
   - `issues.load()` finds `energy` with `kind == "context"` and `line is None`.
 - [ ] **Step 2:** run, FAIL. **Step 3:** implement, following terrain's `fetch`/`result()` shape.

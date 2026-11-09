@@ -33,16 +33,16 @@
   - API documentation: `https://www.ree.es/es/datos/apidatos`
   - Legal notice: `https://www.ree.es/es/aviso-legal`
   - Endpoint: `https://apidatos.ree.es/es/datos/generacion/estructura-generacion`
-- **Licence (`unclear` — requires maintainer decision):**
+- **Licence:**
   - On `https://www.ree.es/es/datos/apidatos`:
     `"The REData API provides a simple REST service to allow third parties to access the backend data used in the REData application. By using this API, you will be able to retrieve data from the REData widgets and use them for your own purposes."`
   - On `https://www.ree.es/es/aviso-legal` (§5.1 *Propiedad intelectual e industrial o derechos de naturaleza análoga*):
     `"No obstante, el usuario podrá visualizar y obtener una copia privada temporal de los contenidos para su exclusivo uso personal y privado en sus sistemas informáticos (software y hardware) publicarlo en su página web o crear materiales corporativos o académicos siempre que sea con fines informativos y no con finalidad comercial."`
     subject to four conditions:
     `"I. Mencionar de forma clara y explícita a la Sociedad como fuente de la información y de los datos. II. No alterar ni desnaturalizar el sentido de la información ni de los datos. III. Mencionar la fecha de la última actualización de la información y los datos. IV. En ningún caso se autoriza la utilización de logotipos, marcas comerciales o signos distintivos de la Sociedad más allá de los utilizados por ésta en los contenidos."`
-  - Because §5.1 limits publication and corporate/academic materials to informational, non-commercial purposes
-    (`"siempre que sea con fines informativos y no con finalidad comercial"`), the licence is marked **`unclear`** for
-    Tomas's decision before merging or filing in `awesome-fabcity-data`.
+  - **Ruling (Tomas, 9 Nov 2026):** non-commercial, not open. Menorca stays `measured` on the node, shown for
+    information with REE named and the date of the data, and the registry entry says non-commercial. The figure
+    stays out of the Index and exports.
 - **API note (9 Nov 2026):** `generacion/estructura-generacion` answers HTTP 200 for `time_trunc=day`, `month` and
   `year`, and HTTP 400 (`"Los datos solicitados no están disponibles en este momento"`) for `time_trunc=hour` on all
   tested dates and regions (`demanda/evolucion` still answers 200 at `time_trunc=hour`). Also, REE's `ree.js` selector

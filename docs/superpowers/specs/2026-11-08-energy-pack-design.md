@@ -27,7 +27,7 @@ own solar, battery or meter through Home Assistant.
    - **a "Today" box:** what the sun gave this roof today, beside what the household used;
    - **a provenance line:** says which numbers are measured and which are estimated.
 2. It works on **node #1 (Ungasan, Bali)** and **node #2 `mahon1` (Menorca)** in the first version. Both use the same
-   card with different provenance: Menorca can be measured hour by hour, Bali can only be estimated by year.
+   card with different provenance: Menorca can be measured day by day, Bali can only be estimated by year.
 3. **Live household readings through Home Assistant.** Solar output, grid import and battery, read from entities the
    household already has in HA. With them, the household's own line goes live and its own fossil share moves through
    the day, even in Bali.
@@ -69,7 +69,7 @@ own solar, battery or meter through Home Assistant.
   - Menorca's own plants (OSM);
   - the 132 kV Mallorca–Menorca cable (OSM `power=cable`);
   - Mallorca's plants, and the Mallorca–peninsula link;
-  - mix: `measured`, hourly, from REE REData (`geo_limit=baleares`).
+  - mix: `measured`, daily, from REE REData (`geo_limit=baleares`, `geo_ids=8743`).
 
 A node finds its grid by its point, inside a hand-drawn polygon per entry. A node outside every entry shows the card's
 `none` sentence and says how to add its grid. It never borrows a neighbour's figure (the 11 Sep no-fallback rule).
@@ -101,11 +101,14 @@ before it goes into the `bali` entry.
 
 ### 5.3 The fossil share
 
-- **Menorca, measured:** REE REData `generacion/estructura-generacion` for the Balearic system, hourly. Power from the
-  peninsula link counts at the peninsula's mix that hour (same API, `peninsular`). On 8 Nov the API answered 400 and
-  502 ("data not available right now"), so neither the endpoint nor REE's reuse terms are confirmed yet.
-  **Licence first:** if REE's terms fail the open rule, Menorca falls back to `estimated` like Bali, and the doc gets
-  updated.
+- **Menorca, measured:** REE REData `generacion/estructura-generacion` for the Balearic system (`geo_ids=8743`), by
+  day. REData has no hourly generation mix (`time_trunc=hour` answers 400, checked 9 Nov); hourly needs ESIOS and a
+  personal token, which this pack doesn't use. Power from the peninsula link counts at the peninsula's mix that day
+  (same API, `peninsular`, `geo_ids=8741`). The 8 Nov 502s were the wrong id (8), not REE being down.
+  **Licence (Tomas, 9 Nov):** REE allows publishing "con fines informativos y no con finalidad comercial", with REE
+  named, the date given and the meaning unaltered. That is non-commercial, not open. Menorca stays `measured` on the
+  node with that attribution, and the registry entry says non-commercial. The figure stays out of the Index and
+  exports.
 - **Bali, estimated:** the yearly share by fuel. The builder picks the method and the card names it. The candidates,
   in the order I'd try them:
   1. PLN Statistik's yearly generation by fuel for the Bali system, if its licence passes;
@@ -138,7 +141,7 @@ ENERGY_HA_BATTERY=          # optional, entity id, W
 Readings land as local readings with the node's usual sensor ids. They are polled every 5 minutes.
 
 The household's fossil share for an hour is the share of its use that came from the grid, times the grid's fossil share
-for that hour (or the year, in Bali).
+for that day in Menorca (REE's finest) or the year in Bali.
 
 My call: the read lives in the energy pack, not in `packs/home-assistant`. That pack promises "The node publishes;
 Home Assistant automates", and it stays one-way. Any setting that makes the node reach into the house is marked in Set
@@ -168,8 +171,8 @@ sources list ("this house: 3.1 kW from the roof now, 40% fossil today") and the 
 instead of the forecast.
 
 The period of the headline is the **trailing 12 months** on both nodes, so the same metric means the same thing on
-node #1 and node #2 (my call). Menorca adds a readout "right now: N%" from the latest REE hour. This needs a year of
-hourly REE rows stored, backfilled on the first fetch.
+node #1 and node #2 (my call). Menorca adds a readout "yesterday: N%" from the latest full REE day. This needs a year of
+daily REE rows stored, backfilled on the first fetch.
 
 `packs/energy/issue.yml`, shaped like `packs/terrain/issue.yml`:
 
