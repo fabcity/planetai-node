@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The visual gate for the production dashboard: the same script that measured Phase 1, run against
 # app/static with the committed fixture, and compared against numbers THIS rig measured against
-# THIS page — never against docs/design/REDESIGN_2026-09_ground.md's Phase 1 numbers, which were
+# THIS page — never against planetai-design/node-docs/design/REDESIGN_2026-09_ground.md's Phase 1 numbers, which were
 # captured against a container nobody can reconstruct and are not comparable to a hermetic render.
 #
 #   bash tests/visual/gate.sh
@@ -129,7 +129,7 @@ function t1legs(d) {
 }
 
 // Recorded by running this gate against the page as committed at 46018b0 (Task 8). Never
-// docs/design/REDESIGN_2026-09_ground.md's Phase 1 numbers — those were measured against a
+// planetai-design/node-docs/design/REDESIGN_2026-09_ground.md's Phase 1 numbers — those were measured against a
 // prototype container nobody can reconstruct, and are not comparable to a hermetic render of the
 // production page.
 //   now_populated_390:  orphanNums 0, orphanComps 0, page height 8267 px, empty share 37.7%

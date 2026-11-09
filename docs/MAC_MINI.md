@@ -46,7 +46,7 @@ planetai mesh      # reachable as <name>.<tailnet>.ts.net from anywhere, no open
 From your laptop, over ordinary `ssh` (Remote Login on):
 
 ```bash
-ssh you@bayu-ungasan.local    # or bayu-ungasan.<tailnet>.ts.net over Tailscale
+ssh you@<node-name>.local    # or <node-name>.<tailnet>.ts.net over Tailscale
 planetai status
 ```
 

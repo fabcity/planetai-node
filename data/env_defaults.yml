@@ -15,10 +15,10 @@ NODE_CITY:
   default: "bali"
   help: "---- who and where ---- pilot key used in Index cells: bali | barcelona | boston | santiago"
 NODE_LAT:
-  default: "-8.8271"
+  default: "-8.8277"
   help: "---- who and where ----"
 NODE_LON:
-  default: "115.15709"
+  default: "115.15418"
   help: "---- who and where ----"
 NODE_TZ:
   default: "Asia/Makassar"
