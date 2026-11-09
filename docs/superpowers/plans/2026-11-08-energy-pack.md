@@ -120,7 +120,7 @@ Indonesia, each with its licence quoted.
   - `grids.grid_for(lat: float, lon: float, gs: list[dict]) -> dict | None`
   - `grids.ring_for(lat: float, lon: float, g: dict) -> str` (`'city'`, `'region'`; a link's sources are `'beyond'`)
   - `osm.QUERY: str` (format keys `s, w, n, e`)
-  - `osm.parse(doc: dict) -> list[dict]`. Each source is `{"name", "kind": "plant"|"substation"|"cable_head",
+  - `osm.parse(doc: dict) -> list[dict]`. Each source is `{"name", "kind": "plant"|"generator"|"substation"|"cable_head",
     "fuel": str|None, "fossil": bool|None, "mw": float|None, "lat", "lon"}`.
   - `osm.mw(tag: str | None) -> float | None`
   - `osm.near(sources: list[dict], lat: float, lon: float) -> list[dict]`: adds `km`, sorted nearest first
@@ -171,6 +171,7 @@ Algorithm (fixed by the spec, §5.3):
 
 ```
 island = Σ mw·cf[fuel] over fossil plants inside g.polygon / Σ mw·cf[fuel] over all plants with mw and a known fuel
+         (kind == "plant" only: a generator is listed, never summed, since its plant already carries the MW)
 import_max = min(1, Σ link.rated_mw / g.demand_mw)    (None if any rated_mw or demand_mw is null)
 f(j) = (1 - j)·island + j·link.fossil_share
 low, high = sorted(f(0), f(import_max)); mid = (low + high) / 2      (high None when import_max None)
