@@ -1,0 +1,15 @@
+id: energy
+name: Energy
+description: "Where the grid's power comes from, how much of it is fossil, and what sources and cables feed this cell."
+kind: code
+version: 0.1.0
+requires: { node: ">=0.91.0" }
+domain: energy
+scales: [region]
+metrics: [fossil_share_pct, fossil_share_low_pct, fossil_share_high_pct, fossil_share_day_pct, substation_km, large_plant_km, import_share_max_pct, grid_months]
+needs: "PACKS_ALLOW_CODE=1; network to Overpass API and the grid's mix source (apidatos.ree.es where applicable)"
+attribution: "© OpenStreetMap contributors, ODbL, via Overpass; Ember Yearly Electricity Data, CC BY 4.0; Red Eléctrica de España (REE), apidatos.ree.es"
+env:
+  - "# Energy pack: OSM refresh cadence (days) and grid mix poll cadence (hours)"
+  - ENERGY_REFRESH_DAYS=30
+  - ENERGY_POLL_HOURS=6

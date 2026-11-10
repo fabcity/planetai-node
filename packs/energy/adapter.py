@@ -1,0 +1,256 @@
+"""Grid mix, fossil share, and nearest power infrastructure for the cell this node stands in.
+
+Finds the node's synchronous grid in grids.yml, queries OpenStreetMap via Overpass once every ENERGY_REFRESH_DAYS (30)
+for plants, generators, substations and cable heads in that grid's bounding box, and computes the grid's fossil share
+every ENERGY_POLL_HOURS (6): a measured trailing-year share where the operator publishes daily generation (REE for the
+Balearic grid), or an explicit [low, high] range from OSM capacities and capacity factors where it does not (Bali).
+"""
+from __future__ import annotations
+
+import json
+import logging
+import os
+import sys
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+sys.path.insert(0, os.path.dirname(__file__))
+
+import grids
+import mix
+import osm
+import ree
+
+log = logging.getLogger("planetai.energy")
+SID = "energy-grid"
+USER_AGENT = "planetai-node/energy (https://planetai.fab.city; info@fab.city)"
+OSM_ATTR = "© OpenStreetMap contributors, ODbL, via Overpass"
+REE_ATTR = "Red Eléctrica de España (REE), apidatos.ree.es"
+EMBER_ATTR = "Ember Yearly Electricity Data (CC BY 4.0)"
+
+
+def _out() -> Path:
+    return Path(os.getenv("PACK_OUT", "/app/out")) / "energy"
+
+
+def result() -> dict:
+    p = _out() / "result.json"
+    if not p.exists():
+        return {}
+    try:
+        return json.loads(p.read_text())
+    except Exception:
+        return {}
+
+
+def _osm_sources(hc, g: dict, now: datetime) -> list[dict]:
+    refresh_days = max(1, int(os.getenv("ENERGY_REFRESH_DAYS", "30") or "30"))
+    cache = _out() / f"osm-{g['id']}.json"
+    if cache.exists():
+        try:
+            saved = json.loads(cache.read_text())
+            ts = datetime.fromisoformat(saved["fetched_at"])
+            if now - ts < timedelta(days=refresh_days) and isinstance(saved.get("sources"), list):
+                return saved["sources"]
+        except Exception:
+            pass
+    url = os.getenv("OVERPASS_URL", "https://overpass-api.de/api/interpreter")
+    s, w, n, e = grids.bbox(g.get("polygon") or [])
+    q = osm.QUERY.format(s=s, w=w, n=n, e=e)
+    headers = {"User-Agent": USER_AGENT, "Accept": "application/json"}
+    try:
+        if hasattr(hc, "post"):
+            r = hc.post(url, data={"data": q}, timeout=120, headers=headers)
+        else:
+            r = hc.get(url, params={"data": q}, timeout=120, headers=headers)
+        r.raise_for_status()
+        sources = osm.parse(r.json())
+        cache.parent.mkdir(parents=True, exist_ok=True)
+        cache.write_text(json.dumps({"fetched_at": now.isoformat(), "sources": sources}))
+        return sources
+    except Exception as exc:
+        log.warning("energy: overpass fetch failed for %s: %s", g["id"], exc)
+        if cache.exists():
+            try:
+                return json.loads(cache.read_text()).get("sources") or []
+            except Exception:
+                pass
+        return []
+
+
+def _grid_mix(hc, g: dict, sources: list[dict], now: datetime) -> dict:
+    poll_hours = max(1, int(os.getenv("ENERGY_POLL_HOURS", "6") or "6"))
+    gm = g.get("mix") or {}
+    if gm.get("source") == "ree" or gm.get("kind") == "measured":
+        st = ree._load()
+        if st.get("grid") == g["id"] and st.get("polled_at") and isinstance(st.get("last_out"), dict):
+            try:
+                if now - datetime.fromisoformat(st["polled_at"]) < timedelta(hours=poll_hours):
+                    return st["last_out"]
+            except Exception:
+                pass
+        out = ree.fetch(hc, st, now.date(), g)
+        st["grid"] = g["id"]
+        st["polled_at"] = now.isoformat()
+        st["last_out"] = out
+        ree._save(st)
+        return out
+    return mix.estimate(sources, g)
+
+
+def _build_bar(sources: list[dict], g: dict, m: dict) -> list[dict]:
+    if m.get("kind") == "measured":
+        val = m.get("value")
+        if val is None:
+            return []
+        return [
+            {"label": "fossil", "fossil": True, "share": round(float(val), 4), "hatched": False},
+            {"label": "clean", "fossil": False, "share": round(max(0.0, 1.0 - float(val)), 4), "hatched": False},
+        ]
+    poly = g.get("polygon") or []
+    cf = g.get("capacity_factors") or {}
+    by_fuel: dict[str, tuple[float, bool]] = {}
+    total_w = 0.0
+    for s in sources or []:
+        if s.get("kind") != "plant" or not (s.get("mw") and s["mw"] > 0):
+            continue
+        if s.get("lat") is None or s.get("lon") is None or not grids.inside(s["lat"], s["lon"], poly):
+            continue
+        factor = mix._cf(cf, s.get("fuel"))
+        if not factor or factor <= 0 or s.get("fossil") is None:
+            continue
+        w = float(s["mw"]) * factor
+        total_w += w
+        fl = str(s.get("fuel") or "other")
+        prev_w, _ = by_fuel.get(fl, (0.0, bool(s["fossil"])))
+        by_fuel[fl] = (prev_w + w, bool(s["fossil"]))
+    if total_w <= 0:
+        return []
+    links = g.get("links") or []
+    imp_max = m.get("import_max")
+    # An unknown import share stays unknown: the island's fuels are shares of what the island makes, and the link's
+    # segment has no width, never a guessed one.
+    imp_sh = (imp_max if imp_max is not None else None) if links else 0.0
+    scale = max(0.0, 1.0 - (imp_sh or 0.0))
+    bar: list[dict] = []
+    for fl, (w, is_f) in sorted(by_fuel.items(), key=lambda kv: (-kv[1][1], -kv[1][0])):
+        bar.append({"label": fl, "fossil": is_f, "share": round((w / total_w) * scale, 4), "hatched": False})
+    for lk in links:
+        seg = {"label": lk["name"], "fossil": True, "hatched": True,
+               "share": round(imp_sh / len(links), 4) if imp_sh is not None else None}
+        if imp_max is None:
+            seg["note"] = "share not published"
+        bar.append(seg)
+    return bar
+
+
+def fetch(hc) -> tuple[list[dict], list[tuple]]:
+    try:
+        lat, lon = float(os.getenv("LATITUDE", "0")), float(os.getenv("LONGITUDE", "0"))
+    except ValueError:
+        return [], []
+    if lat == 0.0 and lon == 0.0:
+        return [], []
+    g = grids.grid_for(lat, lon, grids.load())
+    if g is None:
+        return [], []
+
+    now = datetime.now(timezone.utc)
+    raw_sources = _osm_sources(hc, g, now)
+    near_all = [
+        dict(s, km=round(float(s["km"]), 2), ring=grids.ring_for(s["lat"], s["lon"], g))
+        for s in osm.near(raw_sources, lat, lon)
+    ]
+    m = _grid_mix(hc, g, raw_sources, now)
+
+    gm = g.get("mix") or {}
+    is_meas = m.get("kind") == "measured"
+    method = m.get("method") or gm.get("method") or gm.get("source") or "unknown"
+    attrs = [OSM_ATTR, REE_ATTR if is_meas else EMBER_ATTR]
+
+    subs = [s for s in near_all if s["kind"] == "substation"][:1]
+    plants = [s for s in near_all if s["kind"] == "plant" and (s.get("mw") or 0) >= 1.0]
+    big_plants = [s for s in near_all if s["kind"] == "plant" and (s.get("mw") or 0) >= 100.0]
+    links = []
+    for lk in g.get("links") or []:
+        at = (lk.get("at") or "").lower()
+        ch = next((s for s in near_all if s["kind"] == "cable_head" and (not at or at in s["name"].lower())), None)
+        links.append({
+            "name": lk["name"], "kind": "link", "fuel": None,
+            "fossil": True if (lk.get("fossil_share") or 0) > 0.5 else None,
+            "mw": lk.get("rated_mw"), "km": ch["km"] if ch else None,
+            "ring": lk.get("ring", "beyond"),
+        })
+    cut_sources = [
+        {"name": s["name"], "kind": s["kind"], "fuel": s.get("fuel"),
+         "fossil": s.get("fossil"), "mw": s.get("mw"), "km": s["km"], "ring": s["ring"]}
+        for s in (subs + plants)
+    ] + links
+
+    val = m.get("value")
+    low = val if is_meas else m.get("low")
+    high = val if is_meas else m.get("high")
+    bar = _build_bar(raw_sources, g, m)
+
+    body = {
+        "grid": g["id"],
+        "kind": m.get("kind"),
+        "method": method,
+        "months": m.get("months"),
+        "share": {
+            "low": low,
+            "high": high,
+            "value": val if is_meas else None,
+            "now": m.get("now") if is_meas else None,
+            "stale": bool(m.get("stale", False)),
+            "as_of": m.get("as_of") or now.isoformat(),
+        },
+        "bar": bar,
+        "sources": cut_sources,
+        "today": {"sun_kwh_m2": None, "roof_kwh": None, "use_kwh": None, "measured": False},
+        "household": None,
+        "attribution": attrs,
+        "computed_at": now.isoformat(),
+    }
+    out_dir = _out()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "result.json").write_text(json.dumps(body))
+
+    readings: list[tuple] = []
+    if is_meas and val is not None:
+        readings.append((now, SID, "fossil_share_pct", round(float(val) * 100.0, 2)))
+    if low is not None:
+        readings.append((now, SID, "fossil_share_low_pct", round(float(low) * 100.0, 2)))
+    if high is not None:
+        readings.append((now, SID, "fossil_share_high_pct", round(float(high) * 100.0, 2)))
+    if is_meas and m.get("now") is not None:
+        readings.append((now, SID, "fossil_share_day_pct", round(float(m["now"]) * 100.0, 2)))
+    if subs:
+        readings.append((now, SID, "substation_km", round(float(subs[0]["km"]), 2)))
+    if big_plants:
+        readings.append((now, SID, "large_plant_km", round(float(big_plants[0]["km"]), 2)))
+    imp_max = m.get("beyond") if is_meas else m.get("import_max")
+    if imp_max is not None:
+        readings.append((now, SID, "import_share_max_pct", round(float(imp_max) * 100.0, 2)))
+    if m.get("months") is not None:
+        readings.append((now, SID, "grid_months", float(m["months"])))
+
+    sensor = {
+        "sensor_id": SID,
+        "source": "energy",
+        "name": f"Grid mix ({g['name']})",
+        "kind": "model",
+        "scale": "region",
+        "indoor": False,
+        "local": False,
+        "cadence": "PT1H",
+        "lat": lat,
+        "lon": lon,
+        "meta": {
+            "attribution": "; ".join(attrs),
+            "grid": g["id"],
+            "provenance": m.get("kind"),
+            "method": method,
+        },
+    }
+    return [sensor], readings

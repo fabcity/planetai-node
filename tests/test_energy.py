@@ -176,8 +176,71 @@ sp = R.ring_split(men_plus_mal, g_bal, beyond_share=0.2)
 check(sp["kind"] == "estimated" and abs(sp["beyond"] - 0.2) < 1e-9 and abs(sp["city"] + sp["region"] + sp["beyond"] - 1.0) < 1e-9,
       "Menorca ring split uses OSM capacity for city vs region and marks the split estimated")
 
+# ── Task 5: adapter.py and issue.yml ─────────────────────────────────────────
+import os
+import tempfile
+import adapter as A
+import issues
+
+
+class StubHC:
+    def __init__(self, osm_doc):
+        self.osm_doc = osm_doc
+        self.ree = StubREE3()
+
+    def post(self, url, data=None, **kw):
+        doc = self.osm_doc
+        return type("Resp", (), {"status_code": 200, "raise_for_status": lambda s: None, "json": lambda s: doc})()
+
+    def get(self, url, params=None, **kw):
+        if "overpass" in url:
+            return self.post(url, data=params, **kw)
+        return self.ree.get(url, params=params, **kw)
+
+
+with tempfile.TemporaryDirectory() as tmp:
+    os.environ["PACK_OUT"] = tmp
+    os.environ["LATITUDE"], os.environ["LONGITUDE"] = "-8.8161", "115.1635"
+    s_bali, r_bali = A.fetch(StubHC(json.load(open(FIX / "overpass-bali-2026-11-08.json"))))
+    m_bali = {m: v for _, sid, m, v in r_bali if sid == "energy-grid"}
+    check(len(s_bali) == 1 and s_bali[0]["sensor_id"] == "energy-grid" and s_bali[0]["kind"] == "model"
+          and s_bali[0]["scale"] == "region" and not s_bali[0]["local"],
+          "energy-grid sensor is a regional model sensor")
+    check("fossil_share_low_pct" in m_bali and "fossil_share_high_pct" in m_bali
+          and "fossil_share_pct" not in m_bali and "fossil_share_day_pct" not in m_bali,
+          "node #1 returns fossil_share_low_pct and high_pct, with no fossil_share_pct")
+    check(80 <= m_bali["fossil_share_low_pct"] <= m_bali["fossil_share_high_pct"] <= 100
+          and m_bali["substation_km"] < 5 and 10 <= m_bali["large_plant_km"] <= 15
+          and "import_share_max_pct" not in m_bali,
+          f"node #1 readings match Bali range and distances, and omit unknown import_share_max_pct: {m_bali}")
+    res_bali = A.result()
+    cable = next(b for b in res_bali["bar"] if b["hatched"])
+    check(cable["share"] is None and cable["note"] == "share not published",
+          "the Java cable's segment has no width while its share is unknown, never a guessed one")
+    check("lat" not in res_bali and "lon" not in res_bali, "the body served at /energy carries no coordinates")
+    check(res_bali.get("grid") == "bali" and res_bali.get("kind") == "estimated"
+          and res_bali.get("sources", [{}])[0].get("kind") == "substation",
+          "result() writes out/energy/result.json for Bali with nearest substation first")
+
+    os.environ["LATITUDE"], os.environ["LONGITUDE"] = "39.9493", "4.0500"
+    s_men, r_men = A.fetch(StubHC(json.load(open(FIX / "overpass-menorca-2026-11-08.json"))))
+    m_men = {m: v for _, sid, m, v in r_men if sid == "energy-grid"}
+    check("fossil_share_pct" in m_men and "fossil_share_day_pct" in m_men
+          and m_men["fossil_share_low_pct"] == m_men["fossil_share_high_pct"] == m_men["fossil_share_pct"]
+          and m_men.get("grid_months") == 3.0,
+          f"mahon1 returns fossil_share_pct, fossil_share_day_pct, and low == high: {m_men}")
+
+    os.environ["LATITUDE"], os.environ["LONGITUDE"] = "41.39", "2.17"
+    check(A.fetch(StubHC({})) == ([], []), "Barcelona is outside grids.yml and returns ([], [])")
+
+os.environ["PACKS_DIR"] = str(ROOT / "packs")
+decl = issues.load()
+check("energy" in decl and decl["energy"]["kind"] == "context" and decl["energy"]["line"] is None
+      and decl["energy"]["metric"] == "fossil_share_low_pct",
+      "issues.load() finds energy with kind == 'context' and line is None")
+
 if fails:
     print("\n".join(f"  ✗ {f}" for f in fails))
     sys.exit(1)
-print("  ✓ energy: grids, OSM sources, Bali's range, and Menorca's REE mix")
+print("  ✓ energy: grids, OSM sources, Bali's range, Menorca's REE mix, adapter and issue")
 sys.exit(0)

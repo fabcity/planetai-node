@@ -1,0 +1,10 @@
+# Grid mix and infrastructure distances are regional context derived from OpenStreetMap and grid operators:
+# derived, never comparable with an instrument at this address.
+- { source: energy, metric: fossil_share_pct,      role: derived, comparable: false, unit: "%" }
+- { source: energy, metric: fossil_share_low_pct,  role: derived, comparable: false, unit: "%" }
+- { source: energy, metric: fossil_share_high_pct, role: derived, comparable: false, unit: "%" }
+- { source: energy, metric: fossil_share_day_pct,  role: derived, comparable: false, unit: "%" }
+- { source: energy, metric: substation_km,         role: derived, comparable: false, unit: "km" }
+- { source: energy, metric: large_plant_km,        role: derived, comparable: false, unit: "km" }
+- { source: energy, metric: import_share_max_pct,  role: derived, comparable: false, unit: "%" }
+- { source: energy, metric: grid_months,           role: derived, comparable: false, unit: "months" }
