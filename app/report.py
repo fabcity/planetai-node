@@ -113,7 +113,7 @@ SERIES_SQL = """
 WITH win AS (
   SELECT r.sensor_id, r.metric, r.bucket, r.mean, r.min AS lo, r.max AS hi, r.n
     FROM readings_1h r
-   WHERE r.bucket > now() - make_interval(hours => %(h)s) AND """ + packs.public_sql("r") + """
+   WHERE r.bucket > now() - make_interval(hours => %(h)s) AND """ + packs.public_sql("r") + " AND " + packs.open_sql("r") + """
 ), agg AS (
   SELECT sensor_id, metric, min(bucket) AS t0, max(bucket) AS t1,
          min(lo) AS lo, max(hi) AS hi, sum(n)::int AS n,
@@ -189,7 +189,7 @@ NOW_SQL = """
 SELECT sensor_id, name, metric, indoor, local, kind,
        round(last::numeric, 2) AS last, round(mean_15m::numeric, 2) AS mean_15m,
        round(mean_1h::numeric, 2) AS mean_1h, round(silent_minutes) AS silent_minutes
-  FROM stats WHERE """ + packs.public_sql("stats") + """ ORDER BY local DESC, indoor DESC, sensor_id, metric
+  FROM stats WHERE """ + packs.public_sql("stats") + " AND " + packs.open_sql("stats") + """ ORDER BY local DESC, indoor DESC, sensor_id, metric
 """
 
 PREV_SQL = "SELECT id, ts, text, cells, window_hours, held_quiet FROM reports WHERE sent ORDER BY ts DESC LIMIT 1"

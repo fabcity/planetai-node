@@ -230,6 +230,8 @@ with tempfile.TemporaryDirectory() as tmp:
           and m_men.get("grid_months") == 3.0,
           f"mahon1 returns fossil_share_pct, fossil_share_day_pct, and low == high: {m_men}")
 
+    check(s_men[0]["meta"]["licence"] == "non-commercial" and s_bali[0]["meta"]["licence"] == "open",
+          "REE on the Balearic grid is marked non-commercial, so the open export leaves it out; Bali's sources are open")
     os.environ["LATITUDE"], os.environ["LONGITUDE"] = "41.39", "2.17"
     check(A.fetch(StubHC({})) == ([], []), "Barcelona is outside grids.yml and returns ([], [])")
 

@@ -251,6 +251,9 @@ def fetch(hc) -> tuple[list[dict], list[tuple]]:
             "grid": g["id"],
             "provenance": m.get("kind"),
             "method": method,
+            # REE's terms are non-commercial (ruled 9 Nov 2026): on the page and to the bot, never in the open export
+            # (packs.open_sql). Written every time, since sensors.meta merges and a stale key would linger.
+            "licence": "non-commercial" if is_meas else "open",
         },
     }
     return [sensor], readings
