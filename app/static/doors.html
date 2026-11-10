@@ -667,6 +667,8 @@ body:not(.classic) .hero .ladder.folded{display:none}
 .wstage{position:relative;min-height:0;min-width:0;overflow:hidden}
 .wstage svg{position:absolute;inset:0;display:block;fill:var(--ink)}
 .wstage text{font:500 var(--wf) var(--mono)}
+/* a black edge, so a line under a label never cuts it (node #1, 10 Nov: "line 35" across the heat's bracket) */
+.wstage text{paint-order:stroke;stroke:#000;stroke-width:4px;stroke-linejoin:round}
 .winfo{margin:0;font:500 var(--wf)/1.2 var(--mono);letter-spacing:.02em;text-transform:uppercase;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* under the lead screen: the words, the node's own words once it has spoken, then the balance */
 .wlow{display:grid;grid-template-columns:minmax(0,1.15fr) repeat(2,minmax(0,1fr));gap:2vw;min-height:0}

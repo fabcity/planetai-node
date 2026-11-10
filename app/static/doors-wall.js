@@ -261,8 +261,9 @@ function figSea(b, h, f, r) {
   /* the sea under the swell, a tone, then the swell itself in the sea's hue */
   g += fil(`${body} L${sx(x1)},${sx(pb)} L${sx(x0)},${sx(pb)} Z`, WG[2]) + pth(d.trim(), C, dw * .8);
   const top24 = Math.max(...r.v.filter(q => q != null));
-  g += pth(`M${sx(x0)},${sx(yM - A(top24))} L${sx(x1)},${sx(yM - A(top24))}`, C, HAIR, ` stroke-dasharray="${sx(f * .2)} ${sx(f * .15)}" opacity=".6"`)
-    + tx(x0 + f * .3, yM - A(top24) - f * .3, fits(f, (x1 - x0) * .55, `day's top ${fmt(top24, 1)} m`, `top ${fmt(top24, 1)} m`, ''), 'start', C);
+  g += pth(`M${sx(x0)},${sx(yM - A(top24))} L${sx(x1)},${sx(yM - A(top24))}`, C, HAIR, ` stroke-dasharray="${sx(f * .2)} ${sx(f * .15)}" opacity=".6"`);
+  if (v == null || fmt(top24, 1) !== fmt(v, 1))   /* the staff already says it when the hour is the top */
+    g += tx(x0 + f * .3, yM - A(top24) - f * .3, fits(f, (x1 - x0) * .55, `day's top ${fmt(top24, 1)} m`, `top ${fmt(top24, 1)} m`, ''), 'start', C);
   const sX = x0 + (x1 - x0) * h / 23, sT = yM - Am - f * .9;
   g += pth(`M${sx(sX)},${sx(base)} L${sx(sX)},${sx(sT)}`, 'var(--ink)', sw);
   for (let q = 0; q <= mx; q += 0.5) g += pth(`M${sx(sX)},${sx(yM - A(q))} l${sx(f * (q % 1 ? .2 : .4))},0`, 'var(--ink)', sw);
@@ -386,7 +387,15 @@ function wallDraw(h) {
   $('#wbramp').innerHTML = rampPair('house, µg/m³', '', hs, h, hs && fmt(hs.v[h], hs.dp), WDOM.air);
   $('#wcap').textContent = d ? wallCaption(hs ? hs.v[h] : null, near, d.line, `at ${at}`) : '';
   $('#wbinfo').textContent = `${near.length} stations nearby · partial`;
-  wallStage($('#wstage'), h, f); wallBalance($('#wbal'), h, f);
+  wallStage($('#wstage'), h, f); wallBalance($('#wbal'), h, f); headFit();
+}
+/* the words fit their column whole: past it the tagline goes first, then the Telegram line (node #1, 10 Nov: a
+   three-line sentence put the ask under the bottom of the screen) */
+function headFit() {
+  const hd = $('.whead'); if (!hd || !hd.querySelectorAll) return;
+  const drop = [...hd.querySelectorAll('.wtag, .wask .wtel')];
+  drop.forEach(e => { e.hidden = false; });
+  for (const e of drop) { if (hd.scrollHeight <= hd.clientHeight + 1) break; e.hidden = true; }
 }
 /* the replay's one clock: an hour every HOUR_STEP, the last held for HOLD of them, then the day again */
 function wallTick(now) {
