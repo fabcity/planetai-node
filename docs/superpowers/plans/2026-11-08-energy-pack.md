@@ -219,6 +219,9 @@ check(e2["high"] is None and e2["import_max"] is None, "an unknown cable rating 
   - `ree.fetch(hc, state: dict, today: date) -> dict`: updates `state["months"]`, fetches at most 3 months a call,
     and returns `{"value", "now", "months", "as_of", "kind": "measured"}`, or the last good state with `stale: True`
     after an error.
+  - `ree.LINK_URL` (`intercambios/enlace-baleares`, read for the Balearic system: positive MWh a day = in) and
+    `ree.imports(doc) -> dict[date, float]`. `fetch` makes three requests a month (mix, link, peninsula), puts the
+    current month first and ends it yesterday, and also returns `beyond`, the link's share of supply.
   - The peninsular link: each day's imports count at that day's peninsular share (`parse` of the peninsular fixture).
   - The ring split for Menorca: `beyond` is the link's import share. REE reports the Balearic system as one, so
     `city` (Menorca) against `region` (the rest of the islands) is split by OSM capacity inside each ring polygon, and

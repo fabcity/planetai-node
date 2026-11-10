@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import sys
+from datetime import date
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -15,6 +16,7 @@ sys.path.insert(0, str(ROOT / "packs/energy"))
 import grids as G  # noqa: E402
 import mix as M  # noqa: E402
 import osm as O  # noqa: E402
+import ree as R  # noqa: E402
 
 fails: list[str] = []
 
@@ -91,8 +93,91 @@ e_bali = M.estimate(bali, G.grid_for(-8.8161, 115.1635, g))
 check(e_bali["low"] is not None and 0.80 < e_bali["low"] < e_bali["high"] <= 1,
       f"node #1 Bali range sanity, got {e_bali['low']}–{e_bali['high']}")
 
+# ---------------------------------------------------------------- Menorca measured (ree.py)
+rows = R.parse(json.load(open(FIX / "ree-baleares-2026-05-10.json")))
+check(len(rows) == 1 and rows[0][0] == date(2026, 5, 10), "one day is one row")
+check(all(0 <= f <= t for _, f, t in rows), "fossil never exceeds total")
+check(abs(R.share(rows) - 8612.125 / 11012.72) < 1e-6, "Balearic share on 2026-05-10")
+check(R.share([]) is None, "empty rows give None, never 0")
+pen_rows = R.parse(json.load(open(FIX / "ree-peninsular-2026-05-10.json")))
+check(len(pen_rows) == 1 and abs(R.share(pen_rows) - 193713.6 / 555167.63) < 1e-6, "peninsular share on 2026-05-10")
+linked = R.with_link(rows, pen_rows, {date(2026, 5, 10): 1000.0})
+check(abs(linked[0][2] - 12012.72) < 1e-6 and abs(linked[0][1] - (8612.125 + 1000.0 * R.share(pen_rows))) < 1e-4,
+      "each day's imports count at that day's peninsular share")
+neg_doc = {"included": [
+    {"attributes": {"type": "No-Renovable", "values": [{"value": 500.0, "datetime": "2026-05-10T00:00:00.000+02:00"}]}},
+    {"attributes": {"type": "Renovable", "values": [{"value": 300.0, "datetime": "2026-05-10T00:00:00.000+02:00"}]}},
+    {"attributes": {"type": "Almacenamiento", "values": [{"value": -50.0, "datetime": "2026-05-10T00:00:00.000+02:00"}]}},
+    {"attributes": {"type": "total", "values": [{"value": 750.0, "datetime": "2026-05-10T00:00:00.000+02:00"}]}},
+]}
+neg_rows = R.parse(neg_doc)
+check(neg_rows == [(date(2026, 5, 10), 450.0, 750.0)], "negative storage consumption is subtracted from fossil")
+check(R.months_to_fetch(set(), date(2026, 11, 8))[0] == "2025-12", "the trailing year starts December 2025")
+check(R.months_to_fetch({"2025-12", "2026-01"}, date(2026, 11, 8))[0] == "2026-02", "held months are skipped")
+
+
+class Down:                       # REE down, as on 8 Nov
+    def get(self, *a, **k):
+        raise RuntimeError("502")
+
+
+st = {"months": {"2026-10": [0.4, 600.0, 1500.0]}, "last": {"value": 0.4, "as_of": "2026-11-07T23:00Z"}}
+out = R.fetch(Down(), st, date(2026, 11, 8))
+check(out["stale"] and out["value"] == 0.4, "a failed fetch keeps the last figure and says it is stale, never 0")
+check(out["months"] == 1, "headline says how many months it holds until twelve are in")
+out_empty = R.fetch(Down(), {}, date(2026, 11, 8))
+check(out_empty["stale"] and out_empty["value"] is None and out_empty["months"] == 0,
+      "a failed first fetch with no state gives None, never 0")
+
+
+class StubREE:
+    def __init__(self, doc):
+        self.doc = doc
+        self.calls = []
+
+    def get(self, url, params=None, **kw):
+        self.calls.append((url, params))
+        doc = self.doc
+        return type("Resp", (), {"status_code": 200, "raise_for_status": lambda s: None, "json": lambda s: doc})()
+
+
+class StubREE3:                   # mix, link, peninsula: a link of 1000 MWh a day in, as REE serves it
+    def __init__(self):
+        self.calls = []
+        self.bal = json.load(open(FIX / "ree-baleares-2026-05-10.json"))
+        self.pen = json.load(open(FIX / "ree-peninsular-2026-05-10.json"))
+
+    def get(self, url, params=None, **kw):
+        self.calls.append((url, params))
+        if url == R.LINK_URL:
+            doc = {"included": [{"attributes": {"values": [{"value": 1000.0, "datetime": "2026-05-10T00:00:00.000+02:00"}]}}]}
+        else:
+            doc = self.pen if params["geo_ids"] == "8741" else self.bal
+        return type("Resp", (), {"raise_for_status": lambda s: None, "json": lambda s: doc})()
+
+
+stub = StubREE3()
+st_live: dict = {}
+out_live = R.fetch(stub, st_live, date(2026, 11, 8))
+check(len(stub.calls) == 9 and out_live["months"] == 3 and not out_live["stale"] and out_live["kind"] == "measured",
+      "fetches at most 3 months per call, three requests each, and records a measured share")
+check(stub.calls[0][1]["start_date"] == "2026-11-01T00:00" and stub.calls[0][1]["end_date"] == "2026-11-07T23:59",
+      "the current month goes first and ends yesterday, so 'yesterday' is never a backfill day or today's part")
+check(all(c[1]["time_trunc"] == "day" for c in stub.calls) and {c[1]["geo_ids"] for c in stub.calls} == {"8743", "8741"},
+      "day resolution, geo_ids 8743 and 8741 from grids.yml")
+check(abs(out_live["value"] - linked[0][1] / linked[0][2]) < 1e-9, "the headline counts the link at the peninsula's share")
+check(abs(out_live["beyond"] - 1000.0 / 12012.72) < 1e-9, "beyond is the link's share of supply")
+check(R.fetch(StubREE3(), {}, date(2026, 11, 1))["now"] is None, "on the 1st the month has no full day yet: no 'yesterday'")
+
+g_bal = G.grid_for(39.9493, 4.0500, g)
+men_plus_mal = men + [{"name": "Alcúdia", "kind": "plant", "fuel": "coal", "fossil": True,
+                       "mw": 260.0, "lat": 39.81, "lon": 3.15}]
+sp = R.ring_split(men_plus_mal, g_bal, beyond_share=0.2)
+check(sp["kind"] == "estimated" and abs(sp["beyond"] - 0.2) < 1e-9 and abs(sp["city"] + sp["region"] + sp["beyond"] - 1.0) < 1e-9,
+      "Menorca ring split uses OSM capacity for city vs region and marks the split estimated")
+
 if fails:
     print("\n".join(f"  ✗ {f}" for f in fails))
     sys.exit(1)
-print("  ✓ energy: grids, OSM sources, and Bali's range")
+print("  ✓ energy: grids, OSM sources, Bali's range, and Menorca's REE mix")
 sys.exit(0)
