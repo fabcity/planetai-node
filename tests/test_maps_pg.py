@@ -45,6 +45,9 @@ def raises(sql, *args):
 
 assert table_exists("place_maps") and table_exists("place_marks"), "init.sql creates both tables"
 assert table_exists("place_maps_unshared"), "init.sql keeps the deletes still owed to the node upstream"
+assert table_exists("node_cells"), "init.sql creates node_cells"
+cur.execute("SELECT 1 FROM schema_version WHERE version = '0.65'")
+assert cur.fetchone(), "init.sql records schema_version 0.65"
 cur.execute("SELECT extname FROM pg_extension WHERE extname = 'postgis'")
 assert cur.fetchone(), "init.sql enabled PostGIS"
 print("  both tables exist and PostGIS is on")
@@ -80,6 +83,16 @@ cur.execute("DELETE FROM place_maps WHERE id = %s", (mid,))
 cur.execute("SELECT count(*) AS n FROM place_marks WHERE map_id = %s", (mid,))
 assert cur.fetchone()["n"] == 0, "deleting a map takes its drawings"
 print("  deleting a map deletes its drawings")
+
+import cells  # noqa: E402
+os.environ.update(NODE_LAT="-8.8190516", NODE_LON="115.1644423")
+cur.execute("INSERT INTO sensors (sensor_id, source, name, lat, lon, indoor, local, kind) "
+            "VALUES ('sc-19236', 'smartcitizen', 'Ungasan', -8.81983, 115.16657, false, true, 'sensor')")
+hc = cells.home(-8.8190516, 115.1644423)
+assert cells.load(cur, hc) == {hc, "8895a4c809fffff"}, "cells.load adopts sc-19236's neighbour cell on first run"
+cur.execute("DELETE FROM node_cells WHERE cell = '8895a4c809fffff'")
+assert cells.load(cur, hc) == {hc}, "releasing adopted cell does not re-adopt while home row is present"
+print("  node_cells: adopt and load hold on Postgres")
 
 con.rollback()
 

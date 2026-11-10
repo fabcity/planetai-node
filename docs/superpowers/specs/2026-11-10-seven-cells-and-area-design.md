@@ -45,7 +45,7 @@ that moves (new NODE_LAT/LON) gets a new home cell and adopts again; claims that
 `app/issues/engine.py`, the docstring in `packs/bali-air-dispatch/adapter.py`) move to the own cells: the street claim's
 footprint becomes the area of home plus claimed cells. The setting leaves `app/settings.py` and `.env.example`.
 
-**Community:** `GET /cells` says how many of the seven are held. Four or more is SPEC_eyes §6's draft threshold for
+**Community:** `GET /place/cells` says how many of the seven are held. Four or more is SPEC_eyes §6's draft threshold for
 asking to become a community node; the node only says so, the registry PR is still the approval.
 
 ### Where it shows
@@ -53,7 +53,7 @@ asking to become a community node; the node only says so, the registry PR is sti
 - **Place**, at the Cell zoom: the seven drawn, each in its state. The inspector on a neighbour has Claim or Release.
   A line under the map: "3 of 7 cells held".
 - **Data › Node** (or wherever the review puts it): the same line.
-- `GET /cells`, `POST /cells/{cell}/claim`, `DELETE /cells/{cell}/claim`. On no SHARE_LEVEL allowlist: this machine
+- `GET /place/cells`, `POST /place/cells/{cell}/claim`, `DELETE /place/cells/{cell}/claim` (`/cells` is the Index contract, fci-cells-v0). On no SHARE_LEVEL allowlist: this machine
   or a token. Every claim and release is an `actions` row with stage `place`, so the history survives.
 
 ## 2 · The area pull

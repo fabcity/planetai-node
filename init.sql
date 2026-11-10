@@ -631,3 +631,13 @@ CREATE TABLE IF NOT EXISTS place_photo_asks_in (
 );
 REVOKE ALL ON place_photo_asks, place_photo_asks_in FROM planetai_ro;
 INSERT INTO schema_version (version) VALUES ('0.64') ON CONFLICT DO NOTHING;
+
+-- 0.65: the seven res-8 cells (10 Nov 2026, docs/SPEC_eyes.md §5, §7 step 4). The cell the node stands in ('home') and
+-- any of the six touching it the household or an agent claimed ('adopted', 'keeper', 'agent:<name>'). `held` is derived
+-- on every read from readings in the last 24 h, never stored here.
+CREATE TABLE IF NOT EXISTS node_cells (
+  cell       TEXT PRIMARY KEY,
+  claimed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  claimed_by TEXT NOT NULL          -- 'home' | 'adopted' | 'keeper' | 'agent:<name>'
+);
+INSERT INTO schema_version (version) VALUES ('0.65') ON CONFLICT DO NOTHING;

@@ -20,7 +20,7 @@ Gemini builds Tasks 1–8, one per run. Task 9 (docs, in Tomas's voice) and Task
 
 - `held` derived on read, never stored; it must not be possible to get `held` without a reading in the last 24 h.
 - No sensor on a node that was local yesterday stops being local after upgrade (adoption, Task 2).
-- `/cells` and `/area` are on no SHARE_LEVEL allowlist.
+- `/place/cells` and `/area` are on no SHARE_LEVEL allowlist.
 - Tests that pass by bending the fixture to the code (padding data, loosening a check) are a failed task.
 
 ---
@@ -94,11 +94,12 @@ still sets it must start and ignore it (check how `settings.py` treats an unknow
 **Interfaces**
 
 ```
-GET    /cells               -> {"home": id, "res": 8, "cells": states(...), "held": n, "of": 7, "community_ready": n >= 4}
-POST   /cells/{cell}/claim  -> 200 the same body | 400 not a neighbour | 409 already claimed
-DELETE /cells/{cell}/claim  -> 200 the same body | 400 home cannot be released | 404 not claimed
+GET    /place/cells               -> {"home": id, "res": 8, "cells": states(...), "held": n, "of": 7, "community_ready": n >= 4}
+POST   /place/cells/{cell}/claim  -> 200 the same body | 400 not a neighbour | 409 already claimed
+DELETE /place/cells/{cell}/claim  -> 200 the same body | 400 home cannot be released | 404 not claimed
 ```
 
+`GET /cells` already exists: it is the Index contract (fci-cells-v0, `cells_()` in app/main.py) and must not change.
 In `app/cells.py` as `router`, included in `app/main.py` beside `geo.router`. On no SHARE_LEVEL allowlist (read how
 `geo.py` and `maps.py` are gated and do the same). `seen` comes from one query: res-8 cells of custody `kind='sensor'`
 sensors with a reading in the last 24 h (compute the cell in Python; sensors are few). Each claim and release writes
@@ -109,7 +110,7 @@ caller with no token is refused.
 
 ## Task 5 · Place map shows the seven
 
-`app/static/doors-placemap.js`: at the Cell zoom, a PolygonLayer of the seven from `GET /cells`, coloured by state from
+`app/static/doors-placemap.js`: at the Cell zoom, a PolygonLayer of the seven from `GET /place/cells`, coloured by state from
 the existing theme tokens (no new colour; ask in the report if none fits). Inspector on a neighbour gets Claim or
 Release, calling the routes. A line under the map: "N of 7 cells held". Read
 `docs/` design notes the file points to before changing it.
@@ -166,5 +167,5 @@ Docs page in Tomas's voice, CHANGELOG under Unreleased, the SPEC_eyes §7 step 4
 
 ## Task 10 · node #1 (Claude + Tomas)
 
-Node #1 on the branch: before/after `SELECT sensor_id, local FROM sensors` must match; `GET /cells` shows the
+Node #1 on the branch: before/after `SELECT sensor_id, local FROM sensors` must match; `GET /place/cells` shows the
 adopted cells; one Pull over the seven and one over a drawn area. Then PR, `tested: node 1` label on Tomas's word.
