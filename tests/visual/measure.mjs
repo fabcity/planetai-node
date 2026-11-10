@@ -3309,13 +3309,13 @@ async function wallstage() {
   const bad = [], ok = (c, what) => { if (!c) bad.push(what); };
   const fx = JSON.parse(fs.readFileSync(path.join(HERE, '..', '..', 'app', 'issues', 'fixtures', `${FIXTURE}.json`), 'utf8'));
   const names = (fx.sensors || []).filter(x => x.local && (x.name || '').trim().length > 3).map(x => x.name.trim());
-  const read = page => page.evaluate(([names]) => {
+  const read = (page, floor = 27.5) => page.evaluate(([names, floor]) => {
     const W = document.querySelector('#wallv'), FIVE = ['live', 'partial', 'model', 'cached', 'example'];
     const txt = [...W.querySelectorAll('*')].filter(e => [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim()) && e.getClientRects().length && !e.closest('.wchrome,[hidden]'));
     const px = e => parseFloat(getComputedStyle(e).fontSize) * (e instanceof SVGElement ? e.getScreenCTM().a : 1);
     const narr = document.querySelector('#wnarr'), cols = [...document.querySelectorAll('.wlow > *')].filter(e => !e.hidden).map(e => e.id || e.className);
     return { hour: WALL.h, sub: CLOCK.subs.has('wall-replay'), h: document.documentElement.scrollHeight, w: document.documentElement.scrollWidth,
-      small: txt.filter(e => px(e) < 27.5).map(e => `${e.tagName}.${e.className.baseVal ?? e.className} ${px(e).toFixed(1)}`).slice(0, 3),
+      small: txt.filter(e => px(e) < floor).map(e => `${e.tagName}.${e.className.baseVal ?? e.className} ${px(e).toFixed(1)}`).slice(0, 3),
       clipped: [...W.querySelectorAll('.whead,.wscr')].filter(e => !e.hidden && e.scrollHeight > e.clientHeight + 1).map(e => e.className),
       undated: [...W.querySelectorAll('.wrv')].filter(v => v.querySelector('.wnum')).map(v => v.textContent).filter(f => !/\d\d:\d\d/.test(f) || !FIVE.some(x => f.includes(x))).slice(0, 2),
       stale: [...W.querySelectorAll('.wstage')].filter(e => { const s = e.querySelector('svg'); return s && Math.abs(+s.getAttribute('width') - e.clientWidth) > 1; }).map(e => e.id),
@@ -3323,17 +3323,19 @@ async function wallstage() {
       narr: narr && !narr.hidden ? { cols, past: Math.round(narr.getBoundingClientRect().bottom - innerHeight) } : null,
       words: [...W.querySelectorAll('.wpw')].map(e => e.textContent).filter(x => !FIVE.includes(x)),
       named: names.filter(n => W.innerHTML.includes(n)) };
-  }, [names]);
+  }, [names, floor]);
   const was = [process.env.PAI_ASK_MODEL, process.env.PAI_ASK_LONG];
   process.env.PAI_ASK_MODEL = 'rig-model'; process.env.PAI_ASK_LONG = '1';      /* a model that answers, at length */
-  for (const [w, h, touch] of [[1920, 1080, false], [390, 844, true]]) {
+  for (const [w, h, touch] of [[1920, 1080, false], [1440, 900, false], [390, 844, true]]) {
     const r = await openRig({ w, h, touch, dark: true });
     await r.page.goto(`${POP}/?fixture=${FIXTURE}#wall`, { waitUntil: 'domcontentloaded' });
     await r.page.waitForSelector('#wstage svg', { timeout: 30000 }).catch(() => bad.push(`${w}: the Wall drew no stage`));
     await r.page.waitForSelector('#wnarr:not([hidden])', { timeout: 30000 }).catch(() => bad.push(`${w}: the narration never opened`));
+    /* the loading screen holds at least 1.2 s (ASKING's floor); a reading taken under it reads nothing */
+    ok(await r.page.waitForSelector('#asking:not(.on)', { state: 'attached', timeout: 8000 }).then(() => true, () => false), `${w}: the loading screen never closed`);
     await r.page.evaluate(() => document.fonts.ready); await r.page.waitForTimeout(800);
     if (process.env.PAI_WALL_SHOTS === '1') await r.page.screenshot({ path: path.join(OUT, `wallstage_${w}.png`), fullPage: true });
-    const g = await read(r.page), tag = `${w}`;
+    const g = await read(r.page, Math.min(28, w * .014584, h * .025926) - .5), tag = `${w}`;
     ok(g.stage && g.figs >= 4, `${tag}: the stage or the balance is not drawn (${g.figs} figures)`);
     ok(g.w <= w, `${tag}: the page is ${g.w} px wide`);
     ok(!g.stale.length, `${tag}: drawn at another size than its screen: ${g.stale.join(', ')}`);
@@ -3344,7 +3346,7 @@ async function wallstage() {
     ok(!g.named.length, `${tag}: names a room or sensor: ${g.named.join(', ')}`);
     if (g.narr) { ok(g.narr.cols.join('|') === 'whead|wnarr|wscr wsmall', `${tag}: the narration is not between the words and the balance: ${g.narr.cols.join(' | ')}`);
       if (!touch) ok(g.narr.past <= 1, `${tag}: the narration runs ${g.narr.past} px past the screen`); }
-    if (!touch) {
+    if (w === 1920) {
       const a = await read(r.page); await r.page.waitForTimeout(1500); const b = await read(r.page);
       ok(a.hour === 23 && a.hour === b.hour && !b.sub, `reduced motion: the replay moved (${a.hour} → ${b.hour}, subscribed ${b.sub})`);
     }
@@ -3369,7 +3371,7 @@ async function wallstage() {
     ok(hours.size >= 4 && seen.every(x => Number.isInteger(x[0])), `motion: the hours did not step (${[...hours].join(',')})`);
     ok(new Set(seen.map(x => x[1])).size >= 3, 'motion: the stage was not redrawn as the hours stepped');
     await browser.close(); }
-  if (!bad.length) console.log('  wallstage: the instruments at 1920×1080 and 390, one screen on a TV, nothing under the floor, dated and worded, no names, the narration between the words and the balance; still under reduced motion, stepping with motion on');
+  if (!bad.length) console.log('  wallstage: the instruments at 1920×1080, 1440×900 and 390, one screen on a TV, nothing under the floor, dated and worded, no names, the narration between the words and the balance; still under reduced motion, stepping with motion on');
   for (const b of bad) console.log('FAIL wallstage:', b);
   if (bad.length) process.exitCode = 1;
 }
