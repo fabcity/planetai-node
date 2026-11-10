@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS sensors (
   lat       DOUBLE PRECISION,
   lon       DOUBLE PRECISION,
   indoor    BOOLEAN NOT NULL DEFAULT FALSE,
-  local     BOOLEAN NOT NULL DEFAULT FALSE,   -- TRUE = this node's own instrument, here. Set by the adapter, narrowed by LOCAL_RADIUS_M.
+  local     BOOLEAN NOT NULL DEFAULT FALSE,   -- TRUE = this node's own instrument, here. Set by the adapter, narrowed by node_cells.
   kind      TEXT NOT NULL DEFAULT 'sensor',   -- sensor | portal | model | survey | child | peer | facility  (how the number was produced,
                                         -- or, for 'facility', that there is no number: a place with a name and a point. packs/make)
   scale     TEXT NOT NULL DEFAULT 'community',-- community | city | region | bioregion | planet  (what the number describes)

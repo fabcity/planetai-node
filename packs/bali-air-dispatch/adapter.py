@@ -78,8 +78,8 @@ def verdicts(rows: list[dict], node_lat: float, node_lon: float, radius_km: floa
     Ownership is not the test: a kit of the operator's at another address is a legitimate neighbour. The test is
     whether this node already measures that device.
 
-    Distance from the node stands in for distance from each local sensor: every local sensor is inside
-    LOCAL_RADIUS_M (500 m) of it by definition. A local sensor near the edge of that radius with a station 150 m
+    Distance from the node stands in for distance from each local sensor: every local sensor stands in
+    this node's own res-8 cells by definition. A local sensor near the edge of those cells with a station 150 m
     beyond it on the far side would be missed; BAD_EXCLUDE is the answer if that ever happens.
     """
     own, byhand = own_ids or set(), exclude_ids or set()

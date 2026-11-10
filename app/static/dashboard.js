@@ -4688,7 +4688,7 @@ window.PAI.register({
       { id: 'claims-declared', label: 'Every footprint is declared',
         text: 'Every footprint here is a number a pack or a preset already '
         + 'declares — COAST_MAX_KM, BAD_RADIUS_KM, EARTH_RADIUS_M at 10 m a pixel, PLACE_RADIUS_M, '
-        + 'LOCAL_RADIUS_M, and the three decimals GET /health rounds a coordinate to, which is about '
+        + 'the node\'s own cells, and the three decimals GET /health rounds a coordinate to, which is about '
         + '110 m and the finest resolution anything from this node may be drawn at. Not one '
         + 'radius on this page was chosen by it.' },
       { id: 'claims-order', label: 'Widest ground first',
