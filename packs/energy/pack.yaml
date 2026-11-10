@@ -13,3 +13,6 @@ env:
   - "# Energy pack: OSM refresh cadence (days) and grid mix poll cadence (hours)"
   - ENERGY_REFRESH_DAYS=30
   - ENERGY_POLL_HOURS=6
+# The paths this pack's routes.py serves that a household on SHARE_LEVEL=open shares with its own WiFi (app/auth.py).
+share:
+  open: [/energy]

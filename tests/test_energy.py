@@ -241,8 +241,97 @@ check("energy" in decl and decl["energy"]["kind"] == "context" and decl["energy"
       and decl["energy"]["metric"] == "fossil_share_low_pct",
       "issues.load() finds energy with kind == 'context' and line is None")
 
+# ── Task 6: GET /energy (routes.py) ──────────────────────────────────────────
+import logging
+import time
+
+sys.path = [p for p in sys.path if p != "/tmp/stub"]
+sys.modules.pop("httpx", None)
+logging.disable(logging.WARNING)
+os.environ.update(
+    PACKS_DIR=str(ROOT / "packs"),
+    ADMIN_TOKEN="admin-tok",
+    ACT_TOKEN="act-tok",
+    NODE_LAT="-8.8161",
+    NODE_LON="115.1635",
+    DATABASE_URL="postgresql://unused/never-connected",
+)
+import settings  # noqa: E402
+ROWS = {"PACKS_ENABLED": "", "SHARE_LEVEL": "open"}
+settings._cache = {"at": time.time() + 1e9, "rows": ROWS}
+import db  # noqa: E402
+import main  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
+
+client = TestClient(main.app)
+ADMIN = {"Authorization": "Bearer admin-tok"}
+ACT = {"Authorization": "Bearer act-tok"}
+
+with tempfile.TemporaryDirectory() as tmp:
+    os.environ["PACK_OUT"] = tmp
+    os.environ["LATITUDE"], os.environ["LONGITUDE"] = "-8.8161", "115.1635"
+    A.fetch(StubHC(json.load(open(FIX / "overpass-bali-2026-11-08.json"))))
+
+    ROWS["PACKS_ENABLED"] = "air-quality,heat"
+    r_off = client.get("/energy", headers=ADMIN)
+    check(r_off.status_code == 404 and "pack is off" in r_off.json().get("detail", ""),
+          f"GET /energy is 404 while the pack is off, got {r_off.status_code}: {r_off.text}")
+
+    ROWS["PACKS_ENABLED"] = ""
+    HA_ROWS = [
+        {"sensor_id": "energy-home", "metric": "home_roof_w", "value": 3120.0},
+        {"sensor_id": "energy-home", "metric": "home_grid_w", "value": 400.0},
+        {"sensor_id": "energy-home", "metric": "home_fossil_pct", "value": 24.25},
+    ]
+    db.q = main.q = lambda sql, *a: [dict(r) for r in HA_ROWS] if "energy-home" in sql else []
+
+    r_anon = client.get("/energy")
+    check(r_anon.status_code == 200, f"GET /energy is 200 on SHARE_LEVEL=open with the pack on, got {r_anon.status_code}")
+    body = r_anon.json() if r_anon.status_code == 200 else {}
+    want_keys = {"grid", "kind", "method", "months", "share", "bar", "sources", "today", "household", "attribution"}
+    check(set(body.keys()) == want_keys, f"GET /energy body keys match contract, got {set(body.keys())}")
+    check(body.get("grid") == "bali" and body.get("kind") == "estimated" and body.get("method") == "capacity-factors",
+          "GET /energy serves Bali grid metadata")
+    check(set((body.get("share") or {}).keys()) == {"low", "high", "value", "now", "stale", "as_of"},
+          "GET /energy share object has the contract keys")
+    check(set((body.get("today") or {}).keys()) == {"sun_kwh_m2", "roof_kwh", "use_kwh", "measured"},
+          "GET /energy today object has the contract keys")
+    srcs = body.get("sources") or []
+    check(bool(srcs) and srcs[0].get("kind") == "substation" and srcs[0].get("name") == "GIS Pecatu"
+          and sum(1 for s in srcs if s.get("kind") == "substation") == 1
+          and all((s.get("mw") or 0) >= 1.0 for s in srcs if s.get("kind") == "plant")
+          and srcs[-1].get("kind") == "link",
+          "sources is cut to the nearest substation, then every plant with mw >= 1, then each link")
+    check(body.get("household") is None, "household is null without the admin token even when HA rows exist")
+    check(client.get("/energy", headers=ACT).json().get("household") is None,
+          "household is null for the act token even when HA rows exist")
+    check(client.get("/energy", headers={**ADMIN, "X-Agent": "agent"}).json().get("household") is None,
+          "household is null for an agent even holding the admin token")
+    r_adm = client.get("/energy", headers=ADMIN).json()
+    check(isinstance(r_adm.get("household"), dict) and r_adm["household"].get("roof_w") == 3120.0,
+          f"household is served to the admin token when HA rows exist: {r_adm.get('household')}")
+
+    raw_res = json.loads((Path(tmp) / "energy/result.json").read_text())
+    raw_res["sources"] = [
+        {"name": "Sub Far", "kind": "substation", "fuel": None, "mw": None, "km": 8.0, "ring": "region"},
+        {"name": "Sub Near", "kind": "substation", "fuel": None, "mw": None, "km": 1.2, "ring": "city"},
+        {"name": "Small Solar", "kind": "plant", "fuel": "solar", "mw": 0.5, "km": 0.8, "ring": "city"},
+        {"name": "Unknown MW", "kind": "plant", "fuel": "solar", "mw": None, "km": 0.9, "ring": "city"},
+        {"name": "Big Plant", "kind": "plant", "fuel": "gas", "mw": 50.0, "km": 4.0, "ring": "city"},
+        {"name": "Java cable", "kind": "link", "fuel": None, "mw": None, "km": 100.0, "ring": "beyond"},
+    ]
+    raw_res["household"] = {"roof_w": 2500.0, "grid_w": 100.0, "fossil_pct": 12.0}
+    (Path(tmp) / "energy/result.json").write_text(json.dumps(raw_res))
+    check([(s["name"], s["kind"]) for s in client.get("/energy").json()["sources"]] == [
+        ("Sub Near", "substation"), ("Big Plant", "plant"), ("Java cable", "link")
+    ], "route cuts uncut sources to nearest substation, plants >= 1 MW, then links")
+    check(client.get("/energy").json()["household"] is None,
+          "household in result.json is also hidden without the admin token")
+    check(client.get("/energy", headers=ADMIN).json()["household"]["roof_w"] == 2500.0,
+          "household in result.json is served to the admin token")
+
 if fails:
     print("\n".join(f"  ✗ {f}" for f in fails))
     sys.exit(1)
-print("  ✓ energy: grids, OSM sources, Bali's range, Menorca's REE mix, adapter and issue")
+print("  ✓ energy: grids, OSM sources, Bali's range, Menorca's REE mix, adapter, issue and GET /energy")
 sys.exit(0)
