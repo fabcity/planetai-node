@@ -6,8 +6,8 @@ I also want for the place section to be able to provide the download of reports,
 per city, when we allow people to download a report as pdf." Of the two scopes offered, he chose the small one: "Spec the
 one page". It goes in v0.93, after v0.92 is cut.*
 
-**Status: proposed 11 November 2026. Nothing is built.** Each step in §9 is its own pull request, run on node #1 before
-it merges.
+**Status: proposed 11 November 2026, its four open questions decided by Tomas the same day (§10). Nothing is built.**
+Each step in §9 is its own pull request, run on node #1 before it merges.
 
 ## 1 · What it serves
 
@@ -117,11 +117,14 @@ dropped them would be making the numbers look surer than they are.
 
 ## 6 · Privacy
 
-The report holds nothing a screen with the token cannot already download today. The PNG of the screen and the named
-maps' files already leave the house when the keeper presses Download, and that press is the keeper's choice. So:
+A report is made to leave the house, so it follows SPEC_eyes §2: the house's own res-10 cell blurs on anything that
+leaves. It holds less than the PNG of the screen, which still draws the kit at its point.
 
-- **With the token**, the sheet draws what the screen draws: the outdoor kit, the household's images and its drawings.
-  No text on any page is closer than the res-8 cell: the coordinates line is the cell centre, never the house's point.
+- **With the token**, the sheet draws what the screen draws, except at the house. The outdoor kit, and any image taken
+  inside the house's res-10 cell, are drawn as that cell, filled, never as points (Tomas, 11 November 2026: yes, blur
+  it even with the token). The cell's outline comes from `GET /geo/cell?res=10`, since the page carries no h3-js.
+  Drawings stay as they were drawn: a marker someone placed on the house is their own choice.
+- No text on any page is closer than the res-8 cell: the coordinates line is the cell centre, never the house's point.
 - **Without the token**, Place draws no map of the house (SPEC_place_microgis §8). The sheet says so in the node's own
   sentence, where the map would be, and the report pages carry what a tokenless screen sees: the cake's rows with
   their sources and the yearly figures.
@@ -144,7 +147,8 @@ maps' files already leave the house when the keeper presses Download, and that p
 
 - A lifted-function test under tests/, named for this page (test_place_report.py): the grid step for widths from 50 m to 40 km, which must give
   five to eight lines; the legend's rows and their order for a fixed `LAYERS` and `on`; the page count when pages are
-  empty; and that no page's text holds the house's point (node #1's capture as the fixture). The JSON goes in through
+  empty; that no page's text holds the house's point (node #1's capture as the fixture); and that the sheet's layers
+  hold no kit or image point inside the house's res-10 cell, only the cell. The JSON goes in through
   stdin, never argv, because of the 128 KB limit on Linux CI. Its line goes in `tests/all` and the count goes up by one.
   Only one branch at a time may change that count (NEXT_RELEASE rule 1), and the energy and seven-cells branches both
   add suites, so this one waits its turn.
@@ -155,9 +159,15 @@ maps' files already leave the house when the keeper presses Download, and that p
 
 ## 9 · Steps
 
-1. **The sheet.** The Download line, the register switch with the picture taken, `#place/report` with the sheet, the
+1. **The sheet.** The Download line and a Tools menu row (`place.report`, opening the same view), the register switch with the picture taken, `#place/report` with the sheet, the
    print CSS, the test, the visual gate stage, the docs.
 2. **The report pages.** The four pages of §5 under the sheet, and the test's page-count cases.
+3. **Asking for it.** "Make me the place report" in the Ask pane. Place's command registry (`GET /place/tools`,
+   SPEC_place_microgis §6) is not built yet, so the first form is one pane tool, `place.report`, in
+   `agent_loop.PANE_TOOLS` with its `TOOL_CLASS`. It is offered only on a screen holding the token, takes the register
+   (Paper unless asked otherwise), and answers with the link to `#place/report`, which the pane draws as a button. The
+   person still presses Print: the agent never makes the PDF. When the registry lands, the tool moves into it. The
+   Tools menu on Place lists it from step 1, with its id, so the command is visible before the agent can call it.
 
 Each step lands with its line in the CHANGELOG, a section in `docs/site/place.md` ("Print the place, or save it as a
 PDF") with a picture of the sheet taken from node #1, and the milestone v0.93.
@@ -165,14 +175,12 @@ PDF") with a picture of the sheet taken from node #1, and the milestone v0.93.
 The one non-goal line in SPEC_place_microgis §2 that said "no print layouts" now says what it meant: no layout
 designer. Place has this one fixed sheet. A designer, if one is wanted, is the fab lab node's (SPEC_fablab).
 
-## 10 · Open, for Tomas
+## 10 · Decided, 11 November 2026
 
-- **The house on a sheet that leaves.** §6 follows the PNG's precedent: with the token, the outdoor kit sits at its own
-  point on the map. SPEC_eyes §2 blurs the house's res-10 cell on anything that leaves the node. Should the sheet blur
-  the kit to its res-10 cell even when the keeper holds the token?
-- **Paper as the default register.** It saves ink and reads like the Index's report. The screen is black in both
-  registers by your 4 November ruling, so the default could be Screen instead.
-- **Asking for it.** Every Place tool is a command the Ask agent can run (SPEC_place_microgis §6). A `place.report` command
-  could answer "make me the place report" with the link to `#place/report`. It is left out of the first step.
-- **3D.** urban:SCAN's 3D scheme would be its own spec: a tilted, exploded view of the cake's layers on deck.gl, then a
-  PNG of it on the sheet's second page.
+Tomas answered the four open questions of the first draft: "1. yes, 2 light, 3, yes, yes".
+
+- **The house on a sheet that leaves:** blurred to its res-10 cell even with the token (§6).
+- **The default register:** Paper, the light one (§3).
+- **Asking for it:** yes, as step 3 (§9).
+- **3D:** its own spec, later. urban:SCAN's 3D scheme is a tilted, exploded view of the layers; on the node it would be
+  the cake's sections on deck.gl, then a PNG of it on a page of the report. Nothing in this spec waits for it.
