@@ -50,8 +50,9 @@ Place. (The 416 m is wrong somewhere on its own account. That gets checked separ
 
 **Non-goals**
 
-- A desktop GIS. There is no ribbon, no toolbox of hundreds of tools, no ModelBuilder, no print layouts, no
-  free-form weighted overlay. Those belong to the fab lab node (SPEC_fablab).
+- A desktop GIS. There is no ribbon, no toolbox of hundreds of tools, no ModelBuilder, no print layout designer, no
+  free-form weighted overlay. Those belong to the fab lab node (SPEC_fablab). Place has one fixed sheet to print
+  (SPEC_place_report, 11 November 2026).
 - Editing the map's geometry. Observations add points and areas; the base maps stay what their sources publish.
 - Explaining McHarg on the page. The method lives in the docs (§10).
 
