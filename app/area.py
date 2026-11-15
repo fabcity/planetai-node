@@ -159,7 +159,7 @@ def own(sensors, readings, selection: set[str], own_cells: set[str]) -> dict:
     if not mine:
         out["why"] = "None of these cells is the node's own, so none of its readings are read here."
     elif not out["metrics"]:
-        out["why"] = "No sensor of this node has a reading in these cells."
+        out["why"] = "No sensor of this node has a reading in these cells in the last 24 hours."
     return out
 
 
@@ -169,7 +169,7 @@ def peers(sensors, readings, selection: set[str]) -> dict:
     here = [s for s in ps if _placed(s) in selection]
     out = {"sensors": len(here), "metrics": _read(here, readings), "unplaced": sum(1 for s in ps if _placed(s) is None)}
     if not out["metrics"]:
-        out["why"] = "No neighbouring node has a reading in these cells."
+        out["why"] = "No neighbouring node has a reading in these cells in the last 24 hours."
     return out
 
 

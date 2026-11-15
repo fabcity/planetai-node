@@ -1325,7 +1325,7 @@ async function boot(tok, o = {}) {
   const iso = m => new Date(Date.now() - m * 6e4).toISOString();
   const ANS = { cells: 1, res: 8,
     own: { cells: [SEVEN.cells[1].cell], sensors: 1, metrics: { pm25: { latest: 12.34, latest_at: iso(10), mean_24h: null, n: 0 } }, unplaced: 2, children_unplaced: 0 },
-    peers: { sensors: 0, metrics: {}, unplaced: 1, why: 'No neighbouring node has a reading in these cells.' },
+    peers: { sensors: 0, metrics: {}, unplaced: 1, why: 'No neighbouring node has a reading in these cells in the last 24 hours.' },
     open: [{ pack: 'hydro', source: BAD, licence: 'CC-BY 4.0', rows: [1, 2, 3], as_of: iso(125), note: 'Only the part within 3 km of the node: hydro keeps nothing further out.' },
       { pack: 'eyes', off: true, why: 'The eyes pack is off on this node: set SPECIES_MATCH=on to ask it.' },
       { pack: 'forecast', off: false, why: 'The forecast pack has nothing for this area.' },
@@ -1400,7 +1400,7 @@ assert _pu["two"]["poly"] and _pu["two"]["poly"][0] == _pu["two"]["poly"][-1], "
 assert _pu["one"]["n"] == 1 and _pu["one"]["ids"] == [_rows8[2]["cell"]], ("a second tap on a cell lets it go", _pu["one"])
 assert _pu["asked"] == [{"cells": [_rows8[2]["cell"]]}], ("Pull sends the cells tapped", _pu["asked"])
 _a = _pu["ans"]
-for said in ("12.3", "10 min old", "2 h old", "No neighbouring node has a reading in these cells.", "set SPECIES_MATCH=on to ask it",
+for said in ("12.3", "10 min old", "2 h old", "No neighbouring node has a reading in these cells in the last 24 hours.", "set SPECIES_MATCH=on to ask it",
              "The forecast pack has nothing for this area.", "failed on this area", "Only the part within 3 km", "CC-BY 4.0"):
     assert said in _a, (f"the answer says {said!r}", _a[:1500])
 assert "&lt;img" in _a and "<img src=x" not in _a, "a source's words are escaped"
