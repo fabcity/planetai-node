@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **The Wall's instruments are drawn finer (9 Nov).** Each stands on a framed plate, in greys under the lines, with
+  screws, a nameplate, flanges on the jar's pipe, clips on the thermometer, guy wires on the wind's mast and a tick
+  every five degrees on its dial. Each keeps some of the day too, the heat's range as a bracket beside the tube, the
+  swell's highest line dashed over the wave, the wind's bearings so far fading behind the vane. The scale under them is
+  the day being replayed, an hour a tick, ending on now. The figures in the header are lighter and larger, the
+  narration's label is a strip like on the other screens, and its text stops on a whole line. Nothing is smaller than
+  28 px at 1920. docs/wall.
+
 - **Now reads from the house outwards, and What to do is one line.** The right column opens with Around the house,
   then the map of the air around it, then the city's Fab City Index, now titled Local production capacity in the city,
   with its links to index.fab.city kept. What to do is folded to one line, and **Options to act** opens the answers and

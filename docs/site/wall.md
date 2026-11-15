@@ -60,6 +60,11 @@ One black screen holds four instruments, each drawing one reading the node has, 
 Over them a strip names each reading, says where it is from, and gives its figure, its hour and a provenance word.
 Each reading keeps its own colour on its lines and its figure, and red is only ever the line.
 
+Each instrument sits on its own plate, in greys under fine lines, and carries some of the day with it: the thermometer
+a bracket for the day's range, the swell a dashed line at the day's highest, the dial a mark for each hour's bearing so
+far, fading with age. The scale under them is the day being replayed, an hour a tick, every six hours said and counted
+back from now, with a marker stepping along it at the hour shown.
+
 The instruments replay the last 24 hours, an hour every 1.25 s (30 s for the day), hold the last hour, then start the
 day again. Each hour is a step, never a slide, and nothing counts up. An instrument the node does not read says
 so. Without the admin token the sea and the wind come from the newest reading, which stands for every
