@@ -294,7 +294,7 @@ with tempfile.TemporaryDirectory() as tmp:
           "GET /energy serves Bali grid metadata")
     check(set((body.get("share") or {}).keys()) == {"low", "high", "value", "now", "stale", "as_of"},
           "GET /energy share object has the contract keys")
-    check(set((body.get("today") or {}).keys()) == {"sun_kwh_m2", "roof_kwh", "use_kwh", "measured"},
+    check(set((body.get("today") or {}).keys()) == {"sun_kwh_m2", "roof_kwh", "use_kwh", "measured", "panel_kw"},
           "GET /energy today object has the contract keys")
     srcs = body.get("sources") or []
     check(bool(srcs) and srcs[0].get("kind") == "substation" and srcs[0].get("name") == "GIS Pecatu"
@@ -471,6 +471,55 @@ c.executemany("INSERT INTO readings VALUES (?, ?, ?)", [("energy-home", "home_gr
                                                        ("energy-grid", "fossil_share_low_pct", 95.0)])
 left = [m for (m,) in c.execute(f"SELECT metric FROM readings r WHERE {packs.public_sql('r')}")]
 check(left == ["fossil_share_low_pct"], f"packs.public_sql leaves out home_grid_kwh and every household row, kept {left}")
+
+# ── Task 9: today's sun on the roof (today.py) ───────────────────────────────
+import today as T  # noqa: E402
+
+for k in ("ENERGY_PANEL_KW", "ENERGY_HOUSE_KWH_DAY", "ENERGY_PANEL_PR"):
+    os.environ.pop(k, None)
+SUN = [0.0] * 6 + [1000.0] * 6 + [0.0] * 12
+b = T.box(SUN, 2, 9, None)
+check(b == {"sun_kwh_m2": 6.0, "roof_kwh": 9.0, "use_kwh": 9, "measured": False, "panel_kw": 2},
+      f"six hours of 1000 W/m² is 6 kWh/m², and 2 kW of panels at PR 0.75 make 9.0 kWh: {b}")
+b = T.box(SUN, 2, 9, 3.4)
+check(b["roof_kwh"] == 3.4 and b["measured"] is True and b["sun_kwh_m2"] == 6.0, f"a measured roof wins: {b}")
+b = T.box([], 2, 9, None)
+check(b["sun_kwh_m2"] is None and b["roof_kwh"] is None and b["measured"] is False and b["use_kwh"] == 9,
+      f"no forecast rows: no sun and no roof line, never 0, and the house's use still shows: {b}")
+b = T.box(SUN, None, None, None)
+check(b["sun_kwh_m2"] == 6.0 and b["roof_kwh"] is None and b["use_kwh"] is None and b["panel_kw"] is None,
+      f"no panel size and no daily use set: the sun alone: {b}")
+os.environ["ENERGY_PANEL_PR"] = "0.8"
+check(T.box(SUN, 2, 9, None)["roof_kwh"] == 9.6, "ENERGY_PANEL_PR is the knob on the performance ratio")
+os.environ.pop("ENERGY_PANEL_PR")
+db_url = os.environ.pop("DATABASE_URL", None)
+check(T.read() == ([], None), "no database to read: no sun and no measured roof")
+if db_url:
+    os.environ["DATABASE_URL"] = db_url
+pk = packs.read_yaml(ROOT / "packs/energy/pack.yaml")
+check(all(any(str(e) == v for e in pk["env"]) for v in
+          ("ENERGY_PANEL_KW=2", "ENERGY_HOUSE_KWH_DAY=9", "ENERGY_PANEL_PR=0.75")),
+      "pack.yaml declares the three Today settings with their placeholder values")
+
+# Wired: what fetch() writes and GET /energy serves as `today` is box() on what read() found.
+read_was = T.read
+with tempfile.TemporaryDirectory() as tmp:
+    os.environ["PACK_OUT"] = tmp
+    os.environ["LATITUDE"], os.environ["LONGITUDE"] = "-8.8161", "115.1635"
+    bali_hc = StubHC(json.load(open(FIX / "overpass-bali-2026-11-08.json")))
+    T.read = lambda: (SUN, None)
+    A.fetch(bali_hc)
+    check(A.result().get("today") == T.box(SUN, 2.0, 9.0, None),
+          f"fetch() writes box() as result.json's today: {A.result().get('today')}")
+    td = client.get("/energy").json()["today"]
+    check(td == {"sun_kwh_m2": 6.0, "roof_kwh": 9.0, "use_kwh": 9.0, "measured": False, "panel_kw": 2.0},
+          f"GET /energy serves today with the panel size the label reads: {td}")
+    T.read = lambda: ([], None)
+    A.fetch(bali_hc)
+    td = client.get("/energy").json()["today"]
+    check(td["sun_kwh_m2"] is None and td["roof_kwh"] is None,
+          f"GET /energy with no forecast rows: sun_kwh_m2 null and no roof line: {td}")
+T.read = read_was
 
 if fails:
     print("\n".join(f"  ✗ {f}" for f in fails))

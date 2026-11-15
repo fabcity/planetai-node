@@ -5,6 +5,7 @@ for plants, generators, substations and cable heads in that grid's bounding box,
 every ENERGY_POLL_HOURS (6): a measured trailing-year share where the operator publishes daily generation (REE for the
 Balearic grid), or an explicit [low, high] range from OSM capacities and capacity factors where it does not (Bali).
 With ENERGY_HA_URL set it also reads the house's own power from its Home Assistant every poll (ha.py, `_home`).
+The Today box is today's forecast sun on ENERGY_PANEL_KW of panels, or the roof's measured kWh (today.py, `_today`).
 """
 from __future__ import annotations
 
@@ -22,6 +23,7 @@ import ha
 import mix
 import osm
 import ree
+import today
 
 log = logging.getLogger("planetai.energy")
 SID = "energy-grid"
@@ -147,6 +149,12 @@ def _build_bar(sources: list[dict], g: dict, m: dict) -> list[dict]:
     return bar
 
 
+def _today() -> dict:
+    """The Today box: today's forecast sun (or the roof's measured kWh) and the pack's panel and daily-use settings."""
+    sun, roof = today.read()
+    return today.box(sun, today.setting("ENERGY_PANEL_KW", "2"), today.setting("ENERGY_HOUSE_KWH_DAY", "9"), roof)
+
+
 def _grid(hc) -> tuple[list[dict], list[tuple], dict | None]:
     try:
         lat, lon = float(os.getenv("LATITUDE", "0")), float(os.getenv("LONGITUDE", "0"))
@@ -210,7 +218,7 @@ def _grid(hc) -> tuple[list[dict], list[tuple], dict | None]:
         },
         "bar": bar,
         "sources": cut_sources,
-        "today": {"sun_kwh_m2": None, "roof_kwh": None, "use_kwh": None, "measured": False},
+        "today": _today(),
         "household": None,
         "attribution": attrs,
         "computed_at": now.isoformat(),

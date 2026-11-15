@@ -97,6 +97,7 @@ def energy(request: Request, authorization: str = Header("")):
             "roof_kwh": today.get("roof_kwh"),
             "use_kwh": today.get("use_kwh"),
             "measured": bool(today.get("measured", False)),
+            "panel_kw": today.get("panel_kw"),
         },
         "household": household,
         "attribution": list(raw.get("attribution") or []),

@@ -66,3 +66,13 @@
     gas 71.681 TWh / 23.58 GW = 0.347; other fossil / oil & diesel 13.316 TWh / 5.84 GW = 0.260).
   - `solar: 0.18`, `wind: 0.25`: marked **`assumed`** (typical tropical utility-scale PV and onshore wind capacity
     factors; Ember's 2024 Indonesia capacity column for solar and wind reflects partial-year additions and small samples).
+
+## The Today box
+
+The sun on the cell today comes from the forecast pack's own Open-Meteo point (`forecast-om`, `fc_shortwave`, hourly
+W/m²). With no forecast rows for today there is no sun figure and no roof line. The roof is
+`ENERGY_PANEL_KW × sun × ENERGY_PANEL_PR`, unless Home Assistant measured it (`home_roof_kwh`), and then the measured
+kWh are shown.
+
+The three settings are **placeholders**: `ENERGY_PANEL_KW=2` (the panels in the mockup), `ENERGY_HOUSE_KWH_DAY=9`
+and `ENERGY_PANEL_PR=0.75` (a typical performance ratio). Set your own in Set up. Leave one blank and its line is left out.

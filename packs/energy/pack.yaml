@@ -25,6 +25,13 @@ env:
   - ENERGY_HA_GRID=
   - "# Optional: the entity id of the battery's power, in W or kW"
   - ENERGY_HA_BATTERY=
+  - "# Energy pack: the Today box. Placeholders until you set your own. Blank leaves the line out"
+  - "# The size of the roof's panels, in kW"
+  - ENERGY_PANEL_KW=2
+  - "# What the household uses in a day, in kWh"
+  - ENERGY_HOUSE_KWH_DAY=9
+  - "# The share of the panels' rated output the roof really gives (heat, dust, inverter)"
+  - ENERGY_PANEL_PR=0.75
 secrets: [ENERGY_HA_TOKEN]
 # The paths this pack's routes.py serves that a household on SHARE_LEVEL=open shares with its own WiFi (app/auth.py).
 share:
