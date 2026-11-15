@@ -7,7 +7,6 @@ off, forecast answers nothing. Open-Meteo is sent the centroid and nothing else.
 from __future__ import annotations
 
 import importlib.util
-import os
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -15,16 +14,19 @@ from pathlib import Path
 import h3
 import httpx
 
+import settings
+
 _spec = importlib.util.spec_from_file_location("planetai_pack_forecast_adapter_for_hooks", Path(__file__).with_name("adapter.py"))
 A = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(A)  # type: ignore[union-attr]
 
 HOUR = 3600
+AREA_SWITCH = ("FORECAST_OPENMETEO", "1")    # POST /area reads it too, to say "off on this node" rather than "nothing here"
 _cache: dict = {}
 
 
 def area(cells, bbox):
-    if os.getenv("FORECAST_OPENMETEO", "0") != "1":
+    if settings.get(AREA_SWITCH[0], "0") != AREA_SWITCH[1]:
         return None
     key, now = tuple(sorted(cells)), time.time()
     hit = _cache.get(key)

@@ -30,6 +30,7 @@ GBIF_OCC = "https://api.gbif.org/v1/occurrence/search"
 WKT_MAX = 5000
 FACET_LIMIT = 1000
 DAY = 86400
+AREA_SWITCH = ("SPECIES_MATCH", "on")    # POST /area reads it too, to say "off on this node" rather than "nothing here"
 _cache: dict = {}
 
 
@@ -51,7 +52,7 @@ def _wkt(cells) -> str:
 
 
 def area(cells, bbox):
-    if settings.get("SPECIES_MATCH", "off") != "on":
+    if settings.get(AREA_SWITCH[0], "off") != AREA_SWITCH[1]:
         return None
     key, now = tuple(sorted(cells)), time.time()
     hit = _cache.get(key)

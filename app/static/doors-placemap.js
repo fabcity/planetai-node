@@ -396,6 +396,8 @@ function layers() {
     out.push(new Dk.TextLayer({ characterSet: 'auto', id: 'measure-l', data: lab, getPosition: d => d.q, getText: d => d.t, getSize: 11, fontFamily: 'JetBrains Mono, monospace',
       getColor: A(p.ink, 1), getPixelOffset: [0, -14], background: true, getBackgroundColor: A(p.halo, .95), backgroundPadding: [4, 2] }));
   }
+  if (PM.pull && PM.pull.cells.length) out.push(new Dk.PolygonLayer({ id: 'pull', data: PM.pull.cells, getPolygon: d => d.path, ...px, pickable: false,
+    filled: true, getFillColor: A(p.ink, .10), getLineColor: A(p.ink, .9), getLineWidth: 2 }));
   return out.concat(drawLayers(p, Dk, px, dashed, A));
 }
 const SEVEN_DASH = { home: [0, 0], held: [0, 0], claimed: [5, 3], open: [1.5, 3] };   // [0, 0] is solid
@@ -586,9 +588,10 @@ function tools() {
   PM.setTool = k => {
     const d = PM.draw;
     PM.tool = k; PM.hover = null; d.state = null; d.hover = null; d.corner = null; d.err = '';
+    PM.pull = k === 'pull' ? { cells: [], mark: null, ans: null, err: '', busy: false } : null;
     if (MEASURING()) { PM.measure = []; PM.measured = null; PM.from = true; } else if (PM.measure.length) { PM.measure = []; PM.measured = null; PM.from = false; }
     /* a double press finishes a line, so it zooms only while nothing is being drawn */
-    PM.map.doubleClickZoom[k === 'select' || k === 'from' ? 'enable' : 'disable']();
+    PM.map.doubleClickZoom[k === 'select' || k === 'from' || k === 'pull' ? 'enable' : 'disable']();
     if (PM.keys) PM.keys.querySelectorAll('button[data-k]').forEach(b => { if (b.dataset.k !== 'undo') b.setAttribute('aria-pressed', String(b.dataset.k === k)); });
     if (k === 'image' && d.sel != null) picker(d.sel);
     readout(); drawForm(); redraw(); facts(); if (window.placeTools) window.placeTools();
@@ -702,7 +705,7 @@ PM.mapOff = new Set();
 const DRAWS = ['marker', 'line', 'area', 'note'];
 const DRAWING = () => DRAWS.includes(PM.tool);
 const KEYNAME = { select: 'Select', marker: 'Marker', line: 'Line, with distance', area: 'Area, with surface', note: 'Note', image: 'Image' };
-const TOOLWORD = { select: 'select', marker: 'marker', line: 'line', area: 'area', note: 'note', image: 'image', from: 'from the house' };
+const TOOLWORD = { select: 'select', marker: 'marker', line: 'line', area: 'area', note: 'note', image: 'image', from: 'from the house', pull: 'pull' };
 const KEYICON = { select: '<path d="M5 3l12 6-5 2-2 5z"/>', marker: '<path d="M10 18s-5-5.2-5-9a5 5 0 0110 0c0 3.8-5 9-5 9z"/><circle cx="10" cy="9" r="1.8"/>',
   line: '<circle cx="4" cy="15" r="1.6"/><circle cx="16" cy="5" r="1.6"/><path d="M5.3 13.8L14.7 6.2" stroke-dasharray="2 2"/>',
   area: '<path d="M4 6l7-3 5 5-3 8-9-2z"/>', note: '<path d="M4 4h12v9l-3 3H4z"/><path d="M13 16v-3h3"/>',
@@ -758,6 +761,7 @@ const keysHTML = () => KEYS.map(([k, l]) => `<button type="button" class="${k ==
 function figureNow() {
   const d = PM.draw, k = markById(d.sel), T = PM.tool;
   if (T === 'from') return { v: PM.measured ? fmtM(PM.measured.total_m) : '', hint: 'Press any point and the node measures it from its own point.' };
+  if (T === 'pull') return { v: '', hint: PULL_HINT };
   if ((DRAWS.includes(T) || T === 'image') && !openMap()) return { v: '', hint: 'Make a map first with New map, at the top of the left column.' };
   if (k && d.corner != null) return { v: esc(k.label || k.kind), hint: 'Press the corner’s new place, or move it with the arrows.' };
   if (DRAWS.includes(T) && (!k || (d.state && d.state.pts.length))) {
@@ -1009,7 +1013,7 @@ function onKey(e) {
   const key = (KEYS.find(([, l]) => l === k.toUpperCase()) || [])[0];
   if (key && k.length === 1) { e.preventDefault(); PM.setTool(key); toScreen(key); return; }
   if (k === 'Escape') {
-    if (MEASURING()) { PM.setTool('select'); return; }
+    if (MEASURING() || PM.tool === 'pull') { PM.setTool('select'); return; }
     /* from inside the readout, Esc folds it and keeps the focus on its chip; elsewhere it folds last */
     if (d.open && within('.dpanel')) { d.open = false; d.auto = false; readout(); const c = $('#dread').querySelector('.dchip'); if (c) c.focus(); return; }
     if (d.state) d.state = null; else if (d.corner != null) d.corner = null; else if (d.pick) d.pick = null; else if (d.sel != null) d.sel = null;
@@ -1193,6 +1197,7 @@ async function facts() {
     if (seq !== FSEQ) return;
     el.innerHTML = h;
     const b = el.querySelector && el.querySelector('[data-claim]'); if (b) b.onclick = () => claimCell(b.dataset.claim, b.dataset.verb);
+    if (el.querySelectorAll) el.querySelectorAll('[data-pull]').forEach(x => { x.onclick = () => pullDo(x.dataset.pull); });
   };
   /* one of the seven: its state in words, and Claim or Release on a neighbour (the node's routes; home is always its own) */
   const sevenTail = id => {
@@ -1206,6 +1211,8 @@ async function facts() {
     const m = PM.measured && PM.measured.points === PM.measure.length && PM.measure.length > 1 ? PM.measured : null;
     if (PM.tool === 'from') {
       put(`<span class="k">From the house</span><b>${m ? fmtM(m.total_m) : '—'}</b>` + hint('tap any point: the node measures it from its own point (GET /geo/measure) · press the tool again, or Esc, when you have it'));
+    } else if (PM.tool === 'pull' && PM.pull) {
+      put(pullHTML());
     } else if (o && o.kind === 'station') {
       const s = o.s, v = lastRaw(s.sensor_id, 'pm25');
       const head = `<span class="k">${s.local ? 'This house’s station' : 'Public station'}</span><b class="said">${esc(plain(s.name || s.sensor_id))}</b>`;
@@ -1268,6 +1275,63 @@ async function claimCell(id, verb) {
   PM.said = r.ok ? null : { id, text: refused(r) };
   if (r.ok) PM.cells = r;
   redraw(); facts();
+}
+
+/* ---------------------------------------------------------------- the area pull (POST /area, Tools › Pull)
+   Tap cells at the scale in view (the node names each: GET /geo/cell), or choose one of the household's drawn areas, then
+   Pull. The node answers three blocks: its own sensors (only in home and held cells), peers, and each open source with
+   its words. Every figure is the node's; one it did not send is a dash, and an empty block says why in its sentence. */
+const PULL_HINT = 'Tap cells on the map, or choose one of your drawn areas, then Pull.';
+const pullAreas = () => shownMarks().filter(k => k.kind === 'area' && mine(mapById(k.map_id)));
+async function pullPress(e) {
+  const P = PM.pull, hit = PM.overlay.pickObject({ x: e.point.x, y: e.point.y, radius: 8 }), id = (hit && hit.layer && hit.layer.id) || '';
+  const k = id.startsWith('draw-') && hit.object && hit.object.geometry ? hit.object : null;
+  if (k && k.kind === 'area' && mine(mapById(k.map_id))) { pullDo('m' + k.id); return; }
+  let c; try { c = await cellAt(e.lngLat.lng, e.lngLat.lat, PM.res); } catch (x) { P.err = x.message; facts(); return; }
+  if (PM.pull !== P) return;
+  const i = P.cells.findIndex(x => x.id === c.id);
+  if (i >= 0) P.cells.splice(i, 1); else P.cells.push({ id: c.id, path: loop(c.ring) });
+  P.mark = null; P.ans = null; P.err = ''; redraw(); facts();
+}
+async function pullDo(what) {
+  const P = PM.pull; if (!P) return;
+  if (what === 'clear') { P.cells = []; P.mark = null; P.ans = null; P.err = ''; }
+  else if (what[0] === 'm') { P.mark = +what.slice(1); P.cells = []; P.ans = null; P.err = ''; }
+  else if (what === 'go') {
+    P.busy = true; P.err = ''; facts();
+    const r = await send('POST', 'area', P.mark != null ? { mark_id: P.mark } : { cells: P.cells.map(x => x.id) });
+    if (PM.pull !== P) return;
+    P.busy = false; P.ans = r.ok ? r : null; P.err = r.ok ? '' : refused(r);
+  }
+  redraw(); facts();
+}
+const oldness = t => { const m = (Date.now() - Date.parse(t)) / 6e4; return isFinite(m) ? `${ago(Math.max(0, m))} old` : ''; };
+const pullFigures = b => {
+  const ms = Object.entries(b.metrics || {}), newest = ms.map(([, m]) => m.latest_at).filter(Boolean).sort().pop();
+  return { age: newest ? ` · ${oldness(newest)}` : '', rows: ms.map(([k, m]) => `<span class="fi"><small>${esc(k)}</small><b>${fmt(m.latest, 1)}</b> · 24 h mean ${fmt(m.mean_24h, 1)}</span>`).join('') };
+};
+function pullHTML() {
+  const P = PM.pull, A = P.ans, areas = pullAreas(), some = P.cells.length || P.mark != null;
+  const sel = P.mark != null ? esc((markById(P.mark) || {}).label || `drawn area ${P.mark}`) : P.cells.length ? `${P.cells.length} cell${P.cells.length > 1 ? 's' : ''}` : '—';
+  const btn = (k, t, on) => `<button type="button" class="ptoolsb" data-pull="${k}"${on == null ? '' : ` aria-pressed="${on}"`}>${t}</button>`;
+  let h = `<span class="k">Pull</span><b>${sel}</b>` + areas.map(k => btn('m' + k.id, `<span class="said">${esc(k.label || `area ${k.id}`)}</span>`, P.mark === k.id)).join('')
+    + (some ? btn('go', P.busy ? 'Pulling…' : 'Pull') + btn('clear', 'Clear') : `<span class="hint">${PULL_HINT}</span>`)
+    + (P.err ? `<span class="gap">${esc(P.err)}</span>` : '');
+  if (!A) return h;
+  const o = A.own, pe = A.peers, f = pullFigures(o), g = pullFigures(pe);
+  h += `<div class="pb"><span class="k">This node’s own</span><span>${o.sensors} of its sensors in ${o.cells.length} of its cells${f.age}</span>${f.rows}`
+    + (o.why ? `<span class="gap">${esc(o.why)}</span>` : '')
+    + (o.unplaced ? `<span class="gap">${o.unplaced} of its own sensors have no place, so none of them is read here</span>` : '')
+    + (o.children_unplaced ? `<span class="gap">${o.children_unplaced} sensors of the nodes below have no place yet</span>` : '') + '</div>';
+  h += `<div class="pb"><span class="k">Neighbours</span><span>${pe.sensors} of their sensors placed here${g.age}</span>${g.rows}`
+    + (pe.why ? `<span class="gap">${esc(pe.why)}</span>` : '')
+    + (pe.unplaced ? `<span class="gap">${pe.unplaced} heard with only a distance, so not placed</span>` : '') + '</div>';
+  h += (A.open || []).map(x => `<div class="pb"><span class="k">${esc(x.pack)}</span>`
+    + (x.why ? `<span${x.off ? '' : ' class="gap"'}>${esc(x.why)}</span>` : x.error ? `<span class="gap">${esc(x.error)}</span>`
+      : `<span>${esc(x.source)} · ${esc(x.licence)}${x.as_of ? ` · ${oldness(x.as_of)}` : ''}</span><span class="fi"><small>items</small><b>${(x.rows || []).length}</b></span>`
+        + (x.note ? `<span class="hint">${esc(x.note)}</span>` : '')) + '</div>').join('')
+    || '<div class="pb"><span class="k">Open sources</span><span class="gap">No pack on this node answers for an area.</span></div>';
+  return h;
 }
 
 /* ---------------------------------------------------------------- the wind, moving */
@@ -1500,6 +1564,7 @@ async function placeMap() {
       fromNode(q[0], q[1]).then(d => { if (PM.measure[1] === q) { PM.measured = { points: 2, legs_m: [d], total_m: d }; redraw(); facts(); figureOnly(); } }).catch(x => offline(x.message));
       return;
     }
+    if (PM.tool === 'pull') { pullPress(e); return; }
     press(e);
   });
   map.on('dblclick', e => {

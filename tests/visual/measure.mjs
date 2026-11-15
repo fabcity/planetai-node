@@ -3492,7 +3492,7 @@ async function doors() {
       await r.page.click('#ptoolsb'); await r.page.waitForTimeout(150);
       const tm = await r.page.evaluate(() => { const m = document.getElementById('ptools'), rows = [...m.querySelectorAll('.tl')].filter(x => x.getClientRects().length);
         return { open: !m.hidden && !!m.getClientRects().length, rows: rows.length, first: rows[0] && rows[0].textContent, exp: document.getElementById('ptoolsb').getAttribute('aria-expanded') }; });
-      ok(tm.open && tm.rows === 14 && /^Rings and distance/.test(tm.first || '') && tm.exp === 'true', `${tag} #place: Tools opened ${JSON.stringify(tm)}`);
+      ok(tm.open && tm.rows === 15 && /^Rings and distance/.test(tm.first || '') && tm.exp === 'true', `${tag} #place: Tools opened ${JSON.stringify(tm)}`);
       await r.page.keyboard.press('Escape'); await r.page.waitForTimeout(150);
       ok(await r.page.evaluate(() => document.getElementById('ptools').hidden), `${tag} #place: Esc did not close the Tools menu`);
       if (w < 768 && pl.sheet === 'fixed') { await r.page.click('.psbar button[data-s="cake"]'); await r.page.waitForTimeout(150); } }

@@ -173,6 +173,8 @@ oe = area.own(SENSORS, READ, {N2}, OWN_CELLS)
 check(oe["sensors"] == 0 and oe["metrics"] == {} and oe["cells"] == [N2] and oe.get("why") and oe["why"] != o0["why"],
       f"an own cell with no sensor in it says that, differently: {oe}")
 check(not o.get("why"), "a block with numbers carries no 'why'")
+check(o.get("unplaced") == 1 and o0.get("unplaced") == 1,
+      f"an own sensor with no point is counted as unplaced, whatever the selection, never silently dropped: {o.get('unplaced')}")
 
 # ---------------------------------------------------------------- peers
 p = area.peers(SENSORS, READ, set(RING))
@@ -184,7 +186,197 @@ p0 = area.peers(SENSORS, READ, {FAR})
 check(p0["sensors"] == 0 and p0["metrics"] == {} and p0.get("why") and p0["unplaced"] == 1, f"no peers here, said so: {p0}")
 check(not p.get("why"), "a peers block with numbers carries no 'why'")
 
+# ---------------------------------------------------------------- the route: POST /area (Task 8)
+# Driven through the app with the database faked, as tests/test_cells.py drives /place/cells. Packs are fakes written
+# to a temporary PACKS_DIR, so each reason a pack gives nothing is reached without a network.
+import logging  # noqa: E402
+import os  # noqa: E402
+import tempfile  # noqa: E402
+import time  # noqa: E402
+from pathlib import Path  # noqa: E402
+
+logging.disable(logging.WARNING)
+LAT, LON = h3.cell_to_latlng(HOME)
+os.environ.update(ADMIN_TOKEN="admin-tok", ACT_TOKEN="act-tok", DATABASE_URL="postgresql://unused/never-connected",
+                  NODE_LAT=str(LAT), NODE_LON=str(LON))
+import settings  # noqa: E402
+ROWS = {"SHARE_LEVEL": "open", "BACKUP_TOKEN": "backup-tok", "PACKS_ALLOW_CODE": "1",
+        "PACKS_ENABLED": "alpha,beta,gamma,delta,zeta,broken", "BETA_ON": "0"}
+settings._cache = {"at": time.time() + 1e9, "rows": dict(ROWS)}
+import auth  # noqa: E402
+import main  # noqa: E402 — importing the app starts nothing
+import packs  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
+
+PD = Path(tempfile.mkdtemp())
+FAKE = {
+    "alpha": 'def area(cells, bbox):\n    return {"pack": "alpha", "source": "A", "licence": "CC0", "rows": [len(cells)], "as_of": "2026-11-15T00:00:00+00:00"}\n',
+    "beta": 'AREA_SWITCH = ("BETA_ON", "1")\ndef area(cells, bbox):\n    return {"pack": "beta", "source": "B", "licence": "CC0", "rows": [], "as_of": None}\n',
+    "gamma": 'def area(cells, bbox):\n    return None\n',
+    "delta": 'def area(cells, bbox):\n    raise RuntimeError("boom")\n',
+    "eps": 'def area(cells, bbox):\n    return {"pack": "eps", "rows": []}\n',          # left out of PACKS_ENABLED
+    "zeta": 'def on_readings(rows):\n    return None\n',                                  # no area hook: not listed
+    "broken": 'import no_such_module\ndef area(cells, bbox):\n    return None\n',         # its code does not load
+}
+for name, code in FAKE.items():
+    (PD / name).mkdir()
+    (PD / name / "pack.yaml").write_text(f"id: {name}\n")
+    (PD / name / "hooks.py").write_text(code)
+packs.PACKS_DIR = PD
+
+
+def setting(**kw):
+    ROWS.update(kw)
+    settings._cache.update(at=time.time() + 1e9, rows=dict(ROWS))
+    packs._HOOKS["at"] = 0.0
+
+
+SENSORS_DB = SENSORS + [sensor("n2-1", "sensor", True, N2)]      # in a claimed neighbour with no reading in 24 h
+READ_DB = READ + [{"sensor_id": "n2-1", "metric": "pm25", "ts": ago(30), "value": 1000.0}]
+MARKS = {7: {"kind": "area", "agent": None, "from_node": None,
+             "geometry": {"type": "Polygon", "coordinates": [[list(reversed(p)) for p in h3.cell_to_boundary(HOME)]
+                                                              + [list(reversed(h3.cell_to_boundary(HOME)[0]))]]}},
+         8: {"kind": "line", "agent": None, "from_node": None, "geometry": {"type": "LineString", "coordinates": [[LON, LAT], [LON + .01, LAT]]}},
+         9: {"kind": "area", "agent": "claude", "from_node": None, "geometry": None},
+         10: {"kind": "area", "agent": None, "from_node": "node-2", "geometry": None}}
+
+
+class Cur:
+    def __init__(self):
+        self.cells = {HOME: "home", N1: "keeper", N2: "keeper"}     # adopted already; N2 claimed, never held
+        self.recent = {"home-1", "n1-1"}                             # sensors with a reading in the last 24 h
+        self.sql, self._last, self.rowcount = [], [], 0
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def execute(self, q, params=()):
+        u = " ".join(q.split())
+        self.sql.append(u)
+        if "FROM node_cells" in u and "WHERE cell" in u:
+            self._last = [{"cell": params[0], "claimed_by": self.cells[params[0]]}] if params[0] in self.cells else []
+        elif "FROM node_cells" in u:
+            self._last = [{"cell": c} for c in self.cells]
+        elif "EXISTS (SELECT 1 FROM readings" in u:                  # cells._seen
+            self._last = [{"lat": s["lat"], "lon": s["lon"]} for s in SENSORS_DB if s["sensor_id"] in self.recent]
+        elif "FROM place_marks" in u:
+            check("k.kind = 'area'" in u and "p.agent IS NULL" in u and "p.from_node IS NULL" in u,
+                  "a mark_id resolves to the household's own drawn area only")
+            m = MARKS.get(params[0])
+            ok = m and m["kind"] == "area" and not m["agent"] and not m["from_node"]
+            self._last = [{"geometry": m["geometry"]}] if ok else []
+        elif "FROM sensors" in u:
+            self._last = [dict(s) for s in SENSORS_DB]
+        elif "FROM readings" in u:
+            check("interval '24 hours'" in u and "ts <= now()" in u, "the pull reads the last 24 h, none from the future")
+            self._last = [r for r in READ_DB if r["sensor_id"] in params[0]]
+        else:
+            self._last = []
+
+    def fetchall(self):
+        return list(self._last)
+
+    def fetchone(self):
+        return self._last[0] if self._last else None
+
+
+class Con:
+    def __init__(self, cur):
+        self.cur = cur
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def transaction(self):
+        return self
+
+    def cursor(self):
+        return self.cur
+
+
+CUR = Cur()
+cells._db = lambda: Con(CUR)
+c = TestClient(main.app)
+local = TestClient(main.app, client=("127.0.0.1", 51000))
+H = {"Authorization": "Bearer act-tok"}
+
+for level in ("off", "open"):
+    exact, prefixes = auth._SHARE[level]
+    check("/area" not in exact and not any("/area".startswith(pre) for pre in prefixes), f"/area is on no SHARE_LEVEL allowlist ({level})")
+check(c.post("/area", json={"cells": [HOME]}).status_code in (401, 403), "a pull with no token is refused, even at SHARE_LEVEL=open")
+check(c.post("/area", json={"cells": [HOME]}, headers={"Authorization": "Bearer backup-tok"}).status_code == 401,
+      "the NAS's backup token passes SHARE_LEVEL and is still refused here")
+check(not CUR.sql, f"a refused pull reads nothing: {CUR.sql}")
+check(local.post("/area", json={"cells": [HOME]}).status_code == 200, "this machine pulls without a token")
+
+r = c.post("/area", json={"cells": RING}, headers=H)
+b = r.json() if r.status_code == 200 else {}
+check(r.status_code == 200, f"POST /area over the seven is 200, got {r.status_code} {r.text[:300]}")
+check(b.get("cells") == 7 and b.get("res") == 8 and set(b) == {"cells", "res", "own", "peers", "open"}, f"the answer's shape: {sorted(b)}")
+ow = b.get("own", {})
+check(ow.get("cells") == sorted({HOME, N1}), f"own reads home and held cells only, never a claimed one with no reading: {ow.get('cells')}")
+check(ow.get("sensors") == 2 and ow.get("metrics", {}).get("pm25", {}).get("latest") == 15.0,
+      f"own: home-1 and n1-1, not n2-1 in the claimed cell: {ow}")
+check(ow.get("unplaced") == 1 and ow.get("children_unplaced") == 2, f"own counts what it could not place: {ow}")
+pe = b.get("peers", {})
+check(pe.get("sensors") == 2 and pe.get("unplaced") == 1, f"peers by point, the radio one unplaced: {pe}")
+rd = [u for u in CUR.sql if "FROM readings" in u and "EXISTS" not in u]
+check(rd and "channel_roles" not in rd[-1], "the household reads its private metrics too")
+
+op = {o["pack"]: o for o in b.get("open", [])}
+check(sorted(op) == ["alpha", "beta", "broken", "delta", "eps", "gamma"],
+      f"one entry per pack with an area hook, on or off; zeta has none: {sorted(op)}")
+check(op.get("alpha", {}).get("rows") == [7] and op["alpha"].get("source") == "A", f"a pack's answer goes through whole: {op.get('alpha')}")
+check(op.get("beta", {}).get("off") is True and "BETA_ON=1" in op["beta"].get("why", "") and "rows" not in op["beta"],
+      f"a pack whose own switch is off says so, and is not asked: {op.get('beta')}")
+check(op.get("eps", {}).get("off") is True and "PACKS_ENABLED" in op["eps"].get("why", ""), f"left out of PACKS_ENABLED: {op.get('eps')}")
+check(op.get("gamma", {}).get("off") is False and op["gamma"].get("why") and "off" not in op["gamma"]["why"],
+      f"a pack that is on and has nothing says that, not that it is off: {op.get('gamma')}")
+check(op.get("delta", {}).get("error") and "boom" not in op["delta"]["error"], f"a pack that fails says so in a sentence: {op.get('delta')}")
+check(op.get("broken", {}).get("error"), f"a pack whose code did not load says so: {op.get('broken')}")
+check(all(len(o.get("why", "x").split(". ")) == 1 for o in op.values()), "each reason is one sentence")
+setting(PACKS_ALLOW_CODE="0")
+op = {o["pack"]: o for o in c.post("/area", json={"cells": [HOME]}, headers=H).json().get("open", [])}
+check(op.get("alpha", {}).get("off") is True and "PACKS_ALLOW_CODE" in op["alpha"].get("why", ""),
+      f"with pack code not allowed, a code pack is off and says which setting: {op.get('alpha')}")
+setting(PACKS_ALLOW_CODE="1", BETA_ON="1")
+op = {o["pack"]: o for o in c.post("/area", json={"cells": [HOME]}, headers=H).json().get("open", [])}
+check(op.get("beta", {}).get("source") == "B", f"switched on, it answers: {op.get('beta')}")
+setting(BETA_ON="0")
+
+r = c.post("/area", json={"cells": [FAR]}, headers=H)
+ow = r.json()["own"] if r.status_code == 200 else {}
+check(ow.get("sensors") == 0 and ow.get("metrics") == {} and ow.get("why"), f"a selection away from the node reads none of its own: {ow}")
+
+for bad, why in (({"cells": ["nope"]}, "not an H3 cell"), ({}, "exactly one"), ({"cells": [HOME], "polygon": {}}, "exactly one"),
+                 ({"cells": sorted(h3.grid_disk(h3.cell_to_parent(HOME, 5), 1))[:2]}, "more than 500")):
+    r = c.post("/area", json=bad, headers=H)
+    check(r.status_code == 400 and why in str(r.json().get("detail")), f"{bad} is 400 with the sentence, got {r.status_code} {r.text[:200]}")
+r = c.post("/area", json={"mark_id": 7}, headers=H)
+check(r.status_code == 200 and r.json().get("cells", 0) >= 1, f"a drawn area of the household's pulls its cells: {r.status_code} {r.text[:200]}")
+for mid, why in ((99, "unknown"), (8, "a line"), (9, "an agent's map"), (10, "a child's map")):
+    check(c.post("/area", json={"mark_id": mid}, headers=H).status_code == 404, f"mark_id of {why} is 404")
+for mid in ("7", True, 7.5):
+    check(c.post("/area", json={"mark_id": mid}, headers=H).status_code == 400, f"mark_id {mid!r} is not an id: 400")
+
+CUR.sql.clear()
+c.post("/area", json={"cells": RING}, headers={**H, "X-Agent": "claude"})
+rd = [u for u in CUR.sql if "FROM readings" in u and "EXISTS (SELECT 1 FROM readings" not in u]
+check(rd and "channel_roles" in rd[-1], "an agent's pull never reads a private metric (packs.public_sql)")
+
+os.environ.pop("NODE_LAT")
+r = c.post("/area", json={"cells": [HOME]}, headers=H)
+ow = r.json()["own"] if r.status_code == 200 else {}
+check(r.status_code == 200 and ow.get("cells") == [] and ow.get("why"), f"a node with no place has no own cells, and still pulls: {r.status_code} {ow}")
+os.environ["NODE_LAT"] = str(LAT)
+
 if fails:
     print("\n".join(f"  ✗ {f}" for f in fails))
-print("  ✓ area: cover by cells and polygon under AREA_CAP, bbox, summarise, own only in own cells, peers by point" if not fails else f"  ✗ {len(fails)} failure(s)")
+print("  ✓ area: cover by cells and polygon under AREA_CAP, bbox, summarise, own only in own cells, peers by point, POST /area" if not fails else f"  ✗ {len(fails)} failure(s)")
 sys.exit(1 if fails else 0)

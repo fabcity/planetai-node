@@ -6,17 +6,22 @@ way geo.grid refuses past GRID_CAP. Three streams answer it; this file holds the
 - own: this node's custody sensors, read only inside the node's own cells. A selection elsewhere reads none of them.
 - peers: kind='peer' sensors with a point in the selection. A peer with no point is counted, never guessed into a cell.
 
-All pure here; Task 8 adds the route, resolves a mark_id to its geometry and passes the rows in. h3 stays on the
-server: the page sends ids or GeoJSON and draws what comes back.
+The third, open sources, is whatever each pack's `area(cells, bbox)` hook answers (open_). POST /area, at the end,
+resolves a mark_id to its geometry, reads the rows and answers all three. h3 stays on the server: the page sends ids
+or GeoJSON and draws what comes back.
 """
 from __future__ import annotations
 
+import logging
 import math
 from datetime import datetime, timedelta, timezone
 
 import h3
+from fastapi import APIRouter, Body, Depends, Header, HTTPException, Request
 
 import cells as cells_mod
+
+log = logging.getLogger("planetai")
 
 AREA_CAP = 500                                  # res-8 cells one selection may cover, about 370 km²
 RES = cells_mod.RES
@@ -142,13 +147,15 @@ def _read(sensors: list[dict], readings: list[dict]) -> dict:
 
 
 def own(sensors, readings, selection: set[str], own_cells: set[str]) -> dict:
-    """This node's custody sensors whose cell is in selection ∩ own_cells. A child (no point on the aggregates wire)
-    is counted in children_unplaced; any custody sensor with no point is never guessed into a cell."""
+    """This node's custody sensors whose cell is in selection ∩ own_cells. One with no point is never guessed into a
+    cell: it is counted in `unplaced` (a child, with no point on the aggregates wire, in children_unplaced), so the
+    block never looks more complete than it is."""
     mine = set(selection) & set(own_cells)
     here = [s for s in sensors if s.get("custody") and s.get("kind") != "child" and _placed(s) in mine]
+    nowhere = [s for s in sensors if s.get("custody") and _placed(s) is None]
     out = {"cells": sorted(mine), "sensors": len(here), "metrics": _read(here, readings),
-           "children_unplaced": sum(1 for s in sensors if s.get("custody") and s.get("kind") == "child"
-                                    and _placed(s) is None)}
+           "unplaced": sum(1 for s in nowhere if s.get("kind") != "child"),
+           "children_unplaced": sum(1 for s in nowhere if s.get("kind") == "child")}
     if not mine:
         out["why"] = "None of these cells is the node's own, so none of its readings are read here."
     elif not out["metrics"]:
@@ -164,3 +171,89 @@ def peers(sensors, readings, selection: set[str]) -> dict:
     if not out["metrics"]:
         out["why"] = "No neighbouring node has a reading in these cells."
     return out
+
+
+# ---------------------------------------------------------------- open sources: the packs' `area` hook
+def _area_packs() -> list[str]:
+    """Every pack that ships an `area` hook, on this node or not: read as text, so nothing that is off gets imported."""
+    import packs  # noqa: PLC0415
+    return sorted(f.parent.name for f in packs.PACKS_DIR.glob("*/hooks.py") if "\ndef area(" in "\n" + f.read_text())
+
+
+def open_(cells: list[str], box) -> list[dict]:
+    """One entry per pack with an `area` hook: its answer, or why it gave none. "Off on this node" (PACKS_ENABLED, its
+    code not allowed, its own AREA_SWITCH) is told apart from "nothing here", so an empty block never reads as an
+    area that holds nothing. packs.collect drops a None and a failure alike, so the hooks are called here."""
+    import packs  # noqa: PLC0415
+    import settings  # noqa: PLC0415
+    loaded, on = dict(packs._hook_modules()), {d.name for d in packs._enabled()}
+    out = []
+    for name in sorted(set(_area_packs()) | {n for n, m in loaded.items() if callable(getattr(m, "area", None))}):
+        mod, sw, why = loaded.get(name), getattr(loaded.get(name), "AREA_SWITCH", None), None
+        if name not in on:
+            why = packs.REFUSED.get(name) or "PACKS_ENABLED leaves it out"
+        elif mod is None and not packs._allow_code():
+            why = "its code runs only with PACKS_ALLOW_CODE=1"
+        elif sw and settings.get(sw[0], "") != sw[1]:
+            why = f"set {sw[0]}={sw[1]} to ask it"
+        if why:
+            out.append({"pack": name, "off": True, "why": f"The {name} pack is off on this node: {why}."})
+        elif mod is None:
+            out.append({"pack": name, "error": f"The {name} pack's code did not load on this node; its log says why."})
+        else:
+            try:
+                got = mod.area(cells, box)
+            except Exception as e:  # noqa: BLE001 — a pack that fails costs its own block, never the pull
+                log.warning("pack %s: area failed (%s)", name, type(e).__name__)
+                got = {"pack": name, "error": f"The {name} pack failed on this area; the node's log says why."}
+            out.append(got if got is not None else {"pack": name, "off": False, "why": f"The {name} pack has nothing for this area."})
+    return out
+
+
+# ---------------------------------------------------------------- POST /area
+# The household's alone at every SHARE_LEVEL, as /place/cells: on no allowlist in app/auth.py, and the same gate.
+router = APIRouter(dependencies=[Depends(cells_mod._household)])
+
+_MARK = """SELECT ST_AsGeoJSON(k.geom)::json AS geometry FROM place_marks k JOIN place_maps p ON p.id = k.map_id
+           WHERE k.id = %s AND k.kind = 'area' AND p.agent IS NULL AND p.from_node IS NULL"""
+_SENSORS = "SELECT sensor_id, kind, custody, lat, lon FROM sensors WHERE custody OR kind = 'peer'"
+_READINGS = """SELECT r.sensor_id, r.metric, r.ts, r.value FROM readings r
+               WHERE r.sensor_id = ANY(%s) AND r.ts > now() - interval '24 hours' AND r.ts <= now()"""
+
+
+@router.post("/area")
+def pull(request: Request, sel: dict = Body(...), authorization: str = Header("")):
+    """Body: {"cells": [...]} | {"polygon": GeoJSON} | {"mark_id": n}, a drawn area of the household's own maps.
+    Answers own (home and held cells only), peers and open, one block per stream. 400 with the sentence on a bad
+    selection, 404 on a mark that is not one of the household's drawn areas."""
+    from auth import _shows_private  # noqa: PLC0415
+    import packs  # noqa: PLC0415
+    mark = set(sel) == {"mark_id"}           # with another key, cover() refuses it in its own words
+    if mark and (not isinstance(sel["mark_id"], int) or isinstance(sel["mark_id"], bool)):
+        raise HTTPException(400, "mark_id is the number of a drawing.")
+    with cells_mod._db() as con, con.transaction(), con.cursor() as cur:
+        if mark:
+            cur.execute(_MARK, (sel["mark_id"],))
+            row = cur.fetchone()
+            if not row:
+                raise HTTPException(404, "No drawn area of this household has that number.")
+            sel = {"polygon": row["geometry"]}
+        try:
+            got = cover(sel)
+        except ValueError as e:
+            raise HTTPException(400, str(e)) from None
+        selection = set(got)
+        try:
+            home = cells_mod._home()
+            rows = cells_mod.states(home, cells_mod.load(cur, home), cells_mod._seen(cur))
+            own_cells = {r["cell"] for r in rows if r["state"] in ("home", "held")}
+        except HTTPException:
+            own_cells = set()                 # a node with no place has no cells of its own; open sources still answer
+        cur.execute(_SENSORS)
+        sensors = cur.fetchall()
+        ids = [s["sensor_id"] for s in sensors if _placed(s) in selection]
+        q = _READINGS + ("" if _shows_private(request, authorization, raw=False) else " AND " + packs.public_sql("r"))
+        cur.execute(q, (ids,))
+        readings = cur.fetchall()
+    return {"cells": len(got), "res": RES, "own": own(sensors, readings, selection, own_cells),
+            "peers": peers(sensors, readings, selection), "open": open_(got, bbox(got))}

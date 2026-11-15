@@ -234,6 +234,25 @@ ANSWER[OM] = httpx.HTTPStatusError("429", request=httpx.Request("GET", OM), resp
 fe = by_pack(area_of([h3.latlng_to_cell(LAT + 0.2, LON, 8)])).get("forecast") or {}
 check("error" in fe and "rows" not in fe, f"Open-Meteo refuses: an error, no rows: {fe}")
 
+# ---------------------------------------------------------------- the switches POST /area reads (Task 8)
+# A pack whose own switch is off answers None, which reads like "nothing here". The route reads the same switch from
+# AREA_SWITCH to say "off on this node" instead, so the hook and the route must read one declaration.
+check(getattr(H["eyes"], "AREA_SWITCH", None) == ("SPECIES_MATCH", "on"), "eyes declares the switch its area hook reads")
+check(getattr(H["forecast"], "AREA_SWITCH", None) == ("FORECAST_OPENMETEO", "1"), "forecast declares the switch its area hook reads")
+check(not hasattr(H["hydro"], "AREA_SWITCH"), "hydro has no switch: it answers from the file it keeps")
+os.environ["FORECAST_OPENMETEO"] = "0"
+setting(SPECIES_MATCH="off", FORECAST_OPENMETEO="1")         # the settings table wins over the environment, as everywhere
+ASKED.clear()
+ANSWER[OM] = {"latitude": LAT, "longitude": LON, "hourly": hourly}
+check("forecast" in by_pack(area_of([h3.latlng_to_cell(LAT + 0.3, LON, 8)])) and len(ASKED) == 1,
+      "forecast's area hook reads its switch from Set up, as the route does, not only from .env")
+ROWS.pop("FORECAST_OPENMETEO")
+setting()
+op = {o["pack"]: o for o in area.open_(SEVEN, area.bbox(SEVEN))}
+check(op.get("eyes", {}).get("off") is True and "SPECIES_MATCH=on" in op["eyes"].get("why", ""), f"eyes off, said: {op.get('eyes')}")
+check(op.get("forecast", {}).get("off") is True and "FORECAST_OPENMETEO=1" in op["forecast"].get("why", ""), f"forecast off: {op.get('forecast')}")
+check("hydro" in op and op["hydro"].get("off") is not True, f"hydro is on: its answer or 'nothing here', never off: {op.get('hydro')}")
+
 if fails:
     print("area hooks FAILED:\n  " + "\n  ".join(fails))
     sys.exit(1)
