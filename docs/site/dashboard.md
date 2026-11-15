@@ -114,7 +114,7 @@ line its figure comes from. Pressing it draws the grid where the day figure is: 
 publishes no mix, one figure where it does), the mix as a bar with the part nobody publishes hatched, the nearest
 substation, the plants and the links with how far each is, and a Today box with the sun on the cell, what a roof of
 panels would make with it and what the house uses. With Home Assistant connected the box shows the house's own roof,
-grid and fossil share instead. Energy is context: it never asks you to act.
+grid and fossil share instead. Energy is context and never asks you to act.
 
 **The air around it**, under Around the house: the map of the stations around the house. Each public station has
 its 15-minute mean, a red square beside one over the air's line, the house is one mark with its own sensors' range,

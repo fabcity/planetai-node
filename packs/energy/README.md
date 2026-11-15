@@ -1,7 +1,7 @@
 # energy
 
 The pack says how much of the electricity on the node's grid is made from fossil fuels, where it is made and how far
-away, and what the sun on the cell could make on a roof today. It is context: it never asks the household to act.
+away, and what the sun on the cell could make on a roof today. It is context and never asks the household to act.
 
 Turn it on by adding `energy` to `PACKS_ENABLED` and `NODE_ISSUES` (it needs `PACKS_ALLOW_CODE=1`). Now gets an Energy
 row and panel, Place a Power grid row, and `GET /energy` serves both. A node on a grid `grids.yml` does not hold says
@@ -50,9 +50,9 @@ only, every 5 minutes. Everything it keeps about the house is private.
     `"No obstante, el usuario podrá visualizar y obtener una copia privada temporal de los contenidos para su exclusivo uso personal y privado en sus sistemas informáticos (software y hardware) publicarlo en su página web o crear materiales corporativos o académicos siempre que sea con fines informativos y no con finalidad comercial."`
     subject to four conditions:
     `"I. Mencionar de forma clara y explícita a la Sociedad como fuente de la información y de los datos. II. No alterar ni desnaturalizar el sentido de la información ni de los datos. III. Mencionar la fecha de la última actualización de la información y los datos. IV. En ningún caso se autoriza la utilización de logotipos, marcas comerciales o signos distintivos de la Sociedad más allá de los utilizados por ésta en los contenidos."`
-  - **Ruling (Tomas, 9 Nov 2026):** non-commercial, not open. Menorca stays `measured` on the node, shown for
-    information with REE named and the date of the data, and the registry entry says non-commercial. The figure
-    stays out of the Index and exports.
+  - **Ruling (Tomas, 9 Nov 2026):** non-commercial, so it does not count as open. Menorca stays `measured` on the
+    node, shown for information with REE named and the date of the data, and the registry entry says non-commercial.
+    The figure stays out of the Index and exports.
 - **API note (9 Nov 2026):** `generacion/estructura-generacion` answers HTTP 200 for `time_trunc=day`, `month` and
   `year`, and HTTP 400 (`"Los datos solicitados no están disponibles en este momento"`) for `time_trunc=hour` on all
   tested dates and regions (`demanda/evolucion` still answers 200 at `time_trunc=hour`). Also, REE's `ree.js` selector
@@ -69,7 +69,7 @@ only, every 5 minutes. Everything it keeps about the house is private.
   releases, news coverage, and engineering notes) describe four 150 kV submarine circuits between Ketapang and
   Gilimanuk with ~340–400 MW transfer capacity (~130 MVA / ~100 MW per circuit on circuits 3 & 4) and Bali peak load
   near 1,150–1,300 MW (~5,000+ GWh/year, ~570–650 MW average demand). Because no primary table under an open licence
-  (CC BY 4.0 or public domain) was confirmed during Task 1 recon, both fields are recorded as `~` in `grids.yml`.
+  (CC BY 4.0 or public domain) was found when the pack was built (8 Nov 2026), both fields are recorded as `~` in `grids.yml`.
 - **Capacity factors (`bali.capacity_factors`):**
   - `coal: 0.70`, `gas: 0.35`, `oil: 0.26`: derived from Indonesia's 2024 generation and installed capacity in Ember's
     Yearly Electricity Data (`CC BY 4.0`, `release_generation_yearly_global.csv`: coal 347.086 TWh / 56.69 GW = 0.699;

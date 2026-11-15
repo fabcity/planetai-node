@@ -803,8 +803,8 @@ Where the electricity behind the node's cells comes from. It finds the node's gr
 and the Balearics today), asks OpenStreetMap through Overpass for the grid's plants, substations and cable heads once
 every `ENERGY_REFRESH_DAYS`, and works out how much of the grid's power is made from fossil fuels. Where the grid
 operator publishes its mix the share is measured: Menorca reads Red Eléctrica's Balearic mix by day. Where it does not,
-the share is a range from installed capacity and typical capacity factors: Bali's is a range, and stays one while
-how much comes from Java by cable is not published.
+the share is a range from installed capacity and typical capacity factors. Bali's stays a range while how much of
+its power comes from Java by cable is not published.
 
 | | |
 |---|---|
@@ -822,11 +822,11 @@ draws the grid where the day figure is: the fossil share, the mix as a bar, the 
 Today box with the sun on the cell, what a roof of panels would make with it, and what the house uses. Place gains a
 Power grid row in its built section, off at first. `GET /energy` serves all of it.
 
-Menorca's figure is Red Eléctrica's under terms that allow information and forbid commercial use, so it is shown on the
-node with REE named and the date of its data, and it never leaves in the open export or reaches the Index (each of its
-readings carries `licence: non-commercial`).
+Menorca's figure is Red Eléctrica's under terms that allow its use for information and forbid commercial use, so it
+is shown on the node with REE named and the date of its data, and it never leaves in the open export or reaches the
+Index (each of its readings carries `licence: non-commercial`).
 
-**The house.** Set `ENERGY_HA_URL`, `ENERGY_HA_TOKEN` and the entity ids of the panels and the grid meter, and the pack
+For the house, set `ENERGY_HA_URL`, `ENERGY_HA_TOKEN` and the entity ids of the panels and the grid meter, and the pack
 reads the house's own Home Assistant every 5 minutes, read only. Each hour it adds up the roof's and the grid's kWh and,
 where the grid has one measured figure, the house's own fossil share. An hour with a failed read or a 15-minute gap
 gets no line. Every `home_*` metric is private: the open export, a parent and a public screen never see them.
@@ -848,8 +848,8 @@ gets no line. Every `home_*` metric is private: the open export, a parent and a 
 
 - How much of Bali's power comes from Java. PLN publishes neither the cable's flow nor its rating under an open
   licence, so Bali's share is a range and its low end stays an estimate.
-- The power lines. Overpass is asked where each line is, not its shape, so the map draws plants, substations and
-  cable heads, and no lines yet.
+- The power lines. The pack asks Overpass where each line is and leaves out its shape, so the map draws plants,
+  substations and cable heads, and no lines yet.
 - Any grid not in `grids.yml`. A node elsewhere says it is on no grid the pack knows, and how to add one.
 - A house's solar measured for real. No house in the fleet has panels in Home Assistant yet, so the house's path is
   proven on Home Assistant's documented answers only.

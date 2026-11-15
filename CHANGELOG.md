@@ -4,13 +4,13 @@
 
 - **A node knows where its electricity comes from.** The new `energy` pack finds the node's grid (Bali and the
   Balearics today), asks OpenStreetMap for its plants, substations and cable heads, and works out how much of its
-  power is made from fossil fuels: measured by day where the operator publishes the mix (Menorca, from Red Eléctrica,
-  non-commercial, so it never leaves in the export), a range from installed capacity where it does not (Bali, while
-  the Java cable's share is unpublished). Now gets an Energy row and a panel with the share, the mix, the sources and a
-  Today box with the sun on the cell and what a roof would make with it. Place gets a Power grid row, off at first,
-  with the seven cells and the MW made in each. With Home Assistant connected it reads the house's roof and grid, read
-  only and private, and gives the house its own fossil share. Add `energy` to `PACKS_ENABLED` and `NODE_ISSUES`.
-  Without the token, distances are whole kilometres. docs/packs-reference#energy.
+  power is made from fossil fuels. Where the operator publishes the mix the share is measured by day (Menorca, from
+  Red Eléctrica, non-commercial, so it never leaves in the export). Where it does not, it is a range from installed
+  capacity (Bali, while the Java cable's share is unpublished). Now gets an Energy row and a panel with the share, the
+  mix, the sources and a Today box with the sun on the cell and what a roof would make with it. Place gets a Power
+  grid row, off at first, with the seven cells and the MW made in each. With Home Assistant connected it reads the
+  house's roof and grid, read only and private, and gives the house its own fossil share. Add `energy` to
+  `PACKS_ENABLED` and `NODE_ISSUES`. Without the token, distances are whole kilometres. docs/packs-reference#energy.
 
 - **The Wall's instruments are drawn finer (9 Nov).** Each stands on a framed plate, in greys under the lines, with
   screws, a nameplate, flanges on the jar's pipe, clips on the thermometer, guy wires on the wind's mast and a tick
