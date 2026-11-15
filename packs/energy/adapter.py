@@ -184,7 +184,7 @@ def _cells(sources: list[dict], lat: float, lon: float) -> list[dict] | None:
 
 def _grid(hc) -> tuple[list[dict], list[tuple], dict | None]:
     try:
-        lat, lon = float(os.getenv("LATITUDE", "0")), float(os.getenv("LONGITUDE", "0"))
+        lat, lon = float(os.getenv("NODE_LAT", "0")), float(os.getenv("NODE_LON", "0"))
     except ValueError:
         return [], [], None
     if lat == 0.0 and lon == 0.0:
@@ -206,6 +206,8 @@ def _grid(hc) -> tuple[list[dict], list[tuple], dict | None]:
     method = m.get("method") or gm.get("method") or gm.get("source") or "unknown"
     attrs = [OSM_ATTR, REE_ATTR if is_meas else EMBER_ATTR]
 
+    # only what stands on this grid: the Bali box also holds Nusa Penida's own island grid and a corner of Java
+    near_all = [s for s in near_all if grids.inside(s["lat"], s["lon"], g.get("polygon") or [])]
     subs = [s for s in near_all if s["kind"] == "substation"][:1]
     plants = [s for s in near_all if s["kind"] == "plant" and (s.get("mw") or 0) >= 1.0]
     big_plants = [s for s in near_all if s["kind"] == "plant" and (s.get("mw") or 0) >= 100.0]
@@ -346,7 +348,7 @@ def _home(hc, fossil: float | None, now: datetime) -> tuple[list[dict], list[tup
     p.write_text(json.dumps({"done": (hour - ha.HOUR).isoformat(),
                              "samples": [[t.isoformat(), r, g] for t, r, g in keep]}))
     try:
-        lat, lon = float(os.getenv("LATITUDE", "")), float(os.getenv("LONGITUDE", ""))
+        lat, lon = float(os.getenv("NODE_LAT", "")), float(os.getenv("NODE_LON", ""))
     except ValueError:
         lat = lon = None
     sensor = {"sensor_id": HOME, "source": "energy", "name": "This house (Home Assistant)", "kind": "sensor",

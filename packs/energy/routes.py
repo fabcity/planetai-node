@@ -35,7 +35,9 @@ def _cut_sources(sources: list[dict], points: bool = False) -> list[dict]:
             "kind": s.get("kind"),
             "fuel": s.get("fuel"),
             "mw": s.get("mw"),
-            "km": s.get("km"),
+            # a screen without the token gets whole km: names with km to 10 m placed the house from three plants,
+            # finer than the res-8 cell /health publishes; the household gets them as measured
+            "km": s.get("km") if points or s.get("km") is None else round(float(s["km"])),
             "ring": s.get("ring"),
         }
         if "fossil" in s:

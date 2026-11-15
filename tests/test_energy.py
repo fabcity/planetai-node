@@ -200,7 +200,7 @@ class StubHC:
 
 with tempfile.TemporaryDirectory() as tmp:
     os.environ["PACK_OUT"] = tmp
-    os.environ["LATITUDE"], os.environ["LONGITUDE"] = "-8.8161", "115.1635"
+    os.environ["NODE_LAT"], os.environ["NODE_LON"] = "-8.8161", "115.1635"
     s_bali, r_bali = A.fetch(StubHC(json.load(open(FIX / "overpass-bali-2026-11-08.json"))))
     m_bali = {m: v for _, sid, m, v in r_bali if sid == "energy-grid"}
     check(len(s_bali) == 1 and s_bali[0]["sensor_id"] == "energy-grid" and s_bali[0]["kind"] == "model"
@@ -222,7 +222,7 @@ with tempfile.TemporaryDirectory() as tmp:
           and res_bali.get("sources", [{}])[0].get("kind") == "substation",
           "result() writes out/energy/result.json for Bali with nearest substation first")
 
-    os.environ["LATITUDE"], os.environ["LONGITUDE"] = "39.9493", "4.0500"
+    os.environ["NODE_LAT"], os.environ["NODE_LON"] = "39.9493", "4.0500"
     s_men, r_men = A.fetch(StubHC(json.load(open(FIX / "overpass-menorca-2026-11-08.json"))))
     m_men = {m: v for _, sid, m, v in r_men if sid == "energy-grid"}
     check("fossil_share_pct" in m_men and "fossil_share_day_pct" in m_men
@@ -232,7 +232,7 @@ with tempfile.TemporaryDirectory() as tmp:
 
     check(s_men[0]["meta"]["licence"] == "non-commercial" and s_bali[0]["meta"]["licence"] == "open",
           "REE on the Balearic grid is marked non-commercial, so the open export leaves it out; Bali's sources are open")
-    os.environ["LATITUDE"], os.environ["LONGITUDE"] = "41.39", "2.17"
+    os.environ["NODE_LAT"], os.environ["NODE_LON"] = "41.39", "2.17"
     check(A.fetch(StubHC({})) == ([], []), "Barcelona is outside grids.yml and returns ([], [])")
 
 os.environ["PACKS_DIR"] = str(ROOT / "packs")
@@ -269,7 +269,7 @@ ACT = {"Authorization": "Bearer act-tok"}
 
 with tempfile.TemporaryDirectory() as tmp:
     os.environ["PACK_OUT"] = tmp
-    os.environ["LATITUDE"], os.environ["LONGITUDE"] = "-8.8161", "115.1635"
+    os.environ["NODE_LAT"], os.environ["NODE_LON"] = "-8.8161", "115.1635"
     A.fetch(StubHC(json.load(open(FIX / "overpass-bali-2026-11-08.json"))))
 
     ROWS["PACKS_ENABLED"] = "air-quality,heat"
@@ -291,6 +291,8 @@ with tempfile.TemporaryDirectory() as tmp:
     want_keys = {"grid", "kind", "method", "months", "share", "bar", "sources", "today", "household", "attribution",
                  "counts", "cells"}
     check(set(body.keys()) == want_keys, f"GET /energy body keys match contract, got {set(body.keys())}")
+    check(all(s["km"] is None or float(s["km"]).is_integer() for s in body.get("sources") or []),
+          f"without the token the distances are whole km, never precise enough to place the house: {[s.get('km') for s in body.get('sources') or []]}")
     check(body.get("grid") == "bali" and body.get("kind") == "estimated" and body.get("method") == "capacity-factors",
           "GET /energy serves Bali grid metadata")
     check(set((body.get("share") or {}).keys()) == {"low", "high", "value", "now", "stale", "as_of"},
@@ -309,6 +311,8 @@ with tempfile.TemporaryDirectory() as tmp:
     check(client.get("/energy", headers={**ADMIN, "X-Agent": "agent"}).json().get("household") is None,
           "household is null for an agent even holding the admin token")
     r_adm = client.get("/energy", headers=ADMIN).json()
+    check(any(s.get("km") is not None and not float(s["km"]).is_integer() for s in r_adm.get("sources") or []),
+          "with the token the distances are as measured")
     check(isinstance(r_adm.get("household"), dict) and r_adm["household"].get("roof_w") == 3120.0,
           f"household is served to the admin token when HA rows exist: {r_adm.get('household')}")
 
@@ -400,7 +404,7 @@ check(H.clip(off[:4] + [(off[4][0], None)] + off[5:], T0) is None, "an hour with
 # The adapter: _home() every 5 minutes, then the hour's lines on the first poll after it.
 with tempfile.TemporaryDirectory() as tmp:
     os.environ["PACK_OUT"] = tmp
-    os.environ["LATITUDE"], os.environ["LONGITUDE"] = "39.9493", "4.0500"
+    os.environ["NODE_LAT"], os.environ["NODE_LON"] = "39.9493", "4.0500"
     for k in ("ENERGY_HA_URL", "ENERGY_HA_TOKEN", "ENERGY_HA_SOLAR", "ENERGY_HA_GRID", "ENERGY_HA_BATTERY"):
         os.environ.pop(k, None)
     check(A._home(StubHA(), 0.41, T0) == ([], []), "no ENERGY_HA_URL: no household sensor and no line")
@@ -442,7 +446,7 @@ with tempfile.TemporaryDirectory() as tmp:
 
 with tempfile.TemporaryDirectory() as tmp:
     os.environ["PACK_OUT"] = tmp
-    os.environ["LATITUDE"], os.environ["LONGITUDE"] = "-8.8161", "115.1635"
+    os.environ["NODE_LAT"], os.environ["NODE_LON"] = "-8.8161", "115.1635"
     s_all, r_all = A.fetch(type("HC", (StubHC,), {"get": lambda s, url, **kw: StubHA().get(url, **kw)
                                                     if "/api/states/" in url else StubHC.get(s, url, **kw)})(
         json.load(open(FIX / "overpass-bali-2026-11-08.json"))))
@@ -506,7 +510,7 @@ check(all(any(str(e) == v for e in pk["env"]) for v in
 read_was = T.read
 with tempfile.TemporaryDirectory() as tmp:
     os.environ["PACK_OUT"] = tmp
-    os.environ["LATITUDE"], os.environ["LONGITUDE"] = "-8.8161", "115.1635"
+    os.environ["NODE_LAT"], os.environ["NODE_LON"] = "-8.8161", "115.1635"
     bali_hc = StubHC(json.load(open(FIX / "overpass-bali-2026-11-08.json")))
     T.read = lambda: (SUN, None)
     A.fetch(bali_hc)
@@ -544,13 +548,15 @@ check(all(len(c["ring"]) == 7 and c["ring"][0] == c["ring"][-1] for c in cs), "e
 
 with tempfile.TemporaryDirectory() as tmp:
     os.environ["PACK_OUT"] = tmp
-    os.environ["LATITUDE"], os.environ["LONGITUDE"] = str(PT[0]), str(PT[1])
+    os.environ["NODE_LAT"], os.environ["NODE_LON"] = str(PT[0]), str(PT[1])
     A.fetch(StubHC(json.load(open(FIX / "overpass-bali-2026-11-08.json"))))
     res = A.result()
     check(len(res["cells"]) == 7 and sum(c["mw"] for c in res["cells"]) == 0,
           f"no plant stands in node #1's seven cells on 8 Nov: 0 MW in each, {[c['mw'] for c in res['cells']]}")
     check(res["counts"] == {"plants": 9, "substations": 22},
           f"9 plants and 22 substations inside the Bali polygon (Nusa Penida and Java left out): {res['counts']}")
+    check(not any("Kutampi" in s["name"] or "Nusa Penida" in s["name"] for s in res["sources"]),
+          f"Nusa Penida's island grid is not listed as Bali's: {[s['name'] for s in res['sources']]}")
     check(all(s.get("lat") is not None for s in res["sources"] if s["kind"] != "link")
           and next(s for s in res["sources"] if s["kind"] == "link")["lat"] is not None,
           "every source carries its point, the link at its cable head")
