@@ -1,4 +1,4 @@
-# energy — where the power behind a node's cells comes from
+# energy
 
 The pack says how much of the electricity on the node's grid is made from fossil fuels, where it is made and how far
 away, and what the sun on the cell could make on a roof today. It is context: it never asks the household to act.
@@ -34,7 +34,7 @@ only, every 5 minutes. Everything it keeps about the house is private.
   `"All content is released under a Creative Commons Attribution Licence (CC-BY-4.0)."`
 - **Registry status:** owed in `awesome-fabcity-data` before the pack names it in `pack.yaml` `sources:`.
 
-### Red Eléctrica de España (REE) — REData API (Balearic and peninsular mix)
+### Red Eléctrica de España (REE), the REData API (Balearic and peninsular mix)
 
 - **What it provides:** generation by technology (`generacion/estructura-generacion`) and island link balance
   (`balance/balance-electrico`, `intercambios/enlace-baleares`) for the Balearic (`geo_limit=baleares`, `geo_ids=8743`)
