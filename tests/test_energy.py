@@ -330,6 +330,148 @@ with tempfile.TemporaryDirectory() as tmp:
     check(client.get("/energy", headers=ADMIN).json()["household"]["roof_w"] == 2500.0,
           "household in result.json is served to the admin token")
 
+# ── Task 8: the household through Home Assistant (ha.py) ──────────────────────
+import sqlite3
+from datetime import datetime as DT, timedelta as TD, timezone as TZ
+
+import ha as H  # noqa: E402
+import packs  # noqa: E402
+
+HA = json.load(open(FIX / "ha-api-states.json"))
+
+
+class StubHA:
+    """Answers GET {url}/api/states/<entity> from the fixture, as Home Assistant does."""
+
+    def __init__(self):
+        self.calls = []
+
+    def get(self, url, headers=None, **kw):
+        self.calls.append((url, dict(headers or {})))
+        ent = url.rsplit("/api/states/", 1)[-1]
+        if (headers or {}).get("Authorization") != "Bearer tok":
+            rec = HA["unauthorized"]
+        elif ent in HA["states"]:
+            rec = {"status": 200, "body": HA["states"][ent]}
+        else:
+            rec = HA["not_found"]
+
+        def _json(s, b=rec["body"]):
+            if isinstance(b, str):
+                raise ValueError("not JSON")
+            return b
+        return type("Resp", (), {"status_code": rec["status"], "json": _json})()
+
+
+ha_hc = StubHA()
+check(H.state(ha_hc, "http://ha.local:8123/", "tok", "sensor.solar_power") == 3120.0, 'state() reads "3120" as 3120.0')
+check(ha_hc.calls[0] == ("http://ha.local:8123/api/states/sensor.solar_power", {"Authorization": "Bearer tok"}),
+      f"state() asks {{url}}/api/states/{{entity}} with the Bearer token, got {ha_hc.calls[0]}")
+check(H.state(ha_hc, "http://ha.local:8123", "tok", "sensor.grid_meter_offline") is None, '"unavailable" is None')
+check(H.state(ha_hc, "http://ha.local:8123", "tok", "sensor.battery_power") is None, '"unknown" is None')
+check(H.state(ha_hc, "http://ha.local:8123", "wrong", "sensor.solar_power") is None, "a 401 is None")
+check(H.state(ha_hc, "http://ha.local:8123", "tok", "sensor.nobody") is None, "a 404 is None")
+check(H.state(ha_hc, "http://ha.local:8123", "tok", "sensor.inverter_power_kw") == 3120.0,
+      "an entity in kW is read in W, never as 3.12 W")
+check(H.state(ha_hc, "http://ha.local:8123", "tok", "sensor.solar_energy_today") is None,
+      "an energy entity (kWh) is not a power reading: None, never a W figure")
+
+
+class Boom:
+    def get(self, *a, **kw):
+        raise OSError("no route to host")
+
+
+check(H.state(Boom(), "http://ha.local:8123", "tok", "sensor.solar_power") is None, "an unreachable HA is None")
+
+T0 = DT(2026, 11, 8, 5, 0, tzinfo=TZ.utc)
+check(abs(H.kwh([(T0 + TD(minutes=i), 1000.0) for i in range(0, 61, 5)]) - 1.0) < 1e-9,
+      "kwh() of a constant 1000 W over the hour is 1.0")
+check(abs(H.share(3, 1, 0.97) - 0.2425) < 1e-12, "share(3, 1, 0.97) is 0.2425")
+check(H.share(0, 0, 0.97) is None, "share(0, 0, 0.97) is None")
+# Polls land on the 5-minute loop, not on the hour: the hour's edges are read between the samples either side.
+off = [(T0 + TD(minutes=2 + 5 * i), 1000.0) for i in range(-1, 13)]
+check(abs(H.kwh(H.clip(off, T0)) - 1.0) < 1e-9, "clip() puts the hour's edges between the polls either side")
+check(H.clip([(t, w) for t, w in off if t > T0], T0) is None, "an hour the polls did not reach from its start is None")
+check(H.clip(off[:6] + off[8:], T0) is None, "an hour with a 15-minute hole is None")
+check(H.clip(off[:4] + [(off[4][0], None)] + off[5:], T0) is None, "an hour with a failed read is None")
+
+# The adapter: _home() every 5 minutes, then the hour's lines on the first poll after it.
+with tempfile.TemporaryDirectory() as tmp:
+    os.environ["PACK_OUT"] = tmp
+    os.environ["LATITUDE"], os.environ["LONGITUDE"] = "39.9493", "4.0500"
+    for k in ("ENERGY_HA_URL", "ENERGY_HA_TOKEN", "ENERGY_HA_SOLAR", "ENERGY_HA_GRID", "ENERGY_HA_BATTERY"):
+        os.environ.pop(k, None)
+    check(A._home(StubHA(), 0.41, T0) == ([], []), "no ENERGY_HA_URL: no household sensor and no line")
+    os.environ.update(ENERGY_HA_URL="http://ha.local:8123", ENERGY_HA_TOKEN="tok", ENERGY_HA_SOLAR="sensor.solar_power",
+                      ENERGY_HA_GRID="sensor.grid_power", ENERGY_HA_BATTERY="sensor.battery_power")
+    polls = [T0 + TD(minutes=2 + 5 * i) for i in range(-1, 13)]
+    out = [A._home(StubHA(), 0.97, t) for t in polls]
+    hs, hr = out[1]
+    check(len(hs) == 1 and hs[0]["sensor_id"] == "energy-home" and hs[0]["local"] is True and hs[0]["indoor"] is False
+          and hs[0]["kind"] == "sensor" and hs[0]["source"] == "energy", f"energy-home is a local outdoor sensor: {hs}")
+    check("tok" not in json.dumps(hs) and "ha.local" not in json.dumps(hs), "the sensor's meta carries no token and no URL")
+    check({m: v for _, _, m, v in hr} == {"home_roof_w": 3120.0, "home_grid_w": 400.0},
+          f'every 5 minutes the W lines, and no battery line while HA says "unknown": {hr}')
+    hourly = {m: (ts, v) for _, (_, r) in enumerate(out) for ts, _, m, v in r if m.endswith(("kwh", "pct"))}
+    check(set(hourly) == {"home_roof_kwh", "home_grid_kwh", "home_fossil_pct"}
+          and all(ts == T0 for ts, _ in hourly.values()), f"one hourly line each, stamped at the hour: {hourly}")
+    check(hourly["home_roof_kwh"][1] == 3.12 and hourly["home_grid_kwh"][1] == 0.4
+          and abs(hourly["home_fossil_pct"][1] - 11.02) < 0.01,
+          f"3120 W and 400 W for an hour: 3.12 and 0.4 kWh, 0.4/3.52 of a 97% grid: {hourly}")
+    check(sum(1 for _, r in out for _, _, m, _ in r if m == "home_roof_kwh") == 1, "an hour is written once")
+
+with tempfile.TemporaryDirectory() as tmp:
+    os.environ["PACK_OUT"] = tmp
+    out = []
+    for i, t in enumerate(polls):
+        os.environ["ENERGY_HA_GRID"] = "sensor.grid_meter_offline" if i == 6 else "sensor.grid_power"
+        out.append(A._home(StubHA(), 0.97, t))
+    got = {m for _, r in out for _, _, m, _ in r}
+    check("home_roof_kwh" in got and "home_grid_kwh" not in got and "home_fossil_pct" not in got,
+          f"HA unavailable for one poll: that hour has no household line, never a house on 100% grid: {got}")
+    check(not any(m == "home_grid_w" for _, _, m, _ in out[6][1]), "and that poll writes no grid W")
+
+with tempfile.TemporaryDirectory() as tmp:
+    os.environ["PACK_OUT"] = tmp
+    os.environ["ENERGY_HA_GRID"] = "sensor.grid_power"
+    got = {m for _, r in [A._home(StubHA(), None, t) for t in polls] for _, _, m, _ in r}
+    check("home_grid_kwh" in got and "home_fossil_pct" not in got,
+          "Bali's grid is a range, so the household's kWh are written and its fossil share is not")
+
+with tempfile.TemporaryDirectory() as tmp:
+    os.environ["PACK_OUT"] = tmp
+    os.environ["LATITUDE"], os.environ["LONGITUDE"] = "-8.8161", "115.1635"
+    s_all, r_all = A.fetch(type("HC", (StubHC,), {"get": lambda s, url, **kw: StubHA().get(url, **kw)
+                                                    if "/api/states/" in url else StubHC.get(s, url, **kw)})(
+        json.load(open(FIX / "overpass-bali-2026-11-08.json"))))
+    check({s["sensor_id"] for s in s_all} == {"energy-grid", "energy-home"}
+          and any(sid == "energy-home" and m == "home_roof_w" for _, sid, m, _ in r_all),
+          "fetch() reads the house beside the grid when ENERGY_HA_URL is set")
+    for k in ("ENERGY_HA_URL", "ENERGY_HA_TOKEN", "ENERGY_HA_SOLAR", "ENERGY_HA_GRID", "ENERGY_HA_BATTERY"):
+        os.environ.pop(k, None)
+
+# The channel role check: packs.public_sql on real rows (stdlib sqlite3 runs the same predicate).
+private = {c["metric"] for c in packs.channels() if c["source"] == "energy" and c["role"] == "private"}
+check(private == {"home_roof_w", "home_grid_w", "home_battery_w", "home_roof_kwh", "home_grid_kwh", "home_fossil_pct"},
+      f"every household metric is role: private, got {private}")
+pk = packs.read_yaml(ROOT / "packs/energy/pack.yaml")
+check(pk.get("secrets") == ["ENERGY_HA_TOKEN"] and private <= set(pk["metrics"])
+      and all(any(str(e).startswith(k + "=") for e in pk["env"]) for k in
+              ("ENERGY_HA_URL", "ENERGY_HA_TOKEN", "ENERGY_HA_SOLAR", "ENERGY_HA_GRID", "ENERGY_HA_BATTERY")),
+      "pack.yaml declares the five ENERGY_HA_ keys, the token as its secret, and the household metrics")
+c = sqlite3.connect(":memory:")
+c.execute("CREATE TABLE sensors (sensor_id TEXT, source TEXT)")
+c.execute("CREATE TABLE channel_roles (source TEXT, metric TEXT, role TEXT)")
+c.execute("CREATE TABLE readings (sensor_id TEXT, metric TEXT, value REAL)")
+c.executemany("INSERT INTO sensors VALUES (?, ?)", [("energy-home", "energy"), ("energy-grid", "energy")])
+c.executemany("INSERT INTO channel_roles VALUES (?, ?, ?)", [(x["source"], x["metric"], x["role"]) for x in packs.channels()])
+c.executemany("INSERT INTO readings VALUES (?, ?, ?)", [("energy-home", "home_grid_kwh", 0.4),
+                                                       ("energy-home", "home_roof_w", 3120.0),
+                                                       ("energy-grid", "fossil_share_low_pct", 95.0)])
+left = [m for (m,) in c.execute(f"SELECT metric FROM readings r WHERE {packs.public_sql('r')}")]
+check(left == ["fossil_share_low_pct"], f"packs.public_sql leaves out home_grid_kwh and every household row, kept {left}")
+
 if fails:
     print("\n".join(f"  ✗ {f}" for f in fails))
     sys.exit(1)

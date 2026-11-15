@@ -4,6 +4,7 @@ Finds the node's synchronous grid in grids.yml, queries OpenStreetMap via Overpa
 for plants, generators, substations and cable heads in that grid's bounding box, and computes the grid's fossil share
 every ENERGY_POLL_HOURS (6): a measured trailing-year share where the operator publishes daily generation (REE for the
 Balearic grid), or an explicit [low, high] range from OSM capacities and capacity factors where it does not (Bali).
+With ENERGY_HA_URL set it also reads the house's own power from its Home Assistant every poll (ha.py, `_home`).
 """
 from __future__ import annotations
 
@@ -17,12 +18,14 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(__file__))
 
 import grids
+import ha
 import mix
 import osm
 import ree
 
 log = logging.getLogger("planetai.energy")
 SID = "energy-grid"
+HOME = "energy-home"
 USER_AGENT = "planetai-node/energy (https://planetai.fab.city; info@fab.city)"
 OSM_ATTR = "© OpenStreetMap contributors, ODbL, via Overpass"
 REE_ATTR = "Red Eléctrica de España (REE), apidatos.ree.es"
@@ -144,16 +147,16 @@ def _build_bar(sources: list[dict], g: dict, m: dict) -> list[dict]:
     return bar
 
 
-def fetch(hc) -> tuple[list[dict], list[tuple]]:
+def _grid(hc) -> tuple[list[dict], list[tuple], dict | None]:
     try:
         lat, lon = float(os.getenv("LATITUDE", "0")), float(os.getenv("LONGITUDE", "0"))
     except ValueError:
-        return [], []
+        return [], [], None
     if lat == 0.0 and lon == 0.0:
-        return [], []
+        return [], [], None
     g = grids.grid_for(lat, lon, grids.load())
     if g is None:
-        return [], []
+        return [], [], None
 
     now = datetime.now(timezone.utc)
     raw_sources = _osm_sources(hc, g, now)
@@ -256,4 +259,66 @@ def fetch(hc) -> tuple[list[dict], list[tuple]]:
             "licence": "non-commercial" if is_meas else "open",
         },
     }
+    return [sensor], readings, m
+
+
+def _home(hc, fossil: float | None, now: datetime) -> tuple[list[dict], list[tuple]]:
+    """The house, through its Home Assistant (ha.py), when ENERGY_HA_URL, the token and both entities are set: W every
+    poll, and on the first poll after an hour closes, that hour's kWh and, where the grid has one measured fossil
+    share (`fossil`), the household's own. Samples wait for their hour in out/energy/ha.json."""
+    url, token = os.getenv("ENERGY_HA_URL", "").strip(), os.getenv("ENERGY_HA_TOKEN", "").strip()
+    ents = {m: os.getenv(k, "").strip() for k, m in
+            (("ENERGY_HA_SOLAR", "home_roof_w"), ("ENERGY_HA_GRID", "home_grid_w"), ("ENERGY_HA_BATTERY", "home_battery_w"))}
+    if not (url and token and ents["home_roof_w"] and ents["home_grid_w"]):
+        return [], []
+    w = {m: ha.state(hc, url, token, e) if e else None for m, e in ents.items()}
+    readings: list[tuple] = [(now, HOME, m, v) for m, v in w.items() if v is not None]
+
+    p = _out() / "ha.json"
+    try:
+        st = json.loads(p.read_text())
+    except Exception:
+        st = {}
+    samples = [(datetime.fromisoformat(t), r, g) for t, r, g in st.get("samples") or []]
+    samples.append((now, w["home_roof_w"], w["home_grid_w"]))
+    hour = now.replace(minute=0, second=0, microsecond=0)
+    done = datetime.fromisoformat(st["done"]) if st.get("done") else None
+    pos = lambda v: None if v is None else max(v, 0.0)  # noqa: E731 — power sent out is not power drawn or made here
+    for h in sorted({t.replace(minute=0, second=0, microsecond=0) for t, _, _ in samples if t < hour}):
+        if done and h <= done:
+            continue
+        roof = ha.clip([(t, pos(r)) for t, r, _ in samples], h)
+        grid = ha.clip([(t, pos(g)) for t, _, g in samples], h)
+        roof_kwh = round(ha.kwh(roof), 3) if roof else None
+        grid_kwh = round(ha.kwh(grid), 3) if grid else None
+        if roof_kwh is not None:
+            readings.append((h, HOME, "home_roof_kwh", float(roof_kwh)))
+        if grid_kwh is not None:
+            readings.append((h, HOME, "home_grid_kwh", float(grid_kwh)))
+        if roof_kwh is not None and grid_kwh is not None and fossil is not None:
+            sh = ha.share(roof_kwh, grid_kwh, fossil)
+            if sh is not None:
+                readings.append((h, HOME, "home_fossil_pct", round(sh * 100.0, 2)))
+    keep = [s for s in samples if s[0] < hour][-1:] + [s for s in samples if s[0] >= hour]
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps({"done": (hour - ha.HOUR).isoformat(),
+                             "samples": [[t.isoformat(), r, g] for t, r, g in keep]}))
+    try:
+        lat, lon = float(os.getenv("LATITUDE", "")), float(os.getenv("LONGITUDE", ""))
+    except ValueError:
+        lat = lon = None
+    sensor = {"sensor_id": HOME, "source": "energy", "name": "This house (Home Assistant)", "kind": "sensor",
+              "indoor": False, "local": True, "cadence": "PT5M", "lat": lat, "lon": lon,
+              "meta": {"via": "Home Assistant REST API"}}
     return [sensor], readings
+
+
+def fetch(hc) -> tuple[list[dict], list[tuple]]:
+    sensors, readings, m = _grid(hc)
+    # The house's share uses the grid's one measured figure, the latest full day where there is one (REE), else the
+    # trailing year. Bali's is a range, so the house gets its kWh and no share until one figure is published.
+    fossil = None
+    if m and m.get("kind") == "measured":
+        fossil = m["now"] if m.get("now") is not None else m.get("value")
+    hs, hr = _home(hc, fossil, datetime.now(timezone.utc))
+    return sensors + hs, readings + hr
