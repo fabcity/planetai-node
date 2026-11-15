@@ -1,5 +1,15 @@
 # energy — where the power behind a node's cells comes from
 
+The pack says how much of the electricity on the node's grid is made from fossil fuels, where it is made and how far
+away, and what the sun on the cell could make on a roof today. It is context: it never asks the household to act.
+
+Turn it on by adding `energy` to `PACKS_ENABLED` and `NODE_ISSUES` (it needs `PACKS_ALLOW_CODE=1`). Now gets an Energy
+row and panel, Place a Power grid row, and `GET /energy` serves both. A node on a grid `grids.yml` does not hold says
+so; add the grid there, with its polygon, its links and where its mix comes from.
+
+With `ENERGY_HA_URL`, `ENERGY_HA_TOKEN` and the entity ids set, it also reads the house's own Home Assistant, read
+only, every 5 minutes. Everything it keeps about the house is private.
+
 ## Sources and licences
 
 ### OpenStreetMap (via Overpass API)

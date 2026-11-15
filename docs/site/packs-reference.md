@@ -34,6 +34,7 @@ the pack is off.
 | `earth` | code | land | none | | 1 | `fetch` `change` `frames` `status` `verify` `similar` | `EARTH_*` |
 | `terrain` | code | water | none | | | `coverage` `fetch` `verify` | `TERRAIN_*` |
 | `hydro` | code | water | none | | 1 | `fetch` `verify` | `HYDRO_RADIUS_KM` |
+| `energy` | code | energy | none | | | | `ENERGY_*` |
 | `earth-engine` | code | land | none | | 1 | `timelapse` `verify` `basemap` | `EE_*`, `GROUND_SAT_WIDE_KM` |
 | `place` | code | place | 1 info | | 1 | `refresh` `gaps` `verify` `basemap` | `PLACE_*`, `GROUND_*` |
 | `index` | code | place | none | | | | `INDEX_*` |
@@ -795,6 +796,63 @@ model's long-term average, not a gauge. HydroSHEDS' own download carries its v1 
 passing the files on "as a stand-alone product"; the pack shows what it keeps under HydroATLAS's CC-BY 4.0, which
 publishes the same rivers and basins. At node #1 the nearest river is 5 km away and carries 0.13 m³/s; the
 largest in the square, 23 km away, carries 10.6 m³/s.
+
+## energy
+
+Where the electricity behind the node's cells comes from. It finds the node's grid in `packs/energy/grids.yml` (Bali
+and the Balearics today), asks OpenStreetMap through Overpass for the grid's plants, substations and cable heads once
+every `ENERGY_REFRESH_DAYS`, and works out how much of the grid's power is made from fossil fuels. Where the grid
+operator publishes its mix the share is measured: Menorca reads Red Eléctrica's Balearic mix by day. Where it does not,
+the share is a range from installed capacity and typical capacity factors: Bali's is a range, and stays one while
+how much comes from Java by cable is not published.
+
+| | |
+|---|---|
+| Kind | code |
+| Domain | `energy` |
+| Requires node | `>=0.91.0` |
+| Metrics | `fossil_share_pct`, `fossil_share_low_pct`, `fossil_share_high_pct`, `fossil_share_day_pct`, `substation_km`, `large_plant_km`, `import_share_max_pct`, `grid_months`, and six `home_*` metrics, all private |
+| Scales | region |
+| Needs | `PACKS_ALLOW_CODE=1`; network to Overpass and, for Menorca, `apidatos.ree.es`; with `ENERGY_HA_URL` set, the household's own Home Assistant. No key |
+| Cells | none: a grid is context, never a cell |
+| Attribution | "© OpenStreetMap contributors, ODbL, via Overpass; Ember Yearly Electricity Data, CC BY 4.0; Red Eléctrica de España (REE), apidatos.ree.es" |
+
+Add `energy` to `PACKS_ENABLED` and to `NODE_ISSUES`. Now then has an Energy row in Around the house, and pressing it
+draws the grid where the day figure is: the fossil share, the mix as a bar, the sources with how far each is, and a
+Today box with the sun on the cell, what a roof of panels would make with it, and what the house uses. Place gains a
+Power grid row in its built section, off at first. `GET /energy` serves all of it.
+
+Menorca's figure is Red Eléctrica's under terms that allow information and forbid commercial use, so it is shown on the
+node with REE named and the date of its data, and it never leaves in the open export or reaches the Index (each of its
+readings carries `licence: non-commercial`).
+
+**The house.** Set `ENERGY_HA_URL`, `ENERGY_HA_TOKEN` and the entity ids of the panels and the grid meter, and the pack
+reads the house's own Home Assistant every 5 minutes, read only. Each hour it adds up the roof's and the grid's kWh and,
+where the grid has one measured figure, the house's own fossil share. An hour with a failed read or a 15-minute gap
+gets no line. Every `home_*` metric is private: the open export, a parent and a public screen never see them.
+
+### Settings
+
+| setting | default | meaning |
+|---|---|---|
+| `ENERGY_REFRESH_DAYS` | `30` | how often the grid's plants and substations are asked of OpenStreetMap again |
+| `ENERGY_POLL_HOURS` | `6` | how often the share is worked out again |
+| `ENERGY_HA_URL` | blank | the house's Home Assistant, for example `http://homeassistant.local:8123`. Blank reads nothing |
+| `ENERGY_HA_TOKEN` | blank | a long-lived access token from Home Assistant. Masked once saved |
+| `ENERGY_HA_SOLAR`, `ENERGY_HA_GRID`, `ENERGY_HA_BATTERY` | blank | the entity ids of the panels' power, the power drawn from the grid and the battery's, in W or kW |
+| `ENERGY_PANEL_KW` | `2` | the size of the roof's panels, for the Today box. A placeholder: set your own |
+| `ENERGY_HOUSE_KWH_DAY` | `9` | what the house uses in a day. A placeholder |
+| `ENERGY_PANEL_PR` | `0.75` | the panels' performance ratio, a typical one |
+
+### What it does not know
+
+- How much of Bali's power comes from Java. PLN publishes neither the cable's flow nor its rating under an open
+  licence, so Bali's share is a range and its low end stays an estimate.
+- The power lines. Overpass is asked where each line is, not its shape, so the map draws plants, substations and
+  cable heads, and no lines yet.
+- Any grid not in `grids.yml`. A node elsewhere says it is on no grid the pack knows, and how to add one.
+- A house's solar measured for real. No house in the fleet has panels in Home Assistant yet, so the house's path is
+  proven on Home Assistant's documented answers only.
 
 ## earth-engine
 

@@ -352,7 +352,7 @@ Official and model weather for this point, from `forecast-bmkg`, `forecast-om`, 
 ### GET /energy
 Access: open
 
-The synchronous grid behind this node's cells, as the `energy` pack last computed it: `{grid, kind, method, months, share: {low, high, value, now, stale, as_of}, bar, sources, today: {sun_kwh_m2, roof_kwh, use_kwh, measured}, household, attribution}`. `sources` lists the nearest substation, each plant of at least 1 MW and each link. `household` is null without `ADMIN_TOKEN` (and for `X-Agent`), and 404 while the `energy` pack is off.
+The synchronous grid behind this node's cells, as the `energy` pack last computed it: `{grid, kind, method, months, share: {low, high, value, now, stale, as_of}, bar, sources, today: {sun_kwh_m2, roof_kwh, use_kwh, measured, panel_kw}, household, attribution, counts: {plants, substations}, cells}`. `sources` lists the nearest substation, each plant of at least 1 MW and each link, on this grid only. Without the admin or act token (and for `X-Agent`) each source's `km` is whole kilometres, sources carry no `lat`/`lon`, and `cells` is null; with it they are as measured and `cells` holds the node's seven res-8 cells with their outlines and the MW made in each. `household`, the house's latest W from Home Assistant, needs `ADMIN_TOKEN` itself. `today.sun_kwh_m2` is null when the forecast pack has no Open-Meteo sun for today, and then there is no roof. 404 while the `energy` pack is off.
 
 ### GET /earth
 Access: open
