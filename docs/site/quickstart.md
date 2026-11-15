@@ -23,8 +23,8 @@ planetai status                                         # open a new terminal if
 ```
 
 The installer asks for a name, the place, what the node is for and whether you have a Smart Citizen kit. Type the
-town and pick the right match, because the place fixes the cell the node stands in and the 500 m inside which a
-sensor counts as yours. Near the end it offers to fetch the map of your place: say `y`.
+town and pick the right match, because the place fixes the cell the node stands in, and a sensor counts as yours
+in that cell and the neighbours you claim on Place. Near the end it offers to fetch the map of your place: say `y`.
 
 It worked when `planetai status` shows `polls` going up every five minutes, `errors none`, and the public stations
 and models it reads under `reference`. If a line is wrong, `planetai doctor` prints every check with its fix.
@@ -41,7 +41,8 @@ planetai test-alert                     # one real alert, through the whole path
 planetai act <id> read it on my phone   # the number test-alert printed, and what you did in your own words
 ```
 
-`planetai sensors` marks each sensor `yours`, inside the 500 m, or `reference`. An AirGradient or a PurpleAir on
+`planetai sensors` marks each sensor `yours`, in the node's own cells, or `reference`. A kit in a cell next to the
+node's prints `reference` until you claim that cell on [Place](place.md#the-seven-cells), and `yours` from the next poll. An AirGradient or a PurpleAir on
 your WiFi goes in `AIRGRADIENT_HOSTS` or `PURPLEAIR_HOSTS` the same way; a Bayu or a Meshtastic radio comes in through
 `planetai broker` or `planetai radio`. Without a sensor the node still reads the public stations and models.
 

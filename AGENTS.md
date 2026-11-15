@@ -159,7 +159,7 @@ where the thresholds came from and which place they were written for.
 - `status.errors` is per loop. A key present means that loop failed on its last run.
 - A request without a token reads the house's rooms and sensors as "Room A" and "Sensor 1"; the MCP tools, on this
   machine, read the names the household gave in Set up › Rooms. Never repeat those names anywhere a stranger reads.
-- `sensors[].local` means the person's own **and** at this node; a kit of theirs further than `LOCAL_RADIUS_M` is theirs but not this node's measurement. `indoor` is what the rules use to tell the house from the street.
+- `sensors[].local` means the person's own **and** at this node; a kit of theirs outside the node's own cells (the res-8 cell it stands in and the neighbours claimed on Place, `GET /place/cells`) is theirs but not this node's measurement. `indoor` is what the rules use to tell the house from the street.
 - `alerts[].acted_at` is null until someone acts. It is the person's note on what they did, not the node's own
   measurement: ask them, record it with `act` in their words, and never invent one.
 - "Outside" means: the person's own outdoor sensors, else the three nearest public references, else the model. Same order

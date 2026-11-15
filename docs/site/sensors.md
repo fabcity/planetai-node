@@ -20,8 +20,10 @@ for any source on this page.
    others carry on. Polling twice never stores a reading twice.
 3. **Check that it is yours and here.** `planetai sensors` prints one line per sensor: id, `kind`, `yours` or
    `reference`, `indoor` or `outdoor`, name. `yours` means `local`: the adapter claimed the kit and it stands
-   within `LOCAL_RADIUS_M` (500 m) of the node. A kit on your account 1.2 km away prints `reference`, because it
-   is not this node's measurement of this place.
+   in one of the node's own cells, the one the node stands in or a neighbour you claimed on
+   [Place](place.md#the-seven-cells). A kit on your account outside them prints `reference`, because it is not this
+   node's measurement of this place. A kit in a cell next to the node's prints `reference` until you claim that
+   cell, and `yours` from the next poll.
 4. **Check that it may be counted.** `planetai sensors --json` carries `"custody": true` on the same row. Every
    cell's claim to `live` depends on that field.
 5. **Watch it become a cell.** `planetai cells` prints `Environmental|Community` with a value, a state and the
@@ -77,10 +79,11 @@ reach it.
 ## Who may be counted
 
 `local` is two facts at once. The adapter says whether a sensor is yours, and the node checks whether it is here:
-`sources.stamp_local` sets `local` to false for any claimed sensor farther than `LOCAL_RADIUS_M` from the node. It
-only ever narrows. A sensor no adapter claimed never becomes local, whatever its coordinates. A claimed sensor with
-no coordinates (a radio reaching the node through your own gateway, a purifier on the LAN) stays local, because
-there is no distance to measure. A node with no coordinates of its own leaves every claim alone.
+`sources.stamp_local` sets `local` to false for any claimed sensor whose resolution-8 cell is not one of the node's
+own, the cell the node stands in and the neighbours claimed on Place (`node_cells`). It does this on every poll, so a
+claim or a release counts from the next one. It only ever narrows. A sensor no adapter claimed never becomes local,
+whatever its coordinates. A claimed sensor with no coordinates (a radio reaching the node through your own gateway, a
+purifier on the LAN) stays local, because there is no point to place in a cell. A node with no coordinates of its own leaves every claim alone.
 
 `custody` is a generated column, `kind = 'child' OR (local AND kind <> 'peer')`. No adapter writes it, so it
 cannot disagree with `local` and `kind`. A child node's hourly means are in custody. A model point, a portal,
@@ -96,7 +99,7 @@ switch: it runs when that switch is on.
 
 | source | turned on by | `kind` | `local` | what it reads |
 |---|---|---|---|---|
-| Smart Citizen | `SC_DEVICES=19880,…` or `SC_USER=name` (every kit on the account; `SC_EXCLUDE` drops some) | `sensor` | yes, then narrowed by `LOCAL_RADIUS_M` | The public API, no key. Metrics are mapped by measurement name, so SCK 2.1 and 2.3 both work. `indoor` comes from each kit's own `exposure`. No humidity correction: the Seeed HM-3301 is not a Plantower, and the EPA correction was not derived for it. |
+| Smart Citizen | `SC_DEVICES=19880,…` or `SC_USER=name` (every kit on the account; `SC_EXCLUDE` drops some) | `sensor` | yes, then narrowed to the node's own cells | The public API, no key. Metrics are mapped by measurement name, so SCK 2.1 and 2.3 both work. `indoor` comes from each kit's own `exposure`. No humidity correction: the Seeed HM-3301 is not a Plantower, and the EPA correction was not derived for it. |
 | Open-Meteo and CAMS | `OPENMETEO_ENABLED=1` (default) | `model` | never | Weather now at the node's coordinates (core), and PM2.5, PM10, O₃, NO₂, dust and UV from the Copernicus model at 11 km, as `cams-point` (the `air-quality` pack, on the same key). Free, no key, anywhere. Never in an ambient average. |
 | NASA POWER | the first-start bootstrap (`BOOTSTRAP=1`) | `model` | never | Forty years of monthly temperature, humidity and rain normals, as `power-point`. |
 | CKAN portals | `CKAN_PORTALS=slug=url,…` (five of the six presets name one; `delhi` leaves it blank) | `portal` | never | A portal's upkeep (datasets in total, the share touched in 90 days) for the `open-data-health` pack's `Governance\|City` cell. Scale from `CKAN_SCALE` (`city`). |

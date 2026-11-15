@@ -87,8 +87,8 @@ Then **Here's the plan** lists the name, place, time zone, city key, sensor and 
 `Install with these?`. Saying no changes nothing. Saying yes writes the answers to `.env` first, so a failure
 later keeps them for the next run, and starts the seven steps below.
 
-The place is the answer that matters most: it fixes the H3 cell the node stands in and the 500 m radius inside
-which a sensor counts as this node's own. Without a sensor the node still knows your weather, the satellite air
+The place is the answer that matters most: it fixes the H3 cell the node stands in, and a sensor counts as this
+node's own only in that cell and the neighbours you claim on [Place](place.md#the-seven-cells). Without a sensor the node still knows your weather, the satellite air
 model for your district and forty years of climate for your coordinates; see [Before a sensor](before-a-sensor.md).
 
 > **Only Smart Citizen, for now.** The installer offers one kit. AirGradient and PurpleAir are read by their own
