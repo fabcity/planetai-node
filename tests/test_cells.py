@@ -1,4 +1,5 @@
-"""The node's seven res-8 cells: home, the six touching it, their states, and which neighbours a fleet adopts.
+"""The node's seven res-8 cells: home, the six touching it, their states, which neighbours a fleet adopts, and the
+routes that read, claim and release them (GET /place/cells, POST and DELETE /place/cells/{cell}/claim).
 
 Run: PYTHONPATH=app python3 tests/test_cells.py
 """
@@ -202,7 +203,135 @@ check("cells.load(cur, cells.home(" in poll_block and poll_block.index("cells.lo
 check("cells.load(cur, cells.home(" in store_block and store_block.index("cells.load(") < store_block.index("for s in sensors:"),
       "_store loads own_cells once before looping over sensors")
 
+# ---------------------------------------------------------------- the routes: GET /place/cells, claim and release
+# Driven through the app with the database faked. The seen query's own SQL runs on Postgres in tests/test_maps_pg.py.
+import logging  # noqa: E402
+import time  # noqa: E402
+
+logging.disable(logging.WARNING)
+os.environ.update(ADMIN_TOKEN="admin-tok", ACT_TOKEN="act-tok", DATABASE_URL="postgresql://unused/never-connected")
+import settings  # noqa: E402
+settings._cache = {"at": time.time() + 1e9, "rows": {"SHARE_LEVEL": "open", "BACKUP_TOKEN": "backup-tok"}}
+import auth  # noqa: E402
+import main  # noqa: E402 — importing the app starts nothing
+from fastapi.testclient import TestClient  # noqa: E402
+
+
+class RouteCur(FakeCur):
+    """FakeCur plus what the routes add: the seen query, a release, the ledger row, rowcount."""
+    def __init__(self, sensors_rows, recent):
+        super().__init__(sensors_rows)
+        self.recent, self.actions, self.rowcount = set(recent), [], 0
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def execute(self, q, params=()):
+        u = " ".join(q.split())
+        self.rowcount = 0
+        if "FROM readings" in u:
+            check("s.custody" in u and "s.kind = 'sensor'" in u and "interval '24 hours'" in u and "r.ts <= now()" in u,
+                  "seen reads custody sensors with a reading in the last 24 h, none from the future")
+            self._last = [{"lat": s["lat"], "lon": s["lon"]} for s in self.sensors if s["sensor_id"] in self.recent]
+        elif u.startswith("DELETE FROM node_cells"):
+            self.rowcount = int(self.cells.pop(params[0], None) is not None)
+        elif u.startswith("INSERT INTO actions"):
+            check("'place'" in u, "a claim or release is a `place` row in the actions ledger")
+            self.actions.append(params)
+        elif u.startswith("INSERT INTO node_cells"):
+            new = params[0] not in self.cells
+            super().execute(q, params)
+            self.rowcount = int(new or "DO UPDATE" in u)
+        else:
+            super().execute(q, params)
+
+
+class FakeCon:
+    def __init__(self, cur):
+        self.cur = cur
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def transaction(self):
+        return self
+
+    def cursor(self):
+        return self.cur
+
+
+rc = RouteCur(fleet, recent={"sc-19236"})                 # sc-19236 in n1 read within 24 h; sc-n2-far did not
+cells._db = lambda: FakeCon(rc)
+c = TestClient(main.app)
+local = TestClient(main.app, client=("127.0.0.1", 51000))
+H = {"Authorization": "Bearer act-tok"}
+
+for level in ("off", "open"):
+    exact, prefixes = auth._SHARE[level]
+    check("/place/cells" not in exact and not any(p.startswith(pre) for pre in prefixes
+                                                    for p in ("/place/cells", "/place/cells/x/claim")),
+          f"/place/cells is on no SHARE_LEVEL allowlist ({level})")
+check(c.get("/place/cells").status_code in (401, 403), "a caller with no token is refused, even at SHARE_LEVEL=open")
+check(c.post(f"/place/cells/{n2}/claim").status_code in (401, 403), "a claim with no token is refused")
+check(c.delete(f"/place/cells/{n1}/claim").status_code in (401, 403), "a release with no token is refused")
+check(c.get("/place/cells", headers={"Authorization": "Bearer backup-tok"}).status_code == 401,
+      "the NAS's backup token passes SHARE_LEVEL and is still refused here")
+check(rc.cells == {}, "nothing refused touched node_cells")
+check(local.get("/place/cells").status_code == 200, "this machine reads its cells without a token")
+
+r = c.get("/place/cells", headers=H)
+b = r.json() if r.status_code == 200 else {}
+st = {x["cell"]: x["state"] for x in b.get("cells", [])}
+check(r.status_code == 200, f"GET /place/cells with the act token is 200, got {r.status_code}")
+check(b.get("home") == HOME and b.get("res") == 8 and b.get("of") == 7, f"home, res 8, of 7: {b.get('home')}, {b.get('res')}, {b.get('of')}")
+check([x["cell"] for x in b.get("cells", [])] == cells.ring(HOME), "cells in ring() order")
+check(st.get(HOME) == "home" and st.get(n1) == "held" and st.get(n2) == "open", f"first read adopts n1, held by sc-19236: {st}")
+check(b.get("held") == 2 and b.get("community_ready") is False, f"2 of 7 held, not community ready: {b.get('held')}")
+check(rc.cells == {HOME: "home", n1: "adopted"}, f"the first read adopted: {rc.cells}")
+check(all(x["ring"] == geo._row(x["cell"]) for x in b.get("cells", [])), "every row carries its outline")
+
+r = c.post(f"/place/cells/{n2}/claim?actor=Tomas", headers=H)
+st = {x["cell"]: x["state"] for x in r.json().get("cells", [])} if r.status_code == 200 else {}
+check(r.status_code == 200 and st.get(n2) == "claimed", f"claiming n2 answers 200 with n2 claimed, got {r.status_code} {st}")
+check(rc.cells.get(n2) == "keeper", f"the keeper's claim is claimed_by 'keeper', got {rc.cells.get(n2)}")
+check(rc.actions[-1] == ("Tomas", f"cell {n2}", "claimed") if rc.actions else False, f"the ledger row: {rc.actions}")
+check(r.json().get("held") == 2 if r.status_code == 200 else False, "a claim with no reading in it is not held")
+check(c.post(f"/place/cells/{n2}/claim", headers=H).status_code == 409, "claiming it again is 409")
+check(c.post(f"/place/cells/{n1}/claim", headers=H).status_code == 409, "claiming an adopted cell is 409")
+for bad, why in ((HOME, "home"), (far, "a cell outside the ring"), ("not-a-cell", "a string that is no cell")):
+    check(c.post(f"/place/cells/{bad}/claim", headers=H).status_code == 400, f"claiming {why} is 400")
+check(len(rc.actions) == 1, f"a refused claim writes no ledger row: {rc.actions}")
+
+rc.recent.add("sc-n2-far")                                # a reading lands in n2
+b = c.get("/place/cells", headers=H).json()
+check({x["cell"]: x["state"] for x in b["cells"]}[n2] == "held" and b["held"] == 3, "a reading in a claimed cell makes it held")
+rc.recent.discard("sc-n2-far")                            # and 24 h of nothing drops it back
+check({x["cell"]: x["state"] for x in c.get("/place/cells", headers=H).json()["cells"]}[n2] == "claimed",
+      "held is derived on every read: no reading, claimed again")
+
+r = c.delete(f"/place/cells/{n2}/claim", headers={**H, "X-Agent": "claude"})
+check(r.status_code == 200 and {x["cell"]: x["state"] for x in r.json()["cells"]}[n2] == "open", f"releasing n2 opens it: {r.status_code}")
+check(n2 not in rc.cells and rc.actions[-1] == ("claude", f"cell {n2}", "released"), f"released and ledgered: {rc.actions[-1]}")
+check(c.delete(f"/place/cells/{n2}/claim", headers=H).status_code == 404, "releasing an open cell is 404")
+check(c.delete(f"/place/cells/{far}/claim", headers=H).status_code == 404, "releasing a cell outside the ring is 404")
+check(c.delete(f"/place/cells/{HOME}/claim", headers=H).status_code == 400, "home cannot be released: 400")
+check(rc.cells.get(HOME) == "home", "home's row survives")
+
+n4 = cells.ring(HOME)[4]
+rc.sensors.append({"sensor_id": "sc-n4", "lat": h3.cell_to_latlng(n4)[0], "lon": h3.cell_to_latlng(n4)[1], "local": True, "kind": "sensor"})
+rc.recent |= {"sc-n2-far", "sc-n4"}
+c.post(f"/place/cells/{n2}/claim", headers={**H, "X-Agent": "claude"})
+check(rc.cells.get(n2) == "agent:claude", f"an agent's claim is claimed_by 'agent:<name>', got {rc.cells.get(n2)}")
+b = c.post(f"/place/cells/{n4}/claim", headers=H).json()
+check(b["held"] == 4 and b["community_ready"] is True, f"four held of seven is community ready: {b['held']}")
+
 if fails:
     print("\n".join(f"  ✗ {f}" for f in fails))
-print("  ✓ cells: ring of seven, 3 outside parent, own, states, held_count, adoptable, stamp_local, adopt, load" if not fails else f"  ✗ {len(fails)} failure(s)")
+print("  ✓ cells: ring of seven, 3 outside parent, own, states, held_count, adoptable, stamp_local, adopt, load, /place/cells claim and release" if not fails else f"  ✗ {len(fails)} failure(s)")
 sys.exit(1 if fails else 0)

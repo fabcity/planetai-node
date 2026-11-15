@@ -94,6 +94,25 @@ cur.execute("DELETE FROM node_cells WHERE cell = '8895a4c809fffff'")
 assert cells.load(cur, hc) == {hc}, "releasing adopted cell does not re-adopt while home row is present"
 print("  node_cells: adopt and load hold on Postgres")
 
+# The seen query: only this node's own sensors (custody AND kind = 'sensor'), only a reading in the last 24 h, never one
+# timestamped ahead (forecast rows are). sc-19236 read an hour ago in 8895a4c809fffff; each other row misses one rule.
+import h3  # noqa: E402
+ring = cells.ring(hc)
+def at(c):
+    return h3.cell_to_latlng(c)
+for sid, c, local, kind in (("cells-old", ring[2], True, "sensor"), ("cells-peer", ring[3], True, "peer"),
+                            ("cells-theirs", ring[4], False, "sensor"), ("cells-model", ring[5], True, "model"),
+                            ("cells-ahead", ring[6], True, "sensor")):
+    cur.execute("INSERT INTO sensors (sensor_id, source, lat, lon, local, kind) VALUES (%s, 't', %s, %s, %s, %s)",
+                (sid, *at(c), local, kind))
+cur.execute("""INSERT INTO readings (ts, sensor_id, metric, value) VALUES
+  (now() - interval '1 hour', 'sc-19236', 'pm25', 9), (now() - interval '25 hours', 'cells-old', 'pm25', 9),
+  (now() - interval '1 hour', 'cells-peer', 'pm25', 9), (now() - interval '1 hour', 'cells-theirs', 'pm25', 9),
+  (now() - interval '1 hour', 'cells-model', 'pm25', 9), (now() + interval '2 hours', 'cells-ahead', 'pm25', 9)""")
+seen = cells._seen(cur)
+assert "8895a4c809fffff" in seen and not seen & set(ring[2:]), seen
+print("  the seen query: own sensors, last 24 h, nothing ahead; a peer, a model, a stranger and an old reading hold nothing")
+
 con.rollback()
 
 # ---------------------------------------------------------------- the routes (app/maps.py), through the app

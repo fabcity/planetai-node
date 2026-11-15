@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 
 import h3
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 
 from issues import geometry as geo
 
@@ -100,3 +101,95 @@ def load(cur, home_cell: str) -> set[str]:
     adopt(cur, home_cell)
     cur.execute("SELECT cell FROM node_cells")
     return own(home_cell, {r["cell"] for r in cur.fetchall()})
+
+
+# ---------------------------------------------------------------- the routes: GET /place/cells, claim and release
+# GET /cells is the Index contract (fci-cells-v0, main.cells_) and stays as it is. These are the household's alone at
+# every SHARE_LEVEL, as /place/maps is: on no allowlist in app/auth.py, and the router checks the admin or act token
+# itself, because the SHARE_LEVEL middleware also lets BACKUP_TOKEN through. auth and db are imported where they are
+# used: sources imports this module everywhere, db.py needs DATABASE_URL at import and auth reads the packs' allowlists.
+
+def _household(request: Request, authorization: str = Header("")) -> None:
+    from auth import ACT_TOKEN, _bearer_ok, _is_local  # noqa: PLC0415
+    if not (_is_local(request) or _bearer_ok(authorization, os.getenv("ADMIN_TOKEN", "").strip(), ACT_TOKEN())):
+        raise HTTPException(401, "The node's cells need the household's token.")
+
+
+router = APIRouter(dependencies=[Depends(_household)])
+
+
+def _db():
+    from db import db  # noqa: PLC0415
+    return db()
+
+
+_SEEN = """SELECT s.lat, s.lon FROM sensors s
+           WHERE s.custody AND s.kind = 'sensor' AND s.lat IS NOT NULL AND s.lon IS NOT NULL
+             AND EXISTS (SELECT 1 FROM readings r WHERE r.sensor_id = s.sensor_id
+                           AND r.ts > now() - interval '24 hours' AND r.ts <= now())"""
+
+
+def _seen(cur) -> set[str]:
+    """Res-8 cells with a reading in the last 24 h from one of this node's own sensors: what makes a claim `held`."""
+    cur.execute(_SEEN)
+    return {cell_of(r["lat"], r["lon"]) for r in cur.fetchall()}
+
+
+def _home() -> str:
+    lat, lon = os.getenv("NODE_LAT"), os.getenv("NODE_LON")
+    if not (lat and lon):
+        raise HTTPException(404, "This node has no place yet. Set its address in Set up.")
+    return home(float(lat), float(lon))
+
+
+def _body(cur, home_cell: str) -> dict:
+    rows = states(home_cell, load(cur, home_cell), _seen(cur))
+    n = held_count(rows)
+    return {"home": home_cell, "res": RES, "cells": rows, "held": n, "of": len(rows), "community_ready": n >= 4}
+
+
+def _ledger(cur, request: Request, actor: str, verb: str, cell: str) -> None:
+    """One `place` row in the actions ledger, as app/maps.py writes them. X-Agent wins over ?actor=, as there."""
+    cur.execute("INSERT INTO actions (stage, actor, note, choice) VALUES ('place', %s, %s, %s)",
+                ((request.headers.get("x-agent") or actor)[:80], f"cell {cell}", verb))
+
+
+@router.get("/place/cells")
+def place_cells():
+    """The seven: home, the six touching it, each home, held, claimed or open, and how many are held."""
+    home_cell = _home()
+    with _db() as con, con.transaction(), con.cursor() as cur:
+        return _body(cur, home_cell)
+
+
+@router.post("/place/cells/{cell}/claim")
+def claim(cell: str, request: Request, actor: str = Query("")):
+    """?actor=<who>. 400 for home or a cell that does not touch it, 409 when it is already the node's."""
+    home_cell = _home()
+    if cell == home_cell:
+        raise HTTPException(400, "The cell the node stands in is always its own.")
+    if cell not in ring(home_cell):
+        raise HTTPException(400, "Only a cell touching the one the node stands in can be claimed.")
+    with _db() as con, con.transaction(), con.cursor() as cur:
+        load(cur, home_cell)                               # adopts first, the first time
+        agent = (request.headers.get("x-agent") or "")[:80]
+        cur.execute("INSERT INTO node_cells (cell, claimed_by) VALUES (%s, %s) ON CONFLICT (cell) DO NOTHING",
+                    (cell, f"agent:{agent}" if agent else "keeper"))
+        if not cur.rowcount:
+            raise HTTPException(409, "That cell is already the node's.")
+        _ledger(cur, request, actor, "claimed", cell)
+        return _body(cur, home_cell)
+
+
+@router.delete("/place/cells/{cell}/claim")
+def release(cell: str, request: Request, actor: str = Query("")):
+    """?actor=<who>. 400 for home, 404 when the cell is not claimed."""
+    home_cell = _home()
+    if cell == home_cell:
+        raise HTTPException(400, "The cell the node stands in cannot be released.")
+    with _db() as con, con.transaction(), con.cursor() as cur:
+        if cell not in load(cur, home_cell):
+            raise HTTPException(404, "That cell is not claimed.")
+        cur.execute("DELETE FROM node_cells WHERE cell = %s", (cell,))
+        _ledger(cur, request, actor, "released", cell)
+        return _body(cur, home_cell)
