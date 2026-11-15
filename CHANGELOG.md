@@ -12,6 +12,11 @@
   house's roof and grid, read only and private, and gives the house its own fossil share. Add `energy` to
   `PACKS_ENABLED` and `NODE_ISSUES`. Without the token, distances are whole kilometres. docs/packs-reference#energy.
 
+- **The doctor stops saying two things on Linux that were not true.** The broker check used `nc`, which Arch (and
+  so Omarchy) does not ship, so it read red with the broker up. It now opens the port with bash itself. The captures
+  check read red when the folder belonged to root, which is what happens when the container makes it first, while the
+  app kept every picture. It now asks the app too.
+
 - **The Wall's instruments are drawn finer (9 Nov).** Each stands on a framed plate, in greys under the lines, with
   screws, a nameplate, flanges on the jar's pipe, clips on the thermometer, guy wires on the wind's mast and a tick
   every five degrees on its dial. Each keeps some of the day too, the heat's range as a bracket beside the tube, the
