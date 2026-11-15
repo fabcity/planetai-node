@@ -613,7 +613,9 @@ cmd_doctor() {
   chk "backup destination mounted" "mounted \"\$(envget BACKUP_DIR || echo ./backups)\""   "the NAS or drive in BACKUP_DIR is not mounted; tonight's backup will refuse. Mount it, or: planetai storage set backups <dir>"
   # SPEC_eyes: the folder the household's pictures live in. Unlike DATA_DIR it may be a NAS share — files, not
   # Postgres — so the check is only that it is there and writable; an unmounted share reads as missing, on purpose.
-  chk "captures folder writable" "d=\"\$(envget CAPTURES_DIR)\"; d=\"\${d:-./out/captures}\"; [[ -d \"\$d\" && -w \"\$d\" ]]"   "the folder in CAPTURES_DIR is missing or not writable, so the node refuses every picture. It may be a NAS share (files, not Postgres): mount it, or move them: planetai storage set captures <dir>"
+  # The app writes there, as root in its container. On Linux a folder the container made first is root's, and the
+  # check read red from the keeper's shell while every picture was kept (Omarchy, 15 Nov 2026), so the app is asked too.
+  chk "captures folder writable" "d=\"\$(envget CAPTURES_DIR)\"; d=\"\${d:-./out/captures}\"; [[ -d \"\$d\" ]] && { [[ -w \"\$d\" ]] || docker compose exec -T app test -w /app/captures; }"   "the folder in CAPTURES_DIR is missing or not writable, so the node refuses every picture. It may be a NAS share (files, not Postgres): mount it, or move them: planetai storage set captures <dir>"
   # A tarball node can say whether the code it is running was signed by the key above. A git checkout
   # never fetches a release, so it has no release signature to have checked — no row there, rather than a
   # permanently red one about something that node does not do.
@@ -676,7 +678,8 @@ print("%s|%s|%s" % (r.get("latest", ""), r.get("current", ""), "1" if r.get("new
   local freek; freek="$(df -Pk . 2>/dev/null | awk 'NR==2{print $4}')"; freek="${freek:-0}"
   chk "over 1 GB free on this disk" "[ \"$freek\" -gt 1048576 ]"   "$(( freek / 1024 )) MB free where the node lives. The database and tonight's backup fail when it fills: free space here, or move the backups: planetai storage set backups <dir on another disk>"
   case ",$(envget COMPOSE_PROFILES)," in *,mqtt,*)
-    chk "broker up :1883"        "nc -z localhost 1883"                                 "planetai logs mosquitto"
+    # bash's own /dev/tcp, not nc: Arch (Omarchy) ships without nc, and the check read red with the broker up (15 Nov 2026)
+    chk "broker up :1883"        "bash -c 'exec 3<>/dev/tcp/127.0.0.1/1883'"            "planetai logs mosquitto"
     chk "mesh packets arriving"  "[ \$(mesh_packets) -gt 0 ]"                              "gateway not uplinking yet: planetai meshtastic prints the settings";; esac
   case ",$(envget COMPOSE_PROFILES)," in *,reticulum,*)
     chk "reticulum bridge up"    "curl -sf localhost:4243/health"                       "planetai logs reticulum";; esac
