@@ -116,6 +116,7 @@ print("  the seen query: own sensors, last 24 h, nothing ahead; a peer, a model,
 # POST /area's SQL (app/area.py): a mark_id is the household's own drawn area only, and the readings are the last 24 h,
 # nothing ahead. Its Python is tested with a fake cursor in tests/test_area.py.
 import area  # noqa: E402
+os.environ.setdefault("CHANNELS_PATH", "config/channels.yml")   # packs reads it at import; set late, the private test below loads no core roles
 import packs  # noqa: E402
 lat, lon = at(hc)
 sq = f"ST_GeomFromText('POLYGON(({lon} {lat},{lon + .002} {lat},{lon + .002} {lat + .002},{lon} {lat}))', 4326)"
