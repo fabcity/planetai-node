@@ -524,7 +524,7 @@ DROP TRIGGER IF EXISTS sensors_room ON sensors;
 CREATE TRIGGER sensors_room BEFORE INSERT OR UPDATE ON sensors FOR EACH ROW EXECUTE FUNCTION sensors_room_is_the_name();
 INSERT INTO schema_version (version) VALUES ('0.61') ON CONFLICT DO NOTHING;
 
--- 0.62: Place maps (4 Nov 2026, docs/superpowers/specs/2026-11-04-place-light-gis-design.md §5). Named maps of drawings
+-- 0.62: Place maps (4 Nov 2026, planetai-design/node-docs/superpowers/specs/2026-11-04-place-light-gis-design.md §5). Named maps of drawings
 -- on the Place door: a marker, a line, an area or a note, each with a colour 1-6 (a number, so the palette can change
 -- without a migration). `length_m` and `area_m2` are written by the server from geom::geography on every insert and
 -- update. A map with `agent` set is an agent's own. `from_node` and `remote_id` are both NULL for a map drawn here; a

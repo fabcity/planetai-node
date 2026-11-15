@@ -86,7 +86,7 @@ from the code's default, both are given.
 | `NODE_KIND` | `home` | `home`, `business`, `community`, `district` | What the node is for, which is not its Index scale. `planetai setup` sets `NODE_SCALE=city` for a district. See [Known gaps](#known-gaps). | runtime · public |
 | `NODE_SCALE` | `community` | `community`, `city`, `region` | The Full Stack Metrics scale: stamped on sensors that declare none, sent to a parent, in `/export`, and the scale of the `Governance\|<Scale>` cell. | bootstrap |
 | `NODE_CITY` | `unknown`; `.env.example` `bali` | pilot key or slug | The city key in Index cells, `/health` and `/export`, and what `planetai sources` filters the registry by. `planetai setup` sets `bali`, `barcelona`, `boston` or `santiago` inside those boxes, else a slug of the place. | bootstrap |
-| `NODE_LAT`, `NODE_LON` | `0`; `.env.example` `-8.8271`, `115.15709` | decimal degrees | The node's position. Published as the centre of its resolution-8 cell in `/health`, `/export` and an untrusted `/sensors` and `/stats`; three decimals to this machine or a token; unrounded in `/forecast`, `/earth` and `/place/geojson`. `install.sh` refuses to start without them. | bootstrap |
+| `NODE_LAT`, `NODE_LON` | `0`; `.env.example` `-8.8277`, `115.15418` | decimal degrees | The node's position. Published as the centre of its resolution-8 cell in `/health`, `/export` and an untrusted `/sensors` and `/stats`; three decimals to this machine or a token; unrounded in `/forecast`, `/earth` and `/place/geojson`. `install.sh` refuses to start without them. | bootstrap |
 | `NODE_TZ` | `UTC`; `.env.example` `Asia/Makassar` | IANA name | The database session time zone, so local midnight and local hours in rules, reports, quiet hours and `/shape`. Also the agent container's `TZ`. | bootstrap |
 | `NODE_ISSUES` | blank = every issue; `.env.example` `air,heat,land,coast` | comma list of `air`, `heat`, `land`, `coast`, `water` | What this place watches, most important first. The dashboard starts at the first; the one with something to say takes the top. An unknown name is dropped with a line in the log. Your preset guessed this, so change it. | runtime · public |
 | `NODE_VERSION` | written by `install.sh` and `update.sh` | string | `git describe`, the `VERSION` file, or `dev`. Shown in `/health`, `/presence` and `/export`. | env only |
@@ -297,6 +297,7 @@ alone.
 | `TERRAIN_RADIUS_M` | terrain | `5000` | Half-width of the square around the node, in metres. Water from further uphill is not counted. Needs `PACKS_ALLOW_CODE=1`. |
 | `TERRAIN_DEM_PATH` | terrain | blank | A GeoTIFF of your own (a drone survey, a national LiDAR), used instead of Copernicus DEM GLO-30. |
 | `TERRAIN_DEM_LICENCE` | terrain | blank | That file's licence, in words. Blank and the node computes from it and shows nothing. |
+| `HYDRO_RADIUS_KM` | hydro | `25` | Half-width of the square of rivers and basins kept around the node, in km. Needs `PACKS_ALLOW_CODE=1`. |
 | `COAST_MAX_KM` | coast | `30` | Refuses to report if the nearest ocean grid cell is further than this. Also a runtime key (public), and it moves the dashboard's drawn footprint too. |
 
 Two pack settings are read but declared in no `pack.yaml`, so they are env only: `OVERPASS_URL` (default

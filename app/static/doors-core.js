@@ -90,7 +90,6 @@ function route() {
   const gear = $('#gear'); if (v === 'setup') gear.setAttribute('aria-current', 'page'); else gear.removeAttribute('aria-current');   /* Set up is open */
   document.body.dataset.view = v;
   if (v !== 'wall' && typeof flowStop === 'function') { const w = $('#wfield'); w && flowStop(w); }
-  if (v !== 'wall' && typeof WALLMAP !== 'undefined' && WALLMAP.stop) WALLMAP.stop();
   // the wall is the keeper's register: dark, always (Decision 15); every other door keeps the reader's choice
   document.documentElement.dataset.theme = v === 'wall' ? 'dark' : userTheme;
   const drawn = VIEWS[v]();

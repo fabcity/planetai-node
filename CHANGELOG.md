@@ -2,6 +2,48 @@
 
 ## Unreleased
 
+- **The Wall's instruments are drawn finer (9 Nov).** Each stands on a framed plate, in greys under the lines, with
+  screws, a nameplate, flanges on the jar's pipe, clips on the thermometer, guy wires on the wind's mast and a tick
+  every five degrees on its dial. Each keeps some of the day too, the heat's range as a bracket beside the tube, the
+  swell's highest line dashed over the wave, the wind's bearings so far fading behind the vane. The scale under them is
+  the day being replayed, an hour a tick, ending on now. The figures in the header are lighter and larger, the
+  narration's label is a strip like on the other screens, and its text stops on a whole line. Nothing is smaller than
+  28 px at 1920. docs/wall.
+
+- **Now reads from the house outwards, and What to do is one line.** The right column opens with Around the house,
+  then the map of the air around it, then the city's Fab City Index, now titled Local production capacity in the city,
+  with its links to index.fab.city kept. What to do is folded to one line, and **Options to act** opens the answers and
+  the packs' questions. Did it work and Yesterday moved under it, across the page. On Place the open map's table is
+  gone and the place in figures takes the whole band, bigger. Data's board is gone, Now and Place keep theirs.
+- **The installer tries a download again before giving up.** GitHub sometimes answers a release download with a
+  504. `install` and `update.sh` now retry the tarball, its signature and its checksum up to three times, and `install`
+  the preflight script too.
+- **A new node no longer starts at node #1's exact position.** `.env.example` and the `NODE_LAT`/`NODE_LON` defaults
+  held it to the metre until a keeper set their own. They now hold the centre of node #1's resolution-8 cell, the point
+  `/health` already publishes. The working notes that sat in `docs/` (plans, handoffs, reviews, design audits) moved to
+  the private planetai-design repo, and AGENTS.md says they go there from now on.
+
+- **The rivers are in Place's figures.** Once the hydro pack has fetched them, the place in figures has a Rivers row:
+  how far the nearest river is, its flow and how far it still runs to the sea, and the largest river in the square.
+  Its link turns the Rivers and Basins rows on and takes the map out to District, where the rivers are in view. The
+  row needs the screen's token, as the rivers on the map do. Data's Models table names the seven hydro figures and
+  gives them units.
+
+- **The Wall draws the day as instruments (8 Nov).** One black screen holds four of them, fine dust settling in a jar with a
+  particle for every µg/m³, the apparent heat on a thermometer, the swell as a wave and the wind on a vane, and each
+  figure carries its hour and provenance word. They replay the last 24 hours an hour at a step and hold the last one,
+  under reduced motion they stand still at it. Under them the node's sentence sits beside its model's words, when it
+  has written some, and a balance weighs the house against the clean-air line with the stations nearby counted. The
+  Wall's map and its four scales are gone, the map stays on Place. docs/wall.
+
+- **A node knows where its rivers are.** The new core pack `hydro` fetches HydroSHEDS once for the node's square
+  (`planetai run hydro fetch`, 50-160 MB downloaded, read and deleted, under 100 KB kept) and keeps the rivers, the
+  basins they drain and the basin the node sits in. Each poll re-sends the nearest river's distance, flow, order,
+  upstream area and distance to the sea, and the largest river's flow. On Place, the water layer gains Rivers and
+  Basins rows, and a tap on a river gives its figures. The level-4 basin is the same bioregion index.fab.city draws.
+  Rivers start where 10 km² drains, so a canal or a subak channel is not in it. Shown under HydroATLAS's CC-BY 4.0.
+  Add `hydro` to `PACKS_ENABLED`. Registry pinned at `a310156`.
+
 - **An alert sent while the internet drops for a moment still arrives.** If the connection to Telegram never opens,
   the node tries again 3 seconds later and then 10 seconds after that. Node #1's line drops like this several times a
   day, and an alert sent into one of those drops used to be lost. A send that timed out waiting for an answer is not

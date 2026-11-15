@@ -1,5 +1,5 @@
 """The household's maps on the Place door: named maps, the drawings on them, their rows in the ledger, and a drawing
-tied to an issue as the issue's acted step. docs/superpowers/specs/2026-11-04-place-light-gis-design.md §5 and §8.
+tied to an issue as the issue's acted step. planetai-design/node-docs/superpowers/specs/2026-11-04-place-light-gis-design.md §5 and §8.
 
 Every route here is the household's alone, at every SHARE_LEVEL: none is on an allowlist in app/auth.py, and the router
 checks the admin or act token itself because the middleware also lets BACKUP_TOKEN through, and a NAS's read token

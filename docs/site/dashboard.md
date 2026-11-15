@@ -32,8 +32,8 @@ so the dashboard draws on a network with no route out.
 3. **Read Now.** The bar shows the node's name and the five doors. Now opens on the headline issue: its sign, the
    node's sentence, and its day drawn at every distance against the line. The four distances (house, street, ring,
    region) follow in one line, each with its provenance word.
-4. **Answer what is asked.** If the node is asking something, **What to do** holds a framed card with the action it
-   chose and **Done**, **Not now** and **Doesn't fit**. Press the one that is true. The page says "Recorded.", or for
+4. **Answer what is asked.** If the node is asking something, **What to do** says it in one line. Press **Options to
+   act** and it opens the action the node chose with **Done**, **Not now** and **Doesn't fit**. Press the one that is true. The page says "Recorded.", or for
    Not now, that the node holds the question for three hours unless it reaches danger. If it says the screen can't
    answer yet, the screen holds no token: unlock it in Set up › This screen. When nothing is asked the section reads
    "Nothing is asked now."
@@ -82,19 +82,22 @@ when, and when a Not now asks again. An alert still true that no event stands fo
 buttons, because it is answered on Telegram. When nothing is asked the section is one plain line, "Nothing is asked
 now.", with the hour this issue is usually worst for a screen holding the admin token. A past hour shows what was open
 then, and is read, never answered. An issue with no line says the node only reports it and never asks you to act. What to do is one low strip across
-the whole page, under the day's screen and the city's, in small type; on a phone it follows the city.
+the whole page, under the day's screen and the right column, in small type; on a phone it follows the right column.
+It opens folded, as one line: its head, the one sentence and a button. **Options to act** counts what can be answered,
+the card's buttons and each pack's ask, and opens them under the line; **Fold** closes them. The strip stays open or
+folded while you are on the page.
 
 When a pack's rule has asked with buttons of its own, each of its alerts from the last 72 hours that nobody has
-answered is a card of its own under this one, with the alert's text and its rows of buttons. A press is one answer, and
+answered is a card of its own under this one when the strip is open, with the alert's text and its rows of buttons. A press is one answer, and
 a button that asks a question opens a line for the words. A screen without the token draws none of these.
 
 **Did it work** and **Yesterday** (admin token only). For the issue on screen: the last time the node asked, what was
 done, what the air or heat inside did in the hours after against the street, and the node's verdict from what it
 learned ("It helps here.", "No clear difference here yet.", "Too early to say."), with who it matters to, or a link to
 say who lives here. Yesterday is the node's diary entry for yesterday, condensed from its own numbers, with a link to
-the whole entry on Node.
+the whole entry on Node. Both sit under What to do, across the page, side by side on a wide screen.
 
-**Next days.** Under What to do, across the page, the next three days, from the next hour to the end of the day after tomorrow.
+**Next days.** Under What to do and Did it work, across the page, the next three days, from the next hour to the end of the day after tomorrow.
 Each thing gets a row in the order of Now's rows: air and heat, then wind and rain, then the sea, then a line from any
 pack that declares one with `ahead:` in its `pack.yaml`. A cell has the day's number, the state word against the issue's
 line, and for air and heat how many hours go over it. Press a row and its 72 hours are drawn under it, with the line.
@@ -102,23 +105,24 @@ Under the rows each source is a pill with the time it was issued or fetched, the
 models. The node does not forecast, and nothing here sends a message." With Open-Meteo off only BMKG's weather shows,
 where BMKG covers the node, and a line says where to turn Open-Meteo on. `#now/next` links straight to it.
 
-**Around the house**, under the map. A row for each issue drawn by the hour, its state word, its value now and its hours over the line
+**Around the house** opens the right column. A row for each issue drawn by the hour, its state word, its value now and its hours over the line
 today; pressing one moves the page to that issue. With the admin token one line counts the things this home
 keeps, how many sit idle and how many need repair, and opens Data › Home.
 
-**In the city** opens the right column: one screen with the city's Fab City Index over the map of the stations
-around the house. The Index is the screen's big figure, its FCI or its range out of 1, with a column of the Index's 20
+**The air around it**, under Around the house: the map of the stations around the house. Each public station has
+its 15-minute mean, a red square beside one over the air's line, the house is one mark with its own sensors' range,
+and a screen with the token gets the distance rings and cells. Pressing a station opens it in Data. Without WebGL the
+map is a rose of bearings and distances.
+
+**Local production capacity in the city**, under the map: the city's Fab City Index. The Index is the screen's big figure, its FCI or its range out of 1, with a column of the Index's 20
 cells beside it, one lit for each cell measured. Under the figure: the label the Index gives the city, how many cells
 are measured, and when the Index's file was read, marked `partial`, or `cached` when the last read failed. The figure
 opens the city on index.fab.city, and a link goes to its figures on Place. With no city chosen the screen says to run
-`planetai place` on the node; with a city that has no Index yet it says how a city gets one. Under it, the map: each
-public station with its 15-minute mean, a red square beside one over the air's line, the house as one mark with its
-own sensors' range, and the distance rings and cells for a screen with the token. Pressing a station opens it in Data.
-Without WebGL the map is a rose of bearings and distances.
+`planetai place` on the node; with a city that has no Index yet it says how a city gets one.
 
 **A pack's own band.** A pack can declare a band in its `pack.yaml` (a wild pack has no other way onto the page, it
 ships no code for it), and Now draws it next to the part with the same stage: `decide` and `act` under What to do,
-`measure` under Did it work. The `observe` bands go under both columns, in **Also read here**, side by side on a wide
+`measure` at the foot of the right column. The `observe` bands go under both columns, in **Also read here**, side by side on a wide
 screen. Each band is the pack's title, then where its readings come from, how they were got and how old they are, said
 once, then one row per reading the node holds. A row says its source again only when it changes. A line says how many
 of the readings it declares have not arrived yet, and the pack's note is folded under "How this is read". On node #1

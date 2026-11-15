@@ -42,12 +42,12 @@ for (const locale of ['en', 'es', 'id']) {
     $: q => (els[q] ||= { hidden: true, innerHTML: '', querySelector: () => null }) };
   vm.createContext(ctx);
   vm.runInContext(['esc', 'WD', 'loc', 'dayOf', 'dLabel', 'wdhm', 'said'].map(pick).join('\n') + '\n'
-    + fn(now, 'asksFrom') + fn(now, 'packWord') + fn(now, 'drawAsks') + 'var got = asksFrom(D.alerts, D.actions, Date.now()); drawAsks();', ctx);
+    + fn(now, 'asksFrom') + fn(now, 'packWord') + fn(now, 'drawAsks') + 'function stripFold() {}\n' + 'var got = asksFrom(D.alerts, D.actions, Date.now()); drawAsks();', ctx);
   out[locale] = { got: ctx.got, html: els['#asks'].innerHTML, hidden: els['#asks'].hidden };
 }
 const empty = { innerHTML: '', hidden: true, querySelector: () => null }, c2 = { D: { tz: 'Asia/Makassar', locale: 'en', alerts: [], actions: [] }, doorsLocal: L.doorsLocal, Date, $: () => empty };
 vm.createContext(c2);
-vm.runInContext(['esc', 'WD', 'loc', 'dayOf', 'dLabel', 'wdhm', 'said'].map(pick).join('\n') + '\n' + fn(now, 'asksFrom') + fn(now, 'packWord') + fn(now, 'drawAsks') + 'drawAsks();', c2);
+vm.runInContext(['esc', 'WD', 'loc', 'dayOf', 'dLabel', 'wdhm', 'said'].map(pick).join('\n') + '\n' + fn(now, 'asksFrom') + fn(now, 'packWord') + fn(now, 'drawAsks') + 'function stripFold() {}\n' + 'drawAsks();', c2);
 out.none = empty;
 console.log(JSON.stringify(out));
 """
@@ -129,7 +129,7 @@ const ctx = { D: { tz: 'Asia/Makassar', locale: 'en', alerts, actions: [] }, doo
   Date: Object.assign(class extends Date {}, { now: () => Date.parse('2026-11-03T09:00:00+08:00') }) };
 vm.createContext(ctx);
 vm.runInContext(['esc', 'WD', 'loc', 'dayOf', 'dLabel', 'wdhm', 'said'].map(pick).join('\n') + '\n'
-  + fn(now, 'asksFrom') + fn(now, 'packWord') + fn(now, 'drawAsks') + fn(now, 'askTaken'), ctx);
+  + fn(now, 'asksFrom') + fn(now, 'packWord') + fn(now, 'drawAsks') + 'function stripFold() {}\n' + fn(now, 'askTaken'), ctx);
 const snap = () => out.push({ html: el.innerHTML, hidden: el.hidden, n: ctx.D.actions.length });
 vm.runInContext('drawAsks()', ctx); snap();                                             // 0: the alert, both rows
 vm.runInContext("askTaken('1', 'why', 'ibu')", ctx);                                    // the press was taken

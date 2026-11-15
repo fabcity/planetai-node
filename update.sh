@@ -59,7 +59,7 @@ verify_signature() {
    Debian/Ubuntu:  sudo apt-get install -y openssh-client
    Arch:           sudo pacman -S openssh
    Then run the same line again. (macOS already has it.)"; }
-  curl -fsSL "${GET}/planetai-node.tar.gz.sig" -o "$d/n.sig" \
+  curl -fsSL --retry 3 "${GET}/planetai-node.tar.gz.sig" -o "$d/n.sig" \
     || { rm -rf "$d"; die "could not fetch ${GET}/planetai-node.tar.gz.sig, so it is not known who built this download. Nothing was installed."; }
   printf '%s\n' "$ALLOWED_SIGNERS" > "$d/allowed_signers"
   # -n planetai-node is the namespace: a valid signature made for anything else does not verify here.
@@ -147,7 +147,7 @@ if [[ $PULL -eq 1 ]] && [[ ! -d .git ]] && [[ -f VERSION ]]; then
   # installed from the tarball (no repository access): fetch the current one and unpack over this folder
   say "updating from ${GET}"
   tmp="$(mktemp -d)"
-  if curl -fsSL "${GET}/planetai-node.tar.gz" -o "$tmp/n.tar.gz"; then
+  if curl -fsSL --retry 3 "${GET}/planetai-node.tar.gz" -o "$tmp/n.tar.gz"; then
     # The checksum is not optional — the same five lines the installer uses (`install`, fetch_tarball).
     # This said `if command -v shasum && curl …SHA256`, which failed open twice and silently: `shasum` is
     # macOS's name and Debian ships `sha256sum`, and any hiccup fetching the checksum skipped the check
@@ -157,7 +157,7 @@ if [[ $PULL -eq 1 ]] && [[ ! -d .git ]] && [[ -f VERSION ]]; then
     # that reports success it did not have is worse than one that fails.
     sum=""; command -v shasum >/dev/null && sum="shasum -a 256"; [[ -n "$sum" ]] || { command -v sha256sum >/dev/null && sum="sha256sum"; }
     [[ -n "$sum" ]] || { rm -rf "$tmp"; die "no shasum or sha256sum on this machine, so the download cannot be verified. Install one, then run this again."; }
-    curl -fsSL "${GET}/SHA256" -o "$tmp/sha" || { rm -rf "$tmp"; die "could not fetch the published checksum, so the download cannot be verified."; }
+    curl -fsSL --retry 3 "${GET}/SHA256" -o "$tmp/sha" || { rm -rf "$tmp"; die "could not fetch the published checksum, so the download cannot be verified."; }
     want="$(tr -d '[:space:]' < "$tmp/sha")"; got="$($sum "$tmp/n.tar.gz" | awk '{print $1}')"
     [[ "$want" == "$got" ]] || { rm -rf "$tmp"; die "the download does not match its published checksum. Try again; if it repeats, tell us."; }
     say "checksum verified"

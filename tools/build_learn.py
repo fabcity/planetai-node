@@ -297,11 +297,11 @@ MARKS = [
      "This part shows only with the admin token, because it is the house's own record. The whole diary "
      "and every case are on Node, under What it remembers."),
     ("now-rows", "Every issue, a row each", "dashboard.md", "Now",
-     "**Around the house**, under the map. A row for each issue", "moves the page to that issue.",
+     "**Around the house** opens the right column. A row for each issue", "moves the page to that issue.",
      "Each row carries the node's state word, the value now and today's hours over the line. Press one "
      "and the whole door moves to that issue."),
     ("now-bands", "A pack's own band", "dashboard.md", "Now",
-     "**A pack's own band.** A pack can declare a band", "`measure` under Did it work.",
+     "**A pack's own band.** A pack can declare a band", "`measure` at the foot of the right column.",
      "Each row is one reading the node holds. Its source, how it was got and how old it is are said once under the "
      "band's title, and again on a row only where they change. The pack's own note is folded under How this is read."),
     ("now-next", "The next three days", "dashboard.md", "Now",
@@ -309,15 +309,15 @@ MARKS = [
      "The rows are drawn from GET /forecast, asked when Now is drawn and kept for 30 minutes. Press a row for its 72 hours "
      "against the line. These are models: nothing on this part asks you to act or sends a message."),
     ("now-around", "The stations around the house", "dashboard.md", "Now",
-     "Under it, the map:", "for a screen with the token.",
+     "**The air around it**, under Around the house", "the distance rings and cells.",
      "Press a station to open its readings in Data. Without WebGL the map is drawn as a rose of "
      "bearings and distances instead."),
     ("now-things", "What this home keeps", "dashboard.md", "Now",
      "With the admin token one line counts", "and opens Data › Home.",
      "The line counts the things, how many sit idle and how many need repair, and opens the list in "
      "Data › Home. Only a thing you mark to lend or give is ever published."),
-    ("now-city", "The city on the Fab City Index", "dashboard.md", "Now",
-     "**In the city** opens the right column", "one lit for each cell measured.",
+    ("now-city", "Local production capacity in the city", "dashboard.md", "Now",
+     "**Local production capacity in the city**, under the map", "one lit for each cell measured.",
      "The screen reads GET /index/place, the copy the index pack reads once a day, so Now never waits on "
      "index.fab.city. The numbers are the Index's own; the node does not work them out."),
     ("place-head", "The ground around the house", "place.md", "The head",
@@ -429,18 +429,14 @@ MARKS = [
     ("wall-sentence", "The time and the sentence", "wall.md", "What it shows",
      "**The time and the sentence**", "\"Nothing is\n  asked now.\"",
      "When the node's last poll is more than 15 minutes old, the time says the readings are old."),
-    ("wall-map", "The map", "wall.md", "What it shows",
-     "**The map**: the stations around the house", "red when it is over the line.",
-     "The caption under the map says in words what the red discs mean against the house, at the hour "
-     "they show."),
-    ("wall-walk", "The walk, a scale at a time", "wall.md", "The walk",
-     "Each scale holds while its day is replayed", "lets\nthe walk go on.",
-     "House, street, ring and region, each framed on its own cell. With reduced motion on, the Wall "
-     "holds the street at the last hour."),
-    ("wall-page", "The page for each scale", "wall.md", "The walk",
-     "Every figure says when it is from", "a sensor's name never appears.",
-     "At the house it draws each issue and the day inside, at the street what is usual outside, at the "
-     "ring the land within 1 km, and at the region what the satellites see."),
+    ("wall-stage", "The instruments", "wall.md", "The instruments",
+     "The instruments replay the last 24 hours", "never a slide, and nothing counts up.",
+     "Fine dust in a jar, the heat on a thermometer, the swell as a wave and the wind on a vane. With "
+     "reduced motion on, the Wall holds the last hour."),
+    ("wall-balance", "The balance", "wall.md", "What it shows",
+     "**The balance**", "red when it is over the line.",
+     "The caption under it says in words what the red squares mean against the house, at the hour the "
+     "instruments show."),
     ("wall-narration", "The node, thinking aloud", "wall.md", "The node, thinking aloud",
      "The node tells it to speak", "that anything is safe.",
      "A new text comes every ten minutes from the model chosen in Set up › Model, and the box says it "
@@ -715,15 +711,12 @@ QUESTIONS = {
     'wall-sentence': {"en": ['Is anything being asked of us right now?', 'Are these readings fresh?'],
         "id": ['Apakah ada yang diminta dari kami sekarang?', 'Apakah bacaan ini masih baru?'],
         "es": ['¿Se nos está pidiendo algo ahora?', '¿Son recientes estas lecturas?']},
-    'wall-map': {"en": ['Which way is the wind blowing?', 'What do the red circles mean?'],
-        "id": ['Ke arah mana angin bertiup?', 'Apa arti lingkaran merah itu?'],
-        "es": ['¿Hacia dónde sopla el viento?', '¿Qué significan los círculos rojos?']},
-    'wall-walk': {"en": ['Why does the map keep moving out?', 'How do I keep it on our street?'],
-        "id": ['Mengapa peta terus bergerak menjauh?', 'Bagaimana agar peta tetap di jalan kami?'],
-        "es": ['¿Por qué el mapa se va alejando?', '¿Cómo lo dejo quieto en nuestra calle?']},
-    'wall-page': {"en": ['What is the land around us made of?', 'Are there fires nearby?'],
-        "id": ['Tanah di sekitar kami terdiri dari apa saja?', 'Apakah ada kebakaran di dekat sini?'],
-        "es": ['¿De qué está hecho el terreno de alrededor?', '¿Hay incendios cerca?']},
+    'wall-stage': {"en": ['Why do the instruments keep moving?', 'Which way is the wind blowing?'],
+        "id": ['Mengapa instrumennya terus bergerak?', 'Ke arah mana angin bertiup?'],
+        "es": ['¿Por qué se mueven los instrumentos?', '¿Hacia dónde sopla el viento?']},
+    'wall-balance': {"en": ['Is our air cleaner than the street?', 'What do the red squares mean?'],
+        "id": ['Apakah udara kami lebih bersih dari jalan?', 'Apa arti kotak merah itu?'],
+        "es": ['¿Nuestro aire está más limpio que la calle?', '¿Qué significan los cuadrados rojos?']},
     'wall-narration': {"en": ['What does the node suggest for today?', 'Which model writes this text?'],
         "id": ['Apa saran node untuk hari ini?', 'Model mana yang menulis teks ini?'],
         "es": ['¿Qué sugiere el nodo para hoy?', '¿Qué modelo escribe este texto?']},

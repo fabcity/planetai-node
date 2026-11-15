@@ -164,7 +164,7 @@ const ctx = {{
 vm.createContext(ctx);
 vm.runInContext(
   ['esc', 'WD', 'loc', 'dayOf', 'dLabel', 'fmt', 'said', 'num', 'NODE', 'sign', 'PROV', 'prov', 'ISSUES_DRAWN'].map(pick).join('\\n')
-  + '\\nlet NOWL = null, ENERGY = undefined; function nowRemember() {{}} function evAt() {{ return []; }} function answerWords() {{ return {{}}; }} function val() {{ return null; }}\\n'
+  + '\\nlet NOWL = null, ENERGY = undefined; function nowRemember() {{}} function evAt() {{ return []; }} function answerWords() {{ return {{}}; }} function val() {{ return null; }} function stripFold() {{}}\\n'
   + ['usualLine', 'loadEnergy', 'drawEnergy', 'drawNow', 'readout', 'decision', 'rows', 'rowsValues'].map(n => fn(now, n)).join('\\n'),
   ctx
 );

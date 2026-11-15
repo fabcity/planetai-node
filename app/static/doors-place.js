@@ -269,8 +269,21 @@ function figures() {
   $('#pfigures').innerHTML = `<h3 class="pmh">the place in figures</h3>` + yearly() + indexRow(D.index_place)
     + `<div class="fr"><span>Index cells<small>of the Fab City Index for this place · <a href="#node/cells">Node › Index cells</a></small></span>`
     + `<b>${num('place.index', `${nI} of 20`, 'cells of the Fab City Index holding a value')} ${prov('partial')}</b></div>`
+    + `<div id="phydro"></div>`
     + `<div class="fr"><span>Production and trade · Water and soil · Forecast<small>coming to this place: no adapter, no source, or no village code yet</small></span><b><span class="soon">not yet</span></b></div>`
     + (ch ? `<p class="fine">Land: AlphaEarth, ${ch.year_a} → ${ch.year_b}.</p>` : '');
+  rivers();
+}
+/* RIVERS, a row of the figures once the hydro pack has fetched (GET /hydro, token-only like its map rows): the nearest
+   river in the pack's own sentence, the largest in the square, and a way up to both on the map. Nothing without the
+   pack or the token; the command that fills it before the fetch. */
+async function rivers() {
+  const el = $('#phydro'), H = await doorsFetch('/hydro').then(r => (r.ok ? r.json() : null)).catch(() => null);
+  if (!el || !H) return;
+  if (!H.nearest) { el.innerHTML = `<div class="fr"><span>Rivers<small>the hydro pack has kept nothing yet: <code>planetai run hydro fetch</code></small></span><b><span class="soon">not yet</span></b></div>`; return; }
+  el.innerHTML = `<div class="fr" data-k="rivers"><span>Rivers<small>${esc(H.sentence)}${H.largest_sentence ? `. The largest in the square: ${esc(H.largest_sentence)}` : ''}`
+    + ` · <a href="#place" id="phydrogo">on the map ↑</a></small></span><b>${num('place.river', fmt(H.nearest.dist_m / 1000, 1), 'the nearest river, traced at about 500 m')} km ${prov('model')}</b></div>`;
+  $('#phydrogo').onclick = e => { e.preventDefault(); if (window.placeRivers) window.placeRivers(); const m = $('#map'); if (m) m.scrollIntoView({ block: 'center' }); };
 }
 
 /* ADD AN IMAGE — a dialog, opened from the Image key on the screen (the header's button until 5 Nov 2026): the file

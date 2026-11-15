@@ -95,7 +95,7 @@ past it, with `planetai-theme.css` differing by exactly one comment — its PR #
 the rho row, so the header reads 11 OPEN instead of 12 and the `--rho-closed` note is gone. No token
 value had moved, so that particular re-copy was a visual no-op. They will not all be.
 
-`docs/design/LANGUAGE_GAP.md` is the reading of what the page reaches for: **13 of the layer's 34
+`planetai-design/node-docs/design/LANGUAGE_GAP.md` is the reading of what the page reaches for: **13 of the layer's 34
 tokens are referenced, 12 more are this surface's business and hard-coded instead** — `--rho-closed`
 reached past to `--rings`, the ground's opacities baked into `node-ground.svg`, the wall's credit
 lines using the page-local `--mute`. They resolve to the same pixel today. That is what makes it
@@ -108,7 +108,7 @@ before trusting the list — starting 1b from stale numbers is how a re-tokening
 - ~~**1a · Push `dashboard-directions-2026-09`.**~~ **Done** — merged as `planetai-design` PR #4,
   `10b15fa`. This was the only irreplaceable step on this item and it is no longer owed.
 - ~~**1a½ · The scale spike, before the redrawing.**~~ **Written**, and it landed here as `81e3d45`
-  (PR #73). `docs/design/SCALE_SPIKE_2026-09.md` names three sources — a city budget, a region's waste
+  (PR #73). `planetai-design/node-docs/design/SCALE_SPIKE_2026-09.md` names three sources — a city budget, a region's waste
   series, the planet's material footprint — and the five things about the page that each of them
   breaks. One fixture, four rungs, one place. Not a step any more; it is the thing the drawing is
   judged against, so read it before 1c and not after.
@@ -118,7 +118,7 @@ before trusting the list — starting 1b from stale numbers is how a re-tokening
   change was not what it claimed. This is what turns the redesign from a rewrite into a re-tokening — after it, moving the language moves the page.
 - ~~**1c · Port the modules, one section per PR, against the existing gates.**~~ **Moot** — the redraw
   shipped in v0.71. What follows stays true of any change to the page. `tools/check_ui.py` and
-  `check_theme.py` stay in `make lint`; `docs/design/UX_REVIEW_2026-09.md` (64 findings) and
+  `check_theme.py` stay in `make lint`; `planetai-design/node-docs/design/UX_REVIEW_2026-09.md` (64 findings) and
   `_skeleton.md` (26 more) are the acceptance list, and the four P0s v0.53 fixed are the regressions to
   watch for — a unit the page shouts into a different unit, a gap in a series drawn as a line through it,
   a locale the page claims the node did not send.

@@ -242,10 +242,16 @@ const calls = []; globalThis.fetch = p => { calls.push(p); return Promise.resolv
     + ' caps: [wallCaption(10, [20, 5], 15), wallCaption(20, [], 15), wallCaption(null, [16], 15, "at 15:00"), wallCaption(5, [], null)], narr,'
     + ' long: wallAsk({ asking: [{ says: say }] }), short: oneLine("Open the windows. Then wait."),'
     + ' fresh: wallStale({ last_poll: new Date().toISOString() }), old: wallStale({ last_poll: "2026-10-06T11:19:50+00:00" }), none: wallStale({}) };'
-    /* the walk's four pages, at the day's last hour, with a place learning shaped as GET /learned/place answers it */
-    + ' WALK.place = [{ issue: "air", numbers: { by_hour: Object.fromEntries([...Array(24)].map((_, h) => [h, 10 + h %% 5])), days: 28 }, checked_at: "2026-10-06T08:00:00+08:00" }];'
-    + ' out.pages = [0, 1, 2, 3].map(i => wallPage(i, 23)); out.when = [wallWhen(new Date().toISOString()), wallWhen("2025-07-01T08:00:00+08:00")];'
-    + ' WALK.place = []; out.bare = wallPage(1, 23);', ctx);
+    /* the stage, every replayed hour of the last 24, drawn at 1920x1080's floor: the ramps, the stage and the balance */
+    + ' out.when = [wallWhen(new Date().toISOString()), wallWhen("2025-07-01T08:00:00+08:00")];'
+    + ' function getComputedStyle() { return { fontSize: "28px" }; } $("#wallv"); Object.assign($("#wstage"), { clientWidth: 1840, clientHeight: 560 });'
+    + ' Object.assign($("#wbal"), { clientWidth: 560, clientHeight: 300 }); WALL.R = wallDay24();'
+    + ' out.hours = [...Array(24)].map((_, h) => { wallDraw(h); return { ramp: $("#wramp").innerHTML, bramp: $("#wbramp").innerHTML, stage: $("#wstage").innerHTML,'
+    + ' dust: WALL.R.dust && WALL.R.dust.v[h], dir: WALL.R.dir && WALL.R.dir.v[h] }; });'
+    + ' out.near = WALL.R.near.length; out.house = WALL.R.house && WALL.R.house.v; out.room = D.issues.air.series.room.slice(-24);'
+    + ' const hd = D.issues.air.hero_distance; D.issues.air.hero_distance = "yard"; out.yardHouse = wallDay24().house.v; D.issues.air.hero_distance = hd;'
+    + ' const bare = D.buckets; D.buckets = []; const n24 = wallDay24(); out.nodays = { B: n24.B, raw: D.raw.buckets.slice(-24), wind: n24.wind && { v: n24.wind.v } };'
+    + ' const rawb = D.raw.buckets; D.raw.buckets = []; out.nohours = wallDay24().B; out.asof = D.as_of;' + ' D.raw.buckets = rawb.slice(-5); const s5 = wallDay24(); out.short5 = { B: s5.B, wind: s5.wind.v };' + ' D.raw.buckets = rawb; D.buckets = bare;', ctx);
   const pm = fs.readFileSync('./app/static/doors-placemap.js', 'utf8').match(/function packRows[\s\S]*?\n}\n/)[0];
   vm.runInContext('const LAYERS = [{ id: "earth" }];' + pm + 'packRows(); out.pack = LAYERS.map(l => l.none);', ctx);
   console.log(JSON.stringify({
@@ -276,33 +282,55 @@ assert not [n for n in _names if n in _wall], [n for n in _names if n in _wall]
 assert "Nothing is asked now." in t["wall"]["ask"], "6 Oct 19:22: a stale alert and an answered event ask nothing now"
 assert t["wall"]["old"] and t["wall"]["none"] and not t["wall"]["fresh"], t["wall"]
 print("doors: the Wall names no sensor, room or kit, and says stale only when the last poll is old")
-# THE WALK (Tomas picked option A, 16 Oct): four scales, the phone's own; every figure says when and one provenance word;
-# the land is a hundred squares; floods are said to be not watched, never drawn; the learned usual only when the node has it.
-_pg = t["wall"]["pages"]
+# THE STAGE (Tomas, 8 Nov: "Yes, port it", "Drop the map"): the room's air, heat, sea and wind drawn as instruments on
+# one screen, the last 24 hours replayed on it. Every figure in a ramp says its hour and one of the five words, at
+# every hour; the jar holds a particle for every µg/m³ (counted, never sized, up to 60); the vane turns to the bearing.
 _wsrc = (STATIC / "doors-wall.js").read_text()
-_ws = re.search(r"const WALL_SCALES = (\[.*?\]);", _wsrc).group(1)
-# The story rolls when it is longer than its box (Tomas, 21 Oct: the end was cut and the start never came back): after
-# typing, and again when a scale gives the box its room back; still under reduced motion.
-assert "if (!NARR.typing) narrRoll();" in _wsrc and "!NARR.typing) narrRoll();" in _wsrc.split("function wallFit")[1].split("function wallHour")[0], \
-    "the Wall's story does not start rolling after typing, or when its box gets room again"
-assert re.search(r"prefers-reduced-motion: reduce\)\{[^}]*\.wnarr \.nw\.roll \.nt\{animation:none", html), "the story rolls under reduced motion"
-_ps = re.search(r"const SCALES = (\[.*?\]);", (STATIC / "walk.js").read_text()).group(1)
-assert re.findall(r"k: '(\w+)'", _ws) == re.findall(r"k: '(\w+)'", _ps) and re.findall(r"res: (\d+)", _ws) == re.findall(r"res: (\d+)", _ps)[:4], (_ws, _ps)
-for _i, _h in enumerate(_pg):
-    _figs = re.findall(r'<div class="wfig">(.*?)</div>', _h)
-    assert _figs or _i == 3, f"scale {_i} draws no figure"
-    for _f in _figs:
-        assert re.search(r'class="wpw">(live|partial|model|cached|example)<', _f) and re.search(r"· \d\d:\d\d ", _f), f"a figure with no time or word: {_f}"
-    assert not re.findall(r'class="wpw">(?!(?:live|partial|model|cached|example)<)', _h), f"a word that is not one of the five on scale {_i}"
-assert "dotted: what this node learned is usual outside" in _pg[1] and "dotted" not in t["wall"]["bare"], "the usual is drawn only when learned"
-assert 'stroke-dasharray="1 6"' in _pg[1] and 'stroke-width="3"' in _pg[1] and 'stroke-dasharray="1 6"' not in _pg[0], "the street's day and its usual, dotted"
-assert re.search(r'<p class="wat">.* at <b>\d\d:00</b>: ', _pg[1]), "the replayed hour said in words, house, street and ring"
-_hund = re.search(r'<div class="whund"[^>]*>(.*?)</div>', _pg[2]).group(1)
-assert _hund.count("<i ") == 100 and re.search(r"built <b>\d+%</b>", _pg[2]), _pg[2][:400]
-assert "OpenStreetMap" in _pg[2] and "too few to tell homes from shops" in _pg[2], "the places counted, and why there is no homes-and-shops split"
-assert "<th>Floods</th><td>not watched on this node yet</td>" in _pg[3]
+_hs = t["wall"]["hours"]
+assert len(_hs) == 24 and all(_x["stage"].startswith("<svg") for _x in _hs), "the stage is not drawn at every hour"
+for _i, _x in enumerate(_hs):
+    for _r in (_x["ramp"], _x["bramp"]):
+        for _v in re.findall(r'<div class="wrv"[^>]*>(.*?)</div>', _r):
+            assert re.search(r"<span>(\d\d:\d\d <span class=\"wpw\">(live|partial|model|cached|example)</span>|not read (at \d\d:\d\d|here))</span>", _v), \
+                f"a figure with no time or word at hour {_i}: {_v}"
+        assert not re.findall(r'class="wpw">(?!(?:live|partial|model|cached|example)<)', _r), f"a word that is not one of the five at hour {_i}"
+    if _x["dust"] is not None:
+        assert _x["stage"].count('r="2.8" fill="var(--d-air)"') == min(60, round(_x["dust"])), f"the jar's particles are not the hour's µg/m³ at hour {_i}"
+    if _x["dir"] is not None:
+        _rot = re.search(r"rotate\(([\d.-]+) ", _x["stage"])
+        assert _rot and abs(float(_rot.group(1)) - _x["dir"]) < 0.051, f"the vane does not turn to the hour's bearing at hour {_i}: {_x['dir']}"
+assert any(_x["dust"] for _x in _hs) and any(_x["dir"] is not None for _x in _hs), "the capture drew no dust or no wind: the checks above asserted nothing"
+assert len({_x["stage"] for _x in _hs}) > 12, "the stage does not change with the hour"
+# The balance weighs the house's own room series, and counts only outdoor stations nearby (an indoor one is a room).
+_fx = json.loads(Path(FIX).read_text())["sensors"]
+assert t["wall"]["near"] == len([x for x in _fx if x["kind"] == "sensor" and not x["local"] and not x["indoor"]]) < \
+    len([x for x in _fx if x["kind"] == "sensor" and not x["local"]]), f"the balance counts indoor stations: {t['wall']['near']}"
+assert t["wall"]["house"] == t["wall"]["room"] == t["wall"]["yardHouse"], "the house pan is not the room's series, whatever the headline distance"
+# Without /issues/days the replay keeps its 24 hours, and a model's latest reading stands for each of them.
+_nd = t["wall"]["nodays"]
+assert len(_nd["B"]) == 24 and _nd["wind"] and len(_nd["wind"]["v"]) == 24 and None not in _nd["wind"]["v"], "no buckets, no wind"
+from datetime import datetime
+_ms = lambda s: datetime.fromisoformat(s.replace("Z", "+00:00")).timestamp()
+assert [_ms(b) for b in _nd["B"]] == [_ms(b) for b in _nd["raw"]], "without /issues/days the replay does not take /aggregates' hours"
+assert len(t["wall"]["nohours"]) == 24 and _ms(t["wall"]["nohours"][-1]) == _ms(t["wall"]["asof"]) // 3600 * 3600 and \
+    all(_ms(b) - _ms(a) == 3600 for a, b in zip(t["wall"]["nohours"], t["wall"]["nohours"][1:])), t["wall"]["nohours"][-2:]
+# Five hours of /aggregates fill the last five of the 24; the hour drawn under reduced motion is never blank.
+assert len(t["wall"]["short5"]["B"]) == 24 and _ms(t["wall"]["short5"]["B"][-1]) == _ms(_nd["raw"][-1]) and t["wall"]["short5"]["wind"][-1] is not None, t["wall"]["short5"]
+assert "WALL.h == null || WALL.still !== still" in _wsrc and "if (view() !== 'wall') { WALL.still = null; return; }" in _wsrc, \
+    "motion turned on or off off the Wall resumes the old replay's hour"
 assert t["wall"]["when"][1] == "Jul 2025" and re.fullmatch(r"\d\d:\d\d", t["wall"]["when"][0]), t["wall"]["when"]
-print("doors: the Wall walks the phone's four scales; every figure has its time and word; land as 100 squares; floods not invented")
+# Under reduced motion the Wall is one still frame at the last hour: no replay clock, and the narration's roll stands still.
+assert "{ WALL.h = still ? 23 : 0;" in _wsrc and "if (!still) CLOCK.on('wall-replay', wallTick);" in _wsrc, "the replay runs under reduced motion"
+assert re.search(r"prefers-reduced-motion: reduce\)\{[^}]*\.wnarr \.nw\.roll \.nt\{animation:none", html), "the story rolls under reduced motion"
+assert "#wallv *{transition:none}" in html.replace(" !important", ""), "a step on the Wall is tweened"
+# The story rolls when it is longer than its box (Tomas, 21 Oct: the end was cut and the start never came back), a line a step.
+assert "if (!NARR.typing) narrRoll();" in _wsrc and "--roll-n" in _wsrc, "the Wall's story does not start rolling after typing"
+# The narration took the four distances' screen (Tomas, 8 Nov: "Yes, narration there"): the words, the node's own words,
+# then the balance, in that order; no map and no walk are left.
+_marks = re.findall(r'data-learn="([a-z-]+)"', _wsrc.split("VIEWS.wall = ")[1].split("/* THE NODE, THINKING ALOUD")[0])
+assert _marks == ["wall-stage", "wall-sentence", "wall-narration", "wall-balance"], _marks
+assert not re.search(r"WALL_SCALES|wallPage|WALK\b|wallMap|wallDist|wrail", _wsrc) and not (STATIC / "doors-wallmap.js").exists()
+print("doors: the Wall draws the day as instruments; every figure has its time and word; the dust counted, the vane on its bearing")
 
 # 15 Oct, the Wall read from 3 m (Tomas's review of 14 Oct). Each check fails if its fix regresses.
 # The map's caption says in words what its red discs mean against the house: a clean headline beside red discs.
@@ -333,16 +361,14 @@ assert len(_sizes) >= 18, len(_sizes)
 for _f in _sizes:
     _m = re.search(r"calc\(var\(--wf\) \* ([\d.]+)\)|var\(--wf\)|(\d[\d.]*)(px|em|rem|vw|vh)\b", _f)
     assert _m and (_m.group(0) == "var(--wf)" or (_m.group(1) and float(_m.group(1)) >= 1)), f"under the Wall's type floor: font:{_f}"
-_wjs = (STATIC / "doors-wall.js").read_text().split("/* THE NODE, THINKING ALOUD")[0] + (STATIC / "doors-wallmap.js").read_text()
-assert not re.search(r'class="(?:k|fine)\b|<small', _wjs.split("if (o.time) {")[0] + _wjs.split("if (o.time) {")[-1].split("o.time.querySelectorAll('.seg")[-1]), \
-    "a class sized outside the Wall's block, drawn on the Wall"
-assert re.findall(r"getSize: (\w+)", _wjs) == ["wf", "wf"], "the map's words are at the floor"
+_wjs = (STATIC / "doors-wall.js").read_text().split("/* THE NODE, THINKING ALOUD")[0]
+assert not re.search(r'class="(?:k|fine)\b|<small', _wjs), "a class sized outside the Wall's block, drawn on the Wall"
+assert ".wstage text{font:500 var(--wf) var(--mono)}" in _wcss, "the stage's words are at the floor"
 # CHROME: a wall is not operated. The back button, the chips and the hour strip are .wchrome, invisible until a pointer
 # or the keyboard is in them; the back button is the first thing in keyboard order.
 assert "#wallv .wchrome{opacity:0" in _wcss and "#wallv .wchrome:hover,#wallv .wchrome:focus-within{opacity:1}" in _wcss
-assert re.search(r'<div class="wtop wchrome"><button class="wback"', _wjs) and 'class="wrail" id="wrail"' in _wjs and "flowtime" not in _wjs, \
-    "the rail is how a reader knows the scale: never chrome; the hour strip is gone"
-assert "#wallv .wrail button" in _wcss and "#wallv .wback,#wallv .wchips button,#wallv .wrail button{min-height:44px;min-width:44px}" in _wcss
+assert re.search(r'<div class="wtop wchrome"><button class="wback"', _wjs) and "flowtime" not in _wjs, "the back button is first, the hour strip is gone"
+assert "#wallv .wback{min-height:44px;min-width:44px}" in _wcss
 for _gone in ("share level", "#wall", "more</a>", "readings in", "next in", "Read at", "replay with the token"):
     assert _gone not in _wjs.lower().replace("#wallv", ""), f"admin chrome is back on the Wall: {_gone}"
 print("doors: nothing on the Wall is under 28 px at 1920x1080, and its chrome shows only under a pointer or the keyboard")
@@ -362,7 +388,7 @@ for (const [name, path] of Object.entries(JSON.parse(process.argv[1]))) {
   vm.runInContext(['esc', 'loc', 'dayOf', 'fmt', 'said', 'num', 'unitOf', 'labelOf', 'NODE', 'sign', 'PROV', 'prov', 'ISSUES_DRAWN'].map(pick).join('\n') + '\n'
     + 'let NOWL = null;\n' + (now.includes('function usualLine') ? fn(now, 'usualLine') : '') + fn(now, 'rows')
     + (place.includes('function yearly') ? fn(place, 'yearly') : 'function yearly() { return ""; }\n')
-    + fn(core, 'evAt') + fn(core, 'answerWords') + now.match(/^const ANSWER_STAGE = .*$/m)[0] + '\n' + fn(now, 'decision')
+    + fn(core, 'evAt') + fn(core, 'answerWords') + now.match(/^const ANSWER_STAGE = .*$/m)[0] + '\n' + fn(now, 'decision') + 'function stripFold() {}\n'
     + fs.readFileSync('./app/static/doors-wall.js', 'utf8').match(/const oneLine[\s\S]*?\n};\n/)[0]
     + fs.readFileSync('./app/static/doors-wall.js', 'utf8').match(/function wallAsk[\s\S]*?\n}\n/)[0], ctx);
   /* the phone's Decide card, its own copy of the helpers (mobile.js says why) */
@@ -417,10 +443,15 @@ assert 'id="rail"' not in _nowh and "function rail(" not in _nowjs and 'id="cell
     "the grain rail is back on Now"
 # the parts in reading order, each keeping its learn mark: lead, figure, distances, buttons, then the house's states
 _marks = re.findall(r'data-learn="([a-z-]+)"', _nowh)
-assert _marks == ["now-sentence", "figure", "now-distances", "now-city", "now-around", "now-rows", "now-things", "now-worked", "now-todo", "now-next"], _marks
-assert _nowh.index('class="rcol"') < _nowh.index('id="ncity"') < _nowh.index('class="around"') < _nowh.index('id="rows"') < _nowh.index('id="nremember"') < _nowh.index('class="nstrip"') < _nowh.index('id="decide"') < _nowh.index('class="lcol2"') < _nowh.index('id="next"'), "the city, its map and Around the house; then What to do as a strip; then Next days across the page"
+assert _marks == ["now-sentence", "figure", "now-distances", "now-rows", "now-things", "now-around", "now-city", "now-todo", "now-worked", "now-next"], _marks
+# Tomas, 9 Nov: Around the house heads the right column, the map under it, then the Index as the city's local
+# production capacity; Did it work leaves the column for a row under What to do
+assert _nowh.index('class="rcol"') < _nowh.index('id="rows"') < _nowh.index('class="around"') < _nowh.index('id="ncity"') < _nowh.index('class="nstrip"') < _nowh.index('id="decide"') < _nowh.index('id="nremember"') < _nowh.index('class="lcol2"') < _nowh.index('id="next"'), "Around the house, the map, the Index; then What to do as a strip, Did it work under it; then Next days across the page"
 _css = (STATIC / "doors.html").read_text()
-assert '"kick kick" "l r" "td td" "l2 l2"' in _css and '"kick" "l" "r" "td" "l2"' in _css and 'rcol2' not in _css and '.nstrip{grid-area:td' in _css, "What to do spans both columns, under the top row"
+assert '"kick kick" "l r" "td td" "rm rm" "l2 l2"' in _css and '"kick" "l" "r" "td" "rm" "l2"' in _css and 'rcol2' not in _css and '.nstrip{grid-area:td' in _css and '.nrem{grid-area:rm' in _css, "What to do and Did it work span both columns, under the top row"
+# What to do is one line until its button opens it (Tomas, 9 Nov: "just one line collapsed")
+assert '.nstrip:not(.open) :is(#decide .dm,#decide .ans,#decide .nk,#asks,#ndecl-decide){display:none!important}' in _css, "the folded strip hides the answers and the asks"
+assert "function decision() { decideLine(); stripFold(); }" in _nowjs and "stripFold();\n}" in _nowjs and "`Options to act · ${n} ↓`" in _nowjs and "NFOLD_OPEN = !NFOLD_OPEN; stripFold();" in _nowjs, "the strip folds after every redraw of What to do and the asks"
 assert '.nstrip .decide{display:contents}' in _css and 'new ResizeObserver(() => map.resize())' in _nowjs, "the strip is one band; the map takes the frame's height"
 # heads name the reader's question, in sentence case; no engine stage shouted on Now
 assert "Around the house</h2>" in _nowh and "`Right now · " in _nowjs and '<h2 class="nh">What to do</h2>' in _nowjs
@@ -541,7 +572,7 @@ print("doors: Node › What it remembers holds the diary and what worked as tabl
 _dh = html[html.index('data-view="data"'):html.index("<!-- WALL -->")]
 assert not re.search(r'id="d-(learned|usual|diary)"', _dh) and "learnedBlock" not in _dj and 'href="#node/remember"' in _dh, \
     "Data no longer holds the diary, what is usual or what worked; it points to Node"
-_wall = (STATIC / "doors-wall.js").read_text() + (STATIC / "doors-wallmap.js").read_text()
+_wall = (STATIC / "doors-wall.js").read_text()
 assert "/learned" not in _wall.replace("/learned/place", "") and "/household" not in _wall, "the Wall never reads the house's learnings"
 print("doors: Data points to Node for the diary; the Wall reads none of it")
 
@@ -618,10 +649,11 @@ for _v in _learn.VERDICT_WORDS:
 # PHASE 4a, Place and Node (Tomas, 14–15 Oct 2026). Each check fails if its fix regresses.
 _place = html[html.index('<section class="page view" data-view="place"'):html.index("<!-- DATA -->")]
 # SPEC_place_microgis §4, as Tomas changed it on 5 Nov 2026: the tools a menu on the top line; the cake | the screen;
-# the years end to end; then the lower band: the open map's table | the place in figures
+# the years end to end; then the lower band, the place in figures across the page (Tomas, 9 Nov: the open map's
+# table went)
 assert _place.index('id="pask"') < _place.index('id="ptoolsb"') < _place.index('id="ptools"') < _place.index('id="cake"') < _place.index('class="mapc"') \
     < _place.index('id="facts"') < _place.index('id="pmargin"') < _place.index('class="pyears"') < _place.index('id="pchange"') \
-    < _place.index('class="plow"') < _place.index('id="ptable"') < _place.index('id="pfigures"'), \
+    < _place.index('class="plow"') < _place.index('id="pfigures"'), \
     "Ask and Tools on the top line; the cake, the screen with its status line and the marks around the house; the years; then the lower band"
 assert 'id="paddimg"' not in _place and 'class="addimg"' not in html and "addimg" not in (STATIC / "doors-place.js").read_text(), "+ Add an image left the top line: the Image key does it"
 assert 'data-fold="rc"' not in _place and _place.count('class="pfold"') == 1 and 'data-s="tools"' not in _place, "one side menu, the left: no right column, no right fold, no tools sheet"
@@ -629,6 +661,11 @@ assert '<button type="button" id="ptoolsb" class="ptoolsb" aria-expanded="false"
     "the tools are one button with a menu it discloses"
 assert 'class="pcols"' not in _place and 'id="reach"' not in _place and 'id="layers"' not in _place and 'id="pleads"' not in _place, "the old workbench is gone"
 assert "'#pfigures').innerHTML = `<h3 class=\"pmh\">the place in figures</h3>` + yearly()" in (STATIC / "doors-place.js").read_text(), "Land and Coast are the place's figures"
+# the hydro pack in the figures (8 Nov): a Rivers row from GET /hydro, and a link that turns both map rows on and flies out
+_pjs = (STATIC / "doors-place.js").read_text()
+assert '<div id="phydro"></div>' in _pjs and "doorsFetch('/hydro')" in _pjs and "planetai run hydro fetch" in _pjs, "Rivers is a row of the figures"
+assert "window.placeRivers = () => { setLayer('rivers', true); setLayer('basin', true); if (PM.map) fly(6); };" in (STATIC / "doors-placemap.js").read_text(), "on the map turns both rows on and goes to District"
+assert "river_m: 'the nearest river, away'" in (STATIC / "doors-data.js").read_text(), "Data names the hydro figures"
 _css = html[html.index("/* ================= PLACE: a small GIS"):html.index("/* ================= NODE")]
 assert re.search(r"\.tools button,\.zoom button\{width:var\(--k\);height:var\(--k\)", _css), "the map's tools are --k square"
 assert "--k:36px;container:place / inline-size;" in _css and "@media (pointer:coarse){.mapc{--k:44px}}" in _css, \
@@ -883,7 +920,7 @@ for _sel in (".snav a{display:flex;justify-content:space-between;align-items:cen
 assert "gear.setAttribute('aria-current', 'page')" in (STATIC / "doors-core.js").read_text()
 print("doors: every tab, switch and button in Data and Set up is a 44 px target; the gear shows Set up is open")
 # the Wall shows no alert answers (Tomas, 16 Oct): no row of answered alerts, no rings around the house
-_w = (STATIC / "doors-wall.js").read_text() + (STATIC / "doors-wallmap.js").read_text()
+_w = (STATIC / "doors-wall.js").read_text()
 assert not re.search(r"rhoRow|RHO_ROW|wrho|F\.answers|F\.alerts|answers back", _w), "the Wall shows answers to alerts again"
 assert ".wrho" not in html
 print("doors: the Wall counts no answers to alerts, in words or rings")
@@ -918,7 +955,8 @@ assert "D.sensors" not in pl, "doors-place.js reads no sensor of its own"
 assert all("cake:" in l for l in re.findall(r"\{ id: '[a-z]+'.*?\}", pm.split("const LAYERS = [")[1].split("];")[0])), "every layer names its cake section"
 assert "group:" not in pm.split("const LAYERS = [")[1].split("];")[0] and "id: 'index'" not in pm, "no layer groups, and the Index cells are figures"
 assert "PVIEWS" not in pl and 'class="pviews"' not in html, "one map: From orbit and What changed are no longer views"
-for i in ("cake", "ptools", "ptable", "pfigures", "pask"):
+assert 'id="ptable"' not in html and "function mapTable" not in pm, "the open map's table is gone from Place"
+for i in ("cake", "ptools", "pfigures", "pask"):
     assert f'id="{i}"' in html, i
 assert "Where the readings come from" not in html, "each cake row names its source instead"
 assert "Tools run on this node with a token. Unlock this screen in Set up." in pl, "a tokenless screen says why the tools are quiet"
@@ -927,7 +965,7 @@ assert "if (D.askOff) return;" in pl.split("$('#pask').onsubmit")[1].split("};")
 assert ".pask[hidden]{display:none}" in html, "hidden wins over the flex row"
 assert "$('#askbtn').addEventListener('click', closeSheet)" in pl, "Ask opens over a phone's sheet: the sheet closes first"
 _names = re.findall(r"id: '[a-z0-9]+'.*? name: '([^']+)'", pm.split("const LAYERS = [")[1].split("];")[0])
-assert len(_names) == 25 and max(map(len, _names)) <= 14, ("a cake row's name must fit the 216 px column", sorted(_names, key=len)[-3:])
+assert len(_names) == 27 and max(map(len, _names)) <= 14, ("a cake row's name must fit the 216 px column", sorted(_names, key=len)[-3:])
 assert "<h2><span>${esc(s.name)}</span>" in pm and "#cake .ck>h2{" in html and "#cake h2" not in html and "<h3><span>" not in pm, "cake headings are h2 under the page's h1"
 print("  place: one map, black screen, the cake on the left, tools on the right")
 
@@ -949,7 +987,7 @@ for (const [k, ip] of Object.entries(JSON.parse(process.argv[1]))) {
   const D = L.buildD({ ...F, days: F.issues_days, index_place: ip }, 'en'), els = {};
   const c = { D, $: q => (els[q] ||= {}), sign: id => `<svg data-s="${id}"></svg>`, doorsLocal: L.doorsLocal };
   vm.createContext(c);
-  try { vm.runInContext(['esc', 'loc', 'num', 'PROV', 'prov'].map(pick).join('\n') + '\nfunction yearly() { return ""; }\n' + fn('indexRow') + fn('figures') + 'figures()', c); out[k] = els['#pfigures'].innerHTML; } catch (e) { out[k] = 'THROWS ' + e.message; }
+  try { vm.runInContext(['esc', 'loc', 'num', 'PROV', 'prov'].map(pick).join('\n') + '\nfunction yearly() { return ""; }\nfunction rivers() {}\n' + fn('indexRow') + fn('figures') + 'figures()', c); out[k] = els['#pfigures'].innerHTML; } catch (e) { out[k] = 'THROWS ' + e.message; }
 }
 console.log(JSON.stringify(out));
 """ % FIX
@@ -1033,8 +1071,8 @@ assert _bp["bcn"]["line"].startswith('<p class="lede mono">Barcelona on the Fab 
 assert "<b>0 – 0</b>" in _bp["acc"]["line"] and "Simulated" in _bp["acc"]["line"], "a range stays a range in the head too"
 assert all(_bp[k]["line"] == "" for k in ("empty", "unread", "nullrange")), "no place or no figure: the head says nothing, the figures band says why"
 _html, _nowjs, _pl = (STATIC / "doors.html").read_text(), (STATIC / "doors-now.js").read_text(), (STATIC / "doors-place.js").read_text()
-assert 'id="ncity" data-learn="now-city" data-reads="/index/place"' in _html and 'data-pack="index"' in _html and '<h2 class="nh" id="ncityh">In the city</h2>' in _html
-assert _html.index('<div class="rcol">') < _html.index('id="ncity"') < _html.index('id="ncityrow"') < _html.index('id="rose"') < _html.index('id="decide"'), "In the city opens the right column: the Index over the map, in one screen"
+assert 'id="ncity" data-learn="now-city" data-reads="/index/place"' in _html and 'data-pack="index"' in _html and '<h2 class="nh" id="ncityh">Local production capacity in the city</h2>' in _html
+assert _html.index('<div class="rcol">') < _html.index('id="rows"') < _html.index('id="rose"') < _html.index('id="ncity"') < _html.index('id="ncityrow"') < _html.index('id="decide"'), "the right column: Around the house, the map, then the Index (Tomas, 9 Nov)"
 assert "$('#ncityrow').innerHTML = indexScreen(D.index_place)" in _nowjs and "#ncity').hidden" not in _nowjs, "Now always draws the city screen; without an Index it says how to get one"
 # the city screen (Tomas, 7 Nov): the figure large and linked to the city on the Index, 20 cells with the measured lit, the
 # label once (not beside the same provenance word), the read; no city or no Index says how to get one
@@ -1078,9 +1116,6 @@ const el = () => ({ innerHTML: '', textContent: '', hidden: false, style: {}, da
   getContext: () => ({ setTransform: noop, clearRect: noop }), clientWidth: 900, clientHeight: 560 });
 async function boot(tok, o = {}) {
   const els = {}, map = el(), asked = [], drawn = {}, patched = [], posted = [], keys = [], ons = {}, onced = [], eased = [], renders = [];
-  /* the lower band's row buttons, as mapTable() wires them */
-  const rows = [{ dataset: { k: '11' } }, { dataset: { k: '12' } }];
-  els['#ptable'] = Object.assign(el(), { querySelectorAll: q => (q === '.mrow' ? rows : []) });
   const chip = { classList: { contains: () => true }, focus() { c.document.activeElement = chip; } };
   els['#dread'] = Object.assign(el(), { querySelector: q => (q === '.dchip' ? chip : null), contains: x => x === chip });
   const ask = (p, init = {}) => { asked.push(p); if (!tok && L.DOORS_LOCKED.test(p)) return Promise.resolve(new Response('{}', { status: 403 }));
@@ -1112,19 +1147,22 @@ async function boot(tok, o = {}) {
   c.window = c; vm.createContext(c);
   vm.runInContext(['esc', 'fmt'].map(pick).join('\n') + '\n' + src + '\nwindow.placeMap()', c);
   await new Promise(r => setTimeout(r, 80));
+  /* a drawing pressed on the map puts it in hand (the lower band's table that did it went on 9 Nov) */
+  const press = id => { const m = MARKS.marks.find(x => x.id === id), h = o.hit; o.hit = () => ({ layer: { id: 'draw-' + m.kind }, object: m });
+    (ons.click || []).forEach(f => f({ lngLat: { lng: 115.1675, lat: -8.8187 }, point: { x: 1, y: 1 } })); o.hit = h; };
   const kk = map.kids.find(x => x.className === 'dkeys'), pan = map.kids.find(x => x.className === 'dpanel');
   const out = { keys: kk ? kk.innerHTML : null, panel: pan ? pan.innerHTML : null, read: c.$('#dread').innerHTML, cake: c.$('#cake').innerHTML,
-    table: c.$('#ptable').innerHTML, asked };
-  /* without a mouse: the row puts the area in hand, an arrow moves its first point, the full stop steps, the next arrow moves the second */
+    asked };
+  /* without a mouse: the area in hand, an arrow moves its first point, the full stop steps, the next arrow moves the second */
   if (tok) {
     const key = k => keys.forEach(f => f({ key: k, target: { closest: () => null }, preventDefault: noop, stopPropagation: noop, shiftKey: false, metaKey: false, ctrlKey: false, altKey: false }));
-    rows[0].onclick(); out.held = c.$('#dread').innerHTML;
+    press(11); out.held = c.$('#dread').innerHTML;
     key('ArrowRight'); await new Promise(r => setTimeout(r, 650));
     key('.'); out.stepped = c.$('#dread').innerHTML;
     key('ArrowUp'); await new Promise(r => setTimeout(r, 650));
     out.patched = patched;
   }
-  if (o.then) Object.assign(out, await o.then({ c, map, ons, drawn, asked, onced, eased, renders, keys, posted }));
+  if (o.then) Object.assign(out, await o.then({ c, map, ons, drawn, asked, onced, eased, renders, keys, posted, press }));
   return { ...out, drawn: Object.fromEntries(Object.entries(drawn).filter(([k]) => k.startsWith('draw-')).map(([k, v]) => [k, (v.data || []).length])) };
 }
 (async () => {
@@ -1204,14 +1242,14 @@ async function boot(tok, o = {}) {
      Enter pins a marker at the map's centre and opens the picker, whose first button is a new photo */
   /* the readout is a chip: folded at first, opened by a press, folded by a second; open by itself while a drawing of
      this house's is in hand, folded when it is let go; Esc from inside it folds it and keeps the focus on the chip */
-  out.chip = await boot(true, { then: async ({ c, keys }) => {
+  out.chip = await boot(true, { then: async ({ c, keys, press }) => {
     const r = {}, read = () => c.$('#dread').innerHTML, chip = c.$('#dread').querySelector('.dchip');
     const esc = inPanel => keys.forEach(f => f({ key: 'Escape', target: { closest: q => (inPanel && q === '.dpanel' ? {} : null) }, preventDefault: noop, stopPropagation: noop, shiftKey: false, metaKey: false, ctrlKey: false, altKey: false }));
     c.__PM.draw.sel = null; c.__PM.draw.open = false; c.__PM.draw.auto = false; c.__PM.readout = null;
     c.__PM.setTool('select'); r.start = read();
     chip.onclick(); r.opened = read(); chip.onclick(); r.folded = read();
     chip.onclick(); c.document.activeElement = chip; esc(true); r.escInside = { html: read(), focus: c.document.activeElement === chip };
-    c.$('#ptable').querySelectorAll('.mrow')[0].onclick(); r.held = read();
+    press(11); r.held = read();
     esc(false); r.letGo = { html: read(), sel: c.__PM.draw.sel };
     return r; } });
   out.image = await boot(true, { then: async ({ c, keys, posted }) => {
@@ -1276,13 +1314,9 @@ assert _ck.index('id="ymaps"') < _ck.index('data-cake="results"'), "your maps si
 assert _ck.index('class="ly map') < _ck.index('class="ly new"') and ">New map<" in _ck, "a square-dot row per map, then New map"
 assert _ck.count('class="ly map') == 2 and "2 drawn" in _ck and "0 drawn" in _ck, _ck[:800]
 assert "<img src=x" not in _ck and "&lt;img src=x onerror=1&gt;" in _ck, "a map's name is the household's text, escaped"
-_tb = _t["table"]
-assert "<img src=x" not in _tb and _tb.count("&lt;img src=x onerror=1&gt;") == 2, "the table's head and the drawing's label, escaped"
-assert "<table" in _tb and "312 m²" in _tb and "102 m" in _tb and "catch the roof’s water" in _tb and 'data-k="11"' in _tb and 'data-k="12"' in _tb, _tb[:900]
-assert "#9BFF2E" in _tb and _tb.count('class="mth"') == 1, "a swatch in the drawing's own colour, one thumbnail for the one image"
 assert _t["drawn"].get("draw-area") == 1 and _t["drawn"].get("draw-line") == 1, ("the drawings are deck.gl layers, so the PNG holds them", _t["drawn"])
 assert "/place/maps" in _t["asked"] and "/place/maps/3/marks" in _t["asked"], _t["asked"]
-print("  place: your maps above the cake, then New map; the open map's table in the lower band; names and labels escaped")
+print("  place: your maps above the cake, then New map; names escaped")
 assert _x["keys"] is None and _x["panel"] is None, "without the token no key is drawn"
 _ys = re.sub(r"<[^>]+>", "", _x["cake"][_x["cake"].index('id="ymaps"'):_x["cake"].index('data-cake="results"')])
 assert "Your maps are kept on this node. Unlock this screen in Set up to draw." in _ys and 'class="ly new"' not in _x["cake"], _ys
@@ -1404,8 +1438,8 @@ assert any(e.get("zoom") == 16 and [round(v, 6) for v in e.get("center")] == [11
 print("  place: below zoom 13 each drone flight is a pin, named by its resolution and month; pressed, it flies there at 16")
 _pl = html[html.index('<section class="page view" data-view="place"'):html.index("<!-- DATA -->")]
 assert "altc" not in html and "mapalt" not in html, "the then-and-now pair is off the screen"
-assert _pl.index('class="pyears"') < _pl.index('id="pchange"') < _pl.index('class="plow"') < _pl.index('id="ptable"') < _pl.index('id="pfigures"'), \
-    "what changed is a band of its own under the screen, end to end, above the open map's table"
+assert _pl.index('class="pyears"') < _pl.index('id="pchange"') < _pl.index('class="plow"') < _pl.index('id="pfigures"'), \
+    "what changed is a band of its own under the screen, end to end, above the place in figures"
 assert re.search(r"\.pyears\{[^}]*\}", _css) and ".years{display:grid;gap:4px;align-items:end;height:98px" in _css and "#pchange .pair{grid-template-columns:minmax(0,1fr)}" in html, \
     "the years are bigger: the bars twice as tall; then and now side by side, stacked on a phone"
 _dr = (STATIC / "doors-load.js").read_text()
