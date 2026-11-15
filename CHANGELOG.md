@@ -7,10 +7,10 @@
   yours in it counts as this node's own from its next poll. A claimed cell is held once one of your sensors has a
   reading in it in the last 24 hours, and the line under the map says how many of the seven are held. **Release it**
   gives the cell back, and each claim and release goes in the ledger. `LOCAL_RADIUS_M` is gone, and a `.env` that
-  still sets it is not read: on its first run after the update a node claims each neighbour where one of its sensors
+  still sets it is not read. On its first run after the update a node claims each neighbour where one of its sensors
   stood within 500 m, so nothing that counted before stops counting. Tools › **Pull** asks the node about any cells or
-  any area you drew: its own sensors in the home and held cells among them, and what hydro, eyes and forecast hold for it, each saying why when it has
-  nothing. docs/place, docs/api.
+  any area you drew. It answers with its own sensors in its home and held cells, and with what hydro, eyes and
+  forecast hold there, and says why when a pack has nothing. docs/place, docs/api.
 
 - **The Wall's instruments are drawn finer (9 Nov).** Each stands on a framed plate, in greys under the lines, with
   screws, a nameplate, flanges on the jar's pipe, clips on the thermometer, guy wires on the wind's mast and a tick
