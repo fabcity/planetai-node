@@ -113,6 +113,9 @@ CASES = {
 
 with tempfile.TemporaryDirectory() as tmp:
     in_path = Path(tmp) / "cases.json"
+    # the Today box: no sun forecast keeps the use and says why; a roof Home Assistant measured is not called modelled
+    CASES["nosun"] = {**CASES["estimated"], "today": {"sun_kwh_m2": None, "roof_kwh": None, "use_kwh": 9.0, "measured": False, "panel_kw": 2.0}}
+    CASES["roofmeasured"] = {**CASES["estimated"], "today": {"sun_kwh_m2": 5.8, "roof_kwh": 3.4, "use_kwh": 9.0, "measured": True, "panel_kw": 2.0}}
     in_path.write_text(json.dumps(CASES))
     prog = f"""
 const fs = require('fs'), vm = require('vm');
@@ -221,6 +224,13 @@ else:
     check("on no grid the energy pack knows yet" in none_html and "packs/energy/grids.yml" in none_html,
           f"empty sources renders the none sentence: {none_html}")
     check('class="bar"' not in none_html, f"empty sources renders no bar: {none_html}")
+
+    check("uses about" in est and "9.0" in est, f"the Today box draws the house's use: {est[-700:]}")
+    ns = res.get("nosun", "")
+    check("No forecast of the sun today" in ns and "uses about" in ns and "kW of roof panels" not in ns,
+          f"no sun forecast: the use stays, the roof goes, and it says why: {ns[-700:]}")
+    rm = res.get("roofmeasured", "")
+    check("measured by Home Assistant" in rm and "modelled from" not in rm, f"a measured roof is not called modelled: {rm[-700:]}")
 
     nw = res.get("_now") or {}
     check(nw.get("energyHidden") is False and nw.get("svgDisplay") == "none" and not nw.get("dayWeekCalled"),

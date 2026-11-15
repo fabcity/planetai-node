@@ -150,7 +150,12 @@ function drawEnergy(el, E) {
   const td = E.today || {}, hh = E.household;
   let todayCells = '';
   if (td.sun_kwh_m2 != null) todayCells += `<div><span class="k">Sun on this cell today</span><span class="v">${num('energy.today.sun', fmt(td.sun_kwh_m2, 1), 'shortwave radiation today')} <small>kWh/m²</small></span></div>`;
-  if (td.roof_kwh != null) todayCells += `<div><span class="k">${td.panel_kw != null ? `${fmt(td.panel_kw, 1)} kW of roof panels` : 'Roof panels'}</span><span class="v">≈ ${num('energy.today.roof', fmt(td.roof_kwh, 1), 'modelled from today’s sun, ENERGY_PANEL_KW and ENERGY_PANEL_PR')} <small>kWh today</small></span></div>`;
+  /* no forecast of the sun today: the box keeps the house's use and says why the roof is missing (plan, Task 9) */
+  else todayCells += `<div><span class="k">Sun on this cell today</span><span class="fine">No forecast of the sun today: the forecast pack reads it from Open-Meteo, with FORECAST_OPENMETEO=1</span></div>`;
+  if (td.roof_kwh != null) todayCells += td.measured
+    ? `<div><span class="k">The roof today</span><span class="v">${num('energy.today.roof', fmt(td.roof_kwh, 1), 'measured by Home Assistant')} <small>kWh</small></span></div>`
+    : `<div><span class="k">${td.panel_kw != null ? `${fmt(td.panel_kw, 1)} kW of roof panels` : 'Roof panels'}</span><span class="v">≈ ${num('energy.today.roof', fmt(td.roof_kwh, 1), 'modelled from today’s sun, ENERGY_PANEL_KW and ENERGY_PANEL_PR')} <small>kWh today</small></span></div>`;
+  if (td.use_kwh != null) todayCells += `<div><span class="k">The house uses about</span><span class="v">${num('energy.today.use', fmt(td.use_kwh, 1), 'ENERGY_HOUSE_KWH_DAY, set by hand')} <small>kWh a day</small></span></div>`;
   if (hh) {
     if (hh.roof_w != null) todayCells += `<div><span class="k">This house · roof now</span><span class="v">${num('energy.home.roof_w', fmt(hh.roof_w, 0), 'live solar power')} <small>W</small></span></div>`;
     if (hh.grid_w != null) todayCells += `<div><span class="k">This house · grid now</span><span class="v">${num('energy.home.grid_w', fmt(hh.grid_w, 0), 'live grid import')} <small>W</small></span></div>`;
