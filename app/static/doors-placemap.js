@@ -72,7 +72,7 @@ const LAYERS = [
   { id: 'geology', cake: 'ground', pack: 'place', src: 'no source', name: 'Geology', sub: 'no open source chosen yet', soon: true, empty: true },
   /* the frame: the cell, the grid, the base maps, the household's own images (SPEC_eyes step 1). The street map carries
      its names: one row, not two. */
-  { id: 'mine', cake: 'frame', pack: 'core', src: 'H3', name: 'Node cell', sub: 'the cell it stands in, at the resolution in view', on: true },
+  { id: 'mine', cake: 'frame', pack: 'core', src: 'H3', name: 'Node cell', sub: 'the cell it stands in, at the resolution in view; at Cell scale the seven, held, claimed or open', on: true },
   { id: 'grid', cake: 'frame', pack: 'core', src: 'H3', name: 'H3 grid', sub: 'cells at this scale, dotted where a cell may leave', on: false },
   { id: 'street', cake: 'frame', pack: 'place', src: 'OSM', name: 'Street map', sub: 'OpenStreetMap, with its names, kept on this node', on: true, still: true },
   { id: 'imagery', cake: 'frame', pack: 'earth-engine', src: 'Sentinel-2', name: 'Satellite', sub: '10 m, Sentinel-2, composited by this node; from Block scale in, the street map and any drone flight', on: false, need: 'imagery' },
@@ -319,7 +319,17 @@ function layers() {
       : new Dk.PolygonLayer({ id: 'grid', data: cells, getPolygon: d => d.path, ...px, pickable: true, autoHighlight: true, highlightColor: A(p.cells, .06),
         filled: true, getFillColor: [0, 0, 0, 0], getLineColor: gc, getLineWidth: 1 }));
   }
-  if (L.mine && G) {
+  /* the seven at Cell scale (GET /place/cells, token-only): the cell the node stands in and the six touching it, by state.
+     State by stroke, never a new hue (SPEC_place_microgis §4): home and held solid in the cells' blue, claimed dashed in
+     it, open dotted in grey and unfilled. Home is drawn here, so 'mine' stands aside at res 8. */
+  const seven = L.mine && PM.cells && gr === 8;
+  if (seven) {
+    out.push(new Dk.PolygonLayer({ id: 'seven', data: PM.cells.cells, getPolygon: d => loop(d.ring), ...px, pickable: true, autoHighlight: true,
+      highlightColor: A(p.cells, .06), filled: true, getFillColor: d => A(p.cells, (d.state === 'home' ? .12 : d.state === 'held' ? .06 : 0) * a('mine')),
+      getLineColor: d => A(d.state === 'open' ? p.mute : p.cells, a('mine')), getLineWidth: d => (d.state === 'home' ? 2.5 : 1.5),
+      extensions: [dashed], getDashArray: d => SEVEN_DASH[d.state] }));
+  }
+  if (L.mine && G && !seven) {
     out.push(new Dk.PolygonLayer({ id: 'mine', data: [{ id: G.node, ring: G.nodeRing }], getPolygon: d => d.ring, ...px, pickable: true,
       filled: true, getFillColor: A(p.cells, .12 * a('mine')), getLineColor: A(p.cells, a('mine')), getLineWidth: mayLeave(gr) ? 0 : 2.5 }));
     if (mayLeave(gr)) out.push(new Dk.PathLayer({ id: 'mine-dot', data: [{ path: G.nodeRing }], getPath: d => d.path, ...px,
@@ -388,6 +398,7 @@ function layers() {
   }
   return out.concat(drawLayers(p, Dk, px, dashed, A));
 }
+const SEVEN_DASH = { home: [0, 0], held: [0, 0], claimed: [5, 3], open: [1.5, 3] };   // [0, 0] is solid
 const redraw = () => { if (PM.flat) flat(); else if (PM.overlay) PM.overlay.setProps({ layers: layers() }); margin(); };
 
 /* ---------------------------------------------------------------- around the house (option A, Tomas 15 Oct 2026)
@@ -913,7 +924,7 @@ const pickOf = h => {
   return !o ? null : (id === 'own' || id === 'public') ? { kind: 'station', s: o } : id === 'models' ? { kind: 'model', ss: o.ss, p: o.p }
     : id === 'labs' ? { kind: 'lab', s: o } : id === 'images' ? { kind: 'image', c: o } : id === 'species' ? { kind: 'image', c: o.c }
     : id === 'rivers' ? { kind: 'river', p: o.properties } : id === 'basin' ? { kind: 'basin', p: o.f.properties }
-    : (id === 'grid' || id === 'grid-dot' || id === 'mine' || id === 'radio') ? { kind: 'cell', id: o.id } : null;
+    : (id === 'grid' || id === 'grid-dot' || id === 'mine' || id === 'radio') ? { kind: 'cell', id: o.id } : id === 'seven' ? { kind: 'cell', id: o.cell } : null;
 };
 function select(id) {
   const d = PM.draw, k = markById(id); d.sel = id; d.corner = null; d.kc = 0; d.pick = null; PM.pick = null; popup(null);
@@ -1178,7 +1189,19 @@ let FSEQ = 0;
 async function facts() {
   const seq = ++FSEQ, o = PM.pick, r = PM.res, el = $('#facts');
   const row = (t, v) => `<span class="fi"><small>${esc(t)}</small><b>${v}</b></span>`, hint = h => `<span class="hint">${h}</span>`;
-  const put = h => { if (seq === FSEQ) el.innerHTML = h; };
+  const put = h => {
+    if (seq !== FSEQ) return;
+    el.innerHTML = h;
+    const b = el.querySelector && el.querySelector('[data-claim]'); if (b) b.onclick = () => claimCell(b.dataset.claim, b.dataset.verb);
+  };
+  /* one of the seven: its state in words, and Claim or Release on a neighbour (the node's routes; home is always its own) */
+  const sevenTail = id => {
+    const s = PM.cells && PM.cells.cells.find(x => x.cell === id); if (!s) return '';
+    const verb = s.state === 'open' ? 'claim' : s.state === 'home' ? null : 'release';
+    return row('of the seven', s.state) + `<span>${SEVEN_SAID[s.state]}</span>`
+      + (verb ? `<button type="button" class="ptoolsb" data-claim="${esc(s.cell)}" data-verb="${verb}">${verb === 'claim' ? 'Claim this cell' : 'Release it'}</button>` : '')
+      + (PM.said && PM.said.id === id ? `<span class="gap">${esc(PM.said.text)}</span>` : '');
+  };
   try {
     const m = PM.measured && PM.measured.points === PM.measure.length && PM.measure.length > 1 ? PM.measured : null;
     if (PM.tool === 'from') {
@@ -1197,11 +1220,11 @@ async function facts() {
     } else if (o && o.kind === 'model') {
       put(`<span class="k">Model points here · ${o.ss.length}</span>` + o.ss.map(x => `<span class="said">${esc(x.name)}</span>`).join('') + prov('model') + hint('a model is partial, whatever its quality'));
     } else if (o && o.kind === 'cell') {
-      put(`<span class="k">Cell</span><b>${esc(o.id)}</b>`);
+      put(`<span class="k">Cell</span><b>${esc(o.id)}</b>` + sevenTail(o.id));
       const c = await cellFacts(o.id);
       put(`<span class="k">Cell · res ${c.res}</span><b>${c.id}</b>` + row('area', area(c.area_m2)) + row('edge', fmtM(c.edge_m))
         + (c.parent ? row('parent', c.parent) : '') + row('this node’s cell', c.is_node ? 'yes' : c.cells_from_node == null ? 'no' : `no · ${c.cells_from_node} cells away`)
-        + (c.may_leave ? hint('coarse enough to leave the machine') : ''));
+        + sevenTail(o.id) + (c.may_leave ? hint('coarse enough to leave the machine') : ''));
     } else if (o && o.kind === 'image') {
       const c = o.c, head = `<span class="k">Image · ${esc(KIND[c.kind] || c.kind)}</span><b class="said">${esc(c.note || 'no note')}</b>`
         + row('taken', esc(when(c.ts))) + row('by', `<span class="said">${esc(c.actor || '—')}</span>`) + row('cell, res 10', esc(c.cell))
@@ -1229,10 +1252,22 @@ async function facts() {
       put(`<span class="k">In view</span><b>${esc(h.cell.id)}</b><span>res ${r} in view · cell res ${h.cell.res}</span>`
         + `<span>${h.cell.edge_m} m edge</span>${own ? `<span>${area(own)}</span>` : ''}`
         + `<span>${ON()} of ${OF()} layers on</span>`
+        + (PM.cells ? `<span>${PM.cells.held} of ${PM.cells.of} cells held</span>` : DOORS_TOKEN() && PM.cellsErr ? `<span class="gap">${esc(PM.cellsErr)}</span>` : '')
         + (m ? row(PM.from ? 'from the house' : 'measured', fmtM(m.total_m)) : '') + windWords()
         + (PM.offline ? `<span class="gap">the grid is locked on this screen</span>` : '') + hint('tap a mark, or a row below, to inspect it'));
     }
   } catch (e) { offline(e.message); put(`<span class="k">Inspect</span>` + hint(`the node did not answer: ${esc(e.message)}`)); }
+}
+
+const SEVEN_SAID = { home: 'the cell the node stands in, always its own', held: 'claimed, and one of its own readings landed here in the last 24 h',
+  claimed: 'claimed, with none of its own readings here in the last 24 h', open: 'touches the node’s cell, not claimed' };
+/* GET /place/cells: the seven and how many are held. A refusal is kept to say, never a 0 of 7. */
+const loadCells = () => ask('place/cells').then(x => { PM.cells = x; PM.cellsErr = null; }, e => { PM.cells = null; PM.cellsErr = e.message; });
+async function claimCell(id, verb) {
+  const r = await send(verb === 'claim' ? 'POST' : 'DELETE', `place/cells/${id}/claim?actor=${encodeURIComponent(actor())}`);
+  PM.said = r.ok ? null : { id, text: refused(r) };
+  if (r.ok) PM.cells = r;
+  redraw(); facts();
 }
 
 /* ---------------------------------------------------------------- the wind, moving */
@@ -1390,7 +1425,7 @@ function flat() {
 async function placeMap() {
   if (PM.flat) { flat(); panel(); facts(); margin(); return; }
   if (PM.map) {
-    PM.map.resize(); chrome(); panel(); facts(); windSync(); return;
+    PM.map.resize(); chrome(); panel(); facts(); windSync(); loadCells().then(() => { redraw(); facts(); }); return;
   }
   /* The plan is the node's own GET /place/geojson, centred where the node stands. Only when the node has none is the
      design kit's copy drawn, and the layer row says it is 1.2 km off. */
@@ -1401,6 +1436,7 @@ async function placeMap() {
   NEAR = new Map(((await doorsFetch('/nearby').then(r => (r.ok ? r.json() : null)).catch(() => null)) || {}).ring?.map(x => [x.sensor_id, x.km]) || []);
   [PM.caps, PM.species] = await Promise.all([ask('captures?limit=500').catch(() => null), ask('species').catch(() => null)]); imageRows();
   PM.hydro = await ask('hydro').catch(() => null); hydroRows();
+  await loadCells();
   const nodePlan = await ask('place/geojson').then(g => (g.features || []).length ? g : null).catch(() => null);
   PM.land = { type: 'FeatureCollection', features: [] }; PM.plan = nodePlan;
   if (!nodePlan && !PM.ground.vector && PM.meta) LAYERS.find(l => l.id === 'street').sub = 'the node sent no plan and holds no street map: planetai run place basemap';
