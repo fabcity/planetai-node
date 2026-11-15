@@ -288,7 +288,8 @@ with tempfile.TemporaryDirectory() as tmp:
     r_anon = client.get("/energy")
     check(r_anon.status_code == 200, f"GET /energy is 200 on SHARE_LEVEL=open with the pack on, got {r_anon.status_code}")
     body = r_anon.json() if r_anon.status_code == 200 else {}
-    want_keys = {"grid", "kind", "method", "months", "share", "bar", "sources", "today", "household", "attribution"}
+    want_keys = {"grid", "kind", "method", "months", "share", "bar", "sources", "today", "household", "attribution",
+                 "counts", "cells"}
     check(set(body.keys()) == want_keys, f"GET /energy body keys match contract, got {set(body.keys())}")
     check(body.get("grid") == "bali" and body.get("kind") == "estimated" and body.get("method") == "capacity-factors",
           "GET /energy serves Bali grid metadata")
@@ -521,8 +522,51 @@ with tempfile.TemporaryDirectory() as tmp:
           f"GET /energy with no forecast rows: sun_kwh_m2 null and no roof line: {td}")
 T.read = read_was
 
+# ── Task 10: the Place map (adapter._cells, counts, lat/lon behind the household's token) ─────────────────────
+import h3  # noqa: E402
+
+PT = (-8.8161, 115.1635)
+home8 = h3.latlng_to_cell(*PT, 8)
+nb = next(c for c in h3.grid_disk(home8, 1) if c != home8)
+check(A._cells([], *PT) is None, "no sources fetched: the seven cells are missing, never 0 MW")
+cs = A._cells([{"kind": "plant", "mw": 5.0, "lat": PT[0], "lon": PT[1]},
+               {"kind": "plant", "mw": 2.5, "lat": PT[0], "lon": PT[1]},
+               {"kind": "generator", "mw": 9.0, "lat": PT[0], "lon": PT[1]},
+               {"kind": "plant", "mw": None, "lat": h3.cell_to_latlng(nb)[0], "lon": h3.cell_to_latlng(nb)[1]},
+               {"kind": "plant", "mw": 300.0, "lat": -8.72, "lon": 115.21}], *PT)
+by = {c["id"]: c for c in cs}
+check(len(cs) == 7 and set(by) == set(h3.grid_disk(home8, 1)), "the seven cells are the node's res-8 cell and its six neighbours")
+check(by[home8]["mw"] == 7.5 and by[home8]["home"] and sum(c["home"] for c in cs) == 1,
+      f"a cell's MW sums its plants, never a generator, and the node's own cell is marked: {by[home8]}")
+check(by[nb]["mw"] is None, "a plant with no capacity leaves its cell's MW unknown, never 0")
+check(all(c["mw"] == 0 for c in cs if c["id"] not in (home8, nb)), "a cell with no plant in it is 0 MW")
+check(all(len(c["ring"]) == 7 and c["ring"][0] == c["ring"][-1] for c in cs), "each cell carries its closed outline from the node")
+
+with tempfile.TemporaryDirectory() as tmp:
+    os.environ["PACK_OUT"] = tmp
+    os.environ["LATITUDE"], os.environ["LONGITUDE"] = str(PT[0]), str(PT[1])
+    A.fetch(StubHC(json.load(open(FIX / "overpass-bali-2026-11-08.json"))))
+    res = A.result()
+    check(len(res["cells"]) == 7 and sum(c["mw"] for c in res["cells"]) == 0,
+          f"no plant stands in node #1's seven cells on 8 Nov: 0 MW in each, {[c['mw'] for c in res['cells']]}")
+    check(res["counts"] == {"plants": 9, "substations": 22},
+          f"9 plants and 22 substations inside the Bali polygon (Nusa Penida and Java left out): {res['counts']}")
+    check(all(s.get("lat") is not None for s in res["sources"] if s["kind"] != "link")
+          and next(s for s in res["sources"] if s["kind"] == "link")["lat"] is not None,
+          "every source carries its point, the link at its cable head")
+    ROWS["PACKS_ENABLED"] = ""
+    anon = client.get("/energy").json()
+    act = client.get("/energy", headers=ACT).json()
+    check(anon["cells"] is None and all("lat" not in s and "lon" not in s for s in anon["sources"]),
+          "without the household's token: no cells and no points, so km and a plant's place never give the node's away")
+    check(anon["counts"] == {"plants": 9, "substations": 22}, "the counts are served to anyone the route answers")
+    check(len(act["cells"] or []) == 7 and act["sources"][0]["lat"] is not None,
+          "the household's act token gets the seven cells and each source's point for the Place map")
+    check(client.get("/energy", headers={**ADMIN, "X-Agent": "agent"}).json()["cells"] is None,
+          "an agent never gets the cells, whatever token it holds")
+
 if fails:
     print("\n".join(f"  ✗ {f}" for f in fails))
     sys.exit(1)
-print("  ✓ energy: grids, OSM sources, Bali's range, Menorca's REE mix, adapter, issue and GET /energy")
+print("  ✓ energy: grids, OSM sources, Bali's range, Menorca's REE mix, adapter, issue, GET /energy and the Place map's cells")
 sys.exit(0)

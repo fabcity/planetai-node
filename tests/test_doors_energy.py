@@ -242,8 +242,51 @@ else:
     check("95–98%" in mob_html and "GIS Pecatu" in mob_html,
           f"mobile.js energyHTML renders range and sources: {mob_html}")
 
+# ── Task 10: the Place map's energy row (app/static/doors-placemap.js :: energyRows, cellMW, creditList) ─────────
+SRC = [{"name": "GIS Pecatu", "kind": "substation", "fuel": None, "mw": None, "km": 2.4, "ring": "city", "lat": -8.80, "lon": 115.14},
+       {"name": "PLTG Pesanggaran", "kind": "plant", "fuel": "gas", "mw": 200.0, "km": 12.0, "ring": "city", "lat": -8.72, "lon": 115.21}]
+PLACE = {
+    "held": {**CASES["estimated"], "sources": SRC, "counts": {"plants": 9, "substations": 22}, "cells": []},
+    "locked": {**CASES["estimated"], "sources": [{k: v for k, v in s.items() if k not in ("lat", "lon")} for s in SRC],
+               "counts": {"plants": 9, "substations": 22}, "cells": None},
+    "nogrid": {"grid": None, "sources": [], "counts": None, "cells": None},
+    "off": None,
+}
+with tempfile.TemporaryDirectory() as tmp:
+    in_path = Path(tmp) / "place.json"
+    in_path.write_text(json.dumps(PLACE))
+    pprog = f"""
+const fs = require('fs'), vm = require('vm'), pm = fs.readFileSync('./app/static/doors-placemap.js', 'utf8');
+const lift = n => pm.match(new RegExp('^function ' + n + '\\\\([\\\\s\\\\S]*?\\\\n}}\\\\n', 'm'))[0];
+const cases = JSON.parse(fs.readFileSync({json.dumps(str(in_path))}, 'utf8')), out = {{}};
+for (const [k, E] of Object.entries(cases)) {{
+  const c = {{ PM: {{ on: {{ energy: true }}, energy: E, map: null, meta: null }}, SAT_MAX: 15 }};
+  vm.createContext(c);
+  vm.runInContext(pm.match(/const LAYERS = \\[[\\s\\S]*?\\n\\];/)[0] + '\\n' + lift('energyRows') + lift('creditList')
+    + pm.match(/^const cellMW = .*$/m)[0] + '\\nenergyRows(); this.row = LAYERS.find(l => l.id === "energy"); this.credits = creditList();'
+    + 'this.cell = [cellMW({{ mw: 0, home: true }}, {{ roof_w: 3120 }}), cellMW({{ mw: 0, home: false }}, {{ roof_w: 3120 }}), cellMW({{ mw: null }}, null), cellMW({{ mw: 7.5, home: true }}, null)];', c);
+  out[k] = {{ row: c.row, credits: c.credits, cell: c.cell }};
+}}
+console.log(JSON.stringify(out));
+"""
+    pres = json.loads(subprocess.run(["node"], input=pprog, capture_output=True, text=True, check=True).stdout)
+
+h = pres["held"]["row"]
+check(h["cake"] == "built" and h["on"] is False, f"the energy row sits in the cake's built section and is off at first (five on): {h}")
+check(h["sub"] == "9 plants, 22 substations on this grid · nearest 2.4 km" and not h["empty"] and not h.get("locked"),
+      f"the built row's line, from the body: {h['sub']}")
+check("power grid: © OpenStreetMap contributors, ODbL, via Overpass" in pres["held"]["credits"],
+      f"the OSM credit is on the map while the layer is: {pres['held']['credits']}")
+check(pres["held"]["cell"] == ["0 MW · roof 3.1 kW", "0 MW", "MW not tagged", "7.5 MW"],
+      f"a cell's MW, the house's roof kW on its own cell only, and an untagged plant says so: {pres['held']['cell']}")
+check(pres["locked"]["row"]["locked"] and pres["locked"]["row"]["empty"], "no token: the row is token-only, nothing drawn")
+check(pres["nogrid"]["row"]["empty"] and "grids.yml" in (pres["nogrid"]["row"].get("none") or ""),
+      f"a node on no grid says so, with no figure: {pres['nogrid']['row']}")
+check(pres["off"]["row"]["empty"] and pres["off"]["row"]["why"] == "planetai run energy fetch"
+      and not any("Overpass" in c for c in pres["off"]["credits"]), f"no /energy: an empty row and no credit: {pres['off']}")
+
 if fails:
     print("\n".join(f"  ✗ {f}" for f in fails))
 else:
-    print("  ✓ doors-energy: estimated, measured, unknown cable share, and no grid")
+    print("  ✓ doors-energy: estimated, measured, unknown cable share, no grid, and the Place map's energy row")
 sys.exit(1 if fails else 0)

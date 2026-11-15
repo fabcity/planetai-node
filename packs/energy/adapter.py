@@ -155,6 +155,33 @@ def _today() -> dict:
     return today.box(sun, today.setting("ENERGY_PANEL_KW", "2"), today.setting("ENERGY_HOUSE_KWH_DAY", "9"), roof)
 
 
+def _cells(sources: list[dict], lat: float, lon: float) -> list[dict] | None:
+    """The node's seven res-8 cells (its own and the six touching it, SPEC_eyes §5, as packs/eyes counts them), each
+    with its outline from h3 and the MW of the OSM plants standing in it. A generator is listed, never summed (its plant
+    carries the MW). A plant with no capacity makes its cell's MW unknown (None), never 0. No sources at all is an
+    Overpass fetch that never landed, so there are no cells to say anything about: None, not seven zeros."""
+    if not sources:
+        return None
+    import h3  # noqa: PLC0415 — the app's own dependency; the pack runs in its container
+
+    home = h3.latlng_to_cell(lat, lon, 8)
+    seven = h3.grid_disk(home, 1)
+    mw: dict[str, float | None] = {c: 0.0 for c in seven}
+    for s in sources:
+        if s.get("kind") != "plant" or s.get("lat") is None or s.get("lon") is None:
+            continue
+        c = h3.latlng_to_cell(s["lat"], s["lon"], 8)
+        if c in mw:
+            mw[c] = None if mw[c] is None or s.get("mw") is None else mw[c] + float(s["mw"])
+    out = []
+    for c in sorted(seven):
+        ring = [[round(x, 6), round(y, 6)] for y, x in h3.cell_to_boundary(c)]
+        clat, clon = h3.cell_to_latlng(c)
+        out.append({"id": c, "home": c == home, "lat": round(clat, 6), "lon": round(clon, 6),
+                    "ring": ring + ring[:1], "mw": mw[c]})
+    return out
+
+
 def _grid(hc) -> tuple[list[dict], list[tuple], dict | None]:
     try:
         lat, lon = float(os.getenv("LATITUDE", "0")), float(os.getenv("LONGITUDE", "0"))
@@ -191,12 +218,17 @@ def _grid(hc) -> tuple[list[dict], list[tuple], dict | None]:
             "fossil": True if (lk.get("fossil_share") or 0) > 0.5 else None,
             "mw": lk.get("rated_mw"), "km": ch["km"] if ch else None,
             "ring": lk.get("ring", "beyond"),
+            "lat": ch["lat"] if ch else None, "lon": ch["lon"] if ch else None,
         })
     cut_sources = [
         {"name": s["name"], "kind": s["kind"], "fuel": s.get("fuel"),
-         "fossil": s.get("fossil"), "mw": s.get("mw"), "km": s["km"], "ring": s["ring"]}
+         "fossil": s.get("fossil"), "mw": s.get("mw"), "km": s["km"], "ring": s["ring"],
+         "lat": s["lat"], "lon": s["lon"]}
         for s in (subs + plants)
     ] + links
+    on_grid = [s for s in raw_sources if grids.inside(s["lat"], s["lon"], g.get("polygon") or [])]
+    counts = {"plants": sum(1 for s in on_grid if s["kind"] == "plant"),
+              "substations": sum(1 for s in on_grid if s["kind"] in ("substation", "cable_head"))}
 
     val = m.get("value")
     low = val if is_meas else m.get("low")
@@ -221,6 +253,8 @@ def _grid(hc) -> tuple[list[dict], list[tuple], dict | None]:
         "today": _today(),
         "household": None,
         "attribution": attrs,
+        "counts": counts,
+        "cells": _cells(raw_sources, lat, lon),
         "computed_at": now.isoformat(),
     }
     out_dir = _out()

@@ -2,7 +2,8 @@
 
 Mounted from here by app/packs.py::routers() and answered 404 while the energy pack is off. Reads the latest
 out/energy/result.json from adapter.result(), cuts `sources` to the nearest substation, every plant >= 1 MW and each
-link, and serves `household` only through _shows_private (the admin token, never an agent).
+link, and serves `household` only through _shows_private (the admin token, never an agent). Each source's point and
+the node's seven cells (the Place map's energy row) go only to the household's own tokens, admin or act.
 """
 from __future__ import annotations
 
@@ -21,7 +22,7 @@ adapter = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(adapter)  # type: ignore[union-attr]
 
 
-def _cut_sources(sources: list[dict]) -> list[dict]:
+def _cut_sources(sources: list[dict], points: bool = False) -> list[dict]:
     items = [s for s in (sources or []) if isinstance(s, dict)]
     km_key = lambda s: float(s["km"]) if s.get("km") is not None else float("inf")  # noqa: E731
     subs = sorted([s for s in items if s.get("kind") == "substation"], key=km_key)[:1]
@@ -39,6 +40,8 @@ def _cut_sources(sources: list[dict]) -> list[dict]:
         }
         if "fossil" in s:
             row["fossil"] = s.get("fossil")
+        if points:
+            row["lat"], row["lon"] = s.get("lat"), s.get("lon")
         out.append(row)
     return out
 
@@ -77,6 +80,9 @@ def energy(request: Request, authorization: str = Header("")):
     share = raw.get("share") if isinstance(raw.get("share"), dict) else {}
     today = raw.get("today") if isinstance(raw.get("today"), dict) else {}
     household = (raw.get("household") or _ha_household()) if _shows_private(request, authorization) else None
+    # The Place map's points and the seven cells go to the household's own screen only, as /geo/* do: /energy is on the
+    # SHARE_LEVEL=open list, and a plant's point beside its km from the node gives the node's point away.
+    mine = _shows_private(request, authorization, raw=False)
     return {
         "grid": raw.get("grid"),
         "kind": raw.get("kind"),
@@ -91,7 +97,7 @@ def energy(request: Request, authorization: str = Header("")):
             "as_of": share.get("as_of"),
         },
         "bar": list(raw.get("bar") or []),
-        "sources": _cut_sources(raw.get("sources") or []),
+        "sources": _cut_sources(raw.get("sources") or [], points=mine),
         "today": {
             "sun_kwh_m2": today.get("sun_kwh_m2"),
             "roof_kwh": today.get("roof_kwh"),
@@ -101,4 +107,6 @@ def energy(request: Request, authorization: str = Header("")):
         },
         "household": household,
         "attribution": list(raw.get("attribution") or []),
+        "counts": raw.get("counts"),
+        "cells": raw.get("cells") if mine else None,
     }
