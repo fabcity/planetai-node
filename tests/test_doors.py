@@ -660,7 +660,8 @@ assert 'data-fold="rc"' not in _place and _place.count('class="pfold"') == 1 and
 assert '<button type="button" id="ptoolsb" class="ptoolsb" aria-expanded="false" aria-controls="ptools">Tools</button><div id="ptools" class="ptmenu" role="group" aria-label="Tools" hidden>' in _place, \
     "the tools are one button with a menu it discloses"
 assert 'class="pcols"' not in _place and 'id="reach"' not in _place and 'id="layers"' not in _place and 'id="pleads"' not in _place, "the old workbench is gone"
-assert "'#pfigures').innerHTML = `<h3 class=\"pmh\">the place in figures</h3>` + yearly()" in (STATIC / "doors-place.js").read_text(), "Land and Coast are the place's figures"
+assert "const h = `<h3 class=\"pmh\">the place in figures</h3>` + yearly()" in (STATIC / "doors-place.js").read_text() and "$('#pfigures').innerHTML = h;" in (STATIC / "doors-place.js").read_text(), \
+    "Land and Coast are the place's figures"
 # the hydro pack in the figures (8 Nov): a Rivers row from GET /hydro, and a link that turns both map rows on and flies out
 _pjs = (STATIC / "doors-place.js").read_text()
 assert '<div id="phydro"></div>' in _pjs and "doorsFetch('/hydro')" in _pjs and "planetai run hydro fetch" in _pjs, "Rivers is a row of the figures"
@@ -949,7 +950,7 @@ print("  place: the cake in McHarg's order, sky first; nothing indoor")
 
 # the Place door redrawn (SPEC_place_microgis §4): the cake left, a black screen, the tools right, a lower band
 pm = (STATIC / "doors-placemap.js").read_text(); pl = (STATIC / "doors-place.js").read_text()
-assert "const P = () => PAL.dark" in pm, "the screen is black in both registers (SPEC_place_microgis §4)"
+assert "const P = () => (PM.sheet && PM.sheet.paper ? PAL.light : PAL.dark);" in pm, "the screen is black in both registers (SPEC_place_microgis §4); only the sheet's Paper picture is light (SPEC_place_report §3)"
 assert "outside(D.sensors)" in pm and pm.count("D.sensors") == pm.count("outside(D.sensors)"), "Place draws no indoor sensor"
 assert "D.sensors" not in pl, "doors-place.js reads no sensor of its own"
 assert all("cake:" in l for l in re.findall(r"\{ id: '[a-z]+'.*?\}", pm.split("const LAYERS = [")[1].split("];")[0])), "every layer names its cake section"
@@ -1444,6 +1445,7 @@ assert not [p for p in _x["asked"] if p.startswith(("/place/maps", "/place/marks
 print("  place: without the token, your maps say where they are and how to unlock; no key, no New map")
 assert 'data-tool="from"' in M["ptools"] and "From the house" in M["ptools"], M["ptools"][:400]
 assert 'data-tool="pull"' in M["ptools"] and "<span>Pull</span><code>area.pull</code>" in M["ptools"], ("Pull is a Tools row with its command id", M["ptools"][:600])
+assert 'data-go="#place/report"' in M["ptools"] and "<code>place.report</code>" in M["ptools"], "the Place report is a tool row with its id (SPEC_place_report §9)"
 _css = html[html.index("/* ================= PLACE: a small GIS"):html.index("/* ================= NODE")]
 assert ".dkeys button{width:var(--k);height:var(--k)" in _css and ".dread .dsw button{flex:none;width:var(--k);height:var(--k)" in _css and re.search(r"\.dkeys button:focus-visible,\.dchip:focus-visible,\.dpanel button:focus-visible,\.dpanel input:focus-visible,"
                                                                     r"\.dpanel textarea:focus-visible,\.dpanel select:focus-visible\{outline:2px solid var\(--cells\)", _css), \
@@ -1489,7 +1491,7 @@ _col = re.findall(r'<button[^>]*aria-label="([^"]+)"', _g["col"] or "")
 assert _col == ["Map only", "Full screen", "Back to this node’s cell", "Download"], _col
 _dl = re.findall(r'<button[^>]*aria-label="([^"]+)"', _g["menu"] or "")
 assert _dl == ["Image of the screen · PNG", "For upstream and QGIS · GeoJSON", "For Google Earth, phones · KML", "For CAD, in metres · DXF",
-               "Everything on the screen"], _dl
+               "Everything on the screen", "Report, to print or save as PDF"], _dl
 assert _g["menuShown"], "Download opens its menu"
 assert "save(screenImage().toDataURL('image/png'), name)" in pm and "x.drawImage(src, 0, 0)" in pm, "the PNG is the canvas, drawings and all, composed"
 assert _g["png"] and sorted(_g["saved"]) == ["n-3.dxf", "n-3.geojson", "n-3.kml"] and len(_g["files"]) == 3, \
@@ -1704,7 +1706,7 @@ assert "(document.fullscreenElement ? document.exitFullscreen() : sc.requestFull
     "a refused full screen is caught, never an unhandled rejection"
 print("  place: the left folds by its arrow and by [, \\ is map only, F full screen; a stored right fold is ignored; never while typing; remembered in try/catch")
 _mn = F9["menu"]
-assert _mn["order"][:3] == ["Rings and distance|geo.rings", "From the house|geo.measure", "Pull|area.pull"] and all(x.endswith("|not yet") for x in _mn["order"][3:]) and len(_mn["order"]) == 15, _mn["order"]
+assert _mn["order"][:4] == ["Rings and distance|geo.rings", "From the house|geo.measure", "Pull|area.pull", "Place report|place.report"] and all(x.endswith("|not yet") for x in _mn["order"][4:]) and len(_mn["order"]) == 16, _mn["order"]
 assert _mn["open"] and _mn["exp"] == "true" and _mn["focus"] == "rings", ("Tools opens its menu on the first runnable row", _mn)
 assert _mn["esc"] == {"hidden": True, "exp": "false", "focus": "toolsb"}, ("Esc closes the menu and gives the focus back to Tools", _mn["esc"])
 assert _mn["inside"] is False and _mn["outside"] is True, "a press outside the menu closes it, one inside does not"
