@@ -43,7 +43,7 @@ MAIN += "\n".join(open(f).read().replace("@router.", "@app.") for f in sorted(gl
 # takes out of main.py); app/issues/api.py has its own prefix and is read where /issues is
 # (app/maps.py has two: the household's and a child's, so any router name counts)
 MAIN += "\n".join(re.sub(r"^@\w+\.(get|post|put|delete|patch)\(", r"@app.\1(", open(f).read(), flags=re.M)
-                   for f in sorted(glob.glob("app/*.py")) if f != "app/main.py" and "APIRouter()" in open(f).read())
+                   for f in sorted(glob.glob("app/*.py")) if f != "app/main.py" and "APIRouter(" in open(f).read())
 ENVEX = open(".env.example").read()
 CODE = "\n".join(open(f).read() for f in glob.glob("app/*.py") + glob.glob("packs/*/*.py")) + CLI + \
        "\n".join(open(f).read() for f in ("install.sh", "update.sh", "backup.sh", "install", "docker-compose.yml"))

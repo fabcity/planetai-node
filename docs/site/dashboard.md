@@ -499,7 +499,7 @@ same alert first, and the page prints the node's sentence. When nothing is open,
 pack on, from `COAST_MAX_KM` for the sea to the three decimals `/health` rounds a position to. Each produces one number, and its card says how many cells of the rung you are on that one number has to cover.
 
 The other four are the stations pack's radius (`BAD_RADIUS_KM` in Bali), `EARTH_RADIUS_M` and `PLACE_RADIUS_M` (each a
-`footprint:` in its pack's `pack.yaml`, and counted only while that pack is on), and `LOCAL_RADIUS_M`. The node sends the coverings in `GET /issues` as `geometry.claims`, widest first.
+`footprint:` in its pack's `pack.yaml`, and counted only while that pack is on), and the node's own cells, the one it stands in and the neighbours claimed on Place. The node sends the coverings in `GET /issues` as `geometry.claims`, widest first.
 
 ### Act
 

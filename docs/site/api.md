@@ -413,6 +413,33 @@ Access: token
 
 Circles round the node, `?km=` up to eight distances (default `2,5,15`). Returns `{rings: [{km, ring}]}`.
 
+### GET /place/cells
+Access: act
+
+The node's seven resolution-8 cells, the one it stands in and the six touching it, each `home`, `held`, `claimed` or `open`. Returns `{home, res, cells: [{cell, state, ring}], held, of, community_ready}`. `ring` is a `cells_ll` row, the id and then the corners as latitude, longitude. `held` counts home and the held cells, `of` is 7, and `community_ready` is true when four or more are held. A claimed cell is `held` while one of the node's own sensors has a reading in it from the last 24 hours, worked out on every read and never stored. The first time a node reads its cells it claims, as `adopted`, each neighbour where one of its `local` sensors stood within 500 m of it. On no allowlist, so at every `SHARE_LEVEL` only loopback, `ACT_TOKEN` and `ADMIN_TOKEN` are answered, and `BACKUP_TOKEN` gets 401 `The node's cells need the household's token.` 404 when the node has no place yet.
+
+### POST /place/cells/{cell}/claim
+Access: act
+
+Claims one of the six cells touching the node's, `?actor=<who>`, and returns the same body as `GET /place/cells`. The claim is the `keeper`'s, or `agent:<name>` with `X-Agent`, and it is a `place` row in `actions` with `choice` `claimed`; `X-Agent` wins over `?actor=`. A sensor in the cell counts as `local` from its next poll. 400 for the node's own cell or one that does not touch it, 409 when the cell is already the node's.
+
+### DELETE /place/cells/{cell}/claim
+Access: act
+
+Releases a claimed or held cell, `?actor=<who>`, with a `place` row in `actions` whose `choice` is `released`, and returns the same body as `GET /place/cells`. Its sensors stop counting as `local` at their next poll. 400 for the node's own cell, 404 when the cell is not claimed.
+
+### POST /area
+Access: act
+
+What the node can say about an area. The body is one of `{"cells": [...]}`, H3 ids at resolution 5 to 10, `{"polygon": <GeoJSON Polygon or MultiPolygon>}` in longitude, latitude, or `{"mark_id": <n>}`, an area drawn on one of the household's own maps (not an agent's or a child's). The node covers it at resolution 8, up to 500 cells, about 370 km². Returns `{cells, res, own, peers, open}`.
+
+- `own` is the node's own sensors in the selection, read only in its home and held cells: `{cells, sensors, metrics, unplaced, children_unplaced}`. A sensor with no point is counted in `unplaced` and never put in a cell.
+- `peers` is the sensors of neighbouring nodes (`kind = 'peer'`) with a point in the selection, `{sensors, metrics, unplaced}`. Nothing writes `peer` rows yet, so today it is empty.
+- `metrics` maps each metric to `{latest, latest_at, mean_24h, n}`, from readings of the last 24 hours and never a forecast hour. A block with nothing carries `why`, a sentence.
+- `open` has one entry for each pack with an `area` hook: `{pack, source, licence, rows, as_of}` and sometimes a `note`, or `{pack, off: true, why}` when the pack is off on this node, `{pack, off: false, why}` when it has nothing for the area, or `{pack, error}`. `hydro` gives the rivers and level-12 basins it keeps that touch the area, with no call out. `eyes`, with `SPECIES_MATCH=on`, gives GBIF's open record counts per species, sending GBIF the area's outline and caching it a day. `forecast`, with `FORECAST_OPENMETEO=1`, gives Open-Meteo's next 24 hours at the area's centre, sending only that point and caching it an hour.
+
+A request with `X-Agent` gets no pack's private channels. Same access as `GET /place/cells`. 400 with a sentence for a selection the node cannot cover or one over 500 cells, 404 for a `mark_id` that is not one of the household's drawn areas.
+
 ### GET /place/maps
 Access: token
 
@@ -809,7 +836,8 @@ Each document that travels between nodes names its format in `schema`: `issues-v
 | Telegram | Each alert at or above `ALERT_LEVEL`, each report, once per newer release, and `getMe` once a day for the bot's name | The message, with `TELEGRAM_BOT_TOKEN` |
 | `planetai.fab.city/node0/get/VERSION` | Hourly, unless `UPDATE_CHECK=off` | Nothing about the house |
 | GitHub's `registry.json` | Hourly, unless `UPDATE_CHECK=off` | Nothing about the house |
-| GBIF | With `SPECIES_MATCH=on` and the eyes pack on: each new scientific name, and weekly the country's checklist and the record counts for the seven cells | A name, a country, seven cells |
+| GBIF | With `SPECIES_MATCH=on` and the eyes pack on: each new scientific name, and weekly the country's checklist and the record counts for the seven cells; and each area pulled on Place, at most once a day per area | A name, a country, seven cells, an area's outline |
+| Open-Meteo | With `FORECAST_OPENMETEO=1` and the forecast pack on, each area pulled on Place, at most once an hour per area | The area's centre |
 | `POST {RETICULUM_URL}/send` | Each act-level alert | The alert text |
 | MQTT | Each act-level alert (`MESH_ALERTS=1`), Home Assistant discovery (`HA_DISCOVERY=1`) | The alert's first line, discovery and state topics |
 

@@ -50,8 +50,9 @@ with the core; in a pack's `adapter.py` for a code pack. The contract is on the 
 never reassigned.
 
 **`local`.** Two facts at once: an adapter says whether a sensor is *yours*, and the node checks whether it
-is *here*, within `LOCAL_RADIUS_M` (500 m) of the node. A kit on your account 1.2 km away is yours and is
-not this node's measurement. A sensor with no coordinates that arrives over your own gateway stays local.
+is *here*, in one of the node's own cells: the resolution-8 cell it stands in and the neighbours you claimed
+on [Place](place.md#the-seven-cells). A kit on your account outside them is yours and is not this node's
+measurement. A sensor with no coordinates that arrives over your own gateway stays local.
 
 **`indoor`.** Carried on every sensor and honoured by every rule. An indoor sensor measures a room and never
 enters an ambient average.

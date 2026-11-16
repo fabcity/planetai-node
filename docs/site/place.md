@@ -102,6 +102,47 @@ asks for it. It comes when somebody there presses Send, and only the people with
 To answer an issue from Now, open the drawing's form, choose the issue, say what you did in your own words and press
 **Tie it**. The rain garden you drew then counts as what you did about it, as Done does on Now.
 
+## Print the place, or save it as a PDF
+
+**Report, to print or save as PDF**, the last line in **Download**, opens the place as a sheet to print, with up to
+four pages of the report after it. **Place report** in Tools opens the same. The sheet is what the screen showed when you pressed it: the scale in view, the
+layers that are on, the satellite or the streets, and the maps on the screen. To print the seven cells, go to Village
+first.
+
+The map sits in a black frame with a grid in metres, labelled from 0 m along its left and bottom edges, a scale bar
+under it and a north arrow. Beside it are the node's name and the scale, each layer that is on under its part of the
+layer list with where it comes from, your maps on the screen with their colours, the centre and id of the node's res-8
+cell, the sheet's width, the grid's step and the credits.
+
+The pages after the sheet are A4 upright, and each has a head line with the node's name and its page number.
+
+1. The place in figures. These are the rows under the map on Place, with the yearly figures, Rivers and the city's Fab
+   City Index row. Where the Index has read the city, a line gives the address of the city's own Index report.
+2. What the node holds about its place. Each row of the layer list stands under its heading as held, held in part, not
+   yet, or withheld without the token, with where it comes from and, for an empty row, the command that fills it.
+3. What changed, year on year. The satellite then and now, the hectares that changed and the buildings the satellite
+   counts, a bar a year. A node with no satellite years has no such page, and the pages are counted without it.
+4. Sources and how to cite. Every credit the sheet and the pages owe, with its licence, then a line to cite the report
+   by, with the node's name, its res-8 cell, the PLANETAI version and the date. When the map comes from OpenStreetMap,
+   a line says that it is a Produced Work under the ODbL, so it carries the credit and nothing more.
+
+Each figure keeps its word, live, partial, model or cached, as it has on Place.
+
+You can also ask for it. Type "make me the place report" in Ask, on a screen holding the token, and the answer has a
+button, **Open the Place report**, that opens it. Ask for it on Screen and it opens on Screen. You still press Print.
+
+**Paper** draws the map in the light palette, and the sheet starts there. **Screen** draws it black, as Place does.
+Changing it goes back to the map for a moment to draw it again. **Print or save as PDF** opens the browser's print with
+A4 already set, landscape for the sheet and upright for the pages, and Save as PDF there gives you a file. Nothing is sent anywhere. The browser makes the PDF on
+your own machine. **Back to Place** returns to the map.
+
+The house is blurred on the sheet, even with the token. Your outdoor kit, the model points and any image taken inside
+the house's res-10 cell, about 130 m across, are drawn as that cell, filled, never at their points. The rings are left
+off, because they are drawn around the house. Your drawings stay as you drew them. No text on the sheet is closer than
+the res-8 cell the node publishes, on the sheet or on any page, and no page lists the species found here. Without the
+token there is no map of the house, and the sheet says so where the map would be. The pages then carry what the screen
+shows without the token: the layer list with its sources and the yearly figures.
+
 ## Folding
 
 The layers fold by the arrow on their edge, or `[`, into a strip with their name. `\` or **Map only**
@@ -115,11 +156,36 @@ gives its facts, and with the token how far it is from the node and which cell i
 it counts toward the cell; a public one is shown and never counted. Below it is the list around the house, nearest
 first, with the distance in metres measured by the node (`GET /geo/measure`, and `GET /nearby` for public stations).
 
+## The seven cells
+
+The node stands in one resolution-8 cell, and six more touch it. Its own cells are the one it stands in, its home, and
+the neighbours you claim. A sensor of yours counts as this node's own only inside them.
+
+At Cell scale, with the token, the Node cell row draws the seven. Home and the held cells have a solid line, a claimed
+cell a dashed one, and an open cell a grey dotted one. Press a neighbour and the line under the screen says its state,
+with **Claim this cell** on an open one and **Release it** on one that is claimed or held. Home is always the node's
+and has neither. A claimed cell is held once one of the node's own sensors has a reading in it in the last 24 hours,
+and goes back to claimed after a day with none. The node works this out each time it is asked and never stores it.
+A kit in a cell you claim counts from its next poll, and stops at its next poll after you release the cell.
+
+The line under the screen also says how many of the seven are held, home among them. Each claim and release is a
+row in the ledger on Data.
+
+The first time a node runs with the seven, it claims each neighbour where one of its sensors stood within 500 m of it,
+the old line, so no sensor that counted before stops counting.
+
 ## The tools
 
 **Tools**, beside the ask line, opens a menu of what the node can do with this place. **Rings and
 distance** draws the 2, 5 and 15 km rings from the node's point. **From the house** measures from the node's point to
-any point you press. The two that run come first, and the rest carry a dotted **not yet**. Choosing one closes the
+any point you press. **Pull** asks the node what it holds about an area: press cells at the scale in view, press one
+again to drop it, or choose one of your drawn areas, then press **Pull**, up to 500 resolution-8 cells. The answer
+comes under the screen. First the node's own sensors, read only in its home and held cells, then the neighbouring
+nodes' sensors, which no node sends yet, then one block for each pack that answers for an area. Hydro gives the rivers
+and basins it keeps. Eyes, with `SPECIES_MATCH=on`, gives how many open records GBIF holds of each species there, and
+sends GBIF the area's outline. Forecast, with `FORECAST_OPENMETEO=1`, gives the next 24 hours at the area's centre,
+and sends Open-Meteo only that point. A block with nothing says why, and a pack that is off says so. **Place report** opens the sheet to print, as
+Download's last line does. The four that run come first, and the rest carry a dotted **not yet**. Choosing one closes the
 menu, and so do Esc and a press outside it. A screen without a token reads "Tools run on this node with a token.
 Unlock this screen in Set up." in the menu. On a phone the layers open from a bar under the screen as a sheet, and Esc
 closes it.

@@ -22,7 +22,7 @@ One row per thing that produces readings, and per place the node was told about.
 | `source_name` | text | the platform's own name, kept while a `room` stands in for it |
 | `lat`, `lon` | double | position; rounded before it leaves for a reader without a token |
 | `indoor` | bool | measures a room; never in an ambient average |
-| `local` | bool | the person's own **and** within `LOCAL_RADIUS_M` of the node |
+| `local` | bool | the person's own **and** in one of the node's own cells (`node_cells`), set again on every poll |
 | `kind` | text | `sensor` · `portal` · `model` · `survey` · `child` · `peer` · `facility`, as `init.sql` lists them; the `place` pack also writes `map` |
 | `scale` | text | `community` · `city` · `region` · `bioregion` · `planet` |
 | `cadence` | text | ISO 8601 duration: `PT5M`, `PT1H`, `P1D`, `P30D`, `P1Y` |
@@ -183,6 +183,14 @@ What the node learned: `kind` and `key` (the primary key together), `issue`, `me
 ### `things`
 
 What a home keeps ([`docs/SPEC_inventory.md`](../SPEC_inventory.md)): `id`, `added_at`, `class`, `name`, `count`, `used` (`weekly` · `monthly` · `yearly` · `never`), `condition` (`works` · `needs_repair` · `broken`), `offer` (`no` · `lend` · `give`), `capture_id` and `note`. Written by `/things`, the things pack's routes. Revoked from `planetai_ro`, so no pack SQL reads it, and named by no export or push. Its counts per class reach `readings` as the private `stock.<class>`, `idle.<class>` and `repair.<class>`.
+
+### `node_cells`
+
+The node's own resolution-8 cells: `cell` (the primary key), `claimed_at` and `claimed_by`, which is `home` for the cell
+the node stands in, `adopted` for a neighbour claimed on the first run after `LOCAL_RADIUS_M` was retired, `keeper` for one
+claimed on Place, and `agent:<name>` for one an agent claimed. A neighbour not in the table is open. Whether a claimed
+cell is held is worked out from `readings` on every read and never stored here. The `home` and `adopted` rows are
+written the first time the node reads its cells, the others by `POST` and `DELETE /place/cells/{cell}/claim`.
 
 ### `readings_1h_done`
 

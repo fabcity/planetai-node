@@ -1481,7 +1481,8 @@ def replay(snapshot: dict, settings, decl: dict) -> dict:
                    facilities=facilities, events=body.get("events"), usual=usual, silent=silent)
 
 
-def _geometry(lat: float, lon: float, settings, stations: list[dict], peers) -> dict:
+def _geometry(lat: float, lon: float, settings, stations: list[dict], peers,
+              own_cells: set[str] | None = None) -> dict:
     """The H3 shapes the dashboard's one control — the resolution dial — turns on, computed here so
     the page never has to. The plates alone are a few kB per resolution; the whole object is published
     in one shot because the page turns a dial across eleven resolutions, and asking per stop would be
@@ -1505,22 +1506,23 @@ def _geometry(lat: float, lon: float, settings, stations: list[dict], peers) -> 
         "ladder": geometry.ladder(lat, lon),
         "nav": geometry.plates(lat, lon, stations),
         "grain_table": geometry.grain_table(lat, lon, stations, floor_res=floor, publication_res=pub["res"]),
-        "claims": geometry.claims(lat, lon, settings, ring),
+        "claims": geometry.claims(lat, lon, settings, ring, own_cells=own_cells),
         "radio": geometry.radio(lat, lon, settings, peer_rows),
         "settings": {k: settings.num(k, d) for k, d in (
-            ("LOCAL_RADIUS_M", 500), *([(ring["radius"], 15)] if ring else []), ("EARTH_RADIUS_M", 5000),
+            *([(ring["radius"], 15)] if ring else []), ("EARTH_RADIUS_M", 5000),
             ("PLACE_RADIUS_M", 1000), ("RETICULUM_PRESENCE_RES", 3))} | {"PRESENCE_RES_FLOOR": floor},
         "source": f"h3 {h3.__version__}, computed by this node",
     }
 
 
-def _safe_geometry(lat: float, lon: float, settings, stations: list[dict], peers) -> dict | None:
+def _safe_geometry(lat: float, lon: float, settings, stations: list[dict], peers,
+                   own_cells: set[str] | None = None) -> dict | None:
     """The geometry, or None. One bad number in a setting — a radius, a resolution — reaches h3 through _geometry
     and an h3 exception would otherwise fail the whole /issues response, so the page that draws the air, the asks
     and the stations goes blank over the map. The page's `needs` machinery already prints one honest line for a
     section whose global is absent, which is the true thing to say here."""
     try:
-        return _geometry(lat, lon, settings, stations, peers)
+        return _geometry(lat, lon, settings, stations, peers, own_cells=own_cells)
     except Exception:  # noqa: BLE001 — whatever h3 raises, the rest of the body is still an answer
         log.exception("geometry failed; /issues publishes geometry: null and the page says so")
         return None
@@ -1698,7 +1700,9 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
     # (SPEC_dashboard_figures §3.3).
     heard = [s for s in stations if not s.get("last_heard")]
     stopped = [s for s in stations if s.get("last_heard")]
-    geom = _safe_geometry(lat, lon, settings, heard, peers)
+    cell_rows = _optional(cur, "SELECT cell FROM node_cells") if sited else None
+    own_cells = ({r["cell"] for r in cell_rows if r.get("cell")} if cell_rows is not None else None)
+    geom = _safe_geometry(lat, lon, settings, heard, peers, own_cells=own_cells)
     asks = _asks_ledger(data["alerts"], data["actions"], list(facilities or []))
     # ARCHITECTURE.md §3: the one document a client draws says which document it is. A reader that
     # sees a schema it does not know draws what it recognises; it never refuses, and the dashboard's

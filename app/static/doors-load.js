@@ -13,7 +13,7 @@ if (typeof window !== 'undefined') window.PAI_AUTH = DOORS_AUTH;
    rooms and which /issues' asks stand in for. Asked without a token they are a 403 every time: noise in the node's log
    and the console, and nothing drawn. So a screen holding no token at all does not ask; it gets a stand-in 403 and
    each caller draws what it draws locked. With any token the page asks as before, and the node decides. */
-const DOORS_LOCKED = /^\/?(health\/sources|aggregates|actions|alerts|geo\/(planet|measure|rings|grid)|things|learned(?!\/place)|captures|species|household|machine|storage|place\/geojson|place\/maps|place\/marks)\b/;
+const DOORS_LOCKED = /^\/?(health\/sources|aggregates|actions|alerts|geo\/(planet|measure|rings|grid)|things|learned(?!\/place)|captures|species|household|machine|storage|place\/geojson|place\/maps|place\/marks|place\/cells|area)\b/;
 const doorsFetch = (p, init = {}) => !DOORS_TOKEN() && DOORS_LOCKED.test(p) ? Promise.resolve(new Response('{}', { status: 403 }))
   : fetch(p, { ...init, headers: { ...DOORS_AUTH(), ...(init.headers || {}) } });
 /* A wire time in the node's own zone (/health tz) as 'YYYY-MM-DDTHH:MM'. /health and /issues' as_of are written in
@@ -102,7 +102,7 @@ function buildD(A, locale) {
     node: { name: H.node, place: H.city }, registry: { name: H.node, place: H.city || H.node },
     share: setting('SHARE_LEVEL'), settings: A.settings || null, askOff: setting('UI_ASK') === 'off',   /* the keeper's switch for every ask, the dashboard's and the doors' */ rho: A.rho || {}, health: H,
     earth: A.earth ? { years: E.years || [], changes: E.changes || [], radius_m: E.radius_m, change: E.latest || null,
-      sentinel: img.sentinel || [], landsat: img.landsat || [], credit: img.credit || [] } : null,
+      sentinel: img.sentinel || [], landsat: img.landsat || [], credit: img.credit || [], attribution: E.attribution || null } : null,
     place_yearly: (A.place_yearly || []).map(r => ({ year: +String(r.ts).slice(0, 4), value: r.value })),
     reach: A.reach || [], sensors: A.sensors || [], observations: A.observations || [], index_cells: A.cells || [], index_place: A.index_place || null,
     geometry: { ladder: G.ladder || [], radio: G.radio || {}, grain: G.grain_table || [], publication: G.publication || {} },

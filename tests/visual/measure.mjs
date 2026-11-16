@@ -508,6 +508,13 @@ async function serveNodeAPI(route, u) {
     /* A model that takes its time, so the pane's waiting state can be looked at. */
     if (process.env.PAI_ASK_SLOW) await new Promise(r => setTimeout(r, Number(process.env.PAI_ASK_SLOW)));
     /* PAI_ASK_LONG=1: a narration as long as the Wall's model writes (six to eight sentences), for the Wall's box */
+    /* asked for the place report: the model reaches for place_report and the pane draws its button (SPEC_place_report §9) */
+    if (/place report/i.test(route.request().postData() || '')) {
+      await route.fulfill({ status: 200, contentType: 'text/event-stream', body: sse('proposal', { tool: 'place_report', args: { register: 'screen' } })
+        + 'Here is the place report.'.split(' ').map(w => sse('token', { text: w + ' ' })).join('')
+        + sse('done', { rung: 'local', model: process.env.PAI_ASK_MODEL || 'qwen3.5:4b', host: 'host.docker.internal', where: 'this machine' }) });
+      return true;
+    }
     const words = (process.env.PAI_ASK_LONG === '1' ? Array(8).fill('The air outside has stayed under the line all day and the house is a little cleaner still.').join(' ')
       : 'I have put MAP_TILES on a card. Nothing changed; you decide.').split(' ');
     await route.fulfill({ status: 200, contentType: 'text/event-stream', body:
@@ -3500,7 +3507,7 @@ async function doors() {
       await r.page.click('#ptoolsb'); await r.page.waitForTimeout(150);
       const tm = await r.page.evaluate(() => { const m = document.getElementById('ptools'), rows = [...m.querySelectorAll('.tl')].filter(x => x.getClientRects().length);
         return { open: !m.hidden && !!m.getClientRects().length, rows: rows.length, first: rows[0] && rows[0].textContent, exp: document.getElementById('ptoolsb').getAttribute('aria-expanded') }; });
-      ok(tm.open && tm.rows === 14 && /^Rings and distance/.test(tm.first || '') && tm.exp === 'true', `${tag} #place: Tools opened ${JSON.stringify(tm)}`);
+      ok(tm.open && tm.rows === 16 && /^Rings and distance/.test(tm.first || '') && tm.exp === 'true', `${tag} #place: Tools opened ${JSON.stringify(tm)}`);
       await r.page.keyboard.press('Escape'); await r.page.waitForTimeout(150);
       ok(await r.page.evaluate(() => document.getElementById('ptools').hidden), `${tag} #place: Esc did not close the Tools menu`);
       if (w < 768 && pl.sheet === 'fixed') { await r.page.click('.psbar button[data-s="cake"]'); await r.page.waitForTimeout(150); } }
@@ -3870,6 +3877,86 @@ async function placescreen() {
   process.exit(1);
 }
 
+/* The Place report in print (docs/SPEC_place_report §3, §5, §8): #place/report with software WebGL and the token, so
+ * the picture is taken from a live map, then print media at A4 landscape. The sheet's frame sits inside the page, the
+ * legend is not clipped, each report page holds its rows inside its A4 portrait box, and the PDF the browser makes is one
+ * landscape page and then one portrait page for each report page, nothing spilled onto a blank one. Without the token
+ * the same, with the node's sentence where the map would be. PAI_REPORT_PDF=1 keeps the PDFs. */
+async function report() {
+  const bad = [], ok = (c, what) => { if (!c) bad.push(what); }, said = [];
+  const ADMIN = process.env.PAI_ADMIN_TOKEN || (process.env.PAI_ADMIN_TOKEN = 'rig-admin');
+  for (const tok of [true, false]) {
+    const tag = tok ? 'with the token' : 'without the token';
+    const r = await openRig({ w: 1440, h: 900, touch: false, admin: tok ? ADMIN : null, gl: tok, ground: { on_disk: {}, layers: {} }, mem: 'doors' });
+    await r.page.goto(`${POP}/?fixture=${FIXTURE}#place/report`, { waitUntil: 'domcontentloaded' });
+    const drawn = await r.page.waitForFunction(t => document.querySelector(t ? '#psheets .sheet .splan image' : '#psheets .sheet .snone') && !document.getElementById('preport').hidden,
+      tok, { timeout: 45000 }).then(() => true, () => false);
+    if (!drawn) { bad.push(`${tag}: #place/report drew no sheet: ` + JSON.stringify(await r.page.evaluate(() => ({ url: location.href, sheets: (document.getElementById('psheets') || {}).innerHTML?.slice(0, 200) })))); await r.browser.close(); continue; }
+    /* the register pressed and the page redrawn at once (a resize, the print dialog closing) during the take: the picture
+       must still be of the map, not 0 × 0 (node #1, 16 Nov), and come back to Paper for the measures below */
+    if (tok) {
+      const taken = async reg => {
+        await r.page.evaluate(g => { document.querySelector(`#preport [data-reg="${g}"]`).click(); report(); dispatchEvent(new Event('resize')); }, reg);
+        await r.page.waitForFunction(g => !PTAKING && PREG === g && PSHEET && PSHEET.dark === (g === 'screen') && !document.getElementById('preport').hidden, reg, { timeout: 45000 }).catch(() => {});
+        return r.page.evaluate(() => PSHEET && [PSHEET.w, PSHEET.h, !!PSHEET.dark]);
+      };
+      const sc = await taken('screen'), pa = await taken('paper');
+      ok(sc && sc[0] > 0 && sc[1] > 0 && sc[2] && pa && pa[0] > 0 && !pa[2], `${tag}: a redraw during the take left the picture at ${sc} on Screen, ${pa} on Paper`);
+    }
+    await r.page.emulateMedia({ media: 'print' });
+    await r.page.setViewportSize({ width: 1123, height: 794 });   // A4 landscape at 96 px to the inch
+    await r.page.waitForTimeout(300);
+    const g = await r.page.evaluate(() => {
+      const box = e => { const b = e.getBoundingClientRect(); return [b.left, b.top, b.right, b.bottom].map(Math.round); };
+      const sh = document.querySelector('.sheet'), leg = document.querySelector('.sleg'), map = document.querySelector('.smap');
+      const pg = [...document.querySelectorAll('.rpage')].map(e => ({ w: e.offsetWidth, h: e.offsetHeight, over: [e.scrollHeight - e.clientHeight, e.scrollWidth - e.clientWidth],
+        head: (e.querySelector('.rhead') || {}).textContent }));
+      return { sheet: box(sh), leg: box(leg), map: box(map), legCut: [leg.scrollHeight - leg.clientHeight, leg.scrollWidth - leg.clientWidth], pg,
+        shown: [...document.body.children].filter(e => e.getClientRects().length && getComputedStyle(e).display !== 'none').map(e => e.tagName + (e.id ? '#' + e.id : '')),
+        bar: !!document.querySelector('.prbar').getClientRects().length };
+    });
+    const inside = (b, o) => b[0] >= o[0] - 1 && b[1] >= o[1] - 1 && b[2] <= o[2] + 1 && b[3] <= o[3] + 1;
+    ok(inside(g.sheet, [0, 0, 1123, 794]), `${tag}: the sheet ${g.sheet} leaves the A4 page`);
+    ok(inside(g.map, g.sheet) && inside(g.leg, g.sheet), `${tag}: the frame ${g.map} or the legend ${g.leg} leaves the sheet ${g.sheet}`);
+    ok(g.legCut[0] <= 1 && g.legCut[1] <= 1, `${tag}: the legend is clipped by ${g.legCut} px`);
+    ok(!g.bar && g.shown.length === 1, `${tag}: in print more than the sheet shows: ${g.shown}${g.bar ? ', the bar' : ''}`);
+    /* A4 portrait at 96 px to the inch is 794 × 1123; a page is 296 mm tall, so 1119 */
+    const N = g.pg.length;
+    ok(N >= 3 && N <= 4 && g.pg.every((p, i) => p.head.endsWith(`page ${i + 1} of ${N}`)), `${tag}: the report has ${N} pages, heads ${JSON.stringify(g.pg.map(p => p.head))}`);
+    g.pg.forEach((p, i) => ok(Math.abs(p.w - 794) <= 2 && Math.abs(p.h - 1119) <= 2 && p.over[0] <= 1 && p.over[1] <= 1,
+      `${tag}: report page ${i + 1} is ${p.w}×${p.h} px with ${p.over} px spilling out of it`));
+    const pdf = await r.page.pdf({ preferCSSPageSize: true, printBackground: false });
+    if (process.env.PAI_REPORT_PDF === '1') fs.writeFileSync(path.join(OUT, `report_${tok ? 'token' : 'locked'}.pdf`), pdf);
+    const t = pdf.toString('latin1'), pages = (t.match(/\/Type\s*\/Page\b(?!s)/g) || []).length, boxes = [...t.matchAll(/\/MediaBox\s*\[\s*0 0 ([\d.]+) ([\d.]+)\s*\]/g)].map(m => [+m[1], +m[2]]);
+    ok(pages === 1 + N, `${tag}: the PDF has ${pages} pages, not ${1 + N}: something spilled onto a blank one`);
+    const land = boxes.filter(([w, h]) => Math.abs(w - 842) < 2 && Math.abs(h - 595) < 2).length, port = boxes.filter(([w, h]) => Math.abs(w - 595) < 2 && Math.abs(h - 842) < 2).length;
+    ok(land === 1 && port === N && boxes.length === pages, `${tag}: not one A4 landscape page and ${N} portrait ones: ${JSON.stringify(boxes)}`);
+    said.push(`${tag} ${g.sheet[2] - g.sheet[0]}×${g.sheet[3] - g.sheet[1]} px and ${N} pages`);
+    await r.browser.close();
+  }
+  /* Asking for it (§9 step 3): on Place with the token, the Ask pane's answer carries a button, and the button opens
+     #place/report in the register the model passed on (Screen here) */
+  { const was = process.env.PAI_ASK_MODEL; process.env.PAI_ASK_MODEL = was || 'qwen3.5:4b';
+    const r = await openRig({ w: 1440, h: 900, touch: false, admin: ADMIN, gl: true, ground: { on_disk: {}, layers: {} }, mem: 'doors' });
+    await r.page.goto(`${POP}/?fixture=${FIXTURE}#place`, { waitUntil: 'domcontentloaded' });
+    const got = await r.page.waitForSelector('#askbtn', { timeout: 20000 }).then(async () => {
+      await r.page.click('#askbtn'); await r.page.fill('#q', 'Make me the place report'); await r.page.click('#qsend');
+      await r.page.click('[data-open-report="screen"]', { timeout: 20000 });
+      await r.page.waitForFunction(() => location.hash === '#place/report' && !document.getElementById('preport').hidden
+        && document.querySelector('#preport [data-reg="screen"]').getAttribute('aria-pressed') === 'true', null, { timeout: 45000 });
+      return true;
+    }).catch(async e => String(e.message || e).split('\n')[0] + ' ' + JSON.stringify(await r.page.evaluate(() => ({ hash: location.hash,
+      hidden: document.getElementById('preport').hidden, reg: [...document.querySelectorAll('#preport [data-reg]')].map(b => b.dataset.reg + b.getAttribute('aria-pressed')),
+      sheets: (document.getElementById('psheets').innerHTML || '').slice(0, 160), taking: !!PTAKING, preg: PREG })).catch(() => null)));
+    ok(got === true, `asking: the Ask pane's report button did not open #place/report on Screen: ${got}`);
+    if (got === true) said.push('opened from Ask on Screen');
+    await r.browser.close();
+    if (was === undefined) delete process.env.PAI_ASK_MODEL; }
+  if (!bad.length) { console.log(`  report: #place/report prints the sheet on one A4 landscape page, its legend whole, then each report page on one A4 portrait page (${said.join(', ')})`); return; }
+  for (const b of bad) console.log('FAIL report:', b);
+  process.exit(1);
+}
+
 const [cmd, ...rest] = process.argv.slice(2);
 if (cmd === 'render') await render(rest.length ? rest : ['all']);
 else if (cmd === 'steps') await steps();
@@ -3896,5 +3983,6 @@ else if (cmd === 'mobile') await mobile();
 else if (cmd === 'doors') await doors();
 else if (cmd === 'wallstage') await wallstage();
 else if (cmd === 'placescreen') await placescreen();
-else { console.error('usage: measure.mjs render|shots|plates|plate-list|steps|stall|press|asking|extend|anchors|sheets|header|targets|audit|overflow|analyse|list|mobile|doors|wallstage|placescreen');
+else if (cmd === 'report') await report();
+else { console.error('usage: measure.mjs render|shots|plates|plate-list|steps|stall|press|asking|extend|anchors|sheets|header|targets|audit|overflow|analyse|list|mobile|doors|wallstage|placescreen|report');
   process.exit(2); }

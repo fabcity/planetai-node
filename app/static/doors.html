@@ -127,6 +127,7 @@ body[data-view="wall"] .bar,body[data-view="wall"] .foot{display:none}
 .askpane #qsend:disabled{opacity:.4;cursor:default}
 .askpane .hint{margin:6px 0 0;font:400 var(--t-cap) var(--mono);color:var(--mute)}
 .askpane .hits{list-style:none;padding:0;margin:4px 0 0}.askpane .hits li{padding:8px 0;border-top:1px solid var(--doc-line)}
+.askpane .aopen{display:block;margin-top:8px;background:var(--ink);color:var(--ground);border:0;padding:8px 12px;font:600 var(--t-small) var(--body);cursor:pointer}
 .askpane .hits a{font-weight:600}.askpane .hits p{margin:3px 0 0;font-size:var(--t-small);color:var(--mute)}
 .try{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.try button{background:var(--ground);color:var(--ink);border:1px solid var(--doc-line);padding:4px 8px;font-size:var(--t-small);cursor:pointer;text-align:left}
 .learnsw{display:flex;gap:10px;align-items:flex-start;font-size:var(--t-small);cursor:pointer}
@@ -338,6 +339,44 @@ button.tl{cursor:pointer}button.tl:hover:not(:disabled):not(.on){background:var(
 .tl code{margin-left:auto;font:400 10px var(--mono);color:var(--mute)}
 .tl.on{background:var(--ink);color:var(--ground)}.tl.on code{color:var(--ground);opacity:.6}
 .tl.soon{color:var(--mute)}.tl.soon code{border:1px dotted var(--mute);border-radius:999px;padding:0 6px;font:400 10.5px var(--body)}
+/* THE PLACE REPORT (SPEC_place_report §3, §4, §5): #place/report hides the rest of Place and shows the sheet and the
+   report's pages on a grey ground. The sheet is paper in both registers, sized in its own width (cqw), so on a phone it
+   is the same sheet, smaller. In print only the sheet and the pages are left, the sheet A4 landscape through the named
+   page `sheet`; a browser without named pages prints it portrait and scales it to fit. */
+body.preport .page[data-view="place"]>:not(#preport){display:none}
+.prbar{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;margin:16px 0 12px}
+.prbar .reg button{min-height:32px;padding:0 12px}.prbar .reg button[aria-pressed="true"]{background:var(--ink);color:var(--ground)}
+.psheets{display:grid;justify-items:center;gap:24px;padding:24px;background:var(--doc-line)}
+.sheet{--ink:var(--fc-ink);--mute:var(--fc-neutral-600);--hair:var(--fc-neutral-300);width:min(100%,297mm);aspect-ratio:297/210;container-type:inline-size;
+  background:var(--fc-paper);color:var(--ink);box-shadow:0 1px 6px rgba(0,0,0,.25)}
+.sin{display:grid;grid-template-columns:minmax(0,1fr) 22em;gap:2em;height:100%;padding:2.6em;font:400 max(1cqw,5px)/1.35 var(--body)}
+.smap{min-width:0;min-height:0}.splan{display:block;width:100%;height:100%}
+.snone{display:grid;place-items:center;height:100%;margin:0;padding:3em;border:2px solid var(--ink);text-align:center;font-size:1.3em}
+.sleg{display:flex;flex-direction:column;min-height:0;overflow:hidden;padding-left:1.4em;border-left:1px solid var(--hair)}
+.sleg h2{margin:0;font:700 1.7em/1.1 var(--display);letter-spacing:-.02em}.sleg .k{margin:.3em 0 .6em;font-size:.8em;color:var(--mute)}
+.sleg h3{margin:1em 0 .25em;padding-bottom:.15em;border-bottom:1px solid var(--hair);font:500 .8em var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+.sleg p{display:flex;justify-content:space-between;gap:1em;margin:.12em 0}.sleg small{font:400 .82em var(--mono);color:var(--mute);white-space:nowrap}
+.sleg i{display:inline-block;width:.85em;height:.85em;margin-right:.45em;vertical-align:-.08em;border:1px solid var(--ink);-webkit-print-color-adjust:exact;print-color-adjust:exact}.shouse i{background:rgba(23,23,23,.3)}
+.sfoot{margin-top:auto;padding-top:1em;font-size:.78em;color:var(--mute)}.sfoot p{display:block;margin:.4em 0 0}.sfoot .mono{color:var(--ink)}
+/* the report's pages (§5): A4 portrait paper under the sheet, each with its head line. On a phone a page is the width and
+   grows to hold its rows; in print each is one page of the named page `report`. */
+.rpage{--ink:var(--fc-ink);--mute:var(--fc-neutral-600);--hair:var(--fc-neutral-300);--ground:var(--fc-paper);--prov:var(--fc-ink);width:min(100%,210mm);aspect-ratio:210/297;
+  padding:12mm 15mm;background:var(--fc-paper);color:var(--ink);box-shadow:0 1px 6px rgba(0,0,0,.25);font-size:var(--t-small);-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.rhead{margin:0 0 8mm;padding-bottom:2mm;border-bottom:1px solid var(--hair);font:400 10px var(--mono);color:var(--mute)}
+.rpage .pmh{margin:0 0 4px;font-size:var(--t-small)}.rpage .pmh~.pmh{margin-top:6mm}.rpage p{margin:0 0 6px}.rpage .fine{margin-top:10px}
+.rpage .pair{height:auto;gap:4mm;margin-top:6px}.rpage .pair figure{aspect-ratio:1}.rpage .pairnote{padding:6px 0;border:0}
+.rcake th,.rcake td{padding:2px 8px 2px 0;font-size:11px}.rcake th[colspan]{padding-top:8px;color:var(--ink)}.rcake code{font-size:10px}
+@media (max-width:480px){.psheets{padding:8px}.rpage{padding:16px}}
+@page sheet{size:A4 landscape;margin:0}
+@page report{size:A4 portrait;margin:0}
+@media print{
+  body.preport>:not([data-view="place"]),body.preport .prbar{display:none!important}
+  body.preport .page[data-view="place"]{max-width:none;margin:0;padding:0;border:0;background:none}
+  body.preport .psheets{display:block;padding:0;background:none}
+  body.preport .sheet{page:sheet;width:297mm;height:209mm;aspect-ratio:auto;box-shadow:none;break-inside:avoid}
+  body.preport .rpage{page:report;width:210mm;height:296mm;aspect-ratio:auto;box-shadow:none;break-inside:avoid}
+  body.preport .psheets>:not(:last-child){break-after:page}
+}
 /* EVOLUTION VARIATION (6 Nov 2026): the screen Place has had since 4 Nov, given to Now's day and Node's flow, with
    OP-XY's header ramp on top (name cell, value cell, in grey steps from black to white, a second row under each) and an
    info line at the foot. Same tokens as .mapc (doors-placemap.js PAL.dark), same bezel; no hue the layer lacks. */
@@ -455,6 +494,7 @@ body:not(.classic) .hero .ladder.folded{display:none}
 /* under the screen: the status line (the inspector), then the marks around the house, nearest first */
 #facts.inspect{display:flex;flex-wrap:wrap;gap:4px 16px;align-items:baseline;padding:12px 6px 8px;font:400 10.5px/1.5 var(--mono);color:var(--mute)}
 #facts b{font-weight:500;color:var(--ink)}#facts .fi small{color:var(--mute);font:inherit;margin-right:6px}#facts .hint{margin-left:auto}#facts .said{font-family:var(--body)}
+#facts .pb{flex-basis:100%;display:flex;flex-wrap:wrap;gap:4px 16px;align-items:baseline;border-top:1px solid var(--hair);padding-top:6px}
 #pmargin{padding:0 6px 14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));column-gap:24px}
 #pmargin .pmh,#pmargin .fine{grid-column:1/-1}#pmargin .fine{margin:10px 0 0}
 #pmargin .mr{display:grid;grid-template-columns:18px minmax(0,1fr) auto;gap:8px;align-items:center;min-height:32px;width:100%;padding:0;border:0;border-bottom:1px solid var(--hair);background:none;color:var(--ink);text-align:left;font:400 var(--t-small)/1.25 var(--body)}
@@ -1245,7 +1285,7 @@ body:not(.classic) .hero .ladder.folded{display:none}
 <!-- PLACE -->
 <section class="page view" data-view="place" hidden>
   <div class="phead"><div id="placehead" data-learn="place-head" data-reads="/health /issues" data-stage="observe" data-pack="place"></div>
-    <div class="prow"><form id="pask" class="pask"><label class="vh" for="paskq">Ask the node about this place</label><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 4h14v10H8l-4 3v-3H3z"/></svg><input id="paskq" autocomplete="off" placeholder="Ask about this place"><kbd>/</kbd></form><div class="ptools" data-learn="place-tools" data-reads="/geo/rings /geo/measure /geo/cell" data-stage="observe" data-pack="core"><button type="button" id="ptoolsb" class="ptoolsb" aria-expanded="false" aria-controls="ptools">Tools</button><div id="ptools" class="ptmenu" role="group" aria-label="Tools" hidden></div></div></div></div>
+    <div class="prow"><form id="pask" class="pask"><label class="vh" for="paskq">Ask the node about this place</label><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 4h14v10H8l-4 3v-3H3z"/></svg><input id="paskq" autocomplete="off" placeholder="Ask about this place"><kbd>/</kbd></form><div class="ptools" data-learn="place-tools" data-reads="/geo/rings /geo/measure /geo/cell /area" data-stage="observe" data-pack="core"><button type="button" id="ptoolsb" class="ptoolsb" aria-expanded="false" aria-controls="ptools">Tools</button><div id="ptools" class="ptmenu" role="group" aria-label="Tools" hidden></div></div></div></div>
   <div class="bench">
     <nav id="cake" aria-label="What this place is made of" data-learn="place-layers" data-reads="/health /issues /packs" data-stage="observe" data-pack="place"></nav>
     <button type="button" class="pfold" data-fold="lc" aria-controls="cake" aria-expanded="true" aria-label="Hide the layers" title="Hide the layers · ["><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M9 3L5 7l4 4"/></svg><span>layers</span></button>
@@ -1262,6 +1302,12 @@ body:not(.classic) .hero .ladder.folded{display:none}
   <section class="pyears" aria-label="What changed"><div id="pchange" data-learn="place-orbit" data-reads="/earth /history" data-stage="observe" data-pack="earth"></div></section>
   <div class="plow">
     <section id="pfigures" aria-label="The place in figures" data-learn="place-changing" data-reads="/issues /cells /sources" data-stage="observe" data-pack="core"></section>
+  </div>
+  <!-- THE PLACE REPORT (SPEC_place_report §3): #place/report, the sheet to print or save as PDF -->
+  <div id="preport" class="preport" hidden>
+    <div class="prbar"><div class="reg" role="group" aria-label="Register of the map on the sheet"><button type="button" data-reg="paper" aria-pressed="true">Paper</button><button type="button" data-reg="screen" aria-pressed="false">Screen</button></div>
+      <button type="button" id="prprint" class="ybtn">Print or save as PDF</button><a href="#place">Back to Place</a></div>
+    <div id="psheets" class="psheets"></div>
   </div>
 </section>
 
@@ -1349,6 +1395,7 @@ body:not(.classic) .hero .ladder.folded{display:none}
 <script src="/static/doors-now.js"></script>
 <script src="/static/doors-cake.js"></script>
 <script src="/static/doors-draw.js"></script>
+<script src="/static/doors-sheet.js"></script>
 <script src="/static/doors-placemap.js"></script>
 <script src="/static/doors-place.js"></script>
 <script src="/static/doors-data.js"></script>
