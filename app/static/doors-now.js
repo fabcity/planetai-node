@@ -89,11 +89,104 @@ async function thingsLine(el) {
   el.hidden = !(s && s.things);
   if (!el.hidden) el.innerHTML = `<a href="#data/d-things">${s.things} things, ${s.idle} idle, ${s.repair} need${s.repair === 1 ? 's' : ''} repair ›</a>`;
 }
+let ENERGY = undefined;
+function loadEnergy() {
+  if (D && D.energy) { ENERGY = D.energy; return Promise.resolve(ENERGY); }
+  if (ENERGY !== undefined) return Promise.resolve(ENERGY);
+  ENERGY = null;
+  return doorsFetch('/energy').then(r => r.ok ? r.json() : null).catch(() => null).then(e => {
+    ENERGY = e; if (D) D.energy = e;
+    if (S.issue === 'energy' && $('#energy')) drawEnergy($('#energy'), e);
+    return e;
+  });
+}
+function drawEnergy(el, E) {
+  if (!el) return;
+  if (!E || !Array.isArray(E.sources) || !E.sources.length || E.kind === 'none') {
+    const msg = (((D && D.issues || {}).energy || {}).state === 'none' && D.issues.energy.sentence)
+      || 'This node is on no grid the energy pack knows yet: add it to packs/energy/grids.yml.';
+    el.innerHTML = `<p class="sent said">${esc(msg)}</p>`;
+    return;
+  }
+  const sh = E.share || {}, measured = E.kind === 'measured' || sh.value != null;
+  let head = '';
+  if (measured) {
+    const pct = Math.round((sh.value ?? 0) * 100) + '%';
+    head = `<div class="hl"><span class="big" style="color:var(--d-energy)">${num('energy.share', pct, 'of the grid’s electricity from fossil fuels')}</span>`
+      + `<span class="u">of the grid’s electricity from fossil fuels${E.months ? ` · last ${num('energy.months', String(E.months), 'trailing months measured')} months` : ''}`
+      + `${sh.now != null ? ` · right now: <b style="color:var(--ink)">${num('energy.now', Math.round(sh.now * 100) + '%', 'against the trailing-year share')} fossil</b>` : ''}</span></div>`;
+  } else {
+    const lo = sh.low != null ? Math.round(sh.low * 100) : null, hi = sh.high != null ? Math.round(sh.high * 100) : null;
+    const rng = lo != null && hi != null ? `${lo}–${hi}%` : lo != null ? `${lo}%` : '—';
+    head = `<div class="hl"><span class="big" style="color:var(--d-energy)">${num('energy.share', rng, 'estimated fossil share of the grid')}</span>`
+      + `<span class="u">of the grid’s electricity from fossil fuels · estimated</span></div>`;
+  }
+  const sub = E.sources.find(s => s.kind === 'substation'), plants = E.sources.filter(s => s.kind === 'plant'), links = E.sources.filter(s => s.kind === 'link' || s.kind === 'cable_head');
+  const unknownImport = E.import_max === null || (E.bar || []).some(b => b.hatched && b.share == null);
+  const parts = [];
+  if (sub) parts.push(`The nearest substation is <b>${esc(sub.name)}</b>, ${num('energy.substation.km', fmt(sub.km, 1), 'from this node’s cell')} km away.`);
+  if (plants.length) parts.push(`Generation on the grid is ${plants.slice(0, 3).map((p, i) => `<b>${esc(p.name)}</b> (${esc(p.fuel || p.kind)}${p.mw != null ? `, ${num('energy.plant.' + i + '.mw', fmt(p.mw, 0), 'installed MW')} MW` : ''}, ${num('energy.plant.' + i + '.km', fmt(p.km, 1), 'from this node’s cell')} km)`).join(', ')}.`);
+  if (unknownImport) {
+    const lk = links[0];
+    parts.push(`The rest comes by <b>${esc((lk && lk.name) || 'a link to another grid')}</b>${lk && lk.km != null ? ` (${num('energy.link.0.km', fmt(lk.km, 1), 'from this node’s cell')} km)` : ''}; how much comes from Java is not known.`);
+  } else if (links.length) {
+    parts.push(`Linked by <b>${esc(links[0].name)}</b>${links[0].km != null ? ` (${num('energy.link.0.km', fmt(links[0].km, 1), 'from this node’s cell')} km)` : ''}.`);
+  }
+  const segCol = b => b.tone === 'sky' ? 'var(--d-water)' : b.fossil === false || b.tone === 'sun' ? 'var(--d-heat)' : 'var(--d-energy)';
+  const barSegs = (E.bar || []).filter(b => (b.share != null && b.share > 0) || b.hatched).map(b => {
+    const w = b.share != null ? Math.max(1, Math.round(b.share * 100)) : 12;
+    return `<span class="${b.hatched ? 'hatch' : ''}" style="flex:${w};--seg:${segCol(b)}" title="${esc(b.label)}"></span>`;
+  }).join('');
+  const legend = (E.bar || []).map((b, idx) => {
+    const pct = b.share != null ? num('energy.bar.' + idx, Math.round(b.share * 100) + '%', 'share of grid mix') : esc(b.note || 'share not published');
+    return `<span><i class="sw${b.hatched ? ' hatch' : ''}" style="--seg:${segCol(b)}"></i>${esc(b.label)} · ${pct}${b.share != null && b.note ? ` (${esc(b.note)})` : ''}</span>`;
+  }).join('');
+  const srcRows = E.sources.map((s, idx) => {
+    const dot = s.kind === 'substation' ? 'var(--ink)' : s.fossil === false ? 'var(--d-heat)' : s.fossil === true ? 'var(--d-energy)' : 'var(--d-water)';
+    const kf = [esc(s.fuel || s.kind), s.mw != null ? `${num('energy.src.' + idx + '.mw', fmt(s.mw, s.mw < 10 ? 1 : 0), 'installed capacity')} MW` : ''].filter(Boolean).join(' · ');
+    const dist = s.km != null ? `${num('energy.src.' + idx + '.km', fmt(s.km, 1), 'from this node’s cell')} km` : '';
+    return `<div class="src"><i class="dot" style="--seg:${dot}"></i><span class="said">${esc(s.name)}</span><span class="mono">${kf}</span><span class="mono">${dist}</span>${s.ring ? `<span class="pill">${esc(s.ring)}</span>` : ''}</div>`;
+  }).join('');
+  const td = E.today || {}, hh = E.household;
+  let todayCells = '';
+  if (td.sun_kwh_m2 != null) todayCells += `<div><span class="k">Sun on this cell today</span><span class="v">${num('energy.today.sun', fmt(td.sun_kwh_m2, 1), 'shortwave radiation today')} <small>kWh/m²</small></span></div>`;
+  /* no forecast of the sun today: the box keeps the house's use and says why the roof is missing (plan, Task 9) */
+  else todayCells += `<div><span class="k">Sun on this cell today</span><span class="fine">No forecast of the sun today: the forecast pack reads it from Open-Meteo, with FORECAST_OPENMETEO=1</span></div>`;
+  if (td.roof_kwh != null) todayCells += td.measured
+    ? `<div><span class="k">The roof today</span><span class="v">${num('energy.today.roof', fmt(td.roof_kwh, 1), 'measured by Home Assistant')} <small>kWh</small></span></div>`
+    : `<div><span class="k">${td.panel_kw != null ? `${fmt(td.panel_kw, 1)} kW of roof panels` : 'Roof panels'}</span><span class="v">≈ ${num('energy.today.roof', fmt(td.roof_kwh, 1), 'modelled from today’s sun, ENERGY_PANEL_KW and ENERGY_PANEL_PR')} <small>kWh today</small></span></div>`;
+  if (td.use_kwh != null) todayCells += `<div><span class="k">The house uses about</span><span class="v">${num('energy.today.use', fmt(td.use_kwh, 1), 'ENERGY_HOUSE_KWH_DAY, set by hand')} <small>kWh a day</small></span></div>`;
+  if (hh) {
+    if (hh.roof_w != null) todayCells += `<div><span class="k">This house · roof now</span><span class="v">${num('energy.home.roof_w', fmt(hh.roof_w, 0), 'live solar power')} <small>W</small></span></div>`;
+    if (hh.grid_w != null) todayCells += `<div><span class="k">This house · grid now</span><span class="v">${num('energy.home.grid_w', fmt(hh.grid_w, 0), 'live grid import')} <small>W</small></span></div>`;
+    if (hh.fossil_pct != null) todayCells += `<div><span class="k">This house · fossil share</span><span class="v">${num('energy.home.fossil_pct', fmt(hh.fossil_pct, 0) + '%', 'against the grid mix')}</span></div>`;
+  } else {
+    todayCells += `<div><span class="k">This house</span><span class="fine">No roof panels or home meter connected</span></div>`;
+  }
+  const pw = measured ? (sh.stale ? 'cached' : 'live') : 'model';
+  const attr = (E.attribution || []).map(esc).join(' · ');
+  el.innerHTML = head
+    + `<p class="sent said">${parts.join(' ')}</p>`
+    + `<div class="mixbar" role="img" aria-label="Grid electricity mix">${barSegs}</div>`
+    + `<div class="legend">${legend}</div>`
+    + `<div class="sources">${srcRows}</div>`
+    + `<div class="today">${todayCells}</div>`
+    + `<div class="provline">${prov(pw)}${attr ? `<span>${attr}</span>` : ''}<span>Nothing asked · context issue</span></div>`;
+}
 function drawNow() {
   /* a phone draws the day alone and the week as one row a day it can press (weekRows): 13 px cells are no target */
-  const phone = innerWidth <= 480;
-  dayWeek({ el: $('#svg'), issue: S.issue, head: $('#fighead'), scale: $('#figline'), week: !phone, pick: j => { S.i = j; drawNow(); } });
-  $('#week').hidden = !phone; if (phone) weekRows($('#week'));
+  const phone = innerWidth <= 480, isEnergy = S.issue === 'energy', ep = $('#energy');
+  if (ep) ep.hidden = !isEnergy;
+  $('#svg').style.display = isEnergy ? 'none' : '';
+  if (isEnergy) {
+    $('#week').hidden = true;
+    $('#fighead').textContent = ''; $('#figline').innerHTML = '';
+    if (ep) drawEnergy(ep, (D && D.energy) || ENERGY);
+    loadEnergy();
+  } else {
+    dayWeek({ el: $('#svg'), issue: S.issue, head: $('#fighead'), scale: $('#figline'), week: !phone, pick: j => { S.i = j; drawNow(); } });
+    $('#week').hidden = !phone; if (phone) weekRows($('#week'));
+  }
   readout(); nowRemember();
 }
 
@@ -117,15 +210,15 @@ function weekRows(el) {
 }
 
 function readout() {
-  const k = S.issue, it = D.issues[k], i = S.i, b = D.buckets[i], dp = it.dp, U = it.unit, isNow = i === D.now;
-  const w = (it.provenance || {})[it.hero_distance] || 'model';
+  const k = S.issue, it = D.issues[k], i = S.i, b = D.buckets[i], dp = it.dp, U = it.unit, isNow = i === D.now, hd = it.hero_distance || 'region';
+  const w = (it.provenance || {})[hd] || ((it.stack || {})[hd] || {}).provenance || 'model';
   $('#kick').innerHTML = isNow ? `Right now · ${said(it.name)} at <span class="mono">${hhmm(b)}</span> ${prov(w)}`
     : `${said(it.name)} · ${esc(dLabel(dayOf(b)))} at <span class="mono">${hhmm(b)}</span> ${prov(w)} · ${D.now - i} hour${D.now - i === 1 ? '' : 's'} ago`;
   $('#back').hidden = isNow;
   const cell = D.health.cell || {}, rung = D.geometry.ladder.find(l => l.res === cell.res);
   $('#cellink').innerHTML = cell.edge_m && rung ? `${cell.edge_m} m · ${fmt(rung.own_area_m2 / 1e6, 2)} km² ›` : '';
   const cmp = it.line != null ? `against the line, ${fmt(it.line, dp)} ${U}` : 'this issue has no line';
-  const n = x => num(`${k}.${it.hero_distance}`, x, cmp, `<b class="numf">${esc(x)}</b>`);
+  const n = x => num(`${k}.${hd}`, x, cmp, `<b class="numf">${esc(x)}</b>`);
   let s, tag = '';
   if (isNow) {
     /* the split, same as the wall's: the title is the sentence's qualitative head — no number, no
@@ -157,7 +250,7 @@ function readout() {
     const tick = it.line != null ? (() => { const [a, c] = [pt(it.line / KS), [50 + (R - 7) * Math.cos((A0 + SW * it.line / KS) * Math.PI / 180), 50 + (R - 7) * Math.sin((A0 + SW * it.line / KS) * Math.PI / 180)]]; return `<line x1="${a[0].toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${c[0].toFixed(1)}" y2="${c[1].toFixed(1)}" stroke="var(--signal-worse)" stroke-width="2"/>`; })() : '';
     return `<div class="knob d ${x == null ? 'none' : ''}"><span class="kh"><span class="x">${said(D.labels[dk])}</span>${x == null ? `<span class="gap">${hourly ? 'not recorded' : (isNow ? 'none' : 'no hours')}</span>` : prov(pw)}</span>`
       + `<svg viewBox="0 0 100 100" aria-hidden="true"><path d="${arc(1)}" fill="none" stroke="var(--wire)" stroke-width="7"/>`
-      + (x == null ? '' : `<path d="${arc(x / KS)}" fill="none" stroke="${over ? 'var(--signal-worse)' : `var(--d-${{ air: 'air', heat: 'heat', coast: 'sea', land: 'ground', water: 'water' }[k] || 'air'})`}" stroke-width="7" stroke-dasharray="${DASH[dk]}"/>`) + tick
+      + (x == null ? '' : `<path d="${arc(x / KS)}" fill="none" stroke="${over ? 'var(--signal-worse)' : `var(--d-${{ air: 'air', heat: 'heat', coast: 'sea', land: 'ground', water: 'water', energy: 'energy' }[k] || 'air'})`}" stroke-width="7" stroke-dasharray="${DASH[dk]}"/>`) + tick
       + `<text x="50" y="54" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="17" font-weight="600" fill="var(--ink)">${x == null ? '—' : fmt(x, dp)}</text>`
       + `<text x="50" y="68" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="var(--mute)">${x == null ? '' : said(U)}</text></svg>`
       + `<span class="kf">${isNow && st.source ? said(st.source) : '&nbsp;'}</span></div>`;
@@ -166,7 +259,7 @@ function readout() {
      where it came from */
   /* the screen's readout strip (Field Synthesizer variation, after the export's VALUE PEAK / CURRENT readouts): the
      day's peak at the hero distance, the figure now, the line, and the hours over it today */
-  const ramp = $('#nramp'), day = dayOf(b), hd = it.hero_distance, sd = (it.series || {})[hd] || [];
+  const ramp = $('#nramp'), day = dayOf(b), sd = (it.series || {})[hd] || [];
   if (ramp) {
     let pk = null, ph = null; for (let h = 0; h < 24; h++) { const j = D.at[day + '|' + h], v = j == null ? null : sd[j]; if (v != null && (pk == null || v > pk)) { pk = v; ph = h; } }
     const xh = isNow ? (it.stack[hd] || {}).value : val(k, hd, i), sth = it.stack[hd] || {}, pd = (it.per_day || []).find(p => p.date === day);
@@ -176,8 +269,8 @@ function readout() {
       ['the line', it.line == null ? 'none' : fmt(it.line, dp), it.line == null ? '' : said(U), 'it asks above it', it.line == null ? 'it only reports' : ''],
       ['over · today', pd ? String(pd.over) : '—', pd ? 'h' : '', 'hours read', pd ? `${pd.read} of ${pd.of}` : '', pd && pd.over ? 'warm' : '']]);
   }
-  const info = $('#ninfo'), hw = (it.provenance || {})[it.hero_distance] || ((it.stack[it.hero_distance] || {}).provenance) || '';
-  if (info) info.innerHTML = `<span>${isNow ? 'Now' : 'At'} · ${esc(D.node.name)} · ${esc(dLabel(dayOf(b)))} ${hhmm(b)}${hw ? ` · ${esc(hw)}` : ''}</span><span>${said(it.name)} · ${said(D.labels[it.hero_distance] || '')}${it.line != null ? ` · the line ${fmt(it.line, dp)} ${said(U)}` : ''}</span>`;
+  const info = $('#ninfo'), hw = (it.provenance || {})[hd] || ((it.stack[hd] || {}).provenance) || '';
+  if (info) info.innerHTML = `<span>${isNow ? 'Now' : 'At'} · ${esc(D.node.name)} · ${esc(dLabel(dayOf(b)))} ${hhmm(b)}${hw ? ` · ${esc(hw)}` : ''}</span><span>${said(it.name)} · ${said(D.labels[hd] || '')}${it.line != null ? ` · the line ${fmt(it.line, dp)} ${said(U)}` : ''}</span>`;
   decision(); rowsValues();
 }
 
@@ -357,7 +450,7 @@ function drawDeclared() {
 /* Around the house: the issues drawn by the hour, one row each; a row moves the page to that issue. Land and Coast
    change yearly and have no hours, so they are not here: Place says them, beside the ground (doors-place.js). */
 function rows() {
-  $('#rows').innerHTML = D.order.filter(ISSUES_DRAWN).map(k => {
+  $('#rows').innerHTML = D.order.filter(k => ISSUES_DRAWN(k) || (k === 'energy' && ((D.issues[k].stack || {}).region || {}).value != null)).map(k => {
     const it = D.issues[k];
     return `<button class="row" data-k="${k}" data-kind="readout" aria-pressed="false"><span><span class="n">${said(it.name)}</span><span class="state ${it.state === 'act' ? 'act' : ''}">${esc(stateWord(it.state))}</span></span>`
       + `<span class="v" data-v></span><span class="sub" data-s></span></button>`;
@@ -367,12 +460,12 @@ function rows() {
 function rowsValues() {
   const date = dayOf(D.buckets[S.i]);
   document.querySelectorAll('#rows .row').forEach(r => {
-    const k = r.dataset.k, it = D.issues[k];
+    const k = r.dataset.k, it = D.issues[k], hd = it.hero_distance || 'region';
     r.setAttribute('aria-pressed', String(k === S.issue));
     // now is the live reading the title and the legend say, not the running hour's mean (audit, 15 Oct: 17 beside 10)
-    const v = S.i === D.now ? ((it.stack || {})[it.hero_distance] || {}).value : val(k, it.hero_distance, S.i), pd = (it.per_day || []).find(p => p.date === date);
-    r.querySelector('[data-v]').innerHTML = `${num(`${k}.${it.hero_distance}`, fmt(v, it.dp), `against the line, ${fmt(it.line, it.dp)} ${it.unit}`)}<small>${said(it.unit)}</small>`;
-    r.querySelector('[data-s]').innerHTML = pd ? `${pd.over ? '<span class="over" aria-hidden="true"></span>' : ''}${num(`${k}.over.day`, pd.over, `of ${pd.read} hours read, ${pd.of - pd.read} not recorded`)} h over the line ${date === dayOf(D.buckets[D.now]) ? 'today' : 'on ' + dLabel(date).split(',')[0]} · ${pd.read} of ${pd.of} h read` : 'no count for this day';
+    const v = S.i === D.now || !it.hero_distance ? ((it.stack || {})[hd] || {}).value : val(k, hd, S.i), pd = (it.per_day || []).find(p => p.date === date);
+    r.querySelector('[data-v]').innerHTML = `${num(`${k}.${hd}`, fmt(v, it.dp), `against the line, ${fmt(it.line, it.dp)} ${it.unit}`)}<small>${said(it.unit)}</small>`;
+    r.querySelector('[data-s]').innerHTML = pd ? `${pd.over ? '<span class="over" aria-hidden="true"></span>' : ''}${num(`${k}.over.day`, pd.over, `of ${pd.read} hours read, ${pd.of - pd.read} not recorded`)} h over the line ${date === dayOf(D.buckets[D.now]) ? 'today' : 'on ' + dLabel(date).split(',')[0]} · ${pd.read} of ${pd.of} h read` : (k === 'energy' && (it.tagline || it.sentence) ? said(it.tagline || it.sentence) : 'no count for this day');
   });
 }
 

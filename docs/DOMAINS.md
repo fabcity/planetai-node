@@ -24,6 +24,7 @@ and on an ask, never a number.
 | land | `earth` (the change), `earth-engine` (built, trees) | context | none, because a year-over-year change is not a threshold |
 | coast | `coast`, and the wild pack `posidonia` | context | none |
 | water | `terrain` | context | none yet: it waits for a household to say how much rain is too much here |
+| energy | `energy` | context | none: fossil share of the grid (measured daily where published, estimated range elsewhere) |
 
 | pack | domain | what it is to the issues |
 |---|---|---|
@@ -82,12 +83,13 @@ Air came first because Bali has the sensors and the burning season. Every other 
 | coast | `coast` | waves and sea temperature |
 | land | `earth`, `earth-engine` | change, built-up, tree cover |
 | water | `terrain` | where the next day's rain goes, from the ground's shape and the forecast |
+| energy | `energy` | the grid's fossil share (measured or capacity-factor range), and the plants, substations and cables feeding this cell from OpenStreetMap |
 | governance | `open-data-health`, and ρ in the core | the loop and the Index |
 | trust | the core (`config/rules.yml`) | the node's own instruments: whether they are frozen, missing hours or disagreeing with a neighbour |
 
 ## Not written yet
 
-Water quality, energy, noise and classroom CO₂ have the same shape and no pack yet. What each would watch and what it
+Water quality, noise and classroom CO₂ have the same shape and no pack yet. What each would watch and what it
 needs is on [Packs](site/packs.md#packs-nobody-has-written-yet).
 
 ## Writing one

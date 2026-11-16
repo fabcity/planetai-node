@@ -429,6 +429,14 @@ async function serveNodeAPI(route, u) {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
     return true;
   }
+  /* GET /energy (packs/energy/routes.py): the hand-written Bali body under PAI_RICH, else the 404 a node with the
+     pack off answers; Now's energy panel then says it has no grid. */
+  if (u.pathname === '/energy') {
+    await (process.env.PAI_RICH === '1' && richFixture().energy
+      ? route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(richFixture().energy) })
+      : route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ detail: 'the energy pack is off' }) }));
+    return true;
+  }
   if (u.pathname === '/forecast') {
     const health = computeNodeData(FIXTURE).snapshot?.health;
     const body = process.env.PAI_RICH === '1' ? richForecast() : emptyForecast(health);

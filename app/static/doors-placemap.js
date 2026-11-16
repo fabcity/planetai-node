@@ -54,6 +54,9 @@ const LAYERS = [
   { id: 'labs', cake: 'flows', pack: 'make', src: 'fablabs.io', name: 'Labs', sub: 'places to make, from fablabs.io', on: false },
   { id: 'satonly', cake: 'built', pack: 'place', src: 'satellite', name: 'Satellite only', sub: 'buildings missing from OSM', on: false, minz: 12.5 },
   { id: 'radio', cake: 'built', pack: 'reticulum', src: 'res 3', name: 'Radio cell', sub: 'what leaves by radio: the res-3 cell it announces', on: false, maxz: 10 },
+  /* the grid's plants (sized by MW), substations and cable heads the energy pack read from OSM (GET /energy), and the MW
+     made inside each of the node's seven cells: stock, so built (energy-pack design §5.6). Points and cells are token-only. */
+  { id: 'energy', cake: 'built', pack: 'energy', src: 'OSM', name: 'Power grid', sub: 'plants, substations and cable heads, OpenStreetMap', on: false, empty: true },
   /* the species somebody here confirmed in the household's images (SPEC_species §4), token-only: GET /species. GBIF's
      open records are a count per species (the list under this row), never points, so nothing hollow is drawn for them. */
   { id: 'species', cake: 'animals', pack: 'core', src: 'confirmed', name: 'Species', sub: 'confirmed here, at the image’s point', on: true },
@@ -259,6 +262,18 @@ function hydroRows() {
   if (nB) bs.src = `${nB} basins`;
   if (H && H.basin && H.basin.level4) bs.sub = `level 12 here; the node’s bioregion is level-4 basin ${H.basin.level4.pfaf_id}`;
 }
+/* after GET /energy: the built row's line, or why it draws nothing (pack off or unfetched, no grid, no token) */
+function energyRows() {
+  const E = PM.energy, l = LAYERS.find(x => x.id === 'energy'), S = (E && E.sources) || [], n = E && E.counts;
+  l.empty = !S.some(s => s.lat != null); l.locked = !!S.length && l.empty; l.why = 'planetai run energy fetch';
+  l.none = E && !E.grid ? 'on no grid the energy pack knows yet · add it to packs/energy/grids.yml' : null;
+  if (!n) return;
+  const km = S.filter(s => s.km != null).map(s => s.km), pl = (k, w) => `${k} ${w}${k === 1 ? '' : 's'}`;
+  l.src = pl(n.plants, 'plant');
+  l.sub = `${pl(n.plants, 'plant')}, ${pl(n.substations, 'substation')} on this grid${km.length ? ` · nearest ${Math.min(...km).toFixed(1)} km` : ''}`;
+}
+/* a cell's label: the MW of the plants in it, and the house's roof on its own cell when the admin token shows it */
+const cellMW = (c, h) => (c.mw == null ? 'MW not tagged' : `${+c.mw.toFixed(1)} MW`) + (c.home && h && h.roof_w != null ? ` · roof ${(h.roof_w / 1000).toFixed(1)} kW` : '');
 /* the credits each layer on the screen owes, the same words on the screen and burned into the PNG */
 function creditList() {
   const m = (PM.meta && PM.meta.layers) || {}, c = [];
@@ -269,6 +284,7 @@ function creditList() {
   if (PM.on.drone && m.drone) c.push((m.drone.mosaics || []).map(x => `${x.provider} via OpenAerialMap, CC BY 4.0`).join(' · '));
   if (PM.on.wind && PM.wind) c.push('wind: Open-Meteo, CC BY 4.0');
   if ((PM.on.rivers || PM.on.basin) && PM.hydro) c.push('rivers and basins: HydroSHEDS via HydroATLAS, CC BY 4.0');
+  if (PM.on.energy && PM.energy) c.push('power grid: © OpenStreetMap contributors, ODbL, via Overpass');
   c.push('Natural Earth');
   return c.filter(Boolean);
 }
@@ -295,6 +311,19 @@ function layers() {
     out.push(new Dk.PathLayer({ id: 'rivers', data: PM.hydro.rivers.features, getPath: f => f.geometry.coordinates, ...px, pickable: true,
       autoHighlight: true, highlightColor: [255, 255, 255, 120], getColor: A([110, 190, 255], 0.9 * a('rivers')),
       getWidth: f => Math.min(1 + f.properties.ord_stra * 0.8, 6), capRounded: true, jointRounded: true }));
+  }
+  /* the grid: the seven cells' outlines and MW, then the substations and cable heads hollow, the plants filled when
+     fossil, each sized by its MW (--d-energy on the dark screen) */
+  if (L.energy && PM.energy) {
+    const E = PM.energy, EN = [242, 140, 40], P0 = (E.sources || []).filter(s => s.lat != null), C = E.cells || [];
+    out.push(new Dk.PathLayer({ id: 'energy-cells', data: C, getPath: c => c.ring, ...px, getColor: A(EN, .5 * a('energy')), getWidth: 1 }));
+    if (z >= 12) out.push(new Dk.TextLayer({ characterSet: 'auto', id: 'energy-mw', data: C, getPosition: lngLat, getText: c => cellMW(c, E.household),
+      getSize: 11, fontFamily: 'JetBrains Mono, monospace', getColor: A(EN, a('energy')), background: true, getBackgroundColor: A(p.halo, .85), backgroundPadding: [3, 1] }));
+    out.push(new Dk.ScatterplotLayer({ id: 'energy', data: P0, getPosition: lngLat, ...px, stroked: true, filled: true,
+      getRadius: s => s.kind === 'plant' && s.mw ? 3 + Math.sqrt(s.mw) * 0.6 : 4, getLineWidth: 1.4, getLineColor: A(EN, a('energy')),
+      getFillColor: s => s.kind === 'plant' ? A(EN, (s.fossil === false ? .3 : .85) * a('energy')) : A(p.halo, a('energy')) }));
+    out.push(new Dk.TextLayer({ characterSet: 'auto', id: 'energy-l', data: P0, getPosition: lngLat, getText: s => s.name, getSize: 11, fontFamily: 'Figtree, sans-serif',
+      getColor: A(p.ink, .8 * a('energy')), getTextAnchor: 'start', getPixelOffset: [12, 0], background: true, getBackgroundColor: A(p.halo, .85), backgroundPadding: [3, 1] }));
   }
   if (L.rings && RINGS) {
     out.push(new Dk.PathLayer({ id: 'rings', data: RINGS, getPath: d => d.path, ...px,
@@ -1501,6 +1530,7 @@ async function placeMap() {
   [PM.caps, PM.species] = await Promise.all([ask('captures?limit=500').catch(() => null), ask('species').catch(() => null)]); imageRows();
   PM.hydro = await ask('hydro').catch(() => null); hydroRows();
   await loadCells();
+  PM.energy = await ask('energy').catch(() => null); energyRows();
   const nodePlan = await ask('place/geojson').then(g => (g.features || []).length ? g : null).catch(() => null);
   PM.land = { type: 'FeatureCollection', features: [] }; PM.plan = nodePlan;
   if (!nodePlan && !PM.ground.vector && PM.meta) LAYERS.find(l => l.id === 'street').sub = 'the node sent no plan and holds no street map: planetai run place basemap';
