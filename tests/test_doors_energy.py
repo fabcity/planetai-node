@@ -223,7 +223,9 @@ else:
     none_html = res.get("none", "")
     check("on no grid the energy pack knows yet" in none_html and "packs/energy/grids.yml" in none_html,
           f"empty sources renders the none sentence: {none_html}")
-    check('class="bar"' not in none_html, f"empty sources renders no bar: {none_html}")
+    check('class="mixbar"' not in none_html, f"empty sources renders no bar: {none_html}")
+    # the bar is not called "bar": that is the top bar's class, whose padding drew the mix as an empty box on node #1
+    check('class="mixbar"' in est and 'class="bar"' not in est, f"the mix bar has its own class: {est[:400]}")
 
     check("uses about" in est and "9.0" in est, f"the Today box draws the house's use: {est[-700:]}")
     ns = res.get("nosun", "")

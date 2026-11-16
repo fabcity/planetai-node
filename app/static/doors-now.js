@@ -167,7 +167,7 @@ function drawEnergy(el, E) {
   const attr = (E.attribution || []).map(esc).join(' · ');
   el.innerHTML = head
     + `<p class="sent said">${parts.join(' ')}</p>`
-    + `<div class="bar" role="img" aria-label="Grid electricity mix">${barSegs}</div>`
+    + `<div class="mixbar" role="img" aria-label="Grid electricity mix">${barSegs}</div>`
     + `<div class="legend">${legend}</div>`
     + `<div class="sources">${srcRows}</div>`
     + `<div class="today">${todayCells}</div>`
