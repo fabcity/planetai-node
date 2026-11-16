@@ -997,7 +997,25 @@ body:not(.classic) .hero .ladder.folded{display:none}
    for the stroke of that reading, its LED and its figure: never a background, never good or bad */
 :root[data-theme="dark"]{--d-air:#A78BFA;--d-heat:#F2C14E;--d-water:#5BC8F5;--d-sea:#3B8FD9;--d-wind:#7EE0C3;--d-energy:#F28C28;--d-ground:#C08A48;--d-biota:#8BC34A;--d-noise:#F472B6;--d-light:#F5E9A8}
 :root{--d-air:#6D28D9;--d-heat:#8A6D00;--d-water:#0369A1;--d-sea:#1F5F8B;--d-wind:#0F766E;--d-energy:#B45309;--d-ground:#6B4F1D;--d-biota:#3F7A0C;--d-noise:#BE185D;--d-light:#7A6F2A}
-.rcol .row[data-k]{box-shadow:inset 3px 0 0 var(--dk,var(--wire))}.rcol .row[data-k="air"]{--dk:var(--d-air)}.rcol .row[data-k="heat"]{--dk:var(--d-heat)}.rcol .row[data-k="coast"]{--dk:var(--d-sea)}.rcol .row[data-k="land"]{--dk:var(--d-ground)}.rcol .row[data-k="water"]{--dk:var(--d-water)}
+.rcol .row[data-k]{box-shadow:inset 3px 0 0 var(--dk,var(--wire))}.rcol .row[data-k="air"]{--dk:var(--d-air)}.rcol .row[data-k="heat"]{--dk:var(--d-heat)}.rcol .row[data-k="coast"]{--dk:var(--d-sea)}.rcol .row[data-k="land"]{--dk:var(--d-ground)}.rcol .row[data-k="water"]{--dk:var(--d-water)}.rcol .row[data-k="energy"]{--dk:var(--d-energy)}
+.epanel{padding:14px 12px 10px;border-top:1px solid var(--hair)}
+.epanel .hl{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.epanel .big{font:600 clamp(32px,3.6vw,48px)/1 var(--mono);letter-spacing:-.03em;color:var(--d-energy)}
+.epanel .u{font:500 var(--t-small) var(--mono);color:var(--mute)}
+.epanel .sent{font:400 var(--t-body)/1.45 var(--body);margin:10px 0 12px;max-width:66ch}
+.epanel .mixbar{display:flex;height:20px;border:1px solid var(--ink);overflow:hidden;background:var(--ground)}
+.epanel .mixbar>span{display:block;height:100%;background:var(--seg,var(--d-energy));border-right:1px solid var(--ground)}
+.epanel .mixbar>span:last-child{border-right:0}
+.epanel .hatch{background:repeating-linear-gradient(-45deg,var(--seg,var(--d-energy)) 0 5px,transparent 5px 10px)!important}
+.epanel .legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:8px;font:500 var(--t-cap) var(--mono);color:var(--mute)}
+.epanel .sw{display:inline-block;width:10px;height:10px;margin-right:5px;vertical-align:-1px;border:1px solid var(--ink);background:var(--seg,var(--d-energy))}
+.epanel .sources{margin-top:14px;border-top:1px solid var(--hair)}
+.epanel .src{display:grid;grid-template-columns:10px minmax(0,1.5fr) minmax(0,1fr) auto auto;gap:8px;align-items:baseline;padding:6px 0;border-bottom:1px solid var(--hair);font-size:var(--t-small)}
+.epanel .dot{width:8px;height:8px;display:inline-block;background:var(--seg,var(--ink))}
+.epanel .today{margin-top:12px;padding:10px 12px;border:1px solid var(--hair);display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+.epanel .today .k{font:600 var(--t-cap) var(--mono);color:var(--mute);display:block}
+.epanel .today .v{font:600 var(--t-read)/1.2 var(--mono)}
+.epanel .provline{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin-top:12px;font:500 var(--t-cap) var(--mono);color:var(--mute)}
 .fam[data-fam="Air"]{--dk:var(--d-air)}.fam[data-fam="Weather"]{--dk:var(--d-heat)}.fam[data-fam="Sound and light"]{--dk:var(--d-noise)}.fam[data-fam="Sea"]{--dk:var(--d-sea)}.fam[data-fam="Radio"]{--dk:var(--d-energy)}.fam[data-fam="Other"]{--dk:var(--d-ground)}
 .fam .tr path{stroke:var(--dk,currentColor)!important}.fam .fh{box-shadow:inset 3px 0 0 var(--dk,transparent);padding-left:8px}
 /* the board: a grid of slots; a feed is a module with its own little screen; an empty slot is a + */
@@ -1181,6 +1199,7 @@ body:not(.classic) .hero .ladder.folded{display:none}
       <section class="fig" data-learn="figure" data-reads="/issues /issues/days" data-stage="observe" data-pack="core" data-kind="series" aria-label="The day and the week">
         <svg id="svg" tabindex="0" role="img" aria-describedby="sentence"></svg>
         <div class="week" id="week" role="group" aria-label="The last seven days" hidden></div>
+        <div class="epanel" id="energy" hidden></div>
       </section></div><p class="sinfo" id="ninfo"></p></div>
       <p class="ladder enc" id="ladder" data-learn="now-distances" data-reads="/issues" data-stage="observe" data-pack="core" data-kind="stack"></p>
       <p class="nk figfoot"><span id="fighead"></span> <span id="figline"></span></p>
