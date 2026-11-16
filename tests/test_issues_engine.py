@@ -549,6 +549,8 @@ else:
         fails.append("geometry.radio announces at RETICULUM_PRESENCE_RES, 3 under the fixture's settings")
     if g["publication"]["res"] != 10 or g["settings"]["PRESENCE_RES_FLOOR"] != 6:
         fails.append(f"geometry carries the two lines: {g['publication']} {g['settings']}")
+    if "LOCAL_RADIUS_M" in g["settings"]:
+        fails.append(f"LOCAL_RADIUS_M must leave geometry.settings; got {g['settings']}")
     own_cell = g["nav"]["cells"][g["nav"]["chain"][8]]
     if [body["stations"][i]["sensor_id"] for i in own_cell["sensors"]] != ["sc-19849", "sc-19880", "sc-19897"]:
         fails.append("the plate's sensor indices index into the published stations")

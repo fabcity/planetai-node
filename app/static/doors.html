@@ -494,6 +494,7 @@ body:not(.classic) .hero .ladder.folded{display:none}
 /* under the screen: the status line (the inspector), then the marks around the house, nearest first */
 #facts.inspect{display:flex;flex-wrap:wrap;gap:4px 16px;align-items:baseline;padding:12px 6px 8px;font:400 10.5px/1.5 var(--mono);color:var(--mute)}
 #facts b{font-weight:500;color:var(--ink)}#facts .fi small{color:var(--mute);font:inherit;margin-right:6px}#facts .hint{margin-left:auto}#facts .said{font-family:var(--body)}
+#facts .pb{flex-basis:100%;display:flex;flex-wrap:wrap;gap:4px 16px;align-items:baseline;border-top:1px solid var(--hair);padding-top:6px}
 #pmargin{padding:0 6px 14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));column-gap:24px}
 #pmargin .pmh,#pmargin .fine{grid-column:1/-1}#pmargin .fine{margin:10px 0 0}
 #pmargin .mr{display:grid;grid-template-columns:18px minmax(0,1fr) auto;gap:8px;align-items:center;min-height:32px;width:100%;padding:0;border:0;border-bottom:1px solid var(--hair);background:none;color:var(--ink);text-align:left;font:400 var(--t-small)/1.25 var(--body)}
@@ -1284,7 +1285,7 @@ body:not(.classic) .hero .ladder.folded{display:none}
 <!-- PLACE -->
 <section class="page view" data-view="place" hidden>
   <div class="phead"><div id="placehead" data-learn="place-head" data-reads="/health /issues" data-stage="observe" data-pack="place"></div>
-    <div class="prow"><form id="pask" class="pask"><label class="vh" for="paskq">Ask the node about this place</label><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 4h14v10H8l-4 3v-3H3z"/></svg><input id="paskq" autocomplete="off" placeholder="Ask about this place"><kbd>/</kbd></form><div class="ptools" data-learn="place-tools" data-reads="/geo/rings /geo/measure /geo/cell" data-stage="observe" data-pack="core"><button type="button" id="ptoolsb" class="ptoolsb" aria-expanded="false" aria-controls="ptools">Tools</button><div id="ptools" class="ptmenu" role="group" aria-label="Tools" hidden></div></div></div></div>
+    <div class="prow"><form id="pask" class="pask"><label class="vh" for="paskq">Ask the node about this place</label><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 4h14v10H8l-4 3v-3H3z"/></svg><input id="paskq" autocomplete="off" placeholder="Ask about this place"><kbd>/</kbd></form><div class="ptools" data-learn="place-tools" data-reads="/geo/rings /geo/measure /geo/cell /area" data-stage="observe" data-pack="core"><button type="button" id="ptoolsb" class="ptoolsb" aria-expanded="false" aria-controls="ptools">Tools</button><div id="ptools" class="ptmenu" role="group" aria-label="Tools" hidden></div></div></div></div>
   <div class="bench">
     <nav id="cake" aria-label="What this place is made of" data-learn="place-layers" data-reads="/health /issues /packs" data-stage="observe" data-pack="place"></nav>
     <button type="button" class="pfold" data-fold="lc" aria-controls="cake" aria-expanded="true" aria-label="Hide the layers" title="Hide the layers · ["><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M9 3L5 7l4 4"/></svg><span>layers</span></button>

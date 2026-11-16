@@ -1089,9 +1089,13 @@ print("doors: Now says the city in one row under Around the house, and Place's h
 # Drawing on the screen, and your maps (SPEC_place_microgis §4, §10). Booted in node with a map that does nothing and a
 # deck that records its layers: the keys and the readout on the screen with a token and none without, your maps above
 # the cake's results, the open map's table in the lower band, and every name and label from the node escaped.
-_lk2 = json.loads(subprocess.run(["node", "-e", "const L = require('./app/static/doors-load.js'); console.log(JSON.stringify(['/place/maps', '/place/marks/3', '/place/maps/3/marks', '/place/geojson'].map(p => L.DOORS_LOCKED.test(p))))"],
+_lk2 = json.loads(subprocess.run(["node", "-e", "const L = require('./app/static/doors-load.js'); console.log(JSON.stringify(['/place/maps', '/place/marks/3', '/place/maps/3/marks', '/place/geojson', '/place/cells', '/place/cells/8895a4c843fffff/claim', '/area'].map(p => L.DOORS_LOCKED.test(p))))"],
                                  capture_output=True, text=True, check=True).stdout)
-assert _lk2 == [True, True, True, True], f"a tokenless screen never asks for the household's maps: {_lk2}"
+assert _lk2 == [True] * 7, f"a tokenless screen never asks for the household's maps, cells or an area pull: {_lk2}"
+# the seven as GET /place/cells answers them for node #1's cell: home, one held, one claimed, four open (app/cells.py)
+import cells  # noqa: E402
+_h8 = "8895a4c843fffff"; _r8 = cells.ring(_h8); _rows8 = cells.states(_h8, {_r8[1], _r8[2]}, {_r8[1]})
+_SEVEN = {"home": _h8, "res": 8, "cells": _rows8, "held": cells.held_count(_rows8), "of": 7, "community_ready": False}
 mprog = r"""
 const fs = require('fs'), vm = require('vm'), d3 = require('./app/static/d3.min.js');
 const L = require('./app/static/doors-load.js');
@@ -1120,6 +1124,8 @@ async function boot(tok, o = {}) {
   const chip = { classList: { contains: () => true }, focus() { c.document.activeElement = chip; } };
   els['#dread'] = Object.assign(el(), { querySelector: q => (q === '.dchip' ? chip : null), contains: x => x === chip });
   const ask = (p, init = {}) => { asked.push(p); if (!tok && L.DOORS_LOCKED.test(p)) return Promise.resolve(new Response('{}', { status: 403 }));
+    const own = o.route && o.route(p, init); if (own) return Promise.resolve(own);
+    if (p.startsWith('/place/cells') && o.cells) return Promise.resolve(o.cells(p, init));
     if (init.method === 'PATCH') { const b = JSON.parse(init.body); patched.push(b);
       return Promise.resolve(new Response(JSON.stringify({ mark: { ...MARKS.marks.find(k => p.endsWith('/' + k.id)), ...b } }), { status: 200 })); }
     if (init.method === 'POST' && /^\/place\/maps\/\d+\/marks/.test(p)) { const b = JSON.parse(init.body); posted.push(b);
@@ -1146,7 +1152,7 @@ async function boot(tok, o = {}) {
     deck: new Proxy({}, { get: (t, k) => k === 'MapboxOverlay' ? function () { return { _deck: { device: { canvasContext: { _framebuffer: 'old' } } }, setProps: x => { (x.layers || []).forEach(l => { drawn[l.id] = l.props; }); },
       pickObject: () => (o.hit ? o.hit(drawn) : null) }; } : layer }) };
   c.window = c; vm.createContext(c);
-  vm.runInContext(['esc', 'fmt'].map(pick).join('\n') + '\n' + src + '\nwindow.placeMap()', c);
+  vm.runInContext(['esc', 'fmt', 'ago'].map(pick).join('\n') + '\n' + src + '\nwindow.placeMap()', c);
   await new Promise(r => setTimeout(r, 80));
   /* a drawing pressed on the map puts it in hand (the lower band's table that did it went on 9 Nov) */
   const press = id => { const m = MARKS.marks.find(x => x.id === id), h = o.hit; o.hit = () => ({ layer: { id: 'draw-' + m.kind }, object: m });
@@ -1285,16 +1291,130 @@ async function boot(tok, o = {}) {
     c.document.getElementById = () => null; c.__PM.setTool('select');
     c.__PM.draw.map = null; c.__PM.setTool('image'); r.noMap = { read: c.$('#dread').innerHTML, form: c.$('#dform').innerHTML };
     return r; } });
+  /* the seven at Cell scale (seven cells, Task 5): GET /place/cells drawn by state under the 'mine' row, the line
+     under the map, and a neighbour's Claim or Release, each a call to the node and the node's answer drawn again */
+  const SEVEN = %s, calls = [], tick = ms => new Promise(r => setTimeout(r, ms));
+  let SV = SEVEN, HIT = null;
+  const cellsRoute = (p, init = {}) => { calls.push([init.method || 'GET', p]);
+    if (init.method === 'POST' && p.includes(SEVEN.cells[4].cell)) return new Response(JSON.stringify({ detail: 'That cell is already the node’s.' }), { status: 409 });
+    if (init.method) { const id = p.split('/')[3]; SV = { ...SV, cells: SV.cells.map(x => (x.cell === id ? { ...x, state: init.method === 'POST' ? 'claimed' : 'open' } : x)) }; }
+    return new Response(JSON.stringify(SV), { status: 200 }); };
+  out.seven = await boot(true, { cells: cellsRoute, hit: () => HIT, then: async ({ c, ons, drawn }) => {
+    c.placeLayer('mine', true); await tick(40);   /* a redraw and the status line; the mock map cannot load a grid */
+    const P = c.__PM, d = drawn.seven, r = { line: c.$('#facts').innerHTML };
+    r.n = d ? d.data.length : 0;
+    r.poly = d && d.getPolygon(d.data[1]);
+    r.style = d && d.data.map(x => [x.state, d.getDashArray(x), d.getLineColor(x).slice(0, 3), d.getFillColor(x)[3]]);
+    r.pickable = d && d.pickable;
+    delete drawn.seven; P.res = 9; c.placeLayer('mine', true); r.at9 = !!drawn.seven; P.res = 8; c.placeLayer('mine', true);
+    delete drawn.seven; c.placeLayer('mine', false); r.off = !!drawn.seven; c.placeLayer('mine', true);
+    let BTN = null; const fx = c.$('#facts');
+    fx.querySelector = q => { const m = q === '[data-claim]' && fx.innerHTML.match(/data-claim="([^"]+)" data-verb="(\w+)"/); return m ? (BTN = { dataset: { claim: m[1], verb: m[2] } }) : null; };
+    const pressCell = async i => { BTN = null; HIT = { layer: { id: 'seven' }, object: SV.cells[i] };
+      (ons.click || []).forEach(f => f({ lngLat: { lng: 115.167, lat: -8.819 }, point: { x: 1, y: 1 } })); await tick(30); return fx.innerHTML; };
+    r.home = await pressCell(0); r.homeBtn = !!BTN;
+    r.open = await pressCell(3); const n = calls.length; BTN.onclick(); await tick(40);
+    r.claim = { call: calls.slice(n), after: fx.innerHTML, state: P.cells.cells[3].state, drawn: drawn.seven.data[3].state };
+    r.claimed = await pressCell(2); const m = calls.length; BTN.onclick(); await tick(40);
+    r.release = { call: calls.slice(m), after: fx.innerHTML, state: P.cells.cells[2].state };
+    await pressCell(4); BTN.onclick(); await tick(40);
+    r.refused = { after: fx.innerHTML, state: P.cells.cells[4].state };
+    return r; } });
+  out.sevenLocked = await boot(false, { cells: cellsRoute, then: async ({ c }) => { c.placeLayer('mine', true); await tick(40); return { line: c.$('#facts').innerHTML }; } });
+  /* the Pull tool (Task 8): tap cells or choose a drawn area, then Pull; POST /area's three blocks in the inspector, each
+     with its source and age, an empty one saying why, a number the node did not send a dash */
+  const iso = m => new Date(Date.now() - m * 6e4).toISOString();
+  const ANS = { cells: 1, res: 8,
+    own: { cells: [SEVEN.cells[1].cell], sensors: 1, metrics: { pm25: { latest: 12.34, latest_at: iso(10), mean_24h: null, n: 0 } }, unplaced: 2, children_unplaced: 0 },
+    peers: { sensors: 0, metrics: {}, unplaced: 1, why: 'No neighbouring node has a reading in these cells in the last 24 hours.' },
+    open: [{ pack: 'hydro', source: BAD, licence: 'CC-BY 4.0', rows: [1, 2, 3], as_of: iso(125), note: 'Only the part within 3 km of the node: hydro keeps nothing further out.' },
+      { pack: 'eyes', off: true, why: 'The eyes pack is off on this node: set SPECIES_MATCH=on to ask it.' },
+      { pack: 'forecast', off: false, why: 'The forecast pack has nothing for this area.' },
+      { pack: 'surf', error: 'The surf pack failed on this area; the node’s log says why.' }] };
+  const pulls = []; let GEO = 0, REFUSE = false;
+  const pullRoute = (p, init = {}) => {
+    if (p.startsWith('/geo/cell?lat=')) { const x = SEVEN.cells[1 + (GEO++ %% 2)]; return new Response(JSON.stringify({ id: x.cell, res: 8, ring: x.ring }), { status: 200 }); }
+    if (p === '/area') { pulls.push(JSON.parse(init.body));
+      return REFUSE ? new Response(JSON.stringify({ detail: 'That selection covers more than 500 cells at resolution 8. Choose a smaller area.' }), { status: 400 })
+        : new Response(JSON.stringify(ANS), { status: 200 }); }
+    return null; };
+  /* the mock deck keeps a layer's last props: a test deletes them first to see whether the next redraw draws it */
+  out.pull = await boot(true, { route: pullRoute, cells: cellsRoute, hit: () => HIT, then: async ({ c, ons, drawn }) => {
+    const P = c.__PM, fx = c.$('#facts'); let BTNS = [];
+    fx.querySelectorAll = q => (q === '[data-pull]' ? (BTNS = [...fx.innerHTML.matchAll(/data-pull="([^"]+)"/g)].map(m => ({ dataset: { pull: m[1] } }))) : []);
+    const btn = k => BTNS.find(b => b.dataset.pull === k);
+    const tap = async () => { HIT = null; (ons.click || []).forEach(f => f({ lngLat: { lng: 115.167, lat: -8.819 }, point: { x: 1, y: 1 } })); await tick(30); };
+    P.setTool('pull'); await tick(20);
+    const r = { start: fx.innerHTML, read: c.$('#dread').innerHTML };
+    await tap(); await tap(); r.two = { n: drawn.pull ? drawn.pull.data.length : 0, html: fx.innerHTML, poly: drawn.pull && drawn.pull.getPolygon(drawn.pull.data[0]) };
+    await tap(); r.one = { n: drawn.pull ? drawn.pull.data.length : 0, ids: P.pull.cells.map(x => x.id) };
+    btn('go').onclick(); await tick(40);
+    r.asked = pulls.slice(); r.ans = fx.innerHTML;
+    delete drawn.pull; btn('m11').onclick(); await tick(20); r.marked = { html: fx.innerHTML, n: drawn.pull ? drawn.pull.data.length : 0 };
+    btn('go').onclick(); await tick(40); r.markAsked = pulls[pulls.length - 1];
+    REFUSE = true; btn('go').onclick(); await tick(40); r.refused = fx.innerHTML; REFUSE = false;
+    btn('clear').onclick(); await tick(20); r.cleared = { html: fx.innerHTML, mark: P.pull.mark, n: P.pull.cells.length };
+    HIT = { layer: { id: 'draw-area' }, object: MARKS.marks[0] }; (ons.click || []).forEach(f => f({ lngLat: { lng: 115.1675, lat: -8.8187 }, point: { x: 1, y: 1 } })); await tick(20);
+    r.pressedMark = P.pull.mark;
+    delete drawn.pull; P.setTool('select'); await tick(20); r.left = { pull: P.pull, drawn: drawn.pull ? drawn.pull.data.length : 0 };
+    return r; } });
   /* From the house, in the Tools menu: a tool row that runs with the token */
   const els = {}, c = { $: q => (els[q] ||= el()), DOORS_TOKEN: () => 't', document: { activeElement: null, querySelectorAll: () => [], querySelector: () => null }, window: { __PM: { on: {}, tool: 'select' } } };
   vm.createContext(c); vm.runInContext(place.match(/const TOOLS = [\s\S]*?\n\];\n/)[0] + fn(place, 'placeTools') + 'placeTools()', c);
   out.ptools = c.$('#ptools').innerHTML;
   console.log(JSON.stringify(out));
 })();
-""" % replayed(FIX)
+""" % (replayed(FIX), json.dumps(_SEVEN))
 _r = subprocess.run(["node"], input=mprog, capture_output=True, text=True)
 assert _r.returncode == 0, _r.stderr[-3000:]
 M = json.loads(_r.stdout)
+# the seven at Cell scale (seven cells, Task 5)
+_sv, _svl = M["seven"], M["sevenLocked"]
+assert "2 of 7 cells held" in _sv["line"], ("the line under the map says how many of the seven are held", _sv["line"][:500])
+assert _sv["n"] == 7 and _sv["pickable"], ("the seven are one pickable layer at Cell scale", _sv["n"])
+assert len(_sv["poly"]) == 7 and _sv["poly"][0] == _sv["poly"][-1] and _sv["poly"][0] == [_rows8[1]["ring"][2], _rows8[1]["ring"][1]], \
+    ("a cell's outline is the node's ring, reordered to [lng, lat] and closed, never computed", _sv["poly"])
+_CELLS, _MUTE = [127, 165, 232], [163, 161, 159]
+_st = {s[0]: s[1:] for s in _sv["style"]}
+assert set(_st) == {"home", "held", "claimed", "open"}, _st
+assert all(v[1] in (_CELLS, _MUTE) for v in _st.values()), ("the seven take the screen's own colours, no new one", _st)
+assert _st["home"][1] == _st["held"][1] == _st["claimed"][1] == _CELLS and _st["open"][1] == _MUTE, _st
+assert len({json.dumps(v) for v in _st.values()}) == 4 and _st["claimed"][0] != _st["held"][0] and _st["open"][2] == 0, \
+    ("each state draws apart: held solid, claimed dashed, open grey, unfilled", _st)
+assert not _sv["at9"] and not _sv["off"], "the seven draw at Cell scale only, and with the node's cell row"
+assert "home" in _sv["home"] and not _sv["homeBtn"], ("home is never claimed or released", _sv["home"][:400])
+assert 'data-verb="claim"' in _sv["open"] and "Claim this cell" in _sv["open"], _sv["open"][:500]
+assert _sv["claim"]["call"] == [["POST", f"/place/cells/{_r8[3]}/claim?actor="]], _sv["claim"]["call"]
+assert _sv["claim"]["state"] == "claimed" and _sv["claim"]["drawn"] == "claimed" and 'data-verb="release"' in _sv["claim"]["after"], \
+    ("the node's answer is drawn again: the cell is claimed, and offers Release", _sv["claim"])
+assert _sv["release"]["call"] == [["DELETE", f"/place/cells/{_r8[2]}/claim?actor="]] and _sv["release"]["state"] == "open", _sv["release"]
+assert "That cell is already the node’s." in _sv["refused"]["after"] and _sv["refused"]["state"] == "open", ("a refusal says the node's sentence", _sv["refused"])
+assert "cells held" not in _svl["line"] and "/place/cells" not in _svl["line"], ("without the token the line says nothing of the seven", _svl["line"][:400])
+print("  place: at Cell scale the seven are drawn by state; the line under the map says how many are held; a neighbour claims or releases")
+_pu = M["pull"]
+assert "data-pull" in _pu["start"] and 'data-pull="m11"' in _pu["start"] and 'data-pull="go"' not in _pu["start"], \
+    ("Pull starts with what to do and the household's drawn areas to choose, and nothing to send yet", _pu["start"][:600])
+assert "&lt;img" in _pu["start"] and "<img src=x" not in _pu["start"], "a drawing's label is escaped"
+assert "pull" in _pu["read"], ("the readout names the tool", _pu["read"][:300])
+assert _pu["two"]["n"] == 2 and 'data-pull="go"' in _pu["two"]["html"] and "2 cells" in _pu["two"]["html"], ("two taps, two cells on the map, and Pull", _pu["two"]["html"][:400])
+assert _pu["two"]["poly"] and _pu["two"]["poly"][0] == _pu["two"]["poly"][-1], "a tapped cell is drawn by the node's own outline, closed"
+assert _pu["one"]["n"] == 1 and _pu["one"]["ids"] == [_rows8[2]["cell"]], ("a second tap on a cell lets it go", _pu["one"])
+assert _pu["asked"] == [{"cells": [_rows8[2]["cell"]]}], ("Pull sends the cells tapped", _pu["asked"])
+_a = _pu["ans"]
+for said in ("12.3", "10 min old", "2 h old", "No neighbouring node has a reading in these cells in the last 24 hours.", "set SPECIES_MATCH=on to ask it",
+             "The forecast pack has nothing for this area.", "failed on this area", "Only the part within 3 km", "CC-BY 4.0"):
+    assert said in _a, (f"the answer says {said!r}", _a[:1500])
+assert "&lt;img" in _a and "<img src=x" not in _a, "a source's words are escaped"
+assert "0.0" not in _a and "—" in _a, ("a 24 h mean the node did not send is a dash, never 0", _a[:1500])
+assert re.search(r"\b2\b[^<]*no place", _a) and re.search(r"\b1\b[^<]*(distance|no place)", _a), ("own and peers say how many they could not place", _a[:1500])
+assert _a.count('class="pb"') == 6, ("three blocks: own, peers, and one per open source", _a.count('class="pb"'))
+assert _pu["marked"]["n"] == 0 and 'aria-pressed="true"' in _pu["marked"]["html"] and _pu["markAsked"] == {"mark_id": 11}, \
+    ("a drawn area chosen replaces the cells and is sent by its number", _pu["marked"]["n"], _pu["markAsked"])
+assert "That selection covers more than 500 cells" in _pu["refused"], ("a refusal says the node's sentence", _pu["refused"][:400])
+assert _pu["cleared"]["mark"] is None and _pu["cleared"]["n"] == 0 and 'data-pull="go"' not in _pu["cleared"]["html"], _pu["cleared"]
+assert _pu["pressedMark"] == 11, "a press on one of the household's drawn areas chooses it"
+assert _pu["left"]["pull"] is None and _pu["left"]["drawn"] == 0, ("leaving the tool lets the selection go", _pu["left"])
+print("  place: Pull takes tapped cells or a drawn area, asks POST /area, and draws own, peers and open sources with source and age, each empty one saying why")
 _t, _x = M["tok"], M["locked"]
 _keys = re.findall(r'<button[^>]*aria-label="([^"]+)"[^>]*aria-pressed="(true|false)"', _t["keys"] or "")
 assert [k for k, _ in _keys] == ["Select", "Marker", "Line, with distance", "Area, with surface", "Note", "Image"] and [p for _, p in _keys].count("true") == 1, _keys
@@ -1324,6 +1444,7 @@ assert "Your maps are kept on this node. Unlock this screen in Set up to draw." 
 assert not [p for p in _x["asked"] if p.startswith(("/place/maps", "/place/marks"))], "a tokenless screen does not ask for maps"
 print("  place: without the token, your maps say where they are and how to unlock; no key, no New map")
 assert 'data-tool="from"' in M["ptools"] and "From the house" in M["ptools"], M["ptools"][:400]
+assert 'data-tool="pull"' in M["ptools"] and "<span>Pull</span><code>area.pull</code>" in M["ptools"], ("Pull is a Tools row with its command id", M["ptools"][:600])
 assert 'data-go="#place/report"' in M["ptools"] and "<code>place.report</code>" in M["ptools"], "the Place report is a tool row with its id (SPEC_place_report §9)"
 _css = html[html.index("/* ================= PLACE: a small GIS"):html.index("/* ================= NODE")]
 assert ".dkeys button{width:var(--k);height:var(--k)" in _css and ".dread .dsw button{flex:none;width:var(--k);height:var(--k)" in _css and re.search(r"\.dkeys button:focus-visible,\.dchip:focus-visible,\.dpanel button:focus-visible,\.dpanel input:focus-visible,"
@@ -1585,7 +1706,7 @@ assert "(document.fullscreenElement ? document.exitFullscreen() : sc.requestFull
     "a refused full screen is caught, never an unhandled rejection"
 print("  place: the left folds by its arrow and by [, \\ is map only, F full screen; a stored right fold is ignored; never while typing; remembered in try/catch")
 _mn = F9["menu"]
-assert _mn["order"][:3] == ["Rings and distance|geo.rings", "From the house|geo.measure", "Place report|place.report"] and all(x.endswith("|not yet") for x in _mn["order"][3:]) and len(_mn["order"]) == 15, _mn["order"]
+assert _mn["order"][:4] == ["Rings and distance|geo.rings", "From the house|geo.measure", "Pull|area.pull", "Place report|place.report"] and all(x.endswith("|not yet") for x in _mn["order"][4:]) and len(_mn["order"]) == 16, _mn["order"]
 assert _mn["open"] and _mn["exp"] == "true" and _mn["focus"] == "rings", ("Tools opens its menu on the first runnable row", _mn)
 assert _mn["esc"] == {"hidden": True, "exp": "false", "focus": "toolsb"}, ("Esc closes the menu and gives the focus back to Tools", _mn["esc"])
 assert _mn["inside"] is False and _mn["outside"] is True, "a press outside the menu closes it, one inside does not"
@@ -1593,6 +1714,6 @@ assert _mn["from"] == {"tools": ["from"], "hidden": True, "focus": "toolsb"} and
 assert _mn["focusMap"] is False, "focus going to the map's canvas (a press on the map) leaves the menu to the click, which swallows that press"
 assert _mn["focusIn"] is False and _mn["focusNull"] is False and _mn["focusOut"] is True, ("focus leaving the menu closes it; moving within it, or a press, does not", _mn)
 assert F9["locked"]["any"] == 0 and "Tools run on this node with a token. Unlock this screen in Set up." in F9["locked"]["html"], "without the token the rows are quiet and say why"
-print("  place: Tools is one button on the top line; its menu lists the two that run, then the ones not yet; Esc or a press outside closes it")
+print("  place: Tools is one button on the top line; its menu lists the three that run, then the ones not yet; Esc or a press outside closes it")
 
 print("all doors checks passed")

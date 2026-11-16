@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **A node has seven cells, and you choose which are its own.** The resolution-8 cell it stands in is always its own,
+  and on Place, at Cell scale, the six touching it are drawn round it. Press one and **Claim this cell**, and a kit of
+  yours in it counts as this node's own from its next poll. A claimed cell is held once one of your sensors has a
+  reading in it in the last 24 hours, and the line under the map says how many of the seven are held. **Release it**
+  gives the cell back, and each claim and release goes in the ledger. `LOCAL_RADIUS_M` is gone, and a `.env` that
+  still sets it is not read. On its first run after the update a node claims each neighbour where one of its sensors
+  stood within 500 m, so nothing that counted before stops counting. Tools › **Pull** asks the node about any cells or
+  any area you drew. It answers with its own sensors in its home and held cells, and with what hydro, eyes and
+  forecast hold there, and says why when a pack has nothing. docs/place, docs/api.
+
 - **Place prints as a report.** Download has one more line, **Report, to print or save as PDF**, and Tools a row,
   Place report. Both open the place as one A4 landscape sheet: the map in a black frame with a grid in metres, a scale
   bar and a north arrow, and beside it the layers that are on with their sources, your maps, the node's cell and the

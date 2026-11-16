@@ -32,8 +32,8 @@ Every adapter (a Smart Citizen kit, the ring of Bali Air Dispatch stations, a CK
 model sampled at your coordinates, a pack's own `adapter.py`) returns the same two things: a list of sensors
 and a list of readings `(ts, sensor_id, metric, value)`. The poll loop asks every enabled adapter every
 `POLL_SECONDS` (300) and upserts what comes back. The core does not know what `pm25` means. It stores rows,
-and each sensor row says how its number was produced (`kind`), whether it is yours and within
-`LOCAL_RADIUS_M` (500 m) of the node (`local`), and whether it may be counted (`custody`). See
+and each sensor row says how its number was produced (`kind`), whether it is yours and in one of
+the node's own cells (`local`), and whether it may be counted (`custody`). See
 [Concepts](concepts.md).
 
 ### Observe

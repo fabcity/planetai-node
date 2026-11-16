@@ -105,7 +105,7 @@ assert [s["name"] for s in R["legendFar"]] == ["microclimate", "water", "ground"
 print("  report: the legend lists the layers on, under their section of the cake, in its order, with their sources")
 
 T = R["tok"]
-shot = {l["id"]: l["data"] for l in T["shot"]}
+shot = {l["id"]: l.get("data") for l in T["shot"]}   # a layer the stub gives no data (the seven cells: no /place/cells here) has none
 house = R["home"]
 assert "node" not in shot and shot.get("house") == [{"ring": [[115.1641, -8.8196], [115.1646, -8.8199], [115.165, -8.8195], [115.1649, -8.819], [115.1644, -8.8188], [115.164, -8.8191], [115.1641, -8.8196]]}], \
     ("on the sheet the house is its res-10 cell, filled, and not the ring at its point", shot.get("house"), list(shot))

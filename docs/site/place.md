@@ -156,12 +156,36 @@ gives its facts, and with the token how far it is from the node and which cell i
 it counts toward the cell; a public one is shown and never counted. Below it is the list around the house, nearest
 first, with the distance in metres measured by the node (`GET /geo/measure`, and `GET /nearby` for public stations).
 
+## The seven cells
+
+The node stands in one resolution-8 cell, and six more touch it. Its own cells are the one it stands in, its home, and
+the neighbours you claim. A sensor of yours counts as this node's own only inside them.
+
+At Cell scale, with the token, the Node cell row draws the seven. Home and the held cells have a solid line, a claimed
+cell a dashed one, and an open cell a grey dotted one. Press a neighbour and the line under the screen says its state,
+with **Claim this cell** on an open one and **Release it** on one that is claimed or held. Home is always the node's
+and has neither. A claimed cell is held once one of the node's own sensors has a reading in it in the last 24 hours,
+and goes back to claimed after a day with none. The node works this out each time it is asked and never stores it.
+A kit in a cell you claim counts from its next poll, and stops at its next poll after you release the cell.
+
+The line under the screen also says how many of the seven are held, home among them. Each claim and release is a
+row in the ledger on Data.
+
+The first time a node runs with the seven, it claims each neighbour where one of its sensors stood within 500 m of it,
+the old line, so no sensor that counted before stops counting.
+
 ## The tools
 
 **Tools**, beside the ask line, opens a menu of what the node can do with this place. **Rings and
 distance** draws the 2, 5 and 15 km rings from the node's point. **From the house** measures from the node's point to
-any point you press. **Place report** opens the sheet to print, as Download's last line does. The three that run come
-first, and the rest carry a dotted **not yet**. Choosing one closes the
+any point you press. **Pull** asks the node what it holds about an area: press cells at the scale in view, press one
+again to drop it, or choose one of your drawn areas, then press **Pull**, up to 500 resolution-8 cells. The answer
+comes under the screen. First the node's own sensors, read only in its home and held cells, then the neighbouring
+nodes' sensors, which no node sends yet, then one block for each pack that answers for an area. Hydro gives the rivers
+and basins it keeps. Eyes, with `SPECIES_MATCH=on`, gives how many open records GBIF holds of each species there, and
+sends GBIF the area's outline. Forecast, with `FORECAST_OPENMETEO=1`, gives the next 24 hours at the area's centre,
+and sends Open-Meteo only that point. A block with nothing says why, and a pack that is off says so. **Place report** opens the sheet to print, as
+Download's last line does. The four that run come first, and the rest carry a dotted **not yet**. Choosing one closes the
 menu, and so do Esc and a press outside it. A screen without a token reads "Tools run on this node with a token.
 Unlock this screen in Set up." in the menu. On a phone the layers open from a bar under the screen as a sheet, and Esc
 closes it.

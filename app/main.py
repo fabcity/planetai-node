@@ -31,6 +31,7 @@ from psycopg.types.json import Jsonb
 import bootstrap
 import agent
 import buttons
+import cells
 import actions as _act
 import events_pg
 import fundamentals
@@ -81,7 +82,10 @@ from db import db, q  # noqa: E402 — the pool, the session settings every conn
 # ---------------------------------------------------------------- ingest
 def poll_once(hc: httpx.Client) -> None:
     errors: list[str] = []
+    lat_env, lon_env = os.getenv("NODE_LAT"), os.getenv("NODE_LON")
     with db() as con:
+        with con.cursor() as cur:
+            own_cells = cells.load(cur, cells.home(float(lat_env), float(lon_env))) if (lat_env and lon_env) else None
         for name, fn in sources.enabled(hc):
             try:
                 sensors, readings = fn()
@@ -89,9 +93,7 @@ def poll_once(hc: httpx.Client) -> None:
                 errors.append(f"{name}: {str(e).splitlines()[0]}")
                 log.warning("source %s failed: %s", name, e)
                 continue
-            lat_env, lon_env = os.getenv("NODE_LAT"), os.getenv("NODE_LON")
-            sources.stamp_local(sensors, float(lat_env) if lat_env else None, float(lon_env) if lon_env else None,
-                                 float(settings.get("LOCAL_RADIUS_M") or 500))
+            sources.stamp_local(sensors, own_cells)
             with con.cursor() as cur:
                 for s in sensors:
                     cur.execute(
@@ -116,9 +118,9 @@ def poll_once(hc: httpx.Client) -> None:
 # ---------------------------------------------------------------- MQTT ingest (Meshtastic gateway, DIY pods)
 def _store(sensors, readings) -> None:
     lat_env, lon_env = os.getenv("NODE_LAT"), os.getenv("NODE_LON")
-    sources.stamp_local(sensors, float(lat_env) if lat_env else None, float(lon_env) if lon_env else None,
-                         float(settings.get("LOCAL_RADIUS_M") or 500))
     with db() as con, con.cursor() as cur:
+        own_cells = cells.load(cur, cells.home(float(lat_env), float(lon_env))) if (lat_env and lon_env) else None
+        sources.stamp_local(sensors, own_cells)
         for s in sensors:
             cur.execute("""INSERT INTO sensors (sensor_id, source, name, lat, lon, indoor, local, kind, scale, cadence, meta)
                            VALUES (%(sensor_id)s,%(source)s,COALESCE(%(name)s, %(default_name)s),%(lat)s,%(lon)s,%(indoor)s,%(local)s,%(kind)s,%(scale)s,%(cadence)s,%(meta)s)
@@ -1576,6 +1578,9 @@ def export(day: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$")):
 
 import geo  # noqa: E402 — GET /place/geojson, /geo/* (app/geo.py)
 app.include_router(geo.router)
+app.include_router(cells.router)  # GET /place/cells, claim and release: the node's seven (app/cells.py)
+import area  # noqa: E402
+app.include_router(area.router)  # POST /area: the area pull, own, peers and open sources (app/area.py)
 import maps  # noqa: E402 — /place/maps, /place/marks: the household's drawings (app/maps.py)
 app.include_router(maps.router)
 app.include_router(maps.received)  # POST /place/maps/received: a child's shared map, on AGGREGATE_TOKEN
@@ -2100,7 +2105,7 @@ def test_alert(authorization: str = Header("")):
 
 # ---- Index contract (fci-cells-v0) and ρ ------------------------------------------------------
 @app.get("/cells")
-def cells():
+def cells_():
     """Index cells this node can honestly compute. Same row shape as the FCI Observations base."""
     with db() as con, con.cursor() as cur:
         return index.cells(cur)

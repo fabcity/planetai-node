@@ -45,6 +45,9 @@ def raises(sql, *args):
 
 assert table_exists("place_maps") and table_exists("place_marks"), "init.sql creates both tables"
 assert table_exists("place_maps_unshared"), "init.sql keeps the deletes still owed to the node upstream"
+assert table_exists("node_cells"), "init.sql creates node_cells"
+cur.execute("SELECT 1 FROM schema_version WHERE version = '0.65'")
+assert cur.fetchone(), "init.sql records schema_version 0.65"
 cur.execute("SELECT extname FROM pg_extension WHERE extname = 'postgis'")
 assert cur.fetchone(), "init.sql enabled PostGIS"
 print("  both tables exist and PostGIS is on")
@@ -80,6 +83,63 @@ cur.execute("DELETE FROM place_maps WHERE id = %s", (mid,))
 cur.execute("SELECT count(*) AS n FROM place_marks WHERE map_id = %s", (mid,))
 assert cur.fetchone()["n"] == 0, "deleting a map takes its drawings"
 print("  deleting a map deletes its drawings")
+
+import cells  # noqa: E402
+os.environ.update(NODE_LAT="-8.8190516", NODE_LON="115.1644423")
+cur.execute("INSERT INTO sensors (sensor_id, source, name, lat, lon, indoor, local, kind) "
+            "VALUES ('sc-19236', 'smartcitizen', 'Ungasan', -8.81983, 115.16657, false, true, 'sensor')")
+hc = cells.home(-8.8190516, 115.1644423)
+assert cells.load(cur, hc) == {hc, "8895a4c809fffff"}, "cells.load adopts sc-19236's neighbour cell on first run"
+cur.execute("DELETE FROM node_cells WHERE cell = '8895a4c809fffff'")
+assert cells.load(cur, hc) == {hc}, "releasing adopted cell does not re-adopt while home row is present"
+print("  node_cells: adopt and load hold on Postgres")
+
+# The seen query: only this node's own sensors (custody AND kind = 'sensor'), only a reading in the last 24 h, never one
+# timestamped ahead (forecast rows are). sc-19236 read an hour ago in 8895a4c809fffff; each other row misses one rule.
+import h3  # noqa: E402
+ring = cells.ring(hc)
+def at(c):
+    return h3.cell_to_latlng(c)
+for sid, c, local, kind in (("cells-old", ring[2], True, "sensor"), ("cells-peer", ring[3], True, "peer"),
+                            ("cells-theirs", ring[4], False, "sensor"), ("cells-model", ring[5], True, "model"),
+                            ("cells-ahead", ring[6], True, "sensor")):
+    cur.execute("INSERT INTO sensors (sensor_id, source, lat, lon, local, kind) VALUES (%s, 't', %s, %s, %s, %s)",
+                (sid, *at(c), local, kind))
+cur.execute("""INSERT INTO readings (ts, sensor_id, metric, value) VALUES
+  (now() - interval '1 hour', 'sc-19236', 'pm25', 9), (now() - interval '25 hours', 'cells-old', 'pm25', 9),
+  (now() - interval '1 hour', 'cells-peer', 'pm25', 9), (now() - interval '1 hour', 'cells-theirs', 'pm25', 9),
+  (now() - interval '1 hour', 'cells-model', 'pm25', 9), (now() + interval '2 hours', 'cells-ahead', 'pm25', 9)""")
+seen = cells._seen(cur)
+assert "8895a4c809fffff" in seen and not seen & set(ring[2:]), seen
+print("  the seen query: own sensors, last 24 h, nothing ahead; a peer, a model, a stranger and an old reading hold nothing")
+
+# POST /area's SQL (app/area.py): a mark_id is the household's own drawn area only, and the readings are the last 24 h,
+# nothing ahead. Its Python is tested with a fake cursor in tests/test_area.py.
+import area  # noqa: E402
+os.environ.setdefault("CHANNELS_PATH", "config/channels.yml")   # packs reads it at import; set late, the private test below loads no core roles
+import packs  # noqa: E402
+lat, lon = at(hc)
+sq = f"ST_GeomFromText('POLYGON(({lon} {lat},{lon + .002} {lat},{lon + .002} {lat + .002},{lon} {lat}))', 4326)"
+cur.execute("INSERT INTO place_maps (name) VALUES ('ours'), ('theirs'), ('child') RETURNING id")
+ours, theirs, child = [r["id"] for r in cur.fetchall()]
+cur.execute("UPDATE place_maps SET agent = 'ask' WHERE id = %s", (theirs,))
+cur.execute("UPDATE place_maps SET from_node = 'n9', remote_id = 1 WHERE id = %s", (child,))
+cur.execute(f"""INSERT INTO place_marks (map_id, kind, geom) VALUES (%s, 'area', {sq}), (%s, 'line', ST_MakeLine(ST_Point({lon}, {lat}, 4326), ST_Point({lon + .002}, {lat}, 4326))),
+                (%s, 'area', {sq}), (%s, 'area', {sq}) RETURNING id""", (ours, ours, theirs, child))
+a_ours, a_line, a_theirs, a_child = [r["id"] for r in cur.fetchall()]
+cur.execute(area._MARK, (a_ours,))
+g = cur.fetchone()["geometry"]
+assert g["type"] == "Polygon" and area.cover({"polygon": g}), g
+for k in (a_line, a_theirs, a_child):
+    cur.execute(area._MARK, (k,))
+    assert cur.fetchone() is None, f"mark {k} is not the household's drawn area"
+cur.execute(area._READINGS, (["sc-19236", "cells-old", "cells-ahead"],))
+assert {r["sensor_id"] for r in cur.fetchall()} == {"sc-19236"}, "the pull reads the last 24 h, nothing ahead"
+cur.execute(area._READINGS + " AND " + packs.public_sql("r"), (["sc-19236"],))
+cur.fetchall()
+cur.execute(area._SENSORS)
+assert {"cells-peer", "sc-19236"} <= {r["sensor_id"] for r in cur.fetchall()}
+print("  POST /area's SQL: a mark is the household's own drawn area, readings the last 24 h, private ones filterable")
 
 con.rollback()
 

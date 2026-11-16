@@ -71,6 +71,7 @@ An older `.env` may still hold these, and nothing reads them:
 | key | what happened to it |
 |---|---|
 | `BRIEFINGS`, `BRIEF_MORNING`, `BRIEF_EVENING`, `BRIEF_HOUR` | Replaced by the report rhythm. A node that had `BRIEF_MORNING=7` was set once to `REPORT_EVERY=12`, `REPORT_ANCHOR=7`. You can delete them. |
+| `LOCAL_RADIUS_M` | Replaced by the node's own cells, the one it stands in and the neighbours claimed on [Place](place.md#the-seven-cells). The first time an updated node runs, it claims each neighbour where one of its own sensors stood within 500 m of it, whatever this key said. You can delete it. |
 
 ## Reference
 
@@ -90,7 +91,6 @@ from the code's default, both are given.
 | `NODE_TZ` | `UTC`; `.env.example` `Asia/Makassar` | IANA name | The database session time zone, so local midnight and local hours in rules, reports, quiet hours and `/shape`. Also the agent container's `TZ`. | bootstrap |
 | `NODE_ISSUES` | blank = every issue; `.env.example` `air,heat,land,coast` | comma list of `air`, `heat`, `land`, `coast`, `water` | What this place watches, most important first. The dashboard starts at the first; the one with something to say takes the top. An unknown name is dropped with a line in the log. Your preset guessed this, so change it. | runtime · public |
 | `NODE_VERSION` | written by `install.sh` and `update.sh` | string | `git describe`, the `VERSION` file, or `dev`. Shown in `/health`, `/presence` and `/export`. | env only |
-| `LOCAL_RADIUS_M` | `500` | metres | How far from the node a sensor can be and still count as its own. A kit of yours further away stays out of the ambient average and out of every `live` claim. | runtime · public |
 
 ## Who may read it
 
