@@ -425,7 +425,7 @@ $('#qform').onsubmit = async ev => {
     const r = await fetch('/ask', { method: 'POST', headers: { 'content-type': 'application/json', ...DOORS_AUTH() },
       body: JSON.stringify({ messages: [{ role: 'user', content: q }], view: view(), mode: 'advanced', focus: null }) });
     if (!r.ok || !r.body) throw new Error((await r.json().catch(() => ({}))).detail || `the node answered ${r.status}`);
-    const rd = r.body.getReader(), dec = new TextDecoder(); let buf = '', text = '';
+    const rd = r.body.getReader(), dec = new TextDecoder(); let buf = '', text = '', reg = null;
     for (;;) {
       const { value, done } = await rd.read(); if (done) break;
       buf += dec.decode(value, { stream: true }); let cut;
@@ -433,12 +433,18 @@ $('#qform').onsubmit = async ev => {
         const block = buf.slice(0, cut); buf = buf.slice(cut + 2);
         const ev = (block.match(/^event: (.+)$/m) || [])[1], data = JSON.parse((block.match(/^data: (.+)$/m) || [])[1] || '{}');
         if (ev === 'token') { text += data.text; out.textContent = text; }
-        else if (ev === 'retry') { text = ''; }
+        else if (ev === 'retry') { text = ''; reg = null; }
+        else if (ev === 'proposal' && data.tool === 'place_report') reg = (data.args || {}).register || 'paper';
         else if (ev === 'error') throw new Error(data.message);
       }
     }
     if (!text) throw new Error('empty');
     out.innerHTML = `<p>${esc(text)}</p>`;
+    /* the model asked for the Place report (SPEC_place_report §9 step 3): a button that opens it; the person prints */
+    if (reg && window.placeReport) {
+      out.insertAdjacentHTML('beforeend', `<button type="button" class="aopen" data-open-report="${esc(reg)}">Open the Place report${reg === 'screen' ? ', Screen' : ''}</button>`);
+      out.querySelector('[data-open-report]').onclick = () => window.placeReport(reg);
+    }
     if (!(D.prompts || []).includes(q)) await docsAfter(q, out);   /* the node's own questions are about tonight's readings, not the docs */
     ASKED.add(q); TURN += 3;
   } catch (e) { await docsAnswer(q, 'The model did not answer, so here is what the docs say.', out); }

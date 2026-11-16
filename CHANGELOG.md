@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **Place prints as a report.** Download has one more line, **Report, to print or save as PDF**, and Tools a row,
+  Place report. Both open the place as one A4 landscape sheet: the map in a black frame with a grid in metres, a scale
+  bar and a north arrow, and beside it the layers that are on with their sources, your maps, the node's cell and the
+  credits. Paper draws the map light and is where it starts, Screen draws it black. Up to four A4 pages follow it: the
+  place in figures, what the node holds about its place with the command that fills each empty row, what changed year
+  on year where the node has satellite years, and the sources with a line to cite the report by. The browser's own
+  print makes the PDF, so nothing new runs on the node. On the sheet the house is blurred to its res-10 cell, even with
+  the token, no page says anything closer than the res-8 cell, and without the token there is no map. You can ask for
+  it too: "make me the place report" in Ask gives a button that opens it, on a screen holding the token. docs/place,
+  docs/ask.
+
 - **A node knows where its electricity comes from.** The new `energy` pack finds the node's grid (Bali and the
   Balearics today), asks OpenStreetMap for its plants, substations and cable heads, and works out how much of its
   power is made from fossil fuels. Where the operator publishes the mix the share is measured by day (Menorca, from

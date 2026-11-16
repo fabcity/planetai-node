@@ -29,8 +29,9 @@ const PAL = {
   dark: { sea: '#0E1012', land: '#17191D', green: '#1A201C', road: '#30353D', casing: '#17191D', bldg: '#2B2E34',
     coast: '#3A3F47', built: '#1C1F23', sand: '#1E1F1C', farm: '#191C19', label: '#A3A19F', lhalo: '#17191D', major: '#3C424B', path: '#3A3F47', ink: [249, 245, 242], mute: [163, 161, 159], cells: [127, 165, 232], sat: [255, 147, 30], halo: [23, 25, 29] },
 };
-/* the screen is black in both registers (SPEC_place_microgis §4, Tomas 4 Nov 2026); Now's map keeps the page's (groundBase) */
-const P = () => PAL.dark;
+/* the screen is black in both registers (SPEC_place_microgis §4, Tomas 4 Nov 2026); Now's map keeps the page's (groundBase),
+   and the sheet's picture on Paper takes the light one while it is taken (placeSheet) */
+const P = () => (PM.sheet && PM.sheet.paper ? PAL.light : PAL.dark);
 
 /* ---------------------------------------------------------------- scales: named rungs of the ladder */
 /* the five rungs on the screen (SPEC_place_microgis §4); a scroll still reaches the island and the radio cell */
@@ -232,13 +233,15 @@ function groundRows() {
   const m = (PM.meta && PM.meta.layers) || {}, mb = b => b ? `${(b / 1e6).toFixed(1)} MB` : '', G = PM.ground || {};
   /* no /ground/meta at all is this screen being refused it, not a node without a map: say which */
   const locked = !PM.meta;
-  const set = (id, sub, empty, why) => { const l = LAYERS.find(x => x.id === id); if (sub) l.sub = sub; l.empty = !!empty; l.why = why; l.locked = locked && !!empty; if (empty) PM.on[id] = false; };
-  set('street', G.vector ? `OpenStreetMap ${(m.vector || {}).build ? `build ${m.vector.build.slice(0, 8)}` : ''} · ${mb((m.vector || {}).bytes)} on this node` : locked ? 'token-only · unlock this screen in Set up › This screen' : 'the plan from /place/geojson; no street map on this node yet: planetai run place basemap');
+  /* `part`: the node holds the layer in part, as the report's page 2 says it (SPEC_place_report §5) */
+  const set = (id, sub, empty, why, part) => { const l = LAYERS.find(x => x.id === id); if (sub) l.sub = sub; l.empty = !!empty; l.why = why; l.part = !!part && !empty; l.locked = locked && !!empty; if (empty) PM.on[id] = false; };
+  set('street', G.vector ? `OpenStreetMap ${(m.vector || {}).build ? `build ${m.vector.build.slice(0, 8)}` : ''} · ${mb((m.vector || {}).bytes)} on this node` : locked ? 'token-only · unlock this screen in Set up › This screen' : 'the plan from /place/geojson; no street map on this node yet: planetai run place basemap',
+    false, 'planetai run place basemap', !G.vector && !locked);
   const im = m.imagery || {};
   /* the node's Sentinel-2 years (GET /earth) are the satellite's then and now on the screen, with or without the map layer */
   const yrs = ((D.earth || {}).sentinel || []).length;
   set('imagery', G.imagery ? `Sentinel-2, ${im.passes} passes, ${(im.from || '').slice(0, 7)} to ${(im.to || '').slice(0, 7)} · ${mb(im.bytes)}`
-    : yrs ? `${yrs} Sentinel-2 years, then and now · no map layer yet: planetai run earth-engine basemap` : null, !G.imagery && !yrs, 'planetai run earth-engine basemap');
+    : yrs ? `${yrs} Sentinel-2 years, then and now · no map layer yet: planetai run earth-engine basemap` : null, !G.imagery && !yrs, 'planetai run earth-engine basemap', !G.imagery);
   /* the satellite is the base wherever the node holds it (SPEC_place_microgis §4, Defaults); elsewhere the streets */
   if (G.imagery) PM.on.imagery = true;
   const dr = m.drone || {}, ms = dr.mosaics || [];
@@ -251,7 +254,7 @@ function groundRows() {
    has nothing here yet", which said so beside a working What changed (14 Oct). */
 function packRows() {
   const ea = LAYERS.find(l => l.id === 'earth'), nE = ((D.earth || {}).changes || []).length;
-  ea.none = nE ? `${nE} comparison${nE === 1 ? '' : 's'} · a count, not a shape: Land, in the figures below` : null;
+  ea.none = nE ? `${nE} comparison${nE === 1 ? '' : 's'} · a count, not a shape: Land, in the figures below` : null; ea.part = !!nE;
 }
 /* after GET /hydro: a node without the pack, or before its fetch, keeps both rows and says which */
 function hydroRows() {
@@ -297,8 +300,12 @@ function layers() {
   const L = Object.fromEntries(LAYERS.map(l => [l.id, vis(l)]));
   const px = { lineWidthUnits: 'pixels', radiusUnits: 'pixels', widthUnits: 'pixels' }, out = [];   // PathLayer reads widthUnits
   const dashed = new Dk.PathStyleExtension({ dash: true });
-  const S = outside(D.sensors).filter(s => s.lat != null);
-  const G = GRID, gr = G ? G.res : r;
+  /* on a sheet (placeSheet) the house's own points and the images stand only outside its res-10 cell, as the node placed
+     them; a point the node did not place is left off */
+  const SH = PM.sheet, away = id => !!SH.home && !!id && id !== SH.home;
+  const S = outside(D.sensors).filter(s => s.lat != null && (!SH || s.kind === 'facility' || (s.kind === 'sensor' && !s.local) || away(SH.cells.get(s.sensor_id))));
+  const caps = PM.caps && PM.caps.filter(c => !SH || away(c.cell));
+  const G = GRID, gr = G ? G.res : r, fine = SH && gr > 10;   // a cell of the node's finer than the house's is not drawn on a sheet
 
   /* the basins under the rivers: outlines, the one the node drains through drawn brighter */
   if (L.basin && PM.hydro && PM.hydro.basins) {
@@ -317,7 +324,7 @@ function layers() {
   if (L.energy && PM.energy) {
     const E = PM.energy, EN = [242, 140, 40], P0 = (E.sources || []).filter(s => s.lat != null), C = E.cells || [];
     out.push(new Dk.PathLayer({ id: 'energy-cells', data: C, getPath: c => c.ring, ...px, getColor: A(EN, .5 * a('energy')), getWidth: 1 }));
-    if (z >= 12) out.push(new Dk.TextLayer({ characterSet: 'auto', id: 'energy-mw', data: C, getPosition: lngLat, getText: c => cellMW(c, E.household),
+    if (z >= 12) out.push(new Dk.TextLayer({ characterSet: 'auto', id: 'energy-mw', data: C, getPosition: lngLat, getText: c => cellMW(c, SH ? null : E.household),   // the house's roof is the household's: never on a sheet
       getSize: 11, fontFamily: 'JetBrains Mono, monospace', getColor: A(EN, a('energy')), background: true, getBackgroundColor: A(p.halo, .85), backgroundPadding: [3, 1] }));
     out.push(new Dk.ScatterplotLayer({ id: 'energy', data: P0, getPosition: lngLat, ...px, stroked: true, filled: true,
       getRadius: s => s.kind === 'plant' && s.mw ? 3 + Math.sqrt(s.mw) * 0.6 : 4, getLineWidth: 1.4, getLineColor: A(EN, a('energy')),
@@ -325,7 +332,7 @@ function layers() {
     out.push(new Dk.TextLayer({ characterSet: 'auto', id: 'energy-l', data: P0, getPosition: lngLat, getText: s => s.name, getSize: 11, fontFamily: 'Figtree, sans-serif',
       getColor: A(p.ink, .8 * a('energy')), getTextAnchor: 'start', getPixelOffset: [12, 0], background: true, getBackgroundColor: A(p.halo, .85), backgroundPadding: [3, 1] }));
   }
-  if (L.rings && RINGS) {
+  if (L.rings && RINGS && !SH) {
     out.push(new Dk.PathLayer({ id: 'rings', data: RINGS, getPath: d => d.path, ...px,
       getColor: A(p.ink, .45 * a('rings')), getWidth: 1, extensions: [dashed], getDashArray: [4, 4] }));
     out.push(new Dk.TextLayer({ characterSet: 'auto', id: 'rings-l', data: RINGS.map(x => ({ t: `${x.km} km`, p: x.path[0] })), getPosition: d => d.p, getText: d => d.t,
@@ -336,7 +343,7 @@ function layers() {
       getColor: A(p.ink, .7 * a('radio')), getWidth: 1.5, extensions: [dashed], getDashArray: [1, 4], _kind: 'radio' }));
   }
   if (L.grid && G) {
-    const cells = G.cells.filter(c => c.id !== G.node);
+    const cells = G.cells.filter(c => c.id !== G.node || fine);
     /* over a photograph the grid is drawn light on a dark edge, as the svg ground draws hairlines over tiles */
     const photo = (PM.on.imagery && PM.ground.imagery && z >= 8 && z < SAT_MAX) || (PM.on.drone && PM.ground.drone && z >= 13);
     const gc = photo ? A([255, 255, 255], .8 * a('grid')) : A(p.ink, (z >= 12.5 ? .3 : .22) * a('grid'));
@@ -348,7 +355,7 @@ function layers() {
       : new Dk.PolygonLayer({ id: 'grid', data: cells, getPolygon: d => d.path, ...px, pickable: true, autoHighlight: true, highlightColor: A(p.cells, .06),
         filled: true, getFillColor: [0, 0, 0, 0], getLineColor: gc, getLineWidth: 1 }));
   }
-  if (L.mine && G) {
+  if (L.mine && G && !fine) {
     out.push(new Dk.PolygonLayer({ id: 'mine', data: [{ id: G.node, ring: G.nodeRing }], getPolygon: d => d.ring, ...px, pickable: true,
       filled: true, getFillColor: A(p.cells, .12 * a('mine')), getLineColor: A(p.cells, a('mine')), getLineWidth: mayLeave(gr) ? 0 : 2.5 }));
     if (mayLeave(gr)) out.push(new Dk.PathLayer({ id: 'mine-dot', data: [{ path: G.nodeRing }], getPath: d => d.path, ...px,
@@ -368,14 +375,14 @@ function layers() {
     out.push(new Dk.TextLayer({ characterSet: 'auto', id: 'labs-l', data: F, getPosition: lngLat, getText: s => s.name, getSize: 11, fontFamily: 'Figtree, sans-serif',
       getColor: A(p.ink, .8 * a('labs')), getTextAnchor: 'start', getPixelOffset: [12, 0], background: true, getBackgroundColor: A(p.halo, .85), backgroundPadding: [3, 1] }));
   }
-  if (L.images && PM.caps) {
-    out.push(new Dk.TextLayer({ characterSet: 'auto', id: 'images', data: PM.caps, getPosition: c => [c.at[1], c.at[0]],
+  if (L.images && caps) {
+    out.push(new Dk.TextLayer({ characterSet: 'auto', id: 'images', data: caps, getPosition: c => [c.at[1], c.at[0]],
       getText: () => '■', getSize: 14, pickable: true, fontFamily: 'JetBrains Mono, monospace', getColor: A(p.ink, a('images')),
       background: true, getBackgroundColor: A(p.halo, .9 * a('images')), backgroundPadding: [1, 1] }));
   }
   /* a species somebody here confirmed: filled, at its image's point; named in the list, never beside it (option A) */
-  if (L.species && PM.caps) {
-    out.push(new Dk.TextLayer({ characterSet: 'auto', id: 'species', data: speciesMarks(), getPosition: d => [d.c.at[1], d.c.at[0]], getText: () => '◆', getSize: 15,
+  if (L.species && caps) {
+    out.push(new Dk.TextLayer({ characterSet: 'auto', id: 'species', data: speciesMarks().filter(d => caps.includes(d.c)), getPosition: d => [d.c.at[1], d.c.at[0]], getText: () => '◆', getSize: 15,
       pickable: true, fontFamily: 'JetBrains Mono, monospace', getColor: A(p.ink, a('species')), getPixelOffset: [0, -13] }));
   }
   const st = S.filter(s => s.kind === 'sensor');
@@ -389,9 +396,12 @@ function layers() {
       highlightColor: A(p.cells, 1), stroked: true, filled: true, getRadius: 5, getFillColor: A(p.ink, a('own')),
       getLineColor: A(p.halo, a('own')), getLineWidth: 1.5 }));
   }
-  /* the node itself, always: a ring, not a dot, because /health publishes its cell's centre to strangers */
-  out.push(new Dk.ScatterplotLayer({ id: 'node', data: [{ p: D.point }], getPosition: d => d.p, ...px, stroked: true, filled: false,
+  /* the node itself, always: a ring, not a dot, because /health publishes its cell's centre to strangers. On a sheet the
+     house is its res-10 cell, filled (SPEC_place_report §6) */
+  if (!SH) out.push(new Dk.ScatterplotLayer({ id: 'node', data: [{ p: D.point }], getPosition: d => d.p, ...px, stroked: true, filled: false,
     getRadius: 9, getLineColor: A(p.cells, 1), getLineWidth: 2 }));
+  else if (SH.ring) out.push(new Dk.PolygonLayer({ id: 'house', data: [{ ring: SH.ring }], getPolygon: d => d.ring, ...px, filled: true, stroked: true,
+    getFillColor: A(p.ink, .3), getLineColor: A(p.ink, 1), getLineWidth: 1.5 }));
   /* below the drone layer's zoom, each flight is a pin at its bbox's centre, named by its resolution and month; a press
      flies there (press()). The pin is the screen's chip, light on dark, never a drawing colour. */
   const fl = (((PM.meta || {}).layers || {}).drone || {}).mosaics || [];
@@ -401,11 +411,11 @@ function layers() {
     out.push(new Dk.ScatterplotLayer({ id: 'drone-pins', data: pins, getPosition: d => d.q, ...px, pickable: true, stroked: true, filled: true,
       getRadius: 10, getFillColor: [20, 20, 20, 235], getLineColor: A(p.ink, 1), getLineWidth: 1.2 }));
     out.push(new Dk.TextLayer({ characterSet: 'auto', id: 'drone-pins-l', data: pins, getPosition: d => d.q, getText: d => d.t, pickable: true, getSize: 11,
-      fontFamily: 'Figtree, sans-serif', getColor: A(p.ink, 1), getTextAnchor: 'start', getPixelOffset: [15, 0], background: true,
+      fontFamily: 'Figtree, sans-serif', getColor: [249, 245, 242, 255], getTextAnchor: 'start', getPixelOffset: [15, 0], background: true,   // light on its dark chip in both registers: Paper's ink printed dark on dark (node #1, 16 Nov)
       getBackgroundColor: [20, 20, 20, 235], backgroundPadding: [4, 2] }));
   }
   /* named in the list under the screen, "This house · 0 m": labels never sit on the house (Tomas, 15 Oct, option A) */
-  if (PM.measure.length) {
+  if (PM.measure.length && !SH) {
     const path = PM.measure;
     /* each placed leg labelled with the node's own metres for it; the leg to the cursor is drawn, not measured */
     const legs = (PM.measured && PM.measured.points === PM.measure.length) ? PM.measured.legs_m : [];
@@ -520,6 +530,14 @@ function about(l) {
   const brief = l.soon ? esc(l.src) : flatOff ? 'live map' : l.locked ? `${WH}token-only` : off ? 'not here' : zoom || esc(l.src);
   return { off, brief, long };
 }
+/* the cake as the report's page 2 says it (SPEC_place_report §5): each row held, held in part or not yet, its source, and
+   where it is empty the command that fills it or the cake's own words for it. A withheld row's source is token-only, as
+   the cake says it. Never a row's `sub`: the species row's names the species, which stay the household's. */
+const placeCake = () => cakeSections(LAYERS, PM.on).map(s => ({ name: s.name, rows: s.rows.map(({ id }) => {
+  const l = BY[id], gap = l.empty || l.part;
+  return { name: l.name, src: l.locked ? 'token-only' : l.src, held: l.soon ? 'not yet' : l.locked ? 'withheld' : l.part ? 'held in part' : l.empty ? 'not yet' : 'held',
+    fill: !l.soon && !l.locked && gap && l.why || null, none: !l.soon && !l.locked && gap && !l.why && l.none || null };
+}) }));
 function panel() {
   const spd = document.getElementById && document.getElementById('spd');
   const row = r => {
@@ -655,6 +673,7 @@ function dlMenu(open) {
   menu.innerHTML = `<p class="dlh">download ${m ? esc(m.name) : 'this screen'}</p>`
     + it('png', 'Image of the screen', 'PNG') + it('geojson', 'For upstream and QGIS', 'GeoJSON', no) + it('kml', 'For Google Earth, phones', 'KML', no) + it('dxf', 'For CAD, in metres', 'DXF', no)
     + `<hr><button type="button" data-dl="all" aria-label="Everything on the screen"><span>Everything on the screen</span><code>${n} file${n === 1 ? '' : 's'}</code></button>`
+    + '<button type="button" data-dl="report" aria-label="Report, to print or save as PDF"><span>Report, to print or save as PDF</span><code>PDF</code></button>'
     + (PM.dlErr ? `<p class="err" role="status">${esc(PM.dlErr)}</p>` : '');
   const f = menu.querySelector('button'); if (f) f.focus();
 }
@@ -663,6 +682,8 @@ function png(m) {
   const name = `${slug(D.node.name) || 'node'}-${slug(m ? m.name : 'place') || 'map'}-${doorsLocal(new Date().toISOString(), D.tz).slice(0, 10)}.png`;
   PM.map.triggerRepaint(); PM.map.once('render', () => save(screenImage().toDataURL('image/png'), name));
 }
+/* the scale bar's length, the PNG's and the sheet's: the longest round length under 120 px */
+const barLen = mpp => [1, 2, 5].flatMap(a => [1, 10, 100, 1e3, 1e4, 1e5].map(b => a * b)).sort((a, b) => a - b).filter(v => v / mpp <= 120).pop() || 1;
 /* The map's canvas holds the base and the drawings; the scale bar and the credit are page elements, so the image would
    leave without its attribution (ODbL, CC BY, Copernicus: §4 puts both in the PNG). They are drawn onto a copy here,
    in a dark strip along the foot that reads on the satellite and on the black street map. */
@@ -671,8 +692,7 @@ function screenImage() {
   const cv = document.createElement('canvas'); cv.width = src.width; cv.height = src.height;
   const x = cv.getContext('2d'); x.drawImage(src, 0, 0); x.scale(k, k);
   /* the scale: the longest round length under 120 px, at the map's centre */
-  const c = PM.map.getCenter(), mpp = 40075016.686 * Math.cos(c.lat * Math.PI / 180) / (512 * 2 ** PM.map.getZoom());
-  const len = [1, 2, 5].flatMap(a => [1, 10, 100, 1e3, 1e4, 1e5].map(b => a * b)).sort((a, b) => a - b).filter(v => v / mpp <= 120).pop() || 1;
+  const c = PM.map.getCenter(), mpp = 40075016.686 * Math.cos(c.lat * Math.PI / 180) / (512 * 2 ** PM.map.getZoom()), len = barLen(mpp);
   const bar = len / mpp, label = len >= 1000 ? `${len / 1000} km` : `${len} m`;
   /* the credit, wrapped at its own dots to fit beside the scale */
   x.font = '400 10px Figtree, sans-serif';
@@ -689,6 +709,36 @@ function screenImage() {
   x.textAlign = 'right'; lines.forEach((t, i) => x.fillText(t, W - 10, H - strip + 11.5 + 13 * i));
   return cv;
 }
+/* THE SHEET'S PICTURE (SPEC_place_report §3, §6): the screen in the register chosen, Paper being the light palette, with
+   the house blurred to its res-10 cell (layers()), taken from the canvas once the map is idle, as the PNG's is but
+   without its strip. Then the screen goes back to black. The house's cell and each point's are the node's answers
+   (GET /geo/cell); the rings and the wind are left out of the legend, since the sheet does not draw them. */
+const NOMAP = 'The map of the house stays on this house’s own screens, because where it stands is the household’s. Unlock this screen in Set up › This screen to print it.';
+async function placeSheet(paper) {
+  const date = doorsLocal(new Date().toISOString(), D.tz).slice(0, 10);
+  if (!DOORS_TOKEN()) return { none: NOMAP, date };
+  if (!PM.map) return { none: 'This browser gave the map no WebGL, so there is no picture of it to print.', date };
+  /* loaded() is false while tiles are still coming, not only before the first load, and 'load' fires once: arriving from
+     Place itself (Download, the Tools row, Ask) waited on it for ever. Idle comes after either, and the wait is bounded. */
+  if (!PM.map.loaded()) await new Promise(r => { PM.map.once('idle', r); setTimeout(r, 15000); });
+  const home = (D.geometry.ladder.find(l => l.res === 10) || {}).id || null;
+  const pts = outside(D.sensors).filter(s => s.lat != null && (s.local || s.kind === 'model' || s.kind === 'map'));
+  const [ring, ...ids] = await Promise.all([home ? cellFacts(home).then(c => loop(c.ring), () => null) : null,
+    ...pts.map(s => cellAt(s.lon, s.lat, 10).then(c => c.id, () => null))]);
+  PM.sheet = { paper, home, ring, cells: new Map(pts.map((s, i) => [s.sensor_id, ids[i]])) };
+  try {
+    PM.map.resize(); if (paper) { PM.map.setStyle(style(PAL.light)); applyBase(); }
+    redraw();
+    await new Promise(r => { PM.map.once('idle', r); PM.map.triggerRepaint(); setTimeout(r, 8000); });
+    const cv = PM.map.getCanvas(), z = PM.map.getZoom(), mpp = mPerPx(z);
+    return { img: cv.toDataURL('image/png'), w: cv.clientWidth, h: cv.clientHeight, mpp, bar: barLen(mpp), dark: !paper, res: PM.res, date,
+      rung: (SCALES.find(([r]) => r === PM.res) || [])[1] || null, credits: creditList(), legend: sheetLegend(LAYERS, { ...PM.on, rings: false, wind: false }, z),
+      maps: onScreen().map(m => ({ name: m.name, colours: [...new Set((MARKS[m.id] || []).map(k => k.colour))].map(n => (PM.palette || {})[n]).filter(Boolean) })) };
+  } finally {
+    PM.sheet = null; if (paper) { PM.map.setStyle(style()); applyBase(); }
+    redraw();
+  }
+}
 async function mapFile(m, ext) {
   try {
     const r = await doorsFetch(`${API}place/maps/${m.id}.${ext}?actor=${encodeURIComponent(actor())}`);
@@ -700,6 +750,7 @@ async function mapFile(m, ext) {
 async function download(k) {
   const m = openMap(), all = k === 'all'; PM.dlErr = '';
   dlMenu(false); if (PM.dlb) PM.dlb.focus();
+  if (k === 'report') { location.hash = '#place/report'; return; }   // the sheet takes its own picture (placeSheet)
   if (k === 'png' || all) png(m);
   for (const x of all ? onScreen() : k !== 'png' && m ? [m] : []) for (const ext of all ? ['geojson', 'kml', 'dxf'] : [k]) await mapFile(x, ext);
   if (PM.dlErr) dlMenu(true);   // a file the node refused says why, in the menu
@@ -1508,7 +1559,7 @@ async function placeMap() {
   document.addEventListener('keydown', onKey, true);   // capture: an arrow moving a corner must not also pan the map
   placeMaps();
 }
-window.placeMap = placeMap; window.placeLayer = setLayer; window.__PM = PM;   // __PM for the rig
+window.placeMap = placeMap; window.placeLayer = setLayer; window.placeSheet = placeSheet; window.placeCake = placeCake; window.__PM = PM;   // __PM for the rig
 /* the figures' Rivers row: both hydro rows on, and out to District scale, where the nearest river is in view */
 window.placeRivers = () => { setLayer('rivers', true); setLayer('basin', true); if (PM.map) fly(6); };
 /* the Images panel added one: ask again, so its kind's row and its square appear */
