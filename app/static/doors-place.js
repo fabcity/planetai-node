@@ -137,9 +137,10 @@ async function speciesBlock() {
    shows one year at a time. The hectares that changed between the two are the node's own count (AlphaEarth, GET /earth),
    drawn only for a pair it computed. Under them the buildings the satellite counts round the node, a bar a year (the
    place pack's Open Buildings series, GET /history). The photographs are not registered to the node's point, so they
-   sit beside the map, never on it. */
-function layer() {
-  const el = $('#pchange'), ys = (D.earth || {}).sentinel || [], Y = D.place_yearly || [];
+   sit beside the map, never on it. Given `into`, the report's page 3 (SPEC_place_report §5): then and now as the screen
+   has them, without the switches. */
+function layer(into) {
+  const el = into || $('#pchange'), ys = (D.earth || {}).sentinel || [], Y = D.place_yearly || [];
   let h = `<h3 class="pmh">what changed, year on year <b>Sentinel-2 · AlphaEarth</b></h3>`;
   if (!ys.length && !Y.length) { el.innerHTML = h + '<p class="fine">This node holds no satellite years yet.</p>'; return; }
   if (ys.length) {
@@ -147,11 +148,11 @@ function layer() {
     if (!ys.includes(PAST) || PAST === NOW) PAST = ys[0];
     const ch = (D.earth.changes || []).find(c => c.year_a === PAST && c.year_b === NOW)
       || (D.earth.changes || []).find(c => c.year_a <= PAST + 1 && c.year_b === NOW);
-    h += `<div id="altbar">` + (COMPARE
+    h += (into ? '' : `<div id="altbar">` + (COMPARE
       ? `<span class="k">then</span><button id="yp" aria-label="Earlier">‹</button><b class="mono">${PAST}</b><button id="yn" aria-label="Later">›</button><span class="k">· now</span><b class="mono">${NOW}</b>`
         + `<label class="cmp"><input type="checkbox" id="cmp" checked> then and now</label>`
-      : `<button id="yp" aria-label="Earlier">‹</button><b class="mono">${YEAR}</b><button id="yn" aria-label="Later">›</button><label class="cmp"><input type="checkbox" id="cmp"> then and now</label>`) + '</div>'
-      + (COMPARE
+      : `<button id="yp" aria-label="Earlier">‹</button><b class="mono">${YEAR}</b><button id="yn" aria-label="Later">›</button><label class="cmp"><input type="checkbox" id="cmp"> then and now</label>`) + '</div>')
+      + (COMPARE || into
         ? `<div class="pair"><figure><img src="${SAT(PAST)}" alt="Sentinel-2, ${PAST}"><figcaption>then · ${PAST}</figcaption></figure><figure><img src="${SAT(NOW)}" alt="Sentinel-2, ${NOW}"><figcaption>now · ${NOW}</figcaption></figure></div>`
           + (ch ? `<div class="pairnote">${ch.year_a} → ${ch.year_b}: ${num('earth.change.pair', ch.hectares_over_threshold.toFixed(1), `pixels past the change threshold ${ch.threshold}, of ${ch.pixels.toLocaleString('en')}`)} ha changed, ${(ch.share_over_threshold * 100).toFixed(1)} % of the ground, by the node’s AlphaEarth record ${prov('model')}</div>` : '')
         : `<img class="photo" src="${SAT(YEAR)}" alt="Sentinel-2 annual median, ${YEAR}, about 3 km across">`)
@@ -165,7 +166,7 @@ function layer() {
       + `<div class="yl" style="grid-template-columns:repeat(${Y.length},1fr)">${Y.map(r => `<span>${r.year}</span>`).join('')}</div>`;
   }
   el.innerHTML = h;
-  if (!ys.length) return;
+  if (into || !ys.length) return;
   const NOW = ys[ys.length - 1], past = ys.filter(y => y !== NOW);
   const step = d => { if (COMPARE) PAST = past[Math.max(0, Math.min(past.length - 1, past.indexOf(PAST) + d))]; else YEAR = ys[Math.max(0, Math.min(ys.length - 1, ys.indexOf(YEAR) + d))]; layer(); };
   $('#yp').onclick = () => step(-1); $('#yn').onclick = () => step(1); $('#cmp').onchange = e => { COMPARE = e.target.checked; layer(); };
@@ -208,8 +209,8 @@ document.addEventListener('click', e => { if ($('#ptools').hidden === false && !
 { const w = document.querySelector('.ptools');
   if (w) w.addEventListener('focusout', e => { const t = e.relatedTarget; if (t && !w.contains(t) && !(t.closest && t.closest('.maplibregl-canvas-container'))) toolsMenu(false); }); }
 
-/* THE PLACE REPORT (SPEC_place_report §3): #place/report hides the rest of Place and shows the sheet on a grey ground,
-   under one bar: Paper · Screen, Print or save as PDF, Back to Place. The picture is taken on the way in and again when
+/* THE PLACE REPORT (SPEC_place_report §3, §5): #place/report hides the rest of Place and shows the sheet and the report's
+   pages on a grey ground, under one bar: Paper · Screen, Print or save as PDF, Back to Place. The picture is taken on the way in and again when
    the register changes, with the map shown for it (doors-placemap.js placeSheet). A redraw that is not a new address, a
    resize or the browser laying the page out to print it, keeps the sheet it has. */
 let PREG = 'paper', PSHEET = null, PTAKING = null;
@@ -219,14 +220,26 @@ function report(again) {
   if (PSHEET && !again) { show(true); return null; }
   if (PTAKING) return PTAKING;
   show(false);
-  return (PTAKING = Promise.all([window.placeSheet(PREG === 'paper'),
-    doorsFetch('/geo/cell?id=' + D.health.cell.id).then(r => (r.ok ? r.json() : null)).catch(() => null)]).then(([s, c8]) => {
+  const get = p => doorsFetch(p).then(r => (r.ok ? r.json() : null)).catch(() => null);
+  return (PTAKING = Promise.all([window.placeSheet(PREG === 'paper'), get('/geo/cell?id=' + D.health.cell.id), get('/hydro')]).then(([s, c8, H]) => {
     PTAKING = null;
     if (location.hash !== '#place/report') return;
-    PSHEET = s; $('#psheets').innerHTML = sheetHTML(D, s, c8 && c8.ring);
+    PSHEET = s; $('#psheets').innerHTML = sheetHTML(D, s, c8 && c8.ring) + reportPages(D, reportParts(s, H));
     box.querySelectorAll('[data-reg]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.reg === PREG)));
     show(true); window.scrollTo(0, 0);
   }).catch(e => { PTAKING = null; $('#psheets').innerHTML = `<p class="fine">The picture was not taken: ${esc(e.message)}</p>`; show(true); }));
+}
+/* What the pages carry (SPEC_place_report §5): the band's rows with Rivers in them, the cake, what changed, and every
+   credit they owe in the node's words. /earth and /hydro bring their own; the place and index packs' attributions do not
+   reach the page, so those two lines are their pack.yaml's, as written there. */
+function reportParts(s, H) {
+  const P = D.index_place, E = D.earth || {}, ch = {}, Y = D.place_yearly || [], read = P && P.place && P.read && P.read.at;
+  if ((E.sentinel || []).length || Y.length) layer(ch);
+  return { date: s.date, figures: figures(riversRow(H)), cake: window.placeCake(), change: ch.innerHTML || null,
+    index: read && P.links && /^https:\/\//.test(P.links.report || '') ? { name: P.place.name || P.chosen, url: P.links.report } : null,
+    credits: [...(s.credits || []), ...((E.sentinel || []).length ? E.credit : []), ...((E.changes || []).length && E.attribution ? [E.attribution] : []),
+      ...(Y.length ? ['Google Open Buildings V3 and Temporal v1 (CC BY 4.0) via Earth Engine'] : []), ...(H && H.nearest && H.attribution ? [H.attribution] : []),
+      ...(read ? ['Fab City Index, CC BY 4.0, Fab City Foundation'] : [])] };
 }
 document.querySelectorAll('#preport [data-reg]').forEach(b => b.onclick = () => { PREG = b.dataset.reg; report(true); });
 $('#prprint').onclick = () => window.print();
@@ -289,15 +302,18 @@ function indexLine(P) {
   return `<p class="lede mono">${esc(P.place.name || P.chosen)} on the Fab City Index${sc.status_label ? ` · ${esc(sc.status_label)}` : ''} <b>${v}</b> · <a href="#place/figures" id="pidxgo">its figures ↓</a></p>`;
 }
 /* THE PLACE IN FIGURES, the lower band's right: the issues that change yearly and have no hours (Land, Coast; Now is for
-   the hour), the Index cells, and what is not here yet. */
-function figures() {
+   the hour), the Index cells, and what is not here yet. Given its Rivers row, it returns the rows for the report's
+   page 1 (SPEC_place_report §5) and draws nothing. */
+function figures(hydro) {
   const ch = ((D.earth || {}).changes || []).slice(-1)[0], nI = new Set(D.index_cells.map(c => c.cell)).size;
-  $('#pfigures').innerHTML = `<h3 class="pmh">the place in figures</h3>` + yearly() + indexRow(D.index_place)
+  const h = `<h3 class="pmh">the place in figures</h3>` + yearly() + indexRow(D.index_place)
     + `<div class="fr"><span>Index cells<small>of the Fab City Index for this place · <a href="#node/cells">Node › Index cells</a></small></span>`
     + `<b>${num('place.index', `${nI} of 20`, 'cells of the Fab City Index holding a value')} ${prov('partial')}</b></div>`
-    + `<div id="phydro"></div>`
+    + (hydro ?? `<div id="phydro"></div>`)
     + `<div class="fr"><span>Production and trade · Water and soil · Forecast<small>coming to this place: no adapter, no source, or no village code yet</small></span><b><span class="soon">not yet</span></b></div>`
     + (ch ? `<p class="fine">Land: AlphaEarth, ${ch.year_a} → ${ch.year_b}.</p>` : '');
+  if (hydro != null) return h;
+  $('#pfigures').innerHTML = h;
   rivers();
 }
 /* RIVERS, a row of the figures once the hydro pack has fetched (GET /hydro, token-only like its map rows): the nearest
@@ -306,10 +322,16 @@ function figures() {
 async function rivers() {
   const el = $('#phydro'), H = await doorsFetch('/hydro').then(r => (r.ok ? r.json() : null)).catch(() => null);
   if (!el || !H) return;
-  if (!H.nearest) { el.innerHTML = `<div class="fr"><span>Rivers<small>the hydro pack has kept nothing yet: <code>planetai run hydro fetch</code></small></span><b><span class="soon">not yet</span></b></div>`; return; }
-  el.innerHTML = `<div class="fr" data-k="rivers"><span>Rivers<small>${esc(H.sentence)}${H.largest_sentence ? `. The largest in the square: ${esc(H.largest_sentence)}` : ''}`
-    + ` · <a href="#place" id="phydrogo">on the map ↑</a></small></span><b>${num('place.river', fmt(H.nearest.dist_m / 1000, 1), 'the nearest river, traced at about 500 m')} km ${prov('model')}</b></div>`;
-  $('#phydrogo').onclick = e => { e.preventDefault(); if (window.placeRivers) window.placeRivers(); const m = $('#map'); if (m) m.scrollIntoView({ block: 'center' }); };
+  el.innerHTML = riversRow(H, true);
+  if (H.nearest) $('#phydrogo').onclick = e => { e.preventDefault(); if (window.placeRivers) window.placeRivers(); const m = $('#map'); if (m) m.scrollIntoView({ block: 'center' }); };
+}
+
+/* the row itself, the band's and the report's; `here` adds the way up to the map, which a printed page has no use for */
+function riversRow(H, here) {
+  if (!H) return '';
+  if (!H.nearest) return `<div class="fr"><span>Rivers<small>the hydro pack has kept nothing yet: <code>planetai run hydro fetch</code></small></span><b><span class="soon">not yet</span></b></div>`;
+  return `<div class="fr" data-k="rivers"><span>Rivers<small>${esc(H.sentence)}${H.largest_sentence ? `. The largest in the square: ${esc(H.largest_sentence)}` : ''}`
+    + `${here ? ' · <a href="#place" id="phydrogo">on the map ↑</a>' : ''}</small></span><b>${num('place.river', fmt(H.nearest.dist_m / 1000, 1), 'the nearest river, traced at about 500 m')} km ${prov('model')}</b></div>`;
 }
 
 /* ADD AN IMAGE — a dialog, opened from the Image key on the screen (the header's button until 5 Nov 2026): the file

@@ -102,7 +102,7 @@ function buildD(A, locale) {
     node: { name: H.node, place: H.city }, registry: { name: H.node, place: H.city || H.node },
     share: setting('SHARE_LEVEL'), settings: A.settings || null, askOff: setting('UI_ASK') === 'off',   /* the keeper's switch for every ask, the dashboard's and the doors' */ rho: A.rho || {}, health: H,
     earth: A.earth ? { years: E.years || [], changes: E.changes || [], radius_m: E.radius_m, change: E.latest || null,
-      sentinel: img.sentinel || [], landsat: img.landsat || [], credit: img.credit || [] } : null,
+      sentinel: img.sentinel || [], landsat: img.landsat || [], credit: img.credit || [], attribution: E.attribution || null } : null,
     place_yearly: (A.place_yearly || []).map(r => ({ year: +String(r.ts).slice(0, 4), value: r.value })),
     reach: A.reach || [], sensors: A.sensors || [], observations: A.observations || [], index_cells: A.cells || [], index_place: A.index_place || null,
     geometry: { ladder: G.ladder || [], radio: G.radio || {}, grain: G.grain_table || [], publication: G.publication || {} },

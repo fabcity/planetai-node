@@ -3862,10 +3862,11 @@ async function placescreen() {
   process.exit(1);
 }
 
-/* The Place report's sheet in print (docs/SPEC_place_report §3, §8): #place/report with software WebGL and the token, so
+/* The Place report in print (docs/SPEC_place_report §3, §5, §8): #place/report with software WebGL and the token, so
  * the picture is taken from a live map, then print media at A4 landscape. The sheet's frame sits inside the page, the
- * legend is not clipped, and the PDF the browser makes is one landscape A4 page with nothing spilled onto a second.
- * Without the token the same, with the node's sentence where the map would be. PAI_REPORT_PDF=1 keeps the PDFs. */
+ * legend is not clipped, each report page holds its rows inside its A4 portrait box, and the PDF the browser makes is one
+ * landscape page and then one portrait page for each report page, nothing spilled onto a blank one. Without the token
+ * the same, with the node's sentence where the map would be. PAI_REPORT_PDF=1 keeps the PDFs. */
 async function report() {
   const bad = [], ok = (c, what) => { if (!c) bad.push(what); }, said = [];
   const ADMIN = process.env.PAI_ADMIN_TOKEN || (process.env.PAI_ADMIN_TOKEN = 'rig-admin');
@@ -3882,7 +3883,9 @@ async function report() {
     const g = await r.page.evaluate(() => {
       const box = e => { const b = e.getBoundingClientRect(); return [b.left, b.top, b.right, b.bottom].map(Math.round); };
       const sh = document.querySelector('.sheet'), leg = document.querySelector('.sleg'), map = document.querySelector('.smap');
-      return { sheet: box(sh), leg: box(leg), map: box(map), legCut: [leg.scrollHeight - leg.clientHeight, leg.scrollWidth - leg.clientWidth],
+      const pg = [...document.querySelectorAll('.rpage')].map(e => ({ w: e.offsetWidth, h: e.offsetHeight, over: [e.scrollHeight - e.clientHeight, e.scrollWidth - e.clientWidth],
+        head: (e.querySelector('.rhead') || {}).textContent }));
+      return { sheet: box(sh), leg: box(leg), map: box(map), legCut: [leg.scrollHeight - leg.clientHeight, leg.scrollWidth - leg.clientWidth], pg,
         shown: [...document.body.children].filter(e => e.getClientRects().length && getComputedStyle(e).display !== 'none').map(e => e.tagName + (e.id ? '#' + e.id : '')),
         bar: !!document.querySelector('.prbar').getClientRects().length };
     });
@@ -3891,15 +3894,21 @@ async function report() {
     ok(inside(g.map, g.sheet) && inside(g.leg, g.sheet), `${tag}: the frame ${g.map} or the legend ${g.leg} leaves the sheet ${g.sheet}`);
     ok(g.legCut[0] <= 1 && g.legCut[1] <= 1, `${tag}: the legend is clipped by ${g.legCut} px`);
     ok(!g.bar && g.shown.length === 1, `${tag}: in print more than the sheet shows: ${g.shown}${g.bar ? ', the bar' : ''}`);
+    /* A4 portrait at 96 px to the inch is 794 × 1123; a page is 296 mm tall, so 1119 */
+    const N = g.pg.length;
+    ok(N >= 3 && N <= 4 && g.pg.every((p, i) => p.head.endsWith(`page ${i + 1} of ${N}`)), `${tag}: the report has ${N} pages, heads ${JSON.stringify(g.pg.map(p => p.head))}`);
+    g.pg.forEach((p, i) => ok(Math.abs(p.w - 794) <= 2 && Math.abs(p.h - 1119) <= 2 && p.over[0] <= 1 && p.over[1] <= 1,
+      `${tag}: report page ${i + 1} is ${p.w}×${p.h} px with ${p.over} px spilling out of it`));
     const pdf = await r.page.pdf({ preferCSSPageSize: true, printBackground: false });
     if (process.env.PAI_REPORT_PDF === '1') fs.writeFileSync(path.join(OUT, `report_${tok ? 'token' : 'locked'}.pdf`), pdf);
     const t = pdf.toString('latin1'), pages = (t.match(/\/Type\s*\/Page\b(?!s)/g) || []).length, boxes = [...t.matchAll(/\/MediaBox\s*\[\s*0 0 ([\d.]+) ([\d.]+)\s*\]/g)].map(m => [+m[1], +m[2]]);
-    ok(pages === 1, `${tag}: the PDF has ${pages} pages, not one: something spilled onto a blank one`);
-    ok(boxes.length && boxes.every(([w, h]) => Math.abs(w - 842) < 2 && Math.abs(h - 595) < 2), `${tag}: the page is not A4 landscape: ${JSON.stringify(boxes)}`);
-    said.push(`${tag} ${g.sheet[2] - g.sheet[0]}×${g.sheet[3] - g.sheet[1]} px`);
+    ok(pages === 1 + N, `${tag}: the PDF has ${pages} pages, not ${1 + N}: something spilled onto a blank one`);
+    const land = boxes.filter(([w, h]) => Math.abs(w - 842) < 2 && Math.abs(h - 595) < 2).length, port = boxes.filter(([w, h]) => Math.abs(w - 595) < 2 && Math.abs(h - 842) < 2).length;
+    ok(land === 1 && port === N && boxes.length === pages, `${tag}: not one A4 landscape page and ${N} portrait ones: ${JSON.stringify(boxes)}`);
+    said.push(`${tag} ${g.sheet[2] - g.sheet[0]}×${g.sheet[3] - g.sheet[1]} px and ${N} pages`);
     await r.browser.close();
   }
-  if (!bad.length) { console.log(`  report: #place/report prints one A4 landscape page, the sheet inside it and its legend whole (${said.join(', ')})`); return; }
+  if (!bad.length) { console.log(`  report: #place/report prints the sheet on one A4 landscape page, its legend whole, then each report page on one A4 portrait page (${said.join(', ')})`); return; }
   for (const b of bad) console.log('FAIL report:', b);
   process.exit(1);
 }

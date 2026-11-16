@@ -276,6 +276,6 @@ node tests/visual/measure.mjs wallstage
 # the left open and folded: no two overlap, none leaves the screen, keys 36 px with a pointer and 44 px under a finger.
 node tests/visual/measure.mjs placescreen
 
-# The Place report's sheet in print (SPEC_place_report §8): #place/report at A4 landscape, with and without the token: the
-# sheet inside the page, the legend whole, and a PDF of one landscape page with nothing on a second.
+# The Place report in print (SPEC_place_report §8): #place/report, with and without the token: the sheet inside an A4
+# landscape page with its legend whole, each report page inside an A4 portrait one, and a PDF with nothing on a blank page.
 node tests/visual/measure.mjs report

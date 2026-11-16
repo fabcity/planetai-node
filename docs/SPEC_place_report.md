@@ -6,8 +6,8 @@ I also want for the place section to be able to provide the download of reports,
 per city, when we allow people to download a report as pdf." Of the two scopes offered, he chose the small one: "Spec the
 one page". It goes in v0.92.*
 
-**Status: proposed 11 November 2026, its four open questions decided by Tomas the same day (§10). Step 1, the sheet, is
-being built from 16 November 2026.**
+**Status: proposed 11 November 2026, its four open questions decided by Tomas the same day (§10). Step 1, the sheet, and
+step 2, the report pages, are built, from 16 November 2026.**
 Each step in §9 is its own pull request, run on node #1 before it merges.
 
 ## 1 · What it serves

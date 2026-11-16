@@ -230,13 +230,15 @@ function groundRows() {
   const m = (PM.meta && PM.meta.layers) || {}, mb = b => b ? `${(b / 1e6).toFixed(1)} MB` : '', G = PM.ground || {};
   /* no /ground/meta at all is this screen being refused it, not a node without a map: say which */
   const locked = !PM.meta;
-  const set = (id, sub, empty, why) => { const l = LAYERS.find(x => x.id === id); if (sub) l.sub = sub; l.empty = !!empty; l.why = why; l.locked = locked && !!empty; if (empty) PM.on[id] = false; };
-  set('street', G.vector ? `OpenStreetMap ${(m.vector || {}).build ? `build ${m.vector.build.slice(0, 8)}` : ''} · ${mb((m.vector || {}).bytes)} on this node` : locked ? 'token-only · unlock this screen in Set up › This screen' : 'the plan from /place/geojson; no street map on this node yet: planetai run place basemap');
+  /* `part`: the node holds the layer in part, as the report's page 2 says it (SPEC_place_report §5) */
+  const set = (id, sub, empty, why, part) => { const l = LAYERS.find(x => x.id === id); if (sub) l.sub = sub; l.empty = !!empty; l.why = why; l.part = !!part && !empty; l.locked = locked && !!empty; if (empty) PM.on[id] = false; };
+  set('street', G.vector ? `OpenStreetMap ${(m.vector || {}).build ? `build ${m.vector.build.slice(0, 8)}` : ''} · ${mb((m.vector || {}).bytes)} on this node` : locked ? 'token-only · unlock this screen in Set up › This screen' : 'the plan from /place/geojson; no street map on this node yet: planetai run place basemap',
+    false, 'planetai run place basemap', !G.vector && !locked);
   const im = m.imagery || {};
   /* the node's Sentinel-2 years (GET /earth) are the satellite's then and now on the screen, with or without the map layer */
   const yrs = ((D.earth || {}).sentinel || []).length;
   set('imagery', G.imagery ? `Sentinel-2, ${im.passes} passes, ${(im.from || '').slice(0, 7)} to ${(im.to || '').slice(0, 7)} · ${mb(im.bytes)}`
-    : yrs ? `${yrs} Sentinel-2 years, then and now · no map layer yet: planetai run earth-engine basemap` : null, !G.imagery && !yrs, 'planetai run earth-engine basemap');
+    : yrs ? `${yrs} Sentinel-2 years, then and now · no map layer yet: planetai run earth-engine basemap` : null, !G.imagery && !yrs, 'planetai run earth-engine basemap', !G.imagery);
   /* the satellite is the base wherever the node holds it (SPEC_place_microgis §4, Defaults); elsewhere the streets */
   if (G.imagery) PM.on.imagery = true;
   const dr = m.drone || {}, ms = dr.mosaics || [];
@@ -249,7 +251,7 @@ function groundRows() {
    has nothing here yet", which said so beside a working What changed (14 Oct). */
 function packRows() {
   const ea = LAYERS.find(l => l.id === 'earth'), nE = ((D.earth || {}).changes || []).length;
-  ea.none = nE ? `${nE} comparison${nE === 1 ? '' : 's'} · a count, not a shape: Land, in the figures below` : null;
+  ea.none = nE ? `${nE} comparison${nE === 1 ? '' : 's'} · a count, not a shape: Land, in the figures below` : null; ea.part = !!nE;
 }
 /* after GET /hydro: a node without the pack, or before its fetch, keeps both rows and says which */
 function hydroRows() {
@@ -499,6 +501,14 @@ function about(l) {
   const brief = l.soon ? esc(l.src) : flatOff ? 'live map' : l.locked ? `${WH}token-only` : off ? 'not here' : zoom || esc(l.src);
   return { off, brief, long };
 }
+/* the cake as the report's page 2 says it (SPEC_place_report §5): each row held, held in part or not yet, its source, and
+   where it is empty the command that fills it or the cake's own words for it. A withheld row's source is token-only, as
+   the cake says it. Never a row's `sub`: the species row's names the species, which stay the household's. */
+const placeCake = () => cakeSections(LAYERS, PM.on).map(s => ({ name: s.name, rows: s.rows.map(({ id }) => {
+  const l = BY[id], gap = l.empty || l.part;
+  return { name: l.name, src: l.locked ? 'token-only' : l.src, held: l.soon ? 'not yet' : l.locked ? 'withheld' : l.part ? 'held in part' : l.empty ? 'not yet' : 'held',
+    fill: !l.soon && !l.locked && gap && l.why || null, none: !l.soon && !l.locked && gap && !l.why && l.none || null };
+}) }));
 function panel() {
   const spd = document.getElementById && document.getElementById('spd');
   const row = r => {
@@ -1517,7 +1527,7 @@ async function placeMap() {
   document.addEventListener('keydown', onKey, true);   // capture: an arrow moving a corner must not also pan the map
   placeMaps();
 }
-window.placeMap = placeMap; window.placeLayer = setLayer; window.placeSheet = placeSheet; window.__PM = PM;   // __PM for the rig
+window.placeMap = placeMap; window.placeLayer = setLayer; window.placeSheet = placeSheet; window.placeCake = placeCake; window.__PM = PM;   // __PM for the rig
 /* the figures' Rivers row: both hydro rows on, and out to District scale, where the nearest river is in view */
 window.placeRivers = () => { setLayer('rivers', true); setLayer('basin', true); if (PM.map) fly(6); };
 /* the Images panel added one: ask again, so its kind's row and its square appear */

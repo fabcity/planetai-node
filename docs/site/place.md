@@ -101,8 +101,8 @@ To answer an issue from Now, open the drawing's form, choose the issue, say what
 
 ## Print the place, or save it as a PDF
 
-**Report, to print or save as PDF**, the last line in **Download**, opens the place as one sheet to print. **Place
-report** in Tools opens the same. The sheet is what the screen showed when you pressed it: the scale in view, the
+**Report, to print or save as PDF**, the last line in **Download**, opens the place as a sheet to print, with up to
+four pages of the report after it. **Place report** in Tools opens the same. The sheet is what the screen showed when you pressed it: the scale in view, the
 layers that are on, the satellite or the streets, and the maps on the screen. To print the seven cells, go to Village
 first.
 
@@ -111,16 +111,31 @@ under it and a north arrow. Beside it are the node's name and the scale, each la
 layer list with where it comes from, your maps on the screen with their colours, the centre and id of the node's res-8
 cell, the sheet's width, the grid's step and the credits.
 
+The pages after the sheet are A4 upright, and each has a head line with the node's name and its page number.
+
+1. The place in figures. These are the rows under the map on Place, with the yearly figures, Rivers and the city's Fab
+   City Index row. Where the Index has read the city, a line gives the address of the city's own Index report.
+2. What the node holds about its place. Each row of the layer list stands under its heading as held, held in part, not
+   yet, or withheld without the token, with where it comes from and, for an empty row, the command that fills it.
+3. What changed, year on year. The satellite then and now, the hectares that changed and the buildings the satellite
+   counts, a bar a year. A node with no satellite years has no such page, and the pages are counted without it.
+4. Sources and how to cite. Every credit the sheet and the pages owe, with its licence, then a line to cite the report
+   by, with the node's name, its res-8 cell, the PLANETAI version and the date. When the map comes from OpenStreetMap,
+   a line says that it is a Produced Work under the ODbL, so it carries the credit and nothing more.
+
+Each figure keeps its word, live, partial, model or cached, as it has on Place.
+
 **Paper** draws the map in the light palette, and the sheet starts there. **Screen** draws it black, as Place does.
 Changing it goes back to the map for a moment to draw it again. **Print or save as PDF** opens the browser's print with
-A4 landscape already set, and Save as PDF there gives you a file. Nothing is sent anywhere. The browser makes the PDF on
+A4 already set, landscape for the sheet and upright for the pages, and Save as PDF there gives you a file. Nothing is sent anywhere. The browser makes the PDF on
 your own machine. **Back to Place** returns to the map.
 
 The house is blurred on the sheet, even with the token. Your outdoor kit, the model points and any image taken inside
 the house's res-10 cell, about 130 m across, are drawn as that cell, filled, never at their points. The rings are left
 off, because they are drawn around the house. Your drawings stay as you drew them. No text on the sheet is closer than
-the res-8 cell the node publishes. Without the token there is no map of the house, and the sheet says so where the map
-would be.
+the res-8 cell the node publishes, on the sheet or on any page, and no page lists the species found here. Without the
+token there is no map of the house, and the sheet says so where the map would be. The pages then carry what the screen
+shows without the token: the layer list with its sources and the yearly figures.
 
 ## Folding
 

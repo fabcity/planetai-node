@@ -2,7 +2,8 @@
 /* SHEET — the Place report's first page (SPEC_place_report §4): the screen drawn as a plan, in a black frame, with a grid
    in metres, a scale bar, a north arrow, the legend, the coordinates and the credits. Pure: no DOM and no D of its own.
    doors-placemap.js takes the picture (window.placeSheet), doors-place.js puts the sheet on #place/report, and the
-   browser's print makes the PDF. `esc` and `cakeSections` are the page's (doors-core.js, doors-cake.js). */
+   browser's print makes the PDF. reportPages draws the pages after it (§5). `esc` and `cakeSections` are the page's
+   (doors-core.js, doors-cake.js). */
 
 /* the grid's step: a round 1, 2, 2.5 or 5 × 10ⁿ m that puts five to eight lines on the longer side, the edge's 0 m
    included. With 1, 2 and 5 alone a side of 1.6 to 2 × 10ⁿ m has no such step, so 2.5 is one of them. */
@@ -58,6 +59,25 @@ function sheetHTML(D, c, c8) {
     + `<div class="sfoot"><p class="mono">${where}</p><p>${[...(c.credits || []), made].map(esc).join(' · ')}</p></div></div></div></article>`;
 }
 
-const SHEETS = { gridStep, gridLines, sheetLegend, sheetSVG, sheetHTML };
+/* THE REPORT'S PAGES (SPEC_place_report §5), A4 portrait after the sheet: the place in figures, what the node holds about
+   its place, what changed (none without satellite years) and the sources with how to cite. Each has the head line, and
+   N counts the pages there. The rows come as the band, the years and the cake make them (doors-place.js reportParts). */
+function reportPages(D, r) {
+  const h = D.health || {}, row = (...c) => `<tr>${c.map(x => `<td>${x}</td>`).join('')}</tr>`, credits = [...new Set(r.credits)];
+  const cake = r.cake.map(s => `<tr><th colspan="4">${esc(s.name)}</th></tr>` + (s.rows.length
+    ? s.rows.map(x => row(esc(x.name), esc(x.src), x.held, x.fill ? `<code>${esc(x.fill)}</code>` : esc(x.none || ''))).join('') : row('<span class="fine">none yet</span>', '', '', ''))).join('');
+  const pages = [
+    r.figures + (r.index ? `<p class="fine">${esc(r.index.name)} has its own report on the Fab City Index, which says the rest about the city: `
+      + `<a href="${esc(r.index.url)}" target="_blank" rel="noopener">${esc(r.index.url)}</a></p>` : ''),
+    `<h3 class="pmh">what the node holds about its place</h3><table class="tbl rcake"><tr><th>layer</th><th>source</th><th>held</th><th>to fill it</th></tr>${cake}</table>`,
+    r.change,
+    `<h3 class="pmh">sources and how to cite</h3>${credits.map(c => `<p>${esc(c)}</p>`).join('')}`
+      + (credits.some(c => /OpenStreetMap/.test(c)) ? '<p>A map made from OpenStreetMap is a Produced Work under the ODbL, so it carries the credit and nothing more.</p>' : '')
+      + `<h3 class="pmh">to cite this report</h3><p class="mono">${esc(`${D.node.name}, Place report, cell ${(h.cell || {}).id}, PLANETAI ${h.version}, made ${r.date}.`)}</p>`,
+  ].filter(Boolean);
+  return pages.map((b, i) => `<article class="rpage" aria-label="Page ${i + 1} of ${pages.length}"><p class="rhead">${esc(`${D.node.name} · Place report · page ${i + 1} of ${pages.length}`)}</p>${b}</article>`).join('');
+}
+
+const SHEETS = { gridStep, gridLines, sheetLegend, sheetSVG, sheetHTML, reportPages };
 if (typeof window !== 'undefined') Object.assign(window, SHEETS);
 if (typeof module !== 'undefined') module.exports = SHEETS;

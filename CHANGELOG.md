@@ -2,12 +2,14 @@
 
 ## Unreleased
 
-- **Place prints as a sheet.** Download has one more line, **Report, to print or save as PDF**, and Tools a row,
-  Place report. Both open the place as one A4 landscape page: the map in a black frame with a grid in metres, a scale
+- **Place prints as a report.** Download has one more line, **Report, to print or save as PDF**, and Tools a row,
+  Place report. Both open the place as one A4 landscape sheet: the map in a black frame with a grid in metres, a scale
   bar and a north arrow, and beside it the layers that are on with their sources, your maps, the node's cell and the
-  credits. Paper draws the map light and is where it starts, Screen draws it black. The browser's own print makes the
-  PDF, so nothing new runs on the node. On the sheet the house is blurred to its res-10 cell, even with the token, and
-  without the token there is no map. docs/place.
+  credits. Paper draws the map light and is where it starts, Screen draws it black. Up to four A4 pages follow it: the
+  place in figures, what the node holds about its place with the command that fills each empty row, what changed year
+  on year where the node has satellite years, and the sources with a line to cite the report by. The browser's own
+  print makes the PDF, so nothing new runs on the node. On the sheet the house is blurred to its res-10 cell, even with
+  the token, no page says anything closer than the res-8 cell, and without the token there is no map. docs/place.
 
 - **The doctor stops saying two things on Linux that were not true.** The broker check used `nc`, which Arch (and
   so Omarchy) does not ship, so it read red with the broker up. It now opens the port with bash itself. The captures

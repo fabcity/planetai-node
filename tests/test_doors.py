@@ -660,7 +660,8 @@ assert 'data-fold="rc"' not in _place and _place.count('class="pfold"') == 1 and
 assert '<button type="button" id="ptoolsb" class="ptoolsb" aria-expanded="false" aria-controls="ptools">Tools</button><div id="ptools" class="ptmenu" role="group" aria-label="Tools" hidden>' in _place, \
     "the tools are one button with a menu it discloses"
 assert 'class="pcols"' not in _place and 'id="reach"' not in _place and 'id="layers"' not in _place and 'id="pleads"' not in _place, "the old workbench is gone"
-assert "'#pfigures').innerHTML = `<h3 class=\"pmh\">the place in figures</h3>` + yearly()" in (STATIC / "doors-place.js").read_text(), "Land and Coast are the place's figures"
+assert "const h = `<h3 class=\"pmh\">the place in figures</h3>` + yearly()" in (STATIC / "doors-place.js").read_text() and "$('#pfigures').innerHTML = h;" in (STATIC / "doors-place.js").read_text(), \
+    "Land and Coast are the place's figures"
 # the hydro pack in the figures (8 Nov): a Rivers row from GET /hydro, and a link that turns both map rows on and flies out
 _pjs = (STATIC / "doors-place.js").read_text()
 assert '<div id="phydro"></div>' in _pjs and "doorsFetch('/hydro')" in _pjs and "planetai run hydro fetch" in _pjs, "Rivers is a row of the figures"
