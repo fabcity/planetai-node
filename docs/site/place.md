@@ -125,6 +125,9 @@ The pages after the sheet are A4 upright, and each has a head line with the node
 
 Each figure keeps its word, live, partial, model or cached, as it has on Place.
 
+You can also ask for it. Type "make me the place report" in Ask, on a screen holding the token, and the answer has a
+button, **Open the Place report**, that opens it. Ask for it on Screen and it opens on Screen. You still press Print.
+
 **Paper** draws the map in the light palette, and the sheet starts there. **Screen** draws it black, as Place does.
 Changing it goes back to the map for a moment to draw it again. **Print or save as PDF** opens the browser's print with
 A4 already set, landscape for the sheet and upright for the pages, and Save as PDF there gives you a file. Nothing is sent anywhere. The browser makes the PDF on

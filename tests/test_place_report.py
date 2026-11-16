@@ -184,3 +184,11 @@ for k in ("tok", "locked", "bare"):
             assert t not in rep, f"{k}: a page says {t}, the house's point"
     assert "Plumeria" not in rep and "Hibiscus" not in rep, f"{k}: a page names a species"
 print("  report: no page holds the house's point or the species list")
+
+# Arriving from Place itself (Download, the Tools row, Ask's button) finds the map up and its tiles still coming, so
+# loaded() is false and 'load', which fires once, never comes again: the picture waited for ever (16 Nov). The gate's
+# report stage walks that path; this holds the line in the source.
+SRC = open("app/static/doors-placemap.js").read()
+body = SRC[SRC.index("async function placeSheet"):SRC.index("async function mapFile")]
+assert "once('load'" not in body and "once('idle'" in body, "placeSheet must not wait on a 'load' that has already fired"
+print("  report: the picture is taken when the map is idle, so it comes from Place as well as from a fresh page")

@@ -9,7 +9,9 @@
   place in figures, what the node holds about its place with the command that fills each empty row, what changed year
   on year where the node has satellite years, and the sources with a line to cite the report by. The browser's own
   print makes the PDF, so nothing new runs on the node. On the sheet the house is blurred to its res-10 cell, even with
-  the token, no page says anything closer than the res-8 cell, and without the token there is no map. docs/place.
+  the token, no page says anything closer than the res-8 cell, and without the token there is no map. You can ask for
+  it too: "make me the place report" in Ask gives a button that opens it, on a screen holding the token. docs/place,
+  docs/ask.
 
 - **The doctor stops saying two things on Linux that were not true.** The broker check used `nc`, which Arch (and
   so Omarchy) does not ship, so it read red with the broker up. It now opens the port with bash itself. The captures

@@ -243,6 +243,8 @@ function reportParts(s, H) {
 }
 document.querySelectorAll('#preport [data-reg]').forEach(b => b.onclick = () => { PREG = b.dataset.reg; report(true); });
 $('#prprint').onclick = () => window.print();
+/* the Ask pane's button (doors-core.js): the report in the register asked for */
+window.placeReport = reg => { PREG = reg === 'screen' ? 'screen' : 'paper'; if (location.hash === '#place/report') report(true); else location.hash = '#place/report'; };
 
 /* THE FAB CITY INDEX ROW (GET /index/place): the city's own file, read by the node once a day. The date is the file's,
    never the node's last try, said in the node's zone; a range (simulated: no cell measured yet) is said as a range, never

@@ -9537,6 +9537,11 @@ function proposal(p, i) {
       + `<span>#${esc(String(id))}</span></div><p class="more">Say it in your own words; the node keeps them `
       + `as yours.</p>${id != null && window.K.didButton ? window.K.didButton(id) : ''}</div>`;
   }
+  if (p.tool === 'place_report') {
+    return `<div class="card ask" data-component="askProposal"><div class="ch"><span>the place report</span></div>`
+      + `<p class="more">Opens on Place, to print or save as PDF.</p><div class="bt">`
+      + `<a class="pri" href="/?layout=doors#place/report">open the Place report</a></div></div>`;
+  }
   if (p.tool !== 'settings_set' || !p.setting) {
     return `<div class="card" data-component="askProposal"><div class="ch"><span>${esc(p.tool)}</span></div>`
       + `<p class="more">The model reached for ${esc(p.tool)}. The pane does not run it; Set up or the node's `

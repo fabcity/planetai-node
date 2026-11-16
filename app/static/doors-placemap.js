@@ -689,7 +689,9 @@ async function placeSheet(paper) {
   const date = doorsLocal(new Date().toISOString(), D.tz).slice(0, 10);
   if (!DOORS_TOKEN()) return { none: NOMAP, date };
   if (!PM.map) return { none: 'This browser gave the map no WebGL, so there is no picture of it to print.', date };
-  if (!PM.map.loaded()) await new Promise(r => PM.map.once('load', r));
+  /* loaded() is false while tiles are still coming, not only before the first load, and 'load' fires once: arriving from
+     Place itself (Download, the Tools row, Ask) waited on it for ever. Idle comes after either, and the wait is bounded. */
+  if (!PM.map.loaded()) await new Promise(r => { PM.map.once('idle', r); setTimeout(r, 15000); });
   const home = (D.geometry.ladder.find(l => l.res === 10) || {}).id || null;
   const pts = outside(D.sensors).filter(s => s.lat != null && (s.local || s.kind === 'model' || s.kind === 'map'));
   const [ring, ...ids] = await Promise.all([home ? cellFacts(home).then(c => loop(c.ring), () => null) : null,

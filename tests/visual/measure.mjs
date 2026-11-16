@@ -500,6 +500,13 @@ async function serveNodeAPI(route, u) {
     /* A model that takes its time, so the pane's waiting state can be looked at. */
     if (process.env.PAI_ASK_SLOW) await new Promise(r => setTimeout(r, Number(process.env.PAI_ASK_SLOW)));
     /* PAI_ASK_LONG=1: a narration as long as the Wall's model writes (six to eight sentences), for the Wall's box */
+    /* asked for the place report: the model reaches for place_report and the pane draws its button (SPEC_place_report §9) */
+    if (/place report/i.test(route.request().postData() || '')) {
+      await route.fulfill({ status: 200, contentType: 'text/event-stream', body: sse('proposal', { tool: 'place_report', args: { register: 'screen' } })
+        + 'Here is the place report.'.split(' ').map(w => sse('token', { text: w + ' ' })).join('')
+        + sse('done', { rung: 'local', model: process.env.PAI_ASK_MODEL || 'qwen3.5:4b', host: 'host.docker.internal', where: 'this machine' }) });
+      return true;
+    }
     const words = (process.env.PAI_ASK_LONG === '1' ? Array(8).fill('The air outside has stayed under the line all day and the house is a little cleaner still.').join(' ')
       : 'I have put MAP_TILES on a card. Nothing changed; you decide.').split(' ');
     await route.fulfill({ status: 200, contentType: 'text/event-stream', body:
@@ -3908,6 +3915,24 @@ async function report() {
     said.push(`${tag} ${g.sheet[2] - g.sheet[0]}×${g.sheet[3] - g.sheet[1]} px and ${N} pages`);
     await r.browser.close();
   }
+  /* Asking for it (§9 step 3): on Place with the token, the Ask pane's answer carries a button, and the button opens
+     #place/report in the register the model passed on (Screen here) */
+  { const was = process.env.PAI_ASK_MODEL; process.env.PAI_ASK_MODEL = was || 'qwen3.5:4b';
+    const r = await openRig({ w: 1440, h: 900, touch: false, admin: ADMIN, gl: true, ground: { on_disk: {}, layers: {} }, mem: 'doors' });
+    await r.page.goto(`${POP}/?fixture=${FIXTURE}#place`, { waitUntil: 'domcontentloaded' });
+    const got = await r.page.waitForSelector('#askbtn', { timeout: 20000 }).then(async () => {
+      await r.page.click('#askbtn'); await r.page.fill('#q', 'Make me the place report'); await r.page.click('#qsend');
+      await r.page.click('[data-open-report="screen"]', { timeout: 20000 });
+      await r.page.waitForFunction(() => location.hash === '#place/report' && !document.getElementById('preport').hidden
+        && document.querySelector('#preport [data-reg="screen"]').getAttribute('aria-pressed') === 'true', null, { timeout: 45000 });
+      return true;
+    }).catch(async e => String(e.message || e).split('\n')[0] + ' ' + JSON.stringify(await r.page.evaluate(() => ({ hash: location.hash,
+      hidden: document.getElementById('preport').hidden, reg: [...document.querySelectorAll('#preport [data-reg]')].map(b => b.dataset.reg + b.getAttribute('aria-pressed')),
+      sheets: (document.getElementById('psheets').innerHTML || '').slice(0, 160), taking: !!PTAKING, preg: PREG })).catch(() => null)));
+    ok(got === true, `asking: the Ask pane's report button did not open #place/report on Screen: ${got}`);
+    if (got === true) said.push('opened from Ask on Screen');
+    await r.browser.close();
+    if (was === undefined) delete process.env.PAI_ASK_MODEL; }
   if (!bad.length) { console.log(`  report: #place/report prints the sheet on one A4 landscape page, its legend whole, then each report page on one A4 portrait page (${said.join(', ')})`); return; }
   for (const b of bad) console.log('FAIL report:', b);
   process.exit(1);

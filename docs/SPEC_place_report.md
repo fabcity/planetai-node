@@ -6,8 +6,9 @@ I also want for the place section to be able to provide the download of reports,
 per city, when we allow people to download a report as pdf." Of the two scopes offered, he chose the small one: "Spec the
 one page". It goes in v0.92.*
 
-**Status: proposed 11 November 2026, its four open questions decided by Tomas the same day (§10). Step 1, the sheet, and
-step 2, the report pages, are built, from 16 November 2026.**
+**Status: proposed 11 November 2026, its four open questions decided by Tomas the same day (§10). Steps 1 to 3, the sheet,
+the report pages and asking for it, are built, from 16 November 2026. The pane tool is `place_report`: a function call
+cannot carry a dot, so the Tools menu's `place.report` is spelled with an underscore there.**
 Each step in §9 is its own pull request, run on node #1 before it merges.
 
 ## 1 · What it serves
@@ -164,8 +165,9 @@ leaves. It holds less than the PNG of the screen, which still draws the kit at i
    print CSS, the test, the visual gate stage, the docs.
 2. **The report pages.** The four pages of §5 under the sheet, and the test's page-count cases.
 3. **Asking for it.** "Make me the place report" in the Ask pane. Place's command registry (`GET /place/tools`,
-   SPEC_place_microgis §6) is not built yet, so the first form is one pane tool, `place.report`, in
-   `agent_loop.PANE_TOOLS` with its `TOOL_CLASS`. It is offered only on a screen holding the token, takes the register
+   SPEC_place_microgis §6) is not built yet, so the first form is one pane tool, `place_report`, in
+   `agent_loop.PANE_PAGES`: the pane's own tools that open a view of the page. It runs nothing on the node, so it is
+   not on `/mcp` and has no `TOOL_CLASS`; `/ask/status` lists it as class `page`. It is offered only on a screen holding the token, takes the register
    (Paper unless asked otherwise), and answers with the link to `#place/report`, which the pane draws as a button. The
    person still presses Print: the agent never makes the PDF. When the registry lands, the tool moves into it. The
    Tools menu on Place lists it from step 1, with its id, so the command is visible before the agent can call it.
