@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **An update waits for the app before it checks it.** It used to wait 8 seconds, and on node #1 the app takes about
+  11 to start, so the update ended on "something is off" with the node running fine. It now waits until the app
+  answers, up to a minute.
+
 - **A node has seven cells, and you choose which are its own.** The resolution-8 cell it stands in is always its own,
   and on Place, at Cell scale, the six touching it are drawn round it. Press one and **Claim this cell**, and a kit of
   yours in it counts as this node's own from its next poll. A claimed cell is held once one of your sensors has a
