@@ -99,6 +99,29 @@ asks for it. It comes when somebody there presses Send, and only the people with
 To answer an issue from Now, open the drawing's form, choose the issue, say what you did in your own words and press
 **Tie it**. The rain garden you drew then counts as what you did about it, as Done does on Now.
 
+## Print the place, or save it as a PDF
+
+**Report, to print or save as PDF**, the last line in **Download**, opens the place as one sheet to print. **Place
+report** in Tools opens the same. The sheet is what the screen showed when you pressed it: the scale in view, the
+layers that are on, the satellite or the streets, and the maps on the screen. To print the seven cells, go to Village
+first.
+
+The map sits in a black frame with a grid in metres, labelled from 0 m along its left and bottom edges, a scale bar
+under it and a north arrow. Beside it are the node's name and the scale, each layer that is on under its part of the
+layer list with where it comes from, your maps on the screen with their colours, the centre and id of the node's res-8
+cell, the sheet's width, the grid's step and the credits.
+
+**Paper** draws the map in the light palette, and the sheet starts there. **Screen** draws it black, as Place does.
+Changing it goes back to the map for a moment to draw it again. **Print or save as PDF** opens the browser's print with
+A4 landscape already set, and Save as PDF there gives you a file. Nothing is sent anywhere. The browser makes the PDF on
+your own machine. **Back to Place** returns to the map.
+
+The house is blurred on the sheet, even with the token. Your outdoor kit, the model points and any image taken inside
+the house's res-10 cell, about 130 m across, are drawn as that cell, filled, never at their points. The rings are left
+off, because they are drawn around the house. Your drawings stay as you drew them. No text on the sheet is closer than
+the res-8 cell the node publishes. Without the token there is no map of the house, and the sheet says so where the map
+would be.
+
 ## Folding
 
 The layers fold by the arrow on their edge, or `[`, into a strip with their name. `\` or **Map only**
@@ -116,7 +139,8 @@ first, with the distance in metres measured by the node (`GET /geo/measure`, and
 
 **Tools**, beside the ask line, opens a menu of what the node can do with this place. **Rings and
 distance** draws the 2, 5 and 15 km rings from the node's point. **From the house** measures from the node's point to
-any point you press. The two that run come first, and the rest carry a dotted **not yet**. Choosing one closes the
+any point you press. **Place report** opens the sheet to print, as Download's last line does. The three that run come
+first, and the rest carry a dotted **not yet**. Choosing one closes the
 menu, and so do Esc and a press outside it. A screen without a token reads "Tools run on this node with a token.
 Unlock this screen in Set up." in the menu. On a phone the layers open from a bar under the screen as a sheet, and Esc
 closes it.

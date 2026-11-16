@@ -275,3 +275,7 @@ node tests/visual/measure.mjs wallstage
 # switch, the zoom, the scale and the credit, with software WebGL so the live map draws them, at the widths in between,
 # the left open and folded: no two overlap, none leaves the screen, keys 36 px with a pointer and 44 px under a finger.
 node tests/visual/measure.mjs placescreen
+
+# The Place report's sheet in print (SPEC_place_report §8): #place/report at A4 landscape, with and without the token: the
+# sheet inside the page, the legend whole, and a PDF of one landscape page with nothing on a second.
+node tests/visual/measure.mjs report

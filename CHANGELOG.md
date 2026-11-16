@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Place prints as a sheet.** Download has one more line, **Report, to print or save as PDF**, and Tools a row,
+  Place report. Both open the place as one A4 landscape page: the map in a black frame with a grid in metres, a scale
+  bar and a north arrow, and beside it the layers that are on with their sources, your maps, the node's cell and the
+  credits. Paper draws the map light and is where it starts, Screen draws it black. The browser's own print makes the
+  PDF, so nothing new runs on the node. On the sheet the house is blurred to its res-10 cell, even with the token, and
+  without the token there is no map. docs/place.
+
 - **The doctor stops saying two things on Linux that were not true.** The broker check used `nc`, which Arch (and
   so Omarchy) does not ship, so it read red with the broker up. It now opens the port with bash itself. The captures
   check read red when the folder belonged to root, which is what happens when the container makes it first, while the

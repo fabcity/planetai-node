@@ -4,9 +4,10 @@
 download their place analysis similarly to this tool that is published online here: https://urban-scan.ildar.space/app.
 I also want for the place section to be able to provide the download of reports, similarly as we do in the index page
 per city, when we allow people to download a report as pdf." Of the two scopes offered, he chose the small one: "Spec the
-one page". It goes in v0.93, after v0.92 is cut.*
+one page". It goes in v0.92.*
 
-**Status: proposed 11 November 2026, its four open questions decided by Tomas the same day (§10). Nothing is built.**
+**Status: proposed 11 November 2026, its four open questions decided by Tomas the same day (§10). Step 1, the sheet, is
+being built from 16 November 2026.**
 Each step in §9 is its own pull request, run on node #1 before it merges.
 
 ## 1 · What it serves
@@ -72,9 +73,9 @@ without named pages prints everything portrait and the sheet scales to fit, whic
 One page, laid out like urban:SCAN's Map tab: the map on the left in a black frame, a column on the right.
 
 - **The map**, the picture from §3. It is north-up, because Place never rotates.
-- **The grid in metres.** Lines across the map at a round step (1, 2 or 5 × 10ⁿ m) that gives five to eight lines on
-  the longer side. Each line is labelled from 0 m along the left and the bottom edges, with a small cross where two
-  lines meet. The metres come from the map's own figure for the zoom (`mPerPx`), already used for the scale bar.
+- **The grid in metres.** Lines across the map at a round step (1, 2, 2.5 or 5 × 10ⁿ m) that gives five to eight lines
+  on the longer side. With 1, 2 and 5 alone, a side of 1.6 to 2 × 10ⁿ m has no such step. Each line is labelled from
+  0 m along the left and the bottom edges, with a small cross where two lines meet. The metres come from the map's own figure for the zoom (`mPerPx`), already used for the scale bar.
 - **The scale bar**, under the map: the same round length the PNG uses, drawn as alternating black and white blocks.
 - **The north arrow**, fixed, because the map is north-up.
 - **The legend**, in the right column, top to bottom:
@@ -170,7 +171,7 @@ leaves. It holds less than the PNG of the screen, which still draws the kit at i
    Tools menu on Place lists it from step 1, with its id, so the command is visible before the agent can call it.
 
 Each step lands with its line in the CHANGELOG, a section in `docs/site/place.md` ("Print the place, or save it as a
-PDF") with a picture of the sheet taken from node #1, and the milestone v0.93.
+PDF") with a picture of the sheet taken from node #1, and the milestone v0.92.
 
 The one non-goal line in SPEC_place_microgis §2 that said "no print layouts" now says what it meant: no layout
 designer. Place has this one fixed sheet. A designer, if one is wanted, is the fab lab node's (SPEC_fablab).

@@ -12,6 +12,7 @@ const GEO = {};
 async function geo(name, url) { return GEO[name] || (GEO[name] = await fetch(url).then(r => r.json())); }
 let YEAR = 2025, COMPARE = true, PAST = null;   /* the satellite opens as then | now (Tomas, 7 Oct) */
 VIEWS.place = function () {
+  if (location.hash !== '#place/report') report();   // Place comes back before its map takes its size again
   const h = D.health, area = D.geometry.ladder.find(l => l.res === h.cell.res).own_area_m2 / 1e6;   // the node's own figure for this cell, not the resolution's average
   $('#placehead').innerHTML = `<div class="k">Place · ${said(D.registry.place)}</div>
     <h1>The ground around the house</h1>
@@ -30,7 +31,8 @@ VIEWS.place = function () {
     const bench = document.querySelector('.bench'), open = bench.dataset.sheet === b.dataset.s ? '' : b.dataset.s;
     bench.dataset.sheet = open; document.querySelectorAll('.psbar button').forEach(x => x.setAttribute('aria-expanded', String(x.dataset.s === open)));
   });
-  speciesBlock(); placeTools(); figures(); placeMap(); layer();
+  speciesBlock(); placeTools(); figures(); const mapped = placeMap(); layer();
+  if (location.hash === '#place/report') mapped.then(() => report());
   /* #place/figures (Now's In the city, the head's line) scrolls to the figures once route() has put the page at its top;
      on Place itself the line scrolls there without a new address, so the map is not drawn again */
   const go = () => $('#pfigures').scrollIntoView({ block: 'start' }), g = $('#pidxgo');
@@ -176,21 +178,22 @@ function layer() {
    (doors-placemap.js PM.setTool): the node measures the next press from its own point. The menu is a disclosure, as
    Download's: Esc or a press outside it closes it, and Esc gives the focus back to its button. */
 const TOOLS = [
-  ['tools', [['Rings and distance', 'geo.rings', 'rings'], ['From the house', 'geo.measure', null, 'from'], ['Sun and shade', 'place.sun'], ['Trees, 3-30-300', 'place.trees'], ['Built form', 'place.built'],
+  ['tools', [['Rings and distance', 'geo.rings', 'rings'], ['From the house', 'geo.measure', null, 'from'], ['Place report', 'place.report', null, null, '#place/report'], ['Sun and shade', 'place.sun'], ['Trees, 3-30-300', 'place.trees'], ['Built form', 'place.built'],
     ['Sealed ground', 'place.sealed'], ['Streets', 'place.streets'], ['Walk to', 'place.walk'], ['What changed', 'place.changed'], ['Where the rain goes', 'water.runoff']]],
   ['fitness', [['One more tree', 'fit.tree'], ['A roof for a panel', 'fit.roof'], ['A garden bed', 'fit.grow'], ['Catching rain', 'fit.rain']]],
 ];
 function placeTools() {
   const PM = window.__PM || { on: {} }, on = PM.on, tok = !!DOORS_TOKEN();
   const btn = (n, id, attr, pressed) => `<button type="button" class="tl${pressed ? ' on' : ''}" aria-pressed="${pressed}" ${attr}${tok ? '' : ' disabled'}><span>${n}</span><code>${id}</code></button>`;
-  const all = TOOLS.flatMap(([, ts]) => ts), runs = all.filter(([, , l, t]) => l || t), soon = all.filter(([, , l, t]) => !l && !t);
-  $('#ptools').innerHTML = runs.map(([n, id, l, t]) => l ? btn(n, id, `data-layer="${l}"`, !!on[l]) : btn(n, id, `data-tool="${t}"`, PM.tool === t)).join('')
+  const all = TOOLS.flatMap(([, ts]) => ts), runs = all.filter(([, , l, t, go]) => l || t || go), soon = all.filter(([, , l, t, go]) => !l && !t && !go);
+  $('#ptools').innerHTML = runs.map(([n, id, l, t, go]) => l ? btn(n, id, `data-layer="${l}"`, !!on[l]) : go ? btn(n, id, `data-go="${go}"`, false) : btn(n, id, `data-tool="${t}"`, PM.tool === t)).join('')
     + '<hr>' + soon.map(([n, id]) => `<div class="tl soon" title="${id}"><span>${n}</span><code>not yet</code></div>`).join('')
     + (tok ? '' : `<p class="fine">Tools run on this node with a token. Unlock this screen in Set up.</p>`);
   /* a tool chosen closes the menu: the next press is on the map */
   const done = () => { toolsMenu(false); $('#ptoolsb').focus(); };
   document.querySelectorAll('#ptools button[data-layer]').forEach(b => b.onclick = () => { window.placeLayer(b.dataset.layer, !on[b.dataset.layer]); done(); });
   document.querySelectorAll('#ptools button[data-tool]').forEach(b => b.onclick = () => { if (PM.setTool) PM.setTool(PM.tool === b.dataset.tool ? 'select' : b.dataset.tool); done(); });
+  document.querySelectorAll('#ptools button[data-go]').forEach(b => b.onclick = () => { done(); location.hash = b.dataset.go; });
 }
 function toolsMenu(open) {
   const m = $('#ptools'), b = $('#ptoolsb'); m.hidden = !open; b.setAttribute('aria-expanded', String(open));
@@ -204,6 +207,29 @@ document.addEventListener('click', e => { if ($('#ptools').hidden === false && !
    swallows the press while the menu is open, and the click above then closes it) */
 { const w = document.querySelector('.ptools');
   if (w) w.addEventListener('focusout', e => { const t = e.relatedTarget; if (t && !w.contains(t) && !(t.closest && t.closest('.maplibregl-canvas-container'))) toolsMenu(false); }); }
+
+/* THE PLACE REPORT (SPEC_place_report §3): #place/report hides the rest of Place and shows the sheet on a grey ground,
+   under one bar: Paper · Screen, Print or save as PDF, Back to Place. The picture is taken on the way in and again when
+   the register changes, with the map shown for it (doors-placemap.js placeSheet). A redraw that is not a new address, a
+   resize or the browser laying the page out to print it, keeps the sheet it has. */
+let PREG = 'paper', PSHEET = null, PTAKING = null;
+function report(again) {
+  const box = $('#preport'), show = v => { box.hidden = !v; document.body.classList.toggle('preport', v); };
+  if (location.hash !== '#place/report') { PSHEET = null; show(false); return null; }
+  if (PSHEET && !again) { show(true); return null; }
+  if (PTAKING) return PTAKING;
+  show(false);
+  return (PTAKING = Promise.all([window.placeSheet(PREG === 'paper'),
+    doorsFetch('/geo/cell?id=' + D.health.cell.id).then(r => (r.ok ? r.json() : null)).catch(() => null)]).then(([s, c8]) => {
+    PTAKING = null;
+    if (location.hash !== '#place/report') return;
+    PSHEET = s; $('#psheets').innerHTML = sheetHTML(D, s, c8 && c8.ring);
+    box.querySelectorAll('[data-reg]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.reg === PREG)));
+    show(true); window.scrollTo(0, 0);
+  }).catch(e => { PTAKING = null; $('#psheets').innerHTML = `<p class="fine">The picture was not taken: ${esc(e.message)}</p>`; show(true); }));
+}
+document.querySelectorAll('#preport [data-reg]').forEach(b => b.onclick = () => { PREG = b.dataset.reg; report(true); });
+$('#prprint').onclick = () => window.print();
 
 /* THE FAB CITY INDEX ROW (GET /index/place): the city's own file, read by the node once a day. The date is the file's,
    never the node's last try, said in the node's zone; a range (simulated: no cell measured yet) is said as a range, never

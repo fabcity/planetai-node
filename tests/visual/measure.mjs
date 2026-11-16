@@ -3492,7 +3492,7 @@ async function doors() {
       await r.page.click('#ptoolsb'); await r.page.waitForTimeout(150);
       const tm = await r.page.evaluate(() => { const m = document.getElementById('ptools'), rows = [...m.querySelectorAll('.tl')].filter(x => x.getClientRects().length);
         return { open: !m.hidden && !!m.getClientRects().length, rows: rows.length, first: rows[0] && rows[0].textContent, exp: document.getElementById('ptoolsb').getAttribute('aria-expanded') }; });
-      ok(tm.open && tm.rows === 14 && /^Rings and distance/.test(tm.first || '') && tm.exp === 'true', `${tag} #place: Tools opened ${JSON.stringify(tm)}`);
+      ok(tm.open && tm.rows === 15 && /^Rings and distance/.test(tm.first || '') && tm.exp === 'true', `${tag} #place: Tools opened ${JSON.stringify(tm)}`);
       await r.page.keyboard.press('Escape'); await r.page.waitForTimeout(150);
       ok(await r.page.evaluate(() => document.getElementById('ptools').hidden), `${tag} #place: Esc did not close the Tools menu`);
       if (w < 768 && pl.sheet === 'fixed') { await r.page.click('.psbar button[data-s="cake"]'); await r.page.waitForTimeout(150); } }
@@ -3862,6 +3862,48 @@ async function placescreen() {
   process.exit(1);
 }
 
+/* The Place report's sheet in print (docs/SPEC_place_report §3, §8): #place/report with software WebGL and the token, so
+ * the picture is taken from a live map, then print media at A4 landscape. The sheet's frame sits inside the page, the
+ * legend is not clipped, and the PDF the browser makes is one landscape A4 page with nothing spilled onto a second.
+ * Without the token the same, with the node's sentence where the map would be. PAI_REPORT_PDF=1 keeps the PDFs. */
+async function report() {
+  const bad = [], ok = (c, what) => { if (!c) bad.push(what); }, said = [];
+  const ADMIN = process.env.PAI_ADMIN_TOKEN || (process.env.PAI_ADMIN_TOKEN = 'rig-admin');
+  for (const tok of [true, false]) {
+    const tag = tok ? 'with the token' : 'without the token';
+    const r = await openRig({ w: 1440, h: 900, touch: false, admin: tok ? ADMIN : null, gl: tok, ground: { on_disk: {}, layers: {} }, mem: 'doors' });
+    await r.page.goto(`${POP}/?fixture=${FIXTURE}#place/report`, { waitUntil: 'domcontentloaded' });
+    const drawn = await r.page.waitForFunction(t => document.querySelector(t ? '#psheets .sheet .splan image' : '#psheets .sheet .snone') && !document.getElementById('preport').hidden,
+      tok, { timeout: 45000 }).then(() => true, () => false);
+    if (!drawn) { bad.push(`${tag}: #place/report drew no sheet: ` + JSON.stringify(await r.page.evaluate(() => ({ url: location.href, sheets: (document.getElementById('psheets') || {}).innerHTML?.slice(0, 200) })))); await r.browser.close(); continue; }
+    await r.page.emulateMedia({ media: 'print' });
+    await r.page.setViewportSize({ width: 1123, height: 794 });   // A4 landscape at 96 px to the inch
+    await r.page.waitForTimeout(300);
+    const g = await r.page.evaluate(() => {
+      const box = e => { const b = e.getBoundingClientRect(); return [b.left, b.top, b.right, b.bottom].map(Math.round); };
+      const sh = document.querySelector('.sheet'), leg = document.querySelector('.sleg'), map = document.querySelector('.smap');
+      return { sheet: box(sh), leg: box(leg), map: box(map), legCut: [leg.scrollHeight - leg.clientHeight, leg.scrollWidth - leg.clientWidth],
+        shown: [...document.body.children].filter(e => e.getClientRects().length && getComputedStyle(e).display !== 'none').map(e => e.tagName + (e.id ? '#' + e.id : '')),
+        bar: !!document.querySelector('.prbar').getClientRects().length };
+    });
+    const inside = (b, o) => b[0] >= o[0] - 1 && b[1] >= o[1] - 1 && b[2] <= o[2] + 1 && b[3] <= o[3] + 1;
+    ok(inside(g.sheet, [0, 0, 1123, 794]), `${tag}: the sheet ${g.sheet} leaves the A4 page`);
+    ok(inside(g.map, g.sheet) && inside(g.leg, g.sheet), `${tag}: the frame ${g.map} or the legend ${g.leg} leaves the sheet ${g.sheet}`);
+    ok(g.legCut[0] <= 1 && g.legCut[1] <= 1, `${tag}: the legend is clipped by ${g.legCut} px`);
+    ok(!g.bar && g.shown.length === 1, `${tag}: in print more than the sheet shows: ${g.shown}${g.bar ? ', the bar' : ''}`);
+    const pdf = await r.page.pdf({ preferCSSPageSize: true, printBackground: false });
+    if (process.env.PAI_REPORT_PDF === '1') fs.writeFileSync(path.join(OUT, `report_${tok ? 'token' : 'locked'}.pdf`), pdf);
+    const t = pdf.toString('latin1'), pages = (t.match(/\/Type\s*\/Page\b(?!s)/g) || []).length, boxes = [...t.matchAll(/\/MediaBox\s*\[\s*0 0 ([\d.]+) ([\d.]+)\s*\]/g)].map(m => [+m[1], +m[2]]);
+    ok(pages === 1, `${tag}: the PDF has ${pages} pages, not one: something spilled onto a blank one`);
+    ok(boxes.length && boxes.every(([w, h]) => Math.abs(w - 842) < 2 && Math.abs(h - 595) < 2), `${tag}: the page is not A4 landscape: ${JSON.stringify(boxes)}`);
+    said.push(`${tag} ${g.sheet[2] - g.sheet[0]}×${g.sheet[3] - g.sheet[1]} px`);
+    await r.browser.close();
+  }
+  if (!bad.length) { console.log(`  report: #place/report prints one A4 landscape page, the sheet inside it and its legend whole (${said.join(', ')})`); return; }
+  for (const b of bad) console.log('FAIL report:', b);
+  process.exit(1);
+}
+
 const [cmd, ...rest] = process.argv.slice(2);
 if (cmd === 'render') await render(rest.length ? rest : ['all']);
 else if (cmd === 'steps') await steps();
@@ -3888,5 +3930,6 @@ else if (cmd === 'mobile') await mobile();
 else if (cmd === 'doors') await doors();
 else if (cmd === 'wallstage') await wallstage();
 else if (cmd === 'placescreen') await placescreen();
-else { console.error('usage: measure.mjs render|shots|plates|plate-list|steps|stall|press|asking|extend|anchors|sheets|header|targets|audit|overflow|analyse|list|mobile|doors|wallstage|placescreen');
+else if (cmd === 'report') await report();
+else { console.error('usage: measure.mjs render|shots|plates|plate-list|steps|stall|press|asking|extend|anchors|sheets|header|targets|audit|overflow|analyse|list|mobile|doors|wallstage|placescreen|report');
   process.exit(2); }
