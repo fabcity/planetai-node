@@ -327,11 +327,16 @@ async function rivers() {
 }
 
 /* the row itself, the band's and the report's; `here` adds the way up to the map, which a printed page has no use for */
+/* a report leaves the house, so its distances from the house are whole kilometres: two at 0.1 km, to two rivers, place
+   the house closer than its res-8 cell (SPEC_place_report §6). The screen keeps the hydro pack's own figures. */
+const wholeKm = t => String(t).replace(/(\d+(?:\.\d+)?) km/g, (_, v) => `${Math.round(+v)} km`);
 function riversRow(H, here) {
   if (!H) return '';
+  if (!here && H.nearest) H = { ...H, sentence: wholeKm(H.sentence), largest_sentence: H.largest_sentence && wholeKm(H.largest_sentence),
+    nearest: { ...H.nearest, dist_m: Math.round(H.nearest.dist_m / 1000) * 1000 } };
   if (!H.nearest) return `<div class="fr"><span>Rivers<small>the hydro pack has kept nothing yet: <code>planetai run hydro fetch</code></small></span><b><span class="soon">not yet</span></b></div>`;
   return `<div class="fr" data-k="rivers"><span>Rivers<small>${esc(H.sentence)}${H.largest_sentence ? `. The largest in the square: ${esc(H.largest_sentence)}` : ''}`
-    + `${here ? ' · <a href="#place" id="phydrogo">on the map ↑</a>' : ''}</small></span><b>${num('place.river', fmt(H.nearest.dist_m / 1000, 1), 'the nearest river, traced at about 500 m')} km ${prov('model')}</b></div>`;
+    + `${here ? ' · <a href="#place" id="phydrogo">on the map ↑</a>' : ''}</small></span><b>${num('place.river', fmt(H.nearest.dist_m / 1000, here ? 1 : 0), 'the nearest river, traced at about 500 m')} km ${prov('model')}</b></div>`;
 }
 
 /* ADD AN IMAGE — a dialog, opened from the Image key on the screen (the header's button until 5 Nov 2026): the file

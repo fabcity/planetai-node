@@ -34,7 +34,7 @@ const el = () => ({ innerHTML: '', textContent: '', hidden: false, style: {}, da
   getAttribute(k) { return this.attrs[k]; }, appendChild(x) { this.kids.push(x); }, append(...x) { this.kids.push(...x); }, querySelector: () => null, querySelectorAll: () => [],
   addEventListener: noop, remove: noop, focus: noop, closest: () => null, contains: () => false, getContext: () => ({ setTransform: noop, clearRect: noop }), clientWidth: 900, clientHeight: 560 });
 /* GET /hydro, token-only on the node: the nearest river in the pack's sentence, and its attribution */
-const HYDRO = { nearest: { dist_m: 2140 }, sentence: 'Tukad Mati, 2.1 km away', attribution: 'Rivers and basins: HydroSHEDS, as published in HydroATLAS v1.0 under CC-BY 4.0.' };
+const HYDRO = { nearest: { dist_m: 3555 }, sentence: 'Tukad Mati, 3.6 km away', largest_sentence: '21.9 km to Tukad Badung', attribution: 'Rivers and basins: HydroSHEDS, as published in HydroATLAS v1.0 under CC-BY 4.0.' };
 async function boot(tok, D) {
   const els = {}, map = el(), shots = [], styles = [];
   let last = [];
@@ -163,6 +163,8 @@ assert rows["Satellite"][1:] == ("held in part", "<code>planetai run earth-engin
 assert rows["Land change"][1][:12] == "held in part" and "comparisons · a count, not a shape" in rows["Land change"][2], rows["Land change"]
 assert rows["Outdoor kit"] == ("this house", "held", "") and rows["Node cell"] == ("H3", "held", ""), rows
 assert "pill pv-model" in T[0] and "Tukad Mati" in T[0] and "pill pv-model" in T[2], "each figure keeps its provenance word as prov() draws it"
+# two distances from the house at 0.1 km, to two rivers, place it closer than its res-8 cell: a report says whole km
+assert "Tukad Mati, 4 km away" in T[0] and "22 km to Tukad Badung" in T[0] and not re.search(r"\d\.\d km", T[0]), ("river distances on the report are whole km", T[0])
 assert "Contains modified Copernicus Sentinel data" in T[3] and "AlphaEarth Foundations" in T[3] and "HydroSHEDS, as published in HydroATLAS" in T[3] and "Natural Earth" in T[3], T[3]
 O = pages(R["odbl"])
 assert len(O) == 3 and O[2].count("<p>Natural Earth</p>") == 1 and "<p>A map made from OpenStreetMap is a Produced Work under the ODbL, so it carries the credit and nothing more.</p>" in O[2], O[-1]
