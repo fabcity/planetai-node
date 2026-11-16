@@ -297,6 +297,12 @@ alone.
 | `TERRAIN_RADIUS_M` | terrain | `5000` | Half-width of the square around the node, in metres. Water from further uphill is not counted. Needs `PACKS_ALLOW_CODE=1`. |
 | `TERRAIN_DEM_PATH` | terrain | blank | A GeoTIFF of your own (a drone survey, a national LiDAR), used instead of Copernicus DEM GLO-30. |
 | `TERRAIN_DEM_LICENCE` | terrain | blank | That file's licence, in words. Blank and the node computes from it and shows nothing. |
+| `ENERGY_REFRESH_DAYS` | energy | `30` | How often the grid's plants and substations are asked of OpenStreetMap again, in days. |
+| `ENERGY_POLL_HOURS` | energy | `6` | How often the grid's fossil share is worked out again. |
+| `ENERGY_HA_URL` | energy | blank | The house's Home Assistant, read every 5 minutes and only read. Blank reads nothing. |
+| `ENERGY_HA_TOKEN` | energy | blank | A long-lived access token from Home Assistant. Masked once saved. |
+| `ENERGY_HA_SOLAR`, `ENERGY_HA_GRID`, `ENERGY_HA_BATTERY` | energy | blank | Entity ids of the panels' power, the power drawn from the grid and the battery's, in W or kW. |
+| `ENERGY_PANEL_KW`, `ENERGY_HOUSE_KWH_DAY`, `ENERGY_PANEL_PR` | energy | `2`, `9`, `0.75` | The Today box's roof size, daily use and performance ratio. Placeholders: set your own. |
 | `HYDRO_RADIUS_KM` | hydro | `25` | Half-width of the square of rivers and basins kept around the node, in km. Needs `PACKS_ALLOW_CODE=1`. |
 | `COAST_MAX_KM` | coast | `30` | Refuses to report if the nearest ocean grid cell is further than this. Also a runtime key (public), and it moves the dashboard's drawn footprint too. |
 

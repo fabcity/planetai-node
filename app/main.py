@@ -1547,7 +1547,8 @@ def export(day: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$")):
         raise HTTPException(422, "day must be a real date, YYYY-MM-DD")
     hourly = q("""SELECT r.bucket, r.sensor_id, s.local, s.indoor, s.kind, s.scale, r.metric, r.mean, r.min, r.max, r.n
                   FROM readings_1h r JOIN sensors s USING (sensor_id)
-                  WHERE r.bucket >= %s::date AND r.bucket < %s::date + 1 AND """ + packs.public_sql("r") + """
+                  WHERE r.bucket >= %s::date AND r.bucket < %s::date + 1 AND """ + packs.public_sql("r")
+               + " AND " + packs.open_sql("r") + """
                   ORDER BY r.bucket, r.sensor_id, r.metric""", day, day)
     alias, counts = {}, {"indoor": 0, "outdoor": 0}
     def name(row):
