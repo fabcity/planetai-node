@@ -217,13 +217,16 @@ let PREG = 'paper', PSHEET = null, PTAKING = null;
 function report(again) {
   const box = $('#preport'), show = v => { box.hidden = !v; document.body.classList.toggle('preport', v); };
   if (location.hash !== '#place/report') { PSHEET = null; show(false); return null; }
-  if (PSHEET && !again) { show(true); return null; }
+  /* while a picture is being taken, Place stays on screen under it: a redraw meanwhile (a resize, the print dialog
+     closing) used to show the old sheet over the map and the picture came out 0 × 0 (node #1, 16 Nov) */
   if (PTAKING) return PTAKING;
+  if (PSHEET && !again) { show(true); return null; }
   show(false);
-  const get = p => doorsFetch(p).then(r => (r.ok ? r.json() : null)).catch(() => null);
-  return (PTAKING = Promise.all([window.placeSheet(PREG === 'paper'), get('/geo/cell?id=' + D.health.cell.id), get('/hydro')]).then(([s, c8, H]) => {
+  const get = p => doorsFetch(p).then(r => (r.ok ? r.json() : null)).catch(() => null), reg = PREG;
+  return (PTAKING = Promise.all([window.placeSheet(reg === 'paper'), get('/geo/cell?id=' + D.health.cell.id), get('/hydro')]).then(([s, c8, H]) => {
     PTAKING = null;
     if (location.hash !== '#place/report') return;
+    if (reg !== PREG) return report(true);   // the other register was pressed while this one was taken
     PSHEET = s; $('#psheets').innerHTML = sheetHTML(D, s, c8 && c8.ring) + reportPages(D, reportParts(s, H));
     box.querySelectorAll('[data-reg]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.reg === PREG)));
     show(true); window.scrollTo(0, 0);
@@ -325,7 +328,8 @@ async function rivers() {
   const el = $('#phydro'), H = await doorsFetch('/hydro').then(r => (r.ok ? r.json() : null)).catch(() => null);
   if (!el || !H) return;
   el.innerHTML = riversRow(H, true);
-  if (H.nearest) $('#phydrogo').onclick = e => { e.preventDefault(); if (window.placeRivers) window.placeRivers(); const m = $('#map'); if (m) m.scrollIntoView({ block: 'center' }); };
+  const go = $('#phydrogo');   // the row can be redrawn while /hydro is fetched, and the link with it (node #1, 16 Nov)
+  if (H.nearest && go) go.onclick = e => { e.preventDefault(); if (window.placeRivers) window.placeRivers(); const m = $('#map'); if (m) m.scrollIntoView({ block: 'center' }); };
 }
 
 /* the row itself, the band's and the report's; `here` adds the way up to the map, which a printed page has no use for */

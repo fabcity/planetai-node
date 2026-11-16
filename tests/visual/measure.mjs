@@ -3892,6 +3892,17 @@ async function report() {
     const drawn = await r.page.waitForFunction(t => document.querySelector(t ? '#psheets .sheet .splan image' : '#psheets .sheet .snone') && !document.getElementById('preport').hidden,
       tok, { timeout: 45000 }).then(() => true, () => false);
     if (!drawn) { bad.push(`${tag}: #place/report drew no sheet: ` + JSON.stringify(await r.page.evaluate(() => ({ url: location.href, sheets: (document.getElementById('psheets') || {}).innerHTML?.slice(0, 200) })))); await r.browser.close(); continue; }
+    /* the register pressed and the page redrawn at once (a resize, the print dialog closing) during the take: the picture
+       must still be of the map, not 0 × 0 (node #1, 16 Nov), and come back to Paper for the measures below */
+    if (tok) {
+      const taken = async reg => {
+        await r.page.evaluate(g => { document.querySelector(`#preport [data-reg="${g}"]`).click(); report(); dispatchEvent(new Event('resize')); }, reg);
+        await r.page.waitForFunction(g => !PTAKING && PREG === g && PSHEET && PSHEET.dark === (g === 'screen') && !document.getElementById('preport').hidden, reg, { timeout: 45000 }).catch(() => {});
+        return r.page.evaluate(() => PSHEET && [PSHEET.w, PSHEET.h, !!PSHEET.dark]);
+      };
+      const sc = await taken('screen'), pa = await taken('paper');
+      ok(sc && sc[0] > 0 && sc[1] > 0 && sc[2] && pa && pa[0] > 0 && !pa[2], `${tag}: a redraw during the take left the picture at ${sc} on Screen, ${pa} on Paper`);
+    }
     await r.page.emulateMedia({ media: 'print' });
     await r.page.setViewportSize({ width: 1123, height: 794 });   // A4 landscape at 96 px to the inch
     await r.page.waitForTimeout(300);

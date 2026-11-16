@@ -16,7 +16,7 @@ function gridLines(w, h, mpp) {
   const step = gridStep(Math.max(w, h) * mpp), px = step / mpp, at = n => Array.from({ length: Math.floor(n * mpp / step) + 1 }, (_, k) => k * px);
   return { step, px, xs: at(w), ys: at(h).map(y => h - y) };
 }
-const gridM = m => (m >= 1000 ? `${+(m / 1000).toFixed(2)} km` : `${+m.toFixed(1)} m`);
+const gridM = m => { const r = +m.toFixed(1); return r >= 1000 ? `${+(r / 1000).toFixed(2)} km` : `${r} m`; };   // rounded first: 999.97 m read '1000 m' beside '2 km'
 
 /* the legend: each layer on and in view, under its section of the cake, in the cake's order, with its source */
 const sheetLegend = (layers, on, z) => cakeSections(layers.filter(l => on[l.id] && (l.minz == null || z >= l.minz) && (l.maxz == null || z <= l.maxz)), on)

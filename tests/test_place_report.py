@@ -198,3 +198,18 @@ print("  report: the picture is taken when the map is idle, so it comes from Pla
 assert "cellMW(c, SH ? null : E.household)" in SRC and "if (L.rings && RINGS && !SH)" in SRC, \
     "on a sheet the energy cells must not carry the house's roof, and the rings must stay off"
 print("  report: the energy cells on a sheet carry the plants' MW, never the house's roof")
+
+# Node #1's print run, 16 Nov: the drone pin's label printed dark on its dark chip on Paper, and rivers() threw when the
+# band was redrawn while /hydro was on its way.
+PSRC = open("app/static/doors-place.js").read()
+pins = SRC[SRC.index("id: 'drone-pins-l'"):SRC.index("id: 'drone-pins-l'") + 400]
+assert "getColor: [249, 245, 242, 255]" in pins, "the drone pin's label must be light on its dark chip in both registers"
+assert "if (H.nearest && go) go.onclick" in PSRC, "rivers() must not assume the link is still there after its fetch"
+print("  report: the drone pin reads on Paper; the Rivers link survives a redraw")
+
+# The grid's labels are pixels times metres a pixel, so 999.97 m came out "1000 m" beside "2 km" (node #1, 16 Nov).
+lab = subprocess.run(["node", "-e", "const s=require('fs').readFileSync('app/static/doors-sheet.js','utf8');"
+                      "eval(s.match(/const gridM = [^\\n]*/)[0].replace('const gridM','globalThis.gridM'));"
+                      "console.log([999.97, 1000, 1999.96, 500, 2500].map(gridM).join('|'))"], capture_output=True, text=True)
+assert lab.stdout.strip() == "1 km|1 km|2 km|500 m|2.5 km", lab.stdout + lab.stderr
+print("  report: a grid label is rounded before it is called metres or km")

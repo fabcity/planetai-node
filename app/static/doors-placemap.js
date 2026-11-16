@@ -411,7 +411,7 @@ function layers() {
     out.push(new Dk.ScatterplotLayer({ id: 'drone-pins', data: pins, getPosition: d => d.q, ...px, pickable: true, stroked: true, filled: true,
       getRadius: 10, getFillColor: [20, 20, 20, 235], getLineColor: A(p.ink, 1), getLineWidth: 1.2 }));
     out.push(new Dk.TextLayer({ characterSet: 'auto', id: 'drone-pins-l', data: pins, getPosition: d => d.q, getText: d => d.t, pickable: true, getSize: 11,
-      fontFamily: 'Figtree, sans-serif', getColor: A(p.ink, 1), getTextAnchor: 'start', getPixelOffset: [15, 0], background: true,
+      fontFamily: 'Figtree, sans-serif', getColor: [249, 245, 242, 255], getTextAnchor: 'start', getPixelOffset: [15, 0], background: true,   // light on its dark chip in both registers: Paper's ink printed dark on dark (node #1, 16 Nov)
       getBackgroundColor: [20, 20, 20, 235], backgroundPadding: [4, 2] }));
   }
   /* named in the list under the screen, "This house · 0 m": labels never sit on the house (Tomas, 15 Oct, option A) */
