@@ -633,6 +633,8 @@ check("data.tool === 'place_report'" in _core and "window.placeReport(reg)" in _
       and "window.placeReport = " in open("app/static/doors-place.js").read(),
       "the doors' pane must draw the report's button and the button must open #place/report")
 check("p.tool === 'place_report'" in _dash and "#place/report" in _dash, "the classic pane must draw it too")
+check("needs this screen unlocked in Set up, This screen" in agent_loop.PANE_SYSTEM,
+      "a pane without the token must be told to say how to unlock the report, not that it lacks a function")
 print("  report: Ask's place_report is a button to #place/report, for the token's screen only; nothing runs")
 
 print("\n".join(f"  x {f}" for f in fails) or "  ask: private context, proposals not changes, nothing kept")
