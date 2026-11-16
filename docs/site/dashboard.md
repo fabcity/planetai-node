@@ -109,6 +109,13 @@ where BMKG covers the node, and a line says where to turn Open-Meteo on. `#now/n
 today; pressing one moves the page to that issue. With the admin token one line counts the things this home
 keeps, how many sit idle and how many need repair, and opens Data › Home.
 
+**Energy**, once the energy pack is on and in `NODE_ISSUES`, is a row there too, with the grid's fossil share and the
+line its figure comes from. Pressing it draws the grid where the day figure is: the share (a range where the grid
+publishes no mix, one figure where it does), the mix as a bar with the part nobody publishes hatched, the nearest
+substation, the plants and the links with how far each is, and a Today box with the sun on the cell, what a roof of
+panels would make with it and what the house uses. With Home Assistant connected the box shows the house's own roof,
+grid and fossil share instead. Energy is context and never asks you to act.
+
 **The air around it**, under Around the house: the map of the stations around the house. Each public station has
 its 15-minute mean, a red square beside one over the air's line, the house is one mark with its own sensors' range,
 and a screen with the token gets the distance rings and cells. Pressing a station opens it in Data. Without WebGL the

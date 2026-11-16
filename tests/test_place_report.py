@@ -192,3 +192,9 @@ SRC = open("app/static/doors-placemap.js").read()
 body = SRC[SRC.index("async function placeSheet"):SRC.index("async function mapFile")]
 assert "once('load'" not in body and "once('idle'" in body, "placeSheet must not wait on a 'load' that has already fired"
 print("  report: the picture is taken when the map is idle, so it comes from Place as well as from a fresh page")
+
+# The energy layer labels the house's own cell with its roof when the token shows it. That is the household's, and a
+# sheet leaves the house: on a sheet the cells carry the plants' MW only, and the rings stay off.
+assert "cellMW(c, SH ? null : E.household)" in SRC and "if (L.rings && RINGS && !SH)" in SRC, \
+    "on a sheet the energy cells must not carry the house's roof, and the rings must stay off"
+print("  report: the energy cells on a sheet carry the plants' MW, never the house's roof")

@@ -13,6 +13,16 @@
   it too: "make me the place report" in Ask gives a button that opens it, on a screen holding the token. docs/place,
   docs/ask.
 
+- **A node knows where its electricity comes from.** The new `energy` pack finds the node's grid (Bali and the
+  Balearics today), asks OpenStreetMap for its plants, substations and cable heads, and works out how much of its
+  power is made from fossil fuels. Where the operator publishes the mix the share is measured by day (Menorca, from
+  Red Eléctrica, non-commercial, so it never leaves in the export). Where it does not, it is a range from installed
+  capacity (Bali, while the Java cable's share is unpublished). Now gets an Energy row and a panel with the share, the
+  mix, the sources and a Today box with the sun on the cell and what a roof would make with it. Place gets a Power
+  grid row, off at first, with the seven cells and the MW made in each. With Home Assistant connected it reads the
+  house's roof and grid, read only and private, and gives the house its own fossil share. Add `energy` to
+  `PACKS_ENABLED` and `NODE_ISSUES`. Without the token, distances are whole kilometres. docs/packs-reference#energy.
+
 - **The doctor stops saying two things on Linux that were not true.** The broker check used `nc`, which Arch (and
   so Omarchy) does not ship, so it read red with the broker up. It now opens the port with bash itself. The captures
   check read red when the folder belonged to root, which is what happens when the container makes it first, while the

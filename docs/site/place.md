@@ -49,7 +49,10 @@ and if the row cannot draw, why: **token-only**, **not here**, **live map**, or 
 start on: this house's outdoor kit, the public stations, the species, the cell the node stands in, the street map
 and the images. Once the hydro pack has fetched them (`planetai run hydro fetch`), two more rows wait under water:
 Rivers draws them wider with each order and Basins the level-12 basins, the node's own brighter, and a tap on a
-river gives its flow, the ground it drains and how far it runs to the sea. Nothing from inside the house is listed or
+river gives its flow, the ground it drains and how far it runs to the sea. With the energy pack on, **Power grid**
+waits under built: the grid's plants, sized by what they can make, its substations and cable heads, and the node's
+seven cells with how many MW are made in each. Its line counts the plants and substations on the grid and says how
+far the nearest one is. The points and the cells need the screen's token. Nothing from inside the house is listed or
 drawn on Place, and neither are the rooms.
 
 ## The screen
