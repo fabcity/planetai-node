@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **An update waits for the app before it checks it.** It used to wait 8 seconds, and on node #1 the app takes about
+  11 to start, so the update ended on "something is off" with the node running fine. It now waits until the app
+  answers, up to a minute.
+
 - **The doctor stops saying two things on Linux that were not true.** The broker check used `nc`, which Arch (and
   so Omarchy) does not ship, so it read red with the broker up. It now opens the port with bash itself. The captures
   check read red when the folder belonged to root, which is what happens when the container makes it first, while the

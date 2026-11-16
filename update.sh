@@ -337,7 +337,9 @@ if grep -q "^NODE_VERSION=" .env; then sed -i.bak "s|^NODE_VERSION=.*|NODE_VERSI
 spin "restarting the containers" docker compose up -d || die "the containers did not start; see $ULOG"
 
 # 7. verify
-sleep 8
+# wait for the app to answer rather than a fixed 8 s: on node #1 (a Mac mini under Colima) the container takes ~11 s
+# to import, so the doctor read "app answering" red on an app that was fine a few seconds later (16 Nov 2026)
+for _ in $(seq 30); do curl -sf "localhost:${PORT}/health" >/dev/null 2>&1 && break; sleep 2; done
 TO="$(docker compose exec -T db psql -U planetai -tAc "SELECT version FROM schema_version ORDER BY applied_at DESC, string_to_array(version,'.')::int[] DESC LIMIT 1" planetai 2>/dev/null || echo "?")"
 ok=1
 chk(){ if eval "$2" >/dev/null 2>&1; then echo "  ✓ $1"; else echo "  ✗ $1"; ok=0; fi; }
