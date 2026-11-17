@@ -995,7 +995,7 @@ for (const [k, ip] of Object.entries(JSON.parse(process.argv[1]))) {
   const D = L.buildD({ ...F, days: F.issues_days, index_place: ip }, 'en'), els = {};
   const c = { D, $: q => (els[q] ||= {}), sign: id => `<svg data-s="${id}"></svg>`, doorsLocal: L.doorsLocal };
   vm.createContext(c);
-  try { vm.runInContext(['esc', 'loc', 'num', 'PROV', 'prov'].map(pick).join('\n') + '\nfunction yearly() { return ""; }\nfunction rivers() {}\n' + fn('indexRow') + fn('figures') + 'figures()', c); out[k] = els['#pfigures'].innerHTML; } catch (e) { out[k] = 'THROWS ' + e.message; }
+  try { vm.runInContext(['esc', 'loc', 'num', 'PROV', 'prov'].map(pick).join('\n') + '\nfunction yearly() { return ""; }\nfunction rivers() {}\nfunction who() {}\n' + fn('indexRow') + fn('figures') + 'figures()', c); out[k] = els['#pfigures'].innerHTML; } catch (e) { out[k] = 'THROWS ' + e.message; }
 }
 console.log(JSON.stringify(out));
 """ % FIX

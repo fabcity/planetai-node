@@ -111,7 +111,7 @@ To answer an issue from Now, open the drawing's form, choose the issue, say what
 
 At the foot of Place a block says what the report is and opens it: **Open the report** for the light sheet and
 **Dark version** for the black one. **Report, to print or save as PDF**, the last line in **Download**, opens the place
-as a sheet to print, with up to four pages of the report after it. **Place report** in Tools opens the same. The sheet is what the screen showed when you pressed it: the scale in view, the
+as a sheet to print, with the pages of the report after it. **Place report** in Tools opens the same. The sheet is what the screen showed when you pressed it: the scale in view, the
 layers that are on, the satellite or the streets, and the maps on the screen. To print the seven cells, go to Village
 first.
 
@@ -152,7 +152,7 @@ each carries a layer of the Fab City Full Stack and one of its key actions: map 
 The page ends with what the reading cannot see and what fills each gap. A node that holds little is given four things
 to map first.
 
-Under each title a line says who wrote the page and when. Every node writes its own reading from rules, with no model
+Under each title a line says who wrote the page and when, and the block at the foot of Place says the same in one line. Every node writes its own reading from rules, with no model
 and no network. When Set up › Model has a model on your own network, the report's bar shows **Write a fuller reading**
 to a screen holding the admin token. Press it and the node asks that model, which takes a few minutes. The node keeps
 the text only if every figure in it is one the node holds. If not, it says why, and its own reading stands. The node

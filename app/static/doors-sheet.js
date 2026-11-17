@@ -69,6 +69,8 @@ const longDay = iso => { const [y, m, d] = String(iso).slice(0, 10).split('-').m
 const readingBy = R => R.written
   ? `Written by a language model on ${R.by.where} (${R.by.model}) from the node’s figures, ${longDay(R.written_at)}. The node checked its numbers.`
   : `Written by this node from its own figures, ${longDay(R.facts_at)}.`;
+/* the same, in one line, for the block at the foot of Place (§12) */
+const readingFoot = R => `Reading written ${longDay(R.written ? R.written_at : R.facts_at)} by ${R.written ? `a language model on ${R.by.where}` : 'this node'}`;
 function readingPages(D, R) {
   if (!R || !R.rules) return [];
   const W = R.written, who = `<p class="rwho">${esc(readingBy(R))}</p>`, blind = R.rules.blind || [];
@@ -109,6 +111,6 @@ function reportPages(D, r) {
   return pages.map((b, i) => `<article class="rpage" aria-label="Page ${i + 1} of ${pages.length}"><p class="rhead">${esc(`${D.node.name} · Place report · page ${i + 1} of ${pages.length}`)}</p>${b}</article>`).join('');
 }
 
-const SHEETS = { gridStep, gridLines, sheetLegend, sheetSVG, sheetHTML, reportPages, readingPages, readingBy };
+const SHEETS = { gridStep, gridLines, sheetLegend, sheetSVG, sheetHTML, reportPages, readingPages, readingBy, readingFoot };
 if (typeof window !== 'undefined') Object.assign(window, SHEETS);
 if (typeof module !== 'undefined') module.exports = SHEETS;

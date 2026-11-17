@@ -3987,7 +3987,13 @@ async function report() {
      #place/report in the register the model passed on (Screen here) */
   { const was = process.env.PAI_ASK_MODEL; process.env.PAI_ASK_MODEL = was || 'qwen3.5:4b';
     const r = await openRig({ w: 1440, h: 900, touch: false, admin: ADMIN, gl: true, ground: { on_disk: {}, layers: {} }, mem: 'doors' });
+    await r.page.route(u => new URL(u).pathname === '/place/reading', q => q.fulfill({ status: 200, contentType: 'application/json',
+      body: JSON.stringify({ facts_at: '2026-11-17', state: 'none', refused: null, can_write: false, written: null, written_at: null, by: 'node', rules: { sections: [], avenues: [], blind: [] } }) }));
     await r.page.goto(`${POP}/?fixture=${FIXTURE}#place`, { waitUntil: 'domcontentloaded' });
+    /* beside its buttons, who wrote the reading and when (§11), asked for once the figures are drawn */
+    const who = await r.page.waitForFunction(() => document.getElementById('prfwho').textContent === 'Reading written 17 November 2026 by this node', null, { timeout: 30000 })
+      .then(() => true, () => r.page.evaluate(() => document.getElementById('prfwho').textContent));
+    ok(who === true, `report: the foot of Place does not say who wrote the reading: ${JSON.stringify(who)}`);
     /* the foot of Place offers it (§12): its button opens the report on Paper, and Back to Place shows the block again */
     const foot = await r.page.waitForSelector('#preportfoot [data-prf="paper"]', { timeout: 20000 }).then(async () => {
       await r.page.click('#preportfoot [data-prf="paper"]');

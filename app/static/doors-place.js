@@ -237,6 +237,7 @@ function report(again) {
    house's network the bar offers Write a fuller reading: a press asks the node, the node answers at once and writes in
    its own time, and the page asks again every ten seconds until the text is written or refused. */
 function pages(RD) {
+  footWho(RD);
   $('#psheets').innerHTML = sheetHTML(D, PSHEET, PPARTS.c8 && PPARTS.c8.ring) + reportPages(D, reportParts(PSHEET, PPARTS.H, RD));
   const b = $('#prwrite'), n = $('#prnote'), busy = !!RD && RD.state === 'writing';
   b.hidden = !(RD && RD.can_write); b.disabled = busy;
@@ -265,6 +266,11 @@ $('#prprint').onclick = () => window.print();
 /* the foot of Place (SPEC_place_report §12): its two buttons open the report, and a screen without the token is told
    where the map of the house stays, in the sheet's own sentence */
 document.querySelectorAll('#preportfoot [data-prf]').forEach(b => b.onclick = () => window.placeReport(b.dataset.prf));
+/* beside them, who wrote the reading and when (§11): asked once when the figures are drawn, on a screen holding the
+   token, and written again by the report when a new reading lands */
+let PWHO = false;
+function footWho(RD) { if (RD && RD.rules) $('#prfwho').textContent = readingFoot(RD); }
+function who() { if (PWHO || !DOORS_TOKEN()) return; PWHO = true; doorsFetch('/place/reading').then(r => (r.ok ? r.json() : null)).then(footWho).catch(() => {}); }
 if (!DOORS_TOKEN()) $('#prfhow').textContent = 'Your browser prints it or saves it as a PDF, and nothing is sent anywhere. ' + window.placeNoMap;
 /* the Ask pane's button (doors-core.js): the report in the register asked for */
 window.placeReport = reg => { PREG = reg === 'screen' ? 'screen' : 'paper'; if (location.hash === '#place/report') report(true); else location.hash = '#place/report'; };
@@ -339,7 +345,7 @@ function figures(hydro) {
     + (ch ? `<p class="fine">Land: AlphaEarth, ${ch.year_a} → ${ch.year_b}.</p>` : '');
   if (hydro != null) return h;
   $('#pfigures').innerHTML = h;
-  rivers();
+  rivers(); who();
 }
 /* RIVERS, a row of the figures once the hydro pack has fetched (GET /hydro, token-only like its map rows): the nearest
    river in the pack's own sentence, the largest in the square, and a way up to both on the map. Nothing without the

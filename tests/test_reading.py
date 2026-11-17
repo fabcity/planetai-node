@@ -434,6 +434,24 @@ html = open("app/static/doors.html").read()
 check('id="prwrite"' in html and re.search(r"\.rpage \.av\{[^}]*break-inside:avoid", html), "the bar has the button, and an avenue is never split across pages")
 print("  reading: two pages after the sheet, who wrote them under each title, a model's text in place of the rules' when one held")
 
+# The foot of Place carries one line on who wrote the reading and when (SPEC_place_report §12), and its second
+# paragraph says the report has a reading in it.
+FOOT = r"""
+const fs = require('fs'); globalThis.esc = s => String(s);
+const S = require('./app/static/doors-sheet.js'), I = JSON.parse(fs.readFileSync(0, 'utf8'));
+console.log(JSON.stringify(Object.fromEntries(Object.entries(I).map(([k, v]) => [k, S.readingFoot(v)]))));
+"""
+ft = subprocess.run(["node", "-e", FOOT], input=json.dumps({"ruled": ruled, "model": model}), capture_output=True, text=True)
+ft = json.loads(ft.stdout) if ft.returncode == 0 else {}
+check(ft.get("ruled") == "Reading written 17 November 2026 by this node"
+      and ft.get("model") == "Reading written 17 November 2026 by a language model on your network", f"the foot's line says who wrote the reading and when: {ft}")
+place_js = open("app/static/doors-place.js").read()
+foot_html = html[html.index('id="preportfoot"'):html.index('id="preport"')]
+check("A plan of the map as you have it on screen. A reading of the place, with ways to improve it." in foot_html, "the foot says the report reads the place")
+check(re.search(r"function pages\(RD\) \{[^}]*footWho\(RD\)", place_js, re.S) and "if (PWHO || !DOORS_TOKEN()) return" in place_js
+      and not NAMES.search(foot_html), "the line is asked for once, on a screen holding the token, and a new reading rewrites it")
+print("  reading: the foot of Place says who wrote the reading and when")
+
 # ---------------------------------------------------------------- what describes the report names nobody either
 # Tomas, 17 Nov 2026: "it is for consumption, so do not mention the names of experts behind it". The prompt in
 # app/reading.py is the one place they live; the layer list's own docs keep McHarg, by his ruling of 4 Nov.
