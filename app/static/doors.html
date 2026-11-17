@@ -282,7 +282,7 @@ section.decl{margin-top:22px}.row.decl{cursor:default}   /* a pack's declared ba
 .pmh,#ymaps>h2,#cake .ck>h2{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:12px 0 2px;font:400 var(--t-cap) var(--body);letter-spacing:.02em;color:var(--mute)}
 .pmh b,#ymaps>h2 b,#cake .ck>h2 b{font:400 10.5px var(--mono)}
 /* two columns: the cake and the screen. One side menu, the left (Tomas, 5 Nov 2026): the tools are on the top line */
-.bench{display:grid;grid-template-columns:216px minmax(0,1fr);margin-top:16px;border-top:1px solid var(--hair);border-bottom:1px solid var(--hair)}
+.bench{display:grid;grid-template-columns:224px minmax(0,1fr);margin-top:16px;border-top:1px solid var(--hair);border-bottom:1px solid var(--hair)}
 #cake{padding:0 16px 16px 0;border-right:1px solid var(--hair);min-width:0}
 /* the screen's column sets the bench's height; the cake fills it and scrolls inside it */
 #cake{height:0;min-height:100%;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
@@ -297,41 +297,50 @@ section.decl{margin-top:22px}.row.decl{cursor:default}   /* a pack's declared ba
   .pfold:hover{color:var(--ink)}.pfold svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.5}.pfold span{display:none}
   /* placed in the screen's row, so the strip stops at the screen's foot. Both lines are named: for an absolute grid child
      an `auto` end line is the bench's own edge */
-  .pfold[data-fold="lc"]{grid-row:1/2;grid-column:1/2;left:202px}
+  .pfold[data-fold="lc"]{grid-row:1/2;grid-column:1/2;left:210px}
   .bench.lc .pfold[data-fold="lc"]{left:0;top:0;bottom:0;width:36px;height:auto;align-content:start;gap:10px;padding:12px 0;border:0;border-radius:0;background:none}
   .bench.lc .pfold[data-fold="lc"]:hover{background:var(--raise)}.bench.lc .pfold[data-fold="lc"] svg{transform:scaleX(-1)}
   .bench.lc .pfold[data-fold="lc"] span{display:block;writing-mode:vertical-rl;font:400 11px var(--body);letter-spacing:.04em}
   .bench.lc{grid-template-columns:36px minmax(0,1fr)}.bench.lc #cake{padding:0;overflow:hidden}.bench.lc #cake>*{display:none}
   .bench.lc.mo .mapc #map{height:max(560px,calc(100vh - 80px))}.page[data-view="place"]:has(.bench.lc.mo){padding-left:16px;padding-right:16px}.bench.lc.mo .pmid{padding:12px 6px 0}
 }
-/* a layer: the OP-XY dot (filled with a ring on, hollow off, dotted not yet), its name, and under it its source */
+/* the head of the column: what it is and what a press does (Tomas, 17 Nov 2026: the rows read as text) */
+.ckh{padding:12px 0 2px}.ckh h2{margin:0;font:500 var(--t-small) var(--body);color:var(--ink)}.ckh p{margin:2px 0 0;font:400 var(--t-cap)/1.35 var(--body);color:var(--mute)}
+#cake .ck>h2 span,#ymaps>h2 span{color:var(--ink)}
+/* a layer: a switch (the track filled and the knob to the right on, hollow with the knob to the left off), its name and
+   one word for its source. A row that cannot switch, whatever the reason (not held yet, not here, live map only), has no
+   switch: a dotted mark, and a dashed one when it is locked */
 .lyr{padding:0}#facts code{font:inherit;border:1px solid var(--hair);padding:0 3px}
-.ly{display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:8px;align-items:center;width:100%;min-height:26px;margin:0;padding:0 8px;border:0;border-radius:6px;background:none;color:var(--ink);font:400 var(--t-small)/1.25 var(--body);text-align:left;cursor:pointer}
-.ly:hover{background:var(--raise)}.ly[aria-disabled="true"]{cursor:help}
+.ly{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:8px;align-items:center;width:100%;min-height:26px;margin:0;padding:0 8px;border:0;border-radius:6px;background:none;color:var(--ink);font:400 var(--t-small)/1.25 var(--body);text-align:left;cursor:pointer}
+.ly:hover{background:var(--raise)}.ly[aria-disabled="true"]{cursor:help}.ly:focus-visible,.ly.map>button:focus-visible{outline:2px solid var(--cells);outline-offset:-2px}
 .ly span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ly small{font:400 10.5px var(--mono);color:var(--mute);white-space:nowrap}
 .ly.held small{color:var(--ink)}.ly small .wh{width:10px;height:10px;margin-right:3px;vertical-align:-1px}
-.ly i{width:8px;height:8px;border-radius:50%;margin-left:3px;background:var(--ink);box-shadow:0 0 0 2px var(--ground),0 0 0 3px var(--ink)}
-.ly.off{color:var(--mute)}.ly.off i{background:none;box-shadow:inset 0 0 0 1px var(--mute)}
-.ly.soon{color:var(--mute)}.ly.soon i{width:6px;height:6px;margin-left:4px;background:none;box-shadow:none;border:1px dotted var(--mute)}
-/* your maps, above the cake: a map's dot is square, a layer's round; the dot shows or hides it, the name opens it */
-.ly.map i{border-radius:2px}
-.ly.map{grid-template-columns:22px minmax(0,1fr);gap:0;padding:0;cursor:default}.ly.map:hover{background:none}
+.ly i{position:relative;width:22px;height:12px;border-radius:999px;background:var(--ink)}
+.ly i::after{content:'';position:absolute;top:2px;left:12px;width:8px;height:8px;border-radius:inherit;background:var(--ground)}
+.ly.off{color:var(--mute)}.ly.off i{background:none;box-shadow:inset 0 0 0 1px var(--mute)}.ly.off i::after{left:2px;background:var(--mute)}
+.ly.soon{color:var(--mute)}.ly.soon i,.ly[aria-disabled="true"] i{width:6px;height:6px;margin-left:8px;border-radius:50%;background:none;box-shadow:none;border:1px dotted var(--mute)}
+.ly.held[aria-disabled="true"] i{border-style:dashed}.ly.soon i::after,.ly[aria-disabled="true"] i::after{content:none}
+/* your maps, above the cake: a map's switch is square, a layer's round; the switch shows or hides it, the name opens it */
+.ly.map i{border-radius:3px}
+.ly.map{grid-template-columns:38px minmax(0,1fr);gap:0;padding:0;cursor:default}.ly.map:hover{background:none}
 .ly.map>button{display:grid;align-items:center;min-height:inherit;padding:0 0 0 8px;border:0;border-radius:6px;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
-.ly.map>button:hover{background:var(--raise)}.ly.map .ymn{grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:0 8px 0 4px}
+.ly.map>button:hover{background:var(--raise)}.ly.map .ymn{grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:0 8px 0 0}
 .ly.map.open .ymn span{font-weight:500}
-.ly.new{color:var(--mute)}.ly.new i{background:none;box-shadow:none;font:400 13px/8px var(--body)}.ly.new i::before{content:'+';margin-left:-1px}
-.ly.new span{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px}
-.yed,.ynew{display:flex;flex-direction:column;gap:6px;margin:4px 0 10px 22px;font:400 var(--t-cap) var(--body);color:var(--mute)}.yed .fine{margin:0}
+/* New map is a button and looks like one */
+.ly.new{width:auto;min-height:28px;margin:4px 0 0;padding:0 12px 0 8px;border:1px solid var(--hair);gap:4px}.ly.new:hover{border-color:var(--ink)}
+.ly.new i{background:none;box-shadow:none;font:400 14px/12px var(--body);font-style:normal;text-align:center}.ly.new i::before{content:'+'}.ly.new i::after{content:none}
+.yed,.ynew{display:flex;flex-direction:column;gap:6px;margin:4px 0 10px 30px;font:400 var(--t-cap) var(--body);color:var(--mute)}.yed .fine{margin:0}
 .yed label{display:flex;flex-direction:column;gap:2px}
 .yed input,.ynew input{min-height:32px;padding:0 8px;border:1px solid var(--hair);background:none;color:var(--ink);font:400 var(--t-small) var(--body)}
 .yacts{display:flex;gap:8px}.yask{margin-left:0}.dform img[data-photo]{display:block;width:100%;height:auto;margin:6px 0}
 .ybtn{align-self:flex-start;min-height:32px;padding:0 14px;border:1px solid var(--ink);border-radius:999px;background:none;color:var(--ink);font:400 var(--t-cap) var(--body);cursor:pointer}
-.lyr .op{display:none;width:calc(100% - 22px);margin:6px 0 2px 22px;accent-color:var(--ink);height:14px}
-.lyr:has(.ly.on):hover .op,.lyr:has(.ly.on):focus-within .op{display:block}
-.lyr .whr{display:grid;grid-template-columns:auto minmax(0,1fr) 44px;gap:8px;align-items:center;margin:6px 0 2px 22px;font:400 10.5px var(--mono);color:var(--mute)}
+/* a row that is on shows how strongly it is drawn, always: on hover only, nobody found it */
+.lyr .opw{display:none;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:center;margin:2px 8px 6px 38px;font:400 10.5px var(--mono);color:var(--mute)}
+.lyr:has(.ly.on) .opw{display:grid}.lyr .op{width:100%;accent-color:var(--ink);height:14px}
+.lyr .whr{display:grid;grid-template-columns:auto minmax(0,1fr) 44px;gap:8px;align-items:center;margin:6px 8px 2px 38px;font:400 10.5px var(--mono);color:var(--mute)}
 .lyr .whr input{accent-color:var(--ink);width:100%}.lyr .whr b{font-weight:500;color:var(--ink);text-align:right}
 /* the species confirmed here open under their row */
-.spd{margin:4px 0 0 22px;border:0}.spd summary{display:flex;align-items:center;min-height:28px;padding:0;font:400 var(--t-cap) var(--body);color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+.spd{margin:4px 0 0 38px;border:0}.spd summary{display:inline-flex;align-items:center;min-height:28px;padding:0 12px;border:1px solid var(--hair);border-radius:6px;font:400 var(--t-cap) var(--body);color:var(--ink);cursor:pointer}.spd summary:hover{border-color:var(--ink)}
 .pspecies h2{font:500 var(--t-small) var(--body);margin:4px 0}.pspecies .tbl{font-size:var(--t-cap)}.pspecies .tbl .hide{display:none}
 /* a tool: a plain row with its command id; the chosen one a filled pill; one that does not run yet, a dotted "not yet" */
 .tl{display:flex;align-items:center;gap:8px;width:100%;min-height:28px;margin:0;padding:0 8px;border:0;border-radius:999px;background:none;color:var(--ink);font:400 var(--t-small) var(--body);text-align:left}
@@ -344,6 +353,13 @@ button.tl{cursor:pointer}button.tl:hover:not(:disabled):not(.on){background:var(
    is the same sheet, smaller. In print only the sheet and the pages are left, the sheet A4 landscape through the named
    page `sheet`; a browser without named pages prints it portrait and scales it to fit. */
 body.preport .page[data-view="place"]>:not(#preport){display:none}
+/* the report, offered at the foot of Place (SPEC_place_report §12): what it is on the left, its two doors on the right */
+.prf{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 32px;align-items:end;margin-top:32px;padding:20px 0 8px;border-top:1px solid var(--ink)}
+.prf h2{grid-column:1/-1;margin:0;font:400 var(--t-cap) var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+.prfb{max-width:68ch}.prfb p{margin:0 0 6px;font:400 var(--t-small)/1.5 var(--body);color:var(--mute)}.prfb .prfl{font:400 var(--t-read)/1.3 var(--body);color:var(--ink);margin-bottom:10px}
+.prfa{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:flex-end}.prfa .ybtn{min-height:40px;padding:0 18px;font-size:var(--t-small)}
+.prfa .ybtn:first-child{background:var(--ink);color:var(--ground)}.prfa .fine{flex-basis:100%;margin:4px 0 0;text-align:right}.prfa .fine:empty{display:none}
+@media (max-width:760px){.prf{grid-template-columns:minmax(0,1fr)}.prfa{justify-content:flex-start}.prfa .fine{text-align:left}.prfa .ybtn{min-height:44px}}
 .prbar{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;margin:16px 0 12px}
 .prbar .reg button{min-height:32px;padding:0 12px}.prbar .reg button[aria-pressed="true"]{background:var(--ink);color:var(--ground)}
 .psheets{display:grid;justify-items:center;gap:24px;padding:24px;background:var(--doc-line)}
@@ -448,23 +464,31 @@ body:not(.classic) .hero .ladder.folded{display:none}
 /* the drawing keys (SPEC_place_microgis §4, §10): a column of 44 px keys on the screen's left edge, the letter small in
    a corner, the pressed one filled with the screen's ink; focus is the cells' blue, as everywhere on the screen. Beside
    them the readout, the device's own screen line, and under it the form for the drawing in hand. */
-.dkeys{position:absolute;left:12px;top:12px;z-index:3;display:flex;flex-direction:column;background:var(--chip);border:1px solid var(--hair);border-radius:10px;overflow:hidden}
-.dkeys button{width:var(--k);height:var(--k);position:relative;display:grid;place-items:center;padding:0;border:0;background:none;color:var(--ink);cursor:pointer}
+/* the drawing keys say what they are (Tomas, 17 Nov 2026): a head, then each key as its icon, its name and its letter.
+   Under 760 px of screen they fold back to icons with the letter in the corner (the container rule below) */
+.dkeys{position:absolute;left:12px;top:12px;z-index:3;display:flex;flex-direction:column;width:112px;background:var(--chip);border:1px solid var(--hair);border-radius:10px;overflow:hidden}
+.dkh{padding:6px 10px 5px;border-bottom:1px solid var(--hair);font:400 var(--t-cap) var(--body);letter-spacing:.02em;color:var(--mute)}
+.dkeys button{width:100%;height:var(--k);position:relative;display:grid;grid-template-columns:var(--k) minmax(0,1fr) auto;align-items:center;padding:0 9px 0 0;border:0;background:none;color:var(--ink);font:400 var(--t-small) var(--body);text-align:left;cursor:pointer}
+.dkeys button svg{justify-self:center}.dkeys kbd{font:400 10px var(--mono);opacity:.6;text-transform:none;letter-spacing:0}
+.dkeys button.gap{text-transform:none;letter-spacing:0}  /* the page's .gap chip is uppercase; a key that opens a group is not one */
 .dkeys button+button{border-top:1px solid var(--hair)}.dkeys button.gap{border-top-width:5px}
 .dkeys button[aria-pressed="true"]{background:var(--ink);color:var(--ground)}.dkeys button:hover:not([aria-pressed="true"]){background:var(--raise)}
 .tools button:focus-visible,.zoom button:focus-visible,.dlmenu button:focus-visible,.pbase button:focus-visible,.dkeys button:focus-visible,.dchip:focus-visible,.dpanel button:focus-visible,.dpanel input:focus-visible,.dpanel textarea:focus-visible,.dpanel select:focus-visible{outline:2px solid var(--cells);outline-offset:-3px}
 .dkeys svg,.tools svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
-.dkeys small{position:absolute;right:3px;bottom:2px;font:400 8.5px var(--mono);opacity:.55}
+
 /* with the keys on the screen the hour moves right, beside the column at the top right, clear of the readout */
 .mapc:has(.dkeys) .phour{left:auto;right:calc(var(--k) + 24px);transform:none}
 /* the readout and the form, beside the keys: never wider than leaves the hour and the right column clear, and never
    down into the rungs; only what is drawn in it takes presses */
-.dpanel{position:absolute;left:calc(var(--k) + 24px);top:12px;z-index:3;display:flex;flex-direction:column;align-items:flex-start;gap:6px;width:min(300px,calc(100% - 2 * var(--k) - 302px));max-height:calc(100% - 150px);overflow:auto;scrollbar-width:thin;pointer-events:none}
+.dpanel{position:absolute;left:136px;top:12px;z-index:3;display:flex;flex-direction:column;align-items:flex-start;gap:6px;width:min(300px,calc(100% - var(--k) - 414px));max-height:calc(100% - 150px);overflow:auto;scrollbar-width:thin;pointer-events:none}
 .dpanel>*{pointer-events:auto;max-width:100%}.dpanel .dfull,.dpanel .dform{align-self:stretch}
 /* the controls by the screen's own width, the left open or folded (Tomas, 5 Nov 2026: in between they collapsed). Under
    760 px of screen the rungs say their number only (the name stays in the title); under 560 px the base switch climbs
    above the rungs on the left, and the hour goes down above the zoom, so the readout has the top to itself */
-@container place (max-width:759px){#mapbar .scales b{display:none}#mapbar .scales button{min-width:var(--k);justify-content:center;padding:0 8px}}
+@container place (max-width:759px){#mapbar .scales b{display:none}#mapbar .scales button{min-width:var(--k);justify-content:center;padding:0 8px}
+  .dkeys{width:auto}.dkh,.dkeys .kn{display:none}.dkeys button{width:var(--k);grid-template-columns:var(--k);padding:0}
+  .dkeys kbd{position:absolute;right:3px;bottom:2px;font-size:8.5px;opacity:.55}
+  .dpanel{left:calc(var(--k) + 24px);width:min(300px,calc(100% - 2 * var(--k) - 302px))}}
 @media (min-width:761px){@container place (max-width:559px){
   .mapc:has(.dkeys) .phour,.mapc .phour{left:auto;right:12px;top:auto;bottom:calc(2 * var(--k) + 24px);transform:none}
   .pbase{left:12px;right:auto;bottom:calc(var(--k) + 28px)}.mapc .maplibregl-ctrl-bottom-left{bottom:calc(2 * var(--k) + 48px)}
@@ -821,7 +845,7 @@ body:not(.classic) .hero .ladder.folded{display:none}
   .bench[data-sheet="cake"] #cake{display:block}
   .bench[data-sheet="cake"] .psbar{position:fixed;left:0;right:0;bottom:60vh;z-index:51;margin:0;padding:8px 16px;background:var(--ground)}
   #facts.inspect{order:4}#pmargin{order:5;grid-template-columns:minmax(0,1fr)}#pmargin .mr{min-height:44px}
-  .ly,.tl,.spd summary{min-height:44px}#pchange .pair{grid-template-columns:minmax(0,1fr)}
+  .ly,.ly.new,.tl,.spd summary{min-height:44px}#pchange .pair{grid-template-columns:minmax(0,1fr)}
   #mapcredit{position:static;max-width:none;padding:4px 12px 6px;text-align:left}
   /* the screen's chrome (§10): the hour, the rungs and the base down the top left, the column and the zoom down the right,
      the keys a row along the bottom with the readout above them, the download menu across the top */
@@ -1311,6 +1335,16 @@ body:not(.classic) .hero .ladder.folded{display:none}
   <div class="plow">
     <section id="pfigures" aria-label="The place in figures" data-learn="place-changing" data-reads="/issues /cells /sources" data-stage="observe" data-pack="core"></section>
   </div>
+  <!-- THE REPORT, OFFERED (SPEC_place_report §12): the last block of Place says what the report is and opens it -->
+  <section id="preportfoot" class="prf" aria-labelledby="prfh">
+    <h2 id="prfh">The Place report</h2>
+    <div class="prfb">
+      <p class="prfl">This place on paper, to hand to the neighbours, the council or a funder.</p>
+      <p>A plan of the map as you have it on screen. Its figures, what the node holds and what it does not, what changed year on year, and the sources.</p>
+      <p id="prfhow">Your browser prints it or saves it as a PDF. Nothing is sent anywhere, and the house is drawn as a blurred cell.</p>
+    </div>
+    <div class="prfa"><button type="button" class="ybtn" data-prf="paper">Open the report</button><button type="button" class="ybtn" data-prf="screen">Dark version</button><p id="prfwho" class="fine"></p></div>
+  </section>
   <!-- THE PLACE REPORT (SPEC_place_report §3): #place/report, the sheet to print or save as PDF -->
   <div id="preport" class="preport" hidden>
     <div class="prbar"><div class="reg" role="group" aria-label="Register of the map on the sheet"><button type="button" data-reg="paper" aria-pressed="true">Paper</button><button type="button" data-reg="screen" aria-pressed="false">Screen</button></div>

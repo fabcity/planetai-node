@@ -213,3 +213,18 @@ lab = subprocess.run(["node", "-e", "const s=require('fs').readFileSync('app/sta
                       "console.log([999.97, 1000, 1999.96, 500, 2500].map(gridM).join('|'))"], capture_output=True, text=True)
 assert lab.stdout.strip() == "1 km|1 km|2 km|500 m|2.5 km", lab.stdout + lab.stderr
 print("  report: a grid label is rounded before it is called metres or km")
+
+# The report is offered at the foot of Place, with what it is (Tomas, 17 Nov 2026: "more visible in the bottom of the
+# place tab, explaining what the report does"). It is written for whoever reads it, so it names nobody.
+HTML = open("app/static/doors.html").read()
+assert HTML.index('class="plow"') < HTML.index('id="preportfoot"') < HTML.index('id="preport"'), "the block is the last thing on Place, before the report itself"
+foot = HTML[HTML.index('id="preportfoot"'):HTML.index('id="preport"')]
+for s in ("The Place report", "This place on paper, to hand to the neighbours, the council or a funder.",
+          "A plan of the map as you have it on screen.", "Your browser prints it or saves it as a PDF.",
+          'data-prf="paper"', 'data-prf="screen"', ">Open the report<", ">Dark version<", 'id="prfwho"'):
+    assert s in foot, s
+assert not re.search(r"mumford|mcharg|papanek|meadows|jacobs", foot, re.I)
+assert "data-open-report" not in foot, "the Ask pane's button owns data-open-report; the gate presses it by that name"
+assert "#preportfoot [data-prf]" in PSRC and "window.placeReport(b.dataset.prf)" in PSRC, "its buttons open the report in their register"
+assert "window.placeNoMap = NOMAP" in SRC and "window.placeNoMap" in PSRC[PSRC.index("#prfhow"):PSRC.index("#prfhow") + 300], "without the token it says where the map of the house stays, in the sheet's own sentence"
+print("  report: the foot of Place says what the report is and opens it")

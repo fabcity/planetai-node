@@ -237,3 +237,15 @@ the Implementation Guide's three key actions (map and research, experiment, reth
   four go on a page of their own.
 
 The thresholds in the rules are first guesses, tuned on node #1's own reading.
+
+## 12 · The report, offered (17 November 2026)
+
+*Asked by Tomas, 17 November 2026: "the report download should be more visible in the bottom of the place tab, explaining
+what the report does (it is for consumption, so do not mention the names of experts behind it)."*
+
+The last block of Place, after What changed and The place in figures, says what the report is and opens it. It has a
+line on who the report is for, a line on what is in it, and a line on how it is made: the browser prints it, nothing is
+sent anywhere, and the house is drawn as a blurred cell. **Open the report** opens it on Paper and **Dark version** on
+Screen. A screen without the token reads, in place of the last line, the sentence the sheet itself uses for the map of
+the house (§6). Beside the buttons, on a screen holding the token, one line says who wrote the reading and when (§11). The Download menu's line and the Tools row stay. The block is hidden with the rest of Place while the
+report is open, and it is never printed.

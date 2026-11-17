@@ -6,7 +6,7 @@
      --cells blue, for the cell and focus; orange stays the satellite's alone. No second accent.
    - mono's 1 px rules and tracked mono labels.
    - The v2 drawing (SPEC_place_microgis §4, 4 Nov 2026), after Option A (15 Oct): the cake on the left as plain rows with
-     OP-XY dot switches (OneSoil's layer list), the screen black in both registers with its tools, scales and hour on it as
+     switches (OneSoil's layer list; a dot until 17 Nov 2026), the screen black in both registers with its tools, scales and hour on it as
      chips, the tools in a menu on the top line (5 Nov 2026; the right column before), the inspector a status line under the screen and the marks around the house a list.
 
    SCALE. The H3 resolution drawn follows the zoom: the finest rung whose cell is at least 56 px to an edge on
@@ -527,8 +527,8 @@ function edges(all, inView, W, H) {
 
 /* ---------------------------------------------------------------- the cake (SPEC_place_microgis §4, §5)
    The left column: results, then the layers from the sky down to the ground, then the frame (doors-cake.js). A section is
-   its name and how many of its rows are on; a row is one line, as in the v2 drawing: an OP-XY dot (filled with a ring on,
-   hollow off, dotted not yet), the layer's name and a word for its source, or for why it cannot draw (token-only, not
+   its name and how many of its rows are on; a row is one line, as in the v2 drawing: a switch (filled with the knob to the right on,
+   hollow with the knob to the left off, a dotted mark where it cannot switch), the layer's name and a word for its source, or for why it cannot draw (token-only, not
    here, live map). The whole sentence, with its unlock link or its command, is the row's title and goes to the status
    line under the screen when the row is pressed. The wind's hour and a layer's opacity sit under their rows; the species
    confirmed here open under theirs (#spd, moved in, never redrawn). */
@@ -558,12 +558,15 @@ function panel() {
     return `<div class="lyr" data-l="${l.id}"><button class="ly ${r.state}${l.locked ? ' held' : ''}" aria-pressed="${r.state === 'on'}"${a.off ? ' aria-disabled="true"' : ''} title="${esc(`${l.name} · ${a.long.replace(/<[^>]+>/g, '')}`)}">`
       + `<i aria-hidden="true"></i><span>${esc(l.name)}</span><small>${a.brief}</small></button>`
       + (l.id === 'wind' && PM.on.wind && PM.wind ? `<label class="whr"><span>now</span><input type="range" min="0" max="${PM.wind.times.length - 1 - nowIdx()}" step="1" value="${PM.windStep}" aria-label="Hours ahead"><b>${PM.windStep ? `+${PM.windStep} h` : 'now'}</b></label>` : '')
-      + (a.off || l.still || PM.flat ? '' : `<input class="op" type="range" min="0" max="1" step="0.05" value="${PM.alpha[l.id]}" aria-label="${esc(l.name)} opacity" ${PM.on[l.id] ? '' : 'disabled'}>`)
+      + (a.off || l.still || PM.flat ? '' : `<label class="opw"><span class="opl">opacity</span><input class="op" type="range" min="0" max="1" step="0.05" value="${PM.alpha[l.id]}" aria-label="${esc(l.name)} opacity" ${PM.on[l.id] ? '' : 'disabled'}></label>`)
       + (l.id === 'species' ? '<div data-slot="species"></div>' : '') + `</div>`;
   };
   const fo = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.f;
-  $('#cake').innerHTML = yourMaps() + cakeSections(LAYERS, PM.on).map(s => `<section class="ck" data-cake="${s.id}"><h2><span>${esc(s.name)}</span>`
-    + `<b>${s.rows.length ? `${s.rows.filter(r => r.state === 'on').length} of ${s.rows.length}` : 'none yet'}</b></h2>${s.rows.map(row).join('')}</section>`).join('');
+  /* the head says what the column is and what a press does: the rows are switches, and read as text without it
+     (Tomas, 17 Nov 2026) */
+  $('#cake').innerHTML = '<header class="ckh"><h2>Layers</h2><p>Press a row to draw it on the map or take it off.</p></header>'
+    + yourMaps() + cakeSections(LAYERS, PM.on).map(s => `<section class="ck" data-cake="${s.id}"><h2><span>${esc(s.name)}</span>`
+    + `<b>${s.rows.length ? `${s.rows.filter(r => r.state === 'on').length} of ${s.rows.length} on` : 'none yet'}</b></h2>${s.rows.map(row).join('')}</section>`).join('');
   const slot = document.querySelector('#cake [data-slot="species"]'); if (spd && slot) slot.replaceWith(spd);
   document.querySelectorAll('#cake .lyr').forEach(w => {
     const id = w.dataset.l, b = w.querySelector('button.ly'), op = w.querySelector('.op'), wh = w.querySelector('.whr input');
@@ -656,7 +659,7 @@ function tools() {
   /* the keys and the readout: only for a screen holding the token, since every drawing is the household's */
   if (!DOORS_TOKEN()) return;
   const keys = PM.keys = document.createElement('div'), pan = document.createElement('div');
-  keys.className = 'dkeys'; keys.setAttribute('role', 'toolbar'); keys.setAttribute('aria-label', 'Draw'); keys.innerHTML = keysHTML();
+  keys.className = 'dkeys'; keys.setAttribute('role', 'toolbar'); keys.setAttribute('aria-label', 'Draw'); keys.innerHTML = '<b class="dkh" aria-hidden="true">Draw</b>' + keysHTML();
   pan.className = 'dpanel'; pan.innerHTML = '<div id="dread" class="dread"></div><p id="dsaid" class="vh" aria-live="polite"></p><div id="dform" class="dform" hidden></div>';
   keys.onclick = e => { const b = e.target.closest('button[data-k]'); if (!b) return; if (b.dataset.k === 'undo') undo(); else { PM.setTool(b.dataset.k); toScreen(b.dataset.k); } };
   box.append(keys, pan);
@@ -826,11 +829,13 @@ const tiedTo = k => {
   return o ? o.name : 'an issue';
 };
 
-/* the keys: six tools and Undo, the letter small in a corner, the pressed one filled */
+/* the keys: six tools and Undo, each with its name and its letter beside the icon, the pressed one filled. Where the
+   screen is narrow the names fold away and the letter goes back to the corner (doors.html) */
+const UNDOKEY = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || '') ? '⌘Z' : 'Ctrl+Z';   // the letter this machine's keyboard has
 const keysHTML = () => KEYS.map(([k, l]) => `<button type="button" class="${k === 'marker' ? 'gap' : ''}" data-k="${k}" aria-label="${KEYNAME[k]}" aria-pressed="${PM.tool === k}" title="${KEYNAME[k]} · ${l}"`
   + (k === 'image' ? ' data-learn="place-image" data-reads="/captures" data-stage="observe" data-pack="core"' : '') + '>'
-  + `<svg viewBox="0 0 20 20" aria-hidden="true">${KEYICON[k]}</svg><small>${l}</small></button>`).join('')
-  + `<button type="button" class="gap" data-k="undo" aria-label="Undo" title="Undo · ⌘Z or Ctrl+Z"><svg viewBox="0 0 20 20" aria-hidden="true">${KEYICON.undo}</svg><small>⌘Z</small></button>`;
+  + `<svg viewBox="0 0 20 20" aria-hidden="true">${KEYICON[k]}</svg><span class="kn">${KEYNAME[k].split(',')[0]}</span><kbd>${l}</kbd></button>`).join('')
+  + `<button type="button" class="gap" data-k="undo" aria-label="Undo" title="Undo · ⌘Z or Ctrl+Z"><svg viewBox="0 0 20 20" aria-hidden="true">${KEYICON.undo}</svg><span class="kn">Undo</span><kbd>${UNDOKEY}</kbd></button>`;
 
 /* the readout, folded to a chip (Tomas, 5 Nov 2026): the tool, the open map, the figure while it is drawn (the distance
    or the surface is the point of drawing) and a dot in the colour. A press on it opens the six colours and one line of
@@ -1660,7 +1665,7 @@ async function placeMap() {
   document.addEventListener('keydown', onKey, true);   // capture: an arrow moving a corner must not also pan the map
   placeMaps();
 }
-window.placeMap = placeMap; window.placeLayer = setLayer; window.placeSheet = placeSheet; window.placeCake = placeCake; window.__PM = PM;   // __PM for the rig
+window.placeMap = placeMap; window.placeLayer = setLayer; window.placeSheet = placeSheet; window.placeCake = placeCake; window.placeNoMap = NOMAP; window.__PM = PM;   // __PM for the rig
 /* the figures' Rivers row: both hydro rows on, and out to District scale, where the nearest river is in view */
 window.placeRivers = () => { setLayer('rivers', true); setLayer('basin', true); if (PM.map) fly(6); };
 /* the Images panel added one: ask again, so its kind's row and its square appear */

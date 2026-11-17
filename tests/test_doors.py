@@ -677,8 +677,8 @@ assert "@container place (max-width:759px){#mapbar .scales b{display:none}" in _
     and ".mapc .nonode{right:calc(var(--k) + 24px);bottom:56px;pointer-events:none}" in _css and "width:min(300px,calc(100% - 2 * var(--k) - 302px))" in _css, \
     "the screen's controls lay out by its own width: the rungs by number under 760 px, the base and the hour move under 560 px (tests/visual/measure.mjs placescreen proves the boxes)"
 assert "box-shadow:0 0 0 1px #000,0 0 0 5px #1b1b1b,0 0 0 6px #000" in _css and "border-radius:10px" in _css, "the screen sits in its bezel"
-assert re.search(r"\.bench\{display:grid;grid-template-columns:216px minmax\(0,1fr\);", _css) and ".page[data-view=\"place\"]{max-width:1440px}" in _css, \
-    "216 px of cake, and the screen takes the rest"
+assert re.search(r"\.bench\{display:grid;grid-template-columns:224px minmax\(0,1fr\);", _css) and ".page[data-view=\"place\"]{max-width:1440px}" in _css, \
+    "224 px of cake (216 until the rows' marks became switches, 17 Nov 2026: 'Water samples' was cut), and the screen takes the rest"
 _v2 = _css[:_css.index("#pedges{")]   # the v2 rules; the swatches after them predate it
 _v2 = _v2.replace(_v2[_v2.index(".mapc{--ink"):_v2.index(".mapw{")], "")   # the screen's own values and its bezel
 if ".scr{--ink" in _v2:   # the doors' .scr screens carry the same screen values and bezel
@@ -759,6 +759,13 @@ assert "<small>GLO-30</small></button>" in _ck and "<small>" not in _ck.replace(
 assert re.search(r'data-l="images"><button class="ly off held" aria-pressed="false" aria-disabled="true" title="Images · withheld · unlock this screen in Set up › This screen">.*?token-only</small>', _ck), "withheld stays visible, in a word"
 assert re.search(r'data-l="public"><button class="ly on" aria-pressed="true" title="Stations · hollow · display only, never alert">', _ck), "a layer that is on says so to a screen reader"
 assert "live map only" in _ck and 'data-l="index"' not in _ck and "lystrip" not in _ck, "no strip; the Index is a figure"
+# the list says what it is and what a press does (Tomas, 17 Nov 2026: "make it more understandable what are buttons"):
+# a head over the rows, a count that says what it counts, and the slider under a row that is on says "opacity"
+assert _ck.startswith('<header class="ckh"><h2>Layers</h2><p>Press a row to draw it on the map or take it off.</p></header>'), _ck[:200]
+assert re.search(r'<b>\d+ of \d+ on</b>', _ck) and not re.search(r'<b>\d+ of \d+</b>', _ck), "a section's count says what it counts"
+# this capture has no WebGL, so no row carries a slider: the template is read, and the visual gate sees it drawn
+assert '<label class="opw"><span class="opl">opacity</span><input class="op" type="range"' in open("app/static/doors-placemap.js").read(), "the slider says what it is"
+print("doors: the layer list has a head that says what a press does, and its counts say what they count")
 # locked, the images cannot draw, so four of the five are on; the status line says so
 assert "In view" in _f["facts"] and "res 8 in view" in _f["facts"] and re.search(r"4 of \d+ layers on", _f["facts"]), _f["facts"][:400]
 # the margin names the house, never the map; without the token the house's own rows say withheld and keep their place
@@ -966,7 +973,7 @@ assert "if (D.askOff) return;" in pl.split("$('#pask').onsubmit")[1].split("};")
 assert ".pask[hidden]{display:none}" in html, "hidden wins over the flex row"
 assert "$('#askbtn').addEventListener('click', closeSheet)" in pl, "Ask opens over a phone's sheet: the sheet closes first"
 _names = re.findall(r"id: '[a-z0-9]+'.*? name: '([^']+)'", pm.split("const LAYERS = [")[1].split("];")[0])
-assert len(_names) == 28 and max(map(len, _names)) <= 14, ("a cake row's name must fit the 216 px column", sorted(_names, key=len)[-3:])
+assert len(_names) == 28 and max(map(len, _names)) <= 14, ("a cake row's name must fit the 224 px column", sorted(_names, key=len)[-3:])
 assert "<h2><span>${esc(s.name)}</span>" in pm and "#cake .ck>h2{" in html and "#cake h2" not in html and "<h3><span>" not in pm, "cake headings are h2 under the page's h1"
 print("  place: one map, black screen, the cake on the left, tools on the right")
 
@@ -1419,7 +1426,8 @@ _t, _x = M["tok"], M["locked"]
 _keys = re.findall(r'<button[^>]*aria-label="([^"]+)"[^>]*aria-pressed="(true|false)"', _t["keys"] or "")
 assert [k for k, _ in _keys] == ["Select", "Marker", "Line, with distance", "Area, with surface", "Note", "Image"] and [p for _, p in _keys].count("true") == 1, _keys
 assert re.search(r'<button[^>]*aria-label="Undo"', _t["keys"]) and _keys[0][1] == "true", "an Undo key, and Select pressed to start"
-assert all(f"<small>{k}</small>" in _t["keys"] for k in "VMLANI"), "the letter in each key's corner"
+assert all(f"<kbd>{k}</kbd>" in _t["keys"] for k in "VMLANI") and _t["keys"].startswith('<b class="dkh" aria-hidden="true">Draw</b>'), \
+    "a head over the keys, and each key's letter beside its name"
 assert 'id="dsaid" class="vh" aria-live="polite"' in _t["panel"] and 'id="dread" class="dread">' in _t["panel"], \
     "only the finished figure is live; the readout that follows the pointer is not"
 assert "&lt;img src=x onerror=1&gt;" in _t["read"], "the readout names the open map, escaped"
@@ -1447,11 +1455,14 @@ assert 'data-tool="from"' in M["ptools"] and "From the house" in M["ptools"], M[
 assert 'data-tool="pull"' in M["ptools"] and "<span>Pull</span><code>area.pull</code>" in M["ptools"], ("Pull is a Tools row with its command id", M["ptools"][:600])
 assert 'data-go="#place/report"' in M["ptools"] and "<code>place.report</code>" in M["ptools"], "the Place report is a tool row with its id (SPEC_place_report §9)"
 _css = html[html.index("/* ================= PLACE: a small GIS"):html.index("/* ================= NODE")]
-assert ".dkeys button{width:var(--k);height:var(--k)" in _css and ".dread .dsw button{flex:none;width:var(--k);height:var(--k)" in _css and re.search(r"\.dkeys button:focus-visible,\.dchip:focus-visible,\.dpanel button:focus-visible,\.dpanel input:focus-visible,"
+assert ".dkeys button{width:100%;height:var(--k)" in _css and ".dkeys button{width:var(--k);grid-template-columns:var(--k);padding:0}" in _css and ".dread .dsw button{flex:none;width:var(--k);height:var(--k)" in _css and re.search(r"\.dkeys button:focus-visible,\.dchip:focus-visible,\.dpanel button:focus-visible,\.dpanel input:focus-visible,"
                                                                     r"\.dpanel textarea:focus-visible,\.dpanel select:focus-visible\{outline:2px solid var\(--cells\)", _css), \
-    "--k keys and swatches; focus on the black screen is the cells' blue, as the hour pill's"
+    "--k keys (a row with its name when the screen is wide, a --k square when it folds) and swatches; focus on the black screen is the cells' blue, as the hour pill's"
 assert "p.cells" in pm[pm.index("function drawLayers"):pm.index("function drawLayers") + 4000], "a drawing in focus is outlined in the cells' blue"
-assert ".ly.map i{border-radius:2px}" in _css, "a map's dot is square, a layer's round"
+assert ".ly,.ly.new,.tl,.spd summary{min-height:44px}" in html, "New map is a 44 px target on a phone, like the rows (its own 28 px outranked the phone rule; final review, 17 Nov)"
+assert ".ly[aria-disabled=\"true\"] i{" in _css and ".ly.held[aria-disabled=\"true\"] i{border-style:dashed}" in _css, \
+    "a row that cannot switch, for any reason, has the small mark and never a dead switch; a locked one's is dashed"
+assert ".ly.map i{border-radius:3px}" in _css and ".ly i{position:relative;width:22px;height:12px;border-radius:999px" in _css, "a map's switch is square, a layer's round"
 assert "'The image stays on this node. The map only names which one it is, and the file never leaves.'" in pm and "never the file’s" not in pm, \
     "the image hint says only what is true: a photo's own GPS still wins on the node"
 print("  place: From the house in the Tools menu; --k keys; focus is the cells' blue on the screen")

@@ -3496,7 +3496,12 @@ async function doors() {
         cut: [...document.querySelectorAll('#cake .ly span')].filter(x => x.scrollWidth > x.clientWidth).map(x => x.textContent),
         h: [...document.querySelectorAll('#cake .ck > h2')].length,
         margin: document.getElementById('pmargin').innerText, facts: document.getElementById('facts').innerText,
-        sheet: getComputedStyle(document.getElementById('cake')).position, first: (document.getElementById('cake').firstElementChild || {}).id,
+        sheet: getComputedStyle(document.getElementById('cake')).position, first: (document.querySelector('#cake > section') || {}).id,
+        /* the rows are switches and the column says so (Tomas, 17 Nov 2026): a track at least 20 px wide on every row that can switch, and a head in view */
+        sw: [...document.querySelectorAll('#cake .ly.on:not([aria-disabled="true"]) i, #cake .ly.off:not([aria-disabled="true"]) i')].filter(vis).map(x => Math.round(x.getBoundingClientRect().width)),
+        head: (h => !!h && vis(h) && /Press a row/.test(h.textContent))(document.querySelector('#cake > .ckh p')),
+        /* and a row that cannot switch never shows a switch (final review, 17 Nov): 'not here', 'live map' and 'token-only' rows carry the small mark */
+        dead: [...document.querySelectorAll('#cake .ly[aria-disabled="true"] i')].filter(vis).map(x => Math.round(x.getBoundingClientRect().width)),
         folds: [...document.querySelectorAll('.pfold')].filter(vis).length };
     });
     ok(pl.secs === 10, `${tag} #place: the cake has ${pl.secs} sections, not 10`);
@@ -3514,6 +3519,8 @@ async function doors() {
     ok(w < 768 || pl.map >= 700, `${tag} #place: the screen is ${pl.map}px wide`);
     ok(!pl.cut.length, `${tag} #place: cake name(s) cut off: ${pl.cut.join(', ')}`);
     ok(pl.h === pl.secs, `${tag} #place: ${pl.h} cake headings are h2, of ${pl.secs}`);
+    ok(pl.head && pl.sw.every(x => x >= 20), `${tag} #place: the layer list's head is ${pl.head ? 'shown' : 'missing'} and its switches are ${pl.sw.join(' ')} px wide`);
+    ok(pl.dead.length > 0 && pl.dead.every(x => x < 20), `${tag} #place: ${pl.dead.filter(x => x >= 20).length} of ${pl.dead.length} rows that cannot switch are drawn as switches`);
     ok(w >= 768 || !pl.small, `${tag} #place: ${pl.small} target(s) under 44 × 44 px`);
     ok(/This house/.test(pl.margin) && (tok || /withheld/.test(pl.margin)), `${tag} #place: the list under the screen reads ${pl.margin.slice(0, 120)}`);
     ok(/In view/i.test(pl.facts), `${tag} #place: the status line reads ${pl.facts.slice(0, 80)}`);
@@ -3791,6 +3798,7 @@ async function doors() {
  * 36 px with a pointer, 44 px under a finger. A rig that gives the screen no live map fails: it would prove nothing. */
 async function placescreen() {
   const bad = [], ok = (c, what) => { if (!c) bad.push(what); }, seen = [];
+  let sliders = 0;
   const ADMIN = process.env.PAI_ADMIN_TOKEN || (process.env.PAI_ADMIN_TOKEN = 'rig-admin');
   const ground = { on_disk: { vector: false, imagery: true, drone: true }, layers: { imagery: { passes: 12, from: '2025-01', to: '2025-12', bytes: 4e6,
     attribution: 'Contains modified Copernicus Sentinel data' }, drone: { bytes: 1e6, mosaics: [{ provider: 'Bayu', gsd_m: 0.04, date: '2024-03-15', bbox: [115.16, -8.825, 115.172, -8.815] }] } } };
@@ -3856,7 +3864,12 @@ async function placescreen() {
         const sc = document.querySelector('#mapbar .scales');
         const keys = [...document.querySelectorAll('.dkeys button, .mapc .tools button, .mapc .zoom button, #mapbar .scales button, .pbase button, #dread .dchip, .dsw button')]
           .filter(e => e.getClientRects().length).map(e => e.getBoundingClientRect()).map(b => Math.round(Math.min(b.width, b.height)));
-        return { W: Math.round(m.width), ks, over, out: ks.filter(k => { const b = B[k]; return b[0] < -0.5 || b[1] < -0.5 || b[2] > m.width + 0.5 || b[3] > m.height + 0.5; }),
+        /* the keys say their names where the screen is 760 px or wider, and fold to icons under it (17 Nov 2026) */
+        const named = [...document.querySelectorAll('.dkeys .kn')].filter(e => e.getClientRects().length).length;
+        /* the opacity of a row that is on is always in view, under its row, and says what it is; a row that is off shows none */
+        const cakeUp = !!(document.querySelector('#cake .ckh') || { getClientRects: () => [] }).getClientRects().length;   /* folded, the column is a strip with nothing in it */
+        const op = [...document.querySelectorAll('#cake .lyr .opw')].map(e => ({ on: e.closest('.lyr').querySelector('.ly').classList.contains('on'), shown: e.getClientRects().length > 0, word: e.textContent.trim() }));
+        return { W: Math.round(m.width), ks, over, named, cakeUp, op, out: ks.filter(k => { const b = B[k]; return b[0] < -0.5 || b[1] < -0.5 || b[2] > m.width + 0.5 || b[3] > m.height + 0.5; }),
           cut: sc ? sc.scrollWidth - sc.clientWidth : 0, small: Math.min(...keys) };
       });
       /* with a drawing in hand a short panel may have scrolled its chip out of view: the form must show */
@@ -3866,11 +3879,15 @@ async function placescreen() {
       ok(!g.out.length, `${tag}, readout ${st}: off the screen: ${g.out.join(', ')}`);
       ok(g.cut <= 1, `${tag}, readout ${st}: the rungs are cut by ${g.cut} px`);
       ok(g.small >= (touch ? 44 : 36), `${tag}, readout ${st}: a key ${g.small} px across, under ${touch ? 44 : 36}`);
+      ok(g.named === (g.W >= 760 ? 7 : 0), `${tag}, readout ${st} (screen ${g.W} px): ${g.named} of the 7 keys show their name`);
+      if (g.cakeUp) { sliders += g.op.filter(o => o.shown).length;
+        ok(g.op.every(o => o.shown === o.on && o.word === 'opacity'), `${tag}, readout ${st}: an opacity slider is ${JSON.stringify(g.op.filter(o => o.shown !== o.on || o.word !== 'opacity'))}`); }
       seen.push(`${g.W}`);
       if (st === 'form') await r.page.keyboard.press('Escape');
     }
     await r.browser.close();
   }
+  ok(sliders > 0, 'placescreen: no opacity slider was in view under any row that is on, at any width');
   if (!bad.length) { const px = [...new Set(seen.filter(x => /^\d+$/.test(x)))], ar = seen.filter(x => x.startsWith('area'));
     console.log(`  placescreen: the keys, readout, colours, form, hour, right column, rungs, base switch, zoom, scale and credit apart and on the screen at ${px.join(', ')} px of screen, readout folded, open and with a drawing in hand${cases.some(c => c.touch && c.w >= 761) ? ', a tablet\'s 44 px keys at 768 and 1024' : ''}; keys 36 px with a pointer, 44 under a finger${ar.length ? `; ${ar.join('; ')}, unclipped` : ''}`); return; }
   for (const b of bad) console.log('FAIL placescreen:', b);
@@ -3971,6 +3988,17 @@ async function report() {
   { const was = process.env.PAI_ASK_MODEL; process.env.PAI_ASK_MODEL = was || 'qwen3.5:4b';
     const r = await openRig({ w: 1440, h: 900, touch: false, admin: ADMIN, gl: true, ground: { on_disk: {}, layers: {} }, mem: 'doors' });
     await r.page.goto(`${POP}/?fixture=${FIXTURE}#place`, { waitUntil: 'domcontentloaded' });
+    /* the foot of Place offers it (§12): its button opens the report on Paper, and Back to Place shows the block again */
+    const foot = await r.page.waitForSelector('#preportfoot [data-prf="paper"]', { timeout: 20000 }).then(async () => {
+      await r.page.click('#preportfoot [data-prf="paper"]');
+      await r.page.waitForFunction(() => location.hash === '#place/report' && !document.getElementById('preport').hidden
+        && document.querySelectorAll('#psheets .sheet').length === 1 && !document.getElementById('preportfoot').getClientRects().length, null, { timeout: 45000 });
+      await r.page.click('#preport .prbar a');
+      await r.page.waitForFunction(() => location.hash === '#place' && document.getElementById('preportfoot').getClientRects().length > 0, null, { timeout: 20000 });
+      return true;
+    }).catch(e => String(e.message || e).split('\n')[0]);
+    ok(foot === true, `report: the block at the foot of Place did not open the report and come back: ${foot}`);
+    if (foot === true) said.push('opened from the foot of Place');
     const got = await r.page.waitForSelector('#askbtn', { timeout: 20000 }).then(async () => {
       await r.page.click('#askbtn'); await r.page.fill('#q', 'Make me the place report'); await r.page.click('#qsend');
       await r.page.click('[data-open-report="screen"]', { timeout: 20000 });
