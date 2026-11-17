@@ -72,6 +72,40 @@ empty = reading.shape(latest={}, hydro=None, energy=None, index=None, labs=[], a
 check(all(v is None for v in empty["facts"].values()) and set(empty["fill"]) == set(empty["facts"]), "a node that holds nothing has every fact None")
 print(f"  reading: the facts ({len(F)} keys), whole kilometres, zeros held, stale and missing ones named with what fills them")
 
+# ---------------------------------------------------------------- the rules
+NAMES = re.compile(r"mumford|mcharg|papanek|meadows|jacobs", re.I)
+R = reading.rules(doc)
+sec = {s["id"]: s for s in R["sections"]}
+check([s["id"] for s in R["sections"]] == [i for i, _ in reading.SECTIONS] and [s["heading"] for s in R["sections"]] == [h for _, h in reading.SECTIONS],
+      "five sections, in the frame's order, with its headings")
+check(all(s["lines"] and s["lines"] != [reading.NOTHING] for s in R["sections"]), f"on node #1 every section has something to say: {[(s['id'], len(s['lines'])) for s in R['sections']]}")
+street, system = " ".join(sec["street"]["lines"]), " ".join(sec["system"]["lines"])
+check("within a kilometre" in street and "as far as the public map goes" in street, f"the street is read within a kilometre, and a thin map is said to be thin: {street}")
+check("41%" in system and "What is not drawn is not planned for." in system, f"the system section reads the gap in the map: {system}")
+check("in this cell" not in json.dumps(R), "the place pack reads a kilometre round the point, never 'this cell'")
+A = R["avenues"]
+check(4 <= len(A) <= 6, f"{len(A)} avenues, not four to six")
+check(all(a["layer"] in reading.LAYERS and a["action"] in reading.ACTIONS and a["signal"] in reading.SIGNALS for a in A), "every avenue sits in the frame")
+check(all(a["title"] and a["first_step"] and re.search(r"\d", a["why"]) for a in A), f"on node #1 every avenue has a first step and rests on a figure: {[a['why'] for a in A if not re.search(chr(92) + 'd', a['why'])]}")
+check(any(a["with"] == "the lab about 3 km away" for a in A) and all(a["with"] is None for a in A if a["action"] == "Map and research"), f"an experiment names the lab's distance: {[a['with'] for a in A]}")
+check(not NAMES.search(json.dumps(R)), "the reading names nobody")
+check(R["blind"] and all(b["what"] and b["command"] for b in R["blind"]) and any("school" in b["what"] for b in R["blind"]), f"what it cannot see, each with what fills it: {R['blind']}")
+print(f"  reading: node #1 reads as five sections and {len(A)} avenues, each in the frame, and says what it cannot see")
+
+E = reading.rules(empty)
+check(all(s["lines"] == [reading.NOTHING] for s in E["sections"]) and reading.NOTHING == "The node holds nothing yet that speaks to this.", "a section with nothing held says so in one line")
+check(len(E["avenues"]) == 4 and all(a["action"] == "Map and research" and a["with"] is None for a in E["avenues"]), f"a node that holds nothing gets four avenues to map and research: {[a['title'] for a in E['avenues']]}")
+check(all(any(c in a["first_step"] for c in set(reading.FILL.values())) for a in E["avenues"]), "each of them starts with the command that fills the gap")
+check({k for b in E["blind"] for k in b["facts"]} == set(reading.FILL), "everything missing is in the blind list")
+check("undefined" not in json.dumps(E) and "None" not in json.dumps(E), "nothing unfilled leaks into the text")
+zero = reading.rules(n1(latest={**N1, **{k: (0.0, "2026-11-14") for k in N1 if k.startswith("poi_")}}))
+zs = " ".join({s["id"]: s for s in zero["sections"]}["street"]["lines"])
+check("0 kinds" not in zs and "house visitors" not in zs and "No shop" in zs, f"a place with nothing drawn says so, and divides by nothing: {zs}")
+one = reading.rules(n1(labs=[0.3], hydro={**HYDRO, "nearest": {"dist_m": 300}}))
+check("A river runs within a kilometre." in json.dumps(one) and "the lab within a kilometre" in json.dumps(one) and not re.search(r"\b0 km", json.dumps(one)),
+      "a distance under a kilometre is said in words, never as 0 km")
+print("  reading: an empty node gets four avenues from its gaps; zeros and short distances read as sentences")
+
 if fails:
     print("\n".join("  x " + f for f in fails))
     sys.exit(1)
