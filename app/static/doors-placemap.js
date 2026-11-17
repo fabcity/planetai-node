@@ -1664,7 +1664,7 @@ async function placeMap() {
   document.addEventListener('keydown', onKey, true);   // capture: an arrow moving a corner must not also pan the map
   placeMaps();
 }
-window.placeMap = placeMap; window.placeLayer = setLayer; window.placeSheet = placeSheet; window.placeCake = placeCake; window.__PM = PM;   // __PM for the rig
+window.placeMap = placeMap; window.placeLayer = setLayer; window.placeSheet = placeSheet; window.placeCake = placeCake; window.placeNoMap = NOMAP; window.__PM = PM;   // __PM for the rig
 /* the figures' Rivers row: both hydro rows on, and out to District scale, where the nearest river is in view */
 window.placeRivers = () => { setLayer('rivers', true); setLayer('basin', true); if (PM.map) fly(6); };
 /* the Images panel added one: ask again, so its kind's row and its square appear */

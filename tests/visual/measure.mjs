@@ -3860,7 +3860,9 @@ async function placescreen() {
         const sc = document.querySelector('#mapbar .scales');
         const keys = [...document.querySelectorAll('.dkeys button, .mapc .tools button, .mapc .zoom button, #mapbar .scales button, .pbase button, #dread .dchip, .dsw button')]
           .filter(e => e.getClientRects().length).map(e => e.getBoundingClientRect()).map(b => Math.round(Math.min(b.width, b.height)));
-        return { W: Math.round(m.width), ks, over, out: ks.filter(k => { const b = B[k]; return b[0] < -0.5 || b[1] < -0.5 || b[2] > m.width + 0.5 || b[3] > m.height + 0.5; }),
+        /* the keys say their names where the screen is 760 px or wider, and fold to icons under it (17 Nov 2026) */
+        const named = [...document.querySelectorAll('.dkeys .kn')].filter(e => e.getClientRects().length).length;
+        return { W: Math.round(m.width), ks, over, named, out: ks.filter(k => { const b = B[k]; return b[0] < -0.5 || b[1] < -0.5 || b[2] > m.width + 0.5 || b[3] > m.height + 0.5; }),
           cut: sc ? sc.scrollWidth - sc.clientWidth : 0, small: Math.min(...keys) };
       });
       /* with a drawing in hand a short panel may have scrolled its chip out of view: the form must show */
@@ -3870,6 +3872,7 @@ async function placescreen() {
       ok(!g.out.length, `${tag}, readout ${st}: off the screen: ${g.out.join(', ')}`);
       ok(g.cut <= 1, `${tag}, readout ${st}: the rungs are cut by ${g.cut} px`);
       ok(g.small >= (touch ? 44 : 36), `${tag}, readout ${st}: a key ${g.small} px across, under ${touch ? 44 : 36}`);
+      ok(g.named === (g.W >= 760 ? 7 : 0), `${tag}, readout ${st} (screen ${g.W} px): ${g.named} of the 7 keys show their name`);
       seen.push(`${g.W}`);
       if (st === 'form') await r.page.keyboard.press('Escape');
     }
@@ -3943,6 +3946,17 @@ async function report() {
   { const was = process.env.PAI_ASK_MODEL; process.env.PAI_ASK_MODEL = was || 'qwen3.5:4b';
     const r = await openRig({ w: 1440, h: 900, touch: false, admin: ADMIN, gl: true, ground: { on_disk: {}, layers: {} }, mem: 'doors' });
     await r.page.goto(`${POP}/?fixture=${FIXTURE}#place`, { waitUntil: 'domcontentloaded' });
+    /* the foot of Place offers it (§12): its button opens the report on Paper, and Back to Place shows the block again */
+    const foot = await r.page.waitForSelector('#preportfoot [data-prf="paper"]', { timeout: 20000 }).then(async () => {
+      await r.page.click('#preportfoot [data-prf="paper"]');
+      await r.page.waitForFunction(() => location.hash === '#place/report' && !document.getElementById('preport').hidden
+        && document.querySelectorAll('#psheets .sheet').length === 1 && !document.getElementById('preportfoot').getClientRects().length, null, { timeout: 45000 });
+      await r.page.click('#preport .prbar a');
+      await r.page.waitForFunction(() => location.hash === '#place' && document.getElementById('preportfoot').getClientRects().length > 0, null, { timeout: 20000 });
+      return true;
+    }).catch(e => String(e.message || e).split('\n')[0]);
+    ok(foot === true, `report: the block at the foot of Place did not open the report and come back: ${foot}`);
+    if (foot === true) said.push('opened from the foot of Place');
     const got = await r.page.waitForSelector('#askbtn', { timeout: 20000 }).then(async () => {
       await r.page.click('#askbtn'); await r.page.fill('#q', 'Make me the place report'); await r.page.click('#qsend');
       await r.page.click('[data-open-report="screen"]', { timeout: 20000 });
