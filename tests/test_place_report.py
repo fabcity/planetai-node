@@ -219,7 +219,7 @@ print("  report: a grid label is rounded before it is called metres or km")
 HTML = open("app/static/doors.html").read()
 assert HTML.index('class="plow"') < HTML.index('id="preportfoot"') < HTML.index('id="preport"'), "the block is the last thing on Place, before the report itself"
 foot = HTML[HTML.index('id="preportfoot"'):HTML.index('id="preport"')]
-for s in ("The Place report", "This place on paper, to hand to the neighbours, the banjar or the council.",
+for s in ("The Place report", "This place on paper, to hand to the neighbours, the council or a funder.",
           "A plan of the map as you have it on screen.", "Your browser prints it or saves it as a PDF.",
           'data-prf="paper"', 'data-prf="screen"', ">Open the report<", ">Dark version<", 'id="prfwho"'):
     assert s in foot, s
