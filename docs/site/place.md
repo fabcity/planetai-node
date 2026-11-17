@@ -131,6 +131,30 @@ Each figure keeps its word, live, partial, model or cached, as it has on Place.
 You can also ask for it. Type "make me the place report" in Ask, on a screen holding the token, and the answer has a
 button, **Open the Place report**, that opens it. Ask for it on Screen and it opens on Screen. You still press Print.
 
+### The reading, and ways to improve the place
+
+On a screen holding the token, two pages come before the figures.
+
+**A reading of this place** says what kind of place this is, under five headings: the region it belongs to, what the
+land allows, what people here need, how the place behaves, and the life of the street. Each sentence rests on a figure
+the node holds, such as the basin the rain leaves by, how much of the grid's power is burned, the green ground within
+a kilometre, or the buildings the satellite counts against the ones on the public map.
+
+**Ways to improve it** lists four to six things worth doing here. Each has its reason, with the figures, a first step
+that a household, a banjar or a lab can start this month, and the nearest lab when the node knows one. Under its title
+each carries a layer of the Fab City Full Stack and one of its key actions: map and research, experiment, or rethink.
+The page ends with what the reading cannot see and what fills each gap. A node that holds little is given four things
+to map first.
+
+Under each title a line says who wrote the page and when. Every node writes its own reading from rules, with no model
+and no network. When Set up › Model has a model on your own network, the report's bar shows **Write a fuller reading**
+to a screen holding the admin token. Press it and the node asks that model, which takes a few minutes. The node keeps
+the text only if every number in it is one the node holds. If not, it says why, and its own reading stands. The node
+does not send this to a model outside your network, and the small model on the node itself does not write it.
+
+Distances in the reading are whole kilometres, and what comes from the public map covers a kilometre round the node,
+so nothing in it is closer than the res-8 cell. A report opened without the token has no reading.
+
 **Paper** draws the map in the light palette, and the sheet starts there. **Screen** draws it black, as Place does.
 Changing it goes back to the map for a moment to draw it again. **Print or save as PDF** opens the browser's print with
 A4 already set, landscape for the sheet and upright for the pages, and Save as PDF there gives you a file. Nothing is sent anywhere. The browser makes the PDF on

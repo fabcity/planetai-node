@@ -350,6 +350,23 @@ html = open("app/static/doors.html").read()
 check('id="prwrite"' in html and re.search(r"\.rpage \.av\{[^}]*break-inside:avoid", html), "the bar has the button, and an avenue is never split across pages")
 print("  reading: two pages after the sheet, who wrote them under each title, a model's text in place of the rules' when one held")
 
+# ---------------------------------------------------------------- what describes the report names nobody either
+# Tomas, 17 Nov 2026: "it is for consumption, so do not mention the names of experts behind it". The prompt in
+# app/reading.py is the one place they live; the layer list's own docs keep McHarg, by his ruling of 4 Nov.
+for path, start, end in (("docs/site/place.md", "### The reading, and ways to improve the place", "## Folding"),
+                         ("docs/site/api.md", "### GET /place/reading", "### POST /area"),
+                         ("docs/SPEC_place_report.md", "## 11 · The reading", None),
+                         ("CHANGELOG.md", "**The Place report reads the place.**", "\n\n- **")):
+    text = open(path).read()
+    check(start in text, f"{path} has no '{start}'")
+    if start in text:
+        part = text[text.index(start):]
+        part = part[:part.index(end, len(start))] if end and end in part[len(start):] else part
+        check(len(part) > 300 and not NAMES.search(part), f"{path}: the part on the reading names a person, or is missing")
+src = open("app/reading.py").read()
+check(len(NAMES.findall(src)) == 10, f"in app/reading.py the names are in the prompt's manner and the refusal's pattern, and nowhere else ({len(NAMES.findall(src))})")
+print("  reading: the docs, the API page, the spec and the changelog describe it without naming anybody")
+
 if fails:
     print("\n".join("  x " + f for f in fails))
     sys.exit(1)

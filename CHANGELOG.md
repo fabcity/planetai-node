@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **The Place report reads the place.** Two pages now come before the figures. A reading of this place says what kind
+  of place this is, under five headings, and each sentence rests on a figure the node holds. Ways to improve it lists
+  four to six things worth doing here, each with a first step, the nearest lab, and its layer and key action in the Fab
+  City Full Stack, and it ends with what the reading cannot see. Every node writes this from rules, with no model. With
+  a model on your own network, **Write a fuller reading** asks it, and the node keeps the text only if its numbers are
+  the node's own. Each page says who wrote it and when. `GET` and `POST /place/reading`, schema 0.66. docs/place,
+  docs/api.
+
 - **An update waits for the app before it checks it.** It used to wait 8 seconds, and on node #1 the app takes about
   11 to start, so the update ended on "something is off" with the node running fine. It now waits until the app
   answers, up to a minute.
