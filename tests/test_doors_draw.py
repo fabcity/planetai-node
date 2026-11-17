@@ -67,5 +67,20 @@ print("  draw: the readout figure, with and without a hover point")
 
 assert R["keys"] == [["select", "V"], ["marker", "M"], ["line", "L"], ["area", "A"], ["note", "N"], ["image", "I"]]
 assert R["onWindow"] == "undefined", "no DOM, no window: the module exports itself under node"
+
+# The keys on the map's left edge say their names and their letters (Tomas, 17 Nov 2026: "make it more understandable
+# what are buttons"). keysHTML is lifted from doors-placemap.js with the icons emptied: the words are what is read here.
+html = subprocess.run(["node", "-e", """
+const fs = require('fs'), pm = fs.readFileSync('./app/static/doors-placemap.js', 'utf8'), { KEYS } = require('./app/static/doors-draw.js');
+const KEYICON = new Proxy({}, { get: () => '' }), PM = { tool: 'select' };
+eval(pm.match(/^const KEYNAME = .*$/m)[0].replace('const KEYNAME', 'globalThis.KEYNAME'));
+eval(pm.match(/^const keysHTML = [\\s\\S]*?;\\n\\n/m)[0].replace('const keysHTML', 'globalThis.keysHTML'));
+console.log(keysHTML());
+"""], capture_output=True, text=True, check=True).stdout
+assert html.count('<span class="kn">') == 7, html
+for name, key in [("Select", "V"), ("Marker", "M"), ("Line", "L"), ("Area", "A"), ("Note", "N"), ("Image", "I"), ("Undo", "⌘Z")]:
+    assert f'<span class="kn">{name}</span><kbd>{key}</kbd>' in html, (name, html)
+assert 'aria-label="Line, with distance"' in html and 'title="Undo · ⌘Z or Ctrl+Z"' in html and "<small>" not in html, html
+print("  draw: each key says its name and its letter")
 print("draw: every check passed")
 sys.exit(0)

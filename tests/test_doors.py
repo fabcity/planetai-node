@@ -759,6 +759,13 @@ assert "<small>GLO-30</small></button>" in _ck and "<small>" not in _ck.replace(
 assert re.search(r'data-l="images"><button class="ly off held" aria-pressed="false" aria-disabled="true" title="Images · withheld · unlock this screen in Set up › This screen">.*?token-only</small>', _ck), "withheld stays visible, in a word"
 assert re.search(r'data-l="public"><button class="ly on" aria-pressed="true" title="Stations · hollow · display only, never alert">', _ck), "a layer that is on says so to a screen reader"
 assert "live map only" in _ck and 'data-l="index"' not in _ck and "lystrip" not in _ck, "no strip; the Index is a figure"
+# the list says what it is and what a press does (Tomas, 17 Nov 2026: "make it more understandable what are buttons"):
+# a head over the rows, a count that says what it counts, and the slider under a row that is on says "opacity"
+assert _ck.startswith('<header class="ckh"><h2>Layers</h2><p>Press a row to draw it on the map or take it off.</p></header>'), _ck[:200]
+assert re.search(r'<b>\d+ of \d+ on</b>', _ck) and not re.search(r'<b>\d+ of \d+</b>', _ck), "a section's count says what it counts"
+# this capture has no WebGL, so no row carries a slider: the template is read, and the visual gate sees it drawn
+assert '<label class="opw"><span class="opl">opacity</span><input class="op" type="range"' in open("app/static/doors-placemap.js").read(), "the slider says what it is"
+print("doors: the layer list has a head that says what a press does, and its counts say what they count")
 # locked, the images cannot draw, so four of the five are on; the status line says so
 assert "In view" in _f["facts"] and "res 8 in view" in _f["facts"] and re.search(r"4 of \d+ layers on", _f["facts"]), _f["facts"][:400]
 # the margin names the house, never the map; without the token the house's own rows say withheld and keep their place
@@ -1419,7 +1426,8 @@ _t, _x = M["tok"], M["locked"]
 _keys = re.findall(r'<button[^>]*aria-label="([^"]+)"[^>]*aria-pressed="(true|false)"', _t["keys"] or "")
 assert [k for k, _ in _keys] == ["Select", "Marker", "Line, with distance", "Area, with surface", "Note", "Image"] and [p for _, p in _keys].count("true") == 1, _keys
 assert re.search(r'<button[^>]*aria-label="Undo"', _t["keys"]) and _keys[0][1] == "true", "an Undo key, and Select pressed to start"
-assert all(f"<small>{k}</small>" in _t["keys"] for k in "VMLANI"), "the letter in each key's corner"
+assert all(f"<kbd>{k}</kbd>" in _t["keys"] for k in "VMLANI") and _t["keys"].startswith('<b class="dkh" aria-hidden="true">Draw</b>'), \
+    "a head over the keys, and each key's letter beside its name"
 assert 'id="dsaid" class="vh" aria-live="polite"' in _t["panel"] and 'id="dread" class="dread">' in _t["panel"], \
     "only the finished figure is live; the readout that follows the pointer is not"
 assert "&lt;img src=x onerror=1&gt;" in _t["read"], "the readout names the open map, escaped"
