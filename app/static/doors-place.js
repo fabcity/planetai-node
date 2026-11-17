@@ -246,6 +246,10 @@ function reportParts(s, H) {
 }
 document.querySelectorAll('#preport [data-reg]').forEach(b => b.onclick = () => { PREG = b.dataset.reg; report(true); });
 $('#prprint').onclick = () => window.print();
+/* the foot of Place (SPEC_place_report §12): its two buttons open the report, and a screen without the token is told
+   where the map of the house stays, in the sheet's own sentence */
+document.querySelectorAll('#preportfoot [data-prf]').forEach(b => b.onclick = () => window.placeReport(b.dataset.prf));
+if (!DOORS_TOKEN()) $('#prfhow').textContent = 'Your browser prints it or saves it as a PDF, and nothing is sent anywhere. ' + window.placeNoMap;
 /* the Ask pane's button (doors-core.js): the report in the register asked for */
 window.placeReport = reg => { PREG = reg === 'screen' ? 'screen' : 'paper'; if (location.hash === '#place/report') report(true); else location.hash = '#place/report'; };
 

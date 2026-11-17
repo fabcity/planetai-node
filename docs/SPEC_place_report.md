@@ -187,3 +187,15 @@ Tomas answered the four open questions of the first draft: "1. yes, 2 light, 3, 
 - **Asking for it:** yes, as step 3 (§9).
 - **3D:** its own spec, later. urban:SCAN's 3D scheme is a tilted, exploded view of the layers; on the node it would be
   the cake's sections on deck.gl, then a PNG of it on a page of the report. Nothing in this spec waits for it.
+
+## 12 · The report, offered (17 November 2026)
+
+*Asked by Tomas, 17 November 2026: "the report download should be more visible in the bottom of the place tab, explaining
+what the report does (it is for consumption, so do not mention the names of experts behind it)."*
+
+The last block of Place, after What changed and The place in figures, says what the report is and opens it. It has a
+line on who the report is for, a line on what is in it, and a line on how it is made: the browser prints it, nothing is
+sent anywhere, and the house is drawn as a blurred cell. **Open the report** opens it on Paper and **Dark version** on
+Screen. A screen without the token reads, in place of the last line, the sentence the sheet itself uses for the map of
+the house (§6). The Download menu's line and the Tools row stay. The block is hidden with the rest of Place while the
+report is open, and it is never printed.
