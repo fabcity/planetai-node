@@ -208,16 +208,24 @@ the Implementation Guide's three key actions (map and research, experiment, reth
   pack counts within a kilometre, the surface heat, the terrain, the rivers and basins, the grid's mix, the city on the
   Index, the labs within 50 km, the node's held cells, and the days its own outdoor sensors measured over the WHO
   guideline for a day (stated only with 30 measured days). A number in the reading comes from this document and from
-  nowhere else. A figure older than 400 days counts as not held.
+  nowhere else. A figure older than 400 days counts as not held, except a yearly source, which has 800, and the
+  terrain, which is computed once. The place pack writes the nearest school, clinic or market only when it finds one
+  within its radius, so a distance older than the pack's last run is dropped, and none drawn within the radius is a
+  finding the reading states, not a gap. The packs are read in process, and each held figure's pack is credited on the
+  sources page.
 - **Precision.** The report leaves the house, so §6 holds: every distance from the node's point is a whole kilometre,
   and the document carries no name and no point.
 - **Rules.** `rules()` writes the reading on every node, with no model and no network. A rule whose facts are missing
-  does not fire. Where fewer than four avenues fire, the gaps supply the rest as things to map and research, which is
+  does not fire, and a sentence says no more than its figure does: a count from the public map says so where the map
+  is thin, a yearly count carries its year, and the words fit any node anywhere. Where fewer than four avenues fire, the gaps supply the rest as things to map and research, which is
   where a place that is starting begins.
 - **A fuller text.** `POST /place/reading`, with the admin token, asks a model for the same two pages. Only a model on
   the house's own network is asked, never an online one and never the small local one. The node keeps the text only
-  with the five sections, four to six avenues in the frame, no person named, each part short enough for its page, and
-  no number that is not in the facts. Otherwise it stores the reason and its own reading stands. What the reading
+  with the five sections, four to six avenues in the frame, each resting on a figure, no person named, each part
+  short enough for its page, no quantity in words, and no figure that is not in the facts. A count from one to seven
+  passes bare ("2 of its 7 cells") and never before a unit. The check reads whether a figure is the node's, not
+  whether it is said of the right thing, which is why the page says a model wrote it. Otherwise the node stores the
+  reason and its own reading stands. What the reading
   cannot see is always the rules' to say.
 - **Kept.** A model's text is stored with the facts it was written from (`place_readings`, schema 0.66) and shown until
   another is written. The node's own reading is never stored, so it cannot disagree with the facts.

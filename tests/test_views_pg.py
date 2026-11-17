@@ -135,5 +135,40 @@ got = cur.fetchall()
 assert [(r["value"], r["ts"]) for r in got] == [(10.0, past)], f"observations returns the past hour, not the future one: {got}"
 print("  revisions: a future fc_ hour takes the newer run; a past one, a measured one and observations stay as they were")
 
+# ---------------------------------------------------------------- the reading's facts, on the real schema
+# app/reading.py's own SQL (tests/test_reading.py runs it on a fake cursor): the latest place-scale figures, the yearly
+# building counts, and the days this node's own outdoor sensors measured over the WHO guideline. The packs are not
+# read here (held gives nothing), so only the rows this block writes can come out.
+import reading  # noqa: E402
+
+q("INSERT INTO sensors (sensor_id, source, name, lat, lon, indoor, local, kind, scale) VALUES "
+  "('place-point', 'openstreetmap', 'Around here', -8.8, 115.1, FALSE, FALSE, 'map', 'community') ON CONFLICT (sensor_id) DO NOTHING")
+q("INSERT INTO sensors (sensor_id, source, name, lat, lon, indoor, local, kind, scale) VALUES "
+  "('v-other', 'test', 'a wild pack', -8.8, 115.1, FALSE, FALSE, 'model', 'community')")
+q("DELETE FROM readings WHERE sensor_id = 'place-point'")
+ran, before = t0 - timedelta(days=3), t0 - timedelta(days=70)
+insert_readings(cur, [(ran, "place-point", "buildings", 2459.0), (ran, "place-point", "green_share", 0.341), (ran, "place-point", "poi_health", 0.0),
+                      (before, "place-point", "nearest_health_m", 948.3), (ran, "place-point", "nearest_school_m", 1480.0),
+                      (t0 + timedelta(days=2), "place-point", "green_share", 0.9),          # a row dated ahead never wins
+                      (ran, "v-other", "built_share", 0.99)]                                 # another sensor never supplies a figure
+                     + [(t0.replace(year=y, month=7, day=1), "place-point", "sat_buildings_yearly", float(n)) for y, n in ((2016, 3105), (2019, 4410), (2023, 5994))])
+# v-yard is this node's own outdoor sensor, v-room its indoor one: 31 days of 20 hourly pm25 means, a third of them over 15
+air = []
+for d in range(1, 32):
+    for h in range(20):
+        ts = (t0 - timedelta(days=d)).replace(hour=h, minute=0, second=0, microsecond=0)
+        air += [(ts, "v-yard", "pm25", 30.0 if d % 3 == 0 else 8.0), (ts, "v-room", "pm25", 90.0)]
+insert_readings(cur, air)
+doc = reading.facts(cur, held=lambda c: (None, None, None, None))
+RF = doc["facts"]
+assert set(RF) == set(reading.FORM), "the facts document has every key"
+assert RF["buildings"]["v"] == 2459 and RF["green_share"]["v"] == 0.341, f"the latest past row of each place-scale metric: {RF['buildings']}, {RF['green_share']}"
+assert RF["built_share"] is None, "a figure on another sensor is not the place pack's"
+assert RF["clinic_km"] is None and RF["school_km"]["v"] == 1, f"a distance older than the pack's last run is dropped; one from that run is whole kilometres: {RF['clinic_km']}, {RF['school_km']}"
+assert RF["buildings_then"]["v"] == 3105 and RF["buildings_then_year"]["v"] == 2016 and RF["buildings_now_year"]["v"] == 2023, "the yearly series, first and last"
+assert RF["air_days"]["v"] >= 29 and 8 <= RF["air_days_over"]["v"] <= 11, f"the air figure counts this node's outdoor days only: {RF['air_days_over']} of {RF['air_days']}"
+assert RF["labs_near"] is None and RF["basin_km2"] is None and RF["cells_held"] is None, "the make pack is off (MAKE_ENABLED=0), and what the packs hold is not read here"
+print("  reading: its facts on the real schema: the latest past figure of each place-scale sensor, the yearly counts, the node's own outdoor days over the guideline")
+
 con.rollback()
 print("views: every check passed")

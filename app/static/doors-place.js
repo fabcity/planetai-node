@@ -248,7 +248,7 @@ function pages(RD) {
 }
 $('#prwrite').onclick = () => doorsFetch('/place/reading', { method: 'POST' }).then(r => r.ok ? doorsFetch('/place/reading').then(g => g.json()) : r.json().then(e => { throw new Error(e.detail || `the node answered ${r.status}`); }))
   .then(RD => { if (PSHEET) pages(RD); }).catch(e => { const n = $('#prnote'); n.hidden = false; n.textContent = e.message; });
-/* What the pages carry (SPEC_place_report §5): the band's rows with Rivers in them, the cake, what changed, and every
+/* What the pages carry (SPEC_place_report §5; the reading's own credits ride in RD.credits, §11): the band's rows with Rivers in them, the cake, what changed, and every
    credit they owe in the node's words. /earth and /hydro bring their own; the place and index packs' attributions do not
    reach the page, so those two lines are their pack.yaml's, as written there. */
 function reportParts(s, H, RD) {
@@ -256,7 +256,7 @@ function reportParts(s, H, RD) {
   if ((E.sentinel || []).length || Y.length) layer(ch);
   return { date: s.date, reading: RD, figures: figures(riversRow(H)), cake: window.placeCake(), change: ch.innerHTML || null,
     index: read && P.links && /^https:\/\//.test(P.links.report || '') ? { name: P.place.name || P.chosen, url: P.links.report } : null,
-    credits: [...(s.credits || []), ...((E.sentinel || []).length ? E.credit : []), ...((E.changes || []).length && E.attribution ? [E.attribution] : []),
+    credits: [...(s.credits || []), ...((RD && RD.credits) || []), ...((E.sentinel || []).length ? E.credit : []), ...((E.changes || []).length && E.attribution ? [E.attribution] : []),
       ...(Y.length ? ['Google Open Buildings V3 and Temporal v1 (CC BY 4.0) via Earth Engine'] : []), ...(H && H.nearest && H.attribution ? [H.attribution] : []),
       ...(read ? ['Fab City Index, CC BY 4.0, Fab City Foundation'] : [])] };
 }
