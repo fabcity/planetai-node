@@ -213,7 +213,7 @@ document.addEventListener('click', e => { if ($('#ptools').hidden === false && !
    pages on a grey ground, under one bar: Paper · Screen, Print or save as PDF, Back to Place. The picture is taken on the way in and again when
    the register changes, with the map shown for it (doors-placemap.js placeSheet). A redraw that is not a new address, a
    resize or the browser laying the page out to print it, keeps the sheet it has. */
-let PREG = 'paper', PSHEET = null, PTAKING = null;
+let PREG = 'paper', PSHEET = null, PTAKING = null, PPARTS = null, PPOLL = null;
 function report(again) {
   const box = $('#preport'), show = v => { box.hidden = !v; document.body.classList.toggle('preport', v); };
   if (location.hash !== '#place/report') { PSHEET = null; show(false); return null; }
@@ -223,22 +223,38 @@ function report(again) {
   if (PSHEET && !again) { show(true); return null; }
   show(false);
   const get = p => doorsFetch(p).then(r => (r.ok ? r.json() : null)).catch(() => null), reg = PREG;
-  return (PTAKING = Promise.all([window.placeSheet(reg === 'paper'), get('/geo/cell?id=' + D.health.cell.id), get('/hydro')]).then(([s, c8, H]) => {
+  return (PTAKING = Promise.all([window.placeSheet(reg === 'paper'), get('/geo/cell?id=' + D.health.cell.id), get('/hydro'), get('/place/reading')]).then(([s, c8, H, RD]) => {
     PTAKING = null;
     if (location.hash !== '#place/report') return;
     if (reg !== PREG) return report(true);   // the other register was pressed while this one was taken
-    PSHEET = s; $('#psheets').innerHTML = sheetHTML(D, s, c8 && c8.ring) + reportPages(D, reportParts(s, H));
+    PSHEET = s; PPARTS = { c8, H }; pages(RD);
     box.querySelectorAll('[data-reg]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.reg === PREG)));
     show(true); window.scrollTo(0, 0);
   }).catch(e => { PTAKING = null; $('#psheets').innerHTML = `<p class="fine">The picture was not taken: ${esc(e.message)}</p>`; show(true); }));
 }
+/* THE READING ON THE REPORT (SPEC_place_report §11). pages() draws the sheet already taken and the pages after it with
+   the reading it is given, so a new reading redraws them without a new picture. With the admin token and a model on the
+   house's network the bar offers Write a fuller reading: a press asks the node, the node answers at once and writes in
+   its own time, and the page asks again every ten seconds until the text is written or refused. */
+function pages(RD) {
+  $('#psheets').innerHTML = sheetHTML(D, PSHEET, PPARTS.c8 && PPARTS.c8.ring) + reportPages(D, reportParts(PSHEET, PPARTS.H, RD));
+  const b = $('#prwrite'), n = $('#prnote'), busy = !!RD && RD.state === 'writing';
+  b.hidden = !(RD && RD.can_write); b.disabled = busy;
+  b.textContent = busy ? 'Writing, a few minutes' : RD && RD.written ? 'Write it again' : 'Write a fuller reading';
+  n.hidden = !(RD && RD.state === 'refused'); n.textContent = n.hidden ? '' : `The fuller reading was not kept: ${RD.refused}. The node’s own reading stands.`;
+  clearTimeout(PPOLL);
+  if (busy) PPOLL = setTimeout(() => doorsFetch('/place/reading').then(r => (r.ok ? r.json() : null)).catch(() => null)
+    .then(R2 => { if (location.hash === '#place/report' && PSHEET) pages(R2 || RD); }), 10000);
+}
+$('#prwrite').onclick = () => doorsFetch('/place/reading', { method: 'POST' }).then(r => r.ok ? doorsFetch('/place/reading').then(g => g.json()) : r.json().then(e => { throw new Error(e.detail || `the node answered ${r.status}`); }))
+  .then(RD => { if (PSHEET) pages(RD); }).catch(e => { const n = $('#prnote'); n.hidden = false; n.textContent = e.message; });
 /* What the pages carry (SPEC_place_report §5): the band's rows with Rivers in them, the cake, what changed, and every
    credit they owe in the node's words. /earth and /hydro bring their own; the place and index packs' attributions do not
    reach the page, so those two lines are their pack.yaml's, as written there. */
-function reportParts(s, H) {
+function reportParts(s, H, RD) {
   const P = D.index_place, E = D.earth || {}, ch = {}, Y = D.place_yearly || [], read = P && P.place && P.read && P.read.at;
   if ((E.sentinel || []).length || Y.length) layer(ch);
-  return { date: s.date, figures: figures(riversRow(H)), cake: window.placeCake(), change: ch.innerHTML || null,
+  return { date: s.date, reading: RD, figures: figures(riversRow(H)), cake: window.placeCake(), change: ch.innerHTML || null,
     index: read && P.links && /^https:\/\//.test(P.links.report || '') ? { name: P.place.name || P.chosen, url: P.links.report } : null,
     credits: [...(s.credits || []), ...((E.sentinel || []).length ? E.credit : []), ...((E.changes || []).length && E.attribution ? [E.attribution] : []),
       ...(Y.length ? ['Google Open Buildings V3 and Temporal v1 (CC BY 4.0) via Earth Engine'] : []), ...(H && H.nearest && H.attribution ? [H.attribution] : []),

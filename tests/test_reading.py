@@ -138,8 +138,9 @@ reasons = {bad(lambda g: g["sections"].pop("land"), "section"), bad(lambda g: g[
            bad(lambda g: g["sections"].update(land="Half of it, 51%, is green."), "51"),
            bad(lambda g: g["sections"].update(street="As Jane Jacobs would say, the street lives."), "names a person"),
            bad(lambda g: g["avenues"][2].update(why="MUMFORD saw this."), "names a person"),
-           bad(lambda g: g["sections"].update(region=""), "empty")}
-check(len(reasons) >= 7, f"each kind of refusal says its own reason: {reasons}")
+           bad(lambda g: g["sections"].update(region=""), "empty"), bad(lambda g: g["sections"].update(region="word " * 200), "too long"),
+           bad(lambda g: g["avenues"][3].update(first_step="Count the roofs. " * 20), "too long")}
+check(len(reasons) >= 9, f"each kind of refusal says its own reason: {reasons}")
 for junk in ("not json", "", "[1, 2]", '{"sections": "x"}', '{"sections": {}, "avenues": null}'):
     got, reason = reading.accept(junk, doc)
     check(got is None and reason, f"{junk!r} is refused with a reason, never an exception")
@@ -300,6 +301,54 @@ init = open("init.sql").read()
 check("CREATE TABLE IF NOT EXISTS place_readings" in init and init.rstrip().endswith("INSERT INTO schema_version (version) VALUES ('0.66') ON CONFLICT DO NOTHING;"),
       "the table is in init.sql, at schema 0.66")
 print("  reading: the routes are the household's, the admin token alone may ask a model at home, one writing at a time, and a refusal keeps the node's reading")
+
+# ---------------------------------------------------------------- the two pages (app/static/doors-sheet.js reportPages)
+# The rules' own output goes to the page's own function under node, through stdin (Linux CI caps argv at 128 KB).
+import subprocess  # noqa: E402
+
+PAGES = r"""
+const fs = require('fs'); globalThis.esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const S = require('./app/static/doors-sheet.js'), I = JSON.parse(fs.readFileSync(0, 'utf8'));
+const D = { node: { name: 'bayu-ungasan' }, health: { version: 'v0.92.0', cell: { id: '8895a4c855fffff' } } };
+const base = { date: '2026-11-17', figures: '<p>figures</p>', cake: [], change: null, credits: ['Natural Earth'] };
+const out = {}; for (const k in I) out[k] = S.reportPages(D, { ...base, reading: I[k] });
+console.log(JSON.stringify(out));
+"""
+ruled = {"facts_at": "2026-11-17", "rules": R, "written": None, "written_at": None, "by": "node", "state": "none", "refused": None, "can_write": False}
+model = {**ruled, "written": {"sections": {i: f"The model on {i}." for i, _ in reading.SECTIONS}, "avenues": [{**a, "title": "Model: " + a["title"], "with": None} for a in A[:4]]},
+         "written_at": "2026-11-17T03:04:05+00:00", "by": {"model": "qwen3.5:122b", "where": "your network"}, "state": "written"}
+bare = {**ruled, "rules": E}
+pg = json.loads(subprocess.run(["node", "-e", PAGES], input=json.dumps({"ruled": ruled, "model": model, "bare": bare, "none": None}),
+                               capture_output=True, text=True, check=True).stdout)
+arts = lambda h: re.findall(r'<article class="rpage"[^>]*>(.*?)</article>', h, re.S)  # noqa: E731
+P0, PR_, PM, PB = arts(pg["none"]), arts(pg["ruled"]), arts(pg["model"]), arts(pg["bare"])
+check(len(P0) == 3 and "reading of this place" not in pg["none"] and "Full Stack" not in pg["none"], f"with no reading the report is what it was: {len(P0)} pages")
+check(len(PR_) == 5 and "a reading of this place" in PR_[0] and "ways to improve it" in PR_[1] and "<p>figures</p>" in PR_[2],
+      f"the reading and the avenues are the first two pages after the sheet, before the figures: {len(PR_)}")
+check(all(f"page {i + 1} of 5" in a for i, a in enumerate(PR_)), "the head lines count the pages that are there")
+WHO = "Written by this node from its own figures, 17 November 2026."
+check(WHO in PR_[0] and WHO in PR_[1], "under each title, who wrote it and when")
+check(all(esc_h in PR_[0] for esc_h in ("The region it belongs to", "What the land allows", "What people here need", "How the place behaves", "The life of the street"))
+      and "Rain that falls here leaves by a basin of 319 km²" in PR_[0], "the five headings with the rules' sentences")
+check(all(f"{a['layer']} · {a['action']}" in PR_[1] and a["title"] in PR_[1] and a["first_step"] in PR_[1] for a in A) and "the lab about 3 km away" in PR_[1]
+      and PR_[1].count('class="av"') == len(A), "every avenue with its layer, its key action, its first step and the lab")
+check("what this reading cannot see" in PR_[1] and all(b["what"] in PR_[1] for b in R["blind"]), "what the reading cannot see closes the second page")
+MWHO = "Written by a language model on your network (qwen3.5:122b) from the node’s figures, 17 November 2026. The node checked its numbers."
+check(MWHO in PM[0] and MWHO in PM[1] and "The model on land." in PM[0] and "Rain that falls here" not in PM[0] and "Model: " in PM[1] and PM[1].count('class="av"') == 4,
+      f"a model's text takes the place of the rules', and says a model wrote it: {PM[0][:300]}")
+check("what this reading cannot see" in PM[1] and all(b["what"] in PM[1] for b in R["blind"]) and len(PM) == 5, "what is missing is still the rules' to say")
+six = {**model, "written": {**model["written"], "avenues": [{**a, "with": None} for a in A]}}
+P6 = arts(json.loads(subprocess.run(["node", "-e", PAGES], input=json.dumps({"six": six}), capture_output=True, text=True, check=True).stdout)["six"])
+check(len(P6) == 6 and P6[1].count('class="av"') == 4 and "cannot see" not in P6[1] and "ways to improve it, continued" in P6[2] and P6[2].count('class="av"') == 2
+      and "<b>5</b>" in P6[2] and "cannot see" in P6[2] and "page 3 of 6" in P6[2], "past four, a model's avenues go on a page of their own, with what is missing")
+check(len(PB) == 5 and PB[1].count('class="av"') == 4 and PB[0].count(reading.NOTHING) == 5 and not re.search(r"undefined|null|NaN", PB[0] + PB[1]),
+      "a node that holds nothing still draws both pages, with four avenues and nothing unfilled")
+check("The avenues follow the Fab City Full Stack: fab.city." in PR_[-1] and not NAMES.search(pg["ruled"] + pg["model"] + pg["bare"]), "the sources page names the frame, and no page names a person")
+sheet_js = open("app/static/doors-sheet.js").read()
+check(not NAMES.search(sheet_js) and not NAMES.search(open("app/static/doors-place.js").read()), "nor does the page's code")
+html = open("app/static/doors.html").read()
+check('id="prwrite"' in html and re.search(r"\.rpage \.av\{[^}]*break-inside:avoid", html), "the bar has the button, and an avenue is never split across pages")
+print("  reading: two pages after the sheet, who wrote them under each title, a model's text in place of the rules' when one held")
 
 if fails:
     print("\n".join("  x " + f for f in fails))

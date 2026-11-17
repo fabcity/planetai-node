@@ -339,6 +339,8 @@ MANNER = (("region", "the region as the unit, its limits and its balance, the wa
 PERSON = re.compile(r"mumford|mcharg|papanek|meadows|jacobs", re.I)
 UNITS = re.compile(r"\b(?:PM2\.5|PM10|PM1|CO2|NO2|O3)\b", re.I)    # a unit's own digits are not a figure
 ALWAYS = (1, 2, 3, 4, 5, 6, 7, 50, WHO_DAY)                        # small counts, the labs' radius, the guideline
+# A report page is one A4 sheet and does not grow in print, so each part of a model's text has a ceiling, in characters
+LONGEST = {"section": 900, "title": 100, "why": 300, "first_step": 220}
 
 
 def prompt(doc: dict, ruled: dict) -> str:
@@ -349,13 +351,14 @@ def prompt(doc: dict, ruled: dict) -> str:
         "You are writing two pages of a report about one place, for the people who live there and for whoever they hand it to: "
         "neighbours, a village council, a funder. Read the place five ways, one paragraph each, in this order:\n"
         + "".join(f"- {i} · {head[i]}: {how}.\n" for i, how in MANNER)
-        + "Write in their manner and name no person: not them, not anyone. Plain words, no headings, no lists, 60 to 120 words a section. "
+        + "Write in their manner and name no person: not them, not anyone. Plain words, no headings, no lists, 60 to 120 words a section "
+        f"({LONGEST['section']} characters at most). "
         "Say what the figures mean for the people here, beyond the figures themselves.\n"
         "Use only numbers that are in FACTS, written as THE NODE'S OWN READING writes them. No dates, no coordinates, no other figure.\n"
         "A count or a share that comes from the public map covers one kilometre round the place, never 'this cell'.\n\n"
         "Then give four to six ways to improve the place. You may keep, sharpen or replace the node's own. Each has:\n"
-        "- title: a plain imperative;\n- why: one or two sentences with the figures it rests on;\n"
-        "- first_step: something a household, a village council or a lab can start this month;\n"
+        f"- title: a plain imperative, {LONGEST['title']} characters at most;\n- why: one or two sentences with the figures it rests on, {LONGEST['why']} characters at most;\n"
+        f"- first_step: something a household, a village council or a lab can start this month, {LONGEST['first_step']} characters at most;\n"
         f"- layer: one of {json.dumps(LAYERS)};\n- action: one of {json.dumps(ACTIONS)};\n- signal: one of {json.dumps(SIGNALS)}.\n\n"
         'Answer with JSON only: {"sections": {"region": "...", "land": "...", "needs": "...", "system": "...", "street": "..."}, '
         '"avenues": [{"title": "...", "why": "...", "first_step": "...", "layer": "...", "action": "...", "signal": "..."}]}\n\n'
@@ -392,12 +395,17 @@ def accept(answer: str, doc: dict) -> tuple[dict | None, str]:
     for i in ids:
         if not isinstance(sec[i], str) or not sec[i].strip():
             return None, f"section {i} is empty"
+        if len(sec[i].strip()) > LONGEST["section"]:
+            return None, f"section {i} is too long for its page ({len(sec[i].strip())} characters, {LONGEST['section']} at most)"
     if not isinstance(av, list) or not 4 <= len(av) <= 6:
         return None, f"avenues: four to six were asked for, and it gave {len(av) if isinstance(av, list) else 'none'}"
     out = []
     for n, a in enumerate(av, 1):
         if not isinstance(a, dict) or not all(isinstance(a.get(k), str) and a[k].strip() for k in ("title", "why", "first_step")):
             return None, f"avenue {n} lacks its title, its why or its first step"
+        for key in ("title", "why", "first_step"):
+            if len(a[key].strip()) > LONGEST[key]:
+                return None, f"avenue {n}: its {key.replace('_', ' ')} is too long for the page ({len(a[key].strip())} characters, {LONGEST[key]} at most)"
         for key, frame in (("layer", LAYERS), ("action", ACTIONS), ("signal", SIGNALS)):
             if a.get(key) not in frame:
                 return None, f"avenue {n}: its {key} is not one of the frame's ({str(a.get(key))[:40]!r})"
