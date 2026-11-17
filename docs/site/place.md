@@ -44,9 +44,9 @@ The sky is at the top of the list and the ground at the bottom. Its headings, in
 flows, built, animals, plants, soil, water, ground and frame, and each says how many of its rows are on, or none yet.
 The list opens with a line that says what a press does. A row is one line with a switch, a name and a word for where
 it comes from. The switch is filled, with its knob to the right, when the row is on, and hollow, with its knob to the
-left, when it is off. A row this node does not hold yet has a dotted mark where the switch would be, with its source
-beside it, such as canopy, soil, terrain, geology, the flows log, or samples of soil and water. A row that waits for
-the token has a dashed mark. Under a row that is on, a slider marked opacity sets how strongly it is drawn.
+left, when it is off. A row that cannot switch has a dotted mark where the switch would be. That is a row this node
+does not hold yet, with its source beside it, such as canopy, soil, terrain, geology, the flows log, or samples of soil
+and water, and also a row that is not here or needs the live map. A row that waits for the token has a dashed mark. Under a row that is on, a slider marked opacity sets how strongly it is drawn.
 Press a row to switch it on or off. The line under the screen then says what the row draws and where it comes from,
 and if the row cannot draw, why: **token-only**, **not here**, **live map**, or **zoom in** and **zoom out**. Six rows
 start on: this house's outdoor kit, the public stations, the species, the cell the node stands in, the street map
@@ -74,7 +74,7 @@ screen the rungs show only their number. Narrower still, the base switch moves a
 
 With the token, the keys on the screen's left edge are **Select** (V), **Marker** (M), **Line** (L),
 **Area** (A), **Note** (N), **Image** (I) and **Undo** (⌘Z or Ctrl+Z). They stand under the word Draw, and each shows
-its icon, its name and its letter. On a screen narrower than 760 px the names fold away and the letter sits in the
+its icon, its name and its letter, and Undo's is Ctrl+Z off a Mac. On a screen narrower than 760 px the names fold away and the letter sits in the
 key's corner. Each press on the map adds a point, and a marker
 or a note is done with one. A line ends on a double press, an area when you press its first corner again. Enter adds a
 point at the map's centre, and Enter again without moving finishes the shape, so the keyboard alone can draw. Backspace

@@ -973,7 +973,7 @@ assert "if (D.askOff) return;" in pl.split("$('#pask').onsubmit")[1].split("};")
 assert ".pask[hidden]{display:none}" in html, "hidden wins over the flex row"
 assert "$('#askbtn').addEventListener('click', closeSheet)" in pl, "Ask opens over a phone's sheet: the sheet closes first"
 _names = re.findall(r"id: '[a-z0-9]+'.*? name: '([^']+)'", pm.split("const LAYERS = [")[1].split("];")[0])
-assert len(_names) == 28 and max(map(len, _names)) <= 14, ("a cake row's name must fit the 216 px column", sorted(_names, key=len)[-3:])
+assert len(_names) == 28 and max(map(len, _names)) <= 14, ("a cake row's name must fit the 224 px column", sorted(_names, key=len)[-3:])
 assert "<h2><span>${esc(s.name)}</span>" in pm and "#cake .ck>h2{" in html and "#cake h2" not in html and "<h3><span>" not in pm, "cake headings are h2 under the page's h1"
 print("  place: one map, black screen, the cake on the left, tools on the right")
 
@@ -1459,6 +1459,9 @@ assert ".dkeys button{width:100%;height:var(--k)" in _css and ".dkeys button{wid
                                                                     r"\.dpanel textarea:focus-visible,\.dpanel select:focus-visible\{outline:2px solid var\(--cells\)", _css), \
     "--k keys (a row with its name when the screen is wide, a --k square when it folds) and swatches; focus on the black screen is the cells' blue, as the hour pill's"
 assert "p.cells" in pm[pm.index("function drawLayers"):pm.index("function drawLayers") + 4000], "a drawing in focus is outlined in the cells' blue"
+assert ".ly,.ly.new,.tl,.spd summary{min-height:44px}" in html, "New map is a 44 px target on a phone, like the rows (its own 28 px outranked the phone rule; final review, 17 Nov)"
+assert ".ly[aria-disabled=\"true\"] i{" in _css and ".ly.held[aria-disabled=\"true\"] i{border-style:dashed}" in _css, \
+    "a row that cannot switch, for any reason, has the small mark and never a dead switch; a locked one's is dashed"
 assert ".ly.map i{border-radius:3px}" in _css and ".ly i{position:relative;width:22px;height:12px;border-radius:999px" in _css, "a map's switch is square, a layer's round"
 assert "'The image stays on this node. The map only names which one it is, and the file never leaves.'" in pm and "never the file’s" not in pm, \
     "the image hint says only what is true: a photo's own GPS still wins on the node"
