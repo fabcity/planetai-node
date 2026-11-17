@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Place shows what can be pressed.** The layer list has a head that says what a press does, and each row's mark is a
+  switch that shows whether the row is on. New map and the species list are drawn as buttons, and the opacity slider
+  stays in view under a row that is on. The drawing keys stand under the word Draw, each with its name and its letter
+  beside the icon, and fold back to icons on a narrow screen. At the foot of Place a block says what the report is and
+  opens it, on Paper or in the dark version. docs/place.
+
 - **An update waits for the app before it checks it.** It used to wait 8 seconds, and on node #1 the app takes about
   11 to start, so the update ended on "something is off" with the node running fine. It now waits until the app
   answers, up to a minute.

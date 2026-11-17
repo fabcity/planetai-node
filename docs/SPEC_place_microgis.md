@@ -135,6 +135,13 @@ builder's.
 and What changed becomes a tool (§6). The species table becomes what the animals and plants rows open into. "Where the
 readings come from" disappears as a block, because each layer row now names its source.
 
+**17 November 2026, by Tomas's ask ("make it more understandable what are buttons, and functions, now it is a bit
+hidden").** The layer list has a head that says what a press does, and a row's mark is a switch: filled with the knob
+to the right when on, hollow with the knob to the left when off, dotted where the node does not hold the row yet and
+dashed where it waits for the token. The opacity of a row that is on is always in view. The column is 224 px, eight
+more than before, for the switch. The drawing keys stand under the word Draw, each with its name and its letter beside
+the icon, and fold back to icons under 760 px of screen. The keys, their order and what they do are unchanged.
+
 ## 5 · The cake
 
 The left column, from top to bottom: results, then the cake from the sky down to the ground, then the frame. The order
