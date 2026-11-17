@@ -149,6 +149,158 @@ check(all(h in P for _, h in reading.SECTIONS) and all(x in P for x in reading.L
 check(len(NAMES.findall(P)) == 5, "the five names live in the prompt, once each, and nowhere else")
 print("  reading: a model's text is kept only with the frame's ids, the node's numbers and no person named")
 
+# ---------------------------------------------------------------- kept on the node, read by the household, written on a button
+# Driven through the app with the database and the model faked, as tests/test_cells.py drives its routes.
+import logging  # noqa: E402
+import os  # noqa: E402
+import time  # noqa: E402
+from datetime import datetime, timedelta, timezone  # noqa: E402
+
+logging.disable(logging.WARNING)
+os.environ.update(ADMIN_TOKEN="admin-tok", ACT_TOKEN="act-tok", DATABASE_URL="postgresql://unused/never-connected")
+import settings  # noqa: E402
+settings._cache = {"at": time.time() + 1e9, "rows": {"SHARE_LEVEL": "open", "BACKUP_TOKEN": "backup-tok"}}
+import agent_loop  # noqa: E402
+import auth  # noqa: E402
+import main  # noqa: E402 — importing the app starts nothing
+from fastapi.testclient import TestClient  # noqa: E402
+
+online = agent_loop.Rung("online", "https://api.anthropic.com/v1", "claude", "key")
+home = agent_loop.Rung("remote", "http://100.72.1.5:8080/v1", "qwen3.5:122b")
+away = agent_loop.Rung("remote", "https://gpu.example.org/v1", "big")
+small = agent_loop.Rung("local", "http://host.docker.internal:11434/v1", "qwen3:4b", small=True)
+check(reading.pick([online, home, small]) is home and reading.pick([online, small]) is None and reading.pick([away, small]) is None and reading.pick([]) is None,
+      "the writer is the first model that is neither small nor off the house's network")
+
+
+class Cur:
+    """place_readings in a list; every other read answers nothing, which is a node that holds nothing."""
+    def __init__(self):
+        self.rows, self._last = [], []
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def execute(self, q, params=()):
+        u = " ".join(q.split())
+        if u.startswith("INSERT INTO place_readings"):
+            self.rows.append({"id": len(self.rows) + 1, "ts": datetime.now(timezone.utc), "state": "writing", "rung": params[0], "model": params[1],
+                              "wherefrom": params[2], "facts": params[3], "text": None, "refused": None})
+            self._last = [{"id": len(self.rows)}]
+        elif u.startswith("UPDATE place_readings"):
+            row = next(r for r in self.rows if r["id"] == params[3])
+            row.update(state=params[0], text=getattr(params[1], "obj", params[1]), refused=params[2])
+        elif "FROM place_readings" in u:
+            self._last = sorted(self.rows, key=lambda r: -r["id"])
+        elif "FROM readings_1h" in u:
+            self._last = [{"over": 0, "days": 0}]
+        else:
+            self._last = []
+
+    def fetchall(self):
+        return self._last
+
+    def fetchone(self):
+        return self._last[0] if self._last else None
+
+
+class Con:
+    def __init__(self, cur):
+        self.cur = cur
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def transaction(self):
+        return self
+
+    def cursor(self):
+        return self.cur
+
+
+cur = Cur()
+reading._db = lambda: Con(cur)
+reading._self = lambda path: {"/hydro": HYDRO, "/energy": ENERGY, "/index/place": INDEX, "/place/cells": {"held": 2}}.get(path)
+started, asked = [], []
+reading._spawn = lambda fn, *a: started.append((fn, a))
+reading._rungs = lambda: [online, home, small]
+c = TestClient(main.app)
+local = TestClient(main.app, client=("127.0.0.1", 51000))
+ACT, ADMIN = {"Authorization": "Bearer act-tok"}, {"Authorization": "Bearer admin-tok"}
+
+for level in ("off", "open"):
+    exact, prefixes = auth._SHARE[level]
+    check("/place/reading" not in exact and not any("/place/reading".startswith(pre) for pre in prefixes), f"/place/reading is on no SHARE_LEVEL allowlist ({level})")
+check(c.get("/place/reading").status_code in (401, 403) and c.post("/place/reading").status_code in (401, 403), "a caller with no token reads and writes nothing")
+check(c.get("/place/reading", headers={"Authorization": "Bearer backup-tok"}).status_code == 401, "the backup token is refused here")
+check(c.post("/place/reading", headers=ACT).status_code in (401, 403) and not cur.rows, "the act token reads the reading and may not ask for one")
+g = c.get("/place/reading", headers=ACT)
+b = g.json() if g.status_code == 200 else {}
+check(g.status_code == 200 and b.get("state") == "none" and b.get("written") is None and b.get("by") == "node" and b.get("can_write") is False
+      and [x["id"] for x in b["rules"]["sections"]] == [i for i, _ in reading.SECTIONS], f"the act token reads the node's own reading: {g.status_code} {str(b)[:200]}")
+check("Bali" in json.dumps(b) and "84%" in json.dumps(b), "it rests on what the node's own routes answered")
+check(not re.search(r'"(lat|lon|sensor[a-z_]*)"\s*:', json.dumps(b)) and not re.search(r"-?\d+\.\d{4,}", json.dumps(b)), "no point and no sensor in the answer")
+check(c.get("/place/reading", headers=ADMIN).json().get("can_write") is True and local.get("/place/reading").json().get("can_write") is False,
+      "only the admin token is offered the button")
+
+reading._rungs = lambda: [online, small]
+r = c.post("/place/reading", headers=ADMIN)
+check(r.status_code == 409 and r.json().get("detail") == "No model on this house's network can write this. The reading above is the node's own." and not cur.rows,
+      f"with no model at home that is not small, 409 and the sentence: {r.status_code} {r.text[:120]}")
+check(c.get("/place/reading", headers=ADMIN).json().get("can_write") is False, "and no button")
+reading._rungs = lambda: [online, home, small]
+
+r1, r2 = c.post("/place/reading", headers=ADMIN), c.post("/place/reading", headers=ADMIN)
+check(r1.status_code == 202 and r2.status_code == 202 and r1.json() == r2.json() == {"state": "writing", "id": 1} and len(started) == 1 and len(cur.rows) == 1,
+      f"a second press while one is writing starts nothing: {r1.status_code} {r1.text} {r2.text} started {len(started)}")
+check(cur.rows[0]["rung"] == "remote" and cur.rows[0]["model"] == "qwen3.5:122b" and cur.rows[0]["wherefrom"] == "your network", f"the row says who writes: {cur.rows[0]}")
+check(c.get("/place/reading", headers=ACT).json().get("state") == "writing", "another screen sees it being written")
+reading._ask = lambda rung, system: asked.append((rung.model, system)) or "Sorry, I cannot."
+fn, a = started.pop()
+fn(*a)
+b = c.get("/place/reading", headers=ADMIN).json()
+check(len(asked) == 1 and "FACTS" in asked[0][1] and cur.rows[0]["state"] == "refused" and b["state"] == "refused" and b["refused"] and b["written"] is None
+      and b["by"] == "node" and b["rules"]["avenues"], f"a text that does not hold is refused with its reason, and the node's reading stands: {b.get('refused')}")
+
+# the fake database holds no reading of the place pack, so this text rests only on what the routes answered
+HELD = {"sections": {i: f"A paragraph on {h.lower()}: at least 84% of the power on the Bali grid is burned." for i, h in reading.SECTIONS}, "avenues": [{**a, "title": "Count the roofs"} for a in GOOD["avenues"]]}
+reading._ask = lambda rung, system: json.dumps(HELD)
+check(c.post("/place/reading", headers=ADMIN).json() == {"state": "writing", "id": 2} and len(started) == 1, "after a refusal the button writes again")
+fn, a = started.pop()
+fn(*a)
+b = c.get("/place/reading", headers=ACT).json()
+check(b["state"] == "written" and b["written"]["sections"]["land"] == HELD["sections"]["land"] and b["by"] == {"model": "qwen3.5:122b", "where": "your network"}
+      and b["written_at"] and b["refused"] is None, f"a text that holds is kept, with who wrote it and when: {str(b)[:200]}")
+
+
+def boom(rung, system):
+    raise TimeoutError("the model went away")
+
+
+reading._ask = boom
+c.post("/place/reading", headers=ADMIN)
+fn, a = started.pop()
+fn(*a)
+b = c.get("/place/reading", headers=ACT).json()
+check(cur.rows[2]["state"] == "refused" and "TimeoutError" in cur.rows[2]["refused"] and b["state"] == "refused" and b["written"]["sections"]["land"] == HELD["sections"]["land"],
+      "a model that fails is a refusal, and the last text that held is still shown")
+c.post("/place/reading", headers=ADMIN)
+started.pop()
+cur.rows[3]["ts"] = datetime.now(timezone.utc) - timedelta(minutes=11)
+b = c.get("/place/reading", headers=ADMIN).json()
+check(b["state"] == "refused" and b["refused"] == "took too long" and b["can_write"] is True, f"a writing older than ten minutes no longer holds the button: {b.get('state')} {b.get('refused')}")
+check(c.post("/place/reading", headers=ADMIN).json() == {"state": "writing", "id": 5} and len(started) == 1, "and a new press starts a new one")
+init = open("init.sql").read()
+check("CREATE TABLE IF NOT EXISTS place_readings" in init and init.rstrip().endswith("INSERT INTO schema_version (version) VALUES ('0.66') ON CONFLICT DO NOTHING;"),
+      "the table is in init.sql, at schema 0.66")
+print("  reading: the routes are the household's, the admin token alone may ask a model at home, one writing at a time, and a refusal keeps the node's reading")
+
 if fails:
     print("\n".join("  x " + f for f in fails))
     sys.exit(1)

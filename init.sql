@@ -641,3 +641,19 @@ CREATE TABLE IF NOT EXISTS node_cells (
   claimed_by TEXT NOT NULL          -- 'home' | 'adopted' | 'keeper' | 'agent:<name>'
 );
 INSERT INTO schema_version (version) VALUES ('0.65') ON CONFLICT DO NOTHING;
+
+-- 0.66: a model's reading of the place (17 Nov 2026, docs/SPEC_place_report.md §11). The node's own reading is never
+-- stored: it is computed from the facts on every read, so it cannot disagree with them. A row is one asking: `writing`
+-- until the model answers, then `written` with its text or `refused` with the reason; `facts` is what it was written from.
+CREATE TABLE IF NOT EXISTS place_readings (
+  id        BIGSERIAL PRIMARY KEY,
+  ts        TIMESTAMPTZ NOT NULL DEFAULT now(),
+  state     TEXT NOT NULL,         -- writing | written | refused
+  rung      TEXT,                  -- remote | local: which rung of the ladder wrote
+  model     TEXT,
+  wherefrom TEXT,                  -- 'your network' | 'this machine', as agent_loop.where_of says it
+  facts     JSONB,
+  text      JSONB,                 -- {"sections": {id: paragraph}, "avenues": [...]} when written
+  refused   TEXT
+);
+INSERT INTO schema_version (version) VALUES ('0.66') ON CONFLICT DO NOTHING;

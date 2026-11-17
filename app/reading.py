@@ -17,7 +17,12 @@ import json
 import logging
 import os
 import re
-from datetime import date, timedelta
+import threading
+from datetime import date, datetime, timedelta, timezone
+
+from fastapi import APIRouter, Depends, Header, HTTPException
+
+import cells
 
 log = logging.getLogger("planetai.reading")
 
@@ -418,9 +423,10 @@ def _self(path: str):
         return None
 
 
-def facts(cur, get=_self, today: date | None = None) -> dict:
+def facts(cur, get=None, today: date | None = None) -> dict:
     """Every figure the reading may rest on. `cur` is a dict-row cursor; `get` reads one of the node's own routes."""
     import packs  # noqa: PLC0415 — the loader reads PACKS_DIR at import
+    get = get or _self
 
     pub = packs.public_sql("r")
     cur.execute(f"SELECT DISTINCT ON (r.metric) r.metric, r.value, r.ts FROM readings r WHERE r.metric = ANY(%s) AND {pub} "
@@ -439,3 +445,108 @@ def facts(cur, get=_self, today: date | None = None) -> dict:
     cells = _d(get("/place/cells"))
     return shape(latest, get("/hydro"), get("/energy"), get("/index/place"), labs if os.getenv("MAKE_ENABLED", "") == "1" or labs else None,
                  (a.get("over") or 0, a.get("days") or 0), cells.get("held"), yearly, today or date.today())
+
+
+# ---------------------------------------------------------------- the routes: GET and POST /place/reading
+# The household's alone at every SHARE_LEVEL, as /place/cells and /hydro are: on no allowlist in app/auth.py, so this
+# machine or a token. One facts document for one kind of reader keeps a model's text safe to show to all of them.
+# Reading it takes the admin or the act token; asking a model for the fuller text takes the admin token.
+NO_MODEL = "No model on this house's network can write this. The reading above is the node's own."
+WRITING_MAX = timedelta(minutes=10)     # a `writing` row older than this failed: a restart must not leave the button stuck
+router = APIRouter(dependencies=[Depends(cells._household)])
+_lock = threading.Lock()
+
+
+def _db():
+    from db import db  # noqa: PLC0415 — db.py needs DATABASE_URL at import
+    return db()
+
+
+def _rungs() -> list:
+    import ask  # noqa: PLC0415 — the same ladder and AGENT_PREFER the pane reads
+    return ask.rungs()
+
+
+def _spawn(fn, *args) -> None:
+    threading.Thread(target=fn, args=args, daemon=True, name="place-reading").start()
+
+
+def pick(rungs: list):
+    """The model that may write: the first that is neither small nor off the house's network, whatever AGENT_PREFER
+    lets the pane use. The facts stay at home. The local rung is always `small` in the ladder today, so a node whose
+    only strong model is its local one has no writer yet."""
+    return next((r for r in rungs if not r.small and not r.leaves), None)
+
+
+def _ask(rung, system: str) -> str:
+    """One answer from one rung, with ten minutes to give it. No tools, so chat() runs it without thinking."""
+    import asyncio  # noqa: PLC0415
+    import httpx  # noqa: PLC0415
+    import agent_loop  # noqa: PLC0415
+
+    async def go():
+        async with httpx.AsyncClient(timeout=WRITING_MAX.total_seconds()) as hc:
+            m = await agent_loop.chat(hc, rung, [{"role": "system", "content": system}, {"role": "user", "content": "Write the reading."}], None, final=True)
+            return m.get("content") or ""
+    return asyncio.run(go())
+
+
+def write(rid: int, rung, doc: dict, ruled: dict) -> None:
+    """Ask the model, check what it wrote, and keep it or the reason it was refused. Runs off the request."""
+    from psycopg.types.json import Jsonb  # noqa: PLC0415
+    try:
+        written, why = accept(_ask(rung, prompt(doc, ruled)), doc)
+    except Exception as e:  # noqa: BLE001 — whatever went wrong, the row must leave `writing`
+        written, why = None, f"the model did not answer ({type(e).__name__})"
+    log.info("reading %d: %s", rid, "written" if written else f"refused, {why}")
+    with _db() as con, con.transaction(), con.cursor() as cur:
+        cur.execute("UPDATE place_readings SET state = %s, text = %s, refused = %s WHERE id = %s",
+                    ("written" if written else "refused", Jsonb(written) if written else None, why or None, rid))
+
+
+def _rows(cur) -> list:
+    cur.execute("SELECT id, ts, state, model, wherefrom, text, refused FROM place_readings ORDER BY id DESC LIMIT 20")
+    return list(cur.fetchall())
+
+
+def _stale(row) -> bool:
+    return row["state"] == "writing" and datetime.now(timezone.utc) - row["ts"] > WRITING_MAX
+
+
+@router.get("/place/reading")
+def place_reading(authorization: str = Header("")):
+    """The node's own reading of its place, the fuller text if a model wrote one that held, and whether this caller
+    may ask for one."""
+    from auth import _bearer_ok  # noqa: PLC0415
+    with _db() as con, con.transaction(), con.cursor() as cur:
+        doc = facts(cur)
+        rows = _rows(cur)
+    last = rows[0] if rows else None
+    kept = next((r for r in rows if r["state"] == "written"), None)
+    state, refused = (("refused", "took too long") if _stale(last) else (last["state"], last["refused"])) if last else ("none", None)
+    return {"facts_at": doc["at"], "rules": rules(doc), "written": kept["text"] if kept else None,
+            "written_at": kept["ts"].isoformat() if kept else None, "by": {"model": kept["model"], "where": kept["wherefrom"]} if kept else "node",
+            "state": state, "refused": refused,
+            "can_write": _bearer_ok(authorization, os.getenv("ADMIN_TOKEN", "").strip()) and pick(_rungs()) is not None}
+
+
+@router.post("/place/reading", status_code=202)
+def write_reading(authorization: str = Header("")):
+    """Ask a model on the house's network for the fuller text. 202 at once; GET says when it is written or refused."""
+    from psycopg.types.json import Jsonb  # noqa: PLC0415
+    import agent_loop  # noqa: PLC0415
+    from auth import _admin  # noqa: PLC0415
+    _admin(authorization)
+    rung = pick(_rungs())
+    if rung is None:
+        raise HTTPException(409, NO_MODEL)
+    with _lock, _db() as con, con.transaction(), con.cursor() as cur:      # one writing at a time: a second press joins the first
+        rows = _rows(cur)
+        if rows and rows[0]["state"] == "writing" and not _stale(rows[0]):
+            return {"state": "writing", "id": rows[0]["id"]}
+        doc = facts(cur)
+        cur.execute("INSERT INTO place_readings (state, rung, model, wherefrom, facts) VALUES ('writing', %s, %s, %s, %s) RETURNING id",
+                    (rung.name, rung.model, agent_loop.where_of(rung)["where"], Jsonb(doc)))
+        rid = cur.fetchone()["id"]
+    _spawn(write, rid, rung, doc, rules(doc))
+    return {"state": "writing", "id": rid}
