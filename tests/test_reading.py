@@ -106,6 +106,49 @@ check("A river runs within a kilometre." in json.dumps(one) and "the lab within 
       "a distance under a kilometre is said in words, never as 0 km")
 print("  reading: an empty node gets four avenues from its gaps; zeros and short distances read as sentences")
 
+# ---------------------------------------------------------------- a model's text: kept only if its numbers are the node's
+ALL = "\n".join(l for s in R["sections"] for l in s["lines"]) + "\n" + "\n".join(a["title"] + " " + a["why"] + " " + a["first_step"] + " " + (a["with"] or "") for a in A)
+check(reading.stray_numbers(ALL, doc) == [], f"the rules print every number as the check reads it: {reading.stray_numbers(ALL, doc)}")
+for ok_text in ("2,459 buildings are drawn, and 5,994 seen.", "34% of the ground is green", "34 % green", "a share of 0.34", "0.341 of the ground",
+                "up from 3105 in 2016", "in 2 of its 7 cells", "three or 4 avenues, 1 to 7 of them", "140,535 km² and 140535 km²", "0.6 °C hotter", "within 50 km"):
+    check(reading.stray_numbers(ok_text, doc) == [], f"'{ok_text}' holds only the node's numbers, yet {reading.stray_numbers(ok_text, doc)} strayed")
+for bad_text, n in (("35% of the ground is green", "35"), ("about 2,500 buildings", "2500"), ("9 avenues", "9"), ("in 2021 it changed", "2021"), ("0.7 °C hotter", "0.7")):
+    got = reading.stray_numbers(bad_text, doc)
+    check(got and (n is None or n in got), f"'{bad_text}' strays, and the check said {got}")
+
+GOOD = {"sections": {i: f"A paragraph on {h.lower()}, resting on 34% of green ground and 5,994 buildings." for i, h in reading.SECTIONS},
+        "avenues": [{"title": f"Avenue {k}", "why": "84% of the power is burned.", "first_step": "Count ten roofs.", "layer": reading.LAYERS[k],
+                     "action": reading.ACTIONS[k % 3], "signal": reading.SIGNALS[k % 3]} for k in range(4)]}
+w, why = reading.accept(json.dumps(GOOD), doc)
+check(w is not None and why == "" and set(w["sections"]) == {i for i, _ in reading.SECTIONS} and len(w["avenues"]) == 4 and w["avenues"][0]["with"] is None, f"a good answer is kept: {why}")
+check(reading.accept("```json\n" + json.dumps(GOOD) + "\n```", doc)[0] is not None, "a fenced answer is kept")
+check(reading.accept("Here is the reading:\n" + json.dumps(GOOD) + "\nI hope it helps.", doc)[0] is not None, "prose round the answer is dropped")
+
+
+def bad(change, want):
+    g = json.loads(json.dumps(GOOD)); change(g)
+    got, reason = reading.accept(json.dumps(g), doc)
+    check(got is None and want in reason, f"expected a refusal saying '{want}', got {reason!r}")
+    return reason
+
+
+reasons = {bad(lambda g: g["sections"].pop("land"), "section"), bad(lambda g: g["sections"].update(extra="x"), "section"),
+           bad(lambda g: g["avenues"].pop(), "avenues"), bad(lambda g: g["avenues"].extend(g["avenues"][:3]), "avenues"),
+           bad(lambda g: g["avenues"][0].update(layer="Energy"), "layer"), bad(lambda g: g["avenues"][1].update(action="Build"), "action"),
+           bad(lambda g: g["sections"].update(land="Half of it, 51%, is green."), "51"),
+           bad(lambda g: g["sections"].update(street="As Jane Jacobs would say, the street lives."), "names a person"),
+           bad(lambda g: g["avenues"][2].update(why="MUMFORD saw this."), "names a person"),
+           bad(lambda g: g["sections"].update(region=""), "empty")}
+check(len(reasons) >= 7, f"each kind of refusal says its own reason: {reasons}")
+for junk in ("not json", "", "[1, 2]", '{"sections": "x"}', '{"sections": {}, "avenues": null}'):
+    got, reason = reading.accept(junk, doc)
+    check(got is None and reason, f"{junk!r} is refused with a reason, never an exception")
+P = reading.prompt(doc, R)
+check(all(h in P for _, h in reading.SECTIONS) and all(x in P for x in reading.LAYERS + reading.ACTIONS + reading.SIGNALS) and "name no person" in P.lower()
+      and '"green_share"' in P and "60 to 120 words" in P, "the prompt carries the frame, the facts and the ban on names")
+check(len(NAMES.findall(P)) == 5, "the five names live in the prompt, once each, and nowhere else")
+print("  reading: a model's text is kept only with the frame's ids, the node's numbers and no person named")
+
 if fails:
     print("\n".join("  x " + f for f in fails))
     sys.exit(1)
