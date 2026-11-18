@@ -114,6 +114,12 @@ assert len(rv["features"]) == 1 and rr["nearest_km"] == 0, (rv, rr)
 outside = {**reach, "geometry": {"type": "LineString", "coordinates": [[FRAME[0] - 0.02, clat], [FRAME[0] - 0.01, clat]]}}
 assert wall.water({"lat": clat, "lon": clon, "radius_km": 30, "rivers": {"features": [outside]}}, FRAME, C, HY.inside,
                   HY.square)[0]["features"] == []
+# no river at all and only rivers past the frame answer alike: which one a fetch got says how far its square reached
+none = wall.water({"lat": clat, "lon": clon, "radius_km": 30, "rivers": {"features": []}}, FRAME, C, HY.inside,
+                  HY.square)
+past = wall.water({"lat": clat, "lon": clon, "radius_km": 30, "rivers": {"features": [outside]}}, FRAME, C, HY.inside,
+                  HY.square)
+assert none == past and none[0] == {"type": "FeatureCollection", "features": []} and none[2] is None, (none, past)
 print("  water: the same block from every fetch centre in the cell; a reach crossing the frame is kept")
 
 # ---------------------------------------------------------------- the route

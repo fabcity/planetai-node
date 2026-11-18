@@ -183,13 +183,15 @@ def water(r: dict, frame: tuple, centre: tuple[float, float], inside, square=Non
     every reach from it (`dist_m`), so the reaches are re-chosen by the city frame, which lies inside that square
     and depends only on the cells, and measured again from the cell's centre. The basin is the one holding the
     centre, never the one holding the house: a basin edge through the cell would say which side the house is on."""
-    if not r or not (r.get("rivers") or {}).get("features"):
+    if not r:
         return None, None, None
     home = h3.latlng_to_cell(centre[1], centre[0], 8)
     if square:          # a square smaller than the frame would show its own edge, and that edge is round the house
         if h3.latlng_to_cell(r["lat"], r["lon"], 8) != home or not _covers(square, home, r["radius_km"], frame):
             return None, None, None
-    reaches = [f for f in r["rivers"]["features"]
+    # A fetch that found no river at all and one whose rivers all lie outside the frame answer alike: which of the
+    # two it is depends on how far the square reaches past the frame, so on where in the cell it was centred.
+    reaches = [f for f in (r.get("rivers") or {}).get("features") or []
                if any(_crosses(frame, a, b) for c in [f["geometry"]["coordinates"]] for a, b in zip(c, c[1:] or c))]
     rivers = {"type": "FeatureCollection", "features": [
         {"type": "Feature", "properties": {"m3s": f["properties"].get("dis_av_cms"), "order": f["properties"].get("ord_stra")},

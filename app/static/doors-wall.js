@@ -151,7 +151,9 @@ function wallTick(now) {
    Safari 16; an older TV's browser gets a controller aborted on a timer, and one with neither waits as it always did */
 const wallSignal = ms => { if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) return AbortSignal.timeout(ms);
   if (typeof AbortController === 'undefined') return undefined; const c = new AbortController(); setTimeout(() => c.abort(), ms); return c.signal; };
-const wallGet = p => doorsFetch(p, { signal: wallSignal(WALL_TIME.WAIT) }).then(r => r.ok ? r.json() : null).catch(() => null);
+/* with neither, a race against the same wait: the request cannot be stopped, but a hung /wall still reaches the retry */
+const wallGet = p => { const signal = wallSignal(WALL_TIME.WAIT), got = doorsFetch(p, { signal }).then(r => r.ok ? r.json() : null);
+  return (signal ? got : Promise.race([got, new Promise(ok => setTimeout(() => ok(null), WALL_TIME.WAIT))])).catch(() => null); };
 const wallDisk = () => (WALL.G && WALL.G.on_disk) || {};
 /* the visit that asked still owns the page: a later visit, or another door, has not taken it */
 const wallOwns = gen => gen === WALL.gen && view() === 'wall';

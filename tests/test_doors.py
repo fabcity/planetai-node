@@ -444,6 +444,9 @@ const fire = async () => { const f = timers.shift(); f(); await tick(); };
   out.oldTv = { waits: waits.slice(), map: els['#wmbox'].innerHTML }; wallAns.length = 0; while (metaAns.length) meta(null);
   ctx.AbortSignal = undefined; ctx.AbortController = undefined; honour = false; fresh(); v = ctx.VIEWS.wall(); await tick(); answer(true); await v; await settle();
   out.oldest = { W: !!WALL().W, map: !!WALL().map }; while (metaAns.length) meta(null);
+  /* ... and with neither, a /wall that never answers still gives up after WAIT and reaches the retry path */
+  fresh(); timers.length = 0; waits.length = 0; v = ctx.VIEWS.wall(); await tick(); while (timers.length) timers.shift()(); await v; await settle();
+  out.oldestHung = { waits: waits.slice(), map: els['#wmbox'].innerHTML }; wallAns.length = 0; while (metaAns.length) meta(null);
   console.log(JSON.stringify(out));
 })();
 """ % replayed(FIX)
@@ -468,6 +471,8 @@ assert rt["first"] == [0, 0, True] and rt["later"] == [16, 2] and rt["still"] ==
 assert rt["hung"]["waits"] == [30000] and "The node sent no map." in rt["hung"]["map"], ("a hung /wall never reached the retry path", rt["hung"])
 assert rt["oldTv"]["waits"][-1] == 30000 and 40 in rt["oldTv"]["waits"] and "The node sent no map." in rt["oldTv"]["map"], ("no AbortSignal.timeout: a hung /wall never gave up", rt["oldTv"])
 assert rt["oldest"] == {"W": True, "map": True}, ("no AbortSignal.timeout and no AbortController: the map never came", rt["oldest"])
+assert rt["oldestHung"]["waits"][-1] == 30000 and "The node sent no map." in rt["oldestHung"]["map"], \
+    ("no AbortSignal.timeout and no AbortController: a hung /wall never gave up", rt["oldestHung"])
 print("doors: the Wall paints before /wall answers, asks again 30 s to 5 min while it has none, keeps the last good one, and remounts a lost map")
 print("doors: /wall never waits on /ground/meta, a hung read gives up, a retry is its visit's, the first /wall starts the day over")
 # Over the map, as the approved mockup has them (Tomas, 18 Nov): the size, its cells, resolution and area at the top
