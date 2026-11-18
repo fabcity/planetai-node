@@ -80,16 +80,30 @@ function wallGauge(name, r, h, unit, hue, from) {
   return `<div class="wg" style="--c:var(${hue})"><div class="wgh"><span>${esc(name)}</span><span>${esc((r && r.src) || '')}</span></div><div class="wrv">${fig}</div>${r ? wallSpark(r, h) : ''}</div>`;
 }
 const wallFrom = d => d == null ? '' : ` from ${COMPASS16[Math.round(d / 22.5) % 16]}`;
-/* the size on the map in the column: its name, and a row for each chapter, the one on the map lit with its word, what it
-   says and where it is from; a size with nothing yet says so in one line, and keeps its cells on the map */
+/* the size on the map, in the column and over the map. The column: its name and a row for each chapter, the one on the
+   map lit with its word; a size with nothing yet says so in one line and keeps its cells on the map. Over the map, as the
+   approved mockup has them (Tomas, 18 Nov): the size and its cells at the top left, the chapter's words at the bottom
+   left with where they are from, and the three sizes as nested hexagons at the bottom right, this one lit. */
 function wallChapters(h) {
-  const S = WALL.story[WALL.s], el = $('#wscale'); if (!el) return;
-  if (!S) { el.innerHTML = ''; return; }
-  const n = S.chapters.length, ci = n ? chapterAt(h, n) : -1;
-  el.innerHTML = `<h2>${esc(S.name)} <span>· ${esc(S.what)}</span></h2><ul class="wchap">${S.chapters.map((c, j) => j !== ci
-    ? `<li style="--c:var(${c.hue})"><i></i><div class="wr"><span class="t">${esc(c.title)}</span><b class="n">${esc(c.n[0] ?? '—')}<u>${esc(c.n[1])}</u></b></div></li>`
-    : `<li class="on" style="--c:var(${c.hue})"><i></i><div class="wr"><span class="t">${esc(c.title)}</span><b class="n">${esc(c.n[0] ?? '—')}<u>${esc(c.n[1])}</u>${wpw(c.word)}</b></div>`
-      + `<p class="p">${esc(c.says)}</p><p class="s">${esc(c.src)}</p></li>`).join('')}</ul>${n ? '' : '<p class="wnone">Nothing the node holds at this size yet.</p>'}`;
+  const S = WALL.story[WALL.s], el = $('#wscale'), cap = $('#wcap'); if (!el) return;
+  if (!S) { el.innerHTML = $('#wwhere').innerHTML = $('#whex').innerHTML = cap.innerHTML = ''; return; }
+  const n = S.chapters.length, ci = n ? chapterAt(h, n) : -1, ch = S.chapters[ci];
+  el.innerHTML = `<h2>${esc(S.name)} <span>· ${esc(S.what)}</span></h2><ul class="wchap">${S.chapters.map((c, j) =>
+    `<li${j === ci ? ' class="on"' : ''} style="--c:var(${c.hue})"><i></i><div class="wr"><span class="t">${esc(c.title)}</span><b class="n">${esc(c.n[0] ?? '—')}<u>${esc(c.n[1])}</u>${j === ci ? wpw(c.word) : ''}</b></div></li>`).join('')}</ul>`
+    + (n ? '' : '<p class="wnone">Nothing the node holds at this size yet.</p>');
+  $('#wwhere').innerHTML = `<b>${esc(S.name)}</b><span>${S.cells.length} cells · res ${S.res} · ${fmt(S.km2, 1)} km²</span>`;
+  cap.hidden = !ch; cap.style && cap.style.setProperty('--c', ch ? `var(${ch.hue})` : 'var(--ink)');
+  cap.innerHTML = ch ? `${esc(ch.says)}<span class="wcs">${esc(ch.src)} · ${esc(ch.word)}</span>` : '';
+  $('#whex').innerHTML = wallHexes();
+}
+/* the three sizes as the seven-cell rule drawn three times, larger each size (the mockup's radii); the size on the map
+   lit, its own cell in the cells' blue */
+function wallHexes() {
+  const R = [3.5, 6, 9.5], hex = (x, y, r, me) => `<polygon${me ? ' class="me"' : ''} points="${[0, 1, 2, 3, 4, 5].map(i => { const a = Math.PI / 180 * (60 * i - 30); return `${(x + r * Math.cos(a)).toFixed(1)},${(y + r * Math.sin(a)).toFixed(1)}`; }).join(' ')}"/>`;
+  return WALL.story.map((S, i) => {
+    const r = R[i] ?? R[2], w = Math.sqrt(3) * r, z = (2 * (w + r) + 4).toFixed(1), at = [[0, 0], [w, 0], [w / 2, -1.5 * r], [-w / 2, -1.5 * r], [-w, 0], [-w / 2, 1.5 * r], [w / 2, 1.5 * r]];
+    return `<div class="s${i === WALL.s ? ' on' : ''}"><svg width="${z}" height="${z}" viewBox="${-z / 2} ${-z / 2} ${z} ${z}" aria-hidden="true">${at.map(([x, y], j) => hex(x, y, r * .92, !j)).join('')}</svg>${esc(S.k)}</div>`;
+  }).join('');
 }
 /* one replayed hour, drawn whole: the strip, the column's chapters and the map */
 function wallDraw(h) {
@@ -139,7 +153,8 @@ VIEWS.wall = async function () {
   if (WALL.map) { WALL.map.destroy(); WALL.map = null; }
   $('#wallv').innerHTML = `
     <div class="wtop wchrome"><button class="wback" onclick="location.hash='#now'">← back</button><span class="wnote said" id="wnote"></span></div>
-    <section class="wmap" id="wmap" data-learn="wall-map" data-reads="/wall /ground/meta /ground/imagery /ground/vector /earth/wall.png" data-stage="observe" data-pack="core"></section>
+    <section class="wmap" id="wmap" data-learn="wall-map" data-reads="/wall /ground/meta /ground/imagery /ground/vector /earth/wall.png" data-stage="observe" data-pack="core">
+      <div class="wmbox" id="wmbox"></div><div class="wover wwhere" id="wwhere"></div><div class="wover wcap" id="wcap" hidden></div><div class="wover whex" id="whex"></div></section>
     <aside class="wcol">
       <div class="whead" data-learn="wall-sentence" data-reads="/issues /health" data-stage="decide" data-pack="core">
         <div class="wkick"><time>${at}</time>${wallStale(D.health) ? ' · <b>the readings are old</b>' : ''}</div>
@@ -150,8 +165,8 @@ VIEWS.wall = async function () {
       <section class="wnarr" id="wnarr" hidden data-learn="wall-narration" data-reads="/ask/status /ask" data-stage="observe" data-pack="core"></section>
     </aside>
     <footer class="wstrip" id="wstrip" data-learn="wall-strip" data-reads="/issues /wall" data-stage="observe" data-pack="core"></footer>`;
-  WALL.map = W ? wallMapMount($('#wmap'), W, WALL.story, (G && G.on_disk) || {}) : null;
-  if (!WALL.map) $('#wmap').innerHTML = `<p class="wnomap">${W ? 'The map needs a screen that can draw it.' : 'The node sent no map.'}</p>`;
+  WALL.map = W ? wallMapMount($('#wmbox'), W, WALL.story, (G && G.on_disk) || {}) : null;
+  if (!WALL.map) $('#wmbox').innerHTML = `<p class="wnomap">${W ? 'The map needs a screen that can draw it.' : 'The node sent no map.'}</p>`;
   wallScale(WALL.s, true); wallDraw(WALL.h); narrDraw(); document.fonts.ready.then(() => view() === 'wall' && headFit());
   if (!NARR.busy && !NARR.typing && (!NARR.next || Date.now() >= NARR.next)) narrate(); else if (NARR.shown.length < NARR.text.length) narrType();
   if (!still) CLOCK.on('wall-replay', wallTick);

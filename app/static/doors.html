@@ -718,7 +718,16 @@ body:not(.classic) .hero .ladder.folded{display:none}
 .wnote{font:500 var(--wf)/1.3 var(--body);color:var(--mute)}
 /* the map: the satellite dimmed, or the node's streets dark; the wind and the crests on a canvas over it */
 .wmap{position:relative;grid-row:1;grid-column:1;min-width:0;min-height:0;overflow:hidden;background:#000;border-right:1px solid var(--hair)}
-.wmap .wml,.wmap .wfx{position:absolute;inset:0;width:100%;height:100%}.wmap .wfx{pointer-events:none}
+.wmbox{position:absolute;inset:0}.wmap .wml,.wmap .wfx{position:absolute;inset:0;width:100%;height:100%}.wmap .wfx{pointer-events:none}
+/* over the map, as the mockup Tomas approved (18 Nov): the size, the chapter's words, the three sizes; never pressed */
+.wover{position:absolute;z-index:2;pointer-events:none;font:500 var(--wf)/1.2 var(--mono);text-transform:uppercase;letter-spacing:.02em;text-shadow:0 0 6px #0E0E10,0 0 2px #0E0E10}
+.wwhere{left:1.4vw;top:2.2vh;display:flex;gap:.9em;align-items:center}.wwhere b{color:var(--ink);font-weight:700}.wwhere span{color:var(--mute)}
+.wcap{left:1.4vw;bottom:2.2vh;max-width:56%;text-transform:none;font:500 calc(var(--wf) * 1.05)/1.3 var(--body);color:var(--ink);background:rgb(14 14 16 / .78);padding:.5em .75em;border-left:3px solid var(--c,var(--ink))}
+.wcap .wcs{display:block;font:500 var(--wf)/1.3 var(--mono);color:var(--mute);text-transform:uppercase;margin-top:.25em}
+/* the one size below the floor: the legend's words, as small as the mockup set them after Tomas asked for it smaller */
+.whex{right:1.4vw;bottom:2.2vh;background:rgb(14 14 16 / .78);padding:.45em .6em;display:flex;gap:.8em;align-items:flex-end;font-size:calc(var(--wf) * .8)}
+.whex .s{display:flex;flex-direction:column;align-items:center;gap:.3em;color:var(--dim)}.whex .s.on{color:var(--ink)}.whex svg{display:block}
+.whex polygon{fill:none;stroke:currentColor;stroke-width:1}.whex .s.on polygon.me{fill:rgb(56 189 248 / .18);stroke:var(--cells)}
 .wnomap{position:absolute;left:0;right:0;top:45%;margin:0;text-align:center;font:500 var(--wf)/1.3 var(--body);color:var(--mute)}
 .woffi{font:600 var(--wf)/1.2 var(--mono);text-transform:uppercase;color:var(--ink);background:rgb(14 14 16 / .8);padding:.15em .4em;border-left:3px solid var(--cells);white-space:nowrap}
 #wallv .maplibregl-ctrl-attrib{font:500 var(--wf)/1.3 var(--mono);background:rgb(14 14 16 / .6);color:var(--mute)}
@@ -735,13 +744,11 @@ body:not(.classic) .hero .ladder.folded{display:none}
 .wscale h2{margin:0;font:700 var(--wf)/1.2 var(--mono);text-transform:uppercase;letter-spacing:.03em}.wscale h2 span{color:var(--mute);font-weight:500}
 .wchap{list-style:none;margin:.6em 0 0;padding:0;border-top:1px solid var(--hair)}
 .wchap li{display:grid;grid-template-columns:.35em minmax(0,1fr);column-gap:.7em;padding:.45em 0;border-bottom:1px solid var(--hair);color:var(--dim)}
-.wchap li i{grid-row:1/span 3;background:var(--c);opacity:.35;margin:.2em 0}.wchap li.on{color:var(--ink)}.wchap li.on i{opacity:1}
+.wchap li i{background:var(--c);opacity:.35;margin:.2em 0}.wchap li.on{color:var(--ink)}.wchap li.on i{opacity:1}
 .wchap .wr{display:flex;justify-content:space-between;align-items:baseline;gap:.6em;min-width:0}
 .wchap .t{font:600 var(--wf)/1.15 var(--mono);text-transform:uppercase;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .wchap .n{font:400 calc(var(--wf) * 1.15)/1 var(--mono);letter-spacing:-.04em;white-space:nowrap}.wchap li.on .n{color:var(--c)}
 .wchap .n u{font:500 var(--wf) var(--mono);text-decoration:none;margin-left:.2em;letter-spacing:0}
-.wchap .p{grid-column:2;margin:.3em 0 0;font:500 var(--wf)/1.3 var(--body);text-wrap:pretty}
-.wchap .s{grid-column:2;margin:.2em 0 0;font:500 var(--wf)/1.3 var(--mono);color:var(--mute)}
 .wnone{margin:.6em 0 0;font:500 var(--wf)/1.3 var(--body);color:var(--mute)}
 .wpw{display:inline-block;margin-left:.35em;padding:0 .3em;border:1px solid currentColor;font:500 var(--wf)/1.2 var(--mono);letter-spacing:0;vertical-align:.1em;color:var(--ink)}
 /* the node, thinking aloud: a voice, set apart from the node's figures, at the foot of the column. Figtree Italic, light,
@@ -786,6 +793,8 @@ body:not(.classic) .hero .ladder.folded{display:none}
   #wallv .wstrip{grid-row:3;grid-column:1;grid-template-columns:repeat(2,minmax(0,1fr))}
   #wallv .wg{border-bottom:1px solid var(--hair)}#wallv .wg:nth-child(2n){border-right:0}#wallv .wclock{grid-column:1/-1}
   #wallv .wnarr{max-height:none}
+  #wallv .whex{display:none}   /* on a narrow map it would sit under the chapter's words */
+  #wallv .wcap{max-width:calc(100% - 2.8vw)}
 }
 
 

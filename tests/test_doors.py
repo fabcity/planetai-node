@@ -247,13 +247,14 @@ const calls = []; globalThis.fetch = p => { calls.push(p); return Promise.resolv
     /* the strip and the column, every replayed hour of the last 24, at each of the three sizes */
     + ' function getComputedStyle() { return { fontSize: "20px" }; } $("#wallv"); WALL.W = WF; WALL.story = wallStory(WF, D); WALL.R = wallDay24(WF);'
     + ' out.n = WALL.story.map(S => S.chapters.length); out.titles = WALL.story.map(S => S.chapters.map(c => c.title));'
-    + ' out.hours = [...Array(24)].map((_, h) => { WALL.s = 0; wallDraw(h); const strip = $("#wstrip").innerHTML, chap = [$("#wscale").innerHTML];'
-    + ' for (const s of [1, 2]) { WALL.s = s; wallDraw(h); chap.push($("#wscale").innerHTML); }'
-    + ' return { strip, chap, from: [atHour(WF.hours.wave_from, h), atHour(WF.hours.wind_from, h)] }; });'
+    + ' const over = () => ({ where: $("#wwhere").innerHTML, cap: $("#wcap").innerHTML, capHidden: $("#wcap").hidden, hex: $("#whex").innerHTML });'
+    + ' out.hours = [...Array(24)].map((_, h) => { WALL.s = 0; wallDraw(h); const strip = $("#wstrip").innerHTML, chap = [$("#wscale").innerHTML], ov = [over()];'
+    + ' for (const s of [1, 2]) { WALL.s = s; wallDraw(h); chap.push($("#wscale").innerHTML); ov.push(over()); }'
+    + ' return { strip, chap, ov, from: [atHour(WF.hours.wave_from, h), atHour(WF.hours.wind_from, h)] }; });'
     + ' WALL.story = [{ ...WALL.story[0], chapters: [] }]; WALL.s = 0; wallDraw(5); out.bare = $("#wscale").innerHTML;'
     + ' const bare = D.buckets, rawb = D.raw.buckets; D.buckets = []; D.raw.buckets = []; out.nohours = wallDay24().B; out.asof = D.as_of; D.raw.buckets = rawb; D.buckets = bare;'
     /* and the whole view, drawn on that screen */
-    + ' D.askOff = true; WALL.h = null; out.view = VIEWS.wall().then(() => ({ wallv: $("#wallv").innerHTML, map: $("#wmap").innerHTML, strip: $("#wstrip").innerHTML,'
+    + ' D.askOff = true; WALL.h = null; out.view = VIEWS.wall().then(() => ({ wallv: $("#wallv").innerHTML, map: $("#wmbox").innerHTML, strip: $("#wstrip").innerHTML,'
     + ' scale: $("#wscale").innerHTML, h: WALL.h, s: WALL.s, sub: [...CLOCK.subs.keys()] }));', ctx);
   ctx.out.view = await ctx.out.view;
   const pm = fs.readFileSync('./app/static/doors-placemap.js', 'utf8').match(/function packRows[\s\S]*?\n}\n/)[0];
@@ -310,6 +311,18 @@ for _i, _x in enumerate(_hs):
         assert _c.count("<li") == _n and _c.count('class="on"') == 1, f"size {_s} at hour {_i}: {_c.count('<li')} rows, {_c.count('class=\"on\"')} on"
         _on = re.search(r'<li class="on"[^>]*>.*?<span class="t">(.*?)</span>', _c).group(1)
         assert _on == t["wall"]["titles"][_s][min(_n - 1, _i * _n // 24)], f"size {_s} at hour {_i} has {_on} on"
+# Over the map, as the approved mockup has them (Tomas, 18 Nov): the size, its cells, resolution and area at the top
+# left; the chapter's words with where they are from and one of the five words at the bottom left; the three sizes as
+# hexagons at the bottom right, only the size on the map lit.
+_scales = json.loads(Path("tests/fixtures/wall-node1.json").read_text())["scales"]
+for _i, _x in enumerate(_hs):
+    for _s, _o in enumerate(_x["ov"]):
+        _S = _scales[_s]
+        assert f"{len(_S['cells'])} cells · res {_S['res']} · {_S['km2']:.1f} km²" in _o["where"] and ("Base", "Community", "City")[_s] in _o["where"], f"size {_s} at hour {_i}: {_o['where']}"
+        assert not _o["capHidden"] and re.search(r'<span class="wcs">.+ · ' + _FIVE + r'</span>$', _o["cap"]), f"size {_s} at hour {_i}: the caption has no word: {_o['cap']}"
+        _lit = re.findall(r'class="s on">.*?</svg>(\w+)</div>', _o["hex"])
+        assert _o["hex"].count('class="s') == 3 and _lit == [_S["k"]], f"size {_s} at hour {_i}: the legend lights {_lit}"
+assert "pointer-events:none" in html[html.index(".wover{"):].split("}")[0], "a map overlay can be pressed"
 assert min(t["wall"]["n"]) >= 2, f"a size with under two chapters: the rows above switched nothing ({t['wall']['n']})"
 assert len({_x["strip"] for _x in _hs}) > 12, "the strip does not change with the hour"
 # A size with nothing to show keeps its cells and says so in one line; it never asks for chapter -1.
@@ -362,7 +375,11 @@ _wcss = html[html.index("/* ================= WALL:"):html.index("/* ===========
 assert "#wallv{--wf:min(1.0417vw,1.8519vh)" in _wcss, "the Wall's floor is not the mockup's 20 px"
 _wf = re.search(r"--wf:min\(([\d.]+)vw,([\d.]+)vh\)", _wcss)
 assert _wf and min(float(_wf.group(1)) * 19.2, float(_wf.group(2)) * 10.8) >= 20, "the floor is 20 px at 1920x1080"
-_sizes = re.findall(r"font(?:-size)?:([^;}]*)", re.sub(r"/\*.*?\*/", "", _wcss, flags=re.S))
+# The one exception is the size legend over the map, at .8 of the floor: the mockup Tomas approved set it so after he
+# asked for the legend smaller (18 Nov), and the controller's ruling of 18 Nov keeps it. Nothing else may go under.
+_hexrule = re.search(r"\n\.whex\{[^}]*\}", _wcss).group(0)
+assert "font-size:calc(var(--wf) * .8)" in _hexrule, _hexrule
+_sizes = re.findall(r"font(?:-size)?:([^;}]*)", re.sub(r"/\*.*?\*/", "", _wcss.replace(_hexrule, ""), flags=re.S))
 assert len(_sizes) >= 18, len(_sizes)
 for _f in _sizes:
     _m = re.search(r"calc\(var\(--wf\) \* ([\d.]+)\)|var\(--wf\)|(\d[\d.]*)(px|em|rem|vw|vh)\b", _f)

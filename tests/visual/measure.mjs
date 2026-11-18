@@ -3333,11 +3333,12 @@ async function wallwalk() {
   const names = (fx.sensors || []).filter(x => x.local && (x.name || '').trim().length > 3).map(x => x.name.trim());
   const read = (page, floor) => page.evaluate(([names, floor]) => {
     const W = document.querySelector('#wallv'), FIVE = ['live', 'partial', 'model', 'cached', 'example'], box = q => { const e = document.querySelector(q); return e && !e.hidden ? e.getBoundingClientRect() : null; };
-    const txt = [...W.querySelectorAll('*')].filter(e => [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim()) && e.getClientRects().length && !e.closest('.wchrome,[hidden]'));
+    const txt = [...W.querySelectorAll('*')].filter(e => [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim()) && e.getClientRects().length && !e.closest('.wchrome,[hidden],.whex'));   /* the size legend is the one size under the floor (the mockup's, 18 Nov) */
     const col = box('.wcol'), narr = box('#wnarr'), chap = box('#wscale');
     return { hour: WALL.h, size: WALL.s, sub: [...CLOCK.subs.keys()], h: document.documentElement.scrollHeight, w: document.documentElement.scrollWidth,
       small: txt.filter(e => parseFloat(getComputedStyle(e).fontSize) < floor).map(e => `${e.tagName}.${e.className} ${getComputedStyle(e).fontSize}`).slice(0, 3),
       undated: [...W.querySelectorAll('.wg .wrv')].map(v => v.textContent).filter(f => !(/\d\d:\d\d/.test(f) && FIVE.some(x => f.includes(x))) && !/not read/.test(f)).slice(0, 2),
+      over: [...W.querySelectorAll('.wover')].filter(e => !e.hidden && getComputedStyle(e).display !== 'none').map(e => e.id),
       gauges: W.querySelectorAll('.wg').length, nomap: (document.querySelector('.wnomap') || {}).textContent || '', rows: W.querySelectorAll('.wchap li').length,
       narr: narr && { inCol: narr.bottom <= col.bottom + 1 && narr.right <= col.right + 1 && narr.left >= col.left - 1, belowChap: narr.top >= chap.bottom - 1, past: Math.round(narr.bottom - innerHeight) },
       words: [...W.querySelectorAll('.wpw')].map(e => e.textContent).filter(x => !FIVE.includes(x)),
@@ -3355,6 +3356,7 @@ async function wallwalk() {
     if (process.env.PAI_WALL_SHOTS === '1') await r.page.screenshot({ path: path.join(OUT, `wallwalk_${w}.png`), fullPage: true });
     const g = await read(r.page, (touch ? 12 : Math.min(20, w * .010417, h * .018519)) - .5), tag = `${w}`;
     ok(g.gauges === 4 && g.rows >= 1, `${tag}: the strip or the chapters are not drawn (${g.gauges} gauges, ${g.rows} rows)`);
+    ok(g.over.join() === (touch ? 'wwhere,wcap' : 'wwhere,wcap,whex'), `${tag}: the map's overlays are ${g.over.join(', ')}`);
     ok(g.nomap === 'The map needs a screen that can draw it.', `${tag}: no line where the map would be: "${g.nomap}"`);
     ok(g.w <= w, `${tag}: the page is ${g.w} px wide`);
     if (!touch) ok(g.h <= h, `${tag}: the Wall is ${g.h} px on a ${h} px screen`);

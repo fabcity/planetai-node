@@ -153,12 +153,13 @@ function wallMapMount(el, W, story, G = {}) {
   if (G.vector) base.push({ id: 'water', type: 'fill', source: 'v', 'source-layer': 'water', paint: { 'fill-color': '#000', 'fill-opacity': 0 } });
   let map;
   try {
-    map = new maplibregl.Map({ container: el.firstChild, style: { version: 8, sources, layers: base }, interactive: false, fadeDuration: 0,
-      attributionControl: { compact: false, customAttribution: [G.vector && '© OpenStreetMap', G.imagery && 'Copernicus Sentinel-2'].filter(Boolean).join(' · ') },
+    map = new maplibregl.Map({ container: el.firstChild, style: { version: 8, sources, layers: base }, interactive: false, fadeDuration: 0, attributionControl: false,
       bounds: box(story[0].cells.flatMap(c => c.ring)), fitBoundsOptions: { padding: 40 },
       /* nothing but this page's own origin is ever asked for a tile or an image */
       transformRequest: url => (url.startsWith(location.origin) ? { url } : { url: 'data:,' }) });
   } catch (e) { console.warn('Wall: no map', e); return null; }
+  /* the credit at the top right: the bottom corners hold the chapter's words and the sizes */
+  map.addControl(new maplibregl.AttributionControl({ compact: false, customAttribution: [G.vector && '© OpenStreetMap', G.imagery && 'Copernicus Sentinel-2'].filter(Boolean).join(' · ') }), 'top-right');
 
   const ALL = ['own-air', 'roofs', 'roofs-mask', 'roofs-sun', 'own-heat', 'own-water', 'stations', 'change', 'lab', 'rivers', 'grid', 'basin', 'island'];
   const EXTRA = { grid: ['grid-line'], basin: ['basin-line'] };
