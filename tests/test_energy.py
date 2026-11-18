@@ -317,19 +317,36 @@ with tempfile.TemporaryDirectory() as tmp:
           f"household is served to the admin token when HA rows exist: {r_adm.get('household')}")
 
     raw_res = json.loads((Path(tmp) / "energy/result.json").read_text())
+    import wall  # noqa: E402
+    import h3  # noqa: E402
+    C = wall.cell_centre()
+    check(C == tuple(reversed(h3.cell_to_latlng(h3.latlng_to_cell(-8.8161, 115.1635, 8)))), f"the res-8 cell's middle: {C}")
+    E = lambda km: C[0] + km / (111.32 * 0.988)  # noqa: E731 — a point `km` east of the middle
     raw_res["sources"] = [
-        {"name": "Sub Far", "kind": "substation", "fuel": None, "mw": None, "km": 8.0, "ring": "region"},
-        {"name": "Sub Near", "kind": "substation", "fuel": None, "mw": None, "km": 1.2, "ring": "city"},
-        {"name": "Small Solar", "kind": "plant", "fuel": "solar", "mw": 0.5, "km": 0.8, "ring": "city"},
-        {"name": "Unknown MW", "kind": "plant", "fuel": "solar", "mw": None, "km": 0.9, "ring": "city"},
-        {"name": "Big Plant", "kind": "plant", "fuel": "gas", "mw": 50.0, "km": 4.0, "ring": "city"},
-        {"name": "Java cable", "kind": "link", "fuel": None, "mw": None, "km": 100.0, "ring": "beyond"},
+        # "Sub Near" is the nearest the house (km) and "Sub Mid" the nearest the cell's middle (its point)
+        {"name": "Sub Far", "kind": "substation", "fuel": None, "mw": None, "km": 8.0, "ring": "region", "lat": C[1], "lon": E(8.2)},
+        {"name": "Sub Near", "kind": "substation", "fuel": None, "mw": None, "km": 1.2, "ring": "city", "lat": C[1], "lon": E(3.1)},
+        {"name": "Sub Mid", "kind": "substation", "fuel": None, "mw": None, "km": 1.4, "ring": "city", "lat": C[1], "lon": E(2.0)},
+        {"name": "Small Solar", "kind": "plant", "fuel": "solar", "mw": 0.5, "km": 0.8, "ring": "city", "lat": C[1], "lon": E(0.9)},
+        {"name": "Unknown MW", "kind": "plant", "fuel": "solar", "mw": None, "km": 0.9, "ring": "city", "lat": C[1], "lon": E(0.9)},
+        {"name": "Big Plant", "kind": "plant", "fuel": "gas", "mw": 50.0, "km": 4.03, "ring": "city", "lat": -8.7123456, "lon": 115.2123456},
+        {"name": "Java cable", "kind": "link", "fuel": None, "mw": None, "km": 100.0, "ring": "beyond", "lat": None, "lon": None},
     ]
     raw_res["household"] = {"roof_w": 2500.0, "grid_w": 100.0, "fossil_pct": 12.0}
     (Path(tmp) / "energy/result.json").write_text(json.dumps(raw_res))
-    check([(s["name"], s["kind"]) for s in client.get("/energy").json()["sources"]] == [
-        ("Sub Near", "substation"), ("Big Plant", "plant"), ("Java cable", "link")
-    ], "route cuts uncut sources to nearest substation, plants >= 1 MW, then links")
+    anon_s = client.get("/energy").json()["sources"]
+    check([(s["name"], s["kind"]) for s in anon_s] == [
+        ("Sub Mid", "substation"), ("Big Plant", "plant"), ("Java cable", "link")
+    ], f"without the token: the substation nearest the cell's middle, plants >= 1 MW, then links: {anon_s}")
+    check([s["km"] for s in anon_s] == [2, wall.km_from(C, 115.2123456, -8.7123456), None],
+          f"without the token every km is whole and from the cell's middle, as /wall's, never the house's: {anon_s}")
+    adm_s = client.get("/energy", headers=ADMIN).json()["sources"]
+    check([(s["name"], s["km"]) for s in adm_s] == [("Sub Near", 1.2), ("Big Plant", 4.03), ("Java cable", 100.0)],
+          f"with the token: the substation nearest the house, every km as measured from it: {adm_s}")
+    os.environ["NODE_LAT"], os.environ["NODE_LON"] = "0", "0"
+    check([s["km"] for s in client.get("/energy").json()["sources"]] == [None, None, None],
+          "a node with no place yet gives no km at all without the token")
+    os.environ["NODE_LAT"], os.environ["NODE_LON"] = "-8.8161", "115.1635"
     check(client.get("/energy").json()["household"] is None,
           "household in result.json is also hidden without the admin token")
     check(client.get("/energy", headers=ADMIN).json()["household"]["roof_w"] == 2500.0,

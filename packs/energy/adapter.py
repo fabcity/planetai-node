@@ -28,6 +28,7 @@ import today
 log = logging.getLogger("planetai.energy")
 SID = "energy-grid"
 HOME = "energy-home"
+LARGE_MW = 100.0        # a large plant: large_plant_km, and the one the Wall draws its line to
 USER_AGENT = "planetai-node/energy (https://planetai.fab.city; info@fab.city)"
 OSM_ATTR = "© OpenStreetMap contributors, ODbL, via Overpass"
 REE_ATTR = "Red Eléctrica de España (REE), apidatos.ree.es"
@@ -208,9 +209,11 @@ def _grid(hc) -> tuple[list[dict], list[tuple], dict | None]:
 
     # only what stands on this grid: the Bali box also holds Nusa Penida's own island grid and a corner of Java
     near_all = [s for s in near_all if grids.inside(s["lat"], s["lon"], g.get("polygon") or [])]
-    subs = [s for s in near_all if s["kind"] == "substation"][:1]
+    # the five nearest substations: /energy says one, the nearest the house for the household and the nearest the
+    # cell's middle for anyone else, and that one need not be the house's
+    subs = [s for s in near_all if s["kind"] == "substation"][:5]
     plants = [s for s in near_all if s["kind"] == "plant" and (s.get("mw") or 0) >= 1.0]
-    big_plants = [s for s in near_all if s["kind"] == "plant" and (s.get("mw") or 0) >= 100.0]
+    big_plants = [s for s in near_all if s["kind"] == "plant" and (s.get("mw") or 0) >= LARGE_MW]
     links = []
     for lk in g.get("links") or []:
         at = (lk.get("at") or "").lower()

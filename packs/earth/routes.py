@@ -103,10 +103,12 @@ def earth_year_png(year: int = Query(..., ge=1900, le=2200)):
 @router.get("/earth/wall.png")
 def earth_wall_png():
     """The Wall's land-change image (change.py writes change_<A>_<B>_wall.png): the pair /wall picks, which is
-    _latest(). 204 when that pair has none yet. The name is built from the pack's own JSON as integers."""
+    _latest(). 204 when that pair has none yet. The name is built from the pack's own JSON as integers. /wall asks it
+    with ?pair=<a>_<b>, which is only there to change the URL when the pair changes, so it is not read; no-cache makes
+    a screen ask again before it reuses an image."""
     from fastapi.responses import Response          # here, not above: keeps this route one hunk of its own
     c = _latest()
     p = pack.cache() / f"change_{int(c['year_a'])}_{int(c['year_b'])}_wall.png" if c else None
     if not (p and p.is_file()):
         return Response(status_code=204)
-    return FileResponse(p, media_type="image/png", filename=p.name)
+    return FileResponse(p, media_type="image/png", filename=p.name, headers={"Cache-Control": "no-cache"})

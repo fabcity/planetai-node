@@ -135,6 +135,8 @@ if ER.earth_wall_png().status_code != 204:
 r = ER.earth_wall_png()
 if str(getattr(r, "path", None)) != str(mine / "change_2024_2025_wall.png") or r.media_type != "image/png":
     fails.append(f"/earth/wall.png must serve change_2024_2025_wall.png, got {getattr(r, 'path', r)}")
+if (getattr(r, "headers", None) or {}).get("cache-control") != "no-cache":
+    fails.append("/earth/wall.png must say no-cache: a screen asks again before it reuses last year's image")
 
 print("\n".join(f"  x {f}" for f in fails) or
       "  earth frames: the glob finds a renamed node's frames and its cache, keeps the two records "

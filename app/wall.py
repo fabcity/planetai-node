@@ -58,6 +58,16 @@ def scales(home: str) -> list[dict]:
     return out
 
 
+def cell_centre() -> tuple[float, float] | None:
+    """(lon, lat) of the middle of the res-8 cell /health names, None before the node has a place: what a tokenless
+    reader's every distance is measured from, here and in packs/energy's /energy."""
+    lat, lon = float(os.getenv("NODE_LAT", 0) or 0), float(os.getenv("NODE_LON", 0) or 0)
+    if not (lat or lon):
+        return None
+    clat, clon = h3.cell_to_latlng(h3.latlng_to_cell(lat, lon, 8))
+    return clon, clat
+
+
 def km_from(centre: tuple[float, float], lon: float, lat: float) -> int:
     """Whole km from the cell's centre ((lon, lat)): a decimal of km beside a public point narrows the house."""
     return round(h3.great_circle_distance((centre[1], centre[0]), (lat, lon), unit="km"))
@@ -167,14 +177,15 @@ def _dense(pts: list, step: float = 0.002) -> list:
     return out
 
 
-def grid(raw: dict, centre: tuple[float, float]) -> dict | None:
-    """The energy pack's raw result, measured again from the cell's centre: its `km` is from the house, to 10 m."""
+def grid(raw: dict, centre: tuple[float, float], large_mw: float = 100.0) -> dict | None:
+    """The energy pack's raw result, measured again from the cell's centre: its `km` is from the house, to 10 m.
+    `large` marks a plant of the pack's own large cut (adapter.LARGE_MW), the one the Wall draws its line to."""
     if not raw:
         return None
     src = [s for s in raw.get("sources") or [] if isinstance(s, dict) and s.get("lat") is not None and s.get("lon") is not None]
     subs = sorted(km_from(centre, s["lon"], s["lat"]) for s in src if s.get("kind") == "substation")
     plants = sorted(({"name": s.get("name"), "fuel": s.get("fuel"), "mw": s.get("mw"), "lat": round(s["lat"], 3),
-                      "lon": round(s["lon"], 3), "km": km_from(centre, s["lon"], s["lat"])}
+                      "lon": round(s["lon"], 3), "km": km_from(centre, s["lon"], s["lat"]), "large": (s.get("mw") or 0) >= large_mw}
                      for s in src if s.get("kind") == "plant" and (s.get("mw") or 0) >= 1),
                     key=lambda p: p["km"])
     low = (raw.get("share") or {}).get("low")
@@ -201,7 +212,8 @@ def change(earth, near: tuple[float, float]) -> dict | None:
     to = _utm(int(str(c["crs"]).rsplit(":", 1)[-1]), near)
     corners = [to(bb[x], bb[y]) for x, y in
                (("west", "north"), ("east", "north"), ("east", "south"), ("west", "south"))]
-    return {"a": a, "b": b, "ha": crop.get("ha"), "corners": corners, "png": "/earth/wall.png"}
+    # the pair in the URL: a screen that cached last year's image asks again when the pair changes
+    return {"a": a, "b": b, "ha": crop.get("ha"), "corners": corners, "png": f"/earth/wall.png?pair={a}_{b}"}
 
 
 def _inner_m(home: str, run: dict | None, here: tuple[float, float]) -> int | None:
@@ -322,6 +334,6 @@ def wall():
         # the island is island-wide: no far edge, only the near one
         "island": _safe(island, isl, now, lambda la, lo: kept(la, lo, centre, None, near_m)), "roofs": roofs, "lab": lab,
         "rivers": rivers, "basin": basin, "river": river,
-        "grid": _safe(lambda: grid(energy.result(), centre)) if energy else None,
+        "grid": _safe(lambda: grid(energy.result(), centre, energy.LARGE_MW)) if energy else None,
         "change": _safe(change, earth, (clat, clon)),
     }

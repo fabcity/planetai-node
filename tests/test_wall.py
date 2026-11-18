@@ -147,6 +147,7 @@ iso = lambda d: d.isoformat()  # noqa: E731
         {"kind": "substation", "name": "GI Nusa Dua", "lat": -8.79, "lon": 115.2, "km": 4.123456},
         {"kind": "plant", "name": "PLTDG Pesanggaran", "fuel": "gas", "mw": 200, "lat": -8.7123456, "lon": 115.2123456, "km": 12.3456},
         {"kind": "plant", "name": "Tiny", "fuel": "solar", "mw": 0.5, "lat": -8.80, "lon": 115.17, "km": 1.0},
+        {"kind": "plant", "name": "PLTD Genset", "fuel": "diesel", "mw": 1.2, "lat": -8.78, "lon": 115.19, "km": 4.2},
         {"kind": "plant", "name": "Celukan Bawang", "fuel": "coal", "mw": 380, "lat": -8.18, "lon": 114.83, "km": 79.0}]}))
 hyd = OUT / "hydro" / "n1"
 hyd.mkdir(parents=True)
@@ -232,14 +233,15 @@ assert W["lab"] == {"name": "Fab Lab Bali", "lat": -8.681, "lon": 115.231,
                     "km": wall.km_from((clon, clat), 115.2312345, -8.6812345)}, W["lab"]
 assert W["grid"]["fossil_low_pct"] == 84, W["grid"]
 assert W["grid"]["substation_km"] == wall.km_from((clon, clat), 115.2, -8.79), W["grid"]
-assert [p["name"] for p in W["grid"]["plants"]] == ["PLTDG Pesanggaran"], "1 MW and up, within 30 km of the cell"
-assert W["grid"]["plants"][0]["km"] == wall.km_from((clon, clat), 115.2123456, -8.7123456) != 12
+assert [p["name"] for p in W["grid"]["plants"]] == ["PLTD Genset", "PLTDG Pesanggaran"], "1 MW and up, within 30 km of the cell"
+assert [p["large"] for p in W["grid"]["plants"]] == [False, True], "the energy pack's own large cut, 100 MW"
+assert W["grid"]["plants"][1]["km"] == wall.km_from((clon, clat), 115.2123456, -8.7123456) != 12
 assert W["grid"]["sun"] == {"kwh_m2": 6.38, "roof_kwh": 9.57, "panel_kw": 2.0}, "sun today: three figures, never use_kwh"
 assert [f["properties"]["m3s"] for f in W["rivers"]["features"]] == [0.13, 4.2], "only the reaches in the city frame"
 assert W["basin"]["properties"] == {"sub_area": 319.2, "up_area": 319.2} and W["basin"]["geometry"]["type"] == "Polygon"
 assert W["river"] == {"nearest_km": 4, "nearest_m3s": 0.13, "largest_km": 8, "largest_m3s": 4.2}, W["river"]
 assert W["change"]["a"] == 2024 and W["change"]["b"] == 2025 and W["change"]["ha"] == 61.2, W["change"]
-assert W["change"]["png"] == "/earth/wall.png" and len(W["change"]["corners"]) == 4
+assert W["change"]["png"] == "/earth/wall.png?pair=2024_2025" and len(W["change"]["corners"]) == 4
 tl = W["change"]["corners"][0]
 assert abs(tl[0] - wall.lonlat(safe["west"], safe["north"], 32750, (clat, clon))[0]) < 1e-6, "placed by the wall's crop"
 print("  /wall: every block, from the packs' own files and the hourly table")
