@@ -268,13 +268,13 @@ def _inner_m(home: str, run: dict | None) -> int | None:
     """The radius round the cell's centre that the place pack's last fetch covers: its own `radius_m` (place_runs,
     what it really fetched, never the setting) less the farthest a point of the cell can be from its middle. A fetch
     circle round any point of the cell holds that circle, so the answer is the same wherever in the cell the fetch was
-    centred and wherever the house is now; older runs record no centre, and fetched round the house, in the cell too.
-    Nothing of the house's own point enters it: a radius less the distance the house moved since the fetch would say
-    how far it moved. None with no run, or when the fetch was centred in another cell."""
-    if not run or not run.get("radius_m"):
+    centred and wherever the house is now. Nothing of the house's own point enters it: a radius less the distance the
+    house moved since the fetch would say how far it moved. None with no run, when the fetch was centred in another
+    cell, or when the run recorded no centre: an older run may have been fetched before a move, from another cell, and
+    the place pack fetches again when it finds one (packs/place/adapter.py)."""
+    if not run or not run.get("radius_m") or run.get("lat") is None or run.get("lon") is None:
         return None
-    if run.get("lat") is not None and run.get("lon") is not None \
-            and h3.latlng_to_cell(run["lat"], run["lon"], 8) != home:
+    if h3.latlng_to_cell(run["lat"], run["lon"], 8) != home:
         return None
     return int(run["radius_m"] - circum_m(home))
 

@@ -351,9 +351,9 @@ def round_the_cell():
     return out[0]
 
 
-ANSWERS["place_runs"] = [{"radius_m": 1000, "lat": None, "lon": None}]       # node #1's rows record no centre
+ANSWERS["place_runs"] = [{"radius_m": 1000, "lat": None, "lon": None}]       # an old run that recorded no centre
 got = round_the_cell()
-assert got[0]["mapped_radius_m"] == 400 and got[2] == W["river"] is not None, got
+assert got[0] is None and got[2] == W["river"] is not None, ("a run with no centre may be from another cell", got)
 ANSWERS["place_runs"] = [{"radius_m": 2000, "lat": LAT, "lon": LON}]         # centred on one point of the cell
 assert round_the_cell()[0]["mapped_radius_m"] == 1400
 ANSWERS["place_runs"] = [{"radius_m": 1000, "lat": LAT, "lon": LON}]
