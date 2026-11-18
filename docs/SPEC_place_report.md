@@ -7,7 +7,7 @@ per city, when we allow people to download a report as pdf." Of the two scopes o
 one page". It goes in v0.92.*
 
 **Status: proposed 11 November 2026, its four open questions decided by Tomas the same day (§10). Steps 1 to 3, the sheet,
-the report pages and asking for it, are built, from 16 November 2026. The pane tool is `place_report`: a function call
+the report pages and asking for it, are built, from 16 November 2026. The reading (§11) is built from 17 November 2026. The pane tool is `place_report`: a function call
 cannot carry a dot, so the Tools menu's `place.report` is spelled with an underscore there.**
 Each step in §9 is its own pull request, run on node #1 before it merges.
 
@@ -188,6 +188,57 @@ Tomas answered the four open questions of the first draft: "1. yes, 2 light, 3, 
 - **3D:** its own spec, later. urban:SCAN's 3D scheme is a tilted, exploded view of the layers; on the node it would be
   the cake's sections on deck.gl, then a PNG of it on a page of the report. Nothing in this spec waits for it.
 
+## 11 · The reading (17 November 2026)
+
+*Asked by Tomas, 17 November 2026: "We want the report to provide a human analysis beyond the machine readings, and to
+suggest avenues to improve the locality, including inside the kind of actions we are mapping out as fab city." Decided
+the same day: "Rules, then model", and "On the node, kept".*
+
+Two pages come after the sheet and before the figures.
+
+**A reading of this place** has five sections, always in this order: the region it belongs to, what the land allows,
+what people here need, how the place behaves, and the life of the street. **Ways to improve it** has four to six
+avenues. Each has a title, a reason with its figures, a first step, the nearest lab when the node knows one, and its
+place in Fab City's frame for action: one of the seven layers of the Full Stack (infrastructure, learning,
+value-generating projects, communities, place-based interventions, bioregional strategies, global networks), one of
+the Implementation Guide's three key actions (map and research, experiment, rethink) and one of three signals
+(socio-spatial, bioregional, asset). The page ends with what the reading cannot see, each gap with what fills it.
+
+- **The facts.** `app/reading.py` gathers the place-scale figures the node holds into one document: what the place
+  pack counts within a kilometre, the surface heat, the terrain, the rivers and basins, the grid's mix, the city on the
+  Index, the labs within 50 km, the node's held cells, and the days its own outdoor sensors measured over the WHO
+  guideline for a day (stated only with 30 measured days). A number in the reading comes from this document and from
+  nowhere else. A figure older than 400 days counts as not held, except a yearly source, which has 800, and the
+  terrain, which is computed once. The place pack writes the nearest school, clinic or market only when it finds one
+  within its radius, so a distance older than the pack's last run is dropped, and none drawn within the radius is a
+  finding the reading states, not a gap. The packs are read in process, and each held figure's pack is credited on the
+  sources page.
+- **Precision.** The report leaves the house, so §6 holds: every distance from the node's point is a whole kilometre,
+  and the document carries no name and no point.
+- **Rules.** `rules()` writes the reading on every node, with no model and no network. A rule whose facts are missing
+  does not fire, and a sentence says no more than its figure does: a count from the public map says so where the map
+  is thin, a yearly count carries its year and is held only when its last year is within three times the satellite's footprint count for the same circle, and the words fit any node anywhere. Where fewer than four avenues fire, the gaps supply the rest as things to map and research, which is
+  where a place that is starting begins.
+- **A fuller text.** `POST /place/reading`, with the admin token, asks a model for the same two pages. Only a model on
+  the house's own network is asked, never an online one and never the small local one. The node keeps the text only
+  with the five sections, four to six avenues in the frame, each resting on a figure, no person named, each part
+  short enough for its page, no quantity in words, no figure that is not in the facts, and no section that gives back
+  more than half of the sentences of the node's own reading (the model is handed that reading as findings, and on node #1 it first returned it word for word). A count from one to seven
+  passes bare ("2 of its 7 cells") and never before a unit. The check reads whether a figure is the node's, not
+  whether it is said of the right thing, which is why the page says a model wrote it. A text that fails is asked for once more, with the reason. If that fails too, the node stores the
+  reason and its own reading stands. What the reading
+  cannot see is always the rules' to say.
+- **Kept.** A model's text is stored with the facts it was written from (`place_readings`, schema 0.66) and shown until
+  another is written. The node's own reading is never stored, so it cannot disagree with the facts.
+- **Who reads it.** `GET /place/reading` answers this machine or a token, like `/place/cells` and `/hydro`. A report
+  opened without the token has no reading pages.
+- **Who wrote it.** Under each title the page says so: this node, from its own figures, or a language model on the
+  house's network, with its name, and the date. A page a model wrote never passes as a person's.
+- **Its length.** A page is one A4 sheet. The node's own avenues fit with what it cannot see. A model's avenues past
+  four go on a page of their own.
+
+The thresholds in the rules are first guesses, tuned on node #1's own reading.
+
 ## 12 · The report, offered (17 November 2026)
 
 *Asked by Tomas, 17 November 2026: "the report download should be more visible in the bottom of the place tab, explaining
@@ -197,5 +248,5 @@ The last block of Place, after What changed and The place in figures, says what 
 line on who the report is for, a line on what is in it, and a line on how it is made: the browser prints it, nothing is
 sent anywhere, and the house is drawn as a blurred cell. **Open the report** opens it on Paper and **Dark version** on
 Screen. A screen without the token reads, in place of the last line, the sentence the sheet itself uses for the map of
-the house (§6). The Download menu's line and the Tools row stay. The block is hidden with the rest of Place while the
+the house (§6). Beside the buttons, on a screen holding the token, one line says who wrote the reading and when (§11). The Download menu's line and the Tools row stay. The block is hidden with the rest of Place while the
 report is open, and it is never printed.

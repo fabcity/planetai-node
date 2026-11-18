@@ -3905,6 +3905,20 @@ async function report() {
   for (const tok of [true, false]) {
     const tag = tok ? 'with the token' : 'without the token';
     const r = await openRig({ w: 1440, h: 900, touch: false, admin: tok ? ADMIN : null, gl: tok, ground: { on_disk: {}, layers: {} }, mem: 'doors' });
+    /* the reading (§11): with the token the node answers its own reading, six avenues and what it cannot see, and may be
+       asked for a fuller one; a press shows it being written, and the text that lands redraws the two pages without a
+       new picture. Without the token the page does not ask, and the report is the pages it was */
+    const AV = n => Array.from({ length: n }, (_, i) => ({ title: `Avenue ${i + 1}: shade and soak the hardest ground on the street`, why: 'The surface runs 0.6 °C hotter than the land around it, with 34% of the ground green.',
+      first_step: 'Pick the hottest stretch of street, and plant or shade twenty metres of it before the next dry season.', layer: 'Place-based interventions', action: 'Experiment', signal: 'bioregional', with: 'the lab about 3 km away' }));
+    const RD = { facts_at: '2026-11-17', state: 'none', refused: null, can_write: true, written: null, written_at: null, by: 'node',
+      rules: { sections: ['The region it belongs to', 'What the land allows', 'What people here need', 'How the place behaves', 'The life of the street'].map((heading, i) => ({ id: 's' + i, heading,
+        lines: ['Rain that falls here leaves by a basin of 319 km², inside a bioregion of 140,535 km².', 'The nearest river is about 4 km away.', 'Between 84% and 99% of the electricity here is burned, on the Bali grid.'] })),
+        avenues: AV(6), blind: [{ what: 'trees and farmed land from the satellite', command: 'turn on the earth-engine pack in Set up › Packs', facts: [] }] } };
+    let rd = RD, posts = 0;
+    if (tok) await r.page.route(u => new URL(u).pathname === '/place/reading', q => {
+      if (q.request().method() === 'POST') { posts++; rd = { ...RD, state: 'writing' }; return q.fulfill({ status: 202, contentType: 'application/json', body: '{"state":"writing","id":1}' }); }
+      return q.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(rd) });
+    });
     await r.page.goto(`${POP}/?fixture=${FIXTURE}#place/report`, { waitUntil: 'domcontentloaded' });
     const drawn = await r.page.waitForFunction(t => document.querySelector(t ? '#psheets .sheet .splan image' : '#psheets .sheet .snone') && !document.getElementById('preport').hidden,
       tok, { timeout: 45000 }).then(() => true, () => false);
@@ -3939,7 +3953,7 @@ async function report() {
     ok(!g.bar && g.shown.length === 1, `${tag}: in print more than the sheet shows: ${g.shown}${g.bar ? ', the bar' : ''}`);
     /* A4 portrait at 96 px to the inch is 794 × 1123; a page is 296 mm tall, so 1119 */
     const N = g.pg.length;
-    ok(N >= 3 && N <= 4 && g.pg.every((p, i) => p.head.endsWith(`page ${i + 1} of ${N}`)), `${tag}: the report has ${N} pages, heads ${JSON.stringify(g.pg.map(p => p.head))}`);
+    ok(N >= (tok ? 5 : 3) && N <= (tok ? 6 : 4) && g.pg.every((p, i) => p.head.endsWith(`page ${i + 1} of ${N}`)), `${tag}: the report has ${N} pages, heads ${JSON.stringify(g.pg.map(p => p.head))}`);
     g.pg.forEach((p, i) => ok(Math.abs(p.w - 794) <= 2 && Math.abs(p.h - 1119) <= 2 && p.over[0] <= 1 && p.over[1] <= 1,
       `${tag}: report page ${i + 1} is ${p.w}×${p.h} px with ${p.over} px spilling out of it`));
     const pdf = await r.page.pdf({ preferCSSPageSize: true, printBackground: false });
@@ -3949,13 +3963,37 @@ async function report() {
     const land = boxes.filter(([w, h]) => Math.abs(w - 842) < 2 && Math.abs(h - 595) < 2).length, port = boxes.filter(([w, h]) => Math.abs(w - 595) < 2 && Math.abs(h - 842) < 2).length;
     ok(land === 1 && port === N && boxes.length === pages, `${tag}: not one A4 landscape page and ${N} portrait ones: ${JSON.stringify(boxes)}`);
     said.push(`${tag} ${g.sheet[2] - g.sheet[0]}×${g.sheet[3] - g.sheet[1]} px and ${N} pages`);
+    if (tok) {
+      await r.page.emulateMedia({ media: 'screen' });
+      const pic = await r.page.evaluate(() => document.querySelector('#psheets .sheet .splan image').getAttribute('href').length);
+      const w0 = await r.page.evaluate(() => ({ btn: !document.getElementById('prwrite').hidden && document.getElementById('prwrite').textContent, who: document.querySelector('.rpage .rwho').textContent, av: document.querySelectorAll('.rpage .av').length }));
+      ok(w0.btn === 'Write a fuller reading' && /^Written by this node from its own figures, 17 November 2026\.$/.test(w0.who) && w0.av === 6, `${tag}: the reading's pages ${JSON.stringify(w0)}`);
+      await r.page.click('#prwrite');
+      const busy = await r.page.waitForFunction(() => document.getElementById('prwrite').disabled && /^Writing/.test(document.getElementById('prwrite').textContent), null, { timeout: 10000 }).then(() => true, () => false);
+      rd = { ...RD, state: 'written', written_at: '2026-11-17T03:04:05+00:00', by: { model: 'qwen3.5:122b', where: 'your network' },
+        written: { sections: Object.fromEntries(RD.rules.sections.map(x => [x.id, 'A model wrote this paragraph about the place, from the figures the node holds.'])), avenues: AV(6).map(a => ({ ...a, with: null })) } };
+      const landed = await r.page.waitForFunction(() => /^Written by a language model on your network \(qwen3\.5:122b\)/.test(document.querySelector('.rpage .rwho').textContent)
+        && document.getElementById('prwrite').textContent === 'Write it again', null, { timeout: 20000 }).then(() => true, () => false);
+      const w1 = await r.page.evaluate(() => ({ pages: document.querySelectorAll('.rpage').length, cont: /continued/.test(document.querySelectorAll('.rpage')[2].textContent),
+        pic: document.querySelector('#psheets .sheet .splan image').getAttribute('href').length, heights: [...document.querySelectorAll('.rpage')].map(a => { const pad = parseFloat(getComputedStyle(a).paddingBottom);
+          return Math.round(a.getBoundingClientRect().bottom - pad - a.lastElementChild.getBoundingClientRect().bottom); }) }));
+      ok(posts === 1 && busy && landed && w1.pages === N + 1 && w1.cont && w1.pic === pic && w1.heights.every(x => x >= 0),
+        `${tag}: asking for the fuller reading: ${posts} POST, busy ${busy}, landed ${landed}, ${JSON.stringify(w1)} (the picture was ${pic})`);
+      if (posts === 1 && busy && landed) said.push('a fuller reading written in place');
+    }
     await r.browser.close();
   }
   /* Asking for it (§9 step 3): on Place with the token, the Ask pane's answer carries a button, and the button opens
      #place/report in the register the model passed on (Screen here) */
   { const was = process.env.PAI_ASK_MODEL; process.env.PAI_ASK_MODEL = was || 'qwen3.5:4b';
     const r = await openRig({ w: 1440, h: 900, touch: false, admin: ADMIN, gl: true, ground: { on_disk: {}, layers: {} }, mem: 'doors' });
+    await r.page.route(u => new URL(u).pathname === '/place/reading', q => q.fulfill({ status: 200, contentType: 'application/json',
+      body: JSON.stringify({ facts_at: '2026-11-17', state: 'none', refused: null, can_write: false, written: null, written_at: null, by: 'node', rules: { sections: [], avenues: [], blind: [] } }) }));
     await r.page.goto(`${POP}/?fixture=${FIXTURE}#place`, { waitUntil: 'domcontentloaded' });
+    /* beside its buttons, who wrote the reading and when (§11), asked for once the figures are drawn */
+    const who = await r.page.waitForFunction(() => document.getElementById('prfwho').textContent === 'Reading written 17 November 2026 by this node', null, { timeout: 30000 })
+      .then(() => true, () => r.page.evaluate(() => document.getElementById('prfwho').textContent));
+    ok(who === true, `report: the foot of Place does not say who wrote the reading: ${JSON.stringify(who)}`);
     /* the foot of Place offers it (§12): its button opens the report on Paper, and Back to Place shows the block again */
     const foot = await r.page.waitForSelector('#preportfoot [data-prf="paper"]', { timeout: 20000 }).then(async () => {
       await r.page.click('#preportfoot [data-prf="paper"]');

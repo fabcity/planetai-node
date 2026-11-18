@@ -59,25 +59,58 @@ function sheetHTML(D, c, c8) {
     + `<div class="sfoot"><p class="mono">${where}</p><p>${[...(c.credits || []), made].map(esc).join(' · ')}</p></div></div></div></article>`;
 }
 
-/* THE REPORT'S PAGES (SPEC_place_report §5), A4 portrait after the sheet: the place in figures, what the node holds about
+/* THE READING (SPEC_place_report §11), the report's first two pages: what kind of place this is, in five sections, and
+   the ways to improve it, each in the frame of the Fab City Full Stack, with what the reading cannot see. `R` is GET
+   /place/reading: the node's own rules, and a model's text in their place when one was written and held. Under each
+   title the page says who wrote it and when, so a text a model wrote never passes as a person's. With no reading (the
+   route refused or did not answer) there are no pages. */
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const longDay = iso => { const [y, m, d] = String(iso).slice(0, 10).split('-').map(Number); return `${d} ${MONTHS[m - 1]} ${y}`; };
+const readingBy = R => R.written
+  ? `Written by a language model on ${R.by.where} (${R.by.model}) from the node’s figures, ${longDay(R.written_at)}. The node checked its numbers.`
+  : `Written by this node from its own figures, ${longDay(R.facts_at)}.`;
+/* the same, in one line, for the block at the foot of Place (§12) */
+const readingFoot = R => `Reading written ${longDay(R.written ? R.written_at : R.facts_at)} by ${R.written ? `a language model on ${R.by.where}` : 'this node'}`;
+function readingPages(D, R) {
+  if (!R || !R.rules) return [];
+  const W = R.written, who = `<p class="rwho">${esc(readingBy(R))}</p>`, blind = R.rules.blind || [];
+  /* a model's avenue to experiment keeps the lab the rules found: the facts hold its distance, the model was not asked for it */
+  const lab = (R.rules.avenues.find(a => a.with) || {}).with, withOf = a => a.with || (W && a.action === 'Experiment' ? lab : null);
+  const secs = R.rules.sections.map(s => `<section class="rs"><h4>${esc(s.heading)}</h4><p>${esc(W ? W.sections[s.id] : s.lines.join(' '))}</p></section>`).join('');
+  const cannot = blind.length ? '<h3 class="pmh">what this reading cannot see</h3><p class="rblind">The node does not hold these yet. Each is followed by what fills it.</p><ul class="rblind">'
+    + blind.map(b => `<li>${esc(b.what)}: <code>${esc(b.command)}</code></li>`).join('') + '</ul>' : '';
+  /* a page is one A4 sheet and does not grow in print. The node's own avenues are short by construction and fit with
+     what it cannot see. A model's are as long as it wrote them (reading.py caps each part), so past four they go on a
+     page of their own with what is missing */
+  const AV = W ? W.avenues : R.rules.avenues, av = (a, i) => `<div class="av"><b>${i + 1}</b><div><h4>${esc(a.title)}</h4><p class="avf">${esc(a.layer)} · ${esc(a.action)}</p>`
+    + `<p>${esc(a.why)}</p><p><span class="avk">First step</span> ${esc(a.first_step)}</p>${withOf(a) ? `<p><span class="avk">With</span> ${esc(withOf(a))}</p>` : ''}</div></div>`;
+  const cut = W && AV.length > 4 ? 4 : AV.length, title = '<h3 class="pmh">ways to improve it</h3>';
+  return [`<h3 class="pmh">a reading of this place</h3>${who}${secs}`,
+    title + who + AV.slice(0, cut).map(av).join('') + (cut < AV.length ? '' : cannot),
+    cut < AV.length && title.replace('</h3>', ', continued</h3>') + AV.slice(cut).map((a, i) => av(a, cut + i)).join('') + cannot].filter(Boolean);
+}
+
+/* THE REPORT'S PAGES (SPEC_place_report §5), A4 portrait after the sheet: the reading and its avenues (§11), then the place in figures, what the node holds about
    its place, what changed (none without satellite years) and the sources with how to cite. Each has the head line, and
    N counts the pages there. The rows come as the band, the years and the cake make them (doors-place.js reportParts). */
 function reportPages(D, r) {
-  const h = D.health || {}, row = (...c) => `<tr>${c.map(x => `<td>${x}</td>`).join('')}</tr>`, credits = [...new Set(r.credits)];
+  const h = D.health || {}, row = (...c) => `<tr>${c.map(x => `<td>${x}</td>`).join('')}</tr>`, credits = [...new Set(r.credits)], read = readingPages(D, r.reading);
   const cake = r.cake.map(s => `<tr><th colspan="4">${esc(s.name)}</th></tr>` + (s.rows.length
     ? s.rows.map(x => row(esc(x.name), esc(x.src), x.held, x.fill ? `<code>${esc(x.fill)}</code>` : esc(x.none || ''))).join('') : row('<span class="fine">none yet</span>', '', '', ''))).join('');
   const pages = [
+    ...read,
     r.figures + (r.index ? `<p class="fine">${esc(r.index.name)} has its own report on the Fab City Index, which says the rest about the city: `
       + `<a href="${esc(r.index.url)}" target="_blank" rel="noopener">${esc(r.index.url)}</a></p>` : ''),
     `<h3 class="pmh">what the node holds about its place</h3><table class="tbl rcake"><tr><th>layer</th><th>source</th><th>held</th><th>to fill it</th></tr>${cake}</table>`,
     r.change,
     `<h3 class="pmh">sources and how to cite</h3>${credits.map(c => `<p>${esc(c)}</p>`).join('')}`
       + (credits.some(c => /OpenStreetMap/.test(c)) ? '<p>A map made from OpenStreetMap is a Produced Work under the ODbL, so it carries the credit and nothing more.</p>' : '')
+      + (read.length ? '<p>The avenues follow the Fab City Full Stack: fab.city.</p>' : '')
       + `<h3 class="pmh">to cite this report</h3><p class="mono">${esc(`${D.node.name}, Place report, cell ${(h.cell || {}).id}, PLANETAI ${h.version}, made ${r.date}.`)}</p>`,
   ].filter(Boolean);
   return pages.map((b, i) => `<article class="rpage" aria-label="Page ${i + 1} of ${pages.length}"><p class="rhead">${esc(`${D.node.name} · Place report · page ${i + 1} of ${pages.length}`)}</p>${b}</article>`).join('');
 }
 
-const SHEETS = { gridStep, gridLines, sheetLegend, sheetSVG, sheetHTML, reportPages };
+const SHEETS = { gridStep, gridLines, sheetLegend, sheetSVG, sheetHTML, reportPages, readingPages, readingBy, readingFoot };
 if (typeof window !== 'undefined') Object.assign(window, SHEETS);
 if (typeof module !== 'undefined') module.exports = SHEETS;

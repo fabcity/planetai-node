@@ -381,6 +381,14 @@ body.preport .page[data-view="place"]>:not(#preport){display:none}
 .rhead{margin:0 0 8mm;padding-bottom:2mm;border-bottom:1px solid var(--hair);font:400 10px var(--mono);color:var(--mute)}
 .rpage .pmh{margin:0 0 4px;font-size:var(--t-small)}.rpage .pmh~.pmh{margin-top:6mm}.rpage p{margin:0 0 6px}.rpage .fine{margin-top:10px}
 .rpage .pair{height:auto;gap:4mm;margin-top:6px}.rpage .pair figure{aspect-ratio:1}.rpage .pairnote{padding:6px 0;border:0}
+/* the reading (§11): five short sections, then the avenues, each numbered, with its layer and key action in small type */
+.rpage .rwho{margin:0 0 5mm;font:400 10px var(--mono);color:var(--mute)}
+.rpage .rs{margin:0 0 4mm}.rpage .rs h4,.rpage .av h4{margin:0 0 1mm;font:500 13px/1.3 var(--body);color:var(--ink)}.rpage .rs p{font:400 12px/1.5 var(--body);max-width:72ch}
+.rpage .av{display:grid;grid-template-columns:7mm minmax(0,1fr);gap:0 2mm;margin:0 0 3.5mm;break-inside:avoid}.rpage .av>b{font:400 13px/1.3 var(--mono);color:var(--mute)}
+.rpage .av p{margin:0 0 2px;font:400 11.5px/1.45 var(--body)}.rpage .av .avf{font:400 10px var(--mono);color:var(--mute);margin-bottom:3px}
+.rpage .avk{font:400 10px var(--mono);color:var(--mute);margin-right:4px}
+.rpage .rblind{margin:0 0 3px;padding:0;font:400 11px/1.45 var(--body);list-style:none}.rpage ul.rblind li{margin:0 0 2px}.rblind code{font-size:10px}
+.prbar #prnote{flex-basis:100%;margin:0}
 .rcake th,.rcake td{padding:2px 8px 2px 0;font-size:11px}.rcake th[colspan]{padding-top:8px;color:var(--ink)}.rcake code{font-size:10px}
 @media (max-width:480px){.psheets{padding:8px}.rpage{padding:16px}}
 @page sheet{size:A4 landscape;margin:0}
@@ -1332,7 +1340,7 @@ body:not(.classic) .hero .ladder.folded{display:none}
     <h2 id="prfh">The Place report</h2>
     <div class="prfb">
       <p class="prfl">This place on paper, to hand to the neighbours, the council or a funder.</p>
-      <p>A plan of the map as you have it on screen. Its figures, what the node holds and what it does not, what changed year on year, and the sources.</p>
+      <p>A plan of the map as you have it on screen. A reading of the place, with ways to improve it. Its figures, what the node holds and what it does not, what changed year on year, and the sources.</p>
       <p id="prfhow">Your browser prints it or saves it as a PDF. Nothing is sent anywhere, and the house is drawn as a blurred cell.</p>
     </div>
     <div class="prfa"><button type="button" class="ybtn" data-prf="paper">Open the report</button><button type="button" class="ybtn" data-prf="screen">Dark version</button><p id="prfwho" class="fine"></p></div>
@@ -1340,7 +1348,8 @@ body:not(.classic) .hero .ladder.folded{display:none}
   <!-- THE PLACE REPORT (SPEC_place_report §3): #place/report, the sheet to print or save as PDF -->
   <div id="preport" class="preport" hidden>
     <div class="prbar"><div class="reg" role="group" aria-label="Register of the map on the sheet"><button type="button" data-reg="paper" aria-pressed="true">Paper</button><button type="button" data-reg="screen" aria-pressed="false">Screen</button></div>
-      <button type="button" id="prprint" class="ybtn">Print or save as PDF</button><a href="#place">Back to Place</a></div>
+      <button type="button" id="prprint" class="ybtn">Print or save as PDF</button><button type="button" id="prwrite" class="ybtn" hidden>Write a fuller reading</button><a href="#place">Back to Place</a>
+      <p id="prnote" class="fine" role="status" hidden></p></div>
     <div id="psheets" class="psheets"></div>
   </div>
 </section>

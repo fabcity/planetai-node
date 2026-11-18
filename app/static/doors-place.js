@@ -213,7 +213,7 @@ document.addEventListener('click', e => { if ($('#ptools').hidden === false && !
    pages on a grey ground, under one bar: Paper · Screen, Print or save as PDF, Back to Place. The picture is taken on the way in and again when
    the register changes, with the map shown for it (doors-placemap.js placeSheet). A redraw that is not a new address, a
    resize or the browser laying the page out to print it, keeps the sheet it has. */
-let PREG = 'paper', PSHEET = null, PTAKING = null;
+let PREG = 'paper', PSHEET = null, PTAKING = null, PPARTS = null, PPOLL = null;
 function report(again) {
   const box = $('#preport'), show = v => { box.hidden = !v; document.body.classList.toggle('preport', v); };
   if (location.hash !== '#place/report') { PSHEET = null; show(false); return null; }
@@ -223,24 +223,41 @@ function report(again) {
   if (PSHEET && !again) { show(true); return null; }
   show(false);
   const get = p => doorsFetch(p).then(r => (r.ok ? r.json() : null)).catch(() => null), reg = PREG;
-  return (PTAKING = Promise.all([window.placeSheet(reg === 'paper'), get('/geo/cell?id=' + D.health.cell.id), get('/hydro')]).then(([s, c8, H]) => {
+  return (PTAKING = Promise.all([window.placeSheet(reg === 'paper'), get('/geo/cell?id=' + D.health.cell.id), get('/hydro'), get('/place/reading')]).then(([s, c8, H, RD]) => {
     PTAKING = null;
     if (location.hash !== '#place/report') return;
     if (reg !== PREG) return report(true);   // the other register was pressed while this one was taken
-    PSHEET = s; $('#psheets').innerHTML = sheetHTML(D, s, c8 && c8.ring) + reportPages(D, reportParts(s, H));
+    PSHEET = s; PPARTS = { c8, H }; pages(RD);
     box.querySelectorAll('[data-reg]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.reg === PREG)));
     show(true); window.scrollTo(0, 0);
   }).catch(e => { PTAKING = null; $('#psheets').innerHTML = `<p class="fine">The picture was not taken: ${esc(e.message)}</p>`; show(true); }));
 }
-/* What the pages carry (SPEC_place_report §5): the band's rows with Rivers in them, the cake, what changed, and every
+/* THE READING ON THE REPORT (SPEC_place_report §11). pages() draws the sheet already taken and the pages after it with
+   the reading it is given, so a new reading redraws them without a new picture. With the admin token and a model on the
+   house's network the bar offers Write a fuller reading: a press asks the node, the node answers at once and writes in
+   its own time, and the page asks again every ten seconds until the text is written or refused. */
+function pages(RD) {
+  footWho(RD);
+  $('#psheets').innerHTML = sheetHTML(D, PSHEET, PPARTS.c8 && PPARTS.c8.ring) + reportPages(D, reportParts(PSHEET, PPARTS.H, RD));
+  const b = $('#prwrite'), n = $('#prnote'), busy = !!RD && RD.state === 'writing';
+  b.hidden = !(RD && RD.can_write); b.disabled = busy;
+  b.textContent = busy ? 'Writing, a few minutes' : RD && RD.written ? 'Write it again' : 'Write a fuller reading';
+  n.hidden = !(RD && RD.state === 'refused'); n.textContent = n.hidden ? '' : `The fuller reading was not kept: ${RD.refused}. The node’s own reading stands.`;
+  clearTimeout(PPOLL);
+  if (busy) PPOLL = setTimeout(() => doorsFetch('/place/reading').then(r => (r.ok ? r.json() : null)).catch(() => null)
+    .then(R2 => { if (location.hash === '#place/report' && PSHEET) pages(R2 || RD); }), 10000);
+}
+$('#prwrite').onclick = () => doorsFetch('/place/reading', { method: 'POST' }).then(r => r.ok ? doorsFetch('/place/reading').then(g => g.json()) : r.json().then(e => { throw new Error(e.detail || `the node answered ${r.status}`); }))
+  .then(RD => { if (PSHEET) pages(RD); }).catch(e => { const n = $('#prnote'); n.hidden = false; n.textContent = e.message; });
+/* What the pages carry (SPEC_place_report §5; the reading's own credits ride in RD.credits, §11): the band's rows with Rivers in them, the cake, what changed, and every
    credit they owe in the node's words. /earth and /hydro bring their own; the place and index packs' attributions do not
    reach the page, so those two lines are their pack.yaml's, as written there. */
-function reportParts(s, H) {
+function reportParts(s, H, RD) {
   const P = D.index_place, E = D.earth || {}, ch = {}, Y = D.place_yearly || [], read = P && P.place && P.read && P.read.at;
   if ((E.sentinel || []).length || Y.length) layer(ch);
-  return { date: s.date, figures: figures(riversRow(H)), cake: window.placeCake(), change: ch.innerHTML || null,
+  return { date: s.date, reading: RD, figures: figures(riversRow(H)), cake: window.placeCake(), change: ch.innerHTML || null,
     index: read && P.links && /^https:\/\//.test(P.links.report || '') ? { name: P.place.name || P.chosen, url: P.links.report } : null,
-    credits: [...(s.credits || []), ...((E.sentinel || []).length ? E.credit : []), ...((E.changes || []).length && E.attribution ? [E.attribution] : []),
+    credits: [...(s.credits || []), ...((RD && RD.credits) || []), ...((E.sentinel || []).length ? E.credit : []), ...((E.changes || []).length && E.attribution ? [E.attribution] : []),
       ...(Y.length ? ['Google Open Buildings V3 and Temporal v1 (CC BY 4.0) via Earth Engine'] : []), ...(H && H.nearest && H.attribution ? [H.attribution] : []),
       ...(read ? ['Fab City Index, CC BY 4.0, Fab City Foundation'] : [])] };
 }
@@ -249,6 +266,11 @@ $('#prprint').onclick = () => window.print();
 /* the foot of Place (SPEC_place_report §12): its two buttons open the report, and a screen without the token is told
    where the map of the house stays, in the sheet's own sentence */
 document.querySelectorAll('#preportfoot [data-prf]').forEach(b => b.onclick = () => window.placeReport(b.dataset.prf));
+/* beside them, who wrote the reading and when (§11): asked once when the figures are drawn, on a screen holding the
+   token, and written again by the report when a new reading lands */
+let PWHO = false;
+function footWho(RD) { if (RD && RD.rules) $('#prfwho').textContent = readingFoot(RD); }
+function who() { if (PWHO || !DOORS_TOKEN()) return; PWHO = true; doorsFetch('/place/reading').then(r => (r.ok ? r.json() : null)).then(footWho).catch(() => {}); }
 if (!DOORS_TOKEN()) $('#prfhow').textContent = 'Your browser prints it or saves it as a PDF, and nothing is sent anywhere. ' + window.placeNoMap;
 /* the Ask pane's button (doors-core.js): the report in the register asked for */
 window.placeReport = reg => { PREG = reg === 'screen' ? 'screen' : 'paper'; if (location.hash === '#place/report') report(true); else location.hash = '#place/report'; };
@@ -323,7 +345,7 @@ function figures(hydro) {
     + (ch ? `<p class="fine">Land: AlphaEarth, ${ch.year_a} → ${ch.year_b}.</p>` : '');
   if (hydro != null) return h;
   $('#pfigures').innerHTML = h;
-  rivers();
+  rivers(); who();
 }
 /* RIVERS, a row of the figures once the hydro pack has fetched (GET /hydro, token-only like its map rows): the nearest
    river in the pack's own sentence, the largest in the square, and a way up to both on the map. Nothing without the

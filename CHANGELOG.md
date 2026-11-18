@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **The Place report reads the place.** Two pages now come before the figures. A reading of this place says what kind
+  of place this is, under five headings, and each sentence rests on a figure the node holds. Ways to improve it lists
+  four to six things worth doing here, each with a first step, the nearest lab, and its layer and key action in the Fab
+  City Full Stack, and it ends with what the reading cannot see. Every node writes this from rules, with no model. With
+  a model on your own network, **Write a fuller reading** asks it, and the node keeps the text only if its numbers are
+  the node's own and it says more than the node's own reading does. Each page says who wrote it and when, and so does the block at the foot of Place. `GET` and `POST /place/reading`, schema 0.66. docs/place,
+  docs/api.
 - **Place shows what can be pressed.** The layer list has a head that says what a press does, and each row's mark is a
   switch that shows whether the row is on. New map and the species list are drawn as buttons, and the opacity slider
   stays in view under a row that is on. The drawing keys stand under the word Draw, each with its name and its letter

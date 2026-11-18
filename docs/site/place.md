@@ -111,7 +111,7 @@ To answer an issue from Now, open the drawing's form, choose the issue, say what
 
 At the foot of Place a block says what the report is and opens it: **Open the report** for the light sheet and
 **Dark version** for the black one. **Report, to print or save as PDF**, the last line in **Download**, opens the place
-as a sheet to print, with up to four pages of the report after it. **Place report** in Tools opens the same. The sheet is what the screen showed when you pressed it: the scale in view, the
+as a sheet to print, with the pages of the report after it. **Place report** in Tools opens the same. The sheet is what the screen showed when you pressed it: the scale in view, the
 layers that are on, the satellite or the streets, and the maps on the screen. To print the seven cells, go to Village
 first.
 
@@ -136,6 +136,31 @@ Each figure keeps its word, live, partial, model or cached, as it has on Place.
 
 You can also ask for it. Type "make me the place report" in Ask, on a screen holding the token, and the answer has a
 button, **Open the Place report**, that opens it. Ask for it on Screen and it opens on Screen. You still press Print.
+
+### The reading, and ways to improve the place
+
+On a screen holding the token, two pages come before the figures.
+
+**A reading of this place** says what kind of place this is, under five headings: the region it belongs to, what the
+land allows, what people here need, how the place behaves, and the life of the street. Each sentence rests on a figure
+the node holds, such as the basin the rain leaves by, how much of the grid's power is burned, the green ground within
+a kilometre, or the buildings the satellite counts against the ones on the public map.
+
+**Ways to improve it** lists four to six things worth doing here. Each has its reason, with the figures, a first step
+that a household, a neighbourhood council or a lab can start this month, and the nearest lab when the node knows one. Under its title
+each carries a layer of the Fab City Full Stack and one of its key actions: map and research, experiment, or rethink.
+The page ends with what the reading cannot see and what fills each gap. A node that holds little is given four things
+to map first.
+
+Under each title a line says who wrote the page and when, and the block at the foot of Place says the same in one line. Every node writes its own reading from rules, with no model
+and no network. When Set up › Model has a model on your own network, the report's bar shows **Write a fuller reading**
+to a screen holding the admin token. Press it and the node asks that model, which takes a few minutes. The node keeps
+the text only if every figure in it is one the node holds. If not, it says why, and its own reading stands. The node
+does not send this to a model outside your network, and the small model on the node itself does not write it.
+
+Distances in the reading are whole kilometres, and what comes from the public map covers a kilometre round the node,
+so nothing in it is closer than the res-8 cell. A report opened without the token has no reading. The sources page
+credits each pack the reading rests on.
 
 **Paper** draws the map in the light palette, and the sheet starts there. **Screen** draws it black, as Place does.
 Changing it goes back to the map for a moment to draw it again. **Print or save as PDF** opens the browser's print with

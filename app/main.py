@@ -1579,6 +1579,8 @@ def export(day: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$")):
 import geo  # noqa: E402 — GET /place/geojson, /geo/* (app/geo.py)
 app.include_router(geo.router)
 app.include_router(cells.router)  # GET /place/cells, claim and release: the node's seven (app/cells.py)
+import reading  # noqa: E402
+app.include_router(reading.router)  # GET and POST /place/reading: the Place report's reading (app/reading.py)
 import area  # noqa: E402
 app.include_router(area.router)  # POST /area: the area pull, own, peers and open sources (app/area.py)
 import maps  # noqa: E402 — /place/maps, /place/marks: the household's drawings (app/maps.py)
