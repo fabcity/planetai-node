@@ -312,6 +312,62 @@ for _i, _x in enumerate(_hs):
         assert _c.count("<li") == _n and _c.count('class="on"') == 1, f"size {_s} at hour {_i}: {_c.count('<li')} rows, {_c.count('class=\"on\"')} on"
         _on = re.search(r'<li class="on"[^>]*>.*?<span class="t">(.*?)</span>', _c).group(1)
         assert _on == t["wall"]["titles"][_s][min(_n - 1, _i * _n // 24)], f"size {_s} at hour {_i} has {_on} on"
+# A /wall that fails or is slow (18 Nov review, I5): the column and the strip are painted before /wall answers; with no
+# /wall the Wall asks again in 30 s, 60 s, doubling to 5 min, and mounts the map when it comes; a redraw whose /wall
+# fails keeps the last good one; and a map whose WebGL context was lost is mounted again at the next draw.
+rprog = r"""
+const fs = require('fs'), vm = require('vm');
+const L = require('./app/static/doors-load.js');
+const core = fs.readFileSync('./app/static/doors-core.js', 'utf8'), pick = n => core.match(new RegExp('^const ' + n + ' = .*$', 'm'))[0];
+const F = JSON.parse(fs.readFileSync('%s', 'utf8')), els = {}, WF = fs.readFileSync('./tests/fixtures/wall-node1.json', 'utf8');
+let wallAns = [], waits = [], timers = [], mounts = 0;
+class FakeMap { constructor() { mounts++; this.ev = {}; FakeMap.last = this; } on(e, f) { (this.ev[e] ||= []).push(f); } fire(e) { (this.ev[e] || []).forEach(f => f()); }
+  addSource() {} addLayer() {} getLayer() { return true; } addControl() {} isMoving() { return false; } setLayoutProperty() {} setPaintProperty() {}
+  getSource() { return { setData() {} }; } fitBounds() {} getCenter() { return { toArray: () => [0, 0] }; } getZoom() { return 10; }
+  querySourceFeatures() { return []; } project() { return { x: 0, y: 0 }; } remove() {} }
+const ctx = { D: L.buildD({ ...F, days: F.issues_days }, 'en'), VIEWS: {}, $: q => (els[q] ||= { querySelectorAll: () => [] }), doorsLocal: L.doorsLocal, performance, console, JSON, Math, Promise,
+  doorsFetch: p => p === '/wall' ? new Promise(res => wallAns.push(res)) : Promise.resolve(new Response('{}', { status: 404 })),
+  setTimeout: (f, ms) => { waits.push(ms); timers.push(f); return timers.length; }, clearTimeout() {},
+  maplibregl: { Map: FakeMap, Marker: class {}, AttributionControl: class {} }, devicePixelRatio: 1, location: { origin: 'http://n' },
+  getComputedStyle: () => ({ getPropertyValue: () => '', fontSize: '20px' }),
+  CLOCK: { subs: new Map(), reduced: () => true, on() { return false; }, off() {} }, view: () => 'wall',
+  matchMedia: () => ({ matches: true, addEventListener() {} }), document: { fonts: { ready: Promise.resolve() }, createElement: () => ({}) } };
+els['#wmbox'] = { innerHTML: '', firstChild: {}, lastChild: { getContext: () => null }, getBoundingClientRect: () => ({ width: 800, height: 600 }) };
+vm.createContext(ctx);
+vm.runInContext(['esc', 'fmt', 'plain', 'said', 'num', 'unitOf', 'labelOf', 'loc', 'dayOf'].map(pick).join('\n') + '\n' + fs.readFileSync('./app/static/doors-wallmap.js', 'utf8')
+  + '\n' + fs.readFileSync('./app/static/doors-wall.js', 'utf8') + '\nD.askOff = true; $("#wnarr").classList = { toggle() {}, add() {}, remove() {} };', ctx);
+const WALL = () => vm.runInContext('WALL', ctx);
+const tick = () => new Promise(r => setImmediate(r));
+const answer = ok => { wallAns.shift()(ok ? new Response(WF) : new Response('{}', { status: 503 })); };
+const fire = async () => { const f = timers.shift(); f(); await tick(); };
+(async () => {
+  const out = {};
+  const first = ctx.VIEWS.wall(); await tick();
+  out.painted = { strip: els['#wstrip'].innerHTML.includes('class="wg"'), asked: wallAns.length, mounts };
+  answer(false); await first; await tick();
+  out.none = { map: els['#wmbox'].innerHTML, W: WALL().W, waits: waits.slice() };
+  for (let i = 0; i < 5; i++) { await fire(); answer(false); await tick(); await tick(); }
+  out.backoff = waits.slice();
+  await fire(); answer(true); await tick(); await tick();
+  out.came = { mounts, chapters: WALL().story.map(S => S.chapters.length), W: !!WALL().W, timers: timers.length };
+  const again = ctx.VIEWS.wall(); await tick(); answer(false); await again; await tick();
+  out.kept = { W: !!WALL().W, chapters: WALL().story.map(S => S.chapters.length), timers: timers.length, map: !!WALL().map };
+  const m0 = mounts; FakeMap.last.fire('webglcontextlost'); vm.runInContext('wallDraw(4)', ctx);
+  out.lost = { mounts: mounts - m0, lost: WALL().map.lost };
+  console.log(JSON.stringify(out));
+})();
+""" % replayed(FIX)
+_rr = subprocess.run(["node"], input=rprog, capture_output=True, text=True)
+assert _rr.returncode == 0, _rr.stderr[-2000:]
+rt = json.loads(_rr.stdout)
+assert rt["painted"] == {"strip": True, "asked": 1, "mounts": 0}, ("the strip is painted before /wall answers", rt["painted"])
+assert rt["none"]["map"] == '<p class="wnomap">The node sent no map.</p>' and rt["none"]["W"] is None and rt["none"]["waits"] == [30000], rt["none"]
+assert rt["backoff"] == [30000, 60000, 120000, 240000, 300000, 300000], ("30 s, then 60 s, doubling, at most 5 min", rt["backoff"])
+assert rt["came"]["mounts"] == 1 and rt["came"]["W"] and min(rt["came"]["chapters"]) >= 2 and rt["came"]["timers"] == 0, rt["came"]
+assert rt["kept"]["W"] and rt["kept"]["chapters"] == rt["came"]["chapters"] and rt["kept"]["timers"] == 0 and rt["kept"]["map"], \
+    ("a redraw whose /wall failed keeps the last good one, and asks no retry", rt["kept"])
+assert rt["lost"] == {"mounts": 1, "lost": False}, ("a lost WebGL context: a new map at the next draw", rt["lost"])
+print("doors: the Wall paints before /wall answers, asks again 30 s to 5 min while it has none, keeps the last good one, and remounts a lost map")
 # Over the map, as the approved mockup has them (Tomas, 18 Nov): the size, its cells, resolution and area at the top
 # left; the chapter's words with where they are from and one of the five words at the bottom left; the three sizes as
 # hexagons at the bottom right, only the size on the map lit.

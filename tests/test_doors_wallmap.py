@@ -14,7 +14,11 @@ const W = require('./app/static/doors-wallmap.js');
 const segs = W.crestSegments(800, 600, 204, 0), t = W.toward(204);
 const st = [{lat: -8.7, lon: 115.2, pm25: [10, null, 40]}, {lat: -8.8, lon: 115.1, pm25: [null, null, null]}];
 console.log(JSON.stringify({
-  at: [W.atHour([null, null, 3, null], 0), W.atHour([1, null, null], 2), W.atHour([null, null], 1), W.atHour([5, null, 7], 1), W.atHour([1, 2, 3], 1)],
+  at: [W.atHour([null, null, 3, null], 0), W.atHour([1, null, null], 2), W.atHour([null, null], 1), W.atHour([5, null, 7], 1), W.atHour([1, 2, 3], 1), W.atHour([1, 2, 3], 23), W.atHour([null, 4], 23)],
+  /* the dim's rings, signed area in lon/lat: the outer one and each hole */
+  wind: (() => { const area = r => r.slice(1).reduce((a, [x, y], i) => a + (r[i][0] * y - x * r[i][1]), 0) / 2;
+    const cells = JSON.parse(require('fs').readFileSync('tests/fixtures/wall-node1.json', 'utf8')).scales[0].cells;
+    return { raw: cells.map(c => area(c.ring)), mask: W.maskRings(cells).map(area), n: W.maskRings(cells).length }; })(),
   south: W.toward(180), n350: W.toward(350), unit: Math.hypot(W.toward(37).ux, W.toward(37).uy),
   n: segs.length, t,
   dot: segs.map(([x1, y1, x2, y2]) => (x2 - x1) * t.ux + (y2 - y1) * t.uy),
@@ -29,7 +33,10 @@ console.log(JSON.stringify({
 """], capture_output=True, text=True, check=True)
 R = json.loads(out.stdout)
 
-assert R["at"] == [3, 1, None, 5, 2], R["at"]
+assert R["at"] == [3, 1, None, 5, 2, 3, 4], ("a short day still has its last reading at hour 23", R["at"])
+w = R["wind"]
+assert w["n"] == 8 and all(a > 0 for a in w["raw"]) and w["mask"][0] > 0, ("the world and the h3 rings wind the same way", w)
+assert all(a < 0 for a in w["mask"][1:]), ("each hole winds against the outer ring, or MapLibre draws it as a polygon", w)
 assert abs(R["south"]["ux"]) < 1e-9 and abs(R["south"]["uy"] + 1) < 1e-9, R["south"]
 assert R["n350"]["uy"] > 0.98 and 0 < R["n350"]["ux"] < 0.2, R["n350"]   # from the north, so down the screen, a little right
 assert abs(R["unit"] - 1) < 1e-9
@@ -76,10 +83,13 @@ const empty = { ...nul(all), hours: { ...W0.hours } };
 const noIsland = nul(['island']);
 const noSun = clone(W0); noSun.grid.sun = null;
 const noWave = clone(W0); delete noWave.hours.wave_from;
+const genset = clone(W0); genset.grid.plants.unshift({ name: 'PLTD Genset', fuel: 'diesel', mw: 1.2, lat: -8.8, lon: 115.19, km: 2, large: false });
+const noLarge = clone(W0); noLarge.grid.plants = [genset.grid.plants[0]];
 console.log(JSON.stringify({
   full: M.wallStory(W0, D1), cap: ks(M.wallStory(W0, D0)), noWater: ks(M.wallStory(noWater, D1)),
   empty: M.wallStory(empty, { issues: {} }).map(s => [s.k, s.chapters.length, s.res, s.km2]), capOnly: ks(M.wallStory(empty, mkD({}))),
   noIsland: ks(M.wallStory(noIsland, D1))[2], noSun: ks(M.wallStory(noSun, D1))[0], noWave: M.wallStory(noWave, D1)[2].chapters.find(c => c.k === 'sea').says,
+  genset: M.wallStory(genset, D1)[2].chapters[0], noLarge: M.wallStory(noLarge, D1)[2].chapters[0],
   at: [M.chapterAt(23, 4), M.chapterAt(0, 5), M.chapterAt(23, 5), M.chapterAt(5, 4), M.chapterAt(6, 4), M.chapterAt(12, 1), M.chapterAt(24, 3)],
   names: JSON.parse(fs.readFileSync('app/issues/fixtures/node1-2026-10-06-figures.json', 'utf8')).sensors.map(s => s.name.trim()).filter(n => n.length > 3),
   lab: W0.lab.name,
@@ -107,7 +117,7 @@ print("  story: 5 / 4 / 4 chapters in order, the five words, hues are custom pro
 
 assert [c["layers"] for c in full[0]["chapters"]] == [["own-air"], ["roofs", "roofs-mask"], ["roofs-sun", "roofs-mask"], ["own-heat"], ["own-water"]]
 assert [c["layers"] for c in full[1]["chapters"]] == [["stations"], ["change"], ["lab"], ["rivers"]]
-assert [c["layers"] for c in full[2]["chapters"]] == [["grid"], ["basin", "rivers"], [], ["island", "stations"]]
+assert [c["layers"] for c in full[2]["chapters"]] == [["grid"], ["basin", "rivers"], [], ["island"]], "the island list holds the ring"
 assert [c["fit"] for c in full[2]["chapters"] if "fit" in c] == [[[115.237, -8.716]], full[2]["chapters"][1]["fit"], [[115.178, -8.625]]]
 assert len(CH(2, "basin")["fit"]) == 5 and "fit" not in CH(2, "sea") and "fit" not in CH(0, "air")
 assert CH(2, "city-air")["official"] == {"lon": 115.178, "lat": -8.625, "label": "Sempidi · government"}, CH(2, "city-air")["official"]
@@ -136,6 +146,10 @@ for story in S["named"]:
     shown = " ".join(c["src"] + " " + c["title"] for x in story for c in x["chapters"])
     assert not [n for n in held if n in shown], [n for n in held if n in shown]
 print("  story: captions read W in whole km and name no sensor, in no source and no title either")
+g = S["genset"]
+assert "Pesanggaran" in g["says"] and "Genset" not in g["says"] and g["fit"] == [[115.237, -8.716]], ("the nearest large plant, never a genset", g)
+assert "plant" not in S["noLarge"]["says"] and "fit" not in S["noLarge"], S["noLarge"]
+print("  story: the nearest large plant is the energy pack's 100 MW cut, never the nearest genset")
 
 assert S["cap"] == [["air", "built", "sun"], ["air", "change", "lab", "rivers"], ["grid", "basin", "sea", "city-air"]], \
     ("the capture holds no heat or water readouts, so those chapters are absent; the sun is W's", S["cap"])
@@ -202,3 +216,57 @@ assert len(mount["size"]) == 1 and mount["size"][0]["d"] == 2600 and mount["size
 print("  mount: a size change is one 2.6 s glide to its first chapter's frame; a chapter inside it 1.6 s; a redraw cuts")
 assert mount["fxOn"] and not mount["fxReduced"] and mount["fxBack"] and mount["fxGone"] and mount["removed"] == 1, mount
 print("  mount: reduced motion turned on mid-run takes the wind and the crests off the clock; destroy lets the map go")
+
+# ---- the sea under the crests, and a lost GPU context ----
+# The crests are clipped to the water in the node's street tiles. A clip read before those tiles came was an empty path,
+# kept for as long as the camera stayed put: no crests at all. It is read again when the map goes idle or the street
+# source gets data. While the camera glides there are no crests (each frame re-read every water vertex), and after it
+# they fade back in. A lost WebGL context says so on the handle, for the Wall to mount the map again.
+sea = json.loads(subprocess.run(["node", "-e", r"""
+const fs = require('fs'), vm = require('vm');
+const W = JSON.parse(fs.readFileSync('./tests/fixtures/wall-node1.json', 'utf8'));
+let water = [], moving = false, reads = 0;
+class FakeMap {
+  constructor() { this.ev = {}; FakeMap.last = this; }
+  on(e, f) { (this.ev[e] ||= []).push(f); } fire(e, a) { (this.ev[e] || []).forEach(f => f(a)); }
+  addSource() {} addLayer() {} getLayer() { return true; } addControl() {} isMoving() { return moving; }
+  setLayoutProperty() {} setPaintProperty() {} getSource() { return { setData() {} }; } fitBounds() {}
+  getCenter() { return { toArray: () => [0, 0] }; } getZoom() { return 10; }
+  querySourceFeatures() { reads++; return water; } project([x, y]) { return { x, y }; } remove() {}
+}
+class Path2D { constructor() { this.n = 0; } moveTo() { this.n++; } lineTo() { this.n++; } }
+const clips = [], strokes = [];
+const g = { setTransform() {}, clearRect() {}, save() {}, restore() {}, clip(p) { clips.push(p.n); }, beginPath() {}, moveTo() {}, lineTo() {},
+  stroke() { if (this.lineWidth !== 2) strokes.push(this.globalAlpha); }, globalAlpha: 1, lineWidth: 1 };   /* the crests' strokes; the wind's are 2 px */
+const subs = new Map();
+const CLOCK = { reduced: () => false, on(id, fn) { subs.set(id, fn); return true; }, off(id) { subs.delete(id); } };
+const el = { innerHTML: '', firstChild: {}, lastChild: { getContext: () => g }, getBoundingClientRect: () => ({ width: 800, height: 600 }) };
+const ctx = { maplibregl: { Map: FakeMap, Marker: class {}, AttributionControl: class {} }, Path2D, CLOCK, view: () => 'wall', performance, devicePixelRatio: 1,
+  console, W, el, location: { origin: 'http://n' }, D: { issues: {} }, Math,
+  getComputedStyle: () => ({ getPropertyValue: () => '#123456' }), document: { createElement: () => ({}) } };
+vm.createContext(ctx);
+vm.runInContext(fs.readFileSync('./app/static/doors-wallmap.js', 'utf8'), ctx);
+ctx.story = vm.runInContext('wallStory(W, { issues: {} })', ctx);
+const M = vm.runInContext('wallMapMount(el, W, story, { vector: true })', ctx), map = FakeMap.last, out = {};
+let t = 0; const frame = (dt = 16) => { t += dt; subs.get('wall-fx')(t); };
+map.fire('load'); M.go(2, true); M.hour(3); frame();
+out.before = clips.splice(0);                                      // the tiles have not come: an empty sea
+water = [{ geometry: { type: 'Polygon', coordinates: [[[0, 0], [10, 0], [10, 10], [0, 0]]] } }];
+frame(); out.cached = clips.splice(0);
+map.fire('sourcedata', { sourceId: 'sat' }); frame(); out.other = clips.splice(0);
+map.fire('sourcedata', { sourceId: 'v' }); frame(); out.came = clips.splice(0);
+reads = 0; moving = true; strokes.length = 0; frame(); frame(); out.glide = { clips: clips.splice(0), reads };
+moving = false; strokes.length = 0; for (let i = 0; i < 40; i++) frame(); out.fade = strokes.slice(); clips.length = 0;
+water = [...water, ...water]; map.fire('idle'); frame(); out.idle = clips.splice(0);
+out.lost0 = M.lost; map.fire('webglcontextlost'); out.lost1 = M.lost;
+console.log(JSON.stringify(out));
+"""], capture_output=True, text=True, check=True).stdout)
+assert sea["before"] == [0] and sea["cached"] == [0], sea
+assert sea["other"] == [0], "another source's data leaves the sea as it was"
+assert sea["came"] == [4], ("the street tiles came: the sea is read again", sea["came"])
+assert sea["glide"] == {"clips": [], "reads": 0}, ("no crests and no water read while the camera glides", sea["glide"])
+fade = sea["fade"]
+assert fade[0] < fade[5] < fade[-1] and abs(fade[-1] - 0.28) < 1e-9, ("the crests fade back in after a glide", fade[:6], fade[-1])
+assert sea["idle"] == [8], ("the map at rest reads the sea again", sea["idle"])
+assert sea["lost0"] is False and sea["lost1"] is True, "a lost WebGL context says so on the handle"
+print("  mount: the sea is read again when its tiles come or the map rests, never while it glides; the crests fade back in")

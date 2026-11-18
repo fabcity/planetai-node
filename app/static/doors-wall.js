@@ -61,8 +61,10 @@ function wallDay24(W) {
   const Hr = (W || {}).hours, hour = (k, dp) => Hr && (Hr[k] || []).some(x => x != null) ? { v: Hr[k], ts: Hr.buckets, dp, word: 'model', src: 'Open-Meteo' } : null;
   return { B, dust: issue('air'), heat: issue('heat'), sea: hour('swell_m', 1), wind: hour('wind_kmh', 0) };
 }
-/* s: the size on the map (an index of WALL.story); h: the replayed hour; map: wallMapMount's handle, null when none */
-const WALL = { R: null, W: null, story: [], map: null, s: 0, h: null, t0: 0, still: null };
+/* s: the size on the map (an index of WALL.story); h: the replayed hour; map: wallMapMount's handle, null when none.
+   W and G are the last good /wall and /ground/meta, kept across redraws; gen is the draw a late answer belongs to;
+   retry and tries pace asking /wall again while there is none */
+const WALL = { R: null, W: null, G: null, story: [], map: null, s: 0, h: null, t0: 0, still: null, gen: 0, retry: 0, tries: 0 };
 /* a thin line for the 24 hours, the hour marked, the red line where the reading has one */
 function wallSpark(r, h) {
   const ys = r.v.filter(x => x != null); if (!ys.length) return '';
@@ -108,6 +110,7 @@ function wallHexes() {
 /* one replayed hour, drawn whole: the strip, the column's chapters and the map */
 function wallDraw(h) {
   WALL.h = h; const R = WALL.R; if (!R || !$('#wallv')) return;
+  if (WALL.map && WALL.map.lost) wallMount();    /* the screen lost its WebGL context: a new map */
   const Hr = (WALL.W || {}).hours || {}, wd = atHour(Hr.wave_from || [], h), dr = atHour(Hr.wind_from || [], h);
   $('#wstrip').innerHTML = wallGauge('fine dust', R.dust, h, 'µg/m³', '--d-air') + wallGauge('apparent heat', R.heat, h, '°C', '--d-heat')
     + wallGauge(`swell${wallFrom(wd)}`, R.sea, h, 'm', '--d-sea', wd) + wallGauge(`wind${wallFrom(dr)}`, R.wind, h, 'km/h', '--d-wind', dr)
@@ -135,6 +138,30 @@ function wallTick(now) {
   if (s !== WALL.s) { wallScale(s); wallDraw(h); } else if (h !== WALL.h) wallDraw(h);   /* a size takes effect at its first hour */
 }
 const wallGet = p => doorsFetch(p).then(r => r.ok ? r.json() : null).catch(() => null);
+/* the map from the last good /wall, or one line where it would be */
+function wallMount() {
+  if (WALL.map) { WALL.map.destroy(); WALL.map = null; }
+  const box = $('#wmbox'); if (!box) return;
+  WALL.map = WALL.W ? wallMapMount(box, WALL.W, WALL.story, (WALL.G && WALL.G.on_disk) || {}) : null;
+  if (!WALL.map) box.innerHTML = `<p class="wnomap">${WALL.W ? 'This screen cannot draw the map.' : 'The node sent no map.'}</p>`;
+  wallScale(WALL.s, true);
+}
+/* a /wall that answered: the story and the strip from it, and the map */
+function wallTake(W, G) {
+  WALL.W = W; WALL.G = G || WALL.G; WALL.tries = 0; WALL.story = wallStory(W, D); WALL.R = wallDay24(W);
+  wallMount(); wallDraw(WALL.h);
+}
+/* no /wall yet (it failed, or is slow): ask again in 30 s, then 60 s, doubling to 5 min, until it answers */
+function wallRetry() {
+  if (WALL.retry) return;
+  WALL.retry = setTimeout(async () => {
+    WALL.retry = 0;
+    if (WALL.W || view() !== 'wall') return;    /* the Wall asks again itself when it opens */
+    const [W, G] = await Promise.all([wallGet('/wall'), WALL.G ? null : wallGet('/ground/meta')]);
+    if (WALL.W || view() !== 'wall') return;
+    if (W) wallTake(W, G); else wallRetry();
+  }, Math.min(300e3, 30e3 * 2 ** WALL.tries++));
+}
 VIEWS.wall = async function () {
   const k = D.lead, it = D.issues[k], still = CLOCK.reduced();
   const at = new Intl.DateTimeFormat('en-GB', { timeZone: D.tz, hour: '2-digit', minute: '2-digit' }).format(new Date(D.as_of));
@@ -147,9 +174,10 @@ VIEWS.wall = async function () {
       WALL.still = e.matches;
       if (e.matches) { CLOCK.off('wall-replay'); CLOCK.off('wall-fx'); wallScale(0, true); wallDraw(23); } else { WALL.t0 = performance.now(); CLOCK.on('wall-replay', wallTick); }
     }); }
-  /* one read of /wall a draw, and /ground/meta for which ground the node holds; a screen refused either draws without it */
-  const [W, G] = await Promise.all([wallGet('/wall'), wallGet('/ground/meta')]);
-  WALL.W = W; WALL.story = W ? wallStory(W, D) : []; WALL.R = wallDay24(W);
+  /* the column, the strip and the map from the last good /wall first, then one read of /wall and /ground/meta; a
+     screen refused either keeps what it had */
+  const gen = ++WALL.gen;
+  WALL.story = WALL.W ? wallStory(WALL.W, D) : []; WALL.R = wallDay24(WALL.W);
   if (WALL.map) { WALL.map.destroy(); WALL.map = null; }
   $('#wallv').innerHTML = `
     <div class="wtop wchrome"><button class="wback" onclick="location.hash='#now'">← back</button><span class="wnote said" id="wnote"></span></div>
@@ -165,11 +193,14 @@ VIEWS.wall = async function () {
       <section class="wnarr" id="wnarr" hidden data-learn="wall-narration" data-reads="/ask/status /ask" data-stage="observe" data-pack="core"></section>
     </aside>
     <footer class="wstrip" id="wstrip" data-learn="wall-strip" data-reads="/issues /wall" data-stage="observe" data-pack="core"></footer>`;
-  WALL.map = W ? wallMapMount($('#wmbox'), W, WALL.story, (G && G.on_disk) || {}) : null;
-  if (!WALL.map) $('#wmbox').innerHTML = `<p class="wnomap">${W ? 'This screen cannot draw the map.' : 'The node sent no map.'}</p>`;
-  wallScale(WALL.s, true); wallDraw(WALL.h); narrDraw(); document.fonts.ready.then(() => view() === 'wall' && headFit());
+  if (WALL.W) wallMount(); else wallScale(WALL.s, true);
+  wallDraw(WALL.h); narrDraw(); document.fonts.ready.then(() => view() === 'wall' && headFit());
   if (!NARR.busy && !NARR.typing && (!NARR.next || Date.now() >= NARR.next)) narrate(); else if (NARR.shown.length < NARR.text.length) narrType();
   if (!still) CLOCK.on('wall-replay', wallTick);
+  const [W, G] = await Promise.all([wallGet('/wall'), wallGet('/ground/meta')]);
+  if (gen !== WALL.gen || view() !== 'wall') return;     /* a later draw, or another door, owns the page now */
+  if (W && !(WALL.map && JSON.stringify([W, G || WALL.G]) === JSON.stringify([WALL.W, WALL.G]))) wallTake(W, G);   /* the same answers: the map stands */
+  else if (!W) { if (G) WALL.G = G; if (!WALL.map) wallMount(); if (!WALL.W) wallRetry(); }
 };
 /* THE NODE, THINKING ALOUD (R44, 7 Oct 2026). A reading of the figures by the node's own model, in plain words for
    people who know nothing about air science, units or maps: what is happening inside, how it compares with the street and the

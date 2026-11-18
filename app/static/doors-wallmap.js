@@ -15,7 +15,7 @@
 /* the reading at hour h; with none there, the nearest hour that has one, the earlier hour first on a tie; null if the
    whole day is empty (a gap in a station is shown as a gap, never as the neighbour's number passed off as its own) */
 const atHour = (v, h) => {
-  for (let d = 0; d < v.length; d++) {
+  for (let d = 0; d < 24; d++) {   /* the whole day, whatever v's length: [1, 2, 3] at hour 23 is 3 */
     if (v[h - d] != null) return v[h - d];
     if (v[h + d] != null) return v[h + d];
   }
@@ -52,6 +52,10 @@ const stationFeatures = (stations, h, line) => ({ type: 'FeatureCollection', fea
   return { type: 'Feature', geometry: { type: 'Point', coordinates: [s.lon, s.lat] },
     properties: { v: v ?? -1, over: v != null && v > line } };
 }) });
+
+/* the dim outside the base node's seven cells: the world, with each cell a hole. A hole winds against the outer ring
+   (MapLibre's classifyRings starts a new polygon at a ring wound the same way), and an h3 ring winds as the world's */
+const maskRings = cells => [[[-180, -85], [180, -85], [180, 85], [-180, 85], [-180, -85]], ...cells.map(c => [...c.ring].reverse())];
 
 /* ---- the story: which chapters each scale has ---- */
 
@@ -103,13 +107,13 @@ const wallStory = (W, D) => {
   if (num((stack.ring || {}).value) && (W.stations || []).length) community.push(ch('air', '--d-air', 'Air around', [+f(stack.ring.value, 1), UG], stack.ring.provenance,
     `Each dot is one of the ${W.stations.length} stations around the house, red in any hour it reads over the line.`, counted(stack.ring.source), ['stations']));
   if (W.change && num(W.change.ha)) community.push(ch('change', '--d-ground', 'Land that changed', [Math.round(W.change.ha), 'ha'], 'model',
-    `Ground that looked different in ${W.change.b} than in ${W.change.a}. The satellite sees that it changed, somebody walking there can tell what happened.`, 'AlphaEarth', ['change']));
+    `Ground that looked different in ${W.change.b} than in ${W.change.a}. The satellite sees that it changed. Somebody walking there can tell what happened.`, 'AlphaEarth', ['change']));
   if (W.lab) community.push(ch('lab', '--cells', 'The lab', [W.lab.km, 'km'], 'partial',
     `${W.lab.name} is the nearest fab lab, ${W.lab.km} km from the house. A lab like this one could run a community node here.`, 'the node’s record of the lab', ['lab']));
   if (W.rivers && W.river) community.push(ch('rivers', '--d-water', 'Rivers', [W.river.nearest_km, 'km'], 'model',
     `The nearest river is ${W.river.nearest_km} km from the house and carries ${f(W.river.nearest_m3s, 2)} m³/s on average.`, 'HydroATLAS, CC BY 4.0', ['rivers']));
 
-  const g = W.grid, plant = g && (g.plants || [])[0];
+  const g = W.grid, plant = g && (g.plants || []).find(p => p.large);   /* the energy pack's own cut, 100 MW */
   if (g && num(g.fossil_low_pct)) city.push(ch('grid', '--d-energy', 'Fossil power', [g.fossil_low_pct, '%'], 'model',
     `At least ${g.fossil_low_pct} % of the power here comes from burning fuel.${plant ? ` The nearest large plant is ${String(plant.name).replace(/^PLT\w+ /, '')}, ${plant.km} km away, running on ${plant.fuel}.` : ''}`,
     'PLN Bali system · OpenStreetMap', ['grid'], plant ? { fit: [[plant.lon, plant.lat]] } : {}));
@@ -126,7 +130,7 @@ const wallStory = (W, D) => {
   const items = (W.island || {}).items || [], off = items.find(i => i.official && num(i.pm25));
   if (off) city.push(ch('city-air', '--d-air', 'City air', [+f(off.pm25, 1), UG], 'partial',
     `${items.length} stations across the island. The ringed one at ${String(off.place || '').split(' ').pop()} is the government's, and its figure is worked back from its air index. The rest belong to people and businesses.`,
-    'Bali Air Dispatch · the government station, now', ['island', 'stations'],
+    'Bali Air Dispatch · the government station, now', ['island'],
     { fit: [[off.lon, off.lat]], official: { lon: off.lon, lat: off.lat, label: `${String(off.place || '').split(' ').pop()} · government` } }));
 
   const named = [['Base node', 'the house, its cell and the six around it', base], ['Community node', 'what a lab nearby could keep', community],
@@ -188,7 +192,7 @@ function wallMapMount(el, W, story, G = {}) {
       L({ id: 'roofs-sun', type: 'fill', source: 'v', 'source-layer': 'buildings', paint: { 'fill-color': C.energy, 'fill-opacity': .8 } });
     }
     /* everything outside the base node's seven cells, dimmed: the roofs are counted inside them */
-    add('mask', FC([F({ type: 'Polygon', coordinates: [[[-180, -85], [180, -85], [180, 85], [-180, 85], [-180, -85]], ...story[0].cells.map(c => c.ring)] })]));
+    add('mask', FC([F({ type: 'Polygon', coordinates: maskRings(story[0].cells) })]));
     L({ id: 'roofs-mask', type: 'fill', source: 'mask', paint: { 'fill-color': '#000', 'fill-opacity': .55 } });
     if (W.change) {
       map.addSource('change', { type: 'image', url: location.origin + W.change.png, coordinates: W.change.corners });   /* its own corners, never the node's point */
@@ -200,9 +204,9 @@ function wallMapMount(el, W, story, G = {}) {
       L({ id: 'basin-line', type: 'line', source: 'basin', paint: { 'line-color': C.water, 'line-width': 2, 'line-dasharray': [3, 2] } });
     }
     if (W.rivers) { add('rivers', W.rivers); L({ id: 'rivers', type: 'line', source: 'rivers', paint: { 'line-color': C.water, 'line-width': ['interpolate', ['linear'], ['coalesce', ['get', 'order'], 1], 1, 1.5, 4, 4] } }); }
-    const plants = (W.grid || {}).plants || [];
-    if (plants.length) {   /* the line starts at the cell's centre, never the house */
-      add('grid', FC([...plants.map(p => pt(p.lon, p.lat)), F({ type: 'LineString', coordinates: [W.centre, [plants[0].lon, plants[0].lat]] }, { flow: 1 })]));
+    const plants = (W.grid || {}).plants || [], big = plants.find(p => p.large);
+    if (plants.length) {   /* the line, to the nearest large plant, starts at the cell's centre, never the house */
+      add('grid', FC([...plants.map(p => pt(p.lon, p.lat)), ...(big ? [F({ type: 'LineString', coordinates: [W.centre, [big.lon, big.lat]] }, { flow: 1 })] : [])]));
       L({ id: 'grid-line', type: 'line', source: 'grid', filter: ['has', 'flow'], paint: { 'line-color': C.energy, 'line-width': 1.5, 'line-dasharray': [1, 2] } });
       L({ id: 'grid', type: 'circle', source: 'grid', filter: ['!', ['has', 'flow']], paint: { 'circle-radius': 9, 'circle-color': C.energy } });
     }
@@ -246,9 +250,9 @@ function wallMapMount(el, W, story, G = {}) {
   /* THE WIND AND THE SWELL at the replayed hour: streaks over the whole map where the wind goes, faster with its speed;
      crests on the sea only, square to where the waves go, one passing every swell period. Hidden when the hour has no
      direction, speed, height or period: toward(null) would read as from the north. */
-  const SP = 26, FX = { parts: [], phase: 0, last: 0, w: 0, h: 0, dpr: 1, sea: null, at: '' };
+  const SP = 26, FX = { parts: [], phase: 0, last: 0, w: 0, h: 0, dpr: 1, sea: null, at: '', seaA: 1 };
   const fxSize = () => { const r = el.getBoundingClientRect(); FX.dpr = devicePixelRatio || 1; FX.w = r.width; FX.h = r.height; cv.width = r.width * FX.dpr; cv.height = r.height * FX.dpr; FX.parts = []; };
-  function seaPath() {   /* the sea's outline in screen pixels, rebuilt whenever the camera moved */
+  function seaPath() {   /* the sea's outline in screen pixels, rebuilt when the camera has moved or the water tiles came */
     const key = map.getCenter().toArray().join() + map.getZoom();
     if (key === FX.at && FX.sea) return FX.sea;
     const p = new Path2D();
@@ -264,9 +268,12 @@ function wallMapMount(el, W, story, G = {}) {
     ctx.setTransform(FX.dpr, 0, 0, FX.dpr, 0, 0); ctx.clearRect(0, 0, FX.w, FX.h);
     const h = T.h, S = story[T.s], ch = S && S.chapters.length ? S.chapters[chapterAt(h, S.chapters.length)] : null;
     const wd = atHour(Hr.wave_from || [], h), sw = atHour(Hr.swell_m || [], h), per = atHour(Hr.swell_s || [], h);
-    if (wd != null && sw != null && per) {
+    /* no crests while the camera glides (each frame would re-read every water vertex), faded back in over 0.6 s after */
+    const moving = map.isMoving();
+    FX.seaA = moving ? 0 : still ? 1 : Math.min(1, FX.seaA + dt / .6);
+    if (wd != null && sw != null && per && !moving) {
       if (!still) FX.phase = (FX.phase + dt / per * SP) % SP;   /* integrated, so a new period at the next hour does not jump */
-      ctx.save(); ctx.clip(seaPath()); ctx.strokeStyle = C.sea; ctx.globalAlpha = ch && ch.k === 'sea' ? .7 : .28; ctx.lineWidth = .7 + sw * .5;
+      ctx.save(); ctx.clip(seaPath()); ctx.strokeStyle = C.sea; ctx.globalAlpha = (ch && ch.k === 'sea' ? .7 : .28) * FX.seaA; ctx.lineWidth = .7 + sw * .5;
       ctx.beginPath(); for (const [x1, y1, x2, y2] of crestSegments(FX.w, FX.h, wd, FX.phase, SP)) { ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); }
       ctx.stroke(); ctx.restore();
     }
@@ -288,15 +295,20 @@ function wallMapMount(el, W, story, G = {}) {
      and under reduced motion one still frame */
   const fx = now => { if (view() !== 'wall') return CLOCK.off('wall-fx'); if (CLOCK.reduced()) { CLOCK.off('wall-fx'); return fxDraw(now, true); } fxDraw(now, false); };
   const still = () => { if (CLOCK.reduced()) fxDraw(performance.now(), true); };
-  fxSize(); map.on('resize', () => { fxSize(); still(); }); map.on('idle', still);
+  const stale = () => { FX.at = ''; };   /* the sea is read again: tiles that came after the last read, or a camera at rest */
+  fxSize(); map.on('resize', () => { fxSize(); still(); }); map.on('idle', () => { stale(); still(); });
+  map.on('sourcedata', e => { if (e && e.sourceId === 'v') stale(); });
+  /* a lost WebGL context leaves a dead map: the Wall destroys this mount and mounts again at its next draw */
+  map.on('webglcontextlost', () => { T.lost = true; });
   return {
     /* a new size takes effect at the next hour(h): one camera move, to the chapter of that hour, never first to the
        chapter of the hour before (a size changes at hour 0, and the hour before was 23, the widest frame) */
     go(s, cut) { T.s = s; T.ci = null; T.cut = !!cut; },
     hour(h) { T.h = h; apply(); if (!CLOCK.on('wall-fx', fx)) fxDraw(performance.now(), true); },   /* CLOCK.on refuses under reduced motion: one still frame */
     destroy() { CLOCK.off('wall-fx'); if (offi) offi.remove(); map.remove(); },
+    get lost() { return !!T.lost; },
   };
 }
 
-if (typeof window !== 'undefined') Object.assign(window, { atHour, toward, crestSegments, crestPhase, streak, stationFeatures, wallStory, chapterAt });
-if (typeof module !== 'undefined') module.exports = { atHour, toward, crestSegments, crestPhase, streak, stationFeatures, wallStory, chapterAt };
+if (typeof window !== 'undefined') Object.assign(window, { atHour, toward, crestSegments, crestPhase, streak, stationFeatures, maskRings, wallStory, chapterAt });
+if (typeof module !== 'undefined') module.exports = { atHour, toward, crestSegments, crestPhase, streak, stationFeatures, maskRings, wallStory, chapterAt };
