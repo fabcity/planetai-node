@@ -329,7 +329,7 @@ assert "if (!NARR.typing) narrRoll();" in _wsrc and "--roll-n" in _wsrc, "the Wa
 # then the balance, in that order; no map and no walk are left.
 _marks = re.findall(r'data-learn="([a-z-]+)"', _wsrc.split("VIEWS.wall = ")[1].split("/* THE NODE, THINKING ALOUD")[0])
 assert _marks == ["wall-stage", "wall-sentence", "wall-narration", "wall-balance"], _marks
-assert not re.search(r"WALL_SCALES|wallPage|WALK\b|wallMap|wallDist|wrail", _wsrc) and not (STATIC / "doors-wallmap.js").exists()
+assert not re.search(r"WALL_SCALES|wallPage|WALK\b|wallMap|wallDist|wrail", _wsrc)   # doors-wall.js keeps none of the old map; the new one is its own file, doors-wallmap.js (18 Nov 2026)
 print("doors: the Wall draws the day as instruments; every figure has its time and word; the dust counted, the vane on its bearing")
 
 # 15 Oct, the Wall read from 3 m (Tomas's review of 14 Oct). Each check fails if its fix regresses.
