@@ -2016,29 +2016,29 @@
    "title": "Whether its own sensors tell the truth",
    "url": "https://planetai.fab.city/docs/alerts/#trust"
   },
-  "wall-balance": {
-   "anchor": "what-it-shows",
-   "more": "The caption under it says in words what the red squares mean against the house, at the hour the instruments show.",
+  "wall-map": {
+   "anchor": "the-instruments",
+   "more": "The map walks out from the house: the base node's seven cells, then the community's, then the city's, a replayed day at each size and one thing on it at a time. The wind and the swell move on it.",
    "page": "wall.md",
    "page_title": "Wall mode",
    "questions": {
     "en": [
-     "Is our air cleaner than the street?",
-     "What do the red squares mean?"
+     "Why does the map keep zooming out?",
+     "What are the hexagons on the map?"
     ],
     "es": [
-     "¿Nuestro aire está más limpio que la calle?",
-     "¿Qué significan los cuadrados rojos?"
+     "¿Por qué el mapa se sigue alejando?",
+     "¿Qué son los hexágonos del mapa?"
     ],
     "id": [
-     "Apakah udara kami lebih bersih dari jalan?",
-     "Apa arti kotak merah itu?"
+     "Mengapa petanya terus memperkecil?",
+     "Apa segi enam di peta itu?"
     ]
    },
-   "quote": "**The balance**: the house's fine dust in one pan and the clean-air line in the other, tipped by the heavier, and\n  under it the outdoor stations nearby, one square each, red when it is over the line.",
-   "section": "What it shows",
-   "title": "The balance",
-   "url": "https://planetai.fab.city/docs/wall/#what-it-shows"
+   "quote": "The instruments replay the last 24 hours, an hour every 1.25 s (30 s for the day), hold the last hour, then start the\nday again. Each hour is a step, never a slide, and nothing counts up.",
+   "section": "The instruments",
+   "title": "The map",
+   "url": "https://planetai.fab.city/docs/wall/#the-instruments"
   },
   "wall-narration": {
    "anchor": "the-node-thinking-aloud",
@@ -2112,28 +2112,28 @@
    "title": "The time and the sentence",
    "url": "https://planetai.fab.city/docs/wall/#what-it-shows"
   },
-  "wall-stage": {
+  "wall-strip": {
    "anchor": "the-instruments",
-   "more": "Fine dust in a jar, the heat on a thermometer, the swell as a wave and the wind on a vane. With reduced motion on, the Wall holds the last hour.",
+   "more": "Under the map, fine dust, heat, the swell and the wind at the hour the map shows, each with its last 24 hours as a thin line.",
    "page": "wall.md",
    "page_title": "Wall mode",
    "questions": {
     "en": [
-     "Why do the instruments keep moving?",
-     "Which way is the wind blowing?"
+     "Which way is the wind blowing?",
+     "Is the swell bigger than this morning?"
     ],
     "es": [
-     "¿Por qué se mueven los instrumentos?",
-     "¿Hacia dónde sopla el viento?"
+     "¿Hacia dónde sopla el viento?",
+     "¿El oleaje es más grande que esta mañana?"
     ],
     "id": [
-     "Mengapa instrumennya terus bergerak?",
-     "Ke arah mana angin bertiup?"
+     "Ke arah mana angin bertiup?",
+     "Apakah ombaknya lebih besar dari tadi pagi?"
     ]
    },
-   "quote": "The instruments replay the last 24 hours, an hour every 1.25 s (30 s for the day), hold the last hour, then start the\nday again. Each hour is a step, never a slide, and nothing counts up.",
+   "quote": "Over them a strip names each reading, says where it is from, and gives its figure, its hour and a provenance word.\nEach reading keeps its own colour on its lines and its figure, and red is only ever the line.",
    "section": "The instruments",
-   "title": "The instruments",
+   "title": "The strip",
    "url": "https://planetai.fab.city/docs/wall/#the-instruments"
   },
   "workshop": {
@@ -2247,8 +2247,8 @@
   "data-api",
   "wall-never",
   "wall-sentence",
-  "wall-stage",
-  "wall-balance",
+  "wall-map",
+  "wall-strip",
   "wall-narration",
   "setup-sections",
   "setup-save"

@@ -437,6 +437,11 @@ async function serveNodeAPI(route, u) {
       : route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ detail: 'the energy pack is off' }) }));
     return true;
   }
+  /* the Wall's one read: the hand-built node #1 body its tests use (tests/fixtures/wall-node1.json) */
+  if (u.pathname === '/wall') {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: fs.readFileSync(path.join(HERE, '..', 'fixtures', 'wall-node1.json'), 'utf8') });
+    return true;
+  }
   if (u.pathname === '/forecast') {
     const health = computeNodeData(FIXTURE).snapshot?.health;
     const body = process.env.PAI_RICH === '1' ? richForecast() : emptyForecast(health);
@@ -3312,30 +3317,29 @@ async function mobile() {
   process.exit(1);
 }
 
-/* ------------------------------------------------------------------ the Wall's instruments (8 Nov 2026)
- * The Wall draws the room's air, heat, sea and wind as instruments on one screen and replays the last 24 hours on them
- * (doors-wall.js). Against the committed fixture, at 1920×1080 on a TV and at 390 on a phone, with a model that answers
- * at length: one viewport on the TV and no screen clipped, nothing drawn under the 28 px floor (SVG words included, read
- * through their transform), every figure with its time and one of the five provenance words, no room or sensor name,
- * the narration in its own screen between the words and the balance; under reduced motion two reads 1.5 s apart are the
- * same hour and the replay's clock is not subscribed; with motion on and the replay loop shortened to 2.4 s, the hours
- * step. PAI_WALL_SHOTS=1 writes wallstage_<w>.png to PAI_OUT. */
-async function wallstage() {
+/* ------------------------------------------------------------------ the Wall's walk (18 Nov 2026)
+ * The Wall walks a satellite map through the base, community and city sizes, with a column beside it and a strip of four
+ * gauges and the clock under both (doors-wall.js, doors-wallmap.js). The rig cannot load MapLibre (vendor/ is not served
+ * here), so this is the Wall a screen without a map draws: the column and the strip, and one line where the map would be.
+ * Against the committed fixture and /wall's, at 1920×1080 and 1440×900 on a TV and at 390 on a phone, with a model that
+ * answers at length: no page wider than its screen and, on a TV, no taller; nothing under the 20 px floor (Tomas, 18 Nov);
+ * every strip figure with its time and one of the five words; no room or sensor name; the narration inside the column,
+ * under its chapters and above its bottom; under reduced motion two reads 1.5 s apart are the same hour at the base size
+ * and no clock is subscribed; with motion on and the loop shortened to 2.4 s, the hours step and the sizes walk.
+ * PAI_WALL_SHOTS=1 writes wallwalk_<w>.png to PAI_OUT. */
+async function wallwalk() {
   const bad = [], ok = (c, what) => { if (!c) bad.push(what); };
   const fx = JSON.parse(fs.readFileSync(path.join(HERE, '..', '..', 'app', 'issues', 'fixtures', `${FIXTURE}.json`), 'utf8'));
   const names = (fx.sensors || []).filter(x => x.local && (x.name || '').trim().length > 3).map(x => x.name.trim());
-  const read = (page, floor = 27.5) => page.evaluate(([names, floor]) => {
-    const W = document.querySelector('#wallv'), FIVE = ['live', 'partial', 'model', 'cached', 'example'];
+  const read = (page, floor) => page.evaluate(([names, floor]) => {
+    const W = document.querySelector('#wallv'), FIVE = ['live', 'partial', 'model', 'cached', 'example'], box = q => { const e = document.querySelector(q); return e && !e.hidden ? e.getBoundingClientRect() : null; };
     const txt = [...W.querySelectorAll('*')].filter(e => [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim()) && e.getClientRects().length && !e.closest('.wchrome,[hidden]'));
-    const px = e => parseFloat(getComputedStyle(e).fontSize) * (e instanceof SVGElement ? e.getScreenCTM().a : 1);
-    const narr = document.querySelector('#wnarr'), cols = [...document.querySelectorAll('.wlow > *')].filter(e => !e.hidden).map(e => e.id || e.className);
-    return { hour: WALL.h, sub: CLOCK.subs.has('wall-replay'), h: document.documentElement.scrollHeight, w: document.documentElement.scrollWidth,
-      small: txt.filter(e => px(e) < floor).map(e => `${e.tagName}.${e.className.baseVal ?? e.className} ${px(e).toFixed(1)}`).slice(0, 3),
-      clipped: [...W.querySelectorAll('.whead,.wscr')].filter(e => !e.hidden && e.scrollHeight > e.clientHeight + 1).map(e => e.className),
-      undated: [...W.querySelectorAll('.wrv')].filter(v => v.querySelector('.wnum')).map(v => v.textContent).filter(f => !/\d\d:\d\d/.test(f) || !FIVE.some(x => f.includes(x))).slice(0, 2),
-      stale: [...W.querySelectorAll('.wstage')].filter(e => { const s = e.querySelector('svg'); return s && Math.abs(+s.getAttribute('width') - e.clientWidth) > 1; }).map(e => e.id),
-      figs: W.querySelectorAll('.wrv .wnum').length, stage: !!document.querySelector('#wstage svg') && !!document.querySelector('#wbal svg'),
-      narr: narr && !narr.hidden ? { cols, past: Math.round(narr.getBoundingClientRect().bottom - innerHeight) } : null,
+    const col = box('.wcol'), narr = box('#wnarr'), chap = box('#wscale');
+    return { hour: WALL.h, size: WALL.s, sub: [...CLOCK.subs.keys()], h: document.documentElement.scrollHeight, w: document.documentElement.scrollWidth,
+      small: txt.filter(e => parseFloat(getComputedStyle(e).fontSize) < floor).map(e => `${e.tagName}.${e.className} ${getComputedStyle(e).fontSize}`).slice(0, 3),
+      undated: [...W.querySelectorAll('.wg .wrv')].map(v => v.textContent).filter(f => !(/\d\d:\d\d/.test(f) && FIVE.some(x => f.includes(x))) && !/not read/.test(f)).slice(0, 2),
+      gauges: W.querySelectorAll('.wg').length, nomap: (document.querySelector('.wnomap') || {}).textContent || '', rows: W.querySelectorAll('.wchap li').length,
+      narr: narr && { inCol: narr.bottom <= col.bottom + 1 && narr.right <= col.right + 1 && narr.left >= col.left - 1, belowChap: narr.top >= chap.bottom - 1, past: Math.round(narr.bottom - innerHeight) },
       words: [...W.querySelectorAll('.wpw')].map(e => e.textContent).filter(x => !FIVE.includes(x)),
       named: names.filter(n => W.innerHTML.includes(n)) };
   }, [names, floor]);
@@ -3344,26 +3348,25 @@ async function wallstage() {
   for (const [w, h, touch] of [[1920, 1080, false], [1440, 900, false], [390, 844, true]]) {
     const r = await openRig({ w, h, touch, dark: true });
     await r.page.goto(`${POP}/?fixture=${FIXTURE}#wall`, { waitUntil: 'domcontentloaded' });
-    await r.page.waitForSelector('#wstage svg', { timeout: 30000 }).catch(() => bad.push(`${w}: the Wall drew no stage`));
+    await r.page.waitForSelector('#wstrip .wg', { timeout: 30000 }).catch(() => bad.push(`${w}: the Wall drew no strip`));
     await r.page.waitForSelector('#wnarr:not([hidden])', { timeout: 30000 }).catch(() => bad.push(`${w}: the narration never opened`));
-    /* the loading screen holds at least 1.2 s (ASKING's floor); a reading taken under it reads nothing */
     ok(await r.page.waitForSelector('#asking:not(.on)', { state: 'attached', timeout: 8000 }).then(() => true, () => false), `${w}: the loading screen never closed`);
     await r.page.evaluate(() => document.fonts.ready); await r.page.waitForTimeout(800);
-    if (process.env.PAI_WALL_SHOTS === '1') await r.page.screenshot({ path: path.join(OUT, `wallstage_${w}.png`), fullPage: true });
-    const g = await read(r.page, Math.min(28, w * .014584, h * .025926) - .5), tag = `${w}`;
-    ok(g.stage && g.figs >= 4, `${tag}: the stage or the balance is not drawn (${g.figs} figures)`);
+    if (process.env.PAI_WALL_SHOTS === '1') await r.page.screenshot({ path: path.join(OUT, `wallwalk_${w}.png`), fullPage: true });
+    const g = await read(r.page, (touch ? 12 : Math.min(20, w * .010417, h * .018519)) - .5), tag = `${w}`;
+    ok(g.gauges === 4 && g.rows >= 1, `${tag}: the strip or the chapters are not drawn (${g.gauges} gauges, ${g.rows} rows)`);
+    ok(g.nomap === 'The map needs a screen that can draw it.', `${tag}: no line where the map would be: "${g.nomap}"`);
     ok(g.w <= w, `${tag}: the page is ${g.w} px wide`);
-    ok(!g.stale.length, `${tag}: drawn at another size than its screen: ${g.stale.join(', ')}`);
-    if (!touch) { ok(g.h <= h, `${tag}: the Wall is ${g.h} px on a ${h} px screen`); ok(!g.clipped.length, `${tag}: a screen is clipped: ${g.clipped.join(', ')}`);
-      ok(!g.small.length, `${tag}: under the 28 px floor: ${g.small.join(', ')}`); }
+    if (!touch) ok(g.h <= h, `${tag}: the Wall is ${g.h} px on a ${h} px screen`);
+    ok(!g.small.length, `${tag}: under the floor: ${g.small.join(', ')}`);
     ok(!g.undated.length, `${tag}: a figure with no time or word: ${g.undated.join(' | ')}`);
     ok(!g.words.length, `${tag}: a provenance word that is not one of the five: ${g.words.join(', ')}`);
     ok(!g.named.length, `${tag}: names a room or sensor: ${g.named.join(', ')}`);
-    if (g.narr) { ok(g.narr.cols.join('|') === 'whead|wnarr|wscr wsmall', `${tag}: the narration is not between the words and the balance: ${g.narr.cols.join(' | ')}`);
-      if (!touch) ok(g.narr.past <= 1, `${tag}: the narration runs ${g.narr.past} px past the screen`); }
+    ok(g.narr && g.narr.inCol && g.narr.belowChap, `${tag}: the narration covers the column: ${JSON.stringify(g.narr)}`);
+    if (g.narr && !touch) ok(g.narr.past <= 1, `${tag}: the narration runs ${g.narr.past} px past the screen`);
     if (w === 1920) {
-      const a = await read(r.page); await r.page.waitForTimeout(1500); const b = await read(r.page);
-      ok(a.hour === 23 && a.hour === b.hour && !b.sub, `reduced motion: the replay moved (${a.hour} → ${b.hour}, subscribed ${b.sub})`);
+      const a = await read(r.page, 0); await r.page.waitForTimeout(1500); const b = await read(r.page, 0);
+      ok(a.hour === 23 && a.hour === b.hour && a.size === 0 && !b.sub.length, `reduced motion: the replay moved (${a.hour} → ${b.hour}, size ${a.size}, subscribed ${b.sub})`);
     }
     await r.browser.close();
   }
@@ -3378,16 +3381,17 @@ async function wallstage() {
       if (await serveNodeAPI(route, u)) return; return route.continue(); });
     const page = await ctx.newPage();
     await page.goto(`${POP}/?fixture=${FIXTURE}#wall`, { waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('#wstage svg', { timeout: 30000 }).catch(() => bad.push('motion: the Wall drew no stage'));
+    await page.waitForSelector('#wstrip .wg', { timeout: 30000 }).catch(() => bad.push('motion: the Wall drew no strip'));
     await page.evaluate(() => document.documentElement.style.setProperty('--motion-replay-loop', '2.4s'));
     const seen = [];
-    for (let k = 0; k < 14; k++) { seen.push(await page.evaluate(() => [WALL.h, document.querySelector('#wstage').innerHTML.length])); await page.waitForTimeout(250); }
+    for (let k = 0; k < 28; k++) { seen.push(await page.evaluate(() => [WALL.h, WALL.s, document.querySelector('#wstrip').innerHTML.length + document.querySelector('#wscale').innerHTML])); await page.waitForTimeout(250); }
     const hours = new Set(seen.map(x => x[0]));
     ok(hours.size >= 4 && seen.every(x => Number.isInteger(x[0])), `motion: the hours did not step (${[...hours].join(',')})`);
-    ok(new Set(seen.map(x => x[1])).size >= 3, 'motion: the stage was not redrawn as the hours stepped');
+    ok(new Set(seen.map(x => x[1])).size >= 2, `motion: the walk stayed at one size (${[...new Set(seen.map(x => x[1]))].join(',')})`);
+    ok(new Set(seen.map(x => x[2])).size >= 3, 'motion: the strip and the column were not redrawn as the hours stepped');
     await browser.close(); }
-  if (!bad.length) console.log('  wallstage: the instruments at 1920×1080, 1440×900 and 390, one screen on a TV, nothing under the floor, dated and worded, no names, the narration between the words and the balance; still under reduced motion, stepping with motion on');
-  for (const b of bad) console.log('FAIL wallstage:', b);
+  if (!bad.length) console.log('  wallwalk: the column and the strip at 1920×1080, 1440×900 and 390 without a map, one screen on a TV, nothing under the 20 px floor, dated and worded, no names, the narration inside the column; still under reduced motion, walking with motion on');
+  for (const b of bad) console.log('FAIL wallwalk:', b);
   if (bad.length) process.exitCode = 1;
 }
 
@@ -3593,7 +3597,7 @@ async function doors() {
          line at every width, so place-tools is too */
       const WANT = { '#now': ['now-sentence', 'now-todo', 'now-rows'], '#place': ['place-head', 'place-map', 'place-orbit', 'place-tools'].concat(w < 768 ? [] : ['place-layers']),   /* a phone keeps the cake in a closed sheet */
         '#node': ['node-verdict', 'node-flow', 'node-refusals'], '#data/readings': ['data-head', 'data-readings', 'data-week'],
-        '#data/home': ['data-images', 'data-things'], '#setup': ['settings', 'setup-sections', 'setup-save'], '#wall': ['wall-never', 'wall-sentence', 'wall-stage', 'wall-balance'] };
+        '#data/home': ['data-images', 'data-things'], '#setup': ['settings', 'setup-sections', 'setup-save'], '#wall': ['wall-never', 'wall-map', 'wall-sentence', 'wall-strip'] };
       const NOT = { '#place': ['earth'], '#data/home': ['data-ledger', 'data-readings'], '#wall': ['bar', 'foot'] };
       let parts = 0;
       for (const [h, want] of Object.entries(WANT)) {
@@ -4047,8 +4051,8 @@ else if (cmd === 'overflow') await overflow(rest);
 else if (cmd === 'list') jobs().forEach(j => console.log(j.name));
 else if (cmd === 'mobile') await mobile();
 else if (cmd === 'doors') await doors();
-else if (cmd === 'wallstage') await wallstage();
+else if (cmd === 'wallwalk') await wallwalk();
 else if (cmd === 'placescreen') await placescreen();
 else if (cmd === 'report') await report();
-else { console.error('usage: measure.mjs render|shots|plates|plate-list|steps|stall|press|asking|extend|anchors|sheets|header|targets|audit|overflow|analyse|list|mobile|doors|wallstage|placescreen|report');
+else { console.error('usage: measure.mjs render|shots|plates|plate-list|steps|stall|press|asking|extend|anchors|sheets|header|targets|audit|overflow|analyse|list|mobile|doors|wallwalk|placescreen|report');
   process.exit(2); }

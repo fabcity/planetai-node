@@ -695,71 +695,59 @@ body:not(.classic) .hero .ladder.folded{display:none}
 .sm .grid{stroke:var(--hair)}
 .cols2{display:grid;grid-template-columns:1fr 1fr;gap:48px}
 
-/* ================= WALL: a public screen read from 3 m (docs/site/dashboard.md, the Wall), one viewport, always dark =================
-   VARIATION, 7 Nov 2026: the Wall as instruments (planetai-design/prototypes/wall-variation-instruments), after Tomas's
-   Stitch screen and pass-3 DESIGN.md. A lead screen (header ramp, a stage of line art on a datum rail, an info line),
-   then the title and the sentence, what is asked now, and two or three small screens. Black screens in a square bezel
-   (a line, a gap of the ground, a line); no radius, no shadow, no glow; each reading's domain hue on its stroke and its
-   digits only; the line red, a line only.
-   THE TYPE FLOOR: every size here is --wf or a multiple of it, never less. --wf is 28 px at 1920×1080 and scales with the
-   viewport, whichever of its width or height is shorter for it; tests/test_doors.py holds this block to that. The
-   stages are drawn in their own pixels (doors-wall.js), so their words are --wf too. */
-#wallv{--wf:min(1.4584vw,2.5926vh);--d-air:#D9D9D9;--d-heat:#F2C14E;--d-sea:#2E86C1;--d-wind:#B8E0D2;--bez:rgb(249 245 242 / .4);
-  position:relative;height:100vh;display:grid;grid-template-rows:minmax(0,1.3fr) minmax(0,1fr);gap:3.2vh;padding:3.2vh 2.4vw;overflow:hidden;font-size:var(--wf);background:var(--ground)}
-/* stepped, never tweened: nothing on the Wall eases from one hour to the next */
+/* ================= WALL: a public screen read from 3 m (docs/site/wall.md), one viewport, always dark =================
+   18 Nov 2026: the Wall walks out on the satellite (planetai-design node-docs/superpowers/specs/2026-11-18-wall-scales-map
+   -design.md and its mockup). The map on the left, the column beside it, the strip of four small gauges and the clock
+   under both. No radius, no shadow, no glow; each reading's domain hue on its line and its figure only; red is a line.
+   THE TYPE FLOOR: every size here is --wf or a multiple of it, never less. --wf is 20 px at 1920×1080 (Tomas, 18 Nov:
+   the text and the size legend were "too big"; it was 28) and scales with the viewport, whichever of its width or
+   height is shorter for it; tests/test_doors.py holds this block to that. --cells is the doors' dark value, set here
+   because the map's hues are read inside #wallv. */
+#wallv{--wf:min(1.0417vw,1.8519vh);--cells:#38BDF8;position:relative;height:100vh;display:grid;grid-template-columns:minmax(0,1fr) calc(var(--wf) * 21);
+  grid-template-rows:minmax(0,1fr) auto;overflow:hidden;font-size:var(--wf);background:var(--ground)}
+/* stepped, never tweened: nothing on the Wall eases from one hour to the next. The camera's glide is MapLibre's own. */
 #wallv *{transition:none}
 /* chrome: a wall is not operated. The back button and the model's note are there for a pointer or the keyboard and
    invisible otherwise; the back button is first in keyboard order. On a touch screen it is always shown, a 44 px target. */
 #wallv .wchrome{opacity:0}
 #wallv .wchrome:hover,#wallv .wchrome:focus-within{opacity:1}
-@media (hover:none) and (pointer:coarse){#wallv .wchrome{opacity:1}#wallv .wtop{position:relative;margin:-3.2vh -2.4vw 0}}
+@media (hover:none) and (pointer:coarse){#wallv .wchrome{opacity:1}}
 @media (pointer:coarse){#wallv .wback{min-height:44px;min-width:44px}}
 .wtop{position:absolute;top:0;left:0;right:0;z-index:6;display:flex;gap:1.2vw;align-items:center;flex-wrap:wrap;padding:1.2vh 2.4vw;background:var(--ground);border-bottom:1px solid var(--hair)}
 .wback{background:none;border:1px solid var(--ink);color:var(--ink);padding:.1em .5em;font:600 var(--wf) var(--mono);cursor:pointer}
 .wnote{font:500 var(--wf)/1.3 var(--body);color:var(--mute)}
-/* a screen: black in a square bezel, its header ramp, its stage, its info line */
-.wscr{min-width:0;min-height:0;display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:1vh;margin:6px;padding:1.2vh 1vw;background:#000;border:1px solid var(--bez);outline:1px solid var(--bez);outline-offset:5px}
-.wscr.wsmall{grid-template-rows:auto minmax(0,1fr) auto auto}
-/* the header ramp: name cell, value cell, across the screen, stepping evenly from black to white */
-.wramp{display:grid;grid-template-columns:repeat(4,auto minmax(0,1fr));color:var(--ink)}
-.wsmall .wramp{grid-template-columns:auto minmax(0,1fr)}
-/* a small screen's ramp is one pair, its figure on one line: at the floor, two pairs do not fit its width */
-.wsmall .wramp>div{flex-direction:row;align-items:baseline;justify-content:flex-start;gap:.5em}
-.wramp>div{min-width:0;display:flex;flex-direction:column;justify-content:center;gap:.1em;padding:.25em .5em;overflow:hidden;white-space:nowrap}
-.wrn b{font:500 var(--wf)/1.1 var(--body);letter-spacing:-.005em}.wrn span,.wrv span{font:500 var(--wf)/1.15 var(--mono);opacity:.8}
-/* the figure light and large, as on an instrument's readout; refined, not bold (Tomas, 9 Nov, after OP-XY) */
-.wrv b{font:400 calc(var(--wf) * 1.7)/1 var(--mono);letter-spacing:-.04em;font-variant-numeric:tabular-nums}.wrv u{font:500 var(--wf) var(--mono);text-decoration:none;margin-left:.25em}
-.wramp>:nth-child(1){background:#000}.wramp>:nth-child(2){background:#242424}.wramp>:nth-child(3){background:#494949}.wramp>:nth-child(4){background:#6d6d6d}
-.wramp>:nth-child(5){background:#929292;color:#000}.wramp>:nth-child(6){background:#b6b6b6;color:#000}.wramp>:nth-child(7){background:#dbdbdb;color:#000}.wramp>:nth-child(8){background:#fff;color:#000}
-.wsmall .wramp>:nth-child(2){background:#3a3a3a}.wsmall .wramp>:nth-child(3){background:#9a9a9a;color:#000}.wsmall .wramp>:nth-child(4){background:#fff;color:#000}
-/* a value takes its reading's hue on the dark cells only */
-.wramp>:nth-child(-n+4) .wnum{color:var(--c,inherit)}
-.wpw{display:inline-block;margin-left:.25em;padding:.05em .3em;border:1px solid currentColor;font:500 var(--wf)/1 var(--mono)}
-/* the stage: one drawing, sized by its screen, in the screen's own pixels */
-.wstage{position:relative;min-height:0;min-width:0;overflow:hidden}
-.wstage svg{position:absolute;inset:0;display:block;fill:var(--ink)}
-.wstage text{font:500 var(--wf) var(--mono)}
-/* a black edge, so a line under a label never cuts it (node #1, 10 Nov: "line 35" across the heat's bracket) */
-.wstage text{paint-order:stroke;stroke:#000;stroke-width:4px;stroke-linejoin:round}
-.winfo{margin:0;font:500 var(--wf)/1.2 var(--mono);letter-spacing:.02em;text-transform:uppercase;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-/* under the lead screen: the words, the node's own words once it has spoken, then the balance */
-.wlow{display:grid;grid-template-columns:minmax(0,1.15fr) repeat(2,minmax(0,1fr));gap:2vw;min-height:0}
-.wlow:has(#wnarr[hidden]){grid-template-columns:minmax(0,1.15fr) minmax(0,1fr)}
-.whead{display:flex;flex-direction:column;gap:1.4vh;min-height:0;min-width:0;overflow:hidden;padding-top:6px}
-.wkick{font:600 calc(var(--wf) * 1.2)/1.2 var(--mono);color:var(--mute)}.wkick time,.wkick b{color:var(--ink)}
-.wsent{font:350 calc(var(--wf) * 2.2)/1.04 var(--display);letter-spacing:-.025em;margin:0;text-wrap:balance}
+/* the map: the satellite dimmed, or the node's streets dark; the wind and the crests on a canvas over it */
+.wmap{position:relative;grid-row:1;grid-column:1;min-width:0;min-height:0;overflow:hidden;background:#000;border-right:1px solid var(--hair)}
+.wmap .wml,.wmap .wfx{position:absolute;inset:0;width:100%;height:100%}.wmap .wfx{pointer-events:none}
+.wnomap{position:absolute;left:0;right:0;top:45%;margin:0;text-align:center;font:500 var(--wf)/1.3 var(--body);color:var(--mute)}
+.woffi{font:600 var(--wf)/1.2 var(--mono);text-transform:uppercase;color:var(--ink);background:rgb(14 14 16 / .8);padding:.15em .4em;border-left:3px solid var(--cells);white-space:nowrap}
+#wallv .maplibregl-ctrl-attrib{font:500 var(--wf)/1.3 var(--mono);background:rgb(14 14 16 / .6);color:var(--mute)}
+/* the column: the moment and what is asked, the size on the map and its chapters, then the node's words */
+.wcol{grid-row:1;grid-column:2;display:flex;flex-direction:column;gap:2.2vh;padding:2.4vh 1.3vw 2vh;min-width:0;min-height:0;overflow:hidden}
+.whead{display:flex;flex-direction:column;gap:1vh;min-width:0}
+.wkick{font:600 var(--wf)/1.2 var(--mono);color:var(--mute)}.wkick time,.wkick b{color:var(--ink)}
+.wsent{font:350 calc(var(--wf) * 1.7)/1.08 var(--display);letter-spacing:-.025em;margin:0;text-wrap:balance}
 .wsent .wnum{font-family:var(--mono)}
 .wtag{margin:0;font:500 var(--wf)/1.3 var(--body);color:var(--mute);text-wrap:pretty}
 /* what the node suggests: one line, ending on a word (wallAsk), never a button that answers */
-.wask{margin-top:auto;display:flex;flex-direction:column;gap:.3em;border-left:3px solid var(--ink);padding-left:1vw}
-.wask .wsay{font:600 calc(var(--wf) * 1.15)/1.25 var(--body)}.wask .wtel{font:500 var(--wf)/1.3 var(--body);color:var(--mute)}
-.wsrc{display:block;margin:0;font:500 var(--wf)/1.3 var(--body);color:var(--mute)}
-.wcap{margin:0;font:500 var(--wf)/1.3 var(--body);text-wrap:pretty}
-/* the node, thinking aloud: a voice, set apart from the node's figures, in its own small screen. Figtree Italic, light
-   and large, is speech against the upright facts around it. Collapsed ([hidden]) until there is text. */
-.wlow .wnarr{grid-template-rows:auto minmax(0,1fr)}
-/* its label runs as one sentence, so the words keep the room: whose they are, and that they are never a reading */
-/* its label is a header ramp like the other screens': whose words, in black, then that they are never a reading, in grey */
+.wask{display:flex;flex-direction:column;gap:.3em;border-left:3px solid var(--ink);padding-left:.8em}
+.wask .wsay{font:600 var(--wf)/1.25 var(--body)}.wask .wtel{font:500 var(--wf)/1.3 var(--body);color:var(--mute)}
+.wscale h2{margin:0;font:700 var(--wf)/1.2 var(--mono);text-transform:uppercase;letter-spacing:.03em}.wscale h2 span{color:var(--mute);font-weight:500}
+.wchap{list-style:none;margin:.6em 0 0;padding:0;border-top:1px solid var(--hair)}
+.wchap li{display:grid;grid-template-columns:.35em minmax(0,1fr);column-gap:.7em;padding:.45em 0;border-bottom:1px solid var(--hair);color:var(--dim)}
+.wchap li i{grid-row:1/span 3;background:var(--c);opacity:.35;margin:.2em 0}.wchap li.on{color:var(--ink)}.wchap li.on i{opacity:1}
+.wchap .wr{display:flex;justify-content:space-between;align-items:baseline;gap:.6em;min-width:0}
+.wchap .t{font:600 var(--wf)/1.15 var(--mono);text-transform:uppercase;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wchap .n{font:400 calc(var(--wf) * 1.15)/1 var(--mono);letter-spacing:-.04em;white-space:nowrap}.wchap li.on .n{color:var(--c)}
+.wchap .n u{font:500 var(--wf) var(--mono);text-decoration:none;margin-left:.2em;letter-spacing:0}
+.wchap .p{grid-column:2;margin:.3em 0 0;font:500 var(--wf)/1.3 var(--body);text-wrap:pretty}
+.wchap .s{grid-column:2;margin:.2em 0 0;font:500 var(--wf)/1.3 var(--mono);color:var(--mute)}
+.wnone{margin:.6em 0 0;font:500 var(--wf)/1.3 var(--body);color:var(--mute)}
+.wpw{display:inline-block;margin-left:.35em;padding:0 .3em;border:1px solid currentColor;font:500 var(--wf)/1.2 var(--mono);letter-spacing:0;vertical-align:.1em;color:var(--ink)}
+/* the node, thinking aloud: a voice, set apart from the node's figures, at the foot of the column. Figtree Italic, light,
+   is speech against the upright facts around it. Collapsed ([hidden]) until there is text. */
+.wnarr{margin-top:auto;min-height:0;flex:0 1 auto;display:grid;grid-template-rows:auto minmax(0,1fr);max-height:calc(var(--wf) * 10);border:1px solid var(--hair)}
+/* its label is a header ramp: whose words, in black, then that they are never a reading, in grey */
 .wnarr .nh{display:flex;flex-wrap:wrap;margin:0;padding:0;border:0;font:500 var(--wf)/1.25 var(--body);color:var(--ink)}
 .wnarr .nh>span{padding:.25em .5em}.wnarr .nh>.nl{background:#000;white-space:nowrap}.wnarr .nh>span+span{flex:1 1 10em;background:#3a3a3a}
 .wnarr .nl{color:var(--ink);font-weight:600}.wnarr .nl .dot{display:inline-block;margin-right:.4em;vertical-align:.15em}
@@ -768,25 +756,37 @@ body:not(.classic) .hero .ladder.folded{display:none}
 #wallv{--motion-model-asking:1.6s;--motion-caret-typing:1s}
 .wnarr.busy .dot{opacity:1;animation:breathe var(--motion-model-asking) steps(1) infinite}
 @keyframes breathe{50%{opacity:.25;transform:scale(.7)}}
-.wnarr .nw{min-height:0;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;padding-top:1vh}
-.wnarr .nt{font:italic 300 calc(var(--wf) * 1.05)/1.3 Figtree,var(--body);letter-spacing:-.005em;margin:0;text-wrap:pretty}
+.wnarr .nw{min-height:0;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;padding:.4em .6em 0}
+.wnarr .nt{font:italic 300 var(--wf)/1.35 Figtree,var(--body);letter-spacing:-.005em;margin:0;text-wrap:pretty}
 .wnarr .caret{display:inline-block;width:.42em;height:.95em;margin-left:3px;vertical-align:-.1em;background:var(--ink);animation:blink var(--motion-caret-typing) steps(1) infinite}
 @keyframes blink{50%{opacity:0}}
 .wnarr .nw.roll{justify-content:flex-start}
 .wnarr .nw.roll .nt{flex:none;margin-bottom:calc(var(--wf) * 1.6);animation:wroll var(--roll-s) steps(var(--roll-n,40)) 4s infinite}
 @keyframes wroll{to{transform:translateY(calc(-1 * var(--roll-h)))}}
 @media (prefers-reduced-motion: reduce){.wnarr .caret,.wnarr.busy .dot,.wnarr .nw.roll .nt{animation:none}}
-/* A phone, a small or a portrait screen: everything stacks and the page scrolls. The floor never drops under 12 px,
-   the layer's floor for type and controls (at 390 px wide --wf alone would be 5.7 px). */
-@media (max-width:999px),(max-height:499px),(orientation:portrait){
-  #wallv{--wf:max(12px,min(1.4584vw,2.5926vh));height:auto;min-height:100vh;overflow:visible;grid-template-rows:auto;padding:16px}
-  #wallv .wlead{grid-template-rows:auto min(120vw,64vh) auto}#wallv .wlead .wramp{grid-template-columns:repeat(2,auto minmax(0,1fr))}
-  #wallv .wlow{grid-template-columns:minmax(0,1fr);gap:3vh}#wallv .wsmall{grid-template-rows:auto min(60vw,40vh) auto auto}#wallv .wnarr{grid-template-rows:auto auto}
-  #wallv .wlead .wramp>:nth-child(5){background:#000;color:var(--ink)}#wallv .wlead .wramp>:nth-child(6){background:#242424;color:var(--ink)}
-  #wallv .wlead .wramp>:nth-child(7){background:#b6b6b6}#wallv .wlead .wramp>:nth-child(3){background:#b6b6b6;color:#000}#wallv .wlead .wramp>:nth-child(4){background:#fff;color:#000}
-  @media (hover:none) and (pointer:coarse){#wallv .wtop{margin:-16px -16px 16px}}
+/* the strip: four gauges and the clock, at the hour the map shows */
+.wstrip{grid-row:2;grid-column:1/3;display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) auto;border-top:1px solid var(--hair)}
+.wg{min-width:0;display:flex;flex-direction:column;gap:.3em;padding:1.2vh 1.3vw;border-right:1px solid var(--hair)}
+.wgh{display:flex;justify-content:space-between;gap:1em;white-space:nowrap;overflow:hidden;font:600 var(--wf)/1.2 var(--mono);text-transform:uppercase;letter-spacing:.02em;color:var(--mute)}
+.wgh span+span{text-transform:none;font-weight:500;color:var(--dim);overflow:hidden;text-overflow:ellipsis}
+.wg .wrv{display:flex;align-items:baseline;gap:.4em;white-space:nowrap;overflow:hidden}
+.wg .wrv b{font:400 calc(var(--wf) * 1.5)/1 var(--mono);letter-spacing:-.04em;color:var(--c)}
+.wg .wrv u{font:500 var(--wf) var(--mono);text-decoration:none;margin-left:.2em;letter-spacing:0;color:var(--ink)}
+.wg .wrv>span{font:500 var(--wf)/1.2 var(--mono);color:var(--mute)}
+.wdir{flex:none;width:calc(var(--wf) * 1.1);height:calc(var(--wf) * 1.1);fill:var(--c);align-self:center}
+.wsp{width:100%;height:calc(var(--wf) * 2.2);display:block;overflow:visible}
+.wsp path{fill:none;stroke:var(--c);stroke-width:1.6;vector-effect:non-scaling-stroke}.wsp .wl{stroke:var(--signal-worse);stroke-dasharray:3 2}.wsp .wh{stroke:var(--ink);stroke-opacity:.7;stroke-width:1}
+.wclock{display:flex;flex-direction:column;justify-content:center;padding:1.2vh 1.3vw;min-width:calc(var(--wf) * 9);font:600 var(--wf)/1.3 var(--mono);color:var(--mute);text-transform:uppercase}
+.wclock b{font:400 calc(var(--wf) * 1.5)/1 var(--mono);color:var(--ink);letter-spacing:-.04em}
+/* A phone or a portrait screen: the map first at 60 % of the height, then the column, then the strip as two rows of two,
+   and the page scrolls. The floor never drops under 12 px, the layer's floor for type and controls. */
+@media (max-width:759px),(orientation:portrait){
+  #wallv{--wf:max(12px,min(1.0417vw,1.8519vh));height:auto;min-height:100vh;overflow:visible;grid-template-columns:minmax(0,1fr);grid-template-rows:60vh auto auto}
+  #wallv .wmap{grid-row:1;grid-column:1;border-right:0}#wallv .wcol{grid-row:2;grid-column:1;padding:16px;overflow:visible}
+  #wallv .wstrip{grid-row:3;grid-column:1;grid-template-columns:repeat(2,minmax(0,1fr))}
+  #wallv .wg{border-bottom:1px solid var(--hair)}#wallv .wg:nth-child(2n){border-right:0}#wallv .wclock{grid-column:1/-1}
+  #wallv .wnarr{max-height:none}
 }
-@media (max-width:560px){#wallv .wlead .wramp{grid-template-columns:auto minmax(0,1fr)}#wallv .wlead .wramp>div{background:#000!important;color:var(--ink)!important;border-bottom:1px solid var(--bez)}}
 
 
 /* ================= FLOW: the node by scale (R37) ================= */
@@ -1377,7 +1377,7 @@ body:not(.classic) .hero .ladder.folded{display:none}
 </section>
 
 <!-- WALL -->
-<section class="view" data-view="wall" hidden><div id="wallv" data-learn="wall-never" data-reads="/health /issues /stats" data-stage="observe" data-pack="core"></div></section>
+<section class="view" data-view="wall" hidden><div id="wallv" data-learn="wall-never" data-reads="/health /issues /wall" data-stage="observe" data-pack="core"></div></section>
 
 <!-- SET UP: a page of its own, opened by the gear (doors-setup.js) -->
 <section class="page view" data-view="setup" hidden><div id="setupv2"></div></section>
