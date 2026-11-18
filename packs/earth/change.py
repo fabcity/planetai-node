@@ -87,23 +87,12 @@ def compare(a, b):
     X = np.load(A.year_file(a), mmap_mode="r")
     Y = np.load(A.year_file(b), mmap_mode="r")
     dist, masked = A.cosine_distance(X, Y)
-    good = dist[~masked]
-    if not good.size:
+    numbers = A.change_stats(dist, masked, CHANGED)
+    if not numbers:
         print("earth: every pixel is masked in one of the two years"); return None
 
-    over = float((good > CHANGED).mean())
-    px_m2 = 100.0                                                                    # 10 m x 10 m
     stats = {
-        "node": A.node(), "year_a": a, "year_b": b,
-        "mean": round(float(good.mean()), 5),
-        "median": round(float(np.median(good)), 5),
-        "p95": round(float(np.percentile(good, 95)), 5),
-        "max": round(float(good.max()), 5),
-        "threshold": CHANGED,
-        "share_over_threshold": round(over, 5),
-        "hectares_over_threshold": round(over * good.size * px_m2 / 10000.0, 1),
-        "pixels": int(good.size), "pixels_masked": int(masked.sum()),
-        "px": [int(dist.shape[1]), int(dist.shape[0])],
+        "node": A.node(), "year_a": a, "year_b": b, **numbers,
         "metres_per_pixel": 10,
         "crs": wb.get("crs") or wa.get("crs"),
         "bounds": wb.get("bounds") or wa.get("bounds"),

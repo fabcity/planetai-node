@@ -73,7 +73,8 @@ Weigh what `open` gives a reader before you set it on a network you share:
   last answer, each issue's usual day and an open event's rooms hour by hour. `/issues/days` gives up to 90 days of
   the hourly series, indoor rooms included. That is the household's rhythm over three months. It never carries the
   text the node sent, who answered or what they wrote.
-- `/forecast` and `/earth` carry the node's exact coordinates. [The API](api.md) says what every route returns.
+- `/forecast` carries the node's exact coordinates. `/earth` and its pictures give a screen without your token the
+  cell's centre instead, and no ring where the house is. [The API](api.md) says what every route returns.
 
 `/sources` is on the `open` list because it is a copy of a public registry, the same on every node in a release,
 and says nothing about the house.

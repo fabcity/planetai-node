@@ -15,6 +15,11 @@
   house's cell and every distance is in whole km. A chapter the node has no data for is left out. docs/wall,
   docs/api.
 
+- **/earth no longer gives the house away.** A screen without your token got the node's exact point from `/earth`,
+  and the AlphaEarth pictures were centred on the house with an orange ring on it. That screen now gets the centre of
+  the res-8 cell, as `/health` gives it, and the pictures and numbers come from a square centred on that cell, 1 km in
+  from each side of the one the node keeps, with no ring. Your own tokens and this machine see what they saw before.
+  docs/api, docs/sharing.
 - **A screen with no token can no longer find the house.** At SHARE_LEVEL=open, a reader without a token could place
   the house more finely than its cell: from a lab's distance to 0.1 km, from where the air-station ring's 15 km edge
   and 150 m hole fall, from which map tiles the node holds, from the energy pack's distances to the nearest

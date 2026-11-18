@@ -78,7 +78,7 @@ def issues_now(request: Request = None):
             place = main.ground.centre(lat, lon)[:2]
             facilities = main._public_rows(facilities)
             public = unplaced
-        out = engine.compute(cur, main.settings, load(), earth=_earth(), place=place, public=public,
+        out = engine.compute(cur, main.settings, load(), earth=_earth(public=not trusted), place=place, public=public,
                              mesh=main.mesh_state if main.MQTT_HOST else None,
                              facilities=facilities, now=now, events=events if trusted else nameless(events))
         return out if trusted else nameless(out)
@@ -133,14 +133,15 @@ def issues_days(days: int = Query(7, ge=1, le=engine.DAYS_MAX), locale: str = Qu
         return engine.days(cur, main.settings, load(), days, loc=locale)
 
 
-def _earth():
+def _earth(public: bool = True):
     """`/earth`'s body, or None. The earth pack's record has exactly one reader in this repo and it
     is that pack's own `earth()` (packs/earth/routes.py); land's region column asks it rather than opening the
-    pack's files again, and gets None while the pack is off."""
+    pack's files again, and gets None while the pack is off. A stranger's /issues reads the public square's
+    numbers: the cached square's would place the house (packs/earth/adapter.py, PUBLIC_MARGIN_M)."""
     import packs                   # noqa: PLC0415
     try:
         mod = packs.module("earth", "routes")
-        return mod.earth() if mod else None
+        return mod.earth(public) if mod else None
     except Exception as e:  # noqa: BLE001
         log.warning("issues: /earth did not answer (%s: %s) — land falls back", type(e).__name__, str(e)[:120])
         return None
