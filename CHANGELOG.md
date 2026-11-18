@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **/earth no longer gives the house away.** A screen without your token got the node's exact point from `/earth`,
+  and the AlphaEarth pictures were centred on the house with an orange ring on it. That screen now gets the centre of
+  the res-8 cell, as `/health` gives it, and the pictures and numbers come from a square centred on that cell, 1 km in
+  from each side of the one the node keeps, with no ring. Your own tokens and this machine see what they saw before.
+  docs/api, docs/sharing.
+
 - **The Place report reads the place.** Two pages now come before the figures. A reading of this place says what kind
   of place this is, under five headings, and each sentence rests on a figure the node holds. Ways to improve it lists
   four to six things worth doing here, each with a first step, the nearest lab, and its layer and key action in the Fab
