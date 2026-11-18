@@ -175,6 +175,29 @@ def refresh(con, hc, lat: float, lon: float, radius: int) -> int:
     return len(rows)
 
 
+
+YEARLY = ("sat_buildings_yearly", "sat_height_m_yearly")
+
+
+def satellite_refresh(con, lat: float, lon: float, radius: int) -> int:
+    """The satellite's half of a refresh: Open Buildings footprints into place_buildings_sat, the yearly count and
+    height into place_yearly. Returns the years stored. Raises when Earth Engine is not configured.
+
+    The node files a reading once (ON CONFLICT DO NOTHING) and the series is dated 1 July of each year, so the rows
+    filed from an earlier count would outlive every recount: they are removed here, in the same commit, and the next
+    poll files the series again from place_yearly. Node #1 held a count 64 times low this way (18 Nov 2026)."""
+    import satellite as S
+    ee = S.init_ee()
+    S.footprints(ee, con, lat, lon, radius)
+    years = S.yearly(ee, lat, lon, radius)
+    with con.cursor() as cur:
+        cur.execute("CREATE TABLE IF NOT EXISTS place_yearly (year INT PRIMARY KEY, buildings REAL, height_m REAL, fetched_at TIMESTAMPTZ DEFAULT now())")
+        for year, count, h in years:
+            cur.execute("INSERT INTO place_yearly (year, buildings, height_m) VALUES (%s,%s,%s) ON CONFLICT (year) DO UPDATE SET buildings=EXCLUDED.buildings, height_m=EXCLUDED.height_m, fetched_at=now()", (year, count, h))
+        cur.execute("DELETE FROM readings WHERE sensor_id='place-point' AND metric = ANY(%s)", (list(YEARLY),))
+    con.commit()
+    return len(years)
+
 METRICS_SQL = """
 WITH here AS (SELECT ST_SetSRID(ST_MakePoint(%(lon)s, %(lat)s), 4326)::geography AS g),
 b AS (SELECT count(*) AS n, coalesce(sum(ST_Area(geom::geography)),0) AS area,
@@ -232,14 +255,7 @@ def fetch(hc):
             refresh(con, hc, lat, lon, radius)
             # the satellite's buildings, if Earth Engine is configured; a missing key is logged once, never fatal
             try:
-                import satellite as S
-                ee = S.init_ee()
-                S.footprints(ee, con, lat, lon, radius)
-                with con.cursor() as cur:
-                    cur.execute("CREATE TABLE IF NOT EXISTS place_yearly (year INT PRIMARY KEY, buildings REAL, height_m REAL, fetched_at TIMESTAMPTZ DEFAULT now())")
-                    for year, count, h in S.yearly(ee, lat, lon, radius):
-                        cur.execute("INSERT INTO place_yearly (year, buildings, height_m) VALUES (%s,%s,%s) ON CONFLICT (year) DO UPDATE SET buildings=EXCLUDED.buildings, height_m=EXCLUDED.height_m, fetched_at=now()", (year, count, h))
-                con.commit()
+                satellite_refresh(con, lat, lon, radius)
             except Exception as e:  # noqa: BLE001
                 log.warning("place: Open Buildings skipped (%s: %s)", type(e).__name__, str(e)[:120])
         sat_n, sat_conf, yearly = 0, None, []
