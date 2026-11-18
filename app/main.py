@@ -1590,6 +1590,8 @@ import machine  # noqa: E402 — GET /machine, /storage (app/machine.py)
 app.include_router(machine.router)
 import wild  # noqa: E402 — GET /packs/all, /packs/preview, POST /packs/install (app/wild.py)
 app.include_router(wild.router)
+import wall  # noqa: E402 — GET /wall: what the Wall's map draws, tokenless at SHARE_LEVEL=open (app/wall.py)
+app.include_router(wall.router)
 
 
 @app.get("/report/latest")

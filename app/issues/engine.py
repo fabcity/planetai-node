@@ -610,6 +610,12 @@ def _from_earth(spec: dict, earth: dict | None, obs: list[dict], now: datetime) 
     return cell
 
 
+def day_buckets(buckets, now: datetime) -> list:
+    """The last 24 hourly buckets that have happened, each once and in order: the hours /issues draws, and the
+    Wall's map steps through the same ones (app/wall.py). readings_1h also holds the forecast's hours ahead."""
+    return sorted({b for b in buckets if (_age_minutes(b, now) or 0) >= 0})[-24:]
+
+
 def _age_minutes(ts, now: datetime) -> float | None:
     if not ts:
         return None
@@ -1597,7 +1603,7 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
     # The last 24 hours that have happened. readings_1h also holds the forecast's hours, up to 48 h ahead, and the
     # latest 24 buckets used to be mostly tomorrow's: no sensor reads there, so every series came back empty and
     # every trend "steady" — on node #1 the live title said "holding" whatever the air did (11 Oct 2026).
-    buckets = sorted({r["bucket"] for r in data["hourly"] if (_age_minutes(r["bucket"], now) or 0) >= 0})[-24:]
+    buckets = day_buckets((r["bucket"] for r in data["hourly"]), now)
     hourly: dict = {b: [] for b in buckets}
     for r in data["hourly"]:
         if r["bucket"] in hourly:
