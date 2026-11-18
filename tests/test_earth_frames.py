@@ -126,8 +126,11 @@ if ER.pack.cache() != earth / "bayu-ungasan":
 mine = earth / "bayu-ungasan"; mine.mkdir()
 if ER.earth_wall_png().status_code != 204:
     fails.append("with no comparison, /earth/wall.png must be 204")
+# a crop names the cell it was cut round, and only one cut round the house's cell now is served
+HERE = ER.pack.wall_cell()
 for a, b in ((2023, 2024), (2024, 2025), (2023, 2025)):
-    (mine / f"change_{a}_{b}.json").write_text(json.dumps({"year_a": a, "year_b": b}))
+    (mine / f"change_{a}_{b}.json").write_text(json.dumps({"year_a": a, "year_b": b,
+                                                           "wall": {"bounds": {}, "ha": 1.0, "cell": HERE}}))
 (mine / "change_2023_2024_wall.png").write_bytes(b"\x89PNG old")
 if ER.earth_wall_png().status_code != 204:
     fails.append("the newest year-over-year pair has no Wall image: 204, never an older pair's")
@@ -137,6 +140,23 @@ if str(getattr(r, "path", None)) != str(mine / "change_2024_2025_wall.png") or r
     fails.append(f"/earth/wall.png must serve change_2024_2025_wall.png, got {getattr(r, 'path', r)}")
 if (getattr(r, "headers", None) or {}).get("cache-control") != "no-cache":
     fails.append("/earth/wall.png must say no-cache: a screen asks again before it reuses last year's image")
+# the PNG on disk is not enough: no crop, a crop with no cell (computed before crops named it), another cell
+for wall_ in (None, {"bounds": {}, "ha": 1.0}, {"bounds": {}, "ha": 1.0, "cell": "8895a4c847fffff"}):
+    (mine / "change_2024_2025.json").write_text(json.dumps({"year_a": 2024, "year_b": 2025, "wall": wall_}))
+    for args in ({}, {"pair": "2024_2025"}):
+        r = ER.earth_wall_png(**args)
+        if r.status_code != 204 or r.headers.get("cache-control") != "no-cache":
+            fails.append(f"/earth/wall.png with wall={wall_} {args}: 204 with no-cache, got {r.status_code}")
+(mine / "change_2024_2025.json").write_text(json.dumps({"year_a": 2024, "year_b": 2025,
+                                                       "wall": {"bounds": {}, "ha": 1.0, "cell": HERE}}))
+# ?pair= is the pair /wall placed: that pair's image, or 204, never the latest in its corners
+r = ER.earth_wall_png(pair="2023_2024")
+if str(getattr(r, "path", None)) != str(mine / "change_2023_2024_wall.png"):
+    fails.append(f"?pair=2023_2024 must serve that pair's image, never the latest, got {getattr(r, 'path', r)}")
+for want in ("2023_2025", "2019_2020"):          # computed with no Wall image; never computed
+    r = ER.earth_wall_png(pair=want)
+    if r.status_code != 204 or r.headers.get("cache-control") != "no-cache":
+        fails.append(f"?pair={want} has no Wall image: 204 with no-cache, got {r.status_code} {dict(r.headers)}")
 
 # ---------------------------------------------------------------- nothing finer than the cell, to a stranger
 # /earth handed a tokenless reader the node's point to five decimals (node #1's LAN, 18 Nov 2026), and the square

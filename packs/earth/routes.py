@@ -15,6 +15,7 @@ from __future__ import annotations
 import importlib.util
 import os
 from pathlib import Path
+from typing import Annotated
 
 from fastapi import APIRouter, Header, HTTPException, Query, Request
 from fastapi.responses import FileResponse, Response
@@ -134,14 +135,20 @@ def earth_year_png(request: Request, year: int = Query(..., ge=1900, le=2200), a
 
 
 @router.get("/earth/wall.png")
-def earth_wall_png():
-    """The Wall's land-change image (change.py writes change_<A>_<B>_wall.png): the pair /wall picks, which is
-    _latest(). 204 when that pair has none yet. The name is built from the pack's own JSON as integers. It is cut by
-    the cell, never the house (adapter.py wall_image), so a stranger gets the same file. /wall asks it with
-    ?pair=<a>_<b>, which is only there to change the URL when the pair changes, so it is not read; no-cache makes a
-    screen ask again before it reuses an image."""
-    c = _latest(pack.changes())
-    p = pack.cache() / f"change_{int(c['year_a'])}_{int(c['year_b'])}_wall.png" if c else None
+def earth_wall_png(pair: Annotated[str, Query(pattern=r"^(\d{4}_\d{4})?$")] = ""):
+    """The Wall's land-change image (change.py writes change_<A>_<B>_wall.png): the pair /wall names in its URL
+    (?pair=<a>_<b>), never another pair's, so a comparison that lands between /wall and this read cannot put next
+    year's image in this year's corners. With no pair, _latest(), the pair /wall picks. 204 when that pair has none,
+    and on the same terms /wall shows none (app/wall.py change()): no crop in the pair's JSON, or one cut round
+    another res-8 cell than the house's now, or recorded before crops named their cell (an older clipped read's crop
+    depended on where in the cell the house was). The name is built from the pack's own JSON as integers. It is cut
+    by the cell, never the house (adapter.py wall_image), so a stranger gets the same file. no-cache on both answers
+    makes a screen ask again before it reuses one, an empty 204 included."""
+    cs = pack.changes()
+    c = _latest(cs) if not pair else next((x for x in cs if f"{x.get('year_a')}_{x.get('year_b')}" == pair), None)
+    crop = (c or {}).get("wall")
+    ok = isinstance(crop, dict) and crop.get("cell") is not None and crop.get("cell") == pack.wall_cell()
+    p = pack.cache() / f"change_{int(c['year_a'])}_{int(c['year_b'])}_wall.png" if ok else None
     if not (p and p.is_file()):
-        return Response(status_code=204)
+        return Response(status_code=204, headers={"Cache-Control": "no-cache"})
     return FileResponse(p, media_type="image/png", filename=p.name, headers={"Cache-Control": "no-cache"})

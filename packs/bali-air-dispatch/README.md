@@ -34,8 +34,14 @@ the attribution.
 
 Beside the ring, each poll writes `out/wall/island.json` (`{"at", "items"}`, replaced whole): every fresh, outdoor,
 working station on the island, with no radius, as `{lat, lon, pm25, at, network, official, place}` (coordinates to
-3 decimals). One device is one item when stations name each other in `same_device_as`. `official` is
-"Government" in the station's `type` from `/stations`, which is read at most once a day into
+3 decimals). It leaves out the node's own kit by the ring's three rules: identity (a device this node polls
+directly), minimum separation and `BAD_EXCLUDE`, and each applies to the whole device, every station
+`same_device_as` links to it, a stale one included. Since the file is public, separation here is judged from the
+middle of the node's res-8 cell: `BAD_MIN_SEPARATION_M` (150 m by default) plus the farthest the house can be from
+that middle plus 80 m, a little over 700 m at node #1, never from the house's own point. So a station
+missing from the file is not always missing from the archive. One device is one item when stations name each other
+in `same_device_as`, and its reading is from a station of that device that is fresh, outdoor and working. `official`
+is "Government" in the station's `type` from `/stations`, which is read at most once a day into
 `out/wall/bad-stations.json`; a failed read keeps the last file, and with none nothing is official. `place` is
 the station's name, only when it is official (Sempidi, `aq--519205`). The Wall treats an `at` over 3 hours old as
 missing.

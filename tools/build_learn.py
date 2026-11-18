@@ -424,8 +424,8 @@ MARKS = [
      "routes a script or a spreadsheet can."),
     ("wall-never", "What the Wall never shows", "wall.md", "What the Wall never shows",
      "Anyone in the room reads the Wall", "so the Wall leaves it out.",
-     "Nothing on it is placed finer than the house's cell, and the screen holds no token and no button. An "
-     "answer belongs on Telegram, the radio or the other doors."),
+     "The house is never placed finer than its cell, public places like the lab are drawn where they are. "
+     "The screen holds no token and no button to answer, an answer belongs on Telegram, the radio or the other doors."),
     ("wall-sentence", "The time and the sentence", "wall.md", "What it shows",
      "**The time and the sentence**", "\"Nothing is asked now.\"",
      "When the node's last poll is more than 15 minutes old, the time says the readings are old."),

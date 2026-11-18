@@ -871,6 +871,7 @@ const COLLECT = () => {
       ff: (cs.fontFamily || '').split(',')[0].replace(/["']/g, ''),
       tt: cs.textTransform, chars: s.length, nlines: rects.length, cpl,
       owner: (p.tagName + (p.id ? '#' + p.id : '') + (p.className && typeof p.className === 'string' ? '.' + p.className.split(/\s+/)[0] : '')),
+      wall: !!p.closest('#wallv'),       /* T7 calibrates on the Wall's own lines, never a 20 px line elsewhere on the page */
       text: s.slice(0, 90),
     });
   }
@@ -1856,14 +1857,14 @@ function aTargets() {
 
     /* T7 — the Wall at three metres. 1 px = 0.63 mm at 1920 on a 55-inch 16:9 panel. The floor is the cap height of
      * the Wall's own type floor, 20 px (--wf at 1920×1080; Tomas, 18 Nov 2026: the text "gets too big, control that"),
-     * which was 28 px and 9 mm. The cap ratio is read off the render's own 20 px lines, the canvas measurement COLLECT
+     * which was 28 px and 9 mm. The cap ratio is read off the render's own 20 px lines inside #wallv, the canvas measurement COLLECT
      * takes of "H" in each face, and the lowest face sets the floor. Only the doors' Wall has these parts (#wallv), so the
      * classic wall_populated render has no T7 and `wallwalk` writes the render this reads (wallwalk_1920.json).
      * T7 is a report: gate.sh never runs `targets`. The 20 px floor is enforced by wallwalk's own read() threshold. */
     let t7 = '—';
     if (wall && w >= 1920 && d.els.some(e => e.id === 'wallv')) {
       const MM = 0.63, FLOOR_PX = 20;
-      const ratio = Math.min(...d.lines.filter(l => Math.abs(l.fs - FLOOR_PX) < .5 && l.cap).map(l => l.cap / l.fs));
+      const ratio = Math.min(...d.lines.filter(l => l.wall && Math.abs(l.fs - FLOOR_PX) < .5 && l.cap).map(l => l.cap / l.fs));
       const floor = FLOOR_PX * ratio * MM;
       if (!isFinite(floor)) t7 = 'no 20 px line to calibrate';
       else {
@@ -3352,9 +3353,12 @@ async function wallwalk() {
   const names = (fx.sensors || []).filter(x => x.local && (x.name || '').trim().length > 3).map(x => x.name.trim());
   const read = (page, floor) => page.evaluate(([names, floor]) => {
     const W = document.querySelector('#wallv'), FIVE = ['live', 'partial', 'model', 'cached', 'example'], box = q => { const e = document.querySelector(q); return e && !e.hidden ? e.getBoundingClientRect() : null; };
-    const txt = [...W.querySelectorAll('*')].filter(e => [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim()) && e.getClientRects().length && !e.closest('.wchrome,[hidden],.whex'));   /* the size legend is the one size under the floor (the mockup's, 18 Nov) */
+    /* the size legend is the one size under the floor (the mockup's, 18 Nov); the chrome is read where it shows (a touch
+       screen), and only there */
+    const shown = e => { const c = e.closest('.wchrome'); return !c || +getComputedStyle(c).opacity > 0; };
+    const txt = [...W.querySelectorAll('*')].filter(e => [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim()) && e.getClientRects().length && !e.closest('[hidden],.whex') && shown(e));
     const col = box('.wcol'), narr = box('#wnarr'), chap = box('#wscale');
-    return { hour: WALL.h, size: WALL.s, sub: [...CLOCK.subs.keys()], h: document.documentElement.scrollHeight, w: document.documentElement.scrollWidth,
+    return { hour: WALL.h, size: WALL.s, sub: [...CLOCK.subs.keys()], chrome: [...W.querySelectorAll('.wchrome')].filter(shown).length, h: document.documentElement.scrollHeight, w: document.documentElement.scrollWidth,
       small: txt.filter(e => parseFloat(getComputedStyle(e).fontSize) < floor).map(e => `${e.tagName}.${e.className} ${getComputedStyle(e).fontSize}`).slice(0, 3),
       undated: [...W.querySelectorAll('.wg .wrv')].map(v => v.textContent).filter(f => !(/\d\d:\d\d/.test(f) && FIVE.some(x => f.includes(x))) && !/not read/.test(f)).slice(0, 2),
       over: [...W.querySelectorAll('.wover')].filter(e => !e.hidden && getComputedStyle(e).display !== 'none').map(e => e.id),
@@ -3385,14 +3389,16 @@ async function wallwalk() {
     ok(g.w <= w, `${tag}: the page is ${g.w} px wide`);
     if (!touch) ok(g.h <= h, `${tag}: the Wall is ${g.h} px on a ${h} px screen`);
     ok(!g.small.length, `${tag}: under the floor: ${g.small.join(', ')}`);
+    ok(touch ? g.chrome > 0 : !g.chrome, `${tag}: ${g.chrome} parts of the chrome shown ${touch ? 'on a touch screen, so the floor read none' : 'with no pointer over them'}`);
     ok(!g.undated.length, `${tag}: a figure with no time or word: ${g.undated.join(' | ')}`);
     ok(!g.words.length, `${tag}: a provenance word that is not one of the five: ${g.words.join(', ')}`);
     ok(!g.named.length, `${tag}: names a room or sensor: ${g.named.join(', ')}`);
     ok(g.narr && g.narr.inCol && g.narr.belowChap, `${tag}: the narration covers the column: ${JSON.stringify(g.narr)}`);
     if (g.narr && !touch) ok(g.narr.past <= 1, `${tag}: the narration runs ${g.narr.past} px past the screen`);
     if (w === 1920) {
+      /* both reads: the last real slot (23, the replay pads a short window before it), the base size, no clock */
       const a = await read(r.page, 0); await r.page.waitForTimeout(1500); const b = await read(r.page, 0);
-      ok(a.hour === 23 && a.hour === b.hour && a.size === 0 && !b.sub.length, `reduced motion: the replay moved (${a.hour} → ${b.hour}, size ${a.size}, subscribed ${b.sub})`);
+      ok([a, b].every(x => x.hour === 23 && x.size === 0 && !x.sub.length), `reduced motion: the replay moved (${a.hour}/${a.size}/${a.sub} → ${b.hour}/${b.size}/${b.sub})`);
     }
     await r.browser.close();
   }
@@ -3409,12 +3415,27 @@ async function wallwalk() {
     await page.goto(`${POP}/?fixture=${FIXTURE}#wall`, { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('#wstrip .wg', { timeout: 30000 }).catch(() => bad.push('motion: the Wall drew no strip'));
     await page.evaluate(() => document.documentElement.style.setProperty('--motion-replay-loop', '2.4s'));
+    /* each sample: the hour and the size, the strip as drawn (the clock and the four figures), the chapter lit in the
+       column and the one the story has on at that hour. 60 samples of 250 ms is 15 s and more, a whole walk of three 2.4 s
+       days from wherever it starts and back with time to spare, so the last change is never missed by timing */
     const seen = [];
-    for (let k = 0; k < 28; k++) { seen.push(await page.evaluate(() => [WALL.h, WALL.s, document.querySelector('#wstrip').innerHTML.length + document.querySelector('#wscale').innerHTML])); await page.waitForTimeout(250); }
-    const hours = new Set(seen.map(x => x[0]));
-    ok(hours.size >= 4 && seen.every(x => Number.isInteger(x[0])), `motion: the hours did not step (${[...hours].join(',')})`);
-    ok(new Set(seen.map(x => x[1])).size >= 2, `motion: the walk stayed at one size (${[...new Set(seen.map(x => x[1]))].join(',')})`);
-    ok(new Set(seen.map(x => x[2])).size >= 3, 'motion: the strip and the column were not redrawn as the hours stepped');
+    for (let k = 0; k < 60; k++) { seen.push(await page.evaluate(() => { const S = WALL.story[WALL.s], n = S ? S.chapters.length : 0;
+      return { h: WALL.h, s: WALL.s, strip: [...document.querySelectorAll('#wstrip .wrv, #wstrip .wclock b')].map(e => e.textContent).join(' | '),
+        clock: (document.querySelector('#wstrip .wclock b') || {}).textContent, lit: (document.querySelector('#wscale li.on .t') || {}).textContent || null,
+        want: n ? S.chapters[chapterAt(WALL.h, n)].title : null }; })); await page.waitForTimeout(250); }
+    const hours = new Set(seen.map(x => x.h));
+    ok(hours.size >= 4 && seen.every(x => Number.isInteger(x.h)), `motion: the hours did not step (${[...hours].join(',')})`);
+    /* the strip: every step of the hour redraws the clock, and the figures change over the walk */
+    const stale = seen.filter((x, i) => i && x.h !== seen[i - 1].h && x.clock === seen[i - 1].clock);
+    ok(!stale.length, `motion: the clock stayed at ${stale.map(x => x.clock).join(', ')} while the hour stepped`);
+    ok(new Set(seen.map(x => x.strip)).size >= 4, 'motion: the strip\'s figures were not redrawn as the hours stepped');
+    /* the column: the chapter lit is the story's at that hour, every sample, and more than one is lit over the walk */
+    const off = seen.filter(x => x.lit !== x.want);
+    ok(!off.length && new Set(seen.map(x => `${x.s}:${x.lit}`)).size >= 3, `motion: the column lit ${off.slice(0, 2).map(x => `${x.lit} for ${x.want}`).join(', ') || 'too few chapters'}`);
+    /* the sizes: base → community → city → base, in that order, nothing skipped. Every change is one size on, and four
+       runs hold three changes, a whole turn whichever size the samples start in */
+    const runs = seen.map(x => x.s).filter((x, i, a) => !i || x !== a[i - 1]);
+    ok(runs.length >= 4 && runs.every((x, i) => !i || x === (runs[i - 1] + 1) % 3), `motion: the walk went ${runs.join(' → ')}, not base → community → city → base`);
     await browser.close(); }
   if (!bad.length) console.log('  wallwalk: the column and the strip at 1920×1080, 1440×900 and 390 without a map, one screen on a TV, nothing under the 20 px floor, dated and worded, no names, the narration inside the column; still under reduced motion, walking with motion on');
   for (const b of bad) console.log('FAIL wallwalk:', b);

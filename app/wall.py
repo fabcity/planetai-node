@@ -58,19 +58,30 @@ def scales(home: str) -> list[dict]:
     return out
 
 
+def home_cell() -> str | None:
+    """The res-8 cell /health names, None before the node has a place."""
+    lat, lon = float(os.getenv("NODE_LAT", 0) or 0), float(os.getenv("NODE_LON", 0) or 0)
+    return h3.latlng_to_cell(lat, lon, 8) if lat or lon else None
+
+
 def cell_centre() -> tuple[float, float] | None:
     """(lon, lat) of the middle of the res-8 cell /health names, None before the node has a place: what a tokenless
     reader's every distance is measured from, here and in packs/energy's /energy."""
-    lat, lon = float(os.getenv("NODE_LAT", 0) or 0), float(os.getenv("NODE_LON", 0) or 0)
-    if not (lat or lon):
+    home = home_cell()
+    if home is None:
         return None
-    clat, clon = h3.cell_to_latlng(h3.latlng_to_cell(lat, lon, 8))
+    clat, clon = h3.cell_to_latlng(home)
     return clon, clat
+
+
+def dist_km(centre: tuple[float, float], lon: float, lat: float) -> float:
+    """km from the cell's centre ((lon, lat)), unrounded: what to rank and cut by, never what to publish."""
+    return h3.great_circle_distance((centre[1], centre[0]), (lat, lon), unit="km")
 
 
 def km_from(centre: tuple[float, float], lon: float, lat: float) -> int:
     """Whole km from the cell's centre ((lon, lat)): a decimal of km beside a public point narrows the house."""
-    return round(h3.great_circle_distance((centre[1], centre[0]), (lat, lon), unit="km"))
+    return round(dist_km(centre, lon, lat))
 
 
 def hourly(rows, buckets, sensor_id: str, metric: str) -> list[float | None]:
@@ -136,6 +147,37 @@ def island(doc: dict | None, now: datetime, ok=lambda lat, lon: True) -> dict | 
     return {"at": doc["at"], "items": items}
 
 
+def _covers(square, home: str, km: float, frame: tuple) -> bool:
+    """Whether the hydro square of `km` round any point of `home` holds the frame. The pack fetched round the house,
+    so a square that holds it from one point of the cell and not from another would say which: judged at the
+    corners of the cell's box, every point of the cell lies within them."""
+    w, s, e, n = frame
+    lats, lons = zip(*h3.cell_to_boundary(home))
+    for la in (min(lats), max(lats)):
+        for lo in (min(lons), max(lons)):
+            sw, ss, se, sn = square(la, lo, km)
+            if not (sw <= w and ss <= s and e <= se and n <= sn):
+                return False
+    return True
+
+
+def _crosses(frame: tuple, a, b) -> bool:
+    """Whether the segment a-b ([lon, lat] each) touches the frame (Liang-Barsky): a straight reach can cross it
+    with both ends outside."""
+    w, s, e, n = frame
+    (x1, y1), (x2, y2) = a, b
+    t0, t1 = 0.0, 1.0
+    for p, q in ((x1 - x2, x1 - w), (x2 - x1, e - x1), (y1 - y2, y1 - s), (y2 - y1, n - y1)):
+        if p == 0:
+            if q < 0:
+                return False
+        elif p < 0:
+            t0 = max(t0, q / p)
+        else:
+            t1 = min(t1, q / p)
+    return t0 <= t1
+
+
 def water(r: dict, frame: tuple, centre: tuple[float, float], inside, square=None) -> tuple:
     """(rivers, basin, river) from the hydro pack's result. The pack cut its square around the house and measured
     every reach from it (`dist_m`), so the reaches are re-chosen by the city frame, which lies inside that square
@@ -143,13 +185,12 @@ def water(r: dict, frame: tuple, centre: tuple[float, float], inside, square=Non
     centre, never the one holding the house: a basin edge through the cell would say which side the house is on."""
     if not r or not (r.get("rivers") or {}).get("features"):
         return None, None, None
-    w, s, e, n = frame
+    home = h3.latlng_to_cell(centre[1], centre[0], 8)
     if square:          # a square smaller than the frame would show its own edge, and that edge is round the house
-        sw, ss, se, sn = square(r["lat"], r["lon"], r["radius_km"])
-        if not (sw <= w and ss <= s and e <= se and n <= sn):
+        if h3.latlng_to_cell(r["lat"], r["lon"], 8) != home or not _covers(square, home, r["radius_km"], frame):
             return None, None, None
     reaches = [f for f in r["rivers"]["features"]
-               if any(w <= x <= e and s <= y <= n for x, y in f["geometry"]["coordinates"])]
+               if any(_crosses(frame, a, b) for c in [f["geometry"]["coordinates"]] for a, b in zip(c, c[1:] or c))]
     rivers = {"type": "FeatureCollection", "features": [
         {"type": "Feature", "properties": {"m3s": f["properties"].get("dis_av_cms"), "order": f["properties"].get("ord_stra")},
          "geometry": f["geometry"]} for f in reaches]}
@@ -183,17 +224,22 @@ def grid(raw: dict, centre: tuple[float, float], large_mw: float = 100.0) -> dic
     if not raw:
         return None
     src = [s for s in raw.get("sources") or [] if isinstance(s, dict) and s.get("lat") is not None and s.get("lon") is not None]
-    subs = sorted(km_from(centre, s["lon"], s["lat"]) for s in src if s.get("kind") == "substation")
-    plants = sorted(({"name": s.get("name"), "fuel": s.get("fuel"), "mw": s.get("mw"), "lat": round(s["lat"], 3),
-                      "lon": round(s["lon"], 3), "km": km_from(centre, s["lon"], s["lat"]), "large": (s.get("mw") or 0) >= large_mw}
-                     for s in src if s.get("kind") == "plant" and (s.get("mw") or 0) >= 1),
-                    key=lambda p: p["km"])
+    # the house's nearest few, picked when the pack last polled: from a result for another cell, no substation at all
+    same = raw.get("cell") == h3.latlng_to_cell(centre[1], centre[0], 8)
+    subs = sorted(km_from(centre, s["lon"], s["lat"]) for s in src if s.get("kind") == "substation" and same)
+    # ranked and cut by the unrounded km (30.4 km is not within 30), ties by name: only the km published is whole
+    plants = [{"name": s.get("name"), "fuel": s.get("fuel"), "mw": s.get("mw"), "lat": round(s["lat"], 3),
+               "lon": round(s["lon"], 3), "km": round(d), "large": (s.get("mw") or 0) >= large_mw}
+              for d, s in sorted(((dist_km(centre, s["lon"], s["lat"]), s) for s in src
+                                  if s.get("kind") == "plant" and (s.get("mw") or 0) >= 1),
+                                 key=lambda t: (t[0], str(t[1].get("name") or ""), t[1]["lat"], t[1]["lon"]))
+              if d <= PLANT_KM]
     low = (raw.get("share") or {}).get("low")
     today = raw.get("today")        # the cell's sun today and the panel size the house configured: no position in either
     sun = {"kwh_m2": today.get("sun_kwh_m2"), "roof_kwh": today.get("roof_kwh"), "panel_kw": today.get("panel_kw")} \
         if isinstance(today, dict) else None
     return {"fossil_low_pct": None if low is None else round(low * 100), "substation_km": subs[0] if subs else None,
-            "plants": [p for p in plants if p["km"] <= PLANT_KM], "sun": sun}
+            "plants": plants, "sun": sun}
 
 
 def change(earth, near: tuple[float, float]) -> dict | None:
@@ -207,7 +253,9 @@ def change(earth, near: tuple[float, float]) -> dict | None:
     c = ([x for x in cs if x.get("year_b", 0) - x.get("year_a", 0) == 1] or cs)[-1]
     a, b, crop = c.get("year_a"), c.get("year_b"), c.get("wall") or {}
     bb = crop.get("bounds")
-    if not bb or not earth.change_file(a, b, "png").with_name(f"change_{a}_{b}_wall.png").is_file():
+    # a crop cut round another cell (the house moved inside fetch's tolerance) waits for the next `earth change`
+    if not bb or crop.get("cell") != h3.latlng_to_cell(near[0], near[1], 8) \
+            or not earth.change_file(a, b, "png").with_name(f"change_{a}_{b}_wall.png").is_file():
         return None
     to = _utm(int(str(c["crs"]).rsplit(":", 1)[-1]), near)
     corners = [to(bb[x], bb[y]) for x, y in
@@ -216,25 +264,46 @@ def change(earth, near: tuple[float, float]) -> dict | None:
     return {"a": a, "b": b, "ha": crop.get("ha"), "corners": corners, "png": f"/earth/wall.png?pair={a}_{b}"}
 
 
-def _inner_m(home: str, run: dict | None, here: tuple[float, float]) -> int | None:
-    """The radius round the cell's centre that the place pack's last fetch always covers, wherever in the cell the
-    house is: its own `radius_m` (place_runs, what it really fetched, never the setting), less how far the house can
-    be from the centre, less how far that fetch's centre is from the house now. A count over the seven cells would
-    change with where the house stands in its cell; this one cannot. None with no run."""
+def _inner_m(home: str, run: dict | None) -> int | None:
+    """The radius round the cell's centre that the place pack's last fetch covers: its own `radius_m` (place_runs,
+    what it really fetched, never the setting) less the farthest a point of the cell can be from its middle. A fetch
+    circle round any point of the cell holds that circle, so the answer is the same wherever in the cell the fetch was
+    centred and wherever the house is now; older runs record no centre, and fetched round the house, in the cell too.
+    Nothing of the house's own point enters it: a radius less the distance the house moved since the fetch would say
+    how far it moved. None with no run, or when the fetch was centred in another cell."""
     if not run or not run.get("radius_m"):
         return None
-    moved = 0.0 if run.get("lat") is None or run.get("lon") is None else \
-        h3.great_circle_distance(here, (run["lat"], run["lon"]), unit="m")
-    return int(run["radius_m"] - circum_m(home) - moved)
+    if run.get("lat") is not None and run.get("lon") is not None \
+            and h3.latlng_to_cell(run["lat"], run["lon"], 8) != home:
+        return None
+    return int(run["radius_m"] - circum_m(home))
 
 
-def _ring_limits() -> tuple[float, float]:
-    """(km, m): the tightest radius and the widest separation of the station packs that are on, 15 km and 150 m
-    (the ring's defaults) when none says. A station left from a pack since switched off is held to the defaults."""
-    lim = [(float(settings.get(p["radius"], "15") or 15),
-            float((_safe(lambda: packs.module(p["pack"], on_only=False).cfg()) or {}).get("min_separation_m", 150)))
-           for p in packs.stations() if p.get("radius")]
-    return min(r for r, _ in lim or [(15.0, 0)]), max(m for _, m in lim or [(0, 150.0)])
+_UNREAD_SAID: set = set()
+
+
+def _ring_limits() -> tuple[float, float, set]:
+    """(km, m, withheld): the tightest radius and the widest separation of the station packs that are on, 15 km and
+    150 m (the ring's defaults) when none says, and the ids of the packs whose own settings cannot be read. A station
+    left from a pack since switched off is held to the defaults. A pack whose settings do not read is withheld whole,
+    never held to the defaults: its separation read as 150 m when it is 400 would publish the stations its own rule
+    keeps off the list. Said once a process per pack, in the log, so the operator sees why the stations went and a
+    kiosk polling /wall does not write it on every read."""
+    lim, withheld = [], set()
+    for p in packs.stations():
+        if not p.get("radius"):
+            continue
+        try:
+            lim.append((float(settings.get(p["radius"], "15") or 15),
+                        float(packs.module(p["pack"], on_only=False).cfg().get("min_separation_m", 150))))
+        except Exception as e:  # noqa: BLE001 — any failure withholds the pack, never widens the list
+            withheld.add(p["pack"])
+            if p["pack"] in _UNREAD_SAID:
+                continue
+            _UNREAD_SAID.add(p["pack"])
+            log.warning("wall: %s's settings do not read (%s: %s), its stations are withheld", p["pack"],
+                        type(e).__name__, e)
+    return min(r for r, _ in lim or [(15.0, 0)]), max(m for _, m in lim or [(0, 150.0)]), withheld
 
 
 def _safe(build, *args, empty=None):
@@ -280,7 +349,7 @@ def wall():
     # radius:`, read as /nearby reads it), and never within the separation their own cfg() reads. The Wall keeps only
     # what those rules keep wherever in the cell the house is. The make pack keeps labs within MAKE_RADIUS_KM.
     circ = circum_m(home)
-    far_km, sep_m = _ring_limits()
+    far_km, sep_m, withheld = _ring_limits()
     near_m = circ + sep_m + ROUNDED_M
 
     def ok(la, lo):
@@ -291,7 +360,7 @@ def wall():
         cur.execute(_BUCKETS)
         buckets = day_buckets([r["bucket"] for r in cur.fetchall()], now)
         cur.execute(_STATIONS)
-        srcs = {p["source"] for p in packs.stations()}
+        srcs = {p["source"] for p in packs.stations() if p["pack"] not in withheld}
         found = [s for s in cur.fetchall() if s["source"] in srcs and s["lat"] is not None and s["lon"] is not None
                  and ok(s["lat"], s["lon"])]
         cur.execute(_HOURLY, ([s["sensor_id"] for s in found] + ["om-point", "marine-point"],
@@ -301,15 +370,15 @@ def wall():
             cur.execute(_LABS)
             far = float(os.getenv("MAKE_RADIUS_KM", "50")) * 1000 - circ
             labs = sorted((r for r in cur.fetchall() if kept(r["lat"], r["lon"], centre, far, 0)),
-                          key=lambda r: km_from(centre, r["lon"], r["lat"]))
+                          key=lambda r: (dist_km(centre, r["lon"], r["lat"]), str(r["name"] or "")))
             if labs:
                 lab = {"name": labs[0]["name"], "lat": round(labs[0]["lat"], 3), "lon": round(labs[0]["lon"], 3),
                        "km": km_from(centre, labs[0]["lon"], labs[0]["lat"])}
         if "place" in on:
             try:            # the place pack may not have made its tables yet
                 cur.execute(_RUN)
-                r_m = _inner_m(home, next(iter(cur.fetchall()), None), (lat, lon))
-                r_m = r_m // 100 * 100 if r_m else None     # whole 100 m: the metres under it say where the house moved
+                r_m = _inner_m(home, next(iter(cur.fetchall()), None))
+                r_m = r_m // 100 * 100 if r_m else None     # whole 100 m
                 if r_m and r_m > 0:
                     cur.execute(_ROOFS, (clon, clat, r_m))
                     got = cur.fetchall()
@@ -319,11 +388,12 @@ def wall():
 
     out_dir = Path(os.getenv("PACK_OUT", "/app/out"))
     try:
-        isl = json.loads((out_dir / "wall" / "island.json").read_text()) if "bali-air-dispatch" in on else None
+        isl = json.loads((out_dir / "wall" / "island.json").read_text()) \
+            if "bali-air-dispatch" in on and "bali-air-dispatch" not in withheld else None
     except (OSError, ValueError):
         isl = None
     hydro, energy, earth = packs.module("hydro"), packs.module("energy"), packs.module("earth")
-    rivers, basin, river = (_safe(lambda: water(hydro.result(), frame, centre, hydro.inside, hydro.square),
+    rivers, basin, river = (_safe(lambda: water(hydro.result(near=False), frame, centre, hydro.inside, hydro.square),
                                   empty=(None, None, None)) if hydro else (None, None, None))
     return {
         "home": home, "centre": [round(clon, 5), round(clat, 5)], "scales": sc,

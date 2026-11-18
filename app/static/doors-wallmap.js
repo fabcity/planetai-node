@@ -22,6 +22,22 @@ const atHour = (v, h) => {
   return null;
 };
 
+/* the values of series v (read at timestamps ts) at the replay's slots B: a slot ts lacks is null, never the value at
+   the same index of another window (the issues and /wall are two reads, and an hour can turn between them) */
+const slotJoin = (ts, v, B) => {
+  const at = new Map((ts || []).map((t, i) => [Date.parse(t), i]));
+  return B.map(b => at.has(Date.parse(b)) ? (v || [])[at.get(Date.parse(b))] ?? null : null);
+};
+
+/* the bounds of points as [[w, s], [e, n]], each longitude first brought within half a turn of lon0 (the cell's middle):
+   cells either side of the antimeridian are one span of a few km, never a band round the world */
+const fitBox = (pts, lon0) => pts.reduce((b, [x, y]) => { x -= 360 * Math.round((x - lon0) / 360);
+  return [[Math.min(b[0][0], x), Math.min(b[0][1], y)], [Math.max(b[1][0], x), Math.max(b[1][1], y)]]; }, [[Infinity, 90], [-Infinity, -90]]);
+
+/* a circle of m metres round [lon, lat] as a closed ring of n sides, wound as an h3 ring and the world are */
+const circleRing = ([lon, lat], m, n = 64) => [...Array(n + 1)].map((_, i) => { const a = 2 * Math.PI * (i % n) / n;
+  return [lon + m * Math.cos(a) / (111320 * Math.cos(lat * Math.PI / 180)), lat + m * Math.sin(a) / 110574]; });
+
 /* the unit vector on the screen the air or the water moves along: a "from" bearing turned half a circle, y down */
 const toward = fromDeg => {
   const a = (fromDeg + 180) * Math.PI / 180;
@@ -46,16 +62,17 @@ const crestPhase = (tSeconds, periodS, spacingPx = 26) => (tSeconds / periodS % 
 /* a wind streak's speed in px/s and its tail in px from the wind in km/h; the steps are what reads at a wall's distance */
 const streak = kmh => ({ v: 8 + 5 * kmh, tail: 10 + 2.5 * kmh });
 
-/* the stations as GeoJSON at hour h; v is −1 for a gap (the layer draws it grey), over is above the clean-air line */
+/* the stations as GeoJSON at hour h; v is −1 for a gap (the layer draws it grey), over is above the clean-air line, and
+   never with no line (null > 0 is false, but 40 > null is true) */
 const stationFeatures = (stations, h, line) => ({ type: 'FeatureCollection', features: stations.map(s => {
   const v = (s.pm25 || [])[h] ?? null;
   return { type: 'Feature', geometry: { type: 'Point', coordinates: [s.lon, s.lat] },
-    properties: { v: v ?? -1, over: v != null && v > line } };
+    properties: { v: v ?? -1, over: v != null && Number.isFinite(line) && v > line } };
 }) });
 
-/* the dim outside the base node's seven cells: the world, with each cell a hole. A hole winds against the outer ring
-   (MapLibre's classifyRings starts a new polygon at a ring wound the same way), and an h3 ring winds as the world's */
-const maskRings = cells => [[[-180, -85], [180, -85], [180, 85], [-180, 85], [-180, -85]], ...cells.map(c => [...c.ring].reverse())];
+/* the dim outside an area: the world, with each ring a hole. A hole winds against the outer ring (MapLibre's
+   classifyRings starts a new polygon at a ring wound the same way), and an h3 ring or a circleRing winds as the world's */
+const maskRings = rings => [[[-180, -85], [180, -85], [180, 85], [-180, 85], [-180, -85]], ...rings.map(r => [...r].reverse())];
 
 /* ---- the story: which chapters each scale has ---- */
 
@@ -71,8 +88,9 @@ const UG = 'µg/m³';
    packs that are off), D the doors' data (issues[k].readouts, issues.air.stack and .line). `layers` are the map layer
    ids Task 6 mounts; `hue` is a CSS custom property name, resolved by the page. A scale with nothing to say still
    stands with chapters: []. The captions are public text, in Tomas's voice (pass of 18 Nov); every distance is W's
-   whole km. */
-const wallStory = (W, D) => {
+   whole km. G is /ground/meta's on_disk: Buildings and the Sun light the roofs in the node's street tiles, so with no
+   street tiles (G.vector) there are no roofs to light and neither chapter stands. */
+const wallStory = (W, D, G = {}) => {
   const I = D.issues || {}, num = v => typeof v === 'number' && isFinite(v), f = (v, dp = 0) => (+v).toFixed(dp);
   const ro = (k, m) => { const r = ((I[k] || {}).readouts || []).find(x => x.metric === m); return r && num(r.value) ? r : null; };
   const word = p => PROVS.includes(p) ? p : 'model';
@@ -87,11 +105,11 @@ const wallStory = (W, D) => {
     `Fine dust in the house${num(line) ? `, against the WHO line of ${f(line)} ${UG}. The house's cell turns red in any hour over it` : ''}.`,
     `${(stack.room.n ?? '')} sensors in the house${(stack.yard || {}).n ? ` · ${stack.yard.n} outside` : ''}`.trim(), ['own-air']));
   const built = ro('land', 'built_frac');
-  if (W.roofs && built) base.push(ch('built', '--d-ground', 'Buildings', [Math.round(built.value), '%'], built.provenance,
+  if (W.roofs && G.vector && built) base.push(ch('built', '--d-ground', 'Buildings', [Math.round(built.value), '%'], built.provenance,
     `OpenStreetMap has ${W.roofs.osm_in_cells} roofs within ${Math.round(W.roofs.mapped_radius_m / 100) * 100} m of the middle of this cell, and ${f(built.value)} % of the ground here is built on.`,
     'OpenStreetMap · built share, Earth Engine', ['roofs', 'roofs-mask']));
   const sun = W.grid && W.grid.sun && num(W.grid.sun.kwh_m2) ? W.grid.sun : null;
-  if (W.roofs && sun) base.push(ch('sun', '--d-energy', 'Sun today', [+f(sun.kwh_m2, 1), 'kWh/m²'], 'model',
+  if (W.roofs && G.vector && sun) base.push(ch('sun', '--d-energy', 'Sun today', [+f(sun.kwh_m2, 1), 'kWh/m²'], 'model',
     `The sun puts ${f(sun.kwh_m2, 1)} kWh on each square metre here today.${num(sun.panel_kw) && num(sun.roof_kwh) ? ` A ${f(sun.panel_kw, 1)} kW panel on one of these roofs would make about ${f(sun.roof_kwh, 1)} kWh.` : ''}`,
     'Open-Meteo, today', ['roofs-sun', 'roofs-mask']));
   const lst = ro('heat', 'lst'), dl = ro('heat', 'lst_delta'), ln = ro('heat', 'lst_night');
@@ -140,12 +158,13 @@ const wallStory = (W, D) => {
 
 /* ---- DOM: the map, and the wind and the swell over it ---- */
 
-/* wallMapMount(el, W, story, G): the Wall's own MapLibre map in `el`, walking `story` (wallStory's scales). G is
-   /ground/meta's on_disk: the satellite when the node holds it, dimmed; else the node's own streets, dark. Returns
-   { go(s, cut), hour(h), destroy() }, or null on a screen that cannot draw a map (no MapLibre, no WebGL), where the Wall
+/* wallMapMount(el, W, story, G, onLost): the Wall's own MapLibre map in `el`, walking `story` (wallStory's scales). W
+   is /wall on the replay's 24 slots (doors-wall.js wallDay24): every hourly series is read at the replayed hour's own
+   index. G is /ground/meta's on_disk: the satellite when the node holds it, dimmed; else the node's own streets, dark.
+   onLost is called when the screen takes the map's WebGL context away. Returns { go(s, cut), hour(h), destroy() }, or null on a screen that cannot draw a map (no MapLibre, no WebGL), where the Wall
    writes so in its place. Every layer id below is a name a chapter lists in `layers`; a chapter shows its own and hides
    every other. A canvas over the map draws the wind and the crests at the replayed hour, on the clock's 'wall-fx' key. */
-function wallMapMount(el, W, story, G = {}) {
+function wallMapMount(el, W, story, G = {}, onLost = null) {
   if (typeof maplibregl === 'undefined') return null;
   el.innerHTML = '<div class="wml"></div><canvas class="wfx" aria-hidden="true"></canvas>';
   const cs = getComputedStyle(el), hue = k => cs.getPropertyValue(k).trim() || '#888';   /* the hues are #wallv's (finding 4: --cells is set there) */
@@ -154,8 +173,9 @@ function wallMapMount(el, W, story, G = {}) {
   /* the streets when there is no satellite: doors-placemap.js PAL.dark's sea, land and road (Place's palette sits in its closure) */
   const DARK = { sea: '#0E1012', land: '#17191D', road: '#30353D' };
   const FC = features => ({ type: 'FeatureCollection', features }), F = (geometry, properties = {}) => ({ type: 'Feature', geometry, properties });
-  const box = pts => pts.reduce((b, [x, y]) => [[Math.min(b[0][0], x), Math.min(b[0][1], y)], [Math.max(b[1][0], x), Math.max(b[1][1], y)]], [[180, 90], [-180, -90]]);
-  const air = (D.issues || {}).air || {}, line = air.line, room = ((air.series || {}).room || []).slice(-24), Hr = W.hours || {};
+  const box = pts => fitBox(pts, (W.centre || [])[0]);
+  /* the house's own dust at the replayed hour, joined to the slots by timestamp: /issues is another read than /wall */
+  const air = (D.issues || {}).air || {}, line = air.line, Hr = W.hours || {}, room = slotJoin(D.buckets, (air.series || {}).room, Hr.buckets || []);
   const tiles = k => [`${location.origin}/ground/${k}/{z}/{x}/{y}.${k === 'vector' ? 'pbf' : 'png'}`];
   const sources = {}, base = [{ id: 'bg', type: 'background', paint: { 'background-color': G.imagery ? '#000' : DARK.sea } }];
   if (G.vector) sources.v = { type: 'vector', tiles: tiles('vector'), minzoom: 0, maxzoom: 15 };
@@ -191,9 +211,11 @@ function wallMapMount(el, W, story, G = {}) {
       L({ id: 'roofs', type: 'fill', source: 'v', 'source-layer': 'buildings', paint: { 'fill-color': C.ground, 'fill-opacity': .6 } });
       L({ id: 'roofs-sun', type: 'fill', source: 'v', 'source-layer': 'buildings', paint: { 'fill-color': C.energy, 'fill-opacity': .8 } });
     }
-    /* everything outside the base node's seven cells, dimmed: the roofs are counted inside them */
-    add('mask', FC([F({ type: 'Polygon', coordinates: maskRings(story[0].cells) })]));
-    L({ id: 'roofs-mask', type: 'fill', source: 'mask', paint: { 'fill-color': '#000', 'fill-opacity': .55 } });
+    /* everything outside the circle the roofs are counted in, dimmed: /wall's mapped_radius_m round the cell's middle */
+    if (W.roofs && W.centre) {
+      add('mask', FC([F({ type: 'Polygon', coordinates: maskRings([circleRing(W.centre, W.roofs.mapped_radius_m)]) })]));
+      L({ id: 'roofs-mask', type: 'fill', source: 'mask', paint: { 'fill-color': '#000', 'fill-opacity': .55 } });
+    }
     if (W.change) {
       map.addSource('change', { type: 'image', url: location.origin + W.change.png, coordinates: W.change.corners });   /* its own corners, never the node's point */
       L({ id: 'change', type: 'raster', source: 'change', paint: { 'raster-opacity': .95, 'raster-fade-duration': 0 } });
@@ -216,7 +238,7 @@ function wallMapMount(el, W, story, G = {}) {
     L({ id: 'stations', type: 'circle', source: 'stations', paint: { 'circle-radius': 8, 'circle-color': lit, 'circle-opacity': ['case', ['==', ['get', 'v'], -1], .25, .95],
       'circle-stroke-color': '#000', 'circle-stroke-width': 1 } });
     if (W.island) {   /* the island's stations as they read now: they have no day on the node, so they do not replay */
-      add('island', FC(W.island.items.map(i => F({ type: 'Point', coordinates: [i.lon, i.lat] }, { v: i.pm25 ?? -1, over: i.pm25 != null && line != null && i.pm25 > line, off: !!i.official }))));
+      add('island', FC(W.island.items.map(i => F({ type: 'Point', coordinates: [i.lon, i.lat] }, { v: i.pm25 ?? -1, over: i.pm25 != null && Number.isFinite(line) && i.pm25 > line, off: !!i.official }))));
       L({ id: 'island', type: 'circle', source: 'island', paint: { 'circle-radius': ['case', ['get', 'off'], 9, 6], 'circle-color': lit, 'circle-opacity': .9,
         'circle-stroke-color': ['case', ['get', 'off'], C.cells, '#000'], 'circle-stroke-width': ['case', ['get', 'off'], 3, 1] } });
     }
@@ -248,8 +270,9 @@ function wallMapMount(el, W, story, G = {}) {
   }
 
   /* THE WIND AND THE SWELL at the replayed hour: streaks over the whole map where the wind goes, faster with its speed;
-     crests on the sea only, square to where the waves go, one passing every swell period. Hidden when the hour has no
-     direction, speed, height or period: toward(null) would read as from the north. */
+     crests on the sea only, square to where the waves go, one passing every swell period. Each reads the hour's own slot
+     and is hidden when that hour has no direction, speed, height or period: toward(null) would read as from the north,
+     and a neighbour's speed under this hour's direction is two hours drawn as one. */
   const SP = 26, FX = { parts: [], phase: 0, last: 0, w: 0, h: 0, dpr: 1, sea: null, at: '', seaA: 1 };
   const fxSize = () => { const r = el.getBoundingClientRect(); FX.dpr = devicePixelRatio || 1; FX.w = r.width; FX.h = r.height; cv.width = r.width * FX.dpr; cv.height = r.height * FX.dpr; FX.parts = []; };
   function seaPath() {   /* the sea's outline in screen pixels, rebuilt when the camera has moved or the water tiles came */
@@ -267,7 +290,7 @@ function wallMapMount(el, W, story, G = {}) {
     const dt = Math.min(.05, (now - (FX.last || now)) / 1000); FX.last = now;
     ctx.setTransform(FX.dpr, 0, 0, FX.dpr, 0, 0); ctx.clearRect(0, 0, FX.w, FX.h);
     const h = T.h, S = story[T.s], ch = S && S.chapters.length ? S.chapters[chapterAt(h, S.chapters.length)] : null;
-    const wd = atHour(Hr.wave_from || [], h), sw = atHour(Hr.swell_m || [], h), per = atHour(Hr.swell_s || [], h);
+    const at = k => (Hr[k] || [])[h] ?? null, wd = at('wave_from'), sw = at('swell_m'), per = at('swell_s');
     /* no crests while the camera glides (each frame would re-read every water vertex), faded back in over 0.6 s after */
     const moving = map.isMoving();
     FX.seaA = moving ? 0 : still ? 1 : Math.min(1, FX.seaA + dt / .6);
@@ -277,7 +300,7 @@ function wallMapMount(el, W, story, G = {}) {
       ctx.beginPath(); for (const [x1, y1, x2, y2] of crestSegments(FX.w, FX.h, wd, FX.phase, SP)) { ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); }
       ctx.stroke(); ctx.restore();
     }
-    const dr = atHour(Hr.wind_from || [], h), ws = atHour(Hr.wind_kmh || [], h);
+    const dr = at('wind_from'), ws = at('wind_kmh');
     if (dr != null && ws != null) {
       const { ux, uy } = toward(dr), { v, tail } = streak(ws);
       if (!FX.parts.length) FX.parts = [...Array(260)].map(() => ({ x: Math.random() * FX.w, y: Math.random() * FX.h, a: Math.random() * 4 }));
@@ -298,17 +321,16 @@ function wallMapMount(el, W, story, G = {}) {
   const stale = () => { FX.at = ''; };   /* the sea is read again: tiles that came after the last read, or a camera at rest */
   fxSize(); map.on('resize', () => { fxSize(); still(); }); map.on('idle', () => { stale(); still(); });
   map.on('sourcedata', e => { if (e && e.sourceId === 'v') stale(); });
-  /* a lost WebGL context leaves a dead map: the Wall destroys this mount and mounts again at its next draw */
-  map.on('webglcontextlost', () => { T.lost = true; });
+  /* a lost WebGL context leaves a dead map: the Wall destroys this mount and mounts again after a pause, still or not */
+  map.on('webglcontextlost', () => { if (onLost) onLost(); });
   return {
     /* a new size takes effect at the next hour(h): one camera move, to the chapter of that hour, never first to the
        chapter of the hour before (a size changes at hour 0, and the hour before was 23, the widest frame) */
     go(s, cut) { T.s = s; T.ci = null; T.cut = !!cut; },
     hour(h) { T.h = h; apply(); if (!CLOCK.on('wall-fx', fx)) fxDraw(performance.now(), true); },   /* CLOCK.on refuses under reduced motion: one still frame */
     destroy() { CLOCK.off('wall-fx'); if (offi) offi.remove(); map.remove(); },
-    get lost() { return !!T.lost; },
   };
 }
 
-if (typeof window !== 'undefined') Object.assign(window, { atHour, toward, crestSegments, crestPhase, streak, stationFeatures, maskRings, wallStory, chapterAt });
-if (typeof module !== 'undefined') module.exports = { atHour, toward, crestSegments, crestPhase, streak, stationFeatures, maskRings, wallStory, chapterAt };
+if (typeof window !== 'undefined') Object.assign(window, { atHour, slotJoin, fitBox, circleRing, toward, crestSegments, crestPhase, streak, stationFeatures, maskRings, wallStory, chapterAt });
+if (typeof module !== 'undefined') module.exports = { atHour, slotJoin, fitBox, circleRing, toward, crestSegments, crestPhase, streak, stationFeatures, maskRings, wallStory, chapterAt };

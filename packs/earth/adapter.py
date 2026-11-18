@@ -421,8 +421,10 @@ def allowed_raster(bounds: dict, crs: str, shape: tuple[int, int], home: str, ra
     """(H, W) bool over the square read (north up, `bounds` in `crs`): True on the pixels whose centres fall in the
     community's res-7 cells that lie wholly inside the safe square round `home`'s centre, and inside the raster.
 
-    All False when the window was not clipped and still does not hold the safe square: it was read around a point
-    that is not in this cell (a move inside fetch's tolerance), and which edge cells survive would say where."""
+    All False when a tile edge clipped the window: where the edge cuts the square depends on where in the cell the
+    house is, so which cells survive (or whether any does) would say where. All False too when the window was not
+    clipped and still does not hold the safe square: it was read around a point that is not in this cell (a move
+    inside fetch's tolerance), and which edge cells survive would say the same."""
     import h3
     import numpy as np
     fwd = projection(int(str(crs).rsplit(":", 1)[-1]))
@@ -434,7 +436,7 @@ def allowed_raster(bounds: dict, crs: str, shape: tuple[int, int], home: str, ra
     pw, ph = (bounds["east"] - bounds["west"]) / w, (bounds["north"] - bounds["south"]) / h
     west, east = max(cx - half, bounds["west"]), min(cx + half, bounds["east"])
     south, north = max(cy - half, bounds["south"]), min(cy + half, bounds["north"])
-    if not clipped and (west, east, south, north) != (cx - half, cx + half, cy - half, cy + half):
+    if clipped or (west, east, south, north) != (cx - half, cx + half, cy - half, cy + half):
         return np.zeros(shape, bool)
     X = (bounds["west"] + (np.arange(w) + 0.5) * pw)[None, :]
     Y = (bounds["north"] - (np.arange(h) + 0.5) * ph)[:, None]
@@ -460,8 +462,8 @@ def wall_mask(dist, masked, threshold: float, allowed):
 def wall_image(dist, masked, bounds: dict, crs: str, home: str, radius_m: float, threshold: float,
                clipped: bool = False):
     """The Wall's image and its crop: (ix, {"bounds", "ha"}), the image cut to the allowed cells' box, bounds in
-    `crs`, ha the changed pixels inside the cells. None when no community cell fits the square, or when an
-    unclipped window does not hold it (allowed_raster)."""
+    `crs`, ha the changed pixels inside the cells. None when no community cell fits the square, when a tile edge
+    clipped the read, or when an unclipped window does not hold it (allowed_raster)."""
     import numpy as np
     allowed = allowed_raster(bounds, crs, dist.shape, home, radius_m, clipped)
     if not allowed.any():
@@ -765,6 +767,15 @@ def warm() -> None:
             public_year(y)
     except Exception as e:                                                      # noqa: BLE001
         log.warning("earth: could not cut the public square (%s: %s)", type(e).__name__, str(e)[:120])
+
+
+def wall_cell() -> str | None:
+    """The res-8 cell the Wall's crop is cut round: NODE_LAT/NODE_LON's, None before the node has a place."""
+    if not (os.getenv("NODE_LAT") and os.getenv("NODE_LON")):
+        return None
+    import h3
+    lat, lon, _ = aoi()
+    return h3.latlng_to_cell(lat, lon, 8)
 
 
 def latest_pair() -> tuple[int, int] | None:

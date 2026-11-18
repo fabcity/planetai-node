@@ -708,11 +708,11 @@ body:not(.classic) .hero .ladder.folded{display:none}
 /* stepped, never tweened: nothing on the Wall eases from one hour to the next. The camera's glide is MapLibre's own. */
 #wallv *{transition:none}
 /* chrome: a wall is not operated. The back button and the model's note are there for a pointer or the keyboard and
-   invisible otherwise; the back button is first in keyboard order. On a touch screen it is always shown, a 44 px target. */
+   invisible otherwise; the back button is first in keyboard order. On any screen that can be touched it is always shown, a
+   44 px target: a touch laptop whose primary pointer is its mouse cannot hover to find it (CodeRabbit on #406). */
 #wallv .wchrome{opacity:0}
 #wallv .wchrome:hover,#wallv .wchrome:focus-within{opacity:1}
-@media (hover:none) and (pointer:coarse){#wallv .wchrome{opacity:1}}
-@media (pointer:coarse){#wallv .wback{min-height:44px;min-width:44px}}
+@media (any-pointer:coarse){#wallv .wchrome{opacity:1}#wallv .wback{min-height:44px;min-width:44px}}
 .wtop{position:absolute;top:0;left:0;right:0;z-index:6;display:flex;gap:1.2vw;align-items:center;flex-wrap:wrap;padding:1.2vh 2.4vw;background:var(--ground);border-bottom:1px solid var(--hair)}
 .wback{background:none;border:1px solid var(--ink);color:var(--ink);padding:.1em .5em;font:600 var(--wf) var(--mono);cursor:pointer}
 .wnote{font:500 var(--wf)/1.3 var(--body);color:var(--mute)}

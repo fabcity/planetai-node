@@ -35,6 +35,7 @@ ATTRIBUTION = "Bali Air Dispatch, baliairdispatch.com"
 # IQAir station mirrored by AQICN. The archive dedupes OpenAQ against some networks but not against AirGradient,
 # so the ring has to. These prefixes lose a tie: the network that owns the device is kept, the mirror is dropped.
 MIRROR_PREFIXES = ("oq-", "oaq-", "aq-")
+ROUNDED_M = 80          # app/wall.py's: how far a point at 3 dp can stand from where it is
 
 
 def _ids(key: str) -> set[str]:
@@ -170,15 +171,27 @@ def island(rows: list[dict], stations: dict[str, dict], here: tuple[float, float
            min_separation_m: float = 150.0) -> list[dict]:
     """Every fresh, outdoor, working station on the island, for the Wall's city scale. Pure: /latest rows and the
     /stations rows by id in, items out. No radius (the ring has one), no node: the Wall draws what it can see.
-    One device, one item: stations naming each other in `same_device_as` (either side) are one, and the
-    government's wins, then the direct network over a mirror, then the lower id. `official` is read from /stations'
-    `type`; with no list, nothing is official. Given `here`, the node's own kit is never drawn: verdicts() applies the
-    ring's identity, proximity and by-hand rules (no radius), so the two cannot disagree. Without it, no such filter."""
+    One device, one item: stations naming each other in `same_device_as` (either side, and through a stale station or
+    one /latest no longer lists, which still links its neighbours) are one, and its item is one of its fresh, outdoor,
+    working stations: the government's, then the direct network over a mirror, then the lower id. `official` is read
+    from /stations' `type`; with no list, nothing is official. Given `here`, the node's own kit is never drawn: identity
+    (`own_ids`), by hand (`exclude_ids`) and proximity drop the whole device when any station of it is the node's, so
+    an archive alias of a kit the node polls is not drawn as a peer. Proximity here is judged from the middle of
+    `here`'s res-8 cell, within min_separation_m plus the farthest the house can be from that middle plus ROUNDED_M,
+    never from the point itself: the file is public (GET /wall), and a linked twin kilometres away that comes and goes
+    with a station 150 m from the exact point would say where in the cell the house is. That holds everything
+    verdicts()' exact-point proximity drops, which stays the ring's. Without `here`, no such filter."""
+    owned: set[str] = set()
     if here:
-        # verdicts()' own duplicate pass drops the mirror-prefixed row, and Sempidi's government row is `aq--`; a
-        # "same device" loser has passed the ownership rules, so it stays and the grouping below picks the official.
-        rows = [r for r, v in verdicts(rows, *here, float("inf"), own_ids, exclude_ids, min_separation_m)
-                if v == "included" or v.startswith("excluded: same device as")]
+        import h3  # noqa: PLC0415 — the app's own dependency; the pack runs in its container
+        home = h3.latlng_to_cell(*here, 8)
+        mid = h3.cell_to_latlng(home)
+        near_m = max(h3.great_circle_distance(mid, v, unit="m") for v in h3.cell_to_boundary(home)) \
+            + min_separation_m + ROUNDED_M
+        # identity and by hand name ids that need not be in /latest at all
+        owned = {str(i) for i in (own_ids or set()) | (exclude_ids or set())} | {
+            str(r.get("station_id")) for r in rows if r.get("latitude") is not None and r.get("longitude") is not None
+            and h3.great_circle_distance(mid, (float(r["latitude"]), float(r["longitude"])), unit="m") <= near_m}
     live = {}
     for r in rows:
         if (r.get("stale") or r.get("suspected_indoor") or r.get("suspected_malfunctioning") or r.get("pm25") is None
@@ -187,11 +200,10 @@ def island(rows: list[dict], stations: dict[str, dict], here: tuple[float, float
             continue
         live[str(r["station_id"])] = r
     official = lambda i: "Government" in ((stations.get(i) or {}).get("type") or "")  # noqa: E731
-    twin = {i: set() for i in live}
-    for i in live:
-        for j in (stations.get(i) or {}).get("same_device_as") or []:
-            if j in live:
-                twin[i].add(j); twin[j].add(i)
+    twin: dict[str, set] = {}
+    for i, s in stations.items():
+        for j in (s or {}).get("same_device_as") or []:
+            twin.setdefault(str(i), set()).add(str(j)); twin.setdefault(str(j), set()).add(str(i))
     items, seen = [], set()
     for i in live:
         if i in seen:
@@ -200,9 +212,11 @@ def island(rows: list[dict], stations: dict[str, dict], here: tuple[float, float
         while todo:
             k = todo.pop()
             if k not in group:
-                group.add(k); todo.extend(twin[k])
+                group.add(k); todo.extend(twin.get(k, ()))
         seen |= group
-        best = min(group, key=lambda k: (not official(k), k.startswith(MIRROR_PREFIXES), k))
+        if group & owned:
+            continue
+        best = min(group & live.keys(), key=lambda k: (not official(k), k.startswith(MIRROR_PREFIXES), k))
         r = live[best]
         items.append({"lat": round(float(r["latitude"]), 3), "lon": round(float(r["longitude"]), 3),
                       "pm25": float(r["pm25"]), "at": sources._iso(r["observed_at"]).isoformat(),

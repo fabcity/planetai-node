@@ -7,6 +7,7 @@ held to is R25: nothing in the body places the house more finely than its res-8 
     PACKS_DIR=packs PYTHONPATH=app python3 tests/test_wall.py
 """
 import json
+import logging
 import os
 import tempfile
 import time
@@ -75,6 +76,46 @@ for la, lo in ((-8.816, 115.163), (-8.86, 115.11), (-8.77, 115.21)):       # the
     assert err < 0.05, (la, lo, lat_, lon_, err)
 print("  lonlat: UTM 50S back to lon/lat, under 5 cm at 7 km")
 
+# ---------------------------------------------------------------- grid: the 30 km cut and the substation's cell
+C = (clon, clat)
+E = lambda km: clon + km / (111.32 * 0.98818)  # noqa: E731 — a point `km` east of the centre
+g = wall.grid({"cell": HOME, "sources": [{"kind": "plant", "name": "far", "mw": 5, "lat": clat, "lon": E(30.4)},
+                                         {"kind": "plant", "name": "in", "mw": 5, "lat": clat, "lon": E(29.6)},
+                                         {"kind": "substation", "lat": clat, "lon": E(2.2)}]}, C)
+assert [(p["name"], p["km"]) for p in g["plants"]] == [("in", 30)], ("30.4 km is not within 30", g["plants"])
+assert g["substation_km"] == 2
+g = wall.grid({"cell": h3.cell_to_parent(HOME, 7), "sources": [{"kind": "substation", "lat": clat, "lon": E(2.2)}]}, C)
+assert g["substation_km"] is None, "a result picked for another cell names no substation"
+print("  grid: plants cut at 30 km before the km is made whole; no substation from another cell's result")
+
+# ---------------------------------------------------------------- water: coverage from every point of the cell
+HY = packs.module("hydro", on_only=False)
+_city = [p for cc in wall.scales(HOME)[-1]["cells"] for p in cc["ring"]]
+FRAME = (min(p[0] for p in _city), min(p[1] for p in _city), max(p[0] for p in _city), max(p[1] for p in _city))
+reach = {"type": "Feature", "properties": {"dis_av_cms": 1.0},
+         "geometry": {"type": "LineString", "coordinates": [[FRAME[0] - 0.01, clat], [FRAME[2] + 0.01, clat]]}}
+fetches = [(clat + 0.95 * (v[0] - clat), clon + 0.95 * (v[1] - clon)) for v in h3.cell_to_boundary(HOME)]
+assert all(h3.latlng_to_cell(la, lo, 8) == HOME for la, lo in fetches)
+# 11.2 km holds the frame from some of these points and not from others: the pack's own square says which side
+lit = [all(a <= b for a, b in zip(HY.square(la, lo, 11.2)[:2], FRAME[:2])) and
+       all(a >= b for a, b in zip(HY.square(la, lo, 11.2)[2:], FRAME[2:])) for la, lo in fetches]
+assert any(lit) and not all(lit), lit
+for km, want in ((11.2, False), (12.0, True)):
+    got = [wall.water({"lat": la, "lon": lo, "radius_km": km, "rivers": {"features": [reach]}}, FRAME, C, HY.inside,
+                      HY.square)[0] is not None for la, lo in fetches]
+    assert got == [want] * len(got), (km, got)
+got = wall.water({"lat": clat - 0.02, "lon": clon, "radius_km": 30, "rivers": {"features": [reach]}}, FRAME, C,
+                 HY.inside, HY.square)
+assert got == (None, None, None), "a fetch from another cell: no water"
+# a straight reach across the frame with both ends outside it is a reach in the frame
+rv, _, rr = wall.water({"lat": clat, "lon": clon, "radius_km": 30, "rivers": {"features": [reach]}}, FRAME, C,
+                       HY.inside, HY.square)
+assert len(rv["features"]) == 1 and rr["nearest_km"] == 0, (rv, rr)
+outside = {**reach, "geometry": {"type": "LineString", "coordinates": [[FRAME[0] - 0.02, clat], [FRAME[0] - 0.01, clat]]}}
+assert wall.water({"lat": clat, "lon": clon, "radius_km": 30, "rivers": {"features": [outside]}}, FRAME, C, HY.inside,
+                  HY.square)[0]["features"] == []
+print("  water: the same block from every fetch centre in the cell; a reach crossing the frame is kept")
+
 # ---------------------------------------------------------------- the route
 try:
     from fastapi.testclient import TestClient
@@ -142,7 +183,7 @@ iso = lambda d: d.isoformat()  # noqa: E731
      "official": False, "place": None}]}))
 (OUT / "energy").mkdir()
 (OUT / "energy" / "result.json").write_text(json.dumps({
-    "share": {"low": 0.8412, "high": 0.9}, "today": {"sun_kwh_m2": 6.38, "roof_kwh": 9.57, "panel_kw": 2.0, "use_kwh": 14.2,
+    "cell": HOME, "share": {"low": 0.8412, "high": 0.9}, "today": {"sun_kwh_m2": 6.38, "roof_kwh": 9.57, "panel_kw": 2.0, "use_kwh": 14.2,
                                                      "measured": False}, "sources": [
         {"kind": "substation", "name": "GI Nusa Dua", "lat": -8.79, "lon": 115.2, "km": 4.123456},
         {"kind": "plant", "name": "PLTDG Pesanggaran", "fuel": "gas", "mw": 200, "lat": -8.7123456, "lon": 115.2123456, "km": 12.3456},
@@ -178,7 +219,7 @@ wx, wy = fwd(clat, clon)
 safe = {"west": wx - 3200, "east": wx + 3100, "south": wy - 2900, "north": wy + 3300}
 stats = {"year_a": 2024, "year_b": 2025, "crs": "EPSG:32750", "bounds": square, "hectares_over_threshold": 129.4,
          "lat": LAT, "lon": LON, "png": "change_2024_2025.png", "node_rc": [500, 500]}
-(ea / "change_2024_2025.json").write_text(json.dumps({**stats, "wall": {"bounds": safe, "ha": 61.2}}))
+(ea / "change_2024_2025.json").write_text(json.dumps({**stats, "wall": {"bounds": safe, "ha": 61.2, "cell": HOME}}))
 (ea / "change_2023_2024.json").write_text(json.dumps({**stats, "year_a": 2023, "year_b": 2024}))
 (ea / "change_2024_2025_wall.png").write_bytes(b"\x89PNG\r\n\x1a\n")
 
@@ -226,7 +267,7 @@ assert not any("sensor_id" in s for s in W["stations"]), "a station's id is its 
 assert W["island"]["at"] == iso(NOW) and len(W["island"]["items"]) == 1, "the stale one, and the one 160 m off"
 assert W["island"]["items"][0]["place"] == "Kabupaten Badung Sempidi" and W["island"]["items"][0]["official"] is True
 assert W["roofs"] == {"osm_in_cells": 214, "mapped_radius_m": int(1000 - wall.circum_m(HOME)) // 100 * 100}, W["roofs"]
-assert W["roofs"]["mapped_radius_m"] == 400, "the run's 1000 m, never the 5000 m Set up row, in whole 100 m"
+assert W["roofs"]["mapped_radius_m"] == 400, "the run's 1000 m less the cell, never the 5000 m Set up row, whole 100 m"
 roof_r = next(a[0][2] for q, a in reversed(SEEN) if "place_features" in q)
 assert roof_r == 400, ("the roofs are counted over the radius the Wall says", roof_r)
 assert W["lab"] == {"name": "Fab Lab Bali", "lat": -8.681, "lon": 115.231,
@@ -280,7 +321,9 @@ print("  R25: no top-level point, whole km, 3 dp at most, names only for the lab
 # ---- the earth square's own corners are never used
 (ea / "change_2024_2025.json").write_text(json.dumps(stats))
 assert c.get("/wall").json()["change"] is None, "no crop in the stats, no change: never the square centred on the house"
-(ea / "change_2024_2025.json").write_text(json.dumps({**stats, "wall": {"bounds": safe, "ha": 61.2}}))
+(ea / "change_2024_2025.json").write_text(json.dumps({**stats, "wall": {"bounds": safe, "ha": 61.2, "cell": "88"}}))
+assert c.get("/wall").json()["change"] is None, "a crop cut round another cell waits for the next earth change"
+(ea / "change_2024_2025.json").write_text(json.dumps({**stats, "wall": {"bounds": safe, "ha": 61.2, "cell": HOME}}))
 (ea / "change_2024_2025_wall.png").unlink()
 assert c.get("/wall").json()["change"] is None, "the Wall's image not drawn yet"
 print("  change: null until the Wall's own image and crop exist")
@@ -288,8 +331,72 @@ print("  change: null until the Wall's own image and crop exist")
 # ---- the place pack's last run says what it fetched: no run, no roofs
 ANSWERS["place_runs"] = []
 assert c.get("/wall").json()["roofs"] is None, "no run row: nothing says how far the roofs reach"
+ANSWERS["place_runs"] = [{"radius_m": 2000, "lat": LAT - 0.02, "lon": LON}]          # fetched 2 km south
+assert c.get("/wall").json()["roofs"] is None, "a fetch from outside the house's cell: no bound the cell alone gives"
+# the same run, the house anywhere in its cell, the run's own point included: the same radius and count. A radius less
+# the metres the house moved since the fetch would move with each step. The water too: the hydro pack's 1 % tolerance
+# round its fetch point (250 m at 25 km) is not what /wall goes by, or the rivers would say the house is within it.
+
+
+def round_the_cell():
+    out = []
+    for la, lo in [(LAT, LON)] + [(clat + 0.95 * (v[0] - clat), clon + 0.95 * (v[1] - clon))
+                                  for v in h3.cell_to_boundary(HOME)]:
+        assert h3.latlng_to_cell(la, lo, 8) == HOME
+        os.environ.update(NODE_LAT=str(la), NODE_LON=str(lo))
+        w_ = c.get("/wall").json()
+        out.append((w_["roofs"], next(a[0] for q, a in reversed(SEEN) if "place_features" in q), w_["river"]))
+    os.environ.update(NODE_LAT=str(LAT), NODE_LON=str(LON))
+    assert all(x == out[0] for x in out), out
+    return out[0]
+
+
+ANSWERS["place_runs"] = [{"radius_m": 1000, "lat": None, "lon": None}]       # node #1's rows record no centre
+got = round_the_cell()
+assert got[0]["mapped_radius_m"] == 400 and got[2] == W["river"] is not None, got
+ANSWERS["place_runs"] = [{"radius_m": 2000, "lat": LAT, "lon": LON}]         # centred on one point of the cell
+assert round_the_cell()[0]["mapped_radius_m"] == 1400
 ANSWERS["place_runs"] = [{"radius_m": 1000, "lat": LAT, "lon": LON}]
-print("  roofs: the radius the place pack fetched, from place_runs; none without a run")
+print("  roofs: the radius the place pack fetched less the cell; none without a run or from another cell; the roofs"
+      " and the water the same wherever the house is in its cell")
+
+# ---- a station pack whose settings do not read: its stations are withheld, never held to the defaults
+_real = packs.module
+
+
+class _Unread:
+    @staticmethod
+    def cfg():
+        raise ValueError("could not convert string to float: 'four hundred'")
+
+
+said = []
+_h = logging.Handler()
+_h.emit = lambda rec: said.append(rec.getMessage())
+wall_mod.log.addHandler(_h)
+packs.module = lambda p, *a, **k: _Unread if p == "bali-air-dispatch" else _real(p, *a, **k)
+try:
+    W = c.get("/wall").json()
+    pub = main._public_rows([{"source": "baliairdispatch", "kind": "sensor", "lat": -8.70001, "lon": 115.20001}])
+finally:
+    packs.module = _real
+    wall_mod.log.removeHandler(_h)
+assert W["stations"] == [] and W["island"] is None, (W["stations"], W["island"])
+assert pub == [], "/sensors and /issues withhold them too"
+assert len([m for m in said if "bali-air-dispatch" in m]) == 1, ("said once a process, not on every read", said)
+assert main._public_rows([{"source": "baliairdispatch", "kind": "sensor", "lat": -8.70001, "lon": 115.20001}]), \
+    "with its settings read, the same station is shown"
+assert len(c.get("/wall").json()["stations"]) == 2
+print("  ring: a station pack whose settings do not read has no public stations, and the log says so")
+
+# ---- the nearest lab by its unrounded distance: 4.4 km listed before 4.1 km, both whole 4
+_labs = ANSWERS["kind = 'facility'"]
+ANSWERS["kind = 'facility'"] = [{"name": "Lab 4.4", "lat": clat, "lon": clon + 4.4 / (111.32 * 0.98818)},
+                                {"name": "Lab 4.1", "lat": clat, "lon": clon - 4.1 / (111.32 * 0.98818)}]
+lab = c.get("/wall").json()["lab"]
+ANSWERS["kind = 'facility'"] = _labs
+assert lab["name"] == "Lab 4.1" and lab["km"] == 4, lab
+print("  lab: the nearest by its unrounded km, only the km published is whole")
 
 # ---- a malformed pack file costs its own block, never a 500
 (ea / "change_2024_2025_wall.png").write_bytes(b"\x89PNG\r\n\x1a\n")

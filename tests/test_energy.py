@@ -233,12 +233,31 @@ with tempfile.TemporaryDirectory() as tmp:
         _seen.append(({m: v for _, sid, m, v in _r if m in ("substation_km", "large_plant_km")},
                       min(_subs, key=lambda x: h3.great_circle_distance(_cc, (x["lat"], x["lon"])))["name"]))
     os.environ["NODE_LAT"], os.environ["NODE_LON"], os.environ["PACK_OUT"] = "-8.8161", "115.1635", tmp
+    # the substation nearest the middle is picked by (km, name, point), never by the house-nearest order: five
+    # substations 0.6 km beyond the house fill the house's nearest five, and two at one point 1 km the other side of the
+    # middle tie for nearest the middle, "Zed" listed first. "Abe" is the one picked.
+    _h = tuple(_cc[i] + 0.9 * (_vs[0][i] - _cc[i]) for i in (0, 1))
+    _u = tuple(_h[i] - _cc[i] for i in (0, 1))
+    _n = h3.great_circle_distance(_cc, _h, unit="km")
+    _node = lambda nid, at, name: {"type": "node", "id": nid, "lat": at[0], "lon": at[1],  # noqa: E731
+                                   "tags": {"power": "substation", "name": name, "operator": "PLN"}}
+    _tie = tuple(_cc[i] - _u[i] / _n for i in (0, 1))
+    _doc = {"elements": [_node(1, _tie, "Zed"), _node(2, _tie, "Abe")] + [
+        _node(10 + k, tuple(_h[i] + _u[i] / _n * 0.6 + 0.0001 * k * (i == 1) for i in (0, 1)), f"near {k}")
+        for k in range(5)]}
+    os.environ["NODE_LAT"], os.environ["NODE_LON"] = str(_h[0]), str(_h[1])
+    os.environ["PACK_OUT"] = tempfile.mkdtemp(dir=tmp)
+    A.fetch(StubHC(_doc))
+    _names = {x["name"] for x in A.result()["sources"] if x["kind"] == "substation"}
+    check("Abe" in _names and "Zed" not in _names, f"a tie for nearest the middle goes by name: {sorted(_names)}")
+    os.environ["NODE_LAT"], os.environ["NODE_LON"], os.environ["PACK_OUT"] = "-8.8161", "115.1635", tmp
     check(_seen[0] == _seen[1] and all(float(v).is_integer() for v in _seen[0][0].values()),
           f"the km readings and the substation nearest the cell's middle stay put inside one cell: {_seen}")
     cable = next(b for b in res_bali["bar"] if b["hatched"])
     check(cable["share"] is None and cable["note"] == "share not published",
           "the Java cable's segment has no width while its share is unknown, never a guessed one")
     check("lat" not in res_bali and "lon" not in res_bali, "the body served at /energy carries no coordinates")
+    check(res_bali.get("cell") == h3.latlng_to_cell(-8.8161, 115.1635, 8), "result.json says which cell it was picked for")
     check(res_bali.get("grid") == "bali" and res_bali.get("kind") == "estimated"
           and res_bali.get("sources", [{}])[0].get("kind") == "substation",
           "result() writes out/energy/result.json for Bali with nearest substation first")
@@ -364,10 +383,26 @@ with tempfile.TemporaryDirectory() as tmp:
     adm_s = client.get("/energy", headers=ADMIN).json()["sources"]
     check([(s["name"], s["km"]) for s in adm_s] == [("Sub Near", 1.2), ("Big Plant", 4.03), ("Java cable", 100.0)],
           f"with the token: the substation nearest the house, every km as measured from it: {adm_s}")
+    # two substations whole 2 km from the middle, the farther listed first (the pack's house-nearest order) and first
+    # by name: the nearer by its unrounded km is named; at an exact tie, the name decides, never the pack's order
+    near_first = [dict(raw_res["sources"][2], name="Alpha 2.4", lon=E(2.4)), dict(raw_res["sources"][2], name="Beta 2.1",
+                                                                                lon=E(2.1))] + raw_res["sources"][3:]
+    for srcs_, want in ((near_first, "Beta 2.1"),
+                        ([dict(near_first[0], name="Zed", lon=E(2.0)), dict(near_first[0], name="Abe", lon=E(2.0))], "Abe")):
+        (Path(tmp) / "energy/result.json").write_text(json.dumps({**raw_res, "sources": srcs_}))
+        got = client.get("/energy").json()["sources"][0]
+        check(got["name"] == want and got["km"] == 2, f"the substation nearest the middle by its unrounded km: {got}")
+    # a result computed for another res-8 cell holds the old house's nearest few: no substation until the next poll
+    (Path(tmp) / "energy/result.json").write_text(json.dumps({**raw_res, "cell": h3.cell_to_parent(raw_res["cell"], 7)}))
+    check([s["kind"] for s in client.get("/energy").json()["sources"]] == ["plant", "link"],
+          "without the token, a result for another cell names no substation")
+    check(client.get("/energy", headers=ADMIN).json()["sources"][0]["name"] == "Sub Near",
+          "the household's own list is as the pack measured it")
     os.environ["NODE_LAT"], os.environ["NODE_LON"] = "0", "0"
-    check([s["km"] for s in client.get("/energy").json()["sources"]] == [None, None, None],
-          "a node with no place yet gives no km at all without the token")
+    check([s["km"] for s in client.get("/energy").json()["sources"]] == [None, None],
+          "a node with no place yet gives no km at all, and no substation, without the token")
     os.environ["NODE_LAT"], os.environ["NODE_LON"] = "-8.8161", "115.1635"
+    (Path(tmp) / "energy/result.json").write_text(json.dumps(raw_res))
     check(client.get("/energy").json()["household"] is None,
           "household in result.json is also hidden without the admin token")
     check(client.get("/energy", headers=ADMIN).json()["household"]["roof_w"] == 2500.0,

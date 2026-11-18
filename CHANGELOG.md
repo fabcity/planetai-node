@@ -11,9 +11,9 @@
   stations across the island, with the government's at Sempidi ringed. The wind moves over the map and the swell's
   crests over the sea, at the replayed hour and at their own pace. Under the map a strip holds fine dust, heat, the
   swell and the wind, each with its day as a thin line. The type floor goes from 28 px to 20 px at 1920, with 16 px
-  for the size legend. The map reads the new `GET /wall`, open without a token, so nothing on it is finer than the
-  house's cell and every distance is in whole km. A chapter the node has no data for is left out. docs/wall,
-  docs/api.
+  for the size legend. The map reads the new `GET /wall`, open without a token at `SHARE_LEVEL=open`, so nothing on
+  it is finer than the house's cell and every distance is in whole km. A chapter the node has no data for is left
+  out. docs/wall, docs/api.
 
 - **/earth no longer gives the house away.** A screen without your token got the node's exact point from `/earth`,
   and the AlphaEarth pictures were centred on the house with an orange ring on it. That screen now gets the centre of

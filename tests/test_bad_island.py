@@ -78,6 +78,45 @@ got = B.island(twins, stations, home, set(), set(), 150.0)
 assert len(got) == 1 and got[0]["official"] is True and got[0]["place"] == "Kabupaten Badung Sempidi", got
 assert got[0]["network"] == "AQICN"
 
+# ---- one device through the whole /stations graph: A links B links C, B stale, A and C are still one item
+chain = [row("A", "Chain", latitude=-8.5, longitude=115.3), row("B", "Chain", stale=True, latitude=-8.5, longitude=115.3),
+         row("C", "Chain", source="AQICN", latitude=-8.5001, longitude=115.3)]
+links = {"A": {"same_device_as": ["B"]}, "B": {"same_device_as": ["C"]}}
+got = B.island(chain, links)
+assert len(got) == 1 and got[0]["network"] == "IQAir", ("a stale station still links its neighbours", got)
+assert len(B.island(chain, links, home, set(), set(), 150.0)) == 1
+assert B.island([chain[1]], links) == [], "a device with no live station has no item"
+
+# ---- ownership applies to the whole device: the node polls sc-1, the archive's alias of it 1 km off is not a peer
+alias = [row("sc-1", "My kit", latitude=-8.60, longitude=115.20, stale=True),
+         row("aq-1", "My kit (mirror)", latitude=-8.609, longitude=115.20),
+         row("far", "A neighbour", latitude=-8.70, longitude=115.30)]
+twin = {"sc-1": {"same_device_as": ["aq-1"]}}
+assert [i["lon"] for i in B.island(alias, twin, home, {"sc-1"}, set(), 150.0)] == [115.3], "identity, the whole device"
+assert [i["lon"] for i in B.island(alias[1:], twin, home, {"sc-1"}, set(), 150.0)] == [115.3], \
+    "sc-1 not in /latest at all: its alias still goes"
+assert [i["lon"] for i in B.island(alias, twin, home, set(), {"sc-1"}, 150.0)] == [115.3], "by hand, the whole device"
+close = [row("near", "Under another account", latitude=home[0] + 0.001, longitude=home[1]),
+         row("aq-near", "Its mirror", latitude=-8.60, longitude=115.20)]
+assert B.island(close, {"aq-near": {"same_device_as": ["near"]}}, home, set(), set(), 150.0) == [], \
+    "proximity, the whole device"
+# proximity is judged from the cell, never the point: a station 300 m from the cell's middle, linked to a twin 6 km
+# off, gives the same island for a house 100 m from it and one 400 m from it in the same res-8 cell
+import h3  # noqa: E402
+cell = h3.latlng_to_cell(*home, 8)
+mid = h3.cell_to_latlng(cell)
+pt = lambda north_m, from_=mid: (from_[0] + north_m / 111320.0, from_[1])  # noqa: E731
+st = pt(300)
+pair_ = [row("st", "Station", latitude=st[0], longitude=st[1]), row("aq-st", "Its twin", latitude=-8.60, longitude=115.20)]
+links_ = {"aq-st": {"same_device_as": ["st"]}}
+houses = [pt(200), pt(-100)]                      # 100 m and 400 m from the station
+assert all(h3.latlng_to_cell(*h, 8) == cell for h in houses), "both houses in one cell"
+seen = [B.island(pair_, links_, h, set(), set(), 150.0) for h in houses]
+assert seen[0] == seen[1] == [], seen
+far_st = pt(3000)
+apart = [row("st", "Station", latitude=far_st[0], longitude=far_st[1]), pair_[1]]
+assert all(len(B.island(apart, links_, h, set(), set(), 150.0)) == 1 for h in houses), "3 km off: one item for both"
+
 # ---- the file: written whole, /stations read at most once a day, a failed read keeps yesterday's
 class R:
     def __init__(s, j): s.j = j

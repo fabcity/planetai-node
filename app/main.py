@@ -1170,8 +1170,9 @@ def _public_rows(rows: list[dict]) -> list[dict]:
         return rows
     import h3  # noqa: PLC0415
     clat, clon, circ = ground.centre(lat, lon)
-    far_km, sep_m = wall._ring_limits()   # the same ring rule /wall draws by
+    far_km, sep_m, withheld = wall._ring_limits()   # the same ring rule /wall draws by
     srcs = {p["source"] for p in packs.stations()}
+    gone = {p["source"] for p in packs.stations() if p["pack"] in withheld}   # settings unread: none of its stations
     labs_m = float(os.getenv("MAKE_RADIUS_KM", "50") or 50) * 1000 - circ
     out = []
     for r in rows:
@@ -1183,7 +1184,8 @@ def _public_rows(rows: list[dict]) -> list[dict]:
             if d > labs_m:
                 continue
             r = {**r, "meta": {**(r.get("meta") or {}), "distance_km": round(d / 1000, 1)}}
-        elif r.get("source") in srcs and not circ + sep_m + wall.ROUNDED_M < d <= far_km * 1000 - circ:
+        elif r.get("source") in gone or (r.get("source") in srcs
+                                         and not circ + sep_m + wall.ROUNDED_M < d <= far_km * 1000 - circ):
             continue
         out.append(r)
     return out

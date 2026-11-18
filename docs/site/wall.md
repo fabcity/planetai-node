@@ -87,7 +87,7 @@ packs has fewer chapters.
 | size | chapter | what the map shows | from |
 |---|---|---|---|
 | base | Air | the house's fine dust, its cell filled, red in any hour over the line | the air issue |
-| base | Buildings | the roofs OpenStreetMap has, everything outside the seven cells dimmed, and how much of the ground is built on | the place pack, the land issue |
+| base | Buildings | the roofs OpenStreetMap has, everything outside the circle they are counted in dimmed, and how much of the ground is built on; with no street tiles on the node, neither this nor Sun today is shown | the place pack, the land issue |
 | base | Sun today | the same roofs in the energy colour, the sun on each square metre today, and what the house's panel size would make with it | the energy pack |
 | base | Ground heat | the cell at the last clear Landsat pass, against the land 1 to 3 km around | the heat issue |
 | base | Rain | the rain forecast for the next 24 hours, and how much ground drains through the cell | the terrain pack |

@@ -12,7 +12,7 @@
      the chapter on the map lit with its word and its words; the node thinking aloud, once its model has written.
    - THE STRIP, under both: fine dust, heat, the swell and the wind at the replayed hour, each with its 24 hours as a thin
      line, and the clock. Stepped, never tweened: only the camera glides, and that is MapLibre's own.
-   Under reduced motion it is one still frame: the base size at the last hour. */
+   Under reduced motion it is one still frame: the base size at the last hour, which is always the last real slot. */
 /* Every duration on the Wall, named after the datum it paces. The replay loop is the layer's token, --motion-replay-loop. */
 const WALL_TIME = {
   HOUR_STEP: () => (parseFloat(css('--motion-replay-loop')) || 30) / 24,    /* s: one replayed hour of the last 24 */
@@ -20,6 +20,7 @@ const WALL_TIME = {
   NARR_CHAR: 1000 / 11,                                                     /* ms: one character typed, about two words a second */
   NARR_LINE: 3000,                                                          /* ms: one line of a story longer than its box, rolling */
   STALE: 15 * 60e3,                                                         /* ms: no poll this long and the readings are old */
+  WAIT: 20e3,                                                               /* ms: /wall or /ground/meta unanswered this long has failed */
 };
 /* Never a name on the wall (Tomas, 14 Oct 2026): anyone in the room reads it, and a sensor's name is a room, a kit or an
    address ("K ROOM - BAYU HOLES"); a kicker's reason names who answered. The house is its cell, a public station a dot;
@@ -46,25 +47,34 @@ const wallSrc = s => /^\d+ sensors?$/.test(s || '') ? s : /CAMS/i.test(s || '') 
 const wpw = w => `<span class="wpw">${esc(w)}</span>`;
 const COMPASS16 = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
 /* THE DAY IN THE STRIP: the last 24 hours, an hour a row. Dust and heat are the issues' own series at the issue's
-   headline distance; the swell and the wind are /wall's hourly Open-Meteo rows, which a screen with no token may read. */
+   headline distance; the swell and the wind are /wall's hourly Open-Meteo rows, which a screen with no token may read.
+   ONE TIMELINE (CodeRabbit on #406): the replay's 24 slots are /wall's own hours; without /wall, /issues/days' buckets;
+   without those, 24 whole hours ending at /aggregates' last hour, else at the as-of time's. Every series, /wall's and
+   the issues', is joined to the slots by timestamp: a slot a series has no reading for is not read, never the same
+   index of a window an hour off. A window shorter than 24 is padded before its first hour, so the last hour, 23, is
+   always the last real slot (a new node with three hours). W comes back on the slots too, for the map. */
 function wallDay24(W) {
-  /* without /issues/days there are no buckets: the replay is 24 whole hours ending at /aggregates' last hour, else at the
-     as-of time's */
-  const rb = (D.raw || {}).buckets || [], top = rb.length ? Date.parse(rb[rb.length - 1]) : Math.floor(Date.parse(D.as_of) / 3600e3) * 3600e3;
-  const B = D.buckets.length ? D.buckets.slice(-24) : [...Array(24)].map((_, i) => new Date(top - (23 - i) * 3600e3).toISOString());
+  const Hr = (W || {}).hours || {}, rb = (D.raw || {}).buckets || [];
+  const top = rb.length ? Date.parse(rb[rb.length - 1]) : Math.floor(Date.parse(D.as_of) / 3600e3) * 3600e3;
+  const got = ((Hr.buckets || []).length ? Hr.buckets : D.buckets.length ? D.buckets : [new Date(top).toISOString()]).slice(-24);
+  const B = [...Array(24 - got.length)].map((_, i, a) => new Date(Date.parse(got[0]) - (a.length - i) * 3600e3).toISOString()).concat(got);
+  const J = (ts, v) => slotJoin(ts, v, B);
   const issue = k => {
-    const it = D.issues[k], d = it && (it.hero_distance || 'room'), v = it && it.series && (it.series[d] || []).slice(-24);
+    const it = D.issues[k], d = it && (it.hero_distance || 'room'), v = it && it.series && J(D.buckets, it.series[d]);
     if (!v || !v.some(x => x != null)) return null;
     const s = (it.stack || {})[d] || {};
     return { v, ts: B, line: it.line, dp: it.dp ?? 0, word: (it.provenance || {})[d] || s.provenance || 'partial', src: wallSrc(s.source) };
   };
-  const Hr = (W || {}).hours, hour = (k, dp) => Hr && (Hr[k] || []).some(x => x != null) ? { v: Hr[k], ts: Hr.buckets, dp, word: 'model', src: 'Open-Meteo' } : null;
-  return { B, dust: issue('air'), heat: issue('heat'), sea: hour('swell_m', 1), wind: hour('wind_kmh', 0) };
+  const hr = { buckets: B }; for (const k of Object.keys(Hr)) if (k !== 'buckets') hr[k] = J(Hr.buckets, Hr[k]);
+  const hour = (k, dp) => (hr[k] || []).some(x => x != null) ? { v: hr[k], ts: B, dp, word: 'model', src: 'Open-Meteo' } : null;
+  return { B, W: W ? { ...W, hours: hr, stations: (W.stations || []).map(st => ({ ...st, pm25: J(Hr.buckets, st.pm25) })) } : null,
+    dust: issue('air'), heat: issue('heat'), sea: hour('swell_m', 1), wind: hour('wind_kmh', 0) };
 }
 /* s: the size on the map (an index of WALL.story); h: the replayed hour; map: wallMapMount's handle, null when none.
-   W and G are the last good /wall and /ground/meta, kept across redraws; gen is the draw a late answer belongs to;
-   retry and tries pace asking /wall again while there is none */
-const WALL = { R: null, W: null, G: null, story: [], map: null, s: 0, h: null, t0: 0, still: null, gen: 0, retry: 0, tries: 0 };
+   W and G are the last good /wall and /ground/meta, kept across redraws; gen is the visit a late answer belongs to;
+   retry and tries pace asking /wall again while there is none; askG is the visit's read of /ground/meta; losses paces
+   mounting a map again after its WebGL context was lost */
+const WALL = { R: null, W: null, G: null, story: [], map: null, s: 0, h: null, t0: 0, still: null, gen: 0, retry: 0, tries: 0, askG: null, losses: 0 };
 /* a thin line for the 24 hours, the hour marked, the red line where the reading has one */
 function wallSpark(r, h) {
   const ys = r.v.filter(x => x != null); if (!ys.length) return '';
@@ -110,8 +120,8 @@ function wallHexes() {
 /* one replayed hour, drawn whole: the strip, the column's chapters and the map */
 function wallDraw(h) {
   WALL.h = h; const R = WALL.R; if (!R || !$('#wallv')) return;
-  if (WALL.map && WALL.map.lost) wallMount();    /* the screen lost its WebGL context: a new map */
-  const Hr = (WALL.W || {}).hours || {}, wd = atHour(Hr.wave_from || [], h), dr = atHour(Hr.wind_from || [], h);
+  /* a bearing from the hour's own slot only: a neighbour's would turn the needle under this hour's figure and time */
+  const Hr = (R.W || {}).hours || {}, wd = (Hr.wave_from || [])[h] ?? null, dr = (Hr.wind_from || [])[h] ?? null;
   $('#wstrip').innerHTML = wallGauge('fine dust', R.dust, h, 'µg/m³', '--d-air') + wallGauge('apparent heat', R.heat, h, '°C', '--d-heat')
     + wallGauge(`swell${wallFrom(wd)}`, R.sea, h, 'm', '--d-sea', wd) + wallGauge(`wind${wallFrom(dr)}`, R.wind, h, 'km/h', '--d-wind', dr)
     + `<div class="wclock"><b>${hhmm(R.B[h])}</b>of the last 24 h</div>`;
@@ -137,29 +147,55 @@ function wallTick(now) {
   const i = Math.floor((now - WALL.t0) / (WALL_TIME.HOUR_STEP() * 1000)), s = Math.floor(i / 24) % Math.max(1, WALL.story.length), h = i % 24;
   if (s !== WALL.s) { wallScale(s); wallDraw(h); } else if (h !== WALL.h) wallDraw(h);   /* a size takes effect at its first hour */
 }
-const wallGet = p => doorsFetch(p).then(r => r.ok ? r.json() : null).catch(() => null);
-/* the map from the last good /wall, or one line where it would be */
+/* a read that hangs is a read that failed: it reaches the retry path after WAIT. AbortSignal.timeout is Chrome 103 and
+   Safari 16; an older TV's browser gets a controller aborted on a timer, and one with neither waits as it always did */
+const wallSignal = ms => { if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) return AbortSignal.timeout(ms);
+  if (typeof AbortController === 'undefined') return undefined; const c = new AbortController(); setTimeout(() => c.abort(), ms); return c.signal; };
+const wallGet = p => doorsFetch(p, { signal: wallSignal(WALL_TIME.WAIT) }).then(r => r.ok ? r.json() : null).catch(() => null);
+const wallDisk = () => (WALL.G && WALL.G.on_disk) || {};
+/* the visit that asked still owns the page: a later visit, or another door, has not taken it */
+const wallOwns = gen => gen === WALL.gen && view() === 'wall';
+/* the map from the last good /wall, or one line where it would be. A map whose WebGL context is lost is mounted again,
+   still frame or not, while it is still this page's map (a later visit or another door has let it go): after 2 s, then
+   4 s, doubling to a minute, so a GPU that keeps resetting is not asked for a context in a tight loop. A visit starts
+   the pause at 2 s again. */
 function wallMount() {
   if (WALL.map) { WALL.map.destroy(); WALL.map = null; }
   const box = $('#wmbox'); if (!box) return;
-  WALL.map = WALL.W ? wallMapMount(box, WALL.W, WALL.story, (WALL.G && WALL.G.on_disk) || {}) : null;
-  if (!WALL.map) box.innerHTML = `<p class="wnomap">${WALL.W ? 'This screen cannot draw the map.' : 'The node sent no map.'}</p>`;
+  let held = 0;
+  const m = WALL.map = WALL.W ? wallMapMount(box, WALL.R.W, WALL.story, wallDisk(), () => {
+    if (held || WALL.map !== m) return;
+    held = setTimeout(() => { if (WALL.map === m && view() === 'wall') { wallMount(); wallDraw(WALL.h); } }, Math.min(60e3, 2e3 * 2 ** WALL.losses++));
+  }) : null;
+  if (!m) box.innerHTML = `<p class="wnomap">${WALL.W ? 'This screen cannot draw the map.' : 'The node sent no map.'}</p>`;
   wallScale(WALL.s, true);
 }
-/* a /wall that answered: the story and the strip from it, and the map */
-function wallTake(W, G) {
-  WALL.W = W; WALL.G = G || WALL.G; WALL.tries = 0; WALL.story = wallStory(W, D); WALL.R = wallDay24(W);
-  wallMount(); wallDraw(WALL.h);
+/* /ground/meta, read apart from /wall: the map does not wait for it, and is mounted again when it brings other layers */
+async function wallMeta(gen) {
+  const G = await wallGet('/ground/meta');
+  if (!G || !wallOwns(gen)) return;
+  const was = JSON.stringify(wallDisk()); WALL.G = G;
+  if (WALL.W && JSON.stringify(wallDisk()) !== was) { WALL.story = wallStory(WALL.W, D, wallDisk()); wallMount(); wallDraw(WALL.h); }
 }
-/* no /wall yet (it failed, or is slow): ask again in 30 s, then 60 s, doubling to 5 min, until it answers */
-function wallRetry() {
+/* a /wall that answered: the story and the strip from it, and the map. The first one starts the replay over at the
+   base size's first hour, so the map gets its whole day (under reduced motion the still frame, the last hour). With no
+   /ground/meta yet, it is read once more once the visit's own read has settled. */
+function wallTake(W, gen) {
+  if (!WALL.W) { WALL.s = 0; WALL.h = CLOCK.reduced() ? 23 : 0; WALL.t0 = performance.now(); }
+  WALL.W = W; WALL.tries = 0; WALL.story = wallStory(W, D, wallDisk()); WALL.R = wallDay24(W);
+  wallMount(); wallDraw(WALL.h);
+  if (!WALL.G) WALL.askG = Promise.resolve(WALL.askG).then(() => WALL.G || !wallOwns(gen) || wallMeta(gen));
+}
+/* no /wall yet (it failed, or is slow): ask again in 30 s, then 60 s, doubling to 5 min, until it answers. A retry is
+   the visit's that set it: a later visit clears it, and it asks nothing and takes nothing once that visit is over. */
+function wallRetry(gen) {
   if (WALL.retry) return;
   WALL.retry = setTimeout(async () => {
     WALL.retry = 0;
-    if (WALL.W || view() !== 'wall') return;    /* the Wall asks again itself when it opens */
-    const [W, G] = await Promise.all([wallGet('/wall'), WALL.G ? null : wallGet('/ground/meta')]);
-    if (WALL.W || view() !== 'wall') return;
-    if (W) wallTake(W, G); else wallRetry();
+    if (WALL.W || !wallOwns(gen)) return;
+    const W = await wallGet('/wall');
+    if (WALL.W || !wallOwns(gen)) return;
+    if (W) wallTake(W, gen); else wallRetry(gen);
   }, Math.min(300e3, 30e3 * 2 ** WALL.tries++));
 }
 VIEWS.wall = async function () {
@@ -174,10 +210,10 @@ VIEWS.wall = async function () {
       WALL.still = e.matches;
       if (e.matches) { CLOCK.off('wall-replay'); CLOCK.off('wall-fx'); wallScale(0, true); wallDraw(23); } else { WALL.t0 = performance.now(); CLOCK.on('wall-replay', wallTick); }
     }); }
-  /* the column, the strip and the map from the last good /wall first, then one read of /wall and /ground/meta; a
-     screen refused either keeps what it had */
-  const gen = ++WALL.gen;
-  WALL.story = WALL.W ? wallStory(WALL.W, D) : []; WALL.R = wallDay24(WALL.W);
+  /* the column, the strip and the map from the last good /wall first, then one read of /wall and, apart, of
+     /ground/meta; a screen refused either keeps what it had */
+  const gen = ++WALL.gen; clearTimeout(WALL.retry); WALL.retry = 0; WALL.losses = 0;    /* an earlier visit's retry is not this one's */
+  WALL.story = WALL.W ? wallStory(WALL.W, D, wallDisk()) : []; WALL.R = wallDay24(WALL.W);
   if (WALL.map) { WALL.map.destroy(); WALL.map = null; }
   $('#wallv').innerHTML = `
     <div class="wtop wchrome"><button class="wback" onclick="location.hash='#now'">← back</button><span class="wnote said" id="wnote"></span></div>
@@ -197,10 +233,11 @@ VIEWS.wall = async function () {
   wallDraw(WALL.h); narrDraw(); document.fonts.ready.then(() => view() === 'wall' && headFit());
   if (!NARR.busy && !NARR.typing && (!NARR.next || Date.now() >= NARR.next)) narrate(); else if (NARR.shown.length < NARR.text.length) narrType();
   if (!still) CLOCK.on('wall-replay', wallTick);
-  const [W, G] = await Promise.all([wallGet('/wall'), wallGet('/ground/meta')]);
-  if (gen !== WALL.gen || view() !== 'wall') return;     /* a later draw, or another door, owns the page now */
-  if (W && !(WALL.map && JSON.stringify([W, G || WALL.G]) === JSON.stringify([WALL.W, WALL.G]))) wallTake(W, G);   /* the same answers: the map stands */
-  else if (!W) { if (G) WALL.G = G; if (!WALL.map) wallMount(); if (!WALL.W) wallRetry(); }
+  WALL.askG = wallMeta(gen);
+  const W = await wallGet('/wall');
+  if (!wallOwns(gen)) return;     /* a later draw, or another door, owns the page now */
+  if (W && !(WALL.map && JSON.stringify(W) === JSON.stringify(WALL.W))) wallTake(W, gen);   /* the same answer: the map stands */
+  else if (!W) { if (!WALL.map) wallMount(); if (!WALL.W) wallRetry(gen); }
 };
 /* THE NODE, THINKING ALOUD (R44, 7 Oct 2026). A reading of the figures by the node's own model, in plain words for
    people who know nothing about air science, units or maps: what is happening inside, how it compares with the street and the

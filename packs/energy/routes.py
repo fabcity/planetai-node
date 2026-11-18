@@ -25,13 +25,19 @@ adapter = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(adapter)  # type: ignore[union-attr]
 
 
-def _cut_sources(sources: list[dict], points: bool = False, centre: tuple[float, float] | None = None) -> list[dict]:
+def _cut_sources(sources: list[dict], points: bool = False, centre: tuple[float, float] | None = None,
+                 same_cell: bool = True) -> list[dict]:
+    """`sources` cut to the nearest substation, every plant >= 1 MW and each link. With `points` (the household),
+    as the pack measured them from the house. Without, ranked by the unrounded km from the cell's middle, ties by
+    name then point, so the order does not follow the pack's house-nearest one, and only then each km made whole;
+    no substation at all when the result was computed for another cell (`same_cell`), whose nearest few it holds."""
     items = [s for s in (sources or []) if isinstance(s, dict)]
-    if not points:     # every km again, whole, from the cell's middle; none for a source with no point or no place
-        items = [dict(s, km=wall.km_from(centre, s["lon"], s["lat"])
+    if not points:     # every km again from the cell's middle, whole only once ranked; none with no point or no place
+        items = [dict(s, km=wall.dist_km(centre, s["lon"], s["lat"])
                       if centre and s.get("lat") is not None and s.get("lon") is not None else None) for s in items]
-    km_key = lambda s: float(s["km"]) if s.get("km") is not None else float("inf")  # noqa: E731
-    subs = sorted([s for s in items if s.get("kind") == "substation"], key=km_key)[:1]
+    km_key = lambda s: (float(s["km"]) if s.get("km") is not None else float("inf"),) + \
+        (() if points else (str(s.get("name") or ""), s.get("lat") or 0, s.get("lon") or 0))  # noqa: E731
+    subs = sorted([s for s in items if s.get("kind") == "substation" and (points or same_cell)], key=km_key)[:1]
     plants = sorted([s for s in items if s.get("kind") == "plant" and (s.get("mw") or 0) >= 1.0], key=km_key)
     links = [s for s in items if s.get("kind") == "link"]
     out: list[dict] = []
@@ -41,7 +47,7 @@ def _cut_sources(sources: list[dict], points: bool = False, centre: tuple[float,
             "kind": s.get("kind"),
             "fuel": s.get("fuel"),
             "mw": s.get("mw"),
-            "km": s.get("km"),
+            "km": s.get("km") if points or s.get("km") is None else round(s["km"]),
             "ring": s.get("ring"),
         }
         if "fossil" in s:
@@ -103,7 +109,8 @@ def energy(request: Request, authorization: str = Header("")):
             "as_of": share.get("as_of"),
         },
         "bar": list(raw.get("bar") or []),
-        "sources": _cut_sources(raw.get("sources") or [], points=mine, centre=None if mine else wall.cell_centre()),
+        "sources": _cut_sources(raw.get("sources") or [], points=mine, centre=None if mine else wall.cell_centre(),
+                                same_cell=raw.get("cell") == wall.home_cell()),
         "today": {
             "sun_kwh_m2": today.get("sun_kwh_m2"),
             "roof_kwh": today.get("roof_kwh"),
