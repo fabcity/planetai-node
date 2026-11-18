@@ -1858,12 +1858,15 @@ function aTargets() {
      * the Wall's own type floor, 20 px (--wf at 1920×1080; Tomas, 18 Nov 2026: the text "gets too big, control that"),
      * which was 28 px and 9 mm. The cap ratio is read off the render's own 20 px lines, the canvas measurement COLLECT
      * takes of "H" in each face, and the lowest face sets the floor. Only the doors' Wall has these parts (#wallv), so the
-     * classic wall_populated render has no T7 and `wallwalk` writes the render this reads (wallwalk_1920.json). */
+     * classic wall_populated render has no T7 and `wallwalk` writes the render this reads (wallwalk_1920.json).
+     * T7 is a report: gate.sh never runs `targets`. The 20 px floor is enforced by wallwalk's own read() threshold. */
     let t7 = '—';
     if (wall && w >= 1920 && d.els.some(e => e.id === 'wallv')) {
       const MM = 0.63, FLOOR_PX = 20;
       const ratio = Math.min(...d.lines.filter(l => Math.abs(l.fs - FLOOR_PX) < .5 && l.cap).map(l => l.cap / l.fs));
       const floor = FLOOR_PX * ratio * MM;
+      if (!isFinite(floor)) t7 = 'no 20 px line to calibrate';
+      else {
       const want = [['sentence', sent], ['ask', role(d, 'wallAsk')], ['chapters', role(d, 'wallChapters')],
         ['chapter figures', role(d, 'wallChapterFig')], ['narration', role(d, 'wallNarr')],
         ['gauges', role(d, 'wallGauge')], ['strip figures', role(d, 'wallFig')], ['clock', role(d, 'wallClock')]];
@@ -1878,6 +1881,7 @@ function aTargets() {
         parts.push(`${label} ${lo.toFixed(1)}${low ? ' **' : ' '}mm${low ? '**' : ''}`);
       }
       t7 = `floor ${floor.toFixed(1)} mm: ` + parts.join('; ');
+      }
     }
 
     rows.push([n, w,
