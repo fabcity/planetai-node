@@ -90,7 +90,7 @@ function wallChapters(h) {
   const n = S.chapters.length, ci = n ? chapterAt(h, n) : -1, ch = S.chapters[ci];
   el.innerHTML = `<h2>${esc(S.name)} <span>· ${esc(S.what)}</span></h2><ul class="wchap">${S.chapters.map((c, j) =>
     `<li${j === ci ? ' class="on"' : ''} style="--c:var(${c.hue})"><i></i><div class="wr"><span class="t">${esc(c.title)}</span><b class="n">${esc(c.n[0] ?? '—')}<u>${esc(c.n[1])}</u>${j === ci ? wpw(c.word) : ''}</b></div></li>`).join('')}</ul>`
-    + (n ? '' : '<p class="wnone">Nothing the node holds at this size yet.</p>');
+    + (n ? '' : '<p class="wnone">The node holds nothing at this size yet.</p>');
   $('#wwhere').innerHTML = `<b>${esc(S.name)}</b><span>${S.cells.length} cells · res ${S.res} · ${fmt(S.km2, 1)} km²</span>`;
   cap.hidden = !ch; cap.style && cap.style.setProperty('--c', ch ? `var(${ch.hue})` : 'var(--ink)');
   cap.innerHTML = ch ? `${esc(ch.says)}<span class="wcs">${esc(ch.src)} · ${esc(ch.word)}</span>` : '';
@@ -166,7 +166,7 @@ VIEWS.wall = async function () {
     </aside>
     <footer class="wstrip" id="wstrip" data-learn="wall-strip" data-reads="/issues /wall" data-stage="observe" data-pack="core"></footer>`;
   WALL.map = W ? wallMapMount($('#wmbox'), W, WALL.story, (G && G.on_disk) || {}) : null;
-  if (!WALL.map) $('#wmbox').innerHTML = `<p class="wnomap">${W ? 'The map needs a screen that can draw it.' : 'The node sent no map.'}</p>`;
+  if (!WALL.map) $('#wmbox').innerHTML = `<p class="wnomap">${W ? 'This screen cannot draw the map.' : 'The node sent no map.'}</p>`;
   wallScale(WALL.s, true); wallDraw(WALL.h); narrDraw(); document.fonts.ready.then(() => view() === 'wall' && headFit());
   if (!NARR.busy && !NARR.typing && (!NARR.next || Date.now() >= NARR.next)) narrate(); else if (NARR.shown.length < NARR.text.length) narrType();
   if (!still) CLOCK.on('wall-replay', wallTick);

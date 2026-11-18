@@ -1,9 +1,14 @@
 'use strict';
-/* WALLMAP — the Wall as a satellite map (SPEC wall-scales-map, 18 Nov 2026). Two halves: a pure one that holds the
-   numbers (which hour a reading is read at, which way the wind and the swell move on the screen, how a station is
-   coloured), and a DOM one that mounts the map and draws the crests and streaks on a canvas over it. Screen y grows
-   downward, and a direction is a meteorological "from" bearing in degrees: 0 is from the north, so that wind blows toward
-   the south, down the screen. The pure half has no DOM and no D, and is what tests/test_doors_wallmap.py runs. */
+/* WALLMAP — the Wall as a satellite map (SPEC wall-scales-map, 18 Nov 2026). Three sections:
+   - pure: the numbers (which hour a reading is read at, which way the wind and the swell move on the screen, how a
+     station is coloured);
+   - the story: wallStory, which chapters each of the three sizes has from what the node holds, with their figures and
+     captions, and chapterAt, which chapter is on at a replayed hour;
+   - DOM: wallMapMount, which mounts the MapLibre map, shows each chapter's layers and draws the crests and streaks on
+     a canvas over it.
+   Screen y grows downward, and a direction is a meteorological "from" bearing in degrees: 0 is from the north, so that
+   wind blows toward the south, down the screen. The first two sections have no DOM and read no global (wallStory takes
+   D as an argument), and are what tests/test_doors_wallmap.py runs. */
 
 /* ---- pure: no DOM ---- */
 
@@ -61,7 +66,8 @@ const UG = 'µg/m³';
 /* The chapters of each scale, in order, each present only when the data it draws is. W is GET /wall (null blocks are
    packs that are off), D the doors' data (issues[k].readouts, issues.air.stack and .line). `layers` are the map layer
    ids Task 6 mounts; `hue` is a CSS custom property name, resolved by the page. A scale with nothing to say still
-   stands with chapters: []. Captions are drafts for the voice pass; every distance is W's whole km. */
+   stands with chapters: []. The captions are public text, in Tomas's voice (pass of 18 Nov); every distance is W's
+   whole km. */
 const wallStory = (W, D) => {
   const I = D.issues || {}, num = v => typeof v === 'number' && isFinite(v), f = (v, dp = 0) => (+v).toFixed(dp);
   const ro = (k, m) => { const r = ((I[k] || {}).readouts || []).find(x => x.metric === m); return r && num(r.value) ? r : null; };
@@ -71,50 +77,52 @@ const wallStory = (W, D) => {
   const base = [], community = [], city = [];
 
   if (num((stack.room || {}).value)) base.push(ch('air', '--d-air', 'Air', [+f(stack.room.value, 1), UG], stack.room.provenance,
-    `Fine dust in the house${num(line) ? `, against the WHO line of ${f(line)} ${UG}` : ''}. The cell takes the hour's colour.`,
+    `Fine dust in the house${num(line) ? `, against the WHO line of ${f(line)} ${UG}. The house's cell turns red in any hour over it` : ''}.`,
     `${(stack.room.n ?? '')} sensors in the house${(stack.yard || {}).n ? ` · ${stack.yard.n} outside` : ''}`.trim(), ['own-air']));
   const built = ro('land', 'built_frac');
   if (W.roofs && built) base.push(ch('built', '--d-ground', 'Buildings', [Math.round(built.value), '%'], built.provenance,
-    `${W.roofs.osm_in_cells} roofs are mapped on OpenStreetMap within ${Math.round(W.roofs.mapped_radius_m / 100) * 100} m of this cell, and the ground here is ${f(built.value)} % built.`,
+    `OpenStreetMap has ${W.roofs.osm_in_cells} roofs within ${Math.round(W.roofs.mapped_radius_m / 100) * 100} m of the middle of this cell, and ${f(built.value)} % of the ground here is built on.`,
     'OpenStreetMap · built share, Earth Engine', ['roofs', 'roofs-mask']));
   const sun = W.grid && W.grid.sun && num(W.grid.sun.kwh_m2) ? W.grid.sun : null;
   if (W.roofs && sun) base.push(ch('sun', '--d-energy', 'Sun today', [+f(sun.kwh_m2, 1), 'kWh/m²'], 'model',
-    `${f(sun.kwh_m2, 1)} kWh fell on each square metre today.${num(sun.panel_kw) && num(sun.roof_kwh) ? ` A ${f(sun.panel_kw, 1)} kW panel on a roof here would make about ${f(sun.roof_kwh, 1)} kWh.` : ''} The roofs are coloured by how much of it they catch.`,
+    `The sun puts ${f(sun.kwh_m2, 1)} kWh on each square metre here today.${num(sun.panel_kw) && num(sun.roof_kwh) ? ` A ${f(sun.panel_kw, 1)} kW panel on one of these roofs would make about ${f(sun.roof_kwh, 1)} kWh.` : ''}`,
     'Open-Meteo, today', ['roofs-sun', 'roofs-mask']));
   const lst = ro('heat', 'lst'), dl = ro('heat', 'lst_delta'), ln = ro('heat', 'lst_night');
   if (lst) base.push(ch('heat', '--d-heat', 'Ground heat', [+f(lst.value, 1), '°C'], lst.provenance,
-    `The ground in this cell at the last clear Landsat pass${dl ? `, ${f(Math.abs(dl.value), 1)} °C ${dl.value < 0 ? 'cooler' : 'hotter'} than the land 1 to 3 km around it` : ''}.`,
+    dl ? `The ground in this cell was ${f(Math.abs(dl.value), 1)} °C ${dl.value < 0 ? 'cooler' : 'hotter'} than the land 1 to 3 km around, the last time Landsat saw it clearly.`
+      : 'How hot the ground in this cell was, the last time Landsat saw it clearly.',
     `Landsat${ln ? ` · MODIS at night ${f(ln.value, 1)} °C` : ''}`, ['own-heat']));
   const rain = ro('water', 'rain_24h_mm'), up = ro('water', 'terrain_upslope_ha');
   if (rain) base.push(ch('rain', '--d-water', 'Rain', [+f(rain.value, 1), 'mm'], rain.provenance,
-    `${f(rain.value, 1)} mm of rain in 24 hours.${up ? ` ${f(up.value, 1)} ha of ground drains through this cell.` : ''}${W.river ? ` The nearest river is ${W.river.nearest_km} km away.` : ''}`,
+    `${f(rain.value, 1)} mm of rain is forecast for the next 24 hours.${up ? ` The water from ${f(up.value, 1)} ha of ground runs down through this cell.` : ''}${W.river ? ` The nearest river is ${W.river.nearest_km} km away.` : ''}`,
     'Copernicus DEM 30 m · forecast', ['own-water']));
 
   if (num((stack.ring || {}).value) && (W.stations || []).length) community.push(ch('air', '--d-air', 'Air around', [+f(stack.ring.value, 1), UG], stack.ring.provenance,
-    `${W.stations.length} stations around, each a dot. Red when its hour is past the line.`, stack.ring.source || '', ['stations']));
+    `Each dot is one of the ${W.stations.length} stations around the house, red in any hour it reads over the line.`, stack.ring.source || '', ['stations']));
   if (W.change && num(W.change.ha)) community.push(ch('change', '--d-ground', 'Land that changed', [Math.round(W.change.ha), 'ha'], 'model',
-    `Ground that looked different in ${W.change.b} from ${W.change.a}: cleared, built or flooded. Somebody walking there can say which.`, 'AlphaEarth', ['change']));
+    `Ground that looked different in ${W.change.b} than in ${W.change.a}. The satellite sees that it changed, somebody walking there can tell what happened.`, 'AlphaEarth', ['change']));
   if (W.lab) community.push(ch('lab', '--cells', 'The lab', [W.lab.km, 'km'], 'partial',
-    `${W.lab.name}, the nearest fab lab, is ${W.lab.km} km from the house. A lab like it is who would run a community node here.`, 'the node’s record of the lab', ['lab']));
+    `${W.lab.name} is the nearest fab lab, ${W.lab.km} km from the house. A lab like this one could run a community node here.`, 'the node’s record of the lab', ['lab']));
   if (W.rivers && W.river) community.push(ch('rivers', '--d-water', 'Rivers', [W.river.nearest_km, 'km'], 'model',
-    `The nearest river is ${W.river.nearest_km} km from the house, carrying ${f(W.river.nearest_m3s, 2)} m³/s on average.`, 'HydroATLAS, CC BY 4.0', ['rivers']));
+    `The nearest river is ${W.river.nearest_km} km from the house and carries ${f(W.river.nearest_m3s, 2)} m³/s on average.`, 'HydroATLAS, CC BY 4.0', ['rivers']));
 
   const g = W.grid, plant = g && (g.plants || [])[0];
   if (g && num(g.fossil_low_pct)) city.push(ch('grid', '--d-energy', 'Fossil power', [g.fossil_low_pct, '%'], 'model',
-    `At least that much of the power here is burnt.${plant ? ` The nearest large plant is ${String(plant.name).replace(/^PLT\w+ /, '')}, ${plant.km} km away, on ${plant.fuel}.` : ''}`,
+    `At least ${g.fossil_low_pct} % of the power here comes from burning fuel.${plant ? ` The nearest large plant is ${String(plant.name).replace(/^PLT\w+ /, '')}, ${plant.km} km away, running on ${plant.fuel}.` : ''}`,
     'PLN Bali system · OpenStreetMap', ['grid'], plant ? { fit: [[plant.lon, plant.lat]] } : {}));
   const bp = W.basin && W.basin.properties || {};
   if (W.basin) city.push(ch('basin', '--d-water', 'The basin', [bp.up_area ?? bp.sub_area ?? null, 'km²'], 'model',
-    `All the ground that drains with this house to the sea.${W.river ? ` The largest river nearby carries ${f(W.river.largest_m3s, 1)} m³/s, ${W.river.largest_km} km from the house.` : ''}`,
+    `All the ground that drains to the sea with this house.${W.river ? ` The largest river nearby carries ${f(W.river.largest_m3s, 1)} m³/s, ${W.river.largest_km} km from the house.` : ''}`,
     'HydroBASINS level 12', ['basin', 'rivers'], { fit: W.basin.geometry.coordinates[0] }));
   const swell = ro('coast', 'swell_height_m'), period = ro('coast', 'wave_period_s'), sst = ro('coast', 'sea_surface_temp');
   const from = atHour((W.hours || {}).wave_from || [], 23);
+  const wave = [from != null && `waves from the ${COMPASS[Math.round(from / 45) % 8]}`, period && `a crest every ${f(period.value)} s`].filter(Boolean).join(', ');
   if (swell) city.push(ch('sea', '--d-sea', 'Swell', [+f(swell.value, 1), 'm'], swell.provenance,
-    `The waves come${from != null ? ` from the ${COMPASS[Math.round(from / 45) % 8]}` : ''}${period ? `, a crest every ${f(period.value)} s` : ''}, as drawn on the water.${sst ? ` The sea is ${f(sst.value, 1)} °C.` : ''}`,
+    `${wave ? wave[0].toUpperCase() + wave.slice(1) + ', and the lines on the water move with them.' : 'The lines on the water move with the swell.'}${sst ? ` The sea is at ${f(sst.value, 1)} °C.` : ''}`,
     'Open-Meteo Marine', []));
   const items = (W.island || {}).items || [], off = items.find(i => i.official && num(i.pm25));
   if (off) city.push(ch('city-air', '--d-air', 'City air', [+f(off.pm25, 1), UG], 'partial',
-    `${items.length} stations across the island. The ringed one at ${String(off.place || '').split(' ').pop()} is the government's, read from its air index; the others are people's and businesses' own.`,
+    `${items.length} stations across the island. The ringed one at ${String(off.place || '').split(' ').pop()} is the government's, and its figure is worked back from its air index. The rest belong to people and businesses.`,
     'Bali Air Dispatch · the government station, now', ['island', 'stations'],
     { fit: [[off.lon, off.lat]], official: { lon: off.lon, lat: off.lat, label: `${String(off.place || '').split(' ').pop()} · government` } }));
 
@@ -159,7 +167,7 @@ function wallMapMount(el, W, story, G = {}) {
       transformRequest: url => (url.startsWith(location.origin) ? { url } : { url: 'data:,' }) });
   } catch (e) { console.warn('Wall: no map', e); return null; }
   /* the credit at the top right: the bottom corners hold the chapter's words and the sizes */
-  map.addControl(new maplibregl.AttributionControl({ compact: false, customAttribution: [G.vector && '© OpenStreetMap', G.imagery && 'Copernicus Sentinel-2'].filter(Boolean).join(' · ') }), 'top-right');
+  map.addControl(new maplibregl.AttributionControl({ compact: false, customAttribution: [G.vector && '© OpenStreetMap contributors · Protomaps', G.imagery && 'Copernicus Sentinel-2'].filter(Boolean).join(' · ') }), 'top-right');
 
   const ALL = ['own-air', 'roofs', 'roofs-mask', 'roofs-sun', 'own-heat', 'own-water', 'stations', 'change', 'lab', 'rivers', 'grid', 'basin', 'island'];
   const EXTRA = { grid: ['grid-line'], basin: ['basin-line'] };

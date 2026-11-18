@@ -423,20 +423,20 @@ MARKS = [
      "This tab lists every route on this node, one line each, with a search. The doors read the same "
      "routes a script or a spreadsheet can."),
     ("wall-never", "What the Wall never shows", "wall.md", "What the Wall never shows",
-     "Anyone in the room reads the Wall", "or a button to answer.",
-     "That is why this screen holds no token and no button. An answer belongs on Telegram, the radio or "
-     "the other doors."),
+     "Anyone in the room reads the Wall", "which can name a room.",
+     "Nothing on it is placed finer than the house's cell, and the screen holds no token and no button. An "
+     "answer belongs on Telegram, the radio or the other doors."),
     ("wall-sentence", "The time and the sentence", "wall.md", "What it shows",
-     "**The time and the sentence**", "\"Nothing is\n  asked now.\"",
+     "**The time and the sentence**", "\"Nothing is asked now.\"",
      "When the node's last poll is more than 15 minutes old, the time says the readings are old."),
-    ("wall-map", "The map", "wall.md", "The instruments",
-     "The instruments replay the last 24 hours", "never a slide, and nothing counts up.",
-     "The map walks out from the house: the base node's seven cells, then the community's, then the city's, "
-     "a replayed day at each size and one thing on it at a time. The wind and the swell move on it."),
-    ("wall-strip", "The strip", "wall.md", "The instruments",
-     "Over them a strip names each reading", "red is only ever the line.",
-     "Under the map, fine dust, heat, the swell and the wind at the hour the map shows, each with its last "
-     "24 hours as a thin line."),
+    ("wall-map", "The map", "wall.md", "The three sizes",
+     "Each size holds one replayed day", "has fewer chapters.",
+     "The map walks out from the house, the base node's seven cells first, then the community's and the city's, "
+     "and then starts again. The wind and the swell move on it at the same hour."),
+    ("wall-strip", "The strip", "wall.md", "What it shows",
+     "**The strip**", "where the reading has one.",
+     "The swell and the wind each have a needle that points where they go, and the hour at the end of the "
+     "strip is the one the map shows."),
     ("wall-narration", "The node, thinking aloud", "wall.md", "The node, thinking aloud",
      "The node tells it to speak", "that anything is safe.",
      "A new text comes every ten minutes from the model chosen in Set up › Model, and the box says it "

@@ -3381,7 +3381,7 @@ async function wallwalk() {
        tests/test_doors.py checks that dust and heat read on the replayed capture */
     ok(g.figs >= 2, `${tag}: ${g.figs} figures read in the strip`);
     ok(g.over.join() === (touch ? 'wwhere,wcap' : 'wwhere,wcap,whex'), `${tag}: the map's overlays are ${g.over.join(', ')}`);
-    ok(g.nomap === 'The map needs a screen that can draw it.', `${tag}: no line where the map would be: "${g.nomap}"`);
+    ok(g.nomap === 'This screen cannot draw the map.', `${tag}: no line where the map would be: "${g.nomap}"`);
     ok(g.w <= w, `${tag}: the page is ${g.w} px wide`);
     if (!touch) ok(g.h <= h, `${tag}: the Wall is ${g.h} px on a ${h} px screen`);
     ok(!g.small.length, `${tag}: under the floor: ${g.small.join(', ')}`);

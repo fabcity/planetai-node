@@ -377,7 +377,7 @@ One year drawn from the embeddings in grey, `?year=` required. 404 `no frame for
 ### GET /earth/wall.png
 Access: open
 
-The Wall's land-change image, for the pair `/wall` picks (the newest year-over-year pair, else the newest): the pixels that changed, inside the community's res-7 cells that fit a square centred on the node's res-8 cell, transparent elsewhere, with no ring and no scale bar. `/wall`'s `change.corners` place it. 204 until `planetai run earth change` has drawn it for that pair. A pair computed before this image existed gets it on the next plain `planetai run earth change`, no `--force` needed. Its JSON then holds `wall`: `{bounds, ha}`, or null when no community cell fits the square or the node has no place, and 204 here.
+The Wall's land-change image, for the pair `/wall` picks (the newest year-over-year pair, else the newest): the pixels that changed, inside the community's res-7 cells that fit a square centred on the node's res-8 cell, transparent elsewhere, with no ring and no scale bar. `/wall`'s `change.corners` place it. 204 until `planetai run earth change` has drawn it for that pair. A pair computed before this image existed gets it on the next plain `planetai run earth change`, no `--force` needed. The pair's JSON then holds `wall`, `{bounds, ha}`, or null when no community cell fits the square or the node has no place, and then this route answers 204.
 
 ### GET /earth/frame.png
 Access: open
@@ -544,9 +544,22 @@ The forecast pack's Open-Meteo wind field over the node's square, hourly for the
 ### GET /wall
 Access: open
 
-What the Wall's map draws, in one read: `{home, centre, scales, hours, stations, island, roofs, lab, rivers, basin, river, grid, change}`. `scales` are the three node sizes, the res-8 cell the node stands in and the six touching it, then the same at res 7 and res 6, each cell with its closed `ring`. `hours` holds the 24 hours `/issues` draws, with the Open-Meteo wind and the sea's wave direction and swell for each. `stations` are the outdoor stations the node reads, with 24 hourly PM2.5 values; `island` is Bali Air Dispatch's island-wide list as it reads now, null when it is over 3 hours old. The rest come from the place, make, hydro, energy and earth packs, and each is null while its pack is off or has nothing yet.
+Everything the Wall's map draws, in one read: `{home, centre, scales, hours, stations, island, roofs, lab, rivers, basin, river, grid, change}`. `home` is the node's res-8 cell and `centre` its middle, `[lon, lat]`.
 
-It answers without a token, so nothing in it is finer than the res-8 cell: distances are whole km from the cell's centre, points are public stations, labs and plants at 3 decimals, rivers and the basin are chosen around the cell's centre, roofs are counted within `roofs.mapped_radius_m` of it, and the land-change image is placed by the Wall's own crop (`change.corners`), never by the earth pack's square. 409 before the node has a place.
+- `scales`: the three node sizes, base, community and city, each `{k, res, km2, cells}`: the res-8 cell the node stands in and the six touching it, then the same at res 7 and res 6. Each cell is `{id, own, ring}`: `own` is true on the cell that holds the node, and `ring` is closed, its first point repeated at the end.
+- `hours`: the 24 hours `/issues` draws, as `buckets`, and for each hour the Open-Meteo wind (`wind_kmh`, `wind_from`) and the sea's wave direction and swell (`wave_from`, `swell_m`, `swell_s`). A direction is where it comes from, in degrees. An hour with no row is null.
+- `stations`: the outdoor stations the node reads, each `{lat, lon, pm25}` with 24 hourly PM2.5 values.
+- `island`: Bali Air Dispatch's island-wide list as it reads now, `{at, items}`, each item `{lat, lon, pm25, at, network, official, place}`. Null when the list is over 3 hours old, and a station over 3 hours old is left out.
+- `roofs`: `{osm_in_cells, mapped_radius_m}`, the OpenStreetMap buildings counted within that radius of the cell's middle (the place pack).
+- `lab`: the nearest fab lab, `{name, lat, lon, km}` (the make pack).
+- `rivers`, `basin` and `river` (the hydro pack): the reaches inside the city size's frame as GeoJSON, each with `m3s` and `order`; the basin that holds the cell's middle, a GeoJSON feature with `sub_area` and `up_area` in km²; and `{nearest_km, nearest_m3s, largest_km, largest_m3s}`, the nearest reach and the one that carries most.
+- `grid`: `{fossil_low_pct, substation_km, plants, sun}` from the energy pack. `plants` are the plants of 1 MW or more within 30 km, each `{name, fuel, mw, lat, lon, km}`, nearest first. `sun` is `{kwh_m2, roof_kwh, panel_kw}`: the sun on each square metre of the cell today, what a panel of the size the house set would make with it, and that size. It is null when the pack has no `today`.
+- `change`: the newest land-change pair the Wall may show, `{a, b, ha, corners, png}`, where `png` is `/earth/wall.png` and `corners` its four corners, `[lon, lat]` from the north-west round (the earth pack, after `planetai run earth change`).
+
+Each of `island`, `roofs`, `lab`, `rivers`, `basin`, `river`, `grid` and `change` is null while its pack is off or has nothing yet, and a pack file the route cannot read costs only its own block.
+
+It answers without a token, so nothing in it is finer than the res-8 cell. Distances are whole km from the cell's middle. The only points are public ones, stations, labs and plants, at 3 decimals. A station is kept only where the station packs' own radius and separation would keep it wherever in the cell the house stands, so a station near the house is never in the list. The rivers and the basin are chosen round the cell's middle, the roofs are counted round it, and the land-change image is placed by the Wall's own crop, never by the earth pack's square round the house. 409 before the node has a place.
+
 ## Images and things
 
 A capture is one picture with the facts a reading has: when, which cell, who, with what. The file lives in `CAPTURES_DIR`, the row in the database. These routes are on no allowlist and `BACKUP_TOKEN` opens none of them, and no picture goes into an export, an aggregate or a parent push. The file is cleaned of EXIF and GPS on arrival.

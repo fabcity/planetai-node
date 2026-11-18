@@ -2017,8 +2017,8 @@
    "url": "https://planetai.fab.city/docs/alerts/#trust"
   },
   "wall-map": {
-   "anchor": "the-instruments",
-   "more": "The map walks out from the house: the base node's seven cells, then the community's, then the city's, a replayed day at each size and one thing on it at a time. The wind and the swell move on it.",
+   "anchor": "the-three-sizes",
+   "more": "The map walks out from the house, the base node's seven cells first, then the community's and the city's, and then starts again. The wind and the swell move on it at the same hour.",
    "page": "wall.md",
    "page_title": "Wall mode",
    "questions": {
@@ -2035,10 +2035,10 @@
      "Apa segi enam di peta itu?"
     ]
    },
-   "quote": "The instruments replay the last 24 hours, an hour every 1.25 s (30 s for the day), hold the last hour, then start the\nday again. Each hour is a step, never a slide, and nothing counts up.",
-   "section": "The instruments",
+   "quote": "Each size holds one replayed day, split evenly between its chapters, and each chapter\nturns one thing on over the map. A chapter is only there when the node holds what it draws, so a node with fewer\npacks has fewer chapters.",
+   "section": "The three sizes",
    "title": "The map",
-   "url": "https://planetai.fab.city/docs/wall/#the-instruments"
+   "url": "https://planetai.fab.city/docs/wall/#the-three-sizes"
   },
   "wall-narration": {
    "anchor": "the-node-thinking-aloud",
@@ -2066,7 +2066,7 @@
   },
   "wall-never": {
    "anchor": "what-the-wall-never-shows",
-   "more": "That is why this screen holds no token and no button. An answer belongs on Telegram, the radio or the other doors.",
+   "more": "Nothing on it is placed finer than the house's cell, and the screen holds no token and no button. An answer belongs on Telegram, the radio or the other doors.",
    "page": "wall.md",
    "page_title": "Wall mode",
    "questions": {
@@ -2083,7 +2083,7 @@
      "Bisakah tamu melihat sesuatu yang pribadi di sini?"
     ]
    },
-   "quote": "Anyone in the room reads the Wall, so it names no sensor, room, kit or person, and the model's facts carry none of\nthem either. What is asked is the node's own sentence, never the alert's text, which can name a room. It never shows\nwhat the house learned, its diary, its things, a position or a button to answer.",
+   "quote": "Anyone in the room reads the Wall, so it names no sensor, room, kit or person, and the model's facts carry none of\nthem either. What is asked is the node's own sentence, never the alert's text, which can name a room.",
    "section": "What the Wall never shows",
    "title": "What the Wall never shows",
    "url": "https://planetai.fab.city/docs/wall/#what-the-wall-never-shows"
@@ -2107,14 +2107,14 @@
      "Apakah bacaan ini masih baru?"
     ]
    },
-   "quote": "**The time and the sentence**: the headline issue's title as the node writes it, with what is asked now beside it:\n  the node's own sentence, how many things are asked of the house, and \"Answer on Telegram, not here.\", or \"Nothing is\n  asked now.\"",
+   "quote": "**The time and the sentence**, at the top of the column. The sentence is the headline issue's title as the node\n  writes it, and under it is what is asked now, in the node's own sentence with how many things are asked of the\n  house and \"Answer on Telegram, not here.\", or \"Nothing is asked now.\"",
    "section": "What it shows",
    "title": "The time and the sentence",
    "url": "https://planetai.fab.city/docs/wall/#what-it-shows"
   },
   "wall-strip": {
-   "anchor": "the-instruments",
-   "more": "Under the map, fine dust, heat, the swell and the wind at the hour the map shows, each with its last 24 hours as a thin line.",
+   "anchor": "what-it-shows",
+   "more": "The swell and the wind each have a needle that points where they go, and the hour at the end of the strip is the one the map shows.",
    "page": "wall.md",
    "page_title": "Wall mode",
    "questions": {
@@ -2131,10 +2131,10 @@
      "Apakah ombaknya lebih besar dari tadi pagi?"
     ]
    },
-   "quote": "Over them a strip names each reading, says where it is from, and gives its figure, its hour and a provenance word.\nEach reading keeps its own colour on its lines and its figure, and red is only ever the line.",
-   "section": "The instruments",
+   "quote": "**The strip**, under the map and the column: fine dust, apparent heat, the swell and the wind at the replayed hour,\n  each with its unit, its hour, its provenance word and where it comes from, and its last 24 hours as a thin line\n  with the hour marked and the red line where the reading has one.",
+   "section": "What it shows",
    "title": "The strip",
-   "url": "https://planetai.fab.city/docs/wall/#the-instruments"
+   "url": "https://planetai.fab.city/docs/wall/#what-it-shows"
   },
   "workshop": {
    "anchor": "what-it-is-for",

@@ -55,7 +55,7 @@ assert R["onWindow"] == "undefined"
 print("  wallmap: stations as features")
 
 # ---------------------------------------------------------------- the story: which chapters each scale has
-# W is a /wall body (tests/fixtures/wall-node1.json, coarse values, node #1 on 18 Nov 2026) and D the doors' /issues
+# W is a /wall body (tests/fixtures/wall-node1.json, coarse values, hand-built in /wall's shape) and D the doors' /issues
 # on node #1's capture, with the readouts the capture lacks added for the all-present case.
 out = subprocess.run(["node", "-e", """
 const M = require('./app/static/doors-wallmap.js'), fs = require('fs');

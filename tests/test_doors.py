@@ -327,7 +327,7 @@ assert "pointer-events:none" in html[html.index(".wover{"):].split("}")[0], "a m
 assert min(t["wall"]["n"]) >= 2, f"a size with under two chapters: the rows above switched nothing ({t['wall']['n']})"
 assert len({_x["strip"] for _x in _hs}) > 12, "the strip does not change with the hour"
 # A size with nothing to show keeps its cells and says so in one line; it never asks for chapter -1.
-assert "Nothing the node holds at this size yet." in t["wall"]["bare"] and "<li" not in t["wall"]["bare"], t["wall"]["bare"]
+assert "The node holds nothing at this size yet." in t["wall"]["bare"] and "<li" not in t["wall"]["bare"], t["wall"]["bare"]
 # The strip read real figures: dust and heat each show a figure at some hour, so the checks above asserted something.
 for _g, _what in ((0, "fine dust"), (1, "apparent heat")):
     assert any('class="wnum"' in re.findall(r'<div class="wrv">(.*?)</div>', _x["strip"])[_g] for _x in _hs), f"the capture drew no {_what}: the checks above asserted nothing"
@@ -344,7 +344,7 @@ assert len(t["wall"]["nohours"]) == 24 and _ms(t["wall"]["nohours"][-1]) == _ms(
 # A screen that cannot draw the map (no MapLibre, no WebGL; the visual rig is one) still draws the column and the strip,
 # and says so in one line where the map would be.
 _vw = t["wall"]["view"]
-assert _vw["map"] == '<p class="wnomap">The map needs a screen that can draw it.</p>', _vw["map"]
+assert _vw["map"] == '<p class="wnomap">This screen cannot draw the map.</p>', _vw["map"]
 assert _vw["strip"].count('class="wg"') == 4 and "Base node" in _vw["scale"] and 'class="wsent"' in _vw["wallv"], _vw
 assert "WALL.h == null || WALL.still !== still" in _wsrc and "if (view() !== 'wall') { WALL.still = null; return; }" in _wsrc, \
     "motion turned on or off off the Wall resumes the old replay's hour"
