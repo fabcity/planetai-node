@@ -1654,7 +1654,7 @@ function aStack() {
  * that zero is the baseline T3 is measured against.
  */
 const ROLES = {
-  sentence: ['[data-component="sentence"]', '[data-role="sentence"]', '.hero p.big', '.wall p.big'],
+  sentence: ['[data-component="sentence"]', '[data-role="sentence"]', '.hero p.big', '.wall p.big', '.wsent'],
   /* The monument numeral. `b.mono` and not `p.big b`: ancestors are not checked, so a descendant
    * selector ending in a bare tag matched the header's own <b>. */
   numeral: ['[data-role="numeral"]', 'b.mono'],
@@ -1670,10 +1670,17 @@ const ROLES = {
   index: ['[data-component="index"]', '[data-role="index"]', '#index', '.index'],
   indexRow: ['[data-component="indexRow"]', '[data-role="index-row"]', '.index .row'],
   miniStack: ['[data-component="miniStack"]', '[data-role="mini-stack"]', '.stack.mini'],
-  wallIssueLine: ['[data-component="wallIndex"] .ln', '[data-role="wall-issue"]', '.wall .wi .ln'],
-  /* The readable part of the rho row is its caption: the row itself is a texture of signs, and
-   * a sign is measured against --sign-floor, not against a cap height. */
-  rho: ['[data-role="rho"]', '.rhocap', '[data-component="rhoRow"]'],
+  /* The Wall of 18 Nov 2026 (doors-wall.js): a column beside the map and a strip under both. Each role is a part T7
+   * reads at three metres. The size legend (.whex) is left out on purpose: it is the one text set under the floor, at
+   * .8 of it, as the mockup Tomas approved after he asked on 18 Nov for the text to be smaller ("too big, control
+   * that"); tests/test_doors.py names it and wallwalk exempts it. */
+  wallAsk: ['.wask'],
+  wallChapters: ['.wscale'],
+  wallChapterFig: ['.wchap .n'],
+  wallNarr: ['.wnarr'],
+  wallGauge: ['.wg'],
+  wallFig: ['.wg .wnum'],
+  wallClock: ['.wclock'],
 };
 
 /* Does any element in `d` match this role, and is its box inside the first viewport?
@@ -1847,22 +1854,30 @@ function aTargets() {
     let diverge = 0;
     for (let i = 0; i + 1 < byPos.length; i++) if (byPos[i].dom > byPos[i + 1].dom) diverge++;
 
-    /* T7 — the wall at three metres. 1 px = 0.63 mm at 1920 on a 55-inch 16:9 panel; the floor is
-     * about 3 mm of cap height per metre, so 9 mm. */
+    /* T7 — the Wall at three metres. 1 px = 0.63 mm at 1920 on a 55-inch 16:9 panel. The floor is the cap height of
+     * the Wall's own type floor, 20 px (--wf at 1920×1080; Tomas, 18 Nov 2026: the text "gets too big, control that"),
+     * which was 28 px and 9 mm. The cap ratio is read off the render's own 20 px lines, the canvas measurement COLLECT
+     * takes of "H" in each face, and the lowest face sets the floor. Only the doors' Wall has these parts (#wallv), so the
+     * classic wall_populated render has no T7 and `wallwalk` writes the render this reads (wallwalk_1920.json). */
     let t7 = '—';
-    if (wall && w >= 1920) {
-      const MM = 0.63;
-      const want = [['sentence', sent], ['numeral', num], ['issue line', role(d, 'wallIssueLine')],
-        ['rho row', role(d, 'rho')]];
+    if (wall && w >= 1920 && d.els.some(e => e.id === 'wallv')) {
+      const MM = 0.63, FLOOR_PX = 20;
+      const ratio = Math.min(...d.lines.filter(l => Math.abs(l.fs - FLOOR_PX) < .5 && l.cap).map(l => l.cap / l.fs));
+      const floor = FLOOR_PX * ratio * MM;
+      const want = [['sentence', sent], ['ask', role(d, 'wallAsk')], ['chapters', role(d, 'wallChapters')],
+        ['chapter figures', role(d, 'wallChapterFig')], ['narration', role(d, 'wallNarr')],
+        ['gauges', role(d, 'wallGauge')], ['strip figures', role(d, 'wallFig')], ['clock', role(d, 'wallClock')]];
       const parts = [];
       for (const [label, r] of want) {
+        /* a line belongs to a part when its centre is inside the part's box: a tight line-height (the sentence's 1.08)
+         * makes the line box taller than the paragraph's edges, so whole-box containment missed it */
         const caps = d.lines.filter(l => r.els.some(e => l.x >= e.x - 2 && l.x <= e.x + e.w + 2
-          && l.y >= e.y - 2 && l.y + l.h <= e.y + e.h + 2)).map(l => l.cap * MM);
+          && l.y + l.h / 2 >= e.y && l.y + l.h / 2 <= e.y + e.h)).map(l => l.cap * MM);
         if (!caps.length) { parts.push(`${label} **absent**`); continue; }
-        const lo = Math.min(...caps);
-        parts.push(`${label} ${lo.toFixed(1)}${lo < 9 ? ' **' : ' '}mm${lo < 9 ? '**' : ''}`);
+        const lo = Math.min(...caps), low = lo < floor - 0.05;
+        parts.push(`${label} ${lo.toFixed(1)}${low ? ' **' : ' '}mm${low ? '**' : ''}`);
       }
-      t7 = parts.join('; ');
+      t7 = `floor ${floor.toFixed(1)} mm: ` + parts.join('; ');
     }
 
     rows.push([n, w,
@@ -3354,6 +3369,7 @@ async function wallwalk() {
     ok(await r.page.waitForSelector('#asking:not(.on)', { state: 'attached', timeout: 8000 }).then(() => true, () => false), `${w}: the loading screen never closed`);
     await r.page.evaluate(() => document.fonts.ready); await r.page.waitForTimeout(800);
     if (process.env.PAI_WALL_SHOTS === '1') await r.page.screenshot({ path: path.join(OUT, `wallwalk_${w}.png`), fullPage: true });
+    if (w === 1920) fs.writeFileSync(path.join(OUT, 'wallwalk_1920.json'), JSON.stringify(await r.page.evaluate(COLLECT)));   /* what `targets` reads for T7 */
     const g = await read(r.page, (touch ? 12 : Math.min(20, w * .010417, h * .018519)) - .5), tag = `${w}`;
     ok(g.gauges === 4 && g.rows >= 1, `${tag}: the strip or the chapters are not drawn (${g.gauges} gauges, ${g.rows} rows)`);
     /* the swell and the wind read /wall here. Dust and heat cannot: this fixture's snapshot carries no issues_days, so the
