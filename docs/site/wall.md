@@ -37,9 +37,7 @@ reduced motion on there is no next hour, so it comes back when the window change
 
 ## What it shows
 
-![The Wall: the map, the column and the strip](img/wall.jpg "The Wall on node #1.")
-
-> **Note.** This picture is still the Wall before its map, with the instruments. It will be retaken on node #1.
+![The Wall: the map, the column and the strip](img/wall.jpg "The Wall on node #1 at the community size: the land that changed between 2024 and 2025.")
 
 Nothing on the Wall is smaller than 20 px at 1920×1080, and the type scales with the screen. The one exception is the
 size legend at the bottom right of the map, at 16 px. On a phone or a portrait screen the floor never drops under
