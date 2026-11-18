@@ -237,7 +237,9 @@ def _safe(build, *args, empty=None):
 # ---------------------------------------------------------------- the route
 
 _BUCKETS = "SELECT DISTINCT bucket FROM readings_1h WHERE bucket > now() - interval '24 hours'"
-_STATIONS = ("SELECT sensor_id, lat, lon FROM sensors WHERE kind = 'sensor' AND NOT local AND NOT indoor "
+# Only the station packs' own rows (pack.yaml `stations: source:`): `NOT local` alone also takes a Meshtastic radio and
+# the household's own kit standing away from home, which stamp_local narrows to local=FALSE (app/sources.py).
+_STATIONS = ("SELECT sensor_id, source, lat, lon FROM sensors WHERE kind = 'sensor' AND NOT local AND NOT indoor "
              "ORDER BY sensor_id")
 _HOURLY = ("SELECT h.bucket, h.sensor_id, h.metric, h.mean FROM readings_1h h "
            "WHERE h.bucket > now() - interval '24 hours' AND h.sensor_id = ANY(%s) AND h.metric = ANY(%s)")
@@ -277,7 +279,9 @@ def wall():
         cur.execute(_BUCKETS)
         buckets = day_buckets([r["bucket"] for r in cur.fetchall()], now)
         cur.execute(_STATIONS)
-        found = [s for s in cur.fetchall() if s["lat"] is not None and s["lon"] is not None and ok(s["lat"], s["lon"])]
+        srcs = {p["source"] for p in packs.stations()}
+        found = [s for s in cur.fetchall() if s["source"] in srcs and s["lat"] is not None and s["lon"] is not None
+                 and ok(s["lat"], s["lon"])]
         cur.execute(_HOURLY, ([s["sensor_id"] for s in found] + ["om-point", "marine-point"],
                               ["pm25"] + [m for _, m in HOURS.values()]))
         rows = cur.fetchall()
@@ -293,6 +297,7 @@ def wall():
             try:            # the place pack may not have made its tables yet
                 cur.execute(_RUN)
                 r_m = _inner_m(home, next(iter(cur.fetchall()), None), (lat, lon))
+                r_m = r_m // 100 * 100 if r_m else None     # whole 100 m: the metres under it say where the house moved
                 if r_m and r_m > 0:
                     cur.execute(_ROOFS, (clon, clat, r_m))
                     got = cur.fetchall()

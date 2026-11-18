@@ -83,6 +83,12 @@ console.log(JSON.stringify({
   at: [M.chapterAt(23, 4), M.chapterAt(0, 5), M.chapterAt(23, 5), M.chapterAt(5, 4), M.chapterAt(6, 4), M.chapterAt(12, 1), M.chapterAt(24, 3)],
   names: JSON.parse(fs.readFileSync('app/issues/fixtures/node1-2026-10-06-figures.json', 'utf8')).sensors.map(s => s.name.trim()).filter(n => n.length > 3),
   lab: W0.lab.name,
+  /* one fresh ring station: the engine sets the ring's source to that sensor's own name (engine.py _from_stats) */
+  ring1: M.wallStory(W0, mkD({ air: { ...cap.air, line: 15, stack: { ...cap.air.stack, ring: { ...cap.air.stack.ring, n: 1, source: 'K ROOM - BAYU HOLES' } } } })),
+  /* every name the node holds, put where a source or a title could carry it */
+  named: (() => { const names = JSON.parse(fs.readFileSync('app/issues/fixtures/node1-2026-10-06-figures.json', 'utf8')).sensors.map(s => s.name);
+    return names.map(n => M.wallStory(W0, mkD({ air: { ...cap.air, line: 15, stack: { room: { ...cap.air.stack.room, source: n }, yard: { ...cap.air.stack.yard, source: n },
+      ring: { ...cap.air.stack.ring, source: n } } } }))); })(),
 }));
 """], capture_output=True, text=True, check=True)
 S = json.loads(out.stdout)
@@ -122,7 +128,14 @@ assert "22 km" in CH(2, "basin")["says"] and "10.6" in CH(2, "basin")["says"] an
 assert "Fab Lab Bali" in CH(1, "lab")["says"] and "4 km" in CH(1, "lab")["says"] and "2025" in CH(1, "change")["says"]
 assert "Sempidi" in CH(2, "city-air")["says"] and "south-west" in CH(2, "sea")["says"]
 assert "from the" not in S["noWave"], "no direction hour, no direction said"
-print("  story: captions read W in whole km and name no sensor")
+ring1 = next(c for c in S["ring1"][1]["chapters"] if c["k"] == "air")
+assert ring1["src"] == "stations around", ("one fresh ring station: its name never reaches the Wall", ring1["src"])
+assert CH(1, "air")["src"] == "9 sensors", "a count of sensors is said as it is"
+held = [n.strip() for n in S["names"] if n.strip() != S["lab"]]
+for story in S["named"]:
+    shown = " ".join(c["src"] + " " + c["title"] for x in story for c in x["chapters"])
+    assert not [n for n in held if n in shown], [n for n in held if n in shown]
+print("  story: captions read W in whole km and name no sensor, in no source and no title either")
 
 assert S["cap"] == [["air", "built", "sun"], ["air", "change", "lab", "rivers"], ["grid", "basin", "sea", "city-air"]], \
     ("the capture holds no heat or water readouts, so those chapters are absent; the sun is W's", S["cap"])

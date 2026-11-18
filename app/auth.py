@@ -67,9 +67,10 @@ _SHARE_OPEN = (_SHARE_OFF[0] | frozenset({
     # reads several packs' results that are private on their own (/hydro is on no list): the route re-cuts each one
     # around the res-8 cell's centre, so it says nothing finer than the cell /health names. Distances are whole km
     # from that centre, points are public things' at 3 dp, and the land-change image is placed only by the Wall's
-    # own crop, never by the earth square, which is centred on the house. "/wall/" is for the Wall's later parts.
+    # own crop, never by the earth square, which is centred on the house. The exact path only: no prefix opens
+    # whatever is added under it later.
     "/wall",
-}), ("/static/", "/exports/", "/issues", "/sources/", "/ground/", "/wall/"))
+}), ("/static/", "/exports/", "/issues", "/sources/", "/ground/"))
 # A pack's own routes add themselves (pack.yaml `share:`, packs.shared_open()), the forecast and nearby packs first.
 import packs as _packs  # noqa: E402
 _SHARE_OFF = (_SHARE_OFF[0] | frozenset(_packs.shared("off")), _SHARE_OFF[1])     # /offers: the things pack

@@ -72,6 +72,9 @@ const wallStory = (W, D) => {
   const I = D.issues || {}, num = v => typeof v === 'number' && isFinite(v), f = (v, dp = 0) => (+v).toFixed(dp);
   const ro = (k, m) => { const r = ((I[k] || {}).readouts || []).find(x => x.metric === m); return r && num(r.value) ? r : null; };
   const word = p => PROVS.includes(p) ? p : 'model';
+  /* a source from the node is said as a count or not at all: with one station fresh the ring's source is that sensor's
+     name, a roof or a kit (app/issues/engine.py _from_stats), the old Wall's rule */
+  const counted = s => /^\d+ sensors?$/.test(s || '') ? s : 'stations around';
   const stack = (I.air || {}).stack || {}, line = (I.air || {}).line;
   const ch = (k, hue, title, n, w, says, src, layers, extra) => ({ k, hue, title, n, word: word(w), says, src, layers, ...extra });
   const base = [], community = [], city = [];
@@ -98,7 +101,7 @@ const wallStory = (W, D) => {
     'Copernicus DEM 30 m · forecast', ['own-water']));
 
   if (num((stack.ring || {}).value) && (W.stations || []).length) community.push(ch('air', '--d-air', 'Air around', [+f(stack.ring.value, 1), UG], stack.ring.provenance,
-    `Each dot is one of the ${W.stations.length} stations around the house, red in any hour it reads over the line.`, stack.ring.source || '', ['stations']));
+    `Each dot is one of the ${W.stations.length} stations around the house, red in any hour it reads over the line.`, counted(stack.ring.source), ['stations']));
   if (W.change && num(W.change.ha)) community.push(ch('change', '--d-ground', 'Land that changed', [Math.round(W.change.ha), 'ha'], 'model',
     `Ground that looked different in ${W.change.b} than in ${W.change.a}. The satellite sees that it changed, somebody walking there can tell what happened.`, 'AlphaEarth', ['change']));
   if (W.lab) community.push(ch('lab', '--cells', 'The lab', [W.lab.km, 'km'], 'partial',

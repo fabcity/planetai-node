@@ -95,13 +95,17 @@ HOURLY = ([{"bucket": DAY[i], "sensor_id": "bad-1", "metric": "pm25", "mean": 10
           + [{"bucket": DAY[-1], "sensor_id": "marine-point", "metric": "swell_height_m", "mean": 1.234}])
 ANSWERS = {
     "DISTINCT bucket": [{"bucket": b} for b in BUCKETS],
-    "kind = 'sensor' AND NOT local": [{"sensor_id": "bad-1", "lat": -8.81234567, "lon": 115.1234567},
+    "kind = 'sensor' AND NOT local": [{"sensor_id": "bad-1", "source": "baliairdispatch", "lat": -8.81234567, "lon": 115.1234567},
                                       # 14.9 km south of the house: inside BAD's 15 km, beyond 15 km less the cell
-                                      {"sensor_id": "bad-far", "lat": LAT - 14.9 / 111.32, "lon": LON},
+                                      {"sensor_id": "bad-far", "source": "baliairdispatch", "lat": LAT - 14.9 / 111.32, "lon": LON},
                                       # 160 m north of the house: BAD keeps it, but inside the cell + 150 m of the centre
-                                      {"sensor_id": "bad-near", "lat": LAT + 0.16 / 111.32, "lon": LON},
-                                      {"sensor_id": "bad-2", "lat": -8.70001, "lon": 115.20001},
-                                      {"sensor_id": "bad-3", "lat": None, "lon": None}],
+                                      {"sensor_id": "bad-near", "source": "baliairdispatch", "lat": LAT + 0.16 / 111.32, "lon": LON},
+                                      # a Meshtastic radio, and the household's own kit away from home (stamp_local
+                                      # sets it local=FALSE): not stations, though both pass NOT local AND NOT indoor
+                                      {"sensor_id": "msh-64e0bfd1", "source": "meshtastic", "lat": -8.79, "lon": 115.15},
+                                      {"sensor_id": "sc-19898", "source": "smartcitizen", "lat": -8.77, "lon": 115.19},
+                                      {"sensor_id": "bad-2", "source": "baliairdispatch", "lat": -8.70001, "lon": 115.20001},
+                                      {"sensor_id": "bad-3", "source": "baliairdispatch", "lat": None, "lon": None}],
     "readings_1h h": HOURLY,
     "kind = 'facility'": [{"name": "Fab Lab Bali", "lat": -8.6812345, "lon": 115.2312345},
                           {"name": "Far Lab", "lat": -6.2, "lon": 106.8}],
@@ -213,13 +217,17 @@ assert h3.great_circle_distance((LAT, LON), (LAT - 14.9 / 111.32, LON), unit="km
 assert h3.great_circle_distance((LAT, LON), (LAT + 0.16 / 111.32, LON), unit="m") > 150, "and BAD keeps the near one"
 ids = next(a[0][0] for q, a in reversed(SEEN) if "readings_1h h" in q)
 assert "bad-far" not in ids and "bad-near" not in ids and "bad-1" in ids, "dropped before their hours are read"
+assert "msh-64e0bfd1" not in ids and "sc-19898" not in ids, "only the station packs' sources are stations"
+assert (-8.79, 115.15) not in [(s["lat"], s["lon"]) for s in W["stations"]] and len(W["stations"]) == 2
 assert W["stations"][0]["pm25"][0] == 10.0 and W["stations"][0]["pm25"][1] is None and len(W["stations"][0]["pm25"]) == 24
 assert W["stations"][1]["pm25"] == [None] * 24, "a station with no hour still stands; it is drawn grey"
 assert not any("sensor_id" in s for s in W["stations"]), "a station's id is its network's, and says nothing on a wall"
 assert W["island"]["at"] == iso(NOW) and len(W["island"]["items"]) == 1, "the stale one, and the one 160 m off"
 assert W["island"]["items"][0]["place"] == "Kabupaten Badung Sempidi" and W["island"]["items"][0]["official"] is True
-assert W["roofs"] == {"osm_in_cells": 214, "mapped_radius_m": int(1000 - wall.circum_m(HOME))}, W["roofs"]
-assert 450 < W["roofs"]["mapped_radius_m"] < 500, "the run's 1000 m, never the 5000 m Set up row"
+assert W["roofs"] == {"osm_in_cells": 214, "mapped_radius_m": int(1000 - wall.circum_m(HOME)) // 100 * 100}, W["roofs"]
+assert W["roofs"]["mapped_radius_m"] == 400, "the run's 1000 m, never the 5000 m Set up row, in whole 100 m"
+roof_r = next(a[0][2] for q, a in reversed(SEEN) if "place_features" in q)
+assert roof_r == 400, ("the roofs are counted over the radius the Wall says", roof_r)
 assert W["lab"] == {"name": "Fab Lab Bali", "lat": -8.681, "lon": 115.231,
                     "km": wall.km_from((clon, clat), 115.2312345, -8.6812345)}, W["lab"]
 assert W["grid"]["fossil_low_pct"] == 84, W["grid"]
@@ -322,7 +330,7 @@ assert all(W[k] is None for k in ("island", "roofs", "lab", "rivers", "basin", "
 assert W["stations"] == [] and W["hours"]["buckets"] == [] and len(W["scales"]) == 3
 print("  every pack off and no rows: 200, the scales, and every block null")
 
-# ---- the share list says why
-src = open("app/auth.py").read()
-assert '"/wall"' in src and '"/wall/"' in src, "on the open list by hand, with its reason"
+# ---- the share list: /wall itself, and nothing under it
+assert "/wall" in main._SHARE_OPEN[0] and not any("/wall/x".startswith(p) for p in main._SHARE_OPEN[1])
+assert c.get("/wall/x").status_code in (401, 403), "no prefix opens what is added under /wall later"
 print("wall: one tokenless route, nothing finer than the house's cell")
