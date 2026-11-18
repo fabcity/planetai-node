@@ -28,7 +28,7 @@ Loopback is the socket's peer address, never a header: `X-Forwarded-For` is not 
 An untrusted caller gets less, in four ways:
 
 - Room names: each local sensor's `room`, `name` and `source_name` become `Room A`, `Room B`, `Sensor 1` and so on, in every field and sentence. Alert sentences written under older names are left out: `/alerts` answers `text: null` and `buttons: null`, and so do the alert texts in `/issues`.
-- Positions: nothing finer than the node's resolution-8 cell: `/health` and `/export` carry its centre, the household's own sensors in `/sensors` and `/stats` stand there (a child's at its own cell's centre), and other sensors are rounded to 3 decimals. `/forecast` and `/earth` carry the exact point and are `open`, while `/place/geojson` and most `/geo/` routes are `token`.
+- Positions: nothing finer than the node's resolution-8 cell: `/health` and `/export` carry its centre, the household's own sensors in `/sensors` and `/stats` stand there (a child's at its own cell's centre), and other sensors are rounded to 3 decimals. `/earth` gives the cell's centre too, and cuts its pictures and numbers around it. `/forecast` carries the exact point and is `open`, while `/place/geojson` and most `/geo/` routes are `token`.
 - Private values: a channel a pack declares `private`, such as the counts of what a home keeps, is in `/readings`, `/history`, `/series`, `/sparks` and `/observations` only for `ADMIN_TOKEN`, and in `/stats` for `ADMIN_TOKEN`, `ACT_TOKEN` or loopback. A request carrying `X-Agent` never gets one.
 - Who answered: the `actor` and `note` of every answer in `/issues` are null.
 
@@ -357,7 +357,7 @@ The synchronous grid behind this node's cells, as the `energy` pack last compute
 ### GET /earth
 Access: open
 
-What the earth packs hold for this node's square: `{node, enabled, years, bytes, latest, changes, frames, dir, imagery, png, lat, lon, radius_m, attribution, hint}`, from the AlphaEarth years, the land-change comparisons and the Sentinel-2 or Landsat frames. Empty until `planetai run earth fetch`, never an error; `hint` names the next command.
+What the earth packs hold for this node's square: `{node, enabled, years, bytes, latest, changes, frames, dir, imagery, png, lat, lon, radius_m, attribution, hint}`, from the AlphaEarth years, the land-change comparisons and the Sentinel-2 or Landsat frames. Empty until `planetai run earth fetch`, never an error; `hint` names the next command. Without the admin or act token (and for `X-Agent`), `lat`/`lon` are the res-8 cell's centre with `position: "cell"`, and each comparison is computed again over a smaller square centred on that cell, 1 km in from each side of the cached one, with its own `bounds`, `px` and numbers and no `lat`, `lon` or `node_rc`. With the token they are the square as it was read, `position: "point"`.
 
 ### GET /hydro
 Access: token
@@ -367,12 +367,12 @@ What the hydro pack kept for this node's square: `{lat, lon, radius_km, region, 
 ### GET /earth/change.png
 Access: open
 
-A land-change map, `?pair=YYYY_YYYY` (default the latest). 404 `no such land-change map: planetai run earth change`.
+A land-change map, `?pair=YYYY_YYYY` (default the latest). 404 `no such land-change map: planetai run earth change`. Without the admin or act token it is cut to the square `/earth` describes for that reader, with no ring at the node's point.
 
 ### GET /earth/year.png
 Access: open
 
-One year drawn from the embeddings in grey, `?year=` required. 404 `no frame for <year>: planetai run earth frames`.
+One year drawn from the embeddings in grey, `?year=` required. 404 `no frame for <year>: planetai run earth frames`. Without the admin or act token it is cut the same way, with no ring.
 
 ### GET /earth/frame.png
 Access: open
