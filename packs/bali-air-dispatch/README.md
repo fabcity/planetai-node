@@ -30,6 +30,16 @@ it, EPA 2021 corrected for Plantower networks), `pm25_raw` where the archive has
 `humidity` and `aqi` (a vendor index, never pooled). Its `meta` carries the originating network, the distance and
 the attribution.
 
+### The island's file, for the Wall
+
+Beside the ring, each poll writes `out/wall/island.json` (`{"at", "items"}`, replaced whole): every fresh, outdoor,
+working station on the island, with no radius, as `{lat, lon, pm25, at, network, official, place}` (coordinates to
+3 decimals). One device is one item when stations name each other in `same_device_as`. `official` is
+"Government" in the station's `type` from `/stations`, which is read at most once a day into
+`out/wall/bad-stations.json`; a failed read keeps the last file, and with none nothing is official. `place` is
+the station's name, only when it is official (Sempidi, `aq--519205`). The Wall treats an `at` over 3 hours old as
+missing.
+
 ## Which stations are the ring
 
 `verdicts()` decides, and it is the one function `planetai run nearby stations`, `nearby verify` and

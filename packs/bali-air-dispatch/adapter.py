@@ -14,7 +14,13 @@ read by packs/nearby and by GET /nearby?audit=1, so the audit can never drift fr
 """
 from __future__ import annotations
 
+import json
+import logging
+import os
 import sys
+import time
+from datetime import datetime, timezone
+from pathlib import Path
 
 sys.path.insert(0, "/app")
 import settings  # noqa: E402
@@ -129,13 +135,16 @@ def verdicts(rows: list[dict], node_lat: float, node_lon: float, radius_km: floa
 
 def ring(hc, node_lat: float, node_lon: float, radius_km: float,
          skip_station_ids: set[str] | None = None, exclude_ids: set[str] | None = None,
-         min_separation_m: float = 150.0, include_indoor: bool = False):
+         min_separation_m: float = 150.0, include_indoor: bool = False, rows: list[dict] | None = None):
     """The ring: other people's stations around this node. Never `local` — at any distance, whatever the
-    coordinates say. See verdicts() for which stations are dropped and why."""
+    coordinates say. See verdicts() for which stations are dropped and why. `rows` is /latest when the caller
+    already has it."""
     sensors, readings = [], []
-    r = hc.get(LATEST)
-    r.raise_for_status()
-    for row, verdict in verdicts(r.json().get("readings", []), node_lat, node_lon, radius_km,
+    if rows is None:
+        r = hc.get(LATEST)
+        r.raise_for_status()
+        rows = r.json().get("readings", [])
+    for row, verdict in verdicts(rows, node_lat, node_lon, radius_km,
                                  skip_station_ids, exclude_ids, min_separation_m, include_indoor):
         if verdict != "included":
             continue
@@ -156,6 +165,83 @@ def ring(hc, node_lat: float, node_lon: float, radius_km: float,
     return sensors, readings
 
 
+def island(rows: list[dict], stations: dict[str, dict]) -> list[dict]:
+    """Every fresh, outdoor, working station on the island, for the Wall's city scale. Pure: /latest rows and the
+    /stations rows by id in, items out. No radius (the ring has one), no node: the Wall draws what it can see.
+    One device, one item: stations naming each other in `same_device_as` (either side) are one, and the
+    government's wins, then the direct network over a mirror, then the lower id. `official` is read from /stations'
+    `type`; with no list, nothing is official."""
+    live = {}
+    for r in rows:
+        if (r.get("stale") or r.get("suspected_indoor") or r.get("suspected_malfunctioning") or r.get("pm25") is None
+                or r.get("latitude") is None or r.get("longitude") is None
+                or sources._iso(r.get("observed_at")) is None):
+            continue
+        live[str(r["station_id"])] = r
+    official = lambda i: "Government" in ((stations.get(i) or {}).get("type") or "")  # noqa: E731
+    twin = {i: set() for i in live}
+    for i in live:
+        for j in (stations.get(i) or {}).get("same_device_as") or []:
+            if j in live:
+                twin[i].add(j); twin[j].add(i)
+    items, seen = [], set()
+    for i in live:
+        if i in seen:
+            continue
+        group, todo = set(), [i]
+        while todo:
+            k = todo.pop()
+            if k not in group:
+                group.add(k); todo.extend(twin[k])
+        seen |= group
+        best = min(group, key=lambda k: (not official(k), k.startswith(MIRROR_PREFIXES), k))
+        r = live[best]
+        items.append({"lat": round(float(r["latitude"]), 3), "lon": round(float(r["longitude"]), 3),
+                      "pm25": float(r["pm25"]), "at": sources._iso(r["observed_at"]).isoformat(),
+                      "network": r.get("source"), "official": official(best),
+                      "place": r.get("name") if official(best) else None})
+    return items
+
+
+def _wall() -> Path:
+    return Path(os.getenv("PACK_OUT", "/app/out")) / "wall"
+
+
+def _write(name: str, obj) -> None:
+    d = _wall()
+    d.mkdir(parents=True, exist_ok=True)
+    tmp = d / f"{name}.part"
+    tmp.write_text(json.dumps(obj))
+    tmp.replace(d / name)
+
+
+def _stations(hc) -> dict[str, dict]:
+    """/stations by id, read at most once a day into out/wall/bad-stations.json. A failed read keeps yesterday's
+    file; with none, {} and nothing is official."""
+    f = _wall() / "bad-stations.json"
+    try:
+        have = json.loads(f.read_text())
+        if time.time() - f.stat().st_mtime < 86400:
+            return have
+    except (OSError, ValueError):
+        have = {}
+    try:
+        r = hc.get(STATIONS)
+        r.raise_for_status()
+        have = {str(s["station_id"]): {"type": s.get("type"), "same_device_as": s.get("same_device_as") or []}
+                for s in r.json().get("stations", [])}
+        _write("bad-stations.json", have)
+    except Exception as e:  # noqa: BLE001 — yesterday's list stands
+        logging.getLogger("planetai").warning("bali air dispatch /stations failed: %s", e)
+    return have
+
+
+def write_island(hc, rows: list[dict]) -> None:
+    """Replace out/wall/island.json whole: {"at": now, "items": island(...)}. The Wall treats `at` over 3 h old as missing."""
+    _write("island.json", {"at": datetime.now(timezone.utc).isoformat(),
+                           "items": island(rows, _stations(hc))})
+
+
 def _here() -> tuple[float, float] | None:
     lat, lon = settings.get("NODE_LAT", ""), settings.get("NODE_LON", "")
     return (float(lat), float(lon)) if lat and lon else None
@@ -166,7 +252,14 @@ def fetch(hc):
     c, here = cfg(), _here()
     if not c["on"] or not here:
         return [], []
-    return ring(hc, *here, c["radius_km"], own_ids(hc), c["exclude"], c["min_separation_m"], c["include_indoor"])
+    r = hc.get(LATEST)
+    r.raise_for_status()
+    rows = r.json().get("readings", [])
+    try:
+        write_island(hc, rows)
+    except Exception as e:  # noqa: BLE001 — the ring still works without the Wall's file
+        logging.getLogger("planetai").warning("bali air dispatch island file failed: %s", e)
+    return ring(hc, *here, c["radius_km"], own_ids(hc), c["exclude"], c["min_separation_m"], c["include_indoor"], rows)
 
 
 def audit(hc) -> list[dict]:
