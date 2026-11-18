@@ -436,7 +436,7 @@ The Place report's reading: what kind of place this is, and what is worth doing 
 ### POST /place/reading
 Access: admin
 
-Asks a model on the house's network for the fuller text. Answers 202 with `{state: "writing", id}` at once and writes in the background, and `GET /place/reading` says when the text is written or refused. A second call while one is writing returns the same `id`. 409 with a sentence when no model on the house's network can write it. An online model is never asked, and neither is the small local one. The text is kept only when it has the five sections, four to six avenues in the frame, each resting on a figure, no person named, no quantity in words and no figure the node does not hold.
+Asks a model on the house's network for the fuller text. Answers 202 with `{state: "writing", id}` at once and writes in the background, and `GET /place/reading` says when the text is written or refused. A second call while one is writing returns the same `id`. 409 with a sentence when no model on the house's network can write it. An online model is never asked, and neither is the small local one. The text is kept only when it has the five sections, four to six avenues in the frame, each resting on a figure, no person named, no quantity in words, no figure the node does not hold and no section that repeats the node's own reading.
 
 ### POST /area
 Access: act

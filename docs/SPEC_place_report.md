@@ -217,12 +217,13 @@ the Implementation Guide's three key actions (map and research, experiment, reth
   and the document carries no name and no point.
 - **Rules.** `rules()` writes the reading on every node, with no model and no network. A rule whose facts are missing
   does not fire, and a sentence says no more than its figure does: a count from the public map says so where the map
-  is thin, a yearly count carries its year, and the words fit any node anywhere. Where fewer than four avenues fire, the gaps supply the rest as things to map and research, which is
+  is thin, a yearly count carries its year and is held only when its last year is within three times the satellite's footprint count for the same circle, and the words fit any node anywhere. Where fewer than four avenues fire, the gaps supply the rest as things to map and research, which is
   where a place that is starting begins.
 - **A fuller text.** `POST /place/reading`, with the admin token, asks a model for the same two pages. Only a model on
   the house's own network is asked, never an online one and never the small local one. The node keeps the text only
   with the five sections, four to six avenues in the frame, each resting on a figure, no person named, each part
-  short enough for its page, no quantity in words, and no figure that is not in the facts. A count from one to seven
+  short enough for its page, no quantity in words, no figure that is not in the facts, and no section that gives back
+  more than half of the sentences of the node's own reading (the model is handed that reading as findings, and on node #1 it first returned it word for word). A count from one to seven
   passes bare ("2 of its 7 cells") and never before a unit. The check reads whether a figure is the node's, not
   whether it is said of the right thing, which is why the page says a model wrote it. Otherwise the node stores the
   reason and its own reading stands. What the reading

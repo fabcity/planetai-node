@@ -91,6 +91,12 @@ check(reading.credits(doc, [{"id": "hydro", "attribution": "HydroSHEDS, CC-BY"},
                             {"id": "place", "attribution": "© OpenStreetMap contributors"}, {"id": "surface-heat"}]) == ["HydroSHEDS, CC-BY", "OSM, ODbL", "Ember, CC BY", "© OpenStreetMap contributors"]
       and reading.credits(empty, [{"id": "hydro", "attribution": "HydroSHEDS, CC-BY"}]) == [], "the reading credits the packs whose figures it holds, and no other")
 check(all(v is None for v in empty["facts"].values()) and set(empty["fill"]) == set(empty["facts"]), "a node that holds nothing has every fact None")
+# node #1, 18 Nov 2026: the yearly series read 128 buildings in the circle where the footprints count 5994
+off = n1(yearly=[(2016, 86.4), (2019, 106.6), (2023, 127.7)])
+check(all(off["facts"][k] is None and k in off["fill"] for k in ("buildings_then", "buildings_then_year", "buildings_now", "buildings_now_year"))
+      and off["facts"]["sat_buildings"]["v"] == 5994, "a yearly count several times off the satellite's footprints is a misread, and is not held")
+check("128" not in json.dumps(reading.rules(off)) and "86" not in json.dumps(reading.rules(off)), "and the reading does not print it")
+check(n1(latest={k: v for k, v in N1.items() if k != "sat_buildings"})["facts"]["buildings_now"]["v"] == 5994, "with no footprints to hold it against, the yearly count stands")
 print(f"  reading: the facts ({len(F)} keys), whole kilometres, zeros held, stale and missing ones named with what fills them")
 
 # ---------------------------------------------------------------- the rules
@@ -220,7 +226,21 @@ check(len(reasons) >= 11, f"each kind of refusal says its own reason: {reasons}"
 for junk in ("not json", "", "[1, 2]", '{"sections": "x"}', '{"sections": {}, "avenues": null}'):
     got, reason = reading.accept(junk, doc)
     check(got is None and reason, f"{junk!r} is refused with a reason, never an exception")
+# node #1, 18 Nov 2026: the model gave the node's own reading back word for word, and the node kept it as a model's
+OWN = {s["id"]: " ".join(s["lines"]) for s in R["sections"]}
+got, reason = reading.accept(json.dumps({**GOOD, "sections": OWN}), doc, R)
+check(got is None and "the node's own sentences" in reason, f"a model that gives the node's reading back is refused: {reason!r}")
+got, reason = reading.accept(json.dumps({**GOOD, "sections": {**GOOD["sections"], "land": OWN["land"] + " And so the ground is hard."}}), doc, R)
+check(got is None and "land" in reason and "the node's own sentences" in reason, f"one section copied with a line added is refused too: {reason!r}")
+one = sec["land"]["lines"][0]
+check(reading.accept(json.dumps({**GOOD, "sections": {**GOOD["sections"], "land": one + " The rest is the model's own."}}), doc, R)[0] is not None
+      and reading.accept(json.dumps(GOOD), doc, R)[0] is not None, "one sentence of the node's in a text of its own is kept")
+bare_av = [{**a, "title": "Fill the gap", "why": "Nothing is held in 2 of its 7 cells."} for a in GOOD["avenues"]]
+check(reading.accept(json.dumps({"sections": {i: reading.NOTHING for i, _ in reading.SECTIONS}, "avenues": bare_av}), empty, E)[0] is not None,
+      "where the node holds nothing, saying so in its words is not a copy")
 P = reading.prompt(doc, R)
+check("Do not give its sentences back" in P and json.dumps(OWN["region"], ensure_ascii=False) not in P and all(l in P for l in sec["region"]["lines"]),
+      "the prompt hands the node's reading as findings, line by line, never in the shape of the answer, and asks for more than them")
 check(all(h in P for _, h in reading.SECTIONS) and all(x in P for x in reading.LAYERS + reading.ACTIONS + reading.SIGNALS) and "name no person" in P.lower()
       and '"green_share"' in P and "60 to 120 words" in P and "in digits" in P, "the prompt carries the frame, the facts, the ban on names and figures in digits")
 check(len(NAMES.findall(P)) == 5, "the five names live in the prompt, once each, and nowhere else")

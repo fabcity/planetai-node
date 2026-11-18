@@ -141,7 +141,10 @@ def shape(latest: dict, hydro: dict | None, energy: dict | None, index: dict | N
     if F["buildings"]:
         put("place_radius_km", radius_m / 1000.0)
     years = sorted((int(y), float(n)) for y, n in yearly or [])
-    if len(years) >= 3:                                                  # history: its last year is said, never passed off as today
+    # The yearly series and the footprints count the same circle. A last year several times off the footprints is the
+    # band misread (packs/place/satellite.py says so), and is not held: node #1 read 128 a year beside 5994 footprints.
+    sat = F["sat_buildings"]
+    if len(years) >= 3 and (not sat or sat["v"] / 3 <= years[-1][1] <= sat["v"] * 3):   # history: its last year is said, never passed off as today
         put("buildings_then", years[0][1]); put("buildings_then_year", years[0][0])
         put("buildings_now", years[-1][1]); put("buildings_now_year", years[-1][0])
     h, b = _d(hydro), _d(_d(hydro).get("basin"))
@@ -413,10 +416,15 @@ def prompt(doc: dict, ruled: dict) -> str:
         + "".join(f"- {i} · {head[i]}: {how}.\n" for i, how in MANNER)
         + "Write in their manner and name no person: not them, not anyone. Plain words, no headings, no lists, 60 to 120 words a section "
         f"({LONGEST['section']} characters at most). "
-        "Say what the figures mean for the people here, beyond the figures themselves.\n"
+        "THE NODE'S OWN READING below is the findings, one line each, and the reader already has it. Do not give its sentences back. "
+        "Say in sentences of your own what the findings mean taken together for the people here: what follows from them, "
+        "what they hold back and what they make possible.\n"
         "Use only numbers that are in FACTS, written in digits as THE NODE'S OWN READING writes them. No dates, no coordinates, no other figure, "
         "and no quantity in words: never 'half', 'a third', 'twice' or 'double'.\n"
-        "A count or a share that comes from the public map covers one kilometre round the place, never 'this cell'.\n\n"
+        "A count or a share that comes from the public map covers one kilometre round the place, never 'this cell'. "
+        "A cell of the Fab City Index is one entry in a city's table of scores, not a piece of land.\n"
+        "Claim nothing the findings do not support, and give no cause they do not give. Where the manner asks about something "
+        "the node holds no figure for, say that it is not known here.\n\n"
         "Then give four to six ways to improve the place. You may keep, sharpen or replace the node's own. Each has:\n"
         f"- title: a plain imperative, {LONGEST['title']} characters at most;\n- why: one or two sentences with the figures it rests on, {LONGEST['why']} characters at most;\n"
         f"- first_step: something a household, a village council or a lab can start this month, {LONGEST['first_step']} characters at most;\n"
@@ -424,9 +432,10 @@ def prompt(doc: dict, ruled: dict) -> str:
         'Answer with JSON only: {"sections": {"region": "...", "land": "...", "needs": "...", "system": "...", "street": "..."}, '
         '"avenues": [{"title": "...", "why": "...", "first_step": "...", "layer": "...", "action": "...", "signal": "..."}]}\n\n'
         f"FACTS\n{json.dumps(held, ensure_ascii=False)}\n\nTHE NODE'S OWN READING\n"
-        + json.dumps({"sections": {s["id"]: " ".join(s["lines"]) for s in ruled["sections"]},
-                      "avenues": [{k: a[k] for k in ("title", "why", "first_step", "layer", "action", "signal")} for a in ruled["avenues"]]},
-                     ensure_ascii=False))
+        # as findings, never in the shape of the answer: handed that, the model gave it back (node #1, 18 Nov 2026)
+        + "".join(f"{s['id']}:\n" + "".join(f"- {line}\n" for line in s["lines"]) for s in ruled["sections"])
+        + "its ways to improve the place:\n"
+        + json.dumps([{k: a[k] for k in ("title", "why", "first_step", "layer", "action", "signal")} for a in ruled["avenues"]], ensure_ascii=False))
 
 
 def stray_numbers(text: str, doc: dict) -> list[str]:
@@ -454,8 +463,9 @@ def stray_numbers(text: str, doc: dict) -> list[str]:
     return stray
 
 
-def accept(answer: str, doc: dict) -> tuple[dict | None, str]:
-    """A model's answer, as (written, "") when it holds and (None, why) when it does not. Never raises."""
+def accept(answer: str, doc: dict, ruled: dict | None = None) -> tuple[dict | None, str]:
+    """A model's answer, as (written, "") when it holds and (None, why) when it does not. Never raises. `ruled` is
+    the node's own reading: a section that gives most of its sentences back is a copy, and is refused."""
     # a model may think aloud first and add a word after: the answer is the first JSON object that holds `sections`
     got, text = None, re.sub(r"<think>.*?</think>", "", answer, flags=re.S) if isinstance(answer, str) else ""
     for m in re.finditer(r"\{", text):
@@ -477,6 +487,9 @@ def accept(answer: str, doc: dict) -> tuple[dict | None, str]:
             return None, f"section {i} is empty"
         if len(sec[i].strip()) > LONGEST["section"]:
             return None, f"section {i} is too long for its page ({len(sec[i].strip())} characters, {LONGEST['section']} at most)"
+    for s in (ruled or {}).get("sections", ()):       # node #1, 18 Nov 2026: handed the node's reading, the model gave it back
+        if s["lines"] != [NOTHING] and 2 * sum(line in sec[s["id"]] for line in s["lines"]) > len(s["lines"]):
+            return None, f"section {s['id']} gives the node's own sentences back"
     if not isinstance(av, list) or not 4 <= len(av) <= 6:
         return None, f"avenues: four to six were asked for, and it gave {len(av) if isinstance(av, list) else 'none'}"
     out = []
@@ -605,7 +618,7 @@ def write(rid: int, rung, doc: dict, ruled: dict) -> None:
     """Ask the model, check what it wrote, and keep it or the reason it was refused. Runs off the request."""
     from psycopg.types.json import Jsonb  # noqa: PLC0415
     try:
-        written, why = accept(_ask(rung, prompt(doc, ruled)), doc)
+        written, why = accept(_ask(rung, prompt(doc, ruled)), doc, ruled)
     except Exception as e:  # noqa: BLE001 — whatever went wrong, the row must leave `writing`
         written, why = None, f"the model did not answer ({type(e).__name__})"
     log.info("reading %d: %s", rid, "written" if written else f"refused, {why}")
