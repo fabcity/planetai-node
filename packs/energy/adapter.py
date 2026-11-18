@@ -225,6 +225,17 @@ def _grid(hc) -> tuple[list[dict], list[tuple], dict | None]:
             "ring": lk.get("ring", "beyond"),
             "lat": ch["lat"] if ch else None, "lon": ch["lon"] if ch else None,
         })
+    # R25: the substation nearest the middle of the res-8 cell, over every one on this grid, rides beside the house's.
+    # A screen without a token is told that one (routes.py); picked from the house's nearest few it moved with the house
+    # wherever substations stand close together. The km readings below are from the middle too, in whole km: they are
+    # derived, so /readings, /stats, /series and the energy issue's stack hand them to anyone.
+    import h3  # noqa: PLC0415
+    mid = h3.cell_to_latlng(h3.latlng_to_cell(lat, lon, 8))
+    from_mid = lambda s: osm.km(mid[0], mid[1], s["lat"], s["lon"])  # noqa: E731
+    mid_sub = min((s for s in near_all if s["kind"] == "substation"), key=from_mid, default=None)
+    if mid_sub is not None and mid_sub not in subs:
+        subs = subs + [mid_sub]
+    mid_big = min(big_plants, key=from_mid, default=None)
     cut_sources = [
         {"name": s["name"], "kind": s["kind"], "fuel": s.get("fuel"),
          "fossil": s.get("fossil"), "mw": s.get("mw"), "km": s["km"], "ring": s["ring"],
@@ -275,10 +286,10 @@ def _grid(hc) -> tuple[list[dict], list[tuple], dict | None]:
         readings.append((now, SID, "fossil_share_high_pct", round(float(high) * 100.0, 2)))
     if is_meas and m.get("now") is not None:
         readings.append((now, SID, "fossil_share_day_pct", round(float(m["now"]) * 100.0, 2)))
-    if subs:
-        readings.append((now, SID, "substation_km", round(float(subs[0]["km"]), 2)))
-    if big_plants:
-        readings.append((now, SID, "large_plant_km", round(float(big_plants[0]["km"]), 2)))
+    if mid_sub is not None:
+        readings.append((now, SID, "substation_km", float(round(from_mid(mid_sub)))))
+    if mid_big is not None:
+        readings.append((now, SID, "large_plant_km", float(round(from_mid(mid_big)))))
     imp_max = m.get("beyond") if is_meas else m.get("import_max")
     if imp_max is not None:
         readings.append((now, SID, "import_share_max_pct", round(float(imp_max) * 100.0, 2)))

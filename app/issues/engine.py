@@ -1537,7 +1537,7 @@ def _safe_geometry(lat: float, lon: float, settings, stations: list[dict], peers
 def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime | None = None,
             place: tuple[float, float] | None = None, mesh: dict | None = None,
             peers=(), facilities=(), events: dict | None = None, usual: dict | None = None,
-            silent: list[dict] | None = None) -> dict:
+            silent: list[dict] | None = None, public=None) -> dict:
     """Every declared issue, computed. See the module docstring for what is arithmetic and what is not.
 
     `earth` is `/earth`'s body, passed in rather than re-read here so that the earth pack's record has
@@ -1557,6 +1557,9 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
     fixture captured. None is a node, or a capture, from before events: the page says so (SPEC_dashboard_events §5).
 
     `silent` is the capture's own silent stations, from a replay; None reads them.
+
+    `public(stations, place)` is what a reader without a token may see of the stations (issues/api.py `unplaced`),
+    applied before anything is drawn from them; None shows them as they are.
 
     `usual` maps an issue to the (usual, usual_absent) pair a capture carried; a replay passes it, because a snapshot
     holds the /issues answer and not usual_by_hour. None reads the view, on a savepoint of its own.
@@ -1700,6 +1703,8 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
             and str(a.get("rule_id") or "").split("/", 1)[0] not in owned]}
     headline_issue = lead["issue"] if lead else None
     stations = _stations(data["stats"], data.get("hourly"), lat, lon, sited, silent_rows)
+    if public is not None:
+        stations = public(stations, (lat, lon))
     # A station that stopped is published for the page's fold under `stations_silent.stations`, never in `stations`:
     # geometry's cell `sensors` are positions in the list it is given, and every existing reader of `stations` (the
     # digest, simple mode's neighbours, the grain table, the page) means the stations heard in the last day

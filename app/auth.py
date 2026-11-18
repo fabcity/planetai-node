@@ -48,7 +48,7 @@ def PARENT_TOKEN():
 # /nodes is here because it is the programme's public registry.json, the same on every node: it says which nodes
 # exist and nothing about this house.
 # /ground/* is on `open` because every layer under it is a public dataset (OpenStreetMap, OpenAerialMap, Sentinel-2,
-# Open-Meteo) cut around the node, and its centre is no closer than the point /health already rounds. /geo/cell is
+# Open-Meteo) cut around the centre of the res-8 cell /health names, never the house (R25). /geo/cell is
 # there too, but the route drops what it says relative to the node (is_node, cells_from_node, *_polar) for a
 # caller without a token: asked at res 15 cell by cell, those would find the house. The phone's walk needs both
 # (Tomas, 12 Oct 2026: one phone mode, no token, for the person running the node).

@@ -1158,6 +1158,37 @@ def _coarse(lat, lon):
         return round(float(lat), 2), round(float(lon), 2)
 
 
+def _public_rows(rows: list[dict]) -> list[dict]:
+    """The stations and labs a reader without a token is shown (R25). The station packs chose theirs round the house:
+    within a radius, never within a separation of it (packs/bali-air-dispatch), and the make pack its labs within
+    MAKE_RADIUS_KM. Against the public lists those come from, the edge of either cut traces a circle through the house.
+    So only what every point of the house's cell would have kept is shown, each judged from the cell's centre with the
+    limits widened by how far the house can be from it, and a lab's `distance_km` is from the centre too. Rows with
+    `local` set (the house's own) pass untouched: the caller places them. Copies; `rows` is not changed."""
+    lat, lon = float(os.getenv("NODE_LAT", 0) or 0), float(os.getenv("NODE_LON", 0) or 0)
+    if not (lat or lon):
+        return rows
+    import h3  # noqa: PLC0415
+    clat, clon, circ = ground.centre(lat, lon)
+    far_km, sep_m = wall._ring_limits()   # the same ring rule /wall draws by
+    srcs = {p["source"] for p in packs.stations()}
+    labs_m = float(os.getenv("MAKE_RADIUS_KM", "50") or 50) * 1000 - circ
+    out = []
+    for r in rows:
+        if r.get("local") or r.get("lat") is None or r.get("lon") is None:
+            out.append(r)
+            continue
+        d = h3.great_circle_distance((clat, clon), (r["lat"], r["lon"]), unit="m")
+        if r.get("kind") == "facility":
+            if d > labs_m:
+                continue
+            r = {**r, "meta": {**(r.get("meta") or {}), "distance_km": round(d / 1000, 1)}}
+        elif r.get("source") in srcs and not circ + sep_m + wall.ROUNDED_M < d <= far_km * 1000 - circ:
+            continue
+        out.append(r)
+    return out
+
+
 def _cell() -> dict | None:
     """The H3 cell this node stands in: id, resolution, the mean edge of this cell in metres, and the
     line the dashboard prints under the hero. None before setup, when there is no place to name."""
@@ -1208,6 +1239,8 @@ def sensors_(request: Request):
     rows = q("SELECT sensor_id, source, name, room, source_name, lat, lon, indoor, local, custody, kind, scale, cadence, meta FROM sensors ORDER BY custody DESC, local DESC, name")
     if getattr(request.state, "share_trusted", False):
         return rows
+    # Membership of the stations' ring and the labs' radius, and each lab's distance, from the cell's centre (R25).
+    rows = _public_rows(rows)
     for r in rows:
         r.pop("room", None); r.pop("source_name", None)   # which room is which is the household's
         # This household's own instruments stand in its house, so an untrusted reader gets the cell's centre

@@ -1,5 +1,6 @@
 # Grid mix and infrastructure distances are regional context derived from OpenStreetMap and grid operators:
-# derived, never comparable with an instrument at this address.
+# derived, never comparable with an instrument at this address. The two km are whole km from the middle of the res-8
+# cell, not the house: derived readings leave without a token (R25).
 - { source: energy, metric: fossil_share_pct,      role: derived, comparable: false, unit: "%" }
 - { source: energy, metric: fossil_share_low_pct,  role: derived, comparable: false, unit: "%" }
 - { source: energy, metric: fossil_share_high_pct, role: derived, comparable: false, unit: "%" }
