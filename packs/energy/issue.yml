@@ -47,12 +47,12 @@ readouts:
   - metric: substation_km
     sensor_id: energy-grid
     unit: km
-    dp: 1
+    dp: 0
     label: { en: Nearest substation, id: Gardu induk terdekat, es: Subestación más cercana }
   - metric: large_plant_km
     sensor_id: energy-grid
     unit: km
-    dp: 1
+    dp: 0
     label: { en: Nearest large plant, id: Pembangkit besar terdekat, es: Central grande más cercana }
   - metric: import_share_max_pct
     sensor_id: energy-grid

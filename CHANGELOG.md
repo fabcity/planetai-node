@@ -7,6 +7,16 @@
   the res-8 cell, as `/health` gives it, and the pictures and numbers come from a square centred on that cell, 1 km in
   from each side of the one the node keeps, with no ring. Your own tokens and this machine see what they saw before.
   docs/api, docs/sharing.
+- **A screen with no token can no longer find the house.** At SHARE_LEVEL=open, a reader without a token could place
+  the house more finely than its cell: from a lab's distance to 0.1 km, from where the air-station ring's 15 km edge
+  and 150 m hole fall, from which map tiles the node holds, from the energy pack's distances to the nearest
+  substation and large plant (to 10 m, in /readings and the energy issue), and on /issues and /ground/wind from the
+  house's own point to 5 decimals. Those two energy distances are now whole km from the middle of the cell, for
+  everyone. Without a token every distance and every cut now runs from the centre of the house's cell, so the
+  answer is the same wherever in the cell the house stands. A token and the node's own machine read what they read
+  before. The report's line about the nearest lab is measured from the cell for everyone, because anyone can read it.
+  A map fetched before this update keeps its old cut: `planetai run place basemap` and `planetai run earth-engine
+  basemap` fetch it again round the cell.
 - **The yearly building count was 64 times low.** Place and its report showed 128 buildings in 2023 round node #1,
   where the satellite's footprints count 5,994 in the same circle. The count band of Google's Open Buildings Temporal
   sits on a 0.5 m grid and the node added it up at 4 m, so it read one pixel where 64 stood. It now weighs each pixel
