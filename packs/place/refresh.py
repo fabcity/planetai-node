@@ -11,5 +11,5 @@ with psycopg.connect(os.environ["DATABASE_URL"]) as con:
     try:
         sat = f"{A.satellite_refresh(con, lat, lon, radius)} years of Open Buildings recounted"
     except (Exception, SystemExit) as e:  # noqa: BLE001  init_ee leaves with SystemExit where earthengine-api is not installed
-        sat = f"Open Buildings skipped ({type(e).__name__}: {str(e).splitlines()[0][:120]})"
-print(f"place: {n} features stored, {sat}. The next poll turns them into readings.")
+        sat = f"Open Buildings skipped ({type(e).__name__}: {(str(e).splitlines() or [""])[0][:120]})"
+print(f"place: {n} features stored, {sat}. The next poll turns the features into readings.")
