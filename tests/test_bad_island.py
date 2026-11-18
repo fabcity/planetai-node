@@ -57,6 +57,18 @@ one_sided = {"aq--519205": {"type": "Government (KLHK)", "same_device_as": []},
 assert len(B.island(rows, one_sided)) == 2
 assert not any(i["official"] for i in B.island(rows, {}))
 
+# ---- the node's own kit is never drawn: identity, proximity (within min_separation_m of the node), by hand
+home = (-8.6512345, 115.2166789)
+mine = [row("sc-1", "My kit", latitude=-8.60, longitude=115.20),
+        row("near", "Under another account", latitude=-8.6512345 + 0.001, longitude=115.2166789),   # ~110 m
+        row("hand", "Excluded by hand", latitude=-8.70, longitude=115.25),
+        row("far", "A neighbour", latitude=-8.70, longitude=115.30)]
+assert len(B.island(mine, {})) == 4, "no node, no such filter"
+kept = B.island(mine, {}, home, {"sc-1"}, {"hand"}, 150.0)
+assert [(i["lat"], i["lon"]) for i in kept] == [(-8.7, 115.3)], kept
+assert len(B.island(mine, {}, home, set(), set(), 150.0)) == 3   # only the 110 m one goes
+assert len(B.island(mine, {}, home, set(), {"hand"}, 150.0)) == 2
+
 # ---- the file: written whole, /stations read at most once a day, a failed read keeps yesterday's
 class R:
     def __init__(s, j): s.j = j
@@ -91,4 +103,31 @@ assert any(i["official"] for i in json.loads(f.read_text())["items"]), "yesterda
 cache.unlink()
 B.write_island(down, rows)
 assert not any(i["official"] for i in json.loads(f.read_text())["items"]), "nothing official without a list"
+
+# ---- a bad answer never wipes the list, and a failure waits a day before it asks again
+class Odd(HC):
+    def get(s, url, **kw):
+        s.calls.append(url)
+        return R({"stations": []} if s.fail == "empty" else {"unexpected": 1})
+
+
+cache.unlink(missing_ok=True)
+B.write_island(HC(), rows)                      # a good list on disk
+for shape in ("empty", "garbled"):
+    os.utime(cache, (old, old))
+    odd = Odd(); odd.fail = shape
+    B.write_island(odd, rows)
+    assert odd.calls.count(B.STATIONS) == 1
+    assert any(i["official"] for i in json.loads(f.read_text())["items"]), shape + " 200 kept yesterday's list"
+    assert "aq--519205" in json.loads(cache.read_text()), shape + " 200 did not overwrite the file"
+    B.write_island(odd, rows)
+    assert odd.calls.count(B.STATIONS) == 1, shape + ": no second try within a day"
+os.utime(cache, (old, old))
+down = HC(fail=True)
+B.write_island(down, rows); B.write_island(down, rows)
+assert down.calls.count(B.STATIONS) == 1, "a failed read is not retried on the next poll"
+cache.unlink()
+down = HC(fail=True)
+B.write_island(down, rows); B.write_island(down, rows)
+assert down.calls.count(B.STATIONS) == 1, "no file and a failure: still one try a day"
 print("test_bad_island: ok")

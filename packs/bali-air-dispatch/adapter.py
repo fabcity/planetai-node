@@ -165,12 +165,18 @@ def ring(hc, node_lat: float, node_lon: float, radius_km: float,
     return sensors, readings
 
 
-def island(rows: list[dict], stations: dict[str, dict]) -> list[dict]:
+def island(rows: list[dict], stations: dict[str, dict], here: tuple[float, float] | None = None,
+           own_ids: set[str] | None = None, exclude_ids: set[str] | None = None,
+           min_separation_m: float = 150.0) -> list[dict]:
     """Every fresh, outdoor, working station on the island, for the Wall's city scale. Pure: /latest rows and the
     /stations rows by id in, items out. No radius (the ring has one), no node: the Wall draws what it can see.
     One device, one item: stations naming each other in `same_device_as` (either side) are one, and the
     government's wins, then the direct network over a mirror, then the lower id. `official` is read from /stations'
-    `type`; with no list, nothing is official."""
+    `type`; with no list, nothing is official. Given `here`, the node's own kit is never drawn: verdicts() applies the
+    ring's identity, proximity and by-hand rules (no radius), so the two cannot disagree. Without it, no such filter."""
+    if here:
+        rows = [r for r, v in verdicts(rows, *here, float("inf"), own_ids, exclude_ids, min_separation_m)
+                if v == "included"]
     live = {}
     for r in rows:
         if (r.get("stale") or r.get("suspected_indoor") or r.get("suspected_malfunctioning") or r.get("pm25") is None
@@ -228,18 +234,27 @@ def _stations(hc) -> dict[str, dict]:
     try:
         r = hc.get(STATIONS)
         r.raise_for_status()
-        have = {str(s["station_id"]): {"type": s.get("type"), "same_device_as": s.get("same_device_as") or []}
-                for s in r.json().get("stations", [])}
-        _write("bad-stations.json", have)
-    except Exception as e:  # noqa: BLE001 — yesterday's list stands
+        new = {str(s["station_id"]): {"type": s.get("type"), "same_device_as": s.get("same_device_as") or []}
+               for s in r.json().get("stations", [])}
+        if not new:
+            raise ValueError("an empty station list")
+        _write("bad-stations.json", new)
+        return new
+    except Exception as e:  # noqa: BLE001 — yesterday's list stands, and the next try is a day off
         logging.getLogger("planetai").warning("bali air dispatch /stations failed: %s", e)
+        try:
+            f.stat()
+            os.utime(f)
+        except OSError:
+            _write("bad-stations.json", have)
     return have
 
 
-def write_island(hc, rows: list[dict]) -> None:
+def write_island(hc, rows: list[dict], here: tuple[float, float] | None = None, own_ids: set[str] | None = None,
+                 exclude_ids: set[str] | None = None, min_separation_m: float = 150.0) -> None:
     """Replace out/wall/island.json whole: {"at": now, "items": island(...)}. The Wall treats `at` over 3 h old as missing."""
     _write("island.json", {"at": datetime.now(timezone.utc).isoformat(),
-                           "items": island(rows, _stations(hc))})
+                           "items": island(rows, _stations(hc), here, own_ids, exclude_ids, min_separation_m)})
 
 
 def _here() -> tuple[float, float] | None:
@@ -255,11 +270,12 @@ def fetch(hc):
     r = hc.get(LATEST)
     r.raise_for_status()
     rows = r.json().get("readings", [])
+    own = own_ids(hc)
     try:
-        write_island(hc, rows)
+        write_island(hc, rows, here, own, c["exclude"], c["min_separation_m"])
     except Exception as e:  # noqa: BLE001 — the ring still works without the Wall's file
         logging.getLogger("planetai").warning("bali air dispatch island file failed: %s", e)
-    return ring(hc, *here, c["radius_km"], own_ids(hc), c["exclude"], c["min_separation_m"], c["include_indoor"], rows)
+    return ring(hc, *here, c["radius_km"], own, c["exclude"], c["min_separation_m"], c["include_indoor"], rows)
 
 
 def audit(hc) -> list[dict]:
