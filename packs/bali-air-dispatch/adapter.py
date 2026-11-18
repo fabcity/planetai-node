@@ -175,8 +175,10 @@ def island(rows: list[dict], stations: dict[str, dict], here: tuple[float, float
     `type`; with no list, nothing is official. Given `here`, the node's own kit is never drawn: verdicts() applies the
     ring's identity, proximity and by-hand rules (no radius), so the two cannot disagree. Without it, no such filter."""
     if here:
+        # verdicts()' own duplicate pass drops the mirror-prefixed row, and Sempidi's government row is `aq--`; a
+        # "same device" loser has passed the ownership rules, so it stays and the grouping below picks the official.
         rows = [r for r, v in verdicts(rows, *here, float("inf"), own_ids, exclude_ids, min_separation_m)
-                if v == "included"]
+                if v == "included" or v.startswith("excluded: same device as")]
     live = {}
     for r in rows:
         if (r.get("stale") or r.get("suspected_indoor") or r.get("suspected_malfunctioning") or r.get("pm25") is None

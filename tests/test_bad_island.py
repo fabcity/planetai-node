@@ -69,6 +69,15 @@ assert [(i["lat"], i["lon"]) for i in kept] == [(-8.7, 115.3)], kept
 assert len(B.island(mine, {}, home, set(), set(), 150.0)) == 3   # only the 110 m one goes
 assert len(B.island(mine, {}, home, set(), {"hand"}, 150.0)) == 2
 
+# with a node set, a government mirror row (aq--) and its direct twin, far from home and within 150 m of each other:
+# verdicts()' duplicate pass would drop the government row; the island must keep it, official, once
+far = dict(latitude=-8.5, longitude=115.2)
+twins = [row("aq--519205", "Kabupaten Badung Sempidi", source="AQICN", **far),
+         row("iqs-kabupaten-badung-sempidi", "Kabupaten Badung Sempidi", latitude=-8.5003, longitude=115.2)]
+got = B.island(twins, stations, home, set(), set(), 150.0)
+assert len(got) == 1 and got[0]["official"] is True and got[0]["place"] == "Kabupaten Badung Sempidi", got
+assert got[0]["network"] == "AQICN"
+
 # ---- the file: written whole, /stations read at most once a day, a failed read keeps yesterday's
 class R:
     def __init__(s, j): s.j = j
