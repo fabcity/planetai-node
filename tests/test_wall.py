@@ -138,7 +138,8 @@ iso = lambda d: d.isoformat()  # noqa: E731
      "official": False, "place": None}]}))
 (OUT / "energy").mkdir()
 (OUT / "energy" / "result.json").write_text(json.dumps({
-    "share": {"low": 0.8412, "high": 0.9}, "sources": [
+    "share": {"low": 0.8412, "high": 0.9}, "today": {"sun_kwh_m2": 6.38, "roof_kwh": 9.57, "panel_kw": 2.0, "use_kwh": 14.2,
+                                                     "measured": False}, "sources": [
         {"kind": "substation", "name": "GI Nusa Dua", "lat": -8.79, "lon": 115.2, "km": 4.123456},
         {"kind": "plant", "name": "PLTDG Pesanggaran", "fuel": "gas", "mw": 200, "lat": -8.7123456, "lon": 115.2123456, "km": 12.3456},
         {"kind": "plant", "name": "Tiny", "fuel": "solar", "mw": 0.5, "lat": -8.80, "lon": 115.17, "km": 1.0},
@@ -225,6 +226,7 @@ assert W["grid"]["fossil_low_pct"] == 84, W["grid"]
 assert W["grid"]["substation_km"] == wall.km_from((clon, clat), 115.2, -8.79), W["grid"]
 assert [p["name"] for p in W["grid"]["plants"]] == ["PLTDG Pesanggaran"], "1 MW and up, within 30 km of the cell"
 assert W["grid"]["plants"][0]["km"] == wall.km_from((clon, clat), 115.2123456, -8.7123456) != 12
+assert W["grid"]["sun"] == {"kwh_m2": 6.38, "roof_kwh": 9.57, "panel_kw": 2.0}, "sun today: three figures, never use_kwh"
 assert [f["properties"]["m3s"] for f in W["rivers"]["features"]] == [0.13, 4.2], "only the reaches in the city frame"
 assert W["basin"]["properties"] == {"sub_area": 319.2, "up_area": 319.2} and W["basin"]["geometry"]["type"] == "Polygon"
 assert W["river"] == {"nearest_km": 4, "nearest_m3s": 0.13, "largest_km": 8, "largest_m3s": 4.2}, W["river"]
@@ -284,6 +286,8 @@ print("  roofs: the radius the place pack fetched, from place_runs; none without
 bad_stats = {k: v for k, v in stats.items() if k != "crs"}
 (ea / "change_2024_2025.json").write_text(json.dumps({**bad_stats, "wall": {"bounds": safe, "ha": 61.2}}))
 (OUT / "wall" / "island.json").write_text(json.dumps(["not", "a", "doc"]))
+(OUT / "energy" / "result.json").write_text(json.dumps({"share": {"low": 0.5}, "sources": []}))
+assert c.get("/wall").json()["grid"]["sun"] is None, "no `today` in the pack's result, no sun"
 (OUT / "energy" / "result.json").write_text(json.dumps({"share": "nope", "sources": [{"kind": "plant", "lat": "x", "lon": 1}]}))
 r = c.get("/wall")
 assert r.status_code == 200, r.text

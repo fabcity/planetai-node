@@ -66,8 +66,7 @@ const mkD = more => { const I = {}; for (const [k, it] of Object.entries(cap)) I
 const D0 = mkD({});
 const D1 = mkD({
   heat: { ...cap.heat, line: null, readouts: [rd('lst', 34.2, '°C'), rd('lst_delta', 4.2, '°C'), rd('lst_night', 27.1, '°C')] },
-  water: { readouts: [rd('rain_24h_mm', 3.4, 'mm'), rd('terrain_upslope_ha', 1.8, 'ha')] },
-  energy: { readouts: [rd('sun_kwh_m2', 5.6, 'kWh/m²')] } });
+  water: { readouts: [rd('rain_24h_mm', 3.4, 'mm'), rd('terrain_upslope_ha', 1.8, 'ha')] } });
 const clone = o => JSON.parse(JSON.stringify(o));
 const nul = ks => { const w = clone(W0); ks.forEach(k => w[k] = null); return w; };
 const ks = story => story.map(s => s.chapters.map(c => c.k));
@@ -75,11 +74,12 @@ const all = ['stations', 'island', 'roofs', 'lab', 'rivers', 'basin', 'river', '
 const noWater = nul(['rivers', 'basin', 'river']);
 const empty = { ...nul(all), hours: { ...W0.hours } };
 const noIsland = nul(['island']);
+const noSun = clone(W0); noSun.grid.sun = null;
 const noWave = clone(W0); delete noWave.hours.wave_from;
 console.log(JSON.stringify({
   full: M.wallStory(W0, D1), cap: ks(M.wallStory(W0, D0)), noWater: ks(M.wallStory(noWater, D1)),
   empty: M.wallStory(empty, { issues: {} }).map(s => [s.k, s.chapters.length, s.res, s.km2]), capOnly: ks(M.wallStory(empty, mkD({}))),
-  noIsland: ks(M.wallStory(noIsland, D1))[2], noWave: M.wallStory(noWave, D1)[2].chapters.find(c => c.k === 'sea').says,
+  noIsland: ks(M.wallStory(noIsland, D1))[2], noSun: ks(M.wallStory(noSun, D1))[0], noWave: M.wallStory(noWave, D1)[2].chapters.find(c => c.k === 'sea').says,
   at: [M.chapterAt(23, 4), M.chapterAt(0, 5), M.chapterAt(23, 5), M.chapterAt(5, 4), M.chapterAt(6, 4), M.chapterAt(12, 1), M.chapterAt(24, 3)],
   names: JSON.parse(fs.readFileSync('app/issues/fixtures/node1-2026-10-06-figures.json', 'utf8')).sensors.map(s => s.name.trim()).filter(n => n.length > 3),
   lab: W0.lab.name,
@@ -106,6 +106,7 @@ assert [c["fit"] for c in full[2]["chapters"] if "fit" in c] == [[[115.237, -8.7
 assert len(CH(2, "basin")["fit"]) == 5 and "fit" not in CH(2, "sea") and "fit" not in CH(0, "air")
 assert CH(2, "city-air")["official"] == {"lon": 115.178, "lat": -8.625, "label": "Sempidi · government"}, CH(2, "city-air")["official"]
 assert CH(0, "air")["n"] == [7.8, "µg/m³"] and CH(0, "air")["word"] == "live" and CH(1, "air")["word"] == "partial"
+assert CH(0, "sun")["n"] == [6.4, "kWh/m²"] and "2.0 kW panel" in CH(0, "sun")["says"] and "9.6 kWh" in CH(0, "sun")["says"]
 assert CH(0, "built")["n"] == [91, "%"] and CH(0, "heat")["n"] == [34.2, "°C"] and CH(0, "rain")["n"] == [3.4, "mm"]
 assert CH(1, "change")["n"] == [129, "ha"] and CH(1, "lab")["n"] == [4, "km"] and CH(1, "rivers")["n"] == [4, "km"]
 assert CH(2, "grid")["n"] == [84, "%"] and CH(2, "basin")["n"] == [42, "km²"] and CH(2, "sea")["n"] == [1.7, "m"]
@@ -123,10 +124,11 @@ assert "Sempidi" in CH(2, "city-air")["says"] and "south-west" in CH(2, "sea")["
 assert "from the" not in S["noWave"], "no direction hour, no direction said"
 print("  story: captions read W in whole km and name no sensor")
 
-assert S["cap"] == [["air", "built"], ["air", "change", "lab", "rivers"], ["grid", "basin", "sea", "city-air"]], \
-    ("the capture holds no heat, water or energy readouts, so those chapters are absent", S["cap"])
+assert S["cap"] == [["air", "built", "sun"], ["air", "change", "lab", "rivers"], ["grid", "basin", "sea", "city-air"]], \
+    ("the capture holds no heat or water readouts, so those chapters are absent; the sun is W's", S["cap"])
 assert S["noWater"] == [["air", "built", "sun", "heat", "rain"], ["air", "change", "lab"], ["grid", "sea", "city-air"]], S["noWater"]
 assert S["noIsland"] == ["grid", "basin", "sea"]
+assert S["noSun"] == ["air", "built", "heat", "rain"], "the sun is W.grid.sun, and absent with it"
 assert S["empty"] == [["base", 0, 8, 4.5], ["community", 0, 7, 31.4], ["city", 0, 6, 219.4]], S["empty"]
 assert S["capOnly"] == [["air"], [], ["sea"]], "every /wall block null: only what the doors' own issues hold is left"
 print("  story: a missing block drops its chapter, a scale with none still stands")

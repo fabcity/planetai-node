@@ -77,9 +77,10 @@ const wallStory = (W, D) => {
   if (W.roofs && built) base.push(ch('built', '--d-ground', 'Buildings', [Math.round(built.value), '%'], built.provenance,
     `${W.roofs.osm_in_cells} roofs are mapped on OpenStreetMap within ${Math.round(W.roofs.mapped_radius_m / 100) * 100} m of this cell, and the ground here is ${f(built.value)} % built.`,
     'OpenStreetMap · built share, Earth Engine', ['roofs', 'roofs-mask']));
-  const sun = ro('energy', 'sun_kwh_m2');
-  if (W.roofs && sun) base.push(ch('sun', '--d-energy', 'Sun today', [+f(sun.value, 1), 'kWh/m²'], sun.provenance,
-    `${f(sun.value, 1)} kWh fell on each square metre today. The roofs are coloured by how much of it they catch.`, 'Open-Meteo, today', ['roofs-sun', 'roofs-mask']));
+  const sun = W.grid && W.grid.sun && num(W.grid.sun.kwh_m2) ? W.grid.sun : null;
+  if (W.roofs && sun) base.push(ch('sun', '--d-energy', 'Sun today', [+f(sun.kwh_m2, 1), 'kWh/m²'], 'model',
+    `${f(sun.kwh_m2, 1)} kWh fell on each square metre today.${num(sun.panel_kw) && num(sun.roof_kwh) ? ` A ${f(sun.panel_kw, 1)} kW panel on a roof here would make about ${f(sun.roof_kwh, 1)} kWh.` : ''} The roofs are coloured by how much of it they catch.`,
+    'Open-Meteo, today', ['roofs-sun', 'roofs-mask']));
   const lst = ro('heat', 'lst'), dl = ro('heat', 'lst_delta'), ln = ro('heat', 'lst_night');
   if (lst) base.push(ch('heat', '--d-heat', 'Ground heat', [+f(lst.value, 1), '°C'], lst.provenance,
     `The ground in this cell at the last clear Landsat pass${dl ? `, ${f(Math.abs(dl.value), 1)} °C ${dl.value < 0 ? 'cooler' : 'hotter'} than the land 1 to 3 km around it` : ''}.`,

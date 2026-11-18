@@ -178,8 +178,11 @@ def grid(raw: dict, centre: tuple[float, float]) -> dict | None:
                      for s in src if s.get("kind") == "plant" and (s.get("mw") or 0) >= 1),
                     key=lambda p: p["km"])
     low = (raw.get("share") or {}).get("low")
+    today = raw.get("today")        # the cell's sun today and the panel size the house configured: no position in either
+    sun = {"kwh_m2": today.get("sun_kwh_m2"), "roof_kwh": today.get("roof_kwh"), "panel_kw": today.get("panel_kw")} \
+        if isinstance(today, dict) else None
     return {"fossil_low_pct": None if low is None else round(low * 100), "substation_km": subs[0] if subs else None,
-            "plants": [p for p in plants if p["km"] <= PLANT_KM]}
+            "plants": [p for p in plants if p["km"] <= PLANT_KM], "sun": sun}
 
 
 def change(earth, near: tuple[float, float]) -> dict | None:
