@@ -3,7 +3,8 @@
 With no years, the two most recent consecutive cached years. With `--all`, every consecutive pair plus the
 span from the oldest cached year to the newest — the whole history in one command, which is the order worth
 reading it in: the span is where persistent change stands out from the year-to-year background, and the
-yearly steps say when each thing happened. Already-computed pairs are skipped unless `--force`.
+yearly steps say when each thing happened. Already-computed pairs are skipped unless `--force`; a pair computed
+before the Wall's image existed (no `wall` key in its JSON) is computed again.
 
 Writes change_<A>_<B>.png (north up, a grey ramp, the node ringed) and change_<A>_<B>.json (mean, median,
 p95, the share and the hectares above the threshold, the bounds, the source objects) into out/earth/<node>/,
@@ -130,15 +131,19 @@ def compare(a, b):
     if stats["bounds"] and stats["crs"] and os.getenv("NODE_LAT") and os.getenv("NODE_LON"):
         lat, lon, radius = A.aoi()
         wall = A.wall_image(dist, masked, stats["bounds"], stats["crs"], h3.latlng_to_cell(lat, lon, 8),
-                            stats["radius_m"] or radius, CHANGED)
+                            stats["radius_m"] or radius, CHANGED, stats["clipped"])
+    wall_png = A.change_file(a, b, "png").with_name(f"change_{a}_{b}_wall.png")
     if wall:
-        A.write_png(A.change_file(a, b, "png").with_name(f"change_{a}_{b}_wall.png"), wall[0], {
+        A.write_png(wall_png, wall[0], {
             "Title": f"Land changed {a}-{b}",
             "Description": f"Pixels over {CHANGED} in 1 - cosine similarity of annual AlphaEarth embeddings, inside "
                            f"the community's H3 cells. North up, 10 m per pixel.",
             "Copyright": A.ATTRIBUTION,
         }, palette=A.WALL_PALETTE, trns=b"\x00")
-        stats["wall"] = wall[1]
+    else:
+        wall_png.unlink(missing_ok=True)           # an earlier crop must not answer for this run's null
+    # null, not absent: "tried, nothing the Wall may show", so the next plain run does not try again
+    stats["wall"] = wall[1] if wall else None
     A.change_file(a, b, "json").write_text(json.dumps(stats, indent=1))
 
     print(f"earth: {a} → {b} over {stats['px'][0] * 10 / 1000:.1f} x {stats['px'][1] * 10 / 1000:.1f} km, "
@@ -150,9 +155,18 @@ def compare(a, b):
     return stats
 
 
+def computed(a, b) -> bool:
+    """Whether the pair is done: its JSON exists and has `wall` (null counts). A pair computed before the Wall's
+    image existed has no `wall` key, and the next plain run computes it again so the Wall gets one."""
+    try:
+        return "wall" in json.loads(A.change_file(a, b, "json").read_text())
+    except (OSError, ValueError):
+        return False
+
+
 done, skipped = [], []
 for a, b in pairs:
-    if not force and A.change_file(a, b, "json").is_file():
+    if not force and computed(a, b):
         skipped.append((a, b)); continue
     st = compare(a, b)
     if st:

@@ -377,7 +377,7 @@ One year drawn from the embeddings in grey, `?year=` required. 404 `no frame for
 ### GET /earth/wall.png
 Access: open
 
-The Wall's land-change image, for the pair `/wall` picks (the newest year-over-year pair, else the newest): the pixels that changed, inside the community's res-7 cells that fit a square centred on the node's res-8 cell, transparent elsewhere, with no ring and no scale bar. `/wall`'s `change.corners` place it. 204 until `planetai run earth change` has drawn it for that pair.
+The Wall's land-change image, for the pair `/wall` picks (the newest year-over-year pair, else the newest): the pixels that changed, inside the community's res-7 cells that fit a square centred on the node's res-8 cell, transparent elsewhere, with no ring and no scale bar. `/wall`'s `change.corners` place it. 204 until `planetai run earth change` has drawn it for that pair. A pair computed before this image existed gets it on the next plain `planetai run earth change`, no `--force` needed. Its JSON then holds `wall`: `{bounds, ha}`, or null when no community cell fits the square or the node has no place, and 204 here.
 
 ### GET /earth/frame.png
 Access: open

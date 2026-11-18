@@ -411,20 +411,25 @@ def projection(epsg: int):
     return sh.projection(epsg)
 
 
-def allowed_raster(bounds: dict, crs: str, shape: tuple[int, int], home: str, radius_m: float):
+def allowed_raster(bounds: dict, crs: str, shape: tuple[int, int], home: str, radius_m: float, clipped: bool = False):
     """(H, W) bool over the square read (north up, `bounds` in `crs`): True on the pixels whose centres fall in the
-    community's res-7 cells that lie wholly inside the safe square round `home`'s centre, and inside the raster."""
+    community's res-7 cells that lie wholly inside the safe square round `home`'s centre, and inside the raster.
+
+    All False when the window was not clipped and still does not hold the safe square: it was read around a point
+    that is not in this cell (a move inside fetch's tolerance), and which edge cells survive would say where."""
     import h3
     import numpy as np
     fwd = projection(int(str(crs).rsplit(":", 1)[-1]))
     c = h3.cell_to_latlng(home)
     circum = max(h3.great_circle_distance(c, v, unit="m") for v in h3.cell_to_boundary(home))
     cx, cy = fwd(*c)
-    half = radius_m - circum - SNAP_M
+    half = int(radius_m) // 10 * 10 - circum - SNAP_M     # the half-width window_px really reads
     h, w = shape
     pw, ph = (bounds["east"] - bounds["west"]) / w, (bounds["north"] - bounds["south"]) / h
     west, east = max(cx - half, bounds["west"]), min(cx + half, bounds["east"])
     south, north = max(cy - half, bounds["south"]), min(cy + half, bounds["north"])
+    if not clipped and (west, east, south, north) != (cx - half, cx + half, cy - half, cy + half):
+        return np.zeros(shape, bool)
     X = (bounds["west"] + (np.arange(w) + 0.5) * pw)[None, :]
     Y = (bounds["north"] - (np.arange(h) + 0.5) * ph)[:, None]
     out = np.zeros(shape, bool)
@@ -446,11 +451,13 @@ def wall_mask(dist, masked, threshold: float, allowed):
     return ((dist > threshold) & ~masked & allowed).astype("uint8")
 
 
-def wall_image(dist, masked, bounds: dict, crs: str, home: str, radius_m: float, threshold: float):
+def wall_image(dist, masked, bounds: dict, crs: str, home: str, radius_m: float, threshold: float,
+               clipped: bool = False):
     """The Wall's image and its crop: (ix, {"bounds", "ha"}), the image cut to the allowed cells' box, bounds in
-    `crs`, ha the changed pixels inside the cells. None when no community cell fits the square."""
+    `crs`, ha the changed pixels inside the cells. None when no community cell fits the square, or when an
+    unclipped window does not hold it (allowed_raster)."""
     import numpy as np
-    allowed = allowed_raster(bounds, crs, dist.shape, home, radius_m)
+    allowed = allowed_raster(bounds, crs, dist.shape, home, radius_m, clipped)
     if not allowed.any():
         return None
     rows, cols = np.flatnonzero(allowed.any(1)), np.flatnonzero(allowed.any(0))

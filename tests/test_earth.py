@@ -449,6 +449,17 @@ fit3 = [c for c in fit if all(abs(x - cx) <= 3000 - circ and abs(y - cy) <= 3000
                               for x, y in (fwd(*v) for v in h3.cell_to_boundary(c)))]
 assert len(fit3) == 1 and abs(int(a3.sum()) - h3.cell_area(fit3[0], unit="m^2") / 100) < 0.01 * a3.sum()
 assert A.wall_image(*window(*cen, radius=2000), "EPSG:32750", home, 2000, 0.15) is None, "no whole cell, no image"
+# fetch reads radius // 10 pixels each way, so a radius that is not a multiple of 10 is read as the one below it
+for la, lo in houses:
+    d9, _, b9 = window(la, lo, radius=5009)
+    assert np.array_equal(A.allowed_raster(b9, "EPSG:32750", d9.shape, home, 5009),
+                          A.allowed_raster(b9, "EPSG:32750", d9.shape, home, 5000)), "5009 m is read as 5000"
+# a window that is not clipped and still does not hold the safe square was read around somewhere else: which edge
+# cells survived would say where, so there is no image. At a real tile edge (clipped) the edge is the tile's own.
+dt, mt, bt = window(*cen)
+dt, mt, bt = dt[:, :-80], mt[:, :-80], {**bt, "east": bt["east"] - 800}   # 800 m short: past the 528 m slack
+assert A.wall_image(dt, mt, bt, "EPSG:32750", home, 5000, 0.15) is None, "the square passes an unclipped edge"
+assert A.wall_image(dt, mt, bt, "EPSG:32750", home, 5000, 0.15, clipped=True) is not None, "a tile edge is fixed"
 
 # change.py writes it, end to end, beside the pair's map, and records the crop under `wall`
 with tempfile.TemporaryDirectory() as tmp:
@@ -476,6 +487,35 @@ with tempfile.TemporaryDirectory() as tmp:
     assert 0 < st["wall"]["ha"] < st["hectares_over_threshold"], st["wall"]
     px = np.frombuffer(zlib.decompress(b"".join(ch[b"IDAT"])), np.uint8)
     assert set(np.unique(px)) <= {0, 1}, "filter bytes and two colours: no node mark, no scale bar"
+    # a pair computed before the Wall's image existed has no `wall` key: a plain run (no --force) computes it again
+    old = {k: v for k, v in st.items() if k != "wall"}
+    (cache / "change_2024_2025.json").write_text(json.dumps(old)); wp.unlink()
+    r = subprocess.run([sys.executable, "packs/earth/change.py"], env=env, capture_output=True, text=True)
+    assert r.returncode == 0 and "already computed" not in r.stdout, r.stdout + r.stderr
+    assert wp.is_file() and json.loads((cache / "change_2024_2025.json").read_text())["wall"] == st["wall"]
+    r = subprocess.run([sys.executable, "packs/earth/change.py"], env=env, capture_output=True, text=True)
+    assert "already computed" in r.stdout, "with `wall` written, the pair is done"
+
+# no community cell fits a 2 km square: `wall` is null, no image, and the next plain run does not try again
+with tempfile.TemporaryDirectory() as tmp:
+    env = {**os.environ, "PACK_OUT": tmp, "NODE_NAME": "t", "NODE_LAT": str(LATH), "NODE_LON": str(LONH),
+           "EARTH_RADIUS_M": "2000", "PYTHONPATH": os.getcwd()}
+    cache = Path(tmp) / "earth" / "t"; cache.mkdir(parents=True)
+    _, _, b2 = window(LATH, LONH, radius=2000)
+    for y in (2024, 2025):
+        np.save(cache / f"{y}.npy", np.repeat(np.repeat(base, 400, 1), 400, 2) * (1 if y == 2024 else -1))
+    win = {"crs": "EPSG:32750", "bounds": b2, "px": [400, 400], "clipped": False, "north_up": True,
+           "node_rc": [200, 200], "object": "gs://x.tiff"}
+    (cache / "meta.json").write_text(json.dumps({"lat": LATH, "lon": LONH, "radius_m": 2000,
+                                                 "windows": {"2024": win, "2025": win}}))
+    (cache / "change_2024_2025_wall.png").write_bytes(b"\x89PNG stale")
+    r = subprocess.run([sys.executable, "packs/earth/change.py"], env=env, capture_output=True, text=True)
+    assert r.returncode == 0, r.stdout + r.stderr
+    st2 = json.loads((cache / "change_2024_2025.json").read_text())
+    assert "wall" in st2 and st2["wall"] is None, st2.get("wall")
+    assert not (cache / "change_2024_2025_wall.png").exists(), "a stale image must not answer for a null crop"
+    r = subprocess.run([sys.executable, "packs/earth/change.py"], env=env, capture_output=True, text=True)
+    assert "already computed" in r.stdout, "a null `wall` is an answer, not a pair to redo on every run"
 print("earth wall: changed pixels in whole community cells only, the same image wherever the house is in its cell")
 
 print("all earth pack tests pass")
