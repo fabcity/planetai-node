@@ -28,11 +28,12 @@ The map needs MapLibre and WebGL. A screen without them still draws the column a
 cannot draw the map." where the map would be. The column and the strip are drawn before the node answers for the map.
 When the node sends nothing for the map (it has no place yet, or the read failed), the line is "The node sent no
 map.", and the Wall asks again after 30 seconds, then a minute, then twice as long each time up to five minutes, and
-draws the map once it comes. If the screen loses its graphics, the map is drawn again at the next hour.
+draws the map once it comes. If the screen loses its graphics, the map is drawn again at the next replayed hour. With
+reduced motion on there is no next hour, so it comes back when the window changes size or the Wall is opened again.
 
-> **Gap in v0.91.0.** The Wall does not re-read the node while it stays open, so its figures are those of the moment
-> it was opened, and only the narration is new every ten minutes. Reload the screen, or put the classic wall up instead,
-> which re-reads on `POLL_SECONDS`.
+> **Gap in v0.91.0.** Once it has its map, the Wall does not re-read the node while it stays open, so its figures are
+> those of the moment it was opened, and only the narration is new every ten minutes. Reload the screen, or put the
+> classic wall up instead, which re-reads on `POLL_SECONDS`.
 
 ## What it shows
 
@@ -91,7 +92,7 @@ packs has fewer chapters.
 | base | Ground heat | the cell at the last clear Landsat pass, against the land 1 to 3 km around | the heat issue |
 | base | Rain | the rain forecast for the next 24 hours, and how much ground drains through the cell | the terrain pack |
 | community | Air around | the outdoor stations the node reads, a dot each at the replayed hour, red over the line and grey when it read nothing | the station packs |
-| community | Land that changed | the ground that looked different from one year to the next, in the community's whole cells | the earth pack, after `planetai run earth change` |
+| community | Land that changed | the ground that looked different from one year to the next, in the community's whole cells | the earth pack, after `planetai run earth change`; a node that has moved reads its square again first, `planetai run earth fetch --force` |
 | community | The lab | the nearest fab lab, ringed, and how far it is | the make pack |
 | community | Rivers | the rivers around, and the nearest one's flow | the hydro pack |
 | city | Fossil power | at least how much of the grid's power is burnt fuel, and the nearest plant of 100 MW or more within 30 km, with a dotted line to it from the middle of the house's cell | the energy pack |
@@ -153,7 +154,7 @@ resolution-8 cell. Every distance is in whole kilometres from the middle of that
 starts there too. Only public places have a point on the map, at three decimals. The stations are the ones the
 station packs read, and a radio or the house's own kit away from home is not one of them. A station near the house
 is left out wherever in the cell the house stands, so a missing dot does not give the house away. The roofs
-are counted in whole 100 m around the middle of the cell. The land that changed is cut to the community's whole
+are counted within a circle round the middle of the cell, its radius rounded down to whole 100 m. The land that changed is cut to the community's whole
 cells, and the earth pack's square round the house is not used for it. The place pack's satellite-only roofs stop
 in a circle round the house, so they are not drawn. The only names on the map are public places, such as the
 government's station or the nearest lab. It is always dark, whatever register the other doors are in.
