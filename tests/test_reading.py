@@ -367,18 +367,22 @@ reading._ask = lambda rung, system: asked.append((rung.model, system)) or "Sorry
 fn, a = started.pop()
 fn(*a)
 b = c.get("/place/reading", headers=ADMIN).json()
-check(len(asked) == 1 and "FACTS" in asked[0][1] and cur.rows[0]["state"] == "refused" and b["state"] == "refused" and b["refused"] and b["written"] is None
+check(len(asked) == 2 and "FACTS" in asked[0][1] and asked[1][1].startswith(asked[0][1]) and "Your last answer was refused: not the JSON it was asked for" in asked[1][1],
+      f"a refused text is asked for once more, with the reason: {len(asked)} asked")
+check(cur.rows[0]["state"] == "refused" and b["state"] == "refused" and b["refused"] and b["written"] is None
       and b["by"] == "node" and b["rules"]["avenues"], f"a text that does not hold is refused with its reason, and the node's reading stands: {b.get('refused')}")
 
 # the fake database holds no reading of the place pack, so this text rests only on what the routes answered
 HELD = {"sections": {i: f"A paragraph on {h.lower()}: at least 84% of the power on the Bali grid is burned." for i, h in reading.SECTIONS}, "avenues": [{**a, "title": "Count the roofs"} for a in GOOD["avenues"]]}
-reading._ask = lambda rung, system: json.dumps(HELD)
+# node #1, 18 Nov 2026: half of the model's first answers tripped on 'half' or a figure it worked out; told why, it writes again
+answers = [json.dumps({**HELD, "sections": {**HELD["sections"], "land": "More than half of the ground is bare."}}), json.dumps(HELD)]
+reading._ask = lambda rung, system: answers.pop(0)
 check(c.post("/place/reading", headers=ADMIN).json() == {"state": "writing", "id": 2} and len(started) == 1, "after a refusal the button writes again")
 fn, a = started.pop()
 fn(*a)
 b = c.get("/place/reading", headers=ACT).json()
 check(b["state"] == "written" and b["written"]["sections"]["land"] == HELD["sections"]["land"] and b["by"] == {"model": "qwen3.5:122b", "where": "your network"}
-      and b["written_at"] and b["refused"] is None, f"a text that holds is kept, with who wrote it and when: {str(b)[:200]}")
+      and b["written_at"] and b["refused"] is None and not answers, f"a second answer that holds is kept, with who wrote it and when: {str(b)[:200]}")
 
 
 def boom(rung, system):

@@ -225,7 +225,7 @@ the Implementation Guide's three key actions (map and research, experiment, reth
   short enough for its page, no quantity in words, no figure that is not in the facts, and no section that gives back
   more than half of the sentences of the node's own reading (the model is handed that reading as findings, and on node #1 it first returned it word for word). A count from one to seven
   passes bare ("2 of its 7 cells") and never before a unit. The check reads whether a figure is the node's, not
-  whether it is said of the right thing, which is why the page says a model wrote it. Otherwise the node stores the
+  whether it is said of the right thing, which is why the page says a model wrote it. A text that fails is asked for once more, with the reason. If that fails too, the node stores the
   reason and its own reading stands. What the reading
   cannot see is always the rules' to say.
 - **Kept.** A model's text is stored with the facts it was written from (`place_readings`, schema 0.66) and shown until

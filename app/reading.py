@@ -420,7 +420,8 @@ def prompt(doc: dict, ruled: dict) -> str:
         "Say in sentences of your own what the findings mean taken together for the people here: what follows from them, "
         "what they hold back and what they make possible.\n"
         "Use only numbers that are in FACTS, written in digits as THE NODE'S OWN READING writes them. No dates, no coordinates, no other figure, "
-        "and no quantity in words: never 'half', 'a third', 'twice' or 'double'.\n"
+        "and no quantity in words: never 'half', 'a third', 'twice' or 'double'. "
+        "Work nothing out from the figures: no sum, no difference, no remainder of a share.\n"
         "A count or a share that comes from the public map covers one kilometre round the place, never 'this cell'. "
         "A cell of the Fab City Index is one entry in a city's table of scores, not a piece of land.\n"
         "Claim nothing the findings do not support, and give no cause they do not give. Where the manner asks about something "
@@ -618,7 +619,10 @@ def write(rid: int, rung, doc: dict, ruled: dict) -> None:
     """Ask the model, check what it wrote, and keep it or the reason it was refused. Runs off the request."""
     from psycopg.types.json import Jsonb  # noqa: PLC0415
     try:
-        written, why = accept(_ask(rung, prompt(doc, ruled)), doc, ruled)
+        ask = prompt(doc, ruled)
+        written, why = accept(_ask(rung, ask), doc, ruled)
+        if written is None:      # told why, it writes once more: on node #1 half of the first answers tripped on 'half' or a figure the model worked out
+            written, why = accept(_ask(rung, f"{ask}\n\nYour last answer was refused: {why}. Write it again, and keep clear of that."), doc, ruled)
     except Exception as e:  # noqa: BLE001 — whatever went wrong, the row must leave `writing`
         written, why = None, f"the model did not answer ({type(e).__name__})"
     log.info("reading %d: %s", rid, "written" if written else f"refused, {why}")
