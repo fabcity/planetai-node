@@ -214,6 +214,27 @@ with tempfile.TemporaryDirectory() as tmp:
           and "import_share_max_pct" not in m_bali,
           f"node #1 readings match Bali range and distances, and omit unknown import_share_max_pct: {m_bali}")
     res_bali = A.result()
+    # R25: two house points near opposite corners of one res-8 cell give the same km readings (derived, so they leave
+    # without a token) and both carry the substation nearest the cell's middle, which a stranger's /energy names.
+    import h3
+    _cid = h3.latlng_to_cell(-8.8161, 115.1635, 8)
+    _cc, _vs = h3.cell_to_latlng(_cid), h3.cell_to_boundary(_cid)
+    # and a substation just outside each corner, so the house's own nearest differs between the two
+    _doc = json.load(open(FIX / "overpass-bali-2026-11-08.json"))
+    _doc["elements"] += [{"type": "node", "id": 9e9 + _k, "lat": _cc[0] + 1.3 * (_vs[_k][0] - _cc[0]),
+                          "lon": _cc[1] + 1.3 * (_vs[_k][1] - _cc[1]),
+                          "tags": {"power": "substation", "name": f"corner {_k}", "operator": "PLN"}} for _k in (0, 3)]
+    _seen = []
+    for _k in (0, 3):
+        os.environ["NODE_LAT"], os.environ["NODE_LON"] = (str(_cc[i] + 0.9 * (_vs[_k][i] - _cc[i])) for i in (0, 1))
+        os.environ["PACK_OUT"] = tempfile.mkdtemp(dir=tmp)       # no Overpass cache from the run before
+        _, _r = A.fetch(StubHC(_doc))
+        _subs = [x for x in A.result()["sources"] if x["kind"] == "substation"]
+        _seen.append(({m: v for _, sid, m, v in _r if m in ("substation_km", "large_plant_km")},
+                      min(_subs, key=lambda x: h3.great_circle_distance(_cc, (x["lat"], x["lon"])))["name"]))
+    os.environ["NODE_LAT"], os.environ["NODE_LON"], os.environ["PACK_OUT"] = "-8.8161", "115.1635", tmp
+    check(_seen[0] == _seen[1] and all(float(v).is_integer() for v in _seen[0][0].values()),
+          f"the km readings and the substation nearest the cell's middle stay put inside one cell: {_seen}")
     cable = next(b for b in res_bali["bar"] if b["hatched"])
     check(cable["share"] is None and cable["note"] == "share not published",
           "the Java cable's segment has no width while its share is unknown, never a guessed one")
