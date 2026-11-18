@@ -14,6 +14,7 @@ Each block is null when its pack is off or has nothing yet; the route never fail
 from __future__ import annotations
 
 import json
+import logging
 import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -27,6 +28,7 @@ from db import db
 from issues.engine import day_buckets
 
 router = APIRouter()
+log = logging.getLogger("planetai.wall")
 
 SCALES = (("base", 8), ("community", 7), ("city", 6))
 FRESH = timedelta(hours=3)          # the island's file, and each station in it
@@ -67,14 +69,40 @@ def hourly(rows, buckets, sensor_id: str, metric: str) -> list[float | None]:
     return [None if got.get(b) is None else round(float(got[b]), 2) for b in buckets]
 
 
-def lonlat(x: float, y: float, epsg: int, near: tuple[float, float]) -> list[float]:
-    """UTM metres back to [lon, lat], by surface-heat's own forward projection (Snyder) and its local inverse, with one
-    Newton step from the first guess: under a centimetre 7 km from `near` (lat, lon). No pyproj on a node."""
+def _utm(epsg: int, near: tuple[float, float]):
+    """UTM metres of `epsg` back to [lon, lat], by surface-heat's own forward projection (Snyder) and its local
+    inverse, with one Newton step from the first guess: under a centimetre 7 km from `near` (lat, lon). No pyproj on a
+    node. The pack's module is loaded once here, not once per point."""
     sh = packs.module("surface-heat", on_only=False)
     fwd = sh.projection(epsg)
-    p = sh.local_inverse(fwd, *near)(x, y)
-    lat, lon = sh.local_inverse(fwd, *p)(x, y)
-    return [round(lon, 6), round(lat, 6)]
+    first = sh.local_inverse(fwd, *near)
+
+    def to(x: float, y: float) -> list[float]:
+        lat, lon = sh.local_inverse(fwd, *first(x, y))(x, y)
+        return [round(lon, 6), round(lat, 6)]
+    return to
+
+
+def lonlat(x: float, y: float, epsg: int, near: tuple[float, float]) -> list[float]:
+    return _utm(epsg, near)(x, y)
+
+
+def circum_m(home: str) -> float:
+    """The farthest the house can be from its cell's centre: the farthest vertex."""
+    c = h3.cell_to_latlng(home)
+    return max(h3.great_circle_distance(c, v, unit="m") for v in h3.cell_to_boundary(home))
+
+
+ROUNDED_M = 80      # how far a point at 3 dp can stand from where it is (55 m each way at the equator)
+
+
+def kept(lat: float, lon: float, centre: tuple[float, float], far_m: float | None, near_m: float) -> bool:
+    """Whether a station may be drawn, judged from the cell's centre only. A pack chose its stations round the house:
+    within a radius, and never within a separation of it (packs/bali-air-dispatch). So a station that would be
+    missing for being near the house or far from it is left out for everyone near the centre or far from it,
+    `far_m` and `near_m` being those limits already widened by how far the house can be from the centre."""
+    d = h3.great_circle_distance((centre[1], centre[0]), (lat, lon), unit="m")
+    return d > near_m and (far_m is None or d <= far_m)
 
 
 def _age(ts, now: datetime) -> timedelta | None:
@@ -85,15 +113,16 @@ def _age(ts, now: datetime) -> timedelta | None:
     return now - (t if t.tzinfo else t.replace(tzinfo=timezone.utc))
 
 
-def island(doc: dict | None, now: datetime) -> dict | None:
+def island(doc: dict | None, now: datetime, ok=lambda lat, lon: True) -> dict | None:
     """packs/bali-air-dispatch's island-wide stations, null when the file is over 3 h old. Its `at` is when it was
-    written, not when the stations read, so each item's own `at` is held to the same 3 h."""
-    if not doc or (_age(doc.get("at"), now) or FRESH * 2) > FRESH:
+    written, not when the stations read, so each item's own `at` is held to the same 3 h. `ok` is `kept`."""
+    if not isinstance(doc, dict) or (_age(doc.get("at"), now) or FRESH * 2) > FRESH:
         return None
     keep = ("pm25", "at", "network", "official", "place")
     items = [{"lat": round(i["lat"], 3), "lon": round(i["lon"], 3), **{k: i.get(k) for k in keep}}
              for i in doc.get("items") or []
-             if i.get("lat") is not None and i.get("lon") is not None and (_age(i.get("at"), now) or FRESH * 2) <= FRESH]
+             if i.get("lat") is not None and i.get("lon") is not None and (_age(i.get("at"), now) or FRESH * 2) <= FRESH
+             and ok(i["lat"], i["lon"])]
     return {"at": doc["at"], "items": items}
 
 
@@ -166,18 +195,40 @@ def change(earth, near: tuple[float, float]) -> dict | None:
     bb = crop.get("bounds")
     if not bb or not earth.change_file(a, b, "png").with_name(f"change_{a}_{b}_wall.png").is_file():
         return None
-    epsg = int(str(c.get("crs", "")).rsplit(":", 1)[-1])
-    corners = [lonlat(bb[x], bb[y], epsg, near) for x, y in
+    to = _utm(int(str(c["crs"]).rsplit(":", 1)[-1]), near)
+    corners = [to(bb[x], bb[y]) for x, y in
                (("west", "north"), ("east", "north"), ("east", "south"), ("west", "south"))]
     return {"a": a, "b": b, "ha": crop.get("ha"), "corners": corners, "png": "/earth/wall.png"}
 
 
-def _inner_m(home: str, radius_m: float) -> int:
-    """The radius round the cell's centre that a disc of `radius_m` round the house always covers, wherever in the
-    cell the house is. The place pack's roofs stop at PLACE_RADIUS_M from the house, so a count over the seven cells
-    would change with where the house stands in its cell; this one cannot."""
-    c = h3.cell_to_latlng(home)
-    return int(radius_m - max(h3.great_circle_distance(c, v, unit="m") for v in h3.cell_to_boundary(home)))
+def _inner_m(home: str, run: dict | None, here: tuple[float, float]) -> int | None:
+    """The radius round the cell's centre that the place pack's last fetch always covers, wherever in the cell the
+    house is: its own `radius_m` (place_runs, what it really fetched, never the setting), less how far the house can
+    be from the centre, less how far that fetch's centre is from the house now. A count over the seven cells would
+    change with where the house stands in its cell; this one cannot. None with no run."""
+    if not run or not run.get("radius_m"):
+        return None
+    moved = 0.0 if run.get("lat") is None or run.get("lon") is None else \
+        h3.great_circle_distance(here, (run["lat"], run["lon"]), unit="m")
+    return int(run["radius_m"] - circum_m(home) - moved)
+
+
+def _ring_limits() -> tuple[float, float]:
+    """(km, m): the tightest radius and the widest separation of the station packs that are on, 15 km and 150 m
+    (the ring's defaults) when none says. A station left from a pack since switched off is held to the defaults."""
+    lim = [(float(settings.get(p["radius"], "15") or 15),
+            float((_safe(lambda: packs.module(p["pack"], on_only=False).cfg()) or {}).get("min_separation_m", 150)))
+           for p in packs.stations() if p.get("radius")]
+    return min(r for r, _ in lim or [(15.0, 0)]), max(m for _, m in lim or [(0, 150.0)])
+
+
+def _safe(build, *args, empty=None):
+    """A block built from a pack's file, or `empty` when the file is not what it should be: never a 500."""
+    try:
+        return build(*args)
+    except Exception as e:  # noqa: BLE001 — one malformed file costs its own block
+        log.warning("wall: %s: %s: %s", getattr(build, "__name__", "block"), type(e).__name__, e)
+        return empty
 
 
 # ---------------------------------------------------------------- the route
@@ -188,6 +239,7 @@ _STATIONS = ("SELECT sensor_id, lat, lon FROM sensors WHERE kind = 'sensor' AND 
 _HOURLY = ("SELECT h.bucket, h.sensor_id, h.metric, h.mean FROM readings_1h h "
            "WHERE h.bucket > now() - interval '24 hours' AND h.sensor_id = ANY(%s) AND h.metric = ANY(%s)")
 _LABS = "SELECT name, lat, lon FROM sensors WHERE kind = 'facility' AND lat IS NOT NULL AND lon IS NOT NULL"
+_RUN = "SELECT radius_m, lat, lon FROM place_runs ORDER BY run_at DESC LIMIT 1"
 _ROOFS = ("SELECT count(*) AS n FROM place_features WHERE kind = 'building' AND "
           "ST_DWithin(ST_Centroid(geom)::geography, ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography, %s)")
 
@@ -207,29 +259,42 @@ def wall():
     city = [p for c in sc[-1]["cells"] for p in c["ring"]]
     frame = (min(p[0] for p in city), min(p[1] for p in city), max(p[0] for p in city), max(p[1] for p in city))
     on = {m["id"] for m in packs.manifests()}
+    # The station packs chose their stations round the house: within the radius their pack.yaml names (`stations:
+    # radius:`, read as /nearby reads it), and never within the separation their own cfg() reads. The Wall keeps only
+    # what those rules keep wherever in the cell the house is. The make pack keeps labs within MAKE_RADIUS_KM.
+    circ = circum_m(home)
+    far_km, sep_m = _ring_limits()
+    near_m = circ + sep_m + ROUNDED_M
+
+    def ok(la, lo):
+        return kept(la, lo, centre, far_km * 1000 - circ, near_m)
 
     roofs = lab = None
     with db() as con, con.cursor() as cur:
         cur.execute(_BUCKETS)
         buckets = day_buckets([r["bucket"] for r in cur.fetchall()], now)
         cur.execute(_STATIONS)
-        found = [s for s in cur.fetchall() if s["lat"] is not None and s["lon"] is not None]
+        found = [s for s in cur.fetchall() if s["lat"] is not None and s["lon"] is not None and ok(s["lat"], s["lon"])]
         cur.execute(_HOURLY, ([s["sensor_id"] for s in found] + ["om-point", "marine-point"],
                               ["pm25"] + [m for _, m in HOURS.values()]))
         rows = cur.fetchall()
         if "make" in on:
             cur.execute(_LABS)
-            labs = sorted(cur.fetchall(), key=lambda r: km_from(centre, r["lon"], r["lat"]))
+            far = float(os.getenv("MAKE_RADIUS_KM", "50")) * 1000 - circ
+            labs = sorted((r for r in cur.fetchall() if kept(r["lat"], r["lon"], centre, far, 0)),
+                          key=lambda r: km_from(centre, r["lon"], r["lat"]))
             if labs:
                 lab = {"name": labs[0]["name"], "lat": round(labs[0]["lat"], 3), "lon": round(labs[0]["lon"], 3),
                        "km": km_from(centre, labs[0]["lon"], labs[0]["lat"])}
-        r_m = _inner_m(home, float(settings.get("PLACE_RADIUS_M", "1000") or 1000))
-        if "place" in on and r_m > 0:
-            try:
-                cur.execute(_ROOFS, (clon, clat, r_m))
-                got = cur.fetchall()
-                roofs = {"osm_in_cells": int(got[0]["n"]), "mapped_radius_m": r_m} if got else None
-            except Exception:  # noqa: BLE001 — the place pack has not made its table yet
+        if "place" in on:
+            try:            # the place pack may not have made its tables yet
+                cur.execute(_RUN)
+                r_m = _inner_m(home, next(iter(cur.fetchall()), None), (lat, lon))
+                if r_m and r_m > 0:
+                    cur.execute(_ROOFS, (clon, clat, r_m))
+                    got = cur.fetchall()
+                    roofs = {"osm_in_cells": int(got[0]["n"]), "mapped_radius_m": r_m} if got else None
+            except Exception:  # noqa: BLE001
                 roofs = None
 
     out_dir = Path(os.getenv("PACK_OUT", "/app/out"))
@@ -238,15 +303,17 @@ def wall():
     except (OSError, ValueError):
         isl = None
     hydro, energy, earth = packs.module("hydro"), packs.module("energy"), packs.module("earth")
-    rivers, basin, river = water(hydro.result(), frame, centre, hydro.inside, hydro.square) if hydro else (None, None, None)
+    rivers, basin, river = (_safe(lambda: water(hydro.result(), frame, centre, hydro.inside, hydro.square),
+                                  empty=(None, None, None)) if hydro else (None, None, None))
     return {
         "home": home, "centre": [round(clon, 5), round(clat, 5)], "scales": sc,
         "hours": {"buckets": [b.isoformat() if hasattr(b, "isoformat") else b for b in buckets],
                   **{k: hourly(rows, buckets, sid, m) for k, (sid, m) in HOURS.items()}},
         "stations": [{"lat": round(s["lat"], 3), "lon": round(s["lon"], 3), "pm25": hourly(rows, buckets, s["sensor_id"], "pm25")}
                      for s in found],
-        "island": island(isl, now), "roofs": roofs, "lab": lab,
+        # the island is island-wide: no far edge, only the near one
+        "island": _safe(island, isl, now, lambda la, lo: kept(la, lo, centre, None, near_m)), "roofs": roofs, "lab": lab,
         "rivers": rivers, "basin": basin, "river": river,
-        "grid": grid(energy.result(), centre) if energy else None,
-        "change": change(earth, (clat, clon)),
+        "grid": _safe(lambda: grid(energy.result(), centre)) if energy else None,
+        "change": _safe(change, earth, (clat, clon)),
     }

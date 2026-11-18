@@ -83,7 +83,7 @@ except ImportError:
     raise SystemExit(0)
 
 import settings  # noqa: E402
-ROWS = {"PACKS_ENABLED": "", "SHARE_LEVEL": "open"}
+ROWS = {"PACKS_ENABLED": "", "SHARE_LEVEL": "open", "PLACE_RADIUS_M": "5000"}   # a Set up row the pack never fetched
 settings._cache = {"at": time.time() + 1e9, "rows": ROWS}
 
 NOW = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
@@ -96,12 +96,17 @@ HOURLY = ([{"bucket": DAY[i], "sensor_id": "bad-1", "metric": "pm25", "mean": 10
 ANSWERS = {
     "DISTINCT bucket": [{"bucket": b} for b in BUCKETS],
     "kind = 'sensor' AND NOT local": [{"sensor_id": "bad-1", "lat": -8.81234567, "lon": 115.1234567},
+                                      # 14.9 km south of the house: inside BAD's 15 km, beyond 15 km less the cell
+                                      {"sensor_id": "bad-far", "lat": LAT - 14.9 / 111.32, "lon": LON},
+                                      # 160 m north of the house: BAD keeps it, but inside the cell + 150 m of the centre
+                                      {"sensor_id": "bad-near", "lat": LAT + 0.16 / 111.32, "lon": LON},
                                       {"sensor_id": "bad-2", "lat": -8.70001, "lon": 115.20001},
                                       {"sensor_id": "bad-3", "lat": None, "lon": None}],
     "readings_1h h": HOURLY,
     "kind = 'facility'": [{"name": "Fab Lab Bali", "lat": -8.6812345, "lon": 115.2312345},
                           {"name": "Far Lab", "lat": -6.2, "lon": 106.8}],
     "place_features": [{"n": 214}],
+    "place_runs": [{"radius_m": 1000, "lat": LAT, "lon": LON}],
 }
 SEEN = []
 
@@ -110,7 +115,7 @@ class Cur:
     def __enter__(self): return self
     def __exit__(self, *a): return False
     def execute(self, sql, *a):
-        SEEN.append(sql)
+        SEEN.append((sql, a))
         self.rows = next((v for k, v in ANSWERS.items() if k in sql), [])
     def fetchall(self): return [dict(r) for r in self.rows]
 
@@ -127,6 +132,8 @@ iso = lambda d: d.isoformat()  # noqa: E731
 (OUT / "wall" / "island.json").write_text(json.dumps({"at": iso(NOW), "items": [
     {"lat": -8.5, "lon": 115.2, "pm25": 31.0, "at": iso(NOW - timedelta(minutes=40)), "network": "Government (KLHK)",
      "official": True, "place": "Kabupaten Badung Sempidi"},
+    {"lat": round(LAT + 0.16 / 111.32, 3), "lon": round(LON, 3), "pm25": 9.0, "at": iso(NOW), "network": "PurpleAir",
+     "official": False, "place": None},
     {"lat": -8.6, "lon": 115.3, "pm25": 8.0, "at": iso(NOW - timedelta(hours=5)), "network": "AirGradient",
      "official": False, "place": None}]}))
 (OUT / "energy").mkdir()
@@ -201,12 +208,17 @@ assert H["buckets"] == [iso(b) for b in DAY], "the last 24 hours that happened, 
 assert H["wind_kmh"] == [14.26] * 24 and H["wind_from"] == [120.0] * 24
 assert H["swell_m"] == [None] * 23 + [1.23] and H["wave_from"] == [None] * 24
 assert [s["lat"] for s in W["stations"]] == [-8.812, -8.7] and W["stations"][0]["lon"] == 115.123, W["stations"]
+assert h3.great_circle_distance((LAT, LON), (LAT - 14.9 / 111.32, LON), unit="km") < 15, "the far one is inside BAD's ring"
+assert h3.great_circle_distance((LAT, LON), (LAT + 0.16 / 111.32, LON), unit="m") > 150, "and BAD keeps the near one"
+ids = next(a[0][0] for q, a in reversed(SEEN) if "readings_1h h" in q)
+assert "bad-far" not in ids and "bad-near" not in ids and "bad-1" in ids, "dropped before their hours are read"
 assert W["stations"][0]["pm25"][0] == 10.0 and W["stations"][0]["pm25"][1] is None and len(W["stations"][0]["pm25"]) == 24
 assert W["stations"][1]["pm25"] == [None] * 24, "a station with no hour still stands; it is drawn grey"
 assert not any("sensor_id" in s for s in W["stations"]), "a station's id is its network's, and says nothing on a wall"
-assert W["island"]["at"] == iso(NOW) and len(W["island"]["items"]) == 1, W["island"]
+assert W["island"]["at"] == iso(NOW) and len(W["island"]["items"]) == 1, "the stale one, and the one 160 m off"
 assert W["island"]["items"][0]["place"] == "Kabupaten Badung Sempidi" and W["island"]["items"][0]["official"] is True
-assert W["roofs"]["osm_in_cells"] == 214 and 0 < W["roofs"]["mapped_radius_m"] < 1000, W["roofs"]
+assert W["roofs"] == {"osm_in_cells": 214, "mapped_radius_m": int(1000 - wall.circum_m(HOME))}, W["roofs"]
+assert 450 < W["roofs"]["mapped_radius_m"] < 500, "the run's 1000 m, never the 5000 m Set up row"
 assert W["lab"] == {"name": "Fab Lab Bali", "lat": -8.681, "lon": 115.231,
                     "km": wall.km_from((clon, clat), 115.2312345, -8.6812345)}, W["lab"]
 assert W["grid"]["fossil_low_pct"] == 84, W["grid"]
@@ -260,6 +272,29 @@ assert c.get("/wall").json()["change"] is None, "no crop in the stats, no change
 (ea / "change_2024_2025_wall.png").unlink()
 assert c.get("/wall").json()["change"] is None, "the Wall's image not drawn yet"
 print("  change: null until the Wall's own image and crop exist")
+
+# ---- the place pack's last run says what it fetched: no run, no roofs
+ANSWERS["place_runs"] = []
+assert c.get("/wall").json()["roofs"] is None, "no run row: nothing says how far the roofs reach"
+ANSWERS["place_runs"] = [{"radius_m": 1000, "lat": LAT, "lon": LON}]
+print("  roofs: the radius the place pack fetched, from place_runs; none without a run")
+
+# ---- a malformed pack file costs its own block, never a 500
+(ea / "change_2024_2025_wall.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+bad_stats = {k: v for k, v in stats.items() if k != "crs"}
+(ea / "change_2024_2025.json").write_text(json.dumps({**bad_stats, "wall": {"bounds": safe, "ha": 61.2}}))
+(OUT / "wall" / "island.json").write_text(json.dumps(["not", "a", "doc"]))
+(OUT / "energy" / "result.json").write_text(json.dumps({"share": "nope", "sources": [{"kind": "plant", "lat": "x", "lon": 1}]}))
+r = c.get("/wall")
+assert r.status_code == 200, r.text
+assert r.json()["change"] is None and r.json()["island"] is None and r.json()["grid"] is None, r.json()["grid"]
+_real = packs.module
+packs.module = lambda p, *a, **k: None if p == "surface-heat" else _real(p, *a, **k)
+(ea / "change_2024_2025.json").write_text(json.dumps({**stats, "wall": {"bounds": safe, "ha": 61.2}}))
+r = c.get("/wall")
+packs.module = _real
+assert r.status_code == 200 and r.json()["change"] is None, r.text
+print("  a malformed file or a missing helper: that block is null, the route still answers")
 
 # ---- a hydro square smaller than the city frame: its edge is round the house, so no water at all
 os.environ["HYDRO_RADIUS_KM"] = "5"
