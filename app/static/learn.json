@@ -2083,7 +2083,7 @@
      "Bisakah tamu melihat sesuatu yang pribadi di sini?"
     ]
    },
-   "quote": "Anyone in the room reads the Wall, so it names no sensor, room, kit or person, and the model's facts carry none of\nthem either. What is asked is the node's own sentence, never the alert's text, which can name a room.",
+   "quote": "Anyone in the room reads the Wall, so it names no sensor, room, kit or person, and the model's facts carry none of\nthem either. What is asked is the node's own sentence. The alert's text can name a room, so the Wall leaves it out.",
    "section": "What the Wall never shows",
    "title": "What the Wall never shows",
    "url": "https://planetai.fab.city/docs/wall/#what-the-wall-never-shows"

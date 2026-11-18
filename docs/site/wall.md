@@ -4,8 +4,8 @@
 The Wall is the node on a screen in a living room or a lab, read from about three metres by people who know nothing
 about air science, and operated by nobody. It is a satellite map that walks out from the house, through the three
 sizes a node can have, with the day replayed on it and the wind and the swell moving across it. Beside the map it
-says what is asked of the house and what the node's model makes of it. It asks nothing itself, an answer belongs
-where somebody can write one, on Telegram, over the radio or on the dashboard.
+says what is asked of the house and what the node's model makes of it. It asks nothing itself. Somebody answers on
+Telegram, over the radio or on the dashboard, where they can write.
 
 ```
 http://<node>:8080/#wall
@@ -15,21 +15,23 @@ http://<node>:8080/#wall
 
 1. **Let the house read the node.** A wall screen carries no token, so it needs `SHARE_LEVEL=open`:
    `planetai config set SHARE_LEVEL open`, or Set up › Sharing. At `off` the Wall draws one line, "This screen needs
-   sharing turned on.", and never a token form.
+   sharing turned on.", and asks for no token.
 2. **Open `/#wall` on the screen.** You should see, in the dark register and inside one viewport, the map on the
    left, a column on the right with the time, the node's sentence and the size on the map, and a strip of four
    readings under both. The bar and the foot of the other doors are gone.
 3. **Leave it.** The map spends one replayed day at each size, 30 seconds, an hour every 1.25 s, so the whole walk
-   takes a minute and a half and then starts again at the house. If the screen has reduced motion on, nothing moves:
-   the Wall holds the base size at the last hour, with the wind and the crests drawn still.
+   takes a minute and a half and then starts again at the house. With reduced motion on nothing moves, and the Wall
+   holds the base size at the last hour with the wind and the crests drawn still.
 4. **Reload it now and then.** The Wall reads the node when the page opens.
 
 The map needs MapLibre and WebGL. A screen without them still draws the column and the strip, and says "This screen
-cannot draw the map." where the map would be. When the node sends nothing for the map (it has no place yet, or the
-read failed), the line is "The node sent no map."
+cannot draw the map." where the map would be. The column and the strip are drawn before the node answers for the map.
+When the node sends nothing for the map (it has no place yet, or the read failed), the line is "The node sent no
+map.", and the Wall asks again after 30 seconds, then a minute, then twice as long each time up to five minutes, and
+draws the map once it comes. If the screen loses its graphics, the map is drawn again at the next hour.
 
-> **Gap in v0.91.0.** The Wall does not re-read the node while it stays open: its figures are those of the moment it
-> was opened, and only the narration is new every ten minutes. Reload the screen, or put the classic wall up instead,
+> **Gap in v0.91.0.** The Wall does not re-read the node while it stays open, so its figures are those of the moment
+> it was opened, and only the narration is new every ten minutes. Reload the screen, or put the classic wall up instead,
 > which re-reads on `POLL_SECONDS`.
 
 ## What it shows
@@ -40,7 +42,8 @@ read failed), the line is "The node sent no map."
 
 Nothing on the Wall is smaller than 20 px at 1920×1080, and the type scales with the screen. The one exception is the
 size legend at the bottom right of the map, at 16 px. On a phone or a portrait screen the floor never drops under
-12 px. The Wall reads in this order:
+12 px, and the size legend is hidden there, because it would sit under the chapter's words. The Wall reads in this
+order:
 
 - **The map**, most of the screen. Satellite imagery where the node holds it (`/ground/imagery`), dimmed so the
   layers read over it, and where it does not, the node's own streets, dark. Over the map, at the top left, the size
@@ -67,8 +70,7 @@ stacks: the map first, at about 60 % of the height, then the column, then the st
 
 ## The three sizes
 
-The sizes are the three kinds of node. Each is a cell and the six touching it, one resolution coarser than the size
-before.
+Each size is a cell and the six touching it, one resolution coarser than the size before.
 
 | size | cells | on node #1 |
 |---|---|---|
@@ -92,7 +94,7 @@ packs has fewer chapters.
 | community | Land that changed | the ground that looked different from one year to the next, in the community's whole cells | the earth pack, after `planetai run earth change` |
 | community | The lab | the nearest fab lab, ringed, and how far it is | the make pack |
 | community | Rivers | the rivers around, and the nearest one's flow | the hydro pack |
-| city | Fossil power | at least how much of the grid's power is burnt fuel, and the nearest large plant within 30 km, with a dotted line to it from the middle of the house's cell | the energy pack |
+| city | Fossil power | at least how much of the grid's power is burnt fuel, and the nearest plant of 100 MW or more within 30 km, with a dotted line to it from the middle of the house's cell | the energy pack |
 | city | The basin | all the ground that drains to the sea with the house, and the largest river nearby | the hydro pack |
 | city | Swell | the crests on the sea at full strength | Open-Meteo's marine model |
 | city | City air | the stations across the island as they read now, the government's ringed and named | the bali-air-dispatch pack |
@@ -101,8 +103,8 @@ The island's stations have no day on the node, so they do not replay, and they a
 than three hours old.
 
 The camera glides to a new size in 2.6 s, and widens in 1.6 s when a chapter draws something outside the cells, such
-as the plant or the basin. The camera is the only thing on the Wall that glides, the figures step from hour to hour
-and never count up.
+as the plant or the basin. Nothing else on the Wall glides. The figures step from hour to hour and do not count up.
+While the camera glides the crests on the sea are off, and they fade back in when it stops.
 
 ## Wind and swell
 
@@ -123,12 +125,12 @@ Every ten minutes the Wall asks `POST /ask` with `prompt: wall`, so the model is
 (`AGENT_PREFER`). The node tells it to speak like a calm neighbour in six to eight plain sentences: what is happening
 inside, how it compares with the street and the neighbourhood, what it suggests for an ordinary day, and what the next
 hours may bring, with no units, at most two numbers, and never saying that anything is safe. The model is offered no
-tools, since every fact it may use is in the request, so it answers without thinking first: a few seconds on node #1's
-remote model, where thinking had taken more than four minutes and the box stayed empty. The Wall types the text at a
-reading pace. A story taller than its box then rolls up, a line every three seconds, in a loop that brings its start
-round again; under reduced motion it stands still at its start. The last text stays up while the next is written,
-held in the page's memory and never stored. The box calls itself a model's words from the node's figures, never a reading, and says "written online" when the
-keeper's choice sent the question out. With no model on the node, or `UI_ASK=off`, there is no box.
+tools, since every fact it may use is in the request, so it answers without thinking first. That takes a few seconds on
+node #1's remote model, where thinking had taken more than four minutes and the box stayed empty. The Wall types the
+text at a reading pace. A story taller than its box then rolls up, a line every three seconds, in a loop that brings its
+start round again; under reduced motion it stands still at its start. The last text stays up while the next is written,
+held in the page's memory and never stored. The box says these are a model's words from the node's figures, and "written
+online" when the keeper's choice sent the question out. With no model on the node, or `UI_ASK=off`, there is no box.
 
 The node gives the model only public facts, each a short labelled line with its unit and where it comes from (`live`,
 `model` or `satellite`): the time of day; each watched issue's day sentence, its values inside the home, on the
@@ -142,18 +144,19 @@ angle with no facts is skipped.
 ## What the Wall never shows
 
 Anyone in the room reads the Wall, so it names no sensor, room, kit or person, and the model's facts carry none of
-them either. What is asked is the node's own sentence, never the alert's text, which can name a room. It never shows
-what the house learned, its diary, its things or a button to answer, and nothing on it is placed finer than the
-house's cell.
+them either. What is asked is the node's own sentence. The alert's text can name a room, so the Wall leaves it out.
+It does not show what the house learned, its diary, its things or a button to answer, and nothing on it is placed
+finer than the house's cell.
 
 The map is read without a token, from `GET /wall`, so the node coarsens it before it leaves. The house is always its
-resolution-8 cell, never a point. Every distance is in whole kilometres from the middle of that cell, and the line to
-a power plant starts there too. The only points are public ones, stations, labs and plants, at three decimals. A
-station near the house is left out wherever in the cell the house stands, so a missing dot does not give the house
-away. The roofs are counted around the middle of the cell, the land that changed is cut to the community's whole
-cells, never to the earth pack's square round the house, and the place pack's satellite-only roofs, which stop in a
-circle round the house, are not drawn. Nothing on the map is named but public places, such as the government's station or the nearest lab.
-It is always dark, whatever register the other doors are in.
+resolution-8 cell. Every distance is in whole kilometres from the middle of that cell, and the line to a power plant
+starts there too. Only public places have a point on the map, at three decimals. The stations are the ones the
+station packs read, and a radio or the house's own kit away from home is not one of them. A station near the house
+is left out wherever in the cell the house stands, so a missing dot does not give the house away. The roofs
+are counted in whole 100 m around the middle of the cell. The land that changed is cut to the community's whole
+cells, and the earth pack's square round the house is not used for it. The place pack's satellite-only roofs stop
+in a circle round the house, so they are not drawn. The only names on the map are public places, such as the
+government's station or the nearest lab. It is always dark, whatever register the other doors are in.
 
 ## The classic wall
 

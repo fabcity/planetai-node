@@ -423,7 +423,7 @@ MARKS = [
      "This tab lists every route on this node, one line each, with a search. The doors read the same "
      "routes a script or a spreadsheet can."),
     ("wall-never", "What the Wall never shows", "wall.md", "What the Wall never shows",
-     "Anyone in the room reads the Wall", "which can name a room.",
+     "Anyone in the room reads the Wall", "so the Wall leaves it out.",
      "Nothing on it is placed finer than the house's cell, and the screen holds no token and no button. An "
      "answer belongs on Telegram, the radio or the other doors."),
     ("wall-sentence", "The time and the sentence", "wall.md", "What it shows",
