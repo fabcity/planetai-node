@@ -19,7 +19,7 @@ A request is trusted when it comes from loopback or carries a household token: `
 | `act` | Loopback with no token; from anywhere else `ACT_TOKEN` or `ADMIN_TOKEN`. |
 | `children` | `AGGREGATE_TOKEN`, which a parent gives its children. It opens `POST /aggregates` and `POST /events` and nothing else. |
 
-The `off` allowlist, the default, is `/`, `/ui`, `/workbench`, `/tester`, `/health`, `/llms.txt`, `/settings`, `/export`, `/presence`, `/nodes`, `/offers` and anything under `/static/`. The `open` allowlist adds `/stats`, `/sensors`, `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/packs/all`, `/trust`, `/nearby`, `/forecast`, `/index/place`, `/energy`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, `/ask`, `/ask/status`, `/docs/search`, `/geo/cell`, `/learned/place`, `/wall`, and anything under `/exports/`, `/issues`, `/sources/`, `/ground/` or `/wall/`. The pack routes among them (`/offers`, `/nearby`, `/forecast`, `/index/place`, `/energy` and the `/earth` paths) are put there by their pack's `pack.yaml` (`share:`). Any other value counts as `off`. The lists match the path whatever the method, so at `open` an anonymous `POST /readings` reaches the handler and gets 401. A path with no route also gets 403.
+The `off` allowlist, the default, is `/`, `/ui`, `/workbench`, `/tester`, `/health`, `/llms.txt`, `/settings`, `/export`, `/presence`, `/nodes`, `/offers` and anything under `/static/`. The `open` allowlist adds `/stats`, `/sensors`, `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/packs/all`, `/trust`, `/nearby`, `/forecast`, `/index/place`, `/energy`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/wall.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, `/ask`, `/ask/status`, `/docs/search`, `/geo/cell`, `/learned/place`, `/wall`, and anything under `/exports/`, `/issues`, `/sources/`, `/ground/` or `/wall/`. The pack routes among them (`/offers`, `/nearby`, `/forecast`, `/index/place`, `/energy` and the `/earth` paths) are put there by their pack's `pack.yaml` (`share:`). Any other value counts as `off`. The lists match the path whatever the method, so at `open` an anonymous `POST /readings` reaches the handler and gets 401. A path with no route also gets 403.
 
 Tokens travel in the `Authorization` header only, never in a query string, and are compared in constant time. `ADMIN_TOKEN` is in `.env`, the other three in settings, and `planetai ui` prints them. An optional `X-Agent` header names the caller; `PUT /settings` writes it to the ledger.
 
@@ -44,7 +44,7 @@ The middlewares answer `{"error": "..."}`. A share-level 403 names the level and
 
 For a path no level opens it ends "No share level opens this one, so it always needs a token from anywhere but the node itself." `/mcp` without the admin token is 401 `{"error": "the agent surface needs Authorization: Bearer <ADMIN_TOKEN>"}`.
 
-Some routes are a pack's, served from `packs/<id>/routes.py`: `/forecast` (forecast), `/nearby` (nearby), `/index/place` (index), `/energy` (energy), `/earth`, `/earth/change.png` and `/earth/year.png` (earth), `/earth/frame.png` (earth-engine), `/hydro` (hydro), every `/captures` route and `/species` (eyes), and `/things` and `/offers` (things). While its pack is off on the node, such a route answers 404 `{"detail": "the <pack> pack is off on this node"}`.
+Some routes are a pack's, served from `packs/<id>/routes.py`: `/forecast` (forecast), `/nearby` (nearby), `/index/place` (index), `/energy` (energy), `/earth`, `/earth/change.png`, `/earth/year.png` and `/earth/wall.png` (earth), `/earth/frame.png` (earth-engine), `/hydro` (hydro), every `/captures` route and `/species` (eyes), and `/things` and `/offers` (things). While its pack is off on the node, such a route answers 404 `{"detail": "the <pack> pack is off on this node"}`.
 
 Handlers answer `{"detail": "..."}`. The token checks:
 
@@ -373,6 +373,11 @@ A land-change map, `?pair=YYYY_YYYY` (default the latest). 404 `no such land-cha
 Access: open
 
 One year drawn from the embeddings in grey, `?year=` required. 404 `no frame for <year>: planetai run earth frames`.
+
+### GET /earth/wall.png
+Access: open
+
+The Wall's land-change image, for the pair `/wall` picks (the newest year-over-year pair, else the newest): the pixels that changed, inside the community's res-7 cells that fit a square centred on the node's res-8 cell, transparent elsewhere, with no ring and no scale bar. `/wall`'s `change.corners` place it. 204 until `planetai run earth change` has drawn it for that pair.
 
 ### GET /earth/frame.png
 Access: open

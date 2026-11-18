@@ -358,11 +358,13 @@ def ramp_indices(dist, masked):
     return ix
 
 
-def write_png(path, ix, texts: dict | None = None) -> int:
+def write_png(path, ix, texts: dict | None = None, palette: bytes | None = None, trns: bytes | None = None) -> int:
     """An indexed-colour PNG from a (H, W) uint8 array of palette indices. zlib and struct are enough; the
     node has no image library and this pack is not going to add one. Returns the file size.
 
     The attribution travels inside the file as a tEXt chunk, so a PNG that leaves the node still carries it.
+    `palette` replaces the grey ramp, and `trns` is the alpha of the first palette entries (b"\x00": entry 0
+    is transparent).
     """
     import struct
     import zlib
@@ -375,13 +377,90 @@ def write_png(path, ix, texts: dict | None = None) -> int:
         raw += ix[r].tobytes()
     out = b"\x89PNG\r\n\x1a\n"
     out += chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 3, 0, 0, 0))
-    out += chunk(b"PLTE", _palette())
+    out += chunk(b"PLTE", palette or _palette())
+    if trns is not None:
+        out += chunk(b"tRNS", trns)
     for k, v in (texts or {}).items():
         out += chunk(b"tEXt", k.encode("latin-1", "replace") + b"\x00" + v.encode("latin-1", "replace"))
     out += chunk(b"IDAT", zlib.compress(bytes(raw), 6))
     out += chunk(b"IEND", b"")
     path.write_bytes(out)
     return len(out)
+
+
+# ---------------------------------------------------------------- the image the Wall may show
+
+# The Wall is a screen with no token, and may show nothing finer than the house's res-8 cell (app/wall.py). The
+# square this pack reads is centred on the house's pixel, so its edges, its ring and its hectares all give the house
+# away. The Wall's image is cut from it by the cell instead: the community's res-7 cells (the disk of one around the
+# res-8 cell's parent) that lie wholly inside a square centred on the res-8 cell's centre, whose half-width is the
+# radius less the farthest the house can be from that centre. That square is inside the one read wherever the house
+# stands in its cell, and the pixels are the dataset's own 10 m grid, so the image, its bounds and its hectares are
+# the same for every point in the cell. Changed pixels only, in one colour; everything else is transparent.
+WALL_PALETTE = b"\x00\x00\x00\xff\xbe\x78"          # 0: transparent (with trns=b"\x00"), 1: changed, #FFBE78
+SNAP_M = 10                                             # the square read is snapped to the house's pixel
+
+
+def projection(epsg: int):
+    """(lat, lon) to metres in a UTM EPSG code, by the surface-heat pack's Snyder series: no pyproj on a node.
+    A pure function borrowed from a sibling pack, as app/wall.py does."""
+    spec = importlib.util.spec_from_file_location(
+        "planetai_pack_surface_heat_for_earth", Path(__file__).resolve().parent.parent / "surface-heat" / "adapter.py")
+    sh = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(sh)  # type: ignore[union-attr]
+    return sh.projection(epsg)
+
+
+def allowed_raster(bounds: dict, crs: str, shape: tuple[int, int], home: str, radius_m: float):
+    """(H, W) bool over the square read (north up, `bounds` in `crs`): True on the pixels whose centres fall in the
+    community's res-7 cells that lie wholly inside the safe square round `home`'s centre, and inside the raster."""
+    import h3
+    import numpy as np
+    fwd = projection(int(str(crs).rsplit(":", 1)[-1]))
+    c = h3.cell_to_latlng(home)
+    circum = max(h3.great_circle_distance(c, v, unit="m") for v in h3.cell_to_boundary(home))
+    cx, cy = fwd(*c)
+    half = radius_m - circum - SNAP_M
+    h, w = shape
+    pw, ph = (bounds["east"] - bounds["west"]) / w, (bounds["north"] - bounds["south"]) / h
+    west, east = max(cx - half, bounds["west"]), min(cx + half, bounds["east"])
+    south, north = max(cy - half, bounds["south"]), min(cy + half, bounds["north"])
+    X = (bounds["west"] + (np.arange(w) + 0.5) * pw)[None, :]
+    Y = (bounds["north"] - (np.arange(h) + 0.5) * ph)[:, None]
+    out = np.zeros(shape, bool)
+    for cell in h3.grid_disk(h3.cell_to_parent(home, 7), 1):
+        ring = [fwd(*v) for v in h3.cell_to_boundary(cell)]
+        if not all(west <= x <= east and south <= y <= north for x, y in ring):
+            continue
+        inside = np.zeros(shape, bool)                  # even-odd rule on the pixel centres
+        for (x1, y1), (x2, y2) in zip(ring, ring[1:] + ring[:1]):
+            if y1 == y2:
+                continue
+            inside ^= ((y1 > Y) != (y2 > Y)) & (X < x1 + (Y - y1) * (x2 - x1) / (y2 - y1))
+        out |= inside
+    return out
+
+
+def wall_mask(dist, masked, threshold: float, allowed):
+    """(H, W) uint8: 1 where the land changed (over `threshold`, not masked) inside `allowed`, else 0."""
+    return ((dist > threshold) & ~masked & allowed).astype("uint8")
+
+
+def wall_image(dist, masked, bounds: dict, crs: str, home: str, radius_m: float, threshold: float):
+    """The Wall's image and its crop: (ix, {"bounds", "ha"}), the image cut to the allowed cells' box, bounds in
+    `crs`, ha the changed pixels inside the cells. None when no community cell fits the square."""
+    import numpy as np
+    allowed = allowed_raster(bounds, crs, dist.shape, home, radius_m)
+    if not allowed.any():
+        return None
+    rows, cols = np.flatnonzero(allowed.any(1)), np.flatnonzero(allowed.any(0))
+    r0, r1, c0, c1 = int(rows[0]), int(rows[-1]) + 1, int(cols[0]), int(cols[-1]) + 1
+    h, w = dist.shape
+    pw, ph = (bounds["east"] - bounds["west"]) / w, (bounds["north"] - bounds["south"]) / h
+    ix = np.ascontiguousarray(wall_mask(dist, masked, threshold, allowed)[r0:r1, c0:c1])
+    box = {"west": bounds["west"] + c0 * pw, "east": bounds["west"] + c1 * pw,
+           "north": bounds["north"] - r0 * ph, "south": bounds["north"] - r1 * ph}
+    return ix, {"bounds": box, "ha": round(int(ix.sum()) * pw * ph / 10000.0, 1)}
 
 
 # A 3x5 digit, so a frame that leaves the node still says which year it is. Ten glyphs is cheaper than a

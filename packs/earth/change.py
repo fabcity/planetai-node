@@ -6,7 +6,9 @@ reading it in: the span is where persistent change stands out from the year-to-y
 yearly steps say when each thing happened. Already-computed pairs are skipped unless `--force`.
 
 Writes change_<A>_<B>.png (north up, a grey ramp, the node ringed) and change_<A>_<B>.json (mean, median,
-p95, the share and the hectares above the threshold, the bounds, the source objects) into out/earth/<node>/.
+p95, the share and the hectares above the threshold, the bounds, the source objects) into out/earth/<node>/,
+and change_<A>_<B>_wall.png, the Wall's image (changed pixels in the community's cells only), whose crop the
+JSON keeps under `wall`.
 """
 import json
 import os
@@ -24,8 +26,9 @@ import adapter as A                                                             
 # 0.05, the threshold the earth-engine pack uses on a different quantity, flags a third of this square.
 CHANGED = 0.15
 
-A.require("numpy")
+A.require("numpy", "h3")
 
+import h3                                                                        # noqa: E402
 import numpy as np                                                               # noqa: E402
 
 USAGE = "usage: planetai run earth change [A B | --all] [--force]"
@@ -121,6 +124,21 @@ def compare(a, b):
                        f"North up, 10 m per pixel, grey ramp 0 to {A.RAMP_CEILING}. Black is no data.",
         "Copyright": A.ATTRIBUTION,
     })
+    # The Wall's own image (adapter.py::wall_image): no ring, no scale bar, nothing that moves with the house.
+    # Placed from NODE_LAT/NODE_LON, the point /wall reads; without them there is no cell to crop by.
+    wall = None
+    if stats["bounds"] and stats["crs"] and os.getenv("NODE_LAT") and os.getenv("NODE_LON"):
+        lat, lon, radius = A.aoi()
+        wall = A.wall_image(dist, masked, stats["bounds"], stats["crs"], h3.latlng_to_cell(lat, lon, 8),
+                            stats["radius_m"] or radius, CHANGED)
+    if wall:
+        A.write_png(A.change_file(a, b, "png").with_name(f"change_{a}_{b}_wall.png"), wall[0], {
+            "Title": f"Land changed {a}-{b}",
+            "Description": f"Pixels over {CHANGED} in 1 - cosine similarity of annual AlphaEarth embeddings, inside "
+                           f"the community's H3 cells. North up, 10 m per pixel.",
+            "Copyright": A.ATTRIBUTION,
+        }, palette=A.WALL_PALETTE, trns=b"\x00")
+        stats["wall"] = wall[1]
     A.change_file(a, b, "json").write_text(json.dumps(stats, indent=1))
 
     print(f"earth: {a} → {b} over {stats['px'][0] * 10 / 1000:.1f} x {stats['px'][1] * 10 / 1000:.1f} km, "

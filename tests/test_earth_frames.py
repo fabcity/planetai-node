@@ -122,6 +122,20 @@ for d in (earth / "bayu-2", earth / "bayu-ungasan"):
 if ER.pack.cache() != earth / "bayu-ungasan":
     fails.append(f"another city's square must never answer for this node: {ER.pack.cache()}")
 
+# /earth/wall.png: the image of the pair /wall picks (the newest year-over-year, else the newest), 204 without it
+mine = earth / "bayu-ungasan"; mine.mkdir()
+if ER.earth_wall_png().status_code != 204:
+    fails.append("with no comparison, /earth/wall.png must be 204")
+for a, b in ((2023, 2024), (2024, 2025), (2023, 2025)):
+    (mine / f"change_{a}_{b}.json").write_text(json.dumps({"year_a": a, "year_b": b}))
+(mine / "change_2023_2024_wall.png").write_bytes(b"\x89PNG old")
+if ER.earth_wall_png().status_code != 204:
+    fails.append("the newest year-over-year pair has no Wall image: 204, never an older pair's")
+(mine / "change_2024_2025_wall.png").write_bytes(b"\x89PNG new")
+r = ER.earth_wall_png()
+if str(getattr(r, "path", None)) != str(mine / "change_2024_2025_wall.png") or r.media_type != "image/png":
+    fails.append(f"/earth/wall.png must serve change_2024_2025_wall.png, got {getattr(r, 'path', r)}")
+
 print("\n".join(f"  x {f}" for f in fails) or
       "  earth frames: the glob finds a renamed node's frames and its cache, keeps the two records "
       "apart, and both 404s say what to do")
