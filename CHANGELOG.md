@@ -15,6 +15,13 @@
   house's cell and every distance is in whole km. A chapter the node has no data for is left out. docs/wall,
   docs/api.
 
+- **The yearly building count was 64 times low.** Place and its report showed 128 buildings in 2023 round node #1,
+  where the satellite's footprints count 5,994 in the same circle. The count band of Google's Open Buildings Temporal
+  sits on a 0.5 m grid and the node added it up at 4 m, so it read one pixel where 64 stood. It now weighs each pixel
+  by its area, which is the factor of 64 in Google's own example. A node that already holds the low series gets the
+  right one at its next monthly refresh. `planetai run place refresh` does it at once, because it now counts the
+  satellite's buildings again as well as fetching the map. In Data the series was labelled "buildings added", and it
+  is the count of buildings standing each year. docs/packs-reference.
 - **The Place report reads the place.** Two pages now come before the figures. A reading of this place says what kind
   of place this is, under five headings, and each sentence rests on a figure the node holds. Ways to improve it lists
   four to six things worth doing here, each with a first step, the nearest lab, and its layer and key action in the Fab

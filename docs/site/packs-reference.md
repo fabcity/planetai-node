@@ -948,7 +948,8 @@ cell says `partial`.
 
 ### Scripts
 
-- `planetai run place refresh`: force a fetch from Overpass, so edits to the map reach the node within minutes.
+- `planetai run place refresh`: force a fetch from Overpass, so edits to the map reach the node within minutes. With the
+  `earth-engine` credentials in place it also counts the satellite's buildings again.
 - `planetai run place gaps`: the mapping briefing, with untyped buildings, empty categories, named places without hours and unnamed streets, written to `out/place-gaps.md` for a mapping afternoon at the lab.
 - `planetai run place verify`: PostGIS, OpenStreetMap, Earth Engine and Open Buildings, each step named; it names the mismatch after a move.
 - `planetai run place basemap [--only vector|drone] [--dry-run]`: keeps a map of the place on the node's disk, in `out/ground/`, served at `GET /ground/*`: OpenStreetMap vector tiles cut from Protomaps' daily build, in three rings to zoom 15, with the label fonts, and any OpenAerialMap drone mosaic (CC BY 4.0) that crosses the drone ring. Protomaps and OpenAerialMap learn the square once, and the script says so before it runs.
