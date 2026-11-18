@@ -116,7 +116,8 @@ function wallDraw(h) {
   if (WALL.map) WALL.map.hour(h);
   headFit();
 }
-/* a size on the map: the camera to its cells, a cut when asked (a redraw, reduced motion), else MapLibre's glide */
+/* a size on the map: the camera to its cells at the next wallDraw, a cut when asked (a redraw, reduced motion), else
+   MapLibre's glide */
 function wallScale(s, cut) { WALL.s = s; if (WALL.map) WALL.map.go(s, cut); }
 /* the column fits whole: past it the tagline goes first, then the Telegram line (node #1, 10 Nov: a three-line
    sentence put the ask under the bottom of the screen) */
@@ -129,10 +130,9 @@ function headFit() {
 /* the replay's one clock: an hour every HOUR_STEP, a day at each size, then the next size */
 function wallTick(now) {
   if (view() !== 'wall') return CLOCK.off('wall-replay');
-  if (CLOCK.reduced()) { WALL.still = true; CLOCK.off('wall-replay'); if (WALL.h !== 23 || WALL.s) { wallScale(0, true); wallDraw(23); } return; }   /* motion turned off while it ran */
+  if (CLOCK.reduced()) { WALL.still = true; CLOCK.off('wall-replay'); CLOCK.off('wall-fx'); if (WALL.h !== 23 || WALL.s) { wallScale(0, true); wallDraw(23); } return; }   /* motion turned off while it ran */
   const i = Math.floor((now - WALL.t0) / (WALL_TIME.HOUR_STEP() * 1000)), s = Math.floor(i / 24) % Math.max(1, WALL.story.length), h = i % 24;
-  if (s !== WALL.s) wallScale(s);
-  if (h !== WALL.h) wallDraw(h);
+  if (s !== WALL.s) { wallScale(s); wallDraw(h); } else if (h !== WALL.h) wallDraw(h);   /* a size takes effect at its first hour */
 }
 const wallGet = p => doorsFetch(p).then(r => r.ok ? r.json() : null).catch(() => null);
 VIEWS.wall = async function () {
@@ -145,7 +145,7 @@ VIEWS.wall = async function () {
     matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', e => {           /* still at the last hour, or the replay again */
       if (view() !== 'wall') { WALL.still = null; return; }   /* changed off the Wall: it starts over when it opens */
       WALL.still = e.matches;
-      if (e.matches) { CLOCK.off('wall-replay'); wallScale(0, true); wallDraw(23); } else { WALL.t0 = performance.now(); CLOCK.on('wall-replay', wallTick); }
+      if (e.matches) { CLOCK.off('wall-replay'); CLOCK.off('wall-fx'); wallScale(0, true); wallDraw(23); } else { WALL.t0 = performance.now(); CLOCK.on('wall-replay', wallTick); }
     }); }
   /* one read of /wall a draw, and /ground/meta for which ground the node holds; a screen refused either draws without it */
   const [W, G] = await Promise.all([wallGet('/wall'), wallGet('/ground/meta')]);

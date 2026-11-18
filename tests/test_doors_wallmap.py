@@ -135,3 +135,57 @@ print("  story: a missing block drops its chapter, a scale with none still stand
 
 assert S["at"] == [3, 0, 4, 0, 1, 0, 2], S["at"]
 print("  story: chapterAt splits the day evenly and never runs past the last chapter")
+
+
+# ---- the DOM half: the mount, on a fake MapLibre that records what the map is told ----
+# A size changes at hour 0 (the hour before was 23, the widest frame of the size before): the camera makes one 2.6 s glide
+# to chapter 0's frame of the new size, never first to its last chapter's frame. A chapter changing inside a size glides
+# 1.6 s. Reduced motion turned on while the Wall shows takes the wind and the crests off the clock (CLOCK.on refuses then,
+# but keeps a key already on), and destroy() lets the map go.
+mount = json.loads(subprocess.run(["node", "-e", r"""
+const fs = require('fs'), vm = require('vm');
+const W = JSON.parse(fs.readFileSync('./tests/fixtures/wall-node1.json', 'utf8'));
+const fits = [], layers = new Set(); let removed = 0;
+class FakeMap {
+  constructor() { this.ev = {}; FakeMap.last = this; }
+  on(e, f) { (this.ev[e] ||= []).push(f); } fire(e) { (this.ev[e] || []).forEach(f => f()); }
+  addSource() {} addLayer(l) { layers.add(l.id); } getLayer(id) { return layers.has(id); } addControl() {}
+  setLayoutProperty() {} setPaintProperty() {} getSource() { return { setData() {} }; } fitBounds(b, o) { fits.push({ b, d: o.duration }); }
+  getCenter() { return { toArray: () => [0, 0] }; } getZoom() { return 10; } querySourceFeatures() { return []; } project() { return { x: 0, y: 0 }; }
+  remove() { removed++; }
+}
+const subs = new Map(); let reduced = false;
+const CLOCK = { subs, reduced: () => reduced, on(id, fn) { if (reduced) return false; subs.set(id, fn); return true; }, off(id) { subs.delete(id); } };
+const el = { innerHTML: '', firstChild: {}, lastChild: { getContext: () => null }, getBoundingClientRect: () => ({ width: 800, height: 600 }) };
+const ctx = { maplibregl: { Map: FakeMap, Marker: class { setLngLat() { return this; } addTo() { return this; } remove() {} }, AttributionControl: class {} },
+  CLOCK, view: () => 'wall', performance, devicePixelRatio: 1, console, W, el, location: { origin: 'http://n' },
+  D: { issues: { air: { line: 15, series: { room: Array(24).fill(5) } } } },
+  getComputedStyle: () => ({ getPropertyValue: () => '#123456' }), document: { createElement: () => ({}) } };
+vm.createContext(ctx);
+vm.runInContext(fs.readFileSync('./app/static/doors-wallmap.js', 'utf8'), ctx);
+ctx.story = vm.runInContext(`wallStory(W, { issues: { air: { line: 15, stack: { room: { value: 5, provenance: 'live', n: 3 }, ring: { value: 9, provenance: 'partial', source: 'x' } } },
+  land: { readouts: [{ metric: 'built_frac', value: 91, provenance: 'model' }] }, coast: { readouts: [{ metric: 'swell_height_m', value: 1.6, provenance: 'model' }] } } })`, ctx);
+const S = ctx.story, M = vm.runInContext('wallMapMount(el, W, story, { vector: true })', ctx);
+const box = pts => pts.reduce((b, [x, y]) => [[Math.min(b[0][0], x), Math.min(b[0][1], y)], [Math.max(b[1][0], x), Math.max(b[1][1], y)]], [[180, 90], [-180, -90]]);
+const frame = (s, ch) => box([...S[s].cells.flatMap(c => c.ring), ...((ch && ch.fit) || [])]);
+const out = {};
+M.go(0, true); M.hour(23); FakeMap.last.fire('load');          // a redraw at hour 23: one cut, the base size's last chapter
+out.first = fits.splice(0);
+M.hour(0); out.chapter = fits.splice(0);                       // the day starts again: a chapter change inside the size
+M.go(2); out.goAlone = fits.splice(0);                          // the size changes as the wallTick does it ...
+M.hour(0); out.size = fits.splice(0);                           // ... and takes effect at its first hour
+out.want = { first: frame(0, S[0].chapters[S[0].chapters.length - 1]), chapter: frame(0, S[0].chapters[0]), size: frame(2, S[2].chapters[0]),
+  last2: frame(2, S[2].chapters[S[2].chapters.length - 1]) };
+out.fxOn = subs.has('wall-fx');
+reduced = true; subs.get('wall-fx')(performance.now()); out.fxReduced = subs.has('wall-fx');   // reduced motion turned on mid-run
+reduced = false; M.hour(1); out.fxBack = subs.has('wall-fx');
+M.destroy(); out.fxGone = !subs.has('wall-fx'); out.removed = removed;
+console.log(JSON.stringify(out));
+"""], capture_output=True, text=True, check=True).stdout)
+assert len(mount["first"]) == 1 and mount["first"][0]["d"] == 0 and mount["first"][0]["b"] == mount["want"]["first"], mount["first"]
+assert len(mount["chapter"]) == 1 and mount["chapter"][0]["d"] == 1600 and mount["chapter"][0]["b"] == mount["want"]["chapter"], mount["chapter"]
+assert mount["goAlone"] == [], "go() moved the camera before the size's first hour"
+assert len(mount["size"]) == 1 and mount["size"][0]["d"] == 2600 and mount["size"][0]["b"] == mount["want"]["size"] != mount["want"]["last2"], mount["size"]
+print("  mount: a size change is one 2.6 s glide to its first chapter's frame; a chapter inside it 1.6 s; a redraw cuts")
+assert mount["fxOn"] and not mount["fxReduced"] and mount["fxBack"] and mount["fxGone"] and mount["removed"] == 1, mount
+print("  mount: reduced motion turned on mid-run takes the wind and the crests off the clock; destroy lets the map go")

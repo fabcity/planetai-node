@@ -266,10 +266,11 @@ node tests/visual/measure.mjs mobile
 # lands; and a change that leaves the machine asks first. PAI_DOORS_SHOTS=1 keeps a picture of every pane.
 node tests/visual/measure.mjs doors
 
-# The Wall's instruments (8 Nov): one screen at 1920×1080 with no screen clipped, nothing under the 28 px floor, every
-# figure dated with one of the five provenance words and no room or sensor named, the narration between the words and
-# the balance; still under reduced motion, stepping hour by hour with motion on.
-node tests/visual/measure.mjs wallstage
+# The Wall's walk (18 Nov), as a screen with no map draws it: the column and the strip at 1920×1080, 1440×900 and 390,
+# one screen on a TV, nothing under the 20 px floor but the size legend, every strip figure dated with one of the five
+# provenance words and no room or sensor named, the map's overlays and its one line, the narration inside the column;
+# still at the base size under reduced motion, stepping the hours and walking the sizes with motion on.
+node tests/visual/measure.mjs wallwalk
 
 # The controls on the Place screen (5 Nov 2026): the keys, the readout, the hour, the right column, the rungs, the base
 # switch, the zoom, the scale and the credit, with software WebGL so the live map draws them, at the widths in between,

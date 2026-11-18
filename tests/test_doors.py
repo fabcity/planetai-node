@@ -252,7 +252,8 @@ const calls = []; globalThis.fetch = p => { calls.push(p); return Promise.resolv
     + ' for (const s of [1, 2]) { WALL.s = s; wallDraw(h); chap.push($("#wscale").innerHTML); ov.push(over()); }'
     + ' return { strip, chap, ov, from: [atHour(WF.hours.wave_from, h), atHour(WF.hours.wind_from, h)] }; });'
     + ' WALL.story = [{ ...WALL.story[0], chapters: [] }]; WALL.s = 0; wallDraw(5); out.bare = $("#wscale").innerHTML;'
-    + ' const bare = D.buckets, rawb = D.raw.buckets; D.buckets = []; D.raw.buckets = []; out.nohours = wallDay24().B; out.asof = D.as_of; D.raw.buckets = rawb; D.buckets = bare;'
+    + ' const bare = D.buckets, rawb = D.raw.buckets; D.buckets = []; out.nodays = { B: wallDay24().B, raw: rawb.slice(-24) };'
+    + ' D.raw.buckets = []; out.nohours = wallDay24().B; out.asof = D.as_of; D.raw.buckets = rawb.slice(-5); out.short5 = wallDay24().B; D.raw.buckets = rawb; D.buckets = bare;'
     /* and the whole view, drawn on that screen */
     + ' D.askOff = true; WALL.h = null; out.view = VIEWS.wall().then(() => ({ wallv: $("#wallv").innerHTML, map: $("#wmbox").innerHTML, strip: $("#wstrip").innerHTML,'
     + ' scale: $("#wscale").innerHTML, h: WALL.h, s: WALL.s, sub: [...CLOCK.subs.keys()] }));', ctx);
@@ -327,9 +328,17 @@ assert min(t["wall"]["n"]) >= 2, f"a size with under two chapters: the rows abov
 assert len({_x["strip"] for _x in _hs}) > 12, "the strip does not change with the hour"
 # A size with nothing to show keeps its cells and says so in one line; it never asks for chapter -1.
 assert "Nothing the node holds at this size yet." in t["wall"]["bare"] and "<li" not in t["wall"]["bare"], t["wall"]["bare"]
-# Without /issues/days the replay keeps its 24 hours, ending at the as-of time's hour.
+# The strip read real figures: dust and heat each show a figure at some hour, so the checks above asserted something.
+for _g, _what in ((0, "fine dust"), (1, "apparent heat")):
+    assert any('class="wnum"' in re.findall(r'<div class="wrv">(.*?)</div>', _x["strip"])[_g] for _x in _hs), f"the capture drew no {_what}: the checks above asserted nothing"
+# Without /issues/days the replay takes /aggregates' hours; without either, 24 hours ending at the as-of time's hour;
+# five hours of /aggregates fill the last five of the 24.
 from datetime import datetime
 _ms = lambda s: datetime.fromisoformat(s.replace("Z", "+00:00")).timestamp()
+_nd = t["wall"]["nodays"]
+assert len(_nd["B"]) == 24 and [_ms(b) for b in _nd["B"]] == [_ms(b) for b in _nd["raw"]], "without /issues/days the replay does not take /aggregates' hours"
+assert len(t["wall"]["short5"]) == 24 and _ms(t["wall"]["short5"][-1]) == _ms(_nd["raw"][-1]) and \
+    all(_ms(b) - _ms(a) == 3600 for a, b in zip(t["wall"]["short5"], t["wall"]["short5"][1:])), t["wall"]["short5"][-2:]
 assert len(t["wall"]["nohours"]) == 24 and _ms(t["wall"]["nohours"][-1]) == _ms(t["wall"]["asof"]) // 3600 * 3600 and \
     all(_ms(b) - _ms(a) == 3600 for a, b in zip(t["wall"]["nohours"], t["wall"]["nohours"][1:])), t["wall"]["nohours"][-2:]
 # A screen that cannot draw the map (no MapLibre, no WebGL; the visual rig is one) still draws the column and the strip,
@@ -347,6 +356,11 @@ assert "#wallv *{transition:none}" in html.replace(" !important", ""), "a step o
 # The wind and the crests run on their own clock key, stopped off the Wall like the replay.
 _wmjs = (STATIC / "doors-wallmap.js").read_text()
 assert "CLOCK.on('wall-fx'" in _wmjs and "CLOCK.off('wall-fx')" in _wmjs and "view() !== 'wall'" in _wmjs, "the motion canvas runs off the Wall"
+# Reduced motion turned on while the Wall shows stops the canvas too (CLOCK.on refuses then, but keeps a key already on),
+# and leaving the Wall lets its map go, so no WebGL context runs on another door. tests/test_doors_wallmap.py runs both.
+assert _wsrc.count("CLOCK.off('wall-replay'); CLOCK.off('wall-fx');") == 2, "a reduced-motion path leaves the wind running"
+assert "if (v !== 'wall' && typeof WALL !== 'undefined' && WALL.map) { WALL.map.destroy(); WALL.map = null; }" in (STATIC / "doors-core.js").read_text(), \
+    "leaving the Wall keeps its map"
 # The story rolls when it is longer than its box (Tomas, 21 Oct: the end was cut and the start never came back), a line a step.
 assert "if (!NARR.typing) narrRoll();" in _wsrc and "--roll-n" in _wsrc, "the Wall's story does not start rolling after typing"
 # The marks, in reading order: the map, the words, the node's own words, the strip.

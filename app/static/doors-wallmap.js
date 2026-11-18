@@ -273,11 +273,15 @@ function wallMapMount(el, W, story, G = {}) {
     }
     ctx.globalAlpha = 1;
   }
-  const fx = now => { if (view() !== 'wall') return CLOCK.off('wall-fx'); fxDraw(now, false); };
+  /* off the Wall, or reduced motion turned on while it runs (CLOCK.on refuses then, but keeps a key already on): off,
+     and under reduced motion one still frame */
+  const fx = now => { if (view() !== 'wall') return CLOCK.off('wall-fx'); if (CLOCK.reduced()) { CLOCK.off('wall-fx'); return fxDraw(now, true); } fxDraw(now, false); };
   const still = () => { if (CLOCK.reduced()) fxDraw(performance.now(), true); };
   fxSize(); map.on('resize', () => { fxSize(); still(); }); map.on('idle', still);
   return {
-    go(s, cut) { T.s = s; T.ci = null; T.cut = !!cut; apply(); },
+    /* a new size takes effect at the next hour(h): one camera move, to the chapter of that hour, never first to the
+       chapter of the hour before (a size changes at hour 0, and the hour before was 23, the widest frame) */
+    go(s, cut) { T.s = s; T.ci = null; T.cut = !!cut; },
     hour(h) { T.h = h; apply(); if (!CLOCK.on('wall-fx', fx)) fxDraw(performance.now(), true); },   /* CLOCK.on refuses under reduced motion: one still frame */
     destroy() { CLOCK.off('wall-fx'); if (offi) offi.remove(); map.remove(); },
   };
