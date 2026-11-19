@@ -228,30 +228,49 @@ const calls = []; globalThis.fetch = p => { calls.push(p); return Promise.resolv
 (async () => {
   const locked = await L.doorsFetch('/things'), cap = await L.doorsFetch('/captures/3/file?w=96'), open = await L.doorsFetch('/stats');
   const core = fs.readFileSync('./app/static/doors-core.js', 'utf8'), pick = n => core.match(new RegExp('^const ' + n + ' = .*$', 'm'))[0];
-  const F = JSON.parse(fs.readFileSync('%s', 'utf8')), els = {};
-  const ctx = { D: L.buildD({ ...F, days: F.issues_days }, 'en'), VIEWS: {}, $: q => (els[q] ||= {}), out: null, doorsLocal: L.doorsLocal };
+  const F = JSON.parse(fs.readFileSync('%s', 'utf8')), els = {}, WF = JSON.parse(fs.readFileSync('./tests/fixtures/wall-node1.json', 'utf8'));
+  /* /wall on the capture's own last 24 hours, so the issues' series and /wall's meet at every slot */
+  const D0 = L.buildD({ ...F, days: F.issues_days }, 'en'); WF.hours.buckets = D0.buckets.slice(-24);
+  /* a screen with no MapLibre (the visual rig is one): /wall answers, /ground/meta does not, the clock is still */
+  const ctx = { D: D0, VIEWS: {}, $: q => (els[q] ||= {}), out: null, doorsLocal: L.doorsLocal, WF, performance, AbortSignal, clearTimeout,
+    doorsFetch: p => Promise.resolve(p === '/wall' ? new Response(JSON.stringify(WF)) : new Response('{}', { status: 404 })),
+    CLOCK: { subs: new Map(), reduced: () => true, on() { return false; }, off() {} }, view: () => 'wall',
+    matchMedia: () => ({ matches: true, addEventListener() {} }), document: { fonts: { ready: Promise.resolve() } } };
   vm.createContext(ctx);
-  vm.runInContext(['esc', 'fmt', 'plain', 'said', 'num', 'unitOf', 'labelOf', 'loc', 'dayOf'].map(pick).join('\n') + '\n' + fs.readFileSync('./app/static/doors-wall.js', 'utf8')
-    + '\nconst now15 = s => ((D.stats15[s.sensor_id] || {}).pm25 || [])[0] ?? null, st = D.sensors.filter(s => s.kind === "sensor");'
-    + ' const hv = st.filter(s => s.local).map(now15).filter(v => v != null), house = hv.length ? hv.reduce((a, b) => a + b) / hv.length : null;'
-    + ' const say = Array(30).fill("Close the windows facing the street").join(" ") + ".";'
+  vm.runInContext(['esc', 'fmt', 'plain', 'said', 'num', 'unitOf', 'labelOf', 'loc', 'dayOf'].map(pick).join('\n') + '\n' + fs.readFileSync('./app/static/doors-wallmap.js', 'utf8')
+    + '\n' + fs.readFileSync('./app/static/doors-wall.js', 'utf8')
+    + '\nconst say = Array(30).fill("Close the windows facing the street").join(" ") + ".";'
     + ' $("#wnarr").classList = { toggle() {}, add() {}, remove() {} }; const nd = () => { narrDraw(); return { hidden: $("#wnarr").hidden, html: $("#wnarr").innerHTML, note: $("#wnote").textContent }; };'
     + ' const narr = { empty: nd() }; NARR.busy = true; narr.asking = nd(); NARR.err = "The node’s model did not answer: 500"; narr.err = nd();'
     + ' NARR.prev = "The air inside is calm."; narr.kept = nd(); NARR.busy = false; NARR.err = null; NARR.shown = "The air"; NARR.typing = true; narr.typing = nd();'
-    + ' out = { ask: D.order.map(k => wallAsk(D.issues[k])).join(" "), cap: wallCaption(house, st.filter(s => !s.local).map(now15), D.issues.air.line),'
-    + ' caps: [wallCaption(10, [20, 5], 15), wallCaption(20, [], 15), wallCaption(null, [16], 15, "at 15:00"), wallCaption(5, [], null)], narr,'
+    + ' out = { ask: D.order.map(k => wallAsk(D.issues[k])).join(" "), narr,'
     + ' long: wallAsk({ asking: [{ says: say }] }), short: oneLine("Open the windows. Then wait."),'
     + ' fresh: wallStale({ last_poll: new Date().toISOString() }), old: wallStale({ last_poll: "2026-10-06T11:19:50+00:00" }), none: wallStale({}) };'
-    /* the stage, every replayed hour of the last 24, drawn at 1920x1080's floor: the ramps, the stage and the balance */
-    + ' out.when = [wallWhen(new Date().toISOString()), wallWhen("2025-07-01T08:00:00+08:00")];'
-    + ' function getComputedStyle() { return { fontSize: "28px" }; } $("#wallv"); Object.assign($("#wstage"), { clientWidth: 1840, clientHeight: 560 });'
-    + ' Object.assign($("#wbal"), { clientWidth: 560, clientHeight: 300 }); WALL.R = wallDay24();'
-    + ' out.hours = [...Array(24)].map((_, h) => { wallDraw(h); return { ramp: $("#wramp").innerHTML, bramp: $("#wbramp").innerHTML, stage: $("#wstage").innerHTML,'
-    + ' dust: WALL.R.dust && WALL.R.dust.v[h], dir: WALL.R.dir && WALL.R.dir.v[h] }; });'
-    + ' out.near = WALL.R.near.length; out.house = WALL.R.house && WALL.R.house.v; out.room = D.issues.air.series.room.slice(-24);'
-    + ' const hd = D.issues.air.hero_distance; D.issues.air.hero_distance = "yard"; out.yardHouse = wallDay24().house.v; D.issues.air.hero_distance = hd;'
-    + ' const bare = D.buckets; D.buckets = []; const n24 = wallDay24(); out.nodays = { B: n24.B, raw: D.raw.buckets.slice(-24), wind: n24.wind && { v: n24.wind.v } };'
-    + ' const rawb = D.raw.buckets; D.raw.buckets = []; out.nohours = wallDay24().B; out.asof = D.as_of;' + ' D.raw.buckets = rawb.slice(-5); const s5 = wallDay24(); out.short5 = { B: s5.B, wind: s5.wind.v };' + ' D.raw.buckets = rawb; D.buckets = bare;', ctx);
+    /* the strip and the column, every replayed hour of the last 24, at each of the three sizes */
+    + ' function getComputedStyle() { return { fontSize: "20px" }; } $("#wallv"); WALL.W = WF; WALL.story = wallStory(WF, D, { vector: true }); WALL.R = wallDay24(WF);'
+    + ' out.n = WALL.story.map(S => S.chapters.length); out.titles = WALL.story.map(S => S.chapters.map(c => c.title));'
+    + ' const over = () => ({ where: $("#wwhere").innerHTML, cap: $("#wcap").innerHTML, capHidden: $("#wcap").hidden, hex: $("#whex").innerHTML });'
+    + ' out.hours = [...Array(24)].map((_, h) => { WALL.s = 0; wallDraw(h); const strip = $("#wstrip").innerHTML, chap = [$("#wscale").innerHTML], ov = [over()];'
+    + ' for (const s of [1, 2]) { WALL.s = s; wallDraw(h); chap.push($("#wscale").innerHTML); ov.push(over()); }'
+    + ' return { strip, chap, ov, from: [WF.hours.wave_from[h], WF.hours.wind_from[h]] }; });'
+    /* ONE TIMELINE: /wall an hour ahead of the issues (the Wall opened after the hour turned); a wind bearing missing at
+       one hour; a new node whose /wall holds three hours */
+    + ' const cl = o => JSON.parse(JSON.stringify(o)), WA = cl(WF); WA.hours.buckets = WF.hours.buckets.map(b => new Date(Date.parse(b) + 3600e3).toISOString());'
+    + ' const RA = wallDay24(WA), dd = D.issues.air.hero_distance || "room", hd = D.issues.heat.hero_distance || "room"; WALL.R = RA; WALL.s = 0; wallDraw(23);'
+    + ' out.ahead = { B: RA.B, wallB: WA.hours.buckets, Dbuckets: D.buckets.slice(-25), dust: RA.dust.v, heat: RA.heat.v, sea: RA.sea.v, swell: WA.hours.swell_m,'
+    + ' dustS: D.issues.air.series[dd].slice(-25), heatS: D.issues.heat.series[hd].slice(-25), strip: $("#wstrip").innerHTML, clock: hhmm(RA.B[23]) };'
+    + ' const WG = cl(WF); WG.hours.wind_from[5] = null; WALL.R = wallDay24(WG); wallDraw(5); out.gap = $("#wstrip").innerHTML;'
+    + ' const WS = cl(WF); for (const k of Object.keys(WS.hours)) WS.hours[k] = WS.hours[k].slice(-3); WS.stations.forEach(x => { x.pm25 = x.pm25.slice(-3); });'
+    + ' const RS = wallDay24(WS); WALL.R = RS; wallDraw(23);'
+    + ' out.sparse = { B: RS.B, last: WS.hours.buckets[2], sea: RS.sea.v, wind: RS.wind.v, hours: RS.W.hours, pm25: RS.W.stations.map(x => x.pm25), raw: WS.stations.map(x => x.pm25),'
+    + ' strip: $("#wstrip").innerHTML, clock: hhmm(WS.hours.buckets[2]) }; WALL.R = wallDay24(WF);'
+    + ' WALL.story = [{ ...WALL.story[0], chapters: [] }]; WALL.s = 0; wallDraw(5); out.bare = $("#wscale").innerHTML;'
+    + ' const bare = D.buckets, rawb = D.raw.buckets; D.buckets = []; out.nodays = { B: wallDay24().B, raw: rawb.slice(-24) };'
+    + ' D.raw.buckets = []; out.nohours = wallDay24().B; out.asof = D.as_of; D.raw.buckets = rawb.slice(-5); out.short5 = wallDay24().B; D.raw.buckets = rawb; D.buckets = bare;'
+    /* and the whole view, drawn on that screen */
+    + ' D.askOff = true; WALL.h = null; out.view = VIEWS.wall().then(() => ({ wallv: $("#wallv").innerHTML, map: $("#wmbox").innerHTML, strip: $("#wstrip").innerHTML,'
+    + ' scale: $("#wscale").innerHTML, h: WALL.h, s: WALL.s, sub: [...CLOCK.subs.keys()] }));', ctx);
+  ctx.out.view = await ctx.out.view;
   const pm = fs.readFileSync('./app/static/doors-placemap.js', 'utf8').match(/function packRows[\s\S]*?\n}\n/)[0];
   vm.runInContext('const LAYERS = [{ id: "earth" }];' + pm + 'packRows(); out.pack = LAYERS.map(l => l.none);', ctx);
   console.log(JSON.stringify({
@@ -276,68 +295,244 @@ _lk = json.loads(subprocess.run(["node", "-e", "const L = require('./app/static/
                                 capture_output=True, text=True, check=True).stdout)
 assert _lk == [True, True, False], f"the house's learnings ask the token, the place's do not: {_lk}"
 print("doors: a screen with no token asks no token-only route; with one it asks as before")
-_names = {x["name"].strip() for x in json.loads(Path(FIX).read_text())["sensors"] if len(x["name"].strip()) > 3}
+# a facility is a public place the Wall may name (the lab, 18 Nov spec: "the only names are a public station's place, a
+# lab, a power plant and a basin"); a sensor's name is a room, a kit or an address and never shows
+_names = {x["name"].strip() for x in json.loads(Path(FIX).read_text())["sensors"] if len(x["name"].strip()) > 3 and x.get("kind") != "facility"}
 _wall = json.dumps(t["wall"], ensure_ascii=False)
 assert not [n for n in _names if n in _wall], [n for n in _names if n in _wall]
 assert "Nothing is asked now." in t["wall"]["ask"], "6 Oct 19:22: a stale alert and an answered event ask nothing now"
 assert t["wall"]["old"] and t["wall"]["none"] and not t["wall"]["fresh"], t["wall"]
 print("doors: the Wall names no sensor, room or kit, and says stale only when the last poll is old")
-# THE STAGE (Tomas, 8 Nov: "Yes, port it", "Drop the map"): the room's air, heat, sea and wind drawn as instruments on
-# one screen, the last 24 hours replayed on it. Every figure in a ramp says its hour and one of the five words, at
-# every hour; the jar holds a particle for every µg/m³ (counted, never sized, up to 60); the vane turns to the bearing.
+# THE WALK (Tomas, 18 Nov: "more prominence to a satellite map showing the data of the node changing in three scales"):
+# the map walks base → community → city, a column beside it says the moment and the size's chapters, and a strip of
+# four small gauges and the clock sits under both. Every figure in the strip says its hour and one of the five words at
+# every hour, and the swell's and the wind's needles point where they go: the hour's "from" bearing turned half a circle.
 _wsrc = (STATIC / "doors-wall.js").read_text()
 _hs = t["wall"]["hours"]
-assert len(_hs) == 24 and all(_x["stage"].startswith("<svg") for _x in _hs), "the stage is not drawn at every hour"
+_FIVE = r"(?:live|partial|model|cached|example)"
+assert len(_hs) == 24
 for _i, _x in enumerate(_hs):
-    for _r in (_x["ramp"], _x["bramp"]):
-        for _v in re.findall(r'<div class="wrv"[^>]*>(.*?)</div>', _r):
-            assert re.search(r"<span>(\d\d:\d\d <span class=\"wpw\">(live|partial|model|cached|example)</span>|not read (at \d\d:\d\d|here))</span>", _v), \
-                f"a figure with no time or word at hour {_i}: {_v}"
-        assert not re.findall(r'class="wpw">(?!(?:live|partial|model|cached|example)<)', _r), f"a word that is not one of the five at hour {_i}"
-    if _x["dust"] is not None:
-        assert _x["stage"].count('r="2.8" fill="var(--d-air)"') == min(60, round(_x["dust"])), f"the jar's particles are not the hour's µg/m³ at hour {_i}"
-    if _x["dir"] is not None:
-        _rot = re.search(r"rotate\(([\d.-]+) ", _x["stage"])
-        assert _rot and abs(float(_rot.group(1)) - _x["dir"]) < 0.051, f"the vane does not turn to the hour's bearing at hour {_i}: {_x['dir']}"
-assert any(_x["dust"] for _x in _hs) and any(_x["dir"] is not None for _x in _hs), "the capture drew no dust or no wind: the checks above asserted nothing"
-assert len({_x["stage"] for _x in _hs}) > 12, "the stage does not change with the hour"
-# The balance weighs the house's own room series, and counts only outdoor stations nearby (an indoor one is a room).
-_fx = json.loads(Path(FIX).read_text())["sensors"]
-assert t["wall"]["near"] == len([x for x in _fx if x["kind"] == "sensor" and not x["local"] and not x["indoor"]]) < \
-    len([x for x in _fx if x["kind"] == "sensor" and not x["local"]]), f"the balance counts indoor stations: {t['wall']['near']}"
-assert t["wall"]["house"] == t["wall"]["room"] == t["wall"]["yardHouse"], "the house pan is not the room's series, whatever the headline distance"
-# Without /issues/days the replay keeps its 24 hours, and a model's latest reading stands for each of them.
-_nd = t["wall"]["nodays"]
-assert len(_nd["B"]) == 24 and _nd["wind"] and len(_nd["wind"]["v"]) == 24 and None not in _nd["wind"]["v"], "no buckets, no wind"
+    _figs = re.findall(r'<div class="wrv">(.*?)</div>', _x["strip"])
+    assert len(_figs) == 4 and _x["strip"].count('class="wg"') == 4 and 'class="wclock"' in _x["strip"], f"the strip is not four gauges and the clock at hour {_i}"
+    for _v in _figs:
+        assert re.search(r"<span>(\d\d:\d\d <span class=\"wpw\">" + _FIVE + r"</span>|not read (at \d\d:\d\d|here))</span>", _v), f"a figure with no time or word at hour {_i}: {_v}"
+    assert not re.findall(r'class="wpw">(?!' + _FIVE + '<)', _x["strip"] + "".join(_x["chap"])), f"a word that is not one of the five at hour {_i}"
+    _rot = [float(r) for r in re.findall(r'rotate\(([\d.-]+)\)', _x["strip"])]
+    assert len(_rot) == 2 and all(abs(r - (f + 180) % 360) < 0.05 for r, f in zip(_rot, _x["from"])), f"the needles do not point where the swell and the wind go at hour {_i}: {_rot} {_x['from']}"
+    # the column: the size's chapters, one row each, the chapter of the hour on, its word and its words with it
+    for _s, _c in enumerate(_x["chap"]):
+        _n = t["wall"]["n"][_s]
+        assert _c.count("<li") == _n and _c.count('class="on"') == 1, f"size {_s} at hour {_i}: {_c.count('<li')} rows, {_c.count('class=\"on\"')} on"
+        _on = re.search(r'<li class="on"[^>]*>.*?<span class="t">(.*?)</span>', _c).group(1)
+        assert _on == t["wall"]["titles"][_s][min(_n - 1, _i * _n // 24)], f"size {_s} at hour {_i} has {_on} on"
+# ONE TIMELINE (CodeRabbit on #406): /issues and /wall are two reads, and the hour can turn between them. The replay's
+# slots are /wall's hours; every series is joined to them by instant, so with /wall an hour ahead each gauge shows the
+# value of its slot's own instant, or that it was not read, and the clock says that slot's time.
+from datetime import datetime  # noqa: E402
+_ms = lambda s: datetime.fromisoformat(s.replace("Z", "+00:00")).timestamp()
+_ah = t["wall"]["ahead"]
+assert [_ms(b) for b in _ah["B"]] == [_ms(b) for b in _ah["wallB"]], "the replay's slots are not /wall's hours"
+_hit = 0
+for _h, _b in enumerate(_ah["B"]):
+    _j = next((j for j, d in enumerate(_ah["Dbuckets"]) if _ms(d) == _ms(_b)), None)
+    for _k, _ser in (("dust", "dustS"), ("heat", "heatS")):
+        _want = None if _j is None else _ah[_ser][_j]
+        assert _ah[_k][_h] == _want, f"{_k} at slot {_h} ({_b}) reads {_ah[_k][_h]}, its instant holds {_want}"
+    _hit += _j is not None
+assert _hit == 23 and _ah["dust"][23] is None, ("/wall one hour ahead: 23 slots meet the issues, the last is not read yet", _hit)
+assert _ah["sea"] == _ah["swell"], "the swell is /wall's own slot"
+_f23 = re.findall(r'<div class="wrv">(.*?)</div>', _ah["strip"])
+assert f"not read at {_ah['clock']}" in _f23[0] and f'<div class="wclock"><b>{_ah["clock"]}</b>' in _ah["strip"], (_f23[0], _ah["clock"])
+# a bearing is its own hour's: with none at hour 5 the wind has no needle and no "from", beside its own speed
+assert "<span>wind</span>" in t["wall"]["gap"] and len(re.findall(r"rotate\(", t["wall"]["gap"])) == 1, t["wall"]["gap"]
+# a new node whose /wall holds three hours: the last real hour is slot 23, for the gauges, the clock and the map's W
+_sp = t["wall"]["sparse"]
+assert len(_sp["B"]) == 24 and _ms(_sp["B"][23]) == _ms(_sp["last"]) and all(_ms(b) - _ms(a) == 3600 for a, b in zip(_sp["B"], _sp["B"][1:])), _sp["B"][-3:]
+assert _sp["sea"][:21] == [None] * 21 and None not in _sp["sea"][21:] and _sp["wind"][23] is not None, _sp["sea"]
+assert all(len(v) == 24 for v in _sp["hours"].values()) and all(p[21:] == r for p, r in zip(_sp["pm25"], _sp["raw"])), "the map's /wall is not on the 24 slots"
+_fs = re.findall(r'<div class="wrv">(.*?)</div>', _sp["strip"])
+assert 'class="wnum"' in _fs[2] and 'class="wnum"' in _fs[3] and f'<div class="wclock"><b>{_sp["clock"]}</b>' in _sp["strip"], _sp["strip"][-400:]
+print("doors: the Wall replays one timeline: every series at its slot's own instant, a bearing at its own hour, hour 23 the last real one")
+# A /wall that fails or is slow (18 Nov review, I5): the column and the strip are painted before /wall answers; with no
+# /wall the Wall asks again in 30 s, 60 s, doubling to 5 min, and mounts the map when it comes; a redraw whose /wall
+# fails keeps the last good one; and a map whose WebGL context was lost is mounted again after 2 s, doubling to a
+# minute (a GPU that keeps resetting), on a still screen too, while it is still the page's map. CodeRabbit on #406: /wall never waits on /ground/meta, which mounts the map
+# again when its layers come (and is read once more when /wall came without it); a hung /wall reaches the retry path;
+# a retry belongs to the visit that set it; the first /wall starts the replay over at the base size.
+rprog = r"""
+const fs = require('fs'), vm = require('vm');
+const L = require('./app/static/doors-load.js');
+const core = fs.readFileSync('./app/static/doors-core.js', 'utf8'), pick = n => core.match(new RegExp('^const ' + n + ' = .*$', 'm'))[0];
+const F = JSON.parse(fs.readFileSync('%s', 'utf8')), els = {}, WF = fs.readFileSync('./tests/fixtures/wall-node1.json', 'utf8');
+let wallAns = [], metaAns = [], waits = [], timers = [], mounts = 0, reduced = true, honour = false;
+class FakeMap { constructor() { mounts++; this.ev = {}; FakeMap.last = this; } on(e, f) { (this.ev[e] ||= []).push(f); } fire(e) { (this.ev[e] || []).forEach(f => f()); }
+  addSource() {} addLayer() {} getLayer() { return true; } addControl() {} isMoving() { return false; } setLayoutProperty() {} setPaintProperty() {}
+  getSource() { return { setData() {} }; } fitBounds() {} getCenter() { return { toArray: () => [0, 0] }; } getZoom() { return 10; }
+  querySourceFeatures() { return []; } project() { return { x: 0, y: 0 }; } remove() {} }
+const ctx = { D: L.buildD({ ...F, days: F.issues_days }, 'en'), VIEWS: {}, $: q => (els[q] ||= { querySelectorAll: () => [] }), doorsLocal: L.doorsLocal, performance, console, JSON, Math, Promise, AbortSignal, AbortController, WF,
+  /* /wall and /ground/meta answer when the test says; with `honour` a /wall gives up when its signal does */
+  doorsFetch: (p, init) => p === '/wall' ? new Promise((res, rej) => { wallAns.push(res); if (honour) init.signal.addEventListener('abort', () => rej(init.signal.reason)); })
+    : p === '/ground/meta' ? new Promise(res => metaAns.push(res)) : Promise.resolve(new Response('{}', { status: 404 })),
+  setTimeout: (f, ms) => { waits.push(ms); timers.push(f); return timers.length; }, clearTimeout() {},
+  maplibregl: { Map: FakeMap, Marker: class {}, AttributionControl: class {} }, devicePixelRatio: 1, location: { origin: 'http://n' },
+  getComputedStyle: () => ({ getPropertyValue: () => '', fontSize: '20px' }),
+  CLOCK: { subs: new Map(), reduced: () => reduced, on() { return false; }, off() {} }, view: () => 'wall',
+  matchMedia: () => ({ matches: true, addEventListener() {} }), document: { fonts: { ready: Promise.resolve() }, createElement: () => ({}) } };
+els['#wmbox'] = { innerHTML: '', firstChild: {}, lastChild: { getContext: () => null }, getBoundingClientRect: () => ({ width: 800, height: 600 }) };
+vm.createContext(ctx);
+vm.runInContext(['esc', 'fmt', 'plain', 'said', 'num', 'unitOf', 'labelOf', 'loc', 'dayOf'].map(pick).join('\n') + '\n' + fs.readFileSync('./app/static/doors-wallmap.js', 'utf8')
+  + '\n' + fs.readFileSync('./app/static/doors-wall.js', 'utf8') + '\nD.askOff = true; $("#wnarr").classList = { toggle() {}, add() {}, remove() {} };', ctx);
+const WALL = () => vm.runInContext('WALL', ctx);
+const tick = () => new Promise(r => setImmediate(r)), settle = async () => { for (let i = 0; i < 6; i++) await tick(); };
+const answer = ok => { wallAns.shift()(ok ? new Response(WF) : new Response('{}', { status: 503 })); };
+const meta = on => { metaAns.shift()(on ? new Response(JSON.stringify({ on_disk: on })) : new Response('{}', { status: 404 })); };
+const drain = async () => { for (let i = 0; i < 3; i++) { while (wallAns.length) answer(false); while (metaAns.length) meta(null); await settle(); } };
+const fresh = () => vm.runInContext('if (WALL.map) WALL.map.destroy(); WALL.map = null; WALL.W = null; WALL.G = null; WALL.retry = 0; WALL.tries = 0;', ctx);
+const titles = () => WALL().story[0].chapters.map(c => c.title);
+const fire = async () => { const f = timers.shift(); f(); await tick(); };
+(async () => {
+  const out = {};
+  const first = ctx.VIEWS.wall(); await tick();
+  out.painted = { strip: els['#wstrip'].innerHTML.includes('class="wg"'), asked: wallAns.length, mounts };
+  answer(false); await first; await tick();
+  out.none = { map: els['#wmbox'].innerHTML, W: WALL().W, waits: waits.slice() };
+  for (let i = 0; i < 5; i++) { await fire(); answer(false); await tick(); await tick(); }
+  out.backoff = waits.slice();
+  await fire(); answer(true); await tick(); await tick();
+  out.came = { mounts, chapters: WALL().story.map(S => S.chapters.length), W: !!WALL().W, timers: timers.length };
+  const again = ctx.VIEWS.wall(); await tick(); answer(false); await again; await tick();
+  out.kept = { W: !!WALL().W, chapters: WALL().story.map(S => S.chapters.length), timers: timers.length, map: !!WALL().map };
+  timers.length = 0; waits.length = 0;
+  const m0 = mounts, A = FakeMap.last, h0 = WALL().map; A.fire('webglcontextlost'); A.fire('webglcontextlost');   /* a still screen: no draw follows */
+  const held = { mounts: mounts - m0, timers: timers.length }; await fire();
+  const m1 = mounts, B = FakeMap.last, newMap = WALL().map !== h0; A.fire('webglcontextlost');                 /* the map it replaced, again: nothing */
+  const staleAsk = timers.length; B.fire('webglcontextlost'); const tB = timers.shift();
+  ctx.VIEWS.wall(); const m2 = mounts; tB(); const replaced = mounts - m2;          /* a new visit let B go before its pause ran out */
+  const C = FakeMap.last; C.fire('webglcontextlost'); vm.runInContext('WALL.map.destroy(); WALL.map = null;', ctx); await fire();   /* another door let C go */
+  out.lost = { held, now: m1 - m0, fresh: newMap, staleAsk, replaced, gone: mounts - m2, waits: waits.slice() };
+  await drain();
+  /* /wall comes while /ground/meta hangs: the map mounts without it, and again when its layers come */
+  fresh(); timers.length = 0; let v = ctx.VIEWS.wall(); await tick(); const m4 = mounts; answer(true); await v; await tick();
+  out.noMeta = { mounts: mounts - m4, G: WALL().G, titles: titles() }; meta({ vector: true }); await settle();
+  out.meta = { mounts: mounts - m4, vector: !!(WALL().G || {}).on_disk.vector, titles: titles(), asked: metaAns.length };
+  /* /ground/meta fails, then /wall comes: it is read once more, and the map mounts again with its layers */
+  fresh(); v = ctx.VIEWS.wall(); await tick(); meta(null); await tick(); answer(true); await v; await settle();
+  const m5 = mounts; out.reread = metaAns.length; meta({ imagery: true }); await settle();
+  out.reread = { asked: out.reread, mounts: mounts - m5, G: WALL().G.on_disk };
+  /* a retry is the visit's that set it: a later visit clears it and gets its own, and the old one asks nothing */
+  fresh(); timers.length = 0; waits.length = 0; v = ctx.VIEWS.wall(); await tick(); answer(false); await v; await tick();
+  const stale = timers.shift(); v = ctx.VIEWS.wall(); await tick(); answer(false); await v; await tick();
+  const asked = wallAns.length; stale(); await tick();
+  out.visit = { own: timers.length, staleAsked: wallAns.length - asked };
+  /* ... and one started in an earlier visit that answers in a later one takes nothing */
+  fresh(); timers.length = 0; v = ctx.VIEWS.wall(); await tick(); answer(false); await v; await tick();
+  timers.shift()(); await tick(); const late = ctx.VIEWS.wall(); await tick(); const m6 = mounts;
+  answer(true); await tick(); await tick(); out.late = { W: !!WALL().W, mounts: mounts - m6 }; answer(false); await late; await tick();
+  await drain();
+  /* the first /wall starts the replay over at the base size's first hour; later ones keep it; reduced motion: hour 23 */
+  reduced = false; fresh(); vm.runInContext('WALL.h = 16; WALL.s = 2; WALL.t0 = 0; wallTake(JSON.parse(WF), WALL.gen)', ctx);
+  out.first = [WALL().h, WALL().s, WALL().t0 > 0]; vm.runInContext('WALL.h = 16; WALL.s = 2; wallTake(JSON.parse(WF), WALL.gen)', ctx); out.later = [WALL().h, WALL().s];
+  reduced = true; fresh(); vm.runInContext('WALL.h = 4; wallTake(JSON.parse(WF), WALL.gen)', ctx); out.still = [WALL().h, WALL().s];
+  await drain();
+  /* a /wall that never answers gives up after WAIT and reaches the retry path */
+  fresh(); honour = true; timers.length = 0; waits.length = 0; vm.runInContext('WALL_TIME.WAIT = 40', ctx);
+  const hold = setTimeout(() => {}, 5000);   /* AbortSignal.timeout's timer holds no process open */
+  v = ctx.VIEWS.wall(); await v; clearTimeout(hold); wallAns.length = 0; out.hung = { waits: waits.slice(), map: els['#wmbox'].innerHTML };
+  while (metaAns.length) meta(null);
+  /* an older TV's browser: no AbortSignal.timeout, a controller on a timer instead; with neither, the map still comes */
+  ctx.AbortSignal = {}; fresh(); timers.length = 0; waits.length = 0; v = ctx.VIEWS.wall(); await tick(); while (timers.length) timers.shift()(); await v; await settle();
+  out.oldTv = { waits: waits.slice(), map: els['#wmbox'].innerHTML }; wallAns.length = 0; while (metaAns.length) meta(null);
+  ctx.AbortSignal = undefined; ctx.AbortController = undefined; honour = false; fresh(); v = ctx.VIEWS.wall(); await tick(); answer(true); await v; await settle();
+  out.oldest = { W: !!WALL().W, map: !!WALL().map }; while (metaAns.length) meta(null);
+  /* ... and with neither, a /wall that never answers still gives up after WAIT and reaches the retry path */
+  fresh(); timers.length = 0; waits.length = 0; v = ctx.VIEWS.wall(); await tick(); while (timers.length) timers.shift()(); await v; await settle();
+  out.oldestHung = { waits: waits.slice(), map: els['#wmbox'].innerHTML }; wallAns.length = 0; while (metaAns.length) meta(null);
+  console.log(JSON.stringify(out));
+})();
+""" % replayed(FIX)
+_rr = subprocess.run(["node"], input=rprog, capture_output=True, text=True)
+assert _rr.returncode == 0, _rr.stderr[-2000:]
+rt = json.loads(_rr.stdout)
+assert rt["painted"] == {"strip": True, "asked": 1, "mounts": 0}, ("the strip is painted before /wall answers", rt["painted"])
+assert rt["none"]["map"] == '<p class="wnomap">The node sent no map.</p>' and rt["none"]["W"] is None and rt["none"]["waits"] == [30000], rt["none"]
+assert rt["backoff"] == [30000, 60000, 120000, 240000, 300000, 300000], ("30 s, then 60 s, doubling, at most 5 min", rt["backoff"])
+# no /ground/meta here, so no street tiles: the base size has no Buildings or Sun to light (CodeRabbit on #406)
+assert rt["came"]["mounts"] == 1 and rt["came"]["W"] and rt["came"]["chapters"] == [1, 4, 3] and rt["came"]["timers"] == 0, rt["came"]
+assert rt["kept"]["W"] and rt["kept"]["chapters"] == rt["came"]["chapters"] and rt["kept"]["timers"] == 0 and rt["kept"]["map"], \
+    ("a redraw whose /wall failed keeps the last good one, and asks no retry", rt["kept"])
+assert rt["lost"] == {"held": {"mounts": 0, "timers": 1}, "now": 1, "fresh": True, "staleAsk": 0, "replaced": 0, "gone": 0, "waits": [2000, 4000, 2000]}, \
+    ("a lost WebGL context: a new map after a pause that doubles, a visit starts it at 2 s again, only the page's own", rt["lost"])
+assert rt["noMeta"]["mounts"] == 1 and rt["noMeta"]["G"] is None and "Sun today" not in rt["noMeta"]["titles"], ("/wall waited on /ground/meta", rt["noMeta"])
+assert rt["meta"]["mounts"] == 2 and rt["meta"]["vector"] and "Sun today" in rt["meta"]["titles"] and rt["meta"]["asked"] == 0, ("the layers came and the map stayed bare", rt["meta"])
+assert rt["reread"] == {"asked": 1, "mounts": 1, "G": {"imagery": True}}, ("/wall came without /ground/meta and it was never read again", rt["reread"])
+assert rt["visit"] == {"own": 1, "staleAsked": 0}, ("a retry from an earlier visit", rt["visit"])
+assert rt["late"] == {"W": False, "mounts": 0}, ("an earlier visit's retry answered in a later one and took the page", rt["late"])
+assert rt["first"] == [0, 0, True] and rt["later"] == [16, 2] and rt["still"] == [23, 0], ("the first /wall starts the replay over", rt["first"], rt["later"], rt["still"])
+assert rt["hung"]["waits"] == [30000] and "The node sent no map." in rt["hung"]["map"], ("a hung /wall never reached the retry path", rt["hung"])
+assert rt["oldTv"]["waits"][-1] == 30000 and 40 in rt["oldTv"]["waits"] and "The node sent no map." in rt["oldTv"]["map"], ("no AbortSignal.timeout: a hung /wall never gave up", rt["oldTv"])
+assert rt["oldest"] == {"W": True, "map": True}, ("no AbortSignal.timeout and no AbortController: the map never came", rt["oldest"])
+assert rt["oldestHung"]["waits"][-1] == 30000 and "The node sent no map." in rt["oldestHung"]["map"], \
+    ("no AbortSignal.timeout and no AbortController: a hung /wall never gave up", rt["oldestHung"])
+print("doors: the Wall paints before /wall answers, asks again 30 s to 5 min while it has none, keeps the last good one, and remounts a lost map")
+print("doors: /wall never waits on /ground/meta, a hung read gives up, a retry is its visit's, the first /wall starts the day over")
+# Over the map, as the approved mockup has them (Tomas, 18 Nov): the size, its cells, resolution and area at the top
+# left; the chapter's words with where they are from and one of the five words at the bottom left; the three sizes as
+# hexagons at the bottom right, only the size on the map lit.
+_scales = json.loads(Path("tests/fixtures/wall-node1.json").read_text())["scales"]
+for _i, _x in enumerate(_hs):
+    for _s, _o in enumerate(_x["ov"]):
+        _S = _scales[_s]
+        assert f"{len(_S['cells'])} cells · res {_S['res']} · {_S['km2']:.1f} km²" in _o["where"] and ("Base", "Community", "City")[_s] in _o["where"], f"size {_s} at hour {_i}: {_o['where']}"
+        assert not _o["capHidden"] and re.search(r'<span class="wcs">.+ · ' + _FIVE + r'</span>$', _o["cap"]), f"size {_s} at hour {_i}: the caption has no word: {_o['cap']}"
+        _lit = re.findall(r'class="s on">.*?</svg>(\w+)</div>', _o["hex"])
+        assert _o["hex"].count('class="s') == 3 and _lit == [_S["k"]], f"size {_s} at hour {_i}: the legend lights {_lit}"
+assert "pointer-events:none" in html[html.index(".wover{"):].split("}")[0], "a map overlay can be pressed"
+assert min(t["wall"]["n"]) >= 2, f"a size with under two chapters: the rows above switched nothing ({t['wall']['n']})"
+assert len({_x["strip"] for _x in _hs}) > 12, "the strip does not change with the hour"
+# A size with nothing to show keeps its cells and says so in one line; it never asks for chapter -1.
+assert "The node holds nothing at this size yet." in t["wall"]["bare"] and "<li" not in t["wall"]["bare"], t["wall"]["bare"]
+# The strip read real figures: dust and heat each show a figure at some hour, so the checks above asserted something.
+for _g, _what in ((0, "fine dust"), (1, "apparent heat")):
+    assert any('class="wnum"' in re.findall(r'<div class="wrv">(.*?)</div>', _x["strip"])[_g] for _x in _hs), f"the capture drew no {_what}: the checks above asserted nothing"
+# Without /issues/days the replay takes /aggregates' hours; without either, 24 hours ending at the as-of time's hour;
+# five hours of /aggregates fill the last five of the 24.
 from datetime import datetime
 _ms = lambda s: datetime.fromisoformat(s.replace("Z", "+00:00")).timestamp()
-assert [_ms(b) for b in _nd["B"]] == [_ms(b) for b in _nd["raw"]], "without /issues/days the replay does not take /aggregates' hours"
+_nd = t["wall"]["nodays"]
+assert len(_nd["B"]) == 24 and [_ms(b) for b in _nd["B"]] == [_ms(b) for b in _nd["raw"]], "without /issues/days the replay does not take /aggregates' hours"
+assert len(t["wall"]["short5"]) == 24 and _ms(t["wall"]["short5"][-1]) == _ms(_nd["raw"][-1]) and \
+    all(_ms(b) - _ms(a) == 3600 for a, b in zip(t["wall"]["short5"], t["wall"]["short5"][1:])), t["wall"]["short5"][-2:]
 assert len(t["wall"]["nohours"]) == 24 and _ms(t["wall"]["nohours"][-1]) == _ms(t["wall"]["asof"]) // 3600 * 3600 and \
     all(_ms(b) - _ms(a) == 3600 for a, b in zip(t["wall"]["nohours"], t["wall"]["nohours"][1:])), t["wall"]["nohours"][-2:]
-# Five hours of /aggregates fill the last five of the 24; the hour drawn under reduced motion is never blank.
-assert len(t["wall"]["short5"]["B"]) == 24 and _ms(t["wall"]["short5"]["B"][-1]) == _ms(_nd["raw"][-1]) and t["wall"]["short5"]["wind"][-1] is not None, t["wall"]["short5"]
+# A screen that cannot draw the map (no MapLibre, no WebGL; the visual rig is one) still draws the column and the strip,
+# and says so in one line where the map would be.
+_vw = t["wall"]["view"]
+assert _vw["map"] == '<p class="wnomap">This screen cannot draw the map.</p>', _vw["map"]
+assert _vw["strip"].count('class="wg"') == 4 and "Base node" in _vw["scale"] and 'class="wsent"' in _vw["wallv"], _vw
 assert "WALL.h == null || WALL.still !== still" in _wsrc and "if (view() !== 'wall') { WALL.still = null; return; }" in _wsrc, \
     "motion turned on or off off the Wall resumes the old replay's hour"
-assert t["wall"]["when"][1] == "Jul 2025" and re.fullmatch(r"\d\d:\d\d", t["wall"]["when"][0]), t["wall"]["when"]
-# Under reduced motion the Wall is one still frame at the last hour: no replay clock, and the narration's roll stands still.
+# Under reduced motion the Wall is one still frame at the last hour of the base size: no replay clock, the story still.
+assert _vw["h"] == 23 and _vw["s"] == 0 and not _vw["sub"], _vw
 assert "{ WALL.h = still ? 23 : 0;" in _wsrc and "if (!still) CLOCK.on('wall-replay', wallTick);" in _wsrc, "the replay runs under reduced motion"
 assert re.search(r"prefers-reduced-motion: reduce\)\{[^}]*\.wnarr \.nw\.roll \.nt\{animation:none", html), "the story rolls under reduced motion"
-assert "#wallv *{transition:none}" in html.replace(" !important", ""), "a step on the Wall is tweened"
+assert "#wallv *{transition:none}" in html.replace(" !important", ""), "a step on the Wall is tweened (the camera's glide is MapLibre's own)"
+# The wind and the crests run on their own clock key, stopped off the Wall like the replay.
+_wmjs = (STATIC / "doors-wallmap.js").read_text()
+assert "CLOCK.on('wall-fx'" in _wmjs and "CLOCK.off('wall-fx')" in _wmjs and "view() !== 'wall'" in _wmjs, "the motion canvas runs off the Wall"
+# Reduced motion turned on while the Wall shows stops the canvas too (CLOCK.on refuses then, but keeps a key already on),
+# and leaving the Wall lets its map go, so no WebGL context runs on another door. tests/test_doors_wallmap.py runs both.
+assert _wsrc.count("CLOCK.off('wall-replay'); CLOCK.off('wall-fx');") == 2, "a reduced-motion path leaves the wind running"
+assert "if (v !== 'wall' && typeof WALL !== 'undefined' && WALL.map) { WALL.map.destroy(); WALL.map = null; }" in (STATIC / "doors-core.js").read_text(), \
+    "leaving the Wall keeps its map"
 # The story rolls when it is longer than its box (Tomas, 21 Oct: the end was cut and the start never came back), a line a step.
 assert "if (!NARR.typing) narrRoll();" in _wsrc and "--roll-n" in _wsrc, "the Wall's story does not start rolling after typing"
-# The narration took the four distances' screen (Tomas, 8 Nov: "Yes, narration there"): the words, the node's own words,
-# then the balance, in that order; no map and no walk are left.
+# The marks, in reading order: the map, the words, the node's own words, the strip.
 _marks = re.findall(r'data-learn="([a-z-]+)"', _wsrc.split("VIEWS.wall = ")[1].split("/* THE NODE, THINKING ALOUD")[0])
-assert _marks == ["wall-stage", "wall-sentence", "wall-narration", "wall-balance"], _marks
-assert not re.search(r"WALL_SCALES|wallPage|WALK\b|wallMap|wallDist|wrail", _wsrc) and not (STATIC / "doors-wallmap.js").exists()
-print("doors: the Wall draws the day as instruments; every figure has its time and word; the dust counted, the vane on its bearing")
+assert _marks == ["wall-map", "wall-sentence", "wall-narration", "wall-strip"], _marks
+assert not re.search(r"figDust|figHeat|figSea|figWind|wallStage|wallBalance|wallCaption|\bWG\b", _wsrc), "the instruments are back"
+print("doors: the Wall walks the three sizes; every strip figure has its time and word; the needles point where the sea and the wind go")
 
 # 15 Oct, the Wall read from 3 m (Tomas's review of 14 Oct). Each check fails if its fix regresses.
-# The map's caption says in words what its red discs mean against the house: a clean headline beside red discs.
-_c = t["wall"]["caps"]
-assert t["wall"]["cap"].startswith("This house") and "clean-air line now" in t["wall"]["cap"], t["wall"]["cap"]
-assert _c[0] == "This house is under the clean-air line now; one station nearby, in red, is over it.", _c[0]
-assert _c[1] == "This house is over the clean-air line now; no station nearby is." and "at 15:00" in _c[2] and _c[3] == "", _c
 # What the node suggests is one line ending on a word ("If somethin…"), and still never a button that answers.
 _long = re.search(r'class="wsay said">(.*?)</span>', t["wall"]["long"]).group(1)
 _say = " ".join(["Close the windows facing the street"] * 30) + "."
@@ -350,28 +545,34 @@ assert _n["empty"]["hidden"] and _n["asking"]["hidden"] and _n["err"]["hidden"] 
 assert "did not answer" in _n["err"]["note"], "a failure is chrome (#wnote), never the box"
 assert not _n["kept"]["hidden"] and "The air inside is calm." in _n["kept"]["html"] and "a model’s words" in _n["kept"]["html"], _n["kept"]
 assert "The air<" in _n["typing"]["html"] and "calm" not in _n["typing"]["html"], _n["typing"]
-print("doors: the Wall's caption, its one line and its narration box say what they should, and nothing when empty")
-# THE TYPE FLOOR: every size in the Wall's CSS is --wf or a multiple of it, and --wf is 28 px at 1920x1080. Nothing
-# drawn on the Wall carries a class whose size is set outside that block (.k, .fine, <small>); the map's words are --wf.
+print("doors: the Wall's one line and its narration box say what they should, and nothing when empty")
+# THE TYPE FLOOR: every size in the Wall's CSS is --wf or a multiple of it, and --wf is 20 px at 1920x1080 (Tomas, 18 Nov:
+# the text and the size legend were "too big"; it was 28). Nothing drawn on the Wall carries a class sized outside that block.
 _wcss = html[html.index("/* ================= WALL:"):html.index("/* ================= FLOW:")]
+assert "#wallv{--wf:min(1.0417vw,1.8519vh)" in _wcss, "the Wall's floor is not the mockup's 20 px"
 _wf = re.search(r"--wf:min\(([\d.]+)vw,([\d.]+)vh\)", _wcss)
-assert _wf and min(float(_wf.group(1)) * 19.2, float(_wf.group(2)) * 10.8) >= 28, "the floor is 28 px at 1920x1080"
-_sizes = re.findall(r"font(?:-size)?:([^;}]*)", re.sub(r"/\*.*?\*/", "", _wcss, flags=re.S))
+assert _wf and min(float(_wf.group(1)) * 19.2, float(_wf.group(2)) * 10.8) >= 20, "the floor is 20 px at 1920x1080"
+# The one exception is the size legend over the map, at .8 of the floor: the mockup Tomas approved set it so after he
+# asked for the legend smaller (18 Nov), and the controller's ruling of 18 Nov keeps it. Nothing else may go under.
+_hexrule = re.search(r"\n\.whex\{[^}]*\}", _wcss).group(0)
+assert "font-size:calc(var(--wf) * .8)" in _hexrule, _hexrule
+_sizes = re.findall(r"font(?:-size)?:([^;}]*)", re.sub(r"/\*.*?\*/", "", _wcss.replace(_hexrule, ""), flags=re.S))
 assert len(_sizes) >= 18, len(_sizes)
 for _f in _sizes:
     _m = re.search(r"calc\(var\(--wf\) \* ([\d.]+)\)|var\(--wf\)|(\d[\d.]*)(px|em|rem|vw|vh)\b", _f)
     assert _m and (_m.group(0) == "var(--wf)" or (_m.group(1) and float(_m.group(1)) >= 1)), f"under the Wall's type floor: font:{_f}"
 _wjs = (STATIC / "doors-wall.js").read_text().split("/* THE NODE, THINKING ALOUD")[0]
-assert not re.search(r'class="(?:k|fine)\b|<small', _wjs), "a class sized outside the Wall's block, drawn on the Wall"
-assert ".wstage text{font:500 var(--wf) var(--mono)}" in _wcss, "the stage's words are at the floor"
+assert not re.search(r'class="(?:k|fine)\b|<small', _wjs + _wmjs), "a class sized outside the Wall's block, drawn on the Wall"
 # CHROME: a wall is not operated. The back button, the chips and the hour strip are .wchrome, invisible until a pointer
 # or the keyboard is in them; the back button is the first thing in keyboard order.
 assert "#wallv .wchrome{opacity:0" in _wcss and "#wallv .wchrome:hover,#wallv .wchrome:focus-within{opacity:1}" in _wcss
 assert re.search(r'<div class="wtop wchrome"><button class="wback"', _wjs) and "flowtime" not in _wjs, "the back button is first, the hour strip is gone"
 assert "#wallv .wback{min-height:44px;min-width:44px}" in _wcss
+assert "@media (any-pointer:coarse){#wallv .wchrome{opacity:1}#wallv .wback{min-height:44px;min-width:44px}}" in _wcss and "(pointer:coarse)" not in _wcss, \
+    "a touch laptop whose primary pointer is a mouse cannot see or press the back button"
 for _gone in ("share level", "#wall", "more</a>", "readings in", "next in", "Read at", "replay with the token"):
     assert _gone not in _wjs.lower().replace("#wallv", ""), f"admin chrome is back on the Wall: {_gone}"
-print("doors: nothing on the Wall is under 28 px at 1920x1080, and its chrome shows only under a pointer or the keyboard")
+print("doors: nothing on the Wall is under 20 px at 1920x1080, and its chrome shows only under a pointer or the keyboard")
 # 2. One answer to "is something asked now" (14 Oct): Now's Decide said "No event was open for air" from the events while
 #    the Wall showed an open ask from open_asks. Both now read /issues `asking`; run on three captures, they agree.
 aprog = r"""

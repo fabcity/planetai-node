@@ -437,6 +437,11 @@ async function serveNodeAPI(route, u) {
       : route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ detail: 'the energy pack is off' }) }));
     return true;
   }
+  /* the Wall's one read: the hand-built node #1 body its tests use (tests/fixtures/wall-node1.json) */
+  if (u.pathname === '/wall') {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: fs.readFileSync(path.join(HERE, '..', 'fixtures', 'wall-node1.json'), 'utf8') });
+    return true;
+  }
   if (u.pathname === '/forecast') {
     const health = computeNodeData(FIXTURE).snapshot?.health;
     const body = process.env.PAI_RICH === '1' ? richForecast() : emptyForecast(health);
@@ -866,6 +871,7 @@ const COLLECT = () => {
       ff: (cs.fontFamily || '').split(',')[0].replace(/["']/g, ''),
       tt: cs.textTransform, chars: s.length, nlines: rects.length, cpl,
       owner: (p.tagName + (p.id ? '#' + p.id : '') + (p.className && typeof p.className === 'string' ? '.' + p.className.split(/\s+/)[0] : '')),
+      wall: !!p.closest('#wallv'),       /* T7 calibrates on the Wall's own lines, never a 20 px line elsewhere on the page */
       text: s.slice(0, 90),
     });
   }
@@ -1649,7 +1655,7 @@ function aStack() {
  * that zero is the baseline T3 is measured against.
  */
 const ROLES = {
-  sentence: ['[data-component="sentence"]', '[data-role="sentence"]', '.hero p.big', '.wall p.big'],
+  sentence: ['[data-component="sentence"]', '[data-role="sentence"]', '.hero p.big', '.wall p.big', '.wsent'],
   /* The monument numeral. `b.mono` and not `p.big b`: ancestors are not checked, so a descendant
    * selector ending in a bare tag matched the header's own <b>. */
   numeral: ['[data-role="numeral"]', 'b.mono'],
@@ -1665,10 +1671,17 @@ const ROLES = {
   index: ['[data-component="index"]', '[data-role="index"]', '#index', '.index'],
   indexRow: ['[data-component="indexRow"]', '[data-role="index-row"]', '.index .row'],
   miniStack: ['[data-component="miniStack"]', '[data-role="mini-stack"]', '.stack.mini'],
-  wallIssueLine: ['[data-component="wallIndex"] .ln', '[data-role="wall-issue"]', '.wall .wi .ln'],
-  /* The readable part of the rho row is its caption: the row itself is a texture of signs, and
-   * a sign is measured against --sign-floor, not against a cap height. */
-  rho: ['[data-role="rho"]', '.rhocap', '[data-component="rhoRow"]'],
+  /* The Wall of 18 Nov 2026 (doors-wall.js): a column beside the map and a strip under both. Each role is a part T7
+   * reads at three metres. The size legend (.whex) is left out on purpose: it is the one text set under the floor, at
+   * .8 of it, as the mockup Tomas approved after he asked on 18 Nov for the text to be smaller ("too big, control
+   * that"); tests/test_doors.py names it and wallwalk exempts it. */
+  wallAsk: ['.wask'],
+  wallChapters: ['.wscale'],
+  wallChapterFig: ['.wchap .n'],
+  wallNarr: ['.wnarr'],
+  wallGauge: ['.wg'],
+  wallFig: ['.wg .wnum'],
+  wallClock: ['.wclock'],
 };
 
 /* Does any element in `d` match this role, and is its box inside the first viewport?
@@ -1842,22 +1855,34 @@ function aTargets() {
     let diverge = 0;
     for (let i = 0; i + 1 < byPos.length; i++) if (byPos[i].dom > byPos[i + 1].dom) diverge++;
 
-    /* T7 — the wall at three metres. 1 px = 0.63 mm at 1920 on a 55-inch 16:9 panel; the floor is
-     * about 3 mm of cap height per metre, so 9 mm. */
+    /* T7 — the Wall at three metres. 1 px = 0.63 mm at 1920 on a 55-inch 16:9 panel. The floor is the cap height of
+     * the Wall's own type floor, 20 px (--wf at 1920×1080; Tomas, 18 Nov 2026: the text "gets too big, control that"),
+     * which was 28 px and 9 mm. The cap ratio is read off the render's own 20 px lines inside #wallv, the canvas measurement COLLECT
+     * takes of "H" in each face, and the lowest face sets the floor. Only the doors' Wall has these parts (#wallv), so the
+     * classic wall_populated render has no T7 and `wallwalk` writes the render this reads (wallwalk_1920.json).
+     * T7 is a report: gate.sh never runs `targets`. The 20 px floor is enforced by wallwalk's own read() threshold. */
     let t7 = '—';
-    if (wall && w >= 1920) {
-      const MM = 0.63;
-      const want = [['sentence', sent], ['numeral', num], ['issue line', role(d, 'wallIssueLine')],
-        ['rho row', role(d, 'rho')]];
+    if (wall && w >= 1920 && d.els.some(e => e.id === 'wallv')) {
+      const MM = 0.63, FLOOR_PX = 20;
+      const ratio = Math.min(...d.lines.filter(l => l.wall && Math.abs(l.fs - FLOOR_PX) < .5 && l.cap).map(l => l.cap / l.fs));
+      const floor = FLOOR_PX * ratio * MM;
+      if (!isFinite(floor)) t7 = 'no 20 px line to calibrate';
+      else {
+      const want = [['sentence', sent], ['ask', role(d, 'wallAsk')], ['chapters', role(d, 'wallChapters')],
+        ['chapter figures', role(d, 'wallChapterFig')], ['narration', role(d, 'wallNarr')],
+        ['gauges', role(d, 'wallGauge')], ['strip figures', role(d, 'wallFig')], ['clock', role(d, 'wallClock')]];
       const parts = [];
       for (const [label, r] of want) {
+        /* a line belongs to a part when its centre is inside the part's box: a tight line-height (the sentence's 1.08)
+         * makes the line box taller than the paragraph's edges, so whole-box containment missed it */
         const caps = d.lines.filter(l => r.els.some(e => l.x >= e.x - 2 && l.x <= e.x + e.w + 2
-          && l.y >= e.y - 2 && l.y + l.h <= e.y + e.h + 2)).map(l => l.cap * MM);
+          && l.y + l.h / 2 >= e.y && l.y + l.h / 2 <= e.y + e.h)).map(l => l.cap * MM);
         if (!caps.length) { parts.push(`${label} **absent**`); continue; }
-        const lo = Math.min(...caps);
-        parts.push(`${label} ${lo.toFixed(1)}${lo < 9 ? ' **' : ' '}mm${lo < 9 ? '**' : ''}`);
+        const lo = Math.min(...caps), low = lo < floor - 0.05;
+        parts.push(`${label} ${lo.toFixed(1)}${low ? ' **' : ' '}mm${low ? '**' : ''}`);
       }
-      t7 = parts.join('; ');
+      t7 = `floor ${floor.toFixed(1)} mm: ` + parts.join('; ');
+      }
     }
 
     rows.push([n, w,
@@ -3312,30 +3337,33 @@ async function mobile() {
   process.exit(1);
 }
 
-/* ------------------------------------------------------------------ the Wall's instruments (8 Nov 2026)
- * The Wall draws the room's air, heat, sea and wind as instruments on one screen and replays the last 24 hours on them
- * (doors-wall.js). Against the committed fixture, at 1920×1080 on a TV and at 390 on a phone, with a model that answers
- * at length: one viewport on the TV and no screen clipped, nothing drawn under the 28 px floor (SVG words included, read
- * through their transform), every figure with its time and one of the five provenance words, no room or sensor name,
- * the narration in its own screen between the words and the balance; under reduced motion two reads 1.5 s apart are the
- * same hour and the replay's clock is not subscribed; with motion on and the replay loop shortened to 2.4 s, the hours
- * step. PAI_WALL_SHOTS=1 writes wallstage_<w>.png to PAI_OUT. */
-async function wallstage() {
+/* ------------------------------------------------------------------ the Wall's walk (18 Nov 2026)
+ * The Wall walks a satellite map through the base, community and city sizes, with a column beside it and a strip of four
+ * gauges and the clock under both (doors-wall.js, doors-wallmap.js). The rig cannot load MapLibre (vendor/ is not served
+ * here), so this is the Wall a screen without a map draws: the column and the strip, and one line where the map would be.
+ * Against the committed fixture and /wall's, at 1920×1080 and 1440×900 on a TV and at 390 on a phone, with a model that
+ * answers at length: no page wider than its screen and, on a TV, no taller; nothing under the 20 px floor (Tomas, 18 Nov);
+ * every strip figure with its time and one of the five words; no room or sensor name; the narration inside the column,
+ * under its chapters and above its bottom; under reduced motion two reads 1.5 s apart are the same hour at the base size
+ * and no clock is subscribed; with motion on and the loop shortened to 2.4 s, the hours step and the sizes walk.
+ * PAI_WALL_SHOTS=1 writes wallwalk_<w>.png to PAI_OUT. */
+async function wallwalk() {
   const bad = [], ok = (c, what) => { if (!c) bad.push(what); };
   const fx = JSON.parse(fs.readFileSync(path.join(HERE, '..', '..', 'app', 'issues', 'fixtures', `${FIXTURE}.json`), 'utf8'));
   const names = (fx.sensors || []).filter(x => x.local && (x.name || '').trim().length > 3).map(x => x.name.trim());
-  const read = (page, floor = 27.5) => page.evaluate(([names, floor]) => {
-    const W = document.querySelector('#wallv'), FIVE = ['live', 'partial', 'model', 'cached', 'example'];
-    const txt = [...W.querySelectorAll('*')].filter(e => [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim()) && e.getClientRects().length && !e.closest('.wchrome,[hidden]'));
-    const px = e => parseFloat(getComputedStyle(e).fontSize) * (e instanceof SVGElement ? e.getScreenCTM().a : 1);
-    const narr = document.querySelector('#wnarr'), cols = [...document.querySelectorAll('.wlow > *')].filter(e => !e.hidden).map(e => e.id || e.className);
-    return { hour: WALL.h, sub: CLOCK.subs.has('wall-replay'), h: document.documentElement.scrollHeight, w: document.documentElement.scrollWidth,
-      small: txt.filter(e => px(e) < floor).map(e => `${e.tagName}.${e.className.baseVal ?? e.className} ${px(e).toFixed(1)}`).slice(0, 3),
-      clipped: [...W.querySelectorAll('.whead,.wscr')].filter(e => !e.hidden && e.scrollHeight > e.clientHeight + 1).map(e => e.className),
-      undated: [...W.querySelectorAll('.wrv')].filter(v => v.querySelector('.wnum')).map(v => v.textContent).filter(f => !/\d\d:\d\d/.test(f) || !FIVE.some(x => f.includes(x))).slice(0, 2),
-      stale: [...W.querySelectorAll('.wstage')].filter(e => { const s = e.querySelector('svg'); return s && Math.abs(+s.getAttribute('width') - e.clientWidth) > 1; }).map(e => e.id),
-      figs: W.querySelectorAll('.wrv .wnum').length, stage: !!document.querySelector('#wstage svg') && !!document.querySelector('#wbal svg'),
-      narr: narr && !narr.hidden ? { cols, past: Math.round(narr.getBoundingClientRect().bottom - innerHeight) } : null,
+  const read = (page, floor) => page.evaluate(([names, floor]) => {
+    const W = document.querySelector('#wallv'), FIVE = ['live', 'partial', 'model', 'cached', 'example'], box = q => { const e = document.querySelector(q); return e && !e.hidden ? e.getBoundingClientRect() : null; };
+    /* the size legend is the one size under the floor (the mockup's, 18 Nov); the chrome is read where it shows (a touch
+       screen), and only there */
+    const shown = e => { const c = e.closest('.wchrome'); return !c || +getComputedStyle(c).opacity > 0; };
+    const txt = [...W.querySelectorAll('*')].filter(e => [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim()) && e.getClientRects().length && !e.closest('[hidden],.whex') && shown(e));
+    const col = box('.wcol'), narr = box('#wnarr'), chap = box('#wscale');
+    return { hour: WALL.h, size: WALL.s, sub: [...CLOCK.subs.keys()], chrome: [...W.querySelectorAll('.wchrome')].filter(shown).length, h: document.documentElement.scrollHeight, w: document.documentElement.scrollWidth,
+      small: txt.filter(e => parseFloat(getComputedStyle(e).fontSize) < floor).map(e => `${e.tagName}.${e.className} ${getComputedStyle(e).fontSize}`).slice(0, 3),
+      undated: [...W.querySelectorAll('.wg .wrv')].map(v => v.textContent).filter(f => !(/\d\d:\d\d/.test(f) && FIVE.some(x => f.includes(x))) && !/not read/.test(f)).slice(0, 2),
+      over: [...W.querySelectorAll('.wover')].filter(e => !e.hidden && getComputedStyle(e).display !== 'none').map(e => e.id),
+      gauges: W.querySelectorAll('.wg').length, figs: W.querySelectorAll('.wg .wnum').length, nomap: (document.querySelector('.wnomap') || {}).textContent || '', rows: W.querySelectorAll('.wchap li').length,
+      narr: narr && { inCol: narr.bottom <= col.bottom + 1 && narr.right <= col.right + 1 && narr.left >= col.left - 1, belowChap: narr.top >= chap.bottom - 1, past: Math.round(narr.bottom - innerHeight) },
       words: [...W.querySelectorAll('.wpw')].map(e => e.textContent).filter(x => !FIVE.includes(x)),
       named: names.filter(n => W.innerHTML.includes(n)) };
   }, [names, floor]);
@@ -3344,26 +3372,33 @@ async function wallstage() {
   for (const [w, h, touch] of [[1920, 1080, false], [1440, 900, false], [390, 844, true]]) {
     const r = await openRig({ w, h, touch, dark: true });
     await r.page.goto(`${POP}/?fixture=${FIXTURE}#wall`, { waitUntil: 'domcontentloaded' });
-    await r.page.waitForSelector('#wstage svg', { timeout: 30000 }).catch(() => bad.push(`${w}: the Wall drew no stage`));
+    await r.page.waitForSelector('#wstrip .wg', { timeout: 30000 }).catch(() => bad.push(`${w}: the Wall drew no strip`));
     await r.page.waitForSelector('#wnarr:not([hidden])', { timeout: 30000 }).catch(() => bad.push(`${w}: the narration never opened`));
-    /* the loading screen holds at least 1.2 s (ASKING's floor); a reading taken under it reads nothing */
     ok(await r.page.waitForSelector('#asking:not(.on)', { state: 'attached', timeout: 8000 }).then(() => true, () => false), `${w}: the loading screen never closed`);
     await r.page.evaluate(() => document.fonts.ready); await r.page.waitForTimeout(800);
-    if (process.env.PAI_WALL_SHOTS === '1') await r.page.screenshot({ path: path.join(OUT, `wallstage_${w}.png`), fullPage: true });
-    const g = await read(r.page, Math.min(28, w * .014584, h * .025926) - .5), tag = `${w}`;
-    ok(g.stage && g.figs >= 4, `${tag}: the stage or the balance is not drawn (${g.figs} figures)`);
+    if (process.env.PAI_WALL_SHOTS === '1') await r.page.screenshot({ path: path.join(OUT, `wallwalk_${w}.png`), fullPage: true });
+    if (w === 1920) fs.writeFileSync(path.join(OUT, 'wallwalk_1920.json'), JSON.stringify(await r.page.evaluate(COLLECT)));   /* what `targets` reads for T7 */
+    const g = await read(r.page, (touch ? 12 : Math.min(20, w * .010417, h * .018519)) - .5), tag = `${w}`;
+    ok(g.gauges === 4 && g.rows >= 1, `${tag}: the strip or the chapters are not drawn (${g.gauges} gauges, ${g.rows} rows)`);
+    /* the swell and the wind read /wall here. Dust and heat cannot: this fixture's snapshot carries no issues_days, so the
+       rig's page has no issue series at all (D.buckets is empty); a node's tokenless /issues/days has them, and
+       tests/test_doors.py checks that dust and heat read on the replayed capture */
+    ok(g.figs >= 2, `${tag}: ${g.figs} figures read in the strip`);
+    ok(g.over.join() === (touch ? 'wwhere,wcap' : 'wwhere,wcap,whex'), `${tag}: the map's overlays are ${g.over.join(', ')}`);
+    ok(g.nomap === 'This screen cannot draw the map.', `${tag}: no line where the map would be: "${g.nomap}"`);
     ok(g.w <= w, `${tag}: the page is ${g.w} px wide`);
-    ok(!g.stale.length, `${tag}: drawn at another size than its screen: ${g.stale.join(', ')}`);
-    if (!touch) { ok(g.h <= h, `${tag}: the Wall is ${g.h} px on a ${h} px screen`); ok(!g.clipped.length, `${tag}: a screen is clipped: ${g.clipped.join(', ')}`);
-      ok(!g.small.length, `${tag}: under the 28 px floor: ${g.small.join(', ')}`); }
+    if (!touch) ok(g.h <= h, `${tag}: the Wall is ${g.h} px on a ${h} px screen`);
+    ok(!g.small.length, `${tag}: under the floor: ${g.small.join(', ')}`);
+    ok(touch ? g.chrome > 0 : !g.chrome, `${tag}: ${g.chrome} parts of the chrome shown ${touch ? 'on a touch screen, so the floor read none' : 'with no pointer over them'}`);
     ok(!g.undated.length, `${tag}: a figure with no time or word: ${g.undated.join(' | ')}`);
     ok(!g.words.length, `${tag}: a provenance word that is not one of the five: ${g.words.join(', ')}`);
     ok(!g.named.length, `${tag}: names a room or sensor: ${g.named.join(', ')}`);
-    if (g.narr) { ok(g.narr.cols.join('|') === 'whead|wnarr|wscr wsmall', `${tag}: the narration is not between the words and the balance: ${g.narr.cols.join(' | ')}`);
-      if (!touch) ok(g.narr.past <= 1, `${tag}: the narration runs ${g.narr.past} px past the screen`); }
+    ok(g.narr && g.narr.inCol && g.narr.belowChap, `${tag}: the narration covers the column: ${JSON.stringify(g.narr)}`);
+    if (g.narr && !touch) ok(g.narr.past <= 1, `${tag}: the narration runs ${g.narr.past} px past the screen`);
     if (w === 1920) {
-      const a = await read(r.page); await r.page.waitForTimeout(1500); const b = await read(r.page);
-      ok(a.hour === 23 && a.hour === b.hour && !b.sub, `reduced motion: the replay moved (${a.hour} → ${b.hour}, subscribed ${b.sub})`);
+      /* both reads: the last real slot (23, the replay pads a short window before it), the base size, no clock */
+      const a = await read(r.page, 0); await r.page.waitForTimeout(1500); const b = await read(r.page, 0);
+      ok([a, b].every(x => x.hour === 23 && x.size === 0 && !x.sub.length), `reduced motion: the replay moved (${a.hour}/${a.size}/${a.sub} → ${b.hour}/${b.size}/${b.sub})`);
     }
     await r.browser.close();
   }
@@ -3378,16 +3413,32 @@ async function wallstage() {
       if (await serveNodeAPI(route, u)) return; return route.continue(); });
     const page = await ctx.newPage();
     await page.goto(`${POP}/?fixture=${FIXTURE}#wall`, { waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('#wstage svg', { timeout: 30000 }).catch(() => bad.push('motion: the Wall drew no stage'));
+    await page.waitForSelector('#wstrip .wg', { timeout: 30000 }).catch(() => bad.push('motion: the Wall drew no strip'));
     await page.evaluate(() => document.documentElement.style.setProperty('--motion-replay-loop', '2.4s'));
+    /* each sample: the hour and the size, the strip as drawn (the clock and the four figures), the chapter lit in the
+       column and the one the story has on at that hour. 60 samples of 250 ms is 15 s and more, a whole walk of three 2.4 s
+       days from wherever it starts and back with time to spare, so the last change is never missed by timing */
     const seen = [];
-    for (let k = 0; k < 14; k++) { seen.push(await page.evaluate(() => [WALL.h, document.querySelector('#wstage').innerHTML.length])); await page.waitForTimeout(250); }
-    const hours = new Set(seen.map(x => x[0]));
-    ok(hours.size >= 4 && seen.every(x => Number.isInteger(x[0])), `motion: the hours did not step (${[...hours].join(',')})`);
-    ok(new Set(seen.map(x => x[1])).size >= 3, 'motion: the stage was not redrawn as the hours stepped');
+    for (let k = 0; k < 60; k++) { seen.push(await page.evaluate(() => { const S = WALL.story[WALL.s], n = S ? S.chapters.length : 0;
+      return { h: WALL.h, s: WALL.s, strip: [...document.querySelectorAll('#wstrip .wrv, #wstrip .wclock b')].map(e => e.textContent).join(' | '),
+        clock: (document.querySelector('#wstrip .wclock b') || {}).textContent, lit: (document.querySelector('#wscale li.on .t') || {}).textContent || null,
+        want: n ? S.chapters[chapterAt(WALL.h, n)].title : null }; })); await page.waitForTimeout(250); }
+    const hours = new Set(seen.map(x => x.h));
+    ok(hours.size >= 4 && seen.every(x => Number.isInteger(x.h)), `motion: the hours did not step (${[...hours].join(',')})`);
+    /* the strip: every step of the hour redraws the clock, and the figures change over the walk */
+    const stale = seen.filter((x, i) => i && x.h !== seen[i - 1].h && x.clock === seen[i - 1].clock);
+    ok(!stale.length, `motion: the clock stayed at ${stale.map(x => x.clock).join(', ')} while the hour stepped`);
+    ok(new Set(seen.map(x => x.strip)).size >= 4, 'motion: the strip\'s figures were not redrawn as the hours stepped');
+    /* the column: the chapter lit is the story's at that hour, every sample, and more than one is lit over the walk */
+    const off = seen.filter(x => x.lit !== x.want);
+    ok(!off.length && new Set(seen.map(x => `${x.s}:${x.lit}`)).size >= 3, `motion: the column lit ${off.slice(0, 2).map(x => `${x.lit} for ${x.want}`).join(', ') || 'too few chapters'}`);
+    /* the sizes: base → community → city → base, in that order, nothing skipped. Every change is one size on, and four
+       runs hold three changes, a whole turn whichever size the samples start in */
+    const runs = seen.map(x => x.s).filter((x, i, a) => !i || x !== a[i - 1]);
+    ok(runs.length >= 4 && runs.every((x, i) => !i || x === (runs[i - 1] + 1) % 3), `motion: the walk went ${runs.join(' → ')}, not base → community → city → base`);
     await browser.close(); }
-  if (!bad.length) console.log('  wallstage: the instruments at 1920×1080, 1440×900 and 390, one screen on a TV, nothing under the floor, dated and worded, no names, the narration between the words and the balance; still under reduced motion, stepping with motion on');
-  for (const b of bad) console.log('FAIL wallstage:', b);
+  if (!bad.length) console.log('  wallwalk: the column and the strip at 1920×1080, 1440×900 and 390 without a map, one screen on a TV, nothing under the 20 px floor, dated and worded, no names, the narration inside the column; still under reduced motion, walking with motion on');
+  for (const b of bad) console.log('FAIL wallwalk:', b);
   if (bad.length) process.exitCode = 1;
 }
 
@@ -3593,7 +3644,7 @@ async function doors() {
          line at every width, so place-tools is too */
       const WANT = { '#now': ['now-sentence', 'now-todo', 'now-rows'], '#place': ['place-head', 'place-map', 'place-orbit', 'place-tools'].concat(w < 768 ? [] : ['place-layers']),   /* a phone keeps the cake in a closed sheet */
         '#node': ['node-verdict', 'node-flow', 'node-refusals'], '#data/readings': ['data-head', 'data-readings', 'data-week'],
-        '#data/home': ['data-images', 'data-things'], '#setup': ['settings', 'setup-sections', 'setup-save'], '#wall': ['wall-never', 'wall-sentence', 'wall-stage', 'wall-balance'] };
+        '#data/home': ['data-images', 'data-things'], '#setup': ['settings', 'setup-sections', 'setup-save'], '#wall': ['wall-never', 'wall-map', 'wall-sentence', 'wall-strip'] };
       const NOT = { '#place': ['earth'], '#data/home': ['data-ledger', 'data-readings'], '#wall': ['bar', 'foot'] };
       let parts = 0;
       for (const [h, want] of Object.entries(WANT)) {
@@ -4047,8 +4098,8 @@ else if (cmd === 'overflow') await overflow(rest);
 else if (cmd === 'list') jobs().forEach(j => console.log(j.name));
 else if (cmd === 'mobile') await mobile();
 else if (cmd === 'doors') await doors();
-else if (cmd === 'wallstage') await wallstage();
+else if (cmd === 'wallwalk') await wallwalk();
 else if (cmd === 'placescreen') await placescreen();
 else if (cmd === 'report') await report();
-else { console.error('usage: measure.mjs render|shots|plates|plate-list|steps|stall|press|asking|extend|anchors|sheets|header|targets|audit|overflow|analyse|list|mobile|doors|wallstage|placescreen|report');
+else { console.error('usage: measure.mjs render|shots|plates|plate-list|steps|stall|press|asking|extend|anchors|sheets|header|targets|audit|overflow|analyse|list|mobile|doors|wallwalk|placescreen|report');
   process.exit(2); }

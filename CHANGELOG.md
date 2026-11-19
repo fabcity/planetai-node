@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- **The Wall walks out from the house on the satellite.** The map is now satellite imagery, dimmed, and fills most
+  of the screen. Instead of house, street, ring and region, it walks through the three sizes a node can have: the
+  base node's seven cells round the house, then the community's, then the city's, a replayed day at each size and one
+  thing on the map at a time. At the house that is the air, the roofs, the sun on them today, the ground's heat and
+  the rain to come. Around it, the stations, the land that changed, the nearest fab lab and the rivers. At the city
+  size, how much of the power is burnt fuel and the nearest plant, the basin the house drains with, the swell and the
+  stations across the island, with the government's at Sempidi ringed. The wind moves over the map and the swell's
+  crests over the sea, at the replayed hour and at their own pace. Under the map a strip holds fine dust, heat, the
+  swell and the wind, each with its day as a thin line. The type floor goes from 28 px to 20 px at 1920, with 16 px
+  for the size legend. The map reads the new `GET /wall`, open without a token at `SHARE_LEVEL=open`, so nothing on
+  it is finer than the house's cell and every distance is in whole km. A chapter the node has no data for is left
+  out. docs/wall, docs/api.
+
 - **/earth no longer gives the house away.** A screen without your token got the node's exact point from `/earth`,
   and the AlphaEarth pictures were centred on the house with an orange ring on it. That screen now gets the centre of
   the res-8 cell, as `/health` gives it, and the pictures and numbers come from a square centred on that cell, 1 km in
@@ -77,14 +90,6 @@
   check read red when the folder belonged to root, which is what happens when the container makes it first, while the
   app kept every picture. It now asks the app too.
 
-- **The Wall's instruments are drawn finer (9 Nov).** Each stands on a framed plate, in greys under the lines, with
-  screws, a nameplate, flanges on the jar's pipe, clips on the thermometer, guy wires on the wind's mast and a tick
-  every five degrees on its dial. Each keeps some of the day too, the heat's range as a bracket beside the tube, the
-  swell's highest line dashed over the wave, the wind's bearings so far fading behind the vane. The scale under them is
-  the day being replayed, an hour a tick, ending on now. The figures in the header are lighter and larger, the
-  narration's label is a strip like on the other screens, and its text stops on a whole line. Nothing is smaller than
-  28 px at 1920. docs/wall.
-
 - **Now reads from the house outwards, and What to do is one line.** The right column opens with Around the house,
   then the map of the air around it, then the city's Fab City Index, now titled Local production capacity in the city,
   with its links to index.fab.city kept. What to do is folded to one line, and **Options to act** opens the answers and
@@ -103,13 +108,6 @@
   Its link turns the Rivers and Basins rows on and takes the map out to District, where the rivers are in view. The
   row needs the screen's token, as the rivers on the map do. Data's Models table names the seven hydro figures and
   gives them units.
-
-- **The Wall draws the day as instruments (8 Nov).** One black screen holds four of them, fine dust settling in a jar with a
-  particle for every µg/m³, the apparent heat on a thermometer, the swell as a wave and the wind on a vane, and each
-  figure carries its hour and provenance word. They replay the last 24 hours an hour at a step and hold the last one,
-  under reduced motion they stand still at it. Under them the node's sentence sits beside its model's words, when it
-  has written some, and a balance weighs the house against the clean-air line with the stations nearby counted. The
-  Wall's map and its four scales are gone, the map stays on Place. docs/wall.
 
 - **A node knows where its rivers are.** The new core pack `hydro` fetches HydroSHEDS once for the node's square
   (`planetai run hydro fetch`, 50-160 MB downloaded, read and deleted, under 100 KB kept) and keeps the rivers, the

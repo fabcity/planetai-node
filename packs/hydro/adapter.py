@@ -79,15 +79,17 @@ def square(lat: float, lon: float, km: float) -> tuple[float, float, float, floa
     return lon - dlon, lat - dlat, lon + dlon, lat + dlat
 
 
-def result() -> dict:
+def result(near: bool = True) -> dict:
     """What `planetai run hydro fetch` kept, or {} when it has not run, or ran around a point or square this node no
-    longer is (1 % of the radius, never under 25 m, as terrain)."""
+    longer is (1 % of the radius, never under 25 m, as terrain). `near=False` skips the point's tolerance and keeps the
+    square's size: app/wall.py judges the fetch by the house's res-8 cell instead, since whether the house is within
+    that tolerance of the fetch point would say where in the cell it is."""
     try:
         r = json.loads(result_file().read_text())
     except (OSError, ValueError):
         return {}
     lat, lon, km = aoi()
-    if r.get("radius_km") != km or metres(r["lat"], r["lon"], lat, lon) > max(km * 10.0, 25.0):
+    if r.get("radius_km") != km or (near and metres(r["lat"], r["lon"], lat, lon) > max(km * 10.0, 25.0)):
         return {}
     return r
 

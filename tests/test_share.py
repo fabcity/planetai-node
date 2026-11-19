@@ -357,9 +357,13 @@ def ring_rows(house):
                              "scale": "community", "cadence": "PT1H", "meta": None})
     return rows
 
-_stations0, _sensors0 = main.packs.stations, main.q
+_stations0, _sensors0, _module0 = main.packs.stations, main.q, main.packs.module
 main.packs.stations = lambda: [{"source": "baliairdispatch", "radius": "BAD_RADIUS_KM", "pack": "bali-air-dispatch",
                                 "prefix": "bad-"}]
+# its settings must read: a station pack whose cfg() does not is withheld whole (wall._ring_limits), and PACKS_DIR is
+# not this checkout's here
+main.packs.module = lambda p, *a, **k: type("cfg", (), {"cfg": staticmethod(lambda: {"min_separation_m": 150.0})}) \
+    if p == "bali-air-dispatch" else _module0(p, *a, **k)
 seen, mine = {}, {}
 for name, p in (("A", A), ("B", B)):
     at(p)
@@ -408,7 +412,7 @@ for p in (A, B):
     _fc["write_wind_field"](None, *p)
 assert _got[0] == _got[1] == tuple(_cc), "the wind grid on /ground/wind is centred on the house, to 5 dp"
 print("open: /ground's tile sets and wind grid are cut round the cell's centre")
-main.packs.stations, main.q = _stations0, _sensors0
+main.packs.stations, main.q, main.packs.module = _stations0, _sensors0, _module0
 at((-8.6478291, 115.1385412))
 
 # How far back this node's own record goes is not private: it is the length of the line the page

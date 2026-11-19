@@ -1158,21 +1158,6 @@ def _coarse(lat, lon):
         return round(float(lat), 2), round(float(lon), 2)
 
 
-ROUNDED_M = 80      # how far a point at 3 dp can stand from where it is (55 m each way at the equator)
-
-
-def _ring_limits() -> tuple[float, float]:
-    """(km, m): the tightest radius and the widest separation of the station packs that are on, 15 km and 150 m
-    (the ring's defaults) when none says."""
-    lim = []
-    for p in packs.stations():
-        if p.get("radius"):
-            mod = packs.module(p["pack"], on_only=False)
-            lim.append((float(settings.get(p["radius"], "15") or 15),
-                        float(((mod.cfg() if mod and hasattr(mod, "cfg") else None) or {}).get("min_separation_m", 150))))
-    return min(r for r, _ in lim or [(15.0, 0)]), max(m for _, m in lim or [(0, 150.0)])
-
-
 def _public_rows(rows: list[dict]) -> list[dict]:
     """The stations and labs a reader without a token is shown (R25). The station packs chose theirs round the house:
     within a radius, never within a separation of it (packs/bali-air-dispatch), and the make pack its labs within
@@ -1185,8 +1170,9 @@ def _public_rows(rows: list[dict]) -> list[dict]:
         return rows
     import h3  # noqa: PLC0415
     clat, clon, circ = ground.centre(lat, lon)
-    far_km, sep_m = _ring_limits()
+    far_km, sep_m, withheld = wall._ring_limits()   # the same ring rule /wall draws by
     srcs = {p["source"] for p in packs.stations()}
+    gone = {p["source"] for p in packs.stations() if p["pack"] in withheld}   # settings unread: none of its stations
     labs_m = float(os.getenv("MAKE_RADIUS_KM", "50") or 50) * 1000 - circ
     out = []
     for r in rows:
@@ -1198,7 +1184,8 @@ def _public_rows(rows: list[dict]) -> list[dict]:
             if d > labs_m:
                 continue
             r = {**r, "meta": {**(r.get("meta") or {}), "distance_km": round(d / 1000, 1)}}
-        elif r.get("source") in srcs and not circ + sep_m + ROUNDED_M < d <= far_km * 1000 - circ:
+        elif r.get("source") in gone or (r.get("source") in srcs
+                                         and not circ + sep_m + wall.ROUNDED_M < d <= far_km * 1000 - circ):
             continue
         out.append(r)
     return out
@@ -1638,6 +1625,8 @@ import machine  # noqa: E402 — GET /machine, /storage (app/machine.py)
 app.include_router(machine.router)
 import wild  # noqa: E402 — GET /packs/all, /packs/preview, POST /packs/install (app/wild.py)
 app.include_router(wild.router)
+import wall  # noqa: E402 — GET /wall: what the Wall's map draws, tokenless at SHARE_LEVEL=open (app/wall.py)
+app.include_router(wall.router)
 
 
 @app.get("/report/latest")
@@ -2006,7 +1995,7 @@ COMPANIONS = {
     # The five doors (/?layout=doors): the loader that builds their one object from the routes, then one file per door,
     # as planetai-design's prototype kept them. Natural Earth's coast for the Node door's world (NOTICE).
     **{f"doors-{n}.js": (STATIC / f"doors-{n}.js", "application/javascript")
-       for n in ("load", "nodegeo", "core", "fig", "now", "cake", "draw", "sheet", "placemap", "place", "data", "flow", "wall", "node", "setup")},
+       for n in ("load", "nodegeo", "core", "fig", "now", "cake", "draw", "sheet", "placemap", "place", "data", "flow", "wallmap", "wall", "node", "setup")},
     # The phone page (/?layout=mobile): the shell and its script, which reuses doors-load.js.
     "mobile.html": (STATIC / "mobile.html", "text/html"),
     "mobile.js": (STATIC / "mobile.js", "application/javascript"),

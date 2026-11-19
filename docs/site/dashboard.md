@@ -204,9 +204,10 @@ Every reading the node holds, one tab at a time, routed `#data/<tab>`. The tab b
 
 ## Wall
 
-The keeper's one screen for a room, always dark, read from about three metres and operated by nobody. Its map walks
-out from the house a scale at a time, house, street, ring and region, and under it the node's model says in plain
-words what is happening. It names no sensor, room or person, and shows what is asked without a button to answer it.
+The keeper's one screen for a room, always dark, read from about three metres and operated by nobody. Its satellite
+map walks out from the house through the three sizes of node, base, community and city, and beside it the node's
+model says in plain words what is happening. It names no sensor, room or person, and shows what is asked without a
+button to answer it.
 [Wall mode](wall.md) has all of it.
 
 ## Set up

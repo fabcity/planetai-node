@@ -28,6 +28,7 @@ import today
 log = logging.getLogger("planetai.energy")
 SID = "energy-grid"
 HOME = "energy-home"
+LARGE_MW = 100.0        # a large plant: large_plant_km, and the one the Wall draws its line to
 USER_AGENT = "planetai-node/energy (https://planetai.fab.city; info@fab.city)"
 OSM_ATTR = "© OpenStreetMap contributors, ODbL, via Overpass"
 REE_ATTR = "Red Eléctrica de España (REE), apidatos.ree.es"
@@ -208,13 +209,23 @@ def _grid(hc) -> tuple[list[dict], list[tuple], dict | None]:
 
     # only what stands on this grid: the Bali box also holds Nusa Penida's own island grid and a corner of Java
     near_all = [s for s in near_all if grids.inside(s["lat"], s["lon"], g.get("polygon") or [])]
-    subs = [s for s in near_all if s["kind"] == "substation"][:1]
+    # the five nearest substations: /energy says one, the nearest the house for the household and the nearest the
+    # cell's middle for anyone else, and that one need not be the house's
+    subs = [s for s in near_all if s["kind"] == "substation"][:5]
     plants = [s for s in near_all if s["kind"] == "plant" and (s.get("mw") or 0) >= 1.0]
-    big_plants = [s for s in near_all if s["kind"] == "plant" and (s.get("mw") or 0) >= 100.0]
+    big_plants = [s for s in near_all if s["kind"] == "plant" and (s.get("mw") or 0) >= LARGE_MW]
+    import h3  # noqa: PLC0415
+    cell = h3.latlng_to_cell(lat, lon, 8)
+    mid = h3.cell_to_latlng(cell)
+    from_mid = lambda s: osm.km(mid[0], mid[1], s["lat"], s["lon"])  # noqa: E731
+    # ties by name then point, as routes.py ranks them: never by the house-nearest order near_all comes in
+    mid_key = lambda s: (from_mid(s), str(s.get("name") or ""), s["lat"], s["lon"])  # noqa: E731
     links = []
     for lk in g.get("links") or []:
         at = (lk.get("at") or "").lower()
-        ch = next((s for s in near_all if s["kind"] == "cable_head" and (not at or at in s["name"].lower())), None)
+        # the link's cable head nearest the cell's middle: its km leaves without a token, from the middle
+        ch = min((s for s in near_all if s["kind"] == "cable_head" and (not at or at in s["name"].lower())),
+                 key=mid_key, default=None)
         links.append({
             "name": lk["name"], "kind": "link", "fuel": None,
             "fossil": True if (lk.get("fossil_share") or 0) > 0.5 else None,
@@ -226,10 +237,7 @@ def _grid(hc) -> tuple[list[dict], list[tuple], dict | None]:
     # A screen without a token is told that one (routes.py); picked from the house's nearest few it moved with the house
     # wherever substations stand close together. The km readings below are from the middle too, in whole km: they are
     # derived, so /readings, /stats, /series and the energy issue's stack hand them to anyone.
-    import h3  # noqa: PLC0415
-    mid = h3.cell_to_latlng(h3.latlng_to_cell(lat, lon, 8))
-    from_mid = lambda s: osm.km(mid[0], mid[1], s["lat"], s["lon"])  # noqa: E731
-    mid_sub = min((s for s in near_all if s["kind"] == "substation"), key=from_mid, default=None)
+    mid_sub = min((s for s in near_all if s["kind"] == "substation"), key=mid_key, default=None)
     if mid_sub is not None and mid_sub not in subs:
         subs = subs + [mid_sub]
     mid_big = min(big_plants, key=from_mid, default=None)
@@ -268,6 +276,7 @@ def _grid(hc) -> tuple[list[dict], list[tuple], dict | None]:
         "attribution": attrs,
         "counts": counts,
         "cells": _cells(raw_sources, lat, lon),
+        "cell": cell,           # the res-8 cell the sources were picked for: routes.py names no substation for another
         "computed_at": now.isoformat(),
     }
     out_dir = _out()

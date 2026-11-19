@@ -19,7 +19,7 @@ A request is trusted when it comes from loopback or carries a household token: `
 | `act` | Loopback with no token; from anywhere else `ACT_TOKEN` or `ADMIN_TOKEN`. |
 | `children` | `AGGREGATE_TOKEN`, which a parent gives its children. It opens `POST /aggregates` and `POST /events` and nothing else. |
 
-The `off` allowlist, the default, is `/`, `/ui`, `/workbench`, `/tester`, `/health`, `/llms.txt`, `/settings`, `/export`, `/presence`, `/nodes`, `/offers` and anything under `/static/`. The `open` allowlist adds `/stats`, `/sensors`, `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/packs/all`, `/trust`, `/nearby`, `/forecast`, `/index/place`, `/energy`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, `/ask`, `/ask/status`, `/docs/search`, `/geo/cell`, `/learned/place`, and anything under `/exports/`, `/issues`, `/sources/` or `/ground/`. The pack routes among them (`/offers`, `/nearby`, `/forecast`, `/index/place`, `/energy` and the `/earth` paths) are put there by their pack's `pack.yaml` (`share:`). Any other value counts as `off`. The lists match the path whatever the method, so at `open` an anonymous `POST /readings` reaches the handler and gets 401. A path with no route also gets 403.
+The `off` allowlist, the default, is `/`, `/ui`, `/workbench`, `/tester`, `/health`, `/llms.txt`, `/settings`, `/export`, `/presence`, `/nodes`, `/offers` and anything under `/static/`. The `open` allowlist adds `/stats`, `/sensors`, `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/packs/all`, `/trust`, `/nearby`, `/forecast`, `/index/place`, `/energy`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/wall.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, `/ask`, `/ask/status`, `/docs/search`, `/geo/cell`, `/learned/place`, `/wall`, and anything under `/exports/`, `/issues`, `/sources/` or `/ground/`. The pack routes among them (`/offers`, `/nearby`, `/forecast`, `/index/place`, `/energy` and the `/earth` paths) are put there by their pack's `pack.yaml` (`share:`). Any other value counts as `off`. The lists match the path whatever the method, so at `open` an anonymous `POST /readings` reaches the handler and gets 401. A path with no route also gets 403.
 
 Tokens travel in the `Authorization` header only, never in a query string, and are compared in constant time. `ADMIN_TOKEN` is in `.env`, the other three in settings, and `planetai ui` prints them. An optional `X-Agent` header names the caller; `PUT /settings` writes it to the ledger.
 
@@ -44,7 +44,7 @@ The middlewares answer `{"error": "..."}`. A share-level 403 names the level and
 
 For a path no level opens it ends "No share level opens this one, so it always needs a token from anywhere but the node itself." `/mcp` without the admin token is 401 `{"error": "the agent surface needs Authorization: Bearer <ADMIN_TOKEN>"}`.
 
-Some routes are a pack's, served from `packs/<id>/routes.py`: `/forecast` (forecast), `/nearby` (nearby), `/index/place` (index), `/energy` (energy), `/earth`, `/earth/change.png` and `/earth/year.png` (earth), `/earth/frame.png` (earth-engine), `/hydro` (hydro), every `/captures` route and `/species` (eyes), and `/things` and `/offers` (things). While its pack is off on the node, such a route answers 404 `{"detail": "the <pack> pack is off on this node"}`.
+Some routes are a pack's, served from `packs/<id>/routes.py`: `/forecast` (forecast), `/nearby` (nearby), `/index/place` (index), `/energy` (energy), `/earth`, `/earth/change.png`, `/earth/year.png` and `/earth/wall.png` (earth), `/earth/frame.png` (earth-engine), `/hydro` (hydro), every `/captures` route and `/species` (eyes), and `/things` and `/offers` (things). While its pack is off on the node, such a route answers 404 `{"detail": "the <pack> pack is off on this node"}`.
 
 Handlers answer `{"detail": "..."}`. The token checks:
 
@@ -352,7 +352,7 @@ Official and model weather for this point, from `forecast-bmkg`, `forecast-om`, 
 ### GET /energy
 Access: open
 
-The synchronous grid behind this node's cells, as the `energy` pack last computed it: `{grid, kind, method, months, share: {low, high, value, now, stale, as_of}, bar, sources, today: {sun_kwh_m2, roof_kwh, use_kwh, measured, panel_kw}, household, attribution, counts: {plants, substations}, cells}`. `sources` lists the nearest substation, each plant of at least 1 MW and each link, on this grid only. Without the admin or act token (and for `X-Agent`) each source's `km` is whole kilometres, sources carry no `lat`/`lon`, and `cells` is null; with it they are as measured and `cells` holds the node's seven res-8 cells with their outlines and the MW made in each. `household`, the house's latest W from Home Assistant, needs `ADMIN_TOKEN` itself. `today.sun_kwh_m2` is null when the forecast pack has no Open-Meteo sun for today, and then there is no roof. 404 while the `energy` pack is off.
+The synchronous grid behind this node's cells, as the `energy` pack last computed it: `{grid, kind, method, months, share: {low, high, value, now, stale, as_of}, bar, sources, today: {sun_kwh_m2, roof_kwh, use_kwh, measured, panel_kw}, household, attribution, counts: {plants, substations}, cells}`. `sources` lists the nearest substation, each plant of at least 1 MW and each link, on this grid only. Without the admin or act token (and for `X-Agent`) each source's `km` is whole kilometres from the middle of the node's res-8 cell, as `/wall` measures it, the substation is the one nearest that middle (none while the pack's result was computed for another res-8 cell, until its next poll), the sources are ranked by their distance from it before it is made whole, a source with no point has no `km`, sources carry no `lat`/`lon`, and `cells` is null; with it they are as measured and `cells` holds the node's seven res-8 cells with their outlines and the MW made in each. `household`, the house's latest W from Home Assistant, needs `ADMIN_TOKEN` itself. `today.sun_kwh_m2` is null when the forecast pack has no Open-Meteo sun for today, and then there is no roof. 404 while the `energy` pack is off.
 
 ### GET /earth
 Access: open
@@ -373,6 +373,11 @@ A land-change map, `?pair=YYYY_YYYY` (default the latest). 404 `no such land-cha
 Access: open
 
 One year drawn from the embeddings in grey, `?year=` required. 404 `no frame for <year>: planetai run earth frames`. Without the admin or act token it is cut the same way, with no ring.
+
+### GET /earth/wall.png
+Access: open
+
+The Wall's land-change image, for the pair `/wall` picks (the newest year-over-year pair, else the newest): the pixels that changed, inside the community's res-7 cells that fit a square centred on the node's res-8 cell, transparent elsewhere, with no ring and no scale bar. `/wall`'s `change.corners` place it, and `/wall` asks for it as `/earth/wall.png?pair=<a>_<b>`, so a new pair is a new URL; the route serves that pair's image and never another's, so a comparison that lands between the two reads cannot put a new image in the old corners. Without `pair` it serves the pair `/wall` picks. Either way it answers 204, as `/wall` shows no `change`, unless the pair's `wall` names the node's res-8 cell now (a crop from before crops named their cell is not served). It answers `Cache-Control: no-cache`, on a 204 too. 204 until `planetai run earth change` has drawn it for that pair. A pair computed before this image existed gets it on the next plain `planetai run earth change`, no `--force` needed. The pair's JSON then holds `wall`, `{bounds, ha, cell}`, or null when no community cell fits the square, a tile edge clipped the square read, or the node has no place, and then this route answers 204. A pair whose crop was cut round another res-8 cell than the node's now, or whose image is missing, is computed again on the next plain run, and `/wall` shows no `change` until it is.
 
 ### GET /earth/frame.png
 Access: open
@@ -534,6 +539,26 @@ Label fonts for the vector map, as MapLibre asks for them: `/ground/glyphs/Noto 
 Access: open
 
 The forecast pack's Open-Meteo wind field over the node's square, hourly for the next day: `{source, licence, attribution, fetched, n, km, lats, lons, times, speed_kmh, from_deg, at_node}`. `speed_kmh[t][row][column]` runs south to north and west to east, and `from_deg` is where the wind comes from. 204 with `FORECAST_OPENMETEO=0`.
+
+
+### GET /wall
+Access: open
+
+Everything the Wall's map draws, in one read: `{home, centre, scales, hours, stations, island, roofs, lab, rivers, basin, river, grid, change}`. `home` is the node's res-8 cell and `centre` its middle, `[lon, lat]`.
+
+- `scales`: the three node sizes, base, community and city, each `{k, res, km2, cells}`: the res-8 cell the node stands in and the six touching it, then the same at res 7 and res 6. Each cell is `{id, own, ring}`: `own` is true on the cell that holds the node, and `ring` is closed, its first point repeated at the end.
+- `hours`: the 24 hours `/issues` draws, as `buckets`, and for each hour the Open-Meteo wind (`wind_kmh`, `wind_from`) and the sea's wave direction and swell (`wave_from`, `swell_m`, `swell_s`). A direction is where it comes from, in degrees. `buckets` holds only the hours the node has rows for, so an hour with no row at all is missing from it, and the next value belongs to the hour after: read the timestamps, never count one slot per elapsed hour. A null is an hour that is in `buckets` with no reading of that series.
+- `stations`: the outdoor stations the station packs read (their `stations: source:`), each `{lat, lon, pm25}` with 24 hourly PM2.5 values. A Meshtastic radio or the household's own kit away from home is not one.
+- `island`: Bali Air Dispatch's island-wide list as it reads now, `{at, items}`, each item `{lat, lon, pm25, at, network, official, place}`. Null when the list is over 3 hours old, and a station over 3 hours old is left out.
+- `roofs`: `{osm_in_cells, mapped_radius_m}`, the OpenStreetMap buildings counted within that radius of the cell's middle, in whole 100 m (the place pack). The radius is the place pack's last fetch less the farthest a point of the cell can be from its middle, so it is the same wherever in the cell the house stands and wherever in the cell the fetch was made; null when that fetch was made from outside the house's cell, or did not record where it was made (the place pack fetches again when it finds one).
+- `lab`: the nearest fab lab, `{name, lat, lon, km}` (the make pack).
+- `rivers`, `basin` and `river` (the hydro pack): the reaches that touch the city size's frame as GeoJSON, each with `m3s` and `order`; the basin that holds the cell's middle, a GeoJSON feature with `sub_area` and `up_area` in km²; and `{nearest_km, nearest_m3s, largest_km, largest_m3s}`, the nearest reach and the one that carries most.
+- `grid`: `{fossil_low_pct, substation_km, plants, sun}` from the energy pack. `substation_km` is null while the pack's result was computed for another res-8 cell, until its next poll. `plants` are the plants of 1 MW or more within 30 km, each `{name, fuel, mw, lat, lon, km, large}`, nearest first; `large` is the energy pack's own cut, 100 MW or more. `sun` is `{kwh_m2, roof_kwh, panel_kw}`: the sun on each square metre of the cell today, what a panel of the size the house set would make with it, and that size. It is null when the pack has no `today`.
+- `change`: the newest land-change pair the Wall may show, `{a, b, ha, corners, png}`, where `png` is `/earth/wall.png?pair=<a>_<b>` and `corners` its four corners, `[lon, lat]` from the north-west round (the earth pack, after `planetai run earth change`).
+
+Each of `island`, `roofs`, `lab`, `rivers`, `basin`, `river`, `grid` and `change` is null while its pack is off or has nothing yet, and a pack file the route cannot read costs only its own block.
+
+It answers without a token, so nothing in it is finer than the res-8 cell. Distances are whole km from the cell's middle. Only public places carry a point, at 3 decimals. A station is kept only where the station packs' own radius and separation would keep it wherever in the cell the house stands, so a station near the house is never in the list. The rivers and the basin are chosen round the cell's middle, the roofs are counted round it, and the land-change image is placed by the Wall's own crop, never by the earth pack's square round the house. 409 before the node has a place.
 
 ## Images and things
 

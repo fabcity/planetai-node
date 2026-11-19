@@ -423,20 +423,20 @@ MARKS = [
      "This tab lists every route on this node, one line each, with a search. The doors read the same "
      "routes a script or a spreadsheet can."),
     ("wall-never", "What the Wall never shows", "wall.md", "What the Wall never shows",
-     "Anyone in the room reads the Wall", "or a button to answer.",
-     "That is why this screen holds no token and no button. An answer belongs on Telegram, the radio or "
-     "the other doors."),
+     "Anyone in the room reads the Wall", "so the Wall leaves it out.",
+     "The house is never placed finer than its cell, public places like the lab are drawn where they are. "
+     "The screen holds no token and no button to answer, an answer belongs on Telegram, the radio or the other doors."),
     ("wall-sentence", "The time and the sentence", "wall.md", "What it shows",
-     "**The time and the sentence**", "\"Nothing is\n  asked now.\"",
+     "**The time and the sentence**", "\"Nothing is asked now.\"",
      "When the node's last poll is more than 15 minutes old, the time says the readings are old."),
-    ("wall-stage", "The instruments", "wall.md", "The instruments",
-     "The instruments replay the last 24 hours", "never a slide, and nothing counts up.",
-     "Fine dust in a jar, the heat on a thermometer, the swell as a wave and the wind on a vane. With "
-     "reduced motion on, the Wall holds the last hour."),
-    ("wall-balance", "The balance", "wall.md", "What it shows",
-     "**The balance**", "red when it is over the line.",
-     "The caption under it says in words what the red squares mean against the house, at the hour the "
-     "instruments show."),
+    ("wall-map", "The map", "wall.md", "The three sizes",
+     "Each size holds one replayed day", "has fewer chapters.",
+     "The map walks out from the house, the base node's seven cells first, then the community's and the city's, "
+     "and then starts again. The wind and the swell move on it at the same hour."),
+    ("wall-strip", "The strip", "wall.md", "What it shows",
+     "**The strip**", "where the reading has one.",
+     "The swell and the wind each have a needle that points where they go, and the hour at the end of the "
+     "strip is the one the map shows."),
     ("wall-narration", "The node, thinking aloud", "wall.md", "The node, thinking aloud",
      "The node tells it to speak", "that anything is safe.",
      "A new text comes every ten minutes from the model chosen in Set up › Model, and the box says it "
@@ -711,12 +711,12 @@ QUESTIONS = {
     'wall-sentence': {"en": ['Is anything being asked of us right now?', 'Are these readings fresh?'],
         "id": ['Apakah ada yang diminta dari kami sekarang?', 'Apakah bacaan ini masih baru?'],
         "es": ['¿Se nos está pidiendo algo ahora?', '¿Son recientes estas lecturas?']},
-    'wall-stage': {"en": ['Why do the instruments keep moving?', 'Which way is the wind blowing?'],
-        "id": ['Mengapa instrumennya terus bergerak?', 'Ke arah mana angin bertiup?'],
-        "es": ['¿Por qué se mueven los instrumentos?', '¿Hacia dónde sopla el viento?']},
-    'wall-balance': {"en": ['Is our air cleaner than the street?', 'What do the red squares mean?'],
-        "id": ['Apakah udara kami lebih bersih dari jalan?', 'Apa arti kotak merah itu?'],
-        "es": ['¿Nuestro aire está más limpio que la calle?', '¿Qué significan los cuadrados rojos?']},
+    'wall-map': {"en": ['Why does the map keep zooming out?', 'What are the hexagons on the map?'],
+        "id": ['Mengapa petanya terus memperkecil?', 'Apa segi enam di peta itu?'],
+        "es": ['¿Por qué el mapa se sigue alejando?', '¿Qué son los hexágonos del mapa?']},
+    'wall-strip': {"en": ['Which way is the wind blowing?', 'Is the swell bigger than this morning?'],
+        "id": ['Ke arah mana angin bertiup?', 'Apakah ombaknya lebih besar dari tadi pagi?'],
+        "es": ['¿Hacia dónde sopla el viento?', '¿El oleaje es más grande que esta mañana?']},
     'wall-narration': {"en": ['What does the node suggest for today?', 'Which model writes this text?'],
         "id": ['Apa saran node untuk hari ini?', 'Model mana yang menulis teks ini?'],
         "es": ['¿Qué sugiere el nodo para hoy?', '¿Qué modelo escribe este texto?']},

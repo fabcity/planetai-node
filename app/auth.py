@@ -63,6 +63,13 @@ _SHARE_OPEN = (_SHARE_OFF[0] | frozenset({
     "/ask", "/ask/status", "/docs/search", "/geo/cell",
     # What the node learned about the place (outdoor stations' usual hours), never the house's: the Wall reads it.
     "/learned/place",
+    # The Wall's map (app/wall.py), which a kiosk with no token reads. Named here and not left to a pack, because it
+    # reads several packs' results that are private on their own (/hydro is on no list): the route re-cuts each one
+    # around the res-8 cell's centre, so it says nothing finer than the cell /health names. Distances are whole km
+    # from that centre, points are public things' at 3 dp, and the land-change image is placed only by the Wall's
+    # own crop, never by the earth square, which is centred on the house. The exact path only: no prefix opens
+    # whatever is added under it later.
+    "/wall",
 }), ("/static/", "/exports/", "/issues", "/sources/", "/ground/"))
 # A pack's own routes add themselves (pack.yaml `share:`, packs.shared_open()), the forecast and nearby packs first.
 import packs as _packs  # noqa: E402
