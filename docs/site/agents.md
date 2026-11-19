@@ -1,5 +1,5 @@
 # Bring your own agent
-<!-- checked: v0.91.0 -->
+<!-- checked: v0.92.0 -->
 
 An agent is a guest on the machine, never a part of it. It can read everything the node knows and help the person in
 front of it install, diagnose and run the node in plain language. It drafts and a person dispatches: no agent
@@ -103,7 +103,8 @@ under its alert, with an `alert_id` and a `choice`. No MCP tool writes any of th
 ## Invariants an agent must not break
 
 - Raw readings stay on this machine. Exports and aggregates travel, rows never do.
-- `.env` holds secrets. Never print it, paste it or commit it. A log containing `api.telegram.org/bot` is a leak.
+- `.env` holds secrets. Never print it, paste it or commit it. A log containing `api.telegram.org/bot` is a leak. `NODE_KEY` in it is the node itself
+  ([Federation](federation.md)): never regenerate it, blank it or copy it to another node, because a new key is a new node.
 - The database lives on a local disk, never a network mount. Backups are how data reaches a NAS.
 - A model or a portal is `partial`, whatever its quality. `live` means measured here.
 - Alerts say what to do in one sentence and name the threshold's source. Do not add alerts a household would ignore.

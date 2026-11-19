@@ -1,5 +1,5 @@
 # The dashboard
-<!-- checked: v0.91.0 -->
+<!-- checked: v0.92.0 -->
 
 The dashboard is where a household reads its node: what it observed about the place, what it asks of the people
 there, whether that worked, and what the machine itself is doing. The node computes and the page draws, so every
@@ -57,7 +57,7 @@ The foot closes every door but the Wall: what the node is in one line, its versi
 explained" (this page), `llms.txt` for agents, Ask the node, Set up, **Unlock this screen**, today's open export (CC BY
 4.0) and links to PLANETAI, Fab City and the source.
 
-> **Gap in v0.91.0.** The doors read the node when the page opens, and again only after an answer on Now or an
+> **Gap in v0.92.0.** The doors read the node when the page opens, and again only after an answer on Now or an
 > unlock; nothing re-reads it while the page stays open. A Wall left on keeps the figures of the moment it was opened,
 > and only its narration is new every ten minutes. Reload the page, or use the classic wall, which re-reads on
 > `POLL_SECONDS`.
@@ -376,7 +376,7 @@ fixture. When a poll gets no answer the figures stay, the pill says `stale`, and
 node has not answered for N min". The asking screen is held at least `--motion-asking-hold` (3 s) on a load or a press
 of **↻**, never on a routine poll.
 
-> **Gap in v0.91.0.** On the classic dashboard at `SHARE_LEVEL=off`, a browser that has never stored a token draws
+> **Gap in v0.92.0.** On the classic dashboard at `SHARE_LEVEL=off`, a browser that has never stored a token draws
 > the refused page on every view, Set up included, so there is nowhere to enter one. Unlock the screen on the doors
 > (`/`), which keeps the token in the same place, then open `/?layout=classic`.
 

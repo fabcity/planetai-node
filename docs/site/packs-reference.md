@@ -1,7 +1,7 @@
 # Packs that ship
-<!-- checked: v0.91.0 -->
+<!-- checked: v0.92.0 -->
 
-The twenty-seven core packs in `packs/`, five data and twenty-two code, hold everything the node knows about a place, and no
+The twenty-eight core packs in `packs/`, five data and twenty-three code, hold everything the node knows about a place, and no
 rule in `app/` says what PM2.5 means for a household or where the nearest fab lab is. For each pack this page
 says what it reads, what it says, its rules and where each threshold comes from, its settings, and what it does
 not know. How a pack is built and loaded is on [Packs](packs.md). Wild packs, such as `xiaomi-air` and
@@ -33,7 +33,7 @@ the pack is off.
 | `surface-heat` | code | heat | none | `ground` | | | `SURFACE_HEAT_*` |
 | `earth` | code | land | none | | 1 | `fetch` `change` `frames` `status` `verify` `similar` | `EARTH_*` |
 | `terrain` | code | water | none | | | `coverage` `fetch` `verify` | `TERRAIN_*` |
-| `hydro` | code | water | none | | 1 | `fetch` `verify` | `HYDRO_RADIUS_KM` |
+| `hydro` | code | water | none | | | `fetch` `verify` | `HYDRO_RADIUS_KM` |
 | `energy` | code | energy | none | | | | `ENERGY_*` |
 | `earth-engine` | code | land | none | | 1 | `timelapse` `verify` `basemap` | `EE_*`, `GROUND_SAT_WIDE_KM` |
 | `place` | code | place | 1 info | | 1 | `refresh` `gaps` `verify` `basemap` | `PLACE_*`, `GROUND_*` |
@@ -200,6 +200,12 @@ The sensor ids are `bad-<station>` and the source is `baliairdispatch`. Its chan
 without naming it. A node inside the `box`, south Bali to north Bali, with the pack off is told to turn it on;
 a node anywhere else is told nothing. On `planetai update`, a node that lists its packs in `PACKS_ENABLED` and
 has `BAD_ENABLED=1` gets `bali-air-dispatch` added to the list.
+
+Each poll it also writes `out/wall/island.json` for the Wall's city size: every fresh, outdoor, working station on the
+island, with no radius, its coordinates to 3 decimals. The node's own kit is left out by identity, separation and
+`BAD_EXCLUDE`, and since the file is public, separation is judged from the middle of the house's res-8 cell and not
+from the house. So a station missing from that file can still be in the archive. A station is marked official when
+the archive's `/stations` list types it Government.
 
 ### Settings
 
@@ -537,10 +543,12 @@ A forecast is often wrong, and the pack keeps it apart from what the node measur
 `fc_lead_hours` beside it. Open-Meteo publishes no model run time, so its rows say `fetched`, not `issued`. With
 both sources on, `forecast-gap` records how far apart they are on temperature and wind for the same hour.
 
-With Open-Meteo on, each fetch also keeps the next day's hourly 10 m wind over the node's square as
-`out/ground/wind.json`, served at `GET /ground/wind` for the map. It asks with `cell_selection=nearest`, because
+With Open-Meteo on, each fetch also keeps the next day's hourly 10 m wind over a square round the middle of the node's
+res-8 cell, not the house, as `out/ground/wind.json`, served at `GET /ground/wind` for the map and open at
+`SHARE_LEVEL=open`. It asks with `cell_selection=nearest`, because
 the default moves a sea point to the nearest land cell, up to 12 km off. The field reaches no cell, alert or
-report.
+report. With `FORECAST_OPENMETEO=1` it also answers Tools › Pull on Place: Open-Meteo's weather now and for the next
+24 hours at the middle of the cells you chose, one call per selection, kept an hour.
 
 ## coast
 
@@ -661,6 +669,13 @@ downloaded on a poll. The directory is matched on the point and radius in its `m
 an earlier `NODE_NAME` is adopted as it stands; `planetai run earth status` names any that no longer match and
 deletes nothing.
 
+The square the pack keeps is centred on the house, so its edges and its numbers would say where the house is. A reader
+without a token is given another: centred on the middle of the res-8 cell, 1 km in from each side of the kept one,
+with no ring, and its own bounds and numbers (`GET /earth`, `/earth/change.png`, `/earth/year.png`). Your own tokens
+and this machine get the full square. For the Wall, `earth change` also writes `change_<A>_<B>_wall.png`, the changed
+pixels inside the community's res-7 cells that fit that smaller square and transparent elsewhere, served at
+`GET /earth/wall.png`.
+
 ### Rules
 
 None. A threshold that fires in Kuta Selatan, where the land is being built on, also fires in Boston every
@@ -775,7 +790,8 @@ river's flow. The level-4 basin is the one index.fab.city draws as the place's b
 The adapter writes `hydro-point` (`kind='model'`, `scale='city'`, `local=False`), every row stamped with the fetch's
 own time. The Place map draws the rivers, wider with each Strahler order, and the level-12 basins as rows of its
 water layer (`GET /hydro`, token-only). Tapping a river gives its flow, the ground it drains and its distance to
-the sea.
+the sea. Tools › Pull on Place gets the rivers and basins that touch the area you chose, only inside the pack's own
+square.
 
 ### Scripts
 
@@ -820,7 +836,9 @@ its power comes from Java by cable is not published.
 Add `energy` to `PACKS_ENABLED` and to `NODE_ISSUES`. Now then has an Energy row in Around the house, and pressing it
 draws the grid where the day figure is: the fossil share, the mix as a bar, the sources with how far each is, and a
 Today box with the sun on the cell, what a roof of panels would make with it, and what the house uses. Place gains a
-Power grid row in its built section, off at first. `GET /energy` serves all of it.
+Power grid row in its built section, off at first. `GET /energy` serves all of it. `substation_km` and `large_plant_km`
+are whole km from the middle of the house's res-8 cell, for everyone, and a screen without the token gets no plant's
+point beside its distance.
 
 Menorca's figure is Red Eléctrica's under terms that allow its use for information and forbid commercial use, so it
 is shown on the node with REE named and the date of its data, and it never leaves in the open export or reaches the
@@ -890,7 +908,7 @@ configured the pack logs one line and idles. To set it up:
 
 - `planetai run earth-engine verify`: library, settings, key file, credentials, a real query, the datasets. Names the step that failed.
 - `planetai run earth-engine timelapse [--years a,b,c | --n 4 --gap 5] [--km 2] [--px 1024] [--source landsat|sentinel] [--lat --lon] [--dry-run]`: annual-median frames of clear pixels; Landsat by default (the only archive reaching 2010 with one instrument family), Sentinel-2 from 2016 at 10 m. PNGs and a side-by-side page land in `out/`.
-- `planetai run earth-engine basemap [--months 12] [--dry-run]`: the median of every clear Sentinel-2 pass over the last twelve months, built in the node's own Earth Engine project and kept as tiles at zoom 8 to 15 in `out/ground/imagery.mbtiles`, served at `GET /ground/imagery`. Earth Engine learns the two squares once, and the script says so before it runs.
+- `planetai run earth-engine basemap [--months 12] [--dry-run]`: the median of every clear Sentinel-2 pass over the last twelve months, built in the node's own Earth Engine project and kept as tiles at zoom 8 to 15 in `out/ground/imagery.mbtiles`, served at `GET /ground/imagery`. The squares are centred on the middle of the house's res-8 cell, and a set fetched before 18 November 2026, which was cut round the house, is centred again by fetching it again. Earth Engine learns the two squares once, and the script says so before it runs.
 
 ### Settings
 
@@ -951,8 +969,8 @@ cell says `partial`.
 - `planetai run place refresh`: force a fetch from Overpass, so edits to the map reach the node within minutes. With the
   `earth-engine` credentials in place it also counts the satellite's buildings again.
 - `planetai run place gaps`: the mapping briefing, with untyped buildings, empty categories, named places without hours and unnamed streets, written to `out/place-gaps.md` for a mapping afternoon at the lab.
-- `planetai run place verify`: PostGIS, OpenStreetMap, Earth Engine and Open Buildings, each step named; it names the mismatch after a move.
-- `planetai run place basemap [--only vector|drone] [--dry-run]`: keeps a map of the place on the node's disk, in `out/ground/`, served at `GET /ground/*`: OpenStreetMap vector tiles cut from Protomaps' daily build, in three rings to zoom 15, with the label fonts, and any OpenAerialMap drone mosaic (CC BY 4.0) that crosses the drone ring. Protomaps and OpenAerialMap learn the square once, and the script says so before it runs.
+- `planetai run place verify`: PostGIS, OpenStreetMap, Earth Engine and Open Buildings, each step named; it names the mismatch after a move, and fails when the last year's count is more than three times off the footprints of the same circle.
+- `planetai run place basemap [--only vector|drone] [--dry-run]`: keeps a map of the place on the node's disk, in `out/ground/`, served at `GET /ground/*`: OpenStreetMap vector tiles cut from Protomaps' daily build, in three rings to zoom 15, with the label fonts, and any OpenAerialMap drone mosaic (CC BY 4.0) that crosses the drone ring. The rings are centred on the middle of the house's res-8 cell, and a set fetched before 18 November 2026 is centred again by fetching it again. Protomaps and OpenAerialMap learn the square once, and the script says so before it runs.
 
 `planetai run place satellite` also shows in the script list, because `satellite.py` is a non-adapter `.py`
 in the folder. It is a module the adapter imports, not a command.
@@ -977,7 +995,8 @@ nobody has mapped one. If the map is wrong about your place, fix the map, and ne
 imagery. With the `earth-engine` credentials in place, the monthly refresh also
 fetches Google Open Buildings V3 footprints (confidence at or above 0.65) and the Temporal dataset's yearly
 building count and mean height for 2016 to 2023; `GET /history?sensor_id=place-point&metric=sat_buildings_yearly`
-is the series. After a move it takes `planetai restart`, `planetai run place refresh` and a dashboard reload.
+is the series, the buildings standing each year. Until 18 November 2026 the count was added up 64 times low, and a node
+that holds that series gets the right one at its next monthly refresh, or at once with `planetai run place refresh`. After a move it takes `planetai restart`, `planetai run place refresh` and a dashboard reload.
 
 ## index
 
@@ -1071,7 +1090,9 @@ Nearest place to make or fix something: <lab>, <km> km (<up to three capabilitie
 It is in Indonesian and Spanish too, capability names included (`laser cutting`, `pemotongan laser`, `corte
 láser`). A lab under 0.05 km away prints as `<0.1 km`. The same sentence travels in `GET /issues` as
 `asks.where`, and the dashboard draws it in Act, under the record of what was asked and answered. With the
-pack off, the dashboard shows the help text the node publishes for `MAKE_ENABLED`.
+pack off, the dashboard shows the help text the node publishes for `MAKE_ENABLED`. A reader without a token
+sees each lab's distance from the middle of the house's res-8 cell, so the sentence in the report reads the same
+wherever in the cell the house stands.
 
 ### Settings
 
@@ -1295,7 +1316,8 @@ invasive (GRIIS) and how many open records others have made in the node's seven 
 Core until 24 October 2026. The `captures` table stays in `init.sql` and the pictures stay where they are; the three
 settings stay the core's, because two of them change what leaves the house. With the pack off, the routes answer 404,
 the Data door says so, and the weekly reads do not run. On `planetai update`, a node that lists its packs in
-`PACKS_ENABLED` gets `eyes` added, because every node had it.
+`PACKS_ENABLED` gets `eyes` added, because every node had it. With `SPECIES_MATCH` on it also answers Tools › Pull on
+Place: how many open GBIF records there are of each species in the area you chose, counts only, kept a day.
 
 ## example-cooking-hours
 

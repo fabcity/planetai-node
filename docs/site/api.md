@@ -1,5 +1,5 @@
 # HTTP API
-<!-- checked: v0.91.0 -->
+<!-- checked: v0.92.0 -->
 
 Every node exposes the same API on port 8080. The dashboard, the `planetai` command, the MCP tools, a NAS pulling backups, Home Assistant and a parent node are all clients of it, and none of them has a private path in. A request carries a token as `Authorization: Bearer <token>` or carries nothing, and the `SHARE_LEVEL` setting decides what a request with nothing may read.
 
@@ -17,7 +17,7 @@ A request is trusted when it comes from loopback or carries a household token: `
 | `admin` | `ADMIN_TOKEN` only, from loopback too. |
 | `pull` | `ADMIN_TOKEN` or `BACKUP_TOKEN`, the read-only token for a NAS. |
 | `act` | Loopback with no token; from anywhere else `ACT_TOKEN` or `ADMIN_TOKEN`. |
-| `children` | `AGGREGATE_TOKEN`, which a parent gives its children. It opens `POST /aggregates` and `POST /events` and nothing else. |
+| `children` | `AGGREGATE_TOKEN`, which a parent gives its children. It opens `POST /aggregates`, `POST /events`, `POST /place/maps/received` and `POST /place/photos/received` and nothing else. |
 
 The `off` allowlist, the default, is `/`, `/ui`, `/workbench`, `/tester`, `/health`, `/llms.txt`, `/settings`, `/export`, `/presence`, `/nodes`, `/offers` and anything under `/static/`. The `open` allowlist adds `/stats`, `/sensors`, `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/packs/all`, `/trust`, `/nearby`, `/forecast`, `/index/place`, `/energy`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/wall.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, `/ask`, `/ask/status`, `/docs/search`, `/geo/cell`, `/learned/place`, `/wall`, and anything under `/exports/`, `/issues`, `/sources/` or `/ground/`. The pack routes among them (`/offers`, `/nearby`, `/forecast`, `/index/place`, `/energy` and the `/earth` paths) are put there by their pack's `pack.yaml` (`share:`). Any other value counts as `off`. The lists match the path whatever the method, so at `open` an anonymous `POST /readings` reaches the handler and gets 401. A path with no route also gets 403.
 
@@ -28,7 +28,7 @@ Loopback is the socket's peer address, never a header: `X-Forwarded-For` is not 
 An untrusted caller gets less, in four ways:
 
 - Room names: each local sensor's `room`, `name` and `source_name` become `Room A`, `Room B`, `Sensor 1` and so on, in every field and sentence. Alert sentences written under older names are left out: `/alerts` answers `text: null` and `buttons: null`, and so do the alert texts in `/issues`.
-- Positions: nothing finer than the node's resolution-8 cell: `/health` and `/export` carry its centre, the household's own sensors in `/sensors` and `/stats` stand there (a child's at its own cell's centre), and other sensors are rounded to 3 decimals. `/earth` gives the cell's centre too, and cuts its pictures and numbers around it. `/forecast` carries the exact point and is `open`, while `/place/geojson` and most `/geo/` routes are `token`.
+- Positions: nothing finer than the node's resolution-8 cell: `/health` and `/export` carry its centre, the household's own sensors in `/sensors`, `/stats` and `/issues` stand there (a child's at its own cell's centre), and other sensors are rounded to 3 decimals. `/earth` gives the cell's centre too, and cuts its pictures and numbers around it. `/forecast` carries the exact point and is `open`, while `/place/geojson` and most `/geo/` routes are `token`.
 - Private values: a channel a pack declares `private`, such as the counts of what a home keeps, is in `/readings`, `/history`, `/series`, `/sparks` and `/observations` only for `ADMIN_TOKEN`, and in `/stats` for `ADMIN_TOKEN`, `ACT_TOKEN` or loopback. A request carrying `X-Agent` never gets one.
 - Who answered: the `actor` and `note` of every answer in `/issues` are null.
 
@@ -67,7 +67,7 @@ What every screen in the house polls. Answers at every `SHARE_LEVEL` and never m
 Returns `ok` (true once a poll has run), `node`, `node_id` (the short hash of this node's key, null without `NODE_KEY`), `node_key` (its public key, base64), `version`, `schema`, `uptime_s`, `lat`, `lon`, `position` (`cell` or `point`), `city`, `polls`, `last_poll`, `last_error`, `ingested`, `errors` (each loop's last error), `locale`, `tz`, `cell` (`{id, res, edge_m, caption}`, null before setup), `docs`, `mcp` and `llms`. With their features on it adds `mesh` (`MQTT_HOST`), `direct` (`MQTT_HOST` with the smartcitizen pack on), `reticulum` (`RETICULUM_URL`) and `release` (`{latest, current, newer, checked, asked}` from the hourly check, with `UPDATE_CHECK=on`). `schema` starts with `unreachable` when the database refuses the app, usually a wrong password after a reinstall; `planetai doctor` says why.
 
 ```json
-{"ok": true, "node": "bayu-ungasan", "node_id": "cc5gqlek2e2rhfy6", "version": "v0.91.0", "schema": "0.61", "uptime_s": 86121,
+{"ok": true, "node": "bayu-ungasan", "node_id": "cc5gqlek2e2rhfy6", "version": "v0.92.0", "schema": "0.66", "uptime_s": 86121,
  "lat": -8.825, "lon": 115.159, "position": "cell", "city": "bali", "polls": 287,
  "last_poll": "2026-10-20T08:35:02+00:00", "errors": {}, "locale": "id", "tz": "Asia/Makassar",
  "cell": {"id": "...", "res": 8}, "docs": "https://planetai.fab.city/docs/", "mcp": "/mcp", "llms": "/llms.txt"}
@@ -132,7 +132,7 @@ The old address of the sensor bench. It redirects to `/workbench` (308).
 ### GET /static/{name}
 Access: public
 
-The files the dashboard cannot inline, by name only; any other name is 404 `no such asset`. The names are `node-ground.svg`, `jetbrains-mono-latin.woff2`, `FunnelSans-VariableFont_wght.ttf`, `Figtree-VariableFont_wght.ttf`, `Figtree-Italic-VariableFont_wght.ttf`, `dashboard.js`, `dashboard.css`, `d3.min.js`, `plot.umd.min.js`, `planetai-theme.css`, `tokens.css`, `signs.svg`, `kilometre-cells.json`, `learn.json`, `maplibre-gl.js`, `maplibre-gl.css`, `deck.gl.min.js`, `qrcode.js`, `mobile.html`, `mobile.js`, `walk.js`, `world-land-110m.json`, `docs_site.json`, and `doors-<name>.js` for `load`, `nodegeo`, `core`, `fig`, `now`, `placemap`, `place`, `data`, `flow`, `wall`, `node` and `setup`. `node-ground.svg` is drawn from `NODE_LAT` and `NODE_LON` when they are set, and `?variant=paper` draws it in the paper register.
+The files the dashboard cannot inline, by name only; any other name is 404 `no such asset`. The names are `node-ground.svg`, `jetbrains-mono-latin.woff2`, `FunnelSans-VariableFont_wght.ttf`, `Figtree-VariableFont_wght.ttf`, `Figtree-Italic-VariableFont_wght.ttf`, `dashboard.js`, `dashboard.css`, `d3.min.js`, `plot.umd.min.js`, `planetai-theme.css`, `tokens.css`, `signs.svg`, `kilometre-cells.json`, `learn.json`, `maplibre-gl.js`, `maplibre-gl.css`, `deck.gl.min.js`, `qrcode.js`, `mobile.html`, `mobile.js`, `walk.js`, `world-land-110m.json`, `docs_site.json`, and `board-catalog.json`, and `doors-<name>.js` for `load`, `nodegeo`, `core`, `fig`, `now`, `cake`, `draw`, `sheet`, `placemap`, `place`, `data`, `flow`, `wallmap`, `wall`, `node` and `setup`. `node-ground.svg` is drawn from `NODE_LAT` and `NODE_LON` when they are set, and `?variant=paper` draws it in the paper register.
 
 ### GET /static/vendor/esp-web-tools/{name}
 Access: public
@@ -156,7 +156,7 @@ These routes read what the node has measured, from the sensor list down to raw r
 ### GET /sensors
 Access: open
 
-Every sensor this node reads, its position, and where its numbers come from: `sensor_id`, `source`, `name`, `room`, `source_name`, `lat`, `lon`, `indoor`, `local`, `custody`, `kind`, `scale`, `cadence`, `meta`. An untrusted caller gets no `room` or `source_name`, and `meta` cut to `licence`, `attribution`, `model`, `dataset`, `network`, `note` and `corrected`. A `facility` row, a fab lab, keeps its public description too.
+Every sensor this node reads, its position, and where its numbers come from: `sensor_id`, `source`, `name`, `room`, `source_name`, `lat`, `lon`, `indoor`, `local`, `custody`, `kind`, `scale`, `cadence`, `meta`. An untrusted caller gets no `room` or `source_name`, a lab or a station only where every point of the node's res-8 cell would have kept it, with a lab's `distance_km` measured from the cell's middle, and `meta` cut to `licence`, `attribution`, `model`, `dataset`, `network`, `note` and `corrected`. A `facility` row, a fab lab, keeps its public description too.
 
 ### PATCH /sensors/{sid}
 Access: admin
@@ -347,7 +347,7 @@ What the Fab City Index says about the place this node belongs to (`INDEX_PLACE`
 ### GET /forecast
 Access: open
 
-Official and model weather for this point, from `forecast-bmkg`, `forecast-om`, `forecast-cams`, `forecast-marine` and `forecast-gap`. `?hours=` 1 to 72 (default 24). Returns `{point, sources, hours, attribution, far_from_node, days, lines, openmeteo, schema}`, where `far_from_node` lists any source more than 10 km away (the sea is left out), `days` and `lines` are what [Next days](next-days.md) draws, and `schema` is `forecast-v0`.
+Official and model weather for this point, from `forecast-bmkg`, `forecast-om`, `forecast-cams`, `forecast-marine` and `forecast-gap`. `?hours=` 1 to 72 (default 24). Returns `{point, sources, hours, attribution, far_from_node, days, lines, openmeteo, schema}`, where `far_from_node` lists any source more than 10 km away (the sea is left out), `days` and `lines` are what [Next days](next-days.md) draws, and `schema` is `forecast-v0`. Without a token `point` is the middle of the node's res-8 cell (null before the node has a place) and each source's `km_from_node` is whole kilometres from that middle, so `far_from_node` is judged from it too; this machine and a token get the node's own point and distances from it.
 
 ### GET /energy
 Access: open
@@ -456,67 +456,67 @@ What the node can say about an area. The body is one of `{"cells": [...]}`, H3 i
 A request with `X-Agent` gets no pack's private channels. Same access as `GET /place/cells`. 400 with a sentence for a selection the node cannot cover or one over 500 cells, 404 for a `mark_id` that is not one of the household's drawn areas.
 
 ### GET /place/maps
-Access: token
+Access: act
 
-The household's maps, each with how many drawings it holds, and the six drawing colours: `{maps: [{id, name, owner, agent, shared, held, share_error, from_node, marks, updated_at}], palette}`. A map with `from_node` set came from a child node and is read-only here. `share_error` says why a shared map has not gone up, and `held` is true while a drawing on the house keeps it here.
+The household's maps, which `BACKUP_TOKEN` does not open (401 `Maps need the household's token.`), each with how many drawings it holds, and the six drawing colours: `{maps: [{id, name, owner, agent, shared, held, share_error, from_node, marks, updated_at}], palette}`. A map with `from_node` set came from a child node and is read-only here. `share_error` says why a shared map has not gone up, and `held` is true while a drawing on the house keeps it here.
 
 ### GET /place/maps/{map_id}/marks
-Access: token
+Access: act
 
 A map's drawings as the Place screen draws them: `{marks: [{id, map_id, kind, colour, label, note, capture_id, length_m, area_m2, drawn_by, alert_id, event_id, updated_at, geometry}]}`, `geometry` as GeoJSON in WGS84 and the measures PostGIS's. Any map may be read, an agent's or a child's too. Reading writes nothing to the ledger.
 
 ### POST /place/maps
-Access: token
+Access: act
 
 A new map, `{"name": "Garden plan", "owner"?: "Tomas", "actor": "Tomas"}`. Returns `{map}`.
 
 ### PATCH /place/maps/{map_id}
-Access: token
+Access: act
 
 Rename it, change its owner, or share it: `{"shared": true, "confirm": "exact"}`. Without `confirm` the answer is 409 with `detail` `{"code": "share_warning", "text": …}`, the warning the page shows before the second press. With no `PARENT_API_URL` it is 409 too, with only a sentence. `{"shared": false}` takes it back off the node upstream. 403 for an agent's map or one from a child.
 
 ### DELETE /place/maps/{map_id}
-Access: token
+Access: act
 
 `?confirm=<the map's name>&actor=<who>`. The map goes with its drawings, and from the node upstream too if it was shared.
 
 ### GET /place/maps/{map_id:int}.{ext}
-Access: token
+Access: act
 
 The map as `.geojson`, `.kml` or `.dxf` (R12, in metres of the UTM zone the node stands in), as a file named `<node>-<map>-<date>`.
 
 ### POST /place/maps/{map_id}/marks
-Access: token
+Access: act
 
 A drawing, as a GeoJSON Feature whose `properties` are `{kind: marker | line | area | note, label?, note?, colour?: 1-6, image?}`. Returns `{mark}`, measured by PostGIS. On a shared map, a drawing on the house's own res-10 cell also returns `warn` and holds the map until it is shared again.
 
 ### PATCH /place/marks/{mark_id}
-Access: token
+Access: act
 
 Any of `geometry`, `label`, `note`, `colour`, `image`, and `issue` with `words` to tie the drawing to an open issue as its acted step. Tying it again to the same issue keeps the act's time. Returns `{mark}`, and `warn` when a new geometry on a shared map touches the house's own res-10 cell.
 
 ### DELETE /place/marks/{mark_id}
-Access: token
+Access: act
 
 `?actor=<who>`. A tie to an issue stays in the ledger.
 
 ### POST /place/marks/{mark_id}/ask
-Access: token
+Access: act
 
 On a parent, ask a child for the photo on one of its drawings: `{"actor": "Ana"}`. Returns `{ask}`, whose `state` is `asked`, `sent`, `no` or `gone`. There is one ask per photo. Asking again while it waits, or after the photo came, changes nothing, and after a No or a `gone` it opens again. 409 for a drawing of this node's own, or one with no photo. The child hears it in the answer to its next hourly push.
 
 ### GET /place/marks/{mark_id}/photo
-Access: token
+Access: act
 
 On a parent, the file a child sent for the photo on this drawing. 404 until somebody at the child presses Send, and again once the photo is no longer on a map the child shares.
 
 ### GET /place/photos/asks
-Access: token
+Access: act
 
 On a child, what the node upstream asked for and nobody here has answered: `{asks: [{id, node, asked_by, asked_at, capture_id, drawings: [{mark, label, kind, map}]}]}`. Only a photo on a drawing in a map shared right now is listed.
 
 ### POST /place/photos/asks/{ask_id}
-Access: token
+Access: act
 
 On a child, the answer: `{"answer": "send" | "no", "actor": "Tomas"}`. Only a person answers, so a request with `X-Agent` gets 403. The answer goes up within the minute, once, with the file on a Send. 409 when it is answered already or the photo is no longer shared.
 
@@ -675,7 +675,7 @@ The Index cells this node can compute, in the `fci-cells-v0` row shape. Domain c
 ### GET /sources
 Access: open
 
-The network's registry of what can be measured, a pinned copy of `awesome-fabcity-data` in `data/sources/`; at v0.91.0, pin `7bf12a4` with 284 entries. Filters `?pillar=`, `?scale=`, `?cell=`, `?pilot=`, `?wired=` and `?status=`, combined with AND. Returns `{registry, counts, count, sources}`, where `counts` gives every cell its `capable`, `reviewed` and `candidate` numbers (12, 17 and 55 over 19 cells at this pin). See [the source registry](sources.md). 503 when the registry is missing.
+The network's registry of what can be measured, a pinned copy of `awesome-fabcity-data` in `data/sources/`; at v0.92.0, pin `d106bb8` with 296 entries. Filters `?pillar=`, `?scale=`, `?cell=`, `?pilot=`, `?wired=` and `?status=`, combined with AND. Returns `{registry, counts, count, sources}`, where `counts` gives every cell its `capable`, `reviewed` and `candidate` numbers (12, 17 and 63 over 19 cells at this pin). See [the source registry](sources.md). 503 when the registry is missing.
 
 ### GET /sources/{pillar}/{scale}/{slug}
 Access: open
@@ -779,11 +779,11 @@ push is pinned to the key it signs with. 404 when no child of that name is pinne
 ### GET /export
 Access: public
 
-One day of this node as open data under CC BY 4.0, for `?day=YYYY-MM-DD`: hourly means, the Index cells, the first line of each alert, ρ and, with the things pack on, the offers. Never raw readings, `private` channels or secrets, and the node's own sensors are named by role (`indoor-1`). `backup.sh` writes it every night to `exports/<node>/YYYY-MM-DD.json`.
+One day of this node as open data under CC BY 4.0, for `?day=YYYY-MM-DD`: hourly means, the Index cells, the first line of each alert, ρ and, with the things pack on, the offers. Never raw readings, `private` channels, secrets or readings of a source whose licence is non-commercial, and the node's own sensors are named by role (`indoor-1`). `backup.sh` writes it every night to `exports/<node>/YYYY-MM-DD.json`.
 
 ```json
 {"schema": "export-v0", "node": "bayu-ungasan", "lat": -8.825, "lon": 115.159, "day": "2026-10-19",
- "version": "v0.91.0", "licence": "CC BY 4.0",
+ "version": "v0.92.0", "licence": "CC BY 4.0",
  "hourly": [{"t": "2026-10-19T00:00:00+08:00", "sensor": "indoor-1", "metric": "pm25", "mean": 11.2, "n": 12}],
  "alerts": [], "cells": [], "rho": {}, "offers": []}
 ```

@@ -107,7 +107,7 @@ MARKS = [
      "The request ledger below is this page confessing what it asked of the world while you looked "
      "at it. The offline plan asks nothing; Telegram is reached by the node, never by this page."),
     ("raw", "Raw readings stay", "how-it-works.md", "What leaves the machine, and what never does",
-     "Raw readings stay.", "under CC BY 4.0",
+     "Raw readings stay.", "chooses to share with it;",
      "The strips under Observe are hourly means, one cell an hour: the finest time step this "
      "page shows, and still not a raw reading."),
     ("levels", "Three levels, one floor", "alerts.md", "Levels",
