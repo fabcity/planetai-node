@@ -883,7 +883,7 @@
      "Bagaimana node kami bisa masuk daftar?"
     ]
    },
-   "quote": "Every node reads the file from the repository's `main` once an hour and serves it at `GET /nodes`, with only\nthe name, place, scale, operator, `since` and cell, and each point rounded to one decimal; `contact`, `sources`\nand `parent` stay in the file. The Node door and the phone's walk draw the nodes from it.",
+   "quote": "Every node reads the file from the repository's `main` once an hour and serves it at `GET /nodes`, with only\nthe name, ID, place, scale, operator, `since` and cell, and each point rounded to one decimal; `contact`, `sources`\nand `parent` stay in the file. The Node door and the phone's walk draw the nodes from it.",
    "section": "The node directory",
    "title": "The nodes around it",
    "url": "https://planetai.fab.city/docs/federation/#the-node-directory"
@@ -1651,7 +1651,7 @@
      "Di mana bacaan mentah disimpan?"
     ]
    },
-   "quote": "Raw readings stay. What travels is a summary: hourly means and alert timestamps to a parent node, if\n`PARENT_API_URL` names one; the daily [export](storage.md), with hourly means, your own sensors named by role\n(`indoor-1`, `outdoor-2`), the Index cells, each alert's first line, ρ, the household's offers and its res-8 cell's centre, never its\npoint, under CC BY 4.0",
+   "quote": "Raw readings stay. What travels is a summary: hourly means and alert timestamps to a parent node, if\n`PARENT_API_URL` names one, and the Place maps the household chooses to share with it;",
    "section": "What leaves the machine, and what never does",
    "title": "Raw readings stay",
    "url": "https://planetai.fab.city/docs/how-it-works/#what-leaves-the-machine-and-what-never-does"

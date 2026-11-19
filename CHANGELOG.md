@@ -1,6 +1,17 @@
 # Changelog
 
-## Unreleased
+## v0.92.0 — 2026-11-19 — A node and its place
+
+Most of this release is about the place around the node. Place has a page of its own now, layered as what the ground
+is made of, and you can draw on it and keep your drawings in named maps. It also prints. A node has seven cells, the
+one it stands in and the six round it, and you choose which of the six count as its own. Two new core packs know where
+the node's power comes from and where its rivers run, and the Wall walks out from the house over the satellite.
+Without the token no screen says anything finer than the house's cell. Each node signs what it sends upstream with its
+own key. This release changes the page and the packs together, so if something looks off after you update, tell me
+what you saw and on which screen.
+
+- **The source registry is pinned at `d106bb8`.** awesome-fabcity-data #113 moves a working plan out of the registry
+  repo, and the entries stay at 296.
 
 - **The Wall walks out from the house on the satellite.** The map is now satellite imagery, dimmed, and fills most
   of the screen. Instead of house, street, ring and region, it walks through the three sizes a node can have: the
@@ -23,8 +34,9 @@
 - **A screen with no token can no longer find the house.** At SHARE_LEVEL=open, a reader without a token could place
   the house more finely than its cell: from a lab's distance to 0.1 km, from where the air-station ring's 15 km edge
   and 150 m hole fall, from which map tiles the node holds, from the energy pack's distances to the nearest
-  substation and large plant (to 10 m, in /readings and the energy issue), and on /issues and /ground/wind from the
-  house's own point to 5 decimals. Those two energy distances are now whole km from the middle of the cell, for
+  substation and large plant (to 10 m, in /readings and the energy issue), on /issues, /ground/wind and /forecast from
+  the house's own point to 5 decimals, and from /forecast's km to BMKG's village and to the sea's grid point, two
+  public points whose circles cross at the house. Those two energy distances are now whole km from the middle of the cell, for
   everyone. Without a token every distance and every cut now runs from the centre of the house's cell, so the
   answer is the same wherever in the cell the house stands. A token and the node's own machine read what they read
   before. The report's line about the nearest lab is measured from the cell for everyone, because anyone can read it.

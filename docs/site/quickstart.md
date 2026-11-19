@@ -1,5 +1,5 @@
 # Quick start
-<!-- checked: v0.91.0 -->
+<!-- checked: v0.92.0 -->
 
 This page puts a node on a computer your lab or home already owns, in six steps and one sitting. Once it runs, the
 node reads its place every five minutes, keeps the raw readings on that machine, tells the people there when
@@ -24,9 +24,10 @@ planetai status                                         # open a new terminal if
 
 The installer asks for a name, the place, what the node is for and whether you have a Smart Citizen kit. Type the
 town and pick the right match, because the place fixes the cell the node stands in, and a sensor counts as yours
-in that cell and the neighbours you claim on Place. Near the end it offers to fetch the map of your place: say `y`.
+in that cell and the neighbours you claim on Place. If a Fab City Index place is within 150 km, the installer suggests
+it, and you keep it, pick another or say `none`; `planetai place` asks again later. Near the end it offers to fetch the map of your place: say `y`.
 
-It worked when `planetai status` shows `polls` going up every five minutes, `errors none`, and the public stations
+It worked when `planetai status` shows `polls` going up every five minutes, `errors none`, a `node id`, and the public stations
 and models it reads under `reference`. If a line is wrong, `planetai doctor` prints every check with its fix.
 
 Deeper: [Install](install.md), [Platforms](platforms.md), [Revive a laptop](revive-a-laptop.md).
@@ -64,6 +65,10 @@ planetai packs install                   # builds the packs' libraries into the 
 planetai restart
 planetai packs                           # what is loaded now
 ```
+
+Two packs ask for a step of their own. `planetai run hydro fetch` downloads the rivers of your region once, 50 to 160 MB
+that it reads and deletes, and keeps under 100 KB. The `energy` pack says how much of the power on your grid is made
+from fossil fuels, and goes into `PACKS_ENABLED` and `NODE_ISSUES` where those name a list.
 
 Then switch off on Set up › Packs what does not fit your place: `coast` is for a node near the sea,
 `open-data-health` for a city with a CKAN portal. `fire` stays off until `FIRE_ENABLED=1`, for the bandwidth. Below
@@ -119,6 +124,9 @@ The `place` pack runs once step 3 allows code, as long as you left it switched o
 the kilometre around the node from OpenStreetMap. Open the Place door on the dashboard. The rings and every distance
 from the house need the admin token, because together they place the house; nothing finer than the node's cell leaves
 the machine.
+
+On Place you can claim the cells that touch the node's own. **Download › Report, to print or save as PDF** opens the
+place as one A4 sheet, and the browser makes the PDF.
 
 It worked when the Place door draws your streets and Set up no longer lists **The map of this place** under what is
 left to finish. A zero in the place's figures means unmapped, and `place gaps` says what to map.

@@ -1,15 +1,16 @@
 # The Place door
-<!-- checked: v0.91.0 -->
+<!-- checked: v0.92.0 -->
 
 Place is the ground around the node as a small GIS, built like a layer cake: the sky at the top, the ground at the
 bottom, and between them a map drawn from data the node keeps on its own disk and geometry it computes itself. It is
 one of the five doors on the [dashboard](dashboard.md). Nothing from inside the house is listed or drawn here.
 
-Five packs feed it. The `place` pack fetches everything within `PLACE_RADIUS_M` (1,000 m) from OpenStreetMap into
-PostGIS and summarises it monthly: buildings and the ground they cover, shops, schools, clinics, kilometres of road,
+Five packs feed the ground. The `place` pack fetches everything within `PLACE_RADIUS_M` (1,000 m) from OpenStreetMap
+into PostGIS and summarises it monthly: buildings and the ground they cover, shops, schools, clinics, kilometres of road,
 the share of green, the walk to the nearest of each. With credentials, `earth-engine` adds Google Open Buildings
 footprints and the yearly building count since 2016; `earth` adds the AlphaEarth year compare, `terrain` the
-Copernicus DEM, and `surface-heat` the ground's heat from Landsat and MODIS.
+Copernicus DEM, and `surface-heat` the ground's heat from Landsat and MODIS. The `hydro` pack adds the rivers and
+basins, the `energy` pack the power grid, and the `index` pack the city's row on the Fab City Index.
 
 ## Turn it on
 
@@ -25,8 +26,8 @@ planetai run place basemap                # the street map, kept on the node's d
 ```
 
 The first poll fetches the kilometre from the Overpass API; later polls recompute from what is stored, and every
-`PLACE_REFRESH_DAYS` (30) it fetches again. `planetai run place refresh` forces one. Every command and setting is in
-[the place pack](packs-reference.md#place).
+`PLACE_REFRESH_DAYS` (30) it fetches again. `planetai run place refresh` forces one, and counts the satellite's buildings again as well. Every command and
+setting is in [the place pack](packs-reference.md#place).
 
 ## The head
 

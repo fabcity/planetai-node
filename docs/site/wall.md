@@ -1,5 +1,5 @@
 # Wall mode
-<!-- checked: v0.91.0 -->
+<!-- checked: v0.92.0 -->
 
 The Wall is the node on a screen in a living room or a lab, read from about three metres by people who know nothing
 about air science, and operated by nobody. It is a satellite map that walks out from the house, through the three
@@ -31,7 +31,7 @@ map.", and the Wall asks again after 30 seconds, then a minute, then twice as lo
 draws the map once it comes. If the screen loses its graphics, the map is drawn again at the next replayed hour. With
 reduced motion on there is no next hour, so it comes back when the window changes size or the Wall is opened again.
 
-> **Gap in v0.91.0.** Once it has its map, the Wall does not re-read the node while it stays open, so its figures are
+> **Gap in v0.92.0.** Once it has its map, the Wall does not re-read the node while it stays open, so its figures are
 > those of the moment it was opened, and only the narration is new every ten minutes. Reload the screen, or put the
 > classic wall up instead, which re-reads on `POLL_SECONDS`.
 
@@ -189,7 +189,7 @@ engine is `shadow` or `events` it can read "Nothing has been asked." while Decid
 "Read at … · the node has not answered for N min". If the wall throws while it draws, it says "The wall did not
 render:" and why, rather than going black.
 
-> **Gap in v0.91.0.** On the classic wall the share level in the top bar always reads `off`, because `/health`
+> **Gap in v0.92.0.** On the classic wall the share level in the top bar always reads `off`, because `/health`
 > carries no share level, and the bold `stale` in the foot is a fixed label that shows whether or not the node is
 > answering. The as-of time beside it is the one to read.
 
