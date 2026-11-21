@@ -1335,7 +1335,7 @@ on and read it, and what we measured on node #1.
 | Metrics | none: a forecast is never a reading |
 | Scales | community |
 | Needs | `PREDICT_MODEL`, set by `planetai models pull` (it is the pack's own switch, so `PACKS_ALLOW_CODE` is not needed); the weights, downloaded once from huggingface.co by that command and by nothing else |
-| Shares | nothing: `GET /predict` answers a node token or this machine only |
+| Shares | the one line `predict` gives Next days, served with `GET /forecast` to whoever can see Next days on this node; `GET /predict` answers a node token or this machine only |
 | Rules and cells | none |
 | Attribution | `amazon/chronos-2` and `amazon/chronos-bolt-tiny`, Apache-2.0 |
 
@@ -1343,8 +1343,9 @@ At the first poll after 00:10 local time the adapter sends the models container 
 qualifies: a sensor that is the household's own and not a peer's, a metric whose channel role is `ambient`, at least 7
 days of history and 90% of the hours of the last 14 measured. It stores the answer, 48 hours from local midnight with a
 middle value and an 80% band, in `predictions`, and on its first night it does the same for each of the 28 days before.
-It tries at most once an hour until today's forecast is stored, and keeps 35 days. The only other thing it writes is
-the sensor `predict` (`kind='model'`, not local), whose meta holds tomorrow's line for Next days.
+It tries at most once an hour until today's forecast is stored, and keeps 35 days. Besides those rows it writes
+one row per model in `models`, with the time of its last attempt, and the sensor `predict` (`kind='model'`, not
+local), whose meta holds tomorrow's line for Next days.
 
 `GET /predict` reads those rows and works out the scores on each request; they are never stored. `predictions` and
 `models` are closed to `planetai_ro`, so no pack rule and no Grafana panel reads them, and neither is in the daily

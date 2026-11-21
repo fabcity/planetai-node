@@ -17,7 +17,8 @@ hours of each of its own series. Day one is today, from local midnight, and day 
 of one sensor, the PM2.5 of an outdoor kit for example, and it is forecast when:
 
 - the sensor is the household's own (`local`) and not a peer's;
-- the metric's channel role is `ambient`, so a forecast the node fetched (an `fc_` metric) is never forecast again;
+- the metric's channel role is `ambient` and it is not an `fc_` metric, so a forecast the node fetched is never
+  forecast again;
 - it has hourly means for at least 7 days before the day forecast, with 90% of the hours measured over the last 14
   days, or over all of them while it is younger than that.
 
@@ -39,8 +40,9 @@ at most once an hour until today's forecast is stored.
 planetai models
 ```
 
-lists the models the node knows, from `packs/predict/models.json`, with their size, licence, whether the weights are
-on this machine and which one runs. There are two:
+lists the models the node knows, from `packs/predict/models.json`, with their size, licence and which one runs. While
+the models container is on it also says whether each one's weights are on this machine, and while it is off the list
+says so. There are two:
 
 | model | size | licence |
 |---|---|---|
@@ -97,8 +99,8 @@ the measurement and yesterday's value are all there. The scores are worked out e
 stored forecasts and the hourly means, and never stored.
 
 What the node expects of its own rooms is the household's, so the section needs a node token. Without one it says so
-and where to unlock it. With no model pulled it says "This node does not forecast its own readings." and gives the
-command.
+and where to unlock it. With the pack off it says "This node does not forecast its own readings." and gives the
+command, and with the pack on and no model ready it says "No model is pulled."
 
 Next days on Now gets one line from it, Modelled here, for tomorrow's PM2.5 outside, such as "PM2.5 outside: 12–18
 µg/m³ (modelled here)". It names no sensor. It reads the outdoor PM2.5 series with the most hours, and it is there
@@ -113,7 +115,7 @@ Index cell, and ρ never moves with it. It is not in the daily export, in what a
 bundle, no agent tool reads it, and pack rules and Grafana cannot read it, because the table is closed to
 `planetai_ro`.
 
-The one line in Next days is the exception. It is served with Next days, to whoever can see Now on this node, and it
+The one line in Next days is the exception. It is served with Next days, to whoever can see Next days on this node, and it
 carries tomorrow's range for PM2.5 outside and nothing else.
 
 ## What we measured
@@ -131,8 +133,6 @@ outdoor kit and one indoor room, about 1,900 hours each. Each was forecast 24 ho
 We also tried adapting Chronos-2 to node #1, on its own 37 series, and tested the result on 28 days it had not seen.
 Against the same model with no training it came out at −0.4% with one method and +0.6% with another. That is no gain,
 and one of the runs needed 6.9 GB of memory. So the node runs the general model as it is published, and adapting is left out.
-More seasons of data, or the data of several nodes together at a community or city node, may change that, and we have
-not shown it.
 
 We have not measured an old computer, more than one season or more than one node.
 
