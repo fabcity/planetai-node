@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- **21 Nov: a draft record on commercial rights, for Tomas to rule on.** He asked whether being open source stops
+  the Foundation from licensing a version of the node commercially or making a product of one. The public licence
+  does not, and no document yet gives the Foundation more than the Apache-2.0 everybody has, his own 1,124 commits
+  included. `docs/decisions/2026-11-21-commercial-rights.md` sets out what would have to be true, and it decides
+  nothing until he strikes a row. `LICENSE`, `NOTICE` and `CONTRIBUTING.md` are unchanged.
+
 ## v0.92.0 — 2026-11-19 — A node and its place
 
 Most of this release is about the place around the node. Place has a page of its own now, layered as what the ground
