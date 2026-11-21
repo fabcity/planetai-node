@@ -100,6 +100,16 @@ assert core.cache_root("x/y", snap) is None
 assert "nothing removed" in core.verify("x/y", snap, good) and os.path.isdir(snap)
 assert os.path.isdir(os.path.join(cache, "models--other--model"))
 
+# ---- remove and have: one model's own folder, a name outside the catalogue refused.
+hub = tempfile.mkdtemp()
+cat2 = {"x/y": good["x/y"], "x/z": good["x/y"]}
+for m in ("x--y", "x--z"):
+    os.makedirs(os.path.join(hub, "hub", "models--" + m, "snapshots", "r"))
+assert core.have("x/y", cat2, hub) and not core.have("a/b", cat2, hub)
+assert core.model_dir("../../etc", cat2, hub) is None and "unknown model" in core.remove("../../etc", cat2, hub)
+assert core.remove("x/y", cat2, hub) is None and not core.have("x/y", cat2, hub) and core.have("x/z", cat2, hub)
+assert core.remove("x/y", cat2, hub) is None   # already gone is fine
+
 # ---- the seam: torch and chronos are imported inside load(), never at the top.
 src = open(os.path.join(ROOT, "models", "core.py")).read()
 assert "\nimport torch" not in src and "\nfrom chronos" not in src and "\nimport numpy" not in src

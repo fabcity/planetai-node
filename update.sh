@@ -323,6 +323,10 @@ done
 # 6. rebuild and restart
 say "rebuilding"
 spin "building the image (pip installs; a minute or two)" docker compose build app || die "the image did not build; the node keeps running the version it had. See $ULOG"
+# The forecast model's image carries torch, so only a node that turned it on (planetai models pull) builds it.
+case ",$(envval COMPOSE_PROFILES)," in *,models,*)
+  spin "building the models image" docker compose build models || die "the models image did not build; the node keeps running the version it had. See $ULOG";;
+esac
 # The Reticulum bridge, where it is on, fetched again when bin/planetai pins a new commit and rebuilt, so the node runs
 # the bridge its release names. Before 23 Oct 2026 an update never rebuilt it. Its identity is in the `reticulum`
 # volume, so the address stays. A bridge that does not build is not a failed update: the old one keeps running.

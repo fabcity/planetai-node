@@ -111,6 +111,10 @@ RUNTIME = {
     "AGENT_REMOTE_MODEL": ("model", "Remote model", False, True, "e.g. gpt-oss-120b or qwen3:8b"),
     "AGENT_ONLINE_URL":   ("model", "Online model URL", False, True, "https://api.anthropic.com/v1 or https://api.openai.com/v1"),
     "AGENT_ONLINE_MODEL": ("model", "Online model", False, True, "e.g. claude-sonnet-4-6"),
+    "PREDICT_MODEL":      ("model", "Forecast model", False, False,
+                           "A time-series model that forecasts this node's own readings (Data \u203a Models and satellite). "
+                           "amazon/chronos-2 is 456 MB, amazon/chronos-bolt-tiny 33 MB. Nothing is downloaded until you run "
+                           "`planetai models pull <name>` on this machine."),
     "EYES_MODEL":         ("model", "Image model", False, False,
                            "A vision model in this machine's Ollama that describes each image and lists what it "
                            "finds: species, trees, sites, urban inventory, issues such as litter or pollution. The "

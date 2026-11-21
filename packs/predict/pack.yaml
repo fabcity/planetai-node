@@ -14,8 +14,7 @@ sources: []
 # On when PREDICT_MODEL names a model from models.json; the weights arrive only with `planetai models pull`.
 switch: [PREDICT_MODEL]
 env:
-  - "# predict: the model that forecasts this node's own series (a name from packs/predict/models.json), and where it runs"
-  - "PREDICT_MODEL="
+  - "# predict: where the models container answers (the model itself is Set up › Model, PREDICT_MODEL)"
   - "MODELS_URL=http://models:8080"
 needs:
   - huggingface.co

@@ -186,6 +186,9 @@ there; it prints the exact line for your Python when they are missing. See [Radi
 | `planetai packs add <owner>/<repo>[/<folder>][@<ref>]` | The same for any pack on GitHub, pinned to the commit the ref names. Refuses an id a core pack already has. |
 | `planetai packs install` | Adds every pack's missing `env:` keys to `.env` under a dated marker, records their `pip:` lists and rebuilds the image once. |
 | `planetai packs cron` | Adds the crontab line that checks every minute for an Install pressed on Set up › Packs and runs `planetai packs pending`, which fetches that commit of a listed wild pack and installs it. The installer and `planetai update` add it too. Only the admin token on the page can ask. |
+| `planetai models` | The forecast models `predict` can run, with size, licence, whether their weights are on this machine, and which one `PREDICT_MODEL` names. |
+| `planetai models pull <name>` | Says the size and asks (`--yes` skips it), builds the models image, downloads that model once and checks it, then sets `PREDICT_MODEL`, adds `predict` to a pack list that names packs, starts the container and restarts the node. A failed step leaves `.env` as it was. |
+| `planetai models rm <name>` | Deletes that model's weights. If it was the one running, `PREDICT_MODEL` is blanked and the container stops; the forecasts already written stay. |
 | `planetai run` | Lists every pack script with its first line. |
 | `planetai run <pack> <script> [args]` | Runs it inside the app container, with `PACK_OUT=/app/out` and the pack keys saved from Set up in its environment. |
 | `planetai sources [--all] [--pillar P] [--scale S] [--cell 'Pillar\|Scale'] [--json]` | What the source registry lists for this place: entries relevant to `NODE_CITY` or `global`, or all of them with `--all`. Reads the node, or `data/sources/index.json` when the node is down. |

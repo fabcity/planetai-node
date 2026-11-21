@@ -118,6 +118,27 @@ def cache_root(name, snapshot):
     return root if Path(snapshot).parent.name == "snapshots" and root.name == "models--" + name.replace("/", "--") else None
 
 
+def model_dir(name, cat, hf_home=None):
+    """This catalogue model's own folder in the hub cache, or None for a name the catalogue does not have."""
+    if pinned(name, cat) is None:
+        return None
+    return Path(hf_home or os.getenv("HF_HOME", "/weights")) / "hub" / ("models--" + name.replace("/", "--"))
+
+
+def have(name, cat, hf_home=None):
+    root = model_dir(name, cat, hf_home)
+    return root is not None and (root / "snapshots").is_dir()
+
+
+def remove(name, cat, hf_home=None):
+    """None when the model's own folder is gone (or never was); otherwise the reason. Nothing else is touched."""
+    root = model_dir(name, cat, hf_home)
+    if root is None:
+        return f"unknown model {name}; the catalogue has: {', '.join(cat)}"
+    shutil.rmtree(root, ignore_errors=True)
+    return None
+
+
 def verify(name, snapshot, cat):
     """None when the snapshot's model.safetensors is the pinned file; otherwise the reason, and the model's own
     cache folder is removed so a wrong file is never left where load() would find it. A snapshot path of any

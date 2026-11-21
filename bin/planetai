@@ -29,6 +29,9 @@
 #   planetai packs add <id>  a wild pack from fabcity/planetai-wild-packs; or <owner>/<repo>[/<folder>][@<ref>] from GitHub
 #   planetai packs cron     let Install on the dashboard's Set up › Packs reach this machine (`packs pending` runs it)
 #   planetai place          the Fab City Index place this node belongs to: suggests the nearest; `place <slug>` sets it, `place none` clears it
+#   planetai models         the forecast models predict can run, their size and licence, and which one is on
+#   planetai models pull <name> [--yes]   fetch one (the only time a node downloads weights), turn the pack on
+#   planetai models rm <name>   delete its weights; if it was the one running, predict goes off
 #   planetai ui             the dashboard: where it is, and the token that unlocks its settings pages
 #   planetai storage        where the data lives, where backups and copies go, exports, IPFS; `set` to change
 #   planetai backup         dump + export + copy now, instead of waiting for 03:17
@@ -683,6 +686,8 @@ print("%s|%s|%s" % (r.get("latest", ""), r.get("current", ""), "1" if r.get("new
     chk "mesh packets arriving"  "[ \$(mesh_packets) -gt 0 ]"                              "gateway not uplinking yet: planetai meshtastic prints the settings";; esac
   case ",$(envget COMPOSE_PROFILES)," in *,reticulum,*)
     chk "reticulum bridge up"    "curl -sf localhost:4243/health"                       "planetai logs reticulum";; esac
+  case ",$(envget COMPOSE_PROFILES)," in *,models,*)
+    chk "forecast model $(setting PREDICT_MODEL | sed 's/^$/not set/') running"  "[ -n \"\$(docker compose ps --status running -q models)\" ]"   "planetai models pull <name>, or planetai logs models";; esac
   if [[ $JSON -eq 1 ]]; then
     printf '{"ok":%s,"checks":[%s],"sources":%s}\n' "$([[ $ok -eq 1 ]] && echo true || echo false)" "${rows%,}" "$(doctor_sources json || echo null)"
     return $(( 1 - ok )); fi
@@ -1941,6 +1946,73 @@ packs_switch_on() {
   fi
 }
 
+# ---------------------------------------------------------------- models: what the predict pack forecasts with
+# The catalogue is packs/predict/models.json. Weights come only from `models pull`, run on purpose with the network on
+# (the serving container is offline). PREDICT_MODEL names the one that runs; predict is on while it is set.
+models_row() { python3 -c 'import json, sys
+c = json.load(open("packs/predict/models.json"))
+if sys.argv[1] == "--all":
+    for k, v in c.items(): print("%s\t%s\t%s" % (k, v["size_mb"], v["licence"]))
+elif sys.argv[1] in c:
+    v = c[sys.argv[1]]; print("%s\t%s" % (v["size_mb"], v["licence"]))
+else: sys.exit(1)' "$1"; }
+models_names() { models_row --all | cut -f1 | paste -sd, - | sed 's/,/, /g'; }
+cmd_models() {
+  case "${1:-}" in
+    pull) shift; models_pull "$@";;
+    rm) shift; models_rm "$@";;
+    ""|list)
+      local on cur n size lic have; cur="$(setting PREDICT_MODEL)"
+      case ",$(envget COMPOSE_PROFILES)," in *,models,*) on=1;; *) on=0;; esac
+      step "Forecast models"
+      while IFS=$'\t' read -r n size lic; do
+        have="not checked"
+        if [[ $on -eq 1 ]]; then have="not on this machine"; docker compose run --rm models python pull.py --have "$n" </dev/null >/dev/null 2>&1 && have="on this machine"; fi
+        printf '  %-26s %4s MB  %-11s %s%s\n' "$n" "$size" "$lic" "$have" "$([[ "$n" == "$cur" ]] && echo '  <- runs')"
+      done < <(models_row --all)
+      [[ $on -eq 1 ]] || echo "  The models container is off. planetai models pull <name> fetches one and turns it on."
+      [[ -n "$cur" ]] || echo "  No model is set, so predict is off.";;
+    *) warn "planetai models [pull <name> [--yes] | rm <name>]"; return 2;;
+  esac
+}
+models_pull() {
+  local name="" yes=0 a row size lic
+  for a in "$@"; do case "$a" in --yes|-y) yes=1;; -*) warn "no option $a"; return 2;; *) name="$a";; esac; done
+  [[ -n "$name" ]] || { warn "say which one: planetai models pull <name>  ($(models_names))"; return 2; }
+  row="$(models_row "$name")" || { warn "'$name' is not a forecast model here. The catalogue has: $(models_names)"; return 2; }
+  IFS=$'\t' read -r size lic <<< "$row"
+  say "$name · $size MB · $lic. It is downloaded once, here, from huggingface.co, and checked against the catalogue's checksum."
+  if [[ $yes -eq 0 ]]; then
+    ( : </dev/tty ) 2>/dev/null || { warn "no terminal to ask on. To go ahead: planetai models pull $name --yes"; return 1; }
+    confirm "   Fetch it?" || { echo "  ok, nothing changed."; return 0; }
+  fi
+  # .env changes only after the weights are on disk: a failed build or pull leaves it exactly as it was.
+  spin "building the models image (torch; a few minutes the first time)" docker compose build models || { warn "the image did not build; .env is unchanged. See $LOG"; return 1; }
+  spin "fetching $name ($size MB)" docker compose run --rm -e HF_HUB_OFFLINE=0 models python pull.py "$name" || { warn "the download or its check failed; .env is unchanged. See $LOG"; return 1; }
+  profiles_add models
+  envset PREDICT_MODEL "$name"
+  # the list as .env holds it, because it is .env that is edited here (the node's own copy is packs_switch_on's)
+  local on; on="$(sed -n 's/^PACKS_ENABLED=//p' .env | tail -1 | tr -d ' "'"'"'')"
+  [[ -z "$on" || ",$on," == *",predict,"* ]] || envset PACKS_ENABLED "$on,predict"
+  spin "starting the models container" docker compose up -d models || { warn "the models container did not start; see $LOG"; return 1; }
+  packs_switch_on predict
+  spin "restarting the node with predict on" docker compose up -d --force-recreate app || { warn "the node did not restart; see $LOG"; return 1; }
+  say "$name is on this machine. predict forecasts this node's own series from tonight (00:10)."
+}
+models_rm() {
+  local name="${1:-}"
+  [[ -n "$name" ]] || { warn "say which one: planetai models rm <name>"; return 2; }
+  models_row "$name" >/dev/null || { warn "'$name' is not a forecast model here. The catalogue has: $(models_names)"; return 2; }
+  # the image may not exist (the profile was never on): then there are no weights to remove either
+  spin "removing $name's weights" docker compose run --rm models python pull.py --remove "$name" || { warn "could not remove them; see $LOG"; return 1; }
+  if [[ "$(setting PREDICT_MODEL)" == "$name" ]]; then
+    envset PREDICT_MODEL ""
+    docker compose stop models >>"$LOG" 2>&1 || true
+    spin "restarting the node with predict off" docker compose up -d --force-recreate app || true
+    say "$name is removed and predict is off. The forecasts already written stay."
+  else say "$name is removed."; fi
+}
+
 # ---------------------------------------------------------------- place: which Fab City Index place this node belongs to
 # `place` suggests the nearest one from NODE_LAT/NODE_LON and asks; `place <slug>` sets it; `place none` clears it. The
 # distance and the list live in packs/index/place.py, so nothing here redoes the sums. The choice is INDEX_PLACE, set
@@ -2621,6 +2693,7 @@ case "${1:-help}" in
   homeassistant|ha) cmd_homeassistant;;
   packs) shift; cmd_packs "$@";;
   place) shift; cmd_place "$@";;
+  models) shift; cmd_models "$@";;
   sources) shift; cmd_sources "$@";;
   ui|dashboard) cmd_ui;;
   storage) shift; cmd_storage "$@";;

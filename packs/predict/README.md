@@ -10,7 +10,7 @@ Index cell and sends nothing off the node. Both tables are revoked from `planeta
 sensors count (not peers, not `fc_%` forecast channels), and only their ambient metric. There is no training and no
 adaptation: the weights are the published ones.
 
-**What it needs.** A model container (`MODELS_URL`) and weights fetched once with the planetai command's `models pull` step,
+**What it needs.** A model container (`MODELS_URL`) and weights fetched once with `planetai models pull`,
 the only step that reaches huggingface.co. `models.json` pins each model's revision and the sha256 of its weights.
 
 **The 21 November figures.** `amazon/chronos-2` is 456 MB, `amazon/chronos-bolt-tiny` 33 MB, both Apache-2.0. A series
