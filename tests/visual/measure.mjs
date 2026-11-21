@@ -442,6 +442,11 @@ async function serveNodeAPI(route, u) {
     await route.fulfill({ status: 200, contentType: 'application/json', body: fs.readFileSync(path.join(HERE, '..', 'fixtures', 'wall-node1.json'), 'utf8') });
     return true;
   }
+  /* the predict pack's one read: the hand-built node #1 body its test uses (tests/fixtures/predict-node1.json) */
+  if (u.pathname === '/predict') {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: fs.readFileSync(path.join(HERE, '..', 'fixtures', 'predict-node1.json'), 'utf8') });
+    return true;
+  }
   if (u.pathname === '/forecast') {
     const health = computeNodeData(FIXTURE).snapshot?.health;
     const body = process.env.PAI_RICH === '1' ? richForecast() : emptyForecast(health);

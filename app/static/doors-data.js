@@ -48,7 +48,7 @@ const SYM = { pm25: 'PM2.5', pm10: 'PM10', pm1: 'PM1', pm25_raw: 'PM2.5ʳ', aqi:
 /* the tabs: [the words on the tab, the sections it shows, what it draws] — a tab draws only its own sections */
 const DTABS = {
   readings: ['Readings', ['d-readings', 'issues7', 'perday'], () => { metricTiles(); sensorsBlock(); issuesBlock(); perdayBlock(); }],
-  models: ['Models and satellite', ['models'], () => modelsBlock()],
+  models: ['Models and satellite', ['models', 'predict'], () => { modelsBlock(); predictBlock(); }],
   home: ['Home', ['d-images', 'd-things'], () => { imagesBlock(); thingsBlock(); }],
   ledger: ['Ledger', ['ledger', 'dnote'], () => ledgerBlock()],
   api: ['API', ['api'], () => apiBlock()],
@@ -261,6 +261,35 @@ function modelsBlock() {
     + [...by].map(([id, os]) => `<tbody>${head(id, os)}` + os.map(o => { const r = mrow(o);
       return `<tr><td>${esc(r.what)}</td><td class="n">${r.v}</td><td class="u">${said(r.unit || '—')}</td><td class="hide mono">${o.ts === at(os) ? '' : esc(when(o.ts))}</td></tr>`; }).join('') + `</tbody>`).join('')
     + `</table>`;
+}
+/* PREDICT — this node's own readings, forecast by a general model that runs here (GET /predict, the predict pack). A day
+   is drawn only when the model beat "yesterday repeated" on enough days; otherwise it says why. predictRows is pure: it
+   takes the parsed answer, or { state: 'off' } for a 404 and { state: 'failed' } for no answer, and gives the HTML. */
+function pwhy(d, why) {
+  if (why) return why.reason === 'young' ? `too young: ${why.have} of ${why.need} days` : 'yesterday is closer';
+  return d.days >= 7 ? 'yesterday is closer' : `too young: ${d.days} of 7 days`;
+}
+function predictRows(j, docs, word = x => x) {
+  const state = (j || {}).state, say = t => `<p class="fine">${t}</p>`;
+  if (state === 'off') return say(`This node does not forecast its own readings. <code>planetai models pull amazon/chronos-2</code> turns it on (456 MB). <a href="${esc((docs || 'https://planetai.fab.city/docs/') + 'predict/')}" target="_blank" rel="noopener">How it works</a>.`);
+  if (state === 'no-answer') return say('The models container is not answering.');
+  if (state === 'no-model') return say('No model is pulled.');
+  if (state === 'young') return say('No series has 14 days yet.');
+  if (state !== 'ok') return say('The forecast could not be read.');
+  const m = j.model || {}, rows = j.rows || [], N = Math.max(0, ...rows.map(r => Math.max(r.today.days || 0, r.tomorrow.days || 0)));
+  const day = (r, d) => d.shown ? `${fmt(d.low, 1)}–${fmt(d.high, 1)} ${said(r.unit || '')}` : `— <span class="fine">${esc(pwhy(d, r.why))}</span>`;
+  const off = (r, k) => r.today[k] == null ? '—' : `${fmt(r.today[k], 1)} · ${fmt(r.tomorrow[k], 1)} ${said(r.unit || '')}`;
+  return `<p class="fine">${esc(m.name)} · general model, not adapted here</p><div class="tscroll"><table class="tbl ptab"><thead><tr><th>series</th><th>today</th><th>tomorrow</th>`
+    + `<th class="n">off by, last ${N} days</th><th class="n hide">yesterday repeated</th></tr></thead><tbody>`
+    + rows.map(r => `<tr><td>${esc(r.sensor)} <span class="fine">${esc(word(r.metric))}${r.indoor ? ', inside' : ''}</span></td><td>${day(r, r.today)}</td><td>${day(r, r.tomorrow)}</td>`
+      + `<td class="n">${off(r, 'model')}</td><td class="n hide">${off(r, 'naive')}</td></tr>`).join('') + `</tbody></table></div>`;
+}
+async function predictBlock() {
+  const el = $('#predict'), head = `<h2>Its own readings, forecast</h2>`;
+  const r = await doorsFetch('/predict').catch(() => null);
+  if (r && r.status === 403) { el.innerHTML = head + `<p class="lede">What this node expects of its own sensors is the household’s, so only a screen holding a node token reads it: unlock this one in ${UNLOCK_AT}.</p>`; return; }
+  const j = r && r.ok ? await r.json().catch(() => null) : null;
+  el.innerHTML = head + predictRows(j || { state: r && r.status === 404 ? 'off' : 'failed' }, (D.health || {}).docs, mWord);
 }
 /* IMAGES — every image the household added (SPEC_eyes step 1), with its facts of arrival, and its words to edit: the
    kind, the note, and key: value lines (meta). The act token edits; the admin token deletes, file and row. */

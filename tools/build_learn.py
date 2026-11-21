@@ -406,6 +406,10 @@ MARKS = [
     ("data-models", "Models and satellite", "dashboard.md", "Data",
      "one table: a row per value", "its unit",
      "A model is partial whatever its quality, so these values sit apart from what the house measures."),
+    ("data-predict", "Its own readings, forecast", "dashboard.md", "Data",
+     "With the `predict` pack on", "the row says why.",
+     "A forecast is not a reading and is drawn apart from them. It comes from a general model, not adapted here, "
+     "and a day appears only once the model has been closer than yesterday repeated."),
     ("data-images", "Images", "dashboard.md", "Data",
      "**Images**, newest first", "to edit, confirm or delete.",
      "The pictures stay on this node, cleaned of EXIF and GPS. What the image model saw counts only once "
@@ -693,6 +697,9 @@ QUESTIONS = {
     'data-models': {"en": ['What does the forecast say for here?', 'How is a model different from a sensor?'],
         "id": ['Apa kata prakiraan untuk tempat ini?', 'Apa bedanya model dengan sensor?'],
         "es": ['¿Qué dice el pronóstico para aquí?', '¿En qué se diferencia un modelo de un sensor?']},
+    'data-predict': {"en": ['Will the air be better or worse tomorrow?', 'Why is a day not shown for some series?'],
+        "id": ['Apakah udara besok lebih baik atau lebih buruk?', 'Mengapa sebuah hari tidak ditampilkan untuk sebagian deret?'],
+        "es": ['¿El aire estará mejor o peor mañana?', '¿Por qué no se muestra un día en algunas series?']},
     'data-images': {"en": ['What did the image model see in our photos?', 'How do I confirm what a photo shows?'],
         "id": ['Apa yang dilihat model gambar di foto-foto kami?', 'Bagaimana cara memastikan isi sebuah foto?'],
         "es": ['¿Qué vio el modelo de imágenes en nuestras fotos?', '¿Cómo confirmo lo que muestra una foto?']},
