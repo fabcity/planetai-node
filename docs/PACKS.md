@@ -1,7 +1,7 @@
 # Packs
 
 A pack is a folder in `packs/`. It carries rules, Index cells, or an adapter for a new source. The core knows nothing
-about air, water or heat; the packs do. Twenty-eight ship in `packs/`.
+about air, water or heat; the packs do. Twenty-nine ship in `packs/`.
 
 ```
 packs/<id>/
@@ -523,6 +523,7 @@ reaches no issue and is not named as deliberately outside them fails `tests/test
 | thingdata | code | — repair knowledge, its own catalogue | a ThingData server's things, guides and stories, and how much of the catalogue anyone has written down how to fix |
 | make | code | — places, not numbers | the nearest active fab labs and what each can do, from the Fab Lab Network directory — display-only, no metrics, no cell and no alert, by design |
 | fire | code | air | fires near the node from NASA FIRMS, and whether they are upwind; acts only when the air outside rises too — off until `FIRE_ENABLED=1` |
+| predict | code | none: a section of its own in Data | today and tomorrow for the node's own series, from a general model in the `models` container, shown only while it is closer than the last measured day repeated; no alert, no rule, no cell, off until `PREDICT_MODEL` is set |
 | example-cooking-hours | data | air | a worked example |
 
 `make` is the only pack that stores no number at all. Its rows are `kind='facility'`: a place with

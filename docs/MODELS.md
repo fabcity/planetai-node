@@ -69,9 +69,18 @@ for the Telegram bot and the dashboard's ask pane alike:
 A node with `private` and no model, on this machine or on your network, still answers alerts, writes
 reports and draws its page. It just does not chat.
 
+## A time-series model
+
+A time-series model is a second kind of model, and it is optional too. It runs in its own container, `models`, and
+`predict` is the one pack that needs it. Without it the pack does nothing. `planetai models pull amazon/chronos-bolt-tiny`
+(33 MB) or `planetai models pull amazon/chronos-2` (456 MB) says the size, asks, downloads the weights once, checks
+them and turns the pack on. The pack then forecasts today and tomorrow for the node's own sensors and shows a day only
+while it beats the last measured day repeated; [Predict](site/predict.md) has the rest. A node still needs none of
+this, as the first line of this page says.
+
 ## What is not here
 
-No per-class default profile, no bundled weights, no model in the tarball, and no pack that requires one.
+No per-class default profile, no bundled weights, no model in the tarball, and one pack that needs a model: `predict`, which does nothing until a person pulls one.
 The 14 September models memo proposed 5–30 GB profiles per node class; a default profile is a different
 product from a 230 MiB node, and nothing in this repository pulls a model unless a person asks for it by
 tag.

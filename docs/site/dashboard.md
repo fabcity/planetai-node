@@ -200,7 +200,7 @@ Every reading the node holds, one tab at a time, routed `#data/<tab>`. The tab b
 | **API** | every route on this node, one line each, with a search |
 | **Workbench** | the sensors workbench, routed `#data/workbench/flash`, `/test` or `/network`: flash the Bayu and every Meshtastic board, test a board over USB, and the network this node hears, all with no internet. USB needs Chrome or Edge on a laptop, on the node machine or with one Chrome flag set for this address; the steps are on [Flash and test a board](sensors.md#flash-and-test-a-board) |
 
-With the `predict` pack on, Models and satellite has a second part: the range a general model expects today and tomorrow for each of the node's series, and its mean error over 28 days beside yesterday's repeated. A day is drawn only with at least 7 scored days and the model's error strictly below yesterday's, otherwise the row says why. It needs a node token.
+With the `predict` pack on, Models and satellite has a second part: the range a general model expects today and tomorrow for each of the node's own series, and its mean error beside that of yesterday repeated. A day is drawn only with at least 7 scored days and the model's error strictly below yesterday's, otherwise the row says why. It needs a node token, and [Predict](predict.md) has the rest.
 
 `#data/<sensor-id>` opens a station in Readings. The diary and the Index cells are on Node.
 

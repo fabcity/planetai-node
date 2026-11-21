@@ -115,6 +115,10 @@ planetai radio init         # LoRa radios: the fleet, then `radio provision <rol
   drawing touches the cell the house stands in.
 - **Exactly one node per pilot writes to the spine.** A pilot is a city in the Index's `ALLOWED_CITIES`. Every
   other node computes its cells, shows them, and passes them no further.
+- **A modelled number says so.** A forecast carries the model, its error on this node and the days that error was
+  measured on. It never sends an alert, never moves ρ, never fills an Index cell, and never leaves the node,
+  apart from the one line `predict` gives Next days, which is as open as Next days is.
+  `predictions` is not a reading and is never written to `readings`.
 - When a document and a skill disagree, the document wins and the skill has a bug. Fix the skill, not the doc.
 
 ## Changing code

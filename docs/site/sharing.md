@@ -173,7 +173,10 @@ up never travels to a NAS or a remote. The node never logs the Telegram URL, bec
 | a question to the bot | an online model, only if you gave it a key and changed `AGENT_PREFER` from its default, `private` | the question and the tool results the model asked for |
 | a question in the dashboard's ask pane | the model Set up names: this machine, one on your network, or an online provider only with `AGENT_PREFER` set to `fallback` or `strongest` | the question and the page's own sentences and numbers, with no position, name or id; the node keeps no transcript |
 | an offer | anyone, while the `things` pack is on: `GET /offers` at every level, and the daily export | only a thing the household marked lend or give: its class, name, condition and count, at the node's own resolution-8 cell, with a link to the node's Telegram bot. Never a note, a photo, how often it is used or a point |
+| a forecast model's weights | huggingface.co, once, only when somebody runs `planetai models pull <name>` | a download of the files the catalogue pins. huggingface.co sees this house's internet address and which model it asked for, and afterwards the models container runs offline |
 | raw readings | nobody | nothing |
+| a forecast of the node's own series | nobody: not the export, a parent or the report bundle, and no agent tool reads it | `GET /predict` answers a node token or this machine only |
+| the one line `predict` gives Next days | whoever can see Next days on this node | tomorrow's range for PM2.5 outside, with no sensor named, served with `GET /forecast` |
 | a `private` reading | nobody: not the export, a parent, the report bundle or any agent, and on this machine's raw routes only the admin token | it is used on the page, by rules and by cells; Home Assistant discovery, the household's own automation, still receives it |
 
 At `AGENT_PREFER=private`, the default, the ask pane's model is on this machine or your network and the

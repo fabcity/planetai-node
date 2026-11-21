@@ -1,9 +1,9 @@
 id: predict
 name: Predict
 description: >-
-  A general forecasting model reads this node's own outdoor series and writes the next two days beside the repeated
-  last day, so the node can show when it beats it. The model runs in a separate container and never sees anything but
-  numbers.
+  A general forecasting model reads this node's own series, outdoors and in, and writes the next two days beside the
+  last day repeated, so the node shows a day only when it beats that. The model runs in a separate container and sees
+  nothing but numbers.
 author: PLANETAI core (official)
 version: 0.1.0
 requires: { node: ">=0.92.0" }

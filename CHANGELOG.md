@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- **A node can forecast its own readings.** The new core pack `predict` runs a general time-series model, Chronos-2
+  or Chronos-Bolt tiny, in a container of its own, and each night forecasts today and tomorrow for the node's own
+  sensors. A day is shown in Data only while the model is closer than the last measured day repeated, and a forecast
+  is never written as a reading, and apart from one line in Next days it never leaves the node. Nothing is downloaded until you run
+  `planetai models pull`, and docs/predict has what we measured on node #1.
+
 ## v0.92.0 — 2026-11-19 — A node and its place
 
 Most of this release is about the place around the node. Place has a page of its own now, layered as what the ground

@@ -233,7 +233,7 @@ backups and the pictures folder. See [Storage](storage.md).
 | `EXPORT_ENABLED` | `1` | `1`, `0` | Each night writes yesterday's `exports/<node>/YYYY-MM-DD.json`: hourly means, cells, alerts and ρ, never raw. | bootstrap |
 | `IPFS_PUBLISH` | `0` | `1`, `0` | Adds each export to IPFS and records the CID in `exports/<node>/CIDS.txt`. `planetai ipfs` turns it on. | bootstrap |
 | `APP_PORT` | `8080` | port | The host port, on every interface. Change it if 8080 is taken. | bootstrap |
-| `COMPOSE_PROFILES` | blank | `mqtt`, `agent`, `ipfs`, `reticulum`, `grafana` | Which optional containers run. Set by `planetai meshtastic`, `agent local`, `ipfs`, `reticulum` and `grafana`; leave it alone. | bootstrap |
+| `COMPOSE_PROFILES` | blank | `mqtt`, `agent`, `ipfs`, `reticulum`, `grafana`, `models` | Which optional containers run. Set by `planetai meshtastic`, `agent local`, `ipfs`, `reticulum`, `grafana` and `models pull`; leave it alone. | bootstrap |
 | `GRAFANA_BIND` | `127.0.0.1` | address | Where Grafana listens. `0.0.0.0` opens it to the network; set `GRAFANA_ADMIN_PASSWORD` first. Set up › System shows it. See [Grafana](grafana.md). | bootstrap |
 | `GRAFANA_PORT` | `3000` | port | Grafana's port. | bootstrap |
 | `GRAFANA_ADMIN_PASSWORD` | blank = `admin` | text | The password of Grafana's `admin` login. Set up says only whether it is set. | bootstrap, secret |
@@ -253,8 +253,8 @@ backups and the pictures folder. See [Storage](storage.md).
 ## Pack keys
 
 Every key a `pack.yaml` declares, with the default it ships. All are kind `pack`. A code pack reads them only with
-`PACKS_ALLOW_CODE=1`, except `bali-air-dispatch` and `index`, official packs with their own switch, which run on
-`BAD_ENABLED=1` and on `INDEX_PLACE` being set, alone.
+`PACKS_ALLOW_CODE=1`, except `bali-air-dispatch`, `index` and `predict`, official packs with their own switch, which run on
+`BAD_ENABLED=1`, on `INDEX_PLACE` being set and on `PREDICT_MODEL` being set, alone.
 
 | Setting | Pack | Default | Meaning |
 |---|---|---|---|
@@ -309,6 +309,7 @@ Every key a `pack.yaml` declares, with the default it ships. All are kind `pack`
 | `INDEX_PLACE` | index | blank | The Fab City Index place this node belongs to, a slug from `packs/index/places.json`. The pack runs when it is set. `planetai place` suggests the nearest and `planetai place <slug>` sets it. |
 | `INDEX_URL` | index | `https://index.fab.city` | Where the pack reads the place's file. The request is the slug and nothing about the house. |
 | `INDEX_REFRESH_HOURS` | index | `24` | How often the place's file is read again. |
+| `MODELS_URL` | predict | `http://models:8080` | Where the models container answers. The pack runs while `PREDICT_MODEL` is set, which only `planetai models pull` does. |
 | `COAST_MAX_KM` | coast | `30` | Refuses to report if the nearest ocean grid cell is further than this. Also a runtime key (public), and it moves the dashboard's drawn footprint too. |
 
 Two pack settings are read but declared in no `pack.yaml`, so they are env only: `OVERPASS_URL` (default

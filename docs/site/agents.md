@@ -120,6 +120,10 @@ under its alert, with an `alert_id` and a `choice`. No MCP tool writes any of th
   the node upstream with its exact coordinates, labels, notes and measures, after a plain warning, and is held while a
   drawing touches the cell the house stands in.
 - Exactly one node per pilot writes to the Index's spine.
+- A modelled number says so. A forecast from the `predict` pack carries its model, its error on this node and the days
+  that error was measured on, and it is never written as a reading, never sends an alert, never moves ρ, never fills an
+  Index cell and never leaves the node, apart from the one line `predict` gives Next days, which is as open as Next
+  days is.
 - `act` needs the person's own words. It has no default note and refuses a placeholder. ρ is the share of act-level
   alerts a human answered, and a row written without anything a human said is a model measuring itself. If they did
   not tell you what they did, ask.
