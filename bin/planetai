@@ -687,7 +687,7 @@ print("%s|%s|%s" % (r.get("latest", ""), r.get("current", ""), "1" if r.get("new
   case ",$(envget COMPOSE_PROFILES)," in *,reticulum,*)
     chk "reticulum bridge up"    "curl -sf localhost:4243/health"                       "planetai logs reticulum";; esac
   case ",$(envget COMPOSE_PROFILES)," in *,models,*)
-    chk "forecast model $(setting PREDICT_MODEL | sed 's/^$/not set/') running"  "[ -n \"\$(docker compose ps --status running -q models)\" ]"   "planetai models pull <name>, or planetai logs models";; esac
+    chk "forecast model $(envget PREDICT_MODEL | sed 's/^$/not set/') running"  "[ -n \"\$(docker compose ps --status running -q models)\" ]"   "planetai models pull <name>, or planetai logs models";; esac
   if [[ $JSON -eq 1 ]]; then
     printf '{"ok":%s,"checks":[%s],"sources":%s}\n' "$([[ $ok -eq 1 ]] && echo true || echo false)" "${rows%,}" "$(doctor_sources json || echo null)"
     return $(( 1 - ok )); fi
@@ -1962,7 +1962,7 @@ cmd_models() {
     pull) shift; models_pull "$@";;
     rm) shift; models_rm "$@";;
     ""|list)
-      local on cur n size lic have; cur="$(setting PREDICT_MODEL)"
+      local on cur n size lic have; cur="$(envget PREDICT_MODEL)"
       case ",$(envget COMPOSE_PROFILES)," in *,models,*) on=1;; *) on=0;; esac
       step "Forecast models"
       while IFS=$'\t' read -r n size lic; do
@@ -2005,7 +2005,7 @@ models_rm() {
   models_row "$name" >/dev/null || { warn "'$name' is not a forecast model here. The catalogue has: $(models_names)"; return 2; }
   # the image may not exist (the profile was never on): then there are no weights to remove either
   spin "removing $name's weights" docker compose run --rm models python pull.py --remove "$name" || { warn "could not remove them; see $LOG"; return 1; }
-  if [[ "$(setting PREDICT_MODEL)" == "$name" ]]; then
+  if [[ "$(envget PREDICT_MODEL)" == "$name" ]]; then
     envset PREDICT_MODEL ""
     docker compose stop models >>"$LOG" 2>&1 || true
     spin "restarting the node with predict off" docker compose up -d --force-recreate app || true

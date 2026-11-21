@@ -199,7 +199,7 @@ ask pane reads the same keys on every question. See [The bot](bot.md) and [Ask t
 | `AGENT_REMOTE_MODEL` | `gpt-oss-120b` | model id | e.g. `gpt-oss-120b` or `qwen3:8b`. | runtime · public · restart |
 | `AGENT_REMOTE_KEY` | blank | secret | If that server asks for one. | runtime · secret · restart |
 | `EYES_MODEL` | blank = off | Ollama model id | A vision model in this machine's Ollama that describes each image and files what it sees under the [flows](https://planetai.fab.city/vocab/flows/1.0/) classes. The picture never leaves the machine and the model is never asked about people. On 16 GB, `qwen2.5vl:7b`. | runtime · public |
-| `PREDICT_MODEL` | blank = off | model name | A time-series model that forecasts this node's own readings. `planetai models pull <name>` sets it after the weights are here; `planetai models rm` blanks it. | runtime |
+| `PREDICT_MODEL` | blank = off | model name | A time-series model that forecasts this node's own readings. `planetai models pull <name>` sets it after the weights are here; `planetai models rm` blanks it. Set up shows it and does not edit it: the models container can only follow `.env`. | env only |
 | `OLLAMA_URL` | `http://host.docker.internal:11434` | URL | Ollama on this machine, the `local` rung. `planetai agent local` sets `http://172.17.0.1:11434` on Linux. | env only |
 | `AGENT_MODEL` | `qwen3:4b` | Ollama model | The local rung's model; it must do tool calling. `planetai agent local pull <tag>` sets it. | env only |
 | `AGENT_NAME` | `local-model` | string | How the agent's actions appear in the audit trail. | env only |

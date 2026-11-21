@@ -58,6 +58,27 @@ try:
 except KeyError:
     pass
 
+# PREDICT_MODEL is .env's alone: the models container can only follow .env. It is a read-only row in group model, with
+# its help, refused on save like COMPOSE_PROFILES, and every reader sees the environment.
+os.environ["PREDICT_MODEL"] = "amazon/chronos-2"
+_b = {b["key"]: b for b in settings.describe(unlocked=True)["bootstrap"]}
+assert "PREDICT_MODEL" not in settings.RUNTIME and "PREDICT_MODEL" in _b and "COMPOSE_PROFILES" in _b
+assert _b["PREDICT_MODEL"]["group"] == "model" and _b["PREDICT_MODEL"]["label"] == "Forecast model" and _b["PREDICT_MODEL"]["value"] == "amazon/chronos-2"
+assert _b["PREDICT_MODEL"]["help"].startswith("A time-series model that forecasts this node's own readings") and "planetai models pull <name>" in _b["PREDICT_MODEL"]["help"]
+assert "help" not in _b["COMPOSE_PROFILES"], "a row with no help carries none"
+for _k in ("PREDICT_MODEL", "COMPOSE_PROFILES"):
+    try:
+        settings.set(_k, "amazon/chronos-bolt-tiny"); raise AssertionError(_k + " must refuse a save")
+    except KeyError:
+        pass
+_real_rows = settings._rows
+settings._rows = lambda: {"PREDICT_MODEL": "a row that must never be read"}
+assert settings.get("PREDICT_MODEL") == os.getenv("PREDICT_MODEL") == "amazon/chronos-2", "one source: the environment"
+settings._rows = _real_rows
+os.environ.pop("PREDICT_MODEL")
+_ds = open("app/static/doors-setup.js").read(); _dj = open("app/static/dashboard.js").read()
+assert "b.help ?" in _ds and "b.help ?" in _dj, "Set up draws a read-only row's help only when it has one"
+
 # --- MAP_TILES: live tiles leave the house, so they are off until a keeper says otherwise --------------------
 assert "MAP_TILES" in settings.PUBLIC, "MAP_TILES is a public setting, so the page can read it"
 try:
