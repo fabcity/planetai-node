@@ -102,7 +102,7 @@ Each thing gets a row in the order of Now's rows: air and heat, then wind and ra
 pack that declares one with `ahead:` in its `pack.yaml`. A cell has the day's number, the state word against the issue's
 line, and for air and heat how many hours go over it. Press a row and its 72 hours are drawn under it, with the line.
 Under the rows each source is a pill with the time it was issued or fetched, then the page says "These come from
-models. The node does not forecast, and nothing here sends a message." With Open-Meteo off only BMKG's weather shows,
+models, and nothing here sends a message." With Open-Meteo off only BMKG's weather shows,
 where BMKG covers the node, and a line says where to turn Open-Meteo on. `#now/next` links straight to it.
 
 **Around the house** opens the right column. A row for each issue drawn by the hour, its state word, its value now and its hours over the line

@@ -309,12 +309,13 @@ Every key a `pack.yaml` declares, with the default it ships. All are kind `pack`
 | `INDEX_PLACE` | index | blank | The Fab City Index place this node belongs to, a slug from `packs/index/places.json`. The pack runs when it is set. `planetai place` suggests the nearest and `planetai place <slug>` sets it. |
 | `INDEX_URL` | index | `https://index.fab.city` | Where the pack reads the place's file. The request is the slug and nothing about the house. |
 | `INDEX_REFRESH_HOURS` | index | `24` | How often the place's file is read again. |
-| `MODELS_URL` | predict | `http://models:8080` | Where the models container answers. The pack runs while `PREDICT_MODEL` is set, which only `planetai models pull` does. |
 | `COAST_MAX_KM` | coast | `30` | Refuses to report if the nearest ocean grid cell is further than this. Also a runtime key (public), and it moves the dashboard's drawn footprint too. |
 
-Two pack settings are read but declared in no `pack.yaml`, so they are env only: `OVERPASS_URL` (default
-`https://overpass-api.de/api/interpreter`, the place pack's Overpass endpoint) and `BAD_BACKFILL_DAYS` (default
-`0`, the size of the one-off `planetai run nearby backfill`, whose argument overrides it).
+Three pack settings are read but declared in no `pack.yaml`, so they are env only: `OVERPASS_URL` (default
+`https://overpass-api.de/api/interpreter`, the place pack's Overpass endpoint), `BAD_BACKFILL_DAYS` (default
+`0`, the size of the one-off `planetai run nearby backfill`, whose argument overrides it) and `MODELS_URL` (default
+`http://models:8080`, where the predict pack reaches the models container). Set up does not show `MODELS_URL` and
+no agent can change it, because it decides where every series the pack forecasts is sent.
 
 The Reticulum bridge's own paths, `RETICULUM_DATA` (`/data`), `RETICULUM_CONFIGDIR` (`/etc/reticulum`) and
 `NODE_API_URL` (`http://app:8080`), are set by `docker-compose.yml`. Nothing to set by hand.

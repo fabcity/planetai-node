@@ -44,7 +44,7 @@ the pack is off.
 | `thingdata` | code | repair | 1 warn | | 2 | | `THINGDATA_*` |
 | `things` | code | things | none | | | | none (the Telegram bot's token, the core's) |
 | `eyes` | code | species | none | | | | `CAPTURES_DIR`, `EYES_MODEL`, `SPECIES_MATCH` (declared by the core) |
-| `predict` | code | cross-domain | none | | | | `PREDICT_MODEL` (declared by the core), `MODELS_URL` |
+| `predict` | code | cross-domain | none | | | | `PREDICT_MODEL` (declared by the core) |
 | `example-cooking-hours` | data | (none) | 1 info | | | | |
 
 That is 33 rules with a message (26, and the 7 only the event engine reads), 5 report contributors and 12
@@ -1329,10 +1329,10 @@ on and read it, and what we measured on node #1.
 
 | | |
 |---|---|
-| Kind | code: an adapter and `routes.py`, with the `models` container beside the node |
+| Kind | code, an adapter and `routes.py`, run by its own switch (`switch: [PREDICT_MODEL]`), with the `models` container beside the node |
 | Domain | `cross-domain` |
 | Requires node | `>=0.92.0` |
-| Metrics | none: a forecast is never a reading |
+| Metrics | none, because a forecast is never a reading |
 | Scales | community |
 | Needs | `PREDICT_MODEL`, set by `planetai models pull` (it is the pack's own switch, so `PACKS_ALLOW_CODE` is not needed); the weights, downloaded once from huggingface.co by that command and by nothing else |
 | Shares | the one line `predict` gives Next days, served with `GET /forecast` to whoever can see Next days on this node; `GET /predict` answers a node token or this machine only |
@@ -1341,9 +1341,11 @@ on and read it, and what we measured on node #1.
 
 At the first poll after 00:10 local time the adapter sends the models container the hourly means of each series that
 qualifies: a sensor that is the household's own and not a peer's, a metric whose channel role is `ambient`, at least 7
-days of history and 90% of the hours of the last 14 measured. It stores the answer, 48 hours from local midnight with a
-middle value and an 80% band, in `predictions`, and on its first night it does the same for each of the 28 days before.
-It tries at most once an hour until today's forecast is stored, and keeps 35 days. Besides those rows it writes
+days of history, 90% of the hours of the last 14 measured and at least one of the last 6. It stores the answer, 48 hours
+from local midnight with a middle value and an 80% band, in `predictions`, one day in one transaction, and the first
+time it runs it does the same for each of the 28 days before, oldest first. One poll gives it at most 60 seconds and the
+next poll carries on, so the first run starts at the poll after `planetai models pull` and may take a few polls. After a
+failure it tries at most once an hour until today's forecast is stored, and it keeps 35 days. Besides those rows it writes
 one row per model in `models`, with the time of its last attempt, and the sensor `predict` (`kind='model'`, not
 local), whose meta holds tomorrow's line for Next days.
 
@@ -1356,7 +1358,6 @@ export, the aggregates a parent gets, the report bundle or any agent tool.
 | setting | default | meaning |
 |---|---|---|
 | `PREDICT_MODEL` | empty | the model that runs, a name from `packs/predict/models.json`. Set and blanked by `planetai models pull` and `planetai models rm`; Set up › Model shows it and does not edit it |
-| `MODELS_URL` | `http://models:8080` | where the models container answers |
 
 ### What it does not know
 

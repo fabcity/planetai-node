@@ -20,15 +20,19 @@ of one sensor, the PM2.5 of an outdoor kit for example, and it is forecast when:
 - the metric's channel role is `ambient` and it is not an `fc_` metric, so a forecast the node fetched is never
   forecast again;
 - it has hourly means for at least 7 days before the day forecast, with 90% of the hours measured over the last 14
-  days, or over all of them while it is younger than that.
+  days, or over all of them while it is younger than that;
+- at least one of the 6 hours before local midnight is measured, so a sensor that has gone quiet is not forecast from
+  its last value held flat.
 
 Indoor series are forecast too, and only a screen with the token sees them.
 
-On its first night the node also forecasts each of the previous 28 days, from what it knew before each one, so the
-score starts with up to 28 days behind it. A day in those 28 that has no forecast yet is filled the same way on any
-later night. The model reads up to 4,096 hours of a series before the day it forecasts, with a short gap filled by a
-straight line between the hours either side, and it gets only those numbers, without the sensor's name, its room,
-the place or the time.
+The first run is at the node's next poll after `planetai models pull`, whatever the hour. In it the node also
+forecasts each of the previous 28 days, from what it knew before each one, oldest first, so the score starts with up
+to 28 days behind it. The poll that does this also reads the household's sensors, so the pack works for at most a
+minute at a time and the next poll carries on where it stopped. Each day is stored whole or not at all. A day in
+those 28 that has no forecast yet is filled the same way later. The model reads up to 4,096 hours of a series before
+the day it forecasts, with every gap filled by a straight line between the hours either side, and it gets only those
+numbers, without the sensor's name, its room, the place or the time.
 
 For each hour the model gives a middle value and an 80% band around it. The page uses the middle value and the node
 keeps the band. Forecasts are kept for 35 days. If the container does not answer or the run fails, the node tries again
@@ -53,12 +57,14 @@ says so. There are two:
 planetai models pull amazon/chronos-2
 ```
 
-says the model's size and licence and asks before it does anything (`--yes` skips the question). Then it builds the
-models image, which carries PyTorch for the CPU and takes a few minutes the first time, downloads the weights once from
+says the model's size and licence, says that the models image is built first, carries PyTorch and is several times
+larger than the weights, and asks before it does anything (`--yes` skips the question). Then it builds the models
+image, which takes a few minutes the first time, downloads the weights once from
 huggingface.co at the revision the catalogue pins, and checks them against the catalogue's sha256. Only after that it
 sets `PREDICT_MODEL` in `.env`, adds `models` to `COMPOSE_PROFILES` and, if `PACKS_ENABLED` lists packs, `predict` to
 it, starts the container and restarts the node. If the build or the download fails, `.env` is left as it was. It ends
-with "amazon/chronos-2 is on this machine. predict forecasts this node's own series from tonight (00:10)."
+with "amazon/chronos-2 is on this machine. predict starts at the node's next poll, and after that runs each night
+after 00:10."
 
 Nothing is downloaded before you run that command, and it is the only time a node reaches huggingface.co for a model.
 After it the container runs with `HF_HUB_OFFLINE=1` and asks nothing of the internet. `planetai update` rebuilds the
@@ -72,8 +78,9 @@ model amazon/chronos-2 running".
 planetai models rm amazon/chronos-2
 ```
 
-deletes the weights. If that was the model running, `PREDICT_MODEL` is blanked, the container stops and the node
-restarts with `predict` off. The forecasts already written stay.
+deletes the weights. If that was the model running, `PREDICT_MODEL` is blanked, `models` leaves `COMPOSE_PROFILES`,
+the container stops and the node restarts with `predict` off, so `planetai doctor` no longer has a line for it and an
+update no longer builds the image. The forecasts already written stay.
 
 On a machine short of memory, take `amazon/chronos-bolt-tiny`. In our measurements below it was a little less close
 and needed under half the memory.
@@ -88,22 +95,26 @@ line names the model, then "general model, not adapted here". Under it, one row 
 | series | the sensor and the metric, with ", inside" for an indoor one |
 | today | the lowest and highest hourly value the model expects today, or a dash and why it is not shown |
 | tomorrow | the same for tomorrow |
-| off by, last N days | the model's mean absolute error over the N days scored, today's and then tomorrow's, in the series' unit |
+| off by, last N days | the model's mean absolute error over the N days scored (the last 28 at most), today's and then tomorrow's, in the series' unit, or a dash while no day is scored |
 | yesterday repeated | the same error for the last measured day repeated. A narrow screen hides it |
 
-A day is shown only when at least 7 days are scored and the model's error is strictly below that of yesterday
-repeated. Otherwise the cell says "yesterday is closer", or, while the series is young, how far it has got, "too
-young: 9 of 14 days". Today and tomorrow are judged apart, so a row can show one and not the other. Yesterday repeated
-is the 24 hours before local midnight, hour by hour, used for both days, and an hour counts only when the forecast,
-the measurement and yesterday's value are all there. The scores are worked out each time the page asks, from the
+A day is shown only when today's forecast is stored, at least 7 days are scored and the model's error is strictly
+below that of yesterday repeated. Otherwise the cell says "yesterday is closer" when the model lost, "too young:
+4 of 7 days" while that day has fewer than 7 scored, "too many hours missing" for a series old enough to forecast that
+has too many gaps or has stopped, and "not made yet today" before today's run has stored it. Today and tomorrow are
+judged apart, so a row can show one and not the other. Yesterday repeated is the 24 hours before local midnight, hour
+by hour, used for both days, and an hour counts only when the forecast, the measurement and yesterday's value are all
+there. A day counts as scored with at least 12 such hours. The scores are worked out each time the page asks, from the
 stored forecasts and the hourly means, and never stored.
 
 What the node expects of its own rooms is the household's, so the section needs a node token. Without one it says so
-and where to unlock it. With the pack off it says "This node does not forecast its own readings." and gives the
-command, and with the pack on and no model ready it says "No model is pulled."
+and where to unlock it. While no model is set, as on every node until `planetai models pull`, it says "This node
+does not forecast its own readings." and gives the command, and with a model set and none ready in the container it
+says "No model is pulled."
 
 Next days on Now gets one line from it, Modelled here, for tomorrow's PM2.5 outside, such as "PM2.5 outside: 12–18
-µg/m³ (modelled here)". It names no sensor. It reads the outdoor PM2.5 series with the most hours, and it is there
+µg/m³ (modelled here, off by 3 on average over 28 days)". The error is tomorrow's mean absolute error over the days
+scored. It names no sensor. It reads the outdoor PM2.5 series with the most hours, and it is there
 only while tomorrow is shown for that series in the section above.
 
 `GET /predict` answers what the section draws, and [the API](api.md) has the route.
@@ -111,12 +122,12 @@ only while tomorrow is shown for that series in the section above.
 ## What it never does
 
 A forecast is kept in its own table, `predictions`, and is never written as a reading. It sends no alert and fills no
-Index cell, and ρ never moves with it. It is not in the daily export, in what a parent node gets or in the report
-bundle, no agent tool reads it, and pack rules and Grafana cannot read it, because the table is closed to
+Index cell, and ρ never moves with it. The daily export and the report bundle leave it out, and a parent node gets
+nothing of it. No agent tool reads it, and pack rules and Grafana cannot, because the table is closed to
 `planetai_ro`.
 
-The one line in Next days is the exception. It is served with Next days, to whoever can see Next days on this node, and it
-carries tomorrow's range for PM2.5 outside and nothing else.
+The line on Now is served to whoever can see Next days on this node, and it carries only tomorrow's range for PM2.5
+outside and its error.
 
 ## What we measured
 
