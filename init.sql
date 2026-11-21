@@ -674,7 +674,8 @@ CREATE TABLE IF NOT EXISTS predictions (
 REVOKE ALL ON predictions FROM planetai_ro;
 CREATE TABLE IF NOT EXISTS models (
   model_id TEXT PRIMARY KEY, name TEXT NOT NULL, revision TEXT NOT NULL,
-  first_run TIMESTAMPTZ NOT NULL DEFAULT now()
+  first_run TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_try TIMESTAMPTZ                     -- last attempt at the nightly run, one an hour until it is stored
 );
 REVOKE ALL ON models FROM planetai_ro;
 INSERT INTO schema_version (version) VALUES ('0.67') ON CONFLICT DO NOTHING;

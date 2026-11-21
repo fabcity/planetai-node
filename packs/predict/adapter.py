@@ -20,6 +20,7 @@ import core  # noqa: E402
 
 log = logging.getLogger("planetai.predict")
 HERE = os.path.dirname(os.path.abspath(__file__))
+RETRY_MINUTES = 60                     # at most one attempt an hour until today's origin is stored
 
 SERIES_SQL = """SELECT r.sensor_id, r.metric, r.bucket, r.mean FROM readings_1h r
   JOIN sensors s ON s.sensor_id = r.sensor_id
@@ -64,12 +65,15 @@ def _since(today: date) -> datetime:
         days=core.SCORED_DAYS + 1, hours=core.CONTEXT_HOURS)
 
 
-def _have(cur, model_id: str, origin: date) -> bool:
-    cur.execute("SELECT 1 FROM predictions WHERE model_id = %s AND origin = %s LIMIT 1", (model_id, origin))
-    return cur.fetchone() is not None
+def _due(cur, model_id: str, today: date, now: datetime) -> bool:
+    """One read: today's origin is not stored for this model, and the last attempt is not within RETRY_MINUTES."""
+    cur.execute("SELECT NOT EXISTS (SELECT 1 FROM predictions WHERE model_id = %s AND origin = %s) "
+                "AND COALESCE((SELECT last_try FROM models WHERE model_id = %s) < %s, TRUE)",
+                (model_id, today, model_id, now - timedelta(minutes=RETRY_MINUTES)))
+    return bool(cur.fetchone()[0])
 
 
-def run(cur, hc, today: date, tz: str) -> dict:
+def run(cur, hc, today: date, tz: str, expect: str | None = None) -> dict:
     try:
         h = hc.get(os.getenv("MODELS_URL", "http://models:8080") + "/health", timeout=5).json()
     except Exception as e:  # noqa: BLE001
@@ -78,15 +82,18 @@ def run(cur, hc, today: date, tz: str) -> dict:
     if not h.get("ready"):
         return {"state": "no-model", "model_id": None, "filled": 0}
     model_id = f"{h['model']}@{h['revision']}"
+    if expect and model_id != expect:
+        return {"state": "no-model", "model_id": None, "filled": 0}
     cur.execute("INSERT INTO models (model_id, name, revision) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
                 (model_id, h["model"], h["revision"]))
     pts = series(cur, _since(today))
-    if not pts:
+    keys = sorted(pts)
+    if not any(core.context(pts[k], core.origin_utc(today, tz)) for k in keys):
         return {"state": "young", "model_id": model_id, "filled": 0}
     cur.execute("SELECT DISTINCT origin FROM predictions WHERE model_id = %s AND origin >= %s",
                 (model_id, today - timedelta(days=core.SCORED_DAYS)))
     done = {r[0] for r in cur.fetchall()}
-    keys, filled = sorted(pts), 0
+    filled = 0
     for day in (today - timedelta(days=k) for k in range(core.SCORED_DAYS, -1, -1)):
         if day in done:
             continue
@@ -155,10 +162,16 @@ def fetch(hc):
             return [], []
         today = now.date()
         with _cursor() as cur:
-            if _have(cur, f"{name}@{entry['revision']}", today):
+            gate = f"{name}@{entry['revision']}"
+            if not _due(cur, gate, today, now):
                 return [], []
-            r = run(cur, hc, today, tz)
+            cur.execute("INSERT INTO models (model_id, name, revision, last_try) VALUES (%s, %s, %s, %s) "
+                        "ON CONFLICT (model_id) DO UPDATE SET last_try = EXCLUDED.last_try",
+                        (gate, name, entry["revision"], now))
+            r = run(cur, hc, today, tz, expect=gate)
             if r["state"] != "ok":
+                if r["state"] == "no-model":
+                    log.warning("predict: the container has no %s ready", gate)
                 return [], []
             meta = _meta(cur, r["model_id"], today, tz)
         return [{"sensor_id": "predict", "source": "predict", "name": "Modelled here", "lat": None, "lon": None,

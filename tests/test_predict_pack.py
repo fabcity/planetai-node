@@ -51,14 +51,18 @@ class Cur:
         if q.startswith(("INSERT", "UPDATE", "DELETE")):
             s.writes.append(q)
         if q.startswith("INSERT INTO models"):
-            s.models[a[0]] = a
+            row = s.models.setdefault(a[0], {"last_try": None})
+            if len(a) == 4:
+                row["last_try"] = a[3]
         elif q.startswith("INSERT INTO predictions"):
             m, sid, met, o, ts, p10, p50, p90 = a
             s.pred.setdefault((m, sid, met, o, ts), (p10, p50, p90))
         elif q.startswith("DELETE FROM predictions"):
             s.pred = {k: v for k, v in s.pred.items() if not k[3] < a[0]}
-        elif q.startswith("SELECT 1 FROM predictions"):
-            s.rows = [(1,)] if any(k[0] == a[0] and k[3] == a[1] for k in s.pred) else []
+        elif q.startswith("SELECT NOT EXISTS"):
+            mid, day, _, cutoff = a
+            last = s.models.get(mid, {}).get("last_try")
+            s.rows = [(not any(k[0] == mid and k[3] == day for k in s.pred) and (last is None or last < cutoff),)]
         elif q.startswith("SELECT DISTINCT origin"):
             s.rows = [(o,) for o in sorted({k[3] for k in s.pred if k[0] == a[0] and k[3] >= a[1]})]
         elif q.startswith("SELECT sensor_id, metric, origin"):
@@ -104,8 +108,8 @@ class HC:
         return R({"model": "m", "revision": "r", "quantiles": [[[v[-1] - 1, v[-1], v[-1] + 1]] * 48 for v in json["series"]]})
 
 
-def go(cur, hc, today=TODAY):
-    return A.run(cur, hc, today, "UTC")
+def go(cur, hc, today=TODAY, expect=None):
+    return A.run(cur, hc, today, "UTC", expect)
 
 
 def origins(cur, m=MID):
@@ -146,10 +150,45 @@ print("  ok: backfill resumes")
 # container down: quiet, nothing written
 cur, hc = Cur(), HC(down=ConnectionError("refused"))
 seen.clear()
-assert with_node(cur, lambda: A.fetch(hc)) == ([], []) and not cur.pred and not cur.models
-assert all(x.levelno <= logging.WARNING for x in seen)
+assert with_node(cur, lambda: A.fetch(hc)) == ([], []) and not cur.pred
+assert [x.levelno for x in seen] == [logging.WARNING], seen
 assert go(cur, hc)["state"] == "no-answer"
 print("  ok: container down is quiet")
+
+# a container serving another model than the one asked for: no work, nothing stored
+cur, hc = Cur(), HC(rev="other")
+assert go(cur, hc, expect=MID) == {"state": "no-model", "model_id": None, "filled": 0}
+assert hc.posts == 0 and not cur.pred
+print("  ok: model mismatch does no work")
+
+# five days of data: young, no call, fetch quiet
+cur, hc = Cur(), HC()
+for k in cur.readings:
+    cur.readings[k] = {t: v for t, v in cur.readings[k].items() if t >= NOW - timedelta(days=5)}
+assert go(cur, hc)["state"] == "young" and hc.posts == 0 and not cur.pred
+assert with_node(cur, lambda: A.fetch(hc)) == ([], []) and hc.posts == 0
+print("  ok: young node is young")
+
+# one attempt an hour, kept in the table
+cur, hc = Cur(), HC(down=ConnectionError("refused"))
+with_node(cur, lambda: A.fetch(hc))
+assert len(hc.timeouts) == 1
+with_node(cur, lambda: A.fetch(hc))
+assert len(hc.timeouts) == 1                                       # straight after: no HTTP at all
+cur.models[MID]["last_try"] = NOW - timedelta(minutes=61)
+with_node(cur, lambda: A.fetch(hc))
+assert len(hc.timeouts) == 2
+cur.models[MID]["last_try"] = NOW - timedelta(minutes=59)
+with_node(cur, lambda: A.fetch(hc))
+assert len(hc.timeouts) == 2
+print("  ok: one attempt an hour")
+
+# a failing forecast: one warning for the attempt
+cur, hc = Cur(), HC(fail_post_at=1)
+seen.clear()
+assert with_node(cur, lambda: A.fetch(hc)) == ([], [])
+assert [x.levelno for x in seen] == [logging.WARNING], seen
+print("  ok: failing forecast warns once per attempt")
 
 # not ready
 cur, hc = Cur(), HC(ready=False)
