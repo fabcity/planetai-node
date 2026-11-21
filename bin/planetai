@@ -1957,20 +1957,24 @@ elif sys.argv[1] in c:
     v = c[sys.argv[1]]; print("%s\t%s" % (v["size_mb"], v["licence"]))
 else: sys.exit(1)' "$1"; }
 models_names() { models_row --all | cut -f1 | paste -sd, - | sed 's/,/, /g'; }
+# whether the models image is built: `compose run` without it would build PyTorch to find nothing
+models_image() { docker image inspect planetai-models >/dev/null 2>&1; }
 cmd_models() {
   case "${1:-}" in
     pull) shift; models_pull "$@";;
     rm) shift; models_rm "$@";;
     ""|list)
-      local on cur n size lic have; cur="$(envget PREDICT_MODEL)"
+      local on img=0 cur n size lic have; cur="$(envget PREDICT_MODEL)"
       case ",$(envget COMPOSE_PROFILES)," in *,models,*) on=1;; *) on=0;; esac
+      [[ $on -eq 1 ]] && models_image && img=1
       step "Forecast models"
       while IFS=$'\t' read -r n size lic; do
         have="not checked"
-        if [[ $on -eq 1 ]]; then have="not on this machine"; docker compose run --rm models python pull.py --have "$n" </dev/null >/dev/null 2>&1 && have="on this machine"; fi
+        if [[ $img -eq 1 ]]; then have="not on this machine"; docker compose run --rm models python pull.py --have "$n" </dev/null >/dev/null 2>&1 && have="on this machine"; fi
         printf '  %-26s %4s MB  %-11s %s%s\n' "$n" "$size" "$lic" "$have" "$([[ "$n" == "$cur" ]] && echo '  <- runs')"
       done < <(models_row --all)
       [[ $on -eq 1 ]] || echo "  The models container is off. planetai models pull <name> fetches one and turns it on."
+      [[ $on -eq 0 || $img -eq 1 ]] || echo "  The models image is not built here, so nothing was checked. planetai models pull <name> builds it."
       [[ -n "$cur" ]] || echo "  No model is set, so predict is off.";;
     *) warn "planetai models [pull <name> [--yes] | rm <name>]"; return 2;;
   esac
@@ -1982,6 +1986,7 @@ models_pull() {
   row="$(models_row "$name")" || { warn "'$name' is not a forecast model here. The catalogue has: $(models_names)"; return 2; }
   IFS=$'\t' read -r size lic <<< "$row"
   say "$name · $size MB · $lic. It is downloaded once, here, from huggingface.co, and checked against the catalogue's checksum."
+  say "The models image is built first. It carries PyTorch and is several times larger than the weights."
   if [[ $yes -eq 0 ]]; then
     ( : </dev/tty ) 2>/dev/null || { warn "no terminal to ask on. To go ahead: planetai models pull $name --yes"; return 1; }
     confirm "   Fetch it?" || { echo "  ok, nothing changed."; return 0; }
@@ -1997,16 +2002,20 @@ models_pull() {
   spin "starting the models container" docker compose up -d models || { warn "the models container did not start; see $LOG"; return 1; }
   packs_switch_on predict
   spin "restarting the node with predict on" docker compose up -d --force-recreate app || { warn "the node did not restart; see $LOG"; return 1; }
-  say "$name is on this machine. predict forecasts this node's own series from tonight (00:10)."
+  say "$name is on this machine. predict starts at the node's next poll, and after that runs each night after 00:10."
 }
 models_rm() {
   local name="${1:-}"
   [[ -n "$name" ]] || { warn "say which one: planetai models rm <name>"; return 2; }
   models_row "$name" >/dev/null || { warn "'$name' is not a forecast model here. The catalogue has: $(models_names)"; return 2; }
-  # the image may not exist (the profile was never on): then there are no weights to remove either
-  spin "removing $name's weights" docker compose run --rm models python pull.py --remove "$name" || { warn "could not remove them; see $LOG"; return 1; }
+  # without the image there is nothing to run the removal with, and building PyTorch to find nothing takes minutes
+  if models_image; then
+    spin "removing $name's weights" docker compose run --rm models python pull.py --remove "$name" || { warn "could not remove them; see $LOG"; return 1; }
+  else say "the models image is not built here, so no weights were removed with it."; fi
   if [[ "$(envget PREDICT_MODEL)" == "$name" ]]; then
     envset PREDICT_MODEL ""
+    # the profile goes with it, as `grafana off` does: no idle container at the next up, no doctor line, no torch build
+    envset COMPOSE_PROFILES "$(envget COMPOSE_PROFILES | tr ',' '\n' | { grep -vx models || true; } | paste -sd, -)"
     docker compose stop models >>"$LOG" 2>&1 || true
     spin "restarting the node with predict off" docker compose up -d --force-recreate app || true
     say "$name is removed and predict is off. The forecasts already written stay."

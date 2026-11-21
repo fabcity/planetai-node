@@ -14,6 +14,7 @@ cat > "$d/bin/docker" <<STUB
 #!/bin/sh
 echo "docker \$*" >> "$d/docker.log"
 case "\$*" in
+  *"image inspect"*) [ ! -f "$d/no-image" ] ;;
   *"pull.py --have"*) [ -f "$d/have" ] ;;
   *"pull.py"*) [ ! -f "$d/pull-fails" ] ;;
   *"compose build"*) [ ! -f "$d/build-fails" ] ;;
@@ -23,7 +24,7 @@ STUB
 printf '#!/bin/sh\nexit 7\n' > "$d/bin/curl"; chmod +x "$d/bin/docker" "$d/bin/curl"
 N="$d/node"
 pm() { PATH="$d/bin:$PATH" PLANETAI_HOME="$N" bash bin/planetai models "$@" 2>&1; }
-env0() { printf '%s\n' "$@" > "$N/.env"; : > "$d/docker.log"; rm -f "$d/pull-fails" "$d/build-fails" "$d/have"; }
+env0() { printf '%s\n' "$@" > "$N/.env"; : > "$d/docker.log"; rm -f "$d/pull-fails" "$d/build-fails" "$d/have" "$d/no-image"; }
 M=amazon/chronos-2
 
 # ---------------------------------------------------------------- an unknown name, before anything is touched
@@ -38,7 +39,9 @@ out="$(pm pull $M --yes)"; rc=$?
 [ $rc -eq 0 ] && grep -qx "PREDICT_MODEL=$M" "$N/.env" && grep -qx "PACKS_ENABLED=air-quality,heat,predict" "$N/.env" && grep -qx "COMPOSE_PROFILES=models" "$N/.env" \
   && ok "pull --yes: PREDICT_MODEL set, predict joins the list, the models profile is on" || bad "pull --yes (exit $rc): $out / $(cat "$N/.env")"
 grep -q "456 MB" <<< "$out" && grep -q "Apache-2.0" <<< "$out" && ok "it says the size and the licence" || bad "no size or licence: $out"
-steps="$(sed -n 's/^docker //p' "$d/docker.log" | cut -c1-90 | tr '\n' '|')"
+grep -q "It carries PyTorch and is several times larger than the weights" <<< "$out" && ok "it says the image with PyTorch comes first and is larger" || bad "no word of the image: $out"
+grep -q "starts at the node's next poll" <<< "$out" && ! grep -q "tonight" <<< "$out" && ok "it says predict starts at the next poll" || bad "last line: $out"
+steps="$(sed -n 's/^docker //p' "$d/docker.log" | grep -v '^image inspect' | cut -c1-90 | tr '\n' '|')"
 [ "$steps" = "compose build models|compose run --rm -e HF_HUB_OFFLINE=0 models python pull.py $M|compose up -d models|compose up -d --force-recreate app|" ] \
   && ok "in order: build, pull with the network on, start models, recreate the app" || bad "steps were: $steps"
 cp "$N/.env" "$d/before"; : > "$d/docker.log"
@@ -69,10 +72,17 @@ else [ $rc -ne 0 ] && cmp -s "$N/.env" "$d/before" && [ ! -s "$d/docker.log" ] &
   && ok "without a terminal and without --yes it asks for --yes and does nothing" || bad "no-tty pull (exit $rc): $out"; fi
 
 # ---------------------------------------------------------------- rm
-env0 APP_PORT=1 COMPOSE_PROFILES=models PREDICT_MODEL=$M
+env0 APP_PORT=1 COMPOSE_PROFILES=mqtt,models PREDICT_MODEL=$M
 out="$(pm rm $M)"; rc=$?
 grep -qx "PREDICT_MODEL=" "$N/.env" && grep -q "pull.py --remove $M" "$d/docker.log" && grep -q "compose stop models" "$d/docker.log" && [ $rc -eq 0 ] \
   && ok "rm removes the weights through the image, blanks PREDICT_MODEL and stops the container" || bad "rm (exit $rc): $out / $(cat "$N/.env") / $(cat "$d/docker.log")"
+grep -qx "COMPOSE_PROFILES=mqtt" "$N/.env" && ok "rm of the running model drops the models profile and keeps the others, so doctor has no models line" \
+  || bad "profile after rm: $(cat "$N/.env")"
+grep -B1 'forecast model .* running' bin/planetai | grep -q '\*,models,\*' && ok "doctor's models line is only asked under the models profile" || bad "doctor's models line is not under the profile"
+env0 APP_PORT=1 COMPOSE_PROFILES=models PREDICT_MODEL=$M; touch "$d/no-image"
+out="$(pm rm $M)"; rc=$?
+[ $rc -eq 0 ] && ! grep -q "compose run" "$d/docker.log" && ! grep -q "compose build" "$d/docker.log" && grep -qx "PREDICT_MODEL=" "$N/.env" \
+  && ok "rm with no models image runs nothing in it (no PyTorch build) and still turns predict off" || bad "rm, no image (exit $rc): $out / $(cat "$d/docker.log")"
 env0 APP_PORT=1 COMPOSE_PROFILES=models PREDICT_MODEL=$M
 pm rm amazon/chronos-bolt-tiny >/dev/null
 grep -qx "PREDICT_MODEL=$M" "$N/.env" && ! grep -q "compose stop" "$d/docker.log" && ok "rm of a model that is not the one running leaves PREDICT_MODEL and the container" || bad "rm of the other one changed the node: $(cat "$N/.env")"
@@ -88,12 +98,17 @@ out="$(pm)"
 grep -q "amazon/chronos-2 .*on this machine.*<- runs" <<< "$out" && ! grep -q "chronos-bolt-tiny.*runs" <<< "$out" \
   && ok "profile on: says which weights are here and which one runs" || bad "listing, profile on: $out"
 rm -f "$d/have"; out="$(pm)"; grep -q "chronos-2 .*not on this machine" <<< "$out" && ok "and when they are not" || bad "not-on-machine: $out"
+env0 APP_PORT=1 COMPOSE_PROFILES=models PREDICT_MODEL=$M; touch "$d/no-image"
+out="$(pm)"; ! grep -q "compose run" "$d/docker.log" && grep -q "chronos-2 .*not checked" <<< "$out" && grep -q "image is not built" <<< "$out" \
+  && ok "profile on, no image: the listing runs nothing in it and says so" || bad "listing, no image: $out / $(cat "$d/docker.log")"
 
 # ---------------------------------------------------------------- doctor, update.sh, help
 grep -q "planetai models pull" <<< "$(PATH="$d/bin:$PATH" PLANETAI_HOME="$PWD" bash bin/planetai help 2>&1)" && ok "help names the models commands" || bad "help lacks models"
 us="$(cat update.sh)"
 [ "$(grep -c 'compose build models' update.sh)" -eq 1 ] && grep -B1 'compose build models' update.sh | grep -q '\*,models,\*' \
   && ok "update.sh builds models in one place, inside a case on the models profile" || bad "update.sh does not build models only under its profile"
+grep 'compose build models' update.sh | grep -q '|| warn ' && ! grep 'compose build models' update.sh | grep -q 'die ' \
+  && ok "a models image that does not build warns and the update carries on" || bad "update.sh stops on a failed models build"
 awk '/\*,models,\*\)/{f=1} f&&/;;? *esac|^esac/{f=0} !f&&/models/' update.sh | grep -v '^ *#' | grep -q . \
   && bad "update.sh names models outside its profile case" || ok "outside that case no line of update.sh names the service"
 
