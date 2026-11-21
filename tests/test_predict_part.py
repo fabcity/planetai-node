@@ -55,4 +55,33 @@ assert "Backyard &lt;b&gt;" in ok and "<b>" not in ok, "node text is escaped"
 assert "trained" not in ok and "adapted here on" not in ok
 assert "µ" not in Path("app/static/doors-data.js").read_text().split("function predictRows")[1].split("async function predictBlock")[0]
 print("  ok: shown days print their range, the others a dash and why, node text is escaped")
+
+# predictBlock: which of 403, 404, a failed fetch, an unreadable body and a good answer shows what
+block = r"""
+const fs = require('fs'), vm = require('vm');
+const core = fs.readFileSync('./app/static/doors-core.js', 'utf8'), data = fs.readFileSync('./app/static/doors-data.js', 'utf8');
+const pick = n => core.match(new RegExp('^const ' + n + ' = .*$', 'm'))[0], fn = n => data.match(new RegExp('function ' + n + '\\b[\\s\\S]*?\\n}\\n'))[0];
+const input = JSON.parse(fs.readFileSync(0, 'utf8')), out = [];
+(async () => {
+  for (const a of input) {
+    const el = { innerHTML: '' }, ctx = { $: () => el, D: { health: {} }, mWord: x => x, UNLOCK_AT: 'UNLOCK',
+      doorsFetch: () => a.fail ? Promise.reject(new Error('x')) : Promise.resolve({ ok: a.status === 200, status: a.status, json: async () => { if (a.bad) throw new Error('not json'); return a.body; } }) };
+    vm.createContext(ctx);
+    vm.runInContext(['esc', 'fmt', 'said'].map(pick).join('\n') + '\n' + ['pwhy', 'predictRows'].map(fn).join('\n') + '\nasync ' + fn('predictBlock') + '\nthis.predictBlock = predictBlock;', ctx);
+    await ctx.predictBlock(); out.push(el.innerHTML);
+  }
+  console.log(JSON.stringify(out));
+})();
+"""
+r = subprocess.run(["node", "-e", block], input=json.dumps([{"status": 403}, {"status": 404}, {"status": 500}, {"status": 200, "bad": True}, {"fail": True},
+                                                               {"status": 200, "body": OK}, {"status": 200, "body": {"state": "no-model"}}]), capture_output=True, text=True)
+assert r.returncode == 0, r.stderr
+locked, off404, err500, badjson, down, good, nomodel = json.loads(r.stdout)
+assert "only a screen holding a node token reads it: unlock this one in UNLOCK" in locked and "forecast" in locked and "<table" not in locked, locked
+assert "This node does not forecast its own readings." in off404 and "could not be read" not in off404, off404
+for h in (err500, badjson, down):
+    assert "The forecast could not be read." in h and "does not forecast" not in h and "token" not in h, h
+assert "general model, not adapted here" in good and "6.1–11.0" in good and "<h2>Its own readings, forecast</h2>" in good
+assert "No model is pulled." in nomodel
+print("  ok: predictBlock: 403 is the locked lede, 404 the pack-off sentence, a 500, a bad body and no answer say it could not be read")
 sys.exit(0)

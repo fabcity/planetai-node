@@ -194,13 +194,13 @@ Every reading the node holds, one tab at a time, routed `#data/<tab>`. The tab b
 | tab | what it shows |
 |---|---|
 | **Readings** | every kind of reading as a tile, with the median of its sources' 15-minute means now. Press one to draw every source that reads it over 24 hours on one scale, each linked to where its source publishes it (the hourly table needs the token). Then every issue at every distance over seven days, and the hours over the line per day |
-| **Models and satellite** | one table: a row per value the models and the satellite give for this point, how often it is fetched, its unit |
+| **Models and satellite** | first, one table: a row per value the models and the satellite give for this point, how often it is fetched, its unit; with the `predict` pack on, a second part under it |
 | **Home** | **Images**, newest first: when and who, what took it, the note, what the image model saw and whether somebody here confirmed it. A row opens the image to edit, confirm or delete. Then the species confirmed, and **Things**, what this home keeps, how often each is used, its state and whether it is offered (admin token). With the `eyes` or `things` pack off, its part says so |
 | **Ledger** | every decision, newest first, a run of the same answer as one row ("decided ×10"), who answered in words, and a filter by stage. Without a token, only the time and the stage |
 | **API** | every route on this node, one line each, with a search |
 | **Workbench** | the sensors workbench, routed `#data/workbench/flash`, `/test` or `/network`: flash the Bayu and every Meshtastic board, test a board over USB, and the network this node hears, all with no internet. USB needs Chrome or Edge on a laptop, on the node machine or with one Chrome flag set for this address; the steps are on [Flash and test a board](sensors.md#flash-and-test-a-board) |
 
-With the `predict` pack on, Models and satellite has a second part: the range a general model expects today and tomorrow for each of the node's own series, and how far off it was over 28 days against repeating yesterday. A day is drawn only when the model was closer on at least 7 days, otherwise the row says why. It needs a node token.
+With the `predict` pack on, Models and satellite has a second part: the range a general model expects today and tomorrow for each of the node's series, and its mean error over 28 days beside yesterday's repeated. A day is drawn only with at least 7 scored days and the model's error strictly below yesterday's, otherwise the row says why. It needs a node token.
 
 `#data/<sensor-id>` opens a station in Readings. The diary and the Index cells are on Node.
 

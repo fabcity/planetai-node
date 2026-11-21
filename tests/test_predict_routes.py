@@ -55,7 +55,8 @@ def assert_mid(mid):
 
 day = lambda base, n=24: {ORIGIN + timedelta(hours=h): base + h % 5 for h in range(n)}  # noqa: E731
 META = [("bk", "pm25", "Backyard (SCK)", False, "µg/m³"), ("rm", "temp", "Kids", True, "°C"),
-        ("bk", "temp", "Backyard (SCK)", False, None), ("new", "pm25", "Roof", False, "µg/m³")]
+        ("bk", "temp", "Backyard (SCK)", False, None), ("new", "pm25", "Roof", False, "µg/m³"),
+        ("new", "noise", "Roof", False, None)]          # declared by the source, never reported by this sensor: no row
 SCORES = {("bk", "pm25"): {"d1": SC(2.9, 3.7, 28, True), "d2": SC(3.7, 4.6, 27, True)},
           ("rm", "temp"): {"d1": SC(1.0, 0.8, 28, False), "d2": SC(1.2, 0.9, 28, False)},
           ("bk", "temp"): {"d1": SC(1.0, 0.8, 4, False), "d2": SC(1.2, 0.9, 5, False)},
@@ -77,6 +78,7 @@ assert kid["today"]["model"] == 1.0 and kid["why"] == {"reason": "naive-closer"}
 assert bt["unit"] is None and bt["why"] == {"reason": "young", "have": 5, "need": 7}, bt
 assert new["today"] == dict.fromkeys(("low", "high", "model", "naive", "days", "shown")) and new["tomorrow"] == new["today"], new
 assert new["why"] == {"reason": "young", "have": 9, "need": 14}, new
+assert len(j["rows"]) == 4 and not [r for r in j["rows"] if r["metric"] == "noise"], "a metric with no data is not a series"
 assert all("gone" not in r["sensor"] for r in j["rows"]) and j["model"]["adapted"] is False
 print("  ok: the rows are the eligible series, the not-shown day has no range, a young one says how young")
 
@@ -93,7 +95,9 @@ for h in ({"ready": False, "model": None, "revision": None}, {"ready": True, "mo
     assert serve(META, health=h)["state"] == "no-model", h
 y = serve([], scores={})
 assert y["state"] == "young" and y["rows"] == [], y
-assert serve(META)["state"] == "ok" and all(r["why"]["reason"] == "young" for r in serve(META)["rows"])
+assert serve(META)["state"] == "young" and serve(META)["rows"] == [], "declared but never reported is no series"
+y = serve(META, series=SERIES)
+assert y["state"] == "ok" and [r["why"]["reason"] for r in y["rows"]] == ["young"], y
 print("  ok: no-answer, no-model, young and ok")
 
 # the real _health, with nothing to ask (the stub httpx has only Client, a real one gets refused): None, not an error

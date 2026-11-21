@@ -427,7 +427,7 @@
      "Mengapa sebuah hari tidak ditampilkan untuk sebagian deret?"
     ]
    },
-   "quote": "With the `predict` pack on, Models and satellite has a second part: the range a general model expects today and tomorrow for each of the node's own series, and how far off it was over 28 days against repeating yesterday. A day is drawn only when the model was closer on at least 7 days, otherwise the row says why.",
+   "quote": "With the `predict` pack on, Models and satellite has a second part: the range a general model expects today and tomorrow for each of the node's series, and its mean error over 28 days beside yesterday's repeated. A day is drawn only with at least 7 scored days and the model's error strictly below yesterday's, otherwise the row says why.",
    "section": "Data",
    "title": "Its own readings, forecast",
    "url": "https://planetai.fab.city/docs/dashboard/#data"

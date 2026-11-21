@@ -73,9 +73,10 @@ def predict():
         metas = {(m[0], m[1]): m for m in cur.fetchall()}
         sc = adapter.scores(cur, mid, today, tz)
         stored = adapter._stored(cur, mid, today)
-        pts = adapter.series(cur, adapter._since(today)) if any(k not in sc for k in metas) else {}
+        pts = adapter.series(cur, adapter._since(today))
+    # a series is a pair that has data: the join above is every metric the sensor's source declares, reported or not
     rows = [_row(m, sc.get(k), stored.get(k, {}).get(today, {}), origin,
-                 (adapter._now() - min(pts[k])).days if pts.get(k) else 0) for k, m in metas.items()]
+                 (adapter._now() - min(pts[k])).days if pts.get(k) else 0) for k, m in metas.items() if k in sc or pts.get(k)]
     rows.sort(key=lambda r: (r["indoor"], r["sensor"], r["metric"]))
     return {"state": "ok" if rows else "young", "origin": today.isoformat(), "rows": rows,
             "model": {"name": h["model"], "revision": h["revision"][:8], "adapted": False}}
