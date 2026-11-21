@@ -18,7 +18,7 @@ def main(name):
         return 1
     from huggingface_hub import snapshot_download
     snap = Path(snapshot_download(name, revision=entry["revision"]))
-    err = core.verify(name, snap, snap.parent.parent, cat)    # <cache>/models--org--name/snapshots/<rev>
+    err = core.verify(name, snap, cat)
     if err:
         print(err, file=sys.stderr)
         return 1

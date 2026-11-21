@@ -67,23 +67,38 @@ data = b"not the weights"
 good = {"x/y": {"revision": "r", "sha256": hashlib.sha256(data).hexdigest(), "kind": "bolt"}}
 
 
-def snapshot(content):
-    root = tempfile.mkdtemp()
-    snap = os.path.join(root, "snapshots", "r")
+def snapshot(content, folder="models--x--y"):
+    """A fake hub cache: <tmp>/<folder>/snapshots/r/model.safetensors, with a sibling model beside it."""
+    cache = tempfile.mkdtemp()
+    os.makedirs(os.path.join(cache, "models--other--model"))
+    snap = os.path.join(cache, folder, "snapshots", "r")
     os.makedirs(snap)
     with open(os.path.join(snap, "model.safetensors"), "wb") as f:
         f.write(content)
-    return root, snap
+    return cache, snap
 
 
-root, snap = snapshot(data)
-assert core.verify("x/y", snap, root, good) is None and os.path.isdir(root)
-root, snap = snapshot(b"tampered")
-assert "sha256" in core.verify("x/y", snap, root, good) and not os.path.exists(root)
-root, snap = snapshot(data)
-assert "unknown" in core.verify("a/b", snap, root, good) and not os.path.exists(root)
-root = tempfile.mkdtemp()
-assert core.verify("x/y", os.path.join(root, "nothing"), root, good) and not os.path.exists(root)   # no file at all
+cache, snap = snapshot(data)
+assert core.cache_root("x/y", snap) == core.Path(cache) / "models--x--y"
+assert core.verify("x/y", snap, good) is None and os.path.isdir(snap)
+cache, snap = snapshot(b"tampered")
+assert "sha256" in core.verify("x/y", snap, good)
+assert not os.path.exists(os.path.join(cache, "models--x--y")) and os.path.isdir(os.path.join(cache, "models--other--model"))
+cache, snap = snapshot(data)
+assert "unknown" in core.verify("a/b", snap, good) and os.path.isdir(snap)          # nothing was pulled for it
+cache, snap = snapshot(data)
+os.remove(os.path.join(snap, "model.safetensors"))
+assert core.verify("x/y", snap, good) and not os.path.exists(os.path.join(cache, "models--x--y"))   # no file at all
+
+# a path of another shape removes nothing: one level shorter, or a folder that is not this model's
+cache, snap = snapshot(b"tampered")
+short = os.path.join(cache, "models--x--y", "snapshots")
+assert core.cache_root("x/y", short) is None
+assert "nothing removed" in core.verify("x/y", short, good) and os.path.isdir(snap)
+cache, snap = snapshot(b"tampered", folder="local_dir")
+assert core.cache_root("x/y", snap) is None
+assert "nothing removed" in core.verify("x/y", snap, good) and os.path.isdir(snap)
+assert os.path.isdir(os.path.join(cache, "models--other--model"))
 
 # ---- the seam: torch and chronos are imported inside load(), never at the top.
 src = open(os.path.join(ROOT, "models", "core.py")).read()

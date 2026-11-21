@@ -111,18 +111,30 @@ def sha256_of(path):
     return h.hexdigest()
 
 
-def verify(name, snapshot, root, cat):
-    """None when the snapshot's model.safetensors is the pinned file; otherwise the reason, and `root` (what
-    the download wrote) is removed so a wrong file is never left where load() would find it."""
+def cache_root(name, snapshot):
+    """The hub's folder for this one model, `snapshot`'s grandparent, or None when the path is not shaped
+    <cache>/models--org--name/snapshots/<rev>. Only this folder is ever removed."""
+    root = Path(snapshot).parent.parent
+    return root if Path(snapshot).parent.name == "snapshots" and root.name == "models--" + name.replace("/", "--") else None
+
+
+def verify(name, snapshot, cat):
+    """None when the snapshot's model.safetensors is the pinned file; otherwise the reason, and the model's own
+    cache folder is removed so a wrong file is never left where load() would find it. A snapshot path of any
+    other shape removes nothing."""
     entry = pinned(name, cat)
+    root = cache_root(name, snapshot)
     try:
         if entry is None:
             err = f"unknown model {name}"
+        elif root is None:
+            return f"{name}: unexpected snapshot path {snapshot}; nothing removed"
         elif sha256_of(Path(snapshot) / "model.safetensors") != entry["sha256"]:
             err = f"{name}: model.safetensors sha256 differs from the catalogue"
         else:
             return None
     except OSError as e:
         err = f"{name}: {e}"
-    shutil.rmtree(root, ignore_errors=True)
+    if root is not None:
+        shutil.rmtree(root, ignore_errors=True)
     return err
