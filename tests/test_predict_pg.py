@@ -1,17 +1,20 @@
 """The predict pack's SQL on a real database: which series it reads, the 29 origins, the hourly gate, GET /predict's rows.
 
 The other predict suites run against fake cursors that ignore the query, so the joins and filters in adapter.py and
-routes.py are tested by nothing there. This one makes its own rows (ids and the source start `predict-test`), asserts
-on them, and removes them at the end; it never truncates. Meant for a Postgres with init.sql applied and no other
-local ambient series and no stored predictions for amazon/chronos-2 (a throwaway one, as CI's lint job starts; the suite
-removes that model's rows, because run() counts origins per model): call counts assume the series here are the only ones.
+routes.py are tested by nothing there. This one makes its own rows (ids and the source start `predict-test`) under a
+model that exists only here (`predict-test/model`, through a catalogue of its own), asserts on them, and removes them at
+the end; every DELETE and UPDATE names that model or those sensors, and it never truncates. Meant for a Postgres with
+init.sql applied and no other local ambient series (a throwaway one, as CI's lint job starts): call counts assume the
+series here are the only ones.
 Needs a Postgres at RHO_PG_URL; without it the suite skips.
 Run: RHO_PG_URL=postgresql://planetai:x@127.0.0.1:5432/planetai PYTHONPATH=app PACKS_DIR=packs python3 tests/test_predict_pg.py
 """
 import importlib.util
+import json
 import math
 import os
 import sys
+import tempfile
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
@@ -22,22 +25,26 @@ if not url:
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _local = datetime.now(ZoneInfo("Asia/Makassar"))
 TZ = "UTC" if _local.hour == 0 and _local.minute < 12 else "Asia/Makassar"      # fetch() stays quiet before 00:10 local
-os.environ.update(DATABASE_URL=url, NODE_TZ=TZ, PREDICT_MODEL="amazon/chronos-2", MODELS_URL="http://models:8080")
+MODEL, REV = "predict-test/model", "predict-test-rev"
+MID = f"{MODEL}@{REV}"
+os.environ.update(DATABASE_URL=url, NODE_TZ=TZ, PREDICT_MODEL=MODEL)
 sys.path.insert(0, os.path.join(ROOT, "packs/predict"))
 import psycopg  # noqa: E402
 import adapter  # noqa: E402
 import logging  # noqa: E402
 
 logging.getLogger("planetai.predict").setLevel(logging.CRITICAL)        # the container-down cases warn, by design
+adapter.HERE = tempfile.mkdtemp()                                           # a catalogue with the test model only
+with open(os.path.join(adapter.HERE, "models.json"), "w") as f:
+    json.dump({MODEL: {"revision": REV, "sha256": "-", "size_mb": 1, "licence": "-", "kind": "bolt"}}, f)
 
-SRC, REV = "predict-test-src", "29ec3766d36d6f73f0696f85560a422f50e8498c"
-MID = f"amazon/chronos-2@{REV}"
+SRC = "predict-test-src"
 con = psycopg.connect(url, autocommit=True)
 cur = con.cursor()
 
 
 def clean():
-    cur.execute("DELETE FROM predictions WHERE sensor_id LIKE 'predict-test-%%' OR model_id = %s", (MID,))   # run() counts origins per model
+    cur.execute("DELETE FROM predictions WHERE model_id = %s", (MID,))
     cur.execute("DELETE FROM models WHERE model_id = %s", (MID,))
     cur.execute("DELETE FROM readings_1h_done WHERE sensor_id LIKE 'predict-test-%%'", ())
     cur.execute("DELETE FROM channel_roles WHERE source = %s", (SRC,))
@@ -59,16 +66,24 @@ class R:
 
 class HC:
     posts = 0
+    bad = False             # the last series' rows carry a value Postgres refuses, so its origin's insert fails
 
     def get(s, url, **kw):
-        return R({"ready": True, "model": "amazon/chronos-2", "revision": REV, "error": None})
+        return R({"ready": True, "model": MODEL, "revision": REV, "error": None})
 
     def post(s, url, **kw):
         HC.posts += 1
         b = kw["json"]
         assert all(max(x) < 900 for x in b["series"]), "a future-dated row reached a context"
-        return R({"model": "amazon/chronos-2", "revision": REV, "quantiles": [
-            [[x[-24 + i % 24] - 1, x[-24 + i % 24] + 0.3, x[-24 + i % 24] + 1] for i in range(b["horizon"])] for x in b["series"]]})
+        q = [[[x[-24 + i % 24] - 1, x[-24 + i % 24] + 0.3, x[-24 + i % 24] + 1] for i in range(b["horizon"])] for x in b["series"]]
+        if s.bad:
+            q[-1][-1] = ["not a number", 1.0, 2.0]
+        return R({"model": MODEL, "revision": REV, "quantiles": q})
+
+
+def stored(origin=None):
+    cur.execute("SELECT origin, count(*) FROM predictions WHERE model_id = %s GROUP BY origin", (MID,))
+    return {o: n for o, n in cur.fetchall() if origin is None or o == origin}
 
 
 class Down:
@@ -121,13 +136,48 @@ try:
     print("  ok: run makes 29 forecast calls on 60 days of data and a second run makes none")
 
     # the hourly gate, with the container down
-    cur.execute("DELETE FROM predictions WHERE origin = %s", (today,))
-    cur.execute("UPDATE models SET last_try = NULL")
+    whole = stored()
+    assert len(whole) == 29 and whole[today] >= 5 * 48 and all(n % 48 == 0 for n in whole.values()), whole
+    print("  ok: every stored origin is whole: 48 hours for each series that had a context")
+
+    # an insert that fails half-way leaves nothing for that origin: one transaction per origin
+    cur.execute("DELETE FROM predictions WHERE model_id = %s AND origin = %s", (MID, today))
+    h = HC()
+    h.bad = True
+    failed = False
+    try:
+        adapter.run(cur, h, today, TZ)
+    except Exception:  # noqa: BLE001 — psycopg refuses the text in a real column
+        failed = True
+    assert failed and stored(today) == {}, "a cut origin left part of its rows"
+    print("  ok: an origin whose insert fails stores none of its rows")
+
+    # the time budget: a fetch stops between origins, clears last_try, and the next polls finish the job
+    cur.execute("DELETE FROM predictions WHERE model_id = %s AND origin > %s", (MID, today - timedelta(days=5)))
+    cur.execute("UPDATE models SET last_try = NULL WHERE model_id = %s", (MID,))
+    calls = HC.posts
+    adapter._clock = lambda: (HC.posts - calls) * 40.0                # each forecast call takes 40 s
+    first = adapter.fetch(HC())
+    assert first == ([], []) and HC.posts - calls == 2 and len(stored()) == 26, (HC.posts - calls, len(stored()))
+    cur.execute("SELECT last_try FROM models WHERE model_id = %s", (MID,))
+    assert cur.fetchone()[0] is None, "a cut fetch leaves last_try clear for the next poll"
+    out = adapter.fetch(HC())
+    while out == ([], []):
+        out = adapter.fetch(HC())
+    assert out[0][0]["sensor_id"] == "predict" and stored() == whole, stored()
+    cur.execute("SELECT last_try FROM models WHERE model_id = %s", (MID,))
+    assert cur.fetchone()[0] is not None, "the run that finished keeps last_try"
+    import time  # noqa: E402
+    adapter._clock = time.monotonic
+    print("  ok: the budget cuts a fetch between origins; the next polls carry on and only the last returns the line")
+
+    cur.execute("DELETE FROM predictions WHERE model_id = %s AND origin = %s", (MID, today))
+    cur.execute("UPDATE models SET last_try = NULL WHERE model_id = %s", (MID,))
     d = Down()
     assert adapter.fetch(d) == ([], []) and Down.gets == 1, Down.gets
     adapter.fetch(d)
     assert Down.gets == 1, "a second fetch within the hour made another call"
-    cur.execute("UPDATE models SET last_try = now() - interval '61 minutes'")
+    cur.execute("UPDATE models SET last_try = now() - interval '61 minutes' WHERE model_id = %s", (MID,))
     adapter.fetch(d)
     assert Down.gets == 2, Down.gets
     print("  ok: with the container down, fetch asks once, then not again within the hour, then once after 61 minutes")
@@ -137,7 +187,7 @@ try:
     spec = importlib.util.spec_from_file_location("predict_routes_pg", os.path.join(ROOT, "packs/predict/routes.py"))
     routes = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(routes)
-    routes._health = lambda: {"ready": True, "model": "amazon/chronos-2", "revision": REV, "error": None}
+    routes._health = lambda: {"ready": True, "model": MODEL, "revision": REV, "error": None}
     j = routes.predict()
     mine = {(r["sensor"], r["metric"]): r for r in j["rows"] if r["sensor"] in ("Yard (test)", "Kids (test)", "Studio (test)")}
     assert j["state"] == "ok" and set(mine) == {("Yard (test)", "pm25"), ("Yard (test)", "temp"), ("Kids (test)", "pm25"), ("Kids (test)", "temp"),

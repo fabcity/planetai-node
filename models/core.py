@@ -9,11 +9,14 @@ import json
 import math
 import os
 import shutil
+import threading
 from pathlib import Path
 
 CATALOGUE = "/srv/models.json"
 QUANTILES = [0.1, 0.5, 0.9]
-MIN_VALUES, MAX_SERIES, MAX_HORIZON = 24, 512, 64
+MIN_VALUES, MAX_VALUES, MAX_SERIES, MAX_HORIZON = 24, 8192, 512, 64
+BATCH = 32          # series per call into the model: memory grows with the series in one call
+LOCK = threading.Lock()     # one forecast at a time, so two requests cannot hold the model's memory twice
 
 PIPE = None     # an object with quantiles(series, horizon) -> [[[p10, p50, p90] x horizon] per series]
 META = None     # {"name": ..., "revision": ...} of what PIPE is
@@ -31,6 +34,8 @@ def problem(body):
         return f"at most {MAX_SERIES} series"
     if not all(isinstance(x, list) and len(x) >= MIN_VALUES for x in s):
         return f"every series needs at least {MIN_VALUES} values"
+    if any(len(x) > MAX_VALUES for x in s):
+        return f"a series has at most {MAX_VALUES} values"
     if isinstance(h, bool) or not isinstance(h, int) or not 1 <= h <= MAX_HORIZON:
         return f"horizon must be a whole number from 1 to {MAX_HORIZON}"
     return None
@@ -50,7 +55,10 @@ def health():
 
 
 def answer(body):
-    q = PIPE.quantiles(body["series"], body["horizon"])
+    """The forecast, BATCH series at a time and one request at a time, in the order the series came."""
+    s, h = body["series"], body["horizon"]
+    with LOCK:
+        q = [x for i in range(0, len(s), BATCH) for x in PIPE.quantiles(s[i:i + BATCH], h)]
     return {"model": META["name"], "revision": META["revision"], "quantiles": clean(q)}
 
 

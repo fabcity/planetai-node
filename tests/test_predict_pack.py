@@ -4,6 +4,7 @@ Run: PYTHONPATH=/tmp/stub:app python3 tests/test_predict_pack.py
 A fake hc answers /health and /forecast and counts calls; a dict-backed cur stands where the tables are, and returns
 what psycopg returns (aware datetimes, date objects).
 """
+import contextlib
 import logging
 import os
 import sys
@@ -12,7 +13,7 @@ from datetime import date, datetime, timedelta, timezone
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "packs", "predict"))
 import adapter as A  # noqa: E402
-import core as C  # noqa: E402
+import predict_core as C  # noqa: E402
 
 seen = []                                   # what the adapter logs; keeps the run's output clean
 h = logging.Handler(); h.emit = seen.append
@@ -44,6 +45,25 @@ class Cur:
         for sid, m in [("out", "pm25"), ("in", "temp"), ("peer", "pm25"), ("out", "iaq"), ("out", "fc_temp")]:
             s.readings[(sid, m)] = {t: 10.0 + t.hour % 12 for t in hours(START, NOW)}
         s.pred, s.models, s.writes, s.rows, s.sqls = {}, {}, [], [], []
+        s.connection, s.in_tx, s.txs = s, False, 0
+
+    @contextlib.contextmanager
+    def transaction(s):
+        """Rows written inside land together or not at all."""
+        before, s.in_tx = dict(s.pred), True
+        try:
+            yield
+            s.txs += 1
+        except BaseException:
+            s.pred = before
+            raise
+        finally:
+            s.in_tx = False
+
+    def executemany(s, q, rows):
+        assert s.in_tx, "an origin's rows are written in one transaction"
+        for a in rows:
+            s.execute(q, a)
 
     def execute(s, q, a=()):
         q = " ".join(q.split())
@@ -57,6 +77,8 @@ class Cur:
         elif q.startswith("INSERT INTO predictions"):
             m, sid, met, o, ts, p10, p50, p90 = a
             s.pred.setdefault((m, sid, met, o, ts), (p10, p50, p90))
+        elif q.startswith("UPDATE models SET last_try = NULL WHERE model_id"):
+            s.models.get(a[0], {})["last_try"] = None
         elif q.startswith("DELETE FROM predictions"):
             s.pred = {k: v for k, v in s.pred.items() if not k[3] < a[0]}
         elif q.startswith("SELECT NOT EXISTS"):
@@ -91,9 +113,9 @@ class R:
 
 class HC:
     def __init__(s, model="amazon/chronos-bolt-tiny", rev="a0e552de83495b5c28c14c71c374f3e33280b340", ready=True,
-                 fail_post_at=None, down=None):
+                 fail_post_at=None, down=None, short=False):
         s.health = {"ready": ready, "model": model, "revision": rev, "error": None}
-        s.posts, s.bodies, s.timeouts, s.fail_post_at, s.down = 0, [], [], fail_post_at, down
+        s.posts, s.bodies, s.timeouts, s.fail_post_at, s.down, s.short = 0, [], [], fail_post_at, down, short
     def get(s, url, timeout=None, **kw):
         s.timeouts.append(timeout)
         if s.down:
@@ -105,7 +127,8 @@ class HC:
         if s.fail_post_at == s.posts:
             raise OSError("connection reset")
         s.bodies.append(json)
-        return R({"model": "m", "revision": "r", "quantiles": [[[v[-1] - 1, v[-1], v[-1] + 1]] * 48 for v in json["series"]]})
+        q = [[[v[-1] - 1, v[-1], v[-1] + 1]] * 48 for v in json["series"]]
+        return R({"model": "m", "revision": "r", "quantiles": q[:-1] if s.short else q})
 
 
 def go(cur, hc, today=TODAY, expect=None):
@@ -118,7 +141,6 @@ def origins(cur, m=MID):
 
 def with_node(cur, f):
     """fetch() against the fake: its own cursor and clock."""
-    import contextlib
     A._cursor = contextlib.contextmanager(lambda: (yield cur))
     A._now = lambda: NOW
     return f()
@@ -132,7 +154,8 @@ assert hc.posts == 29 and len(origins(cur)) == 29 and min(origins(cur)) == TODAY
 assert all(len(b["series"]) == 2 and b["horizon"] == 48 for b in hc.bodies)
 assert hc.timeouts[0] == 5 and set(hc.timeouts[1:]) == {120}
 assert len(cur.pred) == 29 * 2 * 48 and (MID, "in", "temp", TODAY, datetime(2026, 11, 21, 0, tzinfo=UTC)) in cur.pred
-print("  ok: first run backfills 29 origins")
+assert cur.txs == 29
+print("  ok: first run backfills 29 origins, one transaction each")
 
 # second run the same day: nothing to ask
 n = len(cur.pred)
@@ -146,6 +169,34 @@ os.environ["NODE_TZ"] = "UTC"
 hc2 = HC()
 assert go(cur, hc2)["filled"] == 20 and hc2.posts == 20 and len(origins(cur)) == 29
 print("  ok: backfill resumes")
+
+# a short answer: that origin stores nothing, the attempt counts as failed (last_try stays), one warning
+cur, hc = Cur(), HC(short=True)
+seen.clear()
+assert with_node(cur, lambda: A.fetch(hc)) == ([], []) and not cur.pred and hc.posts == 1
+assert cur.models[MID]["last_try"] == NOW and [x.levelno for x in seen] == [logging.WARNING], seen
+assert "answered 1 series for 2" in seen[0].getMessage(), seen[0].getMessage()
+print("  ok: a short answer stores nothing and is a failure")
+
+# the time budget: a fetch stops between origins once BUDGET_SECONDS are spent, clears last_try, and the next poll
+# carries on; only the fetch that completes today's origin returns the line, and a cut logs nothing above info
+assert A.BUDGET_SECONDS == 60
+cur, hc = Cur(), HC()
+A._clock = lambda: hc.posts * 25.0          # every forecast call takes 25 s
+seen.clear()
+outs = []
+while not outs or outs[-1] == ([], []):
+    outs.append(with_node(cur, lambda: A.fetch(hc)))
+    assert len(outs) < 20, "the backfill never finished"
+    if outs[-1] == ([], []):
+        assert cur.models[MID]["last_try"] is None, "a cut leaves the next poll free to carry on"
+assert len(outs) == 10 and hc.posts == 29 and len(origins(cur)) == 29, (len(outs), hc.posts)
+assert outs[-1][0][0]["sensor_id"] == "predict" and cur.models[MID]["last_try"] == NOW, "a finished run keeps last_try"
+assert not [x for x in seen if x.levelno > logging.INFO], seen
+assert with_node(cur, lambda: A.fetch(hc)) == ([], []) and hc.posts == 29
+import time  # noqa: E402
+A._clock = time.monotonic
+print("  ok: the budget cuts a fetch between origins and the next poll carries on")
 
 # container down: quiet, nothing written
 cur, hc = Cur(), HC(down=ConnectionError("refused"))
@@ -241,6 +292,7 @@ cur = Cur()
 out = with_node(cur, lambda: A.fetch(HC()))
 meta = out[0][0]["meta"]
 assert meta["fetched"] == "2026-11-21" and "µg/m³" in meta["ahead_en_d1"] and "PM2.5 outside" in meta["ahead_en_d1"], meta
+assert meta["ahead_en_d1"].endswith("(modelled here, off by 1 on average over 20 days)"), meta
 print("  ok: line only when tomorrow is shown")
 
 print("  ok: predict pack")

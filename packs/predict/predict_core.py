@@ -16,6 +16,8 @@ MIN_SCORED = 7
 KEEP_DAYS = 35
 CONTEXT_HOURS = 4096
 RUN_AFTER = "00:10"
+QUIET_HOURS = 6         # a series whose last this many hours before the origin are all unmeasured gets no context
+MIN_HOURS = 12          # a day counts as scored only with at least this many measured hours
 
 _HOUR = timedelta(hours=1)
 
@@ -27,13 +29,16 @@ def origin_utc(day: date, tz: str) -> datetime:
 
 def context(points: dict, origin: datetime):
     """Hourly values before `origin`, oldest first, gaps filled linearly, cut to the last CONTEXT_HOURS.
-    None when the series is younger than MIN_CONTEXT_DAYS or under MIN_PRESENT measured in its last MIN_DAYS."""
+    None when the series is younger than MIN_CONTEXT_DAYS, under MIN_PRESENT measured in its last MIN_DAYS, or has
+    nothing measured in the QUIET_HOURS before the origin: a sensor gone quiet is not forecast from a flat line."""
     pts = {t: v for t, v in points.items() if t < origin}
     if not pts:
         return None
     first = min(pts)
     n = int((origin - first) / _HOUR)
     if n < MIN_CONTEXT_DAYS * 24:
+        return None
+    if not any(first + i * _HOUR in pts for i in range(n - QUIET_HOURS, n)):
         return None
     window = min(n, MIN_DAYS * 24)
     if sum(1 for i in range(n - window, n) if first + i * _HOUR in pts) < MIN_PRESENT * window:
@@ -68,9 +73,12 @@ def day_errors(pred: dict, truth: dict, origin: datetime) -> dict:
 
 
 def score(days: list) -> dict:
-    """Means over the scored origins; `shown` only with MIN_SCORED of them and a model strictly closer than naive."""
+    """Means over the last SCORED_DAYS scored origins, `days` given oldest first (a day_errors entry or None); a day
+    is scored with at least MIN_HOURS measured hours. No scored day gives no error (None), never a zero. `shown`
+    only with MIN_SCORED of them and a model strictly closer than naive."""
+    days = [d for d in days if d and d[2] >= MIN_HOURS][-SCORED_DAYS:]
     if not days:
-        return {"model": 0.0, "naive": 0.0, "days": 0, "shown": False}
+        return {"model": None, "naive": None, "days": 0, "shown": False}
     model = sum(d[0] for d in days) / len(days)
     naive = sum(d[1] for d in days) / len(days)
     return {"model": model, "naive": naive, "days": len(days), "shown": len(days) >= MIN_SCORED and model < naive}
@@ -82,13 +90,19 @@ def day_range(pred: dict, origin: datetime, day: int):
     return (min(vals), max(vals)) if vals else None
 
 
-def ahead_meta(today: date, rng, unit: str) -> dict:
-    """The sensor meta the Next days line reads: the day it was made and, with a range, tomorrow's text in en, es, id."""
+def _err(x: float) -> str:
+    """A mean absolute error for the line: whole, or one decimal below 1."""
+    return f"{x:.1f}" if x < 1 else str(math.floor(x + 0.5))
+
+
+def ahead_meta(today: date, rng, unit: str, sc: dict | None = None) -> dict:
+    """The sensor meta the Next days line reads: the day it was made and, with a range and tomorrow's score (`sc`, a
+    score() of day two), tomorrow's text in en, es, id, with how far off day two has been and over how many days."""
     meta = {"fetched": today.isoformat()}
-    if rng:
+    if rng and sc and sc.get("model") is not None:
         a, b = (math.floor(x + 0.5) for x in rng)
-        span = f"{a}–{b} {unit}"
-        meta["ahead_en_d1"] = f"PM2.5 outside: {span} (modelled here)"
-        meta["ahead_es_d1"] = f"PM2.5 fuera: {span} (modelado aquí)"
-        meta["ahead_id_d1"] = f"PM2.5 di luar: {span} (dimodelkan di sini)"
+        span, e, n = f"{a}–{b} {unit}", _err(sc["model"]), sc["days"]
+        meta["ahead_en_d1"] = f"PM2.5 outside: {span} (modelled here, off by {e} on average over {n} days)"
+        meta["ahead_es_d1"] = f"PM2.5 fuera: {span} (modelado aquí, error medio de {e} en {n} días)"
+        meta["ahead_id_d1"] = f"PM2.5 di luar: {span} (dimodelkan di sini, rata-rata meleset {e} dalam {n} hari)"
     return meta

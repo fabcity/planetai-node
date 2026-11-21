@@ -403,8 +403,11 @@ b = c.get("/place/reading", headers=ADMIN).json()
 check(b["state"] == "refused" and b["refused"] == "took too long" and b["can_write"] is True, f"a writing older than ten minutes no longer holds the button: {b.get('state')} {b.get('refused')}")
 check(c.post("/place/reading", headers=ADMIN).json() == {"state": "writing", "id": 5} and len(started) == 1, "and a new press starts a new one")
 init = open("init.sql").read()
-check("CREATE TABLE IF NOT EXISTS place_readings" in init and "INSERT INTO schema_version (version) VALUES ('0.66') ON CONFLICT DO NOTHING;" in init,
-      "the table is in init.sql, at schema 0.66")
+_versions = re.findall(r"INSERT INTO schema_version \(version\) VALUES \('([0-9.]+)'\) ON CONFLICT DO NOTHING;", init)
+_top = max(_versions, key=lambda v: tuple(map(int, v.split("."))))
+check("CREATE TABLE IF NOT EXISTS place_readings" in init and "VALUES ('0.66')" in init
+      and init.rstrip().endswith(f"INSERT INTO schema_version (version) VALUES ('{_top}') ON CONFLICT DO NOTHING;"),
+      "the table is in init.sql (schema 0.66), and init.sql ends with its highest schema_version")
 print("  reading: the routes are the household's, the admin token alone may ask a model at home, one writing at a time, and a refusal keeps the node's reading")
 
 # ---------------------------------------------------------------- the two pages (app/static/doors-sheet.js reportPages)

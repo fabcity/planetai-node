@@ -10,6 +10,8 @@ from pathlib import Path
 
 import core
 
+FILES = ["config.json", "model.safetensors"]     # all either pipeline reads; the rest of the repository stays there
+
 
 def main(name):
     cat = json.load(open(core.CATALOGUE))
@@ -18,7 +20,7 @@ def main(name):
         print(f"unknown model {name}; the catalogue has: {', '.join(cat)}", file=sys.stderr)
         return 1
     from huggingface_hub import snapshot_download
-    snap = Path(snapshot_download(name, revision=entry["revision"]))
+    snap = Path(snapshot_download(name, revision=entry["revision"], allow_patterns=FILES))
     err = core.verify(name, snap, cat)
     if err:
         print(err, file=sys.stderr)

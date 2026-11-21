@@ -43,6 +43,30 @@ assert core.problem({"series": [[1.0] * 48]})
 assert core.problem({"series": "abc", "horizon": 48})
 assert core.problem([1, 2])
 
+assert core.problem({"series": [[1.0] * 8192], "horizon": 48}) is None
+assert "8192" in core.problem({"series": [[1.0] * 8193], "horizon": 48}), "a series longer than 8,192 values is refused"
+
+
+# ---- batches of 32, in order, one forecast at a time.
+class Counting:
+    def __init__(self):
+        self.calls = []
+
+    def quantiles(self, series, horizon):
+        assert core.LOCK.locked(), "the model ran without the lock"
+        self.calls.append(len(series))
+        return [[[x[0]] * 3] * horizon for x in series]
+
+
+core.PIPE = Counting()
+r = core.answer({"series": [[float(i)] * 24 for i in range(70)], "horizon": 2})
+assert core.PIPE.calls == [32, 32, 6], core.PIPE.calls
+assert [q[0][0] for q in r["quantiles"]] == [float(i) for i in range(70)], "batches come back in order"
+assert not core.LOCK.locked()
+core.PIPE = Fake()
+_svc = open(os.path.join(ROOT, "docker-compose.yml")).read().split("\n  models:\n")[1].split("\nvolumes:")[0]
+assert "\n    mem_limit: 4g\n" in _svc, "the models service has a memory limit"
+
 # ---- a non-finite output is null, never NaN on the wire.
 assert core.clean([[float("nan"), 1.0, 2.0]]) == [[None, 1.0, 2.0]]
 assert core.clean([[[float("inf"), -float("inf"), 3]]]) == [[[None, None, 3.0]]]
