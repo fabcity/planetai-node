@@ -56,6 +56,28 @@ assert "trained" not in ok and "adapted here on" not in ok
 assert "µ" not in Path("app/static/doors-data.js").read_text().split("function predictRows")[1].split("async function predictBlock")[0]
 print("  ok: shown days print their range, the others a dash and why, node text is escaped")
 
+# never a number the node does not have: no scored day, a sparse series, per-day counts, a day not made yet
+NONE = D(None, None, None, None, 0, False)
+odd = {**OK, "rows": [
+    {"sensor": "Gate", "indoor": False, "metric": "pm25", "unit": "µg/m³", "why": {"reason": "young", "have": 0, "need": 7},
+     "today": NONE, "tomorrow": NONE},
+    {"sensor": "Mesh", "indoor": False, "metric": "temp", "unit": "°C", "why": {"reason": "sparse"}, "today": BLANK, "tomorrow": BLANK},
+    {"sensor": "Shed", "indoor": False, "metric": "temp", "unit": "°C", "why": {"reason": "young", "have": 6, "need": 7},
+     "today": D(None, None, 3.0, 2.0, 7, False), "tomorrow": D(None, None, 3.1, 2.0, 6, False)},
+    {"sensor": "Yard", "indoor": False, "metric": "pm25", "unit": "µg/m³", "why": {"reason": "waiting"},
+     "today": D(None, None, 2.0, 3.0, 20, False), "tomorrow": D(None, None, None, None, 0, False)}]}
+(html,) = draw(odd)
+rows = html.split("<tr>")[2:]
+assert "0.0" not in rows[0] and rows[0].count("too young: 0 of 7 days") == 2, rows[0]
+assert '<td class="n">—</td>' in rows[0], rows[0]
+assert rows[1].count("too many hours missing") == 2 and "too young" not in rows[1], rows[1]
+assert "yesterday is closer" in rows[2] and "too young: 6 of 7 days" in rows[2] and "7 of 7" not in html, rows[2]
+assert rows[3].count("not made yet today") == 2 and "2.0 · —" in rows[3], rows[3]
+assert ">off by, last 20 days</th>" in html
+(none,) = draw({**OK, "rows": odd["rows"][:2]})
+assert ">off by</th>" in none and "last 0 days" not in none, none
+print("  ok: no error is a dash, sparse and not-yet say so, each day its own count, no 'last 0 days'")
+
 # predictBlock: which of 403, 404, a failed fetch, an unreadable body and a good answer shows what
 block = r"""
 const fs = require('fs'), vm = require('vm');
@@ -83,5 +105,11 @@ for h in (err500, badjson, down):
     assert "The forecast could not be read." in h and "does not forecast" not in h and "token" not in h, h
 assert "general model, not adapted here" in good and "6.1–11.0" in good and "<h2>Its own readings, forecast</h2>" in good
 assert "No model is pulled." in nomodel
+# the predict sensor row carries the Next days line, not a model for this point: Node's counts and its flow leave it out
+import re  # noqa: E402
+for f, pat in (("app/static/doors-flow.js", r"models = D\.sensors\.filter\(s => s\.kind === 'model'[^;]*\);"),
+               ("app/static/doors-node.js", r"models = D\.sensors\.filter\(s => s\.kind === 'model'[^,]*\)\.length")):
+    m = re.search(pat, Path(f).read_text())
+    assert m and "s.sensor_id !== 'predict'" in m.group(0), (f, m and m.group(0))
 print("  ok: predictBlock: 403 is the locked lede, 404 the pack-off sentence, a 500, a bad body and no answer say it could not be read")
 sys.exit(0)

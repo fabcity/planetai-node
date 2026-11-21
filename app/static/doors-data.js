@@ -266,7 +266,10 @@ function modelsBlock() {
    is drawn only when the model beat "yesterday repeated" on enough days; otherwise it says why. predictRows is pure: it
    takes the parsed answer, or { state: 'off' } for a 404 and { state: 'failed' } for no answer, and gives the HTML. */
 function pwhy(d, why) {
-  if (why) return why.reason === 'young' ? `too young: ${why.have} of ${why.need} days` : 'yesterday is closer';
+  const r = (why || {}).reason;
+  if (r === 'sparse') return 'too many hours missing';
+  if (r === 'waiting') return 'not made yet today';
+  if (d.days == null) return r === 'young' ? `too young: ${why.have} of ${why.need} days` : '';
   return d.days >= 7 ? 'yesterday is closer' : `too young: ${d.days} of 7 days`;
 }
 function predictRows(j, docs, word = x => x) {
@@ -278,9 +281,10 @@ function predictRows(j, docs, word = x => x) {
   if (state !== 'ok') return say('The forecast could not be read.');
   const m = j.model || {}, rows = j.rows || [], N = Math.max(0, ...rows.map(r => Math.max(r.today.days || 0, r.tomorrow.days || 0)));
   const day = (r, d) => d.shown ? `${fmt(d.low, 1)}–${fmt(d.high, 1)} ${said(r.unit || '')}` : `— <span class="fine">${esc(pwhy(d, r.why))}</span>`;
-  const off = (r, k) => r.today[k] == null ? '—' : `${fmt(r.today[k], 1)} · ${fmt(r.tomorrow[k], 1)} ${said(r.unit || '')}`;
+  const v = x => x == null ? '—' : fmt(x, 1);
+  const off = (r, k) => r.today[k] == null && r.tomorrow[k] == null ? '—' : `${v(r.today[k])} · ${v(r.tomorrow[k])} ${said(r.unit || '')}`;
   return `<p class="fine">${esc(m.name)} · general model, not adapted here</p><div class="tscroll"><table class="tbl ptab"><thead><tr><th>series</th><th>today</th><th>tomorrow</th>`
-    + `<th class="n">off by, last ${N} days</th><th class="n hide">yesterday repeated</th></tr></thead><tbody>`
+    + `<th class="n">off by${N ? `, last ${N} days` : ''}</th><th class="n hide">yesterday repeated</th></tr></thead><tbody>`
     + rows.map(r => `<tr><td>${esc(r.sensor)} <span class="fine">${esc(word(r.metric))}${r.indoor ? ', inside' : ''}</span></td><td>${day(r, r.today)}</td><td>${day(r, r.tomorrow)}</td>`
       + `<td class="n">${off(r, 'model')}</td><td class="n hide">${off(r, 'naive')}</td></tr>`).join('') + `</tbody></table></div>`;
 }

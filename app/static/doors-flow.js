@@ -58,7 +58,7 @@ function flowGeometry(S, big) {
   /* Placed by the node's own metres and bearing (GET /geo/measure each, /geo/cell polar): the page only squeezes the
      radius past 5 km, which is the drawing's scale, not a distance it works out. */
   const NG = D.ngeo, pol = (m, d) => at(rr(m / 1000), deg(d));
-  const src = {}, models = D.sensors.filter(s => s.kind === 'model' && s.sensor_id !== 'marine-point');
+  const src = {}, models = D.sensors.filter(s => s.kind === 'model' && s.sensor_id !== 'marine-point' && s.sensor_id !== 'predict');   // predict models no point: its own row carries the Next days line
   for (const s of D.sensors) {
     const q = NG && NG.dist[s.sensor_id]; if (!q) continue;
     if (s.kind === 'sensor') src[s.sensor_id] = { p: pol(q.m, q.deg), local: s.local, kind: 'sensor', name: s.name };
