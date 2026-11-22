@@ -29,7 +29,7 @@ import packs  # noqa: E402
 RT = packs.ROUTES["calibrate"]
 NOW = datetime(2026, 11, 22, 12, tzinfo=timezone.utc)
 RT._now = lambda: NOW
-SEEN = []
+SEEN, ARGS = [], []
 M = 1 / 111320                                   # a degree of latitude is 111320 m: this many degrees is a metre
 
 
@@ -40,10 +40,11 @@ def sensor(sid, source="own", dm=0.0, lat=-8.8, indoor=False, meta=None):
 
 DB = {"a": sensor("a"), "b": sensor("b", dm=30), "far": sensor("far", dm=812), "nocoord": sensor("nocoord", lat=None),
       "st": sensor("st", source="baliairdispatch", dm=20, meta={"network": "AQICN", "official": True, "from_index": True}),
-      "mute": sensor("mute", source="mute", dm=10), "c": sensor("c", dm=500), "d": sensor("d", dm=520)}
-ROLE = [{"source": s, "metric": "pm25", "unit": "µg/m³"} for s in ("own", "baliairdispatch")]
+      "mute": sensor("mute", source="mute", dm=10), "c": sensor("c", dm=500), "d": sensor("d", dm=520),
+      "lst": sensor("lst", dm=25, meta=["not", "a", "dict"])}
+ROLE = [{"source": s, "metric": "pm25", "unit": "µg/m³"} for s in ("own", "baliairdispatch")] + [{"source": "own", "metric": "humidity", "unit": "%"}]
 STATS = [{"sensor_id": i, "source": "own", "name": i.upper(), "lat": DB[i]["lat"], "lon": DB[i]["lon"], "indoor": False,
-          "metric": "pm25"} for i in ("a", "b", "c", "d")]
+          "metric": m} for i in ("a", "b", "c", "d") for m in ("humidity", "pm25")]   # humidity sorts first
 X = lambda h: 5 + (h * 7) % 11                   # noqa: E731  a sensor that moves, so a line can be fitted
 HOURS = [NOW - timedelta(hours=h) for h in range(1, 30 * 24)]
 
@@ -59,6 +60,7 @@ def q(sql, *args):
         return STATS
     if "FROM readings_1h" in s:
         ids, _, start, end = args
+        ARGS.append((start, end))
         assert end <= NOW and (end - start) <= timedelta(days=RT.core.READ_DAYS) + timedelta(seconds=1), (start, end)
         out = []
         for i, t in enumerate(HOURS):
@@ -102,7 +104,27 @@ assert row["sensor"] == {"id": "a", "name": "A"} and row["since"] == "2026-10-01
 assert row["checked"]["corrected"] == 0.0 and row["checked"]["measured"] > 0 and row["paired_hours"] > 168, row
 assert row["hour"] and row["last_paired"] and j["could"] == [{"a": {"id": "c", "name": "C"}, "b": {"id": "d", "name": "D"},
                                                               "metric": "pm25", "metres": 20}], j["could"]
+assert j["could"][0]["metric"] == "pm25", "pm25 before humidity, which sorts first"
 print("  one good pair: the line, the checks, the corrected number, and one pair that could be named (c and d, not a and b)")
+
+# ---- the hours read stop at the start of the current hour, whatever `until` says
+RT._now = lambda: NOW + timedelta(minutes=30)
+del ARGS[:]
+row = get().json()["rows"][0]
+assert ARGS and all(end == NOW for _, end in ARGS), ("the still-filling hour is never read", ARGS)
+ROWS["CALIBRATE_PAIRS"] = "a b pm25 2026-10-01 2026-11-18"
+row = get().json()["rows"][0]
+assert row["shown"] is True and row["hour"] == (NOW - timedelta(hours=1)).isoformat(), row
+assert row["last_paired"] < "2026-11-19", row
+RT._now = lambda: NOW
+print("  hours are read up to the start of the current hour, and an until inside the 7 days still shows the newest finished hour")
+
+# ---- a reference whose meta is not a dict
+ROWS["CALIBRATE_PAIRS"] = "a lst pm25 2026-10-01"
+r = get()
+assert r.status_code == 200 and r.json()["rows"][0]["reference"]["network"] is None \
+    and r.json()["rows"][0]["reference"]["official"] is None and r.json()["rows"][0]["reference"]["from_index"] is None, r.text
+print("  a meta that is not a dict reads as empty")
 
 # ---- a bad entry costs only itself
 ROWS["CALIBRATE_PAIRS"] = "a b pm25 2026-10-01; nonsense; a b pm25 2026-10-02"

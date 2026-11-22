@@ -114,6 +114,7 @@ assert V([near], include_ids={"-519205"}) == ["included"]
 assert V([far], include_ids={"-9"}) == ["included"] and V([far]) == ["excluded: beyond the radius"]
 assert V([near], include_ids={"-519205"}, own_ids={"-519205"}) == ["excluded: identity (this node polls it)"]
 assert V([near], include_ids={"-519205"}, exclude_ids={"-519205"}) == ["excluded: by hand (BAD_EXCLUDE)"]
+assert V([dict(near, suspected_indoor=True)], include_ids={"-519205"}) == ["included"], "a named station stays, indoor guess or not"
 for flag in ("stale", "suspected_malfunctioning"):
     assert V([dict(near, **{flag: True})], include_ids={"-519205"})[0].startswith("excluded: " + flag), flag
 st = {"-519205": {"type": "Government (KLHK)", "same_device_as": [], "pm25_from_aqi": True}}
@@ -122,6 +123,9 @@ s, _ = B.ring(HC(None), *N, 15, include_ids={"-519205"}, rows=two, stations=st)
 m = {x["sensor_id"]: x["meta"] for x in s}
 assert m["bad--519205"]["official"] is True and m["bad--519205"]["from_index"] is True, m
 assert "official" not in m["bad--7"] and "from_index" not in m["bad--7"], m
+old = {"-519205": {"type": "Government (KLHK)", "same_device_as": []}}   # a cache written before pm25_from_aqi was kept
+s, _ = B.ring(HC(None), *N, 15, include_ids={"-519205"}, rows=[near], stations=old)
+assert s[0]["meta"]["official"] is True and "from_index" not in s[0]["meta"], s[0]["meta"]
 s, _ = B.ring(HC(None), *N, 15, rows=two)
 assert [x["sensor_id"] for x in s] == ["bad--7"] and "official" not in s[0]["meta"], "blank BAD_INCLUDE changes nothing"
 

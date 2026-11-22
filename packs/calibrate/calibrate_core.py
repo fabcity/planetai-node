@@ -63,10 +63,11 @@ def refuse(pair, sensor, reference, station_sources, roles, metres):
     for side, row in (("sensor", sensor), ("reference", reference)):
         if (row["source"], pair.metric) not in roles:
             return {"test": "no-channel", "side": side}
-    if bool(sensor.get("indoor")) != bool(reference.get("indoor")):
+    # a station's indoor flag is the archive's guess; the keeper who named the pair vouches for where the two stand
+    if reference["source"] not in station_sources and bool(sensor.get("indoor")) != bool(reference.get("indoor")):
         return {"test": "indoor-outdoor"}
     if metres is not None and metres > MAX_METRES:
-        return {"test": "apart", "metres": round(metres)}
+        return {"test": "apart", "metres": max(round(metres), MAX_METRES + 1)}
     return None
 
 
@@ -80,7 +81,7 @@ def paired(x, y, pair, tz):
 
 
 def line(points):
-    if len(points) < MIN_FIT_HOURS:
+    if len(points) < MIN_FIT_HOURS or len({p[2] for p in points}) < 2:  # a reference frozen on one value
         return None
     try:
         b, a = st.linear_regression([p[1] for p in points], [p[2] for p in points])

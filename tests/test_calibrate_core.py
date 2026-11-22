@@ -43,7 +43,8 @@ def test_all():
     assert ok(r={**R, "source": "baliairdispatch"}) is None, "a station may be the reference"
     assert ok(roles={("smartcitizen-direct", "pm25")}) == {"test": "no-channel", "side": "sensor"}
     assert ok(r={**R, "indoor": True}) == {"test": "indoor-outdoor"}
-    assert ok(m=50.4) is not None and ok(m=812.3) == {"test": "apart", "metres": 812}
+    assert ok(r={**R, "source": "baliairdispatch", "indoor": True}) is None, "a station's indoor flag is the archive's guess"
+    assert ok(m=50.4) == {"test": "apart", "metres": 51} and ok(m=812.3) == {"test": "apart", "metres": 812}
 
     # a pair that earns it: reference = 2 + 1.5 * sensor for 30 days up to an hour ago
     pair = C.Pair("a", "b", "pm25", date(2026, 10, 1), None)
@@ -52,6 +53,12 @@ def test_all():
     w = C.work(pair, x, y, NOW, "UTC")
     assert w["shown"] and w["why"] is None and abs(w["line"]["a"] - 2) < 1e-6 and abs(w["line"]["b"] - 1.5) < 1e-6
     assert w["checked"]["days"] == 14 and w["checked"]["corrected"] < 1e-6 < w["checked"]["measured"] and w["paired_hours"] == 720
+
+    # the node's own zone: still shown on 14 checked days, and a since day cuts at local midnight (UTC+8)
+    w = C.work(pair, x, y, NOW, "Asia/Makassar")
+    assert w["shown"] and w["checked"]["days"] == 14, w
+    # 18 Nov 00:00 in Makassar is 17 Nov 16:00 UTC; NOW is 22 Nov 06:00 UTC and the last hour is 05:00
+    assert C.work(C.Pair("a", "b", "pm25", date(2026, 11, 18), None), x, y, NOW, "Asia/Makassar")["paired_hours"] == 4 * 24 + 6 + 8
 
     # the line changed under it: twice the sensor for 15 days, then equal to it
     y2 = {t: (2 * v if t < NOW - timedelta(days=15) else v) for t, v in x.items()}
@@ -80,6 +87,11 @@ def test_all():
     flat = dict.fromkeys(x, 7.0)
     w = C.work(pair, flat, y, NOW, "UTC")
     assert w["line"] is None and not w["shown"] and w["why"] == {"reason": "flat"}
+    # a reference frozen on one value (a dead Smart Citizen channel re-inserted under fresh hours) is flat too
+    w = C.work(pair, x, dict.fromkeys(x, 12.0), NOW, "UTC")
+    assert w["line"] is None and not w["shown"] and w["why"] == {"reason": "flat"}, w
+    frozen21 = {t: (12.0 if t >= NOW - timedelta(days=21) else v) for t, v in y.items()}
+    assert not C.work(pair, x, frozen21, NOW, "UTC")["shown"], "frozen for the last 21 of 30 days"
     assert C.work(pair, x, {t + timedelta(minutes=30): v for t, v in y.items()}, NOW, "UTC")["why"] == {"reason": "no-hours"}
     assert C.work(pair, {}, {}, NOW, "UTC")["why"] == {"reason": "no-hours"}
 

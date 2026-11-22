@@ -65,7 +65,9 @@ def _could(roles, station_sources, taken):
             m = _metres(a, b)
             both = sorted({r["metric"] for r in seen[x]} & {r["metric"] for r in seen[y]})
             if both and bool(a["indoor"]) == bool(b["indoor"]) and m <= core.MAX_METRES and frozenset((x, y)) not in taken:
-                out.append({"a": {"id": x, "name": a["name"]}, "b": {"id": y, "name": b["name"]}, "metric": both[0], "metres": round(m)})
+                # ponytail: pm25 first because it is the only metric this was measured on; a list per pair if that changes
+                metric = "pm25" if "pm25" in both else both[0]
+                out.append({"a": {"id": x, "name": a["name"]}, "b": {"id": y, "name": b["name"]}, "metric": metric, "metres": round(m)})
     return out
 
 
@@ -90,7 +92,8 @@ def calibrate():
         s, ref = have.get(p.sensor), have.get(p.reference)
         taken.add(frozenset((p.sensor, p.reference)))
         metres = _metres(s, ref)
-        meta = (ref or {}).get("meta") or {}
+        meta = (ref or {}).get("meta")
+        meta = meta if isinstance(meta, dict) else {}
         row = {"entry": e["entry"], "sensor": {"id": p.sensor, "name": (s or {}).get("name")},
                "reference": {"id": p.reference, "name": (ref or {}).get("name"),
                              "own": bool(ref) and ref["source"] not in station_sources,
@@ -107,7 +110,9 @@ def calibrate():
                 row["why"]["source"] = (s if why["side"] == "sensor" else ref)["source"]
             rows.append(row)
             continue
-        end = min(now, _midnight(p.until + timedelta(days=2))) if p.until else now
+        # finished hours only: the still-filling one is never read. paired() clips the pairs to until, so the
+        # sensor's own newest finished hour is "measured" whatever until says
+        end = now.replace(minute=0, second=0, microsecond=0)
         start = max(_midnight(p.since - timedelta(days=1)), end - timedelta(days=core.READ_DAYS))
         x, y = {}, {}
         for h in q(HOURLY, [p.sensor, p.reference], p.metric, start, end):

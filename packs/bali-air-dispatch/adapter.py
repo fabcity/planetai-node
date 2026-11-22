@@ -166,8 +166,9 @@ def ring(hc, node_lat: float, node_lon: float, radius_km: float,
                      "attribution": ATTRIBUTION},
         })
         if known := (stations or {}).get(str(row["station_id"])):
-            sensors[-1]["meta"] |= {"official": "Government" in (known.get("type") or ""),
-                                    "from_index": bool(known.get("pm25_from_aqi"))}
+            sensors[-1]["meta"]["official"] = "Government" in (known.get("type") or "")
+            if "pm25_from_aqi" in known:   # a cache written before this key was kept says nothing either way
+                sensors[-1]["meta"]["from_index"] = bool(known["pm25_from_aqi"])
         for k, metric in (("pm25", "pm25"), ("pm25_raw", "pm25_raw"), ("pm10", "pm10"), ("pm1", "pm1"),
                           ("temperature", "temp"), ("humidity", "humidity"), ("aqi", "aqi")):
             if row.get(k) is not None:
