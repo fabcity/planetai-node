@@ -203,10 +203,10 @@ Every reading the node holds, one tab at a time, routed `#data/<tab>`. The tab b
 `#data/<sensor-id>` opens a station in Readings. The diary and the Index cells are on Node.
 
 **Corrections**, under Models and satellite, has one row for each pair a keeper named in Set up, under Calibrate: the
-sensor, its measured number, the corrected one, what it is corrected against, how far off each has been, and why a row
-is not shown. The measured number stays the one the node stores, alerts on and shares. While a correction is shown,
-the sensor's row in Readings carries a small mark after its value, "corrected 13.6 against Ungasan Kit", that links to
-the section. How a pair is named and checked is on [Corrections](calibrate.md).
+sensor, its measured and corrected numbers, what it is corrected against, how far off each has been, and when it was
+last checked or why it is not shown. The measured number stays the one the node stores, alerts on and shares. While a
+correction is shown, the sensor's row in Readings carries a small mark after its value, "corrected 13.6 against
+Ungasan Kit", that links to the section. How a pair is named and checked is on [Corrections](calibrate.md).
 
 ## Wall
 

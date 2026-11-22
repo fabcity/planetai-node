@@ -271,7 +271,10 @@ function cwhy(r) {
   const CWORDS = { fields: 'needs four or five parts', date: 'a date is not a date', 'until-before-since': 'the last day is before the first',
     'since-in-future': 'the first day is in the future', same: 'both ids are the same', duplicate: 'this sensor is already in an earlier pair' };
   const w = r.why || {}, id = s => (r[s] || {}).id, N = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  if (r.shown) return 'shown';
+  const day = s => { const d = new Date(String(s).slice(0, 10) + 'T00:00:00Z'); return `${d.getUTCDate()} ${N[d.getUTCMonth() + 1]}`; };
+  // last_paired is an hour; its day is the node's (D.tz) where the page knows it, else the string's own clock
+  const local = s => typeof doorsLocal === 'function' && typeof D !== 'undefined' && D && D.tz ? doorsLocal(s, D.tz) : s;
+  if (r.shown) return r.last_paired ? `shown, last checked ${day(local(r.last_paired))}` : 'shown';
   if (w.reason === 'malformed') return `cannot read "${r.entry}": ${CWORDS[w.problem] || w.problem}`;
   if (w.reason === 'refused') {
     const t = w.test, who = id(w.side);
@@ -283,7 +286,7 @@ function cwhy(r) {
   if (w.reason === 'young') return r.line ? `too young: ${w.days} of ${w.need_days} days checked` : `too young: ${w.hours} of ${w.need_hours} hours together`;
   if (w.reason === 'measured-closer') return 'not shown: measured is closer';
   if (w.reason === 'not-a-tenth') return 'not shown: not a tenth closer';
-  if (w.reason === 'withdrawn') { const d = new Date(w.since + 'T00:00:00Z'); return `withdrawn: nothing beside it since ${d.getUTCDate()} ${N[d.getUTCMonth() + 1]}`; }
+  if (w.reason === 'withdrawn') return `withdrawn: nothing beside it since ${day(w.since)}`;
   return 'nothing beside it for six weeks';
 }
 function calibrateRows(j, docs, day = new Date().toISOString().slice(0, 10), word = x => x) {

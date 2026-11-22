@@ -6,14 +6,16 @@
   metres from a better one, name the two in Set up, under Calibrate (`CALIBRATE_PAIRS`), and the Data page shows a
   corrected number beside the measured one, in Corrections under Models and satellite, with a small mark on the
   sensor's row in Readings. It is a straight line fitted on the last 14 days, shown only while it has been at least a
-  tenth closer to the better sensor on days the line never saw, so the first one takes two to three weeks. It stays 7
-  days after the better sensor goes quiet. The pack is off until you name a pair and stores nothing but that setting,
-  and the node keeps storing, alerting on and sharing the measured number, so no rule, alert, cell, export or parent
-  sees a corrected one. In Bali Air Dispatch, `BAD_INCLUDE` keeps a public station at any distance, for a sensor you
-  put beside it. What has not run yet: a reference instrument on either side, any pair with a public station (that
-  half is tested on fixtures only), two units of one model side by side, a full wet season, any metric but PM2.5, and
-  any node, node #1 included. Everything we know comes from Smart Citizen's history of our own sensors in Bali,
-  HM-3301 and PMS5003 against a SEN5X, and we picked the tenth after looking at those days, so they do not test it
+  tenth closer to the better sensor on days the line never saw, so the first one takes two to three weeks, and a shown
+  row says when it was last checked. It stays 7 days after the better sensor goes quiet. The pack is off until you
+  name a pair and stores nothing but that setting. The node keeps storing, alerting on and sharing the measured
+  number, so no rule, alert, cell, export or parent sees a corrected one. In Bali Air Dispatch, `BAD_INCLUDE` keeps a
+  public station at any distance, for a sensor you put beside it.
+
+  It has not run on any node yet, node #1 included, and no pair has had a public station on one side, so that half is
+  tested on fixtures only. We have not tried a reference instrument, two units of one model side by side or a full wet
+  season, and only PM2.5 was tested. Everything we know comes from Smart Citizen's history of our own sensors in Bali,
+  HM-3301 and PMS5003 against a SEN5X. We picked the tenth after looking at those days, so they do not test it
   independently. [Corrections](docs/site/calibrate.md) has the numbers.
 
 - **21 Nov: a draft record on commercial rights, for Tomas to rule on.** He asked whether being open source stops

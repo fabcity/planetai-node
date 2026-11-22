@@ -9,6 +9,9 @@ measured one for as long as the line has been closer on days it never saw.
 The pack is off on every node until you name a pair. Nothing is stored but that setting, and the corrected number
 lives on the page only.
 
+So far it has run only on Smart Citizen's history of our own sensors in Bali, never on a node and never against a
+public station.
+
 ## Naming a pair
 
 A pair is one entry in Set up, under Calibrate, in the setting `CALIBRATE_PAIRS`. It has four or five parts,
@@ -48,7 +51,8 @@ will not use:
 | `<n> m apart` | both have coordinates and they are more than 50 m apart |
 
 50 m is what the node already means by "the same place" (the trust rule `peer_disagreement`). When either side has no
-coordinates the pair is accepted on your word, and the row says the distance is not known.
+coordinates the pair is accepted on your word. If the better sensor is one of yours the row then says "distance not
+known"; a station's row says nothing about distance.
 
 The better sensor can be any of your own sensors or a public station the node reads. It is always read as measured,
 even when it is itself the sensor of another pair.
@@ -69,14 +73,16 @@ over them the corrected distance is at most nine tenths of the measured one, so 
 closer. Otherwise the row shows the measured number alone and says why: too young (how many hours or checked days it
 has), measured is closer, not a tenth closer, or the sensor read one value for two weeks.
 
-Each row shows the two distances as "off by 2.6 → 1.4", measured first. Each call reads 42 days of hourly means.
+Each row shows the two distances as "off by 2.6 → 1.4", measured first, and a shown row's state says when it was last
+checked, "shown, last checked 16 Nov", the day of the last paired hour. Each call reads 42 days of hourly means.
 
 ## When the better sensor leaves
 
-The clock runs from the last paired hour. For 7 days after it the row keeps the corrected number from the last line,
-as long as the check on the days already scored still passes. After 7 days the correction is withdrawn, and the row
-says "withdrawn: nothing beside it since" and the date. A better sensor that drops out for two days and comes back is
-covered by the same rule.
+The clock runs from the last paired hour. A last day given in the pair (`until`) caps it: hours after that day are not
+read, so the 7 days never start later than that day. For 7 days after the last paired hour the row keeps the corrected
+number from the last line, as long as the check on the days already scored still passes. After 7 days the correction
+is withdrawn, and the row says "withdrawn: nothing beside it since" and the date. A better sensor that drops out for
+two days and comes back is covered by the same rule.
 
 In the garden a line left alone was clearly closer in its first week, barely in the second, and worse than the
 measured number from the fourth, which is why 7 days and no more (the table is below).
@@ -105,9 +111,9 @@ kilometres apart and refuses the pair. Give the pair the day you put it there as
 sensor is there the row shows how far off it reads, and for 7 days after it comes home the corrected number stays.
 That does not make the sensor corrected from then on.
 
-The row names the station's network and, for Bali Air Dispatch, whether it is official and whether its numbers are an
-index converted back: "corrected against Kabupaten Badung Sempidi (AQICN), official station, its numbers are an index
-converted back". Other station packs give the network only.
+The row's "against" column names the station's network and, for Bali Air Dispatch, whether it is official and
+whether its numbers are an index converted back: "Kabupaten Badung Sempidi (AQICN), official station, its numbers are
+an index converted back". Other station packs give the network only.
 
 > **Not run yet.** No pair with a public station has run anywhere. This half of the pack is tested on fixtures only.
 > The archive holds two official stations in Bali, Lumintang has been silent since August 2025, Sempidi's PM2.5 is an
@@ -192,6 +198,6 @@ Expect two to three weeks from the first paired hour to a first corrected number
 and hours go missing. In the replay it took 15, 17 and 21 days. A node holds only what it polled, with no backfill,
 so a node that started reading a sensor last week has one week of it whatever the sensor's own network holds.
 
-The route and its answer are in [the API](api.md), the setting in [Configuration](configuration.md), and the rest of
-the Data page on [the dashboard](dashboard.md) page. Next, [the packs reference](packs-reference.md) lists every pack
-that ships.
+The route and its answer are in [the API](api.md), the setting is in [Configuration](configuration.md), and the rest
+of the Data page is in [the dashboard](dashboard.md). Its settings and what it does not know are also in
+[the packs reference](packs-reference.md).

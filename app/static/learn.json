@@ -307,7 +307,7 @@
      "Mengapa angka yang dikoreksi hilang?"
     ]
    },
-   "quote": "**Corrections**, under Models and satellite, has one row for each pair a keeper named in Set up, under Calibrate: the\nsensor, its measured number, the corrected one, what it is corrected against, how far off each has been, and why a row\nis not shown. The measured number stays the one the node stores,",
+   "quote": "**Corrections**, under Models and satellite, has one row for each pair a keeper named in Set up, under Calibrate: the\nsensor, its measured and corrected numbers, what it is corrected against, how far off each has been, and when it was\nlast checked or why it is not shown. The measured number stays the one the node stores,",
    "section": "Data",
    "title": "Corrections",
    "url": "https://planetai.fab.city/docs/dashboard/#data"

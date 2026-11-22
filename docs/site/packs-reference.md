@@ -516,7 +516,7 @@ and puts a mark on the sensor's row in Readings while a correction is shown.
 
 ### What it does not know
 
-Where a sensor stood. It takes your `since` and `until` on trust, and a sensor moved without a word to the node goes
+It does not know where a sensor stood. It takes your `since` and `until` on trust, and a sensor moved without a word to the node goes
 on being fitted against hours when the two were apart, unless its pin moves more than 50 m. It cannot tell the
 particle sensors of one Smart Citizen box apart, so pair only boxes with one. It was tested on PM2.5 from HM-3301
 and PMS5003 sensors against a SEN5X, on Smart Citizen's history, and has not run on any node or with a public station.

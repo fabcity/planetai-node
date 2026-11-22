@@ -39,7 +39,9 @@ def row(sid, name, why, shown=False, **kw):
 CK = {"days": 7, "measured": 2.6, "corrected": 1.4}
 SHOWN = row("s1", "Backyard <b>", None, True, measured=14.2, checked=CK,
             reference={"id": "r1", "name": "<img src=x>", "own": True, "network": None, "official": None, "from_index": None})
-SHOWN["corrected"] = 13.6
+SHOWN["corrected"], SHOWN["last_paired"] = 13.6, "2026-11-16T03:00:00+00:00"
+BARE = row("s11", "Shown, no hour", None, True, checked=CK)  # last_paired null: the state is "shown" alone
+BARE["corrected"] = 9.9
 STATION = {"id": "st", "name": "Sempidi", "own": False, "network": "BAD", "official": True, "from_index": True}
 OK = {"state": "ok", "could": [], "rows": [
     SHOWN,
@@ -59,10 +61,10 @@ REFUSED = {"state": "ok", "could": [], "rows": [row("a", "A", {"reason": "refuse
 BAD = {"state": "ok", "could": [], "rows": [{"entry": 'x <i> y', "shown": False, "why": {"reason": "malformed", "problem": p}} for p in (
     "fields", "date", "until-before-since", "since-in-future", "same", "duplicate")]}
 COULD = {"state": "ok", "rows": [], "could": [{"a": {"id": "s<1>", "name": "Roof <u>"}, "b": {"id": "s2", "name": "Yard"}, "metric": "pm25", "metres": 30}]}
-off, failed, ok, refused, bad, could, mark, mark_temp, nomark = draw(
+off, failed, ok, refused, bad, could, mark, mark_temp, nomark, bare = draw(
     ["rows", {"state": "off"}, "https://d.example/"], ["rows", {"state": "failed"}], ["rows", OK, "", "2026-11-22"],
     ["rows", REFUSED], ["rows", BAD], ["rows", COULD, "", "2026-11-22"],
-    ["marks", OK, "pm25"], ["marks", OK, "temp"], ["marks", {"state": "off"}, "pm25"])
+    ["marks", OK, "pm25"], ["marks", OK, "temp"], ["marks", {"state": "off"}, "pm25"], ["rows", {"state": "ok", "could": [], "rows": [BARE]}])
 
 assert "No sensor on this node is corrected against another. Name a pair in Set up, under Calibrate." in off, off
 assert 'href="https://d.example/calibrate/"' in off, off
@@ -72,9 +74,10 @@ print("  ok: off says its sentence with the docs link, failed says it could not 
 assert "A straight line fitted on the last 14 days against the sensor named. Shown only while it has been closer on days the line never saw. The measured number is what the node stores, alerts on and shares." in ok
 for t in ("no line: the sensor read one value for two weeks", "too young: 120 of 168 hours together", "too young: 3 of 7 days checked",
           "not shown: measured is closer", "not shown: not a tenth closer", "withdrawn: nothing beside it since 3 Nov",
-          "nothing beside it for six weeks", ">shown<"):
+          "nothing beside it for six weeks", ">shown, last checked 16 Nov<"):
     assert t in ok, t
 assert ok.count("not shown: measured is closer") == 3
+assert "<td>shown</td>" in bare and "shown, last checked" not in bare, bare
 assert "&lt;img src=x&gt;, your own sensor, 30 m" in ok, ok
 assert "Sempidi (BAD), official station, its numbers are an index converted back" in ok, ok
 assert "Rooftop, your own sensor, distance not known" in ok, ok

@@ -22,7 +22,7 @@ Add a sensor or a source. An adapter is one function returning `(sensors, readin
 
 Write a rule, a cell or a pack: [Packs](packs.md). A pack for one place is a wild pack in its own repository, listed
 at [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs), and does not come here as a pull
-request. The 28 packs in `packs/` are core, and a wild pack joins them by promotion. Start from a core pack of the
+request. The 29 packs in `packs/` are core, and a wild pack joins them by promotion. Start from a core pack of the
 same kind, say in the README where the thresholds come from and which place you wrote for, and make the rule end in
 something a person does.
 
@@ -171,7 +171,7 @@ app/          main.py (api, loops) · db.py (the pool, q()) · auth.py (tokens, 
               maps.py (the household's named maps on Place) · cells.py (the node's seven cells) · area.py (the area pull)
               reading.py (the Place report's reading) · wall.py (GET /wall) · identity.py (the node's key and its signatures)
 bin/planetai  the operator CLI
-packs/        the twenty-eight core packs, some with their own routes.py; see Packs
+packs/        the twenty-nine core packs, some with their own routes.py; see Packs
 config/       rules.yml (two domain-blind rules, trust's three) · channels.yml · mosquitto · grafana
 data/         sources/ (the pinned registry) · strings/ · env_defaults.yml · frozen_layer.txt · platform_floors.yml · mac_ceilings.yml
 skills/       setup-node · troubleshoot-node · connect-agent · publish-to-index · preflight · land · write-a-pack
