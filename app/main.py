@@ -453,16 +453,30 @@ def _event_keyboard(event_id: int, locale: str) -> list:
 
 
 # ---------------------------------------------------------------- hourly push (child → parent)
+def _parent_rooms() -> bool:
+    """PARENT_INDOOR: do the rooms go to the parent. Anything but `on` is off."""
+    return settings.get("PARENT_INDOOR", "off").strip().lower() == "on"
+
+
+# A rule reads a room when its SQL names `indoor` without a NOT in front: `local AND indoor`, `s.indoor`, `bool_and(a.indoor)`.
+# ponytail: read off the SQL text; give rules a `rooms:` key if one ever reads a room without the word.
+_READS_ROOMS = re.compile(r"(?<!NOT )(?<![\w.])(?:\w+\.)?indoor\b")
+
+
 def push_aggregates() -> None:
     if not PARENT():          # the function, not the setting: a bare PARENT is always truthy
         return
     # Custody only: a peer's station or a model sampled here is context for this house, never the district's own
     # measurement, and the parent stores everything it receives as kind='child', which is custody. `indoor`
     # travels so the parent's outdoor means leave the kitchen out, as this node's do.
+    # Rooms stay home unless the keeper turns PARENT_INDOOR on: the parent stores what it receives, and a room's
+    # hourly mean on somebody else's disk is the rhythm of a home.
+    rooms = _parent_rooms()
     with db() as con, con.cursor() as cur:
         cur.execute("SELECT r.bucket, r.sensor_id, r.metric, r.mean, r.min, r.max, r.n, s.indoor FROM readings_1h r "
                     "JOIN sensors s ON s.sensor_id = r.sensor_id "
-                    "WHERE r.bucket > now() - interval '2 hours' AND s.custody AND " + packs.public_sql("r"))
+                    "WHERE r.bucket > now() - interval '2 hours' AND s.custody AND " + packs.public_sql("r")
+                    + ("" if rooms else " AND NOT s.indoor"))
         rows = [{**r, "bucket": r["bucket"].isoformat()} for r in cur.fetchall()]
     r = _post_parent("/aggregates", {"schema": AGGREGATES_V0, "node": NODE, "rows": rows, "scale": os.getenv("NODE_SCALE", "community")})
     if r:
@@ -509,14 +523,21 @@ def push_events() -> None:
     """
     if not PARENT():
         return
+    # A room's alerts stay home on the same switch as its means (Tomas, 22 Nov 2026): the rule id and the minute it was
+    # raised and answered are the same rhythm. Off, an alert goes up only if its sensor is marked outside, or, where
+    # it has no sensor row (`node`, a pair, a sensor since removed), if its rule is loaded here and reads no room.
+    rooms = _parent_rooms()
+    outdoor_rules = [] if rooms else [r["id"] for r in packs.load_rules() if not _READS_ROOMS.search(r.get("sql") or "")]
     with db() as con, con.cursor() as cur:
         cur.execute("""SELECT a.id, a.rule_id, a.level, a.ts,
                               min(f.ts) FILTER (WHERE f.stage = 'acknowledged') AS responded_at,
                               min(f.ts) FILTER (WHERE f.stage = 'acted')        AS acted_at,
                               min(f.ts) FILTER (WHERE f.stage = 'measured')     AS measured_at
                        FROM alerts a LEFT JOIN actions f ON f.alert_id = a.id
-                       WHERE a.ts > now() - interval '36 hours'
-                       GROUP BY a.id, a.rule_id, a.level, a.ts""")
+                       LEFT JOIN sensors s ON s.sensor_id = a.sensor_id
+                       WHERE a.ts > now() - interval '36 hours'"""
+                    + ("" if rooms else " AND NOT coalesce(s.indoor, a.rule_id <> ALL(%s::text[]))") + """
+                       GROUP BY a.id, a.rule_id, a.level, a.ts""", () if rooms else (outdoor_rules,))
         rows = [{"alert_id": str(r["id"]), "rule": r["rule_id"], "level": r["level"],
                  # rule ids are namespaced <pack>/<id>, so the pack IS the domain tag and there is nothing
                  # to invent: a parent can weigh rho for air apart from rho for heat by reading it.

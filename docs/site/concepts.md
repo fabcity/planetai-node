@@ -229,7 +229,7 @@ this**, and can read no secret. `AGGREGATE_TOKEN` is what this node demands from
 container) is trusted without a token. A browser on the host machine arrives from Docker's bridge and is
 not loopback.
 
-**Parent and child.** A child posts the hourly means of its own sensors to its parent's `/aggregates` and alert timestamps to
+**Parent and child.** A child posts the hourly means of its own outdoor sensors, and of its rooms only with `PARENT_INDOOR=on`, to its parent's `/aggregates` and alert timestamps to
 `/events`, and a Place map the household shares to `/place/maps/received`; the parent stores the means under `<child>/<sensor_id>` with `kind='child'`. Raw never travels the
 link. See [Federation](federation.md).
 

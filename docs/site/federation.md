@@ -65,7 +65,11 @@ node's `.env` to start a second node, because the copy is the same node.
 
 The last two hours of `readings_1h`, the node's hourly means, for its own sensors and its children's only
 (custody), leaving out every channel whose role is `private`. A peer's station and a model sampled at the node
-stay home: the parent would count them as its own.
+stay home: the parent would count them as its own. Rooms stay home too. A child sends the hourly means of a sensor
+marked indoor only when its keeper sets `PARENT_INDOOR=on`. The node goes by the mark each sensor carries, inside
+or outside, which Set up › Rooms shows next to its id. A LAN sensor is outside unless `SENSOR_INDOOR=1` and a radio
+is outside unless it is in `MESH_INDOOR_NODES`, so read that list before you name a parent. A parent's cells that
+read rooms, the hot nights of the heat pack for one, fill only from the children that turned it on.
 
 ```json
 {"schema": "aggregates-v0", "node": "bayu-ungasan", "scale": "community",
@@ -83,7 +87,9 @@ complete; the parent keeps the later mean.
 
 ### POST /events
 
-The last 36 hours of alerts, as timestamps only:
+The last 36 hours of alerts, as timestamps only. A room's alerts stay home on the same switch as its means. With
+`PARENT_INDOOR` off, an alert goes up if its sensor is marked outside. One with no sensor of its own, a line about
+the whole node for example, goes up if its rule is one this node loads and its SQL reads no room:
 
 ```json
 {"schema": "events-v0", "node": "bayu-ungasan", "scale": "community",

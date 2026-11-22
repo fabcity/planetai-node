@@ -101,7 +101,8 @@ the bump is a `docs/decisions/` entry. (`/health`'s `schema` is older and means 
 database schema version. Nothing else should use the name for two things.)
 
 **Readings**: `(ts, sensor_id, metric, value)` + a `sensors` row `(source, name, lat, lon, indoor, local, meta)`.
-Up: children push hourly means of their own sensors, each row saying whether it is indoors (`POST /aggregates`). A child
+Up: children push hourly means of their own outdoor sensors, and of their rooms only with `PARENT_INDOOR=on`, each row
+saying whether it is indoors (`POST /aggregates`). A child
 signs what it pushes with its own key, and the parent pins the child's name to that key (`docs/SPEC_identity.md`).
 A child's peers and models stay with the child, because the parent counts everything it receives as its children's.
 Down: a sensor or a phone the household trusts posts raw
