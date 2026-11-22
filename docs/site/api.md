@@ -44,7 +44,7 @@ The middlewares answer `{"error": "..."}`. A share-level 403 names the level and
 
 For a path no level opens it ends "No share level opens this one, so it always needs a token from anywhere but the node itself." `/mcp` without the admin token is 401 `{"error": "the agent surface needs Authorization: Bearer <ADMIN_TOKEN>"}`.
 
-Some routes are a pack's, served from `packs/<id>/routes.py`: `/forecast` (forecast), `/nearby` (nearby), `/index/place` (index), `/energy` (energy), `/earth`, `/earth/change.png`, `/earth/year.png` and `/earth/wall.png` (earth), `/earth/frame.png` (earth-engine), `/hydro` (hydro), every `/captures` route and `/species` (eyes), and `/things` and `/offers` (things). While its pack is off on the node, such a route answers 404 `{"detail": "the <pack> pack is off on this node"}`.
+Some routes are a pack's, served from `packs/<id>/routes.py`: `/forecast` (forecast), `/nearby` (nearby), `/index/place` (index), `/energy` (energy), `/earth`, `/earth/change.png`, `/earth/year.png` and `/earth/wall.png` (earth), `/earth/frame.png` (earth-engine), `/hydro` (hydro), `/calibrate` (calibrate), every `/captures` route and `/species` (eyes), and `/things` and `/offers` (things). While its pack is off on the node, such a route answers 404 `{"detail": "the <pack> pack is off on this node"}`.
 
 Handlers answer `{"detail": "..."}`. The token checks:
 
@@ -338,6 +338,11 @@ What surrounds the node's own numbers: other people's stations, the forecast, th
 Access: open
 
 The ring of other people's stations around this node, from what is stored, so the page never waits on someone else's server. The stations come from every enabled pack that declares `stations:` (here `bali-air-dispatch`, within `BAD_RADIUS_KM`) and reported in the last 24 hours. Returns `{ring, stations, lowest, p25, median, p75, highest, nearest_km, mine, mine_sensors, radius_km, attribution, mine_minus_ring}`, each `ring` row with its `km`, `pm25` and `reporting`. `?audit=1` also asks each pack's archive for a verdict per station.
+
+### GET /calibrate
+Access: token
+
+Each sensor a keeper put beside a better one in `CALIBRATE_PAIRS`, corrected against it while the line is closer. Returns `{state, rows, could}`. `state` is `off` while the setting is blank (rows and could empty) and `ok` otherwise. Each row has `entry`, `sensor`, `reference` (with `own`, and `network`, `official` and `from_index` when the reference is a station), `metric`, `unit`, `metres`, `since`, `until`, `measured`, `corrected`, `hour`, `line`, `paired_hours`, `last_paired`, `checked`, `shown` and `why`. `corrected` is there only while `shown` is true, and `why` says what is missing otherwise. An entry that does not parse is a row of its own with only `entry`, `shown` and `why`. `could` lists pairs of this node's own sensors within 50 m of each other that nobody has named. Nothing is stored, so it is worked out again on each call, and a node that leaves the pack out of `PACKS_ENABLED` answers 404.
 
 ### GET /index/place
 Access: open
