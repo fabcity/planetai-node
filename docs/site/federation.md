@@ -65,7 +65,8 @@ node's `.env` to start a second node, because the copy is the same node.
 
 The last two hours of `readings_1h`, the node's hourly means, for its own sensors and its children's only
 (custody), leaving out every channel whose role is `private`. A peer's station and a model sampled at the node
-stay home: the parent would count them as its own.
+stay home: the parent would count them as its own. Rooms stay home too. A child sends the hourly means of a sensor
+marked indoor only when its keeper sets `PARENT_INDOOR=on`.
 
 ```json
 {"schema": "aggregates-v0", "node": "bayu-ungasan", "scale": "community",

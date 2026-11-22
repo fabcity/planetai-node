@@ -228,13 +228,13 @@ assert not failures, "\n".join(failures)
 # place a peer can be stopped. Until 21 Oct 2026 it filtered only `private`, and node #1 would have pushed 178
 # rows of other people's stations and Open-Meteo beside its own 94. The statement is read out of
 # app/main.py::push_aggregates, never retyped, and run on the same two databases as above.
-def push_sql() -> str:
+def push_sql(indoor: bool = False) -> str:
     import ast
     import packs
     tree = ast.parse(open(os.path.join(ROOT, "app/main.py")).read())
     fn = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == "push_aggregates")
     call = next(n for n in ast.walk(fn) if isinstance(n, ast.Call) and getattr(n.func, "attr", "") == "execute")
-    return eval(compile(ast.Expression(call.args[0]), "push_aggregates", "eval"), {"packs": packs})
+    return eval(compile(ast.Expression(call.args[0]), "push_aggregates", "eval"), {"packs": packs, "rooms": indoor})
 
 
 PUSH = push_sql()
@@ -249,6 +249,20 @@ if not pushed_clean:
     failures.append("the push sends nothing from a database holding node #1's own kits")
 if "indoor" not in PUSH:
     failures.append("the push no longer carries `indoor`: a parent would average the kitchen into outdoor air")
+# Indoor means stay in the house unless the keeper turns them on (PARENT_INDOOR, 22 Nov 2026). The parent stores
+# what it receives, so a room's hourly mean that travels is a household's rhythm on somebody else's disk. `rooms` is
+# the name push_aggregates gives the setting's value; the statement is still the one read out of app/main.py.
+def pushed(indoor: bool, where: str) -> int:
+    return clean.execute(f"SELECT count(*) FROM ({_pg(push_sql(indoor=indoor))}) p WHERE {where}").fetchone()[0]
+
+
+off, on, out = pushed(False, "indoor"), pushed(True, "indoor"), pushed(False, "NOT indoor")
+if off != 0:
+    failures.append(f"with PARENT_INDOOR off the push still sends {off} indoor rows")
+if on == 0:
+    failures.append("with PARENT_INDOOR on the push sends no indoor rows: the fixture has rooms, so the switch does nothing")
+if out == 0:
+    failures.append("with PARENT_INDOOR off the push sends no outdoor rows either")
 print(f"push: {len(pushed_clean)} rows clean, {len(pushed_peer)} with one peer, none of them the peer's")
 assert not failures, "\n".join(failures)
 

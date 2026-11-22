@@ -864,7 +864,7 @@ Each document that travels between nodes names its format in `schema`: `issues-v
 
 | To | When | What travels |
 |---|---|---|
-| `POST {PARENT_API_URL}/aggregates` | Hourly, with a parent set | The last 2 hours of hourly means of its own sensors, with `PARENT_TOKEN` |
+| `POST {PARENT_API_URL}/aggregates` | Hourly, with a parent set | The last 2 hours of hourly means of its own outdoor sensors, and of its rooms only with `PARENT_INDOOR=on`, with `PARENT_TOKEN` |
 | `POST {PARENT_API_URL}/events` | Hourly, after an alert in the last 36 hours | Alert timestamps |
 | `POST {PARENT_API_URL}/place/maps/received` | Within a minute of a change to a map the household shared | The map's drawings, at their exact place, with their labels, notes and measures, and each photo's kind, note, words and day |
 | `POST {PARENT_API_URL}/place/photos/received` | Within a minute of somebody here answering an ask for a photo | The answer, and with a Send the photo's file, which lost its GPS when it came into this node |

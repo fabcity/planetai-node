@@ -459,10 +459,14 @@ def push_aggregates() -> None:
     # Custody only: a peer's station or a model sampled here is context for this house, never the district's own
     # measurement, and the parent stores everything it receives as kind='child', which is custody. `indoor`
     # travels so the parent's outdoor means leave the kitchen out, as this node's do.
+    # Rooms stay home unless the keeper turns PARENT_INDOOR on: the parent stores what it receives, and a room's
+    # hourly mean on somebody else's disk is the rhythm of a home.
+    rooms = settings.get("PARENT_INDOOR", "off").strip().lower() == "on"
     with db() as con, con.cursor() as cur:
         cur.execute("SELECT r.bucket, r.sensor_id, r.metric, r.mean, r.min, r.max, r.n, s.indoor FROM readings_1h r "
                     "JOIN sensors s ON s.sensor_id = r.sensor_id "
-                    "WHERE r.bucket > now() - interval '2 hours' AND s.custody AND " + packs.public_sql("r"))
+                    "WHERE r.bucket > now() - interval '2 hours' AND s.custody AND " + packs.public_sql("r")
+                    + ("" if rooms else " AND NOT s.indoor"))
         rows = [{**r, "bucket": r["bucket"].isoformat()} for r in cur.fetchall()]
     r = _post_parent("/aggregates", {"schema": AGGREGATES_V0, "node": NODE, "rows": rows, "scale": os.getenv("NODE_SCALE", "community")})
     if r:
