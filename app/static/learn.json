@@ -288,6 +288,30 @@
    "title": "The API",
    "url": "https://planetai.fab.city/docs/api/"
   },
+  "data-calibrate": {
+   "anchor": "data",
+   "more": "A sensor a keeper names beside a better one is corrected against it, on this page only, and only while the corrected number has been at least a tenth closer on days the line never saw.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "Why does this sensor show two numbers?",
+     "Why is the corrected number gone?"
+    ],
+    "es": [
+     "¿Por qué este sensor muestra dos números?",
+     "¿Por qué desapareció el número corregido?"
+    ],
+    "id": [
+     "Mengapa sensor ini menampilkan dua angka?",
+     "Mengapa angka yang dikoreksi hilang?"
+    ]
+   },
+   "quote": "**Corrections**, under Models and satellite, has one row for each pair a keeper named in Set up, under Calibrate: the sensor, its measured number, the corrected one, what it is corrected against and why a row is not shown. The measured number stays the one the node stores,",
+   "section": "Data",
+   "title": "Corrections",
+   "url": "https://planetai.fab.city/docs/dashboard/#data"
+  },
   "data-head": {
    "anchor": "data",
    "more": "The head counts what the tabs draw, the hourly values, the model and satellite values and the decisions, and links to today's open file.",
@@ -2241,6 +2265,7 @@
   "data-week",
   "data-perday",
   "data-models",
+  "data-calibrate",
   "data-images",
   "data-things",
   "data-ledger",

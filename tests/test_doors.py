@@ -797,7 +797,7 @@ class El {
   get outerHTML() { return `<${this.tagName}${Object.entries(this.a).map(([k, v]) => ` ${k}="${v}"`).join('')}>${this.textContent}${this.kids.map(c => c.outerHTML).join('')}</${this.tagName}>`; }
 }
 const els = {}, ctx = { D: L.buildD({ ...F, days: F.issues_days }, 'en'), d3, document: doc, getComputedStyle: () => ({ color: '#000' }),
-  doorsLocal: L.doorsLocal, VIEWS: {}, $: q => (els[q] ||= {}), out: {} };
+  doorsLocal: L.doorsLocal, DOORS_TOKEN: () => '', VIEWS: {}, $: q => (els[q] ||= {}), out: {} };
 vm.createContext(ctx);
 vm.runInContext(['esc', 'WD', 'loc', 'dayOf', 'dLabel', 'fmt', 'lineLab', 'plain', 'NODE', 'sign', 'PROV', 'prov', 'said', 'num', 'unitOf', 'labelOf',
   'ISSUES_DRAWN', 'val'].map(pick).join('\n') + '\n' + fs.readFileSync('./app/static/doors-fig.js', 'utf8') + '\n' + fs.readFileSync('./app/static/doors-data.js', 'utf8')
@@ -1000,7 +1000,7 @@ vm.runInContext(['esc', 'WD', 'loc', 'dayOf', 'dLabel', 'wdhm', 'fmt', 'lineLab'
   + `\nD.dates = [...new Set(D.buckets.map(dayOf))]; D.now = D.buckets.length - 1; D.sens = Object.fromEntries(D.sensors.map(s => [s.sensor_id, s]));
    const calls = [], spy = n => { globalThis[n] = () => calls.push(n); };
    const real = { ledgerBlock, modelsBlock };
-   ['metricTiles', 'sensorsBlock', 'issuesBlock', 'perdayBlock', 'modelsBlock', 'imagesBlock', 'thingsBlock', 'ledgerBlock', 'apiBlock', 'workbenchBlock'].forEach(spy);
+   ['metricTiles', 'sensorsBlock', 'issuesBlock', 'perdayBlock', 'modelsBlock', 'calibrateBlock', 'imagesBlock', 'thingsBlock', 'ledgerBlock', 'apiBlock', 'workbenchBlock'].forEach(spy);
    const draw = h => { calls.length = 0; location.hash = h; location.replaced = null; VIEWS.data();
      return { calls: calls.slice(), shown: Object.values(DTABS).flatMap(t => t[1]).filter(id => !document.getElementById(id).hidden),
        on: (document.getElementById('dnav').innerHTML.match(/href="(#data\\/\\w+)"[^>]*class="on"/) || [])[1] || null, node: location.replaced }; };
@@ -1025,7 +1025,7 @@ console.log(JSON.stringify(ctx.out));
 """
 _d = json.loads(subprocess.run(["node", "-e", dprog, FIX], capture_output=True, text=True, check=True).stdout)
 _want = {"readings": (["metricTiles", "sensorsBlock", "issuesBlock", "perdayBlock"], ["d-readings", "issues7", "perday"]),
-         "models": (["modelsBlock"], ["models"]), "home": (["imagesBlock", "thingsBlock"], ["d-images", "d-things"]),
+         "models": (["modelsBlock", "calibrateBlock"], ["models", "calibrate"]), "home": (["imagesBlock", "thingsBlock"], ["d-images", "d-things"]),
          "ledger": (["ledgerBlock"], ["ledger", "dnote"]), "api": (["apiBlock"], ["api"]),
          "workbench": (["workbenchBlock"], ["d-workbench"])}
 for _t, (_calls, _shown) in _want.items():

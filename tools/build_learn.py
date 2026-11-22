@@ -406,6 +406,10 @@ MARKS = [
     ("data-models", "Models and satellite", "dashboard.md", "Data",
      "one table: a row per value", "its unit",
      "A model is partial whatever its quality, so these values sit apart from what the house measures."),
+    ("data-calibrate", "Corrections", "dashboard.md", "Data",
+     "**Corrections**, under Models and satellite", "the one the node stores,",
+     "A sensor a keeper names beside a better one is corrected against it, on this page only, and only while the "
+     "corrected number has been at least a tenth closer on days the line never saw."),
     ("data-images", "Images", "dashboard.md", "Data",
      "**Images**, newest first", "to edit, confirm or delete.",
      "The pictures stay on this node, cleaned of EXIF and GPS. What the image model saw counts only once "
@@ -693,6 +697,9 @@ QUESTIONS = {
     'data-models': {"en": ['What does the forecast say for here?', 'How is a model different from a sensor?'],
         "id": ['Apa kata prakiraan untuk tempat ini?', 'Apa bedanya model dengan sensor?'],
         "es": ['¿Qué dice el pronóstico para aquí?', '¿En qué se diferencia un modelo de un sensor?']},
+    'data-calibrate': {"en": ['Why does this sensor show two numbers?', 'Why is the corrected number gone?'],
+        "id": ['Mengapa sensor ini menampilkan dua angka?', 'Mengapa angka yang dikoreksi hilang?'],
+        "es": ['¿Por qué este sensor muestra dos números?', '¿Por qué desapareció el número corregido?']},
     'data-images': {"en": ['What did the image model see in our photos?', 'How do I confirm what a photo shows?'],
         "id": ['Apa yang dilihat model gambar di foto-foto kami?', 'Bagaimana cara memastikan isi sebuah foto?'],
         "es": ['¿Qué vio el modelo de imágenes en nuestras fotos?', '¿Cómo confirmo lo que muestra una foto?']},
