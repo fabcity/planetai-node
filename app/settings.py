@@ -178,7 +178,7 @@ RUNTIME = {
                            "device keeps its page there and the campaign dashboards keep reading it. Blank = nothing is "
                            "forwarded. A token is a credential: it is masked here and never appears in a sensor id."),
     "PARENT_API_URL":     ("sharing", "Parent node", False, False, "http://<district>:8080 — hourly means go here. Empty = none."),
-    "PARENT_INDOOR":      ("sharing", "Send indoor means to the parent", False, False, "on sends the hourly means of the rooms too. off (default) = outdoor sensors only."),
+    "PARENT_INDOOR":      ("sharing", "Send the rooms to the parent", False, False, "on sends the hourly means of the rooms and the alerts they raise too. off (default) = outdoor sensors only."),
     # system — tuning numbers, and the layout Arrange mode writes. Not "advanced": that is a page mode, and the header has its switch.
     "STATIONS_SHOWN":     ("system", "Other people's stations listed", False, False,
                            "How many of the neighbourhood's stations the dashboard lists, nearest first. Default 3; "
@@ -245,7 +245,7 @@ CHOICES = {
 OUTWARD = {
     "SHARE_LEVEL",          # what a reader with no token may read from this node
     "PARENT_API_URL",       # where hourly means are posted
-    "PARENT_INDOOR",        # whether the rooms' hourly means go to the parent too
+    "PARENT_INDOOR",        # whether the rooms' hourly means and alerts go to the parent too
     "CKAN_PORTALS",         # open-data portals this node reads from and publishes cells for
     "RETICULUM_PRESENCE",   # the node announcing its existence and a coarse cell over radio
     "RETICULUM_PRESENCE_RES",  # how precisely it does so

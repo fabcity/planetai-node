@@ -146,7 +146,7 @@ up never travels to a NAS or a remote. The node never logs the Telegram URL, bec
 | what | to whom | how exact |
 |---|---|---|
 | the node's position | `/health`, `/export`, and `/sensors` and `/stats` for the household's own sensors, to a reader without a token | the centre of the resolution-8 cell (about 500 m to an edge); this machine or a token gets three decimals |
-| hourly means and alert timestamps | a parent node, hourly, if `PARENT_API_URL` is set | the means of the outdoor sensors, and of the rooms only if you set `PARENT_INDOOR=on`; each alert's rule, level and times, a room's alerts too; never where, never text, never who |
+| hourly means and alert timestamps | a parent node, hourly, if `PARENT_API_URL` is set | the means of the outdoor sensors and each of their alerts' rule, level and times; the rooms' means and alerts only if you set `PARENT_INDOOR=on`; never where, never text, never who |
 | the daily export | anyone (CC BY 4.0) | your own sensors by role (`indoor-1`, `outdoor-2`), no raw rows, no chat ids, and nothing from a source whose licence is non-commercial, such as the Balearic grid mix from Red Eléctrica |
 | a presence announce | the Reticulum network, every half hour, only with `RETICULUM_PRESENCE=1` | the H3 cell rounded up to `RETICULUM_PRESENCE_RES` (3), with a floor of resolution 6 that no setting goes under |
 | the node's coordinates | Open-Meteo, for weather and the CAMS air model, with `OPENMETEO_ENABLED=1` | rounded to three decimals for the current weather and the current CAMS reading |

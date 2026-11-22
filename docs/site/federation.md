@@ -87,8 +87,9 @@ complete; the parent keeps the later mean.
 
 ### POST /events
 
-The last 36 hours of alerts, as timestamps only. An alert a room raised goes up like any other, with its rule and
-its times, and `PARENT_INDOOR` does not change that:
+The last 36 hours of alerts, as timestamps only. A room's alerts stay home on the same switch as its means. With
+`PARENT_INDOOR` off, an alert goes up if its sensor is marked outside. One with no sensor of its own, a line about
+the whole node for example, goes up if its rule is one this node loads and its SQL reads no room:
 
 ```json
 {"schema": "events-v0", "node": "bayu-ungasan", "scale": "community",

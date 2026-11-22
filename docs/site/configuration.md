@@ -206,14 +206,14 @@ ask pane reads the same keys on every question. See [The bot](bot.md) and [Ask t
 
 ## Parent and children
 
-A node with a parent posts the hourly means of its own outdoor sensors to `PARENT_API_URL/aggregates` and alert timestamps to
+A node with a parent posts the hourly means of its own outdoor sensors to `PARENT_API_URL/aggregates` and their alert timestamps to
 `PARENT_API_URL/events`, with `PARENT_TOKEN` as Bearer and `NODE_SCALE` as `scale`. Values and times go up;
 where, what was said and who said it stay. See [Federation](federation.md).
 
 | Setting | Default | Values | Meaning | Kind |
 |---|---|---|---|---|
 | `PARENT_API_URL` | blank = none | `http://<district>:8080` | The parent node. | runtime · outward |
-| `PARENT_INDOOR` | `off` | `off`, `on` | Sends the hourly means of the rooms to the parent too. Off, only outdoor sensors go. | runtime · outward |
+| `PARENT_INDOOR` | `off` | `off`, `on` | Sends the hourly means of the rooms to the parent too, and the alerts they raise. Off, only outdoor sensors go. | runtime · outward |
 | `PARENT_TOKEN` | blank | string | What this node presents to its parent. | runtime · secret |
 | `AGGREGATE_TOKEN` | blank | string | What this node demands from its children on `POST /aggregates` and `POST /events`, and all it opens. Without it the node accepts no children (403). | runtime · secret |
 | `NODE_KEY` | blank; `install.sh` makes one, `update.sh` adds one to an older node | 64 hex characters | This node's private key. Its ID is a short hash of the public key, shown in Set up › Sharing, in `planetai status` and in `GET /health`, and everything the node pushes to its parent is signed with it. The parent pins the node's name to the key the first time it hears from it. Keep a copy of `.env` somewhere that is not the backup share: a node that loses the key is a new node. `planetai children` lists the nodes pushing to a parent. See [Federation](federation.md). | env only · secret |

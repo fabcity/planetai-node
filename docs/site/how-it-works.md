@@ -110,7 +110,7 @@ A pack's `cells.yml` computes the other Index cells the node has the data to fil
 | hourly means | hourly | fills `readings_1h_done` with the finished hours, the last 26 every hour and all of them on the first run after a start and of each local day; `readings_1h` reads it |
 | usual for the hour | hourly | rebuilds `usual_by_hour`, each room's usual for each local hour over the fourteen complete days before today, which the event rules read |
 | push aggregates | hourly | if `PARENT_API_URL` is set, posts the last two hours of hourly means to the parent's `/aggregates`, outdoor sensors only unless `PARENT_INDOOR=on` |
-| push events | hourly | if `PARENT_API_URL` is set, posts this node's alert timestamps of the last 36 hours to the parent's `/events` |
+| push events | hourly | if `PARENT_API_URL` is set, posts this node's alert timestamps of the last 36 hours to the parent's `/events`, a room's alerts only with `PARENT_INDOOR=on` |
 | shared maps | 60 s | if `PARENT_API_URL` is set, sends each shared Place map that changed since it last went up, and the picture of a photo somebody here pressed Send on, to the parent's `/place/maps/received` and `/place/photos/received` |
 | drawings counted | hourly | once a local day, writes how many drawings the household has made and how much ground they cover to the private sensor `place-gis`. Nothing is written until something is drawn |
 | release check | hourly | unless `UPDATE_CHECK=off`, asks planetai.fab.city which version is current and says so in `/health`, the page's top bar and once per version on Telegram. It installs nothing |

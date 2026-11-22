@@ -262,13 +262,18 @@ def pushed(indoor: bool, where: str) -> int:
 
 
 def rooms_on(value: str | None = None) -> bool:
-    """The line of push_aggregates that reads the setting, run with a stand-in for `settings`. None = nothing set."""
+    """_parent_rooms, the one place that reads the setting, run with a stand-in for `settings`. None = nothing set."""
     import ast
-    line = next(n for n in _push_fn().body if isinstance(n, ast.Assign) and getattr(n.targets[0], "id", "") == "rooms")
+    tree = ast.parse(open(os.path.join(ROOT, "app/main.py")).read())
+    fn = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == "_parent_rooms")
+    ret = next(n for n in fn.body if isinstance(n, ast.Return))
     stand_in = type("S", (), {"get": staticmethod(lambda key, default=None: default if value is None else value)})
-    return eval(compile(ast.Expression(line.value), "push_aggregates", "eval"), {"settings": stand_in})
+    return eval(compile(ast.Expression(ret.value), "_parent_rooms", "eval"), {"settings": stand_in})
 
 
+if not any(isinstance(n, __import__("ast").Assign) and getattr(n.targets[0], "id", "") == "rooms"
+           and "_parent_rooms()" in __import__("ast").unparse(n.value) for n in _push_fn().body):
+    failures.append("push_aggregates does not read PARENT_INDOOR through _parent_rooms()")
 if rooms_on():
     failures.append("with PARENT_INDOOR never set, push_aggregates sends the rooms")
 for v in ("off", "", "1", "true", "yes"):
@@ -289,6 +294,74 @@ if out == 0:
     failures.append("with PARENT_INDOOR off the push sends no outdoor rows either")
 print(f"push: {len(pushed_clean)} rows clean, {len(pushed_peer)} with one peer, none of them the peer's")
 assert not failures, "\n".join(failures)
+
+
+# A room's ALERTS stay in the house on the same switch (Tomas, 22 Nov 2026: "Same switch"). An alert's rule id and the
+# minute it was raised and answered are the same rhythm as the room's means. An alert goes up with the switch off
+# only when its sensor is marked outside, or, where it has no sensor row (`node`, a pair, a sensor since removed),
+# when its rule is one this node loads and reads no room. Both statements are read out of app/main.py.
+def _lift(name: str):
+    import ast
+    tree = ast.parse(open(os.path.join(ROOT, "app/main.py")).read())
+    return next((n for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.Assign))
+                 and (getattr(n, "name", "") == name or getattr(getattr(n, "targets", [None])[0], "id", "") == name)), None)
+
+
+def events_pushed(indoor: bool, outdoor_rules: list) -> set:
+    import ast
+    con = duckdb.connect()
+    con.execute(_ddl())
+    con.executemany("INSERT INTO sensors (sensor_id, source, name, lat, lon, indoor, local, kind) VALUES (?,?,?,?,?,?,?,?)", trustdb.sensors())
+    con.executemany("INSERT INTO alerts (id, ts, rule_id, sensor_id, level, text) VALUES (?,?,?,?,?,?)", [
+        (1, NOW - 2 * H, "air-quality/outdoor_pm25_high", "sc-19236", "act", "x"),   # outside sensor
+        (2, NOW - 2 * H, "air-quality/indoor_pm25_high", "sc-19849", "act", "x"),    # a room
+        (3, NOW - 2 * H, "insight/rhythm", "node", "info", "x"),                     # no sensor row, the rule reads rooms
+        (4, NOW - 2 * H, "fire/fire_near", "firms-gone", "act", "x"),                # no sensor row, an outdoor rule
+        (5, NOW - 2 * H, "retired/rule", "node", "act", "x"),                        # no sensor row, a rule nobody loads
+        (6, NOW - 2 * H, "heat/heat_danger", "sc-19874", "act", "x"),                # a rule that reads rooms, raised by an outside sensor
+        (7, NOW - 2 * H, "trust/peer_disagreement", "sc-19849|sc-19897", "warn", "x"),   # a pair of rooms, no sensor row
+    ])
+    con.executemany("INSERT INTO actions (ts, alert_id, stage) VALUES (?,?,?)", [(NOW - H, 2, "acted")])
+    call = next(n for n in ast.walk(_lift("push_events")) if isinstance(n, ast.Call) and getattr(n.func, "attr", "") == "execute")
+    sql = eval(compile(ast.Expression(call.args[0]), "push_events", "eval"), {"rooms": indoor})
+    args = [outdoor_rules] * sql.count("%s")
+    sql = _pg(sql).replace("%s::text[]", "?").replace("%s", "?")
+    return {r[0] for r in con.execute(f"SELECT id FROM ({sql}) p", args).fetchall()}     # ids only: no tz objects, no pytz
+
+
+def reads_rooms(sql: str) -> bool:
+    pat = _lift("_READS_ROOMS")
+    return bool(pat) and bool(eval(compile(__import__("ast").Expression(pat.value), "main", "eval"), {"re": re}).search(sql))
+
+
+OUTDOOR_RULES = ["air-quality/outdoor_pm25_high", "fire/fire_near"]
+went_off, went_on = events_pushed(False, OUTDOOR_RULES), events_pushed(True, OUTDOOR_RULES)
+if went_off != {1, 4, 6}:
+    failures.append(f"with PARENT_INDOOR off the events push sends alerts {sorted(went_off)}, expected [1, 4, 6]: "
+                    "a room's alert, a room rule with no sensor row, and a rule nobody loads all stay in the house")
+if went_on != {1, 2, 3, 4, 5, 6, 7}:
+    failures.append(f"with PARENT_INDOOR on the events push sends alerts {sorted(went_on)}, expected all seven")
+for sql, want in (("WHERE local AND indoor AND metric = 'pm25'", True), ("FILTER (WHERE s.local AND s.indoor)", True),
+                  ("CASE WHEN bool_and(a.indoor) THEN 'inside' END", True), ("WHERE local AND NOT indoor", False),
+                  ("WHERE NOT s.indoor AND s.kind = 'sensor'", False), ("SELECT 1 FROM stats", False)):
+    if reads_rooms(sql) != want:
+        failures.append(f"_READS_ROOMS says {not want} for {sql!r}")
+# and over the rules this tree ships: the ones that word a room, by name, must never be on the outdoor list
+os.environ.setdefault("PACKS_DIR", os.path.join(ROOT, "packs"))
+os.environ.setdefault("RULES_PATH", os.path.join(ROOT, "config/rules.yml"))
+import importlib
+import packs as _packs
+_packs = importlib.reload(_packs)
+shipped = {r["id"]: reads_rooms(r.get("sql") or "") for r in _packs.load_rules()}
+for rid in ("air-quality/indoor_pm25_high", "air-quality/indoor_spike", "air-quality/inside_worse_ventilate",
+            "heat/night_no_relief", "insight/rhythm", "insight/agreement", "trust/peer_disagreement"):
+    if not shipped.get(rid):
+        failures.append(f"{rid} reads a room and is not recognised as doing so (or is no longer shipped)")
+for rid in ("air-quality/outdoor_pm25_high", "fire/fire_near", "coast/heavy_swell"):
+    if shipped.get(rid) is not False:
+        failures.append(f"{rid} reads no room and is held back as if it did (or is no longer shipped)")
+if _lift("push_events") is None or "_parent_rooms()" not in open(os.path.join(ROOT, "app/main.py")).read().split("def push_events")[1].split("\ndef ")[0]:
+    failures.append("push_events does not read PARENT_INDOOR through _parent_rooms()")
 
 
 # ---- 6. readings_1h is the same answer however far the hourly table has got (init.sql, main.refresh_hourly).
