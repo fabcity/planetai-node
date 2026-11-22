@@ -29,19 +29,28 @@ const MNAME = new Proxy({}, { get: (_, m) => labelOf(m), has: (_, m) => m in MNA
    with the token, the 24-hour trace of the hourly medians (GET /aggregates). Press one to draw every source.
    A kind only models read is not a tile: its values are in the Models and satellite tab's table. */
 const FAMILY = [
-  ['Air', ['pm25', 'pm10', 'pm1', 'pm25_raw', 'aqi', 'bme_iaq', 'iaq', 'gas_resistance', 'o3', 'no2', 'co', 'dust', 'aod', 'pm25_model', 'pm10_model']],
+  ['Air', ['pm25', 'pm10', 'pm1', 'pm25_raw', 'pm25_sen5x', 'pm10_sen5x', 'pm1_sen5x', 'pm25_hm3301', 'pm10_hm3301', 'pm1_hm3301',
+    'pm25_pms5003', 'pm10_pms5003', 'pm1_pms5003', 'aqi', 'bme_iaq', 'iaq', 'gas_resistance', 'o3', 'no2', 'co', 'dust', 'aod', 'pm25_model', 'pm10_model']],
   ['Weather', ['temp', 'humidity', 'pressure', 'wind_speed', 'wind_direction', 'precipitation', 'uv_index', 'temp_model', 'humidity_model', 'pressure_model']],
   ['Sound and light', ['noise', 'light']],
   ['Sea', ['sea_surface_temp', 'wave_height_m', 'wave_period_s', 'wave_direction', 'swell_height_m', 'swell_period_s']],
   ['Radio', ['lora_util_pct', 'lora_channel_pct']]];
 /* a word for a key the node has no label for; the node's own label (GET /issues → metrics) always wins */
-const WORD = { pm25_raw: 'PM2.5, uncorrected', bme_iaq: 'indoor air index', iaq: 'indoor air index', gas_resistance: 'gas resistance', o3: 'ozone',
+/* a second particle sensor in the same box (packs/smartcitizen): the box's PM2.5 is the sensor it always was, this is the other */
+const WORD = { pm25_raw: 'PM2.5, uncorrected',
+  pm25_sen5x: 'PM2.5, the box’s SEN5X', pm10_sen5x: 'PM10, the box’s SEN5X', pm1_sen5x: 'PM1, the box’s SEN5X',
+  pm25_hm3301: 'PM2.5, the box’s HM-3301', pm10_hm3301: 'PM10, the box’s HM-3301', pm1_hm3301: 'PM1, the box’s HM-3301',
+  pm25_pms5003: 'PM2.5, the box’s PMS5003', pm10_pms5003: 'PM10, the box’s PMS5003', pm1_pms5003: 'PM1, the box’s PMS5003',
+  bme_iaq: 'indoor air index', iaq: 'indoor air index', gas_resistance: 'gas resistance', o3: 'ozone',
   no2: 'nitrogen dioxide', co: 'carbon monoxide', dust: 'dust', aod: 'aerosol optical depth', pm25_model: 'PM2.5, modelled', pm10_model: 'PM10, modelled',
   temp_model: 'temperature, modelled', humidity_model: 'humidity, modelled', pressure_model: 'pressure, modelled', uv_index: 'UV index',
   sea_surface_temp: 'sea surface', wave_height_m: 'wave height', wave_period_s: 'wave period', wave_direction: 'wave direction',
   swell_height_m: 'swell height', swell_period_s: 'swell period', lora_util_pct: 'LoRa airtime', lora_channel_pct: 'LoRa channel use' };
 const mWord = m => (D.metrics[m] || {}).label || WORD[m] || labelOf(m);
-const SYM = { pm25: 'PM2.5', pm10: 'PM10', pm1: 'PM1', pm25_raw: 'PM2.5ʳ', aqi: 'AQI', bme_iaq: 'IAQ', iaq: 'IAQ', gas_resistance: 'Ω', o3: 'O₃', no2: 'NO₂', co: 'CO',
+const SYM = { pm25: 'PM2.5', pm10: 'PM10', pm1: 'PM1', pm25_raw: 'PM2.5ʳ',
+  pm25_sen5x: 'PM2.5²', pm10_sen5x: 'PM10²', pm1_sen5x: 'PM1²', pm25_hm3301: 'PM2.5²', pm10_hm3301: 'PM10²', pm1_hm3301: 'PM1²',
+  pm25_pms5003: 'PM2.5²', pm10_pms5003: 'PM10²', pm1_pms5003: 'PM1²',
+  aqi: 'AQI', bme_iaq: 'IAQ', iaq: 'IAQ', gas_resistance: 'Ω', o3: 'O₃', no2: 'NO₂', co: 'CO',
   dust: 'Dst', aod: 'AOD', pm25_model: 'PM2.5ᵐ', pm10_model: 'PM10ᵐ', temp: 'T', humidity: 'RH', pressure: 'P', wind_speed: 'W', wind_direction: 'Dir',
   precipitation: 'R', uv_index: 'UV', temp_model: 'Tᵐ', humidity_model: 'RHᵐ', pressure_model: 'Pᵐ', noise: 'dB', light: 'lx', sea_surface_temp: 'SST',
   wave_height_m: 'Hs', wave_period_s: 'Tp', wave_direction: 'Dw', swell_height_m: 'Sw', swell_period_s: 'Ts', lora_util_pct: 'LoRa', lora_channel_pct: 'Ch' };

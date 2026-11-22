@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **22 Nov: a box with two particle sensors keeps both.** Some boxes carry an HM-3301 and a SEN5X side by side,
+  and Smart Citizen calls both PM2.5. The node stored the first one it was given and dropped the other, with
+  nothing in the log. On one box that afternoon the HM-3301 read 5.0 µg/m³ and the SEN5X 12.6, and the page showed
+  5.0. The box's `pm25` is still the sensor it always was, so its history carries on and every rule reads the
+  series it read before. The other sensor is now stored beside it as `pm25_sen5x`, `pm25_hm3301` or
+  `pm25_pms5003`, with `pm1` and `pm10` the same way. The new channels are private. The Data door shows them,
+  nothing of them is exported or sent to a parent, and the Index does not count them. It covers kits read from
+  api.smartcitizen.me and DIY nodes that publish to the node's broker. A second temperature or humidity sensor in
+  a box is still dropped.
+
 - **21 Nov: a draft record on commercial rights, for Tomas to rule on.** He asked whether being open source stops
   the Foundation from licensing a version of the node commercially or making a product of one. The public licence
   does not, and no document yet gives the Foundation more than the Apache-2.0 everybody has, his own 1,124 commits

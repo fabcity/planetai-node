@@ -236,6 +236,13 @@ the house's own, so every one is stored `local`, indoor or outdoor from the kit'
 DIY nodes that publish straight to this node's broker (`device/sck/#`, set up with `planetai broker`), stored as
 `sck-<hash>` with source `smartcitizen-direct`, and passed on to smartcitizen.me for the tokens in `SC_FORWARD`.
 
+Some boxes carry two particle sensors, for example a DIY node with an HM-3301 and a SEN5X, and Smart Citizen calls
+both PM2.5. The node keeps both. The box's `pm25` is the first by sensor name from the API, and on the broker the
+first the firmware sends, which is the sensor a node stored before it kept two. The other is stored under the same
+sensor id as `pm25_sen5x`, `pm25_hm3301` or `pm25_pms5003`, with `pm1` and `pm10` the same way. These channels are
+`private`. The Data door shows them, and no rule, mean, Index cell, export or parent reads them, so one box is
+never counted as two. A second temperature or humidity sensor in a box is dropped.
+
 | | |
 |---|---|
 | Kind | code, on whenever a kit is configured or a broker is set (`switch: [SC_USER, SC_DEVICES, MQTT_HOST]`) |

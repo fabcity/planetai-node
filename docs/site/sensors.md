@@ -150,7 +150,8 @@ Several of these come from Bali Air Dispatch's methodology.
    channel with one kit-level time at each poll. A channel that has stopped producing new values still gets a
    fresh timestamp, and its frozen value is stored again under it. That pulls the 24-hour mean toward the frozen
    number and shrinks its variance, so a dying channel looks steadier. The core rule `trust/channel_dead`
-   (`config/rules.yml`) looks at the value instead.
+   (`config/rules.yml`) looks at the value instead. A second particle sensor in a box (`pm25_sen5x` and the
+   like) carries its own sensor's time, so when it stops, its series stops.
 3. **A daily mean can be one reading.** Check `n` before trusting an aggregate.
 4. **Instants are UTC, days are local.** Daily buckets use `NODE_TZ`. Bali's 9 am burning peak vanishes on a UTC
    day.
