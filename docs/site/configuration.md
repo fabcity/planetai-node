@@ -261,6 +261,7 @@ Every key a `pack.yaml` declares, with the default it ships. All are kind `pack`
 | `BAD_RADIUS_KM` | bali-air-dispatch | `15`; bali preset `8` | How far out the ring reaches. Also `/nearby.radius_km`. |
 | `BAD_MIN_SEPARATION_M` | bali-air-dispatch | `150` | A station closer than this is taken to be the node's own hardware. |
 | `BAD_EXCLUDE` | bali-air-dispatch | blank | Station ids that are ours and the rules above missed. |
+| `BAD_INCLUDE` | bali-air-dispatch | blank | Station ids to keep at any distance, for a public station one of your sensors sits beside. |
 | `BAD_INCLUDE_INDOOR` | bali-air-dispatch | `0` | `1` keeps stations the archive suspects are indoors. |
 | `MAKE_ENABLED` | make | `0` | Off on purpose: the Fab Lab Network directory it reads is not openly licensed. Read [packs/make/README.md](../../packs/make/README.md) first. Needs `PACKS_ALLOW_CODE=1`. |
 | `MAKE_RADIUS_KM` | make | `50` | How far to look for a fab lab, in km. |

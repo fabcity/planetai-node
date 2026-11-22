@@ -28,7 +28,12 @@ history carries on. On `planetai update`, a node that keeps a `PACKS_ENABLED` li
 station the ring keeps becomes a sensor `bad-<station_id>`, `local=false`, with `pm25` (as the archive publishes
 it, EPA 2021 corrected for Plantower networks), `pm25_raw` where the archive has it, `pm10`, `pm1`, `temp`,
 `humidity` and `aqi` (a vendor index, never pooled). Its `meta` carries the originating network, the distance and
-the attribution.
+the attribution. For a station that /stations lists, it also says whether the station is official (the government's)
+and whether its pm25 is an index converted back (`from_index`).
+
+If one of your sensors sits beside a public station, put that station's id in `BAD_INCLUDE` and the ring keeps it
+at any distance. It only overrides distance and the indoor guess. If this node already polls the device, or you listed it in
+`BAD_EXCLUDE`, it stays out, and so does a station that is stale or flagged as malfunctioning.
 
 ### The island's file, for the Wall
 
@@ -56,6 +61,7 @@ missing.
 | identity | a device this node already polls (`SC_DEVICES`, the `SC_USER` account, `AIRGRADIENT_HOSTS`), at any distance |
 | proximity | anything within `BAD_MIN_SEPARATION_M` (150 m) of the node: its own kit under another account |
 | by hand | `BAD_EXCLUDE`, what the first two missed |
+| kept by hand | `BAD_INCLUDE`, station ids to keep in spite of proximity, the radius and the indoor guess |
 | beyond the radius | further than `BAD_RADIUS_KM` (15; the Bali preset says 8) |
 | indoor, malfunctioning, stale | as the archive flags them; `BAD_INCLUDE_INDOOR=1` keeps the indoor ones |
 | same device | one device under two networks' ids (23 AirGradient units mirrored by OpenAQ on 7 Sep 2026): same name within the separation radius, the owning network kept |

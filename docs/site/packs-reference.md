@@ -19,7 +19,7 @@ the pack is off.
 |---|---|---|---|---|---|---|---|
 | `air-quality` | code | air | 4 act, 2 warn; and the event engine's 3 act, 1 warn | | 3 | | `OPENMETEO_ENABLED` (declared by the core) |
 | `heat` | data | heat | 2 act, 1 info; and the event engine's 3 act | | 1 | | |
-| `bali-air-dispatch` | code | air | none | | | | `BAD_ENABLED`, `BAD_RADIUS_KM`, `BAD_MIN_SEPARATION_M`, `BAD_EXCLUDE`, `BAD_INCLUDE_INDOOR` |
+| `bali-air-dispatch` | code | air | none | | | | `BAD_ENABLED`, `BAD_RADIUS_KM`, `BAD_MIN_SEPARATION_M`, `BAD_EXCLUDE`, `BAD_INCLUDE`, `BAD_INCLUDE_INDOOR` |
 | `home-assistant` | code | none | none | | | | `HA_DISCOVERY` (declared by the core) |
 | `smartcitizen` | code | air | none | | | | `SC_USER`, `SC_DEVICES`, `SC_EXCLUDE` (declared by the core) |
 | `airgradient` | code | air | none | | | | `AIRGRADIENT_HOSTS`, `SENSOR_INDOOR` (declared by the core) |
@@ -215,6 +215,7 @@ the archive's `/stations` list types it Government.
 | `BAD_RADIUS_KM` | `15`; the bali preset `8` | ring radius in km. 15 is the tightest that leaves `nearby` its two-station floor at node #1 with room to spare |
 | `BAD_MIN_SEPARATION_M` | `150` | a station closer to the node than this is excluded as the node's own kit |
 | `BAD_EXCLUDE` | empty | station ids excluded by hand |
+| `BAD_INCLUDE` | empty | station ids kept at any distance, for a public station one of your sensors sits beside |
 | `BAD_INCLUDE_INDOOR` | `0` | `1` keeps stations the archive marks `suspected_indoor` |
 
 It also reads `SC_USER`, `SC_DEVICES`, `SC_EXCLUDE` and `AIRGRADIENT_HOSTS`, to know which devices this node

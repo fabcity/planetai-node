@@ -35,6 +35,8 @@ env:
   - "BAD_MIN_SEPARATION_M=150"
   - "BAD_EXCLUDE="
   - "BAD_INCLUDE_INDOOR=0"
+  - "# bali-air-dispatch: station ids to keep whatever their distance, for a public station one of your sensors sits beside"
+  - "BAD_INCLUDE="
 needs:
   - baliairdispatch.com
 thresholds: >-
