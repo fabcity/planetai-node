@@ -40,7 +40,7 @@ def sensor(sid, source="own", dm=0.0, lat=-8.8, indoor=False, meta=None):
 
 DB = {"a": sensor("a"), "b": sensor("b", dm=30), "far": sensor("far", dm=812), "nocoord": sensor("nocoord", lat=None),
       "st": sensor("st", source="baliairdispatch", dm=20, meta={"network": "AQICN", "official": True, "from_index": True}),
-      "c": sensor("c", dm=500), "d": sensor("d", dm=520)}
+      "mute": sensor("mute", source="mute", dm=10), "c": sensor("c", dm=500), "d": sensor("d", dm=520)}
 ROLE = [{"source": s, "metric": "pm25", "unit": "µg/m³"} for s in ("own", "baliairdispatch")]
 STATS = [{"sensor_id": i, "source": "own", "name": i.upper(), "lat": DB[i]["lat"], "lon": DB[i]["lon"], "indoor": False,
           "metric": "pm25"} for i in ("a", "b", "c", "d")]
@@ -121,6 +121,14 @@ row = get().json()["rows"][0]
 assert row["why"] == {"reason": "refused", "test": "apart", "metres": 812} and row["shown"] is False and row["metres"] == 812, row
 assert not [s for s in SEEN if "readings_1h" in s], "a refused pair asks for no hours"
 print("  sensors 812 m apart are refused before any hour is read")
+
+# ---- a source with no pm25 channel names itself
+ROWS["CALIBRATE_PAIRS"] = "mute a pm25 2026-10-01; a ghost pm25 2026-10-01"
+rows = get().json()["rows"]
+assert rows[0]["why"] == {"reason": "refused", "test": "no-channel", "side": "sensor", "source": "mute"}, rows[0]
+assert rows[1]["why"] == {"reason": "refused", "test": "unknown", "side": "reference"} and rows[1]["reference"]["own"] is False \
+    and rows[1]["reference"]["name"] is None and rows[1]["reference"]["network"] is None, rows[1]
+print("  a refusal for a missing channel carries the source, a mistyped id has no name or network")
 
 # ---- a station as the reference, a sensor with no coordinates
 ROWS["CALIBRATE_PAIRS"] = "a st pm25 2026-10-01; nocoord b pm25 2026-10-01"

@@ -103,6 +103,8 @@ def calibrate():
         why = core.refuse(p, s, ref, station_sources, roles, metres)
         if why:
             row["why"] = {"reason": "refused", **why}
+            if why["test"] == "no-channel":
+                row["why"]["source"] = (s if why["side"] == "sensor" else ref)["source"]
             rows.append(row)
             continue
         end = min(now, _midnight(p.until + timedelta(days=2))) if p.until else now
