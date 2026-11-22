@@ -730,7 +730,7 @@ This node's hourly means, newest first, without `private` channels: `[{bucket, s
 ### POST /aggregates
 Access: children
 
-A child pushes the hourly means of its own sensors, each row saying whether it is indoors.
+A child pushes the hourly means of its own outdoor sensors, and of its rooms only with `PARENT_INDOOR=on`, each row saying whether it is indoors.
 
 ```json
 {"schema": "aggregates-v0", "node": "bayu-ungasan", "scale": "community",

@@ -228,11 +228,16 @@ assert not failures, "\n".join(failures)
 # place a peer can be stopped. Until 21 Oct 2026 it filtered only `private`, and node #1 would have pushed 178
 # rows of other people's stations and Open-Meteo beside its own 94. The statement is read out of
 # app/main.py::push_aggregates, never retyped, and run on the same two databases as above.
+def _push_fn():
+    import ast
+    tree = ast.parse(open(os.path.join(ROOT, "app/main.py")).read())
+    return next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == "push_aggregates")
+
+
 def push_sql(indoor: bool = False) -> str:
     import ast
     import packs
-    tree = ast.parse(open(os.path.join(ROOT, "app/main.py")).read())
-    fn = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == "push_aggregates")
+    fn = _push_fn()
     call = next(n for n in ast.walk(fn) if isinstance(n, ast.Call) and getattr(n.func, "attr", "") == "execute")
     return eval(compile(ast.Expression(call.args[0]), "push_aggregates", "eval"), {"packs": packs, "rooms": indoor})
 
@@ -255,6 +260,25 @@ if "indoor" not in PUSH:
 def pushed(indoor: bool, where: str) -> int:
     return clean.execute(f"SELECT count(*) FROM ({_pg(push_sql(indoor=indoor))}) p WHERE {where}").fetchone()[0]
 
+
+def rooms_on(value: str | None = None) -> bool:
+    """The line of push_aggregates that reads the setting, run with a stand-in for `settings`. None = nothing set."""
+    import ast
+    line = next(n for n in _push_fn().body if isinstance(n, ast.Assign) and getattr(n.targets[0], "id", "") == "rooms")
+    stand_in = type("S", (), {"get": staticmethod(lambda key, default=None: default if value is None else value)})
+    return eval(compile(ast.Expression(line.value), "push_aggregates", "eval"), {"settings": stand_in})
+
+
+if rooms_on():
+    failures.append("with PARENT_INDOOR never set, push_aggregates sends the rooms")
+for v in ("off", "", "1", "true", "yes"):
+    if rooms_on(v):
+        failures.append(f"PARENT_INDOOR={v!r} sends the rooms: only `on` may")
+for v in ("on", " ON "):
+    if not rooms_on(v):
+        failures.append(f"PARENT_INDOOR={v!r} does not send the rooms")
+if "PARENT_INDOOR=off" not in open(os.path.join(ROOT, ".env.example")).read().splitlines():
+    failures.append(".env.example no longer ships PARENT_INDOOR=off, and a node's defaults are made from it")
 
 off, on, out = pushed(False, "indoor"), pushed(True, "indoor"), pushed(False, "NOT indoor")
 if off != 0:
