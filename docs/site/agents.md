@@ -120,6 +120,9 @@ under its alert, with an `alert_id` and a `choice`. No MCP tool writes any of th
   the node upstream with its exact coordinates, labels, notes and measures, after a plain warning, and is held while a
   drawing touches the cell the house stands in.
 - Exactly one node per pilot writes to the Index's spine.
+- A corrected number says so: what it was corrected against, how far off it has been on days the line never saw,
+  and when it was last checked. It is worked out when asked and stored nowhere, so it sends no alert, moves no ρ,
+  fills no Index cell and leaves the node in no export or aggregate.
 - `act` needs the person's own words. It has no default note and refuses a placeholder. ρ is the share of act-level
   alerts a human answered, and a row written without anything a human said is a model measuring itself. If they did
   not tell you what they did, ask.

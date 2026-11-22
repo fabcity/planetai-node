@@ -252,8 +252,8 @@ backups and the pictures folder. See [Storage](storage.md).
 ## Pack keys
 
 Every key a `pack.yaml` declares, with the default it ships. All are kind `pack`. A code pack reads them only with
-`PACKS_ALLOW_CODE=1`, except `bali-air-dispatch` and `index`, official packs with their own switch, which run on
-`BAD_ENABLED=1` and on `INDEX_PLACE` being set, alone.
+`PACKS_ALLOW_CODE=1`, except `bali-air-dispatch`, `index` and `calibrate`, official packs with their own switch, which
+run on `BAD_ENABLED=1`, on `INDEX_PLACE` being set and on `CALIBRATE_PAIRS` naming a pair, alone.
 
 | Setting | Pack | Default | Meaning |
 |---|---|---|---|
@@ -261,7 +261,7 @@ Every key a `pack.yaml` declares, with the default it ships. All are kind `pack`
 | `BAD_RADIUS_KM` | bali-air-dispatch | `15`; bali preset `8` | How far out the ring reaches. Also `/nearby.radius_km`. |
 | `BAD_MIN_SEPARATION_M` | bali-air-dispatch | `150` | A station closer than this is taken to be the node's own hardware. |
 | `BAD_EXCLUDE` | bali-air-dispatch | blank | Station ids that are ours and the rules above missed. |
-| `BAD_INCLUDE` | bali-air-dispatch | blank | Station ids to keep at any distance, for a public station one of your sensors sits beside. |
+| `BAD_INCLUDE` | bali-air-dispatch | blank | Station ids the ring keeps at any distance, for a public station one of your sensors sits beside ([Corrections](calibrate.md)). Stale, malfunctioning and your own polled devices still drop. |
 | `BAD_INCLUDE_INDOOR` | bali-air-dispatch | `0` | `1` keeps stations the archive suspects are indoors. |
 | `MAKE_ENABLED` | make | `0` | Off on purpose: the Fab Lab Network directory it reads is not openly licensed. Read [packs/make/README.md](../../packs/make/README.md) first. Needs `PACKS_ALLOW_CODE=1`. |
 | `MAKE_RADIUS_KM` | make | `50` | How far to look for a fab lab, in km. |
@@ -310,6 +310,7 @@ Every key a `pack.yaml` declares, with the default it ships. All are kind `pack`
 | `INDEX_URL` | index | `https://index.fab.city` | Where the pack reads the place's file. The request is the slug and nothing about the house. |
 | `INDEX_REFRESH_HOURS` | index | `24` | How often the place's file is read again. |
 | `COAST_MAX_KM` | coast | `30` | Refuses to report if the nearest ocean grid cell is further than this. Also a runtime key (public), and it moves the dashboard's drawn footprint too. |
+| `CALIBRATE_PAIRS` | calibrate | blank | Sensors to correct against a better one beside them, one pair per `;`: `<sensor> <the better sensor> <metric> <since> [<until>]`, as `sc-19874 sc-19236 pm25 2026-08-30`. Blank is off. The corrected number is shown on the Data page only; rules, alerts, cells and the export keep the measured one. See [Corrections](calibrate.md). |
 
 Two pack settings are read but declared in no `pack.yaml`, so they are env only: `OVERPASS_URL` (default
 `https://overpass-api.de/api/interpreter`, the place pack's Overpass endpoint) and `BAD_BACKFILL_DAYS` (default

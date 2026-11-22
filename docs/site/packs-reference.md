@@ -1,7 +1,7 @@
 # Packs that ship
 <!-- checked: v0.92.0 -->
 
-The twenty-eight core packs in `packs/`, five data and twenty-three code, hold everything the node knows about a place, and no
+The twenty-nine core packs in `packs/`, five data and twenty-four code, hold everything the node knows about a place, and no
 rule in `app/` says what PM2.5 means for a household or where the nearest fab lab is. For each pack this page
 says what it reads, what it says, its rules and where each threshold comes from, its settings, and what it does
 not know. How a pack is built and loaded is on [Packs](packs.md). Wild packs, such as `xiaomi-air` and
@@ -11,7 +11,8 @@ added with `planetai packs add`.
 A pack is `code` when its folder has any `.py` file, and a code pack's adapter and hooks run only with
 `PACKS_ALLOW_CODE=1`; `make` also needs `MAKE_ENABLED=1` and `fire` `FIRE_ENABLED=1`. A pack that names its own
 `switch:` runs on that switch alone: `bali-air-dispatch` on `BAD_ENABLED`, `home-assistant` on `HA_DISCOVERY`, `index` on `INDEX_PLACE`,
-`smartcitizen`, `airgradient` and `purpleair` whenever their keys are set, and `air-quality` reads the CAMS model on
+`smartcitizen`, `airgradient` and `purpleair` whenever their keys are set, `calibrate` once `CALIBRATE_PAIRS` names a
+pair, and `air-quality` reads the CAMS model on
 `OPENMETEO_ENABLED`, the key that ran it in the core. A pack's `routes.py` is mounted at start and answers 404 while
 the pack is off.
 
@@ -28,6 +29,7 @@ the pack is off.
 | `season` | code | air | 1 info | `record` | | `window` | |
 | `insight` | data | cross-domain | 2 info | `digest` | | | |
 | `cold-start` | data | cross-domain | 3 info | | | | |
+| `calibrate` | code | cross-domain | none | | | | `CALIBRATE_PAIRS` |
 | `forecast` | code | weather | none | `ahead` | | `fetch` `status` `verify` `windfield` | `FORECAST_*` |
 | `coast` | code | coast | 2 info | | 1 | | `COAST_MAX_KM` |
 | `surface-heat` | code | heat | none | `ground` | | | `SURFACE_HEAT_*` |
@@ -225,8 +227,10 @@ already polls.
 
 It keeps the node's own kit out of the ring by four tests: identity (a device this node polls, at any
 distance), proximity (within `BAD_MIN_SEPARATION_M`), by hand (`BAD_EXCLUDE`), and one device on two networks
-(an AirGradient unit mirrored by OpenAQ, collapsed on the same name within the separation radius). It cannot
-know about a kit of yours it does not poll and that sits further away than the separation radius. One
+(an AirGradient unit mirrored by OpenAQ, collapsed on the same name within the separation radius). A station you
+put in `BAD_INCLUDE` skips proximity and the radius, so the node takes your word that it is someone else's, while
+identity and `BAD_EXCLUDE` still drop it. It cannot know about a kit of yours it does not poll and that sits
+further away than the separation radius. One
 function, `verdicts()`, decides, and `nearby`'s scripts and `GET /nearby?audit=1` call the same one.
 
 ## smartcitizen
@@ -483,6 +487,39 @@ The rules read `observations`, the view where models and portals land.
 
 The README reads a big gap in `sensor_vs_model` as the local signal a global model cannot see, and not as a
 sensor fault. Seeing that signal is the reason to run a node at all.
+
+## calibrate
+
+Corrects one sensor against a better one you name beside it, on the Data page only. It fits a straight line on the
+last 14 days and shows the corrected number while the line has been at least a tenth closer on days it never saw.
+How to name a pair, what the node checks and what was measured are on [Corrections](calibrate.md).
+
+| | |
+|---|---|
+| Kind | code, with a route and no adapter; its route answers on its own switch (`switch: [CALIBRATE_PAIRS]`) |
+| Domain | `cross-domain` |
+| Requires node | `>=0.92` |
+| Metrics | none of its own: it reads the hourly means of the two sensors in each pair |
+| Scales | community |
+| Needs | two sensors side by side (within 50 m when both have coordinates), both indoors or both outdoors, that share an ambient, comparable metric |
+| Rules and cells | none: a corrected number is worked out when the page asks and stored nowhere |
+
+`GET /calibrate` reads `readings_1h`, `sensors` and `channel_roles`, 42 days for each pair, and writes nothing. It
+answers this machine or a node token only. The Data page shows its answer under Models and satellite, in Corrections,
+and puts a mark on the sensor's row in Readings while a correction is shown.
+
+### Settings
+
+| setting | default | meaning |
+|---|---|---|
+| `CALIBRATE_PAIRS` | empty | the pairs, one per `;`: `<sensor> <the better sensor beside it> <metric> <since> [<until>]`. Empty is off |
+
+### What it does not know
+
+Where a sensor stood. It takes your `since` and `until` on trust, and a sensor moved without a word to the node goes
+on being fitted against hours when the two were apart, unless its pin moves more than 50 m. It cannot tell the
+particle sensors of one Smart Citizen box apart, so pair only boxes with one. It was tested on PM2.5 from HM-3301
+and PMS5003 sensors against a SEN5X, on Smart Citizen's history, and has not run on any node or with a public station.
 
 ## forecast
 
