@@ -681,7 +681,12 @@ body:not(.classic) .hero .ladder.folded{display:none}
   .dgrid .snav a{flex:1 0 auto;justify-content:center;border-bottom:1px solid var(--hair)}
   /* the ledger on a phone: the time and the stage on one line, what it answered under them at full width */
   .tbl.ledger tr{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:12px;border-bottom:1px solid var(--hair)}.tbl.ledger tr:first-child{display:none}
-  .tbl.ledger td{border-bottom:0}.tbl.ledger td:nth-child(4){grid-column:1 / -1;padding-top:0}}
+  .tbl.ledger td{border-bottom:0}.tbl.ledger td:nth-child(4){grid-column:1 / -1;padding-top:0}
+  /* Corrections on a phone: sensor, measured and corrected on one line, then against, the checked days and the state each at full width */
+  .tbl.ctab thead{display:none}.tbl.ctab tr{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(0,1fr);column-gap:12px;border-bottom:1px solid var(--hair)}
+  .tbl.ctab tbody td:nth-child(n){border-bottom:0;padding-left:0;white-space:normal}.tbl.ctab td:nth-child(n+4),.tbl.ctab td[colspan]{grid-column:1 / -1;padding-top:0;text-align:left}
+  .tbl.ctab td:nth-child(2)::before{content:'measured'}.tbl.ctab td:nth-child(3)::before{content:'corrected'}
+  .tbl.ctab td:nth-child(-n+3).n::before{display:block;color:var(--mute);font:500 var(--t-cap) var(--mono)}}
 .dh{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap}.dh h2{margin-bottom:4px}
 .gh{margin:16px 0 4px;padding-bottom:4px;border-bottom:1px solid var(--ink)}
 .srow{display:grid;grid-template-columns:minmax(0,1fr) 300px 80px;gap:16px;align-items:center;padding:4px 0;border-bottom:1px solid var(--hair)}
