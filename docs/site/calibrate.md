@@ -26,9 +26,10 @@ CALIBRATE_PAIRS=sc-19874 sc-19236 pm25 2026-08-30
 ```
 
 The one to correct always comes first. Use the row ids the node shows, since a kit that is both forwarded and polled
-is two rows, and you choose which one you mean. When two of your sensors are within 50 m of each other, both indoors
-or both outdoors, and share a metric, the Corrections section suggests them with the text to paste: "You could name:
-… Write the one to correct first".
+is two rows, and you choose which one you mean. Before you name a pair, find two sensors close together by their
+distance from the node in Readings. Once one pair is named, the Corrections section also suggests any two of your
+sensors within 50 m of each other, both indoors or both outdoors, that share a metric, with the text to paste ("You
+could name: … Write the one to correct first"). Replace its last part with the day you put the two together.
 
 `since` is required because the node keeps no history of where a sensor stood. Two sensors that both reported for
 months from different rooms would otherwise be fitted on hours when they were apart. If you move a sensor and tell the
@@ -50,6 +51,9 @@ will not use:
 | `one is indoors and the other outdoors` | as it says |
 | `<n> m apart` | both have coordinates and they are more than 50 m apart |
 
+The indoor test runs only between two of your own sensors. For a public station the node has only the archive's
+guess, and you know where the two stand.
+
 50 m is what the node already means by "the same place" (the trust rule `peer_disagreement`). When either side has no
 coordinates the pair is accepted on your word. If the better sensor is one of yours the row then says "distance not
 known"; a station's row says nothing about distance.
@@ -62,7 +66,7 @@ even when it is itself the sensor of another pair.
 The node reads the hourly means of both sensors from the day you named. A paired hour is an hour in which both have
 a mean. The line is `better = a + b × sensor`, fitted by least squares on the paired hours of the 14 days that end at
 the last paired hour, and it needs 168 paired hours. The corrected number is that line applied to the sensor's
-latest hourly mean. It never goes below zero when the better sensor never read below zero in those 14 days.
+latest finished hourly mean. It never goes below zero when the better sensor never read below zero in those 14 days.
 
 Every finished day with at least 12 paired hours is scored, if the 14 days before it hold 168 paired hours: a line is
 fitted on those 14 days alone and applied to that day, and the day gets two numbers, how far the measured hours were
@@ -71,15 +75,17 @@ from the better sensor on average and how far the corrected hours were.
 The corrected number is shown when the newest 14 scored days that are no older than 28 days number at least 7, and
 over them the corrected distance is at most nine tenths of the measured one, so the line has been at least a tenth
 closer. Otherwise the row shows the measured number alone and says why: too young (how many hours or checked days it
-has), measured is closer, not a tenth closer, or the sensor read one value for two weeks.
+has), measured is closer, not a tenth closer, or one of the two read one value for two weeks.
 
 Each row shows the two distances as "off by 2.6 → 1.4", measured first, and a shown row's state says when it was last
-checked, "shown, last checked 16 Nov", the day of the last paired hour. Each call reads 42 days of hourly means.
+checked, "shown, last checked 16 Nov", the day of the last paired hour. When the sensor's newest hour is more than
+3 hours old, its number says which hour it is, "14.2 µg/m³ at 12:00 19 Nov", and Readings carries no mark for it.
+Each call reads 42 days of hourly means.
 
 ## When the better sensor leaves
 
 The clock runs from the last paired hour. A last day given in the pair (`until`) caps it: hours after that day are not
-read, so the 7 days never start later than that day. For 7 days after the last paired hour the row keeps the corrected
+paired, so the 7 days never start later than that day. For 7 days after the last paired hour the row keeps the corrected
 number from the last line, as long as the check on the days already scored still passes. After 7 days the correction
 is withdrawn, and the row says "withdrawn: nothing beside it since" and the date. A better sensor that drops out for
 two days and comes back is covered by the same rule.
@@ -104,7 +110,11 @@ A station can be the better side of a pair, if the node reads it. With the `bali
 station within 150 m of the node, taking it for your own hardware, and any beyond `BAD_RADIUS_KM`. A station your
 sensor sits beside is either very close or far outside the ring, so put its id in `BAD_INCLUDE` and the ring keeps it
 at any distance. Stale and malfunctioning stations still drop, and so does a device the node already polls or one you
-listed in `BAD_EXCLUDE`.
+listed in `BAD_EXCLUDE`. A station the ring drops is not a row on the node, so find its id with
+`planetai run nearby stations`, which lists every station in the archive with its id, network, distance and verdict.
+
+A station kept with `BAD_INCLUDE` is a station of this node's ring like any other, so the comparisons and alerts that
+read the ring read it too, however far away it is.
 
 If you carry a sensor to a station, move its pin on the network it reports to, or the node sees the two as
 kilometres apart and refuses the pair. Give the pair the day you put it there as `since`. While the

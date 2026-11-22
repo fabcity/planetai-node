@@ -7,10 +7,11 @@
   corrected number beside the measured one, in Corrections under Models and satellite, with a small mark on the
   sensor's row in Readings. It is a straight line fitted on the last 14 days, shown only while it has been at least a
   tenth closer to the better sensor on days the line never saw, so the first one takes two to three weeks, and a shown
-  row says when it was last checked. It stays 7 days after the better sensor goes quiet. The pack is off until you
-  name a pair and stores nothing but that setting. The node keeps storing, alerting on and sharing the measured
-  number, so no rule, alert, cell, export or parent sees a corrected one. In Bali Air Dispatch, `BAD_INCLUDE` keeps a
-  public station at any distance, for a sensor you put beside it.
+  row says when it was last checked. A number from an hour more than 3 hours old says which hour. It stays 7 days
+  after the better sensor goes quiet. The pack is off until you name a pair and stores nothing but that setting. The
+  node keeps storing, alerting on and sharing the measured number, so no rule, alert, cell, export or parent sees a
+  corrected one. In Bali Air Dispatch, `BAD_INCLUDE` keeps a public station at any distance, for a sensor you put
+  beside it.
 
   It has not run on any node yet, node #1 included, and no pair has had a public station on one side, so that half is
   tested on fixtures only. We have not tried a reference instrument, two units of one model side by side or a full wet

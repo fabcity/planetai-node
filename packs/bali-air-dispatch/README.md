@@ -34,7 +34,9 @@ and whether its pm25 is an index converted back (`from_index`).
 If one of your sensors sits beside a public station, put the station's id in `BAD_INCLUDE` and the ring keeps it,
 however close or far it is and whatever the archive guesses about indoors. That is all it changes. A device this
 node already polls stays out, so does one you listed in `BAD_EXCLUDE`, and so does a station that is stale or flagged
-as malfunctioning. The `calibrate` pack can then correct your sensor against it.
+as malfunctioning. The `calibrate` pack can then correct your sensor against it. A station kept this way is a
+station of this node's ring like any other, so the comparisons and alerts that read the ring read it too, however
+far away it is.
 
 ### The island's file, for the Wall
 

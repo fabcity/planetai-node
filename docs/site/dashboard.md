@@ -206,7 +206,8 @@ Every reading the node holds, one tab at a time, routed `#data/<tab>`. The tab b
 sensor, its measured and corrected numbers, what it is corrected against, how far off each has been, and when it was
 last checked or why it is not shown. The measured number stays the one the node stores, alerts on and shares. While a
 correction is shown, the sensor's row in Readings carries a small mark after its value, "corrected 13.6 against
-Ungasan Kit", that links to the section. How a pair is named and checked is on [Corrections](calibrate.md).
+Ungasan Kit", that links to the section. A number from an hour more than 3 hours old says which hour, and gets no
+mark. How a pair is named and checked is on [Corrections](calibrate.md).
 
 ## Wall
 
