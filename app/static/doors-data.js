@@ -99,7 +99,7 @@ VIEWS.data = function () {
    the week chosen (wk, the last complete one by default), its tiles, the places by day in Indonesia's air index (ISPU),
    then the charts over the whole window. Every band, count and verdict is the node's (GET /weekly summary). */
 const repState = () => { const p = new URLSearchParams(location.hash.split('?')[1] || ''); return { m: p.get('m') || '', s: (p.get('s') || '').split(',').filter(Boolean), bad: p.get('bad') || '15', high: p.get('high') || '55', w: p.get('w') || '8', wk: p.get('wk') || '', lang: p.get('lang') === 'id' ? 'id' : 'en' }; };
-let REPSEQ = 0;
+let REPSEQ = 0, REPLAST = null, SHARE_C = [];
 const repGo = st => { history.replaceState(null, '', '#data/report?' + new URLSearchParams({ m: st.m, s: st.s.join(','), bad: st.bad, high: st.high, w: st.w, wk: st.wk, lang: st.lang })); reportBlock(); };
 /* a day as the node described it: its ISPU band and rounded mean; grey and empty when it was not counted (heard under 18
    hours, or not at all); a thin red edge when it is a bad day inside the good band; the bad mark when the metric has no index */
@@ -147,6 +147,8 @@ function reportBlock() {
     });
     sec.addEventListener('click', e => {
       const b = e.target.closest('button'); if (!b) return;
+      if (b.dataset.share) { repShare(); return; }
+      if (b.dataset.dl) { shareSave(+b.dataset.dl); return; }
       const s2 = repState();
       if (b.dataset.rm) s2.s = s2.s.filter(id => id !== b.dataset.rm);
       else if (b.dataset.lang) s2.lang = b.dataset.lang;
@@ -171,6 +173,7 @@ function reportBlock() {
   fetch(u, { headers: DOORS_AUTH() }).then(r => r.json().then(j => [r.ok, j])).then(([ok, j]) => {
     if (seq !== REPSEQ) return;   // a newer choice has already asked
     if (!ok) { sec.innerHTML = `<h2>Report</h2><p class="fine">${esc(j.detail || j.error || 'The node did not answer.')} <button type="button" class="link" data-reset="1">Start again</button></p>`; return; }
+    REPLAST = j;
     const L = j.words, names = Object.fromEntries(j.sensors.map(o => [o.id, o.label])), t0 = new Date(j.t0 || Date.now()), t1 = new Date(j.t1 || Date.now());
     const para = p => `<p>${esc(p).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')}</p>`;
     const bySrc = d3.groups(j.sensors, o => o.source);
@@ -212,7 +215,8 @@ function reportBlock() {
     const at = sec.contains(document.activeElement) ? document.activeElement : null, was = at && { r: at.dataset.r, v: at.value };
     const typed = (sec.querySelector('[data-r=find]') || {}).value || '';
     sec.innerHTML = `<div class="dsh"><h2>${esc(L.title)}</h2>${L.how.split('\n\n').map(para).join('')}</div>` + pick
-      + (!j.picked.length ? `<p class="fine">${esc(L.pick)}</p>` : tiles + `<h3>${esc(L.the_week)}</h3>` + grid
+      + (!j.picked.length ? `<p class="fine">${esc(L.pick)}</p>` : tiles + `<div class="rbtns">${j.shareable ? `<button type="button" class="ybtn" data-share="1">${esc(L.share)}</button>` : ''}</div><div class="rshare" hidden></div>`
+        + `<h3>${esc(L.the_week)}</h3>` + grid
         + `<h3>${esc(L.daily_mean)}</h3>` + meanFigs
         + `<h3>${esc(L.p_badweeks)}</h3>` + figs('badweeks', { bars: true, top: 7 })
         + `<h3>${esc(L.p_hours)}</h3>` + figs('hours', { gap: 3 * 36e5, line: j.high, refName: L.high_line, capped: true })
@@ -224,6 +228,98 @@ function reportBlock() {
     const back = was && was.r && [...sec.querySelectorAll(`[data-r="${was.r}"]`)].find(el => was.r !== 'pick' || el.value === was.v);
     if (back) back.focus();
   }).catch(() => { if (seq === REPSEQ) sec.innerHTML = `<h2>Report</h2><p class="fine">The node did not answer. <a href="#data/report">Try again</a></p>`; });
+}
+
+/* SHARE (Tomas, 23 Nov 2026: "social sharing jpegs"; the image's job: "how bad the air was this week, and where"). One
+   1080×1350 JPEG per place and, for two places or more, a comparison of the five worst, drawn here on a canvas in the
+   page's paper register and its own fonts, and saved by the person. Always the visitor's view: the node is asked again
+   with no token (repPublic), so a room the keeper picked never reaches an image; the panel says so when one was left out. */
+const slug = t => String(t).normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/['’]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60).replace(/-+$/, '');
+const fiveWorst = ss => [...ss].sort((a, b) => b.bad - a.bad || (b.worst_mean || 0) - (a.worst_mean || 0)).slice(0, 5);
+function repPublic(a, ids) {
+  const q = sens => '/weekly?' + new URLSearchParams({ metric: a.metric, sensors: sens.join(','), bad: a.bad, high: a.high, weeks: a.weeks, wk: a.wk, lang: a.lang });
+  return fetch(q([])).then(r => r.json()).then(o => { const ok = new Set((o.sensors || []).map(x => x.id)), keep = ids.filter(id => ok.has(id));
+    return (keep.length ? fetch(q(keep)).then(r => r.json()) : Promise.resolve(o)).then(j => ({ j, dropped: ids.length - keep.length })); });
+}
+const SH = { paper: '#F9F5F2', ink: '#171717', mute: '#6B6B66', nc: '#D9D4CE' };
+const cssv = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+/* text that fits `max` px in at most `lines` lines, the last one ellipsised */
+function fitLines(g, text, max, lines) {
+  const out = []; let cur = '';
+  for (const w of String(text).split(/\s+/)) { const t = cur ? cur + ' ' + w : w; if (g.measureText(t).width <= max) cur = t; else { if (cur) out.push(cur); cur = w; } }
+  if (cur) out.push(cur);
+  if (out.length > lines) { out.length = lines; out[lines - 1] += '…'; }
+  return out.map(l => { while (g.measureText(l).width > max && l.length > 2) l = l.slice(0, -2) + '…'; return l; });
+}
+function shareBlocks(g, days, x, y, w, h, gap, num) {
+  const red = cssv('--signal-worse') || '#E62038';
+  days.forEach((d, i) => {
+    const b = dayBlock(d), band = /aqi-(\d)/.exec(b.cls), X = x + i * (w + gap);
+    g.fillStyle = band ? cssv('--aqi-' + band[1]) : SH.nc; g.fillRect(X, y, w, h);
+    if (d.edge) { g.strokeStyle = red; g.lineWidth = Math.max(4, w / 12); g.strokeRect(X + g.lineWidth / 2, y + g.lineWidth / 2, w - g.lineWidth, h - g.lineWidth); }
+    if (num && b.text) { g.fillStyle = band ? cssv('--aqi-' + band[1] + '-ink') : SH.ink; g.font = `700 ${num}px "JetBrains Mono", monospace`; g.textAlign = 'center'; g.fillText(b.text, X + w / 2, y + h / 2 + num * 0.36); g.textAlign = 'left'; }
+  });
+}
+function shareFoot(g, j, L) {
+  const line = j.bad_source === 'who' ? L.who_line.replace('{v}', fmt(j.bad, 0)) : L.set_by_reader.replace('{v}', j.bad);
+  g.fillStyle = SH.mute; g.font = '400 30px "Figtree", sans-serif';
+  fitLines(g, `${mWord(j.metric)}, ${L.mean}, ${line}. ${L.colours_from} ${L.not_calibrated}`, 936, 3).forEach((l, i) => g.fillText(l, 72, 1186 + i * 38));
+  g.fillStyle = SH.ink; g.font = '700 32px "Figtree", sans-serif'; g.fillText(`${j.node || 'PLANETAI node'} · PLANETAI · Fab City`, 72, 1306);
+}
+const shareRange = (j, loc) => `${dshort(j.wk)}–${dshort(plusDays(j.wk, 6))}`;
+function shareCard(s, j) {
+  const L = j.words, loc = j.lang === 'id' ? 'id-ID' : 'en-GB', c = document.createElement('canvas'); c.width = 1080; c.height = 1350;
+  const g = c.getContext('2d'); g.fillStyle = SH.paper; g.fillRect(0, 0, 1080, 1350);
+  g.fillStyle = SH.mute; g.font = '600 34px "JetBrains Mono", monospace'; g.fillText(`${L.air_week} · ${shareRange(j, loc)}`.toUpperCase(), 72, 110);
+  g.fillStyle = SH.ink; g.font = '800 112px "Figtree", sans-serif';
+  const name = fitLines(g, s.label, 936, 2); name.forEach((l, i) => g.fillText(l, 72, 240 + i * 118));
+  let y = 240 + (name.length - 1) * 118 + 64;
+  g.fillStyle = SH.mute; g.font = '400 44px "Figtree", sans-serif'; g.fillText(`${mWord(j.metric)}${j.area ? ' · ' + j.area : ''}`, 72, y);
+  y += 190; g.fillStyle = SH.ink; g.font = '800 184px "Figtree", sans-serif'; g.fillText(String(s.bad), 72, y);
+  const nw = g.measureText(String(s.bad)).width; g.font = '600 60px "Figtree", sans-serif';
+  g.fillText((s.counted === 7 ? L.bad_of : L.of_counted).replace('{n}', s.counted), 72 + nw + 24, y);
+  y += 60; shareBlocks(g, s.days, 72, y, 120, 120, 16, 46);
+  g.fillStyle = SH.mute; g.font = '500 34px "JetBrains Mono", monospace'; g.textAlign = 'center';
+  s.days.forEach((d, i) => g.fillText(new Date(d.day + 'T12:00:00').toLocaleDateString(loc, { weekday: 'narrow' }), 72 + i * 136 + 60, y + 170));
+  g.textAlign = 'left';
+  if (s.peak != null) { g.fillStyle = SH.ink; g.font = '400 46px "Figtree", sans-serif';
+    g.fillText(`${L.highest_hour[0].toUpperCase() + L.highest_hour.slice(1)} ${s.peak} µg/m³, ${new Date(s.peak_day + 'T12:00:00').toLocaleDateString(loc, { weekday: 'short' })} ${s.peak_at}`, 72, y + 260); }
+  shareFoot(g, j, L);
+  return c;
+}
+function shareCompare(ss, j) {
+  const L = j.words, c = document.createElement('canvas'); c.width = 1080; c.height = 1350;
+  const g = c.getContext('2d'); g.fillStyle = SH.paper; g.fillRect(0, 0, 1080, 1350);
+  g.fillStyle = SH.ink; g.font = '800 72px "Figtree", sans-serif';
+  const title = fitLines(g, L.around.replace('{area}', j.area || j.node || ''), 936, 2); title.forEach((l, i) => g.fillText(l, 72, 140 + i * 80));
+  let y = 140 + (title.length - 1) * 80 + 56;
+  g.fillStyle = SH.mute; g.font = '600 32px "JetBrains Mono", monospace'; g.fillText(`${shareRange(j)} · ${mWord(j.metric)} · ${L.worst_first}`.toUpperCase(), 72, y);
+  y += 70; g.textAlign = 'right'; g.fillText(`${L.bad_days} / 7`.toUpperCase(), 1008, y); g.textAlign = 'left';
+  fiveWorst(ss).forEach((s, i) => {
+    const Y = y + 40 + i * 168;
+    g.fillStyle = SH.ink; g.font = '700 46px "Figtree", sans-serif'; g.fillText(fitLines(g, s.label, 760, 1)[0], 72, Y + 40);
+    shareBlocks(g, s.days, 72, Y + 64, 92, 56, 10, 0);
+    g.fillStyle = SH.ink; g.font = '800 92px "Figtree", sans-serif'; g.textAlign = 'right'; g.fillText(String(s.bad), 1008, Y + 118); g.textAlign = 'left';
+  });
+  shareFoot(g, j, L);
+  return c;
+}
+function shareSave(i) {
+  const it = SHARE_C[i]; if (!it) return;
+  it.c.toBlob(bl => { const a = document.createElement('a'); a.href = URL.createObjectURL(bl); a.download = it.name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); }, 'image/jpeg', 0.92);
+}
+function repShare() {
+  const sec = $('#d-report'), box = sec.querySelector('.rshare'), a = REPLAST; if (!box || !a) return;
+  box.hidden = false; box.innerHTML = `<p class="fine">…</p>`;
+  repPublic(a, a.picked).then(({ j, dropped }) => Promise.all([document.fonts.load('800 112px "Figtree"'), document.fonts.load('600 34px "JetBrains Mono"')])
+    .then(() => document.fonts.ready).then(() => {
+      const L = j.words, ss = (j.summary || {}).sensors || [];
+      SHARE_C = ss.map(s => ({ c: shareCard(s, j), name: `${slug(s.label) || 'place'}-${j.wk}.jpg` }));
+      if (ss.length > 1) SHARE_C.push({ c: shareCompare(ss, j), name: `comparison-${j.wk}.jpg` });
+      box.innerHTML = `<p class="fine">${esc(L.share_note)}${dropped ? ' ' + esc(L.rooms_out) : ''}</p><div class="rshots">`
+        + SHARE_C.map((it, i) => `<figure><span class="rshot"></span><button type="button" class="ybtn" data-dl="${i}">${esc(L.download)} · ${esc(it.name)}</button></figure>`).join('') + `</div>`;
+      box.querySelectorAll('.rshot').forEach((el, i) => el.appendChild(SHARE_C[i].c));
+    })).catch(() => { box.innerHTML = `<p class="fine">The node did not answer.</p>`; });
 }
 
 /* THE WORKBENCH (Tomas, 27 Oct 2026: "embeds in the same data menu", "a reduced version of the full workbench",

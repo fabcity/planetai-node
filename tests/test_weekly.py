@@ -119,7 +119,7 @@ o = json.loads(r.stdout) if r.returncode == 0 else {}
 check(o.get("route") == {"tab": "report"} and o.get("routeSensor") == {"tab": "readings", "sensor": "sc-1"}, f"#data/report?… opens the tab, a sensor still opens its row {r.stderr[-300:]}")
 check(o.get("state") == {"m": "pm10", "s": ["a", "b c"], "bad": "20", "high": "60", "w": "4", "wk": "", "lang": "id"}, "the address holds the report's state")
 check(o.get("empty") == {"m": "", "s": [], "bad": "15", "high": "55", "w": "8", "wk": "", "lang": "en"}, "an empty address starts from the defaults")
-block = js[js.index("/* REPORT"):js.index("/* THE WORKBENCH")] if "/* REPORT" in js else ""
+block = js[js.index("/* REPORT"):js.index("/* SHARE") if "/* SHARE" in js else js.index("/* THE WORKBENCH")] if "/* REPORT" in js else ""   # the HTML the page writes; the share images are drawn on a canvas, not written as HTML
 check(block.count("new URLSearchParams(") >= 2 and "'/weekly?' + new URLSearchParams(" in block and "history.replaceState(" in block,
       "the request and the address are built with URLSearchParams, and the address is kept with replaceState")
 # Every value the node sends that is a name, an id, a word or a cell is drawn through esc(): none is interpolated bare.
@@ -231,6 +231,31 @@ check(o2.get("short", {}).get("cls") == "nc" and o2["short"].get("text") == "" a
 check(o2.get("noidx", {}).get("cls") == "nb bad" and o2.get("noidxok", {}).get("cls") == "nb", "no index: the bad mark, never a band")
 cap = o2.get("cap", {})
 check(cap.get("top") is not None and cap["top"] < 100 and cap.get("over") == [872], f"one 872 does not set the scale; it is printed {cap}")
+
+print("share images: safe file names, the five worst, and never the keeper's token")
+js = open("app/static/doors-data.js").read()
+prog3 = r"""
+const src = require('fs').readFileSync('app/static/doors-data.js', 'utf8');
+const grab = re => (src.match(re) || [''])[0];
+const lifted = eval(grab(/const slug = [^\n]*\n/) + grab(/const fiveWorst = [^\n]*\n/) + '; ({ slug, fiveWorst })');
+const S = n => Array.from({ length: n }, (_, i) => ({ label: 'P' + i, bad: i % 4, worst_mean: i }));
+console.log(JSON.stringify({ a: lifted.slug("Kulat residencd's 50% & co"), b: lifted.slug('TPA Kutuh (Smart Citizen)'), c: lifted.slug('Ünder  —  Pura'),
+  d: lifted.slug('x'.repeat(90)).length, five: lifted.fiveWorst(S(8)).map(s => s.label), two: lifted.fiveWorst(S(2)).length }));
+"""
+r3 = subprocess.run(["node", "-e", prog3], capture_output=True, text=True)
+o3 = json.loads(r3.stdout) if r3.returncode == 0 else {}
+check(o3.get("a") == "kulat-residencds-50-co" and o3.get("b") == "tpa-kutuh-smart-citizen" and o3.get("c") == "under-pura" and o3.get("d") == 60,
+      f"file names are safe slugs, 60 characters at most {o3} {r3.stderr[-200:]}")
+check(o3.get("five") == ["P7", "P3", "P6", "P2", "P5"] and o3.get("two") == 2, "the comparison takes the five worst: bad days, then the worst day")
+share = js[js.index("/* SHARE"):js.index("/* THE WORKBENCH")] if "/* SHARE" in js else ""
+pub = share[share.index("function repPublic"):share.index("\n}\n", share.index("function repPublic"))] if "function repPublic" in share else ""
+check(pub and "fetch(" in pub and "DOORS_AUTH" not in pub and "authorization" not in pub.lower(), "the share path asks the node without the token")
+check("j.shareable" in js and "data-share" in js, "Share images is offered only when the node says the week can be shared")
+html_share = share[share.index("function repShare"):] if "function repShare" in share else ""
+check(html_share and not re.findall(r"\$\{\s*(s\.label|it\.name|L\.[a-z_]+)\s*\}", html_share), "the panel's HTML escapes what it writes")
+check("L.rooms_out" in share and "'image/jpeg'" in share and "document.fonts.ready" in share and "1080" in share and "1350" in share,
+      "the panel says rooms stay out, draws after the fonts, 1080×1350 JPEG")
+check("-${" in share and ".jpg" in share and "comparison-" in share, "file names: <place>-<week>.jpg and comparison-<week>.jpg")
 
 print(f"weekly: {'every check passed' if not fails else str(len(fails)) + ' failed'}")
 sys.exit(1 if fails else 0)
