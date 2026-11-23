@@ -36,9 +36,9 @@ mkdir -p /tmp/stub && printf 'class Client: pass\n' > /tmp/stub/httpx.py
 # ships because a suite printed "skipped" is the failure it is guarding against. Do not add it here.
 # test_radio, test_radio_gateway: the meshtastic package (and mosquitto, for the gateway) live on the host that
 # provisions radios, not on every machine that runs the suite. Without them the whole suite skips.
-# test_rho_pg, test_views_pg, test_maps_pg: on a real Postgres, at RHO_PG_URL; CI's lint job runs them in its schema step, so here
+# test_rho_pg, test_views_pg, test_maps_pg, test_grafana (the weekly report's counting): on a real Postgres, at RHO_PG_URL; CI's lint job runs them in its schema step, so here
 # they skip.
-EXPECTED_SKIPS=" test_rho_pg test_views_pg test_maps_pg test_ground test_nearby test_season test_measures test_shipped test_custody test_issues_geometry test_kinded_rules test_replay test_captures test_private test_radio test_radio_gateway "
+EXPECTED_SKIPS=" test_rho_pg test_views_pg test_maps_pg test_grafana test_ground test_nearby test_season test_measures test_shipped test_custody test_issues_geometry test_kinded_rules test_replay test_captures test_private test_radio test_radio_gateway "
 
 pass=0; fail=0; skips=0; undeclared=0
 failed_names=""; skip_lines=""
