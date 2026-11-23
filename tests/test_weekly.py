@@ -73,5 +73,42 @@ for need in ("_shows_private(", "weekly.clean(", "weekly.bind(", "db()", "packs.
 check(route and 'f"' not in route and "f'" not in route and '" % ' not in route and ".format(" not in route,
       "the route formats nothing into its SQL")
 
+print("the Report tab in Data: its address, its state, and nothing it is sent drawn unescaped")
+import json  # noqa: E402
+import re  # noqa: E402
+import subprocess  # noqa: E402
+js = open("app/static/doors-data.js").read()
+check(re.search(r"\breport:\s*\['", js) is not None and 'id="d-report"' in open("app/static/doors.html").read(), "Data has a Report tab and its section")
+prog = r"""
+const src = require('fs').readFileSync('app/static/doors-data.js', 'utf8');
+const grab = re => (src.match(re) || [''])[0];
+const D = { sens: { 'sc-1': { kind: 'sensor' } } };
+let location = { hash: '' };
+const reportBlock = () => {}, metricTiles = () => {}, sensorsBlock = () => {}, issuesBlock = () => {}, perdayBlock = () => {},
+      modelsBlock = () => {}, imagesBlock = () => {}, thingsBlock = () => {}, ledgerBlock = () => {}, apiBlock = () => {}, workbenchBlock = () => {};
+const lifted = eval(grab(/const DTABS = \{[\s\S]*?\n  workbench:[^\n]*\n/) + grab(/const DOLD = [^\n]*\n/)
+     + grab(/const DNODE = [^\n]*\n/) + grab(/function dataRoute\(hash\) \{[\s\S]*?\n\}\n/) + grab(/const repState = [^\n]*\n/)
+     + '; ({ dataRoute, repState })');   // a const made inside eval stays inside it, so the eval hands them back
+const out = {};
+out.route = lifted.dataRoute('#data/report?m=pm25&s=a,b');
+out.routeSensor = lifted.dataRoute('#data/sc-1');
+location.hash = '#data/report?m=pm10&s=a,b%20c&bad=20&high=60&w=4&lang=id';
+out.state = lifted.repState();
+location.hash = '#data/report';
+out.empty = lifted.repState();
+console.log(JSON.stringify(out));
+"""
+r = subprocess.run(["node", "-e", prog], capture_output=True, text=True)
+o = json.loads(r.stdout) if r.returncode == 0 else {}
+check(o.get("route") == {"tab": "report"} and o.get("routeSensor") == {"tab": "readings", "sensor": "sc-1"}, f"#data/report?… opens the tab, a sensor still opens its row {r.stderr[-300:]}")
+check(o.get("state") == {"m": "pm10", "s": ["a", "b c"], "bad": "20", "high": "60", "w": "4", "lang": "id"}, "the address holds the report's state")
+check(o.get("empty") == {"m": "", "s": [], "bad": "15", "high": "55", "w": "8", "lang": "en"}, "an empty address starts from the defaults")
+block = js[js.index("/* REPORT"):js.index("/* THE WORKBENCH")] if "/* REPORT" in js else ""
+check(block.count("new URLSearchParams(") >= 2 and "'/weekly?' + new URLSearchParams(" in block and "history.replaceState(" in block,
+      "the request and the address are built with URLSearchParams, and the address is kept with replaceState")
+# Every value the node sends that is a name, an id, a word or a cell is drawn through esc(): none is interpolated bare.
+raw = re.findall(r"\$\{\s*(cell|c|k|src|id|m|o\.label|o\.id|o\.source|j\.detail|j\.bad|j\.high|L\.[a-z_]+|names\[[^\]]*\])\s*[}?|]", block)
+check(block and not raw, f"what the node sends is escaped before it is drawn {raw[:3]}")
+
 print(f"weekly: {'every check passed' if not fails else str(len(fails)) + ' failed'}")
 sys.exit(1 if fails else 0)

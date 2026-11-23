@@ -48,6 +48,7 @@ const SYM = { pm25: 'PM2.5', pm10: 'PM10', pm1: 'PM1', pm25_raw: 'PM2.5ʳ', aqi:
 /* the tabs: [the words on the tab, the sections it shows, what it draws] — a tab draws only its own sections */
 const DTABS = {
   readings: ['Readings', ['d-readings', 'issues7', 'perday'], () => { metricTiles(); sensorsBlock(); issuesBlock(); perdayBlock(); }],
+  report: ['Report', ['d-report'], () => reportBlock()],
   models: ['Models and satellite', ['models'], () => modelsBlock()],
   home: ['Home', ['d-images', 'd-things'], () => { imagesBlock(); thingsBlock(); }],
   ledger: ['Ledger', ['ledger', 'dnote'], () => ledgerBlock()],
@@ -59,7 +60,7 @@ const DNODE = { cells: 'cells', 'd-learned': 'remember', 'd-usual': 'remember', 
 /* #data/<tab> opens a tab; #data/<old section> its tab, at the section; #data/<sensor-id> (a dot on Place) the
    readings on a metric that station reads, at its row, or the models when it is a model */
 function dataRoute(hash) {
-  const seg = decodeURIComponent(hash.split('/')[1] || ''), s = (D.sens || {})[seg];
+  const seg = decodeURIComponent((hash.split('/')[1] || '').split('?')[0]), s = (D.sens || {})[seg];   /* #data/report?… keeps its state after the ? */
   if (DTABS[seg]) return { tab: seg };
   if (DNODE[seg]) return { node: DNODE[seg] };
   if (DOLD[seg]) return { tab: DOLD[seg], el: seg };
@@ -89,6 +90,93 @@ VIEWS.data = function () {
     if (el) { el.scrollIntoView({ block: FOCUS ? 'center' : 'start' }); if (FOCUS) el.classList.add('focus'); }
   });
 };
+
+/* REPORT (Tomas, 23 Nov 2026: "People should be able to select the sensors for the view, or type the name"). The weekly
+   sensor report, the same five queries as the keeper's Grafana report (app/weekly.py), for anyone who opens the node:
+   GET /weekly. The node counts; the page draws. The choices live in the address, #data/report?m=&s=&bad=&high=&w=&lang=,
+   so a report is passed on as a link. Without the token the node offers its outdoor sensors only. */
+const repState = () => { const p = new URLSearchParams(location.hash.split('?')[1] || ''); return { m: p.get('m') || '', s: (p.get('s') || '').split(',').filter(Boolean), bad: p.get('bad') || '15', high: p.get('high') || '55', w: p.get('w') || '8', lang: p.get('lang') === 'id' ? 'id' : 'en' }; };
+let REPSEQ = 0;
+const repGo = st => { history.replaceState(null, '', '#data/report?' + new URLSearchParams({ m: st.m, s: st.s.join(','), bad: st.bad, high: st.high, w: st.w, lang: st.lang })); reportBlock(); };
+/* one small chart: a line per series of [Date, value], broken where the gap is wider than `gap` ms; `ref` dashed (all
+   sensors), `line` the red dash (the high), `bars` instead of a line (bad days a week, 0 to 7) */
+function repChart(pts, o) {
+  const W = 360, H = 110, x = d3.scaleTime([o.t0, o.t1], [30, W - 6]);
+  const vs = pts.concat(o.ref || []).map(p => p[1]).concat(o.line != null ? [o.line] : []);
+  const y = d3.scaleLinear([0, o.top || (d3.max(vs) || 1) * 1.1], [H - 16, 6]).nice(3);
+  const cut = ps => ps.flatMap((p, i) => i && p[0] - ps[i - 1][0] > o.gap ? [null, p] : [p]);
+  const ln = ps => d3.line().defined(p => p).x(p => x(p[0])).y(p => y(p[1]))(cut(ps)) || '';
+  const wk = 7 * 864e5, bw = Math.max(2, x(new Date(+o.t0 + wk)) - x(o.t0) - 3);
+  return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">`
+    + y.ticks(3).map(t => `<line x1="30" x2="${W - 6}" y1="${y(t)}" y2="${y(t)}" class="grid"/><text x="26" y="${y(t) + 4}" text-anchor="end">${fmt(t, 0)}</text>`).join('')
+    + `<text x="30" y="${H - 3}">${esc(dayOf(o.t0.toISOString()))}</text><text x="${W - 6}" y="${H - 3}" text-anchor="end">${esc(dayOf(o.t1.toISOString()))}</text>`
+    + (o.line != null ? `<line x1="30" x2="${W - 6}" y1="${y(o.line)}" y2="${y(o.line)}" class="linep"/>` : '')
+    + (o.ref ? `<path d="${ln(o.ref)}" class="alln"/>` : '')
+    + (o.bars ? pts.map(p => `<rect class="bar" x="${x(p[0])}" width="${bw}" y="${y(p[1])}" height="${Math.max(0, y(0) - y(p[1]))}"/>`).join('') : `<path d="${ln(pts)}" class="lnp"/>`)
+    + `</svg>`;
+}
+function reportBlock() {
+  const sec = $('#d-report'), st = repState(), seq = ++REPSEQ;
+  if (!sec.dataset.wired) {
+    sec.dataset.wired = '1';
+    sec.addEventListener('change', e => {
+      const t = e.target, s2 = repState();
+      if (t.dataset.r === 'pick') s2.s = t.checked ? [...s2.s, t.value] : s2.s.filter(id => id !== t.value);
+      else if (t.dataset.r === 'find') return;
+      else if (t.dataset.r) s2[t.dataset.r] = t.value;
+      if (t.dataset.r === 'm') s2.s = [];
+      repGo(s2);
+    });
+    sec.addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      const s2 = repState();
+      if (b.dataset.rm) s2.s = s2.s.filter(id => id !== b.dataset.rm);
+      else if (b.dataset.lang) s2.lang = b.dataset.lang;
+      else return;
+      repGo(s2);
+    });
+    sec.addEventListener('input', e => {
+      if (e.target.dataset.r !== 'find') return;
+      const q = e.target.value.trim().toLowerCase();
+      sec.querySelectorAll('.rlist label').forEach(l => { l.hidden = !!q && !l.textContent.toLowerCase().includes(q); });
+    });
+    sec.addEventListener('keydown', e => {   // Enter in the name box picks the first match not yet picked
+      if (e.target.dataset.r !== 'find' || e.key !== 'Enter') return;
+      e.preventDefault();
+      const c = [...sec.querySelectorAll('.rlist label:not([hidden]) input')].find(i => !i.checked);
+      if (c) { const s2 = repState(); s2.s = [...s2.s, c.value]; repGo(s2); }
+    });
+  }
+  if (!sec.innerHTML) sec.innerHTML = `<h2>Report</h2><p class="fine">Reading the node…</p>`;
+  const u = '/weekly?' + new URLSearchParams({ metric: st.m, sensors: st.s.join(','), bad: st.bad, high: st.high, weeks: st.w, lang: st.lang });
+  fetch(u, { headers: DOORS_AUTH() }).then(r => r.json().then(j => [r.ok, j])).then(([ok, j]) => {
+    if (seq !== REPSEQ) return;   // a newer choice has already asked
+    if (!ok) { sec.innerHTML = `<h2>Report</h2><p class="fine">${esc(j.detail || 'The node did not answer.')} <a href="#data/report">Start again</a></p>`; return; }
+    const L = j.words, names = Object.fromEntries(j.sensors.map(o => [o.id, o.label])), t0 = new Date(j.t0 || Date.now()), t1 = new Date(j.t1 || Date.now());
+    const para = p => `<p>${esc(p).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')}</p>`;
+    const bySrc = d3.groups(j.sensors, o => o.source);
+    const pick = `<div class="rpick">`
+      + `<label>${esc(L.v_metric)}<select data-r="m">${j.metrics.map(m => `<option value="${esc(m)}"${m === j.metric ? ' selected' : ''}>${esc(mWord(m))}</option>`).join('')}</select></label>`
+      + `<label>${esc(L.v_bad)}<input type="number" step="any" data-r="bad" value="${esc(j.bad)}"></label>`
+      + `<label>${esc(L.v_high)}<input type="number" step="any" data-r="high" value="${esc(j.high)}"></label>`
+      + `<label>${esc(L.weeks_n)}<select data-r="w">${[4, 8, 12].map(n => `<option${n === j.weeks ? ' selected' : ''}>${n}</option>`).join('')}</select></label>`
+      + `<span class="rlang" role="group" aria-label="language"><button type="button" data-lang="en" aria-pressed="${j.lang === 'en'}">English</button> · <button type="button" data-lang="id" aria-pressed="${j.lang === 'id'}">Bahasa Indonesia</button></span></div>`
+      + `<label class="rpick"><span class="vh">${esc(L.find)}</span><input type="search" class="rfind" data-r="find" placeholder="${esc(L.find)}" aria-label="${esc(L.find)}"></label>`
+      + `<div class="rtags">${j.picked.map(id => `<button type="button" data-rm="${esc(id)}" aria-label="remove">${esc(names[id] || id)} ×</button>`).join('')}</div>`
+      + (j.sensors.length ? `<div class="rlist">${bySrc.map(([src, os]) => `<h4>${esc(src)}</h4>` + os.map(o => `<label><input type="checkbox" data-r="pick" value="${esc(o.id)}"${j.picked.includes(o.id) ? ' checked' : ''}>${esc(o.label)}</label>`).join('')).join('')}</div>` : `<p class="fine">${esc(L.none)}</p>`);
+    const P = j.parts, table = (part, mark) => !P[part] ? '' : `<div class="tscroll"><table class="tbl rep"><tr>${P[part].cols.map((c, i) => `<th${i > 1 ? ' class="n"' : ''}>${esc(c)}</th>`).join('')}</tr>`
+      + P[part].rows.map(row => `<tr>${row.map((cell, i) => `<td${i > 1 ? ' class="n' + (mark(i, cell) ? ' wr' : '') + '"' : ''}>${esc(cell ?? '–')}</td>`).join('')}</tr>`).join('') + `</table></div>`;
+    const series = part => d3.groups((P[part] || {}).rows || [], r => r[1]).map(([k, rs]) => [k, rs.map(r => [new Date(r[0]), r[2]])]);
+    const figs = (part, o) => { const ss = series(part), ref = (ss.find(([k]) => k === o.refName) || [])[1];
+      return `<div class="sms">${ss.filter(([k]) => k !== o.refName).map(([k, pts]) => `<figure class="sm"><figcaption><b>${esc(k)}</b></figcaption>${repChart(pts, { ...o, ref, t0, t1 })}</figure>`).join('')}</div>`; };
+    sec.innerHTML = `<div class="dsh"><h2>${esc(L.title)}</h2>${L.how.split('\n\n').map(para).join('')}</div>` + pick
+      + (!j.picked.length ? `<p class="fine">${esc(L.pick)}</p>` : `<h3>${esc(L.p_weeks)}</h3>` + table('weeks', (i, c) => c === L.worse)
+        + `<h3>${esc(L.p_badweeks)}</h3>` + figs('badweeks', { bars: true, top: 7 })
+        + `<h3>${esc(L.p_daily)}</h3>` + figs('daily', { gap: 36 * 36e5, refName: L.all })
+        + `<h3>${esc(L.p_baddays)}</h3>` + (P.baddays && P.baddays.rows.length ? table('baddays', (i, c) => i === 2 && c < j.full_day) : '<p class="fine">–</p>')
+        + `<h3>${esc(L.p_hours)}</h3>` + figs('hours', { gap: 3 * 36e5, line: j.high, refName: L.high_line }));
+  }).catch(() => { if (seq === REPSEQ) sec.innerHTML = `<h2>Report</h2><p class="fine">The node did not answer. <a href="#data/report">Try again</a></p>`; });
+}
 
 /* THE WORKBENCH (Tomas, 27 Oct 2026: "embeds in the same data menu", "a reduced version of the full workbench",
    "able to run offline in the node"). The node's copy of planetai.fab.city/sensors, served at /workbench and reduced

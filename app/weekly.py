@@ -42,6 +42,9 @@ WORDS = {
         "all": "all sensors' median", "diff": "against all sensors", "verdict": "against the week before",
         "improving": "improving", "worse": "worse", "stable": "stable", "open": "week not over", "thin": "too few days",
         "first": "no week before", "high_line": "high line",
+        # the node's page only (the Report tab in Data)
+        "find": "Type part of a sensor's name", "pick": "Pick one or more sensors, from the list or by typing their name.",
+        "weeks_n": "weeks", "none": "No sensor here has reported this metric in the last 30 days.", "picked": "picked",
     },
     "id": {
         "title": "Laporan mingguan sensor", "other": "en", "other_name": "English",
@@ -64,6 +67,8 @@ WORDS = {
         "all": "median semua sensor", "diff": "selisih dengan semua sensor", "verdict": "dibanding minggu sebelumnya",
         "improving": "membaik", "worse": "memburuk", "stable": "stabil", "open": "minggu berjalan", "thin": "data kurang",
         "first": "belum ada minggu sebelumnya", "high_line": "batas tinggi",
+        "find": "Ketik sebagian nama sensor", "pick": "Pilih satu sensor atau lebih, dari daftar atau dengan mengetik namanya.",
+        "weeks_n": "minggu", "none": "Belum ada sensor di sini yang melaporkan metrik ini dalam 30 hari terakhir.", "picked": "dipilih",
     },
 }
 
