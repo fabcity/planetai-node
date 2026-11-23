@@ -13,6 +13,7 @@ What it counts, for the sensors picked:
 Everything reads readings_1h, the node's hourly means, so a sensor that sends every minute and one that sends every
 quarter of an hour are counted the same way.
 """
+import math
 
 FULL_DAY = 18   # hours heard before a day is counted, the usual three quarters for a 24-hour mean
 MIN_DAYS = 5    # counted days a week needs, and the week before it, for a verdict
@@ -150,3 +151,60 @@ def sql_hours(L):
     return ("WITH " + ", ".join([H, SN]) + " SELECT h.bucket AS time, sn.label AS metric, h.v AS value "
             f"FROM h JOIN sn USING (sensor_id) UNION ALL SELECT x.t, {lit(L['high_line'])}, ${{high}} "
             "FROM (VALUES ($__timeFrom()::timestamptz), (least($__timeTo()::timestamptz, now()))) x(t) ORDER BY 1")
+
+
+# For the node's page (GET /weekly). The five parts, in the order the page draws them.
+PARTS = {"weeks": sql_weeks, "badweeks": sql_badweeks, "daily": sql_daily, "baddays": sql_baddays, "hours": sql_hours}
+MAX_SENSORS, MAX_WEEKS = 12, 12
+
+# Grafana's placeholders and what the node binds in their place. $__timeFilter is Grafana's own BETWEEN, so the two
+# readers cut the window the same way.
+_BIND = (("$__timeFilter(r.bucket)", "r.bucket BETWEEN %(t0)s AND %(t1)s"), ("$__timeFrom()", "%(t0)s"),
+         ("$__timeTo()", "%(t1)s"), ("'${metric}'", "%(metric)s"), ("IN (${sensor:sqlstring})", "= ANY(%(sensors)s)"),
+         ("${bad}", "%(bad)s"), ("${high}", "%(high)s"))
+# A visitor's labels are the sensors' names. The keeper's (private) are the rooms', as in Grafana.
+_SN_PUBLIC = "sn AS (SELECT sensor_id, coalesce(nullif(name, ''), sensor_id) AS label FROM sensors)"
+
+
+def bind(sql, private=False):
+    """A report query with psycopg parameters where Grafana had placeholders. Refuses a stray % (psycopg would read
+    it as a parameter) and any placeholder it does not know, so a new panel cannot slip text through."""
+    if not private:
+        sql = sql.replace(SN, _SN_PUBLIC)
+    if "%" in sql:
+        raise ValueError("a % in the report's SQL: write it as %% or bind it")
+    for grafana, node in _BIND:
+        sql = sql.replace(grafana, node)
+    if "$" in sql:
+        raise ValueError("a placeholder the node does not bind: " + sql[sql.index("$"):][:40])
+    return sql
+
+
+def _number(text, default):
+    x = float(default if text in (None, "") else text)   # ValueError on anything that is not a number
+    if not math.isfinite(x):
+        raise ValueError("not a number")
+    return x
+
+
+def clean(args, metrics, offered):
+    """A visitor's request, checked. `offered` is every sensor id the page may name (outdoor only without a token);
+    an id outside it is refused with the same sentence whether it exists or not."""
+    metric = (args.get("metric") or "pm25").strip()
+    if metric not in metrics:
+        raise ValueError("This node has no hourly readings of that metric.")
+    ids = list(dict.fromkeys(x.strip() for x in (args.get("sensors") or "").split(",") if x.strip()))
+    if len(ids) > MAX_SENSORS:
+        raise ValueError(f"Pick {MAX_SENSORS} sensors at most.")
+    if any(i not in offered for i in ids):
+        raise ValueError("Pick the sensors from the list: one of them is not offered here.")
+    try:
+        bad, high = _number(args.get("bad"), 15), _number(args.get("high"), 55)
+    except ValueError:
+        raise ValueError("The two lines have to be numbers.") from None
+    try:
+        weeks = min(MAX_WEEKS, max(1, int(args.get("weeks") or 8)))
+    except ValueError:
+        weeks = 8
+    return {"metric": metric, "sensors": ids, "bad": bad, "high": high, "weeks": weeks,
+            "lang": "id" if args.get("lang") == "id" else "en"}
