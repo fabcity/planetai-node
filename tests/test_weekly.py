@@ -142,5 +142,38 @@ for k in ("so_far", "of_counted", "set_by_reader", "who_line", "pdf", "pdf_hint"
           "band_0", "band_4", "not_calibrated", "colours_from", "bad_of", "week_pick", "worst_place", "worst_day", "highest_hour", "avg_bad"):
     check(k in w.WORDS["en"], f"the word {k!r} is there")
 
+print("the chosen week: the last complete one unless asked, and what the node says about it")
+starts = ["2026-11-02", "2026-11-09", "2026-11-16", "2026-11-23"]
+check(w.pick_week("", starts, "2026-11-23") == ("2026-11-16", True), "no week asked: the last complete one")
+check(w.pick_week("2026-11-09", starts, "2026-11-23") == ("2026-11-09", True), "a week in the window")
+check(w.pick_week("2026-11-23", starts, "2026-11-23") == ("2026-11-23", False), "the week not over can be read")
+check(w.pick_week("2025-01-06", starts, "2026-11-23") == ("2026-11-16", True) and w.pick_week("x';--", starts, "2026-11-23")[0] == "2026-11-16",
+      "a week outside the window falls back to the default")
+check(w.pick_week("", ["2026-11-23"], "2026-11-23") == ("2026-11-23", False), "a one-week window has only the week not over")
+D = lambda day, hours, mean, peak, at: {"day": day, "label": "TPA Kutuh", "sensor_id": "k", "hours": hours, "mean": mean, "peak": peak, "peak_at": at}
+days_rows = [D("2026-11-09", 24, 14.2, 48, "05:00"), D("2026-11-10", 12, 40.0, 90, "08:00"), D("2026-11-11", 24, 15.4, 64, "23:00"),
+             D("2026-11-12", 24, 20.7, 67, "21:00"), D("2026-11-13", 24, 30.9, 67, "06:00"), D("2026-11-15", 24, 12.0, 125, "23:00")]
+cols = ["week from", "sensor", "bad days", "against the week before"]
+weeks_rows = [["2026-11-16", "TPA Kutuh", 1, "improving"], ["2026-11-09", "TPA Kutuh", 3, "worse"]]
+sm = w.summarise(days_rows, weeks_rows, cols, "2026-11-09", "pm25", 15, 18, ["k", "gone"], {"k": "TPA Kutuh", "gone": "Silent"})
+k, gone = sm["sensors"]
+check(k["counted"] == 5 and k["bad"] == 3, f"5 days counted (a 12-hour day and a missing one are not), 3 over 15 {k['counted']}/{k['bad']}")
+check([x["counted"] for x in k["days"]] == [True, False, True, True, True, False, True] and len(k["days"]) == 7, "seven days, Saturday missing")
+check(k["days"][2]["edge"] is True and k["days"][2]["band"] == 0 and k["days"][3]["edge"] is False, "15.4 is a bad day inside the good band: the edge")
+check(k["days"][1]["bad"] is False and k["days"][1]["band"] == 1, "a short day is never bad, though its band is drawn")
+check(k["verdict"] == "worse" and k["worst_day"] == "2026-11-13" and k["worst_mean"] == 30.9, "the verdict is read from the weeks part; the worst counted day")
+check((k["peak"], k["peak_day"], k["peak_at"]) == (125, "2026-11-15", "23:00"), "the highest hour of the week, and when")
+check(gone["counted"] == 0 and gone["bad"] == 0 and not any(x["counted"] for x in gone["days"]) and gone["verdict"] is None, "a silent sensor: nothing counted")
+check(sm["overall"]["worst"] == "TPA Kutuh" and sm["overall"]["avg_bad"] == 3.0 and sm["overall"]["peak_place"] == "TPA Kutuh",
+      "the overview: average over the places heard, the worst place, where the highest hour was")
+k25 = w.summarise(days_rows, weeks_rows, cols, "2026-11-09", "pm25", 25, 18, ["k"], {"k": "TPA Kutuh"})["sensors"][0]
+check(k25["bad"] == 1 and not k25["days"][3]["bad"] and k25["days"][4]["bad"], "the reader's line: at 25 only the 30.9 day is bad")
+tmp = w.summarise([dict(r, mean=r["mean"]) for r in days_rows], weeks_rows, cols, "2026-11-09", "temp", 15, 18, ["k"], {"k": "TPA Kutuh"})
+check(all(x["band"] is None and not x.get("edge") for x in tmp["sensors"][0]["days"]), "no index: no band, no edge")
+route = main[main.index('@app.get("/weekly")'):]
+route = route[:route.index("\n@app.", 1)]
+check("weekly.pick_week(" in route and "weekly.summarise(" in route and route.index('"t0"') < route.index("return"),
+      "the route picks the week, summarises it, and says t0 in every answer")
+
 print(f"weekly: {'every check passed' if not fails else str(len(fails)) + ' failed'}")
 sys.exit(1 if fails else 0)

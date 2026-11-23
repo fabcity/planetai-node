@@ -236,6 +236,14 @@ def bind(sql, private=False, public=""):
     return sql
 
 
+def weeks_of(text):
+    """How many weeks the window holds: 1 to MAX_WEEKS, 8 when it is not a number."""
+    try:
+        return min(MAX_WEEKS, max(1, int(text or 8)))
+    except ValueError:
+        return 8
+
+
 def _number(text, default):
     x = float(default if text in (None, "") else text)   # ValueError on anything that is not a number
     if not math.isfinite(x):
@@ -258,10 +266,7 @@ def clean(args, metrics, offered):
         bad, high = _number(args.get("bad"), 15), _number(args.get("high"), 55)
     except ValueError:
         raise ValueError("The two lines have to be numbers.") from None
-    try:
-        weeks = min(MAX_WEEKS, max(1, int(args.get("weeks") or 8)))
-    except ValueError:
-        weeks = 8
+    weeks = weeks_of(args.get("weeks"))
     return {"metric": metric, "sensors": ids, "bad": bad, "high": high, "weeks": weeks,
             "lang": "id" if args.get("lang") == "id" else "en"}
 
@@ -293,3 +298,47 @@ def offer_sql(private, public):
                + " AND EXISTS (SELECT 1 FROM readings_1h r WHERE r.sensor_id = s.sensor_id AND r.metric = %s" + _RECENT + pub
                + ") ORDER BY s.indoor IS TRUE, s.local DESC, 2")
     return metrics, offered
+
+
+def pick_week(asked, starts, now_start):
+    """The week the page draws: `asked` when it is one of the window's week starts, else the last complete week (the
+    week not over yet only when it is all the window holds). Returns (week start, complete)."""
+    done = [s for s in starts if s != now_start]
+    wk = asked if asked in starts else (done[-1] if done else now_start)
+    return wk, wk != now_start
+
+
+def summarise(days, weeks_rows, cols, wk, metric, bad, full_day, picked, labels):
+    """What the node says about one week, for the tiles, the grid, the PDF and the images: per sensor its seven days
+    (counted when heard for `full_day` hours; bad when counted and over `bad`; its ISPU band; `edge` when bad inside
+    the good band), the bad days, the days counted, the verdict (read from the weeks part, never worked out again), the
+    highest hour and the worst counted day; and the overview across the sensors heard."""
+    from datetime import date, timedelta   # noqa: PLC0415
+    week = [(date.fromisoformat(wk) + timedelta(days=i)).isoformat() for i in range(7)]
+    by = {(r["sensor_id"], r["day"]): r for r in days}
+    verdict = {(r[0], r[1]): r[3] for r in weeks_rows}
+    out = []
+    for sid in picked:
+        label, ds = labels.get(sid, sid), []
+        for day in week:
+            r = by.get((sid, day))
+            if r is None or r["mean"] is None:
+                ds.append({"day": day, "counted": False, "bad": False, "band": None, "edge": False, "mean": None, "hours": 0})
+                continue
+            mean, b = float(r["mean"]), band(metric, float(r["mean"]))
+            counted = r["hours"] >= full_day
+            is_bad = counted and mean > bad
+            ds.append({"day": day, "counted": counted, "bad": is_bad, "band": b, "edge": bool(is_bad and b == 0),
+                       "mean": round(mean, 1), "hours": r["hours"], "peak": round(float(r["peak"])), "peak_at": r["peak_at"]})
+        heard = [d for d in ds if d["mean"] is not None]
+        top = max(heard, key=lambda d: d["peak"], default=None)
+        worst = max((d for d in ds if d["counted"]), key=lambda d: d["mean"], default=None)
+        out.append({"id": sid, "label": label, "days": ds, "bad": sum(d["bad"] for d in ds), "counted": sum(d["counted"] for d in ds),
+                    "verdict": verdict.get((wk, label)), "peak": top and top["peak"], "peak_day": top and top["day"],
+                    "peak_at": top and top["peak_at"], "worst_day": worst and worst["day"], "worst_mean": worst and worst["mean"]})
+    heard = [s for s in out if s["counted"]]
+    worst = max(heard, key=lambda s: (s["bad"], s["worst_mean"] or 0), default=None)
+    top = max((s for s in out if s["peak"] is not None), key=lambda s: s["peak"], default=None)
+    return {"sensors": out, "overall": {"avg_bad": round(sum(s["bad"] for s in heard) / len(heard), 1) if heard else None,
+                                       "worst": worst and worst["label"], "peak": top and top["peak"], "peak_place": top and top["label"],
+                                       "peak_day": top and top["peak_day"], "peak_at": top and top["peak_at"]}}
