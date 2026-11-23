@@ -139,7 +139,33 @@ if os.getenv("RHO_PG_URL"):
         cur = c.execute(q)
         cols = [d.name for d in cur.description]
         rows = [dict(zip(cols, r)) for r in cur.fetchall()]
+        # The node's page runs the same five queries with bound parameters (app/weekly.py bind). On the same tables,
+        # in UTC and in Bali's time zone, both readers have to return the same rows. q is a sensor whose name holds a
+        # quote and a %; z never sent anything.
+        sys.path.insert(0, "app")
+        import weekly
+        c.execute("INSERT INTO sensors VALUES ('q','O''Brien 50%','','sensor',false,false), ('z','Z','','sensor',false,false)")
+        c.execute("INSERT INTO readings_1h SELECT t, 'q', 'pm25', 12 FROM "
+                  "generate_series(date_trunc('week', now()) - interval '14 days', now(), interval '1 hour') t")
+        t0, t1 = c.execute("SELECT now() - interval '60 days', now() + interval '7 days'").fetchone()
+        params = {"t0": t0, "t1": t1, "metric": "pm25", "sensors": ["a", "q", "z"], "bad": 15, "high": 55}
+        grafana = {"$__timeFilter(r.bucket)": "r.bucket BETWEEN now() - interval '60 days' AND now() + interval '7 days'",
+                   "$__timeFrom()": "(now() - interval '60 days')", "$__timeTo()": "(now() + interval '7 days')",
+                   "${metric}": "pm25", "${sensor:sqlstring}": "'a','q','z'", "${bad}": "15", "${high}": "55"}
+        both = {}
+        for tz in ("UTC", "Asia/Makassar"):
+            c.execute(f"SET TIME ZONE '{tz}'")
+            for part, sql_of in weekly.PARTS.items():
+                sql = sql_of(weekly.WORDS["en"])
+                as_grafana = sql
+                for k, v in grafana.items():
+                    as_grafana = as_grafana.replace(k, v)
+                both[tz, part] = (c.execute(as_grafana).fetchall(), c.execute(weekly.bind(sql), params).fetchall())
         c.rollback()
+    for (tz, part), (by_grafana, by_node) in both.items():
+        check(by_node == by_grafana and len(by_node) > 0, f"pg: {part} in {tz}, the node's rows are Grafana's ({len(by_node)} rows)")
+    labels = {r[1] for r in both["UTC", "weeks"][1]}
+    check("O'Brien 50%" in labels and "Z" not in labels, "pg: a name with a quote and a % is drawn; a sensor that never sent has no week")
     check(len(rows) == 3, "pg: this week, last week and the one before")
     now_, last, before = rows
     check(last["bad days"] == 1 and before["bad days"] == 3, "pg: a bad day is a counted day whose 24-hour mean is over the line")
