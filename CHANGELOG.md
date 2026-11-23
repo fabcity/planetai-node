@@ -20,6 +20,11 @@
   HM-3301 and PMS5003 against a SEN5X. We picked the tenth after looking at those days, so they do not test it
   independently. [Corrections](docs/site/calibrate.md) has the numbers.
 
+- **22 Nov: the rooms stay in the house.** A node with a parent used to send the hourly means of every sensor it
+  holds, rooms included. Now it sends its outdoor sensors, and the rooms go only if you set `PARENT_INDOOR=on` in
+  Set up › Sharing. The alerts a room raises follow the same switch. None of our nodes has a parent yet, so
+  nothing that was travelling stops.
+
 - **21 Nov: a draft record on commercial rights, for Tomas to rule on.** He asked whether being open source stops
   the Foundation from licensing a version of the node commercially or making a product of one. The public licence
   does not, and no document yet gives the Foundation more than the Apache-2.0 everybody has, his own 1,124 commits
