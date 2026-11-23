@@ -408,6 +408,8 @@ function sGrafana(B) {
     + [['State', open],
        ['Address', `<code>${esc(bind)}:${esc(port)}</code>${loop ? '' : ' · <b>every screen on the network can reach the sign-in</b>'}`],
        ['Password', v('GRAFANA_ADMIN_PASSWORD') ? 'set (<code>GRAFANA_ADMIN_PASSWORD</code>)' : `not set: Grafana’s <code>admin</code> login is <code>admin</code>. Set <code>GRAFANA_ADMIN_PASSWORD</code> in <code>.env</code> before you open it to the network.`],
+       ['Weekly report', on && !loop ? `<a href="http://${esc(host)}:${esc(port)}/d/planetai-report-en" target="_blank" rel="noopener">Weekly sensor report ↗</a> · <a href="http://${esc(host)}:${esc(port)}/d/planetai-report-id" target="_blank" rel="noopener">Laporan mingguan sensor ↗</a>`
+         : `In Grafana’s PLANETAI folder, in English and Bahasa Indonesia: the bad days of each week for the sensors you pick, how often each went over a high line, and whether the week was better than the one before. <a href="${esc(docs)}#the-weekly-report" target="_blank" rel="noopener">How it counts ↗</a>`],
        ['Read more', `<a href="${esc(docs)}" target="_blank" rel="noopener">Grafana: turning it on, what it can read, what it will not tell you ↗</a>`]]
       .map(([t, x]) => `<div class="srow"><div class="sl"><label>${t}</label></div><div class="sc txt">${x}</div></div>`).join('') + `</div>`;
 }

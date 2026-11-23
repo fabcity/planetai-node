@@ -70,6 +70,9 @@ _SHARE_OPEN = (_SHARE_OFF[0] | frozenset({
     # own crop, never by the earth square, which is centred on the house. The exact path only: no prefix opens
     # whatever is added under it later.
     "/wall",
+    # The weekly sensor report on the Data door's Report tab (app/weekly.py). Without the admin token it answers the
+    # outdoor sensors only, by their names, and the all-sensors median reads no private channel.
+    "/weekly",
 }), ("/static/", "/exports/", "/issues", "/sources/", "/ground/"))
 # A pack's own routes add themselves (pack.yaml `share:`, packs.shared_open()), the forecast and nearby packs first.
 import packs as _packs  # noqa: E402

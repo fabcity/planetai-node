@@ -8,6 +8,30 @@
   never written as a reading. Apart from one line in Next days, it never leaves the node. Nothing is downloaded until you run
   `planetai models pull`, and docs/predict has what we measured on node #1.
 
+- **23 Nov: the weekly report on the node's own page.** Data › Report draws the same weekly sensor report as
+  Grafana, for anyone who opens the node, and there is nothing to sign in to. You pick the sensors from a list or by
+  typing part of a name, set the two lines, and switch between English and Bahasa Indonesia. What you chose stays in
+  the address, so a report can go to someone as a link. The page and Grafana run the same queries, so they always
+  count alike. Another screen on the network reads it once `SHARE_LEVEL` is `open`, and without the token it offers
+  the outdoor sensors only.
+- **23 Nov: a weekly sensor report in Grafana, in English and Bahasa Indonesia.** A reader of the Bali air sensors
+  asked how many days of a week were bad, how often the sensor went over a high value on those days, and whether the
+  place is stable or getting better. `planetai grafana` now brings a second dashboard that answers that for the
+  sensors you pick, with the daily and weekly medians beside the median of every outdoor sensor the node reads. You
+  set the two lines yourself; they start at 15 and 55 for PM2.5. Set up › System has a row for it, and the Grafana
+  docs page says how it counts. Nothing in it is calibrated, and it cannot tell a cleaner week from a windier one.
+
+- **22 Nov: the rooms stay in the house.** A node with a parent used to send the hourly means of every sensor it
+  holds, rooms included. Now it sends its outdoor sensors, and the rooms go only if you set `PARENT_INDOOR=on` in
+  Set up › Sharing. The alerts a room raises follow the same switch. None of our nodes has a parent yet, so
+  nothing that was travelling stops.
+
+- **21 Nov: a draft record on commercial rights, for Tomas to rule on.** He asked whether being open source stops
+  the Foundation from licensing a version of the node commercially or making a product of one. The public licence
+  does not, and no document yet gives the Foundation more than the Apache-2.0 everybody has, his own 1,124 commits
+  included. `docs/decisions/2026-11-21-commercial-rights.md` sets out what would have to be true, and it decides
+  nothing until he strikes a row. `LICENSE`, `NOTICE` and `CONTRIBUTING.md` are unchanged.
+
 ## v0.92.0 — 2026-11-19 — A node and its place
 
 Most of this release is about the place around the node. Place has a page of its own now, layered as what the ground
