@@ -46,7 +46,7 @@ WORDS = {
         "find": "Type part of a sensor's name", "pick": "Pick one or more sensors, from the list or by typing their name.",
         "weeks_n": "weeks", "none": "No sensor here has reported this metric in the last 30 days.", "picked": "picked",
         "week_pick": "Week", "so_far": "so far", "bad_of": "bad days of {n}", "of_counted": "bad days of {n} counted",
-        "set_by_reader": "bad line {v} µg/m³, set by the reader", "who_line": "the WHO guideline, {v} µg/m³",
+        "set_by_reader": "bad-day line {v}{unit}, set by the reader", "who_line": "bad-day line {v}{unit}, the WHO guideline",
         "avg_bad": "bad days, average", "worst_place": "worst place", "worst_day": "worst day", "highest_hour": "highest hour",
         "the_week": "The week, place by place", "daily_mean": "Daily mean, against the bad line",
         "not_counted": "not counted: heard for fewer than 18 hours", "edge_note": "over the line, inside the index's good band",
@@ -57,7 +57,7 @@ WORDS = {
         "not_calibrated": "Not calibrated.", "colours_from": "Colours from Indonesia's air index, ISPU.",
         "page": "page {i} of {n}", "overview": "Overview", "picked_n": "{n} places picked on the {node} node",
         "band_0": "good", "band_1": "moderate", "band_2": "unhealthy", "band_3": "very unhealthy", "band_4": "dangerous",
-        "over_line": "over the line",
+        "over_line": "over the line", "no_answer": "The node did not answer.",
     },
     "id": {
         "title": "Laporan mingguan sensor", "other": "en", "other_name": "English",
@@ -83,7 +83,7 @@ WORDS = {
         "find": "Ketik sebagian nama sensor", "pick": "Pilih satu sensor atau lebih, dari daftar atau dengan mengetik namanya.",
         "weeks_n": "minggu", "none": "Belum ada sensor di sini yang melaporkan metrik ini dalam 30 hari terakhir.", "picked": "dipilih",
         "week_pick": "Minggu", "so_far": "sejauh ini", "bad_of": "hari buruk dari {n}", "of_counted": "hari buruk dari {n} yang terhitung",
-        "set_by_reader": "batas hari buruk {v} µg/m³, diatur pembaca", "who_line": "pedoman WHO, {v} µg/m³",
+        "set_by_reader": "batas hari buruk {v}{unit}, diatur pembaca", "who_line": "batas hari buruk {v}{unit}, pedoman WHO",
         "avg_bad": "rata-rata hari buruk", "worst_place": "tempat terburuk", "worst_day": "hari terburuk", "highest_hour": "jam tertinggi",
         "the_week": "Minggu ini, tempat demi tempat", "daily_mean": "Rerata harian, dibanding batas hari buruk",
         "not_counted": "tidak dihitung: data kurang dari 18 jam", "edge_note": "di atas batas, tapi masih dalam kategori baik ISPU",
@@ -94,7 +94,7 @@ WORDS = {
         "not_calibrated": "Belum dikalibrasi.", "colours_from": "Warna dari Indeks Standar Pencemar Udara, ISPU.",
         "page": "halaman {i} dari {n}", "overview": "Ringkasan", "picked_n": "{n} tempat dipilih di node {node}",
         "band_0": "baik", "band_1": "sedang", "band_2": "tidak sehat", "band_3": "sangat tidak sehat", "band_4": "berbahaya",
-        "over_line": "di atas batas",
+        "over_line": "di atas batas", "no_answer": "Node tidak menjawab.",
     },
 }
 
@@ -189,6 +189,18 @@ def sql_hours(L):
 INDEX = {"pm25": (15.5, 55.4, 150.4, 250.4), "pm10": (50, 150, 350, 420)}
 
 
+# Where each line starts. PM2.5 and PM10 start at the WHO's 24-hour guideline (2021: 15 and 45 µg/m³) for a bad day,
+# and at the top of ISPU's moderate band for the high line (55.4 and 150). Any other metric starts at 15 and 55, the
+# reader's to set. Tomas, 23 Nov 2026: "WHO 15"; PM10 follows the same rule (ledger of the graphical report).
+WHO = {"pm25": 15, "pm10": 45}
+LINES = {"pm25": (15, 55), "pm10": (45, 150)}
+
+
+def line_source(metric, bad):
+    """"who" when the bad-day line is the WHO's guideline for this metric, else "reader"."""
+    return "who" if WHO.get(metric) == bad else "reader"
+
+
 def band(metric, mean):
     """0 good, 1 moderate, 2 unhealthy, 3 very unhealthy, 4 dangerous; None when the metric has no index or no mean."""
     if mean is None or metric not in INDEX:
@@ -263,7 +275,8 @@ def clean(args, metrics, offered):
     if any(i not in offered for i in ids):
         raise ValueError("Pick the sensors from the list: one of them is not offered here.")
     try:
-        bad, high = _number(args.get("bad"), 15), _number(args.get("high"), 55)
+        d_bad, d_high = LINES.get(metric, (15, 55))
+        bad, high = _number(args.get("bad"), d_bad), _number(args.get("high"), d_high)
     except ValueError:
         raise ValueError("The two lines have to be numbers.") from None
     weeks = weeks_of(args.get("weeks"))

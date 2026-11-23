@@ -98,12 +98,17 @@ VIEWS.data = function () {
    At a glance (Tomas, 23 Nov 2026: "more graphical, like graphana graphics"; the paper register with the air colours):
    the week chosen (wk, the last complete one by default), its tiles, the places by day in Indonesia's air index (ISPU),
    then the charts over the whole window. Every band, count and verdict is the node's (GET /weekly summary). */
-const repState = () => { const p = new URLSearchParams(location.hash.split('?')[1] || ''); return { m: p.get('m') || '', s: (p.get('s') || '').split(',').filter(Boolean), bad: p.get('bad') || '15', high: p.get('high') || '55', w: p.get('w') || '8', wk: p.get('wk') || '', lang: p.get('lang') === 'id' ? 'id' : 'en' }; };
+const repState = () => { const p = new URLSearchParams(location.hash.split('?')[1] || ''); return { m: p.get('m') || '', s: (p.get('s') || '').split(',').filter(Boolean), bad: p.get('bad') || '', high: p.get('high') || '', w: p.get('w') || '8', wk: p.get('wk') || '', lang: p.get('lang') === 'id' ? 'id' : 'en' }; };
 let REPSEQ = 0, REPLAST = null, SHARE_C = [];
 const repGo = st => { history.replaceState(null, '', '#data/report?' + new URLSearchParams({ m: st.m, s: st.s.join(','), bad: st.bad, high: st.high, w: st.w, wk: st.wk, lang: st.lang })); reportBlock(); };
 /* a day as the node described it: its ISPU band and rounded mean; grey and empty when it was not counted (heard under 18
    hours, or not at all); a thin red edge when it is a bad day inside the good band; the bad mark when the metric has no index */
 const dayBlock = d => !d || !d.counted ? { cls: 'nc', text: '', title: '' } : { cls: (d.band == null ? (d.bad ? 'nb bad' : 'nb') : 'aqi-' + d.band) + (d.edge ? ' edge' : ''), text: d.mean == null ? '' : String(Math.round(d.mean)), title: '' };
+/* the hours above a chart's scale as drawn (repChart nices it to 3 ticks): the two highest, and how many more */
+function aboveScale(pts, top) {
+  const nt = d3.scaleLinear().domain([0, top]).nice(3).domain()[1], over = pts.filter(p => p[1] > nt).sort((a, b) => b[1] - a[1]);
+  return { shown: over.slice(0, 2), more: Math.max(0, over.length - 2) };
+}
 /* the scale of an hourly chart: the 98th percentile, like the Data door's other charts, and the hours above it, printed */
 function capTop(values) {
   const s = values.filter(v => v != null).sort((a, b) => a - b);
@@ -132,7 +137,7 @@ function repChart(pts, o) {
     + `</svg>`;
 }
 const plusDays = (iso, n) => new Date(Date.parse(iso + 'T12:00:00Z') + n * 864e5).toISOString().slice(0, 10);
-const dshort = iso => new Date(iso + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+const dshort = (iso, loc = 'en-GB') => new Date(iso + 'T12:00:00').toLocaleDateString(loc, { day: 'numeric', month: 'short' });
 function reportBlock() {
   const sec = $('#d-report'), st = repState(), seq = ++REPSEQ;
   if (!sec.dataset.wired) {
@@ -142,7 +147,7 @@ function reportBlock() {
       if (t.dataset.r === 'pick') s2.s = t.checked ? [...s2.s, t.value] : s2.s.filter(id => id !== t.value);
       else if (t.dataset.r === 'find') return;
       else if (t.dataset.r) s2[t.dataset.r] = t.value;
-      if (t.dataset.r === 'm') s2.s = [];
+      if (t.dataset.r === 'm') { s2.s = []; s2.bad = ''; s2.high = ''; }   // each metric starts at its own lines (GET /weekly)
       repGo(s2);
     });
     sec.addEventListener('click', e => {
@@ -153,7 +158,7 @@ function reportBlock() {
       const s2 = repState();
       if (b.dataset.rm) s2.s = s2.s.filter(id => id !== b.dataset.rm);
       else if (b.dataset.lang) s2.lang = b.dataset.lang;
-      else if (b.dataset.reset) { s2.m = ''; s2.s = []; s2.bad = '15'; s2.high = '55'; s2.w = '8'; s2.wk = ''; }
+      else if (b.dataset.reset) { s2.m = ''; s2.s = []; s2.bad = ''; s2.high = ''; s2.w = '8'; s2.wk = ''; }
       else return;
       repGo(s2);
     });
@@ -175,14 +180,16 @@ function reportBlock() {
     if (seq !== REPSEQ) return;   // a newer choice has already asked
     if (!ok) { sec.innerHTML = `<h2>Report</h2><p class="fine">${esc(j.detail || j.error || 'The node did not answer.')} <button type="button" class="link" data-reset="1">Start again</button></p>`; return; }
     REPLAST = j;
-    const L = j.words, names = Object.fromEntries(j.sensors.map(o => [o.id, o.label])), t0 = new Date(j.t0 || Date.now()), t1 = new Date(j.t1 || Date.now());
+    /* the week the node chose goes back into the address, so a link and a printout show this week next Monday too */
+    if (st.wk !== j.wk) history.replaceState(null, '', '#data/report?' + new URLSearchParams({ m: st.m, s: st.s.join(','), bad: st.bad, high: st.high, w: st.w, wk: j.wk, lang: st.lang }));
+    const L = j.words, loc2 = j.lang === 'id' ? 'id-ID' : 'en-GB', names = Object.fromEntries(j.sensors.map(o => [o.id, o.label])), t0 = new Date(j.t0 || Date.now()), t1 = new Date(j.t1 || Date.now());
     const para = p => `<p>${esc(p).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')}</p>`;
     const bySrc = d3.groups(j.sensors, o => o.source);
     const pick = `<div class="rpick">`
       + `<label>${esc(L.v_metric)}<select data-r="m">${j.metrics.map(m => `<option value="${esc(m)}"${m === j.metric ? ' selected' : ''}>${esc(mWord(m))}</option>`).join('')}</select></label>`
       + `<label>${esc(L.v_bad)}<input type="number" step="any" data-r="bad" value="${esc(j.bad)}"></label>`
       + `<label>${esc(L.v_high)}<input type="number" step="any" data-r="high" value="${esc(j.high)}"></label>`
-      + `<label>${esc(L.week_pick)}<select data-r="wk">${[...j.week_starts].reverse().map((w, i) => `<option value="${esc(w)}"${w === j.wk ? ' selected' : ''}>${esc(dshort(w))} – ${esc(dshort(plusDays(w, 6)))}${i === 0 ? ' · ' + esc(L.so_far) : ''}</option>`).join('')}</select></label>`
+      + `<label>${esc(L.week_pick)}<select data-r="wk">${[...j.week_starts].reverse().map((w, i) => `<option value="${esc(w)}"${w === j.wk ? ' selected' : ''}>${esc(dshort(w, loc2))} – ${esc(dshort(plusDays(w, 6), loc2))}${i === 0 ? ' · ' + esc(L.so_far) : ''}</option>`).join('')}</select></label>`
       + `<label>${esc(L.weeks_n)}<select data-r="w">${[4, 8, 12].map(n => `<option${n === j.weeks ? ' selected' : ''}>${n}</option>`).join('')}</select></label>`
       + `<span class="rlang" role="group" aria-label="language"><button type="button" data-lang="en" aria-pressed="${j.lang === 'en'}">English</button> · <button type="button" data-lang="id" aria-pressed="${j.lang === 'id'}">Bahasa Indonesia</button></span></div>`
       + `<label class="rpick"><span class="vh">${esc(L.find)}</span><input type="search" class="rfind" data-r="find" placeholder="${esc(L.find)}" aria-label="${esc(L.find)}"></label>`
@@ -190,7 +197,7 @@ function reportBlock() {
       + (j.sensors.length ? `<div class="rlist">${bySrc.map(([src, os]) => `<h4>${esc(src)}</h4>` + os.map(o => `<label><input type="checkbox" data-r="pick" value="${esc(o.id)}"${j.picked.includes(o.id) ? ' checked' : j.picked.length >= j.max_sensors ? ' disabled' : ''}>${esc(o.label)}</label>`).join('')).join('')}</div>` : `<p class="fine">${esc(L.none)}</p>`);
     const P = j.parts, table = (part, mark) => !P[part] ? '' : `<div class="tscroll"><table class="tbl rep"><tr>${P[part].cols.map((c, i) => `<th${i > 1 ? ' class="n"' : ''}>${esc(c)}</th>`).join('')}</tr>`
       + P[part].rows.map(row => `<tr>${row.map((cell, i) => `<td${i > 1 ? ' class="n' + (mark(i, cell) ? ' wr' : '') + '"' : ''}>${esc(cell ?? '–')}</td>`).join('')}</tr>`).join('') + `</table></div>`;
-    const S = j.summary, loc2 = j.lang === 'id' ? 'id-ID' : 'en-GB';
+    const S = j.summary;
     const wd = iso => new Date(iso + 'T12:00:00').toLocaleDateString(loc2, { weekday: 'short' });
     const tile = (v, l, cls = '') => `<div class="rtile ${cls}"><b>${esc(v)}</b><span>${esc(l)}</span></div>`;
     const when = (day, at) => day ? `${wd(day)} ${at || ''}`.trim() : '';
@@ -209,9 +216,9 @@ function reportBlock() {
     const series = part => d3.groups((P[part] || {}).rows || [], r => r[1]).map(([k, rs]) => [k, rs.map(r => [new Date(r[0]), r[2]])]);
     const figs = (part, o) => { const ss = series(part), ref = (ss.find(([k]) => k === o.refName) || [])[1];
       return `<div class="sms">${ss.filter(([k]) => k !== o.refName).map(([k, pts]) => {
-        const c = o.capped ? capTop(pts.map(p => p[1])) : null, top = c && c.top != null ? Math.max(c.top, o.line || 0) * 1.1 : o.top, over = c ? pts.filter(p => p[1] > top) : [];
+        const c = o.capped ? capTop(pts.map(p => p[1])) : null, top = c && c.top != null ? Math.max(c.top, o.line || 0) * 1.1 : o.top, ab = c ? aboveScale(pts, top) : { shown: [], more: 0 };
         return `<figure class="sm"><figcaption><b>${esc(k)}</b></figcaption>${repChart(pts, { ...o, ref, t0, t1, top })}`
-          + (over.length ? `<p class="fine">${esc(L.above_cap)}: ${over.map(p => `${fmt(p[1], 0)} (${esc(dayOf(p[0].toISOString()))} ${esc(hhmm(p[0].toISOString()))})`).join(', ')}</p>` : '') + `</figure>`; }).join('')}</div>`; };
+          + (ab.shown.length ? `<p class="fine">${esc(L.above_cap)}: ${ab.shown.map(p => `${fmt(p[1], 0)} (${esc(dayOf(p[0].toISOString()))} ${esc(hhmm(p[0].toISOString()))})`).join(', ')}${ab.more ? ' · +' + ab.more : ''}</p>` : '') + `</figure>`; }).join('')}</div>`; };
     /* a redraw keeps where you were: the focused control (a box by its value) and what was typed in the name box */
     const at = sec.contains(document.activeElement) ? document.activeElement : null, was = at && { r: at.dataset.r, v: at.value };
     const typed = (sec.querySelector('[data-r=find]') || {}).value || '';
@@ -236,6 +243,11 @@ function reportBlock() {
    page's paper register and its own fonts, and saved by the person. Always the visitor's view: the node is asked again
    with no token (repPublic), so a room the keeper picked never reaches an image; the panel says so when one was left out. */
 const slug = t => String(t).normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/['’]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60).replace(/-+$/, '');
+const sharedPlaces = ss => ss.filter(s => s.counted > 0);   // a place with no counted day gets no image
+/* the comparison's rows under a title of tl lines: the pitch shrinks so the fifth row ends above the footer (1150 px) */
+const compareLayout = (tl, n) => { const top = 140 + (tl - 1) * 80 + 56 + 70 + 40, row = 124; return { top, row, pitch: Math.min(168, Math.floor((1150 - row - top) / Math.max(1, n - 1))) }; };
+/* the largest size up to `size` at which text fits `max` px */
+function fitFont(g, text, max, size, face) { let z = size; do { g.font = face.replace('{z}', z); } while (g.measureText(text).width > max && --z > 10); return z; }
 const fiveWorst = ss => [...ss].sort((a, b) => b.bad - a.bad || (b.worst_mean || 0) - (a.worst_mean || 0)).slice(0, 5);
 function repPublic(a, ids) {
   const q = sens => '/weekly?' + new URLSearchParams({ metric: a.metric, sensors: sens.join(','), bad: a.bad, high: a.high, weeks: a.weeks, wk: a.wk, lang: a.lang });
@@ -262,23 +274,23 @@ function shareBlocks(g, days, x, y, w, h, gap, num) {
   });
 }
 function shareFoot(g, j, L) {
-  const line = j.bad_source === 'who' ? L.who_line.replace('{v}', fmt(j.bad, 0)) : L.set_by_reader.replace('{v}', j.bad);
+  const line = (j.bad_source === 'who' ? L.who_line : L.set_by_reader).replace('{v}', fmt(j.bad, 0)).replace('{unit}', j.unit || '');
   g.fillStyle = SH.mute; g.font = '400 30px "Figtree", sans-serif';
   fitLines(g, `${mWord(j.metric)}, ${L.mean}, ${line}. ${L.colours_from} ${L.not_calibrated}`, 936, 3).forEach((l, i) => g.fillText(l, 72, 1186 + i * 38));
   g.fillStyle = SH.ink; g.font = '700 32px "Figtree", sans-serif'; g.fillText(`${j.node || 'PLANETAI node'} · PLANETAI · Fab City`, 72, 1306);
 }
-const shareRange = (j, loc) => `${dshort(j.wk)}–${dshort(plusDays(j.wk, 6))}`;
+const shareRange = j => { const loc = j.lang === 'id' ? 'id-ID' : 'en-GB'; return `${dshort(j.wk, loc)}–${dshort(plusDays(j.wk, 6), loc)}`; };
 function shareCard(s, j) {
   const L = j.words, loc = j.lang === 'id' ? 'id-ID' : 'en-GB', c = document.createElement('canvas'); c.width = 1080; c.height = 1350;
   const g = c.getContext('2d'); g.fillStyle = SH.paper; g.fillRect(0, 0, 1080, 1350);
-  g.fillStyle = SH.mute; g.font = '600 34px "JetBrains Mono", monospace'; g.fillText(`${L.air_week} · ${shareRange(j, loc)}`.toUpperCase(), 72, 110);
+  g.fillStyle = SH.mute; g.font = '600 34px "JetBrains Mono", monospace'; g.fillText(`${L.air_week} · ${shareRange(j)}`.toUpperCase(), 72, 110);
   g.fillStyle = SH.ink; g.font = '800 112px "Figtree", sans-serif';
   const name = fitLines(g, s.label, 936, 2); name.forEach((l, i) => g.fillText(l, 72, 240 + i * 118));
   let y = 240 + (name.length - 1) * 118 + 64;
   g.fillStyle = SH.mute; g.font = '400 44px "Figtree", sans-serif'; g.fillText(`${mWord(j.metric)}${j.area ? ' · ' + j.area : ''}`, 72, y);
   y += 190; g.fillStyle = SH.ink; g.font = '800 184px "Figtree", sans-serif'; g.fillText(String(s.bad), 72, y);
-  const nw = g.measureText(String(s.bad)).width; g.font = '600 60px "Figtree", sans-serif';
-  g.fillText((s.counted === 7 ? L.bad_of : L.of_counted).replace('{n}', s.counted), 72 + nw + 24, y);
+  const nw = g.measureText(String(s.bad)).width, said = (s.counted === 7 ? L.bad_of : L.of_counted).replace('{n}', s.counted);
+  fitFont(g, said, 1008 - (72 + nw + 24), 60, '600 {z}px "Figtree", sans-serif'); g.fillText(said, 72 + nw + 24, y);
   y += 60; shareBlocks(g, s.days, 72, y, 120, 120, 16, 46);
   g.fillStyle = SH.mute; g.font = '500 34px "JetBrains Mono", monospace'; g.textAlign = 'center';
   s.days.forEach((d, i) => g.fillText(new Date(d.day + 'T12:00:00').toLocaleDateString(loc, { weekday: 'narrow' }), 72 + i * 136 + 60, y + 170));
@@ -295,12 +307,14 @@ function shareCompare(ss, j) {
   const title = fitLines(g, L.around.replace('{area}', j.area || j.node || ''), 936, 2); title.forEach((l, i) => g.fillText(l, 72, 140 + i * 80));
   let y = 140 + (title.length - 1) * 80 + 56;
   g.fillStyle = SH.mute; g.font = '600 32px "JetBrains Mono", monospace'; g.fillText(`${shareRange(j)} · ${mWord(j.metric)} · ${L.worst_first}`.toUpperCase(), 72, y);
-  y += 70; g.textAlign = 'right'; g.fillText(`${L.bad_days} / 7`.toUpperCase(), 1008, y); g.textAlign = 'left';
-  fiveWorst(ss).forEach((s, i) => {
-    const Y = y + 40 + i * 168;
+  const rows = fiveWorst(ss), lay = compareLayout(title.length, rows.length);
+  y += 70; g.textAlign = 'right'; g.fillText(`${L.bad_days}`.toUpperCase(), 1008, y); g.textAlign = 'left';
+  rows.forEach((s, i) => {
+    const Y = lay.top - 40 + i * lay.pitch;
     g.fillStyle = SH.ink; g.font = '700 46px "Figtree", sans-serif'; g.fillText(fitLines(g, s.label, 760, 1)[0], 72, Y + 40);
     shareBlocks(g, s.days, 72, Y + 64, 92, 56, 10, 0);
-    g.fillStyle = SH.ink; g.font = '800 92px "Figtree", sans-serif'; g.textAlign = 'right'; g.fillText(String(s.bad), 1008, Y + 118); g.textAlign = 'left';
+    g.textAlign = 'right'; g.fillStyle = SH.mute; g.font = '600 40px "Figtree", sans-serif'; g.fillText(`/ ${s.counted}`, 1008, Y + 118);
+    const cw = g.measureText(`/ ${s.counted}`).width; g.fillStyle = SH.ink; g.font = '800 92px "Figtree", sans-serif'; g.fillText(String(s.bad), 1008 - cw - 12, Y + 118); g.textAlign = 'left';
   });
   shareFoot(g, j, L);
   return c;
@@ -315,13 +329,14 @@ function repShare() {
   /* allSettled: a face that cannot load (no route out, a blocked file) leaves the image in the fallback face rather than no image */
   repPublic(a, a.picked).then(({ j, dropped }) => Promise.allSettled([document.fonts.load('800 112px "Figtree"'), document.fonts.load('600 34px "JetBrains Mono"')])
     .then(() => document.fonts.ready).then(() => {
-      const L = j.words, ss = (j.summary || {}).sensors || [];
+      const L = j.words, ss = sharedPlaces((j.summary || {}).sensors || []);
+      if (!ss.length) { box.innerHTML = `<p class="fine">${esc(dropped ? L.rooms_out : L.none)}</p>`; return; }
       SHARE_C = ss.map(s => ({ c: shareCard(s, j), name: `${slug(s.label) || 'place'}-${j.wk}.jpg` }));
       if (ss.length > 1) SHARE_C.push({ c: shareCompare(ss, j), name: `comparison-${j.wk}.jpg` });
       box.innerHTML = `<p class="fine">${esc(L.share_note)}${dropped ? ' ' + esc(L.rooms_out) : ''}</p><div class="rshots">`
         + SHARE_C.map((it, i) => `<figure><span class="rshot"></span><button type="button" class="ybtn" data-dl="${i}">${esc(L.download)} · ${esc(it.name)}</button></figure>`).join('') + `</div>`;
       box.querySelectorAll('.rshot').forEach((el, i) => el.appendChild(SHARE_C[i].c));
-    })).catch(() => { box.innerHTML = `<p class="fine">The node did not answer.</p>`; });
+    })).catch(() => { box.innerHTML = `<p class="fine">${esc(a.words.no_answer)}</p>`; });
 }
 
 /* PDF (Tomas, 23 Nov 2026: "download as pdf full report"). The browser's print, on A4 portrait pages like the Place report:
@@ -330,13 +345,13 @@ function repShare() {
    visual gate can count the pages; printWeekly() prints and takes the pages away again. */
 function buildWeeklyPages(j) {
   const L = j.words, S = j.summary || { sensors: [], overall: {} }, loc = j.lang === 'id' ? 'id-ID' : 'en-GB', P = j.parts || {};
-  const wd = iso => new Date(iso + 'T12:00:00').toLocaleDateString(loc, { weekday: 'short' }), range = `${dshort(j.wk)} – ${dshort(plusDays(j.wk, 6))}`;
+  const wd = iso => new Date(iso + 'T12:00:00').toLocaleDateString(loc, { weekday: 'short' }), range = `${dshort(j.wk, loc)} – ${dshort(plusDays(j.wk, 6), loc)}`;
   const tile = (v, l, cls = '') => `<div class="rtile ${cls}"><b>${esc(v)}</b><span>${esc(l)}</span></div>`;
   const n = 1 + S.sensors.length, foot = i => `<div class="wfoot"><span>${esc(j.node || '')} · PLANETAI · Fab City · ${esc(L.not_calibrated)}</span><span>${esc(L.page.replace('{i}', i).replace('{n}', n))}</span></div>`;
   const grid = `<table class="rgrid"><tr><th></th>${(S.sensors[0] || { days: [] }).days.map(d => `<th>${esc(wd(d.day))}</th>`).join('')}<th class="n">${esc(L.bad_days)}</th></tr>`
     + [...S.sensors].sort((a, b) => b.bad - a.bad || (b.worst_mean || 0) - (a.worst_mean || 0)).map(s => `<tr><td>${esc(s.label)}</td>${s.days.map(d => { const b = dayBlock(d); return `<td><span class="blk ${b.cls}">${esc(b.text)}</span></td>`; }).join('')}<td class="n"><b>${s.bad}</b> / ${s.counted}</td></tr>`).join('') + `</table>`
     + (j.index ? `<p class="rlegend">${[0, 1, 2, 3, 4].map(i => `<span class="blk aqi-${i}"></span> ${esc(L['band_' + i])}`).join(' ')} · <span class="blk aqi-0 edge"></span> ${esc(L.edge_note)} · <span class="blk nc"></span> ${esc(L.not_counted)}</p>` : '');
-  const line = j.bad_source === 'who' ? L.who_line.replace('{v}', fmt(j.bad, 0)) : L.set_by_reader.replace('{v}', j.bad);
+  const line = (j.bad_source === 'who' ? L.who_line : L.set_by_reader).replace('{v}', fmt(j.bad, 0)).replace('{unit}', j.unit || '');
   const head = `<div class="wk">${esc(L.title)} · ${esc(mWord(j.metric))} · ${esc(range)}</div>`;
   const O = S.overall;
   const first = `<section class="wpage">${head}<h1>${esc(L.around.replace('{area}', j.area || j.node || ''))}</h1><div class="sub">${esc(L.picked_n.replace('{n}', S.sensors.length).replace('{node}', j.node || ''))} · ${esc(line)}</div>`
@@ -360,11 +375,13 @@ function buildWeeklyPages(j) {
 }
 function printWeekly() {
   const a = REPLAST; if (!a) return;
+  const box = $('#d-report .rshare');
   repPublic(a, a.picked).then(({ j }) => {
+    if (!((j.summary || {}).sensors || []).length) { if (box) { box.hidden = false; box.innerHTML = `<p class="fine">${esc(j.words.rooms_out)}</p>`; } return; }   // nothing a visitor may see: no blank PDF
     buildWeeklyPages(j); document.body.classList.add('pweekly');
     const done = () => { document.body.classList.remove('pweekly'); $('#wpages').innerHTML = ''; window.removeEventListener('afterprint', done); };
     window.addEventListener('afterprint', done); window.print();
-  }).catch(() => {});
+  }).catch(() => { if (box) { box.hidden = false; box.innerHTML = `<p class="fine">${esc(a.words.no_answer)}</p>`; } });
 }
 
 /* THE WORKBENCH (Tomas, 27 Oct 2026: "embeds in the same data menu", "a reduced version of the full workbench",

@@ -1452,7 +1452,7 @@ def actions(limit: int = Query(500, ge=0, le=5000), stage: str = "", events: int
 
 
 @app.get("/weekly")
-def weekly_(request: Request, metric: str = "", sensors: str = "", bad: str = "15", high: str = "55", weeks: str = "8",
+def weekly_(request: Request, metric: str = "", sensors: str = "", bad: str = "", high: str = "", weeks: str = "8",
             lang: str = "en", wk: str = "", authorization: str = Header("")):
     """The weekly sensor report for the sensors picked: the Report tab in Data (docs/site/grafana.md). The same five
     queries as the keeper's Grafana report (app/weekly.py), every value bound. Without the admin token it offers the
@@ -1476,9 +1476,10 @@ def weekly_(request: Request, metric: str = "", sensors: str = "", bad: str = "1
             "full_day": weekly.FULL_DAY, "max_sensors": weekly.MAX_SENSORS, "parts": {}, "t0": span["t0"].isoformat(),
             "t1": span["t1"].isoformat(), "week_starts": starts, "wk": wk, "wk_complete": complete,
             "shareable": complete and metric in weekly.INDEX, "index": weekly.INDEX.get(metric),
+            "unit": " µg/m³" if metric in weekly.INDEX else "",
             "area": os.getenv("NODE_CITY", "").strip().title(), "node": os.getenv("NODE_NAME", "").strip()}
     if metric is None:   # nothing outdoors has reported yet: the page says so in its own words
-        return {**base, "bad": 15.0, "high": 55.0, "weeks": n}
+        return {**base, "bad": 15.0, "high": 55.0, "weeks": n, "bad_source": "reader"}
     offered = q(offered_sql, metric)
     try:
         c = weekly.clean({"metric": metric, "sensors": sensors, "bad": bad, "high": high, "weeks": weeks, "lang": lang},
@@ -1486,7 +1487,7 @@ def weekly_(request: Request, metric: str = "", sensors: str = "", bad: str = "1
     except ValueError as e:
         raise HTTPException(400, str(e)) from None
     out = {**base, "sensors": offered, "picked": c["sensors"], "bad": c["bad"], "high": c["high"], "weeks": c["weeks"],
-           "bad_source": "who" if c["metric"] == "pm25" and c["bad"] == 15 else "reader"}
+           "bad_source": weekly.line_source(c["metric"], c["bad"])}
     if not c["sensors"]:
         return out
     with db() as con, con.cursor() as cur:

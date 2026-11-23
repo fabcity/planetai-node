@@ -118,7 +118,7 @@ r = subprocess.run(["node", "-e", prog], capture_output=True, text=True)
 o = json.loads(r.stdout) if r.returncode == 0 else {}
 check(o.get("route") == {"tab": "report"} and o.get("routeSensor") == {"tab": "readings", "sensor": "sc-1"}, f"#data/report?… opens the tab, a sensor still opens its row {r.stderr[-300:]}")
 check(o.get("state") == {"m": "pm10", "s": ["a", "b c"], "bad": "20", "high": "60", "w": "4", "wk": "", "lang": "id"}, "the address holds the report's state")
-check(o.get("empty") == {"m": "", "s": [], "bad": "15", "high": "55", "w": "8", "wk": "", "lang": "en"}, "an empty address starts from the defaults")
+check(o.get("empty") == {"m": "", "s": [], "bad": "", "high": "", "w": "8", "wk": "", "lang": "en"}, "an empty address starts from the defaults")
 block = js[js.index("/* REPORT"):js.index("/* SHARE") if "/* SHARE" in js else js.index("/* THE WORKBENCH")] if "/* REPORT" in js else ""   # the HTML the page writes; the share images are drawn on a canvas, not written as HTML
 check(block.count("new URLSearchParams(") >= 2 and "'/weekly?' + new URLSearchParams(" in block and "history.replaceState(" in block,
       "the request and the address are built with URLSearchParams, and the address is kept with replaceState")
@@ -267,6 +267,45 @@ check(pdfjs and "repPublic(" in pdfjs and "DOORS_AUTH" not in pdfjs, "the PDF is
 check("j.wk_complete" in js and "data-pdf" in js and "L.pdf_hint" in js, "Download the PDF is offered for a week that is over, with how to save it")
 check("function buildWeeklyPages" in pdfjs and "function printWeekly" in pdfjs and "afterprint" in pdfjs and "L.page" in pdfjs,
       "the pages are built apart from printing, numbered, and taken away after printing")
+
+print("the review's fixes: each line from its source, the unit of the metric, the images that fit and say what they count")
+check(w.clean({"metric": "pm10"}, {"pm10"}, {})["bad"] == 45 and w.clean({"metric": "pm10"}, {"pm10"}, {})["high"] == 150
+      and w.clean({"metric": "pm25"}, {"pm25"}, {})["bad"] == 15 and w.clean({"metric": "temp"}, {"temp"}, {})["bad"] == 15,
+      "each metric starts at its own lines: PM10 at WHO 45 and ISPU 150, PM2.5 at 15 and 55, others at 15 and 55")
+check(w.line_source("pm10", 45) == "who" and w.line_source("pm25", 15) == "who" and w.line_source("pm10", 15) == "reader" and w.line_source("temp", 15) == "reader",
+      "the line is the WHO's only at the WHO's value for that metric")
+check(all("{unit}" in w.WORDS[l][k] and "µg/m³" not in w.WORDS[l][k] for l in ("en", "id") for k in ("who_line", "set_by_reader")),
+      "the line's words take the metric's unit, never a fixed µg/m³")
+check(all(("bad" in w.WORDS["en"][k] or "line" in w.WORDS["en"][k]) for k in ("who_line", "set_by_reader")), "the footer says it is the bad-day line")
+check("no_answer" in w.WORDS["id"], "the panel's failure is said in the page's language")
+js = open("app/static/doors-data.js").read()
+main = open("app/main.py").read()
+check('"unit"' in main[main.index('@app.get("/weekly")'):][:6000] and "weekly.line_source(" in main, "the route says the metric's unit and where the line comes from")
+prog4 = r"""
+const src = require('fs').readFileSync('app/static/doors-data.js', 'utf8');
+const grab = re => (src.match(re) || [''])[0];
+const d3 = require('./app/static/d3.min.js');
+const L = eval(grab(/const repState = [^\n]*\n/) + grab(/const dshort = [^\n]*\n/) + grab(/const compareLayout = [^\n]*\n/) + grab(/const sharedPlaces = [^\n]*\n/)
+  + grab(/function aboveScale\(pts, top\) \{[\s\S]*?\n\}\n/) + '; ({ dshort, compareLayout, sharedPlaces, aboveScale })');
+const lay = L.compareLayout(2, 5), pts = Array.from({ length: 60 }, (_, i) => [i, i === 10 ? 413 : i === 20 ? 300 : i === 30 ? 280 : 12]);
+console.log(JSON.stringify({ id: L.dshort('2026-10-12', 'id-ID'), en: L.dshort('2026-10-12', 'en-GB'), lay, bottom: lay.top + 4 * lay.pitch + lay.row,
+  places: L.sharedPlaces([{ counted: 0 }, { counted: 5 }, { counted: 7 }]).length, above: L.aboveScale(pts, 50) }));
+"""
+r4 = subprocess.run(["node", "-e", prog4], capture_output=True, text=True)
+o4 = json.loads(r4.stdout) if r4.returncode == 0 else {}
+check("Okt" in str(o4.get("id")) and "Oct" in str(o4.get("en")), f"dates in the page's language {o4.get('id')} {r4.stderr[-200:]}")
+check(o4.get("bottom") is not None and o4["bottom"] <= 1150, f"five places under a two-line title end above the footer {o4.get('lay')} {o4.get('bottom')}")
+check(o4.get("places") == 2, "a place with no counted day gets no image")
+ab = o4.get("above", {})
+check(ab.get("shown") and [p[1] for p in ab["shown"]] == [413, 300] and ab.get("more") == 1, f"above the scale: the two highest, and how many more {ab}")
+block = js[js.index("function reportBlock"):js.index("/* SHARE")]
+check("replaceState" in block and "j.wk" in block[block.index("REPLAST = j"):block.index("REPLAST = j") + 600], "the answer's week goes back into the address")
+share = js[js.index("/* SHARE"):js.index("/* THE WORKBENCH")]
+check("fitFont(" in share and "words.no_answer" in share and "did not answer" not in share and "s.counted" in share[share.index("function shareCompare"):share.index("function repShare")],
+      "the count line is fitted to the image, the comparison says what each count is out of, a failure is in WORDS")
+pdf = js[js.index("/* PDF"):js.index("/* THE WORKBENCH")]
+pw = pdf[pdf.index("function printWeekly"):]
+check("words.rooms_out" in pw and ".sensors || []).length" in pw and "words.no_answer" in pw and "catch(() => {})" not in pw, "the PDF does not print zero places, says why, and says when the node did not answer")
 
 print(f"weekly: {'every check passed' if not fails else str(len(fails)) + ' failed'}")
 sys.exit(1 if fails else 0)
