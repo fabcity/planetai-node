@@ -131,5 +131,16 @@ check("data-reset" in block and "b.dataset.reset" in block, "after a refusal, St
 check("document.activeElement" in block and ".focus()" in block and "find.value" in block,
       "a redraw keeps the focus and what was typed in the name box")
 
+print("the air index: Indonesia's ISPU bands on the 24-hour mean (Permen LHK P.14/2020, Lampiran I)")
+check([w.band("pm25", v) for v in (0, 15.5, 15.6, 55.4, 55.5, 150.4, 150.5, 250.4, 250.5)] == [0, 0, 1, 1, 2, 2, 3, 3, 4],
+      "PM2.5 bands, upper bounds inclusive")
+check([w.band("pm10", v) for v in (50, 50.1, 150, 151, 350, 351, 420, 421)] == [0, 1, 1, 2, 2, 3, 3, 4], "PM10 bands")
+check(w.band("temp", 40) is None and w.band("pm25", None) is None, "no index, no band")
+check("days" in w.PARTS and "%(sensors)s" in w.bind(w.sql_days(w.WORDS["en"])), "the days part is bound like the others")
+check(set(w.WORDS["en"]) == set(w.WORDS["id"]), "every word in both languages")
+for k in ("so_far", "of_counted", "set_by_reader", "who_line", "pdf", "pdf_hint", "share", "not_counted", "rooms_out",
+          "band_0", "band_4", "not_calibrated", "colours_from", "bad_of", "week_pick", "worst_place", "worst_day", "highest_hour", "avg_bad"):
+    check(k in w.WORDS["en"], f"the word {k!r} is there")
+
 print(f"weekly: {'every check passed' if not fails else str(len(fails)) + ' failed'}")
 sys.exit(1 if fails else 0)

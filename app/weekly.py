@@ -45,6 +45,19 @@ WORDS = {
         # the node's page only (the Report tab in Data)
         "find": "Type part of a sensor's name", "pick": "Pick one or more sensors, from the list or by typing their name.",
         "weeks_n": "weeks", "none": "No sensor here has reported this metric in the last 30 days.", "picked": "picked",
+        "week_pick": "Week", "so_far": "so far", "bad_of": "bad days of {n}", "of_counted": "bad days of {n} counted",
+        "set_by_reader": "bad line {v} µg/m³, set by the reader", "who_line": "the WHO guideline, {v} µg/m³",
+        "avg_bad": "bad days, average", "worst_place": "worst place", "worst_day": "worst day", "highest_hour": "highest hour",
+        "the_week": "The week, place by place", "daily_mean": "Daily mean, against the bad line",
+        "not_counted": "not counted: heard for fewer than 18 hours", "edge_note": "over the line, inside the index's good band",
+        "above_cap": "above the scale", "pdf": "Download the PDF", "pdf_hint": "Your browser opens its print window: choose Save as PDF.",
+        "share": "Share images", "share_note": "Each image is 1080×1350, made here in your browser. Nothing leaves the node until you post it.",
+        "download": "Download", "comparison": "Comparison", "air_week": "Air this week", "around": "Air this week around {area}",
+        "worst_first": "worst first", "rooms_out": "Rooms stay out of what is shared and printed.",
+        "not_calibrated": "Not calibrated.", "colours_from": "Colours from Indonesia's air index, ISPU.",
+        "page": "page {i} of {n}", "overview": "Overview", "picked_n": "{n} places picked on the {node} node",
+        "band_0": "good", "band_1": "moderate", "band_2": "unhealthy", "band_3": "very unhealthy", "band_4": "dangerous",
+        "over_line": "over the line",
     },
     "id": {
         "title": "Laporan mingguan sensor", "other": "en", "other_name": "English",
@@ -69,6 +82,19 @@ WORDS = {
         "first": "belum ada minggu sebelumnya", "high_line": "batas tinggi",
         "find": "Ketik sebagian nama sensor", "pick": "Pilih satu sensor atau lebih, dari daftar atau dengan mengetik namanya.",
         "weeks_n": "minggu", "none": "Belum ada sensor di sini yang melaporkan metrik ini dalam 30 hari terakhir.", "picked": "dipilih",
+        "week_pick": "Minggu", "so_far": "sejauh ini", "bad_of": "hari buruk dari {n}", "of_counted": "hari buruk dari {n} yang terhitung",
+        "set_by_reader": "batas hari buruk {v} µg/m³, diatur pembaca", "who_line": "pedoman WHO, {v} µg/m³",
+        "avg_bad": "rata-rata hari buruk", "worst_place": "tempat terburuk", "worst_day": "hari terburuk", "highest_hour": "jam tertinggi",
+        "the_week": "Minggu ini, tempat demi tempat", "daily_mean": "Rerata harian, dibanding batas hari buruk",
+        "not_counted": "tidak dihitung: data kurang dari 18 jam", "edge_note": "di atas batas, tapi masih dalam kategori baik ISPU",
+        "above_cap": "di atas skala", "pdf": "Unduh PDF", "pdf_hint": "Browser membuka jendela cetak: pilih Simpan sebagai PDF.",
+        "share": "Gambar untuk dibagikan", "share_note": "Setiap gambar berukuran 1080×1350, dibuat di browser Anda. Tidak ada yang keluar dari node sampai Anda membagikannya.",
+        "download": "Unduh", "comparison": "Perbandingan", "air_week": "Udara minggu ini", "around": "Udara minggu ini di sekitar {area}",
+        "worst_first": "terburuk di atas", "rooms_out": "Ruangan tidak ikut dalam yang dibagikan dan dicetak.",
+        "not_calibrated": "Belum dikalibrasi.", "colours_from": "Warna dari Indeks Standar Pencemar Udara, ISPU.",
+        "page": "halaman {i} dari {n}", "overview": "Ringkasan", "picked_n": "{n} tempat dipilih di node {node}",
+        "band_0": "baik", "band_1": "sedang", "band_2": "tidak sehat", "band_3": "sangat tidak sehat", "band_4": "berbahaya",
+        "over_line": "di atas batas",
     },
 }
 
@@ -158,8 +184,30 @@ def sql_hours(L):
             "FROM (VALUES ($__timeFrom()::timestamptz), (least($__timeTo()::timestamptz, now()))) x(t) ORDER BY 1")
 
 
-# For the node's page (GET /weekly). The five parts, in the order the page draws them.
-PARTS = {"weeks": sql_weeks, "badweeks": sql_badweeks, "daily": sql_daily, "baddays": sql_baddays, "hours": sql_hours}
+# Indonesia's air index, ISPU, on the 24-hour mean: the upper bounds of good, moderate, unhealthy and very unhealthy
+# (Permen LHK P.14/MENLHK/SETJEN/KUM.1/7/2020, Lampiran I; above the last is dangerous). Only these two have one.
+INDEX = {"pm25": (15.5, 55.4, 150.4, 250.4), "pm10": (50, 150, 350, 420)}
+
+
+def band(metric, mean):
+    """0 good, 1 moderate, 2 unhealthy, 3 very unhealthy, 4 dangerous; None when the metric has no index or no mean."""
+    if mean is None or metric not in INDEX:
+        return None
+    return next((i for i, top in enumerate(INDEX[metric]) if mean <= top), 4)
+
+
+def sql_days(L):
+    """Every sensor's days in the window: hours heard, the 24-hour mean, the highest hour and when. The node's page only;
+    the Grafana report does not draw it."""
+    return ("WITH " + ", ".join([H, SN]) + " SELECT to_char(date_trunc('day', h.bucket), 'YYYY-MM-DD') AS day, sn.label, "
+            "h.sensor_id, count(*) AS hours, avg(h.v) AS mean, max(h.v) AS peak, "
+            "to_char((array_agg(h.bucket ORDER BY h.v DESC))[1], 'HH24:MI') AS peak_at "
+            "FROM h JOIN sn USING (sensor_id) GROUP BY 1, 2, 3 ORDER BY 3, 1")
+
+
+# For the node's page (GET /weekly), in the order the page reads them.
+PARTS = {"weeks": sql_weeks, "badweeks": sql_badweeks, "daily": sql_daily, "baddays": sql_baddays, "hours": sql_hours,
+         "days": sql_days}
 MAX_SENSORS, MAX_WEEKS = 12, 12
 
 # Grafana's placeholders and what the node binds in their place. $__timeFilter is Grafana's own BETWEEN, so the two

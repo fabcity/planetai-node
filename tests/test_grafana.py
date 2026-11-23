@@ -161,7 +161,17 @@ if os.getenv("RHO_PG_URL"):
                 for k, v in grafana.items():
                     as_grafana = as_grafana.replace(k, v)
                 both[tz, part] = (c.execute(as_grafana).fetchall(), c.execute(weekly.bind(sql), params).fetchall())
+        # the days part (the node's page only): a's Tuesday last week, by hand: 21 hours at 10, 60 at 05:00 and 06:00,
+        # 70 at 10:00, so 24 hours, a mean of 400/24 and the highest hour 70 at 10:00; Wednesday all 10
+        c.execute("SET TIME ZONE 'UTC'")
+        tue, wed = c.execute("SELECT to_char(date_trunc('week', now()) - interval '6 days', 'YYYY-MM-DD'), "
+                             "to_char(date_trunc('week', now()) - interval '5 days', 'YYYY-MM-DD')").fetchone()
+        days = {(r[2], r[0]): r for r in c.execute(weekly.bind(weekly.sql_days(weekly.WORDS["en"])), params).fetchall()}
         c.rollback()
+    d_tue, d_wed = days.get(("a", tue)), days.get(("a", wed))
+    check(d_tue is not None and d_tue[3] == 24 and abs(float(d_tue[4]) - 400 / 24) < 1e-9 and float(d_tue[5]) == 70 and d_tue[6] == "10:00",
+          f"pg: days gives a day's hours, 24-hour mean and highest hour by hand {d_tue}")
+    check(d_wed is not None and d_wed[3] == 24 and float(d_wed[4]) == 10 and float(d_wed[5]) == 10, "pg: an ordinary day is all 10")
     for (tz, part), (by_grafana, by_node) in both.items():
         check(by_node == by_grafana and len(by_node) > 0, f"pg: {part} in {tz}, the node's rows are Grafana's ({len(by_node)} rows)")
     # What GET /weekly offers (weekly.offer_sql), on its own temporary tables: a visitor sees the outdoor sensor on a
