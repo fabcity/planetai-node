@@ -312,7 +312,8 @@ function shareSave(i) {
 function repShare() {
   const sec = $('#d-report'), box = sec.querySelector('.rshare'), a = REPLAST; if (!box || !a) return;
   box.hidden = false; box.innerHTML = `<p class="fine">…</p>`;
-  repPublic(a, a.picked).then(({ j, dropped }) => Promise.all([document.fonts.load('800 112px "Figtree"'), document.fonts.load('600 34px "JetBrains Mono"')])
+  /* allSettled: a face that cannot load (no route out, a blocked file) leaves the image in the fallback face rather than no image */
+  repPublic(a, a.picked).then(({ j, dropped }) => Promise.allSettled([document.fonts.load('800 112px "Figtree"'), document.fonts.load('600 34px "JetBrains Mono"')])
     .then(() => document.fonts.ready).then(() => {
       const L = j.words, ss = (j.summary || {}).sensors || [];
       SHARE_C = ss.map(s => ({ c: shareCard(s, j), name: `${slug(s.label) || 'place'}-${j.wk}.jpg` }));
