@@ -148,6 +148,7 @@ function reportBlock() {
     sec.addEventListener('click', e => {
       const b = e.target.closest('button'); if (!b) return;
       if (b.dataset.share) { repShare(); return; }
+      if (b.dataset.pdf) { printWeekly(); return; }
       if (b.dataset.dl) { shareSave(+b.dataset.dl); return; }
       const s2 = repState();
       if (b.dataset.rm) s2.s = s2.s.filter(id => id !== b.dataset.rm);
@@ -215,7 +216,7 @@ function reportBlock() {
     const at = sec.contains(document.activeElement) ? document.activeElement : null, was = at && { r: at.dataset.r, v: at.value };
     const typed = (sec.querySelector('[data-r=find]') || {}).value || '';
     sec.innerHTML = `<div class="dsh"><h2>${esc(L.title)}</h2>${L.how.split('\n\n').map(para).join('')}</div>` + pick
-      + (!j.picked.length ? `<p class="fine">${esc(L.pick)}</p>` : tiles + `<div class="rbtns">${j.shareable ? `<button type="button" class="ybtn" data-share="1">${esc(L.share)}</button>` : ''}</div><div class="rshare" hidden></div>`
+      + (!j.picked.length ? `<p class="fine">${esc(L.pick)}</p>` : tiles + `<div class="rbtns">${j.wk_complete ? `<button type="button" class="ybtn" data-pdf="1" title="${esc(L.pdf_hint)}">${esc(L.pdf)}</button>` : ''}${j.shareable ? `<button type="button" class="ybtn" data-share="1">${esc(L.share)}</button>` : ''}</div>${j.wk_complete ? `<p class="fine">${esc(L.pdf_hint)}</p>` : ''}<div class="rshare" hidden></div>`
         + `<h3>${esc(L.the_week)}</h3>` + grid
         + `<h3>${esc(L.daily_mean)}</h3>` + meanFigs
         + `<h3>${esc(L.p_badweeks)}</h3>` + figs('badweeks', { bars: true, top: 7 })
@@ -320,6 +321,49 @@ function repShare() {
         + SHARE_C.map((it, i) => `<figure><span class="rshot"></span><button type="button" class="ybtn" data-dl="${i}">${esc(L.download)} · ${esc(it.name)}</button></figure>`).join('') + `</div>`;
       box.querySelectorAll('.rshot').forEach((el, i) => el.appendChild(SHARE_C[i].c));
     })).catch(() => { box.innerHTML = `<p class="fine">The node did not answer.</p>`; });
+}
+
+/* PDF (Tomas, 23 Nov 2026: "download as pdf full report"). The browser's print, on A4 portrait pages like the Place report:
+   page 1 the overview of the places picked, then a page per place. Built from the visitor's view (repPublic), on paper
+   whatever the screen's register, the air colours printed as they are. buildWeeklyPages() is apart from printing, so the
+   visual gate can count the pages; printWeekly() prints and takes the pages away again. */
+function buildWeeklyPages(j) {
+  const L = j.words, S = j.summary || { sensors: [], overall: {} }, loc = j.lang === 'id' ? 'id-ID' : 'en-GB', P = j.parts || {};
+  const wd = iso => new Date(iso + 'T12:00:00').toLocaleDateString(loc, { weekday: 'short' }), range = `${dshort(j.wk)} – ${dshort(plusDays(j.wk, 6))}`;
+  const tile = (v, l, cls = '') => `<div class="rtile ${cls}"><b>${esc(v)}</b><span>${esc(l)}</span></div>`;
+  const n = 1 + S.sensors.length, foot = i => `<div class="wfoot"><span>${esc(j.node || '')} · PLANETAI · Fab City · ${esc(L.not_calibrated)}</span><span>${esc(L.page.replace('{i}', i).replace('{n}', n))}</span></div>`;
+  const grid = `<table class="rgrid"><tr><th></th>${(S.sensors[0] || { days: [] }).days.map(d => `<th>${esc(wd(d.day))}</th>`).join('')}<th class="n">${esc(L.bad_days)}</th></tr>`
+    + [...S.sensors].sort((a, b) => b.bad - a.bad || (b.worst_mean || 0) - (a.worst_mean || 0)).map(s => `<tr><td>${esc(s.label)}</td>${s.days.map(d => { const b = dayBlock(d); return `<td><span class="blk ${b.cls}">${esc(b.text)}</span></td>`; }).join('')}<td class="n"><b>${s.bad}</b> / ${s.counted}</td></tr>`).join('') + `</table>`
+    + (j.index ? `<p class="rlegend">${[0, 1, 2, 3, 4].map(i => `<span class="blk aqi-${i}"></span> ${esc(L['band_' + i])}`).join(' ')} · <span class="blk aqi-0 edge"></span> ${esc(L.edge_note)} · <span class="blk nc"></span> ${esc(L.not_counted)}</p>` : '');
+  const line = j.bad_source === 'who' ? L.who_line.replace('{v}', fmt(j.bad, 0)) : L.set_by_reader.replace('{v}', j.bad);
+  const head = `<div class="wk">${esc(L.title)} · ${esc(mWord(j.metric))} · ${esc(range)}</div>`;
+  const O = S.overall;
+  const first = `<section class="wpage">${head}<h1>${esc(L.around.replace('{area}', j.area || j.node || ''))}</h1><div class="sub">${esc(L.picked_n.replace('{n}', S.sensors.length).replace('{node}', j.node || ''))} · ${esc(line)}</div>`
+    + `<div class="rtiles">${tile(O.avg_bad ?? '–', L.avg_bad)}${tile(O.worst || '–', L.worst_place)}${tile(O.peak ?? '–', L.highest_hour + ' · ' + (O.peak_place || ''))}</div>`
+    + `<h3>${esc(L.the_week)}</h3>${grid}<h3>${esc(L.p_how)}</h3><div class="how">${L.how.split('\n\n').map(p => `<p>${esc(p).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')}</p>`).join('')}</div>${foot(1)}</section>`;
+  const t0 = new Date(j.t0), t1 = new Date(j.t1), endWk = plusDays(j.wk, 6);
+  const pages = S.sensors.map((s, k) => {
+    const mean = ((P.days || {}).rows || []).filter(r => r[2] === s.id && r[4] != null).map(r => [new Date(r[0] + 'T12:00:00'), r[4]]);
+    const bars = ((P.badweeks || {}).rows || []).filter(r => r[1] === s.label).map(r => [new Date(r[0]), r[2]]);
+    const bd = P.baddays || { cols: [], rows: [] }, rows = bd.rows.filter(r => r[1] === s.label && r[0] >= j.wk && r[0] <= endWk);
+    return `<section class="wpage">${head}<h1>${esc(s.label)}</h1><div class="sub">${esc(mWord(j.metric))}${j.area ? ' · ' + esc(j.area) : ''} · ${esc(line)}</div>`
+      + `<div class="rtiles">${tile(s.counted ? s.bad : '–', (s.counted === 7 ? L.bad_of : L.of_counted).replace('{n}', s.counted))}${tile(s.verdict || '–', L.verdict, s.verdict === L.worse ? 'wr' : '')}${tile(s.peak ?? '–', L.highest_hour + ' · ' + (s.peak_day ? wd(s.peak_day) + ' ' + (s.peak_at || '') : ''))}${tile(s.worst_mean ?? '–', L.worst_day + ' · ' + (s.worst_day ? wd(s.worst_day) : ''))}</div>`
+      + `<h3>${esc(L.daily_mean)}</h3>${repChart(mean, { gap: 36 * 36e5, line: j.bad, bands: j.index, t0, t1 })}`
+      + `<h3>${esc(L.p_badweeks)}</h3>${repChart(bars, { bars: true, top: 7, t0, t1 })}`
+      + `<h3>${esc(L.p_baddays)}</h3>` + (rows.length ? `<table class="tbl rep"><tr>${bd.cols.filter((c, i) => i !== 1).map((c, i) => `<th${i ? ' class="n"' : ''}>${esc(c)}</th>`).join('')}</tr>`
+        + rows.map(r => `<tr>${r.filter((v, i) => i !== 1).map((v, i) => `<td${i ? ` class="n${i === 1 && v < j.full_day ? ' wr' : ''}"` : ''}>${esc(v ?? '–')}</td>`).join('')}</tr>`).join('') + `</table>` : '<p class="fine">–</p>')
+      + `${foot(k + 2)}</section>`;
+  });
+  const box = $('#wpages'); box.innerHTML = first + pages.join('');
+  return n;
+}
+function printWeekly() {
+  const a = REPLAST; if (!a) return;
+  repPublic(a, a.picked).then(({ j }) => {
+    buildWeeklyPages(j); document.body.classList.add('pweekly');
+    const done = () => { document.body.classList.remove('pweekly'); $('#wpages').innerHTML = ''; window.removeEventListener('afterprint', done); };
+    window.addEventListener('afterprint', done); window.print();
+  }).catch(() => {});
 }
 
 /* THE WORKBENCH (Tomas, 27 Oct 2026: "embeds in the same data menu", "a reduced version of the full workbench",

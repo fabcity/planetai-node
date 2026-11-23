@@ -394,6 +394,10 @@ body.preport .page[data-view="place"]>:not(#preport){display:none}
 @page sheet{size:A4 landscape;margin:0}
 @page report{size:A4 portrait;margin:0}
 @media print{
+  body.pweekly>:not(#wpages){display:none!important}
+  body.pweekly #wpages{display:block!important}
+  body.pweekly .wpage{page:weekly;break-inside:avoid}
+  body.pweekly .wpage:not(:last-child){break-after:page}
   body.preport>:not([data-view="place"]),body.preport .prbar{display:none!important}
   body.preport .page[data-view="place"]{max-width:none;margin:0;padding:0;border:0;background:none}
   body.preport .psheets{display:block;padding:0;background:none}
@@ -708,6 +712,15 @@ body:not(.classic) .hero .ladder.folded{display:none}
 .rbtns{display:flex;gap:10px;flex-wrap:wrap;margin:6px 0}.rshare{border:1px solid var(--hair);padding:12px;margin:8px 0}.rshots{display:flex;flex-wrap:wrap;gap:16px}
 .rshots figure{margin:0;display:flex;flex-direction:column;gap:6px;max-width:270px}.rshots canvas{width:270px;height:auto;display:block;border:1px solid var(--hair)}
 .rlegend{font-size:var(--t-cap);color:var(--mute);line-height:2}.rlegend .blk{min-width:16px;height:12px;line-height:12px;margin-left:6px}.sms .alln{fill:none;stroke:var(--ink);stroke-width:1.2;stroke-dasharray:6 4;opacity:.7}.sms .bar{fill:var(--ink);opacity:.75}
+@page weekly{size:A4 portrait;margin:0}
+/* the weekly report's PDF (doors-data.js printWeekly): paper whatever the screen's register, the air colours printed as they are.
+   A block with its foot pinned, not a flex column: Chrome split a flex page's chart onto an extra Letter page (23 Nov 2026). */
+.wpage{--ink:#171717;--mute:#6B6B66;--dim:#8A8580;--hair:#D9D4CE;--raise:#F3F0EA;--ground:#FFFFFF;background:#fff;color:var(--ink);width:210mm;height:296mm;box-sizing:border-box;padding:14mm 15mm 12mm;position:relative;font:400 10pt/1.4 var(--body);-webkit-print-color-adjust:exact;print-color-adjust:exact;overflow:hidden}
+.wpage h1{font:800 22pt/1.1 var(--body);margin:2mm 0 1mm}.wpage h3{font:700 11pt var(--body);margin:5mm 0 2mm}.wpage .wk{font:600 8pt var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}
+.wpage .sub{color:var(--mute)}.wpage .rtiles{grid-template-columns:repeat(4,1fr)}.wpage .rtile b{font-size:16pt}.wpage svg{width:125mm;height:auto}
+.wpage .lnp{fill:none;stroke:var(--ink);stroke-width:1.4}.wpage .bar{fill:var(--ink);opacity:.75}.wpage .grid{stroke:var(--hair)}.wpage svg text{fill:var(--mute);font:400 9px var(--mono)}.wpage td.wr{color:var(--signal-worse)}.wpage .how p{margin:0 0 2mm;color:var(--mute);font-size:9pt}
+.wpage .wfoot{position:absolute;left:15mm;right:15mm;bottom:12mm;display:flex;justify-content:space-between;gap:6mm;border-top:1px solid var(--hair);padding-top:2mm;font:400 7.5pt var(--mono);color:var(--mute)}
+.wpage .tbl{font-size:8.5pt}
 .sm{margin:0}.sm figcaption{font-size:var(--t-small);margin-bottom:2px}.sm svg{width:100%;height:auto;display:block}
 .sm .grid{stroke:var(--hair)}
 .cols2{display:grid;grid-template-columns:1fr 1fr;gap:48px}
@@ -1407,6 +1420,7 @@ body:not(.classic) .hero .ladder.folded{display:none}
     </div>
   </div>
 </section>
+<div id="wpages" class="wpages" hidden></div>
 
 <!-- WALL -->
 <section class="view" data-view="wall" hidden><div id="wallv" data-learn="wall-never" data-reads="/health /issues /wall" data-stage="observe" data-pack="core"></div></section>

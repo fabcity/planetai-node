@@ -257,5 +257,16 @@ check("L.rooms_out" in share and "'image/jpeg'" in share and "document.fonts.rea
       "the panel says rooms stay out, draws after the fonts, 1080×1350 JPEG")
 check("-${" in share and ".jpg" in share and "comparison-" in share, "file names: <place>-<week>.jpg and comparison-<week>.jpg")
 
+print("the PDF: A4 pages from the browser's print, the visitor's view, only for a week that is over")
+html = open("app/static/doors.html").read()
+js = open("app/static/doors-data.js").read()
+check("@page weekly{size:A4 portrait" in html and "body.pweekly" in html and 'id="wpages"' in html, "an A4 portrait page, a print layout and its container")
+check("print-color-adjust:exact" in html.replace(" ", ""), "the air colours print without the background-graphics box ticked")
+pdfjs = js[js.index("/* PDF"):js.index("/* THE WORKBENCH")] if "/* PDF" in js else ""
+check(pdfjs and "repPublic(" in pdfjs and "DOORS_AUTH" not in pdfjs, "the PDF is made from the visitor's view")
+check("j.wk_complete" in js and "data-pdf" in js and "L.pdf_hint" in js, "Download the PDF is offered for a week that is over, with how to save it")
+check("function buildWeeklyPages" in pdfjs and "function printWeekly" in pdfjs and "afterprint" in pdfjs and "L.page" in pdfjs,
+      "the pages are built apart from printing, numbered, and taken away after printing")
+
 print(f"weekly: {'every check passed' if not fails else str(len(fails)) + ' failed'}")
 sys.exit(1 if fails else 0)
