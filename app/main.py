@@ -19,6 +19,7 @@ import threading
 import time
 import unicodedata
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from pathlib import Path
 
 import httpx
@@ -48,6 +49,7 @@ import report
 import settings
 import sources
 import store
+import weekly
 
 log = logging.getLogger("planetai")
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"), format="%(asctime)s %(levelname)s %(message)s")
@@ -1447,6 +1449,46 @@ def actions(limit: int = Query(500, ge=0, le=5000), stage: str = "", events: int
                  "WHERE alert_id IS NOT NULL OR event_id IS NOT NULL ORDER BY ts DESC LIMIT %s", limit)
     return q("SELECT ts, alert_id, stage, actor, note, choice FROM actions WHERE alert_id IS NOT NULL "
              "ORDER BY ts DESC LIMIT %s", limit)
+
+
+@app.get("/weekly")
+def weekly_(request: Request, metric: str = "", sensors: str = "", bad: str = "15", high: str = "55", weeks: str = "8",
+            lang: str = "en", authorization: str = Header("")):
+    """The weekly sensor report for the sensors picked: the Report tab in Data (docs/site/grafana.md). The same five
+    queries as the keeper's Grafana report (app/weekly.py), every value bound. Without the admin token it offers the
+    outdoor sensors only, named by their names, and reads no private channel."""
+    private = _shows_private(request, authorization)
+    pub = "" if private else " AND " + packs.public_sql("r")
+    room = "" if private else " AND s.indoor IS NOT TRUE"
+    label = "coalesce(nullif(s.room, ''), nullif(s.name, ''), s.sensor_id)" if private else "coalesce(nullif(s.name, ''), s.sensor_id)"
+    recent = " AND r.bucket > now() - interval '30 days' AND r.bucket <= now()"
+    metrics = {x["metric"] for x in q("SELECT DISTINCT r.metric FROM readings_1h r JOIN sensors s USING (sensor_id) "
+                                      "WHERE s.kind = 'sensor'" + room + recent + pub)}
+    metric = metric.strip() or ("pm25" if "pm25" in metrics or not metrics else min(metrics))
+    offered = q("SELECT s.sensor_id AS id, " + label + " AS label, s.source FROM sensors s WHERE s.kind = 'sensor'" + room +
+                " AND EXISTS (SELECT 1 FROM readings_1h r WHERE r.sensor_id = s.sensor_id AND r.metric = %s" + recent + pub +
+                ") ORDER BY s.indoor IS TRUE, s.local DESC, 2", metric)
+    try:
+        c = weekly.clean({"metric": metric, "sensors": sensors, "bad": bad, "high": high, "weeks": weeks, "lang": lang},
+                         metrics, {o["id"]: o["label"] for o in offered})
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from None
+    out = {"lang": c["lang"], "words": weekly.WORDS[c["lang"]], "metric": c["metric"], "metrics": sorted(metrics),
+           "sensors": offered, "picked": c["sensors"], "bad": c["bad"], "high": c["high"], "weeks": c["weeks"],
+           "full_day": weekly.FULL_DAY, "parts": {}}
+    if not c["sensors"]:
+        return out
+    with db() as con, con.cursor() as cur:   # the session is in NODE_TZ (app/db.py), so weeks and days are the node's
+        cur.execute("SELECT date_trunc('week', now()) - make_interval(weeks => %s) AS t0, now() AS t1", (c["weeks"] - 1,))
+        span = cur.fetchone()
+        params = {**span, "metric": c["metric"], "sensors": c["sensors"], "bad": c["bad"], "high": c["high"]}
+        for part, sql_of in weekly.PARTS.items():
+            cur.execute(weekly.bind(sql_of(weekly.WORDS[c["lang"]]), private=private, public=packs.public_sql("r")), params)
+            out["parts"][part] = {"cols": [d.name for d in cur.description],
+                                  "rows": [[v.isoformat() if isinstance(v, datetime) else float(v) if isinstance(v, Decimal) else v
+                                            for v in r.values()] for r in cur.fetchall()]}
+    out["t0"], out["t1"] = span["t0"].isoformat(), span["t1"].isoformat()
+    return out
 
 
 @app.get("/series")

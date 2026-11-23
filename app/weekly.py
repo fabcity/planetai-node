@@ -166,11 +166,14 @@ _BIND = (("$__timeFilter(r.bucket)", "r.bucket BETWEEN %(t0)s AND %(t1)s"), ("$_
 _SN_PUBLIC = "sn AS (SELECT sensor_id, coalesce(nullif(name, ''), sensor_id) AS label FROM sensors)"
 
 
-def bind(sql, private=False):
+def bind(sql, private=False, public=""):
     """A report query with psycopg parameters where Grafana had placeholders. Refuses a stray % (psycopg would read
-    it as a parameter) and any placeholder it does not know, so a new panel cannot slip text through."""
+    it as a parameter) and any placeholder it does not know, so a new panel cannot slip text through. For a visitor
+    (`private` False), `public` is packs.public_sql("r"): the all-sensors median then reads no private channel."""
     if not private:
         sql = sql.replace(SN, _SN_PUBLIC)
+        if public:
+            sql = sql.replace(O, O[:-1] + " AND " + public + ")")
     if "%" in sql:
         raise ValueError("a % in the report's SQL: write it as %% or bind it")
     for grafana, node in _BIND:

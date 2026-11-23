@@ -57,5 +57,21 @@ check(w.clean({"metric": "pm25", "lang": "id"}, M, OFF)["lang"] == "id" and w.cl
       "lang: id, or else en")
 check(w.clean({"metric": "pm25", "sensors": " sc-1 ,,sc-1"}, M, OFF)["sensors"] == ["sc-1"], "spaces, empties and repeats drop out")
 
+check(w.O in w.sql_weeks(w.WORDS["en"]) and "s.indoor IS NOT TRUE AND PUB)" in w.bind(w.sql_weeks(w.WORDS["en"]), public="PUB")
+      and "PUB" not in w.bind(w.sql_weeks(w.WORDS["en"]), private=True, public="PUB"),
+      "a visitor's all-sensors median reads only public channels (packs.public_sql)")
+
+print("GET /weekly: open at SHARE_LEVEL=open, every value bound")
+auth = open("app/auth.py").read()
+open_list = auth[auth.index("_SHARE_OPEN = ("):auth.index("}), (", auth.index("_SHARE_OPEN = ("))]
+check('"/weekly"' in open_list, "/weekly is on the open list, exactly")
+main = open("app/main.py").read()
+route = main[main.index('@app.get("/weekly")'):] if '@app.get("/weekly")' in main else ""
+route = route[:route.index("\n@app.", 1)] if "\n@app." in route[1:] else route
+for need in ("_shows_private(", "weekly.clean(", "weekly.bind(", "db()", "packs.public_sql("):
+    check(need in route, f"the route calls {need}")
+check(route and 'f"' not in route and "f'" not in route and '" % ' not in route and ".format(" not in route,
+      "the route formats nothing into its SQL")
+
 print(f"weekly: {'every check passed' if not fails else str(len(fails)) + ' failed'}")
 sys.exit(1 if fails else 0)
