@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 import httpx
 from fastapi import APIRouter
 
+import channels
 import settings
 import sources
 
@@ -43,7 +44,8 @@ def poll_reticulum() -> None:
     except Exception as e:  # noqa: BLE001 — an older bridge has no /peers, which is not an error
         log.debug("reticulum: no peers from the bridge (%s)", e)
     reticulum_state.update({"ok": bool(r.get("ok")), "address": r.get("address"),
-                            "destinations": r.get("destinations", 0),
+                            # what the node will send to, not the bridge's own .env copy (channels.RETICULUM_TO)
+                            "destinations": len(channels.RETICULUM_TO()),
                             "announce_s": int(os.getenv("RETICULUM_ANNOUNCE_S", "1800")),
                             "announcing": bool(r.get("announcing")),
                             "peers": _with_distance(peers),
