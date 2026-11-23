@@ -691,6 +691,14 @@ body:not(.classic) .hero .ladder.folded{display:none}
 .linep{stroke:var(--signal-worse);stroke-dasharray:6 4;stroke-width:1.5}
 .axis{display:grid;grid-template-columns:minmax(0,1fr) 300px 80px;gap:16px;padding-top:4px}
 .sms{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+/* the Report tab (doors-data.js reportBlock): pickers on one wrapping line, the sensor list in columns, a filter that hides rows */
+.rpick{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:end;margin:0 0 14px}.rpick label{display:flex;flex-direction:column;gap:4px;font-size:var(--t-cap)}
+.rpick select,.rpick input{min-height:36px;border:1px solid var(--hair);background:var(--ground);color:var(--ink);padding:0 8px;font:var(--t-small) var(--body)}
+.rpick input[type=number]{width:7ch}.rfind{width:min(340px,100%)}.rlang button{border:0;background:none;color:var(--ink);padding:0;font:var(--t-small) var(--body);cursor:pointer;min-height:36px}.rlang button[aria-pressed=true]{font-weight:600;text-decoration:underline;text-underline-offset:3px}.tbl.rep td:first-child{white-space:nowrap;font-family:var(--mono)}
+.rtags{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.rtags button{border:1px solid var(--ink);background:none;color:var(--ink);padding:2px 8px;font:var(--t-small) var(--body);cursor:pointer}
+.rlist{columns:3 220px;column-gap:18px;max-height:260px;overflow:auto;border-top:1px solid var(--hair);padding-top:6px}.rlist h4{margin:6px 0 2px;font:500 var(--t-cap) var(--mono);text-transform:uppercase;color:var(--mute)}
+.rlist label{display:flex;gap:6px;align-items:baseline;font-size:var(--t-small);padding:2px 0;break-inside:avoid}.rlist label[hidden]{display:none}
+.tbl td.wr,.tbl td.wr b{color:var(--signal-worse)}.sms .alln{fill:none;stroke:var(--ink);stroke-width:1.2;stroke-dasharray:6 4;opacity:.7}.sms .bar{fill:var(--ink);opacity:.75}
 .sm{margin:0}.sm figcaption{font-size:var(--t-small);margin-bottom:2px}.sm svg{width:100%;height:auto;display:block}
 .sm .grid{stroke:var(--hair)}
 .cols2{display:grid;grid-template-columns:1fr 1fr;gap:48px}
@@ -1377,6 +1385,7 @@ body:not(.classic) .hero .ladder.folded{display:none}
       <section id="perday" class="dsec" data-learn="data-perday" data-reads="/issues/days" data-stage="measure" data-pack="core" data-kind="row"></section>
       <section id="d-images" class="dsec" data-learn="data-images" data-reads="/captures" data-stage="observe" data-pack="core" data-kind="row"></section>
       <section id="d-things" class="dsec" data-learn="data-things" data-reads="/things" data-stage="observe" data-pack="core" data-kind="row"></section>
+      <section id="d-report" class="dsec" data-reads="/weekly" data-pack="core"></section>
       <section id="ledger" class="dsec" data-learn="data-ledger" data-reads="/actions /alerts" data-stage="act" data-pack="core" data-kind="row"></section>
       <p class="fine dsec" id="dnote">The diary, what is usual and what worked are on <a href="#node/remember">Node › What it remembers</a>; the Index cells on <a href="#node/cells">Node</a>, under the flow.</p>
       <section id="api" class="dsec" data-learn="data-api" data-reads="/static/docs_site.json" data-pack="core"></section>

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **23 Nov: the weekly report on the node's own page.** Data › Report draws the same weekly sensor report as
+  Grafana, for anyone who opens the node, and there is nothing to sign in to. You pick the sensors from a list or by
+  typing part of a name, set the two lines, and switch between English and Bahasa Indonesia. What you chose stays in
+  the address, so a report can go to someone as a link. The page and Grafana run the same queries, so they always
+  count alike. Another screen on the network reads it once `SHARE_LEVEL` is `open`, and without the token it offers
+  the outdoor sensors only.
 - **23 Nov: a weekly sensor report in Grafana, in English and Bahasa Indonesia.** A reader of the Bali air sensors
   asked how many days of a week were bad, how often the sensor went over a high value on those days, and whether the
   place is stable or getting better. `planetai grafana` now brings a second dashboard that answers that for the

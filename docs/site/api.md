@@ -19,7 +19,7 @@ A request is trusted when it comes from loopback or carries a household token: `
 | `act` | Loopback with no token; from anywhere else `ACT_TOKEN` or `ADMIN_TOKEN`. |
 | `children` | `AGGREGATE_TOKEN`, which a parent gives its children. It opens `POST /aggregates`, `POST /events`, `POST /place/maps/received` and `POST /place/photos/received` and nothing else. |
 
-The `off` allowlist, the default, is `/`, `/ui`, `/workbench`, `/tester`, `/health`, `/llms.txt`, `/settings`, `/export`, `/presence`, `/nodes`, `/offers` and anything under `/static/`. The `open` allowlist adds `/stats`, `/sensors`, `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/packs/all`, `/trust`, `/nearby`, `/forecast`, `/index/place`, `/energy`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/wall.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, `/ask`, `/ask/status`, `/docs/search`, `/geo/cell`, `/learned/place`, `/wall`, and anything under `/exports/`, `/issues`, `/sources/` or `/ground/`. The pack routes among them (`/offers`, `/nearby`, `/forecast`, `/index/place`, `/energy` and the `/earth` paths) are put there by their pack's `pack.yaml` (`share:`). Any other value counts as `off`. The lists match the path whatever the method, so at `open` an anonymous `POST /readings` reaches the handler and gets 401. A path with no route also gets 403.
+The `off` allowlist, the default, is `/`, `/ui`, `/workbench`, `/tester`, `/health`, `/llms.txt`, `/settings`, `/export`, `/presence`, `/nodes`, `/offers` and anything under `/static/`. The `open` allowlist adds `/stats`, `/sensors`, `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/packs/all`, `/trust`, `/nearby`, `/forecast`, `/index/place`, `/energy`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/wall.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, `/ask`, `/ask/status`, `/docs/search`, `/geo/cell`, `/learned/place`, `/wall`, `/weekly`, and anything under `/exports/`, `/issues`, `/sources/` or `/ground/`. The pack routes among them (`/offers`, `/nearby`, `/forecast`, `/index/place`, `/energy` and the `/earth` paths) are put there by their pack's `pack.yaml` (`share:`). Any other value counts as `off`. The lists match the path whatever the method, so at `open` an anonymous `POST /readings` reaches the handler and gets 401. A path with no route also gets 403.
 
 Tokens travel in the `Authorization` header only, never in a query string, and are compared in constant time. `ADMIN_TOKEN` is in `.env`, the other three in settings, and `planetai ui` prints them. An optional `X-Agent` header names the caller; `PUT /settings` writes it to the ledger.
 
@@ -210,6 +210,17 @@ Hourly means as aligned arrays: local indoor, everything outdoor, and the model 
 Access: open
 
 Hourly means per sensor, on the same buckets and parameters as `/series`. Returns `{hours: [bucket, ...], series: {sensor_id: [mean or null, ...]}}`.
+
+### GET /weekly
+Access: open
+
+The weekly sensor report, the same as the one in Grafana, for the Report tab in Data. `?metric=` (the node's own
+when left out, `pm25` first), `?sensors=` up to twelve ids separated by commas, `?bad=` and `?high=` the two lines
+(15 and 55), `?weeks=` 1 to 12 (8), `?lang=` `en` or `id`. Returns `{metric, metrics, sensors: [{id, label, source}],
+picked, bad, high, weeks, words, full_day, parts, t0, t1}`. `parts` is empty until a sensor is picked; then it holds
+`weeks`, `badweeks`, `daily`, `baddays` and `hours`, each as `{cols, rows}`. Without `ADMIN_TOKEN` only outdoor
+sensors are offered, by their names, and a sensor that is not offered gets 400 with the same answer whether it exists
+or not.
 
 ### GET /reach
 Access: open
