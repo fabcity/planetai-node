@@ -8,14 +8,15 @@
   sensor's row in Readings. It is a straight line fitted on the last 14 days, shown only while it has been at least a
   tenth closer to the better sensor on days the line never saw, so the first one takes two to three weeks, and a shown
   row says when it was last checked. A number from an hour more than 3 hours old says which hour. It stays 7 days
-  after the better sensor goes quiet. The pack is off until you name a pair and stores nothing but that setting. The
+  after the better sensor goes quiet. A sensor stuck on one value for 24 hourly readings in a row stops counting
+  from the hour it froze, and the row says which one is stuck. The pack is off until you name a pair and stores nothing but that setting. The
   node keeps storing, alerting on and sharing the measured number, so no rule, alert, cell, export or parent sees a
   corrected one. In Bali Air Dispatch, `BAD_INCLUDE` keeps a public station at any distance, for a sensor you put
-  beside it.
+  beside it, and `planetai run nearby stations` lists it as included.
 
   It has not run on any node yet, node #1 included, and no pair has had a public station on one side, so that half is
   tested on fixtures only. We have not tried a reference instrument, two units of one model side by side or a full wet
-  season, and only PM2.5 was tested. Everything we know comes from Smart Citizen's history of our own sensors in Bali,
+  season, and only PM2.5 was tested. The stuck rule was tried on made-up hours only. Everything we know comes from Smart Citizen's history of our own sensors in Bali,
   HM-3301 and PMS5003 against a SEN5X. We picked the tenth after looking at those days, so they do not test it
   independently. [Corrections](docs/site/calibrate.md) has the numbers.
 

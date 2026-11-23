@@ -31,7 +31,9 @@ ROLES = "SELECT source, metric, unit FROM channel_roles WHERE role = 'ambient' A
 NEAR = """SELECT DISTINCT s.sensor_id, s.source, s.name, s.lat, s.lon, s.indoor, st.metric
   FROM sensors s JOIN stats st ON st.sensor_id = s.sensor_id
   WHERE s.kind = 'sensor' AND s.lat IS NOT NULL AND s.lon IS NOT NULL"""
-HOURLY = """SELECT sensor_id, bucket, mean FROM readings_1h
+# an hour whose readings never moved gives that reading itself, not avg()'s float of it: a channel stuck on 0.1 must
+# read 0.1 in every hour for calibrate_core._stuck to see one value
+HOURLY = """SELECT sensor_id, bucket, CASE WHEN min = max THEN max ELSE mean END AS mean FROM readings_1h
   WHERE sensor_id = ANY(%s) AND metric = %s AND bucket >= %s AND bucket < %s"""
 
 
@@ -102,7 +104,7 @@ def calibrate():
                "metres": None if metres is None else round(metres), "since": p.since.isoformat(),
                "until": p.until.isoformat() if p.until else None,
                "measured": None, "corrected": None, "hour": None, "line": None, "paired_hours": 0, "last_paired": None,
-               "checked": None, "shown": False, "why": None}
+               "checked": None, "shown": False, "why": None, "stuck": None}
         why = core.refuse(p, s, ref, station_sources, roles, metres)
         if why:
             row["why"] = {"reason": "refused", **why}
@@ -127,7 +129,7 @@ def calibrate():
         if w["checked"]:
             row["checked"] = {"days": w["checked"]["days"], "measured": _r(w["checked"]["measured"]),
                               "corrected": _r(w["checked"]["corrected"])}
-        row.update(paired_hours=w["paired_hours"], shown=w["shown"],
+        row.update(paired_hours=w["paired_hours"], shown=w["shown"], stuck=w["stuck"],
                    last_paired=w["last_paired"].isoformat() if w["last_paired"] else None,
                    why=w["why"] and {k: v.isoformat() if isinstance(v, date) else v for k, v in w["why"].items()})
         if w["shown"] and x:

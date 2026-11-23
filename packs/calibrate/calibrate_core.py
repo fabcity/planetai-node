@@ -1,16 +1,18 @@
 """The arithmetic of the calibrate pack: one sensor corrected against a better one a keeper names beside it.
 
 A straight line is fitted on the 14 days before a day, scored on that day (which the line never saw), and shown
-only while the newest scored days say it is at least a tenth closer. Pure, stdlib only.
+only while the newest scored days say it is at least a tenth closer. An hour where either side has read one value
+for 24 hourly readings in a row is not paired. Pure, stdlib only.
 """
 import statistics as st
 from datetime import date, datetime, timedelta
+from itertools import groupby
 from typing import NamedTuple
 from zoneinfo import ZoneInfo
 
 FIT_DAYS, MIN_FIT_HOURS, MIN_DAY_HOURS = 14, 168, 12
 WINDOW, MAX_AGE_DAYS, MIN_SCORED, MARGIN = 14, 28, 7, 0.9
-KEEP_DAYS, MAX_METRES, READ_DAYS = 7, 50, 42
+KEEP_DAYS, MAX_METRES, READ_DAYS, STUCK_HOURS = 7, 50, 42, 24
 
 
 class Pair(NamedTuple):
@@ -75,8 +77,20 @@ def _day(hour, tz):
     return hour.astimezone(ZoneInfo(tz)).date()
 
 
+def _stuck(series):
+    """The hours of every run of one value at least STUCK_HOURS readings long: a dead channel stored again under
+    fresh hours (docs/sensors.md, gotcha 2), which a line would follow down to the frozen number."""
+    out = set()
+    for _, run in groupby(sorted(series), key=series.get):
+        run = list(run)
+        if len(run) >= STUCK_HOURS:
+            out.update(run)
+    return out
+
+
 def paired(x, y, pair, tz):
-    return [(t, x[t], y[t]) for t in sorted(x.keys() & y.keys())
+    stuck = _stuck(x) | _stuck(y)
+    return [(t, x[t], y[t]) for t in sorted((x.keys() & y.keys()) - stuck)
             if pair.since <= _day(t, tz) and (pair.until is None or _day(t, tz) <= pair.until)]
 
 
@@ -132,7 +146,9 @@ def verdict(scored, last_day):
 
 def work(pair, x, y, now, tz):
     pts = paired(x, y, pair, tz)
-    out = {"paired_hours": len(pts), "last_paired": None, "line": None, "floor0": True,
+    # the side stuck right now, while the pair is open: why nothing is being paired, for the page to say
+    stuck = None if pair.until else next((side for side, s in (("sensor", x), ("reference", y)) if s and max(s) in _stuck(s)), None)
+    out = {"paired_hours": len(pts), "last_paired": None, "line": None, "floor0": True, "stuck": stuck,
            "checked": None, "shown": False, "why": {"reason": "no-hours"}}
     if not pts:
         return out

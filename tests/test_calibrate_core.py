@@ -83,15 +83,30 @@ def test_all():
     assert C.work(C.Pair("a", "b", "pm25", date(2026, 11, 18), None), x, y, NOW, "UTC")["paired_hours"] == 4 * 24 + 6
     assert C.work(C.Pair("a", "b", "pm25", date(2026, 10, 1), date(2026, 11, 10)), x, y, NOW, "UTC")["why"]["reason"] == "withdrawn"
 
-    # a stuck sensor, and two series that never share an hour
-    flat = dict.fromkeys(x, 7.0)
-    w = C.work(pair, flat, y, NOW, "UTC")
-    assert w["line"] is None and not w["shown"] and w["why"] == {"reason": "flat"}
-    # a reference frozen on one value (a dead Smart Citizen channel re-inserted under fresh hours) is flat too
+    # one value for 24 hourly readings in a row is stuck: those hours are not paired, and the answer says which side
+    w = C.work(pair, dict.fromkeys(x, 7.0), y, NOW, "UTC")
+    assert not w["shown"] and w["why"] == {"reason": "no-hours"} and w["stuck"] == "sensor" and w["paired_hours"] == 0, w
     w = C.work(pair, x, dict.fromkeys(x, 12.0), NOW, "UTC")
-    assert w["line"] is None and not w["shown"] and w["why"] == {"reason": "flat"}, w
-    frozen21 = {t: (12.0 if t >= NOW - timedelta(days=21) else v) for t, v in y.items()}
-    assert not C.work(pair, x, frozen21, NOW, "UTC")["shown"], "frozen for the last 21 of 30 days"
+    assert not w["shown"] and w["why"] == {"reason": "no-hours"} and w["stuck"] == "reference", w
+    # a dead Smart Citizen channel re-inserted under fresh hours: the 7 days start where the freeze starts, and the
+    # line stays the one from before it. 167 hours frozen is the last shown hour, 168 the first withdrawn
+    for k, shown in ((24, True), (72, True), (120, True), (167, True), (168, False), (240, False), (504, False)):
+        at = NOW - timedelta(hours=k)
+        w = C.work(pair, x, {t: (12.0 if t >= at else v) for t, v in y.items()}, NOW, "UTC")
+        assert w["shown"] is shown and w["stuck"] == "reference" and w["last_paired"] == at - timedelta(hours=1), (k, w)
+        assert abs(w["line"]["a"] - 2) < 1e-6 and abs(w["line"]["b"] - 1.5) < 1e-6, (k, w["line"])
+        assert shown or w["why"] == {"reason": "withdrawn", "since": (at - timedelta(hours=1)).date()}, (k, w)
+    # 23 hours is not yet stuck; a stuck day that ended only loses its own hours; a closed pair is never called stuck
+    w = C.work(pair, x, {t: (12.0 if t >= NOW - timedelta(hours=23) else v) for t, v in y.items()}, NOW, "UTC")
+    assert w["paired_hours"] == 720 and w["stuck"] is None, w
+    mid = {t: (12.0 if NOW - timedelta(days=20) <= t < NOW - timedelta(days=18) else v) for t, v in y.items()}
+    w = C.work(pair, x, mid, NOW, "UTC")
+    assert w["paired_hours"] == 720 - 48 and w["stuck"] is None and w["shown"], w
+    closed = C.Pair("a", "b", "pm25", date(2026, 10, 1), date(2026, 11, 10))
+    assert C.work(closed, x, {t: (12.0 if t >= NOW - timedelta(days=3) else v) for t, v in y.items()}, NOW, "UTC")["stuck"] is None
+    # the guard under it: paired hours whose reference never varies make no line (it moved only where the sensor was silent)
+    w = C.work(pair, {t: v for t, v in x.items() if t.hour % 2 == 0}, {t: 12.0 + t.hour % 2 for t in x}, NOW, "UTC")
+    assert w["line"] is None and not w["shown"] and w["why"] == {"reason": "flat"} and w["stuck"] is None, w
     assert C.work(pair, x, {t + timedelta(minutes=30): v for t, v in y.items()}, NOW, "UTC")["why"] == {"reason": "no-hours"}
     assert C.work(pair, {}, {}, NOW, "UTC")["why"] == {"reason": "no-hours"}
 

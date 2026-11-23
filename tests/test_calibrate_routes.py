@@ -49,6 +49,9 @@ X = lambda h: 5 + (h * 7) % 11                   # noqa: E731  a sensor that mov
 HOURS = [NOW - timedelta(hours=h) for h in range(1, 30 * 24)]
 
 
+FROZEN = []   # the hour the reference froze at, while a test wants one
+
+
 def q(sql, *args):
     SEEN.append(sql)
     s = " ".join(sql.split())
@@ -67,7 +70,8 @@ def q(sql, *args):
             if start <= t < end:
                 v = X(i)
                 for sid in ids:
-                    out.append({"sensor_id": sid, "bucket": t.isoformat(), "mean": v if sid == ids[0] else 2 + 1.5 * v})
+                    stuck = FROZEN and sid != ids[0] and t >= FROZEN[0]
+                    out.append({"sensor_id": sid, "bucket": t.isoformat(), "mean": 12.0 if stuck else v if sid == ids[0] else 2 + 1.5 * v})
         return out
     raise AssertionError(s)
 
@@ -118,6 +122,17 @@ assert row["shown"] is True and row["hour"] == (NOW - timedelta(hours=1)).isofor
 assert row["last_paired"] < "2026-11-19", row
 RT._now = lambda: NOW
 print("  hours are read up to the start of the current hour, and an until inside the 7 days still shows the newest finished hour")
+
+# ---- a reference stuck on one value for two days: kept on the line from before, and the row says which side
+ROWS["CALIBRATE_PAIRS"] = "a b pm25 2026-10-01"
+FROZEN.append(NOW - timedelta(hours=48))
+row = get().json()["rows"][0]
+del FROZEN[:]
+assert row["stuck"] == "reference" and row["shown"] is True and row["line"]["a"] == 2.0 and row["line"]["b"] == 1.5, row
+assert row["last_paired"] == (NOW - timedelta(hours=49)).isoformat(), row
+assert get().json()["rows"][0]["stuck"] is None
+assert "CASE WHEN min = max THEN max ELSE mean END AS mean" in " ".join(RT.HOURLY.split()), "an hour that never moved reads its own value"
+print("  a reference stuck for two days stops being paired where it froze, and the row names the side")
 
 # ---- a reference whose meta is not a dict
 ROWS["CALIBRATE_PAIRS"] = "a lst pm25 2026-10-01"

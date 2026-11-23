@@ -57,7 +57,10 @@ OK = {"state": "ok", "could": [], "rows": [
     row("s7", "Gone", {"reason": "withdrawn", "since": "2026-11-03"}),
     row("s8", "Empty", {"reason": "no-hours"}, line=None),
     row("s9", "Station", {"reason": "measured-closer"}, reference=STATION, metres=None, checked=CK),
-    row("s10", "Own far", {"reason": "measured-closer"}, metres=None, checked=CK), STALE]}
+    row("s10", "Own far", {"reason": "measured-closer"}, metres=None, checked=CK), STALE,
+    {**row("s13", "Stuck ref", {"reason": "withdrawn", "since": "2026-11-05"}), "stuck": "reference"},
+    {**row("s14", "Stuck <i>", {"reason": "no-hours"}, line=None), "stuck": "sensor"},
+    {**SHOWN, "sensor": {"id": "s15", "name": "Kept"}, "stuck": "reference", "reference": {**SHOWN["reference"], "name": None}}]}
 GHOST = {"id": "ghost", "name": None, "own": False, "network": None, "official": None, "from_index": None}
 REFUSED = {"state": "ok", "could": [], "rows": [row("a", "A", {"reason": "refused", **w}, **({"reference": GHOST} if w["test"] == "unknown" else {})) for w in (
     {"test": "unknown", "side": "reference"}, {"test": "not-a-sensor", "side": "sensor"}, {"test": "sensor-is-station"},
@@ -80,6 +83,10 @@ for t in ("no line: one of the two read one value for two weeks", "too young: 12
           "not shown: measured is closer", "not shown: not a tenth closer", "withdrawn: nothing beside it since 3 Nov",
           "nothing beside it for six weeks", ">shown, last checked 16 Nov<"):
     assert t in ok, t
+for t in ("withdrawn: nothing beside it since 5 Nov, Rooftop is stuck on one value", "nothing beside it for six weeks, Stuck &lt;i&gt; is stuck on one value",
+          ">shown, last checked 16 Nov, r1 is stuck on one value<"):
+    assert t in ok, t
+assert ok.count("is stuck on one value") == 3, "a row with no stuck side says nothing of it"
 assert ok.count("not shown: measured is closer") == 3
 assert "<td>shown</td>" in bare and "shown, last checked" not in bare, bare
 assert "&lt;img src=x&gt;, your own sensor, 30 m" in ok, ok
@@ -108,7 +115,7 @@ assert not re.search(r"\d{4}-\d\d-\d\d", could), "no date in the suggested entry
 print("  ok: could names the pair and writes the entry to start from")
 
 assert "Backyard &lt;b&gt;" in ok and "&lt;img src=x&gt;" in ok
-assert list(mark) == ["s1"] and "s12" not in mark and nomark == {} and mark_temp == {}, (mark, mark_temp)
+assert list(mark) == ["s1", "s15"] and "s12" not in mark and nomark == {} and mark_temp == {}, (mark, mark_temp)
 assert "corrected 13.6 against &lt;img src=x&gt;" in mark["s1"] and 'href="#data/calibrate"' in mark["s1"], mark
 for h in (ok, refused, bad, could, mark["s1"]):
     assert "<b>" not in h and "<img" not in h and "<u>" not in h and "<i>" not in h, h

@@ -267,27 +267,31 @@ function modelsBlock() {
    The corrected number lives on this page only, and only while it has been at least a tenth closer on days the line
    never saw; every other row says why not. calibrateRows is pure: it takes the parsed answer, or { state: 'failed' }
    for no answer, and gives the HTML (a 404 is the pack switched off, said by calibrateBlock); calibrateMarks gives the Readings row its one line. */
+/* a side stuck on one value is not being paired: the state says which, after whatever else it says */
 function cwhy(r) {
-  const CWORDS = { fields: 'needs four or five parts', date: 'a date is not a date', 'until-before-since': 'the last day is before the first',
-    'since-in-future': 'the first day is in the future', same: 'both ids are the same', duplicate: 'this sensor is already in an earlier pair' };
-  const w = r.why || {}, id = s => (r[s] || {}).id, N = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const day = s => { const d = new Date(String(s).slice(0, 10) + 'T00:00:00Z'); return `${d.getUTCDate()} ${N[d.getUTCMonth() + 1]}`; };
-  // last_paired is an hour; its day is the node's (D.tz) where the page knows it, else the string's own clock
-  const local = s => typeof doorsLocal === 'function' && typeof D !== 'undefined' && D && D.tz ? doorsLocal(s, D.tz) : s;
-  if (r.shown) return r.last_paired ? `shown, last checked ${day(local(r.last_paired))}` : 'shown';
-  if (w.reason === 'malformed') return `cannot read "${r.entry}": ${CWORDS[w.problem] || w.problem}`;
-  if (w.reason === 'refused') {
-    const t = w.test, who = id(w.side);
-    return t === 'unknown' ? `not known to this node: ${who}` : t === 'not-a-sensor' ? `${who} is not a sensor`
-      : t === 'sensor-is-station' ? 'a public station cannot be the one corrected' : t === 'no-channel' ? `${w.source} declares no ${r.metric} channel`
-      : t === 'indoor-outdoor' ? 'one is indoors and the other outdoors' : `${w.metres} m apart`;
-  }
-  if (w.reason === 'flat') return 'no line: one of the two read one value for two weeks';
-  if (w.reason === 'young') return r.line ? `too young: ${w.days} of ${w.need_days} days checked` : `too young: ${w.hours} of ${w.need_hours} hours together`;
-  if (w.reason === 'measured-closer') return 'not shown: measured is closer';
-  if (w.reason === 'not-a-tenth') return 'not shown: not a tenth closer';
-  if (w.reason === 'withdrawn') return `withdrawn: nothing beside it since ${day(w.since)}`;
-  return 'nothing beside it for six weeks';
+  const o = r[r.stuck], said = (() => {
+    const CWORDS = { fields: 'needs four or five parts', date: 'a date is not a date', 'until-before-since': 'the last day is before the first',
+      'since-in-future': 'the first day is in the future', same: 'both ids are the same', duplicate: 'this sensor is already in an earlier pair' };
+    const w = r.why || {}, id = s => (r[s] || {}).id, N = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const day = s => { const d = new Date(String(s).slice(0, 10) + 'T00:00:00Z'); return `${d.getUTCDate()} ${N[d.getUTCMonth() + 1]}`; };
+    // last_paired is an hour; its day is the node's (D.tz) where the page knows it, else the string's own clock
+    const local = s => typeof doorsLocal === 'function' && typeof D !== 'undefined' && D && D.tz ? doorsLocal(s, D.tz) : s;
+    if (r.shown) return r.last_paired ? `shown, last checked ${day(local(r.last_paired))}` : 'shown';
+    if (w.reason === 'malformed') return `cannot read "${r.entry}": ${CWORDS[w.problem] || w.problem}`;
+    if (w.reason === 'refused') {
+      const t = w.test, who = id(w.side);
+      return t === 'unknown' ? `not known to this node: ${who}` : t === 'not-a-sensor' ? `${who} is not a sensor`
+        : t === 'sensor-is-station' ? 'a public station cannot be the one corrected' : t === 'no-channel' ? `${w.source} declares no ${r.metric} channel`
+        : t === 'indoor-outdoor' ? 'one is indoors and the other outdoors' : `${w.metres} m apart`;
+    }
+    if (w.reason === 'flat') return 'no line: one of the two read one value for two weeks';
+    if (w.reason === 'young') return r.line ? `too young: ${w.days} of ${w.need_days} days checked` : `too young: ${w.hours} of ${w.need_hours} hours together`;
+    if (w.reason === 'measured-closer') return 'not shown: measured is closer';
+    if (w.reason === 'not-a-tenth') return 'not shown: not a tenth closer';
+    if (w.reason === 'withdrawn') return `withdrawn: nothing beside it since ${day(w.since)}`;
+    return 'nothing beside it for six weeks';
+  })();
+  return said + (o ? `, ${o.name || o.id} is stuck on one value` : '');
 }
 /* an hour that started more than 3 hours before now is old: its number says which hour, and Readings draws no mark */
 function calibrateRows(j, docs, word = x => x, now = Date.now()) {

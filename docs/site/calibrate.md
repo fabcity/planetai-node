@@ -68,6 +68,11 @@ a mean. The line is `better = a + b × sensor`, fitted by least squares on the p
 the last paired hour, and it needs 168 paired hours. The corrected number is that line applied to the sensor's
 latest finished hourly mean. It never goes below zero when the better sensor never read below zero in those 14 days.
 
+An hour is not paired while either sensor is stuck, which means it has read exactly one value for 24 hourly readings
+in a row. A dead Smart Citizen channel does this, because its last value is stored again every hour. The first 23
+hours of a freeze still count, and they are taken out when it reaches 24. A working sensor that reads one value all
+day loses those hours too, a particle sensor at 0 in filtered air or a humidity sensor at 100% in the rain.
+
 Every finished day with at least 12 paired hours is scored, if the 14 days before it hold 168 paired hours: a line is
 fitted on those 14 days alone and applied to that day, and the day gets two numbers, how far the measured hours were
 from the better sensor on average and how far the corrected hours were.
@@ -75,7 +80,8 @@ from the better sensor on average and how far the corrected hours were.
 The corrected number is shown when the newest 14 scored days that are no older than 28 days number at least 7, and
 over them the corrected distance is at most nine tenths of the measured one, so the line has been at least a tenth
 closer. Otherwise the row shows the measured number alone and says why: too young (how many hours or checked days it
-has), measured is closer, not a tenth closer, or one of the two read one value for two weeks.
+has), measured is closer, not a tenth closer, or one of the two read one value for two weeks. While one of the two is
+stuck, the state ends with its name, "shown, last checked 16 Nov, Rooftop is stuck on one value".
 
 Each row shows the two distances as "off by 2.6 → 1.4", measured first, and a shown row's state says when it was last
 checked, "shown, last checked 16 Nov", the day of the last paired hour. When the sensor's newest hour is more than
@@ -88,7 +94,8 @@ The clock runs from the last paired hour. A last day given in the pair (`until`)
 paired, so the 7 days never start later than that day. For 7 days after the last paired hour the row keeps the corrected
 number from the last line, as long as the check on the days already scored still passes. After 7 days the correction
 is withdrawn, and the row says "withdrawn: nothing beside it since" and the date. A better sensor that drops out for
-two days and comes back is covered by the same rule.
+two days and comes back is covered by the same rule. A better sensor that gets stuck on one value counts as gone from
+the hour it froze, so the 7 days start there and the line stays the one from before.
 
 In the garden a line left alone was clearly closer in its first week, barely in the second, and worse than the
 measured number from the fourth, which is why 7 days and no more (the table is below).
@@ -199,7 +206,8 @@ line only.
 
 Not measured: a reference instrument; any pair with a public station; two units of one model side by side; a full
 wet season; any sensor that is not an HM-3301 or a PMS5003; any metric but PM2.5; node #1 or any other node; the
-decay of a line left alone on more than one pair. The pack lets you name any ambient, comparable metric, and the
+decay of a line left alone on more than one pair; a stuck sensor on a real node (the node's alert for a dead channel
+waits the same 24 hours, and here the rule was tried on made-up hours only). The pack lets you name any ambient, comparable metric, and the
 check runs on each pair by itself, so an untested metric still has to earn its place on your node.
 
 ## How long it takes

@@ -60,5 +60,17 @@ assert [(x["a"]["id"], x["b"]["id"]) for x in j["could"]] == [("pg-c", "pg-d")],
 ROWS["CALIBRATE_PAIRS"] = "pg-c pg-d pm25 2026-01-01"
 assert [(x["a"]["id"], x["b"]["id"]) for x in RT.calibrate()["could"]] == [("pg-a", "pg-b")], "the other pair could be named"
 assert count() == before, "the route wrote nothing"
+
+# the better one stuck on 0.1 for two days, three readings in the even hours and one in the odd. avg() of three 0.1 is
+# not 0.1 in a float, so only the hour's own reading (min = max) lets the rule see one value
+ROWS["CALIBRATE_PAIRS"] = "pg-a pg-b pm25 2026-01-01"
+cur.execute("UPDATE readings SET value = 0.1 WHERE sensor_id = 'pg-b' AND ts > now() - interval '48 hours'")
+cur.execute("""INSERT INTO readings (ts, sensor_id, metric, value)
+  SELECT date_trunc('hour', now()) - make_interval(hours => h) + make_interval(mins => k, secs => 7), 'pg-b', 'pm25', 0.1
+  FROM generate_series(2, 46, 2) h CROSS JOIN generate_series(1, 2) k""")
+cur.execute("SELECT count(DISTINCT mean) AS n FROM readings_1h WHERE sensor_id = 'pg-b' AND bucket > now() - interval '40 hours'")
+assert cur.fetchone()["n"] > 1, "the fixture has to give two different means, or it proves nothing"
+row = RT.calibrate()["rows"][0]
+assert row["stuck"] == "reference" and row["shown"] is True and row["line"]["a"] == 2.0 and row["line"]["b"] == 1.5, row
 con.rollback()
 print("calibrate pg: every check passed")

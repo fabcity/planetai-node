@@ -10,7 +10,8 @@ they were put together and, if you took one away, the day it left. Pairs are sep
 which, and names the network when it is a station.
 
 It fits a straight line on the 14 days before a day, scores the line on that day, which the line has never seen,
-and keeps score. A line needs 168 paired hours, and a day is scored when it has 12.
+and keeps score. A line needs 168 paired hours, and a day is scored when it has 12. An hour is not paired while
+either sensor has read one value for 24 hourly readings in a row.
 
 The verdict reads the newest 14 scored days that are no older than 28 days, and needs 7 of them. The corrected
 number is shown only while it has been at least a tenth closer to the better sensor than the measured one, so the
