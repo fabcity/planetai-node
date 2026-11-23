@@ -93,21 +93,37 @@ VIEWS.data = function () {
 
 /* REPORT (Tomas, 23 Nov 2026: "People should be able to select the sensors for the view, or type the name"). The weekly
    sensor report, the same five queries as the keeper's Grafana report (app/weekly.py), for anyone who opens the node:
-   GET /weekly. The node counts; the page draws. The choices live in the address, #data/report?m=&s=&bad=&high=&w=&lang=,
-   so a report is passed on as a link. Without the token the node offers its outdoor sensors only. */
-const repState = () => { const p = new URLSearchParams(location.hash.split('?')[1] || ''); return { m: p.get('m') || '', s: (p.get('s') || '').split(',').filter(Boolean), bad: p.get('bad') || '15', high: p.get('high') || '55', w: p.get('w') || '8', lang: p.get('lang') === 'id' ? 'id' : 'en' }; };
+   GET /weekly. The node counts; the page draws. The choices live in the address, #data/report?m=&s=&bad=&high=&w=&wk=&lang=,
+   so a report is passed on as a link. Without the token the node offers its outdoor sensors only.
+   At a glance (Tomas, 23 Nov 2026: "more graphical, like graphana graphics"; the paper register with the air colours):
+   the week chosen (wk, the last complete one by default), its tiles, the places by day in Indonesia's air index (ISPU),
+   then the charts over the whole window. Every band, count and verdict is the node's (GET /weekly summary). */
+const repState = () => { const p = new URLSearchParams(location.hash.split('?')[1] || ''); return { m: p.get('m') || '', s: (p.get('s') || '').split(',').filter(Boolean), bad: p.get('bad') || '15', high: p.get('high') || '55', w: p.get('w') || '8', wk: p.get('wk') || '', lang: p.get('lang') === 'id' ? 'id' : 'en' }; };
 let REPSEQ = 0;
-const repGo = st => { history.replaceState(null, '', '#data/report?' + new URLSearchParams({ m: st.m, s: st.s.join(','), bad: st.bad, high: st.high, w: st.w, lang: st.lang })); reportBlock(); };
+const repGo = st => { history.replaceState(null, '', '#data/report?' + new URLSearchParams({ m: st.m, s: st.s.join(','), bad: st.bad, high: st.high, w: st.w, wk: st.wk, lang: st.lang })); reportBlock(); };
+/* a day as the node described it: its ISPU band and rounded mean; grey and empty when it was not counted (heard under 18
+   hours, or not at all); a thin red edge when it is a bad day inside the good band; the bad mark when the metric has no index */
+const dayBlock = d => !d || !d.counted ? { cls: 'nc', text: '', title: '' } : { cls: (d.band == null ? (d.bad ? 'nb bad' : 'nb') : 'aqi-' + d.band) + (d.edge ? ' edge' : ''), text: d.mean == null ? '' : String(Math.round(d.mean)), title: '' };
+/* the scale of an hourly chart: the 98th percentile, like the Data door's other charts, and the hours above it, printed */
+function capTop(values) {
+  const s = values.filter(v => v != null).sort((a, b) => a - b);
+  if (!s.length) return { top: null, over: [] };
+  const i = (s.length - 1) * 0.98, top = s[Math.floor(i)] + (s[Math.ceil(i)] - s[Math.floor(i)]) * (i - Math.floor(i));
+  return { top, over: values.filter(v => v != null && v > top) };
+}
 /* one small chart: a line per series of [Date, value], broken where the gap is wider than `gap` ms; `ref` dashed (all
    sensors), `line` the red dash (the high), `bars` instead of a line (bad days a week, 0 to 7) */
 function repChart(pts, o) {
   const W = 360, H = 110, x = d3.scaleTime([o.t0, o.t1], [30, W - 6]);
   const vs = pts.concat(o.ref || []).map(p => p[1]).concat(o.line != null ? [o.line] : []);
-  const y = d3.scaleLinear([0, o.top || (d3.max(vs) || 1) * 1.1], [H - 16, 6]).nice(3);
+  const y = d3.scaleLinear([0, o.top || (d3.max(vs) || 1) * 1.1], [H - 16, 6]).nice(3), Y = v => y(Math.min(v, y.domain()[1]));
   const cut = ps => ps.flatMap((p, i) => i && p[0] - ps[i - 1][0] > o.gap ? [null, p] : [p]);
-  const ln = ps => d3.line().defined(p => p).x(p => x(p[0])).y(p => y(p[1]))(cut(ps)) || '';
+  const ln = ps => d3.line().defined(p => p).x(p => x(p[0])).y(p => Y(p[1]))(cut(ps)) || '';
+  /* the air index behind a daily mean (o.bands, the node's breakpoints), each band in its ISPU colour, faint */
+  const bands = !o.bands ? '' : [0, ...o.bands].map((lo, i) => { const top = y.domain()[1], hi = Math.min(i < o.bands.length ? o.bands[i] : top, top);
+    return lo >= top ? '' : `<rect x="30" width="${W - 36}" y="${y(hi)}" height="${Math.max(0, y(lo) - y(hi))}" style="fill:var(--aqi-${i})" opacity=".18"/>`; }).join('');
   const wk = 7 * 864e5, bw = Math.max(2, x(new Date(+o.t0 + wk)) - x(o.t0) - 3);
-  return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">`
+  return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">` + bands
     + y.ticks(3).map(t => `<line x1="30" x2="${W - 6}" y1="${y(t)}" y2="${y(t)}" class="grid"/><text x="26" y="${y(t) + 4}" text-anchor="end">${fmt(t, 0)}</text>`).join('')
     + `<text x="30" y="${H - 3}">${esc(dayOf(o.t0.toISOString()))}</text><text x="${W - 6}" y="${H - 3}" text-anchor="end">${esc(dayOf(o.t1.toISOString()))}</text>`
     + (o.line != null ? `<line x1="30" x2="${W - 6}" y1="${y(o.line)}" y2="${y(o.line)}" class="linep"/>` : '')
@@ -115,6 +131,8 @@ function repChart(pts, o) {
     + (o.bars ? pts.map(p => `<rect class="bar" x="${x(p[0])}" width="${bw}" y="${y(p[1])}" height="${Math.max(0, y(0) - y(p[1]))}"/>`).join('') : `<path d="${ln(pts)}" class="lnp"/>`)
     + `</svg>`;
 }
+const plusDays = (iso, n) => new Date(Date.parse(iso + 'T12:00:00Z') + n * 864e5).toISOString().slice(0, 10);
+const dshort = iso => new Date(iso + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 function reportBlock() {
   const sec = $('#d-report'), st = repState(), seq = ++REPSEQ;
   if (!sec.dataset.wired) {
@@ -132,7 +150,7 @@ function reportBlock() {
       const s2 = repState();
       if (b.dataset.rm) s2.s = s2.s.filter(id => id !== b.dataset.rm);
       else if (b.dataset.lang) s2.lang = b.dataset.lang;
-      else if (b.dataset.reset) { s2.m = ''; s2.s = []; s2.bad = '15'; s2.high = '55'; s2.w = '8'; }
+      else if (b.dataset.reset) { s2.m = ''; s2.s = []; s2.bad = '15'; s2.high = '55'; s2.w = '8'; s2.wk = ''; }
       else return;
       repGo(s2);
     });
@@ -149,7 +167,7 @@ function reportBlock() {
     });
   }
   if (!sec.innerHTML) sec.innerHTML = `<h2>Report</h2><p class="fine">Reading the node…</p>`;
-  const u = '/weekly?' + new URLSearchParams({ metric: st.m, sensors: st.s.join(','), bad: st.bad, high: st.high, weeks: st.w, lang: st.lang });
+  const u = '/weekly?' + new URLSearchParams({ metric: st.m, sensors: st.s.join(','), bad: st.bad, high: st.high, weeks: st.w, wk: st.wk, lang: st.lang });
   fetch(u, { headers: DOORS_AUTH() }).then(r => r.json().then(j => [r.ok, j])).then(([ok, j]) => {
     if (seq !== REPSEQ) return;   // a newer choice has already asked
     if (!ok) { sec.innerHTML = `<h2>Report</h2><p class="fine">${esc(j.detail || j.error || 'The node did not answer.')} <button type="button" class="link" data-reset="1">Start again</button></p>`; return; }
@@ -160,6 +178,7 @@ function reportBlock() {
       + `<label>${esc(L.v_metric)}<select data-r="m">${j.metrics.map(m => `<option value="${esc(m)}"${m === j.metric ? ' selected' : ''}>${esc(mWord(m))}</option>`).join('')}</select></label>`
       + `<label>${esc(L.v_bad)}<input type="number" step="any" data-r="bad" value="${esc(j.bad)}"></label>`
       + `<label>${esc(L.v_high)}<input type="number" step="any" data-r="high" value="${esc(j.high)}"></label>`
+      + `<label>${esc(L.week_pick)}<select data-r="wk">${[...j.week_starts].reverse().map((w, i) => `<option value="${esc(w)}"${w === j.wk ? ' selected' : ''}>${esc(dshort(w))} – ${esc(dshort(plusDays(w, 6)))}${i === 0 ? ' · ' + esc(L.so_far) : ''}</option>`).join('')}</select></label>`
       + `<label>${esc(L.weeks_n)}<select data-r="w">${[4, 8, 12].map(n => `<option${n === j.weeks ? ' selected' : ''}>${n}</option>`).join('')}</select></label>`
       + `<span class="rlang" role="group" aria-label="language"><button type="button" data-lang="en" aria-pressed="${j.lang === 'en'}">English</button> · <button type="button" data-lang="id" aria-pressed="${j.lang === 'id'}">Bahasa Indonesia</button></span></div>`
       + `<label class="rpick"><span class="vh">${esc(L.find)}</span><input type="search" class="rfind" data-r="find" placeholder="${esc(L.find)}" aria-label="${esc(L.find)}"></label>`
@@ -167,18 +186,39 @@ function reportBlock() {
       + (j.sensors.length ? `<div class="rlist">${bySrc.map(([src, os]) => `<h4>${esc(src)}</h4>` + os.map(o => `<label><input type="checkbox" data-r="pick" value="${esc(o.id)}"${j.picked.includes(o.id) ? ' checked' : j.picked.length >= j.max_sensors ? ' disabled' : ''}>${esc(o.label)}</label>`).join('')).join('')}</div>` : `<p class="fine">${esc(L.none)}</p>`);
     const P = j.parts, table = (part, mark) => !P[part] ? '' : `<div class="tscroll"><table class="tbl rep"><tr>${P[part].cols.map((c, i) => `<th${i > 1 ? ' class="n"' : ''}>${esc(c)}</th>`).join('')}</tr>`
       + P[part].rows.map(row => `<tr>${row.map((cell, i) => `<td${i > 1 ? ' class="n' + (mark(i, cell) ? ' wr' : '') + '"' : ''}>${esc(cell ?? '–')}</td>`).join('')}</tr>`).join('') + `</table></div>`;
+    const S = j.summary, loc2 = j.lang === 'id' ? 'id-ID' : 'en-GB';
+    const wd = iso => new Date(iso + 'T12:00:00').toLocaleDateString(loc2, { weekday: 'short' });
+    const tile = (v, l, cls = '') => `<div class="rtile ${cls}"><b>${esc(v)}</b><span>${esc(l)}</span></div>`;
+    const when = (day, at) => day ? `${wd(day)} ${at || ''}`.trim() : '';
+    const one = S && S.sensors.length === 1 ? S.sensors[0] : null;
+    const tiles = !S ? '' : `<div class="rtiles">` + (one
+      ? tile(one.counted ? one.bad : '–', (one.counted === 7 ? L.bad_of : L.of_counted).replace('{n}', one.counted)) + tile(one.verdict || '–', L.verdict, one.verdict === L.worse ? 'wr' : '')
+        + tile(one.peak ?? '–', L.highest_hour + ' · ' + when(one.peak_day, one.peak_at)) + tile(one.worst_mean ?? '–', L.worst_day + ' · ' + (one.worst_day ? wd(one.worst_day) : ''))
+      : tile(S.overall.avg_bad ?? '–', L.avg_bad) + tile(S.overall.worst || '–', L.worst_place)
+        + tile(S.overall.peak ?? '–', L.highest_hour + ' · ' + (S.overall.peak_place || '') + ' ' + when(S.overall.peak_day, S.overall.peak_at))) + `</div>`;
+    const order = S ? [...S.sensors].sort((a, b) => b.bad - a.bad || (b.worst_mean || 0) - (a.worst_mean || 0)) : [];
+    const grid = !S ? '' : `<div class="tscroll"><table class="rgrid"><tr><th></th>${S.sensors[0].days.map(d => `<th>${esc(wd(d.day))}</th>`).join('')}<th class="n">${esc(L.bad_days)}</th></tr>`
+      + order.map(s => `<tr><td>${esc(s.label)}</td>${s.days.map(d => { const b = dayBlock(d); return `<td><span class="blk ${b.cls}" title="${esc(!d.counted ? L.not_counted : d.edge ? L.edge_note : d.day)}">${esc(b.text)}</span></td>`; }).join('')}<td class="n"><b>${s.bad}</b> / ${s.counted}</td></tr>`).join('') + `</table></div>`
+      + `<p class="rlegend">${j.index ? [0, 1, 2, 3, 4].map(i => `<span class="blk aqi-${i}"></span> ${esc(L['band_' + i])}`).join(' ') + ` · <span class="blk aqi-0 edge"></span> ${esc(L.edge_note)} · ` : `<span class="blk nb bad"></span> ${esc(L.over_line)} · `}<span class="blk nc"></span> ${esc(L.not_counted)}${j.index ? ' · ' + esc(L.colours_from) : ''}</p>`;
+    const daysBy = d3.groups((P.days || {}).rows || [], r => r[1]).map(([k, rs]) => [k, rs.filter(r => r[4] != null).map(r => [new Date(r[0] + 'T12:00:00'), r[4]])]);
+    const meanFigs = `<div class="sms">${daysBy.map(([k, pts]) => `<figure class="sm"><figcaption><b>${esc(k)}</b></figcaption>${repChart(pts, { gap: 36 * 36e5, line: j.bad, bands: j.index, t0, t1 })}</figure>`).join('')}</div>`;
     const series = part => d3.groups((P[part] || {}).rows || [], r => r[1]).map(([k, rs]) => [k, rs.map(r => [new Date(r[0]), r[2]])]);
     const figs = (part, o) => { const ss = series(part), ref = (ss.find(([k]) => k === o.refName) || [])[1];
-      return `<div class="sms">${ss.filter(([k]) => k !== o.refName).map(([k, pts]) => `<figure class="sm"><figcaption><b>${esc(k)}</b></figcaption>${repChart(pts, { ...o, ref, t0, t1 })}</figure>`).join('')}</div>`; };
+      return `<div class="sms">${ss.filter(([k]) => k !== o.refName).map(([k, pts]) => {
+        const c = o.capped ? capTop(pts.map(p => p[1])) : null, top = c && c.top != null ? Math.max(c.top, o.line || 0) * 1.1 : o.top, over = c ? pts.filter(p => p[1] > top) : [];
+        return `<figure class="sm"><figcaption><b>${esc(k)}</b></figcaption>${repChart(pts, { ...o, ref, t0, t1, top })}`
+          + (over.length ? `<p class="fine">${esc(L.above_cap)}: ${over.map(p => `${fmt(p[1], 0)} (${esc(dayOf(p[0].toISOString()))} ${esc(hhmm(p[0].toISOString()))})`).join(', ')}</p>` : '') + `</figure>`; }).join('')}</div>`; };
     /* a redraw keeps where you were: the focused control (a box by its value) and what was typed in the name box */
     const at = sec.contains(document.activeElement) ? document.activeElement : null, was = at && { r: at.dataset.r, v: at.value };
     const typed = (sec.querySelector('[data-r=find]') || {}).value || '';
     sec.innerHTML = `<div class="dsh"><h2>${esc(L.title)}</h2>${L.how.split('\n\n').map(para).join('')}</div>` + pick
-      + (!j.picked.length ? `<p class="fine">${esc(L.pick)}</p>` : `<h3>${esc(L.p_weeks)}</h3>` + table('weeks', (i, c) => c === L.worse)
+      + (!j.picked.length ? `<p class="fine">${esc(L.pick)}</p>` : tiles + `<h3>${esc(L.the_week)}</h3>` + grid
+        + `<h3>${esc(L.daily_mean)}</h3>` + meanFigs
         + `<h3>${esc(L.p_badweeks)}</h3>` + figs('badweeks', { bars: true, top: 7 })
+        + `<h3>${esc(L.p_hours)}</h3>` + figs('hours', { gap: 3 * 36e5, line: j.high, refName: L.high_line, capped: true })
         + `<h3>${esc(L.p_daily)}</h3>` + figs('daily', { gap: 36 * 36e5, refName: L.all })
-        + `<h3>${esc(L.p_baddays)}</h3>` + (P.baddays && P.baddays.rows.length ? table('baddays', (i, c) => i === 2 && c < j.full_day) : '<p class="fine">–</p>')
-        + `<h3>${esc(L.p_hours)}</h3>` + figs('hours', { gap: 3 * 36e5, line: j.high, refName: L.high_line }));
+        + `<h3>${esc(L.p_weeks)}</h3>` + table('weeks', (i, c) => c === L.worse)
+        + `<h3>${esc(L.p_baddays)}</h3>` + (P.baddays && P.baddays.rows.length ? table('baddays', (i, c) => i === 2 && c < j.full_day) : '<p class="fine">–</p>'));
     const find = sec.querySelector('[data-r=find]');
     if (find && typed) { find.value = typed; find.dispatchEvent(new Event('input', { bubbles: true })); }
     const back = was && was.r && [...sec.querySelectorAll(`[data-r="${was.r}"]`)].find(el => was.r !== 'pick' || el.value === was.v);

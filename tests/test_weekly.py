@@ -117,8 +117,8 @@ console.log(JSON.stringify(out));
 r = subprocess.run(["node", "-e", prog], capture_output=True, text=True)
 o = json.loads(r.stdout) if r.returncode == 0 else {}
 check(o.get("route") == {"tab": "report"} and o.get("routeSensor") == {"tab": "readings", "sensor": "sc-1"}, f"#data/report?… opens the tab, a sensor still opens its row {r.stderr[-300:]}")
-check(o.get("state") == {"m": "pm10", "s": ["a", "b c"], "bad": "20", "high": "60", "w": "4", "lang": "id"}, "the address holds the report's state")
-check(o.get("empty") == {"m": "", "s": [], "bad": "15", "high": "55", "w": "8", "lang": "en"}, "an empty address starts from the defaults")
+check(o.get("state") == {"m": "pm10", "s": ["a", "b c"], "bad": "20", "high": "60", "w": "4", "wk": "", "lang": "id"}, "the address holds the report's state")
+check(o.get("empty") == {"m": "", "s": [], "bad": "15", "high": "55", "w": "8", "wk": "", "lang": "en"}, "an empty address starts from the defaults")
 block = js[js.index("/* REPORT"):js.index("/* THE WORKBENCH")] if "/* REPORT" in js else ""
 check(block.count("new URLSearchParams(") >= 2 and "'/weekly?' + new URLSearchParams(" in block and "history.replaceState(" in block,
       "the request and the address are built with URLSearchParams, and the address is kept with replaceState")
@@ -200,6 +200,37 @@ for i, (lo, hi) in want.items():
 check("aqi-4" in tok and hue(tok["aqi-4"])[1] < 0.15, "band 4 is black")
 palette = open("tools/check_ui.py").read()
 check(not any(v.upper() in palette.upper() for v in tok.values()), "none is in the website palette check_ui refuses")
+
+print("the tab at a glance: the week in the address, a day drawn by what the node said, a scale one hour cannot flatten")
+prog2 = r"""
+const src = require('fs').readFileSync('app/static/doors-data.js', 'utf8');
+const grab = re => (src.match(re) || [''])[0];
+let location = { hash: '#data/report?m=pm25&s=a&wk=2026-11-09' };
+const lifted = eval(grab(/const repState = [^\n]*\n/) + grab(/const dayBlock = [^\n]*\n/) + grab(/function capTop\(values\) \{[\s\S]*?\n\}\n/)
+  + '; ({ repState, dayBlock, capTop })');
+const out = { wk: lifted.repState().wk };
+const d = (o) => lifted.dayBlock(o);
+out.mod = d({ counted: true, bad: true, band: 1, edge: false, mean: 20.7 });
+out.edge = d({ counted: true, bad: true, band: 0, edge: true, mean: 15.4 });
+out.short = d({ counted: false, bad: false, band: 1, edge: false, mean: 40 });
+out.missing = d({ counted: false, bad: false, band: null, edge: false, mean: null });
+out.noidx = d({ counted: true, bad: true, band: null, edge: false, mean: 31 });
+out.noidxok = d({ counted: true, bad: false, band: null, edge: false, mean: 22 });
+const series = Array.from({ length: 200 }, (_, i) => 10 + (i % 7));
+series[150] = 872;
+out.cap = lifted.capTop(series);
+console.log(JSON.stringify(out));
+"""
+r2 = subprocess.run(["node", "-e", prog2], capture_output=True, text=True)
+o2 = json.loads(r2.stdout) if r2.returncode == 0 else {}
+check(o2.get("wk") == "2026-11-09", f"the week is in the address {r2.stderr[-200:]}")
+check(o2.get("mod", {}).get("cls") == "aqi-1" and o2["mod"].get("text") == "21", "a counted moderate day: blue, its mean")
+check(o2.get("edge", {}).get("cls") == "aqi-0 edge" and o2["edge"].get("text") == "15", "15.4: green with the red edge")
+check(o2.get("short", {}).get("cls") == "nc" and o2["short"].get("text") == "" and o2.get("missing", {}).get("cls") == "nc",
+      "a short day and a missing one: grey, no number")
+check(o2.get("noidx", {}).get("cls") == "nb bad" and o2.get("noidxok", {}).get("cls") == "nb", "no index: the bad mark, never a band")
+cap = o2.get("cap", {})
+check(cap.get("top") is not None and cap["top"] < 100 and cap.get("over") == [872], f"one 872 does not set the scale; it is printed {cap}")
 
 print(f"weekly: {'every check passed' if not fails else str(len(fails)) + ' failed'}")
 sys.exit(1 if fails else 0)
