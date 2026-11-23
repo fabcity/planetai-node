@@ -87,6 +87,54 @@ The node's alert events are drawn on the time charts, from when each opened to w
 The starter ships with the node and is replaced on every update, so Grafana will not save changes over it. Save as
 makes a copy that is yours; edit that one.
 
+## The weekly report
+
+There is a second dashboard in the PLANETAI folder, "Weekly sensor report", and the same one in Bahasa Indonesia,
+"Laporan mingguan sensor". A reader of the Bali air sensors asked how many days of a week were bad, how often the
+sensor went over a high value on those days, and whether the place is stable or getting better. The report answers
+that for any metric and any sensors the node holds.
+
+There are four pickers at the top: the metric, one or more sensors, and two lines.
+
+| picker | starts at | what it sets |
+|---|---|---|
+| Bad day over (24 h mean) | 15 | A day is bad when its 24-hour mean is over this. 15 µg/m³ is the WHO guideline for PM2.5. |
+| High over (1 h mean) | 55 | The sensor went over the high each time an hourly mean rose past this. 55 µg/m³ is where Indonesia's air index (ISPU) turns unhealthy. |
+
+Both lines start where they do for PM2.5. For any other metric, type your own.
+
+| panel | what it shows |
+|---|---|
+| Week by week | one row per sensor and week: the bad days, the week against the one before, the times and the hours over the high, the highest hour, the weekly median, all sensors' median and the days counted |
+| Bad days in each week | the count week after week, one line per sensor |
+| Daily median, beside all sensors' median | each picked sensor's median for the day, and the median of every outdoor sensor the node reads, dashed |
+| The bad days | every day over the line, with its 24-hour mean, its median, the times and hours over the high, the highest hour and when it was |
+| Hour by hour | the hourly means, with the high line across them |
+
+How it counts:
+
+- Everything is counted from the node's hourly means (`readings_1h`). A sensor that sends every minute and one that
+  sends every quarter of an hour are counted the same way.
+- A day counts when the sensor was heard for 18 of its 24 hours. A thinner day whose mean is over the line is still
+  listed among the bad days, with its hours in red, and the week does not count it.
+- Going over the high counts once for each episode, on the day it began. Three hours in a row over the line is one
+  time and three hours.
+- "All sensors" takes each outdoor sensor's own median first and then the median across them, so a sensor that
+  sends more often does not weigh more. Rooms and models are left out.
+- A week is `improving` when it had fewer bad days than the week before and `worse` when it had more. When the bad
+  days are equal the weekly median decides, if it moved by more than a tenth, and otherwise the week is `stable`. Both
+  weeks need five counted days, or the row says `too few days`.
+
+The report does not say why. A week can be better because less was burned, or because wind and rain carried the smoke
+away, and these numbers cannot tell the two apart. The readings are as each sensor sent them and none is calibrated
+against a reference station, so compare a sensor with its own earlier weeks before you compare it with its neighbours.
+
+The address carries the pickers and the dates, so a copied link opens the same report, and `&kiosk` at the end of it
+hides Grafana's menus. The link at the top switches language and keeps what you picked.
+
+Like the starter, the two reports are replaced on every update, so Save as before you change one. Both files are
+written by `tools/gen_grafana_report.py`, and another language is one more column of words there.
+
 ## What Grafana will not tell you
 
 ### The forecast is stored in the future

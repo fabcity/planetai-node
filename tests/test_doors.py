@@ -1116,6 +1116,7 @@ _gf = _setup[_setup.index("function sGrafana"):_setup.index("function sUpdates")
 assert "sGrafana(d.bootstrap" in _setup and "g === 'system' ? sGrafana" in _setup, "Set up › System draws the Grafana block"
 assert "!/^GRAFANA_/.test(b.key)" in _setup, "Grafana's keys are its block, not three more rows in the start-time table"
 assert "planetai grafana" in _gf and "ssh -L" in _gf and "grafana/" in _gf, "the block says how to turn it on, how to reach it, and links its page"
+assert "/d/planetai-report-en" in _gf and "/d/planetai-report-id" in _gf and "#the-weekly-report" in _gf, "the block offers the weekly report in both languages"
 assert "GRAFANA_ADMIN_PASSWORD') ?" in _gf and "esc(v('GRAFANA_ADMIN_PASSWORD'))" not in _gf, "the password is only ever set or not"
 print("doors: Set up asks before a change that leaves the machine or runs code, in the setting's own words, and never otherwise")
 

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **23 Nov: a weekly sensor report in Grafana, in English and Bahasa Indonesia.** A reader of the Bali air sensors
+  asked how many days of a week were bad, how often the sensor went over a high value on those days, and whether the
+  place is stable or getting better. `planetai grafana` now brings a second dashboard that answers that for the
+  sensors you pick, with the daily and weekly medians beside the median of every outdoor sensor the node reads. You
+  set the two lines yourself; they start at 15 and 55 for PM2.5. Set up › System has a row for it, and the Grafana
+  docs page says how it counts. Nothing in it is calibrated, and it cannot tell a cleaner week from a windier one.
+
 - **22 Nov: the rooms stay in the house.** A node with a parent used to send the hourly means of every sensor it
   holds, rooms included. Now it sends its outdoor sensors, and the rooms go only if you set `PARENT_INDOOR=on` in
   Set up › Sharing. The alerts a room raises follow the same switch. None of our nodes has a parent yet, so

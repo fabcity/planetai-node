@@ -1,0 +1,762 @@
+{
+  "uid": "planetai-report-en",
+  "title": "Weekly sensor report",
+  "tags": [
+    "planetai",
+    "report"
+  ],
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "graphTooltip": 1,
+  "timezone": "",
+  "weekStart": "monday",
+  "refresh": "",
+  "time": {
+    "from": "now-8w/w",
+    "to": "now"
+  },
+  "links": [
+    {
+      "type": "link",
+      "title": "Bahasa Indonesia",
+      "url": "/d/planetai-report-id",
+      "keepTime": true,
+      "includeVars": true,
+      "targetBlank": false
+    }
+  ],
+  "annotations": {
+    "list": []
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "metric",
+        "label": "Metric",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "planetai-node"
+        },
+        "query": "SELECT DISTINCT r.metric FROM readings_1h r JOIN sensors s USING (sensor_id) WHERE s.kind = 'sensor' AND r.bucket > now() - interval '30 days' AND r.bucket <= now() ORDER BY 1",
+        "definition": "SELECT DISTINCT r.metric FROM readings_1h r JOIN sensors s USING (sensor_id) WHERE s.kind = 'sensor' AND r.bucket > now() - interval '30 days' AND r.bucket <= now() ORDER BY 1",
+        "refresh": 2,
+        "sort": 0,
+        "current": {
+          "text": "pm25",
+          "value": "pm25"
+        }
+      },
+      {
+        "name": "sensor",
+        "label": "Sensors",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "planetai-node"
+        },
+        "query": "SELECT coalesce(nullif(s.room, ''), nullif(s.name, ''), s.sensor_id) AS __text, s.sensor_id AS __value FROM sensors s WHERE s.kind = 'sensor' AND EXISTS (SELECT 1 FROM readings_1h r WHERE r.sensor_id = s.sensor_id AND r.metric = '${metric}' AND r.bucket > now() - interval '30 days' AND r.bucket <= now()) ORDER BY s.indoor IS TRUE, s.local DESC, 1",
+        "definition": "SELECT coalesce(nullif(s.room, ''), nullif(s.name, ''), s.sensor_id) AS __text, s.sensor_id AS __value FROM sensors s WHERE s.kind = 'sensor' AND EXISTS (SELECT 1 FROM readings_1h r WHERE r.sensor_id = s.sensor_id AND r.metric = '${metric}' AND r.bucket > now() - interval '30 days' AND r.bucket <= now()) ORDER BY s.indoor IS TRUE, s.local DESC, 1",
+        "refresh": 2,
+        "sort": 0,
+        "multi": true,
+        "includeAll": false
+      },
+      {
+        "name": "bad",
+        "label": "Bad day over (24 h mean)",
+        "type": "textbox",
+        "query": "15",
+        "current": {
+          "text": "15",
+          "value": "15"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "15",
+            "value": "15"
+          }
+        ]
+      },
+      {
+        "name": "high",
+        "label": "High over (1 h mean)",
+        "type": "textbox",
+        "query": "55",
+        "current": {
+          "text": "55",
+          "value": "55"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "55",
+            "value": "55"
+          }
+        ]
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "How to read it",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 6
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "planetai-node"
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "A **bad day** is a day whose 24-hour mean is over the first line set at the top. It starts at 15, the WHO guideline for PM2.5 in µg/m³. The sensor went **over the high** each time an hourly mean rose past the second line. That one starts at 55, where Indonesia's air index (ISPU) turns unhealthy. Set both to your own lines, and set them again for any other metric.\n\nA day is counted when the sensor was heard for 18 of its 24 hours. A median is the middle hour of the day or the week. **All sensors** is the median of every outdoor sensor this node reads. A week is judged against the week before it, on its bad days first and on its median when the bad days are equal.\n\nThe readings are shown as each sensor sent them. Nothing here is calibrated against a reference station."
+      }
+    },
+    {
+      "id": 2,
+      "type": "table",
+      "title": "Week by week",
+      "gridPos": {
+        "x": 0,
+        "y": 6,
+        "w": 24,
+        "h": 11
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "planetai-node"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "planetai-node"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH h AS (SELECT r.sensor_id, r.bucket, r.mean AS v FROM readings_1h r WHERE $__timeFilter(r.bucket) AND r.bucket <= now() AND r.metric = '${metric}' AND r.sensor_id IN (${sensor:sqlstring})), e AS (SELECT *, v > ${high} AND NOT coalesce(lag(v) OVER (PARTITION BY sensor_id ORDER BY bucket) > ${high}, false) AS rose FROM h), d AS (SELECT sensor_id, date_trunc('day', bucket) AS day, count(*) AS hours, avg(v) AS mean, percentile_cont(0.5) WITHIN GROUP (ORDER BY v) AS median, max(v) AS peak, (array_agg(bucket ORDER BY v DESC))[1] AS peak_at, count(*) FILTER (WHERE v > ${high}) AS high_hours, count(*) FILTER (WHERE rose) AS high_times FROM e GROUP BY 1, 2), o AS (SELECT r.sensor_id, r.bucket, r.mean AS v FROM readings_1h r JOIN sensors s USING (sensor_id) WHERE $__timeFilter(r.bucket) AND r.bucket <= now() AND r.metric = '${metric}' AND s.kind = 'sensor' AND s.indoor IS NOT TRUE), sn AS (SELECT sensor_id, coalesce(nullif(room, ''), nullif(name, ''), sensor_id) AS label FROM sensors), w AS (SELECT sensor_id, date_trunc('week', day) AS week, count(*) FILTER (WHERE hours >= 18) AS days, count(*) FILTER (WHERE hours >= 18 AND mean > ${bad}) AS bad_days, sum(high_times) AS high_times, sum(high_hours) AS high_hours, max(peak) AS peak FROM d GROUP BY 1, 2), a AS (SELECT t, percentile_cont(0.5) WITHIN GROUP (ORDER BY m) AS all_median FROM (SELECT sensor_id, date_trunc('week', bucket) AS t, percentile_cont(0.5) WITHIN GROUP (ORDER BY v) AS m FROM o GROUP BY 1, 2) q GROUP BY 1), wm AS (SELECT sensor_id, date_trunc('week', bucket) AS week, percentile_cont(0.5) WITHIN GROUP (ORDER BY v) AS median FROM h GROUP BY 1, 2), j AS (SELECT w.*, wm.median, lag(w.week) OVER p AS pweek, lag(w.days) OVER p AS pdays, lag(w.bad_days) OVER p AS pbad, lag(wm.median) OVER p AS pmedian FROM w JOIN wm USING (sensor_id, week) WINDOW p AS (PARTITION BY w.sensor_id ORDER BY w.week)) SELECT to_char(j.week, 'YYYY-MM-DD') AS \"week from\", sn.label AS \"sensor\", j.bad_days AS \"bad days\", CASE WHEN j.week + interval '7 days' > now() THEN 'week not over' WHEN j.pweek IS NULL THEN 'no week before' WHEN j.pweek <> j.week - interval '7 days' OR j.days < 5 OR j.pdays < 5 THEN 'too few days' WHEN j.bad_days < j.pbad THEN 'improving' WHEN j.bad_days > j.pbad THEN 'worse' WHEN j.median < j.pmedian * 0.9 THEN 'improving' WHEN j.median > j.pmedian * 1.1 THEN 'worse' ELSE 'stable' END AS \"against the week before\", j.high_times AS \"times over the high\", j.high_hours AS \"hours over the high\", round(j.peak::numeric) AS \"highest hour\", round(j.median::numeric, 1) AS \"weekly median\", round(a.all_median::numeric, 1) AS \"all sensors' median\", round((j.median - a.all_median)::numeric, 1) AS \"against all sensors\", j.days AS \"days counted\" FROM j JOIN sn USING (sensor_id) LEFT JOIN a ON a.t = j.week ORDER BY j.week DESC, sn.label"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "minWidth": 70,
+            "wrapHeaderText": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "sensor"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 230
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "bad days"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "transparent",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 1
+                    },
+                    {
+                      "color": "red",
+                      "value": 3
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "weekly median"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "dark-blue",
+                      "value": null
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "all sensors' median"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "dark-blue",
+                      "value": null
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "against all sensors"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 0.05
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "against the week before"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "improving": {
+                        "color": "green",
+                        "index": 0
+                      },
+                      "worse": {
+                        "color": "red",
+                        "index": 1
+                      },
+                      "stable": {
+                        "color": "blue",
+                        "index": 2
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "text",
+                      "value": null
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 170
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Bad days in each week",
+      "gridPos": {
+        "x": 0,
+        "y": 17,
+        "w": 9,
+        "h": 8
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "planetai-node"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "planetai-node"
+          },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "WITH h AS (SELECT r.sensor_id, r.bucket, r.mean AS v FROM readings_1h r WHERE $__timeFilter(r.bucket) AND r.bucket <= now() AND r.metric = '${metric}' AND r.sensor_id IN (${sensor:sqlstring})), e AS (SELECT *, v > ${high} AND NOT coalesce(lag(v) OVER (PARTITION BY sensor_id ORDER BY bucket) > ${high}, false) AS rose FROM h), d AS (SELECT sensor_id, date_trunc('day', bucket) AS day, count(*) AS hours, avg(v) AS mean, percentile_cont(0.5) WITHIN GROUP (ORDER BY v) AS median, max(v) AS peak, (array_agg(bucket ORDER BY v DESC))[1] AS peak_at, count(*) FILTER (WHERE v > ${high}) AS high_hours, count(*) FILTER (WHERE rose) AS high_times FROM e GROUP BY 1, 2), sn AS (SELECT sensor_id, coalesce(nullif(room, ''), nullif(name, ''), sensor_id) AS label FROM sensors), w AS (SELECT sensor_id, date_trunc('week', day) AS week, count(*) FILTER (WHERE hours >= 18) AS days, count(*) FILTER (WHERE hours >= 18 AND mean > ${bad}) AS bad_days, sum(high_times) AS high_times, sum(high_hours) AS high_hours, max(peak) AS peak FROM d GROUP BY 1, 2) SELECT w.week AS time, sn.label AS metric, w.bad_days AS value FROM w JOIN sn USING (sensor_id) ORDER BY 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "max": 7,
+          "decimals": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "stepAfter",
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "showPoints": "always",
+            "pointSize": 7,
+            "spanNulls": false,
+            "insertNulls": 691200000
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Daily median, beside all sensors' median",
+      "gridPos": {
+        "x": 9,
+        "y": 17,
+        "w": 15,
+        "h": 8
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "planetai-node"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "planetai-node"
+          },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "WITH h AS (SELECT r.sensor_id, r.bucket, r.mean AS v FROM readings_1h r WHERE $__timeFilter(r.bucket) AND r.bucket <= now() AND r.metric = '${metric}' AND r.sensor_id IN (${sensor:sqlstring})), o AS (SELECT r.sensor_id, r.bucket, r.mean AS v FROM readings_1h r JOIN sensors s USING (sensor_id) WHERE $__timeFilter(r.bucket) AND r.bucket <= now() AND r.metric = '${metric}' AND s.kind = 'sensor' AND s.indoor IS NOT TRUE), sn AS (SELECT sensor_id, coalesce(nullif(room, ''), nullif(name, ''), sensor_id) AS label FROM sensors), a AS (SELECT t, percentile_cont(0.5) WITHIN GROUP (ORDER BY m) AS all_median FROM (SELECT sensor_id, date_trunc('day', bucket) AS t, percentile_cont(0.5) WITHIN GROUP (ORDER BY v) AS m FROM o GROUP BY 1, 2) q GROUP BY 1) SELECT date_trunc('day', h.bucket) AS time, sn.label AS metric, percentile_cont(0.5) WITHIN GROUP (ORDER BY h.v) AS value FROM h JOIN sn USING (sensor_id) GROUP BY 1, 2 UNION ALL SELECT a.t, 'all sensors'' median', a.all_median FROM a ORDER BY 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": false,
+            "insertNulls": 129600000
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "all sensors' median"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    8,
+                    6
+                  ]
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 3
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "text"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 5,
+      "type": "table",
+      "title": "The bad days, and how often each went over the high",
+      "gridPos": {
+        "x": 0,
+        "y": 25,
+        "w": 24,
+        "h": 10
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "planetai-node"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "planetai-node"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH h AS (SELECT r.sensor_id, r.bucket, r.mean AS v FROM readings_1h r WHERE $__timeFilter(r.bucket) AND r.bucket <= now() AND r.metric = '${metric}' AND r.sensor_id IN (${sensor:sqlstring})), e AS (SELECT *, v > ${high} AND NOT coalesce(lag(v) OVER (PARTITION BY sensor_id ORDER BY bucket) > ${high}, false) AS rose FROM h), d AS (SELECT sensor_id, date_trunc('day', bucket) AS day, count(*) AS hours, avg(v) AS mean, percentile_cont(0.5) WITHIN GROUP (ORDER BY v) AS median, max(v) AS peak, (array_agg(bucket ORDER BY v DESC))[1] AS peak_at, count(*) FILTER (WHERE v > ${high}) AS high_hours, count(*) FILTER (WHERE rose) AS high_times FROM e GROUP BY 1, 2), o AS (SELECT r.sensor_id, r.bucket, r.mean AS v FROM readings_1h r JOIN sensors s USING (sensor_id) WHERE $__timeFilter(r.bucket) AND r.bucket <= now() AND r.metric = '${metric}' AND s.kind = 'sensor' AND s.indoor IS NOT TRUE), sn AS (SELECT sensor_id, coalesce(nullif(room, ''), nullif(name, ''), sensor_id) AS label FROM sensors), a AS (SELECT t, percentile_cont(0.5) WITHIN GROUP (ORDER BY m) AS all_median FROM (SELECT sensor_id, date_trunc('day', bucket) AS t, percentile_cont(0.5) WITHIN GROUP (ORDER BY v) AS m FROM o GROUP BY 1, 2) q GROUP BY 1) SELECT to_char(d.day, 'YYYY-MM-DD') AS \"day\", sn.label AS \"sensor\", d.hours AS \"hours heard\", round(d.mean::numeric, 1) AS \"24 h mean\", round(d.median::numeric, 1) AS \"median\", round(a.all_median::numeric, 1) AS \"all sensors' median\", d.high_times AS \"times over the high\", d.high_hours AS \"hours over the high\", round(d.peak::numeric) AS \"highest hour\", to_char(d.peak_at, 'HH24:MI') AS \"at\" FROM d JOIN sn USING (sensor_id) LEFT JOIN a ON a.t = d.day WHERE d.mean > ${bad} ORDER BY d.day DESC, sn.label"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "minWidth": 70,
+            "wrapHeaderText": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "sensor"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 230
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "hours heard"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "text",
+                      "value": 18
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "24 h mean"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "median"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "dark-blue",
+                      "value": null
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "all sensors' median"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "dark-blue",
+                      "value": null
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "times over the high"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "transparent",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 1
+                    },
+                    {
+                      "color": "red",
+                      "value": 3
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Hour by hour, with the high line",
+      "gridPos": {
+        "x": 0,
+        "y": 35,
+        "w": 24,
+        "h": 9
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "planetai-node"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "planetai-node"
+          },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "WITH h AS (SELECT r.sensor_id, r.bucket, r.mean AS v FROM readings_1h r WHERE $__timeFilter(r.bucket) AND r.bucket <= now() AND r.metric = '${metric}' AND r.sensor_id IN (${sensor:sqlstring})), sn AS (SELECT sensor_id, coalesce(nullif(room, ''), nullif(name, ''), sensor_id) AS label FROM sensors) SELECT h.bucket AS time, sn.label AS metric, h.v AS value FROM h JOIN sn USING (sensor_id) UNION ALL SELECT x.t, 'high line', ${high} FROM (VALUES ($__timeFrom()::timestamptz), (least($__timeTo()::timestamptz, now()))) x(t) ORDER BY 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": false,
+            "insertNulls": 10800000
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "high line"
+            },
+            "properties": [
+              {
+                "id": "custom.insertNulls",
+                "value": false
+              },
+              {
+                "id": "custom.spanNulls",
+                "value": true
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    8,
+                    6
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    }
+  ]
+}

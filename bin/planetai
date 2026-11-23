@@ -1781,7 +1781,7 @@ cmd_grafana() {
     return
   fi
   echo "  Your own panels over this node's readings, beside the dashboard. It reads the database read-only, as"
-  echo "  planetai_grafana: every table but settings, raw readings included. A starter dashboard is in the PLANETAI folder;"
+  echo "  planetai_grafana: every table but settings, raw readings included. A starter dashboard and the weekly sensor report (English and Bahasa Indonesia) are in the PLANETAI folder;"
   echo "  Save as makes a copy that is yours. docs/site/grafana.md lists what Grafana will not tell you on its own."
   echo
   profiles_add grafana

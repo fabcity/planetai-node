@@ -8,7 +8,9 @@ draw tomorrow's forecast as a measurement or bridge a sensor's silence with a li
     python3 tests/test_grafana.py
 """
 import json
+import os
 import re
+import subprocess
 import sys
 
 import yaml
@@ -77,6 +79,72 @@ check(not node1, "nothing in it names node #1's rooms, sensors or timezone" + (f
 check(dash["title"].endswith("no provenance"), "its title says it carries none of the page's rules")
 check(all("opened_at <= now()" in a["target"]["rawSql"] for a in dash["annotations"]["list"]), "the alert annotations stop at now() too")
 check("current_setting('TimeZone')" in raw, "hour of day is the session's, which role.sh sets to NODE_TZ")
+
+print("weekly report: one source, two languages, the same honesty as the starter")
+gen = subprocess.run([sys.executable, "tools/gen_grafana_report.py", "--check"], capture_output=True, text=True)
+check(gen.returncode == 0, "both report files are what tools/gen_grafana_report.py writes" + (": " + gen.stderr.strip() if gen.returncode else ""))
+reports = {lang: json.load(open(f"config/grafana/dashboards/report-{lang}.json", encoding="utf-8")) for lang in ("en", "id")}
+uids = {dash["uid"], *(r["uid"] for r in reports.values())}
+check(len(uids) == 3, "the starter and the two reports have three different uids")
+for lang, rep in reports.items():
+    rq = [(p["title"], t["rawSql"]) for p in rep["panels"] for t in p.get("targets", [])] + \
+         [(v["name"], v["query"]) for v in rep["templating"]["list"] if v["type"] == "query"]
+    check(all("readings_1h" in q and "bucket <= now()" in q for _, q in rq), f"{lang}: every query reads the hourly means and stops at now()")
+    check(all("$__timeFilter(r.bucket)" in q for n, q in rq if n not in ("metric", "sensor")), f"{lang}: every panel follows the time picker")
+    check(all(t["datasource"]["uid"] == "planetai-node" for p in rep["panels"] for t in p.get("targets", [])), f"{lang}: every panel reads the node's datasource")
+    check(all(p["fieldConfig"]["defaults"]["custom"].get("insertNulls") for p in rep["panels"] if p["type"] == "timeseries"),
+          f"{lang}: every line breaks at a silence")
+    check(not [w for w in ("Kids", "Backyard", "Studio", "Living Room", "msh-", "sc-1", "Asia/Makassar", "bayu", "Kutuh") if w in json.dumps(rep)],
+          f"{lang}: nothing in it names node #1's rooms, sensors or timezone")
+    check(rep["links"][0]["url"] == "/d/planetai-report-" + ("id" if lang == "en" else "en"), f"{lang}: it links to the other language")
+    names = "".join(q for _, q in rq)
+    check(names.count("'") % 2 == 0, f"{lang}: no word with an apostrophe left a SQL string open")
+shape = lambda r: [(p["id"], p["type"], p["gridPos"]) for p in r["panels"]]
+check(shape(reports["en"]) == shape(reports["id"]), "the two languages are the same report")
+
+# The counting itself, on a real Postgres (CI's lint job has one at RHO_PG_URL). Temporary tables stand in for
+# sensors and readings_1h, so nothing of the database is read or written.
+if os.getenv("RHO_PG_URL"):
+    import psycopg
+    sys.path.insert(0, "tools")
+    import gen_grafana_report as g
+    q = g.sql_weeks(g.WORDS["en"])
+    for k, v in {"$__timeFilter(r.bucket)": "r.bucket BETWEEN now() - interval '60 days' AND now() + interval '7 days'",
+                 "${metric}": "pm25", "${sensor:sqlstring}": "'a'", "${bad}": "15", "${high}": "55"}.items():
+        q = q.replace(k, v)
+    with psycopg.connect(os.environ["RHO_PG_URL"]) as c:
+        c.execute("SET TIME ZONE 'UTC'")
+        c.execute("CREATE TEMP TABLE sensors (sensor_id text, name text, room text, kind text, local boolean, indoor boolean)")
+        c.execute("CREATE TEMP TABLE readings_1h (bucket timestamptz, sensor_id text, metric text, mean float8)")
+        c.execute("INSERT INTO sensors VALUES ('a','A','','sensor',false,false), ('b','B','','sensor',false,false), "
+                  "('i','I','','sensor',true,true), ('m','M','','model',false,false)")
+        # a: two whole weeks at 10. Two weeks ago, three days at 20. Last week: one day with two episodes over 55
+        # (05:00-06:00, 10:00), and one episode across a midnight (Thu 23:00 - Fri 00:00), which counts once.
+        c.execute("""INSERT INTO readings_1h
+            SELECT t, 'a', 'pm25', CASE
+              WHEN t >= w - interval '14 days' AND t < w - interval '11 days' THEN 20
+              WHEN t IN (w - interval '6 days' + interval '5 hours', w - interval '6 days' + interval '6 hours') THEN 60
+              WHEN t = w - interval '6 days' + interval '10 hours' THEN 70
+              WHEN t IN (w - interval '3 days' - interval '1 hour', w - interval '3 days') THEN 60
+              ELSE 10 END
+            FROM (SELECT date_trunc('week', now()) AS w) x, generate_series(w - interval '14 days', now(), interval '1 hour') t""")
+        c.execute("INSERT INTO readings_1h SELECT t, s, 'pm25', v FROM (VALUES ('b', 30), ('i', 500), ('m', 1000)) y(s, v), "
+                  "generate_series(date_trunc('week', now()) - interval '14 days', now(), interval '1 hour') t")
+        c.execute("INSERT INTO readings_1h VALUES (now() + interval '1 day', 'a', 'pm25', 999)")   # a forecast hour
+        cur = c.execute(q)
+        cols = [d.name for d in cur.description]
+        rows = [dict(zip(cols, r)) for r in cur.fetchall()]
+        c.rollback()
+    check(len(rows) == 3, "pg: this week, last week and the one before")
+    now_, last, before = rows
+    check(last["bad days"] == 1 and before["bad days"] == 3, "pg: a bad day is a counted day whose 24-hour mean is over the line")
+    check(last["times over the high"] == 3 and last["hours over the high"] == 5, "pg: an episode counts once, across a midnight too")
+    check(last["highest hour"] == 70 and now_["highest hour"] <= 10, "pg: the forecast hour is not read")
+    check(float(last["weekly median"]) == 10 and float(last["all sensors' median"]) == 20, "pg: all sensors is the outdoor sensors, no room and no model")
+    check((now_["against the week before"], last["against the week before"], before["against the week before"]) ==
+          ("week not over", "improving", "no week before"), "pg: fewer bad days than the week before is improving")
+else:
+    print("  - the report's counting on a real database skipped (set RHO_PG_URL)")
 
 print("cli: planetai grafana, and remove knows its volumes")
 cli = open("bin/planetai").read()
