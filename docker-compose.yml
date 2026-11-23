@@ -193,7 +193,7 @@ services:
     profiles: [models]
     restart: unless-stopped
     # Chronos-2 took 2.0 GB for 45 series of 4,096 hours on a MacBook; the container forecasts 32 at a time. A model
-    # that needs more is restarted by Docker rather than starving the node. To be measured again on node #1.
+    # that needs more is restarted by Docker rather than starving the node. On node #1 (34 series, 23 Nov) it peaked at 583 MiB.
     mem_limit: 4g
     environment:
       MODEL: ${PREDICT_MODEL:-}

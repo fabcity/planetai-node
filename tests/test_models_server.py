@@ -134,6 +134,31 @@ assert core.model_dir("../../etc", cat2, hub) is None and "unknown model" in cor
 assert core.remove("x/y", cat2, hub) is None and not core.have("x/y", cat2, hub) and core.have("x/z", cat2, hub)
 assert core.remove("x/y", cat2, hub) is None   # already gone is fine
 
+
+# ---- the shared store: huggingface_hub 2.x keeps the files in <hub>/blobs and the model's folder only links into
+# them (node #1, 23 Nov: rm left 456 MB there and the next pull "downloaded" it in 4 s). remove and a failed verify
+# drop this model's files from the store too, and nothing another model still links to.
+def shared(content):
+    h = os.path.join(tempfile.mkdtemp(), "hub")
+    for m, name, body in (("x--y", "ab", content), ("x--y", "cd", b"config"), ("x--z", "cd", b"config")):
+        os.makedirs(os.path.join(h, "blobs", name[:1]), exist_ok=True)
+        with open(os.path.join(h, "blobs", name[:1], name), "wb") as f:
+            f.write(body)
+        snap = os.path.join(h, "models--" + m, "snapshots", "r")
+        os.makedirs(snap, exist_ok=True)
+        os.symlink(os.path.join("..", "..", "..", "blobs", name[:1], name),
+                   os.path.join(snap, "model.safetensors" if name == "ab" else "config.json"))
+    return h, os.path.join(h, "models--x--y", "snapshots", "r")
+
+h, snap = shared(data)
+assert core.verify("x/y", snap, good) is None and os.path.isfile(os.path.join(h, "blobs", "a", "ab"))
+assert core.remove("x/y", cat2, os.path.dirname(h)) is None
+assert not os.path.exists(os.path.join(h, "blobs", "a", "ab"))                     # its weights are gone
+assert os.path.isfile(os.path.join(h, "blobs", "c", "cd")) and core.have("x/z", cat2, os.path.dirname(h))  # x/z's stay
+h, snap = shared(b"tampered")
+assert "sha256" in core.verify("x/y", snap, good) and not os.path.exists(os.path.join(h, "blobs", "a", "ab"))
+assert os.path.isfile(os.path.join(h, "blobs", "c", "cd"))
+
 # ---- the seam: torch and chronos are imported inside load(), never at the top.
 src = open(os.path.join(ROOT, "models", "core.py")).read()
 assert "\nimport torch" not in src and "\nfrom chronos" not in src and "\nimport numpy" not in src

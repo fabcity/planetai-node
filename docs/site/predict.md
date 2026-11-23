@@ -59,7 +59,7 @@ planetai models pull amazon/chronos-2
 
 says the model's size and licence, says that the models image is built first, carries PyTorch and is several times
 larger than the weights, and asks before it does anything (`--yes` skips the question). Then it builds the models
-image, which takes a few minutes the first time, downloads the weights once from
+image, which took 5 minutes and came to 1.76 GB on node #1, downloads the weights once from
 huggingface.co at the revision the catalogue pins, and checks them against the catalogue's sha256. Only after that it
 sets `PREDICT_MODEL` in `.env`, adds `models` to `COMPOSE_PROFILES` and, if `PACKS_ENABLED` lists packs, `predict` to
 it, starts the container and restarts the node. If the build or the download fails, `.env` is left as it was. It ends
@@ -78,7 +78,7 @@ model amazon/chronos-2 running".
 planetai models rm amazon/chronos-2
 ```
 
-deletes the weights. If that was the model running, `PREDICT_MODEL` is blanked, `models` leaves `COMPOSE_PROFILES`,
+deletes the weights, from the shared folder the download keeps them in too. If that was the model running, `PREDICT_MODEL` is blanked, `models` leaves `COMPOSE_PROFILES`,
 the container stops and the node restarts with `predict` off, so `planetai doctor` no longer has a line for it and an
 update no longer builds the image. The forecasts already written stay.
 
@@ -140,6 +140,10 @@ outdoor kit and one indoor room, about 1,900 hours each. Each was forecast 24 ho
 - Its 80% band held the measurement 68 to 86% of the time, so on some series it is a little narrow.
 - One night's forecasts for 45 series took 1.0 second and 1.5 GB of memory with Chronos-2, and 0.1 second and 0.7 GB
   with Bolt tiny, on a laptop's CPU.
+
+On 23 November we ran it on node #1 itself, a Mac mini, with Chronos-2. It forecast 34 series and filled the 28 days
+before in about 40 minutes, a minute at each poll, and the container never used more than 583 MiB of memory. Over
+those 28 days its error on the outdoor kit's PM2.5 for today was 2.8 µg/m³, where yesterday repeated was off by 3.6.
 
 We also tried adapting Chronos-2 to node #1, on its own 37 series, and tested the result on 28 days it had not seen.
 Against the same model with no training it came out at −0.4% with one method and +0.6% with another. That is no gain,

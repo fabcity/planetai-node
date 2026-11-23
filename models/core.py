@@ -143,8 +143,22 @@ def remove(name, cat, hf_home=None):
     root = model_dir(name, cat, hf_home)
     if root is None:
         return f"unknown model {name}; the catalogue has: {', '.join(cat)}"
-    shutil.rmtree(root, ignore_errors=True)
+    drop(root)
     return None
+
+
+def drop(root):
+    """Remove one model's folder and the files it links to in the hub's shared store (huggingface_hub 2.x keeps
+    them in <hub>/blobs), unless another model's folder still links to the same file. Nothing outside the hub."""
+    hub = Path(root).resolve().parent
+    def links(d):
+        return {p.resolve() for p in Path(d).rglob("*") if p.is_symlink()}
+    mine = links(root) if Path(root).is_dir() else set()
+    shutil.rmtree(root, ignore_errors=True)
+    kept = set().union(*(links(d) for d in hub.glob("models--*")))
+    for f in mine - kept:
+        if hub in f.parents and f.is_file():
+            f.unlink()
 
 
 def verify(name, snapshot, cat):
@@ -165,5 +179,5 @@ def verify(name, snapshot, cat):
     except OSError as e:
         err = f"{name}: {e}"
     if root is not None:
-        shutil.rmtree(root, ignore_errors=True)
+        drop(root)
     return err
