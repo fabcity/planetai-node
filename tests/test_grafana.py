@@ -102,6 +102,11 @@ for lang, rep in reports.items():
 shape = lambda r: [(p["id"], p["type"], p["gridPos"]) for p in r["panels"]]
 check(shape(reports["en"]) == shape(reports["id"]), "the two languages are the same report")
 
+print("one source: the report's SQL lives in app/weekly.py, for Grafana and the node's page alike")
+gen_src = open("tools/gen_grafana_report.py").read()
+check("from weekly import" in gen_src and "def sql_weeks" not in gen_src, "the generator imports the SQL, it does not hold a copy")
+check(os.path.exists("app/weekly.py") and "def sql_weeks" in open("app/weekly.py").read(), "app/weekly.py holds the report's SQL")
+
 # The counting itself, on a real Postgres (CI's lint job has one at RHO_PG_URL). Temporary tables stand in for
 # sensors and readings_1h, so nothing of the database is read or written.
 if os.getenv("RHO_PG_URL"):
