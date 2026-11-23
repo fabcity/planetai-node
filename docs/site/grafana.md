@@ -135,6 +135,12 @@ hides Grafana's menus. The link at the top switches language and keeps what you 
 Like the starter, the two reports are replaced on every update, so Save as before you change one. Both files are
 written by `tools/gen_grafana_report.py`, and another language is one more column of words there.
 
+### The same report on the node's page
+
+Data › Report on the node's own page draws this report for anyone who can open the node, with no Grafana and nothing
+to sign in to ([Data](dashboard.md#data)). It runs the same queries, written once in `app/weekly.py`, so the two
+always count alike. Without the token the page offers the outdoor sensors only, and the rooms stay out of it.
+
 ## What Grafana will not tell you
 
 ### The forecast is stored in the future
