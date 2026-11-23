@@ -408,6 +408,30 @@
    "title": "Hours over the line, per day",
    "url": "https://planetai.fab.city/docs/dashboard/#the-strips"
   },
+  "data-predict": {
+   "anchor": "data",
+   "more": "A forecast is not a reading and is drawn apart from them. It comes from a general model, not adapted here, and a day appears only once the model has been closer than yesterday repeated.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "Will the air be better or worse tomorrow?",
+     "Why is a day not shown for some series?"
+    ],
+    "es": [
+     "¿El aire estará mejor o peor mañana?",
+     "¿Por qué no se muestra un día en algunas series?"
+    ],
+    "id": [
+     "Apakah udara besok lebih baik atau lebih buruk?",
+     "Mengapa sebuah hari tidak ditampilkan untuk sebagian deret?"
+    ]
+   },
+   "quote": "With the `predict` pack on, Models and satellite has a second part: the range a general model expects today and tomorrow for each of the node's own series, and its mean error beside that of yesterday repeated. A day is drawn only with at least 7 scored days and the model's error strictly below yesterday's, otherwise the row says why.",
+   "section": "Data",
+   "title": "Its own readings, forecast",
+   "url": "https://planetai.fab.city/docs/dashboard/#data"
+  },
   "data-readings": {
    "anchor": "data",
    "more": "Each tile is one kind of reading with the median of its sources now. With the token a small trace shows its last 24 hours.",
@@ -2241,6 +2265,7 @@
   "data-week",
   "data-perday",
   "data-models",
+  "data-predict",
   "data-images",
   "data-things",
   "data-ledger",

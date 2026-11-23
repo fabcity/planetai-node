@@ -1,0 +1,22 @@
+id: predict
+name: Predict
+description: >-
+  A general forecasting model reads this node's own series, outdoors and in, and writes the next two days beside the
+  last day repeated, so the node shows a day only when it beats that. The model runs in a separate container and sees
+  nothing but numbers.
+author: PLANETAI core (official)
+version: 0.1.0
+requires: { node: ">=0.92.0" }
+kind: code
+domain: cross-domain
+scales: [community]
+sources: []
+# On when PREDICT_MODEL names a model from models.json; the weights arrive only with `planetai models pull`.
+switch: [PREDICT_MODEL]
+needs:
+  - huggingface.co
+ahead:
+  id: predict
+  title: { en: Modelled here, es: Modelado aquí, id: Dimodelkan di sini }
+  sensor: predict
+  days: [ahead_d1, ahead_d2]

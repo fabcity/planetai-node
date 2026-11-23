@@ -9196,7 +9196,7 @@ async function loadSetup() {
   /* Read once at start, so read-only here and never sent: these fields carry no data-key. */
   const boot = (DESC.bootstrap || []).filter(b => (b.group || 'system') === GROUP).map(b =>
     `<div class="field"><div><label for="set-${esc(b.key)}">${esc(b.label)}<span class="src">read at start</span></label>`
-    + `<div class="help">${esc(b.key)} \u00b7 edit .env on the node, then run planetai restart</div></div>`
+    + `<div class="help">${esc(b.key)} \u00b7 edit .env on the node, then run planetai restart</div>${b.help ? `<div class="help">${esc(b.help)}</div>` : ''}</div>`
     + `<div><input id="set-${esc(b.key)}" type="text" readonly value="${esc(b.value || '')}"`
     + ` placeholder="not set"></div></div>`).join('');
   /* The pack switches are an EXTRA, never a replacement. This branch used to render them and return,

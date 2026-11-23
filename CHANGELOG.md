@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **A node can forecast its own readings.** The new core pack `predict` runs a general time-series model, Chronos-2
+  or Chronos-Bolt tiny, in a container of its own, and each night forecasts today and tomorrow for the node's own
+  sensors. A day is shown in Data only while the model is closer than the last measured day repeated. A forecast is
+  never written as a reading. Apart from one line in Next days, it never leaves the node. Nothing is downloaded until you run
+  `planetai models pull`, and docs/predict has what we measured on node #1.
+
 - **23 Nov: the weekly report in the air index colours, with a PDF and pictures to post.** Data › Report now opens on the
   week: a few tiles, then the places day by day in the colours of Indonesia's air index, ISPU, the scale people here
   already know. A day the sensor was heard for under 18 hours is grey and does not count, and a bad day that is still

@@ -52,7 +52,7 @@ from a laptop.
 Grafana signs in to the database as `planetai_grafana`, a login made by `config/grafana/role.sh` each time Grafana
 starts. It belongs to `planetai_ro`, the role pack rules already run as, which can read every table except
 `settings` and the household's own (`captures`, `things`, `learnings`, `digests`, `household`, `place_photo_asks`,
-`place_photo_asks_in`), and write none. On top of that:
+`place_photo_asks_in`) and the `predict` pack's forecasts (`predictions`, `models`), and write none. On top of that:
 
 - every session it opens is read-only;
 - a query stops after 30 seconds, so a wide panel cannot slow the node down;

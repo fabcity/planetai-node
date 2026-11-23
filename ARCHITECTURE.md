@@ -210,7 +210,7 @@ Not a roadmap. Each stage names what exists, what it proves, and the trigger for
 **Stage 0: now.** One node, two containers by default (a broker, a Reticulum bridge built from its own repository,
 the local model's loop, IPFS and Grafana are optional profiles), Sense: adapters across sensor, portal, model and map classes, in the core and in packs.
 Observe: Postgres, hourly view, read API. Act: two domain-blind core rules and the three trust rules, plus whatever the loaded packs contribute
-(twenty-eight core packs ship, some serving their own routes, and wild packs are added per node), to
+(twenty-nine core packs ship, some serving their own routes, and wild packs are added per node), to
 Telegram, the mesh, and Home Assistant through its pack; `POST /actions` records what a person did.
 Index: `GET /cells` emits `Environmental|Community` live and ρ partial. Compute: one Mac mini. *Proves:* a reading
 becomes a message someone acts on, and the node reports that fact as a cell.

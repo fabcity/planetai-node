@@ -174,7 +174,7 @@ async function flow(kept, offers) {
   const grp = id => id.startsWith('msh') ? 'mesh' : (D.sensors.find(s => s.sensor_id === id) || {}).kind === 'model' ? 'models' : (D.sensors.find(s => s.sensor_id === id) || {}).local ? 'house' : 'public';
   const n24 = { house: null, public: null, models: null, mesh: null }; for (const [id, n] of Object.entries(F.counts)) n24[grp(id)] = (n24[grp(id)] || 0) + d3.sum(n);
   const loc = D.sensors.filter(s => s.local && s.kind === 'sensor'), pub = D.sensors.filter(s => !s.local && s.kind === 'sensor');
-  const heard = pub.filter(s => lastRaw(s.sensor_id, 'pm25') != null).length, models = D.sensors.filter(s => s.kind === 'model').length, c24 = v => v == null ? 'counted with the token' : `${v.toLocaleString('en')} in 24 h`;
+  const heard = pub.filter(s => lastRaw(s.sensor_id, 'pm25') != null).length, models = D.sensors.filter(s => s.kind === 'model' && s.sensor_id !== 'predict').length, c24 = v => v == null ? 'counted with the token' : `${v.toLocaleString('en')} in 24 h`;
   const ret = D.health.reticulum || {}, perDay = ret.announce_s ? Math.round(86400 / ret.announce_s) : null;
   /* what reached a phone: the node's own count (/issues events.sent_24h), since an alerts row is written whether or not
      it was sent (below ALERT_LEVEL, or a pack the event engine speaks for); a node too old to say counts the rows */

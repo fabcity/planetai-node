@@ -102,7 +102,7 @@ Each thing gets a row in the order of Now's rows: air and heat, then wind and ra
 pack that declares one with `ahead:` in its `pack.yaml`. A cell has the day's number, the state word against the issue's
 line, and for air and heat how many hours go over it. Press a row and its 72 hours are drawn under it, with the line.
 Under the rows each source is a pill with the time it was issued or fetched, then the page says "These come from
-models. The node does not forecast, and nothing here sends a message." With Open-Meteo off only BMKG's weather shows,
+models, and nothing here sends a message." With Open-Meteo off only BMKG's weather shows,
 where BMKG covers the node, and a line says where to turn Open-Meteo on. `#now/next` links straight to it.
 
 **Around the house** opens the right column. A row for each issue drawn by the hour, its state word, its value now and its hours over the line
@@ -195,11 +195,13 @@ Every reading the node holds, one tab at a time, routed `#data/<tab>`. The tab b
 |---|---|
 | **Readings** | every kind of reading as a tile, with the median of its sources' 15-minute means now. Press one to draw every source that reads it over 24 hours on one scale, each linked to where its source publishes it (the hourly table needs the token). Then every issue at every distance over seven days, and the hours over the line per day |
 | **Report** | the weekly sensor report, the same as the one in [Grafana](grafana.md#the-weekly-report), for anyone who opens the node. Pick sensors from the list or type part of a name, set the two lines, choose the week, and read it in English or Bahasa Indonesia. At the top, the week in tiles and the places day by day, each day coloured by Indonesia's air index (ISPU) for PM2.5 and PM10; a day heard for under 18 hours is grey and not counted, and a bad day still inside the index's green band has a thin red edge. Then, per place, the daily mean over the index bands, the bad days of each week, the hours (one spike is printed instead of flattening the scale) and the daily median beside all sensors', and the two tables. **Download the PDF** prints the week on A4 pages, the overview and a page per place; **Share images** makes a 1080×1350 JPEG per place and one comparing them, for PM2.5 and PM10. Both are made from what a visitor sees, so a room never reaches them, and both need a week that is over. The choices stay in the address (`#data/report?…`), so a report can be sent as a link. Another screen on the network reads it once `SHARE_LEVEL` is `open`; without the token only the outdoor sensors are offered |
-| **Models and satellite** | one table: a row per value the models and the satellite give for this point, how often it is fetched, its unit |
+| **Models and satellite** | first, one table: a row per value the models and the satellite give for this point, how often it is fetched, its unit; with the `predict` pack on, a second part under it |
 | **Home** | **Images**, newest first: when and who, what took it, the note, what the image model saw and whether somebody here confirmed it. A row opens the image to edit, confirm or delete. Then the species confirmed, and **Things**, what this home keeps, how often each is used, its state and whether it is offered (admin token). With the `eyes` or `things` pack off, its part says so |
 | **Ledger** | every decision, newest first, a run of the same answer as one row ("decided ×10"), who answered in words, and a filter by stage. Without a token, only the time and the stage |
 | **API** | every route on this node, one line each, with a search |
 | **Workbench** | the sensors workbench, routed `#data/workbench/flash`, `/test` or `/network`: flash the Bayu and every Meshtastic board, test a board over USB, and the network this node hears, all with no internet. USB needs Chrome or Edge on a laptop, on the node machine or with one Chrome flag set for this address; the steps are on [Flash and test a board](sensors.md#flash-and-test-a-board) |
+
+With the `predict` pack on, Models and satellite has a second part: the range a general model expects today and tomorrow for each of the node's own series, and its mean error beside that of yesterday repeated. A day is drawn only with at least 7 scored days and the model's error strictly below yesterday's, otherwise the row says why. It needs a node token, and [Predict](predict.md) has the rest.
 
 `#data/<sensor-id>` opens a station in Readings. The diary and the Index cells are on Node.
 

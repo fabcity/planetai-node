@@ -44,7 +44,7 @@ The middlewares answer `{"error": "..."}`. A share-level 403 names the level and
 
 For a path no level opens it ends "No share level opens this one, so it always needs a token from anywhere but the node itself." `/mcp` without the admin token is 401 `{"error": "the agent surface needs Authorization: Bearer <ADMIN_TOKEN>"}`.
 
-Some routes are a pack's, served from `packs/<id>/routes.py`: `/forecast` (forecast), `/nearby` (nearby), `/index/place` (index), `/energy` (energy), `/earth`, `/earth/change.png`, `/earth/year.png` and `/earth/wall.png` (earth), `/earth/frame.png` (earth-engine), `/hydro` (hydro), every `/captures` route and `/species` (eyes), and `/things` and `/offers` (things). While its pack is off on the node, such a route answers 404 `{"detail": "the <pack> pack is off on this node"}`.
+Some routes are a pack's, served from `packs/<id>/routes.py`: `/forecast` (forecast), `/nearby` (nearby), `/index/place` (index), `/energy` (energy), `/predict` (predict), `/earth`, `/earth/change.png`, `/earth/year.png` and `/earth/wall.png` (earth), `/earth/frame.png` (earth-engine), `/hydro` (hydro), every `/captures` route and `/species` (eyes), and `/things` and `/offers` (things). While its pack is off on the node, such a route answers 404 `{"detail": "the <pack> pack is off on this node"}`.
 
 Handlers answer `{"detail": "..."}`. The token checks:
 
@@ -364,6 +364,11 @@ What the Fab City Index says about the place this node belongs to (`INDEX_PLACE`
 Access: open
 
 Official and model weather for this point, from `forecast-bmkg`, `forecast-om`, `forecast-cams`, `forecast-marine` and `forecast-gap`. `?hours=` 1 to 72 (default 24). Returns `{point, sources, hours, attribution, far_from_node, days, lines, openmeteo, schema}`, where `far_from_node` lists any source more than 10 km away (the sea is left out), `days` and `lines` are what [Next days](next-days.md) draws, and `schema` is `forecast-v0`. Without a token `point` is the middle of the node's res-8 cell (null before the node has a place) and each source's `km_from_node` is whole kilometres from that middle, so `far_from_node` is judged from it too; this machine and a token get the node's own point and distances from it.
+
+### GET /predict
+Access: token
+
+This node's own ambient series, forecast by the model the `predict` pack runs in its container, beside how often that beat repeating yesterday. Returns `{state, model: {name, revision, adapted}, origin, rows}`. `state` is `ok`, `off` (`PREDICT_MODEL` is blank, so no container is asked), `no-answer` (the container does not answer), `no-model` (none is pulled) or `young` (no series to show yet). `adapted` is always false. Each row is `{sensor, indoor, metric, unit, today, tomorrow, why}`, where `today` and `tomorrow` are `{low, high, model, naive, days, shown}`: `model` and `naive` are the mean absolute error of the model and of yesterday repeated over the `days` scored, the last 28 at most, a day counting with at least 12 measured hours; both are null when no day is scored. `low` and `high` are null unless the day is shown, which takes today's forecast, at least 7 scored days and `model` strictly below `naive`. `why` is null when a day is shown, otherwise `{reason: "naive-closer"}`, `{reason: "young", have, need}`, `{reason: "sparse"}` (old enough, but too many hours missing to forecast from) or `{reason: "waiting"}` (today's forecast is not made yet). In no share list: it answers only a node token or this machine. 404 when `PACKS_ENABLED` lists packs and `predict` is not one of them.
 
 ### GET /energy
 Access: open

@@ -189,7 +189,7 @@ or "nothing looks good". `docs/PACKS.md` documents `ahead:` next to `sections:`.
 - Under the rows, one line of provenance per source, as pills: "BMKG, issued 06:00", "Open-Meteo, fetched 08:12",
   "CAMS", "Open-Meteo Marine", and "10 km from this node" where `far_from_node` says so, and for the sea where its own source's `km_from_node` does
   (the sea is never in `far_from_node`, which the classic card reads as the weather point). Then one sentence: these
-  come from models, the node does not forecast, and they never send anything.
+  come from models, and they never send anything.
 - With the forecast pack off, Next days shows one line and a link to Set up to turn it on.
 - Card kinds, signs, theme and every rule the visual gate measures apply. Nothing new in the frozen layer.
 

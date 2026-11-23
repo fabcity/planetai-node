@@ -16,7 +16,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 FX = {n: json.loads((ROOT / "tests/data/forecast" / f"{n}.json").read_text()) for n in ("full", "om_off", "none", "community")}
-MODELS = "These come from models. The node does not forecast, and nothing here sends a message."
+MODELS = "These come from models, and nothing here sends a message."
 OPTIN = ("Air, the sea and more hours come from Open-Meteo, which is off on this node. "
          "Turn it on in Set up → Packs → forecast.")
 

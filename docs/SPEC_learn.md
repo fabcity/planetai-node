@@ -32,8 +32,9 @@ node can tell what an action changed.
 3. **Few cases say so.** Under five, a learning is "too few to be sure", with its count, never a percentage.
 4. **A learning is never deleted.** It is checked again at each period and marked `holding`, `weakening` or `gone`.
    "The Saturday smoke stopped in November" is a learning too.
-5. **Describe and explain before predicting.** EVDT planned describe, explain, predict and reached the first two;
-   this node does the same. Nothing here forecasts.
+5. **Learnings describe and explain; they never forecast.** EVDT planned describe, explain, predict and reached the
+   first two. A forecast of the node's own series is the `predict` pack's: it lives in its own table, carries its own
+   error, and is never a learning.
 6. **The house's learnings stay home** (§7).
 
 ## 3 · What exists

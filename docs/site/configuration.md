@@ -199,6 +199,7 @@ ask pane reads the same keys on every question. See [The bot](bot.md) and [Ask t
 | `AGENT_REMOTE_MODEL` | `gpt-oss-120b` | model id | e.g. `gpt-oss-120b` or `qwen3:8b`. | runtime · public · restart |
 | `AGENT_REMOTE_KEY` | blank | secret | If that server asks for one. | runtime · secret · restart |
 | `EYES_MODEL` | blank = off | Ollama model id | A vision model in this machine's Ollama that describes each image and files what it sees under the [flows](https://planetai.fab.city/vocab/flows/1.0/) classes. The picture never leaves the machine and the model is never asked about people. On 16 GB, `qwen2.5vl:7b`. | runtime · public |
+| `PREDICT_MODEL` | blank = off | model name | A time-series model that forecasts this node's own readings. `planetai models pull <name>` sets it after the weights are here; `planetai models rm` blanks it. Set up shows it and does not edit it: the models container can only follow `.env`. | env only |
 | `OLLAMA_URL` | `http://host.docker.internal:11434` | URL | Ollama on this machine, the `local` rung. `planetai agent local` sets `http://172.17.0.1:11434` on Linux. | env only |
 | `AGENT_MODEL` | `qwen3:4b` | Ollama model | The local rung's model; it must do tool calling. `planetai agent local pull <tag>` sets it. | env only |
 | `AGENT_NAME` | `local-model` | string | How the agent's actions appear in the audit trail. | env only |
@@ -233,7 +234,7 @@ backups and the pictures folder. See [Storage](storage.md).
 | `EXPORT_ENABLED` | `1` | `1`, `0` | Each night writes yesterday's `exports/<node>/YYYY-MM-DD.json`: hourly means, cells, alerts and ρ, never raw. | bootstrap |
 | `IPFS_PUBLISH` | `0` | `1`, `0` | Adds each export to IPFS and records the CID in `exports/<node>/CIDS.txt`. `planetai ipfs` turns it on. | bootstrap |
 | `APP_PORT` | `8080` | port | The host port, on every interface. Change it if 8080 is taken. | bootstrap |
-| `COMPOSE_PROFILES` | blank | `mqtt`, `agent`, `ipfs`, `reticulum`, `grafana` | Which optional containers run. Set by `planetai meshtastic`, `agent local`, `ipfs`, `reticulum` and `grafana`; leave it alone. | bootstrap |
+| `COMPOSE_PROFILES` | blank | `mqtt`, `agent`, `ipfs`, `reticulum`, `grafana`, `models` | Which optional containers run. Set by `planetai meshtastic`, `agent local`, `ipfs`, `reticulum`, `grafana` and `models pull`; leave it alone. | bootstrap |
 | `GRAFANA_BIND` | `127.0.0.1` | address | Where Grafana listens. `0.0.0.0` opens it to the network; set `GRAFANA_ADMIN_PASSWORD` first. Set up › System shows it. See [Grafana](grafana.md). | bootstrap |
 | `GRAFANA_PORT` | `3000` | port | Grafana's port. | bootstrap |
 | `GRAFANA_ADMIN_PASSWORD` | blank = `admin` | text | The password of Grafana's `admin` login. Set up says only whether it is set. | bootstrap, secret |
@@ -253,8 +254,8 @@ backups and the pictures folder. See [Storage](storage.md).
 ## Pack keys
 
 Every key a `pack.yaml` declares, with the default it ships. All are kind `pack`. A code pack reads them only with
-`PACKS_ALLOW_CODE=1`, except `bali-air-dispatch` and `index`, official packs with their own switch, which run on
-`BAD_ENABLED=1` and on `INDEX_PLACE` being set, alone.
+`PACKS_ALLOW_CODE=1`, except `bali-air-dispatch`, `index` and `predict`, official packs with their own switch, which run on
+`BAD_ENABLED=1`, on `INDEX_PLACE` being set and on `PREDICT_MODEL` being set, alone.
 
 | Setting | Pack | Default | Meaning |
 |---|---|---|---|
@@ -311,9 +312,11 @@ Every key a `pack.yaml` declares, with the default it ships. All are kind `pack`
 | `INDEX_REFRESH_HOURS` | index | `24` | How often the place's file is read again. |
 | `COAST_MAX_KM` | coast | `30` | Refuses to report if the nearest ocean grid cell is further than this. Also a runtime key (public), and it moves the dashboard's drawn footprint too. |
 
-Two pack settings are read but declared in no `pack.yaml`, so they are env only: `OVERPASS_URL` (default
-`https://overpass-api.de/api/interpreter`, the place pack's Overpass endpoint) and `BAD_BACKFILL_DAYS` (default
-`0`, the size of the one-off `planetai run nearby backfill`, whose argument overrides it).
+Three pack settings are read but declared in no `pack.yaml`, so they are env only: `OVERPASS_URL` (default
+`https://overpass-api.de/api/interpreter`, the place pack's Overpass endpoint), `BAD_BACKFILL_DAYS` (default
+`0`, the size of the one-off `planetai run nearby backfill`, whose argument overrides it) and `MODELS_URL` (default
+`http://models:8080`, where the predict pack reaches the models container). Set up does not show `MODELS_URL` and
+no agent can change it, because it decides where every series the pack forecasts is sent.
 
 The Reticulum bridge's own paths, `RETICULUM_DATA` (`/data`), `RETICULUM_CONFIGDIR` (`/etc/reticulum`) and
 `NODE_API_URL` (`http://app:8080`), are set by `docker-compose.yml`. Nothing to set by hand.

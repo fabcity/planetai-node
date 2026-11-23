@@ -187,6 +187,24 @@ services:
       grafana-role: { condition: service_completed_successfully }
     logging: { driver: json-file, options: { max-size: "5m", max-file: "2" } }
 
+  models:
+    build: ./models
+    image: planetai-models
+    profiles: [models]
+    restart: unless-stopped
+    # Chronos-2 took 2.0 GB for 45 series of 4,096 hours on a MacBook; the container forecasts 32 at a time. A model
+    # that needs more is restarted by Docker rather than starving the node. On node #1 (34 series, 23 Nov) it peaked at 583 MiB.
+    mem_limit: 4g
+    environment:
+      MODEL: ${PREDICT_MODEL:-}
+      HF_HOME: /weights
+      HF_HUB_OFFLINE: "1"
+      TZ: ${NODE_TZ:-UTC}
+    volumes:
+      - models:/weights
+      - ./packs/predict/models.json:/srv/models.json:ro
+    logging: { driver: json-file, options: { max-size: "10m", max-file: "3" } }
+
 volumes:
   db: {}
   mosquitto: {}
@@ -194,3 +212,4 @@ volumes:
   ipfsdata: {}
   grafana: {}
   grafana-secret: {}
+  models: {}

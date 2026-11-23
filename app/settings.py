@@ -201,6 +201,16 @@ PUBLIC = {"REPORT_EVERY", "REPORT_ANCHOR", "REPORT_DEPTH", "LEARN_PUSH", "ALERT_
           "RETICULUM_PRESENCE", "RETICULUM_PRESENCE_RES"}
 # Which Set up tab shows each bootstrap key, read-only. The place itself is Basics; the machinery is System.
 BOOTSTRAP_GROUP = {k: "basics" for k in ("NODE_NAME", "NODE_CITY", "NODE_LAT", "NODE_LON", "NODE_TZ", "NODE_SCALE")}
+BOOTSTRAP_GROUP["PREDICT_MODEL"] = "model"
+# Keys get() answers from the environment only, never from a stored row (the container reading .env is the other reader).
+ENV_ONLY = {"PREDICT_MODEL"}
+# A sentence under a read-only row, for the few that need one. PREDICT_MODEL is .env's alone: the models container can
+# only ever follow .env, so a value saved in Set up would be one the container never loads.
+BOOTSTRAP_HELP = {
+    "PREDICT_MODEL": "A time-series model that forecasts this node's own readings (Data \u203a Models and satellite). "
+                     "amazon/chronos-2 is 456 MB, amazon/chronos-bolt-tiny 33 MB. Nothing is downloaded until you run "
+                     "`planetai models pull <name>` on this machine.",
+}
 
 BOOTSTRAP = {
     "NODE_NAME": "Name", "NODE_CITY": "City key", "NODE_LAT": "Latitude", "NODE_LON": "Longitude", "NODE_TZ": "Time zone",
@@ -209,6 +219,7 @@ BOOTSTRAP = {
     # Grafana (docs/site/grafana.md): on when COMPOSE_PROFILES names it, which `planetai grafana` does. Set up draws
     # these as one block, with whether it is on and how to open it (Tomas, 24 Oct 2026: it was nowhere on the page).
     "GRAFANA_BIND": "Grafana address", "GRAFANA_PORT": "Grafana port", "GRAFANA_ADMIN_PASSWORD": "Grafana password",
+    "PREDICT_MODEL": "Forecast model",
 }
 # Read at start and never shown: Set up says only whether it is set. Every other bootstrap value is printed as it is.
 BOOTSTRAP_SECRET = {"GRAFANA_ADMIN_PASSWORD"}
@@ -317,7 +328,7 @@ def writable(key: str) -> bool:
 
 
 def get(key: str, default: str = "") -> str:
-    v = _rows().get(key)
+    v = None if key in ENV_ONLY else _rows().get(key)    # the environment's alone, whatever a row says
     if v is not None:
         return v
     return os.getenv(key, default)
@@ -503,5 +514,6 @@ def describe(unlocked: bool = False, public: frozenset | set = PUBLIC) -> dict:
     for k, label in BOOTSTRAP.items():
         v = os.getenv(k, "")
         out["bootstrap"].append({"key": k, "label": label, "value": ("set" if v else "") if k in BOOTSTRAP_SECRET else v,
-                                 "group": BOOTSTRAP_GROUP.get(k, "system"), "secret": k in BOOTSTRAP_SECRET})
+                                 "group": BOOTSTRAP_GROUP.get(k, "system"), "secret": k in BOOTSTRAP_SECRET,
+                                 **({"help": BOOTSTRAP_HELP[k]} if k in BOOTSTRAP_HELP else {})})
     return out
