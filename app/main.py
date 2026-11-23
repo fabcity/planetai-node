@@ -1452,8 +1452,8 @@ def actions(limit: int = Query(500, ge=0, le=5000), stage: str = "", events: int
 
 
 @app.get("/weekly")
-def weekly_(request: Request, metric: str = "", sensors: str = "", bad: str = "15", high: str = "55", weeks: str = "8",
-            lang: str = "en", authorization: str = Header("")):
+def weekly_(request: Request, metric: str = "", sensors: str = "", bad: str = "", high: str = "", weeks: str = "8",
+            lang: str = "en", wk: str = "", authorization: str = Header("")):
     """The weekly sensor report for the sensors picked: the Report tab in Data (docs/site/grafana.md). The same five
     queries as the keeper's Grafana report (app/weekly.py), every value bound. Without the admin token it offers the
     outdoor sensors only, named by their names, and reads no private channel."""
@@ -1465,29 +1465,41 @@ def weekly_(request: Request, metric: str = "", sensors: str = "", bad: str = "1
         metric = weekly.pick_metric(metric, metrics)
     except ValueError as e:
         raise HTTPException(400, str(e)) from None
+    n = weekly.weeks_of(weeks)
+    with db() as con, con.cursor() as cur:   # the session is in NODE_TZ (app/db.py), so weeks and days are the node's
+        cur.execute("SELECT date_trunc('week', now()) - make_interval(weeks => %s) AS t0, now() AS t1, "
+                    "date_trunc('week', now()) AS now_start", (n - 1,))
+        span = cur.fetchone()
+    starts = [(span["t0"].date() + timedelta(weeks=i)).isoformat() for i in range(n)]
+    wk, complete = weekly.pick_week(wk, starts, span["now_start"].date().isoformat())
     base = {"lang": lang, "words": weekly.WORDS[lang], "metric": metric, "metrics": sorted(metrics), "sensors": [], "picked": [],
-            "full_day": weekly.FULL_DAY, "max_sensors": weekly.MAX_SENSORS, "parts": {}}
+            "full_day": weekly.FULL_DAY, "max_sensors": weekly.MAX_SENSORS, "parts": {}, "t0": span["t0"].isoformat(),
+            "t1": span["t1"].isoformat(), "week_starts": starts, "wk": wk, "wk_complete": complete,
+            "shareable": complete and metric in weekly.INDEX, "index": weekly.INDEX.get(metric),
+            "unit": " µg/m³" if metric in weekly.INDEX else "",
+            "area": os.getenv("NODE_CITY", "").strip().title(), "node": os.getenv("NODE_NAME", "").strip()}
     if metric is None:   # nothing outdoors has reported yet: the page says so in its own words
-        return {**base, "bad": 15.0, "high": 55.0, "weeks": 8}
+        return {**base, "bad": 15.0, "high": 55.0, "weeks": n, "bad_source": "reader"}
     offered = q(offered_sql, metric)
     try:
         c = weekly.clean({"metric": metric, "sensors": sensors, "bad": bad, "high": high, "weeks": weeks, "lang": lang},
                          metrics, {o["id"]: o["label"] for o in offered})
     except ValueError as e:
         raise HTTPException(400, str(e)) from None
-    out = {**base, "sensors": offered, "picked": c["sensors"], "bad": c["bad"], "high": c["high"], "weeks": c["weeks"]}
+    out = {**base, "sensors": offered, "picked": c["sensors"], "bad": c["bad"], "high": c["high"], "weeks": c["weeks"],
+           "bad_source": weekly.line_source(c["metric"], c["bad"])}
     if not c["sensors"]:
         return out
-    with db() as con, con.cursor() as cur:   # the session is in NODE_TZ (app/db.py), so weeks and days are the node's
-        cur.execute("SELECT date_trunc('week', now()) - make_interval(weeks => %s) AS t0, now() AS t1", (c["weeks"] - 1,))
-        span = cur.fetchone()
-        params = {**span, "metric": c["metric"], "sensors": c["sensors"], "bad": c["bad"], "high": c["high"]}
+    with db() as con, con.cursor() as cur:
+        params = {"t0": span["t0"], "t1": span["t1"], "metric": c["metric"], "sensors": c["sensors"], "bad": c["bad"], "high": c["high"]}
         for part, sql_of in weekly.PARTS.items():
             cur.execute(weekly.bind(sql_of(weekly.WORDS[c["lang"]]), private=private, public=packs.public_sql("r")), params)
             out["parts"][part] = {"cols": [d.name for d in cur.description],
                                   "rows": [[v.isoformat() if isinstance(v, datetime) else float(v) if isinstance(v, Decimal) else v
                                             for v in r.values()] for r in cur.fetchall()]}
-    out["t0"], out["t1"] = span["t0"].isoformat(), span["t1"].isoformat()
+    days = [dict(zip(out["parts"]["days"]["cols"], r)) for r in out["parts"]["days"]["rows"]]
+    out["summary"] = weekly.summarise(days, out["parts"]["weeks"]["rows"], out["parts"]["weeks"]["cols"], wk, c["metric"], c["bad"],
+                                      weekly.FULL_DAY, c["sensors"], {o["id"]: o["label"] for o in offered})
     return out
 
 

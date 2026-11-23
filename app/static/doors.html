@@ -394,6 +394,10 @@ body.preport .page[data-view="place"]>:not(#preport){display:none}
 @page sheet{size:A4 landscape;margin:0}
 @page report{size:A4 portrait;margin:0}
 @media print{
+  body.pweekly>:not(#wpages){display:none!important}
+  body.pweekly #wpages{display:block!important}
+  body.pweekly .wpage{page:weekly;break-inside:avoid}
+  body.pweekly .wpage:not(:last-child){break-after:page}
   body.preport>:not([data-view="place"]),body.preport .prbar{display:none!important}
   body.preport .page[data-view="place"]{max-width:none;margin:0;padding:0;border:0;background:none}
   body.preport .psheets{display:block;padding:0;background:none}
@@ -698,7 +702,25 @@ body:not(.classic) .hero .ladder.folded{display:none}
 .rtags{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.rtags button{border:1px solid var(--ink);background:none;color:var(--ink);padding:2px 8px;font:var(--t-small) var(--body);cursor:pointer}
 .rlist{columns:3 220px;column-gap:18px;max-height:260px;overflow:auto;border-top:1px solid var(--hair);padding-top:6px}.rlist h4{margin:6px 0 2px;font:500 var(--t-cap) var(--mono);text-transform:uppercase;color:var(--mute)}
 .rlist label{display:flex;gap:6px;align-items:baseline;font-size:var(--t-small);padding:2px 0;break-inside:avoid}.rlist label[hidden]{display:none}
-.tbl td.wr,.tbl td.wr b{color:var(--signal-worse)}.sms .alln{fill:none;stroke:var(--ink);stroke-width:1.2;stroke-dasharray:6 4;opacity:.7}.sms .bar{fill:var(--ink);opacity:.75}
+.tbl td.wr,.tbl td.wr b{color:var(--signal-worse)}
+.rtiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:14px 0 6px}.rtile{border:1px solid var(--hair);padding:8px 10px;min-width:0}
+.rtile b{display:block;font:600 22px/1.15 var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rtile span{display:block;font:400 var(--t-cap)/1.3 var(--mono);text-transform:uppercase;letter-spacing:.04em;color:var(--mute)}.rtile.wr b{color:var(--signal-worse)}
+.rgrid{border-collapse:collapse;font-size:var(--t-small)}.rgrid th{font:400 var(--t-cap) var(--mono);color:var(--mute);padding:0 2px 4px;text-align:center}.rgrid th.n,.rgrid td.n{text-align:right;padding-left:10px;font-family:var(--mono);white-space:nowrap}.rgrid td{padding:2px}.rgrid td:first-child{padding-right:12px;white-space:nowrap}
+.blk{display:inline-block;min-width:36px;height:24px;line-height:24px;text-align:center;font:600 12px var(--mono);vertical-align:middle}
+.blk.aqi-0{background:var(--aqi-0);color:var(--aqi-0-ink)}.blk.aqi-1{background:var(--aqi-1);color:var(--aqi-1-ink)}.blk.aqi-2{background:var(--aqi-2);color:var(--aqi-2-ink)}.blk.aqi-3{background:var(--aqi-3);color:var(--aqi-3-ink)}.blk.aqi-4{background:var(--aqi-4);color:var(--aqi-4-ink)}
+.blk.nc{background:color-mix(in srgb,var(--mute) 30%,transparent)}.blk.aqi-4{box-shadow:inset 0 0 0 1px var(--mute)}.blk.nb{background:var(--raise);color:var(--ink)}.blk.nb.bad,.blk.edge{box-shadow:inset 0 0 0 3px var(--signal-worse)}
+.rbtns{display:flex;gap:10px;flex-wrap:wrap;margin:6px 0}.rshare{border:1px solid var(--hair);padding:12px;margin:8px 0}.rshots{display:flex;flex-wrap:wrap;gap:16px}
+.rshots figure{margin:0;display:flex;flex-direction:column;gap:6px;max-width:270px}.rshots canvas{width:270px;height:auto;display:block;border:1px solid var(--hair)}
+.rlegend{font-size:var(--t-cap);color:var(--mute);line-height:2}.rlegend .blk{min-width:16px;height:12px;line-height:12px;margin-left:6px}.sms .alln{fill:none;stroke:var(--ink);stroke-width:1.2;stroke-dasharray:6 4;opacity:.7}.sms .bar{fill:var(--ink);opacity:.75}
+@page weekly{size:A4 portrait;margin:0}
+/* the weekly report's PDF (doors-data.js printWeekly): paper whatever the screen's register, the air colours printed as they are.
+   A block with its foot pinned, not a flex column: Chrome split a flex page's chart onto an extra Letter page (23 Nov 2026). */
+.wpage{--ink:#171717;--mute:#6B6B66;--dim:#8A8580;--hair:#D9D4CE;--raise:#F3F0EA;--ground:#FFFFFF;background:#fff;color:var(--ink);width:210mm;height:296mm;box-sizing:border-box;padding:14mm 15mm 12mm;position:relative;font:400 10pt/1.4 var(--body);-webkit-print-color-adjust:exact;print-color-adjust:exact;overflow:hidden}
+.wpage h1{font:800 22pt/1.1 var(--body);margin:2mm 0 1mm}.wpage h3{font:700 11pt var(--body);margin:5mm 0 2mm}.wpage .wk{font:600 8pt var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}
+.wpage .sub{color:var(--mute)}.wpage .rtiles{grid-template-columns:repeat(4,1fr)}.wpage .rtile b{font-size:16pt}.wpage svg{width:125mm;height:auto}
+.wpage .lnp{fill:none;stroke:var(--ink);stroke-width:1.4}.wpage .bar{fill:var(--ink);opacity:.75}.wpage .grid{stroke:var(--hair)}.wpage svg text{fill:var(--mute);font:400 9px var(--mono)}.wpage td.wr{color:var(--signal-worse)}.wpage .how p{margin:0 0 2mm;color:var(--mute);font-size:9pt}
+.wpage .wfoot{position:absolute;left:15mm;right:15mm;bottom:12mm;display:flex;justify-content:space-between;gap:6mm;border-top:1px solid var(--hair);padding-top:2mm;font:400 7.5pt var(--mono);color:var(--mute)}
+.wpage .tbl{font-size:8.5pt}
 .sm{margin:0}.sm figcaption{font-size:var(--t-small);margin-bottom:2px}.sm svg{width:100%;height:auto;display:block}
 .sm .grid{stroke:var(--hair)}
 .cols2{display:grid;grid-template-columns:1fr 1fr;gap:48px}
@@ -807,7 +829,12 @@ body:not(.classic) .hero .ladder.folded{display:none}
 
 
 /* ================= FLOW: the node by scale (R37) ================= */
-:root{--motion-replay-loop:30s}   /* PROPOSED for the layer (R38, replaces R37's --motion-replay-hour): any window, 6 or 24 hours, replayed in 30 s */
+:root{--motion-replay-loop:30s}
+/* THE AIR INDEX (23 Nov 2026, amendment to the layer: planetai-design references/planetai-layer.md, "Air index"). Indonesia's
+   ISPU bands for a PM2.5 or PM10 24-hour mean, good to dangerous, as BACKGROUNDS that mean a band: allowed only where an air
+   reading is drawn (Data › Report, its PDF and its share images). The same in both registers. Each band has its number
+   colour, at 4.5:1 or better (tests/test_weekly.py measures it), dark on the green and the yellow so the hues stay ISPU's. */
+:root{--aqi-0:#3DAE57;--aqi-0-ink:#111111;--aqi-1:#2563C9;--aqi-1-ink:#FFFFFF;--aqi-2:#F2C230;--aqi-2-ink:#111111;--aqi-3:#C8331F;--aqi-3-ink:#FFFFFF;--aqi-4:#111111;--aqi-4-ink:#FFFFFF}   /* PROPOSED for the layer (R38, replaces R37's --motion-replay-hour): any window, 6 or 24 hours, replayed in 30 s */
 .fc{display:grid;grid-template-columns:10px minmax(0,1fr) auto 48px;gap:10px;align-items:baseline;padding:9px 0;border-bottom:1px solid var(--hair)}
 .fc i{width:8px;height:8px;background:var(--ink);align-self:center}.fc.red i{background:var(--signal-worse)}.fc.green i{background:var(--rings)}.fc.blue i{background:var(--cells)}.fc.none i{background:none;border:1px dashed var(--mute)}
 .fc span{font-size:var(--t-small);font-weight:600}.fc small{display:block;font:500 var(--t-cap) var(--mono);color:var(--mute);font-weight:500}
@@ -1393,6 +1420,7 @@ body:not(.classic) .hero .ladder.folded{display:none}
     </div>
   </div>
 </section>
+<div id="wpages" class="wpages" hidden></div>
 
 <!-- WALL -->
 <section class="view" data-view="wall" hidden><div id="wallv" data-learn="wall-never" data-reads="/health /issues /wall" data-stage="observe" data-pack="core"></div></section>
