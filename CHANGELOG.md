@@ -8,6 +8,14 @@
   never written as a reading. Apart from one line in Next days, it never leaves the node. Nothing is downloaded until you run
   `planetai models pull`, and docs/predict has what we measured on node #1.
 
+- **23 Nov: the weekly report in the air index colours, with a PDF and pictures to post.** Data › Report now opens on the
+  week: a few tiles, then the places day by day in the colours of Indonesia's air index, ISPU, the scale people here
+  already know. A day the sensor was heard for under 18 hours is grey and does not count, and a bad day that is still
+  green on the index gets a thin red edge, so the count and the colour never disagree. Each place gets its daily mean
+  over the index bands, and one spike no longer flattens the hourly chart. Download the PDF prints the week on A4
+  pages. Share images makes a 1080×1350 picture per place and one comparing them, for PM2.5 and PM10, saying how bad
+  the air was that week and where, and that the sensors are not calibrated. Both are made in your browser from what a
+  visitor would see, so a room never reaches them.
 - **23 Nov: the weekly report on the node's own page.** Data › Report draws the same weekly sensor report as
   Grafana, for anyone who opens the node, and there is nothing to sign in to. You pick the sensors from a list or by
   typing part of a name, set the two lines, and switch between English and Bahasa Indonesia. What you chose stays in

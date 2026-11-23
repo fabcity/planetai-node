@@ -45,6 +45,19 @@ WORDS = {
         # the node's page only (the Report tab in Data)
         "find": "Type part of a sensor's name", "pick": "Pick one or more sensors, from the list or by typing their name.",
         "weeks_n": "weeks", "none": "No sensor here has reported this metric in the last 30 days.", "picked": "picked",
+        "week_pick": "Week", "so_far": "so far", "bad_of": "bad days of {n}", "of_counted": "bad days of {n} counted",
+        "set_by_reader": "bad-day line {v}{unit}, set by the reader", "who_line": "bad-day line {v}{unit}, the WHO guideline",
+        "avg_bad": "bad days, average", "worst_place": "worst place", "worst_day": "worst day", "highest_hour": "highest hour",
+        "the_week": "The week, place by place", "daily_mean": "Daily mean, against the bad line",
+        "not_counted": "not counted: heard for fewer than 18 hours", "edge_note": "over the line, inside the index's good band",
+        "above_cap": "above the scale", "pdf": "Download the PDF", "pdf_hint": "Your browser opens its print window: choose Save as PDF.",
+        "share": "Share images", "share_note": "Each image is 1080×1350, made here in your browser. Nothing leaves the node until you post it.",
+        "download": "Download", "comparison": "Comparison", "air_week": "Air this week", "around": "Air this week around {area}",
+        "worst_first": "worst first", "rooms_out": "Rooms stay out of what is shared and printed.",
+        "not_calibrated": "Not calibrated.", "colours_from": "Colours from Indonesia's air index, ISPU.",
+        "page": "page {i} of {n}", "overview": "Overview", "picked_n": "{n} places picked on the {node} node",
+        "band_0": "good", "band_1": "moderate", "band_2": "unhealthy", "band_3": "very unhealthy", "band_4": "dangerous",
+        "over_line": "over the line", "no_answer": "The node did not answer.",
     },
     "id": {
         "title": "Laporan mingguan sensor", "other": "en", "other_name": "English",
@@ -69,6 +82,19 @@ WORDS = {
         "first": "belum ada minggu sebelumnya", "high_line": "batas tinggi",
         "find": "Ketik sebagian nama sensor", "pick": "Pilih satu sensor atau lebih, dari daftar atau dengan mengetik namanya.",
         "weeks_n": "minggu", "none": "Belum ada sensor di sini yang melaporkan metrik ini dalam 30 hari terakhir.", "picked": "dipilih",
+        "week_pick": "Minggu", "so_far": "sejauh ini", "bad_of": "hari buruk dari {n}", "of_counted": "hari buruk dari {n} yang terhitung",
+        "set_by_reader": "batas hari buruk {v}{unit}, diatur pembaca", "who_line": "batas hari buruk {v}{unit}, pedoman WHO",
+        "avg_bad": "rata-rata hari buruk", "worst_place": "tempat terburuk", "worst_day": "hari terburuk", "highest_hour": "jam tertinggi",
+        "the_week": "Minggu ini, tempat demi tempat", "daily_mean": "Rerata harian, dibanding batas hari buruk",
+        "not_counted": "tidak dihitung: data kurang dari 18 jam", "edge_note": "di atas batas, tapi masih dalam kategori baik ISPU",
+        "above_cap": "di atas skala", "pdf": "Unduh PDF", "pdf_hint": "Browser membuka jendela cetak: pilih Simpan sebagai PDF.",
+        "share": "Gambar untuk dibagikan", "share_note": "Setiap gambar berukuran 1080×1350, dibuat di browser Anda. Tidak ada yang keluar dari node sampai Anda membagikannya.",
+        "download": "Unduh", "comparison": "Perbandingan", "air_week": "Udara minggu ini", "around": "Udara minggu ini di sekitar {area}",
+        "worst_first": "terburuk di atas", "rooms_out": "Ruangan tidak ikut dalam yang dibagikan dan dicetak.",
+        "not_calibrated": "Belum dikalibrasi.", "colours_from": "Warna dari Indeks Standar Pencemar Udara, ISPU.",
+        "page": "halaman {i} dari {n}", "overview": "Ringkasan", "picked_n": "{n} tempat dipilih di node {node}",
+        "band_0": "baik", "band_1": "sedang", "band_2": "tidak sehat", "band_3": "sangat tidak sehat", "band_4": "berbahaya",
+        "over_line": "di atas batas", "no_answer": "Node tidak menjawab.",
     },
 }
 
@@ -158,8 +184,42 @@ def sql_hours(L):
             "FROM (VALUES ($__timeFrom()::timestamptz), (least($__timeTo()::timestamptz, now()))) x(t) ORDER BY 1")
 
 
-# For the node's page (GET /weekly). The five parts, in the order the page draws them.
-PARTS = {"weeks": sql_weeks, "badweeks": sql_badweeks, "daily": sql_daily, "baddays": sql_baddays, "hours": sql_hours}
+# Indonesia's air index, ISPU, on the 24-hour mean: the upper bounds of good, moderate, unhealthy and very unhealthy
+# (Permen LHK P.14/MENLHK/SETJEN/KUM.1/7/2020, Lampiran I; above the last is dangerous). Only these two have one.
+INDEX = {"pm25": (15.5, 55.4, 150.4, 250.4), "pm10": (50, 150, 350, 420)}
+
+
+# Where each line starts. PM2.5 and PM10 start at the WHO's 24-hour guideline (2021: 15 and 45 µg/m³) for a bad day,
+# and at the top of ISPU's moderate band for the high line (55.4 and 150). Any other metric starts at 15 and 55, the
+# reader's to set. Tomas, 23 Nov 2026: "WHO 15"; PM10 follows the same rule (ledger of the graphical report).
+WHO = {"pm25": 15, "pm10": 45}
+LINES = {"pm25": (15, 55), "pm10": (45, 150)}
+
+
+def line_source(metric, bad):
+    """"who" when the bad-day line is the WHO's guideline for this metric, else "reader"."""
+    return "who" if WHO.get(metric) == bad else "reader"
+
+
+def band(metric, mean):
+    """0 good, 1 moderate, 2 unhealthy, 3 very unhealthy, 4 dangerous; None when the metric has no index or no mean."""
+    if mean is None or metric not in INDEX:
+        return None
+    return next((i for i, top in enumerate(INDEX[metric]) if mean <= top), 4)
+
+
+def sql_days(L):
+    """Every sensor's days in the window: hours heard, the 24-hour mean, the highest hour and when. The node's page only;
+    the Grafana report does not draw it."""
+    return ("WITH " + ", ".join([H, SN]) + " SELECT to_char(date_trunc('day', h.bucket), 'YYYY-MM-DD') AS day, sn.label, "
+            "h.sensor_id, count(*) AS hours, avg(h.v) AS mean, max(h.v) AS peak, "
+            "to_char((array_agg(h.bucket ORDER BY h.v DESC))[1], 'HH24:MI') AS peak_at "
+            "FROM h JOIN sn USING (sensor_id) GROUP BY 1, 2, 3 ORDER BY 3, 1")
+
+
+# For the node's page (GET /weekly), in the order the page reads them.
+PARTS = {"weeks": sql_weeks, "badweeks": sql_badweeks, "daily": sql_daily, "baddays": sql_baddays, "hours": sql_hours,
+         "days": sql_days}
 MAX_SENSORS, MAX_WEEKS = 12, 12
 
 # Grafana's placeholders and what the node binds in their place. $__timeFilter is Grafana's own BETWEEN, so the two
@@ -188,6 +248,14 @@ def bind(sql, private=False, public=""):
     return sql
 
 
+def weeks_of(text):
+    """How many weeks the window holds: 1 to MAX_WEEKS, 8 when it is not a number."""
+    try:
+        return min(MAX_WEEKS, max(1, int(text or 8)))
+    except ValueError:
+        return 8
+
+
 def _number(text, default):
     x = float(default if text in (None, "") else text)   # ValueError on anything that is not a number
     if not math.isfinite(x):
@@ -207,13 +275,11 @@ def clean(args, metrics, offered):
     if any(i not in offered for i in ids):
         raise ValueError("Pick the sensors from the list: one of them is not offered here.")
     try:
-        bad, high = _number(args.get("bad"), 15), _number(args.get("high"), 55)
+        d_bad, d_high = LINES.get(metric, (15, 55))
+        bad, high = _number(args.get("bad"), d_bad), _number(args.get("high"), d_high)
     except ValueError:
         raise ValueError("The two lines have to be numbers.") from None
-    try:
-        weeks = min(MAX_WEEKS, max(1, int(args.get("weeks") or 8)))
-    except ValueError:
-        weeks = 8
+    weeks = weeks_of(args.get("weeks"))
     return {"metric": metric, "sensors": ids, "bad": bad, "high": high, "weeks": weeks,
             "lang": "id" if args.get("lang") == "id" else "en"}
 
@@ -245,3 +311,47 @@ def offer_sql(private, public):
                + " AND EXISTS (SELECT 1 FROM readings_1h r WHERE r.sensor_id = s.sensor_id AND r.metric = %s" + _RECENT + pub
                + ") ORDER BY s.indoor IS TRUE, s.local DESC, 2")
     return metrics, offered
+
+
+def pick_week(asked, starts, now_start):
+    """The week the page draws: `asked` when it is one of the window's week starts, else the last complete week (the
+    week not over yet only when it is all the window holds). Returns (week start, complete)."""
+    done = [s for s in starts if s != now_start]
+    wk = asked if asked in starts else (done[-1] if done else now_start)
+    return wk, wk != now_start
+
+
+def summarise(days, weeks_rows, cols, wk, metric, bad, full_day, picked, labels):
+    """What the node says about one week, for the tiles, the grid, the PDF and the images: per sensor its seven days
+    (counted when heard for `full_day` hours; bad when counted and over `bad`; its ISPU band; `edge` when bad inside
+    the good band), the bad days, the days counted, the verdict (read from the weeks part, never worked out again), the
+    highest hour and the worst counted day; and the overview across the sensors heard."""
+    from datetime import date, timedelta   # noqa: PLC0415
+    week = [(date.fromisoformat(wk) + timedelta(days=i)).isoformat() for i in range(7)]
+    by = {(r["sensor_id"], r["day"]): r for r in days}
+    verdict = {(r[0], r[1]): r[3] for r in weeks_rows}
+    out = []
+    for sid in picked:
+        label, ds = labels.get(sid, sid), []
+        for day in week:
+            r = by.get((sid, day))
+            if r is None or r["mean"] is None:
+                ds.append({"day": day, "counted": False, "bad": False, "band": None, "edge": False, "mean": None, "hours": 0})
+                continue
+            mean, b = float(r["mean"]), band(metric, float(r["mean"]))
+            counted = r["hours"] >= full_day
+            is_bad = counted and mean > bad
+            ds.append({"day": day, "counted": counted, "bad": is_bad, "band": b, "edge": bool(is_bad and b == 0),
+                       "mean": round(mean, 1), "hours": r["hours"], "peak": round(float(r["peak"])), "peak_at": r["peak_at"]})
+        heard = [d for d in ds if d["mean"] is not None]
+        top = max(heard, key=lambda d: d["peak"], default=None)
+        worst = max((d for d in ds if d["counted"]), key=lambda d: d["mean"], default=None)
+        out.append({"id": sid, "label": label, "days": ds, "bad": sum(d["bad"] for d in ds), "counted": sum(d["counted"] for d in ds),
+                    "verdict": verdict.get((wk, label)), "peak": top and top["peak"], "peak_day": top and top["day"],
+                    "peak_at": top and top["peak_at"], "worst_day": worst and worst["day"], "worst_mean": worst and worst["mean"]})
+    heard = [s for s in out if s["counted"]]
+    worst = max(heard, key=lambda s: (s["bad"], s["worst_mean"] or 0), default=None)
+    top = max((s for s in out if s["peak"] is not None), key=lambda s: s["peak"], default=None)
+    return {"sensors": out, "overall": {"avg_bad": round(sum(s["bad"] for s in heard) / len(heard), 1) if heard else None,
+                                       "worst": worst and worst["label"], "peak": top and top["peak"], "peak_place": top and top["label"],
+                                       "peak_day": top and top["peak_day"], "peak_at": top and top["peak_at"]}}

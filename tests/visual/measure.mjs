@@ -372,6 +372,12 @@ async function serveNodeAPI(route, u) {
   /* GET /issues/days, from the capture (docs/SPEC_dashboard_figures.md §3.4). A capture taken before v0.78 has no
      issues_days, and the answer is the 404 a node without the route gives: the strips then draw their own empty
      state, which is the truth about that capture. */
+  /* GET /weekly (Data › Report): tests/visual/weekly-fixture.json, a scratch node's answer; 'bare' when no sensor is asked for */
+  if (u.pathname === '/weekly') {
+    const W = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'visual', 'weekly-fixture.json'), 'utf8'));
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(u.searchParams.get('sensors') ? W.picked : W.bare) });
+    return true;
+  }
   if (u.pathname === '/issues/days') {
     const data = computeNodeData(FIXTURE);
     if (data.error) { await failNodeAPI(route, u.pathname, data); return true; }
@@ -3955,6 +3961,56 @@ async function placescreen() {
  * legend is not clipped, each report page holds its rows inside its A4 portrait box, and the PDF the browser makes is one
  * landscape page and then one portrait page for each report page, nothing spilled onto a blank one. Without the token
  * the same, with the node's sentence where the map would be. PAI_REPORT_PDF=1 keeps the PDFs. */
+/* THE WEEKLY REPORT (Data › Report, 23 Nov 2026; planetai-design-predict node-docs/superpowers/specs/2026-11-23-weekly-report-graphical-design.md).
+   GET /weekly answers from tests/visual/weekly-fixture.json (serveNodeAPI): three places, one with every ISPU band, a
+   15.3 day (a bad day inside the good band), a short Friday and an hour of 413 over a scale of about 300. At 390 and
+   1440, locked and with the token: the tab draws without a sideways scroll, three rows of seven blocks, the edge and
+   the grey day, the hour printed above its scale; Share images draws four 1080×1350 canvases; the PDF is 1 + 3 A4
+   portrait pages with nothing spilled onto another. */
+async function weekly() {
+  const bad = [], ok = (c, what) => { if (!c) bad.push(what); }, said = [];
+  const ADMIN = process.env.PAI_ADMIN_TOKEN || (process.env.PAI_ADMIN_TOKEN = 'rig-admin');
+  for (const [w, h] of [[1440, 900], [390, 844]]) for (const tok of [false, true]) {
+    const tag = `${w} ${tok ? 'with the token' : 'locked'}`;
+    const r = await openRig({ w, h, touch: w < 500, admin: tok ? ADMIN : null, mem: 'doors' });
+    await r.page.goto(`${POP}/?fixture=${FIXTURE}#data/report?m=pm25&s=out-c,out-a,out-b&lang=en`, { waitUntil: 'domcontentloaded' });
+    const drawn = await r.page.waitForSelector('#d-report .rgrid', { timeout: 30000 }).then(() => true, () => false);
+    if (!drawn) { bad.push(`${tag}: the Report tab drew no grid: ` + JSON.stringify(await r.page.evaluate(() => (document.getElementById('d-report') || {}).textContent?.slice(0, 200)))); await r.browser.close(); continue; }
+    const g = await r.page.evaluate(() => {
+      const rows = [...document.querySelectorAll('#d-report .rgrid tr')].slice(1);
+      return { scroll: document.documentElement.scrollWidth - document.documentElement.clientWidth, rows: rows.length, blocks: rows.map(x => x.querySelectorAll('.blk').length),
+        edge: document.querySelectorAll('#d-report .rgrid .blk.edge').length, nc: document.querySelectorAll('#d-report .rgrid .blk.nc').length,
+        bands: [0, 1, 2, 3, 4].map(i => document.querySelectorAll(`#d-report .rgrid .blk.aqi-${i}`).length),
+        above: [...document.querySelectorAll('#d-report figure p.fine')].map(p => p.textContent).join(' '), tiles: document.querySelectorAll('#d-report .rtile').length };
+    });
+    ok(g.scroll <= 1, `${tag}: the page scrolls sideways by ${g.scroll} px`);
+    ok(g.rows === 3 && g.blocks.every(n => n === 7), `${tag}: the grid is ${g.rows} rows of ${g.blocks} blocks, not 3 of 7`);
+    ok(g.edge >= 1 && g.nc >= 1 && g.bands.every(n => n >= 1), `${tag}: the grid lacks the edge (${g.edge}), the grey day (${g.nc}) or a band (${g.bands})`);
+    ok(/above the scale: 413/.test(g.above) && g.tiles === 3, `${tag}: the 413 hour is not printed above its scale, or ${g.tiles} tiles: ${g.above}`);
+    await r.page.click('#d-report [data-share]');
+    const shots = await r.page.waitForFunction(() => document.querySelectorAll('#d-report .rshots canvas').length === 4, null, { timeout: 20000 })
+      .then(() => r.page.evaluate(() => [...document.querySelectorAll('#d-report .rshots canvas')].map(c => [c.width, c.height])), () => null);
+    ok(shots && shots.every(([cw, ch]) => cw === 1080 && ch === 1350), `${tag}: Share images drew ${JSON.stringify(shots)}, not four 1080×1350 canvases: `
+      + JSON.stringify(await r.page.evaluate(() => (document.querySelector('#d-report .rshare') || {}).innerHTML?.slice(0, 160))));
+    if (w === 1440) {
+      const n = await r.page.evaluate(async () => { const { j } = await repPublic(REPLAST, REPLAST.picked); const n = buildWeeklyPages(j); document.body.classList.add('pweekly'); return n; });
+      await r.page.emulateMedia({ media: 'print' });
+      const pdf = await r.page.pdf({ preferCSSPageSize: true, printBackground: false });
+      if (process.env.PAI_WEEKLY_PDF === '1') fs.writeFileSync(path.join(OUT, `weekly_${tok ? 'token' : 'locked'}.pdf`), pdf);
+      const t = pdf.toString('latin1'), pages = (t.match(/\/Type\s*\/Page\b(?!s)/g) || []).length;
+      const boxes = [...t.matchAll(/\/MediaBox\s*\[\s*0 0 ([\d.]+) ([\d.]+)\s*\]/g)].map(m => [+m[1], +m[2]]);
+      ok(n === 4 && pages === 4 && boxes.every(([bw, bh]) => Math.abs(bw - 595) < 2 && Math.abs(bh - 842) < 2),
+        `${tag}: the PDF built ${n} pages and printed ${pages}, sizes ${JSON.stringify(boxes)}: not 4 A4 portrait pages`);
+      said.push(`${tag} PDF ${pages} pages`);
+    }
+    said.push(`${tag}: 3×7 blocks, 4 images`);
+    await r.browser.close();
+  }
+  if (!bad.length) { console.log(`  weekly: #data/report draws the week in the air index colours, the images and the PDF (${said.join(', ')})`); return; }
+  for (const b of bad) console.log('FAIL weekly:', b);
+  process.exit(1);
+}
+
 async function report() {
   const bad = [], ok = (c, what) => { if (!c) bad.push(what); }, said = [];
   const ADMIN = process.env.PAI_ADMIN_TOKEN || (process.env.PAI_ADMIN_TOKEN = 'rig-admin');
@@ -4106,5 +4162,6 @@ else if (cmd === 'doors') await doors();
 else if (cmd === 'wallwalk') await wallwalk();
 else if (cmd === 'placescreen') await placescreen();
 else if (cmd === 'report') await report();
-else { console.error('usage: measure.mjs render|shots|plates|plate-list|steps|stall|press|asking|extend|anchors|sheets|header|targets|audit|overflow|analyse|list|mobile|doors|wallwalk|placescreen|report');
+else if (cmd === 'weekly') await weekly();
+else { console.error('usage: measure.mjs render|shots|plates|plate-list|steps|stall|press|asking|extend|anchors|sheets|header|targets|audit|overflow|analyse|list|mobile|doors|wallwalk|placescreen|report|weekly');
   process.exit(2); }

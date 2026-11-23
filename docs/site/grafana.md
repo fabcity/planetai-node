@@ -142,6 +142,10 @@ to sign in to ([Data](dashboard.md#data)). It runs the same queries, written onc
 always count alike. A screen other than the node's own machine reads it once `SHARE_LEVEL` is `open` (Set up ›
 Sharing). Without the token the page offers the outdoor sensors only, and the rooms stay out of it.
 
+The page draws more than Grafana does: the days in Indonesia's air index colours, a PDF of the week and images to
+post. [Data](dashboard.md#data) says what each part shows. The colours and counts come from the node, so the page and
+this dashboard still agree on every number.
+
 ## What Grafana will not tell you
 
 ### The forecast is stored in the future

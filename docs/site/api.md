@@ -216,11 +216,16 @@ Access: open
 
 The weekly sensor report, the same as the one in Grafana, for the Report tab in Data. `?metric=` (the node's own
 when left out, `pm25` first), `?sensors=` up to twelve ids separated by commas, `?bad=` and `?high=` the two lines
-(15 and 55), `?weeks=` 1 to 12 (8), `?lang=` `en` or `id`. Returns `{metric, metrics, sensors: [{id, label, source}],
-picked, bad, high, weeks, words, full_day, parts, t0, t1}`. `parts` is empty until a sensor is picked; then it holds
-`weeks`, `badweeks`, `daily`, `baddays` and `hours`, each as `{cols, rows}`. Without `ADMIN_TOKEN` only outdoor
-sensors are offered, by their names, and a sensor that is not offered gets 400 with the same answer whether it exists
-or not.
+(PM2.5 starts at 15 and 55, PM10 at 45 and 150: the WHO guideline and where ISPU turns unhealthy; any other metric at 15
+and 55), `?weeks=` 1 to 12 (8), `?wk=` the start of the week to summarise (the last complete week when left out or
+not in the window), `?lang=` `en` or `id`. Every answer has `{metric, metrics, sensors: [{id, label, source}], picked,
+bad, high, weeks, words, full_day, t0, t1, week_starts, wk, wk_complete, shareable, index, area, node, parts}`.
+`index` is the metric's ISPU breakpoints (PM2.5 and PM10) or null; `shareable` is true for a complete week of PM2.5 or
+PM10, and `unit` is the metric's unit where the node knows it (` µg/m³` for those two). `parts` is empty until a sensor is picked; then it holds `weeks`, `badweeks`, `daily`, `baddays`, `hours` and
+`days`, each as `{cols, rows}`, and the answer adds `summary` (each sensor's seven days of the chosen week, counted, bad,
+band and edge, its bad days, days counted, verdict, highest hour and worst day, and an overview) and `bad_source`
+(`who` when the bad line is the WHO's guideline for the metric, else `reader`). Without `ADMIN_TOKEN` only outdoor sensors are offered, by their
+names, and a sensor that is not offered gets 400 with the same answer whether it exists or not.
 
 ### GET /reach
 Access: open
