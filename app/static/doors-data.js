@@ -132,6 +132,7 @@ function reportBlock() {
       const s2 = repState();
       if (b.dataset.rm) s2.s = s2.s.filter(id => id !== b.dataset.rm);
       else if (b.dataset.lang) s2.lang = b.dataset.lang;
+      else if (b.dataset.reset) { s2.m = ''; s2.s = []; s2.bad = '15'; s2.high = '55'; s2.w = '8'; }
       else return;
       repGo(s2);
     });
@@ -143,15 +144,15 @@ function reportBlock() {
     sec.addEventListener('keydown', e => {   // Enter in the name box picks the first match not yet picked
       if (e.target.dataset.r !== 'find' || e.key !== 'Enter') return;
       e.preventDefault();
-      const c = [...sec.querySelectorAll('.rlist label:not([hidden]) input')].find(i => !i.checked);
-      if (c) { const s2 = repState(); s2.s = [...s2.s, c.value]; repGo(s2); }
+      const c = [...sec.querySelectorAll('.rlist label:not([hidden]) input')].find(i => !i.checked && !i.disabled);
+      if (c) { const s2 = repState(); s2.s = [...s2.s, c.value]; e.target.value = ''; repGo(s2); }
     });
   }
   if (!sec.innerHTML) sec.innerHTML = `<h2>Report</h2><p class="fine">Reading the node…</p>`;
   const u = '/weekly?' + new URLSearchParams({ metric: st.m, sensors: st.s.join(','), bad: st.bad, high: st.high, weeks: st.w, lang: st.lang });
   fetch(u, { headers: DOORS_AUTH() }).then(r => r.json().then(j => [r.ok, j])).then(([ok, j]) => {
     if (seq !== REPSEQ) return;   // a newer choice has already asked
-    if (!ok) { sec.innerHTML = `<h2>Report</h2><p class="fine">${esc(j.detail || 'The node did not answer.')} <a href="#data/report">Start again</a></p>`; return; }
+    if (!ok) { sec.innerHTML = `<h2>Report</h2><p class="fine">${esc(j.detail || j.error || 'The node did not answer.')} <button type="button" class="link" data-reset="1">Start again</button></p>`; return; }
     const L = j.words, names = Object.fromEntries(j.sensors.map(o => [o.id, o.label])), t0 = new Date(j.t0 || Date.now()), t1 = new Date(j.t1 || Date.now());
     const para = p => `<p>${esc(p).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')}</p>`;
     const bySrc = d3.groups(j.sensors, o => o.source);
@@ -163,18 +164,25 @@ function reportBlock() {
       + `<span class="rlang" role="group" aria-label="language"><button type="button" data-lang="en" aria-pressed="${j.lang === 'en'}">English</button> · <button type="button" data-lang="id" aria-pressed="${j.lang === 'id'}">Bahasa Indonesia</button></span></div>`
       + `<label class="rpick"><span class="vh">${esc(L.find)}</span><input type="search" class="rfind" data-r="find" placeholder="${esc(L.find)}" aria-label="${esc(L.find)}"></label>`
       + `<div class="rtags">${j.picked.map(id => `<button type="button" data-rm="${esc(id)}" aria-label="remove">${esc(names[id] || id)} ×</button>`).join('')}</div>`
-      + (j.sensors.length ? `<div class="rlist">${bySrc.map(([src, os]) => `<h4>${esc(src)}</h4>` + os.map(o => `<label><input type="checkbox" data-r="pick" value="${esc(o.id)}"${j.picked.includes(o.id) ? ' checked' : ''}>${esc(o.label)}</label>`).join('')).join('')}</div>` : `<p class="fine">${esc(L.none)}</p>`);
+      + (j.sensors.length ? `<div class="rlist">${bySrc.map(([src, os]) => `<h4>${esc(src)}</h4>` + os.map(o => `<label><input type="checkbox" data-r="pick" value="${esc(o.id)}"${j.picked.includes(o.id) ? ' checked' : j.picked.length >= j.max_sensors ? ' disabled' : ''}>${esc(o.label)}</label>`).join('')).join('')}</div>` : `<p class="fine">${esc(L.none)}</p>`);
     const P = j.parts, table = (part, mark) => !P[part] ? '' : `<div class="tscroll"><table class="tbl rep"><tr>${P[part].cols.map((c, i) => `<th${i > 1 ? ' class="n"' : ''}>${esc(c)}</th>`).join('')}</tr>`
       + P[part].rows.map(row => `<tr>${row.map((cell, i) => `<td${i > 1 ? ' class="n' + (mark(i, cell) ? ' wr' : '') + '"' : ''}>${esc(cell ?? '–')}</td>`).join('')}</tr>`).join('') + `</table></div>`;
     const series = part => d3.groups((P[part] || {}).rows || [], r => r[1]).map(([k, rs]) => [k, rs.map(r => [new Date(r[0]), r[2]])]);
     const figs = (part, o) => { const ss = series(part), ref = (ss.find(([k]) => k === o.refName) || [])[1];
       return `<div class="sms">${ss.filter(([k]) => k !== o.refName).map(([k, pts]) => `<figure class="sm"><figcaption><b>${esc(k)}</b></figcaption>${repChart(pts, { ...o, ref, t0, t1 })}</figure>`).join('')}</div>`; };
+    /* a redraw keeps where you were: the focused control (a box by its value) and what was typed in the name box */
+    const at = sec.contains(document.activeElement) ? document.activeElement : null, was = at && { r: at.dataset.r, v: at.value };
+    const typed = (sec.querySelector('[data-r=find]') || {}).value || '';
     sec.innerHTML = `<div class="dsh"><h2>${esc(L.title)}</h2>${L.how.split('\n\n').map(para).join('')}</div>` + pick
       + (!j.picked.length ? `<p class="fine">${esc(L.pick)}</p>` : `<h3>${esc(L.p_weeks)}</h3>` + table('weeks', (i, c) => c === L.worse)
         + `<h3>${esc(L.p_badweeks)}</h3>` + figs('badweeks', { bars: true, top: 7 })
         + `<h3>${esc(L.p_daily)}</h3>` + figs('daily', { gap: 36 * 36e5, refName: L.all })
         + `<h3>${esc(L.p_baddays)}</h3>` + (P.baddays && P.baddays.rows.length ? table('baddays', (i, c) => i === 2 && c < j.full_day) : '<p class="fine">–</p>')
         + `<h3>${esc(L.p_hours)}</h3>` + figs('hours', { gap: 3 * 36e5, line: j.high, refName: L.high_line }));
+    const find = sec.querySelector('[data-r=find]');
+    if (find && typed) { find.value = typed; find.dispatchEvent(new Event('input', { bubbles: true })); }
+    const back = was && was.r && [...sec.querySelectorAll(`[data-r="${was.r}"]`)].find(el => was.r !== 'pick' || el.value === was.v);
+    if (back) back.focus();
   }).catch(() => { if (seq === REPSEQ) sec.innerHTML = `<h2>Report</h2><p class="fine">The node did not answer. <a href="#data/report">Try again</a></p>`; });
 }
 

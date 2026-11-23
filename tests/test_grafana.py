@@ -164,6 +164,29 @@ if os.getenv("RHO_PG_URL"):
         c.rollback()
     for (tz, part), (by_grafana, by_node) in both.items():
         check(by_node == by_grafana and len(by_node) > 0, f"pg: {part} in {tz}, the node's rows are Grafana's ({len(by_node)} rows)")
+    # What GET /weekly offers (weekly.offer_sql), on its own temporary tables: a visitor sees the outdoor sensor on a
+    # public channel, by its name; never the room, the indoor sensor, the private channel, the model, or a metric only
+    # a room reads. The keeper sees them all, by room.
+    sys.path.insert(0, "app")
+    import packs as _packs
+    with psycopg.connect(os.environ["RHO_PG_URL"]) as c:
+        c.execute("CREATE TEMP TABLE sensors (sensor_id text, source text, name text, room text, kind text, local boolean, indoor boolean)")
+        c.execute("CREATE TEMP TABLE channel_roles (source text, metric text, role text)")
+        c.execute("CREATE TEMP TABLE readings_1h (bucket timestamptz, sensor_id text, metric text, mean float8)")
+        c.execute("INSERT INTO sensors VALUES ('o1','sc','Out','Yard','sensor',true,false), ('i1','sc','Living','Living','sensor',true,true), "
+                  "('p1','priv','Private','','sensor',false,false), ('m1','cams','Model','','model',false,false)")
+        c.execute("INSERT INTO channel_roles VALUES ('priv','pm25','private')")
+        c.execute("INSERT INTO readings_1h SELECT now() - interval '2 hours', s, m, 9 FROM "
+                  "(VALUES ('o1','pm25'), ('i1','pm25'), ('i1','co2'), ('p1','pm25'), ('m1','pm25')) x(s, m)")
+        offered = {}
+        for private in (False, True):
+            msql, osql = weekly.offer_sql(private=private, public=_packs.public_sql("r"))
+            offered[private] = ({r[0] for r in c.execute(msql).fetchall()}, c.execute(osql, ("pm25",)).fetchall())
+        c.rollback()
+    check(offered[False][0] == {"pm25"} and [(r[0], r[1]) for r in offered[False][1]] == [("o1", "Out")],
+          "pg: a visitor is offered the outdoor sensor on a public channel, by name; no room, indoor sensor, private channel or model")
+    check({r[0] for r in offered[True][1]} == {"o1", "i1", "p1"} and ("o1", "Yard") in [(r[0], r[1]) for r in offered[True][1]]
+          and offered[True][0] == {"pm25", "co2"}, "pg: the keeper is offered every sensor, by room")
     labels = {r[1] for r in both["UTC", "weeks"][1]}
     check("O'Brien 50%" in labels and "Z" not in labels, "pg: a name with a quote and a % is drawn; a sensor that never sent has no week")
     check(len(rows) == 3, "pg: this week, last week and the one before")

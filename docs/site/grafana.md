@@ -139,7 +139,8 @@ written by `tools/gen_grafana_report.py`, and another language is one more colum
 
 Data › Report on the node's own page draws this report for anyone who can open the node, with no Grafana and nothing
 to sign in to ([Data](dashboard.md#data)). It runs the same queries, written once in `app/weekly.py`, so the two
-always count alike. Without the token the page offers the outdoor sensors only, and the rooms stay out of it.
+always count alike. A screen other than the node's own machine reads it once `SHARE_LEVEL` is `open` (Set up ›
+Sharing). Without the token the page offers the outdoor sensors only, and the rooms stay out of it.
 
 ## What Grafana will not tell you
 

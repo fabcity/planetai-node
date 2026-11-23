@@ -216,3 +216,32 @@ def clean(args, metrics, offered):
         weeks = 8
     return {"metric": metric, "sensors": ids, "bad": bad, "high": high, "weeks": weeks,
             "lang": "id" if args.get("lang") == "id" else "en"}
+
+
+def pick_metric(asked, held):
+    """The metric to report, checked before any query reads it (a NUL in it would be a 500 from Postgres). Left out:
+    pm25 when the node holds it, else the first it holds, else None, a node with nothing to report yet."""
+    asked = (asked or "").strip()
+    if not asked:
+        return ("pm25" if "pm25" in held else min(held)) if held else None
+    if asked not in held:
+        raise ValueError("This node has no hourly readings of that metric.")
+    return asked
+
+
+_RECENT = " AND r.bucket > now() - interval '30 days' AND r.bucket <= now()"
+
+
+def offer_sql(private, public):
+    """The metrics and the sensors the page may offer: (metrics SQL, offered SQL with one %s, the metric). A visitor
+    (`private` False) gets the outdoor sensors on public channels (`public` is packs.public_sql("r")), labelled by
+    name. The keeper gets every sensor, labelled by room as in Grafana."""
+    room = "" if private else " AND s.indoor IS NOT TRUE"
+    pub = "" if private else " AND " + public
+    label = "coalesce(nullif(s.room, ''), nullif(s.name, ''), s.sensor_id)" if private else "coalesce(nullif(s.name, ''), s.sensor_id)"
+    metrics = ("SELECT DISTINCT r.metric FROM readings_1h r JOIN sensors s USING (sensor_id) WHERE s.kind = 'sensor'"
+               + room + _RECENT + pub)
+    offered = ("SELECT s.sensor_id AS id, " + label + " AS label, s.source FROM sensors s WHERE s.kind = 'sensor'" + room
+               + " AND EXISTS (SELECT 1 FROM readings_1h r WHERE r.sensor_id = s.sensor_id AND r.metric = %s" + _RECENT + pub
+               + ") ORDER BY s.indoor IS TRUE, s.local DESC, 2")
+    return metrics, offered
