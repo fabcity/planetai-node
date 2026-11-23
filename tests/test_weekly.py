@@ -175,5 +175,31 @@ route = route[:route.index("\n@app.", 1)]
 check("weekly.pick_week(" in route and "weekly.summarise(" in route and route.index('"t0"') < route.index("return"),
       "the route picks the week, summarises it, and says t0 in every answer")
 
+print("the air index colours: tokens on the page, readable numbers, ISPU's hues, never the website palette")
+import colorsys  # noqa: E402
+html = open("app/static/doors.html").read()
+tok = dict(re.findall(r"--(aqi-[0-4](?:-ink)?):\s*(#[0-9A-Fa-f]{6})", html))
+def lum(h):
+    c = [int(h[i:i + 2], 16) / 255 for i in (1, 3, 5)]
+    c = [x / 12.92 if x <= 0.03928 else ((x + 0.055) / 1.055) ** 2.4 for x in c]
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+def contrast(a, b):
+    la, lb = sorted((lum(a), lum(b)), reverse=True)
+    return (la + 0.05) / (lb + 0.05)
+check(all(f"aqi-{i}" in tok and f"aqi-{i}-ink" in tok for i in range(5)), f"ten tokens, a band and its number colour each {sorted(tok)}")
+for i in range(5):
+    if f"aqi-{i}" in tok and f"aqi-{i}-ink" in tok:
+        r = contrast(tok[f"aqi-{i}"], tok[f"aqi-{i}-ink"])
+        check(r >= 4.5, f"band {i}: its numbers read at {r:.1f}:1")
+hue = lambda h: colorsys.rgb_to_hls(*[int(h[i:i + 2], 16) / 255 for i in (1, 3, 5)])
+want = {0: (90, 160), 1: (200, 235), 2: (38, 60), 3: (0, 15)}
+for i, (lo, hi) in want.items():
+    if f"aqi-{i}" in tok:
+        hdeg = hue(tok[f"aqi-{i}"])[0] * 360
+        check(lo <= hdeg <= hi, f"band {i} reads as ISPU's {['green', 'blue', 'yellow', 'red'][i]} ({hdeg:.0f} degrees)")
+check("aqi-4" in tok and hue(tok["aqi-4"])[1] < 0.15, "band 4 is black")
+palette = open("tools/check_ui.py").read()
+check(not any(v.upper() in palette.upper() for v in tok.values()), "none is in the website palette check_ui refuses")
+
 print(f"weekly: {'every check passed' if not fails else str(len(fails)) + ' failed'}")
 sys.exit(1 if fails else 0)
