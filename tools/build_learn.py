@@ -410,6 +410,10 @@ MARKS = [
      "With the `predict` pack on", "the row says why.",
      "A forecast is not a reading and is drawn apart from them. It comes from a general model, not adapted here, "
      "and a day appears only once the model has been closer than yesterday repeated."),
+    ("data-calibrate", "Corrections", "dashboard.md", "Data",
+     "**Corrections**, under Models and satellite", "the one the node stores,",
+     "A sensor a keeper names beside a better one is corrected against it, on this page only, and only while the "
+     "corrected number has been at least a tenth closer on days the line never saw."),
     ("data-images", "Images", "dashboard.md", "Data",
      "**Images**, newest first", "to edit, confirm or delete.",
      "The pictures stay on this node, cleaned of EXIF and GPS. What the image model saw counts only once "
@@ -700,6 +704,9 @@ QUESTIONS = {
     'data-predict': {"en": ['Will the air be better or worse tomorrow?', 'Why is a day not shown for some series?'],
         "id": ['Apakah udara besok lebih baik atau lebih buruk?', 'Mengapa sebuah hari tidak ditampilkan untuk sebagian deret?'],
         "es": ['¿El aire estará mejor o peor mañana?', '¿Por qué no se muestra un día en algunas series?']},
+    'data-calibrate': {"en": ['Why does this sensor show two numbers?', 'Why is the corrected number gone?'],
+        "id": ['Mengapa sensor ini menampilkan dua angka?', 'Mengapa angka yang dikoreksi hilang?'],
+        "es": ['¿Por qué este sensor muestra dos números?', '¿Por qué desapareció el número corregido?']},
     'data-images': {"en": ['What did the image model see in our photos?', 'How do I confirm what a photo shows?'],
         "id": ['Apa yang dilihat model gambar di foto-foto kami?', 'Bagaimana cara memastikan isi sebuah foto?'],
         "es": ['¿Qué vio el modelo de imágenes en nuestras fotos?', '¿Cómo confirmo lo que muestra una foto?']},

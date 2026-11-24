@@ -22,6 +22,7 @@ RADIUS = float(os.getenv("BAD_RADIUS_KM", "15"))
 SEP = float(os.getenv("BAD_MIN_SEPARATION_M", "150"))
 BYHAND = {x for x in os.getenv("BAD_EXCLUDE", "").replace(" ", "").split(",") if x}
 INDOOR = os.getenv("BAD_INCLUDE_INDOOR", "0") == "1"
+KEPT = archive.cfg()["include"]   # BAD_INCLUDE, read as the adapter reads it, so a kept station is not listed as excluded
 
 hc = httpx.Client(timeout=60, headers={"user-agent": "planetai-node"})
 latest = {r["station_id"]: r for r in hc.get(archive.LATEST).json().get("readings", [])}
@@ -37,13 +38,13 @@ own |= {f"sc-{x}" for x in os.getenv("SC_DEVICES", "").replace(" ", "").split(",
 own |= {f"ag-{h.replace('.local', '').replace('airgradient_', '')}"
         for h in os.getenv("AIRGRADIENT_HOSTS", "").replace(" ", "").split(",") if h}
 
-verdicts = archive.verdicts(rows, LAT, LON, RADIUS, own, BYHAND, SEP, INDOOR)
+verdicts = archive.verdicts(rows, LAT, LON, RADIUS, own, BYHAND, SEP, INDOOR, KEPT)
 verdicts.sort(key=lambda rv: sources.km(LAT, LON, rv[0]["latitude"], rv[0]["longitude"])
               if rv[0].get("latitude") is not None else 9e9)
 
 print(f"\nThe ring around {os.getenv('NODE_NAME', 'this node')} at {LAT}, {LON}")
 print(f"radius {RADIUS:g} km · own hardware within {SEP:g} m · {len(own)} device id(s) read directly"
-      + (f" · {len(BYHAND)} excluded by hand" if BYHAND else ""))
+      + (f" · {len(BYHAND)} excluded by hand" if BYHAND else "") + (f" · {len(KEPT)} kept by hand" if KEPT else ""))
 print(f"\n{'km':>7}  {'station':<24} {'network':<14} verdict")
 print("-" * 100)
 for row, verdict in verdicts:

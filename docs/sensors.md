@@ -82,7 +82,8 @@ Copernicus model at 11 km; climate normals. `kind='model'`, never in an ambient 
    looks at the value instead.
 3. **A daily mean can be one reading.** Check `n` before trusting an aggregate.
 4. **Instants are UTC; days are local.** Daily buckets use `NODE_TZ`. Bali's 9 am burn peak vanishes on a UTC day.
-5. **Corrected ≠ raw.** Store both. Never overwrite raw.
+5. **Corrected ≠ raw.** Store both. Never overwrite raw. A correction against a neighbour (`packs/calibrate`) is not
+   stored at all; [docs/site/sensors.md](site/sensors.md) says why.
 6. **Gaps are real.** No fill, no zero, no interpolation.
 7. **These are not reference instruments.** Good for patterns and magnitudes; the node labels them as such.
 8. **Sensors in the same place disagree.** Three kits at one address read the same air and do not agree: one of

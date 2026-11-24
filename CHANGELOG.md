@@ -56,6 +56,24 @@
   set the two lines yourself; they start at 15 and 55 for PM2.5. Set up › System has a row for it, and the Grafana
   docs page says how it counts. Nothing in it is calibrated, and it cannot tell a cleaner week from a windier one.
 
+- **22 Nov: a sensor can be corrected against a better one beside it.** If you have a cheap particle sensor a few
+  metres from a better one, name the two in Set up, under Calibrate (`CALIBRATE_PAIRS`), and the Data page shows a
+  corrected number beside the measured one, in Corrections under Models and satellite, with a small mark on the
+  sensor's row in Readings. It is a straight line fitted on the last 14 days, shown only while it has been at least a
+  tenth closer to the better sensor on days the line never saw, so the first one takes two to three weeks, and a shown
+  row says when it was last checked. A number from an hour more than 3 hours old says which hour. It stays 7 days
+  after the better sensor goes quiet. A sensor stuck on one value for 24 hourly readings in a row stops counting
+  from the hour it froze, and the row says which one is stuck. The pack is off until you name a pair and stores nothing but that setting. The
+  node keeps storing, alerting on and sharing the measured number, so no rule, alert, cell, export or parent sees a
+  corrected one. In Bali Air Dispatch, `BAD_INCLUDE` keeps a public station at any distance, for a sensor you put
+  beside it, and `planetai run nearby stations` lists it as included.
+
+  It has not run on any node yet, node #1 included, and no pair has had a public station on one side, so that half is
+  tested on fixtures only. We have not tried a reference instrument, two units of one model side by side or a full wet
+  season, and only PM2.5 was tested. The stuck rule was tried on made-up hours only. Everything we know comes from Smart Citizen's history of our own sensors in Bali,
+  HM-3301 and PMS5003 against a SEN5X. We picked the tenth after looking at those days, so they do not test it
+  independently. [Corrections](docs/site/calibrate.md) has the numbers.
+
 - **22 Nov: the rooms stay in the house.** A node with a parent used to send the hourly means of every sensor it
   holds, rooms included. Now it sends its outdoor sensors, and the rooms go only if you set `PARENT_INDOOR=on` in
   Set up › Sharing. The alerts a room raises follow the same switch. None of our nodes has a parent yet, so

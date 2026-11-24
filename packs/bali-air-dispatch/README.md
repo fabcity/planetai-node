@@ -28,7 +28,15 @@ history carries on. On `planetai update`, a node that keeps a `PACKS_ENABLED` li
 station the ring keeps becomes a sensor `bad-<station_id>`, `local=false`, with `pm25` (as the archive publishes
 it, EPA 2021 corrected for Plantower networks), `pm25_raw` where the archive has it, `pm10`, `pm1`, `temp`,
 `humidity` and `aqi` (a vendor index, never pooled). Its `meta` carries the originating network, the distance and
-the attribution.
+the attribution. For a station that /stations lists, it also says whether the station is official (the government's)
+and whether its pm25 is an index converted back (`from_index`).
+
+If one of your sensors sits beside a public station, put the station's id in `BAD_INCLUDE` and the ring keeps it,
+however close or far it is and whatever the archive guesses about indoors. That is all it changes. A device this
+node already polls stays out, so does one you listed in `BAD_EXCLUDE`, and so does a station that is stale or flagged
+as malfunctioning. The `calibrate` pack can then correct your sensor against it. A station kept this way is a
+station of this node's ring like any other, so the comparisons and alerts that read the ring read it too, however
+far away it is.
 
 ### The island's file, for the Wall
 
@@ -44,7 +52,8 @@ in `same_device_as`, and its reading is from a station of that device that is fr
 is "Government" in the station's `type` from `/stations`, which is read at most once a day into
 `out/wall/bad-stations.json`; a failed read keeps the last file, and with none nothing is official. `place` is
 the station's name, only when it is official (Sempidi, `aq--519205`). The Wall treats an `at` over 3 hours old as
-missing.
+missing. `BAD_INCLUDE` does not reach this file, so a station you included that stands within that wider distance of
+the cell's middle is still left out of it.
 
 ## Which stations are the ring
 
@@ -59,6 +68,8 @@ missing.
 | beyond the radius | further than `BAD_RADIUS_KM` (15; the Bali preset says 8) |
 | indoor, malfunctioning, stale | as the archive flags them; `BAD_INCLUDE_INDOOR=1` keeps the indoor ones |
 | same device | one device under two networks' ids (23 AirGradient units mirrored by OpenAQ on 7 Sep 2026): same name within the separation radius, the owning network kept |
+
+A station named in `BAD_INCLUDE` skips proximity, the radius and the indoor guess, and every other rule still applies.
 
 ## What it does not do
 
