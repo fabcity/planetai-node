@@ -96,7 +96,7 @@ boards (T1000-E, Tracker L1) can be the host gateway, which the firmware's own M
 
 ```bash
 pip3 install --user meshtastic paho-mqtt
-planetai meshtastic                                   # the broker and its user, as today
+planetai meshtastic --broker                          # the broker and its user
 planetai radio init                                   # region from NODE_CITY, slot pinned where an allocation is listed
 planetai radio provision gateway-host "bayu radio" NODE --port /dev/cu.usbmodem1101
 planetai radio gateway --port /dev/cu.usbmodem1101 --install
@@ -108,7 +108,8 @@ planetai radio doctor --port /dev/cu.usbmodem1101
 ```
 
 And for two nodes to talk: each puts the other in `RADIO_PEERS`, runs `planetai radio federate --write`, restarts
-the broker. A line typed on a Bali shelf radio's fabcity channel shows up on Menorca's radios as `[bayu-ungasan] …`.
+the broker (`docker compose restart mosquitto`; `planetai restart` is only the app). A line typed on a Bali shelf
+radio's fabcity channel shows up on Menorca's radios as `[bayu-ungasan] …`.
 
 ## Not yet done, and what needs a radio in hand
 
