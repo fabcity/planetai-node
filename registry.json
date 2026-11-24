@@ -4,7 +4,7 @@
     {
       "name": "bayu-ungasan",
       "scale": "community",
-      "operator": "Fab Lab Bali",
+      "operator": "Tomas Diez, Fab City",
       "place": "Ungasan, Badung, Bali, ID",
       "cell": "8895a4c855fffff",
       "lat": -8.818,
@@ -12,7 +12,7 @@
       "sources": ["baliairdispatch", "bmkg-synop", "earth", "earth-engine", "fablabs-io", "firms", "forecast-bmkg", "forecast-om", "landsat-lst", "meshtastic", "modis-lst", "open-meteo", "open-meteo-cams", "open-meteo-marine", "openaerialmap", "openstreetmap", "paddy", "sentinel-2", "smartcitizen", "terrain", "things"],
       "parent": null,
       "since": "2026-09",
-      "contact": "fablabbali@gmail.com"
+      "contact": "tomas@fab.city"
     },
     {
       "name": "barcelona",
