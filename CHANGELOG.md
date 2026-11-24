@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **`planetai update` restarts the LoRa gateway.** The gateway runs on the node's own machine, outside the containers,
+  because macOS cannot hand a USB radio to a container. An update rebuilt the containers and never touched it, so a
+  gateway kept running the radio code it started with: node #1's ran from 25 Oct to 24 Nov while that code changed
+  under it. Where `planetai radio gateway --install` set it up as a service, an update now restarts it. A node with no
+  gateway sees nothing new.
+
 - **`planetai test-alert` fires on a node that has chosen its packs.** Its rule is a pack called `_test` that lives
   for 90 seconds. A node with a pack list in Set up skipped it because it was on no list, so the alert never came and
   the terminal asked whether the node was up. Node #1 has a list, and that is how we found it. The test pack now runs

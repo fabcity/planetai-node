@@ -340,6 +340,19 @@ esac
 VER="$(git describe --tags --always 2>/dev/null || cat VERSION 2>/dev/null || echo dev)"
 if grep -q "^NODE_VERSION=" .env; then sed -i.bak "s|^NODE_VERSION=.*|NODE_VERSION=${VER}|" .env && rm -f .env.bak; else echo "NODE_VERSION=${VER}" >> .env; fi
 spin "restarting the containers" docker compose up -d || die "the containers did not start; see $ULOG"
+# The LoRa gateway (tools/radio.py) runs on the host, not in compose: macOS cannot pass USB into a container. So the
+# rebuild above never reaches it, and node #1's gateway ran a month-old radio.py while main changed it under it
+# (24 Nov 2026). Restart it where `planetai radio gateway --install` put its service; a node without one sees nothing.
+# A gateway that does not restart is not a failed update: it keeps running the radio.py it had.
+restart_radio() {
+  local cmd
+  if [[ -f "$HOME/Library/LaunchAgents/city.fab.planetai.radio.plist" ]]; then cmd=(launchctl kickstart -k "gui/$(id -u)/city.fab.planetai.radio")
+  elif [[ -f "$HOME/.config/systemd/user/planetai-radio.service" ]]; then cmd=(systemctl --user try-restart planetai-radio)
+  else return 0; fi
+  spin "restarting the LoRa gateway (it runs on this machine, outside the containers)" "${cmd[@]}" \
+    || warn "the LoRa gateway did not restart, so it keeps running the radio.py it had. By hand:  ${cmd[*]}"
+}
+restart_radio
 
 # 7. verify
 # wait for the app to answer rather than a fixed 8 s: on node #1 (a Mac mini under Colima) the container takes ~11 s
