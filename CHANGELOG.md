@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **The doctor after an update no longer says the mesh has gone quiet.** An update restarts the app, and the app
+  counts mesh packets from the moment it starts, so the doctor at the end of every update showed ✗ mesh packets
+  arriving, on node #1 a minute after its gateway had sent 200 packets. When that count is still 0, the doctor now
+  looks for mesh readings from the last hour in the database.
+
 - **`planetai update` restarts the LoRa gateway.** The gateway runs on the node's own machine, outside the containers,
   because macOS cannot hand a USB radio to a container. An update rebuilt the containers and never touched it, so a
   gateway kept running the radio code it started with: node #1's ran from 25 Oct to 24 Nov while that code changed
