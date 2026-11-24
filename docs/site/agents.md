@@ -124,6 +124,9 @@ under its alert, with an `alert_id` and a `choice`. No MCP tool writes any of th
   that error was measured on, and it is never written as a reading, never sends an alert, never moves ρ, never fills an
   Index cell and never leaves the node, apart from the one line `predict` gives Next days, which is as open as Next
   days is.
+- A corrected number says so: what it was corrected against, how far off it has been on days the line never saw,
+  and when it was last checked. It is worked out when asked and stored nowhere, so it sends no alert, moves no ρ,
+  fills no Index cell and leaves the node in no export or aggregate.
 - `act` needs the person's own words. It has no default note and refuses a placeholder. ρ is the share of act-level
   alerts a human answered, and a row written without anything a human said is a model measuring itself. If they did
   not tell you what they did, ask.

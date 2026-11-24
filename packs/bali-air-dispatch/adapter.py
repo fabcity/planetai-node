@@ -48,6 +48,7 @@ def cfg() -> dict:
             "radius_km": float(settings.get("BAD_RADIUS_KM", "15") or 15),
             "min_separation_m": float(settings.get("BAD_MIN_SEPARATION_M", "150") or 150),
             "exclude": _ids("BAD_EXCLUDE"),
+            "include": _ids("BAD_INCLUDE"),
             "include_indoor": settings.get("BAD_INCLUDE_INDOOR", "0") == "1"}
 
 
@@ -68,7 +69,8 @@ def own_ids(hc, account: bool = True) -> set[str]:
 
 def verdicts(rows: list[dict], node_lat: float, node_lon: float, radius_km: float,
              own_ids: set[str] | None = None, exclude_ids: set[str] | None = None,
-             min_separation_m: float = 150.0, include_indoor: bool = False) -> list[tuple[dict, str]]:
+             min_separation_m: float = 150.0, include_indoor: bool = False,
+             include_ids: set[str] | None = None) -> list[tuple[dict, str]]:
     """Which archive stations are this node's neighbours, and for the rest, why not.
 
     Pure: rows in, (row, verdict) out, no network. The adapter keeps the `included` ones; `planetai run nearby
@@ -82,6 +84,8 @@ def verdicts(rows: list[dict], node_lat: float, node_lon: float, radius_km: floa
                  the account this node polls and which identity therefore misses. Also catches a re-registered
                  device and a second sensor on the same wall.
       hand       BAD_EXCLUDE, for what the operator knows is theirs and the first two missed.
+    BAD_INCLUDE (include_ids) keeps a named station past proximity, the radius and the indoor guess, and nothing
+    else: identity, by hand, malfunctioning, stale and no timestamp still drop it.
     Ownership is not the test: a kit of the operator's at another address is a legitimate neighbour. The test is
     whether this node already measures that device.
 
@@ -89,7 +93,7 @@ def verdicts(rows: list[dict], node_lat: float, node_lon: float, radius_km: floa
     this node's own res-8 cells by definition. A local sensor near the edge of those cells with a station 150 m
     beyond it on the far side would be missed; BAD_EXCLUDE is the answer if that ever happens.
     """
-    own, byhand = own_ids or set(), exclude_ids or set()
+    own, byhand, keep = own_ids or set(), exclude_ids or set(), include_ids or set()
     out: list[tuple[dict, str]] = []
     for row in rows:
         sid = str(row.get("station_id"))
@@ -98,13 +102,13 @@ def verdicts(rows: list[dict], node_lat: float, node_lon: float, radius_km: floa
         d_m = sources.metres(node_lat, node_lon, float(row["latitude"]), float(row["longitude"]))
         if sid in own:
             out.append((row, "excluded: identity (this node polls it)"))
-        elif d_m <= min_separation_m:
+        elif d_m <= min_separation_m and sid not in keep:
             out.append((row, f"excluded: proximity ({d_m:.0f} m from this node)"))
         elif sid in byhand:
             out.append((row, "excluded: by hand (BAD_EXCLUDE)"))
-        elif sources.km(node_lat, node_lon, row["latitude"], row["longitude"]) > radius_km:
+        elif sid not in keep and sources.km(node_lat, node_lon, row["latitude"], row["longitude"]) > radius_km:
             out.append((row, "excluded: beyond the radius"))
-        elif row.get("suspected_indoor") and not include_indoor:
+        elif row.get("suspected_indoor") and not include_indoor and sid not in keep:
             out.append((row, "excluded: suspected_indoor"))
         elif row.get("suspected_malfunctioning"):
             out.append((row, "excluded: suspected_malfunctioning"))
@@ -136,17 +140,19 @@ def verdicts(rows: list[dict], node_lat: float, node_lon: float, radius_km: floa
 
 def ring(hc, node_lat: float, node_lon: float, radius_km: float,
          skip_station_ids: set[str] | None = None, exclude_ids: set[str] | None = None,
-         min_separation_m: float = 150.0, include_indoor: bool = False, rows: list[dict] | None = None):
+         min_separation_m: float = 150.0, include_indoor: bool = False, rows: list[dict] | None = None,
+         include_ids: set[str] | None = None, stations: dict | None = None):
     """The ring: other people's stations around this node. Never `local` — at any distance, whatever the
     coordinates say. See verdicts() for which stations are dropped and why. `rows` is /latest when the caller
-    already has it."""
+    already has it. `stations` is /stations by id: a station it lists gets `official` and `from_index` in its meta."""
     sensors, readings = [], []
     if rows is None:
         r = hc.get(LATEST)
         r.raise_for_status()
         rows = r.json().get("readings", [])
     for row, verdict in verdicts(rows, node_lat, node_lon, radius_km,
-                                 skip_station_ids, exclude_ids, min_separation_m, include_indoor):
+                                 skip_station_ids, exclude_ids, min_separation_m, include_indoor,
+                                 include_ids):
         if verdict != "included":
             continue
         ts = sources._iso(row.get("observed_at"))
@@ -159,6 +165,10 @@ def ring(hc, node_lat: float, node_lon: float, radius_km: float,
                      "km": round(sources.km(node_lat, node_lon, row["latitude"], row["longitude"]), 2),
                      "attribution": ATTRIBUTION},
         })
+        if known := (stations or {}).get(str(row["station_id"])):
+            sensors[-1]["meta"]["official"] = "Government" in (known.get("type") or "")
+            if "pm25_from_aqi" in known:   # a cache written before this key was kept says nothing either way
+                sensors[-1]["meta"]["from_index"] = bool(known["pm25_from_aqi"])
         for k, metric in (("pm25", "pm25"), ("pm25_raw", "pm25_raw"), ("pm10", "pm10"), ("pm1", "pm1"),
                           ("temperature", "temp"), ("humidity", "humidity"), ("aqi", "aqi")):
             if row.get(k) is not None:
@@ -250,7 +260,8 @@ def _stations(hc) -> dict[str, dict]:
     try:
         r = hc.get(STATIONS)
         r.raise_for_status()
-        new = {str(s["station_id"]): {"type": s.get("type"), "same_device_as": s.get("same_device_as") or []}
+        new = {str(s["station_id"]): {"type": s.get("type"), "same_device_as": s.get("same_device_as") or [],
+                                         "pm25_from_aqi": bool(s.get("pm25_from_aqi"))}
                for s in r.json().get("stations", [])}
         if not new:
             raise ValueError("an empty station list")
@@ -291,7 +302,13 @@ def fetch(hc):
         write_island(hc, rows, here, own, c["exclude"], c["min_separation_m"])
     except Exception as e:  # noqa: BLE001 — the ring still works without the Wall's file
         logging.getLogger("planetai").warning("bali air dispatch island file failed: %s", e)
-    return ring(hc, *here, c["radius_km"], own, c["exclude"], c["min_separation_m"], c["include_indoor"], rows)
+    try:
+        known = _stations(hc)
+    except Exception as e:  # noqa: BLE001 — the ring still works without the station list
+        logging.getLogger("planetai").warning("bali air dispatch station list failed: %s", e)
+        known = None
+    return ring(hc, *here, c["radius_km"], own, c["exclude"], c["min_separation_m"], c["include_indoor"], rows,
+                c["include"], known)
 
 
 def audit(hc) -> list[dict]:
@@ -304,4 +321,4 @@ def audit(hc) -> list[dict]:
              "km": None if r.get("latitude") is None else round(sources.km(*here, r["latitude"], r["longitude"]), 2),
              "verdict": v}
             for r, v in verdicts(rows, *here, c["radius_km"], own_ids(hc), c["exclude"], c["min_separation_m"],
-                                 c["include_indoor"])]
+                                 c["include_indoor"], c["include"])]
