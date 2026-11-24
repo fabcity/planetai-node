@@ -344,4 +344,43 @@ except SystemExit:
     pass
 assert radio.parse_peers("") == {}
 
+# ---- doctor --port reads the radio back and compares it with its fleet profile. Grepping `--info` passed a Tracker
+# with air-quality telemetry off, and the gateway's own port, held by its service, could only fail (node #1, 24 Nov)
+import contextlib
+import io
+fl = radio.new_fleet("bayu-ungasan", "SG_923", "bali")
+fl["radios"] = [{"id": "!8f501a20", "role": "sensor", "name": "Mesh test Ungasan", "short": "MTU", "provisioned": "x"}]
+pinned_prof = radio.render_profile("sensor", "Mesh test Ungasan", "MTU", fl, radio.load_profiles(), fixed=(-8.81902, 115.1673601, 0))
+def held(**over):   # the radio holding exactly what provision wrote, as read_radio returns it
+    s = {"id": "!8f501a20", "lat_i": -88190200, "lon_i": 1151673601, "alt": 0, "owner": "Mesh test Ungasan", "owner_short": "MTU",
+         "reboot_count": 7, "config": json.loads(json.dumps(pinned_prof["config"])), "module_config": json.loads(json.dumps(pinned_prof["module_config"])),
+         "channels": {i: {"role": role, "name": fl[k]["name"], "psk": base64.b64decode(fl[k]["psk"]), "uplink": False, "downlink": False,
+                          "position_precision": fl[k]["position_precision"]} for i, k, role in ((0, "primary", "PRIMARY"), (1, "fabcity", "SECONDARY"))}}
+    s.update(over)
+    return s
+def doctor_says(port, snap):
+    radio.read_radio = lambda p: snap() if callable(snap) else snap
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        radio.doctor(port)
+    return out.getvalue()
+with tempfile.TemporaryDirectory() as d:
+    radio.ROOT, radio.FLEET_PATH = Path(d), Path(d) / "config" / "radio" / "fleet.yaml"
+    radio.save_fleet(fl, radio.FLEET_PATH)
+    radio.load_fleet = lambda path=None: fl
+    (Path(d) / ".env").write_text("NODE_CITY=bali\nMQTT_PASS=x\nCOMPOSE_PROFILES=mqtt\n")
+    radio.gateway_port = lambda: "/dev/cu.gateway"
+    def opened():
+        raise AssertionError("the gateway's port was opened")
+    s = doctor_says("/dev/cu.gateway", opened)
+    assert "is the gateway's, and its service holds the port" in s, s
+    s = doctor_says("/dev/cu.sensor", held())
+    assert "ok  Mesh test Ungasan holds its sensor profile" in s, s
+    tele = dict(held()["module_config"]["telemetry"], airQualityEnabled=False)
+    s = doctor_says("/dev/cu.sensor", held(module_config={"telemetry": tele}))
+    assert "!!  Mesh test Ungasan holds its sensor profile" in s and "telemetry.airQualityEnabled is False, wants True" in s, s
+    assert 'planetai radio provision sensor "Mesh test Ungasan" MTU --port /dev/cu.sensor --fixed=-8.81902,115.1673601' in s, s
+    s = doctor_says("/dev/cu.other", held(id="!99999999"))
+    assert "!!  radio !99999999 is in this node's fleet" in s, s
+
 print("radio: ok")

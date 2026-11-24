@@ -64,6 +64,10 @@ For sensors and alerts where there is no WiFi. One gateway radio with WiFi uplin
 the node, field radios carry a sensor on a battery, and a shelf radio paired to a phone receives alerts when the
 internet is down.
 
+A radio on the node's own USB can be the gateway instead, with no WiFi on it. `planetai radio` takes you through that
+step by step ([Radios](radios.md)); for alerts, do step 3 below without the node number. The steps here are for a
+gateway on WiFi.
+
 1. **Run `planetai meshtastic`.** It creates a broker user, starts the broker as the compose profile `mqtt`, and
    prints *Now the gateway radio (the ESP32 one), in the Meshtastic app* with every value to type: the LoRa region
    for your preset (`EU_868` by default, `SG_923` for Bali, `US` for Boston), MQTT on at `<this machine's LAN
@@ -74,8 +78,9 @@ internet is down.
    minutes)`, then `● packets arriving. Sensors seen so far:` and the mesh sensors it has. Each radio's telemetry
    is now readings under its own sensor, `msh-<its node id>`, with the name the radio gives itself. A radio's own
    temperature and pressure are its enclosure, not the street.
-3. **Turn on alerts back to the mesh.** Set `MESH_ALERTS=1` and `MESH_GATEWAY_NODE_NUM=<the gateway's node
-   number, decimal>` in `.env`, then `planetai restart`. Once the node has learned the mesh's root topic from an
+3. **Turn on alerts back to the mesh.** `planetai config set MESH_ALERTS 1`, or *Set up › Alerts*. A gateway on
+   WiFi also needs `planetai config set MESH_GATEWAY_NODE_NUM <the gateway's node number, decimal>`; a gateway on
+   the node's USB does not. Once the node has learned the mesh's root topic from an
    uplink, an `act` alert's first line goes out through the gateway, and `planetai logs` shows `mesh -> sent <n>
    bytes on <topic>`.
 

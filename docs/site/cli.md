@@ -162,7 +162,7 @@ See [Channels](channels.md) and [Federation](federation.md).
 
 | command | what it does |
 |---|---|
-| `planetai meshtastic` | Starts the MQTT broker (profile `mqtt`), writes its password, prints the gateway radio's settings for your region, and waits up to three minutes for the first packet. |
+| `planetai meshtastic` | Starts the MQTT broker (profile `mqtt`), writes its password, prints your region's settings for a gateway radio on WiFi, and waits up to three minutes for the first packet. With `--broker` it starts the broker and stops there: step 2 of `planetai radio`, for a gateway on the node's USB. |
 | `planetai broker` | Starts the same broker and prints what to type into a Smart Citizen Kit's shell or a DIY node's setup portal so it publishes here. Waits up to three minutes for the first message. |
 | `planetai radio` | On its own, a guide: each step ticked or not, the radios on USB now, and the next command. |
 | `planetai radio init [--region R] [--slot N] [--preset P] [--force]` | Writes the fleet file `config/radio/fleet.yaml`: two channel keys, the region from `NODE_CITY` and, in Bali, a frequency slot pinned inside Indonesia's 920 to 923 MHz. A city with no known region is refused until you pass `--region`. `--force` makes new keys, so every radio must be provisioned again. |
