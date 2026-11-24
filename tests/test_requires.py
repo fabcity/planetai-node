@@ -66,6 +66,15 @@ assert [m["id"] for m in packs.manifests()] == ["no-spec", "old-ok", "too-new"] 
 os.environ["NODE_VERSION"] = "dev"
 assert len(packs.manifests()) == 3
 print("  after an update it loads, and a dev checkout loads everything")
+d = tmp / "packs" / "_test"
+d.mkdir()
+(d / "pack.yaml").write_text("id: _test\nname: Test alert\nkind: data\n")
+(d / "rules.yml").write_text("- id: hello-1\n  level: act\n  sql: SELECT 1 AS x\n  message: { en: x, id: x, es: x }\n")
+os.environ["PACKS_ENABLED"] = "old-ok"
+assert sorted(m["id"] for m in packs.manifests()) == ["_test", "old-ok"], packs.manifests()
+assert "_test/hello-1" in [r["id"] for r in packs.alerts()], "planetai test-alert's rule must run on a node with a pack list"
+os.environ.pop("PACKS_ENABLED")
+print("  a node with a pack list still runs planetai test-alert's rule, and only the packs on the list")
 
 # ---------------------------------------------------------------- guards
 ast.parse((ROOT / "app" / "requires.py").read_text(), feature_version=(3, 9))

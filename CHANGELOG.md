@@ -9,12 +9,17 @@
   making `/usr/local/bin`, which a new Mac may not have. Colima and Lima are pinned to one version each, so a newer
   Colima never turns up beside an older Lima. Testers get this with the next release, because the preflight they
   run comes from the released commit.
+- **`planetai test-alert` fires on a node that has chosen its packs.** Its rule is a pack called `_test` that lives
+  for 90 seconds. A node with a pack list in Set up skipped it because it was on no list, so the alert never came and
+  the terminal asked whether the node was up. Node #1 has a list, and that is how we found it. The test pack now runs
+  whatever the list says.
 - **23 Nov: Reticulum on a fresh node.** The bridge records an `act` with `ACT_TOKEN`, and only `planetai ui` made
   one, so on a new node `act 3` sent from Sideband was dropped and nobody got a reply. `planetai reticulum` now gives
   the bridge the node's token, and makes one if there is none. An address saved in Set up › Sharing › Reticulum alert
   addresses never got an alert either, because the bridge read its own copy from `.env` when its container started.
   Now the node sends the addresses with each alert, so the next one arrives with nothing to restart. The bridge pin
   moves to f7840e3. rns and lxmf stay at the versions in the licence record.
+
 - **A node can forecast its own readings.** The new core pack `predict` runs a general time-series model, Chronos-2
   or Chronos-Bolt tiny, in a container of its own, and each night forecasts today and tomorrow for the node's own
   sensors. A day is shown in Data only while the model is closer than the last measured day repeated. A forecast is
