@@ -95,8 +95,9 @@ built, include that licence with it. What it means for the node is in
 
 The bridge has its own repository, [`fabcity/planetai-reticulum`](https://github.com/fabcity/planetai-reticulum), under Apache-2.0, so the node's own code never takes in `rns` or
 `lxmf`. It runs in its own container (compose profile `reticulum`) and gives the node an LXMF address that Sideband
-can message. It posts answers to `POST /actions` with `ACT_TOKEN`, and reads that token when its container is created, so run
-`planetai ui` first if the node has no `ACT_TOKEN` yet: it creates one.
+can message. It posts answers to `POST /actions` with `ACT_TOKEN`. `planetai reticulum` hands it the node's token, and
+makes one if the node has none yet. The bridge reads it when its container is created, so after you change the token
+in Set up, run `planetai reticulum` again.
 
 1. **Run `planetai reticulum`.** It downloads the bridge at the commit this release pins, builds it on this
    machine, starts it and prints
@@ -106,13 +107,12 @@ can message. It posts answers to `POST /actions` with `ACT_TOKEN`, and reads tha
 2. **Answer an alert.** Send `act 3 opened the windows`. The bridge records an `acted` row on alert #3 with the
    actor `lxmf:<your hash>` and replies `recorded: you acted on #3`. Sent as `act 3` alone, the note is recorded as
    `acted (via reticulum)`, because this path does not ask for words.
-3. **Receive alerts.** Copy your own LXMF address from Sideband's settings into `.env` as
-   `RETICULUM_ALERT_DESTINATIONS=<hash>[,<hash>]`, then run `planetai reticulum` again: the bridge reads the list
-   when its container is created, and `planetai restart` recreates only the app. `planetai logs reticulum` then
-   shows `bridge up: http :4243, announcing every 1800s, 1 alert destination(s), …` with your count. Every `act`
-   alert is delivered, full text, to each address. To check, run `planetai test-alert`: Sideband shows a message
-   from the node's address titled `planetai <NODE_NAME>`, with the whole test alert. If nothing arrives, `planetai
-   logs reticulum` says `no path to <hash> yet; is that client announced and reachable?`.
+3. **Receive alerts.** Copy your own LXMF address from Sideband's settings into Set up › Sharing › Reticulum alert
+   addresses, or run `planetai config set RETICULUM_ALERT_DESTINATIONS <hash>[,<hash>]`. The node sends the list to
+   the bridge with each alert, so the next one goes there and nothing needs restarting. Every `act` alert is
+   delivered, full text, to each address. To check, run `planetai test-alert`: Sideband shows a message from the
+   node's address titled `planetai <NODE_NAME>`, with the whole test alert. If nothing arrives, `planetai logs
+   reticulum` says `no path to <hash> yet; is that client announced and reachable?`.
 
 The bridge does not read `.env`. It receives eight variables from `docker-compose.yml`: `LOG_LEVEL`, `NODE_NAME`,
 `NODE_API_URL`, `RETICULUM_CONFIGDIR`, `RETICULUM_DATA`, `RETICULUM_ALERT_DESTINATIONS`, `RETICULUM_ANNOUNCE_S`

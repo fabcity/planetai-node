@@ -2,12 +2,17 @@
 
 ## Unreleased
 
+- **23 Nov: Reticulum on a fresh node.** The bridge records an `act` with `ACT_TOKEN`, and only `planetai ui` made
+  one, so on a new node `act 3` sent from Sideband was dropped and nobody got a reply. `planetai reticulum` now gives
+  the bridge the node's token, and makes one if there is none. An address saved in Set up › Sharing › Reticulum alert
+  addresses never got an alert either, because the bridge read its own copy from `.env` when its container started.
+  Now the node sends the addresses with each alert, so the next one arrives with nothing to restart. The bridge pin
+  moves to f7840e3. rns and lxmf stay at the versions in the licence record.
 - **A node can forecast its own readings.** The new core pack `predict` runs a general time-series model, Chronos-2
   or Chronos-Bolt tiny, in a container of its own, and each night forecasts today and tomorrow for the node's own
   sensors. A day is shown in Data only while the model is closer than the last measured day repeated. A forecast is
   never written as a reading. Apart from one line in Next days, it never leaves the node. Nothing is downloaded until you run
   `planetai models pull`, and docs/predict has what we measured on node #1.
-
 - **23 Nov: the weekly report in the air index colours, with a PDF and pictures to post.** Data › Report now opens on the
   week: a few tiles, then the places day by day in the colours of Indonesia's air index, ISPU, the scale people here
   already know. A day the sensor was heard for under 18 hours is grey and does not count, and a bad day that is still

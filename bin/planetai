@@ -1098,7 +1098,7 @@ T
 # curl and tar at one pinned commit, and builds the image itself; Fab City publishes no image with rns in it.
 # Moving the pin is its own PR, after reading rns's and lxmf's LICENSE at the versions that commit installs.
 RETICULUM_REPO="fabcity/planetai-reticulum"
-RETICULUM_REF="b84c24f374faabc984d4e726ba616f2d7e8b8a1a"
+RETICULUM_REF="f7840e39ede7bdcd87599b6a50fd5c79cea9c7e1"
 reticulum_fetch() {
   [[ "$(cat reticulum/.ref 2>/dev/null)" == "$RETICULUM_REF" ]] && return 0
   local tmp; tmp="$(mktemp -d)"
@@ -1125,6 +1125,13 @@ cmd_reticulum() {
   mkdir -p config/reticulum
   [[ -f config/reticulum/config ]] || cp reticulum/config.tpl config/reticulum/config
   envset RETICULUM_URL http://reticulum:4243
+  # The bridge records an `act` with ACT_TOKEN, read from .env when its container is created. A fresh node had none
+  # (only `planetai ui` made one), so every `act` sent from Sideband failed and nobody heard why; one saved in Set up
+  # lived only in the database. Take the token the node checks, or make one, and put it where the bridge reads it.
+  local atok; atok="$(api /settings/phone | json 'print(d["act"])' 2>/dev/null || true)"
+  [[ -n "$atok" ]] || atok="$(envget ACT_TOKEN)"
+  [[ -n "$atok" ]] || atok="$(openssl rand -hex 16 2>/dev/null || head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+  [[ "$atok" == "$(envget ACT_TOKEN)" ]] || { envset ACT_TOKEN "$atok"; say "the bridge has the token it needs to record an 'act'"; }
   profiles_add reticulum
   say "building and starting the bridge (first time: a minute)"
   docker compose up -d --build reticulum >>"$LOG" 2>&1 && docker compose up -d --force-recreate app >>"$LOG" 2>&1 || fail "compose failed; see $LOG"
@@ -1140,8 +1147,9 @@ cmd_reticulum() {
   echo "    Connectivity → add a TCP Client interface → host $host port 4242"
   echo "    Conversations → new → paste the address above. Send:  act 3   to record you acted on alert #3."
   echo
-  echo "  To receive alerts in Sideband: copy your own LXMF address from Sideband's settings into .env as"
-  echo "    RETICULUM_ALERT_DESTINATIONS=<hash>[,<hash>]   then planetai restart."
+  echo "  To receive alerts in Sideband: copy your own LXMF address from Sideband's settings into Set up › Sharing ›"
+  echo "  Reticulum alert addresses, or run:   planetai config set RETICULUM_ALERT_DESTINATIONS <hash>[,<hash>]"
+  echo "  The next alert goes there, with nothing to restart. Try it:  planetai test-alert"
   echo "  For LoRa: plug in an RNode, uncomment its block in config/reticulum/config, pass the device in compose (Linux)."
 }
 
