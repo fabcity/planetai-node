@@ -64,6 +64,9 @@ echo "5. above every floor, nothing installed"
 run PF_OS=Darwin PF_OS_VERSION=15.6.1 PF_ARCH=x86_64 PF_HW_MODEL=MacBookPro18,1
 ok    "  exit 1: fixable"                         "$RC" 1
 has   "  offers Colima as a command"              "colima start"
+has   "  with Lima, which Colima cannot start without" "lima-vm/lima/releases/download/v[0-9.]*/lima-[0-9.]*-Darwin-x86_64.tar.gz"
+has   "  and the Intel docker client"             "stable/x86_64/docker-"
+has   "  and makes /usr/local/bin first"          "sudo mkdir -p /usr/local/bin"
 hasnt "  and is not called below the floor"       "No container runtime can be installed"
 
 echo "6. runtime installed and stopped, above the floor"
@@ -75,6 +78,9 @@ echo "7. Apple Silicon on 13.2 — Colima supports it; the hard-coded 13.5 did n
 run PF_OS=Darwin PF_OS_VERSION=13.2 PF_ARCH=arm64 PF_HW_MODEL=Mac14,2
 hasnt "  not turned away"                         "No container runtime can be installed"
 ok    "  exit 1: fixable"                         "$RC" 1
+has   "  Lima for arm64"                          "lima-[0-9.]*-Darwin-arm64.tar.gz"
+has   "  docker from aarch64, Docker's own name"  "stable/aarch64/docker-"
+hasnt "  never the arm64 folder, which 404s"      "stable/arm64/"
 
 echo "8. Intel on 13.2 — vz cannot boot the guest kernel, so it IS below the floor"
 run PF_OS=Darwin PF_OS_VERSION=13.2 PF_ARCH=x86_64 PF_HW_MODEL=MacBookPro16,1

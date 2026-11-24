@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **23 Nov: the Colima line in preflight works on a Mac without Homebrew.** A tester on macOS 26 had no Docker,
+  and preflight gave them a line to paste that could not work. On Apple Silicon it asked Docker for a folder called
+  `arm64`, which Docker calls `aarch64`, so the download stopped at a 404. It also never installed Lima, and Colima
+  does nothing without it. Now the line installs Lima and takes the Docker client from the right folder, after
+  making `/usr/local/bin`, which a new Mac may not have. Colima and Lima are pinned to one version each, so a newer
+  Colima never turns up beside an older Lima. Testers get this with the next release, because the preflight they
+  run comes from the released commit.
 - **23 Nov: Reticulum on a fresh node.** The bridge records an `act` with `ACT_TOKEN`, and only `planetai ui` made
   one, so on a new node `act 3` sent from Sideband was dropped and nobody got a reply. `planetai reticulum` now gives
   the bridge the node's token, and makes one if there is none. An address saved in Set up › Sharing › Reticulum alert
