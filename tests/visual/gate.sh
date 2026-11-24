@@ -280,3 +280,7 @@ node tests/visual/measure.mjs placescreen
 # The Place report in print (SPEC_place_report §8): #place/report, with and without the token: the sheet inside an A4
 # landscape page with its legend whole, each report page inside an A4 portrait one, and a PDF with nothing on a blank page.
 node tests/visual/measure.mjs report
+
+# The weekly report (Data › Report): the places by day in the air index colours at 390 and 1440, locked and with the
+# token, its four share images at 1080×1350, and its PDF on four A4 portrait pages with nothing spilled onto another.
+node tests/visual/measure.mjs weekly

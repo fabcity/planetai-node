@@ -1000,7 +1000,7 @@ vm.runInContext(['esc', 'WD', 'loc', 'dayOf', 'dLabel', 'wdhm', 'fmt', 'lineLab'
   + `\nD.dates = [...new Set(D.buckets.map(dayOf))]; D.now = D.buckets.length - 1; D.sens = Object.fromEntries(D.sensors.map(s => [s.sensor_id, s]));
    const calls = [], spy = n => { globalThis[n] = () => calls.push(n); };
    const real = { ledgerBlock, modelsBlock };
-   ['metricTiles', 'sensorsBlock', 'issuesBlock', 'perdayBlock', 'modelsBlock', 'calibrateBlock', 'imagesBlock', 'thingsBlock', 'ledgerBlock', 'apiBlock', 'workbenchBlock'].forEach(spy);
+   ['metricTiles', 'sensorsBlock', 'issuesBlock', 'perdayBlock', 'reportBlock', 'modelsBlock', 'predictBlock', 'calibrateBlock', 'imagesBlock', 'thingsBlock', 'ledgerBlock', 'apiBlock', 'workbenchBlock'].forEach(spy);
    const draw = h => { calls.length = 0; location.hash = h; location.replaced = null; VIEWS.data();
      return { calls: calls.slice(), shown: Object.values(DTABS).flatMap(t => t[1]).filter(id => !document.getElementById(id).hidden),
        on: (document.getElementById('dnav').innerHTML.match(/href="(#data\\/\\w+)"[^>]*class="on"/) || [])[1] || null, node: location.replaced }; };
@@ -1025,7 +1025,8 @@ console.log(JSON.stringify(ctx.out));
 """
 _d = json.loads(subprocess.run(["node", "-e", dprog, FIX], capture_output=True, text=True, check=True).stdout)
 _want = {"readings": (["metricTiles", "sensorsBlock", "issuesBlock", "perdayBlock"], ["d-readings", "issues7", "perday"]),
-         "models": (["modelsBlock", "calibrateBlock"], ["models", "calibrate"]), "home": (["imagesBlock", "thingsBlock"], ["d-images", "d-things"]),
+         "report": (["reportBlock"], ["d-report"]),
+         "models": (["modelsBlock", "predictBlock", "calibrateBlock"], ["models", "predict", "calibrate"]), "home": (["imagesBlock", "thingsBlock"], ["d-images", "d-things"]),
          "ledger": (["ledgerBlock"], ["ledger", "dnote"]), "api": (["apiBlock"], ["api"]),
          "workbench": (["workbenchBlock"], ["d-workbench"])}
 for _t, (_calls, _shown) in _want.items():
@@ -1116,6 +1117,7 @@ _gf = _setup[_setup.index("function sGrafana"):_setup.index("function sUpdates")
 assert "sGrafana(d.bootstrap" in _setup and "g === 'system' ? sGrafana" in _setup, "Set up › System draws the Grafana block"
 assert "!/^GRAFANA_/.test(b.key)" in _setup, "Grafana's keys are its block, not three more rows in the start-time table"
 assert "planetai grafana" in _gf and "ssh -L" in _gf and "grafana/" in _gf, "the block says how to turn it on, how to reach it, and links its page"
+assert "/d/planetai-report-en" in _gf and "/d/planetai-report-id" in _gf and "#the-weekly-report" in _gf, "the block offers the weekly report in both languages"
 assert "GRAFANA_ADMIN_PASSWORD') ?" in _gf and "esc(v('GRAFANA_ADMIN_PASSWORD'))" not in _gf, "the password is only ever set or not"
 print("doors: Set up asks before a change that leaves the machine or runs code, in the setting's own words, and never otherwise")
 

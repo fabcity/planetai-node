@@ -48,7 +48,8 @@ const SYM = { pm25: 'PM2.5', pm10: 'PM10', pm1: 'PM1', pm25_raw: 'PM2.5ʳ', aqi:
 /* the tabs: [the words on the tab, the sections it shows, what it draws] — a tab draws only its own sections */
 const DTABS = {
   readings: ['Readings', ['d-readings', 'issues7', 'perday'], () => { metricTiles(); sensorsBlock(); issuesBlock(); perdayBlock(); }],
-  models: ['Models and satellite', ['models', 'calibrate'], () => { modelsBlock(); calibrateBlock(); }],
+  report: ['Report', ['d-report'], () => reportBlock()],
+  models: ['Models and satellite', ['models', 'predict', 'calibrate'], () => { modelsBlock(); predictBlock(); calibrateBlock(); }],
   home: ['Home', ['d-images', 'd-things'], () => { imagesBlock(); thingsBlock(); }],
   ledger: ['Ledger', ['ledger', 'dnote'], () => ledgerBlock()],
   api: ['API', ['api'], () => apiBlock()],
@@ -59,7 +60,7 @@ const DNODE = { cells: 'cells', 'd-learned': 'remember', 'd-usual': 'remember', 
 /* #data/<tab> opens a tab; #data/<old section> its tab, at the section; #data/<sensor-id> (a dot on Place) the
    readings on a metric that station reads, at its row, or the models when it is a model */
 function dataRoute(hash) {
-  const seg = decodeURIComponent(hash.split('/')[1] || ''), s = (D.sens || {})[seg];
+  const seg = decodeURIComponent((hash.split('/')[1] || '').split('?')[0]), s = (D.sens || {})[seg];   /* #data/report?… keeps its state after the ? */
   if (DTABS[seg]) return { tab: seg };
   if (DNODE[seg]) return { node: DNODE[seg] };
   if (DOLD[seg]) return { tab: DOLD[seg], el: seg };
@@ -89,6 +90,299 @@ VIEWS.data = function () {
     if (el) { el.scrollIntoView({ block: FOCUS ? 'center' : 'start' }); if (FOCUS) el.classList.add('focus'); }
   });
 };
+
+/* REPORT (Tomas, 23 Nov 2026: "People should be able to select the sensors for the view, or type the name"). The weekly
+   sensor report, the same five queries as the keeper's Grafana report (app/weekly.py), for anyone who opens the node:
+   GET /weekly. The node counts; the page draws. The choices live in the address, #data/report?m=&s=&bad=&high=&w=&wk=&lang=,
+   so a report is passed on as a link. Without the token the node offers its outdoor sensors only.
+   At a glance (Tomas, 23 Nov 2026: "more graphical, like graphana graphics"; the paper register with the air colours):
+   the week chosen (wk, the last complete one by default), its tiles, the places by day in Indonesia's air index (ISPU),
+   then the charts over the whole window. Every band, count and verdict is the node's (GET /weekly summary). */
+const repState = () => { const p = new URLSearchParams(location.hash.split('?')[1] || ''); return { m: p.get('m') || '', s: (p.get('s') || '').split(',').filter(Boolean), bad: p.get('bad') || '', high: p.get('high') || '', w: p.get('w') || '8', wk: p.get('wk') || '', lang: p.get('lang') === 'id' ? 'id' : 'en' }; };
+let REPSEQ = 0, REPLAST = null, SHARE_C = [];
+const repGo = st => { history.replaceState(null, '', '#data/report?' + new URLSearchParams({ m: st.m, s: st.s.join(','), bad: st.bad, high: st.high, w: st.w, wk: st.wk, lang: st.lang })); reportBlock(); };
+/* a day as the node described it: its ISPU band and rounded mean; grey and empty when it was not counted (heard under 18
+   hours, or not at all); a thin red edge when it is a bad day inside the good band; the bad mark when the metric has no index */
+const dayBlock = d => !d || !d.counted ? { cls: 'nc', text: '', title: '' } : { cls: (d.band == null ? (d.bad ? 'nb bad' : 'nb') : 'aqi-' + d.band) + (d.edge ? ' edge' : ''), text: d.mean == null ? '' : String(Math.round(d.mean)), title: '' };
+/* the hours above a chart's scale as drawn (repChart nices it to 3 ticks): the two highest, and how many more */
+function aboveScale(pts, top) {
+  const nt = d3.scaleLinear().domain([0, top]).nice(3).domain()[1], over = pts.filter(p => p[1] > nt).sort((a, b) => b[1] - a[1]);
+  return { shown: over.slice(0, 2), more: Math.max(0, over.length - 2) };
+}
+/* the scale of an hourly chart: the 98th percentile, like the Data door's other charts, and the hours above it, printed */
+function capTop(values) {
+  const s = values.filter(v => v != null).sort((a, b) => a - b);
+  if (!s.length) return { top: null, over: [] };
+  const i = (s.length - 1) * 0.98, top = s[Math.floor(i)] + (s[Math.ceil(i)] - s[Math.floor(i)]) * (i - Math.floor(i));
+  return { top, over: values.filter(v => v != null && v > top) };
+}
+/* one small chart: a line per series of [Date, value], broken where the gap is wider than `gap` ms; `ref` dashed (all
+   sensors), `line` the red dash (the high), `bars` instead of a line (bad days a week, 0 to 7) */
+function repChart(pts, o) {
+  const W = 360, H = 110, x = d3.scaleTime([o.t0, o.t1], [30, W - 6]);
+  const vs = pts.concat(o.ref || []).map(p => p[1]).concat(o.line != null ? [o.line] : []);
+  const y = d3.scaleLinear([0, o.top || (d3.max(vs) || 1) * 1.1], [H - 16, 6]).nice(3), Y = v => y(Math.min(v, y.domain()[1]));
+  const cut = ps => ps.flatMap((p, i) => i && p[0] - ps[i - 1][0] > o.gap ? [null, p] : [p]);
+  const ln = ps => d3.line().defined(p => p).x(p => x(p[0])).y(p => Y(p[1]))(cut(ps)) || '';
+  /* the air index behind a daily mean (o.bands, the node's breakpoints), each band in its ISPU colour, faint */
+  const bands = !o.bands ? '' : [0, ...o.bands].map((lo, i) => { const top = y.domain()[1], hi = Math.min(i < o.bands.length ? o.bands[i] : top, top);
+    return lo >= top ? '' : `<rect x="30" width="${W - 36}" y="${y(hi)}" height="${Math.max(0, y(lo) - y(hi))}" style="fill:var(--aqi-${i})" opacity=".18"/>`; }).join('');
+  const wk = 7 * 864e5, bw = Math.max(2, x(new Date(+o.t0 + wk)) - x(o.t0) - 3);
+  return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">` + bands
+    + y.ticks(3).map(t => `<line x1="30" x2="${W - 6}" y1="${y(t)}" y2="${y(t)}" class="grid"/><text x="26" y="${y(t) + 4}" text-anchor="end">${fmt(t, 0)}</text>`).join('')
+    + `<text x="30" y="${H - 3}">${esc(dayOf(o.t0.toISOString()))}</text><text x="${W - 6}" y="${H - 3}" text-anchor="end">${esc(dayOf(o.t1.toISOString()))}</text>`
+    + (o.line != null ? `<line x1="30" x2="${W - 6}" y1="${y(o.line)}" y2="${y(o.line)}" class="linep"/>` : '')
+    + (o.ref ? `<path d="${ln(o.ref)}" class="alln"/>` : '')
+    + (o.bars ? pts.map(p => `<rect class="bar" x="${x(p[0])}" width="${bw}" y="${y(p[1])}" height="${Math.max(0, y(0) - y(p[1]))}"/>`).join('') : `<path d="${ln(pts)}" class="lnp"/>`)
+    + `</svg>`;
+}
+const plusDays = (iso, n) => new Date(Date.parse(iso + 'T12:00:00Z') + n * 864e5).toISOString().slice(0, 10);
+const dshort = (iso, loc = 'en-GB') => new Date(iso + 'T12:00:00').toLocaleDateString(loc, { day: 'numeric', month: 'short' });
+function reportBlock() {
+  const sec = $('#d-report'), st = repState(), seq = ++REPSEQ;
+  if (!sec.dataset.wired) {
+    sec.dataset.wired = '1';
+    sec.addEventListener('change', e => {
+      const t = e.target, s2 = repState();
+      if (t.dataset.r === 'pick') s2.s = t.checked ? [...s2.s, t.value] : s2.s.filter(id => id !== t.value);
+      else if (t.dataset.r === 'find') return;
+      else if (t.dataset.r) s2[t.dataset.r] = t.value;
+      if (t.dataset.r === 'm') { s2.s = []; s2.bad = ''; s2.high = ''; }   // each metric starts at its own lines (GET /weekly)
+      repGo(s2);
+    });
+    sec.addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      if (b.dataset.share) { repShare(); return; }
+      if (b.dataset.pdf) { printWeekly(); return; }
+      if (b.dataset.dl) { shareSave(+b.dataset.dl); return; }
+      const s2 = repState();
+      if (b.dataset.rm) s2.s = s2.s.filter(id => id !== b.dataset.rm);
+      else if (b.dataset.lang) s2.lang = b.dataset.lang;
+      else if (b.dataset.reset) { s2.m = ''; s2.s = []; s2.bad = ''; s2.high = ''; s2.w = '8'; s2.wk = ''; }
+      else return;
+      repGo(s2);
+    });
+    sec.addEventListener('input', e => {
+      if (e.target.dataset.r !== 'find') return;
+      const q = e.target.value.trim().toLowerCase();
+      sec.querySelectorAll('.rlist label').forEach(l => { l.hidden = !!q && !l.textContent.toLowerCase().includes(q); });
+    });
+    sec.addEventListener('keydown', e => {   // Enter in the name box picks the first match not yet picked
+      if (e.target.dataset.r !== 'find' || e.key !== 'Enter') return;
+      e.preventDefault();
+      const c = [...sec.querySelectorAll('.rlist label:not([hidden]) input')].find(i => !i.checked && !i.disabled);
+      if (c) { const s2 = repState(); s2.s = [...s2.s, c.value]; e.target.value = ''; repGo(s2); }
+    });
+  }
+  if (!sec.innerHTML) sec.innerHTML = `<h2>Report</h2><p class="fine">Reading the node…</p>`;
+  const u = '/weekly?' + new URLSearchParams({ metric: st.m, sensors: st.s.join(','), bad: st.bad, high: st.high, weeks: st.w, wk: st.wk, lang: st.lang });
+  fetch(u, { headers: DOORS_AUTH() }).then(r => r.json().then(j => [r.ok, j])).then(([ok, j]) => {
+    if (seq !== REPSEQ) return;   // a newer choice has already asked
+    if (!ok) { sec.innerHTML = `<h2>Report</h2><p class="fine">${esc(j.detail || j.error || 'The node did not answer.')} <button type="button" class="link" data-reset="1">Start again</button></p>`; return; }
+    REPLAST = j;
+    /* the week the node chose goes back into the address, so a link and a printout show this week next Monday too */
+    if (st.wk !== j.wk) history.replaceState(null, '', '#data/report?' + new URLSearchParams({ m: st.m, s: st.s.join(','), bad: st.bad, high: st.high, w: st.w, wk: j.wk, lang: st.lang }));
+    const L = j.words, loc2 = j.lang === 'id' ? 'id-ID' : 'en-GB', names = Object.fromEntries(j.sensors.map(o => [o.id, o.label])), t0 = new Date(j.t0 || Date.now()), t1 = new Date(j.t1 || Date.now());
+    const para = p => `<p>${esc(p).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')}</p>`;
+    const bySrc = d3.groups(j.sensors, o => o.source);
+    const pick = `<div class="rpick">`
+      + `<label>${esc(L.v_metric)}<select data-r="m">${j.metrics.map(m => `<option value="${esc(m)}"${m === j.metric ? ' selected' : ''}>${esc(mWord(m))}</option>`).join('')}</select></label>`
+      + `<label>${esc(L.v_bad)}<input type="number" step="any" data-r="bad" value="${esc(j.bad)}"></label>`
+      + `<label>${esc(L.v_high)}<input type="number" step="any" data-r="high" value="${esc(j.high)}"></label>`
+      + `<label>${esc(L.week_pick)}<select data-r="wk">${[...j.week_starts].reverse().map((w, i) => `<option value="${esc(w)}"${w === j.wk ? ' selected' : ''}>${esc(dshort(w, loc2))} – ${esc(dshort(plusDays(w, 6), loc2))}${i === 0 ? ' · ' + esc(L.so_far) : ''}</option>`).join('')}</select></label>`
+      + `<label>${esc(L.weeks_n)}<select data-r="w">${[4, 8, 12].map(n => `<option${n === j.weeks ? ' selected' : ''}>${n}</option>`).join('')}</select></label>`
+      + `<span class="rlang" role="group" aria-label="language"><button type="button" data-lang="en" aria-pressed="${j.lang === 'en'}">English</button> · <button type="button" data-lang="id" aria-pressed="${j.lang === 'id'}">Bahasa Indonesia</button></span></div>`
+      + `<label class="rpick"><span class="vh">${esc(L.find)}</span><input type="search" class="rfind" data-r="find" placeholder="${esc(L.find)}" aria-label="${esc(L.find)}"></label>`
+      + `<div class="rtags">${j.picked.map(id => `<button type="button" data-rm="${esc(id)}" aria-label="remove">${esc(names[id] || id)} ×</button>`).join('')}</div>`
+      + (j.sensors.length ? `<div class="rlist">${bySrc.map(([src, os]) => `<h4>${esc(src)}</h4>` + os.map(o => `<label><input type="checkbox" data-r="pick" value="${esc(o.id)}"${j.picked.includes(o.id) ? ' checked' : j.picked.length >= j.max_sensors ? ' disabled' : ''}>${esc(o.label)}</label>`).join('')).join('')}</div>` : `<p class="fine">${esc(L.none)}</p>`);
+    const P = j.parts, table = (part, mark) => !P[part] ? '' : `<div class="tscroll"><table class="tbl rep"><tr>${P[part].cols.map((c, i) => `<th${i > 1 ? ' class="n"' : ''}>${esc(c)}</th>`).join('')}</tr>`
+      + P[part].rows.map(row => `<tr>${row.map((cell, i) => `<td${i > 1 ? ' class="n' + (mark(i, cell) ? ' wr' : '') + '"' : ''}>${esc(cell ?? '–')}</td>`).join('')}</tr>`).join('') + `</table></div>`;
+    const S = j.summary;
+    const wd = iso => new Date(iso + 'T12:00:00').toLocaleDateString(loc2, { weekday: 'short' });
+    const tile = (v, l, cls = '') => `<div class="rtile ${cls}"><b>${esc(v)}</b><span>${esc(l)}</span></div>`;
+    const when = (day, at) => day ? `${wd(day)} ${at || ''}`.trim() : '';
+    const one = S && S.sensors.length === 1 ? S.sensors[0] : null;
+    const tiles = !S ? '' : `<div class="rtiles">` + (one
+      ? tile(one.counted ? one.bad : '–', (one.counted === 7 ? L.bad_of : L.of_counted).replace('{n}', one.counted)) + tile(one.verdict || '–', L.verdict, one.verdict === L.worse ? 'wr' : '')
+        + tile(one.peak ?? '–', L.highest_hour + ' · ' + when(one.peak_day, one.peak_at)) + tile(one.worst_mean ?? '–', L.worst_day + ' · ' + (one.worst_day ? wd(one.worst_day) : ''))
+      : tile(S.overall.avg_bad ?? '–', L.avg_bad) + tile(S.overall.worst || '–', L.worst_place)
+        + tile(S.overall.peak ?? '–', L.highest_hour + ' · ' + (S.overall.peak_place || '') + ' ' + when(S.overall.peak_day, S.overall.peak_at))) + `</div>`;
+    const order = S ? [...S.sensors].sort((a, b) => b.bad - a.bad || (b.worst_mean || 0) - (a.worst_mean || 0)) : [];
+    const grid = !S ? '' : `<div class="tscroll"><table class="rgrid"><tr><th></th>${S.sensors[0].days.map(d => `<th>${esc(wd(d.day))}</th>`).join('')}<th class="n">${esc(L.bad_days)}</th></tr>`
+      + order.map(s => `<tr><td>${esc(s.label)}</td>${s.days.map(d => { const b = dayBlock(d); return `<td><span class="blk ${b.cls}" title="${esc(!d.counted ? L.not_counted : d.edge ? L.edge_note : d.day)}">${esc(b.text)}</span></td>`; }).join('')}<td class="n"><b>${s.bad}</b> / ${s.counted}</td></tr>`).join('') + `</table></div>`
+      + `<p class="rlegend">${j.index ? [0, 1, 2, 3, 4].map(i => `<span class="blk aqi-${i}"></span> ${esc(L['band_' + i])}`).join(' ') + ` · <span class="blk aqi-0 edge"></span> ${esc(L.edge_note)} · ` : `<span class="blk nb bad"></span> ${esc(L.over_line)} · `}<span class="blk nc"></span> ${esc(L.not_counted)}${j.index ? ' · ' + esc(L.colours_from) : ''}</p>`;
+    const daysBy = d3.groups((P.days || {}).rows || [], r => r[1]).map(([k, rs]) => [k, rs.filter(r => r[4] != null).map(r => [new Date(r[0] + 'T12:00:00'), r[4]])]);
+    const meanFigs = `<div class="sms">${daysBy.map(([k, pts]) => `<figure class="sm"><figcaption><b>${esc(k)}</b></figcaption>${repChart(pts, { gap: 36 * 36e5, line: j.bad, bands: j.index, t0, t1 })}</figure>`).join('')}</div>`;
+    const series = part => d3.groups((P[part] || {}).rows || [], r => r[1]).map(([k, rs]) => [k, rs.map(r => [new Date(r[0]), r[2]])]);
+    const figs = (part, o) => { const ss = series(part), ref = (ss.find(([k]) => k === o.refName) || [])[1];
+      return `<div class="sms">${ss.filter(([k]) => k !== o.refName).map(([k, pts]) => {
+        const c = o.capped ? capTop(pts.map(p => p[1])) : null, top = c && c.top != null ? Math.max(c.top, o.line || 0) * 1.1 : o.top, ab = c ? aboveScale(pts, top) : { shown: [], more: 0 };
+        return `<figure class="sm"><figcaption><b>${esc(k)}</b></figcaption>${repChart(pts, { ...o, ref, t0, t1, top })}`
+          + (ab.shown.length ? `<p class="fine">${esc(L.above_cap)}: ${ab.shown.map(p => `${fmt(p[1], 0)} (${esc(dayOf(p[0].toISOString()))} ${esc(hhmm(p[0].toISOString()))})`).join(', ')}${ab.more ? ' · +' + ab.more : ''}</p>` : '') + `</figure>`; }).join('')}</div>`; };
+    /* a redraw keeps where you were: the focused control (a box by its value) and what was typed in the name box */
+    const at = sec.contains(document.activeElement) ? document.activeElement : null, was = at && { r: at.dataset.r, v: at.value };
+    const typed = (sec.querySelector('[data-r=find]') || {}).value || '';
+    sec.innerHTML = `<div class="dsh"><h2>${esc(L.title)}</h2>${L.how.split('\n\n').map(para).join('')}</div>` + pick
+      + (!j.picked.length ? `<p class="fine">${esc(L.pick)}</p>` : tiles + `<div class="rbtns">${j.wk_complete ? `<button type="button" class="ybtn" data-pdf="1" title="${esc(L.pdf_hint)}">${esc(L.pdf)}</button>` : ''}${j.shareable ? `<button type="button" class="ybtn" data-share="1">${esc(L.share)}</button>` : ''}</div>${j.wk_complete ? `<p class="fine">${esc(L.pdf_hint)}</p>` : ''}<div class="rshare" hidden></div>`
+        + `<h3>${esc(L.the_week)}</h3>` + grid
+        + `<h3>${esc(L.daily_mean)}</h3>` + meanFigs
+        + `<h3>${esc(L.p_badweeks)}</h3>` + figs('badweeks', { bars: true, top: 7 })
+        + `<h3>${esc(L.p_hours)}</h3>` + figs('hours', { gap: 3 * 36e5, line: j.high, refName: L.high_line, capped: true })
+        + `<h3>${esc(L.p_daily)}</h3>` + figs('daily', { gap: 36 * 36e5, refName: L.all })
+        + `<h3>${esc(L.p_weeks)}</h3>` + table('weeks', (i, c) => c === L.worse)
+        + `<h3>${esc(L.p_baddays)}</h3>` + (P.baddays && P.baddays.rows.length ? table('baddays', (i, c) => i === 2 && c < j.full_day) : '<p class="fine">–</p>'));
+    const find = sec.querySelector('[data-r=find]');
+    if (find && typed) { find.value = typed; find.dispatchEvent(new Event('input', { bubbles: true })); }
+    const back = was && was.r && [...sec.querySelectorAll(`[data-r="${was.r}"]`)].find(el => was.r !== 'pick' || el.value === was.v);
+    if (back) back.focus();
+  }).catch(() => { if (seq === REPSEQ) sec.innerHTML = `<h2>Report</h2><p class="fine">The node did not answer. <a href="#data/report">Try again</a></p>`; });
+}
+
+/* SHARE (Tomas, 23 Nov 2026: "social sharing jpegs"; the image's job: "how bad the air was this week, and where"). One
+   1080×1350 JPEG per place and, for two places or more, a comparison of the five worst, drawn here on a canvas in the
+   page's paper register and its own fonts, and saved by the person. Always the visitor's view: the node is asked again
+   with no token (repPublic), so a room the keeper picked never reaches an image; the panel says so when one was left out. */
+const slug = t => String(t).normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/['’]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60).replace(/-+$/, '');
+const sharedPlaces = ss => ss.filter(s => s.counted > 0);   // a place with no counted day gets no image
+/* the comparison's rows under a title of tl lines: the pitch shrinks so the fifth row ends above the footer (1150 px) */
+const compareLayout = (tl, n) => { const top = 140 + (tl - 1) * 80 + 56 + 70 + 40, row = 124; return { top, row, pitch: Math.min(168, Math.floor((1150 - row - top) / Math.max(1, n - 1))) }; };
+/* the largest size up to `size` at which text fits `max` px */
+function fitFont(g, text, max, size, face) { let z = size; do { g.font = face.replace('{z}', z); } while (g.measureText(text).width > max && --z > 10); return z; }
+const fiveWorst = ss => [...ss].sort((a, b) => b.bad - a.bad || (b.worst_mean || 0) - (a.worst_mean || 0)).slice(0, 5);
+function repPublic(a, ids) {
+  const q = sens => '/weekly?' + new URLSearchParams({ metric: a.metric, sensors: sens.join(','), bad: a.bad, high: a.high, weeks: a.weeks, wk: a.wk, lang: a.lang });
+  return fetch(q([])).then(r => r.json()).then(o => { const ok = new Set((o.sensors || []).map(x => x.id)), keep = ids.filter(id => ok.has(id));
+    return (keep.length ? fetch(q(keep)).then(r => r.json()) : Promise.resolve(o)).then(j => ({ j, dropped: ids.length - keep.length })); });
+}
+const SH = { paper: '#F9F5F2', ink: '#171717', mute: '#6B6B66', nc: '#D9D4CE' };
+const cssv = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+/* text that fits `max` px in at most `lines` lines, the last one ellipsised */
+function fitLines(g, text, max, lines) {
+  const out = []; let cur = '';
+  for (const w of String(text).split(/\s+/)) { const t = cur ? cur + ' ' + w : w; if (g.measureText(t).width <= max) cur = t; else { if (cur) out.push(cur); cur = w; } }
+  if (cur) out.push(cur);
+  if (out.length > lines) { out.length = lines; out[lines - 1] += '…'; }
+  return out.map(l => { while (g.measureText(l).width > max && l.length > 2) l = l.slice(0, -2) + '…'; return l; });
+}
+function shareBlocks(g, days, x, y, w, h, gap, num) {
+  const red = cssv('--signal-worse') || '#E62038';
+  days.forEach((d, i) => {
+    const b = dayBlock(d), band = /aqi-(\d)/.exec(b.cls), X = x + i * (w + gap);
+    g.fillStyle = band ? cssv('--aqi-' + band[1]) : SH.nc; g.fillRect(X, y, w, h);
+    if (d.edge) { g.strokeStyle = red; g.lineWidth = Math.max(4, w / 12); g.strokeRect(X + g.lineWidth / 2, y + g.lineWidth / 2, w - g.lineWidth, h - g.lineWidth); }
+    if (num && b.text) { g.fillStyle = band ? cssv('--aqi-' + band[1] + '-ink') : SH.ink; g.font = `700 ${num}px "JetBrains Mono", monospace`; g.textAlign = 'center'; g.fillText(b.text, X + w / 2, y + h / 2 + num * 0.36); g.textAlign = 'left'; }
+  });
+}
+function shareFoot(g, j, L) {
+  const line = (j.bad_source === 'who' ? L.who_line : L.set_by_reader).replace('{v}', fmt(j.bad, 0)).replace('{unit}', j.unit || '');
+  g.fillStyle = SH.mute; g.font = '400 30px "Figtree", sans-serif';
+  fitLines(g, `${mWord(j.metric)}, ${L.mean}, ${line}. ${L.colours_from} ${L.not_calibrated}`, 936, 3).forEach((l, i) => g.fillText(l, 72, 1186 + i * 38));
+  g.fillStyle = SH.ink; g.font = '700 32px "Figtree", sans-serif'; g.fillText(`${j.node || 'PLANETAI node'} · PLANETAI · Fab City`, 72, 1306);
+}
+const shareRange = j => { const loc = j.lang === 'id' ? 'id-ID' : 'en-GB'; return `${dshort(j.wk, loc)}–${dshort(plusDays(j.wk, 6), loc)}`; };
+function shareCard(s, j) {
+  const L = j.words, loc = j.lang === 'id' ? 'id-ID' : 'en-GB', c = document.createElement('canvas'); c.width = 1080; c.height = 1350;
+  const g = c.getContext('2d'); g.fillStyle = SH.paper; g.fillRect(0, 0, 1080, 1350);
+  g.fillStyle = SH.mute; g.font = '600 34px "JetBrains Mono", monospace'; g.fillText(`${L.air_week} · ${shareRange(j)}`.toUpperCase(), 72, 110);
+  g.fillStyle = SH.ink; g.font = '800 112px "Figtree", sans-serif';
+  const name = fitLines(g, s.label, 936, 2); name.forEach((l, i) => g.fillText(l, 72, 240 + i * 118));
+  let y = 240 + (name.length - 1) * 118 + 64;
+  g.fillStyle = SH.mute; g.font = '400 44px "Figtree", sans-serif'; g.fillText(`${mWord(j.metric)}${j.area ? ' · ' + j.area : ''}`, 72, y);
+  y += 190; g.fillStyle = SH.ink; g.font = '800 184px "Figtree", sans-serif'; g.fillText(String(s.bad), 72, y);
+  const nw = g.measureText(String(s.bad)).width, said = (s.counted === 7 ? L.bad_of : L.of_counted).replace('{n}', s.counted);
+  fitFont(g, said, 1008 - (72 + nw + 24), 60, '600 {z}px "Figtree", sans-serif'); g.fillText(said, 72 + nw + 24, y);
+  y += 60; shareBlocks(g, s.days, 72, y, 120, 120, 16, 46);
+  g.fillStyle = SH.mute; g.font = '500 34px "JetBrains Mono", monospace'; g.textAlign = 'center';
+  s.days.forEach((d, i) => g.fillText(new Date(d.day + 'T12:00:00').toLocaleDateString(loc, { weekday: 'narrow' }), 72 + i * 136 + 60, y + 170));
+  g.textAlign = 'left';
+  if (s.peak != null) { g.fillStyle = SH.ink; g.font = '400 46px "Figtree", sans-serif';
+    g.fillText(`${L.highest_hour[0].toUpperCase() + L.highest_hour.slice(1)} ${s.peak} µg/m³, ${new Date(s.peak_day + 'T12:00:00').toLocaleDateString(loc, { weekday: 'short' })} ${s.peak_at}`, 72, y + 260); }
+  shareFoot(g, j, L);
+  return c;
+}
+function shareCompare(ss, j) {
+  const L = j.words, c = document.createElement('canvas'); c.width = 1080; c.height = 1350;
+  const g = c.getContext('2d'); g.fillStyle = SH.paper; g.fillRect(0, 0, 1080, 1350);
+  g.fillStyle = SH.ink; g.font = '800 72px "Figtree", sans-serif';
+  const title = fitLines(g, L.around.replace('{area}', j.area || j.node || ''), 936, 2); title.forEach((l, i) => g.fillText(l, 72, 140 + i * 80));
+  let y = 140 + (title.length - 1) * 80 + 56;
+  g.fillStyle = SH.mute; g.font = '600 32px "JetBrains Mono", monospace'; g.fillText(`${shareRange(j)} · ${mWord(j.metric)} · ${L.worst_first}`.toUpperCase(), 72, y);
+  const rows = fiveWorst(ss), lay = compareLayout(title.length, rows.length);
+  y += 70; g.textAlign = 'right'; g.fillText(`${L.bad_days}`.toUpperCase(), 1008, y); g.textAlign = 'left';
+  rows.forEach((s, i) => {
+    const Y = lay.top - 40 + i * lay.pitch;
+    g.fillStyle = SH.ink; g.font = '700 46px "Figtree", sans-serif'; g.fillText(fitLines(g, s.label, 760, 1)[0], 72, Y + 40);
+    shareBlocks(g, s.days, 72, Y + 64, 92, 56, 10, 0);
+    g.textAlign = 'right'; g.fillStyle = SH.mute; g.font = '600 40px "Figtree", sans-serif'; g.fillText(`/ ${s.counted}`, 1008, Y + 118);
+    const cw = g.measureText(`/ ${s.counted}`).width; g.fillStyle = SH.ink; g.font = '800 92px "Figtree", sans-serif'; g.fillText(String(s.bad), 1008 - cw - 12, Y + 118); g.textAlign = 'left';
+  });
+  shareFoot(g, j, L);
+  return c;
+}
+function shareSave(i) {
+  const it = SHARE_C[i]; if (!it) return;
+  it.c.toBlob(bl => { const a = document.createElement('a'); a.href = URL.createObjectURL(bl); a.download = it.name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); }, 'image/jpeg', 0.92);
+}
+function repShare() {
+  const sec = $('#d-report'), box = sec.querySelector('.rshare'), a = REPLAST; if (!box || !a) return;
+  box.hidden = false; box.innerHTML = `<p class="fine">…</p>`;
+  /* allSettled: a face that cannot load (no route out, a blocked file) leaves the image in the fallback face rather than no image */
+  repPublic(a, a.picked).then(({ j, dropped }) => Promise.allSettled([document.fonts.load('800 112px "Figtree"'), document.fonts.load('600 34px "JetBrains Mono"')])
+    .then(() => document.fonts.ready).then(() => {
+      const L = j.words, ss = sharedPlaces((j.summary || {}).sensors || []);
+      if (!ss.length) { box.innerHTML = `<p class="fine">${esc(dropped ? L.rooms_out : L.none)}</p>`; return; }
+      SHARE_C = ss.map(s => ({ c: shareCard(s, j), name: `${slug(s.label) || 'place'}-${j.wk}.jpg` }));
+      if (ss.length > 1) SHARE_C.push({ c: shareCompare(ss, j), name: `comparison-${j.wk}.jpg` });
+      box.innerHTML = `<p class="fine">${esc(L.share_note)}${dropped ? ' ' + esc(L.rooms_out) : ''}</p><div class="rshots">`
+        + SHARE_C.map((it, i) => `<figure><span class="rshot"></span><button type="button" class="ybtn" data-dl="${i}">${esc(L.download)} · ${esc(it.name)}</button></figure>`).join('') + `</div>`;
+      box.querySelectorAll('.rshot').forEach((el, i) => el.appendChild(SHARE_C[i].c));
+    })).catch(() => { box.innerHTML = `<p class="fine">${esc(a.words.no_answer)}</p>`; });
+}
+
+/* PDF (Tomas, 23 Nov 2026: "download as pdf full report"). The browser's print, on A4 portrait pages like the Place report:
+   page 1 the overview of the places picked, then a page per place. Built from the visitor's view (repPublic), on paper
+   whatever the screen's register, the air colours printed as they are. buildWeeklyPages() is apart from printing, so the
+   visual gate can count the pages; printWeekly() prints and takes the pages away again. */
+function buildWeeklyPages(j) {
+  const L = j.words, S = j.summary || { sensors: [], overall: {} }, loc = j.lang === 'id' ? 'id-ID' : 'en-GB', P = j.parts || {};
+  const wd = iso => new Date(iso + 'T12:00:00').toLocaleDateString(loc, { weekday: 'short' }), range = `${dshort(j.wk, loc)} – ${dshort(plusDays(j.wk, 6), loc)}`;
+  const tile = (v, l, cls = '') => `<div class="rtile ${cls}"><b>${esc(v)}</b><span>${esc(l)}</span></div>`;
+  const n = 1 + S.sensors.length, foot = i => `<div class="wfoot"><span>${esc(j.node || '')} · PLANETAI · Fab City · ${esc(L.not_calibrated)}</span><span>${esc(L.page.replace('{i}', i).replace('{n}', n))}</span></div>`;
+  const grid = `<table class="rgrid"><tr><th></th>${(S.sensors[0] || { days: [] }).days.map(d => `<th>${esc(wd(d.day))}</th>`).join('')}<th class="n">${esc(L.bad_days)}</th></tr>`
+    + [...S.sensors].sort((a, b) => b.bad - a.bad || (b.worst_mean || 0) - (a.worst_mean || 0)).map(s => `<tr><td>${esc(s.label)}</td>${s.days.map(d => { const b = dayBlock(d); return `<td><span class="blk ${b.cls}">${esc(b.text)}</span></td>`; }).join('')}<td class="n"><b>${s.bad}</b> / ${s.counted}</td></tr>`).join('') + `</table>`
+    + (j.index ? `<p class="rlegend">${[0, 1, 2, 3, 4].map(i => `<span class="blk aqi-${i}"></span> ${esc(L['band_' + i])}`).join(' ')} · <span class="blk aqi-0 edge"></span> ${esc(L.edge_note)} · <span class="blk nc"></span> ${esc(L.not_counted)}</p>` : '');
+  const line = (j.bad_source === 'who' ? L.who_line : L.set_by_reader).replace('{v}', fmt(j.bad, 0)).replace('{unit}', j.unit || '');
+  const head = `<div class="wk">${esc(L.title)} · ${esc(mWord(j.metric))} · ${esc(range)}</div>`;
+  const O = S.overall;
+  const first = `<section class="wpage">${head}<h1>${esc(L.around.replace('{area}', j.area || j.node || ''))}</h1><div class="sub">${esc(L.picked_n.replace('{n}', S.sensors.length).replace('{node}', j.node || ''))} · ${esc(line)}</div>`
+    + `<div class="rtiles">${tile(O.avg_bad ?? '–', L.avg_bad)}${tile(O.worst || '–', L.worst_place)}${tile(O.peak ?? '–', L.highest_hour + ' · ' + (O.peak_place || ''))}</div>`
+    + `<h3>${esc(L.the_week)}</h3>${grid}<h3>${esc(L.p_how)}</h3><div class="how">${L.how.split('\n\n').map(p => `<p>${esc(p).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')}</p>`).join('')}</div>${foot(1)}</section>`;
+  const t0 = new Date(j.t0), t1 = new Date(j.t1), endWk = plusDays(j.wk, 6);
+  const pages = S.sensors.map((s, k) => {
+    const mean = ((P.days || {}).rows || []).filter(r => r[2] === s.id && r[4] != null).map(r => [new Date(r[0] + 'T12:00:00'), r[4]]);
+    const bars = ((P.badweeks || {}).rows || []).filter(r => r[1] === s.label).map(r => [new Date(r[0]), r[2]]);
+    const bd = P.baddays || { cols: [], rows: [] }, rows = bd.rows.filter(r => r[1] === s.label && r[0] >= j.wk && r[0] <= endWk);
+    return `<section class="wpage">${head}<h1>${esc(s.label)}</h1><div class="sub">${esc(mWord(j.metric))}${j.area ? ' · ' + esc(j.area) : ''} · ${esc(line)}</div>`
+      + `<div class="rtiles">${tile(s.counted ? s.bad : '–', (s.counted === 7 ? L.bad_of : L.of_counted).replace('{n}', s.counted))}${tile(s.verdict || '–', L.verdict, s.verdict === L.worse ? 'wr' : '')}${tile(s.peak ?? '–', L.highest_hour + ' · ' + (s.peak_day ? wd(s.peak_day) + ' ' + (s.peak_at || '') : ''))}${tile(s.worst_mean ?? '–', L.worst_day + ' · ' + (s.worst_day ? wd(s.worst_day) : ''))}</div>`
+      + `<h3>${esc(L.daily_mean)}</h3>${repChart(mean, { gap: 36 * 36e5, line: j.bad, bands: j.index, t0, t1 })}`
+      + `<h3>${esc(L.p_badweeks)}</h3>${repChart(bars, { bars: true, top: 7, t0, t1 })}`
+      + `<h3>${esc(L.p_baddays)}</h3>` + (rows.length ? `<table class="tbl rep"><tr>${bd.cols.filter((c, i) => i !== 1).map((c, i) => `<th${i ? ' class="n"' : ''}>${esc(c)}</th>`).join('')}</tr>`
+        + rows.map(r => `<tr>${r.filter((v, i) => i !== 1).map((v, i) => `<td${i ? ` class="n${i === 1 && v < j.full_day ? ' wr' : ''}"` : ''}>${esc(v ?? '–')}</td>`).join('')}</tr>`).join('') + `</table>` : '<p class="fine">–</p>')
+      + `${foot(k + 2)}</section>`;
+  });
+  const box = $('#wpages'); box.innerHTML = first + pages.join('');
+  return n;
+}
+function printWeekly() {
+  const a = REPLAST; if (!a) return;
+  const box = $('#d-report .rshare');
+  repPublic(a, a.picked).then(({ j }) => {
+    if (!((j.summary || {}).sensors || []).length) { if (box) { box.hidden = false; box.innerHTML = `<p class="fine">${esc(j.words.rooms_out)}</p>`; } return; }   // nothing a visitor may see: no blank PDF
+    buildWeeklyPages(j); document.body.classList.add('pweekly');
+    const done = () => { document.body.classList.remove('pweekly'); $('#wpages').innerHTML = ''; window.removeEventListener('afterprint', done); };
+    window.addEventListener('afterprint', done); window.print();
+  }).catch(() => { if (box) { box.hidden = false; box.innerHTML = `<p class="fine">${esc(a.words.no_answer)}</p>`; } });
+}
 
 /* THE WORKBENCH (Tomas, 27 Oct 2026: "embeds in the same data menu", "a reduced version of the full workbench",
    "able to run offline in the node"). The node's copy of planetai.fab.city/sensors, served at /workbench and reduced
@@ -339,6 +633,39 @@ async function calibrateBlock() {
   if (status === 403) { el.innerHTML = head + `<p class="lede">What is corrected against what is the household’s, so only a screen holding a node token reads it: unlock this one in ${UNLOCK_AT}.</p>`; return; }
   if (status === 404) { el.innerHTML = head + `<p class="fine">The Calibrate pack is off on this node. Switch it on in Set up, under Packs.</p>`; return; }
   el.innerHTML = head + calibrateRows(j || { state: 'failed' }, (D.health || {}).docs, mWord);
+}
+/* PREDICT — this node's own readings, forecast by a general model that runs here (GET /predict, the predict pack). A day
+   is drawn only when the model beat "yesterday repeated" on enough days; otherwise it says why. predictRows is pure: it
+   takes the parsed answer, or { state: 'off' } for a 404 and { state: 'failed' } for no answer, and gives the HTML. */
+function pwhy(d, why) {
+  const r = (why || {}).reason;
+  if (r === 'sparse') return 'too many hours missing';
+  if (r === 'waiting') return 'not made yet today';
+  if (d.days == null) return r === 'young' ? `too young: ${why.have} of ${why.need} days` : '';
+  return d.days >= 7 ? 'yesterday is closer' : `too young: ${d.days} of 7 days`;
+}
+function predictRows(j, docs, word = x => x) {
+  const state = (j || {}).state, say = t => `<p class="fine">${t}</p>`;
+  if (state === 'off') return say(`This node does not forecast its own readings. <code>planetai models pull amazon/chronos-2</code> turns it on (456 MB). <a href="${esc((docs || 'https://planetai.fab.city/docs/') + 'predict/')}" target="_blank" rel="noopener">How it works</a>.`);
+  if (state === 'no-answer') return say('The models container is not answering.');
+  if (state === 'no-model') return say('No model is pulled.');
+  if (state === 'young') return say('No series has 14 days yet.');
+  if (state !== 'ok') return say('The forecast could not be read.');
+  const m = j.model || {}, rows = j.rows || [], N = Math.max(0, ...rows.map(r => Math.max(r.today.days || 0, r.tomorrow.days || 0)));
+  const day = (r, d) => d.shown ? `${fmt(d.low, 1)}–${fmt(d.high, 1)} ${said(r.unit || '')}` : `— <span class="fine">${esc(pwhy(d, r.why))}</span>`;
+  const v = x => x == null ? '—' : fmt(x, 1);
+  const off = (r, k) => r.today[k] == null && r.tomorrow[k] == null ? '—' : `${v(r.today[k])} · ${v(r.tomorrow[k])} ${said(r.unit || '')}`;
+  return `<p class="fine">${esc(m.name)} · general model, not adapted here</p><div class="tscroll"><table class="tbl ptab"><thead><tr><th>series</th><th>today</th><th>tomorrow</th>`
+    + `<th class="n">off by${N ? `, last ${N} days` : ''}</th><th class="n hide">yesterday repeated</th></tr></thead><tbody>`
+    + rows.map(r => `<tr><td>${esc(r.sensor)} <span class="fine">${esc(word(r.metric))}${r.indoor ? ', inside' : ''}</span></td><td>${day(r, r.today)}</td><td>${day(r, r.tomorrow)}</td>`
+      + `<td class="n">${off(r, 'model')}</td><td class="n hide">${off(r, 'naive')}</td></tr>`).join('') + `</tbody></table></div>`;
+}
+async function predictBlock() {
+  const el = $('#predict'), head = `<h2>Its own readings, forecast</h2>`;
+  const r = await doorsFetch('/predict').catch(() => null);
+  if (r && r.status === 403) { el.innerHTML = head + `<p class="lede">What this node expects of its own sensors is the household’s, so only a screen holding a node token reads it: unlock this one in ${UNLOCK_AT}.</p>`; return; }
+  const j = r && r.ok ? await r.json().catch(() => null) : null;
+  el.innerHTML = head + predictRows(j || { state: r && r.status === 404 ? 'off' : 'failed' }, (D.health || {}).docs, mWord);
 }
 /* IMAGES — every image the household added (SPEC_eyes step 1), with its facts of arrival, and its words to edit: the
    kind, the note, and key: value lines (meta). The act token edits; the admin token deletes, file and row. */

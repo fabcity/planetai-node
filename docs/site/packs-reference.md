@@ -1,7 +1,7 @@
 # Packs that ship
 <!-- checked: v0.92.0 -->
 
-The twenty-nine core packs in `packs/`, five data and twenty-four code, hold everything the node knows about a place, and no
+The thirty core packs in `packs/`, five data and twenty-five code, hold everything the node knows about a place, and no
 rule in `app/` says what PM2.5 means for a household or where the nearest fab lab is. For each pack this page
 says what it reads, what it says, its rules and where each threshold comes from, its settings, and what it does
 not know. How a pack is built and loaded is on [Packs](packs.md). Wild packs, such as `xiaomi-air` and
@@ -10,7 +10,7 @@ added with `planetai packs add`.
 
 A pack is `code` when its folder has any `.py` file, and a code pack's adapter and hooks run only with
 `PACKS_ALLOW_CODE=1`; `make` also needs `MAKE_ENABLED=1` and `fire` `FIRE_ENABLED=1`. A pack that names its own
-`switch:` runs on that switch alone: `bali-air-dispatch` on `BAD_ENABLED`, `home-assistant` on `HA_DISCOVERY`, `index` on `INDEX_PLACE`,
+`switch:` runs on that switch alone: `bali-air-dispatch` on `BAD_ENABLED`, `home-assistant` on `HA_DISCOVERY`, `index` on `INDEX_PLACE`, `predict` on `PREDICT_MODEL`,
 `smartcitizen`, `airgradient` and `purpleair` whenever their keys are set, `calibrate` once `CALIBRATE_PAIRS` names a
 pair, and `air-quality` reads the CAMS model on
 `OPENMETEO_ENABLED`, the key that ran it in the core. A pack's `routes.py` is mounted at start and answers 404 while
@@ -46,6 +46,7 @@ the pack is off.
 | `thingdata` | code | repair | 1 warn | | 2 | | `THINGDATA_*` |
 | `things` | code | things | none | | | | none (the Telegram bot's token, the core's) |
 | `eyes` | code | species | none | | | | `CAPTURES_DIR`, `EYES_MODEL`, `SPECIES_MATCH` (declared by the core) |
+| `predict` | code | cross-domain | none | | | | `PREDICT_MODEL` (declared by the core) |
 | `example-cooking-hours` | data | (none) | 1 info | | | | |
 
 That is 33 rules with a message (26, and the 7 only the event engine reads), 5 report contributors and 12
@@ -1356,6 +1357,52 @@ settings stay the core's, because two of them change what leaves the house. With
 the Data door says so, and the weekly reads do not run. On `planetai update`, a node that lists its packs in
 `PACKS_ENABLED` gets `eyes` added, because every node had it. With `SPECIES_MATCH` on it also answers Tools › Pull on
 Place: how many open GBIF records there are of each species in the area you chose, counts only, kept a day.
+
+## predict
+
+Today and tomorrow for the node's own series, hour by hour, from a general time-series model that runs beside the node
+in the `models` container. Every night it scores what it forecast against what the sensors measured, and against the
+last measured day repeated, and a day is shown only while the model is closer. [Predict](predict.md) says how to turn it
+on and read it, and what we measured on node #1.
+
+| | |
+|---|---|
+| Kind | code, an adapter and `routes.py`, run by its own switch (`switch: [PREDICT_MODEL]`), with the `models` container beside the node |
+| Domain | `cross-domain` |
+| Requires node | `>=0.92.0` |
+| Metrics | none, because a forecast is never a reading |
+| Scales | community |
+| Needs | `PREDICT_MODEL`, set by `planetai models pull` (it is the pack's own switch, so `PACKS_ALLOW_CODE` is not needed); the weights, downloaded once from huggingface.co by that command and by nothing else |
+| Shares | the one line `predict` gives Next days, served with `GET /forecast` to whoever can see Next days on this node; `GET /predict` answers a node token or this machine only |
+| Rules and cells | none |
+| Attribution | `amazon/chronos-2` and `amazon/chronos-bolt-tiny`, Apache-2.0 |
+
+At the first poll after 00:10 local time the adapter sends the models container the hourly means of each series that
+qualifies: a sensor that is the household's own and not a peer's, a metric whose channel role is `ambient`, at least 7
+days of history, 90% of the hours of the last 14 measured and at least one of the last 6. It stores the answer, 48 hours
+from local midnight with a middle value and an 80% band, in `predictions`, one day in one transaction, and the first
+time it runs it does the same for each of the 28 days before, oldest first. One poll gives it at most 60 seconds and the
+next poll carries on, so the first run starts at the poll after `planetai models pull` and may take a few polls. After a
+failure it tries at most once an hour until today's forecast is stored, and it keeps 35 days. Besides those rows it writes
+one row per model in `models`, with the time of its last attempt, and the sensor `predict` (`kind='model'`, not
+local), whose meta holds tomorrow's line for Next days.
+
+`GET /predict` reads those rows and works out the scores on each request; they are never stored. `predictions` and
+`models` are closed to `planetai_ro`, so no pack rule and no Grafana panel reads them, and neither is in the daily
+export, the aggregates a parent gets, the report bundle or any agent tool.
+
+### Settings
+
+| setting | default | meaning |
+|---|---|---|
+| `PREDICT_MODEL` | empty | the model that runs, a name from `packs/predict/models.json`. Set and blanked by `planetai models pull` and `planetai models rm`; Set up › Model shows it and does not edit it |
+
+### What it does not know
+
+The model reads each series' own past and nothing else, so it does not know the weather forecast or what the
+household does. It is a
+general model that has never seen this place, and its 80% band held the measurement 68 to 86% of the time on node #1,
+so on some series it is a little narrow. Only the middle value is drawn.
 
 ## example-cooking-hours
 

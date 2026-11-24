@@ -2,6 +2,54 @@
 
 ## Unreleased
 
+- **24 Nov: the radio gateway keeps hearing the node after the broker restarts.** The gateway on the node's USB
+  subscribed to the node's alerts once, at start. After a broker restart it went on carrying readings in and never
+  sent an alert out again, and its log said nothing. It now subscribes each time it connects. `planetai radio doctor
+  --port` reads a radio back over a new connection and compares it with what it was provisioned with, setting by
+  setting; on the gateway's own port it points to the gateway's log, since the service holds that port. Step 2 of
+  `planetai radio` is `planetai meshtastic --broker`, which starts the broker and stops. Before, it waited three minutes
+  for a WiFi gateway nobody had set up yet. For a city it does not know, the WiFi wizard no longer says EU_868, and for
+  Santiago it says ANZ. The guide and the Radios page say how alerts reach the shelf radios (`planetai config set
+  MESH_ALERTS 1`), and `federate --write` names the restart the broker needs, `docker compose restart mosquitto`.
+
+- **`planetai test-alert` fires on a node that has chosen its packs.** Its rule is a pack called `_test` that lives
+  for 90 seconds. A node with a pack list in Set up skipped it because it was on no list, so the alert never came and
+  the terminal asked whether the node was up. Node #1 has a list, and that is how we found it. The test pack now runs
+  whatever the list says.
+
+- **23 Nov: Reticulum on a fresh node.** The bridge records an `act` with `ACT_TOKEN`, and only `planetai ui` made
+  one, so on a new node `act 3` sent from Sideband was dropped and nobody got a reply. `planetai reticulum` now gives
+  the bridge the node's token, and makes one if there is none. An address saved in Set up › Sharing › Reticulum alert
+  addresses never got an alert either, because the bridge read its own copy from `.env` when its container started.
+  Now the node sends the addresses with each alert, so the next one arrives with nothing to restart. The bridge pin
+  moves to f7840e3. rns and lxmf stay at the versions in the licence record.
+
+- **A node can forecast its own readings.** The new core pack `predict` runs a general time-series model, Chronos-2
+  or Chronos-Bolt tiny, in a container of its own, and each night forecasts today and tomorrow for the node's own
+  sensors. A day is shown in Data only while the model is closer than the last measured day repeated. A forecast is
+  never written as a reading. Apart from one line in Next days, it never leaves the node. Nothing is downloaded until you run
+  `planetai models pull`, and docs/predict has what we measured on node #1.
+- **23 Nov: the weekly report in the air index colours, with a PDF and pictures to post.** Data › Report now opens on the
+  week: a few tiles, then the places day by day in the colours of Indonesia's air index, ISPU, the scale people here
+  already know. A day the sensor was heard for under 18 hours is grey and does not count, and a bad day that is still
+  green on the index gets a thin red edge, so the count and the colour never disagree. Each place gets its daily mean
+  over the index bands, and one spike no longer flattens the hourly chart. Download the PDF prints the week on A4
+  pages. Share images makes a 1080×1350 picture per place and one comparing them, for PM2.5 and PM10, saying how bad
+  the air was that week and where, and that the sensors are not calibrated. Both are made in your browser from what a
+  visitor would see, so a room never reaches them.
+- **23 Nov: the weekly report on the node's own page.** Data › Report draws the same weekly sensor report as
+  Grafana, for anyone who opens the node, and there is nothing to sign in to. You pick the sensors from a list or by
+  typing part of a name, set the two lines, and switch between English and Bahasa Indonesia. What you chose stays in
+  the address, so a report can go to someone as a link. The page and Grafana run the same queries, so they always
+  count alike. Another screen on the network reads it once `SHARE_LEVEL` is `open`, and without the token it offers
+  the outdoor sensors only.
+- **23 Nov: a weekly sensor report in Grafana, in English and Bahasa Indonesia.** A reader of the Bali air sensors
+  asked how many days of a week were bad, how often the sensor went over a high value on those days, and whether the
+  place is stable or getting better. `planetai grafana` now brings a second dashboard that answers that for the
+  sensors you pick, with the daily and weekly medians beside the median of every outdoor sensor the node reads. You
+  set the two lines yourself; they start at 15 and 55 for PM2.5. Set up › System has a row for it, and the Grafana
+  docs page says how it counts. Nothing in it is calibrated, and it cannot tell a cleaner week from a windier one.
+
 - **22 Nov: a sensor can be corrected against a better one beside it.** If you have a cheap particle sensor a few
   metres from a better one, name the two in Set up, under Calibrate (`CALIBRATE_PAIRS`), and the Data page shows a
   corrected number beside the measured one, in Corrections under Models and satellite, with a small mark on the

@@ -1,0 +1,4 @@
+chronos-forecasting==2.3.2
+fastapi>=0.115,<1
+uvicorn>=0.31.1,<1
+huggingface_hub

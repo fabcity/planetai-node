@@ -292,7 +292,7 @@ function sGroup(g, unlocked) {
   /* what is read once at start: one table, and the way to change it said once. Grafana's three keys are its own block. */
   const B = (d.bootstrap || []).filter(b => (b.group || 'system') === g && !/^GRAFANA_/.test(b.key));
   const boot = B.length ? `<h3 class="sub2">Read at start</h3><p class="blurb">Change these in <code>.env</code> on the node, then run <code>planetai restart</code>.</p>`
-    + `<table class="tbl ro"><tr><th>setting</th><th class="hide">key</th><th>value</th></tr>${B.map(b => `<tr><td>${esc(b.label)}</td><td class="hide mono">${esc(b.key)}</td>`
+    + `<table class="tbl ro"><tr><th>setting</th><th class="hide">key</th><th>value</th></tr>${B.map(b => `<tr><td>${esc(b.label)}${b.help ? `<p class="help">${esc(b.help)}</p>` : ''}</td><td class="hide mono">${esc(b.key)}</td>`
       + `<td class="mono">${b.value ? esc(b.value) : '<span class="fine">not set</span>'}</td></tr>`).join('')}</table>` : '';
   const changed = (SETUP.history || []).filter(a => rows.some(r => String(a.note || '').split(', ').includes(r.key))).slice(0, 5);
   return `<div class="dh"><h2>${esc(sTitle(g))}</h2>${g === 'packs' && SETUP.packs.length ? `<button type="button" class="sbtn sdet" id="sopenall" aria-pressed="${sOpenAll()}">${sOpenAll() ? 'Close all packs' : 'Open all packs'}</button>` : ''}</div><p class="blurb">${esc((SETUP_GROUPS[g] || [])[1] || 'This node declares this group. planetai config shows the same keys.')}</p>${g === 'sources' ? '<p class="blurb">A sensor of your own: flash it, plug it in and watch each of its sensors read on <a href="/workbench#test">the workbench</a>.</p>' : ''}${gate}`
@@ -408,6 +408,8 @@ function sGrafana(B) {
     + [['State', open],
        ['Address', `<code>${esc(bind)}:${esc(port)}</code>${loop ? '' : ' · <b>every screen on the network can reach the sign-in</b>'}`],
        ['Password', v('GRAFANA_ADMIN_PASSWORD') ? 'set (<code>GRAFANA_ADMIN_PASSWORD</code>)' : `not set: Grafana’s <code>admin</code> login is <code>admin</code>. Set <code>GRAFANA_ADMIN_PASSWORD</code> in <code>.env</code> before you open it to the network.`],
+       ['Weekly report', on && !loop ? `<a href="http://${esc(host)}:${esc(port)}/d/planetai-report-en" target="_blank" rel="noopener">Weekly sensor report ↗</a> · <a href="http://${esc(host)}:${esc(port)}/d/planetai-report-id" target="_blank" rel="noopener">Laporan mingguan sensor ↗</a>`
+         : `In Grafana’s PLANETAI folder, in English and Bahasa Indonesia: the bad days of each week for the sensors you pick, how often each went over a high line, and whether the week was better than the one before. <a href="${esc(docs)}#the-weekly-report" target="_blank" rel="noopener">How it counts ↗</a>`],
        ['Read more', `<a href="${esc(docs)}" target="_blank" rel="noopener">Grafana: turning it on, what it can read, what it will not tell you ↗</a>`]]
       .map(([t, x]) => `<div class="srow"><div class="sl"><label>${t}</label></div><div class="sc txt">${x}</div></div>`).join('') + `</div>`;
 }

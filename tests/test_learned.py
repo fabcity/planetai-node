@@ -387,6 +387,14 @@ main.notify("info", "🌡️ It is hot inside.\n\nNothing needs doing.\n\nAsk me
 assert [j for k, j in SENT if k == "tg"][0]["text"] == "🌡️ It is hot inside.\n\nNothing needs doing.\n\n📔 Yesterday.\n\nAsk me anything.", SENT
 SENT.clear()
 assert not any("child" in str(x) for k, x in SENT if k != "tg"), "never the mesh or Reticulum"
+# The alert addresses go to the bridge with each alert, read from settings at send time. The bridge's own copy came
+# from .env when its container was created, so an address saved in Set up never received anything (23 Nov 2026).
+_get = channels.settings.get
+channels.settings.get = lambda k, d="": " AB12, cd34 " if k == "RETICULUM_ALERT_DESTINATIONS" else _get(k, d)
+main.notify("act", "It is too hot.")
+assert [j for k, j in SENT if k == "ret"][-1] == {"text": "It is too hot.", "to": ["ab12", "cd34"]}, SENT
+channels.settings.get = _get
+SENT.clear()
 main.q = main.household.q = lambda sql, *a: (_ for _ in ()).throw(RuntimeError("no table"))
 assert main._alert_home("heat") == "", "a profile that cannot be read never stops an alert"
 rr = SRC[SRC.index("def run_rules"):SRC.index("def _alert_home")]

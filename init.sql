@@ -657,3 +657,25 @@ CREATE TABLE IF NOT EXISTS place_readings (
   refused   TEXT
 );
 INSERT INTO schema_version (version) VALUES ('0.66') ON CONFLICT DO NOTHING;
+
+-- 0.67: the node's own series, forecast (21 Nov 2026, the predict pack). A prediction is never a reading: it is written
+-- to nothing a rule, a cell or an export reads. `origin` is the local day whose midnight the forecast starts at; scores
+-- are computed on read from these rows and `readings_1h`, never stored. Revoked from pack SQL, in no export.
+CREATE TABLE IF NOT EXISTS predictions (
+  model_id  TEXT NOT NULL,                 -- "<name>@<revision>"
+  sensor_id TEXT NOT NULL,
+  metric    TEXT NOT NULL,
+  origin    DATE NOT NULL,
+  ts        TIMESTAMPTZ NOT NULL,          -- the hour it is for
+  p10 DOUBLE PRECISION, p50 DOUBLE PRECISION NOT NULL, p90 DOUBLE PRECISION,
+  made_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (model_id, sensor_id, metric, origin, ts)
+);
+REVOKE ALL ON predictions FROM planetai_ro;
+CREATE TABLE IF NOT EXISTS models (
+  model_id TEXT PRIMARY KEY, name TEXT NOT NULL, revision TEXT NOT NULL,
+  first_run TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_try TIMESTAMPTZ                     -- last attempt at the nightly run, one an hour until it is stored
+);
+REVOKE ALL ON models FROM planetai_ro;
+INSERT INTO schema_version (version) VALUES ('0.67') ON CONFLICT DO NOTHING;

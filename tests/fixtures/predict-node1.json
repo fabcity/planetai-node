@@ -1,0 +1,109 @@
+{
+ "state": "ok",
+ "model": {
+  "name": "amazon/chronos-2",
+  "revision": "29ec3766",
+  "adapted": false
+ },
+ "origin": "2026-11-22",
+ "rows": [
+  {
+   "sensor": "Backyard (SCK)",
+   "indoor": false,
+   "metric": "pm25",
+   "unit": "µg/m³",
+   "today": {
+    "low": 6.1,
+    "high": 11.0,
+    "model": 2.9,
+    "naive": 3.7,
+    "days": 28,
+    "shown": true
+   },
+   "tomorrow": {
+    "low": 5.8,
+    "high": 12.4,
+    "model": 3.7,
+    "naive": 4.6,
+    "days": 27,
+    "shown": true
+   },
+   "why": null
+  },
+  {
+   "sensor": "Backyard (SCK)",
+   "indoor": false,
+   "metric": "temp",
+   "unit": "°C",
+   "today": {
+    "low": 26.4,
+    "high": 31.2,
+    "model": 0.9,
+    "naive": 1.4,
+    "days": 28,
+    "shown": true
+   },
+   "tomorrow": {
+    "low": 26.1,
+    "high": 31.0,
+    "model": 1.1,
+    "naive": 1.6,
+    "days": 28,
+    "shown": true
+   },
+   "why": null
+  },
+  {
+   "sensor": "Studio",
+   "indoor": true,
+   "metric": "humidity",
+   "unit": "%",
+   "today": {
+    "low": null,
+    "high": null,
+    "model": 3.1,
+    "naive": 2.8,
+    "days": 28,
+    "shown": false
+   },
+   "tomorrow": {
+    "low": null,
+    "high": null,
+    "model": 3.6,
+    "naive": 3.0,
+    "days": 28,
+    "shown": false
+   },
+   "why": {
+    "reason": "naive-closer"
+   }
+  },
+  {
+   "sensor": "Roof",
+   "indoor": false,
+   "metric": "pm25",
+   "unit": "µg/m³",
+   "today": {
+    "low": null,
+    "high": null,
+    "model": null,
+    "naive": null,
+    "days": null,
+    "shown": false
+   },
+   "tomorrow": {
+    "low": null,
+    "high": null,
+    "model": null,
+    "naive": null,
+    "days": null,
+    "shown": false
+   },
+   "why": {
+    "reason": "young",
+    "have": 9,
+    "need": 14
+   }
+  }
+ ]
+}

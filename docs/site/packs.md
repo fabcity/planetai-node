@@ -9,7 +9,7 @@ There are two tiers:
 
 | | core | wild |
 |---|---|---|
-| lives in | `packs/` in the node's repository, twenty-nine of them | its author's own repository, or a folder in [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs) |
+| lives in | `packs/` in the node's repository, thirty of them | its author's own repository, or a folder in [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs) |
 | reaches a node | with every release | Install in Set up › Packs, or `planetai packs add` |
 | checked by | the node's `make lint` and tests, on every commit | the wild-packs repository's CI, against the node's `main`, every week |
 | kept by | the node's maintainers | its author |
@@ -90,7 +90,7 @@ Because blank `PACKS_ENABLED` means every pack, a pack that must stay off by def
 waits for `MAKE_ENABLED=1`, because it reads a directory that is not openly licensed, and `fire` for
 `FIRE_ENABLED=1`, for the bandwidth; both also need `PACKS_ALLOW_CODE=1`. `bali-air-dispatch` names `BAD_ENABLED` as
 its `switch:`, and a core pack with a switch runs its adapter and hooks when the switch is `1`, without
-`PACKS_ALLOW_CODE`; `air-quality`, `home-assistant`, `smartcitizen`, `airgradient`, `purpleair` and `index` have one too.
+`PACKS_ALLOW_CODE`; `air-quality`, `home-assistant`, `smartcitizen`, `airgradient`, `purpleair`, `index` and `predict` have one too.
 
 A `pack.yaml`, `rules.yml`, `cells.yml` or adapter that does not parse is logged and skipped, and the rest of the
 node carries on. Every installed pack's `env:` keys, enabled or not, appear in Set up → Packs with their help text

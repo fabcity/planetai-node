@@ -1,0 +1,16 @@
+{
+  "amazon/chronos-2": {
+    "revision": "29ec3766d36d6f73f0696f85560a422f50e8498c",
+    "sha256": "ddcda3c7508bf2528087723e98a20707cc04b7f370ae275a9fd88078ddba4f42",
+    "size_mb": 456,
+    "licence": "Apache-2.0",
+    "kind": "chronos2"
+  },
+  "amazon/chronos-bolt-tiny": {
+    "revision": "a0e552de83495b5c28c14c71c374f3e33280b340",
+    "sha256": "75068728d376d2bec670379eeef4bfb4d24c0cfe24d957451f8d19b447030a32",
+    "size_mb": 33,
+    "licence": "Apache-2.0",
+    "kind": "bolt"
+  }
+}

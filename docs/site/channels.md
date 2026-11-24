@@ -64,6 +64,10 @@ For sensors and alerts where there is no WiFi. One gateway radio with WiFi uplin
 the node, field radios carry a sensor on a battery, and a shelf radio paired to a phone receives alerts when the
 internet is down.
 
+A radio on the node's own USB can be the gateway instead, with no WiFi on it. `planetai radio` takes you through that
+step by step ([Radios](radios.md)); for alerts, do step 3 below without the node number. The steps here are for a
+gateway on WiFi.
+
 1. **Run `planetai meshtastic`.** It creates a broker user, starts the broker as the compose profile `mqtt`, and
    prints *Now the gateway radio (the ESP32 one), in the Meshtastic app* with every value to type: the LoRa region
    for your preset (`EU_868` by default, `SG_923` for Bali, `US` for Boston), MQTT on at `<this machine's LAN
@@ -74,8 +78,9 @@ internet is down.
    minutes)`, then `● packets arriving. Sensors seen so far:` and the mesh sensors it has. Each radio's telemetry
    is now readings under its own sensor, `msh-<its node id>`, with the name the radio gives itself. A radio's own
    temperature and pressure are its enclosure, not the street.
-3. **Turn on alerts back to the mesh.** Set `MESH_ALERTS=1` and `MESH_GATEWAY_NODE_NUM=<the gateway's node
-   number, decimal>` in `.env`, then `planetai restart`. Once the node has learned the mesh's root topic from an
+3. **Turn on alerts back to the mesh.** `planetai config set MESH_ALERTS 1`, or *Set up › Alerts*. A gateway on
+   WiFi also needs `planetai config set MESH_GATEWAY_NODE_NUM <the gateway's node number, decimal>`; a gateway on
+   the node's USB does not. Once the node has learned the mesh's root topic from an
    uplink, an `act` alert's first line goes out through the gateway, and `planetai logs` shows `mesh -> sent <n>
    bytes on <topic>`.
 
@@ -95,8 +100,9 @@ built, include that licence with it. What it means for the node is in
 
 The bridge has its own repository, [`fabcity/planetai-reticulum`](https://github.com/fabcity/planetai-reticulum), under Apache-2.0, so the node's own code never takes in `rns` or
 `lxmf`. It runs in its own container (compose profile `reticulum`) and gives the node an LXMF address that Sideband
-can message. It posts answers to `POST /actions` with `ACT_TOKEN`, and reads that token when its container is created, so run
-`planetai ui` first if the node has no `ACT_TOKEN` yet: it creates one.
+can message. It posts answers to `POST /actions` with `ACT_TOKEN`. `planetai reticulum` hands it the node's token, and
+makes one if the node has none yet. The bridge reads it when its container is created, so after you change the token
+in Set up, run `planetai reticulum` again.
 
 1. **Run `planetai reticulum`.** It downloads the bridge at the commit this release pins, builds it on this
    machine, starts it and prints
@@ -106,13 +112,12 @@ can message. It posts answers to `POST /actions` with `ACT_TOKEN`, and reads tha
 2. **Answer an alert.** Send `act 3 opened the windows`. The bridge records an `acted` row on alert #3 with the
    actor `lxmf:<your hash>` and replies `recorded: you acted on #3`. Sent as `act 3` alone, the note is recorded as
    `acted (via reticulum)`, because this path does not ask for words.
-3. **Receive alerts.** Copy your own LXMF address from Sideband's settings into `.env` as
-   `RETICULUM_ALERT_DESTINATIONS=<hash>[,<hash>]`, then run `planetai reticulum` again: the bridge reads the list
-   when its container is created, and `planetai restart` recreates only the app. `planetai logs reticulum` then
-   shows `bridge up: http :4243, announcing every 1800s, 1 alert destination(s), …` with your count. Every `act`
-   alert is delivered, full text, to each address. To check, run `planetai test-alert`: Sideband shows a message
-   from the node's address titled `planetai <NODE_NAME>`, with the whole test alert. If nothing arrives, `planetai
-   logs reticulum` says `no path to <hash> yet; is that client announced and reachable?`.
+3. **Receive alerts.** Copy your own LXMF address from Sideband's settings into Set up › Sharing › Reticulum alert
+   addresses, or run `planetai config set RETICULUM_ALERT_DESTINATIONS <hash>[,<hash>]`. The node sends the list to
+   the bridge with each alert, so the next one goes there and nothing needs restarting. Every `act` alert is
+   delivered, full text, to each address. To check, run `planetai test-alert`: Sideband shows a message from the
+   node's address titled `planetai <NODE_NAME>`, with the whole test alert. If nothing arrives, `planetai logs
+   reticulum` says `no path to <hash> yet; is that client announced and reachable?`.
 
 The bridge does not read `.env`. It receives eight variables from `docker-compose.yml`: `LOG_LEVEL`, `NODE_NAME`,
 `NODE_API_URL`, `RETICULUM_CONFIGDIR`, `RETICULUM_DATA`, `RETICULUM_ALERT_DESTINATIONS`, `RETICULUM_ANNOUNCE_S`

@@ -19,7 +19,7 @@ A request is trusted when it comes from loopback or carries a household token: `
 | `act` | Loopback with no token; from anywhere else `ACT_TOKEN` or `ADMIN_TOKEN`. |
 | `children` | `AGGREGATE_TOKEN`, which a parent gives its children. It opens `POST /aggregates`, `POST /events`, `POST /place/maps/received` and `POST /place/photos/received` and nothing else. |
 
-The `off` allowlist, the default, is `/`, `/ui`, `/workbench`, `/tester`, `/health`, `/llms.txt`, `/settings`, `/export`, `/presence`, `/nodes`, `/offers` and anything under `/static/`. The `open` allowlist adds `/stats`, `/sensors`, `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/packs/all`, `/trust`, `/nearby`, `/forecast`, `/index/place`, `/energy`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/wall.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, `/ask`, `/ask/status`, `/docs/search`, `/geo/cell`, `/learned/place`, `/wall`, and anything under `/exports/`, `/issues`, `/sources/` or `/ground/`. The pack routes among them (`/offers`, `/nearby`, `/forecast`, `/index/place`, `/energy` and the `/earth` paths) are put there by their pack's `pack.yaml` (`share:`). Any other value counts as `off`. The lists match the path whatever the method, so at `open` an anonymous `POST /readings` reaches the handler and gets 401. A path with no route also gets 403.
+The `off` allowlist, the default, is `/`, `/ui`, `/workbench`, `/tester`, `/health`, `/llms.txt`, `/settings`, `/export`, `/presence`, `/nodes`, `/offers` and anything under `/static/`. The `open` allowlist adds `/stats`, `/sensors`, `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/packs/all`, `/trust`, `/nearby`, `/forecast`, `/index/place`, `/energy`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/wall.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, `/ask`, `/ask/status`, `/docs/search`, `/geo/cell`, `/learned/place`, `/wall`, `/weekly`, and anything under `/exports/`, `/issues`, `/sources/` or `/ground/`. The pack routes among them (`/offers`, `/nearby`, `/forecast`, `/index/place`, `/energy` and the `/earth` paths) are put there by their pack's `pack.yaml` (`share:`). Any other value counts as `off`. The lists match the path whatever the method, so at `open` an anonymous `POST /readings` reaches the handler and gets 401. A path with no route also gets 403.
 
 Tokens travel in the `Authorization` header only, never in a query string, and are compared in constant time. `ADMIN_TOKEN` is in `.env`, the other three in settings, and `planetai ui` prints them. An optional `X-Agent` header names the caller; `PUT /settings` writes it to the ledger.
 
@@ -44,7 +44,7 @@ The middlewares answer `{"error": "..."}`. A share-level 403 names the level and
 
 For a path no level opens it ends "No share level opens this one, so it always needs a token from anywhere but the node itself." `/mcp` without the admin token is 401 `{"error": "the agent surface needs Authorization: Bearer <ADMIN_TOKEN>"}`.
 
-Some routes are a pack's, served from `packs/<id>/routes.py`: `/forecast` (forecast), `/nearby` (nearby), `/index/place` (index), `/energy` (energy), `/earth`, `/earth/change.png`, `/earth/year.png` and `/earth/wall.png` (earth), `/earth/frame.png` (earth-engine), `/hydro` (hydro), `/calibrate` (calibrate), every `/captures` route and `/species` (eyes), and `/things` and `/offers` (things). While its pack is off on the node, such a route answers 404 `{"detail": "the <pack> pack is off on this node"}`.
+Some routes are a pack's, served from `packs/<id>/routes.py`: `/forecast` (forecast), `/nearby` (nearby), `/index/place` (index), `/energy` (energy), `/predict` (predict), `/earth`, `/earth/change.png`, `/earth/year.png` and `/earth/wall.png` (earth), `/earth/frame.png` (earth-engine), `/hydro` (hydro), `/calibrate` (calibrate), every `/captures` route and `/species` (eyes), and `/things` and `/offers` (things). While its pack is off on the node, such a route answers 404 `{"detail": "the <pack> pack is off on this node"}`.
 
 Handlers answer `{"detail": "..."}`. The token checks:
 
@@ -211,6 +211,22 @@ Access: open
 
 Hourly means per sensor, on the same buckets and parameters as `/series`. Returns `{hours: [bucket, ...], series: {sensor_id: [mean or null, ...]}}`.
 
+### GET /weekly
+Access: open
+
+The weekly sensor report, the same as the one in Grafana, for the Report tab in Data. `?metric=` (the node's own
+when left out, `pm25` first), `?sensors=` up to twelve ids separated by commas, `?bad=` and `?high=` the two lines
+(PM2.5 starts at 15 and 55, PM10 at 45 and 150: the WHO guideline and where ISPU turns unhealthy; any other metric at 15
+and 55), `?weeks=` 1 to 12 (8), `?wk=` the start of the week to summarise (the last complete week when left out or
+not in the window), `?lang=` `en` or `id`. Every answer has `{metric, metrics, sensors: [{id, label, source}], picked,
+bad, high, weeks, words, full_day, t0, t1, week_starts, wk, wk_complete, shareable, index, area, node, parts}`.
+`index` is the metric's ISPU breakpoints (PM2.5 and PM10) or null; `shareable` is true for a complete week of PM2.5 or
+PM10, and `unit` is the metric's unit where the node knows it (` µg/m³` for those two). `parts` is empty until a sensor is picked; then it holds `weeks`, `badweeks`, `daily`, `baddays`, `hours` and
+`days`, each as `{cols, rows}`, and the answer adds `summary` (each sensor's seven days of the chosen week, counted, bad,
+band and edge, its bad days, days counted, verdict, highest hour and worst day, and an overview) and `bad_source`
+(`who` when the bad line is the WHO's guideline for the metric, else `reader`). Without `ADMIN_TOKEN` only outdoor sensors are offered, by their
+names, and a sensor that is not offered gets 400 with the same answer whether it exists or not.
+
 ### GET /reach
 Access: open
 
@@ -353,6 +369,11 @@ What the Fab City Index says about the place this node belongs to (`INDEX_PLACE`
 Access: open
 
 Official and model weather for this point, from `forecast-bmkg`, `forecast-om`, `forecast-cams`, `forecast-marine` and `forecast-gap`. `?hours=` 1 to 72 (default 24). Returns `{point, sources, hours, attribution, far_from_node, days, lines, openmeteo, schema}`, where `far_from_node` lists any source more than 10 km away (the sea is left out), `days` and `lines` are what [Next days](next-days.md) draws, and `schema` is `forecast-v0`. Without a token `point` is the middle of the node's res-8 cell (null before the node has a place) and each source's `km_from_node` is whole kilometres from that middle, so `far_from_node` is judged from it too; this machine and a token get the node's own point and distances from it.
+
+### GET /predict
+Access: token
+
+This node's own ambient series, forecast by the model the `predict` pack runs in its container, beside how often that beat repeating yesterday. Returns `{state, model: {name, revision, adapted}, origin, rows}`. `state` is `ok`, `off` (`PREDICT_MODEL` is blank, so no container is asked), `no-answer` (the container does not answer), `no-model` (none is pulled) or `young` (no series to show yet). `adapted` is always false. Each row is `{sensor, indoor, metric, unit, today, tomorrow, why}`, where `today` and `tomorrow` are `{low, high, model, naive, days, shown}`: `model` and `naive` are the mean absolute error of the model and of yesterday repeated over the `days` scored, the last 28 at most, a day counting with at least 12 measured hours; both are null when no day is scored. `low` and `high` are null unless the day is shown, which takes today's forecast, at least 7 scored days and `model` strictly below `naive`. `why` is null when a day is shown, otherwise `{reason: "naive-closer"}`, `{reason: "young", have, need}`, `{reason: "sparse"}` (old enough, but too many hours missing to forecast from) or `{reason: "waiting"}` (today's forecast is not made yet). In no share list: it answers only a node token or this machine. 404 when `PACKS_ENABLED` lists packs and `predict` is not one of them.
 
 ### GET /energy
 Access: open

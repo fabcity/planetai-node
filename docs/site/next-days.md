@@ -58,7 +58,7 @@ temperature or the rain, the row takes Open-Meteo's hours and says so beside its
 
 Under the rows each source has a pill with its time: BMKG says when it issued its forecast, and Open-Meteo, which
 publishes no model run time, says when the node fetched it. A source more than 10 km from the node says how far. After
-the pills comes the sentence "These come from models. The node does not forecast, and nothing here sends a message.",
+the pills comes the sentence "These come from models, and nothing here sends a message.",
 and with Open-Meteo off, the line about turning it on follows it.
 
 ## Turning Open-Meteo on
