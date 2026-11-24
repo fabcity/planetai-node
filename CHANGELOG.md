@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **24 Nov: the radio gateway keeps hearing the node after the broker restarts.** The gateway on the node's USB
+  subscribed to the node's alerts once, at start. After a broker restart it went on carrying readings in and never
+  sent an alert out again, and its log said nothing. It now subscribes each time it connects. `planetai radio doctor
+  --port` reads a radio back over a new connection and compares it with what it was provisioned with, setting by
+  setting; on the gateway's own port it points to the gateway's log, since the service holds that port. Step 2 of
+  `planetai radio` is `planetai meshtastic --broker`, which starts the broker and stops. Before, it waited three minutes
+  for a WiFi gateway nobody had set up yet. For a city it does not know, the WiFi wizard no longer says EU_868, and for
+  Santiago it says ANZ. The guide and the Radios page say how alerts reach the shelf radios (`planetai config set
+  MESH_ALERTS 1`), and `federate --write` names the restart the broker needs, `docker compose restart mosquitto`.
+
 - **`planetai test-alert` fires on a node that has chosen its packs.** Its rule is a pack called `_test` that lives
   for 90 seconds. A node with a pack list in Set up skipped it because it was on no list, so the alert never came and
   the terminal asked whether the node was up. Node #1 has a list, and that is how we found it. The test pack now runs

@@ -20,7 +20,7 @@
 #   planetai report level   what interrupts you between reports: act | warn | info
 #   planetai act <id>       your note on what you did about alert <id>
 #   planetai mesh           join the tailnet: reach this node from anywhere, no open ports
-#   planetai meshtastic     LoRa sensors and alerts via a gateway radio (sets up the broker, prints gateway settings)
+#   planetai meshtastic     LoRa sensors and alerts via a gateway radio (sets up the broker, prints gateway settings; --broker: only the broker)
 #   planetai broker         a DIY node publishing straight to this node (sets up the broker, prints the portal values)
 #   planetai radio          LoRa radios: provision by role, the node as their USB gateway, federate nodes (tools/radio.py)
 #   planetai reticulum      give the node an LXMF address: encrypted messaging over TCP or LoRa (RNode)
@@ -683,7 +683,7 @@ print("%s|%s|%s" % (r.get("latest", ""), r.get("current", ""), "1" if r.get("new
   case ",$(envget COMPOSE_PROFILES)," in *,mqtt,*)
     # bash's own /dev/tcp, not nc: Arch (Omarchy) ships without nc, and the check read red with the broker up (15 Nov 2026)
     chk "broker up :1883"        "bash -c 'exec 3<>/dev/tcp/127.0.0.1/1883'"            "planetai logs mosquitto"
-    chk "mesh packets arriving"  "[ \$(mesh_packets) -gt 0 ]"                              "gateway not uplinking yet: planetai meshtastic prints the settings";; esac
+    chk "mesh packets arriving"  "[ \$(mesh_packets) -gt 0 ]"                              "gateway not uplinking yet: planetai radio names the next step";; esac
   case ",$(envget COMPOSE_PROFILES)," in *,reticulum,*)
     chk "reticulum bridge up"    "curl -sf localhost:4243/health"                       "planetai logs reticulum";; esac
   case ",$(envget COMPOSE_PROFILES)," in *,models,*)
@@ -1007,15 +1007,24 @@ broker_ensure() {
 }
 
 cmd_meshtastic() {
+  # --broker: the broker and its user, nothing else. It is step 2 of `planetai radio`, where no gateway exists yet:
+  # the wizard below waited three minutes for one and then blamed its JSON setting (24 Nov 2026).
+  if [[ "${1:-}" == "--broker" ]]; then
+    step "This node's broker"; broker_ensure
+    say "the broker is up on port 1883, user planetai. Next step:  planetai radio"; return
+  fi
   step "Meshtastic"
   echo "  A LoRa mesh reaches sensors and phones where there is no WiFi. One radio with WiFi is the gateway: it"
   echo "  uplinks the mesh to a broker on this node, and can send alerts back out. This sets the node side up and"
-  echo "  tells you exactly what to type into the gateway."
+  echo "  tells you exactly what to type into the gateway. A radio on this machine's USB can be the gateway"
+  echo "  instead, with no WiFi on it:  planetai radio"
   echo
   broker_ensure
   local user="planetai" pass; pass="$(envget MQTT_PASS)"
   local ip; ip="$(lan_ip)"; [[ -n "$ip" ]] || ip="<this machine LAN IP>"
-  local region="EU_868"; case "$(envget NODE_CITY)" in bali) region="SG_923 (AS923, the band Indonesia allocates)";; boston) region="US";; santiago) region="LORA_24 or check local allocation";; esac
+  # the same table as tools/radio.py CITY_REGION; a city it does not list is asked about, never given EU_868
+  local region="the band your country allows; nothing is guessed, a radio on another country's band is illegal there"
+  case "$(envget NODE_CITY)" in bali) region="SG_923 (AS923, the band Indonesia allocates)";; menorca|barcelona) region="EU_868";; boston) region="US";; santiago) region="ANZ";; esac
   step "Now the gateway radio (the ESP32 one), in the Meshtastic app"
   cat <<T
    Radio configuration
@@ -2705,7 +2714,7 @@ case "${1:-help}" in
   update) cmd_update;;  backup) cmd_backup;;  config) shift; cmd_config "$@";;  logs) shift; cmd_logs "$@";;
   start) cmd_start;;  stop) cmd_stop;;  restart) cmd_restart;;  sensors) shift; cmd_sensors "$@";;  cells) shift; cmd_cells "$@";;
   mesh) shift; cmd_mesh "$@";;
-  meshtastic) cmd_meshtastic;;  reticulum) shift; cmd_reticulum "$@";;  broker) cmd_broker;;
+  meshtastic) shift; cmd_meshtastic "$@";;  reticulum) shift; cmd_reticulum "$@";;  broker) cmd_broker;;
   radio) shift; cmd_radio "$@";;
   homeassistant|ha) cmd_homeassistant;;
   packs) shift; cmd_packs "$@";;

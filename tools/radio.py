@@ -655,6 +655,11 @@ def envget(key: str, default: str = "") -> str:
     return os.getenv(key, default)
 
 
+def node_broker() -> dict:
+    """This node's broker as a WiFi gateway reaches it from the LAN: what gateway-wifi is provisioned with."""
+    return {"address": f"{lan_ip() or '<node LAN ip>'}:1883", "username": envget("MQTT_USER", "planetai"), "password": envget("MQTT_PASS")}
+
+
 def gateway(port: str, fleet: dict, broker: str = "127.0.0.1:1883", once: bool = False) -> None:
     """This radio, on this node's USB, is the gateway: packets go to the broker as JSON; downlink text comes back;
     the fabcity channel is federated. Runs until killed. `planetai radio gateway --install` makes it a service."""
@@ -709,9 +714,14 @@ def gateway(port: str, fleet: dict, broker: str = "127.0.0.1:1883", once: bool =
         if text:
             iface.sendText(text, channelIndex=fab_idx); counts["fed_in"] += 1
 
-    c.on_message = on_mqtt
+    def on_connect(client, *_):
+        # on every connect, not once: a broker that restarts forgets a clean session's subscriptions, and the gateway
+        # went on uplinking while it never heard an alert or a peer again (found 24 Nov 2026)
+        client.subscribe([(f"{root_topic}/2/json/mqtt/", 0), ("fabcity/+/text", 0), ("fabcity/+/alerts", 0)])
+        log.info("broker %s connected, listening for the node's alerts and peers' lines", broker)
+
+    c.on_connect, c.on_message = on_connect, on_mqtt
     c.connect(host, int(bport or 1883), keepalive=60)
-    c.subscribe([(f"{root_topic}/2/json/mqtt/", 0), ("fabcity/+/text", 0), ("fabcity/+/alerts", 0)])
     c.loop_start()
     # Names: the gateway's own nodeinfo never comes up its USB, and a sensor's comes every three hours. So say the
     # names this radio already holds for itself and the fleet's radios, once, at start (node #1, 20 Oct 2026).
@@ -815,8 +825,8 @@ def doctor(port: Optional[str]) -> int:
     except ImportError:
         chk(False, "paho-mqtt on the host", "python3 -m pip install --user paho-mqtt")
     chk(FLEET_PATH.exists(), f"fleet file {FLEET_PATH.relative_to(ROOT)}", "planetai radio init")
-    chk(bool(envget("MQTT_PASS")), "broker credentials in .env", "planetai meshtastic  (creates the broker and its user)")
-    chk("mqtt" in envget("COMPOSE_PROFILES"), "mqtt compose profile on", "planetai meshtastic")
+    chk(bool(envget("MQTT_PASS")), "broker credentials in .env", "planetai meshtastic --broker  (creates the broker and its user)")
+    chk("mqtt" in envget("COMPOSE_PROFILES"), "mqtt compose profile on", "planetai meshtastic --broker")
     if FLEET_PATH.exists():
         f = load_fleet()
         city = envget("NODE_CITY")
@@ -826,13 +836,31 @@ def doctor(port: Optional[str]) -> int:
             chk(bool(slot) and slot in slots_inside(f["region"], band, f.get("preset", "LONG_FAST")),
                 f"frequency slot inside {city}'s allocation {band[0]}–{band[1]} MHz",
                 "planetai radio init --slot N   (then re-provision every radio: the URL changed)")
-    if port:
+    if port and port == gateway_port():
+        # the service holds the port (meshtastic opens it exclusive), so opening it here could only fail
+        print(f"  --  {port} is the gateway's, and its service holds the port. How it is doing: "
+              + ("out/radio.log" if sys.platform == "darwin" else "journalctl --user -u planetai-radio"))
+    elif port and FLEET_PATH.exists():
+        # read back over a new connection and compared with the profile the fleet says this radio has, as provision does.
+        # Grepping `--info` passed a Tracker whose air-quality telemetry was off (node #1, 24 Nov 2026).
         try:
-            info = run_cli(port, "--info", timeout=60)
-            chk('"region": "UNSET"' not in info and "region: 0" not in info, "radio has a region", "a radio with region unset never transmits and nothing tells you")
-            chk('"name": "planetai"' in info, "radio is on the planetai channel", "planetai radio provision …")
-        except SystemExit as e:
-            chk(False, f"radio answers on {port}", str(e).splitlines()[-1] if str(e) else "")
+            snap = read_radio(port)
+        except (Exception, SystemExit) as e:  # noqa: BLE001
+            chk(False, f"radio answers on {port}", (str(e).splitlines() or [type(e).__name__])[-1])
+        else:
+            r = next((x for x in f.get("radios", []) if snap["id"] and x.get("id") == snap["id"]), None)
+            chk(bool(r), f"radio {snap['id']} is in this node's fleet", f'planetai radio provision <role> "<name>" <SHORT> --port {port}')
+            if r:
+                pin = snap["config"].get("position", {}).get("fixedPosition") and snap.get("lat_i") is not None
+                fixed = (snap["lat_i"] / 1e7, snap["lon_i"] / 1e7, snap.get("alt") or 0) if pin else None
+                profiles = load_profiles()
+                prof = render_profile(r["role"], r["name"], r["short"], f, profiles,
+                                      node_broker() if r["role"] == "gateway-wifi" else None, fixed=fixed)
+                problems = differences(prof, f, snap, bool(profiles[r["role"]].get("_gateway")))
+                again = f'planetai radio provision {r["role"]} "{r["name"]}" {r["short"]} --port {port}' + (
+                    f" --fixed={fixed[0]},{fixed[1]}" if fixed else "")
+                chk(not problems, f"{r['name']} holds its {r['role']} profile, read over a new connection",
+                    "\n        ".join(problems + [again]))
     print(f"\n{bad} problem(s)" if bad else "\nnothing wrong that this can see")
     return 1 if bad else 0
 
@@ -895,7 +923,7 @@ def guide() -> int:
                   f"python3 -m pip install --user {pins}meshtastic paho-mqtt"))
     broker = bool(envget("MQTT_PASS")) and "mqtt" in envget("COMPOSE_PROFILES")
     steps.append((broker, "The broker", "the node's MQTT broker, where the gateway delivers what the radios hear",
-                  "planetai meshtastic"))
+                  "planetai meshtastic --broker"))
     if fleet:
         f = fleet
         where = f"region {f['region']}, slot {f.get('slot') or 'by channel name'}" + (
@@ -931,6 +959,8 @@ def guide() -> int:
                   "      (more than one radio is plugged in: pick its port from the list above)")
     else:
         print("\nEvery step is done. Phones join with  planetai radio url ; check a radio with  planetai radio doctor --port <port>")
+        if envget("MESH_ALERTS", "0") != "1":   # off by default, and only the old WiFi wizard used to say so (24 Nov 2026)
+            print("Alerts go out to the radios only once you turn them on:  planetai config set MESH_ALERTS 1  (or Set up › Alerts)")
     print("Step by step, with what you should see: docs/MESHTASTIC.md")
     return 0
 
@@ -1000,7 +1030,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         f, profiles = load_fleet(), load_profiles()
         mqtt = {"address": a.mqtt[0], "username": a.mqtt[1], "password": a.mqtt[2]} if a.mqtt else None
         if a.role == "gateway-wifi" and not mqtt:
-            mqtt = {"address": f"{lan_ip() or '<node LAN ip>'}:1883", "username": envget("MQTT_USER", "planetai"), "password": envget("MQTT_PASS")}
+            mqtt = node_broker()
         wifi = tuple(a.wifi.split(":", 1)) if a.wifi else None
         fixed = None
         if a.fixed:
@@ -1036,7 +1066,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             main_conf = MOSQ_DIR / "mosquitto.conf"
             if main_conf.exists() and "include_dir" not in main_conf.read_text():
                 main_conf.write_text(main_conf.read_text().rstrip("\n") + "\ninclude_dir /mosquitto/config/bridges\n")
-            print(f">> wrote {d / 'peers.conf'} (a credential: gitignore config/mosquitto/bridges/); restart the broker:  planetai restart")
+            # `planetai restart` recreates only the app, so the broker never read the bridges (24 Nov 2026)
+            print(f">> wrote {d / 'peers.conf'}. The broker reads it when it restarts:  cd {ROOT} && docker compose restart mosquitto")
         else:
             print(conf)
         return 0
