@@ -157,7 +157,15 @@ envset() { # idempotent upsert
   else echo "${k}=${v}" >> .env; fi
 }
 port() { local p; p="$(envget APP_PORT)"; echo "${p:-8080}"; }
-mesh_packets() { api /health | json 'print(d.get("mesh",{}).get("packets",0))' 2>/dev/null || echo 0; }
+# /health counts packets since the app started, and an update restarts the app, so the doctor at the end of every
+# update read ✗ on a gateway that had uplinked 200 a minute before (node #1, 24 Nov 2026). Until a new packet
+# comes, the last hour's mesh readings in the database answer for it.
+mesh_packets() {
+  local n; n="$(api /health | json 'print(d.get("mesh",{}).get("packets",0))' 2>/dev/null)"
+  [[ "${n:-0}" -gt 0 ]] && { echo "$n"; return; }
+  n="$(docker compose exec -T db psql -tAqU planetai -c "SELECT count(*) FROM readings r JOIN sensors s USING (sensor_id) WHERE s.source='meshtastic' AND r.ts > now() - interval '1 hour'" planetai </dev/null 2>/dev/null | tr -d '[:space:]')"
+  echo "${n:-0}"
+}
 # The CLI runs on the node's own machine, but the container sees the Docker bridge gateway, not loopback, so
 # SHARE_LEVEL judges it like any LAN client and at the default (`off`) refuses everything but /health. The
 # node's own command line carries the node's own token; that is what it is for.
