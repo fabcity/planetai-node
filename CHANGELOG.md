@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **`planetai update` restarts the LoRa gateway.** The gateway runs on the node's own machine, outside the containers,
+  because macOS cannot hand a USB radio to a container. An update rebuilt the containers and never touched it, so a
+  gateway kept running the radio code it started with: node #1's ran from 25 Oct to 24 Nov while that code changed
+  under it. Where `planetai radio gateway --install` set it up as a service, an update now restarts it. A node with no
+  gateway sees nothing new.
+
 - **24 Nov: the radio gateway keeps hearing the node after the broker restarts.** The gateway on the node's USB
   subscribed to the node's alerts once, at start. After a broker restart it went on carrying readings in and never
   sent an alert out again, and its log said nothing. It now subscribes each time it connects. `planetai radio doctor
