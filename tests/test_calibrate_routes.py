@@ -41,10 +41,11 @@ def sensor(sid, source="own", dm=0.0, lat=-8.8, indoor=False, meta=None):
 DB = {"a": sensor("a"), "b": sensor("b", dm=30), "far": sensor("far", dm=812), "nocoord": sensor("nocoord", lat=None),
       "st": sensor("st", source="baliairdispatch", dm=20, meta={"network": "AQICN", "official": True, "from_index": True}),
       "mute": sensor("mute", source="mute", dm=10), "c": sensor("c", dm=500), "d": sensor("d", dm=520),
-      "lst": sensor("lst", dm=25, meta=["not", "a", "dict"])}
+      "lst": sensor("lst", dm=25, meta=["not", "a", "dict"]),
+      "r1": sensor("r1", dm=900, indoor=True), "r2": sensor("r2", dm=910, indoor=True)}   # two rooms, 10 m apart
 ROLE = [{"source": s, "metric": "pm25", "unit": "µg/m³"} for s in ("own", "baliairdispatch")] + [{"source": "own", "metric": "humidity", "unit": "%"}]
-STATS = [{"sensor_id": i, "source": "own", "name": i.upper(), "lat": DB[i]["lat"], "lon": DB[i]["lon"], "indoor": False,
-          "metric": m} for i in ("a", "b", "c", "d") for m in ("humidity", "pm25")]   # humidity sorts first
+STATS = [{"sensor_id": i, "source": "own", "name": i.upper(), "lat": DB[i]["lat"], "lon": DB[i]["lon"], "indoor": DB[i]["indoor"],
+          "metric": m} for i in ("a", "b", "c", "d", "r1", "r2") for m in ("humidity", "pm25")]   # humidity sorts first
 X = lambda h: 5 + (h * 7) % 11                   # noqa: E731  a sensor that moves, so a line can be fitted
 HOURS = [NOW - timedelta(hours=h) for h in range(1, 30 * 24)]
 
@@ -109,6 +110,7 @@ assert row["checked"]["corrected"] == 0.0 and row["checked"]["measured"] > 0 and
 assert row["hour"] and row["last_paired"] and j["could"] == [{"a": {"id": "c", "name": "C"}, "b": {"id": "d", "name": "D"},
                                                               "metric": "pm25", "metres": 20}], j["could"]
 assert j["could"][0]["metric"] == "pm25", "pm25 before humidity, which sorts first"
+assert not [x for x in j["could"] if "r1" in (x["a"]["id"], x["b"]["id"])], "two rooms are never suggested: position cannot tell rooms apart"
 print("  one good pair: the line, the checks, the corrected number, and one pair that could be named (c and d, not a and b)")
 
 # ---- the hours read stop at the start of the current hour, whatever `until` says

@@ -66,7 +66,8 @@ def _could(roles, station_sources, taken):
             a, b = seen[x][0], seen[y][0]
             m = _metres(a, b)
             both = sorted({r["metric"] for r in seen[x]} & {r["metric"] for r in seen[y]})
-            if both and bool(a["indoor"]) == bool(b["indoor"]) and m <= core.MAX_METRES and frozenset((x, y)) not in taken:
+            # outdoors only: 40 m indoors is another room, and a position cannot tell rooms apart (node #1, 24 Nov 2026)
+            if both and not a["indoor"] and not b["indoor"] and m <= core.MAX_METRES and frozenset((x, y)) not in taken:
                 # ponytail: pm25 first because it is the only metric this was measured on; a list per pair if that changes
                 metric = "pm25" if "pm25" in both else both[0]
                 out.append({"a": {"id": x, "name": a["name"]}, "b": {"id": y, "name": b["name"]}, "metric": metric, "metres": round(m)})

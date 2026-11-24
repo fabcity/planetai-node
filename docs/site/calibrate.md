@@ -28,8 +28,10 @@ CALIBRATE_PAIRS=sc-19874 sc-19236 pm25 2026-08-30
 The one to correct always comes first. Use the row ids the node shows, since a kit that is both forwarded and polled
 is two rows, and you choose which one you mean. Before you name a pair, find two sensors close together by their
 distance from the node in Readings. Once one pair is named, the Corrections section also suggests any two of your
-sensors within 50 m of each other, both indoors or both outdoors, that share a metric, with the text to paste ("You
-could name: … Write the one to correct first"). Replace its last part with the day you put the two together.
+outdoor sensors within 50 m of each other that share a metric, with the text to paste ("You could name: … Write the
+one to correct first"). Replace its last part with the day you put the two together. It never suggests two indoor
+sensors, because 40 m indoors is another room and the node cannot tell rooms apart by position. Two sensors side by
+side in one room can still be named by hand.
 
 `since` is required because the node keeps no history of where a sensor stood. Two sensors that both reported for
 months from different rooms would otherwise be fitted on hours when they were apart. If you move a sensor and tell the
