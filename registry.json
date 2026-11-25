@@ -1,5 +1,6 @@
 {
   "_": "PLANETAI node directory. Adding a node = a pull request. This file is the registry until there are too many nodes for a file.",
+  "inbox": "1b4f76404c56eba4864090aa33a28f35",
   "nodes": [
     {
       "name": "bayu-ungasan",

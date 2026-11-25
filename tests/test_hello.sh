@@ -13,6 +13,9 @@ cp "$REPO/bin/planetai" "$D/node/bin/planetai"
 cat > "$D/stub/curl" <<S
 #!/bin/sh
 case "\$*" in
+  *4243/health*) [ -e "$D/bridge" ] && printf '{"ok": true, "address": "%s"}' "\$(cat "$D/bridge")" || exit 7;;
+  *4243/hello*) cat > "$D/hellosent"; cat "$D/answer";;
+  *4243/inbox*) cat "$D/inbox";;
   */registry.json*) [ -e "$D/listed" ] && cat "$D/listed" || echo '{"nodes": []}';;
   */sensors*) echo '[{"sensor_id": "sck-1", "source": "smartcitizen"}, {"sensor_id": "om", "source": "open-meteo"}, {"sensor_id": "sck-2", "source": "smartcitizen"}]';;
   */ground/meta*) echo '{"on_disk": {"vector": true, "drone": false, "imagery": true}}';;
@@ -92,6 +95,42 @@ out="$(run "" "" "new@x.es" n)"
 # #367 was titled "list bayu-ungasan" for a node listed since September, and read as a new node
 out="$(run "" "" "new@x.es" y)"
 grep -q "registry: update mahon1" "$D/pr" 2>/dev/null && ok "a listed node's pull request says update, not list" || bad "a listed node's title: $(cat "$D/pr" 2>/dev/null) $out"
+
+# step 4 (docs/SPEC_hub.md §9): with this node's bridge up and an inbox on the list, hello goes over Reticulum and gh is
+# not asked; on the inbox's own node, --inbox lists what arrived and opens the pull request for the one the keeper picks
+rm -rf "$D/pr" "$D/fork.git"; rm -f "$D/key"
+echo '{"inbox": "1b4f76404c56eba4864090aa33a28f35", "nodes": []}' > "$D/listed"
+echo aaaa1111aaaa1111aaaa1111aaaa1111 > "$D/bridge"
+echo '{"sent": true, "answer": "received: a person reads it before it is listed"}' > "$D/answer"
+out="$(run "Mahon, Menorca, ES" "Lucas" "" n)"
+[[ ! -e "$D/hellosent" && ! -e "$D/pr" ]] && ok "over Reticulum too, a no sends nothing" || bad "a no sent something: $out"
+out="$(run "Mahon, Menorca, ES" "Lucas" "" y)"
+[[ "$out" == *"the inbox answered: received: a person reads it before it is listed"* && ! -e "$D/pr" && ! -d "$D/fork.git" ]] \
+  && ok "a yes sends the entry to the inbox over Reticulum, and gh is not asked" || bad "not sent over Reticulum: $out"
+python3 -c '
+import json, sys
+b = json.load(open(sys.argv[1]))
+assert b["inbox"] == "1b4f76404c56eba4864090aa33a28f35" and b["entry"]["name"] == "mahon1" and b["entry"]["operator"] == "Lucas", b
+' "$D/hellosent" && ok "the bridge is handed the inbox and the entry as it was shown" || bad "the bridge got the wrong hello: $(cat "$D/hellosent" 2>/dev/null)"
+echo '{"sent": false, "answer": null}' > "$D/answer"; rm -f "$D/hellosent"
+out="$(run "Mahon, Menorca, ES" "Lucas" "" y)"
+[[ "$out" == *"no way to the inbox yet"* && ! -e "$D/pr" ]] && ok "a bridge with no way to the inbox says so, and opens no pull request" || bad "$out"
+
+runi() { PATH="$D/stub:/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin" PLANETAI_HOME="$D/node" GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@t \
+         GIT_COMMITTER_NAME=t GIT_COMMITTER_EMAIL=t@t python3 "$REPO/tests/pty_run.py" "$@" -- bash "$D/node/bin/planetai" hello --inbox 2>&1; }
+echo 1b4f76404c56eba4864090aa33a28f35 > "$D/bridge"; rm -f "$D/hellosent"
+echo '{"inbox": [{"from": "ee55ee55ee55ee55ee55ee55ee55ee55", "at": 1795560000, "entry": {"name": "oulu-1", "place": "Oulu, FI",
+  "cell": "8808a6c4a5fffff", "lat": 65.01, "lon": 25.47, "scale": "community", "operator": "Lars", "sources": ["smartcitizen"],
+  "since": "2026-11", "parent": null}}]}' > "$D/inbox"
+out="$(runi "")"
+[[ "$out" == *"oulu-1"* && "$out" == *"Oulu, FI"* && "$out" == *"not listed"* && "$out" == *"nothing sent"* && ! -e "$D/pr" ]] \
+  && ok "--inbox lists what arrived, and Enter opens nothing" || bad "--inbox listing: $out"
+out="$(runi 1 y)"
+grep -q "registry: list oulu-1" "$D/pr" 2>/dev/null && grep -q "Sent over Reticulum by oulu-1" "$D/pr" \
+  && ok "the keeper's pick opens the pull request, saying it came over Reticulum" || bad "no pull request for the pick: $(cat "$D/pr" 2>/dev/null) $out"
+git --git-dir="$D/fork.git" show "$(git --git-dir="$D/fork.git" for-each-ref --format='%(refname)' refs/heads/hello-oulu-1-*)":registry.json \
+  | python3 -c 'import json, sys; r = json.load(sys.stdin); assert [n for n in r["nodes"] if n["name"] == "oulu-1"][0]["operator"] == "Lars" and r["inbox"], r' \
+  && ok "the branch adds the entry as it arrived, and keeps the inbox" || bad "registry.json on the inbox branch is wrong"
 
 [[ "$fails" == 0 ]] || { rm -rf "$D"; exit 1; }
 rm -rf "$D"
