@@ -75,6 +75,8 @@ a{color:inherit}
 /* ---- the bar: who, where, five doors, and the one button that is not a door ---- */
 .bar{display:flex;align-items:center;gap:18px;padding:14px clamp(16px,3vw,40px);border-bottom:1px solid var(--ink);flex-wrap:wrap}
 .who{font:700 var(--t-read) var(--display);letter-spacing:-.02em}.who small{font:400 var(--t-small) var(--body);color:var(--mute);margin-left:6px}
+/* the node's kind beside its name: private or community (25 Nov 2026) */
+.who .kind{font:500 var(--t-cap) var(--mono);letter-spacing:.08em;text-transform:uppercase;border:1px solid currentColor;padding:2px 6px;margin-left:8px;vertical-align:middle;white-space:nowrap}
 .doors{display:flex;border:1px solid var(--ink)}
 .doors a{padding:5px 14px;font-size:var(--t-small);color:var(--ink);text-decoration:none;border-right:1px solid var(--ink);cursor:pointer}
 .doors a:last-child{border-right:0}.doors a.on{background:var(--ink);color:var(--ground);font-weight:600}
@@ -1444,6 +1446,7 @@ body:not(.classic) .hero .ladder.folded{display:none}
   <section id="remember" data-learn="node-remember" data-reads="/learned /learned/search /household" data-stage="measure" data-pack="core" data-kind="row" aria-label="What it remembers"></section>
   <h2>The nodes around it</h2>
   <div id="nodes" data-learn="node-around" data-reads="/nodes /health" data-pack="core"></div><div id="world" data-learn="node-globe" data-reads="/nodes /geo/planet /geo/cell" data-pack="core"></div>
+  <section id="reticulum" data-learn="node-reticulum" data-reads="/health" data-pack="core" aria-label="Reticulum"></section>
   <div class="runwrap">
     <section data-learn="node-running" data-reads="/health /machine /storage" data-pack="core"><h2>Running</h2><div id="running"></div>
       <p class="fine"><a href="#setup">Set up</a> holds this node’s settings, its packs, who may read it and this screen’s token.</p></section>

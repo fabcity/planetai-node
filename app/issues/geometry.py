@@ -21,6 +21,8 @@ import math
 
 import h3
 
+import placewords  # a community or district node does not call itself a house
+
 NAV_MIN, NAV_MAX, NAV_STEPS = 2, 12, 2
 
 
@@ -297,7 +299,7 @@ def claims(lat: float, lon: float, settings, ring: dict | None = None, footprint
                   declared=f"{rk}={settings.num(rk, 15)}", where=f"packs/{ring['pack']}/pack.yaml",
                   note="")] if rk else []),
         _own_claim(lat, lon, own_cells),
-        _claim(lat, lon, key="room", name="This house", what="the probes in this house",
+        _claim(lat, lon, key="room", name=placewords.say("This house"), what=placewords.say("the probes in this house"),
                footprint_m=pub["metres"], shape="circle", native_res=pub["res"], base_res=pub["res"],
                declared="lat and lon rounded to three decimals", where="app/main.py, GET /health",
                note="not a radius anybody chose: it is how precisely this node is willing to say where it is, and no "

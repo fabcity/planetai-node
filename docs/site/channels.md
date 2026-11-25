@@ -91,72 +91,10 @@ on [Radios](radios.md).
 
 ## Reticulum, LXMF
 
-**Read the licence before you turn it on.** The bridge installs `rns` and `lxmf`, which are under the
-[Reticulum License](https://github.com/markqvist/Reticulum/blob/1.5.4/LICENSE): MIT with two conditions, and not an
-open-source licence. You may not use them in a system that can purposefully harm people, or directly or indirectly
-in making a dataset to train an AI or machine-learning model. The node does neither. If you share the image you
-built, include that licence with it. What it means for the node is in
-[the decision record](https://github.com/fabcity/planetai-node/blob/main/docs/decisions/2026-10-23-reticulum-licence.md).
-
-The bridge has its own repository, [`fabcity/planetai-reticulum`](https://github.com/fabcity/planetai-reticulum), under Apache-2.0, so the node's own code never takes in `rns` or
-`lxmf`. It runs in its own container (compose profile `reticulum`) and gives the node an LXMF address that Sideband
-can message. It posts answers to `POST /actions` with `ACT_TOKEN`. `planetai reticulum` hands it the node's token, and
-makes one if the node has none yet. The bridge reads it when its container is created, so after you change the token
-in Set up, run `planetai reticulum` again.
-
-1. **Run `planetai reticulum`.** It downloads the bridge at the commit this release pins, builds it on this
-   machine, starts it and prints
-   `● this node's LXMF address: <address>`, then what to do in Sideband: add a TCP Client interface to this machine's LAN address on port 4242,
-   and start a conversation with the address above. A phone can now reach the node over Reticulum with no internet
-   in between. It also asks `Let other PLANETAI nodes see this node?`, and the answer you gave last time is the
-   default; `planetai setup` asks the same at the end of an install, with no as the default. Yes lets your node hear
-   other PLANETAI nodes through the Fab City hub, with nothing to open on your router, and turns presence on (below).
-   Everyone on the hub then sees your node's name, its LXMF address and its rough area, about 60 km across, and never
-   a reading, a sensor or where the house is. Yes writes a `[[Fab City hub]]` block into `config/reticulum/config`, no
-   takes it out and turns presence off, and an update never changes either. Run with no terminal, it changes nothing.
-   A node that is a hub itself, with `enable_transport = Yes`, is dialled rather than dialling, so yes only turns
-   presence on. Then the command says `dialling the Fab City hub`, `planetai doctor` checks it each time,
-   and the Node door's Running section shows it on the Radio row.
-2. **Receive alerts.** Copy your own LXMF address from Sideband's settings into Set up › Sharing › Reticulum alert
-   addresses, or run `planetai config set RETICULUM_ALERT_DESTINATIONS <hash>[,<hash>]`. The node sends the list to
-   the bridge with each alert, so the next one goes there and nothing needs restarting. Every `act` alert is
-   delivered, full text, to each address. To check, run `planetai test-alert`: Sideband shows a message from the
-   node's address titled `planetai <NODE_NAME>`, with the whole test alert. If nothing arrives, `planetai logs
-   reticulum` says `no path to <hash> yet; is that client announced and reachable?`.
-3. **Answer an alert.** Send `act 3 opened the windows`. The bridge records an `acted` row on alert #3 with the
-   actor `lxmf:<your hash>` and replies `recorded: you acted on #3`. Sent as `act 3` alone, the note is recorded as
-   `acted (via reticulum)`, because this path does not ask for words. The bridge takes an `act` only from an address
-   the node sends its alerts to, so do step 2 first. An address saved in Set up counts from the first alert the node
-   sends it. Anyone else who writes to the node gets one reply, `this node takes act only from the addresses it sends
-   alerts to`, and nothing is recorded.
-
-The bridge does not read `.env`. It receives eight variables from `docker-compose.yml`: `LOG_LEVEL`, `NODE_NAME`,
-`NODE_API_URL`, `RETICULUM_CONFIGDIR`, `RETICULUM_DATA`, `RETICULUM_ALERT_DESTINATIONS`, `RETICULUM_ANNOUNCE_S`
-and `ACT_TOKEN`. The Telegram token, the admin token and the database password stay out of a process whose job is
-to speak to a radio mesh. The transport is TCP; an RNode LoRa interface is a commented block in
-`config/reticulum/config`, copied from the bridge's `config.tpl` the first time.
-
-The hub is node #1, the Mac mini in Bali, reached through Tailscale Funnel at `fabalabbali.tail71245c.ts.net:443`.
-Funnel takes only TLS, so your bridge dials it through `openssl s_client`, which checks that the certificate is the
-hub's. A node
-whose bridge has `enable_transport = Yes` passes announces and messages on between the nodes that dial it. Running
-one is in the bridge's [README](https://github.com/fabcity/planetai-reticulum#running-a-hub), and
-[SPEC_hub](https://github.com/fabcity/planetai-node/blob/main/docs/SPEC_hub.md) says why it works this way.
-
-The Node door's "The nodes around it" lists every node yours has heard, with when and how far: "heard on the hub,
-20 min ago, about 340 km away", and "listed" beside it when the programme's list has it too. A heard node is matched to
-a listed one by the node id it announces, or by name when either side has none. On the globe it is an outline of its
-rough area, about 60 km across, and never a point, because it published no position. A heard node stays on the page:
-nothing about it reaches your cells, your alerts or the export. Anyone can announce any name, so heard does not prove
-who sent it.
-
-Presence is separate and off by default: with `RETICULUM_PRESENCE=1` the bridge announces the node's name and a
-coarse H3 cell, its version, kind and node id every half hour, at `RETICULUM_PRESENCE_RES` (3) and never finer than resolution 6, whatever the
-setting says, so an exact place never leaves. `GET /presence` is what the bridge reads to do it, and it answers at
-every sharing level for that reason.
-
-Node-to-node data over Reticulum (a district and a community node with no internet between them) is not built;
-[`SPEC.md`](spec.md) §6 says what would bring it in.
+Reticulum has its own page, [Reticulum](reticulum.md), with the steps and the checks. As a channel it works like the
+others: `planetai reticulum` gives the node an address, the node sends each `act` alert as a message to the addresses
+in Set up › Sharing › Reticulum alert addresses, and `act 3` sent back from one of them closes alert #3. With no
+internet between the phone and the node, over a LAN or a LoRa radio, it still works.
 
 ## Home Assistant
 

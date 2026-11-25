@@ -216,6 +216,15 @@ check("voice of this home's sensor node" in wall and "This time, start from" in 
       "the wall did not get WALL_SYSTEM with its rotating angle")
 check("The page's context:" in wall and not leaks(wall),
       f"the wall's system prompt lost the scrubbed context, or carries {leaks(wall)}")
+# a community or district node's Wall is not in a home (app/placewords.py, final review 25 Nov 2026)
+import re  # noqa: E402
+os.environ["NODE_KIND"] = "community"
+before = len(SCRIPT)
+local.post("/ask", json={"messages": [{"role": "user", "content": "speak"}], "view": "wall", "mode": "advanced", "prompt": "wall"})
+_cw = SCRIPT[before]["system"].split("The page's context:")[0]
+os.environ.pop("NODE_KIND", None)
+check(not re.search(r"\bhome\b|living room|\bhouse\b", _cw, re.I) and "this place" in _cw,
+      f"a community node's Wall still speaks as a home: {_cw[:200]}")
 r = local.post("/ask", json={"messages": [{"role": "user", "content": "speak"}], "view": "wall",
                              "mode": "advanced", "prompt": "wall"})
 check(r.status_code == 200 and SCRIPT[-1]["system"] != wall, "the wall's angle did not rotate between narrations")

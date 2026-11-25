@@ -57,12 +57,12 @@ async function boot() {
 }
 
 /* the node's name, then where it is: two words apart, never "bayu-ungasanbali" (audit 15 Oct, item 25) */
-const who = (name, place) => `${esc(name || 'this node')}${place ? `<small> · ${esc(place)}</small>` : ''}`;
+const who = (name, place, kind) => `${esc(name || 'this node')}<span class="kind">${nodeKind(kind)}</span>${place ? `<small> · ${esc(place)}</small>` : ''}`;
 
 function drawAll() {
   const h = D.health || {};
   document.documentElement.lang = h.locale || 'en';
-  $('#who').innerHTML = who(D.node.name || h.node, D.node.place);
+  $('#who').innerHTML = who(D.node.name || h.node, D.node.place, h.kind);
   $('#asof').textContent = `as of ${hhmm(D.as_of)}`;
   drawNow(); drawNode(h);
 }
@@ -274,7 +274,7 @@ function drawNode(h) {
 function drawRefused() {
   const h = refusedHealth || {};
   document.documentElement.lang = h.locale || 'en';
-  $('#who').innerHTML = who(h.node, h.city);
+  $('#who').innerHTML = who(h.node, h.city, h.kind);
   $('#asof').textContent = 'locked';
   for (const el of [$('#walk'), $('.down')]) if (el) el.remove();   /* nothing to walk through on a refused phone */
   const block = `<div class="refused"><p class="lede">${esc(refusedSentence || 'This node is not sharing its readings with this screen.')}</p>`

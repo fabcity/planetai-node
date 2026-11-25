@@ -1,15 +1,10 @@
 # SPEC: Place, the small GIS a place keeps about itself
 
-*Asked, 4 November 2026, by Tomas: "look at this project: https://github.com/opengeos/RustGIS, and take it as reference
-to re-design the Place tab of the planetai node to make it a hyperlocal GIS". Then, in the same conversation: "a PLACE
+*Asked, 4 November 2026, by Tomas: "re-design the Place tab of the planetai node to make it a hyperlocal GIS". Then, in the same conversation: "a PLACE
 tab for the home/individual node, runs on browser, and with basic analysis options, which I think it should include
 agent readiness and more analysis tools than now, but not as many as a local GIS (to be built in the fab lab node)";
-"more about the context and the influence of things happening outside the house, not inside the house, as I think that
-is a feature Home Assistant does better"; "I want also that the logic of this microGIS follows the work of Ian
-McHarg … I want to recover the capacity of a place to know about itself"; "it can go to light fitness, as it also
-matters for the index and the response capacity to act"; "the cake layering from McHarg is the root of thinking for
-the Fab city Full stack. We dont need to explain it in the dashboard, but makes sense in the docs … it should be
-canonical"; "this is a hyperlocal and distributed inventory with a compute and intelligence layer on top. We need to
+"more about the context and the influence of things happening outside the house, not inside the house"; "it can go to light fitness, as it also
+matters for the index and the response capacity to act"; "this is a hyperlocal and distributed inventory with a compute and intelligence layer on top. We need to
 be also able to incorporate tools for hyperlocal observation, like drone mapping, microscopy, cameras, soil sampling,
 and other data that it is not trivial". Tomas approved the design described here: "all good, lets go". On reading the
 first draft: "we should add artificial observations as part of nature, meaning: roads, built environment, they have an
@@ -37,7 +32,7 @@ Place. (The 416 m is wrong somewhere on its own account. That gets checked separ
 
 **Goals**
 
-- The inventory: the place's layers, ordered as McHarg's layer cake (§3), each saying what the node holds, holds in part,
+- The inventory: the place's layers, ordered as a layer cake (§3), each saying what the node holds, holds in part,
   or does not hold yet.
 - Interactions: the analyses in SPEC_place_analyses (kept privately in planetai-design, node-docs/specs/): sun and
   shade, trees 3-30-300, built form, street structure, plus sealed ground, rings and distance, walk to, what changed
@@ -55,7 +50,7 @@ Place. (The 416 m is wrong somewhere on its own account. That gets checked separ
   free-form weighted overlay. Those belong to the fab lab node (SPEC_fablab). Place has one fixed sheet to print
   (SPEC_place_report, 11 November 2026).
 - Editing the map's geometry. Observations add points and areas; the base maps stay what their sources publish.
-- Explaining McHarg on the page. The method lives in the docs (§10).
+- Explaining the method on the page (§10).
 
 **Anti-goals: it fails if any of these happen, even when it works**
 
@@ -67,24 +62,22 @@ Place. (The 416 m is wrong somewhere on its own account. That gets checked separ
 
 ## 3 · The method: inventory, interaction, light fitness
 
-Ian McHarg's *Design with Nature* (1969) built the inventory as a layer cake. Each layer is a part of the natural and
-human environment, stacked in order of cause and time, so each is partly explained by the ones under it. The order in
-his diagram (reproduced as Fig. 1 in Cohen 2019, from McHarg 1996a p. 258) runs from groundwater hydrology and bedrock
-geology at the bottom, up through surficial geology, physiography, surface hydrology, soils, plants, animals and people,
-to microclimate, mesoclimate and macroclimate. McHarg cared less about each layer than about how they interact.
-Fitness, the second step, reads the overlay for a given human use: where the "intrinsic opportunities and constraints"
-favour it, and where it would do least harm.
+Place works in three steps: **inventory → interaction → light fitness**.
 
-Place follows the same three steps: **inventory → interaction → light fitness**.
+The inventory is a layer cake. Each layer is a part of the natural and human environment, stacked in order of cause and
+time, so each is partly explained by the ones under it. From the bottom: groundwater and bedrock, surface geology,
+landform, surface water, soils, plants, animals and people, then microclimate, mesoclimate and macroclimate. How the
+layers interact matters more than any single layer. Fitness, the last step, reads the overlay for a given human use:
+where the opportunities and constraints favour it, and where it would do least harm.
 
-**What is new here.** McHarg's inventory was regional or national, mapped once, from above, by experts. In 1973 he
-proposed a national one. This one is hyperlocal and distributed. Each node holds the cake for its own cells, inventories join upward
-through the tiers already designed (home → community → pilot → Index), and the compute and intelligence sit on top
-of each node: the node's geometry routes, its models and the Ask agent read how layers interact and answer fitness
-questions on the node itself.
+**What is new here.** An inventory like this is usually regional or national, mapped once, from above, by experts. This
+one is hyperlocal and distributed. Each node holds the cake for its own cells, inventories join upward through the tiers
+already designed (home → community → pilot → Index), and the compute and intelligence sit on top of each node: the
+node's geometry routes, its models and the Ask agent read how layers interact and answer fitness questions on the node
+itself.
 
-**Microclimate is the layer the node measures.** McHarg had to estimate the top of the cake. The outdoor kit, the
-public stations and the forecast read it every few minutes.
+**Microclimate is the layer the node measures.** A map made from above has to estimate the top of the cake. The outdoor
+kit, the public stations and the forecast read it every few minutes.
 
 **Every layer has three sources.** Open archives seen from above, sensors reading continuously, and people with
 instruments (§7). Observation is how a place gets to know itself cell by cell: a soil sample at a corner means
@@ -145,7 +138,7 @@ the icon, and fold back to icons under 760 px of screen. The keys, their order a
 ## 5 · The cake
 
 The left column, from top to bottom: results, then the cake from the sky down to the ground, then the frame. The order
-on screen is McHarg's turned upside down, so the layer the household lives in comes first. Each row says its source and
+on screen is the method's order turned upside down, so the layer the household lives in comes first. Each row says its source and
 count. A row the node cannot fill yet stays, with the dotted mark: the place says what it does not know.
 
 **The cake speaks the flows vocabulary.** Every layer names the classes of `fabcity-flows` 1.0 (the Fab City profile of
@@ -156,8 +149,7 @@ is `plant` on the map, in a fitness answer and in the line a household logs when
 
 **The built environment is part of the cake.** Roads, buildings, walls and paved ground are observed like any other
 layer, because they act on the natural flows: buildings cast shade and turn the wind, roofs and roads shed water and
-send it along the street, sealed ground stops plants and soil. McHarg had a layer for people, and this one holds what
-people built. In the flows vocabulary a building is a stock, not a flow: it is what earlier flows left behind, as
+send it along the street, sealed ground stops plants and soil. This layer holds what people built. In the flows vocabulary a building is a stock, not a flow: it is what earlier flows left behind, as
 SPEC_inventory says of a thing on a shelf. Its materials fall in the EW-MFA bins the profile already tags. Its effects
 on the other layers are interactions (§6).
 
@@ -174,7 +166,7 @@ on the other layers are interactions (§6).
 | ground | terrain (GLO-30), geology | — | land system | model / not yet |
 | frame | this cell, the grid by zoom; base: street map, satellite 2025, drone mosaic | — | — | — |
 
-The flows row sits beside the built one, where McHarg put people: the place's own economy, counted the way the flows
+The flows row sits beside the built one: the place's own economy, counted the way the flows
 log counts it. Rings show as the profile defines them (cell, city, region, beyond), so physical things from `beyond`
 read as products in (PITO) and things made in the cell as DIDO.
 
@@ -292,19 +284,10 @@ Tomas: light fitness "matters for the index and the response capacity to act". A
 can act on, and a decision is what Now already handles. How a fitness result reaches the Index is left open here (§13).
 It could count as an action taken, or as a capacity the place has.
 
-## 10 · Where McHarg is written
+## 10 · Where the method is explained
 
-Tomas ruled on 4 November 2026 that McHarg's layer cake is the root of thinking for the Fab City Full Stack, and is
-canonical in docs and research, but never explained on the dashboard.
-
-- **On the dashboard:** the cake's order, with no explanation.
-- **In the node docs:** a page on how Place reads the ground (inventory, interaction, light fitness, observation),
-  citing McHarg 1969 and Cohen 2019. A new docs page also needs the site repo (NAV and `docsPages`).
-- **In the concept canon** (per CANONICAL.md, the Core Ideas Paper source in fabcity/planetai): a short passage tracing the
-  Full Stack back to the layer cake. It changes the concept canon, so it ships only with Tomas's yes and in his own words.
-
-Source: Cohen, W. J. (2019). The legacy of *Design with Nature*: from practice to education. *Socio-Ecological
-Practice Research* 1:339–345. https://doi.org/10.1007/s42532-019-00026-2
+The dashboard shows the cake's order and says nothing about it. The node docs say what each layer holds and where it
+comes from (`docs/site/place.md`); they don't explain why the layers sit in that order.
 
 ## 11 · What exists and is reused
 

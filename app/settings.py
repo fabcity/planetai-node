@@ -43,7 +43,7 @@ RUNTIME = {
                            "name nothing declares is ignored with a line in the log; blank means every issue there "
                            "is, in the packs' own order. Your preset guessed for this place \u2014 change it: what "
                            "matters here is decided by the people who live here, not by which pack was written first."),
-    "NODE_KIND":          ("basics", "Kind", False, False, "home | business | community | district."),
+    "NODE_KIND":          ("basics", "Kind", False, False, "home | business | community | district. The page says Private node for the first two, Community node for the others."),
     "ALERT_LOCALE":       ("basics", "Alert language", False, False, "en, id or es. The alert rules, the reports, the test alert and the bot's own replies; the dashboard and the terminal stay in English. Anything else falls back to English."),
     "UI_MODE":            ("basics", "How much of the page is shown", False, False,
                            "simple = one sentence per stage, written by this node, and nothing else: for a phone, "

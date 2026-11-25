@@ -226,7 +226,7 @@ MARKS = [
      "The counts here are GET /sources, read the first time somebody opens Network: what the pinned "
      "registry lists for this place, how many entries have code on this node, and the places to make "
      "things and the designs to build. `planetai sources` prints the same list."),
-    ("presence", "A coarse cell, and never finer", "channels.md", "Reticulum, LXMF",
+    ("presence", "A coarse cell, and never finer", "reticulum.md", "Presence",
      "Presence is separate and off by default", "so an exact place never leaves.",
      "The cell drawn here is the one this node would announce, and its area is the whole of what a "
      "stranger on the radio learns. GET /presence answers with enabled false until "
@@ -376,6 +376,10 @@ MARKS = [
      "the nodes listed and heard by radio", "third of the screen high",
      "Each listed node lights its own coarse cell on the planet's grid, with a line from this node to "
      "every other node that has a point."),
+    ("node-reticulum", "Reticulum", "reticulum.md", "What it does on a node today",
+     "**An address.**", "Reticulum alert\n  addresses.",
+     "The address to write to from Sideband, whether this node dials the Fab City hub, how many nodes it hears, "
+     "where its alerts go and what it answers. All of it is read from GET /health's reticulum."),
     ("node-running", "Running", "dashboard.md", "Node",
      "the version and schema, how long since the restart", "and the mesh in the house",
      "The version, the uptime and the readings since the last restart, then the processor, memory and "
@@ -677,6 +681,9 @@ QUESTIONS = {
     'node-globe': {"en": ['Where are the other nodes in the world?', 'Why is our place shown as such a big cell?'],
         "id": ['Di mana saja node lain di dunia?', 'Mengapa tempat kami ditampilkan sebagai sel yang begitu besar?'],
         "es": ['¿Dónde están los otros nodos en el mundo?', '¿Por qué nuestro lugar aparece como una celda tan grande?']},
+    'node-reticulum': {"en": ['How do I get this node’s alerts on my phone?', 'Which nodes can hear this one?'],
+        "id": ['Bagaimana saya menerima peringatan node ini di ponsel?', 'Node mana yang bisa mendengar node ini?'],
+        "es": ['¿Cómo recibo las alertas de este nodo en el teléfono?', '¿Qué nodos pueden oír a este?']},
     'node-running': {"en": ['How long will the disk last?', 'Is the machine working too hard?'],
         "id": ['Berapa lama lagi ruang disk-nya cukup?', 'Apakah mesinnya bekerja terlalu berat?'],
         "es": ['¿Cuánto le queda al disco?', '¿La máquina está trabajando al límite?']},

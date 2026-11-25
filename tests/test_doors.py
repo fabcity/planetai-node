@@ -797,9 +797,10 @@ class El {
   get outerHTML() { return `<${this.tagName}${Object.entries(this.a).map(([k, v]) => ` ${k}="${v}"`).join('')}>${this.textContent}${this.kids.map(c => c.outerHTML).join('')}</${this.tagName}>`; }
 }
 const els = {}, ctx = { D: L.buildD({ ...F, days: F.issues_days }, 'en'), d3, document: doc, getComputedStyle: () => ({ color: '#000' }),
-  doorsLocal: L.doorsLocal, DOORS_TOKEN: () => '', VIEWS: {}, $: q => (els[q] ||= {}), out: {} };
+  doorsLocal: L.doorsLocal, DOORS_TOKEN: () => '', VIEWS: {}, $: q => (els[q] ||= {}), out: {},
+  houseless: require('./app/static/doors-wallmap.js').houseless, notHouse: require('./app/static/doors-wallmap.js').notHouse };
 vm.createContext(ctx);
-vm.runInContext(['esc', 'WD', 'loc', 'dayOf', 'dLabel', 'fmt', 'lineLab', 'plain', 'NODE', 'sign', 'PROV', 'prov', 'said', 'num', 'unitOf', 'labelOf',
+vm.runInContext(['esc', 'asHouse', 'WD', 'loc', 'dayOf', 'dLabel', 'fmt', 'lineLab', 'plain', 'NODE', 'sign', 'PROV', 'prov', 'said', 'num', 'unitOf', 'labelOf',
   'ISSUES_DRAWN', 'val'].map(pick).join('\n') + '\n' + fs.readFileSync('./app/static/doors-fig.js', 'utf8') + '\n' + fs.readFileSync('./app/static/doors-data.js', 'utf8')
   + `\nD.dates = [...new Set(D.buckets.map(dayOf))]; D.at = {}; D.buckets.forEach((b, i) => { D.at[dayOf(b) + '|' + hourOf(b)] = i; });
    D.now = D.buckets.length - 1; D.sens = Object.fromEntries(D.sensors.map(s => [s.sensor_id, s]));   /* doors-core.js's boot, line for line */
@@ -951,7 +952,7 @@ assert "<table" not in pp["spLocked"] and "#setup/screen" in pp["spLocked"], pp[
 print("doors: the species confirmed here are a table below the map; without the token one line says where to unlock")
 _f = pp["flat"]
 assert "<svg" in _f["map"] and 'class="house"' in _f["map"] and "This house" not in _f["map"] and "no WebGL" in _f["map"], _f["map"][:300]
-# the cake: every section in McHarg's order turned over, a row per layer, the not-yet rows dotted and disabled
+# the cake: every section in the cake's order turned over, a row per layer, the not-yet rows dotted and disabled
 _ck = _f["cake"]
 assert [m for m in re.findall(r'data-cake="([a-z]+)"', _ck)] == ["results", "microclimate", "flows", "built", "animals", "plants", "soil", "water", "ground", "frame"], _ck[:300]
 assert re.search(r'data-l="terrain"><button class="ly soon" aria-pressed="false" aria-disabled="true" title="Terrain · GLO-30 · not yet">', _ck), "a row the node cannot fill stays, dotted, with its source"
@@ -992,10 +993,11 @@ const core = fs.readFileSync('./app/static/doors-core.js', 'utf8'), pick = n => 
 const els = {}, mk = id => ({ id, innerHTML: '', hidden: false, classList: { add() {}, remove() {}, toggle() {} }, querySelectorAll: () => [], querySelector: () => null, scrollIntoView() {} });
 const ctx = { D: L.buildD({ ...F, days: F.issues_days }, 'en'), buildD: L.buildD, F, d3, doorsLocal: L.doorsLocal, VIEWS: {}, setTimeout: f => f(), CSS: { escape: x => x },
   $: q => (els[q.slice(1)] ||= mk(q.slice(1))), document: { getElementById: id => (els[id] ||= mk(id)), querySelector: () => null, querySelectorAll: () => [] },
-  location: { hash: '', replace(h) { this.replaced = h; } }, tok: '', out: {} };
+  location: { hash: '', replace(h) { this.replaced = h; } }, tok: '', out: {},
+  houseless: require('./app/static/doors-wallmap.js').houseless, notHouse: require('./app/static/doors-wallmap.js').notHouse };
 ctx.DOORS_TOKEN = () => ctx.tok;
 vm.createContext(ctx);
-vm.runInContext(['esc', 'WD', 'loc', 'dayOf', 'dLabel', 'wdhm', 'fmt', 'lineLab', 'plain', 'NODE', 'sign', 'PROV', 'prov', 'said', 'num', 'unitOf', 'labelOf',
+vm.runInContext(['esc', 'asHouse', 'WD', 'loc', 'dayOf', 'dLabel', 'wdhm', 'fmt', 'lineLab', 'plain', 'NODE', 'sign', 'PROV', 'prov', 'said', 'num', 'unitOf', 'labelOf',
   'UNLOCK_AT', 'ISSUES_DRAWN'].map(pick).join('\n') + '\n' + fs.readFileSync('./app/static/doors-data.js', 'utf8')
   + `\nD.dates = [...new Set(D.buckets.map(dayOf))]; D.now = D.buckets.length - 1; D.sens = Object.fromEntries(D.sensors.map(s => [s.sensor_id, s]));
    const calls = [], spy = n => { globalThis[n] = () => calls.push(n); };
@@ -1140,7 +1142,7 @@ print("doors: the Wall counts no answers to alerts, in words or rings")
 assert re.search(r'<header class="bar"[^>]*>.*id="relnote" href="#setup/updates"[^>]*hidden.*</header>', html, re.S)
 assert "$('#relnote').hidden = !rel.newer" in js
 print("doors: a newer release shows in the bar, and only then")
-# the Place cake (SPEC_place_microgis §5): the layers in McHarg's order turned over, sky first, and no indoor sensor outside
+# the Place cake (SPEC_place_microgis §5): the layers in the cake's order turned over, sky first, and no indoor sensor outside
 cake = subprocess.run(["node", "-e", """
 const K = require('./app/static/doors-cake.js');
 const L = [{id:'own', cake:'microclimate', name:'Outdoor kit'}, {id:'soil1', cake:'soil', name:'SoilGrids', soon:true},
@@ -1156,7 +1158,7 @@ assert [r["state"] for r in sec["soil"]["rows"]] == ["soon"]
 assert [r["state"] for r in sec["frame"]["rows"]] == ["off"]
 assert sec["water"]["rows"] == [] and sec["water"]["classes"] == ["water"] and sec["water"]["ceiling"] == "freshwater"
 assert C["out"] == ["b", "c"], C["out"]
-print("  place: the cake in McHarg's order, sky first; nothing indoor")
+print("  place: the cake in its order, sky first; nothing indoor")
 
 # the Place door redrawn (SPEC_place_microgis §4): the cake left, a black screen, the tools right, a lower band
 pm = (STATIC / "doors-placemap.js").read_text(); pl = (STATIC / "doors-place.js").read_text()

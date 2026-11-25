@@ -463,7 +463,7 @@ async def ask(body: AskBody, request: Request):
         angles = wall_angles(ctx)
         angle = angles[WALL_NARR_TURN % len(angles)]
         WALL_NARR_TURN += 1
-        system = (agent_loop.WALL_SYSTEM + f" This time, start from {angle}."
+        system = (agent_loop.wall_system() + f" This time, start from {angle}."
                   + f"\n\nThe page's context:\n{_json(ctx)}")
     else:
         ctx = scrub.value(context(doc, loc, body.view, body.mode, body.focus, learn, os.getenv("NODE_VERSION", "")))

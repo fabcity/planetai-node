@@ -39,7 +39,7 @@ VIEWS.node = function () {
   const kept = doorsFetch('/storage').then(x => x.ok ? x.json() : null).catch(() => null),
     offers = fetch('/offers').then(x => x.ok ? x.json() : null).catch(() => null);
   doorsFetch('/health/sources').then(r => (r.ok ? r.json() : null)).catch(() => null).then(src => { const el = $('#verdict'); if (src && el) el.innerHTML = say(src); });
-  flow(kept, offers); cellsBlock(); around(); running(kept); remember();
+  flow(kept, offers); cellsBlock(); around(); reticulumBlock(); running(kept); remember();
   /* #node/<id> (a refusal's proof) scrolls to that part once it is drawn; #node/remember is remember()'s own */
   const at = location.hash.slice(1).split('/')[1];
   if (at && at !== 'remember') setTimeout(() => { const t = document.getElementById(at); if (t) t.scrollIntoView({ block: 'start' }); }, 60);
@@ -171,26 +171,33 @@ function flowLayout(W, nIn, nOut) {
 }
 async function flow(kept, offers) {
   const [F, St, Of] = await Promise.all([flowData(), kept, offers]), el = $('#flow'), W = el.clientWidth || 900, narrow = W < 700;
-  const grp = id => id.startsWith('msh') ? 'mesh' : (D.sensors.find(s => s.sensor_id === id) || {}).kind === 'model' ? 'models' : (D.sensors.find(s => s.sensor_id === id) || {}).local ? 'house' : 'public';
-  const n24 = { house: null, public: null, models: null, mesh: null }; for (const [id, n] of Object.entries(F.counts)) n24[grp(id)] = (n24[grp(id)] || 0) + d3.sum(n);
+  const kindOf = id => (D.sensors.find(s => s.sensor_id === id) || {}), grp = id => id.startsWith('msh') ? 'mesh' : kindOf(id).kind === 'model' ? 'models'
+    : kindOf(id).kind === 'child' ? 'senders' : kindOf(id).local ? 'house' : 'public';
+  const n24 = { house: null, public: null, models: null, mesh: null, senders: null }; for (const [id, n] of Object.entries(F.counts)) n24[grp(id)] = (n24[grp(id)] || 0) + d3.sum(n);
   const loc = D.sensors.filter(s => s.local && s.kind === 'sensor'), pub = D.sensors.filter(s => !s.local && s.kind === 'sensor');
   const heard = pub.filter(s => lastRaw(s.sensor_id, 'pm25') != null).length, models = D.sensors.filter(s => s.kind === 'model' && s.sensor_id !== 'predict').length, c24 = v => v == null ? 'counted with the token' : `${v.toLocaleString('en')} in 24 h`;
   const ret = D.health.reticulum || {}, perDay = ret.announce_s ? Math.round(86400 / ret.announce_s) : null;
   /* what reached a phone: the node's own count (/issues events.sent_24h), since an alerts row is written whether or not
      it was sent (below ALERT_LEVEL, or a pack the event engine speaks for); a node too old to say counts the rows */
   const sent = D.sent24, nOff = Of ? (Of.offers || []).length : null;
+  /* a private node and a community node draw different links (Tomas, 25 Nov 2026): a community node takes in what other
+     nodes send it and, with no city node yet, sends nothing further; a node with a parent says where its means went */
+  const community = notHouse(D.health.kind), S = sendersOf(D.sensors, D.stats15), nS = d3.sum(S, g => g.sensors), P = D.health.parent;
+  const sendersRow = ['From the nodes that send to it', S.length ? `${S.length} node${S.length === 1 ? '' : 's'} · ${nS} sensor${nS === 1 ? '' : 's'} · ${c24(n24.senders)}` : 'none yet', n24.senders, ''];
+  const parentRow = ['Hourly means, to a community node', P ? `to ${P.node || 'its community node'} · ${P.sensors ?? 0} sensor${P.sensors === 1 ? '' : 's'} · ${P.at ? `last at ${hhmm(P.at)}` : 'not sent since the restart'}` : 'none set · nowhere yet', P && P.at ? 24 : null, ''];
   // [title, words, events in 24 h (null: nothing travels), colour]
   const IN = [['Sensors in this house', `${loc.length} · ${c24(n24.house)}`, n24.house, ''], ['Public stations around it', `${heard} of ${pub.length} heard · ${c24(n24.public)}`, n24.public, ''],
-    ['Models for this point', `${models} · ${c24(n24.models)}`, n24.models, ''], ['The mesh, by LoRa', n24.mesh == null ? (F.counted ? 'no mesh heard' : 'counted with the token') : `${n24.mesh.toLocaleString('en')} packets in 24 h`, n24.mesh, ''],
+    ...(community || S.length ? [sendersRow] : []), ['Models for this point', `${models} · ${c24(n24.models)}`, n24.models, ''], ['The mesh, by LoRa', n24.mesh == null ? (F.counted ? 'no mesh heard' : 'counted with the token') : `${n24.mesh.toLocaleString('en')} packets in 24 h`, n24.mesh, ''],
     ['Answers, from the household', `${c24(F.answers.length)} · Done, Not now, Doesn’t fit`, F.answers.length, 'green'], ['The satellite', D.earth ? `${D.earth.years.length} years · once a year` : 'not fetched on this node', null, 'sat']];
   const OUT = [['This page, on your network', '0 requests out · when you open it', null, ''], ['Alerts, to a phone', `${sent == null ? `${F.alerts.length.toLocaleString('en')} recorded in 24 h` : `${sent.toLocaleString('en')} sent in 24 h`} · ${D.rho.acted} acted on`, sent ?? F.alerts.length, 'red'],
     ['Its cell, by radio', ret.announce_s ? `res ${D.geometry.radio.res} · every ${Math.round(ret.announce_s / 60)} min · ${(ret.peers || []).length} heard` : 'no radio on this node', perDay, 'blue'], ['Fab City Index cells', `${new Set(D.index_cells.map(c => c.cell)).size} of 20 · hourly`, 24, 'blue'],
     ['Open export, CC BY 4.0', 'one file a day', 1, ''],
-    ['What this home offers', nOff == null ? 'not read' : nOff ? `${nOff} thing${nOff === 1 ? '' : 's'} · open to anyone, and in the export` : 'nothing offered', nOff ? 1 : null, ''], ['Hourly means, to a community node', 'none set · nowhere yet', null, '']];
+    ['What this home offers', nOff == null ? 'not read' : nOff ? `${nOff} thing${nOff === 1 ? '' : 's'} · open to anyone, and in the export` : 'nothing offered', nOff ? 1 : null, ''], ...(community && !P ? [] : [parentRow])];
   /* the flow's screen header (evolution variation): the four counts a keeper asks first, from the rows drawn below */
   const fr = $('#framp'), fi = $('#finfo');
   if (fr) { fr.style.setProperty('--n', 4); fr.innerHTML = rampHTML([['sensors', String(loc.length), '', 'in this house', n24.house == null ? '' : `${n24.house.toLocaleString('en')} in 24 h`],
-    ['stations', `${heard} of ${pub.length}`, '', 'around it', 'heard'], ['answers', String(F.answers.length), '', 'from the household', 'in 24 h'],
+    ['stations', `${heard} of ${pub.length}`, '', 'around it', 'heard'],
+    community ? ['nodes', String(S.length), '', 'send to it', `${nS} sensor${nS === 1 ? '' : 's'}`] : ['answers', String(F.answers.length), '', 'from the household', 'in 24 h'],
     ['to a phone', String(sent == null ? F.alerts.length : sent), '', 'alerts', sent == null ? 'recorded, 24 h' : 'sent, 24 h']]); }
   if (fi) fi.innerHTML = `<span>Node · ${esc(D.node.name)} · ${esc(dLabel(dayOf(D.as_of)))} ${hhmm(D.as_of)}</span><span>raw readings stay here</span>`;
   const L = narrow ? flowLayout(W, IN.length, OUT.length) : null, H = L ? L.H : 500, cx = L ? L.cx : W / 2, cy = L ? L.cy : H / 2, R = L ? L.R : 96;
@@ -285,13 +292,57 @@ async function around() {
   /* the list first, its count in words (Tomas, 15 Oct: a 540 px globe with one dot) */
   const nL = N.filter(x => x.listed).length;
   const heardRow = h => `heard ${where}, ${ago(minsAgo(h.last))} ago${away(h.km)}`;
-  $('#nodes').innerHTML = `<p class="lede">${num('node.listed', nL, 'nodes on the programme’s list with a point')} listed · ${ret.announce_s ? `${num('node.heard', heard.length, 'other nodes this node heard')} heard ${where}` : 'no radio on this node'}</p>` + N.map(x => `<div class="lrow"><span class="t">${esc(x.n)}<small>${esc(x.place)}</small></span><span class="s">${esc([x.reads, heardOf.has(x.n) && heardRow(heardOf.get(x.n))].filter(Boolean).join(' · '))}</span>`
+  /* the links up and down (Tomas, 25 Nov 2026): a community node lists first the nodes that send to it; a node with a
+     parent says which one and when its means last went. A stranger reads a sender as "a home nearby" (sendersOf). */
+  const P = D.health.parent, S = sendersOf(D.sensors, D.stats15), community = notHouse(D.health.kind), pl = n => n === 1 ? '' : 's';
+  const lrow = (t, s2, c, x) => `<div class="lrow"><span class="t">${t}</span><span class="s">${esc(s2)}</span><span class="c${x ? ' x' : ''}">${c}</span></div>`;
+  const down = S.map(g => lrow(`${esc(g.label)}<small>sends to this node</small>`,
+      `hourly means of ${g.sensors} sensor${pl(g.sensors)}${g.silent == null ? '' : `, the last ${ago(g.silent)} ago`}`, '<span class="state">sends to it</span>')).join('')
+    || (community ? lrow('Nodes that send to it', 'none yet: a node sends here once its keeper names this node as its parent, in Set up › Sharing', 'none', true) : '');
+  const up = P ? lrow(`${esc(P.node || 'its community node')}<small>the community node it sends to</small>`,
+      `hourly means of ${P.sensors ?? 0} sensor${pl(P.sensors)}; raw readings stay here`, `<span class="state">${P.at ? `sent at ${hhmm(P.at)}` : 'not sent since the restart'}</span>`)
+    : community ? '' : lrow('A community node above it', 'where this node’s hourly means would go, so a city can be built from nodes', 'not set', true);
+  $('#nodes').innerHTML = (community ? `<p class="lede">${num('node.senders', S.length, 'nodes that send their hourly means here')} node${pl(S.length)} send${S.length === 1 ? 's' : ''} to it</p>${down}` : '')
+    + `<p class="lede">${num('node.listed', nL, 'nodes on the programme’s list with a point')} listed · ${ret.announce_s ? `${num('node.heard', heard.length, 'other nodes this node heard')} heard ${where}` : 'no radio on this node'}</p>` + N.map(x => `<div class="lrow"><span class="t">${esc(x.n)}<small>${esc(x.place)}</small></span><span class="s">${esc([x.reads, heardOf.has(x.n) && heardRow(heardOf.get(x.n))].filter(Boolean).join(' · '))}</span>`
     + `<span class="c"><span class="state">${word(x)}${heardOf.has(x.n) ? ' · heard' : ''}</span> ${x.me ? 'this node' : (NG && NG.dist['node:' + x.n] ? fmt(NG.dist['node:' + x.n].m / 1000, 0) + ' km' : '—')}</span></div>`).join('')
     /* a heard node with no row above: not listed, or listed with no point. Its distance is cell centre to cell centre */
     + heard.filter(h => !(h.listed && N.some(x => x.listed && x.n === h.listed.name))).map(h => `<div class="lrow"><span class="t">${esc(h.n)}<small>${h.res != null ? `its area at res ${esc(String(h.res))}` : 'no area given'}</small></span><span class="s">${esc(heardRow(h))}</span>`
       + `<span class="c"><span class="state">${h.listed ? 'listed · heard' : 'heard'}</span> ${h.km == null ? '—' : fmt(h.km, 0) + ' km'}</span></div>`).join('')
-    + `<div class="lrow"><span class="t">A community node above it</span><span class="s">where this node’s hourly means would go, so a city can be built from nodes</span><span class="c x">not set</span></div>`
+    + (community ? up : up + down)
     + `<p class="fine">${esc(fine)}</p>`;
+}
+
+/* RETICULUM, said plainly (Tomas, 25 Nov 2026: "make visible and clear how to use reticulum"): what the bridge does on
+   this node, the address to write to, who may answer it, and what it does not do yet. All of it from /health's reticulum
+   (app/presence.py); nothing new is asked. docs/site/reticulum.md is the guide. */
+function reticulumBlock() {
+  const el = $('#reticulum'), ret = D.health.reticulum; if (!el) return;
+  const guide = `<a href="${esc(D.health.docs || 'https://planetai.fab.city/docs/')}reticulum/" target="_blank" rel="noopener">The Reticulum guide ↗</a>`;
+  const row = (t, s2, c) => `<div class="lrow"><span class="t">${t}</span><span class="s">${s2}</span><span class="c">${c}</span></div>`;
+  const pl = (k, w) => `${k} ${w}${k === 1 ? '' : (w.endsWith('s') ? 'es' : 's')}`;
+  if (!ret) {
+    el.innerHTML = '<h2>Reticulum</h2>' + row('Off on this node', 'a network that needs no internet. With it on, a phone running Sideband gets this node’s alerts and '
+      + 'answers them, and other nodes can hear this one. <code>planetai reticulum</code> turns it on.', 'off') + `<p class="fine">${guide}</p>`;
+    return;
+  }
+  const n = ret.destinations || 0, peers = (ret.peers || []).length;
+  const hub = ret.relaying != null ? [`this node is the hub · ${pl(ret.relaying, 'node')} connected`, 'the hub']
+    : ret.hub == null ? ['not dialled: <code>planetai reticulum</code> asks whether other nodes may see this one', 'off']
+    : ret.hub ? ['dialling it: the nodes on the hub can hear this one', 'on'] : ['not answering', 'down'];
+  el.innerHTML = '<h2>Reticulum</h2>'
+    + `<p class="lede">${ret.ok ? 'The bridge is running.' : 'The bridge is not answering: <code>planetai logs reticulum</code> says why.'} `
+    + 'Write to this node from Sideband or NomadNet, on this network or through the hub.</p>'
+    + row('Its address', `<code>${esc(ret.address || '—')}</code>`, ret.address ? `<button type="button" class="sbtn" data-copy="${esc(ret.address)}">copy</button>` : '')
+    + row('The Fab City hub', hub[0], hub[1])
+    + row('Nodes it hears', peers ? `${pl(peers, 'node')}, listed under The nodes around it` : 'none yet', String(peers))
+    + row('Its alerts', n ? `go to ${pl(n, 'address')} as messages, in full` : 'go to no address yet: add yours in Set up › Sharing › Reticulum alert addresses', String(n))
+    + row('What it answers', '<code>act 3</code>, or <code>act 3 opened the windows</code>, from an address its alerts go to, closes alert #3. '
+      + 'Anyone else gets one reply saying so. Any other message gets no answer yet.', '')
+    + row('What it announces', ret.announcing ? `every ${Math.round((ret.announce_s || 1800) / 60)} min: its name and an area about 60 km across, never a reading or where it stands`
+      : 'nothing: presence is off', ret.announcing ? 'on' : 'off')
+    + '<p class="fine">Nodes do not send each other messages or readings over Reticulum yet: a node’s hourly means reach its community node over the '
+    + `network. ${guide}</p>`;
+  el.querySelectorAll('[data-copy]').forEach(b => b.onclick = () => { navigator.clipboard && navigator.clipboard.writeText(b.dataset.copy).then(() => { b.textContent = 'copied'; setTimeout(() => { b.textContent = 'copy'; }, 1400); }); });
 }
 
 /* Running, and a light reading of the machine under it (GET /machine, /storage: token-only; the full one is Set up →

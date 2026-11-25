@@ -481,7 +481,7 @@ print("  reading: the foot of Place says who wrote the reading and when")
 
 # ---------------------------------------------------------------- what describes the report names nobody either
 # Tomas, 17 Nov 2026: "it is for consumption, so do not mention the names of experts behind it". The prompt in
-# app/reading.py is the one place they live; the layer list's own docs keep McHarg, by his ruling of 4 Nov.
+# app/reading.py is the one place they live.
 for path, start, end in (("docs/site/place.md", "### The reading, and ways to improve the place", "## Folding"),
                          ("docs/site/api.md", "### GET /place/reading", "### POST /area"),
                          ("CHANGELOG.md", "**The Place report reads the place.**", "\n\n- **")):

@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- **25 Nov: a box with two particle sensors keeps both.** Some boxes carry an HM-3301 and a SEN5X side by side,
+- **26 Nov: a box with two particle sensors keeps both.** Some boxes carry an HM-3301 and a SEN5X side by side,
   and Smart Citizen calls both PM2.5. The node stored the first one it was given and dropped the other, with
   nothing in the log. On one box on 22 Nov the HM-3301 read 5.0 µg/m³ and the SEN5X 12.6, and the page showed
   5.0. The box's `pm25` is still the sensor it always was, so its history carries on and every rule reads the
@@ -11,6 +11,36 @@
   nothing of them is exported or sent to a parent, and the Index does not count them. It covers kits read from
   api.smartcitizen.me and DIY nodes that publish to the node's broker. A second temperature or humidity sensor in
   a box is still dropped.
+
+- **25 Nov: every page says what kind of node it is, and a community node's page follows.** Beside the node's name, at
+  the top of every door and of the phone page, a small box says Private node, for a home or a business, or Community
+  node, for a community or district node (`NODE_KIND`). A community node no longer says "Around the house" or "2 in
+  this house" anywhere on its page, because every word the doors draw now goes through the table its sentences and
+  Wall already used. Its Node door lists first the nodes that send to it, each with its sensors and when it was last heard,
+  and a stranger reads each as a home nearby; its flow draws them coming in and sends nothing further while there is no
+  city node. A node with a parent names it and says when its hourly means last went, where it used to say "none set"
+  whatever was set. `/health` carries `parent`, and a parent answers a push with its name.
+
+- **25 Nov: Reticulum, on the Node door and in its own guide.** The Node door has a Reticulum section: the node's
+  address with a copy button, whether it dials the Fab City hub, how many nodes it hears, where its alerts go, what it
+  answers and what it announces. [Reticulum](docs/site/reticulum.md) is a new docs page with what it does today,
+  what it does not do yet, the steps to turn it on and a table of checks to run after you do and after each update.
+  The Reticulum section of the channels page now points there.
+
+- **23 Nov: the Colima line in preflight works on a Mac without Homebrew.** A tester on macOS 26 had no Docker,
+  and preflight gave them a line to paste that could not work. On Apple Silicon it asked Docker for a folder called
+  `arm64`, which Docker calls `aarch64`, so the download stopped at a 404. It also never installed Lima, and Colima
+  does nothing without it. Now the line installs Lima and takes the Docker client from the right folder, after
+  making `/usr/local/bin`, which a new Mac may not have. Colima and Lima are pinned to one version each, so a newer
+  Colima never turns up beside an older Lima. Testers get this with the next release, because the preflight they
+  run comes from the released commit.
+
+- **25 Nov: a community node no longer calls itself a house.** Every sentence the node writes was written for a
+  house, so the Ungasan community node told its visitors "it is under this house's own heat line" and opened its
+  Wall on the house. A node whose `NODE_KIND` is `community` or `district` now says this place where it said this
+  house, in all three languages, and its Wall opens at its own size. A house reads as it did. A stranger on a parent
+  also reads a child's sensors as a home nearby, without the child's name or its kit numbers, because a kit's public
+  page says where it stands.
 
 - **25 Nov: hello needs no GitHub account.** With the Reticulum bridge running, `planetai hello` sends this node's
   entry as a message to the programme's inbox, node #1, whose address `registry.json` now names, and prints what the
@@ -82,7 +112,6 @@
   for 90 seconds. A node with a pack list in Set up skipped it because it was on no list, so the alert never came and
   the terminal asked whether the node was up. Node #1 has a list, and that is how we found it. The test pack now runs
   whatever the list says.
-
 - **23 Nov: Reticulum on a fresh node.** The bridge records an `act` with `ACT_TOKEN`, and only `planetai ui` made
   one, so on a new node `act 3` sent from Sideband was dropped and nobody got a reply. `planetai reticulum` now gives
   the bridge the node's token, and makes one if there is none. An address saved in Set up › Sharing › Reticulum alert
@@ -138,12 +167,6 @@
   holds, rooms included. Now it sends its outdoor sensors, and the rooms go only if you set `PARENT_INDOOR=on` in
   Set up › Sharing. The alerts a room raises follow the same switch. None of our nodes has a parent yet, so
   nothing that was travelling stops.
-
-- **21 Nov: a draft record on commercial rights, for Tomas to rule on.** He asked whether being open source stops
-  the Foundation from licensing a version of the node commercially or making a product of one. The public licence
-  does not, and no document yet gives the Foundation more than the Apache-2.0 everybody has, his own 1,124 commits
-  included. `docs/decisions/2026-11-21-commercial-rights.md` sets out what would have to be true, and it decides
-  nothing until he strikes a row. `LICENSE`, `NOTICE` and `CONTRIBUTING.md` are unchanged.
 
 ## v0.92.0 — 2026-11-19 — A node and its place
 
