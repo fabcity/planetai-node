@@ -10,6 +10,13 @@
   Colima never turns up beside an older Lima. Testers get this with the next release, because the preflight they
   run comes from the released commit.
 
+- **25 Nov: a community node no longer calls itself a house.** Every sentence the node writes was written for a
+  house, so the Ungasan community node told its visitors "it is under this house's own heat line" and opened its
+  Wall on the house. A node whose `NODE_KIND` is `community` or `district` now says this place where it said this
+  house, in all three languages, and its Wall opens at its own size. A house reads as it did. A stranger on a parent
+  also reads a child's sensors as a home nearby, without the child's name or its kit numbers, because a kit's public
+  page says where it stands.
+
 - **25 Nov: hello needs no GitHub account.** With the Reticulum bridge running, `planetai hello` sends this node's
   entry as a message to the programme's inbox, node #1, whose address `registry.json` now names, and prints what the
   inbox answered: "received: a person reads it before it is listed". On node #1, `planetai hello --inbox` lists what
