@@ -1,12 +1,11 @@
 'use strict';
 /* SET UP — a page of its own (R43, 7 Oct 2026), opened by the gear in the bar. How this node was told to behave.
 
-   Design (refero-design, reference-locked): mono.frm.fm's architectural grid owns the canvas — 1px ink rules, square
-   corners, outlined controls, tracked mono labels, colour only where the node's rules give it a meaning; Linear's
-   preferences own the structure — a sticky list of sections on the left, rows of label and help with the control on
-   the right; Arcade's privacy settings own the share level — two options, each saying what a screen without the
-   token gets; Enode's developer settings own the save — explicit, saying what it will change, with what crosses the
-   house's edge set apart. The one move to remember: every setting that changes what leaves this machine says so,
+   Design: the node's grid owns the canvas — 1px ink rules, square corners, outlined controls, tracked mono labels,
+   colour only where the node's rules give it a meaning. The structure is a sticky list of sections on the left, rows
+   of label and help with the control on the right. The share level is two options, each saying what a screen without
+   the token gets. The save is explicit, says what it will change, and sets apart what crosses the house's edge. The
+   one move to remember: every setting that changes what leaves this machine says so,
    and the save bar counts them before anything is written.
 
    Behaviour is the dashboard's Set up pane (dashboard.js, "the Set up pane"), carried over rule for rule because
