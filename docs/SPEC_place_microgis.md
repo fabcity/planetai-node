@@ -1,11 +1,9 @@
 # SPEC: Place, the small GIS a place keeps about itself
 
-*Asked, 4 November 2026, by Tomas: "look at this project: https://github.com/opengeos/RustGIS, and take it as reference
-to re-design the Place tab of the planetai node to make it a hyperlocal GIS". Then, in the same conversation: "a PLACE
+*Asked, 4 November 2026, by Tomas: "re-design the Place tab of the planetai node to make it a hyperlocal GIS". Then, in the same conversation: "a PLACE
 tab for the home/individual node, runs on browser, and with basic analysis options, which I think it should include
 agent readiness and more analysis tools than now, but not as many as a local GIS (to be built in the fab lab node)";
-"more about the context and the influence of things happening outside the house, not inside the house, as I think that
-is a feature Home Assistant does better"; "it can go to light fitness, as it also
+"more about the context and the influence of things happening outside the house, not inside the house"; "it can go to light fitness, as it also
 matters for the index and the response capacity to act"; "this is a hyperlocal and distributed inventory with a compute and intelligence layer on top. We need to
 be also able to incorporate tools for hyperlocal observation, like drone mapping, microscopy, cameras, soil sampling,
 and other data that it is not trivial". Tomas approved the design described here: "all good, lets go". On reading the
