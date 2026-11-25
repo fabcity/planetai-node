@@ -5,15 +5,10 @@ discoverable within the network". Is Tailscale a limitation, should we consider 
 reticulum (it would be ideal), as it also creates a distributed infrastructure". Read the same day against main and
 node #1; Tomas: "Yes, write the spec".*
 
-**Status: ruled; steps 0 and 1 merged, step 2 built (25 November).** The act allowlist is
-fabcity/planetai-reticulum#1 (a65ad0f), pinned by planetai-node #422. The hub is fabcity/planetai-reticulum#2
-(0794e97) with planetai-node #423 (cee1af7), and node #1 runs both as the hub through Funnel. Step 2, drawing heard
-nodes, is the pull request after #423. Steps 3 and 4 are not built. Tomas, 24 November: "Lets do the mac mini as the hub. On for the bend. Not yet as you
-propose. hello as a reticulum message". Then "Use a relay server", and, once Tailscale Funnel turned out to carry
-it with no server, "Yes, switch it". So node #1 is the first hub, reached through Funnel with a relay as the fallback
-(§3), the bend in §10 stands, the hub does not dial the public Reticulum testnet yet, and hello travels as a
-Reticulum message (§9). Steps 0 to 4 are each a pull request, in the repository the table in §12 names, and each runs
-on node #1 before it merges.
+**Status: ruled; steps 0 to 2 merged, step 3 built (25 November).** The act allowlist is
+fabcity/planetai-reticulum#1, pinned by planetai-node #422. The hub is fabcity/planetai-reticulum#2 (0794e97) with
+planetai-node #423, node #1 runs it as the hub through Funnel, and #425 draws heard nodes. Step 3, the one question,
+is the pull request after #425. Step 4 is not built.
 
 ## 1 · What a node can do today
 
@@ -180,6 +175,11 @@ Turn it on? [y/N]
 
 Yes runs `planetai reticulum` with the hub answered yes and sets `RETICULUM_PRESENCE=1`. No is the default and asks
 nothing more. A node set up before this release gets the same question from `planetai reticulum`.
+
+Built so: `reticulum_see` in `bin/planetai` does what the answer says, for both commands. Yes writes the hub block and
+sets `RETICULUM_PRESENCE=1`; no takes the block out and sets it to 0 if it was on. A node whose config already says
+`enable_transport = Yes` is a hub, which others dial, so yes only turns presence on there. With no terminal neither
+command asks, and nothing changes.
 
 ## 9 · Step 4: hello as a Reticulum message
 
