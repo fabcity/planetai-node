@@ -35,10 +35,10 @@ Left out:
 
 | urban:SCAN analysis | why not |
 |---|---|
-| Residents and jobs | Floor area divided by an assumed m² per person. A model with nothing measured under it, and nothing on the node decides on it. |
+| Residents and jobs | Floor area divided by an assumed m² per person. A model with nothing measured under it, and nothing on the node decides on it. A city's own census is another case (§9). |
 | Housing value | No open source. Its index is stretched ±60% around a city average. |
 | Pedestrian flows, car traffic, traffic noise | Models fed by models. Noise needs traffic counts the node does not have. A city that counts its own traffic is another case (§9). |
-| Pedestrian wind | A 2D slice, which its own page calls "an estimate, not CFD". The forecast pack already gives the node its wind. |
+| Pedestrian wind | A 2D slice, which its own page calls "an estimate, not CFD". The forecast pack already gives the node its wind. Across a district it waits for a city node (§9). |
 | Heat island | The surface-heat pack already reads it from Landsat. |
 | Satellite, its indices, building growth | The earth-engine pack reads NDVI and the tree, crop and built shares, and the earth pack the change from one year to the next. The 23 October reason, Esri imagery, no longer holds: urban:SCAN now uses national orthophotos and Sentinel-2 cloudless 2016. |
 | Water flow and TWI | The terrain pack reads the upslope area and the hollow at the node's point, and "Where the rain goes" waits for its routed grid (SPEC_place_microgis). Wetness classes by percentile are not taken: they rank a square against itself, so every site would have a wettest tenth. |
@@ -202,6 +202,9 @@ its own repository and listed at fabcity/planetai-wild-packs, and a node adds th
 - **National lidar.** Spain's PNOA lidar is CC BY 4.0 under Orden FOM/2807/2015, so a node in Menorca could read a
   2 m ground. With it the hill shades at the sun grid's own scale, and Rain and puddles can be drawn, with
   carriageways a kerb below the pavement and roofs draining away.
-- **City scale.** Public transport frequency, cycling stress, space syntax over a whole network, car traffic and
-  noise describe a city and need a city node's territory. Traffic and noise stay models fed by models until a city's
-  own counters and noise meters feed them. They are not in this spec.
+- **City scale.** Some analyses need more data, more compute or a stronger model than a home node has, and wait for
+  a city node. Space syntax over a whole network, public transport frequency and cycling stress need the city's
+  territory. Car traffic and noise stay models fed by models until the city's own counters and noise meters feed them,
+  and residents and jobs until its census does. Pedestrian wind and rain and puddles across a district need a GPU
+  simulation, and the second a lidar ground as well. Tree crowns and roof pitch read from the city's aerial imagery
+  need a vision model, and the pitch would end the guess in roof power (§5). None of them is in this spec.
