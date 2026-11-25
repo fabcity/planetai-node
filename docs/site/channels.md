@@ -108,11 +108,14 @@ in Set up, run `planetai reticulum` again.
    machine, starts it and prints
    `● this node's LXMF address: <address>`, then what to do in Sideband: add a TCP Client interface to this machine's LAN address on port 4242,
    and start a conversation with the address above. A phone can now reach the node over Reticulum with no internet
-   in between. It also asks `Dial the Fab City hub?`, and the answer you gave last time is the default. The hub lets
-   your node hear other PLANETAI nodes with nothing to open on your router. Everyone on it sees your node's name and
-   its LXMF address, and its rough area (about 60 km) only if presence is on, below. Yes writes a `[[Fab City hub]]`
-   block into `config/reticulum/config`, no takes it out, and an update never changes it. Run with no terminal, it
-   leaves the file alone. Then the command says `dialling the Fab City hub`, `planetai doctor` checks it each time,
+   in between. It also asks `Let other PLANETAI nodes see this node?`, and the answer you gave last time is the
+   default; `planetai setup` asks the same at the end of an install, with no as the default. Yes lets your node hear
+   other PLANETAI nodes through the Fab City hub, with nothing to open on your router, and turns presence on (below).
+   Everyone on the hub then sees your node's name, its LXMF address and its rough area, about 60 km across, and never
+   a reading, a sensor or where the house is. Yes writes a `[[Fab City hub]]` block into `config/reticulum/config`, no
+   takes it out and turns presence off, and an update never changes either. Run with no terminal, it changes nothing.
+   A node that is a hub itself, with `enable_transport = Yes`, is dialled rather than dialling, so yes only turns
+   presence on. Then the command says `dialling the Fab City hub`, `planetai doctor` checks it each time,
    and the Node door's Running section shows it on the Radio row.
 2. **Receive alerts.** Copy your own LXMF address from Sideband's settings into Set up › Sharing › Reticulum alert
    addresses, or run `planetai config set RETICULUM_ALERT_DESTINATIONS <hash>[,<hash>]`. The node sends the list to

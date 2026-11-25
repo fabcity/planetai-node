@@ -532,6 +532,12 @@ finish_setup() {
   [[ -z "$(envget INDEX_PLACE)" ]] || packs_switch_on index     # a re-run on a node whose packs were chosen in Set up
   cmd_doctor quiet || true
   [[ -f out/ground/vector.mbtiles ]] || offer_map
+  # the one question about being seen (docs/SPEC_hub.md §8): no is the default and asks nothing more
+  if ( : </dev/tty ) 2>/dev/null; then
+    local see=""; echo; echo "  ${B}Let other PLANETAI nodes see this node?${N}"; echo "$SEE_WHY"
+    ask see "  Turn it on? (y/n)" "n"
+    [[ "$see" =~ ^[Yy] ]] && SEE=y cmd_reticulum
+  fi
   what_next
 }
 
@@ -1140,6 +1146,23 @@ reticulum_hub() {
     END { if (on == "on" && !done) { print "[interfaces]"; block() } }' "$2" > "$tmp" && cat "$tmp" > "$2"
   rm -f "$tmp"
 }
+reticulum_is_hub() { grep -qiE '^[[:space:]]*enable_transport[[:space:]]*=[[:space:]]*yes' "$1" 2>/dev/null; }
+presence_on() { api /presence 2>/dev/null | json 'print(int(bool(d.get("enabled"))))' 2>/dev/null || echo 0; }
+# One question decides whether other nodes see this one (docs/SPEC_hub.md §8), asked at the end of `planetai setup` and
+# by `planetai reticulum`. Yes dials the hub and announces presence; a node that is a hub itself is dialled, so it only
+# announces. No does neither, and asks nothing more.
+SEE_WHY="  They would see its name, its LXMF address, and an area about 60 km across.
+  Never a reading, a sensor or where the house is. Reticulum's licence is not an open licence:
+  https://planetai.fab.city/docs/channels/"
+reticulum_see() {  # reticulum_see FILE y|n
+  if [[ "$2" =~ ^[Yy] ]]; then
+    reticulum_is_hub "$1" || reticulum_hub on "$1"
+    [[ "$(presence_on)" == 1 ]] || config_set RETICULUM_PRESENCE 1
+  else
+    reticulum_hub off "$1"
+    [[ "$(presence_on)" == 0 ]] || config_set RETICULUM_PRESENCE 0
+  fi
+}
 hub_up() { curl -sf localhost:4243/health 2>/dev/null | json 'print(int(any(i.get("name") == "Fab City hub" and i.get("online") for i in d.get("interfaces", []))))' 2>/dev/null || echo 0; }
 reticulum_fetch() {
   [[ "$(cat reticulum/.ref 2>/dev/null)" == "$RETICULUM_REF" ]] && return 0
@@ -1166,19 +1189,18 @@ cmd_reticulum() {
   reticulum_fetch
   mkdir -p config/reticulum
   [[ -f config/reticulum/config ]] || cp reticulum/config.tpl config/reticulum/config
-  # Dialling the hub is a choice about being seen, so it is asked, last time's answer is the default, and an update
-  # neither asks nor changes it (docs/SPEC_hub.md §4). With no terminal nobody can answer, so the file stays as it is.
-  local hub_was="n" hub_ans=""; reticulum_hub_on config/reticulum/config && hub_was="y"
-  if ( : </dev/tty ) 2>/dev/null; then
-    echo
-    echo "  The Fab City hub lets this node hear other nodes, with nothing to open on your router. Everyone on it sees"
-    echo "  this node's name and LXMF address, and its rough area (about 60 km) only with presence on in Set up › Sharing."
-    ask hub_ans "  Dial the Fab City hub? (y/n)" "$hub_was"
-    if [[ "$hub_ans" =~ ^[Yy] ]]; then
-      reticulum_hub on config/reticulum/config; [[ "$hub_was" == y ]] || say "this node will dial the Fab City hub"
-    else
-      reticulum_hub off config/reticulum/config; [[ "$hub_was" == n ]] || say "this node no longer dials the Fab City hub"
-    fi
+  # Being seen is asked, last time's answer is the default, and an update neither asks nor changes it. With no terminal
+  # nobody can answer, so nothing changes, unless `planetai setup` asked already and passes the answer in SEE.
+  local see_was="n" see_ans="${SEE:-}"
+  { reticulum_hub_on config/reticulum/config || [[ "$(presence_on)" == 1 ]]; } && see_was="y"
+  if [[ -z "$see_ans" ]] && ( : </dev/tty ) 2>/dev/null; then
+    echo; echo "  ${B}Let other PLANETAI nodes see this node?${N}"; echo "$SEE_WHY"
+    ask see_ans "  Turn it on? (y/n)" "$see_was"
+  fi
+  if [[ -n "$see_ans" ]]; then
+    reticulum_see config/reticulum/config "$see_ans"
+    if [[ "$see_ans" =~ ^[Yy] ]]; then [[ "$see_was" == y ]] || say "other PLANETAI nodes will see this node"
+    else [[ "$see_was" == n ]] || say "other PLANETAI nodes no longer see this node"; fi
   fi
   envset RETICULUM_URL http://reticulum:4243
   # The bridge records an `act` with ACT_TOKEN, read from .env when its container is created. A fresh node had none

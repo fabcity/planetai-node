@@ -6,8 +6,8 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 d=$(mktemp -d); trap 'rm -rf "$d"' EXIT
 { grep -E '^RETICULUM_HUB=' bin/planetai
-  sed -n '/^reticulum_hub_on() {/p;/^reticulum_hub() {/,/^}$/p;/^hub_up() {/p;/^json() {/,/^\$1"; }$/p' bin/planetai; } > "$d/fn.sh"
-grep -q 'awk -v on=' "$d/fn.sh" && grep -q '^hub_up()' "$d/fn.sh" || { echo "  FAIL could not lift reticulum_hub() out of bin/planetai"; exit 1; }
+  sed -n '/^reticulum_hub_on() {/p;/^reticulum_hub() {/,/^}$/p;/^hub_up() {/p;/^json() {/,/^\$1"; }$/p;/^reticulum_is_hub() {/p;/^presence_on() {/p;/^reticulum_see() {/,/^}$/p' bin/planetai; } > "$d/fn.sh"
+grep -q 'awk -v on=' "$d/fn.sh" && grep -q '^hub_up()' "$d/fn.sh" && grep -q '^reticulum_see()' "$d/fn.sh" || { echo "  FAIL could not lift reticulum_hub() and reticulum_see() out of bin/planetai"; exit 1; }
 source "$d/fn.sh"
 
 # the shape of the bridge's config.tpl: the hub block commented, a household's own interface added at the end
@@ -82,6 +82,23 @@ HEALTH='{"ok":true,"address":"1b4f"}'
 check '[ "$(up)" = 0 ]'                                                     "a bridge too old to say: 0"
 HEALTH=''
 check '[ "$(up)" = 0 ]'                                                     "no bridge: 0, not an empty string"
+
+# "Let other PLANETAI nodes see this node?" (docs/SPEC_hub.md §8): yes dials the hub and turns presence on, no does
+# neither, and a node that is a hub itself only announces. The node's settings are a file here.
+api() { [[ "$1" == /presence ]] && { [[ "$(cat "$d/presence")" == 1 ]] && echo '{"enabled": true}' || echo '{"enabled": false}'; }; }
+config_set() { echo "$1=$2" >> "$d/sets"; [[ "$1" == RETICULUM_PRESENCE ]] && echo "$2" > "$d/presence"; }
+see() { cp "$d/tpl" "$d/s"; echo "$1" > "$d/presence"; : > "$d/sets"; reticulum_see "$d/s" "$2"; }
+see 0 y
+check 'reticulum_hub_on "$d/s" && [ "$(cat "$d/sets")" = "RETICULUM_PRESENCE=1" ]'        "yes dials the hub and turns presence on"
+reticulum_see "$d/s" y
+check '[ "$(grep -c "^  \[\[Fab City hub\]\]" "$d/s")" = 1 ] && [ "$(cat "$d/sets")" = "RETICULUM_PRESENCE=1" ]' "yes again changes nothing"
+reticulum_see "$d/s" n
+check '! reticulum_hub_on "$d/s" && cmp -s "$d/s" "$d/tpl" && [ "$(cat "$d/presence")" = 0 ]' "no takes the block out and turns presence off"
+see 0 n
+check '[ ! -s "$d/sets" ] && cmp -s "$d/s" "$d/tpl"'                                       "no on a node not seen changes nothing"
+sed 's/enable_transport = No/enable_transport = Yes/' "$d/tpl" > "$d/hubcfg"; echo 0 > "$d/presence"; : > "$d/sets"
+reticulum_see "$d/hubcfg" y
+check '! reticulum_hub_on "$d/hubcfg" && [ "$(cat "$d/sets")" = "RETICULUM_PRESENCE=1" ]'  "a hub says yes by announcing, and never dials itself"
 
 [[ $fail -eq 0 ]] && echo "reticulum hub: ok"
 exit $fail
