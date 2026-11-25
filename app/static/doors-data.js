@@ -23,7 +23,7 @@ const MNAME0 = { pm25: 'PM2.5', pm10: 'PM10', pm1: 'PM1', temp: 'temperature', h
   bme_iaq: 'indoor air index', noise: 'noise', light: 'light', aqi: 'AQI (US EPA)', pm25_raw: 'PM2.5 uncorrected', wind_speed: 'wind', precipitation: 'rain' };
 const MNAME = new Proxy({}, { get: (_, m) => labelOf(m), has: (_, m) => m in MNAME0 });
 
-/* THE INDEX (R45, 7 Oct 2026; frontend-design within the node's layer and Set up's reference lock). Every kind of
+/* THE INDEX (R45, 7 Oct 2026; inside the node's layer, on Set up's grid). Every kind of
    reading this house holds, as a table of specimens by family: each tile its short symbol in the mono, the node's
    own name, the unit, how many sources read it, the median of their 15-minute means now (GET /stats, open), and,
    with the token, the 24-hour trace of the hourly medians (GET /aggregates). Press one to draw every source.

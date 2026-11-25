@@ -236,7 +236,7 @@ function readout() {
   }
   $('#sentence').innerHTML = (it.pix ? `<svg class="pix" aria-hidden="true"><use href="${NODE}signs.svg#${it.pix}"/></svg>` : '') + `<span class="said">${s}${tag ? `<span class="ntag">${esc(tag)}</span>` : ''}</span>`;
   /* the four distances, one quiet line: the drawing above already draws three of them */
-  /* the four distances as an encoder bank (Field Synthesizer variation, after the export's "spatial ladder"): a dial a
+  /* the four distances as an encoder bank (Field Synthesizer variation): a dial a
      distance, its sweep the figure against a scale shared by all four, a red tick where the line is, the sweep red
      only past it. The stroke is the figure's own: the house solid, the street dashed, the ring dotted, the region
      sparse. Same numbers, same words, same provenance as the line it replaces. */
@@ -257,7 +257,7 @@ function readout() {
   }).join('');
   /* the same four figures as the screen's header ramp (evolution variation): the distance and its word, the value and
      where it came from */
-  /* the screen's readout strip (Field Synthesizer variation, after the export's VALUE PEAK / CURRENT readouts): the
+  /* the screen's readout strip (Field Synthesizer variation): the
      day's peak at the hero distance, the figure now, the line, and the hours over it today */
   const ramp = $('#nramp'), day = dayOf(b), sd = (it.series || {})[hd] || [];
   if (ramp) {

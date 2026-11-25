@@ -21,10 +21,10 @@ const plain = s => String(s ?? '').replace(/[\p{Extended_Pictographic}\u{FE0F}\u
 const SAT = y => `/earth/frame.png?year=${y}&source=sentinel`;
 const km = ([lon1, lat1], [lon2, lat2]) => d3.geoDistance([lon1, lat1], [lon2, lat2]) * 6371;
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-/* OP-XY's header ramp (evolution variation): pairs of [name, value, unit, second line under the name, second line under
+/* The header ramp (evolution variation): pairs of [name, value, unit, second line under the name, second line under
    the value], drawn as a name cell then a value cell, in even grey steps from black to white; the type turns ink where
    the step passes the middle. Greys only: a ramp is not a colour. */
-/* Field Synthesizer variation: one cell a figure, as the export's readout strip: an etched label, the value, a line
+/* Field Synthesizer variation: one cell a figure, as a readout strip: an etched label, the value, a line
    under it. pairs: [label, value, unit, sub-label, sub-value, class on the cell (warm: over the line; sig: the signal)] */
 const rampHTML = pairs => pairs.map(([k, v, u, k2, v2, cls]) =>
   `<div class="${cls || ''}"><span class="rk">${k}</span><span class="r1"><span class="rv">${v}</span>${u ? `<span class="ru">${u}</span>` : ''}</span><span class="r2">${[k2, v2].filter(Boolean).join(' · ') || '&nbsp;'}</span></div>`).join('');
