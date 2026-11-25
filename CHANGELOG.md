@@ -14,6 +14,10 @@
   what to announce while the new one was starting, or keep running beside a new app and not ask again. Between its
   half-hourly announces the bridge now asks the node every minute and announces whenever the answer changed. The bridge
   pin moves to dc7071d.
+- **25 Nov: the model that writes a fuller reading is asked five plain questions.** "Write a fuller reading" gives the
+  model what each section looks at, the region and its balance, what the land is fit for, what people need, how the
+  place behaves, the street, and nothing else about how to read. A node with a model on its own network may word a
+  section differently from before. The checks on the text it hands back are the same.
 
 - **25 Nov: one question decides whether other nodes see yours.** At the end of `planetai setup`, and in `planetai
   reticulum`: "Let other PLANETAI nodes see this node?" They would see its name, its LXMF address and an area about
