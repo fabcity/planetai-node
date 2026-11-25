@@ -219,10 +219,60 @@ stays red until a signed update. How to report a security problem is in [SECURIT
 Use Tailscale. `planetai mesh` joins the tailnet under the node's name, and your devices reach the node at its
 MagicDNS name, `<name>.<your-tailnet>.ts.net` (recorded as `MESH_NAME`), with no open port, encrypted by the
 tailnet. The node has no TLS of its own, so never put it behind a port forward, ngrok or a public reverse proxy.
-[Networking](networking.md) has the setup, and the self-hosted alternative to Tailscale's coordinator.
+The one public link a node may have is the one [below](#a-public-link-for-the-report-and-the-wall), and it opens
+named paths only. [Networking](networking.md) has the setup, and the self-hosted alternative to Tailscale's
+coordinator.
 
 There is no loopback-only level. On a network the household does not trust, keep `SHARE_LEVEL` at `off` and give
 tokens only to your own devices; the NAS pull, the phones, Home Assistant and MCP all read over the LAN.
+
+### A public link for the report and the Wall
+
+A community node can let anyone open its weekly report and its Wall through Tailscale Funnel, which gives the node an
+`https://` address on the internet and passes on only the paths you name. Any other path gets `404 page not found`
+from Tailscale and never reaches the node. Both pages need `SHARE_LEVEL=open`, and at `open` that list of paths is
+all that keeps `/readings`, `/history`, `/exports`, `/ask` and `/settings` at home, so name these paths and no others.
+
+Do this on a community node only. On a home node `/issues` and `/issues/days` carry the household's rhythm ([the
+notes above](#share-level)), and a public link hands it to anyone.
+
+1. **Check the node may use Funnel.** On the node, `tailscale funnel status` answers without a policy error. If it
+   says the node is not allowed, give it the `funnel` attribute in your tailnet's access controls, in Tailscale's
+   admin console.
+2. **Open the paths on a free Funnel port.** Funnel listens on 443, 8443 and 10000; a hub keeps 443 for Reticulum.
+   Put your `APP_PORT` in place of `8080`:
+
+   ```bash
+   for p in /ui /static /health /nodes /weekly /wall /issues /sensors /stats /observations /cells /reach /rho /index/place /geo/cell /earth /ground/meta /ground/imagery /ground/vector; do sudo tailscale funnel --bg --yes --https=8443 --set-path=$p http://127.0.0.1:8080$p; done
+   ```
+
+   Funnel passes a path and everything under it, so `/issues` also opens `/issues/fixtures`, which neither page
+   reads. Shut it by mounting it on an empty folder:
+
+   ```bash
+   sudo tailscale funnel --bg --yes --https=8443 --set-path=/issues/fixtures /var/empty
+   ```
+
+   `tailscale funnel status` now lists 20 paths under `https://<name>.<your-tailnet>.ts.net:8443`. Tailscale treats a
+   path with and without a trailing slash as one mount, so `/issues/` would replace `/issues` and break the Wall.
+3. **Share the two pages.** The report is `https://<name>.<your-tailnet>.ts.net:8443/ui#data/report`, and the Wall
+   is the same address ending in `/ui#wall`. `/ui` is the page `/` serves. `/` stays shut, because opening it would
+   open everything under it, which is the whole node.
+4. **Check it from outside.** On a phone off your Wi-Fi, the Wall draws, and `/readings`, `/history`, `/ask`,
+   `/settings` and `/issues/fixtures` each answer `404 page not found`.
+
+A stranger sees the node's whole page, with all its doors, and reads only what those paths answer, so the other doors
+have gaps where they would read a shut path. Under `/earth` the other earth pictures are open too, cut around the
+cell's centre like the Wall's. Each open path answers as it does at `open`. `/sensors` puts the
+household's own sensors at the cell's centre and every other row at three decimals, and the samples a model takes at
+the node's own point are among those rows, so a node that stands in a home places that home within about 80 m.
+
+When an update adds a read to the report or the Wall, the page shows a gap there until you add its path. To close the
+link, run `sudo tailscale funnel --https=8443 --set-path=<path> off` for each of the 20 paths. Never run `tailscale
+funnel reset` on a hub, because it takes the hub's Funnel down too.
+
+> **Careful.** On a Mac where Tailscale's app runs beside the node's own `tailscaled`, the plain `tailscale` command
+> talks to the app. Add `--socket=/var/run/tailscaled.socket` to each command above so it reaches the node's daemon.
 
 ## Where this leads
 
