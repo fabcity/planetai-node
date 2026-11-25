@@ -694,7 +694,7 @@ print("%s|%s|%s" % (r.get("latest", ""), r.get("current", ""), "1" if r.get("new
     chk "mesh packets arriving"  "[ \$(mesh_packets) -gt 0 ]"                              "gateway not uplinking yet: planetai radio names the next step";; esac
   case ",$(envget COMPOSE_PROFILES)," in *,reticulum,*)
     chk "reticulum bridge up"    "curl -sf localhost:4243/health"                       "planetai logs reticulum"
-    reticulum_hub_on config/reticulum/config && chk "on the Fab City hub" "[ \"\$(hub_up)\" = 1 ]" "the hub did not answer: planetai logs reticulum";; esac
+    reticulum_hub_on config/reticulum/config && chk "dialling the Fab City hub" "[ \"\$(hub_up)\" = 1 ]" "the hub did not answer: planetai logs reticulum";; esac
   case ",$(envget COMPOSE_PROFILES)," in *,models,*)
     chk "forecast model $(envget PREDICT_MODEL | sed 's/^$/not set/') running"  "[ -n \"\$(docker compose ps --status running -q models)\" ]"   "planetai models pull <name>, or planetai logs models";; esac
   if [[ $JSON -eq 1 ]]; then
@@ -1116,23 +1116,26 @@ T
 # curl and tar at one pinned commit, and builds the image itself; Fab City publishes no image with rns in it.
 # Moving the pin is its own PR, after reading rns's and lxmf's LICENSE at the versions that commit installs.
 RETICULUM_REPO="fabcity/planetai-reticulum"
-RETICULUM_REF="112b09ae08a573ddedefa82c8d6b4f3f24f74fc9"
+RETICULUM_REF="0794e9799489ed80f2854f97b029384d2713163e"
 # The Fab City hub (docs/SPEC_hub.md): node #1's Funnel name, which goes with the mini when it moves. Funnel takes only
-# TLS, so the bridge dials it through openssl in a PipeInterface, the block config.tpl carries commented.
+# TLS, so the bridge dials it through openssl in a PipeInterface, the block config.tpl carries commented. openssl checks
+# the certificate and that it names the hub: -servername alone only sends the name.
 RETICULUM_HUB="fabalabbali.tail71245c.ts.net"
 reticulum_hub_on() { grep -q '^[[:space:]]*\[\[Fab City hub\]\]' "$1" 2>/dev/null; }
 # reticulum_hub on|off FILE: write the [[Fab City hub]] block under [interfaces], or take it out. The file is the
-# household's, so nothing else in it changes, and on twice leaves it as on once.
+# household's, so nothing else in it changes, and on twice leaves it as on once. A hub block someone edited by hand
+# may hold comments and blank lines, so it ends only at the next section header, live or commented (`# [[RNode LoRa]]`
+# in config.tpl), which stays. Comments just above that header go with the hub's block.
 reticulum_hub() {
   local tmp; tmp="$(mktemp)"
   awk -v on="$1" -v hub="$RETICULUM_HUB" '
     function block() { print "  [[Fab City hub]]"; print "    type = PipeInterface"; print "    enabled = yes"
-      print "    command = openssl s_client -quiet -verify_return_error -connect " hub ":443 -servername " hub
+      print "    command = openssl s_client -quiet -verify_return_error -verify_hostname " hub " -connect " hub ":443 -servername " hub
       print "    respawn_delay = 15"; print ""; done = 1 }
     /^[[:space:]]*\[\[Fab City hub\]\][[:space:]]*$/ { skip = 1; next }
-    skip && /^[[:space:]]+[A-Za-z_]+[[:space:]]*=/ { next }
-    skip && /^[[:space:]]*$/ { skip = 0; next }
-    { skip = 0; print }
+    skip && /^[[:space:]]*(#[[:space:]]*)?\[/ { skip = 0 }
+    skip { next }
+    { print }
     on == "on" && /^\[interfaces\][[:space:]]*$/ { block() }
     END { if (on == "on" && !done) { print "[interfaces]"; block() } }' "$2" > "$tmp" && cat "$tmp" > "$2"
   rm -f "$tmp"
@@ -1164,16 +1167,18 @@ cmd_reticulum() {
   mkdir -p config/reticulum
   [[ -f config/reticulum/config ]] || cp reticulum/config.tpl config/reticulum/config
   # Dialling the hub is a choice about being seen, so it is asked, last time's answer is the default, and an update
-  # neither asks nor changes it (docs/SPEC_hub.md §4).
+  # neither asks nor changes it (docs/SPEC_hub.md §4). With no terminal nobody can answer, so the file stays as it is.
   local hub_was="n" hub_ans=""; reticulum_hub_on config/reticulum/config && hub_was="y"
-  echo
-  echo "  The Fab City hub lets this node hear other nodes, with nothing to open on your router. Everyone on it sees"
-  echo "  this node's name and LXMF address, and its rough area (about 60 km) only with presence on in Set up › Sharing."
-  ask hub_ans "  Dial the Fab City hub? (y/n)" "$hub_was"
-  if [[ "$hub_ans" =~ ^[Yy] ]]; then
-    reticulum_hub on config/reticulum/config; [[ "$hub_was" == y ]] || say "this node will dial the Fab City hub"
-  else
-    reticulum_hub off config/reticulum/config; [[ "$hub_was" == n ]] || say "this node no longer dials the Fab City hub"
+  if ( : </dev/tty ) 2>/dev/null; then
+    echo
+    echo "  The Fab City hub lets this node hear other nodes, with nothing to open on your router. Everyone on it sees"
+    echo "  this node's name and LXMF address, and its rough area (about 60 km) only with presence on in Set up › Sharing."
+    ask hub_ans "  Dial the Fab City hub? (y/n)" "$hub_was"
+    if [[ "$hub_ans" =~ ^[Yy] ]]; then
+      reticulum_hub on config/reticulum/config; [[ "$hub_was" == y ]] || say "this node will dial the Fab City hub"
+    else
+      reticulum_hub off config/reticulum/config; [[ "$hub_was" == n ]] || say "this node no longer dials the Fab City hub"
+    fi
   fi
   envset RETICULUM_URL http://reticulum:4243
   # The bridge records an `act` with ACT_TOKEN, read from .env when its container is created. A fresh node had none
@@ -1192,7 +1197,7 @@ cmd_reticulum() {
   say "this node's LXMF address:  ${B}${addr}${N}"
   if reticulum_hub_on config/reticulum/config; then
     local up=0; for i in $(seq 1 15); do up="$(hub_up)"; [[ "$up" == 1 ]] && break; sleep 2; done
-    if [[ "$up" == 1 ]]; then say "on the Fab City hub: nodes on it hear this one within half an hour"
+    if [[ "$up" == 1 ]]; then say "dialling the Fab City hub: nodes on it hear this one within half an hour"
     else warn "the Fab City hub did not answer yet. planetai logs reticulum says why, and planetai doctor checks again."; fi
   fi
   echo

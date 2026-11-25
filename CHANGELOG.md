@@ -7,8 +7,8 @@
   reticulum` now asks whether to dial the Fab City hub, node #1 in Bali, reached through Tailscale Funnel, with
   nothing to open on your router. Everyone on the hub sees your node's name and LXMF address, and its rough area only
   with presence on. Last time's answer is the default, and an update never changes it. `planetai doctor` checks the
-  hub, and the Node door's Radio row says whether the node is on it, or on a hub how many nodes are connected. The
-  bridge pin moves to 112b09a. docs/SPEC_hub has the plan, the steps after this one included.
+  hub, and the Node door's Radio row says whether the node is dialling it, or on a hub how many nodes are connected. The
+  bridge pin moves to 0794e97. docs/SPEC_hub has the plan, the steps after this one included.
 
 - **24 Nov: over Reticulum, only the people a node sends its alerts to can answer them.** The bridge took `act 3`
   from any address that wrote to the node. On a LAN or a tailnet that was the household, but on a shared Reticulum

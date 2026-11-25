@@ -37,8 +37,8 @@ cp "$d/tpl" "$d/c"
 reticulum_hub on "$d/c"
 check 'reticulum_hub_on "$d/c"'                                             "yes writes the block"
 check '[ "$(grep -c "^  \[\[Fab City hub\]\]" "$d/c")" = 1 ]'                "once, uncommented"
-check 'grep -qx "    command = openssl s_client -quiet -verify_return_error -connect fabalabbali.tail71245c.ts.net:443 -servername fabalabbali.tail71245c.ts.net" "$d/c"' \
-                                                                            "dialling node #1 through Funnel, with its certificate checked"
+check 'grep -qx "    command = openssl s_client -quiet -verify_return_error -verify_hostname fabalabbali.tail71245c.ts.net -connect fabalabbali.tail71245c.ts.net:443 -servername fabalabbali.tail71245c.ts.net" "$d/c"' \
+                                                                            "dialling node #1 through Funnel, its certificate checked by name"
 check 'awk "/^\[interfaces\]/{i=1} /^  \[\[Fab City hub\]\]/{exit !i}" "$d/c"' "under [interfaces]"
 check 'grep -q "^  # \[\[Fab City hub\]\]" "$d/c" && grep -q "My LAN friend" "$d/c"' "the commented copy and the household's own interface stay"
 cp "$d/c" "$d/once"; reticulum_hub on "$d/c"
@@ -49,6 +49,28 @@ reticulum_hub off "$d/c"
 check 'cmp -s "$d/c" "$d/tpl"'                                              "no on a file without it changes nothing"
 printf '[reticulum]\n  enable_transport = No\n' > "$d/bare"; reticulum_hub on "$d/bare"
 check 'grep -q "^\[interfaces\]" "$d/bare" && reticulum_hub_on "$d/bare"'   "a file with no [interfaces] gets one"
+
+# a block someone edited by hand: a comment and a blank line inside it, a commented section after it
+cat > "$d/hand" <<'EOF2'
+[interfaces]
+  [[TCP Server]]
+    type = TCPServerInterface
+    listen_port = 4242
+
+  [[Fab City hub]]
+    type = PipeInterface
+    # turned off by hand, 3 Dec
+
+    enabled = no
+    command = openssl s_client -quiet -connect fabalabbali.tail71245c.ts.net:443
+
+  # [[RNode LoRa]]
+  #   type = RNodeInterface
+EOF2
+printf '[interfaces]\n  [[TCP Server]]\n    type = TCPServerInterface\n    listen_port = 4242\n\n  # [[RNode LoRa]]\n  #   type = RNodeInterface\n' > "$d/hand.want"
+reticulum_hub off "$d/hand"
+check 'cmp -s "$d/hand" "$d/hand.want"'                                     "no takes out a hand-edited block whole, and the commented section after it stays"
+check '! grep -q "PipeInterface\|enabled = no" "$d/hand"'                    "so no hub line is left under [[TCP Server]]"
 
 # hub_up reads the bridge's /health: 1 only when the hub's interface is up
 up() { curl() { printf '%s' "$HEALTH"; [ -n "$HEALTH" ]; }; hub_up; }

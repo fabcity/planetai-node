@@ -111,9 +111,9 @@ in Set up, run `planetai reticulum` again.
    in between. It also asks `Dial the Fab City hub?`, and the answer you gave last time is the default. The hub lets
    your node hear other PLANETAI nodes with nothing to open on your router. Everyone on it sees your node's name and
    its LXMF address, and its rough area (about 60 km) only if presence is on, below. Yes writes a `[[Fab City hub]]`
-   block into `config/reticulum/config`, no takes it out, and an update never changes it. Then the command says
-   `on the Fab City hub`, `planetai doctor` checks it each time, and the Node door's Running section shows it on the
-   Radio row.
+   block into `config/reticulum/config`, no takes it out, and an update never changes it. Run with no terminal, it
+   leaves the file alone. Then the command says `dialling the Fab City hub`, `planetai doctor` checks it each time,
+   and the Node door's Running section shows it on the Radio row.
 2. **Receive alerts.** Copy your own LXMF address from Sideband's settings into Set up › Sharing › Reticulum alert
    addresses, or run `planetai config set RETICULUM_ALERT_DESTINATIONS <hash>[,<hash>]`. The node sends the list to
    the bridge with each alert, so the next one goes there and nothing needs restarting. Every `act` alert is
@@ -134,7 +134,8 @@ to speak to a radio mesh. The transport is TCP; an RNode LoRa interface is a com
 `config/reticulum/config`, copied from the bridge's `config.tpl` the first time.
 
 The hub is node #1, the Mac mini in Bali, reached through Tailscale Funnel at `fabalabbali.tail71245c.ts.net:443`.
-Funnel takes only TLS, so your bridge dials it through `openssl s_client` and checks the hub's certificate. A node
+Funnel takes only TLS, so your bridge dials it through `openssl s_client`, which checks that the certificate is the
+hub's. A node
 whose bridge has `enable_transport = Yes` passes announces and messages on between the nodes that dial it. Running
 one is in the bridge's [README](https://github.com/fabcity/planetai-reticulum#running-a-hub), and
 [SPEC_hub](https://github.com/fabcity/planetai-node/blob/main/docs/SPEC_hub.md) says why it works this way.

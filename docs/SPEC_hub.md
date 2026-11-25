@@ -63,14 +63,15 @@ sudo tailscale funnel --bg --tls-terminated-tcp=443 tcp://localhost:4242
 ```
 
 Funnel takes only TLS, and Reticulum's TCP client sends plain TCP. So a node dials through `openssl s_client` in a
-`PipeInterface`, which frames packets the same way the TCP interface does (both HDLC, read in rns 1.5.4). The bridge
-image already carries `openssl`, so this needs no code:
+`PipeInterface`, which frames packets the same way the TCP interface does (both HDLC, read in rns 1.5.4). openssl
+checks the certificate and that it names the hub; `-servername` alone only sends the name. The bridge image already
+carries `openssl`, so this needs no code:
 
 ```
 [[Fab City hub]]
   type = PipeInterface
   enabled = yes
-  command = openssl s_client -quiet -verify_return_error -connect fabalabbali.tail71245c.ts.net:443 -servername fabalabbali.tail71245c.ts.net
+  command = openssl s_client -quiet -verify_return_error -verify_hostname fabalabbali.tail71245c.ts.net -connect fabalabbali.tail71245c.ts.net:443 -servername fabalabbali.tail71245c.ts.net
   respawn_delay = 15
 ```
 
@@ -88,8 +89,9 @@ Relaying for others is a service a community node offers its territory (the node
 base node keeps `enable_transport = No` and never carries another node's traffic. A lab can run a second hub the same
 way, through Funnel, a relay, or neither when its node takes connections itself, and a node can dial one or two.
 
-One presence announce and one LXMF announce per node per half hour is about seven a minute at a hundred nodes. The
-hub keeps what Reticulum keeps to route (paths and known identities) and nothing PLANETAI adds. It stays its own
+One presence announce and one LXMF announce per node per half hour is about seven a minute at a hundred nodes. To
+route, the hub keeps what Reticulum keeps, paths and known identities. Its bridge, like every node's, also keeps the
+presence announces it hears in `peers.json`: name, id, rough cell and when. It stays its own
 network and does not dial the public Reticulum testnet (Tomas: not yet).
 
 ## 4 · Two choices for the household
