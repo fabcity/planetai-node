@@ -7,6 +7,7 @@ No import of main (it starts a second MQTT client): the functions are lifted who
 """
 import ast
 import json
+import re
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -122,5 +123,32 @@ nodejs = (ROOT / "app/static/doors-node.js").read_text()
 assert 'class="h3heard"' in nodejs and ".h3heard{fill:none" in (ROOT / "app/static/doors.html").read_text(), (
     "a heard node is drawn as an outline of its cell, never filled and never a point")
 assert "they are not on this map yet" not in nodejs, "the Node door still says heard nodes are not drawn"
+# and the Node door draws them: the real around() runs in node with the vendored d3, a fake page and a node that heard one
+# stranger, so the globe gets a dashed outline of its cell and the list a row saying where and when it was heard
+draw = r"""
+const fs = require('fs'), d3 = require('./app/static/d3.min.js');
+const core = fs.readFileSync('./app/static/doors-core.js', 'utf8'), geoSrc = fs.readFileSync('./app/static/doors-nodegeo.js', 'utf8'),
+      node = fs.readFileSync('./app/static/doors-node.js', 'utf8');
+const one = (src, n) => src.match(new RegExp('^const ' + n + ' = .*$', 'm'))[0];
+const fn = (src, n) => src.match(new RegExp('(async )?function ' + n + '\\b[\\s\\S]*?\\n}\\n'))[0];
+const el = { world: { clientWidth: 900, innerHTML: '' }, nodes: { innerHTML: '' } };
+const $ = s => el[s.slice(1)];
+const geo = async () => ({ type: 'FeatureCollection', features: [] }), hhmm = iso => iso.slice(11, 16);   // the page's zone, as UTC here
+const ring = ['833944fffffffff', 41.9, 2.5, 41.2, 2.9, 40.9, 2.4, 41.1, 1.8, 41.8, 1.4, 42.1, 1.9];
+eval([one(core, 'esc'), one(core, 'fmt'), one(core, 'ago'), one(core, 'num'), one(geoSrc, 'llRing'), fn(geoSrc, 'heardNodes'), fn(node, 'around')].join('\n'));
+var KNOWN_NODES = [{ n: 'bayu-ungasan', place: 'Ungasan', ll: [115.17, -8.81], listed: true, reads: 'community', me: true }];
+var D = { as_of: '2026-11-25T03:05:00Z', listed: { read: '2026-11-25T02:55:00Z', nodes: [{ name: 'bayu-ungasan' }] },
+  health: { reticulum: { announce_s: 1800, relaying: 0, hub: null, peers: [
+    { node: 'test-stand-in', id: 'teststandin00000', cell: '833944fffffffff', res: 3, km: 12609, last: Date.parse('2026-11-25T03:01:00Z') / 1000 }] } },
+  ngeo: { planet: [], lit: [], dist: {}, heard: { '833944fffffffff': ring } } };
+around().then(() => console.log(JSON.stringify({ svg: el.world.innerHTML, list: el.nodes.innerHTML.replace(/<[^>]+>/g, ' ') })));
+"""
+got = json.loads(subprocess.run(["node", "-e", draw], cwd=ROOT, capture_output=True, text=True, check=True).stdout)
+got["list"] = re.sub(r"\s+", " ", got["list"])
+outline = re.search(r'<path d="([^"]+)" class="h3heard"/>', got["svg"])
+assert outline and len(outline.group(1)) > 20, "the heard node's cell is drawn as an outline on the globe"
+assert got["svg"].count('class="nd"') == 1, "and no point for it: the only point is this node's own"
+assert "1 heard on the hub" in got["list"], got["list"]
+assert "test-stand-in" in got["list"] and "heard on the hub, 4 min ago, about 12609 km away" in got["list"], got["list"]
 print("heard nodes: matched by id, by name only when either side has none, outlined and listed")
 print("nodes: registry.json read, trimmed to what a page may see, kept through a failed read, off with UPDATE_CHECK")
