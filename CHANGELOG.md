@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **25 Nov: a community node no longer calls itself a house.** Every sentence the node writes was written for a
+  house, so the Ungasan community node told its visitors "it is under this house's own heat line" and opened its
+  Wall on the house. A node whose `NODE_KIND` is `community` or `district` now says this place where it said this
+  house, in all three languages, and its Wall opens at its own size. A house reads as it did. A stranger on a parent
+  also reads a child's sensors as a home nearby, without the child's name or its kit numbers, because a kit's public
+  page says where it stands.
+
 - **24 Nov: over Reticulum, only the people a node sends its alerts to can answer them.** The bridge took `act 3`
   from any address that wrote to the node. On a LAN or a tailnet that was the household, but on a shared Reticulum
   network anyone who heard the node's address could close its alerts, and each one counts in ρ. The bridge now

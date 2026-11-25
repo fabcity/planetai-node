@@ -64,7 +64,7 @@ Access: public
 
 What every screen in the house polls. Answers at every `SHARE_LEVEL` and never makes an outbound request of its own.
 
-Returns `ok` (true once a poll has run), `node`, `node_id` (the short hash of this node's key, null without `NODE_KEY`), `node_key` (its public key, base64), `version`, `schema`, `uptime_s`, `lat`, `lon`, `position` (`cell` or `point`), `city`, `polls`, `last_poll`, `last_error`, `ingested`, `errors` (each loop's last error), `locale`, `tz`, `cell` (`{id, res, edge_m, caption}`, null before setup), `docs`, `mcp` and `llms`. With their features on it adds `mesh` (`MQTT_HOST`), `direct` (`MQTT_HOST` with the smartcitizen pack on), `reticulum` (`RETICULUM_URL`) and `release` (`{latest, current, newer, checked, asked}` from the hourly check, with `UPDATE_CHECK=on`). `schema` starts with `unreachable` when the database refuses the app, usually a wrong password after a reinstall; `planetai doctor` says why.
+Returns `ok` (true once a poll has run), `node`, `node_id` (the short hash of this node's key, null without `NODE_KEY`), `node_key` (its public key, base64), `version`, `schema`, `uptime_s`, `lat`, `lon`, `position` (`cell` or `point`), `city`, `kind` (`NODE_KIND`, `home` when unset), `polls`, `last_poll`, `last_error`, `ingested`, `errors` (each loop's last error), `locale`, `tz`, `cell` (`{id, res, edge_m, caption}`, null before setup), `docs`, `mcp` and `llms`. With their features on it adds `mesh` (`MQTT_HOST`), `direct` (`MQTT_HOST` with the smartcitizen pack on), `reticulum` (`RETICULUM_URL`) and `release` (`{latest, current, newer, checked, asked}` from the hourly check, with `UPDATE_CHECK=on`). `schema` starts with `unreachable` when the database refuses the app, usually a wrong password after a reinstall; `planetai doctor` says why.
 
 ```json
 {"ok": true, "node": "bayu-ungasan", "node_id": "cc5gqlek2e2rhfy6", "version": "v0.92.0", "schema": "0.66", "uptime_s": 86121,
@@ -156,7 +156,7 @@ These routes read what the node has measured, from the sensor list down to raw r
 ### GET /sensors
 Access: open
 
-Every sensor this node reads, its position, and where its numbers come from: `sensor_id`, `source`, `name`, `room`, `source_name`, `lat`, `lon`, `indoor`, `local`, `custody`, `kind`, `scale`, `cadence`, `meta`. An untrusted caller gets no `room` or `source_name`, a lab or a station only where every point of the node's res-8 cell would have kept it, with a lab's `distance_km` measured from the cell's middle, and `meta` cut to `licence`, `attribution`, `model`, `dataset`, `network`, `note` and `corrected`. A `facility` row, a fab lab, keeps its public description too.
+Every sensor this node reads, its position, and where its numbers come from: `sensor_id`, `source`, `name`, `room`, `source_name`, `lat`, `lon`, `indoor`, `local`, `custody`, `kind`, `scale`, `cadence`, `meta`. An untrusted caller gets no `room` or `source_name`, a lab or a station only where every point of the node's res-8 cell would have kept it, with a lab's `distance_km` measured from the cell's middle, and `meta` cut to `licence`, `attribution`, `model`, `dataset`, `network`, `note` and `corrected`. A `facility` row, a fab lab, keeps its public description too. An untrusted caller reads a child's sensors as `home-1/outdoor-1`, named `a home nearby · outdoor 1`, never the child's name or a kit number, and `/observations` names them the same way.
 
 ### PATCH /sensors/{sid}
 Access: admin
@@ -570,7 +570,7 @@ The forecast pack's Open-Meteo wind field over the node's square, hourly for the
 ### GET /wall
 Access: open
 
-Everything the Wall's map draws, in one read: `{home, centre, scales, hours, stations, island, roofs, lab, rivers, basin, river, grid, change}`. `home` is the node's res-8 cell and `centre` its middle, `[lon, lat]`.
+Everything the Wall's map draws, in one read: `{home, centre, house, own, scales, hours, stations, island, roofs, lab, rivers, basin, river, grid, change}`. `home` is the node's res-8 cell and `centre` its middle, `[lon, lat]`. `house` is false on a `community` or `district` node (`NODE_KIND`), and `own` is the size the node is, `community`, `city` for a district, or `base`, and the Wall opens there.
 
 - `scales`: the three node sizes, base, community and city, each `{k, res, km2, cells}`: the res-8 cell the node stands in and the six touching it, then the same at res 7 and res 6. Each cell is `{id, own, ring}`: `own` is true on the cell that holds the node, and `ring` is closed, its first point repeated at the end.
 - `hours`: the 24 hours `/issues` draws, as `buckets`, and for each hour the Open-Meteo wind (`wind_kmh`, `wind_from`) and the sea's wave direction and swell (`wave_from`, `swell_m`, `swell_s`). A direction is where it comes from, in degrees. `buckets` holds only the hours the node has rows for, so an hour with no row at all is missing from it, and the next value belongs to the hour after: read the timestamps, never count one slot per elapsed hour. A null is an hour that is in `buckets` with no reading of that series.
