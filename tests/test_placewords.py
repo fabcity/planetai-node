@@ -84,5 +84,76 @@ kind("home")
 check(T["en"] == {"line": "this house's own heat line"}, "back to home: as written again (the cache keys on the kind)")
 kind(None)
 
+# ---- say: one string the code writes itself, as written on a house and swapped elsewhere
+kind("home")
+check(pw.say("the probes in this house") == "the probes in this house", "home: say() keeps the words")
+kind("district")
+check(pw.say("the probes in this house") == "the probes in this place", "district: say() swaps them")
+check(pw.say("Esta casa", "es") == "Este lugar", "district: say() takes a language")
+kind(None)
+
+# ---- the sweep: every template the engine reads, the core's tables and every pack's sentences, per language
+os.environ.setdefault("PACKS_DIR", str(ROOT / "packs"))
+import re  # noqa: E402
+import issues  # noqa: E402
+
+HOUSE = {"en": re.compile(r"\bhouse\b", re.I), "id": re.compile(r"\brumah\b", re.I), "es": re.compile(r"\bcasa\b", re.I)}
+
+
+def strings(o):
+    if isinstance(o, str):
+        yield o
+    elif isinstance(o, dict):
+        for v in o.values():
+            yield from strings(v)
+    elif isinstance(o, list):
+        for v in o:
+            yield from strings(v)
+
+
+TABLES = {n: getattr(issues, n) for n in
+          ("WHERE_WORDS", "NOUN_WORDS", "LABEL_WORDS", "DIGEST_WORDS", "SIMPLE_WORDS", "REASON_WORDS")}
+for name, t in TABLES.items():
+    check(isinstance(t, pw.Localized), f"{name} is read through Localized")
+    for loc in ("en", "id", "es"):
+        kind("home")
+        check(t.get(loc) == dict.get(t, loc), f"home: {name}.{loc} as written")
+        kind("community")
+        left = [s for s in strings(t.get(loc)) if HOUSE[loc].search(s)]
+        check(not left, f"community: {name}.{loc} has no house word left {left[:2]}")
+
+
+def per_language(o, path=""):
+    """(path, language, string) for every string under a field written per language."""
+    if isinstance(o, dict):
+        if {"en", "id", "es"} <= set(o):
+            for loc in ("en", "id", "es"):
+                for s in strings(o[loc]):
+                    yield path, loc, s
+        for k, v in o.items():
+            if k not in ("en", "id", "es"):
+                yield from per_language(v, f"{path}.{k}")
+    elif isinstance(o, list):
+        for i, v in enumerate(o):
+            yield from per_language(v, f"{path}[{i}]")
+
+
+files = sorted((ROOT / "packs").glob("*/issue.yml")) + sorted((ROOT / "app/issues").glob("*.yml"))
+check(len(files) >= 5, f"the sweep reads {len(files)} issue files")
+for f in files:
+    got = {}
+    issues._read(f, f.stem if f.parent.name == "issues" else f.parent.name, got, pack=None)
+    kind("home")
+    check(issues.for_kind(got) is got, f"home: {f.parent.name}/{f.name} is given back as it was")
+    kind("community")
+    left = [(p, loc, s[:60]) for p, loc, s in per_language(issues.for_kind(got)) if HOUSE[loc].search(s)]
+    check(not left, f"community: {f.parent.name}/{f.name} has no house word in any language {left[:2]}")
+kind("community")
+for loc in ("en", "id", "es"):
+    for d in issues.DISTANCES:
+        lab, noun = issues.LABEL_WORDS[loc][d], issues.NOUN_WORDS[loc][d]
+        check(lab.lower() in noun.lower(), f"community: {loc} label {lab!r} is inside its noun {noun!r}")
+kind(None)
+
 print(f"\n{'FAILED' if fails else 'passed'}: placewords ({fails} failure{'s' if fails != 1 else ''})")
 sys.exit(1 if fails else 0)

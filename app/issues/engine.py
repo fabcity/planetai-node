@@ -1726,7 +1726,7 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
             # why that one is at the top, in three languages — see HEADLINE_RULE
             "headline_rule": HEADLINE_RULE,
             # the column headings, so the page and Telegram both take their words from the node
-            "distances": list(DISTANCES), "labels": LABEL_WORDS,
+            "distances": list(DISTANCES), "labels": {loc: LABEL_WORDS[loc] for loc in LABEL_WORDS},
             "issues": out,
             # what the modular dashboard reads beside the issues — 15 September 2026's decisions
             "stations": heard,

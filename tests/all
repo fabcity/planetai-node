@@ -211,7 +211,7 @@ test_smartcitizen|PACKS_DIR=packs PYTHONPATH=app python3 tests/test_smartcitizen
 test_lan_air|PACKS_DIR=packs PYTHONPATH=app python3 tests/test_lan_air.py
 test_pack_routes|PACKS_DIR=packs PYTHONPATH=app python3 tests/test_pack_routes.py
 test_wall|PACKS_DIR=packs PYTHONPATH=app python3 tests/test_wall.py
-test_placewords|PYTHONPATH=app python3 tests/test_placewords.py
+test_placewords|PACKS_DIR=packs PYTHONPATH=app python3 tests/test_placewords.py
 test_calibrate_core|PYTHONPATH=app python3 tests/test_calibrate_core.py
 test_calibrate_routes|PACKS_DIR=packs PYTHONPATH=app python3 tests/test_calibrate_routes.py
 test_calibrate_pg|PYTHONPATH=app PACKS_DIR=packs python3 tests/test_calibrate_pg.py

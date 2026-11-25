@@ -29,14 +29,17 @@ SWAPS = {
            ("this house's", "this place's"),
            ("the house's", "this place's"),
            ("this house", "this place"),
-           ("the house", "this place")],
+           ("the house", "this place"),
+           ("house", "place")],          # the distance label alone
     "id": [("seseorang di rumah", "seseorang di sini"),
            ("di dalam rumah", "di dalam ruangan"),
            ("rumah ini", "tempat ini"),
            ("rumah", "tempat ini")],
     "es": [("alguien en la casa", "alguien aquí"),
+           ("dentro de casa", "en el interior"),   # the indoor distance; not in the approved table, listed for Tomas
            ("esta casa", "este lugar"),
-           ("la casa", "este lugar")],
+           ("la casa", "este lugar"),
+           ("casa", "lugar")],                     # the distance label alone
 }
 _RX = {loc: [(re.compile(r"\b" + re.escape(old) + r"\b", re.IGNORECASE), new) for old, new in rows]
        for loc, rows in SWAPS.items()}
@@ -67,6 +70,11 @@ def swap(text: str, loc: str) -> str:
     for rx, new in _RX.get(loc, ()):
         text = rx.sub(lambda m, new=new: new[:1].upper() + new[1:] if m.group(0)[:1].isupper() else new, text)
     return text
+
+
+def say(text: str, loc: str = "en") -> str:
+    """One string the code writes itself (not a template table): as written on a house, swapped elsewhere."""
+    return text if is_house() else swap(text, loc)
 
 
 def swap_tree(obj, loc: str):

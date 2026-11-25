@@ -17,6 +17,9 @@ this repo gets caught.
 """
 from __future__ import annotations
 
+import placewords
+from placewords import Localized  # a community or district node's words (app/placewords.py)
+
 import logging
 import re
 import time
@@ -68,23 +71,23 @@ TRENDS = ("rising", "steady", "falling")
 # The words shared by every issue, so four files do not carry four copies of "the street". An issue
 # overrides one of these with its own `where:` block — land and coast both rename `region`, because
 # "over this square of the map" is not where a wave is.
-WHERE_WORDS = {
+WHERE_WORDS = Localized({
     "en": {"room": "in the house", "yard": "on the street", "ring": "in the ring around it",
            "region": "over this square of the map"},
     "id": {"room": "di dalam rumah", "yard": "di jalan", "ring": "di sekitarnya",
            "region": "di atas kotak peta ini"},
     "es": {"room": "dentro de casa", "yard": "en la calle", "ring": "en los alrededores",
            "region": "sobre este cuadrado del mapa"},
-}
+})
 # The same four places as things a number can be compared WITH, which is a different phrase in every
 # language and in English too: "over on the street" is not a sentence.
-NOUN_WORDS = {
+NOUN_WORDS = Localized({
     "en": {"room": "the house", "yard": "the street", "ring": "the ring", "region": "the region"},
     "id": {"room": "rumah", "yard": "jalan", "ring": "sekitarnya", "region": "wilayah"},
     # "la región" takes no contraction, so the three templates that forced "lo que dice el modelo"
     # (por encima de + el) read correctly with the plain noun again.
     "es": {"room": "la casa", "yard": "la calle", "ring": "los alrededores", "region": "la región"},
-}
+})
 # The four distances as column headings: short, and the same four words wherever they appear.
 #
 # CHANGED 23 September 2026 (R25), following the programme page. The page names the four distances
@@ -97,11 +100,11 @@ NOUN_WORDS = {
 # The API KEYS do not change. `room/yard/ring/region` are what `/issues.distances` publishes, what
 # every issue's `stack` is keyed on and what a pack's `where:` block overrides; renaming those would
 # be a wire break for a wording problem. Only the words a person reads change.
-LABEL_WORDS = {
+LABEL_WORDS = Localized({
     "en": {"room": "house", "yard": "street", "ring": "ring", "region": "region"},
     "id": {"room": "rumah", "yard": "jalan", "ring": "sekitar", "region": "wilayah"},
     "es": {"room": "casa", "yard": "calle", "ring": "alrededores", "region": "región"},
-}
+})
 # {cmp} is assembled from these. Never a bare number: a comparison a household can read.
 # "a, b and c". The list separator the sentences use when one comparison covers several distances.
 JOIN_WORDS = {"en": "and", "id": "dan", "es": "y"}
@@ -129,7 +132,7 @@ SPAN_WORDS = {
 # table reads and no more, so a fixture could not render it. A second rho computed from a different
 # window would be a second rho, and two of them disagreeing on one page is worse than one of them
 # being absent. This sentence reports the ledger the Act stage draws, and says that is what it is.
-DIGEST_WORDS = {
+DIGEST_WORDS = Localized({
     "en": {
         "observe": "{issues} issues watched here, read from {stations} stations. "
                    "{headline} has the most to say: it is {phrase}.",
@@ -193,7 +196,7 @@ DIGEST_WORDS = {
                   "quiet": "tranquilo", "context": "contexto, y nunca pide nada",
                   "none": "no lee nada"},
     },
-}
+})
 # The hero's stamp and its line's name. `time` is when the numeral was read; `date` is when a yearly
 # record looked and when it looks next, because the satellite does not look again tomorrow.
 HERO_WORDS = {
@@ -212,7 +215,7 @@ HERO_WORDS = {
 # never in the browser. Approved by Tomas 25 September 2026. Counts agree in number through the pairs
 # below (Indonesian has one form); `{when}` is a time of day for an alert raised today and a date
 # otherwise, and `{since}` is the later of thirty days ago and the oldest alert this read reached.
-SIMPLE_WORDS = {
+SIMPLE_WORDS = Localized({
     "en": {"own": ("{n} station of its own", "{n} stations of its own"),
            "near": ("{n} other station", "{n} other stations"),
            "times": ("once", "{n} times"),
@@ -260,7 +263,7 @@ SIMPLE_WORDS = {
            "loop_none": "Desde {since} el nodo ha pedido algo {asked} y nadie ha respondido todav\u00eda.",
            "loop_empty": "El nodo no ha pedido nada a nadie en los \u00faltimos 30 d\u00edas.",
            "today": "las {t}", "date": "el {d} de {month}"},
-}
+})
 # The ask pane's questions, `digest.prompts`: written from tonight's bundle so the first thing a person
 # does in the pane is press rather than face a blank box. A question, never an answer, in the words a household
 # would use, never an alert number. The first three are the ones the pane opens with; the rest are the pool it
@@ -337,7 +340,7 @@ HEADLINE_RULE = {
           "tiene que decir. Si dos dicen otro tanto, el que m\u00e1s se ha movido en las \u00faltimas tres horas. Si "
           "hay empate exacto, manda el orden que eligi\u00f3 este lugar, en Set up \u2192 Basics.",
 }
-REASON_WORDS = {
+REASON_WORDS = Localized({
     "en": {
         "open_ask_current": "asked at {when}, and still true",
         "open_ask_stale":   "asked at {when}; the reading came back on its own, the alert is still open",
@@ -389,7 +392,7 @@ REASON_WORDS = {
         "event_cleared":    "un evento terminó a las {when}",
         "someone":          "alguien",
     },
-}
+})
 
 
 def _problems(key: str, d: dict) -> list[str]:
@@ -791,7 +794,27 @@ def load(path: Path | str | None = None) -> dict[str, dict]:
             out = pack_readouts(out, packs.manifests())
         except Exception as e:  # noqa: BLE001 — the packs are an addition; without them the core's issues still stand
             log.warning("issues: could not read the packs' issues and readouts (%s)", e)
-    return out
+    return for_kind(out)
+
+
+def for_kind(defs: dict[str, dict]) -> dict[str, dict]:
+    """The declarations as this node speaks them. On a community or district node every field written per language
+    (a dict holding en, id and es: `sentences`, `name`, `about`, `empty`, `where`, the events' words) is a new copy
+    with the house words swapped (app/placewords.py); a house gets the very objects it was given. load() runs on
+    every /issues request, so a change of NODE_KIND is read on the next one."""
+    if placewords.is_house():
+        return defs
+    return {k: _per_language(d) for k, d in defs.items()}
+
+
+def _per_language(o):
+    if isinstance(o, dict):
+        if set(LOCALES) <= set(o):
+            return {k: placewords.swap_tree(v, k) if k in LOCALES else _per_language(v) for k, v in o.items()}
+        return {k: _per_language(v) for k, v in o.items()}
+    if isinstance(o, list):
+        return [_per_language(v) for v in o]
+    return o
 
 
 def order(declared: str, available: dict[str, dict]) -> tuple[list[str], list[str]]:
