@@ -9,6 +9,13 @@
   also reads a child's sensors as a home nearby, without the child's name or its kit numbers, because a kit's public
   page says where it stands.
 
+- **25 Nov: one question decides whether other nodes see yours.** At the end of `planetai setup`, and in `planetai
+  reticulum`: "Let other PLANETAI nodes see this node?" They would see its name, its LXMF address and an area about
+  60 km across, never a reading, a sensor or where the house is. Yes starts the bridge, dials the Fab City hub and
+  turns presence on. No is the default in setup and asks nothing more. In `planetai reticulum` last time's answer is
+  the default, and a run with no terminal changes nothing. This replaces the hub question of 25 Nov, which left
+  presence to Set up.
+
 - **25 Nov: the Node door draws the nodes this one hears.** "The nodes around it" said a heard node was "not on this
   map yet". Now each heard node has a row, "heard on the hub, 20 min ago, about 340 km away", with "listed" beside it
   when the programme's list has it too, and the globe outlines its rough area, about 60 km across, never a point.
