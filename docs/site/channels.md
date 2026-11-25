@@ -108,7 +108,12 @@ in Set up, run `planetai reticulum` again.
    machine, starts it and prints
    `● this node's LXMF address: <address>`, then what to do in Sideband: add a TCP Client interface to this machine's LAN address on port 4242,
    and start a conversation with the address above. A phone can now reach the node over Reticulum with no internet
-   in between.
+   in between. It also asks `Dial the Fab City hub?`, and the answer you gave last time is the default. The hub lets
+   your node hear other PLANETAI nodes with nothing to open on your router. Everyone on it sees your node's name and
+   its LXMF address, and its rough area (about 60 km) only if presence is on, below. Yes writes a `[[Fab City hub]]`
+   block into `config/reticulum/config`, no takes it out, and an update never changes it. Run with no terminal, it
+   leaves the file alone. Then the command says `dialling the Fab City hub`, `planetai doctor` checks it each time,
+   and the Node door's Running section shows it on the Radio row.
 2. **Receive alerts.** Copy your own LXMF address from Sideband's settings into Set up › Sharing › Reticulum alert
    addresses, or run `planetai config set RETICULUM_ALERT_DESTINATIONS <hash>[,<hash>]`. The node sends the list to
    the bridge with each alert, so the next one goes there and nothing needs restarting. Every `act` alert is
@@ -128,8 +133,22 @@ and `ACT_TOKEN`. The Telegram token, the admin token and the database password s
 to speak to a radio mesh. The transport is TCP; an RNode LoRa interface is a commented block in
 `config/reticulum/config`, copied from the bridge's `config.tpl` the first time.
 
+The hub is node #1, the Mac mini in Bali, reached through Tailscale Funnel at `fabalabbali.tail71245c.ts.net:443`.
+Funnel takes only TLS, so your bridge dials it through `openssl s_client`, which checks that the certificate is the
+hub's. A node
+whose bridge has `enable_transport = Yes` passes announces and messages on between the nodes that dial it. Running
+one is in the bridge's [README](https://github.com/fabcity/planetai-reticulum#running-a-hub), and
+[SPEC_hub](https://github.com/fabcity/planetai-node/blob/main/docs/SPEC_hub.md) says why it works this way.
+
+The Node door's "The nodes around it" lists every node yours has heard, with when and how far: "heard on the hub,
+20 min ago, about 340 km away", and "listed" beside it when the programme's list has it too. A heard node is matched to
+a listed one by the node id it announces, or by name when either side has none. On the globe it is an outline of its
+rough area, about 60 km across, and never a point, because it published no position. A heard node stays on the page:
+nothing about it reaches your cells, your alerts or the export. Anyone can announce any name, so heard does not prove
+who sent it.
+
 Presence is separate and off by default: with `RETICULUM_PRESENCE=1` the bridge announces the node's name and a
-coarse H3 cell every half hour, at `RETICULUM_PRESENCE_RES` (3) and never finer than resolution 6, whatever the
+coarse H3 cell, its version, kind and node id every half hour, at `RETICULUM_PRESENCE_RES` (3) and never finer than resolution 6, whatever the
 setting says, so an exact place never leaves. `GET /presence` is what the bridge reads to do it, and it answers at
 every sharing level for that reason.
 

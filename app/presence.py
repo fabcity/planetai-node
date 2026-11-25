@@ -15,6 +15,7 @@ import httpx
 from fastapi import APIRouter
 
 import channels
+import identity
 import settings
 import sources
 
@@ -38,6 +39,7 @@ def poll_reticulum() -> None:
     if not RETICULUM_URL:
         return
     r = httpx.get(f"{RETICULUM_URL}/health", timeout=5).json()
+    ifs = r.get("interfaces") or []                         # a bridge older than the hub sends none
     peers = []
     try:
         peers = httpx.get(f"{RETICULUM_URL}/peers", timeout=5).json().get("peers", [])
@@ -48,6 +50,11 @@ def poll_reticulum() -> None:
                             "destinations": len(channels.RETICULUM_TO()),
                             "announce_s": int(os.getenv("RETICULUM_ANNOUNCE_S", "1800")),
                             "announcing": bool(r.get("announcing")),
+                            # the hub (docs/SPEC_hub.md): whether this node is on it (None: it does not dial one), and
+                            # on a hub, how many nodes are connected to it (None: not a hub)
+                            "hub": next((bool(i.get("online")) for i in ifs if i.get("name") == "Fab City hub"), None),
+                            "relaying": next((i.get("clients") for i in ifs if i.get("type") == "TCPServerInterface"), None)
+                                        if r.get("transport") else None,
                             "peers": _with_distance(peers),
                             "last": datetime.now(timezone.utc).isoformat()})
 
@@ -62,7 +69,7 @@ def _with_distance(peers: list[dict]) -> list[dict]:
     here = _node_cell()
     out = []
     for p in peers or []:
-        row = {k: p.get(k) for k in ("node", "cell", "res", "version", "kind", "first", "last", "hash")}
+        row = {k: p.get(k) for k in ("node", "cell", "res", "version", "kind", "first", "last", "hash", "id")}
         row["km"] = None
         try:
             import h3  # noqa: PLC0415
@@ -115,8 +122,11 @@ def presence():
             cell = h3.cell_to_parent(here["id"], res)
         except Exception as e:  # noqa: BLE001
             log.warning("presence: could not coarsen %s to res %d (%s)", here.get("id"), res, e)
+    # id: the node ID /health carries (SPEC_identity §2), so a node that hears this one can match it to the programme's
+    # list by id rather than by a name anyone may pick (docs/SPEC_hub.md §7)
     return {"enabled": True, "node": NODE, "cell": cell, "res": res,
-            "version": os.getenv("NODE_VERSION", "?"), "kind": os.getenv("NODE_KIND", "") or None}
+            "version": os.getenv("NODE_VERSION", "?"), "kind": os.getenv("NODE_KIND", "") or None,
+            "id": identity.node_id()}
 
 
 def _node_cell() -> dict | None:

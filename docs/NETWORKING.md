@@ -37,6 +37,12 @@ and its H3 cell rounded to `RETICULUM_PRESENCE_RES` (3 by default, never finer t
 LoRa interface is a commented block in its `config.tpl`, which becomes `config/reticulum/config`. `rns` and `lxmf` are pinned and are under the Reticulum License,
 which is not an open licence: [docs/decisions/2026-10-23-reticulum-licence.md](decisions/2026-10-23-reticulum-licence.md).
 
+Nodes hear each other through a hub ([SPEC_hub](SPEC_hub.md)). `planetai reticulum` asks whether to dial the Fab City
+hub, node #1, and writes a `[[Fab City hub]]` block into `config/reticulum/config` when the answer is yes: a
+`PipeInterface` running `openssl s_client` to `fabalabbali.tail71245c.ts.net:443`, because Tailscale Funnel carries
+the hub's port 4242 and takes only TLS. Nothing opens on the dialling node's router. The hub's own bridge has
+`enable_transport = Yes`, and `curl localhost:4243/health` on any node lists its interfaces and whether each is up.
+
 ## What connects to what
 
 ```

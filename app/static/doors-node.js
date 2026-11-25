@@ -253,8 +253,11 @@ async function flow(kept, offers) {
 
 async function around() {
   const land = await geo('world', '/static/world-land-110m.json'), el = $('#world'), W = el.clientWidth || 900, H = Math.round(W * .48);
-  // the nodes the programme lists (GET /nodes, js/nodegeo.js), not the ones this node's radio heard
-  const N = KNOWN_NODES, NG = D.ngeo;
+  // the nodes the programme lists (GET /nodes, js/nodegeo.js), and the ones this node heard over Reticulum (heardNodes)
+  const N = KNOWN_NODES, NG = D.ngeo, heard = heardNodes(D), ret = D.health.reticulum || {};
+  const where = ret.hub != null || ret.relaying != null ? 'on the hub' : 'by radio';
+  const minsAgo = t => Math.max(0, (Date.parse(D.as_of) / 1000 - t) / 60), away = km => km == null ? '' : km < 1 ? ', in this node’s own area' : `, about ${fmt(km, 0)} km away`;
+  const heardOf = new Map(heard.filter(h => h.listed).map(h => [h.listed.name, h]));
   // the whole-sphere H3 grid at resolution 2, as the landing draws it (planetai web, kit/h3/planet-states-web.svg): under
   // the coast, at half strength; each node lights its own res-2 cell. Edges as lines, so no ring winding can fill the globe.
   /* the planet's res-2 grid and each node's res-2 cell are the node's answers (GET /geo/planet, /geo/cell) */
@@ -263,6 +266,8 @@ async function around() {
   let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="The nodes the programme knows" class="geo"><path d="${path({ type: 'Sphere' })}" class="sphere"/>`
     + (g2.length ? `<path d="${path({ type: 'MultiLineString', coordinates: g2.map(llRing) })}" class="h3grid"/>` : '') + `<path d="${path(land)}" class="land"/>`;
   s += lit.map(c => `<path d="${path({ type: 'Polygon', coordinates: [llRing(c).reverse()] })}" class="h3lit"/>`).join('');
+  /* a heard node is its rough cell outlined (res 3, about 60 km), never a point: it published no position */
+  s += heard.filter(h => NG && NG.heard && NG.heard[h.cell]).map(h => `<path d="${path({ type: 'Polygon', coordinates: [llRing(NG.heard[h.cell]).reverse()] })}" class="h3heard"/>`).join('');
   /* an arc from this node to each other node with a point; one label per place, the nodes there by name */
   const me = N.find(x => x.me), far = N.filter(x => !x.me), places = d3.groups(N, x => x.ll.join(','));
   s += far.map(x => `<path d="${path({ type: 'LineString', coordinates: [me.ll, x.ll] })}" class="arc"/>`).join('');
@@ -271,15 +276,20 @@ async function around() {
     s += `<text x="${px + 10}" y="${py + 18}" class="lab">${esc(at.place.split(',')[0].trim())} · ${xs.map(x => esc(x.n)).join(' and ')}</text>`; }
   s += `</svg>`;
   el.innerHTML = s;
-  const L = D.listed, ret = D.health.reticulum || {}, word = x => !(L && L.read) ? 'list not read' : x.listed ? 'listed' : 'not listed';
+  const L = D.listed, word = x => !(L && L.read) ? 'list not read' : x.listed ? 'listed' : 'not listed';
   const fine = (L && L.read ? `Listed: the programme’s registry.json, read at ${hhmm(L.read)}${L.error ? ', the last read failed (' + L.error + ')' : ''}. `
       : `The programme’s list has not been read yet${L && L.error ? ' (' + L.error + ')' : ''}. `)
     + 'A node joins it with planetai hello and a merged pull request; a node with no published point is not drawn. '
-    + (ret.announce_s ? ((ret.peers || []).length ? `This node’s radio has heard ${ret.peers.length} other node${ret.peers.length > 1 ? 's' : ''}; they are not on this map yet.` : 'This node’s radio has heard no other node yet.') : 'This node has no radio announcing it.');
+    + (ret.announce_s ? (heard.length ? `Heard: the nodes this node’s bridge heard ${where}, each drawn as its rough area, an outline about 60 km across, and never as a point. A heard node is matched to a listed one by its id, or by name when either has none. Anyone can announce any name, so heard does not prove who sent it.`
+      : `This node has heard no other node ${where} yet.`) : 'This node has no radio announcing it.');
   /* the list first, its count in words (Tomas, 15 Oct: a 540 px globe with one dot) */
   const nL = N.filter(x => x.listed).length;
-  $('#nodes').innerHTML = `<p class="lede">${num('node.listed', nL, 'nodes on the programme’s list with a point')} listed · ${ret.announce_s ? `${num('node.heard', (ret.peers || []).length, 'other nodes this node’s radio heard')} heard by radio` : 'no radio on this node'}</p>` + N.map(x => `<div class="lrow"><span class="t">${esc(x.n)}<small>${esc(x.place)}</small></span><span class="s">${esc(x.reads)}</span>`
-    + `<span class="c"><span class="state">${word(x)}</span> ${x.me ? 'this node' : (NG && NG.dist['node:' + x.n] ? fmt(NG.dist['node:' + x.n].m / 1000, 0) + ' km' : '—')}</span></div>`).join('')
+  const heardRow = h => `heard ${where}, ${ago(minsAgo(h.last))} ago${away(h.km)}`;
+  $('#nodes').innerHTML = `<p class="lede">${num('node.listed', nL, 'nodes on the programme’s list with a point')} listed · ${ret.announce_s ? `${num('node.heard', heard.length, 'other nodes this node heard')} heard ${where}` : 'no radio on this node'}</p>` + N.map(x => `<div class="lrow"><span class="t">${esc(x.n)}<small>${esc(x.place)}</small></span><span class="s">${esc([x.reads, heardOf.has(x.n) && heardRow(heardOf.get(x.n))].filter(Boolean).join(' · '))}</span>`
+    + `<span class="c"><span class="state">${word(x)}${heardOf.has(x.n) ? ' · heard' : ''}</span> ${x.me ? 'this node' : (NG && NG.dist['node:' + x.n] ? fmt(NG.dist['node:' + x.n].m / 1000, 0) + ' km' : '—')}</span></div>`).join('')
+    /* a heard node with no row above: not listed, or listed with no point. Its distance is cell centre to cell centre */
+    + heard.filter(h => !(h.listed && N.some(x => x.listed && x.n === h.listed.name))).map(h => `<div class="lrow"><span class="t">${esc(h.n)}<small>${h.res != null ? `its area at res ${esc(String(h.res))}` : 'no area given'}</small></span><span class="s">${esc(heardRow(h))}</span>`
+      + `<span class="c"><span class="state">${h.listed ? 'listed · heard' : 'heard'}</span> ${h.km == null ? '—' : fmt(h.km, 0) + ' km'}</span></div>`).join('')
     + `<div class="lrow"><span class="t">A community node above it</span><span class="s">where this node’s hourly means would go, so a city can be built from nodes</span><span class="c x">not set</span></div>`
     + `<p class="fine">${esc(fine)}</p>`;
 }
@@ -303,7 +313,7 @@ async function running(kept) {
     ['Readings taken in', h.last_poll ? `${h.polls} polls since the restart, the last at ${hhmm(h.last_poll)}` : 'no poll yet since the restart', h.ingested.toLocaleString('en')],
     ...hw,
     ['Mesh in the house', mesh ? `${mesh.root_topic} · gateway ${mesh.gateway}` : 'no mesh broker set', mesh ? `${mesh.packets} packets` : 'off'],
-    ['Radio', ret && ret.announce_s ? `announces its cell every ${ret.announce_s / 60} min` : 'no radio bridge set', ret && ret.ok ? 'on' : 'off'],
+    ['Radio', (ret && ret.announce_s ? `announces its cell every ${ret.announce_s / 60} min` : 'no radio bridge set') + (ret && ret.hub != null ? (ret.hub ? ' · dialling the Fab City hub' : ' · the Fab City hub is not answering') : '') + (ret && ret.relaying != null ? ` · a hub, ${ret.relaying} node${ret.relaying === 1 ? '' : 's'} connected` : ''), ret && ret.ok ? 'on' : 'off'],
     ['This screen', DOORS_TOKEN() ? 'holds a token: it draws the map, the cells and the counts' : `${D.share === 'open' ? 'shared openly on this network' : 'not shared with this network'}, without a key: the map, the cells and the counts stay on the node`,
       DOORS_TOKEN() ? 'unlocked' : 'locked']]
     .map(([t, s2, c]) => `<div class="lrow"><span class="t">${t}</span><span class="s">${t === 'The machine' || /class="nm"/.test(s2) ? s2.replace(/^([^<]*)/, m => esc(m)) : esc(s2)}</span><span class="c">${/^<a /.test(c) ? c : esc(c)}</span></div>`).join('')

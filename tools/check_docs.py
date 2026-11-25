@@ -94,6 +94,7 @@ PROPOSED = {
 ALLOWED = {
     "docs/site/cli.md": {"publish"},                    # "There is no `planetai publish` ..."
     "docs/site/configuration.md": {"/send"},            # the Reticulum bridge's route, not the app's
+    "docs/SPEC_hub.md": {"/send", "tests/test_peers.py"},  # the bridge's route and test, in fabcity/planetai-reticulum
 }
 # names used as examples of packs someone might write, not packs that ship
 EXAMPLE_PACKS = {"_test", "my-pack", "monsoon", "monsoon-bali", "air-", "water", "example",
