@@ -20,6 +20,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import h3
+
+import placewords
 from fastapi import APIRouter, HTTPException
 
 import packs
@@ -399,6 +401,8 @@ def wall():
                                   empty=(None, None, None)) if hydro else (None, None, None))
     return {
         "home": home, "centre": [round(clon, 5), round(clat, 5)], "scales": sc,
+        # what the node is for (NODE_KIND): a community node opens at its own size and does not call itself a house
+        "house": placewords.is_house(), "own": placewords.own_scale(),
         "hours": {"buckets": [b.isoformat() if hasattr(b, "isoformat") else b for b in buckets],
                   **{k: hourly(rows, buckets, sid, m) for k, (sid, m) in HOURS.items()}},
         "stations": [{"lat": round(s["lat"], 3), "lon": round(s["lon"], 3), "pm25": hourly(rows, buckets, s["sensor_id"], "pm25")}

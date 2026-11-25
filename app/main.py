@@ -40,6 +40,7 @@ import basemap
 import ground
 import index
 import identity
+import placewords
 import learn
 import issues.api
 from issues import geometry as _geo
@@ -1071,6 +1072,8 @@ def health(request: Request):
             "schema": schema, "uptime_s": int(time.time() - STARTED),
             **_published_position(bool(getattr(request.state, "share_trusted", False))),
             "city": os.getenv("NODE_CITY", ""),
+            # what the node is for (NODE_KIND, default home): the doors speak as a house or as a place (app/placewords.py)
+            "kind": placewords.kind() or "home",
             # Named, never `**state`: state is the timers' scratchpad, and spreading it sent every reader at every
             # share level the programme's node list, the bot's username and, with SPECIES_MATCH on, 12 kB of GBIF
             # maps, every ~20 s from every screen. The keys below are docs/site/api.md's list for this route.
