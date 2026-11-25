@@ -145,10 +145,7 @@ lab/community node as parent", and Reticulum "needs to play a role". What the no
   anything else that becomes an open dataset, go over HTTPS.
 
 **Holochain, later, for bigger nodes.** Tomas sees it as a future feature of lab and community nodes, the base of a
-data economy around them: who flew, who processed, who used the result. Read 23 October: 0.7.1 is the current
-stable release (14 October), under the Cryptographic Autonomy License 1.0, which is OSI approved. The Sensorica
-read (28 September) advised against a Holochain conductor on a home node and against a DHT as the registry, and
-took Nondominium's resource fields and bilateral receipts as ideas for `fabcity-flows`. A lab is a bigger machine
-than a home, so the compute objection weakens there. An economy also needs records to trade on, and the drone
-service's flights (publisher, lab, mosaic, licence) together with `fabcity-flows` logs would be the first. Look
-again once a lab has run the drone service for a while.
+data economy around them: who flew, who processed, who used the result. A lab is a bigger machine than a home, so it
+can carry the compute. An economy also needs records to trade on, and the drone service's flights (publisher, lab,
+mosaic, licence) together with `fabcity-flows` logs would be the first. We look again once a lab has run the drone
+service for a while.
