@@ -1,4 +1,4 @@
-"""The Place report's reading (docs/SPEC_place_report.md §11): the facts it may rest on, the rules that write it, the
+"""The Place report's reading (SPEC_place_report §11, kept privately in planetai-design, node-docs/specs/): the facts it may rest on, the rules that write it, the
 check a model's text must pass, and the two routes. app/reading.py is imported as it is; the model is a stub and the
 database a fake cursor, so nothing here needs Postgres, a network or a model.
 
@@ -484,7 +484,6 @@ print("  reading: the foot of Place says who wrote the reading and when")
 # app/reading.py is the one place they live; the layer list's own docs keep McHarg, by his ruling of 4 Nov.
 for path, start, end in (("docs/site/place.md", "### The reading, and ways to improve the place", "## Folding"),
                          ("docs/site/api.md", "### GET /place/reading", "### POST /area"),
-                         ("docs/SPEC_place_report.md", "## 11 · The reading", None),
                          ("CHANGELOG.md", "**The Place report reads the place.**", "\n\n- **")):
     text = open(path).read()
     check(start in text, f"{path} has no '{start}'")

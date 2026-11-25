@@ -642,7 +642,7 @@ CREATE TABLE IF NOT EXISTS node_cells (
 );
 INSERT INTO schema_version (version) VALUES ('0.65') ON CONFLICT DO NOTHING;
 
--- 0.66: a model's reading of the place (17 Nov 2026, docs/SPEC_place_report.md §11). The node's own reading is never
+-- 0.66: a model's reading of the place (17 Nov 2026, SPEC_place_report §11). The node's own reading is never
 -- stored: it is computed from the facts on every read, so it cannot disagree with them. A row is one asking: `writing`
 -- until the model answers, then `written` with its text or `refused` with the reason; `facts` is what it was written from.
 CREATE TABLE IF NOT EXISTS place_readings (

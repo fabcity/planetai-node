@@ -1,4 +1,4 @@
-"""The Place report's reading: what kind of place this is, and what is worth doing here (docs/SPEC_place_report.md §11).
+"""The Place report's reading: what kind of place this is, and what is worth doing here (SPEC_place_report §11, kept privately in planetai-design, node-docs/specs/).
 
 Four things live here, in the order each rests on the one before:
 
