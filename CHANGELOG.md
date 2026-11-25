@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **25 Nov: after an update, the hub hears the node's new version within a minute.** After `planetai update` every
+  node on the hub could hear the old version, with no id, for half an hour. The Reticulum bridge could ask the old app
+  what to announce while the new one was starting, or keep running beside a new app and not ask again. Between its
+  half-hourly announces the bridge now asks the node every minute and announces whenever the answer changed. The bridge
+  pin moves to dc7071d.
+
 - **25 Nov: one question decides whether other nodes see yours.** At the end of `planetai setup`, and in `planetai
   reticulum`: "Let other PLANETAI nodes see this node?" They would see its name, its LXMF address and an area about
   60 km across, never a reading, a sensor or where the house is. Yes starts the bridge, dials the Fab City hub and
