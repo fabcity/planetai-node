@@ -7,6 +7,7 @@ be listed. Is that possible under the current design?" Answered the same morning
 
 **Status: step 1 built (#208, 11 October 2026); step 3 on `hello-cli-2026-10-11`; step 2 and the site not built.** Step 1 is built first, then step 2, then step 3, each
 its own pull request, each run on node #1 before it merges.
+Step 2, and a hello that needs no GitHub, continue in [SPEC_hub](SPEC_hub.md) (24 November 2026).
 
 ## 1 · What exists, and what the page pretends
 
