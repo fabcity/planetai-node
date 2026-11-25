@@ -128,20 +128,31 @@ assert "they are not on this map yet" not in nodejs, "the Node door still says h
 draw = r"""
 const fs = require('fs'), d3 = require('./app/static/d3.min.js');
 const core = fs.readFileSync('./app/static/doors-core.js', 'utf8'), geoSrc = fs.readFileSync('./app/static/doors-nodegeo.js', 'utf8'),
-      node = fs.readFileSync('./app/static/doors-node.js', 'utf8');
+      node = fs.readFileSync('./app/static/doors-node.js', 'utf8'), load = fs.readFileSync('./app/static/doors-load.js', 'utf8'),
+      wallmap = fs.readFileSync('./app/static/doors-wallmap.js', 'utf8');
 const one = (src, n) => src.match(new RegExp('^const ' + n + ' = .*$', 'm'))[0];
 const fn = (src, n) => src.match(new RegExp('(async )?function ' + n + '\\b[\\s\\S]*?\\n}\\n'))[0];
 const el = { world: { clientWidth: 900, innerHTML: '' }, nodes: { innerHTML: '' } };
 const $ = s => el[s.slice(1)];
 const geo = async () => ({ type: 'FeatureCollection', features: [] }), hhmm = iso => iso.slice(11, 16);   // the page's zone, as UTC here
 const ring = ['833944fffffffff', 41.9, 2.5, 41.2, 2.9, 40.9, 2.4, 41.1, 1.8, 41.8, 1.4, 42.1, 1.9];
-eval([one(core, 'esc'), one(core, 'fmt'), one(core, 'ago'), one(core, 'num'), one(geoSrc, 'llRing'), fn(geoSrc, 'heardNodes'), fn(node, 'around')].join('\n'));
+eval([one(core, 'esc'), one(core, 'fmt'), one(core, 'ago'), one(core, 'num'), one(geoSrc, 'llRing'), fn(geoSrc, 'heardNodes'), fn(load, 'sendersOf'), one(wallmap, 'notHouse'), fn(node, 'around')].join('\n'));
 var KNOWN_NODES = [{ n: 'bayu-ungasan', place: 'Ungasan', ll: [115.17, -8.81], listed: true, reads: 'community', me: true }];
 var D = { as_of: '2026-11-25T03:05:00Z', listed: { read: '2026-11-25T02:55:00Z', nodes: [{ name: 'bayu-ungasan' }] },
   health: { reticulum: { announce_s: 1800, relaying: 0, hub: null, peers: [
     { node: 'test-stand-in', id: 'teststandin00000', cell: '833944fffffffff', res: 3, km: 12609, last: Date.parse('2026-11-25T03:01:00Z') / 1000 }] } },
   ngeo: { planet: [], lit: [], dist: {}, heard: { '833944fffffffff': ring } } };
-around().then(() => console.log(JSON.stringify({ svg: el.world.innerHTML, list: el.nodes.innerHTML.replace(/<[^>]+>/g, ' ') })));
+(async () => {
+  await around(); const first = { svg: el.world.innerHTML, list: el.nodes.innerHTML.replace(/<[^>]+>/g, ' ') };
+  /* a child under a community node names its parent and says when its means went (25 Nov 2026) */
+  D.health.parent = { node: 'bayu-ungasan', at: '2026-11-25T03:00:00Z', sensors: 2 }; await around();
+  const child = el.nodes.innerHTML.replace(/<[^>]+>/g, ' ');
+  /* the community node lists first the nodes that send to it, a stranger reading each as a home nearby */
+  D.health = { ...D.health, kind: 'community', parent: undefined };
+  D.sensors = [{ sensor_id: 'home-1/outdoor-1', name: 'a home nearby · outdoor 1', kind: 'child' }, { sensor_id: 'home-1/outdoor-2', name: 'a home nearby · outdoor 2', kind: 'child' }];
+  D.stats15 = { 'home-1/outdoor-1': { pm25: [5, 30] } }; await around();
+  console.log(JSON.stringify({ ...first, child, community: el.nodes.innerHTML.replace(/<[^>]+>/g, ' ') }));
+})();
 """
 got = json.loads(subprocess.run(["node", "-e", draw], cwd=ROOT, capture_output=True, text=True, check=True).stdout)
 got["list"] = re.sub(r"\s+", " ", got["list"])
@@ -150,5 +161,13 @@ assert outline and len(outline.group(1)) > 20, "the heard node's cell is drawn a
 assert got["svg"].count('class="nd"') == 1, "and no point for it: the only point is this node's own"
 assert "1 heard on the hub" in got["list"], got["list"]
 assert "test-stand-in" in got["list"] and "heard on the hub, 4 min ago, about 12609 km away" in got["list"], got["list"]
+got["child"] = re.sub(r"\s+", " ", got["child"]); got["community"] = re.sub(r"\s+", " ", got["community"])
+assert "A community node above it" in got["list"] and "not set" in got["list"], "a private node with no parent says so"
+assert "bayu-ungasan the community node it sends to" in got["child"] and "hourly means of 2 sensors" in got["child"] \
+    and "sent at 03:00" in got["child"] and "A community node above it" not in got["child"], got["child"]
+assert got["community"].lstrip().startswith("1 node sends to it a home nearby sends to this node hourly means of 2 sensors, the last 30 min ago"), \
+    got["community"][:200]
+assert "A community node above it" not in got["community"] and "ungasan" not in got["community"].split("listed")[0], got["community"]
 print("heard nodes: matched by id, by name only when either side has none, outlined and listed")
+print("links: a child names its parent and when its means went; a community node lists its senders first, as a home nearby")
 print("nodes: registry.json read, trimmed to what a page may see, kept through a failed read, off with UPDATE_CHECK")

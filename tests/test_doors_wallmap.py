@@ -386,3 +386,42 @@ assert "wallScale(0, true)" not in _wall and _wall.count("wallScale(o, true)") +
     "reduced motion rests on the node's own size, both when it loads and when it is turned on"
 assert _data.lstrip().startswith("'use strict';"), "doors-data.js lost strict mode"
 print("  wall: names untouched, the ask says this place from the first draw; footer, heading, still view and strict mode")
+
+# ---- the kind at the top, and a community node's page (Tomas, 25 Nov 2026): every page says Private node or Community
+# node beside the name; a community node's doors never say house, through one pass over the page (placeWords) that
+# uses the Wall's table; the Node door lists the nodes that send to it, and a child says where its means went.
+out4 = subprocess.run(["node", "-e", """
+const L = require('./app/static/doors-load.js'), M = require('./app/static/doors-wallmap.js'), fs = require('fs');
+const kinds = ['home', 'business', 'community', 'district', '', undefined, 'Community'].map(L.nodeKind);
+const stranger = L.sendersOf([{ sensor_id: 'home-1/outdoor-1', name: 'a home nearby · outdoor 1', kind: 'child' },
+  { sensor_id: 'home-1/outdoor-2', name: 'a home nearby · outdoor 2', kind: 'child' }, { sensor_id: 'sc-1', kind: 'sensor', local: true },
+  { sensor_id: 'home-2/outdoor-1', name: 'a home nearby · outdoor 1', kind: 'child' }],
+  { 'home-1/outdoor-1': { pm25: [5, 40] }, 'home-1/outdoor-2': { pm25: [6, 12], temp: [28, 70] } });
+const trusted = L.sendersOf([{ sensor_id: 'ungasan-home/sc-19874', name: 'BAYU NEW ENCLOSURE', kind: 'child' }]);
+/* every "this house" or "the house" the doors hold, in their files as written, read through the Wall's table */
+const files = fs.readdirSync('app/static').filter(f => /^doors.*\\.(js|html)$/.test(f));
+const left = files.flatMap(f => M.houseless(fs.readFileSync('app/static/' + f, 'utf8')).split('\\n')
+  .filter(l => /\\b(this|the) house\\b/i.test(l) && !/^\\s*(\\/\\/|\\/\\*|\\*)/.test(l)).map(l => f + ': ' + l.trim().slice(0, 90)));
+console.log(JSON.stringify({ kinds, stranger, trusted, left }));
+"""], capture_output=True, text=True, cwd=ROOT)
+assert out4.returncode == 0, out4.stderr[-700:]
+R4 = json.loads(out4.stdout)
+assert R4["kinds"] == ["Private node", "Private node", "Community node", "Community node", "Private node", "Private node",
+                       "Community node"], R4["kinds"]
+assert R4["stranger"] == [{"id": "home-1", "label": "a home nearby", "sensors": 2, "silent": 12},
+                          {"id": "home-2", "label": "a home nearby", "sensors": 1, "silent": None}], R4["stranger"]
+assert R4["trusted"] == [{"id": "ungasan-home", "label": "ungasan-home", "sensors": 1, "silent": None}], R4["trusted"]
+assert not R4["left"], ("a phrase the Wall's table leaves as a house on a community node", R4["left"][:5])
+_core = (ROOT / "app/static/doors-core.js").read_text(); _node = (ROOT / "app/static/doors-node.js").read_text()
+_html = (ROOT / "app/static/doors.html").read_text(); _mob = (ROOT / "app/static/mobile.js").read_text()
+_main = (ROOT / "app/main.py").read_text()
+assert _core.count("placeWatch(") == 3 and "new MutationObserver" in _core and "if (t !== n.nodeValue)" in _core, \
+    "both ways in start the watch, and a text that did not change is never written back (no loop)"
+assert _core.count("whoHTML(") == 2 and _mob.count("h.kind)") == 2, "the kind is beside the name on both pages, locked too"
+assert "sendersOf(D.sensors, D.stats15)" in _node and "...(community && !P ? [] : [parentRow])" in _node, \
+    "the flow draws what other nodes send, and a community node with no parent sends nothing further"
+assert "reticulumBlock();" in _node and 'id="reticulum" data-learn="node-reticulum"' in _html, "the Node door has Reticulum"
+assert 'state["parent"] = {"node": answer.get("node")' in _main and '"accepted": len(rows), "node": NODE' in _main \
+    and '"parent": {**{"node": None, "at": None, "sensors": None}' in _main, \
+    "a child keeps where its means went, the parent says its name, /health carries both"
+print("  kind: private or community at the top; no house left on a community node's doors; senders, parent and Reticulum on Node")
