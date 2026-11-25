@@ -93,4 +93,34 @@ ns["check_registry"]()
 assert hc.asked == 2 and ns["nodes"]()["nodes"] == [], "UPDATE_CHECK=off asks nothing and forgets the list"
 
 assert "/nodes" in ns["_SHARE_OFF"][0], "/nodes is open at every share level"
+# Step 2 of docs/SPEC_hub.md: the Node door lists and outlines what this node heard over Reticulum. heardNodes() is lifted
+# out of doors-nodegeo.js and run in node. A heard node is matched to a listed one by id, by name only when either side
+# has none, so a node that picked a listed node's name but carries another id stays a stranger.
+import subprocess  # noqa: E402
+prog = r"""
+const src = require('fs').readFileSync('./app/static/doors-nodegeo.js', 'utf8');
+eval(src.match(/function heardNodes[\s\S]*?\n}\n/)[0]);
+const D = {listed: {nodes: [{name: 'bayu-ungasan', id: 'aaaa'}, {name: 'barcelona'}, {name: 'mahon1', id: 'mmmm'}]},
+  health: {reticulum: {peers: [
+    {node: 'bayu-ungasan', id: 'aaaa', cell: '8395a4fffffffff', res: 3, km: 0, last: 1},
+    {node: 'barcelona', id: 'bbbb', cell: '83394cfffffffff', res: 3, km: 12000, last: 2},
+    {node: 'mahon1', id: 'zzzz', cell: '831e5ffffffffff', res: 3, km: 11800, last: 3},
+    {node: 'old-node', cell: '83194cfffffffff', res: 3, km: 900, last: 4},
+    {cell: 'x', last: 5}]}}};
+const H = heardNodes(D);
+console.log(JSON.stringify(H.map(h => [h.n, h.listed && h.listed.name, h.cell, h.km])));
+console.log(JSON.stringify(heardNodes({listed: null, health: {}})));
+"""
+out = subprocess.run(["node", "-e", prog], cwd=ROOT, capture_output=True, text=True, check=True).stdout.split("\n")
+rows = json.loads(out[0])
+assert rows[0] == ["bayu-ungasan", "bayu-ungasan", "8395a4fffffffff", 0], f"the same id is the listed node: {rows[0]}"
+assert rows[1][1] == "barcelona", f"a listed node with no id is matched by name: {rows[1]}"
+assert rows[2][1] is None, f"a listed name with another id is a stranger, not mahon1: {rows[2]}"
+assert rows[3][1] is None and len(rows) == 4, f"an unlisted node is heard and not listed, and a row with no name is dropped: {rows}"
+assert json.loads(out[1]) == [], "a node with no bridge and no list hears nobody"
+nodejs = (ROOT / "app/static/doors-node.js").read_text()
+assert 'class="h3heard"' in nodejs and ".h3heard{fill:none" in (ROOT / "app/static/doors.html").read_text(), (
+    "a heard node is drawn as an outline of its cell, never filled and never a point")
+assert "they are not on this map yet" not in nodejs, "the Node door still says heard nodes are not drawn"
+print("heard nodes: matched by id, by name only when either side has none, outlined and listed")
 print("nodes: registry.json read, trimmed to what a page may see, kept through a failed read, off with UPDATE_CHECK")

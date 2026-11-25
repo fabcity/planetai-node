@@ -15,6 +15,7 @@ import httpx
 from fastapi import APIRouter
 
 import channels
+import identity
 import settings
 import sources
 
@@ -121,8 +122,11 @@ def presence():
             cell = h3.cell_to_parent(here["id"], res)
         except Exception as e:  # noqa: BLE001
             log.warning("presence: could not coarsen %s to res %d (%s)", here.get("id"), res, e)
+    # id: the node ID /health carries (SPEC_identity §2), so a node that hears this one can match it to the programme's
+    # list by id rather than by a name anyone may pick (docs/SPEC_hub.md §7)
     return {"enabled": True, "node": NODE, "cell": cell, "res": res,
-            "version": os.getenv("NODE_VERSION", "?"), "kind": os.getenv("NODE_KIND", "") or None}
+            "version": os.getenv("NODE_VERSION", "?"), "kind": os.getenv("NODE_KIND", "") or None,
+            "id": identity.node_id()}
 
 
 def _node_cell() -> dict | None:

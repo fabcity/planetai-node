@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **25 Nov: the Node door draws the nodes this one hears.** "The nodes around it" said a heard node was "not on this
+  map yet". Now each heard node has a row, "heard on the hub, 20 min ago, about 340 km away", with "listed" beside it
+  when the programme's list has it too, and the globe outlines its rough area, about 60 km across, never a point.
+  Presence now carries the node id, so a heard node is matched to a listed one by id, and by name only when either
+  side has none. A heard node stays on the page and reaches no cell, alert or export.
+
 - **25 Nov: nodes can hear each other through the Fab City hub.** Until now a node heard another over Reticulum only
   if someone wired the two together by hand, so the presence every node announces reached nobody. `planetai
   reticulum` now asks whether to dial the Fab City hub, node #1 in Bali, reached through Tailscale Funnel, with

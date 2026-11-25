@@ -140,8 +140,15 @@ whose bridge has `enable_transport = Yes` passes announces and messages on betwe
 one is in the bridge's [README](https://github.com/fabcity/planetai-reticulum#running-a-hub), and
 [SPEC_hub](https://github.com/fabcity/planetai-node/blob/main/docs/SPEC_hub.md) says why it works this way.
 
+The Node door's "The nodes around it" lists every node yours has heard, with when and how far: "heard on the hub,
+20 min ago, about 340 km away", and "listed" beside it when the programme's list has it too. A heard node is matched to
+a listed one by the node id it announces, or by name when either side has none. On the globe it is an outline of its
+rough area, about 60 km across, and never a point, because it published no position. A heard node stays on the page:
+nothing about it reaches your cells, your alerts or the export. Anyone can announce any name, so heard does not prove
+who sent it.
+
 Presence is separate and off by default: with `RETICULUM_PRESENCE=1` the bridge announces the node's name and a
-coarse H3 cell every half hour, at `RETICULUM_PRESENCE_RES` (3) and never finer than resolution 6, whatever the
+coarse H3 cell, its version, kind and node id every half hour, at `RETICULUM_PRESENCE_RES` (3) and never finer than resolution 6, whatever the
 setting says, so an exact place never leaves. `GET /presence` is what the bridge reads to do it, and it answers at
 every sharing level for that reason.
 
