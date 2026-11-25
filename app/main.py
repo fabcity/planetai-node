@@ -1281,7 +1281,27 @@ def sensors_(request: Request):
                 r[k] = round(r[k], 3) if r[k] is not None else None
         allow = _META_PUBLIC_FACILITY if r.get("kind") == "facility" else _META_PUBLIC
         r["meta"] = {k: v for k, v in (r["meta"] or {}).items() if k in allow} or None
-    return rows
+    return _child_alias(rows)
+
+
+def _child_alias(rows: list[dict], child_ids: list[str] | None = None) -> list[dict]:
+    """A child's sensors as a reader without the token reads them (Tomas, 25 Nov 2026): "a home nearby", never the
+    child's node name or the kit number in its id, because a Smart Citizen kit's public page says where it stands. Its
+    figures still count wherever the node counts them. Numbered from the sensors table, so /sensors and /observations
+    give one sensor one alias: children by node name, then a child's sensors by id, from 1."""
+    if not any(r.get("kind") == "child" for r in rows):
+        return rows                                  # no child here: nothing to ask the database
+    if child_ids is None:
+        child_ids = sorted(r["sensor_id"] for r in q("SELECT sensor_id, kind FROM sensors WHERE kind = 'child'")
+                           if r.get("kind", "child") == "child")
+    homes = sorted({i.split("/", 1)[0] for i in child_ids})
+    alias = {}
+    for c, home in enumerate(homes, 1):
+        for s, sid in enumerate(sorted(i for i in child_ids if i.split("/", 1)[0] == home), 1):
+            alias[sid] = (f"home-{c}/outdoor-{s}",
+                          f"a home nearby · outdoor {s}" if len(homes) == 1 else f"home {c} nearby · outdoor {s}")
+    return [{**r, "sensor_id": alias[r["sensor_id"]][0], "name": alias[r["sensor_id"]][1]}
+            if r.get("kind") == "child" and r.get("sensor_id") in alias else r for r in rows]
 
 
 @app.patch("/sensors/{sid}")
@@ -1403,8 +1423,9 @@ def trust():
 def observations(request: Request, authorization: str = Header("")):
     """Latest value per slow-moving source: city statistics, model point samples, survey results. A survey's
     `private` counts (the things a home keeps) answer the admin token only, and never an agent."""
-    return q("SELECT * FROM observations" + ("" if _shows_private(request, authorization) else " WHERE " + packs.public_sql("observations"))
+    rows = q("SELECT * FROM observations" + ("" if _shows_private(request, authorization) else " WHERE " + packs.public_sql("observations"))
              + " ORDER BY scale, sensor_id, metric")
+    return rows if getattr(request.state, "share_trusted", False) else _child_alias(rows)   # a child is a home nearby to a stranger
 
 
 @app.get("/alerts")
