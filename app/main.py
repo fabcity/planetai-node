@@ -485,7 +485,16 @@ def push_aggregates() -> None:
     if r:
         log.info("pushed %d hourly rows to parent", len(rows))
         try:
-            maps.take_asks(r.json())   # the parent's asks for a shared photo come back in its answer (light GIS §14)
+            answer = r.json()
+        except ValueError:
+            answer = {}
+        answer = answer if isinstance(answer, dict) else {}
+        # what the Node door says goes up, and to whom (Tomas, 25 Nov 2026): a parent older than v0.93 does not say its
+        # name, so `node` stays None and the page says "its community node"
+        state["parent"] = {"node": answer.get("node"), "at": datetime.now(timezone.utc).isoformat(),
+                           "sensors": len({x["sensor_id"] for x in rows})}
+        try:
+            maps.take_asks(answer)   # the parent's asks for a shared photo come back in its answer (light GIS §14)
         except Exception as e:  # noqa: BLE001
             log.warning("photo asks from parent: %s", e)
 
@@ -1101,6 +1110,10 @@ def health(request: Request):
             # can go further: the documentation, the MCP endpoint (token-gated) and this node's own /llms.txt.
             "docs": DOCS_URL, "mcp": "/mcp", "llms": "/llms.txt",
             **({"mesh": mesh_state} if MQTT_HOST else {}),
+            # where this node's hourly means go, when it has a parent: when they last went and how many sensors, to
+            # anyone; the parent's name only to a reader this node trusts (Tomas, 25 Nov 2026)
+            **({"parent": {**{"node": None, "at": None, "sensors": None}, **state.get("parent", {}),
+                           **({} if getattr(request.state, "share_trusted", False) else {"node": None})}} if PARENT() else {}),
             **{k: v for d in packs.collect("status") if isinstance(d, dict) for k, v in d.items()},  # packs/smartcitizen: direct
             **({"reticulum": presence.reticulum_state} if RETICULUM_URL else {})}
 
@@ -2542,4 +2555,5 @@ def receive_aggregates(body: dict, request: Request, raw: bytes = Depends(_raw_b
             cur.execute("INSERT INTO readings (ts, sensor_id, metric, value) VALUES (%s,%s,%s,%s) "
                         "ON CONFLICT (sensor_id, metric, ts) DO UPDATE SET value = EXCLUDED.value",
                         (r["bucket"], sid, r["metric"], float(r["mean"])))
-    return {"accepted": len(rows), **maps.asks_for(child)}   # a home node is behind NAT: an ask goes down here (§14)
+    # its own name, so the child's Node door can say where its means went; a home node is behind NAT: an ask goes down here (§14)
+    return {"accepted": len(rows), "node": NODE, **maps.asks_for(child)}

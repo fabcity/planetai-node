@@ -200,4 +200,23 @@ function declaredBand(x) {
     + (x.note ? `<details class="how"><summary>How this is read</summary><p class="in">${esc(x.note)}</p></details>` : '') + '</section>';
 }
 
-if (typeof module !== 'undefined') module.exports = { buildD, doorsLocal, doorsFetch, DOORS_LOCKED, WORDS, stateWord, kindWord };
+/* What kind of node this is, said beside its name at the top of every page (Tomas, 25 Nov 2026): private or community.
+   /health's kind is NODE_KIND; a district node reads as community until there are city nodes. */
+const nodeKind = kind => ['community', 'district'].includes(String(kind ?? '').toLowerCase()) ? 'Community node' : 'Private node';
+/* The nodes that send their hourly means to this one, from its sensors. A child's sensors are stored as <child>/<sensor>
+   (app/main.py, POST /aggregates), and a stranger reads them as home-N/outdoor-N named "a home nearby · …", so the part
+   before the slash is the node that sent them, and a stranger never learns its name. `silent` is the fewest minutes
+   since any of its sensors was heard (GET /stats), null when the screen has not been told. */
+function sendersOf(sensors, stats15 = {}) {
+  const by = new Map();
+  for (const s of sensors || []) {
+    if (s.kind !== 'child') continue;
+    const id = String(s.sensor_id).split('/')[0], g = by.get(id) || { id, label: /^a home nearby/.test(s.name || '') ? 'a home nearby' : id, sensors: 0, silent: null };
+    const quiet = Object.values(stats15[s.sensor_id] || {}).map(v => v && v[1]).filter(v => v != null);
+    g.sensors += 1; if (quiet.length) g.silent = Math.min(g.silent ?? Infinity, ...quiet);
+    by.set(id, g);
+  }
+  return [...by.values()];
+}
+
+if (typeof module !== 'undefined') module.exports = { buildD, doorsLocal, doorsFetch, DOORS_LOCKED, WORDS, stateWord, kindWord, nodeKind, sendersOf };

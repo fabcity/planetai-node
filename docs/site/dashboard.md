@@ -44,11 +44,15 @@ so the dashboard draws on a network with no route out.
 
 ## The bar and the foot
 
-The bar runs along the top of every door but the Wall: the node's name and place, the five doors in the order Now,
+The bar runs along the top of every door but the Wall: the node's name, what kind of node it is, its place, the five doors in the order Now,
 Place, Node, Data, Wall, then an as-of line (`LIVE · as of 19:00`, or `CAPTURE` on a fixture, with `· locked` on a
 screen without a token), the **Paper** / **Dark** switch, the documentation, **Ask the node** and the gear for Set up.
 When a newer release is out, one small line says so ("v0.84.0 is out") and opens Set up › Updates. On a phone the bar
 also offers **Phone view**.
+
+The kind sits beside the name in a small box: **Private node** for a home or a business, **Community node** for a
+community or district node (`NODE_KIND`), on the phone page too. On a community node the page says this place
+wherever a house's page says this house, on every door.
 
 The register is kept in this browser as `planetai_theme`; with nothing kept the doors follow the system's setting. The
 Wall is always dark.
@@ -177,10 +181,11 @@ with a link to finish setting up. Under it, the version, uptime, readings since 
 
 | part | what it holds |
 |---|---|
-| **What comes in, what goes out** | the node as a hexagon, its sources on one side and what leaves on the other, replaying the last six hours in 30 s (24 hours on a press). Drawn vertically under 700 px |
+| **What comes in, what goes out** | the node as a hexagon, its sources on one side and what leaves on the other, replaying the last six hours in 30 s (24 hours on a press). Drawn vertically under 700 px. A community node draws a link from the nodes that send to it and counts them at the top; a node with a parent says which node its hourly means went to and when |
 | **Fab City Index cells** | the Index cells this node computes from its hourly buckets, "N of 20", each with its value and provenance word |
 | **What it remembers** | admin token only, and never leaves the machine: the **Diary** as a table by day, week, month or year, each entry opening as the node wrote it, with a search; **What is usual** (the shape of the day inside and out, the week against the three before); **What worked**, per alert, the change inside when somebody acted and when nobody did, and the node's verdict; **Who lives here?**, five boxes that rank the learnings by who they matter to. `#node/remember/day/<date>` opens one entry |
-| **The nodes around it** | the nodes listed and heard by radio, then a globe at most a third of the screen high |
+| **The nodes around it** | on a community node, first the nodes that send to it, each with its sensors and when it was last heard (a stranger reads each as a home nearby); on a node with a parent, that node and when its means last went; then the nodes listed and heard by radio, and a globe at most a third of the screen high |
+| **Reticulum** | the node's LXMF address with a copy button, whether it dials the Fab City hub, how many nodes it hears, where its alerts go, what it answers and what it announces; [Reticulum](reticulum.md) is the guide |
 | **Running** | the version and schema, how long since the restart and the polls since, then, with the token, the processor, memory, temperature and disk, with how long the disk lasts, and the mesh in the house |
 | **What this node will not do, at any stage** | the five refusals in plain words, each beside a link to where it can be checked |
 

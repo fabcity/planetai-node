@@ -5,6 +5,32 @@
 const $ = s => document.querySelector(s);
 /* a community or district node does not call itself a house (app/placewords.py): doors-wallmap.js's houseless and notHouse, read when a door draws */
 const asHouse = s => notHouse(((typeof D !== 'undefined' && D && D.health) || {}).kind) ? houseless(s) : s;
+/* The rest of the page's words, once they are in it. #428 swapped the engine's sentences and a few of the page's, and the
+   doors hold about a hundred more "this house"; a new one would be missed again. So on a community node every text and
+   label the doors add goes through houseless once, here, and a house never starts the watch (Tomas, 25 Nov 2026).
+   ponytail: a sensor a keeper named "The House Garden" reads "This place Garden" on a community node; mark its element
+   data-raw if that ever matters. */
+const PLACE_ATTRS = ['aria-label', 'title', 'placeholder'];
+function placeWords(root) {
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+  for (let n = root; n; n = w.nextNode()) {
+    if (n.nodeType === Node.TEXT_NODE) {
+      if (!/house/i.test(n.nodeValue) || (n.parentElement && n.parentElement.closest('script,style,textarea,[data-raw]'))) continue;
+      const t = houseless(n.nodeValue); if (t !== n.nodeValue) n.nodeValue = t;   /* unchanged is never written: no loop */
+    } else if (n.nodeType === Node.ELEMENT_NODE) {
+      for (const a of PLACE_ATTRS) { const v = n.getAttribute(a); if (v && /house/i.test(v)) { const t = houseless(v); if (t !== v) n.setAttribute(a, t); } }
+    }
+  }
+}
+let PLACEOBS = null;
+function placeWatch(kind) {
+  if (PLACEOBS || !notHouse(kind)) return;
+  placeWords(document.body);
+  PLACEOBS = new MutationObserver(ms => { for (const m of ms) { if (m.type === 'characterData') placeWords(m.target); else m.addedNodes.forEach(placeWords); } });
+  PLACEOBS.observe(document.body, { subtree: true, childList: true, characterData: true });
+}
+/* the node's name at the top, its kind beside it, then where it is */
+const whoHTML = (name, place, kind) => `${esc(name)}<span class="kind">${nodeKind(kind)}</span><small>${esc(place || '')}</small>`;
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], MO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 /* Every wire time is read in the node's own zone (doorsLocal, doors-load.js): a UTC string and a local one say the same
@@ -288,7 +314,8 @@ Promise.all([loadD(), fetch(NODE + 'learn.json').then(r => r.json()).catch(() =>
   /* the cells and distances the flow, the Wall and Node draw are the node's answers (js/nodegeo.js) */
   await knownNodes(D); foot();
   if (D.askOff) $('#askbtn').hidden = true;                 /* UI_ASK off: no ask here either */
-  $('#who').innerHTML = `${esc(D.node.name)}<small>${esc(D.node.place || '')}</small>`;
+  $('#who').innerHTML = whoHTML(D.node.name, D.node.place, D.health.kind);
+  placeWatch(D.health.kind);
   $('#asof').textContent = `${new URLSearchParams(location.search).get('fixture') ? 'CAPTURE' : 'LIVE'} · as of ${hhmm(D.as_of)}${DOORS_TOKEN() ? '' : ' · locked'}`;   /* the version is in the footer (audit, 15 Oct) */
   const rel = D.health.release || {};                        /* a newer release: one small line in the bar, to Set up › Updates */
   $('#relnote').hidden = !rel.newer; $('#relnote').textContent = rel.newer ? `${rel.latest} is out` : '';
@@ -305,7 +332,8 @@ Promise.all([loadD(), fetch(NODE + 'learn.json').then(r => r.json()).catch(() =>
 async function refused(e) {
   const [h, r] = await Promise.all([fetch('/health').then(x => x.json()).catch(() => ({})),
     doorsFetch('/issues').then(async x => x.ok ? null : (await x.json().catch(() => ({}))).error || (await x.text().catch(() => ''))).catch(() => null)]);
-  $('#who').innerHTML = `${esc(h.node || 'this node')}<small>${esc(h.city || '')}</small>`;
+  $('#who').innerHTML = whoHTML(h.node || 'this node', h.city, h.kind);
+  placeWatch(h.kind);
   $('#asof').textContent = 'locked';
   document.querySelectorAll('.view').forEach(el => { el.hidden = el.dataset.view !== 'setup'; });
   /* a Wall is a screen nobody operates: one line it can be read by from across the room, never a token form (audit, 15 Oct) */

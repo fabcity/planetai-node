@@ -36,6 +36,9 @@ To make one node the child of another:
    A caller without the token reads them as a home nearby (`home-1/outdoor-1`), never the child's name or a kit
    number, because a kit's public page says where it stands.
    The house's raw readings are still at home.
+4. Look at both Node doors. The parent lists the child first under The nodes around it, with its sensors and when it
+   was last heard, and its flow draws a link from the nodes that send to it. The child names its parent there,
+   says when its hourly means last went, and its flow's "Hourly means, to a community node" row says the same.
 
 Through those two routes a parent never sees a child's raw rows, its room names, its people, its sentences or its
 coordinates.

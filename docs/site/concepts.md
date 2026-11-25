@@ -13,8 +13,9 @@ lowercase with dashes), a position (`NODE_LAT`, `NODE_LON`), a time zone (`NODE_
 
 ![Nested H3 cells around the node, resolution 6 to 12](img/cell-ladder.svg "The edges are H3 averages. The node's own resolution 8 cell is drawn heavy.")
 
-**Kind** (`NODE_KIND`): `home`, `business`, `community` or `district`, what the node is for. No code reads
-it for a default or a pack; `/presence` announces it. It is separate from the Index scale; the setup wizard sets
+**Kind** (`NODE_KIND`): `home`, `business`, `community` or `district`, what the node is for. Every page says it
+beside the node's name, as a private node (`home`, `business`) or a community node (`community`, `district`), and a
+community node's page and Node door follow it. No code reads it for a default or a pack; `/presence` announces it. It is separate from the Index scale; the setup wizard sets
 `NODE_SCALE=city` when the kind is `district`.
 
 **Scale** (`NODE_SCALE`): `community`, `city` or `region`, one of the Full Stack Metrics Framework's
