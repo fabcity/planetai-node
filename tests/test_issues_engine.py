@@ -886,5 +886,36 @@ _old = engine._reason_text({"code": "open_ask_stale", "at": "2026-10-02T13:22:00
 _new = engine._reason_text({"code": "open_ask_stale", "at": "2026-10-14T05:22:00+00:00", "today": engine._today(_now, _wita)}, "en")
 assert _old.startswith("asked at 2 Oct 21:22;") and _new.startswith("asked at 13:22;"), (_old, _new)
 print("reasons: a time from another day carries its date, today's is the local clock")
+
+# A community or district node writes no house word (app/placewords.py, Tomas 25 Nov 2026), and a house writes exactly
+# what it wrote before: the same replay under NODE_KIND=home and with NODE_KIND unset is the same document.
+_HOUSE = re.compile(r"\bhouse\b|\brumah\b|\bcasa\b", re.IGNORECASE)
+
+
+def _strings(o):
+    if isinstance(o, str):
+        yield o
+    elif isinstance(o, dict):
+        for v in o.values():
+            yield from _strings(v)
+    elif isinstance(o, list):
+        for v in o:
+            yield from _strings(v)
+
+
+_kind0 = os.environ.pop("NODE_KIND", None)
+_unset = json.dumps(run(), sort_keys=True, default=str)
+os.environ["NODE_KIND"] = "home"
+check(json.dumps(run(), sort_keys=True, default=str) == _unset, "NODE_KIND=home: the replay is the document it was")
+os.environ["NODE_KIND"] = "community"
+_DECL0, DECL = DECL, I.load()          # the app loads its declarations on every request
+_left = sorted({s for s in _strings(json.loads(json.dumps(run(), default=str))) if _HOUSE.search(s)})
+DECL = _DECL0
+check(not _left, f"NODE_KIND=community: no house word in the replay ({len(_left)} left: {_left[:3]})")
+os.environ.pop("NODE_KIND", None)
+if _kind0 is not None:
+    os.environ["NODE_KIND"] = _kind0
+print("kinds: a house replays as it did; a community node's replay has no house word"
+      if not [f for f in fails if "NODE_KIND" in f] else "\n".join(f for f in fails if "NODE_KIND" in f))
 sys.exit(1 if [f for f in fails if f] else 0)
 

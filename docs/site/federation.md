@@ -33,6 +33,8 @@ To make one node the child of another:
    changed key, shows as `the parent refused /aggregates (401): …` with the parent's own sentence, and it stays in
    Set up › Machine on the child until a push goes through. On the parent the child's sensors appear as
    `<child>/<sensor_id>` with `kind='child'`, in the parent's custody, so they count toward a `live` cell.
+   A caller without the token reads them as a home nearby (`home-1/outdoor-1`), never the child's name or a kit
+   number, because a kit's public page says where it stands.
    The house's raw readings are still at home.
 
 Through those two routes a parent never sees a child's raw rows, its room names, its people, its sentences or its

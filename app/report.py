@@ -24,6 +24,8 @@ from actions import rooms_said
 import packs
 import settings
 
+from placewords import Localized  # a community or district node's words (app/placewords.py)
+
 log = logging.getLogger("planetai.report")
 
 # What the slow sources mean, in words a model or a person can read. Lived in agent.py until the report needed it
@@ -393,7 +395,7 @@ BEYOND = {
 # what happened, per room and with the local time; then the one thing to do; then the invitation, last. A line is
 # always named with its owner and its unit. A "what changed" sentence says what a person would say about the room
 # ("Studio was more humid than usual"), never "the damp ran higher".
-T = {
+T = Localized({
     "en": {
         "folded": "Overnight and this morning.",
         "state_hot": "🥵 It is dangerously hot inside.",
@@ -503,7 +505,7 @@ T = {
         "todo_none": "No hay nada que hacer antes del próximo informe.",
         "ask": "Pregúntame lo que quieras sobre el aire, el calor o el mar.",
     },
-}
+})
 
 
 # app/agent.py::health_check's `fix` is for whoever runs the node (shell commands, ids); the morning message says the

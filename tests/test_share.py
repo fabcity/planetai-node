@@ -205,6 +205,11 @@ for lv in ("off", "open"):
     # R25: the stranger on the WiFi gets the cell's centre, and is told so.
     assert h.get("position") == "cell", f"{lv}: an untrusted /health must say it carries the cell, got {h.get('position')!r}"
     assert (h["lat"], h["lon"]) == main._coarse(-8.6478291, 115.1385412), f"{lv}: /health is not the cell's centre"
+    # what the node is for (NODE_KIND), so the doors can speak as a house or as a place (app/placewords.py)
+    assert h.get("kind") == "home", f"{lv}: /health's kind is {h.get('kind')!r} with NODE_KIND unset"
+    os.environ["NODE_KIND"] = "community"
+    assert lan.get("/health").json().get("kind") == "community", f"{lv}: /health does not say the node's kind"
+    os.environ.pop("NODE_KIND", None)
     assert h.get("docs", "").startswith("https://planetai.fab.city/docs") and h.get("mcp") == "/mcp", \
         f"{lv}: /health must say where the documentation and the tools are"
     assert h["node"] == "bayu-2", f"{lv}: /health keeps the node name"

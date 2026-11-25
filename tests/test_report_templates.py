@@ -377,3 +377,32 @@ for _chk, _fix in _FIX.items():
                 _who and _chk in ("LoRa radios heard in the last hour", "no local sensor's ambient channel is frozen")), (_chk, _loc, _todo)
 print("a failing health check reaches the morning in the household's words, by room, never as its admin fix")
 print(f"the sheet renders in three languages across {len(CASES)} states, under 100 words, with nothing unfilled")
+
+# A community or district node's report does not call it a house (app/placewords.py, Tomas 25 Nov 2026); a house's
+# reads as it did.
+import re as _re
+
+
+def _strs(o):
+    if isinstance(o, str):
+        yield o
+    elif isinstance(o, dict):
+        for v in o.values():
+            yield from _strs(v)
+    elif isinstance(o, list):
+        for v in o:
+            yield from _strs(v)
+
+
+_k0 = os.environ.pop("NODE_KIND", None)
+os.environ["NODE_KIND"] = "community"
+for _loc in ("en", "id", "es"):
+    _left = [s for s in _strs(report.T.get(_loc)) if _re.search(r"\bhouse\b|\brumah\b|\bcasa\b", s, _re.I)]
+    assert not _left, (_loc, _left)
+assert report.T["en"]["line_heat"] == "the heat line set here, {n} °C feels-like", report.T["en"]["line_heat"]
+os.environ["NODE_KIND"] = "home"
+assert report.T["en"]["line_heat"] == "this house's heat line, {n} °C feels-like", report.T["en"]["line_heat"]
+os.environ.pop("NODE_KIND", None)
+if _k0 is not None:
+    os.environ["NODE_KIND"] = _k0
+print("a community node's report says the heat line set here; a house's says this house's, as it did")

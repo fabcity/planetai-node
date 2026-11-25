@@ -797,9 +797,10 @@ class El {
   get outerHTML() { return `<${this.tagName}${Object.entries(this.a).map(([k, v]) => ` ${k}="${v}"`).join('')}>${this.textContent}${this.kids.map(c => c.outerHTML).join('')}</${this.tagName}>`; }
 }
 const els = {}, ctx = { D: L.buildD({ ...F, days: F.issues_days }, 'en'), d3, document: doc, getComputedStyle: () => ({ color: '#000' }),
-  doorsLocal: L.doorsLocal, DOORS_TOKEN: () => '', VIEWS: {}, $: q => (els[q] ||= {}), out: {} };
+  doorsLocal: L.doorsLocal, DOORS_TOKEN: () => '', VIEWS: {}, $: q => (els[q] ||= {}), out: {},
+  houseless: require('./app/static/doors-wallmap.js').houseless, notHouse: require('./app/static/doors-wallmap.js').notHouse };
 vm.createContext(ctx);
-vm.runInContext(['esc', 'WD', 'loc', 'dayOf', 'dLabel', 'fmt', 'lineLab', 'plain', 'NODE', 'sign', 'PROV', 'prov', 'said', 'num', 'unitOf', 'labelOf',
+vm.runInContext(['esc', 'asHouse', 'WD', 'loc', 'dayOf', 'dLabel', 'fmt', 'lineLab', 'plain', 'NODE', 'sign', 'PROV', 'prov', 'said', 'num', 'unitOf', 'labelOf',
   'ISSUES_DRAWN', 'val'].map(pick).join('\n') + '\n' + fs.readFileSync('./app/static/doors-fig.js', 'utf8') + '\n' + fs.readFileSync('./app/static/doors-data.js', 'utf8')
   + `\nD.dates = [...new Set(D.buckets.map(dayOf))]; D.at = {}; D.buckets.forEach((b, i) => { D.at[dayOf(b) + '|' + hourOf(b)] = i; });
    D.now = D.buckets.length - 1; D.sens = Object.fromEntries(D.sensors.map(s => [s.sensor_id, s]));   /* doors-core.js's boot, line for line */
@@ -992,10 +993,11 @@ const core = fs.readFileSync('./app/static/doors-core.js', 'utf8'), pick = n => 
 const els = {}, mk = id => ({ id, innerHTML: '', hidden: false, classList: { add() {}, remove() {}, toggle() {} }, querySelectorAll: () => [], querySelector: () => null, scrollIntoView() {} });
 const ctx = { D: L.buildD({ ...F, days: F.issues_days }, 'en'), buildD: L.buildD, F, d3, doorsLocal: L.doorsLocal, VIEWS: {}, setTimeout: f => f(), CSS: { escape: x => x },
   $: q => (els[q.slice(1)] ||= mk(q.slice(1))), document: { getElementById: id => (els[id] ||= mk(id)), querySelector: () => null, querySelectorAll: () => [] },
-  location: { hash: '', replace(h) { this.replaced = h; } }, tok: '', out: {} };
+  location: { hash: '', replace(h) { this.replaced = h; } }, tok: '', out: {},
+  houseless: require('./app/static/doors-wallmap.js').houseless, notHouse: require('./app/static/doors-wallmap.js').notHouse };
 ctx.DOORS_TOKEN = () => ctx.tok;
 vm.createContext(ctx);
-vm.runInContext(['esc', 'WD', 'loc', 'dayOf', 'dLabel', 'wdhm', 'fmt', 'lineLab', 'plain', 'NODE', 'sign', 'PROV', 'prov', 'said', 'num', 'unitOf', 'labelOf',
+vm.runInContext(['esc', 'asHouse', 'WD', 'loc', 'dayOf', 'dLabel', 'wdhm', 'fmt', 'lineLab', 'plain', 'NODE', 'sign', 'PROV', 'prov', 'said', 'num', 'unitOf', 'labelOf',
   'UNLOCK_AT', 'ISSUES_DRAWN'].map(pick).join('\n') + '\n' + fs.readFileSync('./app/static/doors-data.js', 'utf8')
   + `\nD.dates = [...new Set(D.buckets.map(dayOf))]; D.now = D.buckets.length - 1; D.sens = Object.fromEntries(D.sensors.map(s => [s.sensor_id, s]));
    const calls = [], spy = n => { globalThis[n] = () => calls.push(n); };

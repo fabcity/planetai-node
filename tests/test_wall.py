@@ -251,7 +251,8 @@ print("  /wall: 403 without a token at SHARE_LEVEL=off, 200 at open")
 
 # ---- shape
 assert set(W) == {"home", "centre", "scales", "hours", "stations", "island", "roofs", "lab", "rivers", "basin", "river",
-                  "grid", "change"}, sorted(W)
+                  "grid", "change", "house", "own"}, sorted(W)
+assert W["house"] is True and W["own"] == "base", (W["house"], W["own"])   # NODE_KIND unset: a house, at the base size
 assert W["home"] == HOME and W["centre"] == [round(clon, 5), round(clat, 5)], (W["home"], W["centre"])
 assert W["scales"] == json.loads(json.dumps(wall.scales(HOME)))
 H = W["hours"]
@@ -448,4 +449,12 @@ print("  every pack off and no rows: 200, the scales, and every block null")
 # ---- the share list: /wall itself, and nothing under it
 assert "/wall" in main._SHARE_OPEN[0] and not any("/wall/x".startswith(p) for p in main._SHARE_OPEN[1])
 assert c.get("/wall/x").status_code in (401, 403), "no prefix opens what is added under /wall later"
+# ---- the node's own size: a community node's Wall opens at its own size and does not call itself a house
+os.environ["NODE_KIND"] = "community"
+_Wc = c.get("/wall").json()
+assert _Wc["house"] is False and _Wc["own"] == "community", (_Wc["house"], _Wc["own"])
+os.environ["NODE_KIND"] = "district"
+assert c.get("/wall").json()["own"] == "city"
+os.environ.pop("NODE_KIND", None)
+print("  /wall: the node's own size and whether it is a house, from NODE_KIND")
 print("wall: one tokenless route, nothing finer than the house's cell")
