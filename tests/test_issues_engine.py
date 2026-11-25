@@ -683,10 +683,10 @@ check(engine._hour_parts(_air, {"room": [None]}, [NOW], 0, "room", "en", _cmp_mo
 
 
 # ---------------------------------------------------------------- simple mode's paragraph
-# digest.simple, as approved on 25 Sep against this capture. Its alerts reach back only to 11 Sep, so
+# digest.simple, as approved on 25 Sep against this capture (2.9 km since the capture stands at its cell's centre). Its alerts reach back only to 11 Sep, so
 # "since" is 11 September and never "30 days"; a live read goes back the full thirty.
 _D21 = engine.replay(_F21, Settings(NODE_ISSUES="air,heat,land,coast"), DECL)["digest"]["simple"]
-check(_D21["en"] == "This house has 5 stations of its own; the nearest other station is 3.2 km away. "
+check(_D21["en"] == "This house has 5 stations of its own; the nearest other station is 2.9 km away. "
       "The oldest open alert is #168, about heat, open since 11 September. Since 11 September the node "
       "has asked 101 times and somebody answered 7; the usual wait was 112 minutes.",
       f"digest.simple reads {_D21['en']!r}")

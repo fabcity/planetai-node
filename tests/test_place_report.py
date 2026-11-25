@@ -16,17 +16,17 @@ FIX = ROOT / "app/issues/fixtures/node1-2026-10-06-figures.json"
 PROG = r"""
 const fs = require('fs'), vm = require('vm'), d3 = require('./app/static/d3.min.js');
 const L = require('./app/static/doors-load.js');
-const F = JSON.parse(fs.readFileSync(0, 'utf8')), D = L.buildD({ ...F, days: F.issues_days }, 'en'), D0 = L.buildD({ ...F, days: F.issues_days, earth: null }, 'en');
+const F = (f => (f.sensors.forEach(s => { if (s.sensor_id === 'sc-19236') s.lat = +(s.lat + 0.003).toFixed(3); }), f))(JSON.parse(fs.readFileSync(0, 'utf8'))), D = L.buildD({ ...F, days: F.issues_days }, 'en'), D0 = L.buildD({ ...F, days: F.issues_days, earth: null }, 'en');
 const core = fs.readFileSync('./app/static/doors-core.js', 'utf8'), pick = n => core.match(new RegExp('^const ' + n + ' = .*$', 'm'))[0];
 const src = ['doors-cake.js', 'doors-draw.js', 'doors-sheet.js', 'doors-placemap.js', 'doors-place.js'].map(f => fs.readFileSync('./app/static/' + f, 'utf8')).join('\n');
 const pm = fs.readFileSync('./app/static/doors-placemap.js', 'utf8');
 const HOME = D.geometry.ladder.find(l => l.res === 10).id, AWAY = '8a95a4c84ffffff';
 /* node #1's res-8 cell as GET /geo/cell rings it: [id, lat, lng, …], six decimals */
 const C8 = ['8895a4c843fffff', -8.812929, 115.160071, -8.817406, 115.159467, -8.82056, 115.16294, -8.819237, 115.167017, -8.814759, 115.167621, -8.811605, 115.164148];
-const HOUSE = ['x', -8.8196, 115.1641, -8.8199, 115.1646, -8.8195, 115.1650, -8.8190, 115.1649, -8.8188, 115.1644, -8.8191, 115.1640];
-/* the node's answers: which res-10 cell each point is in. sc-19874 and the model stack on the house's point are in the
-   house's cell; sc-19236 and the sea model are not */
-const cellOf = p => /lat=-8\.820080|lat=-8\.819052/.test(p) ? HOME : AWAY;
+const HOUSE = ['x', -8.815065, 115.164795, -8.815705, 115.164709, -8.816155, 115.165205, -8.815966, 115.165787, -8.815326, 115.165873, -8.814876, 115.165377];
+/* the node's answers: which res-10 cell each point is in. The capture puts every kit and the model stack on the node's
+   point, in the house's cell; sc-19236 is moved 330 m north below, so one kit, and the sea model, are not */
+const cellOf = p => /lat=-8\.815000/.test(p) ? HOME : AWAY;
 const CAPS = [{ id: 1, kind: 'phone', at: [-8.8191, 115.1645], cell: HOME, analysis: { confirmed_by: 'T', findings: [{ scientific: 'Hibiscus rosa-sinensis' }] } },
   { id: 2, kind: 'phone', at: [-8.8150, 115.1700], cell: AWAY, analysis: { confirmed_by: 'T', findings: [{ scientific: 'Plumeria rubra' }] } }];
 const noop = () => {};
@@ -107,7 +107,7 @@ print("  report: the legend lists the layers on, under their section of the cake
 T = R["tok"]
 shot = {l["id"]: l.get("data") for l in T["shot"]}   # a layer the stub gives no data (the seven cells: no /place/cells here) has none
 house = R["home"]
-assert "node" not in shot and shot.get("house") == [{"ring": [[115.1641, -8.8196], [115.1646, -8.8199], [115.165, -8.8195], [115.1649, -8.819], [115.1644, -8.8188], [115.164, -8.8191], [115.1641, -8.8196]]}], \
+assert "node" not in shot and shot.get("house") == [{"ring": [[115.164795, -8.815065], [115.164709, -8.815705], [115.165205, -8.816155], [115.165787, -8.815966], [115.165873, -8.815326], [115.165377, -8.814876], [115.164795, -8.815065]]}], \
     ("on the sheet the house is its res-10 cell, filled, and not the ring at its point", shot.get("house"), list(shot))
 assert [s["sensor_id"] for s in shot["own"]] == ["sc-19236"], ("no kit inside the house's res-10 cell is a point", shot["own"])
 assert [c["id"] for c in shot["images"]] == [2] and [d["c"]["id"] for d in shot["species"]] == [2], "no image inside the house's cell is a point, nor its species"

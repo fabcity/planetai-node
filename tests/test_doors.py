@@ -171,7 +171,7 @@ print("doors: the issues and the events are the node's own words, renamed and ne
 assert r["raw"] == {"b": 24, "ids": 21} and r["lockedRaw"] is None
 assert r["fullNotes"] is True and r["lockedNotes"] is False and r["lockedActions"] > 0 and not r["lockedNote"], \
     "without the token the ledger comes from /issues' asks: stages and actors, never the notes"
-assert r["stats"] == 18 and r["point"] == [115.164, -8.819], "the point is /health's, rounded as it gives it"
+assert r["stats"] == 18 and r["point"] == [115.165, -8.815], "the point is /health's, rounded as it gives it"
 print("doors: without the token the hourly table is absent and the ledger carries no notes")
 
 # the flow: counts from the hourly table, alerts and answers in its window (matched flow.json exactly on 7 Oct)
