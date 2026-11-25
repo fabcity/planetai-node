@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- **25 Nov: every page says what kind of node it is, and a community node's page follows.** Beside the node's name, at
+  the top of every door and of the phone page, a small box says Private node, for a home or a business, or Community
+  node, for a community or district node (`NODE_KIND`). A community node no longer says "Around the house" or "2 in
+  this house" anywhere on its page, because every word the doors draw now goes through the table its sentences and
+  Wall already used. Its Node door lists first the nodes that send to it, each with its sensors and when it was last heard,
+  and a stranger reads each as a home nearby; its flow draws them coming in and sends nothing further while there is no
+  city node. A node with a parent names it and says when its hourly means last went, where it used to say "none set"
+  whatever was set. `/health` carries `parent`, and a parent answers a push with its name.
+
+- **25 Nov: Reticulum, on the Node door and in its own guide.** The Node door has a Reticulum section: the node's
+  address with a copy button, whether it dials the Fab City hub, how many nodes it hears, where its alerts go, what it
+  answers and what it announces. [Reticulum](docs/site/reticulum.md) is a new docs page with what it does today,
+  what it does not do yet, the steps to turn it on and a table of checks to run after you do and after each update.
+  The Reticulum section of the channels page now points there.
+
 - **23 Nov: the Colima line in preflight works on a Mac without Homebrew.** A tester on macOS 26 had no Docker,
   and preflight gave them a line to paste that could not work. On Apple Silicon it asked Docker for a folder called
   `arm64`, which Docker calls `aarch64`, so the download stopped at a 404. It also never installed Lima, and Colima

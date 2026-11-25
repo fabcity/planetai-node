@@ -43,7 +43,7 @@
      "Seberapa baru bacaan di halaman ini?"
     ]
    },
-   "quote": "The bar runs along the top of every door but the Wall: the node's name and place, the five doors in the order Now,\nPlace, Node, Data, Wall, then an as-of line (`LIVE · as of 19:00`, or `CAPTURE` on a fixture, with `· locked` on a\nscreen without a token)",
+   "quote": "The bar runs along the top of every door but the Wall: the node's name, what kind of node it is, its place, the five doors in the order Now,\nPlace, Node, Data, Wall, then an as-of line (`LIVE · as of 19:00`, or `CAPTURE` on a fixture, with `· locked` on a\nscreen without a token)",
    "section": "The bar and the foot",
    "title": "The bar at the top",
    "url": "https://planetai.fab.city/docs/dashboard/#the-bar-and-the-foot"
@@ -1003,7 +1003,7 @@
      "Mengapa tempat kami ditampilkan sebagai sel yang begitu besar?"
     ]
    },
-   "quote": "the nodes listed and heard by radio, then a globe at most a third of the screen high",
+   "quote": "the nodes listed and heard by radio, and a globe at most a third of the screen high",
    "section": "Node",
    "title": "The globe",
    "url": "https://planetai.fab.city/docs/dashboard/#node"
@@ -1055,6 +1055,30 @@
    "section": "Node",
    "title": "What it remembers",
    "url": "https://planetai.fab.city/docs/dashboard/#node"
+  },
+  "node-reticulum": {
+   "anchor": "what-it-does-on-a-node-today",
+   "more": "The address to write to from Sideband, whether this node dials the Fab City hub, how many nodes it hears, where its alerts go and what it answers. All of it is read from GET /health's reticulum.",
+   "page": "reticulum.md",
+   "page_title": "Reticulum",
+   "questions": {
+    "en": [
+     "How do I get this node’s alerts on my phone?",
+     "Which nodes can hear this one?"
+    ],
+    "es": [
+     "¿Cómo recibo las alertas de este nodo en el teléfono?",
+     "¿Qué nodos pueden oír a este?"
+    ],
+    "id": [
+     "Bagaimana saya menerima peringatan node ini di ponsel?",
+     "Node mana yang bisa mendengar node ini?"
+    ]
+   },
+   "quote": "**An address.** The bridge gives the node an LXMF address, 32 hexadecimal characters. Sideband and NomadNet, the\n  Reticulum messengers, can write to it.\n- **Alerts as messages.** Every `act` alert goes, in full, to each address in Set up › Sharing › Reticulum alert\n  addresses.",
+   "section": "What it does on a node today",
+   "title": "Reticulum",
+   "url": "https://planetai.fab.city/docs/reticulum/#what-it-does-on-a-node-today"
   },
   "node-running": {
    "anchor": "node",
@@ -1585,10 +1609,10 @@
    "url": "https://planetai.fab.city/docs/place/#the-tools"
   },
   "presence": {
-   "anchor": "reticulum-lxmf",
+   "anchor": "presence",
    "more": "The cell drawn here is the one this node would announce, and its area is the whole of what a stranger on the radio learns. GET /presence answers with enabled false until RETICULUM_PRESENCE=1.",
-   "page": "channels.md",
-   "page_title": "Channels",
+   "page": "reticulum.md",
+   "page_title": "Reticulum",
    "questions": {
     "en": [
      "What does this node announce over radio?",
@@ -1604,9 +1628,9 @@
     ]
    },
    "quote": "Presence is separate and off by default: with `RETICULUM_PRESENCE=1` the bridge announces the node's name and a\ncoarse H3 cell, its version, kind and node id every half hour, at `RETICULUM_PRESENCE_RES` (3) and never finer than resolution 6, whatever the\nsetting says, so an exact place never leaves.",
-   "section": "Reticulum, LXMF",
+   "section": "Presence",
    "title": "A coarse cell, and never finer",
-   "url": "https://planetai.fab.city/docs/channels/#reticulum-lxmf"
+   "url": "https://planetai.fab.city/docs/reticulum/#presence"
   },
   "production": {
    "anchor": "",
@@ -2281,6 +2305,7 @@
   "node-remember",
   "node-around",
   "node-globe",
+  "node-reticulum",
   "node-running",
   "node-refusals",
   "data-head",

@@ -64,7 +64,7 @@ Access: public
 
 What every screen in the house polls. Answers at every `SHARE_LEVEL` and never makes an outbound request of its own.
 
-Returns `ok` (true once a poll has run), `node`, `node_id` (the short hash of this node's key, null without `NODE_KEY`), `node_key` (its public key, base64), `version`, `schema`, `uptime_s`, `lat`, `lon`, `position` (`cell` or `point`), `city`, `kind` (`NODE_KIND`, `home` when unset), `polls`, `last_poll`, `last_error`, `ingested`, `errors` (each loop's last error), `locale`, `tz`, `cell` (`{id, res, edge_m, caption}`, null before setup), `docs`, `mcp` and `llms`. With their features on it adds `mesh` (`MQTT_HOST`), `direct` (`MQTT_HOST` with the smartcitizen pack on), `reticulum` (`RETICULUM_URL`) and `release` (`{latest, current, newer, checked, asked}` from the hourly check, with `UPDATE_CHECK=on`). `schema` starts with `unreachable` when the database refuses the app, usually a wrong password after a reinstall; `planetai doctor` says why.
+Returns `ok` (true once a poll has run), `node`, `node_id` (the short hash of this node's key, null without `NODE_KEY`), `node_key` (its public key, base64), `version`, `schema`, `uptime_s`, `lat`, `lon`, `position` (`cell` or `point`), `city`, `kind` (`NODE_KIND`, `home` when unset), `polls`, `last_poll`, `last_error`, `ingested`, `errors` (each loop's last error), `locale`, `tz`, `cell` (`{id, res, edge_m, caption}`, null before setup), `docs`, `mcp` and `llms`. With their features on it adds `mesh` (`MQTT_HOST`), `direct` (`MQTT_HOST` with the smartcitizen pack on), `reticulum` (`RETICULUM_URL`), `parent` (`PARENT_API_URL`: `{node, at, sensors}`, the node this one's hourly means went to, when, and how many sensors; `node` is the parent's own name, given only to a reader this node trusts and null before the first push) and `release` (`{latest, current, newer, checked, asked}` from the hourly check, with `UPDATE_CHECK=on`). `schema` starts with `unreachable` when the database refuses the app, usually a wrong password after a reinstall; `planetai doctor` says why.
 
 ```json
 {"ok": true, "node": "bayu-ungasan", "node_id": "cc5gqlek2e2rhfy6", "version": "v0.92.0", "schema": "0.66", "uptime_s": 86121,
@@ -764,7 +764,7 @@ A child pushes the hourly means of its own outdoor sensors, and of its rooms onl
            "mean": 18.4, "min": 12.0, "max": 25.1, "n": 12, "indoor": false}]}
 ```
 
-The parent keeps each mean as one reading of sensor `<node>/<sensor_id>`, of kind `child`. Returns `{"accepted": <n>, "photo_asks": [...]}`, the photos this node asked that child for, each `{id, image, node, by, at}`. A parent cannot reach a home node, so this is how an ask goes down.
+The parent keeps each mean as one reading of sensor `<node>/<sensor_id>`, of kind `child`. Returns `{"accepted": <n>, "node": <this node's name>, "photo_asks": [...]}`, the photos this node asked that child for, each `{id, image, node, by, at}`. A parent cannot reach a home node, so this is how an ask goes down.
 
 ### POST /place/maps/received
 Access: children
