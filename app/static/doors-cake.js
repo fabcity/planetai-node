@@ -1,6 +1,6 @@
 'use strict';
 /* CAKE — the Place door's left column as data (SPEC_place_microgis §5, 4 Nov 2026). The layers from the sky down to the
-   ground, results first and the frame last: McHarg's order turned upside down, so the layer the household lives in comes
+   ground, results first and the frame last: the order of cause and time turned upside down, so the layer the household lives in comes
    first. Each section names the classes of fabcity-flows 1.0 that live in it and the ceiling those classes carry
    (a planetary boundary, or the material footprint), so the map, the flows log, the inventory and the Index use the same
    words for the same things. Pure: no DOM and no D; doors-placemap.js's LAYERS name their section by `cake: <id>`. */
