@@ -11,7 +11,8 @@ sys.path.insert(0, "app")
 stub = lambda name, **kw: sys.modules.setdefault(name, types.SimpleNamespace(**kw))
 stub("fastapi", APIRouter=lambda *a, **k: types.SimpleNamespace(get=lambda *a, **k: (lambda f: f)))
 stub("channels", RETICULUM_TO=lambda: ["aa11"])
-stub("settings"); stub("sources", km=lambda *a: 0)
+stub("settings", get=lambda k, d=None: {"RETICULUM_PRESENCE": "1"}.get(k, d)); stub("sources", km=lambda *a: 0)
+stub("identity", node_id=lambda: "lfzfhebv76r45tfr")
 stub("main", _cell=lambda: None)
 answers = {}
 stub("httpx", get=lambda url, timeout: types.SimpleNamespace(json=lambda: answers[url.rsplit("/", 1)[1]]))
@@ -45,5 +46,9 @@ chk("a bridge older than the hub breaks nothing", s["ok"] is True and s["hub"] i
 s = poll({"ok": True}, [{"node": "mahon1", "cell": None, "res": 3, "first": 1, "last": 2, "hash": "ab", "id": "k4xq2"}])
 chk("a heard node keeps its id", s["peers"][0]["id"] == "k4xq2")
 
-print("the hub shows on /health" if not fails else f"{fails} failed")
+# /presence carries the node id, so a node that hears this one can match it to the programme's list (SPEC_hub §7)
+p = presence.presence()
+chk("/presence says the node's id", p.get("enabled") is True and p.get("id") == "lfzfhebv76r45tfr")
+
+print("the hub shows on /health, and presence carries the id" if not fails else f"{fails} failed")
 raise SystemExit(1 if fails else 0)

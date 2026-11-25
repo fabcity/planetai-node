@@ -5,9 +5,10 @@ discoverable within the network". Is Tailscale a limitation, should we consider 
 reticulum (it would be ideal), as it also creates a distributed infrastructure". Read the same day against main and
 node #1; Tomas: "Yes, write the spec".*
 
-**Status: ruled; step 0 merged, the Funnel on, step 1 built (25 November).** The act allowlist is
-fabcity/planetai-reticulum#1 (a65ad0f), pinned by planetai-node #422 (f1fcfa7), and node #1 runs it. Step 1 is this
-pull request and its bridge commit. Steps 2 to 4 are not built. Tomas, 24 November: "Lets do the mac mini as the hub. On for the bend. Not yet as you
+**Status: ruled; steps 0 and 1 merged, step 2 built (25 November).** The act allowlist is
+fabcity/planetai-reticulum#1 (a65ad0f), pinned by planetai-node #422. The hub is fabcity/planetai-reticulum#2
+(0794e97) with planetai-node #423 (cee1af7), and node #1 runs both as the hub through Funnel. Step 2, drawing heard
+nodes, is the pull request after #423. Steps 3 and 4 are not built. Tomas, 24 November: "Lets do the mac mini as the hub. On for the bend. Not yet as you
 propose. hello as a reticulum message". Then "Use a relay server", and, once Tailscale Funnel turned out to carry
 it with no server, "Yes, switch it". So node #1 is the first hub, reached through Funnel with a relay as the fallback
 (§3), the bend in §10 stands, the hub does not dial the public Reticulum testnet yet, and hello travels as a

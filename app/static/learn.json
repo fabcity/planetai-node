@@ -1603,7 +1603,7 @@
      "Seberapa kasar sel yang diumumkannya?"
     ]
    },
-   "quote": "Presence is separate and off by default: with `RETICULUM_PRESENCE=1` the bridge announces the node's name and a\ncoarse H3 cell every half hour, at `RETICULUM_PRESENCE_RES` (3) and never finer than resolution 6, whatever the\nsetting says, so an exact place never leaves.",
+   "quote": "Presence is separate and off by default: with `RETICULUM_PRESENCE=1` the bridge announces the node's name and a\ncoarse H3 cell, its version, kind and node id every half hour, at `RETICULUM_PRESENCE_RES` (3) and never finer than resolution 6, whatever the\nsetting says, so an exact place never leaves.",
    "section": "Reticulum, LXMF",
    "title": "A coarse cell, and never finer",
    "url": "https://planetai.fab.city/docs/channels/#reticulum-lxmf"
