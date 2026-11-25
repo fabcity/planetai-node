@@ -272,12 +272,20 @@ row "disk free" "${FREEGB} GB on ${MOUNT:-/}" "$([[ $FREEGB -ge $NODE_min_free_d
 # unattended mini needs. One 16 MB binary; the vz backend is Apple's own hypervisor, so no QEMU and no
 # package manager. It runs the same amd64 postgis image the node already uses.
 colima_line() {
-  local l="curl -fsSL -o /tmp/colima https://github.com/abiosoft/colima/releases/latest/download/colima-Darwin-${ARCH} && sudo install /tmp/colima /usr/local/bin/colima"
+  # Colima and Lima are pinned as a pair (newest of each on 23 Nov 2026), so a new Colima never meets an old
+  # Lima. This line booted a vz VM and ran hello-world on macOS 26 arm64 on 24 Nov 2026, with no Homebrew.
+  # A new Mac has no /usr/local/bin until something makes it, and install(1) will not.
+  local colima=0.10.3 lima=2.3.0
+  local l="sudo mkdir -p /usr/local/bin && curl -fsSL -o /tmp/colima https://github.com/abiosoft/colima/releases/download/v${colima}/colima-Darwin-${ARCH} && sudo install /tmp/colima /usr/local/bin/colima"
+  # Colima is a front for Lima: without it, `colima start` stops at `"limactl": executable file not found`.
+  # Homebrew pulls Lima in; a plain download has to name it. Until 23 Nov 2026 this line did not.
+  l="$l && curl -fsSL https://github.com/lima-vm/lima/releases/download/v${lima}/lima-${lima}-Darwin-${ARCH}.tar.gz | sudo tar xz -C /usr/local"
   # Colima drives the docker client; without Homebrew that client is a plain download too. The version is
   # pinned because a copy-pasteable line cannot scrape a directory listing, and a pin that goes stale is
   # harmless here: an older docker client talks to a newer daemon. Newest is at
-  # https://download.docker.com/mac/static/stable/<arch>/ (checked 8 Sep 2026: 29.8.0).
-  have docker || l="$l && curl -fsSL https://download.docker.com/mac/static/stable/${ARCH}/docker-29.8.0.tgz | tar xz -C /tmp && sudo install /tmp/docker/docker /usr/local/bin/docker"
+  # https://download.docker.com/mac/static/stable/<arch>/ (checked 8 Sep 2026: 29.8.0). Docker names the
+  # Apple Silicon folder aarch64 where uname says arm64; until 23 Nov 2026 this line asked for arm64 and 404'd.
+  have docker || l="$l && curl -fsSL https://download.docker.com/mac/static/stable/${ARCH/arm64/aarch64}/docker-29.8.0.tgz | tar xz -C /tmp && sudo install /tmp/docker/docker /usr/local/bin/docker"
   echo "$l && colima start --vm-type vz --cpu 2 --memory 4 --disk 20"
 }
 
