@@ -39,8 +39,9 @@ Place. (The 416 m is wrong somewhere on its own account. That gets checked separ
 
 - The inventory: the place's layers, ordered as McHarg's layer cake (§3), each saying what the node holds, holds in part,
   or does not hold yet.
-- Interactions: the analyses in SPEC_place_analyses (sun and shade, trees 3-30-300, built form, street structure), plus
-  sealed ground, rings and distance, walk to, what changed and where the rain goes, each as a tool.
+- Interactions: the analyses in SPEC_place_analyses (kept privately in planetai-design, node-docs/specs/): sun and
+  shade, trees 3-30-300, built form, street structure, plus sealed ground, rings and distance, walk to, what changed
+  and where the rain goes, each as a tool.
 - One vocabulary: the cake's layers and the fitness answers use the classes, verbs and rings of `fabcity-flows` 1.0.
 - Light fitness: four home-scale questions (§6) with fixed rules.
 - Agent-ready: one registry of commands that the panel, the Ask box and the Ask agent all call.

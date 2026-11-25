@@ -1,0 +1,18 @@
+id: calibrate
+name: Calibrate
+description: >-
+  Corrects one sensor against a better one a keeper names beside it: a straight line fitted on 14 days, checked on
+  days the line never saw. The corrected number is shown only while it is at least a tenth closer than the measured
+  one, and the page says "corrected against" the sensor it was put beside.
+author: PLANETAI core (official)
+version: 0.1.0
+requires: { node: ">=0.92" }
+kind: code
+domain: cross-domain
+scales: [community]
+sources: []
+switch: [CALIBRATE_PAIRS]
+env:
+  - "# calibrate: pairs to correct, one per ; as: <sensor id> <the better sensor beside it> <metric> <the day they"
+  - "# were put together> [<the day one left>]. Example: sc-19874 sc-19236 pm25 2026-08-30. Blank = off"
+  - "CALIBRATE_PAIRS="

@@ -3956,7 +3956,7 @@ async function placescreen() {
   process.exit(1);
 }
 
-/* The Place report in print (docs/SPEC_place_report §3, §5, §8): #place/report with software WebGL and the token, so
+/* The Place report in print (SPEC_place_report §3, §5, §8): #place/report with software WebGL and the token, so
  * the picture is taken from a live map, then print media at A4 landscape. The sheet's frame sits inside the page, the
  * legend is not clipped, each report page holds its rows inside its A4 portrait box, and the PDF the browser makes is one
  * landscape page and then one portrait page for each report page, nothing spilled onto a blank one. Without the token

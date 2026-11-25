@@ -1,4 +1,4 @@
-"""The Place report (docs/SPEC_place_report.md §4, §5, §6, §8): the sheet's grid in metres, its legend, the house blurred
+"""The Place report (SPEC_place_report §4, §5, §6, §8, kept privately in planetai-design, node-docs/specs/): the sheet's grid in metres, its legend, the house blurred
 to its res-10 cell, the pages after it and their count, and no text closer than the res-8 cell. app/static/doors-sheet.js
 is required as it is, and doors-placemap.js and doors-place.js are booted in node with a map that does nothing and a deck
 that records its layers, and #place/report drawn by report() itself, on node #1's capture

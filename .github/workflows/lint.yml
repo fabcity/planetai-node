@@ -43,6 +43,7 @@ jobs:
           RHO_PG_URL=postgresql://planetai:x@127.0.0.1:5432/planetai python3 tests/test_grafana.py   # the weekly report's counting, on temporary tables
           RHO_PG_URL=postgresql://planetai:x@127.0.0.1:5432/planetai PYTHONPATH=app PACKS_DIR=packs python3 tests/test_maps_pg.py   # place maps: tables, checks, cascade, and the routes
           RHO_PG_URL=postgresql://planetai:x@127.0.0.1:5432/planetai PYTHONPATH=app PACKS_DIR=packs python3 tests/test_predict_pg.py   # predict: the series it reads, the 29 origins, the hourly gate, /predict's rows
+          RHO_PG_URL=postgresql://planetai:x@127.0.0.1:5432/planetai PYTHONPATH=app PACKS_DIR=packs python3 tests/test_calibrate_pg.py   # calibrate: the route's SQL on the real schema
           docker rm -f pg
       # Was one suite of twenty-five. tests/all runs all of them, keeps going, and counts.
       - name: every suite

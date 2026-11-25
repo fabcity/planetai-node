@@ -119,6 +119,9 @@ planetai radio init         # LoRa radios: the fleet, then `radio provision <rol
   measured on. It never sends an alert, never moves ρ, never fills an Index cell, and never leaves the node,
   apart from the one line `predict` gives Next days, which is as open as Next days is.
   `predictions` is not a reading and is never written to `readings`.
+- **A corrected number says so.** It names what it was corrected against, how far off it has been on days the line
+  never saw, and when it was last checked. It is worked out when asked and stored nowhere: it sends no alert, moves
+  no ρ, fills no Index cell and leaves the node in no export or aggregate.
 - When a document and a skill disagree, the document wins and the skill has a bug. Fix the skill, not the doc.
 
 ## Changing code
@@ -128,7 +131,8 @@ Development happens on a dev machine, not on the node. The node only runs `plane
 This repository is public and households install from it. Plans, specs, handoffs, reviews, audits and prompts
 are working records: they go to the private `planetai-design` repo under `node-docs/`, never into `docs/` here.
 What stays is what a household or a contributor reads: `docs/site/`, the `SPEC_*` pages, `docs/decisions/` and
-`docs/proposals/`.
+`docs/proposals/`. Two specs that code comments still cite by name, `SPEC_place_report` and `SPEC_place_analyses`, are in
+`planetai-design` under `node-docs/specs/`.
 
 A merge is not a release, and nothing reaches a tester without one. `/install` and `/preflight` are
 stubs that read the published `node0/get/VERSION`, take the commit it names, and fetch their script

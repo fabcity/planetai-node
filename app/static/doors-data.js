@@ -49,13 +49,13 @@ const SYM = { pm25: 'PM2.5', pm10: 'PM10', pm1: 'PM1', pm25_raw: 'PM2.5ʳ', aqi:
 const DTABS = {
   readings: ['Readings', ['d-readings', 'issues7', 'perday'], () => { metricTiles(); sensorsBlock(); issuesBlock(); perdayBlock(); }],
   report: ['Report', ['d-report'], () => reportBlock()],
-  models: ['Models and satellite', ['models', 'predict'], () => { modelsBlock(); predictBlock(); }],
+  models: ['Models and satellite', ['models', 'predict', 'calibrate'], () => { modelsBlock(); predictBlock(); calibrateBlock(); }],
   home: ['Home', ['d-images', 'd-things'], () => { imagesBlock(); thingsBlock(); }],
   ledger: ['Ledger', ['ledger', 'dnote'], () => ledgerBlock()],
   api: ['API', ['api'], () => apiBlock()],
   workbench: ['Workbench', ['d-workbench'], () => workbenchBlock()] };
 /* an anchor Data used to have: the tab that holds that section now; and what moved to Node, with Node's own anchor */
-const DOLD = { 'd-readings': 'readings', metrics: 'readings', sensors: 'readings', issues7: 'readings', perday: 'readings', 'd-images': 'home', 'd-things': 'home' };
+const DOLD = { calibrate: 'models', 'd-readings': 'readings', metrics: 'readings', sensors: 'readings', issues7: 'readings', perday: 'readings', 'd-images': 'home', 'd-things': 'home' };
 const DNODE = { cells: 'cells', 'd-learned': 'remember', 'd-usual': 'remember', 'd-diary': 'remember' };
 /* #data/<tab> opens a tab; #data/<old section> its tab, at the section; #data/<sensor-id> (a dot on Place) the
    readings on a metric that station reads, at its row, or the models when it is a model */
@@ -488,6 +488,7 @@ function sensorsBlock() {
   $('#sensors').innerHTML = `<div class="dh"><h2>${said(labelOf(METRIC))}, every source, last 24 hours</h2><span class="k">one scale, ${fmt(lo, 0)} to ${fmt(top, 0)} ${said(unitOf(METRIC))} · band = the hour’s low to high · line = its mean${line != null ? ' · red: over the line' : ''}</span></div>`
     + grp('This house', rows.filter(r => r.s.local)) + grp('Around it', rows.filter(r => !r.s.local && r.s.kind !== 'model')) + grp('Models', rows.filter(r => r.s.kind === 'model'))
     + `<div class="axis"><span></span><span class="mono k">${hhmm(B[0])} yesterday → ${hhmm(B[B.length - 1])} today</span><span></span></div>`;
+  calibrateOnRows();
 }
 
 function issuesBlock() {
@@ -555,6 +556,83 @@ function modelsBlock() {
     + [...by].map(([id, os]) => `<tbody>${head(id, os)}` + os.map(o => { const r = mrow(o);
       return `<tr><td>${esc(r.what)}</td><td class="n">${r.v}</td><td class="u">${said(r.unit || '—')}</td><td class="hide mono">${o.ts === at(os) ? '' : esc(when(o.ts))}</td></tr>`; }).join('') + `</tbody>`).join('')
     + `</table>`;
+}
+/* CORRECTIONS — a sensor a keeper named beside a better one, corrected against it (GET /calibrate, the calibrate pack).
+   The corrected number lives on this page only, and only while it has been at least a tenth closer on days the line
+   never saw; every other row says why not. calibrateRows is pure: it takes the parsed answer, or { state: 'failed' }
+   for no answer, and gives the HTML (a 404 is the pack switched off, said by calibrateBlock); calibrateMarks gives the Readings row its one line. */
+/* a side stuck on one value is not being paired: the state says which, after whatever else it says */
+function cwhy(r) {
+  const o = r[r.stuck], said = (() => {
+    const CWORDS = { fields: 'needs four or five parts', date: 'a date is not a date', 'until-before-since': 'the last day is before the first',
+      'since-in-future': 'the first day is in the future', same: 'both ids are the same', duplicate: 'this sensor is already in an earlier pair' };
+    const w = r.why || {}, id = s => (r[s] || {}).id, N = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const day = s => { const d = new Date(String(s).slice(0, 10) + 'T00:00:00Z'); return `${d.getUTCDate()} ${N[d.getUTCMonth() + 1]}`; };
+    // last_paired is an hour; its day is the node's (D.tz) where the page knows it, else the string's own clock
+    const local = s => typeof doorsLocal === 'function' && typeof D !== 'undefined' && D && D.tz ? doorsLocal(s, D.tz) : s;
+    if (r.shown) return r.last_paired ? `shown, last checked ${day(local(r.last_paired))}` : 'shown';
+    if (w.reason === 'malformed') return `cannot read "${r.entry}": ${CWORDS[w.problem] || w.problem}`;
+    if (w.reason === 'refused') {
+      const t = w.test, who = id(w.side);
+      return t === 'unknown' ? `not known to this node: ${who}` : t === 'not-a-sensor' ? `${who} is not a sensor`
+        : t === 'sensor-is-station' ? 'a public station cannot be the one corrected' : t === 'no-channel' ? `${w.source} declares no ${r.metric} channel`
+        : t === 'indoor-outdoor' ? 'one is indoors and the other outdoors' : `${w.metres} m apart`;
+    }
+    if (w.reason === 'flat') return 'no line: one of the two read one value for two weeks';
+    if (w.reason === 'young') return r.line ? `too young: ${w.days} of ${w.need_days} days checked` : `too young: ${w.hours} of ${w.need_hours} hours together`;
+    if (w.reason === 'measured-closer') return 'not shown: measured is closer';
+    if (w.reason === 'not-a-tenth') return 'not shown: not a tenth closer';
+    if (w.reason === 'withdrawn') return `withdrawn: nothing beside it since ${day(w.since)}`;
+    return 'nothing beside it for six weeks';
+  })();
+  return said + (o ? `, ${o.name || o.id} is stuck on one value` : '');
+}
+/* an hour that started more than 3 hours before now is old: its number says which hour, and Readings draws no mark */
+function calibrateRows(j, docs, word = x => x, now = Date.now()) {
+  const state = (j || {}).state, say = t => `<p class="fine">${t}</p>`;
+  if (state === 'off') return say(`No sensor on this node is corrected against another. Name a pair in Set up, under Calibrate. <a href="${esc((docs || 'https://planetai.fab.city/docs/') + 'calibrate/')}" target="_blank" rel="noopener">How it works</a>.`);
+  if (state !== 'ok') return say('The corrections could not be read.');
+  const rows = j.rows || [], N = Math.max(0, ...rows.map(r => (r.checked || {}).days || 0)), u = r => said(r.unit || '');
+  const MO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const local = s => typeof doorsLocal === 'function' && typeof D !== 'undefined' && D && D.tz ? doorsLocal(s, D.tz) : String(s);
+  const at = r => { if (!r.hour || now - Date.parse(r.hour) <= 3 * 3600e3) return ''; const s = local(r.hour);
+    return ` at ${s.slice(11, 16)} ${+s.slice(8, 10)} ${MO[+s.slice(5, 7) - 1]}`; };
+  const against = r => { const f = r.reference || {}, n = esc(f.name || f.id);
+    return f.own ? `${n}, your own sensor${r.metres == null ? ', distance not known' : `, ${r.metres} m`}`
+      : `${n}${f.network && !String(f.name || '').endsWith(`(${f.network})`) ? ` (${esc(f.network)})` : ''}${f.official ? ', official station' : ''}${f.from_index ? ', its numbers are an index converted back' : ''}`; };
+  const could = (j.could || []).map(c => `<p class="fine">You could name: ${esc(c.a.name || c.a.id)} and ${esc(c.b.name || c.b.id)} (${c.metres} m, ${esc(word(c.metric))}). `
+    + `Write the one to correct first: <code>${esc(c.a.id)} ${esc(c.b.id)} ${esc(c.metric)} &lt;the day they were put together&gt;</code></p>`).join('');
+  const tr = r => r.sensor ? `<tr><td>${esc(r.sensor.name || r.sensor.id)} <span class="fine">${esc(word(r.metric))}</span></td>`
+      + `<td class="n">${r.measured == null ? '—' : `${fmt(r.measured, 1)} ${u(r)}${at(r)}`}</td><td class="n">${r.shown ? `${fmt(r.corrected, 1)} ${u(r)}` : '—'}</td><td>${against(r)}</td>`
+      + `<td class="n">${r.checked ? `off by ${fmt(r.checked.measured, 1)} → ${fmt(r.checked.corrected, 1)}` : '—'}</td><td>${esc(cwhy(r))}</td></tr>`
+    : `<tr><td colspan="6">${esc(cwhy(r))}</td></tr>`;
+  return `<p class="fine">A straight line fitted on the last 14 days against the sensor named. Shown only while it has been closer on days the line never saw. `
+    + `The measured number is what the node stores, alerts on and shares.</p>`
+    + (rows.length ? `<div class="tscroll"><table class="tbl ctab"><thead><tr><th>sensor</th><th class="n">measured</th><th class="n">corrected</th><th>against</th>`
+      + `<th class="n">last checked days</th><th>state</th></tr></thead><tbody>${rows.map(tr).join('')}</tbody></table></div>` : '') + could;
+}
+function calibrateMarks(j, metric, now = Date.now()) {
+  const out = {};
+  for (const r of (j || {}).rows || []) if (r.shown && r.metric === metric && r.sensor && !(r.hour && now - Date.parse(r.hour) > 3 * 3600e3))
+    out[r.sensor.id] = `<a href="#data/calibrate">corrected ${fmt(r.corrected, 1)} against ${esc((r.reference || {}).name || (r.reference || {}).id)}</a>`;
+  return out;
+}
+let CALP = null; // the answer, fetched once per page load; a locked screen is asked again once it is unlocked
+const calibrateGet = () => CALP || (CALP = doorsFetch('/calibrate').then(async r => ({ status: r.status, j: r.ok ? await r.json().catch(() => null) : null }))
+  .catch(() => ({ status: 0, j: null })).then(a => { if (a.status === 403) CALP = null; return a; }));
+function calibrateOnRows() {
+  if (!DOORS_TOKEN()) return Promise.resolve();
+  const m = METRIC;
+  return calibrateGet().then(({ j }) => { if (m !== METRIC) return; const mk = calibrateMarks(j, m);
+    // two draws before the answer: a row that already has its mark keeps the one
+    for (const el of document.querySelectorAll('#sensors .srow[data-sid]')) if (mk[el.dataset.sid] && !el.querySelector('.cmark'))
+      el.querySelector('.t').insertAdjacentHTML('beforeend', `<small class="cmark">${mk[el.dataset.sid]}</small>`); });
+}
+async function calibrateBlock() {
+  const el = $('#calibrate'), head = `<h2>Corrections</h2>`, { status, j } = await calibrateGet();
+  if (status === 403) { el.innerHTML = head + `<p class="lede">What is corrected against what is the household’s, so only a screen holding a node token reads it: unlock this one in ${UNLOCK_AT}.</p>`; return; }
+  if (status === 404) { el.innerHTML = head + `<p class="fine">The Calibrate pack is off on this node. Switch it on in Set up, under Packs.</p>`; return; }
+  el.innerHTML = head + calibrateRows(j || { state: 'failed' }, (D.health || {}).docs, mWord);
 }
 /* PREDICT — this node's own readings, forecast by a general model that runs here (GET /predict, the predict pack). A day
    is drawn only when the model beat "yesterday repeated" on enough days; otherwise it says why. predictRows is pure: it

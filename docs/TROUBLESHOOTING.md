@@ -151,8 +151,8 @@ radio was unplugged, the log says `the radio on <port> went away; exiting so the
 
 **Fix.** The gateway runs as a service, and when its radio is unplugged it exits so the service starts it again.
 Plug the radio back in and the mesh returns on its own within about half a minute. If the gateway was never
-installed as a service, `planetai radio gateway --port <port> --install` makes it one, and `planetai meshtastic`
-prints the settings for the gateway radio. The rest is on [Radios](MESHTASTIC.md).
+installed as a service, `planetai radio gateway --port <port> --install` makes it one, and `planetai radio`
+names the next step. The rest is on [Radios](MESHTASTIC.md).
 
 ## Removing a node
 

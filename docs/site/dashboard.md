@@ -205,6 +205,13 @@ With the `predict` pack on, Models and satellite has a second part: the range a 
 
 `#data/<sensor-id>` opens a station in Readings. The diary and the Index cells are on Node.
 
+**Corrections**, under Models and satellite, has one row for each pair a keeper named in Set up, under Calibrate: the
+sensor, its measured and corrected numbers, what it is corrected against, how far off each has been, and when it was
+last checked or why it is not shown. The measured number stays the one the node stores, alerts on and shares. While a
+correction is shown, the sensor's row in Readings carries a small mark after its value, "corrected 13.6 against
+Ungasan Kit", that links to the section. A number from an hour more than 3 hours old says which hour, and gets no
+mark. A row also says which of the two is stuck on one value, if one is. How a pair is named and checked is on [Corrections](calibrate.md).
+
 ## Wall
 
 The keeper's one screen for a room, always dark, read from about three metres and operated by nobody. Its satellite
