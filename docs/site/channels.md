@@ -109,15 +109,18 @@ in Set up, run `planetai reticulum` again.
    `● this node's LXMF address: <address>`, then what to do in Sideband: add a TCP Client interface to this machine's LAN address on port 4242,
    and start a conversation with the address above. A phone can now reach the node over Reticulum with no internet
    in between.
-2. **Answer an alert.** Send `act 3 opened the windows`. The bridge records an `acted` row on alert #3 with the
-   actor `lxmf:<your hash>` and replies `recorded: you acted on #3`. Sent as `act 3` alone, the note is recorded as
-   `acted (via reticulum)`, because this path does not ask for words.
-3. **Receive alerts.** Copy your own LXMF address from Sideband's settings into Set up › Sharing › Reticulum alert
+2. **Receive alerts.** Copy your own LXMF address from Sideband's settings into Set up › Sharing › Reticulum alert
    addresses, or run `planetai config set RETICULUM_ALERT_DESTINATIONS <hash>[,<hash>]`. The node sends the list to
    the bridge with each alert, so the next one goes there and nothing needs restarting. Every `act` alert is
    delivered, full text, to each address. To check, run `planetai test-alert`: Sideband shows a message from the
    node's address titled `planetai <NODE_NAME>`, with the whole test alert. If nothing arrives, `planetai logs
    reticulum` says `no path to <hash> yet; is that client announced and reachable?`.
+3. **Answer an alert.** Send `act 3 opened the windows`. The bridge records an `acted` row on alert #3 with the
+   actor `lxmf:<your hash>` and replies `recorded: you acted on #3`. Sent as `act 3` alone, the note is recorded as
+   `acted (via reticulum)`, because this path does not ask for words. The bridge takes an `act` only from an address
+   the node sends its alerts to, so do step 2 first. An address saved in Set up counts from the first alert the node
+   sends it. Anyone else who writes to the node gets one reply, `this node takes act only from the addresses it sends
+   alerts to`, and nothing is recorded.
 
 The bridge does not read `.env`. It receives eight variables from `docker-compose.yml`: `LOG_LEVEL`, `NODE_NAME`,
 `NODE_API_URL`, `RETICULUM_CONFIGDIR`, `RETICULUM_DATA`, `RETICULUM_ALERT_DESTINATIONS`, `RETICULUM_ANNOUNCE_S`

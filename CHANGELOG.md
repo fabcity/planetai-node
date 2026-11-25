@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **24 Nov: over Reticulum, only the people a node sends its alerts to can answer them.** The bridge took `act 3`
+  from any address that wrote to the node. On a LAN or a tailnet that was the household, but on a shared Reticulum
+  network anyone who heard the node's address could close its alerts, and each one counts in ρ. The bridge now
+  records an `act` only from a signed message sent by one of the node's alert addresses, the ones in Set up ›
+  Sharing, and anyone else gets one reply saying so. The bridge pin moves to a65ad0f, and the Reticulum steps in the
+  channels guide now add your address before you answer.
+
 - **The doctor after an update no longer says the mesh has gone quiet.** An update restarts the app, and the app
   counts mesh packets from the moment it starts, so the doctor at the end of every update showed ✗ mesh packets
   arriving, on node #1 a minute after its gateway had sent 200 packets. When that count is still 0, the doctor now
