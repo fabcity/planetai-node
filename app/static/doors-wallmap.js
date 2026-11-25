@@ -90,7 +90,17 @@ const UG = 'µg/m³';
    stands with chapters: []. The captions are public text, in Tomas's voice (pass of 18 Nov); every distance is W's
    whole km. G is /ground/meta's on_disk: Buildings and the Sun light the roofs in the node's street tiles, so with no
    street tiles (G.vector) there are no roofs to light and neither chapter stands. */
+/* What a community or district node says instead of "the house": app/placewords.py's English rows (Tomas, 25 Nov 2026),
+   the one list on the page; the doors are in English. W.house (from /wall) or /health's kind says when to use it. */
+const HOUSELESS = [[/\bthis house's own heat line\b/gi, 'the heat line set here'], [/\bthis house's heat line\b/gi, 'the heat line set here'],
+  [/\bsomebody in the house\b/gi, 'somebody here'], [/\bthis house has\b/gi, 'this node has'], [/\bin the house\b/gi, 'indoors'],
+  [/\bthis house's\b/gi, "this place's"], [/\bthe house's\b/gi, "this place's"], [/\bthis house\b/gi, 'this place'], [/\bthe house\b/gi, 'this place']];
+const houseless = s => HOUSELESS.reduce((t, [rx, to]) => t.replace(rx, m => /^[A-Z]/.test(m) ? to[0].toUpperCase() + to.slice(1) : to), String(s ?? ''));
+/* where the Wall's replay starts: the node's own size (/wall's `own`), base when it does not say */
+const ownIndex = (story, own) => Math.max(0, story.findIndex(s => s.k === own));
+
 const wallStory = (W, D, G = {}) => {
+  const say = W.house === false ? houseless : (s => s);   /* a community node never calls itself a house */
   const I = D.issues || {}, num = v => typeof v === 'number' && isFinite(v), f = (v, dp = 0) => (+v).toFixed(dp);
   const ro = (k, m) => { const r = ((I[k] || {}).readouts || []).find(x => x.metric === m); return r && num(r.value) ? r : null; };
   const word = p => PROVS.includes(p) ? p : 'model';
@@ -102,8 +112,8 @@ const wallStory = (W, D, G = {}) => {
   const base = [], community = [], city = [];
 
   if (num((stack.room || {}).value)) base.push(ch('air', '--d-air', 'Air', [+f(stack.room.value, 1), UG], stack.room.provenance,
-    `Fine dust in the house${num(line) ? `, against the WHO line of ${f(line)} ${UG}. The house's cell turns red in any hour over it` : ''}.`,
-    `${(stack.room.n ?? '')} sensors in the house${(stack.yard || {}).n ? ` · ${stack.yard.n} outside` : ''}`.trim(), ['own-air']));
+    say(`Fine dust in the house${num(line) ? `, against the WHO line of ${f(line)} ${UG}. The house's cell turns red in any hour over it` : ''}.`),
+    say(`${(stack.room.n ?? '')} sensors in the house${(stack.yard || {}).n ? ` · ${stack.yard.n} outside` : ''}`.trim()), ['own-air']));
   const built = ro('land', 'built_frac');
   if (W.roofs && G.vector && built) base.push(ch('built', '--d-ground', 'Buildings', [Math.round(built.value), '%'], built.provenance,
     `OpenStreetMap has ${W.roofs.osm_in_cells} roofs within ${Math.round(W.roofs.mapped_radius_m / 100) * 100} m of the middle of this cell, and ${f(built.value)} % of the ground here is built on.`,
@@ -123,13 +133,13 @@ const wallStory = (W, D, G = {}) => {
     'Copernicus DEM 30 m · forecast', ['own-water']));
 
   if (num((stack.ring || {}).value) && (W.stations || []).length) community.push(ch('air', '--d-air', 'Air around', [+f(stack.ring.value, 1), UG], stack.ring.provenance,
-    `Each dot is one of the ${W.stations.length} stations around the house, red in any hour it reads over the line.`, counted(stack.ring.source), ['stations']));
+    say(`Each dot is one of the ${W.stations.length} stations around the house, red in any hour it reads over the line.`), counted(stack.ring.source), ['stations']));
   if (W.change && num(W.change.ha)) community.push(ch('change', '--d-ground', 'Land that changed', [Math.round(W.change.ha), 'ha'], 'model',
     `Ground that looked different in ${W.change.b} than in ${W.change.a}. The satellite sees that it changed. Somebody walking there can tell what happened.`, 'AlphaEarth', ['change']));
   if (W.lab) community.push(ch('lab', '--cells', 'The lab', [W.lab.km, 'km'], 'partial',
-    `${W.lab.name} is the nearest fab lab, ${W.lab.km} km from the house. A lab like this one could run a community node here.`, 'the node’s record of the lab', ['lab']));
+    say(`${W.lab.name} is the nearest fab lab, ${W.lab.km} km from the house. A lab like this one could run a community node here.`), 'the node’s record of the lab', ['lab']));
   if (W.rivers && W.river) community.push(ch('rivers', '--d-water', 'Rivers', [W.river.nearest_km, 'km'], 'model',
-    `The nearest river is ${W.river.nearest_km} km from the house and carries ${f(W.river.nearest_m3s, 2)} m³/s on average.`, 'HydroATLAS, CC BY 4.0', ['rivers']));
+    say(`The nearest river is ${W.river.nearest_km} km from the house and carries ${f(W.river.nearest_m3s, 2)} m³/s on average.`), 'HydroATLAS, CC BY 4.0', ['rivers']));
 
   const g = W.grid, plant = g && (g.plants || []).find(p => p.large);   /* the energy pack's own cut, 100 MW */
   if (g && num(g.fossil_low_pct)) city.push(ch('grid', '--d-energy', 'Fossil power', [g.fossil_low_pct, '%'], 'model',
@@ -137,7 +147,7 @@ const wallStory = (W, D, G = {}) => {
     'PLN Bali system · OpenStreetMap', ['grid'], plant ? { fit: [[plant.lon, plant.lat]] } : {}));
   const bp = W.basin && W.basin.properties || {};
   if (W.basin) city.push(ch('basin', '--d-water', 'The basin', [bp.up_area ?? bp.sub_area ?? null, 'km²'], 'model',
-    `All the ground that drains to the sea with this house.${W.river ? ` The largest river nearby carries ${f(W.river.largest_m3s, 1)} m³/s, ${W.river.largest_km} km from the house.` : ''}`,
+    say(`All the ground that drains to the sea with this house.${W.river ? ` The largest river nearby carries ${f(W.river.largest_m3s, 1)} m³/s, ${W.river.largest_km} km from the house.` : ''}`),
     'HydroBASINS level 12', ['basin', 'rivers'], { fit: W.basin.geometry.coordinates[0] }));
   const swell = ro('coast', 'swell_height_m'), period = ro('coast', 'wave_period_s'), sst = ro('coast', 'sea_surface_temp');
   const from = atHour((W.hours || {}).wave_from || [], 23);
@@ -151,7 +161,7 @@ const wallStory = (W, D, G = {}) => {
     'Bali Air Dispatch · the government station, now', ['island'],
     { fit: [[off.lon, off.lat]], official: { lon: off.lon, lat: off.lat, label: `${String(off.place || '').split(' ').pop()} · government` } }));
 
-  const named = [['Base node', 'the house, its cell and the six around it', base], ['Community node', 'what a lab nearby could keep', community],
+  const named = [['Base node', W.house === false ? 'a house, its cell and the six around it' : 'the house, its cell and the six around it', base], ['Community node', 'what a lab nearby could keep', community],
     ['City node', 'the city around it, and its grid', city]];
   return W.scales.map((s, i) => ({ k: s.k, name: named[i][0], what: named[i][1], res: s.res, km2: s.km2, cells: s.cells, chapters: named[i][2] }));
 };
@@ -333,4 +343,4 @@ function wallMapMount(el, W, story, G = {}, onLost = null) {
 }
 
 if (typeof window !== 'undefined') Object.assign(window, { atHour, slotJoin, fitBox, circleRing, toward, crestSegments, crestPhase, streak, stationFeatures, maskRings, wallStory, chapterAt });
-if (typeof module !== 'undefined') module.exports = { atHour, slotJoin, fitBox, circleRing, toward, crestSegments, crestPhase, streak, stationFeatures, maskRings, wallStory, chapterAt };
+if (typeof module !== 'undefined') module.exports = { atHour, slotJoin, fitBox, circleRing, toward, crestSegments, crestPhase, streak, stationFeatures, maskRings, wallStory, chapterAt, houseless, ownIndex };

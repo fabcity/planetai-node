@@ -35,7 +35,8 @@ const oneLine = (s, max = 90) => {
 function wallAsk(it) {
   const a = it.asking || [], says = a.length ? oneLine(a[0].says) : '';
   if (!a.length) return '<span class="wsay">Nothing is asked now.</span>';
-  const count = a.length === 1 ? 'One thing is asked of this house.' : `${a.length} things are asked of this house.`;
+  const say = typeof WALL !== 'undefined' && WALL.W && WALL.W.house === false ? houseless : (s => s);   /* a community node is not a house (doors-wallmap.js) */
+  const count = say(a.length === 1 ? 'One thing is asked of this house.' : `${a.length} things are asked of this house.`);
   return `<span class="wsay said">${esc(says || count)}</span><span class="wtel">${says ? count + ' ' : ''}Answer on Telegram, not here.</span>`;
 }
 /* `stale` only when the node's readings are old: no poll in the last 15 minutes (three at the 300 s default), or none
@@ -131,6 +132,8 @@ function wallDraw(h) {
 }
 /* a size on the map: the camera to its cells at the next wallDraw, a cut when asked (a redraw, reduced motion), else
    MapLibre's glide */
+/* the node's own size in the story (/wall's `own`): where the replay starts and where the still view rests */
+const wallOwn = () => WALL.W ? ownIndex(WALL.story, WALL.W.own) : 0;
 function wallScale(s, cut) { WALL.s = s; if (WALL.map) WALL.map.go(s, cut); }
 /* the column fits whole: past it the tagline goes first, then the Telegram line (node #1, 10 Nov: a three-line
    sentence put the ask under the bottom of the screen) */
@@ -143,8 +146,8 @@ function headFit() {
 /* the replay's one clock: an hour every HOUR_STEP, a day at each size, then the next size */
 function wallTick(now) {
   if (view() !== 'wall') return CLOCK.off('wall-replay');
-  if (CLOCK.reduced()) { WALL.still = true; CLOCK.off('wall-replay'); CLOCK.off('wall-fx'); if (WALL.h !== 23 || WALL.s) { wallScale(0, true); wallDraw(23); } return; }   /* motion turned off while it ran */
-  const i = Math.floor((now - WALL.t0) / (WALL_TIME.HOUR_STEP() * 1000)), s = Math.floor(i / 24) % Math.max(1, WALL.story.length), h = i % 24;
+  if (CLOCK.reduced()) { WALL.still = true; CLOCK.off('wall-replay'); CLOCK.off('wall-fx'); const o = wallOwn(); if (WALL.h !== 23 || WALL.s !== o) { wallScale(o, true); wallDraw(23); } return; }   /* motion turned off while it ran */
+  const i = Math.floor((now - WALL.t0) / (WALL_TIME.HOUR_STEP() * 1000)), s = (wallOwn() + Math.floor(i / 24)) % Math.max(1, WALL.story.length), h = i % 24;
   if (s !== WALL.s) { wallScale(s); wallDraw(h); } else if (h !== WALL.h) wallDraw(h);   /* a size takes effect at its first hour */
 }
 /* a read that hangs is a read that failed: it reaches the retry path after WAIT. AbortSignal.timeout is Chrome 103 and
@@ -183,8 +186,10 @@ async function wallMeta(gen) {
    base size's first hour, so the map gets its whole day (under reduced motion the still frame, the last hour). With no
    /ground/meta yet, it is read once more once the visit's own read has settled. */
 function wallTake(W, gen) {
-  if (!WALL.W) { WALL.s = 0; WALL.h = CLOCK.reduced() ? 23 : 0; WALL.t0 = performance.now(); }
+  const fresh = !WALL.W;
+  if (fresh) { WALL.h = CLOCK.reduced() ? 23 : 0; WALL.t0 = performance.now(); }
   WALL.W = W; WALL.tries = 0; WALL.story = wallStory(W, D, wallDisk()); WALL.R = wallDay24(W);
+  if (fresh) WALL.s = wallOwn();   /* the replay opens at the node's own size */
   wallMount(); wallDraw(WALL.h);
   if (!WALL.G) WALL.askG = Promise.resolve(WALL.askG).then(() => WALL.G || !wallOwns(gen) || wallMeta(gen));
 }
@@ -204,7 +209,7 @@ VIEWS.wall = async function () {
   const k = D.lead, it = D.issues[k], still = CLOCK.reduced();
   const at = new Intl.DateTimeFormat('en-GB', { timeZone: D.tz, hour: '2-digit', minute: '2-digit' }).format(new Date(D.as_of));
   /* a redraw on a poll keeps the replay's hour; motion turned on or off since the last draw, even on another door, starts it over */
-  if (WALL.h == null || WALL.still !== still) { WALL.h = still ? 23 : 0; WALL.s = 0; WALL.t0 = performance.now(); }
+  if (WALL.h == null || WALL.still !== still) { WALL.h = still ? 23 : 0; WALL.s = wallOwn(); WALL.t0 = performance.now(); }
   WALL.still = still;
   if (!WALL.sized) { WALL.sized = true;
     matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', e => {           /* still at the last hour, or the replay again */

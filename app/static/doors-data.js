@@ -1,3 +1,6 @@
+
+/* a community or district node does not call itself a house (app/placewords.py; houseless is doors-wallmap.js's) */
+const asHouse = s => ['community', 'district'].includes(String(((typeof D !== 'undefined' && D && D.health) || {}).kind || '').toLowerCase()) ? houseless(s) : s;
 'use strict';
 /* DATA — every raw reading this node holds, drawn. One metric at a time; every sensor that reads it is one ruled row
    (Zendesk status rows, Square devices), all on one scale capped at the 98th percentile so one spike cannot flatten
@@ -486,7 +489,7 @@ function sensorsBlock() {
   };
   const grp = (t, rs) => rs.length ? `<div class="gh k">${t} · ${rs.length}</div>` + rs.map(r => `<div class="srow" data-sid="${esc(r.id)}"><span class="t">${esc(plain(r.s.name || r.id))}<small>${srcLink({ ...r.s, sensor_id: r.s.sensor_id || r.id }, esc(r.s.source || ''))}${r.s.lat != null ? ` · ${fmt(r.d, 1)} km` : ''}${r.s.indoor ? ' · inside' : ''}</small></span>${spark(r.a)}<span class="c">${num(r.id + '.' + METRIC, fmt(r.last, (D.metrics[METRIC] || {}).dp ?? 1), line != null ? `the line ${line}` : `one scale, ${fmt(lo, 0)} to ${fmt(top, 0)}`)}</span></div>`).join('') : '';
   $('#sensors').innerHTML = `<div class="dh"><h2>${said(labelOf(METRIC))}, every source, last 24 hours</h2><span class="k">one scale, ${fmt(lo, 0)} to ${fmt(top, 0)} ${said(unitOf(METRIC))} · band = the hour’s low to high · line = its mean${line != null ? ' · red: over the line' : ''}</span></div>`
-    + grp('This house', rows.filter(r => r.s.local)) + grp('Around it', rows.filter(r => !r.s.local && r.s.kind !== 'model')) + grp('Models', rows.filter(r => r.s.kind === 'model'))
+    + grp(asHouse('This house'), rows.filter(r => r.s.local)) + grp('Around it', rows.filter(r => !r.s.local && r.s.kind !== 'model')) + grp('Models', rows.filter(r => r.s.kind === 'model'))
     + `<div class="axis"><span></span><span class="mono k">${hhmm(B[0])} yesterday → ${hhmm(B[B.length - 1])} today</span><span></span></div>`;
   calibrateOnRows();
 }
@@ -745,10 +748,10 @@ async function thingsBlock() {
   const r = await doorsFetch('/things').catch(() => null);
   if (r && r.status === 404) { el.innerHTML = `<h2>Things</h2><p class="fine">The things pack is off on this node. Switch it on in Set up, under Packs, to keep a list of what this home has here.</p>`; return; }
   const j = r && r.ok ? await r.json().catch(() => null) : null;
-  if (!j) { el.innerHTML = `<h2>Things</h2><p class="fine">What this home keeps stays private to this house and never leaves it. Unlock this screen with the admin key in ${UNLOCK_AT} to see it.</p>`; return; }
+  if (!j) { el.innerHTML = `<h2>Things</h2><p class="fine">What this home keeps stays private to ${asHouse('this house')} and never leaves it. Unlock this screen with the admin key in ${UNLOCK_AT} to see it.</p>`; return; }
   const s = j.summary;
   el.innerHTML = `<h2>Things, ${s.things}</h2><p class="blurb">What this home keeps: ${s.idle} used a few times a year or never, ${s.repair} waiting for a repair, ${s.offered} offered. `
-    + `Only what you offer leaves the house: its class, name, state and count, at this node's cell, in <a class="mono" href="/offers">/offers</a>; whoever wants it writes to this node's Telegram bot, which passes the message to you.</p>`
+    + `Only what you offer leaves ${asHouse('the house')}: its class, name, state and count, at this node's cell, in <a class="mono" href="/offers">/offers</a>; whoever wants it writes to this node's Telegram bot, which passes the message to you.</p>`
     + `<div class="acts"><button data-a="add">Add a thing</button></div>`
     + (j.things.length ? `<table class="tbl things"><tr><th>what</th><th class="hide">class</th><th class="n">how many</th><th>used</th><th class="hide">state</th><th>offer</th><th></th></tr>`
       + j.things.map(t => `<tr><td>${cell(t.name)}${t.capture_id ? ` <a class="fine" href="#data/d-images">image</a>` : ''}</td><td class="hide">${cell(t.class)}</td><td class="n">${+t.count || 1}</td>`
@@ -849,7 +852,7 @@ async function imagesBlock() {
   if (rr && rr.status === 404) { el.innerHTML = `<h2>Images</h2><p class="fine">The eyes pack is off on this node. Switch it on in Set up, under Packs, to keep pictures of this place here.</p>`; return; }
   const rows = rr && rr.ok ? await rr.json().catch(() => null) : null;
   TKEEP = await doorsFetch('/things').then(r => (r.ok ? r.json() : null)).catch(() => null);
-  if (!rows) { el.innerHTML = `<h2>Images</h2><p class="fine">Images stay private to this house: the picture and where it was taken. Unlock this screen in ${UNLOCK_AT} to see them.</p>`; return; }
+  if (!rows) { el.innerHTML = `<h2>Images</h2><p class="fine">Images stay private to ${asHouse('this house')}: the picture and where it was taken. Unlock this screen in ${UNLOCK_AT} to see them.</p>`; return; }
   // what a person here has confirmed, per species (SPEC_species §4): the model's guesses are not in it
   const sp = await doorsFetch('/species').then(r => (r.ok ? r.json() : null)).catch(() => null);
   const spTable = sp && sp.species.length ? `<h3>Species confirmed, ${sp.species.length}</h3><table class="tbl species"><tr><th>species</th><th class="hide">rank</th><th class="n">seen</th><th>around here</th></tr>`
@@ -916,6 +919,6 @@ function ledgerBlock() {
     + (tok ? `<table class="tbl ledger"><tr><th>when</th><th>stage</th><th class="hide">who</th><th>what it answered</th></tr>`
       + R.map(r => `<tr><td class="mono tw">${dspan(r.first, r.last)}</td><td class="ts">${stage(r)}</td><td class="hide" title="${esc(r.a.actor || '')}">${esc(actorWord(r.a.actor))}</td><td>${esc(ledgerWhat(r.a))}</td></tr>`).join('') + `</table>`
       : `<table class="tbl ledger"><tr><th>when</th><th>stage</th></tr>` + R.map(r => `<tr><td class="mono tw">${dspan(r.first, r.last)}</td><td class="ts">${stage(r)}</td></tr>`).join('') + `</table>`
-        + `<p class="fine">Who answered, and what each alert said, stay private to this house. Unlock this screen in ${UNLOCK_AT} to see them.</p>`);
+        + `<p class="fine">Who answered, and what each alert said, stay private to ${asHouse('this house')}. Unlock this screen in ${UNLOCK_AT} to see them.</p>`);
   document.querySelectorAll('#ledger [data-st]').forEach(b => b.onclick = () => { LSTAGE = b.dataset.st; ledgerBlock(); });
 }

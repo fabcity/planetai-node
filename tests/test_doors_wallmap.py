@@ -324,3 +324,29 @@ assert sea["gap"] == {"crests": 0, "wind": 0}, ("a neighbour's speed or period d
 assert sea["dir"] == [{"crests": 1, "wind": 0}, {"crests": 0, "wind": sea["dir"][1]["wind"]}] and sea["dir"][1]["wind"] > 0, ("a neighbour's bearing drawn", sea["dir"])
 print("  mount: the wind and the crests read their own hour, and are off for it when it lacks one of theirs")
 print("  mount: the sea is read again when its tiles come or the map rests, never while it glides; the crests fade back in")
+
+# ---- a community or district node's Wall (app/placewords.py, Tomas 25 Nov 2026): it starts at its own size and its
+# words never call it a house; the base size it walks through is "a house", not "the house". A house reads as it did.
+out2 = subprocess.run(["node", "-e", """
+const M = require('./app/static/doors-wallmap.js'), fs = require('fs');
+const W0 = JSON.parse(fs.readFileSync('tests/fixtures/wall-node1.json', 'utf8'));
+const cap = JSON.parse(fs.readFileSync('app/issues/fixtures/node1-2026-10-06-figures.json', 'utf8')).issues.issues;
+const I = {}; for (const [k, it] of Object.entries(cap)) I[k] = { ...it, line: (it.line || {}).value ?? null };
+const D = { issues: I }, G = { vector: true };
+const words = st => st.flatMap(s => [s.name, s.what, ...s.chapters.flatMap(c => [c.title, c.says, c.src])]).join('\\n');
+const house = M.wallStory({ ...W0, house: true, own: 'base' }, D, G), old = M.wallStory(W0, D, G);
+const place = M.wallStory({ ...W0, house: false, own: 'community' }, D, G);
+console.log(JSON.stringify({ house: words(house), old: words(old), place: words(place),
+  hl: M.houseless("Fine dust in the house. The house's cell, 3 km from the house; Lighthouse Road; the household"),
+  start: [M.ownIndex(place, 'community'), M.ownIndex(place, 'city'), M.ownIndex(house, 'base'), M.ownIndex(place, undefined)] }));
+"""], capture_output=True, text=True, cwd=ROOT)
+assert out2.returncode == 0, out2.stderr[-600:]
+R2 = json.loads(out2.stdout)
+assert R2["house"] == R2["old"], "a /wall without `house` and a house's /wall tell the same story"
+assert re.search(r"\bthe house\b", R2["house"]), "a house's Wall still says the house"
+_left = [l for l in R2["place"].split("\n") if re.search(r"\b(the|this) house\b|\bhouse's\b", l, re.I)]
+assert not _left, ("a community node's Wall calls it a house", _left)
+assert "a house, its cell and the six around it" in R2["place"], "the base size, walked through by a community node"
+assert R2["hl"] == "Fine dust indoors. This place's cell, 3 km from this place; Lighthouse Road; the household", R2["hl"]
+assert R2["start"] == [1, 2, 0, 0], R2["start"]
+print("  wall: a community node starts at its own size and never calls itself a house; a house's story is unchanged")
