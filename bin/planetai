@@ -45,7 +45,8 @@
 #   planetai cells           the Index cells this node fills, with provenance (--json)
 #   planetai snapshot        one JSON of everything the node answers, for a design round or a bug report (--out FILE)
 #   planetai geocode <place> what the setup wizard would find for a place name
-#   planetai hello          list this node on every node's map: shows what goes public, then opens the pull request (--remove)
+#   planetai hello          list this node on every node's map: shows what goes public, then sends it to the programme's
+#                           inbox over Reticulum, or opens the pull request with gh (--remove; --inbox on the inbox's node)
 #   planetai children       on a parent: the nodes pushing to it, each pinned to its key; `children forget <name>` after one lost its key
 #   planetai version         the version this folder is at
 #   planetai remove         take this node off the machine; asks twice. --keep-data keeps the readings
@@ -1122,7 +1123,7 @@ T
 # curl and tar at one pinned commit, and builds the image itself; Fab City publishes no image with rns in it.
 # Moving the pin is its own PR, after reading rns's and lxmf's LICENSE at the versions that commit installs.
 RETICULUM_REPO="fabcity/planetai-reticulum"
-RETICULUM_REF="dc7071df83ce9b5f6660069726ac1cfdacfc8264"
+RETICULUM_REF="fadb142534e46983c2bcf7124a991eeed9589da6"
 # The Fab City hub (docs/SPEC_hub.md): node #1's Funnel name, which goes with the mini when it moves. Funnel takes only
 # TLS, so the bridge dials it through openssl in a PipeInterface, the block config.tpl carries commented. openssl checks
 # the certificate and that it names the hub: -servername alone only sends the name.
@@ -2655,10 +2656,13 @@ for c in d:
     || fail "the node did not answer GET /children; planetai doctor says why"
 }
 
-# Saying hello is a pull request to registry.json, the programme's list of nodes (docs/SPEC_hello.md §5). Nothing
-# leaves until the household has read the entry and said yes, and nothing is listed until a person merges it.
-# The point is what /health gives a reader without the token: the centre of the res-8 cell, never the house (R25).
+# Saying hello asks to be on registry.json, the programme's list of nodes (docs/SPEC_hello.md §5). With this node's
+# bridge running, the entry goes as a Reticulum message to the inbox registry.json names (docs/SPEC_hub.md §9);
+# without it, as a pull request with gh. Nothing leaves until the household has read the entry and said yes, and
+# nothing is listed until a person merges it. The point is what /health gives a reader without the token: the centre
+# of the res-8 cell, never the house (R25).
 cmd_hello() {
+  [[ "${1:-}" == --inbox ]] && { hello_inbox; return; }
   local remove=""; [[ "${1:-}" == --remove ]] && remove=1
   local h; h="$(curl -sf "localhost:$(port)/health")" || fail "the node does not answer on :$(port). planetai start, then try again"
   local entry; entry="$(printf '%s' "$h" | json '
@@ -2670,10 +2674,12 @@ print(json.dumps({"name": d["node"], "cell": d["cell"]["id"], "lat": d["lat"], "
   # already listed? registry.json on main is public, and the entry asked for is about to go there: read the whole of
   # this node's row (GET /nodes leaves out contact and sources), so its words are the defaults, Enter keeps them, its
   # history (since, parent) is kept, and the same entry again sends nothing
-  local old; old="$(curl -sf "https://raw.githubusercontent.com/fabcity/planetai-node/main/registry.json" | N="$name" json '
+  local reg; reg="$(curl -sf "https://raw.githubusercontent.com/fabcity/planetai-node/main/registry.json")" || reg=""
+  local old; old="$(printf '%s' "$reg" | N="$name" json '
 import os
 n = next((x for x in d.get("nodes") or [] if x.get("name") == os.environ["N"]), None)
 print(json.dumps(n) if n else "")' 2>/dev/null)" || old=""
+  local inbox; inbox="$(printf '%s' "$reg" | json 'print(d.get("inbox") or "")' 2>/dev/null)" || inbox=""
   local lplace="" loper="" lcell="" lsince="" lcontact=""
   [[ -n "$old" ]] && IFS=$'\x1f' read -r lplace loper lcell lsince lcontact < <(printf '%s' "$old" | json '
 print("\x1f".join(str(d.get(k) or "") for k in ("place", "operator", "cell", "since", "contact")))')   # not a tab: IFS whitespace folds empty fields
@@ -2720,6 +2726,22 @@ for k in ("name", "id", "place", "cell", "lat", "lon", "operator", "contact", "s
     echo "  This asks the programme to take $name off the list of nodes."
   fi
   echo
+  # over Reticulum first, through this node's own bridge, to the inbox registry.json names (not from the inbox itself)
+  local mine; mine="$(curl -sf localhost:4243/health 2>/dev/null | json 'print(d.get("address") or "")' 2>/dev/null)" || mine=""
+  if [[ -z "$remove" && -n "$inbox" && -n "$mine" && "$mine" != "$inbox" ]]; then
+    confirm "Send it to the programme's inbox over Reticulum?" || { say "nothing sent"; return 0; }
+    say "sending it to the programme's inbox, ${inbox:0:8}… (up to a minute)"
+    local ans; ans="$(printf '%s' "$entry" | I="$inbox" json 'import os; print(json.dumps({"inbox": os.environ["I"], "entry": d}))' \
+      | curl -sf -m 90 -X POST localhost:4243/hello -H 'Content-Type: application/json' --data-binary @-)" \
+      || fail "the bridge did not take the hello. planetai logs reticulum says why"
+    case "$(printf '%s' "$ans" | json 'print("answered" if d.get("answer") else "sent" if d.get("sent") else "no path")')" in
+      answered) say "the inbox answered: $(printf '%s' "$ans" | json 'print(d["answer"])')"
+                echo "  When a person lists it, every node lists $name within the hour." ;;
+      sent)     warn "sent, and the inbox has not answered yet. It may be offline: try again later." ;;
+      *)        warn "the bridge has no way to the inbox yet. Let other nodes see this one (planetai reticulum), then try again." ;;
+    esac
+    return 0
+  fi
   local edit="https://github.com/fabcity/planetai-node/edit/main/registry.json"
   if ! command -v gh >/dev/null || ! gh auth status >/dev/null 2>&1; then
     echo "  GitHub's gh is not logged in here, so open this and make the change by hand, then propose it:"
@@ -2728,6 +2750,13 @@ for k in ("name", "id", "place", "cell", "lat", "lon", "operator", "contact", "s
     return 0
   fi
   confirm "Open the pull request?" || { say "nothing sent"; return 0; }
+  hello_pr "$entry" "$name" "$remove" "$old" "Sent by \`planetai hello\` from $name."
+}
+
+# hello_pr ENTRY NAME REMOVE OLD WORDS: the pull request that puts ENTRY on registry.json, or takes NAME off it, opened
+# with the gh logged in here. WORDS open its description; the merge is the approval.
+hello_pr() {
+  local entry="$1" name="$2" remove="$3" old="$4" words="$5" edit="https://github.com/fabcity/planetai-node/edit/main/registry.json"
   local tmp; tmp="$(mktemp -d)"
   ( cd "$tmp" && gh repo fork fabcity/planetai-node --clone --default-branch-only -- --depth=1 -q >>"$LOG" 2>&1 ) \
     || fail "could not fork fabcity/planetai-node with gh. By hand: $edit"
@@ -2753,10 +2782,47 @@ open(os.environ["REG"], "w").write(out + "\n")'
   local verb="list"; [[ "$old" != "{}" ]] && verb="update"; [[ -n "$remove" ]] && verb="unlist"
   ( cd "$repo" && git commit -qam "registry: $verb $name" && git push -qu origin "$branch" >>"$LOG" 2>&1 \
     && gh pr create --repo fabcity/planetai-node --head "$me:$branch" --title "registry: $verb $name" \
-       --body "Sent by \`planetai hello\` from $name. The merge is the approval (SPEC.md §2, docs/SPEC_hello.md §5)." ) \
+       --body "$words The merge is the approval (SPEC.md §2, docs/SPEC_hello.md §5)." ) \
     || fail "could not open the pull request. The change is in $repo; or by hand: $edit"
   rm -rf "$tmp"
   say "sent. When it is merged, every node lists $name within the hour."
+}
+
+# planetai hello --inbox: on the node whose bridge is the programme's inbox, the hellos that arrived over Reticulum, and
+# for the one the keeper picks, the pull request opened with the keeper's own gh. The merge stays the approval
+# (docs/SPEC_hub.md §9). The bridge keeps the newest hello per sender; an entry already listed as it is says so.
+hello_inbox() {
+  local box; box="$(curl -sf localhost:4243/inbox)" \
+    || fail "no bridge answers here. The inbox is the node whose LXMF address registry.json names, with its bridge running"
+  local reg; reg="$(curl -sf "https://raw.githubusercontent.com/fabcity/planetai-node/main/registry.json")" || reg='{"nodes": []}'
+  printf '%s' "$box" | R="$reg" json '
+import os, time
+listed = {x.get("name"): x for x in json.loads(os.environ["R"]).get("nodes") or []}
+rows = d.get("inbox") or []
+print("  nothing has arrived" if not rows else "  Arrived over Reticulum, newest first:")
+for i, r in enumerate(rows, 1):
+    e, l = r["entry"], listed.get(r["entry"]["name"])
+    state = "not listed" if not l else "listed as this" if all(l.get(k) == v for k, v in e.items()) else "listed, changed"
+    print("  %2d. %-22s %-30s from %s… %s · %s" % (i, e["name"], (e.get("place") or "")[:30], r["from"][:8],
+                                                 time.strftime("%d %b %H:%M", time.gmtime(r["at"])), state))'
+  local count; count="$(printf '%s' "$box" | json 'print(len(d.get("inbox") or []))')"
+  [[ "$count" -gt 0 ]] || return 0
+  local pick=""; ask pick "Which one opens a pull request? (its number, or Enter for none)" ""
+  [[ "$pick" =~ ^[0-9]+$ && "$pick" -ge 1 && "$pick" -le "$count" ]] || { say "nothing sent"; return 0; }
+  local entry; entry="$(printf '%s' "$box" | P="$pick" json 'import os; print(json.dumps(d["inbox"][int(os.environ["P"]) - 1]["entry"]))')"
+  local name; name="$(printf '%s' "$entry" | json 'print(d["name"])')"
+  local old; old="$(printf '%s' "$reg" | N="$name" json '
+import os
+n = next((x for x in d.get("nodes") or [] if x.get("name") == os.environ["N"]), None)
+print(json.dumps(n) if n else "{}")' 2>/dev/null)" || old="{}"
+  echo; echo "  This is what the whole programme will see about $name, as it sent it:"
+  printf '%s' "$entry" | json '
+for k in ("name", "id", "place", "cell", "lat", "lon", "operator", "contact", "since", "sources"):
+    if d.get(k) is not None:
+        print("    %-9s %s" % (k, ", ".join(d[k]) if isinstance(d[k], list) else d[k]))'
+  command -v gh >/dev/null && gh auth status >/dev/null 2>&1 || fail "gh is not logged in here: gh auth login, then planetai hello --inbox again"
+  confirm "Open the pull request for $name?" || { say "nothing sent"; return 0; }
+  hello_pr "$entry" "$name" "" "$old" "Sent over Reticulum by $name to the programme's inbox, and opened by its keeper with \`planetai hello --inbox\`."
 }
 
 cmd_version() {

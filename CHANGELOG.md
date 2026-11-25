@@ -9,6 +9,13 @@
   also reads a child's sensors as a home nearby, without the child's name or its kit numbers, because a kit's public
   page says where it stands.
 
+- **25 Nov: hello needs no GitHub account.** With the Reticulum bridge running, `planetai hello` sends this node's
+  entry as a message to the programme's inbox, node #1, whose address `registry.json` now names, and prints what the
+  inbox answered: "received: a person reads it before it is listed". On node #1, `planetai hello --inbox` lists what
+  arrived and opens the pull request for the one its keeper picks, and the merge is still the approval. A node without
+  the bridge opens the pull request with `gh` as before. The bridge pin moves to fadb142, which also carries the
+  presence fix below.
+
 - **25 Nov: after an update, the hub hears the node's new version within a minute.** After `planetai update` every
   node on the hub could hear the old version, with no id, for half an hour. The Reticulum bridge could ask the old app
   what to announce while the new one was starting, or keep running beside a new app and not ask again. Between its

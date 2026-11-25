@@ -84,7 +84,8 @@ for f in ("update.sh", "backup.sh", "install.sh", "bin/planetai"):
     for i, line in enumerate(text.splitlines(), 1):
         # A literal path, or a variable one ($1 in a helper) — an unknown path is the dangerous case, because a
         # helper is reused: bin/planetai's api() reaches six endpoints through one curl and one $1.
-        for path in re.findall(r'curl[^|;]*?localhost:[^/\s"]+(/[a-z0-9/._-]+|\$\{?\w+)', line):
+        # 4243 is the Reticulum bridge, its own container with no SHARE_LEVEL, published on the host's loopback only
+        for path in re.findall(r'curl[^|;]*?localhost:(?!4243\b)[^/\s"]+(/[a-z0-9/._-]+|\$\{?\w+)', line):
             if path in _off_paths or "Authorization" in line:
                 continue
             # the header may reach curl through a variable ($AUTH, $t, $tok): accept any name this file

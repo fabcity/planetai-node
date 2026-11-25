@@ -5,10 +5,10 @@ discoverable within the network". Is Tailscale a limitation, should we consider 
 reticulum (it would be ideal), as it also creates a distributed infrastructure". Read the same day against main and
 node #1; Tomas: "Yes, write the spec".*
 
-**Status: ruled; steps 0 to 2 merged, step 3 built (25 November).** The act allowlist is
-fabcity/planetai-reticulum#1, pinned by planetai-node #422. The hub is fabcity/planetai-reticulum#2 (0794e97) with
-planetai-node #423, node #1 runs it as the hub through Funnel, and #425 draws heard nodes. Step 3, the one question,
-is the pull request after #425. Step 4 is not built.
+**Status: ruled; steps 0 to 3 merged, step 4 built (25 November).** The act allowlist is
+fabcity/planetai-reticulum#1, pinned by planetai-node #422. The hub is fabcity/planetai-reticulum#2 with planetai-node
+#423, and node #1 runs it as the hub through Funnel. #425 draws heard nodes, and #427 asks the one question. Step 4 is
+fabcity/planetai-reticulum#4 with the planetai-node pull request after #427.
 
 ## 1 · What a node can do today
 
@@ -202,6 +202,12 @@ licence ruling left open: a registry entry is discovery, so it may travel over R
 
 > ponytail: one stored entry per sender, the newest, and at most 200 in all. A queue with history when a busy week
 > shows it is needed.
+
+Built so, 25 November: the bridge sends with `POST /hello` rather than `/send`, because `/send`'s `to` list decides
+who may act (§5) and an inbox is not one of the household's addresses. It waits up to a minute for the inbox's answer,
+on a threaded server so `/health` keeps answering. The inbox keeps a hello only from a sender whose signature checks
+out, since each sender has one slot, keyed by its address. `registry.json` names node #1's LXMF address as `inbox`.
+`planetai hello` on the inbox's own node takes the `gh` path, since it would be writing to itself.
 
 ## 10 · What it keeps, and the one bend
 
