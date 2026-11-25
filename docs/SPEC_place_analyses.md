@@ -15,8 +15,13 @@ service and its code is not open, so this node copies none of it and takes only 
 and are named below.
 
 The first read took four analyses. The second, after the terrain, hydro, energy and surface-heat packs and the Place
-map had landed, added roof power and what the sky and the street do at the sensor's own point. Every other analysis is in the second table of §2 with the reason it is left out, or in §9
-when a wild pack or a city node is where it belongs.
+map had landed, added roof power and what the sky and the street do at the sensor's own point. Every other analysis
+is in the second table of §2 with the reason it is left out, or in §9 when a wild pack or a city node is where it
+belongs.
+
+Infrared (infrared.city) was read the same day. Its SDK is open, but it only sends the work to Infrared's own cloud,
+where the models run, and that code is not open. Only published methods are taken from it too. It adds felt heat at
+the sensor (§5).
 
 ## 2 · What it serves
 
@@ -26,6 +31,7 @@ The pack design record asks every new thing on a node which decision it informs.
 |---|---|---|
 | Sun and shade | heat | Which hours the yard, the street and the roof are in sun. Also whether the outdoor sensor itself sits in sun, which is when its temperature reads high. |
 | Sky and street at the sensor | heat, air | Why the nights stay warm at the outdoor kit, which the heat pack counts, and how deep the street beside it is, to help read a PM2.5 spike that stays. |
+| Felt heat at the sensor | heat | What the heat at the outdoor kit feels like to a person standing there, in sun or in shade, with the wind, and how many hours a day reach heat stress. The apparent temperature the heat pack gives today leaves out both sun and wind. |
 | Roof power | energy | How much electricity the best roof could give in a year, read beside the grid's fossil share from the energy pack. |
 | Trees, 3-30-300 | heat, land | Whether three trees stand within 30 m of the home, whether the cell has 30% canopy, whether a park of 1 ha or more is within a 300 m walk, and where one more tree would shade the most. |
 | Built form | land | How densely the cell is built, how tall, and how that changed since 1985. |
@@ -52,7 +58,7 @@ Left out:
 ## 3 · Sources
 
 Each one checked against the registry's open rule (CONTRIBUTING.md in awesome-fabcity-data) on 23 October 2026,
-and the two rows added on 25 November checked that day.
+and the rows added on 25 November checked that day.
 
 | source | licence | used for | verdict |
 |---|---|---|---|
@@ -65,7 +71,9 @@ and the two rows added on 25 November checked that day.
 | Meta and WRI canopy height, 1 m | CC BY 4.0; source imagery © 2016 Maxar | tree crowns and their heights, for shade | passes; the imagery is years old in most places, so its date is shown |
 | PVGIS, EU Joint Research Centre | CC BY 4.0 in the JRC data catalogue; reuse allowed with the source acknowledged | sunlight on a roof's plane, month by month, at the node's point | passes; its API's rate limit is still to read (§8) |
 | Copernicus DEM GLO-30 | Copernicus WorldDEM-30 licence: free use and change, its own notice and liability sentence | the ground, for shade on slopes (later, §8) | passes; carry its notice word for word |
+| Open-Meteo forecast, already read by the forecast pack | CC BY 4.0; its free API allows non-commercial use only | wind at 10 m and the sunlight now, direct and diffuse, for felt heat | passes for a household's node; a node used commercially needs Open-Meteo's paid API or another forecast |
 | Sun position | NOAA and Meeus formulas | arithmetic | no data |
+| UTCI | Bröde et al. 2012, the published approximation | felt heat | no data |
 
 Not used: Esri World Imagery and Wayback (Esri's terms). Mapterhorn, whose terrain tiles mix many national sources
 under licences listed one by one, so the node reads GLO-30 directly. Overture buildings, which merge the sources
@@ -83,7 +91,8 @@ the page shows it with the provenance sign it already has:
   mapped.
 - **Modelled** (`model`): any input is an assumption or a model's output. A height filled from Open Buildings, WSF
   or a default of 3 m per floor, a canopy from the 1 m model, the 2.5D Temporal and WSF Evolution series, and roof
-  power always, since the panel and its losses are assumed.
+  power always, since the panel and its losses are assumed. Felt heat always, since its wind and sunlight come from a
+  forecast model and the heat given off by walls and ground is estimated.
 
 **A value is modelled when any one of its inputs is.** Every figure that rests on heights prints how many were
 mapped beside it, as in "heights: 412 mapped, 2,492 filled". Where few heights are mapped, most sun figures will read
@@ -113,6 +122,17 @@ buildings on each side of the street nearest the sensor over the distance betwee
 of it. The deeper the street, the less of what is emitted in it leaves (Oke 1988), which is one reason a PM2.5 spike
 stays. The page gives both numbers and draws no verdict from them.
 
+**Felt heat at the sensor.** UTCI, the temperature a person standing at the outdoor sensor would feel, every hour. Air
+temperature and humidity are the kit's own readings. Wind at 10 m and the sunlight of the hour, direct and diffuse,
+come from the forecast pack, which today keeps only the total sunlight and needs the two parts added. Whether the
+point is in sun comes from the shade above, and how much sky it sees from the paragraph before. From those the node
+works out the radiant temperature at the point by the six-direction method SOLWEIG uses (Lindberg, Holmer and
+Thorsson 2008), with walls and ground taken at the air's temperature, and then UTCI by the published approximation
+(Bröde et al. 2012). An hour outside the ranges the approximation was fitted for has no value. The page shows felt
+heat beside the measured temperature and counts the hours of each day in UTCI's heat stress classes: moderate from
+26 °C, strong from 32, very strong from 38, extreme above 46. This spec puts it in the heat pack, which then holds
+code as well as SQL.
+
 **Roof power.** A year's electricity, in kWh, that panels could give on each roof in the circle, with the house's own
 roof first, beside the energy pack's Today box. PVGIS gives the sunlight on a roof's plane month by month, once for the
 node's point, since roofs within a kilometre share a climate. Pitch is not mapped, so every roof is read at PVGIS's
@@ -125,7 +145,7 @@ figure is always `model` (§4). It is the answer to `fit.roof` in SPEC_place_mic
 **Trees, 3-30-300.** Konijnendijk's rule, three parts read separately. *3*: mapped trees and canopy crowns within 30 m of
 the home's point. The rule asks for three trees seen from the home, and the node draws no lines of sight, so the count
 within 30 m stands in for it and the page says "within 30 m", never "seen". *30*: canopy share of the node's res-8
-cell. *300*: a park of 1 ha or more within a 300 m walk along the street graph (step 6); until the graph exists it is a
+cell. *300*: a park of 1 ha or more within a 300 m walk along the street graph (step 7); until the graph exists it is a
 straight line, and the page says "straight line" beside it. The rule says 300 m to the nearest park; the 1 ha floor
 and the walk are this spec's choices, so a verge of grass does not count and a park behind a wall with no gate is not
 near (§8). A tree mapped in OpenStreetMap is derived; a crown from the 1 m model is modelled. Where one more tree would
@@ -153,7 +173,9 @@ behind the token.
 
 The readouts in §5 are a few numbers per cell, kept as readings on `place-point` with the attribution the place pack
 already writes, and roof power adds PVGIS's acknowledgement to it. Whether such numbers can go into the CC BY export
-as they are is the question SPEC_inventory.md §7 left open. This spec does not decide it.
+as they are is the question SPEC_inventory.md §7 left open. This spec does not decide it. Felt heat is a reading
+of the outdoor sensor, but its sky view comes from the map, so it stays on the node with the readouts until that
+question is decided.
 
 ## 7 · Steps
 
@@ -164,10 +186,12 @@ as they are is the question SPEC_inventory.md §7 left open. This spec does not 
 3. **Sun and shade**, buildings first, with the sky and the street at the sensor in the same pull request, since both
    read the same buildings. The sun on the sensor's own point answers a trust question on its own, before any tree is
    added.
-4. **Roof power.** It reads the sun grid, and it comes before trees so the energy pack's Today box has a roof figure
-   early. Crowns lower it when step 5 lands.
-5. **Trees, 3-30-300**, which adds crowns to steps 3 and 4.
-6. **The street graph**, then streets and walking. The 300 m in step 5 becomes a walk.
+4. **Felt heat at the sensor.** It reads step 3 at the sensor's point, and the forecast pack adds direct and diffuse
+   sunlight in the same pull request.
+5. **Roof power.** It reads the sun grid, and it comes before trees so the energy pack's Today box has a roof figure
+   early. Crowns lower it when step 6 lands.
+6. **Trees, 3-30-300**, which adds crowns to steps 3 to 5.
+7. **The street graph**, then streets and walking. The 300 m in step 6 becomes a walk.
 
 ## 8 · Open
 
@@ -186,6 +210,13 @@ as they are is the question SPEC_inventory.md §7 left open. This spec does not 
 - **Overture places** as a second source for the place pack's counts, where OpenStreetMap has few warungs. The
   registry entry passed with caveats on 21 November, and in Denpasar almost no place says whether it is still open,
   so a count there is a count of listings.
+- **Walls and ground in felt heat.** Taken at the air's temperature, they read low on a hot afternoon, when paving in
+  the sun is far hotter than the air. Infrared publishes its own radiant temperature errors against street
+  instruments, 4.5 to 11.8 K with full 3D geometry. A method at one point, with walls at the air's temperature, has
+  less to go on.
+- **A globe thermometer on the kit.** A black globe measures radiant temperature directly, and a fab lab can make one.
+  With it, the weakest input of felt heat becomes a measurement, and the model can be checked against it at the
+  sensor before it is trusted anywhere else.
 
 ## 9 · Wild packs, and what waits for a city node
 
@@ -207,4 +238,5 @@ its own repository and listed at fabcity/planetai-wild-packs, and a node adds th
   territory. Car traffic and noise stay models fed by models until the city's own counters and noise meters feed them,
   and residents and jobs until its census does. Pedestrian wind and rain and puddles across a district need a GPU
   simulation, and the second a lidar ground as well. Tree crowns and roof pitch read from the city's aerial imagery
-  need a vision model, and the pitch would end the guess in roof power (§5). None of them is in this spec.
+  need a vision model, and the pitch would end the guess in roof power (§5). Felt heat on every street of a city, at
+  1 m, checked each day against the city's own sensors, needs a city node's compute. None of them is in this spec.
