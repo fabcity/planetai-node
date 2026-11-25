@@ -131,7 +131,8 @@ Development happens on a dev machine, not on the node. The node only runs `plane
 This repository is public and households install from it. Plans, specs, handoffs, reviews, audits and prompts
 are working records: they go to the private `planetai-design` repo under `node-docs/`, never into `docs/` here.
 What stays is what a household or a contributor reads: `docs/site/`, the `SPEC_*` pages, `docs/decisions/` and
-`docs/proposals/`.
+`docs/proposals/`. Two specs that code comments still cite by name, `SPEC_place_report` and `SPEC_place_analyses`, are in
+`planetai-design` under `node-docs/specs/`.
 
 A merge is not a release, and nothing reaches a tester without one. `/install` and `/preflight` are
 stubs that read the published `node0/get/VERSION`, take the commit it names, and fetch their script
