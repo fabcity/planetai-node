@@ -260,8 +260,7 @@ section.decl{margin-top:22px}.row.decl{cursor:default}   /* a pack's declared ba
 .lt .t{font:500 var(--t-cap)/1.9 var(--mono)}
 
 /* ================= PLACE: a small GIS (SPEC_place_microgis §4, the v2 drawing of 4 Nov 2026) =================
-   Teenage Engineering's light type and flat surfaces, mono's hairlines, OP-XY's black screen and dot switches, OneSoil's
-   plain layer list. The page keeps the node's register. The screen is black in both, so inside it the frozen layer's
+   Light type and flat surfaces, hairlines, a black screen with dot switches, a plain layer list. The page keeps the node's register. The screen is black in both, so inside it the frozen layer's
    names take the screen's values, and whatever is drawn there (the still map, popups, notes, the satellite) follows. */
 .page[data-view="place"]{max-width:1440px}
 .phead{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,440px);gap:12px 40px;align-items:end}.phead>div{min-width:0}
@@ -406,7 +405,7 @@ body.preport .page[data-view="place"]>:not(#preport){display:none}
   body.preport .psheets>:not(:last-child){break-after:page}
 }
 /* EVOLUTION VARIATION (6 Nov 2026): the screen Place has had since 4 Nov, given to Now's day and Node's flow, with
-   OP-XY's header ramp on top (name cell, value cell, in grey steps from black to white, a second row under each) and an
+   a header ramp on top (name cell, value cell, in grey steps from black to white, a second row under each) and an
    info line at the foot. Same tokens as .mapc (doors-placemap.js PAL.dark), same bezel; no hue the layer lacks. */
 .scr{--ink:#F9F5F2;--ground:#17191D;--mute:#A3A19F;--dim:#8A8886;--hair:#3A3F47;--raise:#2B2E34;--cells:#7FA5E8;--satellite-only:#FF931E;
   margin:20px 6px 6px;border-radius:10px;overflow:hidden;background:var(--ground);color:var(--ink);box-shadow:0 0 0 1px #000,0 0 0 5px #1b1b1b,0 0 0 6px #000}
@@ -927,7 +926,7 @@ body:not(.classic) .hero .ladder.folded{display:none}
   .face{padding-top:14px}.kick .now,.kick .kr a{min-height:44px;display:inline-flex;align-items:center}
   .kick .kr a{min-width:44px}.foot a,.foot button.linkish{min-height:44px;display:flex;align-items:center}
 }
-/* ---- Set up (doors-setup.js): mono's grid — 1px ink rules, square, outlined; Linear's section list and rows ---- */
+/* ---- Set up (doors-setup.js): the node's grid — 1px ink rules, square, outlined; a section list and rows ---- */
 #setupv2 .sh{border-bottom:1px solid var(--ink);padding-bottom:18px}
 #setupv2 .sh h1{margin-top:8px}
 .sgrid{display:grid;grid-template-columns:200px minmax(0,1fr);gap:0;align-items:start}
@@ -1054,12 +1053,11 @@ body:not(.classic) .hero .ladder.folded{display:none}
 @media (scripting: none){.asking{display:none !important}}
 
 /* ===================================================================================================================
-   VARIATION · FIELD SYNTHESIZER (6 Nov 2026), after Stitch's "Field Synthesizer & Instrument Interface" export
-   (DESIGN.md + code.html in planetai-design/prototypes/dashboard-variation-evolve/reference/). An evolution of the
-   doors as they ship: the same pages, parts, words and data, in the export's chassis. Dark is this variation's
+   VARIATION · FIELD SYNTHESIZER (6 Nov 2026), an instrument-panel chassis for the doors.
+   An evolution of the doors as they ship: the same pages, parts, words and data, in that chassis. Dark is this variation's
    default. Its two accents keep one job each: amber is what is engaged (the open door, a pressed answer, a live
    source), cyan is the signal (the current hour, a cell, a source partly read). Red stays the layer's, a reading over
-   its line. Faces are the node's own: Funnel Sans for Space Grotesk, JetBrains Mono for Space Mono.
+   its line. Faces are the node's own: Funnel Sans and JetBrains Mono.
    =================================================================================================================== */
 :root[data-theme="dark"]{--ground:#0E0E10;--ink:#F4F4F5;--mute:#A1A1AA;--dim:#71717A;--hair:#232326;--raise:#1A1A1E;
   --card:#141416;--wire:#323236;--wire-on:#52525B;--amber:#F59E0B;--cyan:#38BDF8;--cells:#38BDF8;--prov:#F4F4F5;--doc:#141416;--doc-line:#323236}
@@ -1097,7 +1095,7 @@ body:not(.classic) .hero .ladder.folded{display:none}
 /* rack-mount rows: the issues around the house as cards in a column; the one in front inverts */
 .rcol .rows{border-top:0;display:grid;gap:8px}.rcol .row{border:1px solid var(--wire);background:var(--ground)}
 .rcol .row[aria-pressed="true"]{background:var(--ink);color:var(--ground);border-color:var(--ink)}
-/* the screen, as the export's oscilloscope: square, a #0E0E10 ground, a faint reticle */
+/* the screen, as an oscilloscope: square, a #0E0E10 ground, a faint reticle */
 .scr{border-radius:0!important;box-shadow:none!important;border:1px solid var(--wire);margin:14px 0 0!important;--ground:#0A0A0C;--cells:#38BDF8;--hair:#26262B}
 .scr .sbody{background-image:radial-gradient(rgba(244,244,245,.09) 1px,transparent 1.2px);background-size:24px 24px}
 /* the readout strip at the screen's head: cells side by side, a label over a value (not a grey ramp in this variation) */

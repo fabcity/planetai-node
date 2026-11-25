@@ -10,11 +10,22 @@
   Colima never turns up beside an older Lima. Testers get this with the next release, because the preflight they
   run comes from the released commit.
 
+- **25 Nov: hello needs no GitHub account.** With the Reticulum bridge running, `planetai hello` sends this node's
+  entry as a message to the programme's inbox, node #1, whose address `registry.json` now names, and prints what the
+  inbox answered: "received: a person reads it before it is listed". On node #1, `planetai hello --inbox` lists what
+  arrived and opens the pull request for the one its keeper picks, and the merge is still the approval. A node without
+  the bridge opens the pull request with `gh` as before. The bridge pin moves to fadb142, which also carries the
+  presence fix below.
+
 - **25 Nov: after an update, the hub hears the node's new version within a minute.** After `planetai update` every
   node on the hub could hear the old version, with no id, for half an hour. The Reticulum bridge could ask the old app
   what to announce while the new one was starting, or keep running beside a new app and not ask again. Between its
   half-hourly announces the bridge now asks the node every minute and announces whenever the answer changed. The bridge
   pin moves to dc7071d.
+- **25 Nov: the model that writes a fuller reading is asked five plain questions.** "Write a fuller reading" gives the
+  model what each section looks at, the region and its balance, what the land is fit for, what people need, how the
+  place behaves, the street, and nothing else about how to read. A node with a model on its own network may word a
+  section differently from before. The checks on the text it hands back are the same.
 
 - **25 Nov: one question decides whether other nodes see yours.** At the end of `planetai setup`, and in `planetai
   reticulum`: "Let other PLANETAI nodes see this node?" They would see its name, its LXMF address and an area about

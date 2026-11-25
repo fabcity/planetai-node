@@ -94,10 +94,9 @@ instruments (§7). Observation is how a place gets to know itself cell by cell: 
 
 The layout was settled in the v2 mockup, 4 November 2026. It lives at
 `FAB CITY/.superpowers/brainstorm/7690-1793751265/content/place-v2.html`, outside the repo, as design reviews are kept
-out of a repo households install from. Its references are Teenage Engineering (thin type, flat surfaces, one signal
-colour), mono (the node's grid and 1 px rules, its existing lock), OP-XY (the black screen, dot switches, eight grey
-steps, state by stroke) and OneSoil's field map (layers as a plain list, the date pill on the map, the controls in
-one column).
+out of a repo households install from. The page has thin type, flat surfaces and one signal colour; the node's grid and
+1 px rules; a black screen with dot switches, eight grey steps and state by stroke; and layers as a plain list, the date
+pill on the map and the controls in one column.
 
 **Desktop, three columns over a lower band**
 
