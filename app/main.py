@@ -932,12 +932,16 @@ def _house_labels() -> list[tuple[str, str]]:
         with db() as con, con.cursor() as cur:   # its own read, not q(): the routes' tests count q's statements
             cur.execute("SELECT room, name, source_name FROM sensors WHERE local AND kind = 'sensor'")
             rows = [dict(r) for r in cur.fetchall()]
+            cur.execute("SELECT sensor_id FROM sensors WHERE kind = 'child'")
+            kids = [r["sensor_id"] for r in cur.fetchall()]
     except Exception:  # noqa: BLE001 — no database: nothing to swap, and nothing of the house to leak either
         return _HOUSE["map"]
     rooms = sorted({(r.get("room") or "").strip() for r in rows} - {""})
     names = sorted({(r.get(k) or "").strip() for r in rows for k in ("name", "source_name")} - {""} - set(rooms))
     pairs = [(x, f"Room {chr(65 + i)}" if i < 26 else f"Room {i + 1}") for i, x in enumerate(rooms)]
     pairs += [(x, f"Sensor {i + 1}") for i, x in enumerate(names)]
+    # a child's kit id, which a stranger could look up on its platform's public page, becomes a home nearby (25 Nov 2026)
+    pairs += [(sid, a) for sid, (a, _n) in _child_names(kids).items()]
     _HOUSE.update(at=time.time(), map=sorted(pairs, key=lambda p: -len(p[0])))
     return _HOUSE["map"]
 
@@ -1294,14 +1298,21 @@ def _child_alias(rows: list[dict], child_ids: list[str] | None = None) -> list[d
     if child_ids is None:
         child_ids = sorted(r["sensor_id"] for r in q("SELECT sensor_id, kind FROM sensors WHERE kind = 'child'")
                            if r.get("kind", "child") == "child")
-    homes = sorted({i.split("/", 1)[0] for i in child_ids})
-    alias = {}
-    for c, home in enumerate(homes, 1):
-        for s, sid in enumerate(sorted(i for i in child_ids if i.split("/", 1)[0] == home), 1):
-            alias[sid] = (f"home-{c}/outdoor-{s}",
-                          f"a home nearby · outdoor {s}" if len(homes) == 1 else f"home {c} nearby · outdoor {s}")
+    alias = _child_names(child_ids)
     return [{**r, "sensor_id": alias[r["sensor_id"]][0], "name": alias[r["sensor_id"]][1]}
             if r.get("kind") == "child" and r.get("sensor_id") in alias else r for r in rows]
+
+
+def _child_names(child_ids) -> dict[str, tuple[str, str]]:
+    """{a child's sensor id: (its alias id, its alias name)}: children by node name, then a child's sensors by id,
+    numbered from 1. One numbering for /sensors, /observations, /export and every stranger's answer (_house_labels)."""
+    homes = sorted({i.split("/", 1)[0] for i in child_ids})
+    out = {}
+    for c, home in enumerate(homes, 1):
+        for s, sid in enumerate(sorted(i for i in child_ids if i.split("/", 1)[0] == home), 1):
+            out[sid] = (f"home-{c}/outdoor-{s}",
+                        f"a home nearby · outdoor {s}" if len(homes) == 1 else f"home {c} nearby · outdoor {s}")
+    return out
 
 
 @app.patch("/sensors/{sid}")
@@ -1672,6 +1683,23 @@ def shape(metric: str = "pm25"):
             "windows": {"day": days >= 7, "week": days >= 14, "month": days >= 60, "year": days >= 365}}
 
 
+def _export_namer(child_ids):
+    """How /export names a row's sensor: the house's own as indoor-N / outdoor-N, a child's as a home nearby
+    (_child_names: the file is CC BY and `planetai ipfs` pins it, fetched as a trusted caller), a public reference
+    or a model by its id, which is public already."""
+    kids, alias, counts = _child_names(child_ids), {}, {"indoor": 0, "outdoor": 0}
+
+    def name(row):
+        if row.get("kind") == "child" and row["sensor_id"] in kids:
+            return kids[row["sensor_id"]][0]
+        if not row["local"]:
+            return row["sensor_id"]
+        if row["sensor_id"] not in alias:
+            k = "indoor" if row["indoor"] else "outdoor"; counts[k] += 1; alias[row["sensor_id"]] = f"{k}-{counts[k]}"
+        return alias[row["sensor_id"]]
+    return name
+
+
 @app.get("/export")
 def export(day: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$")):
     """One day of this node as open data: hourly means per sensor and metric, the Index cells, the alerts, rho.
@@ -1686,13 +1714,9 @@ def export(day: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$")):
                   WHERE r.bucket >= %s::date AND r.bucket < %s::date + 1 AND """ + packs.public_sql("r")
                + " AND " + packs.open_sql("r") + """
                   ORDER BY r.bucket, r.sensor_id, r.metric""", day, day)
-    alias, counts = {}, {"indoor": 0, "outdoor": 0}
-    def name(row):
-        if not row["local"]:
-            return row["sensor_id"]                      # public references and models are public already
-        if row["sensor_id"] not in alias:
-            k = "indoor" if row["indoor"] else "outdoor"; counts[k] += 1; alias[row["sensor_id"]] = f"{k}-{counts[k]}"
-        return alias[row["sensor_id"]]
+    kids = ([r["sensor_id"] for r in q("SELECT sensor_id FROM sensors WHERE kind = 'child'")]
+            if any(r.get("kind") == "child" for r in hourly) else [])
+    name = _export_namer(kids)
     rows = [{"t": r["bucket"], "sensor": name(r), "local": r["local"], "indoor": r["indoor"], "kind": r["kind"],
              "metric": r["metric"], "mean": r["mean"], "min": r["min"], "max": r["max"], "n": r["n"]}   # q() renders timestamps as ISO strings
             for r in hourly]

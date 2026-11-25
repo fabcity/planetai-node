@@ -3,6 +3,8 @@
    answers (doors-load.js). Served at /doors beside the dashboard while it is tried.
    core: helpers, the one moment (S), the router, the register, Ask the node with Learn inside it. */
 const $ = s => document.querySelector(s);
+/* a community or district node does not call itself a house (app/placewords.py): doors-wallmap.js's houseless and notHouse, read when a door draws */
+const asHouse = s => notHouse(((typeof D !== 'undefined' && D && D.health) || {}).kind) ? houseless(s) : s;
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], MO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 /* Every wire time is read in the node's own zone (doorsLocal, doors-load.js): a UTC string and a local one say the same
@@ -457,11 +459,11 @@ $('#qform').onsubmit = async ev => {
    doors are tried. */
 function foot() {
   const h = D.health, docs = h.docs || 'https://planetai.fab.city/docs/', rel = h.release || {};
-  $('#foot').innerHTML = `<div><b>This node</b><p>A home monitor for air, heat, sea and land, part of Fab City’s PLANETAI.</p><p>${esc(D.node.name)}${D.node.place ? ` · ${esc(D.node.place)}` : ''} · planetai-node ${esc(h.version || '')}</p>`
+  $('#foot').innerHTML = `<div><b>This node</b><p>${notHouse(h.kind) ? `A ${esc(h.kind)} node` : 'A home monitor'} for air, heat, sea and land, part of Fab City’s PLANETAI.</p><p>${esc(D.node.name)}${D.node.place ? ` · ${esc(D.node.place)}` : ''} · planetai-node ${esc(h.version || '')}</p>`
     + `<p>${rel.newer ? `${esc(rel.latest)} is out: <code>planetai update</code> on the node.` : 'A node of PLANETAI, the Fab City programme’s network of homes that read their place, decide and act.'}</p></div>`
     + `<div><b>Read</b><a href="${esc(docs)}" target="_blank" rel="noopener">Documentation</a><a href="${esc(docs)}dashboard/" target="_blank" rel="noopener">These pages, explained</a>`
     + `<a href="${esc(h.llms || '/llms.txt')}">For agents: llms.txt</a>${D.askOff ? '' : '<button class="linkish" type="button" id="footask">Ask the node</button>'}</div>`
-    + `<div><b>This house</b><a href="#setup">Set up</a><a href="#setup/screen">Unlock this screen</a><a href="/export?day=${esc(dayOf(D.as_of))}">Today’s open data, CC BY 4.0</a></div>`
+    + `<div><b>${asHouse('This house')}</b><a href="#setup">Set up</a><a href="#setup/screen">Unlock this screen</a><a href="/export?day=${esc(dayOf(D.as_of))}">Today’s open data, CC BY 4.0</a></div>`
     + `<div><b>Fab City</b><a href="https://planetai.fab.city/" target="_blank" rel="noopener">PLANETAI</a><a href="https://fab.city/" target="_blank" rel="noopener">Fab City</a>`
     + `<a href="https://github.com/fabcity/planetai-node" target="_blank" rel="noopener">Source, Apache-2.0</a></div>`;
   if (!D.askOff) $('#footask').onclick = () => $('#askbtn').click();

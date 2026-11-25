@@ -96,6 +96,8 @@ const HOUSELESS = [[/\bthis house's own heat line\b/gi, 'the heat line set here'
   [/\bsomebody in the house\b/gi, 'somebody here'], [/\bthis house has\b/gi, 'this node has'], [/\bin the house\b/gi, 'indoors'],
   [/\bthis house's\b/gi, "this place's"], [/\bthe house's\b/gi, "this place's"], [/\bthis house\b/gi, 'this place'], [/\bthe house\b/gi, 'this place']];
 const houseless = s => HOUSELESS.reduce((t, [rx, to]) => t.replace(rx, m => /^[A-Z]/.test(m) ? to[0].toUpperCase() + to.slice(1) : to), String(s ?? ''));
+/* a node that is not a house, from /health's kind (app/placewords.py PLACE_KINDS) */
+const notHouse = kind => ['community', 'district'].includes(String(kind ?? '').toLowerCase());
 /* where the Wall's replay starts: the node's own size (/wall's `own`), base when it does not say */
 const ownIndex = (story, own) => Math.max(0, story.findIndex(s => s.k === own));
 
@@ -137,7 +139,7 @@ const wallStory = (W, D, G = {}) => {
   if (W.change && num(W.change.ha)) community.push(ch('change', '--d-ground', 'Land that changed', [Math.round(W.change.ha), 'ha'], 'model',
     `Ground that looked different in ${W.change.b} than in ${W.change.a}. The satellite sees that it changed. Somebody walking there can tell what happened.`, 'AlphaEarth', ['change']));
   if (W.lab) community.push(ch('lab', '--cells', 'The lab', [W.lab.km, 'km'], 'partial',
-    say(`${W.lab.name} is the nearest fab lab, ${W.lab.km} km from the house. A lab like this one could run a community node here.`), 'the node’s record of the lab', ['lab']));
+    `${W.lab.name} ${say(`is the nearest fab lab, ${W.lab.km} km from the house.`)} A lab like this one could run a community node here.`, 'the node’s record of the lab', ['lab']));
   if (W.rivers && W.river) community.push(ch('rivers', '--d-water', 'Rivers', [W.river.nearest_km, 'km'], 'model',
     say(`The nearest river is ${W.river.nearest_km} km from the house and carries ${f(W.river.nearest_m3s, 2)} m³/s on average.`), 'HydroATLAS, CC BY 4.0', ['rivers']));
 
@@ -343,4 +345,4 @@ function wallMapMount(el, W, story, G = {}, onLost = null) {
 }
 
 if (typeof window !== 'undefined') Object.assign(window, { atHour, slotJoin, fitBox, circleRing, toward, crestSegments, crestPhase, streak, stationFeatures, maskRings, wallStory, chapterAt });
-if (typeof module !== 'undefined') module.exports = { atHour, slotJoin, fitBox, circleRing, toward, crestSegments, crestPhase, streak, stationFeatures, maskRings, wallStory, chapterAt, houseless, ownIndex };
+if (typeof module !== 'undefined') module.exports = { atHour, slotJoin, fitBox, circleRing, toward, crestSegments, crestPhase, streak, stationFeatures, maskRings, wallStory, chapterAt, houseless, ownIndex, notHouse };

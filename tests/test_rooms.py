@@ -113,3 +113,38 @@ assert [(r["sensor_id"], r["name"]) for r in _two] == [("home-2/outdoor-1", "hom
                                                        ("home-1/outdoor-1", "home 1 nearby · outdoor 1"),
                                                        ("home-1/outdoor-2", "home 1 nearby · outdoor 2")], _two
 print("children: a stranger reads a home nearby, numbered the same in /sensors and /observations; the token reads the ids")
+
+# ---- the same aliases wherever a stranger's answer can carry a child's id (final review, 25 Nov 2026): /export at every
+# SHARE_LEVEL, and /readings, /sparks and the rest at open pass through _unhoused, whose pairs now hold the children.
+_KIDS = ["ungasan-home/sc-19874", "ungasan-home/sc-19236"]
+assert main._child_names(_KIDS) == {"ungasan-home/sc-19236": ("home-1/outdoor-1", "a home nearby · outdoor 1"),
+                                    "ungasan-home/sc-19874": ("home-1/outdoor-2", "a home nearby · outdoor 2")}, main._child_names(_KIDS)
+
+
+class _Cur:
+    def __init__(self): self.rows = []
+    def execute(self, sql, *a): self.rows = [{"sensor_id": k} for k in _KIDS] if "kind = 'child'" in sql else []
+    def fetchall(self): return self.rows
+    def __enter__(self): return self
+    def __exit__(self, *a): return False
+
+
+class _Con:
+    def cursor(self): return _Cur()
+    def __enter__(self): return self
+    def __exit__(self, *a): return False
+
+
+_db0 = main.db
+main.db = lambda: _Con()
+main._HOUSE.update(at=0.0, map=[])
+_pairs = dict(main._house_labels())
+assert _pairs.get("ungasan-home/sc-19236") == "home-1/outdoor-1", _pairs
+_body = main._unhoused(b'[{"sensor_id": "ungasan-home/sc-19236", "metric": "pm25"}]', "/readings")
+assert b"ungasan-home" not in _body and b"home-1/outdoor-1" in _body, _body
+main.db = _db0; main._HOUSE.update(at=0.0, map=[])
+_name = main._export_namer(_KIDS)
+assert _name({"sensor_id": "ungasan-home/sc-19236", "local": False, "indoor": False, "kind": "child"}) == "home-1/outdoor-1"
+assert _name({"sensor_id": "bad-sc-1", "local": False, "indoor": False, "kind": "sensor"}) == "bad-sc-1", "a public station keeps its id"
+assert _name({"sensor_id": "sc-1", "local": True, "indoor": True, "kind": "sensor"}) == "indoor-1", "the house's own as before"
+print("children: /export and every stranger's answer carry a home nearby, never a child's kit id")

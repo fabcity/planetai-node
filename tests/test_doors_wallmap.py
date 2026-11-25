@@ -350,3 +350,39 @@ assert "a house, its cell and the six around it" in R2["place"], "the base size,
 assert R2["hl"] == "Fine dust indoors. This place's cell, 3 km from this place; Lighthouse Road; the household", R2["hl"]
 assert R2["start"] == [1, 2, 0, 0], R2["start"]
 print("  wall: a community node starts at its own size and never calls itself a house; a house's story is unchanged")
+
+# ---- the final review's findings (25 Nov 2026): a name never passes through the swap; the Wall's ask says this place
+# from its first draw (/health's kind, before /wall arrives); the footer and the Data door's heading follow the kind;
+# reduced motion rests on the node's own size; doors-data.js keeps strict mode.
+out3 = subprocess.run(["node", "-e", """
+const M = require('./app/static/doors-wallmap.js'), fs = require('fs'), vm = require('vm');
+const W0 = JSON.parse(fs.readFileSync('tests/fixtures/wall-node1.json', 'utf8'));
+const cap = JSON.parse(fs.readFileSync('app/issues/fixtures/node1-2026-10-06-figures.json', 'utf8')).issues.issues;
+const I = {}; for (const [k, it] of Object.entries(cap)) I[k] = { ...it, line: (it.line || {}).value ?? null };
+const lab = { ...(W0.lab || { km: 3 }), name: 'The House of Making' };
+const place = M.wallStory({ ...W0, lab, house: false, own: 'community' }, { issues: I }, { vector: true });
+const says = place.flatMap(s => s.chapters.map(c => c.says)).join('\\n');
+const core = fs.readFileSync('./app/static/doors-core.js', 'utf8'), wall = fs.readFileSync('./app/static/doors-wall.js', 'utf8');
+const pick = n => core.match(new RegExp('^const ' + n + ' = .*$', 'm'))[0];
+const ctx = { houseless: M.houseless, notHouse: M.notHouse, D: { health: { kind: 'community' } } };
+vm.createContext(ctx);
+vm.runInContext([pick('esc'), pick('asHouse')].join('\\n') + '\\n' + wall.match(/const oneLine[\\s\\S]*?\\n};\\n/)[0]
+  + wall.match(/function wallAsk[\\s\\S]*?\\n}\\n/)[0] + '\\nout = wallAsk({ asking: [{ says: "" }] });', ctx);
+const askPlace = ctx.out; ctx.D.health.kind = 'home'; vm.runInContext('out = wallAsk({ asking: [{ says: "" }] });', ctx);
+console.log(JSON.stringify({ labKept: says.includes('The House of Making'), askPlace, askHouse: ctx.out,
+  kinds: ['community', 'district', 'home', 'business', '', undefined, 'Community'].map(M.notHouse) }));
+"""], capture_output=True, text=True, cwd=ROOT)
+assert out3.returncode == 0, out3.stderr[-700:]
+R3 = json.loads(out3.stdout)
+assert R3["labKept"], "a lab's name went through the swap"
+assert "this place" in R3["askPlace"] and "house" not in R3["askPlace"], R3["askPlace"]
+assert "this house" in R3["askHouse"], R3["askHouse"]
+assert R3["kinds"] == [True, True, False, False, False, False, True], R3["kinds"]
+_core = (ROOT / "app/static/doors-core.js").read_text(); _data = (ROOT / "app/static/doors-data.js").read_text()
+_wall = (ROOT / "app/static/doors-wall.js").read_text()
+assert "asHouse('This house')" in _core and "A home monitor" in _core and "notHouse(h.kind)" in _core, "the footer follows the kind"
+assert "asHouse('What this house reads')" in _data, "the Data door's heading follows the kind"
+assert "wallScale(0, true)" not in _wall and _wall.count("wallScale(o, true)") + _wall.count("wallScale(wallOwn(), true)") == 2, \
+    "reduced motion rests on the node's own size, both when it loads and when it is turned on"
+assert _data.lstrip().startswith("'use strict';"), "doors-data.js lost strict mode"
+print("  wall: names untouched, the ask says this place from the first draw; footer, heading, still view and strict mode")

@@ -25,24 +25,35 @@ SWAPS = {
            ("this house's heat line", "the heat line set here"),
            ("somebody in the house", "somebody here"),
            ("this house has", "this node has"),
+           ("nothing in the house", "nothing here"),   # the node measures nothing of it, indoors or out
            ("in the house", "indoors"),
            ("this house's", "this place's"),
            ("the house's", "this place's"),
            ("this house", "this place"),
-           ("the house", "this place"),
-           ("house", "place")],          # the distance label alone
+           ("the house", "this place")],
     "id": [("seseorang di rumah", "seseorang di sini"),
            ("di dalam rumah", "di dalam ruangan"),
            ("rumah ini", "tempat ini"),
-           ("rumah", "tempat ini")],
+           ("di rumah", "di sini"),                # "at home" in a sentence: here
+           ("rumah", "tempat ini")],               # the noun alone; guarded against compounds (_GUARD)
     "es": [("alguien en la casa", "alguien aquí"),
            ("dentro de casa", "en el interior"),   # the indoor distance; not in the approved table, listed for Tomas
+           ("en casa", "aquí"),                    # "En casa está…": a bare "lugar" would read "instead"
            ("esta casa", "este lugar"),
-           ("la casa", "este lugar"),
-           ("casa", "lugar")],                     # the distance label alone
+           ("la casa", "este lugar")],
 }
-_RX = {loc: [(re.compile(r"\b" + re.escape(old) + r"\b", re.IGNORECASE), new) for old, new in rows]
-       for loc, rows in SWAPS.items()}
+# The distance labels (LABEL_WORDS) are one word each, so they take the bare word, and only they do: in a sentence a
+# bare "casa" or "rumah" would turn "fuera de casa" into "fuera de lugar" and "rumah sakit" into "tempat ini sakit".
+LABEL_SWAPS = {"en": [("house", "place")], "es": [("casa", "lugar")]}
+# Indonesian "rumah" is a plain noun in every template ("Rumah menahan debu", "rumah juga"), so its bare row is a
+# sentence row, kept off the compounds where it is not a house: rumah sakit, rumah tangga, rumah makan…
+_GUARD = {("id", "rumah"): r"(?!\s+(?:sakit|tangga|makan|susun|adat|ibadah)\b)"}
+def _compile(table):
+    return {loc: [(re.compile(r"\b" + re.escape(old) + r"\b" + _GUARD.get((loc, old), ""), re.IGNORECASE), new)
+                  for old, new in rows] for loc, rows in table.items()}
+
+
+_RX, _RX_LABELS = _compile(SWAPS), _compile(LABEL_SWAPS)
 
 
 def kind() -> str:
@@ -65,9 +76,10 @@ def own_scale(k: str | None = None) -> str:
     return _OWN.get(kind() if k is None else (k or "").strip().lower(), "base")
 
 
-def swap(text: str, loc: str) -> str:
-    """`text` with the house words of language `loc` replaced; unchanged for a language with no rows."""
-    for rx, new in _RX.get(loc, ()):
+def swap(text: str, loc: str, labels: bool = False) -> str:
+    """`text` with the house words of language `loc` replaced; unchanged for a language with no rows. `labels` adds the
+    bare words, for the one-word distance labels only."""
+    for rx, new in [*_RX.get(loc, ()), *(_RX_LABELS.get(loc, ()) if labels else ())]:
         text = rx.sub(lambda m, new=new: new[:1].upper() + new[1:] if m.group(0)[:1].isupper() else new, text)
     return text
 
@@ -77,14 +89,14 @@ def say(text: str, loc: str = "en") -> str:
     return text if is_house() else swap(text, loc)
 
 
-def swap_tree(obj, loc: str):
+def swap_tree(obj, loc: str, labels: bool = False):
     """A new copy of `obj` with every string swapped; dicts and lists walked, anything else kept."""
     if isinstance(obj, str):
-        return swap(obj, loc)
+        return swap(obj, loc, labels)
     if isinstance(obj, dict):
-        return {k: swap_tree(v, loc) for k, v in obj.items()}
+        return {k: swap_tree(v, loc, labels) for k, v in obj.items()}
     if isinstance(obj, list):
-        return [swap_tree(v, loc) for v in obj]
+        return [swap_tree(v, loc, labels) for v in obj]
     return obj
 
 
@@ -94,6 +106,8 @@ class Localized(dict):
     change of NODE_KIND takes effect on the next read, without a restart). Iterating the table gives what was written:
     read a language through `[loc]` or `.get(loc)`."""
 
+    labels = False      # True on the distance labels' table (issues.LABEL_WORDS): the bare words apply there too
+
     def __getitem__(self, loc):
         value = dict.__getitem__(self, loc)
         k = kind()
@@ -101,7 +115,7 @@ class Localized(dict):
             return value
         memo = self.__dict__.setdefault("_swapped", {})
         if (loc, k) not in memo:
-            memo[(loc, k)] = swap_tree(value, loc)
+            memo[(loc, k)] = swap_tree(value, loc, self.labels)
         return memo[(loc, k)]
 
     def get(self, loc, default=None):

@@ -105,6 +105,7 @@ LABEL_WORDS = Localized({
     "id": {"room": "rumah", "yard": "jalan", "ring": "sekitar", "region": "wilayah"},
     "es": {"room": "casa", "yard": "calle", "ring": "alrededores", "region": "región"},
 })
+LABEL_WORDS.labels = True     # one word each: on a community node house/rumah/casa become place/tempat ini/lugar
 # {cmp} is assembled from these. Never a bare number: a comparison a household can read.
 # "a, b and c". The list separator the sentences use when one comparison covers several distances.
 JOIN_WORDS = {"en": "and", "id": "dan", "es": "y"}

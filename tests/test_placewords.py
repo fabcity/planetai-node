@@ -61,6 +61,20 @@ for loc, before, after in ROWS:
     got = pw.swap(before, loc)
     check(got == after, f"{loc}: {before!r} -> {after!r} (got {got!r})")
 
+# ---- Spanish and Indonesian sentences read as sentences (final review, 25 Nov 2026): "En casa" is never "En lugar"
+for loc, before, after in (("es", "En casa está {verb}", "Aquí está {verb}"),
+                           ("es", "El aire en casa está {verb}", "El aire aquí está {verb}"),
+                           ("es", "y también en casa.", "y también aquí."),
+                           ("id", "Udara di rumah {verb}", "Udara di sini {verb}"),
+                           ("id", "Rumah menahan debu dari jalan", "Tempat ini menahan debu dari jalan"),
+                           ("en", "nothing in the house measures the sea", "nothing here measures the sea")):
+    got = pw.swap(before, loc)
+    check(got == after, f"{loc}: {before!r} -> {after!r} (got {got!r})")
+for loc, s in (("es", "fuera de casa"), ("id", "rumah sakit"), ("en", "a house nearby")):
+    check(pw.swap(s, loc) == s, f"{loc}: {s!r} is left for a phrase row, never a bare word")
+for loc, label, place in (("en", "house", "place"), ("id", "rumah", "tempat ini"), ("es", "casa", "lugar")):
+    check(pw.swap(label, loc, labels=True) == place, f"{loc}: the distance label {label!r} -> {place!r}")
+
 # ---- words that only contain the word are left alone
 for loc, s in (("en", "Lighthouse Road"), ("en", "Warehouse 4"), ("en", "household"), ("es", "casada"),
                ("id", "perumahan")):

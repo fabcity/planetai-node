@@ -1,6 +1,3 @@
-
-/* a community or district node does not call itself a house (app/placewords.py; houseless is doors-wallmap.js's) */
-const asHouse = s => ['community', 'district'].includes(String(((typeof D !== 'undefined' && D && D.health) || {}).kind || '').toLowerCase()) ? houseless(s) : s;
 'use strict';
 /* DATA — every raw reading this node holds, drawn. One metric at a time; every sensor that reads it is one ruled row
    (Zendesk status rows, Square devices), all on one scale capped at the 98th percentile so one spike cannot flatten
@@ -50,7 +47,7 @@ const SYM = { pm25: 'PM2.5', pm10: 'PM10', pm1: 'PM1', pm25_raw: 'PM2.5ʳ', aqi:
   wave_height_m: 'Hs', wave_period_s: 'Tp', wave_direction: 'Dw', swell_height_m: 'Sw', swell_period_s: 'Ts', lora_util_pct: 'LoRa', lora_channel_pct: 'Ch' };
 /* the tabs: [the words on the tab, the sections it shows, what it draws] — a tab draws only its own sections */
 const DTABS = {
-  readings: ['Readings', ['d-readings', 'issues7', 'perday'], () => { metricTiles(); sensorsBlock(); issuesBlock(); perdayBlock(); }],
+  readings: ['Readings', ['d-readings', 'issues7', 'perday'], () => { const h2 = $('#d-readings h2'); if (h2) h2.textContent = asHouse('What this house reads'); metricTiles(); sensorsBlock(); issuesBlock(); perdayBlock(); }],
   report: ['Report', ['d-report'], () => reportBlock()],
   models: ['Models and satellite', ['models', 'predict', 'calibrate'], () => { modelsBlock(); predictBlock(); calibrateBlock(); }],
   home: ['Home', ['d-images', 'd-things'], () => { imagesBlock(); thingsBlock(); }],

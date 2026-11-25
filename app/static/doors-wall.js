@@ -35,7 +35,7 @@ const oneLine = (s, max = 90) => {
 function wallAsk(it) {
   const a = it.asking || [], says = a.length ? oneLine(a[0].says) : '';
   if (!a.length) return '<span class="wsay">Nothing is asked now.</span>';
-  const say = typeof WALL !== 'undefined' && WALL.W && WALL.W.house === false ? houseless : (s => s);   /* a community node is not a house (doors-wallmap.js) */
+  const say = typeof asHouse === 'function' ? asHouse : (s => s);   /* /health's kind: there at the first draw, before /wall */
   const count = say(a.length === 1 ? 'One thing is asked of this house.' : `${a.length} things are asked of this house.`);
   return `<span class="wsay said">${esc(says || count)}</span><span class="wtel">${says ? count + ' ' : ''}Answer on Telegram, not here.</span>`;
 }
@@ -215,7 +215,7 @@ VIEWS.wall = async function () {
     matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', e => {           /* still at the last hour, or the replay again */
       if (view() !== 'wall') { WALL.still = null; return; }   /* changed off the Wall: it starts over when it opens */
       WALL.still = e.matches;
-      if (e.matches) { CLOCK.off('wall-replay'); CLOCK.off('wall-fx'); wallScale(0, true); wallDraw(23); } else { WALL.t0 = performance.now(); CLOCK.on('wall-replay', wallTick); }
+      if (e.matches) { CLOCK.off('wall-replay'); CLOCK.off('wall-fx'); wallScale(wallOwn(), true); wallDraw(23); } else { WALL.t0 = performance.now(); CLOCK.on('wall-replay', wallTick); }
     }); }
   /* the column, the strip and the map from the last good /wall first, then one read of /wall and, apart, of
      /ground/meta; a screen refused either keeps what it had */
