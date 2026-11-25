@@ -19,6 +19,7 @@ import threading
 import time
 import unicodedata
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from pathlib import Path
 
 import httpx
@@ -48,6 +49,7 @@ import report
 import settings
 import sources
 import store
+import weekly
 
 log = logging.getLogger("planetai")
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"), format="%(asctime)s %(levelname)s %(message)s")
@@ -453,16 +455,30 @@ def _event_keyboard(event_id: int, locale: str) -> list:
 
 
 # ---------------------------------------------------------------- hourly push (child → parent)
+def _parent_rooms() -> bool:
+    """PARENT_INDOOR: do the rooms go to the parent. Anything but `on` is off."""
+    return settings.get("PARENT_INDOOR", "off").strip().lower() == "on"
+
+
+# A rule reads a room when its SQL names `indoor` without a NOT in front: `local AND indoor`, `s.indoor`, `bool_and(a.indoor)`.
+# ponytail: read off the SQL text; give rules a `rooms:` key if one ever reads a room without the word.
+_READS_ROOMS = re.compile(r"(?<!NOT )(?<![\w.])(?:\w+\.)?indoor\b")
+
+
 def push_aggregates() -> None:
     if not PARENT():          # the function, not the setting: a bare PARENT is always truthy
         return
     # Custody only: a peer's station or a model sampled here is context for this house, never the district's own
     # measurement, and the parent stores everything it receives as kind='child', which is custody. `indoor`
     # travels so the parent's outdoor means leave the kitchen out, as this node's do.
+    # Rooms stay home unless the keeper turns PARENT_INDOOR on: the parent stores what it receives, and a room's
+    # hourly mean on somebody else's disk is the rhythm of a home.
+    rooms = _parent_rooms()
     with db() as con, con.cursor() as cur:
         cur.execute("SELECT r.bucket, r.sensor_id, r.metric, r.mean, r.min, r.max, r.n, s.indoor FROM readings_1h r "
                     "JOIN sensors s ON s.sensor_id = r.sensor_id "
-                    "WHERE r.bucket > now() - interval '2 hours' AND s.custody AND " + packs.public_sql("r"))
+                    "WHERE r.bucket > now() - interval '2 hours' AND s.custody AND " + packs.public_sql("r")
+                    + ("" if rooms else " AND NOT s.indoor"))
         rows = [{**r, "bucket": r["bucket"].isoformat()} for r in cur.fetchall()]
     r = _post_parent("/aggregates", {"schema": AGGREGATES_V0, "node": NODE, "rows": rows, "scale": os.getenv("NODE_SCALE", "community")})
     if r:
@@ -509,14 +525,21 @@ def push_events() -> None:
     """
     if not PARENT():
         return
+    # A room's alerts stay home on the same switch as its means (Tomas, 22 Nov 2026): the rule id and the minute it was
+    # raised and answered are the same rhythm. Off, an alert goes up only if its sensor is marked outside, or, where
+    # it has no sensor row (`node`, a pair, a sensor since removed), if its rule is loaded here and reads no room.
+    rooms = _parent_rooms()
+    outdoor_rules = [] if rooms else [r["id"] for r in packs.load_rules() if not _READS_ROOMS.search(r.get("sql") or "")]
     with db() as con, con.cursor() as cur:
         cur.execute("""SELECT a.id, a.rule_id, a.level, a.ts,
                               min(f.ts) FILTER (WHERE f.stage = 'acknowledged') AS responded_at,
                               min(f.ts) FILTER (WHERE f.stage = 'acted')        AS acted_at,
                               min(f.ts) FILTER (WHERE f.stage = 'measured')     AS measured_at
                        FROM alerts a LEFT JOIN actions f ON f.alert_id = a.id
-                       WHERE a.ts > now() - interval '36 hours'
-                       GROUP BY a.id, a.rule_id, a.level, a.ts""")
+                       LEFT JOIN sensors s ON s.sensor_id = a.sensor_id
+                       WHERE a.ts > now() - interval '36 hours'"""
+                    + ("" if rooms else " AND NOT coalesce(s.indoor, a.rule_id <> ALL(%s::text[]))") + """
+                       GROUP BY a.id, a.rule_id, a.level, a.ts""", () if rooms else (outdoor_rules,))
         rows = [{"alert_id": str(r["id"]), "rule": r["rule_id"], "level": r["level"],
                  # rule ids are namespaced <pack>/<id>, so the pack IS the domain tag and there is nothing
                  # to invent: a parent can weigh rho for air apart from rho for heat by reading it.
@@ -1426,6 +1449,58 @@ def actions(limit: int = Query(500, ge=0, le=5000), stage: str = "", events: int
                  "WHERE alert_id IS NOT NULL OR event_id IS NOT NULL ORDER BY ts DESC LIMIT %s", limit)
     return q("SELECT ts, alert_id, stage, actor, note, choice FROM actions WHERE alert_id IS NOT NULL "
              "ORDER BY ts DESC LIMIT %s", limit)
+
+
+@app.get("/weekly")
+def weekly_(request: Request, metric: str = "", sensors: str = "", bad: str = "", high: str = "", weeks: str = "8",
+            lang: str = "en", wk: str = "", authorization: str = Header("")):
+    """The weekly sensor report for the sensors picked: the Report tab in Data (docs/site/grafana.md). The same five
+    queries as the keeper's Grafana report (app/weekly.py), every value bound. Without the admin token it offers the
+    outdoor sensors only, named by their names, and reads no private channel."""
+    private = _shows_private(request, authorization)
+    metrics_sql, offered_sql = weekly.offer_sql(private, packs.public_sql("r"))
+    metrics = {x["metric"] for x in q(metrics_sql)}
+    lang = "id" if lang == "id" else "en"
+    try:
+        metric = weekly.pick_metric(metric, metrics)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from None
+    n = weekly.weeks_of(weeks)
+    with db() as con, con.cursor() as cur:   # the session is in NODE_TZ (app/db.py), so weeks and days are the node's
+        cur.execute("SELECT date_trunc('week', now()) - make_interval(weeks => %s) AS t0, now() AS t1, "
+                    "date_trunc('week', now()) AS now_start", (n - 1,))
+        span = cur.fetchone()
+    starts = [(span["t0"].date() + timedelta(weeks=i)).isoformat() for i in range(n)]
+    wk, complete = weekly.pick_week(wk, starts, span["now_start"].date().isoformat())
+    base = {"lang": lang, "words": weekly.WORDS[lang], "metric": metric, "metrics": sorted(metrics), "sensors": [], "picked": [],
+            "full_day": weekly.FULL_DAY, "max_sensors": weekly.MAX_SENSORS, "parts": {}, "t0": span["t0"].isoformat(),
+            "t1": span["t1"].isoformat(), "week_starts": starts, "wk": wk, "wk_complete": complete,
+            "shareable": complete and metric in weekly.INDEX, "index": weekly.INDEX.get(metric),
+            "unit": " µg/m³" if metric in weekly.INDEX else "",
+            "area": os.getenv("NODE_CITY", "").strip().title(), "node": os.getenv("NODE_NAME", "").strip()}
+    if metric is None:   # nothing outdoors has reported yet: the page says so in its own words
+        return {**base, "bad": 15.0, "high": 55.0, "weeks": n, "bad_source": "reader"}
+    offered = q(offered_sql, metric)
+    try:
+        c = weekly.clean({"metric": metric, "sensors": sensors, "bad": bad, "high": high, "weeks": weeks, "lang": lang},
+                         metrics, {o["id"]: o["label"] for o in offered})
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from None
+    out = {**base, "sensors": offered, "picked": c["sensors"], "bad": c["bad"], "high": c["high"], "weeks": c["weeks"],
+           "bad_source": weekly.line_source(c["metric"], c["bad"])}
+    if not c["sensors"]:
+        return out
+    with db() as con, con.cursor() as cur:
+        params = {"t0": span["t0"], "t1": span["t1"], "metric": c["metric"], "sensors": c["sensors"], "bad": c["bad"], "high": c["high"]}
+        for part, sql_of in weekly.PARTS.items():
+            cur.execute(weekly.bind(sql_of(weekly.WORDS[c["lang"]]), private=private, public=packs.public_sql("r")), params)
+            out["parts"][part] = {"cols": [d.name for d in cur.description],
+                                  "rows": [[v.isoformat() if isinstance(v, datetime) else float(v) if isinstance(v, Decimal) else v
+                                            for v in r.values()] for r in cur.fetchall()]}
+    days = [dict(zip(out["parts"]["days"]["cols"], r)) for r in out["parts"]["days"]["rows"]]
+    out["summary"] = weekly.summarise(days, out["parts"]["weeks"]["rows"], out["parts"]["weeks"]["cols"], wk, c["metric"], c["bad"],
+                                      weekly.FULL_DAY, c["sensors"], {o["id"]: o["label"] for o in offered})
+    return out
 
 
 @app.get("/series")

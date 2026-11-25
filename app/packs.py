@@ -67,7 +67,9 @@ def _enabled() -> list[Path]:
     for d in sorted(PACKS_DIR.iterdir()):
         if not (d / "pack.yaml").is_file():
             continue
-        if only and d.name not in only:
+        # `_test` is the one rule `planetai test-alert` writes and removes again within 90 s. It is on nobody's list,
+        # so a node that had chosen its packs never fired it, and the terminal asked whether the node was up.
+        if only and d.name not in only and d.name != "_test":
             continue
         # A pack written for a newer node may read a column, a route or a setting this one does not have. It is
         # refused whole, rules and adapter alike, with one line in the log, and not half-loaded.

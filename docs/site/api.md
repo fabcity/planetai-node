@@ -19,7 +19,7 @@ A request is trusted when it comes from loopback or carries a household token: `
 | `act` | Loopback with no token; from anywhere else `ACT_TOKEN` or `ADMIN_TOKEN`. |
 | `children` | `AGGREGATE_TOKEN`, which a parent gives its children. It opens `POST /aggregates`, `POST /events`, `POST /place/maps/received` and `POST /place/photos/received` and nothing else. |
 
-The `off` allowlist, the default, is `/`, `/ui`, `/workbench`, `/tester`, `/health`, `/llms.txt`, `/settings`, `/export`, `/presence`, `/nodes`, `/offers` and anything under `/static/`. The `open` allowlist adds `/stats`, `/sensors`, `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/packs/all`, `/trust`, `/nearby`, `/forecast`, `/index/place`, `/energy`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/wall.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, `/ask`, `/ask/status`, `/docs/search`, `/geo/cell`, `/learned/place`, `/wall`, and anything under `/exports/`, `/issues`, `/sources/` or `/ground/`. The pack routes among them (`/offers`, `/nearby`, `/forecast`, `/index/place`, `/energy` and the `/earth` paths) are put there by their pack's `pack.yaml` (`share:`). Any other value counts as `off`. The lists match the path whatever the method, so at `open` an anonymous `POST /readings` reaches the handler and gets 401. A path with no route also gets 403.
+The `off` allowlist, the default, is `/`, `/ui`, `/workbench`, `/tester`, `/health`, `/llms.txt`, `/settings`, `/export`, `/presence`, `/nodes`, `/offers` and anything under `/static/`. The `open` allowlist adds `/stats`, `/sensors`, `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/packs/all`, `/trust`, `/nearby`, `/forecast`, `/index/place`, `/energy`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/wall.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, `/ask`, `/ask/status`, `/docs/search`, `/geo/cell`, `/learned/place`, `/wall`, `/weekly`, and anything under `/exports/`, `/issues`, `/sources/` or `/ground/`. The pack routes among them (`/offers`, `/nearby`, `/forecast`, `/index/place`, `/energy` and the `/earth` paths) are put there by their pack's `pack.yaml` (`share:`). Any other value counts as `off`. The lists match the path whatever the method, so at `open` an anonymous `POST /readings` reaches the handler and gets 401. A path with no route also gets 403.
 
 Tokens travel in the `Authorization` header only, never in a query string, and are compared in constant time. `ADMIN_TOKEN` is in `.env`, the other three in settings, and `planetai ui` prints them. An optional `X-Agent` header names the caller; `PUT /settings` writes it to the ledger.
 
@@ -44,7 +44,7 @@ The middlewares answer `{"error": "..."}`. A share-level 403 names the level and
 
 For a path no level opens it ends "No share level opens this one, so it always needs a token from anywhere but the node itself." `/mcp` without the admin token is 401 `{"error": "the agent surface needs Authorization: Bearer <ADMIN_TOKEN>"}`.
 
-Some routes are a pack's, served from `packs/<id>/routes.py`: `/forecast` (forecast), `/nearby` (nearby), `/index/place` (index), `/energy` (energy), `/earth`, `/earth/change.png`, `/earth/year.png` and `/earth/wall.png` (earth), `/earth/frame.png` (earth-engine), `/hydro` (hydro), every `/captures` route and `/species` (eyes), and `/things` and `/offers` (things). While its pack is off on the node, such a route answers 404 `{"detail": "the <pack> pack is off on this node"}`.
+Some routes are a pack's, served from `packs/<id>/routes.py`: `/forecast` (forecast), `/nearby` (nearby), `/index/place` (index), `/energy` (energy), `/predict` (predict), `/earth`, `/earth/change.png`, `/earth/year.png` and `/earth/wall.png` (earth), `/earth/frame.png` (earth-engine), `/hydro` (hydro), `/calibrate` (calibrate), every `/captures` route and `/species` (eyes), and `/things` and `/offers` (things). While its pack is off on the node, such a route answers 404 `{"detail": "the <pack> pack is off on this node"}`.
 
 Handlers answer `{"detail": "..."}`. The token checks:
 
@@ -211,6 +211,22 @@ Access: open
 
 Hourly means per sensor, on the same buckets and parameters as `/series`. Returns `{hours: [bucket, ...], series: {sensor_id: [mean or null, ...]}}`.
 
+### GET /weekly
+Access: open
+
+The weekly sensor report, the same as the one in Grafana, for the Report tab in Data. `?metric=` (the node's own
+when left out, `pm25` first), `?sensors=` up to twelve ids separated by commas, `?bad=` and `?high=` the two lines
+(PM2.5 starts at 15 and 55, PM10 at 45 and 150: the WHO guideline and where ISPU turns unhealthy; any other metric at 15
+and 55), `?weeks=` 1 to 12 (8), `?wk=` the start of the week to summarise (the last complete week when left out or
+not in the window), `?lang=` `en` or `id`. Every answer has `{metric, metrics, sensors: [{id, label, source}], picked,
+bad, high, weeks, words, full_day, t0, t1, week_starts, wk, wk_complete, shareable, index, area, node, parts}`.
+`index` is the metric's ISPU breakpoints (PM2.5 and PM10) or null; `shareable` is true for a complete week of PM2.5 or
+PM10, and `unit` is the metric's unit where the node knows it (` µg/m³` for those two). `parts` is empty until a sensor is picked; then it holds `weeks`, `badweeks`, `daily`, `baddays`, `hours` and
+`days`, each as `{cols, rows}`, and the answer adds `summary` (each sensor's seven days of the chosen week, counted, bad,
+band and edge, its bad days, days counted, verdict, highest hour and worst day, and an overview) and `bad_source`
+(`who` when the bad line is the WHO's guideline for the metric, else `reader`). Without `ADMIN_TOKEN` only outdoor sensors are offered, by their
+names, and a sensor that is not offered gets 400 with the same answer whether it exists or not.
+
 ### GET /reach
 Access: open
 
@@ -339,6 +355,11 @@ Access: open
 
 The ring of other people's stations around this node, from what is stored, so the page never waits on someone else's server. The stations come from every enabled pack that declares `stations:` (here `bali-air-dispatch`, within `BAD_RADIUS_KM`) and reported in the last 24 hours. Returns `{ring, stations, lowest, p25, median, p75, highest, nearest_km, mine, mine_sensors, radius_km, attribution, mine_minus_ring}`, each `ring` row with its `km`, `pm25` and `reporting`. `?audit=1` also asks each pack's archive for a verdict per station.
 
+### GET /calibrate
+Access: token
+
+Each sensor a keeper put beside a better one in `CALIBRATE_PAIRS`, and whether the corrected number is shown. Returns `{state, rows, could}`. `state` is `off` while the setting is blank, with `rows` and `could` empty, and `ok` otherwise. Each row has `entry`, `sensor` and `reference` (`id`, `name`; the reference also has `own`, and `network`, `official` and `from_index` when it is a station), `metric`, `unit`, `metres` (null when either side has no coordinates), `since`, `until`, `measured` and `hour` (the sensor's latest finished hourly mean), `corrected`, `line` (`a`, `b`, `hours`), `paired_hours`, `last_paired`, `checked` (`days`, and the mean distance of the `measured` and the `corrected` hours over them), `shown`, `why` and `stuck` (`sensor` or `reference` while that side of an open pair has read one value for 24 hourly readings in a row, else null; such hours are not paired). `corrected` is filled only while `shown` is true. Otherwise `why.reason` is `refused` (with `test`: `unknown`, `not-a-sensor`, `sensor-is-station`, `no-channel` with the `source` that declares none, `indoor-outdoor` or `apart` with `metres`, and `side` when one side is at fault), `young`, `flat`, `measured-closer`, `not-a-tenth`, `withdrawn` (with `since`, the last day the two read together) or `no-hours`. An entry that does not parse is a row with only `entry`, `shown` and `why` (`malformed`, with `problem`). `could` lists pairs of this node's own outdoor sensors within 50 m of each other that nobody has named. Nothing is stored: it is worked out again on each call, it writes nothing, and a node that leaves the pack out of `PACKS_ENABLED` answers 404. [Corrections](calibrate.md) says what the numbers mean.
+
 ### GET /index/place
 Access: open
 
@@ -348,6 +369,11 @@ What the Fab City Index says about the place this node belongs to (`INDEX_PLACE`
 Access: open
 
 Official and model weather for this point, from `forecast-bmkg`, `forecast-om`, `forecast-cams`, `forecast-marine` and `forecast-gap`. `?hours=` 1 to 72 (default 24). Returns `{point, sources, hours, attribution, far_from_node, days, lines, openmeteo, schema}`, where `far_from_node` lists any source more than 10 km away (the sea is left out), `days` and `lines` are what [Next days](next-days.md) draws, and `schema` is `forecast-v0`. Without a token `point` is the middle of the node's res-8 cell (null before the node has a place) and each source's `km_from_node` is whole kilometres from that middle, so `far_from_node` is judged from it too; this machine and a token get the node's own point and distances from it.
+
+### GET /predict
+Access: token
+
+This node's own ambient series, forecast by the model the `predict` pack runs in its container, beside how often that beat repeating yesterday. Returns `{state, model: {name, revision, adapted}, origin, rows}`. `state` is `ok`, `off` (`PREDICT_MODEL` is blank, so no container is asked), `no-answer` (the container does not answer), `no-model` (none is pulled) or `young` (no series to show yet). `adapted` is always false. Each row is `{sensor, indoor, metric, unit, today, tomorrow, why}`, where `today` and `tomorrow` are `{low, high, model, naive, days, shown}`: `model` and `naive` are the mean absolute error of the model and of yesterday repeated over the `days` scored, the last 28 at most, a day counting with at least 12 measured hours; both are null when no day is scored. `low` and `high` are null unless the day is shown, which takes today's forecast, at least 7 scored days and `model` strictly below `naive`. `why` is null when a day is shown, otherwise `{reason: "naive-closer"}`, `{reason: "young", have, need}`, `{reason: "sparse"}` (old enough, but too many hours missing to forecast from) or `{reason: "waiting"}` (today's forecast is not made yet). In no share list: it answers only a node token or this machine. 404 when `PACKS_ENABLED` lists packs and `predict` is not one of them.
 
 ### GET /energy
 Access: open
@@ -730,7 +756,7 @@ This node's hourly means, newest first, without `private` channels: `[{bucket, s
 ### POST /aggregates
 Access: children
 
-A child pushes the hourly means of its own sensors, each row saying whether it is indoors.
+A child pushes the hourly means of its own outdoor sensors, and of its rooms only with `PARENT_INDOOR=on`, each row saying whether it is indoors.
 
 ```json
 {"schema": "aggregates-v0", "node": "bayu-ungasan", "scale": "community",
@@ -864,8 +890,8 @@ Each document that travels between nodes names its format in `schema`: `issues-v
 
 | To | When | What travels |
 |---|---|---|
-| `POST {PARENT_API_URL}/aggregates` | Hourly, with a parent set | The last 2 hours of hourly means of its own sensors, with `PARENT_TOKEN` |
-| `POST {PARENT_API_URL}/events` | Hourly, after an alert in the last 36 hours | Alert timestamps |
+| `POST {PARENT_API_URL}/aggregates` | Hourly, with a parent set | The last 2 hours of hourly means of its own outdoor sensors, and of its rooms only with `PARENT_INDOOR=on`, with `PARENT_TOKEN` |
+| `POST {PARENT_API_URL}/events` | Hourly, after an alert in the last 36 hours | Alert timestamps, a room's only with `PARENT_INDOOR=on` |
 | `POST {PARENT_API_URL}/place/maps/received` | Within a minute of a change to a map the household shared | The map's drawings, at their exact place, with their labels, notes and measures, and each photo's kind, note, words and day |
 | `POST {PARENT_API_URL}/place/photos/received` | Within a minute of somebody here answering an ask for a photo | The answer, and with a Send the photo's file, which lost its GPS when it came into this node |
 | Telegram | Each alert at or above `ALERT_LEVEL`, each report, once per newer release, and `getMe` once a day for the bot's name | The message, with `TELEGRAM_BOT_TOKEN` |

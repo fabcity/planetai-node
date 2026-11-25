@@ -1,4 +1,4 @@
-"""The Place report's reading: what kind of place this is, and what is worth doing here (docs/SPEC_place_report.md §11).
+"""The Place report's reading: what kind of place this is, and what is worth doing here (SPEC_place_report §11, kept privately in planetai-design, node-docs/specs/).
 
 Four things live here, in the order each rests on the one before:
 
@@ -386,13 +386,13 @@ def rules(doc: dict) -> dict:
 
 
 # ---------------------------------------------------------------- the fuller text: a model's, kept only if it holds
-# The manner each section is read in. The names steer the model and stop here: a text that carries one is refused,
-# and no page, button, doc or answer of the node says them (Tomas, 17 Nov 2026: "do not mention the names of experts").
-MANNER = (("region", "the region as the unit, its limits and its balance, the way Lewis Mumford read a city in its region"),
-          ("land", "what the land is fit for against what it is used for, as Ian McHarg would lay it out"),
-          ("needs", "real needs before wants, met with local means, as Victor Papanek asked of design"),
-          ("system", "stocks, flows, loops and delays, and where a small push counts, as Donella Meadows would trace them"),
-          ("street", "the mix of uses, short blocks and eyes on the street, as Jane Jacobs watched them"))
+# What each section looks at. A text that names a person is refused (PERSON below), and no page, button, doc or answer
+# of the node does either (Tomas, 17 Nov 2026).
+MANNER = (("region", "the region as the unit, its limits and its balance"),
+          ("land", "what the land is fit for against what it is used for, layer by layer"),
+          ("needs", "real needs before wants, met with local means"),
+          ("system", "stocks, flows, loops and delays, and where a small push counts"),
+          ("street", "the mix of uses, short blocks and eyes on the street"))
 # Three of the names are no other word. The last two are (a water meadow), so those count only with their capital.
 PERSON = re.compile(r"(?i:mumford|mcharg|papanek)|\b(?:Meadows|MEADOWS|Jacobs|JACOBS)\b")
 UNITS = re.compile(r"\b(?:PM2\.5|PM10|PM1|CO2|NO2|O3)\b", re.I)    # a unit's own digits are not a figure
@@ -407,14 +407,14 @@ LONGEST = {"section": 780, "title": 100, "why": 300, "first_step": 220}
 
 
 def prompt(doc: dict, ruled: dict) -> str:
-    """What the model is handed: the frame, the manner, the facts, the node's own reading, and the shape to answer in."""
+    """What the model is handed: the frame, what each section looks at, the facts, the node's own reading, and the shape to answer in."""
     head = dict(SECTIONS)
     held = {k: f["v"] for k, f in doc["facts"].items() if f}
     return (
         "You are writing two pages of a report about one place, for the people who live there and for whoever they hand it to: "
         "neighbours, a village council, a funder. Read the place five ways, one paragraph each, in this order:\n"
         + "".join(f"- {i} · {head[i]}: {how}.\n" for i, how in MANNER)
-        + "Write in their manner and name no person: not them, not anyone. Plain words, no headings, no lists, 60 to 120 words a section "
+        + "Write each one looking at what it names, and name no person. Plain words, no headings, no lists, 60 to 120 words a section "
         f"({LONGEST['section']} characters at most). "
         "THE NODE'S OWN READING below is the findings, one line each, and the reader already has it. Do not give its sentences back. "
         "Say in sentences of your own what the findings mean taken together for the people here: what follows from them, "

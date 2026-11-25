@@ -1,7 +1,7 @@
 # Packs that ship
 <!-- checked: v0.92.0 -->
 
-The twenty-eight core packs in `packs/`, five data and twenty-three code, hold everything the node knows about a place, and no
+The thirty core packs in `packs/`, five data and twenty-five code, hold everything the node knows about a place, and no
 rule in `app/` says what PM2.5 means for a household or where the nearest fab lab is. For each pack this page
 says what it reads, what it says, its rules and where each threshold comes from, its settings, and what it does
 not know. How a pack is built and loaded is on [Packs](packs.md). Wild packs, such as `xiaomi-air` and
@@ -10,8 +10,9 @@ added with `planetai packs add`.
 
 A pack is `code` when its folder has any `.py` file, and a code pack's adapter and hooks run only with
 `PACKS_ALLOW_CODE=1`; `make` also needs `MAKE_ENABLED=1` and `fire` `FIRE_ENABLED=1`. A pack that names its own
-`switch:` runs on that switch alone: `bali-air-dispatch` on `BAD_ENABLED`, `home-assistant` on `HA_DISCOVERY`, `index` on `INDEX_PLACE`,
-`smartcitizen`, `airgradient` and `purpleair` whenever their keys are set, and `air-quality` reads the CAMS model on
+`switch:` runs on that switch alone: `bali-air-dispatch` on `BAD_ENABLED`, `home-assistant` on `HA_DISCOVERY`, `index` on `INDEX_PLACE`, `predict` on `PREDICT_MODEL`,
+`smartcitizen`, `airgradient` and `purpleair` whenever their keys are set, `calibrate` once `CALIBRATE_PAIRS` names a
+pair, and `air-quality` reads the CAMS model on
 `OPENMETEO_ENABLED`, the key that ran it in the core. A pack's `routes.py` is mounted at start and answers 404 while
 the pack is off.
 
@@ -19,7 +20,7 @@ the pack is off.
 |---|---|---|---|---|---|---|---|
 | `air-quality` | code | air | 4 act, 2 warn; and the event engine's 3 act, 1 warn | | 3 | | `OPENMETEO_ENABLED` (declared by the core) |
 | `heat` | data | heat | 2 act, 1 info; and the event engine's 3 act | | 1 | | |
-| `bali-air-dispatch` | code | air | none | | | | `BAD_ENABLED`, `BAD_RADIUS_KM`, `BAD_MIN_SEPARATION_M`, `BAD_EXCLUDE`, `BAD_INCLUDE_INDOOR` |
+| `bali-air-dispatch` | code | air | none | | | | `BAD_ENABLED`, `BAD_RADIUS_KM`, `BAD_MIN_SEPARATION_M`, `BAD_EXCLUDE`, `BAD_INCLUDE`, `BAD_INCLUDE_INDOOR` |
 | `home-assistant` | code | none | none | | | | `HA_DISCOVERY` (declared by the core) |
 | `smartcitizen` | code | air | none | | | | `SC_USER`, `SC_DEVICES`, `SC_EXCLUDE` (declared by the core) |
 | `airgradient` | code | air | none | | | | `AIRGRADIENT_HOSTS`, `SENSOR_INDOOR` (declared by the core) |
@@ -28,6 +29,7 @@ the pack is off.
 | `season` | code | air | 1 info | `record` | | `window` | |
 | `insight` | data | cross-domain | 2 info | `digest` | | | |
 | `cold-start` | data | cross-domain | 3 info | | | | |
+| `calibrate` | code | cross-domain | none | | | | `CALIBRATE_PAIRS` |
 | `forecast` | code | weather | none | `ahead` | | `fetch` `status` `verify` `windfield` | `FORECAST_*` |
 | `coast` | code | coast | 2 info | | 1 | | `COAST_MAX_KM` |
 | `surface-heat` | code | heat | none | `ground` | | | `SURFACE_HEAT_*` |
@@ -44,6 +46,7 @@ the pack is off.
 | `thingdata` | code | repair | 1 warn | | 2 | | `THINGDATA_*` |
 | `things` | code | things | none | | | | none (the Telegram bot's token, the core's) |
 | `eyes` | code | species | none | | | | `CAPTURES_DIR`, `EYES_MODEL`, `SPECIES_MATCH` (declared by the core) |
+| `predict` | code | cross-domain | none | | | | `PREDICT_MODEL` (declared by the core) |
 | `example-cooking-hours` | data | (none) | 1 info | | | | |
 
 That is 33 rules with a message (26, and the 7 only the event engine reads), 5 report contributors and 12
@@ -215,6 +218,7 @@ the archive's `/stations` list types it Government.
 | `BAD_RADIUS_KM` | `15`; the bali preset `8` | ring radius in km. 15 is the tightest that leaves `nearby` its two-station floor at node #1 with room to spare |
 | `BAD_MIN_SEPARATION_M` | `150` | a station closer to the node than this is excluded as the node's own kit |
 | `BAD_EXCLUDE` | empty | station ids excluded by hand |
+| `BAD_INCLUDE` | empty | station ids kept at any distance, for a public station one of your sensors sits beside |
 | `BAD_INCLUDE_INDOOR` | `0` | `1` keeps stations the archive marks `suspected_indoor` |
 
 It also reads `SC_USER`, `SC_DEVICES`, `SC_EXCLUDE` and `AIRGRADIENT_HOSTS`, to know which devices this node
@@ -224,8 +228,10 @@ already polls.
 
 It keeps the node's own kit out of the ring by four tests: identity (a device this node polls, at any
 distance), proximity (within `BAD_MIN_SEPARATION_M`), by hand (`BAD_EXCLUDE`), and one device on two networks
-(an AirGradient unit mirrored by OpenAQ, collapsed on the same name within the separation radius). It cannot
-know about a kit of yours it does not poll and that sits further away than the separation radius. One
+(an AirGradient unit mirrored by OpenAQ, collapsed on the same name within the separation radius). A station you
+put in `BAD_INCLUDE` skips proximity and the radius, so the node takes your word that it is someone else's, while
+identity and `BAD_EXCLUDE` still drop it. It cannot know about a kit of yours it does not poll and that sits
+further away than the separation radius. One
 function, `verdicts()`, decides, and `nearby`'s scripts and `GET /nearby?audit=1` call the same one.
 
 ## smartcitizen
@@ -489,6 +495,39 @@ The rules read `observations`, the view where models and portals land.
 
 The README reads a big gap in `sensor_vs_model` as the local signal a global model cannot see, and not as a
 sensor fault. Seeing that signal is the reason to run a node at all.
+
+## calibrate
+
+Corrects one sensor against a better one you name beside it, on the Data page only. It fits a straight line on the
+last 14 days and shows the corrected number while the line has been at least a tenth closer on days it never saw.
+How to name a pair, what the node checks and what was measured are on [Corrections](calibrate.md).
+
+| | |
+|---|---|
+| Kind | code, with a route and no adapter; its route answers on its own switch (`switch: [CALIBRATE_PAIRS]`) |
+| Domain | `cross-domain` |
+| Requires node | `>=0.92` |
+| Metrics | none of its own: it reads the hourly means of the two sensors in each pair |
+| Scales | community |
+| Needs | two sensors side by side (within 50 m when both have coordinates), both indoors or both outdoors, that share an ambient, comparable metric |
+| Rules and cells | none: a corrected number is worked out when the page asks and stored nowhere |
+
+`GET /calibrate` reads `readings_1h`, `sensors` and `channel_roles`, 42 days for each pair, and writes nothing. It
+answers this machine or a node token only. The Data page shows its answer under Models and satellite, in Corrections,
+and puts a mark on the sensor's row in Readings while a correction is shown.
+
+### Settings
+
+| setting | default | meaning |
+|---|---|---|
+| `CALIBRATE_PAIRS` | empty | the pairs, one per `;`: `<sensor> <the better sensor beside it> <metric> <since> [<until>]`. Empty is off |
+
+### What it does not know
+
+It does not know where a sensor stood. It takes your `since` and `until` on trust, and a sensor moved without a word to the node goes
+on being fitted against hours when the two were apart, unless its pin moves more than 50 m. It cannot tell the
+particle sensors of one Smart Citizen box apart, so pair only boxes with one. It was tested on PM2.5 from HM-3301
+and PMS5003 sensors against a SEN5X, on Smart Citizen's history, and has not run on any node or with a public station.
 
 ## forecast
 
@@ -1325,6 +1364,52 @@ settings stay the core's, because two of them change what leaves the house. With
 the Data door says so, and the weekly reads do not run. On `planetai update`, a node that lists its packs in
 `PACKS_ENABLED` gets `eyes` added, because every node had it. With `SPECIES_MATCH` on it also answers Tools › Pull on
 Place: how many open GBIF records there are of each species in the area you chose, counts only, kept a day.
+
+## predict
+
+Today and tomorrow for the node's own series, hour by hour, from a general time-series model that runs beside the node
+in the `models` container. Every night it scores what it forecast against what the sensors measured, and against the
+last measured day repeated, and a day is shown only while the model is closer. [Predict](predict.md) says how to turn it
+on and read it, and what we measured on node #1.
+
+| | |
+|---|---|
+| Kind | code, an adapter and `routes.py`, run by its own switch (`switch: [PREDICT_MODEL]`), with the `models` container beside the node |
+| Domain | `cross-domain` |
+| Requires node | `>=0.92.0` |
+| Metrics | none, because a forecast is never a reading |
+| Scales | community |
+| Needs | `PREDICT_MODEL`, set by `planetai models pull` (it is the pack's own switch, so `PACKS_ALLOW_CODE` is not needed); the weights, downloaded once from huggingface.co by that command and by nothing else |
+| Shares | the one line `predict` gives Next days, served with `GET /forecast` to whoever can see Next days on this node; `GET /predict` answers a node token or this machine only |
+| Rules and cells | none |
+| Attribution | `amazon/chronos-2` and `amazon/chronos-bolt-tiny`, Apache-2.0 |
+
+At the first poll after 00:10 local time the adapter sends the models container the hourly means of each series that
+qualifies: a sensor that is the household's own and not a peer's, a metric whose channel role is `ambient`, at least 7
+days of history, 90% of the hours of the last 14 measured and at least one of the last 6. It stores the answer, 48 hours
+from local midnight with a middle value and an 80% band, in `predictions`, one day in one transaction, and the first
+time it runs it does the same for each of the 28 days before, oldest first. One poll gives it at most 60 seconds and the
+next poll carries on, so the first run starts at the poll after `planetai models pull` and may take a few polls. After a
+failure it tries at most once an hour until today's forecast is stored, and it keeps 35 days. Besides those rows it writes
+one row per model in `models`, with the time of its last attempt, and the sensor `predict` (`kind='model'`, not
+local), whose meta holds tomorrow's line for Next days.
+
+`GET /predict` reads those rows and works out the scores on each request; they are never stored. `predictions` and
+`models` are closed to `planetai_ro`, so no pack rule and no Grafana panel reads them, and neither is in the daily
+export, the aggregates a parent gets, the report bundle or any agent tool.
+
+### Settings
+
+| setting | default | meaning |
+|---|---|---|
+| `PREDICT_MODEL` | empty | the model that runs, a name from `packs/predict/models.json`. Set and blanked by `planetai models pull` and `planetai models rm`; Set up › Model shows it and does not edit it |
+
+### What it does not know
+
+The model reads each series' own past and nothing else, so it does not know the weather forecast or what the
+household does. It is a
+general model that has never seen this place, and its 80% band held the measurement 68 to 86% of the time on node #1,
+so on some series it is a little narrow. Only the middle value is drawn.
 
 ## example-cooking-hours
 

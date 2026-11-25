@@ -260,8 +260,7 @@ section.decl{margin-top:22px}.row.decl{cursor:default}   /* a pack's declared ba
 .lt .t{font:500 var(--t-cap)/1.9 var(--mono)}
 
 /* ================= PLACE: a small GIS (SPEC_place_microgis §4, the v2 drawing of 4 Nov 2026) =================
-   Teenage Engineering's light type and flat surfaces, mono's hairlines, OP-XY's black screen and dot switches, OneSoil's
-   plain layer list. The page keeps the node's register. The screen is black in both, so inside it the frozen layer's
+   Light type and flat surfaces, hairlines, a black screen with dot switches, a plain layer list. The page keeps the node's register. The screen is black in both, so inside it the frozen layer's
    names take the screen's values, and whatever is drawn there (the still map, popups, notes, the satellite) follows. */
 .page[data-view="place"]{max-width:1440px}
 .phead{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,440px);gap:12px 40px;align-items:end}.phead>div{min-width:0}
@@ -394,6 +393,10 @@ body.preport .page[data-view="place"]>:not(#preport){display:none}
 @page sheet{size:A4 landscape;margin:0}
 @page report{size:A4 portrait;margin:0}
 @media print{
+  body.pweekly>:not(#wpages){display:none!important}
+  body.pweekly #wpages{display:block!important}
+  body.pweekly .wpage{page:weekly;break-inside:avoid}
+  body.pweekly .wpage:not(:last-child){break-after:page}
   body.preport>:not([data-view="place"]),body.preport .prbar{display:none!important}
   body.preport .page[data-view="place"]{max-width:none;margin:0;padding:0;border:0;background:none}
   body.preport .psheets{display:block;padding:0;background:none}
@@ -402,7 +405,7 @@ body.preport .page[data-view="place"]>:not(#preport){display:none}
   body.preport .psheets>:not(:last-child){break-after:page}
 }
 /* EVOLUTION VARIATION (6 Nov 2026): the screen Place has had since 4 Nov, given to Now's day and Node's flow, with
-   OP-XY's header ramp on top (name cell, value cell, in grey steps from black to white, a second row under each) and an
+   a header ramp on top (name cell, value cell, in grey steps from black to white, a second row under each) and an
    info line at the foot. Same tokens as .mapc (doors-placemap.js PAL.dark), same bezel; no hue the layer lacks. */
 .scr{--ink:#F9F5F2;--ground:#17191D;--mute:#A3A19F;--dim:#8A8886;--hair:#3A3F47;--raise:#2B2E34;--cells:#7FA5E8;--satellite-only:#FF931E;
   margin:20px 6px 6px;border-radius:10px;overflow:hidden;background:var(--ground);color:var(--ink);box-shadow:0 0 0 1px #000,0 0 0 5px #1b1b1b,0 0 0 6px #000}
@@ -681,7 +684,12 @@ body:not(.classic) .hero .ladder.folded{display:none}
   .dgrid .snav a{flex:1 0 auto;justify-content:center;border-bottom:1px solid var(--hair)}
   /* the ledger on a phone: the time and the stage on one line, what it answered under them at full width */
   .tbl.ledger tr{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:12px;border-bottom:1px solid var(--hair)}.tbl.ledger tr:first-child{display:none}
-  .tbl.ledger td{border-bottom:0}.tbl.ledger td:nth-child(4){grid-column:1 / -1;padding-top:0}}
+  .tbl.ledger td{border-bottom:0}.tbl.ledger td:nth-child(4){grid-column:1 / -1;padding-top:0}
+  /* Corrections on a phone: sensor, measured and corrected on one line, then against, the checked days and the state each at full width */
+  .tbl.ctab thead{display:none}.tbl.ctab tr{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(0,1fr);column-gap:12px;border-bottom:1px solid var(--hair)}
+  .tbl.ctab tbody td:nth-child(n){border-bottom:0;padding-left:0;white-space:normal}.tbl.ctab td:nth-child(n+4),.tbl.ctab td[colspan]{grid-column:1 / -1;padding-top:0;text-align:left}
+  .tbl.ctab td:nth-child(2)::before{content:'measured'}.tbl.ctab td:nth-child(3)::before{content:'corrected'}
+  .tbl.ctab td:nth-child(-n+3).n::before{display:block;color:var(--mute);font:500 var(--t-cap) var(--mono)}}
 .dh{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap}.dh h2{margin-bottom:4px}
 .gh{margin:16px 0 4px;padding-bottom:4px;border-bottom:1px solid var(--ink)}
 .srow{display:grid;grid-template-columns:minmax(0,1fr) 300px 80px;gap:16px;align-items:center;padding:4px 0;border-bottom:1px solid var(--hair)}
@@ -691,6 +699,32 @@ body:not(.classic) .hero .ladder.folded{display:none}
 .linep{stroke:var(--signal-worse);stroke-dasharray:6 4;stroke-width:1.5}
 .axis{display:grid;grid-template-columns:minmax(0,1fr) 300px 80px;gap:16px;padding-top:4px}
 .sms{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+/* the Report tab (doors-data.js reportBlock): pickers on one wrapping line, the sensor list in columns, a filter that hides rows */
+.rpick{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:end;margin:0 0 14px}.rpick label{display:flex;flex-direction:column;gap:4px;font-size:var(--t-cap)}
+.rpick select,.rpick input{min-height:36px;border:1px solid var(--hair);background:var(--ground);color:var(--ink);padding:0 8px;font:var(--t-small) var(--body)}
+.rpick input[type=number]{width:7ch}.rfind{width:min(340px,100%)}.rlang button{border:0;background:none;color:var(--ink);padding:0;font:var(--t-small) var(--body);cursor:pointer;min-height:36px}.rlang button[aria-pressed=true]{font-weight:600;text-decoration:underline;text-underline-offset:3px}.tbl.rep td:first-child{white-space:nowrap;font-family:var(--mono)}
+.rtags{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.rtags button{border:1px solid var(--ink);background:none;color:var(--ink);padding:2px 8px;font:var(--t-small) var(--body);cursor:pointer}
+.rlist{columns:3 220px;column-gap:18px;max-height:260px;overflow:auto;border-top:1px solid var(--hair);padding-top:6px}.rlist h4{margin:6px 0 2px;font:500 var(--t-cap) var(--mono);text-transform:uppercase;color:var(--mute)}
+.rlist label{display:flex;gap:6px;align-items:baseline;font-size:var(--t-small);padding:2px 0;break-inside:avoid}.rlist label[hidden]{display:none}
+.tbl td.wr,.tbl td.wr b{color:var(--signal-worse)}
+.rtiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:14px 0 6px}.rtile{border:1px solid var(--hair);padding:8px 10px;min-width:0}
+.rtile b{display:block;font:600 22px/1.15 var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rtile span{display:block;font:400 var(--t-cap)/1.3 var(--mono);text-transform:uppercase;letter-spacing:.04em;color:var(--mute)}.rtile.wr b{color:var(--signal-worse)}
+.rgrid{border-collapse:collapse;font-size:var(--t-small)}.rgrid th{font:400 var(--t-cap) var(--mono);color:var(--mute);padding:0 2px 4px;text-align:center}.rgrid th.n,.rgrid td.n{text-align:right;padding-left:10px;font-family:var(--mono);white-space:nowrap}.rgrid td{padding:2px}.rgrid td:first-child{padding-right:12px;white-space:nowrap}
+.blk{display:inline-block;min-width:36px;height:24px;line-height:24px;text-align:center;font:600 12px var(--mono);vertical-align:middle}
+.blk.aqi-0{background:var(--aqi-0);color:var(--aqi-0-ink)}.blk.aqi-1{background:var(--aqi-1);color:var(--aqi-1-ink)}.blk.aqi-2{background:var(--aqi-2);color:var(--aqi-2-ink)}.blk.aqi-3{background:var(--aqi-3);color:var(--aqi-3-ink)}.blk.aqi-4{background:var(--aqi-4);color:var(--aqi-4-ink)}
+.blk.nc{background:color-mix(in srgb,var(--mute) 30%,transparent)}.blk.aqi-4{box-shadow:inset 0 0 0 1px var(--mute)}.blk.nb{background:var(--raise);color:var(--ink)}.blk.nb.bad,.blk.edge{box-shadow:inset 0 0 0 3px var(--signal-worse)}
+.rbtns{display:flex;gap:10px;flex-wrap:wrap;margin:6px 0}.rshare{border:1px solid var(--hair);padding:12px;margin:8px 0}.rshots{display:flex;flex-wrap:wrap;gap:16px}
+.rshots figure{margin:0;display:flex;flex-direction:column;gap:6px;max-width:270px}.rshots canvas{width:270px;height:auto;display:block;border:1px solid var(--hair)}
+.rlegend{font-size:var(--t-cap);color:var(--mute);line-height:2}.rlegend .blk{min-width:16px;height:12px;line-height:12px;margin-left:6px}.sms .alln{fill:none;stroke:var(--ink);stroke-width:1.2;stroke-dasharray:6 4;opacity:.7}.sms .bar{fill:var(--ink);opacity:.75}
+@page weekly{size:A4 portrait;margin:0}
+/* the weekly report's PDF (doors-data.js printWeekly): paper whatever the screen's register, the air colours printed as they are.
+   A block with its foot pinned, not a flex column: Chrome split a flex page's chart onto an extra Letter page (23 Nov 2026). */
+.wpage{--ink:#171717;--mute:#6B6B66;--dim:#8A8580;--hair:#D9D4CE;--raise:#F3F0EA;--ground:#FFFFFF;background:#fff;color:var(--ink);width:210mm;height:296mm;box-sizing:border-box;padding:14mm 15mm 12mm;position:relative;font:400 10pt/1.4 var(--body);-webkit-print-color-adjust:exact;print-color-adjust:exact;overflow:hidden}
+.wpage h1{font:800 22pt/1.1 var(--body);margin:2mm 0 1mm}.wpage h3{font:700 11pt var(--body);margin:5mm 0 2mm}.wpage .wk{font:600 8pt var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}
+.wpage .sub{color:var(--mute)}.wpage .rtiles{grid-template-columns:repeat(4,1fr)}.wpage .rtile b{font-size:16pt}.wpage svg{width:125mm;height:auto}
+.wpage .lnp{fill:none;stroke:var(--ink);stroke-width:1.4}.wpage .bar{fill:var(--ink);opacity:.75}.wpage .grid{stroke:var(--hair)}.wpage svg text{fill:var(--mute);font:400 9px var(--mono)}.wpage td.wr{color:var(--signal-worse)}.wpage .how p{margin:0 0 2mm;color:var(--mute);font-size:9pt}
+.wpage .wfoot{position:absolute;left:15mm;right:15mm;bottom:12mm;display:flex;justify-content:space-between;gap:6mm;border-top:1px solid var(--hair);padding-top:2mm;font:400 7.5pt var(--mono);color:var(--mute)}
+.wpage .tbl{font-size:8.5pt}
 .sm{margin:0}.sm figcaption{font-size:var(--t-small);margin-bottom:2px}.sm svg{width:100%;height:auto;display:block}
 .sm .grid{stroke:var(--hair)}
 .cols2{display:grid;grid-template-columns:1fr 1fr;gap:48px}
@@ -799,7 +833,12 @@ body:not(.classic) .hero .ladder.folded{display:none}
 
 
 /* ================= FLOW: the node by scale (R37) ================= */
-:root{--motion-replay-loop:30s}   /* PROPOSED for the layer (R38, replaces R37's --motion-replay-hour): any window, 6 or 24 hours, replayed in 30 s */
+:root{--motion-replay-loop:30s}
+/* THE AIR INDEX (23 Nov 2026, amendment to the layer: planetai-design references/planetai-layer.md, "Air index"). Indonesia's
+   ISPU bands for a PM2.5 or PM10 24-hour mean, good to dangerous, as BACKGROUNDS that mean a band: allowed only where an air
+   reading is drawn (Data › Report, its PDF and its share images). The same in both registers. Each band has its number
+   colour, at 4.5:1 or better (tests/test_weekly.py measures it), dark on the green and the yellow so the hues stay ISPU's. */
+:root{--aqi-0:#3DAE57;--aqi-0-ink:#111111;--aqi-1:#2563C9;--aqi-1-ink:#FFFFFF;--aqi-2:#F2C230;--aqi-2-ink:#111111;--aqi-3:#C8331F;--aqi-3-ink:#FFFFFF;--aqi-4:#111111;--aqi-4-ink:#FFFFFF}   /* PROPOSED for the layer (R38, replaces R37's --motion-replay-hour): any window, 6 or 24 hours, replayed in 30 s */
 .fc{display:grid;grid-template-columns:10px minmax(0,1fr) auto 48px;gap:10px;align-items:baseline;padding:9px 0;border-bottom:1px solid var(--hair)}
 .fc i{width:8px;height:8px;background:var(--ink);align-self:center}.fc.red i{background:var(--signal-worse)}.fc.green i{background:var(--rings)}.fc.blue i{background:var(--cells)}.fc.none i{background:none;border:1px dashed var(--mute)}
 .fc span{font-size:var(--t-small);font-weight:600}.fc small{display:block;font:500 var(--t-cap) var(--mono);color:var(--mute);font-weight:500}
@@ -834,7 +873,7 @@ body:not(.classic) .hero .ladder.folded{display:none}
 .fdot{fill:var(--ink)}
 #world svg{display:block;width:auto;max-width:100%;height:auto;max-height:33vh}   /* a third of the screen at most: the list above says it */
 #world .land{fill:var(--ink);fill-opacity:.12}   /* as the landing: land carries weight under the grid */
-.h3grid{fill:none;stroke:var(--ink);stroke-width:.4;opacity:.5}.h3lit{fill:var(--cells);fill-opacity:.13;stroke:var(--cells);stroke-width:1.5}
+.h3grid{fill:none;stroke:var(--ink);stroke-width:.4;opacity:.5}.h3lit{fill:var(--cells);fill-opacity:.13;stroke:var(--cells);stroke-width:1.5}.h3heard{fill:none;stroke:var(--cells);stroke-width:1.2;stroke-dasharray:3 3}
 
 @media (max-width:1080px){
   .face{grid-template-columns:minmax(0,1fr);grid-template-areas:"kick" "l" "r" "td" "rm" "l2" "al" "bd"}.rcol{margin-top:28px}
@@ -887,7 +926,7 @@ body:not(.classic) .hero .ladder.folded{display:none}
   .face{padding-top:14px}.kick .now,.kick .kr a{min-height:44px;display:inline-flex;align-items:center}
   .kick .kr a{min-width:44px}.foot a,.foot button.linkish{min-height:44px;display:flex;align-items:center}
 }
-/* ---- Set up (doors-setup.js): mono's grid — 1px ink rules, square, outlined; Linear's section list and rows ---- */
+/* ---- Set up (doors-setup.js): the node's grid — 1px ink rules, square, outlined; a section list and rows ---- */
 #setupv2 .sh{border-bottom:1px solid var(--ink);padding-bottom:18px}
 #setupv2 .sh h1{margin-top:8px}
 .sgrid{display:grid;grid-template-columns:200px minmax(0,1fr);gap:0;align-items:start}
@@ -1014,12 +1053,11 @@ body:not(.classic) .hero .ladder.folded{display:none}
 @media (scripting: none){.asking{display:none !important}}
 
 /* ===================================================================================================================
-   VARIATION · FIELD SYNTHESIZER (6 Nov 2026), after Stitch's "Field Synthesizer & Instrument Interface" export
-   (DESIGN.md + code.html in planetai-design/prototypes/dashboard-variation-evolve/reference/). An evolution of the
-   doors as they ship: the same pages, parts, words and data, in the export's chassis. Dark is this variation's
+   VARIATION · FIELD SYNTHESIZER (6 Nov 2026), an instrument-panel chassis for the doors.
+   An evolution of the doors as they ship: the same pages, parts, words and data, in that chassis. Dark is this variation's
    default. Its two accents keep one job each: amber is what is engaged (the open door, a pressed answer, a live
    source), cyan is the signal (the current hour, a cell, a source partly read). Red stays the layer's, a reading over
-   its line. Faces are the node's own: Funnel Sans for Space Grotesk, JetBrains Mono for Space Mono.
+   its line. Faces are the node's own: Funnel Sans and JetBrains Mono.
    =================================================================================================================== */
 :root[data-theme="dark"]{--ground:#0E0E10;--ink:#F4F4F5;--mute:#A1A1AA;--dim:#71717A;--hair:#232326;--raise:#1A1A1E;
   --card:#141416;--wire:#323236;--wire-on:#52525B;--amber:#F59E0B;--cyan:#38BDF8;--cells:#38BDF8;--prov:#F4F4F5;--doc:#141416;--doc-line:#323236}
@@ -1057,7 +1095,7 @@ body:not(.classic) .hero .ladder.folded{display:none}
 /* rack-mount rows: the issues around the house as cards in a column; the one in front inverts */
 .rcol .rows{border-top:0;display:grid;gap:8px}.rcol .row{border:1px solid var(--wire);background:var(--ground)}
 .rcol .row[aria-pressed="true"]{background:var(--ink);color:var(--ground);border-color:var(--ink)}
-/* the screen, as the export's oscilloscope: square, a #0E0E10 ground, a faint reticle */
+/* the screen, as an oscilloscope: square, a #0E0E10 ground, a faint reticle */
 .scr{border-radius:0!important;box-shadow:none!important;border:1px solid var(--wire);margin:14px 0 0!important;--ground:#0A0A0C;--cells:#38BDF8;--hair:#26262B}
 .scr .sbody{background-image:radial-gradient(rgba(244,244,245,.09) 1px,transparent 1.2px);background-size:24px 24px}
 /* the readout strip at the screen's head: cells side by side, a label over a value (not a grey ramp in this variation) */
@@ -1374,9 +1412,12 @@ body:not(.classic) .hero .ladder.folded{display:none}
         <div id="sensors" data-learn="data-sources" data-reads="/sensors /stats /aggregates" data-stage="observe" data-pack="core" data-kind="series"></div></section>
       <section id="issues7" class="dsec" data-learn="data-week" data-reads="/issues/days" data-stage="observe" data-pack="core" data-kind="series"></section>
       <section id="models" class="dsec" data-learn="data-models" data-reads="/sensors /observations" data-stage="observe" data-pack="earth" data-kind="row"></section>
+      <section id="predict" class="dsec" data-learn="data-predict" data-reads="/predict" data-stage="observe" data-pack="predict" data-kind="row"></section>
+      <section id="calibrate" class="dsec" data-learn="data-calibrate" data-reads="/calibrate" data-stage="observe" data-pack="calibrate" data-kind="row"></section>
       <section id="perday" class="dsec" data-learn="data-perday" data-reads="/issues/days" data-stage="measure" data-pack="core" data-kind="row"></section>
       <section id="d-images" class="dsec" data-learn="data-images" data-reads="/captures" data-stage="observe" data-pack="core" data-kind="row"></section>
       <section id="d-things" class="dsec" data-learn="data-things" data-reads="/things" data-stage="observe" data-pack="core" data-kind="row"></section>
+      <section id="d-report" class="dsec" data-reads="/weekly" data-pack="core"></section>
       <section id="ledger" class="dsec" data-learn="data-ledger" data-reads="/actions /alerts" data-stage="act" data-pack="core" data-kind="row"></section>
       <p class="fine dsec" id="dnote">The diary, what is usual and what worked are on <a href="#node/remember">Node › What it remembers</a>; the Index cells on <a href="#node/cells">Node</a>, under the flow.</p>
       <section id="api" class="dsec" data-learn="data-api" data-reads="/static/docs_site.json" data-pack="core"></section>
@@ -1384,6 +1425,7 @@ body:not(.classic) .hero .ladder.folded{display:none}
     </div>
   </div>
 </section>
+<div id="wpages" class="wpages" hidden></div>
 
 <!-- WALL -->
 <section class="view" data-view="wall" hidden><div id="wallv" data-learn="wall-never" data-reads="/health /issues /wall" data-stage="observe" data-pack="core"></div></section>

@@ -15,6 +15,8 @@ printf 'listener %s 127.0.0.1\nallow_anonymous true\n' "$P" > $T/m.conf
 mosquitto -c $T/m.conf >$T/m.log 2>&1 & echo $! > $T/pid; sleep 1
 kill -0 "$(cat $T/pid)" 2>/dev/null || { echo "radio gateway: mosquitto did not start on $P"; cat $T/m.log; exit 1; }
 export RADIO_TEST_PORT=$P
+# the broker restarting under a running gateway, as `docker compose restart mosquitto` does on a node
+export RADIO_TEST_RESTART="kill \$(cat $T/pid); sleep 1; mosquitto -c $T/m.conf >>$T/m.log 2>&1 & echo \$! > $T/pid"
 export PLANETAI_ROOT=$T; mkdir -p $T/config/radio; printf 'NODE_NAME=testnode\nNODE_CITY=bali\nMQTT_USER=\nMQTT_PASS=\n' > $T/.env
 python3 tools/radio.py init >/dev/null
 
@@ -75,6 +77,20 @@ assert (0, "PM2.5 high, close windows") in sent, sent
 assert (1, "[menorca] hola desde Menorca") in sent, sent
 assert len(sent) == 2, sent
 assert "fabcity/testnode/alerts" in [t for t, _ in got], "the node's alert is also offered to peers"
+# a restarted broker forgets the gateway's subscriptions; it uplinked on and never heard an alert again (24 Nov 2026)
+import subprocess
+import paho.mqtt.publish as publish
+subprocess.run(os.environ["RADIO_TEST_RESTART"], shell=True, check=True)
+for _ in range(15):   # paho reconnects on its own, after a second or two
+    time.sleep(1)
+    try:
+        publish.single("msh/SG_923/2/json/mqtt/", json.dumps({"type": "sendtext", "payload": "after the restart", "channel": 0}), hostname="127.0.0.1", port=P)
+    except OSError:
+        continue
+    time.sleep(0.5)
+    if (0, "after the restart") in sent:
+        break
+assert (0, "after the restart") in sent, f"the gateway stopped hearing the node after the broker restarted: {sent}"
 # an unplugged radio: the gateway exits, so launchd or systemd starts it again
 pub.sendMessage("meshtastic.connection.lost", interface=None)
 gw.join(5)

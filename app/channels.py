@@ -26,6 +26,11 @@ RETICULUM_URL = os.getenv("RETICULUM_URL", "").strip()
 def TG():
     """Token and chat ids, read at send time so the GUI can change them without a restart."""
     return settings.get("TELEGRAM_BOT_TOKEN", "").strip(), [c for c in settings.get("TELEGRAM_CHAT_IDS", "").replace(" ", "").split(",") if c]
+def RETICULUM_TO():
+    """The LXMF addresses act alerts go to, read at send time like TG() and sent to the bridge with each alert. The
+    bridge used to read its own copy from .env when its container was created, so an address saved in Set up never
+    arrived (23 Nov 2026)."""
+    return [d for d in settings.get("RETICULUM_ALERT_DESTINATIONS", "").replace(" ", "").lower().split(",") if d]
 def MESH_ALERTS():
     return settings.get("MESH_ALERTS", "0") == "1"
 def MESH_GATEWAY_NUM():
@@ -83,7 +88,7 @@ def notify(level: str, text: str, keyboard: list | None = None, home: str = "", 
         mesh_send(text.split("\n")[0])            # the mesh gets the first line only: LoRa frames are small
         if RETICULUM_URL:
             try:
-                httpx.post(f"{RETICULUM_URL}/send", json={"text": text}, timeout=10)
+                httpx.post(f"{RETICULUM_URL}/send", json={"text": text, "to": RETICULUM_TO()}, timeout=10)
             except Exception as e:  # noqa: BLE001
                 log.warning("reticulum send failed: %s", type(e).__name__)
     tok, chats = TG()

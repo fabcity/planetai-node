@@ -1,12 +1,12 @@
 'use strict';
 /* PLACE · the map workbench (R36, 7 Oct 2026). MapLibre draws the base, deck.gl draws the node's data over it.
 
-   REFERENCE LOCK (Refero, docs in the R36 note):
-   - Mapbox's cartographic rule: the map is neutral and the data is the only colour. One signal hue, the node's
+   THE DRAWING'S RULES:
+   - The map is neutral and the data is the only colour. One signal hue, the node's
      --cells blue, for the cell and focus; orange stays the satellite's alone. No second accent.
-   - mono's 1 px rules and tracked mono labels.
+   - 1 px rules and tracked mono labels.
    - The v2 drawing (SPEC_place_microgis §4, 4 Nov 2026), after Option A (15 Oct): the cake on the left as plain rows with
-     switches (OneSoil's layer list; a dot until 17 Nov 2026), the screen black in both registers with its tools, scales and hour on it as
+     switches (a plain layer list; a dot until 17 Nov 2026), the screen black in both registers with its tools, scales and hour on it as
      chips, the tools in a menu on the top line (5 Nov 2026; the right column before), the inspector a status line under the screen and the marks around the house a list.
 
    SCALE. The H3 resolution drawn follows the zoom: the finest rung whose cell is at least 56 px to an edge on

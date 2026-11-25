@@ -76,6 +76,8 @@ NAV = [
     ("Dashboard", [
         ("dashboard", "docs/site/dashboard.md"),
         ("next-days", "docs/site/next-days.md"),
+        ("predict", "docs/site/predict.md"),
+        ("calibrate", "docs/site/calibrate.md", "Corrections"),
         ("place", "docs/site/place.md", "The Place door"),
         ("wall", "docs/site/wall.md"),
         ("design", "docs/site/design.md"),

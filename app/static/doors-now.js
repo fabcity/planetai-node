@@ -236,7 +236,7 @@ function readout() {
   }
   $('#sentence').innerHTML = (it.pix ? `<svg class="pix" aria-hidden="true"><use href="${NODE}signs.svg#${it.pix}"/></svg>` : '') + `<span class="said">${s}${tag ? `<span class="ntag">${esc(tag)}</span>` : ''}</span>`;
   /* the four distances, one quiet line: the drawing above already draws three of them */
-  /* the four distances as an encoder bank (Field Synthesizer variation, after the export's "spatial ladder"): a dial a
+  /* the four distances as an encoder bank (Field Synthesizer variation): a dial a
      distance, its sweep the figure against a scale shared by all four, a red tick where the line is, the sweep red
      only past it. The stroke is the figure's own: the house solid, the street dashed, the ring dotted, the region
      sparse. Same numbers, same words, same provenance as the line it replaces. */
@@ -257,7 +257,7 @@ function readout() {
   }).join('');
   /* the same four figures as the screen's header ramp (evolution variation): the distance and its word, the value and
      where it came from */
-  /* the screen's readout strip (Field Synthesizer variation, after the export's VALUE PEAK / CURRENT readouts): the
+  /* the screen's readout strip (Field Synthesizer variation): the
      day's peak at the hero distance, the figure now, the line, and the hours over it today */
   const ramp = $('#nramp'), day = dayOf(b), sd = (it.series || {})[hd] || [];
   if (ramp) {
@@ -608,7 +608,7 @@ const NX = {
     over: 'over', near: 'near', under: 'under', hover: '{h} h over {line}', peak: 'peak {v} at {t}', cells: 'over in {n} of {m} cells',
     gusts: 'gusts {v} km/h', rain: '{v} mm, most {t}', dry: 'no rain', waves: 'waves {v} m',
     issued: '{s}, issued {t}', fetched: '{s}, fetched {t}', ncells: '{n} cells', far: '{km} km from this node', absent: '{s}: nothing fetched yet',
-    models: 'These come from models. The node does not forecast, and nothing here sends a message.',
+    models: 'These come from models, and nothing here sends a message.',
     optin: 'Air, the sea and more hours come from Open-Meteo, which is off on this node. Turn it on in {setup}.',
     none: 'No forecast source answers for this place. Turn one on in {setup}.',
     waiting: 'No forecast has arrived on this node yet.', off: 'The forecast pack is off on this node. Turn it on in {setup}.',
@@ -617,7 +617,7 @@ const NX = {
     over: 'sobre', near: 'cerca', under: 'bajo', hover: '{h} h sobre {line}', peak: 'pico {v} a las {t}', cells: 'sobre la línea en {n} de {m} celdas',
     gusts: 'rachas {v} km/h', rain: '{v} mm, sobre todo {t}', dry: 'sin lluvia', waves: 'olas {v} m',
     issued: '{s}, emitido {t}', fetched: '{s}, descargado {t}', ncells: '{n} celdas', far: 'a {km} km de este nodo', absent: '{s}: nada descargado todavía',
-    models: 'Esto viene de modelos. El nodo no pronostica, y nada de aquí envía un mensaje.',
+    models: 'Esto viene de modelos, y nada de aquí envía un mensaje.',
     optin: 'El aire, el mar y más horas vienen de Open-Meteo, que está apagado en este nodo. Actívalo en {setup}.',
     none: 'Ninguna fuente de pronóstico responde para este lugar. Activa una en {setup}.',
     waiting: 'Todavía no ha llegado ningún pronóstico a este nodo.', off: 'El pack forecast está apagado en este nodo. Actívalo en {setup}.',
@@ -626,7 +626,7 @@ const NX = {
     over: 'di atas', near: 'dekat', under: 'di bawah', hover: '{h} jam di atas {line}', peak: 'puncak {v} pukul {t}', cells: 'di atas garis di {n} dari {m} sel',
     gusts: 'hembusan {v} km/h', rain: '{v} mm, terbanyak {t}', dry: 'tidak hujan', waves: 'ombak {v} m',
     issued: '{s}, terbit {t}', fetched: '{s}, diambil {t}', ncells: '{n} sel', far: '{km} km dari node ini', absent: '{s}: belum ada yang diambil',
-    models: 'Ini berasal dari model. Node tidak membuat prakiraan, dan tidak ada yang di sini mengirim pesan.',
+    models: 'Ini berasal dari model, dan tidak ada yang di sini mengirim pesan.',
     optin: 'Udara, laut, dan lebih banyak jam berasal dari Open-Meteo, yang mati di node ini. Nyalakan di {setup}.',
     none: 'Tidak ada sumber prakiraan yang menjawab untuk tempat ini. Nyalakan satu di {setup}.',
     waiting: 'Belum ada prakiraan yang sampai di node ini.', off: 'Pack forecast mati di node ini. Nyalakan di {setup}.',

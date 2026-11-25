@@ -36,9 +36,9 @@ mkdir -p /tmp/stub && printf 'class Client: pass\n' > /tmp/stub/httpx.py
 # ships because a suite printed "skipped" is the failure it is guarding against. Do not add it here.
 # test_radio, test_radio_gateway: the meshtastic package (and mosquitto, for the gateway) live on the host that
 # provisions radios, not on every machine that runs the suite. Without them the whole suite skips.
-# test_rho_pg, test_views_pg, test_maps_pg: on a real Postgres, at RHO_PG_URL; CI's lint job runs them in its schema step, so here
+# test_rho_pg, test_views_pg, test_maps_pg, test_grafana (the weekly report's counting), test_predict_pg, test_calibrate_pg: on a real Postgres, at RHO_PG_URL; CI's lint job runs them in its schema step, so here
 # they skip.
-EXPECTED_SKIPS=" test_rho_pg test_views_pg test_maps_pg test_ground test_nearby test_season test_measures test_shipped test_custody test_issues_geometry test_kinded_rules test_replay test_captures test_private test_radio test_radio_gateway "
+EXPECTED_SKIPS=" test_rho_pg test_views_pg test_maps_pg test_grafana test_predict_pg test_calibrate_pg test_ground test_nearby test_season test_measures test_shipped test_custody test_issues_geometry test_kinded_rules test_replay test_captures test_private test_radio test_radio_gateway "
 
 pass=0; fail=0; skips=0; undeclared=0
 failed_names=""; skip_lines=""
@@ -100,8 +100,13 @@ test_geocode|bash tests/test_geocode.sh
 test_lan_ip|bash tests/test_lan_ip.sh
 test_test_alert|bash tests/test_test_alert.sh
 test_packs_add|bash tests/test_packs_add.sh
+test_cli_models|bash tests/test_cli_models.sh
 test_pack_install|PYTHONPATH=app python3 tests/test_pack_install.py
 test_update_guard|bash tests/test_update_guard.sh
+test_update_radio|bash tests/test_update_radio.sh
+test_mesh_packets|bash tests/test_mesh_packets.sh
+test_reticulum_hub|bash tests/test_reticulum_hub.sh
+test_presence_hub|python3 tests/test_presence_hub.py
 test_sweep|python3 tests/test_sweep.py
 test_sources|PACKS_DIR=packs PYTHONPATH=/tmp/stub:app python3 tests/test_sources.py
 test_nearby|PYTHONPATH=/tmp/stub:app python3 tests/test_nearby.py
@@ -110,6 +115,7 @@ test_measures|PYTHONPATH=tests python3 tests/test_measures.py
 test_forecast|PYTHONPATH=/tmp/stub:app python3 tests/test_forecast.py
 test_forecast_territory|PYTHONPATH=app python3 tests/test_forecast_territory.py
 test_forecast_days|PACKS_DIR=packs PYTHONPATH=app python3 tests/test_forecast_days.py
+test_models_server|python3 tests/test_models_server.py
 test_index_pack|PYTHONPATH=/tmp/stub:app python3 tests/test_index_pack.py
 test_store|PYTHONPATH=app python3 tests/test_store.py
 test_meshtastic|PYTHONPATH=/tmp/stub:app python3 tests/test_meshtastic.py
@@ -208,7 +214,17 @@ test_sc_two_particle|PACKS_DIR=packs PYTHONPATH=app python3 tests/test_sc_two_pa
 test_lan_air|PACKS_DIR=packs PYTHONPATH=app python3 tests/test_lan_air.py
 test_pack_routes|PACKS_DIR=packs PYTHONPATH=app python3 tests/test_pack_routes.py
 test_wall|PACKS_DIR=packs PYTHONPATH=app python3 tests/test_wall.py
+test_calibrate_core|PYTHONPATH=app python3 tests/test_calibrate_core.py
+test_calibrate_routes|PACKS_DIR=packs PYTHONPATH=app python3 tests/test_calibrate_routes.py
+test_calibrate_pg|PYTHONPATH=app PACKS_DIR=packs python3 tests/test_calibrate_pg.py
+test_calibrate_part|PYTHONPATH=app python3 tests/test_calibrate_part.py
 test_grafana|python3 tests/test_grafana.py
+test_predict_core|PYTHONPATH=app python3 tests/test_predict_core.py
+test_predict_pack|PYTHONPATH=/tmp/stub:app python3 tests/test_predict_pack.py
+test_predict_routes|PYTHONPATH=/tmp/stub:app python3 tests/test_predict_routes.py
+test_predict_part|PYTHONPATH=app python3 tests/test_predict_part.py
+test_predict_pg|PYTHONPATH=app PACKS_DIR=packs python3 tests/test_predict_pg.py
+test_weekly|python3 tests/test_weekly.py
 SUITES
 
 total=$((pass + fail))
@@ -217,12 +233,12 @@ printf '  %d suites: %d passed, %d failed, %d check(s) skipped\n' "$total" "$pas
 [ -n "$skip_lines" ] && printf '%s' "$skip_lines"
 [ -n "$failed_names" ] && printf '  failed:%s\n' "$failed_names"
 
-# One hundred and twenty-three is the number of suites in the list above (test_sc_two_particle joined 22 Nov 2026; test_place_yearly joined 18 Nov 2026; test_doors_wallmap joined 18 Nov 2026; test_wall joined 18 Nov 2026; test_bad_island joined 18 Nov 2026; test_reading joined 17 Nov 2026; test_place_report joined 16 Nov 2026; test_area_hooks joined 15 Nov 2026; test_area joined 15 Nov 2026; test_cells joined 10 Nov 2026; test_doors_energy joined 10 Nov 2026; test_energy joined 10 Nov 2026; test_hydro joined 8 Nov 2026; test_index_pack joined 6 Nov 2026; test_doors_draw joined 4 Nov 2026; test_maps and test_maps_pg joined 4 Nov 2026; test_doors_next joined 3 Nov 2026; test_forecast_days joined 3 Nov 2026; test_forecast_territory joined 3 Nov 2026; test_store joined 3 Nov 2026; test_action_choice and test_notify_keyboard joined 3 Nov 2026; test_doors_asks joined 3 Nov 2026; test_rule_buttons joined 3 Nov 2026; test_pack_buttons joined 3 Nov 2026; test_rule_act_placeholder joined 2 Nov 2026; test_mobile_sections joined 1 Nov 2026; test_peers_persist left with the Reticulum bridge, and
+# One hundred and thirty-nine is the number of suites in the list above (test_sc_two_particle joined 25 Nov 2026; test_reticulum_hub and test_presence_hub joined 25 Nov 2026; test_mesh_packets joined 24 Nov 2026; test_update_radio joined 24 Nov 2026; test_calibrate_part joined 22 Nov 2026; test_calibrate_routes and test_calibrate_pg joined 22 Nov 2026; test_calibrate_core joined 22 Nov 2026; test_weekly joined 23 Nov 2026; test_predict_pg joined 21 Nov 2026; test_predict_part and test_predict_routes joined 21 Nov 2026; test_predict_pack joined 21 Nov 2026; test_models_server joined 21 Nov 2026; test_predict_core joined 21 Nov 2026; test_place_yearly joined 18 Nov 2026; test_doors_wallmap joined 18 Nov 2026; test_wall joined 18 Nov 2026; test_bad_island joined 18 Nov 2026; test_reading joined 17 Nov 2026; test_place_report joined 16 Nov 2026; test_area_hooks joined 15 Nov 2026; test_area joined 15 Nov 2026; test_cells joined 10 Nov 2026; test_doors_energy joined 10 Nov 2026; test_energy joined 10 Nov 2026; test_hydro joined 8 Nov 2026; test_index_pack joined 6 Nov 2026; test_doors_draw joined 4 Nov 2026; test_maps and test_maps_pg joined 4 Nov 2026; test_doors_next joined 3 Nov 2026; test_forecast_days joined 3 Nov 2026; test_forecast_territory joined 3 Nov 2026; test_store joined 3 Nov 2026; test_action_choice and test_notify_keyboard joined 3 Nov 2026; test_doors_asks joined 3 Nov 2026; test_rule_buttons joined 3 Nov 2026; test_pack_buttons joined 3 Nov 2026; test_rule_act_placeholder joined 2 Nov 2026; test_mobile_sections joined 1 Nov 2026; test_peers_persist left with the Reticulum bridge, and
 # test_terrain joined, 23 Oct 2026; test_views_pg and test_grafana joined 24 Oct). If the list and this number disagree, one of them
 # is a typo, and a runner that quietly runs twenty-five of twenty-six is the bug it was written to end.
 # (The word and the number had drifted apart by two bumps when packs/make added the forty-fourth.)
-if [ "$total" -ne 123 ]; then
-  printf '  \033[31mx\033[0m ran %d suites, expected 123 — the list in this file lost or gained a line\n' "$total"
+if [ "$total" -ne 139 ]; then
+  printf '  \033[31mx\033[0m ran %d suites, expected 139 — the list in this file lost or gained a line\n' "$total"
   exit 1
 fi
 [ "$fail" -gt 0 ] && exit 1

@@ -30,7 +30,7 @@ printf 'NODE_NAME=testnode\nNODE_CITY=bali\n' > "$r/.env"; rm -rf "$r/config"
 # the guide reads whether the packages import; give it stubs so the steps after the packages are what is tested
 mkdir -p "$t/stub/meshtastic" "$t/stub/paho/mqtt" "$t/empty"; : > "$t/stub/meshtastic/__init__.py"; : > "$t/stub/paho/__init__.py"; : > "$t/stub/paho/mqtt/__init__.py"
 g="$(PYTHONPATH="$t/stub" PLANETAI_ROOT="$r" python3 tools/radio.py)"
-grep -q '^Next: planetai meshtastic' <<<"$g" || { echo "  x with no broker the guide's next step must be the broker:"; echo "$g"; exit 1; }
+grep -q '^Next: planetai meshtastic --broker$' <<<"$g" || { echo "  x with no broker the guide's next step must be the broker:"; echo "$g"; exit 1; }
 printf 'NODE_NAME=testnode\nNODE_CITY=bali\nMQTT_PASS=x\nCOMPOSE_PROFILES=mqtt\n' > "$r/.env"
 g="$(PYTHONPATH="$t/stub" PLANETAI_ROOT="$r" python3 tools/radio.py)"
 grep -q '^Next: planetai radio init' <<<"$g" || { echo "  x with a broker and no fleet the next step must be init:"; echo "$g"; exit 1; }

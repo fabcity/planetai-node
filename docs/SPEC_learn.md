@@ -1,20 +1,16 @@
 # SPEC: what the node learns
 
 *Asked, 13–14 October 2026, by Tomas: "I want the node to learn from its data, how can we design something like a RAG
-or daily/weekly/monthly/yearly learnings from the node?" Before building it he asked for the research on decisions
-made by households, local businesses and organised communities, starting from MIT Space Enabled's EVDT framework.
-Then: "yes, you can add a research note, and build the spec, lets go."*
+or daily/weekly/monthly/yearly learnings from the node?"*
 
 **Status: steps 1–4 built in v0.82 (#230–#233); 5 waits on the community tier, 6 from Sep 2027. Proposed 14 October 2026.** Each step in §9 is its own pull request, run on node #1
-before it merges. The research behind it is in the note linked in §10.
+before it merges.
 
 ## 1 · What it serves
 
 A household, a shop or a lab acts on what its node tells it, and the node already writes the act down. What nobody
-knows, here or in the literature, is whether the act worked. Studies of feedback measure whether people *understood*
-or *changed* on average; decision-support research measures whether officials found a tool useful. None we found
-logs an alert, the action taken and the effect a sensor measured, home by home. So the first thing the node learns is
-the household's own evidence:
+knows is whether the act worked, because nothing logs an alert, the action taken and the effect a sensor measured,
+home by home. So the first thing the node learns is the household's own evidence:
 
 > When you closed the windows during evening burning, indoor PM2.5 fell by half within two hours, 6 times out of 8.
 > When the same alert went unanswered, it fell by a tenth.
@@ -28,12 +24,12 @@ node can tell what an action changed.
    cases, the query that made it. A model may rephrase a row; it may never add a number or a cause. This is the
    report's rule already ("never write a number that is not in it").
 2. **Every learning shows its proof.** The page draws its cases; the bot can say how many and since when. A learning
-   the household cannot inspect is one it will stop trusting (the learning thermostat's lesson).
+   the household cannot inspect is one it will stop trusting.
 3. **Few cases say so.** Under five, a learning is "too few to be sure", with its count, never a percentage.
 4. **A learning is never deleted.** It is checked again at each period and marked `holding`, `weakening` or `gone`.
    "The Saturday smoke stopped in November" is a learning too.
-5. **Describe and explain before predicting.** EVDT planned describe, explain, predict and reached the first two;
-   this node does the same. Nothing here forecasts.
+5. **Learnings describe and explain; they never forecast.** A forecast of the node's own series is the `predict`
+   pack's: it lives in its own table, carries its own error, and is never a learning.
 6. **The house's learnings stay home** (§7).
 
 ## 3 · What exists
@@ -64,7 +60,7 @@ windows" and "turned on the purifier" can be told apart by the person, not guess
 cases by what was done is a household's choice of words, offered as a filter, not a classifier.
 
 What it does not claim: a cause. It is the household's own before and after, with the street and the unanswered
-alerts beside it. That is more than any study we found records, and it says so in those words.
+alerts beside it, and the page says so in those words.
 
 **The verdict** *(14 October 2026, design review of node #1)*. `holding` says the learning holds, not that acting
 helps: node #1's air row read holding while acting had left the air worse than leaving it (+2.5 µg/m³ acted, −0.8
@@ -83,7 +79,7 @@ Daily, from `readings_1h`, per issue the household watches:
 
 - the shape of an ordinary day (by hour), of a week (weekday against weekend), and of a month;
 - what changed: this week against the usual, beyond its spread;
-- a slow trend, once a series is long enough to have one (Theil–Sen, as EVDT used for night lights);
+- a slow trend, once a series is long enough to have one (Theil–Sen);
 - the same date last year, once there is a last year (node #1's own sensors: from September 2027; its satellite
   series: now).
 
@@ -120,8 +116,8 @@ come only if words prove too weak. Telegram gets `/learned`, a template over the
 
 The commonest reason people ignore an alert is not feeling at risk. A short, private household profile (an older
 person, a child under five, someone with asthma, a pregnancy, someone working outdoors) lets the node rank its
-learnings and say "you said a child lives here". It is EVDT's *vulnerability*, filled in by the household instead
-of estimated from a census. It changes no threshold by itself. *Amended 14 October 2026 (Tomas: "yes, add it to the alerts"):* an act-level heat
+learnings and say "you said a child lives here". The household says who lives there, and nothing is estimated from a
+census. It changes no threshold by itself. *Amended 14 October 2026 (Tomas: "yes, add it to the alerts"):* an act-level heat
 or air alert that weighs on someone listed carries one line saying so in its Telegram message, and only there.
 
 ## 9 · Steps
@@ -132,7 +128,7 @@ or air alert that weighs on someone listed carries one line saying so in its Tel
    before and a trend from 60 days, and the asks that do not fit. The month's shape waits for months of data.
 3. **Digests and asking them.** *Built 14 October 2026, written by the node's template only.* The `digests` table, the four scales, the `learned` tool for the pane and the bot.
 4. **Who is in the house.** *Built 14 October 2026.* §8's profile, five yes-or-no answers that rank the learnings.
-5. **Homes like yours.** Comparison with other homes, the strongest effect in the feedback studies, made from
+5. **Homes like yours.** Comparison with other homes, made from
    anonymous sums through the community tier. Waits for the upstream tiers.
 6. **A year.** Same-date comparisons, as each node reaches its first year.
 
@@ -142,4 +138,3 @@ or air alert that weighs on someone listed carries one line saying so in its Tel
 - Whether five cases is the right floor, and how to show a spread on five.
 - How an action note is grouped: by the household's own label, chosen once, or by the words as written.
 - Whether a place learning goes upstream as a sentence, as numbers, or both.
-- Research note, positioning this against EVDT and the household and community literature: [PLANETAI and the decision below policy](https://claude.ai/artifact/RvpHqtqGNigpbEDVuRExsk) (14 October 2026; private until shared).

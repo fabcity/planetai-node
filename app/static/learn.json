@@ -288,6 +288,30 @@
    "title": "The API",
    "url": "https://planetai.fab.city/docs/api/"
   },
+  "data-calibrate": {
+   "anchor": "data",
+   "more": "A sensor a keeper names beside a better one is corrected against it, on this page only, and only while the corrected number has been at least a tenth closer on days the line never saw.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "Why does this sensor show two numbers?",
+     "Why is the corrected number gone?"
+    ],
+    "es": [
+     "¿Por qué este sensor muestra dos números?",
+     "¿Por qué desapareció el número corregido?"
+    ],
+    "id": [
+     "Mengapa sensor ini menampilkan dua angka?",
+     "Mengapa angka yang dikoreksi hilang?"
+    ]
+   },
+   "quote": "**Corrections**, under Models and satellite, has one row for each pair a keeper named in Set up, under Calibrate: the\nsensor, its measured and corrected numbers, what it is corrected against, how far off each has been, and when it was\nlast checked or why it is not shown. The measured number stays the one the node stores,",
+   "section": "Data",
+   "title": "Corrections",
+   "url": "https://planetai.fab.city/docs/dashboard/#data"
+  },
   "data-head": {
    "anchor": "data",
    "more": "The head counts what the tabs draw, the hourly values, the model and satellite values and the decisions, and links to today's open file.",
@@ -407,6 +431,30 @@
    "section": "The strips",
    "title": "Hours over the line, per day",
    "url": "https://planetai.fab.city/docs/dashboard/#the-strips"
+  },
+  "data-predict": {
+   "anchor": "data",
+   "more": "A forecast is not a reading and is drawn apart from them. It comes from a general model, not adapted here, and a day appears only once the model has been closer than yesterday repeated.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "Will the air be better or worse tomorrow?",
+     "Why is a day not shown for some series?"
+    ],
+    "es": [
+     "¿El aire estará mejor o peor mañana?",
+     "¿Por qué no se muestra un día en algunas series?"
+    ],
+    "id": [
+     "Apakah udara besok lebih baik atau lebih buruk?",
+     "Mengapa sebuah hari tidak ditampilkan untuk sebagian deret?"
+    ]
+   },
+   "quote": "With the `predict` pack on, Models and satellite has a second part: the range a general model expects today and tomorrow for each of the node's own series, and its mean error beside that of yesterday repeated. A day is drawn only with at least 7 scored days and the model's error strictly below yesterday's, otherwise the row says why.",
+   "section": "Data",
+   "title": "Its own readings, forecast",
+   "url": "https://planetai.fab.city/docs/dashboard/#data"
   },
   "data-readings": {
    "anchor": "data",
@@ -1555,7 +1603,7 @@
      "Seberapa kasar sel yang diumumkannya?"
     ]
    },
-   "quote": "Presence is separate and off by default: with `RETICULUM_PRESENCE=1` the bridge announces the node's name and a\ncoarse H3 cell every half hour, at `RETICULUM_PRESENCE_RES` (3) and never finer than resolution 6, whatever the\nsetting says, so an exact place never leaves.",
+   "quote": "Presence is separate and off by default: with `RETICULUM_PRESENCE=1` the bridge announces the node's name and a\ncoarse H3 cell, its version, kind and node id every half hour, at `RETICULUM_PRESENCE_RES` (3) and never finer than resolution 6, whatever the\nsetting says, so an exact place never leaves.",
    "section": "Reticulum, LXMF",
    "title": "A coarse cell, and never finer",
    "url": "https://planetai.fab.city/docs/channels/#reticulum-lxmf"
@@ -2241,6 +2289,8 @@
   "data-week",
   "data-perday",
   "data-models",
+  "data-predict",
+  "data-calibrate",
   "data-images",
   "data-things",
   "data-ledger",

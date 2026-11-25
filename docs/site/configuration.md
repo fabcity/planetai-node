@@ -199,6 +199,7 @@ ask pane reads the same keys on every question. See [The bot](bot.md) and [Ask t
 | `AGENT_REMOTE_MODEL` | `gpt-oss-120b` | model id | e.g. `gpt-oss-120b` or `qwen3:8b`. | runtime · public · restart |
 | `AGENT_REMOTE_KEY` | blank | secret | If that server asks for one. | runtime · secret · restart |
 | `EYES_MODEL` | blank = off | Ollama model id | A vision model in this machine's Ollama that describes each image and files what it sees under the [flows](https://planetai.fab.city/vocab/flows/1.0/) classes. The picture never leaves the machine and the model is never asked about people. On 16 GB, `qwen2.5vl:7b`. | runtime · public |
+| `PREDICT_MODEL` | blank = off | model name | A time-series model that forecasts this node's own readings. `planetai models pull <name>` sets it after the weights are here; `planetai models rm` blanks it. Set up shows it and does not edit it: the models container can only follow `.env`. | env only |
 | `OLLAMA_URL` | `http://host.docker.internal:11434` | URL | Ollama on this machine, the `local` rung. `planetai agent local` sets `http://172.17.0.1:11434` on Linux. | env only |
 | `AGENT_MODEL` | `qwen3:4b` | Ollama model | The local rung's model; it must do tool calling. `planetai agent local pull <tag>` sets it. | env only |
 | `AGENT_NAME` | `local-model` | string | How the agent's actions appear in the audit trail. | env only |
@@ -206,13 +207,14 @@ ask pane reads the same keys on every question. See [The bot](bot.md) and [Ask t
 
 ## Parent and children
 
-A node with a parent posts the hourly means of its own sensors to `PARENT_API_URL/aggregates` and alert timestamps to
+A node with a parent posts the hourly means of its own outdoor sensors to `PARENT_API_URL/aggregates` and their alert timestamps to
 `PARENT_API_URL/events`, with `PARENT_TOKEN` as Bearer and `NODE_SCALE` as `scale`. Values and times go up;
 where, what was said and who said it stay. See [Federation](federation.md).
 
 | Setting | Default | Values | Meaning | Kind |
 |---|---|---|---|---|
 | `PARENT_API_URL` | blank = none | `http://<district>:8080` | The parent node. | runtime · outward |
+| `PARENT_INDOOR` | `off` | `off`, `on` | Sends the hourly means of the rooms to the parent too, and the alerts they raise. Off, only outdoor sensors go. | runtime · outward |
 | `PARENT_TOKEN` | blank | string | What this node presents to its parent. | runtime · secret |
 | `AGGREGATE_TOKEN` | blank | string | What this node demands from its children on `POST /aggregates` and `POST /events`, and all it opens. Without it the node accepts no children (403). | runtime · secret |
 | `NODE_KEY` | blank; `install.sh` makes one, `update.sh` adds one to an older node | 64 hex characters | This node's private key. Its ID is a short hash of the public key, shown in Set up › Sharing, in `planetai status` and in `GET /health`, and everything the node pushes to its parent is signed with it. The parent pins the node's name to the key the first time it hears from it. Keep a copy of `.env` somewhere that is not the backup share: a node that loses the key is a new node. `planetai children` lists the nodes pushing to a parent. See [Federation](federation.md). | env only · secret |
@@ -232,7 +234,7 @@ backups and the pictures folder. See [Storage](storage.md).
 | `EXPORT_ENABLED` | `1` | `1`, `0` | Each night writes yesterday's `exports/<node>/YYYY-MM-DD.json`: hourly means, cells, alerts and ρ, never raw. | bootstrap |
 | `IPFS_PUBLISH` | `0` | `1`, `0` | Adds each export to IPFS and records the CID in `exports/<node>/CIDS.txt`. `planetai ipfs` turns it on. | bootstrap |
 | `APP_PORT` | `8080` | port | The host port, on every interface. Change it if 8080 is taken. | bootstrap |
-| `COMPOSE_PROFILES` | blank | `mqtt`, `agent`, `ipfs`, `reticulum`, `grafana` | Which optional containers run. Set by `planetai meshtastic`, `agent local`, `ipfs`, `reticulum` and `grafana`; leave it alone. | bootstrap |
+| `COMPOSE_PROFILES` | blank | `mqtt`, `agent`, `ipfs`, `reticulum`, `grafana`, `models` | Which optional containers run. Set by `planetai meshtastic`, `agent local`, `ipfs`, `reticulum`, `grafana` and `models pull`; leave it alone. | bootstrap |
 | `GRAFANA_BIND` | `127.0.0.1` | address | Where Grafana listens. `0.0.0.0` opens it to the network; set `GRAFANA_ADMIN_PASSWORD` first. Set up › System shows it. See [Grafana](grafana.md). | bootstrap |
 | `GRAFANA_PORT` | `3000` | port | Grafana's port. | bootstrap |
 | `GRAFANA_ADMIN_PASSWORD` | blank = `admin` | text | The password of Grafana's `admin` login. Set up says only whether it is set. | bootstrap, secret |
@@ -252,8 +254,9 @@ backups and the pictures folder. See [Storage](storage.md).
 ## Pack keys
 
 Every key a `pack.yaml` declares, with the default it ships. All are kind `pack`. A code pack reads them only with
-`PACKS_ALLOW_CODE=1`, except `bali-air-dispatch` and `index`, official packs with their own switch, which run on
-`BAD_ENABLED=1` and on `INDEX_PLACE` being set, alone.
+`PACKS_ALLOW_CODE=1`, except `bali-air-dispatch`, `index`, `predict` and `calibrate`, official packs with their own
+switch, which run on `BAD_ENABLED=1`, on `INDEX_PLACE` being set, on `PREDICT_MODEL` being set and on
+`CALIBRATE_PAIRS` naming a pair, alone.
 
 | Setting | Pack | Default | Meaning |
 |---|---|---|---|
@@ -261,6 +264,7 @@ Every key a `pack.yaml` declares, with the default it ships. All are kind `pack`
 | `BAD_RADIUS_KM` | bali-air-dispatch | `15`; bali preset `8` | How far out the ring reaches. Also `/nearby.radius_km`. |
 | `BAD_MIN_SEPARATION_M` | bali-air-dispatch | `150` | A station closer than this is taken to be the node's own hardware. |
 | `BAD_EXCLUDE` | bali-air-dispatch | blank | Station ids that are ours and the rules above missed. |
+| `BAD_INCLUDE` | bali-air-dispatch | blank | Station ids the ring keeps at any distance, for a public station one of your sensors sits beside ([Corrections](calibrate.md)). Stale, malfunctioning and your own polled devices still drop. |
 | `BAD_INCLUDE_INDOOR` | bali-air-dispatch | `0` | `1` keeps stations the archive suspects are indoors. |
 | `MAKE_ENABLED` | make | `0` | Off on purpose: the Fab Lab Network directory it reads is not openly licensed. Read [packs/make/README.md](../../packs/make/README.md) first. Needs `PACKS_ALLOW_CODE=1`. |
 | `MAKE_RADIUS_KM` | make | `50` | How far to look for a fab lab, in km. |
@@ -309,10 +313,13 @@ Every key a `pack.yaml` declares, with the default it ships. All are kind `pack`
 | `INDEX_URL` | index | `https://index.fab.city` | Where the pack reads the place's file. The request is the slug and nothing about the house. |
 | `INDEX_REFRESH_HOURS` | index | `24` | How often the place's file is read again. |
 | `COAST_MAX_KM` | coast | `30` | Refuses to report if the nearest ocean grid cell is further than this. Also a runtime key (public), and it moves the dashboard's drawn footprint too. |
+| `CALIBRATE_PAIRS` | calibrate | blank | Sensors to correct against a better one beside them, one pair per `;`: `<sensor> <the better sensor> <metric> <since> [<until>]`, as `sc-19874 sc-19236 pm25 2026-08-30`. Blank is off. The corrected number is shown on the Data page only; rules, alerts, cells and the export keep the measured one. See [Corrections](calibrate.md). |
 
-Two pack settings are read but declared in no `pack.yaml`, so they are env only: `OVERPASS_URL` (default
-`https://overpass-api.de/api/interpreter`, the place pack's Overpass endpoint) and `BAD_BACKFILL_DAYS` (default
-`0`, the size of the one-off `planetai run nearby backfill`, whose argument overrides it).
+Three pack settings are read but declared in no `pack.yaml`, so they are env only: `OVERPASS_URL` (default
+`https://overpass-api.de/api/interpreter`, the place pack's Overpass endpoint), `BAD_BACKFILL_DAYS` (default
+`0`, the size of the one-off `planetai run nearby backfill`, whose argument overrides it) and `MODELS_URL` (default
+`http://models:8080`, where the predict pack reaches the models container). Set up does not show `MODELS_URL` and
+no agent can change it, because it decides where every series the pack forecasts is sent.
 
 The Reticulum bridge's own paths, `RETICULUM_DATA` (`/data`), `RETICULUM_CONFIGDIR` (`/etc/reticulum`) and
 `NODE_API_URL` (`http://app:8080`), are set by `docker-compose.yml`. Nothing to set by hand.

@@ -2,15 +2,142 @@
 
 ## Unreleased
 
-- **22 Nov: a box with two particle sensors keeps both.** Some boxes carry an HM-3301 and a SEN5X side by side,
+- **25 Nov: a box with two particle sensors keeps both.** Some boxes carry an HM-3301 and a SEN5X side by side,
   and Smart Citizen calls both PM2.5. The node stored the first one it was given and dropped the other, with
-  nothing in the log. On one box that afternoon the HM-3301 read 5.0 µg/m³ and the SEN5X 12.6, and the page showed
+  nothing in the log. On one box on 22 Nov the HM-3301 read 5.0 µg/m³ and the SEN5X 12.6, and the page showed
   5.0. The box's `pm25` is still the sensor it always was, so its history carries on and every rule reads the
   series it read before. The other sensor is now stored beside it as `pm25_sen5x`, `pm25_hm3301` or
   `pm25_pms5003`, with `pm1` and `pm10` the same way. The new channels are private. The Data door shows them,
   nothing of them is exported or sent to a parent, and the Index does not count them. It covers kits read from
   api.smartcitizen.me and DIY nodes that publish to the node's broker. A second temperature or humidity sensor in
   a box is still dropped.
+
+- **25 Nov: hello needs no GitHub account.** With the Reticulum bridge running, `planetai hello` sends this node's
+  entry as a message to the programme's inbox, node #1, whose address `registry.json` now names, and prints what the
+  inbox answered: "received: a person reads it before it is listed". On node #1, `planetai hello --inbox` lists what
+  arrived and opens the pull request for the one its keeper picks, and the merge is still the approval. A node without
+  the bridge opens the pull request with `gh` as before. The bridge pin moves to fadb142, which also carries the
+  presence fix below.
+
+- **25 Nov: after an update, the hub hears the node's new version within a minute.** After `planetai update` every
+  node on the hub could hear the old version, with no id, for half an hour. The Reticulum bridge could ask the old app
+  what to announce while the new one was starting, or keep running beside a new app and not ask again. Between its
+  half-hourly announces the bridge now asks the node every minute and announces whenever the answer changed. The bridge
+  pin moves to dc7071d.
+- **25 Nov: the model that writes a fuller reading is asked five plain questions.** "Write a fuller reading" gives the
+  model what each section looks at, the region and its balance, what the land is fit for, what people need, how the
+  place behaves, the street, and nothing else about how to read. A node with a model on its own network may word a
+  section differently from before. The checks on the text it hands back are the same.
+
+- **25 Nov: one question decides whether other nodes see yours.** At the end of `planetai setup`, and in `planetai
+  reticulum`: "Let other PLANETAI nodes see this node?" They would see its name, its LXMF address and an area about
+  60 km across, never a reading, a sensor or where the house is. Yes starts the bridge, dials the Fab City hub and
+  turns presence on. No is the default in setup and asks nothing more. In `planetai reticulum` last time's answer is
+  the default, and a run with no terminal changes nothing. This replaces the hub question of 25 Nov, which left
+  presence to Set up.
+
+- **25 Nov: the Node door draws the nodes this one hears.** "The nodes around it" said a heard node was "not on this
+  map yet". Now each heard node has a row, "heard on the hub, 20 min ago, about 340 km away", with "listed" beside it
+  when the programme's list has it too, and the globe outlines its rough area, about 60 km across, never a point.
+  Presence now carries the node id, so a heard node is matched to a listed one by id, and by name only when either
+  side has none. A heard node stays on the page and reaches no cell, alert or export.
+
+- **25 Nov: nodes can hear each other through the Fab City hub.** Until now a node heard another over Reticulum only
+  if someone wired the two together by hand, so the presence every node announces reached nobody. `planetai
+  reticulum` now asks whether to dial the Fab City hub, node #1 in Bali, reached through Tailscale Funnel, with
+  nothing to open on your router. Everyone on the hub sees your node's name and LXMF address, and its rough area only
+  with presence on. Last time's answer is the default, and an update never changes it. `planetai doctor` checks the
+  hub, and the Node door's Radio row says whether the node is dialling it, or on a hub how many nodes are connected. The
+  bridge pin moves to 0794e97. docs/SPEC_hub has the plan, the steps after this one included.
+
+- **24 Nov: over Reticulum, only the people a node sends its alerts to can answer them.** The bridge took `act 3`
+  from any address that wrote to the node. On a LAN or a tailnet that was the household, but on a shared Reticulum
+  network anyone who heard the node's address could close its alerts, and each one counts in ρ. The bridge now
+  records an `act` only from a signed message sent by one of the node's alert addresses, the ones in Set up ›
+  Sharing, and anyone else gets one reply saying so. The bridge pin moves to a65ad0f, and the Reticulum steps in the
+  channels guide now add your address before you answer.
+
+- **The doctor after an update no longer says the mesh has gone quiet.** An update restarts the app, and the app
+  counts mesh packets from the moment it starts, so the doctor at the end of every update showed ✗ mesh packets
+  arriving, on node #1 a minute after its gateway had sent 200 packets. When that count is still 0, the doctor now
+  looks for mesh readings from the last hour in the database.
+
+- **`planetai update` restarts the LoRa gateway.** The gateway runs on the node's own machine, outside the containers,
+  because macOS cannot hand a USB radio to a container. An update rebuilt the containers and never touched it, so a
+  gateway kept running the radio code it started with: node #1's ran from 25 Oct to 24 Nov while that code changed
+  under it. Where `planetai radio gateway --install` set it up as a service, an update now restarts it. A node with no
+  gateway sees nothing new.
+
+- **24 Nov: the radio gateway keeps hearing the node after the broker restarts.** The gateway on the node's USB
+  subscribed to the node's alerts once, at start. After a broker restart it went on carrying readings in and never
+  sent an alert out again, and its log said nothing. It now subscribes each time it connects. `planetai radio doctor
+  --port` reads a radio back over a new connection and compares it with what it was provisioned with, setting by
+  setting; on the gateway's own port it points to the gateway's log, since the service holds that port. Step 2 of
+  `planetai radio` is `planetai meshtastic --broker`, which starts the broker and stops. Before, it waited three minutes
+  for a WiFi gateway nobody had set up yet. For a city it does not know, the WiFi wizard no longer says EU_868, and for
+  Santiago it says ANZ. The guide and the Radios page say how alerts reach the shelf radios (`planetai config set
+  MESH_ALERTS 1`), and `federate --write` names the restart the broker needs, `docker compose restart mosquitto`.
+
+- **`planetai test-alert` fires on a node that has chosen its packs.** Its rule is a pack called `_test` that lives
+  for 90 seconds. A node with a pack list in Set up skipped it because it was on no list, so the alert never came and
+  the terminal asked whether the node was up. Node #1 has a list, and that is how we found it. The test pack now runs
+  whatever the list says.
+
+- **23 Nov: Reticulum on a fresh node.** The bridge records an `act` with `ACT_TOKEN`, and only `planetai ui` made
+  one, so on a new node `act 3` sent from Sideband was dropped and nobody got a reply. `planetai reticulum` now gives
+  the bridge the node's token, and makes one if there is none. An address saved in Set up › Sharing › Reticulum alert
+  addresses never got an alert either, because the bridge read its own copy from `.env` when its container started.
+  Now the node sends the addresses with each alert, so the next one arrives with nothing to restart. The bridge pin
+  moves to f7840e3. rns and lxmf stay at the versions in the licence record.
+
+- **A node can forecast its own readings.** The new core pack `predict` runs a general time-series model, Chronos-2
+  or Chronos-Bolt tiny, in a container of its own, and each night forecasts today and tomorrow for the node's own
+  sensors. A day is shown in Data only while the model is closer than the last measured day repeated. A forecast is
+  never written as a reading. Apart from one line in Next days, it never leaves the node. Nothing is downloaded until you run
+  `planetai models pull`, and docs/predict has what we measured on node #1.
+- **23 Nov: the weekly report in the air index colours, with a PDF and pictures to post.** Data › Report now opens on the
+  week: a few tiles, then the places day by day in the colours of Indonesia's air index, ISPU, the scale people here
+  already know. A day the sensor was heard for under 18 hours is grey and does not count, and a bad day that is still
+  green on the index gets a thin red edge, so the count and the colour never disagree. Each place gets its daily mean
+  over the index bands, and one spike no longer flattens the hourly chart. Download the PDF prints the week on A4
+  pages. Share images makes a 1080×1350 picture per place and one comparing them, for PM2.5 and PM10, saying how bad
+  the air was that week and where, and that the sensors are not calibrated. Both are made in your browser from what a
+  visitor would see, so a room never reaches them.
+- **23 Nov: the weekly report on the node's own page.** Data › Report draws the same weekly sensor report as
+  Grafana, for anyone who opens the node, and there is nothing to sign in to. You pick the sensors from a list or by
+  typing part of a name, set the two lines, and switch between English and Bahasa Indonesia. What you chose stays in
+  the address, so a report can go to someone as a link. The page and Grafana run the same queries, so they always
+  count alike. Another screen on the network reads it once `SHARE_LEVEL` is `open`, and without the token it offers
+  the outdoor sensors only.
+- **23 Nov: a weekly sensor report in Grafana, in English and Bahasa Indonesia.** A reader of the Bali air sensors
+  asked how many days of a week were bad, how often the sensor went over a high value on those days, and whether the
+  place is stable or getting better. `planetai grafana` now brings a second dashboard that answers that for the
+  sensors you pick, with the daily and weekly medians beside the median of every outdoor sensor the node reads. You
+  set the two lines yourself; they start at 15 and 55 for PM2.5. Set up › System has a row for it, and the Grafana
+  docs page says how it counts. Nothing in it is calibrated, and it cannot tell a cleaner week from a windier one.
+
+- **22 Nov: a sensor can be corrected against a better one beside it.** If you have a cheap particle sensor a few
+  metres from a better one, name the two in Set up, under Calibrate (`CALIBRATE_PAIRS`), and the Data page shows a
+  corrected number beside the measured one, in Corrections under Models and satellite, with a small mark on the
+  sensor's row in Readings. It is a straight line fitted on the last 14 days, shown only while it has been at least a
+  tenth closer to the better sensor on days the line never saw, so the first one takes two to three weeks, and a shown
+  row says when it was last checked. A number from an hour more than 3 hours old says which hour. It stays 7 days
+  after the better sensor goes quiet. A sensor stuck on one value for 24 hourly readings in a row stops counting
+  from the hour it froze, and the row says which one is stuck. The pack is off until you name a pair and stores nothing but that setting. The
+  node keeps storing, alerting on and sharing the measured number, so no rule, alert, cell, export or parent sees a
+  corrected one. In Bali Air Dispatch, `BAD_INCLUDE` keeps a public station at any distance, for a sensor you put
+  beside it, and `planetai run nearby stations` lists it as included.
+
+  It has not run on any node yet, node #1 included, and no pair has had a public station on one side, so that half is
+  tested on fixtures only. We have not tried a reference instrument, two units of one model side by side or a full wet
+  season, and only PM2.5 was tested. The stuck rule was tried on made-up hours only. Everything we know comes from Smart Citizen's history of our own sensors in Bali,
+  HM-3301 and PMS5003 against a SEN5X. We picked the tenth after looking at those days, so they do not test it
+  independently. [Corrections](docs/site/calibrate.md) has the numbers.
+
+- **22 Nov: the rooms stay in the house.** A node with a parent used to send the hourly means of every sensor it
+  holds, rooms included. Now it sends its outdoor sensors, and the rooms go only if you set `PARENT_INDOOR=on` in
+  Set up › Sharing. The alerts a room raises follow the same switch. None of our nodes has a parent yet, so
+  nothing that was travelling stops.
 
 - **21 Nov: a draft record on commercial rights, for Tomas to rule on.** He asked whether being open source stops
   the Foundation from licensing a version of the node commercially or making a product of one. The public licence

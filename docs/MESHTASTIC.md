@@ -53,8 +53,10 @@ command, port filled in. Everything below runs on the node's machine, with the r
 1. **The packages, once.** `planetai radio` names what to install for its own Python. On a Mac with Apple's Python
    3.9 that is `python3 -m pip install --user "pyobjc-core<12" "pyobjc-framework-Cocoa<12"
    "pyobjc-framework-CoreBluetooth<12" "pyobjc-framework-libdispatch<12" meshtastic paho-mqtt`.
-2. **The broker.** `planetai meshtastic` gives the node an MQTT broker and a user for it. The gateway delivers what
-   the radios hear there. You see the broker's address and password, and `planetai radio` ticks the step.
+2. **The broker.** `planetai meshtastic --broker` gives the node an MQTT broker and a user for it. The gateway
+   delivers what the radios hear there. You see `the broker is up on port 1883`, and `planetai radio` ticks the step.
+   Without `--broker` it goes on to print the settings a gateway radio on WiFi needs in the phone app; a radio on the
+   node's USB needs none of them.
 3. **The fleet.** `planetai radio init` makes one set of channel keys, region and frequency for every radio of this
    node, in `config/radio/fleet.yaml`. On a Bali node you see `region SG_923, slot 19 (921.625 MHz)`. If the node's
    city has no known region it stops and asks for `--region`. It never guesses, because a radio on another
@@ -72,12 +74,16 @@ command, port filled in. Everything below runs on the node's machine, with the r
 6. **Each other radio.** Plug it in, provision it, unplug it and take it where it goes. A field sensor is
    `planetai radio provision sensor "Subak edge" SBK --port …`. A Tracker has GPS; a XIAO sensor node needs its
    place, south latitudes as written: `--fixed -8.80045,115.17664`. A relay is `relay`, a shelf radio `shelf`. Name
-   a sensor for the place where it stands, because that name becomes its name in the node.
+   a sensor for the place where it stands, because that name becomes its name in the node. Alerts reach a shelf
+   radio only once they are turned on: `planetai config set MESH_ALERTS 1`, or *Set up › Alerts*. Then the first
+   line of each alert you must act on goes out on the `planetai` channel.
 7. **Phones.** `planetai radio url` prints the link and three steps (a QR too, if `qrencode` is installed): install
    the Meshtastic app, pair over Bluetooth, open the link and accept replacing the channels.
-8. **Check it.** `planetai radio doctor --port …` goes through the usual reasons nothing arrives, one by one, and
-   the Network view of the workbench, at `http://<this node>:8080/#data/workbench`, draws every radio the node hears. A sensor's first reading comes
-   within its 15-minute interval.
+8. **Check it.** `planetai radio doctor --port …` goes through the usual reasons nothing arrives, then reads the radio
+   back over a new connection and compares it, setting by setting, with what it was provisioned with. On the
+   gateway's own port it points you to the gateway's log instead, because the gateway service holds that port. The
+   Network view of the workbench, at `http://<this node>:8080/#data/workbench`, draws every radio the node hears. A
+   sensor's first reading comes within its 15-minute interval.
 
 If `planetai radio` lists no port, the cause is usually a charge-only cable, a Tracker with its power switch off, a
 XIAO that needs BOOT held while you plug it in, or a USB hub in between.
@@ -86,7 +92,7 @@ XIAO that needs BOOT held while you plug it in, or a USB hub in between.
 
 ```bash
 planetai radio                                           # where you are, and the next command
-planetai meshtastic                                      # the broker and its user
+planetai meshtastic --broker                             # the broker and its user
 planetai radio init                                      # the fleet: region from NODE_CITY, slot, two channel keys
 planetai radio list                                      # the fleet's radios
 planetai radio render sensor "Subak edge" SBK            # print a profile without touching a radio
@@ -125,7 +131,9 @@ again, the gateway last.
 Indoor radios go in `MESH_INDOOR_NODES=!id,!id` in `.env`; a radio does not know which side of a wall it is on.
 
 To reach other nodes, put `RADIO_PEERS=menorca=<tailnet host>:1883:<their MQTT_PASS>` in `.env` and run `planetai
-radio federate --write`. It bridges this node's broker to theirs over the tailnet. Text and alerts on the `fabcity`
+radio federate --write`, then `docker compose restart mosquitto` in the node's folder: the broker reads the bridges
+only when it starts, and `planetai restart` restarts the app alone. It bridges this node's broker to theirs over the
+tailnet. Text and alerts on the `fabcity`
 channel cross, at most six lines a minute; readings and positions never do. `docs/SPEC_radio.md`
 has the design.
 

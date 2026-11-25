@@ -39,8 +39,9 @@ Place. (The 416 m is wrong somewhere on its own account. That gets checked separ
 
 - The inventory: the place's layers, ordered as McHarg's layer cake (§3), each saying what the node holds, holds in part,
   or does not hold yet.
-- Interactions: the analyses in SPEC_place_analyses (sun and shade, trees 3-30-300, built form, street structure), plus
-  sealed ground, rings and distance, walk to, what changed and where the rain goes, each as a tool.
+- Interactions: the analyses in SPEC_place_analyses (kept privately in planetai-design, node-docs/specs/): sun and
+  shade, trees 3-30-300, built form, street structure, plus sealed ground, rings and distance, walk to, what changed
+  and where the rain goes, each as a tool.
 - One vocabulary: the cake's layers and the fitness answers use the classes, verbs and rings of `fabcity-flows` 1.0.
 - Light fitness: four home-scale questions (§6) with fixed rules.
 - Agent-ready: one registry of commands that the panel, the Ask box and the Ask agent all call.
@@ -93,10 +94,9 @@ instruments (§7). Observation is how a place gets to know itself cell by cell: 
 
 The layout was settled in the v2 mockup, 4 November 2026. It lives at
 `FAB CITY/.superpowers/brainstorm/7690-1793751265/content/place-v2.html`, outside the repo, as design reviews are kept
-out of a repo households install from. Its references are Teenage Engineering (thin type, flat surfaces, one signal
-colour), mono (the node's grid and 1 px rules, its existing lock), OP-XY (the black screen, dot switches, eight grey
-steps, state by stroke) and OneSoil's field map (layers as a plain list, the date pill on the map, the controls in
-one column).
+out of a repo households install from. The page has thin type, flat surfaces and one signal colour; the node's grid and
+1 px rules; a black screen with dot switches, eight grey steps and state by stroke; and layers as a plain list, the date
+pill on the map and the controls in one column.
 
 **Desktop, three columns over a lower band**
 

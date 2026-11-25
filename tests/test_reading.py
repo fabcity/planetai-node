@@ -1,4 +1,4 @@
-"""The Place report's reading (docs/SPEC_place_report.md §11): the facts it may rest on, the rules that write it, the
+"""The Place report's reading (SPEC_place_report §11, kept privately in planetai-design, node-docs/specs/): the facts it may rest on, the rules that write it, the
 check a model's text must pass, and the two routes. app/reading.py is imported as it is; the model is a stub and the
 database a fake cursor, so nothing here needs Postgres, a network or a model.
 
@@ -243,7 +243,7 @@ check("Do not give its sentences back" in P and json.dumps(OWN["region"], ensure
       "the prompt hands the node's reading as findings, line by line, never in the shape of the answer, and asks for more than them")
 check(all(h in P for _, h in reading.SECTIONS) and all(x in P for x in reading.LAYERS + reading.ACTIONS + reading.SIGNALS) and "name no person" in P.lower()
       and '"green_share"' in P and "60 to 120 words" in P and "in digits" in P, "the prompt carries the frame, the facts, the ban on names and figures in digits")
-check(len(NAMES.findall(P)) == 5, "the five names live in the prompt, once each, and nowhere else")
+check(not NAMES.search(P), "the prompt names nobody")
 print("  reading: a model's text is kept only with the frame's ids, the node's numbers and no person named")
 
 # ---------------------------------------------------------------- kept on the node, read by the household, written on a button
@@ -403,8 +403,11 @@ b = c.get("/place/reading", headers=ADMIN).json()
 check(b["state"] == "refused" and b["refused"] == "took too long" and b["can_write"] is True, f"a writing older than ten minutes no longer holds the button: {b.get('state')} {b.get('refused')}")
 check(c.post("/place/reading", headers=ADMIN).json() == {"state": "writing", "id": 5} and len(started) == 1, "and a new press starts a new one")
 init = open("init.sql").read()
-check("CREATE TABLE IF NOT EXISTS place_readings" in init and init.rstrip().endswith("INSERT INTO schema_version (version) VALUES ('0.66') ON CONFLICT DO NOTHING;"),
-      "the table is in init.sql, at schema 0.66")
+_versions = re.findall(r"INSERT INTO schema_version \(version\) VALUES \('([0-9.]+)'\) ON CONFLICT DO NOTHING;", init)
+_top = max(_versions, key=lambda v: tuple(map(int, v.split("."))))
+check("CREATE TABLE IF NOT EXISTS place_readings" in init and "VALUES ('0.66')" in init
+      and init.rstrip().endswith(f"INSERT INTO schema_version (version) VALUES ('{_top}') ON CONFLICT DO NOTHING;"),
+      "the table is in init.sql (schema 0.66), and init.sql ends with its highest schema_version")
 print("  reading: the routes are the household's, the admin token alone may ask a model at home, one writing at a time, and a refusal keeps the node's reading")
 
 # ---------------------------------------------------------------- the two pages (app/static/doors-sheet.js reportPages)
@@ -481,7 +484,6 @@ print("  reading: the foot of Place says who wrote the reading and when")
 # app/reading.py is the one place they live; the layer list's own docs keep McHarg, by his ruling of 4 Nov.
 for path, start, end in (("docs/site/place.md", "### The reading, and ways to improve the place", "## Folding"),
                          ("docs/site/api.md", "### GET /place/reading", "### POST /area"),
-                         ("docs/SPEC_place_report.md", "## 11 · The reading", None),
                          ("CHANGELOG.md", "**The Place report reads the place.**", "\n\n- **")):
     text = open(path).read()
     check(start in text, f"{path} has no '{start}'")
@@ -491,7 +493,7 @@ for path, start, end in (("docs/site/place.md", "### The reading, and ways to im
         check(len(part) > 300 and not NAMES.search(part), f"{path}: the part on the reading names a person, or is missing")
 src = open("app/reading.py").read()
 held_in = src[src.index("MANNER = ("):src.index("UNITS = re.compile")]
-check(len(NAMES.findall(held_in)) >= 10 and not NAMES.search(src.replace(held_in, "")), "in app/reading.py the names are in the prompt's manner and the refusal's pattern, and nowhere else")
+check(len(NAMES.findall(held_in)) >= 5 and not NAMES.search(src.replace(held_in, "")), "in app/reading.py the names are in the refusal's pattern, and nowhere else")
 print("  reading: the docs, the API page, the spec and the changelog describe it without naming anybody")
 
 if fails:

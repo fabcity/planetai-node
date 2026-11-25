@@ -155,7 +155,11 @@ Several of these come from Bali Air Dispatch's methodology.
 3. **A daily mean can be one reading.** Check `n` before trusting an aggregate.
 4. **Instants are UTC, days are local.** Daily buckets use `NODE_TZ`. Bali's 9 am burning peak vanishes on a UTC
    day.
-5. **Corrected and raw are both stored.** Raw is never overwritten.
+5. **Corrected and raw are both stored.** Raw is never overwritten. That is for a correction made as a reading
+   arrives, like the EPA humidity correction. A correction against a better sensor beside yours, from the
+   `calibrate` pack, is not stored at all. The node works it out each time the page asks and shows it only while it
+   has been closer, so it never reaches a rule, an alert, an Index cell, the export or a parent, and it is withdrawn
+   7 days after the better sensor goes quiet. [Corrections](calibrate.md) says how.
 6. **Gaps are real.** No fill, no zero, no interpolation. A gap in a series is a gap in the line.
 7. **These are not reference instruments.** They are good for patterns and magnitudes, and the node labels them
    that way.

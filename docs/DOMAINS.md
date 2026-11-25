@@ -38,6 +38,8 @@ and on an ask, never a number.
 | `things` | things | what the home keeps and offers; no rule, no cell |
 | `eyes` | species | the household's pictures and what is in them; no rule, no cell |
 | `insight`, `cold-start` | cross-domain | each rule belongs to the issue it names |
+| `predict` | cross-domain | the node's own series, forecast; no rule, no cell, no alert |
+| `calibrate` | cross-domain | a sensor corrected against a better one beside it, on the Data page only; no rule, no cell |
 | `example-cooking-hours` | none | its one rule belongs to air |
 
 A sensed issue has eyes on it and rules that can ask somebody to do something. A context issue informs and never
