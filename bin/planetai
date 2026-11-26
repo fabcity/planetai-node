@@ -14,6 +14,7 @@
 #   planetai config get KEY one setting, and whether .env is being ignored for it
 #   planetai config set KEY VALUE   change one; the node has it within 20 s
 #   planetai config edit    the raw .env in an editor, as before
+#   planetai role           private or community: what this node is for; `role community|private` changes it, with a backup first
 #   planetai report         write and send one now; `report last` shows the last one
 #   planetai report every 6 hours between reports: 3, 4, 6, 8, 12 or 24
 #   planetai report at 6   the local hour the rhythm starts from
@@ -2399,6 +2400,33 @@ config_wizard() {
   done
 }
 
+cmd_role() {
+  local want="${1:-}" now other kind bd n
+  now="$(envget NODE_KIND)"; case "$now" in community|district) now=community;; *) now=private;; esac
+  [[ -z "$want" ]] && { echo "$now"; return 0; }
+  [[ "$want" == private || "$want" == community ]] || { echo "planetai role: private or community"; exit 2; }
+  [[ "$want" != "$now" ]] || { say "This node is already $now."; return 0; }
+  docker compose exec -T db pg_isready -U planetai </dev/null >/dev/null 2>&1 \
+    || { echo "The node is not running: start it with planetai start, then try again."; exit 1; }
+  step "Change this node from $now to $want"
+  echo "  The change moves what the doors show, who the bot answers (subscribers and their feeds, or the household),"
+  echo "  what the report says and to whom, how much it shares by default, and which packs it suggests."
+  echo "  Readings, settings and alerts stay as they are."
+  bd="$(envget BACKUP_DIR)"; bd="${bd:-./backups}"
+  if [[ "$want" == community ]]; then
+    n="$(docker compose exec -T db psql -tAqU planetai -c "SELECT count(*) FROM sensors WHERE local AND indoor" planetai </dev/null 2>/dev/null | tr -d '[:space:]')"
+    warn "This node holds ${n:-0} indoor sensors. A community node's public pages never show indoor sensors."
+  fi
+  echo "  A backup goes to $bd before anything changes."
+  confirm "Change the role to $want?" || { say "Nothing changed."; return 0; }
+  chmod +x backup.sh; ./backup.sh || fail "the backup did not finish, so the role is unchanged"
+  kind=community; [[ "$want" == private ]] && kind=home
+  envset NODE_KIND "$kind"
+  spin "restarting with the $want role" docker compose up -d --force-recreate app agent || fail "the node did not restart; .env says NODE_KIND=$kind"
+  # (Task 3 offers presets/roles/$want.env here)
+  say "This node is $want."
+}
+
 cmd_config() {
   local sub="${1:-}" want=""
   case "$sub" in --section) want="${2:-}"; sub="";; --section=*) want="${sub#--section=}"; sub="";; esac
@@ -2852,7 +2880,7 @@ case "${1:-help}" in
   setup) shift; cmd_setup "$@";;      status) shift; cmd_status "$@";;     doctor) shift; cmd_doctor "$@";;
   telegram) cmd_telegram;;            test-alert) cmd_test_alert;;  act) shift; cmd_act "$@";;
   report) shift; cmd_report "$@";;
-  update) cmd_update;;  backup) cmd_backup;;  config) shift; cmd_config "$@";;  logs) shift; cmd_logs "$@";;
+  update) cmd_update;;  backup) cmd_backup;;  config) shift; cmd_config "$@";;  role) shift; cmd_role "$@";;  logs) shift; cmd_logs "$@";;
   start) cmd_start;;  stop) cmd_stop;;  restart) cmd_restart;;  sensors) shift; cmd_sensors "$@";;  cells) shift; cmd_cells "$@";;
   mesh) shift; cmd_mesh "$@";;
   meshtastic) shift; cmd_meshtastic "$@";;  reticulum) shift; cmd_reticulum "$@";;  broker) cmd_broker;;

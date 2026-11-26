@@ -115,6 +115,8 @@ file, `snapshot-<node>-<YYYY-MM-DDTHHMM>.json` by default, holds no raw readings
 | `planetai config set KEY VALUE` | A runtime or pack key goes to the database and is live within 20 seconds. A bootstrap key goes to `.env`, and the command offers the restart. |
 | `planetai config unset KEY` | Removes the database value, so the key goes back to `.env` or the built-in default. |
 | `planetai config edit` | Opens `.env` in `$EDITOR` (nano by default), then offers a restart. |
+| `planetai role` | Prints `private` or `community`. |
+| `planetai role private\|community` | Changes the role. It says what moves, counts the indoor sensors the node holds, takes a backup, writes `NODE_KIND` and restarts the app and agent. Readings, settings and alerts stay as they are. |
 | `planetai report every N` | Hours between reports (`REPORT_EVERY`): 3, 4, 6, 8, 12 or 24. |
 | `planetai report at H` | The local hour the report rhythm counts from (`REPORT_ANCHOR`), 0 to 23. |
 | `planetai report level act\|warn\|info` | What interrupts you between reports (`ALERT_LEVEL`). |
