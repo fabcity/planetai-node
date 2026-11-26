@@ -397,7 +397,7 @@ const stranger = L.sendersOf([{ sensor_id: 'home-1/outdoor-1', name: 'a home nea
   { sensor_id: 'home-1/outdoor-2', name: 'a home nearby · outdoor 2', kind: 'child' }, { sensor_id: 'sc-1', kind: 'sensor', local: true },
   { sensor_id: 'home-2/outdoor-1', name: 'a home nearby · outdoor 1', kind: 'child' }],
   { 'home-1/outdoor-1': { pm25: [5, 40] }, 'home-1/outdoor-2': { pm25: [6, 12], temp: [28, 70] } });
-const trusted = L.sendersOf([{ sensor_id: 'ungasan-home/sc-19874', name: 'BAYU NEW ENCLOSURE', kind: 'child' }]);
+const trusted = L.sendersOf([{ sensor_id: 'child-a/sc-19874', name: 'Sensor 2', kind: 'child' }]);
 /* every "this house" or "the house" the doors hold, in their files as written, read through the Wall's table */
 const files = fs.readdirSync('app/static').filter(f => /^doors.*\\.(js|html)$/.test(f));
 const left = files.flatMap(f => M.houseless(fs.readFileSync('app/static/' + f, 'utf8')).split('\\n')
@@ -410,7 +410,7 @@ assert R4["kinds"] == ["Private node", "Private node", "Community node", "Commun
                        "Community node"], R4["kinds"]
 assert R4["stranger"] == [{"id": "home-1", "label": "a home nearby", "sensors": 2, "silent": 12},
                           {"id": "home-2", "label": "a home nearby", "sensors": 1, "silent": None}], R4["stranger"]
-assert R4["trusted"] == [{"id": "ungasan-home", "label": "ungasan-home", "sensors": 1, "silent": None}], R4["trusted"]
+assert R4["trusted"] == [{"id": "child-a", "label": "child-a", "sensors": 1, "silent": None}], R4["trusted"]
 assert not R4["left"], ("a phrase the Wall's table leaves as a house on a community node", R4["left"][:5])
 _core = (ROOT / "app/static/doors-core.js").read_text(); _node = (ROOT / "app/static/doors-node.js").read_text()
 _html = (ROOT / "app/static/doors.html").read_text(); _mob = (ROOT / "app/static/mobile.js").read_text()
