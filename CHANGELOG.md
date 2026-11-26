@@ -7,7 +7,7 @@
   `↩ done e7 · not now e7 · doesn't fit e7` for an event. Real alerts carried no number, so nobody in Sideband could
   answer one, and a message from the event engine could not be answered there at all. Words after the number are
   the note, `act 45` still works, and when the node refuses an answer the bridge's reply says why. A community node's
-  alerts carry no answers, because a community node asks nobody to act. The bridge moves to 7da56e1, with the same
+  alerts carry no answers, because a community node asks nobody to act. The bridge moves to 45f3f40, with the same
   `rns` and `lxmf`.
 
 - **26 Nov: a box with two particle sensors keeps both.** Some boxes carry an HM-3301 and a SEN5X side by side,
