@@ -47,6 +47,16 @@ SC_WIRE_IDS = {
     182: "pm1", 183: "pm25", 185: "pm10", 193: "pm1", 194: "pm25", 196: "pm10", 158: "co2",
 }
 _SC_WIRE_UNKNOWN: set = set()
+# The particle sensors a box can carry together, by catalogue id (adapter.py has the same three by name). In each
+# message one of them owns the box's plain pm1/pm25/pm10 and any other is stored beside it as pm25_<model>, private
+# (config/channels.yml). The owner is the first of _PM_ORDER in the message, the order the DIY firmware writes them
+# (v5, v6: HM-3301, SEN5X, PMS5003), so it is the sensor "first in the message" always stored.
+# ponytail: decided per message. The firmware leaves a sensor out when its read failed, and for that minute the
+# SEN5X is the box's pm25, as it was before. Remembering the owner per device fixes it and needs a rule for when a
+# box really has changed sensor; a column on the sensor row if those minutes ever matter.
+SC_WIRE_PM = {233: "hm3301", 234: "hm3301", 235: "hm3301", 193: "sen5x", 194: "sen5x", 196: "sen5x",
+              87: "pms5003", 88: "pms5003", 89: "pms5003"}
+_PM_ORDER = ("hm3301", "sen5x", "pms5003")
 
 
 def sc_sensor_id(token: str) -> str:
@@ -95,8 +105,11 @@ def smartcitizen_mqtt(topic: str, payload: bytes, meta: dict | None = None):
         return [], [], {"kind": kind, "sensor_id": sid}
     readings = []
     for ts, vals in groups:
+        owner = min((SC_WIRE_PM[c] for c in vals if c in SC_WIRE_PM), key=_PM_ORDER.index, default=None)
         for cid, v in vals.items():
             metric = SC_WIRE_IDS.get(cid)
+            if cid in SC_WIRE_PM and SC_WIRE_PM[cid] != owner:
+                metric = f"{metric}_{SC_WIRE_PM[cid]}"
             if metric:
                 readings.append((ts, sid, metric, v))
             elif cid and cid not in _SC_WIRE_UNKNOWN:

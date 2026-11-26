@@ -4,13 +4,16 @@ description: >-
   This node's own Smart Citizen kits, read from api.smartcitizen.me: the ones listed by id, and the ones in the
   household's account that published in the last three days. And the kits and DIY nodes that publish straight to this
   node's broker (device/sck/#), passed on to smartcitizen.me for the tokens in SC_FORWARD. Every one is the house's
-  own, indoor or outdoor from the kit's own exposure or the device's meta message.
+  own, indoor or outdoor from the kit's own exposure or the device's meta message. A box with two particle sensors
+  keeps both. Its PM2.5 stays the sensor it always was, and the other is stored beside it as pm25_sen5x, pm25_hm3301
+  or pm25_pms5003, private to the house.
 author: PLANETAI core (official)
 version: 1.0.0
 requires: { node: ">=0.83.0" }
 kind: code
 domain: air
-metrics: [pm25, pm10, pm1, temp, humidity, pressure, bme_iaq, gas_resistance, noise, light, eco2, tvoc]
+metrics: [pm25, pm10, pm1, temp, humidity, pressure, bme_iaq, gas_resistance, noise, light, eco2, tvoc,
+          pm25_sen5x, pm10_sen5x, pm1_sen5x, pm25_hm3301, pm10_hm3301, pm1_hm3301, pm25_pms5003, pm10_pms5003, pm1_pms5003]
 scales: [community]
 sources: [environmental/community/smart-citizen]
 # On whenever a kit is configured or a broker is set, as it was in the core: a list switch is on when any key is set
