@@ -16,7 +16,7 @@ cat > "$t/stub/docker" <<'STUB'
 [ -n "$DOCKER_DOWN" ] && exit 1
 case "$*" in
   *pg_isready*) exit 0;;
-  *"indoor"*) echo 6; exit 0;;
+  *"indoor"*) [ -n "$COUNT_FAIL" ] && exit 1; echo 6; exit 0;;
   *" up "*) echo "$*" >> "$CALLS"; exit 0;;
 esac
 exit 0
@@ -30,21 +30,29 @@ printf 'NODE_NAME=t\nNODE_KIND=district\n' > "$D/.env"
 [[ "$(run)" == community ]] && ok "and community for district" || bad "role did not print community"
 
 printf 'NODE_NAME=t\nNODE_KIND=home\n' > "$D/.env"; rm -f "$t/calls"
+rm -f "$t/calls"; before="$(cat "$D/.env")"
 out="$(run community)"; rc=$?
-[[ $rc -eq 0 ]] && ok "private to community succeeds" || bad "exit $rc: $out"
+[[ $rc -ne 0 ]] && grep -qF 'No terminal here: run it in a terminal, or add --yes.' <<<"$out" && [[ "$(cat "$D/.env")" == "$before" && ! -e "$t/calls" ]] \
+  && ok "with no terminal and no --yes it refuses, and changes nothing" || bad "no-tty rc=$rc out=$out"
+out="$(run --yes community)"; rc=$?
+[[ $rc -eq 0 ]] && ok "private to community succeeds with --yes" || bad "exit $rc: $out"
 grep -q 'This node holds 6 indoor sensors' <<<"$out" && ok "it says how many indoor sensors the node holds" || bad "no indoor count: $out"
 grep -q 'backups/test.sql.gz' <<<"$out" && ok "and where the backup goes" || bad "no backup path"
 grep -q '^NODE_KIND=community$' "$D/.env" && ok "NODE_KIND=community is written" || bad ".env: $(cat "$D/.env")"
 grep -q 'backup ran' "$t/calls" && grep -q 'force-recreate app agent' "$t/calls" && ok "the backup ran, then app and agent restarted" || bad "calls: $(cat "$t/calls" 2>/dev/null)"
 grep -q 'Readings, settings and alerts stay as they are' <<<"$out" && ok "it names what changes" || bad "no what-changes lines"
 
-run private >/dev/null; grep -q '^NODE_KIND=home$' "$D/.env" && ok "community to private writes NODE_KIND=home" || bad ".env: $(cat "$D/.env")"
+run --yes private >/dev/null; grep -q '^NODE_KIND=home$' "$D/.env" && ok "community to private writes NODE_KIND=home" || bad ".env: $(cat "$D/.env")"
 
 printf 'NODE_NAME=t\nNODE_KIND=home\n' > "$D/.env"; before="$(cat "$D/.env")"
-out="$(DOCKER_DOWN=1 run community)"; rc=$?
+out="$(DOCKER_DOWN=1 run --yes community)"; rc=$?
 [[ $rc -eq 1 ]] && grep -qF 'The node is not running: start it with planetai start, then try again.' <<<"$out" && [[ "$(cat "$D/.env")" == "$before" ]] \
   && ok "with the containers down it says so, exits 1 and leaves .env alone" || bad "rc=$rc out=$out"
 
+printf 'NODE_NAME=t\nNODE_KIND=home\n' > "$D/.env"
+out="$(COUNT_FAIL=1 run --yes community)"
+grep -qF 'This node may hold indoor sensors (the count could not be read).' <<<"$out" && ! grep -q 'holds 0' <<<"$out" && grep -q '^NODE_KIND=community$' "$D/.env" \
+  && ok "a failed count says it is unknown and goes on to the confirm" || bad "count fail: $out"
 out="$(run banana)"; rc=$?
 [[ $rc -eq 2 ]] && grep -q 'private or community' <<<"$out" && ok "an unknown role exits 2 and names the two" || bad "rc=$rc out=$out"
 [[ $fails -eq 0 ]]

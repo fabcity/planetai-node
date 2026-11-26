@@ -14,7 +14,7 @@
 #   planetai config get KEY one setting, and whether .env is being ignored for it
 #   planetai config set KEY VALUE   change one; the node has it within 20 s
 #   planetai config edit    the raw .env in an editor, as before
-#   planetai role           private or community: what this node is for; `role community|private` changes it, with a backup first
+#   planetai role           private or community: what this node is for; `role community|private [--yes]` changes it, with a backup first
 #   planetai report         write and send one now; `report last` shows the last one
 #   planetai report every 6 hours between reports: 3, 4, 6, 8, 12 or 24
 #   planetai report at 6   the local hour the rhythm starts from
@@ -165,7 +165,7 @@ port() { local p; p="$(envget APP_PORT)"; echo "${p:-8080}"; }
 mesh_packets() {
   local n; n="$(api /health | json 'print(d.get("mesh",{}).get("packets",0))' 2>/dev/null)"
   [[ "${n:-0}" -gt 0 ]] && { echo "$n"; return; }
-  n="$(docker compose exec -T db psql -tAqU planetai -c "SELECT count(*) FROM readings r JOIN sensors s USING (sensor_id) WHERE s.source='meshtastic' AND r.ts > now() - interval '1 hour'" planetai </dev/null 2>/dev/null | tr -d '[:space:]')"
+  n="$(docker compose exec -T db psql -tAqU planetai -c "SELECT count(*) FROM readings r JOIN sensors s USING (sensor_id) WHERE s.source='meshtastic' AND r.ts > now() - interval '1 hour'" planetai </dev/null 2>/dev/null | tr -d '[:space:]')" || n=
   echo "${n:-0}"
 }
 # The CLI runs on the node's own machine, but the container sees the Docker bridge gateway, not loopback, so
@@ -300,7 +300,7 @@ PY
     [[ -d .git ]] && return 0                       # a developer's checkout knows what it is
     local here there
     here="$(cat VERSION 2>/dev/null || echo dev)"
-    there="$(curl -fsS --max-time 6 "https://planetai.fab.city/node0/get/VERSION" 2>/dev/null | tr -d '[:space:]')"
+    there="$(curl -fsS --max-time 6 "https://planetai.fab.city/node0/get/VERSION" 2>/dev/null | tr -d '[:space:]')" || n=
     [[ -z "$there" || -z "$here" || "$here" == "$there" ]] && return 0
     echo
     warn "this folder holds $here. The published version is $there."
@@ -2401,11 +2401,13 @@ config_wizard() {
 }
 
 cmd_role() {
-  local want="${1:-}" now other kind bd n
+  local want="" yes=0 now kind bd n a
+  for a in "$@"; do case "$a" in --yes) yes=1;; *) want="$a";; esac; done
   now="$(envget NODE_KIND)"; case "$now" in community|district) now=community;; *) now=private;; esac
   [[ -z "$want" ]] && { echo "$now"; return 0; }
   [[ "$want" == private || "$want" == community ]] || { echo "planetai role: private or community"; exit 2; }
   [[ "$want" != "$now" ]] || { say "This node is already $now."; return 0; }
+  [[ $yes -eq 1 || -t 0 ]] || { echo "No terminal here: run it in a terminal, or add --yes."; exit 1; }
   docker compose exec -T db pg_isready -U planetai </dev/null >/dev/null 2>&1 \
     || { echo "The node is not running: start it with planetai start, then try again."; exit 1; }
   step "Change this node from $now to $want"
@@ -2414,8 +2416,9 @@ cmd_role() {
   echo "  Readings, settings and alerts stay as they are."
   bd="$(envget BACKUP_DIR)"; bd="${bd:-./backups}"
   if [[ "$want" == community ]]; then
-    n="$(docker compose exec -T db psql -tAqU planetai -c "SELECT count(*) FROM sensors WHERE local AND indoor" planetai </dev/null 2>/dev/null | tr -d '[:space:]')"
-    warn "This node holds ${n:-0} indoor sensors. A community node's public pages never show indoor sensors."
+    n="$(docker compose exec -T db psql -tAqU planetai -c "SELECT count(*) FROM sensors WHERE local AND indoor" planetai </dev/null 2>/dev/null | tr -d '[:space:]')" || n=
+    if [[ "$n" =~ ^[0-9]+$ ]]; then warn "This node holds $n indoor sensors. A community node's public pages never show indoor sensors."
+    else warn "This node may hold indoor sensors (the count could not be read). A community node's public pages never show indoor sensors."; fi
   fi
   echo "  A backup goes to $bd before anything changes."
   confirm "Change the role to $want?" || { say "Nothing changed."; return 0; }
