@@ -36,6 +36,18 @@ SC_METRICS = {
     "Gas Resistance": "gas_resistance", "Noise Level": "noise", "Light": "light",
     "eCO2": "eco2", "TVOC": "tvoc",
 }
+# A box can carry two particle sensors (a DIY node's HM-3301 beside a SEN5X, 22 Nov 2026). Both are "PM2.5" to the
+# platform, and two rows with one key reach an insert that keeps the first: one sensor was dropped without a word.
+# The first by sensor name keeps the plain metric, which is the one that always had it (the API lists by name), so a
+# box's history carries on. A later one is stored beside it as pm25_<model>, private (config/channels.yml), for
+# these three; any other second sensor is still dropped, because a metric with no declared role is public.
+# Written out, not built from the model's name: tools/check_docs.py reads this file for every metric a channel declares.
+SC_SECOND_PM = {
+    "SEN5X": {"pm1": "pm1_sen5x", "pm25": "pm25_sen5x", "pm10": "pm10_sen5x"},
+    "HM-3301": {"pm1": "pm1_hm3301", "pm25": "pm25_hm3301", "pm10": "pm10_hm3301"},
+    "PMS5003": {"pm1": "pm1_pms5003", "pm25": "pm25_pms5003", "pm10": "pm10_pms5003"},
+}
+_dropped: set = set()
 
 
 def smartcitizen(hc: httpx.Client, device_ids: list[int]):
@@ -58,13 +70,29 @@ def smartcitizen(hc: httpx.Client, device_ids: list[int]):
             "meta": {"hardware": (d.get("hardware") or {}).get("name"), "state": d.get("state"),
                      "url": f"https://smartcitizen.me/kits/{did}"},
         })
-        if ts is None:
-            continue
-        for s in data.get("sensors") or []:
+        seen = set()
+        for s in sorted(data.get("sensors") or [], key=lambda s: str(s.get("name") or "")):
             m = s.get("measurement") or {}
             metric = SC_METRICS.get(m.get("name") if isinstance(m, dict) else m)
-            if metric and s.get("value") is not None:
-                readings.append((ts, sid, metric, float(s["value"])))
+            if not metric or s.get("value") is None:
+                continue
+            at = ts         # the kit's time, as always: trust/channel_dead finds a dead channel by the flat day this draws
+            if metric in seen:
+                name = str(s.get("name") or "")
+                second = next((v.get(metric) for k, v in SC_SECOND_PM.items() if k in name), None)
+                if not second or second in seen:
+                    if (did, name) not in _dropped:
+                        _dropped.add((did, name)); log.info("smartcitizen: kit %s has a second %s, %r, and it is not stored", did, metric, name)
+                    continue
+                metric = second
+                # the second sensor's own time. A sensor that stopped weeks ago is still listed with its last value
+                # (one kit's HM-3301, quiet for four weeks, read 16.0 at every poll), and no rule watches a private
+                # channel for a flat day, so under the kit's time it would be stored as fresh for ever.
+                at = _iso(s.get("last_reading_at")) or ts
+            if at is None:
+                continue
+            seen.add(metric)
+            readings.append((at, sid, metric, float(s["value"])))
     return sensors, readings
 
 
