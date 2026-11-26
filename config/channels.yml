@@ -18,6 +18,29 @@
 - { source: smartcitizen, metric: bme_iaq,        role: index,   comparable: false }
 - { source: smartcitizen, metric: eco2,           role: index,   comparable: false, unit: "ppm" }
 - { source: smartcitizen, metric: tvoc,           role: index,   comparable: false }
+# A second particle sensor in the same box (packs/smartcitizen, 22 Nov 2026): the box's pm25 stays the sensor it
+# always was, and the other is kept beside it under its model's name. Private, so one box is never two instruments
+# to a rule, a mean, an Index cell, the export or a parent. Declared here and not in the pack, for both the API's
+# source and the broker's, because a metric with no declared role is public, and these rows must outlive the pack
+# being switched off. To let one travel as open data, give it `role: ambient, comparable: false`, as pm25_raw has.
+- { source: smartcitizen,        metric: pm1_sen5x,    role: private, comparable: false, unit: "µg/m³", reference: sen5x }
+- { source: smartcitizen,        metric: pm25_sen5x,   role: private, comparable: false, unit: "µg/m³", reference: sen5x }
+- { source: smartcitizen,        metric: pm10_sen5x,   role: private, comparable: false, unit: "µg/m³", reference: sen5x }
+- { source: smartcitizen,        metric: pm1_hm3301,   role: private, comparable: false, unit: "µg/m³", reference: hm3301 }
+- { source: smartcitizen,        metric: pm25_hm3301,  role: private, comparable: false, unit: "µg/m³", reference: hm3301 }
+- { source: smartcitizen,        metric: pm10_hm3301,  role: private, comparable: false, unit: "µg/m³", reference: hm3301 }
+- { source: smartcitizen,        metric: pm1_pms5003,  role: private, comparable: false, unit: "µg/m³", reference: plantower }
+- { source: smartcitizen,        metric: pm25_pms5003, role: private, comparable: false, unit: "µg/m³", reference: plantower }
+- { source: smartcitizen,        metric: pm10_pms5003, role: private, comparable: false, unit: "µg/m³", reference: plantower }
+- { source: smartcitizen-direct, metric: pm1_sen5x,    role: private, comparable: false, unit: "µg/m³", reference: sen5x }
+- { source: smartcitizen-direct, metric: pm25_sen5x,   role: private, comparable: false, unit: "µg/m³", reference: sen5x }
+- { source: smartcitizen-direct, metric: pm10_sen5x,   role: private, comparable: false, unit: "µg/m³", reference: sen5x }
+- { source: smartcitizen-direct, metric: pm1_hm3301,   role: private, comparable: false, unit: "µg/m³", reference: hm3301 }
+- { source: smartcitizen-direct, metric: pm25_hm3301,  role: private, comparable: false, unit: "µg/m³", reference: hm3301 }
+- { source: smartcitizen-direct, metric: pm10_hm3301,  role: private, comparable: false, unit: "µg/m³", reference: hm3301 }
+- { source: smartcitizen-direct, metric: pm1_pms5003,  role: private, comparable: false, unit: "µg/m³", reference: plantower }
+- { source: smartcitizen-direct, metric: pm25_pms5003, role: private, comparable: false, unit: "µg/m³", reference: plantower }
+- { source: smartcitizen-direct, metric: pm10_pms5003, role: private, comparable: false, unit: "µg/m³", reference: plantower }
 
 - { source: airgradient, metric: pm25,       role: ambient, comparable: true,  unit: "µg/m³", reference: plantower }
 - { source: airgradient, metric: pm25_raw,   role: ambient, comparable: false, unit: "µg/m³", reference: plantower }
