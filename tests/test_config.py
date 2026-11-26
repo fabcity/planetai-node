@@ -45,7 +45,7 @@ assert len(_runs) == len(set(_runs)), (
     f"a settings group is split across RUNTIME rather than declared in one block: {_runs}. All three "
     "surfaces print a heading when the group changes, so a strayed key prints a second heading for it.")
 assert _runs[0] == "basics" and re.search(r'^\s*"NODE_ISSUES":\s*\(\s*"basics"', _runtime, re.M) \
-    and _runtime.index('"NODE_ISSUES"') < min(_runtime.index(f'"{k}"') for k in ("NODE_KIND", "ALERT_LOCALE", "UI_MODE")), (
+    and _runtime.index('"NODE_ISSUES"') < min(_runtime.index(f'"{k}"') for k in ("ALERT_LOCALE", "UI_MODE")), (
     "basics leads the settings, and NODE_ISSUES leads basics, on every surface: it is the one setting that says "
     "what this place is for")
 

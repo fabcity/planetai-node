@@ -57,18 +57,18 @@ _RX, _RX_LABELS = _compile(SWAPS), _compile(LABEL_SWAPS)
 
 
 def kind() -> str:
-    """NODE_KIND as the node holds it: a settings row first, then the environment. Lowercase, stripped."""
-    try:
-        import settings
-        k = settings.get("NODE_KIND", "")
-    except Exception:  # noqa: BLE001 — a validator or a test without the app's settings
-        k = os.getenv("NODE_KIND", "")
-    return (k or "").strip().lower()
+    """NODE_KIND from the environment (.env, read at start); never a settings row. Lowercase, stripped."""
+    return os.getenv("NODE_KIND", "").strip().lower()
+
+
+def role(k: str | None = None) -> str:
+    """"community" for a community or a district, "private" for a home, a business or a node that never said."""
+    return "community" if (kind() if k is None else (k or "").strip().lower()) in PLACE_KINDS else "private"
 
 
 def is_house(k: str | None = None) -> bool:
     """True unless the node says it is a community or a district."""
-    return (kind() if k is None else (k or "").strip().lower()) not in PLACE_KINDS
+    return role(k) == "private"
 
 
 def own_scale(k: str | None = None) -> str:
