@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **26 Nov: an alert on Reticulum says how to answer it.** On a private node, an `act` alert sent over Reticulum
+  now ends with the answers it takes, in the node's language: `↩ done 45 · not now 45` for an alert, and
+  `↩ done e7 · not now e7 · doesn't fit e7` for an event. Real alerts carried no number, so nobody in Sideband could
+  answer one, and a message from the event engine could not be answered there at all. Words after the number are
+  the note, `act 45` still works, and when the node refuses an answer the bridge's reply says why. A community node's
+  alerts carry no answers, because a community node asks nobody to act. The bridge moves to 744309e, with the same
+  `rns` and `lxmf`.
+
 - **26 Nov: a box with two particle sensors keeps both.** Some boxes carry an HM-3301 and a SEN5X side by side,
   and Smart Citizen calls both PM2.5. The node stored the first one it was given and dropped the other, with
   nothing in the log. On one box on 22 Nov the HM-3301 read 5.0 µg/m³ and the SEN5X 12.6, and the page showed

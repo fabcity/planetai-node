@@ -15,9 +15,12 @@ hub, how many nodes it hears, where its alerts go and what it answers.
   Reticulum messengers, can write to it.
 - **Alerts as messages.** Every `act` alert goes, in full, to each address in Set up › Sharing › Reticulum alert
   addresses.
-- **Answers.** `act 3`, or `act 3 opened the windows`, sent from one of those addresses closes alert #3, the same as a
-  Telegram reply or `planetai act`. Anyone else who writes gets one reply saying the node takes `act` only from the
-  addresses it sends alerts to, and nothing is recorded.
+- **Answers.** On a private node each alert ends with the answers it takes, the same three as the buttons under a
+  Telegram message: `↩ done 45 · not now 45` for an alert, and `↩ done e7 · not now e7 · doesn't fit e7` for an
+  event, in the node's language. Send one back from one of those addresses, with your own words after the number if
+  you want, `done 45 opened the windows`, and the node records it. `act 45` still works. When the node cannot record
+  it, the reply says why. Anyone else who writes gets one reply saying the node takes `act` only from the addresses
+  it sends alerts to, and nothing is recorded. A community node asks nobody to act, so its alerts carry no answers.
 - **Presence.** With presence on, the node announces its name, version and kind, and an area about 60 km across,
   every half hour. The nodes on the hub list it under The nodes around it, and yours lists them.
 - **Hello.** `planetai hello` sends this node's entry to the programme's inbox on node #1, so a person can add it to
@@ -27,8 +30,8 @@ hub, how many nodes it hears, where its alerts go and what it answers.
 
 Apart from `hello`, nodes do not write to each other over Reticulum, and no reading travels over it. When a
 house sends its hourly means to a community node, they go over a network the two share, a LAN or a tailnet, and the
-Node door of each says where they went and what came in. A message to a node that is not `act` or `hello` gets no
-answer. Anyone can announce any name, so hearing a node does not prove who runs it.
+Node door of each says where they went and what came in. A message to a node that is not an answer or `hello`
+gets no reply. Anyone can announce any name, so hearing a node does not prove who runs it.
 
 ## Turn it on
 
@@ -60,8 +63,8 @@ under Apache-2.0, so the node's own code never takes in `rns` or `lxmf`. It runs
    restarting: the node sends the list to the bridge with each alert. The Node door's "Its alerts" row now counts
    your address.
 5. **Send yourself a test.** Run `planetai test-alert`. Sideband shows a message from the node titled
-   `planetai <NODE_NAME>`, with the whole test alert, and the terminal says which alert number it was.
-6. **Answer it.** Send `act <number> testing` from Sideband. The node replies `recorded: you acted on #<number>`, and
+   `planetai <NODE_NAME>`, with the whole test alert, ending with `↩ done <number> · not now <number>`.
+6. **Answer it.** Send `done <number> testing` from Sideband. The node replies `recorded: you acted on #<number>`, and
    Data shows the alert as acted. It counts in ρ like any other answer, and its note says it was a test.
 
 ## Check it end to end
@@ -73,8 +76,9 @@ Run these after you turn it on, and again after an update. Each row is one thing
 | `planetai doctor` | the terminal | `✓ reticulum bridge up`, and `✓ dialling the Fab City hub` once you said yes |
 | Node › Reticulum | the page | "The bridge is running.", the address, and the hub row saying "dialling it" |
 | `planetai test-alert` | Sideband | a message titled `planetai <NODE_NAME>` |
-| `act <number> testing` from your address | Sideband | `recorded: you acted on #<number>` |
-| `act <number>` from an address the node does not send to | Sideband | one reply, `this node takes act only from the addresses it sends alerts to` |
+| `done <number> testing` from your address | Sideband | `recorded: you acted on #<number>` |
+| `done 999999` from your address | Sideband | `not recorded: no such alert` |
+| `done <number>` from an address the node does not send to | Sideband | one reply, `this node takes act only from the addresses it sends alerts to` |
 | Node › The nodes around it | the page | the nodes on the hub, each "heard on the hub, 20 min ago, about 340 km away" |
 | after `planetai update` | Node › The nodes around it, on another node | your node's new version within a minute |
 
@@ -120,8 +124,9 @@ bridge's `config.tpl` the first time; uncomment it and pass the device into the 
 - **No message in Sideband.** `planetai logs reticulum` says `no path to <hash> yet; is that client announced and
   reachable?` when the node has not heard your phone. Open Sideband on the same network as the node so it announces,
   and check the interface from step 3.
-- **`act` recorded nothing.** Your address is not in Set up › Sharing › Reticulum alert addresses, or the node has
-  not sent it an alert since you added it. The log says which.
+- **An answer recorded nothing.** When the node refused it, the reply says why. With no reply at all, your address
+  is not in Set up › Sharing › Reticulum alert addresses, or the node has not sent it an alert since you added it.
+  `planetai logs reticulum` says which.
 - **The hub row says "not answering".** `planetai doctor` checks the hub again and `planetai logs reticulum` says why.
 - **The bridge is not answering.** `planetai logs reticulum`, then `planetai reticulum` to rebuild and start it.
 

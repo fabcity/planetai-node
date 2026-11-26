@@ -12,6 +12,8 @@ import unicodedata
 
 import httpx
 
+import actions
+import placewords
 import settings
 import sources
 
@@ -75,11 +77,27 @@ def mesh_send(text: str) -> None:
         log.warning("mesh send failed: %s", type(e).__name__)
 
 
-def notify(level: str, text: str, keyboard: list | None = None, home: str = "", home_before_last: bool = False) -> None:
+def reticulum_answers(ref: str) -> str:
+    """The line under an act alert sent over Reticulum: the answers a reply can carry, each with the number the bridge
+    reads back (fabcity/planetai-reticulum). Reticulum has no buttons, and real alerts have carried no number since
+    v0.39, so without this line nobody could answer one there. `ref` is an alert's id ("45": done, not now) or an
+    event's ("e7": done, not now, doesn't fit), in the words of the event buttons (actions.BUTTONS), which the bridge
+    reads in all three languages. A community node asks nobody to act (Tomas, 26 Nov 2026: "No act, feeds only"), so
+    its alerts carry no line."""
+    if not ref or not placewords.is_house():
+        return ""
+    b = actions.BUTTONS.get(settings.get("ALERT_LOCALE", "en") or "en") or actions.BUTTONS["en"]
+    keys = ("done", "not_now", "doesnt_fit") if ref.startswith("e") else ("done", "not_now")
+    return "↩ " + " · ".join(f"{b[k].lower()} {ref}" for k in keys)
+
+
+def notify(level: str, text: str, keyboard: list | None = None, home: str = "", home_before_last: bool = False,
+           answer: str = "") -> None:
     """Send an alert. `home` is a line for the household's own Telegram only (who in this house it matters to,
     learn.alert_line; the report's morning memory): never the mesh, Reticulum or the log, which other people and
     machines can read. It goes at the end, or above the last paragraph with `home_before_last` (the report's
-    invitation stays its last line)."""
+    invitation stays its last line). `answer` is what an answer on Reticulum names: the alert's id, or "e" and the
+    event's (reticulum_answers)."""
     # One sign per message (design review, 14 Oct): a text that opens with its own (📈, ✅, the report's 🌡️) is not
     # given the level's as well; node #1 sent "ℹ️ 🌡️ It is hot inside".
     icon = "" if text[:1] and unicodedata.category(text[0]) == "So" else {"info": "ℹ️", "warn": "⚠️", "act": "🔴"}.get(level, "")
@@ -88,7 +106,9 @@ def notify(level: str, text: str, keyboard: list | None = None, home: str = "", 
         mesh_send(text.split("\n")[0])            # the mesh gets the first line only: LoRa frames are small
         if RETICULUM_URL:
             try:
-                httpx.post(f"{RETICULUM_URL}/send", json={"text": text, "to": RETICULUM_TO()}, timeout=10)
+                line = reticulum_answers(answer)
+                httpx.post(f"{RETICULUM_URL}/send", json={"text": f"{text}\n\n{line}" if line else text, "to": RETICULUM_TO()},
+                           timeout=10)
             except Exception as e:  # noqa: BLE001
                 log.warning("reticulum send failed: %s", type(e).__name__)
     tok, chats = TG()

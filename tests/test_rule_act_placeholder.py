@@ -59,7 +59,7 @@ def run(rules, profiles):
     log.warning = log.info = lambda *a: None
     os.environ["COMPOSE_PROFILES"] = profiles
     g = dict(packs=packs, index=index, events_pg=events_pg, settings=settings, log=log, db=db, _act=actions, os=os, buttons=buttons, json=json,
-             notify=lambda lvl, text, keyboard=None, home="": notified.append(text),
+             notify=lambda lvl, text, keyboard=None, home="", answer="": notified.append(text),
              _alert_home=lambda issue: "", run_report=lambda cur: None, _quiet=lambda lvl: False,
              LOCALE=lambda: "en", _local_now=lambda: "now")
     exec(code, g)

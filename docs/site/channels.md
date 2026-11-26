@@ -9,7 +9,7 @@ there, part of [ρ](rho.md).
 |---|---|---|---|---|
 | Telegram | every alert that reaches the floor; every report, the day's first with the morning memory; the bot's replies | yes | `/act <id> <words>`, and the buttons under an event or a rule's alert, when the bot runs | `planetai telegram` |
 | Meshtastic (LoRa mesh) | `act` alerts, first line only | no | no | `planetai meshtastic`, then `MESH_ALERTS=1` |
-| Reticulum (LXMF) | `act` alerts, full text | no | `act <id> [note]` | `planetai reticulum` |
+| Reticulum (LXMF) | `act` alerts, full text | no | `done <id>`, `not now <id>`, and for an event `doesn't fit e<id>`, with a note after the number | `planetai reticulum` |
 | Home Assistant | every alert, sent or not, and every report sent, as entity state | no (LAN) | no | `planetai homeassistant` |
 
 Telegram, the mesh and Reticulum are all reached from `notify()` in `app/channels.py`. Home Assistant is a pack,
@@ -93,7 +93,8 @@ on [Radios](radios.md).
 
 Reticulum has its own page, [Reticulum](reticulum.md), with the steps and the checks. As a channel it works like the
 others: `planetai reticulum` gives the node an address, the node sends each `act` alert as a message to the addresses
-in Set up › Sharing › Reticulum alert addresses, and `act 3` sent back from one of them closes alert #3. With no
+in Set up › Sharing › Reticulum alert addresses, and on a private node `done 3` sent back from one of them closes
+alert #3, as the buttons under a Telegram message would. With no
 internet between the phone and the node, over a LAN or a LoRa radio, it still works.
 
 ## Home Assistant
@@ -123,7 +124,7 @@ Telegram hello stay in English. The terminal is in English.
 ## What a house with no internet still gets
 
 A shelf radio paired to a phone receives the first line of every `act` alert over LoRa. Sideband receives the
-whole alert over LXMF and can answer `act <id>`. Home Assistant on the LAN keeps every entity current, and the
+whole alert over LXMF and can answer it, `done <id>`. Home Assistant on the LAN keeps every entity current, and the
 dashboard on a wall screen keeps drawing. The node keeps polling its LAN sensors, running its rules and writing its
 reports; only Telegram waits for the internet to come back.
 

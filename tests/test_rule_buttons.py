@@ -66,7 +66,7 @@ def run(row, tg, level="act", quiet=False):
     os.environ["COMPOSE_PROFILES"] = "agent"
     g = dict(packs=packs, index=index, events_pg=events_pg, settings=settings, log=log, db=db, _act=actions, os=os,
              buttons=buttons, json=json,
-             notify=lambda lvl, text, keyboard=None, home="": sent.append((text, keyboard)),
+             notify=lambda lvl, text, keyboard=None, home="", answer="": sent.append((text, keyboard)),
              _alert_home=lambda issue: "", run_report=lambda cur: None, _quiet=lambda lvl: quiet,
              LOCALE=lambda: "en", _local_now=lambda: "now")
     exec(code, g)
