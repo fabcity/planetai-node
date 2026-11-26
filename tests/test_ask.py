@@ -244,7 +244,7 @@ LAT2, LON2 = FIX2["health"]["lat"], FIX2["health"]["lon"]
 NAMES2 = sorted({s["name"].strip() for s in FIX2["sensors"] + DOC2["stations"] if len((s.get("name") or "").strip()) >= 3})
 PRIVATE = ["Tomas Diez", "SECRET-HOUSE-USUAL", "PM2.5 inside", "SECRET-WORKED", "SECRET-DIGEST", "Grandma's purifier",
            "SECRET-THING-USES", "Things this home keeps"]
-check("Tomas Diez" in json.dumps(DOC2) and "K ROOM - BAYU HOLES" in json.dumps(DOC2),
+check("Tomas Diez" in json.dumps(DOC2) and "Sensor 3" in json.dumps(DOC2),
       "the 6 Oct capture no longer names who answered or a room, so the wall's privacy test would prove nothing")
 DOC2["sections"] = [
     {"id": "things", "pack": "thingdata", "stage": "observe", "title": {"en": "Things this home keeps"}, "wall": False,
@@ -253,7 +253,7 @@ DOC2["sections"] = [
      "readouts": [{"metric": "hotspots_25km", "label": {"en": "hotspots within 25 km"}, "value": 3, "dp": 0, "unit": "",
                    "source": "NASA FIRMS (VIIRS)", "provenance": "model"},
                   {"metric": "thing_uses", "label": {"en": "SECRET-THING-USES"}, "value": 2, "dp": 0, "unit": "", "provenance": "partial"},
-                  {"metric": "upwind_km", "label": {"en": f"nearest upwind of K ROOM - BAYU HOLES at {LAT2:.4f}"}, "value": 11,
+                  {"metric": "upwind_km", "label": {"en": f"nearest upwind of Sensor 3 at {LAT2:.4f}"}, "value": 11,
                    "dp": 0, "unit": "km", "provenance": "model"}]}]
 _LEARNED = [
     {"kind": "usual", "key": "indoor-pm25", "scope": "house", "status": "holding", "statement": "SECRET-HOUSE-USUAL",

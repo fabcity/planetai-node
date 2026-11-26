@@ -44,6 +44,13 @@ v0.66 wire: `/sources` at registry pin `85a194c`, the `kind='facility'` row the 
 
 ## Making one
 
+A committed snapshot gives nothing finer than the node's resolution-8 cell, as `main._published_position` does for a
+reader without a token: the node's point and its own kits stand on one made-up spot inside that cell, three decimals
+(not its centre, so a page that may print the centre and must never print the point can still be tested), the cells
+finer than resolution 8 move on the grid with that spot, distances from the node are measured from it, a kit from a
+public list stands at its own cell's centre, and the kits are named Sensor 1, Sensor 2 and so on, as `_unhoused` names
+them. `planetai snapshot` does not do this yet, so do it before committing one.
+
 `planetai snapshot --out <file>`, on the node. Since v0.67 that fetches fourteen paths and the result replays:
 `/actions` was added as a read route, and `readings_1h` is stitched from `/aggregates?hours=24` with `indoor`,
 `local` and `kind` joined in from `/sensors`, the same three columns `engine._read` joins from the sensors

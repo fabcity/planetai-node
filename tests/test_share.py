@@ -281,17 +281,17 @@ _raw = _TC(_mw.cls(_probe, **_mw.kwargs))
 assert _raw.get("/mcp", headers={"Accept-Encoding": "gzip"}).headers.get("content-encoding") is None, "/mcp was gzipped"
 assert _raw.get("/issues", headers={"Accept-Encoding": "gzip"}).headers.get("content-encoding") == "gzip"
 print("open: answers are gzipped after the house's labels are swapped, never before; /mcp is left as it was")
-main._HOUSE.update(map=[("K ROOM - BAYU HOLES", "Sensor 1"), ("Kids", "Room A")])
+main._HOUSE.update(map=[("Sensor 3", "Sensor 1"), ("Kids", "Room A")])
 _q0 = main.q
 main.q = lambda sql, *a: ([{"id": 1, "ts": "2026-10-15T10:00:00+08:00", "rule_id": "x", "sensor_id": "ag-1", "level": "act",
-                                 "text": "The air in K ROOM - BAYU HOLES is unhealthy", "acted_at": None,
-                                 "buttons": [[{"text": {"en": "K ROOM - BAYU HOLES is fine"}, "value": "fine", "stage": "acted", "ask": None}]]}] if "FROM alerts" in sql
+                                 "text": "The air in Sensor 3 is unhealthy", "acted_at": None,
+                                 "buttons": [[{"text": {"en": "Sensor 3 is fine"}, "value": "fine", "stage": "acted", "ask": None}]]}] if "FROM alerts" in sql
                           else _q0(sql, *a))
 _al = lan.get("/alerts").json()
 assert _al and _al[0]["text"] is None and "BAYU" not in lan.get("/alerts").text, f"open: an alert's sentence reached a stranger: {_al}"
 assert _al[0]["buttons"] is None, f"open: a pack's button words can name a sensor or a place, so they go with the sentence: {_al}"
 assert main._unhoused(b'{"rooms": ["Kids"], "t": "Smoke in Kids"}', "/issues") == b'{"rooms": ["Room A"], "t": "Smoke in Room A"}'
-assert main._unlabelled("Smoke or dust in Kids and K ROOM - BAYU HOLES") == "Smoke or dust in Room A and Sensor 1", \
+assert main._unlabelled("Smoke or dust in Kids and Sensor 3") == "Smoke or dust in Room A and Sensor 1", \
     "/export's alert lines travel as CC BY whoever asked for them: they carry Room A, never the house's names"
 assert "_unlabelled(a[\"text\"]" in SRC, "/export must swap the house's labels in its alert lines"
 main.q = _q0; main._HOUSE.update(at=0.0, map=[])

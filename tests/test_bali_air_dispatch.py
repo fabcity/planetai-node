@@ -52,7 +52,7 @@ assert x["indoor"] and x["source"] == "baliairdispatch" and x["local"] is False,
 # a Smart Citizen kit the node polls itself must not come back a second time via BAD (it was: sc-19236 and
 # bad-sc-19236 were both counted in the ambient average, with BAD's indoor flag disagreeing with Smart Citizen's)
 bad2 = {"readings": [
-    {"station_id": "sc-19236", "name": "Ungasan Kit", "source": "Smart Citizen", "latitude": -8.8198, "longitude": 115.1666, "observed_at": "2026-09-05T02:00:00Z", "stale": False, "pm25": 7.0},
+    {"station_id": "sc-19236", "name": "Sensor 5", "source": "Smart Citizen", "latitude": -8.8237, "longitude": 115.1664, "observed_at": "2026-09-05T02:00:00Z", "stale": False, "pm25": 7.0},
     {"station_id": "sc-19760", "name": "Bayu Sensor", "source": "Smart Citizen", "latitude": -8.8100, "longitude": 115.1600, "observed_at": "2026-09-05T02:00:00Z", "stale": False, "pm25": 8.0}]}
 s, r = B.ring(HC(bad2), -8.8271, 115.15709, 15, skip_station_ids={"sc-19236"})
 ids = {x["sensor_id"] for x in s}

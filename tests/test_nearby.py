@@ -32,7 +32,7 @@ assert len(latest) == 84 and len(stations) == 87, "the fixture is the archive as
 
 v = dict((r["station_id"], w) for r, w in B.verdicts(latest, LAT, LON, 15.0, POLLED))
 
-# ---- identity. sc-19236 is "Ungasan Kit", 1.3 km away: no distance rule would ever catch it, and the node reads
+# ---- identity. sc-19236 is "Sensor 5", 1.3 km away: no distance rule would ever catch it, and the node reads
 # it directly, so the ring would be this node arguing with itself.
 assert v["sc-19236"].startswith("excluded: identity"), v["sc-19236"]
 assert v["sc-19898"].startswith("excluded: identity"), "a kit of ours 7 km away is still a kit we read twice"
@@ -155,7 +155,7 @@ else:
     _smoke = [(ts, s, m, 40.0) if (s == "sc-19874" and m == "pm25" and ts > AT - dt.timedelta(hours=1))
               else (ts, s, m, v) for ts, s, m, v in _local]
     _hit = _run("only_here", _smoke + _ringrows(_keys), _keys)
-    assert _hit and _hit[0]["name"] == "BAYU NEW ENCLOSURE" and _hit[0]["stations"] == 6, _hit
+    assert _hit and _hit[0]["name"] == "Sensor 2" and _hit[0]["stations"] == 6, _hit
     assert float(_hit[0]["nearest"]) == 3.8, "and it names how far the nearest neighbour is"
 
     # the ring's own spread is not a gate. On 7 September these six, in clean air with a median of 8.8, were

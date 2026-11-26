@@ -28,7 +28,7 @@ N1 = {"buildings": (2459.0, "2026-11-14"), "sat_buildings": (5994.0, "2026-11-14
       "poi_health": (0.0, "2026-11-14"), "poi_worship": (0.0, "2026-11-14"), "poi_lodging": (5.0, "2026-11-14"),
       "poi_services": (1.0, "2026-11-14"), "nearest_health_m": (948.305, "2026-11-14"),
       "lst_delta": (0.58, "2026-11-06"), "terrain_upslope_ha": (0.09, "2026-10-23")}
-HYDRO = {"lat": -8.81961234, "lon": 115.16412345, "nearest": {"dist_m": 3555, "dis_av_cms": 0.125},
+HYDRO = {"lat": -8.81608263, "lon": 115.16354382, "nearest": {"dist_m": 3555, "dis_av_cms": 0.125},
          "basin": {"level12": {"up_area": 318.6, "sub_area": 318.6, "endo": 0}, "level4": {"sub_area": 140534.8}}}
 ENERGY = {"grid": "bali", "kind": "estimated", "share": {"low": 0.8419, "high": 0.9908927631259593},
           "sources": [{"name": "GIS Bandara", "km": 4.06, "lat": -8.74, "lon": 115.16}]}

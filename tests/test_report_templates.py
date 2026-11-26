@@ -351,7 +351,7 @@ assert report.T["en"]["state_hot"] in report.sheet(_ev("danger"), "en")
 assert report.T["en"]["state_heat"] not in report.sheet(_b(open_act=[], open_events=[]), "en"), "nothing open, no heat line"
 # the inventory is a survey sensor written when it is edited: it never "stopped sending"
 assert "s.local AND s.kind = 'sensor'" in report.QUIET_SQL
-# a metric with no household word is never named (node #1: "BAYU HOLES: the bme_iaq ran higher than usual")
+# a metric with no household word is never named (node #1: "Sensor 3: the bme_iaq ran higher than usual")
 _iaq = report.sheet(_b(series=[dict(FIXTURE["series"][0], metric="bme_iaq", notability=4.0)], alerts=[], open_act=[]), "en")
 assert "bme_iaq" not in _iaq and "What changed" not in _iaq, _iaq
 print("the report tells what was sent; the inventory never stops sending; a metric without a word is not named")

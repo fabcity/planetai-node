@@ -34,7 +34,7 @@ class R:
     def json(s): return s.j
 
 
-KIT = {"name": "Bayu 2 - Indoor", "state": "has_published", "last_reading_at": "2026-09-02T03:11:31Z", "hardware": {"name": "Unknown"},
+KIT = {"name": "Sensor 3", "state": "has_published", "last_reading_at": "2026-09-02T03:11:31Z", "hardware": {"name": "Unknown"},
        "location": {"exposure": "indoor", "latitude": -8.8271, "longitude": 115.15709},
        "data": {"recorded_at": "2026-09-02T03:11:31Z", "sensors": [
            {"id": 234, "measurement": {"name": "PM2.5"}, "value": 7.0}, {"id": 237, "measurement": {"name": "Air Temperature"}, "value": 30.4},

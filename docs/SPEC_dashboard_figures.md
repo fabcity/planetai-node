@@ -87,8 +87,8 @@ time of its last reading). One query on `readings`, in `_read`, beside the five 
 capture's own. They are kept apart because `geometry`'s cells name their sensors by position in `stations`, and every
 reader of `stations` means a station heard now.
 
-**Not every silent row is a silent kit.** Of node #1's eight, "Ungasan Kit - TEST (Smart Citizen)" and "BAYU NEW
-ENCLOSURE (Smart Citizen)" were last heard on 4 October, while kits of the same names report today under other ids.
+**Not every silent row is a silent kit.** Of node #1's eight, "Sensor 5 (Smart Citizen)" and "Sensor 2
+(Smart Citizen)" were last heard on 4 October, while kits of the same names report today under other ids.
 Listing them as "no longer heard" would tell the household two working kits are dead. A silent row is not listed when a station heard in the last day stands at the same point, to five decimal places. On node #1 that drops the three `bad-sc-*` relays and the OpenAQ relay of Padang2 Uluwatu, and keeps four. The stopped stations are published, never counted: `digest` (simple mode's sentence, "observing N stations", the neighbours within a kilometre) and `geometry` (the grain table) read only `stations`.
 
 ### 3.4 `GET /issues/days?days=7` (1 to 90)

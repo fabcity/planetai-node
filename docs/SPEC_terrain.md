@@ -45,7 +45,7 @@ field names it, as `earth` names AlphaEarth.
 
 - `s3://copernicus-dem-30m/`, eu-central-1. Anonymous HTTPS range requests, no key. One-degree COG tiles named
   `Copernicus_DSM_COG_10_<S09_00>_<E115_00>_DEM.tif`.
-- Node #1 (−8.819, 115.164) fits in one tile, `S09_00_E115_00`: 16.4 MB, last modified 9 May 2022. That is the 2021
+- Node #1 (−8.816, 115.164) fits in one tile, `S09_00_E115_00`: 16.4 MB, last modified 9 May 2022. That is the 2021
   release. The Data Space lists 2024_1, but under the restricted licence (§2). The pack keeps 2021 and says so in
   provenance.
 - **It is a surface model, not bare earth.** The publisher's words: "including buildings, infrastructure and
@@ -98,7 +98,7 @@ The probe ran this on node #1's square from a laptop: 4.9 s to read 323 × 327 p
 - **The node's point** (`NODE_LAT`/`NODE_LON` from node #1's own `.env`): 156.8 m high. 0.09 ha drains through
   it, which is its own pixel alone, and there is no hollow: the house's pixel is a local high. The largest flow
   within 60 m (a circle, measured from the pixel centres) drains 0.6 ha.
-- The draft of this spec measured 1.04 ha and a 0.32 m hollow, at −8.819, 115.164. That is the published,
+- The draft of this spec measured 1.04 ha and a 0.32 m hollow, at −8.816, 115.164. That is the published,
   rounded point, 330 m west of the house. On a 30 m surface, 330 m is somewhere else, so the pack reads the
   node's own coordinates and never the published ones.
 

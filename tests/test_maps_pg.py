@@ -58,7 +58,7 @@ cur.execute("SELECT shared, held, from_node, remote_id, pushed_at, push_tried_at
 row = cur.fetchone()
 assert row == {"shared": False, "held": False, "from_node": None, "remote_id": None, "pushed_at": None, "push_tried_at": None}, row
 cur.execute("""INSERT INTO place_marks (map_id, kind, geom) VALUES
-  (%s, 'area', ST_GeomFromText('POLYGON((115.167 -8.819,115.168 -8.819,115.168 -8.818,115.167 -8.819))',4326))""", (mid,))
+  (%s, 'area', ST_GeomFromText('POLYGON((115.171 -8.818,115.172 -8.818,115.172 -8.817,115.171 -8.818))',4326))""", (mid,))
 cur.execute("SELECT colour FROM place_marks WHERE map_id = %s", (mid,))
 assert cur.fetchone()["colour"] == 1, "colour defaults to 1"
 cur.execute("INSERT INTO actions (stage, actor, note, choice) VALUES ('place','t','x','drew')")   # the check allows it
@@ -85,10 +85,14 @@ assert cur.fetchone()["n"] == 0, "deleting a map takes its drawings"
 print("  deleting a map deletes its drawings")
 
 import cells  # noqa: E402
-os.environ.update(NODE_LAT="-8.8190516", NODE_LON="115.1644423")
+import h3  # noqa: E402
+# node #1 at the centre of its cell; sc-19236 just across the border, 55% of the way to the neighbour's centre
+HOME_LL, N1_LL = h3.cell_to_latlng("8895a4c843fffff"), h3.cell_to_latlng("8895a4c809fffff")
+SC_LL = tuple(a + 0.55 * (b - a) for a, b in zip(HOME_LL, N1_LL))
+os.environ.update(NODE_LAT=str(HOME_LL[0]), NODE_LON=str(HOME_LL[1]))
 cur.execute("INSERT INTO sensors (sensor_id, source, name, lat, lon, indoor, local, kind) "
-            "VALUES ('sc-19236', 'smartcitizen', 'Ungasan', -8.81983, 115.16657, false, true, 'sensor')")
-hc = cells.home(-8.8190516, 115.1644423)
+            "VALUES ('sc-19236', 'smartcitizen', 'Sensor 5', %s, %s, false, true, 'sensor')", SC_LL)
+hc = cells.home(*HOME_LL)
 assert cells.load(cur, hc) == {hc, "8895a4c809fffff"}, "cells.load adopts sc-19236's neighbour cell on first run"
 cur.execute("DELETE FROM node_cells WHERE cell = '8895a4c809fffff'")
 assert cells.load(cur, hc) == {hc}, "releasing adopted cell does not re-adopt while home row is present"
@@ -180,7 +184,7 @@ assert r.status_code == 422 and r.json()["detail"] == "A map needs a name.", r.t
 r = c.post("/place/maps", json={"name": "Garden plan", "owner": "Tomas", "actor": "Tomas"}, headers=H)
 assert r.status_code == 200, r.text
 mid = r.json()["map"]["id"]
-RING = [[115.167, -8.819], [115.168, -8.819], [115.168, -8.818], [115.167, -8.818], [115.167, -8.819]]
+RING = [[115.171, -8.818], [115.172, -8.818], [115.172, -8.817], [115.171, -8.817], [115.171, -8.818]]
 
 
 def draw(kind, gtype, coords, **props):
@@ -195,13 +199,13 @@ kid = mark["id"]
 real = one("SELECT ST_Area(geom::geography) AS a FROM place_marks WHERE id = %s", kid)["a"]
 assert abs(mark["area_m2"] - real) / real < 0.01 and mark["length_m"] is None, (mark, real)
 assert mark["drawn_by"] == "Tomas" and mark["colour"] == 3 and mark["geometry"]["type"] == "Polygon", mark
-r = draw("line", "LineString", [[115.167, -8.819], [115.168, -8.819]])
+r = draw("line", "LineString", [[115.171, -8.818], [115.172, -8.818]])
 assert r.status_code == 200 and 105 < r.json()["mark"]["length_m"] < 115, r.text      # 0.001° of longitude at 8.8° S
 r = draw("area", "Polygon", [[[0, 0], [1, 1], [1, 0], [0, 1], [0, 0]]])
 assert r.status_code == 422 and r.json()["detail"] == "That area crosses itself. Draw its corners in order around it."
-assert draw("marker", "Point", [115.167, -8.819], colour=7).json()["detail"] == "A colour is a number from 1 to 6."
+assert draw("marker", "Point", [115.171, -8.818], colour=7).json()["detail"] == "A colour is a number from 1 to 6."
 assert c.post("/place/maps/999999999/marks", headers=H, json={}).status_code == 404
-r = draw("marker", "Point", [115.167, -8.819], image=999999999)
+r = draw("marker", "Point", [115.171, -8.818], image=999999999)
 assert r.status_code == 404 and r.json()["detail"] == "That picture is not on this node.", r.text
 print("  a drawing is stored with PostGIS's own area and length; a crossed area and a seventh colour are refused")
 
@@ -263,7 +267,7 @@ print("  tying: needs the person's words, writes the Done row, keeps its time wh
 
 SET["DECISION_REQUIRED"] = "1"
 A2 = one("INSERT INTO alerts (ts, rule_id, sensor_id, level, text) VALUES (now(), 't', 'sc-1', 'act', 'x') RETURNING id")["id"]
-k2 = draw("marker", "Point", [115.167, -8.819]).json()["mark"]["id"]
+k2 = draw("marker", "Point", [115.171, -8.818]).json()["mark"]["id"]
 tied = c.patch(f"/place/marks/{k2}", json={"issue": {"alert_id": A2}, "words": "closed the windows", "actor": "Tomas"}, headers=H)
 done = c.post("/actions", json={"alert_id": A2, "stage": "acted", "actor": "Tomas", "note": "closed the windows"}, headers=H)
 assert tied.status_code == done.status_code == 409 and tied.json()["detail"] == done.json()["detail"], (tied.text, done.text)
@@ -297,9 +301,9 @@ print("  the list carries counts and the palette; deleting a map needs its name 
 os.environ.update(NODE_NAME="bayu-ungasan", NODE_LAT="-8.8271", NODE_LON="115.15709")
 DL = c.post("/place/maps", json={"name": "Rain & Garden / plan", "actor": "Tomas"}, headers=H).json()["map"]["id"]
 for kind, gtype, coords, props in (("area", "Polygon", [RING], {"label": "Rain garden", "colour": 3}),
-                                   ("line", "LineString", [[115.167, -8.819], [115.168, -8.819]], {}),
-                                   ("marker", "Point", [115.167, -8.819], {"label": "Pozo"}),
-                                   ("note", "Point", [115.1675, -8.8185], {"note": "Water is here"})):
+                                   ("line", "LineString", [[115.171, -8.818], [115.172, -8.818]], {}),
+                                   ("marker", "Point", [115.171, -8.818], {"label": "Pozo"}),
+                                   ("note", "Point", [115.1711, -8.8174], {"note": "Water is here"})):
     assert c.post(f"/place/maps/{DL}/marks", headers=H, json={"type": "Feature", "actor": "Tomas",
                   "properties": {"kind": kind, **props}, "geometry": {"type": gtype, "coordinates": coords}}).status_code == 200
 
@@ -320,7 +324,7 @@ assert len(ET.fromstring(r.text).findall(".//{http://www.opengis.net/kml/2.2}Pla
 r = c.get(f"/place/maps/{DL}.dxf", headers=H)
 assert r.status_code == 200 and r.headers["content-disposition"].endswith('.dxf"') and r.text.startswith("999\nEPSG:32750, metres")
 assert r.text.count("\nPOLYLINE\n") == 2 and r.text.count("\nPOINT\n") == 2 and r.text.count("\nTEXT\n") == 3
-want = one("SELECT ST_X(g) AS x, ST_Y(g) AS y FROM (SELECT ST_Transform(ST_SetSRID(ST_Point(115.167, -8.819), 4326), 32750) AS g) t")
+want = one("SELECT ST_X(g) AS x, ST_Y(g) AS y FROM (SELECT ST_Transform(ST_SetSRID(ST_Point(115.171, -8.818), 4326), 32750) AS g) t")
 body = r.text.split("\nPOINT\n")[1].split("\n")                 # 8 layer, MARKERS, 62, ACI, 10, x, 20, y …
 x, y = float(body[body.index("10") + 1]), float(body[body.index("20") + 1])
 assert abs(x - want["x"]) < 0.01 and abs(y - want["y"]) < 0.01, (x, y, want)
@@ -386,7 +390,7 @@ assert one("SELECT choice FROM actions WHERE stage = 'place' AND note LIKE %s OR
 print("  sharing needs a node upstream, then a second press after the warning")
 
 SK = c.post(f"/place/maps/{SH}/marks", headers=H, json={"type": "Feature", "actor": "Tomas", "properties": {"kind": "line"},
-            "geometry": {"type": "LineString", "coordinates": [[115.167, -8.819], [115.168, -8.819]]}}).json()
+            "geometry": {"type": "LineString", "coordinates": [[115.171, -8.818], [115.172, -8.818]]}}).json()
 assert "warn" not in SK, "a drawing away from the house warns of nothing"
 SK = SK["mark"]["id"]
 c.patch(f"/place/marks/{SK}", json={"label": "Path", "actor": "Tomas"}, headers=H)
@@ -453,7 +457,7 @@ ac.execute("DELETE FROM place_marks WHERE map_id = %s AND kind = 'marker'", (SH,
 import geo  # noqa: E402
 import h3  # noqa: E402
 lat, lon = h3.cell_to_latlng(geo.home_cell(10))
-r = c.patch(f"/place/marks/{SK}", json={"geometry": {"type": "LineString", "coordinates": [[115.167, -8.819], [lon, lat]]},
+r = c.patch(f"/place/marks/{SK}", json={"geometry": {"type": "LineString", "coordinates": [[115.171, -8.818], [lon, lat]]},
                                         "actor": "Tomas"}, headers=H)
 assert r.status_code == 200 and r.json().get("warn") == HOUSE, r.text
 assert row()["held"] is True and push() == [], "moved onto the house, the map is held and nothing goes up"
@@ -594,7 +598,7 @@ httpx.post = parent
 PH = c.post("/place/maps", json={"name": "Swale", "actor": "Tomas"}, headers=H).json()["map"]["id"]
 assert c.patch(f"/place/maps/{PH}", json={"shared": True, "confirm": "exact", "actor": "Tomas"}, headers=H).status_code == 200
 PK = c.post(f"/place/maps/{PH}/marks", headers=H, json={"type": "Feature", "actor": "Tomas", "properties": {
-    "kind": "marker", "label": "Rain garden", "image": CAP}, "geometry": {"type": "Point", "coordinates": [115.167, -8.819]}}).json()["mark"]["id"]
+    "kind": "marker", "label": "Rain garden", "image": CAP}, "geometry": {"type": "Point", "coordinates": [115.171, -8.818]}}).json()["mark"]["id"]
 sent.clear()
 maps.push_maps()
 put = next(x["body"] for x in sent if x["url"].endswith("/place/maps/received"))

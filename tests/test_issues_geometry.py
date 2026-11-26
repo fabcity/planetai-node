@@ -1,7 +1,7 @@
 """The H3 geometry the node publishes, checked against the numbers h3geo.org and the design repo already commit.
 
   · the ladder matches h3geo.org's resolution table: res 2 edge 182,513 m over 5,882 cells; res 8 area 737,328 m²
-  · node #1's cells at 7, 8, 9 match planetai-design/assets/h3/kilometre-cells.json exactly
+  · node #1's cells at 7 and 8 match planetai-design/assets/h3/kilometre-cells.json exactly
   · a plate is nineteen cells, its centre is the node's cell, and every cell's parent is in the plate above or flagged
   · the grain table: fourteen stations fall in 1 cell at res 4, 9 at res 8; three own sensors share one cell everywhere
   · publication: three decimals is about 110 m, and the resolution that holds it is 10
@@ -52,8 +52,8 @@ if abs(L[8]["area_m2"] - 737328) > 1:
 KC = ROOT.parent / "planetai-design/assets/h3/kilometre-cells.json"
 if KC.exists():
     kc = json.loads(KC.read_text())
-    want = {7: (kc.get("cells") or {}).get("res7"), 8: (kc.get("cells") or {}).get("res8"),
-            9: (kc.get("cells") or {}).get("res9")}
+    # res 9 is left out: the fixture stands at its res-8 cell's centre since 26 Nov 2026, not at the point that file read
+    want = {7: (kc.get("cells") or {}).get("res7"), 8: (kc.get("cells") or {}).get("res8")}
     for res, cell in want.items():
         if cell and L[res]["id"] != cell:
             fails.append(f"res {res}: {L[res]['id']} != kilometre-cells.json {cell}")

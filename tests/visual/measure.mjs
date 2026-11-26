@@ -3868,7 +3868,7 @@ async function placescreen() {
   const MAPS = { maps: [{ id: 1, name: 'Garden plan for the whole street', owner: null, agent: null, shared: false, held: false, share_error: null, from_node: null, marks: 1, updated_at: '2026-11-05T10:00:00Z' }],
     palette: { 1: '#FFFFFF', 2: '#FFE600', 3: '#9BFF2E', 4: '#00E5FF', 5: '#FF3DCB', 6: '#FF3B30' } };
   const MARKS = { marks: [{ id: 7, map_id: 1, kind: 'area', colour: 3, label: 'rain garden', note: null, capture_id: null, length_m: null, area_m2: 1500, alert_id: null, event_id: null,
-    geometry: { type: 'Polygon', coordinates: [[[115.1668, -8.8198], [115.168, -8.8198], [115.168, -8.8188], [115.1668, -8.8188], [115.1668, -8.8198]]] } }] };
+    geometry: { type: 'Polygon', coordinates: [[[115.1648, -8.8151], [115.166, -8.8151], [115.166, -8.8141], [115.1648, -8.8141], [115.1648, -8.8151]]] } }] };
   const W = process.env.PAI_W ? process.env.PAI_W.split(',').map(Number) : [761, 900, 1024, 1080, 1280, 1440, 390];
   /* a pointer at every desk width, open and folded; a finger on the phone; and a tablet (a finger at desk widths, the
      44 px keys in the desk layout) at 768 and 1024 with the left open */
@@ -3907,7 +3907,7 @@ async function placescreen() {
       if (st === 'open') { await r.page.click('#dread .dchip'); await r.page.waitForTimeout(200); }
       if (st === 'form') { await r.page.click('#dread .dchip');
         /* the area pressed on the map (the table that put it in hand went on 9 Nov): the map jumps onto it, then a press inside it */
-        const at = await r.page.evaluate(() => { const m = window.__PM.map; m.jumpTo({ center: [115.1676, -8.8194], zoom: 17 }); const b = m.getContainer().getBoundingClientRect(), q = m.project([115.1676, -8.8194]); return { x: b.left + q.x, y: b.top + q.y }; });
+        const at = await r.page.evaluate(() => { const m = window.__PM.map; m.jumpTo({ center: [115.1656, -8.8147], zoom: 17 }); const b = m.getContainer().getBoundingClientRect(), q = m.project([115.1656, -8.8147]); return { x: b.left + q.x, y: b.top + q.y }; });
         await r.page.waitForTimeout(600); await r.page.mouse.click(at.x, at.y); await r.page.waitForTimeout(900);
         /* a short panel (the phone's) scrolls: bring the form into it, as a thumb would */
         await r.page.evaluate(() => { const f = document.getElementById('dform'), p = f && f.closest('.dpanel'); if (p && f.offsetTop + f.offsetHeight > p.clientHeight) p.scrollTop = f.offsetTop; }); await r.page.waitForTimeout(100); }

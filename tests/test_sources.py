@@ -38,16 +38,16 @@ assert round(_pack("air-quality").epa_2021_correct(28, 65), 1) == 14.8   # BAD's
 # `local` is ours AND here. An adapter says whether a sensor is ours; distance says whether it is at this node.
 # Node #1 moved to Ungasan and kept three kits 1.2 km away marked local, so its "house" was three kits in
 # another building and it had no local outdoor sensor at all.
-assert round(sources.metres(-8.8190516, 115.1644423, -8.81983, 115.16657)) == 250, "sc-19236 is 250 m from node #1"
-assert round(sources.metres(-8.8190516, 115.1644423, -8.8271, 115.15709)) == 1207, "the indoor cluster is 1.2 km away"
-assert sources.metres(-8.8190516, 115.1644423, -8.8190516, 115.1644423) == 0.0
+assert round(sources.metres(-8.8160826, 115.1635438, -8.82371, 115.16641)) == 906, "two neighbouring cells' centres are 906 m apart"
+assert round(sources.metres(-8.8160826, 115.1635438, -8.8271, 115.15709)) == 1417, "the indoor cluster is 1.4 km away"
+assert sources.metres(-8.8160826, 115.1635438, -8.8160826, 115.1635438) == 0.0
 
-NODE = (-8.8190516, 115.1644423)
+NODE = (-8.8160826, 115.1635438)
 HOME = cells.home(*NODE)
-OWN = cells.own(HOME, {cells.cell_of(-8.81983, 115.16657)})
-here     = {"sensor_id": "sc-19236", "local": True,  "lat": -8.81983, "lon": 115.16657}
+OWN = cells.own(HOME, {cells.cell_of(-8.82371, 115.16641)})
+here     = {"sensor_id": "sc-19236", "local": True,  "lat": -8.82371, "lon": 115.16641}
 far      = {"sensor_id": "sc-19880", "local": True,  "lat": -8.8271,  "lon": 115.15709}
-theirs   = {"sensor_id": "bad-x",    "local": False, "lat": -8.81985, "lon": 115.16650}
+theirs   = {"sensor_id": "bad-x",    "local": False, "lat": -8.82371, "lon": 115.16641}
 nocoords = {"sensor_id": "msh-abc",  "local": True,  "lat": None,     "lon": None}
 sources.stamp_local([here, far, theirs, nocoords], OWN)
 assert here["local"] is True,  "in an own cell (adopted neighbour) stays local"
@@ -57,7 +57,7 @@ assert nocoords["local"] is True, "a mesh pod on our own gateway has no coordina
 
 # A node that does not know where it is must not decide that nothing is local. With no coordinates stamp_local
 # leaves every claim alone: blanking the fleet on a half-configured node is worse than trusting the adapter.
-unset = [{"sensor_id": "sc-19236", "local": True, "lat": -8.81983, "lon": 115.16657}]
+unset = [{"sensor_id": "sc-19236", "local": True, "lat": -8.82371, "lon": 115.16641}]
 sources.stamp_local(unset, None)
 assert unset[0]["local"] is True, "no node coordinates means no narrowing, not narrowing everything away"
 

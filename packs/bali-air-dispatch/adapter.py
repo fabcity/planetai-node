@@ -78,7 +78,7 @@ def verdicts(rows: list[dict], node_lat: float, node_lon: float, radius_km: floa
     drift from what the adapter actually does.
 
     Three ways a station can be this node's own kit rather than a neighbour, and all three are needed:
-      identity   the node polls this device directly. Catches `sc-19236` (Ungasan Kit, 1.3 km away) which no
+      identity   the node polls this device directly. Catches `sc-19236` (Sensor 5, 1.3 km away) which no
                  distance rule would.
       proximity  within min_separation_m of the node. Catches `sc-19835` ("Bayu Kit", 10 m away), which is NOT on
                  the account this node polls and which identity therefore misses. Also catches a re-registered

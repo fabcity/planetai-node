@@ -21,14 +21,14 @@ prof = {"owner": "Mesh test Ungasan", "owner_short": "MTU", "channel_url": "http
                    "position": {"fixedPosition": True, "gpsMode": "NOT_PRESENT"},
                    "lora": {"region": "SG_923", "usePreset": True, "modemPreset": "LONG_FAST", "channelNum": 19}},
         "module_config": {"telemetry": {"environmentMeasurementEnabled": True, "environmentUpdateInterval": 900}},
-        "location": {"lat": -8.81902, "lon": 115.16736, "alt": 0}}
+        "location": {"lat": -8.81791, "lon": 115.17109, "alt": 0}}
 steps = radio.provision_steps(prof, fleet, gateway=False)
 assert steps[0] == ["--set-owner", "Mesh test Ungasan", "--set-owner-short", "MTU"] and steps[1][0] == "--seturl"
 sets = [s for s in steps if s[0] == "--set"]
 assert [s[1].split(".")[0] for s in sets] == ["device", "position", "lora", "telemetry"], "one call per section: a call that wrote two sections was a transaction, and 2.7.26 lost it"
 assert all(len({x.split(".")[0] for x in s[1::3]}) == 1 for s in sets)
 assert sets[0] == ["--set", "device.role", "SENSOR", "--set", "device.serialEnabled", "true"]
-assert steps.index(["--setlat=-8.81902", "--setlon=115.16736", "--setalt=0"]) > steps.index(sets[1]), \
+assert steps.index(["--setlat=-8.81791", "--setlon=115.17109", "--setalt=0"]) > steps.index(sets[1]), \
     "the pin comes after the position section, with `=` for a south latitude"
 ch0, ch1 = steps[-2:]
 assert ch1[:2] == ["--ch-index", "1"] and "--ch-add" not in ch1, "by index: --ch-add refuses a radio that already has fabcity"
@@ -46,7 +46,7 @@ assert radio.shown(sets[0]) == "--set device.role SENSOR --set device.serialEnab
 assert radio.channel_hash("ab", bytes([1, 2])) == ord("a") ^ ord("b") ^ 1 ^ 2 and radio.channel_hash("", b"") == 0
 # differences(): the radio as read back over a new connection (MessageToDict, defaults included) against the profile
 def snap_of(**over):
-    s = {"id": "!8f501a20", "lat_i": -88190200, "lon_i": 1151673601, "alt": 0, "owner": "Mesh test Ungasan", "owner_short": "MTU", "reboot_count": 7,
+    s = {"id": "!8f501a20", "lat_i": -88179100, "lon_i": 1151710900, "alt": 0, "owner": "Mesh test Ungasan", "owner_short": "MTU", "reboot_count": 7,
          "config": {"device": {"role": "SENSOR", "serialEnabled": True, "rebroadcastMode": "ALL"},
                     "position": {"fixedPosition": True, "gpsMode": "NOT_PRESENT"},
                     "lora": {"region": "SG_923", "usePreset": True, "modemPreset": "LONG_FAST", "channelNum": 19}},
@@ -96,11 +96,11 @@ assert {radio.problem_key(x) for x in radio.differences(aq, fleet, lost, gateway
 assert radio.differences(dict(prof, module_config={"telemetry": {"environmentUpdateInterval": 900}}), fleet,
                          snap_of(module_config={"telemetry": {"environmentUpdateInterval": "900"}}), gateway=False) == []
 # the pin itself, not only fixedPosition: on the XIAO a later write put the position back to its defaults (19 Oct)
-assert radio.differences(prof, fleet, snap_of(lat_i=None, lon_i=None), gateway=False) == ["position.pin is none,none,0 m, wants -8.81902,115.16736,0 m"]
-assert radio.differences(prof, fleet, snap_of(lon_i=None), gateway=False)[0].startswith("position.pin is -8.81902,none"), "one coordinate missing is a difference, not a crash"
-assert radio.differences(prof, fleet, snap_of(lat_i=-88190300), gateway=False), "10 m off is off: compared at the stored 1e-7 degrees"
-assert radio.differences(prof, fleet, snap_of(alt=12), gateway=False) == ["position.pin is -8.81902,115.1673601,12 m, wants -8.81902,115.16736,0 m"]
-assert radio.problem_key("position.pin is none,none,0 m, wants -8.81902,115.16736,0 m") == "position"
+assert radio.differences(prof, fleet, snap_of(lat_i=None, lon_i=None), gateway=False) == ["position.pin is none,none,0 m, wants -8.81791,115.17109,0 m"]
+assert radio.differences(prof, fleet, snap_of(lon_i=None), gateway=False)[0].startswith("position.pin is -8.81791,none"), "one coordinate missing is a difference, not a crash"
+assert radio.differences(prof, fleet, snap_of(lat_i=-88179200), gateway=False), "10 m off is off: compared at the stored 1e-7 degrees"
+assert radio.differences(prof, fleet, snap_of(alt=12), gateway=False) == ["position.pin is -8.81791,115.17109,12 m, wants -8.81791,115.17109,0 m"]
+assert radio.problem_key("position.pin is none,none,0 m, wants -8.81791,115.17109,0 m") == "position"
 assert radio.differences(dict(prof, location=None), fleet, snap_of(lat_i=None, lon_i=None), gateway=False) == [], "no --fixed, no pin wanted"
 # a difference names the step that repairs it: provision writes again only what did not hold (a ch0 write once
 # emptied ch1 on a XIAO, 19 Oct)
@@ -350,9 +350,9 @@ import contextlib
 import io
 fl = radio.new_fleet("bayu-ungasan", "SG_923", "bali")
 fl["radios"] = [{"id": "!8f501a20", "role": "sensor", "name": "Mesh test Ungasan", "short": "MTU", "provisioned": "x"}]
-pinned_prof = radio.render_profile("sensor", "Mesh test Ungasan", "MTU", fl, radio.load_profiles(), fixed=(-8.81902, 115.1673601, 0))
+pinned_prof = radio.render_profile("sensor", "Mesh test Ungasan", "MTU", fl, radio.load_profiles(), fixed=(-8.81791, 115.17109, 0))
 def held(**over):   # the radio holding exactly what provision wrote, as read_radio returns it
-    s = {"id": "!8f501a20", "lat_i": -88190200, "lon_i": 1151673601, "alt": 0, "owner": "Mesh test Ungasan", "owner_short": "MTU",
+    s = {"id": "!8f501a20", "lat_i": -88179100, "lon_i": 1151710900, "alt": 0, "owner": "Mesh test Ungasan", "owner_short": "MTU",
          "reboot_count": 7, "config": json.loads(json.dumps(pinned_prof["config"])), "module_config": json.loads(json.dumps(pinned_prof["module_config"])),
          "channels": {i: {"role": role, "name": fl[k]["name"], "psk": base64.b64decode(fl[k]["psk"]), "uplink": False, "downlink": False,
                           "position_precision": fl[k]["position_precision"]} for i, k, role in ((0, "primary", "PRIMARY"), (1, "fabcity", "SECONDARY"))}}
@@ -379,7 +379,7 @@ with tempfile.TemporaryDirectory() as d:
     tele = dict(held()["module_config"]["telemetry"], airQualityEnabled=False)
     s = doctor_says("/dev/cu.sensor", held(module_config={"telemetry": tele}))
     assert "!!  Mesh test Ungasan holds its sensor profile" in s and "telemetry.airQualityEnabled is False, wants True" in s, s
-    assert 'planetai radio provision sensor "Mesh test Ungasan" MTU --port /dev/cu.sensor --fixed=-8.81902,115.1673601' in s, s
+    assert 'planetai radio provision sensor "Mesh test Ungasan" MTU --port /dev/cu.sensor --fixed=-8.81791,115.17109' in s, s
     s = doctor_says("/dev/cu.other", held(id="!99999999"))
     assert "!!  radio !99999999 is in this node's fleet" in s, s
 

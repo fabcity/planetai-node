@@ -1607,10 +1607,10 @@
     },
     {
       "station_id": "sc-19236",
-      "name": "Ungasan Kit - TEST",
+      "name": "Sensor 5",
       "source": "Smart Citizen",
-      "latitude": -8.81983,
-      "longitude": 115.16657,
+      "latitude": -8.82371,
+      "longitude": 115.16641,
       "observed_at": "2026-09-07T15:00:46.000Z",
       "age_hours": 0,
       "stale": false,
