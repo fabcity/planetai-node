@@ -97,7 +97,7 @@ category name — there is no `'own'` kind and there is no `'peer'`, `'external'
 
 | the row | written by | `kind` | `local` | in custody? | may reach a cell? |
 |---|---|---|---|---|---|
-| `sc-19874` "BAYU NEW ENCLOSURE" — the house's own kit | `sources.smartcitizen` → `main.py:115` | `sensor` | **TRUE** | yes | **yes, may be `live`** |
+| `sc-19874` "Sensor 2" — the house's own kit | `sources.smartcitizen` → `main.py:115` | `sensor` | **TRUE** | yes | **yes, may be `live`** |
 | `pod-<id>` — a Meshtastic/MQTT pod, no coordinates | `main.py:182` (`_store`) | `sensor` | **TRUE** | yes | yes, `live` |
 | a phone or contributor `POST /readings` | `main.py:182` | `sensor` | **TRUE** | yes | yes, `live` |
 | `mahon1/sc-19874` — a child's hourly mean | `main.py:1625` (`receive_aggregates`) | `child` | **FALSE** | **yes** | **yes — and this is what is broken** |

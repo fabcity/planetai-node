@@ -111,7 +111,7 @@ number, and no line is sent to another sensor or another node.
 `GET /calibrate` answers only this machine or a screen holding a node token, because which sensor sits beside which
 is the household's. A locked screen shows the Corrections section with a line asking you to unlock it. On an unlocked
 screen, the row of a sensor whose correction is shown also carries a small mark in Readings, "corrected 13.6 against
-Ungasan Kit", linking to the section. The measured value stays the row's number.
+Sensor 5", linking to the section. The measured value stays the row's number.
 
 ## A public station beside your sensor
 

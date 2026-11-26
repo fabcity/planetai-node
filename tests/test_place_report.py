@@ -27,7 +27,7 @@ const HOUSE = ['x', -8.815065, 115.164795, -8.815705, 115.164709, -8.816155, 115
 /* the node's answers: which res-10 cell each point is in. The capture puts every kit and the model stack on the node's
    point, in the house's cell; sc-19236 is moved 330 m north below, so one kit, and the sea model, are not */
 const cellOf = p => /lat=-8\.815000/.test(p) ? HOME : AWAY;
-const CAPS = [{ id: 1, kind: 'phone', at: [-8.8191, 115.1645], cell: HOME, analysis: { confirmed_by: 'T', findings: [{ scientific: 'Hibiscus rosa-sinensis' }] } },
+const CAPS = [{ id: 1, kind: 'phone', at: [-8.8161, 115.1635], cell: HOME, analysis: { confirmed_by: 'T', findings: [{ scientific: 'Hibiscus rosa-sinensis' }] } },
   { id: 2, kind: 'phone', at: [-8.8150, 115.1700], cell: AWAY, analysis: { confirmed_by: 'T', findings: [{ scientific: 'Plumeria rubra' }] } }];
 const noop = () => {};
 const el = () => ({ innerHTML: '', textContent: '', hidden: false, style: {}, dataset: {}, kids: [], className: '', attrs: {}, setAttribute(k, v) { this.attrs[k] = v; },
@@ -54,7 +54,7 @@ async function boot(tok, D) {
     maplibregl: { ScaleControl: function () {}, Map: function (opts) { return Object.assign(map, { opts, on: noop, once: (t, f) => f(), addControl: noop, getContainer: () => map,
       triggerRepaint: noop, getLayer: () => null, loaded: () => true, resize: noop, setStyle: s => styles.push(s.layers[0].paint['background-color']),
       getCanvas: () => ({ width: 1800, height: 1120, clientWidth: 900, clientHeight: 560, toDataURL: () => { shots.push(last.map(l => ({ id: l.id, data: l.props.data }))); return 'data:image/png;base64,AAAA'; } }),
-      touchZoomRotate: { disableRotation: noop }, doubleClickZoom: { enable: noop, disable: noop }, getZoom: () => 14.5, getCenter: () => ({ lng: 115.164, lat: -8.819 }),
+      touchZoomRotate: { disableRotation: noop }, doubleClickZoom: { enable: noop, disable: noop }, getZoom: () => 14.5, getCenter: () => ({ lng: 115.164, lat: -8.816 }),
       project: ([x, y]) => ({ x: x * 1e4, y: -y * 1e4 }), unproject: ([x, y]) => ({ lng: x / 1e4, lat: -y / 1e4 }), easeTo: noop }); } },
     deck: new Proxy({}, { get: (t, k) => k === 'MapboxOverlay' ? function () { return { _deck: {}, setProps: x => { if (x.layers) last = x.layers; } }; } : layer }) };
   c.window = c; vm.createContext(c);

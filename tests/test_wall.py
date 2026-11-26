@@ -17,7 +17,7 @@ from pathlib import Path
 import h3
 
 HOME = "8895a4c843fffff"                      # node #1's res-8 cell (tests/test_cells.py)
-LAT, LON = -8.8170, 115.1650                  # a point inside it, not its centre
+LAT, LON = -8.8161, 115.1635                  # a point inside it, not its centre
 OUT = Path(tempfile.mkdtemp())
 os.environ.update(PACKS_DIR="packs", ADMIN_TOKEN="admin-tok", NODE_LAT=str(LAT), NODE_LON=str(LON), NODE_NAME="n1",
                   PACK_OUT=str(OUT), DATABASE_URL="postgresql://unused/never-connected")

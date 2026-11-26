@@ -23,7 +23,7 @@ const WALL_TIME = {
   WAIT: 20e3,                                                               /* ms: /wall or /ground/meta unanswered this long has failed */
 };
 /* Never a name on the wall (Tomas, 14 Oct 2026): anyone in the room reads it, and a sensor's name is a room, a kit or an
-   address ("K ROOM - BAYU HOLES"); a kicker's reason names who answered. The house is its cell, a public station a dot;
+   address ("Sensor 3"); a kicker's reason names who answered. The house is its cell, a public station a dot;
    what is asked is the engine's own sentence (asking[].says), never the alert's text, which names the room. */
 /* one line that ends on a word: the first sentence, cut at a word under `max` characters ("If somethin…", 14 Oct) */
 const oneLine = (s, max = 90) => {

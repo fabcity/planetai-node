@@ -100,7 +100,7 @@ far = [{"local": False, "indoor": False, "v": 3.0, "lat": -8.83, "lon": 115.09},
        {"local": False, "indoor": False, "v": 19.0, "lat": -8.82, "lon": 115.16},    # Fab Lab kit, 1 km
        {"local": False, "indoor": False, "v": 13.9, "lat": -8.822, "lon": 115.161},  # Kios Utak, 1 km
        {"local": False, "indoor": False, "v": 7.0, "lat": -8.80, "lon": 115.18}]     # 3 km
-mine = [{"local": True, "indoor": False, "v": 14.0, "lat": -8.820, "lon": 115.1667}]
+mine = [{"local": True, "indoor": False, "v": 14.0, "lat": -8.824, "lon": 115.1664}]
 v, src = resolve_outside(far + mine, *N)
 assert src == "yours" and v == 14.0, "your own outdoor sensor wins outright"
 v, src = resolve_outside(far, *N)

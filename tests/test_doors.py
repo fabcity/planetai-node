@@ -89,7 +89,7 @@ print("doors: the walk is the phone page's middle; it loads when reached and nam
 # it says relative to the node for a token, or a phone could find the house asking res 15 cell by cell
 assert "/geo/cell" in main._SHARE_OPEN[0] and "/ground/" in main._SHARE_OPEN[1] and "/geo/cell" not in main._SHARE_OFF[0]
 from types import SimpleNamespace  # noqa: E402
-os.environ.setdefault("NODE_LAT", "-8.819"); os.environ.setdefault("NODE_LON", "115.164")
+os.environ.setdefault("NODE_LAT", "-8.818"); os.environ.setdefault("NODE_LON", "115.171")
 _rq = lambda t: SimpleNamespace(state=SimpleNamespace(share_trusted=t))  # noqa: E731
 _kw = dict(id=None, lat=-8.8, lon=115.17, res=14, children=15, polar=True)
 _open, _mine = main.geo.geo_cell(_rq(False), **_kw), main.geo.geo_cell(_rq(True), **_kw)
@@ -1321,9 +1321,9 @@ const MAPS = { maps: [{ id: 3, name: BAD, owner: 'Tomas', agent: null, shared: f
   palette: { 1: '#FFFFFF', 2: '#FFE600', 3: '#9BFF2E', 4: '#00E5FF', 5: '#FF3DCB', 6: '#FF3B30' } };
 const MARKS = { marks: [
   { id: 11, map_id: 3, kind: 'area', colour: 3, label: BAD, note: 'catch the roof’s water', capture_id: null, length_m: null, area_m2: 312.4, alert_id: null, event_id: null,
-    geometry: { type: 'Polygon', coordinates: [[[115.167, -8.819], [115.168, -8.819], [115.168, -8.818], [115.167, -8.819]]] } },
+    geometry: { type: 'Polygon', coordinates: [[[115.171, -8.818], [115.172, -8.818], [115.172, -8.817], [115.171, -8.818]]] } },
   { id: 12, map_id: 3, kind: 'line', colour: 2, label: 'Hose run', note: null, capture_id: 7, length_m: 102.4, area_m2: null, alert_id: null, event_id: null,
-    geometry: { type: 'LineString', coordinates: [[115.167, -8.819], [115.168, -8.819]] } }] };
+    geometry: { type: 'LineString', coordinates: [[115.171, -8.818], [115.172, -8.818]] } }] };
 const noop = () => {};
 const SAVED = [];   /* every file the page hands the browser to save, by its name */
 const el = () => ({ innerHTML: '', textContent: '', hidden: false, style: {}, dataset: {}, kids: [], className: '', attrs: {},
@@ -1360,7 +1360,7 @@ async function boot(tok, o = {}) {
       getContainer: () => map, triggerRepaint: noop, getLayer: () => null,
       getCanvas: () => (map.cv ||= { style: {}, width: 1800, height: 1120, clientWidth: 900, focus: () => { map.focused = (map.focused || 0) + 1; } }), touchZoomRotate: { disableRotation: noop }, doubleClickZoom: { enable: noop, disable: noop }, getZoom: () => o.zoom || 13.6, resize: noop,
       project: ([x, y]) => ({ x: x * 1e4, y: -y * 1e4 }), unproject: ([x, y]) => ({ lng: x / 1e4, lat: -y / 1e4 }), easeTo: a => eased.push(a), panBy: a => (map.panned ||= []).push(a),
-      getCenter: () => ({ lng: 115.167, lat: -8.819 }) }); } },
+      getCenter: () => ({ lng: 115.171, lat: -8.818 }) }); } },
     deck: new Proxy({}, { get: (t, k) => k === 'MapboxOverlay' ? function () { return { _deck: { device: { canvasContext: { _framebuffer: 'old' } } }, setProps: x => { (x.layers || []).forEach(l => { drawn[l.id] = l.props; }); },
       pickObject: () => (o.hit ? o.hit(drawn) : null) }; } : layer }) };
   c.window = c; vm.createContext(c);
@@ -1368,7 +1368,7 @@ async function boot(tok, o = {}) {
   await new Promise(r => setTimeout(r, 80));
   /* a drawing pressed on the map puts it in hand (the lower band's table that did it went on 9 Nov) */
   const press = id => { const m = MARKS.marks.find(x => x.id === id), h = o.hit; o.hit = () => ({ layer: { id: 'draw-' + m.kind }, object: m });
-    (ons.click || []).forEach(f => f({ lngLat: { lng: 115.1675, lat: -8.8187 }, point: { x: 1, y: 1 } })); o.hit = h; };
+    (ons.click || []).forEach(f => f({ lngLat: { lng: 115.1711, lat: -8.8176 }, point: { x: 1, y: 1 } })); o.hit = h; };
   const kk = map.kids.find(x => x.className === 'dkeys'), pan = map.kids.find(x => x.className === 'dpanel');
   const out = { keys: kk ? kk.innerHTML : null, panel: pan ? pan.innerHTML : null, read: c.$('#dread').innerHTML, cake: c.$('#cake').innerHTML,
     asked };
@@ -1482,8 +1482,8 @@ async function boot(tok, o = {}) {
   out.fix = await boot(true, { then: async ({ c, map, ons, keys, posted }) => {
     const r = {}, ev = (k, closest) => keys.forEach(f => f({ key: k, target: { closest }, preventDefault: noop, stopPropagation: noop, shiftKey: false, metaKey: false, ctrlKey: false, altKey: false }));
     c.__PM.setTool('line');
-    (ons.click || []).forEach(f => f({ lngLat: { lng: 115.167, lat: -8.819 }, point: { x: 100, y: 100 } }));
-    (ons.mousemove || []).forEach(f => f({ lngLat: { lng: 115.168, lat: -8.8185 }, point: { x: 300, y: 200 } }));
+    (ons.click || []).forEach(f => f({ lngLat: { lng: 115.171, lat: -8.818 }, point: { x: 100, y: 100 } }));
+    (ons.mousemove || []).forEach(f => f({ lngLat: { lng: 115.172, lat: -8.8174 }, point: { x: 300, y: 200 } }));
     r.before = c.__PM.draw.hover;
     map.unproject = ([x, y]) => ({ lng: x / 2e4 + 115, lat: -y / 2e4 - 8 });   /* the map zoomed: the same pixel is another place */
     (ons.move || []).forEach(f => f()); await new Promise(x => setTimeout(x, 20));
@@ -1523,7 +1523,7 @@ async function boot(tok, o = {}) {
     let BTN = null; const fx = c.$('#facts');
     fx.querySelector = q => { const m = q === '[data-claim]' && fx.innerHTML.match(/data-claim="([^"]+)" data-verb="(\w+)"/); return m ? (BTN = { dataset: { claim: m[1], verb: m[2] } }) : null; };
     const pressCell = async i => { BTN = null; HIT = { layer: { id: 'seven' }, object: SV.cells[i] };
-      (ons.click || []).forEach(f => f({ lngLat: { lng: 115.167, lat: -8.819 }, point: { x: 1, y: 1 } })); await tick(30); return fx.innerHTML; };
+      (ons.click || []).forEach(f => f({ lngLat: { lng: 115.171, lat: -8.818 }, point: { x: 1, y: 1 } })); await tick(30); return fx.innerHTML; };
     r.home = await pressCell(0); r.homeBtn = !!BTN;
     r.open = await pressCell(3); const n = calls.length; BTN.onclick(); await tick(40);
     r.claim = { call: calls.slice(n), after: fx.innerHTML, state: P.cells.cells[3].state, drawn: drawn.seven.data[3].state };
@@ -1555,7 +1555,7 @@ async function boot(tok, o = {}) {
     const P = c.__PM, fx = c.$('#facts'); let BTNS = [];
     fx.querySelectorAll = q => (q === '[data-pull]' ? (BTNS = [...fx.innerHTML.matchAll(/data-pull="([^"]+)"/g)].map(m => ({ dataset: { pull: m[1] } }))) : []);
     const btn = k => BTNS.find(b => b.dataset.pull === k);
-    const tap = async () => { HIT = null; (ons.click || []).forEach(f => f({ lngLat: { lng: 115.167, lat: -8.819 }, point: { x: 1, y: 1 } })); await tick(30); };
+    const tap = async () => { HIT = null; (ons.click || []).forEach(f => f({ lngLat: { lng: 115.171, lat: -8.818 }, point: { x: 1, y: 1 } })); await tick(30); };
     P.setTool('pull'); await tick(20);
     const r = { start: fx.innerHTML, read: c.$('#dread').innerHTML };
     await tap(); await tap(); r.two = { n: drawn.pull ? drawn.pull.data.length : 0, html: fx.innerHTML, poly: drawn.pull && drawn.pull.getPolygon(drawn.pull.data[0]) };
@@ -1566,7 +1566,7 @@ async function boot(tok, o = {}) {
     btn('go').onclick(); await tick(40); r.markAsked = pulls[pulls.length - 1];
     REFUSE = true; btn('go').onclick(); await tick(40); r.refused = fx.innerHTML; REFUSE = false;
     btn('clear').onclick(); await tick(20); r.cleared = { html: fx.innerHTML, mark: P.pull.mark, n: P.pull.cells.length };
-    HIT = { layer: { id: 'draw-area' }, object: MARKS.marks[0] }; (ons.click || []).forEach(f => f({ lngLat: { lng: 115.1675, lat: -8.8187 }, point: { x: 1, y: 1 } })); await tick(20);
+    HIT = { layer: { id: 'draw-area' }, object: MARKS.marks[0] }; (ons.click || []).forEach(f => f({ lngLat: { lng: 115.1711, lat: -8.8176 }, point: { x: 1, y: 1 } })); await tick(20);
     r.pressedMark = P.pull.mark;
     delete drawn.pull; P.setTool('select'); await tick(20); r.left = { pull: P.pull, drawn: drawn.pull ? drawn.pull.data.length : 0 };
     return r; } });
@@ -1637,7 +1637,7 @@ assert 'id="dsaid" class="vh" aria-live="polite"' in _t["panel"] and 'id="dread"
     "only the finished figure is live; the readout that follows the pointer is not"
 assert "&lt;img src=x onerror=1&gt;" in _t["read"], "the readout names the open map, escaped"
 print("  place: six drawing keys and Undo on the screen, Select pressed; the kept figure is aria-live; the readout names the open map")
-_ring = [[115.167, -8.819], [115.168, -8.819], [115.168, -8.818]]
+_ring = [[115.171, -8.818], [115.172, -8.818], [115.172, -8.817]]
 _p1, _p2 = [x["geometry"]["coordinates"][0] for x in _t["patched"]]
 assert "Arrows move point 1 of 3. Press . for the next point." in _t["held"] and "point 2 of 3" in _t["stepped"], (_t["held"], _t["stepped"])
 assert _p1[0] != _ring[0] and _p1[1:3] == _ring[1:3] and _p1[0] == _p1[-1], ("the first arrow moves the first point, the ring stays closed", _p1)
@@ -1745,7 +1745,7 @@ assert _shut(_ch["letGo"]["html"]) and _ch["letGo"]["sel"] is None, ("Esc lets t
 assert 'id="dsaid" class="vh" aria-live="polite"' in _t["panel"], "the finished-figure live region stays as it was"
 print("  place: the readout is a chip with the tool, the map, the live figure and a dot; a press opens the colours; a drawing in hand opens it; Esc folds it")
 _fx = M["fix"]
-assert _fx["before"] == [115.168, -8.8185] and _fx["after"] == [115 + 300 / 2e4, -8 - 200 / 2e4], ("on move the leg's end follows the pointer's pixel", _fx["before"], _fx["after"])
+assert _fx["before"] == [115.172, -8.8174] and _fx["after"] == [115 + 300 / 2e4, -8 - 200 / 2e4], ("on move the leg's end follows the pointer's pixel", _fx["before"], _fx["after"])
 assert _fx["escTools"] == 11, "Esc on the Tools button while its menu is open is the menu's: the drawing in hand stays"
 assert _fx["escFrom"] == "select" and _fx["mFrom"] == "marker", ("with the menu shut and the focus on Tools, Esc ends From the house and M takes the marker key", _fx["escFrom"], _fx["mFrom"])
 assert _fx["kbLeg"] == [None, None], ("a shape from the keyboard gains no leg to an old mouse pixel when the map moves", _fx["kbLeg"])
@@ -1761,7 +1761,7 @@ assert "max-height:calc(100% - 3 * var(--k) - 44px)" in html, "under 560 px of s
 print("  place: the leg follows the pointer through a zoom; Esc and a press that close Tools touch nothing else; the Image key with no map says so")
 _im = M["image"]
 assert 'data-a="newphoto"' in _im["form"] and "A new photo" in _im["form"], ("the Image key with nothing in hand offers a photo on its own", _im["form"])
-assert _im["posted"] == [["marker", [115.167, -8.819]]] and 'data-a="newimg"' in _im["picker"], ("Enter with the Image key pins a marker at the centre and opens the picker", _im)
+assert _im["posted"] == [["marker", [115.171, -8.818]]] and 'data-a="newimg"' in _im["picker"], ("Enter with the Image key pins a marker at the centre and opens the picker", _im)
 assert 'data-learn="place-image"' in pm and "on('newphoto', () => window.placeAddImage && window.placeAddImage());" in pm, "the Image key carries the image's learn mark; its photo opens #imgdlg"
 print("  place: the Image key adds a photo on its own or pinned at the map's centre by Enter, through the same dialog")
 _mv = M["move"]

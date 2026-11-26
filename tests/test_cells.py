@@ -140,22 +140,24 @@ class FakeCur:
         return self._last[0] if self._last else None
 
 
-# Node #1's actual coordinates in HOME (8895a4c843fffff); sc-19236 sits 250 m away across the border in n1 (8895a4c809fffff)
-NODE1_LAT, NODE1_LON = -8.8190516, 115.1644423
+# Node #1 stands at the centre of HOME (8895a4c843fffff); sc-19236 sits just across the border in n1 (8895a4c809fffff)
+NODE1_LAT, NODE1_LON = -8.8160826, 115.1635438
 os.environ["NODE_LAT"] = str(NODE1_LAT)
 os.environ["NODE_LON"] = str(NODE1_LON)
-sc_cell = cells.cell_of(-8.81983, 115.16657)
+n1_lat, n1_lon = h3.cell_to_latlng(n1)
+toward_n1 = lambda f: (NODE1_LAT + f * (n1_lat - NODE1_LAT), NODE1_LON + f * (n1_lon - NODE1_LON))  # noqa: E731
+sc_cell = cells.cell_of(*toward_n1(0.55))
 check(sc_cell == n1, f"sc-19236 sits in neighbour {n1}, got {sc_cell}")
-# A point in n3 (8895a4c847fffff) ~300 m from NODE1: step 45% from NODE1 toward n3's centre
+# A point in n3 (8895a4c847fffff) ~470 m from NODE1: step 55% from NODE1 toward n3's centre
 n3_lat, n3_lon = h3.cell_to_latlng(n3)
-near_n3 = (NODE1_LAT + 0.45 * (n3_lat - NODE1_LAT), NODE1_LON + 0.45 * (n3_lon - NODE1_LON))
+near_n3 = (NODE1_LAT + 0.55 * (n3_lat - NODE1_LAT), NODE1_LON + 0.55 * (n3_lon - NODE1_LON))
 check(cells.cell_of(*near_n3) == n3 and sources.metres(NODE1_LAT, NODE1_LON, *near_n3) < 500,
       "near_n3 is in n3 and within 500 m of node #1")
 
 fleet = [
     {"sensor_id": "sc-home", "lat": NODE1_LAT, "lon": NODE1_LON, "local": True, "kind": "sensor"},
-    {"sensor_id": "sc-19236", "lat": -8.81983, "lon": 115.16657, "local": True, "kind": "sensor"},      # 250 m, in n1
-    {"sensor_id": "sc-19874", "lat": -8.82008, "lon": 115.16669, "local": True, "kind": "sensor"},      # 273 m, in n1
+    {"sensor_id": "sc-19236", "lat": toward_n1(0.55)[0], "lon": toward_n1(0.55)[1], "local": True, "kind": "sensor"},  # ~470 m, in n1
+    {"sensor_id": "sc-19874", "lat": toward_n1(0.57)[0], "lon": toward_n1(0.57)[1], "local": True, "kind": "sensor"},  # ~490 m, in n1
     {"sensor_id": "sc-19880", "lat": -8.8271, "lon": 115.15709, "local": True, "kind": "sensor"},       # 1207 m, outside ring
     {"sensor_id": "sc-n2-far", "lat": pt_n2[0], "lon": pt_n2[1], "local": True, "kind": "sensor"},      # in n2, > 500 m (1072 m)
     {"sensor_id": "bad-n3", "lat": near_n3[0], "lon": near_n3[1], "local": False, "kind": "sensor"},    # in n3 < 500 m, not local

@@ -211,7 +211,7 @@ function sTodo() {
 
 /* Rooms (Tomas, 14 Oct 2026): the household's word for where each of its own sensors is. The node makes it the
    sensor's name whatever its platform calls it (init.sql 0.61), so alerts, the report and every page say "Kids", not
-   "K ROOM - BAYU HOLES". Each row saves on its own: a room is not a setting, and has no .env behind it. */
+   "Sensor 3". Each row saves on its own: a room is not a setting, and has no .env behind it. */
 function sRooms(unlocked) {
   const S = (D.sensors || []).filter(s => s.local && s.kind === 'sensor');
   if (!unlocked) return `<h2>Rooms</h2><p class="gate">Which room is which is the household’s: <a href="#setup/screen" data-go="screen">unlock this screen</a> with the admin token to name them.</p>`;

@@ -503,8 +503,8 @@ UPDATE learnings SET status_since = first_seen::date WHERE status_since IS NULL;
 ALTER TABLE reports ADD COLUMN IF NOT EXISTS memory BOOLEAN NOT NULL DEFAULT false;
 INSERT INTO schema_version (version) VALUES ('0.60') ON CONFLICT DO NOTHING;
 
--- 0.61: rooms in the household's words (Tomas, 14 Oct 2026: node #1's K, L and S are Kids, Living Room and Studio). A
--- kit's platform names its sensors ("K ROOM - BAYU HOLES") and every poll writes that name back. A room the household
+-- 0.61: rooms in the household's words (Tomas, 14 Oct 2026). A
+-- kit's platform names its sensors ("Sensor 3") and every poll writes that name back. A room the household
 -- set (PATCH /sensors/{id}) becomes the name whatever writes the row, core or a pack, so the rules, the stats, the
 -- report, the event messages and the pages all say the room; the platform's own name is kept in `source_name`.
 ALTER TABLE sensors ADD COLUMN IF NOT EXISTS room TEXT;

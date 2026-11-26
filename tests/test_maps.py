@@ -35,8 +35,8 @@ assert check_feature(area([[0, 0], [1, 0], [1, 1], [0, 1]])) is None, "an outlin
 assert check_feature(area([[0, 0], [1, 0], [1, 0], [1, 1], [0, 0]])) is None, "a corner tapped twice is one corner"
 print("  lines and areas: point counts, and an area that crosses itself")
 
-assert check_feature(marker(115.167, -8.819)) is None
-assert check_feature(feature("note", "Point", [115.167, -8.819])) is None
+assert check_feature(marker(115.164, -8.816)) is None
+assert check_feature(feature("note", "Point", [115.164, -8.816])) is None
 assert check_feature(feature("marker", "LineString", [[0, 0], [1, 1]])) == "A marker is one point."
 assert check_feature(feature("note", "Polygon", [[[0, 0], [1, 0], [1, 1], [0, 0]]])) == "A note is one point."
 assert check_feature(feature("circle", "Point", [0, 0])) == "A drawing is a marker, a line, an area or a note."
@@ -67,12 +67,12 @@ print("  six colours, each a hex for the screen and an ACI number for DXF")
 
 def mark_row(**over):
     """A row as place_marks gives it back, with a geometry in WGS84."""
-    ring = [[115.167, -8.819], [115.168, -8.819], [115.168, -8.818], [115.167, -8.819]]
+    ring = [[115.164, -8.816], [115.165, -8.816], [115.165, -8.815], [115.164, -8.816]]
     return {"id": 1, "kind": "marker", "colour": 1, "label": None, "note": None, "capture_id": None, "length_m": None,
             "area_m2": None, "drawn_by": "Tomas", "updated_at": None, "geometry": {"type": "Polygon", "coordinates": [ring]}, **over}
 
 
-assert utm_epsg(115.167, -8.819) == 32750 and utm_epsg(2.17, 41.39) == 32631 and utm_epsg(-179.9, 10) == 32601
+assert utm_epsg(115.164, -8.816) == 32750 and utm_epsg(2.17, 41.39) == 32631 and utm_epsg(-179.9, 10) == 32601
 assert utm_epsg(180, 1) == 32660, "the antimeridian is zone 60, not 61"
 fc = feature_collection({"id": 3, "name": "Garden plan", "owner": "Tomas"},
                         [mark_row(kind="area", label='Rain <garden> & "pond"', colour=3, capture_id=9)], "bayu-ungasan")

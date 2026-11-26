@@ -111,7 +111,7 @@ console.log(JSON.stringify({
   names: JSON.parse(fs.readFileSync('app/issues/fixtures/node1-2026-10-06-figures.json', 'utf8')).sensors.map(s => s.name.trim()).filter(n => n.length > 3),
   lab: W0.lab.name,
   /* one fresh ring station: the engine sets the ring's source to that sensor's own name (engine.py _from_stats) */
-  ring1: M.wallStory(W0, mkD({ air: { ...cap.air, line: 15, stack: { ...cap.air.stack, ring: { ...cap.air.stack.ring, n: 1, source: 'K ROOM - BAYU HOLES' } } } })),
+  ring1: M.wallStory(W0, mkD({ air: { ...cap.air, line: 15, stack: { ...cap.air.stack, ring: { ...cap.air.stack.ring, n: 1, source: 'Sensor 3' } } } })),
   /* every name the node holds, put where a source or a title could carry it */
   named: (() => { const names = JSON.parse(fs.readFileSync('app/issues/fixtures/node1-2026-10-06-figures.json', 'utf8')).sensors.map(s => s.name);
     return names.map(n => M.wallStory(W0, mkD({ air: { ...cap.air, line: 15, stack: { room: { ...cap.air.stack.room, source: n }, yard: { ...cap.air.stack.yard, source: n },

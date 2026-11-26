@@ -17,8 +17,8 @@ reading speaks for this address and nothing else.
 Bali Air Dispatch ingests the Smart Citizen public API, and node #1 polls Smart Citizen directly. The same
 physical kit can therefore enter the node twice — once with a week of its own history, once as a station — and
 every comparison the ring makes would be the node arguing with itself. On 7 September the archive carried
-`sc-19835` "Bayu Kit" at node #1's exact coordinates and `sc-19236` "Ungasan Kit" 1.3 km away. The node calls its
-own kits "BAYU NEW ENCLOSURE" and "Ungasan Kit - TEST". Name matching was never an option.
+`sc-19835` "Bayu Kit" at node #1's exact coordinates and `sc-19236` "Sensor 5" 1.3 km away. The node calls its
+own kits "Sensor 2" and "Sensor 5". Name matching was never an option.
 
 Four rules do it, in `app/sources.py`, and each one catches something the others miss:
 

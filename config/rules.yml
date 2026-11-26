@@ -67,7 +67,7 @@
       GROUP BY 1, 2, 3, 4),
     -- Frozen means a day, not an evening. Every hourly bucket of the last 24 has to be there and flat
     -- (max - min = 0). The v0.35 form -- six flat hours out of 24, latest bucket flat too -- fired at dusk on
-    -- Ungasan Kit's light channel, which reads 0 from dusk to dawn: eleven flat hours ending in the latest
+    -- Sensor 5's light channel, which reads 0 from dusk to dawn: eleven flat hours ending in the latest
     -- bucket, every evening, on every kit with a light channel. Night in Kuta Selatan is under twelve hours, so
     -- a full day needs no metric-specific exception, and a channel that genuinely dies still matches after a day.
     frozen AS (

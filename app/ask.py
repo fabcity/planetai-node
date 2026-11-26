@@ -72,7 +72,7 @@ class Scrub:
         coords = []
         for v in (lat, lon):
             if v:
-                # rounded and cut: -8.8190516 rounds to -8.82, and "-8.8190" in a text starts -8.81
+                # rounded and cut: -8.6472 rounds to -8.65, and "-8.6472" in a text starts -8.64
                 for head in {f"{float(v):.2f}", f"{int(float(v) * 100) / 100:.2f}"}:
                     coords.append(re.escape(head) + r"\d*")
         self.coords = re.compile("|".join(coords)) if coords else None

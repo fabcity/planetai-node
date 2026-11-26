@@ -426,16 +426,16 @@ else:
     real_centre = wall.cell_centre
     wall.cell_centre = lambda: centre
     try:
-        a = routes._for_a_stranger(body(-8.81902, 115.16736))
+        a = routes._for_a_stranger(body(-8.81691, 115.17209))
         b = routes._for_a_stranger(body(-8.8158, 115.1739))   # another house in the same cell, other distances
         assert a == b, "two houses in one cell get one answer"
         assert a["point"] == {"lat": centre[1], "lon": centre[0]}, a["point"]
         km = {s["sensor_id"]: s["km_from_node"] for s in a["sources"]}
         assert km["forecast-om"] is None and all(isinstance(v, int) for k, v in km.items() if k != "forecast-om"), km
         assert a["far_from_node"] == [{"sensor_id": "forecast-far", "km": km["forecast-far"]}], a["far_from_node"]
-        assert "-8.81902" not in str(a) and "1.28" not in str(a) and "5.4" not in str(a)
+        assert "-8.81691" not in str(a) and "1.28" not in str(a) and "5.4" not in str(a)
         wall.cell_centre = lambda: None
-        c = routes._for_a_stranger(copy.deepcopy(body(-8.81902, 115.16736)))
+        c = routes._for_a_stranger(copy.deepcopy(body(-8.81691, 115.17209)))
         assert c["point"] is None and all(s["km_from_node"] is None for s in c["sources"]), "no place, no point"
     finally:
         wall.cell_centre = real_centre

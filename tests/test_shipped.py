@@ -406,7 +406,7 @@ print("every trust rule needs a week of a sensor before it names it")
 # The same three rules, run over node #1's own readings (tests/data/node1-*.tsv, out of the 7 September dump).
 # Every kit there is under three days old: sc-19236, sc-19849, sc-19874 and sc-19897 first reported on 5 September
 # and sc-19880 on 2 September. The shipped v0.35 rules named four of them — `coverage_low` at 35% of the week,
-# `channel_dead` on Ungasan Kit's light channel at dusk, `peer_disagreement` five times over one collocated trio
+# `channel_dead` on Sensor 5's light channel at dusk, `peer_disagreement` five times over one collocated trio
 # and one pair. A node this young must now hear nothing.
 try:
     import trustdb
@@ -423,7 +423,7 @@ else:
         "given a week, the rules must still be able to speak — otherwise this test proves nothing"
     print("trust says nothing about a sensor younger than a week")
 
-    # channel_dead, over Ungasan Kit's real light series (5-7 September): 0 from dusk to dawn, eleven flat hours
+    # channel_dead, over Sensor 5's real light series (5-7 September): 0 from dusk to dawn, eleven flat hours
     # ending in the latest bucket, then 4 -> 1259 lux through the day. The v0.35 rule matched it at 21:14 with
     # flat_hours = 11. It must now match at no hour of the day, and its age must not be the reason: the series is
     # given the week the pack asks for, so what is being tested is the flat rule itself.
@@ -436,15 +436,15 @@ else:
     # A channel that has genuinely stopped: 26 hours on one number, beside the same kit's pm25 still moving.
     _stuck = trustdb.week(trustdb.readings("sc-19874"), _at) + trustdb.flat("sc-19874", "light", 412, 26, _at)
     _rows = trustdb.Node(_stuck).run(_trust["channel_dead"], _at)
-    assert [r["metric"] for r in _rows] == ["light"] and _rows[0]["name"] == "BAYU NEW ENCLOSURE", \
+    assert [r["metric"] for r in _rows] == ["light"] and _rows[0]["name"] == "Sensor 2", \
         f"a channel stuck on 412 lux for 26 hours is the failure this rule exists to catch, got {_rows}"
     # The same channel stuck on 0 is a floor, not a freeze — night, no rain, a quiet room.
     _floor = trustdb.week(trustdb.readings("sc-19874"), _at) + trustdb.flat("sc-19874", "light", 0, 26, _at)
     assert trustdb.Node(_floor).run(_trust["channel_dead"], _at) == [], "0 lux for a day is night, not a dead sensor"
     print("channel_dead: a day on one number, and a floor of 0 is not a freeze")
 
-    # peer_disagreement, over the five kits' real pm1. Tonight it fired twice for one fact — Ungasan Kit at
-    # 7.4 ug/m3 against BAYU NEW ENCLOSURE at 5.4, and then the same pair the other way round — where a ratio of
+    # peer_disagreement, over the five kits' real pm1. Tonight it fired twice for one fact — Sensor 5 at
+    # 7.4 ug/m3 against Sensor 2 at 5.4, and then the same pair the other way round — where a ratio of
     # 1.37 is two units 30 m apart differing by 2 ug/m3, inside a Plantower's resolution. Over the week the pack
     # now asks for: the SENX unit's 16 against its two neighbours' 7 is a real disagreement and is named once per
     # pair, naming both units; the 6.8-against-7.2 pair is not named; the 7.4-against-5.4 pair is not either,
@@ -453,20 +453,20 @@ else:
     assert [r["sensor_id"] for r in _peers] == ["sc-19849|sc-19880", "sc-19849|sc-19897"], \
         f"one row per pair, the low pair and the sub-resolution pair silent, got {_peers}"
     for _r in _peers:
-        assert _r["name_a"] == "SENX ALL IN ONE" and _r["name_b"] in ("Bayu 2 - Indoor", "NEW FIRMWARE TEST")
-        assert _trust["peer_disagreement"]["message"]["en"].format(**_r).startswith("⚖️ SENX ALL IN ONE and ")
+        assert _r["name_a"] == "Sensor 1" and _r["name_b"] in ("Sensor 3", "Sensor 4")
+        assert _trust["peer_disagreement"]["message"]["en"].format(**_r).startswith("⚖️ Sensor 1 and ")
     # Twenty-four hours of the same five kits says nothing at all: the rule no longer looks at 24 hours.
     assert trustdb.Node(trustdb.day(_real)).run(_trust["peer_disagreement"], _at) == [], \
         "a day of two boxes is a statement about the day"
     print("peer_disagreement: a week, an absolute floor, and one alert per pair")
 
-    # coverage_low keeps its 60% of 168 hours; the gate is all it needed. SENX ALL IN ONE reported 59 of tonight's
+    # coverage_low keeps its 60% of 168 hours; the gate is all it needed. Sensor 1 reported 59 of tonight's
     # last 168 hours — 35%, which is what the rule would have said, and true — but it had only been on the node
     # for two days. Given a fortnight behind it and the same 59 hours, it is named; two days old, it is not.
     _senx = trustdb.readings("sc-19849")
     _old = _senx + [(_ts - datetime.timedelta(days=14), _s, _m, _v) for _ts, _s, _m, _v in _senx]
     assert [(r["name"], r["hours"], float(r["pct"])) for r in trustdb.Node(_old).run(_trust["coverage_low"], _at)] \
-        == [("SENX ALL IN ONE", 59, 35.0)], "a seasoned sensor with 35% of the week is still worth saying"
+        == [("Sensor 1", 59, 35.0)], "a seasoned sensor with 35% of the week is still worth saying"
     assert trustdb.Node(_senx).run(_trust["coverage_low"], _at) == [], "two days old is not a hole in the week"
     print("coverage_low: the same 60%, over sensors old enough for the question")
 

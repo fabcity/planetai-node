@@ -1253,8 +1253,8 @@ together, so if something looks off after you update, tell me what you saw and o
   capture.
 - **Rooms in the household's words.** Set up › Rooms names the room each of the home's sensors is in, and the node
   makes that the sensor's name in the database (schema 0.61, a trigger on `sensors`), whatever a poll or a pack writes
-  after. Every alert, the report, the stats and the pages then say "Kids", not "K ROOM - BAYU HOLES" (Tomas, 14 Oct:
-  node #1's K, L and S are Kids, Living Room and Studio). The platform's name is kept in `source_name`; the Wall never
+  after. Every alert, the report, the stats and the pages then say "Kids", not "Sensor 3" (Tomas, 14 Oct).
+  The platform's name is kept in `source_name`; the Wall never
   shows a room; a reader without a token never sees which room is which. `PATCH /sensors/{sid}`, admin.
 
 - **The report tells what was sent.** On `ALERT_ENGINE=events` the heat and air rules still record alerts that
@@ -1273,7 +1273,7 @@ together, so if something looks off after you update, tell me what you saw and o
   counted every alerts row, including the ones the event engine records and never sends; `/issues` now carries
   `events.sent_24h`, what was sent, and the door shows that. (6) Place's land-change and Index rows said the pack had
   nothing while node #1 held 6 of 20 Index values and nine years compared; they now say how many and where they are
-  drawn. (7) The Wall printed `stale` always, and the names of the house's sensors ("K ROOM - BAYU HOLES") and an
+  drawn. (7) The Wall printed `stale` always, and the names of the house's sensors ("Sensor 3") and an
   alert's text naming the room; it now says `stale` only when the last poll is over 15 minutes old, and names nothing:
   inside, outside, a public station by its distance, an ask in the engine's words. (8) Pressure is stored in kPa and
   `/issues` called it hPa, so Data read "99.8 hPa" beside the model's 996; it says kPa. (9) The household form shared
@@ -3948,7 +3948,7 @@ of its own.
 ### what fired wrongly, and what each rule asks now
 
 - **`channel_dead` fired at dusk on every kit with a light channel.** It asked for six flat hourly buckets out of
-  the last 24 with the latest one flat too. Ungasan Kit's light channel reads 0 from dusk to dawn — eleven flat
+  the last 24 with the latest one flat too. Sensor 5's light channel reads 0 from dusk to dawn — eleven flat
   hours, ending in the latest bucket — so it matched every evening, as often as its 12-hour cooldown allowed. Any
   channel with a legitimate floor (light, uv, rain, noise) or a steady indoor value tripped it. It now needs a
   whole day: all 24 of the last day's hourly buckets present and flat, none of them moving, while another ambient
@@ -5196,4 +5196,4 @@ Fixes from the first live install at Fab Lab Bali, and the first two asks from t
 
 ## v0.1 — 2026-09-02
 
-First running node. Smart Citizen 19880 + Bali Air Dispatch → Postgres → five SQL rules → Telegram. `GET /cells` (fci-cells-v0), `POST /actions` (ρ). Node #1: "Bayu 2 – Indoor", Kuta Selatan.
+First running node. Smart Citizen 19880 + Bali Air Dispatch → Postgres → five SQL rules → Telegram. `GET /cells` (fci-cells-v0), `POST /actions` (ρ). Node #1: "Sensor 3", Kuta Selatan.

@@ -1,4 +1,4 @@
-"""Rooms in the household's words (Tomas, 14 Oct 2026: node #1's K, L and S are Kids, Living Room and Studio).
+"""Rooms in the household's words (Tomas, 14 Oct 2026).
 
 Structural half reads init.sql: the room becomes the sensor's name in the database, whatever writes the row, and the
 platform's name is kept. Request half drives PATCH /sensors/{sid} and GET /sensors with the database stubbed.
@@ -32,7 +32,7 @@ import main                                       # noqa: E402
 from fastapi.testclient import TestClient         # noqa: E402
 
 DONE = []
-SENSORS = {"sc-1": {"sensor_id": "sc-1", "name": "K ROOM - BAYU HOLES", "room": None, "source_name": None}}
+SENSORS = {"sc-1": {"sensor_id": "sc-1", "name": "Sensor 3", "room": None, "source_name": None}}
 
 
 class Cur:
@@ -66,21 +66,21 @@ ADMIN, ACT = {"Authorization": "Bearer admin-tok"}, {"Authorization": "Bearer ac
 assert c.patch("/sensors/sc-1", json={"room": "Kids"}).status_code in (401, 403)
 assert c.patch("/sensors/sc-1", json={"room": "Kids"}, headers=ACT).status_code == 401, "admin only: it renames what the house reads"
 r = c.patch("/sensors/sc-1", json={"room": "  Kids  "}, headers=ADMIN)
-assert r.status_code == 200 and r.json()["sensor"]["name"] == "Kids" and r.json()["sensor"]["source_name"] == "K ROOM - BAYU HOLES", r.text
+assert r.status_code == 200 and r.json()["sensor"]["name"] == "Kids" and r.json()["sensor"]["source_name"] == "Sensor 3", r.text
 assert any(q.startswith("UPDATE sensors") and p[0] == "Kids" for q, p in DONE), "trimmed before it is stored"
 assert DONE[-1] == ("UPDATE alert_events SET rooms = array_replace(rooms, %s, %s) WHERE %s = ANY(rooms)",
-                    ("K ROOM - BAYU HOLES", "Kids", "K ROOM - BAYU HOLES")), "the rename follows into the event episodes"
+                    ("Sensor 3", "Kids", "Sensor 3")), "the rename follows into the event episodes"
 assert c.patch("/sensors/sc-1", json={"room": "x" * 80}, headers=ADMIN).json()["sensor"]["room"] == "x" * 40, "forty characters at most"
 assert c.patch("/sensors/sc-1", json={"room": 3}, headers=ADMIN).status_code == 422
 r = c.patch("/sensors/sc-1", json={"room": None}, headers=ADMIN)
-assert r.json()["sensor"]["name"] == "K ROOM - BAYU HOLES" and DONE[-2][1][0] is None, "null gives the platform's name back"
+assert r.json()["sensor"]["name"] == "Sensor 3" and DONE[-2][1][0] is None, "null gives the platform's name back"
 assert c.patch("/sensors/nope", json={"room": "Kids"}, headers=ADMIN).status_code == 404
 
-ROWS = [{"sensor_id": "sc-1", "source": "smartcitizen", "name": "Kids", "room": "Kids", "source_name": "K ROOM - BAYU HOLES",
+ROWS = [{"sensor_id": "sc-1", "source": "smartcitizen", "name": "Kids", "room": "Kids", "source_name": "Sensor 3",
          "lat": -8.81, "lon": 115.16, "indoor": True, "local": True, "custody": True, "kind": "sensor", "scale": "community",
          "cadence": "PT5M", "meta": {}}]
 main.q = lambda sql, *a: [dict(x) for x in ROWS]
-assert c.get("/sensors", headers=ADMIN).json()[0]["source_name"] == "K ROOM - BAYU HOLES"
+assert c.get("/sensors", headers=ADMIN).json()[0]["source_name"] == "Sensor 3"
 pub = TestClient(main.app, client=("192.168.4.20", 5000)).get("/sensors").json()[0]
 assert "room" not in pub and "source_name" not in pub, "which room is which is the household's, not a stranger's"
 print("routes: admin names a room, trimmed and capped, null gives the platform's name back; a stranger never reads it")

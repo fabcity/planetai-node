@@ -12,7 +12,7 @@
 > not assumed:
 >
 > - **§2's two leaks are both fixed.** `/health` rounds `lat`/`lon` to 3 dp (`app/main.py:779`) — node #1
->   serves `-8.819 / 115.164`. `/place/geojson` is refused by the public allowlist (`app/main.py:674`).
+>   serves `-8.816 / 115.164`. `/place/geojson` is refused by the public allowlist (`app/main.py:674`).
 > - **§4's `SHARE_LEVEL` exists**, in `app/settings.py`.
 > - **§3 is superseded.** It argues that `s.local` is the boundary that keeps a peer out of a cell. That
 >   was true and it was also why a community node aggregating ten homes could never say `live` — children

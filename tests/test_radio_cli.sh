@@ -69,7 +69,7 @@ echo "  ok   with the gateway running, the guide never offers its port for the n
 # `--fixed -8.8,115.1`: a south latitude starts with a minus, and argparse once took it for an option and stopped at
 # "expected one argument". Every radio in Bali has one (19 Oct 2026). Accepted, the command reaches its next question.
 # Python 3.12+ argparse accepts it already; node #1 runs Apple's 3.9, so the test puts 3.9's rule back first.
-for fx in "--fixed -8.81902,115.16736" "--fixed=-8.81902,115.16736" "--fixed -8.81902,115.16736,12"; do
+for fx in "--fixed -8.81791,115.17109" "--fixed=-8.81791,115.17109" "--fixed -8.81791,115.17109,12"; do
   # shellcheck disable=SC2086
   if PLANETAI_ROOT="$r" python3 - provision sensor "Mesh test" MTU $fx >"$t/out" 2>&1 <<'PY'
 import argparse, re, sys

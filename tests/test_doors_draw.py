@@ -16,16 +16,16 @@ const sq = [[0,0],[0.001,0],[0.001,0.001],[0,0.001],[0,0]];
 let a = D.addPt(D.addPt(D.drawState('area'), [0,0]), [0.001,0]);
 const open = { can: D.canFinish(a), feat: D.toFeature(a, {}) };
 const a3 = D.addPt(a, [0.001,0.001]);
-const ln = D.addPt(D.addPt(D.addPt(D.drawState('line'), [115.167,-8.819]), [115.168,-8.819]), [115.168,-8.818]);
+const ln = D.addPt(D.addPt(D.addPt(D.drawState('line'), [115.164,-8.816]), [115.165,-8.816]), [115.165,-8.815]);
 console.log(JSON.stringify({
-  len: D.lengthM([[115.167,-8.819],[115.168,-8.819]]), area: D.areaM2(sq), areaOpen: D.areaM2(sq.slice(0, 4)),
+  len: D.lengthM([[115.164,-8.816],[115.165,-8.816]]), area: D.areaM2(sq), areaOpen: D.areaM2(sq.slice(0, 4)),
   perim: D.perimeterM(sq), perimOpen: D.perimeterM(sq.slice(0, 4)), lenOne: D.lengthM([[1,1]]), areaTwo: D.areaM2([[0,0],[1,1]]),
   f: [D.fmtArea(312), D.fmtArea(24000), D.fmtArea(10000), D.fmtLen(1240), D.fmtLen(58.4), D.fmtLen(999.4), D.fmtLen(0)],
   open, feat: D.toFeature(a3, {label: 'x'}), back: D.backPt(a3).pts, backEmpty: D.backPt(D.drawState('line')).pts,
   immut: a.pts.length, can: [D.canFinish(a3), D.canFinish(D.addPt(D.drawState('line'), [0,0])), D.canFinish(ln), D.canFinish(D.addPt(D.drawState('marker'), [1,2])), D.canFinish(D.drawState('note'))],
-  line: D.toFeature(ln, {kind: 'x'}), marker: D.toFeature(D.addPt(D.drawState('marker'), [115.1702,-8.8183]), {}),
-  fig: { empty: D.figure(D.drawState('line')), line: D.figure(ln), lineHover: D.figure(D.addPt(D.drawState('line'), [115.167,-8.819]), [115.168,-8.819]),
-         area: D.figure(D.addPt(D.addPt(D.addPt(D.drawState('area'), [0,0]), [0.0005,0]), [0.0005,0.0005])), areaBig: D.figure(D.addPt(D.addPt(D.addPt(D.addPt(D.drawState('area'), [0,0]), [0.001,0]), [0.001,0.001]), [0,0.001])), areaTwo: D.figure(a), marker: D.figure(D.addPt(D.drawState('marker'), [115.1702,-8.8183])),
+  line: D.toFeature(ln, {kind: 'x'}), marker: D.toFeature(D.addPt(D.drawState('marker'), [115.1635,-8.8161]), {}),
+  fig: { empty: D.figure(D.drawState('line')), line: D.figure(ln), lineHover: D.figure(D.addPt(D.drawState('line'), [115.164,-8.816]), [115.165,-8.816]),
+         area: D.figure(D.addPt(D.addPt(D.addPt(D.drawState('area'), [0,0]), [0.0005,0]), [0.0005,0.0005])), areaBig: D.figure(D.addPt(D.addPt(D.addPt(D.addPt(D.drawState('area'), [0,0]), [0.001,0]), [0.001,0.001]), [0,0.001])), areaTwo: D.figure(a), marker: D.figure(D.addPt(D.drawState('marker'), [115.1635,-8.8161])),
          areaEmpty: D.figure(D.drawState('area')), note: D.figure(D.drawState('note')), markerEmpty: D.figure(D.drawState('marker')) },
   keys: D.KEYS, onWindow: typeof window,
 }));
@@ -50,7 +50,7 @@ assert f["properties"] == {"kind": "area", "label": "x"}, f["properties"]
 assert R["back"] == [[0, 0], [0.001, 0]] and R["backEmpty"] == [] and R["immut"] == 2, "backPt and addPt leave the old state alone"
 assert R["can"] == [True, False, True, True, False], R["can"]
 assert R["line"]["geometry"]["type"] == "LineString" and R["line"]["properties"]["kind"] == "x", "the caller's props win"
-assert R["marker"]["geometry"] == {"type": "Point", "coordinates": [115.1702, -8.8183]}
+assert R["marker"]["geometry"] == {"type": "Point", "coordinates": [115.1635, -8.8161]}
 print("  draw: the state machine adds, takes back, and finishes only when the shape is a shape")
 
 g = R["fig"]
@@ -61,7 +61,7 @@ assert g["area"]["unit"].startswith("m² · 0.15 ha · ") and g["area"]["unit"].
 assert g["areaBig"]["value"] == "1.2" and g["areaBig"]["unit"].startswith("ha · 445 m round"), g["areaBig"]
 assert g["area"]["hint"].startswith("Press to add a corner"), g["area"]
 assert g["areaTwo"]["value"] == "" and g["areaEmpty"]["value"] == ""
-assert g["marker"]["value"] == "−8.8183, 115.1702" and g["markerEmpty"]["hint"].startswith("Press the map to drop it")
+assert g["marker"]["value"] == "−8.8161, 115.1635" and g["markerEmpty"]["hint"].startswith("Press the map to drop it")
 assert g["note"]["hint"].startswith("A note sits on the map")
 print("  draw: the readout figure, with and without a hover point")
 

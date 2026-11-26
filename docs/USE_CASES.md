@@ -30,7 +30,7 @@ you breathe. That gap is why the sensor exists, and the `agreement` rule states 
 
 ## Also learned
 
-Ungasan Kit published no PM2.5 for a week: online radio, dead sensor. Ulu Garden is indoor, seven kilometres away,
+Sensor 5 published no PM2.5 for a week: online radio, dead sensor. Ulu Garden is indoor, seven kilometres away,
 offline. The account was a six-sensor network already; the node was reading one.
 
 ## Automations

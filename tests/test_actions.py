@@ -58,8 +58,7 @@ no_tpl, aid3 = A.render({"name": heat["name"], "events": {}, "actions": []}, E.M
 assert no_tpl.startswith(heat["name"]["en"]) and "K ROOM" in no_tpl and not no_tpl.startswith("\n") and aid3 is None, no_tpl
 print("  render: no template for the kind gives one line naming the issue and the rooms")
 
-# The voice (design review of node #1, 14 Oct). Before: "📈 The air jumped in K ROOM - BAYU HOLES, L ROOM - Ai1 - SEEED
-# OPEN: 48 µg/m³ PM2.5 — the WHO line is 15. Outside reads 11 µg/m³.\n\n👉 Open the side where it started and run the
+# The voice (design review of node #1, 14 Oct). Before: "📈 The air jumped in Sensor 3, Sensor 1: 48 µg/m³ PM2.5 — the WHO line is 15. Outside reads 11 µg/m³.\n\n👉 Open the side where it started and run the
 # purifier for 30 min: outside is cleaner (11 µg/m³)." Words first, one reading, the line with its owner and unit, the
 # outside said once, as the action's reason, and nothing about where it started (rooms are a sorted set).
 import unicodedata                                                  # noqa: E402

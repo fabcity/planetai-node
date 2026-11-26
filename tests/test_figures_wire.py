@@ -127,20 +127,20 @@ def stopped(i, name, lat, lon, when, indoor=False):
             "last_heard": when}
 
 
-HEARD = [heard("sc-19874", "BAYU NEW ENCLOSURE ", -8.82008, 115.16669, True),
-         heard("sc-19236", "Ungasan Kit - TEST", -8.81983, 115.16657, True),
+HEARD = [heard("sc-19874", "Sensor 2 ", -8.82371, 115.16641, True),
+         heard("sc-19236", "Sensor 5", -8.82371, 115.16641, True),
          heard("sc-19898", "Suluban Entrance - AIR", -8.81645, 115.09271),
          heard("bad-ag-197980", "Padang2 Uluwatu (AirGradient)", -8.81121, 115.10252),
          heard("bad-sc-19768", "Bayu Sensor by Fab Lab - Kios Serangan (Smart Citizen)", -8.72582, 115.23585)]
-STOPPED = [stopped("bad-sc-19874", "BAYU NEW ENCLOSURE (Smart Citizen)", -8.82008, 115.16669, "2026-10-04T15:00:37+00:00"),
-           stopped("bad-sc-19236", "Ungasan Kit - TEST (Smart Citizen)", -8.81983, 115.16657, "2026-10-04T15:00:37+00:00"),
+STOPPED = [stopped("bad-sc-19874", "Sensor 2 (Smart Citizen)", -8.82371, 115.16641, "2026-10-04T15:00:37+00:00"),
+           stopped("bad-sc-19236", "Sensor 5 (Smart Citizen)", -8.82371, 115.16641, "2026-10-04T15:00:37+00:00"),
            stopped("bad-sc-19898", "Suluban Entrance - AIR (Smart Citizen)", -8.81645, 115.09271, "2026-10-01T20:30:26+00:00"),
            stopped("bad-oq-6432409", "Padang2 Uluwatu (OpenAQ)", -8.81121, 115.10252, "2026-09-07T23:00:42+00:00"),
            stopped("bad-sc-19995", "Bayu Sensor Demo Test Lora (Smart Citizen)", -8.72591, 115.23600, "2026-10-03T22:45:24+00:00"),
            stopped("bad-iqs-jimbaran-s", "Jimbaran (IQAir)", -8.79122, 115.16740, "2026-09-07T22:07:41+00:00", True),
            stopped("bad-pa-36601", "Jimbaran by Lumi Clinic (PurpleAir)", -8.79122, 115.16740, "2026-09-07T23:00:42+00:00", True),
            stopped("bad-ag-208245", "Suluban (AirGradient)", -8.81882, 115.08806, "2026-10-03T09:45:22+00:00")]
-out = engine._stations(HEARD, [], -8.8190516, 115.1644423, True, STOPPED)
+out = engine._stations(HEARD, [], -8.8160826, 115.1635438, True, STOPPED)
 gone = sorted(s["name"] for s in out if s.get("last_heard"))
 # Four of the eight are relays (bad-sc-*, OpenAQ) of kits heard today at the same point: they are not listed.
 assert gone == ["Bayu Sensor Demo Test Lora (Smart Citizen)", "Jimbaran (IQAir)",
@@ -163,7 +163,7 @@ assert not any(s.get("last_heard") for s in again["stations"]), "a stopped stati
 print("  silent stations: a capture says whether it read them, and replays the ones it carried")
 
 # A station that stopped is published for the fold, never counted as one this node reads now (§3.3).
-quiet = {"sensor_id": "bad-sc-0", "name": "Stopped, 60 m away", "lat": -8.8195, "lon": 115.1650, "local": False,
+quiet = {"sensor_id": "bad-sc-0", "name": "Stopped, 60 m away", "lat": -8.8161, "lon": 115.1635, "local": False,
          "indoor": False, "kind": "sensor", "read": {}, "series": {}, "last_heard": "2026-09-20T10:00:00+00:00"}
 base = engine.replay(fresh(), Settings(), DECL)
 snap = fresh()
