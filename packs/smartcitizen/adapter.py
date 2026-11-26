@@ -86,7 +86,7 @@ def smartcitizen(hc: httpx.Client, device_ids: list[int]):
                     continue
                 metric = second
                 # the second sensor's own time. A sensor that stopped weeks ago is still listed with its last value
-                # (kit 20137's HM-3301, quiet since 29 Oct, read 16.0 at every poll), and no rule watches a private
+                # (one kit's HM-3301, quiet for four weeks, read 16.0 at every poll), and no rule watches a private
                 # channel for a flat day, so under the kit's time it would be stored as fresh for ever.
                 at = _iso(s.get("last_reading_at")) or ts
             if at is None:

@@ -2,8 +2,8 @@
 
 Until 22 Nov 2026 the adapter mapped a measurement by its name, so a device with a Seeed HM-3301 and a Sensirion SEN5X
 wrote two rows with one key, (sc-<kit>, pm25, ts). The insert keeps the row already there, so the first one the API
-listed was stored and the other dropped, with no log line. The living room box (19849) read 5.0 on the HM-3301 and 12.6
-on the SEN5X that afternoon, and the node showed 5.0.
+listed was stored and the other dropped, with no log line. One box read 5.0 on the HM-3301 and 12.6 on the SEN5X that
+afternoon, and the node showed 5.0.
 
 What must hold now: the sensor that had `pm25` keeps it, under the same sensor id, so history, rules and the Index
 cells read the series they always read; any other known particle sensor in the box is stored beside it as
@@ -60,11 +60,11 @@ class HC:
     def __init__(s, sensors): s.sensors = sensors
     def get(s, url, timeout=None):
         return type("R", (), {"raise_for_status": lambda r: None, "json": lambda r: {
-            "name": "box", "last_reading_at": NOW, "location": {"exposure": "indoor", "latitude": -8.8, "longitude": 115.1},
+            "name": "box", "last_reading_at": NOW, "location": {"exposure": "indoor", "latitude": 0.0, "longitude": 0.0},
             "data": {"sensors": s.sensors}}})()
 
 
-def read(sensors, kit=19849):
+def read(sensors, kit=1001):
     s, r = sc.smartcitizen(HC(sensors), [kit])
     assert [x["sensor_id"] for x in s] == [f"sc-{kit}"], "one box is one sensor row, as it always was"
     keys = Counter((sid, m, ts) for ts, sid, m, _ in r)
@@ -72,15 +72,15 @@ def read(sensors, kit=19849):
     return {m: (v, ts.isoformat().replace("+00:00", "Z")) for ts, _, m, v in r}
 
 
-# ---- 1. the living room box (19849): HM-3301 and SEN5X. Both kept; the HM-3301 keeps the plain names.
+# ---- 1. a box with an HM-3301 and a SEN5X. Both kept; the HM-3301 keeps the plain names.
 got = read(HM + SEN)
 assert {m: v for m, (v, _) in got.items() if m.startswith("pm")} == {
     "pm1": 4.0, "pm25": 5.0, "pm10": 5.0, "pm1_sen5x": 12.1, "pm25_sen5x": 12.6, "pm10_sen5x": 12.6}, got
 assert read(list(reversed(HM + SEN))) == got, "which sensor keeps pm25 must not depend on the order the API sends"
 print("two particle sensors: both stored, the one that had pm25 keeps it, whatever order the API lists them in")
 
-# ---- 2. the study box (20137): three particle sensors, one of them quiet since 29 Oct, and three thermometers.
-got = read(BME + PMS + [dict(x, value=v, last_reading_at=OCT) for x, v in zip(HM, (11.0, 18.0, 16.0))] + SEN, kit=20137)
+# ---- 2. a box with three particle sensors, one of them quiet since 29 Oct, and three thermometers.
+got = read(BME + PMS + [dict(x, value=v, last_reading_at=OCT) for x, v in zip(HM, (11.0, 18.0, 16.0))] + SEN, kit=1002)
 assert (got["pm25"], got["pm25_sen5x"]) == ((7.0, NOW), (12.6, NOW)), got
 assert got["pm25_hm3301"] == (16.0, OCT), "a sensor that stopped on 29 Oct was written again as a reading of today"
 assert (got["temp"][0], got["humidity"][0]) == (27.5, 73.4), "temperature and humidity stay the sensor they were (not in this change)"
