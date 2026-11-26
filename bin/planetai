@@ -1123,7 +1123,7 @@ T
 # curl and tar at one pinned commit, and builds the image itself; Fab City publishes no image with rns in it.
 # Moving the pin is its own PR, after reading rns's and lxmf's LICENSE at the versions that commit installs.
 RETICULUM_REPO="fabcity/planetai-reticulum"
-RETICULUM_REF="45f3f4091958f0d14650e4f5ba11e5b7a7ce6358"
+RETICULUM_REF="744309e562adf0b2164aae4efbb9b47481517745"
 # The Fab City hub (docs/SPEC_hub.md): node #1's Funnel name, which goes with the mini when it moves. Funnel takes only
 # TLS, so the bridge dials it through openssl in a PipeInterface, the block config.tpl carries commented. openssl checks
 # the certificate and that it names the hub: -servername alone only sends the name.
