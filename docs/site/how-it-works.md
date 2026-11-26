@@ -74,7 +74,7 @@ Assistant.
 
 When a person does something about it, that is a row in `actions`, and it can come from five places: the
 dashboard's **I did this** (which needs `ACT_TOKEN` or `ADMIN_TOKEN` in the browser), `planetai act`,
-`/act <id> <what you did>` in Telegram, the MCP `act` tool, or an `act <id>` message over Reticulum. A rule's buttons
+`/act <id> <what you did>` in Telegram, the MCP `act` tool, or a `done <id>` message over Reticulum. A rule's buttons
 are a sixth, on Telegram with `TELEGRAM_BUTTONS=1` and under What to do on Now: each press is a row with a `choice`. An agent
 drafts and never dispatches, so nothing is recorded as done without that row.
 
@@ -120,7 +120,7 @@ A pack's `cells.yml` computes the other Index cells the node has the data to fil
 | introduced species | hourly | only with the `eyes` pack on and `SPECIES_MATCH=on`: once a week reads the country's GRIIS checklist from GBIF |
 | others' records | hourly | only with the `eyes` pack on and `SPECIES_MATCH=on`: once a week counts GBIF's open records in each of the node's seven res-8 cells |
 | what the house learned | hourly | once a local day, in its first hour: what worked, what is usual, the alerts that may not fit, and the diary's entries |
-| Reticulum | 300 s | only with `RETICULUM_URL` set: asks the bridge for its health and the peers it has heard, for `/health.reticulum`. The bridge itself turns an `act <id>` message into `POST /actions` |
+| Reticulum | 300 s | only with `RETICULUM_URL` set: asks the bridge for its health and the peers it has heard, for `/health.reticulum`. The bridge itself turns an answer, `done <id>` or `not now e<id>`, into `POST /actions` |
 
 With `MQTT_HOST` set, one more thread subscribes to the broker for Meshtastic radios, DIY sensors and the
 topics a loaded pack's `hooks.py` names in `MQTT_TOPICS` (the `smartcitizen` pack's `device/sck/#`). That pack

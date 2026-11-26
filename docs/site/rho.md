@@ -73,12 +73,12 @@ row of rings. The doors' Wall does not show it.
 
 | stage | meaning | written by | in ρ |
 |---|---|---|---|
-| `acknowledged` | somebody saw it | `POST /actions`, the bot's Not now | yes |
+| `acknowledged` | somebody saw it | `POST /actions`, the bot's Not now, `not now <id>` over LXMF | yes |
 | `decided` | somebody said what would be done | the dashboard's Decide form, `POST /actions` | no |
-| `acted` | somebody did the thing | the dashboard's *I did this* and Done, a drawing on Place tied to an issue, `planetai act`, `/act` on Telegram, `act <id>` over LXMF, the MCP `act` tool, `POST /actions` | yes |
+| `acted` | somebody did the thing | the dashboard's *I did this* and Done, a drawing on Place tied to an issue, `planetai act`, `/act` on Telegram, `done <id>` over LXMF, the MCP `act` tool, `POST /actions` | yes |
 | `measured` | the condition stopped | derived in the funnel (below); `POST /actions` refuses it | no |
 | `settings` | a setting was changed, with no alert | the node, on `PUT /settings` | no |
-| `dismissed` | *Doesn't fit*, said of an event's advice | `POST /actions` with an `event_id` | no |
+| `dismissed` | *Doesn't fit*, said of an event's advice | `POST /actions` with an `event_id`, `doesn't fit e<id>` over LXMF | no |
 | `place` | a drawing, a change, a download or a share on Place, one line in the ledger | the node, from Place | no |
 
 An event's three answers (`acted`, `acknowledged`, `dismissed`) carry an `event_id` and no `alert_id`. ρ and the
@@ -155,7 +155,7 @@ counts in ρ like any other. A `choice` the alert did not offer is a 400, and an
 | `planetai act <id> [note]` | `$(whoami)` | writes `acted` |
 | Telegram `/act <id> <words>` | `<AGENT_NAME>/telegram` | writes nothing; the bot asks "What did you do about it?" |
 | the MCP `act` tool | its `agent` argument | refuses, and refuses placeholders such as `acted`, `done` or `ok` |
-| `act <id> [note]` over LXMF | `lxmf:<hash>` | writes `acted (via reticulum)` |
+| `done <id> [note]` over LXMF, or `not now`, `doesn't fit`, `act` | `lxmf:<hash>` | writes the word, `done (via reticulum)` |
 
 The note should be what the person said. The MCP tool and the Telegram bot will not write a row without one, the
 terminal and the radio fill in a placeholder, and `POST /actions` takes any note. `GET /actions` lists every answer

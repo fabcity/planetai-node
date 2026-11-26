@@ -29,8 +29,12 @@ class Msg:
         self.event = type("E", (), {"level": level, "id": 7, "issue": "heat"})()
 
 
+answers = []   # what each send names for an answer on Reticulum (channels.reticulum_answers), newest run only
+
+
 def run(mode, buttons=False):
     sqls, notified, ran, kbs = [], [], [], []
+    answers.clear()
 
     class Cur:
         def execute(self, sql, *a):
@@ -62,7 +66,8 @@ def run(mode, buttons=False):
     log.warning = log.info = lambda *a: None
     sent_levels = []
     g = dict(packs=packs, index=index, events_pg=events_pg, settings=settings, log=log, db=db, _act=actions,
-             notify=lambda lvl, text, keyboard=None, home="": (notified.append(text), sent_levels.append(lvl), kbs.append(keyboard)),
+             notify=lambda lvl, text, keyboard=None, home="", answer="": (notified.append(text), sent_levels.append(lvl),
+                                                                        kbs.append(keyboard), answers.append(answer)),
              _alert_home=lambda issue: "",
              run_report=lambda cur: None, _quiet=lambda lvl: False, LOCALE=lambda: "en", _local_now=lambda: "now")
     g.update(buttons=buttons_mod, json=json)
@@ -92,6 +97,7 @@ assert sum(s.startswith("INSERT") for s in sqls) == 2, "both old rules still rec
 assert "old 1" not in notified, "an old rule of a pack the engine replaces is recorded, not sent"
 assert notified == ["other 1", "engine says"], notified
 assert kbs == [None, None], "no bot, no buttons: TELEGRAM_BUTTONS=0 sends every message bare (SPEC_alerts §7)"
+assert answers == ["1", "e7"], f"a rule's message is answered by its alert id, an event's by e and its id: {answers}"
 print("  events: the engine's sent messages go out (held and text-less ones do not); old heat/air rules are recorded,")
 print("          not sent; rules of packs the engine does not replace send as before")
 

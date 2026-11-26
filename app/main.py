@@ -413,7 +413,8 @@ def run_rules() -> None:
                     # Buttons ride only when the bot has announced itself, as for events; they are stored either way.
                     kb = buttons.telegram_rows(btns, alert_id, settings.get("ALERT_LOCALE", "en") or "en") \
                         if btns and settings.num("TELEGRAM_BUTTONS", 0) else None
-                    notify(level, text, keyboard=kb, home=_alert_home(rule["id"]) if level == "act" else "")
+                    notify(level, text, keyboard=kb, home=_alert_home(rule["id"]) if level == "act" else "",
+                           answer=str(alert_id))
                 packs.emit("on_alert", level, text, alert_id)
         if mode in ("shadow", "events"):
             try:
@@ -431,7 +432,8 @@ def run_rules() -> None:
                         kb = _event_keyboard(m.event.id, settings.get("ALERT_LOCALE", "en") or "en") \
                             if m.event.id and settings.num("TELEGRAM_BUTTONS", 0) else None
                         notify(m.event.level, text, keyboard=kb,
-                               home=_alert_home(m.event.issue) if m.event.level == "act" else "")
+                               home=_alert_home(m.event.issue) if m.event.level == "act" else "",
+                               answer=f"e{m.event.id}" if m.event.id else "")
 
 
 def _alert_home(issue: str) -> str:
@@ -2273,7 +2275,7 @@ def test_alert(authorization: str = Header("")):
         closing = f"👉 Responde {how} para mostrarme cómo cierras el círculo." if how.startswith("/") else f"👉 En la terminal, {how} registra que cerraste el círculo."
     else:
         closing = f"👉 Reply {how} to show me how you close the loop." if how.startswith("/") else f"👉 In the terminal, {how} records that you closed the loop."
-    notify("act", f"{text}\n\n{closing}")      # the hint already carries the number; a bare #id on the end taught nothing
+    notify("act", f"{text}\n\n{closing}", answer=str(alert_id))   # the hint carries the number; a bare #id on the end taught nothing
     packs.emit("on_alert", "act", text, alert_id)
     return {"ok": True, "alert_id": alert_id}
 
