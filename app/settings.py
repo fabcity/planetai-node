@@ -83,6 +83,9 @@ RUNTIME = {
     "ALERT_MAX_PER_DAY":  ("alerts", "Most messages a day", False, False,
                            "With the event engine: pushes a day outside danger, default 4. Beyond it an event "
                            "is still recorded and waits for the next report. Danger is never held."),
+    "RAIN_HEAVY_MM":      ("alerts", "Heavy rain, mm in 24 h", False, False,
+                           "A community node's rain feed says heavy rain when the forecast for the next 24 hours "
+                           "reaches this. 50 mm is BMKG's heavy rain (hujan lebat); check it for your place."),
     "HOME_HAS":           ("alerts", "What this home has", False, False,
                            "Comma-separated: purifier, ac, fan, windows (windows that open). The event engine "
                            "only suggests what is here to use."),

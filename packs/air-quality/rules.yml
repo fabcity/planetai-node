@@ -231,3 +231,28 @@
     en: "Very unhealthy air at {name}: {value} µg/m³ PM2.5."
     id: "Udara sangat tidak sehat di {name}: PM2.5 {value} µg/m³."
     es: "Aire muy insalubre en {name}: {value} µg/m³ de PM2.5."
+
+# ---- for a community node's subscribers only (`feed_only`): nothing reaches a household from here.
+# Every outdoor station the node reads counts, its own kits, its children's and the public ones its sources fetch
+# within its radius; a model point never does, a room never does, and a reading marked private never does.
+- id: air_unhealthy_around
+  level: info
+  cooldown_minutes: 1440
+  feed_only: true
+  sql: |
+    WITH o AS (
+      SELECT st.name, st.mean_1h FROM stats st
+      WHERE st.metric = 'pm25' AND NOT st.indoor AND st.kind IN ('sensor', 'child', 'portal') AND st.mean_1h IS NOT NULL
+        AND NOT EXISTS (SELECT 1 FROM sensors ps JOIN channel_roles pc ON pc.source = ps.source
+                        WHERE ps.sensor_id = st.sensor_id AND pc.metric = st.metric AND pc.role = 'private'))
+    SELECT 'node' AS sensor_id, count(*) AS n,
+           count(*) FILTER (WHERE mean_1h > 55.5) AS over,
+           round(CAST(max(mean_1h) AS NUMERIC)) AS worst,
+           (SELECT name FROM o ORDER BY mean_1h DESC LIMIT 1) AS worst_at
+    FROM o
+    HAVING count(*) >= 2 AND percentile_cont(0.5) WITHIN GROUP (ORDER BY mean_1h) > 55.5
+  feed:
+    name: air
+    metric: pm25
+    en: "😷 The air around here is unhealthy: {worst} at {worst_at}, {over} of {n} stations.\nPut off outdoor work and exercise; keep children inside."
+    id: "😷 Udara di sekitar sini tidak sehat: {worst} di {worst_at}, {over} dari {n} stasiun.\nTunda kerja dan olahraga di luar; anak-anak tetap di dalam."

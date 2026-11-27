@@ -153,6 +153,7 @@ Sources that come as packs (stations, forecast, earth and place data, fab labs) 
 | `QUIET_FROM`, `QUIET_TO` | `22`, `6` | local hour | When quiet hours start and end. | runtime · public |
 | `ALERT_ENGINE` | `rules` | `rules`, `shadow`, `events` | `rules`: every rule sends on its own. `shadow`: the event engine records what it would send in `event_messages` and sends nothing. `events`: the engine sends the heat and air messages, one per event, with the buttons when the bot runs; the old heat and air rules still record alerts but do not send. On `shadow` and `events` an issue's state on the dashboard follows its event. | runtime |
 | `ALERT_MAX_PER_DAY` | `4` | whole number | With the event engine, pushes a day outside danger. Danger is never held. | runtime |
+| `RAIN_HEAVY_MM` | `50` | whole number, mm | A community node's rain feed says heavy rain when the forecast for the next 24 hours reaches this. 50 mm is BMKG's heavy rain (hujan lebat); check it for your place. | runtime |
 | `HOME_HAS` | blank | `purifier`, `ac`, `fan`, `windows` | What this home has; the event engine suggests only these. | runtime |
 | `ALERT_LOCALE` | `en` | `en`, `id`, `es` | Language of the alerts, the reports, the test alert and the bot. The dashboard and terminal stay in English. | runtime · public |
 | `HA_DISCOVERY` | `0` | `1`, `0` | Publishes local sensors and alerts as Home Assistant entities over MQTT, through the `home-assistant` pack, whose switch this is. `planetai homeassistant` sets it. | runtime · public · outward |

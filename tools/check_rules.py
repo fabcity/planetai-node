@@ -114,6 +114,9 @@ for f in sorted(glob.glob("config/rules.yml") + glob.glob("packs/*/rules.yml")):
             errs.append(f"{where}: `contributes: {con}` is not something a rule can contribute to")
         if con and msg:
             errs.append(f"{where}: `contributes: {con}` and a message — a contributor is never sent, so the message is dead")
+        # A `feed_only` rule reaches the subscribers of its feed and nobody else: its feed lines are its message.
+        if r.get("feed_only") and not msg and isinstance(r.get("feed"), dict):
+            msg = {k: v for k, v in r["feed"].items() if k in ("en", "id")}
         if not con and not msg:
             errs.append(f"{where}: no message and no `contributes:` — this rule can fire and reach nobody")
         # `watch:` names the indicator and the line this rule is about, so GET /effect can say how long an
@@ -146,7 +149,10 @@ for f in sorted(glob.glob("config/rules.yml") + glob.glob("packs/*/rules.yml")):
                             "names whose line it is — add the {line} clause (docs/SPEC_language.md rule 10)")
             if not has_watch and "{line}" in msg_en:
                 errs.append(f"{where}: message uses {{line}} but the rule has no watch.over to fill it from")
-        for lang, tmpl in (msg.items() if isinstance(msg, dict) else [("", msg)]):
+        # a feed line is filled from the same row, and a line with a hole in it is never queued
+        feed_lines = {f"feed.{k}": v for k, v in (r.get("feed") or {}).items()
+                      if k in ("en", "id") and r.get("message")}
+        for lang, tmpl in [*(msg.items() if isinstance(msg, dict) else [("", msg)]), *feed_lines.items()]:
             for ph in re.findall(r"\{(\w+)", str(tmpl)):
                 if ph not in outs:
                     if ph == "line" and not r.get("kind") and has_watch:

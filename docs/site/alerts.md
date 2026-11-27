@@ -43,6 +43,16 @@ block may also carry `metric:` to name the metric the line is about, when the ru
 `feed_only: true` records its alert at level `info` for the cooldown and only queues the line, never sending it; on a
 private node it does not run. A private node ignores `feed:` blocks.
 
+A rule runs as a role that cannot read the settings, so a rule that needs one names it under `params:` and reads it in
+its SQL as `%(name)s`: `params: {rain_heavy_mm: RAIN_HEAVY_MM}` binds the number in `RAIN_HEAVY_MM`. Only a rule with
+`params:` is run with bound values; every other rule's SQL runs as written, so a `%` in it (`LIKE 'a%'`) stays a `%`.
+
+Three rules exist only for subscribers, each at most once a day: `air-quality/air_unhealthy_around` (the median PM2.5
+of the outdoor stations the node reads, at least two of them, is over 55.5 µg/m³), `forecast/heat_ahead` (between
+06:00 and 09:00, tomorrow's highest feels-like temperature in the forecast is above nine in ten of the last 30 days'
+highest, from the forecasts the node stored for them) and `forecast/rain_ahead` (a forecast point's next 24 hours
+reach `RAIN_HEAVY_MM`, 50 mm by default, BMKG's heavy rain).
+
 How to write a rule, with every key, the tables its SQL may read and the lint that checks it, is on
 [Packs](packs.md#rules).
 

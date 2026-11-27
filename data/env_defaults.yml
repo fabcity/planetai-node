@@ -116,6 +116,9 @@ ALERT_ENGINE:
 ALERT_MAX_PER_DAY:
   default: "4"
   help: "With the event engine: pushes a day outside danger."
+RAIN_HEAVY_MM:
+  default: "50"
+  help: "A community node's rain feed says heavy rain when the forecast for the next 24 hours reaches this many mm. 50 mm is BMKG's heavy rain (hujan lebat); check it for your place."
 HOME_HAS:
   default: ""
   help: "What this home has, comma-separated: purifier, ac, fan, windows."

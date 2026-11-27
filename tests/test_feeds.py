@@ -135,7 +135,9 @@ for rid, rule in RULES.items():
     if "feed" in rule:
         assert rule["feed"]["name"] in feeds.NAMES and {"en", "id"} <= set(rule["feed"]), rid
         assert all(t.count("\n") <= 1 for t in (rule["feed"]["en"], rule["feed"]["id"])), rid
-assert [k for k, v in RULES.items() if "feed" in v] == ["coast/heavy_swell", "fire/fire_near", "fire/fire_upwind_near", "fire/smoke_arriving"]
+assert [k for k, v in RULES.items() if "feed" in v] == ["air-quality/air_unhealthy_around", "coast/heavy_swell", "fire/fire_near",
+                                                       "fire/fire_upwind_near", "fire/smoke_arriving", "forecast/heat_ahead",
+                                                       "forecast/rain_ahead"]
 print("ok  feed lines")
 
 logging.disable(logging.WARNING)

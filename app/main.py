@@ -368,7 +368,14 @@ def run_rules() -> None:
             if rule.get("feed_only") and placewords.is_house():
                 continue                  # a rule that exists only to feed subscribers has nothing to do on a private node
             try:
-                rows = index.run_ro(cur, rule["sql"])      # as planetai_ro: a rule can read everything but settings, and write nothing
+                # as planetai_ro: a rule can read everything but settings, and write nothing. A rule that needs a
+                # setting names it under `params:` and reads it as %(name)s; every other rule runs unbound, so a
+                # literal % in its SQL (LIKE 'a%') is never taken for a placeholder.
+                if rule.get("params"):
+                    rows = index.run_ro(cur, rule["sql"], {n: settings.num(k, int((settings.defaults().get(k) or {}).get("default") or 0))
+                                                           for n, k in rule["params"].items()})
+                else:
+                    rows = index.run_ro(cur, rule["sql"])
             except Exception as e:  # noqa: BLE001
                 log.warning("rule %s failed: %s", rule.get("id"), e)
                 continue
@@ -389,7 +396,7 @@ def run_rules() -> None:
                 # and normalize is the only reading of it (an invalid column costs the buttons, never the alert).
                 feed_row = dict(row)
                 btns = buttons.normalize(row.pop("buttons", None))
-                msg = rule["message"]
+                msg = rule.get("message") or rule.get("feed") or ""     # a feed_only rule's row says its feed line
                 tmpl = msg.get(LOCALE()) or msg.get("en") if isinstance(msg, dict) else str(msg)
                 # {line} is the one placeholder the row never carries: it is the rule's own line,
                 # named by watch.over and printed bare (35, not 35.0), so an alert can say whose

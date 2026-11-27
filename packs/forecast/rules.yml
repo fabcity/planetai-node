@@ -1,6 +1,7 @@
-# One rule, and it has no message. The forecast is context for a person reading the report, and forecasting is
-# the upstream tiers' job. Three wrong warnings reached node #1's Telegram at 21:17 on 7 September; a forecast
-# pack that starts talking is the next batch of them. This pack never sends anything.
+# The forecast is context for a person reading the report: `ahead` adds the next 24 hours to it, and sends nothing
+# to a household. On a community node two more rules feed the people subscribed to heat and rain, from the
+# forecast the node already reads: tomorrow hotter than the node's last 30 days of forecasts, and heavy rain in
+# the next 24 hours. They never run on a private node.
 - id: ahead
   contributes: report
   sql: |
@@ -16,3 +17,69 @@
            round(max(value) FILTER (WHERE metric = 'fc_lead_hours')::numeric)              AS lead_hours
     FROM nxt
     HAVING count(*) > 0
+
+- id: heat_ahead
+  level: info
+  cooldown_minutes: 1440
+  feed_only: true
+  # Feels-like (apparent) temperature from air temperature, humidity and wind, per hour, averaged over the forecast
+  # points. "Usual for the month" is the highest of each of the last 30 days, from the forecasts stored for those
+  # hours, because the node holds no climate normals; a hot spell's second week reads as usual.
+  sql: |
+    WITH h AS (
+      SELECT r.ts,
+             avg(r.value) FILTER (WHERE r.metric = 'fc_temp')             AS ta,
+             avg(r.value) FILTER (WHERE r.metric = 'fc_humidity')         AS rh,
+             avg(r.value) FILTER (WHERE r.metric = 'fc_wind_speed') / 3.6 AS ws
+      FROM readings r JOIN sensors s ON s.sensor_id = r.sensor_id
+      WHERE s.kind = 'model' AND s.source IN ('forecast-om', 'forecast-bmkg')
+        AND r.metric IN ('fc_temp', 'fc_humidity', 'fc_wind_speed')
+        AND r.ts >= date_trunc('day', now()) - interval '30 days'
+        AND r.ts < date_trunc('day', now()) + interval '2 days'
+      GROUP BY r.ts),
+    f AS (
+      SELECT ts, date_trunc('day', ts) AS d,
+             ta + 0.33 * (rh / 100 * 6.105 * exp(17.27 * ta / (237.7 + ta))) - 0.70 * ws - 4.00 AS feel
+      FROM h WHERE ta IS NOT NULL AND rh IS NOT NULL AND ws IS NOT NULL),
+    past AS (
+      SELECT count(*) AS days, percentile_cont(0.9) WITHIN GROUP (ORDER BY top) AS p90
+      FROM (SELECT d, max(feel) AS top FROM f WHERE d < date_trunc('day', now()) GROUP BY d) t),
+    tomorrow AS (
+      SELECT ts, feel FROM f WHERE d = date_trunc('day', now()) + interval '1 day' ORDER BY feel DESC LIMIT 1)
+    SELECT 'node' AS sensor_id, round(CAST(t.feel AS NUMERIC)) AS at,
+           lpad(CAST(CAST(extract(hour FROM t.ts) AS INTEGER) AS TEXT), 2, '0') || ':00' AS hour,
+           json_build_object(
+             'en', (ARRAY['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September',
+                          'October', 'November', 'December'])[CAST(extract(month FROM now()) AS INTEGER)],
+             'id', (ARRAY['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September',
+                          'Oktober', 'November', 'Desember'])[CAST(extract(month FROM now()) AS INTEGER)]) AS month
+    FROM tomorrow t, past p
+    WHERE extract(hour FROM now()) >= 6 AND extract(hour FROM now()) < 9
+      AND p.days >= 20 AND t.feel > p.p90
+  feed:
+    name: heat
+    en: "🥵 Tomorrow feels like {at} °C at {hour}, hotter than usual for {month[en]}.\nPlan hard work for the morning; water and shade after noon."
+    id: "🥵 Besok terasa {at} °C pukul {hour}, lebih panas dari biasanya untuk {month[id]}.\nKerja berat pagi saja; minum dan cari teduh setelah tengah hari."
+
+- id: rain_ahead
+  level: info
+  cooldown_minutes: 1440
+  feed_only: true
+  # `params:` binds a setting into the SQL (rules run as planetai_ro, which cannot read settings).
+  params: {rain_heavy_mm: RAIN_HEAVY_MM}
+  sql: |
+    WITH f AS (
+      SELECT r.sensor_id, r.ts, r.value
+      FROM readings r JOIN sensors s ON s.sensor_id = r.sensor_id
+      WHERE s.kind = 'model' AND s.source IN ('forecast-om', 'forecast-bmkg') AND r.metric = 'fc_rain'
+        AND r.ts > now() AND r.ts <= now() + interval '24 hours'),
+    top AS (SELECT sensor_id, sum(value) AS mm FROM f GROUP BY sensor_id ORDER BY mm DESC LIMIT 1)
+    SELECT 'node' AS sensor_id, round(CAST(top.mm AS NUMERIC)) AS mm,
+           (SELECT lpad(CAST(CAST(extract(hour FROM f.ts) AS INTEGER) AS TEXT), 2, '0') || ':00'
+              FROM f WHERE f.sensor_id = top.sensor_id AND f.value > 2 ORDER BY f.ts LIMIT 1) AS "from"
+    FROM top
+    WHERE top.mm >= %(rain_heavy_mm)s
+  feed:
+    name: rain
+    en: "🌧️ Heavy rain in the next 24 hours, up to {mm} mm, from about {from}.\nKeep clear of rivers and low roads."
+    id: "🌧️ Hujan lebat dalam 24 jam ke depan, sampai {mm} mm, mulai sekitar {from}.\nJauhi sungai dan jalan rendah."
