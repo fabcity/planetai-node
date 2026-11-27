@@ -40,6 +40,7 @@ from datetime import datetime, timedelta, timezone
 
 import actions as A
 import packs
+import placewords
 
 from . import (CMP_WORDS, DAY_PARTS, DIGEST_WORDS, DISTANCES, HEADLINE_RULE, HERO_WORDS, JOIN_WORDS, LABEL_WORDS,
                LOCALES, NOUN_WORDS, PLAIN_WORDS, PROMPT_WORDS, REASON_WORDS, SIMPLE_WORDS, prompt_issue,
@@ -733,7 +734,9 @@ def _asking(event: dict | None, open_asks: list[dict]) -> list[dict]:
     when a Not now's hold runs out), then each open act-level alert that is `current`. A stale one ("the reading came
     back on its own") is still open and ρ still counts it, but it is not asking anything of anybody now; `open_asks`
     keeps it. On `rules` there is no event; on `shadow` and `events` the replaced packs' alerts are already out of
-    `open_asks` (`_asks`), because the event stands for them."""
+    `open_asks` (`_asks`), because the event stands for them. A community node asks nobody: always []."""
+    if not placewords.is_house():
+        return []
     got = []
     if event and (event["asking"] if event.get("asking") is not None else not event.get("answer")):
         got.append({"event_id": event.get("id"), "since": event.get("opened_at"),

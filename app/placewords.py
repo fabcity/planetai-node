@@ -16,7 +16,9 @@ import re
 
 HOUSE_KINDS = {"", "home", "business"}
 PLACE_KINDS = {"community", "district"}
-_OWN = {"community": "community", "district": "city"}     # the Wall's size for a kind; everything else is base
+_OWN = {"community": "community", "district": "city"}
+# what a community node says to anybody who tries to answer one of its alerts: the bot, POST /actions
+NO_ACT = "This is a community node: it sends feeds, and nobody answers its alerts here."     # the Wall's size for a kind; everything else is base
 
 # Longest first: a row only ever sees text the rows above it left. Whole words, so "household", "Lighthouse",
 # "casada" and "perumahan" stay as they are. A leading capital in the text is kept on the replacement.

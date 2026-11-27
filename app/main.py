@@ -2432,6 +2432,11 @@ def action(body: dict, request: Request, authorization: str = Header("")):
             raise HTTPException(403, "no ACT_TOKEN or ADMIN_TOKEN set on this node; run `planetai ui` to create one")
         if not _bearer_ok(authorization, *tokens):
             raise HTTPException(401, "closing a loop from off this machine needs Authorization: Bearer <ACT_TOKEN>")
+    # A community node sends feeds and nobody answers its alerts: no button, reply, act tool or curl records one.
+    # `decided` is a record, not an answer, and stays (docs/SPEC_decide.md section 6).
+    if not placewords.is_house() and (body.get("event_id") is not None or body.get("choice") is not None
+                                      or body.get("stage") != "decided"):
+        raise HTTPException(409, placewords.NO_ACT)
     if body.get("event_id") is not None:
         # An event's buttons (docs/SPEC_dashboard_events.md §3.2): the same tokens, the same refusals, one row.
         if body.get("alert_id") is not None:

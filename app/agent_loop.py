@@ -174,11 +174,11 @@ def ladder(cfg: dict) -> list[Rung]:
 
 
 KIND = ""        # the node's kind, from its /health; a community node sends feeds and nobody answers its alerts
-NO_ACT = "This is a community node: it sends feeds, and nobody answers its alerts here."
+NO_ACT = placewords.NO_ACT
 
 
 def no_act() -> bool:
-    return not placewords.is_house(KIND)
+    return not placewords.is_house(KIND or None)   # before the first /health read, the NODE_KIND this container was given
 
 
 async def refresh_ladder(hc: httpx.AsyncClient) -> None:

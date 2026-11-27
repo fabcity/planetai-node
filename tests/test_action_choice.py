@@ -16,13 +16,14 @@ from fastapi import HTTPException
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "app"))
 import buttons  # noqa: E402
+import placewords  # noqa: E402 — action() refuses answers on a community node
 import events_pg  # noqa: E402 — the DECISION_REQUIRED check action() asks (events_pg.decision_first)
 
 tree = ast.parse((ROOT / "app" / "main.py").read_text())
 fn = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "action")
 fn.decorator_list = []                    # the route's decorator needs the app; the function does not
 NS = {"HTTPException": HTTPException, "Request": object, "Header": lambda d: d, "buttons": buttons,
-      "datetime": datetime, "timezone": timezone, "_is_local": lambda r: True}
+      "datetime": datetime, "timezone": timezone, "_is_local": lambda r: True, "placewords": placewords}
 exec(compile(ast.Module([fn], []), "action", "exec"), NS)
 action = NS["action"]
 

@@ -12,6 +12,7 @@ from types import SimpleNamespace
 from zoneinfo import ZoneInfo
 
 import actions as A
+import placewords
 import settings
 
 log = logging.getLogger("planetai")
@@ -94,14 +95,15 @@ def build(engine, events, messages, answers, covered, contexts, decl, locale, no
                "peak": e.get("peak"), "line": (issue.get("line") or {}).get("value"),
                "rooms": sorted(e.get("rooms") or []), "places": sorted(e.get("places") or []),
                "action": ({"id": am["action_id"], "text": _action_of(said)}
-                          if am else None),
+                          if am and placewords.is_house() else None),   # a community card: never the stored action,
+                                                                        # which can carry an inside reading from before a switch
                "message": {"text": m.get("text"), "ts": _iso(m["ts"]), "sent": bool(m.get("sent"))} if m else None,
                "alerts": sorted(covered.get(eid) or []),
                "answer": _answer(a, e["kind"])}
         # Whether the card still asks: until somebody answers, and again once a Not now's hold has run out (the node
         # asks again then). Every page draws its buttons from this, so an answered card never offers them twice.
         held = (row["answer"] or {}).get("held_until")
-        row["asking"] = cleared is None and (a is None or (a["stage"] == "acknowledged" and held is not None
+        row["asking"] = placewords.is_house() and cleared is None and (a is None or (a["stage"] == "acknowledged" and held is not None
                                                             and _t(held) <= now))
         if cleared is None:
             ctx, key = contexts.get(eid) or {}, OUTSIDE.get(issue.get("metric"))

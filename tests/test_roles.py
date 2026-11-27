@@ -384,3 +384,59 @@ assert asyncio.run(agent_loop.act_command(None, "1", "/stack")) is False
 _dn = (ROOT / "app/static/doors-now.js").read_text().split("function decision()")[1].split("\n")[0]
 assert "notHouse((D.health || {}).kind)" in _dn and "hidden" in _dn, "the Now door draws no What to do on a community node"
 print("ok  community: no act hint, no buttons, no action line, no inside value, rho from its children, the bot says why")
+
+# ---------------------------------------------------------------- fix round 1: no surface asks, no route records an answer
+import events_wire  # noqa: E402
+from issues import engine as _engine  # noqa: E402
+
+_H = dt.timedelta(hours=1); _NOW = dt.datetime(2026, 11, 26, 12, tzinfo=dt.timezone.utc)
+_EVS = [{"id": 1, "issue": "heat", "kind": "sustained", "level": "act", "opened_at": _NOW - 2 * _H, "last_seen_at": _NOW,
+         "cleared_at": None, "peak": 35.8, "rooms": [], "places": ["yard"], "action_id": "heat/open_up"}]
+_MSGS = [{"event_id": 1, "ts": _NOW - 2 * _H, "sent": True, "action_id": "heat/open_up",
+          "text": "Hot for hours.\nOpen up now: outside is 24.9 °C and inside is 29.3 °C."}]
+_DECL = {"heat": {"metric": "apparent", "line": {"value": 35.0}}}
+
+
+def _card(kind, ctx):
+    os.environ["NODE_KIND"] = kind
+    return events_wire.build("events", _EVS, _MSGS, [], {1: []}, {1: ctx}, _DECL, "en", _NOW, dt.timezone.utc)["open"][0]
+
+
+for _ctx in ({}, {"usual": None}):          # no context read, and a context with no action of its own
+    _c = _card("community", _ctx)
+    assert _c["asking"] is False and _c["action"] is None, ("a community card asks nothing, shows no stored action", _c)
+assert _card("home", {})["asking"] is True and _card("home", {})["action"]["text"].startswith("Open up"), "private unchanged"
+
+_ev_open = {"id": 1, "asking": True, "opened_at": "2026-11-26T10:00:00+00:00", "kind": "sustained"}
+_asks = [{"id": 9, "ts": "2026-11-26T11:00:00+00:00", "current": True, "says": {}, "how": {}}]
+os.environ["NODE_KIND"] = "community"
+assert _engine._asking(_ev_open, _asks) == [], "an open act event and an open act alert ask nothing of a community"
+os.environ["NODE_KIND"] = "home"
+assert [a.get("event_id") or a.get("alert_id") for a in _engine._asking(_ev_open, _asks)] == [1, 9]
+
+# POST /actions: every kind of answer is refused on a community node; a decided record and a private node still write
+_answered = []
+_real_answer, _real_db = events_pg.answer, main.db
+events_pg.answer = lambda cur, *a: _answered.append(a)
+main.db = lambda: _TaCon()
+os.environ["NODE_KIND"] = "community"
+for _body in ({"event_id": 3, "stage": "acted"}, {"event_id": 3, "stage": "dismissed"},
+              {"alert_id": 41, "stage": "acknowledged"}, {"alert_id": 41, "stage": "acted", "note": "closed windows"},
+              {"alert_id": 41, "stage": "dismissed"}, {"alert_id": 41, "choice": "good"}):
+    r = client.post("/actions", json=_body, headers=TOK)
+    assert r.status_code == 409 and r.json()["detail"] == "This is a community node: it sends feeds, and nobody answers its alerts here.", (_body, r.status_code, r.text)
+assert not _answered
+assert client.post("/actions", json={"alert_id": 41, "stage": "decided"}, headers=TOK).status_code != 409, \
+    "a decided record is not an answer"
+os.environ["NODE_KIND"] = "home"
+assert client.post("/actions", json={"event_id": 3, "stage": "acted"}, headers=TOK).status_code == 200
+assert _answered == [(3, "acted", None, None)], _answered
+events_pg.answer, main.db = _real_answer, _real_db
+
+# the agent before its first /health read: the NODE_KIND it was started with
+agent_loop.KIND = ""
+os.environ["NODE_KIND"] = "community"; assert agent_loop.no_act()
+os.environ["NODE_KIND"] = "home"; assert not agent_loop.no_act()
+agent_loop.KIND = "community"; assert agent_loop.no_act(), "/health wins once read"
+agent_loop.KIND = "home"
+print("ok  community: no card or /issues asks, no stored action, POST /actions refuses every answer; private unchanged")
