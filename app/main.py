@@ -989,20 +989,23 @@ def _unlabelled(text: str) -> str:
 
 # A community node may hold indoor sensors (a house that became a community node keeps its kits): a reader without a
 # token never sees one. "Indoor" is the node's own indoor sensors; a child's are not local, so they are not touched.
-_INDOOR = {"at": 0.0, "ids": set()}
+_INDOOR = {"at": 0.0, "ids": set(), "names": set()}
 
 
 def _indoor_ids() -> set[str]:
-    """The ids of this node's own indoor sensors, re-read every settings.TTL seconds; a failed read keeps the last."""
+    """The ids of this node's own indoor sensors, re-read every settings.TTL seconds; a failed read keeps the last.
+    Their names ride along in _INDOOR["names"]: an alert event names its rooms by either."""
     if time.time() - _INDOOR["at"] < settings.TTL:
         return _INDOOR["ids"]
     try:
         with db() as con, con.cursor() as cur:   # its own read, not q(): the routes' tests count q's statements
-            cur.execute("SELECT sensor_id FROM sensors WHERE local AND indoor")
-            ids = {r["sensor_id"] for r in cur.fetchall()}
+            cur.execute("SELECT sensor_id, name, source_name FROM sensors WHERE local AND indoor")
+            rows = cur.fetchall()
+            ids = {r["sensor_id"] for r in rows}
+            names = {r.get(k) for r in rows for k in ("name", "source_name")} - {None, ""}
     except Exception:  # noqa: BLE001 — no database: no route answers from it either
         return _INDOOR["ids"]
-    _INDOOR.update(at=time.time(), ids=ids)
+    _INDOOR.update(at=time.time(), ids=ids, names=names)
     return ids
 
 

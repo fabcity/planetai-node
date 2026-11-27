@@ -103,9 +103,11 @@ class _Cur:
     def __exit__(self, *a): return False
     def execute(self, sql, *a): self.sql = sql
     def fetchall(self):
+        if "local AND indoor" in self.sql:
+            return [{"sensor_id": "ag-in", "name": "ag-in", "source_name": None}]
         if "source_name" in self.sql:
             return [{"room": None, "name": s["name"], "source_name": None} for s in (_IN, _OUT)]
-        return [{"sensor_id": "ag-in"}] if "indoor" in self.sql else []
+        return []
 
 
 class _Con(_Cur):
@@ -197,6 +199,68 @@ try:
         assert _seen and not isinstance(_seen[0], _ia._NoIndoor), path
 finally:
     _eng.compute, _eng.days, events_wire.live = _real_compute, _real_days, _real_live
+# round 2 · alert events: alert_events carries no sensor column, so an event at the room place, or naming an indoor
+# kit, is left out whole for a stranger, open or cleared, in /issues and in /issues/days
+from datetime import timedelta, timezone  # noqa: E402
+_now = datetime.now(timezone.utc)
+_EV = [{"id": 1, "issue": "air", "kind": "smoke", "level": "act", "opened_at": _now - timedelta(hours=1),
+        "last_seen_at": _now, "cleared_at": None, "peak": 80.0, "rooms": ["ag-in"], "places": ["room"], "action_id": None},
+       {"id": 2, "issue": "air", "kind": "smoke", "level": "act", "opened_at": _now - timedelta(hours=3),
+        "last_seen_at": _now - timedelta(hours=2), "cleared_at": _now - timedelta(hours=2), "peak": 60.0,
+        "rooms": ["Kids"], "places": ["room"], "action_id": None},
+       {"id": 3, "issue": "air", "kind": "haze", "level": "warn", "opened_at": _now - timedelta(hours=1),
+        "last_seen_at": _now, "cleared_at": None, "peak": 40.0, "rooms": [], "places": ["yard"], "action_id": None},
+       {"id": 4, "issue": "air", "kind": "smoke", "level": "warn", "opened_at": _now - timedelta(hours=1),
+        "last_seen_at": _now, "cleared_at": None, "peak": 50.0, "rooms": ["Kids"], "places": ["yard"], "action_id": None}]
+
+
+class _EvCur(_Cur):
+    connection = _Con()
+    def fetchall(self):
+        if "FROM alert_events" in self.sql:
+            return [dict(e) for e in _EV]
+        if "FROM sensors WHERE local AND indoor" in self.sql:
+            return [{"sensor_id": "ag-in", "name": "Kids", "source_name": None}]
+        return super().fetchall()
+    def fetchone(self):
+        if "current_setting('TimeZone')" in self.sql:
+            return {"tz": "Asia/Makassar", "hour": 10}
+        return None
+
+
+class _EvCon(_Con):
+    def cursor(self): return _EvCur()
+
+
+settings._cache["rows"]["ALERT_ENGINE"] = "events"
+_db0 = main.db; main.db = lambda: _EvCon(); _reset()
+_got = {}
+_real_compute = _eng.compute
+_eng.compute = lambda cur, *a, **k: _got.update(ev=k.get("events")) or {}
+try:
+    def _evids(headers=None):
+        _got.clear(); client.get("/issues", headers=headers or {})
+        ev = _got["ev"] or {}
+        assert "error" not in ev, ev
+        return sorted(e["id"] for e in (ev.get("open") or []) + (ev.get("recent") or []))
+    assert _evids(TOK) == [1, 2, 3, 4], _evids(TOK)
+    assert _evids() == [3], f"a room event reached a stranger's /issues: {_evids()}"
+    _days = lambda h=None: sorted(e["id"] for e in client.get("/issues/days", headers=h or {}).json()["events"])  # noqa: E731
+    assert _days(TOK) == [1, 2, 3, 4], _days(TOK)
+    assert _days() == [3], f"a room event reached a stranger's /issues/days: {_days()}"
+    assert not {"rooms", "places"} & set(client.get("/issues/days", headers=TOK).json()["events"][0]), \
+        "the days events keep their own keys: rooms and places are read for the filter, not sent"
+finally:
+    _eng.compute = _real_compute; main.db = _db0; settings._cache["rows"].pop("ALERT_ENGINE")
+# the wrapper filters every way a row can be read
+_w = _ia._NoIndoor(type("C", (), {"rows": [{"sensor_id": "x"}, {"sensor_id": "ag-in"}], "fetchall": lambda s: list(s.rows),
+                                  "fetchone": lambda s: s.rows.pop(0) if s.rows else None,
+                                  "fetchmany": lambda s, n=1: [s.rows.pop(0) for _ in range(min(n, len(s.rows)))],
+                                  "__iter__": lambda s: iter(s.rows)})(), {"ag-in"})
+assert _ia._NoIndoor(None, {"ag-in"}, {"Kids"})._in({"rooms": ["Kids"], "places": ["yard"]}), "an event naming an indoor kit"
+assert not _ia._NoIndoor(None, {"ag-in"}, {"Kids"})._in({"rooms": ["Garden"], "places": ["yard"]})
+assert list(_w) == [{"sensor_id": "x"}] and _w.fetchmany(5) == [{"sensor_id": "x"}], "iteration bypassed the filter"
+
 # fail closed: a community node that has never read its indoor sensors answers a stranger 503
 _reset(); _db = main.db
 main.db = lambda: (_ for _ in ()).throw(RuntimeError("no database yet"))

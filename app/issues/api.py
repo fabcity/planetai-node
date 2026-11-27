@@ -47,7 +47,7 @@ def issues_now(request: Request = None):
     import main                    # noqa: PLC0415 — main imports this module at the bottom of itself
     with main.db() as con, con.cursor() as cur:
         if main._stranger_on_community(request):
-            cur = _NoIndoor(cur, main._indoor_ids())
+            cur = _NoIndoor(cur, main._indoor_ids(), main._INDOOR["names"])
         # `mesh_state` and `MQTT_HOST` are `app/main.py`'s own module-level names, already used by its
         # `/health` route — reading them here costs no query and no network call (Ruling P3: /issues
         # never makes a network call, so the Reticulum bridge's peer list is Task 4's problem, not this
@@ -134,22 +134,24 @@ def issues_days(request: Request, days: int = Query(7, ge=1, le=engine.DAYS_MAX)
     import main                    # noqa: PLC0415
     with main.db() as con, con.cursor() as cur:
         if main._stranger_on_community(request):
-            cur = _NoIndoor(cur, main._indoor_ids())
+            cur = _NoIndoor(cur, main._indoor_ids(), main._INDOOR["names"])
         return engine.days(cur, main.settings, load(), days, loc=locale)
 
 
 class _NoIndoor:
-    """A cursor that never returns a row of this node's own indoor sensors: by id, or flagged local and indoor. A
-    community node computes a stranger's issues through it, so the room place, its series and everything ranked or
-    worded from it are computed from nothing."""
-    def __init__(self, cur, ids):
-        self.cur, self.ids = cur, ids
+    """A cursor that never returns a row of this node's own indoor sensors: by id, or flagged local and indoor, or an
+    alert event at the room place or naming an indoor sensor (alert_events has no sensor column, and its context, usual
+    and action are read from inside, so the whole event goes). A community node computes a stranger's issues through
+    it, so the room place, its series, its events and everything ranked or worded from them are computed from nothing."""
+    def __init__(self, cur, ids, names=()):
+        self.cur, self.ids, self.rooms = cur, ids, set(ids) | set(names)
 
     def __getattr__(self, k):
         return getattr(self.cur, k)
 
     def _in(self, r) -> bool:
-        return r.get("sensor_id") in self.ids or bool(r.get("local") and r.get("indoor"))
+        return (r.get("sensor_id") in self.ids or bool(r.get("local") and r.get("indoor"))
+                or "room" in (r.get("places") or ()) or bool(self.rooms.intersection(r.get("rooms") or ())))
 
     def execute(self, *a, **k):
         return self.cur.execute(*a, **k)
@@ -161,6 +163,15 @@ class _NoIndoor:
         while (r := self.cur.fetchone()) is not None and self._in(r):
             pass
         return r
+
+    def fetchmany(self, size: int = 1):
+        out = []
+        while len(out) < size and (r := self.fetchone()) is not None:
+            out.append(r)
+        return out
+
+    def __iter__(self):
+        return (r for r in self.cur if not self._in(r))
 
 
 def _earth(public: bool = True):
