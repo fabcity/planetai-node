@@ -58,8 +58,8 @@
       AND p.days >= 20 AND t.feel > p.p90
   feed:
     name: heat
-    en: "🥵 Tomorrow feels like {at} °C at {hour}, hotter than usual for {month[en]}.\nPlan hard work for the morning; water and shade after noon."
-    id: "🥵 Besok terasa {at} °C pukul {hour}, lebih panas dari biasanya untuk {month[id]}.\nKerja berat pagi saja; minum dan cari teduh setelah tengah hari."
+    en: "🥵 The forecast says tomorrow feels like {at} °C at {hour}, hotter than usual for {month[en]}.\nPlan hard work for the morning; water and shade after noon."
+    id: "🥵 Menurut prakiraan, besok terasa {at} °C pukul {hour}, lebih panas dari biasanya untuk {month[id]}.\nKerja berat pagi saja; minum dan cari teduh setelah tengah hari."
 
 - id: rain_ahead
   level: info

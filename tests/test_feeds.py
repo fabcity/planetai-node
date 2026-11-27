@@ -218,6 +218,10 @@ assert "--exclude-table-data=subscribers" in backup and "--exclude-table-data=fe
 sql = (ROOT / "init.sql").read_text()
 assert "CREATE TABLE IF NOT EXISTS subscribers" in sql and "('0.68')" in sql
 assert "PLACE_NAME" in settings.RUNTIME and settings.RUNTIME["PLACE_NAME"][0] == "basics"
+assert feeds.place() == "Ungasan"
+os.environ["NODE_NAME"] = "  "                    # no PLACE_NAME and no NODE_NAME: never a blank at the head
+assert feeds.place() == "node"
+os.environ["NODE_NAME"] = "Ungasan"
 print("ok  schema, backup, setting")
 
 try:
@@ -250,7 +254,7 @@ assert not feeds.enqueue(cur, smoke, {"pm25": 80}, "ag-in", NOW), "an indoor sen
 assert not feeds.enqueue(cur, smoke, {"pm25": 80}, "sc-private", NOW), "a private metric never does"
 assert not feeds.enqueue(cur, smoke, {"pm25": 80}, "nobody-knows", NOW), "an unknown sensor never does"
 assert len(QUEUE) == n
-assert feeds.enqueue(cur, smoke, {"pm25": 80}, "firms-fires", NOW) and "air outside is 80," in QUEUE[-1]["texts"]["en"]
+assert feeds.enqueue(cur, smoke, {"pm25": 80}, "firms-fires", NOW) and "air outside is 80 µg/m³," in QUEUE[-1]["texts"]["en"]
 assert not feeds.enqueue(cur, {"id": "x/y"}, {}, "node", NOW) and not feeds.enqueue(cur, {"id": "x/y", "feed": {"name": "zzz", "en": "a"}}, {}, "node", NOW)
 nid = {"id": "x/y", "feed": {"name": "heat", "en": "hot {k}"}}                              # no id template: falls back to en
 assert feeds.enqueue(cur, nid, {"k": 1}, "node", NOW) and QUEUE[-1]["texts"] == {"en": "hot 1", "id": "hot 1"}
@@ -320,7 +324,13 @@ class _Wk(_Cur):
 
 
 wk = _Wk()
-FIX = {"air": {"day": date(2026, 11, 19), "med": 20.0, "name": "Jimbaran", "mean": 30.6, "k": 0},
+def _air(day, med, name, mean, k, child=False, top=None):
+    """The air statement's row: the worst day's highest hour and, by default, the same hour as the week's highest."""
+    top = top or {"top_day": day, "top": mean, "top_name": name, "top_child": child}
+    return {"day": day, "med": med, "name": name, "mean": mean, "child": child, "k": k, **top}
+
+
+FIX = {"air": _air(date(2026, 11, 19), 20.0, "Jimbaran", 30.6, 0),
        "heat": {"day": date(2026, 11, 21), "mean": 31.7},
        "sea": {"day": date(2026, 11, 21), "mean": 2.14},
        "rhythm": {"hour": 18}}
@@ -328,36 +338,51 @@ STUB.update(FIX)
 URL = "https://x.ts.net:8443"
 en = feeds.weekly_texts(wk, date(2026, 11, 24), "Ungasan", URL)["en"]
 assert en == ("📊 Ungasan, 17–23 Nov.\n"
-              "Air was clean all week; the worst moment was 31 near Jimbaran, Thursday.\n"
-              "The hottest afternoon was Saturday, 32 °C in the shade.\n"
+              "Air was clean all week; the worst moment was 31 µg/m³ near Jimbaran, Thursday.\n"
+              "The hottest afternoon was Saturday, 32 °C.\n"
               "Swell peaked Saturday, 2.1 m.\n"
               "Evenings around 18:00 are when the air is worst here.\n"
               "The full report: https://x.ts.net:8443/ui#data/report"), en
 for key, s, p in SEEN:           # outdoor and public only, in the week Monday 17 to Sunday 23
     if key in ("air", "heat"):
         assert "NOT s.indoor" in s and "NOT EXISTS" in s and "'private'" in s, s
+        assert "c.node_id IS NOT NULL" in s, "a child's station counts only when the child signs its pushes"
     assert key == "rhythm" or p[-2:] == (date(2026, 11, 17), date(2026, 11, 24)), (key, p)
 idt = feeds.weekly_texts(wk, date(2026, 11, 24), "Ungasan", URL)["id"]
-assert idt.split("\n")[1] == "Udara bersih sepanjang minggu; paling buruk 31 dekat Jimbaran, hari Kamis.", idt
-assert idt.split("\n")[2] == "Siang terpanas hari Sabtu, 32 °C di tempat teduh."
+assert idt.split("\n")[1] == "Udara bersih sepanjang minggu; paling buruk 31 µg/m³ dekat Jimbaran, hari Kamis.", idt
+assert idt.split("\n")[2] == "Siang terpanas hari Sabtu, 32 °C."
 assert idt.split("\n")[-1] == "Laporan lengkap: https://x.ts.net:8443/ui#data/report"
 assert "📊 Ungasan, 17–23 Nov." == idt.split("\n")[0]
 assert "full report" not in feeds.weekly_texts(wk, date(2026, 11, 24), "Ungasan", "")["en"]
 # an unhealthy week names its days; a morning peak leaves the rhythm line out; rain falls back to the next series
 # no unhealthy day but one hour at 91: mostly clean, the bracket on the station name dropped
-STUB["air"] = {"day": date(2026, 11, 23), "med": 20.0, "name": "TPA Kutuh (Smart Citizen)", "mean": 91.2, "k": 0}
+STUB["air"] = _air(date(2026, 11, 23), 20.0, "TPA Kutuh (Smart Citizen)", 91.2, 0)
 mc = feeds.weekly_texts(wk, date(2026, 11, 24), "Ungasan", "")
-assert mc["en"].split("\n")[1] == "Air was mostly clean; Monday was the worst, 91 near TPA Kutuh.", mc
-assert mc["id"].split("\n")[1] == "Udara sebagian besar bersih; paling buruk hari Senin, 91 dekat TPA Kutuh.", mc
+assert mc["en"].split("\n")[1] == "Air was mostly clean; Monday was the worst, 91 µg/m³ near TPA Kutuh.", mc
+assert mc["id"].split("\n")[1] == "Udara sebagian besar bersih; paling buruk hari Senin, 91 µg/m³ dekat TPA Kutuh.", mc
+# clean or mostly is the week's highest hour, not the worst day's: a quiet worst-by-median day and a 60 on Wednesday
+STUB["air"] = _air(date(2026, 11, 23), 22.0, "Jimbaran", 30.0, 0,
+                   top={"top_day": date(2026, 11, 18), "top": 60.4, "top_name": "Sempidi (IQAir)", "top_child": False})
+assert feeds.weekly_texts(wk, date(2026, 11, 24), "Ungasan", "")["en"].split("\n")[1] == \
+    "Air was mostly clean; Wednesday was the worst, 60 µg/m³ near Sempidi."
+# a child's station is never named: neither the household's node name nor its kit id reaches a line
+STUB["air"] = _air(date(2026, 11, 20), 21.0, "ungasan-home/sc-19880", 44.0, 0, child=True)
+kid = feeds.weekly_texts(wk, date(2026, 11, 24), "Ungasan", "")
+assert kid["en"].split("\n")[1] == "Air was mostly clean; Friday was the worst, 44 µg/m³ near a neighbour's station.", kid
+assert kid["id"].split("\n")[1] == "Udara sebagian besar bersih; paling buruk hari Jumat, 44 µg/m³ dekat stasiun tetangga.", kid
+STUB["air"] = _air(date(2026, 11, 20), 61.0, "ungasan-home/sc-19880", 140.0, 3, child=True)
+kid = feeds.weekly_texts(wk, date(2026, 11, 24), "Ungasan", "")
+assert "near a neighbour's station" in kid["en"] and "dekat stasiun tetangga" in kid["id"], kid
+assert not any(x in t for t in kid.values() for x in ("ungasan-home", "sc-19880")), kid
 assert feeds._name("A (b) c") == "A (b) c" and feeds._name("Seminyak Beach - Hotel Indigo (IQAir)") == "Seminyak Beach - Hotel Indigo"
 # the heat statement takes the median of the sensors per hour; Indonesian writes decimals with a comma
 assert "percentile_cont(0.5)" in [x[1] for x in SEEN if x[0] == "heat"][0]
 assert feeds.weekly_texts(wk, date(2026, 11, 24), "Ungasan", "")["id"].split("\n")[3] == "Ombak tertinggi hari Sabtu, 2,1 m."
-STUB["air"] = {"day": date(2026, 11, 18), "med": 60.0, "name": "Sempidi", "mean": 88.4, "k": 2}
+STUB["air"] = _air(date(2026, 11, 18), 60.0, "Sempidi", 88.4, 2)
 STUB["rhythm"] = {"hour": 16}   # 16:00 is not evening: left out
 STUB["rain"] = {"rain": None, "precipitation": {"mm": 12.34, "day": date(2026, 11, 20)}}
 en = feeds.weekly_texts(wk, date(2026, 11, 24), "Ungasan", "")["en"].split("\n")
-assert en[1] == "Air was unhealthy on 2 days; Wednesday was the worst, 88 near Sempidi.", en
+assert en[1] == "Air was unhealthy on 2 days; Wednesday was the worst, 88 µg/m³ near Sempidi.", en
 assert "12.3 mm of rain fell, most on Friday." in en
 assert "Hujan 12,3 mm, paling banyak hari Jumat." in feeds.weekly_texts(wk, date(2026, 11, 24), "Ungasan", "")["id"].split("\n") and not any("Evenings" in x for x in en), en
 STUB["rain"] = {"rain": {"mm": 0.0, "day": date(2026, 11, 20)}}

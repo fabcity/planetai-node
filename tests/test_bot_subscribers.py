@@ -103,7 +103,7 @@ NS = {"re": re, "time": __import__("time"), "log": log, "telegram": _telegram, "
       "placewords": __import__("placewords")}
 _lift("agent_loop.py", {"node_url", "T", "no_act", "NO_ACT", "_sub", "subscriber_message", "subscriber_tap",
                         "SUB_COMMANDS", "handle_callback", "keep_picture", "picture_of", "_name_of",
-                        "parse_callback", "parse_alert_callback", "main"}, NS)
+                        "parse_callback", "parse_alert_callback", "main", "tg_status"}, NS)
 subscriber_message, subscriber_tap = NS["subscriber_message"], NS["subscriber_tap"]
 hc = _Hc()
 run = asyncio.run
@@ -214,8 +214,13 @@ ROWS.clear()
 drive("community", text("5550002", "hello"))
 assert ROUTES == ["/subscribers/card", "/subscribers/start"] and TG[-1]["text"] == "card en", (ROUTES, TG)
 assert all("5550002" not in r for r in LOGS), LOGS
-assert any("answering 1 chat(s)" in r for r in LOGS) and all("42" not in r for r in LOGS), \
+assert any("answering subscribers and 1 keeper chat(s)" in r for r in LOGS) and all("42" not in r for r in LOGS), \
     "the startup line on a community node names no chat"
+NS["CHATS"] = lambda: set()                 # a community node with a token and no keeper chat still answers subscribers
+assert NS["tg_status"]() == "bot set, answering subscribers; no keeper chat (TELEGRAM_CHAT_IDS is empty)"
+NS["KIND"] = "home"
+assert "will not answer anyone" in NS["tg_status"](), "a private node with no chat answers nobody"
+NS["CHATS"] = lambda: {"42"}
 
 drive("home", text("5550003", "hello"))
 assert ROUTES == [] and TG[-1]["text"].startswith("This node answers its household only."), TG

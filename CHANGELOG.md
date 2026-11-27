@@ -7,7 +7,8 @@
   Indonesia. `/feeds`, `/now`, `/week` and `/stop` work from then on; anything else gets one line, and no model
   answers a subscriber. The keeper's chats keep everything they had. Lines come from rules with a `feed:` block and
   from three rules that only feed subscribers: air around, heat ahead and rain ahead. They use outdoor and public
-  readings only, never an indoor sensor or a room. A person gets one message per pass, every 2 minutes. Quiet hours
+  readings only, never an indoor sensor or a room; a child node's station counts only when the child signs its
+  pushes, and is never named ("a neighbour's station"). Feed lines never reach Home Assistant. A person gets one message per pass, every 2 minutes. Quiet hours
   hold everything except a fire upwind, and a line held 12 hours is dropped. The node keeps a chat number, the
   picks, the language and the date, and `/stop` or a blocked bot deletes them. Backups leave them out. Set up ›
   Subscribers shows counts. New settings: `PLACE_NAME`, `PUBLIC_URL` and `RAIN_HEAVY_MM` (50). Nothing of this runs

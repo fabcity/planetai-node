@@ -437,7 +437,8 @@ def run_rules() -> None:
                         if btns and bot else None
                     notify(level, text, keyboard=kb, home=_alert_home(rule["id"]) if level == "act" else "",
                            answer=str(alert_id))
-                packs.emit("on_alert", level, text, alert_id)
+                if not rule.get("feed_only"):     # a feed line is for subscribers, never Home Assistant
+                    packs.emit("on_alert", level, text, alert_id)
         if mode in ("shadow", "events"):
             try:
                 decided = events_pg.run(cur, cands, mode, _local_now())

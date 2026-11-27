@@ -56,7 +56,7 @@ WORDS = {
 
 
 def place() -> str:
-    return settings.get("PLACE_NAME", "").strip() or os.getenv("NODE_NAME", "").strip()
+    return settings.get("PLACE_NAME", "").strip() or os.getenv("NODE_NAME", "").strip() or "node"
 
 
 def _row(cur, chat: str):
@@ -262,25 +262,30 @@ DAYS = {"en": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday
 MONTHS = {"en": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
           "id": ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]}
 WEEK = {
-    "en": {"clean": "Air was clean all week; the worst moment was {v} near {name}, {day}.",
-           "mostly": "Air was mostly clean; {day} was the worst, {v} near {name}.",
-           "bad": "Air was unhealthy on {k} days; {day} was the worst, {v} near {name}.",
-           "heat": "The hottest afternoon was {day}, {v} °C in the shade.",
+    "en": {"clean": "Air was clean all week; the worst moment was {v} µg/m³ near {name}, {day}.",
+           "mostly": "Air was mostly clean; {day} was the worst, {v} µg/m³ near {name}.",
+           "bad": "Air was unhealthy on {k} days; {day} was the worst, {v} µg/m³ near {name}.",
+           "heat": "The hottest afternoon was {day}, {v} °C.",
            "sea": "Swell peaked {day}, {v} m.",
            "rain": "{v} mm of rain fell, most on {day}.",
            "rhythm": "Evenings around {v}:00 are when the air is worst here.",
            "link": "The full report: {v}/ui#data/report"},
-    "id": {"clean": "Udara bersih sepanjang minggu; paling buruk {v} dekat {name}, hari {day}.",
-           "mostly": "Udara sebagian besar bersih; paling buruk hari {day}, {v} dekat {name}.",
-           "bad": "Udara tidak sehat {k} hari; {day} paling buruk, {v} dekat {name}.",
-           "heat": "Siang terpanas hari {day}, {v} °C di tempat teduh.",
+    "id": {"clean": "Udara bersih sepanjang minggu; paling buruk {v} µg/m³ dekat {name}, hari {day}.",
+           "mostly": "Udara sebagian besar bersih; paling buruk hari {day}, {v} µg/m³ dekat {name}.",
+           "bad": "Udara tidak sehat {k} hari; {day} paling buruk, {v} µg/m³ dekat {name}.",
+           "heat": "Siang terpanas hari {day}, {v} °C.",
            "sea": "Ombak tertinggi hari {day}, {v} m.",
            "rain": "Hujan {v} mm, paling banyak hari {day}.",
            "rhythm": "Sekitar pukul {v}.00 udara di sini paling buruk.",
            "link": "Laporan lengkap: {v}/ui#data/report"},
 }
-# Outdoor and public rows only: `sensors.indoor` and the channel-role predicate every road out of the house uses.
-_OUT = "NOT s.indoor AND s.kind IN ('sensor','child') AND r.mean IS NOT NULL AND r.bucket >= %s AND r.bucket < %s"
+NEIGHBOUR = {"en": "a neighbour's station", "id": "stasiun tetangga"}   # a child's station is never named
+# Outdoor and public rows only: `sensors.indoor` and the channel-role predicate every road out of the house uses. A
+# child's station counts only when the child signs its pushes: a signing child sends `indoor` with every row, and an
+# older child did not, so its rooms were stored as outdoor (the same condition as air-quality/air_unhealthy_around).
+_OUT = ("NOT s.indoor AND (s.kind = 'sensor' OR (s.kind = 'child' AND EXISTS (SELECT 1 FROM children c "
+        "WHERE c.node_id IS NOT NULL AND left(s.sensor_id, length(c.name) + 1) = c.name || '/'))) "
+        "AND r.mean IS NOT NULL AND r.bucket >= %s AND r.bucket < %s")
 
 
 def _span(a: date, lang: str) -> str:
@@ -325,18 +330,25 @@ def _week(cur, week_start: date, place_name: str, public_url: str):
     w = (w0, week_start)
     lines: list[dict] = []          # {"key", "v", "day", "name", "k"} per line, in order
 
-    cur.execute(  # the worst day by its median, and that day's highest hour
-        f"WITH h AS (SELECT r.bucket, r.mean, s.name FROM readings_1h r JOIN sensors s USING (sensor_id) "
-        f"WHERE r.metric = 'pm25' AND {_OUT} AND {packs.public_sql('r')}), "
+    cur.execute(  # the worst day by its median and that day's highest hour; the week's highest hour
+        f"WITH h AS (SELECT r.bucket, r.mean, s.name, s.kind = 'child' AS child FROM readings_1h r "
+        f"JOIN sensors s USING (sensor_id) WHERE r.metric = 'pm25' AND {_OUT} AND {packs.public_sql('r')}), "
         "d AS (SELECT bucket::date AS day, percentile_cont(0.5) WITHIN GROUP (ORDER BY mean) AS med FROM h GROUP BY 1), "
-        "w AS (SELECT day, med FROM d ORDER BY med DESC LIMIT 1) "
-        "SELECT w.day, w.med, h.name, h.mean, (SELECT count(*) FROM d WHERE med >= 35.5) AS k "
-        "FROM w JOIN h ON h.bucket::date = w.day ORDER BY h.mean DESC LIMIT 1", w)
+        "w AS (SELECT day, med FROM d ORDER BY med DESC LIMIT 1), "
+        "t AS (SELECT bucket::date AS day, mean, name, child FROM h ORDER BY mean DESC LIMIT 1) "
+        "SELECT w.day, w.med, h.name, h.mean, h.child, (SELECT count(*) FROM d WHERE med >= 35.5) AS k, "
+        "t.day AS top_day, t.mean AS top, t.name AS top_name, t.child AS top_child "
+        "FROM w JOIN h ON h.bucket::date = w.day CROSS JOIN t ORDER BY h.mean DESC LIMIT 1", w)
     a = cur.fetchone()
     if a:
-        # the verdict is the days' medians; a worst hour over the line with no unhealthy day is "mostly clean"
-        key = "bad" if a["k"] else "mostly" if a["mean"] >= 35.5 else "clean"
-        lines.append({"key": key, "num": (a["mean"], 0), "day": a["day"], "name": _name(a["name"]), "k": a["k"]})
+        # the verdict is the days' medians: an unhealthy day names the worst day and its highest hour. With none, the
+        # week's highest hour decides between clean and mostly clean, and is the moment the line names.
+        if a["k"]:
+            lines.append({"key": "bad", "num": (a["mean"], 0), "day": a["day"], "name": a["name"],
+                          "child": a["child"], "k": a["k"]})
+        else:
+            lines.append({"key": "mostly" if a["top"] >= 35.5 else "clean", "num": (a["top"], 0),
+                          "day": a["top_day"], "name": a["top_name"], "child": a["top_child"]})
 
     cur.execute(  # per local hour 12:00-17:59 the median of the sensors' hourly means; the highest of those
         f"SELECT r.bucket::date AS day, percentile_cont(0.5) WITHIN GROUP (ORDER BY r.mean) AS mean "
@@ -375,7 +387,8 @@ def _week(cur, week_start: date, place_name: str, public_url: str):
         for ln in lines:
             day = DAYS[lang][ln["day"].weekday()] if ln.get("day") else ""
             v = _fmt(*ln["num"], lang) if "num" in ln else ln["v"]
-            out.append(WEEK[lang][ln["key"]].format(v=v, day=day, name=ln.get("name"), k=ln.get("k")))
+            name = NEIGHBOUR[lang] if ln.get("child") else _name(ln.get("name"))
+            out.append(WEEK[lang][ln["key"]].format(v=v, day=day, name=name, k=ln.get("k")))
         texts[lang] = "\n".join(out)
     return texts, n
 

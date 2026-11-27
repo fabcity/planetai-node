@@ -37,10 +37,13 @@ row has none. A rule that declares a `kind:` belongs to the event engine and is 
 On a community node a rule can also carry a `feed:` block, which queues one short line for the people subscribed to
 that feed: `feed: {name: fire, en: "...", id: "..."}`. `name` is one of `weekly`, `air`, `heat`, `waves`, `fire` or
 `rain`; `en` and `id` are templates filled with the row exactly as `message` is (`{km}`, `{dir[en]}`). An `id` left out
-falls back to `en`. A feed gets at most one line a local day, except the feed's urgent rules (fire upwind). A line is
-queued only from a sensor that is outdoors and whose metric is not private, so a room never reaches a subscriber. The
+falls back to `en`. A feed gets at most one line a local day, except the feed's urgent rules (fire upwind). A row that
+names an indoor sensor, or a metric on a private channel, is dropped before its line is queued. A row whose
+`sensor_id` is `node` or a whole source (`firms-fires`) passes that check, so its SQL must read outdoor, public rows
+only. The
 block may also carry `metric:` to name the metric the line is about, when the rule has no `watch:`. A rule with
-`feed_only: true` records its alert at level `info` for the cooldown and only queues the line, never sending it; on a
+`feed_only: true` records its alert at level `info` for the cooldown and only queues the line, never sending it or
+passing it to Home Assistant; on a
 private node it does not run. A private node ignores `feed:` blocks.
 
 A rule runs as a role that cannot read the settings, so a rule that needs one names it under `params:` and reads it in

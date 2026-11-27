@@ -72,6 +72,8 @@
 - id: smoke_arriving
   level: act
   cooldown_minutes: 1440
+  # The feed line's filtering is this SQL's: the row says `firms-fires`, which feeds.allowed lets through, so the
+  # outdoor and public condition lives in `x` (kind 'sensor' and NOT indoor, or the CAMS model point).
   sql: |
     WITH last AS (SELECT max(ts) AS ts FROM readings
                   WHERE sensor_id = 'firms-fires' AND metric = 'fires_local_24h' AND ts > now() - interval '12 hours'),
@@ -102,5 +104,5 @@
   feed:
     name: air
     metric: pm25
-    en: "🔥 Smoke has likely reached us: the air outside is {pm25}, unhealthy.\nClose up and keep children and anyone with asthma inside."
-    id: "🔥 Asap kemungkinan sudah sampai: udara di luar {pm25}, tidak sehat.\nTutup rumah, anak-anak dan penderita asma tetap di dalam."
+    en: "🔥 Smoke has likely reached us: the air outside is {pm25} µg/m³, unhealthy.\nClose up and keep children and anyone with asthma inside."
+    id: "🔥 Asap kemungkinan sudah sampai: udara di luar {pm25} µg/m³, tidak sehat.\nTutup rumah, anak-anak dan penderita asma tetap di dalam."

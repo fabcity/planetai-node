@@ -181,6 +181,18 @@ def no_act() -> bool:
     return not placewords.is_house(KIND or None)   # before the first /health read, the NODE_KIND this container was given
 
 
+def tg_status() -> str:
+    """The startup line about the bot. A community node's ids are never printed: its keeper chats sit beside subscribers."""
+    if not TG_TOKEN():
+        return "NOT configured (no TELEGRAM_BOT_TOKEN in settings or .env) — the bot will not answer anyone"
+    if no_act():
+        return f"bot set, answering subscribers and {len(CHATS())} keeper chat(s)" if CHATS() else \
+            "bot set, answering subscribers; no keeper chat (TELEGRAM_CHAT_IDS is empty)"
+    if CHATS():
+        return f"bot set, answering {len(CHATS())} chat(s): {sorted(CHATS())}"
+    return "NOT configured (no TELEGRAM_CHAT_IDS in settings or .env) — the bot will not answer anyone"
+
+
 async def refresh_ladder(hc: httpx.AsyncClient) -> None:
     """Every minute: re-read the runtime settings so a change in the dashboard reaches the bot without a restart,
     and the node's kind, so the bot knows whether anybody answers here."""
@@ -1192,7 +1204,7 @@ async def main():
     asyncio.create_task(refresh_ladder(hc))
     await asyncio.sleep(2)
     log.info("%s: ladder %s", NODE, [f"{r.name}:{r.model}" for r in RUNGS])
-    log.info("telegram: %s", f"bot set, answering {len(CHATS())} chat(s)" + ("" if no_act() else f": {sorted(CHATS())}") if TG_TOKEN() and CHATS() else "NOT configured (no TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_IDS in settings or .env) — the bot will not answer anyone")
+    log.info("telegram: %s", tg_status())
     try:                                   # once, so the log says the node answered and how many tools it offers
         async with node_session(hc) as (_s, tools):
             log.info("%d tools", len(tools))

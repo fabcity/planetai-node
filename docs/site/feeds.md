@@ -1,7 +1,7 @@
 # Feeds for subscribers
 <!-- checked: v0.92.0 -->
 
-Once it is on, anyone can start the node's Telegram bot, pick what they want to hear about, and get a short message when it happens. A private node does none of this.
+On a community node, anyone can start the node's Telegram bot, pick what they want to hear about, and get a short message when it happens. A private node does none of this.
 
 ## What a subscriber gets
 
@@ -11,18 +11,22 @@ A person opens the bot and sends `/start`. The bot answers with a card: the node
 |---|---|---|
 | Weekly report | Monday at 07:00 local, a head line with the dates, then one line for each thing the week's readings support | the node's own readings and the model points |
 | Air | the air around here is unhealthy, or smoke has reached the node | the outdoor stations the node reads, and the fire rules |
-| Heat | tomorrow feels hotter than usual | the forecast, compared with the last 30 days; it needs about three weeks of the node's own forecasts before it can say "hotter than usual" |
+| Heat | tomorrow feels hotter than usual | the forecast, compared with the last 30 days |
 | Waves | a heavy, long-period swell is arriving | the marine model point |
 | Fire | satellites saw fire near, and fire upwind | the fire pack |
 | Rain and floods | heavy rain in the next 24 hours | the forecast, against `RAIN_HEAVY_MM` |
 
-Each line has two parts: what is happening, then what to do. A feed sends at most one line a local day. The exception is a fire upwind of the node, which can send again.
+The heat feed needs about three weeks of the node's own forecasts before it can say "hotter than usual", so a new node sends no heat line for its first weeks.
 
-The weekly message has a head line with the place and the dates, then only the lines the week's readings support (up to five): the worst air day, the hottest afternoon, the highest swell, the rain, the hour the air is usually worst. A week with none of them sends nothing. If `PUBLIC_URL` is set, the last line is a link to the report.
+Each line has two parts: what is happening, then what to do. Air readings are in µg/m³ of fine dust (PM2.5). A feed sends at most one line a local day. The exception is a fire upwind of the node, which can send again. The smoke line and the air-around line share the air feed's one line a day, so on a day the air was already called unhealthy the smoke line waits.
+
+The weekly message has a head line with the place and the dates, then only the lines the week's readings support: the worst air day, the hottest afternoon, the highest swell, the rain, the hour the air is usually worst. A week with none of them sends nothing. If `PUBLIC_URL` is set, the last line is a link to the report.
 
 ## What a feed never carries
 
-A feed line is built from outdoor and public readings only. An indoor sensor, a room, or a metric on a private channel never reaches a subscriber, whatever a rule says. The check is made again when the line is queued, so a rule written wrongly still cannot send one.
+A feed line is built from outdoor and public readings only. Each feed rule reads outdoor and public rows only, and when the line is queued, a row that names an indoor sensor or a private channel is dropped.
+
+A child node's station counts only when that node signs what it sends, because an older child did not say which of its sensors were indoors. It is never named: a line about it says "a neighbour's station".
 
 ## Commands
 
@@ -56,4 +60,4 @@ A chat number, the feeds picked, the language, the date they started and when th
 
 ## Adding a feed line to a rule
 
-A rule in a pack can carry a `feed:` block. Next, [Alerts](alerts.md) has its keys and the rules and levels the feeds come from.
+A rule in a pack can carry a `feed:` block. The `feed:` block and the rules the feeds come from are in [Alerts](alerts.md).

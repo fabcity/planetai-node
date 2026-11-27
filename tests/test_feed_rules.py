@@ -83,6 +83,38 @@ g["run_rules"]()
 assert calls == [("SELECT 1 WHERE 'ab' LIKE 'a%'", ()), ("SELECT %(n)s", ({"n": 61},))], calls
 print("ok  params bind only where declared")
 
+# ---- a feed_only rule's line goes to the queue and never to Home Assistant (packs.emit "on_alert"); a rule that is
+# not feed_only still emits.
+EMITS, QUEUED = [], []
+
+
+class _Fresh:
+    """No cooldown row; the alerts INSERT returns an id."""
+    def execute(self, sql, *a): self._last = sql
+    def fetchone(self): return {"id": 7} if "RETURNING" in self._last else None
+
+
+@contextlib.contextmanager
+def _db2():
+    yield type("C", (), {"cursor": lambda self: contextlib.nullcontext(_Fresh()),
+                         "transaction": lambda self: contextlib.nullcontext()})()
+
+
+p_packs.load_rules = lambda: [{"id": "air-quality/around", "sql": "q1", "feed_only": True, "level": "info",
+                               "feed": {"name": "air", "en": "{worst}"}},
+                              {"id": "x/plain", "sql": "q2", "level": "info", "message": "plain {worst}"}]
+p_packs.emit = lambda *a: EMITS.append(a)
+p_index.run_ro = lambda cur, sql, *p: [{"sensor_id": "node", "worst": 70}]
+p_feeds = _NS()
+p_feeds.enqueue = lambda cur, rule, row, sid, now: QUEUED.append(rule["id"])
+g.update(packs=p_packs, index=p_index, db=_db2, feeds=p_feeds, json=json, act_hint=lambda i: "",
+         buttons=type("B", (), {"normalize": staticmethod(lambda b: None)}))
+exec(code, g)
+g["run_rules"]()
+assert QUEUED == ["air-quality/around"], QUEUED
+assert [e[2] for e in EMITS] == ["plain 70"], EMITS
+print("ok  a feed_only rule never reaches Home Assistant")
+
 try:
     import trustdb
 except ImportError:
@@ -93,7 +125,7 @@ WITA = dt.timezone(dt.timedelta(hours=8))
 RULES = {**trustdb.rules("air-quality"), **trustdb.rules("forecast")}
 
 
-def replay(rule, rows, who, at, private=(), **params):
+def replay(rule, rows, who, at, private=(), signed=(), **params):
     r = dict(RULES[rule])
     sql = r["sql"].replace("json_build_object(", "json_object(")
     for k, v in params.items():
@@ -103,10 +135,13 @@ def replay(rule, rows, who, at, private=(), **params):
     for src in private:                               # a source whose pm25 its pack declares private
         node.con.execute("INSERT INTO channel_roles (source, metric, role, comparable, declared_by) "
                          "VALUES (?, 'pm25', 'private', false, 'core')", (src,))
+    for child in signed:                              # a child that signs its pushes is pinned with its node id
+        node.con.execute("INSERT INTO children (name, node_id, public_key) VALUES (?, ?, 'k')", (child, "id-" + child))
     out = node.run(r, at)
     for o in out:
-        if isinstance(o.get("month"), str):
-            o["month"] = json.loads(o["month"])
+        for k in ("month", "worst_at"):
+            if isinstance(o.get(k), str):
+                o[k] = json.loads(o[k])
     return out
 
 
@@ -114,29 +149,49 @@ def replay(rule, rows, who, at, private=(), **params):
 AT = dt.datetime(2026, 11, 27, 10, 0, tzinfo=WITA)
 
 
-def station(sid, v, indoor=False, kind="sensor", local=False, source="x", ago=0):
-    return ((sid, source, f"Station {sid}", -8.8, 115.1, indoor, local, kind),
+def station(sid, v, indoor=False, kind="sensor", local=False, source="x", ago=0, name=None):
+    return ((sid, source, name or f"Station {sid}", -8.8, 115.1, indoor, local, kind),
             [(AT - dt.timedelta(minutes=ago + m), sid, "pm25", float(v)) for m in (5, 20, 40)])
 
 
-def air(*st, private=()):
-    return replay("air_unhealthy_around", [r for s in st for r in s[1]], [s[0] for s in st], AT, private=private)
+def air(*st, private=(), signed=("home-a",)):
+    return replay("air_unhealthy_around", [r for s in st for r in s[1]], [s[0] for s in st], AT, private=private,
+                  signed=signed)
+
+
+def kid(n, v, **kw):
+    """A child's station as a parent stores it: id and name are the child's node name and its kit id."""
+    return station(f"home-a/sc-{n}", v, kind="child", source="child", name=f"home-a/sc-{n}", **kw)
+
+
+def both(w):
+    return {"en": w, "id": w}
 
 
 hit = air(station("a", 60), station("b", 70, local=True), station("c", 20), station("m", 200, kind="model"))
 assert len(hit) == 1 and hit[0]["sensor_id"] == "node", hit
-assert hit[0]["n"] == 3 and hit[0]["over"] == 2 and hit[0]["worst"] == 70 and hit[0]["worst_at"] == "Station b", hit
+assert hit[0]["n"] == 3 and hit[0]["over"] == 2 and hit[0]["worst"] == 70 and hit[0]["worst_at"] == both("Station b"), hit
+br = air(station("a", 60), station("b", 70, name="TPA Kutuh (Smart Citizen)"), station("c", 20))
+assert br[0]["worst_at"] == both("TPA Kutuh"), "a station's trailing bracket is dropped, as the weekly does"
 assert air(station("a", 90)) == [], "one station alone is not the air around here"
 assert air(station("in", 300, indoor=True), station("a", 10), station("b", 10)) == [], "a room never counts"
 assert air(station("p", 300, source="mine"), station("a", 60), station("b", 10), private=["mine"]) == [], \
     "a private reading never counts"
 # children arrive as hourly means (kind='child', outside `stats`): they count, a newest bucket within 2 hours
-kids = air(station("k1", 60, kind="child"), station("k2", 70, kind="child"), station("a", 20))
-assert len(kids) == 1 and kids[0]["n"] == 3 and kids[0]["over"] == 2 and kids[0]["worst_at"] == "Station k2", kids
-assert air(station("k1", 300, kind="child", indoor=True), station("a", 60), station("b", 10)) == [], \
-    "a child's room never counts"
-assert air(station("k1", 300, kind="child", ago=180), station("a", 60), station("b", 10)) == [], \
-    "a child's bucket 3 hours old does not count"
+kids = air(kid(1, 60), kid(2, 70), station("a", 20))
+assert len(kids) == 1 and kids[0]["n"] == 3 and kids[0]["over"] == 2, kids
+# a child's station is never named: the worst is "a neighbour's station", in both languages
+assert kids[0]["worst_at"] == {"en": "a neighbour's station", "id": "stasiun tetangga"}, kids
+for lang in ("en", "id"):
+    text = feeds._fill(LOADED["air-quality/air_unhealthy_around"]["feed"][lang], kids[0])
+    assert "home-a" not in text and "sc-2" not in text and "sc-1" not in text, text
+    assert ("70 µg/m³ at a neighbour's station" if lang == "en" else "70 µg/m³ di stasiun tetangga") in text, text
+assert air(kid(1, 300, indoor=True), station("a", 60), station("b", 10)) == [], "a child's room never counts"
+assert air(kid(1, 300, ago=180), station("a", 60), station("b", 10)) == [], "a child's bucket 3 hours old does not count"
+assert air(kid(1, 300), station("a", 60), station("b", 10), private=["child"]) == [], \
+    "a child's reading on a private channel never counts"
+# an unsigned child is an older one, which did not send `indoor`: its stations were stored outdoor, so none counts
+assert air(kid(1, 300), kid(2, 300), station("a", 10), signed=()) == [], "an unsigned child's stations never count"
 print("ok  air around")
 
 
@@ -199,7 +254,7 @@ assert len(hit) == 1 and hit[0]["mm"] == 61 and hit[0]["from"] == "14:00", hit
 assert replay("rain_ahead", rain(49), PTS, NOW, rain_heavy_mm=50) == [], "49 mm is under the line"
 print("ok  rain ahead")
 
-row = {"worst": 70, "worst_at": "Station b", "over": 2, "n": 3, "at": 38, "hour": "14:00",
+row = {"worst": 70, "worst_at": both("Station b"), "over": 2, "n": 3, "at": 38, "hour": "14:00",
        "month": {"en": "November", "id": "November"}, "mm": 61, "from": "14:00"}
 for rid in NEW:
     for lang in ("en", "id"):
