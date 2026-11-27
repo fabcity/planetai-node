@@ -584,7 +584,7 @@ const out = {};
 for (const [name, path] of Object.entries(JSON.parse(process.argv[1]))) {
   const F = JSON.parse(fs.readFileSync(path, 'utf8')), els = {}, D = L.buildD({ ...F, days: F.issues_days }, 'en');
   D.now = D.buckets.length - 1;
-  const ctx = { D, notHouse: () => false, S: { issue: null, i: D.now }, doorsLocal: L.doorsLocal, WORDS: L.WORDS, stateWord: L.stateWord, kindWord: L.kindWord, VIEWS: {}, $: q => (els[q] ||= {}), document: { querySelectorAll: () => [] } };
+  const ctx = { D, notHouse: () => false, S: { issue: null, i: D.now }, doorsLocal: L.doorsLocal, WORDS: L.WORDS, stateWord: L.stateWord, kindWord: L.kindWord, VIEWS: {}, $: q => (els[q] ||= q === '.nstrip' ? { style: {} } : {}), document: { querySelectorAll: () => [] } };
   vm.createContext(ctx);
   vm.runInContext(['esc', 'loc', 'dayOf', 'fmt', 'said', 'num', 'unitOf', 'labelOf', 'NODE', 'sign', 'PROV', 'prov', 'ISSUES_DRAWN'].map(pick).join('\n') + '\n'
     + 'let NOWL = null;\n' + (now.includes('function usualLine') ? fn(now, 'usualLine') : '') + fn(now, 'rows')
@@ -1006,6 +1006,7 @@ vm.runInContext(['esc', 'asHouse', 'WD', 'loc', 'dayOf', 'dLabel', 'wdhm', 'fmt'
    const draw = h => { calls.length = 0; location.hash = h; location.replaced = null; VIEWS.data();
      return { calls: calls.slice(), shown: Object.values(DTABS).flatMap(t => t[1]).filter(id => !document.getElementById(id).hidden),
        on: (document.getElementById('dnav').innerHTML.match(/href="(#data\\/\\w+)"[^>]*class="on"/) || [])[1] || null, node: location.replaced }; };
+   D.health.kind = 'community';   /* the Workbench tab is a community node's */
    out.tabs = Object.fromEntries(Object.keys(DTABS).map(t => [t, draw('#data/' + t)]));
    const sid = D.sensors.find(s => s.local && s.kind === 'sensor').sensor_id, mid = D.sensors.find(s => s.kind === 'model').sensor_id;
    out.old = Object.fromEntries(['#data', '#data/d-images', '#data/d-things', '#data/perday', '#data/issues7', '#data/cells', '#data/d-learned', '#data/' + sid, '#data/' + mid]

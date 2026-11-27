@@ -716,8 +716,8 @@ def check_registry() -> None:
 def check_firmware() -> None:
     """Every six hours, bring this node's copy of the workbench's firmware up to date (app/firmware.py), so the
     workbench flashes with no internet. UPDATE_CHECK=off asks nothing, the same switch as the registry read."""
-    if settings.get("UPDATE_CHECK", "on") == "off":
-        return
+    if settings.get("UPDATE_CHECK", "on") == "off" or placewords.role() == "private":
+        return          # the workbench is a community node's; a private node keeps no firmware
     import firmware
 
     def get(u: str) -> bytes:
@@ -2046,6 +2046,12 @@ def ui(layout: str = ""):
     return HTMLResponse(body, headers={"cache-control": "no-cache, must-revalidate"})
 
 
+def _community_only():
+    """The flasher and the firmware are a community node's: a private node answers 404, nothing links to them."""
+    if placewords.role() == "private":
+        raise HTTPException(404, "the workbench is on community nodes")
+
+
 @app.get("/workbench", include_in_schema=False)
 def workbench():
     """The sensors workbench (planetai.fab.city/sensors/, the same file). Served here it reads this node's /health,
@@ -2064,7 +2070,9 @@ def workbench():
     takes the doors' register, and sends a page opened on its own (the site's Connect) to /#data/workbench. The
     flasher is vendored under /static/vendor/, and the firmware comes from this node's own copy (app/firmware.py)
     once it has one; before that, from where the site reads it."""
-    from fastapi.responses import HTMLResponse
+    from fastapi.responses import HTMLResponse, RedirectResponse
+    if placewords.role() == "private":   # a private node's sensors are set up on its community node, or the site's copy
+        return RedirectResponse("https://planetai.fab.city/sensors/", status_code=308)
     f = STATIC / "workbench.html"
     if not f.exists():
         raise HTTPException(404, "the sensors workbench is not shipped in this build")
@@ -2096,6 +2104,7 @@ def workbench_flasher(name: str):
     """ESP Web Tools 10.4.0 (Apache-2.0), the workbench's flasher, vendored as the site vendors it, so the node flashes
     with no internet. A flat name in one folder, like /static/{name}: nothing a caller sends walks the filesystem."""
     from fastapi.responses import FileResponse
+    _community_only()
     p = STATIC / "vendor" / "esp-web-tools" / name
     if not re.fullmatch(r"[A-Za-z0-9_.-]+\.(js|txt)", name) or not p.is_file():
         raise HTTPException(404, "no such file")
@@ -2108,6 +2117,7 @@ def workbench_firmware(path: str):
     they answer at every SHARE_LEVEL, under /static/ like the page's other parts. The path must resolve inside the
     copy."""
     from fastapi.responses import FileResponse
+    _community_only()
     root = (OUT / "firmware").resolve()
     p = (root / path).resolve()
     if not p.is_relative_to(root) or not p.is_file():

@@ -638,6 +638,8 @@ print("storage and machine: the keeper's, refused to the LAN at every level")
 # app/firmware.py has kept a copy, and the site's addresses only before that.
 import tempfile as _wbtf
 _wbout, main.OUT = main.OUT, _P(_wbtf.mkdtemp())
+_wbkind = os.environ.get("NODE_KIND"); os.environ["NODE_KIND"] = "community"   # the workbench is a community node's
+_wbin = dict(main._INDOOR); main._INDOOR.update(at=1e12, ids=set(), names=set())   # a community node reads its indoor ids before answering JSON
 _dt = re.findall(r"^  (\w+): \['([^']+)'", open("app/static/doors-data.js").read().split("const DTABS = {")[1].split("};")[0], re.M)
 assert ("workbench", "Workbench") in _dt, "the workbench must be one of the Data door's tabs (DTABS in doors-data.js)"
 assert 'id="d-workbench"' in open("app/static/doors.html").read(), "doors.html must hold the Workbench tab's section"
@@ -668,6 +670,8 @@ assert lan.get("/static/firmware/meshtastic/2.7/fw.uf2").content == b"uf2", "a k
 for _bad in ("/static/firmware/..%2F..%2Fetc%2Fpasswd", "/static/firmware/meshtastic", "/static/firmware/nothing.bin"):
     assert lan.get(_bad).status_code == 404, f"{_bad} must not be served"
 main.OUT = _wbout
+main._INDOOR.update(_wbin)
+os.environ.pop("NODE_KIND", None) if _wbkind is None else os.environ.update(NODE_KIND=_wbkind)
 level("off")
 print("workbench: the Data door's tab, offline flasher and firmware, answers at every level, /tester redirects")
 

@@ -440,3 +440,48 @@ os.environ["NODE_KIND"] = "home"; assert not agent_loop.no_act()
 agent_loop.KIND = "community"; assert agent_loop.no_act(), "/health wins once read"
 agent_loop.KIND = "home"
 print("ok  community: no card or /issues asks, no stored action, POST /actions refuses every answer; private unchanged")
+
+# ---------------------------------------------------------------- the doors by role (Data tabs, Readings note, /workbench)
+import subprocess  # noqa: E402
+_prog = r"""
+const fs = require('fs'), vm = require('vm');
+const core = fs.readFileSync('./app/static/doors-core.js', 'utf8'), data = fs.readFileSync('./app/static/doors-data.js', 'utf8'), wall = fs.readFileSync('./app/static/doors-wallmap.js', 'utf8');
+const pick = (src, n) => src.match(new RegExp('^const ' + n + ' = .*$', 'm'))[0], fn = n => data.match(new RegExp('function ' + n + '\\b[\\s\\S]*?\\n}\n'))[0];
+const ctx = { $: () => null }; vm.createContext(ctx);
+vm.runInContext(pick(core, 'esc') + '\n' + pick(wall, 'notHouse') + '\n' + data.slice(data.indexOf('const DTABS = {'), data.indexOf('/* an anchor Data used')) + fn('dataTabs') + fn('sensorLine')
+  + '\nthis.tabs = dataTabs; this.line = sensorLine;', ctx);
+const names = k => Object.fromEntries(Object.entries(ctx.tabs(k)).map(([id, t]) => [id, t[0]]));
+console.log(JSON.stringify({ home: names('home'), community: names('community'), district: names('district'), none: names(undefined),
+  line: ctx.line({ kind: 'home' }), parent: ctx.line({ kind: 'home', parent: { node: 'bayu-ungasan' } }), com: ctx.line({ kind: 'community' }) }));
+"""
+_r = subprocess.run(["node", "-e", _prog], capture_output=True, text=True, cwd=ROOT)
+assert _r.returncode == 0, _r.stderr
+_o = json.loads(_r.stdout)
+for _k in ("home", "none"):
+    assert "workbench" not in _o[_k] and _o[_k]["home"] == "Home", (_k, _o[_k])
+for _k in ("community", "district"):
+    assert _o[_k]["workbench"] == "Workbench" and _o[_k]["home"] == "Services", (_k, _o[_k])
+_site = 'planetai.fab.city/sensors</a>.'
+assert _o["line"].startswith("To set up a new sensor, use your community node’s workbench or <a href=\"https://planetai.fab.city/sensors/\"") and _o["line"].endswith(_site), _o["line"]
+assert "use bayu-ungasan’s workbench or" in _o["parent"], _o["parent"]
+assert _o["com"] == "", "a community node has the workbench itself"
+_ds = (ROOT / "app/static/doors-setup.js").read_text()
+assert "b.key === 'NODE_KIND'" in _ds and "<input" not in _ds.split("const boot = ")[1].split("const changed")[0], "Basics shows NODE_KIND as a read-only row, no input"
+assert "band.style.display" in (ROOT / "app/static/doors-now.js").read_text().split("function decision()")[1].split("\n")[0]
+
+# /workbench: a private node points to the site; its flasher and firmware answer 404; a community node serves them
+os.environ["NODE_KIND"] = "home"
+_r = client.get("/workbench", follow_redirects=False)
+assert _r.status_code == 308 and _r.headers["location"] == "https://planetai.fab.city/sensors/", (_r.status_code, _r.headers)
+assert client.get("/static/vendor/esp-web-tools/esp32-DNPRK0Ay.js").status_code == 404
+assert client.get("/static/firmware/bayu/manifest.json").status_code == 404
+_calls = []
+_real_hc = main.hc
+main.hc = SimpleNamespace(get=lambda *a, **k: _calls.append(a))
+main.check_firmware(); assert not _calls, "a private node fetches no firmware"
+main.hc = _real_hc
+os.environ["NODE_KIND"] = "community"
+assert client.get("/workbench", follow_redirects=False).status_code == 200
+assert client.get("/static/vendor/esp-web-tools/esp32-DNPRK0Ay.js").status_code == 200
+os.environ["NODE_KIND"] = "home"
+print("ok  roles: the Workbench is a community node's; a private node points to it")
