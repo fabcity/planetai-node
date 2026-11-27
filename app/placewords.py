@@ -16,9 +16,10 @@ import re
 
 HOUSE_KINDS = {"", "home", "business"}
 PLACE_KINDS = {"community", "district"}
+# the Wall's size for a kind; everything else is base
 _OWN = {"community": "community", "district": "city"}
 # what a community node says to anybody who tries to answer one of its alerts: the bot, POST /actions
-NO_ACT = "This is a community node: it sends feeds, and nobody answers its alerts here."     # the Wall's size for a kind; everything else is base
+NO_ACT = "This is a community node: it sends feeds, and nobody answers its alerts here."
 
 # Longest first: a row only ever sees text the rows above it left. Whole words, so "household", "Lighthouse",
 # "casada" and "perumahan" stay as they are. A leading capital in the text is kept on the replacement.
@@ -104,9 +105,9 @@ def swap_tree(obj, loc: str, labels: bool = False):
 
 class Localized(dict):
     """A table keyed by language. `t[loc]` and `t.get(loc)` give the language's templates as written on a house, and
-    swapped on a community or district node, worked out once per language and kind and kept on the table itself (a
-    change of NODE_KIND takes effect on the next read, without a restart). Iterating the table gives what was written:
-    read a language through `[loc]` or `.get(loc)`."""
+    swapped on a community or district node, worked out once per language and kind and kept on the table itself
+    (NODE_KIND is read at start, so a change of role arrives with the restart `planetai role` does). Iterating the
+    table gives what was written: read a language through `[loc]` or `.get(loc)`."""
 
     labels = False      # True on the distance labels' table (issues.LABEL_WORDS): the bare words apply there too
 

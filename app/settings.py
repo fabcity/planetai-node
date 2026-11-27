@@ -194,9 +194,11 @@ RUNTIME = {
 # What an anonymous reader on the LAN may see the value of. Everything else shows as "•••• set" until the admin token is
 # presented (the dashboard's Set up view sends it once unlocked). Chat ids, sensor hosts, account names and remote URLs
 # are not secrets, but they are the household's, and GET /settings answers anyone on the WiFi (found 6 Sep 2026).
+# NODE_KIND is not here: it is a bootstrap key, and bootstrap rows show their value without this list (Set up reads
+# the role from /health anyway).
 PUBLIC = {"REPORT_EVERY", "REPORT_ANCHOR", "REPORT_DEPTH", "LEARN_PUSH", "ALERT_LEVEL", "QUIET_HOURS", "QUIET_FROM", "QUIET_TO", "ALERT_LOCALE",
           "MESH_ALERTS", "HA_DISCOVERY", "PACKS_ENABLED", "PACKS_ALLOW_CODE", "OPENMETEO_ENABLED",
-          "SENSOR_INDOOR", "COAST_MAX_KM", "AGENT_PREFER", "AGENT_REMOTE_MODEL", "AGENT_ONLINE_MODEL", "EYES_MODEL", "UI_LAYOUT", "UI_MODE", "UI_ASK", "UI_GROUND", "MAP_TILES", "UPDATE_CHECK", "SPECIES_MATCH", "STATIONS_SHOWN", "NODE_KIND", "SHARE_LEVEL", "NODE_ISSUES",
+          "SENSOR_INDOOR", "COAST_MAX_KM", "AGENT_PREFER", "AGENT_REMOTE_MODEL", "AGENT_ONLINE_MODEL", "EYES_MODEL", "UI_LAYOUT", "UI_MODE", "UI_ASK", "UI_GROUND", "MAP_TILES", "UPDATE_CHECK", "SPECIES_MATCH", "STATIONS_SHOWN", "SHARE_LEVEL", "NODE_ISSUES",
           "RETICULUM_PRESENCE", "RETICULUM_PRESENCE_RES"}
 # Which Set up tab shows each bootstrap key, read-only. The place itself is Basics; the machinery is System.
 BOOTSTRAP_GROUP = {k: "basics" for k in ("NODE_NAME", "NODE_CITY", "NODE_LAT", "NODE_LON", "NODE_TZ", "NODE_SCALE", "NODE_KIND")}
