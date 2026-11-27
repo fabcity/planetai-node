@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- **27 Nov: a node's role is set at install, and a community node keeps its rooms private.** `planetai role
+  [private|community] [--yes]` changes the role. It warns, takes a backup, restarts the node and offers the role's
+  starting settings (`presets/roles/`). Packs are only ever added. Set up shows the role and does not change it. A
+  community node shows no indoor sensor to a reader without a token: not in any JSON read, `/history`, `/series`,
+  `/shape`, `/issues`, `/report/latest`, a stored export or an alert, and `/ask` is refused to a stranger. It answers
+  503 until it has read its indoor sensors once. It asks nobody to act: no answer buttons or act hint on any page, no
+  household action lines, `POST /actions` refuses an answer (409), the bot's `/act` says so, and ρ counts only its
+  children's households. The Workbench lives on community nodes only: a private node's `/workbench` goes to
+  planetai.fab.city/sensors/, and its firmware fetch stops. Data › Home reads Services on a community node. Set up
+  names the room each sensor is in (Sources and Basics › Rooms). A community Node door draws what comes in and what
+  it serves, and its Place door shows its territory, 49 cells, read and unread, with anything outside listed. Exports
+  written while a node was private keep their alert lines, which can mention rooms.
+
 - **26 Nov: an alert on Reticulum says how to answer it.** On a private node, an `act` alert sent over Reticulum
   now ends with the answers it takes, in the node's language: `↩ done 45 · not now 45` for an alert, and
   `↩ done e7 · not now e7 · doesn't fit e7` for an event. Real alerts carried no number, so nobody in Sideband could

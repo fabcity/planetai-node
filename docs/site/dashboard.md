@@ -203,10 +203,10 @@ Every reading the node holds, one tab at a time, routed `#data/<tab>`. The tab b
 | **Readings** | every kind of reading as a tile, with the median of its sources' 15-minute means now. Press one to draw every source that reads it over 24 hours on one scale, each linked to where its source publishes it (the hourly table needs the token). Then every issue at every distance over seven days, and the hours over the line per day |
 | **Report** | the weekly sensor report, the same as the one in [Grafana](grafana.md#the-weekly-report), for anyone who opens the node. Pick sensors from the list or type part of a name, set the two lines, choose the week, and read it in English or Bahasa Indonesia. At the top, the week in tiles and the places day by day, each day coloured by Indonesia's air index (ISPU) for PM2.5 and PM10; a day heard for under 18 hours is grey and not counted, and a bad day still inside the index's green band has a thin red edge. Then, per place, the daily mean over the index bands, the bad days of each week, the hours (one spike is printed instead of flattening the scale) and the daily median beside all sensors', and the two tables. **Download the PDF** prints the week on A4 pages, the overview and a page per place; **Share images** makes a 1080×1350 JPEG per place and one comparing them, for PM2.5 and PM10. Both are made from what a visitor sees, so a room never reaches them, and both need a week that is over. The choices stay in the address (`#data/report?…`), so a report can be sent as a link. Another screen on the network reads it once `SHARE_LEVEL` is `open`; without the token only the outdoor sensors are offered |
 | **Models and satellite** | first, one table: a row per value the models and the satellite give for this point, how often it is fetched, its unit; with the `predict` pack on, a second part under it |
-| **Home** | **Images**, newest first: when and who, what took it, the note, what the image model saw and whether somebody here confirmed it. A row opens the image to edit, confirm or delete. Then the species confirmed, and **Things**, what this home keeps, how often each is used, its state and whether it is offered (admin token). With the `eyes` or `things` pack off, its part says so |
+| **Home** (**Services** on a community node, which keeps no home) | **Images**, newest first: when and who, what took it, the note, what the image model saw and whether somebody here confirmed it. A row opens the image to edit, confirm or delete. Then the species confirmed, and **Things**, what this home keeps, how often each is used, its state and whether it is offered (admin token). With the `eyes` or `things` pack off, its part says so |
 | **Ledger** | every decision, newest first, a run of the same answer as one row ("decided ×10"), who answered in words, and a filter by stage. Without a token, only the time and the stage |
 | **API** | every route on this node, one line each, with a search |
-| **Workbench** | the sensors workbench, routed `#data/workbench/flash`, `/test` or `/network`: flash the Bayu and every Meshtastic board, test a board over USB, and the network this node hears, all with no internet. USB needs Chrome or Edge on a laptop, on the node machine or with one Chrome flag set for this address; the steps are on [Flash and test a board](sensors.md#flash-and-test-a-board) |
+| **Workbench** | on a community node only (a private node's `/workbench` goes to `planetai.fab.city/sensors/`), the sensors workbench, routed `#data/workbench/flash`, `/test` or `/network`: flash the Bayu and every Meshtastic board, test a board over USB, and the network this node hears, all with no internet. USB needs Chrome or Edge on a laptop, on the node machine or with one Chrome flag set for this address; the steps are on [Flash and test a board](sensors.md#flash-and-test-a-board) |
 
 With the `predict` pack on, Models and satellite has a second part: the range a general model expects today and tomorrow for each of the node's own series, and its mean error beside that of yesterday repeated. A day is drawn only with at least 7 scored days and the model's error strictly below yesterday's, otherwise the row says why. It needs a node token, and [Predict](predict.md) has the rest.
 
@@ -218,6 +218,23 @@ last checked or why it is not shown. The measured number stays the one the node 
 correction is shown, the sensor's row in Readings carries a small mark after its value, "corrected 13.6 against
 Sensor 5", that links to the section. A number from an hour more than 3 hours old says which hour, and gets no
 mark. A row also says which of the two is stuck on one value, if one is. How a pair is named and checked is on [Corrections](calibrate.md).
+
+## What each role shows
+
+The role is set at install (`NODE_KIND`) and read at start. `planetai role` changes it, and Set up shows it without a
+way to change it. A private node is a `home` or a `business`, a community node a `community` or a `district`.
+
+A community node never shows an indoor sensor to a reader without a token: not in any JSON read, not in `/history`,
+`/series`, `/shape` or `/issues` (room events are dropped from it, and so are its days), not in the text of
+`/report/latest`, not in a stored `/exports` file or an `/export` row, and not in an alert. `/ask` is refused to a
+stranger. Until it has read its indoor sensors once it answers 503, so nothing slips out before it knows which they are.
+
+A community node has no act. No page draws an answer button or an act hint, no household action line is written,
+`POST /actions` refuses an answer with 409, the bot's `/act` says so, and [ρ](rho.md) counts only its children's
+households. A private node keeps all of it.
+
+The Workbench tab and the firmware fetch are a community node's. Data › Home reads Services there. A community Node
+door draws what comes in and what it serves, and its Place door shows its territory.
 
 ## Wall
 

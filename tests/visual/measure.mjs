@@ -3483,7 +3483,9 @@ async function doors() {
     ok(await r.page.waitForSelector('#asking:not(.on)', { state: 'attached', timeout: 6000 }).then(() => true, () => false), `${tag}: the loading screen never closed`);
     /* the tabs drawn in this page, Workbench among them: the node's /workbench in a frame (Tomas, 27 Oct 2026) */
     const tabs = await r.page.evaluate(() => [...document.querySelectorAll('#dnav a[href^="#data/"]')].map(a => a.getAttribute('href')));
-    ok(tabs.includes('#data/workbench'), `${tag}: Data has no Workbench tab`);
+    /* the Workbench lives on community and district nodes only */
+    const wbKind = String(fixtureHealth(FIXTURE).kind ?? '').toLowerCase();
+    ok(tabs.includes('#data/workbench') === ['community', 'district'].includes(wbKind), `${tag}: Data's Workbench tab is ${tabs.includes('#data/workbench') ? 'drawn' : 'missing'} on a ${wbKind || 'home'} node`);
     ok(tabs.length >= 4, `${tag}: Data lists ${tabs.length} tabs`);
     const seen = new Set();
     for (const t of tabs) {

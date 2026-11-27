@@ -43,6 +43,9 @@ To make one node the child of another:
 Through those two routes a parent never sees a child's raw rows, its room names, its people, its sentences or its
 coordinates.
 
+A community node asks nobody to act, so it has no act of its own: it records no answer and draws no button. What it
+sends and reads of its children is unchanged, and the ρ it computes counts only its children's households.
+
 ## Each node is a key
 
 The token says who may push to a parent. It does not say who is pushing: every child holds the same one. So each
