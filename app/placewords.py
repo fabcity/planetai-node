@@ -16,7 +16,10 @@ import re
 
 HOUSE_KINDS = {"", "home", "business"}
 PLACE_KINDS = {"community", "district"}
-_OWN = {"community": "community", "district": "city"}     # the Wall's size for a kind; everything else is base
+# the Wall's size for a kind; everything else is base
+_OWN = {"community": "community", "district": "city"}
+# what a community node says to anybody who tries to answer one of its alerts: the bot, POST /actions
+NO_ACT = "This is a community node: it sends feeds, and nobody answers its alerts here."
 
 # Longest first: a row only ever sees text the rows above it left. Whole words, so "household", "Lighthouse",
 # "casada" and "perumahan" stay as they are. A leading capital in the text is kept on the replacement.
@@ -57,18 +60,18 @@ _RX, _RX_LABELS = _compile(SWAPS), _compile(LABEL_SWAPS)
 
 
 def kind() -> str:
-    """NODE_KIND as the node holds it: a settings row first, then the environment. Lowercase, stripped."""
-    try:
-        import settings
-        k = settings.get("NODE_KIND", "")
-    except Exception:  # noqa: BLE001 — a validator or a test without the app's settings
-        k = os.getenv("NODE_KIND", "")
-    return (k or "").strip().lower()
+    """NODE_KIND from the environment (.env, read at start); never a settings row. Lowercase, stripped."""
+    return os.getenv("NODE_KIND", "").strip().lower()
+
+
+def role(k: str | None = None) -> str:
+    """"community" for a community or a district, "private" for a home, a business or a node that never said."""
+    return "community" if (kind() if k is None else (k or "").strip().lower()) in PLACE_KINDS else "private"
 
 
 def is_house(k: str | None = None) -> bool:
     """True unless the node says it is a community or a district."""
-    return (kind() if k is None else (k or "").strip().lower()) not in PLACE_KINDS
+    return role(k) == "private"
 
 
 def own_scale(k: str | None = None) -> str:
@@ -102,9 +105,9 @@ def swap_tree(obj, loc: str, labels: bool = False):
 
 class Localized(dict):
     """A table keyed by language. `t[loc]` and `t.get(loc)` give the language's templates as written on a house, and
-    swapped on a community or district node, worked out once per language and kind and kept on the table itself (a
-    change of NODE_KIND takes effect on the next read, without a restart). Iterating the table gives what was written:
-    read a language through `[loc]` or `.get(loc)`."""
+    swapped on a community or district node, worked out once per language and kind and kept on the table itself
+    (NODE_KIND is read at start, so a change of role arrives with the restart `planetai role` does). Iterating the
+    table gives what was written: read a language through `[loc]` or `.get(loc)`."""
 
     labels = False      # True on the distance labels' table (issues.LABEL_WORDS): the bare words apply there too
 

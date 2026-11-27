@@ -321,6 +321,15 @@ for always in things eyes; do
 done
 
 # 6. rebuild and restart
+# 6a. NODE_KIND is read from .env at start and is not a setting: a row left in the settings table by an older
+# node moves to .env when the two differ, and the row goes either way.
+nk="$(pq "SELECT value FROM settings WHERE key = 'NODE_KIND'" | tr A-Z a-z)"
+if [[ -n "$nk" && "$nk" =~ ^[a-z]+$ && "$nk" != "$(envval NODE_KIND)" ]]; then
+  if grep -q "^NODE_KIND=" .env; then sed -i.bak "s|^NODE_KIND=.*|NODE_KIND=${nk}|" .env && rm -f .env.bak; else echo "NODE_KIND=${nk}" >> .env; fi
+  echo "   NODE_KIND moved from the settings table to .env: ${nk}"
+fi
+pq "DELETE FROM settings WHERE key = 'NODE_KIND'" >/dev/null || true
+
 say "rebuilding"
 spin "building the image (pip installs; a minute or two)" docker compose build app || die "the image did not build; the node keeps running the version it had. See $ULOG"
 # The forecast model's image carries torch, so only a node that turned it on (planetai models pull) builds it. Like the

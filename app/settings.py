@@ -43,7 +43,6 @@ RUNTIME = {
                            "name nothing declares is ignored with a line in the log; blank means every issue there "
                            "is, in the packs' own order. Your preset guessed for this place \u2014 change it: what "
                            "matters here is decided by the people who live here, not by which pack was written first."),
-    "NODE_KIND":          ("basics", "Kind", False, False, "home | business | community | district. The page says Private node for the first two, Community node for the others."),
     "ALERT_LOCALE":       ("basics", "Alert language", False, False, "en, id or es. The alert rules, the reports, the test alert and the bot's own replies; the dashboard and the terminal stay in English. Anything else falls back to English."),
     "UI_MODE":            ("basics", "How much of the page is shown", False, False,
                            "simple = one sentence per stage, written by this node, and nothing else: for a phone, "
@@ -195,18 +194,25 @@ RUNTIME = {
 # What an anonymous reader on the LAN may see the value of. Everything else shows as "•••• set" until the admin token is
 # presented (the dashboard's Set up view sends it once unlocked). Chat ids, sensor hosts, account names and remote URLs
 # are not secrets, but they are the household's, and GET /settings answers anyone on the WiFi (found 6 Sep 2026).
+# NODE_KIND is not here: it is a bootstrap key, and bootstrap rows show their value without this list (Set up reads
+# the role from /health anyway).
 PUBLIC = {"REPORT_EVERY", "REPORT_ANCHOR", "REPORT_DEPTH", "LEARN_PUSH", "ALERT_LEVEL", "QUIET_HOURS", "QUIET_FROM", "QUIET_TO", "ALERT_LOCALE",
           "MESH_ALERTS", "HA_DISCOVERY", "PACKS_ENABLED", "PACKS_ALLOW_CODE", "OPENMETEO_ENABLED",
-          "SENSOR_INDOOR", "COAST_MAX_KM", "AGENT_PREFER", "AGENT_REMOTE_MODEL", "AGENT_ONLINE_MODEL", "EYES_MODEL", "UI_LAYOUT", "UI_MODE", "UI_ASK", "UI_GROUND", "MAP_TILES", "UPDATE_CHECK", "SPECIES_MATCH", "STATIONS_SHOWN", "NODE_KIND", "SHARE_LEVEL", "NODE_ISSUES",
+          "SENSOR_INDOOR", "COAST_MAX_KM", "AGENT_PREFER", "AGENT_REMOTE_MODEL", "AGENT_ONLINE_MODEL", "EYES_MODEL", "UI_LAYOUT", "UI_MODE", "UI_ASK", "UI_GROUND", "MAP_TILES", "UPDATE_CHECK", "SPECIES_MATCH", "STATIONS_SHOWN", "SHARE_LEVEL", "NODE_ISSUES",
           "RETICULUM_PRESENCE", "RETICULUM_PRESENCE_RES"}
 # Which Set up tab shows each bootstrap key, read-only. The place itself is Basics; the machinery is System.
-BOOTSTRAP_GROUP = {k: "basics" for k in ("NODE_NAME", "NODE_CITY", "NODE_LAT", "NODE_LON", "NODE_TZ", "NODE_SCALE")}
+BOOTSTRAP_GROUP = {k: "basics" for k in ("NODE_NAME", "NODE_CITY", "NODE_LAT", "NODE_LON", "NODE_TZ", "NODE_SCALE", "NODE_KIND")}
 BOOTSTRAP_GROUP["PREDICT_MODEL"] = "model"
 # Keys get() answers from the environment only, never from a stored row (the container reading .env is the other reader).
 ENV_ONLY = {"PREDICT_MODEL"}
 # A sentence under a read-only row, for the few that need one. PREDICT_MODEL is .env's alone: the models container can
 # only ever follow .env, so a value saved in Set up would be one the container never loads.
 BOOTSTRAP_HELP = {
+    # {Role} and {other} are filled with the node's current role and the one a change would move it to.
+    "NODE_KIND": "{Role} node. Set when it was installed. To change it, run `planetai role {other}` on the node's machine; "
+                 "the node restarts.\nA change moves what the doors show (the Workbench, the network view, Home), who the "
+                 "bot answers (subscribers and their feeds, or the household), what the report says and to whom, how much "
+                 "it shares by default, and which packs it suggests. Readings, settings and alerts stay as they are.",
     "PREDICT_MODEL": "A time-series model that forecasts this node's own readings (Data \u203a Models and satellite). "
                      "amazon/chronos-2 is 456 MB, amazon/chronos-bolt-tiny 33 MB. Nothing is downloaded until you run "
                      "`planetai models pull <name>` on this machine.",
@@ -214,7 +220,7 @@ BOOTSTRAP_HELP = {
 
 BOOTSTRAP = {
     "NODE_NAME": "Name", "NODE_CITY": "City key", "NODE_LAT": "Latitude", "NODE_LON": "Longitude", "NODE_TZ": "Time zone",
-    "NODE_SCALE": "Scale", "APP_PORT": "Port", "COMPOSE_PROFILES": "Extra containers", "MQTT_HOST": "Broker",
+    "NODE_KIND": "Kind", "NODE_SCALE": "Scale", "APP_PORT": "Port", "COMPOSE_PROFILES": "Extra containers", "MQTT_HOST": "Broker",
     "BACKUP_DIR": "Backups", "BACKUP_REMOTE": "Off-machine copy", "BACKUP_KEEP": "Days of backups kept", "DATA_DIR": "Database location", "CAPTURES_DIR": "Pictures folder", "EXPORT_ENABLED": "Daily export", "IPFS_PUBLISH": "IPFS", "POLL_SECONDS": "Poll interval",
     # Grafana (docs/site/grafana.md): on when COMPOSE_PROFILES names it, which `planetai grafana` does. Set up draws
     # these as one block, with whether it is on and how to open it (Tomas, 24 Oct 2026: it was nowhere on the page).
@@ -513,7 +519,12 @@ def describe(unlocked: bool = False, public: frozenset | set = PUBLIC) -> dict:
             "default": r["default"], "pack": r["pack"]})
     for k, label in BOOTSTRAP.items():
         v = os.getenv(k, "")
+        help_ = BOOTSTRAP_HELP.get(k)
+        if k == "NODE_KIND":
+            import placewords
+            now = placewords.role()
+            help_ = help_.format(Role=now.capitalize(), other="community" if now == "private" else "private")
         out["bootstrap"].append({"key": k, "label": label, "value": ("set" if v else "") if k in BOOTSTRAP_SECRET else v,
                                  "group": BOOTSTRAP_GROUP.get(k, "system"), "secret": k in BOOTSTRAP_SECRET,
-                                 **({"help": BOOTSTRAP_HELP[k]} if k in BOOTSTRAP_HELP else {})})
+                                 **({"help": help_} if help_ else {})})
     return out

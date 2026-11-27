@@ -129,6 +129,7 @@ const fn = (src, n) => {{
 const cases = JSON.parse(fs.readFileSync({json.dumps(str(in_path))}, 'utf8'));
 const els = {{}};
 const ctx = {{
+  notHouse: () => false,
   D: {{
     now: 0,
     buckets: ['2026-11-08T06:00:00+08:00'],

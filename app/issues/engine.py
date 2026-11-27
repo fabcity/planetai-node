@@ -40,6 +40,7 @@ from datetime import datetime, timedelta, timezone
 
 import actions as A
 import packs
+import placewords
 
 from . import (CMP_WORDS, DAY_PARTS, DIGEST_WORDS, DISTANCES, HEADLINE_RULE, HERO_WORDS, JOIN_WORDS, LABEL_WORDS,
                LOCALES, NOUN_WORDS, PLAIN_WORDS, PROMPT_WORDS, REASON_WORDS, SIMPLE_WORDS, prompt_issue,
@@ -733,7 +734,9 @@ def _asking(event: dict | None, open_asks: list[dict]) -> list[dict]:
     when a Not now's hold runs out), then each open act-level alert that is `current`. A stale one ("the reading came
     back on its own") is still open and ρ still counts it, but it is not asking anything of anybody now; `open_asks`
     keeps it. On `rules` there is no event; on `shadow` and `events` the replaced packs' alerts are already out of
-    `open_asks` (`_asks`), because the event stands for them."""
+    `open_asks` (`_asks`), because the event stands for them. A community node asks nobody: always []."""
+    if not placewords.is_house():
+        return []
     got = []
     if event and (event["asking"] if event.get("asking") is not None else not event.get("answer")):
         got.append({"event_id": event.get("id"), "since": event.get("opened_at"),
@@ -1810,14 +1813,16 @@ def days(cur, settings, decl: dict, n: int, now: datetime | None = None, loc: st
                        "hours": ({loc: [_hour_parts(d, series, buckets, i, dist, loc, compare, line, tz)
                                         for i in range(len(buckets))]}
                                  if d["kind"] == "sensed" and dist else None)}
-    events = _rows(cur, "SELECT id, issue, kind, level, opened_at, cleared_at FROM alert_events "
+    # rooms and places are read so a stranger's cursor (issues.api._NoIndoor) can leave out an indoor event; not sent
+    events = _rows(cur, "SELECT id, issue, kind, level, opened_at, cleared_at, rooms, places FROM alert_events "
                         "WHERE opened_at >= %s OR cleared_at IS NULL OR cleared_at >= %s ORDER BY opened_at",
                    buckets[0], buckets[0])
     iso = lambda v: v.isoformat() if hasattr(v, "isoformat") else v  # noqa: E731
     return {"schema": "days-v0", "as_of": now.isoformat(), "tz": tzname, "days": n,
             "buckets": [b.isoformat() for b in buckets],
             "issues": issues,
-            "events": [{**e, "opened_at": iso(e["opened_at"]), "cleared_at": iso(e["cleared_at"])} for e in events]}
+            "events": [{**{k: v for k, v in e.items() if k not in ("rooms", "places")},
+                        "opened_at": iso(e["opened_at"]), "cleared_at": iso(e["cleared_at"])} for e in events]}
 
 
 def _sections(decl: list[dict], obs: list[dict], now: datetime) -> list[dict]:

@@ -32,7 +32,7 @@ class Msg:
 answers = []   # what each send names for an answer on Reticulum (channels.reticulum_answers), newest run only
 
 
-def run(mode, buttons=False):
+def run(mode, buttons=False, house=True):
     sqls, notified, ran, kbs = [], [], [], []
     answers.clear()
 
@@ -70,7 +70,7 @@ def run(mode, buttons=False):
                                                                         kbs.append(keyboard), answers.append(answer)),
              _alert_home=lambda issue: "",
              run_report=lambda cur: None, _quiet=lambda lvl: False, LOCALE=lambda: "en", _local_now=lambda: "now")
-    g.update(buttons=buttons_mod, json=json)
+    g.update(buttons=buttons_mod, json=json, placewords=type("P", (), {"is_house": staticmethod(lambda: house)}))
     exec(code, g)
     g["run_rules"]()
     return sqls, notified, ran, kbs
@@ -108,3 +108,7 @@ assert [[(b["text"], b["callback_data"]) for b in row] for row in kbs[1]] == \
     [[("Done", "ev:7:acted"), ("Not now", "ev:7:acknowledged"), ("Doesn't fit", "ev:7:dismissed")]], \
     f"the event's message carries the wire's three words and the bot's contract: {kbs[1]}"
 print("  events + bot: the engine's message rides the three buttons, the rule's own message goes bare")
+
+sqls, notified, ran, kbs = run("events", buttons=True, house=False)
+assert notified == ["other 1", "engine says"] and kbs == [None, None], f"a community node sends no buttons: {kbs}"
+print("  events + bot on a community node: every message goes bare, nobody is asked to answer")

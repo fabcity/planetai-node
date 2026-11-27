@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 
 import learn
 import packs
+import placewords
 import registry
 import settings
 
@@ -188,9 +189,11 @@ def rho(cur, days_ago: int = 0) -> dict:
     its first sent message, answered by an `actions` row carrying its event_id. Packs the engine does not replace
     (nearby, a wild pack) still send through rules and still count as before; on a rules node nothing changes."""
     rep = _replaced()
+    # A community node asks nobody to act, so only its children's households are counted: its own branches go.
+    own = placewords.is_house()
     cur.execute("""WITH ref AS (SELECT now() - make_interval(days => %(back)s) AS t),
                         sw AS (SELECT min(ts) AS t FROM event_messages WHERE sent AND mode = 'events'),
-                        a AS (SELECT ('self/' || id) AS id, ts FROM alerts, ref, sw
+                        a AS (""" + ("""SELECT ('self/' || id) AS id, ts FROM alerts, ref, sw
                               WHERE level='act' AND ts > ref.t - interval '30 days' AND ts <= ref.t
                                 AND NOT (split_part(rule_id, '/', 1) = ANY(%(rep)s::text[]) AND sw.t IS NOT NULL AND ts >= sw.t)
                               UNION ALL
@@ -201,15 +204,15 @@ def rho(cur, days_ago: int = 0) -> dict:
                               GROUP BY e.id
                               HAVING min(m.ts) > (SELECT t FROM ref) - interval '30 days' AND min(m.ts) <= (SELECT t FROM ref)
                               UNION ALL
-                              SELECT (e.child || '/' || e.alert_id), e.raised_at FROM events e, ref
+                              """ if own else "") + """SELECT (e.child || '/' || e.alert_id) AS id, e.raised_at AS ts FROM events e, ref
                               WHERE e.level='act' AND e.raised_at > ref.t - interval '30 days' AND e.raised_at <= ref.t),
-                        f AS (SELECT ('self/' || alert_id) AS id, min(ts) AS t FROM actions
+                        f AS (""" + ("""SELECT ('self/' || alert_id) AS id, min(ts) AS t FROM actions
                               WHERE stage IN ('acknowledged','acted') AND alert_id IS NOT NULL GROUP BY alert_id
                               UNION ALL
                               SELECT ('ev/' || event_id), min(ts) FROM actions
                               WHERE stage IN ('acknowledged','acted') AND event_id IS NOT NULL GROUP BY event_id
                               UNION ALL
-                              SELECT (child || '/' || alert_id), least(responded_at, acted_at) FROM events
+                              """ if own else "") + """SELECT (child || '/' || alert_id) AS id, least(responded_at, acted_at) AS t FROM events
                               WHERE responded_at IS NOT NULL OR acted_at IS NOT NULL)
                    SELECT count(a.id) AS alerts_act,
                           count(f.id) FILTER (WHERE f.t - a.ts < interval '24 hours') AS acted,

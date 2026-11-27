@@ -98,12 +98,13 @@ check(re.search(r"\breport:\s*\['", js) is not None and 'id="d-report"' in open(
 prog = r"""
 const src = require('fs').readFileSync('app/static/doors-data.js', 'utf8');
 const grab = re => (src.match(re) || [''])[0];
-const D = { sens: { 'sc-1': { kind: 'sensor' } } };
+const D = { sens: { 'sc-1': { kind: 'sensor' } }, health: { kind: 'home' } };
 let location = { hash: '' };
 const reportBlock = () => {}, metricTiles = () => {}, sensorsBlock = () => {}, issuesBlock = () => {}, perdayBlock = () => {},
       modelsBlock = () => {}, imagesBlock = () => {}, thingsBlock = () => {}, ledgerBlock = () => {}, apiBlock = () => {}, workbenchBlock = () => {};
+const notHouse = k => ['community', 'district'].includes(String(k ?? '').toLowerCase());
 const lifted = eval(grab(/const DTABS = \{[\s\S]*?\n  workbench:[^\n]*\n/) + grab(/const DOLD = [^\n]*\n/)
-     + grab(/const DNODE = [^\n]*\n/) + grab(/function dataRoute\(hash\) \{[\s\S]*?\n\}\n/) + grab(/const repState = [^\n]*\n/)
+     + grab(/function dataTabs\(kind\) \{[\s\S]*?\n\}\n/) + grab(/const DNODE = [^\n]*\n/) + grab(/function dataRoute\(hash\) \{[\s\S]*?\n\}\n/) + grab(/const repState = [^\n]*\n/)
      + '; ({ dataRoute, repState })');   // a const made inside eval stays inside it, so the eval hands them back
 const out = {};
 out.route = lifted.dataRoute('#data/report?m=pm25&s=a,b');

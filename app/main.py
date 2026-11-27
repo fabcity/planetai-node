@@ -217,6 +217,8 @@ def act_hint(alert_id) -> str:
     """How this household closes the loop on alert N. `/act N` is a reply to the Telegram bot, which exists only when the
     agent container runs (planetai agent local); on every other node the words are `planetai act N`. A tester who
     replied /act to a bot that was not there heard nothing back (BETA review, 8.2)."""
+    if not placewords.is_house():   # a community node sends feeds; nobody answers its alerts
+        return ""
     bot = "agent" in os.getenv("COMPOSE_PROFILES", "")
     return f"/act {alert_id}" if bot else f"planetai act {alert_id}"
 
@@ -350,6 +352,9 @@ def run_rules() -> None:
     # still record an alerts row (the dashboard, rho and Home Assistant read those) but no longer send. Every other
     # rule, core sensor_silent included, sends as before.
     replaced = {r["id"].split("/", 1)[0] for r in rules if r.get("kind")} if mode == "events" else set()
+    # Buttons ride only when the bot has announced itself, and never on a community node: it sends feeds, and
+    # nobody answers its alerts.
+    bot = settings.num("TELEGRAM_BUTTONS", 0) and placewords.is_house()
     cands = []
     with db() as con, con.cursor() as cur:
         try:
@@ -412,7 +417,7 @@ def run_rules() -> None:
                     # act alerts got an answer, nine of them in two dashboard batch-clicks a day later.
                     # Buttons ride only when the bot has announced itself, as for events; they are stored either way.
                     kb = buttons.telegram_rows(btns, alert_id, settings.get("ALERT_LOCALE", "en") or "en") \
-                        if btns and settings.num("TELEGRAM_BUTTONS", 0) else None
+                        if btns and bot else None
                     notify(level, text, keyboard=kb, home=_alert_home(rule["id"]) if level == "act" else "",
                            answer=str(alert_id))
                 packs.emit("on_alert", level, text, alert_id)
@@ -430,7 +435,7 @@ def run_rules() -> None:
                         # set by agent_loop on startup): a node without the agent container sends the
                         # same message bare (SPEC_alerts §7).
                         kb = _event_keyboard(m.event.id, settings.get("ALERT_LOCALE", "en") or "en") \
-                            if m.event.id and settings.num("TELEGRAM_BUTTONS", 0) else None
+                            if m.event.id and bot else None
                         notify(m.event.level, text, keyboard=kb,
                                home=_alert_home(m.event.issue) if m.event.level == "act" else "",
                                answer=f"e{m.event.id}" if m.event.id else "")
@@ -711,8 +716,8 @@ def check_registry() -> None:
 def check_firmware() -> None:
     """Every six hours, bring this node's copy of the workbench's firmware up to date (app/firmware.py), so the
     workbench flashes with no internet. UPDATE_CHECK=off asks nothing, the same switch as the registry read."""
-    if settings.get("UPDATE_CHECK", "on") == "off":
-        return
+    if settings.get("UPDATE_CHECK", "on") == "off" or placewords.role() == "private":
+        return          # the workbench is a community node's; a private node keeps no firmware
     import firmware
 
     def get(u: str) -> bytes:
@@ -873,6 +878,7 @@ def start() -> None:
         load_channel_roles()
     except Exception as e:  # noqa: BLE001  — a node whose schema predates 0.22 has no channel_roles table yet
         log.warning("channel roles: %s", e)
+    _warn_kind_row()
     if MQTT_HOST:
         threading.Thread(target=mqtt_thread, daemon=True, name="mqtt").start()
     loop(poll_sources, POLL, delay=2)
@@ -892,6 +898,18 @@ def start() -> None:
     loop(check_learn, 3600, delay=180)
     if RETICULUM_URL:
         loop(presence.poll_reticulum, 300, delay=20)
+
+
+def _warn_kind_row() -> None:
+    """One line when an older node left NODE_KIND in the settings table: the role is .env's, so the row is ignored."""
+    try:
+        with db() as con, con.cursor() as cur:
+            cur.execute("SELECT 1 FROM settings WHERE key = 'NODE_KIND'")
+            if cur.fetchone():
+                log.warning("a NODE_KIND row in the settings table is ignored: the role is NODE_KIND in .env, "
+                            "and planetai update moves the row there")
+    except Exception:  # noqa: BLE001 — no database yet: nothing to warn about
+        pass
 
 
 # ---------------------------------------------------------------- http
@@ -987,6 +1005,45 @@ def _unlabelled(text: str) -> str:
     return text
 
 
+# A community node may hold indoor sensors (a house that became a community node keeps its kits): a reader without a
+# token never sees one. "Indoor" is the node's own indoor sensors and a child's (PARENT_INDOOR=on sends them up).
+_INDOOR = {"at": 0.0, "ids": set(), "names": set()}
+
+
+def _indoor_ids() -> set[str]:
+    """The ids of the indoor sensors, this node's own and its children's, re-read every settings.TTL seconds; a failed
+    read keeps the last.
+    Their names ride along in _INDOOR["names"]: an alert event names its rooms by either."""
+    if time.time() - _INDOOR["at"] < settings.TTL:
+        return _INDOOR["ids"]
+    try:
+        with db() as con, con.cursor() as cur:   # its own read, not q(): the routes' tests count q's statements
+            cur.execute("SELECT sensor_id, name, source_name FROM sensors WHERE indoor AND (local OR kind = 'child')")
+            rows = cur.fetchall()
+            ids = {r["sensor_id"] for r in rows}
+            names = {r.get(k) for r in rows for k in ("name", "source_name")} - {None, ""}
+    except Exception:  # noqa: BLE001 — no database: no route answers from it either
+        return _INDOOR["ids"]
+    _INDOOR.update(at=time.time(), ids=ids, names=names)
+    return ids
+
+
+def _stranger_on_community(request) -> bool:
+    """The one gate: a community node, and a reader with no token and not on this machine."""
+    return (request is not None and not placewords.is_house()
+            and not getattr(request.state, "share_trusted", False))
+
+
+def _drop_indoor(obj, ids: set[str]):
+    """A copy of obj without the sensors in ids, at any depth: a dict in a list whose sensor_id is one of them goes,
+    and so does a dict key that is one of them (/stats is keyed by sensor)."""
+    if isinstance(obj, list):
+        return [_drop_indoor(x, ids) for x in obj if not (isinstance(x, dict) and x.get("sensor_id") in ids)]
+    if isinstance(obj, dict):
+        return {k: _drop_indoor(v, ids) for k, v in obj.items() if k not in ids}
+    return obj
+
+
 @app.middleware("http")
 async def _share_level(request, call_next):
     """SHARE_LEVEL decides what a request with no token may read. The levels are in settings.RUNTIME["SHARE_LEVEL"];
@@ -1017,11 +1074,25 @@ async def _share_level(request, call_next):
         return JSONResponse(status_code=403, content={"error":
             f"this node is set to SHARE_LEVEL={level}, so {request.url.path} answers only this machine or a request "
             f"carrying a token. {fix}"})
+    from fastapi.responses import JSONResponse, Response
+    # a stranger's /ask is gated in app/ask.py: the Wall's paragraph answers, nothing else does
     resp = await call_next(request)
     if "application/json" not in resp.headers.get("content-type", ""):
         return resp
-    from fastapi.responses import Response
-    body = _unhoused(b"".join([c async for c in resp.body_iterator]), request.url.path)
+    body = b"".join([c async for c in resp.body_iterator])
+    if _stranger_on_community(request):
+        # Before the label swap: a kit named by its id (Smart Citizen, /ingest) would have its id swapped too
+        ids = _indoor_ids()
+        # never read: fail closed rather than answer with indoor rows in it. /health carries no sensor row and is
+        # what says the node is up, so it still answers.
+        if not _INDOOR["at"] and request.url.path != "/health":
+            return JSONResponse(status_code=503, content={"error": "the node is starting; try again in a moment"})
+        if ids:
+            try:
+                body = json.dumps(_drop_indoor(json.loads(body), ids)).encode()
+            except ValueError:
+                pass
+    body = _unhoused(body, request.url.path)
     headers = {k: v for k, v in resp.headers.items() if k.lower() != "content-length"}
     return Response(body, status_code=resp.status_code, headers=headers)
 
@@ -1310,6 +1381,9 @@ def _child_alias(rows: list[dict], child_ids: list[str] | None = None) -> list[d
     give one sensor one alias: children by node name, then a child's sensors by id, from 1."""
     if not any(r.get("kind") == "child" for r in rows):
         return rows                                  # no child here: nothing to ask the database
+    if not placewords.is_house():   # a stranger's rows: a child's indoor ones go before the alias hides their ids
+        indoor = _indoor_ids()
+        rows = [r for r in rows if r.get("sensor_id") not in indoor]
     if child_ids is None:
         child_ids = sorted(r["sensor_id"] for r in q("SELECT sensor_id, kind FROM sensors WHERE kind = 'child'")
                            if r.get("kind", "child") == "child")
@@ -1568,12 +1642,13 @@ def series(request: Request, metric: str = "pm25", hours: int = Query(24, ge=1, 
               WHERE sensor_id = 'cams-point' AND metric = %s || '_model' AND ts > now() - make_interval(hours => %s) GROUP BY 1)
         SELECT h.bucket, r.indoor, r.outdoor, m.model FROM h LEFT JOIN r USING (bucket) LEFT JOIN m USING (bucket) ORDER BY h.bucket""",
         hours, metric, hours, metric, hours)
+    hide = _stranger_on_community(request)
     return {"metric": metric, "hours": hours, "buckets": [x["bucket"] for x in rows],
-            "indoor": [x["indoor"] for x in rows], "outdoor": [x["outdoor"] for x in rows], "model": [x["model"] for x in rows]}
+            "indoor": [None if hide else x["indoor"] for x in rows], "outdoor": [x["outdoor"] for x in rows], "model": [x["model"] for x in rows]}
 
 
 @app.get("/effect")
-def effect(days: int = Query(365, ge=1, le=3650)):
+def effect(request: Request, days: int = Query(365, ge=1, le=3650)):
     """Did the actions work, and how long did they take? Per rule, over this node's whole record.
 
     TWO DIFFERENT QUESTIONS WITH TWO DIFFERENT KINDS OF EVIDENCE, and they are reported apart because
@@ -1607,9 +1682,12 @@ def effect(days: int = Query(365, ge=1, le=3650)):
     live = index._live_rule_ids()
     if not live:
         return {"window_hours": round(win / 60), "rules": [], "note": "this node could not read its rule set"}
+    # a stranger on a community node gets no recovery of an indoor sensor: its alerts are left out
+    hide = sorted(_indoor_ids()) if _stranger_on_community(request) else []
     rows = q("""WITH a AS (SELECT id, ts, rule_id, sensor_id FROM alerts
                             WHERE level = 'act' AND rule_id = ANY(%s)
-                              AND ts > now() - make_interval(days => %s)),
+                              AND ts > now() - make_interval(days => %s)
+                              AND (sensor_id IS NULL OR sensor_id <> ALL(%s::text[]))),
                      act AS (SELECT alert_id, min(ts) AS t FROM actions WHERE stage = 'acted' GROUP BY alert_id),
                      -- only an act whose window has fully elapsed can be judged either way
                      j AS (SELECT a.rule_id, a.id, a.sensor_id, act.t AS acted_at,
@@ -1622,7 +1700,7 @@ def effect(days: int = Query(365, ge=1, le=3650)):
                            WHERE now() > act.t + make_interval(mins => %s))
                 SELECT rule_id, count(*) AS acted, count(*) FILTER (WHERE cleared) AS cleared
                 FROM j GROUP BY rule_id ORDER BY count(*) DESC, rule_id""",
-             live, days, win, win)
+             live, days, hide, win, win)
     watches = {r["id"]: r["watch"] for r in packs.load_rules()
                if isinstance(r, dict) and isinstance(r.get("watch"), dict)}
     out = []
@@ -1635,7 +1713,8 @@ def effect(days: int = Query(365, ge=1, le=3650)):
             # is an act made when the reading had come back on its own, which is a real and common thing and not
             # a nought-hour recovery.
             h = q("""WITH a AS (SELECT id, ts, sensor_id FROM alerts
-                                 WHERE level='act' AND rule_id = %s AND ts > now() - make_interval(days => %s)),
+                                 WHERE level='act' AND rule_id = %s AND ts > now() - make_interval(days => %s)
+                                   AND (sensor_id IS NULL OR sensor_id <> ALL(%s::text[]))),
                           act AS (SELECT alert_id, min(ts) AS t FROM actions WHERE stage='acted' GROUP BY alert_id),
                           e AS (SELECT a.id, act.t AS acted_at,
                                        (SELECT min(x.bucket) FROM readings_1h x
@@ -1650,7 +1729,7 @@ def effect(days: int = Query(365, ge=1, le=3650)):
                               ORDER BY extract(epoch FROM ok_at - acted_at) / 3600.0)
                               FILTER (WHERE ok_at IS NOT NULL
                                       AND ok_at > date_trunc('hour', acted_at)) AS median_hours
-                     FROM e""", r["rule_id"], days, w["metric"], w["over"])
+                     FROM e""", r["rule_id"], days, hide, w["metric"], w["over"])
             g = (h[0] if h else {}) or {}
             item["measured"] = int(g.get("measured") or 0)
             item["already"] = int(g.get("already") or 0)
@@ -1660,7 +1739,7 @@ def effect(days: int = Query(365, ge=1, le=3650)):
 
 
 @app.get("/shape")
-def shape(metric: str = "pm25"):
+def shape(request: Request, metric: str = "pm25"):
     """The day this place usually has: one hour-of-day mean per hour, over the whole record, indoor against outdoor.
 
     THE HOURS ARE LOCAL, and that is not incidental. `extract(hour FROM bucket)` answers in the session timezone, and
@@ -1694,7 +1773,7 @@ def shape(metric: str = "pm25"):
     # A day's shape wants a week behind it before an hourly mean means anything; a week-on-week comparison wants two;
     # a month wants two months to compare; a year wants a year. Nothing here is a forecast and nothing extrapolates.
     return {"metric": metric, "days": days, "first": d.get("first"), "last": d.get("last"),
-            "hours": [{"hour": r["hour"], "indoor": r["indoor"], "outdoor": r["outdoor"], "n": r["n"]} for r in rows],
+            "hours": [{"hour": r["hour"], "indoor": None if _stranger_on_community(request) else r["indoor"], "outdoor": r["outdoor"], "n": r["n"]} for r in rows],
             "windows": {"day": days >= 7, "week": days >= 14, "month": days >= 60, "year": days >= 365}}
 
 
@@ -1729,13 +1808,18 @@ def export(day: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$")):
                   WHERE r.bucket >= %s::date AND r.bucket < %s::date + 1 AND """ + packs.public_sql("r")
                + " AND " + packs.open_sql("r") + """
                   ORDER BY r.bucket, r.sensor_id, r.metric""", day, day)
+    if not placewords.is_house():   # the file travels whoever asked: a community node's indoor sensors stay home
+        hourly = [r for r in hourly if not (r["indoor"] and (r["local"] or r["kind"] == "child"))]
     kids = ([r["sensor_id"] for r in q("SELECT sensor_id FROM sensors WHERE kind = 'child'")]
             if any(r.get("kind") == "child" for r in hourly) else [])
     name = _export_namer(kids)
     rows = [{"t": r["bucket"], "sensor": name(r), "local": r["local"], "indoor": r["indoor"], "kind": r["kind"],
              "metric": r["metric"], "mean": r["mean"], "min": r["min"], "max": r["max"], "n": r["n"]}   # q() renders timestamps as ISO strings
             for r in hourly]
-    alerts_ = q("SELECT ts, rule_id, level, text FROM alerts WHERE ts >= %s::date AND ts < %s::date + 1 ORDER BY ts", day, day)
+    alerts_ = q("SELECT ts, rule_id, level, text, sensor_id FROM alerts WHERE ts >= %s::date AND ts < %s::date + 1 ORDER BY ts", day, day)
+    if not placewords.is_house():
+        indoor = _indoor_ids()
+        alerts_ = [a for a in alerts_ if a.get("sensor_id") not in indoor]
     with db() as con, con.cursor() as cur:
         cells_ = index.cells(cur); rho_ = index.rho(cur)
     _pos = _published_position()
@@ -1768,7 +1852,7 @@ app.include_router(wall.router)
 
 
 @app.get("/report/latest")
-def report_latest():
+def report_latest(request: Request):
     """The last report this node wrote, sent or held. What the dashboard's Here band shows, and what the MCP tool
     `report_latest` returns. Open, like /alerts: it is the same sentences the household already received."""
     # by ts, not by due_local: a report written on request has no due hour, and ordering by that hid it here and
@@ -1783,7 +1867,8 @@ def report_latest():
     out = {"schema": REPORT_V0,
            "id": r.get("id"), "ts": r.get("ts"), "due_local": r.get("due_local"),
            "window_hours": r.get("window_hours"), "depth": r.get("depth"), "rung": r.get("rung"),
-           "text": r.get("text"), "sent": r.get("sent"), "held_quiet": r.get("held_quiet"),
+           # a community node's report is the keeper's, not public; the weekly report is
+           "text": None if _stranger_on_community(request) else r.get("text"), "sent": r.get("sent"), "held_quiet": r.get("held_quiet"),
            "fallback_reason": r.get("fallback_reason"),
            # in the literal, None when there is a report: a key added by subscript is a key of the
            # document that does not appear in it, which tools/check_wire.py refuses for the same
@@ -1826,6 +1911,8 @@ def report_now(authorization: str = Header("")):
 def history(request: Request, sensor_id: str, metric: str, limit: int = Query(500, ge=1, le=5000), authorization: str = Header("")):
     """Every reading of one metric from one sensor, oldest first. For series that are not hourly: a yearly building count,
     a monthly refresh. `/sparks` is the hourly view; this is the raw one."""
+    if _stranger_on_community(request) and sensor_id in _indoor_ids():
+        return []                                   # what an unknown sensor answers
     return [{"ts": r["ts"], "value": r["value"]} for r in            # q() already renders timestamps as ISO strings
             q("SELECT ts, value FROM readings WHERE sensor_id=%s AND metric=%s"
               + ("" if _shows_private(request, authorization) else " AND " + packs.public_sql("readings"))
@@ -1940,6 +2027,14 @@ def get_export(node: str, name: str):
     p = EXPORTS / Path(node).name / Path(name).name
     if not (p.exists() and p.suffix == ".json"):
         raise HTTPException(404, "no such export")
+    if not placewords.is_house():
+        # a file written while this node was a house still names its indoor sensors; the file travels whoever asked
+        from fastapi.responses import JSONResponse
+        doc = json.loads(p.read_text())
+        if isinstance(doc, dict) and isinstance(doc.get("hourly"), list):
+            doc["hourly"] = [r for r in doc["hourly"] if not (isinstance(r, dict) and (
+                r.get("indoor") or str(r.get("sensor", "")).startswith("indoor-")))]
+        return JSONResponse(doc, headers={"content-disposition": f'attachment; filename="{p.name}"'})
     return FileResponse(p, media_type="application/json", filename=p.name)
 
 
@@ -1970,6 +2065,12 @@ def ui(layout: str = ""):
     return HTMLResponse(body, headers={"cache-control": "no-cache, must-revalidate"})
 
 
+def _community_only():
+    """The flasher and the firmware are a community node's: a private node answers 404, nothing links to them."""
+    if placewords.role() == "private":
+        raise HTTPException(404, "the workbench is on community nodes")
+
+
 @app.get("/workbench", include_in_schema=False)
 def workbench():
     """The sensors workbench (planetai.fab.city/sensors/, the same file). Served here it reads this node's /health,
@@ -1988,7 +2089,9 @@ def workbench():
     takes the doors' register, and sends a page opened on its own (the site's Connect) to /#data/workbench. The
     flasher is vendored under /static/vendor/, and the firmware comes from this node's own copy (app/firmware.py)
     once it has one; before that, from where the site reads it."""
-    from fastapi.responses import HTMLResponse
+    from fastapi.responses import HTMLResponse, RedirectResponse
+    if placewords.role() == "private":   # a private node's sensors are set up on its community node, or the site's copy
+        return RedirectResponse("https://planetai.fab.city/sensors/", status_code=308)
     f = STATIC / "workbench.html"
     if not f.exists():
         raise HTTPException(404, "the sensors workbench is not shipped in this build")
@@ -2020,6 +2123,7 @@ def workbench_flasher(name: str):
     """ESP Web Tools 10.4.0 (Apache-2.0), the workbench's flasher, vendored as the site vendors it, so the node flashes
     with no internet. A flat name in one folder, like /static/{name}: nothing a caller sends walks the filesystem."""
     from fastapi.responses import FileResponse
+    _community_only()
     p = STATIC / "vendor" / "esp-web-tools" / name
     if not re.fullmatch(r"[A-Za-z0-9_.-]+\.(js|txt)", name) or not p.is_file():
         raise HTTPException(404, "no such file")
@@ -2032,6 +2136,7 @@ def workbench_firmware(path: str):
     they answer at every SHARE_LEVEL, under /static/ like the page's other parts. The path must resolve inside the
     copy."""
     from fastapi.responses import FileResponse
+    _community_only()
     root = (OUT / "firmware").resolve()
     p = (root / path).resolve()
     if not p.is_relative_to(root) or not p.is_file():
@@ -2271,11 +2376,13 @@ def test_alert(authorization: str = Header("")):
         cur.execute("INSERT INTO alerts (ts, rule_id, sensor_id, level, text) VALUES (now(), 'gui/test', 'node', 'act', %s) RETURNING id", (text,))
         alert_id = cur.fetchone()["id"]
     how = act_hint(alert_id)
-    if es:
+    if not how:
+        closing = ""
+    elif es:
         closing = f"👉 Responde {how} para mostrarme cómo cierras el círculo." if how.startswith("/") else f"👉 En la terminal, {how} registra que cerraste el círculo."
     else:
         closing = f"👉 Reply {how} to show me how you close the loop." if how.startswith("/") else f"👉 In the terminal, {how} records that you closed the loop."
-    notify("act", f"{text}\n\n{closing}", answer=str(alert_id))   # the hint carries the number; a bare #id on the end taught nothing
+    notify("act", f"{text}\n\n{closing}" if closing else text, answer=str(alert_id))   # the hint carries the number; a bare #id on the end taught nothing
     packs.emit("on_alert", "act", text, alert_id)
     return {"ok": True, "alert_id": alert_id}
 
@@ -2354,6 +2461,11 @@ def action(body: dict, request: Request, authorization: str = Header("")):
             raise HTTPException(403, "no ACT_TOKEN or ADMIN_TOKEN set on this node; run `planetai ui` to create one")
         if not _bearer_ok(authorization, *tokens):
             raise HTTPException(401, "closing a loop from off this machine needs Authorization: Bearer <ACT_TOKEN>")
+    # A community node sends feeds and nobody answers its alerts: no button, reply, act tool or curl records one.
+    # `decided` is a record, not an answer, and stays (docs/SPEC_decide.md section 6).
+    if not placewords.is_house() and (body.get("event_id") is not None or body.get("choice") is not None
+                                      or body.get("stage") != "decided"):
+        raise HTTPException(409, placewords.NO_ACT)
     if body.get("event_id") is not None:
         # An event's buttons (docs/SPEC_dashboard_events.md §3.2): the same tokens, the same refusals, one row.
         if body.get("alert_id") is not None:

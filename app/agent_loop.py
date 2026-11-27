@@ -32,6 +32,7 @@ import time
 from urllib.parse import urlparse
 
 import httpx
+import placewords
 import re
 from buttons import pick
 from contextlib import asynccontextmanager
@@ -172,10 +173,23 @@ def ladder(cfg: dict) -> list[Rung]:
     return rungs
 
 
+KIND = ""        # the node's kind, from its /health; a community node sends feeds and nobody answers its alerts
+NO_ACT = placewords.NO_ACT
+
+
+def no_act() -> bool:
+    return not placewords.is_house(KIND or None)   # before the first /health read, the NODE_KIND this container was given
+
+
 async def refresh_ladder(hc: httpx.AsyncClient) -> None:
-    """Every minute: re-read the runtime settings so a change in the dashboard reaches the bot without a restart."""
-    global RUNGS
+    """Every minute: re-read the runtime settings so a change in the dashboard reaches the bot without a restart,
+    and the node's kind, so the bot knows whether anybody answers here."""
+    global RUNGS, KIND
     while True:
+        try:
+            KIND = (await hc.get(node_url("/health"), timeout=10)).json().get("kind") or KIND
+        except Exception as e:  # noqa: BLE001
+            log.warning("health unreachable at %s: %s", MCP_URL, type(e).__name__)
         try:
             r = await hc.get(node_url("/settings/raw"))
             cfg = r.json() if r.status_code == 200 else {}
@@ -1017,6 +1031,10 @@ async def handle_callback(hc, cq: dict, pending: dict) -> None:
         if qid:
             await telegram("answerCallbackQuery", callback_query_id=qid)
         return
+    if (alert_tap or parsed) and no_act():
+        if qid:
+            await telegram("answerCallbackQuery", callback_query_id=qid, text=NO_ACT)
+        return
     if alert_tap:
         return await _handle_alert_tap(hc, cq, pending, chat, actor, *alert_tap)
     if not parsed:
@@ -1063,6 +1081,36 @@ async def announce_buttons(hc) -> None:
     except Exception as e:  # noqa: BLE001
         log.warning("could not turn the event buttons on (%s: %s): messages go without buttons",
                     type(e).__name__, str(e)[:120])
+
+
+async def act_command(hc, chat: str, text: str) -> bool:
+    """/act N <what you did>: recorded on the node. True when the message was this command and has been answered."""
+    if not text.startswith("/act"):
+        return False
+    if no_act():
+        await telegram("sendMessage", chat_id=chat, text=NO_ACT)
+        return True
+    parts = text.split(maxsplit=2)
+    if len(parts) >= 2 and parts[1].isdigit() and len(parts) < 3:
+        # No words, no row. `act` used to substitute "acted" here, which put a placeholder
+        # where the person's own sentence belongs — and rho is built out of those sentences.
+        # Asking costs one message and gets something true.
+        await telegram("sendMessage", chat_id=chat,
+                       text=T(f"What did you do about it? Send it with your words:  /act {parts[1]} <what you did>",
+                              es=f"¿Qué hiciste? Envíalo con tus palabras:  /act {parts[1]} <lo que hiciste>"))
+        return True
+    if len(parts) >= 3 and parts[1].isdigit():
+        try:
+            async with node_session(hc) as (session, _t):
+                await session.call_tool("act", {"alert_id": int(parts[1]), "note": parts[2], "agent": f"{NAME}/telegram"})
+            said = T("Recorded what you did.", es="Anotado lo que hiciste.")
+        except Exception as e:  # noqa: BLE001
+            log.warning("act on #%s failed: %s: %s", parts[1], type(e).__name__, str(e)[:200])
+            said = T("⚠️ I couldn't record that. Nothing was saved; try again in a minute.",
+                     es="⚠️ No pude anotarlo. No se guardó nada; inténtalo de nuevo en un minuto.")
+        await telegram("sendMessage", chat_id=chat, text=said)
+        return True
+    return False
 
 
 def ladder_text(pins: dict, chat: str) -> str:
@@ -1161,27 +1209,8 @@ async def main():
                              es="⚠️ No pude guardar esa nota en el nodo. El No encaja queda; la nota se pierde.")
                 await telegram("sendMessage", chat_id=chat, text=said)
                 continue
-            if text.startswith("/act"):
-                parts = text.split(maxsplit=2)
-                if len(parts) >= 2 and parts[1].isdigit() and len(parts) < 3:
-                    # No words, no row. `act` used to substitute "acted" here, which put a placeholder
-                    # where the person's own sentence belongs — and rho is built out of those sentences.
-                    # Asking costs one message and gets something true.
-                    await telegram("sendMessage", chat_id=chat,
-                                   text=T(f"What did you do about it? Send it with your words:  /act {parts[1]} <what you did>",
-                                          es=f"¿Qué hiciste? Envíalo con tus palabras:  /act {parts[1]} <lo que hiciste>"))
-                    continue
-                if len(parts) >= 3 and parts[1].isdigit():
-                    try:
-                        async with node_session(hc) as (session, _t):
-                            await session.call_tool("act", {"alert_id": int(parts[1]), "note": parts[2], "agent": f"{NAME}/telegram"})
-                        said = T("Recorded what you did.", es="Anotado lo que hiciste.")
-                    except Exception as e:  # noqa: BLE001
-                        log.warning("act on #%s failed: %s: %s", parts[1], type(e).__name__, str(e)[:200])
-                        said = T("⚠️ I couldn't record that. Nothing was saved; try again in a minute.",
-                                 es="⚠️ No pude anotarlo. No se guardó nada; inténtalo de nuevo en un minuto.")
-                    await telegram("sendMessage", chat_id=chat, text=said)
-                    continue
+            if await act_command(hc, chat, text):
+                continue
             if text.startswith("/learned"):
                 # No model, as /stack: the node's own sentences, printed. Each learning's statement was written by
                 # the node from its numbers (app/learn.py), so nothing here can add one.

@@ -336,6 +336,10 @@ MARKS = [
      "In the middle is the map", "the dark one.",
      "Every distance on this door is measured by the node from its own point. Without the token the "
      "house's marks say withheld, because together they would place the house."),
+    ("place-territory", "The territory", "place.md", "The territory",
+     "On a community node the map opens", "never its point.",
+     "The ground a community node covers, cell by cell: its own, the homes that send to it, the stations and "
+     "the mesh, and the cells read in the last day. What stands outside is named, not drawn."),
     ("place-tools", "The tools", "place.md", "The tools",
      "**Tools**, beside the ask line", "15 km rings from the node's point.",
      "The tools that run on this node today, and the ones still to come, marked not yet. Rings and "
@@ -356,6 +360,13 @@ MARKS = [
      "A\npoll older than 15 minutes", "to finish setting up.",
      "The verdict is the node's own check of its last poll, its loop and its sensors. Under it, the "
      "version, how long it has run and the cell it stands in."),
+    ("node-network", "What it takes in and what it serves", "dashboard.md", "Node",
+     "on a community node only", "arrows pointing out.",
+     "A community node's network: what reaches it on the left and what it serves on the right. A dashed line "
+     "carries nothing yet."),
+    ("node-ledger", "Comes in, it serves", "dashboard.md", "Node",
+     "the same as rows under the drawing", "says not counted yet",
+     "The drawing's counts as rows. Readings need the token; what the node does not count yet says so."),
     ("node-flow", "What comes in, what goes out", "dashboard.md", "Node",
      "the node as a hexagon", "Drawn vertically under 700 px",
      "Your sources come in on one side and what leaves goes out on the other, at their real rate. Raw "
@@ -648,6 +659,9 @@ QUESTIONS = {
     'place-layers': {"en": ['Which layer shows the public air stations?', 'Where does the street map come from?'],
         "id": ['Lapisan mana yang menampilkan stasiun udara publik?', 'Dari mana peta jalan ini berasal?'],
         "es": ['¿Qué capa muestra las estaciones públicas de aire?', '¿De dónde sale el mapa de calles?']},
+    'place-territory': {"en": ['Which cells of our territory have no reading?', 'Which homes send to this node?'],
+        "id": ['Sel mana di wilayah kami yang belum ada bacaan?', 'Rumah mana yang mengirim ke node ini?'],
+        "es": ['¿Qué celdas de nuestro territorio no tienen lectura?', '¿Qué casas envían a este nodo?']},
     'place-map': {"en": ['How far is the nearest station from our house?', 'Why are some marks hidden?'],
         "id": ['Seberapa jauh stasiun terdekat dari rumah kami?', 'Mengapa beberapa tanda disembunyikan?'],
         "es": ['¿A qué distancia de casa está la estación más cercana?', '¿Por qué algunas marcas están ocultas?']},
@@ -666,6 +680,12 @@ QUESTIONS = {
     'node-verdict': {"en": ['Is the node working properly?', 'Which sensor has gone quiet?'],
         "id": ['Apakah node bekerja dengan baik?', 'Sensor mana yang berhenti mengirim data?'],
         "es": ['¿Está funcionando bien el nodo?', '¿Qué sensor ha dejado de enviar datos?']},
+    'node-network': {"en": ['Which homes send to this node?', 'What does this node serve?'],
+        "id": ['Rumah mana yang mengirim ke node ini?', 'Apa yang dilayani node ini?'],
+        "es": ['¿Qué casas envían a este nodo?', '¿Qué sirve este nodo?']},
+    'node-ledger': {"en": ['How many readings came in today?', 'Why is something not counted yet?'],
+        "id": ['Berapa banyak bacaan yang masuk hari ini?', 'Mengapa ada yang belum dihitung?'],
+        "es": ['¿Cuántas lecturas llegaron hoy?', '¿Por qué algo no se cuenta todavía?']},
     'node-flow': {"en": ['What does this node send out, and to whom?', 'Where do our readings come from?'],
         "id": ['Apa yang dikirim node ini keluar, dan kepada siapa?', 'Dari mana bacaan kami berasal?'],
         "es": ['¿Qué envía este nodo hacia fuera, y a quién?', '¿De dónde vienen nuestras lecturas?']},

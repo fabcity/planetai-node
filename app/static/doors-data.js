@@ -56,13 +56,30 @@ const SYM = { pm25: 'PM2.5', pm10: 'PM10', pm1: 'PM1', pm25_raw: 'PM2.5ʳ',
   wave_height_m: 'Hs', wave_period_s: 'Tp', wave_direction: 'Dw', swell_height_m: 'Sw', swell_period_s: 'Ts', lora_util_pct: 'LoRa', lora_channel_pct: 'Ch' };
 /* the tabs: [the words on the tab, the sections it shows, what it draws] — a tab draws only its own sections */
 const DTABS = {
-  readings: ['Readings', ['d-readings', 'issues7', 'perday'], () => { const h2 = $('#d-readings h2'); if (h2) h2.textContent = asHouse('What this house reads'); metricTiles(); sensorsBlock(); issuesBlock(); perdayBlock(); }],
+  readings: ['Readings', ['d-readings', 'issues7', 'perday'], () => { const h2 = $('#d-readings h2'); if (h2) h2.textContent = asHouse('What this house reads'); readingsNote(); metricTiles(); sensorsBlock(); issuesBlock(); perdayBlock(); }],
   report: ['Report', ['d-report'], () => reportBlock()],
   models: ['Models and satellite', ['models', 'predict', 'calibrate'], () => { modelsBlock(); predictBlock(); calibrateBlock(); }],
   home: ['Home', ['d-images', 'd-things'], () => { imagesBlock(); thingsBlock(); }],
   ledger: ['Ledger', ['ledger', 'dnote'], () => ledgerBlock()],
   api: ['API', ['api'], () => apiBlock()],
   workbench: ['Workbench', ['d-workbench'], () => workbenchBlock()] };
+function readingsNote() {
+  const p = $('#snote'); if (!p) return;
+  p.innerHTML = sensorLine(D.health); p.hidden = !p.innerHTML;
+}
+/* the tabs this node shows: the Workbench is a community node's (a private node points to it, in the Readings note), and
+   Home is that node's Services */
+function dataTabs(kind) {
+  const t = { ...DTABS };
+  if (notHouse(kind)) t.home = ['Services', ...t.home.slice(1)]; else delete t.workbench;
+  return t;
+}
+/* a private node sets up a sensor on its community node's workbench, or the site's */
+function sensorLine(h) {
+  if (notHouse((h || {}).kind)) return '';
+  const p = ((h || {}).parent || {}).node;
+  return `To set up a new sensor, use ${p ? esc(p) + '’s' : 'your community node’s'} workbench or <a href="https://planetai.fab.city/sensors/" target="_blank" rel="noopener">planetai.fab.city/sensors</a>.`;
+}
 /* an anchor Data used to have: the tab that holds that section now; and what moved to Node, with Node's own anchor */
 const DOLD = { calibrate: 'models', 'd-readings': 'readings', metrics: 'readings', sensors: 'readings', issues7: 'readings', perday: 'readings', 'd-images': 'home', 'd-things': 'home' };
 const DNODE = { cells: 'cells', 'd-learned': 'remember', 'd-usual': 'remember', 'd-diary': 'remember' };
@@ -70,7 +87,7 @@ const DNODE = { cells: 'cells', 'd-learned': 'remember', 'd-usual': 'remember', 
    readings on a metric that station reads, at its row, or the models when it is a model */
 function dataRoute(hash) {
   const seg = decodeURIComponent((hash.split('/')[1] || '').split('?')[0]), s = (D.sens || {})[seg];   /* #data/report?… keeps its state after the ? */
-  if (DTABS[seg]) return { tab: seg };
+  if (dataTabs(D.health.kind)[seg]) return { tab: seg };
   if (DNODE[seg]) return { node: DNODE[seg] };
   if (DOLD[seg]) return { tab: DOLD[seg], el: seg };
   if (s) return ['model', 'map'].includes(s.kind) ? { tab: 'models', el: 'models' } : { tab: 'readings', sensor: seg };
@@ -88,7 +105,8 @@ VIEWS.data = function () {
   const total = Object.values(S2).reduce((a, m) => a + Object.values(m).reduce((b, arr) => b + arr.filter(Boolean).length, 0), 0);
   $('#datahead').innerHTML = `<div class="k">Data · everything this node holds, as it reads it</div><h1>Every reading, drawn.</h1>
     <p class="lede">${D.raw ? `${total.toLocaleString('en')} hourly values from ${Object.keys(S2).length} sources over the last 24 hours` : 'The hourly values with the token'}, seven days of every issue at every distance, ${D.observations.length} model and satellite values and ${D.actions.length} decisions. Today’s open export, CC BY 4.0: <a class="mono" href="/export?day=${dayOf(D.buckets[D.now])}">GET /export?day=${dayOf(D.buckets[D.now])}</a>.</p>`;
-  $('#dnav').innerHTML = Object.entries(DTABS).map(([id, [t]]) => `<a href="#data/${id}" data-t="${id}"${id === r.tab ? ' class="on" aria-current="page"' : ''}>${t}</a>`).join('');
+  const T = dataTabs(D.health.kind);
+  $('#dnav').innerHTML = Object.entries(T).map(([id, [t]]) => `<a href="#data/${id}" data-t="${id}"${id === r.tab ? ' class="on" aria-current="page"' : ''}>${t}</a>`).join('');
   for (const [id, [, secs]] of Object.entries(DTABS)) for (const sec of secs) { const el = document.getElementById(sec); if (el) el.hidden = id !== r.tab; }
   DTABS[r.tab][2]();
   // a tab named in the link lands on the tab bar: the board sits above it (Field Synthesizer variation)

@@ -212,14 +212,16 @@ function sTodo() {
 /* Rooms (Tomas, 14 Oct 2026): the household's word for where each of its own sensors is. The node makes it the
    sensor's name whatever its platform calls it (init.sql 0.61), so alerts, the report and every page say "Kids", not
    "Sensor 3". Each row saves on its own: a room is not a setting, and has no .env behind it. */
-function sRooms(unlocked) {
+function sRoomRows() {
   const S = (D.sensors || []).filter(s => s.local && s.kind === 'sensor');
-  if (!unlocked) return `<h2>Rooms</h2><p class="gate">Which room is which is the household’s: <a href="#setup/screen" data-go="screen">unlock this screen</a> with the admin token to name them.</p>`;
-  return `<h2>Rooms</h2><p class="blurb">Name the room each of this home’s sensors is in. Every alert, the report and every page use the name you give; the Wall never shows one. Leave it empty to use the sensor’s own name again.</p>`
-    + `<div class="rows">${S.map(s => `<form class="srow" data-room="${esc(s.sensor_id)}"><div class="sl"><label for="room-${esc(s.sensor_id)}">${esc(s.source_name || s.name || s.sensor_id)}</label>`
+  return `<div class="rows">${S.map(s => `<form class="srow" data-room="${esc(s.sensor_id)}"><div class="sl"><label for="room-${esc(s.sensor_id)}">${esc(s.source_name || s.name || s.sensor_id)}</label>`
       + `<div class="sm"><code>${esc(s.sensor_id)}</code>${s.indoor ? ' · inside' : ' · outside'}</div></div>`
-      + `<div class="sc"><input id="room-${esc(s.sensor_id)}" maxlength="40" value="${esc(s.room || '')}" placeholder="${esc(s.source_name || s.name || '')}"><button class="sbtn">Save</button></div>`
+      + `<div class="sc"><input id="room-${esc(s.sensor_id)}" maxlength="40" aria-label="Room for ${esc(s.source_name || s.name || s.sensor_id)}" value="${esc(s.room || '')}" placeholder="${esc(s.source_name || s.name || '')}"><button class="sbtn">Save</button></div>`
       + `<p class="err" role="status"></p></form>`).join('') || '<p class="fine">This node has no sensors of its own yet.</p>'}</div>`;
+}
+function sRooms(unlocked) {
+  if (!unlocked) return `<h2>Rooms</h2><p class="gate">Which room is which is the household’s: <a href="#setup/screen" data-go="screen">unlock this screen</a> with the admin token to name them.</p>`;
+  return `<h2>Rooms</h2><p class="blurb">Name the room each of this node’s own sensors is in. Every alert, the report and every page use the name you give; the Wall never shows one. Leave it empty to use the sensor’s own name again.</p>` + sRoomRows();
 }
 async function sRoom(ev) {
   ev.preventDefault();
@@ -292,10 +294,10 @@ function sGroup(g, unlocked) {
   const B = (d.bootstrap || []).filter(b => (b.group || 'system') === g && !/^GRAFANA_/.test(b.key));
   const boot = B.length ? `<h3 class="sub2">Read at start</h3><p class="blurb">Change these in <code>.env</code> on the node, then run <code>planetai restart</code>.</p>`
     + `<table class="tbl ro"><tr><th>setting</th><th class="hide">key</th><th>value</th></tr>${B.map(b => `<tr><td>${esc(b.label)}${b.help ? `<p class="help">${esc(b.help)}</p>` : ''}</td><td class="hide mono">${esc(b.key)}</td>`
-      + `<td class="mono">${b.value ? esc(b.value) : '<span class="fine">not set</span>'}</td></tr>`).join('')}</table>` : '';
+      + `<td class="mono">${b.key === 'NODE_KIND' ? (notHouse(D.health.kind) ? 'community' : 'private') : b.value ? esc(b.value) : '<span class="fine">not set</span>'}</td></tr>`).join('')}</table>` : '';
   const changed = (SETUP.history || []).filter(a => rows.some(r => String(a.note || '').split(', ').includes(r.key))).slice(0, 5);
   return `<div class="dh"><h2>${esc(sTitle(g))}</h2>${g === 'packs' && SETUP.packs.length ? `<button type="button" class="sbtn sdet" id="sopenall" aria-pressed="${sOpenAll()}">${sOpenAll() ? 'Close all packs' : 'Open all packs'}</button>` : ''}</div><p class="blurb">${esc((SETUP_GROUPS[g] || [])[1] || 'This node declares this group. planetai config shows the same keys.')}</p>${g === 'sources' ? '<p class="blurb">A sensor of your own: flash it, plug it in and watch each of its sensors read on <a href="/workbench#test">the workbench</a>.</p>' : ''}${gate}`
-    + `<div class="rows">${body}</div>${g === 'system' ? sGrafana(d.bootstrap || []) : ''}${boot}`
+    + `<div class="rows">${body}</div>${g === 'sources' && unlocked ? '<h3 class="sub2">Room for each of your sensors</h3><p class="blurb">The room becomes the sensor’s name in every alert, report and message. Leave it empty for the platform’s own name.</p>' + sRoomRows() : ''}${g === 'system' ? sGrafana(d.bootstrap || []) : ''}${boot}`
     + (changed.length ? `<div class="hist"><div class="k">changed lately</div>${changed.map(a => `<p><span class="mono">${esc(wdhm(a.ts))}</span> · ${esc(a.actor || 'someone')} · ${esc(a.note || '')}</p>`).join('')}</div>` : '');
 }
 

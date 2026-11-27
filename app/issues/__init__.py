@@ -802,7 +802,7 @@ def for_kind(defs: dict[str, dict]) -> dict[str, dict]:
     """The declarations as this node speaks them. On a community or district node every field written per language
     (a dict holding en, id and es: `sentences`, `name`, `about`, `empty`, `where`, the events' words) is a new copy
     with the house words swapped (app/placewords.py); a house gets the very objects it was given. load() runs on
-    every /issues request, so a change of NODE_KIND is read on the next one."""
+    every /issues request; NODE_KIND is read at start, so a change of role arrives with the restart `planetai role` does."""
     if placewords.is_house():
         return defs
     return {k: _per_language(d) for k, d in defs.items()}

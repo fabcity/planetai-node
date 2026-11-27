@@ -129,7 +129,7 @@ _quiet = logging.getLogger("quiet")      # the refusals log a warning each; the 
 _quiet.addHandler(logging.NullHandler())
 _quiet.propagate = False
 _ns = {"re": re, "time": __import__("time"), "log": _quiet, "telegram": _telegram, "pick": buttons.pick,
-       "CHATS": lambda: {"1", "2"}, "LOCALE": "en", "MCP_URL": "http://app:8080/mcp"}
+       "CHATS": lambda: {"1", "2"}, "LOCALE": "en", "MCP_URL": "http://app:8080/mcp", "no_act": lambda: False}
 _ns = _lift("agent_loop.py", {"parse_callback", "parse_alert_callback", "lift", "node_url", "_name_of", "T",
                               "_post_answer", "_handle_alert_tap", "handle_callback", "note_pending",
                               "NOTE_WINDOW", "_keep_alert_note"}, _ns)

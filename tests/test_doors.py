@@ -584,7 +584,7 @@ const out = {};
 for (const [name, path] of Object.entries(JSON.parse(process.argv[1]))) {
   const F = JSON.parse(fs.readFileSync(path, 'utf8')), els = {}, D = L.buildD({ ...F, days: F.issues_days }, 'en');
   D.now = D.buckets.length - 1;
-  const ctx = { D, S: { issue: null, i: D.now }, doorsLocal: L.doorsLocal, WORDS: L.WORDS, stateWord: L.stateWord, kindWord: L.kindWord, VIEWS: {}, $: q => (els[q] ||= {}), document: { querySelectorAll: () => [] } };
+  const ctx = { D, notHouse: () => false, S: { issue: null, i: D.now }, doorsLocal: L.doorsLocal, WORDS: L.WORDS, stateWord: L.stateWord, kindWord: L.kindWord, VIEWS: {}, $: q => (els[q] ||= q === '.nstrip' ? { style: {} } : {}), document: { querySelectorAll: () => [] } };
   vm.createContext(ctx);
   vm.runInContext(['esc', 'loc', 'dayOf', 'fmt', 'said', 'num', 'unitOf', 'labelOf', 'NODE', 'sign', 'PROV', 'prov', 'ISSUES_DRAWN'].map(pick).join('\n') + '\n'
     + 'let NOWL = null;\n' + (now.includes('function usualLine') ? fn(now, 'usualLine') : '') + fn(now, 'rows')
@@ -652,7 +652,7 @@ _css = (STATIC / "doors.html").read_text()
 assert '"kick kick" "l r" "td td" "rm rm" "l2 l2"' in _css and '"kick" "l" "r" "td" "rm" "l2"' in _css and 'rcol2' not in _css and '.nstrip{grid-area:td' in _css and '.nrem{grid-area:rm' in _css, "What to do and Did it work span both columns, under the top row"
 # What to do is one line until its button opens it (Tomas, 9 Nov: "just one line collapsed")
 assert '.nstrip:not(.open) :is(#decide .dm,#decide .ans,#decide .nk,#asks,#ndecl-decide){display:none!important}' in _css, "the folded strip hides the answers and the asks"
-assert "function decision() { decideLine(); stripFold(); }" in _nowjs and "stripFold();\n}" in _nowjs and "`Options to act · ${n} ↓`" in _nowjs and "NFOLD_OPEN = !NFOLD_OPEN; stripFold();" in _nowjs, "the strip folds after every redraw of What to do and the asks"
+assert "return; decideLine(); stripFold(); }" in _nowjs and "stripFold();\n}" in _nowjs and "`Options to act · ${n} ↓`" in _nowjs and "NFOLD_OPEN = !NFOLD_OPEN; stripFold();" in _nowjs, "the strip folds after every redraw of What to do and the asks"
 assert '.nstrip .decide{display:contents}' in _css and 'new ResizeObserver(() => map.resize())' in _nowjs, "the strip is one band; the map takes the frame's height"
 # heads name the reader's question, in sentence case; no engine stage shouted on Now
 assert "Around the house</h2>" in _nowh and "`Right now · " in _nowjs and '<h2 class="nh">What to do</h2>' in _nowjs
@@ -1006,6 +1006,7 @@ vm.runInContext(['esc', 'asHouse', 'WD', 'loc', 'dayOf', 'dLabel', 'wdhm', 'fmt'
    const draw = h => { calls.length = 0; location.hash = h; location.replaced = null; VIEWS.data();
      return { calls: calls.slice(), shown: Object.values(DTABS).flatMap(t => t[1]).filter(id => !document.getElementById(id).hidden),
        on: (document.getElementById('dnav').innerHTML.match(/href="(#data\\/\\w+)"[^>]*class="on"/) || [])[1] || null, node: location.replaced }; };
+   D.health.kind = 'community';   /* the Workbench tab is a community node's */
    out.tabs = Object.fromEntries(Object.keys(DTABS).map(t => [t, draw('#data/' + t)]));
    const sid = D.sensors.find(s => s.local && s.kind === 'sensor').sensor_id, mid = D.sensors.find(s => s.kind === 'model').sensor_id;
    out.old = Object.fromEntries(['#data', '#data/d-images', '#data/d-things', '#data/perday', '#data/issues7', '#data/cells', '#data/d-learned', '#data/' + sid, '#data/' + mid]

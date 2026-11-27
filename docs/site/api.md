@@ -122,7 +122,7 @@ The dashboard: the five doors by default, the older dashboard with `?layout=clas
 ### GET /workbench
 Access: public
 
-The sensors workbench, a reduced copy of `planetai.fab.city/sensors/` that the dashboard shows as the Data door's Workbench tab (`/#data/workbench`, with `/flash`, `/test` or `/network` after it for one view). It flashes the Bayu and the Meshtastic radios, tests a board over USB, and draws the network this node hears from its `/health`, `/sensors`, `/readings` and `/nodes`, asking for the token when a read is refused. It runs with no internet: the flasher comes from `/static/vendor/esp-web-tools/`, and the firmware from the node's own copy under `/static/firmware/`, which the node refreshes every six hours while it is online. Until the first copy is made, the firmware comes from where the site reads it. Opened on its own, as the site's Connect button opens it, the page goes to `/#data/workbench` at the same view. Browsers only open a USB port where they count the page as secure, so flashing and USB tests work at `http://localhost:8080/` on the node machine. From another laptop on the LAN they work once that laptop's Chrome trusts the node's address: open `chrome://flags/#unsafely-treat-insecure-origin-as-secure`, paste the address exactly as the browser shows it (`http://192.168.1.20:8080`), choose Enabled and relaunch. The page shows this step with its own address filled in. Why this and not https: `docs/decisions/2026-10-27-serial-on-the-lan.md`. 404 when the build does not ship it.
+On a community or district node, the sensors workbench; on a private node (`home` or `business`) it redirects to `planetai.fab.city/sensors/` (308). It is a reduced copy of `planetai.fab.city/sensors/` that the dashboard shows as the Data door's Workbench tab (`/#data/workbench`, with `/flash`, `/test` or `/network` after it for one view). It flashes the Bayu and the Meshtastic radios, tests a board over USB, and draws the network this node hears from its `/health`, `/sensors`, `/readings` and `/nodes`, asking for the token when a read is refused. It runs with no internet: the flasher comes from `/static/vendor/esp-web-tools/`, and the firmware from the node's own copy under `/static/firmware/`, which the node refreshes every six hours while it is online. Until the first copy is made, the firmware comes from where the site reads it. Opened on its own, as the site's Connect button opens it, the page goes to `/#data/workbench` at the same view. Browsers only open a USB port where they count the page as secure, so flashing and USB tests work at `http://localhost:8080/` on the node machine. From another laptop on the LAN they work once that laptop's Chrome trusts the node's address: open `chrome://flags/#unsafely-treat-insecure-origin-as-secure`, paste the address exactly as the browser shows it (`http://192.168.1.20:8080`), choose Enabled and relaunch. The page shows this step with its own address filled in. Why this and not https: `docs/decisions/2026-10-27-serial-on-the-lan.md`. 404 when the build does not ship it.
 
 ### GET /tester
 Access: public
@@ -137,12 +137,12 @@ The files the dashboard cannot inline, by name only; any other name is 404 `no s
 ### GET /static/vendor/esp-web-tools/{name}
 Access: public
 
-ESP Web Tools 10.4.0 (Apache-2.0), the workbench's flasher, kept in the node so it flashes offline. A flat file name in that one folder; anything else is 404.
+ESP Web Tools 10.4.0 (Apache-2.0), the workbench's flasher, kept in the node so it flashes offline. A private node answers 404. A flat file name in that one folder; anything else is 404.
 
 ### GET /static/firmware/{path:path}
 Access: public
 
-The node's copy of the firmware the workbench flashes: `meshtastic/` as `planetai.fab.city/sensors/firmware/meshtastic/` publishes it, each binary checked against that release's `SHA256SUMS`, and `bayu/` as Making Sense Bali publishes it. Refreshed every six hours while the node is online (not at all with `UPDATE_CHECK=off`), and an old build is deleted once nothing names it. A path outside the copy is 404.
+On a community or district node (a private node answers 404), the node's copy of the firmware the workbench flashes: `meshtastic/` as `planetai.fab.city/sensors/firmware/meshtastic/` publishes it, each binary checked against that release's `SHA256SUMS`, and `bayu/` as Making Sense Bali publishes it. Refreshed every six hours while a community node is online (a private node keeps no copy, and `UPDATE_CHECK=off` stops it everywhere), and an old build is deleted once nothing names it. A path outside the copy is 404.
 
 ### GET /static/fonts/jetbrains-mono-latin.woff2
 Access: public

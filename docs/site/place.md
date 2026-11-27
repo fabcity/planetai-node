@@ -206,6 +206,17 @@ row in the ledger on Data.
 The first time a node runs with the seven, it claims each neighbour where one of its sensors stood within 500 m of it,
 the old line, so no sensor that counted before stops counting.
 
+## The territory
+
+On a community node the map opens on the ground it covers, its seven resolution-7 cells, drawn as the 49
+resolution-8 cells inside them. Its own cell is filled in blue. A home that sends to it fills the cell it stands in,
+never its point. A cell with a public station has a solid outline, and one with a radio the mesh gateway hears a
+dashed one. A cell where one of the node's own sensors was heard in the last 24 hours is a light blue, and every
+other cell is not read yet. When one cell holds more than one of these, the first in that order is drawn.
+
+Under the screen a line counts them, "The territory: 49 cells, 6 read", with one swatch for each kind of cell. A
+home or a station outside the seven is named under it and not drawn. A private node's map has none of this.
+
 ## The tools
 
 **Tools**, beside the ask line, opens a menu of what the node can do with this place. **Rings and

@@ -101,4 +101,10 @@ import pathlib
 route = (pathlib.Path(__file__).resolve().parent.parent / "app/main.py").read_text().split("def report_now(")[1].split("\n@app.")[0]
 assert "threading.Thread(target=notify" in route and "\n    notify(" not in route, "POST /report/now waits on Telegram again"
 print("  POST /report/now hands the send to a thread, so a down line never holds the request")
+rules = (pathlib.Path(__file__).resolve().parent.parent / "app/main.py").read_text().split("def run_rules(")[1].split("\ndef ")[0]
+switch = [ln for ln in rules.split("\n") if '"TELEGRAM_BUTTONS"' in ln]
+assert len(switch) == 1 and "placewords.is_house()" in switch[0], f"one buttons switch, off on a community node: {switch}"
+assert rules.count("keyboard=kb") == 2 and "bot" in rules.split("kb = buttons.telegram_rows")[1].split("\n")[1], \
+    "the rule send and the event send both read that switch"
+print("  a community node sends its rule and event messages bare, whatever TELEGRAM_BUTTONS says")
 print("test_notify_keyboard: all checks passed")

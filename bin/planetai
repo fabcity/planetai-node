@@ -14,6 +14,7 @@
 #   planetai config get KEY one setting, and whether .env is being ignored for it
 #   planetai config set KEY VALUE   change one; the node has it within 20 s
 #   planetai config edit    the raw .env in an editor, as before
+#   planetai role           private or community: what this node is for; `role community|private [--yes]` changes it, with a backup first
 #   planetai report         write and send one now; `report last` shows the last one
 #   planetai report every 6 hours between reports: 3, 4, 6, 8, 12 or 24
 #   planetai report at 6   the local hour the rhythm starts from
@@ -164,7 +165,7 @@ port() { local p; p="$(envget APP_PORT)"; echo "${p:-8080}"; }
 mesh_packets() {
   local n; n="$(api /health | json 'print(d.get("mesh",{}).get("packets",0))' 2>/dev/null)"
   [[ "${n:-0}" -gt 0 ]] && { echo "$n"; return; }
-  n="$(docker compose exec -T db psql -tAqU planetai -c "SELECT count(*) FROM readings r JOIN sensors s USING (sensor_id) WHERE s.source='meshtastic' AND r.ts > now() - interval '1 hour'" planetai </dev/null 2>/dev/null | tr -d '[:space:]')"
+  n="$(docker compose exec -T db psql -tAqU planetai -c "SELECT count(*) FROM readings r JOIN sensors s USING (sensor_id) WHERE s.source='meshtastic' AND r.ts > now() - interval '1 hour'" planetai </dev/null 2>/dev/null | tr -d '[:space:]')" || n=
   echo "${n:-0}"
 }
 # The CLI runs on the node's own machine, but the container sees the Docker bridge gateway, not loopback, so
@@ -530,6 +531,7 @@ finish_setup() {
   spin "starting with your settings" docker compose up -d --force-recreate app || fail "the app container did not restart with your settings"
   spin "waiting for the first answer" bash -c 'for i in $(seq 1 30); do curl -sf "http://localhost:$(grep ^APP_PORT= .env | cut -d= -f2 | sed "s/[[:space:]]*#.*$//" | tr -d " " || echo 8080)/health" >/dev/null && exit 0; sleep 1; done; exit 1' || true
   api /health >/dev/null || fail "the node is not answering on port $(port). Look at: planetai logs"
+  case "$(envget NODE_KIND)" in community|district) apply_role_defaults community defaults;; *) apply_role_defaults private defaults;; esac
   [[ -z "$(envget INDEX_PLACE)" ]] || packs_switch_on index     # a re-run on a node whose packs were chosen in Set up
   cmd_doctor quiet || true
   [[ -f out/ground/vector.mbtiles ]] || offer_map
@@ -2399,6 +2401,79 @@ config_wizard() {
   done
 }
 
+# merge_packs CURRENT ADD: the union, current order first, then the new ones. An empty CURRENT means every pack, so it
+# stays empty: adding one would narrow it to that one.
+merge_packs() {
+  local out="$1" p
+  [[ -n "$out" ]] || return 0
+  for p in ${2//,/ }; do [[ ",$out," == *",$p,"* ]] || out+=",$p"; done
+  printf '%s\n' "$out"
+}
+
+# apply_role_defaults ROLE: the starting settings in presets/roles/ROLE.env. Runtime keys go through config set, and
+# PACKS_ADD joins PACKS_ENABLED. Packs are only added, and nothing is removed. With a second argument "defaults", a
+# key is skipped when its source is "gui" (changed in Set up or with config set), as setup does on a node that is
+# already set up, and PACKS_ADD is skipped when PACKS_ENABLED's is. A value from .env or the built-in one gets the role's.
+apply_role_defaults() {
+  local f="presets/roles/$1.env" k v cur new
+  [[ -f "$f" ]] || return 0
+  while IFS='=' read -r -u 3 k v; do
+    [[ "$k" =~ ^[A-Z][A-Z0-9_]*$ ]] || continue
+    if [[ "${2:-}" == defaults ]]; then
+      cur="${k/#PACKS_ADD/PACKS_ENABLED}"   # PACKS_ADD is skipped when the pack list was changed in Set up
+      cur="$(api /settings | json "print(([r['source'] for r in d['runtime'] if r['key']=='$cur'] or [''])[0])" 2>/dev/null)" || cur=
+      [[ -n "$cur" && "$cur" != gui ]] || continue
+    fi
+    if [[ "$k" == PACKS_ADD ]]; then
+      cur="$(api /settings | json "print(([r['value'] for r in d['runtime'] if r['key']=='PACKS_ENABLED'] or [''])[0])" 2>/dev/null | tr -d ' ')" || cur=
+      [[ -n "$cur" ]] || cur="$(setting PACKS_ENABLED)"
+      new="$(merge_packs "$cur" "$v")"
+      [[ -z "$new" || "$new" == "$cur" ]] || config_set PACKS_ENABLED "$new" || true
+    else
+      config_set "$k" "$v" || true
+    fi
+  done 3< "$f"
+}
+
+cmd_role() {
+  local want="" yes=0 now kind bd n a
+  for a in "$@"; do case "$a" in --yes) yes=1;; *) want="$a";; esac; done
+  now="$(envget NODE_KIND)"; case "$now" in community|district) now=community;; *) now=private;; esac
+  [[ -z "$want" ]] && { echo "$now"; return 0; }
+  [[ "$want" == private || "$want" == community ]] || { echo "planetai role: private or community"; exit 2; }
+  [[ "$want" != "$now" ]] || { say "This node is already $now."; return 0; }
+  [[ $yes -eq 1 || -t 0 ]] || { echo "No terminal here: run it in a terminal, or add --yes."; exit 1; }
+  docker compose exec -T db pg_isready -U planetai </dev/null >/dev/null 2>&1 \
+    || { echo "The node is not running: start it with planetai start, then try again."; exit 1; }
+  step "Change this node from $now to $want"
+  echo "  The change moves what the doors show, who the bot answers (subscribers and their feeds, or the household),"
+  echo "  what the report says and to whom, how much it shares by default, and which packs it suggests."
+  echo "  Readings, settings and alerts stay as they are."
+  bd="$(envget BACKUP_DIR)"; bd="${bd:-./backups}"
+  if [[ "$want" == community ]]; then
+    n="$(docker compose exec -T db psql -tAqU planetai -c "SELECT count(*) FROM sensors WHERE local AND indoor" planetai </dev/null 2>/dev/null | tr -d '[:space:]')" || n=
+    if [[ "$n" =~ ^[0-9]+$ ]]; then warn "This node holds $n indoor sensors. A community node's public pages never show indoor sensors."
+    else warn "This node may hold indoor sensors (the count could not be read). A community node's public pages never show indoor sensors."; fi
+  fi
+  echo "  A backup goes to $bd before anything changes."
+  [[ $yes -eq 1 ]] || confirm "Change the role to $want?" || { say "Nothing changed."; return 0; }
+  chmod +x backup.sh; ./backup.sh || fail "the backup did not finish, so the role is unchanged"
+  kind=community; [[ "$want" == private ]] && kind=home
+  envset NODE_KIND "$kind"
+  # a settings row from an older node would read as the role; update.sh moves it, here .env has just said it
+  docker compose exec -T db psql -U planetai -tAc "DELETE FROM settings WHERE key = 'NODE_KIND'" planetai </dev/null >/dev/null 2>&1 || true
+  # naming a profiled service starts it, so the agent restarts only where it was on
+  local svc=app
+  case ",$(envget COMPOSE_PROFILES)," in *,agent,*) svc="app agent";; *) [[ -n "$(docker compose ps -q agent 2>/dev/null)" ]] && svc="app agent";; esac
+  spin "restarting with the $want role" docker compose up -d --force-recreate $svc || fail "the node did not restart; .env says NODE_KIND=$kind"
+  if [[ -f "presets/roles/$want.env" ]]; then
+    echo "  Starting settings for a $want node (presets/roles/$want.env). Packs are added to the list, nothing is removed:"
+    sed 's/^/    /' "presets/roles/$want.env"
+    if [[ $yes -eq 1 ]] || confirm "Apply them?"; then apply_role_defaults "$want"; else say "Not applied."; fi
+  fi
+  say "This node is $want."
+}
+
 cmd_config() {
   local sub="${1:-}" want=""
   case "$sub" in --section) want="${2:-}"; sub="";; --section=*) want="${sub#--section=}"; sub="";; esac
@@ -2852,7 +2927,7 @@ case "${1:-help}" in
   setup) shift; cmd_setup "$@";;      status) shift; cmd_status "$@";;     doctor) shift; cmd_doctor "$@";;
   telegram) cmd_telegram;;            test-alert) cmd_test_alert;;  act) shift; cmd_act "$@";;
   report) shift; cmd_report "$@";;
-  update) cmd_update;;  backup) cmd_backup;;  config) shift; cmd_config "$@";;  logs) shift; cmd_logs "$@";;
+  update) cmd_update;;  backup) cmd_backup;;  config) shift; cmd_config "$@";;  role) shift; cmd_role "$@";;  logs) shift; cmd_logs "$@";;
   start) cmd_start;;  stop) cmd_stop;;  restart) cmd_restart;;  sensors) shift; cmd_sensors "$@";;  cells) shift; cmd_cells "$@";;
   mesh) shift; cmd_mesh "$@";;
   meshtastic) shift; cmd_meshtastic "$@";;  reticulum) shift; cmd_reticulum "$@";;  broker) cmd_broker;;

@@ -58,6 +58,18 @@ no_tpl, aid3 = A.render({"name": heat["name"], "events": {}, "actions": []}, E.M
 assert no_tpl.startswith(heat["name"]["en"]) and "K ROOM" in no_tpl and not no_tpl.startswith("\n") and aid3 is None, no_tpl
 print("  render: no template for the kind gives one line naming the issue and the rooms")
 
+# a community node sends feeds and asks nobody to act: no action line, no action id, and the card has none either
+import os  # noqa: E402
+os.environ["NODE_KIND"] = "community"
+yard = E.Event(issue="heat", kind="sustained", level="act", opened_at=t0, last_seen_at=t0, peak=36.7, rooms={"Yard"})
+c_text, c_aid = A.render(heat, E.Message(yard, "open", True, None), night, "en")
+assert c_aid is None and "\n" not in c_text and "Open up" not in c_text and "29.3" not in c_text, c_text
+assert A.now_say(heat, night, "en", set(), 36.7) is None, "a community card shows no action"
+os.environ["NODE_KIND"] = "home"
+assert A.render(heat, E.Message(yard, "open", True, None), night, "en")[1] == "heat/open_up", "a private node unchanged"
+os.environ.pop("NODE_KIND")
+print("  render: a community node's message and card carry no action line and no inside value")
+
 # The voice (design review of node #1, 14 Oct). Before: "📈 The air jumped in Sensor 3, Sensor 1: 48 µg/m³ PM2.5 — the WHO line is 15. Outside reads 11 µg/m³.\n\n👉 Open the side where it started and run the
 # purifier for 30 min: outside is cleaner (11 µg/m³)." Words first, one reading, the line with its owner and unit, the
 # outside said once, as the action's reason, and nothing about where it started (rooms are a sorted set).

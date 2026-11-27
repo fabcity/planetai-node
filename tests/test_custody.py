@@ -185,7 +185,8 @@ def rho_at(alerts, actions, events):
         con.executemany("""INSERT INTO events (child, alert_id, rule, level, raised_at, responded_at, acted_at)
                            VALUES (?,?,?,?,?,?,?)""", events)
     import index
-    sql = re.search(r'cur\.execute\(\s*"""(.*?)"""', inspect.getsource(index.rho), re.S).group(1)
+    src = inspect.getsource(index.rho).replace('""" + ("""', "").replace('""" if own else "") + """', "")   # a private node's query
+    sql = re.search(r'cur\.execute\(\s*"""(.*?)"""', src, re.S).group(1)
     sql = (sql.replace("%(back)s", "0").replace("make_interval(days => 0)", "interval '0 days'")
               .replace("split_part(rule_id, '/', 1) = ANY(%(rep)s::text[])", "FALSE")   # no pack replaced: a rules node
               .replace("now()", f"TIMESTAMPTZ '{NOW.isoformat()}'"))
