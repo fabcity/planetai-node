@@ -23,6 +23,7 @@ code = compile(ast.Module(body=fns, type_ignores=[]), "run_rules", "exec")
 
 sys.path.insert(0, str(src.parent))
 import actions  # noqa: E402
+import placewords  # noqa: E402
 import buttons  # noqa: E402
 
 ACT = {"id": "surf/tomorrow", "sql": "ACT_SQL", "message": "go {x} {act}", "level": "act"}
@@ -58,7 +59,7 @@ def run(rules, profiles):
     settings.num = lambda k, d=0: d
     log.warning = log.info = lambda *a: None
     os.environ["COMPOSE_PROFILES"] = profiles
-    g = dict(packs=packs, index=index, events_pg=events_pg, settings=settings, log=log, db=db, _act=actions, os=os, buttons=buttons, json=json,
+    g = dict(packs=packs, index=index, events_pg=events_pg, settings=settings, log=log, db=db, _act=actions, os=os, placewords=placewords, buttons=buttons, json=json,
              notify=lambda lvl, text, keyboard=None, home="", answer="": notified.append(text),
              _alert_home=lambda issue: "", run_report=lambda cur: None, _quiet=lambda lvl: False,
              LOCALE=lambda: "en", _local_now=lambda: "now")

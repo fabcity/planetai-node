@@ -9,6 +9,7 @@ import logging
 import actions as A
 import events as E
 import issues
+import placewords
 import settings
 
 log = logging.getLogger("planetai")
@@ -111,6 +112,8 @@ def context(cur, e: E.Event, now: dt.datetime) -> dict:
     for k in ("inside_temp", "inside_pm25", "outside_temp", "outside_pm25"):
         if ctx[k] is not None:
             ctx[k] = round(float(ctx[k]), 1)
+    if not placewords.is_house():   # the indoor mean is the rooms of the homes nearby: never in a community node's words
+        ctx["inside_temp"] = ctx["inside_pm25"] = None
     ctx.update(hour=now.hour, home_has=home_has(), where=set(e.where), kind=e.kind)
     return ctx
 

@@ -24,6 +24,7 @@ code = compile(ast.Module(body=fns, type_ignores=[]), "run_rules", "exec")
 
 sys.path.insert(0, str(src.parent))
 import actions  # noqa: E402
+import placewords  # noqa: E402
 import buttons  # noqa: E402
 
 warnings = []                           # buttons.normalize's one warning per bad column, caught here so the output stays clean
@@ -64,7 +65,7 @@ def run(row, tg, level="act", quiet=False):
     settings.num = lambda k, d=0: tg if k == "TELEGRAM_BUTTONS" else d
     log.warning = log.info = lambda *a: warned.append(a)
     os.environ["COMPOSE_PROFILES"] = "agent"
-    g = dict(packs=packs, index=index, events_pg=events_pg, settings=settings, log=log, db=db, _act=actions, os=os,
+    g = dict(packs=packs, index=index, events_pg=events_pg, settings=settings, log=log, db=db, _act=actions, os=os, placewords=placewords,
              buttons=buttons, json=json,
              notify=lambda lvl, text, keyboard=None, home="", answer="": sent.append((text, keyboard)),
              _alert_home=lambda issue: "", run_report=lambda cur: None, _quiet=lambda lvl: quiet,

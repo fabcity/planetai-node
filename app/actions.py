@@ -7,6 +7,8 @@ that needs the outside temperature is never chosen on a node that has none.
 """
 from __future__ import annotations
 
+import placewords
+
 # The three answers to an event (docs/SPEC_alerts.md §7), in the household's language. One table, so the dashboard's
 # buttons and the bot's say the same words: the page holds no copy (docs/SPEC_dashboard_events.md §4.4).
 BUTTONS = {
@@ -128,7 +130,7 @@ def render(issue: dict, msg, ctx: dict, locale: str) -> tuple[str, str | None]:
     fields = _fields(issue, rooms, e.peak, ctx)
     # no template for this kind: say which issue and where, so a message never starts with an empty line
     text = _fill(tpl, fields, locale) or f"{_say(issue.get('name'), locale) or issue.get('key') or e.issue}: {rooms}"
-    if msg.reason == "clear":
+    if msg.reason == "clear" or not placewords.is_house():   # a community node sends feeds and asks nobody to act
         return text, None
     a = choose(issue.get("actions") or [], ctx)
     line = _fill(a.get("say"), fields, locale) if a else ""
@@ -142,6 +144,8 @@ def now_say(issue: dict, ctx: dict, locale: str, rooms, peak) -> dict | None:
     """The action an open event's card shows: chosen again from the context as it is now, by the same rules that
     chose the sent message's. The sent message stays what it was (it is history); the card is the present, so it
     never tells a house to open up on the strength of last night's outside reading."""
+    if not placewords.is_house():
+        return None
     a = choose(issue.get("actions") or [], ctx)
     text = _fill(a.get("say"), _fields(issue, rooms_said(rooms, locale), peak, ctx), locale) if a else ""
     return {"id": a["id"], "text": text} if text else None

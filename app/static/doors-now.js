@@ -279,7 +279,8 @@ function readout() {
    asking, else an alert still true. On 14 Oct this read the events alone and said "No event was open for air" beside a
    Wall showing an open ask. A past hour is history: the events open then. The frame (.decide) and the buttons are
    drawn only while something is asked; otherwise What to do is one plain line, with the hour it is usually worst. */
-function decision() { decideLine(); stripFold(); }
+/* a community node sends feeds and asks nobody to act: What to do is not drawn at all */
+function decision() { if (($('#decide').hidden = notHouse((D.health || {}).kind))) return; decideLine(); stripFold(); }
 function decideLine() {
   const k = S.issue, it = D.issues[k], B = D.buttons, live = S.i === D.now, ask = live ? (it.asking || [])[0] : null;
   const head = '<h2 class="nh">What to do</h2>', usual = live ? usualLine(k) : '';

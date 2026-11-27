@@ -287,3 +287,100 @@ _eng.compute, events_wire.live = _real_compute, _real_live
 assert _seen and not isinstance(_seen[0], _ia._NoIndoor), "a private node's /issues reads every row"
 assert any(r["sensor"] == "indoor-1" for r in client.get("/export?day=2026-11-25").json()["hourly"])
 print("ok  community: no indoor sensor without a token, none in the export; private unchanged")
+
+# ---------------------------------------------------------------- a community node asks nobody to act
+import asyncio  # noqa: E402
+import datetime as dt  # noqa: E402
+from types import SimpleNamespace  # noqa: E402
+import events_pg  # noqa: E402
+import importlib.util  # noqa: E402
+import agent_loop  # noqa: E402
+
+os.environ["NODE_KIND"] = "community"
+assert main.act_hint(12) == "", "a community node names no way to answer"
+os.environ["NODE_KIND"] = "home"
+assert main.act_hint(12).endswith("act 12"), "a private node unchanged"
+
+# run_rules reads the bot's buttons once, and only a private node lets them ride
+_rr = (ROOT / "app/main.py").read_text().split("def run_rules(")[1].split("\ndef ")[0]
+assert _rr.count('"TELEGRAM_BUTTONS"') == 1 and "placewords.is_house()" in _rr.split('"TELEGRAM_BUTTONS"')[1].split("\n")[0], \
+    "the rule and event sends must share one buttons switch gated on the role"
+
+# /test-alert on a community node: the message, no line telling anyone how to answer
+_sent = []
+_real_notify, _real_db = main.notify, main.db
+main.notify = lambda lvl, text, **k: _sent.append(text)
+
+
+class _TaCur:
+    def __enter__(self): return self
+    def __exit__(self, *a): return False
+    def execute(self, *a): pass
+    def fetchone(self): return {"id": 41}
+
+
+class _TaCon(_TaCur):
+    def cursor(self): return _TaCur()
+
+
+main.db = lambda: _TaCon()
+os.environ["NODE_KIND"] = "community"
+assert client.post("/test-alert", headers=TOK).status_code == 200
+assert _sent and "act" not in _sent[-1].split("\n")[-1] and "👉" not in _sent[-1], _sent
+os.environ["NODE_KIND"] = "home"
+client.post("/test-alert", headers=TOK)
+assert "act 41" in _sent[-1], "a private node still says how to answer"
+main.notify, main.db = _real_notify, _real_db
+
+
+# the context behind a message and a card never carries an inside reading on a community node
+class _CtxCur:
+    def execute(self, *a): pass
+    def fetchone(self): return {"inside_temp": 29.31, "inside_pm25": 8.0, "outside_temp": 24.9, "outside_pm25": 10.0,
+                                "outside_source": "outside"}
+
+
+_ev = SimpleNamespace(rooms=set(), where={"yard"}, kind="sustained")
+os.environ["NODE_KIND"] = "community"
+_c = events_pg.context(_CtxCur(), _ev, dt.datetime(2026, 11, 26, 20))
+assert _c["inside_temp"] is None and _c["inside_pm25"] is None and _c["outside_temp"] == 24.9, _c
+os.environ["NODE_KIND"] = "home"
+assert events_pg.context(_CtxCur(), _ev, dt.datetime(2026, 11, 26, 20))["inside_temp"] == 29.3
+
+
+# rho on a community node counts its children's households only
+class _RhoCur:
+    def execute(self, sql, *a): self.sql = sql
+    def fetchone(self): return {}
+    def fetchall(self): return []
+
+
+_spec = importlib.util.spec_from_file_location("index_unstubbed", ROOT / "app/index.py")   # the module above is stubbed
+_ix = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(_ix)
+_rc = _RhoCur(); _ix._funnel = lambda *a: {}; _ix._replaced = lambda: []
+os.environ["NODE_KIND"] = "community"; _ix.rho(_rc)
+assert "self/" not in _rc.sql and "ev/" not in _rc.sql and "child ||" in _rc.sql, _rc.sql
+os.environ["NODE_KIND"] = "home"; _ix.rho(_rc)
+assert "self/" in _rc.sql and "ev/" in _rc.sql and "child ||" in _rc.sql
+
+# the agent: /act and every answer button get one line on a community node, and nothing is posted
+_tg, _posted = [], []
+agent_loop.telegram = lambda method, **p: _tg.append((method, p)) or asyncio.sleep(0)
+agent_loop._post_answer = lambda *a, **k: _posted.append(a) or asyncio.sleep(0)
+agent_loop.node_session = lambda *a, **k: (_ for _ in ()).throw(AssertionError("a community /act reached the node"))
+agent_loop.CHATS = lambda: {"1"}
+_line = "This is a community node: it sends feeds, and nobody answers its alerts here."
+agent_loop.KIND = "community"
+assert asyncio.run(agent_loop.act_command(None, "1", "/act 3 opened the windows")) is True
+assert _tg == [("sendMessage", {"chat_id": "1", "text": _line})], _tg
+for data in ("ev:5:acted", "al:7:good"):
+    _tg.clear()
+    asyncio.run(agent_loop.handle_callback(None, {"id": "q", "data": data, "message": {"chat": {"id": 1}}}, {}))
+    assert _tg == [("answerCallbackQuery", {"callback_query_id": "q", "text": _line})], (data, _tg)
+assert not _posted, "a community node records no answer"
+agent_loop.KIND = "home"; _tg.clear()
+assert asyncio.run(agent_loop.act_command(None, "1", "/act 3")) is True and "What did you do" in _tg[0][1]["text"]
+assert asyncio.run(agent_loop.act_command(None, "1", "/stack")) is False
+_dn = (ROOT / "app/static/doors-now.js").read_text().split("function decision()")[1].split("\n")[0]
+assert "notHouse((D.health || {}).kind)" in _dn and "hidden" in _dn, "the Now door draws no What to do on a community node"
+print("ok  community: no act hint, no buttons, no action line, no inside value, rho from its children, the bot says why")

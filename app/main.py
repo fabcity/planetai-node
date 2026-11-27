@@ -217,6 +217,8 @@ def act_hint(alert_id) -> str:
     """How this household closes the loop on alert N. `/act N` is a reply to the Telegram bot, which exists only when the
     agent container runs (planetai agent local); on every other node the words are `planetai act N`. A tester who
     replied /act to a bot that was not there heard nothing back (BETA review, 8.2)."""
+    if not placewords.is_house():   # a community node sends feeds; nobody answers its alerts
+        return ""
     bot = "agent" in os.getenv("COMPOSE_PROFILES", "")
     return f"/act {alert_id}" if bot else f"planetai act {alert_id}"
 
@@ -350,6 +352,9 @@ def run_rules() -> None:
     # still record an alerts row (the dashboard, rho and Home Assistant read those) but no longer send. Every other
     # rule, core sensor_silent included, sends as before.
     replaced = {r["id"].split("/", 1)[0] for r in rules if r.get("kind")} if mode == "events" else set()
+    # Buttons ride only when the bot has announced itself, and never on a community node: it sends feeds, and
+    # nobody answers its alerts.
+    bot = settings.num("TELEGRAM_BUTTONS", 0) and placewords.is_house()
     cands = []
     with db() as con, con.cursor() as cur:
         try:
@@ -412,7 +417,7 @@ def run_rules() -> None:
                     # act alerts got an answer, nine of them in two dashboard batch-clicks a day later.
                     # Buttons ride only when the bot has announced itself, as for events; they are stored either way.
                     kb = buttons.telegram_rows(btns, alert_id, settings.get("ALERT_LOCALE", "en") or "en") \
-                        if btns and settings.num("TELEGRAM_BUTTONS", 0) else None
+                        if btns and bot else None
                     notify(level, text, keyboard=kb, home=_alert_home(rule["id"]) if level == "act" else "",
                            answer=str(alert_id))
                 packs.emit("on_alert", level, text, alert_id)
@@ -430,7 +435,7 @@ def run_rules() -> None:
                         # set by agent_loop on startup): a node without the agent container sends the
                         # same message bare (SPEC_alerts §7).
                         kb = _event_keyboard(m.event.id, settings.get("ALERT_LOCALE", "en") or "en") \
-                            if m.event.id and settings.num("TELEGRAM_BUTTONS", 0) else None
+                            if m.event.id and bot else None
                         notify(m.event.level, text, keyboard=kb,
                                home=_alert_home(m.event.issue) if m.event.level == "act" else "",
                                answer=f"e{m.event.id}" if m.event.id else "")
@@ -2342,11 +2347,13 @@ def test_alert(authorization: str = Header("")):
         cur.execute("INSERT INTO alerts (ts, rule_id, sensor_id, level, text) VALUES (now(), 'gui/test', 'node', 'act', %s) RETURNING id", (text,))
         alert_id = cur.fetchone()["id"]
     how = act_hint(alert_id)
-    if es:
+    if not how:
+        closing = ""
+    elif es:
         closing = f"👉 Responde {how} para mostrarme cómo cierras el círculo." if how.startswith("/") else f"👉 En la terminal, {how} registra que cerraste el círculo."
     else:
         closing = f"👉 Reply {how} to show me how you close the loop." if how.startswith("/") else f"👉 In the terminal, {how} records that you closed the loop."
-    notify("act", f"{text}\n\n{closing}", answer=str(alert_id))   # the hint carries the number; a bare #id on the end taught nothing
+    notify("act", f"{text}\n\n{closing}" if closing else text, answer=str(alert_id))   # the hint carries the number; a bare #id on the end taught nothing
     packs.emit("on_alert", "act", text, alert_id)
     return {"ok": True, "alert_id": alert_id}
 
