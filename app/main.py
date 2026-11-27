@@ -1075,9 +1075,7 @@ async def _share_level(request, call_next):
             f"this node is set to SHARE_LEVEL={level}, so {request.url.path} answers only this machine or a request "
             f"carrying a token. {fix}"})
     from fastapi.responses import JSONResponse, Response
-    if _stranger_on_community(request) and request.url.path.startswith("/ask"):
-        return JSONResponse(status_code=403, content={"error":
-            "a community node's questions are answered to a reader with a token only"})
+    # a stranger's /ask is gated in app/ask.py: the Wall's paragraph answers, nothing else does
     resp = await call_next(request)
     if "application/json" not in resp.headers.get("content-type", ""):
         return resp

@@ -150,10 +150,39 @@ assert client.get("/shape", headers=TOK).json()["hours"][0]["indoor"] == 5.0
 assert client.get("/report/latest").json()["text"] is None, "the keeper's report is not public"
 assert client.get("/report/latest", headers=TOK).json()["text"]
 _raw = TestClient(main.app, raise_server_exceptions=False)
-for m, path in (("get", "/ask/status"), ("post", "/ask")):
-    r = getattr(_raw, m)(path, **({"json": {"q": "hi"}} if m == "post" else {}))
-    assert r.status_code == 403 and "token" in r.json()["error"], (path, r.status_code, r.text)
-    assert getattr(_raw, m)(path, headers=TOK, **({"json": {"q": "hi"}} if m == "post" else {})).status_code != 403
+# a stranger's questions are refused; the Wall's paragraph is not (Tomas, 27 Nov: "Allow the Wall")
+import contextlib  # noqa: E402
+import ask as _ask  # noqa: E402
+import agent_loop as _al  # noqa: E402
+from issues import api as _iapi  # noqa: E402
+_heard = {}
+_real_ask = (_ask.rungs, _ask.wall_reads, _iapi.issues_now, _al.node_session, _al.pane)
+_ask.rungs = lambda: [type("R", (), {"name": "local", "model": "m", "leaves": False})()]
+_ask.wall_reads = lambda: ([], None)
+_iapi.issues_now = lambda req=None: _heard.update(req=req) or {}
+
+
+@contextlib.asynccontextmanager
+async def _session(hc, url, keep):
+    yield None, ["a tool"]
+
+
+async def _pane(messages, system, tools, call, scrub, rungs):
+    _heard.update(messages=messages, tools=tools)
+    yield "done", {}
+_al.node_session, _al.pane = _session, _pane
+_askq = {"messages": [{"role": "user", "content": "what did the house do today?"}]}
+r = _raw.post("/ask", json=_askq)
+assert r.status_code == 403 and "token" in r.json()["error"], (r.status_code, r.text)
+assert _raw.post("/ask", json=_askq, headers=TOK).status_code == 200
+assert _heard["req"] is None, "a token's ask reads every issue"  # called with no request
+r = _raw.post("/ask", json={**_askq, "prompt": "wall"})
+assert r.status_code == 200, r.text
+assert _heard["req"] is not None, "the stranger's Wall reads the issues a stranger reads, no indoor sensor in them"
+assert _heard["messages"] == [{"role": "user", "content": "speak"}], ("the Wall's own word, never the reader's", _heard)
+assert _heard["tools"] == [], "the Wall is offered no tools"
+assert _raw.get("/ask/status").status_code != 403, "the Wall checks for a model first"
+_ask.rungs, _ask.wall_reads, _iapi.issues_now, _al.node_session, _al.pane = _real_ask
 al = [a["rule"] for a in client.get("/export?day=2026-11-25", headers=TOK).json()["alerts"]]
 assert al == ["outdoor_pm25_high"], f"an indoor sensor's alert left in the export: {al}"
 import tempfile  # noqa: E402

@@ -227,7 +227,7 @@ way to change it. A private node is a `home` or a `business`, a community node a
 A community node never shows an indoor sensor to a reader without a token: not in any JSON read, not in `/history`,
 `/series`, `/shape` or `/issues` (room events are dropped from it, and so are its days), not in the text of
 `/report/latest`, not in a stored `/exports` file or an `/export` row, and not in an alert. `/ask` is refused to a
-stranger. Until it has read its indoor sensors once it answers 503, so nothing slips out before it knows which they are.
+stranger, except the Wall's own paragraph, which is told only what a stranger may read. Until it has read its indoor sensors once it answers 503, so nothing slips out before it knows which they are.
 
 A community node has no act. No page draws an answer button or an act hint, no household action line is written,
 `POST /actions` refuses an answer with 409, the bot's `/act` says so, and [ρ](rho.md) counts only its children's

@@ -31,7 +31,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import httpx
 from fastapi import APIRouter, HTTPException, Query, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 import agent_loop
@@ -442,7 +442,15 @@ async def ask(body: AskBody, request: Request):
         raise HTTPException(404, "no model is set up on this node; `planetai agent local` sets one up")
     import main                                    # noqa: PLC0415 — main includes this router at the bottom of itself
     from issues import api as issues_api           # noqa: PLC0415
-    doc = await asyncio.to_thread(issues_api.issues_now)
+    stranger = main._stranger_on_community(request)
+    if stranger and body.prompt != "wall":
+        return JSONResponse(status_code=403, content={"error":
+            "a community node's questions are answered to a reader with a token only"})
+    if stranger:
+        # The public Wall still speaks: its own one-word ask, never the reader's words, from the issues a stranger
+        # reads (no indoor sensor in them), with no tools.
+        body.messages = [Msg(role="user", content="speak")]
+    doc = await asyncio.to_thread(*((issues_api.issues_now, request) if stranger else (issues_api.issues_now,)))
     try:
         # a room is the sensor's name (init.sql 0.61); the room and the platform's own name are looked for too
         names = [v for r in await asyncio.to_thread(main.q, "SELECT name, room, source_name FROM sensors")

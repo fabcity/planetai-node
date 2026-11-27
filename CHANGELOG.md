@@ -6,7 +6,8 @@
   [private|community] [--yes]` changes the role. It warns, takes a backup, restarts the node and offers the role's
   starting settings (`presets/roles/`). Packs are only ever added. Set up shows the role and does not change it. A
   community node shows no indoor sensor to a reader without a token: not in any JSON read, `/history`, `/series`,
-  `/shape`, `/issues`, `/report/latest`, a stored export or an alert, and `/ask` is refused to a stranger. It answers
+  `/shape`, `/issues`, `/report/latest`, a stored export or an alert, and `/ask` is refused to a stranger except for
+  the Wall's paragraph, which is told only what a stranger may read. It answers
   503 until it has read its indoor sensors once. It asks nobody to act: no answer buttons or act hint on any page, no
   household action lines, `POST /actions` refuses an answer (409), the bot's `/act` says so, and ρ counts only its
   children's households. The Workbench lives on community nodes only: a private node's `/workbench` goes to
