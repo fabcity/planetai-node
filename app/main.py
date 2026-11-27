@@ -987,6 +987,35 @@ def _unlabelled(text: str) -> str:
     return text
 
 
+# A community node may hold indoor sensors (a house that became a community node keeps its kits): a reader without a
+# token never sees one. "Indoor" is the node's own indoor sensors; a child's are not local, so they are not touched.
+_INDOOR = {"at": 0.0, "ids": set()}
+
+
+def _indoor_ids() -> set[str]:
+    """The ids of this node's own indoor sensors, re-read every settings.TTL seconds; a failed read keeps the last."""
+    if time.time() - _INDOOR["at"] < settings.TTL:
+        return _INDOOR["ids"]
+    try:
+        with db() as con, con.cursor() as cur:   # its own read, not q(): the routes' tests count q's statements
+            cur.execute("SELECT sensor_id FROM sensors WHERE local AND indoor")
+            ids = {r["sensor_id"] for r in cur.fetchall()}
+    except Exception:  # noqa: BLE001 — no database: no route answers from it either
+        return _INDOOR["ids"]
+    _INDOOR.update(at=time.time(), ids=ids)
+    return ids
+
+
+def _drop_indoor(obj, ids: set[str]):
+    """A copy of obj without the sensors in ids, at any depth: a dict in a list whose sensor_id is one of them goes,
+    and so does a dict key that is one of them (/stats is keyed by sensor)."""
+    if isinstance(obj, list):
+        return [_drop_indoor(x, ids) for x in obj if not (isinstance(x, dict) and x.get("sensor_id") in ids)]
+    if isinstance(obj, dict):
+        return {k: _drop_indoor(v, ids) for k, v in obj.items() if k not in ids}
+    return obj
+
+
 @app.middleware("http")
 async def _share_level(request, call_next):
     """SHARE_LEVEL decides what a request with no token may read. The levels are in settings.RUNTIME["SHARE_LEVEL"];
@@ -1022,6 +1051,11 @@ async def _share_level(request, call_next):
         return resp
     from fastapi.responses import Response
     body = _unhoused(b"".join([c async for c in resp.body_iterator]), request.url.path)
+    if not placewords.is_house() and (ids := _indoor_ids()):
+        try:
+            body = json.dumps(_drop_indoor(json.loads(body), ids)).encode()
+        except ValueError:
+            pass
     headers = {k: v for k, v in resp.headers.items() if k.lower() != "content-length"}
     return Response(body, status_code=resp.status_code, headers=headers)
 
@@ -1729,6 +1763,8 @@ def export(day: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$")):
                   WHERE r.bucket >= %s::date AND r.bucket < %s::date + 1 AND """ + packs.public_sql("r")
                + " AND " + packs.open_sql("r") + """
                   ORDER BY r.bucket, r.sensor_id, r.metric""", day, day)
+    if not placewords.is_house():   # the file travels whoever asked: a community node's indoor sensors stay home
+        hourly = [r for r in hourly if not (r["local"] and r["indoor"])]
     kids = ([r["sensor_id"] for r in q("SELECT sensor_id FROM sensors WHERE kind = 'child'")]
             if any(r.get("kind") == "child" for r in hourly) else [])
     name = _export_namer(kids)
