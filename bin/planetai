@@ -2412,7 +2412,8 @@ merge_packs() {
 
 # apply_role_defaults ROLE: the starting settings in presets/roles/ROLE.env. Runtime keys go through config set, and
 # PACKS_ADD joins PACKS_ENABLED. Packs are only added, and nothing is removed. With a second argument "defaults", a
-# key is written only while its source is "default" (nobody set it), as setup does on a node that is already set up.
+# key is skipped when its source is "gui" (changed in Set up or with config set), as setup does on a node that is
+# already set up. A value from .env or the built-in one gets the role's.
 apply_role_defaults() {
   local f="presets/roles/$1.env" k v cur new
   [[ -f "$f" ]] || return 0
@@ -2426,7 +2427,7 @@ apply_role_defaults() {
     else
       if [[ "${2:-}" == defaults ]]; then
         cur="$(api /settings | json "print(([r['source'] for r in d['runtime'] if r['key']=='$k'] or [''])[0])" 2>/dev/null)" || cur=
-        [[ "$cur" == default ]] || continue
+        [[ -n "$cur" && "$cur" != gui ]] || continue
       fi
       config_set "$k" "$v" || true
     fi
