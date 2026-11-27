@@ -53,6 +53,37 @@ printf 'NODE_NAME=t\nNODE_KIND=home\n' > "$D/.env"
 out="$(COUNT_FAIL=1 run --yes community)"
 grep -qF 'This node may hold indoor sensors (the count could not be read).' <<<"$out" && ! grep -q 'holds 0' <<<"$out" && grep -q '^NODE_KIND=community$' "$D/.env" \
   && ok "a failed count says it is unknown and goes on to the confirm" || bad "count fail: $out"
+# the role's starting settings: runtime keys go to the node's settings, PACKS_ADD joins PACKS_ENABLED, nothing is removed
+cat > "$t/stub/curl" <<'STUB'
+#!/bin/sh
+case "$*" in
+  *"-X PUT"*) while [ $# -gt 0 ]; do [ "$1" = -d ] && echo "$2" >> "$PUTS"; shift; done; printf '\n200'; exit 0;;
+esac
+cat "$SETTINGS"
+STUB
+chmod +x "$t/stub/curl"
+settings() { python3 - "$1" > "$t/settings.json" <<'PY'
+import json, sys
+keys = ["SHARE_LEVEL", "REPORT_EVERY", "ALERT_ENGINE", "ALERT_LEVEL", "PACKS_ENABLED"]
+rows = [dict(key=k, group="g", secret=False, restart=False, value=sys.argv[1] if k == "PACKS_ENABLED" else "", source="default", help="") for k in keys]
+print(json.dumps(dict(runtime=rows, bootstrap=[])))
+PY
+}
+runp() { PATH="$t/stub:/usr/bin:/bin:/usr/local/bin" PLANETAI_HOME="$D" CALLS="$t/calls" PUTS="$t/puts" SETTINGS="$t/settings.json" bash "$D/bin/planetai" role "$@" </dev/null 2>&1; }
+mkdir -p "$D/presets"; cp -R "$REPO/presets/roles" "$D/presets/"
+eval "$(sed -n '/^merge_packs() {/,/^}/p' "$REPO/bin/planetai")"
+[[ "$(merge_packs "smartcitizen,heat" "heat,eyes")" == "smartcitizen,heat,eyes" ]] && ok "merge_packs adds the new ones after the current ones" || bad "merge_packs union"
+[[ -z "$(merge_packs "" "eyes")" ]] && ok "an empty list stays empty (it means every pack)" || bad "merge_packs empty"
+
+printf 'NODE_NAME=t\nNODE_KIND=home\nADMIN_TOKEN=x\n' > "$D/.env"; settings "smartcitizen,air-quality"; rm -f "$t/puts"
+out="$(runp --yes community)"
+grep -qF '"SHARE_LEVEL":"open"' "$t/puts" && grep -qF '"ALERT_LEVEL":"act"' "$t/puts" && ok "community.env sets its runtime keys through the settings" || bad "puts: $(cat "$t/puts" 2>/dev/null) out=$out"
+grep -qF '"PACKS_ENABLED":"smartcitizen,air-quality,nearby,forecast,coast,fire,hydro,place,index"' "$t/puts" \
+  && ok "its packs are added after the ones already on" || bad "packs: $(cat "$t/puts" 2>/dev/null)"
+printf 'NODE_NAME=t\nNODE_KIND=community\nADMIN_TOKEN=x\n' > "$D/.env"; settings ""; rm -f "$t/puts"
+runp --yes private >/dev/null
+grep -q PACKS_ENABLED "$t/puts" && bad "an empty PACKS_ENABLED was narrowed" || ok "an empty PACKS_ENABLED is left alone"
+grep -qF '"ALERT_ENGINE":"events"' "$t/puts" && ok "private.env sets its keys too" || bad "private puts: $(cat "$t/puts" 2>/dev/null)"
 out="$(run banana)"; rc=$?
 [[ $rc -eq 2 ]] && grep -q 'private or community' <<<"$out" && ok "an unknown role exits 2 and names the two" || bad "rc=$rc out=$out"
 [[ $fails -eq 0 ]]

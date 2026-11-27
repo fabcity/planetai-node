@@ -10,3 +10,5 @@ any coordinates on earth, so nothing depends on being listed here.
 Adding your city is one file and a pull request. Copy the closest one and change the five values and `NODE_ISSUES`;
 leave out `BAD_ENABLED`, which only Bali's preset sets (the `bali-air-dispatch` pack is off everywhere else). If your city runs a CKAN portal, add it; test the URL first with
 `https://<domain>/api/3/action/package_search?rows=0`.
+
+`presets/roles/` holds the starting settings of the two roles, `private.env` and `community.env`. `planetai setup` applies the one that matches the answer to question 3, and `planetai role` offers it after a change. Runtime keys are set like `planetai config set`; `PACKS_ADD` adds packs to `PACKS_ENABLED`, and an empty `PACKS_ENABLED` (every pack) stays empty. Nothing is ever removed.

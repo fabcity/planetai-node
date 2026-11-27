@@ -531,6 +531,7 @@ finish_setup() {
   spin "starting with your settings" docker compose up -d --force-recreate app || fail "the app container did not restart with your settings"
   spin "waiting for the first answer" bash -c 'for i in $(seq 1 30); do curl -sf "http://localhost:$(grep ^APP_PORT= .env | cut -d= -f2 | sed "s/[[:space:]]*#.*$//" | tr -d " " || echo 8080)/health" >/dev/null && exit 0; sleep 1; done; exit 1' || true
   api /health >/dev/null || fail "the node is not answering on port $(port). Look at: planetai logs"
+  case "$(envget NODE_KIND)" in community|district) apply_role_defaults community;; *) apply_role_defaults private;; esac
   [[ -z "$(envget INDEX_PLACE)" ]] || packs_switch_on index     # a re-run on a node whose packs were chosen in Set up
   cmd_doctor quiet || true
   [[ -f out/ground/vector.mbtiles ]] || offer_map
@@ -2400,6 +2401,33 @@ config_wizard() {
   done
 }
 
+# merge_packs CURRENT ADD: the union, current order first, then the new ones. An empty CURRENT means every pack, so it
+# stays empty: adding one would narrow it to that one.
+merge_packs() {
+  local out="$1" p
+  [[ -n "$out" ]] || return 0
+  for p in ${2//,/ }; do [[ ",$out," == *",$p,"* ]] || out+=",$p"; done
+  printf '%s\n' "$out"
+}
+
+# apply_role_defaults ROLE: the starting settings in presets/roles/ROLE.env. Runtime keys go through config set, and
+# PACKS_ADD joins PACKS_ENABLED. Packs are only added, and nothing is removed.
+apply_role_defaults() {
+  local f="presets/roles/$1.env" k v cur new
+  [[ -f "$f" ]] || return 0
+  while IFS='=' read -r -u 3 k v; do
+    [[ "$k" =~ ^[A-Z][A-Z0-9_]*$ ]] || continue
+    if [[ "$k" == PACKS_ADD ]]; then
+      cur="$(api /settings | json "print(([r['value'] for r in d['runtime'] if r['key']=='PACKS_ENABLED'] or [''])[0])" 2>/dev/null | tr -d ' ')" || cur=
+      [[ -n "$cur" ]] || cur="$(setting PACKS_ENABLED)"
+      new="$(merge_packs "$cur" "$v")"
+      [[ -z "$new" || "$new" == "$cur" ]] || config_set PACKS_ENABLED "$new" || true
+    else
+      config_set "$k" "$v" || true
+    fi
+  done 3< "$f"
+}
+
 cmd_role() {
   local want="" yes=0 now kind bd n a
   for a in "$@"; do case "$a" in --yes) yes=1;; *) want="$a";; esac; done
@@ -2426,7 +2454,11 @@ cmd_role() {
   kind=community; [[ "$want" == private ]] && kind=home
   envset NODE_KIND "$kind"
   spin "restarting with the $want role" docker compose up -d --force-recreate app agent || fail "the node did not restart; .env says NODE_KIND=$kind"
-  # (Task 3 offers presets/roles/$want.env here)
+  if [[ -f "presets/roles/$want.env" ]]; then
+    echo "  Starting settings for a $want node (presets/roles/$want.env). Packs are added to the list, nothing is removed:"
+    sed 's/^/    /' "presets/roles/$want.env"
+    if [[ $yes -eq 1 ]] || confirm "Apply them?"; then apply_role_defaults "$want"; else say "Not applied."; fi
+  fi
   say "This node is $want."
 }
 
