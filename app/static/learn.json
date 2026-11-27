@@ -1027,7 +1027,7 @@
      "Mengapa ada yang belum dihitung?"
     ]
    },
-   "quote": "the same as rows under the drawing, each with its count. A count the node does not keep yet, such as the bot's subscribers or the public link's visits, says not counted yet",
+   "quote": "the same as rows under the drawing, each with its count; a row's own line says when, if it is not now. A count the node does not keep yet, such as the bot's subscribers or the public link's visits, says not counted yet",
    "section": "Node",
    "title": "Comes in, it serves",
    "url": "https://planetai.fab.city/docs/dashboard/#node"

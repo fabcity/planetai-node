@@ -535,5 +535,7 @@ assert all(x["y"] < _L["node"]["y"] for x in _L["items"] if x["side"] == "in") a
 assert len(_L["items"]) == 8, _L
 assert _o["still"] == 0 and _o["made"] == 0 and _o["moved"] > 0, _o
 _dn = (ROOT / "app/static/doors-node.js").read_text(); _dh = (ROOT / "app/static/doors.html").read_text()
+assert "<h3>It serves · now</h3>" in _dn and "7 days" not in _dn.split("function ledgerBlock")[1], "the serves block holds current counts"
+assert "g.key === 'mesh' ? ' from the mesh'" in _dn, "the mesh row's 24 h figure is readings, not packets"
 assert 'id="netview"' in _dh and 'id="ledger-node"' in _dh and "role=\"img\" aria-label=\"${esc(" in _dn, "both sections, and the drawing says its counts"
 print("ok  roles: a community Node door draws what comes in and what it serves; reduced motion moves nothing")

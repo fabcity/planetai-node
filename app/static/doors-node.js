@@ -148,8 +148,8 @@ function ledgerBlock(G, el) {
   const row = (t, s2, c, x) => `<div class="lrow"><span class="t">${esc(t)}</span><span class="s">${esc(s2)}</span><span class="c${x ? ' x' : ''}">${esc(c)}</span></div>`;
   const up = t => t.replace(/^./, c => c.toUpperCase());
   el.innerHTML = `<h3>Comes in · 24 h</h3>` + G.in.map(g => row(`${up(g.label)} · ${g.count.toLocaleString('en')}`, g.sub,
-      g.n24 == null ? 'counted with the token' : `${g.n24.toLocaleString('en')} readings`, g.n24 == null)).join('')
-    + `<h3>It serves · 7 days</h3>` + G.out.map(g => row(up(g.label), g.count == null ? '' : g.sub, g.count == null ? 'not counted yet' : g.count.toLocaleString('en'), g.count == null)).join('')
+      g.n24 == null ? 'counted with the token' : `${g.n24.toLocaleString('en')} readings${g.key === 'mesh' ? ' from the mesh' : ''}`, g.n24 == null)).join('')
+    + `<h3>It serves · now</h3>` + G.out.map(g => row(up(g.label), g.count == null ? '' : g.sub, g.count == null ? 'not counted yet' : g.count.toLocaleString('en'), g.count == null)).join('')
     + row('Workbench · boards flashed', '', 'not counted yet', true)
     + `<p class="fine">Readings are the hourly table’s counts for the last 24 hours. The bot’s subscribers, the public link’s visits and the boards flashed are not counted by the node yet.</p>`;
 }
