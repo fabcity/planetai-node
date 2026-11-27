@@ -64,6 +64,7 @@ NAV = [
     ]),
     ("Alerts and ρ", [
         ("alerts", "docs/site/alerts.md"),
+        ("feeds", "docs/site/feeds.md"),
         ("channels", "docs/site/channels.md"),
         ("reticulum", "docs/site/reticulum.md", "Reticulum"),
         ("report", "docs/site/report.md"),

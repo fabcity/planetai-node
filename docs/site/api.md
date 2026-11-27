@@ -890,12 +890,12 @@ The card for a chat, or 404 when it is not a subscriber.
 ### POST /subscribers/now
 Access: admin
 
-Answers 501 for now.
+The newest line of each feed the chat picked, from today, or a fixed line. Returns `{text}`.
 
 ### POST /subscribers/week
 Access: admin
 
-Answers 501 for now.
+The latest weekly message in the chat's language, or a fixed line before the first Monday. Returns `{text}`.
 
 ### GET /subscribers/counts
 Access: admin

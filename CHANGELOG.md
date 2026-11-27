@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **27 Nov: anyone can subscribe to a community node's bot for feeds.** `/start` shows a card to pick feeds (the
+  weekly report on Mondays at 07:00, air, heat, waves, fire, rain and floods) and a language, English or Bahasa
+  Indonesia. `/feeds`, `/now`, `/week` and `/stop` work from then on; anything else gets one line, and no model
+  answers a subscriber. The keeper's chats keep everything they had. Lines come from rules with a `feed:` block and
+  from three rules that only feed subscribers: air around, heat ahead and rain ahead. They use outdoor and public
+  readings only, never an indoor sensor or a room. A person gets one message per pass, every 2 minutes. Quiet hours
+  hold everything except a fire upwind, and a line held 12 hours is dropped. The node keeps a chat number, the
+  picks, the language and the date, and `/stop` or a blocked bot deletes them. Backups leave them out. Set up ›
+  Subscribers shows counts. New settings: `PLACE_NAME`, `PUBLIC_URL` and `RAIN_HEAVY_MM` (50). Nothing of this runs
+  on a private node. See docs/site/feeds.md.
+
 - **27 Nov: a node's role is set at install, and a community node keeps its rooms private.** `planetai role
   [private|community] [--yes]` changes the role. It warns, takes a backup, restarts the node and offers the role's
   starting settings (`presets/roles/`). Packs are only ever added. Set up shows the role and does not change it. A
