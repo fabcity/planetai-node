@@ -233,18 +233,28 @@
     es: "Aire muy insalubre en {name}: {value} µg/m³ de PM2.5."
 
 # ---- for a community node's subscribers only (`feed_only`): nothing reaches a household from here.
-# Every outdoor station the node reads counts, its own kits, its children's and the public ones its sources fetch
-# within its radius; a model point never does, a room never does, and a reading marked private never does.
+# Every outdoor station the node reads counts: its own kits and the public ones its sources fetch within its radius
+# (from `stats`), and its children's, which arrive as hourly means (from `readings_1h`, the newest bucket of the
+# last 2 hours). A model point never does, a room never does, and a reading marked private never does.
 - id: air_unhealthy_around
   level: info
   cooldown_minutes: 1440
   feed_only: true
   sql: |
-    WITH o AS (
-      SELECT st.name, st.mean_1h FROM stats st
-      WHERE st.metric = 'pm25' AND NOT st.indoor AND st.kind IN ('sensor', 'child', 'portal') AND st.mean_1h IS NOT NULL
+    WITH kids AS (
+      SELECT s.name, h.mean, row_number() OVER (PARTITION BY h.sensor_id ORDER BY h.bucket DESC) AS newest
+      FROM readings_1h h JOIN sensors s ON s.sensor_id = h.sensor_id
+      WHERE h.metric = 'pm25' AND s.kind = 'child' AND NOT s.indoor AND h.mean IS NOT NULL
+        AND h.bucket > now() - interval '2 hours'
         AND NOT EXISTS (SELECT 1 FROM sensors ps JOIN channel_roles pc ON pc.source = ps.source
-                        WHERE ps.sensor_id = st.sensor_id AND pc.metric = st.metric AND pc.role = 'private'))
+                        WHERE ps.sensor_id = h.sensor_id AND pc.metric = h.metric AND pc.role = 'private')),
+    o AS (
+      SELECT st.name, st.mean_1h FROM stats st
+      WHERE st.metric = 'pm25' AND NOT st.indoor AND st.kind = 'sensor' AND st.mean_1h IS NOT NULL
+        AND NOT EXISTS (SELECT 1 FROM sensors ps JOIN channel_roles pc ON pc.source = ps.source
+                        WHERE ps.sensor_id = st.sensor_id AND pc.metric = st.metric AND pc.role = 'private')
+      UNION ALL
+      SELECT name, mean FROM kids WHERE newest = 1)
     SELECT 'node' AS sensor_id, count(*) AS n,
            count(*) FILTER (WHERE mean_1h > 55.5) AS over,
            round(CAST(max(mean_1h) AS NUMERIC)) AS worst,

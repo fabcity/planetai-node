@@ -114,9 +114,9 @@ def replay(rule, rows, who, at, private=(), **params):
 AT = dt.datetime(2026, 11, 27, 10, 0, tzinfo=WITA)
 
 
-def station(sid, v, indoor=False, kind="sensor", local=False, source="x"):
+def station(sid, v, indoor=False, kind="sensor", local=False, source="x", ago=0):
     return ((sid, source, f"Station {sid}", -8.8, 115.1, indoor, local, kind),
-            [(AT - dt.timedelta(minutes=m), sid, "pm25", float(v)) for m in (5, 20, 40)])
+            [(AT - dt.timedelta(minutes=ago + m), sid, "pm25", float(v)) for m in (5, 20, 40)])
 
 
 def air(*st, private=()):
@@ -130,6 +130,13 @@ assert air(station("a", 90)) == [], "one station alone is not the air around her
 assert air(station("in", 300, indoor=True), station("a", 10), station("b", 10)) == [], "a room never counts"
 assert air(station("p", 300, source="mine"), station("a", 60), station("b", 10), private=["mine"]) == [], \
     "a private reading never counts"
+# children arrive as hourly means (kind='child', outside `stats`): they count, a newest bucket within 2 hours
+kids = air(station("k1", 60, kind="child"), station("k2", 70, kind="child"), station("a", 20))
+assert len(kids) == 1 and kids[0]["n"] == 3 and kids[0]["over"] == 2 and kids[0]["worst_at"] == "Station k2", kids
+assert air(station("k1", 300, kind="child", indoor=True), station("a", 60), station("b", 10)) == [], \
+    "a child's room never counts"
+assert air(station("k1", 300, kind="child", ago=180), station("a", 60), station("b", 10)) == [], \
+    "a child's bucket 3 hours old does not count"
 print("ok  air around")
 
 
