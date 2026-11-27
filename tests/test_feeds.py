@@ -342,12 +342,22 @@ assert idt.split("\n")[-1] == "Laporan lengkap: https://x.ts.net:8443/ui#data/re
 assert "📊 Ungasan, 17–23 Nov." == idt.split("\n")[0]
 assert "full report" not in feeds.weekly_texts(wk, date(2026, 11, 24), "Ungasan", "")["en"]
 # an unhealthy week names its days; a morning peak leaves the rhythm line out; rain falls back to the next series
+# no unhealthy day but one hour at 91: mostly clean, the bracket on the station name dropped
+STUB["air"] = {"day": date(2026, 11, 23), "med": 20.0, "name": "TPA Kutuh (Smart Citizen)", "mean": 91.2, "k": 0}
+mc = feeds.weekly_texts(wk, date(2026, 11, 24), "Ungasan", "")
+assert mc["en"].split("\n")[1] == "Air was mostly clean; Monday was the worst, 91 near TPA Kutuh.", mc
+assert mc["id"].split("\n")[1] == "Udara sebagian besar bersih; paling buruk hari Senin, 91 dekat TPA Kutuh.", mc
+assert feeds._name("A (b) c") == "A (b) c" and feeds._name("Seminyak Beach - Hotel Indigo (IQAir)") == "Seminyak Beach - Hotel Indigo"
+# the heat statement takes the median of the sensors per hour; Indonesian writes decimals with a comma
+assert "percentile_cont(0.5)" in [x[1] for x in SEEN if x[0] == "heat"][0]
+assert feeds.weekly_texts(wk, date(2026, 11, 24), "Ungasan", "")["id"].split("\n")[3] == "Ombak tertinggi hari Sabtu, 2,1 m."
 STUB["air"] = {"day": date(2026, 11, 18), "med": 60.0, "name": "Sempidi", "mean": 88.4, "k": 2}
-STUB["rhythm"] = {"hour": 7}
+STUB["rhythm"] = {"hour": 16}   # 16:00 is not evening: left out
 STUB["rain"] = {"rain": None, "precipitation": {"mm": 12.34, "day": date(2026, 11, 20)}}
 en = feeds.weekly_texts(wk, date(2026, 11, 24), "Ungasan", "")["en"].split("\n")
 assert en[1] == "Air was unhealthy on 2 days; Wednesday was the worst, 88 near Sempidi.", en
-assert "12.3 mm of rain fell, most on Friday." in en and not any("Evenings" in x for x in en), en
+assert "12.3 mm of rain fell, most on Friday." in en
+assert "Hujan 12,3 mm, paling banyak hari Jumat." in feeds.weekly_texts(wk, date(2026, 11, 24), "Ungasan", "")["id"].split("\n") and not any("Evenings" in x for x in en), en
 STUB["rain"] = {"rain": {"mm": 0.0, "day": date(2026, 11, 20)}}
 assert not any("rain fell" in x for x in feeds.weekly_texts(wk, date(2026, 11, 24), "Ungasan", "")["en"].split("\n"))
 # a week with no rows is the head alone, and the job queues nothing for it

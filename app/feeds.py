@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import time
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
@@ -262,6 +263,7 @@ MONTHS = {"en": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", 
           "id": ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]}
 WEEK = {
     "en": {"clean": "Air was clean all week; the worst moment was {v} near {name}, {day}.",
+           "mostly": "Air was mostly clean; {day} was the worst, {v} near {name}.",
            "bad": "Air was unhealthy on {k} days; {day} was the worst, {v} near {name}.",
            "heat": "The hottest afternoon was {day}, {v} °C in the shade.",
            "sea": "Swell peaked {day}, {v} m.",
@@ -269,6 +271,7 @@ WEEK = {
            "rhythm": "Evenings around {v}:00 are when the air is worst here.",
            "link": "The full report: {v}/ui#data/report"},
     "id": {"clean": "Udara bersih sepanjang minggu; paling buruk {v} dekat {name}, hari {day}.",
+           "mostly": "Udara sebagian besar bersih; paling buruk hari {day}, {v} dekat {name}.",
            "bad": "Udara tidak sehat {k} hari; {day} paling buruk, {v} dekat {name}.",
            "heat": "Siang terpanas hari {day}, {v} °C di tempat teduh.",
            "sea": "Ombak tertinggi hari {day}, {v} m.",
@@ -286,8 +289,14 @@ def _span(a: date, lang: str) -> str:
     return f"{a.day}–{b.day} {m[b.month - 1]}" if a.month == b.month else f"{a.day} {m[a.month - 1]}–{b.day} {m[b.month - 1]}"
 
 
-def _fmt(x: float, dp: int) -> str:
-    return f"{x:.{dp}f}"
+def _fmt(x: float, dp: int, lang: str = "en") -> str:
+    out = f"{x:.{dp}f}"
+    return out.replace(".", ",") if lang == "id" else out
+
+
+def _name(n: str) -> str:
+    """A station name without its trailing bracket: "TPA Kutuh (Smart Citizen)" is "TPA Kutuh"."""
+    return re.sub(r"\s*\([^)]*\)\s*$", "", n or "")
 
 
 def _rain(cur, w0: date, w1: date):
@@ -325,16 +334,18 @@ def _week(cur, week_start: date, place_name: str, public_url: str):
         "FROM w JOIN h ON h.bucket::date = w.day ORDER BY h.mean DESC LIMIT 1", w)
     a = cur.fetchone()
     if a:
-        lines.append({"key": "bad" if a["k"] else "clean", "v": _fmt(a["mean"], 0), "day": a["day"],
-                      "name": a["name"], "k": a["k"]})
+        # the verdict is the days' medians; a worst hour over the line with no unhealthy day is "mostly clean"
+        key = "bad" if a["k"] else "mostly" if a["mean"] >= 35.5 else "clean"
+        lines.append({"key": key, "num": (a["mean"], 0), "day": a["day"], "name": _name(a["name"]), "k": a["k"]})
 
-    cur.execute(  # the highest hourly mean between 12:00 and 18:00 local (the session is in NODE_TZ)
-        f"SELECT r.bucket::date AS day, r.mean FROM readings_1h r JOIN sensors s USING (sensor_id) "
+    cur.execute(  # per local hour 12:00-17:59 the median of the sensors' hourly means; the highest of those
+        f"SELECT r.bucket::date AS day, percentile_cont(0.5) WITHIN GROUP (ORDER BY r.mean) AS mean "
+        f"FROM readings_1h r JOIN sensors s USING (sensor_id) "
         f"WHERE r.metric = 'temp' AND {_OUT} AND extract(hour FROM r.bucket) BETWEEN 12 AND 17 "
-        f"AND {packs.public_sql('r')} ORDER BY r.mean DESC LIMIT 1", w)
+        f"AND {packs.public_sql('r')} GROUP BY r.bucket ORDER BY 2 DESC LIMIT 1", w)
     t = cur.fetchone()
     if t:
-        lines.append({"key": "heat", "v": _fmt(t["mean"], 0), "day": t["day"]})
+        lines.append({"key": "heat", "num": (t["mean"], 0), "day": t["day"]})
 
     cur.execute(  # the sea's model point; public
         f"SELECT r.bucket::date AS day, r.mean FROM readings_1h r JOIN sensors s USING (sensor_id) "
@@ -342,17 +353,17 @@ def _week(cur, week_start: date, place_name: str, public_url: str):
         f"AND {packs.public_sql('r')} ORDER BY r.mean DESC LIMIT 1", w)
     sea = cur.fetchone()
     if sea:
-        lines.append({"key": "sea", "v": _fmt(sea["mean"], 1), "day": sea["day"]})
+        lines.append({"key": "sea", "num": (sea["mean"], 1), "day": sea["day"]})
 
     rain = _rain(cur, *w)
     if rain and rain[0] >= 0.1:
-        lines.append({"key": "rain", "v": _fmt(rain[0], 1), "day": rain[1]})
+        lines.append({"key": "rain", "num": (rain[0], 1), "day": rain[1]})
 
     cur.execute(  # the rows the Wall reads: the hour the day's fine dust is usually highest
         "SELECT (numbers->>'high_hour')::int AS hour FROM learnings WHERE kind = 'usual' AND scope = 'place' "
         "AND status = 'holding' AND metric = 'pm25' AND numbers ? 'high_hour' ORDER BY n DESC, key LIMIT 1")
     rh = cur.fetchone()
-    if rh and rh["hour"] is not None and rh["hour"] >= 16:   # the line says "evenings"; a morning peak is left out
+    if rh and rh["hour"] is not None and rh["hour"] >= 17:   # the line says "evenings"; a morning peak is left out
         lines.append({"key": "rhythm", "v": f"{rh['hour']:02d}"})
     n = len(lines)
     if n and public_url:
@@ -363,7 +374,8 @@ def _week(cur, week_start: date, place_name: str, public_url: str):
         out = [f"📊 {place_name}, {_span(w0, lang)}."]
         for ln in lines:
             day = DAYS[lang][ln["day"].weekday()] if ln.get("day") else ""
-            out.append(WEEK[lang][ln["key"]].format(v=ln["v"], day=day, name=ln.get("name"), k=ln.get("k")))
+            v = _fmt(*ln["num"], lang) if "num" in ln else ln["v"]
+            out.append(WEEK[lang][ln["key"]].format(v=v, day=day, name=ln.get("name"), k=ln.get("k")))
         texts[lang] = "\n".join(out)
     return texts, n
 
