@@ -68,7 +68,8 @@ allow = SRC[SRC.index("_SHARE_OFF = ("):SRC.index("_SHARE = {")]
 for p in ("place/geojson", "settings/raw", "backups", "actions", "aggregates", "test-alert", "captures"):
     assert f'"/{p}"' not in allow, f"/{p} is on a SHARE_LEVEL allowlist and must never be"
 assert 'startswith("/mcp")' in mw, "the middleware must pass /mcp through: _mcp_auth has already decided it"
-assert "_drop_indoor(" in mw and "is_house()" in mw, "a community node's middleware must drop indoor sensors for a stranger"
+assert "_drop_indoor(" in mw and "_stranger_on_community(request)" in mw and "is_house()" in code_of("_stranger_on_community"), \
+    "a community node's middleware must drop indoor sensors for a stranger"
 assert "_bearer_ok" in mw, "the middleware must reuse _bearer_ok, which is constant-time"
 assert "headers" not in code_of("_is_local"), \
     "_is_local reads a header: X-Forwarded-For would make the loopback bypass a one-line spoof. Use request.client only."

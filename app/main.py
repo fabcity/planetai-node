@@ -1006,6 +1006,12 @@ def _indoor_ids() -> set[str]:
     return ids
 
 
+def _stranger_on_community(request) -> bool:
+    """The one gate: a community node, and a reader with no token and not on this machine."""
+    return (request is not None and not placewords.is_house()
+            and not getattr(request.state, "share_trusted", False))
+
+
 def _drop_indoor(obj, ids: set[str]):
     """A copy of obj without the sensors in ids, at any depth: a dict in a list whose sensor_id is one of them goes,
     and so does a dict key that is one of them (/stats is keyed by sensor)."""
@@ -1046,16 +1052,27 @@ async def _share_level(request, call_next):
         return JSONResponse(status_code=403, content={"error":
             f"this node is set to SHARE_LEVEL={level}, so {request.url.path} answers only this machine or a request "
             f"carrying a token. {fix}"})
+    from fastapi.responses import JSONResponse, Response
+    if _stranger_on_community(request) and request.url.path.startswith("/ask"):
+        return JSONResponse(status_code=403, content={"error":
+            "a community node's questions are answered to a reader with a token only"})
     resp = await call_next(request)
     if "application/json" not in resp.headers.get("content-type", ""):
         return resp
-    from fastapi.responses import Response
-    body = _unhoused(b"".join([c async for c in resp.body_iterator]), request.url.path)
-    if not placewords.is_house() and (ids := _indoor_ids()):
-        try:
-            body = json.dumps(_drop_indoor(json.loads(body), ids)).encode()
-        except ValueError:
-            pass
+    body = b"".join([c async for c in resp.body_iterator])
+    if _stranger_on_community(request):
+        # Before the label swap: a kit named by its id (Smart Citizen, /ingest) would have its id swapped too
+        ids = _indoor_ids()
+        # never read: fail closed rather than answer with indoor rows in it. /health carries no sensor row and is
+        # what says the node is up, so it still answers.
+        if not _INDOOR["at"] and request.url.path != "/health":
+            return JSONResponse(status_code=503, content={"error": "the node is starting; try again in a moment"})
+        if ids:
+            try:
+                body = json.dumps(_drop_indoor(json.loads(body), ids)).encode()
+            except ValueError:
+                pass
+    body = _unhoused(body, request.url.path)
     headers = {k: v for k, v in resp.headers.items() if k.lower() != "content-length"}
     return Response(body, status_code=resp.status_code, headers=headers)
 
@@ -1602,8 +1619,9 @@ def series(request: Request, metric: str = "pm25", hours: int = Query(24, ge=1, 
               WHERE sensor_id = 'cams-point' AND metric = %s || '_model' AND ts > now() - make_interval(hours => %s) GROUP BY 1)
         SELECT h.bucket, r.indoor, r.outdoor, m.model FROM h LEFT JOIN r USING (bucket) LEFT JOIN m USING (bucket) ORDER BY h.bucket""",
         hours, metric, hours, metric, hours)
+    hide = _stranger_on_community(request)
     return {"metric": metric, "hours": hours, "buckets": [x["bucket"] for x in rows],
-            "indoor": [x["indoor"] for x in rows], "outdoor": [x["outdoor"] for x in rows], "model": [x["model"] for x in rows]}
+            "indoor": [None if hide else x["indoor"] for x in rows], "outdoor": [x["outdoor"] for x in rows], "model": [x["model"] for x in rows]}
 
 
 @app.get("/effect")
@@ -1694,7 +1712,7 @@ def effect(days: int = Query(365, ge=1, le=3650)):
 
 
 @app.get("/shape")
-def shape(metric: str = "pm25"):
+def shape(request: Request, metric: str = "pm25"):
     """The day this place usually has: one hour-of-day mean per hour, over the whole record, indoor against outdoor.
 
     THE HOURS ARE LOCAL, and that is not incidental. `extract(hour FROM bucket)` answers in the session timezone, and
@@ -1728,7 +1746,7 @@ def shape(metric: str = "pm25"):
     # A day's shape wants a week behind it before an hourly mean means anything; a week-on-week comparison wants two;
     # a month wants two months to compare; a year wants a year. Nothing here is a forecast and nothing extrapolates.
     return {"metric": metric, "days": days, "first": d.get("first"), "last": d.get("last"),
-            "hours": [{"hour": r["hour"], "indoor": r["indoor"], "outdoor": r["outdoor"], "n": r["n"]} for r in rows],
+            "hours": [{"hour": r["hour"], "indoor": None if _stranger_on_community(request) else r["indoor"], "outdoor": r["outdoor"], "n": r["n"]} for r in rows],
             "windows": {"day": days >= 7, "week": days >= 14, "month": days >= 60, "year": days >= 365}}
 
 
@@ -1771,7 +1789,10 @@ def export(day: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$")):
     rows = [{"t": r["bucket"], "sensor": name(r), "local": r["local"], "indoor": r["indoor"], "kind": r["kind"],
              "metric": r["metric"], "mean": r["mean"], "min": r["min"], "max": r["max"], "n": r["n"]}   # q() renders timestamps as ISO strings
             for r in hourly]
-    alerts_ = q("SELECT ts, rule_id, level, text FROM alerts WHERE ts >= %s::date AND ts < %s::date + 1 ORDER BY ts", day, day)
+    alerts_ = q("SELECT ts, rule_id, level, text, sensor_id FROM alerts WHERE ts >= %s::date AND ts < %s::date + 1 ORDER BY ts", day, day)
+    if not placewords.is_house():
+        indoor = _indoor_ids()
+        alerts_ = [a for a in alerts_ if a.get("sensor_id") not in indoor]
     with db() as con, con.cursor() as cur:
         cells_ = index.cells(cur); rho_ = index.rho(cur)
     _pos = _published_position()
@@ -1804,7 +1825,7 @@ app.include_router(wall.router)
 
 
 @app.get("/report/latest")
-def report_latest():
+def report_latest(request: Request):
     """The last report this node wrote, sent or held. What the dashboard's Here band shows, and what the MCP tool
     `report_latest` returns. Open, like /alerts: it is the same sentences the household already received."""
     # by ts, not by due_local: a report written on request has no due hour, and ordering by that hid it here and
@@ -1819,7 +1840,8 @@ def report_latest():
     out = {"schema": REPORT_V0,
            "id": r.get("id"), "ts": r.get("ts"), "due_local": r.get("due_local"),
            "window_hours": r.get("window_hours"), "depth": r.get("depth"), "rung": r.get("rung"),
-           "text": r.get("text"), "sent": r.get("sent"), "held_quiet": r.get("held_quiet"),
+           # a community node's report is the keeper's, not public; the weekly report is
+           "text": None if _stranger_on_community(request) else r.get("text"), "sent": r.get("sent"), "held_quiet": r.get("held_quiet"),
            "fallback_reason": r.get("fallback_reason"),
            # in the literal, None when there is a report: a key added by subscript is a key of the
            # document that does not appear in it, which tools/check_wire.py refuses for the same
@@ -1862,6 +1884,8 @@ def report_now(authorization: str = Header("")):
 def history(request: Request, sensor_id: str, metric: str, limit: int = Query(500, ge=1, le=5000), authorization: str = Header("")):
     """Every reading of one metric from one sensor, oldest first. For series that are not hourly: a yearly building count,
     a monthly refresh. `/sparks` is the hourly view; this is the raw one."""
+    if _stranger_on_community(request) and sensor_id in _indoor_ids():
+        return []                                   # what an unknown sensor answers
     return [{"ts": r["ts"], "value": r["value"]} for r in            # q() already renders timestamps as ISO strings
             q("SELECT ts, value FROM readings WHERE sensor_id=%s AND metric=%s"
               + ("" if _shows_private(request, authorization) else " AND " + packs.public_sql("readings"))
@@ -1976,6 +2000,14 @@ def get_export(node: str, name: str):
     p = EXPORTS / Path(node).name / Path(name).name
     if not (p.exists() and p.suffix == ".json"):
         raise HTTPException(404, "no such export")
+    if not placewords.is_house():
+        # a file written while this node was a house still names its indoor sensors; the file travels whoever asked
+        from fastapi.responses import JSONResponse
+        doc = json.loads(p.read_text())
+        if isinstance(doc, dict) and isinstance(doc.get("hourly"), list):
+            doc["hourly"] = [r for r in doc["hourly"] if not (isinstance(r, dict) and (
+                r.get("indoor") or str(r.get("sensor", "")).startswith("indoor-")))]
+        return JSONResponse(doc, headers={"content-disposition": f'attachment; filename="{p.name}"'})
     return FileResponse(p, media_type="application/json", filename=p.name)
 
 
