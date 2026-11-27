@@ -37,6 +37,8 @@ TTL = 20
 # `system`.
 RUNTIME = {
     # basics — what this place is, what it watches, and how its page opens. What matters here is decided by the people who live here.
+    "PLACE_NAME":         ("basics", "What people call this place", False, False,
+                           "The name a subscriber sees on the community bot's card and at the top of the weekly message, for example Ungasan. Empty uses the node's name."),
     "NODE_ISSUES":        ("basics", "What this place watches, in order", False, False,
                            "The issues this node reports, most important first: air, heat, land, coast, water, energy. The first "
                            "one is where the page starts, and the one with something to say takes the top of it. A "

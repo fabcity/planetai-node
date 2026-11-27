@@ -90,6 +90,7 @@ from the code's default, both are given.
 | `NODE_LAT`, `NODE_LON` | `0`; `.env.example` `-8.8277`, `115.15418` | decimal degrees | The node's position. Published as the centre of its resolution-8 cell in `/health`, `/export` and, to a reader without a token, `/earth`, `/forecast`, `/sensors` and `/stats`; three decimals to this machine or a token; unrounded in `/place/geojson` and, to this machine or a token, `/forecast` and `/earth`. `install.sh` refuses to start without them. | bootstrap |
 | `NODE_TZ` | `UTC`; `.env.example` `Asia/Makassar` | IANA name | The database session time zone, so local midnight and local hours in rules, reports, quiet hours and `/shape`. Also the agent container's `TZ`. | bootstrap |
 | `NODE_ISSUES` | blank = every issue; `.env.example` `air,heat,land,coast` | comma list of `air`, `heat`, `land`, `coast`, `water`, `energy` | What this place watches, most important first. The dashboard starts at the first; the one with something to say takes the top. An unknown name is dropped with a line in the log. Your preset guessed this, so change it. | runtime · public |
+| `PLACE_NAME` | blank = `NODE_NAME` | text, for example `Ungasan` | The name a subscriber sees on the community bot's card and at the top of the weekly message. | runtime · public |
 | `NODE_VERSION` | written by `install.sh` and `update.sh` | string | `git describe`, the `VERSION` file, or `dev`. Shown in `/health`, `/presence` and `/export`. | env only |
 
 ## Who may read it

@@ -1121,6 +1121,8 @@ app.add_middleware(_GZipButMCP, minimum_size=1000, compresslevel=5,
 app.include_router(issues.api.router)  # GET /issues and /issues/fixtures/<name>; see app/issues/
 import ask  # noqa: E402 — GET /ask/status, POST /ask, GET /docs/search: the dashboard's ask pane
 app.include_router(ask.router)
+import subscribers  # noqa: E402 — POST /subscribers/*: the community bot's subscriber store, admin only (app/subscribers.py)
+app.include_router(subscribers.router)
 app.include_router(basemap.router)  # GET /ground/*: the map kept on this node's disk (app/basemap.py)
 for _r in packs.routers():           # GET /forecast, /nearby: each official pack's routes.py, 404 while that pack is off
     app.include_router(_r)

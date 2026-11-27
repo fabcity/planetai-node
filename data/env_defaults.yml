@@ -26,6 +26,9 @@ NODE_TZ:
 NODE_ISSUES:
   default: "air,heat,land,coast"
   help: "What this place watches, most important first: air, heat, land, coast. The first issue is where the dashboard starts; whichever has something to say takes the top of it. A name nothing declares is ignored with a line in the log. Blank = every issue there is, in the packs' own order. The presets guess per place; change it. What matters here is decided by the people who live here."
+PLACE_NAME:
+  default: ""
+  help: "What people call this place, for example Ungasan. A community node's bot shows it on its subscribe card and at the top of the weekly message. Blank uses NODE_NAME."
 SC_DEVICES:
   default: ""
   help: "---- your sensor(s) — set at least one. See docs/sensors.md. ---- Smart Citizen (cloud API, no LAN needed). The number in smartcitizen.me/kits/<id>. Comma-separate several."

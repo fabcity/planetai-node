@@ -863,6 +863,45 @@ Access: admin
 
 The MCP server over streamable HTTP at exactly `/mcp`, with `Authorization: Bearer <ADMIN_TOKEN>` on every call. Its tools call the API back on `http://127.0.0.1:8080`, as loopback. They are `status`, `health_check`, `sensors`, `context`, `readings`, `report_latest`, `report_now`, `report_bundle`, `learned`, `history`, `alerts`, `act`, `settings_get`, `settings_set`, `packs`, `cells`, `issues`, `series`, `export_day`, `run_pack_script` and `maintenance`. `act` refuses an empty note or a placeholder such as `done`. The [MCP page](mcp.md) describes each.
 
+## Subscribers
+
+A community node's bot keeps its subscribers here: a chat id, the feeds picked and a language, nothing else. Every route is a `POST` with the chat id in a JSON body `{"chat": "<id>"}`, never in a path or query string, and answers 409 `{"error": ...}` on a private node.
+
+### POST /subscribers/start
+Access: admin
+
+Adds the chat, with the weekly report ticked, or finds it already there. Returns the subscribe card: `{text, keyboard, lang}`, where `keyboard` is rows of `{text, callback_data}` and a ticked feed starts with a check mark.
+
+### POST /subscribers/toggle
+Access: admin
+
+`{"chat", "what"}` where `what` is a feed (`weekly`, `air`, `heat`, `waves`, `fire`, `rain`) or `lang:en` or `lang:id`. Flips the feed or sets the language and returns the card. Anything else leaves the row as it was.
+
+### POST /subscribers/stop
+Access: admin
+
+Deletes the chat's row. Returns `{text}`, the goodbye in the chat's language.
+
+### POST /subscribers/card
+Access: admin
+
+The card for a chat, or 404 when it is not a subscriber.
+
+### POST /subscribers/now
+Access: admin
+
+Answers 501 for now.
+
+### POST /subscribers/week
+Access: admin
+
+Answers 501 for now.
+
+### GET /subscribers/counts
+Access: admin
+
+`{total, feeds: {weekly, air, heat, waves, fire, rain}}`, how many subscribers there are and how many picked each feed. No chat id.
+
 ## The ask pane
 
 The dashboard's pane asks the model in Set up → Model about what the page shows, and keeps nothing it was asked or answered. It changes nothing either: a write comes back as a proposal for the person to press. See [Ask](ask.md).
