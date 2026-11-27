@@ -60,6 +60,13 @@ def scales(home: str) -> list[dict]:
     return out
 
 
+def territory(sc: list[dict]) -> list[dict]:
+    """A community node's territory at the house's grain: the 49 res-8 cells inside its seven res-7 cells, each with its
+    ring, so the Place door draws them without computing H3 (doors-placemap.js territoryCells)."""
+    com = next(s for s in sc if s["k"] == "community")
+    return [{"id": k, "ring": _ring(k)} for c in com["cells"] for k in sorted(h3.cell_to_children(c["id"], 8))]
+
+
 def home_cell() -> str | None:
     """The res-8 cell /health names, None before the node has a place."""
     lat, lon = float(os.getenv("NODE_LAT", 0) or 0), float(os.getenv("NODE_LON", 0) or 0)
@@ -346,6 +353,8 @@ def wall():
     centre = (clon, clat)
     now = datetime.now(timezone.utc)
     sc = scales(home)
+    if not placewords.is_house():       # a community node's Place door draws its territory cell by cell
+        next(s for s in sc if s["k"] == "community")["fine"] = territory(sc)
     city = [p for c in sc[-1]["cells"] for p in c["ring"]]
     frame = (min(p[0] for p in city), min(p[1] for p in city), max(p[0] for p in city), max(p[1] for p in city))
     on = {m["id"] for m in packs.manifests()}

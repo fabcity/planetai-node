@@ -532,6 +532,12 @@ body:not(.classic) .hero .ladder.folded{display:none}
 #facts.inspect{display:flex;flex-wrap:wrap;gap:4px 16px;align-items:baseline;padding:12px 6px 8px;font:400 10.5px/1.5 var(--mono);color:var(--mute)}
 #facts b{font-weight:500;color:var(--ink)}#facts .fi small{color:var(--mute);font:inherit;margin-right:6px}#facts .hint{margin-left:auto}#facts .said{font-family:var(--body)}
 #facts .pb{flex-basis:100%;display:flex;flex-wrap:wrap;gap:4px 16px;align-items:baseline;border-top:1px solid var(--hair);padding-top:6px}
+/* a community node's territory under the screen: the count, then one swatch per value, as the map draws it */
+#pterr{padding:4px 6px 12px;font:400 var(--t-cap)/1.5 var(--mono);color:var(--mute)}#pterr .tl{margin:0 0 6px;font:600 var(--t-small) var(--body);color:var(--ink)}
+#pterr .tleg{display:flex;flex-wrap:wrap;gap:6px 16px}#pterr .tleg span{display:inline-flex;align-items:center;gap:6px}#pterr b{font-weight:500;color:var(--ink)}#pterr .fine{margin:8px 0 0}
+.tc{width:14px;height:12px;display:inline-block;clip-path:polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%);background:var(--hair)}
+.tc.own{background:var(--cells)}.tc.child{background:color-mix(in srgb,var(--ink) 45%,transparent)}.tc.read{background:color-mix(in srgb,var(--cells) 30%,transparent)}
+.tc.station{background:var(--ink);-webkit-mask:radial-gradient(circle,transparent 3px,var(--ink) 3.5px);mask:radial-gradient(circle,transparent 3px,var(--ink) 3.5px)}.tc.mesh{background:repeating-linear-gradient(90deg,var(--ink) 0 3px,transparent 3px 6px)}.tc.unread{background:color-mix(in srgb,var(--mute) 30%,transparent)}
 #pmargin{padding:0 6px 14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));column-gap:24px}
 #pmargin .pmh,#pmargin .fine{grid-column:1/-1}#pmargin .fine{margin:10px 0 0}
 #pmargin .mr{display:grid;grid-template-columns:18px minmax(0,1fr) auto;gap:8px;align-items:center;min-height:32px;width:100%;padding:0;border:0;border-bottom:1px solid var(--hair);background:none;color:var(--ink);text-align:left;font:400 var(--t-small)/1.25 var(--body)}
@@ -898,7 +904,7 @@ body:not(.classic) .hero .ladder.folded{display:none}
     padding:4px 16px 24px;border:0;border-top:1px solid var(--ink);background:var(--ground)}
   .bench[data-sheet="cake"] #cake{display:block}
   .bench[data-sheet="cake"] .psbar{position:fixed;left:0;right:0;bottom:60vh;z-index:51;margin:0;padding:8px 16px;background:var(--ground)}
-  #facts.inspect{order:4}#pmargin{order:5;grid-template-columns:minmax(0,1fr)}#pmargin .mr{min-height:44px}
+  #facts.inspect{order:4}#pterr{order:5}#pmargin{order:5;grid-template-columns:minmax(0,1fr)}#pmargin .mr{min-height:44px}
   .ly,.ly.new,.tl,.spd summary{min-height:44px}#pchange .pair{grid-template-columns:minmax(0,1fr)}
   #mapcredit{position:static;max-width:none;padding:4px 12px 6px;text-align:left}
   /* the screen's chrome (§10): the hour, the rungs and the base down the top left, the column and the zoom down the right,
@@ -1378,6 +1384,7 @@ body:not(.classic) .hero .ladder.folded{display:none}
       <div class="mapc" data-learn="place-map" data-reads="/place/geojson /sensors /issues" data-stage="observe" data-pack="place"><div class="mapw"><div id="mapbar"></div><div id="map"></div><div id="phour" class="phour"></div><svg id="pedges" aria-hidden="true"></svg><p id="mapcredit"></p></div></div>
       <div class="psbar"><button data-s="cake" aria-expanded="false" aria-controls="cake">Layers</button></div>
       <div id="facts" class="inspect" aria-live="polite"></div>
+      <div id="pterr" class="pterr" data-learn="place-territory" data-reads="/wall /sensors /stats" data-stage="observe" data-pack="core" hidden></div>
       <aside id="pmargin" aria-label="Around the house"></aside>
     </div>
     <details id="spd" class="spd"><summary>the list</summary><section id="pspecies" class="pspecies" data-learn="place-species" data-reads="/species /captures" data-stage="observe" data-pack="core"></section></details>

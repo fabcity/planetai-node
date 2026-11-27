@@ -18,6 +18,34 @@
    routes, asked with this screen's token (token-only at every SHARE_LEVEL); the plan is the node's own
    GET /place/geojson. Without the token the map says what it is not drawing, and why. */
 
+/* A COMMUNITY NODE'S TERRITORY (Place, community only). /wall's community size carries `fine`: the 49 res-8 cells inside
+   its seven res-7 cells, each with the ring the node computed. Each cell gets one value; where several things stand in
+   one cell the first of own > child > station > mesh > read > unread wins. own is the node's cell; child a home that
+   sends to it, at the cell its point falls in and never drawn at the point; station a public station; mesh a radio the
+   gateway hears with a position; read one of the node's own sensors heard in the last 24 h (stats15's silent minutes).
+   A child, station or radio outside the seven goes to `outside`, listed under the map. Null without `fine`: a private
+   node's map is unchanged. Pure: tests/test_roles.py. */
+const TERR_RANK = ['own', 'child', 'station', 'mesh', 'read', 'unread'];
+function territoryCells(wall, sensors, stats15) {
+  const com = ((wall && wall.scales) || []).find(s => s.k === 'community');
+  if (!com || !com.fine) return null;
+  const inRing = (x, y, r) => { let o = false; for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+    const [xi, yi] = r[i], [xj, yj] = r[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) o = !o; } return o; };
+  const cellOf = (lon, lat) => (com.fine.find(c => inRing(lon, lat, c.ring)) || {}).id;
+  const cells = new Map(com.fine.map(c => [c.id, c.id === wall.home ? 'own' : 'unread'])), outside = [];
+  const heard = s => Object.values((stats15 || {})[s.sensor_id] || {}).some(v => v && v[1] != null && v[1] <= 1440);
+  for (const s of sensors || []) {
+    if (s.lat == null || s.lon == null) continue;
+    const v = s.kind === 'child' ? 'child' : s.kind !== 'sensor' ? null : String(s.sensor_id).startsWith('msh') ? 'mesh'
+      : !s.local ? 'station' : heard(s) ? 'read' : null;
+    if (!v) continue;
+    const id = cellOf(s.lon, s.lat);
+    if (!id) { if (v !== 'read') outside.push(s); continue; }
+    if (TERR_RANK.indexOf(v) < TERR_RANK.indexOf(cells.get(id))) cells.set(id, v);
+  }
+  return { cells, outside, fine: com.fine };
+}
+
 (function () {
 const PM = { map: null, overlay: null, res: 8, tool: 'select', measure: [], hover: null, pick: null,
   on: {}, alpha: {}, plan: null, land: null };
@@ -342,6 +370,16 @@ function layers() {
     out.push(new Dk.PathLayer({ id: 'radio', data: [RADIO], getPath: d => d.path, ...px, pickable: true,
       getColor: A(p.ink, .7 * a('radio')), getWidth: 1.5, extensions: [dashed], getDashArray: [1, 4], _kind: 'radio' }));
   }
+  /* a community node's territory (territoryCells), under the grid and the seven: one look per value */
+  const T = !SH && L.mine && territoryCells(PM.wall, outside(D.sensors), D.stats15);
+  if (T) {
+    const F = { own: A(p.cells, .55), child: A(p.ink, .4), read: A(p.cells, .2) }, K = v => T.cells.get(v.id);
+    out.push(new Dk.PolygonLayer({ id: 'territory', data: T.fine, getPolygon: d => d.ring, ...px, filled: true, stroked: true,
+      getFillColor: d => (F[K(d)] || [0, 0, 0, 0]).map((x, i) => i < 3 ? x : Math.round(x * a('mine'))),
+      getLineColor: d => K(d) === 'unread' ? A(p.mute, .35 * a('mine')) : K(d) === 'read' || K(d) === 'own' ? A(p.cells, .8 * a('mine')) : A(p.ink, .8 * a('mine')),
+      getLineWidth: d => K(d) === 'station' || K(d) === 'mesh' ? 1.5 : 1, extensions: [dashed], getDashArray: d => K(d) === 'mesh' ? [3, 3] : [0, 0],
+      updateTriggers: { getFillColor: [PM.alpha.mine, T.cells], getLineColor: [PM.alpha.mine, T.cells], getLineWidth: T.cells, getDashArray: T.cells } }));
+  }
   if (L.grid && G) {
     const cells = G.cells.filter(c => c.id !== G.node || fine);
     /* over a photograph the grid is drawn light on a dark edge, as the svg ground draws hairlines over tiles */
@@ -471,7 +509,19 @@ function marks() {
   if (on('species') && PM.caps) speciesMarks().forEach(x => out.push({ pick: { kind: 'image', c: x.c }, name: x.t, ll: [x.c.at[1], x.c.at[0]], sw: 'pt-sp', key: 'c' + x.c.id, dy: -13 }));
   return out;
 }
+/* the territory in words, under the screen: the count, the legend, and what stands outside the seven res-7 cells */
+const TERR_SAY = { own: 'this node', child: 'a home that sends', station: 'a public station', mesh: 'a radio on the mesh', read: 'its own sensor, heard in 24 h', unread: 'not read yet' };
+function terrBlock() {
+  const el = $('#pterr'); if (!el) return;
+  const T = territoryCells(PM.wall, outside(D.sensors), D.stats15);
+  el.hidden = !T; if (!T) return;
+  const v = [...T.cells.values()], n = k => v.filter(x => x === k).length, nm = s => plain(s.name || s.sensor_id);
+  el.innerHTML = `<p class="tl">The territory: ${v.length} cells, ${v.length - n('unread')} read</p><div class="tleg">`
+    + TERR_RANK.map(k => `<span><i class="tc ${k}" aria-hidden="true"></i>${TERR_SAY[k]} <b>${n(k)}</b></span>`).join('') + '</div>'
+    + (T.outside.length ? `<p class="fine">Outside the territory, ${T.outside.length}, not drawn: ${T.outside.map(s => esc(nm(s))).join(', ')}.</p>` : '');
+}
 function margin() {
+  terrBlock();
   const el = $('#pmargin'); if (!el) return;
   const tok = !!DOORS_TOKEN(), map = PM.map, box = map && map.getContainer(), W = box ? box.clientWidth : 0, H = box ? box.clientHeight : 0;
   const all = marks().map(m => { const q = map ? map.project(m.ll) : null; return { ...m, x: q ? q.x : null, y: q ? q.y + (m.dy || 0) : null }; });
@@ -1586,6 +1636,7 @@ async function placeMap() {
   [PM.caps, PM.species] = await Promise.all([ask('captures?limit=500').catch(() => null), ask('species').catch(() => null)]); imageRows();
   PM.hydro = await ask('hydro').catch(() => null); hydroRows();
   await loadCells();
+  if (typeof notHouse === 'function' && notHouse((D.health || {}).kind)) PM.wall = await ask('wall').catch(() => null);   /* the territory: territoryCells */
   PM.energy = await ask('energy').catch(() => null); energyRows();
   const nodePlan = await ask('place/geojson').then(g => (g.features || []).length ? g : null).catch(() => null);
   PM.land = { type: 'FeatureCollection', features: [] }; PM.plan = nodePlan;
@@ -1593,7 +1644,7 @@ async function placeMap() {
   const el = $('#map'); el.innerHTML = '';
   panel();   /* the list first: the map takes its height, so it must be at its height before the map is centred */
   let map;
-  try { map = PM.map = new maplibregl.Map({ container: el, style: style(), center: D.point, zoom: 13.6, minZoom: 5, maxZoom: 18.5,
+  try { map = PM.map = new maplibregl.Map({ container: el, style: style(), center: D.point, zoom: PM.wall ? 12.4 : 13.6, minZoom: 5, maxZoom: 18.5,
     dragRotate: false, pitchWithRotate: false, touchPitch: false, maxPitch: 0, attributionControl: false, fadeDuration: 0, canvasContextAttributes: { preserveDrawingBuffer: true },
     /* the one guard that keeps the promise: nothing but this page's own origin is ever asked for a tile */
     transformRequest: url => (url.startsWith(location.origin + '/ground/') ? { url, headers: DOORS_AUTH() }
@@ -1683,3 +1734,4 @@ window.groundBase = async theme => {
 window.groundRequest = url => (url.startsWith(location.origin + '/ground/') ? { url, headers: DOORS_AUTH() }
   : url.startsWith(location.origin) || url.startsWith('blob:') ? { url } : { url: 'data:,' });
 })();
+if (typeof module !== 'undefined') module.exports = { territoryCells };

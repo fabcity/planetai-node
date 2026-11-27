@@ -1632,6 +1632,30 @@
    "title": "Species confirmed here",
    "url": "https://planetai.fab.city/docs/place/#images-and-species"
   },
+  "place-territory": {
+   "anchor": "the-territory",
+   "more": "The ground a community node covers, cell by cell: its own, the homes that send to it, the stations and the mesh, and the cells read in the last day. What stands outside is named, not drawn.",
+   "page": "place.md",
+   "page_title": "The Place door",
+   "questions": {
+    "en": [
+     "Which cells of our territory have no reading?",
+     "Which homes send to this node?"
+    ],
+    "es": [
+     "¿Qué celdas de nuestro territorio no tienen lectura?",
+     "¿Qué casas envían a este nodo?"
+    ],
+    "id": [
+     "Sel mana di wilayah kami yang belum ada bacaan?",
+     "Rumah mana yang mengirim ke node ini?"
+    ]
+   },
+   "quote": "On a community node the map opens on the ground it covers, its seven resolution-7 cells, drawn as the 49\nresolution-8 cells inside them. Its own cell is filled in blue. A home that sends to it fills the cell it stands in,\nnever its point.",
+   "section": "The territory",
+   "title": "The territory",
+   "url": "https://planetai.fab.city/docs/place/#the-territory"
+  },
   "place-tools": {
    "anchor": "the-tools",
    "more": "The tools that run on this node today, and the ones still to come, marked not yet. Rings and distance draws the 2, 5 and 15 km rings from the node's own point. Without a token they stay quiet.",
@@ -2343,6 +2367,7 @@
   "place-image",
   "place-layers",
   "place-map",
+  "place-territory",
   "place-tools",
   "place-orbit",
   "place-species",

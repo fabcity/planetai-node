@@ -539,3 +539,56 @@ assert "<h3>It serves · now</h3>" in _dn and "7 days" not in _dn.split("functio
 assert "g.key === 'mesh' ? ' from the mesh'" in _dn, "the mesh row's 24 h figure is readings, not packets"
 assert 'id="netview"' in _dh and 'id="ledger-node"' in _dh and "role=\"img\" aria-label=\"${esc(" in _dn, "both sections, and the drawing says its counts"
 print("ok  roles: a community Node door draws what comes in and what it serves; reduced motion moves nothing")
+
+# The Place door on a community node: the territory as res-8 cells (wall.territory, territoryCells in doors-placemap.js)
+import h3  # noqa: E402
+import wall as _wall  # noqa: E402
+_home = h3.latlng_to_cell(-8.81, 115.17, 8)
+_sc = _wall.scales(_home)
+_fine = _wall.territory(_sc)
+assert len(_fine) == 49 and len({c["id"] for c in _fine}) == 49, ("seven res-7 cells hold 7 x 7 res-8 cells", len(_fine))
+_seven = {c["id"] for c in _sc[1]["cells"]}
+assert all(h3.get_resolution(c["id"]) == 8 and h3.cell_to_parent(c["id"], 7) in _seven for c in _fine)
+assert all(c["ring"][0] == c["ring"][-1] for c in _fine), "each ring is closed, as scales() closes its own"
+_W = {"home": _home, "scales": [{**s, **({"fine": _fine} if s["k"] == "community" else {})} for s in _sc]}
+_kids = sorted(c["id"] for c in _fine if c["id"] != _home)
+_ll = lambda c: dict(zip(("lat", "lon"), h3.cell_to_latlng(c)))  # noqa: E731
+_kc, _sc1, _mc, _rc, _qc, _both = _kids[0], _kids[8], _kids[16], _kids[24], _kids[32], _kids[40]
+_fx = h3.cell_to_boundary(_kc)[0]                    # a token reader's child point, near its cell's corner
+_pt = {"lat": (_fx[0] * 3 + _ll(_kc)["lat"]) / 4, "lon": (_fx[1] * 3 + _ll(_kc)["lon"]) / 4}
+_far = {"lat": -8.60, "lon": 115.30}
+assert h3.cell_to_parent(h3.latlng_to_cell(_far["lat"], _far["lon"], 8), 7) not in _seven
+_S = [
+    {"sensor_id": "home-1/outdoor-1", "kind": "child", **_pt},
+    {"sensor_id": "home-2/outdoor-1", "kind": "child", **_ll(_both)},
+    {"sensor_id": "bad-1", "kind": "sensor", "local": False, **_ll(_sc1)},
+    {"sensor_id": "bad-2", "kind": "sensor", "local": False, **_ll(_both)},
+    {"sensor_id": "bad-3", "kind": "sensor", "local": False, **_ll(_home)},
+    {"sensor_id": "bad-far", "kind": "sensor", "local": False, **_far},
+    {"sensor_id": "home-3/outdoor-1", "kind": "child", **_far},
+    {"sensor_id": "msh-a1", "kind": "sensor", "local": True, **_ll(_mc)},
+    {"sensor_id": "sc-1", "kind": "sensor", "local": True, **_ll(_rc)},
+    {"sensor_id": "sc-2", "kind": "sensor", "local": True, **_ll(_qc)},
+    {"sensor_id": "om-point", "kind": "model", **_ll(_kids[44])},
+    {"sensor_id": "sc-x", "kind": "sensor", "local": True, "lat": None, "lon": None},
+]
+_st = {"sc-1": {"pm25": [10, 30]}, "sc-2": {"pm25": [10, 2000]}, "bad-1": {"pm25": [10, 5000]}}
+_prog = r"""
+global.window = {}; const P = require('./app/static/doors-placemap.js');
+const [W, S, st] = JSON.parse(require('fs').readFileSync(0, 'utf8'));
+const t = P.territoryCells(W, S, st), none = P.territoryCells({ home: W.home, scales: W.scales.map(s => ({ ...s, fine: undefined })) }, S, st);
+console.log(JSON.stringify({ cells: Object.fromEntries(t.cells), outside: t.outside.map(s => s.sensor_id), none }));
+"""
+_r = subprocess.run(["node", "-e", _prog], input=json.dumps([_W, _S, _st]), capture_output=True, text=True, cwd=ROOT, timeout=60)
+assert _r.returncode == 0, _r.stderr
+_o = json.loads(_r.stdout); _c = _o["cells"]
+assert len(_c) == 49 and set(_c) == {c["id"] for c in _fine}, len(_c)
+assert _c[_home] == "own", "the node's cell is its own, whatever stands in it"
+assert _c[_kc] == "child", "a home that sends fills its cell, from a point anywhere in it"
+assert _c[_both] == "child", "a child outranks a station in one cell"
+assert (_c[_sc1], _c[_mc], _c[_rc], _c[_qc], _c[_kids[44]]) == ("station", "mesh", "read", "unread", "unread"), \
+    (_c[_sc1], _c[_mc], _c[_rc], _c[_qc])
+assert sorted(_o["outside"]) == ["bad-far", "home-3/outdoor-1"], _o["outside"]
+assert sum(v == "unread" for v in _c.values()) == 49 - 6, "everything else is unread"
+assert _o["none"] is None, "a private node's /wall has no territory: the map is unchanged"
+print("ok  roles: a community Place door draws its territory, 49 cells, read and unread")

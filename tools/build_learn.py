@@ -336,6 +336,10 @@ MARKS = [
      "In the middle is the map", "the dark one.",
      "Every distance on this door is measured by the node from its own point. Without the token the "
      "house's marks say withheld, because together they would place the house."),
+    ("place-territory", "The territory", "place.md", "The territory",
+     "On a community node the map opens", "never its point.",
+     "The ground a community node covers, cell by cell: its own, the homes that send to it, the stations and "
+     "the mesh, and the cells read in the last day. What stands outside is named, not drawn."),
     ("place-tools", "The tools", "place.md", "The tools",
      "**Tools**, beside the ask line", "15 km rings from the node's point.",
      "The tools that run on this node today, and the ones still to come, marked not yet. Rings and "
@@ -655,6 +659,9 @@ QUESTIONS = {
     'place-layers': {"en": ['Which layer shows the public air stations?', 'Where does the street map come from?'],
         "id": ['Lapisan mana yang menampilkan stasiun udara publik?', 'Dari mana peta jalan ini berasal?'],
         "es": ['¿Qué capa muestra las estaciones públicas de aire?', '¿De dónde sale el mapa de calles?']},
+    'place-territory': {"en": ['Which cells of our territory have no reading?', 'Which homes send to this node?'],
+        "id": ['Sel mana di wilayah kami yang belum ada bacaan?', 'Rumah mana yang mengirim ke node ini?'],
+        "es": ['¿Qué celdas de nuestro territorio no tienen lectura?', '¿Qué casas envían a este nodo?']},
     'place-map': {"en": ['How far is the nearest station from our house?', 'Why are some marks hidden?'],
         "id": ['Seberapa jauh stasiun terdekat dari rumah kami?', 'Mengapa beberapa tanda disembunyikan?'],
         "es": ['¿A qué distancia de casa está la estación más cercana?', '¿Por qué algunas marcas están ocultas?']},
