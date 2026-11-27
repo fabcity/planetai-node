@@ -5,14 +5,21 @@ only: it is not logged, not put in a URL, and `backup.sh` leaves the table's dat
 """
 from __future__ import annotations
 
+import logging
 import os
-from datetime import datetime
+import time
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from psycopg.types.json import Jsonb
 
 import packs
 import placewords
 import settings
+
+log = logging.getLogger("planetai")
+STALE = timedelta(hours=12)   # a held line older than this is dropped, never sent late
+_sleep = time.sleep
 
 FEEDS = [
     {"name": "weekly", "en": "Weekly report, Mondays", "id": "Laporan mingguan, tiap Senin", "urgent": set()},
@@ -142,3 +149,101 @@ def enqueue(cur, rule: dict, row: dict, sensor_id: str, now: datetime) -> bool:
     cur.execute("INSERT INTO feed_queue (feed, rule_id, texts, urgent) VALUES (%s, %s, %s, %s)",
                 (feed["name"], rule["id"], Jsonb(texts), urgent))
     return True
+
+
+def _local_midnight(now: datetime | None = None) -> datetime:
+    try:
+        now = now or datetime.now(ZoneInfo(os.getenv("NODE_TZ", "").strip() or "UTC"))
+    except Exception:  # noqa: BLE001
+        now = now or datetime.now(timezone.utc)
+    return now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def _text(texts: dict, lang: str) -> str:
+    return texts.get(lang) or texts["en"]
+
+
+def _default_post(url: str, body: dict):
+    import channels  # noqa: PLC0415 — channels pulls in the sources; the pass needs it only to send
+    return channels._tg_post(url, body, waits=())
+
+
+def send_pass(cur, now: datetime, quiet: bool, post=None) -> dict:
+    """Turn the open queue lines into one message per subscriber. Lines older than 12 h are dropped; in quiet hours
+    only urgent lines go and the rest stay open. 403 deletes the subscriber, 429 waits its retry_after and tries that
+    chat once more. No chat id, token or URL is logged."""
+    n = {"sent": 0, "held": 0, "dropped": 0, "gone": 0}
+    cur.execute("SELECT id, ts, feed, texts, urgent FROM feed_queue WHERE done = false ORDER BY ts, id")
+    open_ = cur.fetchall()
+    fresh = [q for q in open_ if now - q["ts"] <= STALE]
+    n["dropped"] = len(open_) - len(fresh)
+    go = [q for q in fresh if q["urgent"] or not quiet]
+    n["held"] = len(fresh) - len(go)
+    tok = ""
+    if post is None:
+        import channels  # noqa: PLC0415
+        tok = channels.TG()[0]
+        if not tok and go:
+            go = []                       # no bot token: nothing can be sent, so nothing is marked done
+            n["held"] = len(fresh)
+        post = _default_post
+    if go:
+        cur.execute("SELECT chat_id, feeds, lang, since FROM subscribers")
+        for s in cur.fetchall():
+            mine = [q for q in go if q["feed"] in s["feeds"] and q["ts"] > s["since"]]
+            if not mine:
+                continue
+            body = {"chat_id": s["chat_id"], "text": "\n\n".join(_text(q["texts"], s["lang"]) for q in mine)}
+            url = f"https://api.telegram.org/bot{tok}/sendMessage"
+            for attempt in (0, 1):
+                try:
+                    r = post(url, body)
+                    if r.status_code == 429 and attempt == 0:
+                        try:
+                            wait = float(r.json()["parameters"]["retry_after"])
+                        except Exception:  # noqa: BLE001
+                            wait = 1.0
+                        _sleep(min(wait, 60.0))
+                        continue
+                    if r.status_code == 403:
+                        stop(cur, s["chat_id"])
+                        n["gone"] += 1
+                    elif r.status_code == 200:
+                        cur.execute("UPDATE subscribers SET last_sent = %s WHERE chat_id = %s", (now, s["chat_id"]))
+                        n["sent"] += 1
+                except Exception as e:  # noqa: BLE001 — httpx puts the URL, and so the token, in its messages
+                    log.warning("feeds: a send failed: %s", type(e).__name__)
+                break
+            _sleep(0.04)
+    done = [q["id"] for q in open_ if q not in fresh or q in go]
+    if done:
+        cur.execute("UPDATE feed_queue SET done = true WHERE id = ANY(%s)", (done,))
+    log.info("feeds: sent %d, held %d, dropped %d, gone %d", n["sent"], n["held"], n["dropped"], n["gone"])
+    return n
+
+
+def now_text(cur, chat: str, now: datetime | None = None) -> str:
+    """What this subscriber's feeds said today (the newest line of each, never the weekly), or the fixed line."""
+    row = _row(cur, chat)
+    lang = row["lang"] if row else "en"
+    midnight = _local_midnight(now)
+    out, quiet = [], []
+    for f in FEEDS:
+        if f["name"] == "weekly" or (row and f["name"] not in row["feeds"]):
+            continue
+        cur.execute("SELECT texts FROM feed_queue WHERE feed = %s AND ts >= %s ORDER BY ts DESC LIMIT 1",
+                    (f["name"], midnight))
+        got = cur.fetchone()
+        (out if got else quiet).append(_text(got["texts"], lang) if got else f[lang])
+    if quiet:
+        out.append(WORDS[lang]["nothing_now"].format(feeds=", ".join(quiet)))
+    return "\n\n".join(out)
+
+
+def week_text(cur, chat: str) -> str:
+    """The newest weekly message in this subscriber's language, or the fixed line before the first Monday."""
+    row = _row(cur, chat)
+    lang = row["lang"] if row else "en"
+    cur.execute("SELECT texts FROM feed_queue WHERE feed = %s ORDER BY ts DESC LIMIT 1", ("weekly",))
+    got = cur.fetchone()
+    return _text(got["texts"], lang) if got else WORDS[lang]["no_week"]

@@ -71,11 +71,19 @@ def card(b: Body, authorization: str = Header(default="")):
 
 
 @router.post("/now")
-@router.post("/week")
-def not_yet(b: Body, authorization: str = Header(default="")):
+def now(b: Body, authorization: str = Header(default="")):
     if (no := _gate(authorization)):
         return no
-    raise HTTPException(501, "not built yet")
+    with _db() as con, con.cursor() as cur:
+        return {"text": feeds.now_text(cur, b.chat)}
+
+
+@router.post("/week")
+def week(b: Body, authorization: str = Header(default="")):
+    if (no := _gate(authorization)):
+        return no
+    with _db() as con, con.cursor() as cur:
+        return {"text": feeds.week_text(cur, b.chat)}
 
 
 @router.get("/counts")

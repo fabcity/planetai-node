@@ -878,6 +878,12 @@ def poll_sources() -> None:
 _STARTED = False
 
 
+def feeds_send() -> None:
+    """One send pass over the feed queue (app/feeds.py), on its own cursor."""
+    with db() as con, con.cursor() as cur:
+        feeds.send_pass(cur, _local_now(), _quiet("info"))
+
+
 def start() -> None:
     """Everything the node does on its own: the first-start bootstrap, the channel roles, the MQTT threads and the
     timer loops. Run once, from the app's lifespan, never at import. Importing
@@ -913,6 +919,8 @@ def start() -> None:
     loop(_pack_job("eyes", "check_griis"), 3600, delay=90)     # the eyes pack's weekly reads, while it is on
     loop(_pack_job("eyes", "check_others"), 3600, delay=120)
     loop(check_learn, 3600, delay=180)
+    if not placewords.is_house():   # checked once, at start: a community node sends its subscribers' feeds
+        loop(feeds_send, 120, delay=90)
     if RETICULUM_URL:
         loop(presence.poll_reticulum, 300, delay=20)
 

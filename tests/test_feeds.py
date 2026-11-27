@@ -41,7 +41,7 @@ class _Cur:
                 ROWS[p[0]] = {"feeds": ["weekly"], "lang": "en"}
         elif sql.startswith("SELECT feeds, lang"):
             self._out = [dict(ROWS[p[0]])] if p[0] in ROWS else []
-        elif sql.startswith("UPDATE subscribers"):
+        elif sql.startswith("UPDATE subscribers SET feeds"):
             ROWS[p[2]].update(feeds=list(p[0]), lang=p[1])
         elif sql.startswith("DELETE FROM subscribers"):
             self.rowcount = 1 if ROWS.pop(p[0], None) else 0
@@ -51,7 +51,22 @@ class _Cur:
         elif sql.startswith("SELECT 1 FROM feed_queue"):
             self._out = [{"one": 1}] if any(q["feed"] == p[0] and q["ts"] >= p[1] for q in QUEUE) else []
         elif sql.startswith("INSERT INTO feed_queue"):
-            QUEUE.append({"feed": p[0], "rule_id": p[1], "texts": p[2].obj, "urgent": p[3], "ts": CLOCK[0]})
+            QUEUE.append({"id": len(QUEUE) + 1, "feed": p[0], "rule_id": p[1], "texts": p[2].obj, "urgent": p[3],
+                          "ts": CLOCK[0], "done": False})
+        elif sql.startswith("SELECT id, ts, feed"):
+            self._out = [dict(q) for q in sorted(QUEUE, key=lambda q: q["ts"]) if not q["done"]]
+        elif sql.startswith("SELECT chat_id, feeds"):
+            self._out = [dict(chat_id=k, **v) for k, v in ROWS.items()]
+        elif sql.startswith("UPDATE feed_queue SET done"):
+            for q in QUEUE:
+                if q["id"] in p[0]:
+                    q["done"] = True
+        elif sql.startswith("UPDATE subscribers SET last_sent"):
+            ROWS[p[1]]["last_sent"] = p[0]
+        elif sql.startswith("SELECT texts FROM feed_queue"):
+            hit = [q for q in sorted(QUEUE, key=lambda q: q["ts"], reverse=True)
+                   if q["feed"] == p[0] and (len(p) < 2 or q["ts"] >= p[1])]
+            self._out = [{"texts": hit[0]["texts"]}] if hit else []
         elif sql.startswith("SELECT feeds FROM subscribers"):
             self._out = [{"feeds": list(r["feeds"])} for r in ROWS.values()]
         else:
@@ -83,6 +98,96 @@ assert feeds.NAMES == ["weekly", "air", "heat", "waves", "fire", "rain"]
 for k in feeds.WORDS["en"]:
     assert k in feeds.WORDS["id"]
 print("ok  feeds store")
+
+# the send pass, with 7-digit chat ids so a digit in a count cannot match one in the log
+saved_rows, saved_queue = dict(ROWS), list(QUEUE)
+T0 = datetime(2026, 11, 27, 9, 0, tzinfo=timezone.utc)
+SENT, STATUS, LOGS, SLEPT = [], {}, [], []
+
+
+class _Resp:
+    def __init__(self, code): self.status_code = code
+    def json(self): return {"parameters": {"retry_after": 7}}
+
+
+def fake(url, body):
+    chat = body["chat_id"]
+    SENT.append((chat, body["text"]))
+    return _Resp(STATUS[chat].pop(0) if STATUS.get(chat) else 200)
+
+
+class _Cap(logging.Handler):
+    def emit(self, rec): LOGS.append(rec.getMessage())
+
+
+logging.disable(logging.NOTSET)
+logging.getLogger("planetai").addHandler(_Cap())
+logging.getLogger("planetai").setLevel(logging.INFO)
+feeds._sleep = SLEPT.append
+
+
+IDS = iter(range(1000, 9999))
+
+
+def line(feed, en, urgent=False, ts=T0):
+    return {"id": next(IDS), "feed": feed, "rule_id": None, "texts": {"en": en, "id": en + " (id)"},
+            "urgent": urgent, "ts": ts, "done": False}
+
+
+def sub(picked, lang="en"):
+    return {"feeds": list(picked), "lang": lang, "since": T0 - timedelta(days=1)}
+
+
+QUEUE.clear(); ROWS.clear()
+QUEUE[:] = [line("air", "Air line"), line("waves", "Waves line"), line("fire", "Fire upwind", urgent=True)]
+ROWS.update({"5550001": sub(["air", "waves"]), "5550002": sub(["fire"], lang="id"), "5550003": sub(["weekly"])})
+r = feeds.send_pass(cur, T0, quiet=False, post=fake)
+assert SENT == [("5550001", "Air line\n\nWaves line"), ("5550002", "Fire upwind (id)")] and r["sent"] == 2, (SENT, r, LOGS)
+assert all(q["done"] for q in QUEUE) and ROWS["5550001"]["last_sent"] == T0 and "last_sent" not in ROWS["5550003"]
+SENT.clear(); assert feeds.send_pass(cur, T0, quiet=False, post=fake)["sent"] == 0 and SENT == []   # nothing open
+# quiet hours hold all but urgent, which goes; the rest goes once after
+NIGHT, MORNING = T0.replace(hour=23), T0 + timedelta(hours=7)
+QUEUE[:] = [line("air", "Rain", ts=NIGHT), line("fire", "Fire", urgent=True, ts=NIGHT)]
+ROWS.update({"5550001": sub(["air", "fire"])}); SENT.clear()
+r = feeds.send_pass(cur, NIGHT, quiet=True, post=fake)
+assert r["held"] == 1
+assert ("5550001", "Fire") in SENT and not QUEUE[0]["done"] and QUEUE[1]["done"]
+SENT.clear()
+feeds.send_pass(cur, MORNING, quiet=False, post=fake); feeds.send_pass(cur, MORNING, quiet=False, post=fake)
+assert [t for _, t in SENT] == ["Rain"], SENT
+# a line held past 12 h is dropped, not sent late
+QUEUE[:] = [line("air", "Old", ts=T0 - timedelta(hours=13))]; SENT.clear()
+r = feeds.send_pass(cur, T0, quiet=False, post=fake)
+assert r["dropped"] == 1 and SENT == [] and QUEUE[0]["done"]
+# a line queued before someone subscribed does not reach them
+QUEUE[:] = [line("air", "Before", ts=T0 - timedelta(days=2))]; SENT.clear()
+assert feeds.send_pass(cur, T0 - timedelta(hours=1), quiet=False, post=fake)["sent"] == 0 and SENT == []
+# 403 deletes the row, and a new start makes a fresh one with the weekly ticked
+QUEUE[:] = [line("air", "Air")]; STATUS["5550001"] = [403]; SENT.clear()
+r = feeds.send_pass(cur, T0, quiet=False, post=fake)
+assert r["gone"] == 1 and "5550001" not in ROWS
+feeds.start(cur, "5550001"); assert ROWS["5550001"]["feeds"] == ["weekly"]
+# 429 waits its retry_after and tries that chat once more
+ROWS["5550001"] = sub(["air"]); QUEUE[:] = [line("air", "Air")]; STATUS["5550001"] = [429, 200]; SENT.clear(); SLEPT.clear()
+r = feeds.send_pass(cur, T0, quiet=False, post=fake)
+assert SENT == [("5550001", "Air")] * 2 and r["sent"] == 1 and 7.0 in SLEPT, (SENT, SLEPT)
+# a failure other than 403/429 is logged by type and the pass moves on
+def boom(url, body): raise ConnectionError("https://api.telegram.org/botSECRET/sendMessage 5550001")
+QUEUE[:] = [line("air", "Air")]; LOGS.clear()
+r = feeds.send_pass(cur, T0, quiet=False, post=boom)
+assert r["sent"] == 0 and any("ConnectionError" in m for m in LOGS)
+assert not any(x in m for m in LOGS for x in ("5550001", "5550002", "5550003", "SECRET")), LOGS
+assert any(m == "feeds: sent 0, held 0, dropped 0, gone 0" for m in LOGS)
+# /now and /week
+QUEUE[:] = [line("air", "Air today", ts=T0), line("weekly", "Week en", ts=T0 - timedelta(days=3))]
+ROWS["5550001"] = sub(["weekly", "air", "heat"], lang="id")
+assert feeds.now_text(cur, "5550001", T0) == "Air today (id)\n\n" + feeds.WORDS["id"]["nothing_now"].format(feeds="Panas")
+assert feeds.week_text(cur, "5550001") == "Week en (id)"
+QUEUE.clear(); ROWS["5550001"]["lang"] = "en"
+assert feeds.week_text(cur, "5550001") == feeds.WORDS["en"]["no_week"]
+ROWS.clear(); ROWS.update(saved_rows); QUEUE[:] = saved_queue
+logging.disable(logging.CRITICAL)
+print("ok  send pass")
 
 backup = (ROOT / "backup.sh").read_text()
 assert "--exclude-table-data=subscribers" in backup and "--exclude-table-data=feed_queue" in backup
@@ -156,8 +261,8 @@ assert anon.get("/subscribers/counts", headers=H).json()["total"] == 2
 assert anon.post("/subscribers/toggle", json={"chat": "888", "what": "air"}, headers=H).json()["keyboard"][0][1]["text"] == "✓ Air"
 assert anon.post("/subscribers/card", json={"chat": "888"}, headers=H).status_code == 200
 assert anon.post("/subscribers/card", json={"chat": "000"}, headers=H).status_code == 404
-assert anon.post("/subscribers/now", json={"chat": "888"}, headers=H).status_code == 501
-assert anon.post("/subscribers/week", json={"chat": "888"}, headers=H).status_code == 501
+r = anon.post("/subscribers/now", json={"chat": "888"}, headers=H); assert r.status_code == 200, (r.status_code, r.text); assert r.json()["text"].startswith("\U0001F525 Smoke")
+assert anon.post("/subscribers/week", json={"chat": "888"}, headers=H).json() == {"text": feeds.WORDS["en"]["no_week"]}
 assert anon.post("/subscribers/stop", json={"chat": "888"}, headers=H).json() == {"text": feeds.WORDS["en"]["stopped"]}
 assert "888" not in ROWS
 os.environ["NODE_KIND"] = "home"
