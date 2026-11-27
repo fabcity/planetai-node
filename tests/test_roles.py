@@ -625,6 +625,32 @@ assert "j.detail" in _put, "the route's error text is shown"
 assert "g === 'sources' && unlocked ? " in _ds and "sRoomRows()" in _ds.split("g === 'sources' && unlocked")[1][:600], "Sources draws the rows, only for a reader with the token"
 print("ok  roles: Sources names a room for each local sensor")
 
+# Set up > Subscribers: a community node's menu and its counts, no chat id
+_prog = r"""
+const fs = require('fs'), vm = require('vm');
+const core = fs.readFileSync('./app/static/doors-core.js', 'utf8'), wall = fs.readFileSync('./app/static/doors-wallmap.js', 'utf8'), st = fs.readFileSync('./app/static/doors-setup.js', 'utf8');
+const pick = (src, n) => src.match(new RegExp('^const ' + n + ' = .*$', 'm'))[0];
+const ctx = { $: () => null }; vm.createContext(ctx);
+vm.runInContext(pick(core, 'esc') + '\n' + pick(wall, 'notHouse') + '\nconst SETUP = { desc: { runtime: [{ group: \'alerts\' }, { group: \'model\' }] } };\nconst sGroups = d => d.runtime.map(r => r.group);\n' + st.slice(st.indexOf('const SETUP_CATS'), st.indexOf('const SETUP_TIPS'))
+  + st.slice(st.indexOf('const sCats'), st.indexOf('/* what a section holds')) + '\n' + pick(st, 'SUBS_FEEDS') + st.match(/function sSubsHtml[\s\S]*?\n}\n/)[0] + st.match(/function sSubs\([\s\S]*?\n}\n/)[0]
+  + '\nthis.cats = sCats; this.html = sSubsHtml; this.gate = sSubs;', ctx);
+const menu = k => { ctx.D = { health: { kind: k } }; return ctx.cats().find(([t]) => t === 'How it speaks')[1]; };
+const tips = st.slice(st.indexOf('const SETUP_TIPS'), st.indexOf('const SETUP_BOOLS'));
+console.log(JSON.stringify({ home: menu('home'), community: menu('community'), html: ctx.html({ total: 3, feeds: { weekly: 3, waves: 1 } }), gate: ctx.gate(false), tip: /subscribers: 'How many people get each of this node/.test(tips) }));
+"""
+_r = subprocess.run(["node", "-e", _prog], capture_output=True, text=True, cwd=ROOT)
+assert _r.returncode == 0, _r.stderr
+_o = json.loads(_r.stdout)
+assert _o["home"] == ["alerts", "model"], _o["home"]
+assert _o["community"] == ["alerts", "model", "subscribers"], _o["community"]
+assert "<b>3</b>" in _o["html"] and "Waves</div><div class=\"sc\"><b>1</b>" in _o["html"] and "Total</div><div class=\"sc\"><b>3</b>" in _o["html"], _o["html"]
+import re as _re  # noqa: E402
+assert not _re.search(r"\d{7,}", _o["html"]), "no chat id can be in it"
+assert "unlock this screen" in _o["gate"] and 'data-go="screen"' in _o["gate"] and "<b>" not in _o["gate"], _o["gate"]
+assert _o["tip"]
+assert "doorsFetch('/subscribers/counts', { headers: DOORS_AUTH() })" in _ds and "sSubsLoad()" in _ds
+print("ok  roles: Set up lists Subscribers on a community node only, counts only")
+
 # The Node door on a community node: the network drawing and the ledger (netGroups, netLayout, netPackets)
 _prog = r"""
 global.VIEWS = {}; Object.assign(global, require('./app/static/doors-load.js'));
