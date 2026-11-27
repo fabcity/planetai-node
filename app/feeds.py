@@ -8,7 +8,7 @@ from __future__ import annotations
 import logging
 import os
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from psycopg.types.json import Jsonb
@@ -254,3 +254,137 @@ def week_text(cur, chat: str) -> str:
     cur.execute("SELECT texts FROM feed_queue WHERE feed = %s ORDER BY ts DESC LIMIT 1", ("weekly",))
     got = cur.fetchone()
     return _text(got["texts"], lang) if got else WORDS[lang]["no_week"]
+
+
+DAYS = {"en": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+        "id": ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"]}
+MONTHS = {"en": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+          "id": ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]}
+WEEK = {
+    "en": {"clean": "Air was clean all week; the worst moment was {v} near {name}, {day}.",
+           "bad": "Air was unhealthy on {k} days; {day} was the worst, {v} near {name}.",
+           "heat": "The hottest afternoon was {day}, {v} °C in the shade.",
+           "sea": "Swell peaked {day}, {v} m.",
+           "rain": "{v} mm of rain fell, most on {day}.",
+           "rhythm": "Evenings around {v}:00 are when the air is worst here.",
+           "link": "The full report: {v}/ui#data/report"},
+    "id": {"clean": "Udara bersih sepanjang minggu; paling buruk {v} dekat {name}, hari {day}.",
+           "bad": "Udara tidak sehat {k} hari; {day} paling buruk, {v} dekat {name}.",
+           "heat": "Siang terpanas hari {day}, {v} °C di tempat teduh.",
+           "sea": "Ombak tertinggi hari {day}, {v} m.",
+           "rain": "Hujan {v} mm, paling banyak hari {day}.",
+           "rhythm": "Sekitar pukul {v}.00 udara di sini paling buruk.",
+           "link": "Laporan lengkap: {v}/ui#data/report"},
+}
+# Outdoor and public rows only: `sensors.indoor` and the channel-role predicate every road out of the house uses.
+_OUT = "NOT s.indoor AND s.kind IN ('sensor','child') AND r.mean IS NOT NULL AND r.bucket >= %s AND r.bucket < %s"
+
+
+def _span(a: date, lang: str) -> str:
+    b = a + timedelta(days=6)
+    m = MONTHS[lang]
+    return f"{a.day}–{b.day} {m[b.month - 1]}" if a.month == b.month else f"{a.day} {m[a.month - 1]}–{b.day} {m[b.month - 1]}"
+
+
+def _fmt(x: float, dp: int) -> str:
+    return f"{x:.{dp}f}"
+
+
+def _rain(cur, w0: date, w1: date):
+    """(mm, busiest day) for the week, or None. The first series that exists wins: an outdoor sensor's `rain` or
+    `precipitation`; else the model point's `precipitation` (Open-Meteo, the only rain this node has when no sensor
+    reports it); else the stored past hours of `fc_rain`, the mean of the forecast points. Hourly means, summed."""
+    for metrics, extra in ((["rain", "precipitation"], "NOT s.indoor AND s.kind = 'sensor'"),
+                           (["precipitation"], "true"), (["fc_rain"], "true")):
+        cur.execute(
+            "WITH h AS (SELECT r.bucket, avg(r.mean) AS mm FROM readings_1h r JOIN sensors s USING (sensor_id) "
+            f"WHERE r.metric = ANY(%s) AND {extra} AND r.mean IS NOT NULL AND r.bucket >= %s AND r.bucket < %s "
+            f"AND r.bucket < now() AND {packs.public_sql('r')} GROUP BY r.bucket), "
+            "d AS (SELECT bucket::date AS day, sum(mm) AS mm FROM h GROUP BY 1) "
+            "SELECT (SELECT sum(mm) FROM d) AS mm, (SELECT day FROM d ORDER BY mm DESC LIMIT 1) AS day",
+            (metrics, w0, w1))
+        row = cur.fetchone()
+        if row and row["mm"] is not None:
+            return float(row["mm"]), row["day"]
+    return None
+
+
+def _week(cur, week_start: date, place_name: str, public_url: str):
+    """(texts, n): the weekly message for the Monday-to-Sunday before `week_start`, and how many lines besides the head
+    and the link it has. Each line is left out when its rows are missing."""
+    w0 = week_start - timedelta(days=7)
+    w = (w0, week_start)
+    lines: list[dict] = []          # {"key", "v", "day", "name", "k"} per line, in order
+
+    cur.execute(  # the worst day by its median, and that day's highest hour
+        f"WITH h AS (SELECT r.bucket, r.mean, s.name FROM readings_1h r JOIN sensors s USING (sensor_id) "
+        f"WHERE r.metric = 'pm25' AND {_OUT} AND {packs.public_sql('r')}), "
+        "d AS (SELECT bucket::date AS day, percentile_cont(0.5) WITHIN GROUP (ORDER BY mean) AS med FROM h GROUP BY 1), "
+        "w AS (SELECT day, med FROM d ORDER BY med DESC LIMIT 1) "
+        "SELECT w.day, w.med, h.name, h.mean, (SELECT count(*) FROM d WHERE med >= 35.5) AS k "
+        "FROM w JOIN h ON h.bucket::date = w.day ORDER BY h.mean DESC LIMIT 1", w)
+    a = cur.fetchone()
+    if a:
+        lines.append({"key": "bad" if a["k"] else "clean", "v": _fmt(a["mean"], 0), "day": a["day"],
+                      "name": a["name"], "k": a["k"]})
+
+    cur.execute(  # the highest hourly mean between 12:00 and 18:00 local (the session is in NODE_TZ)
+        f"SELECT r.bucket::date AS day, r.mean FROM readings_1h r JOIN sensors s USING (sensor_id) "
+        f"WHERE r.metric = 'temp' AND {_OUT} AND extract(hour FROM r.bucket) BETWEEN 12 AND 17 "
+        f"AND {packs.public_sql('r')} ORDER BY r.mean DESC LIMIT 1", w)
+    t = cur.fetchone()
+    if t:
+        lines.append({"key": "heat", "v": _fmt(t["mean"], 0), "day": t["day"]})
+
+    cur.execute(  # the sea's model point; public
+        f"SELECT r.bucket::date AS day, r.mean FROM readings_1h r JOIN sensors s USING (sensor_id) "
+        f"WHERE r.metric = 'swell_height_m' AND r.mean IS NOT NULL AND r.bucket >= %s AND r.bucket < %s "
+        f"AND {packs.public_sql('r')} ORDER BY r.mean DESC LIMIT 1", w)
+    sea = cur.fetchone()
+    if sea:
+        lines.append({"key": "sea", "v": _fmt(sea["mean"], 1), "day": sea["day"]})
+
+    rain = _rain(cur, *w)
+    if rain and rain[0] >= 0.1:
+        lines.append({"key": "rain", "v": _fmt(rain[0], 1), "day": rain[1]})
+
+    cur.execute(  # the rows the Wall reads: the hour the day's fine dust is usually highest
+        "SELECT (numbers->>'high_hour')::int AS hour FROM learnings WHERE kind = 'usual' AND scope = 'place' "
+        "AND status = 'holding' AND metric = 'pm25' AND numbers ? 'high_hour' ORDER BY n DESC, key LIMIT 1")
+    rh = cur.fetchone()
+    if rh and rh["hour"] is not None and rh["hour"] >= 16:   # the line says "evenings"; a morning peak is left out
+        lines.append({"key": "rhythm", "v": f"{rh['hour']:02d}"})
+    n = len(lines)
+    if n and public_url:
+        lines.append({"key": "link", "v": public_url})
+
+    texts = {}
+    for lang in LANGS:
+        out = [f"📊 {place_name}, {_span(w0, lang)}."]
+        for ln in lines:
+            day = DAYS[lang][ln["day"].weekday()] if ln.get("day") else ""
+            out.append(WEEK[lang][ln["key"]].format(v=ln["v"], day=day, name=ln.get("name"), k=ln.get("k")))
+        texts[lang] = "\n".join(out)
+    return texts, n
+
+
+def weekly_texts(cur, week_start: date, place: str, public_url: str) -> dict:  # noqa: A002
+    """{"en","id"}: the head line, then the lines this week's rows support, then the link when `public_url` is set."""
+    return _week(cur, week_start, place, public_url)[0]
+
+
+def weekly_job(cur, now: datetime) -> bool:
+    """On Monday from 07:00 local, queue the weekly message once: True when it did. Already queued this week is read
+    from feed_queue (a 'weekly' row at or after this Monday 07:00). A week with no data lines queues nothing."""
+    start = now.replace(hour=7, minute=0, second=0, microsecond=0)
+    if now.weekday() != 0 or now < start:
+        return False
+    cur.execute("SELECT 1 FROM feed_queue WHERE feed = %s AND ts >= %s LIMIT 1", ("weekly", start))
+    if cur.fetchone():
+        return False
+    texts, n = _week(cur, now.date(), place(), settings.get("PUBLIC_URL", ""))
+    if not n:
+        return False
+    cur.execute("INSERT INTO feed_queue (feed, rule_id, texts, urgent) VALUES (%s, %s, %s, %s)",
+                ("weekly", None, Jsonb(texts), False))
+    return True

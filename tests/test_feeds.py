@@ -294,3 +294,92 @@ r = anon.post("/subscribers/start", json={"chat": "777"}, headers=H)
 assert r.status_code == 409 and r.json() == {"error": main.placewords.NO_ACT}, r.text
 assert anon.get("/subscribers/counts", headers=H).status_code == 409
 print("ok  feeds routes")
+
+# ---- the weekly message. The SQL is stubbed per line (the fixture week is the one in the spec); a check that the
+# air and heat statements read outdoor, public rows only stands in for the indoor sensor at 300 µg/m³.
+from datetime import date  # noqa: E402
+
+STUB = {}
+SEEN = []
+
+
+class _Wk(_Cur):
+    def execute(self, sql, p=()):
+        s = " ".join(sql.split())
+        key = ("air" if "metric = 'pm25' AND" in s and "WITH h" in s else "heat" if "metric = 'temp'" in s else
+               "sea" if "swell_height_m" in s else "rain" if "metric = ANY" in s else
+               "rhythm" if "FROM learnings" in s else None)
+        if key is None:
+            return super().execute(sql, p)
+        SEEN.append((key, s, p))
+        got = STUB.get(key)
+        got = got.get(tuple(p[0])[0], None) if key == "rain" and isinstance(got, dict) else got
+        self._out = [got] if got else []
+
+
+wk = _Wk()
+FIX = {"air": {"day": date(2026, 11, 19), "med": 20.0, "name": "Jimbaran", "mean": 30.6, "k": 0},
+       "heat": {"day": date(2026, 11, 21), "mean": 31.7},
+       "sea": {"day": date(2026, 11, 21), "mean": 2.14},
+       "rhythm": {"hour": 18}}
+STUB.update(FIX)
+URL = "https://x.ts.net:8443"
+en = feeds.weekly_texts(wk, date(2026, 11, 24), "Ungasan", URL)["en"]
+assert en == ("📊 Ungasan, 17–23 Nov.\n"
+              "Air was clean all week; the worst moment was 31 near Jimbaran, Thursday.\n"
+              "The hottest afternoon was Saturday, 32 °C in the shade.\n"
+              "Swell peaked Saturday, 2.1 m.\n"
+              "Evenings around 18:00 are when the air is worst here.\n"
+              "The full report: https://x.ts.net:8443/ui#data/report"), en
+for key, s, p in SEEN:           # outdoor and public only, in the week Monday 17 to Sunday 23
+    if key in ("air", "heat"):
+        assert "NOT s.indoor" in s and "NOT EXISTS" in s and "'private'" in s, s
+    assert key == "rhythm" or p[-2:] == (date(2026, 11, 17), date(2026, 11, 24)), (key, p)
+idt = feeds.weekly_texts(wk, date(2026, 11, 24), "Ungasan", URL)["id"]
+assert idt.split("\n")[1] == "Udara bersih sepanjang minggu; paling buruk 31 dekat Jimbaran, hari Kamis.", idt
+assert idt.split("\n")[2] == "Siang terpanas hari Sabtu, 32 °C di tempat teduh."
+assert idt.split("\n")[-1] == "Laporan lengkap: https://x.ts.net:8443/ui#data/report"
+assert "📊 Ungasan, 17–23 Nov." == idt.split("\n")[0]
+assert "full report" not in feeds.weekly_texts(wk, date(2026, 11, 24), "Ungasan", "")["en"]
+# an unhealthy week names its days; a morning peak leaves the rhythm line out; rain falls back to the next series
+STUB["air"] = {"day": date(2026, 11, 18), "med": 60.0, "name": "Sempidi", "mean": 88.4, "k": 2}
+STUB["rhythm"] = {"hour": 7}
+STUB["rain"] = {"rain": None, "precipitation": {"mm": 12.34, "day": date(2026, 11, 20)}}
+en = feeds.weekly_texts(wk, date(2026, 11, 24), "Ungasan", "")["en"].split("\n")
+assert en[1] == "Air was unhealthy on 2 days; Wednesday was the worst, 88 near Sempidi.", en
+assert "12.3 mm of rain fell, most on Friday." in en and not any("Evenings" in x for x in en), en
+STUB["rain"] = {"rain": {"mm": 0.0, "day": date(2026, 11, 20)}}
+assert not any("rain fell" in x for x in feeds.weekly_texts(wk, date(2026, 11, 24), "Ungasan", "")["en"].split("\n"))
+# a week with no rows is the head alone, and the job queues nothing for it
+STUB.clear()
+assert feeds.weekly_texts(wk, date(2026, 11, 24), "Ungasan", URL)["en"] == "📊 Ungasan, 17–23 Nov."
+assert feeds.weekly_texts(wk, date(2026, 11, 30), "Ungasan", "")["id"] == "📊 Ungasan, 23–29 Nov."
+assert feeds.weekly_texts(wk, date(2026, 12, 7), "Ungasan", "")["en"] == "📊 Ungasan, 30 Nov–6 Dec."
+
+# weekly_job: Mondays from 07:00 local, once a week
+QUEUE.clear()
+settings._cache["rows"]["PUBLIC_URL"] = URL
+from zoneinfo import ZoneInfo  # noqa: E402
+TZ = ZoneInfo("Asia/Makassar")
+mon = lambda h, m, d=23: datetime(2026, 11, d, h, m, tzinfo=TZ)  # noqa: E731
+assert feeds.weekly_job(wk, mon(7, 0)) is False and not QUEUE      # no data: nothing queued, head-only never goes
+STUB.update(FIX)
+assert feeds.weekly_job(wk, mon(6, 59)) is False and not QUEUE
+CLOCK[0] = mon(7, 0)
+assert feeds.weekly_job(wk, mon(7, 0)) is True and len(QUEUE) == 1
+q = QUEUE[0]
+assert (q["feed"], q["rule_id"], q["urgent"]) == ("weekly", None, False)
+assert q["texts"]["en"].startswith("📊 Ungasan, 16–22 Nov.\n") and q["texts"]["en"].endswith("/ui#data/report")
+CLOCK[0] = mon(7, 10)
+assert feeds.weekly_job(wk, mon(7, 10)) is False and len(QUEUE) == 1
+CLOCK[0] = datetime(2026, 11, 30, 7, 0, tzinfo=TZ)
+assert feeds.weekly_job(wk, datetime(2026, 11, 30, 7, 0, tzinfo=TZ)) is True and len(QUEUE) == 2
+assert feeds.weekly_job(wk, datetime(2026, 12, 1, 9, 0, tzinfo=TZ)) is False   # Tuesday: the week is not caught up late
+# PUBLIC_URL must be https:// and not end with /; the refusal comes before any database is touched
+for bad in ("http://x.ts.net", "https://x.ts.net/", "x.ts.net"):
+    try:
+        settings.set("PUBLIC_URL", bad)
+        raise AssertionError(bad)
+    except ValueError:
+        pass
+print("ok  feeds weekly")

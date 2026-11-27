@@ -98,6 +98,7 @@ from the code's default, both are given.
 | Setting | Default | Values | Meaning | Kind |
 |---|---|---|---|---|
 | `SHARE_LEVEL` | `off` | `off`, `open` | What a request with no token may read. `off`: the dashboard shell, `/health` with the position rounded, the daily export, the layout, `/nodes`, and `/offers` while the `things` pack is on. `open`: the whole read API to anything on your network, so a wall screen or a phone works without a token, with rooms and sensors named Room A and Sensor 1; writes still need a token. A request with a token reads everything at either level. See [Sharing and security](sharing.md). | runtime · public · outward |
+| `PUBLIC_URL` | blank = no link | `https://…`, no `/` at the end | The address people outside your network use to open this node's report and Wall, for example its Tailscale Funnel link. The community bot's weekly message ends with it. | runtime |
 | `ADMIN_TOKEN` | blank; `install.sh` makes one | hex string | Opens `PUT /settings`, `/settings/raw`, `/settings/phone`, `POST /readings`, `/report/now`, `/test-alert` and all of `/mcp`, and works wherever `BACKUP_TOKEN` or `ACT_TOKEN` would. `planetai ui` creates and prints it. | env only · secret |
 | `BACKUP_TOKEN` | blank; `update.sh` makes one | string | Read-only: lets a NAS fetch `/backups`, `/backups/<name>` and `/report/bundle`, and nothing secret. | runtime · secret |
 | `POSTGRES_PASSWORD` | `change-me`; `install.sh` replaces it | string | The database password. | env only · secret |

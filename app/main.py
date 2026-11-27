@@ -884,6 +884,12 @@ def feeds_send() -> None:
         feeds.send_pass(cur, _local_now(), _quiet("info"))
 
 
+def feeds_weekly() -> None:
+    """The weekly message, queued Mondays from 07:00 local (app/feeds.py), on its own cursor."""
+    with db() as con, con.cursor() as cur:
+        feeds.weekly_job(cur, _local_now())
+
+
 def start() -> None:
     """Everything the node does on its own: the first-start bootstrap, the channel roles, the MQTT threads and the
     timer loops. Run once, from the app's lifespan, never at import. Importing
@@ -921,6 +927,7 @@ def start() -> None:
     loop(check_learn, 3600, delay=180)
     if not placewords.is_house():   # checked once, at start: a community node sends its subscribers' feeds
         loop(feeds_send, 120, delay=90)
+        loop(feeds_weekly, 600, delay=200)
     if RETICULUM_URL:
         loop(presence.poll_reticulum, 300, delay=20)
 

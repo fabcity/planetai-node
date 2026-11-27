@@ -141,6 +141,8 @@ RUNTIME = {
     "ACT_TOKEN":          ("keys", "Token for closing a loop", True, False,
                            "Lets someone in the house record that they acted on an alert (POST /actions) without holding the admin token: it cannot read a secret or change a setting. `planetai ui` prints it."),
     # sharing — sharing and network: who may read this node, and everything it sends or announces beyond this machine.
+    "PUBLIC_URL":         ("sharing", "This node's public address", False, False,
+                           "The address people outside your network use to open this node's report and Wall, for example its Tailscale Funnel link. The community bot's weekly message ends with it. Empty leaves the link out."),
     "SHARE_LEVEL":        ("sharing", "What a reader without a token may see", False, False,
                            "off (default) = the dashboard shell, /health with the position rounded, the daily export and the layout, and nothing else. "
                            "open = the whole read API to anyone on your network, so a wall screen or a phone works with no token; writes still need one. "
@@ -350,6 +352,8 @@ def set(key: str, value: str) -> None:  # noqa: A001
         raise KeyError(f"{key} is not a runtime setting, and no installed pack declares it")
     if value and key in CHOICES and value not in CHOICES[key]:
         raise ValueError(f"{value!r} is not a value {key} accepts. {RUNTIME[key][4]}")
+    if key == "PUBLIC_URL" and value and (not value.startswith("https://") or value.endswith("/")):
+        raise ValueError(f"{value!r} is not an address {key} accepts. {RUNTIME[key][4]} Write it as https://… with no / at the end.")
     import psycopg
     from psycopg.rows import dict_row
     with psycopg.connect(DB, row_factory=dict_row, autocommit=True) as con, con.cursor() as cur:

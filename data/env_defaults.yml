@@ -125,6 +125,9 @@ HOME_HAS:
 PARENT_API_URL:
   default: ""
   help: "---- network (v0.2, leave empty on node #1) ---- http://<district-node>:8080  → hourly aggregates go up"
+PUBLIC_URL:
+  default: ""
+  help: "The address people outside your network use to open this node's report and Wall, for example its Tailscale Funnel link: https://…, no / at the end. The community bot's weekly message ends with it. Blank leaves the link out."
 PARENT_INDOOR:
   default: "off"
   help: "on = the hourly means of the rooms and the alerts they raise go to the parent too. off = outdoor sensors only."
