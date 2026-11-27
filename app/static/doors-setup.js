@@ -213,7 +213,7 @@ function sTodo() {
    sensor's name whatever its platform calls it (init.sql 0.61), so alerts, the report and every page say "Kids", not
    "Sensor 3". Each row saves on its own: a room is not a setting, and has no .env behind it. */
 function sRoomRows() {
-  const S = (D.sensors || []).filter(s => s.local);
+  const S = (D.sensors || []).filter(s => s.local && s.kind === 'sensor');
   return `<div class="rows">${S.map(s => `<form class="srow" data-room="${esc(s.sensor_id)}"><div class="sl"><label for="room-${esc(s.sensor_id)}">${esc(s.source_name || s.name || s.sensor_id)}</label>`
       + `<div class="sm"><code>${esc(s.sensor_id)}</code>${s.indoor ? ' · inside' : ' · outside'}</div></div>`
       + `<div class="sc"><input id="room-${esc(s.sensor_id)}" maxlength="40" aria-label="Room for ${esc(s.source_name || s.name || s.sensor_id)}" value="${esc(s.room || '')}" placeholder="${esc(s.source_name || s.name || '')}"><button class="sbtn">Save</button></div>`
