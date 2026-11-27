@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Header, HTTPException
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 import feeds
 import placewords
@@ -14,7 +14,7 @@ from auth import _admin
 
 
 class Body(BaseModel):
-    chat: str = ""
+    chat: str = Field(min_length=1, max_length=64)
     what: str = ""
 
 

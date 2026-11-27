@@ -279,6 +279,8 @@ anon = TestClient(main.app)
 H = {"Authorization": "Bearer admin-tok"}
 assert anon.post("/subscribers/start", json={"chat": "777"}).status_code == 403
 assert anon.get("/subscribers/counts").status_code == 403
+assert anon.post("/subscribers/start", json={}, headers=H).status_code == 422, "a chat id is required"
+assert anon.post("/subscribers/start", json={"chat": ""}, headers=H).status_code == 422
 r = anon.post("/subscribers/start", json={"chat": "888"}, headers=H)
 assert r.status_code == 200 and r.json()["keyboard"][0][0]["callback_data"] == "fd:weekly", r.text
 assert anon.get("/subscribers/counts", headers=H).json()["total"] == 2

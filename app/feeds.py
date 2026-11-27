@@ -75,7 +75,7 @@ def card(cur, chat: str) -> dict | None:
     langs = [{"text": ("✓ " if lang == code else "") + label, "callback_data": "fl:" + code}
              for code, label in (("en", "English"), ("id", "Bahasa Indonesia"))]
     return {"text": f"{w['title'].format(place=place())}\n{w['pick']}\n\n{w['keeps']}",
-            "keyboard": [btn[:4], btn[4:], langs], "lang": lang}
+            "keyboard": [btn[:4], btn[4:], langs], "lang": lang, "other": w["other"]}
 
 
 def start(cur, chat: str) -> dict:

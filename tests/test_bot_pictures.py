@@ -81,7 +81,8 @@ log.addHandler(Logs())
 log.propagate = False
 
 ns = {"re": re, "telegram": telegram, "T": lambda en, **o: en, "CHATS": lambda: {"109"}, "TG_TOKEN": lambda: TOKEN,
-      "node_url": lambda p: "http://app:8080" + p, "log": log, "httpx": FakeHttpx, "time": time}
+      "node_url": lambda p: "http://app:8080" + p, "log": log, "httpx": FakeHttpx, "time": time,
+      "no_act": lambda: False}
 WANT = {"TG_FILE_MAX", "PICTURE_KINDS", "picture_of", "kind_and_note", "tg_download", "keep_picture", "_name_of",
         "TelegramError"}
 for node in ast.parse(SRC).body:
