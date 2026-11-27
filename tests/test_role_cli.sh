@@ -62,10 +62,10 @@ esac
 cat "$SETTINGS"
 STUB
 chmod +x "$t/stub/curl"
-settings() { python3 - "$1" > "$t/settings.json" <<'PY'
+settings() { python3 - "$@" > "$t/settings.json" <<'PY'
 import json, sys
 keys = ["SHARE_LEVEL", "REPORT_EVERY", "ALERT_ENGINE", "ALERT_LEVEL", "PACKS_ENABLED"]
-rows = [dict(key=k, group="g", secret=False, restart=False, value=sys.argv[1] if k == "PACKS_ENABLED" else "", source="default", help="") for k in keys]
+rows = [dict(key=k, group="g", secret=False, restart=False, value=sys.argv[1] if k == "PACKS_ENABLED" else "", source=("db" if k in sys.argv[2:] else "default"), help="") for k in keys]
 print(json.dumps(dict(runtime=rows, bootstrap=[])))
 PY
 }
@@ -83,7 +83,13 @@ grep -qF '"PACKS_ENABLED":"smartcitizen,air-quality,nearby,forecast,coast,fire,h
 printf 'NODE_NAME=t\nNODE_KIND=community\nADMIN_TOKEN=x\n' > "$D/.env"; settings ""; rm -f "$t/puts"
 runp --yes private >/dev/null
 grep -q PACKS_ENABLED "$t/puts" && bad "an empty PACKS_ENABLED was narrowed" || ok "an empty PACKS_ENABLED is left alone"
-grep -qF '"ALERT_ENGINE":"events"' "$t/puts" && ok "private.env sets its keys too" || bad "private puts: $(cat "$t/puts" 2>/dev/null)"
+grep -qF '"ALERT_ENGINE":"events"' "$t/puts" && grep -qF '"SHARE_LEVEL":"off"' "$t/puts" && ok "private.env sets its keys too, SHARE_LEVEL off among them" || bad "private puts: $(cat "$t/puts" 2>/dev/null)"
+# setup writes a role default only for a key nobody has set (source default); a db value is left alone
+head -n "$(($(grep -n '^case "${1:-help}" in' "$REPO/bin/planetai" | cut -d: -f1)-1))" "$REPO/bin/planetai" > "$t/lib.sh"
+printf 'NODE_NAME=t\nNODE_KIND=community\nADMIN_TOKEN=x\n' > "$D/.env"; settings "smartcitizen" SHARE_LEVEL; rm -f "$t/puts"
+PATH="$t/stub:/usr/bin:/bin:/usr/local/bin" PLANETAI_HOME="$D" PUTS="$t/puts" SETTINGS="$t/settings.json" bash -c 'source "$1"; apply_role_defaults community defaults' _ "$t/lib.sh" </dev/null >/dev/null 2>&1
+grep -qF '"ALERT_LEVEL":"act"' "$t/puts" && ! grep -q SHARE_LEVEL "$t/puts" \
+  && ok "setup sends no PUT for a key whose source is db, and still sets the untouched ones" || bad "setup puts: $(cat "$t/puts" 2>/dev/null)"
 out="$(run banana)"; rc=$?
 [[ $rc -eq 2 ]] && grep -q 'private or community' <<<"$out" && ok "an unknown role exits 2 and names the two" || bad "rc=$rc out=$out"
 [[ $fails -eq 0 ]]
