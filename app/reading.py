@@ -21,7 +21,7 @@ import re
 import threading
 from datetime import date, datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 
 import cells
 
@@ -577,7 +577,17 @@ def facts(cur, held=None, today: date | None = None) -> dict:
 # Reading it takes the admin or the act token; asking a model for the fuller text takes the admin token.
 NO_MODEL = "No model on this house's network can write this. The reading above is the node's own."
 WRITING_MAX = timedelta(minutes=10)     # a `writing` row older than this failed: a restart must not leave the button stuck
-router = APIRouter(dependencies=[Depends(cells._household)])
+def _reader(request: Request, authorization: str = Header("")) -> None:
+    """Who may read the reading: the household, and on a community node set to share (SHARE_LEVEL=open) anyone, since
+    the Place report it opens is what such a node hands out (auth._COMMUNITY_READS). Asking a model stays the keeper's."""
+    import placewords  # noqa: PLC0415
+    from auth import SHARE_LEVEL  # noqa: PLC0415
+    if not placewords.is_house() and SHARE_LEVEL() == "open":
+        return
+    cells._household(request, authorization)
+
+
+router = APIRouter()
 _lock = threading.Lock()
 
 
@@ -640,7 +650,7 @@ def _stale(row) -> bool:
     return row["state"] == "writing" and datetime.now(timezone.utc) - row["ts"] > WRITING_MAX
 
 
-@router.get("/place/reading")
+@router.get("/place/reading", dependencies=[Depends(_reader)])
 def place_reading(authorization: str = Header("")):
     """The node's own reading of its place, the fuller text if a model wrote one that held, and whether this caller
     may ask for one."""
@@ -658,7 +668,7 @@ def place_reading(authorization: str = Header("")):
             "can_write": _bearer_ok(authorization, os.getenv("ADMIN_TOKEN", "").strip()) and pick(_rungs()) is not None}
 
 
-@router.post("/place/reading", status_code=202)
+@router.post("/place/reading", status_code=202, dependencies=[Depends(cells._household)])
 def write_reading(authorization: str = Header("")):
     """Ask a model on the house's network for the fuller text. 202 at once; GET says when it is written or refused."""
     from psycopg.types.json import Jsonb  # noqa: PLC0415

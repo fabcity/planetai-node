@@ -228,9 +228,9 @@ tokens only to your own devices; the NAS pull, the phones, Home Assistant and MC
 
 ### A public link for the report and the Wall
 
-A community node can let anyone open its weekly report and its Wall through Tailscale Funnel, which gives the node an
+A community node can let anyone open its Place report, its weekly report and its Wall through Tailscale Funnel, which gives the node an
 `https://` address on the internet and passes on only the paths you name. Any other path gets `404 page not found`
-from Tailscale and never reaches the node. Both pages need `SHARE_LEVEL=open`, and at `open` that list of paths is
+from Tailscale and never reaches the node. The three pages need `SHARE_LEVEL=open`, and at `open` that list of paths is
 all that keeps `/readings`, `/history`, `/exports`, `/ask` and `/settings` at home, so name these paths and no others.
 
 Do this on a community node only. On a home node `/issues` and `/issues/days` carry the household's rhythm ([the
@@ -243,20 +243,22 @@ notes above](#share-level)), and a public link hands it to anyone.
    Put your `APP_PORT` in place of `8080`:
 
    ```bash
-   for p in /ui /static /health /nodes /weekly /wall /issues /sensors /stats /observations /cells /reach /rho /index/place /geo/cell /earth /ground/meta /ground/imagery /ground/vector; do sudo tailscale funnel --bg --yes --https=8443 --set-path=$p http://127.0.0.1:8080$p; done
+   for p in /ui /static /health /nodes /weekly /wall /issues /sensors /stats /observations /cells /reach /rho /index/place /geo/cell /earth /ground/meta /ground/imagery /ground/vector /ground/glyphs /ground/wind /place/reading /forecast /nearby /energy; do sudo tailscale funnel --bg --yes --https=8443 --set-path=$p http://127.0.0.1:8080$p; done
    ```
 
-   Funnel passes a path and everything under it, so `/issues` also opens `/issues/fixtures`, which neither page
+   Funnel passes a path and everything under it, so `/issues` also opens `/issues/fixtures`, which no page
    reads. Shut it by mounting it on an empty folder:
 
    ```bash
    sudo tailscale funnel --bg --yes --https=8443 --set-path=/issues/fixtures /var/empty
    ```
 
-   `tailscale funnel status` now lists 20 paths under `https://<name>.<your-tailnet>.ts.net:8443`. Tailscale treats a
+   `tailscale funnel status` now lists 26 paths under `https://<name>.<your-tailnet>.ts.net:8443`. Tailscale treats a
    path with and without a trailing slash as one mount, so `/issues/` would replace `/issues` and break the Wall.
-3. **Share the two pages.** The report is `https://<name>.<your-tailnet>.ts.net:8443/ui#data/report`, and the Wall
-   is the same address ending in `/ui#wall`. `/ui` is the page `/` serves. `/` stays shut, because opening it would
+3. **Share the three pages.** The Place report is `https://<name>.<your-tailnet>.ts.net:8443/ui#place/report`, with
+   the picture of the place, its reading, the forecast and a button to save it as a PDF. The weekly report ends in
+   `/ui#data/report` and the Wall in `/ui#wall`. Put the address up to the port in `PUBLIC_URL` and the community
+   bot's weekly message ends with the Place report. `/ui` is the page `/` serves. `/` stays shut, because opening it would
    open everything under it, which is the whole node.
 4. **Check it from outside.** On a phone off your Wi-Fi, the Wall draws, and `/readings`, `/history`, `/ask`,
    `/settings` and `/issues/fixtures` each answer `404 page not found`.
@@ -268,7 +270,7 @@ household's own sensors at the cell's centre and every other row at three decima
 the node's own point are among those rows, so a node that stands in a home places that home within about 80 m.
 
 When an update adds a read to the report or the Wall, the page shows a gap there until you add its path. To close the
-link, run `sudo tailscale funnel --https=8443 --set-path=<path> off` for each of the 20 paths. Never run `tailscale
+link, run `sudo tailscale funnel --https=8443 --set-path=<path> off` for each of the 26 paths. Never run `tailscale
 funnel reset` on a hub, because it takes the hub's Funnel down too.
 
 > **Careful.** On a Mac where Tailscale's app runs beside the node's own `tailscaled`, the plain `tailscale` command

@@ -121,7 +121,17 @@ under it and a north arrow. Beside it are the node's name and the scale, each la
 layer list with where it comes from, your maps on the screen with their colours, the centre and id of the node's res-8
 cell, the sheet's width, the grid's step and the credits.
 
-The pages after the sheet are A4 upright, and each has a head line with the node's name and its page number.
+The pages after the sheet are A4 upright, and each has a head line with the place's name and its page number. The
+name is `PLACE_NAME`, or the node's name while that is empty.
+
+After the reading's pages comes What is coming: one row a day from the forecast, with the highest hour of fine dust,
+the hottest hour as it feels, the day's rain with its hours, and the highest waves. A day with hours over the WHO line
+for fine dust or over the node's heat line says how many, and under the table a sentence says what each column and its
+line mean. It is a forecast from weather and air models, and the page says so. A node with no forecast has no such
+page. The rest follow.
+
+On a community node set to `SHARE_LEVEL=open` a reader with no token gets the whole report: the picture, the reading
+and these pages. A house gives the picture and the reading only to a screen holding its token.
 
 1. The place in figures. These are the rows under the map on Place, with the yearly figures, Rivers and the city's Fab
    City Index row. Where the Index has read the city, a line gives the address of the city's own Index report.

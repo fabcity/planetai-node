@@ -228,3 +228,23 @@ assert "data-open-report" not in foot, "the Ask pane's button owns data-open-rep
 assert "#preportfoot [data-prf]" in PSRC and "window.placeReport(b.dataset.prf)" in PSRC, "its buttons open the report in their register"
 assert "window.placeNoMap = NOMAP" in SRC and "window.placeNoMap" in PSRC[PSRC.index("#prfhow"):PSRC.index("#prfhow") + 300], "without the token it says where the map of the house stays, in the sheet's own sentence"
 print("  report: the foot of Place says what the report is and opens it")
+
+# What is coming (28 Nov 2026): the forecast's days on a page of the report, each against its line, and no page with
+# no days. A community node hands the picture and the reading to a reader with no token; a house does neither.
+fc = subprocess.run(["node", "-e", "global.esc=s=>String(s);const S=require('./app/static/doors-sheet.js');"
+                     "const F={days:[{date:'2026-11-28',part:'rest',rows:{air:{value:9,peak:22,line:15,hours_over:2},heat:{value:35.6,line:35,hours_over:3},"
+                     "wind_rain:{rain_mm:4.9,rain_hours:'10:00–13:00'},sea:{value:1.4}}},{date:'2026-11-29',part:'day',rows:{air:{value:10,peak:12,line:15,hours_over:0}}}]};"
+                     "const t=S.forecastPage(F).replace(/<[^>]+>/g,'|');"
+                     "console.log(JSON.stringify({t,none:[S.forecastPage(null),S.forecastPage({days:[]}),S.forecastPage({days:[{date:'2026-11-28',rows:{}}]})],"
+                     "pages:S.reportPages({health:{place:'Ungasan',cell:{id:'c'},version:'v'},node:{name:'bayu-ungasan'}},{credits:[],cake:[],figures:'',forecast:F,date:'2026-11-28'})}))"],
+                    capture_output=True, text=True)
+fcj = json.loads(fc.stdout) if fc.stdout.strip() else {}
+assert fcj, fc.stderr
+for s in ("what is coming", "not a measurement", "Saturday 28 Nov", "the rest of today", "|22| µg/m³", "2 h over 15", "|35.6| °C", "3 h over 35", "|4.9| mm", "10:00–13:00",
+          "|1.4| m", "Sunday 29 Nov", "not held", "hours over it on 1 of 2 days", "hours over it on that day"):
+    assert s in fcj["t"], f"the forecast page says {s!r}: {fcj['t']}"
+assert fcj["none"] == [None, None, None], "no days, no page"
+assert "Ungasan · Place report · page 1 of" in fcj["pages"] and "bayu-ungasan" not in fcj["pages"] and "what is coming" in fcj["pages"], "the report is titled with the place's name and carries the forecast"
+assert "!(typeof notHouse === 'function' && notHouse((D.health || {}).kind))) return { none: NOMAP, date }" in SRC, "only a house keeps its map from a reader with no token"
+assert "get('/forecast')" in PSRC and "forecast: FC" in PSRC, "the report asks for the forecast"
+print("  report: what is coming, from the forecast's days; a community node hands out the picture; the report carries the place's name")
