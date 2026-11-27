@@ -873,6 +873,10 @@ body:not(.classic) .hero .ladder.folded{display:none}
 .ft{font:600 var(--t-small) var(--body)!important;fill:var(--ink)!important}.fn{font:500 var(--t-cap) var(--mono)}
 .fname{font:700 17px var(--display)!important;fill:var(--ink)!important}
 .fdot{fill:var(--ink)}
+#netview svg{display:block;max-width:100%;height:auto}.nnode{fill:var(--ink)}.narr{fill:var(--ink);fill-opacity:.6}
+.nfill{fill:var(--ink)}.nquiet{fill:none;stroke:var(--ink);stroke-width:1.3}.nroom{fill:none;stroke:var(--mute);stroke-dasharray:3 3}
+.ncell{fill:none;stroke:var(--cells);stroke-width:1.5}.ncell.on{fill:var(--cells);fill-opacity:.2}
+#ledger-node{margin:8px 0 28px}#ledger-node h3{font:600 var(--t-cap) var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--mute);margin:18px 0 6px}
 #world svg{display:block;width:auto;max-width:100%;height:auto;max-height:33vh}   /* a third of the screen at most: the list above says it */
 #world .land{fill:var(--ink);fill-opacity:.12}   /* as the landing: land carries weight under the grid */
 .h3grid{fill:none;stroke:var(--ink);stroke-width:.4;opacity:.5}.h3lit{fill:var(--cells);fill-opacity:.13;stroke:var(--cells);stroke-width:1.5}.h3heard{fill:none;stroke:var(--cells);stroke-width:1.2;stroke-dasharray:3 3}
@@ -1439,6 +1443,8 @@ body:not(.classic) .hero .ladder.folded{display:none}
 <!-- NODE -->
 <section class="page view" data-view="node" hidden>
   <div id="nodehead" data-learn="node-verdict" data-reads="/health" data-pack="core"></div>
+  <section id="netview" data-learn="node-network" data-reads="/health /sensors /stats" data-pack="core" hidden></section>
+  <section id="ledger-node" data-learn="node-ledger" data-reads="/health /sensors /stats /aggregates" data-pack="core" hidden></section>
   <h2>What comes in, what goes out</h2>
   <div class="scr" data-theme="dark" id="fscr"><div class="ramp" id="framp" aria-label="What comes in, what goes out, counted"></div>
   <div id="flow" data-learn="node-flow" data-reads="/health /sensors /stats /alerts /actions /rho /cells" data-pack="core" data-kind="row"></div><p class="sinfo" id="finfo"></p></div><p class="fine" id="flownote"></p>

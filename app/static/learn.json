@@ -1008,6 +1008,54 @@
    "title": "The globe",
    "url": "https://planetai.fab.city/docs/dashboard/#node"
   },
+  "node-ledger": {
+   "anchor": "node",
+   "more": "The drawing's counts as rows. Readings need the token; what the node does not count yet says so.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "How many readings came in today?",
+     "Why is something not counted yet?"
+    ],
+    "es": [
+     "¿Cuántas lecturas llegaron hoy?",
+     "¿Por qué algo no se cuenta todavía?"
+    ],
+    "id": [
+     "Berapa banyak bacaan yang masuk hari ini?",
+     "Mengapa ada yang belum dihitung?"
+    ]
+   },
+   "quote": "the same as rows under the drawing, each with its count. A count the node does not keep yet, such as the bot's subscribers or the public link's visits, says not counted yet",
+   "section": "Node",
+   "title": "Comes in, it serves",
+   "url": "https://planetai.fab.city/docs/dashboard/#node"
+  },
+  "node-network": {
+   "anchor": "node",
+   "more": "A community node's network: what reaches it on the left and what it serves on the right. A dashed line carries nothing yet.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "Which homes send to this node?",
+     "What does this node serve?"
+    ],
+    "es": [
+     "¿Qué casas envían a este nodo?",
+     "¿Qué sirve este nodo?"
+    ],
+    "id": [
+     "Rumah mana yang mengirim ke node ini?",
+     "Apa yang dilayani node ini?"
+    ]
+   },
+   "quote": "on a community node only, the node as a dark hexagon in the middle: the homes that send to it, its own sensors, the public stations, the mesh and the model points on the left, arrows pointing in; the bot, the public link, the Reticulum hub and the Index cells on the right, arrows pointing out.",
+   "section": "Node",
+   "title": "What it takes in and what it serves",
+   "url": "https://planetai.fab.city/docs/dashboard/#node"
+  },
   "node-refusals": {
    "anchor": "refusals-that-hold-at-every-stage",
    "more": "Each refusal on this door links to where you can check it yourself: the flow, the cells, the ledger, the machine and the nodes around.",
@@ -2300,6 +2348,8 @@
   "place-species",
   "place-changing",
   "node-verdict",
+  "node-network",
+  "node-ledger",
   "node-flow",
   "node-cells",
   "node-remember",

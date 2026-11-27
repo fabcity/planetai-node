@@ -496,3 +496,44 @@ assert "`/sensors/${encodeURIComponent(sid)}`" in _put and "method: 'PATCH'" in 
 assert "j.detail" in _put, "the route's error text is shown"
 assert "g === 'sources' && unlocked ? " in _ds and "sRoomRows()" in _ds.split("g === 'sources' && unlocked")[1][:600], "Sources draws the rows, only for a reader with the token"
 print("ok  roles: Sources names a room for each local sensor")
+
+# The Node door on a community node: the network drawing and the ledger (netGroups, netLayout, netPackets)
+_prog = r"""
+global.VIEWS = {}; Object.assign(global, require('./app/static/doors-load.js'));
+eval(require('fs').readFileSync('./app/static/doors-core.js', 'utf8').match(/^const ago = .*$/m)[0].replace('const ago', 'global.ago'));
+const N = require('./app/static/doors-node.js');
+const own = [1, 2, 3].map(i => ({ sensor_id: 'sc-' + i, kind: 'sensor', local: true }));
+const kids = [1, 2].map(i => ({ sensor_id: 'home-1/outdoor-' + i, kind: 'child', name: 'a home nearby · outdoor ' + i }));
+const pub = Array.from({ length: 28 }, (_, i) => ({ sensor_id: 'bad-' + i, kind: 'sensor', local: false }));
+const mini = { sensors: [...own, ...kids, ...pub], stats15: { 'home-1/outdoor-1': { pm25: [10, 4] } }, index_cells: [],
+  health: { kind: 'community', city: 'Ungasan', mesh: { root_topic: 'msh/x', gateway: '!8f491db0', packets: 40 }, reticulum: { relaying: 0, peers: [] } } };
+const fresh = { sensors: [], stats15: {}, index_cells: [], health: { kind: 'community' } };
+const g = N.netGroups(mini), f = N.netGroups(fresh), out = [];
+const nan = L => [L.node.x, L.node.y, L.H, ...L.items.flatMap(i => [i.x, i.y])].some(v => typeof v !== 'number' || Number.isNaN(v));
+const lay = [[g, 900, 360, false], [g, 360, 0, true], [f, 900, 360, false], [f, 360, 0, true]].map(a => N.netLayout(...a));
+const fakeSvg = made => ({ querySelectorAll: () => [{ getTotalLength: () => 100, getPointAtLength: () => ({ x: 1, y: 2 }), dataset: { n: '24' } }],
+  querySelector: () => ({ appendChild() {} }), ownerDocument: { createElementNS: () => { made.n++; return { setAttribute() {} }; } } });
+const made = { n: 0 }; global.matchMedia = () => ({ matches: true }); const still = N.netPackets(fakeSvg(made), 1000);
+const moved = { n: 0 }; global.matchMedia = () => ({ matches: false }); N.netPackets(fakeSvg(moved), 1000);
+console.log(JSON.stringify({ g, f, nan: lay.map(nan), narrow: lay[1], still: still.length, made: made.n, moved: moved.n }));
+"""
+_r = subprocess.run(["node", "-e", _prog], capture_output=True, text=True, cwd=ROOT, timeout=60)
+assert _r.returncode == 0, _r.stderr
+_o = json.loads(_r.stdout)
+_in = {x["key"]: x for x in _o["g"]["in"]}; _out = {x["key"]: x for x in _o["g"]["out"]}
+assert list(_in) == ["homes", "own", "stations", "mesh"], list(_in)
+assert (_in["homes"]["count"], _in["own"]["count"], _in["stations"]["count"], _in["mesh"]["count"]) == (1, 3, 28, 40), _in
+assert "2 sensors" in _in["homes"]["sub"] and _in["homes"]["live"] and "!8f491db0" in _in["mesh"]["sub"], _in
+assert list(_out) == ["bot", "link", "reticulum", "index"] and _out["reticulum"]["count"] == 0, _out
+for _k in ("bot", "link"):
+    assert _out[_k]["count"] is None and _out[_k]["sub"] == "not counted yet", _out[_k]
+assert [(x["key"], x["count"]) for x in _o["f"]["in"]] == [("own", 0)], _o["f"]
+assert [x["key"] for x in _o["f"]["out"]] == ["bot", "link", "index"], _o["f"]
+assert not any(_o["nan"]), _o["nan"]
+_L = _o["narrow"]; _side = {x["key"]: x for x in _L["items"]}
+assert all(x["y"] < _L["node"]["y"] for x in _L["items"] if x["side"] == "in") and all(x["y"] > _L["node"]["y"] for x in _L["items"] if x["side"] == "out"), _L
+assert len(_L["items"]) == 8, _L
+assert _o["still"] == 0 and _o["made"] == 0 and _o["moved"] > 0, _o
+_dn = (ROOT / "app/static/doors-node.js").read_text(); _dh = (ROOT / "app/static/doors.html").read_text()
+assert 'id="netview"' in _dh and 'id="ledger-node"' in _dh and "role=\"img\" aria-label=\"${esc(" in _dn, "both sections, and the drawing says its counts"
+print("ok  roles: a community Node door draws what comes in and what it serves; reduced motion moves nothing")

@@ -27,7 +27,7 @@ function verdict(D, src) {
   return { ok: true, head: 'Working', text: `Last reading ${hhmm(h.last_poll)}; ${own.length ? `${nOwn} of ${own.length} sensors` : 'no sensors of its own'}, ${nPub} of ${pub.length} stations heard in the last hour.` };
 }
 VIEWS.node = function () {
-  FLOWOBS && FLOWOBS.disconnect(); CLOCK.off('node-flow');
+  FLOWOBS && FLOWOBS.disconnect(); CLOCK.off('node-flow'); CLOCK.off('node-net');
   const R = D.registry, h = D.health;
   const say = src => { const v = verdict(D, src);
     return `<h1 class="verdict ${v.ok ? '' : 'bad'}">${v.head}.</h1><p class="vline said" data-role="sentence">${esc(v.text)}`
@@ -39,11 +39,120 @@ VIEWS.node = function () {
   const kept = doorsFetch('/storage').then(x => x.ok ? x.json() : null).catch(() => null),
     offers = fetch('/offers').then(x => x.ok ? x.json() : null).catch(() => null);
   doorsFetch('/health/sources').then(r => (r.ok ? r.json() : null)).catch(() => null).then(src => { const el = $('#verdict'); if (src && el) el.innerHTML = say(src); });
-  flow(kept, offers); cellsBlock(); around(); reticulumBlock(); running(kept); remember();
+  networkBlock(); flow(kept, offers); cellsBlock(); around(); reticulumBlock(); running(kept); remember();
   /* #node/<id> (a refusal's proof) scrolls to that part once it is drawn; #node/remember is remember()'s own */
   const at = location.hash.slice(1).split('/')[1];
   if (at && at !== 'remember') setTimeout(() => { const t = document.getElementById(at); if (t) t.scrollIntoView({ block: 'start' }); }, 60);
 };
+
+/* THE NETWORK AND ITS LEDGER, a community node's (Tomas, 26 Nov 2026): the node in the middle, what comes in on the
+   left, what it serves on the right; under it the same as rows. Every count is one this door already reads (/sensors,
+   /stats, /health, and the hourly table with the token). What the node does not count yet says so, never a guess.
+   A private node draws neither; its flow below is unchanged. */
+function netGroups(D, F) {
+  const S = D.sensors || [], st = D.stats15 || {}, h = D.health || {}, pl = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+  const heard = s => Object.values(st[s.sensor_id] || {}).some(v => v && v[1] != null && v[1] <= 60);
+  /* readings in 24 h, from the hourly table (flowFrom), grouped as the flow groups them; null without the token */
+  const n24 = {}, by = new Map(S.map(s => [s.sensor_id, s]));
+  if (F && F.counted) for (const [id, n] of Object.entries(F.counts || {})) {
+    const s = by.get(id) || {}, k = id.startsWith('msh') ? 'mesh' : s.kind === 'model' ? 'models' : s.kind === 'child' ? 'homes' : s.local ? 'own' : 'stations';
+    n24[k] = (n24[k] || 0) + n.reduce((a, b) => a + (b || 0), 0);
+  }
+  const g = (key, label, count, sub, live) => ({ key, label, count, sub, live: !!live, n24: F && F.counted ? n24[key] || 0 : null });
+  const homes = sendersOf(S, st), nS = homes.reduce((a, x) => a + x.sensors, 0), q = homes.map(x => x.silent).filter(v => v != null);
+  const own = S.filter(s => s.local && s.kind === 'sensor'), pub = S.filter(s => !s.local && s.kind === 'sensor');
+  const models = S.filter(s => s.kind === 'model' && s.sensor_id !== 'predict').length, mesh = h.mesh && h.mesh.root_topic ? h.mesh : null, ret = h.reticulum;
+  const cells = new Set((D.index_cells || []).map(c => c.cell)).size;
+  return {
+    in: [homes.length && g('homes', 'homes that send to it', homes.length, `${pl(nS, 'sensor')}${q.length ? ` · the last ${ago(Math.min(...q))} ago` : ''}`, q.some(v => v <= 60)),
+      g('own', 'its own sensors', own.length, own.length ? `${own.filter(heard).length} heard in the last hour` : 'none yet', own.some(heard)),
+      pub.length && g('stations', 'public stations', pub.length, `${pub.filter(heard).length} heard in the last hour`, pub.some(heard)),
+      mesh && g('mesh', 'mesh packets', mesh.packets || 0, `gateway ${mesh.gateway || 'not heard yet'} · since the restart`, mesh.packets > 0),
+      models && g('models', 'model and satellite points', models, 'for this point', true)].filter(Boolean),
+    out: [g('bot', 'the bot', null, 'not counted yet', false), g('link', 'public link · report, Wall', null, 'not counted yet', false),
+      ret && (ret.relaying != null ? g('reticulum', 'Reticulum hub', ret.relaying, 'nodes dialled in now', ret.relaying > 0)
+        : g('reticulum', 'Reticulum', (ret.peers || []).length, 'nodes heard', (ret.peers || []).length > 0)),
+      g('index', 'Fab City Index cells', cells, 'of 20 · hourly', cells > 0)].filter(Boolean),
+  };
+}
+/* Where each group sits: in on the left and out on the right, the node between; under 700 px in above the node and out
+   below, one row each, with the lines on rails in the left margin (flowLayout's rule). Pure: tests/test_roles.py. */
+function netLayout(G, W, H, narrow) {
+  const nI = G.in.length, nO = G.out.length, R = 30;
+  if (narrow) {
+    const row = 50, x = 16 + 3 * Math.max(nI, nO) + 22, ny = 40 + nI * row + 40, oy = ny + R + 70;
+    return { W, H: oy + (nO - 1) * row + 30, R, node: { x: Math.max(W / 2, x + 140), y: ny },
+      items: [...G.in.map((g, i) => ({ key: g.key, x, y: 40 + i * row, side: 'in' })), ...G.out.map((g, j) => ({ key: g.key, x, y: oy + j * row, side: 'out' }))] };
+  }
+  const at = (i, n) => n < 2 ? H / 2 : 44 + i * (H - 88) / (n - 1);
+  return { W, H, R, node: { x: W / 2, y: H / 2 },
+    items: [...G.in.map((g, i) => ({ key: g.key, x: Math.round(W * .3), y: at(i, nI), side: 'in' })), ...G.out.map((g, j) => ({ key: g.key, x: Math.round(W * .7), y: at(j, nO), side: 'out' }))] };
+}
+/* One square per live line, stepping along it once per arrival at that line's rate over 24 h, on the Wall's pace (the
+   flow's rule). None under reduced motion: the counts are in the words. */
+function netPackets(svg, perH) {
+  if (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches) return [];
+  const g = svg.querySelector('#npk');
+  return [...svg.querySelectorAll('path[data-live]')].map(path => {
+    const dot = svg.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'rect'), L = path.getTotalLength(), STEPS = 8;
+    for (const [k, v] of [['width', 6], ['height', 6], ['x', -3], ['y', -3], ['class', 'fdot']]) dot.setAttribute(k, v);
+    g.appendChild(dot);
+    const put = n => { const p = path.getPointAtLength(L * n / (STEPS - 1)); dot.setAttribute('transform', `translate(${p.x} ${p.y})`); };
+    const l = { put, k: Math.floor(Math.random() * STEPS), every: Math.max(84, 24 * perH / (+path.dataset.n || 24)), last: 0, STEPS };
+    put(l.k); return l;
+  });
+}
+const hexPts = (x, y, r) => [0, 1, 2, 3, 4, 5].map(k => { const a = Math.PI / 3 * k - Math.PI / 2; return `${(x + r * Math.cos(a)).toFixed(1)},${(y + r * Math.sin(a)).toFixed(1)}`; }).join(' ');
+function netIcon(g, x, y) {
+  const row = (n, f) => Array.from({ length: n }, (_, i) => f(x + (i - (n - 1) / 2) * 13, i)).join('');
+  switch (g.key) {
+    case 'homes': return row(Math.min(5, Math.max(3, g.count + 1)), (cx, i) => `<polygon points="${hexPts(cx, y, 6.5)}" class="${i < g.count ? (g.live ? 'nfill' : 'nquiet') : 'nroom'}"/>`);
+    case 'own': return g.count ? row(Math.min(3, g.count), cx => `<circle cx="${cx}" cy="${y}" r="4.5" class="${g.live ? 'nfill' : 'nquiet'}"/>`) : `<circle cx="${x}" cy="${y}" r="4.5" class="nroom"/>`;
+    case 'stations': return row(Math.min(4, g.count), (cx, i) => `<circle cx="${cx}" cy="${y + (i % 2 ? -3 : 2)}" r="3.5" class="nquiet"/>`);
+    case 'mesh': return `<polygon points="${x},${y - 8} ${x + 8},${y + 6} ${x - 8},${y + 6}" class="nquiet"/>`;
+    case 'models': return `<circle cx="${x}" cy="${y}" r="6" class="nroom"/>`;
+    case 'reticulum': return `<polygon points="${hexPts(x, y, 9)}" class="ncell"/>`;
+    case 'index': return `<polygon points="${hexPts(x, y, 9)}" class="ncell on"/>`;
+    default: return `<rect x="${x - 14}" y="${y - 9}" width="28" height="18" rx="3" class="nquiet"/>`;
+  }
+}
+async function networkBlock() {
+  const el = $('#netview'), led = $('#ledger-node'); if (!el || !led) return;
+  el.hidden = led.hidden = !notHouse(D.health.kind); if (el.hidden) return;
+  const G = netGroups(D, await flowData()), W = el.clientWidth || 900, L = netLayout(G, W, 380, W < 700), N = L.node, R = L.R;
+  const said = g => g.count == null ? `${g.label}, ${g.sub}` : `${g.label} ${g.count.toLocaleString('en')}`;
+  const aria = `${D.registry.name}, a community node. Comes in: ${G.in.map(said).join(', ')}. Goes out: ${G.out.map(said).join(', ')}.`;
+  const rail = i => 6 + 3 * i, items = [...G.in, ...G.out];
+  let s = `<svg viewBox="0 0 ${W} ${L.H}" width="${W}" height="${L.H}" role="img" aria-label="${esc(aria)}"><defs><marker id="narr" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0L8,4L0,8z" class="narr"/></marker></defs>`;
+  const io = L.W < 700 ? [[L.items[0].x + 24, 16], [L.items[0].x + 24, N.y + R + 50]] : [[8, 18], [W - 8, 18]];
+  s += `<text x="${io[0][0]}" y="${io[0][1]}" class="fn">COMES IN</text><text x="${io[1][0]}" y="${io[1][1]}" class="fn"${L.W < 700 ? '' : ' text-anchor="end"'}>GOES OUT</text>`;
+  L.items.forEach((it, i) => {
+    const g = items[i], inn = it.side === 'in', j = inn ? i : i - G.in.length, narrow = L.W < 700;
+    const d = narrow ? (inn ? `M${it.x - 22},${it.y}H${rail(j)}V${N.y - 6 + j * 2}H${N.x - R - 2}` : `M${N.x - R},${N.y + 6 + j * 2}H${rail(j)}V${it.y}H${it.x - 24}`)
+      : inn ? `M${it.x + 24},${it.y}C${(it.x + N.x) / 2},${it.y} ${(it.x + N.x) / 2},${N.y} ${N.x - R - 4},${N.y}` : `M${N.x + R + 2},${N.y}C${(it.x + N.x) / 2},${N.y} ${(it.x + N.x) / 2},${it.y} ${it.x - 26},${it.y}`;
+    const tx = narrow || !inn ? it.x + 26 : it.x - 26, anchor = narrow || !inn ? '' : ' text-anchor="end"';
+    s += `<path d="${d}" class="fl${g.live ? '' : ' empty'}" marker-end="url(#narr)"${g.live ? ` data-live data-n="${g.n24 || 24}"` : ''}/>` + netIcon(g, it.x, it.y)
+      + `<text x="${tx}" y="${it.y - 2}" class="ft"${anchor}>${esc(g.label)}${g.count == null ? '' : ` · ${g.count.toLocaleString('en')}`}</text><text x="${tx}" y="${it.y + 13}" class="fn"${anchor}>${esc(g.sub)}</text>`;
+  });
+  s += `<polygon points="${hexPts(N.x, N.y, R)}" class="nnode"/><text x="${N.x}" y="${N.y + R + 18}" text-anchor="middle" class="fname">${esc(D.registry.name)}</text>`
+    + `<text x="${N.x}" y="${N.y + R + 33}" text-anchor="middle" class="fn">community · ${esc(D.health.city || D.registry.place)}</text><g id="npk"></g></svg>`;
+  el.innerHTML = `<h2>What it takes in and what it serves</h2>${s}`;
+  ledgerBlock(G, led);
+  const links = netPackets(el.querySelector('svg'), (parseFloat(css('--motion-replay-loop')) || 30) * 1000 / 6);
+  if (links.length) CLOCK.on('node-net', t => { if (view() !== 'node') return CLOCK.off('node-net');
+    for (const l of links) if (t - l.last >= l.every) { l.last = t; l.k = (l.k + 1) % l.STEPS; l.put(l.k); } });
+}
+/* the same, as rows: readings in the last 24 h (with the token), and what it serves. The bot's subscribers, the public
+   link's visits and the boards flashed are not counted by the node yet, and say so. */
+function ledgerBlock(G, el) {
+  const row = (t, s2, c, x) => `<div class="lrow"><span class="t">${esc(t)}</span><span class="s">${esc(s2)}</span><span class="c${x ? ' x' : ''}">${esc(c)}</span></div>`;
+  const up = t => t.replace(/^./, c => c.toUpperCase());
+  el.innerHTML = `<h3>Comes in · 24 h</h3>` + G.in.map(g => row(`${up(g.label)} · ${g.count.toLocaleString('en')}`, g.sub,
+      g.n24 == null ? 'counted with the token' : `${g.n24.toLocaleString('en')} readings`, g.n24 == null)).join('')
+    + `<h3>It serves · 7 days</h3>` + G.out.map(g => row(up(g.label), g.count == null ? '' : g.sub, g.count == null ? 'not counted yet' : g.count.toLocaleString('en'), g.count == null)).join('')
+    + row('Workbench · boards flashed', '', 'not counted yet', true)
+    + `<p class="fine">Readings are the hourly table’s counts for the last 24 hours. The bot’s subscribers, the public link’s visits and the boards flashed are not counted by the node yet.</p>`;
+}
 
 /* THE INDEX CELLS this node holds (GET /cells), under the flow that counts them; moved from Data (phase 4b, 15 Oct).
    #node/cells lands here, and so does Data's old #data/cells. */
@@ -371,3 +480,5 @@ async function running(kept) {
     + `<p class="fine">${M ? 'The machine as the node’s containers see it. ' : ''}<a href="#setup/machine">Set up → Machine</a> has all of it, and how long the disk lasts.</p>`;
 }
 
+
+if (typeof module !== 'undefined') module.exports = { netGroups, netLayout, netPackets };

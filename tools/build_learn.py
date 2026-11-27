@@ -356,6 +356,13 @@ MARKS = [
      "A\npoll older than 15 minutes", "to finish setting up.",
      "The verdict is the node's own check of its last poll, its loop and its sensors. Under it, the "
      "version, how long it has run and the cell it stands in."),
+    ("node-network", "What it takes in and what it serves", "dashboard.md", "Node",
+     "on a community node only", "arrows pointing out.",
+     "A community node's network: what reaches it on the left and what it serves on the right. A dashed line "
+     "carries nothing yet."),
+    ("node-ledger", "Comes in, it serves", "dashboard.md", "Node",
+     "the same as rows under the drawing", "says not counted yet",
+     "The drawing's counts as rows. Readings need the token; what the node does not count yet says so."),
     ("node-flow", "What comes in, what goes out", "dashboard.md", "Node",
      "the node as a hexagon", "Drawn vertically under 700 px",
      "Your sources come in on one side and what leaves goes out on the other, at their real rate. Raw "
@@ -666,6 +673,12 @@ QUESTIONS = {
     'node-verdict': {"en": ['Is the node working properly?', 'Which sensor has gone quiet?'],
         "id": ['Apakah node bekerja dengan baik?', 'Sensor mana yang berhenti mengirim data?'],
         "es": ['¿Está funcionando bien el nodo?', '¿Qué sensor ha dejado de enviar datos?']},
+    'node-network': {"en": ['Which homes send to this node?', 'What does this node serve?'],
+        "id": ['Rumah mana yang mengirim ke node ini?', 'Apa yang dilayani node ini?'],
+        "es": ['¿Qué casas envían a este nodo?', '¿Qué sirve este nodo?']},
+    'node-ledger': {"en": ['How many readings came in today?', 'Why is something not counted yet?'],
+        "id": ['Berapa banyak bacaan yang masuk hari ini?', 'Mengapa ada yang belum dihitung?'],
+        "es": ['¿Cuántas lecturas llegaron hoy?', '¿Por qué algo no se cuenta todavía?']},
     'node-flow': {"en": ['What does this node send out, and to whom?', 'Where do our readings come from?'],
         "id": ['Apa yang dikirim node ini keluar, dan kepada siapa?', 'Dari mana bacaan kami berasal?'],
         "es": ['¿Qué envía este nodo hacia fuera, y a quién?', '¿De dónde vienen nuestras lecturas?']},
