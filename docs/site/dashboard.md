@@ -237,7 +237,7 @@ which settings it holds.
 | section | what is in it |
 |---|---|
 | **Basics** | what this place watches, in order; what kind of node it is; its language; how the page opens. Name, city, position and time zone are read once at start: edit `.env`, then `planetai restart` |
-| **Sources** | your sensors and accounts, the public stations and portals around you. A source that comes as a pack is set in its card under Packs |
+| **Sources** | your sensors and accounts, the public stations and portals around you. A source that comes as a pack is set in its card under Packs. With the admin token, Sources also has a room box for each of the node's own sensors: type "Kids" and that name replaces the platform's in every alert, report and message; leave it empty to get the platform's name back |
 | **Alerts** | reports at the hours you choose, what interrupts between them, quiet hours, which engine sends the heat and air messages (`ALERT_ENGINE`), how many it may send a day (`ALERT_MAX_PER_DAY`), what this home has (`HOME_HAS`), mesh alerts, and whether an act needs a decision first |
 | **Model** | which model answers, on the ask pane and on Telegram alike |
 | **Packs** | every pack on the disk, one line each, a switched-off pack included: its switch, its name and how many settings it has. **+** opens what it does and its settings, and **Open all packs** opens every one, remembered by this browser; a key the pack lists under `secrets:` is masked once saved. Under them are the packs on the wild list this node does not have yet, each with **Install**, which shows who wrote the pack, where it comes from and what it brings before anything is fetched. Only the admin token can install |

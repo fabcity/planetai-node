@@ -485,3 +485,14 @@ assert client.get("/workbench", follow_redirects=False).status_code == 200
 assert client.get("/static/vendor/esp-web-tools/esp32-DNPRK0Ay.js").status_code == 200
 os.environ["NODE_KIND"] = "home"
 print("ok  roles: the Workbench is a community node's; a private node points to it")
+
+# Set up > Sources names a room for each of the node's own sensors, on either role
+_ds = (ROOT / "app/static/doors-setup.js").read_text()
+_rows = _ds.split("function sRoomRows()")[1].split("function sRooms(")[0]
+assert "s.local" in _rows and "s.kind" not in _rows, "one row per local sensor, nothing else"
+assert 'aria-label="Room for ${esc(s.source_name || s.name' in _rows and 'maxlength="40"' in _rows, "the input is labelled with the platform's name"
+_put = _ds.split("async function sRoom(ev)")[1].split("\n}")[0]
+assert "`/sensors/${encodeURIComponent(sid)}`" in _put and "method: 'PATCH'" in _put and "DOORS_AUTH()" in _put and "room:" in _put and "|| null" in _put, "blank sends room null"
+assert "j.detail" in _put, "the route's error text is shown"
+assert "g === 'sources' && unlocked ? " in _ds and "sRoomRows()" in _ds.split("g === 'sources' && unlocked")[1][:600], "Sources draws the rows, only for a reader with the token"
+print("ok  roles: Sources names a room for each local sensor")
