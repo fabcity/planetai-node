@@ -6,7 +6,12 @@ only: it is not logged, not put in a URL, and `backup.sh` leaves the table's dat
 from __future__ import annotations
 
 import os
+from datetime import datetime
 
+from psycopg.types.json import Jsonb
+
+import packs
+import placewords
 import settings
 
 FEEDS = [
@@ -95,3 +100,45 @@ def counts(cur) -> dict:
     cur.execute("SELECT feeds FROM subscribers")
     rows = cur.fetchall()
     return {"total": len(rows), "feeds": {n: sum(n in r["feeds"] for r in rows) for n in NAMES}}
+
+
+def allowed(cur, sensor_id: str, metric: str | None) -> bool:
+    """May a reading of this sensor reach a subscriber: the node's own (`node` or none), or a sensor that is outdoors
+    and, for `metric`, not marked private. Same predicate as packs.public_sql. An unknown sensor is not allowed."""
+    if sensor_id in ("", "node", None):
+        return True
+    cur.execute(f"SELECT s.indoor, {packs.public_sql('m')} AS pub FROM sensors s "
+                "CROSS JOIN LATERAL (SELECT s.sensor_id AS sensor_id, %s::text AS metric) m WHERE s.sensor_id = %s",
+                (metric, sensor_id))
+    row = cur.fetchone()
+    return bool(row) and not row["indoor"] and bool(row["pub"])
+
+
+def _fill(tmpl: str, row: dict) -> str:
+    return tmpl.format(**{k: ("—" if v is None else v) for k, v in row.items()})
+
+
+def enqueue(cur, rule: dict, row: dict, sensor_id: str, now: datetime) -> bool:
+    """Queue the rule's feed line (its `feed:` block) for the next send pass. True when a row was queued. One line a
+    feed per local day, except for the feed's urgent rules; indoor and private readings never get here."""
+    block = rule.get("feed")
+    feed = next((f for f in FEEDS if block and f["name"] == block.get("name")), None)
+    if placewords.is_house() or not feed:
+        return False
+    metric = block.get("metric") or (rule.get("watch") or {}).get("metric")
+    if not allowed(cur, sensor_id, metric):
+        return False
+    urgent = rule["id"] in feed["urgent"]
+    if not urgent:
+        midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        cur.execute("SELECT 1 FROM feed_queue WHERE feed = %s AND ts >= %s LIMIT 1", (feed["name"], midnight))
+        if cur.fetchone():
+            return False
+    try:
+        en = _fill(block["en"], row)
+        texts = {"en": en, "id": _fill(block["id"], row) if block.get("id") else en}
+    except (KeyError, IndexError, ValueError, TypeError):
+        return False                      # a line with a hole in it is never sent
+    cur.execute("INSERT INTO feed_queue (feed, rule_id, texts, urgent) VALUES (%s, %s, %s, %s)",
+                (feed["name"], rule["id"], Jsonb(texts), urgent))
+    return True

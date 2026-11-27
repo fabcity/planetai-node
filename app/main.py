@@ -35,6 +35,7 @@ import buttons
 import cells
 import actions as _act
 import events_pg
+import feeds
 import fundamentals
 import basemap
 import ground
@@ -364,6 +365,8 @@ def run_rules() -> None:
         for rule in rules:
             if rule.get("kind") and mode == "rules":
                 continue                  # kinded rules belong to the event engine (docs/SPEC_alerts.md)
+            if rule.get("feed_only") and placewords.is_house():
+                continue                  # a rule that exists only to feed subscribers has nothing to do on a private node
             try:
                 rows = index.run_ro(cur, rule["sql"])      # as planetai_ro: a rule can read everything but settings, and write nothing
             except Exception as e:  # noqa: BLE001
@@ -384,6 +387,7 @@ def run_rules() -> None:
                     continue
                 # `buttons` is the rule's question, not a word for the message: it leaves the row before the format,
                 # and normalize is the only reading of it (an invalid column costs the buttons, never the alert).
+                feed_row = dict(row)
                 btns = buttons.normalize(row.pop("buttons", None))
                 msg = rule["message"]
                 tmpl = msg.get(LOCALE()) or msg.get("en") if isinstance(msg, dict) else str(msg)
@@ -397,7 +401,7 @@ def run_rules() -> None:
                     text = tmpl.format(**line_f, act="{act}", **{k: ("—" if v is None else v) for k, v in row.items()})
                 except (KeyError, ValueError, TypeError):
                     text = tmpl
-                level = rule.get("level", "info")
+                level = "info" if rule.get("feed_only") else rule.get("level", "info")
                 cur.execute("INSERT INTO alerts (rule_id, sensor_id, level, text, buttons) VALUES (%s,%s,%s,%s,%s) RETURNING id",
                             (rule["id"], sid, level, text, json.dumps(btns) if btns else None))
                 alert_id = cur.fetchone()["id"]
@@ -406,10 +410,16 @@ def run_rules() -> None:
                 if "{act}" in text:
                     text = text.replace("{act}", act_hint(alert_id))
                     cur.execute("UPDATE alerts SET text = %s WHERE id = %s", (text, alert_id))
+                if rule.get("feed"):
+                    try:                  # a feed line never stops the alert; a savepoint keeps its SQL error from the transaction
+                        with con.transaction():
+                            feeds.enqueue(cur, rule, feed_row, sid, _local_now())
+                    except Exception as e:  # noqa: BLE001
+                        log.warning("feed line failed: %s", type(e).__name__)
                 # what interrupts a person: act always; warn if ALERT_LEVEL allows; info only in a briefing (it is
                 # recorded either way, and appears on the dashboard). Quiet hours hold everything but act.
                 floor = {"act": 2, "warn": 1, "info": 0}
-                send = (rule["id"].split("/", 1)[0] not in replaced
+                send = (not rule.get("feed_only") and rule["id"].split("/", 1)[0] not in replaced
                         and floor.get(level, 0) >= floor.get(settings.get("ALERT_LEVEL", "act"), floor["act"]) and not _quiet(level))
                 if send:
                     # No id, and nothing asking to be told. The node watches what happens next (v0.39) instead of

@@ -32,6 +32,17 @@ row has none. A rule that declares a `kind:` belongs to the event engine and is 
    On `ALERT_ENGINE=events` a heat or air-quality alert is not sent at all; the engine sends instead.
    With `TELEGRAM_BUTTONS=1` the alert's buttons go with it to Telegram as a keyboard.
 
+### Feeds
+
+On a community node a rule can also carry a `feed:` block, which queues one short line for the people subscribed to
+that feed: `feed: {name: fire, en: "...", id: "..."}`. `name` is one of `weekly`, `air`, `heat`, `waves`, `fire` or
+`rain`; `en` and `id` are templates filled with the row exactly as `message` is (`{km}`, `{dir[en]}`). An `id` left out
+falls back to `en`. A feed gets at most one line a local day, except the feed's urgent rules (fire upwind). A line is
+queued only from a sensor that is outdoors and whose metric is not private, so a room never reaches a subscriber. The
+block may also carry `metric:` to name the metric the line is about, when the rule has no `watch:`. A rule with
+`feed_only: true` records its alert at level `info` for the cooldown and only queues the line, never sending it; on a
+private node it does not run. A private node ignores `feed:` blocks.
+
 How to write a rule, with every key, the tables its SQL may read and the lint that checks it, is on
 [Packs](packs.md#rules).
 

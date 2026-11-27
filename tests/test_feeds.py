@@ -6,6 +6,7 @@ import logging
 import os
 import sys
 import time
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -18,6 +19,9 @@ import settings  # noqa: E402
 
 settings._cache = {"at": time.time() + 1e9, "rows": {"SHARE_LEVEL": "open"}}
 ROWS = {}
+QUEUE = []
+CLOCK = [datetime(2026, 11, 27, 9, 0, tzinfo=timezone.utc)]
+SENSORS = {"ag-in": (True, set()), "sc-private": (False, {"pm25"}), "firms-fires": (False, set())}
 
 
 class _Cur:
@@ -41,6 +45,13 @@ class _Cur:
             ROWS[p[2]].update(feeds=list(p[0]), lang=p[1])
         elif sql.startswith("DELETE FROM subscribers"):
             self.rowcount = 1 if ROWS.pop(p[0], None) else 0
+        elif sql.startswith("SELECT s.indoor"):
+            s = SENSORS.get(p[1])
+            self._out = [{"indoor": s[0], "pub": p[0] not in s[1]}] if s else []
+        elif sql.startswith("SELECT 1 FROM feed_queue"):
+            self._out = [{"one": 1}] if any(q["feed"] == p[0] and q["ts"] >= p[1] for q in QUEUE) else []
+        elif sql.startswith("INSERT INTO feed_queue"):
+            QUEUE.append({"feed": p[0], "rule_id": p[1], "texts": p[2].obj, "urgent": p[3], "ts": CLOCK[0]})
         elif sql.startswith("SELECT feeds FROM subscribers"):
             self._out = [{"feeds": list(r["feeds"])} for r in ROWS.values()]
         else:
@@ -85,6 +96,48 @@ try:
 except ImportError:
     print("feeds: route checks skipped (pip install -r app/requirements.txt)")
     raise SystemExit(0)
+
+import yaml  # noqa: E402
+
+RULES = {}
+for f in sorted((ROOT / "packs").glob("*/rules.yml")):
+    for r in yaml.safe_load(f.read_text()) or []:
+        RULES[f"{f.parent.name}/{r['id']}"] = r
+NOW = CLOCK[0]
+os.environ["NODE_KIND"] = "community"
+r = {"id": "fire/fire_upwind_near", "feed": RULES["fire/fire_upwind_near"]["feed"]}
+assert feeds.enqueue(cur, r, {"km": 4, "dir": {"en": "north", "id": "utara"}}, "node", NOW)
+assert QUEUE[-1]["texts"]["en"].startswith("\U0001F525 Fire 4 km north") and QUEUE[-1]["urgent"]
+assert "di sebelah utara" in QUEUE[-1]["texts"]["id"]
+assert feeds.enqueue(cur, r, {"km": 3, "dir": {"en": "north", "id": "utara"}}, "node", NOW)   # urgent: no daily cap
+swell = {"id": "coast/heavy_swell", "feed": RULES["coast/heavy_swell"]["feed"]}
+assert feeds.enqueue(cur, swell, {}, "node", NOW) and not feeds.enqueue(cur, swell, {}, "node", NOW)   # one a day
+CLOCK[0] = NOW + timedelta(days=1)
+assert feeds.enqueue(cur, swell, {}, "node", NOW + timedelta(days=1))                       # past local midnight: again
+smoke = {"id": "fire/smoke_arriving", "feed": RULES["fire/smoke_arriving"]["feed"]}
+assert smoke["feed"]["metric"] == "pm25"
+n = len(QUEUE)
+assert not feeds.enqueue(cur, smoke, {"pm25": 80}, "ag-in", NOW), "an indoor sensor never reaches a feed"
+assert not feeds.enqueue(cur, smoke, {"pm25": 80}, "sc-private", NOW), "a private metric never does"
+assert not feeds.enqueue(cur, smoke, {"pm25": 80}, "nobody-knows", NOW), "an unknown sensor never does"
+assert len(QUEUE) == n
+assert feeds.enqueue(cur, smoke, {"pm25": 80}, "firms-fires", NOW) and "air outside is 80," in QUEUE[-1]["texts"]["en"]
+assert not feeds.enqueue(cur, {"id": "x/y"}, {}, "node", NOW) and not feeds.enqueue(cur, {"id": "x/y", "feed": {"name": "zzz", "en": "a"}}, {}, "node", NOW)
+nid = {"id": "x/y", "feed": {"name": "heat", "en": "hot {k}"}}                              # no id template: falls back to en
+assert feeds.enqueue(cur, nid, {"k": 1}, "node", NOW) and QUEUE[-1]["texts"] == {"en": "hot 1", "id": "hot 1"}
+assert not feeds.enqueue(cur, {"id": "x/z", "feed": {"name": "air", "en": "{missing}"}}, {}, "node", NOW), "a hole in a line"
+os.environ["NODE_KIND"] = "home"
+n = len(QUEUE)
+assert not feeds.enqueue(cur, swell, {}, "node", NOW + timedelta(days=5)), "a private node queues nothing"
+assert len(QUEUE) == n
+os.environ["NODE_KIND"] = "community"
+for rid, rule in RULES.items():
+    if "feed" in rule:
+        assert rule["feed"]["name"] in feeds.NAMES and {"en", "id"} <= set(rule["feed"]), rid
+        assert all(t.count("\n") <= 1 for t in (rule["feed"]["en"], rule["feed"]["id"])), rid
+assert [k for k, v in RULES.items() if "feed" in v] == ["coast/heavy_swell", "fire/fire_near", "fire/fire_upwind_near", "fire/smoke_arriving"]
+print("ok  feed lines")
+
 logging.disable(logging.WARNING)
 os.environ.setdefault("PACKS_DIR", str(ROOT / "packs"))
 import main  # noqa: E402
