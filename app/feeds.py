@@ -187,6 +187,7 @@ def send_pass(cur, now: datetime, quiet: bool, post=None) -> dict:
             go = []                       # no bot token: nothing can be sent, so nothing is marked done
             n["held"] = len(fresh)
         post = _default_post
+    outage = False
     if go:
         cur.execute("SELECT chat_id, feeds, lang, since FROM subscribers")
         for s in cur.fetchall():
@@ -211,11 +212,17 @@ def send_pass(cur, now: datetime, quiet: bool, post=None) -> dict:
                     elif r.status_code == 200:
                         cur.execute("UPDATE subscribers SET last_sent = %s WHERE chat_id = %s", (now, s["chat_id"]))
                         n["sent"] += 1
+                    else:
+                        log.warning("feeds: telegram answered %d", r.status_code)
+                        outage = outage or r.status_code >= 500 or r.status_code == 429
                 except Exception as e:  # noqa: BLE001 — httpx puts the URL, and so the token, in its messages
                     log.warning("feeds: a send failed: %s", type(e).__name__)
+                    outage = True
                 break
             _sleep(0.04)
-    done = [q["id"] for q in open_ if q not in fresh or q in go]
+    # Nothing got through and something failed like an outage: the lines stay open for the next pass (the 12 h drop bounds them).
+    keep = outage and not n["sent"]
+    done = [q["id"] for q in open_ if q not in fresh or (q in go and not keep)]
     if done:
         cur.execute("UPDATE feed_queue SET done = true WHERE id = ANY(%s)", (done,))
     log.info("feeds: sent %d, held %d, dropped %d, gone %d", n["sent"], n["held"], n["dropped"], n["gone"])

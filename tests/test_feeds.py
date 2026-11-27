@@ -178,6 +178,30 @@ r = feeds.send_pass(cur, T0, quiet=False, post=boom)
 assert r["sent"] == 0 and any("ConnectionError" in m for m in LOGS)
 assert not any(x in m for m in LOGS for x in ("5550001", "5550002", "5550003", "SECRET")), LOGS
 assert any(m == "feeds: sent 0, held 0, dropped 0, gone 0" for m in LOGS)
+# an outage (every send raises, or answers 502) keeps the lines open; the next pass sends each once
+def down(url, body): raise ConnectionError("down")
+def bad(url, body): return _Resp(502)
+for failing in (down, bad):
+    QUEUE[:] = [line("air", "Air")]; ROWS["5550001"] = sub(["air"]); ROWS["5550002"] = sub(["air"]); SENT.clear()
+    assert feeds.send_pass(cur, T0, quiet=False, post=failing)["sent"] == 0 and not QUEUE[0]["done"]
+    assert feeds.send_pass(cur, T0, quiet=False, post=fake)["sent"] == 2 and QUEUE[0]["done"]
+    assert sorted(c for c, _ in SENT) == ["5550001", "5550002"]
+    SENT.clear(); assert feeds.send_pass(cur, T0, quiet=False, post=fake)["sent"] == 0
+# one chat 502 and another 200: the lines are done, the 200 subscriber has theirs
+def mixed(url, body): return _Resp(502 if body["chat_id"] == "5550001" else 200)
+QUEUE[:] = [line("air", "Air")]; LOGS.clear()
+r = feeds.send_pass(cur, T0, quiet=False, post=mixed)
+assert r["sent"] == 1 and QUEUE[0]["done"] and "feeds: telegram answered 502" in LOGS
+# a 400 is logged by its number, never the chat id; a 429 that persists too
+def refused(url, body): return _Resp(400)
+def slow(url, body): return _Resp(429)
+QUEUE[:] = [line("air", "Air")]; LOGS.clear(); SLEPT.clear()
+feeds.send_pass(cur, T0, quiet=False, post=refused)
+assert "feeds: telegram answered 400" in LOGS and QUEUE[0]["done"]
+QUEUE[:] = [line("air", "Air")]; LOGS.clear()
+feeds.send_pass(cur, T0, quiet=False, post=slow)
+assert "feeds: telegram answered 429" in LOGS and not QUEUE[0]["done"]
+assert not any(c in m for m in LOGS for c in ("5550001", "5550002")), LOGS
 # /now and /week
 QUEUE[:] = [line("air", "Air today", ts=T0), line("weekly", "Week en", ts=T0 - timedelta(days=3))]
 ROWS["5550001"] = sub(["weekly", "air", "heat"], lang="id")
