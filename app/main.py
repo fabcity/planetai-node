@@ -878,6 +878,7 @@ def start() -> None:
         load_channel_roles()
     except Exception as e:  # noqa: BLE001  — a node whose schema predates 0.22 has no channel_roles table yet
         log.warning("channel roles: %s", e)
+    _warn_kind_row()
     if MQTT_HOST:
         threading.Thread(target=mqtt_thread, daemon=True, name="mqtt").start()
     loop(poll_sources, POLL, delay=2)
@@ -897,6 +898,18 @@ def start() -> None:
     loop(check_learn, 3600, delay=180)
     if RETICULUM_URL:
         loop(presence.poll_reticulum, 300, delay=20)
+
+
+def _warn_kind_row() -> None:
+    """One line when an older node left NODE_KIND in the settings table: the role is .env's, so the row is ignored."""
+    try:
+        with db() as con, con.cursor() as cur:
+            cur.execute("SELECT 1 FROM settings WHERE key = 'NODE_KIND'")
+            if cur.fetchone():
+                log.warning("a NODE_KIND row in the settings table is ignored: the role is NODE_KIND in .env, "
+                            "and planetai update moves the row there")
+    except Exception:  # noqa: BLE001 — no database yet: nothing to warn about
+        pass
 
 
 # ---------------------------------------------------------------- http
@@ -993,18 +1006,19 @@ def _unlabelled(text: str) -> str:
 
 
 # A community node may hold indoor sensors (a house that became a community node keeps its kits): a reader without a
-# token never sees one. "Indoor" is the node's own indoor sensors; a child's are not local, so they are not touched.
+# token never sees one. "Indoor" is the node's own indoor sensors and a child's (PARENT_INDOOR=on sends them up).
 _INDOOR = {"at": 0.0, "ids": set(), "names": set()}
 
 
 def _indoor_ids() -> set[str]:
-    """The ids of this node's own indoor sensors, re-read every settings.TTL seconds; a failed read keeps the last.
+    """The ids of the indoor sensors, this node's own and its children's, re-read every settings.TTL seconds; a failed
+    read keeps the last.
     Their names ride along in _INDOOR["names"]: an alert event names its rooms by either."""
     if time.time() - _INDOOR["at"] < settings.TTL:
         return _INDOOR["ids"]
     try:
         with db() as con, con.cursor() as cur:   # its own read, not q(): the routes' tests count q's statements
-            cur.execute("SELECT sensor_id, name, source_name FROM sensors WHERE local AND indoor")
+            cur.execute("SELECT sensor_id, name, source_name FROM sensors WHERE indoor AND (local OR kind = 'child')")
             rows = cur.fetchall()
             ids = {r["sensor_id"] for r in rows}
             names = {r.get(k) for r in rows for k in ("name", "source_name")} - {None, ""}
@@ -1369,6 +1383,9 @@ def _child_alias(rows: list[dict], child_ids: list[str] | None = None) -> list[d
     give one sensor one alias: children by node name, then a child's sensors by id, from 1."""
     if not any(r.get("kind") == "child" for r in rows):
         return rows                                  # no child here: nothing to ask the database
+    if not placewords.is_house():   # a stranger's rows: a child's indoor ones go before the alias hides their ids
+        indoor = _indoor_ids()
+        rows = [r for r in rows if r.get("sensor_id") not in indoor]
     if child_ids is None:
         child_ids = sorted(r["sensor_id"] for r in q("SELECT sensor_id, kind FROM sensors WHERE kind = 'child'")
                            if r.get("kind", "child") == "child")
@@ -1633,7 +1650,7 @@ def series(request: Request, metric: str = "pm25", hours: int = Query(24, ge=1, 
 
 
 @app.get("/effect")
-def effect(days: int = Query(365, ge=1, le=3650)):
+def effect(request: Request, days: int = Query(365, ge=1, le=3650)):
     """Did the actions work, and how long did they take? Per rule, over this node's whole record.
 
     TWO DIFFERENT QUESTIONS WITH TWO DIFFERENT KINDS OF EVIDENCE, and they are reported apart because
@@ -1667,9 +1684,12 @@ def effect(days: int = Query(365, ge=1, le=3650)):
     live = index._live_rule_ids()
     if not live:
         return {"window_hours": round(win / 60), "rules": [], "note": "this node could not read its rule set"}
+    # a stranger on a community node gets no recovery of an indoor sensor: its alerts are left out
+    hide = sorted(_indoor_ids()) if _stranger_on_community(request) else []
     rows = q("""WITH a AS (SELECT id, ts, rule_id, sensor_id FROM alerts
                             WHERE level = 'act' AND rule_id = ANY(%s)
-                              AND ts > now() - make_interval(days => %s)),
+                              AND ts > now() - make_interval(days => %s)
+                              AND (sensor_id IS NULL OR sensor_id <> ALL(%s::text[]))),
                      act AS (SELECT alert_id, min(ts) AS t FROM actions WHERE stage = 'acted' GROUP BY alert_id),
                      -- only an act whose window has fully elapsed can be judged either way
                      j AS (SELECT a.rule_id, a.id, a.sensor_id, act.t AS acted_at,
@@ -1682,7 +1702,7 @@ def effect(days: int = Query(365, ge=1, le=3650)):
                            WHERE now() > act.t + make_interval(mins => %s))
                 SELECT rule_id, count(*) AS acted, count(*) FILTER (WHERE cleared) AS cleared
                 FROM j GROUP BY rule_id ORDER BY count(*) DESC, rule_id""",
-             live, days, win, win)
+             live, days, hide, win, win)
     watches = {r["id"]: r["watch"] for r in packs.load_rules()
                if isinstance(r, dict) and isinstance(r.get("watch"), dict)}
     out = []
@@ -1695,7 +1715,8 @@ def effect(days: int = Query(365, ge=1, le=3650)):
             # is an act made when the reading had come back on its own, which is a real and common thing and not
             # a nought-hour recovery.
             h = q("""WITH a AS (SELECT id, ts, sensor_id FROM alerts
-                                 WHERE level='act' AND rule_id = %s AND ts > now() - make_interval(days => %s)),
+                                 WHERE level='act' AND rule_id = %s AND ts > now() - make_interval(days => %s)
+                                   AND (sensor_id IS NULL OR sensor_id <> ALL(%s::text[]))),
                           act AS (SELECT alert_id, min(ts) AS t FROM actions WHERE stage='acted' GROUP BY alert_id),
                           e AS (SELECT a.id, act.t AS acted_at,
                                        (SELECT min(x.bucket) FROM readings_1h x
@@ -1710,7 +1731,7 @@ def effect(days: int = Query(365, ge=1, le=3650)):
                               ORDER BY extract(epoch FROM ok_at - acted_at) / 3600.0)
                               FILTER (WHERE ok_at IS NOT NULL
                                       AND ok_at > date_trunc('hour', acted_at)) AS median_hours
-                     FROM e""", r["rule_id"], days, w["metric"], w["over"])
+                     FROM e""", r["rule_id"], days, hide, w["metric"], w["over"])
             g = (h[0] if h else {}) or {}
             item["measured"] = int(g.get("measured") or 0)
             item["already"] = int(g.get("already") or 0)
@@ -1790,7 +1811,7 @@ def export(day: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$")):
                + " AND " + packs.open_sql("r") + """
                   ORDER BY r.bucket, r.sensor_id, r.metric""", day, day)
     if not placewords.is_house():   # the file travels whoever asked: a community node's indoor sensors stay home
-        hourly = [r for r in hourly if not (r["local"] and r["indoor"])]
+        hourly = [r for r in hourly if not (r["indoor"] and (r["local"] or r["kind"] == "child"))]
     kids = ([r["sensor_id"] for r in q("SELECT sensor_id FROM sensors WHERE kind = 'child'")]
             if any(r.get("kind") == "child" for r in hourly) else [])
     name = _export_namer(kids)

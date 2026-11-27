@@ -61,7 +61,8 @@
       FROM readings WHERE sensor_id = 'cams-point' AND metric = 'pm25_model' AND ts > now() - interval '7 days'
       GROUP BY 1),
     j AS (SELECT h.*, m.model FROM h LEFT JOIN m USING (bucket))
-    SELECT 'node' AS sensor_id,
+    -- an indoor sensor's id, not 'node': the text is read from the rooms, so what hides a room hides it too
+    SELECT (SELECT min(sensor_id) FROM sensors WHERE local AND indoor) AS sensor_id,
            count(indoor) AS hours,
            round(corr(indoor, outdoor)::numeric, 2)  AS r_in_out,
            round(corr(outdoor, model)::numeric, 2)   AS r_out_model,

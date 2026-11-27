@@ -96,6 +96,7 @@ def _q(sql, *a):
 
 
 main.q = _q
+_KIDS_IN = []     # a child's indoor sensors, as _indoor_ids reads them (the PARENT_INDOOR block below fills it)
 
 
 class _Cur:
@@ -103,8 +104,8 @@ class _Cur:
     def __exit__(self, *a): return False
     def execute(self, sql, *a): self.sql = sql
     def fetchall(self):
-        if "local AND indoor" in self.sql:
-            return [{"sensor_id": "ag-in", "name": "ag-in", "source_name": None}]
+        if "indoor AND (local OR kind = 'child')" in self.sql:
+            return [{"sensor_id": "ag-in", "name": "ag-in", "source_name": None}] + _KIDS_IN
         if "source_name" in self.sql:
             return [{"room": None, "name": s["name"], "source_name": None} for s in (_IN, _OUT)]
         return []
@@ -219,7 +220,7 @@ class _EvCur(_Cur):
     def fetchall(self):
         if "FROM alert_events" in self.sql:
             return [dict(e) for e in _EV]
-        if "FROM sensors WHERE local AND indoor" in self.sql:
+        if "FROM sensors WHERE indoor AND (local OR kind = 'child')" in self.sql:
             return [{"sensor_id": "ag-in", "name": "Kids", "source_name": None}]
         return super().fetchall()
     def fetchone(self):
@@ -286,6 +287,104 @@ client.get("/issues")
 _eng.compute, events_wire.live = _real_compute, _real_live
 assert _seen and not isinstance(_seen[0], _ia._NoIndoor), "a private node's /issues reads every row"
 assert any(r["sensor"] == "indoor-1" for r in client.get("/export?day=2026-11-25").json()["hourly"])
+
+# a child's indoor rows (PARENT_INDOOR=on stores them as kind child, indoor) are indoor too: a stranger reads none
+_KIN = dict(_IN, sensor_id="kid-a/ag-in", name="kid-a/ag-in", local=False, custody=False, kind="child")
+_KOUT = dict(_KIN, sensor_id="kid-a/ag-out", name="kid-a/ag-out", indoor=False)
+
+
+def _qk(sql, *a):
+    if "FROM sensors WHERE kind = 'child'" in sql:
+        return [{"sensor_id": s["sensor_id"], "kind": "child"} for s in (_KIN, _KOUT)]
+    if "FROM readings_1h" in sql:
+        return [dict(_HOURLY[0], sensor_id=s["sensor_id"], local=False, kind="child", indoor=s["indoor"]) for s in (_KIN, _KOUT)]
+    if "FROM sensors" in sql:
+        return [dict(_IN), dict(_OUT), dict(_KIN), dict(_KOUT)]
+    return _q(sql, *a)
+
+
+main.q = _qk; _KIDS_IN[:] = [{"sensor_id": "kid-a/ag-in", "name": "kid-a/ag-in", "source_name": None}]
+os.environ["NODE_KIND"] = "community"; _reset()
+assert main._indoor_ids() == {"ag-in", "kid-a/ag-in"}, main._indoor_ids()
+r = client.get("/sensors").json()
+assert [s["sensor_id"] for s in r] == ["ag-out", "home-1/outdoor-2"] and not any(s["indoor"] for s in r), r
+assert {s["sensor_id"] for s in client.get("/sensors", headers=TOK).json()} >= {"kid-a/ag-in"}, "a token reads the child's room"
+for h in ({}, TOK):
+    ex = client.get("/export?day=2026-11-25", headers=h).json()["hourly"]
+    assert [x["sensor"] for x in ex] == ["home-1/outdoor-2"], ("the export travels whoever asked", h, ex)
+os.environ["NODE_KIND"] = "home"; _reset()
+assert len(client.get("/sensors").json()) == 4, "a private node is unchanged"
+assert len(client.get("/export?day=2026-11-25").json()["hourly"]) == 2
+main.q = _q; _KIDS_IN.clear(); _reset()
+
+# /effect: a stranger on a community node gets no recovery hours of an indoor sensor's alerts
+_eff = []
+
+
+def _qe(sql, *a):
+    _eff.append(a)
+    return [{"rule_id": "air-quality/indoor_pm25_high", "acted": 1, "cleared": 1}] if "GROUP BY rule_id" in sql else \
+        [{"measured": 1, "already": 0, "median_hours": 2.0}]
+
+
+_lr0, _lw0 = main.index._live_rule_ids, main.packs.load_rules
+main.index._live_rule_ids = lambda: ["air-quality/indoor_pm25_high"]
+main.packs.load_rules = lambda: [{"id": "air-quality/indoor_pm25_high", "watch": {"metric": "pm25", "over": 35.5}}]
+main.q = _qe
+try:
+    os.environ["NODE_KIND"] = "community"; _reset()
+    client.get("/effect"); assert _eff and all(["ag-in"] in [list(x) for x in a if isinstance(x, list)] for a in _eff), _eff
+    _eff.clear(); client.get("/effect", headers=TOK); assert all([] in a for a in _eff), ("a token reads them all", _eff)
+    os.environ["NODE_KIND"] = "home"; _reset()
+    _eff.clear(); client.get("/effect"); assert all([] in a for a in _eff), ("a private node unchanged", _eff)
+    _sql = (ROOT / "app/main.py").read_text().split("def effect(")[1].split("\n@app.")[0]
+    assert _sql.count("sensor_id <> ALL(%s::text[])") == 2, "both alert CTEs leave the indoor sensors out"
+finally:
+    main.index._live_rule_ids, main.packs.load_rules, main.q = _lr0, _lw0, _q
+
+# a NODE_KIND row in the settings table: one warning at start, and it is ignored
+_wl = []
+
+
+class _WCur(_Cur):
+    def fetchone(self): return {"?column?": 1} if "key = 'NODE_KIND'" in self.sql else None
+
+
+class _WCon(_Con):
+    def cursor(self): return _WCur()
+
+
+_db0, _log0 = main.db, main.log.warning
+main.db, main.log.warning = (lambda: _WCon()), (lambda m, *a: _wl.append(m % a if a else m))
+main._warn_kind_row()
+main.db = lambda: _Con(); main._warn_kind_row()
+main.db, main.log.warning = _db0, _log0
+assert len(_wl) == 1 and "ignored" in _wl[0] and "planetai update" in _wl[0], _wl
+assert "_warn_kind_row()" in (ROOT / "app/main.py").read_text().split("def start()")[1].split("\ndef ")[0], "start() runs it"
+
+# a drawing tied to an issue is an answer: refused on a community node, before anything is written; untying still works
+import maps as _maps  # noqa: E402
+
+
+class _MCur:
+    def __init__(self): self.sql = []
+    def execute(self, sql, *a): self.sql.append(sql)
+    def fetchone(self): return None
+
+
+os.environ["NODE_KIND"] = "community"
+_mc = _MCur()
+try:
+    _maps.tie(_mc, 1, {"alert_id": 1}, "closed the gate", "a"); raise AssertionError("tie wrote on a community node")
+except main.HTTPException as e:
+    assert e.status_code == 409 and e.detail == placewords.NO_ACT and not _mc.sql, (e.status_code, _mc.sql)
+_maps.tie(_mc, 1, None, "", "a"); assert _mc.sql, "untying on a community node still clears the row"
+os.environ["NODE_KIND"] = "home"
+_mc = _MCur()
+try:
+    _maps.tie(_mc, 1, {"alert_id": 1}, "closed the gate", "a")
+except main.HTTPException as e:
+    assert e.status_code == 404, "a private node goes on to look the alert up"
 print("ok  community: no indoor sensor without a token, none in the export; private unchanged")
 
 # ---------------------------------------------------------------- a community node asks nobody to act

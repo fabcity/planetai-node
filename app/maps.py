@@ -44,6 +44,7 @@ from psycopg.types.json import Jsonb
 import events_pg
 import geo
 import identity
+import placewords
 from auth import ACT_TOKEN, AGG_TOKEN, PARENT, PARENT_TOKEN, _bearer_ok, _is_local
 from db import NODE_TZ, db
 
@@ -371,6 +372,8 @@ def tie(cur, mark_id: int, issue: dict | None, words: str, actor: str) -> None:
     `{"alert_id": A}` or `{"event_id": E}`, the way the Done button on that issue carries it; None unties, deleting the
     row. Tying again replaces it; to the same issue it keeps the act's time, so new words do not move it out of ρ's
     24 h, and to another issue it is a new act. Deleting the drawing keeps it, because the person did act."""
+    if issue is not None and not placewords.is_house():
+        raise HTTPException(409, placewords.NO_ACT)      # nobody answers a community node's alerts, a drawing included
     choice = f"place.mark:{mark_id}"
     cur.execute("DELETE FROM actions WHERE stage = 'acted' AND choice = %s RETURNING ts, alert_id, event_id", (choice,))
     was = cur.fetchone()
