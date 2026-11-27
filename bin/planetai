@@ -300,7 +300,7 @@ PY
     [[ -d .git ]] && return 0                       # a developer's checkout knows what it is
     local here there
     here="$(cat VERSION 2>/dev/null || echo dev)"
-    there="$(curl -fsS --max-time 6 "https://planetai.fab.city/node0/get/VERSION" 2>/dev/null | tr -d '[:space:]')" || n=
+    there="$(curl -fsS --max-time 6 "https://planetai.fab.city/node0/get/VERSION" 2>/dev/null | tr -d '[:space:]')"
     [[ -z "$there" || -z "$here" || "$here" == "$there" ]] && return 0
     echo
     warn "this folder holds $here. The published version is $there."
@@ -2413,22 +2413,23 @@ merge_packs() {
 # apply_role_defaults ROLE: the starting settings in presets/roles/ROLE.env. Runtime keys go through config set, and
 # PACKS_ADD joins PACKS_ENABLED. Packs are only added, and nothing is removed. With a second argument "defaults", a
 # key is skipped when its source is "gui" (changed in Set up or with config set), as setup does on a node that is
-# already set up. A value from .env or the built-in one gets the role's.
+# already set up, and PACKS_ADD is skipped when PACKS_ENABLED's is. A value from .env or the built-in one gets the role's.
 apply_role_defaults() {
   local f="presets/roles/$1.env" k v cur new
   [[ -f "$f" ]] || return 0
   while IFS='=' read -r -u 3 k v; do
     [[ "$k" =~ ^[A-Z][A-Z0-9_]*$ ]] || continue
+    if [[ "${2:-}" == defaults ]]; then
+      cur="${k/#PACKS_ADD/PACKS_ENABLED}"   # PACKS_ADD is skipped when the pack list was changed in Set up
+      cur="$(api /settings | json "print(([r['source'] for r in d['runtime'] if r['key']=='$cur'] or [''])[0])" 2>/dev/null)" || cur=
+      [[ -n "$cur" && "$cur" != gui ]] || continue
+    fi
     if [[ "$k" == PACKS_ADD ]]; then
       cur="$(api /settings | json "print(([r['value'] for r in d['runtime'] if r['key']=='PACKS_ENABLED'] or [''])[0])" 2>/dev/null | tr -d ' ')" || cur=
       [[ -n "$cur" ]] || cur="$(setting PACKS_ENABLED)"
       new="$(merge_packs "$cur" "$v")"
       [[ -z "$new" || "$new" == "$cur" ]] || config_set PACKS_ENABLED "$new" || true
     else
-      if [[ "${2:-}" == defaults ]]; then
-        cur="$(api /settings | json "print(([r['source'] for r in d['runtime'] if r['key']=='$k'] or [''])[0])" 2>/dev/null)" || cur=
-        [[ -n "$cur" && "$cur" != gui ]] || continue
-      fi
       config_set "$k" "$v" || true
     fi
   done 3< "$f"
@@ -2455,11 +2456,16 @@ cmd_role() {
     else warn "This node may hold indoor sensors (the count could not be read). A community node's public pages never show indoor sensors."; fi
   fi
   echo "  A backup goes to $bd before anything changes."
-  confirm "Change the role to $want?" || { say "Nothing changed."; return 0; }
+  [[ $yes -eq 1 ]] || confirm "Change the role to $want?" || { say "Nothing changed."; return 0; }
   chmod +x backup.sh; ./backup.sh || fail "the backup did not finish, so the role is unchanged"
   kind=community; [[ "$want" == private ]] && kind=home
   envset NODE_KIND "$kind"
-  spin "restarting with the $want role" docker compose up -d --force-recreate app agent || fail "the node did not restart; .env says NODE_KIND=$kind"
+  # a settings row from an older node would read as the role; update.sh moves it, here .env has just said it
+  docker compose exec -T db psql -U planetai -tAc "DELETE FROM settings WHERE key = 'NODE_KIND'" planetai </dev/null >/dev/null 2>&1 || true
+  # naming a profiled service starts it, so the agent restarts only where it was on
+  local svc=app
+  case ",$(envget COMPOSE_PROFILES)," in *,agent,*) svc="app agent";; *) [[ -n "$(docker compose ps -q agent 2>/dev/null)" ]] && svc="app agent";; esac
+  spin "restarting with the $want role" docker compose up -d --force-recreate $svc || fail "the node did not restart; .env says NODE_KIND=$kind"
   if [[ -f "presets/roles/$want.env" ]]; then
     echo "  Starting settings for a $want node (presets/roles/$want.env). Packs are added to the list, nothing is removed:"
     sed 's/^/    /' "presets/roles/$want.env"

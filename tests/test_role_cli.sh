@@ -18,6 +18,8 @@ case "$*" in
   *pg_isready*) exit 0;;
   *"indoor"*) [ -n "$COUNT_FAIL" ] && exit 1; echo 6; exit 0;;
   *" up "*) echo "$*" >> "$CALLS"; exit 0;;
+  *"DELETE FROM settings"*) echo "$*" >> "$CALLS"; exit 0;;
+  *"ps -q agent"*) [ -n "$AGENT_RUNNING" ] && echo 3f2a; exit 0;;
 esac
 exit 0
 STUB
@@ -39,10 +41,15 @@ out="$(run --yes community)"; rc=$?
 grep -q 'This node holds 6 indoor sensors' <<<"$out" && ok "it says how many indoor sensors the node holds" || bad "no indoor count: $out"
 grep -q 'backups/test.sql.gz' <<<"$out" && ok "and where the backup goes" || bad "no backup path"
 grep -q '^NODE_KIND=community$' "$D/.env" && ok "NODE_KIND=community is written" || bad ".env: $(cat "$D/.env")"
-grep -q 'backup ran' "$t/calls" && grep -q 'force-recreate app agent' "$t/calls" && ok "the backup ran, then app and agent restarted" || bad "calls: $(cat "$t/calls" 2>/dev/null)"
+grep -q 'backup ran' "$t/calls" && grep -q 'force-recreate app$' "$t/calls" && ok "the backup ran, then app restarted, and no agent on a node without it" || bad "calls: $(cat "$t/calls" 2>/dev/null)"
+grep -qF "DELETE FROM settings WHERE key = 'NODE_KIND'" "$t/calls" && ok "a NODE_KIND row in the settings table is deleted" || bad "no delete: $(cat "$t/calls" 2>/dev/null)"
 grep -q 'Readings, settings and alerts stay as they are' <<<"$out" && ok "it names what changes" || bad "no what-changes lines"
 
 run --yes private >/dev/null; grep -q '^NODE_KIND=home$' "$D/.env" && ok "community to private writes NODE_KIND=home" || bad ".env: $(cat "$D/.env")"
+printf 'NODE_NAME=t\nNODE_KIND=home\nCOMPOSE_PROFILES=mqtt,agent\n' > "$D/.env"; rm -f "$t/calls"
+run --yes community >/dev/null; grep -q 'force-recreate app agent$' "$t/calls" && ok "with the agent profile on, the agent restarts too" || bad "calls: $(cat "$t/calls" 2>/dev/null)"
+printf 'NODE_NAME=t\nNODE_KIND=home\n' > "$D/.env"; rm -f "$t/calls"
+AGENT_RUNNING=1 run --yes community >/dev/null; grep -q 'force-recreate app agent$' "$t/calls" && ok "and so does an agent that is running without it" || bad "calls: $(cat "$t/calls" 2>/dev/null)"
 
 printf 'NODE_NAME=t\nNODE_KIND=home\n' > "$D/.env"; before="$(cat "$D/.env")"
 out="$(DOCKER_DOWN=1 run --yes community)"; rc=$?
@@ -93,6 +100,11 @@ grep -qF '"ALERT_LEVEL":"act"' "$t/puts" && ! grep -q SHARE_LEVEL "$t/puts" \
 settings "smartcitizen"; rm -f "$t/puts"
 PATH="$t/stub:/usr/bin:/bin:/usr/local/bin" PLANETAI_HOME="$D" PUTS="$t/puts" SETTINGS="$t/settings.json" bash -c 'source "$1"; apply_role_defaults community defaults' _ "$t/lib.sh" </dev/null >/dev/null 2>&1
 grep -qF '"SHARE_LEVEL":"open"' "$t/puts" && ok "setup does send SHARE_LEVEL open when its source is env (.env.example's value)" || bad "env puts: $(cat "$t/puts" 2>/dev/null)"
+grep -q PACKS_ENABLED "$t/puts" && ok "and adds the role's packs when the list was not changed in Set up" || bad "no packs put: $(cat "$t/puts" 2>/dev/null)"
+settings "smartcitizen" PACKS_ENABLED; rm -f "$t/puts"
+PATH="$t/stub:/usr/bin:/bin:/usr/local/bin" PLANETAI_HOME="$D" PUTS="$t/puts" SETTINGS="$t/settings.json" bash -c 'source "$1"; apply_role_defaults community defaults' _ "$t/lib.sh" </dev/null >/dev/null 2>&1
+! grep -q PACKS_ENABLED "$t/puts" && grep -qF '"ALERT_LEVEL":"act"' "$t/puts" && ok "setup adds no pack when the pack list was changed in Set up (source gui)" || bad "gui packs: $(cat "$t/puts" 2>/dev/null)"
+grep -q '^  \[\[ \$yes -eq 1 \]\] || confirm "Change the role to' "$REPO/bin/planetai" && ok "--yes answers the first question too" || bad "--yes does not skip the role confirm"
 out="$(run banana)"; rc=$?
 [[ $rc -eq 2 ]] && grep -q 'private or community' <<<"$out" && ok "an unknown role exits 2 and names the two" || bad "rc=$rc out=$out"
 [[ $fails -eq 0 ]]
