@@ -490,7 +490,7 @@ place_js = open("app/static/doors-place.js").read()
 foot_html = html[html.index('id="preportfoot"'):html.index('id="preport"')]
 check("A plan of the map as you have it on screen. A reading of the place, with ways to improve it." in foot_html, "the foot says the report reads the place")
 check(re.search(r"function pages\(RD\) \{[^}]*footWho\(RD\)", place_js, re.S) and "if (PWHO) return; PWHO = true;" in place_js
-      and "if (!DOORS_TOKEN() && !notHouse((D.health || {}).kind)) {" in place_js
+      and "if (!DOORS_TOKEN() && !notAHouse()) {" in place_js
       and not NAMES.search(foot_html), "the line is asked for once, by a screen holding the token or any screen of a community node, and a new reading rewrites it")
 print("  reading: the foot of Place says who wrote the reading and when")
 

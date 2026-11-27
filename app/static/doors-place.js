@@ -214,6 +214,10 @@ document.addEventListener('click', e => { if ($('#ptools').hidden === false && !
    the register changes, with the map shown for it (doors-placemap.js placeSheet). A redraw that is not a new address, a
    resize or the browser laying the page out to print it, keeps the sheet it has. */
 let PREG = 'paper', PSHEET = null, PTAKING = null, PPARTS = null, PPOLL = null;
+/* The page does not ask the node for what a screen with no token is always refused (doors-load.js DOORS_LOCKED), and the
+   reading is on that list for a house. A community node answers it to anyone, so there the page asks. */
+const notAHouse = () => typeof notHouse === 'function' && notHouse((D.health || {}).kind);
+const readingFetch = () => (notAHouse() ? fetch('/place/reading', { headers: DOORS_AUTH() }) : doorsFetch('/place/reading'));
 function report(again) {
   const box = $('#preport'), show = v => { box.hidden = !v; document.body.classList.toggle('preport', v); };
   if (location.hash !== '#place/report') { PSHEET = null; show(false); return null; }
@@ -223,7 +227,7 @@ function report(again) {
   if (PSHEET && !again) { show(true); return null; }
   show(false);
   const get = p => doorsFetch(p).then(r => (r.ok ? r.json() : null)).catch(() => null), reg = PREG;
-  return (PTAKING = Promise.all([window.placeSheet(reg === 'paper'), get('/geo/cell?id=' + D.health.cell.id), get('/hydro'), get('/place/reading'), get('/forecast')]).then(([s, c8, H, RD, FC]) => {
+  return (PTAKING = Promise.all([window.placeSheet(reg === 'paper'), get('/geo/cell?id=' + D.health.cell.id), get('/hydro'), readingFetch().then(r => (r.ok ? r.json() : null)).catch(() => null), get('/forecast')]).then(([s, c8, H, RD, FC]) => {
     PTAKING = null;
     if (location.hash !== '#place/report') return;
     if (reg !== PREG) return report(true);   // the other register was pressed while this one was taken
@@ -244,10 +248,10 @@ function pages(RD) {
   b.textContent = busy ? 'Writing, a few minutes' : RD && RD.written ? 'Write it again' : 'Write a fuller reading';
   n.hidden = !(RD && RD.state === 'refused'); n.textContent = n.hidden ? '' : `The fuller reading was not kept: ${RD.refused}. The node’s own reading stands.`;
   clearTimeout(PPOLL);
-  if (busy) PPOLL = setTimeout(() => doorsFetch('/place/reading').then(r => (r.ok ? r.json() : null)).catch(() => null)
+  if (busy) PPOLL = setTimeout(() => readingFetch().then(r => (r.ok ? r.json() : null)).catch(() => null)
     .then(R2 => { if (location.hash === '#place/report' && PSHEET) pages(R2 || RD); }), 10000);
 }
-$('#prwrite').onclick = () => doorsFetch('/place/reading', { method: 'POST' }).then(r => r.ok ? doorsFetch('/place/reading').then(g => g.json()) : r.json().then(e => { throw new Error(e.detail || `the node answered ${r.status}`); }))
+$('#prwrite').onclick = () => doorsFetch('/place/reading', { method: 'POST' }).then(r => r.ok ? readingFetch().then(g => g.json()) : r.json().then(e => { throw new Error(e.detail || `the node answered ${r.status}`); }))
   .then(RD => { if (PSHEET) pages(RD); }).catch(e => { const n = $('#prnote'); n.hidden = false; n.textContent = e.message; });
 /* What the pages carry (SPEC_place_report §5; the reading's own credits ride in RD.credits, §11): the band's rows with Rivers in them, the cake, what changed, and every
    credit they owe in the node's words. /earth and /hydro bring their own; the place and index packs' attributions do not
@@ -273,8 +277,8 @@ function footWho(RD) { if (RD && RD.rules) $('#prfwho').textContent = readingFoo
 function who() {
   if (PWHO) return; PWHO = true;
   /* a house keeps its map and its reading to its own screens; a community node hands both out */
-  if (!DOORS_TOKEN() && !notHouse((D.health || {}).kind)) { $('#prfhow').textContent = 'Your browser prints it or saves it as a PDF, and nothing is sent anywhere. ' + window.placeNoMap; return; }
-  doorsFetch('/place/reading').then(r => (r.ok ? r.json() : null)).then(footWho).catch(() => {});
+  if (!DOORS_TOKEN() && !notAHouse()) { $('#prfhow').textContent = 'Your browser prints it or saves it as a PDF, and nothing is sent anywhere. ' + window.placeNoMap; return; }
+  readingFetch().then(r => (r.ok ? r.json() : null)).then(footWho).catch(() => {});
 }
 /* the Ask pane's button (doors-core.js): the report in the register asked for */
 window.placeReport = reg => { PREG = reg === 'screen' ? 'screen' : 'paper'; if (location.hash === '#place/report') report(true); else location.hash = '#place/report'; };

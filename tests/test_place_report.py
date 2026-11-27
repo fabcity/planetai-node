@@ -246,5 +246,6 @@ for s in ("what is coming", "not a measurement", "Saturday 28 Nov", "the rest of
 assert fcj["none"] == [None, None, None], "no days, no page"
 assert "Ungasan · Place report · page 1 of" in fcj["pages"] and "bayu-ungasan" not in fcj["pages"] and "what is coming" in fcj["pages"], "the report is titled with the place's name and carries the forecast"
 assert "!(typeof notHouse === 'function' && notHouse((D.health || {}).kind))) return { none: NOMAP, date }" in SRC, "only a house keeps its map from a reader with no token"
+assert "notAHouse() ? fetch('/place/reading', { headers: DOORS_AUTH() }) : doorsFetch('/place/reading')" in PSRC, "a community node's page asks for the reading with no token; a house's does not"
 assert "get('/forecast')" in PSRC and "forecast: FC" in PSRC, "the report asks for the forecast"
 print("  report: what is coming, from the forecast's days; a community node hands out the picture; the report carries the place's name")
