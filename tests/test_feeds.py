@@ -342,7 +342,7 @@ assert en == ("📊 Ungasan, 17–23 Nov.\n"
               "The hottest afternoon was Saturday, 32 °C.\n"
               "Swell peaked Saturday, 2.1 m.\n"
               "Evenings around 18:00 are when the air is worst here.\n"
-              "The full report: https://x.ts.net:8443/ui#data/report"), en
+              "The full report: https://x.ts.net:8443/ui#place/report"), en
 for key, s, p in SEEN:           # outdoor and public only, in the week Monday 17 to Sunday 23
     if key in ("air", "heat"):
         assert "NOT s.indoor" in s and "NOT EXISTS" in s and "'private'" in s, s
@@ -351,7 +351,7 @@ for key, s, p in SEEN:           # outdoor and public only, in the week Monday 1
 idt = feeds.weekly_texts(wk, date(2026, 11, 24), "Ungasan", URL)["id"]
 assert idt.split("\n")[1] == "Udara bersih sepanjang minggu; paling buruk 31 µg/m³ dekat Jimbaran, hari Kamis.", idt
 assert idt.split("\n")[2] == "Siang terpanas hari Sabtu, 32 °C."
-assert idt.split("\n")[-1] == "Laporan lengkap: https://x.ts.net:8443/ui#data/report"
+assert idt.split("\n")[-1] == "Laporan lengkap: https://x.ts.net:8443/ui#place/report"
 assert "📊 Ungasan, 17–23 Nov." == idt.split("\n")[0]
 assert "full report" not in feeds.weekly_texts(wk, date(2026, 11, 24), "Ungasan", "")["en"]
 # an unhealthy week names its days; a morning peak leaves the rhythm line out; rain falls back to the next series
@@ -406,7 +406,7 @@ CLOCK[0] = mon(7, 0)
 assert feeds.weekly_job(wk, mon(7, 0)) is True and len(QUEUE) == 1
 q = QUEUE[0]
 assert (q["feed"], q["rule_id"], q["urgent"]) == ("weekly", None, False)
-assert q["texts"]["en"].startswith("📊 Ungasan, 16–22 Nov.\n") and q["texts"]["en"].endswith("/ui#data/report")
+assert q["texts"]["en"].startswith("📊 Ungasan, 16–22 Nov.\n") and q["texts"]["en"].endswith("/ui#place/report")
 CLOCK[0] = mon(7, 10)
 assert feeds.weekly_job(wk, mon(7, 10)) is False and len(QUEUE) == 1
 CLOCK[0] = datetime(2026, 11, 30, 7, 0, tzinfo=TZ)

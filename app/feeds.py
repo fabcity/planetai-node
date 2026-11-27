@@ -269,7 +269,7 @@ WEEK = {
            "sea": "Swell peaked {day}, {v} m.",
            "rain": "{v} mm of rain fell, most on {day}.",
            "rhythm": "Evenings around {v}:00 are when the air is worst here.",
-           "link": "The full report: {v}/ui#data/report"},
+           "link": "The full report: {v}/ui#place/report"},
     "id": {"clean": "Udara bersih sepanjang minggu; paling buruk {v} µg/m³ dekat {name}, hari {day}.",
            "mostly": "Udara sebagian besar bersih; paling buruk hari {day}, {v} µg/m³ dekat {name}.",
            "bad": "Udara tidak sehat {k} hari; {day} paling buruk, {v} µg/m³ dekat {name}.",
@@ -277,7 +277,7 @@ WEEK = {
            "sea": "Ombak tertinggi hari {day}, {v} m.",
            "rain": "Hujan {v} mm, paling banyak hari {day}.",
            "rhythm": "Sekitar pukul {v}.00 udara di sini paling buruk.",
-           "link": "Laporan lengkap: {v}/ui#data/report"},
+           "link": "Laporan lengkap: {v}/ui#place/report"},
 }
 NEIGHBOUR = {"en": "a neighbour's station", "id": "stasiun tetangga"}   # a child's station is never named
 # Outdoor and public rows only: `sensors.indoor` and the channel-role predicate every road out of the house uses. A
