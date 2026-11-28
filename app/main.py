@@ -1305,12 +1305,8 @@ def _coarse(lat, lon):
     """A point snapped to the centre of its resolution-8 cell, three decimals; two decimals without h3."""
     if lat is None or lon is None:
         return lat, lon
-    try:
-        import h3  # noqa: PLC0415
-        clat, clon = h3.cell_to_latlng(h3.latlng_to_cell(float(lat), float(lon), 8))
-        return round(clat, 3), round(clon, 3)
-    except Exception:  # noqa: BLE001
-        return round(float(lat), 2), round(float(lon), 2)
+    clat, clon = ground.middle(float(lat), float(lon))   # its own two decimals without h3
+    return round(clat, 3), round(clon, 3)
 
 
 def _public_rows(rows: list[dict]) -> list[dict]:
@@ -1318,7 +1314,7 @@ def _public_rows(rows: list[dict]) -> list[dict]:
     within a radius, never within a separation of it (packs/bali-air-dispatch), and the make pack its labs within
     MAKE_RADIUS_KM. Against the public lists those come from, the edge of either cut traces a circle through the house.
     So only what every point of the house's cell would have kept is shown, each judged from the cell's centre with the
-    limits widened by how far the house can be from it, and a lab's `distance_km` is from the centre too. Rows with
+    limits widened by how far the house can be from it, and a lab's `distance_km` is whole km from the centre too. Rows with
     `local` set (the house's own) pass untouched: the caller places them. Copies; `rows` is not changed."""
     lat, lon = float(os.getenv("NODE_LAT", 0) or 0), float(os.getenv("NODE_LON", 0) or 0)
     if not (lat or lon):
@@ -1338,7 +1334,7 @@ def _public_rows(rows: list[dict]) -> list[dict]:
         if r.get("kind") == "facility":
             if d > labs_m:
                 continue
-            r = {**r, "meta": {**(r.get("meta") or {}), "distance_km": round(d / 1000, 1)}}
+            r = {**r, "meta": {**(r.get("meta") or {}), "distance_km": round(d / 1000)}}   # whole km, as packs/make stores it
         elif r.get("source") in gone or (r.get("source") in srcs
                                          and not circ + sep_m + wall.ROUNDED_M < d <= far_km * 1000 - circ):
             continue

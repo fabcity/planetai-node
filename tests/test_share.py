@@ -279,12 +279,12 @@ for _r in lan.get("/sensors").json():
     if _r["kind"] in ("model", "map") and _r["lat"] is not None:
         assert (_r["lat"], _r["lon"]) in (main._coarse(*_NODE), main._coarse(*_OLD), main._coarse(*_GRID)), _r
 assert local.get("/sensors").json()[0]["lat"] == _NODE[0], "this machine still reads the row as it is kept"
-_h3 = sys.modules.get("h3")                            # without h3 the fallback is two decimals, as /health's is
-sys.modules["h3"] = None
+_h3, main.ground.h3 = main.ground.h3, None            # without h3 the fallback is two decimals, as /health's is
+main.ground.centre.cache_clear()
 try:
     assert main._coarse(*_NODE) == (round(_NODE[0], 2), round(_NODE[1], 2)), "without h3 a row falls back to two decimals, coarser than the cell"
 finally:
-    sys.modules.pop("h3") if _h3 is None else sys.modules.__setitem__("h3", _h3)
+    main.ground.h3 = _h3
 main.q = _keep
 # Tomas, 15 Oct 2026: a screen without a key never reads what the house calls its rooms or its sensors.
 main._HOUSE.update(at=time.time() + 1e9, map=[("Kitchen, upstairs", "Sensor 1")])   # the database is stubbed out
@@ -354,7 +354,7 @@ for k in ("distance_km", "capabilities", "url", "snapshot", "city", "registry_sl
     assert k in f0["meta"], f"open: a facility cannot say its own {k}, so the page cannot draw it"
 import h3  # noqa: E402
 _c = main.ground.centre(-8.6478291, 115.1385412)
-assert f0["meta"]["distance_km"] == round(h3.great_circle_distance(_c[:2], (-8.793, 115.15), unit="km"), 1) != 3.3, \
+assert f0["meta"]["distance_km"] == round(h3.great_circle_distance(_c[:2], (-8.793, 115.15), unit="km")) != 3.3, \
     "the distance is the one figure the ask needs, and a stranger's is from the cell's centre, not the house (R25)"
 assert local.get("/sensors").json()[0]["meta"]["distance_km"] == 3.3, "this machine keeps the pack's own distance"
 assert "host" not in f0["meta"], \

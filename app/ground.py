@@ -109,6 +109,17 @@ def centre(lat: float, lon: float) -> tuple[float, float, float]:
     return c[0], c[1], max(h3.great_circle_distance(c, v, unit="m") for v in h3.cell_to_boundary(cell))
 
 
+def middle(lat: float, lon: float) -> tuple[float, float]:
+    """(lat, lon) of the middle of the res-8 cell the point stands in: what every distance, bearing or nearest a pack
+    stores is measured from, so the figure is the same wherever in the cell the node stands. Without h3, the point at
+    two decimals, which is coarser than the cell. Packs call this one; nothing else keeps a fallback of its own."""
+    try:
+        c = centre(lat, lon)
+    except RuntimeError:
+        return round(lat, 2), round(lon, 2)
+    return c[0], c[1]
+
+
 @lru_cache(maxsize=4)
 def svg(lat: float, lon: float, variant: str = "dark") -> str:
     """The ground for one point. Cached: NODE_LAT and NODE_LON are bootstrap keys, so a node changes
