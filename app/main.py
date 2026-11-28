@@ -321,13 +321,16 @@ HOURLY_INSERT = ("INSERT INTO readings_1h_done (bucket, sensor_id, metric, mean,
                  "GROUP BY 1, 2, 3")
 
 
+_HOURLY = threading.Lock()   # one rebuild at a time: two full ones at once insert the same hours
+
+
 def refresh_hourly() -> None:
     """The last 26 hours every hour, which catches a late push or a radio that caught up; the whole table on the first
     run after a start and on the first run of each local day, which catches a backfill or a deletion. One transaction,
     so a reader sees the old hours until the new ones are in. A full rebuild took 0.6 s on a copy of node #1."""
     today = _local_now().date().isoformat()
     full = state.get("hourly_full_on") != today
-    with db() as con, con.transaction(), con.cursor() as cur:
+    with _HOURLY, db() as con, con.transaction(), con.cursor() as cur:
         since = "-infinity" if full else (datetime.now(timezone.utc) - timedelta(hours=26)).isoformat()
         cur.execute(HOURLY_DELETE, {"since": since})
         cur.execute(HOURLY_INSERT, {"since": since})
