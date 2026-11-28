@@ -214,6 +214,19 @@ check("with a key it asks the area API for the ring's box, and no HEAD",
       hc.calls and hc.calls[0][0] == "GET" and "/api/area/csv/" in hc.calls[0][1] and "VIIRS_NOAA20_NRT" in hc.calls[0][1], hc.calls)
 check("a failure still records the ask, so a server that is down is not asked every five minutes",
       A.fetch(HC()) == ([], []))
+# the box the area API is asked for is drawn round the middle of the node's cell: two points in one cell ask for the
+# same box and store the same regional counts
+asked, region_rows = [], []
+for pt in (P1, P2):
+    os.environ.update(NODE_LAT=str(pt[0]), NODE_LON=str(pt[1]), FIRMS_MAP_KEY="k")
+    A._save({})
+    hc = HC()
+    _, rows = A.fetch(hc)
+    asked.append(hc.calls[0][1])
+    region_rows.append(sorted((r[0], r[2], r[3]) for r in rows if r[2].startswith("fires_region_")))
+check("two points in one cell ask FIRMS for the same box", asked[0] == asked[1], asked)
+check("and store the same fires_region_* figures", region_rows[0] == region_rows[1] and region_rows[0], region_rows)
+os.environ.update(NODE_LAT=str(BALI[0]), NODE_LON=str(BALI[1]))
 os.environ.pop("FIRMS_MAP_KEY")
 os.environ.pop("FIRE_SATELLITES")
 

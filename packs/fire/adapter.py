@@ -117,8 +117,8 @@ def places(spots: list[list]) -> list[list]:
 def summarise(spots: list[list], at: datetime, lat: float, lon: float, local_km: float, region_km: float,
               wind_from: float | None) -> list[tuple]:
     """The readings for the 24 hours before `at`. No nearest fire is invented when there is none, and nothing is
-    said about upwind without a wind to reckon it by. (lat, lon) is the node's point; every distance, bearing and count
-    is taken from the middle of its res-8 cell, and the distances are kept as whole km."""
+    said about upwind without a wind to reckon it by. Every distance, bearing and count is taken from the middle of
+    the res-8 cell (lat, lon) is in, and the distances are kept as whole km."""
     lat, lon = ground.middle(lat, lon)
     end = at.timestamp()
     seen = []
@@ -209,7 +209,8 @@ def _read(hc, url: str, old: dict | None, keyed: bool):
 def fetch(hc):
     if os.getenv("FIRE_ENABLED", "0").strip() != "1":
         return [], []
-    lat, lon = float(os.environ["NODE_LAT"]), float(os.environ["NODE_LON"])
+    # the middle of the node's cell: the box asked for, the file chosen and every figure are drawn round it
+    lat, lon = ground.middle(float(os.environ["NODE_LAT"]), float(os.environ["NODE_LON"]))
     local_km = float(os.getenv("FIRE_LOCAL_KM") or 25)
     region_km = max(float(os.getenv("FIRE_REGION_KM") or 150), local_km)
     now = datetime.now(timezone.utc)

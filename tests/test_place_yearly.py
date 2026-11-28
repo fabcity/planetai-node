@@ -158,10 +158,16 @@ print("  refresh: the poll and `planetai run place refresh` both recount, and th
 
 # The four nearest_* figures are measured from the middle of the node's res-8 cell and kept to the nearest 100 m, so two
 # node points inside one cell store the same four numbers. The database is a fake that measures from whatever point
-# the adapter hands METRICS_SQL for the distances; the counts in the circle are of the features stored round the node's point.
+# the adapter hands METRICS_SQL, over the features the fetch kept.
 import h3  # noqa: E402
 
-FEATURES = {"school": (-8.8290, 115.1601), "health": (-8.8210, 115.1555), "market": (-8.8301, 115.1520), "worship": (-8.8262, 115.1611)}
+_cell = h3.latlng_to_cell(-8.8271, 115.15709, 8)
+_c, _v = h3.cell_to_latlng(_cell), h3.cell_to_boundary(_cell)
+P1, P2 = [(_c[0] + 0.8 * (v[0] - _c[0]), _c[1] + 0.8 * (v[1] - _c[1])) for v in (_v[0], _v[3])]   # near opposite corners
+_dlat, _dlon = 1 / 111320.0, 1 / (111320.0 * math.cos(math.radians(_c[0])))
+# all four within PLACE_RADIUS_M less the cell's circumradius of the middle (about 480 m here), so all four are sure
+FEATURES = {"school": [(_c[0] + 300 * _dlat, _c[1])], "health": [(_c[0], _c[1] + 200 * _dlon)],
+            "market": [(-8.8301, 115.1520)], "worship": [(_c[0] - 250 * _dlat, _c[1] - 150 * _dlon)]}
 handed = []
 
 
@@ -176,7 +182,10 @@ class PlaceCur:
             self.row = (False,)
         elif sql is place.METRICS_SQL:
             handed.append(params)
-            near = {k: place.metres(params["mlat"], params["mlon"], *v) for k, v in FEATURES.items()}
+            # the features the fetch kept: those within PLACE_RADIUS_M of NODE_LAT, NODE_LON, as Overpass's around: does
+            node = float(os.environ["NODE_LAT"]), float(os.environ["NODE_LON"])
+            near = {k: min((place.metres(params["mlat"], params["mlon"], *f) for f in fs if place.metres(*node, *f) <= 1000), default=None)
+                    for k, fs in FEATURES.items()}
             cols = ["buildings", "building_area_m2", "commercial_buildings", "roads_km", "green_area_m2", "school", "health", "market", "worship", "pois"]
             self.description = [types.SimpleNamespace(name=c) for c in cols]
             self.row = (100, 50000.0, 10, 3.0, 1000.0, near["school"], near["health"], near["market"], near["worship"], {})
@@ -194,9 +203,6 @@ class PlaceCon:
 
 place.psycopg = types.SimpleNamespace(connect=lambda url: PlaceCon())
 os.environ["DATABASE_URL"] = "postgresql://nowhere"
-_cell = h3.latlng_to_cell(-8.8271, 115.15709, 8)
-_c, _v = h3.cell_to_latlng(_cell), h3.cell_to_boundary(_cell)
-P1, P2 = [(_c[0] + 0.8 * (v[0] - _c[0]), _c[1] + 0.8 * (v[1] - _c[1])) for v in (_v[0], _v[3])]   # near opposite corners
 got = []
 for pt in (P1, P2):
     os.environ.update(NODE_LAT=str(pt[0]), NODE_LON=str(pt[1]))
@@ -207,4 +213,17 @@ assert got[0] == got[1], f"two points in one cell must store the same nearest_* 
 assert all(v % 100 == 0 for v in got[0].values()), f"each kept to the nearest 100 m: {got[0]}"
 assert handed[0] == handed[1], "the query is handed one point for both"
 print("  nearest: the four distances are from the middle of the node's cell, to the nearest 100 m")
+
+# A place of worship 990 m from P1, on the side away from P2: inside P1's fetch, outside P2's. From the middle it is
+# farther than the fetch reaches for every point of the cell, so neither point can be sure it is the nearest: no row.
+_u = math.hypot((P1[0] - P2[0]) / _dlat, (P1[1] - P2[1]) / _dlon)
+FEATURES["worship"] = [(P1[0] + 990 * (P1[0] - P2[0]) / _u, P1[1] + 990 * (P1[1] - P2[1]) / _u)]
+got = []
+for pt in (P1, P2):
+    os.environ.update(NODE_LAT=str(pt[0]), NODE_LON=str(pt[1]))
+    _, rows = place.fetch(None)
+    got.append({m: v for _, _, m, v in rows if m.startswith("nearest_")})
+assert got[0] == got[1], f"a place only one point's fetch reaches must give both points the same figures: {got}"
+assert "nearest_worship_m" not in got[0], f"a nearest beyond what the fetch is sure of is kept as no row: {got[0]}"
+print("  nearest: kept only when it is sure to be the nearest from the middle, whatever point the fetch was centred on")
 print("place yearly tests pass")

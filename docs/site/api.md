@@ -334,7 +334,7 @@ Per rule, how many acts were followed by the condition stopping, and how long re
 ### GET /report/latest
 Access: open
 
-The last report the node wrote, sent or held: `{schema: "report-v0", id, ts, due_local, window_hours, depth, rung, text, sent, held_quiet, fallback_reason, note}`. Before the first, every key but `schema` and `note` is null.
+The last report the node wrote, sent or held: `{schema: "report-v0", id, ts, due_local, window_hours, depth, rung, text, sent, held_quiet, fallback_reason, note}`. Before the first, every key but `schema` and `note` is null. A reader without a token gets `text` null for a report written before the one-time cut recorded in `data_cuts`, or while none is recorded.
 
 ### GET /report/bundle
 Access: pull
@@ -805,7 +805,7 @@ push is pinned to the key it signs with. 404 when no child of that name is pinne
 ### GET /export
 Access: public
 
-One day of this node as open data under CC BY 4.0, for `?day=YYYY-MM-DD`: hourly means, the Index cells, the first line of each alert (null for an alert raised before the node measured its distances from the middle of its cell, the time in `data_cuts`), ρ and, with the things pack on, the offers. Never raw readings, `private` channels, secrets or readings of a source whose licence is non-commercial, and the node's own sensors are named by role (`indoor-1`), a child's as a home nearby (`home-1/outdoor-1`). `backup.sh` writes it every night to `exports/<node>/YYYY-MM-DD.json`.
+One day of this node as open data under CC BY 4.0, for `?day=YYYY-MM-DD`: hourly means, the Index cells, the first line of each alert (null for an alert raised before the one-time cut recorded in `data_cuts`, and for every alert while none is recorded), ρ and, with the things pack on, the offers. Never raw readings, `private` channels, secrets or readings of a source whose licence is non-commercial, and the node's own sensors are named by role (`indoor-1`), a child's as a home nearby (`home-1/outdoor-1`). `backup.sh` writes it every night to `exports/<node>/YYYY-MM-DD.json`.
 
 ```json
 {"schema": "export-v0", "node": "bayu-ungasan", "lat": -8.825, "lon": 115.159, "day": "2026-10-19",

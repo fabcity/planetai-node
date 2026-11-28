@@ -29,7 +29,7 @@ def fetch(hc):
     dist = _km(lat, lon, cell_lat, cell_lon)
     if dist > float(os.getenv("COAST_MAX_KM", "30")):
         raise RuntimeError(f"nearest ocean cell is {dist:.0f} km away; this node is not coastal (COAST_MAX_KM)")
-    import ground  # noqa: PLC0415 — the app's, as every adapter is loaded
+    import ground  # noqa: PLC0415; the app's, as every adapter is loaded
     mid = _km(*ground.middle(lat, lon), cell_lat, cell_lon)   # what is stored: from the middle of the node's res-8 cell
     cur = d.get("current") or {}
     t = cur.get("time")

@@ -59,7 +59,7 @@ def bmkg(hc, adm4: str, node_lat: float, node_lon: float):
     steps = [s for group in (d.get("data") or [{}])[0].get("cuaca") or [] for s in group]
     issued = _utc((steps[0] if steps else {}).get("analysis_date"))
     sid = "forecast-bmkg"
-    import ground  # noqa: PLC0415 — the app's; its km is whole, from the middle of the node's res-8 cell
+    import ground  # noqa: PLC0415; the app's; its km is whole, from the middle of the node's res-8 cell
     mlat, mlon = ground.middle(node_lat, node_lon)
     sensors = [_sensor(sid, f"BMKG forecast — {loc.get('desa')}, {loc.get('kecamatan')}",
                        loc.get("lat"), loc.get("lon"),
@@ -184,7 +184,7 @@ def marine(hc, points: list[dict]):
     if km > float(os.getenv("COAST_MAX_KM", "30")):
         log.info("forecast: nearest sea cell is %.0f km away; this node is not coastal (COAST_MAX_KM), no sea forecast", km)
         return [], []
-    import ground  # noqa: PLC0415 — the app's; the stored km is whole, from the middle of the node's res-8 cell
+    import ground  # noqa: PLC0415; the app's; the stored km is whole, from the middle of the node's res-8 cell
     mid = _km(*ground.middle(p["lat"], p["lon"]), cell_lat, cell_lon)
     sensor = _sensor("forecast-marine", "Open-Meteo Marine forecast, nearest sea cell", cell_lat, cell_lon,
                      {"fetched": fetched.isoformat(), "issued": None, "cell": p.get("cell"), "distance_km": round(mid),

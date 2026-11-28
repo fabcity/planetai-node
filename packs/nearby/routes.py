@@ -27,11 +27,10 @@ def _pct(xs: list[float], p: float) -> float | None:
 
 
 def _for_a_stranger(out: dict) -> dict:
-    """The answer for a reader without a token. The ring the station packs keep is cut round the node's own point, so
-    a stranger gets only the stations every point of its res-8 cell would keep (main._public_rows), each at three
-    decimals with whole km from the cell's centre, and the ring's figures are worked out again from those stations.
-    Before the node has a place there is no ring at all."""
-    import main  # noqa: PLC0415 — the route is mounted by main; importing it at the top would be a cycle
+    """The answer for a reader without a token: only the stations every point of the node's res-8 cell would keep
+    (main._public_rows), each at three decimals with whole km from the cell's centre, and the ring's figures worked
+    out again from those stations. Before the node has a place there is no ring at all."""
+    import main  # noqa: PLC0415; the route is mounted by main; importing it at the top would be a cycle
     c = wall.cell_centre()
     ring = []
     for s in main._public_rows(out["ring"]) if c else []:

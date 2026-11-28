@@ -166,7 +166,7 @@ else:
         "a node at 40 with the whole ring at 30 is not a local source; that is what `everywhere` is for"
 
     assert _run("everywhere", _local + _ringrows(_keys, 45.0), _keys)[0]["stations"] == 6
-    # the text's "{closest}, {nearest} km" is the same wherever in its res-8 cell the node stands, in whole km
+    # the text's "{closest}, {nearest} km" is measured from the middle of the node's res-8 cell, in whole km
     import h3  # noqa: E402
     _cell = h3.latlng_to_cell(-8.8271, 115.15709, 8)
     _c, _v = h3.cell_to_latlng(_cell), h3.cell_to_boundary(_cell)

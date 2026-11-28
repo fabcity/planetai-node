@@ -121,7 +121,7 @@ def main():
     if a.source == "sentinel" and min(years) < 2016:
         sys.exit(f"Sentinel-2 starts in 2015 (usable from 2016); {min(years)} needs --source landsat")
 
-    print(f"{len(years)} frames of {a.km} km around {lat}, {lon}, the middle of cell {cell} — {', '.join(map(str, years))}  [{a.source}]")
+    print(f"{len(years)} frames of {a.km} km around {lat}, {lon}, the middle of cell {cell}; {', '.join(map(str, years))}  [{a.source}]")
     if a.dry_run:
         return
     _init()

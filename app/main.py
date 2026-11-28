@@ -872,14 +872,12 @@ def load_channel_roles() -> int:
 
 
 
-# Schema 0.68 (init.sql `data_cuts`). The figures below were measured from the node's own point until this release and
-# from the middle of its res-8 cell since. Their past rows are removed once, in one transaction with the mark, by the
-# first poll of this code, before any adapter writes: the code before it went on writing them until the containers
-# restarted, after update.sh had taken its backup and applied the schema. The substation and plant distances have been
-# whole km from the middle since 18 Nov, so only their rows with a decimal go. A second run finds the mark and does
-# nothing. The sensors' own rows are rewritten by their packs at the next poll; their old distance keys and the
-# distance in the two sea names go now, so nothing waits for one. A lab loses its fetch stamp too, which makes the make
-# pack read the directory again at its next poll.
+# Schema 0.69 (init.sql `data_cuts`). The figures below are measured from the middle of the node's res-8 cell. Their
+# rows written before this release are removed once, in one transaction with the mark, by the first poll of this code,
+# before any adapter writes, because update.sh applies the schema while the code before it is still running. Only the
+# substation and plant rows with a decimal go. A second run finds the mark and does nothing. The packs rewrite their
+# sensors' rows at the next poll; the older distance keys and the distance in the two sea names go now, so nothing
+# waits for one. A lab loses its fetch stamp too, which makes the make pack read the directory again at its next poll.
 CUT_METRICS = ("nearest_school_m", "nearest_health_m", "nearest_market_m", "nearest_worship_m",
                "fires_nearest_km", "fires_nearest_bearing", "fires_upwind_km", "fires_upwind_bearing",
                "fires_local_24h", "fires_region_24h", "fires_local_upwind", "fires_region_upwind",
@@ -901,8 +899,39 @@ CUT_SENSORS = (
     "UPDATE sensors SET name = regexp_replace(name, '^Sea, [0-9]+ km off ', 'Sea, nearest cell ') WHERE sensor_id = 'marine-point'")
 
 
-def cut_once(cur) -> bool:
-    """The cut, if this node has not had it: True when it ran. The mark and the removal share the caller's transaction."""
+# DuckDB has no to_regclass; information_schema answers on both.
+CUT_TABLE = ("SELECT count(*) AS n FROM information_schema.tables "
+             "WHERE table_schema = current_schema() AND table_name = 'data_cuts'")
+
+
+def _first(cur):
+    """The first value of the first row, or None: a dict row (the node's) or a tuple (DuckDB's)."""
+    rows = cur.fetchall()
+    if not rows:
+        return None
+    return next(iter(rows[0].values())) if isinstance(rows[0], dict) else rows[0][0]
+
+
+def cut_at(cur):
+    """When the cut ran, or None: none recorded yet, or a database with no data_cuts table."""
+    cur.execute(CUT_TABLE)
+    if not _first(cur):
+        return None
+    cur.execute("SELECT cut_at FROM data_cuts WHERE name = 'cell-middle'")
+    return _first(cur)
+
+
+def _after_cut(ts, cut) -> bool:
+    """True when a row stamped ts (a datetime or its ISO string) was written after the cut. With no cut, never."""
+    return cut is not None and (datetime.fromisoformat(ts) if isinstance(ts, str) else ts) >= cut
+
+
+def cut_once(cur) -> bool | None:
+    """The cut, if this node has not had it: True when it ran, None on a database with no data_cuts table, where it
+    does nothing. The mark and the removal share the caller's transaction."""
+    cur.execute(CUT_TABLE)
+    if not _first(cur):
+        return None
     cur.execute(CUT_MARK)
     if not cur.fetchall():
         return False
@@ -917,14 +946,21 @@ def _cut() -> None:
         return
     try:
         with db() as con, con.transaction(), con.cursor() as cur:
-            if cut_once(cur):
-                log.info("removed the rows of %d figures written before they were measured from the middle of the cell",
-                         len(CUT_METRICS) + len(CUT_WHOLE))
+            ran = cut_once(cur)
         state["cut"] = True
-    except Exception as e:  # noqa: BLE001 — polling goes on; the cut is asked again next time
+    except Exception as e:  # noqa: BLE001; polling goes on; the cut is asked again next time
         if not state.get("cut_said"):
             log.warning("the one-time cut did not run (%s: %s); asked again at the next poll", type(e).__name__, e)
             state["cut_said"] = True
+        return
+    if ran is None:
+        log.warning("the one-time cut did not run: this database has no data_cuts table (planetai update applies it)")
+    elif ran:
+        log.info("the one-time cut removed the past rows of %d figures", len(CUT_METRICS) + len(CUT_WHOLE))
+        try:
+            refresh_hourly()      # now, so no hourly mean read from the removed rows a moment before stays
+        except Exception as e:  # noqa: BLE001; the hourly loop rebuilds within the hour
+            log.warning("the hourly means were not rebuilt after the cut (%s: %s)", type(e).__name__, e)
 
 
 def poll_sources() -> None:
@@ -1900,9 +1936,7 @@ def _export_namer(child_ids):
     return name
 
 
-# An alert raised before the cut (data_cuts, 0.68) was written from figures measured the old way: its text stays home.
-EXPORT_ALERTS_SQL = """SELECT a.text, a.ts, a.rule_id, a.level, a.sensor_id,
-                              coalesce(a.ts >= (SELECT cut_at FROM data_cuts WHERE name = 'cell-middle'), false) AS after_cut
+EXPORT_ALERTS_SQL = """SELECT a.text, a.ts, a.rule_id, a.level, a.sensor_id
                        FROM alerts a WHERE a.ts >= %s::date AND a.ts < %s::date + 1 ORDER BY a.ts"""
 
 
@@ -1933,7 +1967,7 @@ def export(day: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$")):
         indoor = _indoor_ids()
         alerts_ = [a for a in alerts_ if a.get("sensor_id") not in indoor]
     with db() as con, con.cursor() as cur:
-        cells_ = index.cells(cur); rho_ = index.rho(cur)
+        cells_ = index.cells(cur); rho_ = index.rho(cur); cut = cut_at(cur)
     _pos = _published_position()
     return {"schema": EXPORT_V0,
             "node": NODE, "city": os.getenv("NODE_CITY", ""), "scale": os.getenv("NODE_SCALE", "community"),
@@ -1941,8 +1975,9 @@ def export(day: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$")):
             "lat": _pos["lat"], "lon": _pos["lon"],
             "day": day, "generated": datetime.now(timezone.utc).isoformat(), "version": os.getenv("NODE_VERSION", ""),
             "licence": "CC BY 4.0", "hourly": rows,
+            # only an alert raised after the cut (0.69) carries its text
             "alerts": [{"t": a["ts"], "rule": a["rule_id"], "level": a["level"],
-                        "text": _unlabelled(a["text"].split("\n")[0]) if a.get("after_cut") else None} for a in alerts_],
+                        "text": _unlabelled(a["text"].split("\n")[0]) if _after_cut(a["ts"], cut) else None} for a in alerts_],
             "cells": cells_, "rho": rho_, "offers": _offers()}
 
 
@@ -1977,11 +2012,16 @@ def report_latest(request: Request):
     # exact implicitness this release is about. Every key is present and null when there is no report,
     # and `note` is added rather than substituted.
     r = rows[0] if rows else {}
+    hide = _stranger_on_community(request)
+    if rows and not hide and not getattr(request.state, "share_trusted", False):
+        # the text of a report written before the cut (0.69) stays with the household
+        with db() as con, con.cursor() as cur:
+            hide = not _after_cut(r["ts"], cut_at(cur))
     out = {"schema": REPORT_V0,
            "id": r.get("id"), "ts": r.get("ts"), "due_local": r.get("due_local"),
            "window_hours": r.get("window_hours"), "depth": r.get("depth"), "rung": r.get("rung"),
            # a community node's report is the keeper's, not public; the weekly report is
-           "text": None if _stranger_on_community(request) else r.get("text"), "sent": r.get("sent"), "held_quiet": r.get("held_quiet"),
+           "text": None if hide else r.get("text"), "sent": r.get("sent"), "held_quiet": r.get("held_quiet"),
            "fallback_reason": r.get("fallback_reason"),
            # in the literal, None when there is a report: a key added by subscript is a key of the
            # document that does not appear in it, which tools/check_wire.py refuses for the same

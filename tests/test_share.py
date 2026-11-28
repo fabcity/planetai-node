@@ -449,8 +449,8 @@ for p in (A, B):
 assert _got[0] == _got[1] == tuple(_cc), "the wind grid on /ground/wind is centred on the house, to 5 dp"
 print("open: /ground's tile sets and wind grid are cut round the cell's centre")
 
-# /nearby, /observations and /alerts. A reader without a token gets the same answer for two house points in one cell,
-# holding neither point and no km with a decimal; the household's token and this machine read the stored rows.
+# /nearby, /observations and /alerts. A reader without a token gets the same answer for two points in one cell, holding
+# neither point and no km with a decimal; the household's token and this machine read the stored rows.
 import importlib.util as _ilu  # noqa: E402
 import types as _types  # noqa: E402
 _spec = _ilu.spec_from_file_location("t_nearby_routes", "packs/nearby/routes.py")
@@ -458,8 +458,8 @@ NB = _ilu.module_from_spec(_spec); _spec.loader.exec_module(NB)
 
 
 def nearby_rows(house):
-    """The ring as the database holds it for a house at `house`: the stations the pack kept round the house, each
-    with the km the pack stored (whole, from the cell's middle), and the shape query's own answer."""
+    """The ring as the database holds it with NODE_LAT, NODE_LON at `house`: the stations the pack kept, each with
+    the km the pack stored (whole, from the cell's middle), and the shape query's own answer."""
     out = []
     for r in ring_rows(house)[1:]:
         out.append({"sensor_id": r["sensor_id"], "source": r["source"], "name": r["name"], "lat": r["lat"], "lon": r["lon"],
@@ -489,14 +489,14 @@ for name, p in (("A", A), ("B", B)):
     NB.q = nb_q(p)
     said[name] = _json.dumps(NB.nearby(req(False)), sort_keys=True, default=str)
     kept[name] = NB.nearby(req(True))
-assert said["A"] == said["B"], "a stranger's /nearby moves with where the house stands in its cell"
+assert said["A"] == said["B"], "a stranger's /nearby is one answer for every point of the cell"
 _body = _json.loads(said["A"])
 assert 1 < len(_body["ring"]) < len(nearby_rows(A)), f"a stranger's ring is the stations every point of the cell keeps: {len(_body['ring'])}"
 assert all(s["km"] == int(s["km"]) and dp(s["lat"]) <= 3 and dp(s["lon"]) <= 3 for s in _body["ring"]), _body["ring"][:3]
 assert _body["nearest_km"] == min(s["km"] for s in _body["ring"]) and "source" not in _body["ring"][0], _body
 for p in (A, B):
     for d in (3, 4, 7):
-        assert f"{p[0]:.{d}f}" not in said["A"] and f"{p[1]:.{d}f}" not in said["A"], f"a stranger's /nearby holds the house at {d} dp"
+        assert f"{p[0]:.{d}f}" not in said["A"] and f"{p[1]:.{d}f}" not in said["A"], f"a stranger's /nearby holds NODE_LAT, NODE_LON at {d} dp"
 assert kept["A"]["ring"] == [{k: v for k, v in r.items() if k != "source"} for r in nearby_rows(A)], \
     "the household's token reads the ring as stored"
 try:
@@ -504,7 +504,7 @@ try:
     raise AssertionError("a stranger's ?audit=1 must be refused")
 except NB.HTTPException as e:
     assert e.status_code == 403 and "token" in e.detail, e.detail
-print(f"open: /nearby's ring is the same wherever in its cell the house is ({len(_body['ring'])} stations), and the audit needs the token")
+print(f"open: /nearby's ring is one answer for every point of the cell ({len(_body['ring'])} stations), and the audit needs the token")
 
 level("open")
 OBS = [{"sensor_id": "forecast-bmkg", "metric": "fc_temp", "value": 29.0, "ts": "2026-11-28T00:00:00+00:00", "name": "BMKG forecast",
@@ -531,6 +531,30 @@ _a = lan.get("/alerts").json()
 assert _a == [dict(ALERTS[0], text=None)], f"a reader without a token gets no alert text: {_a}"
 assert local.get("/alerts").json() == ALERTS and lan.get("/alerts", headers=ADMIN).json() == ALERTS, "the household reads its texts"
 print("open: /alerts gives a reader without a token every alert and no text")
+
+# /report/latest: a reader without a token gets no text from a report written before the cut (main.cut_at), or from
+# any report when no cut is recorded; one written after keeps its text, and the household reads every text.
+from datetime import datetime as _dt, timezone as _tz  # noqa: E402
+REPORT = {"id": 3, "ts": "2026-11-28T09:00:00+00:00", "due_local": None, "window_hours": 24, "depth": "full", "rung": "template",
+          "text": "The nearest clinic is 900 m away.", "sent": True, "held_quiet": False, "fallback_reason": None}
+_db0, _cut0 = main.db, main.cut_at
+main.q = lambda sql, *a: [dict(REPORT)] if "FROM reports" in sql else []
+
+
+class _NoCur:
+    def __enter__(self): return self
+    def __exit__(self, *a): return False
+    def cursor(self): return self
+
+
+main.db = lambda: _NoCur()
+for cut, stranger in ((_dt(2026, 11, 28, 12, tzinfo=_tz.utc), None), (None, None), (_dt(2026, 11, 28, 6, tzinfo=_tz.utc), REPORT["text"])):
+    main.cut_at = lambda cur, _c=cut: _c
+    assert lan.get("/report/latest").json()["text"] == stranger, f"a reader without a token, cut at {cut}"
+    assert lan.get("/report/latest", headers=ADMIN).json()["text"] == REPORT["text"] and local.get("/report/latest").json()["text"] == REPORT["text"], \
+        "the household reads every report's text"
+main.db, main.cut_at = _db0, _cut0
+print("open: /report/latest gives a reader without a token no text from a report written before the cut")
 main.packs.stations, main.q, main.packs.module = _stations0, _sensors0, _module0
 at((-8.6478291, 115.1385412))
 

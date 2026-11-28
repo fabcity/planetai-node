@@ -1,4 +1,4 @@
-"""The one-time cut (schema 0.68) on a real database: main.cut_once against init.sql's tables.
+"""The one-time cut (schema 0.69) on a real database: main.cut_once against init.sql's tables.
 
 Rows of the listed figures written before the cut are gone from `readings` and `readings_1h_done`, rows written after
 stay, the sensors' old distance keys and the two sea names are rewritten, and a second run changes nothing. Needs a

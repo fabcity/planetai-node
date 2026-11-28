@@ -178,7 +178,7 @@ def fetch(hc):                                                                  
     b12, b4 = r["basin"].get("level12") or {}, r["basin"].get("level4") or {}
     # What is stored is measured from the middle of the node's res-8 cell: the reach nearest that middle, its distance
     # to the nearest 100 m, and the sentences in whole km. The result file and /hydro keep the fetch's own figures.
-    import ground  # noqa: PLC0415 — the app's; fetch.py and verify.py import this file without it
+    import ground  # noqa: PLC0415; the app's; fetch.py and verify.py import this file without it
     mlat, mlon = ground.middle(lat, lon)
     near = [dict(f["properties"], dist_m=round(to_line(mlat, mlon, f["geometry"]["coordinates"]), -2))
             for f in r["rivers"]["features"] if (f.get("geometry") or {}).get("coordinates")]

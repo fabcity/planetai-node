@@ -285,8 +285,14 @@ def fetch(hc):
                 cur.execute("SELECT year, buildings, height_m FROM place_yearly ORDER BY year"); yearly = cur.fetchall()
         with con.cursor() as cur:
             # the nearest_* distances are from the middle of the node's res-8 cell
-            import ground  # noqa: PLC0415 — the app's; refresh.py and verify.py import this file without it
+            import ground  # noqa: PLC0415; the app's; refresh.py and verify.py import this file without it
             mlat, mlon = ground.middle(lat, lon)
+            # a nearest is kept only within PLACE_RADIUS_M less the cell's circumradius of the middle, where the
+            # fetch is sure to hold it; without h3 the margin is a fixed 600 m
+            try:
+                reach = radius - ground.centre(lat, lon)[2]
+            except RuntimeError:
+                reach = radius - 600
             cur.execute(METRICS_SQL, {"mlat": mlat, "mlon": mlon, "commercial": list(COMMERCIAL_BUILDINGS), "food": list(FOOD), "road_exclude": list(ROAD_EXCLUDE)})
             m = dict(zip([d.name for d in cur.description], cur.fetchone()))
             cur.execute("SELECT run_at, n_features FROM place_runs ORDER BY run_at DESC LIMIT 1"); run_at, n_feat = cur.fetchone()
@@ -299,8 +305,8 @@ def fetch(hc):
         "poi_food": pois.get("food", 0), "poi_retail": pois.get("retail", 0) + pois.get("market", 0), "poi_education": pois.get("education", 0),
         "poi_health": pois.get("health", 0), "poi_worship": pois.get("worship", 0), "poi_lodging": pois.get("lodging", 0), "poi_services": pois.get("services", 0),
         "roads_km": m["roads_km"], "green_share": (m["green_area_m2"] or 0) / (area_km2 * 1e6),
-        # to the nearest 100 m, from the cell's middle: the same four numbers wherever in the cell the node stands
-        **{f"nearest_{k}_m": None if m[k] is None else round(m[k], -2) for k in ("school", "health", "market", "worship")},
+        # to the nearest 100 m, from the cell's middle, and only when the fetch is sure to hold the nearest
+        **{f"nearest_{k}_m": None if m[k] is None or m[k] > reach else round(m[k], -2) for k in ("school", "health", "market", "worship")},
     }
     sensor = {"sensor_id": "place-point", "source": "openstreetmap", "name": f"Around here, {radius} m",
               "lat": lat, "lon": lon, "indoor": False, "local": False, "kind": "map", "scale": "community", "cadence": f"P{days}D",

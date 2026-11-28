@@ -182,8 +182,8 @@ def fetch(hc):
     log.info("make: %d active labs within %.0f km of the node, from %s (%d active labs network-wide "
              "publish no coordinates and cannot be placed)", len(found), radius, which, no_coords)
 
-    import ground  # noqa: PLC0415 — the app's, as every adapter is loaded
-    mid = ground.middle(lat, lon)    # who is in the radius is judged from the node's point; distance_km from the middle
+    import ground  # noqa: PLC0415; the app's, as every adapter is loaded
+    mid = ground.middle(lat, lon)    # distance_km is whole km from the middle of the node's cell
     sensors = []
     for lab, _ in found:
         slug = (lab.get("slug") or "").strip() or f"id{lab.get('id')}"

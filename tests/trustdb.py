@@ -195,7 +195,7 @@ class Node:
             sql = (sql.replace("current_setting('planetai.lat')::float", str(lat))
                       .replace("current_setting('planetai.lon')::float", str(lon)))
             if "planetai.clat" in sql:          # the middle of the node's res-8 cell, as app/db.py sets it
-                import ground  # noqa: PLC0415 — only the replays that read it have app/ on their path
+                import ground  # noqa: PLC0415; only the replays that read it have app/ on their path
                 clat, clon = ground.middle(lat, lon)
                 sql = (sql.replace("current_setting('planetai.clat')::float", str(clat))
                           .replace("current_setting('planetai.clon')::float", str(clon)))

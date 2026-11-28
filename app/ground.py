@@ -110,9 +110,9 @@ def centre(lat: float, lon: float) -> tuple[float, float, float]:
 
 
 def middle(lat: float, lon: float) -> tuple[float, float]:
-    """(lat, lon) of the middle of the res-8 cell the point stands in: what every distance, bearing or nearest a pack
-    stores is measured from, so the figure is the same wherever in the cell the node stands. Without h3, the point at
-    two decimals, which is coarser than the cell. Packs call this one; nothing else keeps a fallback of its own."""
+    """(lat, lon) of the middle of the res-8 cell holding (lat, lon): what every distance, bearing or nearest a pack
+    stores is measured from. Without h3, the point at two decimals, which is coarser than the cell. Packs call this
+    one; nothing else keeps a fallback of its own."""
     try:
         c = centre(lat, lon)
     except RuntimeError:

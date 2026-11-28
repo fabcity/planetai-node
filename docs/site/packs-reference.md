@@ -998,8 +998,10 @@ everything within `PLACE_RADIUS_M` from Overpass, later polls recompute from wha
 `PLACE_REFRESH_DAYS` it fetches again. It also notices a moved node (more than 1% of the radius, never less
 than 25 m) and refetches, clearing the satellite footprints and yearly series of the old circle.
 
-The four `nearest_*_m` are measured from the middle of the node's res-8 cell and kept to the nearest 100 m. The
-counts and shares cover the circle round the node's point.
+The four `nearest_*_m` are measured from the middle of the node's res-8 cell and kept to the nearest 100 m. One is
+kept only when it lies within `PLACE_RADIUS_M` of the middle, less the farthest a point of the cell can be from the
+middle (600 m without h3), where the fetch is sure to hold the nearest; past that there is no row. The counts and
+shares cover the circle the pack fetched.
 
 ### Rules
 
@@ -1131,9 +1133,8 @@ with the reason; `make: <n> fab lab(s) within 50 km Â· fablabs.io @ <snapshot> Â
 
 It stores one `sensors` row per active lab inside `MAKE_RADIUS_KM`, a `facility` with no readings; the row and
 its `meta` are on [Data schema](schema.md). `meta` never holds an email or a telephone number, although most
-upstream records carry them. A facility reaches no metric, cell or alert, and is never in custody. Which labs are
-inside `MAKE_RADIUS_KM` is judged from the node's point, and each lab's `distance_km` is whole km from the middle of
-the node's res-8 cell; a lab in or beside the cell reads `<1 km`.
+upstream records carry them. A facility reaches no metric, cell or alert, and is never in custody. Each lab's
+`distance_km` is whole km from the middle of the node's res-8 cell; a lab in or beside the cell reads `<1 km`.
 
 Near the end of the report, after what happened and before the to-do lines, it adds one sentence:
 
@@ -1205,8 +1206,8 @@ from, by the node's own wind: a local kit, then the core Open-Meteo point, then 
 and upwind, and the nearest fire's distance and bearing; it stays out of `/issues` until the node holds a row
 of it. The source line under the band says how far each ring reaches, from `FIRE_LOCAL_KM` and `FIRE_REGION_KM`.
 
-Every distance, bearing and count is taken from the middle of the node's res-8 cell, so it is the same wherever in
-the cell the node stands. `fires_nearest_km` and `fires_upwind_km` are kept in whole km, the bearings in whole
+Every distance, bearing and count is taken from the middle of the node's res-8 cell, and the box asked of the FIRMS
+area API is drawn round it. `fires_nearest_km` and `fires_upwind_km` are kept in whole km, the bearings in whole
 degrees, and the rules say the same numbers.
 
 ### Rules
