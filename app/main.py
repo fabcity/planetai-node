@@ -12,7 +12,6 @@ from __future__ import annotations
 import json
 from zoneinfo import ZoneInfo
 import logging
-import math
 import os
 import re
 import secrets
@@ -1302,22 +1301,6 @@ def _own_point(r: dict) -> tuple:
     return _coarse(r["lat"], r["lon"])
 
 
-AT_NODE_M = 150.0   # a pack may round the node's point before it stores a row there: three decimals is up to ~80 m
-
-
-def _at_node(r: dict) -> bool:
-    """Whether a row stands at the node's own point without being the household's instrument: a model's sample of
-    this place, or the map's summary of it. A pack takes those at NODE_LAT, NODE_LON, so the row's position is the
-    house's. A model's grid point elsewhere, and any station, is public at its source and is not one of these."""
-    if r.get("kind") not in ("model", "map") or r.get("lat") is None or r.get("lon") is None:
-        return False
-    lat, lon = float(os.getenv("NODE_LAT", 0) or 0), float(os.getenv("NODE_LON", 0) or 0)
-    if not (lat or lon):
-        return False
-    dy, dx = (float(r["lat"]) - lat) * 111_320.0, (float(r["lon"]) - lon) * 111_320.0 * math.cos(math.radians(lat))
-    return math.hypot(dx, dy) <= AT_NODE_M
-
-
 def _coarse(lat, lon):
     """A point snapped to the centre of its resolution-8 cell, three decimals; two decimals without h3."""
     if lat is None or lon is None:
@@ -1404,7 +1387,7 @@ def sensors_(request: Request):
     it stays private until it is named here.
 
     For a caller that is neither on this machine nor carrying a token, the position of this household's own sensors
-    (`custody`) is the centre of their resolution-8 cell, a model's or the map's row taken at the node's own point stands there too, and every other position is rounded to 3 decimals, and `meta` is cut to _META_PUBLIC. On a real node that drops `host`,
+    (`custody`) is the centre of their resolution-8 cell, a model's or the map's row stands at the centre of its own cell, and every other position is rounded to 3 decimals, and `meta` is cut to _META_PUBLIC. On a real node that drops `host`,
     `firmware`, `mesh_node`, `gateway`, `channel`, `root_topic` and `topic` — an AirGradient row otherwise hands a
     stranger on the WiFi `{"host": "airgradient_84fce6.local", "model": "I-9PSL", "firmware": "3.1.9"}` next to a
     room name and five decimals of position."""
@@ -1418,14 +1401,15 @@ def sensors_(request: Request):
     for r in rows:
         r.pop("room", None); r.pop("source_name", None)   # which room is which is the household's
         # This household's own instruments stand in its house, so an untrusted reader gets the cell's centre
-        # for them (R25). A model's sample or the map's summary taken at the node's own point stands in the house
-        # too, and gets the point /health publishes. Everything else here is a public station, a model's grid
-        # point or a lab, whose position is public at its source; three decimals is what it always was.
+        # for them (R25). A model's sample and the map's summary are taken at the node's own point, so they stand
+        # in the house too: each gets the centre of its own cell, which for a row at the node's point is the point
+        # /health publishes. By kind, never by distance: a row written at install, or by a pack since switched
+        # off, still stands where the node was then. A model's grid point elsewhere moves by under a cell.
+        # A station or a lab is public at its source; three decimals is what it always was.
         if r.get("custody"):
             r["lat"], r["lon"] = _own_point(r)
-        elif _at_node(r):
-            p = _published_position()
-            r["lat"], r["lon"] = p["lat"], p["lon"]
+        elif r.get("kind") in ("model", "map"):
+            r["lat"], r["lon"] = _coarse(r["lat"], r["lon"])
         else:
             for k in ("lat", "lon"):
                 r[k] = round(r[k], 3) if r[k] is not None else None
