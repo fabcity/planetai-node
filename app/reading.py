@@ -402,7 +402,7 @@ MEASURE = re.compile(r"\s*(?:%|°|º|percent\b|per cent\b|km|ha\b|m\b|m²|µg|kW
 # a quantity in words is a number the check cannot read: the model is asked for digits, and these are refused
 QUANTITY = re.compile(r"\b(?:half|halves|thirds?|quarters?|fifths?|tenths?|twice|thrice|doubl\w+|tripl\w+|dozens?|hundreds?|thousands?|millions?)\b", re.I)
 # a grade the figures do not give: with 8% built a model wrote "dense settlement", and "not drawn" became "unplanned" (node #1, 28 Nov 2026)
-GRADE = re.compile(r"\b(?:dens(?:e|ely|ity)|sparse(?:ly)?|heavily|vast(?:ly)?|unplanned|unmet)\b", re.I)
+GRADE = re.compile(r"\b(?:dense(?:ly)?|sparse(?:ly)?|heavily|vast(?:ly)?|unplanned|unmet)\b", re.I)
 # A report page is one A4 sheet and does not grow in print, so each part of a model's text has a ceiling, in characters
 # (measured in print: five sections of 800 keep the first page whole, five of 900 overrun it)
 LONGEST = {"section": 780, "title": 100, "why": 300, "first_step": 220}
@@ -429,7 +429,7 @@ def prompt(doc: dict, ruled: dict) -> str:
         # node #1, 28 Nov 2026: with 8% built it wrote "dense settlement", and "nothing drawn" became "needs unmet"
         "A finding that ends 'as far as the public map goes' says what is drawn, not what exists: keep that limit when you use it, "
         "and never say a need is unmet or a thing is missing because the map does not draw it. "
-        "Do not grade the place beyond its figures: no 'dense', 'sparse', 'heavily', 'most', 'vast' or 'unplanned' unless a finding says so.\n"
+        "Do not grade the place beyond its figures: never 'dense', 'sparse', 'heavily', 'vast', 'unplanned' or 'unmet'. What the map does not draw is 'not drawn', never 'unplanned'.\n"
         "Claim nothing the findings do not support, and give no cause they do not give. Where the manner asks about something "
         "the node holds no figure for, say that it is not known here.\n\n"
         "Then give four to six ways to improve the place. You may keep, sharpen or replace the node's own. Each has:\n"
@@ -522,8 +522,8 @@ def accept(answer: str, doc: dict, ruled: dict | None = None) -> tuple[dict | No
         return None, f"a quantity in words ('{words.group().lower()}'), which the node cannot check"
     own = " ".join(line for sx in (ruled or {}).get("sections", ()) for line in sx["lines"]).lower()
     grade = next((g.group().lower() for g in GRADE.finditer(text) if g.group().lower() not in own), None)
-    if grade:
-        return None, f"it grades the place ('{grade}') where the findings do not"
+    if grade:       # the whole list, so the second try does not trade one of them for another (node #1, 28 Nov 2026)
+        return None, f"it grades the place ('{grade}') where the findings do not; none of dense, sparse, heavily, vast, unplanned or unmet may be used"
     stray = stray_numbers(text, doc)
     if stray:
         return None, "numbers the node does not hold: " + ", ".join(dict.fromkeys(stray))
