@@ -63,7 +63,9 @@ FORM = {**{k: f for k, f in READ.values()},
         "river_km": "n", "basin_km2": "n", "bioregion_km2": "n", "basin_ends": "s",
         "grid": "s", "fossil_low_pct": "n", "fossil_high_pct": "n",
         "index_place": "s", "index_label": "s", "index_measured": "n", "index_cells": "n",
-        "labs_near": "n", "labs_radius_km": "n", "lab_km": "n", "air_days_over": "n", "air_days": "n", "cells_held": "n"}
+        "labs_near": "n", "labs_radius_km": "n", "lab_km": "n", "air_days_over": "n", "air_days": "n", "cells_held": "n",
+        "supply_first": "s", "supply_kind": "s", "supply_holds": "s", "supply_origin_km": "n", "supply_basin": "s", "supply_second": "s"}
+SUPPLY = ("supply_first", "supply_kind", "supply_holds", "supply_origin_km", "supply_basin", "supply_second")
 SHARES = frozenset(k for k, f in FORM.items() if f == "share")
 NEAREST = ("school_km", "clinic_km", "market_km")     # written by the place pack only when it finds one within its radius
 SAT = ("sat_buildings", "osm_coverage", "buildings_then", "buildings_then_year", "buildings_now", "buildings_now_year")
@@ -81,12 +83,13 @@ FILL = {**{k: _PLACE for k, _ in READ.values()}, "place_radius_km": _PLACE, **di
         "labs_near": "set MAKE_ENABLED=1, then planetai restart", "labs_radius_km": "set MAKE_ENABLED=1, then planetai restart",
         "lab_km": "set MAKE_ENABLED=1, then planetai restart",
         "air_days_over": "an outdoor sensor of your own, measuring for 30 days", "air_days": "an outdoor sensor of your own, measuring for 30 days",
-        "cells_held": "planetai update"}
+        "cells_held": "planetai update", **dict.fromkeys(SUPPLY, "planetai config set SUPPLY_SOURCES")}
 # which pack a fact comes from, for the report's sources page: a held figure owes its pack's credit
 PACK_OF = {**{k: "place" for k, _ in READ.values()}, "place_radius_km": "place", **dict.fromkeys(SAT, "place"),
            "heat_delta_c": "surface-heat", "upslope_ha": "terrain", "tree_share": "earth-engine", "crop_share": "earth-engine",
            **dict.fromkeys(("river_km", "basin_km2", "bioregion_km2", "basin_ends"), "hydro"), **dict.fromkeys(("grid", "fossil_low_pct", "fossil_high_pct"), "energy"),
-           **dict.fromkeys(("index_place", "index_label", "index_measured", "index_cells"), "index"), **dict.fromkeys(("labs_near", "labs_radius_km", "lab_km"), "make")}
+           **dict.fromkeys(("index_place", "index_label", "index_measured", "index_cells"), "index"), **dict.fromkeys(("labs_near", "labs_radius_km", "lab_km"), "make"),
+           **dict.fromkeys(SUPPLY, "supply")}
 
 
 def say(key: str, v) -> str:
@@ -109,7 +112,7 @@ def _d(x) -> dict:
     return x if isinstance(x, dict) else {}
 
 
-def shape(latest: dict, hydro: dict | None, energy: dict | None, index: dict | None, labs: list | None, air: tuple | None,
+def shape(latest: dict, hydro: dict | None, energy: dict | None, index: dict | None, supply: dict | None, labs: list | None, air: tuple | None,
           held: int | None, yearly: list, today: date, labs_radius_km: float = 50, radius_m: float = 1000) -> dict:
     """The facts document, from what the node read. Pure: the I/O is facts(), below.
 
@@ -169,6 +172,25 @@ def shape(latest: dict, hydro: dict | None, energy: dict | None, index: dict | N
             put("lab_km", near[0])
     if air and air[1] >= AIR_MIN_DAYS:
         put("air_days_over", air[0]); put("air_days", air[1])
+    # The first source the keeper stated that holds up, and the next one. The origin's distance is from the middle of the
+    # res-8 cell and whole, as every other distance here: this reading leaves the house, and the node's own point must not.
+    # the keeper's own name for it, as typed; only a trailing full stop and the spaces round it are taken off, so a line never ends ".."
+    ok = [dict(x, name=str(x["name"]).strip().rstrip(".").strip()) for x in _d(supply).get("stated") or ()
+          if isinstance(x, dict) and not x.get("problem") and x.get("name") is not None]
+    ok = [x for x in ok if x["name"]]
+    if ok:
+        import wall  # noqa: PLC0415 — only a node that has a stated source needs the database module
+        centre = wall.cell_centre()        # None before the node has a place: then the km is not held
+        first, org = ok[0], _d(ok[0].get("origin"))
+        put("supply_first", first.get("name")); put("supply_kind", first.get("kind")); put("supply_holds", first.get("holds"))
+        try:
+            if org.get("lat") is not None and org.get("lon") is not None and centre:
+                put("supply_origin_km", wall.dist_km(centre, float(org["lon"]), float(org["lat"])))
+        except (TypeError, ValueError):       # a malformed origin holds no km
+            pass
+        put("supply_basin", org.get("basin"))
+        if len(ok) > 1:
+            put("supply_second", ok[1].get("kind"))
     put("cells_held", held)
     return {"at": day, "facts": F, "fill": {k: FILL[k] for k, v in F.items() if v is None}}
 
@@ -181,6 +203,8 @@ def credits(doc: dict, manifests: list) -> list[str]:
         if m.get("id") in packs_held:
             a = m.get("attribution")
             out += [str(x) for x in (a if isinstance(a, list) else [a]) if x and str(x) not in out]
+    if "supply" in packs_held:
+        out.append("Water supply as stated by the keeper of this node")
     return out
 
 
@@ -208,6 +232,7 @@ GAPS = (
     ("what the satellite counts here, year by year", SAT, None),
     ("how hot the ground gets", ("heat_delta_c",), None),
     ("trees and farmed land from the satellite", ("tree_share", "crop_share"), None),
+    ("where the water comes from", SUPPLY, ("Say where this place's water comes from", "Infrastructure", "asset")),
     ("which of its seven cells the node holds", ("cells_held",), None),
 )
 
@@ -314,6 +339,22 @@ def rules(doc: dict) -> dict:
                    "Ask ten households how they get there and what it costs them, and take the answers to the neighbourhood council.", "Communities", "Rethink", "socio-spatial")
     if has("market_km"):
         lines["needs"].append(osm("A market is drawn within a kilometre." if v("market_km") == 0 else f"The nearest market drawn is about {t('market_km')} km away."))
+    if has("supply_first", "supply_kind"):
+        k, first = v("supply_kind"), t("supply_first")
+        water = {"truck": f"The water here comes by truck ({first}).", "bottled": f"The water here is bought bottled ({first}).",
+                 "rain": "The water here is rain kept from the roof.", "well": f"The water here comes from a well ({first}).",
+                 "spring": f"The water here comes from a spring ({first})."}.get(k)
+        if k == "piped":
+            basin = {"same": ", in the same basin", "other": ", in another basin", "beyond": ", outside the basins this node holds"}.get(v("supply_basin"), "")
+            water = (f"The water here is piped by {first}" + (f", from works {near('supply_origin_km')}" if has("supply_origin_km") else "") + basin + ".")
+        if water:
+            lines["needs"].append(water)
+        if v("supply_holds") in ("fails at times", "fails often"):
+            fill = None if v("supply_second") == k else {"truck": "trucks", "well": "a well", "spring": "a spring", "bottled": "bottled water", "rain": "rain"}.get(v("supply_second"))
+            gap = f"It {v('supply_holds')}" + (f", and {fill} fill{'' if fill == 'trucks' else 's'} the gap" if fill else "") + "."
+            lines["needs"].append(gap)
+            avenue(("supply_first", "supply_kind", "supply_holds"), "Count the days the tap is dry", f"{water or ''} {gap}".strip(),
+                   "Keep a tally on one street for a month: each dry day, each truck bought and what it paid.", "Infrastructure", "Map and research", "asset")
     if has("lab_km", "labs_near", "labs_radius_km"):
         lines["needs"].append(f"What breaks here can be mended {near('lab_km')}.")
         avenue(("lab_km", "labs_near"), "Hold a repair evening", f"A place to make and fix things is {near('lab_km')}, "
@@ -534,7 +575,7 @@ SENSORS = ("place-point", "ee-point", "surface-cell", "terrain-point")   # the p
 
 
 def _held(cur) -> tuple:
-    """What the packs and the cells hold, read in process: (hydro, energy, the Index place, held cells). A pack that is
+    """What the packs and the cells hold, read in process: (hydro, energy, the Index place, supply, held cells). A pack that is
     off gives None, which is a gap. A read that fails is logged and gives None too, so one pack cannot stop the page."""
     import packs  # noqa: PLC0415 — the loader reads PACKS_DIR at import
 
@@ -550,6 +591,7 @@ def _held(cur) -> tuple:
         return read(pack, lambda: getattr(m, call)()) if m else None
 
     return (of("hydro", "adapter", "result"), of("energy", "adapter", "result"), of("index", "routes", "index_place"),
+            of("supply", "adapter", "result"),
             read("cells", lambda: cells._body(cur, cells._home())["held"]))
 
 
@@ -576,8 +618,8 @@ def facts(cur, held=None, today: date | None = None) -> dict:
                         AND s.local AND NOT s.indoor AND s.kind = 'sensor' AND {pub}
                       GROUP BY date_trunc('day', r.bucket) HAVING count(DISTINCT r.bucket) >= 18) d""", (WHO_DAY,))
     a = cur.fetchone() or {}
-    hydro, energy, index, cells_held = (held or _held)(cur)
-    return shape(latest, hydro, energy, index, labs, (a.get("over") or 0, a.get("days") or 0), cells_held, yearly, today or date.today(),
+    hydro, energy, index, supply, cells_held = (held or _held)(cur)
+    return shape(latest, hydro, energy, index, supply, labs, (a.get("over") or 0, a.get("days") or 0), cells_held, yearly, today or date.today(),
                  labs_radius_km=float(os.getenv("MAKE_RADIUS_KM", "50") or 50), radius_m=float(os.getenv("PLACE_RADIUS_M", "1000") or 1000))
 
 

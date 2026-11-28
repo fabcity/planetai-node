@@ -159,7 +159,7 @@ for d in range(1, 32):
         ts = (t0 - timedelta(days=d)).replace(hour=h, minute=0, second=0, microsecond=0)
         air += [(ts, "v-yard", "pm25", 30.0 if d % 3 == 0 else 8.0), (ts, "v-room", "pm25", 90.0)]
 insert_readings(cur, air)
-doc = reading.facts(cur, held=lambda c: (None, None, None, None))
+doc = reading.facts(cur, held=lambda c: (None, None, None, None, None))
 RF = doc["facts"]
 assert set(RF) == set(reading.FORM), "the facts document has every key"
 assert RF["buildings"]["v"] == 2459 and RF["green_share"]["v"] == 0.341, f"the latest past row of each place-scale metric: {RF['buildings']}, {RF['green_share']}"
@@ -190,7 +190,7 @@ assert after == [(2016, "sat_buildings_yearly", 5464.0), (2016, "sat_height_m_ye
 # a poll that read the old count before the recount files it after: the new rows stand
 insert_readings(cur, place.yearly_readings([(2016, 86.4, 3.9), (2020, 107.8, None), (2023, 127.7, None)]))
 assert series() == after, "a stale poll cannot bring the old count back"
-assert reading.facts(cur, held=lambda c: (None, None, None, None))["facts"]["buildings_now"]["v"] == 8076, "and the reading takes the recount"
+assert reading.facts(cur, held=lambda c: (None, None, None, None, None))["facts"]["buildings_now"]["v"] == 8076, "and the reading takes the recount"
 # a node that has not filed its sensor yet: nothing to correct, and no reading without its sensor
 q("DELETE FROM readings WHERE sensor_id = 'place-point'")
 q("DELETE FROM sensors WHERE sensor_id = 'place-point'")

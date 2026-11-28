@@ -35,12 +35,16 @@ const el = () => ({ innerHTML: '', textContent: '', hidden: false, style: {}, da
   addEventListener: noop, remove: noop, focus: noop, closest: () => null, contains: () => false, getContext: () => ({ setTransform: noop, clearRect: noop }), clientWidth: 900, clientHeight: 560 });
 /* GET /hydro, token-only on the node: the nearest river in the pack's sentence, and its attribution */
 const HYDRO = { nearest: { dist_m: 3555 }, sentence: 'Tukad Mati, 3.6 km away', largest_sentence: '21.9 km to Tukad Badung', attribution: 'Rivers and basins: HydroSHEDS, as published in HydroATLAS v1.0 under CC-BY 4.0.' };
+/* GET /supply, and /supply?reader=1 as the report asks: the sources and the works mapped round the node */
+const SUPPLY = { state: 'both', sources: [{ id: 'a', name: 'PDAM Tirta Mangutama', kind: 'piped', holds: 'fails often', origin: { how: 'mapped', name: 'Waduk Muara', km: 12, basin: 'other', lat: -8.7, lon: 115.3 } }],
+  works: [{ kind: 'reservoir', name: 'Waduk Muara', operator: null, km: 12, lat: -8.7, lon: 115.3 }], counts: { reservoir: 1 }, radius_km: 25,
+  attribution: ['Water supply as stated by the keeper of this node'] };
 async function boot(tok, D) {
   const els = {}, map = el(), shots = [], styles = [];
   let last = [];
   const ask = p => {
     if (!tok && (L.DOORS_LOCKED.test(p) || p === '/hydro')) return Promise.resolve(new Response('{}', { status: 403 }));
-    const b = p.startsWith('/geo/cell?id=' + HOME) ? { id: HOME, ring: HOUSE } : p === '/geo/cell?id=' + C8[0] ? { id: C8[0], ring: C8 } : p === '/hydro' ? HYDRO : p.startsWith('/geo/cell?lat=') ? { id: cellOf(p) }
+    const b = p.startsWith('/geo/cell?id=' + HOME) ? { id: HOME, ring: HOUSE } : p === '/geo/cell?id=' + C8[0] ? { id: C8[0], ring: C8 } : p === '/hydro' ? HYDRO : p.split('?')[0] === '/supply' ? SUPPLY : p.startsWith('/geo/cell?lat=') ? { id: cellOf(p) }
       : p.startsWith('/captures') ? CAPS : p.startsWith('/species') ? { species: [{ name: 'Plumeria rubra', rank: 'SPECIES' }] } : p.startsWith('/place/maps') ? { maps: [], palette: {} } : {};
     return Promise.resolve(new Response(JSON.stringify(b), { status: 200 }));
   };
@@ -165,6 +169,9 @@ assert rows["Outdoor kit"] == ("this house", "held", "") and rows["Node cell"] =
 assert "pill pv-model" in T[0] and "Tukad Mati" in T[0] and "pill pv-model" in T[2], "each figure keeps its provenance word as prov() draws it"
 # two distances from the house at 0.1 km, to two rivers, place it closer than its res-8 cell: a report says whole km
 assert "Tukad Mati, 4 km away" in T[0] and "22 km to Tukad Badung" in T[0] and not re.search(r"\d\.\d km", T[0]), ("river distances on the report are whole km", T[0])
+assert 'data-k="supply"' in T[0] and "PDAM Tirta Mangutama, piped, fails often, from 12 km away, in another basin" in T[0] and "psupplygo" not in T[0], ("the report's figures carry the supply row, with no map link", T[0])
+assert "Water supply as stated by the keeper of this node" in T[3], T[3]
+assert rows["Water supply"][1:] == ("held", ""), ("the cake lists the new layer in the built section", rows.get("Water supply"))
 assert "Contains modified Copernicus Sentinel data" in T[3] and "AlphaEarth Foundations" in T[3] and "HydroSHEDS, as published in HydroATLAS" in T[3] and "Natural Earth" in T[3], T[3]
 O = pages(R["odbl"])
 assert len(O) == 3 and O[2].count("<p>Natural Earth</p>") == 1 and "<p>A map made from OpenStreetMap is a Produced Work under the ODbL, so it carries the credit and nothing more.</p>" in O[2], O[-1]

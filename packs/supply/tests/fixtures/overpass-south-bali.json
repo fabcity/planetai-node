@@ -1,0 +1,807 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.11 87bfad18",
+  "osm3s": {
+    "timestamp_osm_base": "2026-11-28T02:03:06Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+
+{
+  "type": "node",
+  "id": 4109654765,
+  "lat": -8.8447192,
+  "lon": 115.1116833,
+  "tags": {
+    "man_made": "water_well"
+  }
+},
+{
+  "type": "node",
+  "id": 4225527010,
+  "lat": -8.6440435,
+  "lon": 115.2516421,
+  "tags": {
+    "man_made": "water_well"
+  }
+},
+{
+  "type": "node",
+  "id": 5438849730,
+  "lat": -8.7187505,
+  "lon": 115.2155643,
+  "tags": {
+    "man_made": "storage_tank"
+  }
+},
+{
+  "type": "node",
+  "id": 12704142841,
+  "lat": -8.5670972,
+  "lon": 115.2131375,
+  "tags": {
+    "drinking_water": "yes",
+    "man_made": "water_well"
+  }
+},
+{
+  "type": "way",
+  "id": 311207274,
+  "center": {
+    "lat": -8.7934494,
+    "lon": 115.1779571
+  },
+  "tags": {
+    "man_made": "water_tower"
+  }
+},
+{
+  "type": "way",
+  "id": 311271877,
+  "center": {
+    "lat": -8.7946734,
+    "lon": 115.1751381
+  },
+  "tags": {
+    "name": "Waduk Udayana",
+    "natural": "water",
+    "water": "reservoir"
+  }
+},
+{
+  "type": "way",
+  "id": 320898921,
+  "center": {
+    "lat": -8.6708329,
+    "lon": 115.2301844
+  },
+  "tags": {
+    "man_made": "water_tower"
+  }
+},
+{
+  "type": "way",
+  "id": 375215769,
+  "center": {
+    "lat": -8.6489265,
+    "lon": 115.2323664
+  },
+  "tags": {
+    "addr:city": "Denpasar",
+    "addr:street": "Jalan WR Supratman",
+    "building": "yes",
+    "name": "Honda",
+    "operator": "Tirta Agung",
+    "shop": "motorcycle"
+  }
+},
+{
+  "type": "way",
+  "id": 375354160,
+  "center": {
+    "lat": -8.6390355,
+    "lon": 115.2120464
+  },
+  "tags": {
+    "addr:city": "Denpasar",
+    "addr:housenumber": "98",
+    "addr:street": "Jalan Ahmad Yani",
+    "landuse": "commercial",
+    "name": "PDAM Kota Denpasar",
+    "office": "company"
+  }
+},
+{
+  "type": "way",
+  "id": 375493952,
+  "center": {
+    "lat": -8.7456784,
+    "lon": 115.2073042
+  },
+  "tags": {
+    "building": "yes",
+    "man_made": "storage_tank"
+  }
+},
+{
+  "type": "way",
+  "id": 375493953,
+  "center": {
+    "lat": -8.7456993,
+    "lon": 115.2075873
+  },
+  "tags": {
+    "building": "yes",
+    "man_made": "storage_tank"
+  }
+},
+{
+  "type": "way",
+  "id": 375493964,
+  "center": {
+    "lat": -8.7455712,
+    "lon": 115.2089826
+  },
+  "tags": {
+    "building": "yes",
+    "content": "fuel",
+    "man_made": "storage_tank"
+  }
+},
+{
+  "type": "way",
+  "id": 375493965,
+  "center": {
+    "lat": -8.7454889,
+    "lon": 115.2091194
+  },
+  "tags": {
+    "building": "yes",
+    "content": "fuel",
+    "man_made": "storage_tank"
+  }
+},
+{
+  "type": "way",
+  "id": 375493966,
+  "center": {
+    "lat": -8.7457879,
+    "lon": 115.2090055
+  },
+  "tags": {
+    "building": "yes",
+    "content": "fuel",
+    "man_made": "storage_tank"
+  }
+},
+{
+  "type": "way",
+  "id": 375493969,
+  "center": {
+    "lat": -8.7460562,
+    "lon": 115.2091165
+  },
+  "tags": {
+    "building": "yes",
+    "content": "fuel",
+    "man_made": "storage_tank"
+  }
+},
+{
+  "type": "way",
+  "id": 375493970,
+  "center": {
+    "lat": -8.7459932,
+    "lon": 115.2092414
+  },
+  "tags": {
+    "building": "yes",
+    "content": "fuel",
+    "man_made": "storage_tank"
+  }
+},
+{
+  "type": "way",
+  "id": 378929887,
+  "center": {
+    "lat": -8.7425717,
+    "lon": 115.2083335
+  },
+  "tags": {
+    "building": "yes",
+    "content": "unknown",
+    "man_made": "storage_tank"
+  }
+},
+{
+  "type": "way",
+  "id": 378929891,
+  "center": {
+    "lat": -8.7426080,
+    "lon": 115.2084823
+  },
+  "tags": {
+    "building": "yes",
+    "content": "unknown",
+    "man_made": "storage_tank"
+  }
+},
+{
+  "type": "way",
+  "id": 378929895,
+  "center": {
+    "lat": -8.7426533,
+    "lon": 115.2086192
+  },
+  "tags": {
+    "building": "yes",
+    "content": "unknown",
+    "man_made": "storage_tank"
+  }
+},
+{
+  "type": "way",
+  "id": 381441270,
+  "center": {
+    "lat": -8.6356824,
+    "lon": 115.2159063
+  },
+  "tags": {
+    "addr:city": "Denpasar",
+    "addr:housenumber": "3",
+    "addr:street": "Jalan Bedahulu",
+    "building": "yes",
+    "name": "PDAM Badung",
+    "name:en": "Badung Water Company",
+    "office": "company"
+  }
+},
+{
+  "type": "way",
+  "id": 405588646,
+  "center": {
+    "lat": -8.7182932,
+    "lon": 115.2125101
+  },
+  "tags": {
+    "building": "yes",
+    "content": "fuel",
+    "man_made": "storage_tank"
+  }
+},
+{
+  "type": "way",
+  "id": 405588647,
+  "center": {
+    "lat": -8.7184243,
+    "lon": 115.2120196
+  },
+  "tags": {
+    "building": "yes",
+    "content": "fuel",
+    "man_made": "storage_tank"
+  }
+},
+{
+  "type": "way",
+  "id": 405588648,
+  "center": {
+    "lat": -8.7184582,
+    "lon": 115.2122606
+  },
+  "tags": {
+    "building": "yes",
+    "content": "fuel",
+    "man_made": "storage_tank"
+  }
+},
+{
+  "type": "way",
+  "id": 405588651,
+  "center": {
+    "lat": -8.7186373,
+    "lon": 115.2119900
+  },
+  "tags": {
+    "building": "yes",
+    "content": "fuel",
+    "man_made": "storage_tank"
+  }
+},
+{
+  "type": "way",
+  "id": 405588652,
+  "center": {
+    "lat": -8.7186651,
+    "lon": 115.2122285
+  },
+  "tags": {
+    "building": "yes",
+    "content": "fuel",
+    "man_made": "storage_tank"
+  }
+},
+{
+  "type": "way",
+  "id": 405588653,
+  "center": {
+    "lat": -8.7186924,
+    "lon": 115.2124536
+  },
+  "tags": {
+    "building": "yes",
+    "content": "fuel",
+    "man_made": "storage_tank"
+  }
+},
+{
+  "type": "way",
+  "id": 405588654,
+  "center": {
+    "lat": -8.7189457,
+    "lon": 115.2122028
+  },
+  "tags": {
+    "building": "yes",
+    "content": "fuel",
+    "man_made": "storage_tank"
+  }
+},
+{
+  "type": "way",
+  "id": 405588655,
+  "center": {
+    "lat": -8.7189953,
+    "lon": 115.2124873
+  },
+  "tags": {
+    "building": "yes",
+    "content": "fuel",
+    "man_made": "storage_tank"
+  }
+},
+{
+  "type": "way",
+  "id": 497979345,
+  "center": {
+    "lat": -8.7989146,
+    "lon": 115.1604677
+  },
+  "tags": {
+    "landuse": "industrial",
+    "man_made": "water_works",
+    "name": "PDAM Tirta Mangutama"
+  }
+},
+{
+  "type": "way",
+  "id": 499051645,
+  "center": {
+    "lat": -8.7888230,
+    "lon": 115.1646621
+  },
+  "tags": {
+    "landuse": "industrial",
+    "man_made": "water_works",
+    "name": "PDAM Tirta Mangutama"
+  }
+},
+{
+  "type": "way",
+  "id": 513367280,
+  "center": {
+    "lat": -8.7876757,
+    "lon": 115.2231794
+  },
+  "tags": {
+    "man_made": "water_works",
+    "name": "Lagoon The Nusa Dua",
+    "operator": "PT Pengembangan Pariwisata Indonesia ITDC"
+  }
+},
+{
+  "type": "way",
+  "id": 560628444,
+  "center": {
+    "lat": -8.7455268,
+    "lon": 115.2095836
+  },
+  "tags": {
+    "building": "yes",
+    "content": "fuel",
+    "man_made": "storage_tank"
+  }
+},
+{
+  "type": "way",
+  "id": 560628446,
+  "center": {
+    "lat": -8.7453718,
+    "lon": 115.2095193
+  },
+  "tags": {
+    "building": "yes",
+    "content": "fuel",
+    "man_made": "storage_tank"
+  }
+},
+{
+  "type": "way",
+  "id": 560919629,
+  "center": {
+    "lat": -8.8000887,
+    "lon": 115.2166010
+  },
+  "tags": {
+    "building": "commercial",
+    "name": "PDAM Tirta Mangutama Kabupaten Badung"
+  }
+},
+{
+  "type": "way",
+  "id": 562926819,
+  "center": {
+    "lat": -8.8351266,
+    "lon": 115.1278272
+  },
+  "tags": {
+    "building": "yes",
+    "content": "water",
+    "man_made": "storage_tank",
+    "material": "metal",
+    "operator": "Aquastore"
+  }
+},
+{
+  "type": "way",
+  "id": 562954734,
+  "center": {
+    "lat": -8.8070680,
+    "lon": 115.1190385
+  },
+  "tags": {
+    "building": "yes",
+    "content": "water",
+    "man_made": "storage_tank"
+  }
+},
+{
+  "type": "way",
+  "id": 564505128,
+  "center": {
+    "lat": -8.7184569,
+    "lon": 115.2155529
+  },
+  "tags": {
+    "man_made": "storage_tank"
+  }
+},
+{
+  "type": "way",
+  "id": 564505129,
+  "center": {
+    "lat": -8.7184960,
+    "lon": 115.2163884
+  },
+  "tags": {
+    "man_made": "storage_tank"
+  }
+},
+{
+  "type": "way",
+  "id": 564505130,
+  "center": {
+    "lat": -8.7187949,
+    "lon": 115.2163831
+  },
+  "tags": {
+    "man_made": "storage_tank"
+  }
+},
+{
+  "type": "way",
+  "id": 564505131,
+  "center": {
+    "lat": -8.7187220,
+    "lon": 115.2155280
+  },
+  "tags": {
+    "man_made": "storage_tank"
+  }
+},
+{
+  "type": "way",
+  "id": 564505132,
+  "center": {
+    "lat": -8.7192569,
+    "lon": 115.2154899
+  },
+  "tags": {
+    "man_made": "storage_tank"
+  }
+},
+{
+  "type": "way",
+  "id": 564505133,
+  "center": {
+    "lat": -8.7189871,
+    "lon": 115.2155113
+  },
+  "tags": {
+    "man_made": "storage_tank"
+  }
+},
+{
+  "type": "way",
+  "id": 564505134,
+  "center": {
+    "lat": -8.7189970,
+    "lon": 115.2157722
+  },
+  "tags": {
+    "man_made": "storage_tank"
+  }
+},
+{
+  "type": "way",
+  "id": 564505135,
+  "center": {
+    "lat": -8.7190978,
+    "lon": 115.2164112
+  },
+  "tags": {
+    "man_made": "storage_tank"
+  }
+},
+{
+  "type": "way",
+  "id": 564505136,
+  "center": {
+    "lat": -8.7191018,
+    "lon": 115.2160766
+  },
+  "tags": {
+    "man_made": "storage_tank"
+  }
+},
+{
+  "type": "way",
+  "id": 564505137,
+  "center": {
+    "lat": -8.7193861,
+    "lon": 115.2157694
+  },
+  "tags": {
+    "man_made": "storage_tank"
+  }
+},
+{
+  "type": "way",
+  "id": 566544164,
+  "center": {
+    "lat": -8.8186046,
+    "lon": 115.1534794
+  },
+  "tags": {
+    "building": "yes",
+    "name": "PDAM Tirta Mangutama"
+  }
+},
+{
+  "type": "way",
+  "id": 570882448,
+  "center": {
+    "lat": -8.7961974,
+    "lon": 115.1902135
+  },
+  "tags": {
+    "man_made": "water_tower",
+    "operator": "PDAM"
+  }
+},
+{
+  "type": "way",
+  "id": 744843872,
+  "center": {
+    "lat": -8.7424584,
+    "lon": 115.1613219
+  },
+  "tags": {
+    "building": "storage_tank",
+    "man_made": "storage_tank"
+  }
+},
+{
+  "type": "way",
+  "id": 744843873,
+  "center": {
+    "lat": -8.7417469,
+    "lon": 115.1626235
+  },
+  "tags": {
+    "building": "storage_tank",
+    "man_made": "storage_tank"
+  }
+},
+{
+  "type": "way",
+  "id": 744843874,
+  "center": {
+    "lat": -8.7413809,
+    "lon": 115.1626007
+  },
+  "tags": {
+    "building": "storage_tank",
+    "man_made": "storage_tank"
+  }
+},
+{
+  "type": "way",
+  "id": 744843875,
+  "center": {
+    "lat": -8.7413943,
+    "lon": 115.1622338
+  },
+  "tags": {
+    "building": "storage_tank",
+    "man_made": "storage_tank"
+  }
+},
+{
+  "type": "way",
+  "id": 744843876,
+  "center": {
+    "lat": -8.7416416,
+    "lon": 115.1616054
+  },
+  "tags": {
+    "building": "storage_tank",
+    "man_made": "storage_tank"
+  }
+},
+{
+  "type": "way",
+  "id": 744843877,
+  "center": {
+    "lat": -8.7416652,
+    "lon": 115.1613178
+  },
+  "tags": {
+    "building": "storage_tank",
+    "man_made": "storage_tank"
+  }
+},
+{
+  "type": "way",
+  "id": 744843878,
+  "center": {
+    "lat": -8.7413504,
+    "lon": 115.1616145
+  },
+  "tags": {
+    "building": "storage_tank",
+    "man_made": "storage_tank"
+  }
+},
+{
+  "type": "way",
+  "id": 744843879,
+  "center": {
+    "lat": -8.7413690,
+    "lon": 115.1612961
+  },
+  "tags": {
+    "building": "storage_tank",
+    "man_made": "storage_tank"
+  }
+},
+{
+  "type": "way",
+  "id": 1081963504,
+  "center": {
+    "lat": -8.7989526,
+    "lon": 115.2138188
+  },
+  "tags": {
+    "description": "PDAM Reservoir",
+    "natural": "water",
+    "water": "reservoir"
+  }
+},
+{
+  "type": "way",
+  "id": 1090944474,
+  "center": {
+    "lat": -8.6400007,
+    "lon": 115.1819986
+  },
+  "tags": {
+    "landuse": "reservoir"
+  }
+},
+{
+  "type": "way",
+  "id": 1270763036,
+  "center": {
+    "lat": -8.7243585,
+    "lon": 115.1865056
+  },
+  "tags": {
+    "waterway": "dam"
+  }
+},
+{
+  "type": "way",
+  "id": 1270763037,
+  "center": {
+    "lat": -8.7245924,
+    "lon": 115.1860894
+  },
+  "tags": {
+    "waterway": "dam"
+  }
+},
+{
+  "type": "way",
+  "id": 1446697131,
+  "center": {
+    "lat": -8.6830294,
+    "lon": 115.1877263
+  },
+  "tags": {
+    "waterway": "dam"
+  }
+},
+{
+  "type": "way",
+  "id": 1446697132,
+  "center": {
+    "lat": -8.6862793,
+    "lon": 115.1833047
+  },
+  "tags": {
+    "waterway": "dam"
+  }
+},
+{
+  "type": "way",
+  "id": 1470073892,
+  "center": {
+    "lat": -8.7939592,
+    "lon": 115.1756970
+  },
+  "tags": {
+    "waterway": "dam"
+  }
+},
+{
+  "type": "way",
+  "id": 1527867532,
+  "center": {
+    "lat": -8.8350794,
+    "lon": 115.1276038
+  },
+  "tags": {
+    "content": "water",
+    "man_made": "storage_tank",
+    "material": "metal",
+    "operator": "Aquastore"
+  }
+},
+{
+  "type": "relation",
+  "id": 17442558,
+  "center": {
+    "lat": -8.7283833,
+    "lon": 115.1889708
+  },
+  "tags": {
+    "name": "Waduk Muara Nusa Dua",
+    "natural": "water",
+    "type": "multipolygon",
+    "water": "reservoir"
+  }
+}
+
+  ]
+}

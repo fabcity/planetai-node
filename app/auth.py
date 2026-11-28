@@ -79,11 +79,13 @@ import packs as _packs  # noqa: E402
 _SHARE_OFF = (_SHARE_OFF[0] | frozenset(_packs.shared("off")), _SHARE_OFF[1])     # /offers: the things pack
 _SHARE_OPEN = (_SHARE_OPEN[0] | frozenset(_packs.shared("open")), _SHARE_OPEN[1])
 _SHARE = {"off": _SHARE_OFF, "open": _SHARE_OPEN}
-# What a community node answers a reader with no token at SHARE_LEVEL=open, and a house never does: GET only, the exact
-# path. /place/reading is the node's own reading of its place, the first pages of the Place report a community node
+# What a community node answers a reader with no token at SHARE_LEVEL=open, and a house does not: GET only, the exact
+# path. (A house's own WiFi does read /supply at open, through that pack's `share:`, with no points in it.)
+# /place/reading is the node's own reading of its place, the first pages of the Place report a community node
 # hands out by a public link. Its figures are the node's outdoor sensors on public channels, the packs' and the
 # Index's, with distances in whole km (app/reading.py facts), and asking a model for a fuller text stays the keeper's.
-_COMMUNITY_READS = frozenset({"/place/reading"})
+# /supply is where the node's water comes from: whole-km distances, the points of mapped works, never a typed point.
+_COMMUNITY_READS = frozenset({"/place/reading", "/supply"})
 
 
 def _node_tokens() -> list[str]:

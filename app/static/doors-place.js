@@ -227,11 +227,11 @@ function report(again) {
   if (PSHEET && !again) { show(true); return null; }
   show(false);
   const get = p => doorsFetch(p).then(r => (r.ok ? r.json() : null)).catch(() => null), reg = PREG;
-  return (PTAKING = Promise.all([window.placeSheet(reg === 'paper'), get('/geo/cell?id=' + D.health.cell.id), get('/hydro'), readingFetch().then(r => (r.ok ? r.json() : null)).catch(() => null), get('/forecast')]).then(([s, c8, H, RD, FC]) => {
+  return (PTAKING = Promise.all([window.placeSheet(reg === 'paper'), get('/geo/cell?id=' + D.health.cell.id), get('/hydro'), get('/supply?reader=1'), readingFetch().then(r => (r.ok ? r.json() : null)).catch(() => null), get('/forecast')]).then(([s, c8, H, S, RD, FC]) => {
     PTAKING = null;
     if (location.hash !== '#place/report') return;
     if (reg !== PREG) return report(true);   // the other register was pressed while this one was taken
-    PSHEET = s; PPARTS = { c8, H, FC }; pages(RD);
+    PSHEET = s; PPARTS = { c8, H, FC, S }; pages(RD);
     box.querySelectorAll('[data-reg]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.reg === PREG)));
     show(true); window.scrollTo(0, 0);
   }).catch(e => { PTAKING = null; $('#psheets').innerHTML = `<p class="fine">The picture was not taken: ${esc(e.message)}</p>`; show(true); }));
@@ -242,7 +242,7 @@ function report(again) {
    its own time, and the page asks again every ten seconds until the text is written or refused. */
 function pages(RD) {
   footWho(RD);
-  $('#psheets').innerHTML = sheetHTML(D, PSHEET, PPARTS.c8 && PPARTS.c8.ring) + reportPages(D, reportParts(PSHEET, PPARTS.H, RD, PPARTS.FC));
+  $('#psheets').innerHTML = sheetHTML(D, PSHEET, PPARTS.c8 && PPARTS.c8.ring) + reportPages(D, reportParts(PSHEET, PPARTS.H, RD, PPARTS.FC, PPARTS.S));
   const b = $('#prwrite'), n = $('#prnote'), busy = !!RD && RD.state === 'writing';
   b.hidden = !(RD && RD.can_write); b.disabled = busy;
   b.textContent = busy ? 'Writing, a few minutes' : RD && RD.written ? 'Write it again' : 'Write a fuller reading';
@@ -256,13 +256,13 @@ $('#prwrite').onclick = () => doorsFetch('/place/reading', { method: 'POST' }).t
 /* What the pages carry (SPEC_place_report §5; the reading's own credits ride in RD.credits, §11): the band's rows with Rivers in them, the cake, what changed, and every
    credit they owe in the node's words. /earth and /hydro bring their own; the place and index packs' attributions do not
    reach the page, so those two lines are their pack.yaml's, as written there. */
-function reportParts(s, H, RD, FC) {
+function reportParts(s, H, RD, FC, S) {
   const P = D.index_place, E = D.earth || {}, ch = {}, Y = D.place_yearly || [], read = P && P.place && P.read && P.read.at;
   if ((E.sentinel || []).length || Y.length) layer(ch);
-  return { date: s.date, reading: RD, forecast: FC, figures: figures(riversRow(H)), cake: window.placeCake(), change: ch.innerHTML || null,
+  return { date: s.date, reading: RD, forecast: FC, figures: figures(riversRow(H), supplyRow(S)), cake: window.placeCake(), change: ch.innerHTML || null,
     index: read && P.links && /^https:\/\//.test(P.links.report || '') ? { name: P.place.name || P.chosen, url: P.links.report } : null,
     credits: [...(s.credits || []), ...((RD && RD.credits) || []), ...((FC && (FC.days || []).length && FC.attribution) || []), ...((E.sentinel || []).length ? E.credit : []), ...((E.changes || []).length && E.attribution ? [E.attribution] : []),
-      ...(Y.length ? ['Google Open Buildings V3 and Temporal v1 (CC BY 4.0) via Earth Engine'] : []), ...(H && H.nearest && H.attribution ? [H.attribution] : []),
+      ...(Y.length ? ['Google Open Buildings V3 and Temporal v1 (CC BY 4.0) via Earth Engine'] : []), ...(H && H.nearest && H.attribution ? [H.attribution] : []), ...((S && S.attribution) || []),
       ...(read ? ['Fab City Index, CC BY 4.0, Fab City Foundation'] : [])] };
 }
 document.querySelectorAll('#preport [data-reg]').forEach(b => b.onclick = () => { PREG = b.dataset.reg; report(true); });
@@ -343,17 +343,17 @@ function indexLine(P) {
 /* THE PLACE IN FIGURES, the lower band's right: the issues that change yearly and have no hours (Land, Coast; Now is for
    the hour), the Index cells, and what is not here yet. Given its Rivers row, it returns the rows for the report's
    page 1 (SPEC_place_report §5) and draws nothing. */
-function figures(hydro) {
+function figures(hydro, supplyHtml) {
   const ch = ((D.earth || {}).changes || []).slice(-1)[0], nI = new Set(D.index_cells.map(c => c.cell)).size;
   const h = `<h3 class="pmh">the place in figures</h3>` + yearly() + indexRow(D.index_place)
     + `<div class="fr"><span>Index cells<small>of the Fab City Index for this place · <a href="#node/cells">Node › Index cells</a></small></span>`
     + `<b>${num('place.index', `${nI} of 20`, 'cells of the Fab City Index holding a value')} ${prov('partial')}</b></div>`
-    + (hydro ?? `<div id="phydro"></div>`)
-    + `<div class="fr"><span>Production and trade · Water and soil · Forecast<small>coming to this place: no adapter, no source, or no village code yet</small></span><b><span class="soon">not yet</span></b></div>`
+    + (hydro ?? `<div id="phydro"></div>`) + (supplyHtml ?? `<div id="psupply"></div>`)
+    + `<div class="fr"><span>Production and trade · Soil · Forecast<small>coming to this place: no adapter, no source, or no village code yet</small></span><b><span class="soon">not yet</span></b></div>`
     + (ch ? `<p class="fine">Land: AlphaEarth, ${ch.year_a} → ${ch.year_b}.</p>` : '');
   if (hydro != null) return h;
   $('#pfigures').innerHTML = h;
-  rivers(); who();
+  rivers(); supply(); who();
 }
 /* RIVERS, a row of the figures once the hydro pack has fetched (GET /hydro, token-only like its map rows): the nearest
    river in the pack's own sentence, the largest in the square, and a way up to both on the map. Nothing without the
@@ -377,6 +377,37 @@ function riversRow(H, here) {
   if (!H.nearest) return `<div class="fr"><span>Rivers<small>the hydro pack has kept nothing yet: <code>planetai run hydro fetch</code></small></span><b><span class="soon">not yet</span></b></div>`;
   return `<div class="fr" data-k="rivers"><span>Rivers<small>${esc(H.sentence)}${H.largest_sentence ? `. The largest in the square: ${esc(H.largest_sentence)}` : ''}`
     + `${here ? ' · <a href="#place" id="phydrogo">on the map ↑</a>' : ''}</small></span><b>${num('place.river', fmt(H.nearest.dist_m / 1000, here ? 1 : 0), 'the nearest river, traced at about 500 m')} km ${prov('model')}</b></div>`;
+}
+
+/* WATER SUPPLY, the row after Rivers (GET /supply): where this place's water comes from, as its keeper stated it, and the
+   works mapped round it. `/supply` is open to a screen with no token; the route leaves out the points a stranger may not
+   have, so the row says only what it was given. `here` adds the way up to the map, which a printed page has no use for. */
+async function supply() {
+  const el = $('#psupply'), S = await doorsFetch('/supply').then(r => (r.ok ? r.json() : null)).catch(() => null);
+  if (!el || !S || !S.state) return;
+  el.innerHTML = supplyRow(S, true);
+  const go = $('#psupplygo');
+  if (go) go.onclick = e => { e.preventDefault(); if (window.placeSupply) window.placeSupply(); const m = $('#map'); if (m) m.scrollIntoView({ block: 'center' }); };
+}
+const BASIN = { same: 'in the same basin', other: 'in another basin', beyond: 'outside the basins this node holds' };
+function supplyRow(S, here) {
+  if (!S || !S.state) return '';
+  const all = Array.isArray(S.sources) ? S.sources : [], src = all.filter(s => s && s.id), bad = here ? all.filter(s => s && s.entry) : [];
+  const works = Array.isArray(S.works) ? S.works : [], first = src[0];
+  const line = (s, full) => {
+    /* a report is handed on: its distances are whole kilometres, as the Rivers row's are */
+    const o = s.origin || {}, km = o.km == null ? null : here ? +o.km : Math.round(+o.km);
+    return [[s.name, s.kind].filter(Boolean).join(', '), full && s.holds ? s.holds : null,
+      full && km != null ? (km < 1 ? 'within a kilometre' : `from ${here ? +km.toFixed(1) : km} km away`) : null, full && BASIN[o.basin] || null].filter(Boolean).join(', ');
+  };
+  const drawn = works.some(w => w.lat != null) || src.some(s => s.origin && s.origin.lat != null);
+  const said = [...src.map((s, i) => esc(line(s, !i))), ...bad.map(b => `${esc(b.entry)}: not read (${esc(b.problem)})`)];
+  const n = works.length;
+  /* the setting's name is the keeper's: a reader with no token, and a printed report, are only told it is not stated */
+  if (!first && !bad.length && here && typeof DOORS_TOKEN === 'function' && DOORS_TOKEN()) said.push('set SUPPLY_SOURCES on Set up');
+  if (!first && n) said.push(`${n} water works drawn${S.radius_km == null ? '' : ` within ${esc(S.radius_km)} km`}`);
+  const link = here && drawn ? ' · <a href="#place" id="psupplygo">on the map ↑</a>' : '';
+  return `<div class="fr" data-k="supply"><span>Water supply<small>${said.join('. ')}${link}</small></span><b>${first ? esc(first.kind) : '<span class="soon">not stated</span>'}</b></div>`;
 }
 
 /* ADD AN IMAGE — a dialog, opened from the Image key on the screen (the header's button until 5 Nov 2026): the file

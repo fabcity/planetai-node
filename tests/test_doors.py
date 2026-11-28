@@ -1179,7 +1179,7 @@ assert "if (D.askOff) return;" in pl.split("$('#pask').onsubmit")[1].split("};")
 assert ".pask[hidden]{display:none}" in html, "hidden wins over the flex row"
 assert "$('#askbtn').addEventListener('click', closeSheet)" in pl, "Ask opens over a phone's sheet: the sheet closes first"
 _names = re.findall(r"id: '[a-z0-9]+'.*? name: '([^']+)'", pm.split("const LAYERS = [")[1].split("];")[0])
-assert len(_names) == 28 and max(map(len, _names)) <= 14, ("a cake row's name must fit the 224 px column", sorted(_names, key=len)[-3:])
+assert len(_names) == 29 and max(map(len, _names)) <= 14, ("a cake row's name must fit the 224 px column", sorted(_names, key=len)[-3:])
 assert "<h2><span>${esc(s.name)}</span>" in pm and "#cake .ck>h2{" in html and "#cake h2" not in html and "<h3><span>" not in pm, "cake headings are h2 under the page's h1"
 print("  place: one map, black screen, the cake on the left, tools on the right")
 
@@ -1201,7 +1201,7 @@ for (const [k, ip] of Object.entries(JSON.parse(process.argv[1]))) {
   const D = L.buildD({ ...F, days: F.issues_days, index_place: ip }, 'en'), els = {};
   const c = { D, $: q => (els[q] ||= {}), sign: id => `<svg data-s="${id}"></svg>`, doorsLocal: L.doorsLocal };
   vm.createContext(c);
-  try { vm.runInContext(['esc', 'loc', 'num', 'PROV', 'prov'].map(pick).join('\n') + '\nfunction yearly() { return ""; }\nfunction rivers() {}\nfunction who() {}\n' + fn('indexRow') + fn('figures') + 'figures()', c); out[k] = els['#pfigures'].innerHTML; } catch (e) { out[k] = 'THROWS ' + e.message; }
+  try { vm.runInContext(['esc', 'loc', 'num', 'PROV', 'prov'].map(pick).join('\n') + '\nfunction yearly() { return ""; }\nfunction rivers() {}\nfunction supply() {}\nfunction who() {}\n' + fn('indexRow') + fn('figures') + 'figures()', c); out[k] = els['#pfigures'].innerHTML; } catch (e) { out[k] = 'THROWS ' + e.message; }
 }
 console.log(JSON.stringify(out));
 """ % FIX
@@ -1231,6 +1231,7 @@ assert "Accra · Simulated" in _a and ">0 – 0<" in _a and "FCI 0" not in _a an
 assert "Choose this node's Index place" in _ip["none"] and "<code>planetai place</code>" in _ip["none"] and "Index cells" in _ip["none"], _ip["none"]
 assert "last read 2026-11-05 · tried 2026-11-08" in _ip["stale"] and ">0.454<" in _ip["stale"], "a failed read keeps the last values and dates them by the file"
 assert "not read yet" in _ip["unread"] and "not read</span>" in _ip["unread"] and "data-num=\"place.fci\"" not in _ip["unread"], _ip["unread"]
+assert _b.count('<div id="psupply"></div>') == 1 and _b.index('id="phydro"') < _b.index('id="psupply"') < _b.index("Production and trade · Soil · Forecast"), "the supply row's place is after Rivers"
 _row = lambda h: h.split("Index cells<small>")[0]
 assert "sign-prov-partial" in _row(_b) and "sign-prov-live" not in _row(_b), "the Index's numbers are a portal's: partial, never live"
 assert "sign-prov-cached" in _row(_ip["stale"]) and "sign-prov-partial" not in _row(_ip["stale"]), "a failed read is cached"

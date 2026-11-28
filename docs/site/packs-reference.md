@@ -1,7 +1,7 @@
 # Packs that ship
 <!-- checked: v0.92.0 -->
 
-The thirty core packs in `packs/`, five data and twenty-five code, hold everything the node knows about a place, and no
+The thirty-one core packs in `packs/`, five data and twenty-six code, hold everything the node knows about a place, and no
 rule in `app/` says what PM2.5 means for a household or where the nearest fab lab is. For each pack this page
 says what it reads, what it says, its rules and where each threshold comes from, its settings, and what it does
 not know. How a pack is built and loaded is on [Packs](packs.md). Wild packs, such as `xiaomi-air` and
@@ -36,6 +36,7 @@ the pack is off.
 | `earth` | code | land | none | | 1 | `fetch` `change` `frames` `status` `verify` `similar` | `EARTH_*` |
 | `terrain` | code | water | none | | | `coverage` `fetch` `verify` | `TERRAIN_*` |
 | `hydro` | code | water | none | | | `fetch` `verify` | `HYDRO_RADIUS_KM` |
+| `supply` | code | water | none | | | | `SUPPLY_*` |
 | `energy` | code | energy | none | | | | `ENERGY_*` |
 | `earth-engine` | code | land | none | | 1 | `timelapse` `verify` `basemap` | `EE_*`, `GROUND_SAT_WIDE_KM` |
 | `place` | code | place | 1 info | | 1 | `refresh` `gaps` `verify` `basemap` | `PLACE_*`, `GROUND_*` |
@@ -861,6 +862,77 @@ model's long-term average, not a gauge. HydroSHEDS' own download carries its v1 
 passing the files on "as a stand-alone product"; the pack shows what it keeps under HydroATLAS's CC-BY 4.0, which
 publishes the same rivers and basins. At node #1 the nearest river is 5 km away and carries 0.13 m³/s; the
 largest in the square, 23 km away, carries 10.6 m³/s.
+
+## supply
+
+Where the water of this place comes from, as its keeper states it, set beside the water works on the public map. The
+keeper lists the sources in order of use. Once every `SUPPLY_REFRESH_DAYS` the pack asks OpenStreetMap through Overpass
+for water works, pumping stations, water towers, reservoirs, dams, wells, water tanks and water pipelines in a square of
+`SUPPLY_RADIUS_KM` round the middle of the node's res-8 cell, and keeps them. When the read fails it keeps the last works
+and waits six hours before it tries again.
+
+Each source gets an origin: the point the keeper typed, or a mapped work that has the name written in the origin. A
+water work, a pumping station, a reservoir, a dam, a well or a water tower can be an origin; a tank or a pipeline is
+never one. Where several works share the name, the one nearest the middle of the cell is taken. The pack works out how
+far the origin is from the middle of the cell, and whether it lies in the basin that holds the middle of the node's
+cell, in another basin the node holds, or outside them. The basin needs the hydro pack; without it the basin is left out
+and the rest stays. With no cell centre the pack reads no map, keeps the works it already has and leaves every named
+origin unfound, so nothing is chosen by the node's own point.
+
+Add `supply` to `PACKS_ENABLED` where the node lists its packs, and set `SUPPLY_SOURCES` on Set up.
+
+| | |
+|---|---|
+| Kind | code |
+| Domain | `water` |
+| Requires node | `>=0.92.0` |
+| Metrics | `supply_sources`, `supply_origin_km`, `supply_first_holds` |
+| Scales | city |
+| Needs | `PACKS_ALLOW_CODE=1`; network to the Overpass API once every `SUPPLY_REFRESH_DAYS`; the hydro pack for the basin, optional. No key |
+| Cells | none: the works are context, never a cell |
+| Attribution | "© OpenStreetMap contributors, ODbL, via Overpass" |
+
+The adapter writes three figures on the sensor `supply-point`, which stands at the middle of the cell. `supply_sources`
+is how many sources parse. `supply_origin_km` is how far the first source's origin is from the middle of the cell, in
+whole kilometres, written only when the first source has an origin and the node has a cell centre.
+`supply_first_holds` is how well the first source holds, 0 steady, 1 fails at times, 2 fails often, written only when
+the first source says how it holds. The figures are daily: each carries the start of its UTC day, so Data shows one a
+day. `GET /supply` answers with the sources, their origins and the works.
+
+### Settings
+
+| setting | default | meaning |
+|---|---|---|
+| `SUPPLY_SOURCES` | empty | the sources of water, in order of use, separated by `;`. Each one is `name \| kind \| holds \| origin` |
+| `SUPPLY_RADIUS_KM` | `25` | half-width of the square of water works read from the public map, in km |
+| `SUPPLY_REFRESH_DAYS` | `30` | how often the public map is read again, in days |
+
+The kind is one of `piped`, `truck`, `well`, `spring`, `rain` or `bottled`. Holds is `steady`, `fails at times` or
+`fails often`, and can be left blank. The origin is a point as `lat,lon`, the name a water work has on the public map, or
+blank. Name a company or a kind of seller, never a person. For a piped supply that fails often and a truck that fills
+the gap:
+
+```
+SUPPLY_SOURCES=PDAM Tirta Mangutama | piped | fails often | PDAM Tirta Mangutama; Water trucks | truck | |
+```
+
+An entry that does not parse is skipped, and the keeper sees it on the page with its problem.
+
+### What a stranger sees
+
+With the admin token or the act token, or from the machine itself, `/supply` gives each distance from the node's own
+point with one decimal, the latitude and longitude of every work and origin, and the entries that did not parse. A
+request that carries `X-Agent` gets the stranger's answer even with a token, and so does any request with `?reader=1`,
+which is how the printed report always asks. A stranger never gets a point the keeper typed, and every distance they
+see is in whole kilometres from the middle of the cell. On a community node a stranger still gets the points of mapped
+works, and a house's own WiFi gets no points. The entries and the answer's fields are
+under [`GET /supply`](api.md).
+
+### What it does not know
+
+The works are what somebody has drawn on the public map, so a well that nobody mapped is not here, and a name written
+differently on the map is not found. How well a source holds is the keeper's word, and the pack measures nothing of it. The pack does not
+count the days the tap is dry or what a truck costs.
 
 ## energy
 
