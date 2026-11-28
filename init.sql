@@ -679,3 +679,25 @@ CREATE TABLE IF NOT EXISTS models (
 );
 REVOKE ALL ON models FROM planetai_ro;
 INSERT INTO schema_version (version) VALUES ('0.67') ON CONFLICT DO NOTHING;
+
+-- 0.68: a community node's subscribers and the lines waiting for them (27 Nov 2026, node roles piece 2). A
+-- subscriber row is a stranger's chat id: no name, no username, and backup.sh leaves its data out.
+CREATE TABLE IF NOT EXISTS subscribers (
+  chat_id   TEXT PRIMARY KEY,
+  feeds     TEXT[] NOT NULL DEFAULT ARRAY['weekly'],
+  lang      TEXT NOT NULL DEFAULT 'en' CHECK (lang IN ('en', 'id')),
+  since     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_sent TIMESTAMPTZ
+);
+CREATE TABLE IF NOT EXISTS feed_queue (
+  id      BIGSERIAL PRIMARY KEY,
+  ts      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  feed    TEXT NOT NULL,
+  rule_id TEXT,
+  texts   JSONB NOT NULL,              -- {"en": "...", "id": "..."}
+  urgent  BOOLEAN NOT NULL DEFAULT FALSE,
+  done    BOOLEAN NOT NULL DEFAULT FALSE
+);
+CREATE INDEX IF NOT EXISTS feed_queue_open ON feed_queue (done, ts);
+REVOKE ALL ON subscribers FROM planetai_ro;
+INSERT INTO schema_version (version) VALUES ('0.68') ON CONFLICT DO NOTHING;

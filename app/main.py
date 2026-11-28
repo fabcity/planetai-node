@@ -35,6 +35,7 @@ import buttons
 import cells
 import actions as _act
 import events_pg
+import feeds
 import fundamentals
 import basemap
 import ground
@@ -364,8 +365,17 @@ def run_rules() -> None:
         for rule in rules:
             if rule.get("kind") and mode == "rules":
                 continue                  # kinded rules belong to the event engine (docs/SPEC_alerts.md)
+            if rule.get("feed_only") and placewords.is_house():
+                continue                  # a rule that exists only to feed subscribers has nothing to do on a private node
             try:
-                rows = index.run_ro(cur, rule["sql"])      # as planetai_ro: a rule can read everything but settings, and write nothing
+                # as planetai_ro: a rule can read everything but settings, and write nothing. A rule that needs a
+                # setting names it under `params:` and reads it as %(name)s; every other rule runs unbound, so a
+                # literal % in its SQL (LIKE 'a%') is never taken for a placeholder.
+                if rule.get("params"):
+                    rows = index.run_ro(cur, rule["sql"], {n: settings.num(k, int((settings.defaults().get(k) or {}).get("default") or 0))
+                                                           for n, k in rule["params"].items()})
+                else:
+                    rows = index.run_ro(cur, rule["sql"])
             except Exception as e:  # noqa: BLE001
                 log.warning("rule %s failed: %s", rule.get("id"), e)
                 continue
@@ -384,8 +394,9 @@ def run_rules() -> None:
                     continue
                 # `buttons` is the rule's question, not a word for the message: it leaves the row before the format,
                 # and normalize is the only reading of it (an invalid column costs the buttons, never the alert).
+                feed_row = dict(row)
                 btns = buttons.normalize(row.pop("buttons", None))
-                msg = rule["message"]
+                msg = rule.get("message") or rule.get("feed") or ""     # a feed_only rule's row says its feed line
                 tmpl = msg.get(LOCALE()) or msg.get("en") if isinstance(msg, dict) else str(msg)
                 # {line} is the one placeholder the row never carries: it is the rule's own line,
                 # named by watch.over and printed bare (35, not 35.0), so an alert can say whose
@@ -397,7 +408,7 @@ def run_rules() -> None:
                     text = tmpl.format(**line_f, act="{act}", **{k: ("—" if v is None else v) for k, v in row.items()})
                 except (KeyError, ValueError, TypeError):
                     text = tmpl
-                level = rule.get("level", "info")
+                level = "info" if rule.get("feed_only") else rule.get("level", "info")
                 cur.execute("INSERT INTO alerts (rule_id, sensor_id, level, text, buttons) VALUES (%s,%s,%s,%s,%s) RETURNING id",
                             (rule["id"], sid, level, text, json.dumps(btns) if btns else None))
                 alert_id = cur.fetchone()["id"]
@@ -406,10 +417,16 @@ def run_rules() -> None:
                 if "{act}" in text:
                     text = text.replace("{act}", act_hint(alert_id))
                     cur.execute("UPDATE alerts SET text = %s WHERE id = %s", (text, alert_id))
+                if rule.get("feed"):
+                    try:                  # a feed line never stops the alert; a savepoint keeps its SQL error from the transaction
+                        with con.transaction():
+                            feeds.enqueue(cur, rule, feed_row, sid, _local_now())
+                    except Exception as e:  # noqa: BLE001
+                        log.warning("feed line failed: %s", type(e).__name__)
                 # what interrupts a person: act always; warn if ALERT_LEVEL allows; info only in a briefing (it is
                 # recorded either way, and appears on the dashboard). Quiet hours hold everything but act.
                 floor = {"act": 2, "warn": 1, "info": 0}
-                send = (rule["id"].split("/", 1)[0] not in replaced
+                send = (not rule.get("feed_only") and rule["id"].split("/", 1)[0] not in replaced
                         and floor.get(level, 0) >= floor.get(settings.get("ALERT_LEVEL", "act"), floor["act"]) and not _quiet(level))
                 if send:
                     # No id, and nothing asking to be told. The node watches what happens next (v0.39) instead of
@@ -420,7 +437,8 @@ def run_rules() -> None:
                         if btns and bot else None
                     notify(level, text, keyboard=kb, home=_alert_home(rule["id"]) if level == "act" else "",
                            answer=str(alert_id))
-                packs.emit("on_alert", level, text, alert_id)
+                if not rule.get("feed_only"):     # a feed line is for subscribers, never Home Assistant
+                    packs.emit("on_alert", level, text, alert_id)
         if mode in ("shadow", "events"):
             try:
                 decided = events_pg.run(cur, cands, mode, _local_now())
@@ -861,6 +879,18 @@ def poll_sources() -> None:
 _STARTED = False
 
 
+def feeds_send() -> None:
+    """One send pass over the feed queue (app/feeds.py), on its own cursor."""
+    with db() as con, con.cursor() as cur:
+        feeds.send_pass(cur, _local_now(), _quiet("info"))
+
+
+def feeds_weekly() -> None:
+    """The weekly message, queued Mondays from 07:00 local (app/feeds.py), on its own cursor."""
+    with db() as con, con.cursor() as cur:
+        feeds.weekly_job(cur, _local_now())
+
+
 def start() -> None:
     """Everything the node does on its own: the first-start bootstrap, the channel roles, the MQTT threads and the
     timer loops. Run once, from the app's lifespan, never at import. Importing
@@ -896,6 +926,9 @@ def start() -> None:
     loop(_pack_job("eyes", "check_griis"), 3600, delay=90)     # the eyes pack's weekly reads, while it is on
     loop(_pack_job("eyes", "check_others"), 3600, delay=120)
     loop(check_learn, 3600, delay=180)
+    if not placewords.is_house():   # checked once, at start: a community node sends its subscribers' feeds
+        loop(feeds_send, 120, delay=90)
+        loop(feeds_weekly, 600, delay=200)
     if RETICULUM_URL:
         loop(presence.poll_reticulum, 300, delay=20)
 
@@ -1121,6 +1154,8 @@ app.add_middleware(_GZipButMCP, minimum_size=1000, compresslevel=5,
 app.include_router(issues.api.router)  # GET /issues and /issues/fixtures/<name>; see app/issues/
 import ask  # noqa: E402 — GET /ask/status, POST /ask, GET /docs/search: the dashboard's ask pane
 app.include_router(ask.router)
+import subscribers  # noqa: E402 — POST /subscribers/*: the community bot's subscriber store, admin only (app/subscribers.py)
+app.include_router(subscribers.router)
 app.include_router(basemap.router)  # GET /ground/*: the map kept on this node's disk (app/basemap.py)
 for _r in packs.routers():           # GET /forecast, /nearby: each official pack's routes.py, 404 while that pack is off
     app.include_router(_r)

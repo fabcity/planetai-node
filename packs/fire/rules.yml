@@ -34,6 +34,10 @@
     en: "🔥 Satellites saw fire {km} km {dir[en]} of the house in the last day ({fires} within {ring} km).\n\nNothing to do unless you smell smoke. If you do, shut the windows on that side."
     id: "🔥 Satelit melihat api {km} km di sebelah {dir[id]} rumah dalam sehari terakhir ({fires} titik dalam {ring} km).\n\nTidak perlu berbuat apa-apa kecuali tercium asap. Kalau tercium, tutup jendela di sisi itu."
     es: "🔥 Los satélites vieron fuego a {km} km al {dir[es]} de la casa en el último día ({fires} en {ring} km a la redonda).\n\nNo hace falta hacer nada salvo que huela a humo. Si huele, cierra las ventanas de ese lado."
+  feed:
+    name: fire
+    en: "🔥 Satellites saw fire {km} km {dir[en]} of here in the last day.\nNothing to do unless you smell smoke."
+    id: "🔥 Satelit melihat api {km} km di sebelah {dir[id]} dari sini dalam sehari terakhir.\nTidak perlu apa-apa kecuali tercium asap."
 
 - id: fire_upwind_near
   level: warn
@@ -55,6 +59,10 @@
     en: "🔥 A fire {km} km {dir[en]} of the house is upwind: the wind is blowing from it towards you. Satellites saw it in the last day.\n\nShut the windows and doors on that side, and run the purifier if you have one."
     id: "🔥 Ada api {km} km di sebelah {dir[id]} rumah, dari arah datangnya angin: angin bertiup dari sana ke arah rumah. Satelit melihatnya dalam sehari terakhir.\n\nTutup jendela dan pintu di sisi itu, dan nyalakan pembersih udara kalau ada."
     es: "🔥 Hay un fuego a {km} km al {dir[es]} de la casa, del lado del que sopla el viento: el aire va de allí hacia la casa. Los satélites lo vieron en el último día.\n\nCierra puertas y ventanas de ese lado, y enciende el purificador si tienes."
+  feed:
+    name: fire
+    en: "🔥 Fire {km} km {dir[en]}, and the wind blows from there toward us.\nClose windows on that side."
+    id: "🔥 Ada api {km} km di sebelah {dir[id]}, dan angin bertiup dari sana ke sini.\nTutup jendela di sisi itu."
 
 # Act needs both halves: many fires on the side the wind comes from, AND the air outside rising past the WHO line.
 # Fires alone are not smoke here; a rise alone is not fires. Outside is the node's own and public outdoor sensors
@@ -64,6 +72,8 @@
 - id: smoke_arriving
   level: act
   cooldown_minutes: 1440
+  # The feed line's filtering is this SQL's: the row says `firms-fires`, which feeds.allowed lets through, so the
+  # outdoor and public condition lives in `x` (kind 'sensor' and NOT indoor, or the CAMS model point).
   sql: |
     WITH last AS (SELECT max(ts) AS ts FROM readings
                   WHERE sensor_id = 'firms-fires' AND metric = 'fires_local_24h' AND ts > now() - interval '12 hours'),
@@ -91,3 +101,8 @@
     en: "🔥 Smoke from fires is probably reaching the house. The air outside has risen to {pm25} µg/m³, past the WHO line of 15 µg/m³, and satellites saw {fires} fires in the last day on the side the wind comes from, the nearest {km} km {dir[en]}.\n\nShut windows and doors, run the purifier if you have one, and keep children, older people and anyone with asthma inside."
     id: "🔥 Asap kebakaran kemungkinan sudah sampai ke rumah. Udara di luar naik ke {pm25} µg/m³, di atas batas WHO 15 µg/m³, dan satelit melihat {fires} titik api dalam sehari terakhir di arah datangnya angin, yang terdekat {km} km di sebelah {dir[id]}.\n\nTutup jendela dan pintu, nyalakan pembersih udara kalau ada, dan jaga anak-anak, orang tua, dan penderita asma tetap di dalam."
     es: "🔥 Es probable que el humo de los incendios esté llegando a la casa. El aire de fuera ha subido a {pm25} µg/m³, por encima del límite de la OMS de 15 µg/m³, y los satélites vieron {fires} fuegos en el último día del lado del que sopla el viento, el más cercano a {km} km al {dir[es]}.\n\nCierra puertas y ventanas, enciende el purificador si tienes, y que los niños, los mayores y quien tenga asma se queden dentro."
+  feed:
+    name: air
+    metric: pm25
+    en: "🔥 Smoke has likely reached us: the air outside is {pm25} µg/m³, unhealthy.\nClose up and keep children and anyone with asthma inside."
+    id: "🔥 Asap kemungkinan sudah sampai: udara di luar {pm25} µg/m³, tidak sehat.\nTutup rumah, anak-anak dan penderita asma tetap di dalam."

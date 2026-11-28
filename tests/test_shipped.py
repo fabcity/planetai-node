@@ -488,8 +488,11 @@ assert not _os.path.exists("packs/nearby/adapter.py"), \
 for _p in ("nearby", "forecast"):
     assert not _os.path.exists(f"packs/{_p}/cells.yml"), f"{_p}: no cell, by design — see its README"
 
-# the forecast never speaks. Three wrong warnings reached node #1's Telegram at 21:17 on 7 September.
+# the forecast never speaks to a household. Three wrong warnings reached node #1's Telegram at 21:17 on 7 September.
+# A feed_only rule has no message: it only queues a line for a community node's subscribers.
 _fr = yaml.safe_load(open("packs/forecast/rules.yml"))
+assert all("message" not in r and r.get("feed") for r in _fr if r.get("feed_only")), "forecast: a feed rule has no message"
+_fr = [r for r in _fr if not r.get("feed_only")]
 assert _fr and all(r.get("contributes") == "report" and "message" not in r and "level" not in r for r in _fr), \
     "forecast: every rule contributes to the report and none of them can reach a phone"
 

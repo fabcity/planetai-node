@@ -231,3 +231,46 @@
     en: "Very unhealthy air at {name}: {value} µg/m³ PM2.5."
     id: "Udara sangat tidak sehat di {name}: PM2.5 {value} µg/m³."
     es: "Aire muy insalubre en {name}: {value} µg/m³ de PM2.5."
+
+# ---- for a community node's subscribers only (`feed_only`): nothing reaches a household from here.
+# Every outdoor station the node reads counts: its own kits and the public ones its sources fetch within its radius
+# (from `stats`), and its children's, which arrive as hourly means (from `readings_1h`, the newest bucket of the
+# last 2 hours). A model point never does, a room never does, and a reading marked private never does.
+# A child's station counts only when the child signs its pushes (`children.node_id` is set): a signing child sends
+# `indoor` with every row, and an older one did not, so its rooms were stored as outdoor. A child's station is never
+# named: when it is the worst, `worst_at` says "a neighbour's station".
+- id: air_unhealthy_around
+  level: info
+  cooldown_minutes: 1440
+  feed_only: true
+  sql: |
+    WITH kids AS (
+      SELECT s.name, h.mean, row_number() OVER (PARTITION BY h.sensor_id ORDER BY h.bucket DESC) AS newest
+      FROM readings_1h h JOIN sensors s ON s.sensor_id = h.sensor_id
+      WHERE h.metric = 'pm25' AND s.kind = 'child' AND NOT s.indoor AND h.mean IS NOT NULL
+        AND h.bucket > now() - interval '2 hours'
+        AND EXISTS (SELECT 1 FROM children c WHERE c.node_id IS NOT NULL
+                    AND left(h.sensor_id, length(c.name) + 1) = c.name || '/')
+        AND NOT EXISTS (SELECT 1 FROM sensors ps JOIN channel_roles pc ON pc.source = ps.source
+                        WHERE ps.sensor_id = h.sensor_id AND pc.metric = h.metric AND pc.role = 'private')),
+    o AS (
+      SELECT st.name, st.mean_1h, false AS child FROM stats st
+      WHERE st.metric = 'pm25' AND NOT st.indoor AND st.kind = 'sensor' AND st.mean_1h IS NOT NULL
+        AND NOT EXISTS (SELECT 1 FROM sensors ps JOIN channel_roles pc ON pc.source = ps.source
+                        WHERE ps.sensor_id = st.sensor_id AND pc.metric = st.metric AND pc.role = 'private')
+      UNION ALL
+      SELECT name, mean, true FROM kids WHERE newest = 1)
+    SELECT 'node' AS sensor_id, count(*) AS n,
+           count(*) FILTER (WHERE mean_1h > 55.5) AS over,
+           round(CAST(max(mean_1h) AS NUMERIC)) AS worst,
+           (SELECT json_build_object(
+                     'en', CASE WHEN child THEN 'a neighbour''s station' ELSE regexp_replace(name, '\s*\([^)]*\)\s*$', '') END,
+                     'id', CASE WHEN child THEN 'stasiun tetangga' ELSE regexp_replace(name, '\s*\([^)]*\)\s*$', '') END)
+            FROM o ORDER BY mean_1h DESC LIMIT 1) AS worst_at
+    FROM o
+    HAVING count(*) >= 2 AND percentile_cont(0.5) WITHIN GROUP (ORDER BY mean_1h) > 55.5
+  feed:
+    name: air
+    metric: pm25
+    en: "😷 The air around here is unhealthy: {worst} µg/m³ at {worst_at[en]}, {over} of {n} stations.\nPut off outdoor work and exercise; keep children inside."
+    id: "😷 Udara di sekitar sini tidak sehat: {worst} µg/m³ di {worst_at[id]}, {over} dari {n} stasiun.\nTunda kerja dan olahraga di luar; anak-anak tetap di dalam."

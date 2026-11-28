@@ -88,10 +88,13 @@ if horizon:
     assert horizon <= dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=A.HOURS + 3), \
         "the pack stores the next day, not everything BMKG will say"
 
-# ---- this pack never speaks. Three wrong warnings reached node #1's Telegram on 7 September; a forecast pack
-# that starts talking is the next batch.
+# ---- this pack never speaks to a household. Three wrong warnings reached node #1's Telegram on 7 September; a
+# forecast pack that starts talking is the next batch. Its feed_only rules carry no message: they queue a line for a
+# community node's subscribers and never run on a private node.
 import yaml  # noqa: E402
 rules = yaml.safe_load(open(os.path.join(ROOT, "packs/forecast/rules.yml")))
+assert all(r.get("feed") and r.get("level") == "info" for r in rules if r.get("feed_only")), "a feed_only rule feeds"
+rules = [r for r in rules if not r.get("feed_only")]
 assert rules and all(r.get("contributes") == "report" for r in rules), "no rule here may have a level"
 assert all("message" not in r for r in rules), "no rule here may have a message"
 assert not os.path.exists(os.path.join(ROOT, "packs/forecast/cells.yml")), \

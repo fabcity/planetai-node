@@ -90,6 +90,7 @@ from the code's default, both are given.
 | `NODE_LAT`, `NODE_LON` | `0`; `.env.example` `-8.8277`, `115.15418` | decimal degrees | The node's position. Published as the centre of its resolution-8 cell in `/health`, `/export` and, to a reader without a token, `/earth`, `/forecast`, `/sensors` and `/stats`; three decimals to this machine or a token; unrounded in `/place/geojson` and, to this machine or a token, `/forecast` and `/earth`. `install.sh` refuses to start without them. | bootstrap |
 | `NODE_TZ` | `UTC`; `.env.example` `Asia/Makassar` | IANA name | The database session time zone, so local midnight and local hours in rules, reports, quiet hours and `/shape`. Also the agent container's `TZ`. | bootstrap |
 | `NODE_ISSUES` | blank = every issue; `.env.example` `air,heat,land,coast` | comma list of `air`, `heat`, `land`, `coast`, `water`, `energy` | What this place watches, most important first. The dashboard starts at the first; the one with something to say takes the top. An unknown name is dropped with a line in the log. Your preset guessed this, so change it. | runtime · public |
+| `PLACE_NAME` | blank = `NODE_NAME` | text, for example `Ungasan` | The name a subscriber sees on the community bot's card and at the top of the weekly message. | runtime · public |
 | `NODE_VERSION` | written by `install.sh` and `update.sh` | string | `git describe`, the `VERSION` file, or `dev`. Shown in `/health`, `/presence` and `/export`. | env only |
 
 ## Who may read it
@@ -97,6 +98,7 @@ from the code's default, both are given.
 | Setting | Default | Values | Meaning | Kind |
 |---|---|---|---|---|
 | `SHARE_LEVEL` | `off` | `off`, `open` | What a request with no token may read. `off`: the dashboard shell, `/health` with the position rounded, the daily export, the layout, `/nodes`, and `/offers` while the `things` pack is on. `open`: the whole read API to anything on your network, so a wall screen or a phone works without a token, with rooms and sensors named Room A and Sensor 1; writes still need a token. A request with a token reads everything at either level. See [Sharing and security](sharing.md). | runtime · public · outward |
+| `PUBLIC_URL` | blank = no link | `https://…`, no `/` at the end | The address people outside your network use to open this node's report and Wall, for example its Tailscale Funnel link. The community bot's weekly message ends with it. | runtime |
 | `ADMIN_TOKEN` | blank; `install.sh` makes one | hex string | Opens `PUT /settings`, `/settings/raw`, `/settings/phone`, `POST /readings`, `/report/now`, `/test-alert` and all of `/mcp`, and works wherever `BACKUP_TOKEN` or `ACT_TOKEN` would. `planetai ui` creates and prints it. | env only · secret |
 | `BACKUP_TOKEN` | blank; `update.sh` makes one | string | Read-only: lets a NAS fetch `/backups`, `/backups/<name>` and `/report/bundle`, and nothing secret. | runtime · secret |
 | `POSTGRES_PASSWORD` | `change-me`; `install.sh` replaces it | string | The database password. | env only · secret |
@@ -152,6 +154,7 @@ Sources that come as packs (stations, forecast, earth and place data, fab labs) 
 | `QUIET_FROM`, `QUIET_TO` | `22`, `6` | local hour | When quiet hours start and end. | runtime · public |
 | `ALERT_ENGINE` | `rules` | `rules`, `shadow`, `events` | `rules`: every rule sends on its own. `shadow`: the event engine records what it would send in `event_messages` and sends nothing. `events`: the engine sends the heat and air messages, one per event, with the buttons when the bot runs; the old heat and air rules still record alerts but do not send. On `shadow` and `events` an issue's state on the dashboard follows its event. | runtime |
 | `ALERT_MAX_PER_DAY` | `4` | whole number | With the event engine, pushes a day outside danger. Danger is never held. | runtime |
+| `RAIN_HEAVY_MM` | `50` | whole number, mm | A community node's rain feed says heavy rain when the forecast for the next 24 hours reaches this. 50 mm is BMKG's heavy rain (hujan lebat); check it for your place. | runtime |
 | `HOME_HAS` | blank | `purifier`, `ac`, `fan`, `windows` | What this home has; the event engine suggests only these. | runtime |
 | `ALERT_LOCALE` | `en` | `en`, `id`, `es` | Language of the alerts, the reports, the test alert and the bot. The dashboard and terminal stay in English. | runtime · public |
 | `HA_DISCOVERY` | `0` | `1`, `0` | Publishes local sensors and alerts as Home Assistant entities over MQTT, through the `home-assistant` pack, whose switch this is. `planetai homeassistant` sets it. | runtime · public · outward |

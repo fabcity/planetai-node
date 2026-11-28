@@ -168,7 +168,7 @@ _contrib = {r["id"] for r in _packs.contributors("report")}
 assert _contrib == _all - _alerts, "every rule is either sent or contributed, never both and never neither"
 assert "insight/digest" in _contrib, "the digest is part of the report now, not a message every three hours"
 for r in _packs.alerts():
-    assert r.get("message"), f"{r['id']} is loaded as an alert with no message; it would print its own braces"
+    assert r.get("message") or (r.get("feed_only") and r.get("feed")), f"{r['id']} is loaded as an alert with no message; it would print its own braces"
 for r in _packs.contributors("report"):
     assert not r.get("message") and not r.get("level"), f"{r['id']} contributes; it has nothing to send"
 print("a rule either says something or contributes something, and the loader knows which")

@@ -181,6 +181,18 @@ def no_act() -> bool:
     return not placewords.is_house(KIND or None)   # before the first /health read, the NODE_KIND this container was given
 
 
+def tg_status() -> str:
+    """The startup line about the bot. A community node's ids are never printed: its keeper chats sit beside subscribers."""
+    if not TG_TOKEN():
+        return "NOT configured (no TELEGRAM_BOT_TOKEN in settings or .env) — the bot will not answer anyone"
+    if no_act():
+        return f"bot set, answering subscribers and {len(CHATS())} keeper chat(s)" if CHATS() else \
+            "bot set, answering subscribers; no keeper chat (TELEGRAM_CHAT_IDS is empty)"
+    if CHATS():
+        return f"bot set, answering {len(CHATS())} chat(s): {sorted(CHATS())}"
+    return "NOT configured (no TELEGRAM_CHAT_IDS in settings or .env) — the bot will not answer anyone"
+
+
 async def refresh_ladder(hc: httpx.AsyncClient) -> None:
     """Every minute: re-read the runtime settings so a change in the dashboard reaches the bot without a restart,
     and the node's kind, so the bot knows whether anybody answers here."""
@@ -888,7 +900,8 @@ async def keep_picture(hc, m: dict, chat: str) -> bool:
     if not got:
         return False
     if chat not in CHATS():
-        log.info("picture from chat %s ignored: not in TELEGRAM_CHAT_IDS", chat)
+        if not no_act():          # a community node names no chat in its log
+            log.info("picture from chat %s ignored: not in TELEGRAM_CHAT_IDS", chat)
         return False
     f, original = got
     say = lambda en, es: telegram("sendMessage", chat_id=chat, text=T(en, es=es))  # noqa: E731
@@ -1026,8 +1039,11 @@ async def handle_callback(hc, cq: dict, pending: dict) -> None:
     actor = _name_of(cq.get("from") or {})
     parsed = parse_callback(cq.get("data"))
     alert_tap = parse_alert_callback(cq.get("data"))
+    if no_act() and re.match(r"f[dl]:", str(cq.get("data") or "")):
+        return await subscriber_tap(hc, cq)       # a subscribe card's button, from any chat
     if chat not in CHATS():
-        log.info("callback from chat %s ignored: not in TELEGRAM_CHAT_IDS", chat)
+        if not no_act():
+            log.info("callback from chat %s ignored: not in TELEGRAM_CHAT_IDS", chat)
         if qid:
             await telegram("answerCallbackQuery", callback_query_id=qid)
         return
@@ -1068,6 +1084,52 @@ async def handle_callback(hc, cq: dict, pending: dict) -> None:
         await telegram("sendMessage", chat_id=chat,
                        text=T("What did you do instead? One line, or ignore me.",
                               es="¿Qué hiciste en su lugar? Una línea, o ignórame."))
+
+
+# ----------------------------------------------------------- subscribers (community node only)
+# Anyone can subscribe to a community node's bot, for feeds only. The app's /subscribers/* routes hold the rows and
+# the words; the chat id travels in the POST body and is never logged here. No model, no history.
+SUB_COMMANDS = ("/feeds", "/now", "/week", "/stop")
+
+
+async def _sub(hc, route: str, chat: str, **more):
+    r = await hc.post(node_url(f"/subscribers/{route}"), json={"chat": chat, **more}, timeout=15)
+    if r.status_code != 404:
+        r.raise_for_status()
+    return r
+
+
+async def subscriber_message(hc, chat: str, text: str) -> None:
+    """One message to a community node's bot: a command through its route, the card for a chat with no row (or
+    /start, /feeds), and the subscriber's `other` line for anything else."""
+    cmd = text.split(maxsplit=1)[0].split("@")[0].lower() if text else ""
+    if cmd in ("/now", "/week", "/stop"):
+        await telegram("sendMessage", chat_id=chat, text=(await _sub(hc, cmd[1:], chat)).json()["text"])
+        return
+    r = await _sub(hc, "card", chat)
+    if r.status_code == 404:
+        r = await _sub(hc, "start", chat)
+    elif cmd not in ("/start", "/feeds"):
+        await telegram("sendMessage", chat_id=chat, text=r.json()["other"])
+        return
+    c = r.json()
+    await telegram("sendMessage", chat_id=chat, text=c["text"], reply_markup={"inline_keyboard": c["keyboard"]})
+
+
+async def subscriber_tap(hc, cq: dict) -> None:
+    """A tap on the card: fd:<feed> flips a feed, fl:<lang> sets the language; the card is redrawn in place."""
+    data = str(cq.get("data") or "")
+    msg = cq.get("message") or {}
+    chat = str((msg.get("chat") or {}).get("id", ""))
+    what = data[3:] if data.startswith("fd:") else "lang:" + data[3:]
+    try:
+        c = (await _sub(hc, "toggle", chat, what=what)).json()
+        await telegram("editMessageText", chat_id=chat, message_id=msg.get("message_id"), text=c["text"],
+                       reply_markup={"inline_keyboard": c["keyboard"]})
+    except Exception as e:  # noqa: BLE001 — a type name only: the chat id stays out of the log
+        log.warning("subscriber tap failed: %s", type(e).__name__)
+    if cq.get("id"):
+        await telegram("answerCallbackQuery", callback_query_id=cq["id"])
 
 
 async def announce_buttons(hc) -> None:
@@ -1142,7 +1204,7 @@ async def main():
     asyncio.create_task(refresh_ladder(hc))
     await asyncio.sleep(2)
     log.info("%s: ladder %s", NODE, [f"{r.name}:{r.model}" for r in RUNGS])
-    log.info("telegram: %s", f"bot set, answering {len(CHATS())} chat(s): {sorted(CHATS())}" if TG_TOKEN() and CHATS() else "NOT configured (no TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_IDS in settings or .env) — the bot will not answer anyone")
+    log.info("telegram: %s", tg_status())
     try:                                   # once, so the log says the node answered and how many tools it offers
         async with node_session(hc) as (_s, tools):
             log.info("%d tools", len(tools))
@@ -1188,6 +1250,12 @@ async def main():
                         continue
                 except Exception as e:  # noqa: BLE001
                     log.warning("offer relay failed: %s", type(e).__name__)
+                if no_act():                  # a community node: anyone can subscribe to its feeds
+                    try:
+                        await subscriber_message(hc, chat, text)
+                    except Exception as e:  # noqa: BLE001
+                        log.warning("subscriber message failed: %s", type(e).__name__)
+                    continue
                 log.info("message from chat %s ignored: not in TELEGRAM_CHAT_IDS %s", chat, sorted(CHATS()))
                 # once per chat per run, so a second person in the house learns why it is quiet (audit, 15 Oct)
                 if chat not in told_unknown:
@@ -1195,6 +1263,12 @@ async def main():
                     await telegram("sendMessage", chat_id=chat, text=T(
                         f"This node answers its household only. To be added, ask whoever set it up to add this chat: {chat}.",
                         es=f"Este nodo solo responde a su casa. Para entrar, pide a quien lo instaló que añada este chat: {chat}."))
+                continue
+            if no_act() and text.split(maxsplit=1)[0].split("@")[0].lower() in SUB_COMMANDS:
+                try:                          # the keeper's chats get the feeds' commands too
+                    await subscriber_message(hc, chat, text)
+                except Exception as e:  # noqa: BLE001
+                    log.warning("subscriber command failed: %s", type(e).__name__)
                 continue
             if await _keep_alert_note(hc, pending, chat, m, text, time.monotonic()):
                 continue                              # the answer to a pack button's question

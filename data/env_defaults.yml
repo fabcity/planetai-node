@@ -26,6 +26,9 @@ NODE_TZ:
 NODE_ISSUES:
   default: "air,heat,land,coast"
   help: "What this place watches, most important first: air, heat, land, coast. The first issue is where the dashboard starts; whichever has something to say takes the top of it. A name nothing declares is ignored with a line in the log. Blank = every issue there is, in the packs' own order. The presets guess per place; change it. What matters here is decided by the people who live here."
+PLACE_NAME:
+  default: ""
+  help: "What people call this place, for example Ungasan. A community node's bot shows it on its subscribe card and at the top of the weekly message. Blank uses NODE_NAME."
 SC_DEVICES:
   default: ""
   help: "---- your sensor(s) — set at least one. See docs/sensors.md. ---- Smart Citizen (cloud API, no LAN needed). The number in smartcitizen.me/kits/<id>. Comma-separate several."
@@ -113,12 +116,18 @@ ALERT_ENGINE:
 ALERT_MAX_PER_DAY:
   default: "4"
   help: "With the event engine: pushes a day outside danger."
+RAIN_HEAVY_MM:
+  default: "50"
+  help: "A community node's rain feed says heavy rain when the forecast for the next 24 hours reaches this many mm. 50 mm is BMKG's heavy rain (hujan lebat); check it for your place."
 HOME_HAS:
   default: ""
   help: "What this home has, comma-separated: purifier, ac, fan, windows."
 PARENT_API_URL:
   default: ""
   help: "---- network (v0.2, leave empty on node #1) ---- http://<district-node>:8080  → hourly aggregates go up"
+PUBLIC_URL:
+  default: ""
+  help: "The address people outside your network use to open this node's report and Wall, for example its Tailscale Funnel link: https://…, no / at the end. The community bot's weekly message ends with it. Blank leaves the link out."
 PARENT_INDOOR:
   default: "off"
   help: "on = the hourly means of the rooms and the alerts they raise go to the parent too. off = outdoor sensors only."

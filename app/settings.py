@@ -37,6 +37,8 @@ TTL = 20
 # `system`.
 RUNTIME = {
     # basics — what this place is, what it watches, and how its page opens. What matters here is decided by the people who live here.
+    "PLACE_NAME":         ("basics", "What people call this place", False, False,
+                           "The name a subscriber sees on the community bot's card and at the top of the weekly message, for example Ungasan. Empty uses the node's name."),
     "NODE_ISSUES":        ("basics", "What this place watches, in order", False, False,
                            "The issues this node reports, most important first: air, heat, land, coast, water, energy. The first "
                            "one is where the page starts, and the one with something to say takes the top of it. A "
@@ -81,6 +83,9 @@ RUNTIME = {
     "ALERT_MAX_PER_DAY":  ("alerts", "Most messages a day", False, False,
                            "With the event engine: pushes a day outside danger, default 4. Beyond it an event "
                            "is still recorded and waits for the next report. Danger is never held."),
+    "RAIN_HEAVY_MM":      ("alerts", "Heavy rain, mm in 24 h", False, False,
+                           "A community node's rain feed says heavy rain when the forecast for the next 24 hours "
+                           "reaches this. 50 mm is BMKG's heavy rain (hujan lebat); check it for your place."),
     "HOME_HAS":           ("alerts", "What this home has", False, False,
                            "Comma-separated: purifier, ac, fan, windows (windows that open). The event engine "
                            "only suggests what is here to use."),
@@ -136,6 +141,8 @@ RUNTIME = {
     "ACT_TOKEN":          ("keys", "Token for closing a loop", True, False,
                            "Lets someone in the house record that they acted on an alert (POST /actions) without holding the admin token: it cannot read a secret or change a setting. `planetai ui` prints it."),
     # sharing — sharing and network: who may read this node, and everything it sends or announces beyond this machine.
+    "PUBLIC_URL":         ("sharing", "This node's public address", False, False,
+                           "The address people outside your network use to open this node's report and Wall, for example its Tailscale Funnel link. The community bot's weekly message ends with it. Empty leaves the link out."),
     "SHARE_LEVEL":        ("sharing", "What a reader without a token may see", False, False,
                            "off (default) = the dashboard shell, /health with the position rounded, the daily export and the layout, and nothing else. "
                            "open = the whole read API to anyone on your network, so a wall screen or a phone works with no token; writes still need one. "
@@ -345,6 +352,8 @@ def set(key: str, value: str) -> None:  # noqa: A001
         raise KeyError(f"{key} is not a runtime setting, and no installed pack declares it")
     if value and key in CHOICES and value not in CHOICES[key]:
         raise ValueError(f"{value!r} is not a value {key} accepts. {RUNTIME[key][4]}")
+    if key == "PUBLIC_URL" and value and (not value.startswith("https://") or value.endswith("/")):
+        raise ValueError(f"{value!r} is not an address {key} accepts. {RUNTIME[key][4]} Write it as https://… with no / at the end.")
     import psycopg
     from psycopg.rows import dict_row
     with psycopg.connect(DB, row_factory=dict_row, autocommit=True) as con, con.cursor() as cur:

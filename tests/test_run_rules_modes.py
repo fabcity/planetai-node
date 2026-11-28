@@ -32,7 +32,7 @@ class Msg:
 answers = []   # what each send names for an answer on Reticulum (channels.reticulum_answers), newest run only
 
 
-def run(mode, buttons=False, house=True):
+def run(mode, buttons=False, house=True, rules=None, enq=None):
     sqls, notified, ran, kbs = [], [], [], []
     answers.clear()
 
@@ -47,6 +47,9 @@ def run(mode, buttons=False, house=True):
         def cursor(self):
             return contextlib.nullcontext(Cur())
 
+        def transaction(self):
+            return contextlib.nullcontext()
+
     @contextlib.contextmanager
     def db():
         yield Con()
@@ -55,7 +58,7 @@ def run(mode, buttons=False, house=True):
         pass
 
     packs, index, events_pg, settings, log = NS(), NS(), NS(), NS(), NS()
-    packs.load_rules = lambda: [OLD, OTHER, KINDED]
+    packs.load_rules = lambda: rules or [OLD, OTHER, KINDED]
     packs.emit = lambda *a: None          # Home Assistant and any other hook: a pack since 22 Oct
     index.run_ro = lambda cur, sql: (sqls.append(sql), [{"sensor_id": "s", "x": 1}])[1]
     events_pg.candidates = lambda rule, rows: ["cand"]
@@ -70,7 +73,11 @@ def run(mode, buttons=False, house=True):
                                                                         kbs.append(keyboard), answers.append(answer)),
              _alert_home=lambda issue: "",
              run_report=lambda cur: None, _quiet=lambda lvl: False, LOCALE=lambda: "en", _local_now=lambda: "now")
-    g.update(buttons=buttons_mod, json=json, placewords=type("P", (), {"is_house": staticmethod(lambda: house)}))
+    def _enq(cur, rule, row, sid, now):
+        if enq is not None:
+            enq.append((rule["id"], dict(row), sid))
+        return True
+    g.update(feeds=type("F", (), {"enqueue": staticmethod(_enq)}), buttons=buttons_mod, json=json, placewords=type("P", (), {"is_house": staticmethod(lambda: house)}))
     exec(code, g)
     g["run_rules"]()
     return sqls, notified, ran, kbs
@@ -112,3 +119,15 @@ print("  events + bot: the engine's message rides the three buttons, the rule's 
 sqls, notified, ran, kbs = run("events", buttons=True, house=False)
 assert notified == ["other 1", "engine says"] and kbs == [None, None], f"a community node sends no buttons: {kbs}"
 print("  events + bot on a community node: every message goes bare, nobody is asked to answer")
+
+# a rule with a `feed:` block queues its line after the alerts row; `feed_only` never sends, and a private node skips it
+FEED = {"id": "fire/f", "sql": "F_SQL", "message": "m {x}", "level": "act", "feed": {"name": "fire", "en": "x"}}
+ONLY = {"id": "air/f_only", "sql": "O_SQL", "message": "m", "level": "act", "feed_only": True, "feed": {"name": "air", "en": "x"}}
+enq = []
+sqls, notified, ran, kbs = run("rules", house=False, rules=[FEED, ONLY], enq=enq)
+assert [e[0] for e in enq] == ["fire/f", "air/f_only"] and enq[0][2] == "s", enq
+assert notified == ["m 1"], f"a feed_only rule is recorded and queued, never sent: {notified}"
+assert sum(s.startswith("INSERT") for s in sqls) == 2
+sqls, notified, ran, kbs = run("rules", house=True, rules=[ONLY], enq=(enq := []))
+assert not enq and not notified and not sqls, "a feed_only rule on a private node writes nothing and does not run"
+print("  feed block: queued after the alerts row; feed_only records at info, never sends; a private node skips it")

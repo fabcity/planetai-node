@@ -31,7 +31,7 @@ const SETUP_GROUPS = {
 const SETUP_CATS = [
   ['This place', ['basics', 'rooms']],
   ['What it reads', ['sources', 'packs']],
-  ['How it speaks', ['alerts', 'model']],
+  ['How it speaks', ['alerts', 'model', 'subscribers']],
   ['Who can see it', ['sharing', 'keys', 'screen']],
   ['The machine', ['system', 'machine', 'updates']],
 ];
@@ -42,6 +42,7 @@ const SETUP_TIPS = {
   packs: 'Which packs this node loads, and each pack’s own settings.',
   alerts: 'When the reports come, what is allowed to interrupt you, and how a loop is closed.',
   model: 'Which model answers questions, here and on Telegram.',
+  subscribers: 'How many people get each of this node’s feeds on Telegram.',
   sharing: 'Who on your network can read this node, and what leaves it.',
   keys: 'Every secret: tokens and API keys. Masked once saved, never shown again.',
   screen: 'Unlock this screen with the admin token to change settings, or lock it again.',
@@ -63,6 +64,7 @@ const SECTIONS = () => sCats().flatMap(([, secs]) => secs);
 /* the categories as this node has them: a declared group in its category, any other one in the last */
 const sCats = () => {
   const have = new Set([...(SETUP.desc ? sGroups(SETUP.desc) : []), 'rooms', 'machine', 'screen', 'updates']);
+  if (notHouse(((typeof D !== 'undefined' && D && D.health) || {}).kind)) have.add('subscribers');   /* a community node's bot has subscribers; a private node has none */
   const named = new Set(SETUP_CATS.flatMap(([, secs]) => secs));
   const cats = SETUP_CATS.map(([t, secs]) => [t, secs.filter(x => have.has(x))]);
   cats[cats.length - 1][1].push(...[...have].filter(x => !named.has(x)));
@@ -113,7 +115,7 @@ function setupDraw() {
         return `<a href="#setup/${s}" class="${s === g ? 'on' : ''}" data-s="${s}" aria-describedby="tip-${s}">`
         + `<span>${esc(sName(s))}</span>${s === 'screen' ? `<i>${unlocked ? 'unlocked' : 'locked'}</i>` : s === 'updates' ? (D.health.release || {}).newer ? '<i>new</i>' : '' : s === 'machine' ? (SETUP.storage && SETUP.storage.days_left != null ? `<i>${sDays(SETUP.storage.days_left)}</i>` : '') : s === 'packs' && SETUP.listed.some(p => p.new) ? '<i>new</i>' : setHere(s) ? `<i>${setHere(s)} set</i>` : ''}`
         + `<span class="tip" role="tooltip" id="tip-${s}"><b>${esc(sName(s))}</b>${esc(SETUP_TIPS[s] || (SETUP_GROUPS[s] || [])[1] || '')}${holds ? `<em>Holds: ${esc(holds)}</em>` : ''}</span></a>`; }).join('')).join('')}</nav>`
-    + `<section class="spane" aria-live="polite" data-learn="setup-save" data-reads="/settings /actions">${sTodo()}${g === 'screen' ? sScreen(unlocked) : g === 'updates' ? sUpdates() : g === 'machine' ? sMachine() : g === 'rooms' ? sRooms(unlocked) : sGroup(g, unlocked)}</section></div>`
+    + `<section class="spane" aria-live="polite" data-learn="setup-save" data-reads="/settings /actions">${sTodo()}${g === 'screen' ? sScreen(unlocked) : g === 'updates' ? sUpdates() : g === 'machine' ? sMachine() : g === 'rooms' ? sRooms(unlocked) : g === 'subscribers' ? sSubs(unlocked) : sGroup(g, unlocked)}</section></div>`
     + `<div class="sbar" id="sbar" hidden><span id="scount"></span><span class="sp"></span><button type="button" class="sbtn" id="sdiscard">Discard</button><button type="button" class="sbtn primary" id="ssave">Save changes</button></div>`;
   sqa('.snav a').forEach(a => a.onclick = ev => {
     ev.preventDefault();
@@ -126,6 +128,7 @@ function setupDraw() {
   const lockB = sq('#slock'); if (lockB) lockB.onclick = () => { try { localStorage.removeItem('planetai_admin'); localStorage.removeItem('planetai_act'); } catch (e) { /* none */ } location.reload(); };
   sq('#ssave').onclick = () => sSave(); sq('#sdiscard').onclick = () => { SETUP.dirty = false; setupDraw(); };
   sqa('[data-room]').forEach(f => f.onsubmit = sRoom);
+  if (g === 'subscribers' && unlocked) sSubsLoad();
   /* a pack card opens on its own (Tomas, 24 Oct 2026: "Bali Air Dispatch itself", not the rows inside it); the pane's
      button opens or closes every card, and this browser remembers the choice */
   sqa('.px').forEach(b => b.onclick = () => { const card = b.closest('.pcard'), open = !card.classList.contains('open');
@@ -232,6 +235,26 @@ async function sRoom(ev) {
   if (!(r && r.ok)) { say.textContent = `Not saved: ${j.detail || (r ? r.status : 'the node did not answer')}`; return; }
   const s = (D.sensors || []).find(x => x.sensor_id === sid); if (s) Object.assign(s, j.sensor);
   say.textContent = j.sensor.room ? `Saved: this sensor is “${j.sensor.room}” everywhere now.` : 'Saved: back to the sensor’s own name.';
+}
+
+/* Subscribers: how many people get each feed on this community node's Telegram bot. Counts only: no chat id is ever
+   fetched or drawn. Read from /subscribers/counts (admin token) when the section opens. */
+const SUBS_FEEDS = [['weekly', 'Weekly report, Mondays'], ['air', 'Air'], ['heat', 'Heat'], ['waves', 'Waves'], ['fire', 'Fire'], ['rain', 'Rain and floods']];
+function sSubsHtml(c) {
+  const f = (c && c.feeds) || {};
+  return `<h2>Subscribers</h2><p class="blurb">People who get this node’s feeds on Telegram. The node keeps their chat number and what they picked, nothing else, and never shows who they are.</p>`
+    + `<div class="rows" id="ssubs">${c ? SUBS_FEEDS.map(([k, l]) => `<div class="srow"><div class="sl">${esc(l)}</div><div class="sc"><b>${Number(f[k]) || 0}</b></div></div>`).join('')
+      + `<div class="srow"><div class="sl">Total</div><div class="sc"><b>${Number(c.total) || 0}</b></div></div>` : '<p class="fine">Reading the counts…</p>'}</div>`;
+}
+function sSubs(unlocked) {
+  if (!unlocked) return `<h2>Subscribers</h2><p class="gate">How many people subscribe is the keeper’s: <a href="#setup/screen" data-go="screen">unlock this screen</a> with the admin token to see it.</p>`;
+  return sSubsHtml(SETUP.subs);
+}
+async function sSubsLoad() {
+  const r = await doorsFetch('/subscribers/counts', { headers: DOORS_AUTH() }).catch(() => null);
+  SETUP.subs = r && r.ok ? await r.json().catch(() => null) : null;
+  const el = sq('.spane'); if (!el || SETUP.group !== 'subscribers') return;
+  el.innerHTML = SETUP.subs ? sSubsHtml(SETUP.subs) : `<h2>Subscribers</h2><p class="fine">The node did not answer with the counts.</p>`;
 }
 
 /* one row: the label, the node's help and where its value comes from; the control on the right; the refusal under it */
