@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **28 Nov: `/sensors` gives no position finer than the node's cell.** A model's sample and the map's summary are
+  taken at the node's own point, and a reader without a token got that point to three decimals, about 80 m. Every row
+  of a model or of the map now stands at the centre of its own cell, so one taken at the node's point stands where
+  `/health` publishes the node. A station keeps three decimals, and a token or this machine reads every row as it is kept.
+
 - **28 Nov: a community node's Place report opens complete from its public link.** A reader with no token now gets the
   picture of the place on the first sheet and the reading after it, what kind of place this is and the ways to improve
   it. A house still keeps both to its own screens. The report has a new page, What is coming: the forecast's days for

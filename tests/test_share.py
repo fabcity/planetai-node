@@ -150,6 +150,7 @@ except ImportError:
     raise SystemExit(0)
 
 import logging
+import sys
 import time
 logging.disable(logging.WARNING)      # main.py logs a failed bootstrap connect on import; that is the point of the stub
 os.environ.update(ADMIN_TOKEN="admin-tok", ACT_TOKEN="act-tok", AGGREGATE_TOKEN="agg-tok", NODE_LAT="-8.6478291", NODE_LON="115.1385412",
@@ -258,6 +259,33 @@ assert main._own_point({"local": True, "kind": "sensor", "lat": -8.6528, "lon": 
     "a house's own sensor in the neighbouring cell must stand where the house does"
 assert main._own_point({"local": False, "kind": "child", "lat": -8.6528, "lon": 115.1445}) == main._coarse(-8.6528, 115.1445), \
     "a child's row is another house: its own cell's centre"
+# 28 Nov 2026: a model's sample and the map's summary are taken at the node's own point, so three decimals of their
+# row placed the house within about 80 m for anyone. They stand at the centre of their own cell; a station does not move.
+_keep = main.q
+_at = lambda kind, lat, lon, **k: dict(ROW, sensor_id=f"x-{kind}", source="x", name="x", indoor=False, local=False,   # noqa: E731
+                                        custody=False, kind=kind, lat=lat, lon=lon, meta={}, **k)
+_NODE, _OLD, _GRID = (-8.6478291, 115.1385412), (-8.6571234, 115.1312345), (-8.7012345, 115.2012345)
+main.q = lambda sql, *a: ([_at("model", *_NODE), _at("map", *_NODE), _at("model", *_OLD), _at("model", *_GRID),
+                           _at("sensor", *_NODE), _at("model", None, None)] if "FROM sensors" in sql else [])
+_m, _map, _old, _grid, _st, _none = lan.get("/sensors").json()
+assert (_m["lat"], _m["lon"]) == (_map["lat"], _map["lon"]) == (_h["lat"], _h["lon"]), \
+    "a model's row and the map's row at the node's own point must stand where the house is published"
+assert (_old["lat"], _old["lon"]) == main._coarse(*_OLD) != (round(_OLD[0], 3), round(_OLD[1], 3)), \
+    "a row written where the node stood before (at install, or by a pack since switched off) gets its own cell's centre"
+assert (_grid["lat"], _grid["lon"]) == main._coarse(*_GRID), "a model's grid point elsewhere stands at its cell's centre too"
+assert (_st["lat"], _st["lon"]) == (round(_NODE[0], 3), round(_NODE[1], 3)), "a public station keeps its own three decimals, however near"
+assert (_none["lat"], _none["lon"]) == (None, None), "a row with no position stays without one"
+for _r in lan.get("/sensors").json():
+    if _r["kind"] in ("model", "map") and _r["lat"] is not None:
+        assert (_r["lat"], _r["lon"]) in (main._coarse(*_NODE), main._coarse(*_OLD), main._coarse(*_GRID)), _r
+assert local.get("/sensors").json()[0]["lat"] == _NODE[0], "this machine still reads the row as it is kept"
+_h3 = sys.modules.get("h3")                            # without h3 the fallback is two decimals, as /health's is
+sys.modules["h3"] = None
+try:
+    assert main._coarse(*_NODE) == (round(_NODE[0], 2), round(_NODE[1], 2)), "without h3 a row falls back to two decimals, coarser than the cell"
+finally:
+    sys.modules.pop("h3") if _h3 is None else sys.modules.__setitem__("h3", _h3)
+main.q = _keep
 # Tomas, 15 Oct 2026: a screen without a key never reads what the house calls its rooms or its sensors.
 main._HOUSE.update(at=time.time() + 1e9, map=[("Kitchen, upstairs", "Sensor 1")])   # the database is stubbed out
 r = lan.get("/sensors"); s0 = r.json()[0]
