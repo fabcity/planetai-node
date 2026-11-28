@@ -872,7 +872,63 @@ def load_channel_roles() -> int:
 
 
 
+# Schema 0.68 (init.sql `data_cuts`). The figures below were measured from the node's own point until this release and
+# from the middle of its res-8 cell since. Their past rows are removed once, in one transaction with the mark, by the
+# first poll of this code, before any adapter writes: the code before it went on writing them until the containers
+# restarted, after update.sh had taken its backup and applied the schema. The substation and plant distances have been
+# whole km from the middle since 18 Nov, so only their rows with a decimal go. A second run finds the mark and does
+# nothing. The sensors' own rows are rewritten by their packs at the next poll; their old distance keys and the
+# distance in the two sea names go now, so nothing waits for one. A lab loses its fetch stamp too, which makes the make
+# pack read the directory again at its next poll.
+CUT_METRICS = ("nearest_school_m", "nearest_health_m", "nearest_market_m", "nearest_worship_m",
+               "fires_nearest_km", "fires_nearest_bearing", "fires_upwind_km", "fires_upwind_bearing",
+               "fires_local_24h", "fires_region_24h", "fires_local_upwind", "fires_region_upwind",
+               "frp_local_mw", "frp_region_mw", "river_m")
+CUT_WHOLE = ("substation_km", "large_plant_km")
+_IN_CUT, _IN_WHOLE = (", ".join(f"'{m}'" for m in ms) for ms in (CUT_METRICS, CUT_WHOLE))   # constants, never input
+CUT_MARK = "INSERT INTO data_cuts (name) VALUES ('cell-middle') ON CONFLICT DO NOTHING RETURNING name"
+CUT_ROWS = (
+    f"DELETE FROM readings WHERE metric IN ({_IN_CUT}) OR (metric IN ({_IN_WHOLE}) AND value <> round(value))",
+    f"DELETE FROM readings_1h_done WHERE metric IN ({_IN_CUT}) OR (metric IN ({_IN_WHOLE}) "
+    "AND (mean <> round(mean) OR min <> round(min) OR max <> round(max)))")
+CUT_SENSORS = (
+    "UPDATE sensors SET meta = meta - 'km' WHERE kind = 'sensor' AND NOT local AND meta ? 'km'",    # a station pack's km
+    "UPDATE sensors SET meta = meta - 'km_from_node' WHERE sensor_id = 'forecast-bmkg' AND meta ? 'km_from_node'",
+    "UPDATE sensors SET meta = meta - 'distance_km' WHERE sensor_id IN ('forecast-marine', 'marine-point') AND meta ? 'distance_km'",
+    "UPDATE sensors SET meta = meta - 'distance_km' - 'fetched' WHERE kind = 'facility' AND source = 'fablabs-io'",
+    "UPDATE sensors SET meta = meta - 'sentence' - 'largest' WHERE sensor_id = 'hydro-point'",
+    "UPDATE sensors SET name = 'Open-Meteo Marine forecast, nearest sea cell' WHERE sensor_id = 'forecast-marine'",
+    "UPDATE sensors SET name = regexp_replace(name, '^Sea, [0-9]+ km off ', 'Sea, nearest cell ') WHERE sensor_id = 'marine-point'")
+
+
+def cut_once(cur) -> bool:
+    """The cut, if this node has not had it: True when it ran. The mark and the removal share the caller's transaction."""
+    cur.execute(CUT_MARK)
+    if not cur.fetchall():
+        return False
+    for sql in CUT_ROWS + CUT_SENSORS:
+        cur.execute(sql)
+    return True
+
+
+def _cut() -> None:
+    """cut_once on the first poll of a process; a failure is said once and asked again at the next poll."""
+    if state.get("cut"):
+        return
+    try:
+        with db() as con, con.transaction(), con.cursor() as cur:
+            if cut_once(cur):
+                log.info("removed the rows of %d figures written before they were measured from the middle of the cell",
+                         len(CUT_METRICS) + len(CUT_WHOLE))
+        state["cut"] = True
+    except Exception as e:  # noqa: BLE001 — polling goes on; the cut is asked again next time
+        if not state.get("cut_said"):
+            log.warning("the one-time cut did not run (%s: %s); asked again at the next poll", type(e).__name__, e)
+            state["cut_said"] = True
+
+
 def poll_sources() -> None:
+    _cut()
     poll_once(hc)
 
 
@@ -1844,6 +1900,12 @@ def _export_namer(child_ids):
     return name
 
 
+# An alert raised before the cut (data_cuts, 0.68) was written from figures measured the old way: its text stays home.
+EXPORT_ALERTS_SQL = """SELECT a.text, a.ts, a.rule_id, a.level, a.sensor_id,
+                              coalesce(a.ts >= (SELECT cut_at FROM data_cuts WHERE name = 'cell-middle'), false) AS after_cut
+                       FROM alerts a WHERE a.ts >= %s::date AND a.ts < %s::date + 1 ORDER BY a.ts"""
+
+
 @app.get("/export")
 def export(day: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$")):
     """One day of this node as open data: hourly means per sensor and metric, the Index cells, the alerts, rho.
@@ -1866,7 +1928,7 @@ def export(day: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$")):
     rows = [{"t": r["bucket"], "sensor": name(r), "local": r["local"], "indoor": r["indoor"], "kind": r["kind"],
              "metric": r["metric"], "mean": r["mean"], "min": r["min"], "max": r["max"], "n": r["n"]}   # q() renders timestamps as ISO strings
             for r in hourly]
-    alerts_ = q("SELECT ts, rule_id, level, text, sensor_id FROM alerts WHERE ts >= %s::date AND ts < %s::date + 1 ORDER BY ts", day, day)
+    alerts_ = q(EXPORT_ALERTS_SQL, day, day)
     if not placewords.is_house():
         indoor = _indoor_ids()
         alerts_ = [a for a in alerts_ if a.get("sensor_id") not in indoor]
@@ -1879,7 +1941,8 @@ def export(day: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$")):
             "lat": _pos["lat"], "lon": _pos["lon"],
             "day": day, "generated": datetime.now(timezone.utc).isoformat(), "version": os.getenv("NODE_VERSION", ""),
             "licence": "CC BY 4.0", "hourly": rows,
-            "alerts": [{"t": a["ts"], "rule": a["rule_id"], "level": a["level"], "text": _unlabelled(a["text"].split("\n")[0])} for a in alerts_],
+            "alerts": [{"t": a["ts"], "rule": a["rule_id"], "level": a["level"],
+                        "text": _unlabelled(a["text"].split("\n")[0]) if a.get("after_cut") else None} for a in alerts_],
             "cells": cells_, "rho": rho_, "offers": _offers()}
 
 
