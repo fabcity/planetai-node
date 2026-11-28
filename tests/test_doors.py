@@ -879,8 +879,8 @@ assert "@container place (max-width:759px){#mapbar .scales b{display:none}" in _
     and ".mapc .nonode{right:calc(var(--k) + 24px);bottom:56px;pointer-events:none}" in _css and "width:min(300px,calc(100% - 2 * var(--k) - 302px))" in _css, \
     "the screen's controls lay out by its own width: the rungs by number under 760 px, the base and the hour move under 560 px (tests/visual/measure.mjs placescreen proves the boxes)"
 assert "box-shadow:0 0 0 1px #000,0 0 0 5px #1b1b1b,0 0 0 6px #000" in _css and "border-radius:10px" in _css, "the screen sits in its bezel"
-assert re.search(r"\.bench\{display:grid;grid-template-columns:224px minmax\(0,1fr\);", _css) and ".page[data-view=\"place\"]{max-width:1440px}" in _css, \
-    "224 px of cake (216 until the rows' marks became switches, 17 Nov 2026: 'Water samples' was cut), and the screen takes the rest"
+assert re.search(r"\.bench\{display:grid;grid-template-columns:248px minmax\(0,1fr\);", _css) and ".page[data-view=\"place\"]{max-width:1440px}" in _css, \
+    "248 px of cake (216 until the rows' marks became switches, 17 Nov 2026, and 224 until the text grew to 14 px, 28 Nov: both times 'Water samples' was cut), and the screen takes the rest"
 _v2 = _css[:_css.index("#pedges{")]   # the v2 rules; the swatches after them predate it
 _v2 = _v2.replace(_v2[_v2.index(".mapc{--ink"):_v2.index(".mapw{")], "")   # the screen's own values and its bezel
 if ".scr{--ink" in _v2:   # the doors' .scr screens carry the same screen values and bezel
