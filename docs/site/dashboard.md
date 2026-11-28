@@ -113,6 +113,11 @@ where BMKG covers the node, and a line says where to turn Open-Meteo on. `#now/n
 today; pressing one moves the page to that issue. With the admin token one line counts the things this home
 keeps, how many sit idle and how many need repair, and opens Data › Home.
 
+**Water** is a row there once the keeper has stated where the water comes from (the supply pack, `SUPPLY_SOURCES`
+on Set up). It names the first source with how it holds, its kind beside it, and under that every source in order,
+with how far the first one's works are, in whole km from the middle of the cell, and which basin they are in.
+Pressing it opens Place, where the Water supply row and the map layer are.
+
 **Energy**, once the energy pack is on and in `NODE_ISSUES`, is a row there too, with the grid's fossil share and the
 line its figure comes from. Pressing it draws the grid where the day figure is: the share (a range where the grid
 publishes no mix, one figure where it does), the mix as a bar with the part nobody publishes hatched, the nearest

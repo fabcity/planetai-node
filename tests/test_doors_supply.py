@@ -69,7 +69,11 @@ const cases = JSON.parse(fs.readFileSync({json.dumps(str(p))}, 'utf8')), out = {
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({{ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }}[c]));
 let tok = false; const EVIL = '<img src=x onerror=1>"&';
 const pc = {{ esc, DOORS_TOKEN: () => (tok ? 't' : '') }}; vm.createContext(pc);
-vm.runInContext(pl.match(/^const BASIN = .*$/m)[0] + '\\n' + lift(pl, 'supplyRow') + 'this.supplyRow = supplyRow;', pc);
+vm.runInContext(pl.match(/^const BASIN = .*$/m)[0] + '\\n' + lift(pl, 'supplyLine') + lift(pl, 'supplyRow') + 'this.supplyRow = supplyRow;', pc);
+/* Now's Around: the water row (doors-now.js :: waterAround), built from the same words */
+const nw = fs.readFileSync('./app/static/doors-now.js', 'utf8'), wc = {{ esc }}; vm.createContext(wc);
+vm.runInContext(pl.match(/^const BASIN = .*$/m)[0] + '\\n' + lift(pl, 'supplyLine') + lift(nw, 'waterAround') + 'this.f = waterAround;', wc);
+out.around = Object.fromEntries(Object.entries(cases).map(([k, S]) => [k, wc.f(S)]));
 for (const [k, S] of Object.entries(cases)) {{ tok = true; const a = pc.supplyRow(S, true); const r = pc.supplyRow(S); tok = false; out.rows[k] = [a, r, pc.supplyRow(S, true), pc.supplyRow(S)]; }}
 for (const [k, S] of Object.entries(cases)) {{
   out.layer[k] = {{}};
@@ -135,6 +139,14 @@ check("not stated" in none and "SUPPLY_SOURCES" in none and not re.search(r"\b0\
 check("3 water works drawn within 25 km" in r["rows"]["mapped"][0] and "not stated" in r["rows"]["mapped"][0], "mapped only")
 check("Bad line: not read (no kind)" in r["rows"]["bad"][0], "an entry that did not parse is said")
 check(r["rows"]["empty"] == ["", "", "", ""], "an answer with no state draws no row")
+aw = r["around"]
+check(aw["both"].startswith('<a class="row" data-k="water" href="#place"') and "PDAM Tirta Mangutama, piped, fails often, from 12 km away, in another basin" in aw["both"]
+      and "Water trucks, truck" in aw["both"] and aw["both"].index("PDAM") < aw["both"].index("Water trucks"), f"Now's water row, both sources in order: {aw['both']}")
+check('<span class="state">fails often</span>' in aw["both"] and '<span class="v">piped</span>' in aw["both"], f"the row's state and value: {aw['both']}")
+check("from 12 km away" in aw["report"] and "12.3" not in aw["report"], f"whole km on Now: {aw['report']}")
+check(all(aw[k] == "" for k in ("none", "mapped", "wifi", "empty", "off", "bad", "nullsnone")), "no row without a stated source")
+check("<img" not in aw["evil"] and "&lt;img" in aw["evil"], "a source's name is escaped on Now")
+check('class="state"' not in aw["typed"], "no state word when the keeper did not say how it holds")
 check("psupplygo" not in r["rows"]["wifi"][0] and "psupplygo" not in r["rows"]["typed"][0], "no link where nothing is drawn")
 check(not any(c in page for c in ("—", "undefined", "null")), f"no dash or stray word: {page}")
 trucks = re.sub(r"\s+", " ", strip(page))

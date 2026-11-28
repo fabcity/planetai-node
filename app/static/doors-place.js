@@ -390,16 +390,18 @@ async function supply() {
   if (go) go.onclick = e => { e.preventDefault(); if (window.placeSupply) window.placeSupply(); const m = $('#map'); if (m) m.scrollIntoView({ block: 'center' }); };
 }
 const BASIN = { same: 'in the same basin', other: 'in another basin', beyond: 'outside the basins this node holds' };
+/* one source in words: its name and kind, and for the first how it holds, how far its works are and which basin.
+   A report, and Now's row, are handed on: their distances are whole kilometres, as the Rivers row's are. */
+function supplyLine(s, full, here) {
+  const o = s.origin || {}, km = o.km == null ? null : here ? +o.km : Math.round(+o.km);
+  return [[s.name, s.kind].filter(Boolean).join(', '), full && s.holds ? s.holds : null,
+    full && km != null ? (km < 1 ? 'within a kilometre' : `from ${here ? +km.toFixed(1) : km} km away`) : null, full && BASIN[o.basin] || null].filter(Boolean).join(', ');
+}
 function supplyRow(S, here) {
   if (!S || !S.state) return '';
   const all = Array.isArray(S.sources) ? S.sources : [], src = all.filter(s => s && s.id), bad = here ? all.filter(s => s && s.entry) : [];
   const works = Array.isArray(S.works) ? S.works : [], first = src[0];
-  const line = (s, full) => {
-    /* a report is handed on: its distances are whole kilometres, as the Rivers row's are */
-    const o = s.origin || {}, km = o.km == null ? null : here ? +o.km : Math.round(+o.km);
-    return [[s.name, s.kind].filter(Boolean).join(', '), full && s.holds ? s.holds : null,
-      full && km != null ? (km < 1 ? 'within a kilometre' : `from ${here ? +km.toFixed(1) : km} km away`) : null, full && BASIN[o.basin] || null].filter(Boolean).join(', ');
-  };
+  const line = (s, full) => supplyLine(s, full, here);
   const drawn = works.some(w => w.lat != null) || src.some(s => s.origin && s.origin.lat != null);
   const said = [...src.map((s, i) => esc(line(s, !i))), ...bad.map(b => `${esc(b.entry)}: not read (${esc(b.problem)})`)];
   const n = works.length;

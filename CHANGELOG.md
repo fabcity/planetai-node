@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **28 Nov: Now has a Water row under Around this place.** Once the keeper has stated where the water comes from, the
+  row names the first source, how it holds and its kind, with the other sources under it and the first one's works in
+  whole km from the middle of the cell. Pressing it opens Place.
 - **28 Nov: a new `supply` pack says where a place's water comes from.** The keeper writes the sources in order of use
   in `SUPPLY_SOURCES`, each as a name, a kind (piped, truck, well, spring, rain or bottled), how well it holds and an
   origin, a point or the name of a water work on the public map. The node reads the water works, pumping stations,

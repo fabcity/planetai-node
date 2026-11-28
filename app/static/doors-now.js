@@ -5,7 +5,7 @@
    routes it reads and its stage; every figure carries its comparison; the node's words are never shouted; provenance
    is a pill in ink. The scales are Place's: the kicker links there and draws no rail. */
 VIEWS.now = function () {
-  rows(); drawDeclared(); drawAsks(); drawNow();
+  rows(); waterRow(); drawDeclared(); drawAsks(); drawNow();
   aroundMap($('#rose')); thingsLine($('#nthings')); rememberLoad().then(() => decision()); drawBoard('now');   /* the usual hour joins "Nothing is asked now" */
   $('#ncityrow').innerHTML = indexScreen(D.index_place);   /* the city screen's readout, over the map (doors-place.js) */
   /* Next days (SPEC_next_days §5) is a part of Now; #now/next, the address the switch kept until 4 Nov, scrolls to it */
@@ -456,11 +456,31 @@ function rows() {
     return `<button class="row" data-k="${k}" data-kind="readout" aria-pressed="false"><span><span class="n">${said(it.name)}</span><span class="state ${it.state === 'act' ? 'act' : ''}">${esc(stateWord(it.state))}</span></span>`
       + `<span class="v" data-v></span><span class="sub" data-s></span></button>`;
   }).join('');
-  document.querySelectorAll('#rows .row').forEach(b => b.onclick = () => { S.issue = b.dataset.k; drawNow(); });
+  document.querySelectorAll('#rows button.row').forEach(b => b.onclick = () => { S.issue = b.dataset.k; drawNow(); });
+}
+/* Water, after the issues' rows: where this place's water comes from (GET /supply, the Water supply row on Place), the
+   first source with how it holds, its kind as the value, the other sources under it. It has no hours, so it takes the
+   reader to Place. No row until the keeper has stated a source. */
+let NOW_SUPPLY;
+function waterRow() {
+  const put = S => {
+    const el = $('#rows'), h = waterAround(S);
+    if (!el || !h || el.querySelector('[data-k="water"]')) return;
+    const at = el.querySelector('[data-k="energy"]');
+    if (at) at.insertAdjacentHTML('beforebegin', h); else el.insertAdjacentHTML('beforeend', h);
+  };
+  if (NOW_SUPPLY !== undefined) return put(NOW_SUPPLY);
+  doorsFetch('/supply').then(r => (r.ok ? r.json() : null)).catch(() => null).then(S => { NOW_SUPPLY = S; put(S); });
+}
+function waterAround(S) {
+  const src = S && Array.isArray(S.sources) ? S.sources.filter(s => s && s.id) : [], first = src[0];
+  if (!first) return '';
+  return `<a class="row" data-k="water" href="#place"><span><span class="n">Water</span>${first.holds ? `<span class="state">${esc(first.holds)}</span>` : ''}</span>`
+    + `<span class="v">${esc(first.kind)}</span><span class="sub">${src.map((s, i) => esc(supplyLine(s, !i, false))).join('. ')}</span></a>`;
 }
 function rowsValues() {
   const date = dayOf(D.buckets[S.i]);
-  document.querySelectorAll('#rows .row').forEach(r => {
+  document.querySelectorAll('#rows button.row').forEach(r => {
     const k = r.dataset.k, it = D.issues[k], hd = it.hero_distance || 'region';
     r.setAttribute('aria-pressed', String(k === S.issue));
     // now is the live reading the title and the legend say, not the running hour's mean (audit, 15 Oct: 17 beside 10)
