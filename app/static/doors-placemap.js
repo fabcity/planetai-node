@@ -326,6 +326,17 @@ function supplyMarks(S, from) {
   const f = src[0] && at(src[0].origin) ? src[0].origin : null;
   return { works, origins, line: from && f ? [from, [f.lon, f.lat]] : null };
 }
+/* what the layer draws. A sheet is handed on, so whoever prints it gets what a reader with no token is given: never a
+   point the keeper typed, no line, and on a house nothing at all; on a community node the mapped works and the mapped
+   origins, as marks. Off a sheet, the marks of the answer this screen was given. */
+function supplyDrawn(S, sheet, from) {
+  if (!sheet) return supplyMarks(S, from);
+  if (!(typeof notHouse === 'function' && notHouse((D.health || {}).kind))) return { works: [], origins: [], line: null };
+  const works = supplyMarks(S, null).works, has = o => works.some(w => w.lat === o.lat && w.lon === o.lon);
+  const mapped = ((S && S.sources) || []).filter(x => x && x.id && x.origin && x.origin.how === 'mapped' && x.origin.lat != null && x.origin.lon != null && !has(x.origin))
+    .map(x => ({ kind: x.kind, name: x.origin.name, lat: x.origin.lat, lon: x.origin.lon }));
+  return { works: [...works, ...mapped], origins: [], line: null };
+}
 /* the inspector's lines for a mark of the water supply */
 function waterFacts(w, row, hint) {
   return `<span class="k">Water supply · ${esc(w.kind)}</span><b class="said">${esc(w.name || 'not named')}</b>` + (w.operator ? row('run by', `<span class="said">${esc(w.operator)}</span>`) : '')
@@ -352,7 +363,8 @@ function creditList() {
   if (PM.on.wind && PM.wind) c.push('wind: Open-Meteo, CC BY 4.0');
   if ((PM.on.rivers || PM.on.basin) && PM.hydro) c.push('rivers and basins: HydroSHEDS via HydroATLAS, CC BY 4.0');
   if (PM.on.energy && PM.energy) c.push('power grid: © OpenStreetMap contributors, ODbL, via Overpass');
-  if (PM.on.supply && PM.supply && !LAYERS.find(l => l.id === 'supply').empty) c.push('water supply: © OpenStreetMap contributors, ODbL, via Overpass');
+  const W = PM.on.supply && PM.supply && supplyDrawn(PM.supply, PM.sheet, null);
+  if (W && (W.works.length || W.origins.length)) c.push('water supply: © OpenStreetMap contributors, ODbL, via Overpass');
   c.push('Natural Earth');
   return c.filter(Boolean);
 }
@@ -399,7 +411,7 @@ function layers() {
   }
   /* the water supply: the works as marks, named from zoom 11, the stated origins as rings, and the line to the first */
   if (L.supply && PM.supply) {
-    const M = supplyMarks(PM.supply, supplyFrom());
+    const M = supplyDrawn(PM.supply, SH, supplyFrom());
     if (M.line) out.push(new Dk.PathLayer({ id: 'supply-line', data: [{ path: M.line }], getPath: d => d.path, ...px, getColor: A(WATER, .6 * a('supply')), getWidth: 1.5, extensions: [dashed], getDashArray: [4, 4] }));
     out.push(new Dk.ScatterplotLayer({ id: 'supply', data: M.works, getPosition: lngLat, ...px, pickable: true, stroked: true, filled: true, getRadius: 5, getLineWidth: 1.4,
       getLineColor: A(WATER, a('supply')), getFillColor: A(WATER, .55 * a('supply')) }));

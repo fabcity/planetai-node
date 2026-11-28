@@ -55,7 +55,8 @@ and the images. Once the hydro pack has fetched them (`planetai run hydro fetch`
 Rivers draws them wider with each order and Basins the level-12 basins, the node's own brighter, and a tap on a
 river gives its flow, the ground it drains and how far it runs to the sea. With the supply pack on, **Water supply**
 waits under built, off at first: the water works round the node and the origins of the sources the keeper stated.
-On a house the works' points go only to the keeper, so a screen without the token draws none. A tap on a work gives its
+On a house the works' points go only to the keeper, so a screen without the token draws none. A printed sheet draws the
+mapped works on a community node and nothing of the supply on a house, and never a point the keeper typed. A tap on a work gives its
 kind, its name and who runs it. With the energy pack on, **Power grid**
 waits under built: the grid's plants, sized by what they can make, its substations and cable heads, and the node's
 seven cells with how many MW are made in each. Its line counts the plants and substations on the grid and says how
@@ -175,8 +176,8 @@ does not send this to a model outside your network, and the small model on the n
 With the supply pack on, the reading can say where the water comes from: that it is piped by the first source, from works
 some kilometres away and in which basin, or that it comes by truck, from a well, from a spring, from rain kept off the
 roof or bought bottled. When the first source fails at times or often, a second line says so. It names what fills the
-gap only when the second source is of a different kind. That line also offers a way to improve the place, "Count the days the tap is dry": keep a tally on one street for a
-month, with each dry day, each truck bought and what it paid.
+gap only when the second source is of a different kind. The reading then offers a way to improve the place, "Count the
+days the tap is dry": keep a tally on one street for a month, with each dry day, each truck bought and what it paid.
 
 Distances in the reading are whole kilometres, and what comes from the public map covers a kilometre round the node,
 so nothing in it is closer than the res-8 cell. A report opened without the token has no reading. The sources page

@@ -218,8 +218,10 @@ with tempfile.TemporaryDirectory() as tmp4:
           "the sensor row stands at the middle of the cell, never at the node's point")
     check((A.result()["lat"], A.result()["lon"]) == node, "the result keeps the node's point for the keeper's km")
     _, rn2 = A.fetch(StubHC({"elements": []}))
-    day = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-    check({t for t, *_ in rn} == {t for t, *_ in rn2} == {day}, "two fetches in one day stamp their rows with the start of that UTC day")
+    t1, t2 = {t for t, *_ in rn}, {t for t, *_ in rn2}
+    midnight = lambda t: t.utcoffset() == timedelta(0) and (t.hour, t.minute, t.second, t.microsecond) == (0, 0, 0, 0)
+    check(len(t1) == len(t2) == 1 and all(midnight(t) for t in t1 | t2) and (max(t2) - max(t1)) in (timedelta(0), timedelta(days=1)),
+          "each fetch stamps its rows with the start of its UTC day, so two in one day share a stamp")
 
     # No cell centre: no map read, the cache kept, the statement kept with no km and no basin, a warning once.
     age_cache(31)

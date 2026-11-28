@@ -877,7 +877,7 @@ never one. Where several works share the name, the one nearest the middle of the
 far the origin is from the middle of the cell, and whether it lies in the basin that holds the middle of the node's
 cell, in another basin the node holds, or outside them. The basin needs the hydro pack; without it the basin is left out
 and the rest stays. With no cell centre the pack reads no map, keeps the works it already has and leaves every named
-origin unfound, so nothing is measured from the node's own point.
+origin unfound, so nothing is chosen by the node's own point.
 
 Add `supply` to `PACKS_ENABLED` where the node lists its packs, and set `SUPPLY_SOURCES` on Set up.
 
@@ -931,7 +931,7 @@ under [`GET /supply`](api.md).
 ### What it does not know
 
 The works are what somebody has drawn on the public map, so a well that nobody mapped is not here, and a name written
-differently on the map is not found. How well a source holds is the keeper's word, not a measure. The pack does not
+differently on the map is not found. How well a source holds is the keeper's word, and the pack measures nothing of it. The pack does not
 count the days the tap is dry or what a truck costs.
 
 ## energy

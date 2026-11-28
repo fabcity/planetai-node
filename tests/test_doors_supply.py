@@ -76,7 +76,7 @@ for (const [k, S] of Object.entries(cases)) {{
   for (const t of [true, false]) {{
     tok = t;
     const c = {{ PM: {{ on: {{ supply: true }}, supply: S, map: null, meta: null }}, SAT_MAX: 15, DOORS_TOKEN: () => (t ? 't' : '') }}; vm.createContext(c);
-    vm.runInContext(cake + '\\n' + pm.match(/const LAYERS = \\[[\\s\\S]*?\\n\\];/)[0] + '\\nconst BY = Object.fromEntries(LAYERS.map(l => [l.id, l]));\\n' + lift(pm, 'supplyRows') + lift(pm, 'supplyMarks') + lift(pm, 'creditList')
+    vm.runInContext(cake + '\\n' + pm.match(/const LAYERS = \\[[\\s\\S]*?\\n\\];/)[0] + '\\nconst BY = Object.fromEntries(LAYERS.map(l => [l.id, l]));\\n' + lift(pm, 'supplyRows') + lift(pm, 'supplyMarks') + lift(pm, 'supplyDrawn') + lift(pm, 'creditList')
       + lift(pm, 'waterFacts') + pm.match(/^const placeCake = [\\s\\S]*?\\n}}\\) }}\\)\\);/m)[0]
       + 'supplyRows(); this.row = LAYERS.find(l => l.id === "supply"); this.credits = creditList(); this.m = supplyMarks(PM.supply, [115, -8.9]);'
       + 'this.fill = placeCake().flatMap(s => s.rows).find(r => r.name === "Water supply").fill;'
@@ -94,6 +94,16 @@ const from = (PM, D, t) => {{
 const ring = [ 'c', -8.0, 115.0, -8.0, 115.2, -8.2, 115.2, -8.2, 115.0 ];   /* a cells_ll row: lat, lng pairs, as loop() closes it */
 out.from = [from({{ sheet: {{}} }}, {{ point: [1, 2] }}, false), from({{ }}, {{ point: [115.1, -8.1] }}, false), from({{ }}, {{ point: [9, 9], ngeo: {{ c8: {{ ring }} }} }}, true),
   from({{ }}, {{ point: [9, 9] }}, true), from({{ sheet: {{}} }}, {{ point: [9, 9], ngeo: {{ c8: {{ ring }} }} }}, true)];
+/* a sheet is handed on: what the supply layer draws there, and its credit, on a community node and on a house */
+out.sheet = {{}};
+for (const [label, sheet, kind, k] of [['community', {{}}, 'community', 'both'], ['house', {{}}, 'home', 'both'], ['page', null, 'home', 'both'], ['communityTyped', {{}}, 'community', 'typed']]) {{
+  const c = {{ PM: {{ on: {{ supply: true }}, supply: cases[k], sheet, map: null, meta: null }}, D: {{ health: {{ kind }}, point: [115.15, -8.82] }}, d3, SAT_MAX: 15,
+    DOORS_TOKEN: () => 't', notHouse: x => x === 'community' }};
+  vm.createContext(c);
+  vm.runInContext(pm.match(/const LAYERS = \\[[\\s\\S]*?\\n\\];/)[0] + '\\n' + lift(pm, 'supplyRows') + lift(pm, 'supplyMarks') + lift(pm, 'supplyDrawn') + lift(pm, 'creditList')
+    + 'supplyRows(); this.m = supplyDrawn(PM.supply, PM.sheet, [115, -8.9]); this.credits = creditList();', c);
+  out.sheet[label] = {{ m: c.m, credits: c.credits }};
+}}
 /* placeSupply: where "on the map ↑" takes the map */
 out.fly = {{}};
 for (const k of ['both', 'ungasan', 'mapped', 'typed', 'none']) {{
@@ -165,6 +175,21 @@ rep_fn = re.search(r"^function report\(again\) \{[\s\S]*?\n\}\n", pls, re.M).gro
 sup_fn = re.search(r"^async function supply\(\) \{[\s\S]*?\n\}\n", pls, re.M).group(0)
 check("get('/supply?reader=1')" in rep_fn and "'/supply'" not in rep_fn, "the report fetches /supply?reader=1")
 check("doorsFetch('/supply')" in sup_fn, "the page's row fetches /supply")
+
+# a printed sheet draws what a reader with no token is given, whoever prints
+sh = r["sheet"]
+typed_pt = lambda m: any((x["lat"], x["lon"]) == (-8.6, 115.1) for x in m["works"] + m["origins"])
+cm = sh["community"]["m"]
+check(len(cm["works"]) == 4 and any((x["lat"], x["lon"]) == (-8.7, 115.3) for x in cm["works"]) and cm["origins"] == [] and cm["line"] is None and not typed_pt(cm),
+      f"a sheet on a community node: the works and the mapped origin as marks, no ring, no line, no typed point: {cm}")
+check("water supply: © OpenStreetMap contributors, ODbL, via Overpass" in sh["community"]["credits"], "a community sheet with works credits the map")
+hm = sh["house"]["m"]
+check(hm["works"] == [] and hm["origins"] == [] and hm["line"] is None and not any("water supply" in c for c in sh["house"]["credits"]),
+      f"a sheet on a house: no supply marks and no credit: {sh['house']}")
+pg = sh["page"]["m"]
+check([o["name"] for o in pg["origins"]] == ["Water trucks (stated)"] and len(pg["works"]) == 3 and pg["line"] == [[115, -8.9], [115.3, -8.7]],
+      f"off a sheet with a token, unchanged: {pg}")
+check(not any("water supply" in c for c in sh["communityTyped"]["credits"]), "a sheet with nothing drawn does not credit the map")
 
 # a report is handed on: whole km and no keeper's entries; the page keeps 12.3 and the entry
 pg, rp = r["rows"]["report"][:2]
