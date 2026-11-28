@@ -258,6 +258,22 @@ assert main._own_point({"local": True, "kind": "sensor", "lat": -8.6528, "lon": 
     "a house's own sensor in the neighbouring cell must stand where the house does"
 assert main._own_point({"local": False, "kind": "child", "lat": -8.6528, "lon": 115.1445}) == main._coarse(-8.6528, 115.1445), \
     "a child's row is another house: its own cell's centre"
+# 28 Nov 2026: a model's sample and the map's summary are taken at the node's own point, so three decimals of their
+# row placed the house within about 80 m for anyone. They stand where the house is published; a station does not move.
+_keep = main.q
+_at = lambda kind, lat, lon, **k: dict(ROW, sensor_id=f"x-{kind}", source="x", name="x", indoor=False, local=False,   # noqa: E731
+                                        custody=False, kind=kind, lat=lat, lon=lon, meta={}, **k)
+main.q = lambda sql, *a: ([_at("model", -8.6478291, 115.1385412), _at("map", -8.648, 115.139), _at("model", -8.70, 115.20),
+                           _at("sensor", -8.6478291, 115.1385412), _at("model", None, None)] if "FROM sensors" in sql else [])
+_m, _map, _far, _st, _none = lan.get("/sensors").json()
+assert (_m["lat"], _m["lon"]) == (_h["lat"], _h["lon"]), "a model row at the node's own point must stand where the house is published"
+assert (_map["lat"], _map["lon"]) == (_h["lat"], _h["lon"]), "the map's row, rounded by its pack, stands there too"
+assert (_far["lat"], _far["lon"]) == (-8.7, 115.2), "a model's grid point elsewhere is public at its source and keeps three decimals"
+assert (_st["lat"], _st["lon"]) == (-8.648, 115.139), "a public station keeps its own three decimals, however near"
+assert (_none["lat"], _none["lon"]) == (None, None), "a row with no position stays without one"
+assert "8.6478" not in lan.get("/sensors").text.replace("-8.648,", ""), "the node's point leaves no finer trace in the answer"
+assert local.get("/sensors").json()[0]["lat"] == -8.6478291, "this machine still reads the row as it is kept"
+main.q = _keep
 # Tomas, 15 Oct 2026: a screen without a key never reads what the house calls its rooms or its sensors.
 main._HOUSE.update(at=time.time() + 1e9, map=[("Kitchen, upstairs", "Sensor 1")])   # the database is stubbed out
 r = lan.get("/sensors"); s0 = r.json()[0]

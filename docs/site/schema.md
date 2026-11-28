@@ -20,7 +20,7 @@ One row per thing that produces readings, and per place the node was told about.
 | `name` | text | the place, as the person named it: the `room` when the household set one, else the platform's name |
 | `room` | text | the household's word for where the sensor is, set with `PATCH /sensors/{sid}`; a trigger makes it the `name` whatever writes the row |
 | `source_name` | text | the platform's own name, kept while a `room` stands in for it |
-| `lat`, `lon` | double | position. A reader without a token gets the centre of the node's cell for a sensor in `custody`, and three decimals for any other row |
+| `lat`, `lon` | double | position. A reader without a token gets the centre of the node's cell for a sensor in `custody` and for a `model` or `map` row taken at the node's own point, and three decimals for any other row |
 | `indoor` | bool | measures a room; never in an ambient average |
 | `local` | bool | the person's own **and** in one of the node's own cells (`node_cells`), set again on every poll |
 | `kind` | text | `sensor` · `portal` · `model` · `survey` · `child` · `peer` · `facility`, as `init.sql` lists them; the `place` pack also writes `map` |
