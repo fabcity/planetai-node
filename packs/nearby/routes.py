@@ -7,17 +7,53 @@ A route of this pack since 23 Oct 2026; until then app/main.py, moved unchanged.
 from __future__ import annotations
 
 import httpx
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, Request
 
 import packs
 import settings
+import wall
 from db import q
 
 router = APIRouter()
 
 
+def _pct(xs: list[float], p: float) -> float | None:
+    """percentile_cont over a sorted list, rounded as the shape query rounds it."""
+    if not xs:
+        return None
+    k = (len(xs) - 1) * p
+    lo = int(k)
+    return round(xs[lo] + (xs[min(lo + 1, len(xs) - 1)] - xs[lo]) * (k - lo), 1)
+
+
+def _for_a_stranger(out: dict) -> dict:
+    """The answer for a reader without a token. The ring the station packs keep is cut round the node's own point, so
+    a stranger gets only the stations every point of its res-8 cell would keep (main._public_rows), each at three
+    decimals with whole km from the cell's centre, and the ring's figures are worked out again from those stations.
+    Before the node has a place there is no ring at all."""
+    import main  # noqa: PLC0415 — the route is mounted by main; importing it at the top would be a cycle
+    c = wall.cell_centre()
+    ring = []
+    for s in main._public_rows(out["ring"]) if c else []:
+        s = {k: v for k, v in s.items() if k != "source"}
+        if s.get("lat") is None or s.get("lon") is None:
+            s["km"] = None
+        else:
+            s.update(km=wall.km_from(c, s["lon"], s["lat"]), lat=round(s["lat"], 3), lon=round(s["lon"], 3))
+        ring.append(s)
+    ring.sort(key=lambda s: (s["km"] is None, s["km"] or 0, s["sensor_id"]))
+    live = [s for s in ring if s.get("reporting") and not s.get("indoor") and s.get("pm25") is not None]
+    pm = sorted(float(s["pm25"]) for s in live)
+    out.update(ring=ring, stations=len(pm), lowest=_pct(pm, 0), p25=_pct(pm, 0.25), median=_pct(pm, 0.5),
+               p75=_pct(pm, 0.75), highest=_pct(pm, 1), nearest_km=min((s["km"] for s in live if s["km"] is not None),
+                                                                       default=None))
+    m, med = out.get("mine"), out.get("median")
+    out["mine_minus_ring"] = None if m is None or med is None else round(float(m) - float(med), 1)
+    return out
+
+
 @router.get("/nearby")
-def nearby(audit: bool = False):
+def nearby(request: Request, audit: bool = False):
     """The ring: other people's stations around this node, and where this node sits inside it.
 
     `?audit=1` calls the archive and returns a verdict for every station it lists, which is the same answer
@@ -27,11 +63,17 @@ def nearby(audit: bool = False):
     A station excluded after it was already stored keeps its row and stops getting readings, so `reporting` goes
     false and it leaves the ring's numbers within two hours on its own. The row is left alone rather than deleted:
     what it measured while it was in the ring was still measured.
+
+    This machine and the household's token get the ring as stored. Anyone else gets `_for_a_stranger`, and
+    `?audit=1` answers only the household.
     """
+    trusted = bool(getattr(request.state, "share_trusted", False))
+    if audit and not trusted:
+        raise HTTPException(403, "The station audit answers this machine or a request with the household's token.")
     on = [p for p in packs.stations() if p["on"]]
     src = [p["source"] for p in on]
     ring = q("""
-        SELECT s.sensor_id, s.name, s.lat, s.lon, s.indoor, s.meta->>'network' AS network,
+        SELECT s.sensor_id, s.source, s.name, s.lat, s.lon, s.indoor, s.meta->>'network' AS network,
                round((s.meta->>'km')::numeric, 2) AS km,
                round(st.mean_1h::numeric, 1) AS pm25,
                round(st.silent_minutes::numeric) AS silent_minutes, st.last_ts,
@@ -71,6 +113,10 @@ def nearby(audit: bool = False):
            + (["and the network named in each station's `network` field"] if on else [])}
     m, med = out.get("mine"), out.get("median")
     out["mine_minus_ring"] = None if m is None or med is None else round(float(m) - float(med), 1)
+    if not trusted:
+        return _for_a_stranger(out)
+    for s in ring:
+        s.pop("source", None)                      # asked for the stranger's cut, never part of the answer
     if audit:
         out["audit"] = []
         try:

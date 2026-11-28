@@ -1374,6 +1374,12 @@ _META_PUBLIC_FACILITY = _META_PUBLIC + (
     "distance_km", "url", "registry_slug", "snapshot", "fetched")
 
 
+def _meta_public(r: dict) -> dict | None:
+    """A row's `meta` as an untrusted reader sees it: _META_PUBLIC, or _META_PUBLIC_FACILITY for a facility."""
+    allow = _META_PUBLIC_FACILITY if r.get("kind") == "facility" else _META_PUBLIC
+    return {k: v for k, v in (r.get("meta") or {}).items() if k in allow} or None
+
+
 @app.get("/sensors")
 def sensors_(request: Request):
     """Every sensor this node reads, its position, and where its numbers come from.
@@ -1409,8 +1415,7 @@ def sensors_(request: Request):
         else:
             for k in ("lat", "lon"):
                 r[k] = round(r[k], 3) if r[k] is not None else None
-        allow = _META_PUBLIC_FACILITY if r.get("kind") == "facility" else _META_PUBLIC
-        r["meta"] = {k: v for k, v in (r["meta"] or {}).items() if k in allow} or None
+        r["meta"] = _meta_public(r)
     return _child_alias(rows)
 
 
@@ -1562,10 +1567,15 @@ def trust():
 @app.get("/observations")
 def observations(request: Request, authorization: str = Header("")):
     """Latest value per slow-moving source: city statistics, model point samples, survey results. A survey's
-    `private` counts (the things a home keeps) answer the admin token only, and never an agent."""
+    `private` counts (the things a home keeps) answer the admin token only, and never an agent. A reader without a
+    token gets each row's `meta` cut as /sensors cuts it."""
     rows = q("SELECT * FROM observations" + ("" if _shows_private(request, authorization) else " WHERE " + packs.public_sql("observations"))
              + " ORDER BY scale, sensor_id, metric")
-    return rows if getattr(request.state, "share_trusted", False) else _child_alias(rows)   # a child is a home nearby to a stranger
+    if getattr(request.state, "share_trusted", False):
+        return rows
+    for r in rows:
+        r["meta"] = _meta_public(r)
+    return _child_alias(rows)   # a child is a home nearby to a stranger
 
 
 @app.get("/alerts")
