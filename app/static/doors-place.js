@@ -392,18 +392,20 @@ async function supply() {
 const BASIN = { same: 'in the same basin', other: 'in another basin', beyond: 'outside the basins this node holds' };
 function supplyRow(S, here) {
   if (!S || !S.state) return '';
-  const all = Array.isArray(S.sources) ? S.sources : [], src = all.filter(s => s && s.id), bad = all.filter(s => s && s.entry);
+  const all = Array.isArray(S.sources) ? S.sources : [], src = all.filter(s => s && s.id), bad = here ? all.filter(s => s && s.entry) : [];
   const works = Array.isArray(S.works) ? S.works : [], first = src[0];
   const line = (s, full) => {
-    const o = s.origin || {}, km = o.km == null ? null : +o.km;
-    return [`${s.name}, ${s.kind}`, full && s.holds ? s.holds : null,
-      full && km != null ? (km < 1 ? 'within a kilometre' : `from ${+km.toFixed(1)} km away`) : null, full && BASIN[o.basin] || null].filter(Boolean).join(', ');
+    /* a report is handed on: its distances are whole kilometres, as the Rivers row's are */
+    const o = s.origin || {}, km = o.km == null ? null : here ? +o.km : Math.round(+o.km);
+    return [[s.name, s.kind].filter(Boolean).join(', '), full && s.holds ? s.holds : null,
+      full && km != null ? (km < 1 ? 'within a kilometre' : `from ${here ? +km.toFixed(1) : km} km away`) : null, full && BASIN[o.basin] || null].filter(Boolean).join(', ');
   };
   const drawn = works.some(w => w.lat != null) || src.some(s => s.origin && s.origin.lat != null);
   const said = [...src.map((s, i) => esc(line(s, !i))), ...bad.map(b => `${esc(b.entry)}: not read (${esc(b.problem)})`)];
   const n = works.length;
-  if (!first && !bad.length) said.push('set SUPPLY_SOURCES on Set up');
-  if (!first && n) said.push(`${n} water works drawn within ${esc(S.radius_km)} km`);
+  /* the setting's name is the keeper's: a reader with no token, and a printed report, are only told it is not stated */
+  if (!first && !bad.length && here && typeof DOORS_TOKEN === 'function' && DOORS_TOKEN()) said.push('set SUPPLY_SOURCES on Set up');
+  if (!first && n) said.push(`${n} water works drawn${S.radius_km == null ? '' : ` within ${esc(S.radius_km)} km`}`);
   const link = here && drawn ? ' · <a href="#place" id="psupplygo">on the map ↑</a>' : '';
   return `<div class="fr" data-k="supply"><span>Water supply<small>${said.join('. ')}${link}</small></span><b>${first ? esc(first.kind) : '<span class="soon">not stated</span>'}</b></div>`;
 }

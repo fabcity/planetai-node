@@ -566,7 +566,7 @@ const MWORD = { built_frac: 'built up', crop_frac: 'cropland', tree_frac: 'trees
   sat_confidence: 'satellite buildings, confidence', osm_building_coverage: 'buildings mapped in OpenStreetMap',
   river_m: 'the nearest river, away', river_flow_m3s: 'its flow, long-term average', river_order: 'its order', river_upland_km2: 'ground that drains into it',
   river_to_sea_km: 'how far it still runs to the sea', river_largest_m3s: 'the largest river in the square, its flow', basin_up_km2: 'ground upstream of the node’s basin',
-  supply_sources: 'sources of water stated', supply_origin_km: 'the first source’s works, away', supply_first_holds: 'how the first source holds (0 steady, 2 fails often)' };
+  supply_sources: 'sources of water stated', supply_origin_km: 'the first source’s works, from the middle of the cell', supply_first_holds: 'how the first source holds (0 steady, 2 fails often)' };
 const mrow = o => {
   const m = o.metric, share = /(_frac|_share|_coverage|_confidence)$/.test(m);
   const unit = share ? '%' : MUNIT[m] ?? (/_m(_yearly)?$/.test(m) ? 'm' : /_s$/.test(m) ? 's' : /^poi_/.test(m) ? 'places' : unitOf(m));

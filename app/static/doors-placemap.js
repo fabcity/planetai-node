@@ -312,7 +312,9 @@ function energyRows() {
 function supplyRows() {
   const S = PM.supply, l = LAYERS.find(x => x.id === 'supply'), W = (S && S.works) || [], O = supplyMarks(S).origins, pts = W.some(w => w.lat != null);
   l.empty = !pts && !O.length; l.locked = !!W.length && l.empty;
-  l.why = S ? 'set SUPPLY_SOURCES on Set up' : 'planetai run supply fetch';
+  /* the setting's name is the keeper's; the report's table and a reader with no token say only that it is not stated */
+  l.rwhy = S ? 'not stated' : null;
+  l.why = !S ? 'planetai run supply fetch' : DOORS_TOKEN() ? 'set SUPPLY_SOURCES on Set up' : 'not stated';
   if (W.length) l.src = `${W.length} work${W.length === 1 ? '' : 's'}`;
 }
 /* what the layer draws from an answer: the works with a point, the stated origins with a point (a ring each), and the
@@ -323,6 +325,11 @@ function supplyMarks(S, from) {
   const origins = src.filter(x => x.origin && x.origin.how === 'stated' && at(x.origin)).map(x => ({ name: `${x.origin.name} (stated)`, kind: x.kind, lat: x.origin.lat, lon: x.origin.lon }));
   const f = src[0] && at(src[0].origin) ? src[0].origin : null;
   return { works, origins, line: from && f ? [from, [f.lon, f.lat]] : null };
+}
+/* the inspector's lines for a mark of the water supply */
+function waterFacts(w, row, hint) {
+  return `<span class="k">Water supply · ${esc(w.kind)}</span><b class="said">${esc(w.name || 'not named')}</b>` + (w.operator ? row('run by', `<span class="said">${esc(w.operator)}</span>`) : '')
+    + (w.km != null ? row('from the cell’s middle', `${w.km < 1 ? 'within a kilometre' : `${+(+w.km).toFixed(1)} km`}`) : '') + hint('OpenStreetMap, or as stated by the keeper of this node');
 }
 /* where the line starts: the middle of the node's res-8 cell, never the node's own point. A screen with no token is
    given that middle as D.point; with the token the cell's ring is read; a sheet draws no line. */
@@ -640,7 +647,7 @@ function about(l) {
 const placeCake = () => cakeSections(LAYERS, PM.on).map(s => ({ name: s.name, rows: s.rows.map(({ id }) => {
   const l = BY[id], gap = l.empty || l.part;
   return { name: l.name, src: l.locked ? 'token-only' : l.src, held: l.soon ? 'not yet' : l.locked ? 'withheld' : l.part ? 'held in part' : l.empty ? 'not yet' : 'held',
-    fill: !l.soon && !l.locked && gap && l.why || null, none: !l.soon && !l.locked && gap && !l.why && l.none || null };
+    fill: !l.soon && !l.locked && gap && (l.rwhy || l.why) || null, none: !l.soon && !l.locked && gap && !l.why && l.none || null };
 }) }));
 function panel() {
   const spd = document.getElementById && document.getElementById('spd');
@@ -1416,9 +1423,7 @@ async function facts() {
       put(head);
       put(head + row('from this node', fmtM(await fromNode(c.at[1], c.at[0]))) + hint('kept on this node, cleaned of EXIF and GPS'));
     } else if (o && o.kind === 'water') {
-      const w = o.w;
-      put(`<span class="k">Water supply · ${esc(w.kind)}</span><b class="said">${esc(w.name || 'not named')}</b>` + (w.operator ? row('run by', `<span class="said">${esc(w.operator)}</span>`) : '')
-        + (w.km != null ? row('from the cell’s middle', `${w.km < 1 ? 'within a kilometre' : `${+(+w.km).toFixed(1)} km`}`) : '') + hint('OpenStreetMap, or as stated by the keeper of this node'));
+      put(waterFacts(o.w, row, hint));
     } else if (o && o.kind === 'river') {
       const p = o.p;
       put(`<span class="k">River · order ${p.ord_stra}</span><b>${fmt(p.dis_av_cms, p.dis_av_cms < 1 ? 2 : 1)} m³/s on average</b>`
