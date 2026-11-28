@@ -401,6 +401,8 @@ COUNTS = frozenset(range(1, 8))                                    # "2 of its 7
 MEASURE = re.compile(r"\s*(?:%|°|º|percent\b|per cent\b|km|ha\b|m\b|m²|µg|kWh?\b|MW\b|mm\b|cm\b|degrees?\b|times\b|fold\b)", re.I)
 # a quantity in words is a number the check cannot read: the model is asked for digits, and these are refused
 QUANTITY = re.compile(r"\b(?:half|halves|thirds?|quarters?|fifths?|tenths?|twice|thrice|doubl\w+|tripl\w+|dozens?|hundreds?|thousands?|millions?)\b", re.I)
+# a grade the figures do not give: with 8% built a model wrote "dense settlement", and "not drawn" became "unplanned" (node #1, 28 Nov 2026)
+GRADE = re.compile(r"\b(?:dens(?:e|ely|ity)|sparse(?:ly)?|heavily|vast(?:ly)?|unplanned|unmet)\b", re.I)
 # A report page is one A4 sheet and does not grow in print, so each part of a model's text has a ceiling, in characters
 # (measured in print: five sections of 800 keep the first page whole, five of 900 overrun it)
 LONGEST = {"section": 780, "title": 100, "why": 300, "first_step": 220}
@@ -518,6 +520,10 @@ def accept(answer: str, doc: dict, ruled: dict | None = None) -> tuple[dict | No
     words = QUANTITY.search(text)
     if words:
         return None, f"a quantity in words ('{words.group().lower()}'), which the node cannot check"
+    own = " ".join(line for sx in (ruled or {}).get("sections", ()) for line in sx["lines"]).lower()
+    grade = next((g.group().lower() for g in GRADE.finditer(text) if g.group().lower() not in own), None)
+    if grade:
+        return None, f"it grades the place ('{grade}') where the findings do not"
     stray = stray_numbers(text, doc)
     if stray:
         return None, "numbers the node does not hold: " + ", ".join(dict.fromkeys(stray))

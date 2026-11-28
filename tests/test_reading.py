@@ -235,6 +235,8 @@ check(got is None and "land" in reason and "the node's own sentences" in reason,
 one = sec["land"]["lines"][0]
 check(reading.accept(json.dumps({**GOOD, "sections": {**GOOD["sections"], "land": one + " The rest is the model's own."}}), doc, R)[0] is not None
       and reading.accept(json.dumps(GOOD), doc, R)[0] is not None, "one sentence of the node's in a text of its own is kept")
+check("grades the place ('dense')" in reading.accept(json.dumps({**GOOD, "sections": {**GOOD["sections"], "land": GOOD["sections"]["land"][:600] + " A dense settlement."}}), doc, R)[1],
+      "a grade the findings do not give is refused")
 bare_av = [{**a, "title": "Fill the gap", "why": "Nothing is held in 2 of its 7 cells."} for a in GOOD["avenues"]]
 check(reading.accept(json.dumps({"sections": {i: reading.NOTHING for i, _ in reading.SECTIONS}, "avenues": bare_av}), empty, E)[0] is not None,
       "where the node holds nothing, saying so in its words is not a copy")
