@@ -25,6 +25,7 @@ _spec.loader.exec_module(adapter)  # type: ignore[union-attr]
 
 KEEPER_CREDIT = "Water supply as stated by the keeper of this node"
 HINT = "not stated: set SUPPLY_SOURCES on Set up"
+HINT_READ = "not read: see the entries"
 MAX_WORKS = 40
 
 
@@ -59,7 +60,7 @@ def build(res: dict, mine: bool, community: bool) -> dict:
         if o:
             typed = o.get("how") == "stated"
             show = mine or (community and not typed)
-            out = {"how": o.get("how"), "name": o.get("name") if (not typed or mine or o.get("name")) else None,
+            out = {"how": o.get("how"), "name": o.get("name"),
                    "km": km(o.get("lat"), o.get("lon")), "basin": o.get("basin")}
             if show and _num(o.get("lat")) and _num(o.get("lon")):
                 out["lat"], out["lon"] = o["lat"], o["lon"]
@@ -79,6 +80,8 @@ def build(res: dict, mine: bool, community: bool) -> dict:
     attribution = [a for a in (res.get("attribution") if isinstance(res.get("attribution"), list) else []) if works and isinstance(a, str)]
     if stated:
         attribution.append(KEEPER_CREDIT)
+    problems = any(isinstance(s, dict) and s.get("problem") for s in res["stated"]) if isinstance(res.get("stated"), list) else False
+    hint = None if stated else (HINT_READ if mine and problems else HINT)
     return {
         "state": ("both" if works else "stated") if stated else ("mapped" if works else "none"),
         "sources": sources, "works": works,
@@ -86,7 +89,7 @@ def build(res: dict, mine: bool, community: bool) -> dict:
         "radius_km": res.get("radius_km") if _num(res.get("radius_km")) else None,
         "attribution": attribution,
         "fetched_at": res.get("fetched_at") if isinstance(res.get("fetched_at"), str) else None,
-        "hint": None if stated else HINT,
+        "hint": hint,
     }
 
 

@@ -46,6 +46,24 @@ def _metres(a_lat: float, a_lon: float, b_lat: float, b_lon: float) -> float:
     return math.hypot(dx, dy)
 
 
+def _wall():
+    """app/wall.py, or None where it cannot load (it imports the database module, which needs DATABASE_URL)."""
+    try:
+        import wall  # noqa: PLC0415
+
+        return wall
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _centre(lat: float, lon: float) -> tuple[float, float]:
+    """(lat, lon) of the middle of the res-8 cell this node is in. The map is read around it, never around the node's
+    own point, so what is kept and counted cannot mark where in the cell the node is. The node's point when no cell."""
+    w = _wall()
+    c = w.cell_centre() if w else None
+    return (c[1], c[0]) if c else (lat, lon)
+
+
 def result() -> dict:
     """What the last fetch kept, or {} when none has run or it ran for a point this node no longer is (as hydro's)."""
     try:
@@ -126,7 +144,7 @@ def fetch(hc):
             _state["warned"] = True
         return [], []
     now = datetime.now(timezone.utc)
-    works, fetched_at = _works(hc, lat, lon, km, now)
+    works, fetched_at = _works(hc, *_centre(lat, lon), km, now)
     inside, hydro = _hydro()
     stated = []
     for s in core.parse_sources(os.getenv("SUPPLY_SOURCES", "")):
@@ -149,7 +167,12 @@ def fetch(hc):
     rows = [(now, SID, "supply_sources", len(good))]
     if good and good[0]["origin"]:
         o = good[0]["origin"]
-        rows.append((now, SID, "supply_origin_km", round(osm.km(lat, lon, o["lat"], o["lon"]), 1)))
+        # Whole km from the middle of the cell: /readings is open, and a decimal from the node's point beside a public
+        # origin would place the node. No row while there is no cell centre.
+        w = _wall()
+        c = w.cell_centre() if w else None
+        if c:
+            rows.append((now, SID, "supply_origin_km", round(w.dist_km(c, o["lon"], o["lat"]))))
     if good and good[0]["holds"]:
         rows.append((now, SID, "supply_first_holds", HOLDS_RANK[good[0]["holds"]]))
     meta = {"radius_km": km, "attribution": ATTRIBUTION, "works": len(works), "fetched_at": fetched_at}

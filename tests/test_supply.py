@@ -132,6 +132,13 @@ with tempfile.TemporaryDirectory() as tmp:
     check(o["how"] == "mapped" and o["name"] == "PDAM Tirta Mangutama" and abs(o["lat"] + 8.799) < 0.01, "the nearest of the two works of that name")
     check(R["stated"][1]["origin"] is None and R["counts"]["works"] == 3, "trucks have no origin; counts by kind")
     check({x.strip() for x in pack.split(",")} == set(got), "pack.yaml lists what fetch writes")
+    import wall as W  # noqa: E402
+    centre = W.cell_centre()
+    check(got["supply_origin_km"] == round(W.dist_km(centre, o["lon"], o["lat"])) and isinstance(got["supply_origin_km"], int),
+          "the origin figure is whole km from the middle of the cell, never from the node")
+    _cc, W.cell_centre = W.cell_centre, lambda: None
+    check("supply_origin_km" not in stated_rows(A.fetch(StubHC(FIXDOC))[1]), "no cell centre, no origin figure")
+    W.cell_centre = _cc
     check(o["basin"] is None and R["fetched_at"], "no hydro, no basin")
 
     calls = []; A.fetch(StubHC(FIXDOC, calls)); check(calls == [], "inside the refresh days, no second read")
@@ -166,6 +173,26 @@ with tempfile.TemporaryDirectory() as tmp:
     check(A.result() == {}, "the node moved: nothing kept for here")
     del os.environ["NODE_LAT"]
     check(A.fetch(StubHC(FIXDOC)) == ([], []) and A.result() == {}, "no point: nothing, no raise")
+
+class BoxHC(StubHC):
+    def post(self, url, data=None, **kw):
+        self.calls.append(data["data"].split("\n")[0])
+        return type("Resp", (), {"raise_for_status": lambda s: None, "json": lambda s: self.doc})()
+
+
+with tempfile.TemporaryDirectory() as tmp3:
+    os.environ["PACK_OUT"] = tmp3
+    os.environ["SUPPLY_SOURCES"] = ""
+    boxes, cells = [], []
+    for la, lo in (("-8.82", "115.15"), ("-8.8203", "115.1503")):
+        os.environ["NODE_LAT"], os.environ["NODE_LON"] = la, lo
+        cells.append(W.home_cell())
+        (pathlib.Path(tmp3) / "supply" / "osm.json").unlink(missing_ok=True)
+        A.fetch(BoxHC(FIXDOC, boxes))
+    check(cells[0] == cells[1] and len(boxes) == 2 and boxes[0] == boxes[1], "two points in one cell ask the map for the same square")
+    c = W.cell_centre()
+    check(abs(float(boxes[0].split("bbox:")[1].split(",")[0]) - (c[1] - 25 / 111.32)) < 1e-9,
+          "the square is centred on the middle of the cell")
 
 with tempfile.TemporaryDirectory() as tmp2:
     os.environ["PACK_OUT"] = tmp2
@@ -216,6 +243,7 @@ client = TestClient(main.app)
 ADMIN = {"Authorization": "Bearer admin-tok"}
 db.q = main.q = lambda sql, *a: []
 NODE_LAT, TYPED_LAT, TYPED_LON = -8.8161, -8.8302, 115.1711
+adapter_km = A.osm.km
 
 
 def src(i, name, kind, holds, origin=None, problem=None, entry=""):
@@ -251,7 +279,10 @@ with tempfile.TemporaryDirectory() as tmp:
     check(resp.status_code == 200 and "lat" not in j["sources"][2]["origin"] and j["sources"][2]["origin"]["km"] == round(j["sources"][2]["origin"]["km"]),
           "a stranger never gets a typed point, and km are whole")
     check("lat" in j["sources"][0]["origin"] and "lat" in j["works"][0], "a stranger on a community node gets the points of mapped works")
-    check(str(TYPED_LAT) not in resp.text and str(NODE_LAT) not in resp.text, "neither the typed point nor the node's is anywhere in the answer")
+    raw = resp.text
+    pts = [TYPED_LAT, TYPED_LON, NODE_LAT, 115.1635]
+    check(not any(f"{v:.{d}f}" in raw for v in pts for d in (3, 4)) and not any(str(v) in raw for v in pts),
+          "neither the typed point nor the node's is anywhere in the answer, at 3, 4 or full digits")
     check("entry" not in resp.text, "no raw entry for a stranger")
 
     os.environ["NODE_KIND"] = "home"
@@ -261,6 +292,39 @@ with tempfile.TemporaryDirectory() as tmp:
     ROWS["SHARE_LEVEL"] = "off"
     check(TestClient(main.app, client=("10.0.0.9", 5)).get("/supply").status_code in (401, 403), "a house that does not share answers no stranger")
     ROWS["SHARE_LEVEL"] = "open"
+    os.environ.pop("NODE_KIND") if _kind is None else os.environ.__setitem__("NODE_KIND", _kind)
+
+    # 3: a stranger's km come from the cell's middle, the keeper's from the node
+    import wall as W  # noqa: E402
+    ctr = W.cell_centre()
+    probe = next((la, 115.1635) for la in [NODE_LAT + 0.0005 * i for i in range(20, 200)]
+                 if round(adapter_km(NODE_LAT, 115.1635, la, 115.1635)) != round(W.dist_km(ctr, 115.1635, la)))
+    pl, po = probe
+    patch_result(dict(DOC, works=[{"kind": "works", "name": "Probe", "operator": None, "lat": pl, "lon": po}], stated=[]))
+    mine_km = client.get("/supply", headers=ADMIN).json()["works"][0]["km"]
+    check(mine_km == round(adapter_km(NODE_LAT, 115.1635, pl, po), 1), "the keeper's km is from the node, one decimal")
+    os.environ["NODE_KIND"] = "community"
+    st_km = client.get("/supply").json()["works"][0]["km"]
+    check(st_km == round(W.dist_km(ctr, po, pl)) and st_km != round(adapter_km(NODE_LAT, 115.1635, pl, po)), "a stranger's km is from the cell's middle, whole")
+    os.environ.pop("NODE_KIND") if _kind is None else os.environ.__setitem__("NODE_KIND", _kind)
+
+    # 8: act token is the keeper, X-Agent gets the stranger's view, a community node that does not share answers no stranger
+    patch_result(DOC)
+    check(client.get("/supply", headers={"Authorization": "Bearer act-tok"}).json()["sources"][2]["origin"]["lat"] == TYPED_LAT, "the act token counts as the keeper")
+    ag = client.get("/supply", headers=dict(ADMIN, **{"X-Agent": "bot"})).json()
+    check("lat" not in ag["sources"][2]["origin"] and ag["sources"][0]["origin"]["km"] == round(ag["sources"][0]["origin"]["km"]), "X-Agent with the admin token gets the stranger's answer")
+    os.environ["NODE_KIND"] = "community"
+    ROWS["SHARE_LEVEL"] = "off"
+    check(TestClient(main.app, client=("10.0.0.9", 5)).get("/supply").status_code in (401, 403), "a community node that does not share answers no stranger")
+    ROWS["SHARE_LEVEL"] = "open"
+    os.environ.pop("NODE_KIND") if _kind is None else os.environ.__setitem__("NODE_KIND", _kind)
+
+    # 6: every entry bad, for the keeper
+    patch_result(dict(DOC, stated=[src(None, None, None, None, problem="kind", entry="A | canal | | ")], works=[]))
+    check(client.get("/supply", headers=ADMIN).json()["hint"] == "not read: see the entries", "all entries bad: the keeper is told to see them")
+    os.environ["NODE_KIND"] = "community"
+    sj = client.get("/supply").json()
+    check(sj["hint"].startswith("not stated") and sj["sources"] == [], "a stranger's answer does not change")
     os.environ.pop("NODE_KIND") if _kind is None else os.environ.__setitem__("NODE_KIND", _kind)
 
     patch_result({})
