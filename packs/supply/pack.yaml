@@ -1,0 +1,20 @@
+id: supply
+name: Water supply
+description: "Where the water of this place comes from, as its keeper states it, set beside the water works on the public map. It shows how far each source is from its origin and which one fails first."
+kind: code
+version: 0.1.0
+requires: { node: ">=0.92.0" }
+domain: water
+scales: [city]
+metrics: [supply_sources, supply_origin_km, supply_first_holds]
+needs: "PACKS_ALLOW_CODE=1; network to Overpass API once every SUPPLY_REFRESH_DAYS; the hydro pack for the basin, optional"
+attribution: "© OpenStreetMap contributors, ODbL, via Overpass"
+env:
+  - "# Water supply pack: the sources of water of this place, in order of use, separated by ;, each name | kind | holds | origin. Kind is one of piped, well, truck, rain, spring, bottled. Holds is one of fails often, steady, seasonal, or blank. Origin is lat,lon, or the name a water work has on the public map, or blank. Name a company or a kind of seller, never a person"
+  - SUPPLY_SOURCES=
+  - "# Water supply pack: half-width of the square of water works read from the public map, in km"
+  - SUPPLY_RADIUS_KM=25
+  - "# Water supply pack: how often the public map is read again, in days"
+  - SUPPLY_REFRESH_DAYS=30
+share:
+  open: [/supply]

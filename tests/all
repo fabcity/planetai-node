@@ -171,6 +171,7 @@ test_surface_heat|PYTHONPATH=/tmp/stub:app python3 tests/test_surface_heat.py
 test_terrain|PYTHONPATH=/tmp/stub:app python3 tests/test_terrain.py
 test_energy|PACKS_DIR=packs PYTHONPATH=/tmp/stub:app python3 tests/test_energy.py
 test_hydro|PYTHONPATH=/tmp/stub:app python3 tests/test_hydro.py
+test_supply|PYTHONPATH=/tmp/stub:app python3 tests/test_supply.py
 test_cells|PYTHONPATH=app python3 tests/test_cells.py
 test_area|PYTHONPATH=app python3 tests/test_area.py
 test_area_hooks|PACKS_DIR=packs PYTHONPATH=app python3 tests/test_area_hooks.py
