@@ -2,7 +2,8 @@
 
 Mounted from here by app/packs.py::routers() and answered 404 while the supply pack is off. It reads the pack's
 result and stores nothing. The keeper's own tokens, or this machine, get every point and each km from the node.
-Anyone else gets each km from the middle of the res-8 cell, whole, and never a point the keeper typed. On a house
+Anyone else, and any caller with `?reader=1`, gets each km from the middle of the res-8 cell, whole, and never a point
+the keeper typed. On a house
 the points of mapped works and origins go to the keeper only: a work's position beside a whole-km distance would
 place the house.
 """
@@ -94,12 +95,14 @@ def build(res: dict, mine: bool, community: bool) -> dict:
 
 
 @router.get("/supply")
-def supply(request: Request, authorization: str = Header("")):
+def supply(request: Request, authorization: str = Header(""), reader: str = ""):
+    """`?reader=1` gives whoever asks the stranger's answer: the printed report asks this way, since it is handed on."""
     try:
         res = adapter.result()
     except Exception:
         res = {}
     try:
-        return build(res, _shows_private(request, authorization, raw=False), not placewords.is_house())
+        mine = reader != "1" and _shows_private(request, authorization, raw=False)
+        return build(res, mine, not placewords.is_house())
     except Exception:
         return build({}, False, False)

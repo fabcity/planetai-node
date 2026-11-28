@@ -29,7 +29,7 @@ ATTRIBUTION = "© OpenStreetMap contributors, ODbL, via Overpass"
 HOLDS_RANK = {"steady": 0, "fails at times": 1, "fails often": 2}
 RETRY_HOURS = 6        # after a failed read, the map is left alone this long
 ALWAYS_KEPT = ("works", "pumping", "reservoir", "dam")
-_state = {"warned": False}
+_state = {"warned": False, "no_centre": False, "no_hydro": False}
 
 
 def _out() -> Path:
@@ -56,12 +56,13 @@ def _wall():
         return None
 
 
-def _centre(lat: float, lon: float) -> tuple[float, float]:
-    """(lat, lon) of the middle of the res-8 cell this node is in. The map is read around it, never around the node's
-    own point, so what is kept and counted cannot mark where in the cell the node is. The node's point when no cell."""
+def _centre() -> tuple[float, float] | None:
+    """(lat, lon) of the middle of the res-8 cell this node is in, or None when there is none. The map is read around
+    it, the nearest work of a name is picked from it and the sensor stands on it, so nothing a stranger sees can mark
+    where in the cell the node is."""
     w = _wall()
     c = w.cell_centre() if w else None
-    return (c[1], c[0]) if c else (lat, lon)
+    return (c[1], c[0]) if c else None
 
 
 def result() -> dict:
@@ -76,8 +77,9 @@ def result() -> dict:
         return {}
 
 
-def _works(hc, lat: float, lon: float, km: float, now: datetime) -> tuple[list[dict], str | None]:
-    """The works on the public map, from the cache while it is fresh, and from the cache when the read fails."""
+def _works(hc, lat: float, lon: float, km: float, now: datetime, read: bool = True) -> tuple[list[dict], str | None]:
+    """The works on the public map, from the cache while it is fresh, and from the cache when the read fails or
+    `read` is False."""
     days = max(1, int(os.getenv("SUPPLY_REFRESH_DAYS") or 30))
     cache = _out() / "osm.json"
     saved = None
@@ -88,6 +90,8 @@ def _works(hc, lat: float, lon: float, km: float, now: datetime) -> tuple[list[d
             saved = None
     except (OSError, ValueError, KeyError, TypeError):
         saved = None
+    if not read:
+        return (saved["works"], saved["fetched_at"]) if saved else ([], None)
     if saved:
         try:
             if now - datetime.fromisoformat(saved["fetched_at"]) < timedelta(days=days):
@@ -128,10 +132,15 @@ def _hydro():
         import packs  # noqa: PLC0415  the loader reads PACKS_DIR at import
 
         h = packs.module("hydro", "adapter")
-        return h.inside, h.result() or {}
+        if h is not None:
+            return h.inside, h.result() or {}
+        why = "the pack is off"
     except Exception as exc:  # noqa: BLE001
-        log.info("supply: no hydro basins (%s)", type(exc).__name__)
-        return None, {}
+        why = type(exc).__name__
+    if not _state["no_hydro"]:
+        log.info("supply: no hydro basins (%s)", why)
+        _state["no_hydro"] = True
+    return None, {}
 
 
 def fetch(hc):
@@ -144,13 +153,20 @@ def fetch(hc):
             _state["warned"] = True
         return [], []
     now = datetime.now(timezone.utc)
-    works, fetched_at = _works(hc, *_centre(lat, lon), km, now)
+    c = _centre()
+    if c is None and not _state["no_centre"]:
+        log.warning("supply: no cell centre, the map is not read")
+        _state["no_centre"] = True
+    # With no centre the cached works are kept and nothing new is read: a square round the node's own point would
+    # mark where in the cell it is.
+    works, fetched_at = _works(hc, *(c or (lat, lon)), km, now, read=c is not None)
     inside, hydro = _hydro()
     stated = []
     for s in core.parse_sources(os.getenv("SUPPLY_SOURCES", "")):
-        o = None if s["problem"] else core.resolve(s, works, lat, lon)
+        # with no centre a named origin is left unresolved: the nearest of two works would be picked from the node
+        o = None if s["problem"] else core.resolve(s, works if c else [], *(c or (lat, lon)))
         if o:
-            o["basin"] = core.basin_of(o["lat"], o["lon"], hydro, inside) if inside else None
+            o["basin"] = core.basin_of(o["lat"], o["lon"], hydro, inside, c) if inside else None
         stated.append(dict(s, origin=o))
     counts: dict[str, int] = {}
     for w in works:
@@ -164,19 +180,20 @@ def fetch(hc):
     except OSError as exc:
         log.warning("supply: could not keep the result: %s", exc)
     good = [s for s in stated if not s["problem"]]
-    rows = [(now, SID, "supply_sources", len(good))]
+    # One row a day per figure: the poll runs every few minutes and the statement rarely changes.
+    day = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    rows = [(day, SID, "supply_sources", len(good))]
     if good and good[0]["origin"]:
         o = good[0]["origin"]
         # Whole km from the middle of the cell: /readings is open, and a decimal from the node's point beside a public
         # origin would place the node. No row while there is no cell centre.
-        w = _wall()
-        c = w.cell_centre() if w else None
         if c:
-            rows.append((now, SID, "supply_origin_km", round(w.dist_km(c, o["lon"], o["lat"]))))
+            rows.append((day, SID, "supply_origin_km", round(_wall().dist_km((c[1], c[0]), o["lon"], o["lat"]))))
     if good and good[0]["holds"]:
-        rows.append((now, SID, "supply_first_holds", HOLDS_RANK[good[0]["holds"]]))
+        rows.append((day, SID, "supply_first_holds", HOLDS_RANK[good[0]["holds"]]))
     meta = {"radius_km": km, "attribution": ATTRIBUTION, "works": len(works), "fetched_at": fetched_at}
     sensor = {"sensor_id": SID, "source": "supply", "name": f"Water supply within {km:g} km (OpenStreetMap)",
-              "lat": lat, "lon": lon, "indoor": False, "local": False,
+              # the middle of the cell, never the node's point: /sensors hands a model row's position to anyone
+              "lat": c[0] if c else None, "lon": c[1] if c else None, "indoor": False, "local": False,
               "kind": "model", "scale": "city", "cadence": "P1D", "meta": meta}
     return [sensor], rows

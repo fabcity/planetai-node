@@ -142,7 +142,6 @@ with tempfile.TemporaryDirectory() as tmp:
     check(o["basin"] is None and R["fetched_at"], "no hydro, no basin")
 
     calls = []; A.fetch(StubHC(FIXDOC, calls)); check(calls == [], "inside the refresh days, no second read")
-    check(not any("@" in str(c) for c in calls), "no address in a header")
     age_cache(31); old = A.result()["fetched_at"]
     os.environ["SUPPLY_SOURCES"] = "Trucks | truck | | "
     _, rr = A.fetch(FailingHC()); R3 = A.result()
@@ -202,6 +201,59 @@ with tempfile.TemporaryDirectory() as tmp2:
     check(len(sn) == 1 and stated_rows(rn) == {"supply_sources": 1, "supply_first_holds": 0} and Rn["works"] == [] and Rn["fetched_at"] is None
           and Rn["stated"][0]["id"] == "trucks", "a failed read with no cache: statement kept, no works, no date, rows still back")
 
+import logging  # noqa: E402
+
+# The node's point never chooses: the works, the sensor's position, the day's stamp, and no cell centre.
+with tempfile.TemporaryDirectory() as tmp4:
+    os.environ["PACK_OUT"] = tmp4
+    os.environ["NODE_LAT"], os.environ["NODE_LON"] = "-8.82", "115.15"
+    c = W.cell_centre()
+    node = (-8.82, 115.15)
+    el = lambda la, lo: {"type": "node", "lat": la, "lon": lo, "tags": {"man_made": "water_works", "name": "Twin Works"}}
+    os.environ["SUPPLY_SOURCES"] = "Twin | piped | | Twin Works"
+    sn, rn = A.fetch(StubHC({"elements": [el(*node), el(c[1], c[0])]}))
+    o = A.result()["stated"][0]["origin"]
+    check((o["lat"], o["lon"]) == (c[1], c[0]), f"of two works of one name, the nearest to the middle of the cell is taken: {o}")
+    check((sn[0]["lat"], sn[0]["lon"]) == (c[1], c[0]) and (sn[0]["lat"], sn[0]["lon"]) != node,
+          "the sensor row stands at the middle of the cell, never at the node's point")
+    check((A.result()["lat"], A.result()["lon"]) == node, "the result keeps the node's point for the keeper's km")
+    _, rn2 = A.fetch(StubHC({"elements": []}))
+    day = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    check({t for t, *_ in rn} == {t for t, *_ in rn2} == {day}, "two fetches in one day stamp their rows with the start of that UTC day")
+
+    # No cell centre: no map read, the cache kept, the statement kept with no km and no basin, a warning once.
+    age_cache(31)
+    seen = []
+    h = logging.Handler(); h.emit = lambda rec: seen.append(rec)
+    A.log.addHandler(h); A.log.setLevel(logging.INFO)
+    _w, A._wall = A._wall, lambda: None
+    A._state["no_centre"] = False
+    try:
+        nc = []
+        os.environ["SUPPLY_SOURCES"] = "Twin | piped | steady | Twin Works; Ours | well | | -8.83, 115.16"
+        s0, r0 = A.fetch(StubHC(FIXDOC, nc)); A.fetch(StubHC(FIXDOC, nc)); R0 = A.result()
+        check(nc == [], "no cell centre: the map is not read")
+        check(len(R0["works"]) == 2 and [x["id"] for x in R0["stated"]] == ["twin", "ours"], "no cell centre: the cached works and the statement are kept")
+        check(R0["stated"][0]["origin"] is None and R0["stated"][1]["origin"]["how"] == "stated" and R0["stated"][1]["origin"]["basin"] is None,
+              "no cell centre: no named origin is picked, a typed one has no basin")
+        check(stated_rows(r0) == {"supply_sources": 2, "supply_first_holds": 0}, "no cell centre: no km row")
+        check(s0[0]["lat"] is None and s0[0]["lon"] is None, "no cell centre: the sensor row has no position")
+        check(sum("no cell centre" in rec.getMessage() and rec.levelno == logging.WARNING for rec in seen) == 1, "no cell centre: one warning")
+        import packs  # noqa: E402
+        _m, packs.module = packs.module, lambda *a, **k: None
+        seen.clear()
+        check(A._hydro() == (None, {}) and A._hydro() == (None, {}), "hydro off: no basins")
+        packs.module = _m
+        check(sum("hydro" in rec.getMessage() for rec in seen) == 1, f"hydro off: said once, not every poll: {[r.getMessage() for r in seen]}")
+    except Exception as e:  # noqa: BLE001
+        check(False, f"no cell centre raised: {e!r}")
+    finally:
+        A._wall = _w
+        A.log.removeHandler(h); A.log.setLevel(logging.NOTSET)
+
+for label, la, lo in (("nan", "nan", 115.2), ("inf", -8.8, "inf"), ("lat out of range", 91, 115.2), ("lon out of range", -8.8, 181)):
+    check(osm.parse({"elements": [{"type": "node", "lat": la, "lon": lo, "tags": {"man_made": "water_well"}}]}) == [], f"a point that is {label} is dropped")
+
 SQ = lambda x0, y0: [[x0, y0], [x0 + 1, y0], [x0 + 1, y0 + 1], [x0, y0 + 1], [x0, y0]]
 H = {"basins": {"features": [{"properties": {"here": True}, "geometry": {"type": "Polygon", "coordinates": [SQ(0, 0)]}},
                              {"properties": {}, "geometry": {"type": "MultiPolygon", "coordinates": [[SQ(1, 0)]]}}]}}
@@ -211,14 +263,21 @@ def inside(lon, lat, rings):
     return any(r[0][0] <= lon <= r[1][0] and r[0][1] <= lat <= r[2][1] for r in rings)
 
 
-check(core.basin_of(0.5, 0.5, H, inside) == "same" and core.basin_of(0.5, 1.5, H, inside) == "other"
-      and core.basin_of(5.0, 5.0, H, inside) == "beyond" and core.basin_of(0.5, 0.5, {}, inside) is None, "same, other, beyond, and none without hydro")
+C0 = (0.5, 0.5)   # (lat, lon) of the cell's middle, inside the first basin
+check(core.basin_of(0.5, 0.5, H, inside, C0) == "same" and core.basin_of(0.5, 1.5, H, inside, C0) == "other"
+      and core.basin_of(5.0, 5.0, H, inside, C0) == "beyond" and core.basin_of(0.5, 0.5, {}, inside, C0) is None, "same, other, beyond, and none without hydro")
+check(core.basin_of(0.5, 0.5, H, inside, None) is None, "no cell centre, no basin word")
+# A basin edge splits the cell: hydro flags the basin holding the node's point, the middle of the cell is in the other.
+C1 = (0.5, 1.5)
+check(core.basin_of(0.5, 1.5, H, inside, C1) == "same" and core.basin_of(0.5, 0.5, H, inside, C1) == "other",
+      "the basin word follows the middle of the cell, never hydro's flag for the node's point")
 HY = load("hydro_adapter", "packs/hydro/adapter.py")
 sq = lambda x0, y0: [[x0, y0], [x0 + .1, y0], [x0 + .1, y0 + .1], [x0, y0 + .1], [x0, y0]]
 HB = {"basins": {"features": [{"type": "Feature", "properties": {"here": True}, "geometry": {"type": "Polygon", "coordinates": [sq(115.1, -8.9)]}},
                               {"type": "Feature", "properties": {}, "geometry": {"type": "Polygon", "coordinates": [sq(115.2, -8.9)]}}]}}
-check(core.basin_of(-8.85, 115.15, HB, HY.inside) == "same" and core.basin_of(-8.85, 115.25, HB, HY.inside) == "other"
-      and core.basin_of(-8.0, 114.0, HB, HY.inside) == "beyond", "hydro's own inside on hydro's basins shape")
+CB = (-8.85, 115.15)
+check(core.basin_of(-8.85, 115.15, HB, HY.inside, CB) == "same" and core.basin_of(-8.85, 115.25, HB, HY.inside, CB) == "other"
+      and core.basin_of(-8.0, 114.0, HB, HY.inside, CB) == "beyond", "hydro's own inside on hydro's basins shape")
 W2 = [{"kind": "works", "name": "Água Pura", "lat": 0.0, "lon": 0.0}, {"kind": "works", "name": "agua pura", "lat": 5.0, "lon": 5.0},
       {"kind": "tank", "name": "agua pura", "lat": 0.1, "lon": 0.1}]
 r = core.resolve({"origin": {"how": "name", "name": "AGUA PURA"}}, W2, 4.0, 4.0)
@@ -294,7 +353,7 @@ with tempfile.TemporaryDirectory() as tmp:
     ROWS["SHARE_LEVEL"] = "open"
     os.environ.pop("NODE_KIND") if _kind is None else os.environ.__setitem__("NODE_KIND", _kind)
 
-    # 3: a stranger's km come from the cell's middle, the keeper's from the node
+    # a stranger's km come from the cell's middle, the keeper's from the node
     import wall as W  # noqa: E402
     ctr = W.cell_centre()
     probe = next((la, 115.1635) for la in [NODE_LAT + 0.0005 * i for i in range(20, 200)]
@@ -308,7 +367,7 @@ with tempfile.TemporaryDirectory() as tmp:
     check(st_km == round(W.dist_km(ctr, po, pl)) and st_km != round(adapter_km(NODE_LAT, 115.1635, pl, po)), "a stranger's km is from the cell's middle, whole")
     os.environ.pop("NODE_KIND") if _kind is None else os.environ.__setitem__("NODE_KIND", _kind)
 
-    # 8: act token is the keeper, X-Agent gets the stranger's view, a community node that does not share answers no stranger
+    # the act token is the keeper, X-Agent gets the stranger's view, a community node that does not share answers no stranger
     patch_result(DOC)
     check(client.get("/supply", headers={"Authorization": "Bearer act-tok"}).json()["sources"][2]["origin"]["lat"] == TYPED_LAT, "the act token counts as the keeper")
     ag = client.get("/supply", headers=dict(ADMIN, **{"X-Agent": "bot"})).json()
@@ -319,7 +378,17 @@ with tempfile.TemporaryDirectory() as tmp:
     ROWS["SHARE_LEVEL"] = "open"
     os.environ.pop("NODE_KIND") if _kind is None else os.environ.__setitem__("NODE_KIND", _kind)
 
-    # 6: every entry bad, for the keeper
+    # ?reader=1 gives the keeper's own token the stranger's answer, as the printed report asks for it
+    patch_result(dict(DOC, stated=DOC["stated"] + [src(None, None, None, None, problem="kind", entry="A | canal | | ")]))
+    rd = client.get("/supply?reader=1", headers=ADMIN)
+    jr = rd.json()
+    check(rd.status_code == 200 and "entry" not in rd.text and "A | canal" not in rd.text, "reader=1: no raw entry, even for the keeper")
+    check("lat" not in jr["sources"][2]["origin"] and not any(f"{v:.3f}" in rd.text for v in (TYPED_LAT, TYPED_LON)), "reader=1: no typed point")
+    check(jr["sources"][0]["origin"]["km"] == round(W.dist_km(ctr, 115.19, -8.80)) and all(w["km"] == round(w["km"]) for w in jr["works"]),
+          "reader=1: whole km from the middle of the cell")
+    check("lat" in client.get("/supply", headers=ADMIN).json()["sources"][2]["origin"], "without the flag the keeper still gets every point")
+
+    # every entry bad, for the keeper
     patch_result(dict(DOC, stated=[src(None, None, None, None, problem="kind", entry="A | canal | | ")], works=[]))
     check(client.get("/supply", headers=ADMIN).json()["hint"] == "not read: see the entries", "all entries bad: the keeper is told to see them")
     os.environ["NODE_KIND"] = "community"

@@ -227,7 +227,7 @@ function report(again) {
   if (PSHEET && !again) { show(true); return null; }
   show(false);
   const get = p => doorsFetch(p).then(r => (r.ok ? r.json() : null)).catch(() => null), reg = PREG;
-  return (PTAKING = Promise.all([window.placeSheet(reg === 'paper'), get('/geo/cell?id=' + D.health.cell.id), get('/hydro'), get('/supply'), readingFetch().then(r => (r.ok ? r.json() : null)).catch(() => null), get('/forecast')]).then(([s, c8, H, S, RD, FC]) => {
+  return (PTAKING = Promise.all([window.placeSheet(reg === 'paper'), get('/geo/cell?id=' + D.health.cell.id), get('/hydro'), get('/supply?reader=1'), readingFetch().then(r => (r.ok ? r.json() : null)).catch(() => null), get('/forecast')]).then(([s, c8, H, S, RD, FC]) => {
     PTAKING = null;
     if (location.hash !== '#place/report') return;
     if (reg !== PREG) return report(true);   // the other register was pressed while this one was taken

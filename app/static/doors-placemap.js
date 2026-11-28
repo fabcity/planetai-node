@@ -312,9 +312,9 @@ function energyRows() {
 function supplyRows() {
   const S = PM.supply, l = LAYERS.find(x => x.id === 'supply'), W = (S && S.works) || [], O = supplyMarks(S).origins, pts = W.some(w => w.lat != null);
   l.empty = !pts && !O.length; l.locked = !!W.length && l.empty;
-  /* the setting's name is the keeper's; the report's table and a reader with no token say only that it is not stated */
-  l.rwhy = S ? 'not stated' : null;
-  l.why = !S ? 'planetai run supply fetch' : DOORS_TOKEN() ? 'set SUPPLY_SOURCES on Set up' : 'not stated';
+  /* the settings' names are the keeper's; the report's table and a reader with no token say only what is missing */
+  l.rwhy = S ? 'not stated' : 'not yet';
+  l.why = DOORS_TOKEN() ? (S ? 'set SUPPLY_SOURCES on Set up' : 'add supply to PACKS_ENABLED') : S ? 'not stated' : 'not yet';
   if (W.length) l.src = `${W.length} work${W.length === 1 ? '' : 's'}`;
 }
 /* what the layer draws from an answer: the works with a point, the stated origins with a point (a ring each), and the
@@ -322,14 +322,14 @@ function supplyRows() {
 function supplyMarks(S, from) {
   const src = ((S && S.sources) || []).filter(x => x && x.id), at = o => o && o.lat != null && o.lon != null;
   const works = ((S && S.works) || []).filter(w => w.lat != null && w.lon != null);
-  const origins = src.filter(x => x.origin && x.origin.how === 'stated' && at(x.origin)).map(x => ({ name: `${x.origin.name} (stated)`, kind: x.kind, lat: x.origin.lat, lon: x.origin.lon }));
+  const origins = src.filter(x => x.origin && x.origin.how === 'stated' && at(x.origin)).map(x => ({ name: `${x.name} (stated)`, kind: x.kind, lat: x.origin.lat, lon: x.origin.lon }));
   const f = src[0] && at(src[0].origin) ? src[0].origin : null;
   return { works, origins, line: from && f ? [from, [f.lon, f.lat]] : null };
 }
 /* the inspector's lines for a mark of the water supply */
 function waterFacts(w, row, hint) {
   return `<span class="k">Water supply · ${esc(w.kind)}</span><b class="said">${esc(w.name || 'not named')}</b>` + (w.operator ? row('run by', `<span class="said">${esc(w.operator)}</span>`) : '')
-    + (w.km != null ? row('from the cell’s middle', `${w.km < 1 ? 'within a kilometre' : `${+(+w.km).toFixed(1)} km`}`) : '') + hint('OpenStreetMap, or as stated by the keeper of this node');
+    + (w.km != null ? row(DOORS_TOKEN() ? 'from this node' : 'from the middle of the cell', `${w.km < 1 ? 'within a kilometre' : `${+(+w.km).toFixed(1)} km`}`) : '') + hint('OpenStreetMap, or as stated by the keeper of this node');
 }
 /* where the line starts: the middle of the node's res-8 cell, never the node's own point. A screen with no token is
    given that middle as D.point; with the token the cell's ring is read; a sheet draws no line. */
@@ -1770,11 +1770,12 @@ async function placeMap() {
 }
 window.placeMap = placeMap; window.placeLayer = setLayer; window.placeSheet = placeSheet; window.placeCake = placeCake; window.placeNoMap = NOMAP; window.__PM = PM;   // __PM for the rig
 /* the figures' Rivers row: both hydro rows on, and out to District scale, where the nearest river is in view */
-/* the figures' Water supply row: the layer on, and the map out to where the first stated origin is in frame (the cell, when
-   none has a point) */
+/* the figures' Water supply row: the layer on, and the map out to where the first source's origin is in frame when the
+   answer carries its point, else the first work with one, else the cell */
 window.placeSupply = () => {
   setLayer('supply', true); if (!PM.map) return;
-  const M = supplyMarks(PM.supply, null), at = M.origins[0] || M.works[0];
+  const s = ((PM.supply && PM.supply.sources) || []).find(x => x && x.id), o = s && s.origin;
+  const at = o && o.lat != null && o.lon != null ? o : supplyMarks(PM.supply, null).works[0];
   if (!at) { fly(8); return; }
   const f = supplyFrom() || D.point, b = [[Math.min(f[0], at.lon), Math.min(f[1], at.lat)], [Math.max(f[0], at.lon), Math.max(f[1], at.lat)]];
   PM.map.fitBounds(b, { padding: 60, maxZoom: 13, duration: CLOCK.reduced() ? 0 : 700 });

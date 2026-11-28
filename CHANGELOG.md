@@ -26,11 +26,12 @@
 - **28 Nov: a new `supply` pack says where a place's water comes from.** The keeper writes the sources in order of use
   in `SUPPLY_SOURCES`, each as a name, a kind (piped, truck, well, spring, rain or bottled), how well it holds and an
   origin, a point or the name of a water work on the public map. The node reads the water works, pumping stations,
-  towers, reservoirs, dams, wells and pipelines round it from OpenStreetMap once a month, and finds each origin, how far
-  it is and which basin it is in. Place has a Water supply row and a layer for the works, off at first, and the
-  reading says how the water comes and, when the first source fails, how the gap is filled and how to count the dry days.
-  A reader of a community node's report sees the row and the works with distances in whole kilometres, and never a
-  point the keeper typed. A public link needs one more path, `/supply`, listed in Sharing.
+  towers, reservoirs, dams, wells, water tanks and water pipelines round it from OpenStreetMap once a month, and finds
+  each origin, how far it is from the middle of the node's cell and which basin it is in. Place has a Water supply row,
+  and a layer for the works once you switch it on. The reading says how the water comes and, when the first source
+  fails, says so and how to count the dry days; it names what fills the gap when the second source is of another kind.
+  The printed report always takes a stranger's answer, so it has distances in whole kilometres and never a point the
+  keeper typed. A public link needs one more path, `/supply`, listed in Sharing.
 - **28 Nov: a community node's Place report opens complete from its public link.** A reader with no token now gets the
   picture of the place on the first sheet and the reading after it, what kind of place this is and the ways to improve
   it. A house still keeps both to its own screens. The report has a new page, What is coming: the forecast's days for

@@ -55,7 +55,8 @@ and the images. Once the hydro pack has fetched them (`planetai run hydro fetch`
 Rivers draws them wider with each order and Basins the level-12 basins, the node's own brighter, and a tap on a
 river gives its flow, the ground it drains and how far it runs to the sea. With the supply pack on, **Water supply**
 waits under built, off at first: the water works round the node and the origins of the sources the keeper stated.
-A tap on a work gives its kind, its name and who runs it. With the energy pack on, **Power grid**
+On a house the works' points go only to the keeper, so a screen without the token draws none. A tap on a work gives its
+kind, its name and who runs it. With the energy pack on, **Power grid**
 waits under built: the grid's plants, sized by what they can make, its substations and cable heads, and the node's
 seven cells with how many MW are made in each. Its line counts the plants and substations on the grid and says how
 far the nearest one is. The points and the cells need the screen's token. Nothing from inside the house is listed or
@@ -173,8 +174,8 @@ does not send this to a model outside your network, and the small model on the n
 
 With the supply pack on, the reading can say where the water comes from: that it is piped by the first source, from works
 some kilometres away and in which basin, or that it comes by truck, from a well, from a spring, from rain kept off the
-roof or bought bottled. When the first source fails at times or often, a second line says so and names what fills the
-gap. That line also offers a way to improve the place, "Count the days the tap is dry": keep a tally on one street for a
+roof or bought bottled. When the first source fails at times or often, a second line says so. It names what fills the
+gap only when the second source is of a different kind. That line also offers a way to improve the place, "Count the days the tap is dry": keep a tally on one street for a
 month, with each dry day, each truck bought and what it paid.
 
 Distances in the reading are whole kilometres, and what comes from the public map covers a kilometre round the node,
@@ -265,11 +266,15 @@ nearest river is in view. Before the fetch the row says `planetai run hydro fetc
 Data › Models and satellite, under "Rivers within 25 km".
 
 **Water supply** follows it, once the supply pack is on. It names the first source the keeper stated and its kind, and
-for that source says how well it holds, how far its origin is and whether the origin is in the node's own basin, in
-another basin the node holds, or outside them. The other sources are listed after it by name and kind. An entry that
-did not parse is shown with its problem, to the keeper only. With nothing stated the row says **not stated** and
-`set SUPPLY_SOURCES on Set up`, and counts the works drawn if the map has any. **on the map ↑** turns the layer on and
-takes the map out to the first origin. The sources are set under [`supply`](packs-reference.md#supply).
+for that source says how well it holds, how far its origin is and whether the origin is in the basin that holds the
+middle of the node's cell, in another basin the node holds, or outside them. The origin is the point the keeper typed,
+or a mapped water work, pumping station, reservoir, dam, well or water tower of the name the keeper wrote; a tank or a
+pipeline is never one. Where several works share the name, the one nearest the middle of the cell is taken. The other
+sources are listed after it by name and kind. An entry that did not parse is shown with its problem, to the keeper
+only. With nothing stated the row says **not stated**. The keeper also sees `set SUPPLY_SOURCES on Set up`; a reader
+with no token, and the report, see only **not stated**. The row counts the works drawn if the map has any. **on the map
+↑** turns the layer on and takes the map out to the first source's origin when the answer carries its point, else to
+the nearest work with a point, else to the cell. The sources are set under [`supply`](packs-reference.md#supply).
 
 **Fab City Index** is a row in that band, under land and coast. It names the place this node belongs to, which
 `planetai place` chooses, with the label the Index gives its score (**Partial** or **Simulated**), and then the Index's own

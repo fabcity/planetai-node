@@ -871,10 +871,15 @@ for water works, pumping stations, water towers, reservoirs, dams, wells, water 
 `SUPPLY_RADIUS_KM` round the middle of the node's res-8 cell, and keeps them. When the read fails it keeps the last works
 and waits six hours before it tries again.
 
-Each source gets an origin: the point the keeper typed, or the nearest mapped work that has the name written in the
-origin. The pack works out how far the origin is from the middle of the cell, and whether it lies in the node's own
-basin, in another basin the node holds, or outside them. The basin needs the hydro pack; without it the basin is left
-out and the rest stays.
+Each source gets an origin: the point the keeper typed, or a mapped work that has the name written in the origin. A
+water work, a pumping station, a reservoir, a dam, a well or a water tower can be an origin; a tank or a pipeline is
+never one. Where several works share the name, the one nearest the middle of the cell is taken. The pack works out how
+far the origin is from the middle of the cell, and whether it lies in the basin that holds the middle of the node's
+cell, in another basin the node holds, or outside them. The basin needs the hydro pack; without it the basin is left out
+and the rest stays. With no cell centre the pack reads no map, keeps the works it already has and leaves every named
+origin unfound, so nothing is measured from the node's own point.
+
+Add `supply` to `PACKS_ENABLED` where the node lists its packs, and set `SUPPLY_SOURCES` on Set up.
 
 | | |
 |---|---|
@@ -887,10 +892,12 @@ out and the rest stays.
 | Cells | none: the works are context, never a cell |
 | Attribution | "© OpenStreetMap contributors, ODbL, via Overpass" |
 
-The adapter writes three figures on the sensor `supply-point`. `supply_sources` is how many sources parse,
-`supply_origin_km` is how far the first source's origin is from the middle of the cell, in whole kilometres, and
-`supply_first_holds` is how well the first source holds: 0 steady, 1 fails at times, 2 fails often. The last two are
-written only when the first source has an origin, or says how it holds. `GET /supply` answers with the sources, their origins and the works.
+The adapter writes three figures on the sensor `supply-point`, which stands at the middle of the cell. `supply_sources`
+is how many sources parse. `supply_origin_km` is how far the first source's origin is from the middle of the cell, in
+whole kilometres, written only when the first source has an origin and the node has a cell centre.
+`supply_first_holds` is how well the first source holds, 0 steady, 1 fails at times, 2 fails often, written only when
+the first source says how it holds. The figures are daily: each carries the start of its UTC day, so Data shows one a
+day. `GET /supply` answers with the sources, their origins and the works.
 
 ### Settings
 
@@ -913,10 +920,12 @@ An entry that does not parse is skipped, and the keeper sees it on the page with
 
 ### What a stranger sees
 
-With the admin token, or from the machine itself, `/supply` gives each distance from the node's own point with one
-decimal, and the latitude and longitude of every work and origin. A reader with no token never gets a point the keeper
-typed, and every distance they see is in whole kilometres from the middle of the cell. On a community node that reader
-still gets the points of mapped works, and a house's own WiFi gets no points. The entries and the answer's fields are
+With the admin token or the act token, or from the machine itself, `/supply` gives each distance from the node's own
+point with one decimal, the latitude and longitude of every work and origin, and the entries that did not parse. A
+request that carries `X-Agent` gets the stranger's answer even with a token, and so does any request with `?reader=1`,
+which is how the printed report always asks. A stranger never gets a point the keeper typed, and every distance they
+see is in whole kilometres from the middle of the cell. On a community node a stranger still gets the points of mapped
+works, and a house's own WiFi gets no points. The entries and the answer's fields are
 under [`GET /supply`](api.md).
 
 ### What it does not know

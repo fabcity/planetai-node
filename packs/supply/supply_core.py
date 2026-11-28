@@ -100,15 +100,15 @@ def _rings(geometry: dict) -> list:
     return list(c)
 
 
-def basin_of(lat: float, lon: float, hydro: dict, inside) -> str | None:
-    """`same` inside the node's own level-12 basin, `other` inside another one hydro holds, `beyond` outside them all."""
+def basin_of(lat: float, lon: float, hydro: dict, inside, centre) -> str | None:
+    """`same` inside the level-12 basin holding the middle of the node's cell (`centre`, as lat, lon), `other` inside
+    another basin hydro holds, `beyond` outside them all. None with no basins or no centre: a basin edge through the
+    cell would otherwise say which side of it the node is on."""
     feats = ((hydro or {}).get("basins") or {}).get("features") or []
-    if not feats:
+    if not feats or not centre:
         return None
-    other = False
-    for f in feats:
-        if inside(lon, lat, _rings(f.get("geometry"))):
-            if (f.get("properties") or {}).get("here"):
-                return "same"
-            other = True
-    return "other" if other else "beyond"
+    rings = [_rings(f.get("geometry")) for f in feats]
+    home = next((r for r in rings if inside(centre[1], centre[0], r)), None)
+    if home is not None and inside(lon, lat, home):
+        return "same"
+    return "other" if any(inside(lon, lat, r) for r in rings) else "beyond"

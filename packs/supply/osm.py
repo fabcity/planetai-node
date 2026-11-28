@@ -1,7 +1,7 @@
 """Water works on the public map: the Overpass query, its parser, and the distance helper."""
 from __future__ import annotations
 
-from math import asin, cos, radians, sin, sqrt
+from math import asin, cos, isfinite, radians, sin, sqrt
 
 QUERY = """[out:json][timeout:90][bbox:{s},{w},{n},{e}];
 (
@@ -47,7 +47,7 @@ def parse(doc: dict) -> list[dict]:
             kind = _kind(tags)
             center = el.get("center") or el
             lat, lon = float(center["lat"]), float(center["lon"])
-            if kind is None:
+            if kind is None or not (isfinite(lat) and isfinite(lon) and -90 <= lat <= 90 and -180 <= lon <= 180):
                 continue
             out.append({"kind": kind, "name": str(tags.get("name") or tags.get("name:en") or ""),
                         "operator": str(tags.get("operator") or ""), "lat": lat, "lon": lon})
