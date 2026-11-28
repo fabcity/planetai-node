@@ -1,11 +1,25 @@
 """The keeper's statement of where this place's water comes from, parsed into one entry per source."""
 from __future__ import annotations
 
+import importlib.util
 import re
+import sys
 import unicodedata
+from pathlib import Path
 
 KINDS = ("piped", "truck", "well", "spring", "rain", "bottled")
 HOLDS = ("steady", "fails at times", "fails often")
+NAMED_KINDS = ("works", "pumping", "reservoir", "dam", "well", "tower")
+
+
+def sibling(name: str):
+    """A file of this pack, loaded under its own name: packs share bare names like `osm`, so a plain import could meet another pack's."""
+    key = f"supply_{name}"
+    if key not in sys.modules:
+        spec = importlib.util.spec_from_file_location(key, Path(__file__).with_name(f"{name}.py"))
+        sys.modules[key] = mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+    return sys.modules[key]
 
 
 def slug(name: str) -> str:
@@ -57,3 +71,44 @@ def parse_sources(text: str) -> list[dict]:
                 seen.add(e["id"])
         out.append(e)
     return out
+
+
+def _fold(text: str) -> str:
+    return "".join(c for c in unicodedata.normalize("NFKD", text) if not unicodedata.combining(c)).casefold().strip()
+
+
+def resolve(source: dict, works: list[dict], lat: float, lon: float) -> dict | None:
+    """Where a source comes from: the point the keeper typed, or the nearest water work on the map that has the name they gave."""
+    o = source.get("origin")
+    if not o:
+        return None
+    if o["how"] == "point":
+        return {"how": "stated", "name": None, "lat": o["lat"], "lon": o["lon"]}
+    want = _fold(o["name"])
+    km = sibling("osm").km
+    hits = [w for w in works if w.get("kind") in NAMED_KINDS and w.get("name") and _fold(w["name"]) == want]
+    if not hits:
+        return None
+    w = min(hits, key=lambda w: km(lat, lon, w["lat"], w["lon"]))
+    return {"how": "mapped", "name": w["name"], "lat": w["lat"], "lon": w["lon"]}
+
+
+def _rings(geometry: dict) -> list:
+    c = (geometry or {}).get("coordinates") or []
+    if (geometry or {}).get("type") == "MultiPolygon":
+        return [ring for poly in c for ring in poly]
+    return list(c)
+
+
+def basin_of(lat: float, lon: float, hydro: dict, inside) -> str | None:
+    """`same` inside the node's own level-12 basin, `other` inside another one hydro holds, `beyond` outside them all."""
+    feats = ((hydro or {}).get("basins") or {}).get("features") or []
+    if not feats:
+        return None
+    other = False
+    for f in feats:
+        if inside(lon, lat, _rings(f.get("geometry"))):
+            if (f.get("properties") or {}).get("here"):
+                return "same"
+            other = True
+    return "other" if other else "beyond"
