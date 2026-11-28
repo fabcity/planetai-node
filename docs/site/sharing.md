@@ -45,7 +45,7 @@ There are two levels. `cell` and `means` are named in the setting's help and ref
 | level | a request with no token, from another machine, may read |
 |---|---|
 | `off` (default) | 11 paths and the static files: `/` and `/ui` (the dashboard shell), `/workbench` (the sensors workbench, a shell like `/ui`) and `/tester` (which sends you to it), `/health` with the centre of the node's resolution-8 cell, `/llms.txt`, `/settings` reduced to the layout and the sharing level, the daily CC BY 4.0 `/export`, `/presence`, `/nodes` (the programme's public list of nodes), `/offers` (what the household chose to lend or give), and anything under `/static/`. Everything else is refused with a sentence naming the setting. |
-| `open` | 45 paths and 5 prefixes: the `off` list, and `/sensors` and `/stats` (the household's own sensors at the point `/health` publishes, a model's or the map's row at the centre of its own cell, the rest to three decimals, metadata cut to the provenance keys), `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/packs/all`, `/trust`, `/nearby`, `/forecast`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/earth/wall.png`, `/energy`, `/index/place`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, the ask pane's `/ask`, `/ask/status` and `/docs/search`, `/geo/cell` without the fields that place a cell relative to the node (`is_node`, `cells_from_node`, `ring_polar`, `children_polar`), `/learned/place` (what the node learned is usual for the outdoor sensors, never the house), `/wall` (the Wall's map, cut round the centre of the house's cell), and anything under `/exports/`, `/issues`, `/sources/` and `/ground/`. What a wall screen or a phone with no token needs. |
+| `open` | 46 paths and 5 prefixes: the `off` list, and `/sensors` and `/stats` (the household's own sensors at the point `/health` publishes, a model's or the map's row at the centre of its own cell, the rest to three decimals, metadata cut to the provenance keys), `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/packs/all`, `/trust`, `/nearby`, `/forecast`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/earth/wall.png`, `/energy`, `/supply`, `/index/place`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, the ask pane's `/ask`, `/ask/status` and `/docs/search`, `/geo/cell` without the fields that place a cell relative to the node (`is_node`, `cells_from_node`, `ring_polar`, `children_polar`), `/learned/place` (what the node learned is usual for the outdoor sensors, never the house), `/wall` (the Wall's map, cut round the centre of the house's cell), and anything under `/exports/`, `/issues`, `/sources/` and `/ground/`. What a wall screen or a phone with no token needs. |
 
 A refused request gets 403 and a sentence. For a path that `open` would answer it ends "Set SHARE_LEVEL to open in
 the dashboard's Set up view to let anything on your network read it." For a path no level opens it ends "No share
@@ -244,7 +244,7 @@ notes above](#share-level)), and a public link hands it to anyone.
    Put your `APP_PORT` in place of `8080`:
 
    ```bash
-   for p in /ui /static /health /nodes /weekly /wall /issues /sensors /stats /observations /cells /reach /rho /index/place /geo/cell /earth /ground/meta /ground/imagery /ground/vector /ground/glyphs /ground/wind /place/reading /forecast /nearby /energy; do sudo tailscale funnel --bg --yes --https=8443 --set-path=$p http://127.0.0.1:8080$p; done
+   for p in /ui /static /health /nodes /weekly /wall /issues /sensors /stats /observations /cells /reach /rho /index/place /geo/cell /earth /ground/meta /ground/imagery /ground/vector /ground/glyphs /ground/wind /place/reading /forecast /nearby /energy /supply; do sudo tailscale funnel --bg --yes --https=8443 --set-path=$p http://127.0.0.1:8080$p; done
    ```
 
    Funnel passes a path and everything under it, so `/issues` also opens `/issues/fixtures`, which no page
@@ -254,8 +254,10 @@ notes above](#share-level)), and a public link hands it to anyone.
    sudo tailscale funnel --bg --yes --https=8443 --set-path=/issues/fixtures /var/empty
    ```
 
-   `tailscale funnel status` now lists 26 paths under `https://<name>.<your-tailnet>.ts.net:8443`. Tailscale treats a
+   `tailscale funnel status` now lists 27 paths under `https://<name>.<your-tailnet>.ts.net:8443`. Tailscale treats a
    path with and without a trailing slash as one mount, so `/issues/` would replace `/issues` and break the Wall.
+   A public link set up before the supply pack needs that one more path, `/supply`: run the loop again, or just its
+   last entry, and the report's water supply row reads on the public page.
 3. **Share the three pages.** The Place report is `https://<name>.<your-tailnet>.ts.net:8443/ui#place/report`, with
    the picture of the place, its reading, the forecast and a button to save it as a PDF. The weekly report ends in
    `/ui#data/report` and the Wall in `/ui#wall`. Put the address up to the port in `PUBLIC_URL` and the community

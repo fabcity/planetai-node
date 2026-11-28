@@ -53,7 +53,9 @@ and if the row cannot draw, why: **token-only**, **not here**, **live map**, or 
 start on: this house's outdoor kit, the public stations, the species, the cell the node stands in, the street map
 and the images. Once the hydro pack has fetched them (`planetai run hydro fetch`), two more rows wait under water:
 Rivers draws them wider with each order and Basins the level-12 basins, the node's own brighter, and a tap on a
-river gives its flow, the ground it drains and how far it runs to the sea. With the energy pack on, **Power grid**
+river gives its flow, the ground it drains and how far it runs to the sea. With the supply pack on, **Water supply**
+waits under built, off at first: the water works round the node and the origins of the sources the keeper stated.
+A tap on a work gives its kind, its name and who runs it. With the energy pack on, **Power grid**
 waits under built: the grid's plants, sized by what they can make, its substations and cable heads, and the node's
 seven cells with how many MW are made in each. Its line counts the plants and substations on the grid and says how
 far the nearest one is. The points and the cells need the screen's token. Nothing from inside the house is listed or
@@ -133,7 +135,7 @@ page. The rest follow.
 On a community node set to `SHARE_LEVEL=open` a reader with no token gets the whole report: the picture, the reading
 and these pages. A house gives the picture and the reading only to a screen holding its token.
 
-1. The place in figures. These are the rows under the map on Place, with the yearly figures, Rivers and the city's Fab
+1. The place in figures. These are the rows under the map on Place, with the yearly figures, Rivers, Water supply and the city's Fab
    City Index row. Where the Index has read the city, a line gives the address of the city's own Index report.
 2. What the node holds about its place. Each row of the layer list stands under its heading as held, held in part, not
    yet, or withheld without the token, with where it comes from and, for an empty row, the command that fills it.
@@ -168,6 +170,12 @@ and no network. When Set up › Model has a model on your own network, the repor
 to a screen holding the admin token. Press it and the node asks that model, which takes a few minutes. The node keeps
 the text only if every figure in it is one the node holds. If not, it says why, and its own reading stands. The node
 does not send this to a model outside your network, and the small model on the node itself does not write it.
+
+With the supply pack on, the reading can say where the water comes from: that it is piped by the first source, from works
+some kilometres away and in which basin, or that it comes by truck, from a well, from a spring, from rain kept off the
+roof or bought bottled. When the first source fails at times or often, a second line says so and names what fills the
+gap. That line also offers a way to improve the place, "Count the days the tap is dry": keep a tally on one street for a
+month, with each dry day, each truck bought and what it paid.
 
 Distances in the reading are whole kilometres, and what comes from the public map covers a kilometre round the node,
 so nothing in it is closer than the res-8 cell. A report opened without the token has no reading. The sources page
@@ -255,6 +263,13 @@ is, how much water it carries on average and how far it still runs to the sea, a
 the square. **on the map ↑** turns on the Rivers and Basins rows and takes the map out to District scale, where the
 nearest river is in view. Before the fetch the row says `planetai run hydro fetch`. The same seven figures are in
 Data › Models and satellite, under "Rivers within 25 km".
+
+**Water supply** follows it, once the supply pack is on. It names the first source the keeper stated and its kind, and
+for that source says how well it holds, how far its origin is and whether the origin is in the node's own basin, in
+another basin the node holds, or outside them. The other sources are listed after it by name and kind. An entry that
+did not parse is shown with its problem, to the keeper only. With nothing stated the row says **not stated** and
+`set SUPPLY_SOURCES on Set up`, and counts the works drawn if the map has any. **on the map ↑** turns the layer on and
+takes the map out to the first origin. The sources are set under [`supply`](packs-reference.md#supply).
 
 **Fab City Index** is a row in that band, under land and coast. It names the place this node belongs to, which
 `planetai place` chooses, with the label the Index gives its score (**Partial** or **Simulated**), and then the Index's own
