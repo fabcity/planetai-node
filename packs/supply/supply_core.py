@@ -2,13 +2,15 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 
-KINDS = ("piped", "well", "truck", "rain", "spring", "bottled")
-HOLDS = ("fails often", "steady", "seasonal")
+KINDS = ("piped", "truck", "well", "spring", "rain", "bottled")
+HOLDS = ("steady", "fails at times", "fails often")
 
 
 def slug(name: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+    folded = "".join(c for c in unicodedata.normalize("NFKD", name) if not unicodedata.combining(c))
+    return re.sub(r"[^a-z0-9]+", "-", folded.lower()).strip("-")
 
 
 def _origin(text: str):

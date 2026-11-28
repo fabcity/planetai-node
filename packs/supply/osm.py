@@ -23,7 +23,8 @@ def km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 
 
 def _kind(tags: dict) -> str | None:
-    kind = _MAN_MADE.get(tags.get("man_made"))
+    man_made = tags.get("man_made")
+    kind = _MAN_MADE.get(man_made) if isinstance(man_made, str) else None
     if kind is None:
         if tags.get("landuse") == "reservoir" or tags.get("water") == "reservoir":
             return "reservoir"
@@ -39,13 +40,17 @@ def _kind(tags: dict) -> str | None:
 def parse(doc: dict) -> list[dict]:
     """Water works from an Overpass JSON answer; an element with no point or none of the tags read is dropped."""
     out: list[dict] = []
-    for el in (doc or {}).get("elements") or []:
-        tags = el.get("tags") or {}
-        kind = _kind(tags)
-        center = el.get("center") or el
-        lat, lon = center.get("lat"), center.get("lon")
-        if kind is None or lat is None or lon is None:
-            continue
-        out.append({"kind": kind, "name": tags.get("name") or tags.get("name:en") or "", "operator": tags.get("operator") or "",
-                    "lat": float(lat), "lon": float(lon)})
+    elements = doc.get("elements") if isinstance(doc, dict) else None
+    for el in elements if isinstance(elements, list) else []:
+        try:
+            tags = el.get("tags") or {}
+            kind = _kind(tags)
+            center = el.get("center") or el
+            lat, lon = float(center["lat"]), float(center["lon"])
+            if kind is None:
+                continue
+            out.append({"kind": kind, "name": str(tags.get("name") or tags.get("name:en") or ""),
+                        "operator": str(tags.get("operator") or ""), "lat": lat, "lon": lon})
+        except (AttributeError, KeyError, TypeError, ValueError):
+            continue  # a malformed element is skipped, never raised
     return out
