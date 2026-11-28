@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **28 Nov: the doors read better on a phone and a wall.** A phone that opens a public link at `/ui` now reaches the
+  phone page at the same path, where it used to be sent to `/` and got a 404; the phone page's link back to the
+  doors keeps the path too, and a `#place` link on a phone opens Place. On a phone the bar takes three rows instead
+  of four: the name, its kind and the three icons share the first. Every control in the bar is at least 40 px on a
+  desk and 44 px under a finger. Labels start at 12 px and body text at 16 px. The printed report's sheets keep to
+  the screen on a phone instead of scrolling sideways. On a narrow Wall the map's name and its credit line no longer
+  print over each other or under the back strip. Now's "Also read here" packs its bands in columns, and a screen
+  that cannot read the settings gets a Set up page that says whose it is and where to go.
 - **28 Nov: a new `supply` pack says where a place's water comes from.** The keeper writes the sources in order of use
   in `SUPPLY_SOURCES`, each as a name, a kind (piped, truck, well, spring, rain or bottled), how well it holds and an
   origin, a point or the name of a water work on the public map. The node reads the water works, pumping stations,

@@ -18,11 +18,11 @@
     mem = layout;
   }
   if (layout === 'mobile') return;                            /* ui() serves the phone page; nothing to do here */
-  var mobileHash = (hash === '' || hash === '#now' || hash === '#place' || hash === '#node');
+  var mobileHash = (hash === '' || hash === '#now' || hash === '#node');   /* #place opens Place: the phone page has none */
   if (!mobileHash) return;                                    /* docs and the bot link to sections the phone page has not */
   if (!layout && (mem === 'mobile' || (PHONE && mem !== 'doors'))) {
     q.set('layout', 'mobile');
-    location.replace('/?' + q.toString() + hash);
+    location.replace(location.pathname + '?' + q.toString() + hash);   /* the same path: a public link mounts /ui, never / */
   }
 })();
 </script>
@@ -43,17 +43,17 @@
   --mute:#5F5A54;--dim:#6F6963;--hair:var(--fc-grid-line);--raise:rgba(23,23,23,.035);
   --doc:var(--fc-neutral-200);--doc-line:var(--fc-neutral-400);   /* the ask pane's ground, not the data's (dashboard.css) */
   --body:var(--fc-font-body);--display:var(--fc-font-display);
-  --t-cap:11px;--t-small:13px;--t-body:15px;--t-read:20px;--t-head:clamp(26px,3.1vw,44px);
+  --t-cap:12px;--t-small:14px;--t-body:16px;--t-read:20px;--t-head:clamp(26px,3.1vw,44px);
 }
 :root[data-theme="dark"]{--mute:#A3A19F;--dim:#8A8886;--hair:rgba(249,245,242,.14);--raise:rgba(249,245,242,.05);--doc:var(--fc-neutral-800);--doc-line:var(--fc-neutral-600)}
 /* the node's words are never shouted (check_ui.py: µ uppercases to M) */
 .said{text-transform:none!important;letter-spacing:normal}
 /* provenance: ink only, square, glyph then word (dashboard.css .pill) */
-.pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--prov);color:var(--prov);padding:2px 7px 2px 6px;font:500 11px/1.3 var(--mono);letter-spacing:.04em;white-space:nowrap;vertical-align:middle;text-transform:none}
+.pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--prov);color:var(--prov);padding:2px 7px 2px 6px;font:500 12px/1.3 var(--mono);letter-spacing:.04em;white-space:nowrap;vertical-align:middle;text-transform:none}
 .pill svg.sg{width:var(--sign-floor);height:var(--sign-floor)}
 svg.sg{width:1em;height:1em;flex:none;vertical-align:-.12em;fill:currentColor}
-.gap{display:inline-block;border:1px dashed var(--mute);color:var(--mute);padding:1px 7px;font:500 11px/1.3 var(--mono)}
-.state{font:500 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mute);margin-left:8px}.state.act{color:var(--ink);font-weight:700}
+.gap{display:inline-block;border:1px dashed var(--mute);color:var(--mute);padding:1px 7px;font:500 12px/1.3 var(--mono)}
+.state{font:500 12px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mute);margin-left:8px}.state.act{color:var(--ink);font-weight:700}
 [aria-pressed="true"] .state,.on .state{color:var(--ground)}   /* a state on a selected (ink) row reads in paper */
 .skip{position:absolute;left:8px;top:-60px;z-index:100;background:var(--ink);color:var(--ground);padding:10px 14px;font:600 14px var(--body)}.skip:focus{top:8px}
 .numf{font-family:var(--num-face);font-weight:800;font-size:1.18em;letter-spacing:-.04em;line-height:1}
@@ -253,7 +253,9 @@ section.decl{margin-top:22px}.row.decl{cursor:default}   /* a pack's declared ba
 /* the four columns by the width Next days has, not the screen's: in the right column (Field Synthesizer variation) it has three */
 @container next (min-width:560px){.nxhead,.nrow{grid-template-columns:8.5em repeat(3,minmax(0,1fr))}.nxhead>span:first-child{display:block}.nrow .n,.nxhead>span:first-child{grid-column:auto}}
 /* what the packs read here, under both columns: each band's source said once under its head, its note folded */
-.alsoread{grid-area:al;margin-top:40px;min-width:0}.alsog{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:0 40px;align-items:start}
+.alsoread{grid-area:al;margin-top:40px;min-width:0}
+/* the bands flow in columns, each kept whole, so a short band no longer leaves a hole under it beside a long one */
+.alsog{columns:300px;column-gap:40px}.alsog>*{break-inside:avoid}
 .decl .src{margin:-4px 0 6px}.decl .how{border:0;margin-top:4px}
 .decl .how summary{display:flex;align-items:center;min-height:44px;padding:0;font:500 var(--t-small) var(--body);color:var(--mute);text-decoration:underline;text-underline-offset:3px}
 .aroundmap{position:relative;border:1px solid var(--rule,currentColor);border-color:color-mix(in srgb,currentColor 18%,transparent)}
@@ -273,7 +275,7 @@ section.decl{margin-top:22px}.row.decl{cursor:default}   /* a pack's declared ba
 .pask svg{width:15px;height:15px;flex:none;fill:none;stroke:var(--ink);stroke-width:1.4}
 .pask input{flex:1;min-width:0;height:100%;border:0;background:none;color:var(--ink);font:300 var(--t-body) var(--body);outline-offset:4px}
 .pask input::placeholder{color:var(--mute)}
-.pask kbd{font:400 10.5px/17px var(--mono);color:var(--mute);border:1px solid var(--hair);border-radius:4px;padding:0 5px}
+.pask kbd{font:400 12px/17px var(--mono);color:var(--mute);border:1px solid var(--hair);border-radius:4px;padding:0 5px}
 .prow{position:relative}
 /* the tools: one button on the top line, beside Ask (Tomas, 5 Nov 2026), and its menu under it, the runnable rows first */
 .ptoolsb{background:none;border:1px solid var(--ink);border-radius:999px;padding:0 16px;font:400 var(--t-small) var(--body);color:var(--ink);cursor:pointer;min-height:44px;white-space:nowrap}
@@ -281,9 +283,9 @@ section.decl{margin-top:22px}.row.decl{cursor:default}   /* a pack's declared ba
 .ptmenu{position:absolute;right:0;top:calc(100% + 6px);z-index:30;width:min(320px,calc(100vw - 32px));max-height:min(520px,70vh);overflow-y:auto;padding:6px;background:var(--ground);border:1px solid var(--ink);border-radius:10px}
 .ptmenu[hidden]{display:none}.ptmenu hr{border:0;border-top:1px solid var(--hair);margin:6px 2px}.ptmenu .fine{margin:8px 8px 4px}
 .pmh,#ymaps>h2,#cake .ck>h2{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:12px 0 2px;font:400 var(--t-cap) var(--body);letter-spacing:.02em;color:var(--mute)}
-.pmh b,#ymaps>h2 b,#cake .ck>h2 b{font:400 10.5px var(--mono)}
+.pmh b,#ymaps>h2 b,#cake .ck>h2 b{font:400 12px var(--mono)}
 /* two columns: the cake and the screen. One side menu, the left (Tomas, 5 Nov 2026): the tools are on the top line */
-.bench{display:grid;grid-template-columns:224px minmax(0,1fr);margin-top:16px;border-top:1px solid var(--hair);border-bottom:1px solid var(--hair)}
+.bench{display:grid;grid-template-columns:248px minmax(0,1fr);margin-top:16px;border-top:1px solid var(--hair);border-bottom:1px solid var(--hair)}
 #cake{padding:0 16px 16px 0;border-right:1px solid var(--hair);min-width:0}
 /* the screen's column sets the bench's height; the cake fills it and scrolls inside it */
 #cake{height:0;min-height:100%;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
@@ -298,10 +300,10 @@ section.decl{margin-top:22px}.row.decl{cursor:default}   /* a pack's declared ba
   .pfold:hover{color:var(--ink)}.pfold svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.5}.pfold span{display:none}
   /* placed in the screen's row, so the strip stops at the screen's foot. Both lines are named: for an absolute grid child
      an `auto` end line is the bench's own edge */
-  .pfold[data-fold="lc"]{grid-row:1/2;grid-column:1/2;left:210px}
+  .pfold[data-fold="lc"]{grid-row:1/2;grid-column:1/2;left:234px}
   .bench.lc .pfold[data-fold="lc"]{left:0;top:0;bottom:0;width:36px;height:auto;align-content:start;gap:10px;padding:12px 0;border:0;border-radius:0;background:none}
   .bench.lc .pfold[data-fold="lc"]:hover{background:var(--raise)}.bench.lc .pfold[data-fold="lc"] svg{transform:scaleX(-1)}
-  .bench.lc .pfold[data-fold="lc"] span{display:block;writing-mode:vertical-rl;font:400 11px var(--body);letter-spacing:.04em}
+  .bench.lc .pfold[data-fold="lc"] span{display:block;writing-mode:vertical-rl;font:400 12px var(--body);letter-spacing:.04em}
   .bench.lc{grid-template-columns:36px minmax(0,1fr)}.bench.lc #cake{padding:0;overflow:hidden}.bench.lc #cake>*{display:none}
   .bench.lc.mo .mapc #map{height:max(560px,calc(100vh - 80px))}.page[data-view="place"]:has(.bench.lc.mo){padding-left:16px;padding-right:16px}.bench.lc.mo .pmid{padding:12px 6px 0}
 }
@@ -314,7 +316,7 @@ section.decl{margin-top:22px}.row.decl{cursor:default}   /* a pack's declared ba
 .lyr{padding:0}#facts code{font:inherit;border:1px solid var(--hair);padding:0 3px}
 .ly{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:8px;align-items:center;width:100%;min-height:26px;margin:0;padding:0 8px;border:0;border-radius:6px;background:none;color:var(--ink);font:400 var(--t-small)/1.25 var(--body);text-align:left;cursor:pointer}
 .ly:hover{background:var(--raise)}.ly[aria-disabled="true"]{cursor:help}.ly:focus-visible,.ly.map>button:focus-visible{outline:2px solid var(--cells);outline-offset:-2px}
-.ly span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ly small{font:400 10.5px var(--mono);color:var(--mute);white-space:nowrap}
+.ly span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ly small{font:400 12px var(--mono);color:var(--mute);white-space:nowrap}
 .ly.held small{color:var(--ink)}.ly small .wh{width:10px;height:10px;margin-right:3px;vertical-align:-1px}
 .ly i{position:relative;width:22px;height:12px;border-radius:999px;background:var(--ink)}
 .ly i::after{content:'';position:absolute;top:2px;left:12px;width:8px;height:8px;border-radius:inherit;background:var(--ground)}
@@ -336,9 +338,9 @@ section.decl{margin-top:22px}.row.decl{cursor:default}   /* a pack's declared ba
 .yacts{display:flex;gap:8px}.yask{margin-left:0}.dform img[data-photo]{display:block;width:100%;height:auto;margin:6px 0}
 .ybtn{align-self:flex-start;min-height:32px;padding:0 14px;border:1px solid var(--ink);border-radius:999px;background:none;color:var(--ink);font:400 var(--t-cap) var(--body);cursor:pointer}
 /* a row that is on shows how strongly it is drawn, always: on hover only, nobody found it */
-.lyr .opw{display:none;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:center;margin:2px 8px 6px 38px;font:400 10.5px var(--mono);color:var(--mute)}
+.lyr .opw{display:none;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:center;margin:2px 8px 6px 38px;font:400 12px var(--mono);color:var(--mute)}
 .lyr:has(.ly.on) .opw{display:grid}.lyr .op{width:100%;accent-color:var(--ink);height:14px}
-.lyr .whr{display:grid;grid-template-columns:auto minmax(0,1fr) 44px;gap:8px;align-items:center;margin:6px 8px 2px 38px;font:400 10.5px var(--mono);color:var(--mute)}
+.lyr .whr{display:grid;grid-template-columns:auto minmax(0,1fr) 44px;gap:8px;align-items:center;margin:6px 8px 2px 38px;font:400 12px var(--mono);color:var(--mute)}
 .lyr .whr input{accent-color:var(--ink);width:100%}.lyr .whr b{font-weight:500;color:var(--ink);text-align:right}
 /* the species confirmed here open under their row */
 .spd{margin:4px 0 0 38px;border:0}.spd summary{display:inline-flex;align-items:center;min-height:28px;padding:0 12px;border:1px solid var(--hair);border-radius:6px;font:400 var(--t-cap) var(--body);color:var(--ink);cursor:pointer}.spd summary:hover{border-color:var(--ink)}
@@ -346,9 +348,9 @@ section.decl{margin-top:22px}.row.decl{cursor:default}   /* a pack's declared ba
 /* a tool: a plain row with its command id; the chosen one a filled pill; one that does not run yet, a dotted "not yet" */
 .tl{display:flex;align-items:center;gap:8px;width:100%;min-height:28px;margin:0;padding:0 8px;border:0;border-radius:999px;background:none;color:var(--ink);font:400 var(--t-small) var(--body);text-align:left}
 button.tl{cursor:pointer}button.tl:hover:not(:disabled):not(.on){background:var(--raise)}button.tl:disabled{color:var(--mute);cursor:default}
-.tl code{margin-left:auto;font:400 10px var(--mono);color:var(--mute)}
+.tl code{margin-left:auto;font:400 12px var(--mono);color:var(--mute)}
 .tl.on{background:var(--ink);color:var(--ground)}.tl.on code{color:var(--ground);opacity:.6}
-.tl.soon{color:var(--mute)}.tl.soon code{border:1px dotted var(--mute);border-radius:999px;padding:0 6px;font:400 10.5px var(--body)}
+.tl.soon{color:var(--mute)}.tl.soon code{border:1px dotted var(--mute);border-radius:999px;padding:0 6px;font:400 12px var(--body)}
 /* THE PLACE REPORT (SPEC_place_report §3, §4, §5): #place/report hides the rest of Place and shows the sheet and the
    report's pages on a grey ground. The sheet is paper in both registers, sized in its own width (cqw), so on a phone it
    is the same sheet, smaller. In print only the sheet and the pages are left, the sheet A4 landscape through the named
@@ -448,19 +450,19 @@ body:not(.classic) .hero .ladder.folded{display:none}
 .mapc:fullscreen{margin:0;border-radius:0;box-shadow:none}.mapc:fullscreen .mapw{display:flex;flex-direction:column;height:100%}.mapc:fullscreen #map{flex:1;height:auto}
 /* the download menu beside the column, and the base switch beside the zoom (SPEC_place_microgis §4) */
 .dlmenu{position:absolute;right:calc(var(--k) + 24px);top:12px;z-index:5;width:250px;padding:6px;color:var(--ink)}.dlmenu[hidden],.pbase[hidden]{display:none}
-.dlmenu .dlh{margin:0;padding:4px 8px 6px;font:400 10.5px var(--body);color:var(--mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dlmenu .dlh{margin:0;padding:4px 8px 6px;font:400 12px var(--body);color:var(--mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dlmenu button{display:flex;align-items:center;gap:8px;width:100%;min-height:var(--k);padding:0 8px;border:0;border-radius:6px;background:none;color:var(--ink);font:400 12.5px var(--body);text-align:left;cursor:pointer}
 .dlmenu button:hover:not(:disabled){background:var(--raise)}.dlmenu button:disabled{color:var(--mute);cursor:default}
-.dlmenu code{margin-left:auto;font:400 10px var(--mono);color:var(--mute)}.dlmenu hr{border:0;border-top:1px solid var(--hair);margin:5px 2px}.dlmenu .err{margin:6px 8px 2px;font:400 11px/1.4 var(--body)}
+.dlmenu code{margin-left:auto;font:400 12px var(--mono);color:var(--mute)}.dlmenu hr{border:0;border-top:1px solid var(--hair);margin:5px 2px}.dlmenu .err{margin:6px 8px 2px;font:400 12px/1.4 var(--body)}
 .pbase{position:absolute;right:calc(var(--k) + 24px);bottom:12px;z-index:3;display:flex;gap:2px;padding:3px;border-radius:999px}
-.pbase button{min-height:var(--k);padding:0 12px;border:0;border-radius:999px;background:none;color:var(--mute);font:400 11px var(--body);cursor:pointer}
+.pbase button{min-height:var(--k);padding:0 12px;border:0;border-radius:999px;background:none;color:var(--mute);font:400 12px var(--body);cursor:pointer}
 .pbase button[aria-pressed="true"]{background:var(--ink);color:var(--ground)}.mapc:has(.pbase:not([hidden])) #mapcredit{bottom:calc(var(--k) + 32px)}
 .mapc #mapbar{position:absolute;left:12px;bottom:12px;z-index:3;padding:0;border:0;display:block;max-width:calc(100% - var(--k) - 240px)}
 .scales{display:flex;gap:2px;padding:3px;border-radius:999px!important;overflow-x:auto;scrollbar-width:none}
-#mapbar .scales button{display:flex;gap:5px;align-items:center;width:auto;height:auto;min-height:var(--k);padding:0 12px;border:0;border-radius:999px;background:none;color:var(--mute);cursor:pointer;font:400 11px var(--body);white-space:nowrap}
-.scales b{font-weight:400}.scales span{font:400 10px var(--mono);opacity:.75}.scales button.leave span{text-decoration:underline dotted;text-underline-offset:2px}
+#mapbar .scales button{display:flex;gap:5px;align-items:center;width:auto;height:auto;min-height:var(--k);padding:0 12px;border:0;border-radius:999px;background:none;color:var(--mute);cursor:pointer;font:400 12px var(--body);white-space:nowrap}
+.scales b{font-weight:400}.scales span{font:400 12px var(--mono);opacity:.75}.scales button.leave span{text-decoration:underline dotted;text-underline-offset:2px}
 #mapbar .scales button.on{background:var(--ink);color:var(--ground)}
-.phour{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:3;display:flex;align-items:center;gap:0;min-height:var(--k);padding:0 6px;border-radius:999px;font:400 11.5px var(--mono);color:var(--ink);white-space:nowrap}
+.phour{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:3;display:flex;align-items:center;gap:0;min-height:var(--k);padding:0 6px;border-radius:999px;font:400 12px var(--mono);color:var(--ink);white-space:nowrap}
 .phour:empty{display:none}.phour b{font-weight:400;padding:0 8px}
 .phour button{width:var(--k);height:var(--k);border:0;border-radius:50%;background:none;color:var(--mute);cursor:pointer;font:400 14px var(--body)}.phour button:disabled{opacity:.35;cursor:default}
 .mapc .maplibregl-ctrl-scale{background:none;border:1px solid var(--mute);border-top:0;color:var(--mute);font:400 10px var(--mono);padding:0 5px;border-radius:0}
@@ -475,7 +477,7 @@ body:not(.classic) .hero .ladder.folded{display:none}
 .dkeys{position:absolute;left:12px;top:12px;z-index:3;display:flex;flex-direction:column;width:112px;background:var(--chip);border:1px solid var(--hair);border-radius:10px;overflow:hidden}
 .dkh{padding:6px 10px 5px;border-bottom:1px solid var(--hair);font:400 var(--t-cap) var(--body);letter-spacing:.02em;color:var(--mute)}
 .dkeys button{width:100%;height:var(--k);position:relative;display:grid;grid-template-columns:var(--k) minmax(0,1fr) auto;align-items:center;padding:0 9px 0 0;border:0;background:none;color:var(--ink);font:400 var(--t-small) var(--body);text-align:left;cursor:pointer}
-.dkeys button svg{justify-self:center}.dkeys kbd{font:400 10px var(--mono);opacity:.6;text-transform:none;letter-spacing:0}
+.dkeys button svg{justify-self:center}.dkeys kbd{font:400 12px var(--mono);opacity:.6;text-transform:none;letter-spacing:0}
 .dkeys button.gap{text-transform:none;letter-spacing:0}  /* the page's .gap chip is uppercase; a key that opens a group is not one */
 .dkeys button+button{border-top:1px solid var(--hair)}.dkeys button.gap{border-top-width:5px}
 .dkeys button[aria-pressed="true"]{background:var(--ink);color:var(--ground)}.dkeys button:hover:not([aria-pressed="true"]){background:var(--raise)}
@@ -504,33 +506,33 @@ body:not(.classic) .hero .ladder.folded{display:none}
 /* the readout folds to a chip (Tomas, 5 Nov 2026): the tool, the open map, the live figure and a dot in the colour; a
    press opens the colours and the hint under it, a second press or Esc folds them */
 .dread{display:flex;flex-direction:column;align-items:flex-start;gap:6px;max-width:100%;color:var(--ink)}
-.dchip{display:flex;align-items:center;gap:8px;max-width:100%;min-height:var(--k);padding:0 12px;background:var(--chip);border:1px solid var(--hair);border-radius:999px;color:var(--ink);font:400 11px var(--body);cursor:pointer;white-space:nowrap}
+.dchip{display:flex;align-items:center;gap:8px;max-width:100%;min-height:var(--k);padding:0 12px;background:var(--chip);border:1px solid var(--hair);border-radius:999px;color:var(--ink);font:400 12px var(--body);cursor:pointer;white-space:nowrap}
 .dchip:hover{background:var(--raise)}.dchip[aria-expanded="true"]{border-color:var(--ink)}
 .dchip .dot{flex:none;width:10px;height:10px;border-radius:50%;box-shadow:0 0 0 1px var(--hair)}
 /* when the chip is short of room the map's name gives way first, then the tool's word; the figure last, and it ends in
    an ellipsis rather than spilling out. The figure's second half (" · 0.31 ha · 223 m round") is the open panel's on
    a screen under 900 px: the chip keeps the number and its unit */
 .dchip>*{min-width:0}.dchip .t{flex:0 10 auto;overflow:hidden;text-overflow:ellipsis}
-.dchip .m{flex:0 1000 auto;font:400 10px var(--mono);color:var(--mute);overflow:hidden;text-overflow:ellipsis}
+.dchip .m{flex:0 1000 auto;font:400 12px var(--mono);color:var(--mute);overflow:hidden;text-overflow:ellipsis}
 .dchip .v,.dfull .vf{flex:0 1 auto;font:400 13px var(--mono);letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis}.dchip .v:empty,.dfull .vf:empty{display:none}
-.dchip .v small,.dfull .vf small{margin-left:4px;font-size:10px;color:var(--mute)}.dchip .v small.more,.dfull .vf small.more{margin-left:0}
+.dchip .v small,.dfull .vf small{margin-left:4px;font-size:12px;color:var(--mute)}.dchip .v small.more,.dfull .vf small.more{margin-left:0}
 .dfull .vf{display:block;margin:2px 0 4px;white-space:normal}
 @container place (max-width:899px){.dchip .v small.more{display:none}}
 .dfull,.dform{background:var(--chip);border:1px solid var(--hair);border-radius:10px;padding:6px 10px 8px;color:var(--ink)}.dfull{align-self:stretch}.dfull[hidden],.dform[hidden]{display:none}
 /* the swatches are .dsw: .sw is the margin's sign class, 18 px wide */
-.dread .dsw{display:flex;flex-wrap:wrap;align-items:center}.dread .dsw em{margin-left:auto;font:normal 400 11px var(--body);color:var(--mute)}
+.dread .dsw{display:flex;flex-wrap:wrap;align-items:center}.dread .dsw em{margin-left:auto;font:normal 400 12px var(--body);color:var(--mute)}
 .dread .dsw button{flex:none;width:var(--k);height:var(--k);display:grid;place-items:center;padding:0;border:0;background:none;cursor:pointer}
 .dread .dsw i{width:14px;height:14px;border-radius:50%;display:block}.dread .dsw button[aria-pressed="true"] i{box-shadow:0 0 0 2px var(--ground),0 0 0 3px var(--ink)}
-.dread .hint{margin-top:2px;padding-top:5px;border-top:1px solid var(--hair);font:400 10.5px/1.4 var(--body);color:var(--mute)}
-.dread .err,.dform p{margin:6px 0 0;font:400 11px/1.4 var(--body);color:var(--ink)}.dform p{color:var(--mute)}
-.dform label{display:flex;flex-direction:column;gap:2px;margin-bottom:6px;font:400 10.5px var(--body);color:var(--mute)}
+.dread .hint{margin-top:2px;padding-top:5px;border-top:1px solid var(--hair);font:400 12px/1.4 var(--body);color:var(--mute)}
+.dread .err,.dform p{margin:6px 0 0;font:400 12px/1.4 var(--body);color:var(--ink)}.dform p{color:var(--mute)}
+.dform label{display:flex;flex-direction:column;gap:2px;margin-bottom:6px;font:400 12px var(--body);color:var(--mute)}
 .dform input,.dform textarea,.dform select{min-height:var(--k);padding:0 8px;border:1px solid var(--hair);border-radius:6px;background:var(--ground);color:var(--ink);font:400 var(--t-small) var(--body)}
 .dform textarea{padding:8px;resize:vertical}.dform .acts{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0}
 .dform button{min-height:var(--k);padding:0 14px;border:1px solid var(--hair);border-radius:999px;background:none;color:var(--ink);font:400 var(--t-small) var(--body);cursor:pointer}
 .dform button:hover{background:var(--raise)}.dform .caps{display:flex;flex-direction:column;max-height:220px;overflow:auto;margin-top:6px}
-.dform .caps button{border-radius:6px;text-align:left}.dform .caps small{font:400 10px var(--mono);color:var(--mute)}
+.dform .caps button{border-radius:6px;text-align:left}.dform .caps small{font:400 12px var(--mono);color:var(--mute)}
 /* under the screen: the status line (the inspector), then the marks around the house, nearest first */
-#facts.inspect{display:flex;flex-wrap:wrap;gap:4px 16px;align-items:baseline;padding:12px 6px 8px;font:400 10.5px/1.5 var(--mono);color:var(--mute)}
+#facts.inspect{display:flex;flex-wrap:wrap;gap:4px 16px;align-items:baseline;padding:12px 6px 8px;font:400 12px/1.5 var(--mono);color:var(--mute)}
 #facts b{font-weight:500;color:var(--ink)}#facts .fi small{color:var(--mute);font:inherit;margin-right:6px}#facts .hint{margin-left:auto}#facts .said{font-family:var(--body)}
 #facts .pb{flex-basis:100%;display:flex;flex-wrap:wrap;gap:4px 16px;align-items:baseline;border-top:1px solid var(--hair);padding-top:6px}
 /* a community node's territory under the screen: the count, then one swatch per value, as the map draws it */
@@ -853,15 +855,15 @@ body:not(.classic) .hero .ladder.folded{display:none}
 .fc span{font-size:var(--t-small);font-weight:600}.fc small{display:block;font:500 var(--t-cap) var(--mono);color:var(--mute);font-weight:500}
 .fc b{font:600 var(--t-read)/1 var(--num-face);text-align:right}.fc em{font:500 var(--t-cap) var(--mono);color:var(--mute);font-style:normal;text-align:right}
 .flowtime{display:flex;align-items:flex-end;gap:10px;margin-top:8px;flex-wrap:wrap}
-.flowtime .seg{display:flex;border:1px solid var(--ink)}.flowtime .seg button{background:none;border:0;padding:0 9px;height:26px;font:500 11px var(--mono);cursor:pointer}
+.flowtime .seg{display:flex;border:1px solid var(--ink)}.flowtime .seg button{background:none;border:0;padding:0 9px;height:26px;font:500 12px var(--mono);cursor:pointer}
 .flowtime .seg button+button{border-left:1px solid var(--ink)}.flowtime .seg button.on{background:var(--ink);color:var(--ground)}
 .flowtime > .k{flex-basis:100%;margin-top:2px}
 .fkey{position:absolute;right:0;bottom:0;padding:10px 12px;background:var(--ground);font:500 var(--t-cap)/1.45 var(--mono);color:var(--mute);pointer-events:none}
 .fkey p{margin:0;white-space:nowrap}.fkey b{color:var(--ink);font-weight:600}.fkey .k{margin-bottom:4px}
-.flowtime .play{background:none;border:1px solid var(--ink);width:30px;height:26px;cursor:pointer;font:600 11px var(--mono)}
+.flowtime .play{background:none;border:1px solid var(--ink);width:30px;height:26px;cursor:pointer;font:600 12px var(--mono)}
 .flowtime .hours{display:grid;grid-template-columns:repeat(24,minmax(0,1fr));flex:1;min-width:280px;border-bottom:1px solid var(--ink)}
 .flowtime .h{position:relative;height:30px;background:none;border:0;border-left:1px solid var(--hair);padding:0;cursor:pointer}
-.flowtime .h span{position:absolute;left:2px;top:0;font:500 10px var(--mono);color:var(--mute)}
+.flowtime .h span{position:absolute;left:2px;top:0;font:500 12px var(--mono);color:var(--mute)}
 .flowtime .h.on{background:var(--raise);border-bottom:3px solid var(--ink)}
 .flowtime .h .a{position:absolute;left:3px;bottom:2px;width:4px;background:var(--signal-worse)}
 .flowtime .h .b{position:absolute;right:3px;bottom:3px;width:7px;height:7px;border:1.5px solid var(--rings);border-radius:50%}
@@ -1052,9 +1054,9 @@ body:not(.classic) .hero .ladder.folded{display:none}
 .asking .big small{font:600 14px var(--mono);letter-spacing:0;margin-left:8px}
 .asking .meters{display:grid;gap:4px;margin:12px 0 0}
 .asking .meters .r{display:grid;grid-template-columns:96px minmax(0,1fr);gap:10px;align-items:center}
-.asking .meters .k{font:500 10.5px var(--mono);letter-spacing:.06em;color:var(--mute);text-transform:uppercase}
+.asking .meters .k{font:500 12px var(--mono);letter-spacing:.06em;color:var(--mute);text-transform:uppercase}
 .asking .meters .meter{height:10px;width:100%}
-.asking .rule{font:400 11.5px/1.6 var(--body);color:var(--mute);margin:14px 0 0;max-width:38ch}
+.asking .rule{font:400 12px/1.6 var(--body);color:var(--mute);margin:14px 0 0;max-width:38ch}
 @media (max-width:900px){.asking.on{grid-template-columns:minmax(0,1fr)}.asking .frame{aspect-ratio:auto;height:min(38vh,72vw)}}
 .asking .brand{grid-column:1 / -1;margin:0;font:500 var(--t-cap) var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
 .asking .brand b{color:var(--ink);font-weight:800}
@@ -1084,7 +1086,7 @@ body:not(.classic) .hero .ladder.folded{display:none}
 #asof::before{content:"";display:inline-block;width:6px;height:6px;background:var(--amber);margin-right:7px;vertical-align:1px}
 .bar{border-bottom-color:var(--hair);background:var(--ground)}
 /* provenance as a micro-badge: a square LED, then the word. live engaged (amber), partial signal (cyan), the rest slate */
-.pill{border-color:var(--wire);background:var(--ground);gap:6px;font-weight:700;font-size:11px}
+.pill{border-color:var(--wire);background:var(--ground);gap:6px;font-weight:700;font-size:12px}
 .pill::before{content:"";width:5px;height:5px;flex:none;background:var(--dim)}
 .pill.pv-live::before{background:var(--amber)}.pill.pv-partial::before{background:var(--cyan)}
 .pill svg.sg{display:none}
@@ -1121,7 +1123,7 @@ body:not(.classic) .hero .ladder.folded{display:none}
 .ladder.enc{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;border-top:0;padding-top:0;margin-top:14px}
 .enc .knob{border:1px solid var(--wire);background:var(--ground);padding:10px;min-width:0;display:flex;flex-direction:column;gap:6px}
 .enc .kh{display:flex;justify-content:space-between;align-items:center;gap:6px;font:700 var(--t-cap) var(--mono);text-transform:uppercase;letter-spacing:.1em}
-.enc .kh .pill{font-size:10px;padding:1px 5px}
+.enc .kh .pill{font-size:12px;padding:1px 5px}
 .enc svg{width:100%;max-width:120px;height:auto;align-self:center;display:block}
 .enc .kf{display:block;max-width:100%;font:500 var(--t-cap) var(--mono);color:var(--mute);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.enc .knob>*{min-width:0;max-width:100%}
 .foot{border-top-color:var(--hair)}
@@ -1158,7 +1160,7 @@ body:not(.classic) .hero .ladder.folded{display:none}
 .tile .th{display:flex;align-items:center;gap:7px;padding:8px 10px;border-bottom:1px solid var(--hair);min-width:0}
 .tile .th .led{width:7px;height:7px;flex:none;background:var(--dk)}
 .tile .th b{font:700 var(--t-cap) var(--mono);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
-.tile .th .pill{margin-left:auto;font-size:10px;padding:1px 5px}
+.tile .th .pill{margin-left:auto;font-size:12px;padding:1px 5px}
 .tile .tx{background:none;border:1px solid var(--wire);color:var(--mute);width:24px;height:24px;flex:none;cursor:pointer;font:400 14px/1 var(--mono);padding:0}
 .tile .tx:hover{color:var(--ink);border-color:var(--wire-on)}
 .tile .tb{flex:1;background:#0A0A0C;background-image:radial-gradient(rgba(244,244,245,.08) 1px,transparent 1.2px);background-size:20px 20px;min-height:110px;color:#F4F4F5}
@@ -1166,7 +1168,7 @@ body:not(.classic) .hero .ladder.folded{display:none}
 .tile .tf{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:7px 10px;border-top:1px solid var(--hair);min-width:0}
 .tile .tv{font:600 18px var(--mono);color:var(--dk);white-space:nowrap}.tile .tv small{font-size:var(--t-cap);color:var(--mute);margin-left:3px}
 .tile .ts{font:500 var(--t-cap) var(--mono);color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
-.tile .kinds{display:flex;gap:0;border:1px solid var(--wire)}.tile .kinds button{background:none;border:0;border-right:1px solid var(--wire);color:var(--mute);font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.06em;padding:3px 6px;cursor:pointer;min-height:24px}
+.tile .kinds{display:flex;gap:0;border:1px solid var(--wire)}.tile .kinds button{background:none;border:0;border-right:1px solid var(--wire);color:var(--mute);font:600 12px var(--mono);text-transform:uppercase;letter-spacing:.06em;padding:3px 6px;cursor:pointer;min-height:24px}
 .tile .kinds button:last-child{border-right:0}.tile .kinds button[aria-pressed="true"]{background:var(--amber);color:#0E0E10}
 .tile .tk{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:0 10px 8px}
 .tile.add{align-items:center;justify-content:center;gap:10px;border-style:dashed;cursor:pointer;color:var(--mute);font:600 var(--t-cap) var(--mono);text-transform:uppercase;letter-spacing:.08em}
@@ -1187,7 +1189,7 @@ body:not(.classic) .hero .ladder.folded{display:none}
 .fpr .m{font:600 var(--t-small) var(--body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.fpr .s{font:500 var(--t-cap) var(--mono);color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fpr .v{font:600 var(--t-small) var(--mono);color:var(--dk);text-align:right;white-space:nowrap}.fpr svg{width:80px;height:20px;display:block}
 .fpr.off{cursor:default;opacity:.62}.fpr.off .v{color:var(--mute);font-weight:500}
-.fpr .on{font:700 10px var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--mute)}
+.fpr .on{font:700 12px var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--mute)}
 /* ROUND 3: Now with no dead space. Both columns are stacks of modules and end on the same line: the grid stretches
    them, and the last module of the shorter one grows (Tomas, 7 Nov: "so it does not have empty spaces like the one
    below the map"). What to do opens the right column, beside the moment it is about. */
@@ -1249,7 +1251,7 @@ body:not(.classic) .hero .ladder.folded{display:none}
 .phd .sure{display:flex;gap:8px;align-items:center;font-size:var(--t-small);color:var(--mute)}
 .pgrid{grid-template-columns:repeat(4,minmax(0,1fr))}.pgrid .tile.w2{grid-column:span 2}.pgrid .tile{min-height:230px}
 .pgrid .tile.w2 .tb{min-height:140px}
-.tile .tw{background:none;border:1px solid var(--wire);color:var(--mute);height:24px;flex:none;cursor:pointer;font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.06em;padding:0 6px}
+.tile .tw{background:none;border:1px solid var(--wire);color:var(--mute);height:24px;flex:none;cursor:pointer;font:600 12px var(--mono);text-transform:uppercase;letter-spacing:.06em;padding:0 6px}
 .tile .tw[aria-pressed="true"]{color:var(--ink);border-color:var(--wire-on)}
 .pn{padding:4px 16px 16px}.pn label{display:block;font:700 var(--t-cap) var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--mute);margin:14px 0 6px}
 .pn input[type=text]{width:100%;min-height:42px;border:1px solid var(--wire);background:#0A0A0C;color:var(--ink);padding:0 10px;font:var(--t-body) var(--body)}
@@ -1265,6 +1267,29 @@ body:not(.classic) .hero .ladder.folded{display:none}
   .bar:has(.doors a.pg) .doors .pgadd{flex:0 0 44px;border-top:1px solid var(--wire);min-height:44px}}
 @media (max-width:520px){.bgrid{grid-template-columns:minmax(0,1fr)}.fpr{grid-template-columns:9px minmax(0,1fr) 70px;}.fpr .s,.fpr svg{display:none}}
 @media (max-width:640px){.ladder.enc{grid-template-columns:repeat(2,minmax(0,1fr))}.face .hero,.face .todo,.face .nxpart,.face .rcol,.dsec{padding:0 10px 12px}.nh:not(.wnarr>.nh){margin:0 -10px 12px!important;padding:12px 10px!important}}
+/* ---- 28 Nov 2026 revision: controls a finger can hit, a header that leaves the phone its screen ---- */
+/* every control in the bar is at least 40 px on a desk and 44 px under a finger */
+.doors a,.reg button,#layout-switch{min-height:40px}.iconbtn{width:40px;height:40px}.bar .iconbtn+.iconbtn{margin-left:-8px}
+.doors .pgadd{min-height:40px}
+@media (pointer:coarse){.doors a,.reg button,#layout-switch,.doors .pgadd{min-height:44px}.iconbtn{width:44px;height:44px}
+  .rseg button,.rfind input,.rfind button,.prbar .reg button{min-height:44px}#layout-switch{display:inline-flex;align-items:center}}
+/* on a phone the name, its kind and the three icons share the first row; the doors take the second; the register,
+   the time and the phone link the third. Before, the icons fell to a row of their own and the bar ran four rows. */
+@media (max-width:480px){
+  .bar{row-gap:8px}
+  .who{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:flex-start;line-height:1.15;overflow:hidden;white-space:nowrap}
+  .who small{display:none}
+  .who .kind{margin:3px 0 0;padding:1px 5px}
+  .iconbtn{order:0}.bar .iconbtn+.iconbtn{margin-left:-9px}
+  .doors{order:2}.reg{order:3}#layout-switch{order:4}#asof{order:5;margin-left:auto;text-align:right;line-height:1.35}
+}
+/* the report's sheets keep to the screen: an auto track grew to the sheet's own width and the page scrolled sideways */
+.psheets{grid-template-columns:minmax(0,1fr)}
+/* a narrow Wall: the map's name keeps the left half and its credit the right, where they used to print over each other */
+@media (max-width:760px){#wallv .maplibregl-ctrl-top-right{max-width:50%}#wallv .maplibregl-ctrl-attrib{text-align:right}
+  #wallv .wwhere{max-width:46%;flex-wrap:wrap;row-gap:2px}}
+/* under a finger the back strip is always shown (above), so what sits at the map's top moves below it */
+@media (any-pointer:coarse){#wallv .maplibregl-ctrl-top-right{top:calc(44px + 2.4vh + 4px)}#wallv .wwhere{top:calc(44px + 2.4vh + 10px)}}
 </style>
 </head>
 <body>
@@ -1291,7 +1316,7 @@ body:not(.classic) .hero .ladder.folded{display:none}
   <nav class="doors" aria-label="Doors"><a href="#now" data-v="now">Now</a><a href="#place" data-v="place">Place</a><a href="#node" data-v="node">Node</a><a href="#data" data-v="data">Data</a><a href="#wall" data-v="wall">Wall</a></nav>
   <span class="sp"></span>
   <a class="proto relnote" id="relnote" href="#setup/updates" title="What changed, and how to update" hidden></a>
-  <a id="layout-switch" href="/?layout=mobile" title="Open the phone page">Phone view</a>
+  <a id="layout-switch" href="?layout=mobile" title="Open the phone page">Phone view</a>
   <span class="proto" id="asof"></span>
   <div class="reg" role="group" aria-label="Register"><button data-r="light" class="on">PAPER</button><button data-r="dark">DARK</button></div>
   <a class="iconbtn" href="https://planetai.fab.city/docs/" target="_blank" rel="noopener" aria-label="Documentation (opens planetai.fab.city)" title="Documentation"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 2.5h7l3.5 3.5v11.5h-10.5zM12 2.5v3.5h3.5M7.5 10h5M7.5 12.5h5M7.5 15h3"/></svg></a>
