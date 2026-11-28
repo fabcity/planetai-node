@@ -38,7 +38,7 @@ YEARLY = [(2016, 3105.0), (2019, 4410.0), (2023, 5994.0)]
 
 
 def n1(**over):
-    a = dict(latest=N1, hydro=HYDRO, energy=ENERGY, index=INDEX, labs=[3.4, 21.0], labs_radius_km=50, air=(12, 45), held=2, yearly=YEARLY, today=TODAY)
+    a = dict(latest=N1, hydro=HYDRO, energy=ENERGY, index=INDEX, supply=None, labs=[3.4, 21.0], labs_radius_km=50, air=(12, 45), held=2, yearly=YEARLY, today=TODAY)
     a.update(over)
     return reading.shape(**a)
 
@@ -86,7 +86,7 @@ check(not re.search(r"lat|lon|sensor|GIS Bandara", J), "no point, no sensor and 
 check(set(doc["fill"]) == {k for k, v in F.items() if v is None}, "fill names exactly the facts that are missing")
 check(reading.say("green_share", 0.341) == "34%" and reading.say("buildings", 2459.0) == "2459" and reading.say("heat_delta_c", 0.58) == "0.6"
       and reading.say("clinic_km", 1) == "1" and reading.say("grid", "Bali") == "Bali", "one formatter turns a fact into text")
-empty = reading.shape(latest={}, hydro=None, energy=None, index=None, labs=None, labs_radius_km=50, air=None, held=None, yearly=[], today=TODAY)
+empty = reading.shape(latest={}, hydro=None, energy=None, index=None, supply=None, labs=None, labs_radius_km=50, air=None, held=None, yearly=[], today=TODAY)
 check(reading.credits(doc, [{"id": "hydro", "attribution": "HydroSHEDS, CC-BY"}, {"id": "energy", "attribution": ["OSM, ODbL", "Ember, CC BY"]}, {"id": "fire", "attribution": "FIRMS"},
                             {"id": "place", "attribution": "© OpenStreetMap contributors"}, {"id": "surface-heat"}]) == ["HydroSHEDS, CC-BY", "OSM, ODbL", "Ember, CC BY", "© OpenStreetMap contributors"]
       and reading.credits(empty, [{"id": "hydro", "attribution": "HydroSHEDS, CC-BY"}]) == [], "the reading credits the packs whose figures it holds, and no other")
@@ -125,7 +125,7 @@ check(all(a["layer"] in reading.LAYERS and a["action"] in reading.ACTIONS and a[
 check(all(a["title"] and a["first_step"] and re.search(r"\d", a["why"]) for a in A), f"on node #1 every avenue has a first step and rests on a figure: {[a['why'] for a in A if not re.search(chr(92) + 'd', a['why'])]}")
 check(any(a["with"] == "the lab about 3 km away" for a in A) and all(a["with"] is None for a in A if a["action"] == "Map and research"), f"an experiment names the lab's distance: {[a['with'] for a in A]}")
 check(not NAMES.search(json.dumps(R)), "the reading names nobody")
-check(R["blind"] and all(b["what"] and b["command"] for b in R["blind"]) and [b["what"] for b in R["blind"]] == ["trees and farmed land from the satellite"],
+check(R["blind"] and all(b["what"] and b["command"] for b in R["blind"]) and [b["what"] for b in R["blind"]] == ["trees and farmed land from the satellite", "where the water comes from"],
       f"what it cannot see, each with what fills it, and nothing it does see: {R['blind']}")
 # a gap is named for what is missing, with the command that fills that and nothing else
 nosat = reading.rules(n1(latest={k: v for k, v in N1.items() if k not in ("sat_buildings", "osm_building_coverage")}, yearly=[]))
@@ -137,7 +137,7 @@ check("No clinic or pharmacy is drawn within a kilometre, as far as the public m
       and not any("clinic" in b["what"] or "school" in b["what"] for b in noclinic["blind"]),
       f"none drawn within the radius is a finding, not a gap: {nc} / {[b['what'] for b in noclinic['blind']]}")
 check(any(a["title"].startswith("Ask who walks to the clinic") and "0" in a["why"] for a in reading.rules(n1(latest={**N1, "nearest_health_m": (948.305, "2026-09-06"),
-      "lst_delta": (0.1, "2026-11-06"), "poi_lodging": (0.0, "2026-11-14"), "businesses_per_km2": (60.0, "2026-11-14")}, energy=None, index=None, yearly=[], held=7))["avenues"]),
+      "lst_delta": (0.1, "2026-11-06"), "poi_lodging": (0.0, "2026-11-14"), "businesses_per_km2": (60.0, "2026-11-14")}, energy=None, index=None, supply=None, yearly=[], held=7))["avenues"]),
       "and it opens an avenue")
 far = json.dumps(reading.rules(n1(radius_m=2000)))
 check("within 2 km" in far and "within a kilometre is green" not in far, "the radius in a sentence is the one the place pack counted in")
@@ -250,6 +250,53 @@ check("says what is drawn, not what exists" in P and "Do not grade the place bey
       "the prompt keeps the public map's limit and asks for no grade the figures do not give")
 print("  reading: a model's text is kept only with the frame's ids, the node's numbers and no person named")
 
+# ---------------------------------------------------------------- where the water comes from (the supply pack)
+import os as _os  # noqa: E402
+
+_os.environ.setdefault("DATABASE_URL", "postgresql://unused/never-connected")
+import wall  # noqa: E402
+
+NODE_LAT, NODE_LON = -8.81608263, 115.16354382
+_os.environ["NODE_LAT"], _os.environ["NODE_LON"] = str(NODE_LAT), str(NODE_LON)     # the home cell wall.cell_centre() takes its middle from
+
+
+def wall_km_from_cell_middle(lat, lon):
+    return round(wall.dist_km(wall.cell_centre(), lon, lat))
+
+
+def shape_with(**over):
+    return n1(**over)
+
+
+MANIFESTS = [{"id": "supply", "attribution": "Water works as drawn on OpenStreetMap, ODbL"}, {"id": "hydro", "attribution": "HydroSHEDS, CC-BY"}]
+S = {"stated": [{"id": "pdam", "name": "PDAM Tirta Mangutama", "kind": "piped", "holds": "fails often", "problem": None,
+                 "origin": {"how": "mapped", "name": "PDAM Tirta Mangutama", "lat": -8.799, "lon": 115.160, "basin": "same"}},
+                {"id": "water-trucks", "name": "Water trucks", "kind": "truck", "holds": None, "origin": None, "problem": None}]}
+d = shape_with(supply=S)
+L = reading.rules(d)["sections"]
+needs = next(sx for sx in L if sx["id"] == "needs")["lines"]
+check(any(l.startswith("The water here is piped by PDAM Tirta Mangutama, from works about ") and l.endswith(" km away, in the same basin.") for l in needs), "the piped line, with km and basin")
+check("It fails often, and trucks fill the gap." in needs, "the failing line")
+check(any(a["title"] == "Count the days the tap is dry" and a["layer"] == "Infrastructure" for a in reading.rules(d)["avenues"]), "the tally is proposed")
+check(not any("where the water comes from" == b["what"] for b in reading.rules(d)["blind"]), "stated: not among what the reading cannot see")
+
+d0 = shape_with(supply={})
+r0 = reading.rules(d0)
+check(not any(l.startswith("The water here") for sx in r0["sections"] for l in sx["lines"]) and any(
+    b["what"] == "where the water comes from" and b["command"] == "planetai config set SUPPLY_SOURCES" for b in r0["blind"]), "not stated: no line, and it is listed as unseen")
+steady = shape_with(supply={"stated": [dict(S["stated"][0], holds="steady")]})
+check(not any(a["title"] == "Count the days the tap is dry" for a in reading.rules(steady)["avenues"]), "a steady supply proposes no tally")
+bad = shape_with(supply={"stated": [dict(S["stated"][0], problem="no such kind"), S["stated"][1]]})
+check(bad["facts"]["supply_kind"]["v"] == "truck" and "supply_second" not in json.dumps(bad) or bad["facts"]["supply_second"] is None, "a source with a problem is not the first source")
+typed = shape_with(supply={"stated": [dict(S["stated"][0], origin={"how": "stated", "name": None, "lat": NODE_LAT, "lon": NODE_LON, "basin": "same"})]})
+check(str(NODE_LAT) not in json.dumps(reading.rules(typed)) and str(NODE_LON) not in json.dumps(reading.rules(typed)), "a typed origin puts no point in the reading")
+check(typed["facts"]["supply_origin_km"]["v"] == round(wall_km_from_cell_middle(NODE_LAT, NODE_LON)), "its km is whole, from the middle of the cell")
+check(any("Water supply as stated by the keeper of this node" in c for c in reading.credits(d, MANIFESTS)) and "Water works as drawn on OpenStreetMap, ODbL" in reading.credits(d, MANIFESTS),
+      "the keeper is credited beside the pack's own line")
+GOOD_WITH_SUPPLY = {**GOOD, "sections": {**GOOD["sections"], "needs": "The tap fails often here, and trucks fill the gap, with 34% of the ground green."}}
+check(reading.accept(json.dumps(GOOD_WITH_SUPPLY), d, reading.rules(d))[0] is not None, "a model's text may say 'fails often' when the node's own line does")
+print("  reading: where the water comes from is said, with no point and a whole km from the cell's middle, and credited")
+
 # ---------------------------------------------------------------- kept on the node, read by the household, written on a button
 # Driven through the app with the database and the model faked, as tests/test_cells.py drives its routes.
 import logging  # noqa: E402
@@ -328,7 +375,7 @@ class Con:
 cur = Cur()
 src_reading = open("app/reading.py").read()
 reading._db = lambda: Con(cur)
-reading._held = lambda c: (HYDRO, ENERGY, INDEX, 2)        # what the packs and the cells hold, read in process on a node
+reading._held = lambda c: (HYDRO, ENERGY, INDEX, None, 2)        # what the packs and the cells hold, read in process on a node
 started, asked = [], []
 reading._spawn = lambda fn, *a: started.append((fn, a))
 reading._rungs = lambda: [online, home, small]
